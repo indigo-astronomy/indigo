@@ -140,7 +140,7 @@
       <AdditionalLibraryDirectories>..\..\build\$(Configuration)\$(Platform)\;bin_externals\libogmacam\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /Y /I "bin_externals\libogmacam\lib\windows\$(Platform)\*.*" "..\..\build\$(Configuration)\$(Platform)\"</Command>
+      <Command>xcopy /Y /I "bin_externals\libogmacam\lib\windows\$(Platform)\*.dll" "..\..\build\$(Configuration)\$(Platform)\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -166,7 +166,7 @@
       <AdditionalLibraryDirectories>..\..\build\$(Configuration)\$(Platform)\;bin_externals\libogmacam\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /Y /I "bin_externals\libogmacam\lib\windows\$(Platform)\*.*" "..\..\build\$(Configuration)\$(Platform)\"</Command>
+      <Command>xcopy /Y /I "bin_externals\libogmacam\lib\windows\$(Platform)\*.dll" "..\..\build\$(Configuration)\$(Platform)\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -188,7 +188,7 @@
       <AdditionalLibraryDirectories>..\..\build\$(Configuration)\$(Platform)\;bin_externals\libogmacam\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /Y /I "bin_externals\libogmacam\lib\windows\$(Platform)\*.*" "..\..\build\$(Configuration)\$(Platform)\"</Command>
+      <Command>xcopy /Y /I "bin_externals\libogmacam\lib\windows\$(Platform)\*.dll" "..\..\build\$(Configuration)\$(Platform)\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -214,7 +214,7 @@
       <AdditionalLibraryDirectories>..\..\build\$(Configuration)\$(Platform)\;bin_externals\libogmacam\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /Y /I "bin_externals\libogmacam\lib\windows\$(Platform)\*.*" "..\..\build\$(Configuration)\$(Platform)\"</Command>
+      <Command>xcopy /Y /I "bin_externals\libogmacam\lib\windows\$(Platform)\*.dll" "..\..\build\$(Configuration)\$(Platform)\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">

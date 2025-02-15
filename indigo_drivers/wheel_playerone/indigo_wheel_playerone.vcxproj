@@ -29,7 +29,7 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{2EC31342-35CD-4620-96FE-A37342685AC1}</ProjectGuid>
+    <ProjectGuid>{44F16A32-7552-4113-93A0-FBF9537DC783}</ProjectGuid>
     <RootNamespace>indigomountsimulator</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
@@ -130,17 +130,17 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>..\..\indigo_libs\bin_externals\pthreads4w\include\;..\..\indigo_libs\bin_externals\zlib\include;..\..\indigo_libs\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\indigo_libs\bin_externals\pthreads4w\include\;..\..\indigo_libs\bin_externals\zlib\include;..\..\indigo_libs\bin_externals\libusb\include;..\..\indigo_libs\;bin_externals\libPlayerOnePW\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;indigo.lib;starshootg.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\build\$(Configuration)\$(Platform)\;bin_externals\libstarshootg\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;indigo.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\build\$(Configuration)\$(Platform)\;bin_externals\libPlayerOnePW\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /Y /I "bin_externals\libstarshootg\lib\windows\$(Platform)\*.dll" "..\..\build\$(Configuration)\$(Platform)\"</Command>
+      <Command>xcopy /Y /I "bin_externals\libPlayerOnePW\lib\windows\$(Platform)\*.dll" "..\..\build\$(Configuration)\$(Platform)\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -154,7 +154,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>..\..\indigo_libs\bin_externals\pthreads4w\include\;..\..\indigo_libs\bin_externals\zlib\include;..\..\indigo_libs\bin_externals\libusb\include;..\..\indigo_libs\;bin_externals\libstarshootg\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\indigo_libs\bin_externals\pthreads4w\include\;..\..\indigo_libs\bin_externals\zlib\include;..\..\indigo_libs\bin_externals\libusb\include;..\..\indigo_libs\;bin_externals\libPlayerOnePW\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -162,11 +162,11 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;indigo.lib;starshootg.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\build\$(Configuration)\$(Platform)\;bin_externals\libstarshootg\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;indigo.lib;PlayerOnePW.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\build\$(Configuration)\$(Platform)\;bin_externals\libPlayerOnePW\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /Y /I "bin_externals\libstarshootg\lib\windows\$(Platform)\*.dll" "..\..\build\$(Configuration)\$(Platform)\"</Command>
+      <Command>xcopy /Y /I "bin_externals\libPlayerOnePW\lib\windows\$(Platform)\*.dll" "..\..\build\$(Configuration)\$(Platform)\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -178,17 +178,17 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>..\..\indigo_libs\bin_externals\pthreads4w\include\;..\..\indigo_libs\bin_externals\zlib\include;..\..\indigo_libs\bin_externals\libusb\include;..\..\indigo_libs\;bin_externals\libstarshootg\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\indigo_libs\bin_externals\pthreads4w\include\;..\..\indigo_libs\bin_externals\zlib\include;..\..\indigo_libs\bin_externals\libusb\include;..\..\indigo_libs\;bin_externals\libPlayerOnePW\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;indigo.lib;starshootg.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\build\$(Configuration)\$(Platform)\;bin_externals\libstarshootg\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;indigo.lib;PlayerOnePW.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\build\$(Configuration)\$(Platform)\;bin_externals\libPlayerOnePW\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /Y /I "bin_externals\libstarshootg\lib\windows\$(Platform)\*.dll" "..\..\build\$(Configuration)\$(Platform)\"</Command>
+      <Command>xcopy /Y /I "bin_externals\libPlayerOnePW\lib\windows\$(Platform)\*.dll" "..\..\build\$(Configuration)\$(Platform)\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -202,7 +202,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>..\..\indigo_libs\bin_externals\pthreads4w\include\;..\..\indigo_libs\bin_externals\zlib\include;..\..\indigo_libs\bin_externals\libusb\include;..\..\indigo_libs\;bin_externals\libstarshootg\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\indigo_libs\bin_externals\pthreads4w\include\;..\..\indigo_libs\bin_externals\zlib\include;..\..\indigo_libs\bin_externals\libusb\include;..\..\indigo_libs\;bin_externals\libPlayerOnePW\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -210,11 +210,11 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;indigo.lib;starshootg.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\build\$(Configuration)\$(Platform)\;bin_externals\libstarshootg\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;indigo.lib;PlayerOnePW.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\build\$(Configuration)\$(Platform)\;bin_externals\libPlayerOnePW\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /Y /I "bin_externals\libstarshootg\lib\windows\$(Platform)\*.dll" "..\..\build\$(Configuration)\$(Platform)\"</Command>
+      <Command>xcopy /Y /I "bin_externals\libPlayerOnePW\lib\windows\$(Platform)\*.dll" "..\..\build\$(Configuration)\$(Platform)\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
@@ -226,14 +226,14 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>..\..\indigo_libs\bin_externals\pthreads4w\include\;..\..\indigo_libs\bin_externals\zlib\include;..\..\indigo_libs\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\indigo_libs\bin_externals\pthreads4w\include\;..\..\indigo_libs\bin_externals\zlib\include;..\..\indigo_libs\bin_externals\libusb\include;..\..\indigo_libs\;bin_externals\libPlayerOnePW\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;indigo.lib;starshootgcam.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\build\$(Configuration)\$(Platform)\;bin_externals\libstarshootg\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;indigo.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\build\$(Configuration)\$(Platform)\;bin_externals\libPlayerOnePW\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>
@@ -251,7 +251,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>..\..\indigo_libs\bin_externals\pthreads4w\include\;..\..\indigo_libs\bin_externals\zlib\include;..\..\indigo_libs\bin_externals\libusb\include;..\..\indigo_libs\;bin_externals\libstarshootg\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\indigo_libs\bin_externals\pthreads4w\include\;..\..\indigo_libs\bin_externals\zlib\include;..\..\indigo_libs\bin_externals\libusb\include;..\..\indigo_libs\;bin_externals\libPlayerOnePW\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -259,8 +259,8 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;indigo.lib;starshootgcam.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\build\$(Configuration)\$(Platform)\;bin_externals\libstarshootg\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;indigo.lib;PlayerOnePW.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\build\$(Configuration)\$(Platform)\;bin_externals\libPlayerOnePW\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>
@@ -269,7 +269,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\indigo_windows\dllmain.cpp" />
-    <ClCompile Include="indigo_ccd_ssg.c" />
+    <ClCompile Include="indigo_wheel_playerone.c" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\indigo_libs\indigo.vcxproj">
@@ -277,7 +277,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="indigo_ccd_ssg.h" />
+    <ClInclude Include="indigo_wheel_playerone.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

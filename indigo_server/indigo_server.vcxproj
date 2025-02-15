@@ -299,6 +299,9 @@
     <ProjectReference Include="..\indigo_drivers\ccd_omegonpro\indigo_ccd_omegonpro.vcxproj">
       <Project>{f10ee54d-fa61-46db-9586-efb35c735209}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\ccd_playerone\indigo_ccd_playerone.vcxproj">
+      <Project>{add5495d-88fd-473c-83af-934b358608ea}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\indigo_drivers\ccd_rising\indigo_ccd_rising.vcxproj">
       <Project>{ad38f44e-9b0a-4003-b654-393de71dfed7}</Project>
     </ProjectReference>
@@ -314,11 +317,17 @@
     <ProjectReference Include="..\indigo_drivers\dome_simulator\indigo_dome_simulator.vcxproj">
       <Project>{bed3f6c7-d374-49bb-9004-eaf521129a8c}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\focuser_asi\indigo_focuser_asi.vcxproj">
+      <Project>{6e012146-7be8-4567-860b-c11515b7a287}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\indigo_drivers\rotator_simulator\indigo_rotator_simulator.vcxproj">
       <Project>{88bcddef-e256-437d-a5ad-9ef58e6752fa}</Project>
     </ProjectReference>
     <ProjectReference Include="..\indigo_drivers\wheel_asi\indigo_wheel_asi.vcxproj">
       <Project>{60bc6dfb-7773-4865-b9cd-933816cb234e}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\wheel_playerone\indigo_wheel_playerone.vcxproj">
+      <Project>{44f16a32-7552-4113-93a0-fbf9537dc783}</Project>
     </ProjectReference>
     <ProjectReference Include="..\indigo_libs\indigo.vcxproj">
       <Project>{aa10be9e-6416-4f58-b821-2d0e479eb81b}</Project>
