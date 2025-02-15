@@ -38,7 +38,7 @@
 #include <indigo/indigo_token.h>
 #include <indigo/indigo_uni_io.h>
 
-#if defined(INDIGO_LINNUX)
+#if defined(INDIGO_LINUX)
 #define _GNU_SOURCE
 #define PTHREAD_RECURSIVE_MUTEX_INITIALIZER PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP
 #endif
