@@ -225,7 +225,7 @@ for (index = 0; SetupDiEnumDeviceInfo(deviceInfoSet, index, &deviceInfoData); in
 		indigo_error("Failed to get friendly name for device %d", index);
 		continue;
 	}
-	snprintf(serial_info[index].product_string, PATH_MAX, "%s", friendlyName);
+	snprintf(serial_info[index].product_string, sizeof(serial_info[index].product_string), "%s", friendlyName);
 }
 SetupDiDestroyDeviceInfoList(deviceInfoSet);
 return index;

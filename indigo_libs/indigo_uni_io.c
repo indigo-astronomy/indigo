@@ -856,6 +856,7 @@ static long read_data(indigo_uni_handle *handle, void *buffer, long length) {
 			indigo_error("%d -> // Failed to read (%s)", handle->index, indigo_uni_strerror(handle));
 		} else {
 			handle->last_error = 0;
+			return bytes_read;
 		}
 	} else if (handle->type == INDIGO_COM_HANDLE) {
 		ResetEvent(handle->ov_read.hEvent);
@@ -1064,9 +1065,20 @@ long indigo_uni_read_section(indigo_uni_handle *handle, char *buffer, long lengt
 			buffer[bytes_read] = 0;
 			return bytes_read;
 		}
-		if (read_data(handle, &c, 1) <= 0) {
-			indigo_error("%d -> // Failed to read (%s)", handle->index, indigo_uni_strerror(handle));
-			return -1;
+		switch (read_data(handle, &c, 1)) {
+			case -1:
+				indigo_error("%d -> // Failed to read (%s)", handle->index, indigo_uni_strerror(handle));
+				return -1;
+			case 0:
+				if (handle->log_level < 0) {
+					indigo_log_on_level(-handle->log_level, "%d -> // %ld bytes read", handle->index, bytes_read - 1);
+				}
+				else {
+					indigo_log_on_level(handle->log_level, "%d -> %.*s", handle->index, bytes_read, buffer);
+				}
+				return 0;
+			default:
+				break;
 		}
 		bool ignored = false;
 		for (const char *s = ignore; *s; s++) {
