@@ -857,6 +857,8 @@ static int focuser_get_index(int id) {
 	return -1;
 }
 
+static pthread_mutex_t indigo_device_enumeration_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 static indigo_device *focuser_create(int id) {
 	AOFocuserVersion version;
 	AOFocuserConfig config;

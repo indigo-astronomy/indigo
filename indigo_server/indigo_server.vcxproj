@@ -317,6 +317,9 @@
     <ProjectReference Include="..\indigo_drivers\rotator_simulator\indigo_rotator_simulator.vcxproj">
       <Project>{88bcddef-e256-437d-a5ad-9ef58e6752fa}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\wheel_asi\indigo_wheel_asi.vcxproj">
+      <Project>{60bc6dfb-7773-4865-b9cd-933816cb234e}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\indigo_libs\indigo.vcxproj">
       <Project>{aa10be9e-6416-4f58-b821-2d0e479eb81b}</Project>
     </ProjectReference>

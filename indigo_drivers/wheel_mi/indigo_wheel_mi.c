@@ -256,6 +256,8 @@ static void callback(int eid) {
 	new_eid = eid;
 }
 
+static pthread_mutex_t indigo_device_enumeration_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 static void process_plug_event(libusb_device *dev) {
 	static indigo_device wheel_template = INDIGO_DEVICE_INITIALIZER(
 		"",

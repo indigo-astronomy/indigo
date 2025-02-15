@@ -551,6 +551,8 @@ out:
 	return device;
 }
 
+static pthread_mutex_t indigo_device_enumeration_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 static void wheel_refresh(void) {
 	WHEEL_LIST wheels = { {}, 0 };
 	int number, ids[OFW_MAX_NUM];
