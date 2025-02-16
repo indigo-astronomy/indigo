@@ -23,7 +23,7 @@
  \file indigo_ccd_sx.c
  */
 
-#define DRIVER_VERSION 0x000E
+#define DRIVER_VERSION 0x000F
 #define DRIVER_NAME "indigo_ccd_sx"
 
 #include <stdlib.h>

@@ -24,7 +24,7 @@
  \file indigo_ccd_playerone.c
  */
 
-#define DRIVER_VERSION 0x000C
+#define DRIVER_VERSION 0x000D
 #define DRIVER_NAME "indigo_ccd_playerone"
 
 /* POA_SAFE_READOUT enables workaround for a bug in POAGetImageData().

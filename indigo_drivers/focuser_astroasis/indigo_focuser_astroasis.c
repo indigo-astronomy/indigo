@@ -23,7 +23,7 @@
  \file indigo_focuser_astroasis.c
  */
 
-#define DRIVER_VERSION 0x0005
+#define DRIVER_VERSION 0x0006
 #define DRIVER_NAME "indigo_focuser_astroasis"
 
 #include <stdlib.h>

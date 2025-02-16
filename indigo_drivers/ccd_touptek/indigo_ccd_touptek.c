@@ -24,7 +24,7 @@
  \file indigo_ccd_touptek.c
  */
 
-#define DRIVER_VERSION 0x0027
+#define DRIVER_VERSION 0x0028
 
 #include <stdlib.h>
 #include <string.h>
