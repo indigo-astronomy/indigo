@@ -28,12 +28,10 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
 #include <stdbool.h>
-#include <sys/time.h>
 
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_usb_utils.h>
@@ -536,7 +534,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 
 			if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) {
 				/* Goto position */
-				AOReturn ret = AOFocuserMoveTo(PRIVATE_DATA->dev_id, FOCUSER_POSITION_ITEM->number.target);
+				AOReturn ret = AOFocuserMoveTo(PRIVATE_DATA->dev_id, (int)FOCUSER_POSITION_ITEM->number.target);
 
 				if (ret != AO_SUCCESS)
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to move Oasis Focuser, ret = %d\n", ret);
@@ -549,7 +547,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 				FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 
-				ret = AOFocuserSyncPosition(PRIVATE_DATA->dev_id, FOCUSER_POSITION_ITEM->number.target);
+				ret = AOFocuserSyncPosition(PRIVATE_DATA->dev_id, (int)FOCUSER_POSITION_ITEM->number.target);
 
 				if (ret != AO_SUCCESS) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to sync Oasis Focuser, ret = %d\n", ret);
@@ -618,7 +616,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 
-			int step = (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) ? (-FOCUSER_STEPS_ITEM->number.value) : FOCUSER_STEPS_ITEM->number.value;
+			int step = (int)((FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) ? (-FOCUSER_STEPS_ITEM->number.value) : FOCUSER_STEPS_ITEM->number.value);
 			AOReturn ret = AOFocuserMove(PRIVATE_DATA->dev_id, step);
 
 			if (ret != AO_SUCCESS)
