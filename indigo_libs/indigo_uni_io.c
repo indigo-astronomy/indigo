@@ -401,7 +401,7 @@ static indigo_uni_handle *open_tty(const char *serial, DCB *dcb, int log_level) 
 	}
 	COMMTIMEOUTS timeouts = { 0 };
 	timeouts.ReadIntervalTimeout = INFINITE;
-	timeouts.ReadTotalTimeoutConstant = 0;
+	timeouts.ReadTotalTimeoutConstant = INFINITE;
 	timeouts.ReadTotalTimeoutMultiplier = 0;
 	timeouts.WriteTotalTimeoutConstant = INFINITE;
 	timeouts.WriteTotalTimeoutMultiplier = 0;
@@ -765,6 +765,19 @@ void indigo_uni_set_socket_write_timeout(indigo_uni_handle *handle, long timeout
 	}
 }
 
+static int discard_data(indigo_uni_handle *handle) {
+	if (handle->type != INDIGO_COM_HANDLE) {
+		return -1;
+	}
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	return tcflush(handle->fd, TCIOFLUSH);
+#elif defined(INDIGO_WINDOWS)
+	return PurgeComm(handle->com, PURGE_RXCLEAR | PURGE_TXCLEAR) ? 0 : -1;
+#else
+#pragma message ("TODO: discard_data()")
+#endif
+}
+
 static int wait_for_data(indigo_uni_handle *handle, long timeout) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	if (handle->type == INDIGO_FILE_HANDLE) {
@@ -782,7 +795,7 @@ static int wait_for_data(indigo_uni_handle *handle, long timeout) {
 				return -1;
 			case 0:
 				handle->last_error = 0;
-				indigo_log_on_level(handle->log_level, "%d <- // timeout", handle->index);
+				indigo_log_on_level(handle->log_level, "%d -> // timeout", handle->index);
 				return 0;
 			default:
 				handle->last_error = 0;
@@ -807,7 +820,7 @@ static int wait_for_data(indigo_uni_handle *handle, long timeout) {
 				return 1;
 			case WAIT_TIMEOUT:
 				CancelIo(handle->com);
-				indigo_log_on_level(handle->log_level, "%d <- // timeout", handle->index);
+				indigo_log_on_level(handle->log_level, "%d -> // timeout", handle->index);
 				return 0;
 			default:
 				handle->last_error = GetLastError();
@@ -1033,6 +1046,8 @@ long indigo_uni_discard(indigo_uni_handle *handle, long timeout) {
 	}
 	if (handle->type == INDIGO_FILE_HANDLE) {
 		return 0;
+	} else if (handle->type == INDIGO_COM_HANDLE) {
+		return discard_data(handle);
 	}
 	char c;
 	long bytes_read = 0;
@@ -1110,7 +1125,9 @@ long indigo_uni_read_section(indigo_uni_handle *handle, char *buffer, long lengt
 			buffer[bytes_read] = 0;
 			break;
 		}
-		timeout = 10000;
+		if (timeout > 10000) {
+			timeout = 10000;
+		}
 	}
 	if (handle->log_level < 0) {
 		indigo_log_on_level(-handle->log_level, "%d -> // %ld bytes read", handle->index, bytes_read);
