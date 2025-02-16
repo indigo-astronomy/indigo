@@ -68,6 +68,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_focuser_astroasis", 
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_aux_ppb", "indigo_drivers\aux_ppb\indigo_aux_ppb.vcxproj", "{F6B5C900-07CE-4D6B-A39A-3B9EA3B01486}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_aux_upb", "indigo_drivers\aux_upb\indigo_aux_upb.vcxproj", "{0955B910-1425-4589-91FA-33B6CBA63FA6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -340,6 +342,14 @@ Global
 		{F6B5C900-07CE-4D6B-A39A-3B9EA3B01486}.Release|x64.Build.0 = Release|x64
 		{F6B5C900-07CE-4D6B-A39A-3B9EA3B01486}.Release|x86.ActiveCfg = Release|Win32
 		{F6B5C900-07CE-4D6B-A39A-3B9EA3B01486}.Release|x86.Build.0 = Release|Win32
+		{0955B910-1425-4589-91FA-33B6CBA63FA6}.Debug|x64.ActiveCfg = Debug|x64
+		{0955B910-1425-4589-91FA-33B6CBA63FA6}.Debug|x64.Build.0 = Debug|x64
+		{0955B910-1425-4589-91FA-33B6CBA63FA6}.Debug|x86.ActiveCfg = Debug|Win32
+		{0955B910-1425-4589-91FA-33B6CBA63FA6}.Debug|x86.Build.0 = Debug|Win32
+		{0955B910-1425-4589-91FA-33B6CBA63FA6}.Release|x64.ActiveCfg = Release|x64
+		{0955B910-1425-4589-91FA-33B6CBA63FA6}.Release|x64.Build.0 = Release|x64
+		{0955B910-1425-4589-91FA-33B6CBA63FA6}.Release|x86.ActiveCfg = Release|Win32
+		{0955B910-1425-4589-91FA-33B6CBA63FA6}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

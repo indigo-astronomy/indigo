@@ -852,7 +852,7 @@ static indigo_result handle_advanced_property(indigo_device *device, indigo_prop
 		ASIGetControlCaps(id, ctrl_no, &ctrl_caps);
 		for (int item = 0; item < property->count; item++) {
 			if (!strncmp(ctrl_caps.Name, property->items[item].name, INDIGO_NAME_SIZE)) {
-				res = (long)ASISetControlValue(id, ctrl_caps.ControlType, (long)property->items[item].number.value, ASI_FALSE);
+				res = ASISetControlValue(id, ctrl_caps.ControlType, (long)property->items[item].number.value, ASI_FALSE);
 				if (res) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, %s) = %d", id, ctrl_caps.Name, res);
 				}

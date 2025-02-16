@@ -284,6 +284,9 @@
     <ProjectReference Include="..\indigo_drivers\aux_ppb\indigo_aux_ppb.vcxproj">
       <Project>{f6b5c900-07ce-4d6b-a39a-3b9ea3b01486}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\aux_upb\indigo_aux_upb.vcxproj">
+      <Project>{0955b910-1425-4589-91fa-33b6cba63fa6}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\indigo_drivers\ccd_altair\indigo_ccd_altair.vcxproj">
       <Project>{72e231d8-8732-41c6-a813-bf061fd9083d}</Project>
     </ProjectReference>
