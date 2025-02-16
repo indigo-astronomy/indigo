@@ -768,7 +768,8 @@ void indigo_uni_set_socket_write_timeout(indigo_uni_handle *handle, long timeout
 static int wait_for_data(indigo_uni_handle *handle, long timeout) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	if (handle->type == INDIGO_FILE_HANDLE) {
-		return true;
+		handle->last_error = 0;
+		return 1;
 	} else {
 		fd_set readout;
 		FD_ZERO(&readout);
@@ -790,7 +791,7 @@ static int wait_for_data(indigo_uni_handle *handle, long timeout) {
 	}
 #elif defined(INDIGO_WINDOWS)
 	if (handle->type == INDIGO_FILE_HANDLE) {
-		return true;
+		return 1;
 	} else if (handle->type == INDIGO_COM_HANDLE) {
 		unsigned long mask;
 		ResetEvent(handle->ov_read.hEvent);
@@ -798,20 +799,20 @@ static int wait_for_data(indigo_uni_handle *handle, long timeout) {
 			if (GetLastError() != ERROR_IO_PENDING) {
 				handle->last_error = GetLastError();
 				indigo_error("%d -> // Failed to wait for (%s)", handle->index, indigo_uni_strerror(handle));
-				return false;
+				return -1;
 			}
 		}
 		switch (WaitForSingleObject(handle->ov_read.hEvent, timeout / 1000)) {
 			case WAIT_OBJECT_0:
-				return true;
+				return 1;
 			case WAIT_TIMEOUT:
 				CancelIo(handle->com);
 				indigo_log_on_level(handle->log_level, "%d <- // timeout", handle->index);
-				return false;
+				return 0;
 			default:
 				handle->last_error = GetLastError();
 				indigo_error("%d -> // Failed to wait for (%s)", handle->index, indigo_uni_strerror(handle));
-				return false;
+				return -1;
 		}
 	} else if (handle->type == INDIGO_TCP_HANDLE || handle->type == INDIGO_UDP_HANDLE) {
 		fd_set readout;
@@ -821,15 +822,17 @@ static int wait_for_data(indigo_uni_handle *handle, long timeout) {
 		int result = select(0, &readout, NULL, NULL, &tv);
 		if (result == 0) {
 			handle->last_error = 0;
-			return false;
+			return 0;
 		} else if (result == SOCKET_ERROR) {
 			handle->last_error = WSAGetLastError();
 			indigo_error("%d -> // Failed to wait for (%s)", handle->index, indigo_uni_strerror(handle));
-			return false;
+			return -1;
 		}
-		return true;
+		handle->last_error = 0;
+		return 1;
 	}
-	return false;
+	handle->last_error = 0;
+	return 0;
 #else
 #pragma message ("TODO: wait_for_com_data()")
 #endif
