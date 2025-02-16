@@ -29,17 +29,14 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
 #include <errno.h>
 #include <pthread.h>
 #include <stdarg.h>
-#include <sys/time.h>
-#include <sys/termios.h>
 
 #include <indigo/indigo_driver_xml.h>
-#include <indigo/indigo_io.h>
+#include <indigo/indigo_uni_io.h>
 
 #include "indigo_aux_ppb.h"
 
@@ -91,7 +88,7 @@
 #define AUX_GROUP	"Powerbox"
 
 typedef struct {
-	int handle;
+	indigo_uni_handle *handle;
 	indigo_timer *aux_timer;
 	indigo_property *outlet_names_property;
 	indigo_property *power_outlet_property;
@@ -113,17 +110,16 @@ typedef struct {
 // -------------------------------------------------------------------------------- Low level communication routines
 
 static bool ppb_command(indigo_device *device, char *command, char *response, int max) {
-	tcflush(PRIVATE_DATA->handle, TCIOFLUSH);
-	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
-	indigo_write(PRIVATE_DATA->handle, "\n", 1);
-	if (response != NULL) {
-		if (indigo_read_line(PRIVATE_DATA->handle, response, max) == -1) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s -> no response", command);
-			return false;
+	if (indigo_uni_discard(PRIVATE_DATA->handle, INDIGO_DELAY(0.01)) >= 0) {
+		if (indigo_uni_printf(PRIVATE_DATA->handle, "%s\n", command) >= 0) {
+			if (response != NULL) {
+				if (indigo_uni_read_line(PRIVATE_DATA->handle, response, max) >= 0) {
+					return true;
+				}
+			}
 		}
 	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s -> %s", command, response != NULL ? response : "NULL");
-	return true;
+	return false;
 }
 
 // -------------------------------------------------------------------------------- INDIGO aux device implementation
@@ -373,7 +369,7 @@ static void aux_connection_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (PRIVATE_DATA->count++ == 0) {
-			PRIVATE_DATA->handle = indigo_open_serial(DEVICE_PORT_ITEM->text.value);
+			PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
 			if (PRIVATE_DATA->handle > 0) {
 				int attempt = 0;
 				while (true) {
@@ -420,8 +416,7 @@ static void aux_connection_handler(indigo_device *device) {
 					}
 					if (attempt++ == 3) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "PPB not detected");
-						close(PRIVATE_DATA->handle);
-						PRIVATE_DATA->handle = 0;
+						indigo_uni_close(&PRIVATE_DATA->handle);
 						break;
 					}
 					indigo_sleep(1);
@@ -483,8 +478,7 @@ static void aux_connection_handler(indigo_device *device) {
 				}
 			} else {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read 'PA' response");
-				close(PRIVATE_DATA->handle);
-				PRIVATE_DATA->handle = 0;
+				indigo_uni_close(&PRIVATE_DATA->handle);
 			}
 		}
 		if (PRIVATE_DATA->handle > 0) {
@@ -543,8 +537,7 @@ static void aux_connection_handler(indigo_device *device) {
 					ppb_command(device, "PL:0", response, sizeof(response));
 				}
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
-				close(PRIVATE_DATA->handle);
-				PRIVATE_DATA->handle = 0;
+				indigo_uni_close(&PRIVATE_DATA->handle);
 			}
 		}
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
