@@ -20,25 +20,20 @@
 // 2.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
 
 /** INDIGO Pegasus Astro FlatMaster aux driver
- \file indigo_aux_flatmaster.c
+ \file indigo_flatmaster_command.c
  */
 
-#define DRIVER_VERSION 0x0006
-#define DRIVER_NAME "indigo_aux_flatmaster"
+#define DRIVER_VERSION 0x0007
+#define DRIVER_NAME "indigo_flatmaster_command"
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
-#include <termios.h>
-#include <errno.h>
-#include <sys/time.h>
-#include <sys/ioctl.h>
 
 #include <indigo/indigo_driver_xml.h>
-#include <indigo/indigo_io.h>
+#include <indigo/indigo_uni_io.h>
 #include "indigo_aux_flatmaster.h"
 
 #define PRIVATE_DATA                                          ((flatmaster_private_data *)device->private_data)
@@ -54,22 +49,21 @@
 #define CALCULATE_INTENSITY(intensity)                        ((int)floor((100 - (int)(intensity) - 0) * (220 - 20) / (100 - 0) + 20))
 
 typedef struct {
-	int handle;
+	indigo_uni_handle *handle;
 	indigo_property *light_switch_property;
 	indigo_property *light_intensity_property;
 	pthread_mutex_t mutex;
 } flatmaster_private_data;
 
-static bool flatmaster_command(int handle, char *command, char *response, int resp_len) {
-	int result = indigo_write(handle, command, strlen(command));
-	result |= indigo_write(handle, "\n", 1);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d <- %s (%s)", handle, command, result ? "OK" : strerror(errno));
-	if (result) {
-		*response = 0;
-		result = indigo_read_line(handle, response, resp_len) > 0;
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d -> %s (%s)", handle, response, result ? "OK" : strerror(errno));
+static bool flatmaster_command(indigo_uni_handle *handle, char *command, char *response, int resp_len) {
+	if (indigo_uni_discard(handle) >= 0) {
+		if (indigo_uni_printf(handle, "%s\n", command) > 0) {
+			if (indigo_uni_read_section(handle, response, resp_len, "\n", "\r\n", INDIGO_DELAY(1)) > 0) {
+				return true;
+			}
+		}
 	}
-	return result;
+	return false;
 }
 
 static void aux_intensity_handler(indigo_device *device);
@@ -132,15 +126,14 @@ static void aux_connection_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		for (int i = 0; i < 2; i++) {
-			PRIVATE_DATA->handle = indigo_open_serial(DEVICE_PORT_ITEM->text.value);
+			PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
 			if (PRIVATE_DATA->handle > 0) {
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected on %s", DEVICE_PORT_ITEM->text.value);
 				if (flatmaster_command(PRIVATE_DATA->handle, "#", response, sizeof(response)) && !strcmp("OK_FM", response)) {
 					break;
 				} else {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed");
-					close(PRIVATE_DATA->handle);
-					PRIVATE_DATA->handle = 0;
+					indigo_uni_close(&PRIVATE_DATA->handle);
 				}
 			}
 		}
@@ -176,8 +169,7 @@ static void aux_connection_handler(indigo_device *device) {
 		indigo_delete_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
 		// turn off flatmaster at disconnect
 		flatmaster_command(PRIVATE_DATA->handle, "E:0", response, sizeof(response));
-		close(PRIVATE_DATA->handle);
-		PRIVATE_DATA->handle = 0;
+		indigo_uni_close(&PRIVATE_DATA->handle);
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
