@@ -708,6 +708,42 @@
     <ClInclude Include="indigo\indigo_usb_utils.h">
       <Filter>Header Files\indigo</Filter>
     </ClInclude>
+    <ClInclude Include="externals\libtiff\libtiff\t4.h">
+      <Filter>Header Files\libtiff</Filter>
+    </ClInclude>
+    <ClInclude Include="externals\libtiff\libtiff\tif_config.h">
+      <Filter>Header Files\libtiff</Filter>
+    </ClInclude>
+    <ClInclude Include="externals\libtiff\libtiff\tif_dir.h">
+      <Filter>Header Files\libtiff</Filter>
+    </ClInclude>
+    <ClInclude Include="externals\libtiff\libtiff\tif_fax3.h">
+      <Filter>Header Files\libtiff</Filter>
+    </ClInclude>
+    <ClInclude Include="externals\libtiff\libtiff\tif_predict.h">
+      <Filter>Header Files\libtiff</Filter>
+    </ClInclude>
+    <ClInclude Include="externals\libtiff\libtiff\tiff.h">
+      <Filter>Header Files\libtiff</Filter>
+    </ClInclude>
+    <ClInclude Include="externals\libtiff\libtiff\tiffconf.h">
+      <Filter>Header Files\libtiff</Filter>
+    </ClInclude>
+    <ClInclude Include="externals\libtiff\libtiff\tiffio.h">
+      <Filter>Header Files\libtiff</Filter>
+    </ClInclude>
+    <ClInclude Include="externals\libtiff\libtiff\tiffio.hxx">
+      <Filter>Header Files\libtiff</Filter>
+    </ClInclude>
+    <ClInclude Include="externals\libtiff\libtiff\tiffiop.h">
+      <Filter>Header Files\libtiff</Filter>
+    </ClInclude>
+    <ClInclude Include="externals\libtiff\libtiff\tiffvers.h">
+      <Filter>Header Files\libtiff</Filter>
+    </ClInclude>
+    <ClInclude Include="externals\libtiff\libtiff\uvcode.h">
+      <Filter>Header Files\libtiff</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Header Files">
@@ -754,6 +790,9 @@
     </Filter>
     <Filter Include="Header Files\indigo\indigo_cat">
       <UniqueIdentifier>{cbd9fa5d-1ab2-496d-8d51-f6e70bef853e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\libtiff">
+      <UniqueIdentifier>{194269cc-a6a7-4bc3-84a2-9970fa821553}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

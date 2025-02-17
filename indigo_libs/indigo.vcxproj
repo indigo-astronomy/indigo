@@ -148,6 +148,9 @@
     <PostBuildEvent>
       <Command>xcopy /Y /I "bin_externals\libusb\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" &amp;&amp; xcopy /Y /I "bin_externals\zlib\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" &amp;&amp; xcopy /Y /I "bin_externals\pthreads4w\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" &amp;&amp; xcopy /Y /I "bin_externals\libraw\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" </Command>
     </PostBuildEvent>
+    <PreBuildEvent>
+      <Command>xcopy /y /-i "externals\libtiff\libtiff\tif_config.vs" "externals\libtiff\libtiff\tif_config.h" &amp;&amp; xcopy /y /-i "externals\libtiff\libtiff\tiffconf.vs" "externals\libtiff\libtiff\tiffconf.h"</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -170,6 +173,9 @@
     <PostBuildEvent>
       <Command>xcopy /Y /I "bin_externals\libusb\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" &amp;&amp; xcopy /Y /I "bin_externals\zlib\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" &amp;&amp; xcopy /Y /I "bin_externals\pthreads4w\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" &amp;&amp; xcopy /Y /I "bin_externals\libraw\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" </Command>
     </PostBuildEvent>
+    <PreBuildEvent>
+      <Command>xcopy /y /-i "externals\libtiff\libtiff\tif_config.vs" "externals\libtiff\libtiff\tif_config.h" &amp;&amp; xcopy /y /-i "externals\libtiff\libtiff\tiffconf.vs" "externals\libtiff\libtiff\tiffconf.h"</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
     <ClCompile>
@@ -191,6 +197,9 @@
     <PostBuildEvent>
       <Command>xcopy /Y /I "bin_externals\libusb\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" &amp;&amp; xcopy /Y /I "bin_externals\zlib\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" &amp;&amp; xcopy /Y /I "bin_externals\pthreads4w\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" &amp;&amp; xcopy /Y /I "bin_externals\libraw\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" </Command>
     </PostBuildEvent>
+    <PreBuildEvent>
+      <Command>xcopy /y /-i "externals\libtiff\libtiff\tif_config.vs" "externals\libtiff\libtiff\tif_config.h" &amp;&amp; xcopy /y /-i "externals\libtiff\libtiff\tiffconf.vs" "externals\libtiff\libtiff\tiffconf.h"</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -214,8 +223,7 @@
       <ModuleDefinitionFile>.\indigo.def</ModuleDefinitionFile>
     </Link>
     <PreBuildEvent>
-      <Command>
-      </Command>
+      <Command>xcopy /y /-i "externals\libtiff\libtiff\tif_config.vs" "externals\libtiff\libtiff\tif_config.h" &amp;&amp; xcopy /y /-i "externals\libtiff\libtiff\tiffconf.vs" "externals\libtiff\libtiff\tiffconf.h"</Command>
     </PreBuildEvent>
     <PostBuildEvent>
       <Command>xcopy /Y /I "bin_externals\libusb\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" &amp;&amp; xcopy /Y /I "bin_externals\zlib\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" &amp;&amp; xcopy /Y /I "bin_externals\pthreads4w\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" &amp;&amp; xcopy /Y /I "bin_externals\libraw\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" </Command>
@@ -243,8 +251,7 @@
       <ModuleDefinitionFile>.\indigo.def</ModuleDefinitionFile>
     </Link>
     <PreBuildEvent>
-      <Command>
-      </Command>
+      <Command>xcopy /y /-i "externals\libtiff\libtiff\tif_config.vs" "externals\libtiff\libtiff\tif_config.h" &amp;&amp; xcopy /y /-i "externals\libtiff\libtiff\tiffconf.vs" "externals\libtiff\libtiff\tiffconf.h"</Command>
     </PreBuildEvent>
     <PostBuildEvent>
       <Command>xcopy /Y /I "bin_externals\libusb\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" &amp;&amp; xcopy /Y /I "bin_externals\zlib\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" &amp;&amp; xcopy /Y /I "bin_externals\pthreads4w\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" &amp;&amp; xcopy /Y /I "bin_externals\libraw\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" </Command>
@@ -272,8 +279,7 @@
       <ModuleDefinitionFile>.\indigo.def</ModuleDefinitionFile>
     </Link>
     <PreBuildEvent>
-      <Command>
-      </Command>
+      <Command>xcopy /y /-i "externals\libtiff\libtiff\tif_config.vs" "externals\libtiff\libtiff\tif_config.h" &amp;&amp; xcopy /y /-i "externals\libtiff\libtiff\tiffconf.vs" "externals\libtiff\libtiff\tiffconf.h"</Command>
     </PreBuildEvent>
     <PostBuildEvent>
       <Command>xcopy /Y /I "bin_externals\libusb\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" &amp;&amp; xcopy /Y /I "bin_externals\zlib\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" &amp;&amp; xcopy /Y /I "bin_externals\pthreads4w\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" &amp;&amp; xcopy /Y /I "bin_externals\libraw\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" </Command>
@@ -288,6 +294,18 @@
     <ClInclude Include="externals\libraw\libraw\libraw_internal.h" />
     <ClInclude Include="externals\libraw\libraw\libraw_types.h" />
     <ClInclude Include="externals\libraw\libraw\libraw_version.h" />
+    <ClInclude Include="externals\libtiff\libtiff\t4.h" />
+    <ClInclude Include="externals\libtiff\libtiff\tiff.h" />
+    <ClInclude Include="externals\libtiff\libtiff\tiffconf.h" />
+    <ClInclude Include="externals\libtiff\libtiff\tiffio.h" />
+    <ClInclude Include="externals\libtiff\libtiff\tiffio.hxx" />
+    <ClInclude Include="externals\libtiff\libtiff\tiffiop.h" />
+    <ClInclude Include="externals\libtiff\libtiff\tiffvers.h" />
+    <ClInclude Include="externals\libtiff\libtiff\tif_config.h" />
+    <ClInclude Include="externals\libtiff\libtiff\tif_dir.h" />
+    <ClInclude Include="externals\libtiff\libtiff\tif_fax3.h" />
+    <ClInclude Include="externals\libtiff\libtiff\tif_predict.h" />
+    <ClInclude Include="externals\libtiff\libtiff\uvcode.h" />
     <ClInclude Include="indigo\indigocat\indigocat_dso.h" />
     <ClInclude Include="indigo\indigocat\indigocat_dynamical_time.h" />
     <ClInclude Include="indigo\indigocat\indigocat_nutation.h" />
