@@ -141,6 +141,16 @@ INDIGO_EXTERN indigo_uni_handle *indigo_uni_open_serial_with_speed(const char *s
  */
 INDIGO_EXTERN indigo_uni_handle *indigo_uni_open_serial(const char *serial, int log_level);
 
+/** sets/clears RTS on serial port
+ */
+
+INDIGO_EXTERN int indigo_uni_set_rts(indigo_uni_handle *handle, bool state);
+
+/** sets/clears CTS on serial port
+ */
+
+INDIGO_EXTERN int indigo_uni_set_cts(indigo_uni_handle *handle, bool state);
+
 /** Open client socket.
  */
 INDIGO_EXTERN indigo_uni_handle *indigo_uni_open_client_socket(const char *host, int port, int type, int log_level);
@@ -177,10 +187,10 @@ INDIGO_EXTERN long indigo_uni_peek_available(indigo_uni_handle *handle, void *bu
  */
 INDIGO_EXTERN long indigo_uni_read(indigo_uni_handle *handle, void *buffer, long length);
 
-/** Discard all pending input with timeout
+/** Discard all pending input
  */
 
-INDIGO_EXTERN long indigo_uni_discard(indigo_uni_handle *handle, long timeout);
+INDIGO_EXTERN long indigo_uni_discard(indigo_uni_handle *handle);
 
 /** Read up to one of terminator characters optionally ignoring some characters (or NULL) into buffer with optional usecs timeout (or -1).
  */

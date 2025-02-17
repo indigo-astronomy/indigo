@@ -39,6 +39,7 @@
 #include <termios.h>
 #include <netdb.h>
 #include <sys/socket.h>
+#include <sys/ioctl.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #elif defined(INDIGO_WINDOWS)
@@ -451,6 +452,60 @@ indigo_uni_handle *indigo_uni_open_serial(const char *serial, int log_level) {
 	return indigo_uni_open_serial_with_config(serial, "9600-8N1", log_level);
 }
 
+int indigo_uni_set_rts(indigo_uni_handle *handle, bool state) {
+	if (handle == NULL) {
+		indigo_error("%s used with NULL handle", __FUNCTION__);
+		return -1;
+	}
+	if (handle->type != INDIGO_COM_HANDLE) {
+		return -1;
+	}
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	int fc_flag = TIOCM_RTS;
+	if (ioctl(handle->fd, state ? TIOCMBIS : TIOCMBIC, &fc_flag) < 0) {
+		handle->last_error = errno;
+		indigo_error("Failed to %s RTS (%s)", state ? "set" : "clear", indigo_uni_strerror(handle));
+		return -1;
+	}
+#elif defined(INDIGO_WINDOWS)
+	if (!EscapeCommFunction(handle->com, state ? SETRTS : CLRRTS)) {
+		handle->last_error = GetLastError();
+		indigo_error("Failed to %s RTS (%s)", state ? "set" : "clear", indigo_uni_strerror(handle));
+		return -1;
+	}
+#else
+#pragma message ("TODO: indigo_uni_set_rts()")
+#endif
+	return 0;
+}
+
+int indigo_uni_set_cts(indigo_uni_handle *handle, bool state) {
+	if (handle == NULL) {
+		indigo_error("%s used with NULL handle", __FUNCTION__);
+		return -1;
+	}
+	if (handle->type != INDIGO_COM_HANDLE) {
+		return -1;
+	}
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	int fc_flag = TIOCM_CTS;
+	if (ioctl(handle->fd, state ? TIOCMBIS : TIOCMBIC, &fc_flag) < 0) {
+		handle->last_error = errno;
+		indigo_error("Failed to %s CTS (%s)", state ? "set" : "clear", indigo_uni_strerror(handle));
+		return -1;
+	}
+#elif defined(INDIGO_WINDOWS)
+	if (!EscapeCommFunction(handle->com, state ? SETCTS : CLRCTS)) {
+		handle->last_error = GetLastError();
+		indigo_error("Failed to %s CTS (%s)", state ? "set" : "clear", indigo_uni_strerror(handle));
+		return -1;
+	}
+#else
+#pragma message ("TODO: indigo_uni_set_cts()")
+#endif
+	return 0;
+}
+
 indigo_uni_handle *indigo_uni_open_client_socket(const char *host, int port, int type, int log_level) {
 	indigo_uni_handle *handle = NULL;
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
@@ -852,9 +907,6 @@ static int wait_for_data(indigo_uni_handle *handle, long timeout) {
 }
 
 static long read_data(indigo_uni_handle *handle, void *buffer, long length) {
-	if (handle == NULL) {
-		return -1;
-	}
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	long bytes_read = read(handle->fd, buffer, length);
 	if (bytes_read < 0) {
@@ -911,10 +963,6 @@ static long read_data(indigo_uni_handle *handle, void *buffer, long length) {
 }
 
 static long write_data(indigo_uni_handle *handle, const char *buffer, long length) {
-	if (handle == NULL) {
-		indigo_error("%s used with NULL handle", __FUNCTION__);
-		return -1;
-	}
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	long bytes_written = write(handle->fd, buffer, length);
 	if (bytes_written < 0) {
@@ -969,6 +1017,10 @@ static long write_data(indigo_uni_handle *handle, const char *buffer, long lengt
 }
 
 long indigo_uni_read_available(indigo_uni_handle *handle, void *buffer, long length) {
+	if (handle == NULL) {
+		indigo_error("%s used with NULL handle", __FUNCTION__);
+		return -1;
+	}
 	long bytes_read = read_data(handle, buffer, length);
 	if (bytes_read < 0) {
 		if (handle->log_level < 0) {
@@ -1039,7 +1091,7 @@ long indigo_uni_read(indigo_uni_handle *handle, void *buffer, long length) {
 	}
 }
 
-long indigo_uni_discard(indigo_uni_handle *handle, long timeout) {
+long indigo_uni_discard(indigo_uni_handle *handle) {
 	if (handle == NULL) {
 		indigo_error("%s used with NULL handle", __FUNCTION__);
 		return -1;
@@ -1052,7 +1104,7 @@ long indigo_uni_discard(indigo_uni_handle *handle, long timeout) {
 	char c;
 	long bytes_read = 0;
 	while (true) {
-		if (wait_for_data(handle, timeout) <= 0) {
+		if (wait_for_data(handle, 10000) <= 0) {
 			break;
 		}
 		if (read_data(handle, &c, 1) <= 0) {
