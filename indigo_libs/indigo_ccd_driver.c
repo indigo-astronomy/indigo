@@ -128,9 +128,9 @@ void indigo_use_shortest_exposure_if_bias(indigo_device *device) {
 indigo_result indigo_ccd_attach(indigo_device *device, const char* driver_name, unsigned version) {
 	assert(device != NULL);
 	if (indigo_is_sandboxed) {
-		snprintf(default_image_path, PATH_MAX, "%s/", getenv("HOME"));
+		snprintf(default_image_path, PATH_MAX, "%s%c", indigo_uni_home_folder(), INDIGO_PATH_SEPATATOR);
 	} else {
-		snprintf(default_image_path, PATH_MAX, "%s/indigo_image_cache/", getenv("HOME"));
+		snprintf(default_image_path, PATH_MAX, "%s%cindigo_image_cache%c", indigo_uni_home_folder(), INDIGO_PATH_SEPATATOR, INDIGO_PATH_SEPATATOR);
 	}
 
 	if (CCD_CONTEXT == NULL) {

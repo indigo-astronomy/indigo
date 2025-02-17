@@ -231,10 +231,15 @@ INDIGO_EXTERN bool indigo_uni_lock_file(indigo_uni_handle *handle);
  */
 INDIGO_EXTERN void indigo_uni_close(indigo_uni_handle **handle);
 
+/** Home folder (~/)
+ */
+
+INDIGO_EXTERN const char* indigo_uni_home_folder(void);
+
 /** INDIGO config folder (~/.indigo)
  */
 
-INDIGO_EXTERN const char *indigo_uni_config_folder();
+INDIGO_EXTERN const char *indigo_uni_config_folder(void);
 
 /** Create folder.
  */

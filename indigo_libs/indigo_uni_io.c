@@ -1372,7 +1372,26 @@ void indigo_uni_close(indigo_uni_handle **handle) {
 	}
 }
 
-const char *indigo_uni_config_folder() {
+const char* indigo_uni_home_folder(void) {
+	static char home_folder[512] = { 0 };
+	if (home_folder[0] == 0) {
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+		strsnprintfncpy(home_folder, "%s", sizeof(home_folder), getenv("HOME"));
+#elif defined(INDIGO_WINDOWS)
+		const char* userprofile = getenv("USERPROFILE");
+		if (userprofile) {
+			snprintf(home_folder, sizeof(home_folder), "%s", userprofile);
+		} else {
+			snprintf(home_folder, sizeof(home_folder), "C:\\Users\\Default");
+		}
+#else
+#pragma message ("TODO: indigo_uni_home_folder()")
+#endif
+	}
+	return home_folder;
+}
+
+const char *indigo_uni_config_folder(void) {
 	static char config_folder[512] = { 0 };
 	if (config_folder[0] == 0) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
