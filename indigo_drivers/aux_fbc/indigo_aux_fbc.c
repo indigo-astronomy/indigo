@@ -193,6 +193,7 @@ static void aux_connection_handler(indigo_device *device) {
 			PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
 			if (PRIVATE_DATA->handle > 0) {
 				indigo_uni_set_rts(PRIVATE_DATA->handle, false);
+				// TODO: retest on windows (indigo_uni_set_cts() is no-op)
 				indigo_uni_set_cts(PRIVATE_DATA->handle, false);
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected on %s", DEVICE_PORT_ITEM->text.value);
 				if (fbc_command(PRIVATE_DATA->handle, ": I #", response, sizeof(response)) && !strcmp("I FBC", response)) {

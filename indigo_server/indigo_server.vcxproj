@@ -281,6 +281,18 @@
     <ProjectReference Include="..\indigo_drivers\ao_sx\indigo_ao_sx.vcxproj">
       <Project>{96d12488-1b9b-4cad-b128-86ed0cde5dbe}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\aux_arteskyflat\indigo_aux_arteskyflat.vcxproj">
+      <Project>{420c4d15-9009-4d5a-977b-a098b3aa735d}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\aux_astromechanics\indigo_aux_astromechanics.vcxproj">
+      <Project>{f0f408a1-e902-4d89-b65a-da709f06afa7}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\aux_fbc\indigo_aux_fbc.vcxproj">
+      <Project>{f27f54e7-3508-4f54-89ee-30b3e6d0f41a}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\aux_flatmaster\indigo_aux_flatmaster.vcxproj">
+      <Project>{c0733c8e-b8cd-4112-8658-c69f48d874b0}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\indigo_drivers\aux_ppb\indigo_aux_ppb.vcxproj">
       <Project>{f6b5c900-07ce-4d6b-a39a-3b9ea3b01486}</Project>
     </ProjectReference>

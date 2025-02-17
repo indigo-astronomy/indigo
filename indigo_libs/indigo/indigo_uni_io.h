@@ -141,6 +141,12 @@ INDIGO_EXTERN indigo_uni_handle *indigo_uni_open_serial_with_speed(const char *s
  */
 INDIGO_EXTERN indigo_uni_handle *indigo_uni_open_serial(const char *serial, int log_level);
 
+
+/** sets/clears DTR on serial port
+ */
+
+INDIGO_EXTERN int indigo_uni_set_dtr(indigo_uni_handle *handle, bool state);
+
 /** sets/clears RTS on serial port
  */
 

@@ -29,7 +29,7 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{96D12488-1B9B-4CAD-B128-86ED0CDE5DBE}</ProjectGuid>
+    <ProjectGuid>{420C4D15-9009-4D5A-977B-A098B3AA735D}</ProjectGuid>
     <RootNamespace>indigomountsimulator</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
@@ -273,7 +273,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\indigo_windows\dllmain.cpp" />
-    <ClCompile Include="indigo_aux_flatmaster.c" />
+    <ClCompile Include="indigo_aux_arteskyflat.c" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\indigo_libs\indigo.vcxproj">
@@ -281,7 +281,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="indigo_aux_flatmaster.h" />
+    <ClInclude Include="indigo_aux_arteskyflat.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

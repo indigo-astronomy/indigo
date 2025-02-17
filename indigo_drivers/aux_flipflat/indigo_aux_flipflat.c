@@ -28,17 +28,13 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
-#include <termios.h>
-#include <errno.h>
-#include <sys/time.h>
-#include <sys/ioctl.h>
 
 #include <indigo/indigo_driver_xml.h>
-#include <indigo/indigo_io.h>
+#include <indigo/indigo_uni_io.h>
+
 #include "indigo_aux_flipflat.h"
 
 #define PRIVATE_DATA												((flipflat_private_data *)device->private_data)
@@ -55,7 +51,7 @@
 #define AUX_COVER_OPEN_ITEM           			(AUX_COVER_PROPERTY->items+1)
 
 typedef struct {
-	int handle;
+	indigo_uni_handle *handle;
 	indigo_property *light_switch_property;
 	indigo_property *light_intensity_property;
 	indigo_property *cover_property;
@@ -63,16 +59,15 @@ typedef struct {
 	int type;
 } flipflat_private_data;
 
-static bool flipflat_command(int handle, char *command, char *response) {
-	int result = indigo_write(handle, command, strlen(command));
-	result |= indigo_write(handle, "\r", 1);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d <- %s (%s)", handle, command, result ? "OK" : strerror(errno));
-	if (result) {
-		*response = 0;
-		result = indigo_read_line(handle, response, 10) > 0;
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d -> %s (%s)", handle, response, result ? "OK" : strerror(errno));
+static bool flipflat_command(indigo_uni_handle *handle, char *command, char *response) {
+	if (indigo_uni_discard(handle) >= 0) {
+		if (indigo_uni_printf(handle, "%s\r", command) > 0) {
+			if (indigo_uni_read_section(handle, response, 16, "\n", "\n", INDIGO_DELAY(1)) > 0) {
+				return true;
+			}
+		}
 	}
-	return result;
+	return false;
 }
 
 // -------------------------------------------------------------------------------- INDIGO aux device implementation
@@ -128,7 +123,7 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 	if (IS_CONNECTED) {
 		indigo_define_matching_property(AUX_LIGHT_SWITCH_PROPERTY);
 		indigo_define_matching_property(AUX_LIGHT_INTENSITY_PROPERTY);
-	indigo_define_matching_property(AUX_COVER_PROPERTY);
+		indigo_define_matching_property(AUX_COVER_PROPERTY);
 	}
 	return indigo_aux_enumerate_properties(device, NULL, NULL);
 }
@@ -138,16 +133,12 @@ static void aux_connection_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		for (int i = 0; i < 2; i++) {
-			PRIVATE_DATA->handle = indigo_open_serial(DEVICE_PORT_ITEM->text.value);
+			PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
 			if (PRIVATE_DATA->handle > 0) {
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected on %s", DEVICE_PORT_ITEM->text.value);
-				int bits = TIOCM_DTR;
-				int result = ioctl(PRIVATE_DATA->handle, TIOCMBIS, &bits);
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d <- DTR %s", PRIVATE_DATA->handle, result < 0 ? strerror(errno) : "set");
+				indigo_uni_set_dtr(PRIVATE_DATA->handle, true);
 				indigo_usleep(100000);
-				bits = TIOCM_RTS;
-				result = ioctl(PRIVATE_DATA->handle, TIOCMBIC, &bits);
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d <- RTS %s", PRIVATE_DATA->handle, result < 0 ? strerror(errno) : "cleared");
+				indigo_uni_set_rts(PRIVATE_DATA->handle, false);
 				indigo_sleep(2);
 				if (flipflat_command(PRIVATE_DATA->handle, ">P000", response) && *response == '*') {
 					if (sscanf(response, "*P%02d000", &PRIVATE_DATA->type) != 1)
@@ -187,8 +178,7 @@ static void aux_connection_handler(indigo_device *device) {
 					break;
 				} else {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed");
-					close(PRIVATE_DATA->handle);
-					PRIVATE_DATA->handle = 0;
+					indigo_uni_close(&PRIVATE_DATA->handle);
 				}
 			}
 		}
@@ -231,8 +221,7 @@ static void aux_connection_handler(indigo_device *device) {
 		indigo_delete_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_COVER_PROPERTY, NULL);
-		close(PRIVATE_DATA->handle);
-		PRIVATE_DATA->handle = 0;
+		indigo_uni_close(&PRIVATE_DATA->handle);
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}

@@ -452,6 +452,33 @@ indigo_uni_handle *indigo_uni_open_serial(const char *serial, int log_level) {
 	return indigo_uni_open_serial_with_config(serial, "9600-8N1", log_level);
 }
 
+int indigo_uni_set_dtr(indigo_uni_handle *handle, bool state) {
+	if (handle == NULL) {
+		indigo_error("%s used with NULL handle", __FUNCTION__);
+		return -1;
+	}
+	if (handle->type != INDIGO_COM_HANDLE) {
+		return -1;
+	}
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	int fc_flag = TIOCM_DTR;
+	if (ioctl(handle->fd, state ? TIOCMBIS : TIOCMBIC, &fc_flag) < 0) {
+		handle->last_error = errno;
+		indigo_error("Failed to %s RTS (%s)", state ? "set" : "clear", indigo_uni_strerror(handle));
+		return -1;
+	}
+#elif defined(INDIGO_WINDOWS)
+	if (!EscapeCommFunction(handle->com, state ? SETDTR : CLRDTR)) {
+		handle->last_error = GetLastError();
+		indigo_error("Failed to %s RTS (%s)", state ? "set" : "clear", indigo_uni_strerror(handle));
+		return -1;
+	}
+#else
+#pragma message ("TODO: indigo_uni_set_rts()")
+#endif
+	return 0;
+}
+
 int indigo_uni_set_rts(indigo_uni_handle *handle, bool state) {
 	if (handle == NULL) {
 		indigo_error("%s used with NULL handle", __FUNCTION__);
@@ -495,11 +522,7 @@ int indigo_uni_set_cts(indigo_uni_handle *handle, bool state) {
 		return -1;
 	}
 #elif defined(INDIGO_WINDOWS)
-	if (!EscapeCommFunction(handle->com, state ? SETCTS : CLRCTS)) {
-		handle->last_error = GetLastError();
-		indigo_error("Failed to %s CTS (%s)", state ? "set" : "clear", indigo_uni_strerror(handle));
-		return -1;
-	}
+	return -1;
 #else
 #pragma message ("TODO: indigo_uni_set_cts()")
 #endif
