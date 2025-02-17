@@ -1200,9 +1200,7 @@ long indigo_uni_read_section(indigo_uni_handle *handle, char *buffer, long lengt
 			buffer[bytes_read] = 0;
 			break;
 		}
-		if (timeout > 10000) {
-			timeout = 10000;
-		}
+		timeout = -1;
 	}
 	if (handle->log_level < 0) {
 		indigo_log_on_level(-handle->log_level, "%d -> // %ld bytes read", handle->index, bytes_read);

@@ -78,7 +78,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_aux_fbc", "indigo_dr
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_aux_flatmaster", "indigo_drivers\aux_flatmaster\indigo_aux_flatmaster.vcxproj", "{C0733C8E-B8CD-4112-8658-C69F48D874B0}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_aux_aux_flipflat", "indigo_drivers\aux_flipflat\indigo_aux_aux_flipflat.vcxproj", "{958FEABF-5888-4F4D-8116-FD3454CA4953}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_aux_flipflat", "indigo_drivers\aux_flipflat\indigo_aux_flipflat.vcxproj", "{958FEABF-5888-4F4D-8116-FD3454CA4953}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
