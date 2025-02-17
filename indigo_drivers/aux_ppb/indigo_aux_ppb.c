@@ -110,7 +110,7 @@ typedef struct {
 // -------------------------------------------------------------------------------- Low level communication routines
 
 static bool ppb_command(indigo_device *device, char *command, char *response, int max) {
-	if (indigo_uni_discard(PRIVATE_DATA->handle, INDIGO_DELAY(0.01)) >= 0) {
+	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
 		if (indigo_uni_printf(PRIVATE_DATA->handle, "%s\n", command) > 0) {
 			if (response != NULL) {
 				if (indigo_uni_read_line(PRIVATE_DATA->handle, response, max) > 0) {

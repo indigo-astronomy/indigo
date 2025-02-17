@@ -17004,10 +17004,11 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Manual;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = "";
-				"DEVELOPMENT_TEAM[sdk=macosx*]" = AG8BXW65A2;
+				"DEVELOPMENT_TEAM[sdk=macosx*]" = "";
 				LD_RUNPATH_SEARCH_PATHS = "$(PROJECT_DIR)/build/lib";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
@@ -17043,10 +17044,11 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Manual;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = "";
-				"DEVELOPMENT_TEAM[sdk=macosx*]" = AG8BXW65A2;
+				"DEVELOPMENT_TEAM[sdk=macosx*]" = "";
 				LD_RUNPATH_SEARCH_PATHS = "$(PROJECT_DIR)/build/lib";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",

@@ -56,18 +56,14 @@ typedef struct {
 // -------------------------------------------------------------------------------- Low level communication routines
 
 static bool astromechanics_command(indigo_device *device, char *command, char *response) {
-	if (command != NULL) {
-		if (indigo_uni_write(PRIVATE_DATA->handle, command, strlen(command)) < 0)
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s <- // Failed to write (%s)", PRIVATE_DATA->handle->index, indigo_uni_strerror(PRIVATE_DATA->handle));
-			return false;
-	}
-	if (response != NULL) {
-		if (indigo_uni_read_section(PRIVATE_DATA->handle, response, 10, "#", "#", 1000000) < 0) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s -> // Failed to read (%s)", PRIVATE_DATA->handle->index, indigo_uni_strerror(PRIVATE_DATA->handle));
-			return false;
+	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
+		if (indigo_uni_printf(PRIVATE_DATA->handle, "%s", command) > 0) {
+			if (indigo_uni_read_section(PRIVATE_DATA->handle, response, 10, "#", "#", INDIGO_DELAY(1)) > 0) {
+				return true;
+			}
 		}
 	}
-	return true;
+	return false;
 }
 
 // -------------------------------------------------------------------------------- INDIGO aux device implementation
