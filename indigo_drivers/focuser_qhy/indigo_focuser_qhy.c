@@ -276,22 +276,22 @@ static int qhy_parse_response(char *response, qhy_response *qresponse) {
 	return 0;
 }
 
-static void qhy_print_response(qhy_response resp) {
-	int cmd_id = resp.idx;
-	if (cmd_id == 2 || cmd_id == 3 || cmd_id == 6 || cmd_id == 7 || cmd_id == 11 || cmd_id == 13 || cmd_id == 16) {
-		indigo_error("command %d returned: no value\n", cmd_id);
-	} else if (cmd_id == 1) {
-		indigo_error("command %d returned: version = %s, board_version = %s\n", cmd_id, resp.version, resp.version_board);
-	} else if (cmd_id == 4) {
-		indigo_error("command %d returned: out_temp = %g, chip_temp = %g, voltage = %g\n", cmd_id, resp.out_temp, resp.chip_temp, resp.voltage);
-	} else if (cmd_id == 5) {
-		indigo_error("command %d returned: position = %d\n", cmd_id, resp.position);
-	} else if (cmd_id == -1) {
-		indigo_error("command %d - ubnormal situation\n", cmd_id);
-	} else {
-		indigo_error("command %d - unknown\n", cmd_id);
-	}
-}
+//static void qhy_print_response(qhy_response resp) {
+//	int cmd_id = resp.idx;
+//	if (cmd_id == 2 || cmd_id == 3 || cmd_id == 6 || cmd_id == 7 || cmd_id == 11 || cmd_id == 13 || cmd_id == 16) {
+//		indigo_error("command %d returned: no value\n", cmd_id);
+//	} else if (cmd_id == 1) {
+//		indigo_error("command %d returned: version = %s, board_version = %s\n", cmd_id, resp.version, resp.version_board);
+//	} else if (cmd_id == 4) {
+//		indigo_error("command %d returned: out_temp = %g, chip_temp = %g, voltage = %g\n", cmd_id, resp.out_temp, resp.chip_temp, resp.voltage);
+//	} else if (cmd_id == 5) {
+//		indigo_error("command %d returned: position = %d\n", cmd_id, resp.position);
+//	} else if (cmd_id == -1) {
+//		indigo_error("command %d - ubnormal situation\n", cmd_id);
+//	} else {
+//		indigo_error("command %d - unknown\n", cmd_id);
+//	}
+//}
 
 
 /* QHY Q-Focuser Commands ======================================================================== */
@@ -371,22 +371,22 @@ static int qhy_get_version(indigo_device *device, char *version, char *board_ver
 	return 0;
 }
 
-static int qhy_relative_move(indigo_device *device, bool out, int steps) {
-	qhy_response parsed_response;
-	char command[MAX_CMD_LEN];
-	char response[MAX_CMD_LEN];
-	sprintf(command, "{\"cmd_id\":2,\"dir\":%d,\"step\":%d}", out ? 1 : -1, steps);
-	int result = qhy_command(device, command, response, MAX_CMD_LEN, 0);
-	if (result < 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Command '%s' failed", command);
-		return result;
-	}
-	result = qhy_parse_response(response, &parsed_response);
-	if (result < 0 || parsed_response.idx != 2) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Parsing response '%s' failed with %d", response, result);
-	}
-	return result;
-}
+//static int qhy_relative_move(indigo_device *device, bool out, int steps) {
+//	qhy_response parsed_response;
+//	char command[MAX_CMD_LEN];
+//	char response[MAX_CMD_LEN];
+//	sprintf(command, "{\"cmd_id\":2,\"dir\":%d,\"step\":%d}", out ? 1 : -1, steps);
+//	int result = qhy_command(device, command, response, MAX_CMD_LEN, 0);
+//	if (result < 0) {
+//		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Command '%s' failed", command);
+//		return result;
+//	}
+//	result = qhy_parse_response(response, &parsed_response);
+//	if (result < 0 || parsed_response.idx != 2) {
+//		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Parsing response '%s' failed with %d", response, result);
+//	}
+//	return result;
+//}
 
 static int qhy_abort(indigo_device *device) {
 	qhy_response response;
@@ -542,7 +542,7 @@ static void focuser_timer_callback(indigo_device *device) {
 
 
 static void temperature_timer_callback(indigo_device *device) {
-	double temp, temp_sample, chip_temp, voltage;
+	double temp = 0, temp_sample, chip_temp, voltage;
 	static bool has_valid_temperature = true;
 
 	FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
