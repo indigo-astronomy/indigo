@@ -19,7 +19,7 @@ All notable changes to INDIGO framework will be documented in this file.
 ## Driver Fixes:
 - indigo_agent_scripting:
 	- do not add new scripts to execute on load by default
-	
+
 	- Sequencer.js:
 		- make select_image_format(), select_frame_type(), select_camera_mode() and select_filter() accept both label and item name and remove _by_label() versions
 
