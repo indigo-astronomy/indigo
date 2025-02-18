@@ -299,6 +299,9 @@
     <ProjectReference Include="..\indigo_drivers\aux_ppb\indigo_aux_ppb.vcxproj">
       <Project>{f6b5c900-07ce-4d6b-a39a-3b9ea3b01486}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\aux_rts\indigo_aux_rts.vcxproj">
+      <Project>{eaf171cf-5f71-4230-a709-2c7f3ba8c25b}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\indigo_drivers\aux_upb\indigo_aux_upb.vcxproj">
       <Project>{0955b910-1425-4589-91fa-33b6cba63fa6}</Project>
     </ProjectReference>

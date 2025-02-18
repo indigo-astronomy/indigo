@@ -23,22 +23,17 @@
  \file indigo_aux_skyalert.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME "indigo_aux_skyalert"
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
-#include <termios.h>
-#include <errno.h>
-#include <sys/time.h>
-#include <sys/ioctl.h>
 
 #include <indigo/indigo_driver_xml.h>
-#include <indigo/indigo_io.h>
+#include <indigo/indigo_uni_io.h>
 
 #include "indigo_aux_skyalert.h"
 
@@ -57,10 +52,8 @@
 #define AUX_INFO_POWER_ITEM                        (AUX_INFO_PROPERTY->items + 1)
 
 
-#define RESPONSE_LENGTH 256
-
 typedef struct {
-	int handle;
+	indigo_uni_handle *handle;
 	indigo_property *weather_property;
 	indigo_property *info_property;
 	indigo_timer *timer_callback;
@@ -70,56 +63,11 @@ typedef struct {
 
 // -------------------------------------------------------------------------------- serial interface
 
-static bool skyalert_open(indigo_device *device) {
-	PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 115200);
-	if (PRIVATE_DATA->handle < 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", DEVICE_PORT_ITEM->text.value);
-		return false;
+static double skyalert_read_value(indigo_uni_handle *handle, char *response, int max) {
+	if (indigo_uni_read_section(handle, response, sizeof(response), "\r", "\r", INDIGO_DELAY(1))) {
+		return indigo_atod(response);
 	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Connected to %s", DEVICE_PORT_ITEM->text.value);
-	return true;
-}
-
-static bool skyalert_command(indigo_device *device, const char *command, char *response) {
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	int result = indigo_write(PRIVATE_DATA->handle, command, strlen(command));
-	result |= indigo_write(PRIVATE_DATA->handle, "\r", 1);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d <- \"%s\" (%s)", PRIVATE_DATA->handle, command, result ? "OK" : strerror(errno));
-	if (result && response) {
-		char c, *pnt = response;
-		*pnt = 0;
-		result = false;
-		int i = 0;
-		while (pnt - response < RESPONSE_LENGTH) {
-			if (indigo_read(PRIVATE_DATA->handle, &c, 1) < 1) {
-				*pnt = 0;
-				break;
-			}
-			if (c == '\r') {
-				if (i == 9) {
-					*pnt = 0;
-					result = true;
-					break;
-				} else {
-					*pnt++ = ' ';
-					i++;
-					continue;
-				}
-			}
-			*pnt++ = c;
-		}
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d -> \"%s\" (%s)", PRIVATE_DATA->handle, response, result ? "OK" : strerror(errno));
-	}
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-	return result;
-}
-
-static void skyalert_close(indigo_device *device) {
-	if (PRIVATE_DATA->handle >= 0) {
-		close(PRIVATE_DATA->handle);
-		PRIVATE_DATA->handle = -1;
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Disconnected");
-	}
+	return -1;
 }
 
 // -------------------------------------------------------------------------------- async handlers
@@ -128,63 +76,54 @@ static void aux_timer_callback(indigo_device *device) {
 	if (!IS_CONNECTED) {
 		return;
 	}
-	char response[RESPONSE_LENGTH] = { 0 }, *pnt;
-	if (skyalert_command(device, "send", response)) {
-		char *tok = strtok_r(response, " ", &pnt);
-		if (tok == NULL) {
-			AUX_INFO_PROPERTY->state = INDIGO_ALERT_STATE;
-		} else if (!strcmp(tok, "Data")) {
-			AUX_WEATHER_TEMPERATURE_ITEM->number.value = indigo_atod(strtok_r(NULL, " ", &pnt));
-			AUX_WEATHER_SKY_TEMPERATURE_ITEM->number.value = indigo_atod(strtok_r(NULL, " ", &pnt));
-			AUX_WEATHER_RAIN_ITEM->number.value = indigo_atod(strtok_r(NULL, " ", &pnt));
-			AUX_INFO_SKY_BRIGHTNESS_ITEM->number.value = indigo_atod(strtok_r(NULL, " ", &pnt));
-			AUX_WEATHER_HUMIDITY_ITEM->number.value = indigo_atod(strtok_r(NULL, " ", &pnt));
-//			double therm_ad_units = 0.2 * (8431 - (sqrt(2.57048e7 + 500000 * AUX_WEATHER_TEMPERATURE_ITEM->number.value * 100)));
-//			double wind_speed_volts = indigo_atod(strtok_r(NULL, " ", &pnt)) * 0.0048828125;
-//			double zero_wind_ad_units = -0.0006 * (therm_ad_units * therm_ad_units) + 1.0727 * therm_ad_units + 47.172;
-//			double zero_wind_volts = (zero_wind_ad_units * 0.0048828125) - 0.2;
-//			double wind_speed = pow(((wind_speed_volts - zero_wind_volts) / 0.23), 2.7265) * 0.609 / 0.621;
-			AUX_WEATHER_WIND_SPEED_ITEM->number.value = indigo_atod(strtok_r(NULL, " ", &pnt));
-			AUX_INFO_POWER_ITEM->number.value = indigo_atod(strtok_r(NULL, " ", &pnt));
-			strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, strtok_r(NULL, " ", &pnt));
-			AUX_WEATHER_PRESSURE_ITEM->number.value = indigo_atod(strtok_r(NULL, " ", &pnt));
-			AUX_WEATHER_PROPERTY->state = INDIGO_OK_STATE;
-			AUX_INFO_PROPERTY->state = INDIGO_OK_STATE;
-		} else {
-			AUX_WEATHER_PROPERTY->state = INDIGO_ALERT_STATE;
-			AUX_INFO_PROPERTY->state = INDIGO_ALERT_STATE;
+	char response[32] = { 0 };
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0 && indigo_uni_printf(PRIVATE_DATA->handle, "send\r") > 0 && indigo_uni_read_section(PRIVATE_DATA->handle, response, sizeof(response), "\r", "\r", INDIGO_DELAY(1)) >= 0 && !strcmp(response, "Data")) {
+		AUX_WEATHER_TEMPERATURE_ITEM->number.value = skyalert_read_value(PRIVATE_DATA->handle, response, sizeof(response));
+		AUX_WEATHER_SKY_TEMPERATURE_ITEM->number.value = skyalert_read_value(PRIVATE_DATA->handle, response, sizeof(response));
+		AUX_WEATHER_RAIN_ITEM->number.value = skyalert_read_value(PRIVATE_DATA->handle, response, sizeof(response));
+		AUX_INFO_SKY_BRIGHTNESS_ITEM->number.value = skyalert_read_value(PRIVATE_DATA->handle, response, sizeof(response));
+		AUX_WEATHER_HUMIDITY_ITEM->number.value = skyalert_read_value(PRIVATE_DATA->handle, response, sizeof(response));
+		AUX_WEATHER_WIND_SPEED_ITEM->number.value = skyalert_read_value(PRIVATE_DATA->handle, response, sizeof(response));
+		AUX_INFO_POWER_ITEM->number.value = skyalert_read_value(PRIVATE_DATA->handle, response, sizeof(response));
+		if (indigo_uni_read_section(PRIVATE_DATA->handle, response, sizeof(response), "\r", "\r", INDIGO_DELAY(1))) {
+			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, response);
 		}
+		AUX_WEATHER_PRESSURE_ITEM->number.value = skyalert_read_value(PRIVATE_DATA->handle, response, sizeof(response));
+		AUX_WEATHER_PROPERTY->state = INDIGO_OK_STATE;
+		AUX_INFO_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
 		AUX_WEATHER_PROPERTY->state = INDIGO_ALERT_STATE;
 		AUX_INFO_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 	indigo_update_property(device, AUX_WEATHER_PROPERTY, NULL);
 	indigo_update_property(device, AUX_INFO_PROPERTY, NULL);
-	if (PRIVATE_DATA->timer_callback)
+	if (PRIVATE_DATA->timer_callback) {
 		indigo_reschedule_timer(device, 10, &PRIVATE_DATA->timer_callback);
-	else
+	} else {
 		indigo_set_timer(device, 0, aux_timer_callback, &PRIVATE_DATA->timer_callback);
+	}
 }
 
 static void aux_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		if (!skyalert_open(device)) {
+		PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 115200, INDIGO_LOG_DEBUG);
+		if (PRIVATE_DATA->handle == NULL) {
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-		if (CONNECTION_PROPERTY->state == INDIGO_BUSY_STATE) {
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		} else {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Connected to %s", DEVICE_PORT_ITEM->text.value);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_define_property(device, AUX_INFO_PROPERTY, NULL);
 			indigo_define_property(device, AUX_WEATHER_PROPERTY, NULL);
 			indigo_delete_property(device, INFO_PROPERTY, NULL);
 			aux_timer_callback(device);
 			indigo_define_property(device, INFO_PROPERTY, NULL);
-		} else {
-			skyalert_close(device);
-			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer_callback);
-		skyalert_close(device);
+		indigo_uni_close(&PRIVATE_DATA->handle);
 		indigo_delete_property(device, AUX_INFO_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_WEATHER_PROPERTY, NULL);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
