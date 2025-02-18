@@ -1282,7 +1282,7 @@ static void raw_to_tiff(indigo_device *device, void *data_in, int frame_width, i
 	TIFFWriteDirectory(tiff);
 	indigo_tiff_close(tiff);
 	*data_out = memory_handle->data;
-	*size_out = memory_handle->file_length;
+	*size_out = (unsigned long)memory_handle->file_length;
 	free(memory_handle);
 }
 

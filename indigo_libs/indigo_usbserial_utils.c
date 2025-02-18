@@ -214,7 +214,6 @@ for (index = 0; SetupDiEnumDeviceInfo(deviceInfoSet, index, &deviceInfoData); in
 	DWORD type;
 	if (RegQueryValueExA(hKey, "PortName", NULL, &type, (LPBYTE)portName, &portNameSize) == ERROR_SUCCESS) {
 		if (type == REG_SZ) {
-			DWORD type;
 			DWORD portNameSize = sizeof(portName);
 			snprintf(serial_info[index].path, PATH_MAX, "%s:", portName);
 		}

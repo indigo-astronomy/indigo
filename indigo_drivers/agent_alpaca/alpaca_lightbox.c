@@ -199,8 +199,8 @@ void indigo_alpaca_lightbox_update_property(indigo_alpaca_device *alpaca_device,
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = property->items + i;
 			if (!strcmp(item->name, AUX_LIGHT_INTENSITY_ITEM_NAME)) {
-				alpaca_device->covercalibrator.brightness = item->number.value;
-				alpaca_device->covercalibrator.maxbrightness = item->number.max;
+				alpaca_device->covercalibrator.brightness = (int)item->number.value;
+				alpaca_device->covercalibrator.maxbrightness = (int)item->number.max;
 			}
 		}
 	}

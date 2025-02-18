@@ -213,10 +213,10 @@ void indigo_alpaca_focuser_update_property(indigo_alpaca_device *alpaca_device, 
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = property->items + i;
 				if (!strcmp(item->name, FOCUSER_POSITION_ITEM_NAME)) {
-					alpaca_device->focuser.offset = item->number.min;
-					alpaca_device->focuser.maxstep = item->number.max - alpaca_device->focuser.offset;
-					alpaca_device->focuser.maxincrement = item->number.max - alpaca_device->focuser.offset;
-					alpaca_device->focuser.position = item->number.value - alpaca_device->focuser.offset;
+					alpaca_device->focuser.offset = (int)item->number.min;
+					alpaca_device->focuser.maxstep = (int)item->number.max - alpaca_device->focuser.offset;
+					alpaca_device->focuser.maxincrement = (int)item->number.max - alpaca_device->focuser.offset;
+					alpaca_device->focuser.position = (int)item->number.value - alpaca_device->focuser.offset;
 				}
 			}
 		} else {
@@ -229,8 +229,8 @@ void indigo_alpaca_focuser_update_property(indigo_alpaca_device *alpaca_device, 
 				indigo_item *item = property->items + i;
 				if (!strcmp(item->name, FOCUSER_STEPS_ITEM_NAME)) {
 					alpaca_device->focuser.offset = 0;
-					alpaca_device->focuser.maxstep = item->number.max;
-					alpaca_device->focuser.maxincrement = item->number.max;
+					alpaca_device->focuser.maxstep = (int)item->number.max;
+					alpaca_device->focuser.maxincrement = (int)item->number.max;
 				}
 			}
 		}

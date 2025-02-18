@@ -226,6 +226,11 @@
   <ItemGroup>
     <ClCompile Include="make_indigo_drivers.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\indigo_libs\indigo.vcxproj">
+      <Project>{aa10be9e-6416-4f58-b821-2d0e479eb81b}</Project>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

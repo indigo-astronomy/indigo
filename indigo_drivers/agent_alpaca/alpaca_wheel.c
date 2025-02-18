@@ -94,8 +94,8 @@ void indigo_alpaca_wheel_update_property(indigo_alpaca_device *alpaca_device, in
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = property->items + i;
 				if (!strcmp(item->name, WHEEL_SLOT_ITEM_NAME)) {
-					alpaca_device->wheel.count = item->number.max;
-					alpaca_device->wheel.position = item->number.value - 1;
+					alpaca_device->wheel.count = (int)item->number.max;
+					alpaca_device->wheel.position = (int)item->number.value - 1;
 				}
 			}
 		} else {
@@ -105,22 +105,22 @@ void indigo_alpaca_wheel_update_property(indigo_alpaca_device *alpaca_device, in
 		if (property->state == INDIGO_OK_STATE) {
 			alpaca_device->wheel.count = property->count;
 			for (int i = 0; i < property->count; i++) {
-				indigo_item *item = property->items + i;
+				indigo_item* item = property->items + i;
 				int index = 0;
-				sscanf(item->name, WHEEL_SLOT_OFFSET_ITEM_NAME, &index);
-				if (index <= ALPACA_MAX_FILTERS)
-					alpaca_device->wheel.focusoffsets[index - 1] = item->number.value;
+				if (sscanf(item->name, WHEEL_SLOT_OFFSET_ITEM_NAME, &index) == 1 && index > 0 && index <= ALPACA_MAX_FILTERS) {
+					alpaca_device->wheel.focusoffsets[index - 1] = (int)item->number.value;
+				}
 			}
 		}
 	} else if (!strcmp(property->name, WHEEL_SLOT_NAME_PROPERTY_NAME)) {
 		if (property->state == INDIGO_OK_STATE) {
 			alpaca_device->wheel.count = property->count;
 			for (int i = 0; i < property->count; i++) {
-				indigo_item *item = property->items + i;
+				indigo_item* item = property->items + i;
 				int index = 0;
-				sscanf(item->name, WHEEL_SLOT_NAME_ITEM_NAME, &index);
-				if (index <= ALPACA_MAX_FILTERS)
+				if (sscanf(item->name, WHEEL_SLOT_NAME_ITEM_NAME, &index) == 1 && index > 0 && index <= ALPACA_MAX_FILTERS) {
 					alpaca_device->wheel.names[index - 1] = item->text.value;
+				}
 			}
 		}
 	}

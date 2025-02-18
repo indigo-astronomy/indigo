@@ -260,6 +260,9 @@
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ProjectReference Include="..\indigo_drivers\agent_alpaca\indigo_agent_alpaca.vcxproj">
+      <Project>{9d858526-ac14-45a3-a8e4-f0945dc9b21f}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\indigo_drivers\agent_auxiliary\indigo_agent_auxiliary.vcxproj">
       <Project>{5f021221-5611-4173-9af4-87b43fd3e3a5}</Project>
     </ProjectReference>
@@ -376,6 +379,9 @@
     </ProjectReference>
     <ProjectReference Include="..\indigo_drivers\mount_simulator\indigo_mount_simulator.vcxproj">
       <Project>{8ff4a248-d905-4778-bed8-7caf85e4c6a3}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\indigo_windows\make_indigo_drivers\make_indigo_drivers.vcxproj">
+      <Project>{ee2d3f23-9a54-48c7-901c-5d71f3a7d19f}</Project>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
