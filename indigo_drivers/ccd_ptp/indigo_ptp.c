@@ -1161,25 +1161,27 @@ bool ptp_open(indigo_device *device) {
 	}
 	struct libusb_config_descriptor *config_descriptor = NULL;
 	const struct libusb_interface *interface = NULL;
-	for (int config = 0; config < device_descriptor.bNumConfigurations; config++) {
-		rc = libusb_get_config_descriptor(dev, config, &config_descriptor);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_get_config_descriptor(%d) -> %s", config, rc < 0 ? libusb_error_name(rc) : "OK");
-		if (rc < 0) {
-			break;
-		}
-		for (int iface = 0; iface < config_descriptor->bNumInterfaces; iface++) {
-			interface = config_descriptor->interface + iface;
-			if (interface->altsetting->bInterfaceClass == 0x06 && interface->altsetting->bInterfaceSubClass == 0x01 && interface->altsetting->bInterfaceProtocol == 0x01) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "PTP CONFIG = %d IFACE = %d", config_descriptor->bConfigurationValue, interface->altsetting->bInterfaceNumber);
+	if (rc >= 0) {
+		for (int config = 0; config < device_descriptor.bNumConfigurations; config++) {
+			rc = libusb_get_config_descriptor(dev, config, &config_descriptor);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_get_config_descriptor(%d) -> %s", config, rc < 0 ? libusb_error_name(rc) : "OK");
+			if (rc < 0) {
 				break;
 			}
-			interface = NULL;
+			for (int iface = 0; iface < config_descriptor->bNumInterfaces; iface++) {
+				interface = config_descriptor->interface + iface;
+				if (interface->altsetting->bInterfaceClass == 0x06 && interface->altsetting->bInterfaceSubClass == 0x01 && interface->altsetting->bInterfaceProtocol == 0x01) {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "PTP CONFIG = %d IFACE = %d", config_descriptor->bConfigurationValue, interface->altsetting->bInterfaceNumber);
+					break;
+				}
+				interface = NULL;
+			}
+			if (interface) {
+				break;
+			}
+			libusb_free_config_descriptor(config_descriptor);
+			config_descriptor = NULL;
 		}
-		if (interface) {
-			break;
-		}
-		libusb_free_config_descriptor(config_descriptor);
-		config_descriptor = NULL;
 	}
 // Already sent OpenSession
 //	if (rc >= 0 && config_descriptor) {
@@ -1233,6 +1235,9 @@ bool ptp_open(indigo_device *device) {
 			PRIVATE_DATA->handle = NULL;
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	if (rc < 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "libusb error: %s", libusb_error_name(rc));
+	}
 	return rc >= 0;
 }
 
