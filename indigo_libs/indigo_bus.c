@@ -1010,21 +1010,10 @@ indigo_property *indigo_copy_property(indigo_property *copy, indigo_property *pr
 	return copy;
 }
 
-indigo_property *indigo_clear_property(indigo_property *property) {
-	int allocated_count = property->allocated_count;
-	memset(property, 0, sizeof(indigo_property) + allocated_count * sizeof(indigo_item));
-	property->allocated_count = allocated_count;
-	return property;
-}
-
-
-void indigo_release_property(indigo_property *property) {
-	if (property == NULL) {
-		return;
-	}
+static void release_dependencies(indigo_property *property) {
 	if (property->type == INDIGO_BLOB_VECTOR) {
 		pthread_mutex_lock(&blob_mutex);
-		for (int i = 0; i < property->count; i++) {
+		for (int i = 0; i < property->allocated_count; i++) {
 			indigo_item *item = property->items + i;
 			for (int j = 0; j < MAX_BLOBS; j++) {
 				indigo_blob_entry *entry = blobs[j];
@@ -1044,10 +1033,27 @@ void indigo_release_property(indigo_property *property) {
 		}
 		pthread_mutex_unlock(&blob_mutex);
 	} else if (property->type == INDIGO_TEXT_VECTOR) {
-		for (int i = 0; i < property->count; i++)
+		for (int i = 0; i < property->allocated_count; i++) {
 			indigo_safe_free(property->items[i].text.long_value);
+		}
 	}
-	free(property);
+}
+
+indigo_property *indigo_clear_property(indigo_property *property) {
+	release_dependencies(property);
+	int allocated_count = property->allocated_count;
+	memset(property, 0, sizeof(indigo_property) + allocated_count * sizeof(indigo_item));
+	property->allocated_count = allocated_count;
+	return property;
+}
+
+
+void indigo_release_property(indigo_property *property) {
+	if (property == NULL) {
+		return;
+	}
+	release_dependencies(property);
+	indigo_safe_free(property);
 }
 
 indigo_blob_entry *indigo_validate_blob(indigo_item *item) {
