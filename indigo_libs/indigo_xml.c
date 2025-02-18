@@ -1721,11 +1721,12 @@ exit_loop:
 			indigo_property *property = context->properties[index];
 			if (property != NULL && !strncmp(remote_device.name, property->device, INDIGO_NAME_SIZE)) {
 				if (property->type == INDIGO_BLOB_VECTOR) {
-					for (int i = 0; i < property->count; i++) {
-						void *blob = property->items[i].blob.value;
-						if (blob) {
-							free(blob);
-						}
+					for (int i = 0; i < property->allocated_count; i++) {
+						indigo_safe_free(property->items[i].blob.value);
+					}
+				} else if (property->type == INDIGO_TEXT_VECTOR) {
+					for (int i = 0; i < property->allocated_count; i++) {
+						indigo_safe_free(property->items[i].text.long_value);
 					}
 				}
 				indigo_release_property(property);
@@ -1740,9 +1741,9 @@ exit_loop:
 	indigo_safe_free(context->properties);
 	pthread_mutex_unlock(&context->mutex);
 	pthread_mutex_destroy(&context->mutex);
-	free(context);
-	free(buffer);
-	free(value_buffer);
+	indigo_safe_free(context);
+	indigo_safe_free(buffer);
+	indigo_safe_free(value_buffer);
 	close(handle);
 	INDIGO_TRACE_PARSER(indigo_trace("XML Parser: parser finished"));
 }
