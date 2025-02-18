@@ -17,12 +17,15 @@ All notable changes to INDIGO framework will be documented in this file.
 	- SVBONY OEM Camera driver produced by Touptek
 
 ## Driver Fixes:
-- indigo_agent_scripting - Sequencer.js:
-	- make select_image_format(), select_frame_type(), select_camera_mode() and select_filter() accept both label and item name and remove _by_label() versions
+- indigo_agent_scripting:
+	- do not add new scripts to execute on load by default
+	
+	- Sequencer.js:
+		- make select_image_format(), select_frame_type(), select_camera_mode() and select_filter() accept both label and item name and remove _by_label() versions
 
-	- make select_program(), select_aperture(), select_shutter() and select_iso() accept both label and item name and remove _by_label() versions
+		- make select_program(), select_aperture(), select_shutter() and select_iso() accept both label and item name and remove _by_label() versions
 
-	- fix loop counting
+		- fix loop counting
 
 - indigo_ccd_toupcam & oem:
 	- SDK updated to version 57.27650.20250209
