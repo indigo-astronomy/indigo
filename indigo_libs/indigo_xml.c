@@ -1720,15 +1720,6 @@ exit_loop:
 		for (; index < context->count; index++) {
 			indigo_property *property = context->properties[index];
 			if (property != NULL && !strncmp(remote_device.name, property->device, INDIGO_NAME_SIZE)) {
-				if (property->type == INDIGO_BLOB_VECTOR) {
-					for (int i = 0; i < property->allocated_count; i++) {
-						indigo_safe_free(property->items[i].blob.value);
-					}
-				} else if (property->type == INDIGO_TEXT_VECTOR) {
-					for (int i = 0; i < property->allocated_count; i++) {
-						indigo_safe_free(property->items[i].text.long_value);
-					}
-				}
 				indigo_release_property(property);
 				context->properties[index] = NULL;
 			}
@@ -1737,7 +1728,7 @@ exit_loop:
 	indigo_safe_free(blob_buffer);
 	indigo_safe_free(name_buffer);
 	indigo_safe_free(message);
-	indigo_safe_free(context->property);
+	indigo_release_property(context->property);
 	indigo_safe_free(context->properties);
 	pthread_mutex_unlock(&context->mutex);
 	pthread_mutex_destroy(&context->mutex);
