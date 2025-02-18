@@ -78,6 +78,202 @@ indigo_uni_handle *indigo_uni_create_file_handle(int fd, int log_level) {
 	return handle;
 }
 
+static int discard_data(indigo_uni_handle *handle) {
+	if (handle->type != INDIGO_COM_HANDLE) {
+		return -1;
+	}
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	return tcflush(handle->fd, TCIOFLUSH);
+#elif defined(INDIGO_WINDOWS)
+	return PurgeComm(handle->com, PURGE_RXCLEAR | PURGE_TXCLEAR) ? 0 : -1;
+#else
+#pragma message ("TODO: discard_data()")
+#endif
+}
+
+static int wait_for_data(indigo_uni_handle *handle, long timeout) {
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	if (handle->type == INDIGO_FILE_HANDLE) {
+		handle->last_error = 0;
+		return 1;
+	} else {
+		fd_set readout;
+		FD_ZERO(&readout);
+		FD_SET(handle->fd, &readout);
+		struct timeval tv = { .tv_sec = timeout / 1000000L, .tv_usec = timeout % 1000000L };
+		switch (select(handle->fd + 1, &readout, NULL, NULL, &tv)) {
+			case -1:
+				handle->last_error = errno;
+				indigo_error("%d -> // Failed to wait for (%s)", handle->index, indigo_uni_strerror(handle));
+				return -1;
+			case 0:
+				handle->last_error = 0;
+				indigo_log_on_level(handle->log_level, "%d -> // timeout", handle->index);
+				return 0;
+			default:
+				handle->last_error = 0;
+				return 1;
+		}
+	}
+#elif defined(INDIGO_WINDOWS)
+	if (handle->type == INDIGO_FILE_HANDLE) {
+		return 1;
+	} else if (handle->type == INDIGO_COM_HANDLE) {
+		unsigned long mask;
+		ResetEvent(handle->ov_read.hEvent);
+		if (!WaitCommEvent(handle->com, &mask, &handle->ov_read)){
+			if (GetLastError() != ERROR_IO_PENDING) {
+				handle->last_error = GetLastError();
+				indigo_error("%d -> // Failed to wait for (%s)", handle->index, indigo_uni_strerror(handle));
+				return -1;
+			}
+		}
+		switch (WaitForSingleObject(handle->ov_read.hEvent, timeout / 1000)) {
+			case WAIT_OBJECT_0:
+				return 1;
+			case WAIT_TIMEOUT:
+				CancelIo(handle->com);
+				indigo_log_on_level(handle->log_level, "%d -> // timeout", handle->index);
+				return 0;
+			default:
+				handle->last_error = GetLastError();
+				indigo_error("%d -> // Failed to wait for (%s)", handle->index, indigo_uni_strerror(handle));
+				return -1;
+		}
+	} else if (handle->type == INDIGO_TCP_HANDLE || handle->type == INDIGO_UDP_HANDLE) {
+		fd_set readout;
+		FD_ZERO(&readout);
+		FD_SET(handle->sock, &readout);
+		struct timeval tv = { .tv_sec = timeout / 1000000L, .tv_usec = timeout % 1000000L };
+		int result = select(0, &readout, NULL, NULL, &tv);
+		if (result == 0) {
+			handle->last_error = 0;
+			return 0;
+		} else if (result == SOCKET_ERROR) {
+			handle->last_error = WSAGetLastError();
+			indigo_error("%d -> // Failed to wait for (%s)", handle->index, indigo_uni_strerror(handle));
+			return -1;
+		}
+		handle->last_error = 0;
+		return 1;
+	}
+	handle->last_error = 0;
+	return 0;
+#else
+#pragma message ("TODO: wait_for_com_data()")
+#endif
+}
+
+static long read_data(indigo_uni_handle *handle, void *buffer, long length) {
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	long bytes_read = read(handle->fd, buffer, length);
+	if (bytes_read < 0) {
+		handle->last_error = errno;
+		indigo_error("%d -> // Failed to read (%s)", handle->index, indigo_uni_strerror(handle));
+		return -1;
+	}
+	handle->last_error = 0;
+	return bytes_read;
+#elif defined(INDIGO_WINDOWS)
+	if (handle->type == INDIGO_FILE_HANDLE) {
+		long bytes_read = _read((int)handle->fd, buffer, length);
+		if (bytes_read < 0) {
+			handle->last_error = errno;
+			indigo_error("%d -> // Failed to read (%s)", handle->index, indigo_uni_strerror(handle));
+		} else {
+			handle->last_error = 0;
+			return bytes_read;
+		}
+	} else if (handle->type == INDIGO_COM_HANDLE) {
+		ResetEvent(handle->ov_read.hEvent);
+		long bytes_read = 0;
+		bool read_result = ReadFile(handle->com, buffer, length, &bytes_read, &handle->ov_read);
+		handle->last_error = GetLastError();
+		if (!read_result && handle->last_error != ERROR_IO_PENDING) {
+			indigo_error("%d -> // Failed to read (%s)", handle->index, indigo_uni_strerror(handle));
+			return -1;
+		}
+		DWORD waitResult = WaitForSingleObject(handle->ov_read.hEvent, INFINITE);
+		if (waitResult == WAIT_OBJECT_0) {
+			if (GetOverlappedResult(handle->com, &handle->ov_read, &bytes_read, FALSE)) {
+				handle->last_error = 0;
+				return bytes_read;
+			}
+		}
+		handle->last_error = GetLastError();
+		indigo_error("%d -> // Failed to read (%s)", handle->index, indigo_uni_strerror(handle));
+		CancelIo(handle->com);
+		return -1;
+	} else if (handle->type == INDIGO_TCP_HANDLE || handle->type == INDIGO_UDP_HANDLE) {
+		long bytes_read = recv(handle->sock, buffer, length, 0);
+		if (bytes_read < 0) {
+			handle->last_error = WSAGetLastError();
+			indigo_error("%d -> // Failed to read (%s)", handle->index, indigo_uni_strerror(handle));
+			return -1;
+		}
+		handle->last_error = 0;
+		return bytes_read;
+	}
+	return -1;
+#else
+#pragma message ("TODO: read_com_data()")
+#endif
+}
+
+static long write_data(indigo_uni_handle *handle, const char *buffer, long length) {
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	long bytes_written = write(handle->fd, buffer, length);
+	if (bytes_written < 0) {
+		handle->last_error = errno;
+		indigo_error("%d <- // Failed to write (%s)", handle->index, indigo_uni_strerror(handle));
+		return -1;
+	}
+	handle->last_error = 0;
+	return bytes_written;
+#elif defined(INDIGO_WINDOWS)
+	if (handle->type == INDIGO_FILE_HANDLE) {
+		long bytes_written = _write(handle->fd, buffer, length);
+		if (bytes_written < 0) {
+			handle->last_error = errno;
+			indigo_error("%d <- // Failed to write (%s)", handle->index, indigo_uni_strerror(handle));
+			return -1;
+		}
+		handle->last_error = 0;
+		return bytes_written;
+	} else if (handle->type == INDIGO_COM_HANDLE) {
+		long bytes_written = 0;
+		ResetEvent(handle->ov_write.hEvent);
+		bool write_result = WriteFile(handle->com, buffer, (DWORD)length, &bytes_written, &handle->ov_write);
+		handle->last_error = GetLastError();
+		if (!write_result && handle->last_error != ERROR_IO_PENDING) {
+			indigo_error("%d <- // Failed to write (%s)", handle->index, indigo_uni_strerror(handle));
+			return -1;
+		}
+		if (WaitForSingleObject(handle->ov_write.hEvent, 15000) == WAIT_OBJECT_0) {
+			if (GetOverlappedResult(handle->com, &handle->ov_write, &bytes_written, FALSE)) {
+				handle->last_error = 0;
+				return bytes_written;
+			}
+		}
+		handle->last_error = GetLastError();
+		indigo_error("%d <- // Failed to write (%s)", handle->index, indigo_uni_strerror(handle));
+		return -1;
+	} else if (handle->type == INDIGO_TCP_HANDLE || handle->type == INDIGO_UDP_HANDLE) {
+		long bytes_written = send(handle->sock, buffer, length, 0);
+		if (bytes_written < 0) {
+			handle->last_error = WSAGetLastError();
+			indigo_error("%d <- // Failed to write (%s)", handle->index, indigo_uni_strerror(handle));
+			return -1;
+		}
+		handle->last_error = 0;
+		return bytes_written;
+	}
+	return -1;
+#else
+#pragma message ("TODO: indigo_uni_write()")
+#endif
+}
+
 #if defined(INDIGO_WINDOWS)
 
 char* indigo_last_wsa_error() {
@@ -632,7 +828,7 @@ void indigo_uni_open_tcp_server_socket(int *port, indigo_uni_handle **server_han
 		return;
 	}
 	int reuse = 1;
-	if (setsockopt(server_socket, SOL_SOCKET,SO_REUSEADDR, &reuse, sizeof(reuse)) < 0) {
+	if (setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) < 0) {
 		indigo_error("Can't setsockopt for server socket (%s)", strerror(errno));
 		close(server_socket);
 		return;
@@ -671,11 +867,11 @@ void indigo_uni_open_tcp_server_socket(int *port, indigo_uni_handle **server_han
 	(*server_handle)->type = INDIGO_TCP_HANDLE;
 	(*server_handle)->fd = server_socket;
 	(*server_handle)->log_level = log_level;
-	indigo_log("Server started on TCP port %d", *port);
+	indigo_log_on_level(log_level, "Server started on TCP port %d", *port);
 	if (callback) {
 		callback(0);
 	}
-	while (1) {
+	while (true) {
 		struct sockaddr_in client_name;
 		unsigned int name_len = sizeof(client_name);
 		int client_socket = accept(server_socket, (struct sockaddr *)&client_name, &name_len);
@@ -709,6 +905,7 @@ void indigo_uni_open_tcp_server_socket(int *port, indigo_uni_handle **server_han
 			indigo_error("Can't create worker thread for connection (%s)", strerror(errno));
 		}
 	}
+	indigo_log_on_level(log_level, "Server stopped on TCP port %d", *port);
 #elif defined(INDIGO_WINDOWS)
 	SOCKET server_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (server_socket == INVALID_SOCKET) {
@@ -841,202 +1038,6 @@ void indigo_uni_set_socket_write_timeout(indigo_uni_handle *handle, long timeout
 #pragma message ("TODO: indigo_uni_set_socket_write_timeout()")
 #endif
 	}
-}
-
-static int discard_data(indigo_uni_handle *handle) {
-	if (handle->type != INDIGO_COM_HANDLE) {
-		return -1;
-	}
-#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-	return tcflush(handle->fd, TCIOFLUSH);
-#elif defined(INDIGO_WINDOWS)
-	return PurgeComm(handle->com, PURGE_RXCLEAR | PURGE_TXCLEAR) ? 0 : -1;
-#else
-#pragma message ("TODO: discard_data()")
-#endif
-}
-
-static int wait_for_data(indigo_uni_handle *handle, long timeout) {
-#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-	if (handle->type == INDIGO_FILE_HANDLE) {
-		handle->last_error = 0;
-		return 1;
-	} else {
-		fd_set readout;
-		FD_ZERO(&readout);
-		FD_SET(handle->fd, &readout);
-		struct timeval tv = { .tv_sec = timeout / 1000000L, .tv_usec = timeout % 1000000L };
-		switch (select(handle->fd + 1, &readout, NULL, NULL, &tv)) {
-			case -1:
-				handle->last_error = errno;
-				indigo_error("%d -> // Failed to wait for (%s)", handle->index, indigo_uni_strerror(handle));
-				return -1;
-			case 0:
-				handle->last_error = 0;
-				indigo_log_on_level(handle->log_level, "%d -> // timeout", handle->index);
-				return 0;
-			default:
-				handle->last_error = 0;
-				return 1;
-		}
-	}
-#elif defined(INDIGO_WINDOWS)
-	if (handle->type == INDIGO_FILE_HANDLE) {
-		return 1;
-	} else if (handle->type == INDIGO_COM_HANDLE) {
-		unsigned long mask;
-		ResetEvent(handle->ov_read.hEvent);
-		if (!WaitCommEvent(handle->com, &mask, &handle->ov_read)){
-			if (GetLastError() != ERROR_IO_PENDING) {
-				handle->last_error = GetLastError();
-				indigo_error("%d -> // Failed to wait for (%s)", handle->index, indigo_uni_strerror(handle));
-				return -1;
-			}
-		}
-		switch (WaitForSingleObject(handle->ov_read.hEvent, timeout / 1000)) {
-			case WAIT_OBJECT_0:
-				return 1;
-			case WAIT_TIMEOUT:
-				CancelIo(handle->com);
-				indigo_log_on_level(handle->log_level, "%d -> // timeout", handle->index);
-				return 0;
-			default:
-				handle->last_error = GetLastError();
-				indigo_error("%d -> // Failed to wait for (%s)", handle->index, indigo_uni_strerror(handle));
-				return -1;
-		}
-	} else if (handle->type == INDIGO_TCP_HANDLE || handle->type == INDIGO_UDP_HANDLE) {
-		fd_set readout;
-		FD_ZERO(&readout);
-		FD_SET(handle->sock, &readout);
-		struct timeval tv = { .tv_sec = timeout / 1000000L, .tv_usec = timeout % 1000000L };
-		int result = select(0, &readout, NULL, NULL, &tv);
-		if (result == 0) {
-			handle->last_error = 0;
-			return 0;
-		} else if (result == SOCKET_ERROR) {
-			handle->last_error = WSAGetLastError();
-			indigo_error("%d -> // Failed to wait for (%s)", handle->index, indigo_uni_strerror(handle));
-			return -1;
-		}
-		handle->last_error = 0;
-		return 1;
-	}
-	handle->last_error = 0;
-	return 0;
-#else
-#pragma message ("TODO: wait_for_com_data()")
-#endif
-}
-
-static long read_data(indigo_uni_handle *handle, void *buffer, long length) {
-#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-	long bytes_read = read(handle->fd, buffer, length);
-	if (bytes_read < 0) {
-		handle->last_error = errno;
-		indigo_error("%d -> // Failed to read (%s)", handle->index, indigo_uni_strerror(handle));
-		return -1;
-	}
-	handle->last_error = 0;
-	return bytes_read;
-#elif defined(INDIGO_WINDOWS)
-	if (handle->type == INDIGO_FILE_HANDLE) {
-		long bytes_read = _read((int)handle->fd, buffer, length);
-		if (bytes_read < 0) {
-			handle->last_error = errno;
-			indigo_error("%d -> // Failed to read (%s)", handle->index, indigo_uni_strerror(handle));
-		} else {
-			handle->last_error = 0;
-			return bytes_read;
-		}
-	} else if (handle->type == INDIGO_COM_HANDLE) {
-		ResetEvent(handle->ov_read.hEvent);
-		long bytes_read = 0;
-		bool read_result = ReadFile(handle->com, buffer, length, &bytes_read, &handle->ov_read);
-		handle->last_error = GetLastError();
-		if (!read_result && handle->last_error != ERROR_IO_PENDING) {
-			indigo_error("%d -> // Failed to read (%s)", handle->index, indigo_uni_strerror(handle));
-			return -1;
-		}
-		DWORD waitResult = WaitForSingleObject(handle->ov_read.hEvent, INFINITE);
-		if (waitResult == WAIT_OBJECT_0) {
-			if (GetOverlappedResult(handle->com, &handle->ov_read, &bytes_read, FALSE)) {
-				handle->last_error = 0;
-				return bytes_read;
-			}
-		}
-		handle->last_error = GetLastError();
-		indigo_error("%d -> // Failed to read (%s)", handle->index, indigo_uni_strerror(handle));
-		CancelIo(handle->com);
-		return -1;
-	} else if (handle->type == INDIGO_TCP_HANDLE || handle->type == INDIGO_UDP_HANDLE) {
-		long bytes_read = recv(handle->sock, buffer, length, 0);
-		if (bytes_read < 0) {
-			handle->last_error = WSAGetLastError();
-			indigo_error("%d -> // Failed to read (%s)", handle->index, indigo_uni_strerror(handle));
-			return -1;
-		}
-		handle->last_error = 0;
-		return bytes_read;
-	}
-	return -1;
-#else
-#pragma message ("TODO: read_com_data()")
-#endif
-}
-
-static long write_data(indigo_uni_handle *handle, const char *buffer, long length) {
-#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-	long bytes_written = write(handle->fd, buffer, length);
-	if (bytes_written < 0) {
-		handle->last_error = errno;
-		indigo_error("%d <- // Failed to write (%s)", handle->index, indigo_uni_strerror(handle));
-		return -1;
-	}
-	handle->last_error = 0;
-	return bytes_written;
-#elif defined(INDIGO_WINDOWS)
-	if (handle->type == INDIGO_FILE_HANDLE) {
-		long bytes_written = _write(handle->fd, buffer, length);
-		if (bytes_written < 0) {
-			handle->last_error = errno;
-			indigo_error("%d <- // Failed to write (%s)", handle->index, indigo_uni_strerror(handle));
-			return -1;
-		}
-		handle->last_error = 0;
-		return bytes_written;
-	} else if (handle->type == INDIGO_COM_HANDLE) {
-		long bytes_written = 0;
-		ResetEvent(handle->ov_write.hEvent);
-		bool write_result = WriteFile(handle->com, buffer, (DWORD)length, &bytes_written, &handle->ov_write);
-		handle->last_error = GetLastError();
-		if (!write_result && handle->last_error != ERROR_IO_PENDING) {
-			indigo_error("%d <- // Failed to write (%s)", handle->index, indigo_uni_strerror(handle));
-			return -1;
-		}
-		if (WaitForSingleObject(handle->ov_write.hEvent, 15000) == WAIT_OBJECT_0) {
-			if (GetOverlappedResult(handle->com, &handle->ov_write, &bytes_written, FALSE)) {
-				handle->last_error = 0;
-				return bytes_written;
-			}
-		}
-		handle->last_error = GetLastError();
-		indigo_error("%d <- // Failed to write (%s)", handle->index, indigo_uni_strerror(handle));
-		return -1;
-	} else if (handle->type == INDIGO_TCP_HANDLE || handle->type == INDIGO_UDP_HANDLE) {
-		long bytes_written = send(handle->sock, buffer, length, 0);
-		if (bytes_written < 0) {
-			handle->last_error = WSAGetLastError();
-			indigo_error("%d <- // Failed to write (%s)", handle->index, indigo_uni_strerror(handle));
-			return -1;
-		}
-		handle->last_error = 0;
-		return bytes_written;
-	}
-	return -1;
-#else
-#pragma message ("TODO: indigo_uni_write()")
-#endif
 }
 
 long indigo_uni_read_available(indigo_uni_handle *handle, void *buffer, long length) {

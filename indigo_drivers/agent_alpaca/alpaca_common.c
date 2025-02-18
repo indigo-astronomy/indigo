@@ -149,7 +149,7 @@ bool indigo_alpaca_wait_for_bool(bool *reference, bool value, int timeout) {
 	return indigo_alpaca_error_ValueNotSet;
 }
 
-bool indigo_alpaca_wait_for_int32(int32_t *reference, int32_t value, int timeout) {
+bool indigo_alpaca_wait_for_int32(int *reference, int value, int timeout) {
 	for (int i = 0; i < timeout; i++) {
 		if (*reference == value)
 			return indigo_alpaca_error_OK;

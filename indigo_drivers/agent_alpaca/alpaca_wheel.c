@@ -27,12 +27,12 @@
 
 #include "alpaca_common.h"
 
-static indigo_alpaca_error alpaca_get_interfaceversion(indigo_alpaca_device *device, int version, uint32_t *value) {
+static indigo_alpaca_error alpaca_get_interfaceversion(indigo_alpaca_device *device, int version, int *value) {
 	*value = 2;
 	return indigo_alpaca_error_OK;
 }
 
-static indigo_alpaca_error alpaca_get_position(indigo_alpaca_device *device, int version, int32_t *value) {
+static indigo_alpaca_error alpaca_get_position(indigo_alpaca_device *device, int version, int *value) {
 	pthread_mutex_lock(&device->mutex);
 	if (!device->connected) {
 		pthread_mutex_unlock(&device->mutex);
@@ -43,7 +43,7 @@ static indigo_alpaca_error alpaca_get_position(indigo_alpaca_device *device, int
 	return indigo_alpaca_error_OK;
 }
 
-static indigo_alpaca_error alpaca_set_position(indigo_alpaca_device *device, int version, int32_t value) {
+static indigo_alpaca_error alpaca_set_position(indigo_alpaca_device *device, int version, int value) {
 	pthread_mutex_lock(&device->mutex);
 	if (!device->connected) {
 		pthread_mutex_unlock(&device->mutex);
@@ -62,7 +62,7 @@ static indigo_alpaca_error alpaca_set_position(indigo_alpaca_device *device, int
 }
 
 
-static indigo_alpaca_error alpaca_get_names(indigo_alpaca_device *device, int version, char ***value, uint32_t *count) {
+static indigo_alpaca_error alpaca_get_names(indigo_alpaca_device *device, int version, char ***value, int *count) {
 	pthread_mutex_lock(&device->mutex);
 	if (!device->connected) {
 		*count = 0;
@@ -75,7 +75,7 @@ static indigo_alpaca_error alpaca_get_names(indigo_alpaca_device *device, int ve
 	return indigo_alpaca_error_OK;
 }
 
-static indigo_alpaca_error alpaca_get_focusoffsets(indigo_alpaca_device *device, int version, uint32_t **value, uint32_t *count) {
+static indigo_alpaca_error alpaca_get_focusoffsets(indigo_alpaca_device *device, int version, int **value, int *count) {
 	pthread_mutex_lock(&device->mutex);
 	if (!device->connected) {
 		*count = 0;
@@ -131,18 +131,18 @@ long indigo_alpaca_wheel_get_command(indigo_alpaca_device *alpaca_device, int ve
 		return snprintf(buffer, buffer_length, "\"Value\": [ ], \"ErrorNumber\": 0, \"ErrorMessage\": \"\"");
 	}
 	if (!strcmp(command, "interfaceversion")) {
-		uint32_t value;
+		int value;
 		indigo_alpaca_error result = alpaca_get_interfaceversion(alpaca_device, version, &value);
 	return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "position")) {
-		int32_t value = 0;
+		int value = 0;
 		indigo_alpaca_error result = alpaca_get_position(alpaca_device, version, &value);
 	return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "names")) {
 		char **value;
-		uint32_t count = 0;
+		int count = 0;
 		indigo_alpaca_error result = alpaca_get_names(alpaca_device, version, &value, &count);
 		if (result == indigo_alpaca_error_OK) {
 			long index = snprintf(buffer, buffer_length, "\"Value\": [ ");
@@ -156,8 +156,8 @@ long indigo_alpaca_wheel_get_command(indigo_alpaca_device *alpaca_device, int ve
 		}
 	}
 	if (!strcmp(command, "focusoffsets")) {
-		uint32_t *value;
-		uint32_t count = 0;
+		int *value;
+		int count = 0;
 		indigo_alpaca_error result = alpaca_get_focusoffsets(alpaca_device, version, &value, &count);
 		if (result == indigo_alpaca_error_OK) {
 			long index = snprintf(buffer, buffer_length, "\"Value\": [ ");
@@ -175,7 +175,7 @@ long indigo_alpaca_wheel_get_command(indigo_alpaca_device *alpaca_device, int ve
 
 long indigo_alpaca_wheel_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2) {
 	if (!strcmp(command, "position")) {
-		int32_t value = 1;
+		int value = 1;
 		indigo_alpaca_error result;
 		if (sscanf(param_1, "Position=%d", &value) == 1)
 			result = alpaca_set_position(alpaca_device, version, value);

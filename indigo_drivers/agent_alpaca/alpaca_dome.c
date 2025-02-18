@@ -35,7 +35,7 @@ typedef enum {
 	SHUTTER_ERROR = 4
 } alpaca_dome_status;
 
-static indigo_alpaca_error alpaca_get_interfaceversion(indigo_alpaca_device *device, int version, uint32_t *value) {
+static indigo_alpaca_error alpaca_get_interfaceversion(indigo_alpaca_device *device, int version, int *value) {
 	*value = 1;
 	return indigo_alpaca_error_OK;
 }
@@ -200,7 +200,7 @@ static indigo_alpaca_error alpaca_get_canpark(indigo_alpaca_device *device, int 
 	return indigo_alpaca_error_OK;
 }
 
-static indigo_alpaca_error alpaca_get_shutterstatus(indigo_alpaca_device *device, int version, uint32_t *value) {
+static indigo_alpaca_error alpaca_get_shutterstatus(indigo_alpaca_device *device, int version, int *value) {
 	pthread_mutex_lock(&device->mutex);
 	if (!device->connected) {
 		pthread_mutex_unlock(&device->mutex);
@@ -611,7 +611,7 @@ long indigo_alpaca_dome_get_command(indigo_alpaca_device *alpaca_device, int ver
 		return snprintf(buffer, buffer_length, "\"Value\": [ ], \"ErrorNumber\": 0, \"ErrorMessage\": \"\"");
 	}
 	if (!strcmp(command, "interfaceversion")) {
-		uint32_t value = 0;
+		int value = 0;
 		indigo_alpaca_error result = alpaca_get_interfaceversion(alpaca_device, version, &value);
 		return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
 	}
@@ -681,7 +681,7 @@ long indigo_alpaca_dome_get_command(indigo_alpaca_device *alpaca_device, int ver
 		return indigo_alpaca_append_value_bool(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "shutterstatus")) {
-		uint32_t value = 0;
+		int value = 0;
 		indigo_alpaca_error result = alpaca_get_shutterstatus(alpaca_device, version, &value);
 		return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
 	}

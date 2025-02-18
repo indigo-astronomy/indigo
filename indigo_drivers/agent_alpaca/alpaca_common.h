@@ -48,7 +48,7 @@ typedef enum {
 } indigo_alpaca_error;
 
 typedef struct indigo_alpaca_device_struct {
-	uint64_t indigo_interface;
+	indigo_device_interface indigo_interface;
 	char indigo_device[INDIGO_NAME_SIZE];
 	char device_name[INDIGO_NAME_SIZE];
 	char driver_info[INDIGO_VALUE_SIZE];
@@ -68,15 +68,15 @@ typedef struct indigo_alpaca_device_struct {
 			bool cangetcoolerpower;
 			bool cangetccdtemperature;
 			bool cansetccdtemperature;
-			uint32_t binx;
-			uint32_t biny;
+			int binx;
+			int biny;
 			int camerastate;
-			uint32_t cameraxsize;
-			uint32_t cameraysize;
-			uint32_t startx;
-			uint32_t starty;
-			uint32_t numx;
-			uint32_t numy;
+			int cameraxsize;
+			int cameraysize;
+			int startx;
+			int starty;
+			int numx;
+			int numy;
 			double ccdtemperature;
 			double setccdtemperature;
 			bool cooleron;
@@ -84,28 +84,28 @@ typedef struct indigo_alpaca_device_struct {
 			double electronsperadu;
 			double fullwellcapacity;
 			indigo_item *imageready;
-			uint32_t maxadu;
+			int maxadu;
 			double pixelsizex;
 			double pixelsizey;
 			double exposuremin;
 			double exposuremax;
 			double lastexposureduration;
 			char lastexposuretarttime[20];
-			uint32_t gainmin;
-			uint32_t gainmax;
-			uint32_t gain;
-			uint32_t offsetmin;
-			uint32_t offsetmax;
-			uint32_t offset;
+			int gainmin;
+			int gainmax;
+			int gain;
+			int offsetmin;
+			int offsetmax;
+			int offset;
 			char *readoutmodes_names[ALPACA_MAX_ITEMS];
 			char *readoutmodes_labels[ALPACA_MAX_ITEMS];
 			int readoutmode;
 			indigo_item *bayer_matrix;
 		} ccd;
 		struct {
-			uint32_t count;
-			int32_t position;
-			uint32_t focusoffsets[ALPACA_MAX_FILTERS];
+			int count;
+			int position;
+			int focusoffsets[ALPACA_MAX_FILTERS];
 			char *names[ALPACA_MAX_FILTERS];
 		} wheel;
 		struct {
@@ -115,10 +115,10 @@ typedef struct indigo_alpaca_device_struct {
 			bool tempcomp;
 			bool temperatureavailable;
 			bool halted;
-			int32_t offset;
-			uint32_t maxstep;
-			uint32_t maxincrement;
-			uint32_t position;
+			int offset;
+			int maxstep;
+			int maxincrement;
+			int position;
 			double temperature;
 		} focuser;
 		struct {
@@ -173,18 +173,18 @@ typedef struct indigo_alpaca_device_struct {
 			bool cansetpark;
 			bool cansetshutter;
 			bool canslave;
-			uint32_t shutterstatus;
+			int shutterstatus;
 			bool slaved;
 			bool isrotating;
 			bool isshuttermoving;
 			bool isflapmoving;
 		} dome;
 		struct {
-			uint32_t maxswitch_power_outlet;
-			uint32_t maxswitch_heater_outlet;
-			uint32_t maxswitch_usb_port;
-			uint32_t maxswitch_gpio_outlet;
-			uint32_t maxswitch_gpio_sensor;
+			int maxswitch_power_outlet;
+			int maxswitch_heater_outlet;
+			int maxswitch_usb_port;
+			int maxswitch_gpio_outlet;
+			int maxswitch_gpio_sensor;
 			bool canwrite[5 * ALPACA_MAX_SWITCHES];
 			char switchname[5 * ALPACA_MAX_SWITCHES][INDIGO_VALUE_SIZE];
 			double switchvalue[5 * ALPACA_MAX_SWITCHES];
@@ -203,8 +203,8 @@ typedef struct indigo_alpaca_device_struct {
 		} guider;
 		struct {
 			int calibratorstate;
-			uint32_t brightness;
-			uint32_t maxbrightness;
+			int brightness;
+			int maxbrightness;
 			int coverstate;
 		} covercalibrator;
 	};
@@ -225,17 +225,17 @@ typedef enum {
 } indigo_alpaca_element_type;
 
 typedef struct {
-	int32_t metadata_version; // Bytes 0..3 - Metadata version = 1
-	int32_t error_number; // Bytes 4..7 - Alpaca error number or zero for success
-	uint32_t client_transaction_id; // Bytes 8..11 - Client's transaction ID
-	uint32_t server_transaction_id; // Bytes 12..15 - Device's transaction ID
-	int32_t data_start; // Bytes 16..19 - Offset of the start of the data bytes
-	int32_t image_element_type; // Bytes 20..23 - Element type of the source image array
-	int32_t transmission_element_type; // Bytes 24..27 - Element type as sent over the network
-	int32_t rank; // Bytes 28..31 - Image array rank (2 or 3)
-	int32_t dimension1; // Bytes 32..35 - Length of image array first dimension
-	int32_t dimension2; // Bytes 36..39 - Length of image array second dimension
-	int32_t dimension3; // Bytes 40..43 - Length of image array third dimension (0 for 2D array)
+	int metadata_version; // Bytes 0..3 - Metadata version = 1
+	int error_number; // Bytes 4..7 - Alpaca error number or zero for success
+	int client_transaction_id; // Bytes 8..11 - Client's transaction ID
+	int server_transaction_id; // Bytes 12..15 - Device's transaction ID
+	int data_start; // Bytes 16..19 - Offset of the start of the data bytes
+	int image_element_type; // Bytes 20..23 - Element type of the source image array
+	int transmission_element_type; // Bytes 24..27 - Element type as sent over the network
+	int rank; // Bytes 28..31 - Image array rank (2 or 3)
+	int dimension1; // Bytes 32..35 - Length of image array first dimension
+	int dimension2; // Bytes 36..39 - Length of image array second dimension
+	int dimension3; // Bytes 40..43 - Length of image array third dimension (0 for 2D array)
 } indigo_alpaca_metadata;
 
 extern bool get_bayer_RGGB_offsets(const char *pattern, int *x_offset, int *y_offset);
@@ -247,7 +247,7 @@ extern long indigo_alpaca_append_value_int(char *buffer, long buffer_length, int
 extern long indigo_alpaca_append_value_double(char *buffer, long buffer_length, double value, indigo_alpaca_error result);
 extern long indigo_alpaca_append_value_string(char *buffer, long buffer_length, char *value, indigo_alpaca_error result);
 extern bool indigo_alpaca_wait_for_bool(bool *reference, bool value, int timeout);
-extern bool indigo_alpaca_wait_for_int32(int32_t *reference, int32_t value, int timeout);
+extern bool indigo_alpaca_wait_for_int32(int *reference, int value, int timeout);
 extern bool indigo_alpaca_wait_for_double(double *reference, double value, int timeout);
 
 extern void indigo_alpaca_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property);
@@ -257,7 +257,7 @@ extern long indigo_alpaca_set_command(indigo_alpaca_device *alpaca_device, int v
 extern void indigo_alpaca_ccd_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property);
 extern long indigo_alpaca_ccd_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length);
 extern long indigo_alpaca_ccd_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2);
-extern void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int version, indigo_uni_handle *handle, uint32_t client_transaction_id, uint32_t server_transaction_id, bool use_gzip, bool use_imagebytes);
+extern void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int version, indigo_uni_handle *handle, int client_transaction_id, int server_transaction_id, bool use_gzip, bool use_imagebytes);
 
 extern void indigo_alpaca_wheel_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property);
 extern long indigo_alpaca_wheel_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length);

@@ -23,20 +23,25 @@
  \file indigo_agent_alpaca.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME	"indigo_agent_alpaca"
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
 #include <errno.h>
 
+#if defined(INDIGO_MACOS) || defined(INDIGO_LINUX)
+#include <unistd.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#elif defined(INDIGO_WINDOWS)
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
+#include <winsock2.h>
+#endif
 
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_io.h>
@@ -68,9 +73,15 @@ typedef struct {
 
 static alpaca_agent_private_data *private_data = NULL;
 
-static int discovery_server_socket = 0;
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+#define INVALID_SOCKET -1
+static int discovery_server_socket = INVALID_SOCKET;
+#elif defined(INDIGO_WINDOWS)
+static SOCKET discovery_server_socket = INVALID_SOCKET;
+#endif
+
 static indigo_alpaca_device *alpaca_devices = NULL;
-static uint32_t server_transaction_id = 0;
+static int server_transaction_id = 0;
 
 indigo_device *indigo_agent_alpaca_device = NULL;
 indigo_client *indigo_agent_alpaca_client = NULL;
@@ -95,18 +106,27 @@ static void save_config(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- ALPACA bridge implementation
 
+#if defined(INDIGO_MACOS) || defined(INDIGO_LINUX)
+#define LAST_ERROR	strerror(errno)
+#elif defined(INDIGO_WINDOWS)
+#define LAST_ERROR indigo_last_wsa_error()
+#endif
+
 static void start_discovery_server(indigo_device *device) {
-#warning: "TODO: Pending issue for migration to unified I/O"
 	int port = (int)AGENT_DISCOVERY_PORT_ITEM->number.value;
 	discovery_server_socket = socket(PF_INET, SOCK_DGRAM, 0);
-	if (discovery_server_socket == -1) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to create socket (%s)", strerror(errno));
+	if (discovery_server_socket == INVALID_SOCKET) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to create socket (%s)", LAST_ERROR);
 		return;
 	}
 	int reuse = 1;
-	if (setsockopt(discovery_server_socket, SOL_SOCKET,SO_REUSEADDR, &reuse, sizeof(reuse)) < 0) {
+	if (setsockopt(discovery_server_socket, SOL_SOCKET, SO_REUSEADDR, (char *) &reuse, sizeof(reuse)) < 0) {
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 		close(discovery_server_socket);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "setsockopt() failed (%s)", strerror(errno));
+#elif defined(INDIGO_WINDOWS)
+		closesocket(discovery_server_socket);
+#endif
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "setsockopt() failed (%s)", LAST_ERROR);
 		return;
 	}
 	struct sockaddr_in server_address;
@@ -115,8 +135,12 @@ static void start_discovery_server(indigo_device *device) {
 	server_address.sin_port = htons(port);
 	server_address.sin_addr.s_addr = htonl(INADDR_ANY);
 	if (bind(discovery_server_socket, (struct sockaddr *)&server_address, server_address_length) < 0) {
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 		close(discovery_server_socket);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "bind() failed (%s)", strerror(errno));
+#elif defined(INDIGO_WINDOWS)
+		closesocket(discovery_server_socket);
+#endif
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "bind() failed (%s)", LAST_ERROR);
 		return;
 	}
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "Discovery server started on port %d", port);
@@ -125,19 +149,23 @@ static void start_discovery_server(indigo_device *device) {
 	unsigned int client_address_length = sizeof(client_address);
 	char buffer[128];
 	struct timeval tv;
-	while (discovery_server_socket) {
+	while (discovery_server_socket != INVALID_SOCKET) {
 		tv.tv_sec = 1;
 		tv.tv_usec = 0;
 		FD_ZERO(&readfd);
 		FD_SET(discovery_server_socket, &readfd);
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 		int ret = select(discovery_server_socket + 1, &readfd, NULL, NULL, &tv);
+#elif defined(INDIGO_WINDOWS)
+		int ret = select(0, &readfd, NULL, NULL, &tv);
+#endif
 		if (ret > 0) {
 			if (FD_ISSET(discovery_server_socket, &readfd)) {
 				recvfrom(discovery_server_socket, buffer, sizeof(buffer), 0, (struct sockaddr*)&client_address, &client_address_length);
 				if (strstr(buffer, DISCOVERY_REQUEST)) {
 					INDIGO_DRIVER_LOG(DRIVER_NAME, "Discovery request from %s", inet_ntoa(client_address.sin_addr));
 					sprintf(buffer, DISCOVERY_RESPONSE, indigo_server_tcp_port);
-					sendto(discovery_server_socket, buffer, strlen(buffer), 0, (struct sockaddr*)&client_address, client_address_length);
+					sendto(discovery_server_socket, buffer, (int)strlen(buffer), 0, (struct sockaddr*)&client_address, client_address_length);
 				}
 			}
 		}
@@ -148,13 +176,18 @@ static void start_discovery_server(indigo_device *device) {
 
 static void shutdown_discovery_server() {
 	if (discovery_server_socket) {
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 		shutdown(discovery_server_socket, SHUT_RDWR);
 		close(discovery_server_socket);
-		discovery_server_socket = 0;
+#elif defined(INDIGO_WINDOWS)
+		shutdown(discovery_server_socket, SD_BOTH);
+		closesocket(discovery_server_socket);
+#endif
+		discovery_server_socket = INVALID_SOCKET;
 	}
 }
 
-static void parse_url_params(char *params, uint32_t *client_id, uint32_t *client_transaction_id, int *id) {
+static void parse_url_params(char *params, int *client_id, int *client_transaction_id, int *id) {
 	if (params == NULL) {
 		return;
 	}
@@ -165,11 +198,11 @@ static void parse_url_params(char *params, uint32_t *client_id, uint32_t *client
 		}
 		if (!strncasecmp(token, "ClientID", 8)) {
 			if ((token = strchr(token, '='))) {
-				*client_id = (uint32_t)atol(token + 1);
+				*client_id = atoi(token + 1);
 			}
 		} else if (!strncasecmp(token, "ClientTransactionID", 19)) {
 			if ((token = strchr(token, '='))) {
-				*client_transaction_id = (uint32_t)atol(token + 1);
+				*client_transaction_id = atoi(token + 1);
 			}
 		} else if (id && !strncasecmp(token, "ID", 2)) {
 			if ((token = strchr(token, '='))) {
@@ -231,7 +264,7 @@ static bool alpaca_setup_handler(indigo_uni_handle *handle, char *method, char *
 }
 
 static bool alpaca_apiversions_handler(indigo_uni_handle *handle, char *method, char *path, char *params) {
-	uint32_t client_id = 0, client_transaction_id = 0;
+	int client_id = 0, client_transaction_id = 0;
 	char buffer[128];
 	parse_url_params(params, &client_id, &client_transaction_id, NULL);
 	snprintf(buffer, sizeof(buffer), "{ \"Value\": [ 1 ], \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", client_transaction_id, server_transaction_id++);
@@ -240,7 +273,7 @@ static bool alpaca_apiversions_handler(indigo_uni_handle *handle, char *method, 
 }
 
 static bool alpaca_v1_description_handler(indigo_uni_handle *handle, char *method, char *path, char *params) {
-	uint32_t client_id = 0, client_transaction_id = 0;
+	int client_id = 0, client_transaction_id = 0;
 	char buffer[512];
 	parse_url_params(params, &client_id, &client_transaction_id, NULL);
 	snprintf(buffer, sizeof(buffer), "{ \"Value\": { \"ServerName\": \"INDIGO-Alpaca Bridge\", \"ServerVersion\": \"%d.%d-%s\", \"Manufacturer\": \"The INDIGO Initiative\", \"ManufacturerURL\": \"https://www.indigo-astronomy.org\" }, \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, client_transaction_id, server_transaction_id++);
@@ -249,7 +282,7 @@ static bool alpaca_v1_description_handler(indigo_uni_handle *handle, char *metho
 }
 
 static bool alpaca_v1_configureddevices_handler(indigo_uni_handle *handle, char *method, char *path, char *params) {
-	uint32_t client_id = 0, client_transaction_id = 0;
+	int client_id = 0, client_transaction_id = 0;
 	char *buffer = indigo_alloc_large_buffer();
 	parse_url_params(params, &client_id, &client_transaction_id, NULL);
 	long index = snprintf(buffer, INDIGO_BUFFER_SIZE, "{ \"Value\": [ ");
@@ -279,7 +312,7 @@ int string_cmp(const void * a, const void * b) {
 
 static bool alpaca_v1_api_handler(indigo_uni_handle *handle, char *method, char *path, char *params) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "< %s %s %s", method, path, params);
-	uint32_t client_id = 0, client_transaction_id = 0;
+	int client_id = 0, client_transaction_id = 0;
 	int id = 0;
 	char *device_type = strstr(path, "/api/v1/");
 	if (device_type == NULL) {
@@ -301,7 +334,7 @@ static bool alpaca_v1_api_handler(indigo_uni_handle *handle, char *method, char 
 	*command++ = 0;
 	char *buffer = NULL;
 	indigo_alpaca_device *alpaca_device = alpaca_devices;
-	uint32_t number = (uint32_t)atol(device_number);
+	int number = atoi(device_number);
 	while (alpaca_device) {
 		if (alpaca_device->device_number == number) {
 			if (alpaca_device->device_type && !strcasecmp(alpaca_device->device_type, device_type)) {
@@ -355,11 +388,11 @@ static bool alpaca_v1_api_handler(indigo_uni_handle *handle, char *method, char 
 			}
 			if (!strncmp(token, "ClientID", 8)) {
 				if ((token = strchr(token, '='))) {
-					client_id = (uint32_t)atol(token + 1);
+					client_id = atoi(token + 1);
 				}
 			} else if (!strncmp(token, "ClientTransactionID", 19)) {
 				if ((token = strchr(token, '='))) {
-					client_transaction_id = (uint32_t)atol(token + 1);
+					client_transaction_id = atoi(token + 1);
 				}
 			} else if (count < 5) {
 				strncpy(args[count++], token, 128);
@@ -548,7 +581,7 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = property->items + i;
 			if (!strcmp(item->name, INFO_DEVICE_INTERFACE_ITEM_NAME)) {
-				alpaca_device->indigo_interface = atoll(item->text.value);
+				alpaca_device->indigo_interface = (indigo_device_interface)atol(item->text.value);
 				if (IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_AGENT)) {
 					alpaca_device->device_type = NULL;
 				} else if (IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_CCD)) {

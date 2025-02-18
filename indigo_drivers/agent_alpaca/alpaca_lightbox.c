@@ -27,12 +27,12 @@
 
 #include "alpaca_common.h"
 
-static indigo_alpaca_error alpaca_get_interfaceversion(indigo_alpaca_device *device, int version, uint32_t *value) {
+static indigo_alpaca_error alpaca_get_interfaceversion(indigo_alpaca_device *device, int version, int *value) {
 	*value = 1;
 	return indigo_alpaca_error_OK;
 }
 
-static indigo_alpaca_error alpaca_get_brightness(indigo_alpaca_device *device, int version, uint32_t *value) {
+static indigo_alpaca_error alpaca_get_brightness(indigo_alpaca_device *device, int version, int *value) {
 	pthread_mutex_lock(&device->mutex);
 	if (!device->connected) {
 		pthread_mutex_unlock(&device->mutex);
@@ -43,7 +43,7 @@ static indigo_alpaca_error alpaca_get_brightness(indigo_alpaca_device *device, i
 	return indigo_alpaca_error_OK;
 }
 
-static indigo_alpaca_error alpaca_get_maxbrightness(indigo_alpaca_device *device, int version, uint32_t *value) {
+static indigo_alpaca_error alpaca_get_maxbrightness(indigo_alpaca_device *device, int version, int *value) {
 	pthread_mutex_lock(&device->mutex);
 	if (!device->connected) {
 		pthread_mutex_unlock(&device->mutex);
@@ -77,7 +77,7 @@ static indigo_alpaca_error alpaca_get_coverstate(indigo_alpaca_device *device, i
 }
 
 
-static indigo_alpaca_error alpaca_calibratoron(indigo_alpaca_device *device, int version, uint32_t value) {
+static indigo_alpaca_error alpaca_calibratoron(indigo_alpaca_device *device, int version, int value) {
 	pthread_mutex_lock(&device->mutex);
 	if (!device->connected) {
 		pthread_mutex_unlock(&device->mutex);
@@ -211,17 +211,17 @@ long indigo_alpaca_lightbox_get_command(indigo_alpaca_device *alpaca_device, int
 		return snprintf(buffer, buffer_length, "\"Value\": [ ], \"ErrorNumber\": 0, \"ErrorMessage\": \"\"");
 	}
 	if (!strcmp(command, "interfaceversion")) {
-		uint32_t value;
+		int value;
 		indigo_alpaca_error result = alpaca_get_interfaceversion(alpaca_device, version, &value);
 	return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "brightness")) {
-		uint32_t value = 0;
+		int value = 0;
 		indigo_alpaca_error result = alpaca_get_brightness(alpaca_device, version, &value);
 	return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "maxbrightness")) {
-		uint32_t value = 0;
+		int value = 0;
 		indigo_alpaca_error result = alpaca_get_maxbrightness(alpaca_device, version, &value);
 	return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
 	}
@@ -244,7 +244,7 @@ long indigo_alpaca_lightbox_set_command(indigo_alpaca_device *alpaca_device, int
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strcmp(command, "calibratoron")) {
-		uint32_t value = 1;
+		int value = 1;
 		indigo_alpaca_error result;
 		if (sscanf(param_1, "Brightness=%d", &value) == 1)
 			result = alpaca_calibratoron(alpaca_device, version, value);

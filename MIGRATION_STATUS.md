@@ -1,5 +1,6 @@
 # ALREADY DONE
 
+agent_alpaca
 agent_auxiliary
 agent_config
 agent_guider
@@ -49,8 +50,6 @@ wheel_astroasis
 wheel_playerone
 
 # IN PROGRESS
-
-agent_alpaca
 
 # TODO
 

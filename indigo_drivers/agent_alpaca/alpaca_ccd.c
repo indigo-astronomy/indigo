@@ -25,13 +25,17 @@
 
 #include <math.h>
 #include <zlib.h>
+#if defined(INDIGO_WINDOWS)
+#include <io.h>
+#include <fcntl.h>
+#endif
 
 #include <indigo/indigo_io.h>
 #include <indigo/indigo_ccd_driver.h>
 
 #include "alpaca_common.h"
 
-static indigo_alpaca_error alpaca_get_interfaceversion(indigo_alpaca_device *device, int version, uint32_t *value) {
+static indigo_alpaca_error alpaca_get_interfaceversion(indigo_alpaca_device *device, int version, int *value) {
 	*value = 3;
 	return indigo_alpaca_error_OK;
 }
@@ -636,7 +640,7 @@ static indigo_alpaca_error alpaca_set_cooleron(indigo_alpaca_device *device, int
 	return indigo_alpaca_error_OK;
 }
 
-static indigo_alpaca_error alpaca_set_startx(indigo_alpaca_device *device, int version, double value) {
+static indigo_alpaca_error alpaca_set_startx(indigo_alpaca_device *device, int version, int value) {
 	pthread_mutex_lock(&device->mutex);
 	if (!device->connected) {
 		pthread_mutex_unlock(&device->mutex);
@@ -652,7 +656,7 @@ static indigo_alpaca_error alpaca_set_startx(indigo_alpaca_device *device, int v
 	return indigo_alpaca_error_OK;
 }
 
-static indigo_alpaca_error alpaca_set_starty(indigo_alpaca_device *device, int version, double value) {
+static indigo_alpaca_error alpaca_set_starty(indigo_alpaca_device *device, int version, int value) {
 	pthread_mutex_lock(&device->mutex);
 	if (!device->connected) {
 		pthread_mutex_unlock(&device->mutex);
@@ -668,7 +672,7 @@ static indigo_alpaca_error alpaca_set_starty(indigo_alpaca_device *device, int v
 	return indigo_alpaca_error_OK;
 }
 
-static indigo_alpaca_error alpaca_set_numx(indigo_alpaca_device *device, int version, double value) {
+static indigo_alpaca_error alpaca_set_numx(indigo_alpaca_device *device, int version, int value) {
 	pthread_mutex_lock(&device->mutex);
 	if (!device->connected) {
 		pthread_mutex_unlock(&device->mutex);
@@ -684,7 +688,7 @@ static indigo_alpaca_error alpaca_set_numx(indigo_alpaca_device *device, int ver
 	return indigo_alpaca_error_OK;
 }
 
-static indigo_alpaca_error alpaca_set_numy(indigo_alpaca_device *device, int version, double value) {
+static indigo_alpaca_error alpaca_set_numy(indigo_alpaca_device *device, int version, int value) {
 	pthread_mutex_lock(&device->mutex);
 	if (!device->connected) {
 		pthread_mutex_unlock(&device->mutex);
@@ -804,9 +808,9 @@ void indigo_alpaca_ccd_update_property(indigo_alpaca_device *alpaca_device, indi
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = property->items + i;
 				if (!strcmp(item->name, CCD_BIN_HORIZONTAL_ITEM_NAME)) {
-					alpaca_device->ccd.binx = item->number.value;
+					alpaca_device->ccd.binx = (int)item->number.value;
 				} else if (!strcmp(item->name, CCD_BIN_VERTICAL_ITEM_NAME)) {
-					alpaca_device->ccd.biny = item->number.value;
+					alpaca_device->ccd.biny = (int)item->number.value;
 				}
 			}
 		}
@@ -848,13 +852,13 @@ void indigo_alpaca_ccd_update_property(indigo_alpaca_device *alpaca_device, indi
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = property->items + i;
 				if (!strcmp(item->name, CCD_FRAME_LEFT_ITEM_NAME)) {
-					alpaca_device->ccd.startx = item->number.value / alpaca_device->ccd.binx;
+					alpaca_device->ccd.startx = (int)(item->number.value / alpaca_device->ccd.binx);
 				} else if (!strcmp(item->name, CCD_FRAME_TOP_ITEM_NAME)) {
-					alpaca_device->ccd.starty = item->number.value / alpaca_device->ccd.biny;
+					alpaca_device->ccd.starty = (int)(item->number.value / alpaca_device->ccd.biny);
 				} else if (!strcmp(item->name, CCD_FRAME_WIDTH_ITEM_NAME)) {
-					alpaca_device->ccd.numx = item->number.value / alpaca_device->ccd.binx;
+					alpaca_device->ccd.numx = (int)(item->number.value / alpaca_device->ccd.binx);
 				} else if (!strcmp(item->name, CCD_FRAME_HEIGHT_ITEM_NAME)) {
-					alpaca_device->ccd.numy = item->number.value / alpaca_device->ccd.biny;
+					alpaca_device->ccd.numy = (int)(item->number.value / alpaca_device->ccd.biny);
 				} else if (!strcmp(item->name, CCD_FRAME_BITS_PER_PIXEL_ITEM_NAME)) {
 					alpaca_device->ccd.electronsperadu = 1;
 					alpaca_device->ccd.fullwellcapacity = pow(2, item->number.value);
@@ -870,14 +874,14 @@ void indigo_alpaca_ccd_update_property(indigo_alpaca_device *alpaca_device, indi
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = property->items + i;
 				if (!strcmp(item->name, CCD_INFO_WIDTH_ITEM_NAME)) {
-					alpaca_device->ccd.cameraxsize = item->number.value;
+					alpaca_device->ccd.cameraxsize = (int)item->number.value;
 					if (alpaca_device->ccd.numx <= 0) {
-						alpaca_device->ccd.numx = item->number.value / alpaca_device->ccd.binx;
+						alpaca_device->ccd.numx = (int)(item->number.value / alpaca_device->ccd.binx);
 					}
 				} else if (!strcmp(item->name, CCD_INFO_HEIGHT_ITEM_NAME)) {
-					alpaca_device->ccd.cameraysize = item->number.value;
+					alpaca_device->ccd.cameraysize = (int)item->number.value;
 					if (alpaca_device->ccd.numy <= 0) {
-						alpaca_device->ccd.numy = item->number.value / alpaca_device->ccd.biny;
+						alpaca_device->ccd.numy = (int)(item->number.value / alpaca_device->ccd.biny);
 					}
 				} else if (!strcmp(item->name, CCD_INFO_PIXEL_WIDTH_ITEM_NAME)) {
 					alpaca_device->ccd.pixelsizex = (item->number.value > 0) ? item->number.value : 1;
@@ -885,7 +889,7 @@ void indigo_alpaca_ccd_update_property(indigo_alpaca_device *alpaca_device, indi
 					alpaca_device->ccd.pixelsizey = (item->number.value > 0) ? item->number.value : 1;
 				} else if (!strcmp(item->name, CCD_INFO_BITS_PER_PIXEL_ITEM_NAME)) {
 					alpaca_device->ccd.electronsperadu = 1;
-					alpaca_device->ccd.maxadu = (uint32_t)pow(2, item->number.value);
+					alpaca_device->ccd.maxadu = (int)pow(2, item->number.value);
 				}
 			}
 		}
@@ -915,9 +919,9 @@ void indigo_alpaca_ccd_update_property(indigo_alpaca_device *alpaca_device, indi
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = property->items + i;
 				if (!strcmp(item->name, CCD_GAIN_ITEM_NAME)) {
-					alpaca_device->ccd.gain = item->number.value;
-					alpaca_device->ccd.gainmin = item->number.min;
-					alpaca_device->ccd.gainmax = item->number.max;
+					alpaca_device->ccd.gain = (int)item->number.value;
+					alpaca_device->ccd.gainmin = (int)item->number.min;
+					alpaca_device->ccd.gainmax = (int)item->number.max;
 				}
 			}
 		}
@@ -926,9 +930,9 @@ void indigo_alpaca_ccd_update_property(indigo_alpaca_device *alpaca_device, indi
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = property->items + i;
 				if (!strcmp(item->name, CCD_OFFSET_ITEM_NAME)) {
-					alpaca_device->ccd.offset = item->number.value;
-					alpaca_device->ccd.offsetmin = item->number.min;
-					alpaca_device->ccd.offsetmax = item->number.max;
+					alpaca_device->ccd.offset = (int)item->number.value;
+					alpaca_device->ccd.offsetmin = (int)item->number.min;
+					alpaca_device->ccd.offsetmax = (int)item->number.max;
 				}
 			}
 		}
@@ -950,7 +954,7 @@ long indigo_alpaca_ccd_get_command(indigo_alpaca_device *alpaca_device, int vers
 		return snprintf(buffer, buffer_length, "\"Value\": [ ], \"ErrorNumber\": 0, \"ErrorMessage\": \"\"");
 	}
 	if (!strcmp(command, "interfaceversion")) {
-		uint32_t value = 0;
+		int value = 0;
 		indigo_alpaca_error result = alpaca_get_interfaceversion(alpaca_device, version, &value);
 		return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
 	}
@@ -1235,7 +1239,7 @@ long indigo_alpaca_ccd_set_command(indigo_alpaca_device *alpaca_device, int vers
 		double value = 0;
 		indigo_alpaca_error result;
 		if (sscanf(param_1, "StartX=%lf", &value) == 1)
-			result = alpaca_set_startx(alpaca_device, version, value);
+			result = alpaca_set_startx(alpaca_device, version, (int)value);
 		else
 			result = indigo_alpaca_error_InvalidValue;
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
@@ -1244,7 +1248,7 @@ long indigo_alpaca_ccd_set_command(indigo_alpaca_device *alpaca_device, int vers
 		double value = 0;
 		indigo_alpaca_error result;
 		if (sscanf(param_1, "StartY=%lf", &value) == 1)
-			result = alpaca_set_starty(alpaca_device, version, value);
+			result = alpaca_set_starty(alpaca_device, version, (int)value);
 		else
 			result = indigo_alpaca_error_InvalidValue;
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
@@ -1253,7 +1257,7 @@ long indigo_alpaca_ccd_set_command(indigo_alpaca_device *alpaca_device, int vers
 		double value = 0;
 		indigo_alpaca_error result;
 		if (sscanf(param_1, "NumX=%lf", &value) == 1)
-			result = alpaca_set_numx(alpaca_device, version, value);
+			result = alpaca_set_numx(alpaca_device, version, (int)value);
 		else
 			result = indigo_alpaca_error_InvalidValue;
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
@@ -1262,7 +1266,7 @@ long indigo_alpaca_ccd_set_command(indigo_alpaca_device *alpaca_device, int vers
 		double value = 0;
 		indigo_alpaca_error result;
 		if (sscanf(param_1, "NumY=%lf", &value) == 1)
-			result = alpaca_set_numy(alpaca_device, version, value);
+			result = alpaca_set_numy(alpaca_device, version, (int)value);
 		else
 			result = indigo_alpaca_error_InvalidValue;
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
@@ -1318,7 +1322,7 @@ long indigo_alpaca_ccd_set_command(indigo_alpaca_device *alpaca_device, int vers
 
 #define PRINTF(fmt, ...) if (use_gzip) gzprintf(gzf, fmt, ##__VA_ARGS__); else indigo_uni_printf(handle, fmt, ##__VA_ARGS__);
 
-void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int version, indigo_uni_handle *handle, uint32_t client_transaction_id, uint32_t server_transaction_id, bool use_gzip, bool use_imagebytes) {
+void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int version, indigo_uni_handle *handle, int client_transaction_id, int server_transaction_id, bool use_gzip, bool use_imagebytes) {
 	indigo_alpaca_error result = indigo_alpaca_error_OK;
 	indigo_blob_entry *entry;
 	if (use_imagebytes) {
@@ -1340,8 +1344,8 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 				case INDIGO_RAW_MONO8: {
 					metadata.dimension3 = 0;
 					metadata.rank = 2;
-					uint8_t *data = entry->content + sizeof(indigo_raw_header);
-					uint32_t *buffer = malloc(size * 4), *pnt = buffer;
+					uint8_t *data = (uint8_t *)((char *)entry->content + sizeof(indigo_raw_header));
+					uint32_t *buffer = (uint32_t *)indigo_safe_malloc(size * 4), *pnt = buffer;
 					for (int col = 0; col < width; col++)
 						for (int row = height - 1; row >= 0; row--)
 							*pnt++ = data[row * width + col];
@@ -1355,8 +1359,8 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 				case INDIGO_RAW_MONO16: {
 					metadata.dimension3 = 0;
 					metadata.rank = 2;
-					uint16_t *data = entry->content + sizeof(indigo_raw_header);
-					uint32_t *buffer = malloc(size * 4), *pnt = buffer;
+					uint16_t *data = (uint16_t *)((char *)entry->content + sizeof(indigo_raw_header));
+					uint32_t *buffer = (uint32_t *)indigo_safe_malloc(size * 4), *pnt = buffer;
 					for (int col = 0; col < width; col++)
 						for (int row = height - 1; row >= 0; row--)
 							*pnt++ = data[row * width + col];
@@ -1365,14 +1369,14 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 					indigo_uni_write(handle, (const char *)&metadata, sizeof(metadata));
 					indigo_uni_write(handle, (const char *)buffer, size * 4);
 					handle->log_level = abs(handle->log_level);
-					free(buffer);
+					indigo_safe_free(buffer);
 					break;
 				}
 				case INDIGO_RAW_RGB24: {
 					metadata.dimension3 = 3;
 					metadata.rank = 3;
-					uint8_t *data = entry->content + sizeof(indigo_raw_header);
-					uint32_t *buffer = malloc(size * 12), *pnt = buffer;
+					uint8_t *data = (uint8_t *)((char *)entry->content + sizeof(indigo_raw_header));
+					uint32_t *buffer = (uint32_t *)indigo_safe_malloc(size * 12), *pnt = buffer;
 					for (int col = 0; col < width; col++)
 						for (int row = height - 1; row >= 0; row--) {
 							int base = 3 * (row * width + col);
@@ -1390,8 +1394,8 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 				case INDIGO_RAW_RGB48: {
 					metadata.dimension3 = 3;
 					metadata.rank = 3;
-					uint16_t *data = entry->content + sizeof(indigo_raw_header);
-					uint32_t *buffer = malloc(size * 12), *pnt = buffer;
+					uint16_t *data = (uint16_t *)((char *)entry->content + sizeof(indigo_raw_header));
+					uint32_t *buffer = (uint32_t *)indigo_safe_malloc(size * 12), *pnt = buffer;
 					for (int col = 0; col < width; col++)
 						for (int row = height - 1; row >= 0; row--) {
 							int base = 3 * (row * width + col);
@@ -1416,8 +1420,11 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 		gzFile gzf = NULL;
 		if (use_gzip) {
 			indigo_uni_printf(handle, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Encoding: gzip\r\n\r\n");
-#warning: "TODO: Pending issue for migration to unified I/O"
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 			gzf = gzdopen(handle->fd, "w");
+#elif defined(INDIGO_WINDOWS)
+			gzf = gzdopen(_open_osfhandle((intptr_t)handle->sock, _O_WRONLY), "w");
+#endif
 		} else {
 			indigo_uni_printf(handle, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n");
 		}
@@ -1429,7 +1436,7 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 			switch (header->signature) {
 				case INDIGO_RAW_MONO8: {
 					PRINTF("{ \"Type\": 2, \"Rank\": 2, \"Value\": [");
-					uint8_t *data = entry->content + sizeof(indigo_raw_header);
+					uint8_t *data = (uint8_t *)((char *)entry->content + sizeof(indigo_raw_header));
 					for (int col = 0; col < width; col++) {
 						if (col == 0) {
 							PRINTF("[");
@@ -1449,7 +1456,7 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 				}
 				case INDIGO_RAW_MONO16: {
 					PRINTF("{ \"Type\": 2, \"Rank\": 2, \"Value\": [");
-					uint16_t *data = entry->content + sizeof(indigo_raw_header);
+					uint16_t *data = (uint16_t *)((char *)entry->content + sizeof(indigo_raw_header));
 					for (int col = 0; col < width; col++) {
 						if (col == 0) {
 							PRINTF("[");
@@ -1469,7 +1476,7 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 				}
 				case INDIGO_RAW_RGB24: {
 					PRINTF("{ \"Type\": 2, \"Rank\": 3, \"Value\": [");
-					uint8_t *data = entry->content + sizeof(indigo_raw_header);
+					uint8_t *data = (uint8_t *)((char *)entry->content + sizeof(indigo_raw_header));
 					for (int col = 0; col < width; col++) {
 						if (col == 0) {
 							PRINTF("[");

@@ -31,12 +31,12 @@ static int get_switch_number(indigo_alpaca_device *device) {
 	return device->sw.maxswitch_power_outlet + device->sw.maxswitch_heater_outlet + device->sw.maxswitch_usb_port + device->sw.maxswitch_gpio_outlet + device->sw.maxswitch_gpio_sensor;
 }
 
-static indigo_alpaca_error alpaca_get_interfaceversion(indigo_alpaca_device *device, int version, uint32_t *value) {
+static indigo_alpaca_error alpaca_get_interfaceversion(indigo_alpaca_device *device, int version, int *value) {
 	*value = 2;
 	return indigo_alpaca_error_OK;
 }
 
-static indigo_alpaca_error alpaca_get_maxswitch(indigo_alpaca_device *device, int version, uint32_t *value) {
+static indigo_alpaca_error alpaca_get_maxswitch(indigo_alpaca_device *device, int version, int *value) {
 	pthread_mutex_lock(&device->mutex);
 	if (!device->connected) {
 		pthread_mutex_unlock(&device->mutex);
@@ -310,7 +310,7 @@ static indigo_alpaca_error alpaca_set_setswitch(indigo_alpaca_device *device, in
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotConnected;
 	}
-	uint32_t switch_number = get_switch_number(device);
+	int switch_number = get_switch_number(device);
 	if (!canwrite && id >= 0 && id < switch_number) {
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotImplemented;
@@ -359,7 +359,7 @@ static indigo_alpaca_error alpaca_set_setswitchvalue(indigo_alpaca_device *devic
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotConnected;
 	}
-	uint32_t switch_number = get_switch_number(device);
+	int switch_number = get_switch_number(device);
 	if (!canwrite && id >= 0 && id < switch_number) {
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotImplemented;
@@ -574,12 +574,12 @@ long indigo_alpaca_switch_get_command(indigo_alpaca_device *alpaca_device, int v
 		return snprintf(buffer, buffer_length, "\"Value\": [ ], \"ErrorNumber\": 0, \"ErrorMessage\": \"\"");
 	}
 	if (!strcmp(command, "interfaceversion")) {
-		uint32_t value;
+		int value;
 		indigo_alpaca_error result = alpaca_get_interfaceversion(alpaca_device, version, &value);
 		return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "maxswitch")) {
-		uint32_t value;
+		int value;
 		indigo_alpaca_error result = alpaca_get_maxswitch(alpaca_device, version, &value);
 		return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
 	}

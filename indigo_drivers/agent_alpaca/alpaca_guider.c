@@ -27,7 +27,7 @@
 
 #include "alpaca_common.h"
 
-static indigo_alpaca_error alpaca_get_interfaceversion(indigo_alpaca_device *device, int version, uint32_t *value) {
+static indigo_alpaca_error alpaca_get_interfaceversion(indigo_alpaca_device *device, int version, int *value) {
 	*value = 3;
 	return indigo_alpaca_error_OK;
 }
@@ -196,7 +196,7 @@ long indigo_alpaca_guider_get_command(indigo_alpaca_device *alpaca_device, int v
 		return snprintf(buffer, buffer_length, "\"Value\": [ ], \"ErrorNumber\": 0, \"ErrorMessage\": \"\"");
 	}
 	if (!strcmp(command, "interfaceversion")) {
-		uint32_t value;
+		int value;
 		indigo_alpaca_error result = alpaca_get_interfaceversion(alpaca_device, version, &value);
 	return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
 	}
