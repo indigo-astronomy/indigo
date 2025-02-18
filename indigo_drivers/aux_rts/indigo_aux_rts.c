@@ -23,21 +23,17 @@
  \file indigo_aux_rts.c
  */
 
-#define DRIVER_VERSION 0x0006
+#define DRIVER_VERSION 0x0007
 #define DRIVER_NAME "indigo_aux_rts"
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
-#include <termios.h>
-#include <sys/time.h>
-#include <sys/ioctl.h>
 
 #include <indigo/indigo_driver_xml.h>
-#include <indigo/indigo_io.h>
+#include <indigo/indigo_uni_io.h>
 #include "indigo_aux_rts.h"
 
 #define PRIVATE_DATA												((rts_private_data *)device->private_data)
@@ -49,7 +45,7 @@
 #define X_CCD_ABORT_EXPOSURE_ITEM						(X_CCD_ABORT_EXPOSURE_PROPERTY->items+0)
 
 typedef struct {
-	int handle;
+	indigo_uni_handle *handle;
 	indigo_property *exposure_property;
 	indigo_property *abort_exposure_property;
 	indigo_timer *timer_callback;
@@ -58,16 +54,12 @@ typedef struct {
 
 // -------------------------------------------------------------------------------- Low level communication routines
 
-static int rts_flag = TIOCM_RTS;
-
 static void rts_on(indigo_device *device) {
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RTS on");
-	ioctl(PRIVATE_DATA->handle, TIOCMBIS, &rts_flag);
+	indigo_uni_set_rts(PRIVATE_DATA->handle, true);
 }
 
 static void rts_off(indigo_device *device) {
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RTS off");
-	ioctl(PRIVATE_DATA->handle, TIOCMBIC, &rts_flag);
+	indigo_uni_set_rts(PRIVATE_DATA->handle, false);
 }
 
 // -------------------------------------------------------------------------------- INDIGO aux device implementation
@@ -142,7 +134,7 @@ static void aux_timer_callback(indigo_device *device) {
 static void aux_connection_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		PRIVATE_DATA->handle = indigo_open_serial(DEVICE_PORT_ITEM->text.value);
+		PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
 		if (PRIVATE_DATA->handle > 0) {
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected on %s", DEVICE_PORT_ITEM->text.value);
 			indigo_define_property(device, X_CCD_EXPOSURE_PROPERTY, NULL);
@@ -158,8 +150,7 @@ static void aux_connection_handler(indigo_device *device) {
 		rts_off(device);
 		indigo_delete_property(device, X_CCD_EXPOSURE_PROPERTY, NULL);
 		indigo_delete_property(device, X_CCD_ABORT_EXPOSURE_PROPERTY, NULL);
-		close(PRIVATE_DATA->handle);
-		PRIVATE_DATA->handle = 0;
+		indigo_uni_close(&PRIVATE_DATA->handle);
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
