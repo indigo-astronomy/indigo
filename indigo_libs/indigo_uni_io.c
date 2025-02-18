@@ -1376,7 +1376,7 @@ const char* indigo_uni_home_folder(void) {
 	static char home_folder[512] = { 0 };
 	if (home_folder[0] == 0) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-		strsnprintfncpy(home_folder, "%s", sizeof(home_folder), getenv("HOME"));
+		snprintf(home_folder, sizeof(home_folder), "%s", getenv("HOME"));
 #elif defined(INDIGO_WINDOWS)
 		const char* userprofile = getenv("USERPROFILE");
 		if (userprofile) {
