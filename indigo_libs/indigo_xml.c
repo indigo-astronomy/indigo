@@ -174,11 +174,11 @@ static void *enable_blob_handler(parser_state state, parser_context *context, ch
 			if (!strcmp(property->device, record->device) && (*record->name == 0 || !strcmp(property->name, record->name))) {
 				if (prev) {
 					prev->next = record->next;
-					free(record);
+					indigo_safe_free(record);
 					record = prev->next;
 				} else {
 					client->enable_blob_mode_records = record->next;
-					free(record);
+					indigo_safe_free(record);
 					record = client->enable_blob_mode_records;
 				}
 			} else {
@@ -282,12 +282,6 @@ static void *new_text_vector_handler(parser_state state, parser_context *context
 		}
 	} else if (state == END_TAG) {
 		indigo_change_property(client, property);
-		for (int i = 0; i < property->count; i++) {
-			indigo_item *item = property->items + i;
-			if (item->text.long_value) {
-				free(item->text.long_value);
-			}
-		}
 		indigo_clear_property(property);
 		return top_level_handler;
 	}
@@ -411,17 +405,6 @@ static void *new_blob_vector_handler(parser_state state, parser_context *context
 			property->access_token = strtol(value, NULL, 16);
 		}
 	} else if (state == END_TAG) {
-		for (int i = 0; i < property->count; i++) {
-			indigo_item *item = property->items + i;
-			indigo_blob_entry *entry = indigo_find_blob(property, item);
-			if (entry)
-				item->blob.value = indigo_safe_malloc_copy(item->blob.size = entry->size, entry->content);
-		}
-		indigo_change_property(client, property);
-		for (int i = 0; i < property->count; i++) {
-			indigo_item *item = property->items + i;
-			indigo_safe_free(item->blob.value);
-		}
 		indigo_clear_property(property);
 		return top_level_handler;
 	}
@@ -462,14 +445,7 @@ static void set_property(parser_context *context, indigo_property *other, char *
 					if (!strcmp(property_item->name, other_item->name)) {
 						switch (property->type) {
 							case INDIGO_TEXT_VECTOR:
-								if (property_item->text.long_value) {
-									free(property_item->text.long_value);
-									property_item->text.long_value = NULL;
-								}
-								indigo_copy_value(property_item->text.value, other_item->text.value);
-								if (other_item->text.long_value) {
-									property_item->text.long_value = indigo_safe_malloc_copy(property_item->text.length = other_item->text.length, other_item->text.long_value);
-								}
+								indigo_set_text_item_value(property_item, other_item->text.value);
 								break;
 							case INDIGO_NUMBER_VECTOR:
 								property_item->number.value = other_item->number.value;
@@ -510,7 +486,7 @@ static void set_property(parser_context *context, indigo_property *other, char *
 										memcpy(property_item->blob.value, other_item->blob.value, property_item->blob.size);
 									} else {
 										if (property_item->blob.value != NULL) {
-											free(property_item->blob.value);
+											indigo_safe_free(property_item->blob.value);
 											property_item->blob.value = NULL;
 										}
 										char *ext = strrchr(property_item->blob.url, '.');
@@ -526,14 +502,6 @@ static void set_property(parser_context *context, indigo_property *other, char *
 			}
 			INDIGO_TRACE_PARSER(indigo_trace("XML Parser: set_property '%s' '%s' %d", property->device, property->name, index));
 			indigo_update_property(context->device, property, *message ? message : NULL);
-			if (other->type == INDIGO_TEXT_VECTOR) {
-				for (int i = 0; i < other->count; i++) {
-					indigo_item *item = other->items + i;
-					if (item->text.long_value) {
-						free(item->text.long_value);
-					}
-				}
-			}
 			break;
 		}
 	}
@@ -1183,14 +1151,6 @@ static void *del_property_handler(parser_state state, parser_context *context, c
 				indigo_property *tmp = context->properties[i];
 				if (tmp != NULL && !strncmp(tmp->device, property->device, INDIGO_NAME_SIZE) && !strncmp(tmp->name, property->name, INDIGO_NAME_SIZE)) {
 					indigo_delete_property(device, tmp, *message ? message : NULL);
-					if (tmp->type == INDIGO_BLOB_VECTOR) {
-						for (int i = 0; i < tmp->count; i++) {
-							void *blob = tmp->items[i].blob.value;
-							if (blob) {
-								free(blob);
-							}
-						}
-					}
 					indigo_release_property(tmp);
 					context->properties[i] = NULL;
 					break;
@@ -1748,7 +1708,7 @@ static bool free_escape_buffers_registered = false;
 static void free_escape_buffers() {
 	for (int i = 0; i < BUFFER_COUNT; i++)
 		if (escape_buffer[i]) {
-			free(escape_buffer[i]);
+			indigo_safe_free(escape_buffer[i]);
 		}
 }
 
