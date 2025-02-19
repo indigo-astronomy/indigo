@@ -24,7 +24,7 @@
  \file indigo_aux_mgbox.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME	"idnigo_aux_mgbox"
 
 #define DEFAULT_BAUDRATE "38400"
@@ -34,13 +34,12 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <pthread.h>
 #include <math.h>
 #include <assert.h>
 
 #include <indigo/indigo_driver_xml.h>
-#include <indigo/indigo_io.h>
+#include <indigo/indigo_uni_io.h>
 
 #include "indigo_aux_mgbox.h"
 
@@ -108,23 +107,23 @@
 #define AUX_DEW_WARNING_SENSOR_1_ITEM         (AUX_DEW_WARNING_PROPERTY->items + 0)
 
 typedef struct {
-	int handle;
+	indigo_uni_handle *handle;
 	int count_open;
-	pthread_mutex_t serial_mutex,
-	                reset_mutex;
+	pthread_mutex_t serial_mutex;
+	pthread_mutex_t reset_mutex;
 	char firmware[INDIGO_VALUE_SIZE];
 	char device_type[INDIGO_VALUE_SIZE];
-	indigo_property *outlet_names_property,
-	                *gpio_outlet_property,
-	                *gpio_outlet_pulse_property,
-	                *sky_calibration_property,
-	                *weather_property,
-	                *dew_threshold_property,
-	                *dew_warning_property,
-	                *weather_to_mount_property,
-	                *gps_to_mount_property,
-	                *reboot_gps_property,
-	                *reboot_device_property;
+	indigo_property *outlet_names_property;
+	indigo_property *gpio_outlet_property;
+	indigo_property *gpio_outlet_pulse_property;
+	indigo_property *sky_calibration_property;
+	indigo_property *weather_property;
+	indigo_property *dew_threshold_property;
+	indigo_property *dew_warning_property;
+	indigo_property *weather_to_mount_property;
+	indigo_property *gps_to_mount_property;
+	indigo_property *reboot_gps_property;
+	indigo_property *reboot_device_property;
 } mg_private_data;
 
 static mg_private_data *private_data = NULL;
@@ -135,24 +134,28 @@ static indigo_timer *global_timer = NULL;
 // ---------------------------- Common Stuff ----------------------------------
 static char **parse(char *buffer) {
 	int offset = 3;
-
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s", buffer);
-
-	if (strncmp("$GP", buffer, 3) && strncmp("$P", buffer, 2) && strncmp("$LOG", buffer, 4)) return NULL;
-	else if (buffer[1] == 'G') offset = 3;
-	else if (buffer[1] == 'P') offset = 2;
-	else offset = 1;
-
+	if (strncmp("$GP", buffer, 3) && strncmp("$P", buffer, 2) && strncmp("$LOG", buffer, 4)) {
+		return NULL;
+	} else if (buffer[1] == 'G') {
+		offset = 3;
+	} else if (buffer[1] == 'P') {
+		offset = 2;
+	} else {
+		offset = 1;
+	}
 	char *index = strchr(buffer, '*');
 	if (index) {
 		*index++ = 0;
 		int c1 = (int)strtol(index, NULL, 16);
 		int c2 = 0;
 		index = buffer + 1;
-		while (*index)
+		while (*index) {
 			c2 ^= *index++;
-		if (c1 != c2)
+		}
+		if (c1 != c2) {
 			return NULL;
+		}
 	}
 	static char *tokens[128];
 	int token = 0;
@@ -161,8 +164,9 @@ static char **parse(char *buffer) {
 	while (index) {
 		tokens[token++] = index;
 		index = strchr(index, ',');
-		if (index)
+		if (index) {
 			*index++ = 0;
+		}
 	}
 	return tokens;
 }
@@ -174,11 +178,11 @@ static char **parse(char *buffer) {
 	 }
 
 
-static void mg_send_command(int handle, char *command) {
+static void mg_send_command(indigo_uni_handle *handle, char *command) {
 	/* This device does not respond to frequent commands, so wait 1/2 seconds */
 	indigo_sleep(0.5);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command -> %s", command);
-	indigo_write(handle, command, strlen(command));
+	indigo_uni_write(handle, command, (long)strlen(command));
 }
 
 
@@ -186,12 +190,11 @@ static void data_refresh_callback(indigo_device *gdevice) {
 	char buffer[INDIGO_VALUE_SIZE];
 	char **tokens;
 	indigo_device* device;
-
 	device = gps;
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "NMEA reader started");
 	while (PRIVATE_DATA->handle >= 0) {
 		pthread_mutex_lock(&PRIVATE_DATA->reset_mutex);
-		int result = indigo_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer));
+		long result = indigo_uni_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer));
 		pthread_mutex_unlock(&PRIVATE_DATA->reset_mutex);
 		buffer[INDIGO_VALUE_SIZE-1] = '\0';
 		if (result > 0 && (tokens = parse(buffer))) {
@@ -205,13 +208,15 @@ static void data_refresh_callback(indigo_device *gdevice) {
 				update_property_if_connected(device, GPS_UTC_TIME_PROPERTY, NULL);
 				double lat = indigo_atod(tokens[3]);
 				lat = floor(lat / 100) + fmod(lat, 100) / 60;
-				if (!strcmp(tokens[4], "S"))
+				if (!strcmp(tokens[4], "S")) {
 					lat = -lat;
+				}
 				lat = round(lat * 10000) / 10000;
 				double lon = indigo_atod(tokens[5]);
 				lon = floor(lon / 100) + fmod(lon, 100) / 60;
-				if (!strcmp(tokens[6], "W"))
+				if (!strcmp(tokens[6], "W")) {
 					lon = -lon;
+				}
 				lon = round(lon * 10000) / 10000;
 				if (GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value != lon || GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value != lat) {
 					GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = lon;
@@ -222,13 +227,15 @@ static void data_refresh_callback(indigo_device *gdevice) {
 			} else if (!strcmp(tokens[0], "GGA")) { // Global Positioning System Fix Data
 				double lat = indigo_atod(tokens[2]);
 				lat = floor(lat / 100) + fmod(lat, 100) / 60;
-				if (!strcmp(tokens[3], "S"))
+				if (!strcmp(tokens[3], "S")) {
 					lat = -lat;
+				}
 				lat = round(lat * 10000) / 10000;
 				double lon = indigo_atod(tokens[4]);
 				lon = floor(lon / 100) + fmod(lon, 100) / 60;
-				if (!strcmp(tokens[5], "W"))
+				if (!strcmp(tokens[5], "W")) {
 					lon = -lon;
+				}
 				lon = round(lon * 10000) / 10000;
 				double elv = round(indigo_atod(tokens[9]));
 				if (GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value != lon || GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value != lat || GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value != elv) {
@@ -365,7 +372,6 @@ static void data_refresh_callback(indigo_device *gdevice) {
 				X_CALIBRATION_HUMIDIDTY_ITEM->number.value = indigo_atod(tokens[6]) / 10.0;
 				X_CALIBRATION_PROPERTY->state = INDIGO_OK_STATE;
 				update_property_if_connected(device, X_CALIBRATION_PROPERTY, NULL);
-
 				int i = 1;
 				while (tokens[i] != NULL) {
 					if (!strcmp(tokens[i++], "MM")) {
@@ -414,13 +420,12 @@ static bool mgbox_open(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 	if (PRIVATE_DATA->count_open++ == 0) {
 		char *name = DEVICE_PORT_ITEM->text.value;
-		if (!indigo_is_device_url(name, "mgbox")) {
+		if (!indigo_uni_is_url(name, "mgbox")) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Opening local device on port: '%s', baudrate = %s", DEVICE_PORT_ITEM->text.value, DEVICE_BAUDRATE_ITEM->text.value);
-			PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, atoi(DEVICE_BAUDRATE_ITEM->text.value));
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, atoi(DEVICE_BAUDRATE_ITEM->text.value), INDIGO_LOG_DEBUG);
 		} else {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Opening netwotk device on host: %s", DEVICE_PORT_ITEM->text.value);
-			indigo_network_protocol proto = INDIGO_PROTOCOL_TCP;
-			PRIVATE_DATA->handle = indigo_open_network_device(name, 9999, &proto);
+			PRIVATE_DATA->handle = indigo_uni_client_tcp_socket(name, 9999, INDIGO_LOG_DEBUG);
 		}
 		if (PRIVATE_DATA->handle >= 0) {
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
@@ -445,8 +450,7 @@ static bool mgbox_open(indigo_device *device) {
 
 			// no responce to ":devicetype*"
 			if (PRIVATE_DATA->device_type[0] == '\0') {
-				close(PRIVATE_DATA->handle);
-				PRIVATE_DATA->handle = -1;
+				indigo_uni_close(&PRIVATE_DATA->handle);
 				indigo_cancel_timer_sync(gps, &global_timer);
 				PRIVATE_DATA->count_open--;
 				PRIVATE_DATA->firmware[0] = '\0';
@@ -470,8 +474,7 @@ static bool mgbox_open(indigo_device *device) {
 static void mgbox_close(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 	if (--PRIVATE_DATA->count_open == 0) {
-		close(PRIVATE_DATA->handle);
-		PRIVATE_DATA->handle = -1;
+		indigo_uni_close(&PRIVATE_DATA->handle);
 		indigo_cancel_timer_sync(gps, &global_timer);
 		PRIVATE_DATA->firmware[0] = '\0';
 		PRIVATE_DATA->device_type[0] = '\0';
@@ -790,8 +793,9 @@ static indigo_result aux_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_aux_attach(device, DRIVER_NAME, DRIVER_VERSION, INDIGO_INTERFACE_AUX_WEATHER | INDIGO_INTERFACE_AUX_GPIO) == INDIGO_OK) {
-		if (aux_init_properties(device) != INDIGO_OK) return INDIGO_FAILED;
-		PRIVATE_DATA->handle = -1;
+		if (aux_init_properties(device) != INDIGO_OK) {
+			return INDIGO_FAILED;
+		}
 		pthread_mutex_init(&PRIVATE_DATA->serial_mutex, NULL);
 		pthread_mutex_init(&PRIVATE_DATA->reset_mutex, NULL);
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;

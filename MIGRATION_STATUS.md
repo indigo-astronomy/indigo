@@ -16,9 +16,11 @@ aux_fbc
 aux_flatmaster
 aux_flipflat
 aux_geoptikflat
+aux_mgbox
 aux_ppb
 aux_rts
 aux_skyalert
+aux_sqm
 aux_upb
 
 ccd_altair
@@ -62,8 +64,6 @@ aux_cloudwatcher
 aux_dragonfly
 aux_dsusb
 aux_joystick
-aux_mgbox
-aux_sqm
 aux_uch
 aux_upb3
 aux_usbdp

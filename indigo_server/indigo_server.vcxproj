@@ -299,6 +299,12 @@
     <ProjectReference Include="..\indigo_drivers\aux_flipflat\indigo_aux_flipflat.vcxproj">
       <Project>{958feabf-5888-4f4d-8116-fd3454ca4953}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\aux_geoptikflat\indigo_aux_geoptikflat.vcxproj">
+      <Project>{e6edd577-8378-4a16-b4b1-11384dc146db}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\aux_mgbox\indigo_aux_mgbox.vcxproj">
+      <Project>{cfdba0f3-022c-44de-b23b-372d90062965}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\indigo_drivers\aux_ppb\indigo_aux_ppb.vcxproj">
       <Project>{f6b5c900-07ce-4d6b-a39a-3b9ea3b01486}</Project>
     </ProjectReference>

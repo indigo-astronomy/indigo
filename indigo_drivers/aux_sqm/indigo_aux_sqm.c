@@ -23,22 +23,17 @@
  \file indigo_aux_sqm.c
  */
 
-#define DRIVER_VERSION 0x00010
+#define DRIVER_VERSION 0x00011
 #define DRIVER_NAME "indigo_aux_sqm"
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
-#include <termios.h>
-#include <errno.h>
-#include <sys/time.h>
-#include <sys/ioctl.h>
 
 #include <indigo/indigo_driver_xml.h>
-#include <indigo/indigo_io.h>
+#include <indigo/indigo_uni_io.h>
 
 #include "indigo_aux_sqm.h"
 
@@ -57,7 +52,7 @@
 #define RESPONSE_LENGTH 120
 
 typedef struct {
-	int handle;
+	indigo_uni_handle *handle;
 	indigo_property *info_property;
 	indigo_property *weather_property;
 	indigo_timer *timer_callback;
@@ -68,8 +63,8 @@ typedef struct {
 // -------------------------------------------------------------------------------- serial interface
 
 static bool sqm_open(indigo_device *device) {
-	PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 115200);
-	if (PRIVATE_DATA->handle < 0) {
+	PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 115200, INDIGO_LOG_DEBUG);
+	if (PRIVATE_DATA->handle == NULL) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", DEVICE_PORT_ITEM->text.value);
 		return false;
 	}
@@ -79,24 +74,24 @@ static bool sqm_open(indigo_device *device) {
 
 static bool sqm_command(indigo_device *device, const char *command, char *response) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	bool result = indigo_write(PRIVATE_DATA->handle, command, strlen(command));
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d <- \"%s\" (%s)", PRIVATE_DATA->handle, command, result ? "OK" : strerror(errno));
-	if (result) {
-		result = indigo_read_line(PRIVATE_DATA->handle, response, RESPONSE_LENGTH) > 0;
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d -> \"%s\" (%s)", PRIVATE_DATA->handle, response, result ? "OK" : strerror(errno));
+	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
+		if (indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command)) > 0) {
+			if (indigo_uni_read_section(PRIVATE_DATA->handle, response, 16, "\n", "\r\n", INDIGO_DELAY(1)) > 0) {
+				pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+				return true;
+			}
+		}
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-	return result;
+	return true;
 }
 
 static void sqm_close(indigo_device *device) {
 	if (PRIVATE_DATA->handle >= 0) {
-		close(PRIVATE_DATA->handle);
-		PRIVATE_DATA->handle = -1;
+		indigo_uni_close(&PRIVATE_DATA->handle);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Disconnected");
 	}
 }
-
 
 // -------------------------------------------------------------------------------- async handlers
 
