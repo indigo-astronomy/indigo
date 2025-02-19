@@ -23,24 +23,17 @@
  \file indigo_aux_uch.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME "indigo_aux_uch"
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
-#include <errno.h>
 #include <pthread.h>
-#include <stdarg.h>
-
-#include <sys/time.h>
-#include <sys/termios.h>
 
 #include <indigo/indigo_driver_xml.h>
-#include <indigo/indigo_usb_utils.h>
-#include <indigo/indigo_io.h>
+#include <indigo/indigo_uni_io.h>
 
 #include "indigo_aux_uch.h"
 
@@ -76,7 +69,7 @@
 #define AUX_GROUP											"USB Ports"
 
 typedef struct {
-	int handle;
+	indigo_uni_handle *handle;
 	indigo_timer *aux_timer;
 	indigo_property *outlet_names_property;
 	indigo_property *usb_port_property;
@@ -90,16 +83,13 @@ typedef struct {
 // -------------------------------------------------------------------------------- Low level communication routines
 
 static bool uch_command(indigo_device *device, char *command, char *response, int max) {
-	tcflush(PRIVATE_DATA->handle, TCIOFLUSH);
-	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
-	indigo_write(PRIVATE_DATA->handle, "\n", 1);
-	if (response != NULL) {
-		if (indigo_read_line(PRIVATE_DATA->handle, response, max) == -1) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s -> no response", command);
-			return false;
+	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
+		if (indigo_uni_printf(PRIVATE_DATA->handle, "%s\n", command) > 0) {
+			if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "\n", "\r\n", INDIGO_DELAY(1)) > 0) {
+				return true;
+			}
 		}
 	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s -> %s", command, response != NULL ? response : "NULL");
 	return true;
 }
 
@@ -266,7 +256,7 @@ static void aux_connection_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (PRIVATE_DATA->count++ == 0) {
-			PRIVATE_DATA->handle = indigo_open_serial(DEVICE_PORT_ITEM->text.value);
+			PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
 			if (PRIVATE_DATA->handle > 0) {
 				bool connected = false;
 				int attempt = 0;
@@ -279,8 +269,7 @@ static void aux_connection_handler(indigo_device *device) {
 					}
 					if (attempt++ == 3) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "UCH not detected");
-						close(PRIVATE_DATA->handle);
-						PRIVATE_DATA->handle = 0;
+						indigo_uni_close(&PRIVATE_DATA->handle);
 						break;
 					}
 					indigo_sleep(1);
@@ -303,13 +292,11 @@ static void aux_connection_handler(indigo_device *device) {
 					AUX_USB_PORT_6_ITEM->sw.value =  token[5] == '1';
 				} else {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to parse 'PA' response");
-					close(PRIVATE_DATA->handle);
-					PRIVATE_DATA->handle = 0;
+					indigo_uni_close(&PRIVATE_DATA->handle);
 				}
 			} else {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read 'PA' response");
-				close(PRIVATE_DATA->handle);
-				PRIVATE_DATA->handle = 0;
+				indigo_uni_close(&PRIVATE_DATA->handle);
 			}
 
 			if (uch_command(device, "PV", response, sizeof(response))) {
@@ -346,8 +333,7 @@ static void aux_connection_handler(indigo_device *device) {
 			if (PRIVATE_DATA->handle > 0) {
 				uch_command(device, "PL:0", response, sizeof(response));
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
-				close(PRIVATE_DATA->handle);
-				PRIVATE_DATA->handle = 0;
+				indigo_uni_close(&PRIVATE_DATA->handle);
 			}
 		}
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;

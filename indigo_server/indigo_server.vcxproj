@@ -314,6 +314,9 @@
     <ProjectReference Include="..\indigo_drivers\aux_skyalert\indigo_aux_skyalert.vcxproj">
       <Project>{21ae094d-56c6-4f38-9dc6-fca76b3dc516}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\aux_sqm\indigo_aux_sqm.vcxproj">
+      <Project>{1194c633-e067-4fc2-b480-261b01631725}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\indigo_drivers\aux_upb\indigo_aux_upb.vcxproj">
       <Project>{0955b910-1425-4589-91fa-33b6cba63fa6}</Project>
     </ProjectReference>
