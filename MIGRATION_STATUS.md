@@ -15,6 +15,7 @@ aux_astromechanics
 aux_fbc
 aux_flatmaster
 aux_flipflat
+aux_geoptikflat
 aux_ppb
 aux_rts
 aux_skyalert
@@ -60,7 +61,6 @@ agent_snoop
 aux_cloudwatcher
 aux_dragonfly
 aux_dsusb
-aux_geoptikflat
 aux_joystick
 aux_mgbox
 aux_sqm

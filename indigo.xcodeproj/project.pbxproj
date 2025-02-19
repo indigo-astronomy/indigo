@@ -2964,6 +2964,7 @@
 		59A886EB225A85E20027680B /* 99-indigo_focuser_dmfc.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = "99-indigo_focuser_dmfc.rules"; sourceTree = "<group>"; };
 		59AA603D25AB10E80065905E /* solver_test_image.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = solver_test_image.c; sourceTree = "<group>"; };
 		59AD798F24AA6AE700F52563 /* RainbowAstro_200629.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = RainbowAstro_200629.pdf; sourceTree = "<group>"; };
+		59AE9A682D66626100DF1E15 /* HOME.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = HOME.md; sourceTree = "<group>"; };
 		59AEF52E2CFC705A002C6347 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		59AEF52F2CFC7102002C6347 /* indigo_ccd_atik2.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_atik2.h; sourceTree = "<group>"; };
 		59AEF5322CFC7128002C6347 /* indigo_ccd_atik2.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_atik2.c; sourceTree = "<group>"; };
@@ -6173,6 +6174,7 @@
 				59E5A29323C1231F00E8BBBF /* CHANGELOG.md */,
 				9D49573A2456B31E00674101 /* TESTING.md */,
 				59F6B5722D65037B004FB01E /* MIGRATION_STATUS.md */,
+				59AE9A682D66626100DF1E15 /* HOME.md */,
 				9DC7830921AC565B009859FD /* .travis.yml */,
 				5996615922CF55E800330652 /* .editorconfig */,
 				5936A993299C0D1F00C3095A /* uncrustify.cfg */,

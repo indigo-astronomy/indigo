@@ -86,6 +86,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_aux_skyalert", "indi
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_agent_alpaca", "indigo_drivers\agent_alpaca\indigo_agent_alpaca.vcxproj", "{9D858526-AC14-45A3-A8E4-F0945DC9B21F}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_aux_geoptikflat", "indigo_drivers\aux_geoptikflat\indigo_aux_geoptikflat.vcxproj", "{E6EDD577-8378-4A16-B4B1-11384DC146DB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -430,6 +432,14 @@ Global
 		{9D858526-AC14-45A3-A8E4-F0945DC9B21F}.Release|x64.Build.0 = Release|x64
 		{9D858526-AC14-45A3-A8E4-F0945DC9B21F}.Release|x86.ActiveCfg = Release|Win32
 		{9D858526-AC14-45A3-A8E4-F0945DC9B21F}.Release|x86.Build.0 = Release|Win32
+		{E6EDD577-8378-4A16-B4B1-11384DC146DB}.Debug|x64.ActiveCfg = Debug|x64
+		{E6EDD577-8378-4A16-B4B1-11384DC146DB}.Debug|x64.Build.0 = Debug|x64
+		{E6EDD577-8378-4A16-B4B1-11384DC146DB}.Debug|x86.ActiveCfg = Debug|Win32
+		{E6EDD577-8378-4A16-B4B1-11384DC146DB}.Debug|x86.Build.0 = Debug|Win32
+		{E6EDD577-8378-4A16-B4B1-11384DC146DB}.Release|x64.ActiveCfg = Release|x64
+		{E6EDD577-8378-4A16-B4B1-11384DC146DB}.Release|x64.Build.0 = Release|x64
+		{E6EDD577-8378-4A16-B4B1-11384DC146DB}.Release|x86.ActiveCfg = Release|Win32
+		{E6EDD577-8378-4A16-B4B1-11384DC146DB}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
