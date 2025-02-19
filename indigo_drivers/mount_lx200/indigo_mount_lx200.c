@@ -289,7 +289,10 @@ static bool meade_open(indigo_device *device) {
 		} else {
 			PRIVATE_DATA->handle = indigo_open_serial(name);
 			if (PRIVATE_DATA->handle > 0) {
-				if (!meade_command(device, ":GR#", response, sizeof(response), 0) || strlen(response) < 6) {
+				// sometimes the first command after power on in OnStep fails and just returns '0'
+				// so we try two times for the default baudrate of 9600
+				if ((!meade_command(device, ":GR#", response, sizeof(response), 0) || strlen(response) < 6) &&
+				    (!meade_command(device, ":GR#", response, sizeof(response), 0) || strlen(response) < 6)) {
 					close(PRIVATE_DATA->handle);
 					PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, 19200);
 					if (!meade_command(device, ":GR#", response, sizeof(response), 0) || strlen(response) < 6) {
