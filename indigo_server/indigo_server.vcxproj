@@ -317,6 +317,12 @@
     <ProjectReference Include="..\indigo_drivers\aux_sqm\indigo_aux_sqm.vcxproj">
       <Project>{1194c633-e067-4fc2-b480-261b01631725}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\aux_uch\indigo_aux_uch.vcxproj">
+      <Project>{78ed976b-8d12-43eb-9c73-3951c0faf73f}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\aux_upb3\indigo_aux_upb3.vcxproj">
+      <Project>{7037feb0-4408-41e2-b59f-0ee192152993}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\indigo_drivers\aux_upb\indigo_aux_upb.vcxproj">
       <Project>{0955b910-1425-4589-91fa-33b6cba63fa6}</Project>
     </ProjectReference>

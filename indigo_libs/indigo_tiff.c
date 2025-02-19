@@ -22,6 +22,7 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include <indigo/indigo_bus.h>
 #include <indigo/indigo_tiff.h>
 
 #ifndef LZW_SUPPORT
@@ -30,8 +31,8 @@
 
 tsize_t indigo_tiff_read(thandle_t handle, tdata_t data, tsize_t size) {
 	indigo_tiff_memory_handle *memory_handle = (indigo_tiff_memory_handle *)handle;
-	tsize_t length;
-	if ((size_t)(memory_handle->file_offset + size) <= memory_handle->file_length)
+	size_t length;
+	if ((size_t)(memory_handle->file_offset + size) <= (size_t)memory_handle->file_length)
 		length = size;
 	else
 		length = memory_handle->file_length - memory_handle->file_offset;
@@ -42,13 +43,13 @@ tsize_t indigo_tiff_read(thandle_t handle, tdata_t data, tsize_t size) {
 
 tsize_t indigo_tiff_write(thandle_t handle, tdata_t data, tsize_t size) {
 	indigo_tiff_memory_handle *memory_handle = (indigo_tiff_memory_handle *)handle;
-	if ((size_t)(memory_handle->file_offset + (size_t)size) > memory_handle->size) {
-		memory_handle->data = (unsigned char *) realloc(memory_handle->data, memory_handle->file_offset + size);
+	if ((size_t)(memory_handle->file_offset + (size_t)size) > (size_t)memory_handle->size) {
+		memory_handle->data = (unsigned char *) indigo_safe_realloc(memory_handle->data, memory_handle->file_offset + size);
 		memory_handle->size = memory_handle->file_offset + size;
 	}
 	memcpy(memory_handle->data + memory_handle->file_offset, data, size);
 	memory_handle->file_offset += size;
-	if ((size_t)memory_handle->file_offset > memory_handle->file_length)
+	if ((size_t)memory_handle->file_offset > (size_t)memory_handle->file_length)
 		memory_handle->file_length = memory_handle->file_offset;
 	return size;
 }
@@ -58,24 +59,24 @@ toff_t indigo_tiff_seek(thandle_t handle, toff_t off, int whence) {
 	switch (whence) {
 		case SEEK_SET: {
 			if ((tsize_t) off > memory_handle->size)
-				memory_handle->data = (unsigned char *) realloc(memory_handle->data, memory_handle->size += off);
+				memory_handle->data = (unsigned char *)indigo_safe_realloc(memory_handle->data, memory_handle->size += off);
 			memory_handle->file_offset = off;
 			break;
 		}
 		case SEEK_CUR: {
 			if ((tsize_t)(memory_handle->file_offset + off) > memory_handle->size)
-				memory_handle->data = (unsigned char *) realloc(memory_handle->data, memory_handle->size = memory_handle->file_offset + off);
+				memory_handle->data = (unsigned char *)indigo_safe_realloc(memory_handle->data, memory_handle->size = memory_handle->file_offset + off);
 			memory_handle->file_offset += off;
 			break;
 		}
 		case SEEK_END: {
 			if ((tsize_t) (memory_handle->file_length + off) > memory_handle->size)
-				memory_handle->data = (unsigned char *) realloc(memory_handle->data, memory_handle->size += off);
+				memory_handle->data = (unsigned char *)indigo_safe_realloc(memory_handle->data, memory_handle->size += off);
 			memory_handle->file_offset = memory_handle->file_length + off;
 			break;
 		}
 	}
-	if ((size_t)memory_handle->file_offset > memory_handle->file_length)
+	if ((size_t)memory_handle->file_offset > (size_t)memory_handle->file_length)
 		memory_handle->file_length = memory_handle->file_offset;
 	return memory_handle->file_offset;
 }

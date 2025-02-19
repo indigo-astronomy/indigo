@@ -185,7 +185,7 @@ static void aux_timer_callback(indigo_device *device) {
 	bool updateUSBPorts = false;
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (uch_command(device, "PA", response, sizeof(response))) {
-		char *pnt, *token = strtok_r(response, ":", &pnt);
+		char *pnt = NULL, *token = strtok_r(response, ":", &pnt);
 		if ((token = strtok_r(NULL, ":", &pnt))) { // Voltage
 			double value = indigo_atod(token);
 			if (AUX_INFO_VOLTAGE_ITEM->number.value != value) {
@@ -228,7 +228,7 @@ static void aux_timer_callback(indigo_device *device) {
 	}
 
 	if (uch_command(device, "PC", response, sizeof(response))) {
-		char *pnt, *token = strtok_r(response, ":", &pnt);
+		char *pnt = NULL, *token = strtok_r(response, ":", &pnt);
 		if ((token = strtok_r(NULL, ":", &pnt))) {
 			double value = indigo_atod(token)/(1000*3600); // convert to seconds;
 			if (AUX_INFO_UPTIME_ITEM->number.value != value) {

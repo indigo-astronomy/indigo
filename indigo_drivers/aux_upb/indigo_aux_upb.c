@@ -392,7 +392,7 @@ static void aux_timer_callback(indigo_device *device) {
 	bool updateUSBPorts = false;
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (upb_command(device, "PA", response, sizeof(response))) {
-		char *pnt, *token = strtok_r(response, ":", &pnt);
+		char *pnt = NULL, *token = strtok_r(response, ":", &pnt);
 		if ((token = strtok_r(NULL, ":", &pnt))) { // Voltage
 			double value = indigo_atod(token);
 			if (AUX_INFO_VOLTAGE_ITEM->number.value != value) {
@@ -626,7 +626,7 @@ static void aux_timer_callback(indigo_device *device) {
 		}
 	}
 	if (upb_command(device, "PC", response, sizeof(response))) {
-		char *pnt, *token = strtok_r(response, ":", &pnt);
+		char *pnt = NULL, *token = strtok_r(response, ":", &pnt);
 		if (token) {
 			double value = indigo_atod(token);
 			if (X_AUX_AVERAGE_ITEM->number.value != value) {
@@ -753,7 +753,7 @@ static void aux_connection_handler(indigo_device *device) {
 				AUX_USB_PORT_STATE_PROPERTY->hidden = true;
 			}
 			if (upb_command(device, "PA", response, sizeof(response)) && !strncmp(response, "UPB", 3)) {
-				char *pnt, *token = strtok_r(response, ":", &pnt);
+				char *pnt = NULL, *token = strtok_r(response, ":", &pnt);
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Voltage
 					AUX_INFO_VOLTAGE_ITEM->number.value = indigo_atod(token);
 				}
@@ -918,7 +918,7 @@ static void aux_connection_handler(indigo_device *device) {
 			}
 			if (PRIVATE_DATA->version == 2) {
 				if (upb_command(device, "PS", response, sizeof(response)) && !strncmp(response, "PS", 2)) {
-					char *pnt, *token = strtok_r(response, ":", &pnt);
+					char *pnt = NULL, *token = strtok_r(response, ":", &pnt);
 					if ((token = strtok_r(NULL, ":", &pnt))) { // Power-up state
 					}
 					if ((token = strtok_r(NULL, ":", &pnt))) { // Variable voltage
@@ -1367,7 +1367,7 @@ static void focuser_connection_handler(indigo_device *device) {
 		}
 		if (PRIVATE_DATA->handle != NULL) {
 			if (upb_command(device, "SA", response, sizeof(response))) {
-				char *pnt, *token = strtok_r(response, ":", &pnt);
+				char *pnt = NULL, *token = strtok_r(response, ":", &pnt);
 				if (token) { // Stepper position
 					FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = atol(token);
 				}
