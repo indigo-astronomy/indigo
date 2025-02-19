@@ -44,7 +44,7 @@
 - [Polar Alignment](POLAR_ALIGNMENT.md)
 - [Plate Solving](PLATE_SOLVING.md)
 - [Guiding Misconceptions](GUIDING_MISCONCEPTIONS.md)
-- [Guding PI Controller Tuning](GUIDING_PI_CONTROLLER_TUNING.md)
+- [Guiding PI Controller Tuning](GUIDING_PI_CONTROLLER_TUNING.md)
 
 ## Others
 - [Change Log](../CHANGELOG.md)
