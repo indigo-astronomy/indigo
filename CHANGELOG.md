@@ -2,6 +2,45 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-314] - 18 Feb Tue 2025
+## Overall:
+- indigo_ccd_driver:
+	- fix Jpeg quality step
+
+- race fixed in cancel timer
+
+- fix memory leak related to large text properties
+
+## New Drivers:
+
+- indigo_ccd_svb2:
+	- SVBONY OEM Camera driver produced by Touptek
+
+## Driver Fixes:
+- indigo_agent_scripting:
+	- do not add new scripts to execute on load by default
+
+	- Sequencer.js:
+		- make select_image_format(), select_frame_type(), select_camera_mode() and select_filter() accept both label and item name and remove _by_label() versions
+
+		- make select_program(), select_aperture(), select_shutter() and select_iso() accept both label and item name and remove _by_label() versions
+
+		- fix loop counting
+
+- indigo_ccd_toupcam & oem:
+	- SDK updated to version 57.27650.20250209
+
+- indigo_mount_lx200:
+	- do not mix home and park commands - it confuses some firmwares
+	- Implement OnStep switch and analog AUX outputs
+	- JTW GTR Manticore (OnStep) mount uses 230400 bps
+
+- indigo_ccd_qhy2:
+	- SDK updated to version 24.12.26
+
+- indigo_ccd_ptp:
+	- handle insufficient USB permissions gracefully
+
 # [2.0-312] - 03 Feb Mon 2025
 ## Overall:
 - indigo_property_copy_values() for BLOBs fixed
