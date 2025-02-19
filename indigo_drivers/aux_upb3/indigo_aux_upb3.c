@@ -23,23 +23,17 @@
  \file indigo_aux_upb3.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_aux_upb3"
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
-#include <errno.h>
 #include <pthread.h>
-#include <stdarg.h>
-
-#include <sys/time.h>
-#include <sys/termios.h>
 
 #include <indigo/indigo_driver_xml.h>
-#include <indigo/indigo_io.h>
+#include <indigo/indigo_uni_io.h>
 
 #include "indigo_aux_upb3.h"
 
@@ -130,7 +124,7 @@
 #define AUX_GROUP															"Powerbox"
 
 typedef struct {
-	int handle;
+	indigo_uni_handle *handle;
 	indigo_timer *aux_timer;
 	indigo_timer *focuser_timer;
 	indigo_property *outlet_names_property;
@@ -154,23 +148,20 @@ typedef struct {
 // -------------------------------------------------------------------------------- Low level communication routines
 
 static bool upb_command(indigo_device *device, char *command, char *response, int max) {
-	tcflush(PRIVATE_DATA->handle, TCIOFLUSH);
-	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
-	indigo_write(PRIVATE_DATA->handle, "\n", 1);
-	if (response != NULL) {
-		if (indigo_read_line(PRIVATE_DATA->handle, response, max) == -1) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s -> no response", command);
-			return false;
+	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
+		if (indigo_uni_printf(PRIVATE_DATA->handle, "%s\n", command) > 0) {
+			if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "\n", "\r\n", INDIGO_DELAY(1)) > 0) {
+				return true;
+			}
 		}
 	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s -> %s", command, response != NULL ? response : "NULL");
 	return true;
 }
 
 static void upb_open(indigo_device *device) {
 	char response[128];
-	PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 115200);
-	if (PRIVATE_DATA->handle > 0) {
+	PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 115200, INDIGO_LOG_DEBUG);
+	if (PRIVATE_DATA->handle != NULL) {
 		int attempt = 0;
 		while (true) {
 			if (upb_command(device, "P#", response, sizeof(response))) {
@@ -179,8 +170,7 @@ static void upb_open(indigo_device *device) {
 					PRIVATE_DATA->version = 3;
 					break;
 				} else {
-					close(PRIVATE_DATA->handle);
-					PRIVATE_DATA->handle = 0;
+					indigo_uni_close(&PRIVATE_DATA->handle);
 				}
 			}
 			if (attempt++ == 3) {
@@ -470,7 +460,7 @@ static void aux_connection_handler(indigo_device *device) {
 		if (PRIVATE_DATA->count++ == 0) {
 			upb_open(device);
 		}
-		if (PRIVATE_DATA->handle > 0) {
+		if (PRIVATE_DATA->handle != NULL) {
 			if (upb_command(device, "PV", response, sizeof(response))) {
 				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro UPBv3");
 				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, response + 3);
@@ -583,11 +573,10 @@ static void aux_connection_handler(indigo_device *device) {
 		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		indigo_update_property(device, INFO_PROPERTY, NULL);
 		if (--PRIVATE_DATA->count == 0) {
-			if (PRIVATE_DATA->handle > 0) {
+			if (PRIVATE_DATA->handle != NULL) {
 				upb_command(device, "PL:0", response, sizeof(response));
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
-				close(PRIVATE_DATA->handle);
-				PRIVATE_DATA->handle = 0;
+				indigo_uni_close(&PRIVATE_DATA->handle);
 			}
 		}
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -924,7 +913,7 @@ static void focuser_connection_handler(indigo_device *device) {
 		if (PRIVATE_DATA->count++ == 0) {
 			upb_open(device->master_device);
 		}
-		if (PRIVATE_DATA->handle > 0) {
+		if (PRIVATE_DATA->handle != NULL) {
 			if (upb_command(device, "SA", response, sizeof(response))) {
 				char *pnt, *token = strtok_r(response, ":", &pnt);
 				token = strtok_r(NULL, ":", &pnt); // position
@@ -959,11 +948,10 @@ static void focuser_connection_handler(indigo_device *device) {
 	} else {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_timer);
 		if (--PRIVATE_DATA->count == 0) {
-			if (PRIVATE_DATA->handle > 0) {
+			if (PRIVATE_DATA->handle != NULL) {
 				upb_command(device, "PL:0", response, sizeof(response));
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
-				close(PRIVATE_DATA->handle);
-				PRIVATE_DATA->handle = 0;
+				indigo_uni_close(&PRIVATE_DATA->handle);
 			}
 		}
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;

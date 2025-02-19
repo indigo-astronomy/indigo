@@ -23,6 +23,7 @@ aux_skyalert
 aux_sqm
 aux_uch
 aux_upb
+aux_upb3
 
 ccd_altair
 ccd_asi
@@ -65,7 +66,6 @@ aux_cloudwatcher
 aux_dragonfly
 aux_dsusb
 aux_joystick
-aux_upb3
 aux_usbdp
 aux_wbplusv3
 aux_wbprov3

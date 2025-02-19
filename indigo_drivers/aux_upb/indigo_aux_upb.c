@@ -182,7 +182,7 @@ static bool upb_command(indigo_device *device, char *command, char *response, in
 static void upb_open(indigo_device *device) {
 	char response[128];
 	PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
-	if (PRIVATE_DATA->handle > 0) {
+	if (PRIVATE_DATA->handle != NULL) {
 		int attempt = 0;
 		while (true) {
 			if (upb_command(device, "P#", response, sizeof(response))) {
@@ -738,7 +738,7 @@ static void aux_connection_handler(indigo_device *device) {
 		if (PRIVATE_DATA->count++ == 0) {
 			upb_open(device);
 		}
-		if (PRIVATE_DATA->handle > 0) {
+		if (PRIVATE_DATA->handle != NULL) {
 			if (PRIVATE_DATA->version == 1) {
 				AUX_HEATER_OUTLET_PROPERTY->count = 2;
 				AUX_HEATER_OUTLET_STATE_PROPERTY->count = 2;
@@ -853,7 +853,7 @@ static void aux_connection_handler(indigo_device *device) {
 				indigo_uni_close(&PRIVATE_DATA->handle);
 			}
 		}
-		if (PRIVATE_DATA->handle > 0) {
+		if (PRIVATE_DATA->handle != NULL) {
 			if (upb_command(device, "PV", response, sizeof(response))) {
 				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->version == 2 ? "UPBv2" : "UPB");
 				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, response + 3); // remove "PV:" prefix
@@ -965,7 +965,7 @@ static void aux_connection_handler(indigo_device *device) {
 			PRIVATE_DATA->smart_hub = 0;
 		}
 		if (--PRIVATE_DATA->count == 0) {
-			if (PRIVATE_DATA->handle > 0) {
+			if (PRIVATE_DATA->handle != NULL) {
 				upb_command(device, "PL:0", response, sizeof(response));
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
 				indigo_uni_close(&PRIVATE_DATA->handle);
@@ -1365,7 +1365,7 @@ static void focuser_connection_handler(indigo_device *device) {
 		if (PRIVATE_DATA->count++ == 0) {
 			upb_open(device->master_device);
 		}
-		if (PRIVATE_DATA->handle > 0) {
+		if (PRIVATE_DATA->handle != NULL) {
 			if (upb_command(device, "SA", response, sizeof(response))) {
 				char *pnt, *token = strtok_r(response, ":", &pnt);
 				if (token) { // Stepper position
@@ -1388,7 +1388,7 @@ static void focuser_connection_handler(indigo_device *device) {
 				indigo_uni_close(&PRIVATE_DATA->handle);
 			}
 		}
-		if (PRIVATE_DATA->handle > 0) {
+		if (PRIVATE_DATA->handle != NULL) {
 			if (upb_command(device, "PV", response, sizeof(response))) {
 				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->version == 2 ? "UPBv2" : "UPB");
 				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, response);
@@ -1409,7 +1409,7 @@ static void focuser_connection_handler(indigo_device *device) {
 	} else {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_timer);
 		if (--PRIVATE_DATA->count == 0) {
-			if (PRIVATE_DATA->handle > 0) {
+			if (PRIVATE_DATA->handle != NULL) {
 				upb_command(device, "PL:0", response, sizeof(response));
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
 				indigo_uni_close(&PRIVATE_DATA->handle);
