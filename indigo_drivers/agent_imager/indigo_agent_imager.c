@@ -2709,8 +2709,10 @@ static void sequence_process(indigo_device *device) {
 		AGENT_START_PROCESS_PROPERTY->state = AGENT_IMAGER_STATS_PROPERTY->state = INDIGO_OK_STATE;
 		// Sometimes blob arrives after the end of the sequence - gives sime time to the blob update
 		indigo_usleep(0.2 * ONE_SECOND_DELAY);
+		AGENT_IMAGER_STATS_PHASE_ITEM->number.value = INDIGO_IMAGER_PHASE_SEQUENCE_DONE;
 		indigo_send_message(device, "Sequence finished");
 	} else {
+		AGENT_IMAGER_STATS_PHASE_ITEM->number.value = INDIGO_IMAGER_PHASE_SEQUENCE_FAILDED;
 		indigo_send_message(device, "Sequence failed");
 	}
 	AGENT_IMAGER_STATS_PHASE_ITEM->number.value = INDIGO_IMAGER_PHASE_IDLE;
