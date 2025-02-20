@@ -20,7 +20,6 @@
 #include <indigo/indigo_io.h>
 #include <indigo/indigo_align.h>
 #include <indigo/indigo_mount_driver.h>
-
 #include "indigo_mount_synscan_private.h"
 #include "indigo_mount_synscan_protocol.h"
 #include "indigo_mount_synscan_driver.h"
@@ -197,7 +196,7 @@ bool synscan_configure(indigo_device* device) {
 			return false;
 		if (!synscan_high_speed_ratio(device, kAxisDEC, &PRIVATE_DATA->decHighSpeedFactor))
 			return false;
-
+		
 		if (!synscan_ext_inquiry(device, kAxisRA, kGetFeatures, &PRIVATE_DATA->raFeatures)) {
 			PRIVATE_DATA->raFeatures = 0;
 		}
@@ -216,10 +215,10 @@ bool synscan_configure(indigo_device* device) {
 			MOUNT_POLARSCOPE_PROPERTY->hidden = false;
 			MOUNT_POLARSCOPE_BRIGHTNESS_ITEM->number.value = 255;
 		}
-
+		
 		if (!MOUNT_PEC_PROPERTY->hidden)
 			indigo_set_switch(MOUNT_PEC_PROPERTY, PRIVATE_DATA->raFeatures & kInPPEC ? MOUNT_PEC_ENABLED_ITEM : MOUNT_PEC_DISABLED_ITEM, true);
-
+		
 		if (!MOUNT_PEC_TRAINING_PROPERTY->hidden)
 			indigo_set_switch(MOUNT_PEC_TRAINING_PROPERTY, (PRIVATE_DATA->raFeatures & kInPPECTraining) || (PRIVATE_DATA->decFeatures & kInPPECTraining) ? MOUNT_PEC_TRAINIG_STARTED_ITEM : MOUNT_PEC_TRAINIG_STOPPED_ITEM, true);
 
@@ -299,7 +298,7 @@ bool synscan_configure(indigo_device* device) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "DEC MOTOR OK %06X", decMotorStatus);
 	}
 	indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
-
+	
 	//  Configure the mount modes
 	PRIVATE_DATA->raAxisMode = kAxisModeIdle;
 	PRIVATE_DATA->decAxisMode = kAxisModeIdle;
@@ -450,10 +449,10 @@ bool synscan_guide_axis_at_rate(indigo_device* device, enum AxisID axis, double 
 	} else {
 		//*result = true;
 	}
-
+	
 	//  Reference relevant axis config cache
 	struct AxisConfig* cachedConfig = (axis == kAxisRA) ? &PRIVATE_DATA->raAxisConfig : &PRIVATE_DATA->decAxisConfig;
-
+	
 	//  Invalidate gearing in case of error
 	cachedConfig->valid = false;
 #endif

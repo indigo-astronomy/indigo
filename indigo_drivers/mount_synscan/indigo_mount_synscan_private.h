@@ -11,10 +11,8 @@
 
 #include <pthread.h>
 #include <stdbool.h>
-
 #include <indigo/indigo_driver.h>
 //#include "indigo_timer.h"
-
 #include "indigo_mount_synscan_driver.h"
 
 #define DRIVER_VERSION			0x0012
@@ -112,7 +110,7 @@ typedef struct {
 	bool guiding_thread_exit;
 	int ha_pulse_ms;
 	int dec_pulse_ms;
-
+	
 } synscan_private_data;
 
 //-----------------------------------------------
@@ -149,15 +147,5 @@ typedef struct {
 
 #define MOUNT_AUTOHOME_SETTINGS_PROPERTY_NAME		  "MOUNT_AUTOHOME_SETTINGS"
 #define MOUNT_AUTOHOME_DEC_OFFSET_ITEM_NAME       "DEC_OFFSET"
-
-#define MOUNT_CUSTOM_TRACKING_RA_RATE_ITEM        (MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->items+0)
-#define MOUNT_CUSTOM_TRACKING_DEC_RATE_ITEM       (MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->items+1)
-
-#define MOUNT_CUSTOM_TRACKING_RA_RATE_ITEM_NAME   "RA_RATE"
-#define MOUNT_CUSTOM_TRACKING_DEC_RATE_ITEM_NAME  "DEC_RATE"
-
-// overwrite MOUNT_TRACK_RATE_CUSTOM_ITEM since King tracking rate is not implemented
-#undef  MOUNT_TRACK_RATE_CUSTOM_ITEM
-#define MOUNT_TRACK_RATE_CUSTOM_ITEM              (MOUNT_TRACK_RATE_PROPERTY->items+3)
 
 #endif /* indigo_mount_synscan_private_h */
