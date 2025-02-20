@@ -1,4 +1,4 @@
-LIBRARY		libfli64
+LIBRARY		libfli
 EXPORTS
 	FLIOpen					@1
 	FLIClose				@2

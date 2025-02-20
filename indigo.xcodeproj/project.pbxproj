@@ -2449,64 +2449,6 @@
 		59A52D6021A3360B000B6F27 /* libgxccd.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libgxccd.a; sourceTree = "<group>"; };
 		59A52D6221A3360B000B6F27 /* libgxccd.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libgxccd.a; sourceTree = "<group>"; };
 		59A52D6421A3360B000B6F27 /* libgxccd.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libgxccd.a; sourceTree = "<group>"; };
-		59A52D6921A33E34000B6F27 /* Makefile.dkms */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.dkms; sourceTree = "<group>"; };
-		59A52D6B21A33E34000B6F27 /* dkms.conf */ = {isa = PBXFileReference; lastKnownFileType = text; path = dkms.conf; sourceTree = "<group>"; };
-		59A52D6C21A33E34000B6F27 /* fliusb_ioctl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fliusb_ioctl.h; sourceTree = "<group>"; };
-		59A52D6D21A33E34000B6F27 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
-		59A52D6E21A33E34000B6F27 /* fliusb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = fliusb.c; sourceTree = "<group>"; };
-		59A52D6F21A33E34000B6F27 /* README */ = {isa = PBXFileReference; lastKnownFileType = text; path = README; sourceTree = "<group>"; };
-		59A52D7021A33E34000B6F27 /* fliusb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fliusb.h; sourceTree = "<group>"; };
-		59A52D7221A33E34000B6F27 /* libfli.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = libfli.c; sourceTree = "<group>"; };
-		59A52D7321A33E34000B6F27 /* libfli-raw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-raw.c"; sourceTree = "<group>"; };
-		59A52D7421A33E34000B6F27 /* libfli-camera.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-camera.h"; sourceTree = "<group>"; };
-		59A52D7521A33E34000B6F27 /* libfli-camera-parport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-camera-parport.c"; sourceTree = "<group>"; };
-		59A52D7621A33E34000B6F27 /* libfli-filter-focuser.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-filter-focuser.h"; sourceTree = "<group>"; };
-		59A52D7721A33E34000B6F27 /* libfli.dxx */ = {isa = PBXFileReference; lastKnownFileType = text; path = libfli.dxx; sourceTree = "<group>"; };
-		59A52D7821A33E34000B6F27 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
-		59A52D7921A33E34000B6F27 /* libfli-mem.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-mem.c"; sourceTree = "<group>"; };
-		59A52D7A21A33E34000B6F27 /* libfli-camera-usb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-camera-usb.h"; sourceTree = "<group>"; };
-		59A52D7B21A33E34000B6F27 /* libfli-camera.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-camera.c"; sourceTree = "<group>"; };
-		59A52D7C21A33E34000B6F27 /* libfli-raw.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-raw.h"; sourceTree = "<group>"; };
-		59A52D7E21A33E34000B6F27 /* libfli-sys.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-sys.c"; sourceTree = "<group>"; };
-		59A52D7F21A33E34000B6F27 /* libfli-usb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-usb.c"; sourceTree = "<group>"; };
-		59A52D8121A33E34000B6F27 /* libfli-usb-sys.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-usb-sys.c"; sourceTree = "<group>"; };
-		59A52D8221A33E34000B6F27 /* libfli-usb-sys.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-usb-sys.h"; sourceTree = "<group>"; };
-		59A52D8321A33E34000B6F27 /* libfli-debug.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-debug.c"; sourceTree = "<group>"; };
-		59A52D8421A33E34000B6F27 /* libfli-serial.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-serial.c"; sourceTree = "<group>"; };
-		59A52D8521A33E34000B6F27 /* libfli-parport.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-parport.h"; sourceTree = "<group>"; };
-		59A52D8721A33E34000B6F27 /* libfli-usb-sys.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-usb-sys.c"; sourceTree = "<group>"; };
-		59A52D8821A33E34000B6F27 /* libfli-sys.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-sys.h"; sourceTree = "<group>"; };
-		59A52D8921A33E34000B6F27 /* libfli-usb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-usb.h"; sourceTree = "<group>"; };
-		59A52D8B21A33E34000B6F27 /* fliusb_ioctl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fliusb_ioctl.h; sourceTree = "<group>"; };
-		59A52D8C21A33E34000B6F27 /* fli_ioctl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fli_ioctl.h; sourceTree = "<group>"; };
-		59A52D8D21A33E34000B6F27 /* libfli-usb-sys.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-usb-sys.c"; sourceTree = "<group>"; };
-		59A52D8E21A33E34000B6F27 /* libfli-parport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-parport.c"; sourceTree = "<group>"; };
-		59A52D8F21A33E34000B6F27 /* fli-usb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "fli-usb.h"; sourceTree = "<group>"; };
-		59A52D9021A33E34000B6F27 /* libfli-serial.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-serial.h"; sourceTree = "<group>"; };
-		59A52D9121A33E34000B6F27 /* libfli.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = libfli.h; sourceTree = "<group>"; };
-		59A52D9221A33E34000B6F27 /* docxx.sty */ = {isa = PBXFileReference; lastKnownFileType = text; path = docxx.sty; sourceTree = "<group>"; };
-		59A52D9321A33E34000B6F27 /* libfli-filter-focuser.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-filter-focuser.c"; sourceTree = "<group>"; };
-		59A52D9421A33E34000B6F27 /* libfli-camera-parport.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-camera-parport.h"; sourceTree = "<group>"; };
-		59A52D9621A33E34000B6F27 /* FLI_SDK_Documentation.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = FLI_SDK_Documentation.pdf; sourceTree = "<group>"; };
-		59A52D9721A33E34000B6F27 /* libfli-libfli.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-libfli.h"; sourceTree = "<group>"; };
-		59A52D9921A33E34000B6F27 /* libfli-windows.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-windows.c"; sourceTree = "<group>"; };
-		59A52D9A21A33E34000B6F27 /* libfli.def */ = {isa = PBXFileReference; lastKnownFileType = text; path = libfli.def; sourceTree = "<group>"; };
-		59A52D9B21A33E34000B6F27 /* libfli-usb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-usb.c"; sourceTree = "<group>"; };
-		59A52D9C21A33E34000B6F27 /* libfli-windows-parport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-windows-parport.c"; sourceTree = "<group>"; };
-		59A52D9D21A33E34000B6F27 /* libfli-debug.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-debug.c"; sourceTree = "<group>"; };
-		59A52D9E21A33E34000B6F27 /* libfli.vcproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = libfli.vcproj; sourceTree = "<group>"; };
-		59A52D9F21A33E34000B6F27 /* libfli-serial.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-serial.c"; sourceTree = "<group>"; };
-		59A52DA021A33E34000B6F27 /* libfli-parport.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-parport.h"; sourceTree = "<group>"; };
-		59A52DA121A33E34000B6F27 /* libfli64.def */ = {isa = PBXFileReference; lastKnownFileType = text; path = libfli64.def; sourceTree = "<group>"; };
-		59A52DA221A33E34000B6F27 /* libfli-sys.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-sys.h"; sourceTree = "<group>"; };
-		59A52DA321A33E34000B6F27 /* libfli-usb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-usb.h"; sourceTree = "<group>"; };
-		59A52DA421A33E34000B6F27 /* libfli.rc */ = {isa = PBXFileReference; lastKnownFileType = text; path = libfli.rc; sourceTree = "<group>"; };
-		59A52DA521A33E34000B6F27 /* resource.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = resource.h; sourceTree = "<group>"; };
-		59A52DA621A33E34000B6F27 /* libfli-serial.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-serial.h"; sourceTree = "<group>"; };
-		59A52DA721A33E34000B6F27 /* libfli.sln */ = {isa = PBXFileReference; lastKnownFileType = text; path = libfli.sln; sourceTree = "<group>"; };
-		59A52DA821A33E34000B6F27 /* libfli-debug.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-debug.h"; sourceTree = "<group>"; };
-		59A52DA921A33E34000B6F27 /* libfli-camera-usb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-camera-usb.c"; sourceTree = "<group>"; };
-		59A52DAA21A33E34000B6F27 /* libfli-mem.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-mem.h"; sourceTree = "<group>"; };
 		59A52DAC21A33E34000B6F27 /* libfli.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = libfli.c; sourceTree = "<group>"; };
 		59A52DAD21A33E34000B6F27 /* libfli-raw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-raw.c"; sourceTree = "<group>"; };
 		59A52DAF21A33E34000B6F27 /* libfli-camera.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-camera.h"; sourceTree = "<group>"; };
@@ -2677,64 +2619,6 @@
 		59A52E7821A33E5D000B6F27 /* libfli-camera-usb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-camera-usb.c"; sourceTree = "<group>"; };
 		59A52E7921A33E5D000B6F27 /* libfli-mem.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-mem.h"; sourceTree = "<group>"; };
 		59A52E7A21A33E5D000B6F27 /* libfli-mem.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libfli-mem.o"; sourceTree = "<group>"; };
-		59A52E7D21A33E78000B6F27 /* Makefile.dkms */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.dkms; sourceTree = "<group>"; };
-		59A52E7F21A33E78000B6F27 /* dkms.conf */ = {isa = PBXFileReference; lastKnownFileType = text; path = dkms.conf; sourceTree = "<group>"; };
-		59A52E8021A33E78000B6F27 /* fliusb_ioctl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fliusb_ioctl.h; sourceTree = "<group>"; };
-		59A52E8121A33E78000B6F27 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
-		59A52E8221A33E78000B6F27 /* fliusb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = fliusb.c; sourceTree = "<group>"; };
-		59A52E8321A33E78000B6F27 /* README */ = {isa = PBXFileReference; lastKnownFileType = text; path = README; sourceTree = "<group>"; };
-		59A52E8421A33E78000B6F27 /* fliusb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fliusb.h; sourceTree = "<group>"; };
-		59A52E8621A33E78000B6F27 /* libfli.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = libfli.c; sourceTree = "<group>"; };
-		59A52E8721A33E78000B6F27 /* libfli-raw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-raw.c"; sourceTree = "<group>"; };
-		59A52E8821A33E78000B6F27 /* libfli-camera.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-camera.h"; sourceTree = "<group>"; };
-		59A52E8921A33E78000B6F27 /* libfli-camera-parport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-camera-parport.c"; sourceTree = "<group>"; };
-		59A52E8A21A33E78000B6F27 /* libfli-filter-focuser.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-filter-focuser.h"; sourceTree = "<group>"; };
-		59A52E8B21A33E78000B6F27 /* libfli.dxx */ = {isa = PBXFileReference; lastKnownFileType = text; path = libfli.dxx; sourceTree = "<group>"; };
-		59A52E8C21A33E78000B6F27 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
-		59A52E8D21A33E78000B6F27 /* libfli-mem.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-mem.c"; sourceTree = "<group>"; };
-		59A52E8E21A33E78000B6F27 /* libfli-camera-usb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-camera-usb.h"; sourceTree = "<group>"; };
-		59A52E8F21A33E78000B6F27 /* libfli-camera.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-camera.c"; sourceTree = "<group>"; };
-		59A52E9021A33E78000B6F27 /* libfli-raw.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-raw.h"; sourceTree = "<group>"; };
-		59A52E9221A33E78000B6F27 /* libfli-sys.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-sys.c"; sourceTree = "<group>"; };
-		59A52E9321A33E78000B6F27 /* libfli-usb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-usb.c"; sourceTree = "<group>"; };
-		59A52E9521A33E78000B6F27 /* libfli-usb-sys.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-usb-sys.c"; sourceTree = "<group>"; };
-		59A52E9621A33E78000B6F27 /* libfli-usb-sys.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-usb-sys.h"; sourceTree = "<group>"; };
-		59A52E9721A33E78000B6F27 /* libfli-debug.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-debug.c"; sourceTree = "<group>"; };
-		59A52E9821A33E78000B6F27 /* libfli-serial.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-serial.c"; sourceTree = "<group>"; };
-		59A52E9921A33E78000B6F27 /* libfli-parport.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-parport.h"; sourceTree = "<group>"; };
-		59A52E9B21A33E78000B6F27 /* libfli-usb-sys.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-usb-sys.c"; sourceTree = "<group>"; };
-		59A52E9C21A33E78000B6F27 /* libfli-sys.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-sys.h"; sourceTree = "<group>"; };
-		59A52E9D21A33E78000B6F27 /* libfli-usb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-usb.h"; sourceTree = "<group>"; };
-		59A52E9F21A33E78000B6F27 /* fliusb_ioctl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fliusb_ioctl.h; sourceTree = "<group>"; };
-		59A52EA021A33E78000B6F27 /* fli_ioctl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fli_ioctl.h; sourceTree = "<group>"; };
-		59A52EA121A33E78000B6F27 /* libfli-usb-sys.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-usb-sys.c"; sourceTree = "<group>"; };
-		59A52EA221A33E78000B6F27 /* libfli-parport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-parport.c"; sourceTree = "<group>"; };
-		59A52EA321A33E78000B6F27 /* fli-usb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "fli-usb.h"; sourceTree = "<group>"; };
-		59A52EA421A33E78000B6F27 /* libfli-serial.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-serial.h"; sourceTree = "<group>"; };
-		59A52EA521A33E78000B6F27 /* libfli.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = libfli.h; sourceTree = "<group>"; };
-		59A52EA621A33E78000B6F27 /* docxx.sty */ = {isa = PBXFileReference; lastKnownFileType = text; path = docxx.sty; sourceTree = "<group>"; };
-		59A52EA721A33E78000B6F27 /* libfli-filter-focuser.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-filter-focuser.c"; sourceTree = "<group>"; };
-		59A52EA821A33E78000B6F27 /* libfli-camera-parport.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-camera-parport.h"; sourceTree = "<group>"; };
-		59A52EAA21A33E78000B6F27 /* FLI_SDK_Documentation.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = FLI_SDK_Documentation.pdf; sourceTree = "<group>"; };
-		59A52EAB21A33E78000B6F27 /* libfli-libfli.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-libfli.h"; sourceTree = "<group>"; };
-		59A52EAD21A33E78000B6F27 /* libfli-windows.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-windows.c"; sourceTree = "<group>"; };
-		59A52EAE21A33E78000B6F27 /* libfli.def */ = {isa = PBXFileReference; lastKnownFileType = text; path = libfli.def; sourceTree = "<group>"; };
-		59A52EAF21A33E78000B6F27 /* libfli-usb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-usb.c"; sourceTree = "<group>"; };
-		59A52EB021A33E78000B6F27 /* libfli-windows-parport.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-windows-parport.c"; sourceTree = "<group>"; };
-		59A52EB121A33E78000B6F27 /* libfli-debug.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-debug.c"; sourceTree = "<group>"; };
-		59A52EB221A33E78000B6F27 /* libfli.vcproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = libfli.vcproj; sourceTree = "<group>"; };
-		59A52EB321A33E78000B6F27 /* libfli-serial.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-serial.c"; sourceTree = "<group>"; };
-		59A52EB421A33E78000B6F27 /* libfli-parport.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-parport.h"; sourceTree = "<group>"; };
-		59A52EB521A33E78000B6F27 /* libfli64.def */ = {isa = PBXFileReference; lastKnownFileType = text; path = libfli64.def; sourceTree = "<group>"; };
-		59A52EB621A33E78000B6F27 /* libfli-sys.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-sys.h"; sourceTree = "<group>"; };
-		59A52EB721A33E78000B6F27 /* libfli-usb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-usb.h"; sourceTree = "<group>"; };
-		59A52EB821A33E78000B6F27 /* libfli.rc */ = {isa = PBXFileReference; lastKnownFileType = text; path = libfli.rc; sourceTree = "<group>"; };
-		59A52EB921A33E78000B6F27 /* resource.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = resource.h; sourceTree = "<group>"; };
-		59A52EBA21A33E78000B6F27 /* libfli-serial.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-serial.h"; sourceTree = "<group>"; };
-		59A52EBB21A33E78000B6F27 /* libfli.sln */ = {isa = PBXFileReference; lastKnownFileType = text; path = libfli.sln; sourceTree = "<group>"; };
-		59A52EBC21A33E78000B6F27 /* libfli-debug.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-debug.h"; sourceTree = "<group>"; };
-		59A52EBD21A33E78000B6F27 /* libfli-camera-usb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-camera-usb.c"; sourceTree = "<group>"; };
-		59A52EBE21A33E78000B6F27 /* libfli-mem.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "libfli-mem.h"; sourceTree = "<group>"; };
 		59A52EC021A33E78000B6F27 /* libfli.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = libfli.c; sourceTree = "<group>"; };
 		59A52EC121A33E78000B6F27 /* libfli-raw.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "libfli-raw.c"; sourceTree = "<group>"; };
 		59A52EC221A33E78000B6F27 /* libfli-camera.o */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.objfile"; path = "libfli-camera.o"; sourceTree = "<group>"; };
@@ -2965,6 +2849,9 @@
 		59AA603D25AB10E80065905E /* solver_test_image.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = solver_test_image.c; sourceTree = "<group>"; };
 		59AD798F24AA6AE700F52563 /* RainbowAstro_200629.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = RainbowAstro_200629.pdf; sourceTree = "<group>"; };
 		59AE9A682D66626100DF1E15 /* HOME.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = HOME.md; sourceTree = "<group>"; };
+		59AE9A692D67C74000DF1E15 /* libfli.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = libfli.vcxproj; sourceTree = "<group>"; };
+		59AE9A6A2D67C74000DF1E15 /* libfli.vcxproj.filters */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = libfli.vcxproj.filters; sourceTree = "<group>"; };
+		59AE9A6B2D67C74000DF1E15 /* libfli.vcxproj.user */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = libfli.vcxproj.user; sourceTree = "<group>"; };
 		59AEF52E2CFC705A002C6347 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		59AEF52F2CFC7102002C6347 /* indigo_ccd_atik2.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_atik2.h; sourceTree = "<group>"; };
 		59AEF5322CFC7128002C6347 /* indigo_ccd_atik2.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_atik2.c; sourceTree = "<group>"; };
@@ -8554,139 +8441,9 @@
 		59A52D6721A33E34000B6F27 /* externals */ = {
 			isa = PBXGroup;
 			children = (
-				59A52D6821A33E34000B6F27 /* fliusb-1.3 */,
-				59A52D7121A33E34000B6F27 /* libfli-1.104 */,
 				59A52DAB21A33E34000B6F27 /* libfli-1.999.1-180223 */,
 			);
 			path = externals;
-			sourceTree = "<group>";
-		};
-		59A52D6821A33E34000B6F27 /* fliusb-1.3 */ = {
-			isa = PBXGroup;
-			children = (
-				59A52D6921A33E34000B6F27 /* Makefile.dkms */,
-				59A52D6A21A33E34000B6F27 /* dkms */,
-				59A52D6C21A33E34000B6F27 /* fliusb_ioctl.h */,
-				59A52D6D21A33E34000B6F27 /* Makefile */,
-				59A52D6E21A33E34000B6F27 /* fliusb.c */,
-				59A52D6F21A33E34000B6F27 /* README */,
-				59A52D7021A33E34000B6F27 /* fliusb.h */,
-			);
-			path = "fliusb-1.3";
-			sourceTree = "<group>";
-		};
-		59A52D6A21A33E34000B6F27 /* dkms */ = {
-			isa = PBXGroup;
-			children = (
-				59A52D6B21A33E34000B6F27 /* dkms.conf */,
-			);
-			path = dkms;
-			sourceTree = "<group>";
-		};
-		59A52D7121A33E34000B6F27 /* libfli-1.104 */ = {
-			isa = PBXGroup;
-			children = (
-				59A52D7221A33E34000B6F27 /* libfli.c */,
-				59A52D7321A33E34000B6F27 /* libfli-raw.c */,
-				59A52D7421A33E34000B6F27 /* libfli-camera.h */,
-				59A52D7521A33E34000B6F27 /* libfli-camera-parport.c */,
-				59A52D7621A33E34000B6F27 /* libfli-filter-focuser.h */,
-				59A52D7721A33E34000B6F27 /* libfli.dxx */,
-				59A52D7821A33E34000B6F27 /* Makefile */,
-				59A52D7921A33E34000B6F27 /* libfli-mem.c */,
-				59A52D7A21A33E34000B6F27 /* libfli-camera-usb.h */,
-				59A52D7B21A33E34000B6F27 /* libfli-camera.c */,
-				59A52D7C21A33E34000B6F27 /* libfli-raw.h */,
-				59A52D7D21A33E34000B6F27 /* unix */,
-				59A52D9121A33E34000B6F27 /* libfli.h */,
-				59A52D9221A33E34000B6F27 /* docxx.sty */,
-				59A52D9321A33E34000B6F27 /* libfli-filter-focuser.c */,
-				59A52D9421A33E34000B6F27 /* libfli-camera-parport.h */,
-				59A52D9521A33E34000B6F27 /* doc */,
-				59A52D9721A33E34000B6F27 /* libfli-libfli.h */,
-				59A52D9821A33E34000B6F27 /* windows */,
-				59A52DA821A33E34000B6F27 /* libfli-debug.h */,
-				59A52DA921A33E34000B6F27 /* libfli-camera-usb.c */,
-				59A52DAA21A33E34000B6F27 /* libfli-mem.h */,
-			);
-			path = "libfli-1.104";
-			sourceTree = "<group>";
-		};
-		59A52D7D21A33E34000B6F27 /* unix */ = {
-			isa = PBXGroup;
-			children = (
-				59A52D7E21A33E34000B6F27 /* libfli-sys.c */,
-				59A52D7F21A33E34000B6F27 /* libfli-usb.c */,
-				59A52D8021A33E34000B6F27 /* osx */,
-				59A52D8321A33E34000B6F27 /* libfli-debug.c */,
-				59A52D8421A33E34000B6F27 /* libfli-serial.c */,
-				59A52D8521A33E34000B6F27 /* libfli-parport.h */,
-				59A52D8621A33E34000B6F27 /* bsd */,
-				59A52D8821A33E34000B6F27 /* libfli-sys.h */,
-				59A52D8921A33E34000B6F27 /* libfli-usb.h */,
-				59A52D8A21A33E34000B6F27 /* linux */,
-				59A52D9021A33E34000B6F27 /* libfli-serial.h */,
-			);
-			path = unix;
-			sourceTree = "<group>";
-		};
-		59A52D8021A33E34000B6F27 /* osx */ = {
-			isa = PBXGroup;
-			children = (
-				59A52D8121A33E34000B6F27 /* libfli-usb-sys.c */,
-				59A52D8221A33E34000B6F27 /* libfli-usb-sys.h */,
-			);
-			path = osx;
-			sourceTree = "<group>";
-		};
-		59A52D8621A33E34000B6F27 /* bsd */ = {
-			isa = PBXGroup;
-			children = (
-				59A52D8721A33E34000B6F27 /* libfli-usb-sys.c */,
-			);
-			path = bsd;
-			sourceTree = "<group>";
-		};
-		59A52D8A21A33E34000B6F27 /* linux */ = {
-			isa = PBXGroup;
-			children = (
-				59A52D8B21A33E34000B6F27 /* fliusb_ioctl.h */,
-				59A52D8C21A33E34000B6F27 /* fli_ioctl.h */,
-				59A52D8D21A33E34000B6F27 /* libfli-usb-sys.c */,
-				59A52D8E21A33E34000B6F27 /* libfli-parport.c */,
-				59A52D8F21A33E34000B6F27 /* fli-usb.h */,
-			);
-			path = linux;
-			sourceTree = "<group>";
-		};
-		59A52D9521A33E34000B6F27 /* doc */ = {
-			isa = PBXGroup;
-			children = (
-				59A52D9621A33E34000B6F27 /* FLI_SDK_Documentation.pdf */,
-			);
-			path = doc;
-			sourceTree = "<group>";
-		};
-		59A52D9821A33E34000B6F27 /* windows */ = {
-			isa = PBXGroup;
-			children = (
-				59A52D9921A33E34000B6F27 /* libfli-windows.c */,
-				59A52D9A21A33E34000B6F27 /* libfli.def */,
-				59A52D9B21A33E34000B6F27 /* libfli-usb.c */,
-				59A52D9C21A33E34000B6F27 /* libfli-windows-parport.c */,
-				59A52D9D21A33E34000B6F27 /* libfli-debug.c */,
-				59A52D9E21A33E34000B6F27 /* libfli.vcproj */,
-				59A52D9F21A33E34000B6F27 /* libfli-serial.c */,
-				59A52DA021A33E34000B6F27 /* libfli-parport.h */,
-				59A52DA121A33E34000B6F27 /* libfli64.def */,
-				59A52DA221A33E34000B6F27 /* libfli-sys.h */,
-				59A52DA321A33E34000B6F27 /* libfli-usb.h */,
-				59A52DA421A33E34000B6F27 /* libfli.rc */,
-				59A52DA521A33E34000B6F27 /* resource.h */,
-				59A52DA621A33E34000B6F27 /* libfli-serial.h */,
-				59A52DA721A33E34000B6F27 /* libfli.sln */,
-			);
-			path = windows;
 			sourceTree = "<group>";
 		};
 		59A52DAB21A33E34000B6F27 /* libfli-1.999.1-180223 */ = {
@@ -8775,6 +8532,9 @@
 		59A52DDA21A33E34000B6F27 /* windows */ = {
 			isa = PBXGroup;
 			children = (
+				59AE9A692D67C74000DF1E15 /* libfli.vcxproj */,
+				59AE9A6A2D67C74000DF1E15 /* libfli.vcxproj.filters */,
+				59AE9A6B2D67C74000DF1E15 /* libfli.vcxproj.user */,
 				59A52DDB21A33E34000B6F27 /* libfli-windows.c */,
 				59A52DDC21A33E34000B6F27 /* libfli.def */,
 				59A52DDD21A33E34000B6F27 /* libfli-usb.c */,
@@ -9053,141 +8813,11 @@
 		59A52E7B21A33E78000B6F27 /* externals */ = {
 			isa = PBXGroup;
 			children = (
-				59A52E7C21A33E78000B6F27 /* fliusb-1.3 */,
-				59A52E8521A33E78000B6F27 /* libfli-1.104 */,
 				59A52EBF21A33E78000B6F27 /* libfli-1.999.1-180223 */,
 			);
 			name = externals;
 			path = indigo_drivers/ccd_fli/externals;
 			sourceTree = SOURCE_ROOT;
-		};
-		59A52E7C21A33E78000B6F27 /* fliusb-1.3 */ = {
-			isa = PBXGroup;
-			children = (
-				59A52E7D21A33E78000B6F27 /* Makefile.dkms */,
-				59A52E7E21A33E78000B6F27 /* dkms */,
-				59A52E8021A33E78000B6F27 /* fliusb_ioctl.h */,
-				59A52E8121A33E78000B6F27 /* Makefile */,
-				59A52E8221A33E78000B6F27 /* fliusb.c */,
-				59A52E8321A33E78000B6F27 /* README */,
-				59A52E8421A33E78000B6F27 /* fliusb.h */,
-			);
-			path = "fliusb-1.3";
-			sourceTree = "<group>";
-		};
-		59A52E7E21A33E78000B6F27 /* dkms */ = {
-			isa = PBXGroup;
-			children = (
-				59A52E7F21A33E78000B6F27 /* dkms.conf */,
-			);
-			path = dkms;
-			sourceTree = "<group>";
-		};
-		59A52E8521A33E78000B6F27 /* libfli-1.104 */ = {
-			isa = PBXGroup;
-			children = (
-				59A52E8621A33E78000B6F27 /* libfli.c */,
-				59A52E8721A33E78000B6F27 /* libfli-raw.c */,
-				59A52E8821A33E78000B6F27 /* libfli-camera.h */,
-				59A52E8921A33E78000B6F27 /* libfli-camera-parport.c */,
-				59A52E8A21A33E78000B6F27 /* libfli-filter-focuser.h */,
-				59A52E8B21A33E78000B6F27 /* libfli.dxx */,
-				59A52E8C21A33E78000B6F27 /* Makefile */,
-				59A52E8D21A33E78000B6F27 /* libfli-mem.c */,
-				59A52E8E21A33E78000B6F27 /* libfli-camera-usb.h */,
-				59A52E8F21A33E78000B6F27 /* libfli-camera.c */,
-				59A52E9021A33E78000B6F27 /* libfli-raw.h */,
-				59A52E9121A33E78000B6F27 /* unix */,
-				59A52EA521A33E78000B6F27 /* libfli.h */,
-				59A52EA621A33E78000B6F27 /* docxx.sty */,
-				59A52EA721A33E78000B6F27 /* libfli-filter-focuser.c */,
-				59A52EA821A33E78000B6F27 /* libfli-camera-parport.h */,
-				59A52EA921A33E78000B6F27 /* doc */,
-				59A52EAB21A33E78000B6F27 /* libfli-libfli.h */,
-				59A52EAC21A33E78000B6F27 /* windows */,
-				59A52EBC21A33E78000B6F27 /* libfli-debug.h */,
-				59A52EBD21A33E78000B6F27 /* libfli-camera-usb.c */,
-				59A52EBE21A33E78000B6F27 /* libfli-mem.h */,
-			);
-			path = "libfli-1.104";
-			sourceTree = "<group>";
-		};
-		59A52E9121A33E78000B6F27 /* unix */ = {
-			isa = PBXGroup;
-			children = (
-				59A52E9221A33E78000B6F27 /* libfli-sys.c */,
-				59A52E9321A33E78000B6F27 /* libfli-usb.c */,
-				59A52E9421A33E78000B6F27 /* osx */,
-				59A52E9721A33E78000B6F27 /* libfli-debug.c */,
-				59A52E9821A33E78000B6F27 /* libfli-serial.c */,
-				59A52E9921A33E78000B6F27 /* libfli-parport.h */,
-				59A52E9A21A33E78000B6F27 /* bsd */,
-				59A52E9C21A33E78000B6F27 /* libfli-sys.h */,
-				59A52E9D21A33E78000B6F27 /* libfli-usb.h */,
-				59A52E9E21A33E78000B6F27 /* linux */,
-				59A52EA421A33E78000B6F27 /* libfli-serial.h */,
-			);
-			path = unix;
-			sourceTree = "<group>";
-		};
-		59A52E9421A33E78000B6F27 /* osx */ = {
-			isa = PBXGroup;
-			children = (
-				59A52E9521A33E78000B6F27 /* libfli-usb-sys.c */,
-				59A52E9621A33E78000B6F27 /* libfli-usb-sys.h */,
-			);
-			path = osx;
-			sourceTree = "<group>";
-		};
-		59A52E9A21A33E78000B6F27 /* bsd */ = {
-			isa = PBXGroup;
-			children = (
-				59A52E9B21A33E78000B6F27 /* libfli-usb-sys.c */,
-			);
-			path = bsd;
-			sourceTree = "<group>";
-		};
-		59A52E9E21A33E78000B6F27 /* linux */ = {
-			isa = PBXGroup;
-			children = (
-				59A52E9F21A33E78000B6F27 /* fliusb_ioctl.h */,
-				59A52EA021A33E78000B6F27 /* fli_ioctl.h */,
-				59A52EA121A33E78000B6F27 /* libfli-usb-sys.c */,
-				59A52EA221A33E78000B6F27 /* libfli-parport.c */,
-				59A52EA321A33E78000B6F27 /* fli-usb.h */,
-			);
-			path = linux;
-			sourceTree = "<group>";
-		};
-		59A52EA921A33E78000B6F27 /* doc */ = {
-			isa = PBXGroup;
-			children = (
-				59A52EAA21A33E78000B6F27 /* FLI_SDK_Documentation.pdf */,
-			);
-			path = doc;
-			sourceTree = "<group>";
-		};
-		59A52EAC21A33E78000B6F27 /* windows */ = {
-			isa = PBXGroup;
-			children = (
-				59A52EAD21A33E78000B6F27 /* libfli-windows.c */,
-				59A52EAE21A33E78000B6F27 /* libfli.def */,
-				59A52EAF21A33E78000B6F27 /* libfli-usb.c */,
-				59A52EB021A33E78000B6F27 /* libfli-windows-parport.c */,
-				59A52EB121A33E78000B6F27 /* libfli-debug.c */,
-				59A52EB221A33E78000B6F27 /* libfli.vcproj */,
-				59A52EB321A33E78000B6F27 /* libfli-serial.c */,
-				59A52EB421A33E78000B6F27 /* libfli-parport.h */,
-				59A52EB521A33E78000B6F27 /* libfli64.def */,
-				59A52EB621A33E78000B6F27 /* libfli-sys.h */,
-				59A52EB721A33E78000B6F27 /* libfli-usb.h */,
-				59A52EB821A33E78000B6F27 /* libfli.rc */,
-				59A52EB921A33E78000B6F27 /* resource.h */,
-				59A52EBA21A33E78000B6F27 /* libfli-serial.h */,
-				59A52EBB21A33E78000B6F27 /* libfli.sln */,
-			);
-			path = windows;
-			sourceTree = "<group>";
 		};
 		59A52EBF21A33E78000B6F27 /* libfli-1.999.1-180223 */ = {
 			isa = PBXGroup;

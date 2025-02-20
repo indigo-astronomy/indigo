@@ -23,19 +23,15 @@
  \file indigo_wheel_fli.c
  */
 
-#define DRIVER_VERSION 0x0008
+#define DRIVER_VERSION 0x0009
 #define DRIVER_NAME		"indigo_wheel_fli"
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
 #include <stdbool.h>
-#include <sys/time.h>
-
-#define MAX_PATH 255
 
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_usb_utils.h>
@@ -53,8 +49,8 @@
 
 typedef struct {
 	flidev_t dev_id;
-	char dev_file_name[MAX_PATH];
-	char dev_name[MAX_PATH];
+	char dev_file_name[PATH_MAX];
+	char dev_name[PATH_MAX];
 	flidomain_t domain;
 	long int current_slot, target_slot;
 	int count;
@@ -226,7 +222,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
-			PRIVATE_DATA->target_slot = WHEEL_SLOT_ITEM->number.value;
+			PRIVATE_DATA->target_slot = (long)WHEEL_SLOT_ITEM->number.value;
 			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
 			indigo_set_timer(device, 0, wheel_timer_callback, &PRIVATE_DATA->wheel_timer);
 		}
@@ -254,8 +250,8 @@ static indigo_result wheel_detach(indigo_device *device) {
 
 static const flidomain_t enum_domain = FLIDOMAIN_USB | FLIDEVICE_FILTERWHEEL;
 static int num_devices = 0;
-static char fli_file_names[MAX_DEVICES][MAX_PATH] = {""};
-static char fli_dev_names[MAX_DEVICES][MAX_PATH] = {""};
+static char fli_file_names[MAX_DEVICES][PATH_MAX] = {""};
+static char fli_dev_names[MAX_DEVICES][PATH_MAX] = {""};
 static flidomain_t fli_domains[MAX_DEVICES] = {0};
 
 static indigo_device *devices[MAX_DEVICES] = {NULL};
@@ -269,12 +265,12 @@ static void enumerate_devices() {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLICreateList(%d) = %d", enum_domain , res);
 	else
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "FLICreateList(%d) = %d", enum_domain , res);
-	res = FLIListFirst(&fli_domains[num_devices], fli_file_names[num_devices], MAX_PATH, fli_dev_names[num_devices], MAX_PATH);
+	res = FLIListFirst(&fli_domains[num_devices], fli_file_names[num_devices], PATH_MAX, fli_dev_names[num_devices], PATH_MAX);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "FLIListFirst(-> %d, -> '%s', ->'%s') = %d", fli_domains[num_devices], fli_file_names[num_devices], fli_dev_names[num_devices], res);
 	if (res == 0) {
 		do {
 			num_devices++;
-			res = FLIListNext(&fli_domains[num_devices], fli_file_names[num_devices], MAX_PATH, fli_dev_names[num_devices], MAX_PATH);
+			res = FLIListNext(&fli_domains[num_devices], fli_file_names[num_devices], PATH_MAX, fli_dev_names[num_devices], PATH_MAX);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "FLIListNext(-> %d, -> '%s', ->'%s') = %d", fli_domains[num_devices], fli_file_names[num_devices], fli_dev_names[num_devices], res);
 		} while ((res == 0) && (num_devices < MAX_DEVICES));
 	}
@@ -291,7 +287,7 @@ static int find_plugged_device(char *fname) {
 			if (device == NULL) {
 				continue;
 			}
-			if (!strncmp(PRIVATE_DATA->dev_file_name, fli_file_names[dev_no], MAX_PATH)) {
+			if (!strncmp(PRIVATE_DATA->dev_file_name, fli_file_names[dev_no], PATH_MAX)) {
 				found = true;
 				break;
 			}
@@ -300,7 +296,7 @@ static int find_plugged_device(char *fname) {
 			continue;
 		} else {
 			assert(fname!=NULL);
-			strncpy(fname, fli_file_names[dev_no], MAX_PATH);
+			strncpy(fname, fli_file_names[dev_no], PATH_MAX);
 			return dev_no;
 		}
 	}
@@ -310,7 +306,7 @@ static int find_plugged_device(char *fname) {
 
 static int find_index_by_device_fname(char *fname) {
 	for (int dev_no = 0; dev_no < num_devices; dev_no++) {
-		if (!strncmp(fli_file_names[dev_no], fname, MAX_PATH)) {
+		if (!strncmp(fli_file_names[dev_no], fname, PATH_MAX)) {
 			return dev_no;
 		}
 	}
@@ -347,7 +343,7 @@ static int find_unplugged_device(char *fname) {
 			continue;
 		}
 		for (int dev_no = 0; dev_no < num_devices; dev_no++) {
-			if (!strncmp(PRIVATE_DATA->dev_file_name, fli_file_names[dev_no], MAX_PATH)) {
+			if (!strncmp(PRIVATE_DATA->dev_file_name, fli_file_names[dev_no], PATH_MAX)) {
 				found = true;
 				break;
 			}
@@ -356,7 +352,7 @@ static int find_unplugged_device(char *fname) {
 			continue;
 		} else {
 			assert(fname!=NULL);
-			strncpy(fname, PRIVATE_DATA->dev_file_name, MAX_PATH);
+			strncpy(fname, PRIVATE_DATA->dev_file_name, PATH_MAX);
 			return slot;
 		}
 	}
@@ -383,7 +379,7 @@ static void process_plug_event(indigo_device *unused) {
 		return;
 	}
 
-	char file_name[MAX_PATH];
+	char file_name[PATH_MAX];
 	int idx = find_plugged_device(file_name);
 	if (idx < 0) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No FLI Camera plugged.");
@@ -396,8 +392,8 @@ static void process_plug_event(indigo_device *unused) {
 	fli_private_data *private_data = indigo_safe_malloc(sizeof(fli_private_data));
 	private_data->dev_id = 0;
 	private_data->domain = fli_domains[idx];
-	strncpy(private_data->dev_file_name, fli_file_names[idx], MAX_PATH);
-	strncpy(private_data->dev_name, fli_dev_names[idx], MAX_PATH);
+	strncpy(private_data->dev_file_name, fli_file_names[idx], PATH_MAX);
+	strncpy(private_data->dev_name, fli_dev_names[idx], PATH_MAX);
 	device->private_data = private_data;
 	indigo_attach_device(device);
 	devices[slot]=device;
@@ -407,7 +403,7 @@ static void process_plug_event(indigo_device *unused) {
 static void process_unplug_event(indigo_device *unused) {
 	pthread_mutex_lock(&indigo_device_enumeration_mutex);
 	int slot, id;
-	char file_name[MAX_PATH];
+	char file_name[PATH_MAX];
 	bool removed = false;
 	while ((id = find_unplugged_device(file_name)) != -1) {
 		slot = find_device_slot(file_name);
@@ -469,7 +465,7 @@ static void remove_all_devices() {
 
 static libusb_hotplug_callback_handle callback_handle;
 
-extern void (*debug_ext)(int level, char *format, va_list arg);
+INDIGO_EXTERN void (*debug_ext)(int level, char *format, va_list arg);
 
 static void _debug_ext(int level, char *format, va_list arg) {
 	if (indigo_get_log_level() >= INDIGO_LOG_DEBUG) {

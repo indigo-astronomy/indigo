@@ -23,10 +23,8 @@
  \file indigo_focuser_fli.c
  */
 
-#define MAX_PATH                      255     /* Maximal Path Length */
-
 #define DRIVER_NAME		"indigo_focuser_fli"
-#define DRIVER_VERSION             0x000B
+#define DRIVER_VERSION             0x000C
 #define FLI_VENDOR_ID              0x0f18
 
 #define POLL_TIME                       1     /* Seconds */
@@ -35,11 +33,9 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
-#include <sys/time.h>
 
 #include <libfli.h>
 
@@ -55,8 +51,8 @@
 
 typedef struct {
 	flidev_t dev_id;
-	char dev_file_name[MAX_PATH];
-	char dev_name[MAX_PATH];
+	char dev_file_name[PATH_MAX];
+	char dev_name[PATH_MAX];
 	flidomain_t domain;
 	long zero_position;
 	long steps_to_go;     /* some focusers can not do full extent stpes in one go use this for the second move call */
@@ -309,7 +305,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 
 			/* do not go over the max extent */
 			if (FOCUSER_POSITION_ITEM->number.max < (current_value + value)) {
-				value -= current_value + value - FOCUSER_POSITION_ITEM->number.max;
+				value -= current_value + value - (long)FOCUSER_POSITION_ITEM->number.max;
 				FOCUSER_STEPS_ITEM->number.value = (double)labs(value);
 			}
 
@@ -355,7 +351,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetStepperPosition(%d) = %d", PRIVATE_DATA->dev_id, res);
 			}
 			value -= PRIVATE_DATA->zero_position;
-			value = FOCUSER_POSITION_ITEM->number.target - value;
+			value = (long)FOCUSER_POSITION_ITEM->number.target - value;
 
 			PRIVATE_DATA->steps_to_go = 0;
 			/* focusers with max < 10000 can only go 4095 steps at once */
@@ -453,8 +449,8 @@ static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static const flidomain_t enum_domain = FLIDOMAIN_USB | FLIDEVICE_FOCUSER;
 static int num_devices = 0;
-static char fli_file_names[MAX_DEVICES][MAX_PATH] = {""};
-static char fli_dev_names[MAX_DEVICES][MAX_PATH] = {""};
+static char fli_file_names[MAX_DEVICES][PATH_MAX] = {""};
+static char fli_dev_names[MAX_DEVICES][PATH_MAX] = {""};
 static flidomain_t fli_domains[MAX_DEVICES] = {0};
 
 static indigo_device *devices[MAX_DEVICES] = {NULL};
@@ -468,12 +464,12 @@ static void enumerate_devices() {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLICreateList(%d) = %d", enum_domain , res);
 	else
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "FLICreateList(%d) = %d", enum_domain , res);
-	res = FLIListFirst(&fli_domains[num_devices], fli_file_names[num_devices], MAX_PATH, fli_dev_names[num_devices], MAX_PATH);
+	res = FLIListFirst(&fli_domains[num_devices], fli_file_names[num_devices], PATH_MAX, fli_dev_names[num_devices], PATH_MAX);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "FLIListFirst(-> %d, -> '%s', ->'%s') = %d", fli_domains[num_devices], fli_file_names[num_devices], fli_dev_names[num_devices], res);
 	if (res == 0) {
 		do {
 			num_devices++;
-			res = FLIListNext(&fli_domains[num_devices], fli_file_names[num_devices], MAX_PATH, fli_dev_names[num_devices], MAX_PATH);
+			res = FLIListNext(&fli_domains[num_devices], fli_file_names[num_devices], PATH_MAX, fli_dev_names[num_devices], PATH_MAX);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "FLIListNext(-> %d, -> '%s', ->'%s') = %d", fli_domains[num_devices], fli_file_names[num_devices], fli_dev_names[num_devices], res);
 		} while ((res == 0) && (num_devices < MAX_DEVICES));
 	}
@@ -490,7 +486,7 @@ static int find_plugged_device(char *fname) {
 			if (device == NULL) {
 				continue;
 			}
-			if (!strncmp(PRIVATE_DATA->dev_file_name, fli_file_names[dev_no], MAX_PATH)) {
+			if (!strncmp(PRIVATE_DATA->dev_file_name, fli_file_names[dev_no], PATH_MAX)) {
 				found = true;
 				break;
 			}
@@ -499,7 +495,7 @@ static int find_plugged_device(char *fname) {
 			continue;
 		} else {
 			assert(fname!=NULL);
-			strncpy(fname, fli_file_names[dev_no], MAX_PATH);
+			strncpy(fname, fli_file_names[dev_no], PATH_MAX);
 			return dev_no;
 		}
 	}
@@ -535,7 +531,7 @@ static int find_unplugged_device(char *fname) {
 			continue;
 		}
 		for (int dev_no = 0; dev_no < num_devices; dev_no++) {
-			if (!strncmp(PRIVATE_DATA->dev_file_name, fli_file_names[dev_no], MAX_PATH)) {
+			if (!strncmp(PRIVATE_DATA->dev_file_name, fli_file_names[dev_no], PATH_MAX)) {
 				found = true;
 				break;
 			}
@@ -544,7 +540,7 @@ static int find_unplugged_device(char *fname) {
 			continue;
 		} else {
 			assert(fname!=NULL);
-			strncpy(fname, PRIVATE_DATA->dev_file_name, MAX_PATH);
+			strncpy(fname, PRIVATE_DATA->dev_file_name, PATH_MAX);
 			return slot;
 		}
 	}
@@ -569,7 +565,7 @@ static void process_plug_event(indigo_device *unused) {
 		return;
 	}
 
-	char file_name[MAX_PATH];
+	char file_name[PATH_MAX];
 	int idx = find_plugged_device(file_name);
 	if (idx < 0) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No FLI Camera plugged.");
@@ -582,8 +578,8 @@ static void process_plug_event(indigo_device *unused) {
 	fli_private_data *private_data = indigo_safe_malloc(sizeof(fli_private_data));
 	private_data->dev_id = 0;
 	private_data->domain = fli_domains[idx];
-	strncpy(private_data->dev_file_name, fli_file_names[idx], MAX_PATH);
-	strncpy(private_data->dev_name, fli_dev_names[idx], MAX_PATH);
+	strncpy(private_data->dev_file_name, fli_file_names[idx], PATH_MAX);
+	strncpy(private_data->dev_name, fli_dev_names[idx], PATH_MAX);
 	device->private_data = private_data;
 	indigo_attach_device(device);
 	devices[slot]=device;
@@ -593,7 +589,7 @@ static void process_plug_event(indigo_device *unused) {
 static void process_unplug_event(indigo_device *unused) {
 	pthread_mutex_lock(&device_mutex);
 	int slot, id;
-	char file_name[MAX_PATH];
+	char file_name[PATH_MAX];
 	bool removed = false;
 	while ((id = find_unplugged_device(file_name)) != -1) {
 		slot = find_device_slot(file_name);
@@ -653,7 +649,7 @@ static void remove_all_devices() {
 
 static libusb_hotplug_callback_handle callback_handle;
 
-extern void (*debug_ext)(int level, char *format, va_list arg);
+INDIGO_EXTERN void (*debug_ext)(int level, char *format, va_list arg);
 
 static void _debug_ext(int level, char *format, va_list arg) {
 	if (indigo_get_log_level() >= INDIGO_LOG_DEBUG) {

@@ -53,7 +53,7 @@
 #define __SYSNAME__ "Windows"
 #define __LIBFLI_MINOR__ 104
 
-#define snprintf _snprintf
+//#define snprintf _snprintf
 
 #define USB_READ_SIZ_MAX (65535)
 #define USB_MAX_PIPES (10)

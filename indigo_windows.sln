@@ -104,6 +104,14 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_aux_wbprov3", "indig
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_aux_wcv4ec", "indigo_drivers\aux_wcv4ec\indigo_aux_wcv4ec.vcxproj", "{7480E4F5-0BFE-4B76-9A6D-C6B0251EEC19}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libfli", "indigo_drivers\ccd_fli\externals\libfli-1.999.1-180223\windows\libfli.vcxproj", "{EF4B8A79-8ACA-4B90-A36C-BA3E2E727535}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_ccd_fli", "indigo_drivers\ccd_fli\indigo_ccd_fli.vcxproj", "{612227FD-DE31-43DB-9C7C-69DA003D9265}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_focuser_fli", "indigo_drivers\focuser_fli\indigo_focuser_fli.vcxproj", "{3AC3F27F-8763-4533-A948-43373E5DEEF9}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_wheel_fli", "indigo_drivers\wheel_fli\indigo_wheel_fli.vcxproj", "{B2060A29-C06D-4B00-9BAD-8442BDCF31B6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -520,6 +528,38 @@ Global
 		{7480E4F5-0BFE-4B76-9A6D-C6B0251EEC19}.Release|x64.Build.0 = Release|x64
 		{7480E4F5-0BFE-4B76-9A6D-C6B0251EEC19}.Release|x86.ActiveCfg = Release|Win32
 		{7480E4F5-0BFE-4B76-9A6D-C6B0251EEC19}.Release|x86.Build.0 = Release|Win32
+		{EF4B8A79-8ACA-4B90-A36C-BA3E2E727535}.Debug|x64.ActiveCfg = DLL Debug|x64
+		{EF4B8A79-8ACA-4B90-A36C-BA3E2E727535}.Debug|x64.Build.0 = DLL Debug|x64
+		{EF4B8A79-8ACA-4B90-A36C-BA3E2E727535}.Debug|x86.ActiveCfg = DLL Release|Win32
+		{EF4B8A79-8ACA-4B90-A36C-BA3E2E727535}.Debug|x86.Build.0 = DLL Release|Win32
+		{EF4B8A79-8ACA-4B90-A36C-BA3E2E727535}.Release|x64.ActiveCfg = DLL Release|x64
+		{EF4B8A79-8ACA-4B90-A36C-BA3E2E727535}.Release|x64.Build.0 = DLL Release|x64
+		{EF4B8A79-8ACA-4B90-A36C-BA3E2E727535}.Release|x86.ActiveCfg = DLL Release|Win32
+		{EF4B8A79-8ACA-4B90-A36C-BA3E2E727535}.Release|x86.Build.0 = DLL Release|Win32
+		{612227FD-DE31-43DB-9C7C-69DA003D9265}.Debug|x64.ActiveCfg = Debug|x64
+		{612227FD-DE31-43DB-9C7C-69DA003D9265}.Debug|x64.Build.0 = Debug|x64
+		{612227FD-DE31-43DB-9C7C-69DA003D9265}.Debug|x86.ActiveCfg = Debug|Win32
+		{612227FD-DE31-43DB-9C7C-69DA003D9265}.Debug|x86.Build.0 = Debug|Win32
+		{612227FD-DE31-43DB-9C7C-69DA003D9265}.Release|x64.ActiveCfg = Release|x64
+		{612227FD-DE31-43DB-9C7C-69DA003D9265}.Release|x64.Build.0 = Release|x64
+		{612227FD-DE31-43DB-9C7C-69DA003D9265}.Release|x86.ActiveCfg = Release|Win32
+		{612227FD-DE31-43DB-9C7C-69DA003D9265}.Release|x86.Build.0 = Release|Win32
+		{3AC3F27F-8763-4533-A948-43373E5DEEF9}.Debug|x64.ActiveCfg = Debug|x64
+		{3AC3F27F-8763-4533-A948-43373E5DEEF9}.Debug|x64.Build.0 = Debug|x64
+		{3AC3F27F-8763-4533-A948-43373E5DEEF9}.Debug|x86.ActiveCfg = Debug|Win32
+		{3AC3F27F-8763-4533-A948-43373E5DEEF9}.Debug|x86.Build.0 = Debug|Win32
+		{3AC3F27F-8763-4533-A948-43373E5DEEF9}.Release|x64.ActiveCfg = Release|x64
+		{3AC3F27F-8763-4533-A948-43373E5DEEF9}.Release|x64.Build.0 = Release|x64
+		{3AC3F27F-8763-4533-A948-43373E5DEEF9}.Release|x86.ActiveCfg = Release|Win32
+		{3AC3F27F-8763-4533-A948-43373E5DEEF9}.Release|x86.Build.0 = Release|Win32
+		{B2060A29-C06D-4B00-9BAD-8442BDCF31B6}.Debug|x64.ActiveCfg = Debug|x64
+		{B2060A29-C06D-4B00-9BAD-8442BDCF31B6}.Debug|x64.Build.0 = Debug|x64
+		{B2060A29-C06D-4B00-9BAD-8442BDCF31B6}.Debug|x86.ActiveCfg = Debug|Win32
+		{B2060A29-C06D-4B00-9BAD-8442BDCF31B6}.Debug|x86.Build.0 = Debug|Win32
+		{B2060A29-C06D-4B00-9BAD-8442BDCF31B6}.Release|x64.ActiveCfg = Release|x64
+		{B2060A29-C06D-4B00-9BAD-8442BDCF31B6}.Release|x64.Build.0 = Release|x64
+		{B2060A29-C06D-4B00-9BAD-8442BDCF31B6}.Release|x86.ActiveCfg = Release|Win32
+		{B2060A29-C06D-4B00-9BAD-8442BDCF31B6}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

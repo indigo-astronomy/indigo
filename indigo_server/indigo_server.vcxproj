@@ -335,6 +335,9 @@
     <ProjectReference Include="..\indigo_drivers\aux_wbprov3\indigo_aux_wbprov3.vcxproj">
       <Project>{84a7dcac-2f26-4483-9426-ff321598a7ce}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\aux_wcv4ec\indigo_aux_wcv4ec.vcxproj">
+      <Project>{7480e4f5-0bfe-4b76-9a6d-c6b0251eec19}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\indigo_drivers\ccd_altair\indigo_ccd_altair.vcxproj">
       <Project>{72e231d8-8732-41c6-a813-bf061fd9083d}</Project>
     </ProjectReference>
@@ -346,6 +349,12 @@
     </ProjectReference>
     <ProjectReference Include="..\indigo_drivers\ccd_bresser\indigo_ccd_bresser.vcxproj">
       <Project>{028c4593-58b9-4523-af0a-f5ac7d4fba13}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\ccd_fli\externals\libfli-1.999.1-180223\windows\libfli.vcxproj">
+      <Project>{ef4b8a79-8aca-4b90-a36c-ba3e2e727535}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\ccd_fli\indigo_ccd_fli.vcxproj">
+      <Project>{612227fd-de31-43db-9c7c-69da003d9265}</Project>
     </ProjectReference>
     <ProjectReference Include="..\indigo_drivers\ccd_mallin\indigo_ccd_mallin.vcxproj">
       <Project>{b3a3b858-0016-43f5-b4d2-703289885b5b}</Project>

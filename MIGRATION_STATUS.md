@@ -33,6 +33,7 @@ ccd_altair
 ccd_asi
 ccd_atik
 ccd_bresser
+ccd_fli
 ccd_mallin
 ccd_ogma
 ccd_omegonpro
@@ -47,6 +48,7 @@ dome_simulator
 
 focuser_asi
 focuser_astroasis
+focuser_fli
 
 gps_simulator
 
@@ -56,6 +58,7 @@ rotator_simulator
 
 wheel_asi
 wheel_astroasis
+wheel_fli
 wheel_playerone
 
 # IN PROGRESS
@@ -73,7 +76,6 @@ aux_joystick
 
 ccd_apogee
 ccd_dsi
-ccd_fli
 ccd_iidc
 ccd_mi
 ccd_pentax
@@ -101,7 +103,6 @@ focuser_dsd
 focuser_efa
 focuser_fc3
 focuser_fcusb
-focuser_fli
 focuser_focusdreampro
 focuser_ioptron
 focuser_lacerta
@@ -149,7 +150,6 @@ rotator_wa
 system_ascol
 
 wheel_atik
-wheel_fli
 wheel_indigo
 wheel_manual
 wheel_mi
