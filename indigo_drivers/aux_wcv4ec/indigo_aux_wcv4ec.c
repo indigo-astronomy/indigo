@@ -23,22 +23,18 @@
  \file indigo_aux_wcv4ec.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME "indigo_aux_wcv4ec"
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
-#include <termios.h>
-#include <errno.h>
-#include <sys/time.h>
-#include <sys/ioctl.h>
 
 #include <indigo/indigo_driver_xml.h>
-#include <indigo/indigo_io.h>
+#include <indigo/indigo_uni_io.h>
+
 #include "indigo_aux_wcv4ec.h"
 
 #define PRIVATE_DATA												((wcv4ec_private_data *)device->private_data)
@@ -71,7 +67,7 @@
 #define DEVICE_ID "WandererCoverV4"
 
 typedef struct {
-	int handle;
+	indigo_uni_handle *handle;
 	indigo_property *light_switch_property;
 	indigo_property *light_intensity_property;
 	indigo_property *cover_property;
@@ -87,17 +83,16 @@ typedef struct {
 typedef struct {
 	char model_id[1550];
 	char firmware[20];
-	float close_position;
-	float open_position;
-	float current_position;
-	float input_voltage;
+	double close_position;
+	double open_position;
+	double current_position;
+	double input_voltage;
 	int brightness;
 	bool ready;
 } wcv4ec_status_t;
 
 static bool wcv4ec_parse_status(char *status_line, wcv4ec_status_t *status) {
 	char *buf;
-	
 	char* token = strtok_r(status_line, "A", &buf);
 	if (token == NULL) {
 		return false;
@@ -106,37 +101,31 @@ static bool wcv4ec_parse_status(char *status_line, wcv4ec_status_t *status) {
 	if (strcmp(status->model_id, DEVICE_ID)) {
 		return false;
 	}
-	
 	token = strtok_r(NULL, "A", &buf);
 	if (token == NULL) {
 		return false;
 	}
 	strncpy(status->firmware, token, sizeof(status->firmware));
-	
 	token = strtok_r(NULL, "A", &buf);
 	if (token == NULL) {
 		return false;
 	}
 	status->close_position = atof(token);
-	
 	token = strtok_r(NULL, "A", &buf);
 	if (token == NULL) {
 		return false;
 	}
 	status->open_position = atof(token);
-
 	token = strtok_r(NULL, "A", &buf);
 	if (token == NULL) {
 		return false;
 	}
 	status->current_position = atof(token);
-
 	token = strtok_r(NULL, "A", &buf);
 	if (token == NULL) {
 		return false;
 	}
 	status->input_voltage = atof(token);
-
 	/* inctroduced with firmware 20240618 */
 	token = strtok_r(NULL, "A", &buf);
 	if (token != NULL) {
@@ -144,36 +133,31 @@ static bool wcv4ec_parse_status(char *status_line, wcv4ec_status_t *status) {
 	} else {
 		status->brightness = 0;
 	}
-
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "model_id = '%s'\nfirmware = '%s'\nclose_position = %.2f\nopen_position = %.2f\ncurrent_position = %.2f\ninput_voltage = %.2fV\nbrightness = %d/255\ndone = %d\n",
 	status->model_id, status->firmware, status->close_position, status->open_position, status->current_position, status->input_voltage, status->brightness, status->ready);
- 
 	return true;
 }
 
 static bool wcv4ec_read_status(indigo_device *device, wcv4ec_status_t *wc_stat) {
-	char status[256] = {0};
-	tcflush(PRIVATE_DATA->handle, TCIOFLUSH);
+	char status[256] = { 0 };
+	indigo_uni_discard(PRIVATE_DATA->handle);
 	wc_stat->ready = false;
-	int res = indigo_read_line(PRIVATE_DATA->handle, status, 256);
+	long res = indigo_uni_read_line(PRIVATE_DATA->handle, status, 256);
 	if (strncmp(status, DEVICE_ID, strlen(DEVICE_ID))) {   // first part of the message is cleared by tcflush() or "done";
 		if (status[0] == '\0') {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "BRANCH: no id, status= '%s'", status);
-			res = indigo_read_line(PRIVATE_DATA->handle, status, 256);
+			res = indigo_uni_read_line(PRIVATE_DATA->handle, status, 256);
 		}
 		if (!strncmp(status, "done", strlen("done"))) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "BRANCH: done");
 			wc_stat->ready = true;
-			res = indigo_read_line(PRIVATE_DATA->handle, status, 256);
+			res = indigo_uni_read_line(PRIVATE_DATA->handle, status, 256);
 		}
 	}
-	if (res == -1) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No status report");
-		return false;
-	} else {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Read: \"%s\" %d", status, res);
+	if (res > 0) {
 		return wcv4ec_parse_status(status, wc_stat);
 	}
+	return false;
 }
 
 static void aux_update_states(indigo_device *device) {
@@ -207,7 +191,6 @@ static void aux_update_states(indigo_device *device) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME,"Update");
 			indigo_update_property(device, AUX_COVER_PROPERTY, NULL);
 		}
-
 		update = false;
 		if (fabs(AUX_SET_OPEN_CLOSE_OPEN_ITEM->number.value - wc_stat.open_position) > 0.01) {
 			AUX_SET_OPEN_CLOSE_OPEN_ITEM->number.value = wc_stat.open_position;
@@ -225,7 +208,6 @@ static void aux_update_states(indigo_device *device) {
 			indigo_update_property(device, AUX_SET_OPEN_CLOSE_PROPERTY, NULL);
 		}
 	}
-
 	// timeout if open or close get stuck somewhere
 	if (time(NULL) - PRIVATE_DATA->operation_start_time > 60 && PRIVATE_DATA->operation_start_time > 0) {
 		AUX_COVER_CLOSE_ITEM->sw.value = false;
@@ -250,15 +232,11 @@ static void aux_timer_callback(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- Low level communication routines
 static bool wcv4ec_command(indigo_device *device, char *command) {
-	tcflush(PRIVATE_DATA->handle, TCIOFLUSH);
-	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
-	int res = indigo_write(PRIVATE_DATA->handle, "\n", 1);
-	if (res < 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Command %s failed", command);
-		return false;
+	indigo_uni_discard(PRIVATE_DATA->handle);
+	if (indigo_uni_printf(PRIVATE_DATA->handle, "%s\n", command) > 0) {
+		return true;
 	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s", command);
-	return true;
+	return false;
 }
 
 // -------------------------------------------------------------------------------- INDIGO aux device implementation
@@ -274,38 +252,44 @@ static indigo_result aux_attach(indigo_device *device) {
 		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		// -------------------------------------------------------------------------------- AUX_LIGHT_SWITCH
 		AUX_LIGHT_SWITCH_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_MAIN_GROUP, "Light (on/off)", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (AUX_LIGHT_SWITCH_PROPERTY == NULL)
+		if (AUX_LIGHT_SWITCH_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(AUX_LIGHT_SWITCH_ON_ITEM, AUX_LIGHT_SWITCH_ON_ITEM_NAME, "On", false);
 		indigo_init_switch_item(AUX_LIGHT_SWITCH_OFF_ITEM, AUX_LIGHT_SWITCH_OFF_ITEM_NAME, "Off", true);
 		// -------------------------------------------------------------------------------- AUX_LIGHT_INTENSITY
 		AUX_LIGHT_INTENSITY_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_MAIN_GROUP, "Light intensity", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		if (AUX_LIGHT_INTENSITY_PROPERTY == NULL)
+		if (AUX_LIGHT_INTENSITY_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(AUX_LIGHT_INTENSITY_ITEM, AUX_LIGHT_INTENSITY_ITEM_NAME, "Intensity", 0, 255, 1, 50);
 		strcpy(AUX_LIGHT_INTENSITY_ITEM->number.format, "%g");
 		// -------------------------------------------------------------------------------- AUX_COVER
 		AUX_COVER_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_COVER_PROPERTY_NAME, AUX_MAIN_GROUP, "Cover (open/close)", INDIGO_IDLE_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (AUX_COVER_PROPERTY == NULL)
+		if (AUX_COVER_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(AUX_COVER_OPEN_ITEM, AUX_COVER_OPEN_ITEM_NAME, "Open", false);
 		indigo_init_switch_item(AUX_COVER_CLOSE_ITEM, AUX_COVER_CLOSE_ITEM_NAME, "Close", false);
 		// -------------------------------------------------------------------------------- X_COVER_DETECT_OPEN_CLOSE
 		AUX_DETECT_OPEN_CLOSE_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_COVER_DETECT_OPEN_CLOSE", AUX_ADVANCED_GROUP, "Detect cover open/close position", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (AUX_DETECT_OPEN_CLOSE_PROPERTY == NULL)
+		if (AUX_DETECT_OPEN_CLOSE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(AUX_DETECT_OPEN_CLOSE_OPEN_ITEM, AUX_COVER_OPEN_ITEM_NAME, "Detect Open", false);
 		indigo_init_switch_item(AUX_DETECT_OPEN_CLOSE_CLOSE_ITEM, AUX_COVER_CLOSE_ITEM_NAME, "Detect Close", false);
 		// -------------------------------------------------------------------------------- X_COVER_SET_OPEN_CLOSE
 		AUX_SET_OPEN_CLOSE_PROPERTY = indigo_init_number_property(NULL, device->name, "X_COVER_SET_OPEN_CLOSE", AUX_ADVANCED_GROUP, "Set cover open/close position", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
-		if (AUX_SET_OPEN_CLOSE_PROPERTY == NULL)
+		if (AUX_SET_OPEN_CLOSE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(AUX_SET_OPEN_CLOSE_OPEN_ITEM, AUX_COVER_OPEN_ITEM_NAME, "Set Open [°]", 0, 290, 1, 110);
 		indigo_init_number_item(AUX_SET_OPEN_CLOSE_CLOSE_ITEM, AUX_COVER_CLOSE_ITEM_NAME, "Set Close [°]", 0, 290, 1, 22);
 		// -------------------------------------------------------------------------------- X_HEATER
 		AUX_HEATER_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_HEATER", AUX_MAIN_GROUP, "Heater", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
-		if (AUX_HEATER_PROPERTY == NULL)
+		if (AUX_HEATER_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(AUX_HEATER_OFF_ITEM, "OFF", "Off", true);
 		indigo_init_switch_item(AUX_HEATER_LOW_ITEM, "LOW", "Low", false);
 		indigo_init_switch_item(AUX_HEATER_HIGH_ITEM, "HIGH", "High", false);
@@ -349,8 +333,8 @@ static void aux_connection_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		wcv4ec_status_t wc_stat = {0};
-		PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200);
-		if (PRIVATE_DATA->handle > 0) {
+		PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200, INDIGO_LOG_DEBUG);
+		if (PRIVATE_DATA->handle != NULL) {
 			indigo_sleep(1);
 			if (wcv4ec_read_status(device, &wc_stat)) {
 				if (!strcmp(wc_stat.model_id, DEVICE_ID)) {
@@ -359,16 +343,14 @@ static void aux_connection_handler(indigo_device *device) {
 					indigo_update_property(device, INFO_PROPERTY, NULL);
 				} else {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Device is not WandererCover V4-EC");
-					close(PRIVATE_DATA->handle);
-					PRIVATE_DATA->handle = 0;
+					indigo_uni_close(&PRIVATE_DATA->handle);
 				}
 			} else {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Device is not WandererCover V4-EC");
-				close(PRIVATE_DATA->handle);
-				PRIVATE_DATA->handle = 0;
+				indigo_uni_close(&PRIVATE_DATA->handle);
 			}
 		}
-		if (PRIVATE_DATA->handle > 0) {
+		if (PRIVATE_DATA->handle != NULL) {
 			PRIVATE_DATA->operation_start_time = 0;
 			if (wc_stat.brightness > 0) {
 				AUX_LIGHT_SWITCH_ON_ITEM->sw.value = true;
@@ -380,14 +362,12 @@ static void aux_connection_handler(indigo_device *device) {
 				AUX_LIGHT_SWITCH_OFF_ITEM->sw.value = true;
 				AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_OK_STATE;
 			}
-
 			wcv4ec_command(device, "2000"); // turn the heater off as the state is not known
 			AUX_HEATER_OFF_ITEM->sw.value = true;
 			AUX_HEATER_LOW_ITEM->sw.value = false;
 			AUX_HEATER_HIGH_ITEM->sw.value = false;
 			AUX_HEATER_MAX_ITEM->sw.value = false;
 			AUX_HEATER_PROPERTY->state = INDIGO_OK_STATE;
-
 			indigo_define_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
 			indigo_define_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
 			indigo_define_property(device, AUX_COVER_PROPERTY, NULL);
@@ -415,8 +395,7 @@ static void aux_connection_handler(indigo_device *device) {
 		indigo_update_property(device, INFO_PROPERTY, NULL);
 		wcv4ec_command(device, "9999"); // turn light off
 		wcv4ec_command(device, "2000"); // turn the heater off
-		close(PRIVATE_DATA->handle);
-		PRIVATE_DATA->handle = 0;
+		indigo_uni_close(&PRIVATE_DATA->handle);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Disconnected");
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
@@ -493,9 +472,9 @@ static void aux_detect_open_close_handler(indigo_device *device) {
 	if (success) {
 		PRIVATE_DATA->operation_running = true; // let the status callback set correct open/close when we are done
 		char status_line[128] = {0};
-		tcflush(PRIVATE_DATA->handle, TCIOFLUSH);
+		indigo_uni_discard(PRIVATE_DATA->handle);
 		do {
-			indigo_read_line(PRIVATE_DATA->handle, status_line, 128);
+			indigo_uni_read_line(PRIVATE_DATA->handle, status_line, 128);
 		} while (strncmp(status_line, "OpenSet", strlen("OpenSet")) && strncmp(status_line, "CloseSet", strlen("CloseSet")));
 		AUX_DETECT_OPEN_CLOSE_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
@@ -566,8 +545,9 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	assert(property != NULL);
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
-		if (indigo_ignore_connection_change(device, property))
+		if (indigo_ignore_connection_change(device, property)) {
 			return INDIGO_OK;
+		}
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);

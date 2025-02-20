@@ -332,6 +332,9 @@
     <ProjectReference Include="..\indigo_drivers\aux_wbplusv3\indigo_aux_wbplusv3.vcxproj">
       <Project>{d9bdb240-4c75-4a37-9902-8b99662e2e4a}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\aux_wbprov3\indigo_aux_wbprov3.vcxproj">
+      <Project>{84a7dcac-2f26-4483-9426-ff321598a7ce}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\indigo_drivers\ccd_altair\indigo_ccd_altair.vcxproj">
       <Project>{72e231d8-8732-41c6-a813-bf061fd9083d}</Project>
     </ProjectReference>
