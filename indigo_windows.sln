@@ -100,6 +100,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_aux_usbdp", "indigo_
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_aux_wbplusv3", "indigo_drivers\aux_wbplusv3\indigo_aux_wbplusv3.vcxproj", "{D9BDB240-4C75-4A37-9902-8B99662E2E4A}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_aux_wbprov3", "indigo_drivers\aux_wbprov3\indigo_aux_wbprov3.vcxproj", "{84A7DCAC-2F26-4483-9426-FF321598A7CE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -500,6 +502,14 @@ Global
 		{D9BDB240-4C75-4A37-9902-8B99662E2E4A}.Release|x64.Build.0 = Release|x64
 		{D9BDB240-4C75-4A37-9902-8B99662E2E4A}.Release|x86.ActiveCfg = Release|Win32
 		{D9BDB240-4C75-4A37-9902-8B99662E2E4A}.Release|x86.Build.0 = Release|Win32
+		{84A7DCAC-2F26-4483-9426-FF321598A7CE}.Debug|x64.ActiveCfg = Debug|x64
+		{84A7DCAC-2F26-4483-9426-FF321598A7CE}.Debug|x64.Build.0 = Debug|x64
+		{84A7DCAC-2F26-4483-9426-FF321598A7CE}.Debug|x86.ActiveCfg = Debug|Win32
+		{84A7DCAC-2F26-4483-9426-FF321598A7CE}.Debug|x86.Build.0 = Debug|Win32
+		{84A7DCAC-2F26-4483-9426-FF321598A7CE}.Release|x64.ActiveCfg = Release|x64
+		{84A7DCAC-2F26-4483-9426-FF321598A7CE}.Release|x64.Build.0 = Release|x64
+		{84A7DCAC-2F26-4483-9426-FF321598A7CE}.Release|x86.ActiveCfg = Release|Win32
+		{84A7DCAC-2F26-4483-9426-FF321598A7CE}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

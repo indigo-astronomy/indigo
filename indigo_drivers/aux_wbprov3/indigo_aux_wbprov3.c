@@ -23,23 +23,17 @@
  \file indigo_aux_wbprov3.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_aux_wbprov3"
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
-#include <errno.h>
 #include <pthread.h>
-#include <stdarg.h>
-#include <sys/time.h>
-#include <sys/termios.h>
-
 
 #include <indigo/indigo_driver_xml.h>
-#include <indigo/indigo_io.h>
+#include <indigo/indigo_uni_io.h>
 
 #include "indigo_aux_wbprov3.h"
 
@@ -108,7 +102,7 @@
 #define DEVICE_ID "ZXWBProV3"
 
 typedef struct {
-	int handle;
+	indigo_uni_handle *handle;
 	indigo_timer *aux_timer;
 	indigo_property *outlet_names_property;
 	indigo_property *power_outlet_property;
@@ -128,15 +122,15 @@ typedef struct {
 typedef struct {
 	char model_id[50];
 	char firmware[20];
-	float probe1_temperature;
-	float probe2_temperature;
-	float probe3_temperature;
-	float dht22_hunidity;
-	float dht22_temperature;
-	float input_current;
-	float dc2_current;
-	float dc3_4_current;
-	float input_voltage;
+	double probe1_temperature;
+	double probe2_temperature;
+	double probe3_temperature;
+	double dht22_hunidity;
+	double dht22_temperature;
+	double input_current;
+	double dc2_current;
+	double dc3_4_current;
+	double input_voltage;
 	bool usb31_1_status;
 	bool usb31_2_status;
 	bool usb31_3_status;
@@ -148,12 +142,11 @@ typedef struct {
 	uint8_t dc7_pwm;
 	bool dc8_9_status;
 	bool dc10_11_status;
-	float dc3_4_voltage;
+	double dc3_4_voltage;
 } wbprov3_status_t;
 
 int wbprov3_parse_status(char *status_line, wbprov3_status_t *status) {
 	char *buf;
-	
 	char* token = strtok_r(status_line, "A", &buf);
 	if (token == NULL) {
 		return false;
@@ -162,31 +155,26 @@ int wbprov3_parse_status(char *status_line, wbprov3_status_t *status) {
 	if (strcmp(status->model_id, DEVICE_ID)) {
 		return false;
 	}
-	
 	token = strtok_r(NULL, "A", &buf);
 	if (token == NULL) {
 		return false;
 	}
 	strncpy(status->firmware, token, sizeof(status->firmware));
-	
 	token = strtok_r(NULL, "A", &buf);
 	if (token == NULL) {
 		return false;
 	}
 	status->probe1_temperature = atof(token);
-	
 	token = strtok_r(NULL, "A", &buf);
 	if (token == NULL) {
 		return false;
 	}
 	status->probe2_temperature = atof(token);
-	
 	token = strtok_r(NULL, "A", &buf);
 	if (token == NULL) {
 		return false;
 	}
 	status->probe3_temperature = atof(token);
-	
 	token = strtok_r(NULL, "A", &buf);
 	if (token == NULL) {
 		return false;
@@ -196,7 +184,6 @@ int wbprov3_parse_status(char *status_line, wbprov3_status_t *status) {
 	} else {
 		status->dht22_hunidity = atof(token);
 	}
-	
 	token = strtok_r(NULL, "A", &buf);
 	if (token == NULL) {
 		return false;
@@ -206,161 +193,111 @@ int wbprov3_parse_status(char *status_line, wbprov3_status_t *status) {
 	} else {
 		status->dht22_temperature = atof(token);
 	}
-
 	token = strtok_r(NULL, "A", &buf);
 	if (token == NULL) {
 		return false;
 	}
 	status->input_current = atof(token);
-	
-	
 	token = strtok_r(NULL, "A", &buf);
 	if (token == NULL) {
 		return false;
 	}
 	status->dc2_current = atof(token);
-	
-	
 	token = strtok_r(NULL, "A", &buf);
 	if (token == NULL) {
 		return false;
 	}
 	status->dc3_4_current = atof(token);
-	
 	token = strtok_r(NULL, "A", &buf);
 	if (token == NULL) {
 		return false;
 	}
 	status->input_voltage = atof(token);
-	
 	token = strtok_r(NULL, "A", &buf);
 	if (token == NULL) {
 		return false;
 	}
 	status->usb31_1_status = atoi(token);
-	
 	token = strtok_r(NULL, "A", &buf);
 	if (token == NULL) {
 		return false;
 	}
 	status->usb31_2_status = atoi(token);
-	
 	token = strtok_r(NULL, "A", &buf);
 	if (token == NULL) {
 		return false;
 	}
 	status->usb31_3_status = atoi(token);
-	
 	token = strtok_r(NULL, "A", &buf);
 	if (token == NULL) {
 		return false;
 	}
 	status->usb20_1_3_status = atoi(token);
-	
 	token = strtok_r(NULL, "A", &buf);
 	if (token == NULL) {
 		return false;
 	}
 	status->usb20_4_6_status = atoi(token);
-	
 	token = strtok_r(NULL, "A", &buf);
 	if (token == NULL) {
 		return false;
 	}
 	status->dc3_4_status = atoi(token);
-	
 	token = strtok_r(NULL, "A", &buf);
 	if (token == NULL) {
 		return false;
 	}
 	status->dc5_pwm = atoi(token);
-	
 	token = strtok_r(NULL, "A", &buf);
 	if (token == NULL) {
 		return false;
 	}
 	status->dc6_pwm = atoi(token);
-	
 	token = strtok_r(NULL, "A", &buf);
 	if (token == NULL) {
 		return false;
 	}
 	status->dc7_pwm = atoi(token);
-	
 	token = strtok_r(NULL, "A", &buf);
 	if (token == NULL) {
 		return false;
 	}
 	status->dc8_9_status = atoi(token);
-	
 	token = strtok_r(NULL, "A", &buf);
 	if (token == NULL) {
 		return false;
 	}
 	status->dc10_11_status = atoi(token);
-	
 	token = strtok_r(NULL, "A", &buf);
 	if (token == NULL) {
 		return false;
 	}
 	status->dc3_4_voltage = atof(token)/10.0;
-	
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "model_id = '%s'\nfirmware = '%s'\nprobe1_temperature = %.2fC\nprobe2_temperature = %.2fC\nprobe3_temperature = %.2fC\ndht22_hunidity = %.2f%%\ndht22_temperature = %.2fC\ninput_current = %.2fA\ndc2_current = %.2fA\ndc3_4_current = %.2fA\ninput_voltage = %.2fV\nusb31_1_status = %d\nusb31_2_status = %d\nusb31_3_status = %d\nusb20_1_3_status = %d\nusb20_4_6_status = %d\ndc3_4_status = %d\ndc5_pwm = %d\ndc6_pwm = %d\ndc7_pwm = %d\ndc8_9_status = %d\ndc10_11_status = %d\ndc3_4_voltage = %.1fV\n",
-		status->model_id,
-		status->firmware,
-		status->probe1_temperature,
-		status->probe2_temperature,
-		status->probe3_temperature,
-		status->dht22_hunidity,
-		status->dht22_temperature,
-		status->input_current,
-		status->dc2_current,
-		status->dc3_4_current,
-		status->input_voltage,
-		status->usb31_1_status,
-		status->usb31_2_status,
-		status->usb31_3_status,
-		status->usb20_1_3_status,
-		status->usb20_4_6_status,
-		status->dc3_4_status,
-		status->dc5_pwm,
-		status->dc6_pwm,
-		status->dc7_pwm,
-		status->dc8_9_status,
-		status->dc10_11_status,
-		status->dc3_4_voltage
-	); 
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "model_id = '%s'\nfirmware = '%s'\nprobe1_temperature = %.2fC\nprobe2_temperature = %.2fC\nprobe3_temperature = %.2fC\ndht22_hunidity = %.2f%%\ndht22_temperature = %.2fC\ninput_current = %.2fA\ndc2_current = %.2fA\ndc3_4_current = %.2fA\ninput_voltage = %.2fV\nusb31_1_status = %d\nusb31_2_status = %d\nusb31_3_status = %d\nusb20_1_3_status = %d\nusb20_4_6_status = %d\ndc3_4_status = %d\ndc5_pwm = %d\ndc6_pwm = %d\ndc7_pwm = %d\ndc8_9_status = %d\ndc10_11_status = %d\ndc3_4_voltage = %.1fV\n", status->model_id, status->firmware, status->probe1_temperature, status->probe2_temperature, status->probe3_temperature, status->dht22_hunidity, status->dht22_temperature, status->input_current, status->dc2_current, status->dc3_4_current, status->input_voltage, status->usb31_1_status, status->usb31_2_status, status->usb31_3_status, status->usb20_1_3_status, status->usb20_4_6_status, status->dc3_4_status, status->dc5_pwm, status->dc6_pwm, status->dc7_pwm, status->dc8_9_status, status->dc10_11_status, status->dc3_4_voltage);
 	return true;
 }
 
 static bool wbprov3_read_status(indigo_device *device, wbprov3_status_t *wb_stat) {
-	char status[256] = {0};
-	tcflush(PRIVATE_DATA->handle, TCIOFLUSH);
-	int res = indigo_read_line(PRIVATE_DATA->handle, status, 256);
+	char status[256] = { 0 };
+	indigo_uni_discard(PRIVATE_DATA->handle);
+	long res = indigo_uni_read_line(PRIVATE_DATA->handle, status, 256);
 	if (strncmp(status, DEVICE_ID, strlen(DEVICE_ID))) {   // first part of the message is cleared by tcflush();
-		res = indigo_read_line(PRIVATE_DATA->handle, status, 256);
+		res = indigo_uni_read_line(PRIVATE_DATA->handle, status, 256);
 	}
-	if (res == -1) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "No status report");
-		return false;
-	} else {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Read: \"%s\" %d", status, res);
+	if (res > 0) {
 		return wbprov3_parse_status(status, wb_stat);
 	}
+	return false;
 }
 
 // -------------------------------------------------------------------------------- Low level communication routines
 
 static bool wbprov3_command(indigo_device *device, char *command) {
-	tcflush(PRIVATE_DATA->handle, TCIOFLUSH);
-	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
-	int res = indigo_write(PRIVATE_DATA->handle, "\n", 1);
-	if (res < 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Command %s failed", command);
-		return false;
+	indigo_uni_discard(PRIVATE_DATA->handle);
+	if (indigo_uni_printf(PRIVATE_DATA->handle, "%s\n", command) > 0) {
+		return true;
 	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s", command);
-	return true;
+	return false;
 }
 
 // -------------------------------------------------------------------------------- INDIGO aux device implementation
@@ -610,8 +547,8 @@ static void aux_timer_callback(indigo_device *device) {
 static void aux_connection_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200);
-		if (PRIVATE_DATA->handle > 0) {
+		PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200, INDIGO_LOG_DEBUG);
+		if (PRIVATE_DATA->handle != NULL) {
 			indigo_sleep(1);
 			wbprov3_status_t wb_stat;
 			if (wbprov3_read_status(device, &wb_stat)) {
@@ -621,16 +558,14 @@ static void aux_connection_handler(indigo_device *device) {
 					indigo_update_property(device, INFO_PROPERTY, NULL);
 				} else {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Device is not WandererBox Pro V3");
-					close(PRIVATE_DATA->handle);
-					PRIVATE_DATA->handle = 0;
+					indigo_uni_close(&PRIVATE_DATA->handle);
 				}
 			} else {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Device is not WandererBox Pro V3 1");
-				close(PRIVATE_DATA->handle);
-				PRIVATE_DATA->handle = 0;
+				indigo_uni_close(&PRIVATE_DATA->handle);
 			}
 		}
-		if (PRIVATE_DATA->handle > 0) {
+		if (PRIVATE_DATA->handle != NULL) {
 			indigo_define_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
 			indigo_define_property(device, AUX_POWER_OUTLET_VOLTAGE_PROPERTY, NULL);
 			indigo_define_property(device, AUX_POWER_OUTLET_CURRENT_PROPERTY, NULL);
@@ -666,10 +601,9 @@ static void aux_connection_handler(indigo_device *device) {
 		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		indigo_update_property(device, INFO_PROPERTY, NULL);
 
-		if (PRIVATE_DATA->handle > 0) {
+		if (PRIVATE_DATA->handle != NULL) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Disconnected");
-			close(PRIVATE_DATA->handle);
-			PRIVATE_DATA->handle = 0;
+			indigo_uni_close(&PRIVATE_DATA->handle);
 		}
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
