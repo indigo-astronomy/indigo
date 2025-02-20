@@ -155,7 +155,7 @@ static bool upb_command(indigo_device *device, char *command, char *response, in
 			}
 		}
 	}
-	return true;
+	return false;
 }
 
 static void upb_open(indigo_device *device) {

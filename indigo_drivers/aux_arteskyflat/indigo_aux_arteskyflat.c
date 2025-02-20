@@ -60,7 +60,7 @@ static bool artesky_command(indigo_device *device, char *command, char *response
 			}
 		}
 	}
-	return true;
+	return false;
 }
 
 // -------------------------------------------------------------------------------- INDIGO aux device implementation

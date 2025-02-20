@@ -90,7 +90,7 @@ static bool uch_command(indigo_device *device, char *command, char *response, in
 			}
 		}
 	}
-	return true;
+	return false;
 }
 
 // -------------------------------------------------------------------------------- INDIGO aux device implementation

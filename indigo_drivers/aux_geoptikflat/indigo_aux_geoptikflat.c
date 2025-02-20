@@ -63,7 +63,7 @@ static bool goflat_command(indigo_uni_handle *handle, char *command, char *respo
 			}
 		}
 	}
-	return true;
+	return false;
 }
 
 static bool goflat_ping(indigo_uni_handle *handle) {

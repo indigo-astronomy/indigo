@@ -83,7 +83,7 @@ static bool sqm_command(indigo_device *device, const char *command, char *respon
 		}
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-	return true;
+	return false;
 }
 
 static void sqm_close(indigo_device *device) {
