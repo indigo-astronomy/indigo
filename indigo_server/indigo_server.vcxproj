@@ -389,6 +389,9 @@
     <ProjectReference Include="..\indigo_drivers\focuser_astroasis\indigo_focuser_astroasis.vcxproj">
       <Project>{255a446f-c41e-4846-95d2-398422d68025}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\focuser_fli\indigo_focuser_fli.vcxproj">
+      <Project>{3ac3f27f-8763-4533-a948-43373e5deef9}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\indigo_drivers\rotator_simulator\indigo_rotator_simulator.vcxproj">
       <Project>{88bcddef-e256-437d-a5ad-9ef58e6752fa}</Project>
     </ProjectReference>
@@ -397,6 +400,9 @@
     </ProjectReference>
     <ProjectReference Include="..\indigo_drivers\wheel_astroasis\indigo_wheel_astroasis.vcxproj">
       <Project>{ae6d9352-9c40-4a7f-88f3-7343003f7cd6}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\wheel_fli\indigo_wheel_fli.vcxproj">
+      <Project>{b2060a29-c06d-4b00-9bad-8442bdcf31b6}</Project>
     </ProjectReference>
     <ProjectReference Include="..\indigo_drivers\wheel_playerone\indigo_wheel_playerone.vcxproj">
       <Project>{44f16a32-7552-4113-93a0-fbf9537dc783}</Project>
