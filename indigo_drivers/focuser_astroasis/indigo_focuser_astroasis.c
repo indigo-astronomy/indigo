@@ -334,51 +334,58 @@ static indigo_result focuser_attach(indigo_device *device) {
 
 		// BEEP_ON_POWER_UP_PROPERTY
 		BEEP_ON_POWER_UP_PROPERTY = indigo_init_switch_property(NULL, device->name, BEEP_ON_POWER_UP_PROPERTY_NAME, "Advanced", "Beep on power up", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (BEEP_ON_POWER_UP_PROPERTY == NULL)
+		if (BEEP_ON_POWER_UP_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 
 		indigo_init_switch_item(BEEP_ON_POWER_UP_ON_ITEM, BEEP_ON_POWER_UP_ON_ITEM_NAME, "On", false);
 		indigo_init_switch_item(BEEP_ON_POWER_UP_OFF_ITEM, BEEP_ON_POWER_UP_OFF_ITEM_NAME, "Off", true);
 
 		// BEEP_ON_MOVE_PROPERTY
 		BEEP_ON_MOVE_PROPERTY = indigo_init_switch_property(NULL, device->name, BEEP_ON_MOVE_PROPERTY_NAME, "Advanced", "Beep on move", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (BEEP_ON_MOVE_PROPERTY == NULL)
+		if (BEEP_ON_MOVE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 
 		indigo_init_switch_item(BEEP_ON_MOVE_ON_ITEM, BEEP_ON_MOVE_ON_ITEM_NAME, "On", false);
 		indigo_init_switch_item(BEEP_ON_MOVE_OFF_ITEM, BEEP_ON_MOVE_OFF_ITEM_NAME, "Off", true);
 
 		// BACKLASH_DIRECTION_PROPERTY
 		BACKLASH_DIRECTION_PROPERTY = indigo_init_switch_property(NULL, device->name, BACKLASH_DIRECTION_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Backlash compensation overshot direction", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (BACKLASH_DIRECTION_PROPERTY == NULL)
+		if (BACKLASH_DIRECTION_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 
 		indigo_init_switch_item(BACKLASH_DIRECTION_IN_ITEM, BACKLASH_DIRECTION_IN_ITEM_NAME, "Inward", false);
 		indigo_init_switch_item(BACKLASH_DIRECTION_OUT_ITEM, BACKLASH_DIRECTION_OUT_ITEM_NAME, "Outward", true);
 
 		// CUSTOM_SUFFIX_PROPERTY
 		CUSTOM_SUFFIX_PROPERTY = indigo_init_text_property(NULL, device->name, CUSTOM_SUFFIX_PROPERTY_NAME, "Advanced", "Device name custom suffix", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		if (CUSTOM_SUFFIX_PROPERTY == NULL)
+		if (CUSTOM_SUFFIX_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_text_item(CUSTOM_SUFFIX_ITEM, CUSTOM_SUFFIX_NAME, "Suffix", PRIVATE_DATA->custom_suffix);
 
 		// BLUETOOTH_PROPERTY
 		BLUETOOTH_PROPERTY = indigo_init_switch_property(NULL, device->name, BLUETOOTH_PROPERTY_NAME, "Advanced", "Bluetooth", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (BLUETOOTH_PROPERTY == NULL)
+		if (BLUETOOTH_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(BLUETOOTH_ON_ITEM, BLUETOOTH_ON_ITEM_NAME, "Enabled", false);
 		indigo_init_switch_item(BLUETOOTH_OFF_ITEM, BLUETOOTH_OFF_ITEM_NAME, "Disabled", true);
 
 		// BLUETOOTH_NAME_PROPERTY
 		BLUETOOTH_NAME_PROPERTY = indigo_init_text_property(NULL, device->name, BLUETOOTH_NAME_PROPERTY_NAME, "Advanced", "Bluetooth name", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		if (BLUETOOTH_NAME_PROPERTY == NULL)
+		if (BLUETOOTH_NAME_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_text_item(BLUETOOTH_NAME_ITEM, BLUETOOTH_NAME_NAME, "Bluetooth name", PRIVATE_DATA->bluetooth_name);
 
 		// FACTORY_RESET_PROPERTY
 		FACTORY_RESET_PROPERTY = indigo_init_switch_property(NULL, device->name, FACTORY_RESET_PROPERTY_NAME, "Advanced", "Factory reset", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
-		if (FACTORY_RESET_PROPERTY == NULL)
+		if (FACTORY_RESET_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(FACTORY_RESET_ITEM, FACTORY_RESET_ITEM_NAME, "Reset", false);
 		sprintf(FACTORY_RESET_ITEM->hints, "warn_on_set:\"Confirm focuser factory reset?\";");
 

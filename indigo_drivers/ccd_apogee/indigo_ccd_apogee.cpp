@@ -652,23 +652,27 @@ static indigo_result ccd_attach(indigo_device *device) {
 
 		// ---------------------------------------------------------------------------------
 		APG_ADC_SPEED_PROPERTY = indigo_init_switch_property(NULL, device->name, "APG_ADC_SPEED", CCD_ADVANCED_GROUP, "ADC speed", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (APG_ADC_SPEED_PROPERTY == NULL)
+		if (APG_ADC_SPEED_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 			/* will be populated on connect */
 		// ----------------------------------------------------------------------------------
 		APG_FAN_SPEED_PROPERTY = indigo_init_switch_property(NULL, device->name, "APG_FAN_SPEED", CCD_COOLER_GROUP, "Fan speed", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
-		if (APG_FAN_SPEED_PROPERTY == NULL)
+		if (APG_FAN_SPEED_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 			/* will be populated on connect */
 		// ----------------------------------------------------------------------------------
 		APG_GAIN_PROPERTY = indigo_init_number_property(NULL, device->name, "APG_GAIN", CCD_ADVANCED_GROUP, "Gain", INDIGO_OK_STATE, INDIGO_RW_PERM, 4);
-		if (APG_GAIN_PROPERTY == NULL)
+		if (APG_GAIN_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 			/* will be populated on connect */
 		// ----------------------------------------------------------------------------------
 		APG_OFFSET_PROPERTY = indigo_init_number_property(NULL, device->name, "APG_OFFSET", CCD_ADVANCED_GROUP, "Offset", INDIGO_OK_STATE, INDIGO_RW_PERM, 4);
-		if (APG_OFFSET_PROPERTY == NULL)
+		if (APG_OFFSET_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 			/* will be populated on connect */
 		// ----------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);

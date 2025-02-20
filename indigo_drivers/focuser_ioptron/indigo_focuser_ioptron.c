@@ -158,8 +158,9 @@ static indigo_result focuser_attach(indigo_device *device) {
 	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- ZERO_SYNC
 		X_FOCUSER_ZERO_SYNC_PROPERTY = indigo_init_switch_property(NULL, device->name, "ZERO_SYNC", FOCUSER_MAIN_GROUP, "Sync position", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
-		if (X_FOCUSER_ZERO_SYNC_PROPERTY == NULL)
+		if (X_FOCUSER_ZERO_SYNC_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(X_FOCUSER_ZERO_SYNC_ITEM, "SYNC", "Sync to 0", false);
 
 		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS

@@ -89,14 +89,16 @@ static indigo_result focuser_attach(indigo_device *device) {
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		X_FOCUSER_STEPPING_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_FOCUSER_STEPPING_MODE", FOCUSER_MAIN_GROUP, "Stepping mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
-		if (X_FOCUSER_STEPPING_MODE_PROPERTY == NULL)
+		if (X_FOCUSER_STEPPING_MODE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(X_FOCUSER_STEPPING_MODE_WAVE_ITEM, "WAVE", "Wave", false);
 		indigo_init_switch_item(X_FOCUSER_STEPPING_MODE_HALF_ITEM, "HALF", "Half", false);
 		indigo_init_switch_item(X_FOCUSER_STEPPING_MODE_FULL_ITEM, "FULL", "Full", true);
 		X_FOCUSER_PHASE_WIRING_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_FOCUSER_PHASE_WIRING", FOCUSER_MAIN_GROUP, "Phase wiring", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
-		if (X_FOCUSER_PHASE_WIRING_PROPERTY == NULL)
+		if (X_FOCUSER_PHASE_WIRING_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(X_FOCUSER_PHASE_WIRING_0_ITEM, "0", "0", true);
 		indigo_init_switch_item(X_FOCUSER_PHASE_WIRING_1_ITEM, "1", "1", false);
 		indigo_init_switch_item(X_FOCUSER_PHASE_WIRING_2_ITEM, "2", "2", false);

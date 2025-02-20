@@ -365,20 +365,23 @@ static indigo_result mount_attach(indigo_device *device) {
 
 		// CORRECTION_SPEED
 		CORRECTION_SPEED_PROPERTY = indigo_init_number_property(NULL, device->name, CORRECTION_SPEED_PROPERTY_NAME, CCD_ADVANCED_GROUP, "Correction speed", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
-		if (CORRECTION_SPEED_PROPERTY == NULL)
+		if (CORRECTION_SPEED_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(CORRECTION_SPEED_RA_ITEM, CORRECTION_SPEED_RA_ITEM_NAME, "RA speed (10% - 90%)", 10, 90, 1, 50);
 		indigo_init_number_item(CORRECTION_SPEED_DEC_ITEM, CORRECTION_SPEED_DEC_ITEM_NAME, "Dec speed (10% - 90%)", 10, 90, 1, 50);
 		// HIGH_SPEED
 		HIGH_SPEED_PROPERTY = indigo_init_switch_property(NULL, device->name, HIGH_SPEED_PROPERTY_NAME, CCD_ADVANCED_GROUP, "High-speed or High-voltage config", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (HIGH_SPEED_PROPERTY == NULL)
+		if (HIGH_SPEED_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(HIGH_SPEED_LOW_ITEM, HIGH_SPEED_LOW_ITEM_NAME, "12V or Low-speed", true);
 		indigo_init_switch_item(HIGH_SPEED_HIGH_ITEM, HIGH_SPEED_HIGH_ITEM_NAME, "24V or High-speed", false);
 		// ZENITH
 		ZENITH_PROPERTY = indigo_init_switch_property(NULL, device->name, ZENITH_PROPERTY_NAME, CCD_ADVANCED_GROUP, "Sync zenith", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 2);
-		if (ZENITH_PROPERTY == NULL)
+		if (ZENITH_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(ZENITH_EAST_ITEM, ZENITH_EAST_ITEM_NAME, "East zenith", false);
 		indigo_init_switch_item(ZENITH_WEST_ITEM, ZENITH_WEST_ITEM_NAME, "West zenith", false);
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;

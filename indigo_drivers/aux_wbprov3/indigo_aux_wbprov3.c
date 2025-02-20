@@ -313,8 +313,9 @@ static indigo_result aux_attach(indigo_device *device) {
 		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		// -------------------------------------------------------------------------------- OUTLET_NAMES
 		AUX_OUTLET_NAMES_PROPERTY = indigo_init_text_property(NULL, device->name, AUX_OUTLET_NAMES_PROPERTY_NAME, AUX_GROUP, "Outlet names", INDIGO_OK_STATE, INDIGO_RW_PERM, 6);
-		if (AUX_OUTLET_NAMES_PROPERTY == NULL)
+		if (AUX_OUTLET_NAMES_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_text_item(AUX_POWER_OUTLET_NAME_1_ITEM, AUX_POWER_OUTLET_NAME_1_ITEM_NAME, "Regulated outlets (DC3-DC4)", "Regulated outlets");
 		indigo_init_text_item(AUX_HEATER_OUTLET_NAME_1_ITEM, AUX_HEATER_OUTLET_NAME_1_ITEM_NAME, "Heater outlet (DC5)", "Heater outlet");
 		indigo_init_text_item(AUX_HEATER_OUTLET_NAME_2_ITEM, AUX_HEATER_OUTLET_NAME_2_ITEM_NAME, "Heater outlet (DC6)", "Heater outlet");
@@ -323,26 +324,30 @@ static indigo_result aux_attach(indigo_device *device) {
 		indigo_init_text_item(AUX_POWER_OUTLET_NAME_3_ITEM, AUX_POWER_OUTLET_NAME_3_ITEM_NAME, "Power outlets (DC10-DC11)", "Power outlets");
 		// -------------------------------------------------------------------------------- POWER_OUTLET
 		AUX_POWER_OUTLET_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_POWER_OUTLET_PROPERTY_NAME, AUX_GROUP, "Power outlets", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 3);
-		if (AUX_POWER_OUTLET_PROPERTY == NULL)
+		if (AUX_POWER_OUTLET_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(AUX_POWER_OUTLET_1_ITEM, AUX_POWER_OUTLET_1_ITEM_NAME, "Regulated outlets (DC3-DC4)", true);
 		indigo_init_switch_item(AUX_POWER_OUTLET_2_ITEM, AUX_POWER_OUTLET_2_ITEM_NAME, "Power outlets (DC8-DC9)", true);
 		indigo_init_switch_item(AUX_POWER_OUTLET_3_ITEM, AUX_POWER_OUTLET_3_ITEM_NAME, "Power outlets (DC10-DC11)", true);
 		// -------------------------------------------------------------------------------- POWER_OUTLET_VOLTAGE
 		AUX_POWER_OUTLET_VOLTAGE_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_POWER_OUTLET_VOLTAGE_PROPERTY_NAME, AUX_GROUP, "Regulated outlets voltage", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		if (AUX_POWER_OUTLET_VOLTAGE_PROPERTY == NULL)
+		if (AUX_POWER_OUTLET_VOLTAGE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(AUX_POWER_OUTLET_VOLTAGE_1_ITEM, AUX_POWER_OUTLET_VOLTAGE_1_ITEM_NAME, "Regulated outlet (DC3-DC4) [V]", 0, 13.2, 0.2, 13.2);
 		// -------------------------------------------------------------------------------- POWER_OUTLET_VOLTAGE
 		AUX_POWER_OUTLET_CURRENT_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_POWER_OUTLET_CURRENT_PROPERTY_NAME, AUX_GROUP, "Output currents", INDIGO_OK_STATE, INDIGO_RO_PERM, 2);
-		if (AUX_POWER_OUTLET_CURRENT_PROPERTY == NULL)
+		if (AUX_POWER_OUTLET_CURRENT_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(AUX_POWER_OUTLET_CURRENT_1_ITEM, AUX_POWER_OUTLET_CURRENT_1_ITEM_NAME, "Output current (DC2) [A]", 0, 20, 0, 0);
 		indigo_init_number_item(AUX_POWER_OUTLET_CURRENT_2_ITEM, AUX_POWER_OUTLET_CURRENT_2_ITEM_NAME, "Output current (DC3-DC4) [A]", 0, 20, 0, 0);
 		// -------------------------------------------------------------------------------- USB_PORT
 		AUX_USB_PORT_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_USB_PORT_PROPERTY_NAME, AUX_GROUP, "USB Ports", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 5);
-		if (AUX_USB_PORT_PROPERTY == NULL)
+		if (AUX_USB_PORT_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(AUX_USB_PORT_1_ITEM, AUX_USB_PORT_1_ITEM_NAME, "USB 3.1 port (1)", true);
 		indigo_init_switch_item(AUX_USB_PORT_2_ITEM, AUX_USB_PORT_2_ITEM_NAME, "USB 3.1 port (2)", true);
 		indigo_init_switch_item(AUX_USB_PORT_3_ITEM, AUX_USB_PORT_3_ITEM_NAME, "USB 3.1 port (3)", true);
@@ -350,48 +355,55 @@ static indigo_result aux_attach(indigo_device *device) {
 		indigo_init_switch_item(AUX_USB_PORT_5_ITEM, AUX_USB_PORT_5_ITEM_NAME, "USB 2.0 ports (4-6)", true);
 		// -------------------------------------------------------------------------------- HEATER_OUTLET
 		AUX_HEATER_OUTLET_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_HEATER_OUTLET_PROPERTY_NAME, AUX_GROUP, "Heater outlets", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
-		if (AUX_HEATER_OUTLET_PROPERTY == NULL)
+		if (AUX_HEATER_OUTLET_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(AUX_HEATER_OUTLET_1_ITEM, AUX_HEATER_OUTLET_1_ITEM_NAME, "Heater outlet (DC5) [%]", 0, 100, 5, 0);
 		indigo_init_number_item(AUX_HEATER_OUTLET_2_ITEM, AUX_HEATER_OUTLET_2_ITEM_NAME, "Heater outlet (DC6) [%]", 0, 100, 5, 0);
 		indigo_init_number_item(AUX_HEATER_OUTLET_3_ITEM, AUX_HEATER_OUTLET_3_ITEM_NAME, "Heater outlet (DC7) [%]", 0, 100, 5, 0);
 		// -------------------------------------------------------------------------------- AUX_DEW_CONTROL
 		AUX_DEW_CONTROL_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_DEW_CONTROL_PROPERTY_NAME, AUX_GROUP, "Dew control", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (AUX_DEW_CONTROL_PROPERTY == NULL)
+		if (AUX_DEW_CONTROL_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(AUX_DEW_CONTROL_MANUAL_ITEM, AUX_DEW_CONTROL_MANUAL_ITEM_NAME, "Manual", true);
 		indigo_init_switch_item(AUX_DEW_CONTROL_AUTOMATIC_ITEM, AUX_DEW_CONTROL_AUTOMATIC_ITEM_NAME, "Automatic", false);
 		//AUX_DEW_CONTROL_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- WEATHER
 		AUX_WEATHER_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_WEATHER_PROPERTY_NAME, WEATHER_GROUP, "Weather info (DHT22)", INDIGO_OK_STATE, INDIGO_RO_PERM, 3);
-		if (AUX_WEATHER_PROPERTY == NULL)
+		if (AUX_WEATHER_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(AUX_WEATHER_TEMPERATURE_ITEM, AUX_WEATHER_TEMPERATURE_ITEM_NAME, "Temperature [°C]", -50, 100, 0, 0);
 		indigo_init_number_item(AUX_WEATHER_HUMIDITY_ITEM, AUX_WEATHER_HUMIDITY_ITEM_NAME, "Humidity [%]", 0, 100, 0, 0);
 		indigo_init_number_item(AUX_WEATHER_DEWPOINT_ITEM, AUX_WEATHER_DEWPOINT_ITEM_NAME, "Dewpoint [°C]", -50, 100, 0, 0);
 		// -------------------------------------------------------------------------------- AUX_TEMPERATURE_SENSORS
 		AUX_TEMPERATURE_SENSORS_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_TEMPERATURE_SENSORS_PROPERTY_NAME, WEATHER_GROUP, "Temperature sensors", INDIGO_OK_STATE, INDIGO_RO_PERM, 4);
-		if (AUX_TEMPERATURE_SENSORS_PROPERTY == NULL)
+		if (AUX_TEMPERATURE_SENSORS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(AUX_TEMPERATURE_SENSORS_SENSOR_1_ITEM, AUX_TEMPERATURE_SENSORS_SENSOR_1_ITEM_NAME, "Temperature (DHT22) [°C]", -50, 100, 0, 0);
 		indigo_init_number_item(AUX_TEMPERATURE_SENSORS_SENSOR_2_ITEM, AUX_TEMPERATURE_SENSORS_SENSOR_2_ITEM_NAME, "Temperature (Temp probe 1) [°C]", -50, 100, 0, 0);
 		indigo_init_number_item(AUX_TEMPERATURE_SENSORS_SENSOR_3_ITEM, AUX_TEMPERATURE_SENSORS_SENSOR_3_ITEM_NAME, "Temperature (Temp probe 2) [°C]", -50, 100, 0, 0);
 		indigo_init_number_item(AUX_TEMPERATURE_SENSORS_SENSOR_4_ITEM, AUX_TEMPERATURE_SENSORS_SENSOR_4_ITEM_NAME, "Temperature (Temp probe 3) [°C]", -50, 100, 0, 0);
 		// -------------------------------------------------------------------------------- DEW_WARNING
 		AUX_DEW_WARNING_PROPERTY = indigo_init_light_property(NULL, device->name, AUX_DEW_WARNING_PROPERTY_NAME, WEATHER_GROUP, "Dew warning", INDIGO_IDLE_STATE, 1);
-		if (AUX_DEW_WARNING_PROPERTY == NULL)
+		if (AUX_DEW_WARNING_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_light_item(AUX_DEW_WARNING_SENSOR_1_ITEM, AUX_DEW_WARNING_SENSOR_1_ITEM_NAME, "Dew warning (DHT22)", INDIGO_IDLE_STATE);
 		// -------------------------------------------------------------------------------- INFO
 		AUX_INFO_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_INFO_PROPERTY_NAME, AUX_GROUP, "Sensors", INDIGO_OK_STATE, INDIGO_RO_PERM, 2);
-		if (AUX_INFO_PROPERTY == NULL)
+		if (AUX_INFO_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(AUX_INFO_VOLTAGE_ITEM, AUX_INFO_VOLTAGE_ITEM_NAME, "Voltage [V]", 0, 15, 0, 0);
 		indigo_init_number_item(AUX_INFO_CURRENT_ITEM, AUX_INFO_CURRENT_ITEM_NAME, "Current [A]", 0, 20, 0, 0);
 		// -------------------------------------------------------------------------------- X_AUX_CALIBRATE
 		X_AUX_CALIBRATE_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_AUX_CALIBRATE", AUX_ADVANCED_GROUP, "Calibrate sensors", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
-		if (X_AUX_CALIBRATE_PROPERTY == NULL)
+		if (X_AUX_CALIBRATE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(X_AUX_CALIBRATE_ITEM, "CALIBRATE", "Calibrate", false);
 		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS
 		DEVICE_PORT_PROPERTY->hidden = false;

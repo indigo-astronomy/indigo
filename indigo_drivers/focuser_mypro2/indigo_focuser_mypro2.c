@@ -574,8 +574,9 @@ static indigo_result focuser_attach(indigo_device *device) {
 
 		// -------------------------------------------------------------------------- STEP_MODE_PROPERTY
 		X_STEP_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, X_STEP_MODE_PROPERTY_NAME, FOCUSER_ADVANCED_GROUP, "Step mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 8);
-		if (X_STEP_MODE_PROPERTY == NULL)
+		if (X_STEP_MODE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		X_STEP_MODE_PROPERTY->hidden = false;
 		indigo_init_switch_item(X_STEP_MODE_FULL_ITEM, X_STEP_MODE_FULL_ITEM_NAME, "Full step", false);
 		indigo_init_switch_item(X_STEP_MODE_HALF_ITEM, X_STEP_MODE_HALF_ITEM_NAME, "1/2 step", false);
@@ -588,15 +589,17 @@ static indigo_result focuser_attach(indigo_device *device) {
 
 		// -------------------------------------------------------------------------- COILS_MODE_PROPERTY
 		X_COILS_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, X_COILS_MODE_PROPERTY_NAME, FOCUSER_ADVANCED_GROUP, "Coils Power", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (X_COILS_MODE_PROPERTY == NULL)
+		if (X_COILS_MODE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		X_COILS_MODE_PROPERTY->hidden = false;
 		indigo_init_switch_item(X_COILS_MODE_IDLE_OFF_ITEM, X_COILS_MODE_IDLE_OFF_ITEM_NAME, "OFF when idle", false);
 		indigo_init_switch_item(X_COILS_MODE_ALWAYS_ON_ITEM, X_COILS_MODE_ALWAYS_ON_ITEM_NAME, "Always ON", false);
 		//--------------------------------------------------------------------------- TIMINGS_PROPERTY
 		X_SETTLE_TIME_PROPERTY = indigo_init_number_property(NULL, device->name, X_SETTLE_TIME_PROPERTY_NAME, FOCUSER_ADVANCED_GROUP, "Settle time", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		if (X_SETTLE_TIME_PROPERTY == NULL)
+		if (X_SETTLE_TIME_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(X_SETTLE_TIME_ITEM, X_SETTLE_TIME_ITEM_NAME, "Settle time (ms)", 0, 999, 10, 0);
 		// --------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);

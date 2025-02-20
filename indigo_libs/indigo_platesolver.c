@@ -680,13 +680,15 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		FILTER_DEVICE_CONTEXT->validate_related_agent = validate_related_agent;
 		// -------------------------------------------------------------------------------- AGENT_PLATESOLVER_USE_INDEX
 		AGENT_PLATESOLVER_USE_INDEX_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_PLATESOLVER_USE_INDEX_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Use indexes", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 33);
-		if (AGENT_PLATESOLVER_USE_INDEX_PROPERTY == NULL)
+		if (AGENT_PLATESOLVER_USE_INDEX_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count = 0;
 		// -------------------------------------------------------------------------------- Hints property
 		AGENT_PLATESOLVER_HINTS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_PLATESOLVER_HINTS_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Hints", INDIGO_OK_STATE, INDIGO_RW_PERM, 9);
-		if (AGENT_PLATESOLVER_HINTS_PROPERTY == NULL)
+		if (AGENT_PLATESOLVER_HINTS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(AGENT_PLATESOLVER_HINTS_RADIUS_ITEM, AGENT_PLATESOLVER_HINTS_RADIUS_ITEM_NAME, "Search radius (°)", 0, 360, 2, 0);
 		indigo_init_sexagesimal_number_item(AGENT_PLATESOLVER_HINTS_RA_ITEM, AGENT_PLATESOLVER_HINTS_RA_ITEM_NAME, "RA (hours)", 0, 24, 0, 0);
 		indigo_init_sexagesimal_number_item(AGENT_PLATESOLVER_HINTS_DEC_ITEM, AGENT_PLATESOLVER_HINTS_DEC_ITEM_NAME, "Dec (°)", -90, 90, 0, 0);
@@ -702,8 +704,9 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		strcpy(AGENT_PLATESOLVER_HINTS_SCALE_ITEM->number.format, "%m");
 		// -------------------------------------------------------------------------------- WCS property
 		AGENT_PLATESOLVER_WCS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_PLATESOLVER_WCS_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "WCS solution", INDIGO_OK_STATE, INDIGO_RO_PERM, 10);
-		if (AGENT_PLATESOLVER_WCS_PROPERTY == NULL)
+		if (AGENT_PLATESOLVER_WCS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(AGENT_PLATESOLVER_WCS_STATE_ITEM, AGENT_PLATESOLVER_WCS_STATE_ITEM_NAME, "WCS solution state", 0, 5, 0, 0);
 		indigo_init_sexagesimal_number_item(AGENT_PLATESOLVER_WCS_RA_ITEM, AGENT_PLATESOLVER_WCS_RA_ITEM_NAME, "Frame center RA (hours)", 0, 24, 0, 0);
 		indigo_init_sexagesimal_number_item(AGENT_PLATESOLVER_WCS_DEC_ITEM, AGENT_PLATESOLVER_WCS_DEC_ITEM_NAME, "Frame center Dec (°)", 0, 360, 0, 0);
@@ -722,8 +725,9 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		strcpy(AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.format, "%m");
 		// -------------------------------------------------------------------------------- SYNC property /* OBSOLETED */
 		AGENT_PLATESOLVER_SYNC_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_PLATESOLVER_SYNC_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Sync mode (obsolete)", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 5);
-		if (AGENT_PLATESOLVER_SYNC_PROPERTY == NULL)
+		if (AGENT_PLATESOLVER_SYNC_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(AGENT_PLATESOLVER_SYNC_DISABLED_ITEM, AGENT_PLATESOLVER_SYNC_DISABLED_ITEM_NAME, "Disabled", true);
 		indigo_init_switch_item(AGENT_PLATESOLVER_SYNC_SYNC_ITEM, AGENT_PLATESOLVER_SYNC_SYNC_ITEM_NAME, "Sync only", false);
 		indigo_init_switch_item(AGENT_PLATESOLVER_SYNC_CENTER_ITEM, AGENT_PLATESOLVER_SYNC_CENTER_ITEM_NAME, "Sync and center", false);
@@ -731,8 +735,9 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		indigo_init_switch_item(AGENT_PLATESOLVER_SYNC_RECALCULATE_PA_ERROR_ITEM, AGENT_PLATESOLVER_SYNC_RECALCULATE_PA_ERROR_ITEM_NAME, "Recalclulate polar alignment error", false);
 		// -------------------------------------------------------------------------------- AGENT_START_PROCESS property /* replaces SYNC */
 		AGENT_START_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_START_PROCESS_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Start process", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 6);
-		if (AGENT_PLATESOLVER_SYNC_PROPERTY == NULL)
+		if (AGENT_PLATESOLVER_SYNC_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(AGENT_PLATESOLVER_START_SOLVE_ITEM, AGENT_PLATESOLVER_START_SOLVE_ITEM_NAME, "Solve only", false);
 		indigo_init_switch_item(AGENT_PLATESOLVER_START_SYNC_ITEM, AGENT_PLATESOLVER_START_SYNC_ITEM_NAME, "Solve and sync", false);
 		indigo_init_switch_item(AGENT_PLATESOLVER_START_CENTER_ITEM, AGENT_PLATESOLVER_START_CENTER_ITEM_NAME, "Solve, sync and center", false);
@@ -741,19 +746,22 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		indigo_init_switch_item(AGENT_PLATESOLVER_START_RECALCULATE_PA_ERROR_ITEM, AGENT_PLATESOLVER_START_RECALCULATE_PA_ERROR_ITEM_NAME, "Recalclulate polar alignment error", false);
 		// -------------------------------------------------------------------------------- AGENT_PLATESOLVER_SOLVE_IMAGES
 		AGENT_PLATESOLVER_SOLVE_IMAGES_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_PLATESOLVER_SOLVE_IMAGES_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Solve images from related agents", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (AGENT_PLATESOLVER_SOLVE_IMAGES_PROPERTY == NULL)
+		if (AGENT_PLATESOLVER_SOLVE_IMAGES_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(AGENT_PLATESOLVER_SOLVE_IMAGES_ENABLED_ITEM, AGENT_PLATESOLVER_SOLVE_IMAGES_ENABLED_ITEM_NAME, "Enabled", true);
 		indigo_init_switch_item(AGENT_PLATESOLVER_SOLVE_IMAGES_DISABLED_ITEM, AGENT_PLATESOLVER_SOLVE_IMAGES_DISABLED_ITEM_NAME, "Disabled", false);
 		// -------------------------------------------------------------------------------- _SETTINGS property
 		AGENT_PLATESOLVER_EXPOSURE_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_PLATESOLVER_EXPOSURE_SETTINGS_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Exposure settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		if (AGENT_PLATESOLVER_EXPOSURE_SETTINGS_PROPERTY == NULL)
+		if (AGENT_PLATESOLVER_EXPOSURE_SETTINGS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(AGENT_PLATESOLVER_EXPOSURE_SETTINGS_EXPOSURE_ITEM, AGENT_PLATESOLVER_EXPOSURE_SETTINGS_EXPOSURE_ITEM_NAME, "Exposure time (s)", 0, 60, 1, 1);
 		// -------------------------------------------------------------------------------- POLAR_ALIGNMENT_SETTINGS property
 		AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Polar alignment settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
-		if (AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY == NULL)
+		if (AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(AGENT_PLATESOLVER_PA_SETTINGS_EXPOSURE_ITEM, AGENT_PLATESOLVER_PA_SETTINGS_EXPOSURE_ITEM_NAME, "Exposure time (s) (obsolete)", 0, 60, 1, 1);
 		indigo_init_number_item(AGENT_PLATESOLVER_PA_SETTINGS_HA_MOVE_ITEM, AGENT_PLATESOLVER_PA_SETTINGS_HA_MOVE_ITEM_NAME, "Hour angle move (°)", -50, 50, 5, 20);
 		indigo_init_number_item(AGENT_PLATESOLVER_PA_SETTINGS_COMPENSATE_REFRACTION_ITEM, AGENT_PLATESOLVER_PA_SETTINGS_COMPENSATE_REFRACTION_ITEM_NAME, "Compensate refraction (1=On, 0=Off)", 0, 1, 0, 0);
@@ -761,8 +769,9 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		strcpy(AGENT_PLATESOLVER_PA_SETTINGS_COMPENSATE_REFRACTION_ITEM->number.format, "%.0f");
 		// -------------------------------------------------------------------------------- POLAR_ALIGNMENT_ERROR property
 		AGENT_PLATESOLVER_PA_STATE_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_PLATESOLVER_PA_STATE_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Polar alignment state", INDIGO_OK_STATE, INDIGO_RO_PERM, 12);
-		if (AGENT_PLATESOLVER_PA_STATE_PROPERTY == NULL)
+		if (AGENT_PLATESOLVER_PA_STATE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(AGENT_PLATESOLVER_PA_STATE_ITEM, AGENT_PLATESOLVER_PA_STATE_ITEM_NAME, "Polar alignment state", 0, 10, 0, 0);
 		indigo_init_number_item(AGENT_PLATESOLVER_PA_STATE_DEC_DRIFT_2_ITEM, AGENT_PLATESOLVER_PA_STATE_DEC_DRIFT_2_ITEM_NAME, "Declination drift at point 2 (°)", -45, 45, 0, 0);
 		indigo_init_number_item(AGENT_PLATESOLVER_PA_STATE_DEC_DRIFT_3_ITEM, AGENT_PLATESOLVER_PA_STATE_DEC_DRIFT_3_ITEM_NAME, "Declination drift at point 3 (°)", -45, 45, 0, 0);
@@ -789,29 +798,34 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		strcpy(AGENT_PLATESOLVER_PA_STATE_POLAR_ERROR_ITEM->number.format, "%m");
 		// -------------------------------------------------------------------------------- AGENT_PLATESOLVER_GOTO_SETTINGS
 		AGENT_PLATESOLVER_GOTO_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_PLATESOLVER_GOTO_SETTINGS_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "GOTO Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
-		if (AGENT_PLATESOLVER_GOTO_SETTINGS_PROPERTY == NULL)
+		if (AGENT_PLATESOLVER_GOTO_SETTINGS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_sexagesimal_number_item(AGENT_PLATESOLVER_GOTO_SETTINGS_RA_ITEM, AGENT_PLATESOLVER_GOTO_SETTINGS_RA_ITEM_NAME, "Right ascension (0 to 24 hrs)", 0, 24, 0, 0);
 		indigo_init_sexagesimal_number_item(AGENT_PLATESOLVER_GOTO_SETTINGS_DEC_ITEM, AGENT_PLATESOLVER_GOTO_SETTINGS_DEC_ITEM_NAME, "Declination (-90 to 90°)", -90, 90, 0, 90);
 		// -------------------------------------------------------------------------------- _MOUNT_SETTLE_TIME property
 		AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Mount settle time", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		if (AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_PROPERTY == NULL)
+		if (AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_ITEM, AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_ITEM_NAME, "Settle time (s)", 0, 60, 1, 3);
 		// -------------------------------------------------------------------------------- ABORT property
 		AGENT_PLATESOLVER_ABORT_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_PLATESOLVER_ABORT_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Abort", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
-		if (AGENT_PLATESOLVER_ABORT_PROPERTY == NULL)
+		if (AGENT_PLATESOLVER_ABORT_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(AGENT_PLATESOLVER_ABORT_ITEM, AGENT_PLATESOLVER_ABORT_ITEM_NAME, "Abort", false);
 		// -------------------------------------------------------------------------------- AGENT_PLATESOLVER_IMAGE property
 		AGENT_PLATESOLVER_IMAGE_PROPERTY = indigo_init_blob_property_p(NULL, device->name, AGENT_PLATESOLVER_IMAGE_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Image upload", INDIGO_OK_STATE, INDIGO_WO_PERM, 1);
-		if (AGENT_PLATESOLVER_IMAGE_PROPERTY == NULL)
+		if (AGENT_PLATESOLVER_IMAGE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_blob_item(AGENT_PLATESOLVER_IMAGE_ITEM, AGENT_PLATESOLVER_IMAGE_ITEM_NAME, "Image");
 		// -------------------------------------------------------------------------------- AGENT_PLATESOLVER_IMAGE_OUTPUT property
 		AGENT_PLATESOLVER_IMAGE_OUTPUT_PROPERTY = indigo_init_blob_property(NULL, device->name, AGENT_PLATESOLVER_IMAGE_OUTPUT_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Image mirror", INDIGO_OK_STATE, 1);
-		if (AGENT_PLATESOLVER_IMAGE_OUTPUT_PROPERTY == NULL)
+		if (AGENT_PLATESOLVER_IMAGE_OUTPUT_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_blob_item(AGENT_PLATESOLVER_IMAGE_OUTPUT_ITEM, AGENT_PLATESOLVER_IMAGE_OUTPUT_ITEM_NAME, "Image");
 		// --------------------------------------------------------------------------------
 		CONFIG_PROPERTY->hidden = true;

@@ -558,8 +558,9 @@ static indigo_result dome_attach(indigo_device *device) {
 		DOME_SLAVING_PARAMETERS_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- X_EMERGENCY_CLOSE_PROPERTY
 		X_EMERGENCY_CLOSE_PROPERTY = indigo_init_light_property(NULL, device->name, X_EMERGENCY_CLOSE_PROPERTY_NAME, DOME_MAIN_GROUP, "Energency close flags", INDIGO_IDLE_STATE, 4);
-		if (X_EMERGENCY_CLOSE_PROPERTY == NULL)
+		if (X_EMERGENCY_CLOSE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_light_item(X_EMERGENCY_RAIN_ITEM, X_EMERGENCY_RAIN_ITEM_NAME, "Rain alert", INDIGO_IDLE_STATE);
 		indigo_init_light_item(X_EMERGENCY_WIND_ITEM, X_EMERGENCY_WIND_ITEM_NAME, "Wind alert", INDIGO_IDLE_STATE);
 		indigo_init_light_item(X_EMERGENCY_OPERATION_TIMEOUT_ITEM, X_EMERGENCY_OPERATION_TIMEOUT_ITEM_NAME, "Operation timeout alert", INDIGO_IDLE_STATE);

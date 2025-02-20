@@ -1900,30 +1900,34 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		FILTER_RELATED_AGENT_LIST_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- Process properties
 		AGENT_GUIDER_DETECTION_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_GUIDER_DETECTION_MODE_PROPERTY_NAME, "Agent", "Drift detection mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
-		if (AGENT_GUIDER_DETECTION_MODE_PROPERTY == NULL)
+		if (AGENT_GUIDER_DETECTION_MODE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(AGENT_GUIDER_DETECTION_SELECTION_ITEM, AGENT_GUIDER_DETECTION_SELECTION_ITEM_NAME, "Selection", true);
 		indigo_init_switch_item(AGENT_GUIDER_DETECTION_WEIGHTED_SELECTION_ITEM, AGENT_GUIDER_DETECTION_WEIGHTED_SELECTION_ITEM_NAME, "Weighted selection", false);
 		indigo_init_switch_item(AGENT_GUIDER_DETECTION_DONUTS_ITEM, AGENT_GUIDER_DETECTION_DONUTS_ITEM_NAME, "Donuts", false);
 		indigo_init_switch_item(AGENT_GUIDER_DETECTION_CENTROID_ITEM, AGENT_GUIDER_DETECTION_CENTROID_ITEM_NAME, "Centroid", false);
 
 		AGENT_GUIDER_DEC_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_GUIDER_DEC_MODE_PROPERTY_NAME, "Agent", "Dec guiding mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
-		if (AGENT_GUIDER_DEC_MODE_PROPERTY == NULL)
+		if (AGENT_GUIDER_DEC_MODE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(AGENT_GUIDER_DEC_MODE_BOTH_ITEM, AGENT_GUIDER_DEC_MODE_BOTH_ITEM_NAME, "North and south", true);
 		indigo_init_switch_item(AGENT_GUIDER_DEC_MODE_NORTH_ITEM, AGENT_GUIDER_DEC_MODE_NORTH_ITEM_NAME, "North only", false);
 		indigo_init_switch_item(AGENT_GUIDER_DEC_MODE_SOUTH_ITEM, AGENT_GUIDER_DEC_MODE_SOUTH_ITEM_NAME, "South only", false);
 		indigo_init_switch_item(AGENT_GUIDER_DEC_MODE_NONE_ITEM, AGENT_GUIDER_DEC_MODE_NONE_ITEM_NAME, "None", false);
 
 		AGENT_GUIDER_APPLY_DEC_BACKLASH_PROPERTY = indigo_init_switch_property(NULL, device->name,AGENT_GUIDER_APPLY_DEC_BACKLASH_PROPERTY_NAME, "Agent", "Apply Dec backlash", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (AGENT_GUIDER_APPLY_DEC_BACKLASH_PROPERTY == NULL)
+		if (AGENT_GUIDER_APPLY_DEC_BACKLASH_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(AGENT_GUIDER_APPLY_DEC_BACKLASH_DISABLED_ITEM, AGENT_GUIDER_APPLY_DEC_BACKLASH_DISABLED_ITEM_NAME, "Disabled", true);
 		indigo_init_switch_item(AGENT_GUIDER_APPLY_DEC_BACKLASH_ENABLED_ITEM, AGENT_GUIDER_APPLY_DEC_BACKLASH_ENABLED_ITEM_NAME, "Enabled", false);
 
 		AGENT_START_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_START_PROCESS_PROPERTY_NAME, "Agent", "Start process", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 6);
-		if (AGENT_START_PROCESS_PROPERTY == NULL)
+		if (AGENT_START_PROCESS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(AGENT_GUIDER_START_PREVIEW_1_ITEM, AGENT_GUIDER_START_PREVIEW_1_ITEM_NAME, "Preview single frame", false);
 		indigo_init_switch_item(AGENT_GUIDER_START_PREVIEW_ITEM, AGENT_GUIDER_START_PREVIEW_ITEM_NAME, "Start preview", false);
 		indigo_init_switch_item(AGENT_GUIDER_START_CALIBRATION_ITEM, AGENT_GUIDER_START_CALIBRATION_ITEM_NAME, "Start calibration", false);
@@ -1931,13 +1935,15 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_switch_item(AGENT_GUIDER_START_GUIDING_ITEM, AGENT_GUIDER_START_GUIDING_ITEM_NAME, "Start guiding", false);
 		indigo_init_switch_item(AGENT_GUIDER_CLEAR_SELECTION_ITEM, AGENT_GUIDER_CLEAR_SELECTION_ITEM_NAME, "Clear star selection", false);
 		AGENT_ABORT_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_ABORT_PROCESS_PROPERTY_NAME, "Agent", "Abort process", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
-		if (AGENT_ABORT_PROCESS_PROPERTY == NULL)
+		if (AGENT_ABORT_PROCESS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(AGENT_ABORT_PROCESS_ITEM, AGENT_ABORT_PROCESS_ITEM_NAME, "Abort", false);
 		
 		AGENT_PROCESS_FEATURES_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_PROCESS_FEATURES_PROPERTY_NAME, "Agent", "Process features", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 8);
-		if (AGENT_PROCESS_FEATURES_PROPERTY == NULL)
+		if (AGENT_PROCESS_FEATURES_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(AGENT_GUIDER_ENABLE_LOGGING_FEATURE_ITEM, AGENT_GUIDER_ENABLE_LOGGING_FEATURE_ITEM_NAME, "Enable logging", false);
 		indigo_init_switch_item(AGENT_GUIDER_FAIL_ON_CALIBRATION_ERROR_ITEM, AGENT_GUIDER_FAIL_ON_CALIBRATION_ERROR_ITEM_NAME, "Fail on calibration error", false);
 		indigo_init_switch_item(AGENT_GUIDER_RESET_ON_CALIBRATION_ERROR_ITEM, AGENT_GUIDER_RESET_ON_CALIBRATION_ERROR_ITEM_NAME, "Reset selection on calibration error", true);
@@ -1948,16 +1954,18 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_switch_item(AGENT_GUIDER_USE_INCLUDE_FOR_DONUTS_ITEM, AGENT_GUIDER_USE_INCLUDE_FOR_DONUTS_ITEM_NAME, "Use include region for DONUTS", false);
 		//------------------------------------------------------------------------------- Mount orientation
 		AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY_NAME, "Agent", "Telescope coordinates", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
-		if (AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY == NULL)
+		if (AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_sexagesimal_number_item(AGENT_GUIDER_MOUNT_COORDINATES_RA_ITEM, AGENT_GUIDER_MOUNT_COORDINATES_RA_ITEM_NAME, "Right ascension (0 to 24 hrs)", 0, 24, 1, 0);
 		indigo_init_sexagesimal_number_item(AGENT_GUIDER_MOUNT_COORDINATES_DEC_ITEM, AGENT_GUIDER_MOUNT_COORDINATES_DEC_ITEM_NAME, "Declination (-90° to +90°)", -90, 90, 1, 0);
 		indigo_init_number_item(AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM, AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM_NAME, "Side of Pier (-1=E, 1=W, 0=undef)", -1, 1, 1, 0);
 		DEVICE_PRIVATE_DATA->cos_dec = 1; /* default dec is 0 until set */
 		// -------------------------------------------------------------------------------- Guiding settings
 		AGENT_GUIDER_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_SETTINGS_PROPERTY_NAME, "Agent", "Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 23);
-		if (AGENT_GUIDER_SETTINGS_PROPERTY == NULL)
+		if (AGENT_GUIDER_SETTINGS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM, AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM_NAME, "Exposure time (s)", 0, 120, 0.1, 1);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_DELAY_ITEM, AGENT_GUIDER_SETTINGS_DELAY_ITEM_NAME, "Delay time (s)", 0, 120, 1, 0);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_STEP_ITEM, AGENT_GUIDER_SETTINGS_STEP_ITEM_NAME, "Calibration step (s)", 0.05, 2, 0.05, 0.200);
@@ -1983,20 +1991,23 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM, AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM_NAME, "Dithering settling limit (frames)", 1, 50, 1, 5);
 		// -------------------------------------------------------------------------------- FLIP_REVERSE_DEC
 		AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY_NAME, "Agent", "Reverse Dec speed after meridian flip", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY == NULL)
+		if (AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(AGENT_GUIDER_FLIP_REVERSES_DEC_ENABLED_ITEM, AGENT_GUIDER_FLIP_REVERSES_DEC_ENABLED_ITEM_NAME, "Enabled", true);
 		indigo_init_switch_item(AGENT_GUIDER_FLIP_REVERSES_DEC_DISABLED_ITEM, AGENT_GUIDER_FLIP_REVERSES_DEC_DISABLED_ITEM_NAME, "Disabled", false);
 		// -------------------------------------------------------------------------------- Detected stars
 		AGENT_GUIDER_STARS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_GUIDER_STARS_PROPERTY_NAME, "Agent", "Stars", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, MAX_STAR_COUNT + 1);
-		if (AGENT_GUIDER_STARS_PROPERTY == NULL)
+		if (AGENT_GUIDER_STARS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		AGENT_GUIDER_STARS_PROPERTY->count = 1;
 		indigo_init_switch_item(AGENT_GUIDER_STARS_REFRESH_ITEM, AGENT_GUIDER_STARS_REFRESH_ITEM_NAME, "Refresh", false);
 		// -------------------------------------------------------------------------------- Selected star
 		AGENT_GUIDER_SELECTION_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_SELECTION_PROPERTY_NAME, "Agent", "Selection", INDIGO_OK_STATE, INDIGO_RW_PERM, 12 + 2 * INDIGO_MAX_MULTISTAR_COUNT);
-		if (AGENT_GUIDER_SELECTION_PROPERTY == NULL)
+		if (AGENT_GUIDER_SELECTION_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(AGENT_GUIDER_SELECTION_RADIUS_ITEM, AGENT_GUIDER_SELECTION_RADIUS_ITEM_NAME, "Radius (px)", 1, 50, 1, 8);
 		indigo_init_number_item(AGENT_GUIDER_SELECTION_SUBFRAME_ITEM, AGENT_GUIDER_SELECTION_SUBFRAME_ITEM_NAME, "Subframe", 0, 20, 1, 0);
 		indigo_init_number_item(AGENT_GUIDER_SELECTION_EDGE_CLIPPING_ITEM, AGENT_GUIDER_SELECTION_EDGE_CLIPPING_ITEM_NAME, "Edge Clipping (px)", 0, 500, 1, 8);
@@ -2023,8 +2034,9 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		AGENT_GUIDER_SELECTION_PROPERTY->count = 14;
 		// -------------------------------------------------------------------------------- Guiding stats
 		AGENT_GUIDER_STATS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_STATS_PROPERTY_NAME, "Agent", "Statistics", INDIGO_OK_STATE, INDIGO_RO_PERM, 19);
-		if (AGENT_GUIDER_STATS_PROPERTY == NULL)
+		if (AGENT_GUIDER_STATS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(AGENT_GUIDER_STATS_PHASE_ITEM, AGENT_GUIDER_STATS_PHASE_ITEM_NAME, "Phase #", -1, 100, 0, INDIGO_GUIDER_PHASE_DONE);
 		indigo_init_number_item(AGENT_GUIDER_STATS_FRAME_ITEM, AGENT_GUIDER_STATS_FRAME_ITEM_NAME, "Frame #", 0, 0xFFFFFFFF, 0, 0);
 		indigo_init_number_item(AGENT_GUIDER_STATS_REFERENCE_X_ITEM, AGENT_GUIDER_STATS_REFERENCE_X_ITEM_NAME, "Reference X (px)", 0, 100000, 0, 0);
@@ -2046,27 +2058,31 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_GUIDER_STATS_DITHERING_ITEM, AGENT_GUIDER_STATS_DITHERING_ITEM_NAME, "Dithering RMSE (px)", 0, 100, 0, 0);
 		// -------------------------------------------------------------------------------- Logging
 		AGENT_GUIDER_LOG_PROPERTY = indigo_init_text_property(NULL, device->name, AGENT_GUIDER_LOG_PROPERTY_NAME, "Agent", "Logging", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
-		if (AGENT_GUIDER_LOG_PROPERTY == NULL)
+		if (AGENT_GUIDER_LOG_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_text_item(AGENT_GUIDER_LOG_DIR_ITEM, AGENT_GUIDER_LOG_DIR_ITEM_NAME, "Directory", default_log_path);
 		indigo_init_text_item(AGENT_GUIDER_LOG_TEMPLATE_ITEM, AGENT_GUIDER_LOG_TEMPLATE_ITEM_NAME, "Name template", "GUIDING_%%y%%m%%d_%%H%%M%%S.csv"); // strftime format specifiers accepted
 		// -------------------------------------------------------------------------------- Dithering offsets
 		AGENT_GUIDER_DITHERING_OFFSETS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_DITHERING_OFFSETS_PROPERTY_NAME, "Agent", "Dithering offsets", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
-		if (AGENT_GUIDER_DITHERING_OFFSETS_PROPERTY == NULL)
+		if (AGENT_GUIDER_DITHERING_OFFSETS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM, AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM_NAME, "Offset X (px)", -15, 15, 1, 0);
 		indigo_init_number_item(AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM, AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM_NAME, "Offset Y (px)", -15, 15, 1, 0);
 		// -------------------------------------------------------------------------------- Dithering strategy
 		AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY_NAME, "Agent", "Dithering strategy", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
-		if (AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY == NULL)
+		if (AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(AGENT_GUIDER_DITHERING_STRATEGY_RANDOM_SPIRAL_ITEM, AGENT_GUIDER_DITHERING_STRATEGY_RANDOM_SPIRAL_ITEM_NAME, "Randomized spiral", true);
 		indigo_init_switch_item(AGENT_GUIDER_DITHERING_STRATEGY_RANDOM_ITEM, AGENT_GUIDER_DITHERING_STRATEGY_RANDOM_ITEM_NAME, "Random", false);
 		indigo_init_switch_item(AGENT_GUIDER_DITHERING_STRATEGY_SPIRAL_ITEM, AGENT_GUIDER_DITHERING_STRATEGY_SPIRAL_ITEM_NAME, "Spiral", false);
 		// -------------------------------------------------------------------------------- Dither now
 		AGENT_GUIDER_DITHER_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_GUIDER_DITHER_PROPERTY_NAME, "Agent", "Dithering", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 2);
-		if (AGENT_GUIDER_DITHER_PROPERTY == NULL)
+		if (AGENT_GUIDER_DITHER_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(AGENT_GUIDER_DITHER_TRIGGER_ITEM, AGENT_GUIDER_DITHER_TRIGGER_ITEM_NAME, "Trigger", false);
 		indigo_init_switch_item(AGENT_GUIDER_DITHER_RESET_ITEM, AGENT_GUIDER_DITHER_RESET_ITEM_NAME, "Reset", false);
 

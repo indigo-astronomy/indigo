@@ -108,8 +108,9 @@ static indigo_result focuser_attach(indigo_device *device) {
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		X_FOCUSER_ACTIVE_SLOPE_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_FOCUSER_ACTIVE_SLOPE", FOCUSER_MAIN_GROUP, "Active slope", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (X_FOCUSER_ACTIVE_SLOPE_PROPERTY == NULL)
+		if (X_FOCUSER_ACTIVE_SLOPE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(X_FOCUSER_ACTIVE_SLOPE_1_ITEM, "1", "Slope #1", true);
 		indigo_init_switch_item(X_FOCUSER_ACTIVE_SLOPE_2_ITEM, "2", "Slope #2", false);
 		FOCUSER_COMPENSATION_PROPERTY = indigo_resize_property(FOCUSER_COMPENSATION_PROPERTY, 3);

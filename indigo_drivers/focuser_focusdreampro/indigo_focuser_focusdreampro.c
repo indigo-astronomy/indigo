@@ -79,8 +79,9 @@ static indigo_result focuser_attach(indigo_device *device) {
 	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- X_FOCUSER_FREQUENCY
 		X_FOCUSER_DUTY_CYCLE_PROPERTY = indigo_init_number_property(NULL, device->name, "X_FOCUSER_DUTY_CYCLE", FOCUSER_MAIN_GROUP, "Duty cycle", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		if (X_FOCUSER_DUTY_CYCLE_PROPERTY == NULL)
+		if (X_FOCUSER_DUTY_CYCLE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(X_FOCUSER_DUTY_CYCLE_ITEM, "DUTY_CYCLE", "Duty cycle", 0, 100, 1, 20);
 		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS
 		DEVICE_PORT_PROPERTY->hidden = false;

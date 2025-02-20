@@ -121,16 +121,18 @@ static indigo_result focuser_attach(indigo_device *device) {
 	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- X_FOCUSER_POWER_CHANNELS
 		X_FOCUSER_POWER_CHANNELS_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_FOCUSER_POWER_CHANNELS", FOCUSER_MAIN_GROUP, "Power channels", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 4);
-		if (X_FOCUSER_POWER_CHANNELS_PROPERTY == NULL)
+		if (X_FOCUSER_POWER_CHANNELS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(X_FOCUSER_POWER_CHANNEL_1_ITEM, "1", "Channel #1", false);
 		indigo_init_switch_item(X_FOCUSER_POWER_CHANNEL_2_ITEM, "2", "Channel #2", false);
 		indigo_init_switch_item(X_FOCUSER_POWER_CHANNEL_3_ITEM, "3", "Channel #3", false);
 		indigo_init_switch_item(X_FOCUSER_POWER_CHANNEL_4_ITEM, "4", "Channel #4", false);
 		// -------------------------------------------------------------------------------- X_FOCUSER_POWER_CHANNELS
 		X_FOCUSER_CONFIG_PROPERTY = indigo_init_number_property(NULL, device->name, "X_FOCUSER_CONFIG", FOCUSER_MAIN_GROUP, "Configuration", INDIGO_OK_STATE, INDIGO_RW_PERM, 4);
-		if (X_FOCUSER_CONFIG_PROPERTY == NULL)
+		if (X_FOCUSER_CONFIG_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(X_FOCUSER_CONFIG_DUTY_CYCLE_ITEM, "DUTY_CYCLE", "Duty cycle", 0, 250, 1, 0);
 		indigo_init_number_item(X_FOCUSER_CONFIG_STEP_DELAY_ITEM, "STEP_DELAY", "Step delay", 1, 64, 1, 1);
 		indigo_init_number_item(X_FOCUSER_CONFIG_STEP_SIZE_ITEM, "STEP_SIZE", "Step size", 1, 64, 1, 1);

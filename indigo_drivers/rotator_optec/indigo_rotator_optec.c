@@ -119,18 +119,21 @@ static indigo_result rotator_attach(indigo_device *device) {
 	if (indigo_rotator_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- X_HOME
 		X_HOME_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_HOME", ROTATOR_MAIN_GROUP, "Home", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
-		if (X_HOME_PROPERTY == NULL)
+		if (X_HOME_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(X_HOME_ITEM, "HOME", "Find home", false);
 		// -------------------------------------------------------------------------------- X_RATE
 		X_RATE_PROPERTY = indigo_init_number_property(NULL, device->name, "X_RATE", ROTATOR_MAIN_GROUP, "Rate", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		if (X_RATE_PROPERTY == NULL)
+		if (X_RATE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(X_RATE_ITEM, "RATE", "Rotational rate", 0, 99, 1, 8);
 		// -------------------------------------------------------------------------------- X_RATE
 		X_ROTATE_PROPERTY = indigo_init_number_property(NULL, device->name, "X_ROTATE", ROTATOR_MAIN_GROUP, "Rotate", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		if (X_ROTATE_PROPERTY == NULL)
+		if (X_ROTATE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(X_ROTATE_ITEM, "ROTATE", "Steps", -9, 9, 1, 0);
 		// --------------------------------------------------------------------------------
 		ROTATOR_ON_POSITION_SET_PROPERTY->hidden = true;

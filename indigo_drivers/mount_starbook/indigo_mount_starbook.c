@@ -1233,14 +1233,16 @@ static indigo_result mount_attach(indigo_device *device) {
 
 		// TIMEZONE
 		TIMEZONE_PROPERTY = indigo_init_number_property(NULL, device->name, TIMEZONE_PROPERTY_NAME, MOUNT_SITE_GROUP, "Timezone", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		if (TIMEZONE_PROPERTY == NULL)
+		if (TIMEZONE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(TIMEZONE_VALUE_ITEM, TIMEZONE_VALUE_ITEM_NAME, "Timezone", -12, 12, 1, 0);
 
 		// RESET
 		RESET_PROPERTY = indigo_init_switch_property(NULL, device->name, RESET_PROPERTY_NAME, MOUNT_ADVANCED_GROUP, "Reset", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
-		if (RESET_PROPERTY == NULL)
+		if (RESET_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(RESET_CTRL_ITEM, RESET_CTRL_ITEM_NAME, "Reset", false);
 
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);

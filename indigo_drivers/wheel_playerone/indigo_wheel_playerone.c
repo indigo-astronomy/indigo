@@ -114,8 +114,9 @@ static indigo_result wheel_attach(indigo_device *device) {
 
 		// --------------------------------------------------------------------------------- POA_CUSTOM_SUFFIX
 		POA_CUSTOM_SUFFIX_PROPERTY = indigo_init_text_property(NULL, device->name, "POA_CUSTOM_SUFFIX", WHEEL_MAIN_GROUP, "Device name custom suffix", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		if (POA_CUSTOM_SUFFIX_PROPERTY == NULL)
+		if (POA_CUSTOM_SUFFIX_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_text_item(POA_CUSTOM_SUFFIX_ITEM, POA_CUSTOM_SUFFIX_NAME, "Suffix", "");
 		// --------------------------------------------------------------------------------
 		return wheel_enumerate_properties(device, NULL, NULL);

@@ -765,8 +765,9 @@ static indigo_result ccd_attach(indigo_device *device) {
 		pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
 		// -------------------------------------------------------------------------------- PIXEL_FORMAT_PROPERTY
 		PIXEL_FORMAT_PROPERTY = indigo_init_switch_property(NULL, device->name, "PIXEL_FORMAT", CCD_ADVANCED_GROUP, "Pixel Format", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, POA_MAX_FORMATS);
-		if (PIXEL_FORMAT_PROPERTY == NULL)
+		if (PIXEL_FORMAT_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 
 		int format_count = 0;
 		if (pixel_format_supported(device, POA_RAW8)) {
@@ -851,20 +852,23 @@ static indigo_result ccd_attach(indigo_device *device) {
 
 		// -------------------------------------------------------------------------------- POA_PRESETS
 		POA_PRESETS_PROPERTY = indigo_init_switch_property(NULL, device->name, "POA_PRESETS", CCD_ADVANCED_GROUP, "Presets (Gain, Offset)", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 4);
-		if (POA_PRESETS_PROPERTY == NULL)
+		if (POA_PRESETS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		// --------------------------------------------------------------------------------- POA_CUSTOM_SUFFIX
 		POA_CUSTOM_SUFFIX_PROPERTY = indigo_init_text_property(NULL, device->name, "POA_CUSTOM_SUFFIX", CCD_ADVANCED_GROUP, "Device name custom suffix", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		if (POA_CUSTOM_SUFFIX_PROPERTY == NULL)
+		if (POA_CUSTOM_SUFFIX_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_text_item(POA_CUSTOM_SUFFIX_ITEM, POA_CUSTOM_SUFFIX_NAME, "Suffix", PRIVATE_DATA->property.userCustomID);
 		// -------------------------------------------------------------------------------- CCD_STREAMING
 		CCD_STREAMING_PROPERTY->hidden = false;
 		CCD_IMAGE_FORMAT_PROPERTY->count = 7;
 		// -------------------------------------------------------------------------------- POA_ADVANCED
 		POA_ADVANCED_PROPERTY = indigo_init_number_property(NULL, device->name, "POA_ADVANCED", CCD_ADVANCED_GROUP, "Advanced", INDIGO_OK_STATE, INDIGO_RW_PERM, 0);
-		if (POA_ADVANCED_PROPERTY == NULL)
+		if (POA_ADVANCED_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		// --------------------------------------------------------------------------------
 		switch (PRIVATE_DATA->property.bayerPattern) {
 			case POA_BAYER_BG:

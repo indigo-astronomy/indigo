@@ -188,8 +188,9 @@ static indigo_result wheel_attach(indigo_device *device) {
 	if (indigo_wheel_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- X_MODEL
 		X_MODEL_PROPERTY = indigo_init_switch_property(NULL, device->name, X_MODEL_PROPERTY_NAME, MAIN_GROUP, "Device type", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
-		if (X_MODEL_PROPERTY == NULL)
+		if (X_MODEL_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(X_MODEL_1_ITEM, X_MODEL_1_ITEM_NAME, "CFW 1", false);
 		indigo_init_switch_item(X_MODEL_2_ITEM, X_MODEL_2_ITEM_NAME, "CFW 2", false);
 		indigo_init_switch_item(X_MODEL_3_ITEM, X_MODEL_3_ITEM_NAME, "CFW 3", true);

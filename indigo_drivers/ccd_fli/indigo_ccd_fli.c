@@ -511,8 +511,9 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_RBI_FLUSH_COUNT_ITEM->number.value = CCD_RBI_FLUSH_COUNT_ITEM->number.target = DEFAULT_FLUSH_COUNT;
 		// -------------------------------------------------------------------------------- FLI_NFLUSHES
 		FLI_NFLUSHES_PROPERTY = indigo_init_number_property(NULL, device->name, "FLI_NFLUSHES", CCD_ADVANCED_GROUP, "Flush CCD", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		if (FLI_NFLUSHES_PROPERTY == NULL)
+		if (FLI_NFLUSHES_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 
 		indigo_init_number_item(FLI_NFLUSHES_PROPERTY_ITEM, "FLI_NFLUSHES", "Times (before exposure)", MIN_N_FLUSHES, MAX_N_FLUSHES, 1, DEFAULT_N_FLUSHES);
 

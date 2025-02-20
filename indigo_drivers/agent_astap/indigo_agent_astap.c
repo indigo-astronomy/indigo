@@ -612,8 +612,9 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		char *name, label[INDIGO_VALUE_SIZE], path[INDIGO_VALUE_SIZE];
 		bool present;
 		AGENT_ASTAP_INDEX_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_ASTAP_INDEX_PROPERTY_NAME, "Index managememt", "Installed ASTAP indexes", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 10);
-		if (AGENT_ASTAP_INDEX_PROPERTY == NULL)
+		if (AGENT_ASTAP_INDEX_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		AGENT_ASTAP_INDEX_PROPERTY->count = 0;
 		for (int i = 0; (name = astap_index[i].name); i++) {
 			sprintf(label, "Index %s (FOV %g-%g°, size %sB)", name, astap_index[i].fov_min, astap_index[i].fov_max, astap_index[i].size);

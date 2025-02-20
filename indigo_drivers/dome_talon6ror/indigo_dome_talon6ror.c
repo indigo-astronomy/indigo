@@ -561,8 +561,9 @@ static indigo_result dome_attach(indigo_device *device) {
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- X_SENSORS
 		X_SENSORS_PROPERTY = indigo_init_light_property(NULL, device->name, X_SENSORS_PROPERTY_NAME, DOME_MAIN_GROUP, "Sensors", INDIGO_OK_STATE, 8);
-		if (X_SENSORS_PROPERTY == NULL)
+		if (X_SENSORS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_light_item(X_SENSORS_POWER_CONDITION_ITEM, X_SENSORS_POWER_CONDITION_ITEM_NAME, "Power condition", INDIGO_IDLE_STATE);
 		indigo_init_light_item(X_SENSORS_WEATHER_CONDITION_ITEM, X_SENSORS_WEATHER_CONDITION_ITEM_NAME, "Weather condition", INDIGO_IDLE_STATE);
 		indigo_init_light_item(X_SENSORS_PARKED_SENSOR_ITEM, X_SENSORS_PARKED_SENSOR_ITEM_NAME, "Mount at park sensor", INDIGO_IDLE_STATE);
@@ -573,8 +574,9 @@ static indigo_result dome_attach(indigo_device *device) {
 		indigo_init_light_item(X_SENSORS_STOP_BUTTON_ITEM, X_SENSORS_STOP_BUTTON_ITEM_NAME, "Stop button pushed", INDIGO_IDLE_STATE);
 		// -------------------------------------------------------------------------------- X_MOTOR_CONF
 		X_MOTOR_CONF_PROPERTY = indigo_init_number_property(NULL, device->name, X_MOTOR_CONF_PROPERTY_NAME, "Configuration", "Motor configuration", INDIGO_OK_STATE, INDIGO_RW_PERM, 10);
-		if (X_MOTOR_CONF_PROPERTY == NULL)
+		if (X_MOTOR_CONF_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(X_MOTOR_CONF_KP_ITEM, X_MOTOR_CONF_KP_ITEM_NAME, "Proportional constant", 1, 1000, 1, 180);
 		indigo_init_number_item(X_MOTOR_CONF_KI_ITEM, X_MOTOR_CONF_KI_ITEM_NAME, "Integral constant", 1, 1000, 1, 140);
 		indigo_init_number_item(X_MOTOR_CONF_KD_ITEM, X_MOTOR_CONF_KD_ITEM_NAME, "Differential constant", 1, 1000, 1, 2);
@@ -587,35 +589,40 @@ static indigo_result dome_attach(indigo_device *device) {
 		indigo_init_number_item(X_MOTOR_CONF_REVERSE_ITEM, X_MOTOR_CONF_REVERSE_ITEM_NAME, "Reverse (0 or 1)", 0, 1, 0, 0);
 		// -------------------------------------------------------------------------------- X_DELAY_CONF
 		X_DELAY_CONF_PROPERTY = indigo_init_number_property(NULL, device->name, X_DELAY_CONF_PROPERTY_NAME, "Configuration", "Delay configuration", INDIGO_OK_STATE, INDIGO_RW_PERM, 4);
-		if (X_MOTOR_CONF_PROPERTY == NULL)
+		if (X_MOTOR_CONF_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(X_DELAY_CONF_PARK_ITEM, X_DELAY_CONF_PARK_ITEM_NAME, "Wait for mount park", 1, 0x377, 1, 1);
 		indigo_init_number_item(X_DELAY_CONF_WEATHER_ITEM, X_DELAY_CONF_WEATHER_ITEM_NAME, "Weather condition delay", 1, 0x377, 1, 120);
 		indigo_init_number_item(X_DELAY_CONF_POWER_ITEM, X_DELAY_CONF_POWER_ITEM_NAME, "Power condition delay", 1, 0x377, 1, 60);
 		indigo_init_number_item(X_DELAY_CONF_TIMEOUT_ITEM, X_DELAY_CONF_TIMEOUT_ITEM_NAME, "Temporal opening delay", 1, 0x377, 1, 10);
 		// -------------------------------------------------------------------------------- X_CLOSE_COND
 		X_CLOSE_COND_PROPERTY = indigo_init_switch_property(NULL, device->name, X_CLOSE_COND_PROPERTY_NAME, "Configuration", "Close conditions", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 3);
-		if (X_MOTOR_CONF_PROPERTY == NULL)
+		if (X_MOTOR_CONF_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(X_CLOSE_COND_WEATHER_ITEM, X_CLOSE_COND_WEATHER_ITEM_NAME, "Weather condition delay enabled", false);
 		indigo_init_switch_item(X_CLOSE_COND_POWER_ITEM, X_CLOSE_COND_POWER_ITEM_NAME, "Power condition delay enabled", false);
 		indigo_init_switch_item(X_CLOSE_COND_TIMEOUT_ITEM, X_CLOSE_COND_TIMEOUT_ITEM_NAME, "Temporal opening delay enabled", false);
 		// -------------------------------------------------------------------------------- X_DELAY_CONF
 		X_CLOSE_TIMER_PROPERTY = indigo_init_number_property(NULL, device->name, X_CLOSE_TIMER_PROPERTY_NAME, DOME_MAIN_GROUP, "Close timers", INDIGO_OK_STATE, INDIGO_RO_PERM, 3);
-		if (X_CLOSE_TIMER_PROPERTY == NULL)
+		if (X_CLOSE_TIMER_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(X_CLOSE_TIMER_WEATHER_ITEM, X_CLOSE_TIMER_WEATHER_ITEM_NAME, "Weather condition timer", 0, 0x377, 1, 0);
 		indigo_init_number_item(X_CLOSE_TIMER_POWER_ITEM, X_CLOSE_TIMER_POWER_ITEM_NAME, "Power condition timer", 0, 0x377, 1, 0);
 		indigo_init_number_item(X_CLOSE_TIMER_TIMEOUT_ITEM, X_CLOSE_TIMER_TIMEOUT_ITEM_NAME, "Temporal opening timer", 0, 0x377, 1, 0);
 		// -------------------------------------------------------------------------------- X_POSITION
 		X_POSITION_PROPERTY = indigo_init_number_property(NULL, device->name, X_POSITION_PROPERTY_NAME, DOME_MAIN_GROUP, "Roof position", INDIGO_OK_STATE, INDIGO_RO_PERM, 1);
-		if (X_POSITION_PROPERTY == NULL)
+		if (X_POSITION_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(X_POSITION_ITEM, X_POSITION_ITEM_NAME, "Roof position", 0, 10000, 1, 0);
 		// -------------------------------------------------------------------------------- X_VOLTAGE
 		X_STATUS_PROPERTY = indigo_init_number_property(NULL, device->name, X_STATUS_PROPERTY_NAME, DOME_MAIN_GROUP, "System status", INDIGO_OK_STATE, INDIGO_RO_PERM, 1);
-		if (X_STATUS_PROPERTY == NULL)
+		if (X_STATUS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(X_STATUS_VOLTAGE_ITEM, X_STATUS_VOLTAGE_ITEM_NAME, "Voltage", 0, 10000, 1, 0);
 		// --------------------------------------------------------------------------------
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;

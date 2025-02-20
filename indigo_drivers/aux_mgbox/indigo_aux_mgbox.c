@@ -533,13 +533,15 @@ static indigo_result gps_attach(indigo_device *device) {
 		//#endif
 		//--------------------------------------------------------------------------- X_SEND_GPS_MOUNT_PROPERTY
 		X_SEND_GPS_MOUNT_PROPERTY = indigo_init_switch_property(NULL, device->name, X_SEND_GPS_MOUNT_PROPERTY_NAME, SETTINGS_GROUP, "Send GPS data to mount", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
-		if (X_SEND_GPS_MOUNT_PROPERTY == NULL)
+		if (X_SEND_GPS_MOUNT_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(X_SEND_GPS_MOUNT_ITEM, X_SEND_GPS_MOUNT_ITEM_NAME, "Enable", false);
 		//--------------------------------------------------------------------------- X_REBOOT_GPS_PROPERTY
 		X_REBOOT_GPS_PROPERTY = indigo_init_switch_property(NULL, device->name, X_REBOOT_GPS_PROPERTY_NAME, SETTINGS_GROUP, "Reboot GPS", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
-		if (X_REBOOT_GPS_PROPERTY == NULL)
+		if (X_REBOOT_GPS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(X_REBOOT_GPS_ITEM, X_REBOOT_GPS_ITEM_NAME, "Reboot!", false);
 		//--------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);

@@ -681,35 +681,40 @@ static indigo_result dome_attach(indigo_device *device) {
 		DOME_SLAVING_PARAMETERS_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- NEXDOME_FIND_HOME
 		NEXDOME_FIND_HOME_PROPERTY = indigo_init_switch_property(NULL, device->name, NEXDOME_FIND_HOME_PROPERTY_NAME, NEXDOME_SETTINGS_GROUP, "Find home position", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
-		if (NEXDOME_FIND_HOME_PROPERTY == NULL)
+		if (NEXDOME_FIND_HOME_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		NEXDOME_FIND_HOME_PROPERTY->hidden = false;
 		indigo_init_switch_item(NEXDOME_FIND_HOME_ITEM, NEXDOME_FIND_HOME_ITEM_NAME, "Find home sensor", false);
 		// -------------------------------------------------------------------------------- NEXDOME_MOVE_THRESHOLD
 		NEXDOME_MOVE_THRESHOLD_PROPERTY = indigo_init_number_property(NULL, device->name, NEXDOME_MOVE_THRESHOLD_PROPERTY_NAME, NEXDOME_SETTINGS_GROUP, "Move threshold", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		if (NEXDOME_MOVE_THRESHOLD_PROPERTY == NULL)
+		if (NEXDOME_MOVE_THRESHOLD_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		NEXDOME_MOVE_THRESHOLD_PROPERTY->hidden = false;
 		indigo_init_number_item(NEXDOME_MOVE_THRESHOLD_ITEM, NEXDOME_MOVE_THRESHOLD_ITEM_NAME, "Minimal move (steps, ~153 steps/°)", 0, 10000, 1, 300);
 		strcpy(NEXDOME_MOVE_THRESHOLD_ITEM->number.format, "%.0f");
 		// -------------------------------------------------------------------------------- NEXDOME_HOME_POSITION
 		NEXDOME_HOME_POSITION_PROPERTY = indigo_init_number_property(NULL, device->name, NEXDOME_HOME_POSITION_PROPERTY_NAME, NEXDOME_SETTINGS_GROUP, "Home position", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		if (NEXDOME_HOME_POSITION_PROPERTY == NULL)
+		if (NEXDOME_HOME_POSITION_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		NEXDOME_HOME_POSITION_PROPERTY->hidden = false;
 		indigo_init_number_item(NEXDOME_HOME_POSITION_ITEM, NEXDOME_HOME_POSITION_ITEM_NAME, "Position (steps, ~153 steps/°)", 0, 100000, 1, 0);
 		strcpy(NEXDOME_HOME_POSITION_ITEM->number.format, "%.0f");
 		// -------------------------------------------------------------------------------- NEXDOME_POWER
 		NEXDOME_POWER_PROPERTY = indigo_init_number_property(NULL, device->name, NEXDOME_POWER_PROPERTY_NAME, NEXDOME_SETTINGS_GROUP, "Power status", INDIGO_OK_STATE, INDIGO_RO_PERM, 1);
-		if (NEXDOME_POWER_PROPERTY == NULL)
+		if (NEXDOME_POWER_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		NEXDOME_POWER_PROPERTY->hidden = false;
 		indigo_init_number_item(NEXDOME_POWER_VOLTAGE_ITEM, NEXDOME_POWER_VOLTAGE_ITEM_NAME, "Battery charge (Volts)", 0, 500, 1, 0);
 		strcpy(NEXDOME_POWER_VOLTAGE_ITEM->number.format, "%.2f");
 		// -------------------------------------------------------------------------------- NEXDOME_ACCELERATION
 		NEXDOME_ACCELERATION_PROPERTY = indigo_init_number_property(NULL, device->name, NEXDOME_ACCELERATION_PROPERTY_NAME, NEXDOME_SETTINGS_GROUP, "Acceleration time", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
-		if (NEXDOME_ACCELERATION_PROPERTY == NULL)
+		if (NEXDOME_ACCELERATION_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		NEXDOME_ACCELERATION_PROPERTY->hidden = false;
 		indigo_init_number_item(NEXDOME_ACCELERATION_ROTATOR_ITEM, NEXDOME_ACCELERATION_ROTATOR_ITEM_NAME, "Rotator (ms)", 100, 10000, 1, 1500);
 		strcpy(NEXDOME_ACCELERATION_ROTATOR_ITEM->number.format, "%.0f");
@@ -717,8 +722,9 @@ static indigo_result dome_attach(indigo_device *device) {
 		strcpy(NEXDOME_ACCELERATION_SHUTTER_ITEM->number.format, "%.0f");
 		// -------------------------------------------------------------------------------- NEXDOME_VELOCITY
 		NEXDOME_VELOCITY_PROPERTY = indigo_init_number_property(NULL, device->name, NEXDOME_VELOCITY_PROPERTY_NAME, NEXDOME_SETTINGS_GROUP, "Movement velocity", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
-		if (NEXDOME_VELOCITY_PROPERTY == NULL)
+		if (NEXDOME_VELOCITY_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		NEXDOME_VELOCITY_PROPERTY->hidden = false;
 		indigo_init_number_item(NEXDOME_VELOCITY_ROTATOR_ITEM, NEXDOME_VELOCITY_ROTATOR_ITEM_NAME, "Rotator (steps/s)", 32, 5000, 1, 600);
 		strcpy(NEXDOME_VELOCITY_ROTATOR_ITEM->number.format, "%.0f");
@@ -726,8 +732,9 @@ static indigo_result dome_attach(indigo_device *device) {
 		strcpy(NEXDOME_VELOCITY_SHUTTER_ITEM->number.format, "%.0f");
 		// -------------------------------------------------------------------------------- NEXDOME_RANGE
 		NEXDOME_RANGE_PROPERTY = indigo_init_number_property(NULL, device->name, NEXDOME_RANGE_PROPERTY_NAME, NEXDOME_SETTINGS_GROUP, "Movement range", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
-		if (NEXDOME_RANGE_PROPERTY == NULL)
+		if (NEXDOME_RANGE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		NEXDOME_RANGE_PROPERTY->hidden = false;
 		indigo_init_number_item(NEXDOME_RANGE_ROTATOR_ITEM, NEXDOME_RANGE_ROTATOR_ITEM_NAME, "Dome circumference (steps)", 30000, 100000, 1, 55080);
 		strcpy(NEXDOME_RANGE_ROTATOR_ITEM->number.format, "%.0f");
@@ -735,29 +742,33 @@ static indigo_result dome_attach(indigo_device *device) {
 		strcpy(NEXDOME_RANGE_SHUTTER_ITEM->number.format, "%.0f");
 		// -------------------------------------------------------------------------------- NEXDOME_FIND_HOME
 		NEXDOME_SETTINGS_PROPERTY = indigo_init_switch_property(NULL, device->name, NEXDOME_SETTINGS_PROPERTY_NAME, NEXDOME_SETTINGS_GROUP, "Settings management", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 3);
-		if (NEXDOME_SETTINGS_PROPERTY == NULL)
+		if (NEXDOME_SETTINGS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		NEXDOME_SETTINGS_PROPERTY->hidden = false;
 		indigo_init_switch_item(NEXDOME_SETTINGS_LOAD_ITEM, NEXDOME_SETTINGS_LOAD_ITEM_NAME, "Load from EEPROM", false);
 		indigo_init_switch_item(NEXDOME_SETTINGS_SAVE_ITEM, NEXDOME_SETTINGS_SAVE_ITEM_NAME, "Save to EEPROM", false);
 		indigo_init_switch_item(NEXDOME_SETTINGS_DEFAULT_ITEM, NEXDOME_SETTINGS_DEFAULT_ITEM_NAME, "Load factory defaults", false);
 		// -------------------------------------------------------------------------------- NEXDOME_RAIN
 		NEXDOME_RAIN_PROPERTY = indigo_init_light_property(NULL, device->name, NEXDOME_RAIN_PROPERTY_NAME, NEXDOME_SETTINGS_GROUP, "Rain sensor", INDIGO_OK_STATE, 1);
-		if (NEXDOME_RAIN_PROPERTY == NULL)
+		if (NEXDOME_RAIN_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		NEXDOME_RAIN_PROPERTY->hidden = false;
 		indigo_init_light_item(NEXDOME_RAIN_ALERT_ITEM, NEXDOME_RAIN_ALERT_ITEM_NAME, "Rain alert", INDIGO_IDLE_STATE);
 		// -------------------------------------------------------------------------------- NEXDOME_XB_STATE
 		NEXDOME_XB_STATE_PROPERTY = indigo_init_text_property(NULL, device->name, NEXDOME_XB_STATE_PROPERTY_NAME, NEXDOME_SETTINGS_GROUP, "Shutter state", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 1);
-		if (NEXDOME_XB_STATE_PROPERTY == NULL)
+		if (NEXDOME_XB_STATE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		NEXDOME_XB_STATE_PROPERTY->hidden = false;
 		indigo_init_text_item(NEXDOME_XB_STATE_ITEM, NEXDOME_XB_STATE_ITEM_NAME, "Shutter state", "");
 #ifdef CMD_AID
 		// -------------------------------------------------------------------------------- NEXDOME_COMMAND
 		NEXDOME_COMMAND_PROPERTY = indigo_init_text_property(NULL, device->name, NEXDOME_COMMAND_PROPERTY_NAME, NEXDOME_SETTINGS_GROUP, "Custom command", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 1);
-		if (NEXDOME_COMMAND_PROPERTY == NULL)
+		if (NEXDOME_COMMAND_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		NEXDOME_COMMAND_PROPERTY->hidden = false;
 		indigo_init_text_item(NEXDOME_COMMAND_ITEM, NEXDOME_COMMAND_ITEM_NAME, "Command", INDIGO_IDLE_STATE);
 #endif

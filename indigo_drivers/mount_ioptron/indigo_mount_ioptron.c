@@ -1896,14 +1896,16 @@ static indigo_result mount_attach(indigo_device *device) {
 		*DEVICE_BAUDRATE_ITEM->text.value = 0;
 		// -------------------------------------------------------------------------------- MOUNT_HOME
 		MOUNT_HOME_PROPERTY = indigo_resize_property(MOUNT_HOME_PROPERTY, 2);
-		if (MOUNT_HOME_PROPERTY == NULL)
+		if (MOUNT_HOME_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(MOUNT_HOME_SEARCH_ITEM, MOUNT_HOME_SEARCH_ITEM_NAME, "Search mechanical zero position", false);
 		MOUNT_HOME_PROPERTY->count = 1;
 		// -------------------------------------------------------------------------------- MOUNT_PROTOCOL
 		MOUNT_PROTOCOL_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_PROTOCOL_PROPERTY_NAME, MAIN_GROUP, "Mount protocol version", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 8);
-		if (MOUNT_PROTOCOL_PROPERTY == NULL)
+		if (MOUNT_PROTOCOL_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(PROTOCOL_AUTO_ITEM, PROTOCOL_AUTO_ITEM_NAME, "Autodetection", true);
 		indigo_init_switch_item(PROTOCOL_8406_ITEM, PROTOCOL_8406_ITEM_NAME, "HC 8406", false);
 		indigo_init_switch_item(PROTOCOL_8407_ITEM, PROTOCOL_8407_ITEM_NAME, "HC 8407", false);

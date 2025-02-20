@@ -796,59 +796,68 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME, "Elevation (m)", -400, 8000, 0, 0);
 		// -------------------------------------------------------------------------------- AGENT_SITE_DATA_SOURCE
 		AGENT_SITE_DATA_SOURCE_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_SITE_DATA_SOURCE_PROPERTY_NAME, "Agent", "Location coordinates source", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
-		if (AGENT_SITE_DATA_SOURCE_PROPERTY == NULL)
+		if (AGENT_SITE_DATA_SOURCE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(AGENT_SITE_DATA_SOURCE_HOST_ITEM, AGENT_SITE_DATA_SOURCE_HOST_ITEM_NAME, "Use agent coordinates", true);
 		indigo_init_switch_item(AGENT_SITE_DATA_SOURCE_MOUNT_ITEM, AGENT_SITE_DATA_SOURCE_MOUNT_ITEM_NAME, "Use mount coordinates", false);
 		indigo_init_switch_item(AGENT_SITE_DATA_SOURCE_DOME_ITEM, AGENT_SITE_DATA_SOURCE_DOME_ITEM_NAME, "Use dome coordinates", false);
 		indigo_init_switch_item(AGENT_SITE_DATA_SOURCE_GPS_ITEM, AGENT_SITE_DATA_SOURCE_GPS_ITEM_NAME, "Use GPS coordinates", false);
 		// -------------------------------------------------------------------------------- AGENT_SET_HOST_TIME
 		AGENT_SET_HOST_TIME_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_SET_HOST_TIME_PROPERTY_NAME, "Agent", "Use host time", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 2);
-		if (AGENT_SET_HOST_TIME_PROPERTY == NULL)
+		if (AGENT_SET_HOST_TIME_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(AGENT_SET_HOST_TIME_MOUNT_ITEM, AGENT_SET_HOST_TIME_MOUNT_ITEM_NAME, "Use host time for mount", true);
 		indigo_init_switch_item(AGENT_SET_HOST_TIME_DOME_ITEM, AGENT_SET_HOST_TIME_DOME_ITEM_NAME, "Use host time for dome", true);
 		// -------------------------------------------------------------------------------- AGENT_ABORT_RELATED_PROCESS
 		AGENT_ABORT_RELATED_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_ABORT_RELATED_PROCESS_PROPERTY_NAME, "Agent", "Allow to abort related process", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 2);
-		if (AGENT_ABORT_RELATED_PROCESS_PROPERTY == NULL)
+		if (AGENT_ABORT_RELATED_PROCESS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(AGENT_ABORT_IMAGER_ITEM, AGENT_ABORT_IMAGER_ITEM_NAME, "Imaging", false);
 		indigo_init_switch_item(AGENT_ABORT_GUIDER_ITEM, AGENT_ABORT_GUIDER_ITEM_NAME, "Guiding", false);
 		// -------------------------------------------------------------------------------- AGENT_LX200_SERVER
 		AGENT_LX200_SERVER_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_LX200_SERVER_PROPERTY_NAME, "Agent", "LX200 Server state", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (AGENT_LX200_SERVER_PROPERTY == NULL)
+		if (AGENT_LX200_SERVER_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(AGENT_LX200_SERVER_STARTED_ITEM, AGENT_LX200_SERVER_STARTED_ITEM_NAME, "Start LX200 server", false);
 		indigo_init_switch_item(AGENT_LX200_SERVER_STOPPED_ITEM, AGENT_LX200_SERVER_STOPPED_ITEM_NAME, "Stop LX200 server", true);
 		AGENT_LX200_CONFIGURATION_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_LX200_CONFIGURATION_PROPERTY_NAME, "Agent", "LX200 Server configuration", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
-		if (AGENT_LX200_CONFIGURATION_PROPERTY == NULL)
+		if (AGENT_LX200_CONFIGURATION_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(AGENT_LX200_CONFIGURATION_PORT_ITEM, AGENT_LX200_CONFIGURATION_PORT_ITEM_NAME, "Server port", 0, 0xFFFF, 0, 4030);
 		indigo_init_number_item(AGENT_LX200_CONFIGURATION_EPOCH_ITEM, AGENT_LX200_CONFIGURATION_EPOCH_ITEM_NAME, "Epoch (0=JNow, 2000=J2k)", 0, 2050, 0, 0);
 		// -------------------------------------------------------------------------------- AGENT_LIMITS
 		AGENT_LIMITS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_LIMITS_PROPERTY_NAME, "Agent", "Limits", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
-		if (AGENT_LIMITS_PROPERTY == NULL)
+		if (AGENT_LIMITS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_sexagesimal_number_item(AGENT_HA_TRACKING_LIMIT_ITEM, AGENT_HA_TRACKING_LIMIT_ITEM_NAME, "HA tracking limit (0 to 24 hrs)", 0, 24, 0, 24);
 		indigo_init_sexagesimal_number_item(AGENT_LOCAL_TIME_LIMIT_ITEM, AGENT_LOCAL_TIME_LIMIT_ITEM_NAME, "Time limit (0 to 24 hrs)", 0, 24, 0, 12);
 		indigo_init_sexagesimal_number_item(AGENT_COORDINATES_PROPAGATE_THESHOLD_ITEM, AGENT_COORDINATES_PROPAGATE_THESHOLD_ITEM_NAME, "Coordinate propagation threshold (°)", 0, 360, 0, 5.0/3600.0);
 		// -------------------------------------------------------------------------------- AGENT_MOUNT_FOV
 		AGENT_MOUNT_FOV_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_MOUNT_FOV_PROPERTY_NAME, "Agent", "FOV", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
-		if (AGENT_MOUNT_FOV_PROPERTY == NULL)
+		if (AGENT_MOUNT_FOV_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_sexagesimal_number_item(AGENT_MOUNT_FOV_ANGLE_ITEM, AGENT_MOUNT_FOV_ANGLE_ITEM_NAME, "Angle (°)", -360, 360, 0, 0);
 		indigo_init_sexagesimal_number_item(AGENT_MOUNT_FOV_WIDTH_ITEM, AGENT_MOUNT_FOV_WIDTH_ITEM_NAME, "Width (°)", 0, 360, 0, 0);
 		indigo_init_sexagesimal_number_item(AGENT_MOUNT_FOV_HEIGHT_ITEM, AGENT_MOUNT_FOV_HEIGHT_ITEM_NAME, "Height (°)", 0, 360, 0, 0);
 		// -------------------------------------------------------------------------------- AGENT_MOUNT_TARGET_COORDINATES
 		AGENT_MOUNT_TARGET_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_MOUNT_TARGET_COORDINATES_PROPERTY_NAME, "Agent", "Target coordinates", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
-		if (AGENT_MOUNT_TARGET_COORDINATES_PROPERTY == NULL)
+		if (AGENT_MOUNT_TARGET_COORDINATES_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_sexagesimal_number_item(AGENT_MOUNT_TARGET_COORDINATES_RA_ITEM, AGENT_MOUNT_TARGET_COORDINATES_RA_ITEM_NAME, "Right ascension (0 to 24 hrs)", 0, 24, 0, 0);
 		indigo_init_sexagesimal_number_item(AGENT_MOUNT_TARGET_COORDINATES_DEC_ITEM, AGENT_MOUNT_TARGET_COORDINATES_DEC_ITEM_NAME, "Declination (-90° to +90°)", -90, 90, 0, 0);
 		// -------------------------------------------------------------------------------- AGENT_MOUNT_DISPLAY_COORDINATES
 		AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY_NAME, "Agent", "Display coordinates", INDIGO_OK_STATE, INDIGO_RO_PERM, 12);
-		if (AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY == NULL)
+		if (AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_sexagesimal_number_item(AGENT_MOUNT_DISPLAY_COORDINATES_RA_JNOW_ITEM, AGENT_MOUNT_DISPLAY_COORDINATES_RA_JNOW_ITEM_NAME, "Right ascension JNow (0 to 24 hrs)", 0, 24, 0, 0);
 		indigo_init_sexagesimal_number_item(AGENT_MOUNT_DISPLAY_COORDINATES_DEC_JNOW_ITEM, AGENT_MOUNT_DISPLAY_COORDINATES_DEC_JNOW_ITEM_NAME, "Declination JNow (-90° to +90°)", -90, 90, 0, 0);
 		indigo_init_sexagesimal_number_item(AGENT_MOUNT_DISPLAY_COORDINATES_ALT_ITEM, AGENT_MOUNT_DISPLAY_COORDINATES_ALT_ITEM_NAME, "Altitude (0 to 180°)", 0, 180, 0, 0);
@@ -863,23 +872,27 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_MOUNT_DISPLAY_COORDINATES_DEROTATION_RATE_ITEM, AGENT_MOUNT_DISPLAY_COORDINATES_DEROTATION_RATE_ITEM_NAME, "Derotation rate (\"/s)", -1000, 1000, 0, 0);
 		// -------------------------------------------------------------------------------- AGENT_FIELD_DEROTATION
 		AGENT_FIELD_DEROTATION_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_FIELD_DEROTATION_PROPERTY_NAME, "Agent", "Derotate field for Alt/Az mounts", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (AGENT_FIELD_DEROTATION_PROPERTY == NULL)
+		if (AGENT_FIELD_DEROTATION_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(AGENT_FIELD_DEROTATION_ENABLED_ITEM, AGENT_FIELD_DEROTATION_ENABLED_ITEM_NAME, "Enabled", false);
 		indigo_init_switch_item(AGENT_FIELD_DEROTATION_DISABLED_ITEM, AGENT_FIELD_DEROTATION_DISABLED_ITEM_NAME, "Disabled", true);
 		// -------------------------------------------------------------------------------- AGENT_START_PROCESS
 		AGENT_START_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_START_PROCESS_PROPERTY_NAME, "Agent", "Start process", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 2);
-		if (AGENT_START_PROCESS_PROPERTY == NULL)
+		if (AGENT_START_PROCESS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(AGENT_MOUNT_START_SLEW_ITEM, AGENT_MOUNT_START_SLEW_ITEM_NAME, "Slew", false);
 		indigo_init_switch_item(AGENT_MOUNT_START_SYNC_ITEM, AGENT_MOUNT_START_SYNC_ITEM_NAME, "Sync", false);
 		AGENT_ABORT_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_ABORT_PROCESS_PROPERTY_NAME, "Agent", "Abort", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
-		if (AGENT_ABORT_PROCESS_PROPERTY == NULL)
+		if (AGENT_ABORT_PROCESS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(AGENT_ABORT_PROCESS_ITEM, AGENT_ABORT_PROCESS_ITEM_NAME, "Abort", false);
 		AGENT_PROCESS_FEATURES_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_PROCESS_FEATURES_PROPERTY_NAME, "Agent", "Process features", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 2);
-		if (AGENT_PROCESS_FEATURES_PROPERTY == NULL)
+		if (AGENT_PROCESS_FEATURES_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(AGENT_MOUNT_ENABLE_HA_LIMIT_FEATURE_ITEM, AGENT_MOUNT_ENABLE_HA_LIMIT_FEATURE_ITEM_NAME, "Enable HA limit", false);
 		indigo_init_switch_item(AGENT_MOUNT_ENABLE_TIME_LIMIT_FEATURE_ITEM, AGENT_MOUNT_ENABLE_TIME_LIMIT_FEATURE_ITEM_NAME, "Enable time limit", false);
 		// --------------------------------------------------------------------------------

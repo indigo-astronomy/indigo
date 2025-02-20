@@ -663,17 +663,20 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_IMAGE_FORMAT_PROPERTY->count = 7;
 		// --------------------------------------------------------------------------------- PIXEL_FORMAT
 		PIXEL_FORMAT_PROPERTY = indigo_init_switch_property(NULL, device->name, "PIXEL_FORMAT", CCD_ADVANCED_GROUP, "Pixel Format", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (PIXEL_FORMAT_PROPERTY == NULL)
+		if (PIXEL_FORMAT_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		// -------------------------------------------------------------------------------- ASI_ADVANCED
 		QHY_ADVANCED_PROPERTY = indigo_init_number_property(NULL, device->name, "QHY_ADVANCED", CCD_ADVANCED_GROUP, "Advanced", INDIGO_OK_STATE, INDIGO_RW_PERM, 0);
-		if (QHY_ADVANCED_PROPERTY == NULL)
+		if (QHY_ADVANCED_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 #ifdef QHY2
 // -------------------------------------------------------------------------------- ASI_ADVANCED
 		READ_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, "READ_MODE", CCD_ADVANCED_GROUP, "Read mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 16);
-		if (READ_MODE_PROPERTY == NULL)
+		if (READ_MODE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 #endif
 		// --------------------------------------------------------------------------------
 		return qhy_enumerate_properties(device, NULL, NULL);

@@ -165,15 +165,17 @@ static indigo_result rotator_attach(indigo_device *device) {
 		ROTATOR_DIRECTION_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------- BEEP_PROPERTY
 		CAA_BEEP_PROPERTY = indigo_init_switch_property(NULL, device->name, CAA_BEEP_PROPERTY_NAME, ROTATOR_ADVANCED_GROUP, "Beep on move", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (CAA_BEEP_PROPERTY == NULL)
+		if (CAA_BEEP_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 
 		indigo_init_switch_item(CAA_BEEP_ON_ITEM, CAA_BEEP_ON_ITEM_NAME, "On", false);
 		indigo_init_switch_item(CAA_BEEP_OFF_ITEM, CAA_BEEP_OFF_ITEM_NAME, "Off", true);
 		// --------------------------------------------------------------------------------- CAA_CUSTOM_SUFFIX
 		CAA_CUSTOM_SUFFIX_PROPERTY = indigo_init_text_property(NULL, device->name, "CAA_CUSTOM_SUFFIX", ROTATOR_ADVANCED_GROUP, "Device name custom suffix", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		if (CAA_CUSTOM_SUFFIX_PROPERTY == NULL)
+		if (CAA_CUSTOM_SUFFIX_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_text_item(CAA_CUSTOM_SUFFIX_ITEM, CAA_CUSTOM_SUFFIX_NAME, "Suffix", PRIVATE_DATA->custom_suffix);
 		// --------------------------------------------------------------------------
 		return caa_enumerate_properties(device, NULL, NULL);

@@ -283,13 +283,15 @@ static indigo_result dome_attach(indigo_device *device) {
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- X_MOUNT_PARKED
 		X_MOUNT_PARK_STATUS_PROPERTY = indigo_init_light_property(NULL, device->name, X_MOUNT_PARK_STATUS_PROPERTY_NAME, DOME_MAIN_GROUP, "Mount park status", INDIGO_OK_STATE, 1);
-		if (X_MOUNT_PARK_STATUS_PROPERTY == NULL)
+		if (X_MOUNT_PARK_STATUS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_light_item(X_MOUNT_PARK_STATUS_ITEM, X_MOUNT_PARK_STATUS_ITEM_NAME, "Parked", INDIGO_IDLE_STATE);
 		// -------------------------------------------------------------------------------- X_MOUNT_PARKED
 		X_HEATER_CONTROL_PROPERTY = indigo_init_switch_property(NULL, device->name, X_HEATER_CONTROL_PROPERTY_NAME, DOME_MAIN_GROUP, "Heater control", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (X_HEATER_CONTROL_PROPERTY == NULL)
+		if (X_HEATER_CONTROL_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(X_HEATER_CONTROL_OFF_ITEM, X_HEATER_CONTROL_OFF_ITEM_NAME, "Off", true);
 		indigo_init_switch_item(X_HEATER_CONTROL_ON_ITEM, X_HEATER_CONTROL_ON_ITEM_NAME, "On", false);
 		// --------------------------------------------------------------------------------

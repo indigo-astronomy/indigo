@@ -81,40 +81,46 @@ static indigo_result ccd_attach(indigo_device *device) {
 		indigo_init_switch_item(CCD_IMAGE_FORMAT_NATIVE_AVI_ITEM, CCD_IMAGE_FORMAT_NATIVE_AVI_ITEM_NAME, "Native + AVI", false);
 		// -------------------------------------------------------------------------------- DSLR_DELETE_IMAGE
 		DSLR_DELETE_IMAGE_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_DELETE_IMAGE_PROPERTY_NAME, "DSLR", "Delete downloaded image", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (DSLR_DELETE_IMAGE_PROPERTY == NULL)
+		if (DSLR_DELETE_IMAGE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(DSLR_DELETE_IMAGE_ON_ITEM, DSLR_ZOOM_PREVIEW_ON_ITEM_NAME, "On", true);
 		indigo_init_switch_item(DSLR_DELETE_IMAGE_OFF_ITEM, DSLR_ZOOM_PREVIEW_OFF_ITEM_NAME, "Off", false);
 		// -------------------------------------------------------------------------------- DSLR_MIRROR_LOCKUP
 		DSLR_MIRROR_LOCKUP_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_MIRROR_LOCKUP_PROPERTY_NAME, "DSLR", "Use mirror lockup", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (DSLR_MIRROR_LOCKUP_PROPERTY == NULL)
+		if (DSLR_MIRROR_LOCKUP_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(DSLR_MIRROR_LOCKUP_LOCK_ITEM, DSLR_MIRROR_LOCKUP_LOCK_ITEM_NAME, "On", false);
 		indigo_init_switch_item(DSLR_MIRROR_LOCKUP_UNLOCK_ITEM, DSLR_MIRROR_LOCKUP_UNLOCK_ITEM_NAME, "Off", true);
 		// -------------------------------------------------------------------------------- DSLR_ZOOM_PREVIEW
 		DSLR_ZOOM_PREVIEW_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_ZOOM_PREVIEW_PROPERTY_NAME, "DSLR", "Zoom preview", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (DSLR_ZOOM_PREVIEW_PROPERTY == NULL)
+		if (DSLR_ZOOM_PREVIEW_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		DSLR_ZOOM_PREVIEW_PROPERTY->hidden = PRIVATE_DATA->zoom == NULL;
 		indigo_init_switch_item(DSLR_ZOOM_PREVIEW_ON_ITEM, DSLR_ZOOM_PREVIEW_ON_ITEM_NAME, "On", false);
 		indigo_init_switch_item(DSLR_ZOOM_PREVIEW_OFF_ITEM, DSLR_ZOOM_PREVIEW_OFF_ITEM_NAME, "Off", true);
 		// -------------------------------------------------------------------------------- DSLR_LOCK
 		DSLR_LOCK_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_LOCK_PROPERTY_NAME, "DSLR", "Lock camera GUI", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (DSLR_LOCK_PROPERTY == NULL)
+		if (DSLR_LOCK_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		DSLR_LOCK_PROPERTY->hidden = PRIVATE_DATA->lock == NULL;
 		indigo_init_switch_item(DSLR_LOCK_ITEM, DSLR_LOCK_ITEM_NAME, "On", false);
 		indigo_init_switch_item(DSLR_UNLOCK_ITEM, DSLR_UNLOCK_ITEM_NAME, "Off", true);
 		// -------------------------------------------------------------------------------- DSLR_AF
 		DSLR_AF_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_AF_PROPERTY_NAME, "DSLR", "Autofocus", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
-		if (DSLR_AF_PROPERTY == NULL)
+		if (DSLR_AF_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		DSLR_AF_PROPERTY->hidden = PRIVATE_DATA->af == NULL;
 		indigo_init_switch_item(DSLR_AF_ITEM, DSLR_AF_ITEM_NAME, "Start autofocus", false);
 		// -------------------------------------------------------------------------------- DSLR_SET_HOST_TIME
 		DSLR_SET_HOST_TIME_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_SET_HOST_TIME_PROPERTY_NAME, "DSLR", "Set host time", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
-		if (DSLR_SET_HOST_TIME_PROPERTY == NULL)
+		if (DSLR_SET_HOST_TIME_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		DSLR_SET_HOST_TIME_PROPERTY->hidden = PRIVATE_DATA->set_host_time == NULL;
 		indigo_init_switch_item(DSLR_SET_HOST_TIME_ITEM, DSLR_SET_HOST_TIME_ITEM_NAME, "Set host time", false);
 		// --------------------------------------------------------------------------------

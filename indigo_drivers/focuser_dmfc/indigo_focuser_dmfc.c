@@ -91,18 +91,21 @@ static indigo_result focuser_attach(indigo_device *device) {
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		X_FOCUSER_MOTOR_TYPE_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_FOCUSER_MOTOR_TYPE", FOCUSER_MAIN_GROUP, "Motor type", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (X_FOCUSER_MOTOR_TYPE_PROPERTY == NULL)
+		if (X_FOCUSER_MOTOR_TYPE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(X_FOCUSER_MOTOR_TYPE_STEPPER_ITEM, "STEPPER", "Stepper motor", false);
 		indigo_init_switch_item(X_FOCUSER_MOTOR_TYPE_DC_ITEM, "DC", "DC Motor", false);
 		X_FOCUSER_ENCODER_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_FOCUSER_ENCODER", FOCUSER_MAIN_GROUP, "Encoder state", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (X_FOCUSER_ENCODER_PROPERTY == NULL)
+		if (X_FOCUSER_ENCODER_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(X_FOCUSER_ENCODER_ENABLED_ITEM, "ENABLED", "Enabled", false);
 		indigo_init_switch_item(X_FOCUSER_ENCODER_DISABLED_ITEM, "DISABLED", "Disabled", false);
 		X_FOCUSER_LED_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_FOCUSER_LED", FOCUSER_MAIN_GROUP, "LED status", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (X_FOCUSER_LED_PROPERTY == NULL)
+		if (X_FOCUSER_LED_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(X_FOCUSER_LED_ENABLED_ITEM, "ENABLED", "Enabled", false);
 		indigo_init_switch_item(X_FOCUSER_LED_DISABLED_ITEM, "DISABLED", "Disabled", false);
 		// -------------------------------------------------------------------------------- FOCUSER_BACKLASH

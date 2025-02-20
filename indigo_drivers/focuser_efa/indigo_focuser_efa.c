@@ -191,14 +191,16 @@ static indigo_result focuser_attach(indigo_device *device) {
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		X_FOCUSER_FANS_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_FOCUSER_FANS", FOCUSER_MAIN_GROUP, "Fans", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (X_FOCUSER_FANS_PROPERTY == NULL)
+		if (X_FOCUSER_FANS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		X_FOCUSER_FANS_PROPERTY->hidden = true;
 		indigo_init_switch_item(X_FOCUSER_FANS_OFF_ITEM, "OFF", "Off", true);
 		indigo_init_switch_item(X_FOCUSER_FANS_ON_ITEM, "ON", "On", false);
 		X_FOCUSER_CALIBRATION_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_FOCUSER_CALIBRATION", FOCUSER_MAIN_GROUP, "Calibration", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
-		if (X_FOCUSER_CALIBRATION_PROPERTY == NULL)
+		if (X_FOCUSER_CALIBRATION_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		X_FOCUSER_CALIBRATION_PROPERTY->hidden = true;
 		indigo_init_switch_item(X_FOCUSER_CALIBRATION_ITEM, "CALIBRATE", "Calibrate", false);
 		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS

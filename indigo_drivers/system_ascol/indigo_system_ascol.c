@@ -1494,13 +1494,15 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_SNOOP_DEVICES_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------- OIL STATE
 		OIL_STATE_PROPERTY = indigo_init_text_property(NULL, device->name, OIL_STATE_PROPERTY_NAME, OIL_GROUP, "Oil State", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 1);
-		if (OIL_STATE_PROPERTY == NULL)
+		if (OIL_STATE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_text_item(OIL_STATE_ITEM, OIL_STATE_ITEM_NAME, "State", "");
 		// --------------------------------------------------------------------------- FLAP STATE
 		FLAP_STATE_PROPERTY = indigo_init_text_property(NULL, device->name, FLAP_STATE_PROPERTY_NAME, FLAPS_GROUP, "Flaps State", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 2);
-		if (FLAP_STATE_PROPERTY == NULL)
+		if (FLAP_STATE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_text_item(TUBE_FLAP_STATE_ITEM, TUBE_FLAP_STATE_ITEM_NAME, "Tube Flap", "");
 		indigo_init_text_item(COUDE_FLAP_STATE_ITEM, COUDE_FLAP_STATE_ITEM_NAME, "Coude Flap", "");
 
@@ -1508,22 +1510,25 @@ static indigo_result mount_attach(indigo_device *device) {
 		char item_label[INDIGO_NAME_SIZE];
 		// -------------------------------------------------------------------------- FLAP_TUBE
 		FLAP_TUBE_PROPERTY = indigo_init_switch_property(NULL, device->name, FLAP_TUBE_PROPERTY_NAME, FLAPS_GROUP, "Tube Flap", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (FLAP_TUBE_PROPERTY == NULL)
+		if (FLAP_TUBE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 
 		indigo_init_switch_item(FLAP_TUBE_OPEN_ITEM, FLAP_TUBE_OPEN_ITEM_NAME, "Open", false);
 		indigo_init_switch_item(FLAP_TUBE_CLOSE_ITEM, FLAP_TUBE_CLOSE_ITEM_NAME, "Close", true);
 		// -------------------------------------------------------------------------- FLAP_COUDE
 		FLAP_COUDE_PROPERTY = indigo_init_switch_property(NULL, device->name, FLAP_COUDE_PROPERTY_NAME, FLAPS_GROUP, "Coude Flap", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (FLAP_COUDE_PROPERTY == NULL)
+		if (FLAP_COUDE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 
 		indigo_init_switch_item(FLAP_COUDE_OPEN_ITEM, FLAP_COUDE_OPEN_ITEM_NAME, "Open", false);
 		indigo_init_switch_item(FLAP_COUDE_CLOSE_ITEM, FLAP_COUDE_CLOSE_ITEM_NAME, "Close", true);
 		// --------------------------------------------------------------------------- OIMV
 		OIMV_PROPERTY = indigo_init_number_property(NULL, device->name, OIMV_PROPERTY_NAME, OIL_GROUP, "Oil Sesors", INDIGO_OK_STATE, INDIGO_RO_PERM, ASCOL_OIMV_N);
-		if (OIMV_PROPERTY == NULL)
+		if (OIMV_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 
 		ascol_OIMV(ASCOL_DESCRIBE, &PRIVATE_DATA->oimv);
 		for (index = 0; index < ASCOL_OIMV_N; index++) {
@@ -1536,125 +1541,144 @@ static indigo_result mount_attach(indigo_device *device) {
 		}
 		// -------------------------------------------------------------------------- OIL_POWER
 		OIL_POWER_PROPERTY = indigo_init_switch_property(NULL, device->name, OIL_POWER_PROPERTY_NAME, OIL_GROUP, "Oil Power", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (OIL_POWER_PROPERTY == NULL)
+		if (OIL_POWER_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 
 		indigo_init_switch_item(OIL_ON_ITEM, OIL_ON_ITEM_NAME, "On", false);
 		indigo_init_switch_item(OIL_OFF_ITEM, OIL_OFF_ITEM_NAME, "Off", true);
 		// -------------------------------------------------------------------------- AXIS_CALIBRATED
 		AXIS_CALIBRATED_PROPERTY = indigo_init_light_property(NULL, device->name, AXIS_CALIBRATED_PROPERTY_NAME, CORRECTIONS_GROUP, "Axis Calibrated", INDIGO_IDLE_STATE, 2);
-		if (AXIS_CALIBRATED_PROPERTY == NULL)
+		if (AXIS_CALIBRATED_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 
 		indigo_init_light_item(RA_CALIBRATED_ITEM, RA_CALIBRATED_ITEM_NAME, "RA Axis", INDIGO_IDLE_STATE);
 		indigo_init_light_item(DEC_CALIBRATED_ITEM, DEC_CALIBRATED_ITEM_NAME, "DEC Axis", INDIGO_IDLE_STATE);
 		// -------------------------------------------------------------------------- RA_CALIBRATION
 		RA_CALIBRATION_PROPERTY = indigo_init_switch_property(NULL, device->name, RA_CALIBRATION_PROPERTY_NAME, CORRECTIONS_GROUP, "RA Calibration", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 2);
-		if (RA_CALIBRATION_PROPERTY == NULL)
+		if (RA_CALIBRATION_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 
 		indigo_init_switch_item(RA_CALIBRATION_START_ITEM, RA_CALIBRATION_START_ITEM_NAME, "Start", false);
 		indigo_init_switch_item(RA_CALIBRATION_STOP_ITEM, RA_CALIBRATION_STOP_ITEM_NAME, "Stop", false);
 		// -------------------------------------------------------------------------- DEC_CALIBRATION
 		DEC_CALIBRATION_PROPERTY = indigo_init_switch_property(NULL, device->name, DEC_CALIBRATION_PROPERTY_NAME, CORRECTIONS_GROUP, "DEC Calibration", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 2);
-		if (DEC_CALIBRATION_PROPERTY == NULL)
+		if (DEC_CALIBRATION_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 
 		indigo_init_switch_item(DEC_CALIBRATION_START_ITEM, DEC_CALIBRATION_START_ITEM_NAME, "Start", false);
 		indigo_init_switch_item(DEC_CALIBRATION_STOP_ITEM, DEC_CALIBRATION_STOP_ITEM_NAME, "Stop", false);
 		// -------------------------------------------------------------------------- ABERRATION_CORRECTION
 		ABERRATION_PROPERTY = indigo_init_switch_property(NULL, device->name, ABERRATION_PROPERTY_NAME, CORRECTIONS_GROUP, "Aberration Correction", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (ABERRATION_PROPERTY == NULL)
+		if (ABERRATION_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 
 		indigo_init_switch_item(ABERRATION_ON_ITEM, ABERRATION_ON_ITEM_NAME, "On", false);
 		indigo_init_switch_item(ABERRATION_OFF_ITEM, ABERRATION_OFF_ITEM_NAME, "Off", true);
 		// -------------------------------------------------------------------------- PRECESSION_CORRECTION
 		PRECESSION_PROPERTY = indigo_init_switch_property(NULL, device->name, PRECESSION_PROPERTY_NAME, CORRECTIONS_GROUP, "Precession and Nutation Correction", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (PRECESSION_PROPERTY == NULL)
+		if (PRECESSION_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 
 		indigo_init_switch_item(PRECESSION_ON_ITEM, PRECESSION_ON_ITEM_NAME, "On", false);
 		indigo_init_switch_item(PRECESSION_OFF_ITEM, PRECESSION_OFF_ITEM_NAME, "Off", true);
 		// -------------------------------------------------------------------------- REFRACTION_CORRECTION
 		REFRACTION_PROPERTY = indigo_init_switch_property(NULL, device->name, REFRACTION_PROPERTY_NAME, CORRECTIONS_GROUP, "Refraction Correction", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (REFRACTION_PROPERTY == NULL)
+		if (REFRACTION_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 
 		indigo_init_switch_item(REFRACTION_ON_ITEM, REFRACTION_ON_ITEM_NAME, "On", false);
 		indigo_init_switch_item(REFRACTION_OFF_ITEM, REFRACTION_OFF_ITEM_NAME, "Off", true);
 		// -------------------------------------------------------------------------- ERROR_CORRECTION
 		ERROR_CORRECTION_PROPERTY = indigo_init_switch_property(NULL, device->name, ERROR_CORRECTION_PROPERTY_NAME, CORRECTIONS_GROUP, "Error Correction", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (ERROR_CORRECTION_PROPERTY == NULL)
+		if (ERROR_CORRECTION_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 
 		indigo_init_switch_item(ERROR_CORRECTION_ON_ITEM, ERROR_CORRECTION_ON_ITEM_NAME, "On", false);
 		indigo_init_switch_item(ERROR_CORRECTION_OFF_ITEM, ERROR_CORRECTION_OFF_ITEM_NAME, "Off", true);
 		// -------------------------------------------------------------------------- CORRECTION_MODEL
 		CORRECTION_MODEL_PROPERTY = indigo_init_number_property(NULL, device->name, CORRECTION_MODEL_PROPERTY_NAME, CORRECTIONS_GROUP, "Correction Model", INDIGO_BUSY_STATE, INDIGO_RW_PERM, 1);
-		if (CORRECTION_MODEL_PROPERTY == NULL)
+		if (CORRECTION_MODEL_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 
 		indigo_init_number_item(CORRECTION_MODEL_INDEX_ITEM, CORRECTION_MODEL_INDEX_ITEM_NAME, "Index", 0, 4, 1, 0);
 		// -------------------------------------------------------------------------- GUIDE_MODE
 		GUIDE_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, GUIDE_MODE_PROPERTY_NAME, CORRECTIONS_GROUP, "Guide Mode", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (GUIDE_MODE_PROPERTY == NULL)
+		if (GUIDE_MODE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 
 		indigo_init_switch_item(GUIDE_MODE_ON_ITEM, GUIDE_MODE_ON_ITEM_NAME, "On", false);
 		indigo_init_switch_item(GUIDE_MODE_OFF_ITEM, GUIDE_MODE_OFF_ITEM_NAME, "Off", true);
 		// --------------------------------------------------------------------------- MOUNT STATE
 		MOUNT_STATE_PROPERTY = indigo_init_text_property(NULL, device->name, MOUNT_STATE_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Mount State", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 3);
-		if (MOUNT_STATE_PROPERTY == NULL)
+		if (MOUNT_STATE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_text_item(MOUNT_STATE_ITEM, MOUNT_STATE_ITEM_NAME, "Mount", "");
 		indigo_init_text_item(RA_STATE_ITEM, RA_STATE_ITEM_NAME, "RA Axis", "");
 		indigo_init_text_item(DEC_STATE_ITEM, DEC_STATE_ITEM_NAME, "DEC Axis", "");
 		// -------------------------------------------------------------------------- TELESCOPE_POWER
 		TELESCOPE_POWER_PROPERTY = indigo_init_switch_property(NULL, device->name, TELESCOPE_POWER_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Telescope Power", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (TELESCOPE_POWER_PROPERTY == NULL)
+		if (TELESCOPE_POWER_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 
 		indigo_init_switch_item(TELESCOPE_ON_ITEM, TELESCOPE_ON_ITEM_NAME, "On", false);
 		indigo_init_switch_item(TELESCOPE_OFF_ITEM, TELESCOPE_OFF_ITEM_NAME, "Off", true);
 		// -------------------------------------------------------------------------- HADEC_COORDINATES
 		HADEC_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, HADEC_COORDINATES_PROPERTY_NAME, MOUNT_MAIN_GROUP, "HA DEC Coordinates", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
-		if (HADEC_COORDINATES_PROPERTY == NULL)
+		if (HADEC_COORDINATES_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_sexagesimal_number_item(HADEC_COORDINATES_HA_ITEM, HADEC_COORDINATES_HA_ITEM_NAME, "Hour Angle (-180° to 330°)", -180, 330, 0.0001, 0);
 		indigo_init_sexagesimal_number_item(HADEC_COORDINATES_DEC_ITEM, HADEC_COORDINATES_DEC_ITEM_NAME, "Declination (-90° to 90°)", -90, 270, 0.0001, 0);
 		// -------------------------------------------------------------------------- HADEC_RELATIVE_MOVE
 		HADEC_RELATIVE_MOVE_PROPERTY = indigo_init_number_property(NULL, device->name, HADEC_RELATIVE_MOVE_PROPERTY_NAME, MOUNT_MAIN_GROUP, "HA DEC Relative Move", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
-		if (HADEC_RELATIVE_MOVE_PROPERTY == NULL)
+		if (HADEC_RELATIVE_MOVE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(HADEC_RELATIVE_MOVE_HA_ITEM, HADEC_RELATIVE_MOVE_HA_ITEM_NAME, "Hour Angle (-36000\" to 36000\")", -36000, 36000, 0.01, 0);
 		indigo_init_number_item(HADEC_RELATIVE_MOVE_DEC_ITEM, HADEC_RELATIVE_MOVE_DEC_ITEM_NAME, "Declination (-36000\" to 36000\")", -36000, 36000, 0.01, 0);
 		// -------------------------------------------------------------------------- RADEC_RELATIVE_MOVE
 		RADEC_RELATIVE_MOVE_PROPERTY = indigo_init_number_property(NULL, device->name, RADEC_RELATIVE_MOVE_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Relative Move", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
-		if (RADEC_RELATIVE_MOVE_PROPERTY == NULL)
+		if (RADEC_RELATIVE_MOVE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(RADEC_RELATIVE_MOVE_RA_ITEM, RADEC_RELATIVE_MOVE_RA_ITEM_NAME, "Right Ascension (-36000\" to 36000\")", -36000, 36000, 0.01, 0);
 		indigo_init_number_item(RADEC_RELATIVE_MOVE_DEC_ITEM, RADEC_RELATIVE_MOVE_DEC_ITEM_NAME, "Declination (-36000\" to 36000\")", -36000, 36000, 0.01, 0);
 		// -------------------------------------------------------------------------- USER_SPEED
 		USER_SPEED_PROPERTY = indigo_init_number_property(NULL, device->name, USER_SPEED_PROPERTY_NAME, SPEEDS_GROUP, "User Speed", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
-		if (USER_SPEED_PROPERTY == NULL)
+		if (USER_SPEED_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(USER_SPEED_RA_ITEM, USER_SPEED_RA_ITEM_NAME, "Right Ascension (-10.0\"/s to 10.0\"/s)", -10, 10, 0.0001, 0);
 		indigo_init_number_item(USER_SPEED_DEC_ITEM, USER_SPEED_DEC_ITEM_NAME, "Declination (-10.0\"/s to 10.0\"/s)", -10, 10, 0.0001, 0);
 		// -------------------------------------------------------------------------- T1_SPEED
 		T1_SPEED_PROPERTY = indigo_init_number_property(NULL, device->name, T1_SPEED_PROPERTY_NAME, SPEEDS_GROUP, "T1 Speed", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		if (T1_SPEED_PROPERTY == NULL)
+		if (T1_SPEED_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(T1_SPEED_ITEM, T1_SPEED_ITEM_NAME, "Rate (100.0\"/s to 5000.0\"/s)", 100, 5000, 0.01, 0);
 		// -------------------------------------------------------------------------- T2_SPEED
 		T2_SPEED_PROPERTY = indigo_init_number_property(NULL, device->name, T2_SPEED_PROPERTY_NAME, SPEEDS_GROUP, "T2 Speed", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		if (T2_SPEED_PROPERTY == NULL)
+		if (T2_SPEED_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(T2_SPEED_ITEM, T2_SPEED_ITEM_NAME, "Rate (1.0\"/s to 120.0\"/s)", 1, 120, 0.01, 0);
 		// -------------------------------------------------------------------------- T3_SPEED
 		T3_SPEED_PROPERTY = indigo_init_number_property(NULL, device->name, T3_SPEED_PROPERTY_NAME, SPEEDS_GROUP, "T3 Speed", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		if (T3_SPEED_PROPERTY == NULL)
+		if (T3_SPEED_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(T3_SPEED_ITEM, T3_SPEED_ITEM_NAME, "Rate (1.0\"/s to 120.0\"/s)", 1, 120, 0.01, 0);
 		// --------------------------------------------------------------------------
 
@@ -2014,8 +2038,9 @@ static indigo_result guider_attach(indigo_device *device) {
 		GUIDER_RATE_ITEM->number.max = 80;
 		// -------------------------------------------------------------------------- GUIDE_CORRECTION
 		GUIDE_CORRECTION_PROPERTY = indigo_init_number_property(NULL, device->name, GUIDE_CORRECTION_PROPERTY_NAME, GUIDER_MAIN_GROUP, "Guide Corrections", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
-		if (GUIDE_CORRECTION_PROPERTY == NULL)
+		if (GUIDE_CORRECTION_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(GUIDE_CORRECTION_RA_ITEM, GUIDE_CORRECTION_RA_ITEM_NAME, "RA Correction (-3600\" to 3600\")", -3600, 3600, 0.1, 0);
 		indigo_init_number_item(GUIDE_CORRECTION_DEC_ITEM, GUIDE_CORRECTION_DEC_ITEM_NAME, "Dec Correction (-3600\" to 3600\")", -3600, 3600, 0.1, 0);
 		// ---------------------------------------------------------------------------
@@ -2499,20 +2524,23 @@ static indigo_result dome_attach(indigo_device *device) {
 
 		// -------------------------------------------------------------------------- DOME_POWER
 		DOME_POWER_PROPERTY = indigo_init_switch_property(NULL, device->name, DOME_POWER_PROPERTY_NAME, DOME_MAIN_GROUP, "Dome Power", INDIGO_BUSY_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (DOME_POWER_PROPERTY == NULL)
+		if (DOME_POWER_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 
 		indigo_init_switch_item(DOME_ON_ITEM, DOME_ON_ITEM_NAME, "On", false);
 		indigo_init_switch_item(DOME_OFF_ITEM, DOME_OFF_ITEM_NAME, "Off", true);
 		// --------------------------------------------------------------------------- DOME STATE
 		DOME_STATE_PROPERTY = indigo_init_text_property(NULL, device->name, DOME_STATE_PROPERTY_NAME, DOME_MAIN_GROUP, "Dome State", INDIGO_BUSY_STATE, INDIGO_RO_PERM, 1);
-		if (DOME_STATE_PROPERTY == NULL)
+		if (DOME_STATE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_text_item(DOME_STATE_ITEM, DOME_STATE_ITEM_NAME, "State", "");
 		// --------------------------------------------------------------------------- DOME SHUTTER STATE
 		DOME_SHUTTER_STATE_PROPERTY = indigo_init_text_property(NULL, device->name, DOME_SHUTTER_STATE_PROPERTY_NAME, DOME_MAIN_GROUP, "Dome Shutter State", INDIGO_BUSY_STATE, INDIGO_RO_PERM, 1);
-		if (DOME_SHUTTER_STATE_PROPERTY == NULL)
+		if (DOME_SHUTTER_STATE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_text_item(DOME_SHUTTER_STATE_ITEM, DOME_SHUTTER_STATE_ITEM_NAME, "State", "");
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -2825,8 +2853,9 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_POSITION_ITEM->number.max = 100;
 		// -------------------------------------------------------------------------------- FOCUSER STATE
 		FOCUSER_STATE_PROPERTY = indigo_init_text_property(NULL, device->name, FOCUSER_STATE_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Focuser State", INDIGO_BUSY_STATE, INDIGO_RO_PERM, 1);
-		if (FOCUSER_STATE_PROPERTY == NULL)
+		if (FOCUSER_STATE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_text_item(FOCUSER_STATE_ITEM, FOCUSER_STATE_ITEM_NAME, "State", "");
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -3058,8 +3087,9 @@ static indigo_result panel_attach(indigo_device *device) {
 		indigo_copy_value(DEVICE_PORT_ITEM->text.value, "ascol://192.168.2.230:2002");
 		// -------------------------------------------------------------------------------- ALARM
 		ALARM_PROPERTY = indigo_init_light_property(NULL, device->name, ALARM_PROPERTY_NAME, ALARM_GROUP, "Alarms", INDIGO_IDLE_STATE, ALARM_MAX+1);
-		if (ALARM_PROPERTY == NULL)
+		if (ALARM_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 
 		int index = 0;
 		for (int alarm = 0; alarm <= ALARM_MAX; alarm++) {
@@ -3077,8 +3107,9 @@ static indigo_result panel_attach(indigo_device *device) {
 		char item_name[INDIGO_NAME_SIZE];
 		char item_label[INDIGO_NAME_SIZE];
 		GLME_PROPERTY = indigo_init_number_property(NULL, device->name, GLME_PROPERTY_NAME, METEO_DATA_GROUP, "Meteo Sesors", INDIGO_OK_STATE, INDIGO_RO_PERM, ASCOL_GLME_N);
-		if (GLME_PROPERTY == NULL)
+		if (GLME_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 
 		ascol_GLME(ASCOL_DESCRIBE, &PRIVATE_DATA->glme);
 		for (index = 0; index < ASCOL_GLME_N; index++) {

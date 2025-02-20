@@ -143,14 +143,16 @@ static indigo_result aux_attach(indigo_device *device) {
 		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Interactive Astronomy SkyAlert");
 		// -------------------------------------------------------------------------------- INFO
 		AUX_INFO_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_INFO_PROPERTY_NAME, "Info", "Info", INDIGO_OK_STATE, INDIGO_RO_PERM, 2);
-		if (AUX_INFO_PROPERTY == NULL)
+		if (AUX_INFO_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(AUX_INFO_SKY_BRIGHTNESS_ITEM, AUX_WEATHER_SKY_BRIGHTNESS_ITEM_NAME, "Sky brightness [raw]", 0, 0, 0, 0);
 		indigo_init_number_item(AUX_INFO_POWER_ITEM, AUX_INFO_POWER_ITEM_NAME, "Power [1 = ok, 0 = failure]", 0, 1, 0, 0);
 		// -------------------------------------------------------------------------------- WEATHER
 		AUX_WEATHER_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_WEATHER_PROPERTY_NAME, "Info", "Weather conditions", INDIGO_OK_STATE, INDIGO_RO_PERM, 6);
-		if (AUX_WEATHER_PROPERTY == NULL)
+		if (AUX_WEATHER_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(AUX_WEATHER_TEMPERATURE_ITEM, AUX_WEATHER_TEMPERATURE_ITEM_NAME, "Temperature [C]", 0, 0, 0, 0);
 		indigo_init_number_item(AUX_WEATHER_HUMIDITY_ITEM, AUX_WEATHER_HUMIDITY_ITEM_NAME, "Humidity [%]", 0, 0, 0, 0);
 		indigo_init_number_item(AUX_WEATHER_PRESSURE_ITEM, AUX_WEATHER_PRESSURE_ITEM_NAME, "Pressure [hPa]", 0, 0, 0, 0);

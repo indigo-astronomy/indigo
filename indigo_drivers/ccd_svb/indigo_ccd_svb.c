@@ -703,8 +703,9 @@ static indigo_result ccd_attach(indigo_device *device) {
 		pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
 		// -------------------------------------------------------------------------------- PIXEL_FORMAT_PROPERTY
 		PIXEL_FORMAT_PROPERTY = indigo_init_switch_property(NULL, device->name, "PIXEL_FORMAT", CCD_ADVANCED_GROUP, "Pixel Format", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, SVB_MAX_FORMATS);
-		if (PIXEL_FORMAT_PROPERTY == NULL)
+		if (PIXEL_FORMAT_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 
 		int format_count = 0;
 		if (pixel_format_supported(device, SVB_IMG_RAW8)) {
@@ -815,8 +816,9 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_IMAGE_FORMAT_PROPERTY->count = 7;
 		// -------------------------------------------------------------------------------- SVB_ADVANCED
 		SVB_ADVANCED_PROPERTY = indigo_init_number_property(NULL, device->name, "SVB_ADVANCED", CCD_ADVANCED_GROUP, "Advanced", INDIGO_OK_STATE, INDIGO_RW_PERM, 0);
-		if (SVB_ADVANCED_PROPERTY == NULL)
+		if (SVB_ADVANCED_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		// --------------------------------------------------------------------------------
 		switch (PRIVATE_DATA->property.BayerPattern) {
 			case SVB_BAYER_BG:

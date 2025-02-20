@@ -804,8 +804,9 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_PARK_POSITION_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- TRACKING_MODE
 		TRACKING_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, TRACKING_MODE_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Tracking mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
-		if (TRACKING_MODE_PROPERTY == NULL)
+		if (TRACKING_MODE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(TRACKING_EQ_ITEM, TRACKING_EQ_ITEM_NAME, "EQ mode", false);
 		indigo_init_switch_item(TRACKING_AA_ITEM, TRACKING_AA_ITEM_NAME, "Alt/Az mode", false);
 		indigo_init_switch_item(TRACKING_AUTO_ITEM, TRACKING_AUTO_ITEM_NAME, "Automatic mode", true);
@@ -1159,8 +1160,9 @@ static indigo_result guider_attach(indigo_device *device) {
 		// --------------------------------------------------------------------------------
 		PRIVATE_DATA->guide_rate = 1; /* 1 -> 0.5 siderial rate , 2 -> siderial rate */
 		COMMAND_GUIDE_RATE_PROPERTY = indigo_init_switch_property(NULL, device->name, COMMAND_GUIDE_RATE_PROPERTY_NAME, GUIDER_MAIN_GROUP, "Guide rate", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (COMMAND_GUIDE_RATE_PROPERTY == NULL)
+		if (COMMAND_GUIDE_RATE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(GUIDE_50_ITEM, GUIDE_50_ITEM_NAME, "50% sidereal", true);
 		indigo_init_switch_item(GUIDE_100_ITEM, GUIDE_100_ITEM_NAME, "100% sidereal", false);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);

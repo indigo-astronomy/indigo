@@ -121,36 +121,41 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_SIDE_OF_PIER_PROPERTY->perm = INDIGO_RO_PERM;
 		// -------------------------------------------------------------------------------- MOUNT_POLARSCOPE
 		MOUNT_POLARSCOPE_PROPERTY = indigo_init_number_property(NULL, device->name, MOUNT_POLARSCOPE_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Polarscope", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		if (MOUNT_POLARSCOPE_PROPERTY == NULL)
+		if (MOUNT_POLARSCOPE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		MOUNT_POLARSCOPE_PROPERTY->hidden = true;
 		indigo_init_number_item(MOUNT_POLARSCOPE_BRIGHTNESS_ITEM, MOUNT_POLARSCOPE_BRIGHTNESS_ITEM_NAME, "Polarscope Brightness", 0, 255, 0, 0);
 		// -------------------------------------------------------------------------------- MOUNT_OPERATING_MODE
 		MOUNT_OPERATING_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_OPERATING_MODE_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Operating mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (MOUNT_OPERATING_MODE_PROPERTY == NULL)
+		if (MOUNT_OPERATING_MODE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		MOUNT_OPERATING_MODE_PROPERTY->hidden = true;
 		indigo_init_switch_item(POLAR_MODE_ITEM, POLAR_MODE_ITEM_NAME, "Polar mode", true);
 		indigo_init_switch_item(ALTAZ_MODE_ITEM, ALTAZ_MODE_ITEM_NAME, "Alt/Az mode", false);
 
 		// -------------------------------------------------------------------------------- MOUNT_USE_ENCODERS
 		MOUNT_USE_ENCODERS_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_USE_ENCODERS_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Use encoders", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 2);
-		if (MOUNT_USE_ENCODERS_PROPERTY == NULL)
+		if (MOUNT_USE_ENCODERS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		MOUNT_USE_ENCODERS_PROPERTY->hidden = true;
 		indigo_init_switch_item(MOUNT_USE_RA_ENCODER_ITEM, MOUNT_USE_RA_ENCODER_ITEM_NAME, "Use RA encoder", false);
 		indigo_init_switch_item(MOUNT_USE_DEC_ENCODER_ITEM, MOUNT_USE_DEC_ENCODER_ITEM_NAME, "Use Dec encoder", false);
 
 		// -------------------------------------------------------------------------------- MOUNT_AUTOHOME
 		MOUNT_AUTOHOME_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_AUTOHOME_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Auto home", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
-		if (MOUNT_AUTOHOME_PROPERTY == NULL)
+		if (MOUNT_AUTOHOME_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		MOUNT_AUTOHOME_PROPERTY->hidden = true;
 		indigo_init_switch_item(MOUNT_AUTOHOME_ITEM, MOUNT_AUTOHOME_ITEM_NAME, "Start auto home procedure", false);
 		// -------------------------------------------------------------------------------- MOUNT_POLARSCOPE
 		MOUNT_AUTOHOME_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, MOUNT_AUTOHOME_SETTINGS_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Auto home settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		if (MOUNT_AUTOHOME_SETTINGS_PROPERTY == NULL)
+		if (MOUNT_AUTOHOME_SETTINGS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		MOUNT_AUTOHOME_SETTINGS_PROPERTY->hidden = true;
 		indigo_init_number_item(MOUNT_AUTOHOME_DEC_OFFSET_ITEM, MOUNT_AUTOHOME_DEC_OFFSET_ITEM_NAME, "Dec offset", -90, 90, 0, 0);
 

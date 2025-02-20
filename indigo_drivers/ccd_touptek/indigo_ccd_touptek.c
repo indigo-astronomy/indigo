@@ -742,8 +742,9 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_GAIN_PROPERTY->hidden = false;
 
 		X_CCD_ADVANCED_PROPERTY = indigo_init_number_property(NULL, device->name, "X_CCD_ADVANCED", CCD_ADVANCED_GROUP, "Advanced Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 9);
-		if (X_CCD_ADVANCED_PROPERTY == NULL)
+		if (X_CCD_ADVANCED_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(X_CCD_SPEED_ITEM, "SPEED", "Speed level", 0, PRIVATE_DATA->cam.model->maxspeed, 1, 0);
 		indigo_init_number_item(X_CCD_CONTRAST_ITEM, "CONTRAST", "Contrast", SDK_DEF(CONTRAST_MIN), SDK_DEF(CONTRAST_MAX), 1, SDK_DEF(CONTRAST_DEF));
 		indigo_init_number_item(X_CCD_HUE_ITEM, "HUE", "Hue", SDK_DEF(HUE_MIN), SDK_DEF(HUE_MAX), 1, SDK_DEF(HUE_DEF));
@@ -782,15 +783,17 @@ static indigo_result ccd_attach(indigo_device *device) {
 		}
 
 		X_CCD_BIN_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_CCD_BIN_MODE", CCD_ADVANCED_GROUP, "Binning mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
-		if (X_CCD_BIN_MODE_PROPERTY == NULL)
+		if (X_CCD_BIN_MODE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(X_CCD_BIN_MODE_SATURATE_ITEM, "SATURATE", "Sum and saturate", true);
 		indigo_init_switch_item(X_CCD_BIN_MODE_EXPAND_ITEM, "EXPAND", "Sum and expand to 16-bits (10, 12 and 14-bit data)", false);
 		indigo_init_switch_item(X_CCD_BIN_MODE_AVERAGE_ITEM, "AVERAGE", "Average", false);
 
 		X_CCD_LED_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_CCD_LED", CCD_ADVANCED_GROUP, "Camera LED control", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (X_CCD_LED_PROPERTY == NULL)
+		if (X_CCD_LED_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(X_CCD_LED_ON_ITEM, "ON", "On", true);
 		indigo_init_switch_item(X_CCD_LED_OFF_ITEM, "OFF", "Off", false);
 		X_CCD_LED_PROPERTY->hidden = true;
@@ -1670,13 +1673,15 @@ static indigo_result wheel_attach(indigo_device *device) {
 		INFO_PROPERTY->count = 7;
 		// --------------------------------------------------------------------------------- X_CALIBRATE
 		X_CALIBRATE_PROPERTY = indigo_init_switch_property(NULL, device->name, X_CALIBRATE_PROPERTY_NAME, ADVANCED_GROUP, "Calibrate filter wheel", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
-		if (X_CALIBRATE_PROPERTY == NULL)
+		if (X_CALIBRATE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(X_CALIBRATE_START_ITEM, X_CALIBRATE_START_ITEM_NAME, "Start", false);
 		// --------------------------------------------------------------------------------- X_WHEEL_MODEL
 		X_WHEEL_MODEL_PROPERTY = indigo_init_switch_property(NULL, device->name, X_WHEEL_MODEL_PROPERTY_NAME, MAIN_GROUP, "Device Model", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
-		if (X_WHEEL_MODEL_PROPERTY == NULL)
+		if (X_WHEEL_MODEL_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(X_WHEEL_MODEL_5_POSITION_ITEM, X_WHEEL_MODEL_5_POSITION_ITEM_NAME, "5 positions Filter wheel", false);
 		indigo_init_switch_item(X_WHEEL_MODEL_7_POSITION_ITEM, X_WHEEL_MODEL_7_POSITION_ITEM_NAME, "7 positions Filter wheel", true);
 		indigo_init_switch_item(X_WHEEL_MODEL_8_POSITION_ITEM, X_WHEEL_MODEL_8_POSITION_ITEM_NAME, "8 positions Filter wheel", false);
@@ -2067,8 +2072,9 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_MODE_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------- BEEP_PROPERTY
 		X_BEEP_PROPERTY = indigo_init_switch_property(NULL, device->name, X_BEEP_PROPERTY_NAME, FOCUSER_ADVANCED_GROUP, "Buzzer", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (X_BEEP_PROPERTY == NULL)
+		if (X_BEEP_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 
 		indigo_init_switch_item(X_BEEP_ON_ITEM, X_BEEP_ON_ITEM_NAME, "On", false);
 		indigo_init_switch_item(X_BEEP_OFF_ITEM, X_BEEP_OFF_ITEM_NAME, "Off", true);

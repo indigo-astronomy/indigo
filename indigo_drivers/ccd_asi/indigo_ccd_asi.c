@@ -717,8 +717,9 @@ static indigo_result ccd_attach(indigo_device *device) {
 		pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
 		// -------------------------------------------------------------------------------- PIXEL_FORMAT_PROPERTY
 		PIXEL_FORMAT_PROPERTY = indigo_init_switch_property(NULL, device->name, "PIXEL_FORMAT", CCD_ADVANCED_GROUP, "Pixel Format", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, ASI_MAX_FORMATS);
-		if (PIXEL_FORMAT_PROPERTY == NULL)
+		if (PIXEL_FORMAT_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 
 		int format_count = 0;
 		if (pixel_format_supported(device, ASI_IMG_RAW8)) {
@@ -813,17 +814,20 @@ static indigo_result ccd_attach(indigo_device *device) {
 
 		// -------------------------------------------------------------------------------- ASI_PRESETS
 		ASI_PRESETS_PROPERTY = indigo_init_switch_property(NULL, device->name, "ASI_PRESETS", CCD_ADVANCED_GROUP, "Presets (Gain, Offset)", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 3);
-		if (ASI_PRESETS_PROPERTY == NULL)
+		if (ASI_PRESETS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		// --------------------------------------------------------------------------------- ASI_CUSTOM_SUFFIX
 		ASI_CUSTOM_SUFFIX_PROPERTY = indigo_init_text_property(NULL, device->name, "ASI_CUSTOM_SUFFIX", CCD_ADVANCED_GROUP, "Device name custom suffix", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		if (ASI_CUSTOM_SUFFIX_PROPERTY == NULL)
+		if (ASI_CUSTOM_SUFFIX_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_text_item(ASI_CUSTOM_SUFFIX_ITEM, ASI_CUSTOM_SUFFIX_NAME, "Suffix", PRIVATE_DATA->custom_suffix);
 		// -------------------------------------------------------------------------------- ASI_ADVANCED
 		ASI_ADVANCED_PROPERTY = indigo_init_number_property(NULL, device->name, "ASI_ADVANCED", CCD_ADVANCED_GROUP, "Advanced", INDIGO_OK_STATE, INDIGO_RW_PERM, 0);
-		if (ASI_ADVANCED_PROPERTY == NULL)
+		if (ASI_ADVANCED_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		// --------------------------------------------------------------------------------
 		return asi_enumerate_properties(device, NULL, NULL);
 	}

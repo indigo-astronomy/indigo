@@ -899,29 +899,34 @@ static indigo_result dome_attach(indigo_device *device) {
 		DOME_PARK_POSITION_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- X_SHUTTER_CALIBRATE_PROPERTY
 		X_SHUTTER_CALIBRATE_PROPERTY = indigo_init_switch_property(NULL, device->name, X_SHUTTER_CALIBRATE_PROPERTY_NAME, X_MISC_GROUP, "Calibrate shutter", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
-		if (X_SHUTTER_CALIBRATE_PROPERTY == NULL)
+		if (X_SHUTTER_CALIBRATE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(X_SHUTTER_CALIBRATE_ITEM, X_SHUTTER_CALIBRATE_ITEM_NAME, "Calibrate", false);
 		// -------------------------------------------------------------------------------- X_ROTATOR_CALIBRATE_PROPERTY
 		X_ROTATOR_CALIBRATE_PROPERTY = indigo_init_switch_property(NULL, device->name, X_ROTATOR_CALIBRATE_PROPERTY_NAME, X_MISC_GROUP, "Calibrate rotator", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
-		if (X_ROTATOR_CALIBRATE_PROPERTY == NULL)
+		if (X_ROTATOR_CALIBRATE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(X_ROTATOR_CALIBRATE_ITEM, X_ROTATOR_CALIBRATE_ITEM_NAME, "Calibrate", false);
 		// -------------------------------------------------------------------------------- X_FAILURE_MESSAGE_PROPERTY
 		X_FAILURE_MESSAGE_PROPERTY = indigo_init_text_property(NULL, device->name, X_FAILURE_MESSAGE_PROPERTY_NAME, X_MISC_GROUP, "Last failures", INDIGO_OK_STATE, INDIGO_RO_PERM, 2);
-		if (X_FAILURE_MESSAGE_PROPERTY == NULL)
+		if (X_FAILURE_MESSAGE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_text_item(X_FAILURE_MESSAGE_ROTATOR_ITEM, X_FAILURE_MESSAGE_ROTATOR_ITEM_NAME, "Rotator message", "");
 		indigo_init_text_item(X_FAILURE_MESSAGE_SHUTTER_ITEM, X_FAILURE_MESSAGE_SHUTTER_ITEM_NAME, "Shutter message", "");
 		// -------------------------------------------------------------------------------- X_CLEAR_FAILURE_PROPERTY
 		X_CLEAR_FAILURE_PROPERTY = indigo_init_switch_property(NULL, device->name, X_CLEAR_FAILURE_PROPERTY_NAME, X_MISC_GROUP, "Clear last failures", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
-		if (X_CLEAR_FAILURE_PROPERTY == NULL)
+		if (X_CLEAR_FAILURE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(X_CLEAR_FAILURE_ITEM, X_CLEAR_FAILURE_ITEM_NAME, "Clear", false);
 		// -------------------------------------------------------------------------------- X_CONDITIONS_SAFETY_PROPERTY
 		X_CONDITIONS_SAFETY_PROPERTY = indigo_init_light_property(NULL, device->name, X_CONDITIONS_SAFETY_PROPERTY_NAME, X_MISC_GROUP, "Observing conditions safety", INDIGO_IDLE_STATE, 2);
-		if (X_CONDITIONS_SAFETY_PROPERTY == NULL)
+		if (X_CONDITIONS_SAFETY_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_light_item(X_SAFE_CW_ITEM, X_SAFE_CW_ITEM_NAME, "Safe by Cloud Wacher", INDIGO_IDLE_STATE);
 		indigo_init_light_item(X_SAFE_HYDREON_ITEM, X_SAFE_HYDREON_ITEM_NAME, "Safe by Hydreon RG-x", INDIGO_IDLE_STATE);
 		// --------------------------------------------------------------------------------

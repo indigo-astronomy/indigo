@@ -117,8 +117,9 @@ static indigo_result wheel_attach(indigo_device *device) {
 	if (indigo_wheel_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- SFW_REINIT_SWITCH
 		SFW_REINIT_SWITCH_PROPERTY = indigo_init_switch_property(NULL, device->name, SFW_COMMANDS_GROUP, MAIN_GROUP, "Commands", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
-		if (SFW_REINIT_SWITCH_PROPERTY == NULL)
+		if (SFW_REINIT_SWITCH_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(SFW_REINIT_SWITCH_ITEM, SFW_REINIT_SWITCH_ITEM_NAME, "Reinit Filter Wheel", false);
 		// --------------------------------------------------------------------------------
 		INFO_PROPERTY->count = 8;

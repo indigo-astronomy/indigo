@@ -326,8 +326,9 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_OFFSET_ITEM->number.max = 511;
 		CCD_OFFSET_ITEM->number.value = CCD_OFFSET_ITEM->number.target = 0;
 		ATIK_PRESETS_PROPERTY = indigo_init_switch_property(NULL, device->name, ATIK_PRESETS_PROPERTY_NAME, CCD_MAIN_GROUP, "Gain/offset presets", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
-		if (ATIK_PRESETS_PROPERTY == NULL)
+		if (ATIK_PRESETS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		ATIK_PRESETS_PROPERTY->hidden = true;
 		indigo_init_switch_item(ATIK_PRESETS_CUSTOM_ITEM, ATIK_PRESETS_CUSTOM_ITEM_NAME, "Custom", false);
 		indigo_init_switch_item(ATIK_PRESETS_HIGH_ITEM, ATIK_PRESETS_HIGH_ITEM_NAME, "High", false);
@@ -335,8 +336,9 @@ static indigo_result ccd_attach(indigo_device *device) {
 		indigo_init_switch_item(ATIK_PRESETS_LOW_ITEM, ATIK_PRESETS_LOW_ITEM_NAME, "Low", false);
 		// Take window heater into account
 		ATIK_WINDOW_HEATER_PROPERTY = indigo_init_number_property(NULL, device->name, ATIK_WINDOW_HEATER_PROPERTY_NAME, CCD_MAIN_GROUP, "Window heater", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		if (ATIK_WINDOW_HEATER_PROPERTY == NULL)
+		if (ATIK_WINDOW_HEATER_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		ATIK_WINDOW_HEATER_PROPERTY->hidden = true;
 		indigo_init_number_item(ATIK_WINDOW_HEATER_POWER_ITEM, ATIK_WINDOW_HEATER_POWER_ITEM_NAME, "Power", 0.0, 255.0, 1.0, 0.0);
 		// --------------------------------------------------------------------------------

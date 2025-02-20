@@ -1175,30 +1175,34 @@ static indigo_result mount_attach(indigo_device *device) {
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- ALIGNMENT_MODE
 		MOUNT_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_MODE_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Mount mode", INDIGO_OK_STATE, INDIGO_RO_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (MOUNT_MODE_PROPERTY == NULL)
+		if (MOUNT_MODE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(EQUATORIAL_ITEM, EQUATORIAL_ITEM_NAME, "Equatorial mode", false);
 		indigo_init_switch_item(ALTAZ_MODE_ITEM, ALTAZ_MODE_ITEM_NAME, "Alt/Az mode", false);
 		MOUNT_MODE_PROPERTY->hidden = true;
 		// ---------------------------------------------------------------------------- ZWO_BUZZER
 		ZWO_BUZZER_PROPERTY = indigo_init_switch_property(NULL, device->name, ZWO_BUZZER_PROPERTY_NAME, MOUNT_ADVANCED_GROUP, "Buzzer volume", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
-		if (ZWO_BUZZER_PROPERTY == NULL)
+		if (ZWO_BUZZER_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(ZWO_BUZZER_OFF_ITEM, ZWO_BUZZER_OFF_ITEM_NAME, "Off", false);
 		indigo_init_switch_item(ZWO_BUZZER_LOW_ITEM, ZWO_BUZZER_LOW_ITEM_NAME, "Low", false);
 		indigo_init_switch_item(ZWO_BUZZER_HIGH_ITEM, ZWO_BUZZER_HIGH_ITEM_NAME, "High", false);
 		ZWO_BUZZER_PROPERTY->hidden = true;
 		// ---------------------------------------------------------------------------- ZWO_MERIDIAN
 		ZWO_MERIDIAN_PROPERTY = indigo_init_switch_property(NULL, device->name, ZWO_MERIDIAN_PROPERTY_NAME, MOUNT_ADVANCED_GROUP, "Action at meridian", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 2);
-		if (ZWO_MERIDIAN_PROPERTY == NULL)
+		if (ZWO_MERIDIAN_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(ZWO_MERIDIAN_AUTO_FLIP_ITEM, ZWO_MERIDIAN_AUTO_FLIP_ITEM_NAME, "Enable auto meridian flip (at limit)", false);
 		indigo_init_switch_item(ZWO_MERIDIAN_TRACK_PASSED_ITEM, ZWO_MERIDIAN_TRACK_PASSED_ITEM_NAME, "Enable tracking passed meridian (to the limit)", false);
 		ZWO_MERIDIAN_PROPERTY->hidden = true;
 		// ---------------------------------------------------------------------------- ZWO_MERIDIAN_LIMIT
 		ZWO_MERIDIAN_LIMIT_PROPERTY = indigo_init_number_property(NULL, device->name, ZWO_MERIDIAN_LIMIT_PROPERTY_NAME, MOUNT_ADVANCED_GROUP, "Meridian limit", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		if (ZWO_MERIDIAN_LIMIT_PROPERTY == NULL)
+		if (ZWO_MERIDIAN_LIMIT_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(ZWO_MERIDIAN_LIMIT_ITEM, ZWO_MERIDIAN_LIMIT_ITEM_NAME, "Limit (°) (<0° before meridian)", -15, 15, 0, 0);
 		ZWO_MERIDIAN_LIMIT_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------

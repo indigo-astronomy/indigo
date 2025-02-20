@@ -190,32 +190,37 @@ static indigo_result wheel_attach(indigo_device *device) {
 
 		// --------------------------------------------------------------------------------- X_CALIBRATE
 		X_CALIBRATE_PROPERTY = indigo_init_switch_property(NULL, device->name, X_CALIBRATE_PROPERTY_NAME, ADVANCED_GROUP, "Calibrate filter wheel", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
-		if (X_CALIBRATE_PROPERTY == NULL)
+		if (X_CALIBRATE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(X_CALIBRATE_START_ITEM, X_CALIBRATE_START_ITEM_NAME, "Start", false);
 		// --------------------------------------------------------------------------------- X_CUSTOM_SUFFIX
 		X_CUSTOM_SUFFIX_PROPERTY = indigo_init_text_property(NULL, device->name, "X_CUSTOM_SUFFIX", WHEEL_ADVANCED_GROUP, "Device name custom suffix", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		if (X_CUSTOM_SUFFIX_PROPERTY == NULL)
+		if (X_CUSTOM_SUFFIX_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_text_item(X_CUSTOM_SUFFIX_ITEM, X_CUSTOM_SUFFIX_NAME, "Suffix", PRIVATE_DATA->custom_suffix);
 		// --------------------------------------------------------------------------------- BLUETOOTH
 		X_BLUETOOTH_PROPERTY = indigo_init_switch_property(NULL, device->name, X_BLUETOOTH_PROPERTY_NAME, "Advanced", "Bluetooth", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (X_BLUETOOTH_PROPERTY == NULL)
+		if (X_BLUETOOTH_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 
 		indigo_init_switch_item(X_BLUETOOTH_ON_ITEM, X_BLUETOOTH_ON_ITEM_NAME, "Enabled", false);
 		indigo_init_switch_item(X_BLUETOOTH_OFF_ITEM, X_BLUETOOTH_OFF_ITEM_NAME, "Disabled", true);
 		X_BLUETOOTH_PROPERTY->hidden = true;  // not suppred by firmware yet
 		// ---------------------------------------------------------------------------------- X_BLUETOOTH_NAME
 		X_BLUETOOTH_NAME_PROPERTY = indigo_init_text_property(NULL, device->name, X_BLUETOOTH_NAME_PROPERTY_NAME, "Advanced", "Bluetooth name", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		if (X_BLUETOOTH_NAME_PROPERTY == NULL)
+		if (X_BLUETOOTH_NAME_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_text_item(X_BLUETOOTH_NAME_ITEM, X_BLUETOOTH_NAME_NAME, "Bluetooth name", PRIVATE_DATA->bluetooth_name);
 		X_BLUETOOTH_NAME_PROPERTY->hidden = true; // not supported by firmware yet
 		// ---------------------------------------------------------------------------------- X_FACTORY_RESET
 		X_FACTORY_RESET_PROPERTY = indigo_init_switch_property(NULL, device->name, X_FACTORY_RESET_PROPERTY_NAME, "Advanced", "Factory reset", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
-		if (X_FACTORY_RESET_PROPERTY == NULL)
+		if (X_FACTORY_RESET_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(X_FACTORY_RESET_ITEM, X_FACTORY_RESET_ITEM_NAME, "Reset", false);
 		sprintf(X_FACTORY_RESET_ITEM->hints, "warn_on_set:\"Confirm filter wheel factory reset?\";");
 		// --------------------------------------------------------------------------

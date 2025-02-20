@@ -2971,22 +2971,25 @@ static indigo_result mount_attach(indigo_device *device) {
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- ALIGNMENT_MODE
 		MOUNT_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_MODE_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Mount mode", INDIGO_OK_STATE, INDIGO_RO_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (MOUNT_MODE_PROPERTY == NULL)
+		if (MOUNT_MODE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(EQUATORIAL_ITEM, EQUATORIAL_ITEM_NAME, "Equatorial mode", false);
 		indigo_init_switch_item(ALTAZ_MODE_ITEM, ALTAZ_MODE_ITEM_NAME, "Alt/Az mode", false);
 		MOUNT_MODE_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- FORCE_FLIP
 		FORCE_FLIP_PROPERTY = indigo_init_switch_property(NULL, device->name, FORCE_FLIP_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Meridian flip mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (FORCE_FLIP_PROPERTY == NULL)
+		if (FORCE_FLIP_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(FORCE_FLIP_ENABLED_ITEM, FORCE_FLIP_ENABLED_ITEM_NAME, "Enabled", true);
 		indigo_init_switch_item(FORCE_FLIP_DISABLED_ITEM, FORCE_FLIP_DISABLED_ITEM_NAME, "Disabled", false);
 		FORCE_FLIP_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- MOUNT_TYPE
 		MOUNT_TYPE_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_TYPE_PROPERTY_NAME, MAIN_GROUP, "Mount type", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 15);
-		if (MOUNT_TYPE_PROPERTY == NULL)
+		if (MOUNT_TYPE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(MOUNT_TYPE_DETECT_ITEM, MOUNT_TYPE_DETECT_ITEM_NAME, "Autodetect", true);
 		indigo_init_switch_item(MOUNT_TYPE_MEADE_ITEM, MOUNT_TYPE_MEADE_ITEM_NAME, "Meade", false);
 		indigo_init_switch_item(MOUNT_TYPE_EQMAC_ITEM, MOUNT_TYPE_EQMAC_ITEM_NAME, "EQMac", false);
@@ -3004,36 +3007,41 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_init_switch_item(MOUNT_TYPE_GENERIC_ITEM, MOUNT_TYPE_GENERIC_ITEM_NAME, "Generic", false);
 		// ---------------------------------------------------------------------------- ZWO_BUZZER
 		ZWO_BUZZER_PROPERTY = indigo_init_switch_property(NULL, device->name, ZWO_BUZZER_PROPERTY_NAME, MOUNT_ADVANCED_GROUP, "Buzzer volume", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
-		if (ZWO_BUZZER_PROPERTY == NULL)
+		if (ZWO_BUZZER_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(ZWO_BUZZER_OFF_ITEM, ZWO_BUZZER_OFF_ITEM_NAME, "Off", false);
 		indigo_init_switch_item(ZWO_BUZZER_LOW_ITEM, ZWO_BUZZER_LOW_ITEM_NAME, "Low", false);
 		indigo_init_switch_item(ZWO_BUZZER_HIGH_ITEM, ZWO_BUZZER_HIGH_ITEM_NAME, "High", false);
 		ZWO_BUZZER_PROPERTY->hidden = true;
 		// ---------------------------------------------------------------------------- NYX_WIFI_AP
 		NYX_WIFI_AP_PROPERTY = indigo_init_text_property(NULL, device->name, NYX_WIFI_AP_PROPERTY_NAME, MOUNT_ADVANCED_GROUP, "AP WiFi settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
-		if (NYX_WIFI_AP_PROPERTY == NULL)
+		if (NYX_WIFI_AP_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		NYX_WIFI_AP_PROPERTY->hidden = true;
 		indigo_init_text_item(NYX_WIFI_AP_SSID_ITEM, NYX_WIFI_AP_SSID_ITEM_NAME, "SSID", "");
 		indigo_init_text_item(NYX_WIFI_AP_PASSWORD_ITEM, NYX_WIFI_AP_PASSWORD_ITEM_NAME, "Password", "");
 		// ---------------------------------------------------------------------------- NYX_WIFI_CL
 		NYX_WIFI_CL_PROPERTY = indigo_init_text_property(NULL, device->name, NYX_WIFI_CL_PROPERTY_NAME, MOUNT_ADVANCED_GROUP, "Client WiFi settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
-		if (NYX_WIFI_CL_PROPERTY == NULL)
+		if (NYX_WIFI_CL_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		NYX_WIFI_CL_PROPERTY->hidden = true;
 		indigo_init_text_item(NYX_WIFI_CL_SSID_ITEM, NYX_WIFI_CL_SSID_ITEM_NAME, "SSID", "");
 		indigo_init_text_item(NYX_WIFI_CL_PASSWORD_ITEM, NYX_WIFI_CL_PASSWORD_ITEM_NAME, "Password", "");
 		// ---------------------------------------------------------------------------- NYX_WIFI_RESET
 		NYX_WIFI_RESET_PROPERTY = indigo_init_switch_property(NULL, device->name, NYX_WIFI_RESET_PROPERTY_NAME, MOUNT_ADVANCED_GROUP, "Reset WiFi settings", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
-		if (NYX_WIFI_RESET_PROPERTY == NULL)
+		if (NYX_WIFI_RESET_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		NYX_WIFI_RESET_PROPERTY->hidden = true;
 		indigo_init_switch_item(NYX_WIFI_RESET_ITEM, NYX_WIFI_RESET_ITEM_NAME, "Reset", false);
 		// ---------------------------------------------------------------------------- NYX_LEVELER
 		NYX_LEVELER_PROPERTY = indigo_init_number_property(NULL, device->name, NYX_LEVELER_PROPERTY_NAME, MOUNT_ADVANCED_GROUP, "Leveler", INDIGO_OK_STATE, INDIGO_RO_PERM, 3);
-		if (NYX_LEVELER_PROPERTY == NULL)
+		if (NYX_LEVELER_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		NYX_LEVELER_PROPERTY->hidden = true;
 		indigo_init_number_item(NYX_LEVELER_PICH_ITEM, NYX_LEVELER_PICH_ITEM_NAME, "Pitch [°]", 0, 360, 0, 0);
 		indigo_init_number_item(NYX_LEVELER_ROLL_ITEM, NYX_LEVELER_ROLL_ITEM_NAME, "Roll [°]", 0, 360, 0, 0);
@@ -3587,14 +3595,16 @@ static indigo_result aux_attach(indigo_device *device) {
 	if (indigo_aux_attach(device, DRIVER_NAME, DRIVER_VERSION, INDIGO_INTERFACE_AUX_POWERBOX | INDIGO_INTERFACE_AUX_WEATHER) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- WEATHER
 		AUX_WEATHER_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_WEATHER_PROPERTY_NAME, "Info", "Weather info", INDIGO_OK_STATE, INDIGO_RO_PERM, 2);
-		if (AUX_WEATHER_PROPERTY == NULL)
+		if (AUX_WEATHER_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(AUX_WEATHER_TEMPERATURE_ITEM, AUX_WEATHER_TEMPERATURE_ITEM_NAME, "Temperature [C]", -50, 100, 0, 0);
 		indigo_init_number_item(AUX_WEATHER_PRESSURE_ITEM, AUX_WEATHER_PRESSURE_ITEM_NAME, "Pressure [mb]", 0, 2000, 0, 0);
 		// -------------------------------------------------------------------------------- INFO
 		AUX_INFO_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_INFO_PROPERTY_NAME, "Info", "Info", INDIGO_OK_STATE, INDIGO_RO_PERM, 1);
-		if (AUX_INFO_PROPERTY == NULL)
+		if (AUX_INFO_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(AUX_INFO_VOLTAGE_ITEM, AUX_INFO_VOLTAGE_ITEM_NAME, "Voltage [V]", 0, 15, 0, 0);
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);

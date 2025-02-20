@@ -263,13 +263,15 @@ static indigo_result focuser_attach(indigo_device *device) {
 #endif
 		// -------------------------------------------------------------------------------- X_NAME
 		X_NAME_PROPERTY = indigo_init_text_property(NULL, device->name, "X_NAME", FOCUSER_ADVANCED_GROUP, "Device name", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		if (X_NAME_PROPERTY == NULL)
+		if (X_NAME_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_text_item(X_NAME_ITEM, "NAME", "Name", "");
 		// -------------------------------------------------------------------------------- X_SAVED_VALUES
 		X_SAVED_VALUES_PROPERTY = indigo_init_number_property(NULL, device->name, "X_SAVED_VALUES", FOCUSER_ADVANCED_GROUP, "Saved values", INDIGO_OK_STATE, INDIGO_RW_PERM, 6);
-		if (X_SAVED_VALUES_PROPERTY == NULL)
+		if (X_SAVED_VALUES_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(X_SAVED_FOCUS_ITEM, "FOCUS", "Saved focus", 0, 0xFFFF, 0, 0);
 		indigo_init_number_item(X_SAVED_JOGSTEPS_ITEM, "JOGSTEPS", "Jogging mode steps", 0, 0xFFFF, 0, 0);
 		indigo_init_number_item(X_SAVED_SINGLESTEPS_ITEM, "SINGLESTEPS", "Single mode steps", 0, 0xFFFF, 0, 0);
@@ -278,33 +280,38 @@ static indigo_result focuser_attach(indigo_device *device) {
 		indigo_init_number_item(X_SAVED_TEMP1_OFS_ITEM, "TEMP1_OFS", "Sensor #1 offset", -50, 50, 1, 0);
 		// -------------------------------------------------------------------------------- X_STATUS
 		X_STATUS_PROPERTY = indigo_init_number_property(NULL, device->name, "X_STATUS", FOCUSER_ADVANCED_GROUP, "Status", INDIGO_OK_STATE, INDIGO_RO_PERM, 2);
-		if (X_STATUS_PROPERTY == NULL)
+		if (X_STATUS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(X_STATUS_SENSOR_0_ITEM, "SENSOR_0", "Sensor #0", -100, 100, 0, 0);
 		indigo_init_number_item(X_STATUS_SENSOR_1_ITEM, "SENSOR_1", "Sensor #1", -100, 100, 0, 0);
 		// -------------------------------------------------------------------------------- X_SELECT_TC_SENSOR
 		X_SELECT_TC_SENSOR_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_SELECT_TC_SENSOR", FOCUSER_ADVANCED_GROUP, "TCOMP sensor selection", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
-		if (X_SELECT_TC_SENSOR_PROPERTY == NULL)
+		if (X_SELECT_TC_SENSOR_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(X_SELECT_TC_SENSOR_0_ITEM, "SENSOR_0", "Sensor #0", false);
 		indigo_init_switch_item(X_SELECT_TC_SENSOR_1_ITEM, "SENSOR_1", "Sensor #1", false);
 		indigo_init_switch_item(X_SELECT_TC_SENSOR_AVG_ITEM, "AVG", "Average", true);
 		// -------------------------------------------------------------------------------- X_RESET
 		X_RESET_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_RESET", FOCUSER_ADVANCED_GROUP, "Reset", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 2);
-		if (X_RESET_PROPERTY == NULL)
+		if (X_RESET_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(X_RESET_ITEM, "RESET", "Reset", false);
 		indigo_init_switch_item(X_REBOOT_ITEM, "REBOOT", "Reboot", false);
 		// -------------------------------------------------------------------------------- X_USE_ENDSTOP
 		X_USE_ENDSTOP_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_USE_ENDSTOP", FOCUSER_ADVANCED_GROUP, "Use end-stop sensor", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (X_USE_ENDSTOP_PROPERTY == NULL)
+		if (X_USE_ENDSTOP_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(X_USE_ENDSTOP_DISABLED_ITEM, "DISABLED", "Disabled", true);
 		indigo_init_switch_item(X_USE_ENDSTOP_ENABLED_ITEM, "ENABLED", "Enabled", false);
 		// -------------------------------------------------------------------------------- X_START_ZEROING
 		X_START_ZEROING_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_START_ZEROING", FOCUSER_ADVANCED_GROUP, "Start zeroing", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
-		if (X_START_ZEROING_PROPERTY == NULL)
+		if (X_START_ZEROING_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(X_START_ZEROING_ITEM, "START", "Start", false);
 		// -------------------------------------------------------------------------------- FOCUSER_TEMPERATURE
 		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
@@ -897,38 +904,44 @@ static indigo_result aux_attach(indigo_device *device) {
 		INFO_PROPERTY->count = 6;
 		// -------------------------------------------------------------------------------- HEATER OUTLETS
 		AUX_HEATER_OUTLET_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_HEATER_OUTLET_PROPERTY_NAME, "Heating", "Heater outlets", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		if (AUX_HEATER_OUTLET_PROPERTY == NULL)
+		if (AUX_HEATER_OUTLET_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(AUX_HEATER_OUTLET_1_ITEM, AUX_HEATER_OUTLET_1_ITEM_NAME, "Heater outlet [%]", 0, 100, 5, 0);
 		// -------------------------------------------------------------------------------- AUX_DEW_CONTROL
 		AUX_DEW_CONTROL_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_USE_AUTO_DEW", "Heating", "Dew control", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (AUX_DEW_CONTROL_PROPERTY == NULL)
+		if (AUX_DEW_CONTROL_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(AUX_DEW_CONTROL_MANUAL_ITEM, AUX_DEW_CONTROL_MANUAL_ITEM_NAME, "Manual", true);
 		indigo_init_switch_item(AUX_DEW_CONTROL_AUTOMATIC_ITEM, AUX_DEW_CONTROL_AUTOMATIC_ITEM_NAME, "Automatic", false);
 		// -------------------------------------------------------------------------------- X_USE_PID
 		X_USE_PID_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_USE_PID", "Heating", "PID control", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (X_USE_PID_PROPERTY == NULL)
+		if (X_USE_PID_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(X_USE_PID_DISABLED_ITEM, "DISABLED", "Disabled", true);
 		indigo_init_switch_item(X_USE_PID_ENABLED_ITEM, "ENABLED", "Enabled", false);
 		// -------------------------------------------------------------------------------- X_PID_SETTINGS
 		X_PID_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, "X_PID_SETTINGS", "Heating", "Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
-		if (X_SAVED_VALUES_PROPERTY == NULL)
+		if (X_SAVED_VALUES_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(X_PID_SETTINGS_OFS_ITEM, "PID_DEW_OFS", "PID offset", -50, 50, 1, 0);
 		indigo_init_number_item(X_PID_SETTINGS_TARGET_ITEM, "PID TARGET", "PID target", -50, 50, 1, 0);
 		// -------------------------------------------------------------------------------- X_SELECT_PID_SENSOR
 		X_SELECT_PID_SENSOR_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_SELECT_PID_SENSOR", "Heating", "PID sensor selection", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
-		if (X_SELECT_PID_SENSOR_PROPERTY == NULL)
+		if (X_SELECT_PID_SENSOR_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(X_SELECT_PID_SENSOR_0_ITEM, "SENSOR_0", "Sensor #0", false);
 		indigo_init_switch_item(X_SELECT_PID_SENSOR_1_ITEM, "SENSOR_1", "Sensor #1", false);
 		indigo_init_switch_item(X_SELECT_PID_SENSOR_AVG_ITEM, "AVG", "Average", true);
 		// -------------------------------------------------------------------------------- X_SELECT_AMB_SENSOR
 		X_SELECT_AMB_SENSOR_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_SELECT_AMB_SENSOR", "Heating", "Ambient sensor selection", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (X_SELECT_AMB_SENSOR_PROPERTY == NULL)
+		if (X_SELECT_AMB_SENSOR_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(X_SELECT_AMB_SENSOR_0_ITEM, "SENSOR_0", "Sensor #0", false);
 		indigo_init_switch_item(X_SELECT_AMB_SENSOR_1_ITEM, "SENSOR_1", "Sensor #1", true);
 		// --------------------------------------------------------------------------------

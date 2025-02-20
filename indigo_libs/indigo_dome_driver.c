@@ -160,8 +160,9 @@ indigo_result indigo_dome_attach(indigo_device *device, const char* driver_name,
 			indigo_init_number_item(DOME_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME, "Elevation (m)", 0, 8000, 0, 0);
 			// --------------------------------------------------------------------------------DOME_UTC_TIME
 			DOME_UTC_TIME_PROPERTY = indigo_init_text_property(NULL, device->name, UTC_TIME_PROPERTY_NAME, DOME_SITE_GROUP, "UTC time", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
-			if (DOME_UTC_TIME_PROPERTY == NULL)
+			if (DOME_UTC_TIME_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 			DOME_UTC_TIME_PROPERTY->hidden = true;
 			indigo_init_text_item(DOME_UTC_ITEM, UTC_TIME_ITEM_NAME, "UTC Time", "0000-00-00T00:00:00");
 			indigo_init_text_item(DOME_UTC_OFFSET_ITEM, UTC_OFFSET_ITEM_NAME, "UTC Offset", "0"); /* step is 0.5 as there are timezones at 30 min */

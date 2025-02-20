@@ -707,33 +707,38 @@ static indigo_result dome_attach(indigo_device *device) {
 		DOME_SLAVING_PARAMETERS_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- NEXDOME_REVERSED
 		NEXDOME_REVERSED_PROPERTY = indigo_init_switch_property(NULL, device->name, NEXDOME_REVERSED_PROPERTY_NAME, NEXDOME_SETTINGS_GROUP, "Reversed dome directions", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (NEXDOME_REVERSED_PROPERTY == NULL)
+		if (NEXDOME_REVERSED_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		NEXDOME_REVERSED_PROPERTY->hidden = false;
 		indigo_init_switch_item(NEXDOME_REVERSED_YES_ITEM, NEXDOME_REVERSED_YES_ITEM_NAME, "Yes", false);
 		indigo_init_switch_item(NEXDOME_REVERSED_NO_ITEM, NEXDOME_REVERSED_NO_ITEM_NAME, "No", false);
 		// -------------------------------------------------------------------------------- NEXDOME_RESET_SHUTTER_COMM_PROPERTY
 		NEXDOME_RESET_SHUTTER_COMM_PROPERTY = indigo_init_switch_property(NULL, device->name, NEXDOME_RESET_SHUTTER_COMM_PROPERTY_NAME, NEXDOME_SETTINGS_GROUP, "Reset shutter communication", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
-		if (NEXDOME_RESET_SHUTTER_COMM_PROPERTY == NULL)
+		if (NEXDOME_RESET_SHUTTER_COMM_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		NEXDOME_RESET_SHUTTER_COMM_PROPERTY->hidden = false;
 		indigo_init_switch_item(NEXDOME_RESET_SHUTTER_COMM_ITEM, NEXDOME_RESET_SHUTTER_COMM_ITEM_NAME, "Reset", false);
 		// -------------------------------------------------------------------------------- NEXDOME_FIND_HOME_PROPERTY
 		NEXDOME_FIND_HOME_PROPERTY = indigo_init_switch_property(NULL, device->name, NEXDOME_FIND_HOME_PROPERTY_NAME, NEXDOME_SETTINGS_GROUP, "Find home position", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
-		if (NEXDOME_FIND_HOME_PROPERTY == NULL)
+		if (NEXDOME_FIND_HOME_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		NEXDOME_FIND_HOME_PROPERTY->hidden = false;
 		indigo_init_switch_item(NEXDOME_FIND_HOME_ITEM, NEXDOME_FIND_HOME_ITEM_NAME, "Find home", false);
 		// -------------------------------------------------------------------------------- NEXDOME_FIND_HOME_PROPERTY
 		NEXDOME_CALLIBRATE_PROPERTY = indigo_init_switch_property(NULL, device->name, NEXDOME_CALLIBRATE_PROPERTY_NAME, NEXDOME_SETTINGS_GROUP, "Callibrate", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
-		if (NEXDOME_CALLIBRATE_PROPERTY == NULL)
+		if (NEXDOME_CALLIBRATE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		NEXDOME_CALLIBRATE_PROPERTY->hidden = false;
 		indigo_init_switch_item(NEXDOME_CALLIBRATE_ITEM, NEXDOME_CALLIBRATE_ITEM_NAME, "Callibrate", false);
 		// -------------------------------------------------------------------------------- NEXDOME_POWER_PROPERTY
 		NEXDOME_POWER_PROPERTY = indigo_init_number_property(NULL, device->name, NEXDOME_POWER_PROPERTY_NAME, NEXDOME_SETTINGS_GROUP, "Power status", INDIGO_OK_STATE, INDIGO_RO_PERM, 2);
-		if (NEXDOME_POWER_PROPERTY == NULL)
+		if (NEXDOME_POWER_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		NEXDOME_POWER_PROPERTY->hidden = false;
 		indigo_init_number_item(NEXDOME_POWER_ROTATOR_ITEM, NEXDOME_POWER_ROTATOR_ITEM_NAME, "Rotator (Volts)", 0, 500, 1, 0);
 		strcpy(NEXDOME_POWER_ROTATOR_ITEM->number.format, "%.2f");

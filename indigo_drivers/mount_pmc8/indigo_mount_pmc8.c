@@ -443,16 +443,18 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_SIDE_OF_PIER_PROPERTY->perm = INDIGO_RO_PERM;
 		// -------------------------------------------------------------------------------- CONNECTION_MODE
 		CONNECTION_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, CONNECTION_MODE_PROPERTY_NAME, MAIN_GROUP, "Connnection mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
-		if (CONNECTION_MODE_PROPERTY == NULL)
+		if (CONNECTION_MODE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(CONNECTION_UDP_ITEM, CONNECTION_UDP_ITEM_NAME, "UDP", true);
 		indigo_init_switch_item(CONNECTION_TCP_ITEM, CONNECTION_TCP_ITEM_NAME, "TCP", false);
 		indigo_init_switch_item(CONNECTION_SERIAL_ITEM, CONNECTION_SERIAL_ITEM_NAME, "Serial", false);
 		indigo_init_switch_item(CONNECTION_SERIAL_DTR_ITEM, CONNECTION_SERIAL_DTR_ITEM_NAME, "Serial (clear DTR)", false);
 		// -------------------------------------------------------------------------------- MOUNT_TYPE
 		MOUNT_TYPE_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_TYPE_PROPERTY_NAME, MAIN_GROUP, "Mount type", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
-		if (MOUNT_TYPE_PROPERTY == NULL)
+		if (MOUNT_TYPE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(MOUNT_TYPE_G11, MOUNT_TYPE_G11_NAME, MODELS[0].name, false);
 		indigo_init_switch_item(MOUNT_TYPE_TITAN, MOUNT_TYPE_TITAN_NAME, MODELS[1].name, false);
 		indigo_init_switch_item(MOUNT_TYPE_EXOS2, MOUNT_TYPE_EXOS2_NAME, MODELS[2].name, false);

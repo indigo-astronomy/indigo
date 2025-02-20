@@ -320,20 +320,23 @@ static indigo_result ccd_attach(indigo_device *device) {
 		snprintf(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, INDIGO_NAME_SIZE, "%s", PRIVATE_DATA->serial);
 		// -------------------------------------------------------------------------------- QSI_READOUT_SPEED
 		QSI_READOUT_SPEED_PROPERTY = indigo_init_switch_property(NULL, device->name, QSI_READOUT_SPEED_PROPERTY_NAME, CCD_ADVANCED_GROUP, "CCD readout speed", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 2);
-		if (QSI_READOUT_SPEED_PROPERTY == NULL)
+		if (QSI_READOUT_SPEED_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(QSI_READOUT_HQ_ITEM, QSI_READOUT_HQ_ITEM_NAME, "High Quality", false);
 		indigo_init_switch_item(QSI_READOUT_FAST_ITEM, QSI_READOUT_FAST_ITEM_NAME, "Fast Readout", false);
 		// -------------------------------------------------------------------------------- QSI_ANTI_BLOOM
 		QSI_ANTI_BLOOM_PROPERTY = indigo_init_switch_property(NULL, device->name, QSI_ANTI_BLOOM_PROPERTY_NAME, CCD_ADVANCED_GROUP, "Antiblooming", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 2);
-		if (QSI_ANTI_BLOOM_PROPERTY == NULL)
+		if (QSI_ANTI_BLOOM_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(QSI_ANTI_BLOOM_NORMAL_ITEM, QSI_ANTI_BLOOM_NORMAL_ITEM_NAME, "Normal", false);
 		indigo_init_switch_item(QSI_ANTI_BLOOM_HIGH_ITEM, QSI_ANTI_BLOOM_HIGH_ITEM_NAME, "High", false);
 		// -------------------------------------------------------------------------------- QSI_PRE_EXPOSURE_FLUSH
 		QSI_PRE_EXPOSURE_FLUSH_PROPERTY = indigo_init_switch_property(NULL, device->name, QSI_PRE_EXPOSURE_FLUSH_PROPERTY_NAME, CCD_ADVANCED_GROUP, "Pre-exposure flush", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 5);
-		if (QSI_PRE_EXPOSURE_FLUSH_PROPERTY == NULL)
+		if (QSI_PRE_EXPOSURE_FLUSH_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(QSI_PRE_EXPOSURE_FLUSH_NONE_ITEM, QSI_PRE_EXPOSURE_FLUSH_NONE_ITEM_NAME, "Off", false);
 		indigo_init_switch_item(QSI_PRE_EXPOSURE_FLUSH_MODEST_ITEM, QSI_PRE_EXPOSURE_FLUSH_MODEST_ITEM_NAME, "Modest", false);
 		indigo_init_switch_item(QSI_PRE_EXPOSURE_FLUSH_NORMAL_ITEM, QSI_PRE_EXPOSURE_FLUSH_NORMAL_ITEM_NAME, "Normal", false);
@@ -341,8 +344,9 @@ static indigo_result ccd_attach(indigo_device *device) {
 		indigo_init_switch_item(QSI_PRE_EXPOSURE_FLUSH_V_AGGRESSIVE_ITEM, QSI_PRE_EXPOSURE_FLUSH_V_AGGRESSIVE_ITEM_NAME, "Verry aggressive", false);
 		// -------------------------------------------------------------------------------- QSI_FAN_MODE
 		QSI_FAN_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, QSI_FAN_MODE_PROPERTY_NAME, CCD_COOLER_GROUP, "Fan mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 3);
-		if (QSI_FAN_MODE_PROPERTY == NULL)
+		if (QSI_FAN_MODE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(QSI_FAN_MODE_OFF_ITEM, QSI_FAN_MODE_OFF_ITEM_NAME, "Off", false);
 		indigo_init_switch_item(QSI_FAN_MODE_QUIET_ITEM, QSI_FAN_MODE_QUIET_ITEM_NAME, "Quiet", false);
 		indigo_init_switch_item(QSI_FAN_MODE_FULL_ITEM, QSI_FAN_MODE_FULL_ITEM_NAME, "Full speed", false);

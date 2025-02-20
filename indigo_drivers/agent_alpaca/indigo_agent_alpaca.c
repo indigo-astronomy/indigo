@@ -430,12 +430,14 @@ static indigo_result agent_device_attach(indigo_device *device) {
 	if (indigo_device_attach(device, DRIVER_NAME, DRIVER_VERSION, INDIGO_INTERFACE_AGENT) == INDIGO_OK) {
 		// --------------------------------------------------------------------------------
 		AGENT_DISCOVERY_PROPERTY = indigo_init_number_property(NULL, device->name, "AGENT_ALPACA_DISCOVERY", MAIN_GROUP, "Discovery Configuration", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		if (AGENT_DISCOVERY_PROPERTY == NULL)
+		if (AGENT_DISCOVERY_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_number_item(AGENT_DISCOVERY_PORT_ITEM, "PORT", "Discovery port", 0, 0xFFFF, 0, 32227);
 		AGENT_DEVICES_PROPERTY = indigo_init_text_property(NULL, device->name, "AGENT_ALPACA_DEVICES", MAIN_GROUP, "Device mapping", INDIGO_OK_STATE, INDIGO_RW_PERM, ALPACA_MAX_ITEMS);
-		if (AGENT_DISCOVERY_PROPERTY == NULL)
+		if (AGENT_DISCOVERY_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		for (int i = 0; i < ALPACA_MAX_ITEMS; i++) {
 			sprintf(AGENT_DEVICES_PROPERTY->items[i].name, "%d", i);
 			sprintf(AGENT_DEVICES_PROPERTY->items[i].label, "Device #%d", i);
@@ -443,8 +445,9 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		AGENT_DEVICES_PROPERTY->count = 0;
 
 		AGENT_CAMERA_BAYERPAT_PROPERTY = indigo_init_text_property(NULL, device->name, "AGENT_ALPACA_CAMERA_BAYERPAT", MAIN_GROUP, "Camera Bayer pattern", INDIGO_OK_STATE, INDIGO_RW_PERM, ALPACA_MAX_ITEMS);
-		if (AGENT_CAMERA_BAYERPAT_PROPERTY == NULL)
+		if (AGENT_CAMERA_BAYERPAT_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		for (int i = 0; i < ALPACA_MAX_ITEMS; i++) {
 			AGENT_CAMERA_BAYERPAT_PROPERTY->items[i].name[0] = '\0';
 			AGENT_CAMERA_BAYERPAT_PROPERTY->items[i].label[0] = '\0';
