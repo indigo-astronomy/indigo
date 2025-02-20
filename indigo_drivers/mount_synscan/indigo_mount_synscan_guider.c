@@ -9,9 +9,7 @@
 #include <sys/time.h>
 #include <string.h>
 #include <unistd.h>
-
 #include <indigo/indigo_mount_driver.h>
-
 #include "indigo_mount_synscan_private.h"
 #include "indigo_mount_synscan_driver.h"
 #include "indigo_mount_synscan_guider.h"
@@ -36,7 +34,7 @@
 //		//  This is not ideal as we are busy-waiting here and just consuming CPU cycles doing nothing,
 //		//  but if we actually sleep, then the OS might not give control back for much longer than we
 //		//  wanted to sleep for.
-//
+//		
 //		//  Return if we've reached the end time
 //		if (tnow >= tend)
 //			return;
@@ -62,11 +60,12 @@ void guider_timer_callback_ra(indigo_device *device) {
 		}
 
 		//  Determine the rate and duration
-		double guideRate = synscan_tracking_rate_ra(device->master_device);
+		double guideRate = synscan_tracking_rate(device->master_device);
 		if (pulse_length_ms < 0) {
 			guideRate -= GUIDER_RATE_ITEM->number.value * guideRate / 100.0;
 			pulse_length_ms = -pulse_length_ms;
-		} else {
+		}
+		else {
 			guideRate += GUIDER_RATE_ITEM->number.value * guideRate / 100.0;
 		}
 
@@ -81,13 +80,13 @@ void guider_timer_callback_ra(indigo_device *device) {
 #endif
 
 		//  Resume tracking
-		double axisRate = synscan_tracking_rate_ra(device->master_device);
+		double axisRate = synscan_tracking_rate(device->master_device);
 #if 0
 		synscan_update_axis_to_rate(device->master_device, kAxisRA, axisRate, &result);
 		PRIVATE_DATA->raAxisMode = kAxisModeTracking;
 #endif
 		synscan_guide_axis_at_rate(device->master_device, kAxisRA, guideRate, pulse_length_ms, axisRate);
-
+		
 		//  Complete the guiding property updates
 		GUIDER_GUIDE_EAST_ITEM->number.value = 0;
 		GUIDER_GUIDE_WEST_ITEM->number.value = 0;
@@ -108,7 +107,7 @@ void guider_timer_callback_dec(indigo_device *device) {
 		pulse_length_ms = PRIVATE_DATA->dec_pulse_ms;
 		PRIVATE_DATA->dec_pulse_ms = 0;
 		pthread_mutex_unlock(&PRIVATE_DATA->dec_mutex);
-
+		
 		//  Exit if requested
 		if (PRIVATE_DATA->guiding_thread_exit) {
 			PRIVATE_DATA->timer_count--;
@@ -116,23 +115,13 @@ void guider_timer_callback_dec(indigo_device *device) {
 		}
 
 		//  Determine the rate and duration
-		double guideRate;
-		if (MOUNT_TRACK_RATE_CUSTOM_ITEM->sw.value) {
-			guideRate = synscan_tracking_rate_dec(device->master_device);
-			if (pulse_length_ms < 0) {
-				guideRate -= GUIDER_DEC_RATE_ITEM->number.value * guideRate / 100.0;
-				pulse_length_ms = -pulse_length_ms;
-			} else {
-				guideRate += GUIDER_DEC_RATE_ITEM->number.value * guideRate / 100.0;
-			}
-		} else {
-			guideRate = synscan_tracking_rate_ra(device->master_device);
-			if (pulse_length_ms < 0) {
-				guideRate = -GUIDER_DEC_RATE_ITEM->number.value * guideRate / 100.0;
-				pulse_length_ms = -pulse_length_ms;
-			} else {
-				guideRate = GUIDER_DEC_RATE_ITEM->number.value * guideRate / 100.0;
-			}
+		double guideRate = synscan_tracking_rate(device->master_device);
+		if (pulse_length_ms < 0) {
+			guideRate = -GUIDER_DEC_RATE_ITEM->number.value * guideRate / 100.0;
+			pulse_length_ms = -pulse_length_ms;
+		}
+		else {
+			guideRate = GUIDER_DEC_RATE_ITEM->number.value * guideRate / 100.0;
 		}
 
 #if 0
@@ -142,16 +131,14 @@ void guider_timer_callback_dec(indigo_device *device) {
 
 		//  Wait for the required duration
 		//guider_delay_ms(pulse_length_ms);
-
+		
 		//  Stop the slew
 		synscan_stop_axis(device->master_device, kAxisDEC);
 		synscan_wait_for_axis_stopped(device->master_device, kAxisDEC, NULL);
 		PRIVATE_DATA->decAxisMode = kAxisModeIdle;
 #endif
-		//  Resume tracking
-		double axisRate = MOUNT_TRACK_RATE_CUSTOM_ITEM->sw.value ? synscan_tracking_rate_dec(device->master_device) : 0;
-		synscan_guide_axis_at_rate(device->master_device, kAxisDEC, guideRate, pulse_length_ms, axisRate);
-
+		synscan_guide_axis_at_rate(device->master_device, kAxisDEC, guideRate, pulse_length_ms, 0);
+		
 		//  Complete the guiding property updates
 		GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
 		GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
