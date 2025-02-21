@@ -23,7 +23,7 @@
  \file indigo_mount_lx200.c
  */
 
-#define DRIVER_VERSION 0x002D
+#define DRIVER_VERSION 0x002E
 #define DRIVER_NAME	"indigo_mount_lx200"
 
 #include <stdlib.h>
@@ -1256,6 +1256,28 @@ static void meade_update_site_items(indigo_device *device) {
 	meade_get_site(device, &latitude, &longitude);
 	MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = latitude;
 	MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = longitude;
+}
+
+static void meade_update_site_if_changed(indigo_device *device) {
+	double latitude = 0, longitude = 0;
+	meade_get_site(device, &latitude, &longitude);
+
+	double current_latitude = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value;
+	double current_longitude = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value;
+
+	double lat_diff = fabs(current_latitude - latitude);
+	double lon_diff = fabs(current_longitude - longitude);
+
+	// Handle 0-360 transition for longitude
+	if (lon_diff > 180) {
+		lon_diff = 360 - lon_diff;
+	}
+
+	if (lat_diff > 0.0028 || lon_diff > 0.0028) { // 10 arcseconds
+		MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = latitude;
+		MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = longitude;
+		indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+	}
 }
 
 static bool meade_detect_generic_mount(indigo_device *device) {
@@ -2589,6 +2611,7 @@ static void meade_update_mount_state(indigo_device *device) {
 
 static void position_timer_callback(indigo_device *device) {
 	if (PRIVATE_DATA->handle > 0) {
+		meade_update_site_if_changed(device);
 		meade_update_mount_state(device);
 		indigo_update_coordinates(device, NULL);
 		if (PRIVATE_DATA->tracking_changed)
