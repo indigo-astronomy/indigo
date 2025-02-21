@@ -17,7 +17,6 @@
 
 #include <indigo/indigo_driver.h>
 #include <indigo/indigo_io.h>
-
 #include "indigo_mount_synscan_private.h"
 #include "indigo_mount_synscan_protocol.h"
 

@@ -2,6 +2,17 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-316] - 21 Feb Fri 2025
+
+- indigo_mount_synscan:
+	- Revert custom RA and Dec tracking - users repored multiple crashes and erratic guiding
+
+- indigo_mount_lx200:
+	- OnStep handshake fixed - often first command after powerup fails.
+
+- indigo_ccd_svb2:
+	- driver included in the distribution
+
 # [2.0-314] - 18 Feb Tue 2025
 ## Overall:
 - indigo_ccd_driver:
