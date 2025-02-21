@@ -405,6 +405,13 @@ static void *new_blob_vector_handler(parser_state state, parser_context *context
 			property->access_token = strtol(value, NULL, 16);
 		}
 	} else if (state == END_TAG) {
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = property->items + i;
+			indigo_blob_entry *entry = indigo_find_blob(property, item);
+			if (entry)
+				item->blob.value = indigo_safe_malloc_copy(item->blob.size = entry->size, entry->content);
+		}
+		indigo_change_property(client, property);
 		indigo_clear_property(property);
 		return top_level_handler;
 	}
