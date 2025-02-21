@@ -711,7 +711,7 @@ static void mount_park_timer_callback(indigo_device* device) {
 	synscan_wait_for_axis_stopped(device, kAxisRA, &PRIVATE_DATA->abort_motion);
 	PRIVATE_DATA->raAxisMode = kAxisModeIdle;
 	synscan_wait_for_axis_stopped(device, kAxisDEC, &PRIVATE_DATA->abort_motion);
-	PRIVATE_DATA->raAxisMode = kAxisModeIdle;
+	PRIVATE_DATA->decAxisMode = kAxisModeIdle;
 
 	//  Stop tracking if enabled
 	indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
