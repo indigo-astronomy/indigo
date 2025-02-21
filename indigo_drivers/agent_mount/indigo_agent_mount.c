@@ -665,10 +665,12 @@ static void handle_site_change(indigo_device *device) {
 		indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device->name, "DOME_" GEOGRAPHIC_COORDINATES_PROPERTY_NAME, 3, names, values);
 	}
 	// set host time if needed
-	if (AGENT_SET_HOST_TIME_MOUNT_ITEM->sw.value)
+	if (AGENT_SET_HOST_TIME_MOUNT_ITEM->sw.value) {
 		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, MOUNT_SET_HOST_TIME_PROPERTY_NAME, MOUNT_SET_HOST_TIME_ITEM_NAME, true);
-	if (AGENT_SET_HOST_TIME_DOME_ITEM->sw.value)
+	}
+	if (AGENT_SET_HOST_TIME_DOME_ITEM->sw.value) {
 		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, DOME_SET_HOST_TIME_PROPERTY_NAME, DOME_SET_HOST_TIME_ITEM_NAME, true);
+	}
 	AGENT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = latitude;
 	AGENT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = longitude;
 	AGENT_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value = elevation;
