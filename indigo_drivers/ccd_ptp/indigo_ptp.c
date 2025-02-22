@@ -49,7 +49,7 @@ char *ptp_type_code_label(uint16_t code) {
 	if (code <= ptp_uint128_type)
 		return scalar_type_label[code - 1];
 	if (code <= ptp_auint128_type)
-		return array_type_label[code & 0xFF - 1];
+		return array_type_label[code & (0xFF - 1)];
 	if (code == 0xFFFF)
 		return "string";
 	return "undef!";
@@ -308,7 +308,7 @@ char *ptp_property_value_code_label(indigo_device *device, uint16_t property, ui
 			return label;
 		}
 		case ptp_property_ExposureIndex: {
-			snprintf(label, PTP_MAX_CHARS,  "%lld", code);
+			snprintf(label, PTP_MAX_CHARS,  "%lld", (unsigned long long) code);
 			return label;
 		}
 		case ptp_property_ExposureBiasCompensation: {
@@ -316,7 +316,7 @@ char *ptp_property_value_code_label(indigo_device *device, uint16_t property, ui
 			return label;
 		}
 	}
-	snprintf(label, PTP_MAX_CHARS,  "%llx", code);
+	snprintf(label, PTP_MAX_CHARS,  "%llx", (unsigned long long) code);
 	return label;
 }
 
@@ -1444,7 +1444,7 @@ bool ptp_update_property(indigo_device *device, ptp_property *property) {
 						indigo_init_switch_item(property->property->items + i, str, str, !strcmp(property->value.sw_str.value, str));
 					} else {
 						indigo_item *item = property->property->items + i;
-						snprintf(str, INDIGO_VALUE_SIZE, "%llx", property->value.sw.values[i]);
+						snprintf(str, INDIGO_VALUE_SIZE, "%llx", (unsigned long long) property->value.sw.values[i]);
 						indigo_init_switch_item(item, str, PRIVATE_DATA->property_value_code_label(device, property->code, property->value.sw.values[i]), property->value.sw.value == property->value.sw.values[i]);
 						if (!strcmp(item->label, "+") || !strcmp(item->label, "-")) {
 							strcpy(item->name, item->label);
@@ -1491,7 +1491,7 @@ bool ptp_update_property(indigo_device *device, ptp_property *property) {
 						strcpy(str, property->value.sw_str.values[i]);
 						indigo_copy_value(property->property->items[i].label, str);
 					} else {
-						snprintf(str, INDIGO_NAME_SIZE, "%llx", property->value.sw.values[i]);
+						snprintf(str, INDIGO_NAME_SIZE, "%llx", (unsigned long long) property->value.sw.values[i]);
 						indigo_copy_value(property->property->items[i].label, PRIVATE_DATA->property_value_code_label(device, property->code, property->value.sw.values[i]));
 					}
 					if (strncmp(property->property->items[i].name, str, INDIGO_NAME_SIZE)) {
@@ -1717,7 +1717,7 @@ bool ptp_handle_event(indigo_device *device, ptp_event_code code, uint32_t *para
 bool ptp_set_property(indigo_device *device, ptp_property *property) {
 	switch (property->property->type) {
 		case INDIGO_TEXT_VECTOR: {
-			strncpy(property->value.text.value, property->property->items->text.value, PTP_MAX_CHARS);
+			indigo_safe_strncpy(property->value.text.value, property->property->items->text.value, PTP_MAX_CHARS);
 			uint8_t buffer[PTP_MAX_CHARS * 2 + 2];
 			uint32_t size = (uint32_t)(ptp_encode_string(property->value.text.value, buffer) - buffer);
 			return ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, property->code, buffer, size);
@@ -1726,7 +1726,7 @@ bool ptp_set_property(indigo_device *device, ptp_property *property) {
 			for (int i = 0; i < property->property->count; i++) {
 				if (property->property->items[i].sw.value) {
 					if (property->type == ptp_str_type) {
-						strncpy(property->value.sw_str.value, property->value.sw_str.values[i], PTP_MAX_CHARS);
+						indigo_safe_strncpy(property->value.sw_str.value, property->value.sw_str.values[i], PTP_MAX_CHARS);
 					} else {
 						property->value.sw.value = property->value.sw.values[i];
 					}
@@ -1773,7 +1773,7 @@ bool ptp_set_host_time(indigo_device *device) {
 		time_t secs = time(NULL);
 		struct tm tm = *localtime_r(&secs, &tm);
 		char iso_time[16];
-		snprintf(iso_time, 16, "%02d%02d%02dT%02d%02d%02d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+		strftime(iso_time, sizeof(iso_time), "%Y%m%dT%H%M%S", &tm);
 		uint8_t buffer[2 * PTP_MAX_CHARS + 2];
 		uint8_t *end = ptp_encode_string(iso_time, buffer);
 		return ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, ptp_property_DateTime, buffer, (uint32_t)(end - buffer));

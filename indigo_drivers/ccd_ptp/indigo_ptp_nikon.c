@@ -686,7 +686,7 @@ char *ptp_property_nikon_value_code_label(indigo_device *device, uint16_t proper
 		}
 		case ptp_property_nikon_ExposureIndexHi: {
 			// same as ptp_property_ExposureIndex
-			sprintf(label, "%lld", code);
+			sprintf(label, "%lld", (unsigned long long) code);
 			return label;
 		}
 		case ptp_property_nikon_ExposureTime: {
@@ -705,7 +705,7 @@ char *ptp_property_nikon_value_code_label(indigo_device *device, uint16_t proper
 			} else if (numerator == 10) {
 				snprintf(label, PTP_MAX_CHARS,  "1/%.1fs", denominator / 10.0);
 			} else {
-				snprintf(label, PTP_MAX_CHARS,  "0x%llx", code);
+				snprintf(label, PTP_MAX_CHARS,  "0x%llx", (unsigned long long) code);
 			}
 			return label;
 		}

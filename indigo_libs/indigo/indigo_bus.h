@@ -753,8 +753,8 @@ extern void indigo_set_text_item_value(indigo_item *item, const char *value);
 
 #define indigo_fix_locale(s) { char *fc = strchr(s, ','); if (fc) *fc = '.'; }
 
-#define indigo_copy_name(target, source) { memset(target, 0, INDIGO_NAME_SIZE); strncpy(target, source, INDIGO_NAME_SIZE - 1); }
-#define indigo_copy_value(target, source) { memset(target, 0, INDIGO_VALUE_SIZE); strncpy(target, source, INDIGO_VALUE_SIZE - 1); }
+#define indigo_copy_name(target, source) { memset(target, 0, INDIGO_NAME_SIZE); indigo_safe_strncpy(target, source, INDIGO_NAME_SIZE - 1); }
+#define indigo_copy_value(target, source) { memset(target, 0, INDIGO_VALUE_SIZE); indigo_safe_strncpy(target, source, INDIGO_VALUE_SIZE - 1); }
 
 #define indigo_define_matching_property(template); if (indigo_property_match(template, property)) indigo_define_property(device, template, NULL)
 
@@ -837,13 +837,20 @@ static inline void indigo_safe_free(void *pointer) {
 		free(pointer);
 	}
 }
-
+/**
+ * Copy null-terminated string from src to dst, stopping after size characters
+ * Returns a pointer to the next byte in dst after inserting or NULL if either size is NULL or truncation occured
+ */
 static inline char *indigo_safe_strncpy(char *dst, const char *src, size_t size) {
-    if (size > 0) {
-		dst[size - 1] = '\0';
-        strncpy(dst, src, size - 1);
-    }
-	return dst;
+	if (size == 0) {
+        return NULL;
+	}
+	char *c = (char *) memccpy(dst, src, '\0', size);
+	if (c == NULL) {
+		dst[size - 1] = '\0'; /* truncation occured, null-terminate manually. */
+		return NULL;
+	}
+	return c;
 }
 
 #define INDIGO_BUFFER_SIZE (128 * 1024)

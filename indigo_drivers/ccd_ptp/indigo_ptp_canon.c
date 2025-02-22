@@ -564,7 +564,7 @@ char *ptp_property_canon_value_code_label(indigo_device *device, uint16_t proper
 					strcpy(label, "CR2 + ");
 					break;
 				default:
-					sprintf(label, "Unknown (0x%llx) +", (code >> 32) & 0xFFFFFFFF);
+					sprintf(label, "Unknown (0x%llx) +", (unsigned long long) (code >> 32) & 0xFFFFFFFF);
 					break;
 			}
 			switch (code & 0xFFFFFFFF) {
@@ -656,7 +656,8 @@ char *ptp_property_canon_value_code_label(indigo_device *device, uint16_t proper
 					strcat(label, "CR2");
 					break;
 				default:
-					sprintf(label, "%sUnknown (0x%llx)", label, code & 0xFFFFFFFF);
+					size_t len = strlen(label);
+					snprintf(label + len, sizeof(label) - len, "Unknown (0x%llx)", (unsigned long long)code & 0xFFFFFFFF);
 					break;
 			}
 			return label;
@@ -989,7 +990,7 @@ static void ptp_canon_get_event(indigo_device *device) {
 							break;
 						}
 						case ptp_str_type: {
-							strncpy((char *)property->value.text.value, (char *)source, PTP_MAX_CHARS);
+							indigo_safe_strncpy((char *)property->value.text.value, (char *)source, PTP_MAX_CHARS);
 							break;
 						}
 						case ptp_undef_type: {
@@ -1147,9 +1148,9 @@ static void ptp_canon_get_event(indigo_device *device) {
 					ptp_decode_uint32(source, &handle);
 					ptp_decode_uint32(source + 0x14, &length);
 					if (event == ptp_event_canon_ObjectAddedEx) {
-						strncpy(filename, (char *)source + 0x20, PTP_MAX_CHARS);
+						indigo_safe_strncpy(filename, (char *)source + 0x20, PTP_MAX_CHARS);
 					} else {
-						strncpy(filename, (char *)source + 0x24, PTP_MAX_CHARS);
+						indigo_safe_strncpy(filename, (char *)source + 0x24, PTP_MAX_CHARS);
 					}
 					if (CCD_UPLOAD_MODE_NONE_ITEM->sw.value) {
 						INDIGO_DRIVER_LOG(DRIVER_NAME, "%s (%04x): handle = %08x, size = %u, name = '%s' skipped", ptp_event_canon_code_label(event), event, handle, length, filename);
@@ -1383,7 +1384,7 @@ static bool set_number_property(indigo_device *device, uint16_t code, uint64_t v
 
 static bool set_string_property(indigo_device *device, uint16_t code, char *value) {
 	uint8_t buffer[PTP_MAX_CHARS + 2 * sizeof(uint32_t)], *target = buffer + 2 * sizeof(uint32_t);
-	strncpy((char *)target, value, PTP_MAX_CHARS);
+	indigo_safe_strncpy((char *)target, value, PTP_MAX_CHARS);
 	target += strlen((char *)target) + 1;
 	uint32_t size = *((uint32_t *)buffer) = (uint32_t)(target - buffer);
 	*((uint32_t *)buffer + 1) = code;
