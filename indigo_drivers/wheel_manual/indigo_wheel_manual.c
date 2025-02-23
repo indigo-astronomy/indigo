@@ -23,12 +23,11 @@
  \file indigo_wheel_manual.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME	"indigo_wheel_manual"
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <assert.h>
 
 #include <indigo/indigo_driver_xml.h>

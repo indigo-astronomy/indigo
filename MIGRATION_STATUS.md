@@ -64,6 +64,7 @@ wheel_asi
 wheel_astroasis
 wheel_indigo
 wheel_fli
+wheel_manual
 wheel_playerone
 
 # IN PROGRESS
@@ -151,7 +152,6 @@ rotator_wa
 system_ascol
 
 wheel_atik
-wheel_manual
 wheel_mi
 wheel_optec
 wheel_qhy
