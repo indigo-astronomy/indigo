@@ -646,7 +646,8 @@ static bool asi_guide_ra(indigo_device *device, int west, int east) {
 }
 
 static void asi_update_site_items(indigo_device *device) {
-	double latitude, longitude;
+	double latitude = 0.0;
+	double longitude = 0.0;
 	asi_get_site(device, &latitude, &longitude);
 	MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = latitude;
 	MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = longitude;
@@ -755,7 +756,7 @@ static void position_timer_callback(indigo_device *device) {
 		indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
 
 		if (indigo_get_log_level() >= INDIGO_LOG_DEBUG) {
-			double st;
+			double st = 0.0;
 			asi_get_sidereal_time(device, &st);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Mount LST = %lf, Host LST = %lf, offset = %.2fs", st, MOUNT_LST_TIME_ITEM->number.value, fabs(st - MOUNT_LST_TIME_ITEM->number.value)*3600);
 		}
@@ -1152,7 +1153,7 @@ static void zwo_meridian_limit_callback(indigo_device *device) {
 	} else {
 		ZWO_MERIDIAN_LIMIT_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-	int value;
+	int value = 0;
 	asi_get_meridian_settings(device, NULL, NULL, &value);
 	ZWO_MERIDIAN_LIMIT_ITEM->number.value = value;
 	indigo_update_property(device, ZWO_MERIDIAN_LIMIT_PROPERTY, NULL);
