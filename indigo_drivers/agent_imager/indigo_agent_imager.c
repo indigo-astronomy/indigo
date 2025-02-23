@@ -3666,6 +3666,17 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 		setup_download(FILTER_CLIENT_CONTEXT->device);
 	} else if (!strcmp(property->name, CCD_IMAGE_FILE_PROPERTY_NAME)) {
 		 setup_download(FILTER_CLIENT_CONTEXT->device);
+	} else if (!strcmp(property->name, CCD_LENS_FOV_PROPERTY_NAME)) {
+		indigo_device *device_filter = FILTER_CLIENT_CONTEXT->device;
+		char *related_agent_name = indigo_filter_first_related_agent(device_filter, "Guider Agent");
+		if (related_agent_name) {
+			double pix_scale_x = CCD_LENS_FOV_PIXEL_SCALE_WIDTH_ITEM->number.value;
+			double pix_scale_y = CCD_LENS_FOV_PIXEL_SCALE_HEIGHT_ITEM->number.value;
+			indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_GUIDER_SETTINGS_PROPERTY_NAME, AGENT_GUIDER_SETTINGS_MAIN_CCD_IMG_PIXEL_SCALE_WIDTH_ITEM_NAME, pix_scale_x);
+			indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_GUIDER_SETTINGS_PROPERTY_NAME, AGENT_GUIDER_SETTINGS_MAIN_CCD_IMG_PIXEL_SCALE_HEIGHT_ITEM_NAME, pix_scale_y);
+		} else {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "guider agent not found");
+		}
 	} else if (!strcmp(property->name, FILTER_AUX_1_LIST_PROPERTY_NAME)) { // Snoop AUX_1 ...
 		if (!INDIGO_FILTER_AUX_1_SELECTED) {
 			DEVICE_PRIVATE_DATA->use_aux_1 = false;
