@@ -503,7 +503,6 @@ bool asiair_export_all(bool use_pwm) {
 }
 
 bool asiair_unexport_all(bool use_pwm) {
-	int first = 0;
 	if (use_pwm) {
 		if (!asiair_pwm_unexport(0)) return false;
 		if (!asiair_pwm_unexport(1)) return false;
