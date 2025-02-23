@@ -66,6 +66,8 @@ typedef struct {
 	bool initialized;												///< driver is initialized
 } indigo_driver_entry;
 
+#define INDIGO_LAST_ERROR_SIZE 256
+
 /** Remote executable entry type.
  */
 typedef struct {
@@ -74,7 +76,7 @@ typedef struct {
   bool thread_started;                    ///< client thread started/stopped
   int pid;																///< process pid
   indigo_device *protocol_adapter;        ///< server protocol adapter
-	char last_error[256];										///< last error reported within client thread
+	char last_error[INDIGO_LAST_ERROR_SIZE];										///< last error reported within client thread
 } indigo_subprocess_entry;
 
 /** Array of all available drivers (statically & dynamically linked).
@@ -123,7 +125,7 @@ typedef struct {
 	bool thread_started;                    ///< client thread started/stopped
 	int socket;                             ///< stream socket
 	indigo_device *protocol_adapter;        ///< server protocol adapter
-	char last_error[256];										///< last error reported within client thread
+	char last_error[INDIGO_LAST_ERROR_SIZE];										///< last error reported within client thread
 	bool shutdown;													///< request shutdown
 } indigo_server_entry;
 
@@ -142,7 +144,7 @@ extern indigo_result indigo_connect_server(const char *name, const char *host, i
 extern indigo_result indigo_connect_server_id(const char *name, const char *host, int port, uint32_t connection_id, indigo_server_entry **server);
 
 /** If connected to the server returns true else returns false and last_error (if not NULL) will contain the last error
-    reported within client thread. Last_error should have length of 256.
+    reported within client thread. Last_error should have length of INDIGO_LAST_ERROR_SIZE.
  */
 extern bool indigo_connection_status(indigo_server_entry *server, char *last_error);
 
