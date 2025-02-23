@@ -368,6 +368,9 @@
     <ProjectReference Include="..\indigo_drivers\ccd_playerone\indigo_ccd_playerone.vcxproj">
       <Project>{add5495d-88fd-473c-83af-934b358608ea}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\ccd_qhy2\indigo_ccd_qhy2.vcxproj">
+      <Project>{92188d54-fe2c-4ba6-bcc2-9a473e73fbe5}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\indigo_drivers\ccd_rising\indigo_ccd_rising.vcxproj">
       <Project>{ad38f44e-9b0a-4003-b654-393de71dfed7}</Project>
     </ProjectReference>
@@ -391,6 +394,9 @@
     </ProjectReference>
     <ProjectReference Include="..\indigo_drivers\focuser_fli\indigo_focuser_fli.vcxproj">
       <Project>{3ac3f27f-8763-4533-a948-43373e5deef9}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\gps_nmea\indigo_gps_nmea.vcxproj">
+      <Project>{a2c83e5f-7089-4217-b4e3-fd60fee14645}</Project>
     </ProjectReference>
     <ProjectReference Include="..\indigo_drivers\rotator_simulator\indigo_rotator_simulator.vcxproj">
       <Project>{88bcddef-e256-437d-a5ad-9ef58e6752fa}</Project>

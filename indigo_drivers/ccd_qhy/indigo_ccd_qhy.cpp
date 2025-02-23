@@ -25,15 +25,13 @@
  \NOTE: This file should be .cpp as qhy headers are in C++
  */
 
-#define DRIVER_VERSION 0x0017
+#define DRIVER_VERSION 0x0018
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
-#include <sys/time.h>
 
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_usb_utils.h>
@@ -127,7 +125,7 @@ typedef struct {
 	bool has_cooler;
 	bool cooler_on;
 	int last_bpp;
-	int last_live;
+	bool last_live;
 	indigo_timer *exposure_timer, *temperature_timer, *guider_timer_ra, *guider_timer_dec;
 	double target_temperature, current_temperature;
 	long cooler_power;
@@ -432,7 +430,7 @@ static bool qhy_set_cooler(indigo_device *device, bool status, double target, do
 	}
 
 	if (PRIVATE_DATA->cooler_on) {
-		*cooler_power = (GetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_CURPWM) / 2.55); /* make it in percent (PWM is 0-255) */
+		*cooler_power = (long)(GetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_CURPWM) / 2.55); /* make it in percent (PWM is 0-255) */
 		/* ControlQHYCCDTemp() should be called once in a couple of seconds
 		   in order to maintain the requested temperature
 		 */
@@ -490,9 +488,9 @@ static void exposure_timer_callback(indigo_device *device) {
 				/* NOTE: There is no need to take care about the offsets,
 				   the SDK takes care the image to be in the correct bayer pattern */
 				indigo_fits_keyword keywords[] = {
-					{ .type = INDIGO_FITS_STRING, .name = "BAYERPAT", {.string = color_string }, .comment = "Bayer color pattern" },
-					{ .type = INDIGO_FITS_NUMBER, .name = "XBAYROFF", {.number = 0 }, .comment = "X offset of Bayer array" },
-					{ .type = INDIGO_FITS_NUMBER, .name = "YBAYROFF", {.number = 0 }, .comment = "Y offset of Bayer array" },
+					{ .type = INDIGO_FITS_STRING, .name = "BAYERPAT", .string = color_string, .comment = "Bayer color pattern" },
+					{ .type = INDIGO_FITS_NUMBER, .name = "XBAYROFF", .number = 0, .comment = "X offset of Bayer array" },
+					{ .type = INDIGO_FITS_NUMBER, .name = "YBAYROFF", .number = 0, .comment = "Y offset of Bayer array" },
 					{ .type = (indigo_fits_keyword_type)0 }
 				};
 				if ((CCD_BIN_HORIZONTAL_ITEM->number.value == 1) &&
@@ -521,13 +519,13 @@ static void streaming_timer_callback(indigo_device *device) {
 	}
 	char *color_string = get_bayer_string(device);
 	indigo_fits_keyword keywords[] = {
-		{ .type = INDIGO_FITS_STRING, .name = "BAYERPAT", {.string = color_string }, .comment = "Bayer color pattern" },
-		{ .type = INDIGO_FITS_NUMBER, .name = "XBAYROFF", {.number = 0 }, .comment = "X offset of Bayer array" },
-		{ .type = INDIGO_FITS_NUMBER, .name = "YBAYROFF", {.number = 0 }, .comment = "Y offset of Bayer array" },
+		{ .type = INDIGO_FITS_STRING, .name = "BAYERPAT", .string = color_string, .comment = "Bayer color pattern" },
+		{ .type = INDIGO_FITS_NUMBER, .name = "XBAYROFF", .number = 0, .comment = "X offset of Bayer array" },
+		{ .type = INDIGO_FITS_NUMBER, .name = "YBAYROFF", .number = 0, .comment = "Y offset of Bayer array" },
 		{ .type = (indigo_fits_keyword_type)0 }
 	};
 	PRIVATE_DATA->can_check_temperature = false;
-	if (qhy_start_exposure(device, CCD_STREAMING_EXPOSURE_ITEM->number.value, (CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_DARKFLAT_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value), CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value, CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value, true)) {
+	if (qhy_start_exposure(device, CCD_STREAMING_EXPOSURE_ITEM->number.value, (CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_DARKFLAT_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value), (int)CCD_FRAME_LEFT_ITEM->number.value, (int)CCD_FRAME_TOP_ITEM->number.value, (int)CCD_FRAME_WIDTH_ITEM->number.value, (int)CCD_FRAME_HEIGHT_ITEM->number.value, (int)CCD_BIN_HORIZONTAL_ITEM->number.value, (int)CCD_BIN_VERTICAL_ITEM->number.value, true)) {
 		while (CCD_STREAMING_COUNT_ITEM->number.value != 0) {
 			if (qhy_read_pixels(device, true)) {
 				if (color_string) {
@@ -598,7 +596,7 @@ static void guider_timer_callback_ra(indigo_device *device) {
 	}
 
 	indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer_ra);
-	int duration = GUIDER_GUIDE_EAST_ITEM->number.value;
+	int duration = (int)GUIDER_GUIDE_EAST_ITEM->number.value;
 	if (duration > 0) {
 		/* No sync possible here, ControlQHYCCDGuide is blocking. Let us hope is will work... */
 		res = ControlQHYCCDGuide(PRIVATE_DATA->handle, QHY_GUIDE_EAST, duration);
@@ -606,7 +604,7 @@ static void guider_timer_callback_ra(indigo_device *device) {
 		if (res != QHYCCD_SUCCESS)
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ControlQHYCCDGuide(%s, GUIDE_EAST) = %d", PRIVATE_DATA->dev_sid, res);
 	} else {
-		int duration = GUIDER_GUIDE_WEST_ITEM->number.value;
+		int duration = (int)GUIDER_GUIDE_WEST_ITEM->number.value;
 		if (duration > 0) {
 			/* No sync possible here, ControlQHYCCDGuide is blocking. Let us hope is will work... */
 			res = ControlQHYCCDGuide(PRIVATE_DATA->handle, QHY_GUIDE_WEST, duration);
@@ -628,7 +626,7 @@ static void guider_timer_callback_dec(indigo_device *device) {
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
 		return;
 	}
-	int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
+	int duration = (int)GUIDER_GUIDE_NORTH_ITEM->number.value;
 	if (duration > 0) {
 		/* No sync possible here, ControlQHYCCDGuide is blocking. Let us hope is will work... */
 		res = ControlQHYCCDGuide(PRIVATE_DATA->handle, QHY_GUIDE_NORTH, duration);
@@ -636,7 +634,7 @@ static void guider_timer_callback_dec(indigo_device *device) {
 		if (res != QHYCCD_SUCCESS)
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ControlQHYCCDGuide(%s, GUIDE_NORTH) = %d", PRIVATE_DATA->dev_sid, res);
 	} else {
-		int duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
+		int duration = (int)GUIDER_GUIDE_SOUTH_ITEM->number.value;
 		if (duration > 0) {
 			/* No sync possible here, ControlQHYCCDGuide is blocking. Let us hope is will work... */
 			res = ControlQHYCCDGuide(PRIVATE_DATA->handle, QHY_GUIDE_SOUTH, duration);
@@ -853,7 +851,7 @@ static void ccd_connect_callback(indigo_device *device) {
 					GetQHYCCDReadMode(PRIVATE_DATA->handle, &current_mode);
 					READ_MODE_PROPERTY->count = mode_count;
 					READ_MODE_PROPERTY->hidden = false;
-					for (int i = 0; i < mode_count; i++) {
+					for (uint32_t i = 0; i < mode_count; i++) {
 						char name[INDIGO_NAME_SIZE], label[INDIGO_NAME_SIZE];
 						snprintf(name, sizeof(name), "%d", i);
 						GetQHYCCDReadModeName(PRIVATE_DATA->handle, i, label);
@@ -965,12 +963,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		qhy_start_exposure(
-			device, CCD_EXPOSURE_ITEM->number.target, (CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_DARKFLAT_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value),
-			CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value,
-			CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value,
-			CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value,
-			false
-		);
+			device, CCD_EXPOSURE_ITEM->number.target, (CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_DARKFLAT_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value), (int)CCD_FRAME_LEFT_ITEM->number.value, (int)CCD_FRAME_TOP_ITEM->number.value, (int)CCD_FRAME_WIDTH_ITEM->number.value, (int)CCD_FRAME_HEIGHT_ITEM->number.value, (int)CCD_BIN_HORIZONTAL_ITEM->number.value, (int)CCD_BIN_VERTICAL_ITEM->number.value, false);
 		if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
 			CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
@@ -1411,7 +1404,7 @@ static void wheel_timer_callback(indigo_device *device) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetQHYCCDCFWStatus(%s) = %d.", PRIVATE_DATA->dev_sid, res);
 			return;
 		}
-		PRIVATE_DATA->fw_current_slot = WHEEL_SLOT_ITEM->number.value;
+		PRIVATE_DATA->fw_current_slot = (int)WHEEL_SLOT_ITEM->number.value;
 		//WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->fw_current_slot;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "GetQHYCCDCFWStatus(%s) fw_target_slot = %d %d", PRIVATE_DATA->dev_sid, PRIVATE_DATA->fw_target_slot, currentpos[0]);
 
@@ -1498,8 +1491,8 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
-			int fw_target_slot = WHEEL_SLOT_ITEM->number.value;
-			PRIVATE_DATA->fw_current_slot = WHEEL_SLOT_ITEM->number.value;
+			int fw_target_slot = (int)WHEEL_SLOT_ITEM->number.value;
+			PRIVATE_DATA->fw_current_slot = (int)WHEEL_SLOT_ITEM->number.value;
 
 			char targetpos = '0' + (fw_target_slot - 1);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Requested filter %d %c", fw_target_slot, targetpos);
@@ -1926,11 +1919,13 @@ indigo_result INDIGO_CCD_QHY(indigo_driver_action action, indigo_driver_info *in
 	switch (action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 			if (indigo_driver_initialized((char *)CONFLICTING_DRIVER)) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Conflicting driver %s is already loaded", CONFLICTING_DRIVER);
 				last_action = INDIGO_DRIVER_SHUTDOWN;
 				return INDIGO_FAILED;
 			}
+#endif
 #ifdef QHY2
 			SetQHYCCDAutoDetectCamera(false);
 #endif  // new SDK

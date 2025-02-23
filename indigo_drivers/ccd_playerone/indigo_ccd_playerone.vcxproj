@@ -136,7 +136,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;indigo.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;indigo.lib;PlayerOneCamera.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\..\build\$(Configuration)\$(Platform)\;bin_externals\libplayeronecamera\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
@@ -236,8 +236,7 @@
       <AdditionalLibraryDirectories>..\..\build\$(Configuration)\$(Platform)\;bin_externals\libplayeronecamera\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>
-      </Command>
+      <Command>xcopy /Y /I "bin_externals\libplayeronecamera\lib\windows\$(Platform)\*.dll" "..\..\build\$(Configuration)\$(Platform)\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
@@ -263,8 +262,7 @@
       <AdditionalLibraryDirectories>..\..\build\$(Configuration)\$(Platform)\;bin_externals\libplayeronecamera\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>
-      </Command>
+      <Command>xcopy /Y /I "bin_externals\libplayeronecamera\lib\windows\$(Platform)\*.dll" "..\..\build\$(Configuration)\$(Platform)\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>

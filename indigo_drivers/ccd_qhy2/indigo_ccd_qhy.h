@@ -28,10 +28,13 @@
 #define ccd_qhy_h
 
 #include <indigo/indigo_driver.h>
-#include <indigo/indigo_client.h>
 #include <indigo/indigo_ccd_driver.h>
 #include <indigo/indigo_guider_driver.h>
 #include <indigo/indigo_wheel_driver.h>
+
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+#include <indigo/indigo_client.h>
+#endif
 
 #if defined(INDIGO_WINDOWS)
 #if defined(INDIGO_WINDOWS_DLL)
@@ -55,7 +58,7 @@ extern "C" {
 #define CONFLICTING_DRIVER "indigo_ccd_qhy"
 #define DRIVER_DESCRIPTION "QHY CMOS (modern) Camera"
 
-extern indigo_result INDIGO_CCD_QHY(indigo_driver_action action, indigo_driver_info *info);
+INDIGO_EXTERN indigo_result INDIGO_CCD_QHY(indigo_driver_action action, indigo_driver_info *info);
 
 #ifdef __cplusplus
 }

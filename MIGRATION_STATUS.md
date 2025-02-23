@@ -38,6 +38,7 @@ ccd_mallin
 ccd_ogma
 ccd_omegonpro
 ccd_playerone
+ccd_qhy2
 ccd_rising
 ccd_simulator
 ccd_ssg
@@ -82,7 +83,6 @@ ccd_mi
 ccd_pentax
 ccd_ptp
 ccd_qhy
-ccd_qhy2
 ccd_qsi
 ccd_sbig
 ccd_ssag
