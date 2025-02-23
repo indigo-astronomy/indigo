@@ -23,17 +23,14 @@
  \file indigo_wheel_optec.c
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0005
 #define DRIVER_NAME "indigo_wheel_optec"
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <math.h>
 #include <assert.h>
-#include <sys/time.h>
 
-#include <indigo/indigo_io.h>
+#include <indigo/indigo_uni_io.h>
 
 #include "indigo_wheel_optec.h"
 
@@ -42,22 +39,21 @@
 #define PRIVATE_DATA        ((optec_private_data *)device->private_data)
 
 typedef struct {
-	int handle;
+	indigo_uni_handle *handle;
 	int slot;
 } optec_private_data;
 
 static bool optec_open(indigo_device *device) {
 	char *name = DEVICE_PORT_ITEM->text.value;
-	PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, 19200);
-	if (PRIVATE_DATA->handle >= 0) {
+	PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, 19200, INDIGO_LOG_DEBUG);
+	if (PRIVATE_DATA->handle != NULL) {
 		char reply;
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
-		if (indigo_printf(PRIVATE_DATA->handle, "WSMODE") && indigo_scanf(PRIVATE_DATA->handle, "%c", &reply) == 1 && reply == '!') {
+		if (indigo_uni_printf(PRIVATE_DATA->handle, "WSMODE") && indigo_uni_scanf_line(PRIVATE_DATA->handle, "%c", &reply) == 1 && reply == '!') {
 			return true;
 		}
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to initialize");
-		close(PRIVATE_DATA->handle);
-		PRIVATE_DATA->handle = 0;
+		indigo_uni_close(&PRIVATE_DATA->handle);
 	} else {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", name);
 	}
@@ -65,12 +61,12 @@ static bool optec_open(indigo_device *device) {
 }
 
 static void optec_goto(indigo_device *device) {
-	int slot = WHEEL_SLOT_ITEM->number.target;
+	int slot = (int)WHEEL_SLOT_ITEM->number.target;
 	char reply;
 	WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 	WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
-	if (indigo_printf(PRIVATE_DATA->handle, "WGOTO%d", slot) && indigo_scanf(PRIVATE_DATA->handle, "%c", &reply) == 1 && reply == '*') {
+	if (indigo_uni_printf(PRIVATE_DATA->handle, "WGOTO%d", slot) && indigo_uni_scanf_line(PRIVATE_DATA->handle, "%c", &reply) == 1 && reply == '*') {
 		WHEEL_SLOT_ITEM->number.value = slot;
 		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
@@ -80,10 +76,9 @@ static void optec_goto(indigo_device *device) {
 }
 
 static void optec_close(indigo_device *device) {
-	if (PRIVATE_DATA->handle > 0) {
-		indigo_printf(PRIVATE_DATA->handle, "WEXITS");
-		close(PRIVATE_DATA->handle);
-		PRIVATE_DATA->handle = 0;
+	if (PRIVATE_DATA->handle != NULL) {
+		indigo_uni_printf(PRIVATE_DATA->handle, "WEXITS");
+		indigo_uni_close(&PRIVATE_DATA->handle);
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
 	}
 }
@@ -107,7 +102,7 @@ static indigo_result wheel_attach(indigo_device *device) {
 static void wheel_connect_callback(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (optec_open(device)) {
-			if (indigo_printf(PRIVATE_DATA->handle, "WFILTR") && indigo_scanf(PRIVATE_DATA->handle, "%d", &PRIVATE_DATA->slot) == 1) {
+			if (indigo_uni_printf(PRIVATE_DATA->handle, "WFILTR") && indigo_uni_scanf_line(PRIVATE_DATA->handle, "%d", &PRIVATE_DATA->slot) == 1) {
 				WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->slot;
 				WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 			} else {

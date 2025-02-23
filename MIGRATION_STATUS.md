@@ -65,6 +65,7 @@ wheel_astroasis
 wheel_indigo
 wheel_fli
 wheel_manual
+wheel_optec
 wheel_playerone
 
 # IN PROGRESS
@@ -153,7 +154,6 @@ system_ascol
 
 wheel_atik
 wheel_mi
-wheel_optec
 wheel_qhy
 wheel_quantum
 wheel_sx

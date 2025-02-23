@@ -124,6 +124,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_wheel_indigo", "indi
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_wheel_manual", "indigo_drivers\wheel_manual\indigo_wheel_manual.vcxproj", "{B0C449BD-EAE9-4ADE-A3C7-349086D15CE2}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_wheel_optec", "indigo_drivers\wheel_optec\indigo_wheel_optec.vcxproj", "{209D5A91-D11F-433A-89CB-FE3FFC78FDBD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -620,6 +622,14 @@ Global
 		{B0C449BD-EAE9-4ADE-A3C7-349086D15CE2}.Release|x64.Build.0 = Release|x64
 		{B0C449BD-EAE9-4ADE-A3C7-349086D15CE2}.Release|x86.ActiveCfg = Release|Win32
 		{B0C449BD-EAE9-4ADE-A3C7-349086D15CE2}.Release|x86.Build.0 = Release|Win32
+		{209D5A91-D11F-433A-89CB-FE3FFC78FDBD}.Debug|x64.ActiveCfg = Debug|x64
+		{209D5A91-D11F-433A-89CB-FE3FFC78FDBD}.Debug|x64.Build.0 = Debug|x64
+		{209D5A91-D11F-433A-89CB-FE3FFC78FDBD}.Debug|x86.ActiveCfg = Debug|Win32
+		{209D5A91-D11F-433A-89CB-FE3FFC78FDBD}.Debug|x86.Build.0 = Debug|Win32
+		{209D5A91-D11F-433A-89CB-FE3FFC78FDBD}.Release|x64.ActiveCfg = Release|x64
+		{209D5A91-D11F-433A-89CB-FE3FFC78FDBD}.Release|x64.Build.0 = Release|x64
+		{209D5A91-D11F-433A-89CB-FE3FFC78FDBD}.Release|x86.ActiveCfg = Release|Win32
+		{209D5A91-D11F-433A-89CB-FE3FFC78FDBD}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
