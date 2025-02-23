@@ -26,16 +26,14 @@
  \file indigo_ccd_ssag.c
  */
 
-#define DRIVER_VERSION 0x000B
+#define DRIVER_VERSION 0x000C
 #define DRIVER_NAME "indigo_ccd_ssag"
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
-#include <sys/time.h>
 
 #include <indigo/indigo_usb_utils.h>
 #include <indigo/indigo_driver_xml.h>
@@ -217,7 +215,7 @@ static bool ssag_open(indigo_device *device) {
 
 static bool ssag_start_exposure(indigo_device *device, double exposure) {
 	unsigned char data[16];
-	unsigned duration = 1000 * exposure;
+	unsigned duration = (unsigned)(1000 * exposure);
 	int rc = ssag_init_sequence(device);
 	rc = rc < 0 ? rc : libusb_control_transfer(PRIVATE_DATA->handle, 0xc0, USB_RQ_EXPOSE, duration & 0xFFFF, duration >> 16, data, 2, USB_TIMEOUT);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_control_transfer -> %s", rc < 0 ? libusb_error_name(rc) : "OK");
@@ -432,7 +430,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- CCD_GAIN
 		indigo_property_copy_values(CCD_GAIN_PROPERTY, property, false);
 		CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
-		ssag_set_gain(device, CCD_GAIN_ITEM->number.target);
+		ssag_set_gain(device, (int)CCD_GAIN_ITEM->number.target);
 		indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
 		// --------------------------------------------------------------------------------
 	}
@@ -500,11 +498,11 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
 		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
-		int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
+		int duration = (int)GUIDER_GUIDE_NORTH_ITEM->number.value;
 		if (duration > 0) {
 			ssag_guide(device, guide_north, duration);
 		} else {
-			int duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
+			int duration = (int)GUIDER_GUIDE_SOUTH_ITEM->number.value;
 			if (duration > 0) {
 				ssag_guide(device, guide_south, duration);
 			}
@@ -515,11 +513,11 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
 		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
-		int duration = GUIDER_GUIDE_EAST_ITEM->number.value;
+		int duration = (int)GUIDER_GUIDE_EAST_ITEM->number.value;
 		if (duration > 0) {
 			ssag_guide(device, guide_east, duration);
 		} else {
-			duration = GUIDER_GUIDE_WEST_ITEM->number.value;
+			duration = (int)GUIDER_GUIDE_WEST_ITEM->number.value;
 			if (duration > 0) {
 				ssag_guide(device, guide_west, duration);
 			}

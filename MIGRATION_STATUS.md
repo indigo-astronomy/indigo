@@ -41,6 +41,7 @@ ccd_playerone
 ccd_qhy2
 ccd_rising
 ccd_simulator
+ccd_ssag
 ccd_ssg
 ccd_sx
 ccd_touptek
@@ -85,7 +86,6 @@ ccd_ptp
 ccd_qhy
 ccd_qsi
 ccd_sbig
-ccd_ssag
 ccd_svb
 ccd_svb2
 ccd_uvc

@@ -374,6 +374,9 @@
     <ProjectReference Include="..\indigo_drivers\ccd_rising\indigo_ccd_rising.vcxproj">
       <Project>{ad38f44e-9b0a-4003-b654-393de71dfed7}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\ccd_ssag\indigo_ccd_ssag.vcxproj">
+      <Project>{146ec52d-ee47-4a7d-88b4-1f0054fb50f2}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\indigo_drivers\ccd_ssg\indigo_ccd_ssg.vcxproj">
       <Project>{2ec31342-35cd-4620-96fe-a37342685ac1}</Project>
     </ProjectReference>
