@@ -28,11 +28,8 @@ struct DSI_CAMERA {
 	struct libusb_device *device;
 	struct libusb_device_handle *handle;
 	unsigned char command_sequence_number;
-
-	int is_simulation;
 	int eeprom_length;
 	int test_pattern;
-
 	int exposure_time;
 	int read_height_even;
 	int read_height_odd;
@@ -48,22 +45,17 @@ struct DSI_CAMERA {
 	int is_interlaced;
 	int little_endian_data;
 	char bayer_pattern[DSI_BAYER_LEN];
-
 	double pixel_size_x;
 	double pixel_size_y;
-
 	int amp_gain_pct;
 	int amp_offset_pct;
-
 	char chip_name[DSI_NAME_LEN];
 	char camera_name[DSI_NAME_LEN];
 	char model_name[DSI_NAME_LEN];
 	char serial_number[DSI_NAME_LEN];
-
 	enum DSI_FW_DEBUG fw_debug;
 	enum DSI_USB_SPEED usb_speed;
 	enum DSI_BIN_MODE bin_mode;
-
 	union {
 		int value;
 		unsigned char s[4];
@@ -78,285 +70,13 @@ struct DSI_CAMERA {
 	int read_command_timeout;
 	int write_command_timeout;
 	int read_image_timeout;
-
 	enum DSI_IMAGE_STATE imaging_state;
-
 	unsigned int last_time;
 	int log_commands;
-
 	size_t read_size_odd, read_size_even;
 	unsigned char *read_buffer_odd;
 	unsigned char *read_buffer_even;
 };
-
-
-/**
- * Look up the human-readable mnemonic for a numeric command code.
- *
- * @param cmd Command code to look up.
- * @param buffer Space to write the string mnemonic.
- * @param bufsize Size of write buffer.
- *
- * @return Pointer to buffer containing the mnemonic.
- */
-//const char *dsicmd_lookup_command_name_r(dsi_command_t cmd, char *buffer, int bufsize) {
-//	const char *bufptr = 0;
-//
-//	switch(cmd) {
-//		case PING:
-//			bufptr = "PING";
-//			break;
-//		case RESET:
-//			bufptr = "RESET";
-//			break;
-//		case ABORT:
-//			bufptr = "ABORT";
-//			break;
-//		case TRIGGER:
-//			bufptr = "TRIGGER";
-//			break;
-//		case CLEAR_TS:
-//			bufptr = "CLEAR_TS";
-//			break;
-//		case GET_VERSION:
-//			bufptr = "GET_VERSION";
-//			break;
-//		case GET_STATUS:
-//			bufptr = "GET_STATUS";
-//			break;
-//		case GET_TIMESTAMP:
-//			bufptr = "GET_TIMESTAMP";
-//			break;
-//		case GET_EEPROM_LENGTH:
-//			bufptr = "GET_EEPROM_LENGTH";
-//			break;
-//		case GET_EEPROM_BYTE:
-//			bufptr = "GET_EEPROM_BYTE";
-//			break;
-//		case SET_EEPROM_BYTE:
-//			bufptr = "SET_EEPROM_BYTE";
-//			break;
-//		case GET_GAIN:
-//			bufptr = "GET_GAIN";
-//			break;
-//		case SET_GAIN:
-//			bufptr = "SET_GAIN";
-//			break;
-//		case GET_OFFSET:
-//			bufptr = "GET_OFFSET";
-//			break;
-//		case SET_OFFSET:
-//			bufptr = "SET_OFFSET";
-//			break;
-//		case GET_EXP_TIME:
-//			bufptr = "GET_EXP_TIME";
-//			break;
-//		case SET_EXP_TIME:
-//			bufptr = "SET_EXP_TIME";
-//			break;
-//		case GET_EXP_MODE:
-//			bufptr = "GET_EXP_MODE";
-//			break;
-//		case SET_EXP_MODE:
-//			bufptr = "SET_EXP_MODE";
-//			break;
-//		case GET_VDD_MODE:
-//			bufptr = "GET_VDD_MODE";
-//			break;
-//		case SET_VDD_MODE:
-//			bufptr = "SET_VDD_MODE";
-//			break;
-//		case GET_FLUSH_MODE:
-//			bufptr = "GET_FLUSH_MODE";
-//			break;
-//		case SET_FLUSH_MODE:
-//			bufptr = "SET_FLUSH_MODE";
-//			break;
-//		case GET_CLEAN_MODE:
-//			bufptr = "GET_CLEAN_MODE";
-//			break;
-//		case SET_CLEAN_MODE:
-//			bufptr = "SET_CLEAN_MODE";
-//			break;
-//		case GET_READOUT_SPEED:
-//			bufptr = "GET_READOUT_SPEED";
-//			break;
-//		case SET_READOUT_SPEED:
-//			bufptr = "SET_READOUT_SPEED";
-//			break;
-//		case GET_READOUT_MODE:
-//			bufptr = "GET_READOUT_MODE";
-//			break;
-//		case SET_READOUT_MODE:
-//			bufptr = "SET_READOUT_MODE";
-//			break;
-//		case GET_READOUT_DELAY:
-//			bufptr = "GET_NORM_READOUT_DELAY";
-//			break;
-//		case SET_READOUT_DELAY:
-//			bufptr = "SET_NORM_READOUT_DELAY";
-//			break;
-//		case GET_ROW_COUNT_ODD:
-//			bufptr = "GET_ROW_COUNT_ODD";
-//			break;
-//		case SET_ROW_COUNT_ODD:
-//			bufptr = "SET_ROW_COUNT_ODD";
-//			break;
-//		case GET_ROW_COUNT_EVEN:
-//			bufptr = "GET_ROW_COUNT_EVEN";
-//			break;
-//		case SET_ROW_COUNT_EVEN:
-//			bufptr = "SET_ROW_COUNT_EVEN";
-//			break;
-//		case GET_TEMP:
-//			bufptr = "GET_TEMP";
-//			break;
-//		case GET_EXP_TIMER_COUNT:
-//			bufptr = "GET_EXP_TIMER_COUNT";
-//			break;
-//		case PS_ON:
-//			bufptr = "PS_ON";
-//			break;
-//		case PS_OFF:
-//			bufptr = "PS_OFF";
-//			break;
-//		case CCD_VDD_ON:
-//			bufptr = "CCD_VDD_ON";
-//			break;
-//		case CCD_VDD_OFF:
-//			bufptr = "CCD_VDD_OFF";
-//			break;
-//		case AD_READ:
-//			bufptr = "AD_READ";
-//			break;
-//		case AD_WRITE:
-//			bufptr = "AD_WRITE";
-//			break;
-//		case TEST_PATTERN:
-//			bufptr = "TEST_PATTERN";
-//			break;
-//		case GET_DEBUG_VALUE:
-//			bufptr = "GET_DEBUG_VALUE";
-//			break;
-//		case GET_EEPROM_VIDPID:
-//			bufptr = "GET_EEPROM_VIDPID";
-//			break;
-//		case SET_EEPROM_VIDPID:
-//			bufptr = "SET_EEPROM_VIDPID";
-//			break;
-//		case ERASE_EEPROM:
-//			bufptr = "ERASE_EEPROM";
-//			break;
-//	}
-//	if (bufptr != 0) {
-//		snprintf(buffer, bufsize, "%s", bufptr);
-//	} else {
-//		snprintf(buffer, bufsize, "CMD_UNKNOWN, 0x%02x", cmd);
-//	}
-//	return buffer;
-//}
-
-/**
- * Look up the human-readable mnemonic for a numeric command code, non-reentrant.
- *
- * @param cmd Command code to look up.
- *
- * @return Pointer to buffer containing the mnemonic.
- */
-//const char *dsicmd_lookup_command_name(dsi_command_t cmd) {
-//	static char scratch[100];
-//	return dsicmd_lookup_command_name_r(cmd, scratch, 100);
-//}
-
-/**
- * Look up the human-readable mnemonic for a numeric imaging state code,
- * non-reentrant.
- *
- * @param state Imaging state code to look up.
- * @param buffer Space to write the string mnemonic.
- * @param bufsize Size of write buffer.
- *
- * @return Pointer to buffer containing the mnemonic.
- */
-//const char *dsicmd_lookup_image_state_r(enum DSI_IMAGE_STATE state, char *buffer, int bufsize) {
-//	char *bufptr = 0;
-//
-//	switch(state) {
-//		case DSI_IMAGE_IDLE:
-//			bufptr = "DSI_IMAGE_IDLE";
-//			break;
-//		case DSI_IMAGE_EXPOSING:
-//			bufptr = "DSI_IMAGE_EXPOSING";
-//			break;
-//		case DSI_IMAGE_ABORTING:
-//			bufptr = "DSI_IMAGE_ABORTING";
-//			break;
-//	}
-//	if (bufptr != 0) {
-//		snprintf(buffer, bufsize, "%s", bufptr);
-//	} else {
-//		snprintf(buffer, bufsize, "DSI_IMAGE_UNKNOWN, 0x%02x", state);
-//	}
-//	return buffer;
-//}
-
-/**
- * Look up the human-readable mnemonic for a numeric imaging state code,
- * non-reentrant.
- *
- * @param state Imaging state code to look up.
- *
- * @return Pointer to buffer containing the mnemonic.
- */
-//const char *dsicmd_lookup_image_state(enum DSI_IMAGE_STATE state) {
-//	/* not thread safe. */
-//	static char unknown[100];
-//	return dsicmd_lookup_image_state_r(state, unknown, 100);
-//}
-
-/**
- * Look up the human-readable mnemonic for a USB speed code.
- *
- * @param speed USB speed code to look up.
- * @param buffer Space to write the string mnemonic.
- * @param bufsize Size of write buffer.
- *
- * @return Pointer to buffer containing the mnemonic.
- */
-//const char *dsicmd_lookup_usb_speed_r(enum DSI_USB_SPEED speed, char *buffer, int bufsize) {
-//	char *bufptr = 0;
-//	switch(speed) {
-//		case DSI_USB_SPEED_FULL:
-//			bufptr = "DSI_USB_SPEED_FULL";
-//			break;
-//		case DSI_USB_SPEED_HIGH:
-//			bufptr = "DSI_USB_SPEED_HIGH";
-//			break;
-//		case DSI_USB_SPEED_INVALID:
-//			bufptr = "DSI_USB_SPEED_INVALID";
-//			break;
-//	}
-//	if (bufptr != 0) {
-//		snprintf(buffer, bufsize, "%s", bufptr);
-//	} else {
-//		snprintf(buffer, bufsize, "DSI_USB_SPEED_UNKNOWN, 0x%02x", speed);
-//	}
-//	return buffer;
-//}
-
-/**
- * Look up the human-readable mnemonic for a USB speed code, non-reentrant.
- *
- * @param speed USB speed code to look up.
- *
- * @return Pointer to buffer containing the mnemonic.
- */
-//const char *dsicmd_lookup_usb_speed(enum DSI_USB_SPEED speed) {
-//	/* not thread safe. */
-//	static char unknown[100];
-//	return dsicmd_lookup_usb_speed_r(speed, unknown, 100);
-//}
-
 
 /**
  * Utility to return system clock time in milliseconds.
@@ -417,10 +137,6 @@ static unsigned int dsi_get_int_result(unsigned char *buffer) {
  * @return decoded command response.
  */
 static int dsicmd_command_1(dsi_camera_t *dsi, dsi_command_t cmd) {
-	if (dsi->is_simulation) {
-		return 0;
-	}
-
 	// This is the one place where having class-based enums instead of
 	// built-in enums is annoying: you can't use a switch statement here.
 	switch (cmd) {
@@ -454,7 +170,6 @@ static int dsicmd_command_1(dsi_camera_t *dsi, dsi_command_t cmd) {
 		case GET_ROW_COUNT_ODD:
 		case GET_ROW_COUNT_EVEN:
 			return dsicmd_command_3(dsi, cmd, 0, 3);
-
 		default:
 			return -1;
 	}
@@ -471,9 +186,6 @@ static int dsicmd_command_1(dsi_camera_t *dsi, dsi_command_t cmd) {
  * @return decoded command response.
  */
 static int dsicmd_command_2(dsi_camera_t *dsi, dsi_command_t cmd, int param) {
-	if (dsi->is_simulation) {
-		return 0;
-	}
 	// This is the one place where having class-based enums instead of
 	// built-in enums is annoying: you can't use a switch statement here.
 	switch (cmd) {
@@ -701,7 +413,9 @@ static int dsicmd_reset_camera(dsi_camera_t *dsi) {
 }
 
 static int dsicmd_set_exposure_time(dsi_camera_t *dsi, int ticks) {
-	if (ticks <= 0) ticks = 1;
+	if (ticks <= 0) {
+		ticks = 1;
+	}
 	dsi->exposure_time = ticks;
 	return dsicmd_command_2(dsi, SET_EXP_TIME, ticks);
 }
@@ -725,8 +439,9 @@ static int dsicmd_abort_exposure(dsi_camera_t *dsi) {
 }
 
 static int dsicmd_set_gain(dsi_camera_t *dsi, int gain) {
-	if (gain < 0 || gain > 63)
+	if (gain < 0 || gain > 63) {
 		return -1;
+	}
 	return dsicmd_command_2(dsi, SET_GAIN, gain);
 }
 
@@ -789,7 +504,9 @@ static int dsicmd_set_readout_speed(dsi_camera_t *dsi, int speed) {
 //}
 
 static int dsicmd_get_temperature(dsi_camera_t *dsi) {
-	if (!dsi->has_temperature_sensor) return NO_TEMP_SENSOR;
+	if (!dsi->has_temperature_sensor) {
+		return NO_TEMP_SENSOR;
+	}
 	return dsicmd_command_1(dsi, GET_TEMP);
 }
 
@@ -808,7 +525,6 @@ static int dsicmd_get_temperature(dsi_camera_t *dsi) {
 //		dsi->read_height_even = dsicmd_command_1(dsi, GET_ROW_COUNT_EVEN);
 //	return dsi->read_height_even;
 //}
-
 
 static unsigned char dsicmd_get_eeprom_byte(dsi_camera_t *dsi, int offset) {
 	if (dsi->eeprom_length < 0) {
@@ -844,7 +560,6 @@ static int dsicmd_set_eeprom_data(dsi_camera_t *dsi, char *buffer, int start, in
 	return length;
 }
 
-
 static void dsicmd_get_eeprom_string(dsi_camera_t *dsi, unsigned char *buffer, int start, int length) {
 	int i;
 	dsicmd_get_eeprom_data(dsi, (char *)buffer, start, length);
@@ -861,7 +576,6 @@ static void dsicmd_get_eeprom_string(dsi_camera_t *dsi, unsigned char *buffer, i
 		}
 	}
 }
-
 
 /**
  * Write the provided string to a region in the EEPROM.  WARNING: I think it
@@ -968,13 +682,6 @@ static dsi_camera_t *dsicmd_init_dsi(dsi_camera_t *dsi) {
 	dsi->little_endian_data = 1;
 	dsi->bayer_pattern[0] = '\0';
 	dsi->bin_mode = BIN1X1;
-	if (!dsi->is_simulation) {
-		dsicmd_command_1(dsi, PING);
-		dsicmd_command_1(dsi, RESET);
-		dsicmd_get_version(dsi);
-		dsicmd_load_status(dsi);
-		dsicmd_command_1(dsi, GET_READOUT_MODE);
-	}
 	dsi_get_chip_name(dsi);
 	dsi_get_camera_name(dsi);
 	// dsi_get_serial_number(dsi);
@@ -1178,13 +885,13 @@ static void dsicmd_init_usb_device(dsi_camera_t *dsi) {
 	 * wire).
 	 *
 	 */
-	assert(libusb_get_descriptor(dsi->handle, 0x01, 0x00, data, sizeof(data)) >= 0);
-	assert(libusb_get_descriptor(dsi->handle, 0x01, 0x00, data, sizeof(data)) >= 0);
-	assert(libusb_get_descriptor(dsi->handle, 0x02, 0x00, data, sizeof(data)) >= 0);
-	assert(libusb_set_configuration(dsi->handle, 1) >= 0);
-	assert(libusb_claim_interface(dsi->handle, 0) >= 0);
+	libusb_get_descriptor(dsi->handle, 0x01, 0x00, data, sizeof(data));
+	libusb_get_descriptor(dsi->handle, 0x01, 0x00, data, sizeof(data));
+	libusb_get_descriptor(dsi->handle, 0x02, 0x00, data, sizeof(data));
+	libusb_set_configuration(dsi->handle, 1);
+	libusb_claim_interface(dsi->handle, 0);
 	/* This seems to solve the connect issue after reconnect without close ot close after short exposure */
-	assert(libusb_reset_device(dsi->handle) >= 0);
+	libusb_reset_device(dsi->handle);
 	/* This is included out of desperation, but it works :-|
 	 *
 	 * After running once, an attempt to run a second time appears, for some
@@ -1192,12 +899,12 @@ static void dsicmd_init_usb_device(dsi_camera_t *dsi) {
 	 * least, we need to clear this EP.  However, believing in the power of
 	 * magic, we clear them all.
 	 */
-	assert(libusb_clear_halt(dsi->handle, 0x01) >= 0);
-	assert(libusb_clear_halt(dsi->handle, 0x81) >= 0);
-	assert(libusb_clear_halt(dsi->handle, 0x86) >= 0);
-	assert(libusb_clear_halt(dsi->handle, 0x02) >= 0);
-	assert(libusb_clear_halt(dsi->handle, 0x04) >= 0);
-	assert(libusb_clear_halt(dsi->handle, 0x88) >= 0);
+	libusb_clear_halt(dsi->handle, 0x01);
+	libusb_clear_halt(dsi->handle, 0x81);
+	libusb_clear_halt(dsi->handle, 0x86);
+	libusb_clear_halt(dsi->handle, 0x02);
+	libusb_clear_halt(dsi->handle, 0x04);
+	libusb_clear_halt(dsi->handle, 0x88);
 }
 
 /**
@@ -1284,7 +991,6 @@ static unsigned char *dsicmd_decode_image(dsi_camera_t *dsi, unsigned char *buff
 				  fprintf(stderr, "starting image row %d, outpos=%d, is_odd_row=%d, row_start=%d, ixypos=%d\n",
 				  ypix, outpos, is_odd_row, row_start, ixypos);
 				 */
-
 				for (xpix = 0; xpix < image_width; xpix++) {
 					buffer[outpos++] = dsi->read_buffer_odd[ixypos++];
 					buffer[outpos++] = dsi->read_buffer_odd[ixypos++];
@@ -1517,7 +1223,7 @@ bool dsi_load_firmware(void) {
 	int cnt = (int)libusb_get_device_list(NULL, &list);
 	for (i = 0; i < cnt; ++i) {
 		if (!libusb_get_device_descriptor(list[i], &desc)) {
-			if ((desc.idVendor == 0x156c) && (desc.idProduct == 0x0100)) {
+			if ((desc.idVendor == 0x156c) && (desc.idProduct == 0x0101 || desc.idProduct == 0x0100)) {
 				libusb_device_handle *handle;
 				int rc = libusb_open(list[i], &handle);
 				if (rc >= 0) {
@@ -1550,11 +1256,13 @@ int dsi_scan_usb(dsi_device_list devices) {
 	int cnt = (int)libusb_get_device_list(NULL, &list);
 	for (i = 0; i < cnt; ++i) {
 		if (!libusb_get_device_descriptor(list[i], &desc)) {
-			if (desc.idVendor == 0x156c) {
+			if ((desc.idVendor == 0x156c) && (desc.idProduct == 0x0101 || desc.idProduct == 0x0100)) {
 				dsi_get_identifier(list[i], dev_id);
 				strncpy(devices[index], dev_id, DSI_ID_LEN);
 				index++;
-				if (index >= DSI_MAX_DEVICES) break;
+				if (index >= DSI_MAX_DEVICES) {
+					break;
+				}
 			}
 		}
 	}
@@ -1582,7 +1290,7 @@ dsi_camera_t *dsi_open_camera(const char *identifier) {
 	int cnt = (int)libusb_get_device_list(NULL, &list);
 	for (i = 0; i < cnt; ++i) {
 		if (!libusb_get_device_descriptor(list[i], &desc)) {
-			if ((desc.idVendor == 0x156c) && (desc.idProduct = 0x0101)) {
+			if ((desc.idVendor == 0x156c) && (desc.idProduct == 0x0101 || desc.idProduct == 0x0100)) {
 				dev = list[i];
 				dsi_get_identifier(dev, dev_id);
 				if (!strncmp(dev_id, identifier, DSI_ID_LEN)) {
@@ -1602,7 +1310,6 @@ dsi_camera_t *dsi_open_camera(const char *identifier) {
 	assert(dsi != 0);
 	dsi->device = dev;
 	dsi->handle = handle;
-	dsi->is_simulation = 0;
 	dsicmd_init_usb_device(dsi);
 	dsicmd_init_dsi(dsi);
 	dsi_start_exposure(dsi, 0.0001);

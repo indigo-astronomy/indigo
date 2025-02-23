@@ -4513,7 +4513,7 @@
 		59F682A8250FD48200ABD731 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		59F682A9250FD48200ABD731 /* indigo_focuser_robofocus.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_robofocus.h; sourceTree = "<group>"; };
 		59F682AA250FD56D00ABD731 /* robofocusins31.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = robofocusins31.pdf; sourceTree = "<group>"; };
-		59F6B5722D65037B004FB01E /* MIGRATION_STATUS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = MIGRATION_STATUS.md; sourceTree = "<group>"; };
+		59F6B5722D65037B004FB01E /* MIGRATION_STATUS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = MIGRATION_STATUS.md; sourceTree = "<group>"; wrapsLines = 1; };
 		59F6BB40261CA65800DA9BE1 /* alpaca_switch.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = alpaca_switch.c; sourceTree = "<group>"; };
 		59F7E5E62457616400EF273A /* indigo_aux_cloudwatcher.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_cloudwatcher.c; sourceTree = "<group>"; };
 		59F7E5E72457616400EF273A /* indigo_aux_cloudwatcher_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_cloudwatcher_main.c; sourceTree = "<group>"; };
