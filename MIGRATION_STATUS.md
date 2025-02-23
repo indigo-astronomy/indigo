@@ -53,7 +53,7 @@ focuser_asi
 focuser_astroasis
 focuser_fli
 
-gps_gpsd
+gps_nmea
 gps_simulator
 
 mount_simulator
@@ -127,7 +127,7 @@ focuser_steeldrive2
 focuser_usbv3
 focuser_wemacro
 
-gps_nmea
+gps_gpsd
 
 guider_asi
 guider_cgusbst4
