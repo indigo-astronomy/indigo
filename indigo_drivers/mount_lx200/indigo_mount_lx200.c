@@ -3749,8 +3749,6 @@ static void onstep_aux_connect(indigo_device *device) {
 			*comma++ = '\0';
 			char *name = response;
 			onstep_aux_device_purpose purpose = *comma - '0';
-			char property_name[32];
-			indigo_property *aux_property = NULL;
 			if (purpose == ONSTEP_AUX_ANALOG) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Onstep AUX Heater Outlet at slot %d with name %s", i + 1, name);
 				ONSTEP_AUX_HEATER_OUTLET_MAPPING[ONSTEP_AUX_HEATER_OUTLET_COUNT] = i + 1;
