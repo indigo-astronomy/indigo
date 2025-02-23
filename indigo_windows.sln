@@ -120,6 +120,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_ccd_ssag", "indigo_d
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_ccd_dsi", "indigo_drivers\ccd_dsi\indigo_ccd_dsi.vcxproj", "{AEF790A2-BEB0-4C40-90AF-24A40E583F75}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_wheel_indigo", "indigo_drivers\wheel_indigo\indigo_wheel_indigo.vcxproj", "{2103CF27-9E6C-4A04-AD34-0116EC9F5D08}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -600,6 +602,14 @@ Global
 		{AEF790A2-BEB0-4C40-90AF-24A40E583F75}.Release|x64.Build.0 = Release|x64
 		{AEF790A2-BEB0-4C40-90AF-24A40E583F75}.Release|x86.ActiveCfg = Release|Win32
 		{AEF790A2-BEB0-4C40-90AF-24A40E583F75}.Release|x86.Build.0 = Release|Win32
+		{2103CF27-9E6C-4A04-AD34-0116EC9F5D08}.Debug|x64.ActiveCfg = Debug|x64
+		{2103CF27-9E6C-4A04-AD34-0116EC9F5D08}.Debug|x64.Build.0 = Debug|x64
+		{2103CF27-9E6C-4A04-AD34-0116EC9F5D08}.Debug|x86.ActiveCfg = Debug|Win32
+		{2103CF27-9E6C-4A04-AD34-0116EC9F5D08}.Debug|x86.Build.0 = Debug|Win32
+		{2103CF27-9E6C-4A04-AD34-0116EC9F5D08}.Release|x64.ActiveCfg = Release|x64
+		{2103CF27-9E6C-4A04-AD34-0116EC9F5D08}.Release|x64.Build.0 = Release|x64
+		{2103CF27-9E6C-4A04-AD34-0116EC9F5D08}.Release|x86.ActiveCfg = Release|Win32
+		{2103CF27-9E6C-4A04-AD34-0116EC9F5D08}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

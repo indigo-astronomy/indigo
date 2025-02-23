@@ -23,18 +23,15 @@
  \file indigo_ccd_indigo.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_wheel_indigo"
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
-#include <sys/time.h>
-#include <sys/termios.h>
 
-#include <indigo/indigo_io.h>
+#include <indigo/indigo_uni_io.h>
 
 #include "indigo_wheel_indigo.h"
 
@@ -43,56 +40,52 @@
 #define PRIVATE_DATA        ((indigo_private_data *)device->private_data)
 
 typedef struct {
-	int handle;
+	indigo_uni_handle *handle;
 	pthread_mutex_t mutex;
 } indigo_private_data;
 
 static bool indigo_command(indigo_device *device, char *command, char *response, int max) {
-	tcflush(PRIVATE_DATA->handle, TCIOFLUSH);
-	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
-	indigo_write(PRIVATE_DATA->handle, "\n", 1);
-	if (response != NULL) {
-		if (indigo_read_line(PRIVATE_DATA->handle, response, max) == 0) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s -> no response", command);
-			return false;
+	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
+		if (indigo_uni_printf(PRIVATE_DATA->handle, "%s\n", command) > 0) {
+			if (response != NULL) {
+				if (indigo_uni_read_line(PRIVATE_DATA->handle, response, max) > 0) {
+					return true;
+				}
+			}
 		}
 	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s -> %s", command, response != NULL ? response : "NULL");
-	return true;
+	return false;
 }
 
 static void wheel_connection_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char response[64];
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 9600);
-		if (PRIVATE_DATA->handle > 0) {
+		PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 9600, INDIGO_LOG_DEBUG);
+		if (PRIVATE_DATA->handle != NULL) {
 			if (indigo_command(device, "W#", response, sizeof(response)) && !strcmp(response, "FW_OK")) {
 			} else {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Wheel not detected");
-				close(PRIVATE_DATA->handle);
-				PRIVATE_DATA->handle = 0;
+				indigo_uni_close(&PRIVATE_DATA->handle);
 			}
 		}
-		if (PRIVATE_DATA->handle > 0) {
+		if (PRIVATE_DATA->handle != NULL) {
 			if (indigo_command(device, "WI", response, sizeof(response)) && !strcmp(response, "WI:1")) {
 				WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = 1;
 			} else {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read 'WI' response");
-				close(PRIVATE_DATA->handle);
-				PRIVATE_DATA->handle = 0;
+				indigo_uni_close(&PRIVATE_DATA->handle);
 			}
 		}
-		if (PRIVATE_DATA->handle > 0) {
+		if (PRIVATE_DATA->handle != NULL) {
 			if (indigo_command(device, "WV", response, sizeof(response)) && !strncmp(response, "WV:", 3)) {
 				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, response + 3);
 			} else {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read 'WV' response");
-				close(PRIVATE_DATA->handle);
-				PRIVATE_DATA->handle = 0;
+				indigo_uni_close(&PRIVATE_DATA->handle);
 			}
 		}
-		if (PRIVATE_DATA->handle > 0) {
+		if (PRIVATE_DATA->handle != NULL) {
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", DEVICE_PORT_ITEM->text.value);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
@@ -102,10 +95,9 @@ static void wheel_connection_handler(indigo_device *device) {
 		}
 	} else {
 		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "undefined");
-		if (PRIVATE_DATA->handle > 0) {
+		if (PRIVATE_DATA->handle != NULL) {
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
-			close(PRIVATE_DATA->handle);
-			PRIVATE_DATA->handle = 0;
+			indigo_uni_close(&PRIVATE_DATA->handle);
 		}
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
