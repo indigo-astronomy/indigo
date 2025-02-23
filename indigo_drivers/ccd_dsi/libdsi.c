@@ -5,16 +5,13 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
-#include <errno.h>
 #include <assert.h>
-#include <fcntl.h>
-#include <sys/types.h>
-#include <sys/time.h>
-#include <regex.h>
 #include <math.h>
 #include <string.h>
 #include <ctype.h>
+#include <errno.h>
+
+#include <indigo/indigo_usb_utils.h>
 
 #include "libdsi.h"
 #include "libdsi_firmware.h"
@@ -102,162 +99,162 @@ struct DSI_CAMERA {
  *
  * @return Pointer to buffer containing the mnemonic.
  */
-const char *dsicmd_lookup_command_name_r(dsi_command_t cmd, char *buffer, int bufsize) {
-	const char *bufptr = 0;
-
-	switch(cmd) {
-		case PING:
-			bufptr = "PING";
-			break;
-		case RESET:
-			bufptr = "RESET";
-			break;
-		case ABORT:
-			bufptr = "ABORT";
-			break;
-		case TRIGGER:
-			bufptr = "TRIGGER";
-			break;
-		case CLEAR_TS:
-			bufptr = "CLEAR_TS";
-			break;
-		case GET_VERSION:
-			bufptr = "GET_VERSION";
-			break;
-		case GET_STATUS:
-			bufptr = "GET_STATUS";
-			break;
-		case GET_TIMESTAMP:
-			bufptr = "GET_TIMESTAMP";
-			break;
-		case GET_EEPROM_LENGTH:
-			bufptr = "GET_EEPROM_LENGTH";
-			break;
-		case GET_EEPROM_BYTE:
-			bufptr = "GET_EEPROM_BYTE";
-			break;
-		case SET_EEPROM_BYTE:
-			bufptr = "SET_EEPROM_BYTE";
-			break;
-		case GET_GAIN:
-			bufptr = "GET_GAIN";
-			break;
-		case SET_GAIN:
-			bufptr = "SET_GAIN";
-			break;
-		case GET_OFFSET:
-			bufptr = "GET_OFFSET";
-			break;
-		case SET_OFFSET:
-			bufptr = "SET_OFFSET";
-			break;
-		case GET_EXP_TIME:
-			bufptr = "GET_EXP_TIME";
-			break;
-		case SET_EXP_TIME:
-			bufptr = "SET_EXP_TIME";
-			break;
-		case GET_EXP_MODE:
-			bufptr = "GET_EXP_MODE";
-			break;
-		case SET_EXP_MODE:
-			bufptr = "SET_EXP_MODE";
-			break;
-		case GET_VDD_MODE:
-			bufptr = "GET_VDD_MODE";
-			break;
-		case SET_VDD_MODE:
-			bufptr = "SET_VDD_MODE";
-			break;
-		case GET_FLUSH_MODE:
-			bufptr = "GET_FLUSH_MODE";
-			break;
-		case SET_FLUSH_MODE:
-			bufptr = "SET_FLUSH_MODE";
-			break;
-		case GET_CLEAN_MODE:
-			bufptr = "GET_CLEAN_MODE";
-			break;
-		case SET_CLEAN_MODE:
-			bufptr = "SET_CLEAN_MODE";
-			break;
-		case GET_READOUT_SPEED:
-			bufptr = "GET_READOUT_SPEED";
-			break;
-		case SET_READOUT_SPEED:
-			bufptr = "SET_READOUT_SPEED";
-			break;
-		case GET_READOUT_MODE:
-			bufptr = "GET_READOUT_MODE";
-			break;
-		case SET_READOUT_MODE:
-			bufptr = "SET_READOUT_MODE";
-			break;
-		case GET_READOUT_DELAY:
-			bufptr = "GET_NORM_READOUT_DELAY";
-			break;
-		case SET_READOUT_DELAY:
-			bufptr = "SET_NORM_READOUT_DELAY";
-			break;
-		case GET_ROW_COUNT_ODD:
-			bufptr = "GET_ROW_COUNT_ODD";
-			break;
-		case SET_ROW_COUNT_ODD:
-			bufptr = "SET_ROW_COUNT_ODD";
-			break;
-		case GET_ROW_COUNT_EVEN:
-			bufptr = "GET_ROW_COUNT_EVEN";
-			break;
-		case SET_ROW_COUNT_EVEN:
-			bufptr = "SET_ROW_COUNT_EVEN";
-			break;
-		case GET_TEMP:
-			bufptr = "GET_TEMP";
-			break;
-		case GET_EXP_TIMER_COUNT:
-			bufptr = "GET_EXP_TIMER_COUNT";
-			break;
-		case PS_ON:
-			bufptr = "PS_ON";
-			break;
-		case PS_OFF:
-			bufptr = "PS_OFF";
-			break;
-		case CCD_VDD_ON:
-			bufptr = "CCD_VDD_ON";
-			break;
-		case CCD_VDD_OFF:
-			bufptr = "CCD_VDD_OFF";
-			break;
-		case AD_READ:
-			bufptr = "AD_READ";
-			break;
-		case AD_WRITE:
-			bufptr = "AD_WRITE";
-			break;
-		case TEST_PATTERN:
-			bufptr = "TEST_PATTERN";
-			break;
-		case GET_DEBUG_VALUE:
-			bufptr = "GET_DEBUG_VALUE";
-			break;
-		case GET_EEPROM_VIDPID:
-			bufptr = "GET_EEPROM_VIDPID";
-			break;
-		case SET_EEPROM_VIDPID:
-			bufptr = "SET_EEPROM_VIDPID";
-			break;
-		case ERASE_EEPROM:
-			bufptr = "ERASE_EEPROM";
-			break;
-	}
-	if (bufptr != 0) {
-		snprintf(buffer, bufsize, "%s", bufptr);
-	} else {
-		snprintf(buffer, bufsize, "CMD_UNKNOWN, 0x%02x", cmd);
-	}
-	return buffer;
-}
+//const char *dsicmd_lookup_command_name_r(dsi_command_t cmd, char *buffer, int bufsize) {
+//	const char *bufptr = 0;
+//
+//	switch(cmd) {
+//		case PING:
+//			bufptr = "PING";
+//			break;
+//		case RESET:
+//			bufptr = "RESET";
+//			break;
+//		case ABORT:
+//			bufptr = "ABORT";
+//			break;
+//		case TRIGGER:
+//			bufptr = "TRIGGER";
+//			break;
+//		case CLEAR_TS:
+//			bufptr = "CLEAR_TS";
+//			break;
+//		case GET_VERSION:
+//			bufptr = "GET_VERSION";
+//			break;
+//		case GET_STATUS:
+//			bufptr = "GET_STATUS";
+//			break;
+//		case GET_TIMESTAMP:
+//			bufptr = "GET_TIMESTAMP";
+//			break;
+//		case GET_EEPROM_LENGTH:
+//			bufptr = "GET_EEPROM_LENGTH";
+//			break;
+//		case GET_EEPROM_BYTE:
+//			bufptr = "GET_EEPROM_BYTE";
+//			break;
+//		case SET_EEPROM_BYTE:
+//			bufptr = "SET_EEPROM_BYTE";
+//			break;
+//		case GET_GAIN:
+//			bufptr = "GET_GAIN";
+//			break;
+//		case SET_GAIN:
+//			bufptr = "SET_GAIN";
+//			break;
+//		case GET_OFFSET:
+//			bufptr = "GET_OFFSET";
+//			break;
+//		case SET_OFFSET:
+//			bufptr = "SET_OFFSET";
+//			break;
+//		case GET_EXP_TIME:
+//			bufptr = "GET_EXP_TIME";
+//			break;
+//		case SET_EXP_TIME:
+//			bufptr = "SET_EXP_TIME";
+//			break;
+//		case GET_EXP_MODE:
+//			bufptr = "GET_EXP_MODE";
+//			break;
+//		case SET_EXP_MODE:
+//			bufptr = "SET_EXP_MODE";
+//			break;
+//		case GET_VDD_MODE:
+//			bufptr = "GET_VDD_MODE";
+//			break;
+//		case SET_VDD_MODE:
+//			bufptr = "SET_VDD_MODE";
+//			break;
+//		case GET_FLUSH_MODE:
+//			bufptr = "GET_FLUSH_MODE";
+//			break;
+//		case SET_FLUSH_MODE:
+//			bufptr = "SET_FLUSH_MODE";
+//			break;
+//		case GET_CLEAN_MODE:
+//			bufptr = "GET_CLEAN_MODE";
+//			break;
+//		case SET_CLEAN_MODE:
+//			bufptr = "SET_CLEAN_MODE";
+//			break;
+//		case GET_READOUT_SPEED:
+//			bufptr = "GET_READOUT_SPEED";
+//			break;
+//		case SET_READOUT_SPEED:
+//			bufptr = "SET_READOUT_SPEED";
+//			break;
+//		case GET_READOUT_MODE:
+//			bufptr = "GET_READOUT_MODE";
+//			break;
+//		case SET_READOUT_MODE:
+//			bufptr = "SET_READOUT_MODE";
+//			break;
+//		case GET_READOUT_DELAY:
+//			bufptr = "GET_NORM_READOUT_DELAY";
+//			break;
+//		case SET_READOUT_DELAY:
+//			bufptr = "SET_NORM_READOUT_DELAY";
+//			break;
+//		case GET_ROW_COUNT_ODD:
+//			bufptr = "GET_ROW_COUNT_ODD";
+//			break;
+//		case SET_ROW_COUNT_ODD:
+//			bufptr = "SET_ROW_COUNT_ODD";
+//			break;
+//		case GET_ROW_COUNT_EVEN:
+//			bufptr = "GET_ROW_COUNT_EVEN";
+//			break;
+//		case SET_ROW_COUNT_EVEN:
+//			bufptr = "SET_ROW_COUNT_EVEN";
+//			break;
+//		case GET_TEMP:
+//			bufptr = "GET_TEMP";
+//			break;
+//		case GET_EXP_TIMER_COUNT:
+//			bufptr = "GET_EXP_TIMER_COUNT";
+//			break;
+//		case PS_ON:
+//			bufptr = "PS_ON";
+//			break;
+//		case PS_OFF:
+//			bufptr = "PS_OFF";
+//			break;
+//		case CCD_VDD_ON:
+//			bufptr = "CCD_VDD_ON";
+//			break;
+//		case CCD_VDD_OFF:
+//			bufptr = "CCD_VDD_OFF";
+//			break;
+//		case AD_READ:
+//			bufptr = "AD_READ";
+//			break;
+//		case AD_WRITE:
+//			bufptr = "AD_WRITE";
+//			break;
+//		case TEST_PATTERN:
+//			bufptr = "TEST_PATTERN";
+//			break;
+//		case GET_DEBUG_VALUE:
+//			bufptr = "GET_DEBUG_VALUE";
+//			break;
+//		case GET_EEPROM_VIDPID:
+//			bufptr = "GET_EEPROM_VIDPID";
+//			break;
+//		case SET_EEPROM_VIDPID:
+//			bufptr = "SET_EEPROM_VIDPID";
+//			break;
+//		case ERASE_EEPROM:
+//			bufptr = "ERASE_EEPROM";
+//			break;
+//	}
+//	if (bufptr != 0) {
+//		snprintf(buffer, bufsize, "%s", bufptr);
+//	} else {
+//		snprintf(buffer, bufsize, "CMD_UNKNOWN, 0x%02x", cmd);
+//	}
+//	return buffer;
+//}
 
 /**
  * Look up the human-readable mnemonic for a numeric command code, non-reentrant.
@@ -266,10 +263,10 @@ const char *dsicmd_lookup_command_name_r(dsi_command_t cmd, char *buffer, int bu
  *
  * @return Pointer to buffer containing the mnemonic.
  */
-const char *dsicmd_lookup_command_name(dsi_command_t cmd) {
-	static char scratch[100];
-	return dsicmd_lookup_command_name_r(cmd, scratch, 100);
-}
+//const char *dsicmd_lookup_command_name(dsi_command_t cmd) {
+//	static char scratch[100];
+//	return dsicmd_lookup_command_name_r(cmd, scratch, 100);
+//}
 
 /**
  * Look up the human-readable mnemonic for a numeric imaging state code,
@@ -281,27 +278,27 @@ const char *dsicmd_lookup_command_name(dsi_command_t cmd) {
  *
  * @return Pointer to buffer containing the mnemonic.
  */
-const char *dsicmd_lookup_image_state_r(enum DSI_IMAGE_STATE state, char *buffer, int bufsize) {
-	char *bufptr = 0;
-
-	switch(state) {
-		case DSI_IMAGE_IDLE:
-			bufptr = "DSI_IMAGE_IDLE";
-			break;
-		case DSI_IMAGE_EXPOSING:
-			bufptr = "DSI_IMAGE_EXPOSING";
-			break;
-		case DSI_IMAGE_ABORTING:
-			bufptr = "DSI_IMAGE_ABORTING";
-			break;
-	}
-	if (bufptr != 0) {
-		snprintf(buffer, bufsize, "%s", bufptr);
-	} else {
-		snprintf(buffer, bufsize, "DSI_IMAGE_UNKNOWN, 0x%02x", state);
-	}
-	return buffer;
-}
+//const char *dsicmd_lookup_image_state_r(enum DSI_IMAGE_STATE state, char *buffer, int bufsize) {
+//	char *bufptr = 0;
+//
+//	switch(state) {
+//		case DSI_IMAGE_IDLE:
+//			bufptr = "DSI_IMAGE_IDLE";
+//			break;
+//		case DSI_IMAGE_EXPOSING:
+//			bufptr = "DSI_IMAGE_EXPOSING";
+//			break;
+//		case DSI_IMAGE_ABORTING:
+//			bufptr = "DSI_IMAGE_ABORTING";
+//			break;
+//	}
+//	if (bufptr != 0) {
+//		snprintf(buffer, bufsize, "%s", bufptr);
+//	} else {
+//		snprintf(buffer, bufsize, "DSI_IMAGE_UNKNOWN, 0x%02x", state);
+//	}
+//	return buffer;
+//}
 
 /**
  * Look up the human-readable mnemonic for a numeric imaging state code,
@@ -311,11 +308,11 @@ const char *dsicmd_lookup_image_state_r(enum DSI_IMAGE_STATE state, char *buffer
  *
  * @return Pointer to buffer containing the mnemonic.
  */
-const char *dsicmd_lookup_image_state(enum DSI_IMAGE_STATE state) {
-	/* not thread safe. */
-	static char unknown[100];
-	return dsicmd_lookup_image_state_r(state, unknown, 100);
-}
+//const char *dsicmd_lookup_image_state(enum DSI_IMAGE_STATE state) {
+//	/* not thread safe. */
+//	static char unknown[100];
+//	return dsicmd_lookup_image_state_r(state, unknown, 100);
+//}
 
 /**
  * Look up the human-readable mnemonic for a USB speed code.
@@ -326,26 +323,26 @@ const char *dsicmd_lookup_image_state(enum DSI_IMAGE_STATE state) {
  *
  * @return Pointer to buffer containing the mnemonic.
  */
-const char *dsicmd_lookup_usb_speed_r(enum DSI_USB_SPEED speed, char *buffer, int bufsize) {
-	char *bufptr = 0;
-	switch(speed) {
-		case DSI_USB_SPEED_FULL:
-			bufptr = "DSI_USB_SPEED_FULL";
-			break;
-		case DSI_USB_SPEED_HIGH:
-			bufptr = "DSI_USB_SPEED_HIGH";
-			break;
-		case DSI_USB_SPEED_INVALID:
-			bufptr = "DSI_USB_SPEED_INVALID";
-			break;
-	}
-	if (bufptr != 0) {
-		snprintf(buffer, bufsize, "%s", bufptr);
-	} else {
-		snprintf(buffer, bufsize, "DSI_USB_SPEED_UNKNOWN, 0x%02x", speed);
-	}
-	return buffer;
-}
+//const char *dsicmd_lookup_usb_speed_r(enum DSI_USB_SPEED speed, char *buffer, int bufsize) {
+//	char *bufptr = 0;
+//	switch(speed) {
+//		case DSI_USB_SPEED_FULL:
+//			bufptr = "DSI_USB_SPEED_FULL";
+//			break;
+//		case DSI_USB_SPEED_HIGH:
+//			bufptr = "DSI_USB_SPEED_HIGH";
+//			break;
+//		case DSI_USB_SPEED_INVALID:
+//			bufptr = "DSI_USB_SPEED_INVALID";
+//			break;
+//	}
+//	if (bufptr != 0) {
+//		snprintf(buffer, bufsize, "%s", bufptr);
+//	} else {
+//		snprintf(buffer, bufsize, "DSI_USB_SPEED_UNKNOWN, 0x%02x", speed);
+//	}
+//	return buffer;
+//}
 
 /**
  * Look up the human-readable mnemonic for a USB speed code, non-reentrant.
@@ -354,11 +351,11 @@ const char *dsicmd_lookup_usb_speed_r(enum DSI_USB_SPEED speed, char *buffer, in
  *
  * @return Pointer to buffer containing the mnemonic.
  */
-const char *dsicmd_lookup_usb_speed(enum DSI_USB_SPEED speed) {
-	/* not thread safe. */
-	static char unknown[100];
-	return dsicmd_lookup_usb_speed_r(speed, unknown, 100);
-}
+//const char *dsicmd_lookup_usb_speed(enum DSI_USB_SPEED speed) {
+//	/* not thread safe. */
+//	static char unknown[100];
+//	return dsicmd_lookup_usb_speed_r(speed, unknown, 100);
+//}
 
 
 /**
@@ -370,59 +367,6 @@ static unsigned int dsi_get_sysclock_ms() {
 	struct timeval tv;
 	gettimeofday(&tv, 0);
 	return (unsigned int)(tv.tv_sec * 1000 + tv.tv_usec/1000);
-}
-
-/**
- * Pretty-print a DSI command buffer for logging purposes.
- *
- * @param dsi Pointer to an open dsi_camera_t holding state information.
- * @param iswrite Was this command a write to the DSI (true), or a read from
- *        the DSI (false).
- * @param prefix String prefix for logging message.
- * @param length Buffer length
- * @param buffer Buffer sent to/received from DSI.
- * @param result If the command had a return value, this is a pointer to that value.
- */
-static void dsi_log_command_info(dsi_camera_t *dsi,
-					  int iswrite, const char *prefix, unsigned int length,
-					  char *buffer, unsigned int *result) {
-	if (!dsi->log_commands)
-		return;
-
-	unsigned int now = dsi_get_sysclock_ms();
-	int i, count;
-
-	fprintf(stderr, "%-4s %02x %-4s [dt=%d]",
-			prefix, length, "", now-dsi->last_time);
-
-	if (strcmp(prefix, "r 86") != 0) {
-		char scratch[50];
-		for (i = count = 0; i < length; i++) {
-			if (i == 8)
-				break;
-			if ((i % 8) == 0) {
-				fprintf(stderr, "\n    %08x:", i);
-			}
-			fprintf(stderr, " %02x", (unsigned char) buffer[i]);
-		}
-		for (i = 8-(length%8); i != 8 && i > 0; i--) {
-			fprintf(stderr, "   ");
-		}
-
-		fprintf(stderr, "    %s",
-				iswrite ? dsicmd_lookup_command_name_r(buffer[2], scratch, 50) : "ACK");
-
-		if (result) {
-			fprintf(stderr, " %d", (unsigned int) *result);
-			if (*result < 128 && isprint(*result)) {
-				fprintf(stderr, " (%c)", *result);
-			}
-		}
-
-	}
-	fprintf(stderr, "\n");
-	dsi->last_time = now;
-	return;
 }
 
 /**
@@ -530,11 +474,9 @@ static int dsicmd_command_2(dsi_camera_t *dsi, dsi_command_t cmd, int param) {
 	if (dsi->is_simulation) {
 		return 0;
 	}
-
 	// This is the one place where having class-based enums instead of
 	// built-in enums is annoying: you can't use a switch statement here.
 	switch (cmd) {
-
 		case GET_EEPROM_BYTE:
 		case SET_GAIN:
 		case SET_EXP_MODE:
@@ -546,7 +488,6 @@ static int dsicmd_command_2(dsi_camera_t *dsi, dsi_command_t cmd, int param) {
 		case AD_READ:
 		case GET_DEBUG_VALUE:
 			return dsicmd_command_3(dsi, cmd, param, 4);
-
 		case SET_EEPROM_BYTE:
 		case SET_OFFSET:
 		case SET_READOUT_DELAY:
@@ -554,16 +495,12 @@ static int dsicmd_command_2(dsi_camera_t *dsi, dsi_command_t cmd, int param) {
 		case SET_ROW_COUNT_EVEN:
 		case AD_WRITE:
 			return dsicmd_command_3(dsi, cmd, param, 5);
-
 		case SET_EXP_TIME:
 		case SET_EEPROM_VIDPID:
 			return dsicmd_command_3(dsi, cmd, param, 7);
-
 		default:
 			return dsicmd_command_1(dsi, cmd);
 	}
-
-
 }
 
 /**
@@ -604,7 +541,6 @@ static int dsicmd_command_3(dsi_camera_t *dsi, dsi_command_t cmd, int param, int
 		case SET_EEPROM_VIDPID:
 		case ERASE_EEPROM:
 			return dsicmd_command_4(dsi, cmd, param, param_len, 3);
-
 		case GET_EEPROM_LENGTH:
 		case GET_EEPROM_BYTE:
 		case GET_GAIN:
@@ -615,7 +551,6 @@ static int dsicmd_command_3(dsi_camera_t *dsi, dsi_command_t cmd, int param, int
 		case GET_READOUT_SPEED:
 		case GET_READOUT_MODE:
 			return dsicmd_command_4(dsi, cmd, param, param_len, 4);
-
 		case GET_OFFSET:
 		case GET_READOUT_DELAY:
 		case SET_EXP_MODE:
@@ -625,7 +560,6 @@ static int dsicmd_command_3(dsi_camera_t *dsi, dsi_command_t cmd, int param, int
 		case AD_READ:
 		case GET_DEBUG_VALUE:
 			return dsicmd_command_4(dsi, cmd, param, param_len, 5);
-
 		case GET_VERSION:
 		case GET_STATUS:
 		case GET_TIMESTAMP:
@@ -633,7 +567,6 @@ static int dsicmd_command_3(dsi_camera_t *dsi, dsi_command_t cmd, int param, int
 		case GET_EXP_TIMER_COUNT:
 		case GET_EEPROM_VIDPID:
 			return dsicmd_command_4(dsi, cmd, param, param_len, 7);
-
 		default:
 			return -1;
 	}
@@ -650,15 +583,12 @@ static int dsicmd_command_3(dsi_camera_t *dsi, dsi_command_t cmd, int param, int
  *
  * @return decoded command response.
  */
-static int dsicmd_command_4(dsi_camera_t *dsi, dsi_command_t cmd,
-			  int val, int val_bytes, int ret_bytes) {
+static int dsicmd_command_4(dsi_camera_t *dsi, dsi_command_t cmd, int val, int val_bytes, int ret_bytes) {
 	unsigned char buffer[0x40];
 	dsi->command_sequence_number++;
-
 	buffer[0] = val_bytes;
 	buffer[1] = dsi->command_sequence_number;
 	buffer[2] = cmd;
-
 	switch (val_bytes) {
 		case 3:
 			break;
@@ -706,12 +636,10 @@ static int dsicmd_usb_command(dsi_camera_t *dsi, unsigned char *ibuf, int ibuf_l
 	 * failure can escape notice.  */
 	unsigned int value = 0, result = 0;
 	int retcode;
-
 	/* The DSI endpoint for commands has is defined to only be able to return
 	 * 64 bytes. */
 	size_t obuf_size = 0x40;
 	char obuf[0x40];
-
 	switch (ibuf_len) {
 		case 3:
 			value = 0;
@@ -730,27 +658,20 @@ static int dsicmd_usb_command(dsi_camera_t *dsi, unsigned char *ibuf, int ibuf_l
 			assert((ibuf_len >= 3) || (ibuf_len <= 7) || (ibuf_len != 6));
 			break;
 	}
-	if (dsi->log_commands)
-		dsi_log_command_info(dsi, 1, "w 1", (unsigned int) ibuf[0],
-						 (char *) ibuf, (ibuf_len > 3 ? &value : 0));
-
-
 	if (dsi->last_time == 0) {
 		dsi->last_time = dsi_get_sysclock_ms();
 	}
-
 	int actual_length;
 	retcode = (int)libusb_bulk_transfer(dsi->handle, 0x01, (unsigned char *) ibuf, ibuf[0], &actual_length, dsi->write_command_timeout);
-	if (retcode < 0)
+	if (retcode < 0) {
 		return retcode;
-
+	}
 	retcode = (int)libusb_bulk_transfer(dsi->handle, 0x81, (unsigned char *)obuf, (int)obuf_size, &actual_length, dsi->read_command_timeout);
-	if (retcode < 0)
+	if (retcode < 0) {
 		return retcode;
-
+	}
 	assert((unsigned char) obuf[1] == dsi->command_sequence_number);
 	assert(obuf[2] == 6);
-
 	switch (obuf_len) {
 		case 3:
 			result = 0;
@@ -768,10 +689,6 @@ static int dsicmd_usb_command(dsi_camera_t *dsi, unsigned char *ibuf, int ibuf_l
 			assert((obuf_len >= 3) && (obuf_len <= 7) && (obuf_len != 6));
 			break;
 	}
-
-	if (dsi->log_commands)
-		dsi_log_command_info(dsi, 0, "r 81", obuf[0], obuf, (obuf_len > 3 ? &result : 0));
-
 	return result;
 }
 
@@ -997,10 +914,8 @@ static void dsicmd_load_status(dsi_camera_t *dsi) {
 		int result = dsicmd_command_1(dsi, GET_STATUS);
 		int usb_speed = (result & 0x0ff);
 		int fw_debug  = ((result << 8) & 0x0ff);
-
 		assert((usb_speed == DSI_USB_SPEED_FULL) || (usb_speed == DSI_USB_SPEED_HIGH));
 		dsi->usb_speed = usb_speed;
-
 		/* XXX: I suppose there is logically a DSI_FW_DEBUG_ON, but I don't know how
 		 * to turn it on, nor what I would do if I turned it on. */
 		assert((fw_debug == DSI_FW_DEBUG_OFF));
@@ -1047,34 +962,26 @@ static dsi_camera_t *dsicmd_init_dsi(dsi_camera_t *dsi) {
 	dsi->log_commands     = verbose_init;
 	dsi->test_pattern     = 0;
 	dsi->exposure_time    = 10;
-
 	dsi->version.value = -1;
 	dsi->fw_debug  = DSI_FW_DEBUG_INVALID;
 	dsi->usb_speed = DSI_USB_SPEED_INVALID;
-
 	dsi->little_endian_data = 1;
 	dsi->bayer_pattern[0] = '\0';
 	dsi->bin_mode = BIN1X1;
-
 	if (!dsi->is_simulation) {
 		dsicmd_command_1(dsi, PING);
 		dsicmd_command_1(dsi, RESET);
-
 		dsicmd_get_version(dsi);
 		dsicmd_load_status(dsi);
-
 		dsicmd_command_1(dsi, GET_READOUT_MODE);
 	}
 	dsi_get_chip_name(dsi);
 	dsi_get_camera_name(dsi);
 	// dsi_get_serial_number(dsi);
-
 	// dsi->read_height_even = dsicmd_get_row_count_even(dsi);
 	// dsi->read_height_odd  = dsicmd_get_row_count_odd(dsi);
-
 	/* You would think these could be found by asking the camera, but I can't
 	   find an example of it happening. */
-
 	/* IMPORTANT: Compare only 7 or 8 characters as the rest may vary */
 	if (strncmp(dsi->chip_name, "ICX254AL", 8) == 0) {
 		/* DSI Pro I.
@@ -1086,7 +993,6 @@ static dsi_camera_t *dsicmd_init_dsi(dsi_camera_t *dsi) {
 		 * Dummy bits: horizontal 16
 		 *             vertical 1 (even rows only)
 		 */
-
 		/* Okay, there is some interesting inconsistencies here.  MaximDL
 		 * takes my DSI Pro I and spits out an image that is 508x489.
 		 * Envisage spits out an image that is 780x586.  If I ask the camera
@@ -1095,24 +1001,19 @@ static dsi_camera_t *dsicmd_init_dsi(dsi_camera_t *dsi) {
 		 * height, and the width doesn't scale out to 780.  I'm going with
 		 * MaximDL even though it doesn't quite match the Sony specs (why not?
 		 * What are the dummy bits?) */
-
 		dsi->read_width       = 537;
 		dsi->read_height_even = 253;
 		dsi->read_height_odd  = 252;
-
 		dsi->image_width      = 508;
 		dsi->image_height     = 488;
 		dsi->image_offset_x   = 23;
 		dsi->image_offset_y   = 13;
-
 		dsi->is_binnable      = 0;
 		dsi->is_interlaced    = 1;
 		dsi->has_temperature_sensor = 0;
-
 		dsi->pixel_size_x     = 9.6;
 		dsi->pixel_size_y     = 7.5;
 		dsi->bayer_pattern[0] = '\0';
-
 	} else if (strncmp(dsi->chip_name, "ICX404AK", 8) == 0) {
 		/* DSI Color I.
 		 * Sony reports the following information:
@@ -1126,20 +1027,16 @@ static dsi_camera_t *dsicmd_init_dsi(dsi_camera_t *dsi) {
 		dsi->read_width       = 537;
 		dsi->read_height_even = 253;
 		dsi->read_height_odd  = 252;
-
 		dsi->image_width      = 508;
 		dsi->image_height     = 488;
 		dsi->image_offset_x   = 23;
 		dsi->image_offset_y   = 17;
-
 		dsi->is_binnable      = 0;
 		dsi->is_interlaced    = 1;
 		dsi->has_temperature_sensor = 0;
-
 		dsi->pixel_size_x     = 9.6;
 		dsi->pixel_size_y     = 7.5;
 		strncpy(dsi->bayer_pattern,"MCGY", DSI_BAYER_LEN);
-
 	} else if (strncmp(dsi->chip_name, "ICX429A", 7) == 0) {
 		/* DSI Pro/Color II.
 		 * Sony reports the following information:
@@ -1150,88 +1047,72 @@ static dsi_camera_t *dsicmd_init_dsi(dsi_camera_t *dsi) {
 		 * Dummy bits: horizontal 22
 		 *             vertical 1 (even rows only)
 		 */
-
 		dsi->read_width       = 795;
 		dsi->read_height_even = 299;
 		dsi->read_height_odd  = 298;
-
 		dsi->image_width      = 748;
 		dsi->image_height     = 577;
 		dsi->image_offset_x   = 30;     /* In bytes, not pixels */
 		dsi->image_offset_y   = 13;     /* In rows. */
-
 		dsi->pixel_size_x     = 8.6;
 		dsi->pixel_size_y     = 8.3;
 		dsi->has_temperature_sensor = 1;
 		dsi->is_binnable      = 0;
 		dsi->is_interlaced    = 1;
-
-		if (strncmp(dsi->chip_name, "ICX429AK", 8) == 0)
+		if (strncmp(dsi->chip_name, "ICX429AK", 8) == 0) {
 			strncpy(dsi->bayer_pattern,"MCGY", DSI_BAYER_LEN);
-		else /* ICX429ALL */
+		} else /* ICX429ALL */ {
 			dsi->bayer_pattern[0] = '\0';
-
+		}
 		/* FIXME: Don't know if these are B&W specific or not. */
 		dsicmd_command_2(dsi, SET_ROW_COUNT_EVEN, dsi->read_height_even);
 		dsicmd_command_2(dsi, SET_ROW_COUNT_ODD,  dsi->read_height_odd);
 		dsicmd_command_2(dsi, AD_WRITE,  88);
 		dsicmd_command_2(dsi, AD_WRITE, 704);
-
 	} else if (strncmp(dsi->chip_name, "ICX285A", 7) == 0) {
 		/* DSI Pro/Color III.
 		 * Sony reports the following information:
 		 * Effective pixels: 1360 x 1024
 		 * Total pixels:     1434 x 1050
 		 */
-
 		dsi->is_binnable      = 1;
 		dsi->is_interlaced    = 0;
 		dsi->read_width       = 1434;
 		dsi->read_height_even = 0;
 		dsi->read_height_odd  = 1050;
-
 		dsi->image_width      = 1360;
 		dsi->image_height     = 1024;
 		dsi->image_offset_x   = 30;     /* In bytes, not pixels */
 		dsi->image_offset_y   = 13;     /* In rows. */
-
 		dsi->pixel_size_x     = 6.45;
 		dsi->pixel_size_y     = 6.45;
 		dsi->has_temperature_sensor = 1;
-
-		if (strncmp(dsi->chip_name, "ICX285AQ", 8) == 0)
+		if (strncmp(dsi->chip_name, "ICX285AQ", 8) == 0) {
 			strncpy(dsi->bayer_pattern,"RGGB", DSI_BAYER_LEN);
-		else /* ICX285AL */
+		} else /* ICX285AL */ {
 			dsi->bayer_pattern[0] = '\0';
-
+		}
 		dsicmd_command_2(dsi, SET_ROW_COUNT_EVEN, dsi->read_height_even);
 		dsicmd_command_2(dsi, SET_ROW_COUNT_ODD,  dsi->read_height_odd);
 		dsicmd_command_2(dsi, AD_WRITE, 216);
 		dsicmd_command_2(dsi, AD_WRITE, 704);
-
 	} else {
 		/* Die, camera not supported. */
 		fprintf(stderr, "Camera %s not supported", dsi->chip_name);
 		abort();
 	}
-
 	dsi->read_bpp         = 2;
 	dsi->read_height      = dsi->read_height_even + dsi->read_height_odd;
 	dsi->read_width       = ((dsi->read_bpp * dsi->read_width / 512) + 1) * 256;
-
 	dsi->read_size_odd    = dsi->read_bpp * dsi->read_width * dsi->read_height_odd;
 	dsi->read_size_even   = dsi->read_bpp * dsi->read_width * dsi->read_height_even;
-
 	dsi->read_buffer_odd  = malloc(dsi->read_size_odd);
 	dsi->read_buffer_even = malloc(dsi->read_size_even);
-
 	dsi->read_command_timeout  = 1000;    /* milliseconds */
 	dsi->write_command_timeout = 1000;    /* milliseconds */
 	dsi->read_image_timeout   =  5000;    /* milliseconds */
-
 	dsi->amp_gain_pct   = 100;
 	dsi->amp_offset_pct =  50;
-
 	dsi->imaging_state = DSI_IMAGE_IDLE;
 	dsicmd_command_1(dsi, RESET);
 	return dsi;
@@ -1257,10 +1138,9 @@ static dsi_camera_t *dsicmd_init_dsi(dsi_camera_t *dsi) {
  *
  * @return
  */
-static void dsicmd_init_usb_device(dsi_camera_t *dsi) {
-	const size_t size = 0x800;
-	unsigned char data[size];
 
+static void dsicmd_init_usb_device(dsi_camera_t *dsi) {
+	unsigned char data[0x800];
 	/* This is monkey code.  SniffUSB shows that the Meade driver is doing
 	 * this, but I can think of no reason why.  It does the equivalent of the
 	 * following sequence
@@ -1298,15 +1178,13 @@ static void dsicmd_init_usb_device(dsi_camera_t *dsi) {
 	 * wire).
 	 *
 	 */
-	assert(libusb_get_descriptor(dsi->handle, 0x01, 0x00, data, size) >= 0);
-	assert(libusb_get_descriptor(dsi->handle, 0x01, 0x00, data, size) >= 0);
-	assert(libusb_get_descriptor(dsi->handle, 0x02, 0x00, data, size) >= 0);
+	assert(libusb_get_descriptor(dsi->handle, 0x01, 0x00, data, sizeof(data)) >= 0);
+	assert(libusb_get_descriptor(dsi->handle, 0x01, 0x00, data, sizeof(data)) >= 0);
+	assert(libusb_get_descriptor(dsi->handle, 0x02, 0x00, data, sizeof(data)) >= 0);
 	assert(libusb_set_configuration(dsi->handle, 1) >= 0);
 	assert(libusb_claim_interface(dsi->handle, 0) >= 0);
-
 	/* This seems to solve the connect issue after reconnect without close ot close after short exposure */
 	assert(libusb_reset_device(dsi->handle) >= 0);
-
 	/* This is included out of desperation, but it works :-|
 	 *
 	 * After running once, an attempt to run a second time appears, for some
@@ -1317,28 +1195,23 @@ static void dsicmd_init_usb_device(dsi_camera_t *dsi) {
 	assert(libusb_clear_halt(dsi->handle, 0x01) >= 0);
 	assert(libusb_clear_halt(dsi->handle, 0x81) >= 0);
 	assert(libusb_clear_halt(dsi->handle, 0x86) >= 0);
-
 	assert(libusb_clear_halt(dsi->handle, 0x02) >= 0);
 	assert(libusb_clear_halt(dsi->handle, 0x04) >= 0);
 	assert(libusb_clear_halt(dsi->handle, 0x88) >= 0);
-
 }
-
 
 /**
  * Decode the internal image buffer from an already read image.
  */
 static unsigned char *dsicmd_decode_image(dsi_camera_t *dsi, unsigned char *buffer) {
-
 	int xpix, ypix, outpos;
 	int is_odd_row, row_start;
 	int read_width, image_width, image_height, image_offset_x, image_offset_y;
-
 	/* FIXME: This method should really only be called if the camera is an
 	   post-imaging state. */
-
-	if (buffer == NULL) return NULL;
-
+	if (buffer == NULL) {
+		return NULL;
+	}
 	if (dsi->bin_mode == BIN2X2) {
 		read_width       = dsi->read_width / 2;
 		image_width      = dsi->image_width / 2;
@@ -1351,8 +1224,7 @@ static unsigned char *dsicmd_decode_image(dsi_camera_t *dsi, unsigned char *buff
 		image_height     = dsi->image_height;
 		image_offset_x   = dsi->image_offset_x;
 		image_offset_y   = dsi->image_offset_y;
-    }
-
+	}
 	outpos = 0;
 	if (dsi->is_interlaced) {
 		for (ypix = 0; ypix < image_height; ypix++) {
@@ -1589,7 +1461,6 @@ int dsi_set_binning(dsi_camera_t *dsi, enum DSI_BIN_MODE bin) {
 		dsi->bin_mode = bin;
 		return 0;
 	}
-
 	dsi->bin_mode = BIN1X1;
 	return -1;
 }
@@ -1602,7 +1473,6 @@ int dsi_get_identifier(libusb_device *device, char *identifier) {
 	uint8_t data[10];
 	char buf[10];
 	int i;
-
 	data[0]=libusb_get_bus_number(device);
 	int n = libusb_get_port_numbers(device, &data[1], 9);
 	if (n != LIBUSB_ERROR_OVERFLOW) {
@@ -1643,7 +1513,6 @@ bool dsi_load_firmware(void) {
 	struct libusb_device **list = NULL;
 	struct libusb_device_descriptor desc;
 	int i;
-
 	// check for uninitialized cameras
 	int cnt = (int)libusb_get_device_list(NULL, &list);
 	for (i = 0; i < cnt; ++i) {
@@ -1671,20 +1540,17 @@ bool dsi_load_firmware(void) {
 	return false;
 }
 
-
 int dsi_scan_usb(dsi_device_list devices) {
 	struct libusb_device **list = NULL;
 	struct libusb_device_descriptor desc;
 	char dev_id[20];
 	int index = 0;
 	int i;
-
 	// check for initialized cameras
 	int cnt = (int)libusb_get_device_list(NULL, &list);
-
 	for (i = 0; i < cnt; ++i) {
 		if (!libusb_get_device_descriptor(list[i], &desc)) {
-			if ((desc.idVendor == 0x156c) && (desc.idProduct == 0x0101)) {
+			if (desc.idVendor == 0x156c) {
 				dsi_get_identifier(list[i], dev_id);
 				strncpy(devices[index], dev_id, DSI_ID_LEN);
 				index++;
@@ -1695,7 +1561,6 @@ int dsi_scan_usb(dsi_device_list devices) {
 	libusb_free_device_list(list, 0);
 	return index;
 }
-
 
 /**
  * Open a DSI camera using the named device, or the first DSI device found if
@@ -1714,9 +1579,7 @@ dsi_camera_t *dsi_open_camera(const char *identifier) {
 	dsi_camera_t *dsi = NULL;
 	char dev_id[20];
 	int i;
-
 	int cnt = (int)libusb_get_device_list(NULL, &list);
-
 	for (i = 0; i < cnt; ++i) {
 		if (!libusb_get_device_descriptor(list[i], &desc)) {
 			if ((desc.idVendor == 0x156c) && (desc.idProduct = 0x0101)) {
@@ -1732,26 +1595,22 @@ dsi_camera_t *dsi_open_camera(const char *identifier) {
 		}
 	}
 	libusb_free_device_list(list, 0);
-
-	if (handle == NULL) return NULL;
-
+	if (handle == NULL) {
+		return NULL;
+	}
 	dsi = calloc(1, sizeof(dsi_camera_t));
 	assert(dsi != 0);
-
 	dsi->device = dev;
 	dsi->handle = handle;
 	dsi->is_simulation = 0;
-
 	dsicmd_init_usb_device(dsi);
 	dsicmd_init_dsi(dsi);
-
 	dsi_start_exposure(dsi, 0.0001);
 	dsi_read_image(dsi, 0, 0);
 //	dsi_start_exposure(dsi, 0.0001);
 //	dsi_read_image(dsi, 0, 0);
 //	dsi_start_exposure(dsi, 0.1);
 //	dsi_read_image(dsi, 0, 0);
-
 	return dsi;
 }
 
@@ -1770,7 +1629,6 @@ void dsi_close_camera(dsi_camera_t *dsi) {
 	if (dsi->read_buffer_even) free(dsi->read_buffer_even);
 	free(dsi);
 }
-
 
 /**
  * Set the verbose logging state for the library during camera
@@ -1816,10 +1674,8 @@ int dsi_get_verbose(dsi_camera_t *dsi) {
 
 int dsi_start_exposure(dsi_camera_t *dsi, double exptime) {
 	int gain, offset;
-	int exposure_ticks = 10000 * exptime;
-
+	int exposure_ticks = (int)(10000 * exptime);
 	gain = (int)(63 * dsi->amp_gain_pct / 100.0);
-
 	/* FIXME: What is the mapping?
 	 *     20% -> 409 -> 0x199
 	 *     50% ->   0
@@ -1828,7 +1684,6 @@ int dsi_start_exposure(dsi_camera_t *dsi, double exptime) {
 	 * (80-50)/50*255 = 153, and 20% is the same thing, but with the high bit
 	 * set.
 	 */
-
 	if (dsi->amp_offset_pct < 50) {
 		offset = 50 - dsi->amp_offset_pct;
 		offset = (int)(255 * offset / 50.0);
@@ -1837,9 +1692,9 @@ int dsi_start_exposure(dsi_camera_t *dsi, double exptime) {
 		offset = dsi->amp_offset_pct - 50;
 		offset = (int)(255 * offset / 50.0);
 	}
-
-	if (dsi->is_binnable) dsicmd_set_binning(dsi, dsi->bin_mode);
-
+	if (dsi->is_binnable) {
+		dsicmd_set_binning(dsi, dsi->bin_mode);
+	}
 	if (dsi->is_interlaced) {
 		dsicmd_set_gain(dsi, 0);
 		dsicmd_set_offset(dsi, 0);
@@ -1881,13 +1736,10 @@ int dsi_start_exposure(dsi_camera_t *dsi, double exptime) {
 		//	dsicmd_set_vdd_mode(dsi, DSI_VDD_MODE_OFF);
 		//}
 	}
-
 	dsicmd_set_flush_mode(dsi, DSI_FLUSH_MODE_CONT);
 	dsicmd_get_readout_mode(dsi);
 	dsicmd_get_exposure_time(dsi);
-
 	dsicmd_start_exposure(dsi);
-
 	dsi->imaging_state = DSI_IMAGE_EXPOSING;
 	return 0;
 }
@@ -1921,57 +1773,32 @@ int dsi_reset_camera(dsi_camera_t *dsi) {
  * returns EIO.  If the image is not ready and O_NONBLOCK was specified,
  * returns EWOULDBLOCK.
  */
-int dsi_read_image(dsi_camera_t *dsi, unsigned char *buffer, int flags) {
+int dsi_read_image(dsi_camera_t *dsi, unsigned char *buffer, bool noblock) {
 	int status;
 	int ticks_left, read_size_odd, read_size_even;
 	int read_width, read_height_even, read_height_odd;
-
-	if (dsi == NULL || buffer == NULL) return EINVAL;
-
+	
+	if (dsi == NULL || buffer == NULL) {
+		return EINVAL;
+	}
 	/* FIXME: This method should really only be callable if the imager is in a
-	   currently imaging state. */
-
-	if (dsi->imaging_state != DSI_IMAGE_EXPOSING)
+	 currently imaging state. */
+	if (dsi->imaging_state != DSI_IMAGE_EXPOSING) {
 		return ENOTSUP;
-
+	}
 	if (dsi->exposure_time > 10000) {
-		if (dsi->log_commands)
-			fprintf(stderr, "long exposure, checking remaining time\n");
-		/* These are in different units, so this really says "if the time left is
-		   greater than 1/10 of the image read timeout time, wait."  ticks_left is
-		   in units of 1/10 millisecond whle read_image_timeout is in units of
-		   milliseconds. */
 		ticks_left = dsicmd_get_exposure_time_left(dsi);
-		/*    if (ticks_left < 0) {
-			  fprintf(stderr, "ticks left < 0: %d\n", ticks_left);
-			  return ticks_left;
-			  }
-		*/
-
 		while (ticks_left > dsi->read_image_timeout) {
-			if (dsi->log_commands)
-				fprintf(stderr, "long exposure, %d ticks remaining exceeds threshold of %d\n",
-						ticks_left, dsi->read_image_timeout);
 			/* FIXME: There are other possible error codes which are just
 			   status codes from underlying calls and not true errors.  We
 			   need to fix this so that there is no possibility of overlap. */
-			if ((flags & O_NONBLOCK) != 0) {
-				if (dsi->log_commands)
-					fprintf(stderr, "non-blocking requested, returning now\n");
+			if (noblock) {
 				return EWOULDBLOCK;
 			}
-			if (dsi->log_commands)
-				fprintf(stderr, "sleeping for %.4fs\n", ticks_left / 10000.0);
-			usleep(100 * ticks_left);
+			indigo_usleep(100 * ticks_left);
 			ticks_left = dsicmd_get_exposure_time_left(dsi);
 		}
-		/*    if (ticks_left < 0) {
-			  fprintf(stderr, "ticks left < 0: %d\n", ticks_left);
-			  return ticks_left;
-			  }
-		*/
 	}
-
 	if (dsi->bin_mode == BIN2X2) {
 		read_width       = dsi->read_width / 2;
 		read_height_even = dsi->read_height_even / 2;
@@ -1980,32 +1807,19 @@ int dsi_read_image(dsi_camera_t *dsi, unsigned char *buffer, int flags) {
 		read_width       = dsi->read_width;
 		read_height_even = dsi->read_height_even;
 		read_height_odd  = dsi->read_height_odd;
-    }
-
+	}
 	dsicmd_set_gain(dsi, (int)(63 * dsi->amp_gain_pct / 100.0));
-
 	int actual_length;
 	if (dsi->is_interlaced) {
 		read_size_even = dsi->read_bpp * read_width * read_height_even;
-		status = libusb_bulk_transfer(dsi->handle, 0x86, dsi->read_buffer_even, read_size_even, &actual_length,
-							   3 * dsi->read_image_timeout);
-		if (dsi->log_commands)
-			dsi_log_command_info(dsi, 1, "r 86", read_size_even, (char *)dsi->read_buffer_even, 0);
+		status = libusb_bulk_transfer(dsi->handle, 0x86, dsi->read_buffer_even, read_size_even, &actual_length, 3 * dsi->read_image_timeout);
 		if (status < 0) {
-			//fprintf(stderr, "libusb_bulk_transfer(%p, 0x86, %p, %d, %d) (even) -> returned %d\n",
-			//		dsi->handle, dsi->read_buffer_even, read_size_even, 2*dsi->read_image_timeout, status);
 			dsi->imaging_state = DSI_IMAGE_IDLE;
 			return EIO;
 		}
-
 		read_size_odd = dsi->read_bpp * read_width * read_height_odd;
-		status = libusb_bulk_transfer(dsi->handle, 0x86, dsi->read_buffer_odd, read_size_odd, &actual_length,
-							   3 * dsi->read_image_timeout);
-		if (dsi->log_commands)
-			dsi_log_command_info(dsi, 1, "r 86", read_size_odd, (char *)dsi->read_buffer_odd, 0);
+		status = libusb_bulk_transfer(dsi->handle, 0x86, dsi->read_buffer_odd, read_size_odd, &actual_length, 3 * dsi->read_image_timeout);
 		if (status < 0) {
-			//fprintf(stderr, "libusb_bulk_transfer(%p, 0x86, %p, %d, %d) (odd) -> returned %d\n",
-			//		dsi->handle, dsi->read_buffer_odd, read_size_odd, 2*dsi->read_image_timeout, status);
 			dsi->imaging_state = DSI_IMAGE_IDLE;
 			return EIO;
 		}
@@ -2015,200 +1829,17 @@ int dsi_read_image(dsi_camera_t *dsi, unsigned char *buffer, int flags) {
 			dsicmd_set_vdd_mode(dsi, DSI_VDD_MODE_ON);
 		}
 		read_size_odd = dsi->read_bpp * read_width * read_height_odd;
-		status = libusb_bulk_transfer(dsi->handle, 0x86, dsi->read_buffer_odd, read_size_odd, &actual_length,
-							   3 * dsi->read_image_timeout);
-		if (dsi->log_commands)
-			dsi_log_command_info(dsi, 1, "r 86", read_size_odd, (char *)dsi->read_buffer_odd, 0);
+		status = libusb_bulk_transfer(dsi->handle, 0x86, dsi->read_buffer_odd, read_size_odd, &actual_length, 3 * dsi->read_image_timeout);
 		if (status < 0) {
-			//fprintf(stderr, "libusb_bulk_transfer(%p, 0x86, %p, %d, %d) (odd) -> returned %d\n",
-			//		dsi->handle, dsi->read_buffer_odd, read_size_odd, 2*dsi->read_image_timeout, status);
 			dsi->imaging_state = DSI_IMAGE_IDLE;
 			return EIO;
 		}
 	}
-
 	/* Set binning to 1x1 after reading the data */
-	if (dsi->is_binnable) dsicmd_set_binning(dsi, BIN1X1);
-
+	if (dsi->is_binnable) {
+		dsicmd_set_binning(dsi, BIN1X1);
+	}
 	dsicmd_set_gain(dsi, 0);
 	dsi->imaging_state = DSI_IMAGE_IDLE;
 	return (dsicmd_decode_image(dsi, buffer) == NULL) ? EINVAL : 0;
-}
-
-
-/**
- * Create a simulated DSI camera intialized to behave like the named camera chip.
- *
- * @param chip_name
- *
- * @return pointer to simulated DSI camera.
- */
-dsi_camera_t * dsitst_open(const char *chip_name) {
-	dsi_camera_t *dsi = calloc(1, sizeof(dsi_camera_t));
-
-	dsi->is_simulation = 1;
-
-	dsi->command_sequence_number = 0;
-	dsi->eeprom_length    = -1;
-	dsi->log_commands     = verbose_init;
-	dsi->test_pattern     = 0;
-	dsi->exposure_time    = 10;
-
-	dsi->version.c.family   = 10;
-	dsi->version.c.model    =  1;
-	dsi->version.c.version  =  1;
-	dsi->version.c.revision =  0;
-	dsi->fw_debug  = DSI_FW_DEBUG_OFF;
-	dsi->usb_speed = DSI_USB_SPEED_HIGH;
-
-	strncpy(dsi->chip_name, chip_name, DSI_NAME_LEN);
-	strncpy(dsi->serial_number, "0123456789abcdef", DSI_NAME_LEN);
-
-	dsicmd_init_dsi(dsi);
-
-	/* Okay, this was learned the hard way.  The SniffUSB logs clearly showed
-	   that the actual read size is calculated by rounding the size of EACH
-	   ROW up to some multiple of 512 bytes.  The basic read size of the USB
-	   endpoint is a multiple of 512 bytes, so this kind of makes sense as the
-	   easiest implementation in firmware---just pad to 512 bytes for each
-	   row, then it won't matter how many rows you stick in.  And the C++
-	   driver was reading correctly, but the first implementation here was
-	   rounding later, at the time of the read.  That results in core dumps
-	   since have to size the buffers correctly.  Remember, each row must be a
-	   multiple of 512 bytes. */
-
-	dsi->read_bpp         = 2;
-	dsi->read_height      = dsi->read_height_even + dsi->read_height_odd;
-	dsi->read_width       = ((dsi->read_bpp * dsi->read_width / 512) + 1) * 256;
-
-	fprintf(stderr, "read_size_odd  => %ld (0x%lx)\n", dsi->read_size_odd, dsi->read_size_odd);
-	fprintf(stderr, "read_size_even => %ld (0x%lx)\n", dsi->read_size_even, dsi->read_size_even);
-	fprintf(stderr, "read_size_bpp  => %d (0x%x)\n", dsi->read_bpp, dsi->read_bpp);
-
-	return dsi;
-}
-
-/**
- * Read DSI image data from FILENAME into internal buffers.
- *
- * @param dsi dsi_camera_t camera struct into which the data will be loaded.
- * @param filename read from this file.  Data is assumed to be in raw format
- * @param is_binary true if the file is raw binary data to load into the read
- * buffers.  If false, the data is assumed to be in SniffUSB/USBsnoop format.
- *
- * This is a test routine to allow injecting data into the internal image
- * buffers for post-acquisition testing.
- *
- * The data to be read should be either from the same type of camera in use
- * for the test, or have been carefully constructed to be consistent with that
- * form.  If not, then the results are undefined (read, expect crashes or
- * crap).
- *
- * The raw binary data should be the same size as the read buffers that would
- * come from reading the camera.
- *
- * SniffUSB/USBsnoop data is of the form
- *
- *    00000000: 13 45 13 49 13 4e 12 ac 49 b3 4d f2 52 40 56 67
- *    00000010: 5a 46 5e 31 62 3b 65 98 69 29 6c bb 6f b2 72 9d
- *    ...
- *
- * Note that this will read the FIRST image found in the file which means it
- * won't work :-)  The problem is that both Envisage and MaximDL seem to
- * take several short throw-away images as part of the intialization.  I don't
- * know why and they don't seem to be necessary, so we don't do it.  But if
- * you use a SniffUSB dump from Envisage or MaximDL, and it includes the
- * initialization, the first apparent image in the dump is not the image you
- * get on the screen.  The point is, you want your test data to include ONLY
- * the test image you are going to compare.
- *
- * @return
- */
-int dsitst_read_image(dsi_camera_t *dsi, const char *filename, int is_binary) {
-	FILE *fptr = 0;
-	int status = 0;
-
-	/* state = 0, looking for first match.
-	 * state = 1, reading first buffer.
-	 * state = 2, looking for second match.
-	 * state = 3, reading second buffer.
-	 * state = 4, done.
-	 */
-	int state = 0;
-
-	if (is_binary) {
-		/* Oops, don't really support this yet. */
-		status = -1;
-		goto OOPS;
-
-	} else {
-		char line[1000];
-		regex_t preg;
-		regmatch_t pmatch[32];
-		const char *regex = " *([0-9a-f]{8}):( [0-9a-f]{2}){16}";
-		int status;
-		unsigned char *write_buffer = NULL;
-		size_t buffer_size = 0;
-
-		status = regcomp(&preg, regex, REG_EXTENDED|REG_ICASE);
-		assert(status == 0);
-
-		fptr = fopen(filename, "r");
-		assert(fptr != 0);
-
-		char *res = fgets(line, 1000, fptr);
-		while (!feof(fptr)) {
-
-			if (regexec(&preg, line, 32, pmatch, 0) == 0) {
-				if (state == 0) {
-					state = 1;
-					write_buffer = dsi->read_buffer_even;
-					buffer_size  = dsi->read_size_even;
-				}
-
-				if (state == 2) {
-					state = 3;
-					write_buffer = dsi->read_buffer_odd;
-					buffer_size  = dsi->read_size_odd;
-				}
-
-				if (state == 1 || state == 3) {
-					unsigned char *wptr;
-					int offset;
-					int v[16], i;
-
-					sscanf(line, "%08x:", &offset);
-					assert(offset + 16 <= buffer_size);
-
-					assert(write_buffer != 0);
-					wptr = write_buffer + offset;
-					sscanf(line + pmatch[1].rm_eo + 1,
-						   "%02x %02x %02x %02x %02x %02x %02x %02x "
-						   "%02x %02x %02x %02x %02x %02x %02x %02x",
-						   v+0x0, v+0x1, v+0x2, v+0x3, v+0x4, v+0x5, v+0x6, v+0x7,
-						   v+0x8, v+0x9, v+0xa, v+0xb, v+0xc, v+0xd, v+0xe, v+0xf);
-					for (i = 0; i < 16; i++) {
-						wptr[i] = v[i];
-					}
-				}
-
-			} else if (state == 1 || state == 3) {
-				state++;
-				write_buffer = 0;
-			}
-
-			if (state > 3)
-				break;
-
-			res = fgets(line, 1000, fptr);
-		}
-		regfree(&preg);
-	}
-
- OOPS:
-	if (fptr != 0) {
-		fclose(fptr);
-	}
-
-	return 0;
 }

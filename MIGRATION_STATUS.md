@@ -33,6 +33,7 @@ ccd_altair
 ccd_asi
 ccd_atik
 ccd_bresser
+ccd_dsi
 ccd_fli
 ccd_mallin
 ccd_ogma
@@ -78,7 +79,6 @@ aux_dsusb
 aux_joystick
 
 ccd_apogee
-ccd_dsi
 ccd_iidc
 ccd_mi
 ccd_pentax

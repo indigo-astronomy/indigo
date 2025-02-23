@@ -24,23 +24,20 @@
  \file indigo_ccd_dsi.c
  */
 
-#define DRIVER_VERSION 0x000C
+#define DRIVER_VERSION 0x000E
 #define DRIVER_NAME		"indigo_ccd_dsi"
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
+#include <errno.h>
 #include <assert.h>
-
 #include <pthread.h>
-#include <sys/time.h>
 
 #define MAX_CCD_TEMP         45     /* Max CCD temperature */
 #define MIN_CCD_TEMP        -55     /* Min CCD temperature */
 
 #define DEFAULT_BPP          16     /* Default bits per pixel */
-#define MAX_PATH            255     /* Maximal Path Length */
 
 #define TEMP_CHECK_TIME       3     /* Time between teperature checks (seconds) */
 
@@ -75,28 +72,23 @@ typedef struct {
 
 
 static bool camera_open(indigo_device *device) {
-	if (device->is_connected) return false;
-
+	if (device->is_connected) {
+		return false;
+	}
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-
 	if (indigo_try_global_lock(device) != INDIGO_OK) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
 		return false;
 	}
-
 	PRIVATE_DATA->dsi = dsi_open_camera(PRIVATE_DATA->dev_sid);
 	if (PRIVATE_DATA->dsi == NULL) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsi_open_camera(%s) = %p", PRIVATE_DATA->dev_sid, PRIVATE_DATA->dsi);
 		return false;
 	}
-
 	if (PRIVATE_DATA->buffer == NULL) {
-		PRIVATE_DATA->buffer_size = dsi_get_frame_width(PRIVATE_DATA->dsi) *
-		                            dsi_get_frame_height(PRIVATE_DATA->dsi) *
-		                            dsi_get_bytespp(PRIVATE_DATA->dsi) +
-		                            FITS_HEADER_SIZE;
+		PRIVATE_DATA->buffer_size = dsi_get_frame_width(PRIVATE_DATA->dsi) * dsi_get_frame_height(PRIVATE_DATA->dsi) * dsi_get_bytespp(PRIVATE_DATA->dsi) + FITS_HEADER_SIZE;
 		PRIVATE_DATA->buffer = (char*)indigo_alloc_blob_buffer(PRIVATE_DATA->buffer_size);
 		if (PRIVATE_DATA->buffer == NULL) {
 			dsi_close_camera(PRIVATE_DATA->dsi);
@@ -105,18 +97,14 @@ static bool camera_open(indigo_device *device) {
 			return true;
 		}
 	}
-
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return true;
 }
 
-
 static bool camera_start_exposure(indigo_device *device, double exposure, bool dark, int binning) {
 	long res;
 	enum DSI_BIN_MODE bin_mode = (binning > 1) ? BIN2X2 : BIN1X1;
-
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-
 	if (dsi_get_max_binning(PRIVATE_DATA->dsi) > 1) {
 		res = dsi_set_binning(PRIVATE_DATA->dsi, bin_mode);
 		if (res) {
@@ -125,25 +113,22 @@ static bool camera_start_exposure(indigo_device *device, double exposure, bool d
 			return false;
 		}
 	}
-
 	res = dsi_start_exposure(PRIVATE_DATA->dsi, exposure);
 	if (res) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsi_start_exposure(%s) = %d", PRIVATE_DATA->dev_sid, res);
 		return false;
 	}
-
 	PRIVATE_DATA->exp_bin_mode = bin_mode;
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return true;
 }
 
-
 static bool camera_read_pixels(indigo_device *device) {
 	long res;
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	dsi_set_image_little_endian(PRIVATE_DATA->dsi, 0);
-	while ((res = dsi_read_image(PRIVATE_DATA->dsi, (unsigned char*)(PRIVATE_DATA->buffer + FITS_HEADER_SIZE), O_NONBLOCK)) != 0) {
+	while ((res = dsi_read_image(PRIVATE_DATA->dsi, (unsigned char*)(PRIVATE_DATA->buffer + FITS_HEADER_SIZE), true)) != 0) {
 		if (res == EWOULDBLOCK) {
 			double time_left = dsi_get_exposure_time_left(PRIVATE_DATA->dsi);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Image not ready, sleeping for %.3fs...\n", time_left);
@@ -160,25 +145,20 @@ static bool camera_read_pixels(indigo_device *device) {
 	return true;
 }
 
-
 static bool camera_abort_exposure(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-
 	indigo_cancel_timer(device, &PRIVATE_DATA->exposure_timer);
 	dsi_abort_exposure(PRIVATE_DATA->dsi);
 	dsi_reset_camera(PRIVATE_DATA->dsi);
 	PRIVATE_DATA->can_check_temperature = true;
-
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return true;
 }
-
 
 static void camera_close(indigo_device *device) {
 	if (!device->is_connected) {
 		return;
 	}
-	
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	dsi_close_camera(PRIVATE_DATA->dsi);
 	indigo_global_unlock(device);
@@ -210,23 +190,9 @@ static void exposure_timer_callback(indigo_device *device) {
 					{ INDIGO_FITS_STRING, "BAYERPAT", .string = color_string, "Bayer color pattern" },
 					{ 0 }
 				};
-				indigo_process_image(
-														 device,
-														 PRIVATE_DATA->buffer,
-														 (int)(CCD_FRAME_WIDTH_ITEM->number.value / binning),
-														 (int)(CCD_FRAME_HEIGHT_ITEM->number.value / binning),
-														 DEFAULT_BPP,
-														 true, true, keywords, false
-														 );
+				indigo_process_image(device, PRIVATE_DATA->buffer, (int)(CCD_FRAME_WIDTH_ITEM->number.value / binning), (int)(CCD_FRAME_HEIGHT_ITEM->number.value / binning), DEFAULT_BPP, true, true, keywords, false);
 			} else {
-				indigo_process_image(
-														 device,
-														 PRIVATE_DATA->buffer,
-														 (int)(CCD_FRAME_WIDTH_ITEM->number.value / binning),
-														 (int)(CCD_FRAME_HEIGHT_ITEM->number.value / binning),
-														 DEFAULT_BPP,
-														 true, true, NULL, false
-														 );
+				indigo_process_image(device, PRIVATE_DATA->buffer,  (int)(CCD_FRAME_WIDTH_ITEM->number.value / binning), (int)(CCD_FRAME_HEIGHT_ITEM->number.value / binning), DEFAULT_BPP, true, true, NULL, false );
 			}
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
@@ -567,7 +533,6 @@ static int find_unplugged_device_slot() {
 	}
 	return NOT_FOUND;
 }
-
 
 static void process_plug_event(indigo_device *unusued) {
 	static indigo_device ccd_template = INDIGO_DEVICE_INITIALIZER(

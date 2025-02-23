@@ -6,15 +6,6 @@
 #ifndef __libdsi_h
 #define __libdsi_h
 
-#if defined(INDIGO_MACOS)
-#include <libusb-1.0/libusb.h>
-#elif defined(INDIGO_FREEBSD)
-#include <libusb.h>
-#else
-#include <libusb-1.0/libusb.h>
-#endif
-#include <fcntl.h>
-#include <errno.h>
 #include <stdbool.h>
 
 struct DSI_CAMERA;
@@ -227,7 +218,7 @@ const char *dsi_get_bayer_pattern(dsi_camera_t *dsi);
 int dsi_start_exposure(dsi_camera_t *dsi, double exptime);
 int dsi_abort_exposure(dsi_camera_t *dsi);
 void dsi_set_image_little_endian(dsi_camera_t *dsi, int little_endian);
-int dsi_read_image(dsi_camera_t *dsi, unsigned char *buffer, int flags);
+int dsi_read_image(dsi_camera_t *dsi, unsigned char *buffer, bool noblock);
 
 /* get frame width and height unaffected by binning */
 int dsi_get_frame_width(dsi_camera_t *dsi);

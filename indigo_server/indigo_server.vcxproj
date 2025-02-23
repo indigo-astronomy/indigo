@@ -350,6 +350,9 @@
     <ProjectReference Include="..\indigo_drivers\ccd_bresser\indigo_ccd_bresser.vcxproj">
       <Project>{028c4593-58b9-4523-af0a-f5ac7d4fba13}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\ccd_dsi\indigo_ccd_dsi.vcxproj">
+      <Project>{aef790a2-beb0-4c40-90af-24a40e583f75}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\indigo_drivers\ccd_fli\externals\libfli-1.999.1-180223\windows\libfli.vcxproj">
       <Project>{ef4b8a79-8aca-4b90-a36c-ba3e2e727535}</Project>
     </ProjectReference>
