@@ -407,6 +407,7 @@ static void *new_blob_vector_handler(parser_state state, parser_context *context
 			if (entry)
 				item->blob.value = indigo_safe_malloc_copy(item->blob.size = entry->size, entry->content);
 		}
+		property->perm = INDIGO_WO_PERM;
 		indigo_change_property(client, property);
 		indigo_clear_property(property);
 		return top_level_handler;

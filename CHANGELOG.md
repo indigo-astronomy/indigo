@@ -2,6 +2,19 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-318] - 22 Feb Sat 2025
+## Overall:
+- indigo_bus:
+	- fixed regression related to blob upload
+	- fix leaking uploaded blobs
+
+## Driver Fixes:
+- indigo_mount_synscan:
+	- fix axis state at park
+
+- indigo_mount_lx200:
+	- driver checks geo coordinates and updates them if changed from external source like GPS Web inerface or HC
+
 # [2.0-316] - 21 Feb Fri 2025
 
 - indigo_mount_synscan:

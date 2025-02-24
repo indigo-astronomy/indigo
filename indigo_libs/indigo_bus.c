@@ -986,7 +986,7 @@ indigo_property *indigo_resize_property(indigo_property *property, int count) {
 	}
 	assert(property != NULL);
 	if (count > property->count)
-		memset(property->items+property->count, 0, (count - property->count) * sizeof(indigo_item));
+		memset(property->items + property->count, 0, (count - property->count) * sizeof(indigo_item));
 	property->count = count;
 	return property;
 }
@@ -1015,20 +1015,21 @@ static void release_dependencies(indigo_property *property) {
 		pthread_mutex_lock(&blob_mutex);
 		for (int i = 0; i < property->allocated_count; i++) {
 			indigo_item *item = property->items + i;
-			for (int j = 0; j < MAX_BLOBS; j++) {
-				indigo_blob_entry *entry = blobs[j];
-				if (entry && entry->item == item) {
-					pthread_mutex_lock(&entry->mutext);
-					blobs[j] = NULL;
-					indigo_safe_free(entry->content);
-					pthread_mutex_unlock(&entry->mutext);
-					pthread_mutex_destroy(&entry->mutext);
-					indigo_safe_free(entry);
-					break;
-				}
-			}
 			if (property->perm == INDIGO_WO_PERM) {
 				indigo_safe_free(item->blob.value);
+			} else {
+				for (int j = 0; j < MAX_BLOBS; j++) {
+					indigo_blob_entry *entry = blobs[j];
+					if (entry && entry->item == item) {
+						pthread_mutex_lock(&entry->mutext);
+						blobs[j] = NULL;
+						indigo_safe_free(entry->content);
+						pthread_mutex_unlock(&entry->mutext);
+						pthread_mutex_destroy(&entry->mutext);
+						indigo_safe_free(entry);
+						break;
+					}
+				}
 			}
 		}
 		pthread_mutex_unlock(&blob_mutex);
