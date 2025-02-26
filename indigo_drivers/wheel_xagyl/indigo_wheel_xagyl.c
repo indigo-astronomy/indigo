@@ -50,28 +50,28 @@ static bool xagyl_open(indigo_device *device) {
 	if (PRIVATE_DATA->handle != NULL) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
 		char buffer[128];
-		if (indigo_uni_printf(PRIVATE_DATA->handle, "I0") && indigo_uni_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer)) > 0) {
+		if (indigo_uni_printf(PRIVATE_DATA->handle, "I0") > 0 && indigo_uni_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer)) > 0) {
 			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, buffer);
 		} else {
 			indigo_uni_close(&PRIVATE_DATA->handle);
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read model name");
 			return false;
 		}
-		if (indigo_uni_printf(PRIVATE_DATA->handle, "I1") && indigo_uni_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer)) > 0) {
+		if (indigo_uni_printf(PRIVATE_DATA->handle, "I1") > 0 && indigo_uni_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer)) > 0) {
 			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, buffer);
 		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read firmware version");
 			indigo_uni_close(&PRIVATE_DATA->handle);
 			return false;
 		}
-		if (indigo_uni_printf(PRIVATE_DATA->handle, "I3") && indigo_uni_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer)) > 0) {
+		if (indigo_uni_printf(PRIVATE_DATA->handle, "I3") > 0 && indigo_uni_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer)) > 0) {
 			indigo_copy_value(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, buffer);
 		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read S/N");
 			indigo_uni_close(&PRIVATE_DATA->handle);
 			return false;
 		}
-		if (indigo_uni_printf(PRIVATE_DATA->handle, "I8") && indigo_uni_scanf_line(PRIVATE_DATA->handle, "FilterSlots %d", &PRIVATE_DATA->slot) == 1) {
+		if (indigo_uni_printf(PRIVATE_DATA->handle, "I8") > 0 && indigo_uni_scanf_line(PRIVATE_DATA->handle, "FilterSlots %d", &PRIVATE_DATA->slot) == 1) {
 			WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->slot;
 			
 		} else {
@@ -79,7 +79,7 @@ static bool xagyl_open(indigo_device *device) {
 			indigo_uni_close(&PRIVATE_DATA->handle);
 			return false;
 		}
-		if (indigo_uni_printf(PRIVATE_DATA->handle, "I2") && indigo_uni_scanf_line(PRIVATE_DATA->handle, "P%d", &PRIVATE_DATA->slot) == 1) {
+		if (indigo_uni_printf(PRIVATE_DATA->handle, "I2") > 0 && indigo_uni_scanf_line(PRIVATE_DATA->handle, "P%d", &PRIVATE_DATA->slot) == 1) {
 			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->slot;
 		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read position");
@@ -95,7 +95,7 @@ static bool xagyl_open(indigo_device *device) {
 
 static void xagyl_query(indigo_device *device) {
 	for (int repeat = 0; repeat < 60; repeat++) {
-		if (indigo_uni_printf(PRIVATE_DATA->handle, "I2") && indigo_uni_scanf_line(PRIVATE_DATA->handle, "P%d", &PRIVATE_DATA->slot) == 1) {
+		if (indigo_uni_printf(PRIVATE_DATA->handle, "I2") > 0 && indigo_uni_scanf_line(PRIVATE_DATA->handle, "P%d", &PRIVATE_DATA->slot) == 1) {
 			if (PRIVATE_DATA->slot == WHEEL_SLOT_ITEM->number.target) {
 				WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->slot;
 				WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;

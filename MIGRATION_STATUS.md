@@ -68,6 +68,7 @@ wheel_fli
 wheel_manual
 wheel_optec
 wheel_playerone
+wheel_quantum
 wheel_trutek
 wheel_xagyl
 
@@ -157,7 +158,6 @@ system_ascol
 wheel_atik
 wheel_mi
 wheel_qhy
-wheel_quantum
 wheel_sx
 
 # COOKBOOK
