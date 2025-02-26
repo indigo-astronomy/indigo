@@ -23,17 +23,15 @@
  \file indigo_ccd_quantum.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME "indigo_wheel_quantum"
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
-#include <sys/time.h>
 
-#include <indigo/indigo_io.h>
+#include <indigo/indigo_uni_io.h>
 
 #include "indigo_wheel_quantum.h"
 
@@ -42,14 +40,14 @@
 #define PRIVATE_DATA        ((quantum_private_data *)device->private_data)
 
 typedef struct {
-	int handle;
+	indigo_uni_handle *handle;
 	int slot;
 } quantum_private_data;
 
 static bool quantum_open(indigo_device *device) {
 	char *name = DEVICE_PORT_ITEM->text.value;
-	PRIVATE_DATA->handle = indigo_open_serial(name);
-	if (PRIVATE_DATA->handle >= 0) {
+	PRIVATE_DATA->handle = indigo_uni_open_serial(name, INDIGO_LOG_DEBUG);
+	if (PRIVATE_DATA->handle != NULL) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
 		return true;
 	} else {
@@ -59,9 +57,8 @@ static bool quantum_open(indigo_device *device) {
 }
 
 static void quantum_close(indigo_device *device) {
-	if (PRIVATE_DATA->handle > 0) {
-		close(PRIVATE_DATA->handle);
-		PRIVATE_DATA->handle = 0;
+	if (PRIVATE_DATA->handle != NULL) {
+		indigo_uni_close(&PRIVATE_DATA->handle);
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
 	}
 }
@@ -82,11 +79,10 @@ static indigo_result wheel_attach(indigo_device *device) {
 }
 
 static void wheel_goto_callback(indigo_device *device) {
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "%d -> %d", (int)WHEEL_SLOT_ITEM->number.value, (int)WHEEL_SLOT_ITEM->number.target);
-	indigo_printf(PRIVATE_DATA->handle, "G%d\r\n", (int)WHEEL_SLOT_ITEM->number.target - 1);
+	indigo_uni_printf(PRIVATE_DATA->handle, "G%d\r\n", (int)WHEEL_SLOT_ITEM->number.target - 1);
 	for (int repeat = 0; repeat < 30; repeat++) {
 		int slot;
-		if (indigo_scanf(PRIVATE_DATA->handle, "P%d", &slot) == 1) {
+		if (indigo_uni_scanf_line(PRIVATE_DATA->handle, "P%d", &slot) == 1) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "slot = %d", slot);
 			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->slot = slot + 1;
 			if (WHEEL_SLOT_ITEM->number.value == WHEEL_SLOT_ITEM->number.target) {
