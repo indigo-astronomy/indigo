@@ -23,17 +23,15 @@
  \file indigo_ccd_trutek.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME "indigo_wheel_trutek"
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
-#include <sys/time.h>
 
-#include <indigo/indigo_io.h>
+#include <indigo/indigo_uni_io.h>
 
 #include "indigo_wheel_trutek.h"
 
@@ -42,19 +40,19 @@
 #define PRIVATE_DATA        ((trutek_private_data *)device->private_data)
 
 typedef struct {
-	int handle;
+	indigo_uni_handle *handle;
 	int slot;
 } trutek_private_data;
 
 static bool trutek_open(indigo_device *device) {
 	char *name = DEVICE_PORT_ITEM->text.value;
-	PRIVATE_DATA->handle = indigo_open_serial(name);
-	if (PRIVATE_DATA->handle >= 0) {
+	PRIVATE_DATA->handle = indigo_uni_open_serial(name, -INDIGO_LOG_DEBUG);
+	if (PRIVATE_DATA->handle != NULL) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
 		unsigned char buffer[4] = { 0xA5, 0x03, 0x20, 0xA5 + 0x03 + 0x20 };
 		INDIGO_DRIVER_TRACE(DRIVER_NAME, "%d <- %02x %02x %02x %02x", PRIVATE_DATA->handle, buffer[0], buffer[1], buffer[2], buffer[3]);
-		if (indigo_write(PRIVATE_DATA->handle, (char *)buffer, 4)) {
-			if (indigo_read(PRIVATE_DATA->handle, (char *)buffer, 4)) {
+		if (indigo_uni_write(PRIVATE_DATA->handle, (char *)buffer, 4)) {
+			if (indigo_uni_read(PRIVATE_DATA->handle, (char *)buffer, 4)) {
 				INDIGO_DRIVER_TRACE(DRIVER_NAME, "%d -> %02x %02x %02x %02x", PRIVATE_DATA->handle, buffer[0], buffer[1], buffer[2], buffer[3]);
 				if (buffer[0] == 0xA5 && buffer[1] == 0x83) {
 					WHEEL_SLOT_ITEM->number.max =  buffer[2] - 0x30;
@@ -62,8 +60,7 @@ static bool trutek_open(indigo_device *device) {
 				}
 			}
 		}
-		close(PRIVATE_DATA->handle);
-		PRIVATE_DATA->handle = 0;
+		indigo_uni_close(&PRIVATE_DATA->handle);
 	} else {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", name);
 	}
@@ -74,8 +71,8 @@ static void trutek_query(indigo_device *device) {
 	unsigned char buffer[4] = { 0xA5, 0x02, 0x20, 0xA5 + 0x02 + 0x20 };
 	WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
 	INDIGO_DRIVER_TRACE(DRIVER_NAME, "%d <- %02x %02x %02x %02x", PRIVATE_DATA->handle, buffer[0], buffer[1], buffer[2], buffer[3]);
-	if (indigo_write(PRIVATE_DATA->handle, (char *)buffer, 4)) {
-		if (indigo_read(PRIVATE_DATA->handle, (char *)buffer, 4)) {
+	if (indigo_uni_write(PRIVATE_DATA->handle, (char *)buffer, 4)) {
+		if (indigo_uni_read(PRIVATE_DATA->handle, (char *)buffer, 4)) {
 			INDIGO_DRIVER_TRACE(DRIVER_NAME, "%d -> %02x %02x %02x %02x", PRIVATE_DATA->handle, buffer[0], buffer[1], buffer[2], buffer[3]);
 			if (buffer[0] == 0xA5 && buffer[1] == 0x82) {
 				WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->slot = buffer[2] - 0x30;
@@ -87,14 +84,14 @@ static void trutek_query(indigo_device *device) {
 }
 
 static void trutek_goto(indigo_device *device) {
-	int slot = WHEEL_SLOT_ITEM->number.target;
+	int slot = (int)WHEEL_SLOT_ITEM->number.target;
 	unsigned char buffer[4] = { 0xA5, 0x01, slot, 0xA5 + 0x01 + slot };
 	WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 	WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
 	INDIGO_DRIVER_TRACE(DRIVER_NAME, "%d <- %02x %02x %02x %02x", PRIVATE_DATA->handle, buffer[0], buffer[1], buffer[2], buffer[3]);
-	if (indigo_write(PRIVATE_DATA->handle, (char *)buffer, 4)) {
-		if (indigo_read(PRIVATE_DATA->handle, (char *)buffer, 4)) {
+	if (indigo_uni_write(PRIVATE_DATA->handle, (char *)buffer, 4)) {
+		if (indigo_uni_read(PRIVATE_DATA->handle, (char *)buffer, 4)) {
 			INDIGO_DRIVER_TRACE(DRIVER_NAME, "%d -> %02x %02x %02x %02x", PRIVATE_DATA->handle, buffer[0], buffer[1], buffer[2], buffer[3]);
 			if (buffer[0] == 0xA5 && buffer[1] == 0x81) {
 				WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->slot = buffer[2];
@@ -106,9 +103,8 @@ static void trutek_goto(indigo_device *device) {
 }
 
 static void trutek_close(indigo_device *device) {
-	if (PRIVATE_DATA->handle > 0) {
-		close(PRIVATE_DATA->handle);
-		PRIVATE_DATA->handle = 0;
+	if (PRIVATE_DATA->handle != NULL) {
+		indigo_uni_close(&PRIVATE_DATA->handle);
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
 	}
 }

@@ -68,6 +68,7 @@ wheel_fli
 wheel_manual
 wheel_optec
 wheel_playerone
+wheel_trutek
 wheel_xagyl
 
 # IN PROGRESS
@@ -158,7 +159,6 @@ wheel_mi
 wheel_qhy
 wheel_quantum
 wheel_sx
-wheel_trutek
 
 # COOKBOOK
 

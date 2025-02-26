@@ -431,6 +431,9 @@
     <ProjectReference Include="..\indigo_drivers\wheel_playerone\indigo_wheel_playerone.vcxproj">
       <Project>{44f16a32-7552-4113-93a0-fbf9537dc783}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\wheel_xagyl\indigo_wheel_xagyl.vcxproj">
+      <Project>{8d2e5b8c-ce39-4f58-a75d-a836b5af20eb}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\indigo_libs\indigo.vcxproj">
       <Project>{aa10be9e-6416-4f58-b821-2d0e479eb81b}</Project>
     </ProjectReference>
