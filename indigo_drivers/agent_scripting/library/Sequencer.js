@@ -324,6 +324,11 @@ Sequence.prototype.precise_goto = function(exposure, ra, dec) {
 	this.sequence.push({ execute: 'precise_goto()', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
+Sequence.prototype.set_rotator_angle = function(value) {
+	this.sequence.push({ execute: 'set_rotator_goto()', step: this.step, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'set_rotator_angle(' + value + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
 Sequence.prototype.start = function(imager_agent, mount_agent, guider_agent) {
 	indigo_sequencer.devices[2] = imager_agent == undefined ? "Imager Agent" : imager_agent;
 	indigo_sequencer.devices[3] = mount_agent == undefined ? "Mount Agent" : mount_agent;
@@ -1506,6 +1511,26 @@ var indigo_sequencer = {
 			this.select_switch(agent, "AGENT_START_PROCESS", "CENTER");
 		} else {
 			this.failure("Can't sync and center");
+		}
+	},
+
+	set_rotator_goto: function() {
+		var agent = this.devices[3];
+		var property = indigo_devices[agent].ROTATOR_ON_POSITION_SET;
+		if (property != null) {
+			this.select_switch(agent, "ROTATOR_ON_POSITION_SET", "GOTO");
+		} else {
+			this.failure("Can't set rotator in GOTO mode");
+		}
+	},
+
+	set_rotator_angle: function(angle) {
+		var agent = this.devices[3];
+		property = indigo_devices[agent].ROTATOR_POSITION;
+		if (property != null  && property.items.POSITION != undefined) {
+			this.change_numbers(agent, "ROTATOR_POSITION", { POSITION: angle });
+		} else {
+			this.failure("Can't set rotator angle");
 		}
 	}
 };
