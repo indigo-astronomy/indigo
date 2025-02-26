@@ -58,6 +58,7 @@ gps_simulator
 
 mount_simulator
 
+rotator_falcon
 rotator_simulator
 
 wheel_asi
@@ -145,7 +146,6 @@ mount_synscan
 mount_temma
 
 rotator_asi
-rotator_falcon
 rotator_lunatico
 rotator_optec
 rotator_wa

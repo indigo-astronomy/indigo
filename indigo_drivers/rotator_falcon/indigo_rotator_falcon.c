@@ -23,90 +23,83 @@
  \file indigo_rotator_falcon.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME	"indigo_rotator_falcon"
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
-#include <sys/termios.h>
 
-#include <indigo/indigo_io.h>
+#include <indigo/indigo_uni_io.h>
 
 #include "indigo_rotator_falcon.h"
 
 #define PRIVATE_DATA								((falcon_private_data *)device->private_data)
 
 typedef struct {
-	int handle;
+	indigo_uni_handle *handle;
 	pthread_mutex_t mutex;
 	indigo_timer *position_timer;
 	int version;
 } falcon_private_data;
 
 static bool falcon_command(indigo_device *device, char *command, char *response, int max) {
-	tcflush(PRIVATE_DATA->handle, TCIOFLUSH);
-	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
-	indigo_write(PRIVATE_DATA->handle, "\n", 1);
-	if (response != NULL) {
-		if (indigo_read_line(PRIVATE_DATA->handle, response, max) <= 0) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s -> no response", command);
-			return false;
+	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
+		if (indigo_uni_printf(PRIVATE_DATA->handle, "%s\n", command) > 0) {
+			if (response != NULL) {
+				if (indigo_uni_read_line(PRIVATE_DATA->handle, response, max) > 0) {
+					return true;
+				}
+			}
 		}
 	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s -> %s", command, response != NULL ? response : "NULL");
-	return true;
+	return false;
 }
 
 static void rotator_connection_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char response[64];
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 9600);
-		if (PRIVATE_DATA->handle > 0) {
+		PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 9600, INDIGO_LOG_DEBUG);
+		if (PRIVATE_DATA->handle != NULL) {
 			if (falcon_command(device, "F#", response, sizeof(response)) && !strcmp(response, "FR_OK")) {
 				strcpy(INFO_DEVICE_MODEL_ITEM->text.value ,"Falcon Rotator");
 			} else {
-				close(PRIVATE_DATA->handle);
-				PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 115200);
-				if (PRIVATE_DATA->handle > 0) {
+				indigo_uni_close(&PRIVATE_DATA->handle);
+				PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 115200, INDIGO_LOG_DEBUG);
+				if (PRIVATE_DATA->handle != NULL) {
 					if (falcon_command(device, "F#", response, sizeof(response)) && !strncmp(response, "F2R_", 4)) {
 						strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Falcon Rotator v2");
 					} else {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "Rotator not detected");
-						close(PRIVATE_DATA->handle);
-						PRIVATE_DATA->handle = 0;
+						indigo_uni_close(&PRIVATE_DATA->handle);
 					}
 				}
 			}
 		}
-		if (PRIVATE_DATA->handle > 0) {
+		if (PRIVATE_DATA->handle != NULL) {
 			if (falcon_command(device, "FV", response, sizeof(response)) && !strncmp(response, "FV:", 3)) {
 				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, response + 3);
 			} else {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read 'FV' response");
-				close(PRIVATE_DATA->handle);
-				PRIVATE_DATA->handle = 0;
+				indigo_uni_close(&PRIVATE_DATA->handle);
 			}
 		}
-		if (PRIVATE_DATA->handle > 0) {
+		if (PRIVATE_DATA->handle != NULL) {
 			if (!(falcon_command(device, "FH", response, sizeof(response)) && !strcmp(response, "FH:1"))) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read 'FH' response");
-				close(PRIVATE_DATA->handle);
-				PRIVATE_DATA->handle = 0;
+				indigo_uni_close(&PRIVATE_DATA->handle);
 			}
 		}
-		if (PRIVATE_DATA->handle > 0) {
+		if (PRIVATE_DATA->handle != NULL) {
 			if (!(falcon_command(device, "DR:0", response, sizeof(response)) && !strncmp(response, "DR:", 3))) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read 'DR' response");
-				close(PRIVATE_DATA->handle);
-				PRIVATE_DATA->handle = 0;
+				indigo_uni_close(&PRIVATE_DATA->handle);
 			}
 		}
-		if (PRIVATE_DATA->handle > 0) {
+		if (PRIVATE_DATA->handle != NULL) {
 			if (falcon_command(device, "FA", response, sizeof(response))) {
 				if (!strncmp(response, "FR_OK", 5)) {
 					char *pnt, *token = strtok_r(response, ":", &pnt);
@@ -125,8 +118,7 @@ static void rotator_connection_handler(indigo_device *device) {
 							indigo_set_switch(ROTATOR_DIRECTION_PROPERTY, ROTATOR_DIRECTION_REVERSED_ITEM, true);
 					} else {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to parse 'FA' response");
-						close(PRIVATE_DATA->handle);
-						PRIVATE_DATA->handle = 0;
+						indigo_uni_close(&PRIVATE_DATA->handle);
 					}
 				} else if (!strncmp(response, "F2R:", 4)) {
 					char *pnt, *token = strtok_r(response, ":", &pnt); // position_in_deg
@@ -144,17 +136,15 @@ static void rotator_connection_handler(indigo_device *device) {
 							indigo_set_switch(ROTATOR_DIRECTION_PROPERTY, ROTATOR_DIRECTION_REVERSED_ITEM, true);
 					} else {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to parse 'FA' response");
-						close(PRIVATE_DATA->handle);
-						PRIVATE_DATA->handle = 0;
+						indigo_uni_close(&PRIVATE_DATA->handle);
 					}
 				}
 			} else {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read 'FA' response");
-				close(PRIVATE_DATA->handle);
-				PRIVATE_DATA->handle = 0;
+				indigo_uni_close(&PRIVATE_DATA->handle);
 			}
 		}
-		if (PRIVATE_DATA->handle > 0) {
+		if (PRIVATE_DATA->handle != NULL) {
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", DEVICE_PORT_ITEM->text.value);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
@@ -164,10 +154,9 @@ static void rotator_connection_handler(indigo_device *device) {
 		}
 	} else {
 		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "undefined");
-		if (PRIVATE_DATA->handle > 0) {
+		if (PRIVATE_DATA->handle != NULL) {
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
-			close(PRIVATE_DATA->handle);
-			PRIVATE_DATA->handle = 0;
+			indigo_uni_close(&PRIVATE_DATA->handle);
 		}
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}

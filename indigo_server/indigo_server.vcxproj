@@ -422,6 +422,9 @@
     <ProjectReference Include="..\indigo_drivers\wheel_manual\indigo_wheel_manual.vcxproj">
       <Project>{b0c449bd-eae9-4ade-a3c7-349086d15ce2}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\wheel_optec\indigo_wheel_optec.vcxproj">
+      <Project>{209d5a91-d11f-433a-89cb-fe3ffc78fdbd}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\indigo_drivers\wheel_playerone\indigo_wheel_playerone.vcxproj">
       <Project>{44f16a32-7552-4113-93a0-fbf9537dc783}</Project>
     </ProjectReference>
