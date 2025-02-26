@@ -404,6 +404,9 @@
     <ProjectReference Include="..\indigo_drivers\gps_nmea\indigo_gps_nmea.vcxproj">
       <Project>{a2c83e5f-7089-4217-b4e3-fd60fee14645}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\rotator_falcon\indigo_rotator_falcon.vcxproj">
+      <Project>{827bb928-02bf-4df7-9c0f-4e141dec7406}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\indigo_drivers\rotator_simulator\indigo_rotator_simulator.vcxproj">
       <Project>{88bcddef-e256-437d-a5ad-9ef58e6752fa}</Project>
     </ProjectReference>
