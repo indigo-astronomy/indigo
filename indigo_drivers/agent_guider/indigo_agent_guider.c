@@ -37,6 +37,7 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/param.h>
 
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_filter.h>
@@ -347,6 +348,8 @@ static void write_log_record(indigo_device *device) {
 	}
 }
 
+static indigo_property_state pulse_guide(indigo_device *device, double ra, double dec);
+
 static void close_log(indigo_device *device) {
 	if (DEVICE_PRIVATE_DATA->log_file > 0) {
 		close(DEVICE_PRIVATE_DATA->log_file);
@@ -416,31 +419,7 @@ static void spiral_dither_values(unsigned int dither_number, double amount, bool
 	}
 }
 
-static void do_dither(indigo_device *device) {
-	// if not guiding clear state and return
-	if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value != INDIGO_GUIDER_PHASE_GUIDING) {
-		AGENT_GUIDER_DITHER_TRIGGER_ITEM->sw.value = false;
-		AGENT_GUIDER_DITHER_RESET_ITEM->sw.value = false;
-		AGENT_GUIDER_DITHER_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, AGENT_GUIDER_DITHER_PROPERTY, NULL);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dither request igored, not guiding");
-		return;
-	}
-	AGENT_GUIDER_DITHER_RESET_ITEM->sw.value = false;
-	AGENT_GUIDER_DITHER_PROPERTY->state = INDIGO_BUSY_STATE;
-	indigo_update_property(device, AGENT_GUIDER_DITHER_PROPERTY, NULL);
-	double x_value = 0;
-	double y_value = 0;
-	if (AGENT_GUIDER_DITHERING_STRATEGY_RANDOM_SPIRAL_ITEM->sw.value) {
-		spiral_dither_values(DEVICE_PRIVATE_DATA->dither_num++, AGENT_GUIDER_SETTINGS_DITHERING_AMOUNT_ITEM->number.target * 2, true, &x_value, &y_value);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering RANDOMIZED_SPIRAL x_value = %.4f y_value = %.4f dither_num = %d", x_value, y_value, DEVICE_PRIVATE_DATA->dither_num - 1);
-	} else if (AGENT_GUIDER_DITHERING_STRATEGY_SPIRAL_ITEM->sw.value) {
-		spiral_dither_values(DEVICE_PRIVATE_DATA->dither_num++, AGENT_GUIDER_SETTINGS_DITHERING_AMOUNT_ITEM->number.target * 2, false, &x_value, &y_value);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering SPIRAL x_value = %.4f y_value = %.4f dither_num = %d", x_value, y_value, DEVICE_PRIVATE_DATA->dither_num - 1);
-	} else {
-		random_dither_values(AGENT_GUIDER_SETTINGS_DITHERING_AMOUNT_ITEM->number.target * 2, &x_value, &y_value);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering RANDOM x_value = %.4f y_value = %.4f", x_value, y_value);
-	}
+static void do_dither_guided(indigo_device *device, double x_value, double y_value) {
 	static const char *names[] = { AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM_NAME, AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM_NAME };
 	double item_values[] = { x_value, y_value };
 	indigo_change_number_property(NULL, device->name, AGENT_GUIDER_DITHERING_OFFSETS_PROPERTY_NAME, 2, names, item_values);
@@ -458,11 +437,11 @@ static void do_dither(indigo_device *device) {
 		indigo_usleep(200000);
 	}
 	if (IS_DITHERING) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering started");
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Dithering started");
 		double time_limit = AGENT_GUIDER_SETTINGS_DITHERING_TIME_LIMIT_ITEM->number.value * 5;
 		for (int i = 0; i < time_limit; i++) { // wait up to time limit to finish dithering
 			if (NOT_DITHERING) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering finished");
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Dithering finished");
 				break;
 			}
 			if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -475,6 +454,7 @@ static void do_dither(indigo_device *device) {
 			indigo_usleep(200000);
 		}
 		if (IS_DITHERING) {
+			//todo move this also do dither fail function?
 			AGENT_GUIDER_DITHER_PROPERTY->state = INDIGO_ALERT_STATE;
 			AGENT_GUIDER_DITHER_TRIGGER_ITEM->sw.value = false;
 			AGENT_GUIDER_DITHER_RESET_ITEM->sw.value = false;
@@ -491,8 +471,153 @@ static void do_dither(indigo_device *device) {
 	AGENT_GUIDER_DITHER_TRIGGER_ITEM->sw.value = false;
 	AGENT_GUIDER_DITHER_RESET_ITEM->sw.value = false;
 	indigo_update_property(device, AGENT_GUIDER_DITHER_PROPERTY, NULL);
+}
+// fail dithering with error message and cleanup
+void fail_dither(indigo_device *device, char* message) {
+	AGENT_GUIDER_DITHER_TRIGGER_ITEM->sw.value = false;
+	AGENT_GUIDER_DITHER_RESET_ITEM->sw.value = false;
+	AGENT_GUIDER_DITHER_PROPERTY->state = INDIGO_ALERT_STATE;
+	indigo_update_property(device, AGENT_GUIDER_DITHER_PROPERTY, NULL);
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s", message);
 	return;
 }
+
+/*
+split pulse guide movement into several chunks of AGENT_GUIDER_SETTINGS_MAX_PULSE_ITEM duration
+and calculate the actual amount moved
+*/
+ 
+void pulse_guide_chunked(indigo_device *device, double x, double y, double *x_moved, double *y_moved) {
+	double min_pulse = AGENT_GUIDER_SETTINGS_MIN_PULSE_ITEM->number.value;
+	double max_pulse = AGENT_GUIDER_SETTINGS_MAX_PULSE_ITEM->number.value;
+
+	double time_prediction = fmax(fabs(x), fabs(y));
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "dithering movement will take around %.1f seconds", time_prediction);
+	*x_moved = 0.0;
+	*y_moved = 0.0;
+	if (time_prediction > 30.0) {
+		fail_dither(device, "dithering will too long, either increase guide rate or decrease dither amount");
+		return;
+	}
+	double real_min = fmax(0.1, min_pulse);
+	int i = 0;
+	while (fabs(x) > real_min || fabs(y) > real_min)
+	{
+		double effective_x = copysign(fmin(max_pulse, fabs(x)), x);
+		double effective_y = copysign(fmin(max_pulse, fabs(y)), y);
+		*x_moved = *x_moved + effective_x;
+		*y_moved = *y_moved + effective_y;
+		pulse_guide(device, effective_x, effective_y);
+		// wait for a while between pulse guiding calls to allow for time deviation in comparision to mount
+		int sleep_duration_us = MIN(200 * 1000, (int) max_pulse * 1.2 * 1000 * 1000);
+		indigo_usleep(sleep_duration_us);
+		x = copysign(fmax(0.0, fabs(x) - fabs(effective_x)), x);
+		y = copysign(fmax(0.0, fabs(y) - fabs(effective_y)), y);
+	}	
+}
+
+static void do_dither_unguided(indigo_device *device, double x_value, double y_value) {
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "Dithering started");
+	static const char *names[] = { AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM_NAME, AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM_NAME };
+	double item_values[] = { x_value, y_value };
+	//calculate distance always from initial start point
+	double previous_x_movement = AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.value;
+	double previous_y_movement = AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.value;
+	indigo_change_number_property(NULL, device->name, AGENT_GUIDER_DITHERING_OFFSETS_PROPERTY_NAME, 2, names, item_values);
+	double x_movement = -previous_x_movement + x_value;
+	double y_movement = -previous_y_movement + y_value;
+
+	//TODO use pixel scale from imager agent
+	double pix_scale_x = 2.0;
+	double pix_scale_y = 2.0;
+	if (pix_scale_x == 0.0 || pix_scale_y == 0.0) {
+		fail_dither(device, "pixel scale required for unguided dithering");
+		return;
+	}  
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "pixel scale (arcseconds/px):  (%.2f, %.2f)", pix_scale_x, pix_scale_y);
+	double pulse_duration_x = pix_scale_x * x_movement;
+	double pulse_duration_y = pix_scale_y * y_movement;
+	//TODO use actual guide rate
+	double guide_rate_ra = 2.5;
+	double guide_rate_dec = 2.5;
+	if (guide_rate_ra == 0.0 || guide_rate_dec == 0.0) {
+		fail_dither(device, "guide rate required for unguided dithering");
+		return;
+	}
+	pulse_duration_x = pulse_duration_x / guide_rate_ra;
+	pulse_duration_y = pulse_duration_y / guide_rate_dec;
+	//TODO can we do backlash compensation here? or don't we have an useful value without guide cam?
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "Moving mount (px): (%.2f, %.2f) ...", x_movement, y_movement);
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "Pulse guiding for (s): (%.3f, %.3f) with guide rate (%% sidereal): (%f, %f", pulse_duration_x, pulse_duration_y, guide_rate_ra * 100.0, guide_rate_dec * 100.0);
+	double x_actual_pulse_duration = 0.0;
+	double y_actual_pulse_duration = 0.0;
+	pulse_guide_chunked(device, pulse_duration_x, pulse_duration_y, &x_actual_pulse_duration, &y_actual_pulse_duration);
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "Actual total pulse duration while dithering (s): (%.3f, %.3f)", x_actual_pulse_duration, y_actual_pulse_duration);
+	double actual_x_movement_px = x_actual_pulse_duration * guide_rate_ra / pix_scale_x;
+	double actual_y_movement_px = y_actual_pulse_duration * guide_rate_dec / pix_scale_y;
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "Actual movement while dithering (px): (%.2f, %.2f)", actual_x_movement_px, actual_y_movement_px);
+
+	// todo write back x_moved and y_moved
+	double settle_time = AGENT_GUIDER_SETTINGS_DITHERING_TIME_LIMIT_ITEM->number.value;
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "Waiting %.1f seconds for mount to settle...", settle_time);
+	indigo_usleep(settle_time * 1000 * 1000);
+	
+	AGENT_GUIDER_DITHER_PROPERTY->state = INDIGO_OK_STATE;
+	AGENT_GUIDER_DITHER_TRIGGER_ITEM->sw.value = false;
+	AGENT_GUIDER_DITHER_RESET_ITEM->sw.value = false;
+	indigo_update_property(device, AGENT_GUIDER_DITHER_PROPERTY, NULL);
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "Dithering finished");
+}
+
+
+typedef enum {
+	INDIGO_DITHER_TYPE_NONE,
+	INDIGO_DITHER_TYPE_UNGUIDED,
+	INDIGO_DITHER_TYPE_GUIDED
+} dither_type;
+
+static void do_dither(indigo_device *device) {
+	dither_type dither_type = INDIGO_DITHER_TYPE_NONE;
+	if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value == INDIGO_GUIDER_PHASE_GUIDING) {
+		dither_type = INDIGO_DITHER_TYPE_GUIDED;
+	}
+	if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value == INDIGO_GUIDER_PHASE_DONE) {
+		dither_type = INDIGO_DITHER_TYPE_UNGUIDED;
+	}
+	// if not guiding clear state and return
+	if (dither_type == INDIGO_DITHER_TYPE_NONE) {
+		// todo actually check for no guide camera
+		fail_dither(device, "Dither request igored, neither guiding nor no guide camera selected for unguided dithering");
+		return;
+	}
+	
+	AGENT_GUIDER_DITHER_RESET_ITEM->sw.value = false;
+	AGENT_GUIDER_DITHER_PROPERTY->state = INDIGO_BUSY_STATE;
+	indigo_update_property(device, AGENT_GUIDER_DITHER_PROPERTY, NULL);
+	double x_value = 0;
+	double y_value = 0;
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "Dither value: %f", AGENT_GUIDER_SETTINGS_DITHERING_AMOUNT_ITEM->number.target);
+	if (AGENT_GUIDER_DITHERING_STRATEGY_RANDOM_SPIRAL_ITEM->sw.value) {
+		spiral_dither_values(DEVICE_PRIVATE_DATA->dither_num++, AGENT_GUIDER_SETTINGS_DITHERING_AMOUNT_ITEM->number.target * 2, true, &x_value, &y_value);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Dithering RANDOMIZED_SPIRAL x_value = %.4f y_value = %.4f dither_num = %d", x_value, y_value, DEVICE_PRIVATE_DATA->dither_num - 1);
+	} else if (AGENT_GUIDER_DITHERING_STRATEGY_SPIRAL_ITEM->sw.value) {
+		spiral_dither_values(DEVICE_PRIVATE_DATA->dither_num++, AGENT_GUIDER_SETTINGS_DITHERING_AMOUNT_ITEM->number.target * 2, false, &x_value, &y_value);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering SPIRAL x_value = %.4f y_value = %.4f dither_num = %d", x_value, y_value, DEVICE_PRIVATE_DATA->dither_num - 1);
+	} else {
+		random_dither_values(AGENT_GUIDER_SETTINGS_DITHERING_AMOUNT_ITEM->number.target * 2, &x_value, &y_value);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Dithering RANDOM x_value = %.4f y_value = %.4f", x_value, y_value);
+	}
+	if (dither_type == INDIGO_DITHER_TYPE_GUIDED) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "guided dither");
+		do_dither_guided(device, x_value, y_value);
+	}
+	if (dither_type == INDIGO_DITHER_TYPE_UNGUIDED) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "unguided dither");
+		do_dither_unguided(device, x_value, y_value);
+	}
+
+}
+
 
 static bool capture_frame(indigo_device *device) {
 	indigo_property_state state = INDIGO_ALERT_STATE;
@@ -1014,6 +1139,7 @@ static void restore_subframe(indigo_device *device) {
 	}
 }
 
+//ra and dec in seconds
 static indigo_property_state pulse_guide(indigo_device *device, double ra, double dec) {
 	double ra_duration = 0, dec_duration = 0;
 	if (ra) {
