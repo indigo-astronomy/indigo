@@ -1525,7 +1525,7 @@ var indigo_sequencer = {
 		if (property != null) {
 			this.select_switch(agent, "ROTATOR_ON_POSITION_SET", "GOTO");
 		} else {
-			this.failure("Can't set rotator in GOTO mode");
+			indigo_set_timer(indigo_sequencer_next_handler, 0);
 		}
 	},
 
