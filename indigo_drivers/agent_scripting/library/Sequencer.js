@@ -257,6 +257,11 @@ Sequence.prototype.clear_focuser_selection = function() {
 	this.sequence.push({ execute: 'clear_focuser_selection()', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
+Sequence.prototype.set_focuser_position = function(position) {
+	this.sequence.push({ execute: 'set_focuser_goto()', step: this.step, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'set_focuser_position(' + position + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
 Sequence.prototype.park = function() {
 	this.sequence.push({ execute: 'park()', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
@@ -1531,6 +1536,26 @@ var indigo_sequencer = {
 			this.change_numbers(agent, "ROTATOR_POSITION", { POSITION: angle });
 		} else {
 			this.failure("Can't set rotator angle");
+		}
+	},
+
+	set_focuser_goto: function() {
+		var agent = this.devices[2];
+		var property = indigo_devices[agent].FOCUSER_ON_POSITION_SET;
+		if (property != null) {
+			this.select_switch(agent, "FOCUSER_ON_POSITION_SET", "GOTO");
+		} else {
+			indigo_set_timer(indigo_sequencer_next_handler, 0);
+		}
+	},
+
+	set_focuser_position: function(position) {
+		var agent = this.devices[2];
+		property = indigo_devices[agent].FOCUSER_POSITION;
+		if (property != null  && property.items.POSITION != undefined) {
+			this.change_numbers(agent, "FOCUSER_POSITION", { POSITION: position });
+		} else {
+			this.failure("Can't set focuser position");
 		}
 	}
 };
