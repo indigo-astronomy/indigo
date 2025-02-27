@@ -1,3 +1,8 @@
+2025.02.18(3.8.0)
+- Add 'POA_EXP' in 'POAConfig', please update 'PlayerOneCamera.h' in your project. 
+	Note: In order to increase the maximum exposure to 3600s while maintaining the binary compatibility of the SDK, POA_EXP has been added, please use POA_EXP instead of POA_EXPOSURE in your codes, thanks.
+- Add support for Uranus-M and Uranus-M PRO
+
 2024.11.29(3.7.1)
 - Fixed a bug that on some hosts with Ubuntu24.04(e.g. PI5), the first exposure failed after opening the camera.
 

@@ -99,7 +99,7 @@ static indigo_result forward_property(indigo_device *device, indigo_client *clie
 			return INDIGO_OK;
 	}
 	int size = sizeof(indigo_property) + source_property->count * sizeof(indigo_item);
-	indigo_property *property = indigo_safe_malloc_copy(size, source_property);
+	indigo_property *property = indigo_copy_property(NULL, source_property);
 	indigo_copy_name(property->device, r->target_device_name);
 	indigo_copy_name(property->name, r->target_property_name);
 	indigo_trace_property("Property set by rule", NULL, property, false, true);

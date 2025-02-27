@@ -803,7 +803,7 @@ indigo_result indigo_filter_define_property(indigo_client *client, indigo_device
 				for (free_index = 0; free_index < INDIGO_FILTER_MAX_CACHED_PROPERTIES; free_index++) {
 					if (device_cache[free_index] == NULL) {
 						int size = sizeof(indigo_property) + property->count * sizeof(indigo_item);
-						device_cache[free_index] = indigo_safe_malloc_copy(size, property);
+						device_cache[free_index] = indigo_copy_property(NULL, property);
 						indigo_property *agent_property = indigo_copy_property(NULL, property);
 						strcpy(agent_property->device, device->name);
 						bool translate = strncmp(name_prefix, agent_property->name, name_prefix_length);
