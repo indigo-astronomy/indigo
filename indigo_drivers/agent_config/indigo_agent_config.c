@@ -293,7 +293,7 @@ static void process_configuration_property(indigo_device *device) {
 					}
 				}
 				indigo_change_property(agent_client, copy); // it expects this call is actually synchronous on a local bus
-				indigo_safe_free(copy);
+				indigo_release_property(copy);
 			} else if (!strcmp(property->name, AGENT_CONFIG_PROFILES_PROPERTY_NAME)) {
 				for (int j = 0; j < property->count; j++) {
 					indigo_item *item = property->items + j;

@@ -416,7 +416,7 @@ static indigo_result update_device_list(indigo_device *device, indigo_client *cl
 			for (int i = 0; i < INDIGO_FILTER_MAX_CACHED_PROPERTIES; i++) {
 				indigo_property *device_property = device_cache[i];
 				if (device_property && !strcmp(connection_property->device, device_property->device)) {
-					indigo_safe_free(device_property);
+					indigo_release_property(device_property);
 					device_cache[i] = NULL;
 					if (agent_cache[i]) {
 						indigo_delete_property(device, agent_cache[i], NULL);
@@ -895,7 +895,7 @@ indigo_result indigo_filter_update_property(indigo_client *client, indigo_device
 						indigo_update_property(device, device_list, NULL);
 						for (int i = 0; i < INDIGO_FILTER_MAX_CACHED_PROPERTIES; i++) {
 							if (device_cache[i] && !strcmp(property->device, device_cache[i]->device)) {
-								indigo_safe_free(device_cache[i]);
+								indigo_release_property(device_cache[i]);
 								device_cache[i] = NULL;
 								if (agent_cache[i]) {
 									indigo_delete_property(device, agent_cache[i], message);
@@ -946,7 +946,7 @@ indigo_result indigo_filter_delete_property(indigo_client *client, indigo_device
 	if (*property->name) {
 		for (int i = 0; i < INDIGO_FILTER_MAX_CACHED_PROPERTIES; i++) {
 			if (indigo_property_match(device_cache[i], property)) {
-				indigo_safe_free(device_cache[i]);
+				indigo_release_property(device_cache[i]);
 				device_cache[i] = NULL;
 				if (agent_cache[i]) {
 					indigo_delete_property(device, agent_cache[i], NULL);
@@ -961,7 +961,7 @@ indigo_result indigo_filter_delete_property(indigo_client *client, indigo_device
 	} else {
 		for (int i = 0; i < INDIGO_FILTER_MAX_CACHED_PROPERTIES; i++) {
 			if (device_cache[i] && !strcmp(device_cache[i]->device, property->device)) {
-				indigo_safe_free(device_cache[i]);
+				indigo_release_property(device_cache[i]);
 				device_cache[i] = NULL;
 				if (agent_cache[i]) {
 					indigo_delete_property(device, agent_cache[i], message);
@@ -980,7 +980,7 @@ indigo_result indigo_filter_delete_property(indigo_client *client, indigo_device
 		remove_from_list(device, FILTER_CLIENT_CONTEXT->filter_related_agent_list_property, 0, property->device, NULL);
 		for (int i = 0; i < INDIGO_FILTER_MAX_CACHED_PROPERTIES; i++) {
 			if (device_cache[i] && !strcmp(property->device, device_cache[i]->device)) {
-				indigo_safe_free(device_cache[i]);
+				indigo_release_property(device_cache[i]);
 				device_cache[i] = NULL;
 				if (agent_cache[i]) {
 					indigo_delete_property(device, agent_cache[i], message);
@@ -1008,7 +1008,7 @@ indigo_result indigo_filter_client_detach(indigo_client *client) {
 	indigo_property **agent_cache = FILTER_CLIENT_CONTEXT->agent_property_cache;
 	for (int i = 0; i < INDIGO_FILTER_MAX_CACHED_PROPERTIES; i++) {
 		if (device_cache[i]) {
-			indigo_safe_free(device_cache[i]);
+			indigo_release_property(device_cache[i]);
 		}
 		if (agent_cache[i]) {
 			indigo_release_property(agent_cache[i]);
