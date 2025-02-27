@@ -156,7 +156,7 @@ static void load_configuration(indigo_device *device) {
 		pthread_mutex_lock(&DEVICE_PRIVATE_DATA->data_mutex);
 		indigo_property *agent = DEVICE_PRIVATE_DATA->agents[i];
 		if (agent) {
-			indigo_property *copy = indigo_safe_malloc_copy(sizeof(indigo_property) + agent->count * sizeof(indigo_item), agent);
+			indigo_property *copy = indigo_copy_property(NULL, agent);
 			pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->data_mutex);
 			char *device_name = copy->name + 13;
 			for (int j = 0; j < copy->count; j++) {
@@ -275,7 +275,7 @@ static void process_configuration_property(indigo_device *device) {
 		if (property) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Restoring '%s'", property->name);
 			if (!strcmp(property->name, AGENT_CONFIG_DRIVERS_PROPERTY_NAME)) {
-				indigo_property *copy = indigo_safe_malloc_copy(sizeof(indigo_property) + property->count * sizeof(indigo_item), property);
+				indigo_property *copy = indigo_copy_property(NULL, property);
 				strcpy(copy->name, SERVER_DRIVERS_PROPERTY_NAME);
 				strcpy(copy->device, DEVICE_PRIVATE_DATA->server);
 				if (!AGENT_CONFIG_SETUP_UNLOAD_DRIVERS_ITEM->sw.value) {
@@ -580,7 +580,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (!strncmp(property->name, "AGENT_CONFIG", 12)) {
 		pthread_mutex_lock(&DEVICE_PRIVATE_DATA->data_mutex);
-		DEVICE_PRIVATE_DATA->restore_properties[DEVICE_PRIVATE_DATA->restore_count++] = indigo_safe_malloc_copy(sizeof(indigo_property) + property->count * sizeof(indigo_item), property);
+		DEVICE_PRIVATE_DATA->restore_properties[DEVICE_PRIVATE_DATA->restore_count++] = indigo_copy_property(NULL, property);
 		pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->data_mutex);
 		indigo_set_timer(device, 0, process_configuration_property, NULL);
 	}
