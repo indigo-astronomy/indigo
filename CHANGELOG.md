@@ -2,6 +2,22 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-320] - 28 Feb Fri 2025
+## Overall:
+	- fix inproper long text handling on some places
+
+## Driver Fixes:
+- indigo_agent_config:
+	- random crash fixed
+
+- indigo_ccd_playerone:
+	- updated SDK v.3.8.0
+
+- indigo_agent_scripting:
+	- Sequencer.js: add set_focuser_position();
+	- Sequencer.js: add set_rotator_angle();
+	- Sequencer.js: fix select_rotator();
+
 # [2.0-318] - 22 Feb Sat 2025
 ## Overall:
 - indigo_bus:
