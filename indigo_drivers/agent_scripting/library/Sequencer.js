@@ -797,7 +797,7 @@ var indigo_sequencer = {
 	},
 
 	select_rotator: function(rotator) {
-		var agent = this.devices[2];
+		var agent = this.devices[3];
 		if (rotator == undefined)
 			rotator = "NONE";
 		var property = indigo_devices[agent].FILTER_ROTATOR_LIST;
