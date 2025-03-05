@@ -116,8 +116,14 @@ extern void indigo_j2k_to_eq(const double eq, double *ra, double *dec);
 /** calculate time to the next transit
 	ra - right ascension of the object in decimal hours
 	lmst - local mean sidereal time in decimal degrees
-*/
-double indigo_time_to_transit(const double ra, const double lmst);
+	west - true if side of pier is west
+		if west = true:
+			The function returns the time to the next transit in hours.
+		if west = false:
+			If transit happened it returns megaive time. Time since transit.
+			This means that no meridian flip happened.
+ */
+double indigo_time_to_transit(const double ra, const double lmst, bool west);
 
 /** Calculate raise transit and set times for the nearest transit
 	jd - julian day

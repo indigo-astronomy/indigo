@@ -552,7 +552,7 @@ static void handle_mount_change(indigo_device *device) {
 	AGENT_MOUNT_DISPLAY_COORDINATES_HA_ITEM->number.value = fmod((lst - ra + 24), 24);
 	indigo_raise_set(UT2JD(utc), latitude, longitude, ra, dec, &AGENT_MOUNT_DISPLAY_COORDINATES_RISE_ITEM->number.value, &AGENT_MOUNT_DISPLAY_COORDINATES_TRANSIT_ITEM->number.value, &AGENT_MOUNT_DISPLAY_COORDINATES_SET_ITEM->number.value);
 	AGENT_MOUNT_DISPLAY_COORDINATES_AIRMASS_ITEM->number.value = indigo_airmass(AGENT_MOUNT_DISPLAY_COORDINATES_ALT_ITEM->number.value);
-	AGENT_MOUNT_DISPLAY_COORDINATES_TIME_TO_TRANSIT_ITEM->number.value = indigo_time_to_transit(ra, lst);
+	AGENT_MOUNT_DISPLAY_COORDINATES_TIME_TO_TRANSIT_ITEM->number.value = indigo_time_to_transit(ra, lst, DEVICE_PRIVATE_DATA->mount_side_of_pier >= 0);
 	AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY->state = DEVICE_PRIVATE_DATA->mount_eq_coordinates_state;
 	AGENT_MOUNT_DISPLAY_COORDINATES_DEROTATION_RATE_ITEM->number.value = indigo_derotation_rate(AGENT_MOUNT_DISPLAY_COORDINATES_ALT_ITEM->number.value, AGENT_MOUNT_DISPLAY_COORDINATES_AZ_ITEM->number.value, latitude);
 	AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM->number.value = indigo_parallactic_angle(AGENT_MOUNT_DISPLAY_COORDINATES_HA_ITEM->number.value * 15, dec, latitude);

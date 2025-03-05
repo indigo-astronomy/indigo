@@ -290,7 +290,7 @@ typedef struct {
 	indigo_property_state related_guider_process_state;
 	double solver_goto_ra;
 	double solver_goto_dec;
-	double ra, dec, latitude, longitude, time_to_transit;
+	double time_to_transit;
 	bool has_camera;
 } imager_agent_private_data;
 
@@ -3514,29 +3514,6 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 					value = item->text.value;
 				}
 			}
-			if (name != NULL && value != NULL) {
-				int d, m, s;
-				if (sscanf(value, "'%d %d %d'", &d, &m, &s) == 3) {
-					double value = d + m / 60.0 + s / 3600.0;
-					if (!strcmp(name, "OBJCTRA")) {
-						DEVICE_PRIVATE_DATA->ra = value;
-					} else if (!strcmp(name, "OBJCTDEC")) {
-						DEVICE_PRIVATE_DATA->dec = value;
-					} else if (!strcmp(name, "SITELAT")) {
-						DEVICE_PRIVATE_DATA->latitude = value;
-					} else if (!strcmp(name, "SITELONG")) {
-						DEVICE_PRIVATE_DATA->longitude = value;
-					}
-					time_t utc = time(NULL);
-					double lst = indigo_lst(&utc, DEVICE_PRIVATE_DATA->longitude);
-					double ra = DEVICE_PRIVATE_DATA->ra;
-					double dec = DEVICE_PRIVATE_DATA->dec;
-					double transit;
-					indigo_j2k_to_jnow(&ra, &dec);
-					indigo_raise_set(UT2JD(utc), DEVICE_PRIVATE_DATA->latitude, DEVICE_PRIVATE_DATA->longitude, ra, dec, NULL, &transit, NULL);
-					DEVICE_PRIVATE_DATA->time_to_transit = indigo_time_to_transit(ra, lst);
-				}
-			}
 		}
 	}
 	return indigo_filter_change_property(device, client, property);
@@ -3808,6 +3785,21 @@ static void snoop_guider_changes(indigo_client *client, indigo_property *propert
 	}
 }
 
+static void snoop_mount_changes(indigo_client *client, indigo_property *property) {
+	indigo_device *device = FILTER_CLIENT_CONTEXT->device;
+	char *related_agent_name = indigo_filter_first_related_agent(device, "Mount Agent");
+	if (related_agent_name && !strcmp(related_agent_name, property->device)) {
+		if (!strcmp(property->name, AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY_NAME)) {
+			for (int i = 0; i < property->count; i++) {
+				indigo_item *item = property->items + i;
+				if (!strcmp(item->name, AGENT_MOUNT_DISPLAY_COORDINATES_TIME_TO_TRANSIT_ITEM_NAME)) {
+					DEVICE_PRIVATE_DATA->time_to_transit = item->number.value;
+				}
+			}
+		}
+	}
+}
+
 static void snoop_astrometry_changes(indigo_client *client, indigo_property *property) {
 	char *related_agent_name = indigo_filter_first_related_agent(FILTER_CLIENT_CONTEXT->device, "Astrometry Agent");
 	if (related_agent_name && !strcmp(property->device, related_agent_name)) {
@@ -3857,6 +3849,7 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 	} else {
 		snoop_barrier_state(client, property);
 		snoop_guider_changes(client, property);
+		snoop_mount_changes(client, property);
 		snoop_astrometry_changes(client, property);
 	}
 	return indigo_filter_define_property(client, device, property, message);
@@ -3915,6 +3908,7 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 	} else {
 		snoop_barrier_state(client, property);
 		snoop_guider_changes(client, property);
+		snoop_mount_changes(client, property);
 		snoop_astrometry_changes(client, property);
 	}
 	return indigo_filter_update_property(client, device, property, message);
