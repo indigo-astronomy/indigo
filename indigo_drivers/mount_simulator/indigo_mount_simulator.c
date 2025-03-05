@@ -77,13 +77,17 @@ static void position_timer_callback(indigo_device *device) {
 				indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 				MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parked");
-			}
-			if (PRIVATE_DATA->going_home) {
+			} else if (PRIVATE_DATA->going_home) {
 				PRIVATE_DATA->going_home = false;
 				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
 				indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 				MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
+			} else {
+				if (MOUNT_TRACKING_OFF_ITEM->sw.value) {
+					indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
+					indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+				}
 			}
 		} else {
 			double speedRA = 0.2;
