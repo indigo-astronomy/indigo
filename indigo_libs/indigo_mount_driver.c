@@ -1224,7 +1224,7 @@ void indigo_update_coordinates(indigo_device *device, const char *message) {
 			&MOUNT_TARGET_INFO_TRANSIT_TIME_ITEM->number.value,
 			&MOUNT_TARGET_INFO_SET_TIME_ITEM->number.value
 		);
-		MOUNT_TARGET_INFO_TIME_TO_TRANSIT_ITEM->number.value = indigo_time_to_transit(ra, MOUNT_LST_TIME_ITEM->number.value, 0);
+		MOUNT_TARGET_INFO_TIME_TO_TRANSIT_ITEM->number.value = indigo_time_to_transit(ra, MOUNT_LST_TIME_ITEM->number.value);
 		/*
 		indigo_error(
 			"time = %s, ttr = %s, raise = %s, transit = %s, set = %s",
