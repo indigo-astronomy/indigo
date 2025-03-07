@@ -274,7 +274,7 @@ static void *new_text_vector_handler(parser_state state, parser_context *context
 		}
 	} else if (state == ATTRIBUTE_VALUE) {
 		if (!strcmp(name, "device")) {
-			strncpy(property->device, value,INDIGO_NAME_SIZE);
+			strncpy(property->device, value, INDIGO_NAME_SIZE);
 		} else if (!strcmp(name, "name")) {
 			indigo_copy_property_name(client ? client->version : INDIGO_VERSION_CURRENT, property, value);
 		} else if (!strcmp(name, "token")) {
@@ -453,7 +453,7 @@ static void set_property(parser_context *context, indigo_property *other, char *
 					if (!strcmp(property_item->name, other_item->name)) {
 						switch (property->type) {
 							case INDIGO_TEXT_VECTOR:
-								indigo_set_text_item_value(property_item, other_item->text.value);
+								indigo_set_text_item_value(property_item, indigo_get_text_item_value(other_item));
 								break;
 							case INDIGO_NUMBER_VECTOR:
 								property_item->number.value = other_item->number.value;
