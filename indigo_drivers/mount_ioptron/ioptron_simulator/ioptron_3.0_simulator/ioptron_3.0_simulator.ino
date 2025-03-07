@@ -40,7 +40,7 @@ void parseCommand() {
     int length = Serial.readBytesUntil('#', command, sizeof(command));
     command[length] = 0;
     if (strcmp(command, "MountInfo") == 0) {
-      Serial.write("0044");
+      Serial.write("0036");
     } else if (strcmp(command, "FW1") == 0) {
       Serial.write("210605xxxxxx#");
     } else if (strcmp(command, "FW2") == 0) {
