@@ -23,25 +23,17 @@
  \file indigo_mount_ioptron.c
  */
 
-#define DRIVER_VERSION 0x002A
+#define DRIVER_VERSION 0x002B
 #define DRIVER_NAME	"indigo_mount_ioptron"
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <time.h>
 #include <math.h>
 #include <assert.h>
-#include <errno.h>
 #include <pthread.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <sys/ioctl.h>
-#include <sys/time.h>
 
 #include <indigo/indigo_driver_xml.h>
-#include <indigo/indigo_io.h>
+#include <indigo/indigo_uni_io.h>
 #include <indigo/indigo_align.h>
 
 #include "indigo_mount_ioptron.h"
@@ -75,7 +67,7 @@
 #define DEC_MIN_DIF					0.1
 
 typedef struct {
-	int handle;
+	indigo_uni_handle *handle;
 	int device_count;
 	double currentRA;
 	double currentDec;
@@ -95,76 +87,32 @@ typedef struct {
 
 static bool ieq_command(indigo_device *device, char *command, char *response, int max) {
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
-	char c;
-	struct timeval tv;
-		// flush
-	while (true) {
-		fd_set readout;
-		tv.tv_sec = 0;
-		tv.tv_usec = 10000;
-		FD_ZERO(&readout);
-		FD_SET(PRIVATE_DATA->handle, &readout);
-		long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-		if (result == 0) {
-			break;
-		}
-		if (result < 0) {
-			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-			return false;
-		}
-		result = read(PRIVATE_DATA->handle, &c, 1);
-		if (result < 1) {
-			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-			return false;
-		}
-	}
-		// write command
-	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
-		// read response
-	if (response != NULL) {
-		int index = 0;
-		*response = 0;
-		while (index < max) {
-			tv.tv_usec = 500000;
-			tv.tv_sec = 0;
-			fd_set readout;
-			FD_ZERO(&readout);
-			FD_SET(PRIVATE_DATA->handle, &readout);
-			long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-			if (result <= 0) {
-				break;
+	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
+		if (indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command)) > 0) {
+			if (response != NULL) {
+				if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "#", "", INDIGO_DELAY(1) > 0)) {
+					pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+					return true;
+				}
 			}
-			result = read(PRIVATE_DATA->handle, &c, 1);
-			if (result < 1) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
-				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-				return false;
-			}
-			if (c == '#') {
-				break;
-			}
-			response[index++] = c;
 		}
-		response[index] = 0;
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command '%s' -> '%s'", command, response != NULL ? response : "");
 	return true;
 }
 
 static bool ieq_open(indigo_device *device) {
 	char response[128] = "";
 	char *name = DEVICE_PORT_ITEM->text.value;
-	if (!indigo_is_device_url(name, "ieq")) {
+	if (!indigo_uni_is_url(name, "ieq")) {
 		if (DEVICE_BAUDRATE_ITEM->text.value[0] != '\0') {
-			PRIVATE_DATA->handle = indigo_open_serial_with_config(name, DEVICE_BAUDRATE_ITEM->text.value);
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_config(name, DEVICE_BAUDRATE_ITEM->text.value, INDIGO_LOG_DEBUG);
 			if (!ieq_command(device, ":MountInfo#", response, sizeof(response)) || strlen(response) < 4) {
-				close(PRIVATE_DATA->handle);
-				PRIVATE_DATA->handle = -1;
+				indigo_uni_close(&PRIVATE_DATA->handle);
 			}
 		} else {
-			PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, 9600);
-			if (PRIVATE_DATA->handle > 0) {
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, 9600, INDIGO_LOG_DEBUG);
+			if (PRIVATE_DATA->handle != NULL) {
 				bool reopenAt115200 = true;
 				if (ieq_command(device, ":V#", response, sizeof(response)) && *response == 'V') {
 					reopenAt115200 = false;
@@ -172,20 +120,18 @@ static bool ieq_open(indigo_device *device) {
 					reopenAt115200 = false;
 				}
 				if (reopenAt115200) {
-					close(PRIVATE_DATA->handle);
-					PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, 115200);
+					indigo_uni_close(&PRIVATE_DATA->handle);
+					PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, 115200, INDIGO_LOG_DEBUG);
 					if (!ieq_command(device, ":MountInfo#", response, sizeof(response)) || strlen(response) < 4) {
-						close(PRIVATE_DATA->handle);
-						PRIVATE_DATA->handle = -1;
+						indigo_uni_close(&PRIVATE_DATA->handle);
 					}
 				}
 			}
 		}
 	} else {
-		indigo_network_protocol proto = INDIGO_PROTOCOL_TCP;
-		PRIVATE_DATA->handle = indigo_open_network_device(name, 4030, &proto);
+		PRIVATE_DATA->handle = indigo_uni_open_url(name, 4030, INDIGO_TCP_HANDLE, INDIGO_LOG_DEBUG);
 	}
-	if (PRIVATE_DATA->handle > 0) {
+	if (PRIVATE_DATA->handle != NULL) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
@@ -197,9 +143,8 @@ static bool ieq_open(indigo_device *device) {
 }
 
 static void ieq_close(indigo_device *device) {
-	if (PRIVATE_DATA->handle > 0) {
-		close(PRIVATE_DATA->handle);
-		PRIVATE_DATA->handle = 0;
+	if (PRIVATE_DATA->handle != NULL) {
+		indigo_uni_close(&PRIVATE_DATA->handle);
 		pthread_mutex_destroy(&PRIVATE_DATA->port_mutex);
 		pthread_mutex_destroy(&PRIVATE_DATA->mutex);
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
@@ -406,12 +351,10 @@ static bool ieq_set_utc(indigo_device *device, time_t *secs, int utc_offset) {
 	return false;
 }
 
-
-
 static void position_timer_callback(indigo_device *device) {
 	char response[128];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	if (PRIVATE_DATA->handle > 0) {
+	if (PRIVATE_DATA->handle != NULL) {
 		ieq_get_coords(device);
 		if (PRIVATE_DATA->hc8406) {
 			if (ieq_command(device, ":SE?#", response, 1) && *response == '1') {

@@ -80,6 +80,8 @@ focuser_focusdreampro
 focuser_dmfc
 focuser_ioptron
 
+mount_ioptron
+
 wheel_qhy
 
 # TODO
@@ -141,7 +143,6 @@ guider_cgusbst4
 guider_gpusb
 
 mount_asi
-mount_ioptron
 mount_lx200
 mount_nexstar
 mount_nexstaraux
