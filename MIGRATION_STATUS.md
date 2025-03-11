@@ -75,6 +75,7 @@ wheel_xagyl
 # IN PROGRESS
 
 focuser_astromechanics
+focuser_fc3
 wheel_qhy
 
 # TODO
@@ -111,7 +112,6 @@ dome_talon6ror
 focuser_dmfc
 focuser_dsd
 focuser_efa
-focuser_fc3
 focuser_fcusb
 focuser_focusdreampro
 focuser_ioptron
