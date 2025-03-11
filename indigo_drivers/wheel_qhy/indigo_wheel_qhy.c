@@ -23,7 +23,7 @@
  \file indigo_ccd_qhy.c
  */
 
-#define DRIVER_VERSION 0x0008
+#define DRIVER_VERSION 0x0009
 #define DRIVER_NAME "indigo_wheel_qhy"
 
 #include <stdlib.h>
@@ -60,7 +60,7 @@ typedef struct {
 static bool qhy_open(indigo_device *device) {
 	char *name = DEVICE_PORT_ITEM->text.value;
 	PRIVATE_DATA->handle = indigo_uni_open_serial(name, INDIGO_LOG_DEBUG);
-	if (PRIVATE_DATA->handle >= 0) {
+	if (PRIVATE_DATA->handle != NULL) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
 		return true;
 	} else {
@@ -72,7 +72,7 @@ static bool qhy_open(indigo_device *device) {
 static bool qhy_command(indigo_device *device, char *command, char *reply, int reply_length, int read_timeout) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
-		if (indigo_uni_printf(PRIVATE_DATA->handle, "%s", command) > 0) {
+		if (indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command)) > 0) {
 			for (int i = 0; i < read_timeout; i++) {
 				if (indigo_uni_read(PRIVATE_DATA->handle, reply, reply_length) > 0) {
 					pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -87,7 +87,7 @@ static bool qhy_command(indigo_device *device, char *command, char *reply, int r
 }
 
 static void qhy_close(indigo_device *device) {
-	if (PRIVATE_DATA->handle > 0) {
+	if (PRIVATE_DATA->handle != NULL) {
 		indigo_uni_close(&PRIVATE_DATA->handle);
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
 	}
@@ -151,7 +151,7 @@ static void wheel_connect_callback(indigo_device *device) {
 
 static void wheel_goto_handler(indigo_device *device) {
 	char command[2] = { '0' + WHEEL_SLOT_ITEM->number.target - 1, 0 };
-	char reply[3]= {0};
+	char reply[3]= { 0 };
 	if (qhy_command(device, command, reply, 1, 15)) {
 		if (X_MODEL_1_ITEM->sw.value) {
 			WHEEL_SLOT_PROPERTY->state = (reply[0] == '-' ? INDIGO_OK_STATE : INDIGO_ALERT_STATE);

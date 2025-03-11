@@ -24,22 +24,18 @@
  */
 
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME "indigo_focuser_astromechanics"
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
-#include <errno.h>
 #include <pthread.h>
 #include <stdarg.h>
 
-#include <sys/time.h>
-
 #include <indigo/indigo_driver_xml.h>
-#include <indigo/indigo_io.h>
+#include <indigo/indigo_uni_io.h>
 
 #include "indigo_focuser_astromechanics.h"
 
@@ -49,7 +45,7 @@
 #define X_FOCUSER_APERTURE_ITEM								(X_FOCUSER_APERTURE_PROPERTY->items+0)
 
 typedef struct {
-	int handle;
+	indigo_uni_handle *handle;
 	indigo_timer *timer;
 	indigo_property *aperture_property;
 	pthread_mutex_t mutex;
@@ -58,41 +54,16 @@ typedef struct {
 // -------------------------------------------------------------------------------- Low level communication routines
 
 static bool astromechanics_command(indigo_device *device, char *command, char *response) {
-	char c;
-	struct timeval tv;
-	if (command != NULL) {
-		if (!indigo_write(PRIVATE_DATA->handle, command, strlen(command)))
-			return false;
-	}
-	if (response != NULL) {
-		int index = 0;
-		while (index < 10) {
-			fd_set readout;
-			tv.tv_sec = 1;
-			tv.tv_usec = 0;
-			FD_ZERO(&readout);
-			FD_SET(PRIVATE_DATA->handle, &readout);
-			long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-			if (result <= 0) {
-				break;
+	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
+		if (indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command)) > 0) {
+			if (response != NULL) {
+				if (indigo_uni_read_section(PRIVATE_DATA->handle, response, 16, "#", " ", INDIGO_DELAY(1) > 0)) {
+					return true;
+				}
 			}
-			result = read(PRIVATE_DATA->handle, &c, 1);
-			if (result < 1) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
-				return false;
-			}
-			if (c <= ' ') {
-				continue;
-			}
-			if (c < 0 || c == '#') {
-				break;
-			}
-			response[index++] = c;
 		}
-		response[index] = 0;
 	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command '%s' -> '%s'", command, response != NULL ? response : "NULL");
-	return true;
+	return false;
 }
 
 // -------------------------------------------------------------------------------- INDIGO focuser device implementation
@@ -151,18 +122,17 @@ static void focuser_connection_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char response[16];
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 38400);
+		PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 38400, INDIGO_LOG_DEBUG);
 		if (PRIVATE_DATA->handle > 0) {
 			if (astromechanics_command(device, "P#", response)) {
 				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = atoi(response);
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "ASTROMECHANICS focuser detected");
 			} else {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASTROMECHANICS focuser not detected");
-				close(PRIVATE_DATA->handle);
-				PRIVATE_DATA->handle = 0;
+				indigo_uni_close(&PRIVATE_DATA->handle);
 			}
 		}
-		if (PRIVATE_DATA->handle > 0) {
+		if (PRIVATE_DATA->handle != NULL) {
 			indigo_define_property(device, X_FOCUSER_APERTURE_PROPERTY, NULL);
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", DEVICE_PORT_ITEM->text.value);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -172,11 +142,10 @@ static void focuser_connection_handler(indigo_device *device) {
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
-		if (PRIVATE_DATA->handle > 0) {
+		if (PRIVATE_DATA->handle != NULL) {
 			indigo_delete_property(device, X_FOCUSER_APERTURE_PROPERTY, NULL);
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
-			close(PRIVATE_DATA->handle);
-			PRIVATE_DATA->handle = 0;
+			indigo_uni_close(&PRIVATE_DATA->handle);
 		}
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}

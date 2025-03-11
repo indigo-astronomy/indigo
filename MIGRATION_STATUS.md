@@ -74,6 +74,7 @@ wheel_xagyl
 
 # IN PROGRESS
 
+focuser_astromechanics
 wheel_qhy
 
 # TODO
@@ -107,7 +108,6 @@ dome_nexdome3
 dome_skyroof
 dome_talon6ror
 
-focuser_astromechanics
 focuser_dmfc
 focuser_dsd
 focuser_efa
@@ -193,7 +193,7 @@ static bool xxx_command(indigo_device *device, char *command, char *response, in
     if (indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command)) > 0) { 
       if (response != NULL) {
         // read input terminated with \n, don't copy \r and \n with 1 second timeout.
-        if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "\n", "\r\n", INDIGO_DELAY(1) > 0) {
+        if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "\n", "\r\n", INDIGO_DELAY(1)) > 0) {
           return true;
         }
       }
