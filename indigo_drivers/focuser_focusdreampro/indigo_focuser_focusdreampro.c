@@ -23,22 +23,18 @@
  \file indigo_focuser_focusdreampro.c
  */
 
-#define DRIVER_VERSION 0x0005
+#define DRIVER_VERSION 0x0006
 #define DRIVER_NAME "indigo_focuser_focusdreampro"
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
-#include <errno.h>
 #include <pthread.h>
 #include <stdarg.h>
 
-#include <sys/time.h>
-
 #include <indigo/indigo_driver_xml.h>
-#include <indigo/indigo_io.h>
+#include <indigo/indigo_uni_io.h>
 
 #include "indigo_focuser_focusdreampro.h"
 
@@ -48,7 +44,7 @@
 #define X_FOCUSER_DUTY_CYCLE_ITEM							(X_FOCUSER_DUTY_CYCLE_PROPERTY->items+0)
 
 typedef struct {
-	int handle;
+	indigo_uni_handle *handle;
 	indigo_property *duty_cycle_property;
 	indigo_timer *timer;
 	pthread_mutex_t mutex;
@@ -59,14 +55,17 @@ static int SPEED[] = { 500, 250, 110, 40, 10, 5 };
 
 // -------------------------------------------------------------------------------- Low level communication routines
 
-static bool focusdreampro_command(indigo_device *device, char *command, char *response, int length) {
-	if (indigo_write(PRIVATE_DATA->handle, command, strlen(command)) && indigo_write(PRIVATE_DATA->handle, "\n", 1) && indigo_read_line(PRIVATE_DATA->handle, response, length) < 0) {
-		*response = 0;
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s failed", command);
-		return false;
+static bool focusdreampro_command(indigo_device *device, char *command, char *response, int max) {
+	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
+		if (indigo_uni_write(PRIVATE_DATA->handle, command, strlen(command)) > 0) {
+			if (response != NULL) {
+				if (indigo_uni_read_line(PRIVATE_DATA->handle, response, max) > 0) {
+					return true;
+				}
+			}
+		}
 	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s -> %s", command, response);
-	return true;
+	return false;
 }
 
 // -------------------------------------------------------------------------------- INDIGO focuser device implementation
@@ -206,8 +205,8 @@ static void focuser_connection_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char command[16], response[16];
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 9600);
-		if (PRIVATE_DATA->handle > 0) {
+		PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 9600, INDIGO_LOG_DEBUG);
+		if (PRIVATE_DATA->handle != NULL) {
 			if (focusdreampro_command(device, "#", response, sizeof(response))) {
 				if (!strcmp(response, "FD")) {
 					INDIGO_DRIVER_LOG(DRIVER_NAME, "FocusDreamPro detected");
@@ -221,11 +220,10 @@ static void focuser_connection_handler(indigo_device *device) {
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 			} else {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "FocusDreamPro not detected");
-				close(PRIVATE_DATA->handle);
-				PRIVATE_DATA->handle = 0;
+				indigo_uni_close(&PRIVATE_DATA->handle);
 			}
 		}
-		if (PRIVATE_DATA->handle > 0) {
+		if (PRIVATE_DATA->handle != NULL) {
 			if (focusdreampro_command(device, "T", response, sizeof(response)) && *response == 'T') {
 				if (!strcmp(response, "T:false")) {
 					FOCUSER_TEMPERATURE_PROPERTY->hidden = true;
@@ -270,13 +268,12 @@ static void focuser_connection_handler(indigo_device *device) {
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
-		if (PRIVATE_DATA->handle > 0) {
+		if (PRIVATE_DATA->handle != NULL) {
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer);
 			focusdreampro_command(device, "H", response, sizeof(response));
 			indigo_delete_property(device, X_FOCUSER_DUTY_CYCLE_PROPERTY, NULL);
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
-			close(PRIVATE_DATA->handle);
-			PRIVATE_DATA->handle = 0;
+			indigo_uni_close(&PRIVATE_DATA->handle);
 		}
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}

@@ -76,6 +76,7 @@ wheel_xagyl
 
 focuser_astromechanics
 focuser_fc3
+focuser_focusdreampro
 wheel_qhy
 
 # TODO
@@ -113,7 +114,6 @@ focuser_dmfc
 focuser_dsd
 focuser_efa
 focuser_fcusb
-focuser_focusdreampro
 focuser_ioptron
 focuser_lacerta
 focuser_lakeside
