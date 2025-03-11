@@ -112,7 +112,7 @@ failure:
 
 bool indigo_ser_add_frame(indigo_ser *ser, void *buffer, size_t len) {
 	ser->count++;
-	return indigo_write(ser->handle, buffer + 12, len - 12);
+	return indigo_write(ser->handle, buffer, len);
 }
 
 bool indigo_ser_close(indigo_ser *ser) {
