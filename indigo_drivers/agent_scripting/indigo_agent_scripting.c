@@ -142,7 +142,7 @@ static void push_items(indigo_property *property, bool use_target) {
 		indigo_item *item = property->items + i;
 		switch (property->type) {
 			case INDIGO_TEXT_VECTOR:
-				duk_push_string(PRIVATE_DATA->ctx, item->text.value);
+				duk_push_string(PRIVATE_DATA->ctx, indigo_get_text_item_value(item));
 				break;
 			case INDIGO_NUMBER_VECTOR:
 				duk_push_number(PRIVATE_DATA->ctx, use_target ? item->number.target : item->number.value);
@@ -465,7 +465,7 @@ static duk_ret_t define_text_property(duk_context *ctx) {
 				indigo_item *item = tmp->items + tmp->count;
 				const char *key = duk_require_string(ctx, -2);
 				indigo_copy_name(item->name, key);
-				indigo_copy_value(item->text.value, duk_to_string(ctx, -1));
+				indigo_set_text_item_value(item, duk_to_string(ctx, -1));
 				duk_get_prop_string(ctx, 5, key);
 				duk_get_prop_string(ctx, -1, "label");
 				indigo_copy_value(item->label, duk_to_string(ctx, -1));

@@ -94,11 +94,12 @@
 #define GUIDER_IMAGE_LONG_ITEM			(GUIDER_SETTINGS_PROPERTY->items + 15)
 #define GUIDER_IMAGE_RA_ITEM				(GUIDER_SETTINGS_PROPERTY->items + 16)
 #define GUIDER_IMAGE_DEC_ITEM				(GUIDER_SETTINGS_PROPERTY->items + 17)
-#define GUIDER_IMAGE_EPOCH_ITEM			(GUIDER_SETTINGS_PROPERTY->items + 18)
-#define GUIDER_IMAGE_MAGNITUDE_LIMIT_ITEM			(GUIDER_SETTINGS_PROPERTY->items + 19)
-#define GUIDER_IMAGE_ALT_ERROR_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 20)
-#define GUIDER_IMAGE_AZ_ERROR_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 21)
-#define GUIDER_IMAGE_IMAGE_AGE_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 22)
+#define GUIDER_IMAGE_SIDE_OF_PIER_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 18)
+#define GUIDER_IMAGE_EPOCH_ITEM			(GUIDER_SETTINGS_PROPERTY->items + 19)
+#define GUIDER_IMAGE_MAGNITUDE_LIMIT_ITEM			(GUIDER_SETTINGS_PROPERTY->items + 20)
+#define GUIDER_IMAGE_ALT_ERROR_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 21)
+#define GUIDER_IMAGE_AZ_ERROR_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 22)
+#define GUIDER_IMAGE_IMAGE_AGE_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 23)
 
 #define BAHTINOV_SETTINGS_PROPERTY	PRIVATE_DATA->bahtinov_settings_property
 #define BAHTINOV_ROTATION_ITEM			(BAHTINOV_SETTINGS_PROPERTY->items + 0)
@@ -133,6 +134,7 @@ typedef struct {
 	indigo_property *bayerpat_property;
 	indigo_property *focuser_settings_property;
 	double ra, dec;
+	int side_of_pier;
 	double lat, lon;
 	double ew_error, ns_error;
 	double lst;
@@ -159,7 +161,7 @@ static int mags[] = { 760000, 305000, 122000, 49000, 20000, 7800, 3100, 1200, 50
 
 static void search_stars(indigo_device *device) {
 	double lst = indigo_lst(NULL, GUIDER_IMAGE_LONG_ITEM->number.target);
-	if (lst - PRIVATE_DATA->lst >= GUIDER_IMAGE_IMAGE_AGE_ITEM->number.value || PRIVATE_DATA->ra != GUIDER_IMAGE_RA_ITEM->number.value || PRIVATE_DATA->dec != GUIDER_IMAGE_DEC_ITEM->number.value || PRIVATE_DATA->lat != GUIDER_IMAGE_LAT_ITEM->number.value || PRIVATE_DATA->lon != GUIDER_IMAGE_LONG_ITEM->number.value || PRIVATE_DATA->ew_error != GUIDER_IMAGE_ALT_ERROR_ITEM->number.value || PRIVATE_DATA->ns_error != GUIDER_IMAGE_AZ_ERROR_ITEM->number.value) {
+	if (lst - PRIVATE_DATA->lst >= GUIDER_IMAGE_IMAGE_AGE_ITEM->number.value || PRIVATE_DATA->ra != GUIDER_IMAGE_RA_ITEM->number.value || PRIVATE_DATA->dec != GUIDER_IMAGE_DEC_ITEM->number.value || PRIVATE_DATA->side_of_pier != GUIDER_IMAGE_SIDE_OF_PIER_ITEM->number.value || PRIVATE_DATA->lat != GUIDER_IMAGE_LAT_ITEM->number.value || PRIVATE_DATA->lon != GUIDER_IMAGE_LONG_ITEM->number.value || PRIVATE_DATA->ew_error != GUIDER_IMAGE_ALT_ERROR_ITEM->number.value || PRIVATE_DATA->ns_error != GUIDER_IMAGE_AZ_ERROR_ITEM->number.value) {
 		double h2r = M_PI / 12;
 		double d2r = M_PI / 180;
 		double mount_ra = GUIDER_IMAGE_RA_ITEM->number.value; // where mount thinks it is pointing
@@ -173,6 +175,9 @@ static void search_stars(indigo_device *device) {
 		double cos_mount_dec = cos(mount_dec);
 		double sin_mount_dec = sin(mount_dec);
 		double angle = M_PI * GUIDER_IMAGE_ANGLE_ITEM->number.target / 180.0; // image rotation
+		if (GUIDER_IMAGE_SIDE_OF_PIER_ITEM->number.value == 1) {
+			angle += M_PI;
+		}
 		double ppr = GUIDER_IMAGE_HEIGHT_ITEM->number.target / GUIDER_FOV / d2r; // pixel/radian ratio
 		double radius = GUIDER_FOV * d2r * 2;
 		double ppr_cos = ppr * cos(angle);
@@ -213,6 +218,7 @@ static void search_stars(indigo_device *device) {
 		}
 		PRIVATE_DATA->ra = GUIDER_IMAGE_RA_ITEM->number.target;
 		PRIVATE_DATA->dec = GUIDER_IMAGE_DEC_ITEM->number.target;
+		PRIVATE_DATA->side_of_pier = GUIDER_IMAGE_SIDE_OF_PIER_ITEM->number.target;
 		PRIVATE_DATA->lat = GUIDER_IMAGE_LAT_ITEM->number.target;
 		PRIVATE_DATA->lon = GUIDER_IMAGE_LONG_ITEM->number.target;
 		PRIVATE_DATA->ew_error = GUIDER_IMAGE_ALT_ERROR_ITEM->number.target;
@@ -836,7 +842,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 				indigo_init_switch_item(GUIDER_MODE_SUN_ITEM, "SUN", "Sun", false);
 				indigo_init_switch_item(GUIDER_MODE_ECLIPSE_ITEM, "ECLIPSE", "Eclipse", false);
 				PRIVATE_DATA->eclipse = -ECLIPSE;
-				GUIDER_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, "SIMULATION_SETUP", MAIN_GROUP, "Simulation Setup", INDIGO_OK_STATE, INDIGO_RW_PERM, 23);
+				GUIDER_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, "SIMULATION_SETUP", MAIN_GROUP, "Simulation Setup", INDIGO_OK_STATE, INDIGO_RW_PERM, 24);
 				indigo_init_number_item(GUIDER_IMAGE_WIDTH_ITEM, "IMAGE_WIDTH", "Image width (px)", 400, 16000, 0, 1600);
 				indigo_init_number_item(GUIDER_IMAGE_HEIGHT_ITEM, "IMAGE_HEIGHT", "Image height (px)", 300, 12000, 0, 1200);
 				indigo_init_number_item(GUIDER_IMAGE_NOISE_FIX_ITEM, "IMAGE_NOISE_FIX", "Image noise offset", 0, 5000, 0, 500);
@@ -856,6 +862,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 				// deault is close to Vega
 				indigo_init_sexagesimal_number_item(GUIDER_IMAGE_RA_ITEM, "RA", "RA (h)", 0, +24, 0, 18.84);
 				indigo_init_sexagesimal_number_item(GUIDER_IMAGE_DEC_ITEM, "DEC", "Dec (°)", -90, +90, 0, 38.75);
+				indigo_init_number_item(GUIDER_IMAGE_SIDE_OF_PIER_ITEM, "SIDE_OF_PIER", "Side of pier (0/1=E/W)", 0, 1, 0, 0);
 				indigo_init_number_item(GUIDER_IMAGE_EPOCH_ITEM, "J2000", "J2000 (2000=J2k, 0=JNow)", 0, 2050, 0, 2000);
 				indigo_init_number_item(GUIDER_IMAGE_MAGNITUDE_LIMIT_ITEM, "MAGNITUDE_LIMIT", "Magnitude limit (m)", -2, 12, 1, GUIDER_MAG_LIMIT);
 				indigo_init_sexagesimal_number_item(GUIDER_IMAGE_ALT_ERROR_ITEM, "ALT_POLAR_ERROR", "Altitude polar error (°)", -30, +30, 0, 0);
@@ -1238,6 +1245,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			}
 			if (!strcmp(CCD_SET_FITS_HEADER_NAME_ITEM->text.value, "OBJCTDEC") && sscanf(CCD_SET_FITS_HEADER_VALUE_ITEM->text.value, "'%d %d %d'", &d, &m, &s) == 3) {
 				GUIDER_IMAGE_DEC_ITEM->number.value = GUIDER_IMAGE_DEC_ITEM->number.target = (abs(d) + m / 60.0 + s / 3600.0) * (d >= 0 ? 1 : -1);
+				update = true;
+			}
+			if (!strcmp(CCD_SET_FITS_HEADER_NAME_ITEM->text.value, "PIERSIDE") && sscanf(CCD_SET_FITS_HEADER_VALUE_ITEM->text.value, "%d", &d) == 1) {
+				GUIDER_IMAGE_SIDE_OF_PIER_ITEM->number.value = GUIDER_IMAGE_SIDE_OF_PIER_ITEM->number.target = d;
 				update = true;
 			}
 			if (!strcmp(CCD_SET_FITS_HEADER_NAME_ITEM->text.value, "SITELAT") && sscanf(CCD_SET_FITS_HEADER_VALUE_ITEM->text.value, "'%d %d %d'", &d, &m, &s) == 3) {

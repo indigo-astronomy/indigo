@@ -93,7 +93,14 @@ double indigo_mean_gst(const time_t *utc) {
 }
 
 double indigo_time_to_transit(const double ra, const double lmst) {
-	return fmod((ra - lmst)+ 24.0, 24.0) / 1.0027379093508;
+	/*
+	if (west) {
+		return fmod((ra - lmst) + 24.0, 24.0) / 1.0027379093508;
+	} else {
+		return (ra - lmst) / 1.0027379093508;
+	}
+	*/
+	return (ra - lmst) / 1.0027379093508;
 }
 
 void indigo_raise_set(

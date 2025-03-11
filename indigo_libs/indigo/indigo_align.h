@@ -126,7 +126,9 @@ INDIGO_EXTERN void indigo_j2k_to_eq(const double eq, double *ra, double *dec);
 /** calculate time to the next transit
 	ra - right ascension of the object in decimal hours
 	lmst - local mean sidereal time in decimal degrees
-*/
+	returns time to closest transit in decimal hours.
+	if transit happened it returns megaive time.
+ */
 INDIGO_EXTERN double indigo_time_to_transit(const double ra, const double lmst);
 
 /** Calculate raise transit and set times for the nearest transit

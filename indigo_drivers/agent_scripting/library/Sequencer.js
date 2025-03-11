@@ -369,7 +369,7 @@ var indigo_flipper = {
 		else if (this.waiting_for_guiding)
 			indigo_log("waiting_for_guiding " + property.name + " -> " + property.state);
 		if (this.waiting_for_transit && property.device == this.devices[3] && property.name == "AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY") {
-			if (property.items.TIME_TO_TRANSIT > 12) {
+			if (property.items.TIME_TO_TRANSIT <= 0) {
 				indigo_send_message("Meridian flip started");
 				this.waiting_for_transit = false;
 				this.waiting_for_slew = true;

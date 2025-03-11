@@ -24,7 +24,7 @@
  \file indigo_mount_simulator.c
  */
 
-#define DRIVER_VERSION 0x0009
+#define DRIVER_VERSION 0x000A
 #define DRIVER_NAME "indigo_mount_simulator"
 
 #include <stdlib.h>
@@ -76,13 +76,17 @@ static void position_timer_callback(indigo_device *device) {
 				indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 				MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parked");
-			}
-			if (PRIVATE_DATA->going_home) {
+			} else if (PRIVATE_DATA->going_home) {
 				PRIVATE_DATA->going_home = false;
 				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
 				indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 				MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
+			} else {
+				if (MOUNT_TRACKING_OFF_ITEM->sw.value) {
+					indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
+					indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+				}
 			}
 		} else {
 			double speedRA = 0.2;
@@ -108,9 +112,11 @@ static void position_timer_callback(indigo_device *device) {
 		}
 		indigo_reschedule_timer(device, 0.2, &PRIVATE_DATA->position_timer);
 	} else {
-		if (PRIVATE_DATA->parked || (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_OK_STATE && MOUNT_TRACKING_OFF_ITEM->sw.value)) {
+		if (PRIVATE_DATA->parked) {
 			MOUNT_RAW_COORDINATES_RA_ITEM->number.value = fmod(indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) - PRIVATE_DATA->ha + 24, 24);
 			MOUNT_RAW_COORDINATES_DEC_ITEM->number.value = MOUNT_PARK_POSITION_DEC_ITEM->number.value;
+		} else if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_OK_STATE && MOUNT_TRACKING_OFF_ITEM->sw.value) {
+			MOUNT_RAW_COORDINATES_RA_ITEM->number.value = fmod(indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) - PRIVATE_DATA->ha + 24, 24);
 		}
 		indigo_reschedule_timer(device, 1.0, &PRIVATE_DATA->position_timer);
 	}

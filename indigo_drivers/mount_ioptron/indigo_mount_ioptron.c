@@ -819,6 +819,8 @@ static void mount_connect_callback(indigo_device *device) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "GEM28-EC");
 				} else if (!strcmp(PRIVATE_DATA->product, "0030")) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "iEQ30 Pro");
+				} else if (!strcmp(PRIVATE_DATA->product, "0036")) {
+					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "HAE");
 				} else if (!strcmp(PRIVATE_DATA->product, "0040")) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "CEM40");
 				} else if (!strcmp(PRIVATE_DATA->product, "0041")) {
@@ -918,6 +920,10 @@ static void mount_connect_callback(indigo_device *device) {
 						PRIVATE_DATA->no_park = false;
 					}
 					if (strncmp("230420", response, 6) <= 0 && (product == 15)) {
+						PRIVATE_DATA->protocol = 0x0300;
+						PRIVATE_DATA->no_park = false;
+					}
+					if (product == 36) {
 						PRIVATE_DATA->protocol = 0x0300;
 						PRIVATE_DATA->no_park = false;
 					}

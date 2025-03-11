@@ -557,6 +557,7 @@ static void handle_mount_change(indigo_device *device) {
 		indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY_NAME, 3, names, values);
 		indigo_set_fits_header(FILTER_DEVICE_CONTEXT->client, related_agent_name, "OBJCTRA", "'%d %02d %02d'", (int)(DEVICE_PRIVATE_DATA->mount_ra), ((int)(fabs(DEVICE_PRIVATE_DATA->mount_ra) * 60)) % 60, ((int)(fabs(DEVICE_PRIVATE_DATA->mount_ra) * 3600)) % 60);
 		indigo_set_fits_header(FILTER_DEVICE_CONTEXT->client, related_agent_name, "OBJCTDEC", "'%d %02d %02d'", (int)(DEVICE_PRIVATE_DATA->mount_dec), ((int)(fabs(DEVICE_PRIVATE_DATA->mount_dec) * 60)) % 60, ((int)(fabs(DEVICE_PRIVATE_DATA->mount_dec) * 3600)) % 60);
+		indigo_set_fits_header(FILTER_DEVICE_CONTEXT->client, related_agent_name, "PIERSIDE", "%d", (int)(DEVICE_PRIVATE_DATA->mount_side_of_pier == 1 ? 1 : 0));
 	}
 }
 
@@ -869,7 +870,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_sexagesimal_number_item(AGENT_MOUNT_DISPLAY_COORDINATES_RISE_ITEM, AGENT_MOUNT_DISPLAY_COORDINATES_RISE_ITEM_NAME, "Raise time (0 to 24 hrs)", 0, 24, 0, 0);
 		indigo_init_sexagesimal_number_item(AGENT_MOUNT_DISPLAY_COORDINATES_TRANSIT_ITEM, AGENT_MOUNT_DISPLAY_COORDINATES_TRANSIT_ITEM_NAME, "Transit time (0 to 24 hrs)", 0, 24, 0, 0);
 		indigo_init_sexagesimal_number_item(AGENT_MOUNT_DISPLAY_COORDINATES_SET_ITEM, AGENT_MOUNT_DISPLAY_COORDINATES_SET_ITEM_NAME, "Set time (0 to 24 hrs)", 0, 24, 0, 0);
-		indigo_init_sexagesimal_number_item(AGENT_MOUNT_DISPLAY_COORDINATES_TIME_TO_TRANSIT_ITEM, AGENT_MOUNT_DISPLAY_COORDINATES_TIME_TO_TRANSIT_ITEM_NAME, "Time to transit (0 to 24 hrs)", 0, 24, 0, 0);
+		indigo_init_sexagesimal_number_item(AGENT_MOUNT_DISPLAY_COORDINATES_TIME_TO_TRANSIT_ITEM, AGENT_MOUNT_DISPLAY_COORDINATES_TIME_TO_TRANSIT_ITEM_NAME, "Time to transit (12 to -12 hrs)", 0, 24, 0, 0);
 		indigo_init_sexagesimal_number_item(AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM, AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM_NAME, "Parallactic angle (-180 to 180°)", -180, 180, 0, 0);
 		indigo_init_number_item(AGENT_MOUNT_DISPLAY_COORDINATES_DEROTATION_RATE_ITEM, AGENT_MOUNT_DISPLAY_COORDINATES_DEROTATION_RATE_ITEM_NAME, "Derotation rate (\"/s)", -1000, 1000, 0, 0);
 		// -------------------------------------------------------------------------------- AGENT_FIELD_DEROTATION
