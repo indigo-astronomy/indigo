@@ -23,22 +23,18 @@
  \file indigo_focuser_ioptron.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_focuser_ioptron"
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
-#include <errno.h>
 #include <pthread.h>
 #include <stdarg.h>
 
-#include <sys/time.h>
-
 #include <indigo/indigo_driver_xml.h>
-#include <indigo/indigo_io.h>
+#include <indigo/indigo_uni_io.h>
 
 #include "indigo_focuser_ioptron.h"
 
@@ -49,7 +45,7 @@
 
 
 typedef struct {
-	int handle;
+	indigo_uni_handle *handle;
 	int reversed;
 	indigo_property *zero_sync_property;
 	indigo_timer *timer;
@@ -60,75 +56,31 @@ typedef struct {
 
 static bool ioptron_command(indigo_device *device, char *command, char *response, int max) {
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
-	char c;
-	struct timeval tv;
-		// flush
-	while (true) {
-		fd_set readout;
-		tv.tv_sec = 0;
-		tv.tv_usec = 10000;
-		FD_ZERO(&readout);
-		FD_SET(PRIVATE_DATA->handle, &readout);
-		long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-		if (result == 0) {
-			break;
-		}
-		if (result < 0) {
-			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-			return false;
-		}
-		result = read(PRIVATE_DATA->handle, &c, 1);
-		if (result < 1) {
-			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-			return false;
-		}
-	}
-		// write command
-	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
-		// read response
-	if (response != NULL) {
-		int index = 0;
-		*response = 0;
-		while (index < max) {
-			tv.tv_usec = 500000;
-			tv.tv_sec = 0;
-			fd_set readout;
-			FD_ZERO(&readout);
-			FD_SET(PRIVATE_DATA->handle, &readout);
-			long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-			if (result <= 0) {
-				break;
+	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
+		if (indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command)) > 0) {
+			if (response != NULL) {
+				if (indigo_uni_read_section(PRIVATE_DATA->handle, response, 16, "#", "", INDIGO_DELAY(1) > 0)) {
+					pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+					return true;
+				}
 			}
-			result = read(PRIVATE_DATA->handle, &c, 1);
-			if (result < 1) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
-				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-				return false;
-			}
-			if (c == '#') {
-				break;
-			}
-			response[index++] = c;
 		}
-		response[index] = 0;
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command '%s' -> '%s'", command, response != NULL ? response : "");
 	return true;
 }
 
 static bool ioptron_open(indigo_device *device) {
 	char response[128] = "";
 	char *name = DEVICE_PORT_ITEM->text.value;
-	PRIVATE_DATA->handle = indigo_open_serial(name);
+	PRIVATE_DATA->handle = indigo_uni_open_serial(name, INDIGO_LOG_DEBUG);
 	if (PRIVATE_DATA->handle >= 0) {
 		int pos, model;
 		indigo_sleep(2);
 		if (ioptron_command(device, ":MountInfo#", response, sizeof(response)) && sscanf(response, "%6d%2d", &pos, &model) == 2 && model == 2) {
 			FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = pos;
 		} else {
-			close(PRIVATE_DATA->handle);
-			PRIVATE_DATA->handle = -1;
+			indigo_uni_close(&PRIVATE_DATA->handle);
 		}
 	}
 	if (PRIVATE_DATA->handle >= 0) {
@@ -142,8 +94,7 @@ static bool ioptron_open(indigo_device *device) {
 
 static void ioptron_close(indigo_device *device) {
 	if (PRIVATE_DATA->handle >= 0) {
-		close(PRIVATE_DATA->handle);
-		PRIVATE_DATA->handle = -1;
+		indigo_uni_close(&PRIVATE_DATA->handle);
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
 	}
 }
@@ -266,7 +217,7 @@ static void focuser_connection_handler(indigo_device *device) {
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
-		if (PRIVATE_DATA->handle > 0) {
+		if (PRIVATE_DATA->handle != NULL) {
 			indigo_delete_property(device, X_FOCUSER_ZERO_SYNC_PROPERTY, NULL);
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer);
 			ioptron_close(device);

@@ -78,6 +78,7 @@ focuser_astromechanics
 focuser_fc3
 focuser_focusdreampro
 focuser_dmfc
+focuser_ioptron
 
 wheel_qhy
 
@@ -115,7 +116,6 @@ dome_talon6ror
 focuser_dsd
 focuser_efa
 focuser_fcusb
-focuser_ioptron
 focuser_lacerta
 focuser_lakeside
 focuser_lunatico
