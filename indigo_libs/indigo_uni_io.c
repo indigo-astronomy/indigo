@@ -1541,7 +1541,7 @@ int indigo_uni_scandir(const char* folder, char ***list, bool (*filter)(const ch
 		result = 0;
 		*list = (char **)indigo_safe_malloc(sizeof(const char *) * count);
 		for (int i = 0; i < count; i++) {
-			if (filter(entries[i]->d_name)) {
+			if (filter == NULL || filter(entries[i]->d_name)) {
 				(*list)[result++] = strdup(entries[i]->d_name);
 			}
 			indigo_safe_free(entries[i]);

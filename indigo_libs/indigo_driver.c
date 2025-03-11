@@ -186,6 +186,11 @@ static bool indigo_select_matching_usbserial_device(indigo_device *device, indig
 	return false;
 }
 
+static bool cu_filter(const char *name) {
+	return strncmp(name, "cu.", 3) == 0 && strstr(name, "debug") == NULL && strstr(name, "Bluetooth-Incoming-Port") == NULL;
+}
+
+
 void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *property) {
 	assert(device != NULL);
 	char label[INDIGO_VALUE_SIZE];
@@ -241,6 +246,29 @@ void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *prope
 				}
 			}
 			indigo_safe_free(list[i]);
+		}
+		indigo_safe_free(list);
+	}
+#elif defined(INDIGO_MACOS)
+	char path[PATH_MAX];
+	char **list;
+	int count = indigo_uni_scandir("/dev", &list, cu_filter);
+	if (count >= 0) {
+		for (int i = 0; i < count && DEVICE_PORTS_PROPERTY->count < MAX_DEVICE_PORTS; i++) {
+			snprintf(path, INDIGO_VALUE_SIZE, "/dev/%s", list[i]);
+			bool found = false;
+			for (int i = 0; i < serial_count; i++) {
+				if (strcmp(serial_info[i].path, path) == 0) {
+					found = true;
+					break;
+				}
+			}
+			if (!found) {
+				int index = DEVICE_PORTS_PROPERTY->count++;
+				snprintf(label, INDIGO_VALUE_SIZE, "%s (Unknown)", path);
+				indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + index, path, label, false);
+				INDIGO_DEBUG(indigo_debug("%s(): Serial port #%d: %s", __FUNCTION__, index, path));
+			}
 		}
 		indigo_safe_free(list);
 	}
