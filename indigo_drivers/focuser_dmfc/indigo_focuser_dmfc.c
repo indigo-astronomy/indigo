@@ -23,23 +23,18 @@
  \file indigo_focuser_dmfc.c
  */
 
-#define DRIVER_VERSION 0x000D
+#define DRIVER_VERSION 0x000E
 #define DRIVER_NAME "indigo_focuser_dmfc"
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
-#include <errno.h>
 #include <pthread.h>
 #include <stdarg.h>
 
-#include <sys/time.h>
-#include <sys/termios.h>
-
 #include <indigo/indigo_driver_xml.h>
-#include <indigo/indigo_io.h>
+#include <indigo/indigo_uni_io.h>
 
 #include "indigo_focuser_dmfc.h"
 
@@ -58,7 +53,7 @@
 #define X_FOCUSER_LED_DISABLED_ITEM				(X_FOCUSER_LED_PROPERTY->items+1)
 
 typedef struct {
-	int handle;
+	indigo_uni_handle *handle;
 	indigo_timer *timer;
 	indigo_property *motor_type_property;
 	indigo_property *encoder_property;
@@ -69,17 +64,16 @@ typedef struct {
 // -------------------------------------------------------------------------------- Low level communication routines
 
 static bool dmfc_command(indigo_device *device, char *command, char *response, int max) {
-	tcflush(PRIVATE_DATA->handle, TCIOFLUSH);
-	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
-	indigo_write(PRIVATE_DATA->handle, "\n", 1);
-	if (response != NULL) {
-		if (indigo_read_line(PRIVATE_DATA->handle, response, max) == 0) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s -> no response", command);
-			return false;
+	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
+		if (indigo_uni_printf(PRIVATE_DATA->handle, "%s\n", command) > 0) {
+			if (response != NULL) {
+				if (indigo_uni_read_line(PRIVATE_DATA->handle, response, max) > 0) {
+					return true;
+				}
+			}
 		}
 	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s -> %s", command, response != NULL ? response : "NULL");
-	return true;
+	return false;
 }
 
 // -------------------------------------------------------------------------------- INDIGO focuser device implementation
@@ -201,17 +195,16 @@ static void focuser_connection_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char response[64];
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200);
-		if (PRIVATE_DATA->handle > 0) {
+		PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200, INDIGO_LOG_DEBUG);
+		if (PRIVATE_DATA->handle != NULL) {
 			if (dmfc_command(device, "#", response, sizeof(response)) && !strncmp(response, "OK_", 3)) {
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "%s OK", response + 3);
 			} else {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Focuser not detected");
-				close(PRIVATE_DATA->handle);
-				PRIVATE_DATA->handle = 0;
+				indigo_uni_close(&PRIVATE_DATA->handle);
 			}
 		}
-		if (PRIVATE_DATA->handle > 0) {
+		if (PRIVATE_DATA->handle != NULL) {
 			if (dmfc_command(device, "A", response, sizeof(response)) && !strncmp(response, "OK_", 3)) {
 				char *pnt, *token = strtok_r(response, ":", &pnt);
 				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, token + 3);
@@ -252,16 +245,14 @@ static void focuser_connection_handler(indigo_device *device) {
 					FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = atoi(token);
 				} else {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to parse 'A' response");
-					close(PRIVATE_DATA->handle);
-					PRIVATE_DATA->handle = 0;
+					indigo_uni_close(&PRIVATE_DATA->handle);
 				}
 			} else {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read 'A' response");
-				close(PRIVATE_DATA->handle);
-				PRIVATE_DATA->handle = 0;
+				indigo_uni_close(&PRIVATE_DATA->handle);
 			}
 		}
-		if (PRIVATE_DATA->handle > 0) {
+		if (PRIVATE_DATA->handle != NULL) {
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 			indigo_define_property(device, X_FOCUSER_MOTOR_TYPE_PROPERTY, NULL);
 			indigo_define_property(device, X_FOCUSER_ENCODER_PROPERTY, NULL);
@@ -275,7 +266,7 @@ static void focuser_connection_handler(indigo_device *device) {
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
-		if (PRIVATE_DATA->handle > 0) {
+		if (PRIVATE_DATA->handle != NULL) {
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer);
 			dmfc_command(device, "H", response, sizeof(response));
 			indigo_delete_property(device, X_FOCUSER_MOTOR_TYPE_PROPERTY, NULL);
@@ -284,8 +275,7 @@ static void focuser_connection_handler(indigo_device *device) {
 			strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Undefined");
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
-			close(PRIVATE_DATA->handle);
-			PRIVATE_DATA->handle = 0;
+			indigo_uni_close(&PRIVATE_DATA->handle);
 		}
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}

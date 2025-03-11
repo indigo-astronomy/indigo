@@ -77,6 +77,8 @@ wheel_xagyl
 focuser_astromechanics
 focuser_fc3
 focuser_focusdreampro
+focuser_dmfc
+
 wheel_qhy
 
 # TODO
@@ -110,7 +112,6 @@ dome_nexdome3
 dome_skyroof
 dome_talon6ror
 
-focuser_dmfc
 focuser_dsd
 focuser_efa
 focuser_fcusb
