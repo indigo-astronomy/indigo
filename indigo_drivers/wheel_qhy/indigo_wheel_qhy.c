@@ -28,15 +28,11 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
 #include <ctype.h>
-#include <errno.h>
-#include <sys/time.h>
-#include <sys/termios.h>
 
-#include <indigo/indigo_io.h>
+#include <indigo/indigo_uni_io.h>
 
 #include "indigo_wheel_qhy.h"
 
@@ -55,7 +51,7 @@
 #define PRIVATE_DATA        ((qhy_private_data *)device->private_data)
 
 typedef struct {
-	int handle;
+	indigo_uni_handle *handle;
 	int current_slot;
 	indigo_property *model;
 	pthread_mutex_t mutex;
@@ -63,7 +59,7 @@ typedef struct {
 
 static bool qhy_open(indigo_device *device) {
 	char *name = DEVICE_PORT_ITEM->text.value;
-	PRIVATE_DATA->handle = indigo_open_serial(name);
+	PRIVATE_DATA->handle = indigo_uni_open_serial(name, INDIGO_LOG_DEBUG);
 	if (PRIVATE_DATA->handle >= 0) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
 		return true;
@@ -75,31 +71,24 @@ static bool qhy_open(indigo_device *device) {
 
 static bool qhy_command(indigo_device *device, char *command, char *reply, int reply_length, int read_timeout) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	tcflush(PRIVATE_DATA->handle, TCIOFLUSH);
-	size_t result = indigo_write(PRIVATE_DATA->handle, command, strlen(command));
-	if (result > 0 && reply) {
-		for (int i = 0; i < read_timeout; i++) {
-			result = indigo_read(PRIVATE_DATA->handle, reply, reply_length);
-			if (result > 0) {
-				break;
-			} else {
-				indigo_sleep(1);
+	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
+		if (indigo_uni_printf(PRIVATE_DATA->handle, "%s", command) > 0) {
+			for (int i = 0; i < read_timeout; i++) {
+				if (indigo_uni_read(PRIVATE_DATA->handle, reply, reply_length) > 0) {
+					pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+					return true;
+				}
+				indigo_usleep(INDIGO_DELAY(1));
 			}
 		}
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-	if (result > 0) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "command: %s -> '%s' (%s)", command, reply, "OK");
-	} else {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "command: %s -> '%s' (%s)", command, "", strerror(errno));
-	}
-	return result > 0;
+	return false;
 }
 
 static void qhy_close(indigo_device *device) {
 	if (PRIVATE_DATA->handle > 0) {
-		close(PRIVATE_DATA->handle);
-		PRIVATE_DATA->handle = 0;
+		indigo_uni_close(&PRIVATE_DATA->handle);
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
 	}
 }

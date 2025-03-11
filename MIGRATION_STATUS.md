@@ -74,6 +74,8 @@ wheel_xagyl
 
 # IN PROGRESS
 
+wheel_qhy
+
 # TODO
 
 agent_astap
@@ -157,7 +159,6 @@ system_ascol
 
 wheel_atik
 wheel_mi
-wheel_qhy
 wheel_sx
 
 # COOKBOOK
