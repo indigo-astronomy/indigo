@@ -160,7 +160,7 @@ It is advised to remove libraw1394-dev
 
 #### Fedora
 
-`dnf install automake autoconf cmake libtool gcc gcc-c++ libusb-devel avahi-compat-libdns_sd-devel libudev-devel git curl curl-devel zlib-devel`
+`dnf install automake autoconf cmake libtool gcc gcc-c++ avahi-compat-libdns_sd-devel libudev-devel git curl curl-devel zlib-devel libusb-compat-0.1-devel systemd-devel avahi-compat-libdns_sd-devel libcurl-devel patchelf`
 
 It is advised to remove libraw1394-devel
 
