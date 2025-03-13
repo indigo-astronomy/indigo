@@ -172,6 +172,10 @@ INDIGO_EXTERN void indigo_uni_set_socket_read_timeout(indigo_uni_handle *handle,
  */
 INDIGO_EXTERN void indigo_uni_set_socket_write_timeout(indigo_uni_handle *handle, long timeout);
 
+/** Set NODELAY option.
+ */
+INDIGO_EXTERN void indigo_uni_set_socket_nodelay_option(indigo_uni_handle *handle);
+
 /** Open server socket.
  */
 INDIGO_EXTERN void indigo_uni_open_tcp_server_socket(int *port, indigo_uni_handle **server_handle, void (*worker)(indigo_uni_worker_data *), void *data, void (*callback)(int), int log_level);

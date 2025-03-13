@@ -81,6 +81,8 @@ focuser_dmfc
 focuser_ioptron
 
 mount_ioptron
+mount_lx200
+
 
 wheel_qhy
 
@@ -143,7 +145,6 @@ guider_cgusbst4
 guider_gpusb
 
 mount_asi
-mount_lx200
 mount_nexstar
 mount_nexstaraux
 mount_pmc8

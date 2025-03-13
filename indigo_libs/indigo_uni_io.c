@@ -41,6 +41,7 @@
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <arpa/inet.h>
 #elif defined(INDIGO_WINDOWS)
 #include <io.h>
@@ -49,9 +50,6 @@
 #include <ws2tcpip.h>
 #else
 #pragma message ("TODO: Unified I/O")
-#endif
-#ifdef INDIGO_LINUX
-#include <netinet/tcp.h>
 #endif
 
 #include <indigo/indigo_bus.h>
@@ -1036,6 +1034,31 @@ void indigo_uni_set_socket_write_timeout(indigo_uni_handle *handle, long timeout
 		}
 #else
 #pragma message ("TODO: indigo_uni_set_socket_write_timeout()")
+#endif
+	}
+}
+
+void indigo_uni_set_socket_nodelay_option(indigo_uni_handle *handle) {
+	if (handle->type == INDIGO_TCP_HANDLE) {
+		int value = 1;
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+		if (setsockopt(handle->fd, IPPROTO_TCP, TCP_NODELAY, &value, sizeof(int)) != 0) {
+			handle->last_error = errno;
+			indigo_error("%d <- // Failed to set socket no delay option (%s)", handle->index, indigo_uni_strerror(handle));
+		} else {
+			handle->last_error = 0;
+			indigo_log_on_level(handle->log_level, "%d <- // Set socket no delay %d", handle->index, value);
+		}
+#elif defined(INDIGO_WINDOWS)
+		if (setsockopt(handle->sock, IPPROTO_TCP, TCP_NODELAY, &value, sizeof(int)) == SOCKET_ERROR) {
+			handle->last_error = WSAGetLastError();
+			indigo_error("%d <- // Failed to set socket no delay option (%s)", handle->index, indigo_uni_strerror(handle));
+		} else {
+			handle->last_error = 0;
+			indigo_log_on_level(handle->log_level, "%d <- // Set socket no delay %d", handle->index, value);
+		}
+#else
+#pragma message ("TODO: indigo_uni_set_socket_nodelay_option()")
 #endif
 	}
 }

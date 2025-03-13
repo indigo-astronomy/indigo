@@ -98,7 +98,7 @@ static bool ieq_command(indigo_device *device, char *command, char *response, in
 		}
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-	return true;
+	return false;
 }
 
 static bool ieq_open(indigo_device *device) {

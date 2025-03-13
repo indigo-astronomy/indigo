@@ -23,30 +23,20 @@
  \file indigo_mount_lx200.c
  */
 
-#define DRIVER_VERSION 0x002E
+#define DRIVER_VERSION 0x002F
 #define DRIVER_NAME	"indigo_mount_lx200"
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <time.h>
 #include <math.h>
 #include <assert.h>
-#include <errno.h>
 #include <pthread.h>
 #include <ctype.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <fcntl.h>
-#include <sys/ioctl.h>
-#include <sys/time.h>
-#include <sys/socket.h>
-#include <sys/param.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
 
 #include <indigo/indigo_driver_xml.h>
-#include <indigo/indigo_io.h>
+#include <indigo/indigo_uni_io.h>
 #include <indigo/indigo_align.h>
 
 #include "indigo_mount_lx200.h"
@@ -164,6 +154,9 @@
 
 #define IS_PARKED (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PROPERTY->count == 2 && MOUNT_PARK_PARKED_ITEM->sw.value)
 
+#undef MIN
+#define MIN(a,b)	((a) < (b) ? (a) : (b))
+
 typedef enum {
 	ONSTEP_AUX_NONE = 0, // Auxiliary slot is disabled
 	ONSTEP_AUX_SWITCH = 1, // Auxiliary slot is a on/off switch -> power outlet in indigo
@@ -173,9 +166,8 @@ typedef enum {
 
 
 typedef struct {
-	int handle;
+	indigo_uni_handle *handle;
 	int device_count;
-	bool is_network;
 	indigo_timer *position_timer;
 	indigo_timer *keep_alive_timer;
 	pthread_mutex_t port_mutex;
@@ -271,8 +263,9 @@ static char *meade_error_string(indigo_device *device, unsigned int code) {
 
 static void str_replace(char *string, char c0, char c1) {
 	char *cp = strchr(string, c0);
-	if (cp)
+	if (cp) {
 		*cp = c1;
+	}
 }
 
 static bool meade_command(indigo_device *device, char *command, char *response, int max, int sleep);
@@ -280,30 +273,27 @@ static bool meade_command(indigo_device *device, char *command, char *response, 
 static bool meade_open(indigo_device *device) {
 	char response[128] = "";
 	char *name = DEVICE_PORT_ITEM->text.value;
-	if (!indigo_is_device_url(name, "lx200")) {
-		PRIVATE_DATA->is_network = false;
+	if (!indigo_uni_is_url(name, "lx200")) {
 		if (MOUNT_TYPE_NYX_ITEM->sw.value) {
-			PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, 115200);
-		} else if (MOUNT_TYPE_OAT_ITEM->sw.value){
-			PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, 19200);
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, 115200, INDIGO_LOG_DEBUG);
+		} else if (MOUNT_TYPE_OAT_ITEM->sw.value) {
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, 19200, INDIGO_LOG_DEBUG);
 		} else {
-			PRIVATE_DATA->handle = indigo_open_serial(name);
-			if (PRIVATE_DATA->handle > 0) {
+			PRIVATE_DATA->handle = indigo_uni_open_serial(name, INDIGO_LOG_DEBUG);
+			if (PRIVATE_DATA->handle != NULL) {
 				// sometimes the first command after power on in OnStep fails and just returns '0'
 				// so we try two times for the default baudrate of 9600
-				if ((!meade_command(device, ":GR#", response, sizeof(response), 0) || strlen(response) < 6) &&
-				    (!meade_command(device, ":GR#", response, sizeof(response), 0) || strlen(response) < 6)) {
-					close(PRIVATE_DATA->handle);
-					PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, 19200);
+				if ((!meade_command(device, ":GR#", response, sizeof(response), 0) || strlen(response) < 6) && (!meade_command(device, ":GR#", response, sizeof(response), 0) || strlen(response) < 6)) {
+					indigo_uni_close(&PRIVATE_DATA->handle);
+					PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, 19200, INDIGO_LOG_DEBUG);
 					if (!meade_command(device, ":GR#", response, sizeof(response), 0) || strlen(response) < 6) {
-						close(PRIVATE_DATA->handle);
-						PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, 115200);
+						indigo_uni_close(&PRIVATE_DATA->handle);
+						PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, 115200, INDIGO_LOG_DEBUG);
 						if (!meade_command(device, ":GR#", response, sizeof(response), 0) || strlen(response) < 6) {
-							close(PRIVATE_DATA->handle);
-							PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, 230400);
+							indigo_uni_close(&PRIVATE_DATA->handle);
+							PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, 230400, INDIGO_LOG_DEBUG);
 							if (!meade_command(device, ":GR#", response, sizeof(response), 0) || strlen(response) < 6) {
-								close(PRIVATE_DATA->handle);
-								PRIVATE_DATA->handle = -1;
+								indigo_uni_close(&PRIVATE_DATA->handle);
 							}
 						}
 					}
@@ -311,46 +301,16 @@ static bool meade_open(indigo_device *device) {
 			}
 		}
 	} else {
-		PRIVATE_DATA->is_network = true;
-		indigo_network_protocol proto = INDIGO_PROTOCOL_TCP;
-		if (MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value)
-			PRIVATE_DATA->handle = indigo_open_network_device(name, 9999, &proto);
-		else
-			PRIVATE_DATA->handle = indigo_open_network_device(name, 4030, &proto);
+		if (MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value) {
+			PRIVATE_DATA->handle = indigo_uni_open_url(name, 9999, INDIGO_TCP_HANDLE, INDIGO_LOG_DEBUG);
+		} else {
+			PRIVATE_DATA->handle = indigo_uni_open_url(name, 4030, INDIGO_TCP_HANDLE, INDIGO_LOG_DEBUG);
+		}
 	}
-	if (PRIVATE_DATA->handle >= 0) {
-		if (PRIVATE_DATA->is_network) {
-			int opt = 1;
-			if (setsockopt(PRIVATE_DATA->handle, IPPROTO_TCP, TCP_NODELAY, &opt, sizeof(int)) < 0) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to disable Nagle algorithm");
-			}
-		}
+	if (PRIVATE_DATA->handle != NULL) {
+		indigo_uni_set_socket_nodelay_option(PRIVATE_DATA->handle);
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
-		// flush the garbage if any...
-		char c;
-		struct timeval tv;
-		tv.tv_sec = 1;
-		tv.tv_usec = 0;
-		while (true) {
-			fd_set readout;
-			FD_ZERO(&readout);
-			FD_SET(PRIVATE_DATA->handle, &readout);
-			long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-			if (result == 0) {
-				break;
-			}
-			if (result < 0) {
-				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-				return false;
-			}
-			result = read(PRIVATE_DATA->handle, &c, 1);
-			if (result < 1) {
-				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-				return false;
-			}
-			tv.tv_sec = 0;
-			tv.tv_usec = 100000;
-		}
+		indigo_uni_discard(PRIVATE_DATA->handle);
 		return true;
 	} else {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", name);
@@ -362,174 +322,53 @@ static void network_disconnection(__attribute__((unused)) indigo_device *device)
 
 static bool meade_command(indigo_device *device, char *command, char *response, int max, int sleep) {
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
-	char c;
-	struct timeval tv;
-	// flush, and detect network disconnection
-	while (true) {
-		fd_set readout;
-		FD_ZERO(&readout);
-		FD_SET(PRIVATE_DATA->handle, &readout);
-		tv.tv_sec = 0;
-		if (PRIVATE_DATA->is_network) {
-			tv.tv_usec = 50;
-		} else {
-			tv.tv_usec = 5000;
-		}
-		
-		long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-		if (result == 0) {
-			break;
-		}
-		if (result < 0) {
-			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-			return false;
-		}
-		result = read(PRIVATE_DATA->handle, &c, 1);
-		if (result < 1) {
-			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-			if (PRIVATE_DATA->is_network) {
-				// This is a disconnection
-				indigo_set_timer(device, 0, network_disconnection, NULL);
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unexpected disconnection from %s", DEVICE_PORT_ITEM->text.value);
+	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
+		if (indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command)) > 0) {
+			if (sleep > 0) {
+				indigo_usleep(sleep);
 			}
-			return false;
+			if (response != NULL) {
+				if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "#", "", INDIGO_DELAY(1) > 0)) {
+					indigo_usleep(50000);
+					pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+					return true;
+				}
+			}
 		}
 	}
-	// write command
-	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
-	if (sleep > 0) {
-		indigo_usleep(sleep);
-	}
-	// read response
-	if (response != NULL) {
-		int index = 0;
-		int timeout = 3;
-		while (index < max) {
-			fd_set readout;
-			FD_ZERO(&readout);
-			FD_SET(PRIVATE_DATA->handle, &readout);
-			tv.tv_sec = timeout;
-			tv.tv_usec = 100000;
-			timeout = 0;
-			long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-			if (result <= 0) {
-				break;
-			}
-			result = read(PRIVATE_DATA->handle, &c, 1);
-			if (result < 1) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
-				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-				return false;
-			}
-			if (c == '#') {
-				break;
-			}
-			response[index++] = c;
-		}
-		response[index] = 0;
+	if (PRIVATE_DATA->handle->type == INDIGO_TCP_HANDLE) {
+		indigo_set_timer(device, 0, network_disconnection, NULL);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unexpected disconnection from %s", DEVICE_PORT_ITEM->text.value);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s -> %s", command, response != NULL ? response : "NULL");
-	indigo_usleep(50000);
-	return true;
+	return false;
 }
 
 static bool meade_command_progress(indigo_device *device, char *command, char *response, int max, int sleep) {
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
-	char c;
-	struct timeval tv;
-	// flush, and detect network disconnection
-	while (true) {
-		fd_set readout;
-		FD_ZERO(&readout);
-		FD_SET(PRIVATE_DATA->handle, &readout);
-		tv.tv_sec = 0;
-		tv.tv_usec = 100000;
-		long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-		if (result == 0) {
-			break;
-		}
-		if (result < 0) {
-			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-			return false;
-		}
-		result = read(PRIVATE_DATA->handle, &c, 1);
-		if (result < 1) {
-			if (PRIVATE_DATA->is_network) {
-				// This is a disconnection
-				indigo_set_timer(device, 0, network_disconnection, NULL);
-				INDIGO_DRIVER_LOG (DRIVER_NAME, "Disconnection from %s", DEVICE_PORT_ITEM->text.value);
+	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
+		if (indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command)) > 0) {
+			if (sleep > 0) {
+				indigo_usleep(sleep);
 			}
-			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-			return false;
+			if (response != NULL) {
+				if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "#", "", INDIGO_DELAY(1) > 0)) {
+					char progress[128];
+					if (indigo_uni_read_section(PRIVATE_DATA->handle, progress, sizeof(progress), "#", "", INDIGO_DELAY(0.1) > 0)) {
+						indigo_usleep(50000);
+						pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+						return true;
+					}
+				}
+			}
 		}
 	}
-	// write command
-	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
-	if (sleep > 0) {
-		indigo_usleep(sleep);
+	if (PRIVATE_DATA->handle->type == INDIGO_TCP_HANDLE) {
+		indigo_set_timer(device, 0, network_disconnection, NULL);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unexpected disconnection from %s", DEVICE_PORT_ITEM->text.value);
 	}
-	// read response
-	if (response != NULL) {
-		int index = 0;
-		int timeout = 3;
-		while (index < max) {
-			fd_set readout;
-			FD_ZERO(&readout);
-			FD_SET(PRIVATE_DATA->handle, &readout);
-			tv.tv_sec = timeout;
-			tv.tv_usec = 100000;
-			timeout = 0;
-			long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-			if (result <= 0) {
-				break;
-			}
-			result = read(PRIVATE_DATA->handle, &c, 1);
-			if (result < 1) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
-				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-				return false;
-			}
-			if (c == '#') {
-				break;
-			}
-			response[index++] = c;
-		}
-		response[index] = 0;
-	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "readout progress part...");
-	char progress[128];
-	// read progress
-	int index = 0;
-	int timeout = 60;
-	while (index < sizeof(progress)) {
-		fd_set readout;
-		FD_ZERO(&readout);
-		FD_SET(PRIVATE_DATA->handle, &readout);
-		tv.tv_sec = timeout;
-		tv.tv_usec = 100000;
-		timeout = 0;
-		long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-		if (result <= 0) {
-			break;
-		}
-		result = read(PRIVATE_DATA->handle, &c, 1);
-		if (result < 1) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
-			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-			return false;
-		}
-		if (c < 0)
-			c = ':';
-		if (c == '#') {
-			break;
-		}
-		progress[index++] = c;
-	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Progress width: %d", index);
 	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s -> %s", command, response != NULL ? response : "NULL");
-	return true;
+	return false;
 }
 
 static bool gemini_set(indigo_device *device, int command, char *parameter) {
@@ -546,9 +385,8 @@ static bool gemini_set(indigo_device *device, int command, char *parameter) {
 }
 
 static void meade_close(indigo_device *device) {
-	if (PRIVATE_DATA->handle > 0) {
-		close(PRIVATE_DATA->handle);
-		PRIVATE_DATA->handle = 0;
+	if (PRIVATE_DATA->handle != NULL) {
+		indigo_uni_close(&PRIVATE_DATA->handle);
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
 	}
 }
@@ -2610,7 +2448,7 @@ static void meade_update_mount_state(indigo_device *device) {
 // -------------------------------------------------------------------------------- INDIGO MOUNT device implementation
 
 static void position_timer_callback(indigo_device *device) {
-	if (PRIVATE_DATA->handle > 0) {
+	if (PRIVATE_DATA->handle != NULL) {
 		meade_update_site_if_changed(device);
 		meade_update_mount_state(device);
 		indigo_update_coordinates(device, NULL);
@@ -3384,7 +3222,7 @@ static void guider_connect_callback(indigo_device *device) {
 					GUIDER_GUIDE_WEST_ITEM->number.max = 3000;
 				}
 			}
-			if (PRIVATE_DATA->is_network && !PRIVATE_DATA->keep_alive_timer) {
+			if (PRIVATE_DATA->handle->type == INDIGO_TCP_HANDLE && !PRIVATE_DATA->keep_alive_timer) {
 				/* In case of a network connection and there is no mount connected (to create chatter)
 				   the commection is closed in several seconds. So we send :GVP# on a regular basis
 				   to keep the connection alive */
@@ -3508,7 +3346,7 @@ static void focuser_connect_callback(indigo_device *device) {
 				FOCUSER_SPEED_ITEM->number.max = 2;
 				FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-				if (PRIVATE_DATA->is_network && !PRIVATE_DATA->keep_alive_timer) {
+				if (PRIVATE_DATA->handle->type == INDIGO_TCP_HANDLE && !PRIVATE_DATA->keep_alive_timer) {
 					/* In case of a network connection and there is no mount connected (to create chatter)
 					 the commection is closed in several seconds. So we send :GVP# on a regular basis
 					 to keep the connection alive */
