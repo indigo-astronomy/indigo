@@ -308,7 +308,9 @@ static bool meade_open(indigo_device *device) {
 		}
 	}
 	if (PRIVATE_DATA->handle != NULL) {
-		indigo_uni_set_socket_nodelay_option(PRIVATE_DATA->handle);
+		if (PRIVATE_DATA->handle->type == INDIGO_TCP_HANDLE) {
+			indigo_uni_set_socket_nodelay_option(PRIVATE_DATA->handle);
+		}
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
 		indigo_uni_discard(PRIVATE_DATA->handle);
 		return true;

@@ -80,6 +80,7 @@ focuser_focusdreampro
 focuser_dmfc
 focuser_ioptron
 
+mount_asi
 mount_ioptron
 mount_lx200
 mount_rainbow
@@ -144,7 +145,6 @@ guider_asi
 guider_cgusbst4
 guider_gpusb
 
-mount_asi
 mount_nexstar
 mount_nexstaraux
 mount_pmc8

@@ -23,29 +23,18 @@
  \file indigo_mount_asi.c
  */
 
-#define DRIVER_VERSION 0x001A
+#define DRIVER_VERSION 0x001B
 #define DRIVER_NAME	"indigo_mount_asi"
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <time.h>
 #include <math.h>
 #include <assert.h>
-#include <errno.h>
 #include <pthread.h>
 #include <ctype.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <sys/ioctl.h>
-#include <sys/time.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
 
 #include <indigo/indigo_driver_xml.h>
-#include <indigo/indigo_io.h>
+#include <indigo/indigo_uni_io.h>
 #include <indigo/indigo_align.h>
 
 #include "indigo_mount_asi.h"
@@ -85,9 +74,8 @@
 #define ZWO_MERIDIAN_LIMIT_ITEM_NAME       "LIMIT"
 
 typedef struct {
-	int handle;
+	indigo_uni_handle *handle;
 	int device_count;
-	bool is_network;
 	indigo_timer *position_timer;
 	pthread_mutex_t port_mutex;
 	char lastMotionNS, lastMotionWE, lastSlewRate, lastTrackRate;
@@ -139,48 +127,17 @@ static bool asi_command(indigo_device *device, char *command, char *response, in
 
 static bool asi_open(indigo_device *device) {
 	char *name = DEVICE_PORT_ITEM->text.value;
-	if (!indigo_is_device_url(name, "asi")) {
-		PRIVATE_DATA->is_network = false;
-		PRIVATE_DATA->handle = indigo_open_serial(name);
+	if (!indigo_uni_is_url(name, "asi")) {
+		PRIVATE_DATA->handle = indigo_uni_open_serial(name, INDIGO_LOG_DEBUG);
 	} else {
-		PRIVATE_DATA->is_network = true;
-		indigo_network_protocol proto = INDIGO_PROTOCOL_TCP;
-		PRIVATE_DATA->handle = indigo_open_network_device(name, 4030, &proto);
-
+		PRIVATE_DATA->handle = indigo_uni_open_url(name, 4030, INDIGO_TCP_HANDLE, INDIGO_LOG_DEBUG);
 	}
-	if (PRIVATE_DATA->handle >= 0) {
-		if (PRIVATE_DATA->is_network) {
-			int opt = 1;
-			if (setsockopt(PRIVATE_DATA->handle, IPPROTO_TCP, TCP_NODELAY, &opt, sizeof(int)) < 0) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to disable Nagle algorithm");
-			}
+	if (PRIVATE_DATA->handle != NULL) {
+		if (PRIVATE_DATA->handle->type == INDIGO_TCP_HANDLE) {
+			indigo_uni_set_socket_nodelay_option(PRIVATE_DATA->handle);
 		}
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
-		// flush the garbage if any...
-		char c;
-		struct timeval tv;
-		tv.tv_sec = 1;
-		tv.tv_usec = 0;
-		while (true) {
-			fd_set readout;
-			FD_ZERO(&readout);
-			FD_SET(PRIVATE_DATA->handle, &readout);
-			long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-			if (result == 0) {
-				break;
-			}
-			if (result < 0) {
-				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-				return false;
-			}
-			result = read(PRIVATE_DATA->handle, &c, 1);
-			if (result < 1) {
-				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-				return false;
-			}
-			tv.tv_sec = 0;
-			tv.tv_usec = 100000;
-		}
+		indigo_uni_discard(PRIVATE_DATA->handle);
 		return true;
 	} else {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", name);
@@ -192,80 +149,31 @@ static void network_disconnection(__attribute__((unused)) indigo_device *device)
 
 static bool asi_command(indigo_device *device, char *command, char *response, int max, int sleep) {
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
-	char c;
-	struct timeval tv;
-	// flush, and detect network disconnection
-	while (true) {
-		fd_set readout;
-		FD_ZERO(&readout);
-		FD_SET(PRIVATE_DATA->handle, &readout);
-		tv.tv_sec = 0;
-		if (PRIVATE_DATA->is_network) {
-			tv.tv_usec = 50;
-		} else {
-			tv.tv_usec = 5000;
-		}
-		long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-		if (result == 0) {
-			break;
-		}
-		if (result < 0) {
-			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-			return false;
-		}
-		result = read(PRIVATE_DATA->handle, &c, 1);
-		if (result < 1) {
-			if (PRIVATE_DATA->is_network) {
-				// This is a disconnection
-				indigo_set_timer(device, 0, network_disconnection, NULL);
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unexpected disconnection from %s", DEVICE_PORT_ITEM->text.value);
+	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
+		if (indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command)) > 0) {
+			if (sleep > 0) {
+				indigo_usleep(sleep);
 			}
-			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-			return false;
+			if (response != NULL) {
+				if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "#", "", INDIGO_DELAY(3) > 0)) {
+					indigo_usleep(50000);
+					pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+					return true;
+				}
+			}
 		}
 	}
-	// write command
-	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
-	if (sleep > 0) {
-		indigo_usleep(sleep);
-	}
-	// read response
-	if (response != NULL) {
-		int index = 0;
-		int timeout = 3;
-		while (index < max) {
-			fd_set readout;
-			FD_ZERO(&readout);
-			FD_SET(PRIVATE_DATA->handle, &readout);
-			tv.tv_sec = timeout;
-			tv.tv_usec = 100000;
-			timeout = 0;
-			long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-			if (result <= 0) {
-				break;
-			}
-			result = read(PRIVATE_DATA->handle, &c, 1);
-			if (result < 1) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
-				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-				return false;
-			}
-			if (c == '#') {
-  break;
-}
-			response[index++] = c;
-		}
-		response[index] = 0;
+	if (PRIVATE_DATA->handle->type == INDIGO_TCP_HANDLE) {
+		indigo_set_timer(device, 0, network_disconnection, NULL);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unexpected disconnection from %s", DEVICE_PORT_ITEM->text.value);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s -> %s", command, response != NULL ? response : "NULL");
-	return true;
+	return false;
 }
 
 static void asi_close(indigo_device *device) {
-	if (PRIVATE_DATA->handle > 0) {
-		close(PRIVATE_DATA->handle);
-		PRIVATE_DATA->handle = 0;
+	if (PRIVATE_DATA->handle != NULL) {
+		indigo_uni_close(&PRIVATE_DATA->handle);
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
 	}
 }
@@ -670,7 +578,7 @@ static bool asi_detect_mount(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- INDIGO MOUNT device implementation
 static void position_timer_callback(indigo_device *device) {
-	if (PRIVATE_DATA->handle > 0) {
+	if (PRIVATE_DATA->handle != NULL) {
 		char response[128];
 
 		// read coordinates and moving state
