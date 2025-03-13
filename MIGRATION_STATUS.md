@@ -82,7 +82,7 @@ focuser_ioptron
 
 mount_ioptron
 mount_lx200
-
+mount_rainbow
 
 wheel_qhy
 
@@ -148,7 +148,6 @@ mount_asi
 mount_nexstar
 mount_nexstaraux
 mount_pmc8
-mount_rainbow
 mount_starbook
 mount_synscan
 mount_temma

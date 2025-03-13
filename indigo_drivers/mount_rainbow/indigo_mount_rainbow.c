@@ -23,25 +23,18 @@
  \file indigo_mount_rainbow.c
  */
 
-#define DRIVER_VERSION 0x000D
+#define DRIVER_VERSION 0x000E
 #define DRIVER_NAME	"indigo_mount_rainbow"
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <time.h>
 #include <math.h>
 #include <assert.h>
 #include <errno.h>
 #include <pthread.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <sys/ioctl.h>
-#include <sys/time.h>
 
 #include <indigo/indigo_driver_xml.h>
-#include <indigo/indigo_io.h>
+#include <indigo/indigo_uni_io.h>
 #include <indigo/indigo_align.h>
 
 #include "indigo_mount_rainbow.h"
@@ -49,7 +42,7 @@
 #define PRIVATE_DATA        ((rainbow_private_data *)device->private_data)
 
 typedef struct {
-	int handle;
+	indigo_uni_handle *handle;
 	indigo_timer *position_timer, *reader;
 	pthread_mutex_t port_mutex;
 	char lastMotionNS, lastMotionWE;
@@ -59,47 +52,27 @@ typedef struct {
 
 static bool rainbow_command(indigo_device *device, char *command, indigo_property *property) {
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
-	bool result = indigo_write(PRIVATE_DATA->handle, command, strlen(command));
-	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "-> %s", command);
-	if (property && !result) {
-		property->state = INDIGO_ALERT_STATE;
-		if (IS_CONNECTED)
-			indigo_update_property(device, property, NULL);
+	if (indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command)) > 0) {
+		pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+		return true;
 	}
-	return result;
+	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+	if (property) {
+		property->state = INDIGO_ALERT_STATE;
+		if (IS_CONNECTED) {
+			indigo_update_property(device, property, NULL);
+		}
+	}
+	return false;
 }
 
 static bool rainbow_response(indigo_device *device, char *response, int length) {
-	char c;
-	bool result = false;
-	struct timeval tv;
-	fd_set readout;
-	int i = 0;
-	while (true) {
-		response[i] = 0;
-		if (i == length - 1) {
-			break;
-		}
-		FD_ZERO(&readout);
-		FD_SET(PRIVATE_DATA->handle, &readout);
-		tv.tv_sec = 0;
-		tv.tv_usec = 200000;
-		if (select(PRIVATE_DATA->handle + 1, &readout, NULL, NULL, &tv) <= 0) {
-			break;
-		}
-		if (read(PRIVATE_DATA->handle, &c, 1) < 1) {
-			break;
-		}
-		response[i++] = c;
-		if (c == '#') {
-			response[i] = 0;
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "<- %s", response);
-			result = true;
-			break;
-		}
+	if (indigo_uni_read_section(PRIVATE_DATA->handle, response, length, "#", "", INDIGO_DELAY(0.2) > 0)) {
+		pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+		return true;
 	}
-	return result;
+	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+	return false;
 }
 
 static bool rainbow_sync_command(indigo_device *device, char *command, indigo_property *property) {
@@ -120,15 +93,14 @@ static bool rainbow_sync_command(indigo_device *device, char *command, indigo_pr
 
 static bool rainbow_open(indigo_device *device) {
 	char *name = DEVICE_PORT_ITEM->text.value;
-	if (!indigo_is_device_url(name, "rainbow")) {
-		PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, 115200);
+	if (!indigo_uni_is_url(name, "rainbow")) {
+		PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, 115200, INDIGO_LOG_DEBUG);
 	} else {
-		indigo_network_protocol proto = INDIGO_PROTOCOL_TCP;
-		PRIVATE_DATA->handle = indigo_open_network_device(name, 4030, &proto);
+		PRIVATE_DATA->handle = indigo_uni_open_url(name, 4030, INDIGO_TCP_HANDLE, INDIGO_LOG_DEBUG);
 	}
-	if (PRIVATE_DATA->handle > 0) {
+	if (PRIVATE_DATA->handle != NULL) {
 		char *command=":AV#";
-		bool result = indigo_write(PRIVATE_DATA->handle, command, strlen(command));
+		bool result = indigo_uni_write(PRIVATE_DATA->handle, command, strlen(command));
 		if (result) {
 			result = false;
 			char response[128];
@@ -141,8 +113,7 @@ static bool rainbow_open(indigo_device *device) {
 		if (result) {
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
 		} else {
-			close(PRIVATE_DATA->handle);
-			PRIVATE_DATA->handle = -1;
+			indigo_uni_close(&PRIVATE_DATA->handle);
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed: %s is not a Rainbow Astro mount", name);
 		}
 		return result;
@@ -153,9 +124,8 @@ static bool rainbow_open(indigo_device *device) {
 }
 
 static void rainbow_close(indigo_device *device) {
-	if (PRIVATE_DATA->handle > 0) {
-		close(PRIVATE_DATA->handle);
-		PRIVATE_DATA->handle = -1;
+	if (PRIVATE_DATA->handle != NULL) {
+		indigo_uni_close(&PRIVATE_DATA->handle);
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
 	}
 }
@@ -331,7 +301,7 @@ static void rainbow_reader(indigo_device *device) {
 // -------------------------------------------------------------------------------- INDIGO MOUNT device implementations
 
 static void position_timer_callback(indigo_device *device) {
-	if (PRIVATE_DATA->handle > 0) {
+	if (PRIVATE_DATA->handle != NULL) {
 		rainbow_command(device, ":GR#:GD#:CL#", MOUNT_EQUATORIAL_COORDINATES_PROPERTY);
 		rainbow_command(device, PRIVATE_DATA->version >= 200625 ? ":GC#:GG#:GL#" : ":GL#", MOUNT_UTC_TIME_PROPERTY);
 		rainbow_command(device, ":AT#", MOUNT_TRACKING_PROPERTY);
