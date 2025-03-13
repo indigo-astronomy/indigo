@@ -2544,7 +2544,7 @@ static void sequence_process(indigo_device *device) {
 		indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 		AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 		FILTER_DEVICE_CONTEXT->running_process = false;
-		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, "No filter wheen is selected");
+		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, "No filter wheel is selected");
 		indigo_safe_free(sequence_text);
 		return;
 	}
