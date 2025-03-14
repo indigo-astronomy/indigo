@@ -34,7 +34,7 @@ typedef struct {
 } indigo_ser;
 
 extern indigo_ser *indigo_ser_open(const char *filename, void *buffer);
-extern bool indigo_ser_add_frame(indigo_ser *ser, void *buffer, size_t len);
+extern bool indigo_ser_add_frame(indigo_ser *ser, void *buffer);
 extern bool indigo_ser_close(indigo_ser *ser);
 
 #ifdef __cplusplus
