@@ -44,6 +44,7 @@
 #define strtok_r strtok_s
 #define strdup _strdup
 #define stat _stat
+#define tzset _tzset
 #endif
 
 #if defined(INDIGO_WINDOWS)
@@ -283,6 +284,13 @@ INDIGO_EXTERN void indigo_uni_compress(char *name, char *in_buffer, unsigned in_
  */
 
 INDIGO_EXTERN void indigo_uni_decompress(char *in_buffer, unsigned in_size, unsigned char *out_buffer, unsigned *out_size);
+
+/** Convert time to components
+ */
+
+INDIGO_EXTERN void indigo_gmtime(time_t* seconds, struct tm* tm);
+
+INDIGO_EXTERN time_t indigo_timegm(struct tm* tm);
 
 #ifdef __cplusplus
 }

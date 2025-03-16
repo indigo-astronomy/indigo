@@ -413,6 +413,9 @@
     <ProjectReference Include="..\indigo_drivers\focuser_focusdreampro\indigo_focuser_focusdreampro.vcxproj">
       <Project>{31aba8a9-f4d6-4a19-a797-8545c2e0b1bb}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\focuser_ioptron\indigo_focuser_ioptron.vcxproj">
+      <Project>{8b4d45fc-1ec0-46e6-9a95-3ba68860e440}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\indigo_drivers\gps_nmea\indigo_gps_nmea.vcxproj">
       <Project>{a2c83e5f-7089-4217-b4e3-fd60fee14645}</Project>
     </ProjectReference>

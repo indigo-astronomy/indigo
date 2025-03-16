@@ -31,6 +31,7 @@
 #include <errno.h>
 #include <pthread.h>
 #include <zlib.h>
+#include <time.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
@@ -1635,4 +1636,24 @@ void indigo_uni_decompress(char *in_buffer, unsigned in_size, unsigned char *out
 	r = inflate(&infstream, Z_NO_FLUSH);
 	r = inflateEnd(&infstream);
 	*out_size = (unsigned)((unsigned char *)infstream.next_out - (unsigned char *)out_buffer);
+}
+
+void indigo_gmtime(time_t* seconds, struct tm* tm) {
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	gmtime_r(seconds, tm);
+#elif defined(INDIGO_WINDOWS)
+	gmtime_s(tm, seconds);
+#else
+#pragma message ("TODO: indigo_gmtime()")
+#endif
+}
+
+time_t indigo_timegm(struct tm* tm) {
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	return timegm(tm);
+#elif defined(INDIGO_WINDOWS)
+	return _mkgmtime(tm);
+#else
+#pragma message ("TODO: indigo_timegm()")
+#endif
 }

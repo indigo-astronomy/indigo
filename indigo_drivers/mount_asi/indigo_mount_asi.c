@@ -145,7 +145,7 @@ static bool asi_open(indigo_device *device) {
 	}
 }
 
-static void network_disconnection(__attribute__((unused)) indigo_device *device);
+static void network_disconnection(indigo_device *device);
 
 static bool asi_command(indigo_device *device, char *command, char *response, int max, int sleep) {
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
@@ -184,7 +184,7 @@ static bool asi_set_utc(indigo_device *device, time_t *secs, int utc_offset) {
 	char command[128], response[128];
 	time_t seconds = *secs + utc_offset * 3600;
 	struct tm tm;
-	gmtime_r(&seconds, &tm);
+	indigo_gmtime(&seconds, &tm);
 	sprintf(command, ":SC%02d/%02d/%02d#", tm.tm_mon + 1, tm.tm_mday, tm.tm_year % 100);
 	bool result = asi_command(device, command, response, 1, 0);
 	if (!result || *response != '1') {
@@ -215,7 +215,7 @@ static bool asi_get_utc(indigo_device *device, time_t *secs, int *utc_offset) {
 			tm.tm_mon -= 1;
 			if (asi_command(device, ":GG#", response, sizeof(response), 0)) {
 				*utc_offset = -atoi(response);
-				*secs = timegm(&tm) - *utc_offset * 3600;
+				*secs = indigo_timegm(&tm) - *utc_offset * 3600;
 				return true;
 			}
 		}
@@ -392,9 +392,13 @@ static bool asi_sync(indigo_device *device, double ra, double dec, int *error_co
 static bool asi_set_guide_rate(indigo_device *device, int ra, int dec) {
 	char command[128];
 	// asi miunt has one guide rate for ra and dec
-	if (ra < 10) ra = 10;
-	if (ra > 90) ra = 90;
-	float rate = ra / 100.0;
+	if (ra < 10) {
+		ra = 10;
+	}
+	if (ra > 90) {
+		ra = 90;
+	}
+	double rate = ra / 100.0;
 	sprintf(command, ":Rg%.1f#", rate);
 	return (asi_command(device, command, NULL, 0, 0));
 }
@@ -402,11 +406,15 @@ static bool asi_set_guide_rate(indigo_device *device, int ra, int dec) {
 static bool asi_get_guide_rate(indigo_device *device, int *ra, int *dec) {
 	char response[128] = {0};
 	bool res = asi_command(device, ":Ggr#", response, sizeof(response), 0);
-	if (!res) return false;
-	float rate = 0;
-	int parsed = sscanf(response, "%f", &rate);
-	if (parsed != 1) return false;
-	*ra = *dec = rate * 100;
+	if (!res) {
+		return false;
+	}
+	double rate = 0;
+	int parsed = sscanf(response, "%lf", &rate);
+	if (parsed != 1) {
+		return false;
+	}
+	*ra = *dec = (int)(rate * 100);
 	return true;
 }
 
@@ -1338,8 +1346,8 @@ static void guider_connect_callback(indigo_device *device) {
 }
 
 static void guider_guide_dec_callback(indigo_device *device) {
-	int north = GUIDER_GUIDE_NORTH_ITEM->number.value;
-	int south = GUIDER_GUIDE_SOUTH_ITEM->number.value;
+	int north = (int)GUIDER_GUIDE_NORTH_ITEM->number.value;
+	int south = (int)GUIDER_GUIDE_SOUTH_ITEM->number.value;
 	asi_guide_dec(device, north, south);
 	if (north > 0) {
 		indigo_usleep(1000 * north);
@@ -1352,8 +1360,8 @@ static void guider_guide_dec_callback(indigo_device *device) {
 }
 
 static void guider_guide_ra_callback(indigo_device *device) {
-	int west = GUIDER_GUIDE_WEST_ITEM->number.value;
-	int east = GUIDER_GUIDE_EAST_ITEM->number.value;
+	int west = (int)GUIDER_GUIDE_WEST_ITEM->number.value;
+	int east = (int)GUIDER_GUIDE_EAST_ITEM->number.value;
 	asi_guide_ra(device, west, east);
 	if (west > 0) {
 		indigo_usleep(1000 * west);
@@ -1424,7 +1432,7 @@ static asi_private_data *private_data = NULL;
 static indigo_device *mount = NULL;
 static indigo_device *mount_guider = NULL;
 
-static void network_disconnection(__attribute__((unused)) indigo_device* device) {
+static void network_disconnection(indigo_device* device) {
 	// Since the two devices share the same TCP connection,
 	// process the disconnection on all of them
 	device_network_disconnection(mount, mount_connect_callback);

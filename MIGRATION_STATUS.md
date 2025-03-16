@@ -61,6 +61,7 @@ focuser_ioptron
 gps_nmea
 gps_simulator
 
+mount_asi
 mount_simulator
 
 rotator_falcon
@@ -79,7 +80,6 @@ wheel_xagyl
 
 # IN PROGRESS
 
-mount_asi
 mount_ioptron
 mount_lx200
 mount_rainbow
