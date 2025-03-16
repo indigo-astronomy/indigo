@@ -431,6 +431,9 @@
     <ProjectReference Include="..\indigo_drivers\wheel_playerone\indigo_wheel_playerone.vcxproj">
       <Project>{44f16a32-7552-4113-93a0-fbf9537dc783}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\wheel_quantum\indigo_wheel_quantum.vcxproj">
+      <Project>{73e8f060-8e11-4f9a-8870-b0d6d316cad3}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\indigo_drivers\wheel_trutek\indigo_wheel_trutek.vcxproj">
       <Project>{448d3540-28f1-4def-98dd-0b4be29d1f70}</Project>
     </ProjectReference>

@@ -1050,7 +1050,7 @@ void indigo_uni_set_socket_nodelay_option(indigo_uni_handle *handle) {
 			indigo_log_on_level(handle->log_level, "%d <- // Set socket no delay %d", handle->index, value);
 		}
 #elif defined(INDIGO_WINDOWS)
-		if (setsockopt(handle->sock, IPPROTO_TCP, TCP_NODELAY, &value, sizeof(int)) == SOCKET_ERROR) {
+		if (setsockopt(handle->sock, IPPROTO_TCP, TCP_NODELAY, (const char *) & value, sizeof(int)) == SOCKET_ERROR) {
 			handle->last_error = WSAGetLastError();
 			indigo_error("%d <- // Failed to set socket no delay option (%s)", handle->index, indigo_uni_strerror(handle));
 		} else {

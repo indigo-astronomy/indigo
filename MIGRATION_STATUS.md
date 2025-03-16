@@ -51,6 +51,7 @@ dome_simulator
 
 focuser_asi
 focuser_astroasis
+focuser_astromechanics
 focuser_fli
 
 gps_nmea
@@ -74,7 +75,6 @@ wheel_xagyl
 
 # IN PROGRESS
 
-focuser_astromechanics
 focuser_fc3
 focuser_focusdreampro
 focuser_dmfc

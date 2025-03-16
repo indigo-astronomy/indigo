@@ -158,12 +158,12 @@ static void focuser_steps_handler(indigo_device *device) {
 	char command[16], response[16];
 	int position;
 	if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
-		position = FOCUSER_POSITION_ITEM->number.value - FOCUSER_STEPS_ITEM->number.value;
+		position = (int)FOCUSER_POSITION_ITEM->number.value - (int)FOCUSER_STEPS_ITEM->number.value;
 		if (position < 0)
 			position = 0;
 		sprintf(command, "M%04d#", position);
 	} else {
-		position = FOCUSER_POSITION_ITEM->number.value + FOCUSER_STEPS_ITEM->number.value;
+		position = (int)FOCUSER_POSITION_ITEM->number.value + (int)FOCUSER_STEPS_ITEM->number.value;
 		if (position > 9999)
 			position = 9999;
 		sprintf(command, "M%04d#", position);
@@ -202,7 +202,7 @@ static void focuser_position_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char command[16], response[16];
 	int position;
-	position = FOCUSER_POSITION_ITEM->number.target;
+	position = (int)FOCUSER_POSITION_ITEM->number.target;
 	if (position < 0)
 		position = 0;
 	else if (position > 9999)
@@ -269,7 +269,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_POSITION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_POSITION
-		long position = FOCUSER_POSITION_ITEM->number.value;
+		long position = (long)FOCUSER_POSITION_ITEM->number.value;
 		indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
 		FOCUSER_POSITION_ITEM->number.value = position;
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
