@@ -398,6 +398,9 @@
     <ProjectReference Include="..\indigo_drivers\focuser_astroasis\indigo_focuser_astroasis.vcxproj">
       <Project>{255a446f-c41e-4846-95d2-398422d68025}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\focuser_astromechanics\indigo_focuser_astromechanics.vcxproj">
+      <Project>{20db922c-8667-4316-815d-d3fdfc18618a}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\indigo_drivers\focuser_fli\indigo_focuser_fli.vcxproj">
       <Project>{3ac3f27f-8763-4533-a948-43373e5deef9}</Project>
     </ProjectReference>
