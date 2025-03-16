@@ -56,6 +56,7 @@ focuser_dmfc
 focuser_fc3
 focuser_fli
 focuser_focusdreampro
+focuser_ioptron
 
 gps_nmea
 gps_simulator
@@ -77,8 +78,6 @@ wheel_trutek
 wheel_xagyl
 
 # IN PROGRESS
-
-focuser_ioptron
 
 mount_asi
 mount_ioptron
