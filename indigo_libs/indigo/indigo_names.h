@@ -185,11 +185,7 @@
 #define GEOGRAPHIC_COORDINATES_ACCURACY_ITEM_NAME	"ACCURACY"
 
 //----------------------------------------------------------------------
-/** DOME_SNOOP_DEVICES property name.
- */
-#define SNOOP_DEVICES_PROPERTY_NAME	"SNOOP_DEVICES"
-
-/** MOUNT_SNOOP_DEVICES property name.
+/** SNOOP_DEVICES property name.
  */
 #define SNOOP_DEVICES_PROPERTY_NAME	"SNOOP_DEVICES"
 
