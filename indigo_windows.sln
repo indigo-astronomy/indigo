@@ -146,6 +146,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_focuser_ioptron", "i
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_mount_asi", "indigo_drivers\mount_asi\indigo_mount_asi.vcxproj", "{8FC22A4E-EEE4-4BD8-9639-B1198B1A7C96}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_mount_ioptron", "indigo_drivers\mount_ioptron\indigo_mount_ioptron.vcxproj", "{D2B427C2-B6D4-4354-BDDF-92041036799F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -730,6 +732,14 @@ Global
 		{8FC22A4E-EEE4-4BD8-9639-B1198B1A7C96}.Release|x64.Build.0 = Release|x64
 		{8FC22A4E-EEE4-4BD8-9639-B1198B1A7C96}.Release|x86.ActiveCfg = Release|Win32
 		{8FC22A4E-EEE4-4BD8-9639-B1198B1A7C96}.Release|x86.Build.0 = Release|Win32
+		{D2B427C2-B6D4-4354-BDDF-92041036799F}.Debug|x64.ActiveCfg = Debug|x64
+		{D2B427C2-B6D4-4354-BDDF-92041036799F}.Debug|x64.Build.0 = Debug|x64
+		{D2B427C2-B6D4-4354-BDDF-92041036799F}.Debug|x86.ActiveCfg = Debug|Win32
+		{D2B427C2-B6D4-4354-BDDF-92041036799F}.Debug|x86.Build.0 = Debug|Win32
+		{D2B427C2-B6D4-4354-BDDF-92041036799F}.Release|x64.ActiveCfg = Release|x64
+		{D2B427C2-B6D4-4354-BDDF-92041036799F}.Release|x64.Build.0 = Release|x64
+		{D2B427C2-B6D4-4354-BDDF-92041036799F}.Release|x86.ActiveCfg = Release|Win32
+		{D2B427C2-B6D4-4354-BDDF-92041036799F}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

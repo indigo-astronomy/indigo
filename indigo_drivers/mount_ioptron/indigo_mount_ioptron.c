@@ -225,7 +225,7 @@ static bool ieq_get_utc(indigo_device *device, time_t *secs, int *utc_offset) {
 						*utc_offset = atoi(response + 1);
 					else
 						*utc_offset = -atoi(response + 1);
-					*secs = timegm(&tm) - *utc_offset * 3600;
+					*secs = indigo_timegm(&tm) - *utc_offset * 3600;
 					return true;
 				}
 			}
@@ -237,7 +237,7 @@ static bool ieq_get_utc(indigo_device *device, time_t *secs, int *utc_offset) {
 				tm.tm_mon -= 1;
 				if (ieq_command(device, ":GG#", response, sizeof(response))) {
 					*utc_offset = atoi(response);
-					*secs = timegm(&tm) - *utc_offset * 3600;
+					*secs = indigo_timegm(&tm) - *utc_offset * 3600;
 					return true;
 				}
 			}
@@ -248,7 +248,7 @@ static bool ieq_get_utc(indigo_device *device, time_t *secs, int *utc_offset) {
 			tm.tm_year += 100; // TODO: To be fixed in year 2100 :)
 			tm.tm_mon -= 1;
 			*utc_offset = offset / 60;
-			*secs = timegm(&tm) - *utc_offset * 3600;
+			*secs = indigo_timegm(&tm) - *utc_offset * 3600;
 			return true;
 		}
 	} else if (PRIVATE_DATA->protocol == 0x0300) {
@@ -257,7 +257,7 @@ static bool ieq_get_utc(indigo_device *device, time_t *secs, int *utc_offset) {
 			int offset = atoi(response);
 			*utc_offset = offset / 60;
 			double jd = atoll(response + 5) / 8.64e+7 + JD2000;
-			*secs = (jd - DELTA_UTC_UT1 - 2440587.5) * 86400.0;
+			*secs = (time_t)((jd - DELTA_UTC_UT1 - 2440587.5) * 86400.0);
 			return true;
 		}
 	}
@@ -268,7 +268,7 @@ static bool ieq_set_utc(indigo_device *device, time_t *secs, int utc_offset) {
 	char command[128], response[128];
 	time_t seconds = *secs + utc_offset * 3600;
 	struct tm tm;
-	gmtime_r(&seconds, &tm);
+	indigo_gmtime(&seconds, &tm);
 	if (PRIVATE_DATA->hc8406 || PRIVATE_DATA->protocol == 0x0000) {
 		sprintf(command, ":SL %02d:%02d:%02d#", tm.tm_hour, tm.tm_min, tm.tm_sec);
 		if (!ieq_command(device, command, response, 1) || *response != '1') {
