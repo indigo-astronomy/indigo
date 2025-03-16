@@ -1869,12 +1869,6 @@
 /** MOUNT_SIDE_OF_PIER.WEST property item name.
  */
 #define MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME             		"WEST"
-
-//----------------------------------------------------------------------
-/** MOUNT_ALIGNMENT_DELETE_POINTS property name.
- */
-#define MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY_NAME	"MOUNT_ALIGNMENT_DELETE_POINTS"
-
 //----------------------------------------------------------------------
 /** MOUNT_PEC property name.
  */
