@@ -150,7 +150,7 @@ static void wheel_connect_callback(indigo_device *device) {
 }
 
 static void wheel_goto_handler(indigo_device *device) {
-	char command[2] = { '0' + WHEEL_SLOT_ITEM->number.target - 1, 0 };
+	char command[2] = { '0' + (int)WHEEL_SLOT_ITEM->number.target - 1, 0 };
 	char reply[3]= { 0 };
 	if (qhy_command(device, command, reply, 1, 15)) {
 		if (X_MODEL_1_ITEM->sw.value) {
@@ -160,7 +160,7 @@ static void wheel_goto_handler(indigo_device *device) {
 		} else {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
-		PRIVATE_DATA->current_slot = WHEEL_SLOT_ITEM->number.target;
+		PRIVATE_DATA->current_slot = (int)WHEEL_SLOT_ITEM->number.target;
 	} else {
 		WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
@@ -220,7 +220,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(WHEEL_SLOT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- WHEEL_SLOT
-		int slot = WHEEL_SLOT_ITEM->number.value;
+		int slot = (int)WHEEL_SLOT_ITEM->number.value;
 		indigo_property_copy_values(WHEEL_SLOT_PROPERTY, property, false);
 		if (WHEEL_SLOT_ITEM->number.target == slot) {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;

@@ -77,13 +77,13 @@ wheel_fli
 wheel_manual
 wheel_optec
 wheel_playerone
+wheel_qhy
 wheel_quantum
 wheel_trutek
 wheel_xagyl
 
 # IN PROGRESS
 
-wheel_qhy
 
 # TODO
 
