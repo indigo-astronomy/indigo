@@ -52,6 +52,7 @@ dome_simulator
 focuser_asi
 focuser_astroasis
 focuser_astromechanics
+focuser_dmfc
 focuser_fc3
 focuser_fli
 focuser_focusdreampro
@@ -77,7 +78,6 @@ wheel_xagyl
 
 # IN PROGRESS
 
-focuser_dmfc
 focuser_ioptron
 
 mount_asi
