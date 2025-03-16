@@ -34,6 +34,7 @@
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 #include <sys/socket.h>
 #define INDIGO_PATH_SEPATATOR	'/'
+#define indigo_timezone timezone
 #elif defined(INDIGO_WINDOWS)
 #include <winsock2.h>
 #define INDIGO_PATH_SEPATATOR	'\\'
@@ -45,6 +46,7 @@
 #define strdup _strdup
 #define stat _stat
 #define tzset _tzset
+#define indigo_timezone _timezone
 #endif
 
 #if defined(INDIGO_WINDOWS)

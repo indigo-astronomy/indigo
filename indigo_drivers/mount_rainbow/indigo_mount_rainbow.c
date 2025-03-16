@@ -100,7 +100,7 @@ static bool rainbow_open(indigo_device *device) {
 	}
 	if (PRIVATE_DATA->handle != NULL) {
 		char *command=":AV#";
-		bool result = indigo_uni_write(PRIVATE_DATA->handle, command, strlen(command));
+		bool result = indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command));
 		if (result) {
 			result = false;
 			char response[128];
@@ -188,7 +188,9 @@ static void rainbow_reader(indigo_device *device) {
 		}
 		if (!strncmp(response, ":GG", 3)) {
 			int offset = -atoi(response + 3);
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 			PRIVATE_DATA->utc.tm_gmtoff =  offset * 3600;
+#endif
 			sprintf(MOUNT_UTC_OFFSET_ITEM->text.value, "%d", offset);
 			continue;
 		}
@@ -499,7 +501,7 @@ static void mount_set_host_time_callback(indigo_device *device) {
 		MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_OK_STATE;
 		time_t secs = time(NULL);
 		struct tm tm = *localtime(&secs);
-		sprintf(command, ":SC%02d/%02d/%02d#:SG%+03ld#:SL%02d:%02d:%02d#", tm.tm_mon + 1, tm.tm_mday, tm.tm_year % 100, -(tm.tm_gmtoff / 3600), tm.tm_hour, tm.tm_min, tm.tm_sec);
+		sprintf(command, ":SC%02d/%02d/%02d#:SG%+03ld#:SL%02d:%02d:%02d#", tm.tm_mon + 1, tm.tm_mday, tm.tm_year % 100, -(indigo_timezone / 3600), tm.tm_hour, tm.tm_min, tm.tm_sec);
 		MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_OK_STATE;
 		if (rainbow_command(device, command, MOUNT_SET_HOST_TIME_PROPERTY)) {
 			indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
@@ -518,7 +520,7 @@ static void mount_utc_time_callback(indigo_device *device) {
 		indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, "Wrong date/time format!");
 	} else {
 		struct tm tm = *localtime(&secs);
-		sprintf(command, ":SC%02d/%02d/%02d#:SG%+03ld#:SL%02d:%02d:%02d#", tm.tm_mon + 1, tm.tm_mday, tm.tm_year % 100, -(tm.tm_gmtoff / 3600), tm.tm_hour, tm.tm_min, tm.tm_sec);
+		sprintf(command, ":SC%02d/%02d/%02d#:SG%+03ld#:SL%02d:%02d:%02d#", tm.tm_mon + 1, tm.tm_mday, tm.tm_year % 100, -(indigo_timezone / 3600), tm.tm_hour, tm.tm_min, tm.tm_sec);
 		if (rainbow_command(device, command, NULL)) {
 			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 		}
