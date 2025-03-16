@@ -2045,7 +2045,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 					message = strerror(errno);
 				}
 			} else if (use_ser) {
-				if (!indigo_ser_add_frame((indigo_ser *)(CCD_CONTEXT->video_stream), (char*)data + FITS_HEADER_SIZE, blob_size - sizeof(indigo_raw_header))) {
+				if (!indigo_ser_add_frame((indigo_ser *)(CCD_CONTEXT->video_stream), (char*)data + FITS_HEADER_SIZE - sizeof(indigo_raw_header))) {
 					CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
 					message = strerror(errno);
 				}

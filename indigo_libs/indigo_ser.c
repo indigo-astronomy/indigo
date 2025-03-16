@@ -106,9 +106,24 @@ failure:
 	return NULL;
 }
 
-bool indigo_ser_add_frame(indigo_ser *ser, void *buffer, size_t len) {
-	ser->count++;
-	return indigo_uni_write(ser->handle, (char *)buffer, (long)len);
+bool indigo_ser_add_frame(indigo_ser *ser, void *buffer) {
+	indigo_raw_header *header = (indigo_raw_header *)buffer;
+	int size = header->width * header->height;
+	switch (header->signature) {
+		case INDIGO_RAW_MONO8:
+			ser->count++;
+			return indigo_uni_write(ser->handle, (char *)buffer + sizeof(indigo_raw_header), size);
+		case INDIGO_RAW_MONO16:
+			ser->count++;
+			return indigo_uni_write(ser->handle, (char *)buffer + sizeof(indigo_raw_header), 2 * size);
+		case INDIGO_RAW_RGB24:
+			ser->count++;
+			return indigo_uni_write(ser->handle, (char *)buffer + sizeof(indigo_raw_header), 3 * size);
+		case INDIGO_RAW_RGB48:
+			ser->count++;
+			return indigo_uni_write(ser->handle, (char *)buffer + sizeof(indigo_raw_header), 6 * size);
+	}
+	return false;
 }
 
 bool indigo_ser_close(indigo_ser *ser) {

@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2022 The Player One Astronomy Co., Ltd.
+** Copyright (C) 2025 The Player One Astronomy Co., Ltd.
 ** This software is the secondary software development kit (SDK) for
 ** the astronomy filter wheel made by Player One Astronomy Co., Ltd.
 ** Player One Astronomy Co., Ltd (hereinafter referred to as "the company") owns its copyright.
@@ -339,7 +339,7 @@ POA_PW_API int POAGetPWAPIVer();
 /**
  * @brief POAGetPWSDKVer: get the sdk version
  *
- * @return point to const char* version, eg: 1.0.11.17
+ * @return point to const char* version, eg: 1.0.1
  */
 POA_PW_API const char* POAGetPWSDKVer();
 
