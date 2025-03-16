@@ -320,7 +320,7 @@ static bool meade_open(indigo_device *device) {
 	}
 }
 
-static void network_disconnection(__attribute__((unused)) indigo_device *device);
+static void network_disconnection(indigo_device *device);
 
 static bool meade_command(indigo_device *device, char *command, char *response, int max, int sleep) {
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
@@ -399,7 +399,7 @@ static bool meade_set_utc(indigo_device *device, time_t *secs, int utc_offset) {
 	char command[128], response[128];
 	time_t seconds = *secs + utc_offset * 3600;
 	struct tm tm;
-	gmtime_r(&seconds, &tm);
+	indigo_gmtime(&seconds, &tm);
 	sprintf(command, ":SC%02d/%02d/%02d#", tm.tm_mon + 1, tm.tm_mday, tm.tm_year % 100);
 	// :SCMM/DD/YY# returns two delimiters response:
 	// "1Updating Planetary Data#                                #"
@@ -504,7 +504,7 @@ static bool meade_get_utc(indigo_device *device, time_t *secs, int *utc_offset) 
 						}
 					}
 					*utc_offset = -atoi(response);
-					*secs = timegm(&tm) - *utc_offset * 3600;
+					*secs = indigo_timegm(&tm) - *utc_offset * 3600;
 					return true;
 				}
 			}
@@ -719,10 +719,14 @@ static bool meade_set_guide_rate(indigo_device *device, int ra, int dec) {
 		}
 	} else if (MOUNT_TYPE_ZWO_ITEM->sw.value) {
 		// asi miunt has one guide rate for ra and dec
-		if (ra < 10) ra = 10;
-		if (ra > 90) ra = 90;
-		float rate = ra / 100.0;
-		sprintf(command, ":Rg%.1f#", rate);
+		if (ra < 10) {
+			ra = 10;
+		}
+		if (ra > 90) {
+			ra = 90;
+		}
+		double rate = ra / 100.0;
+		sprintf(command, ":Rg%.1lf#", rate);
 		return (meade_command(device, command, NULL, 0, 0));
 	}
 	return false;
@@ -732,11 +736,15 @@ static bool meade_get_guide_rate(indigo_device *device, int *ra, int *dec) {
 	char response[128] = {0};
 	if (MOUNT_TYPE_ZWO_ITEM->sw.value) {
 		bool res = meade_command(device, ":Ggr#", response, sizeof(response), 0);
-		if (!res) return false;
-		float rate = 0;
-		int parsed = sscanf(response, "%f", &rate);
-		if (parsed !=1) return false;
-		*ra = *dec = rate * 100;
+		if (!res) {
+			return false;
+		}
+		double rate = 0;
+		int parsed = sscanf(response, "%lf", &rate);
+		if (parsed != 1) {
+			return false;
+		}
+		*ra = *dec = (int)(rate * 100);
 		return true;
 	}
 	return false;
@@ -3249,8 +3257,8 @@ static void guider_connect_callback(indigo_device *device) {
 }
 
 static void guider_guide_dec_callback(indigo_device *device) {
-	int north = GUIDER_GUIDE_NORTH_ITEM->number.value;
-	int south = GUIDER_GUIDE_SOUTH_ITEM->number.value;
+	int north = (int)GUIDER_GUIDE_NORTH_ITEM->number.value;
+	int south = (int)GUIDER_GUIDE_SOUTH_ITEM->number.value;
 	meade_guide_dec(device, north, south);
 	if (north > 0) {
 		indigo_usleep(1000 * north);
@@ -3263,8 +3271,8 @@ static void guider_guide_dec_callback(indigo_device *device) {
 }
 
 static void guider_guide_ra_callback(indigo_device *device) {
-	int west = GUIDER_GUIDE_WEST_ITEM->number.value;
-	int east = GUIDER_GUIDE_EAST_ITEM->number.value;
+	int west = (int)GUIDER_GUIDE_WEST_ITEM->number.value;
+	int east = (int)GUIDER_GUIDE_EAST_ITEM->number.value;
 	meade_guide_ra(device, west, east);
 	if (west > 0) {
 		indigo_usleep(1000 * west);
@@ -3378,7 +3386,7 @@ static void focuser_connect_callback(indigo_device *device) {
 }
 
 static void focuser_steps_callback(indigo_device *device) {
-	int steps = FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value ^ FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value ? -FOCUSER_STEPS_ITEM->number.value : FOCUSER_STEPS_ITEM->number.value;
+	int steps = (int)(FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value ^ FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value ? -FOCUSER_STEPS_ITEM->number.value : FOCUSER_STEPS_ITEM->number.value);
 	if (meade_focus_rel(device, FOCUSER_SPEED_ITEM->number.value == FOCUSER_SPEED_ITEM->number.min, steps))
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 	else
@@ -3797,7 +3805,7 @@ static indigo_device *mount_guider = NULL;
 static indigo_device *mount_focuser = NULL;
 static indigo_device *mount_aux = NULL;
 
-static void network_disconnection(__attribute__((unused)) indigo_device* device) {
+static void network_disconnection(indigo_device* device) {
 	// Since all three devices share the same TCP connection,
 	// process the disconnection on all three of them
 	device_network_disconnection(mount, mount_connect_callback);

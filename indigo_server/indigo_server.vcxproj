@@ -422,6 +422,9 @@
     <ProjectReference Include="..\indigo_drivers\mount_asi\indigo_mount_asi.vcxproj">
       <Project>{8fc22a4e-eee4-4bd8-9639-b1198b1a7c96}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\mount_ioptron\indigo_mount_ioptron.vcxproj">
+      <Project>{d2b427c2-b6d4-4354-bddf-92041036799f}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\indigo_drivers\rotator_falcon\indigo_rotator_falcon.vcxproj">
       <Project>{827bb928-02bf-4df7-9c0f-4e141dec7406}</Project>
     </ProjectReference>

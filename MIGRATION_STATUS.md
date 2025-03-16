@@ -63,6 +63,7 @@ gps_simulator
 
 mount_asi
 mount_ioptron
+mount_lx200
 mount_simulator
 
 rotator_falcon
@@ -81,7 +82,6 @@ wheel_xagyl
 
 # IN PROGRESS
 
-mount_lx200
 mount_rainbow
 
 wheel_qhy
