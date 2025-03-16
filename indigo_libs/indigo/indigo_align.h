@@ -114,15 +114,18 @@ extern void indigo_j2k_to_jnow(double *ra, double *dec);
 extern void indigo_j2k_to_eq(const double eq, double *ra, double *dec);
 
 /** calculate time to the next transit
+
 	ra - right ascension of the object in decimal hours
 	lmst - local mean sidereal time in decimal degrees
+	allow_negative_time - if true it returns time to closest transit in decimal hours,
+		if previous transit is closer it returns negative time since transit.
 
-	returns time to closest transit in decimal hours.
-	If transit happened it returns megaive time.
+	returns time to the next or closest transit in decimal hours depending on allow_negative_time
  */
-double indigo_time_to_transit(const double ra, const double lmst);
+extern double indigo_time_to_transit(const double ra, const double lmst, const bool allow_negative_time);
 
 /** Calculate raise transit and set times for the nearest transit
+
 	jd - julian day
 	latitude (degrees)
 	longitude (degrees)
