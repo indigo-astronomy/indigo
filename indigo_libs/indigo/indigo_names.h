@@ -185,11 +185,7 @@
 #define GEOGRAPHIC_COORDINATES_ACCURACY_ITEM_NAME	"ACCURACY"
 
 //----------------------------------------------------------------------
-/** DOME_SNOOP_DEVICES property name.
- */
-#define SNOOP_DEVICES_PROPERTY_NAME	"SNOOP_DEVICES"
-
-/** MOUNT_SNOOP_DEVICES property name.
+/** SNOOP_DEVICES property name.
  */
 #define SNOOP_DEVICES_PROPERTY_NAME	"SNOOP_DEVICES"
 
@@ -1869,12 +1865,6 @@
 /** MOUNT_SIDE_OF_PIER.WEST property item name.
  */
 #define MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME             		"WEST"
-
-//----------------------------------------------------------------------
-/** MOUNT_ALIGNMENT_DELETE_POINTS property name.
- */
-#define MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY_NAME	"MOUNT_ALIGNMENT_DELETE_POINTS"
-
 //----------------------------------------------------------------------
 /** MOUNT_PEC property name.
  */
