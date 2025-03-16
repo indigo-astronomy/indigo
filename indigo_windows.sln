@@ -138,6 +138,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_focuser_astromechani
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_focuser_fc3", "indigo_drivers\focuser_fc3\indigo_focuser_fc3.vcxproj", "{08B423FC-85F3-4A77-9FBB-F350A00B9036}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_focuser_focusdreampro", "indigo_drivers\focuser_focusdreampro\indigo_focuser_focusdreampro.vcxproj", "{31ABA8A9-F4D6-4A19-A797-8545C2E0B1BB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -690,6 +692,14 @@ Global
 		{08B423FC-85F3-4A77-9FBB-F350A00B9036}.Release|x64.Build.0 = Release|x64
 		{08B423FC-85F3-4A77-9FBB-F350A00B9036}.Release|x86.ActiveCfg = Release|Win32
 		{08B423FC-85F3-4A77-9FBB-F350A00B9036}.Release|x86.Build.0 = Release|Win32
+		{31ABA8A9-F4D6-4A19-A797-8545C2E0B1BB}.Debug|x64.ActiveCfg = Debug|x64
+		{31ABA8A9-F4D6-4A19-A797-8545C2E0B1BB}.Debug|x64.Build.0 = Debug|x64
+		{31ABA8A9-F4D6-4A19-A797-8545C2E0B1BB}.Debug|x86.ActiveCfg = Debug|Win32
+		{31ABA8A9-F4D6-4A19-A797-8545C2E0B1BB}.Debug|x86.Build.0 = Debug|Win32
+		{31ABA8A9-F4D6-4A19-A797-8545C2E0B1BB}.Release|x64.ActiveCfg = Release|x64
+		{31ABA8A9-F4D6-4A19-A797-8545C2E0B1BB}.Release|x64.Build.0 = Release|x64
+		{31ABA8A9-F4D6-4A19-A797-8545C2E0B1BB}.Release|x86.ActiveCfg = Release|Win32
+		{31ABA8A9-F4D6-4A19-A797-8545C2E0B1BB}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

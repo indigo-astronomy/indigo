@@ -57,7 +57,7 @@ static int SPEED[] = { 500, 250, 110, 40, 10, 5 };
 
 static bool focusdreampro_command(indigo_device *device, char *command, char *response, int max) {
 	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
-		if (indigo_uni_write(PRIVATE_DATA->handle, command, strlen(command)) > 0) {
+		if (indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command)) > 0) {
 			if (response != NULL) {
 				if (indigo_uni_read_line(PRIVATE_DATA->handle, response, max) > 0) {
 					return true;
@@ -299,9 +299,9 @@ static void focuser_position_handler(indigo_device *device) {
 	char command[16], response[16];
 	int position = (int)FOCUSER_POSITION_ITEM->number.target;
 	if (position < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target)
-		position = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target;
+		position = (int)FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target;
 	if (position > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target)
-		position = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target;
+		position = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target;
 	FOCUSER_POSITION_ITEM->number.target = position;
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 	snprintf(command, sizeof(command), "%c:%d", FOCUSER_ON_POSITION_SET_SYNC_ITEM->sw.value ? 'R': 'M', position);
@@ -321,9 +321,9 @@ static void focuser_steps_handler(indigo_device *device) {
 	char command[16], response[16];
 	int position = (int)FOCUSER_POSITION_ITEM->number.value + (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? -(int)FOCUSER_STEPS_ITEM->number.value : (int)FOCUSER_STEPS_ITEM->number.value);
 	if (position < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target)
-		position = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target;
+		position = (int)FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target;
 	if (position > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target)
-		position = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target;
+		position = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target;
 	snprintf(command, sizeof(command), "M:%d", position);
 	if (focusdreampro_command(device, command, response, sizeof(response)) && *response == *command) {
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -392,7 +392,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_POSITION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_POSITION
-		int position = FOCUSER_POSITION_ITEM->number.value;
+		int position = (int)FOCUSER_POSITION_ITEM->number.value;
 		indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
 		FOCUSER_POSITION_ITEM->number.value = position;
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;

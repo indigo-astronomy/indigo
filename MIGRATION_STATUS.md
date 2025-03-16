@@ -54,6 +54,7 @@ focuser_astroasis
 focuser_astromechanics
 focuser_fc3
 focuser_fli
+focuser_focusdreampro
 
 gps_nmea
 gps_simulator
@@ -76,7 +77,6 @@ wheel_xagyl
 
 # IN PROGRESS
 
-focuser_focusdreampro
 focuser_dmfc
 focuser_ioptron
 
