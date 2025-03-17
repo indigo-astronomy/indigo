@@ -145,7 +145,6 @@ typedef struct {
 	int mount_side_of_pier;
 
 	bool show_show_negative_time_past_transit;
-	bool geographic_coordinates_defined;
 	bool equatorial_coordinates_defined;
 
 	int selected_mount_index;
@@ -538,7 +537,7 @@ static void reset_star_selection(indigo_device *device, char *reason) {
 }
 
 static void handle_mount_change(indigo_device *device) {
-	if (!DEVICE_PRIVATE_DATA->geographic_coordinates_defined || !DEVICE_PRIVATE_DATA->equatorial_coordinates_defined) {
+	if (!DEVICE_PRIVATE_DATA->equatorial_coordinates_defined) {
 		return;
 	}
 	time_t utc = time(NULL);
@@ -660,9 +659,6 @@ static void handle_mount_change(indigo_device *device) {
 }
 
 static void handle_site_change(indigo_device *device) {
-	if (!DEVICE_PRIVATE_DATA->geographic_coordinates_defined) {
-		return;
-	}
 	static const char *names[] = { GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME };
 	double latitude = 0, longitude = 0, elevation = 0;
 	// select coordinates source
@@ -723,7 +719,6 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 					if(DEVICE_PRIVATE_DATA->selected_mount_index != i) {
 						DEVICE_PRIVATE_DATA->selected_mount_index = i;
 						DEVICE_PRIVATE_DATA->equatorial_coordinates_defined = false;
-						DEVICE_PRIVATE_DATA->geographic_coordinates_defined = false;
 						DEVICE_PRIVATE_DATA->show_show_negative_time_past_transit = false;
 						DEVICE_PRIVATE_DATA->mount_eq_coordinates_state = INDIGO_IDLE_STATE;
 						indigo_error("Selected mount changed: %s", property->items[i].label);
@@ -741,7 +736,6 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 			}
 			DEVICE_PRIVATE_DATA->show_show_negative_time_past_transit = false;
 			DEVICE_PRIVATE_DATA->equatorial_coordinates_defined = false;
-			DEVICE_PRIVATE_DATA->geographic_coordinates_defined = false;
 			for (int i = 0; i < AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY->count; i++) {
 				AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY->items[i].number.value = 0.0;
 			}
@@ -749,7 +743,6 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 			indigo_update_property(device, AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY, NULL);
 		}
 	} else if (!strcmp(property->name, "MOUNT_" GEOGRAPHIC_COORDINATES_PROPERTY_NAME)) {
-		DEVICE_PRIVATE_DATA->geographic_coordinates_defined = true;
 		bool changed = false;
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = property->items + i;
