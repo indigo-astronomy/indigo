@@ -23,7 +23,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x0032
+#define DRIVER_VERSION 0x0033
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>
@@ -1033,8 +1033,6 @@ static bool exposure_batch(indigo_device *device) {
 			double exposure_time = AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.target;
 			if (pauseOnTTT && indigo_filter_first_related_agent(device, "Mount Agent")) {
 				time_to_transit = DEVICE_PRIVATE_DATA->time_to_transit;
-				if (time_to_transit > 12)
-					time_to_transit = time_to_transit - 24;
 				if (time_to_transit <= exposure_time / 3600 - AGENT_IMAGER_BATCH_PAUSE_AFTER_TRANSIT_ITEM->number.target) {
 					pauseOnTTT = false; // pause only once per batch
 					clear_selection(device);
