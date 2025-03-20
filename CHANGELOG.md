@@ -2,7 +2,16 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
- [2.0-322] - 17 Mar Mon 2025
+# [2.0-324] - 20 Mar Thu 2025
+## New Drivers:
+- indigo_rotator_asi:
+	- ZWO Camera Angle Adjsuter driver
+
+## Driver Fixes:
+- indigo_agent_imager:
+	- pause at meridian disabled if there is no mount selected
+
+# [2.0-322] - 17 Mar Mon 2025
 ## Overall:
 - code cleanup
 - truncated long text items fixed
