@@ -595,17 +595,17 @@ var indigo_sequencer = {
 	enter_loop: function() {
 		this.loop_level++;
 		indigo_define_number_property(this.devices[0], "LOOP_" + this.loop_level, "Sequencer", "Loop " + this.loop_level, { STEP: this.step, COUNT: 0 }, { STEP: { label: "Loop at", format: "%g", min: 0, max: 10000, step: 1 }, COUNT: { label: "Itreations elapsed", format: "%g", min: 0, max: 10000, step: 1 }}, "Ok", "RO");
-		indigo_set_timer(indigo_sequencer_next_handler, 0.01); // delayed execution of next step to avoid out of sequence define/update/delete
+		indigo_set_timer(indigo_sequencer_next_handler, 0);
 	},
 	
 	increment_loop: function(i) {
 		indigo_update_number_property(this.devices[0], "LOOP_" + this.loop_level, { COUNT: i }, "Ok");
-		indigo_set_timer(indigo_sequencer_next_handler, 0.01); // delayed execution of next step to avoid out of sequence define/update/delete
+		indigo_set_timer(indigo_sequencer_next_handler, 0);
 	},
 		
 	exit_loop: function() {
 		indigo_delete_property(this.devices[0], "LOOP_" + this.loop_level--);
-		indigo_set_timer(indigo_sequencer_next_handler, 0.01); // delayed execution of next step to avoid out of sequence define/update/delete
+		indigo_set_timer(indigo_sequencer_next_handler, 0);
 	},
 	
 	select_switch: function(device, property, item) {
