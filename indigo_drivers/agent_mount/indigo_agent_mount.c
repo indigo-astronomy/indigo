@@ -23,7 +23,7 @@
  \file indigo_agent_mount.c
  */
 
-#define DRIVER_VERSION 0x0011
+#define DRIVER_VERSION 0x0012
 #define DRIVER_NAME	"indigo_agent_mount"
 
 #include <stdlib.h>
@@ -103,8 +103,9 @@
 #define AGENT_MOUNT_DISPLAY_COORDINATES_TRANSIT_ITEM	(AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY->items+7)
 #define AGENT_MOUNT_DISPLAY_COORDINATES_SET_ITEM			(AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY->items+8)
 #define AGENT_MOUNT_DISPLAY_COORDINATES_TIME_TO_TRANSIT_ITEM			(AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY->items+9)
-#define AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM			(AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY->items+10)
-#define AGENT_MOUNT_DISPLAY_COORDINATES_DEROTATION_RATE_ITEM			(AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY->items+11)
+#define AGENT_MOUNT_DISPLAY_COORDINATES_FLIP_REQUIRED_ITEM			(AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY->items+10)
+#define AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM			(AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY->items+11)
+#define AGENT_MOUNT_DISPLAY_COORDINATES_DEROTATION_RATE_ITEM			(AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY->items+12)
 
 #define AGENT_ABORT_PROCESS_PROPERTY									(DEVICE_PRIVATE_DATA->agent_abort_process_property)
 #define AGENT_ABORT_PROCESS_ITEM      								(AGENT_ABORT_PROCESS_PROPERTY->items+0)
@@ -142,6 +143,11 @@ typedef struct {
 	indigo_property_state mount_eq_coordinates_state;
 	double mount_ra, mount_dec;
 	int mount_side_of_pier;
+
+	bool show_show_negative_time_past_transit;
+	bool equatorial_coordinates_defined;
+
+	int selected_mount_index;
 	double mount_target_ra, mount_target_dec;
 	indigo_property_state rotator_position_state;
 	double rotator_position;
@@ -531,6 +537,9 @@ static void reset_star_selection(indigo_device *device, char *reason) {
 }
 
 static void handle_mount_change(indigo_device *device) {
+	if (!DEVICE_PRIVATE_DATA->equatorial_coordinates_defined) {
+		return;
+	}
 	time_t utc = time(NULL);
 	double ra = DEVICE_PRIVATE_DATA->mount_ra;
 	double dec = DEVICE_PRIVATE_DATA->mount_dec;
@@ -552,8 +561,23 @@ static void handle_mount_change(indigo_device *device) {
 	AGENT_MOUNT_DISPLAY_COORDINATES_HA_ITEM->number.value = fmod((lst - ra + 24), 24);
 	indigo_raise_set(UT2JD(utc), latitude, longitude, ra, dec, &AGENT_MOUNT_DISPLAY_COORDINATES_RISE_ITEM->number.value, &AGENT_MOUNT_DISPLAY_COORDINATES_TRANSIT_ITEM->number.value, &AGENT_MOUNT_DISPLAY_COORDINATES_SET_ITEM->number.value);
 	AGENT_MOUNT_DISPLAY_COORDINATES_AIRMASS_ITEM->number.value = indigo_airmass(AGENT_MOUNT_DISPLAY_COORDINATES_ALT_ITEM->number.value);
-	AGENT_MOUNT_DISPLAY_COORDINATES_TIME_TO_TRANSIT_ITEM->number.value = indigo_time_to_transit(ra, lst);
+
 	AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY->state = DEVICE_PRIVATE_DATA->mount_eq_coordinates_state;
+	/* Do not show negative time past transit if the mount is flipped.
+	   However if we are close to transit the time becomes positive again
+	   and we need to re-enable showing negative time to indicate that the mount needs to flip.
+	*/
+	double time_to_transit = indigo_time_to_transit(ra, lst, true);
+	if (time_to_transit > 0) {
+		DEVICE_PRIVATE_DATA->show_show_negative_time_past_transit = true;
+	}
+	if (DEVICE_PRIVATE_DATA->mount_eq_coordinates_state == INDIGO_BUSY_STATE && time_to_transit <= 0) {
+		DEVICE_PRIVATE_DATA->show_show_negative_time_past_transit = false;
+		AGENT_MOUNT_DISPLAY_COORDINATES_FLIP_REQUIRED_ITEM->number.value = 0.0;
+	} else {
+		AGENT_MOUNT_DISPLAY_COORDINATES_TIME_TO_TRANSIT_ITEM->number.value = indigo_time_to_transit(ra, lst, DEVICE_PRIVATE_DATA->show_show_negative_time_past_transit);
+		AGENT_MOUNT_DISPLAY_COORDINATES_FLIP_REQUIRED_ITEM->number.value = (AGENT_MOUNT_DISPLAY_COORDINATES_TIME_TO_TRANSIT_ITEM->number.value <= 0 ? 1.0 : 0.0);
+	}
 	AGENT_MOUNT_DISPLAY_COORDINATES_DEROTATION_RATE_ITEM->number.value = indigo_derotation_rate(AGENT_MOUNT_DISPLAY_COORDINATES_ALT_ITEM->number.value, AGENT_MOUNT_DISPLAY_COORDINATES_AZ_ITEM->number.value, latitude);
 	AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM->number.value = indigo_parallactic_angle(AGENT_MOUNT_DISPLAY_COORDINATES_HA_ITEM->number.value * 15, dec, latitude);
 	indigo_update_property(device, AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY, NULL);
@@ -630,6 +654,7 @@ static void handle_mount_change(indigo_device *device) {
 		indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY_NAME, 3, names, values);
 		indigo_set_fits_header(FILTER_DEVICE_CONTEXT->client, related_agent_name, "OBJCTRA", "'%d %02d %02d'", (int)(DEVICE_PRIVATE_DATA->mount_ra), ((int)(fabs(DEVICE_PRIVATE_DATA->mount_ra) * 60)) % 60, ((int)(fabs(DEVICE_PRIVATE_DATA->mount_ra) * 3600)) % 60);
 		indigo_set_fits_header(FILTER_DEVICE_CONTEXT->client, related_agent_name, "OBJCTDEC", "'%d %02d %02d'", (int)(DEVICE_PRIVATE_DATA->mount_dec), ((int)(fabs(DEVICE_PRIVATE_DATA->mount_dec) * 60)) % 60, ((int)(fabs(DEVICE_PRIVATE_DATA->mount_dec) * 3600)) % 60);
+		indigo_set_fits_header(FILTER_DEVICE_CONTEXT->client, related_agent_name, "PIERSIDE", "%d", (int)(DEVICE_PRIVATE_DATA->mount_side_of_pier == 1 ? 1 : 0));
 	}
 }
 
@@ -689,6 +714,18 @@ static void handle_site_change(indigo_device *device) {
 static void snoop_changes(indigo_client *client, indigo_device *device, indigo_property *property) {
 	if (!strcmp(property->name, FILTER_MOUNT_LIST_PROPERTY_NAME)) { // Snoop mount
 		if (INDIGO_FILTER_MOUNT_SELECTED) {
+			for (int i = 0; i < property->count; i++) {
+				if (property->items[i].sw.value) {
+					if(DEVICE_PRIVATE_DATA->selected_mount_index != i) {
+						DEVICE_PRIVATE_DATA->selected_mount_index = i;
+						DEVICE_PRIVATE_DATA->equatorial_coordinates_defined = false;
+						DEVICE_PRIVATE_DATA->show_show_negative_time_past_transit = false;
+						DEVICE_PRIVATE_DATA->mount_eq_coordinates_state = INDIGO_IDLE_STATE;
+						indigo_error("Selected mount changed: %s", property->items[i].label);
+					}
+					break;
+				}
+			}
 			handle_site_change(device);
 		} else {
 			DEVICE_PRIVATE_DATA->mount_eq_coordinates_state = INDIGO_IDLE_STATE;
@@ -697,6 +734,13 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 				AGENT_FIELD_DEROTATION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_update_property(device, AGENT_FIELD_DEROTATION_PROPERTY, "Mount disconnected - derotation disabled");
 			}
+			DEVICE_PRIVATE_DATA->show_show_negative_time_past_transit = false;
+			DEVICE_PRIVATE_DATA->equatorial_coordinates_defined = false;
+			for (int i = 0; i < AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY->count; i++) {
+				AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY->items[i].number.value = 0.0;
+			}
+			AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY->state = INDIGO_IDLE_STATE;
+			indigo_update_property(device, AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY, NULL);
 		}
 	} else if (!strcmp(property->name, "MOUNT_" GEOGRAPHIC_COORDINATES_PROPERTY_NAME)) {
 		bool changed = false;
@@ -731,6 +775,7 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 		}
 		handle_mount_change(device);
 	} else if (!strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)) {
+		DEVICE_PRIVATE_DATA->equatorial_coordinates_defined = true;
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = property->items + i;
 			if (!strcmp(item->name, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME)) {
@@ -921,7 +966,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_sexagesimal_number_item(AGENT_MOUNT_TARGET_COORDINATES_RA_ITEM, AGENT_MOUNT_TARGET_COORDINATES_RA_ITEM_NAME, "Right ascension (0 to 24 hrs)", 0, 24, 0, 0);
 		indigo_init_sexagesimal_number_item(AGENT_MOUNT_TARGET_COORDINATES_DEC_ITEM, AGENT_MOUNT_TARGET_COORDINATES_DEC_ITEM_NAME, "Declination (-90° to +90°)", -90, 90, 0, 0);
 		// -------------------------------------------------------------------------------- AGENT_MOUNT_DISPLAY_COORDINATES
-		AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY_NAME, "Agent", "Display coordinates", INDIGO_OK_STATE, INDIGO_RO_PERM, 12);
+		AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY_NAME, "Agent", "Display coordinates", INDIGO_OK_STATE, INDIGO_RO_PERM, 13);
 		if (AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_sexagesimal_number_item(AGENT_MOUNT_DISPLAY_COORDINATES_RA_JNOW_ITEM, AGENT_MOUNT_DISPLAY_COORDINATES_RA_JNOW_ITEM_NAME, "Right ascension JNow (0 to 24 hrs)", 0, 24, 0, 0);
@@ -933,7 +978,8 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_sexagesimal_number_item(AGENT_MOUNT_DISPLAY_COORDINATES_RISE_ITEM, AGENT_MOUNT_DISPLAY_COORDINATES_RISE_ITEM_NAME, "Raise time (0 to 24 hrs)", 0, 24, 0, 0);
 		indigo_init_sexagesimal_number_item(AGENT_MOUNT_DISPLAY_COORDINATES_TRANSIT_ITEM, AGENT_MOUNT_DISPLAY_COORDINATES_TRANSIT_ITEM_NAME, "Transit time (0 to 24 hrs)", 0, 24, 0, 0);
 		indigo_init_sexagesimal_number_item(AGENT_MOUNT_DISPLAY_COORDINATES_SET_ITEM, AGENT_MOUNT_DISPLAY_COORDINATES_SET_ITEM_NAME, "Set time (0 to 24 hrs)", 0, 24, 0, 0);
-		indigo_init_sexagesimal_number_item(AGENT_MOUNT_DISPLAY_COORDINATES_TIME_TO_TRANSIT_ITEM, AGENT_MOUNT_DISPLAY_COORDINATES_TIME_TO_TRANSIT_ITEM_NAME, "Time to transit (0 to 24 hrs)", 0, 24, 0, 0);
+		indigo_init_sexagesimal_number_item(AGENT_MOUNT_DISPLAY_COORDINATES_TIME_TO_TRANSIT_ITEM, AGENT_MOUNT_DISPLAY_COORDINATES_TIME_TO_TRANSIT_ITEM_NAME, "Time to transit (24 to 0 hrs)", 0, 24, 0, 0);
+		indigo_init_number_item(AGENT_MOUNT_DISPLAY_COORDINATES_FLIP_REQUIRED_ITEM, AGENT_MOUNT_DISPLAY_COORDINATES_FLIP_REQUIRED_ITEM_NAME, "Flip required (0 to 1)", 0, 1, 0, 0);
 		indigo_init_sexagesimal_number_item(AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM, AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM_NAME, "Parallactic angle (-180 to 180°)", -180, 180, 0, 0);
 		indigo_init_number_item(AGENT_MOUNT_DISPLAY_COORDINATES_DEROTATION_RATE_ITEM, AGENT_MOUNT_DISPLAY_COORDINATES_DEROTATION_RATE_ITEM_NAME, "Derotation rate (\"/s)", -1000, 1000, 0, 0);
 		// -------------------------------------------------------------------------------- AGENT_FIELD_DEROTATION

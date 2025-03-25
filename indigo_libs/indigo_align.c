@@ -92,8 +92,21 @@ double indigo_mean_gst(const time_t *utc) {
 	}
 }
 
-double indigo_time_to_transit(const double ra, const double lmst) {
-	return fmod((ra - lmst)+ 24.0, 24.0) / 1.0027379093508;
+double indigo_time_to_transit(const double ra, const double lmst, const bool allow_negative_time) {
+	double diff = ra - lmst;
+	if (allow_negative_time) {
+		// normalize to [-6h, +6h] range to handle both meridian crossings
+		while (diff > 6.0) diff -= 12.0;
+		while (diff < -6.0) diff += 12.0;
+	} else {
+		diff = fmod(diff + 24.0, 24.0);
+		// normalize to [0h,12h] range to handle both meridian crossings
+		if (diff > 12.0) {
+			diff -= 12.0;
+		}
+	}
+	// sidereal to solar time
+	return diff / 1.0027379093508;
 }
 
 void indigo_raise_set(

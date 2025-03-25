@@ -23,7 +23,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x0032
+#define DRIVER_VERSION 0x0034
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>
@@ -290,7 +290,8 @@ typedef struct {
 	indigo_property_state related_guider_process_state;
 	double solver_goto_ra;
 	double solver_goto_dec;
-	double ra, dec, latitude, longitude, time_to_transit;
+	double time_to_transit;
+	int display_coordinates_state;
 	bool has_camera;
 } imager_agent_private_data;
 
@@ -1010,8 +1011,8 @@ static bool do_dither(indigo_device *device) {
 }
 
 static bool exposure_batch(indigo_device *device) {
-	double time_to_transit = DEVICE_PRIVATE_DATA->time_to_transit;
-	bool pauseOnTTT = AGENT_IMAGER_PAUSE_AFTER_TRANSIT_FEATURE_ITEM->sw.value && time_to_transit < 12;
+	bool pauseOnTTT = AGENT_IMAGER_PAUSE_AFTER_TRANSIT_FEATURE_ITEM->sw.value && DEVICE_PRIVATE_DATA->display_coordinates_state == INDIGO_OK_STATE;
+	// indigo_send_message(device, "Batch started (%s)", pauseOnTTT ? "will pause on transit" : "no pause on transit");
 	indigo_property_state state = INDIGO_ALERT_STATE;
 	AGENT_IMAGER_STATS_EXPOSURE_ITEM->number.value = 0;
 	AGENT_IMAGER_STATS_DELAY_ITEM->number.value = 0;
@@ -1033,9 +1034,7 @@ static bool exposure_batch(indigo_device *device) {
 			bool pausedOnTTT = false;
 			double exposure_time = AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.target;
 			if (pauseOnTTT && indigo_filter_first_related_agent(device, "Mount Agent")) {
-				time_to_transit = DEVICE_PRIVATE_DATA->time_to_transit;
-				if (time_to_transit > 12)
-					time_to_transit = time_to_transit - 24;
+				double time_to_transit = DEVICE_PRIVATE_DATA->time_to_transit;
 				if (time_to_transit <= exposure_time / 3600 - AGENT_IMAGER_BATCH_PAUSE_AFTER_TRANSIT_ITEM->number.target) {
 					pauseOnTTT = false; // pause only once per batch
 					clear_selection(device);
@@ -2589,7 +2588,7 @@ static void sequence_process(indigo_device *device) {
 		indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 		AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 		FILTER_DEVICE_CONTEXT->running_process = false;
-		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, "No filter wheen is selected");
+		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, "No filter wheel is selected");
 		indigo_safe_free(sequence_text);
 		return;
 	}
@@ -3514,29 +3513,6 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 					value = item->text.value;
 				}
 			}
-			if (name != NULL && value != NULL) {
-				int d, m, s;
-				if (sscanf(value, "'%d %d %d'", &d, &m, &s) == 3) {
-					double value = d + m / 60.0 + s / 3600.0;
-					if (!strcmp(name, "OBJCTRA")) {
-						DEVICE_PRIVATE_DATA->ra = value;
-					} else if (!strcmp(name, "OBJCTDEC")) {
-						DEVICE_PRIVATE_DATA->dec = value;
-					} else if (!strcmp(name, "SITELAT")) {
-						DEVICE_PRIVATE_DATA->latitude = value;
-					} else if (!strcmp(name, "SITELONG")) {
-						DEVICE_PRIVATE_DATA->longitude = value;
-					}
-					time_t utc = time(NULL);
-					double lst = indigo_lst(&utc, DEVICE_PRIVATE_DATA->longitude);
-					double ra = DEVICE_PRIVATE_DATA->ra;
-					double dec = DEVICE_PRIVATE_DATA->dec;
-					double transit;
-					indigo_j2k_to_jnow(&ra, &dec);
-					indigo_raise_set(UT2JD(utc), DEVICE_PRIVATE_DATA->latitude, DEVICE_PRIVATE_DATA->longitude, ra, dec, NULL, &transit, NULL);
-					DEVICE_PRIVATE_DATA->time_to_transit = indigo_time_to_transit(ra, lst);
-				}
-			}
 		}
 	}
 	return indigo_filter_change_property(device, client, property);
@@ -3808,6 +3784,22 @@ static void snoop_guider_changes(indigo_client *client, indigo_property *propert
 	}
 }
 
+static void snoop_mount_changes(indigo_client *client, indigo_property *property) {
+	indigo_device *device = FILTER_CLIENT_CONTEXT->device;
+	char *related_agent_name = indigo_filter_first_related_agent(device, "Mount Agent");
+	if (related_agent_name && !strcmp(related_agent_name, property->device)) {
+		if (!strcmp(property->name, AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY_NAME)) {
+			DEVICE_PRIVATE_DATA->display_coordinates_state = property->state;
+			for (int i = 0; i < property->count; i++) {
+				indigo_item *item = property->items + i;
+				if (!strcmp(item->name, AGENT_MOUNT_DISPLAY_COORDINATES_TIME_TO_TRANSIT_ITEM_NAME)) {
+					DEVICE_PRIVATE_DATA->time_to_transit = item->number.value;
+				}
+			}
+		}
+	}
+}
+
 static void snoop_astrometry_changes(indigo_client *client, indigo_property *property) {
 	char *related_agent_name = indigo_filter_first_related_agent(FILTER_CLIENT_CONTEXT->device, "Astrometry Agent");
 	if (related_agent_name && !strcmp(property->device, related_agent_name)) {
@@ -3857,6 +3849,7 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 	} else {
 		snoop_barrier_state(client, property);
 		snoop_guider_changes(client, property);
+		snoop_mount_changes(client, property);
 		snoop_astrometry_changes(client, property);
 	}
 	return indigo_filter_define_property(client, device, property, message);
@@ -3915,6 +3908,7 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 	} else {
 		snoop_barrier_state(client, property);
 		snoop_guider_changes(client, property);
+		snoop_mount_changes(client, property);
 		snoop_astrometry_changes(client, property);
 	}
 	return indigo_filter_update_property(client, device, property, message);
