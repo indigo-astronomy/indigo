@@ -471,6 +471,8 @@ var indigo_sequencer = {
 	wait_for_timer: null,
 	ignore_failure: false,
 	use_solver: false,
+	paused: false,
+	capturing_batch: false,
 	
 	on_update: function(property) {
 		if (property.device == this.devices[2] && property.name == "AGENT_PAUSE_PROCESS" && property.state == "Busy" && property.items.PAUSE_AFTER_TRANSIT) {
@@ -478,7 +480,7 @@ var indigo_sequencer = {
 			indigo_flipper.start(this.use_solver);
 		} else if (property.device == this.wait_for_device && property.name == this.wait_for_name) {
 			if (this.wait_for_item != null && this.wait_for_value != null) {
-			indigo_log("wait_for_item '" + this.wait_for_item + "' -> " + property.items[this.wait_for_item]);
+				indigo_log("wait_for_item '" + this.wait_for_item + "' -> " + property.items[this.wait_for_item]);
 				if (property.items[this.wait_for_item] != this.wait_for_value) {
 					return;
 				}
@@ -510,6 +512,9 @@ var indigo_sequencer = {
 			if (property.name == null || property.name == "AGENT_ABORT_PROCESS") {
 				indigo_define_switch_property(this.devices[0], "AGENT_ABORT_PROCESS", "Sequencer", "Abort sequence", { ABORT: false }, { ABORT: { label: "Abort" }}, this.state, "RW", "OneOfMany");
 			}
+			if (property.name == null || property.name == "AGENT_PAUSE_PROCESS") {
+				indigo_define_switch_property(this.devices[0], "AGENT_PAUSE_PROCESS", "Sequencer", "Pause sequence", { PAUSE: this.paused }, { PAUSE: { label: "Pause" }}, this.state, "RW", "OneOfMany");
+			}
 			if (property.name == null || property.name == "SEQUENCE_RESET") {
 				indigo_define_switch_property(this.devices[0], "SEQUENCE_RESET", "Sequencer", "Reset sequence", { RESET: false }, { RESET: { label: "Reset" }}, this.state, "RW", "OneOfMany");
 			}
@@ -519,9 +524,38 @@ var indigo_sequencer = {
 	on_change_property: function(property) {
 		if (property.device == this.devices[0]) {
 			if (property.name == "AGENT_ABORT_PROCESS") {
-				if (property.items.ABORT) {
-					indigo_update_switch_property(this.devices[0], "AGENT_ABORT_PROCESS", { ABORT: false }, "Busy");
-					indigo_set_timer(indigo_sequencer_abort_handler, 0);
+				if (this.sequence != null) {
+					if (property.items.ABORT) {
+						indigo_update_switch_property(this.devices[0], "AGENT_ABORT_PROCESS", { ABORT: false }, "Busy");
+						indigo_set_timer(indigo_sequencer_abort_handler, 0);
+					}
+				} else {
+					indigo_update_switch_property(this.devices[0], "AGENT_ABORT_PROCESS", { ABORT: false }, "Alert");
+				}
+			} else if (property.name == "AGENT_PAUSE_PROCESS") {
+				if (this.sequence != null) {
+					if (property.items.PAUSE) {
+						if (!this.paused) {
+							if (this.capturing_batch) {
+								indigo_change_switch_property(this.devices[2], "AGENT_PAUSE_PROCESS", { "PAUSE_WAIT": true });
+							}
+							this.paused = true;
+							indigo_update_switch_property(this.devices[0], "AGENT_PAUSE_PROCESS", { PAUSE: true }, "Busy");
+							indigo_send_message("Sequence paused");
+						}
+					} else {
+						if (this.paused) {
+							if (this.capturing_batch) {
+								indigo_change_switch_property(this.devices[2], "AGENT_PAUSE_PROCESS", { "PAUSE_WAIT": false });
+							}
+							this.paused = false;
+							indigo_update_switch_property(this.devices[0], "AGENT_PAUSE_PROCESS", { PAUSE: false }, "Ok");
+							indigo_send_message("Sequence resumed");
+						}
+					}
+				} else {
+					this.paused = false;
+					indigo_update_switch_property(this.devices[0], "AGENT_PAUSE_PROCESS", { PAUSE: false }, "Alert");
 				}
 			} else if (property.name == "SEQUENCE_RESET") {
 				if (property.items.RESET) {
@@ -561,6 +595,10 @@ var indigo_sequencer = {
 			this.exposure = 0;
 			this.exposure_total = exposure_total;
 			this.state = "Busy";
+			this.paused = false;
+			this.capturing_batch = false;
+			indigo_update_switch_property(this.devices[0], "AGENT_PAUSE_PROCESS", { PAUSE: false }, "Ok");
+			indigo_update_switch_property(this.devices[0], "AGENT_ABORT_PROCESS", { ABORT: false }, "Ok");
 			indigo_update_number_property(this.devices[0], "SEQUENCE_STATE", { STEP: this.step, PROGRESS: this.progress, PROGRESS_TOTAL: this.progress_total, EXPOSURE: this.exposure, EXPOSURE_TOTAL: this.exposure_total }, this.state);
 			this.name = name;
 			indigo_update_text_property(this.devices[0], "SEQUENCE_NAME", { NAME: this.name }, "Ok");
@@ -574,21 +612,30 @@ var indigo_sequencer = {
 	},
 
 	next: function() {
-		current = this.sequence[++this.index];
-		if (current != null) {
-			this.step = current.step;
-			this.progress = current.progress;
-			this.exposure = current.exposure;
-			indigo_log(current.execute);
-			indigo_update_number_property(this.devices[0], "SEQUENCE_STATE", { STEP: this.step, PROGRESS: this.progress, PROGRESS_TOTAL: this.progress_total, EXPOSURE: this.exposure, EXPOSURE_TOTAL: this.exposure_total }, this.state);
-			eval("indigo_sequencer." + current.execute);
-		} else {
-			this.progress = this.progress_total;
-			this.exposure = this.exposure_total;
-			this.state = "Ok";
-			this.sequence = null;
-			indigo_update_number_property(this.devices[0], "SEQUENCE_STATE", { STEP: this.step, PROGRESS: this.progress, PROGRESS_TOTAL: this.progress_total, EXPOSURE: this.exposure, EXPOSURE_TOTAL: this.exposure_total }, this.state);
-			indigo_send_message("Sequence finished");
+		if (this.paused) {
+			indigo_set_timer(indigo_sequencer_next_handler, 0.01);
+		} else if (this.sequence != null) {
+			current = this.sequence[++this.index];
+			if (current != null) {
+				this.step = current.step;
+				this.progress = current.progress;
+				this.exposure = current.exposure;
+				this.capturing_batch = false;
+				indigo_log(current.execute);
+				indigo_update_number_property(this.devices[0], "SEQUENCE_STATE", { STEP: this.step, PROGRESS: this.progress, PROGRESS_TOTAL: this.progress_total, EXPOSURE: this.exposure, EXPOSURE_TOTAL: this.exposure_total }, this.state);
+				eval("indigo_sequencer." + current.execute);
+			} else {
+				this.progress = this.progress_total;
+				this.exposure = this.exposure_total;
+				this.state = "Ok";
+				this.sequence = null;
+				if (this.paused) {
+					this.paused = false;
+					indigo_update_switch_property(this.devices[0], "AGENT_PAUSE_PROCESS", { PAUSE: false }, "Ok");
+				}
+				indigo_update_number_property(this.devices[0], "SEQUENCE_STATE", { STEP: this.step, PROGRESS: this.progress, PROGRESS_TOTAL: this.progress_total, EXPOSURE: this.exposure, EXPOSURE_TOTAL: this.exposure_total }, this.state);
+				indigo_send_message("Sequence finished");
+			}
 		}
 	},
 	
@@ -657,6 +704,10 @@ var indigo_sequencer = {
 		this.wait_for_value = null;
 		this.sequence = null;
 		indigo_send_message(message);
+		if (this.paused) {
+			this.paused = false;
+			indigo_update_switch_property(this.devices[0], "AGENT_PAUSE_PROCESS", { PAUSE: false }, "Ok");
+		}
 		indigo_update_number_property(this.devices[0], "SEQUENCE_STATE", { STEP: this.step, PROGRESS: this.progress, PROGRESS_TOTAL: this.progress_total, EXPOSURE: this.exposure, EXPOSURE_TOTAL: this.exposure_total }, this.state, "Sequence failed at step " + this.step);
 	},
 	
@@ -1314,6 +1365,7 @@ var indigo_sequencer = {
 		var agent = this.devices[2];
 		var property = indigo_devices[agent].AGENT_START_PROCESS;
 		if (property != null) {
+			this.capturing_batch = true;
 			this.select_switch(agent, "AGENT_START_PROCESS", "EXPOSURE");
 		} else {
 			this.failure("Can't capture batch");
