@@ -468,6 +468,7 @@ var indigo_sequencer = {
 	wait_for_name: null,
 	wait_for_item: null,
 	wait_for_value: null,
+	wait_for_value_tolerance: null,
 	wait_for_timer: null,
 	ignore_failure: false,
 	use_solver: false,
@@ -480,8 +481,14 @@ var indigo_sequencer = {
 			indigo_flipper.start(this.use_solver);
 		} else if (property.device == this.wait_for_device && property.name == this.wait_for_name) {
 			if (this.wait_for_item != null && this.wait_for_value != null) {
-				indigo_log("wait_for_item '" + this.wait_for_item + "' -> " + property.items[this.wait_for_item]);
-				if (property.items[this.wait_for_item] != this.wait_for_value) {
+				if (this.wait_for_value_tolerance != null) {
+					diff = Math.abs(property.items[this.wait_for_item] - this.wait_for_value);
+					if (diff > this.wait_for_value_tolerance) {
+						indigo_log("wait_for_item '" + this.wait_for_item + "' -> " + property.items[this.wait_for_item] + " (" + diff + " > " + this.wait_for_value_tolerance + ")");
+						return;
+					}
+				} else if (property.items[this.wait_for_item] != this.wait_for_value) {
+					indigo_log("wait_for_item '" + this.wait_for_item + "' -> " + property.items[this.wait_for_item]);
 					return;
 				}
 			}
@@ -491,6 +498,7 @@ var indigo_sequencer = {
 				this.wait_for_name = null;
 				this.wait_for_item = null;
 				this.wait_for_value = null;
+				this.wait_for_value_tolerance = null;
 				if (property.state == "Ok" || this.ignore_failure) {
 					this.ignore_failure = false;
 					indigo_set_timer(indigo_sequencer_next_handler, 0);
@@ -702,6 +710,7 @@ var indigo_sequencer = {
 		this.wait_for_name = null;
 		this.wait_for_item = null;
 		this.wait_for_value = null;
+		this.wait_for_value_tolerance = null;
 		this.sequence = null;
 		indigo_send_message(message);
 		if (this.paused) {
@@ -1213,6 +1222,8 @@ var indigo_sequencer = {
 		if (property != null) {
 			this.wait_for_item = "TEMPERATURE";
 			this.wait_for_value = temperature;
+			this.wait_for_value_tolerance = 1; // Allow large tolerance for the temperature. The property state will remain "Busy"
+			                                   // until temperature reaches the driver's tolerance.
 			this.change_numbers(agent, "CCD_TEMPERATURE", { TEMPERATURE: temperature });
 		} else {
 			this.failure("Can't set temperature");
