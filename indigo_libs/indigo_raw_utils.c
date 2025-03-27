@@ -67,6 +67,12 @@ indigo_result indigo_equalize_bayer_channels(indigo_raw_type raw_type, void *dat
 	int x_step = (int)(width / sqrt(SAMPLES)) & ~1;  // Ensure it's even
 	int y_step = (int)(height / sqrt(SAMPLES)) & ~1; // Ensure it's even
 
+	if (x_step == 0) {
+		x_step = 1;
+	}
+	if (y_step == 0) {
+		y_step = 1;
+	}
 	if (raw_type == INDIGO_RAW_MONO16) {
 		uint16_t* data16 = (uint16_t*)data;
 		for (int y = 0; y < height - 1; y += y_step) {
