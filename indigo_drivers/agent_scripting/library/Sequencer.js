@@ -163,6 +163,14 @@ Sequence.prototype.disable_meridian_flip = function() {
 	this.sequence.push({ execute: 'set_imager_feature("PAUSE_AFTER_TRANSIT", false)', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
+Sequence.prototype.set_fits_header = function(keyword, value) {
+	this.sequence.push({ execute: 'set_fits_header("' + keyword + '", "' + value +'")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
+Sequence.prototype.remove_fits_header = function(keyword) {
+	this.sequence.push({ execute: 'remove_fits_header("' + keyword + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
 Sequence.prototype.select_filter = function(filter) {
 	this.sequence.push({ execute: 'select_filter("' + filter + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
@@ -1268,6 +1276,16 @@ var indigo_sequencer = {
 		}
 	},
 
+	set_fits_header: function(keyword, value) {
+		var agent = this.devices[2];
+		this.change_texts(agent, "CCD_SET_FITS_HEADER", { "KEYWORD": keyword, "VALUE": value });
+	},
+	
+	remove_fits_header: function(keyword, value) {
+		var agent = this.devices[2];
+		this.change_texts(agent, "CCD_REMOVE_FITS_HEADER", { "KEYWORD": keyword });
+	},
+	
 	set_guider_dithering: function(amount, time_limit) {
 		var agent = this.devices[4];
 		var property = indigo_devices[agent].AGENT_GUIDER_SETTINGS;
