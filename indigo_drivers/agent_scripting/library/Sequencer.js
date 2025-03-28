@@ -476,34 +476,36 @@ var indigo_sequencer = {
 	capturing_batch: false,
 	
 	on_update: function(property) {
-		if (property.device == this.devices[2] && property.name == "AGENT_PAUSE_PROCESS" && property.state == "Busy" && property.items.PAUSE_AFTER_TRANSIT) {
-			indigo_flipper.devices = this.devices;
-			indigo_flipper.start(this.use_solver);
-		} else if (property.device == this.wait_for_device && property.name == this.wait_for_name) {
-			if (this.wait_for_item != null && this.wait_for_value != null) {
-				if (this.wait_for_value_tolerance != null) {
-					diff = Math.abs(property.items[this.wait_for_item] - this.wait_for_value);
-					if (diff > this.wait_for_value_tolerance) {
-						indigo_log("wait_for_item '" + this.wait_for_item + "' -> " + property.items[this.wait_for_item] + " (" + diff + " > " + this.wait_for_value_tolerance + ")");
+		if (this.sequence != null) {
+			if (property.device == this.devices[2] && property.name == "AGENT_PAUSE_PROCESS" && property.state == "Busy" && property.items.PAUSE_AFTER_TRANSIT) {
+				indigo_flipper.devices = this.devices;
+				indigo_flipper.start(this.use_solver);
+			} else if (property.device == this.wait_for_device && property.name == this.wait_for_name) {
+				if (this.wait_for_item != null && this.wait_for_value != null) {
+					if (this.wait_for_value_tolerance != null) {
+						diff = Math.abs(property.items[this.wait_for_item] - this.wait_for_value);
+						if (diff > this.wait_for_value_tolerance) {
+							indigo_log("wait_for_item '" + this.wait_for_item + "' -> " + property.items[this.wait_for_item] + " (" + diff + " > " + this.wait_for_value_tolerance + ")");
+							return;
+						}
+					} else if (property.items[this.wait_for_item] != this.wait_for_value) {
+						indigo_log("wait_for_item '" + this.wait_for_item + "' -> " + property.items[this.wait_for_item]);
 						return;
 					}
-				} else if (property.items[this.wait_for_item] != this.wait_for_value) {
-					indigo_log("wait_for_item '" + this.wait_for_item + "' -> " + property.items[this.wait_for_item]);
-					return;
 				}
-			}
-			indigo_log("wait_for '" + property.device + "', '" + property.name + "' -> " + property.state);
-			if (property.state != "Busy") {
-				this.wait_for_device = null;
-				this.wait_for_name = null;
-				this.wait_for_item = null;
-				this.wait_for_value = null;
-				this.wait_for_value_tolerance = null;
-				if (property.state == "Ok" || this.ignore_failure) {
-					this.ignore_failure = false;
-					indigo_set_timer(indigo_sequencer_next_handler, 0);
-				} else if (property.state == "Alert") {
-					this.failure("Sequence failed");
+				indigo_log("wait_for '" + property.device + "', '" + property.name + "' -> " + property.state);
+				if (property.state != "Busy") {
+					this.wait_for_device = null;
+					this.wait_for_name = null;
+					this.wait_for_item = null;
+					this.wait_for_value = null;
+					this.wait_for_value_tolerance = null;
+					if (property.state == "Ok" || this.ignore_failure) {
+						this.ignore_failure = false;
+						indigo_set_timer(indigo_sequencer_next_handler, 0);
+					} else if (property.state == "Alert") {
+						this.failure("Sequence failed");
+					}
 				}
 			}
 		}
@@ -579,16 +581,27 @@ var indigo_sequencer = {
 	},
 	
 	abort: function() {
+		this.state = "Alert";
+		this.wait_for_device = null;
+		this.wait_for_name = null;
+		this.wait_for_item = null;
+		this.wait_for_value = null;
+		this.wait_for_value_tolerance = null;
+		this.sequence = null;
+		if (this.paused) {
+			this.paused = false;
+			indigo_update_switch_property(this.devices[0], "AGENT_PAUSE_PROCESS", { PAUSE_WAIT: false }, "Ok");
+		}
 		for (var device in this.devices) {
 			if (device != 0) {
-				this.select_switch(this.devices[device], "AGENT_ABORT_PROCESS", "ABORT");
+				indigo_change_switch_property(this.devices[device], "AGENT_ABORT_PROCESS", { "ABORT": true });
 			}
 		}
 		if (this.wait_for_timer != null) {
 			indigo_cancel_timer(this.wait_for_timer);
 			this.wait_for_timer = null;
 		}
-		this.failure("Sequence aborted");
+		indigo_update_number_property(this.devices[0], "SEQUENCE_STATE", { STEP: this.step, PROGRESS: this.progress, PROGRESS_TOTAL: this.progress_total, EXPOSURE: this.exposure, EXPOSURE_TOTAL: this.exposure_total }, this.state, "Sequence aborted at step " + this.step);
 		indigo_update_switch_property(this.devices[0], "AGENT_ABORT_PROCESS", { ABORT: false }, "Ok");
 	},
 	
