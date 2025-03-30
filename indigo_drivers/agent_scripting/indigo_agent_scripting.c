@@ -801,6 +801,25 @@ static duk_ret_t set_timer(duk_context *ctx) {
 	return DUK_RET_ERROR;
 }
 
+static duk_ret_t set_timer_at(duk_context *ctx) {
+	for (uintptr_t index = 0; index < MAX_TIMER_COUNT; index++) {
+		if (PRIVATE_DATA->timers[index] == NULL) {
+			duk_push_global_object(PRIVATE_DATA->ctx);
+			duk_get_prop_string(PRIVATE_DATA->ctx, -1, "indigo_timers");
+			duk_push_number(PRIVATE_DATA->ctx, (double)index);
+			duk_dup(PRIVATE_DATA->ctx, 0);
+			duk_put_prop(PRIVATE_DATA->ctx, -3);
+			long start_time = (long)duk_require_number(ctx, 1);
+			if (indigo_set_timer_at(agent_device, start_time, timer_handler, PRIVATE_DATA->timers + index, (void *)(index + 1))) {
+				duk_push_int(ctx, (int)index);
+				return 1;
+			}
+			break;
+		}
+	}
+	return DUK_RET_ERROR;
+}
+
 // function indigo_cancel_timer(timer);
 
 static duk_ret_t cancel_timer(duk_context *ctx) {
@@ -923,6 +942,8 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_delete_property");
 			duk_push_c_function(PRIVATE_DATA->ctx, set_timer, 2);
 			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_set_timer");
+			duk_push_c_function(PRIVATE_DATA->ctx, set_timer_at, 2);
+			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_set_timer_at");
 			duk_push_c_function(PRIVATE_DATA->ctx, cancel_timer, 1);
 			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_cancel_timer");
 			if (duk_peval_string(PRIVATE_DATA->ctx, boot_js)) {

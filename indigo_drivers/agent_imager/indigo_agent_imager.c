@@ -23,7 +23,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x0033
+#define DRIVER_VERSION 0x0034
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>
@@ -289,6 +289,7 @@ typedef struct {
 	double solver_goto_ra;
 	double solver_goto_dec;
 	double time_to_transit;
+	int display_coordinates_state;
 	bool has_camera;
 } imager_agent_private_data;
 
@@ -1007,8 +1008,8 @@ static bool do_dither(indigo_device *device) {
 }
 
 static bool exposure_batch(indigo_device *device) {
-	double time_to_transit = DEVICE_PRIVATE_DATA->time_to_transit;
-	bool pauseOnTTT = AGENT_IMAGER_PAUSE_AFTER_TRANSIT_FEATURE_ITEM->sw.value && time_to_transit < 12;
+	bool pauseOnTTT = AGENT_IMAGER_PAUSE_AFTER_TRANSIT_FEATURE_ITEM->sw.value && DEVICE_PRIVATE_DATA->display_coordinates_state == INDIGO_OK_STATE;
+	// indigo_send_message(device, "Batch started (%s)", pauseOnTTT ? "will pause on transit" : "no pause on transit");
 	indigo_property_state state = INDIGO_ALERT_STATE;
 	AGENT_IMAGER_STATS_EXPOSURE_ITEM->number.value = 0;
 	AGENT_IMAGER_STATS_DELAY_ITEM->number.value = 0;
@@ -1032,7 +1033,7 @@ static bool exposure_batch(indigo_device *device) {
 			bool pausedOnTTT = false;
 			double exposure_time = AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.target;
 			if (pauseOnTTT && indigo_filter_first_related_agent(device, "Mount Agent")) {
-				time_to_transit = DEVICE_PRIVATE_DATA->time_to_transit;
+				double time_to_transit = DEVICE_PRIVATE_DATA->time_to_transit;
 				if (time_to_transit <= exposure_time / 3600 - AGENT_IMAGER_BATCH_PAUSE_AFTER_TRANSIT_ITEM->number.target) {
 					pauseOnTTT = false; // pause only once per batch
 					clear_selection(device);
@@ -3769,6 +3770,7 @@ static void snoop_mount_changes(indigo_client *client, indigo_property *property
 	char *related_agent_name = indigo_filter_first_related_agent(device, "Mount Agent");
 	if (related_agent_name && !strcmp(related_agent_name, property->device)) {
 		if (!strcmp(property->name, AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY_NAME)) {
+			DEVICE_PRIVATE_DATA->display_coordinates_state = property->state;
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = property->items + i;
 				if (!strcmp(item->name, AGENT_MOUNT_DISPLAY_COORDINATES_TIME_TO_TRANSIT_ITEM_NAME)) {

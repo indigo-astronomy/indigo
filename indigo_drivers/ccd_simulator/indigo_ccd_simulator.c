@@ -1316,7 +1316,11 @@ static indigo_result ccd_detach(indigo_device *device) {
 
 static void guider_ra_timer_callback(indigo_device *device) {
 	if (GUIDER_GUIDE_EAST_ITEM->number.value != 0 || GUIDER_GUIDE_WEST_ITEM->number.value != 0) {
-		GUIDER_IMAGE_RA_OFFSET_ITEM->number.value += cos(M_PI * GUIDER_IMAGE_DEC_ITEM->number.value / 180.0) * PRIVATE_DATA->guide_rate * (GUIDER_GUIDE_WEST_ITEM->number.value - GUIDER_GUIDE_EAST_ITEM->number.value) / 200;
+		if (GUIDER_IMAGE_SIDE_OF_PIER_ITEM->number.value == 0) {
+			GUIDER_IMAGE_RA_OFFSET_ITEM->number.value += cos(M_PI * GUIDER_IMAGE_DEC_ITEM->number.value / 180.0) * PRIVATE_DATA->guide_rate * (GUIDER_GUIDE_WEST_ITEM->number.value - GUIDER_GUIDE_EAST_ITEM->number.value) / 200;
+		} else {
+			GUIDER_IMAGE_RA_OFFSET_ITEM->number.value -= cos(M_PI * GUIDER_IMAGE_DEC_ITEM->number.value / 180.0) * PRIVATE_DATA->guide_rate * (GUIDER_GUIDE_WEST_ITEM->number.value - GUIDER_GUIDE_EAST_ITEM->number.value) / 200;
+		}
 		GUIDER_GUIDE_EAST_ITEM->number.value = 0;
 		GUIDER_GUIDE_WEST_ITEM->number.value = 0;
 		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;

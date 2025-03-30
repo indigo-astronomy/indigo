@@ -2,6 +2,46 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-324] - 20 Mar Thu 2025
+## New Drivers:
+- indigo_rotator_asi:
+	- ZWO Camera Angle Adjsuter driver
+
+## Driver Fixes:
+- indigo_agent_imager:
+	- pause at meridian disabled if there is no mount selected
+
+# [2.0-322] - 17 Mar Mon 2025
+## Overall:
+- code cleanup
+- truncated long text items fixed
+- SER format encoding cleanup
+- SER format frame size fixed
+- indigo_time_to_transit() - change signatire and fixed to hadle both meridian crossings
+
+## Driver Fixes:
+- indigo_agent_mount:
+	- added FLIP_REQUIRED item to display coordinates property
+	- better meridian flip state handling
+
+- indigo_agent_imager:
+	- typo fix
+	- remove wrong condition to pause at meridian
+
+- indigo_mount_simulator:
+	- fix start/stop tracking
+	- tracking is resumed after slew
+
+- indigo_ccd_simulator:
+	- guider simulator rotates image by 180 degrees for east and west side of pier
+
+- indigo_mount_ioptron:
+	- HAE mount detection added
+
+- indigo_wheel_playerone:
+	- update SDK v.1.2.2
+
+
 # [2.0-320] - 28 Feb Fri 2025
 ## Overall:
 	- fix inproper long text handling on some places

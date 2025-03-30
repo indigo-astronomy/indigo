@@ -23,7 +23,7 @@
  \file indigo_rotator_asi.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_rotator_asi"
 
 #include <stdlib.h>
@@ -69,7 +69,7 @@ typedef struct {
 	CAA_INFO info;
 	char model[64];
 	char custom_suffix[9];
-	float current_position, target_position, max_position;
+	float current_position, target_position, min_position, max_position;
 	indigo_timer *rotator_timer, *temperature_timer;
 	pthread_mutex_t usb_mutex;
 	indigo_property *beep_property;
@@ -145,21 +145,25 @@ static indigo_result rotator_attach(indigo_device *device) {
 
 		ROTATOR_LIMITS_PROPERTY->hidden = false;
 		ROTATOR_LIMITS_MAX_POSITION_ITEM->number.min = 0;
-		ROTATOR_LIMITS_MAX_POSITION_ITEM->number.max = PRIVATE_DATA->info.MaxStep;
+		ROTATOR_LIMITS_MAX_POSITION_ITEM->number.value =
+		ROTATOR_LIMITS_MAX_POSITION_ITEM->number.target = 360;
+		ROTATOR_LIMITS_MAX_POSITION_ITEM->number.max = 480;
 		ROTATOR_LIMITS_MIN_POSITION_ITEM->number.min = 0;
-		ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value = 0;
-		ROTATOR_LIMITS_MIN_POSITION_ITEM->number.max = 0;
+		ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value =
+		ROTATOR_LIMITS_MIN_POSITION_ITEM->number.target = 0;
+		ROTATOR_LIMITS_MIN_POSITION_ITEM->number.max = 480;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "\'%s\' MaxStep = %d",device->name ,PRIVATE_DATA->info.MaxStep);
 
 		ROTATOR_BACKLASH_PROPERTY->hidden = true;
 
 		ROTATOR_POSITION_ITEM->number.min = 0;
 		ROTATOR_POSITION_ITEM->number.step = 1;
-		ROTATOR_POSITION_ITEM->number.max = PRIVATE_DATA->info.MaxStep;
+		ROTATOR_POSITION_ITEM->number.max = 480;
 
-		ROTATOR_RELATIVE_MOVE_ITEM->number.min = 0;
+		ROTATOR_RELATIVE_MOVE_ITEM->number.min = -120;
 		ROTATOR_RELATIVE_MOVE_ITEM->number.step = 1;
-		ROTATOR_RELATIVE_MOVE_ITEM->number.max = PRIVATE_DATA->info.MaxStep;
+		ROTATOR_RELATIVE_MOVE_ITEM->number.max = 120;
+		ROTATOR_RELATIVE_MOVE_PROPERTY->hidden = false;
 
 		ROTATOR_ON_POSITION_SET_PROPERTY->hidden = false;
 		ROTATOR_DIRECTION_PROPERTY->hidden = false;
@@ -204,11 +208,21 @@ static void rotator_connect_callback(indigo_device *device) {
 					if (!res) {
 						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CAAOpen(%d) = %d", PRIVATE_DATA->dev_id, res);
 						pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+
+						// there is no such call in the SDK!!!
+						// res = CAAMinDegree(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->min_position));
+						PRIVATE_DATA->min_position = 0;
+						if (res != CAA_SUCCESS) {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "CAAMinDegree(%d) = %d", PRIVATE_DATA->dev_id, res);
+						}
+						ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value = ROTATOR_LIMITS_MIN_POSITION_ITEM->number.target =
+						ROTATOR_LIMITS_MIN_POSITION_ITEM->number.min = ROTATOR_LIMITS_MIN_POSITION_ITEM->number.max = (double)PRIVATE_DATA->min_position;
+
 						res = CAAGetMaxDegree(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->max_position));
 						if (res != CAA_SUCCESS) {
 							INDIGO_DRIVER_ERROR(DRIVER_NAME, "CAAGetMaxDegree(%d) = %d", PRIVATE_DATA->dev_id, res);
 						}
-						ROTATOR_LIMITS_MAX_POSITION_ITEM->number.value = (double)PRIVATE_DATA->max_position;
+						ROTATOR_LIMITS_MAX_POSITION_ITEM->number.value = ROTATOR_LIMITS_MAX_POSITION_ITEM->number.target = (double)PRIVATE_DATA->max_position;
 
 						res = CAAGetDegree(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->target_position));
 						if (res != CAA_SUCCESS) {
@@ -307,12 +321,7 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 		if (ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
 			return INDIGO_OK;
 		}
-		if (ROTATOR_POSITION_ITEM->number.target < 0 || ROTATOR_POSITION_ITEM->number.target > ROTATOR_POSITION_ITEM->number.max) {
-			ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-			ROTATOR_RELATIVE_MOVE_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, ROTATOR_RELATIVE_MOVE_PROPERTY, NULL);
-			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
-		} else if (ROTATOR_POSITION_ITEM->number.target == PRIVATE_DATA->current_position) {
+		if (ROTATOR_POSITION_ITEM->number.target == PRIVATE_DATA->current_position) {
 			ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 			ROTATOR_RELATIVE_MOVE_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, ROTATOR_RELATIVE_MOVE_PROPERTY, NULL);
@@ -326,9 +335,9 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 			if (ROTATOR_ON_POSITION_SET_GOTO_ITEM->sw.value) { /* GOTO POSITION */
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-				int res = CAAMove(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position);
+				int res = CAAMoveTo(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position);
 				if (res != CAA_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "CAAMove(%d, %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position, res);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "CAAMoveTo(%d, %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position, res);
 				}
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 				indigo_set_timer(device, 0.5, rotator_timer_callback, &PRIVATE_DATA->rotator_timer);
@@ -359,8 +368,6 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 		// -------------------------------------------------------------------------------- ROTATOR_LIMITS
 		indigo_property_copy_values(ROTATOR_LIMITS_PROPERTY, property, false);
 		ROTATOR_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
-		PRIVATE_DATA->max_position = (int)ROTATOR_LIMITS_MAX_POSITION_ITEM->number.target;
-		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		int res = CAASetMaxDegree(PRIVATE_DATA->dev_id, PRIVATE_DATA->max_position);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CAASetMaxDegree(%d, -> %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->max_position, res);
 		if (res != CAA_SUCCESS) {
@@ -381,7 +388,7 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 		if (ROTATOR_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE) {
 			return INDIGO_OK;
 		}
-		if (ROTATOR_RELATIVE_MOVE_ITEM->number.value < 0 || ROTATOR_RELATIVE_MOVE_ITEM->number.value > ROTATOR_RELATIVE_MOVE_ITEM->number.max) {
+		if (fabs(ROTATOR_RELATIVE_MOVE_ITEM->number.target) > ROTATOR_RELATIVE_MOVE_ITEM->number.max) {
 			ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 			ROTATOR_RELATIVE_MOVE_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, ROTATOR_RELATIVE_MOVE_PROPERTY, NULL);
@@ -397,19 +404,12 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CAAGetDegree(%d) = %d", PRIVATE_DATA->dev_id, res);
 			}
 
-			PRIVATE_DATA->target_position = PRIVATE_DATA->current_position + ROTATOR_RELATIVE_MOVE_ITEM->number.value;
-
-			/* Make sure we do not attempt to go beyond the limits */
-			if (ROTATOR_POSITION_ITEM->number.max < PRIVATE_DATA->target_position) {
-				PRIVATE_DATA->target_position = ROTATOR_POSITION_ITEM->number.max;
-			} else if (ROTATOR_POSITION_ITEM->number.min > PRIVATE_DATA->target_position) {
-				PRIVATE_DATA->target_position = ROTATOR_POSITION_ITEM->number.min;
-			}
+			PRIVATE_DATA->target_position = PRIVATE_DATA->current_position + ROTATOR_RELATIVE_MOVE_ITEM->number.target;
 
 			ROTATOR_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
-			res = CAAMove(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position);
+			res = CAAMoveTo(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position);
 			if (res != CAA_SUCCESS) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CAAMove(%d, %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position, res);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CAAMoveTo(%d, %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position, res);
 			}
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 			indigo_set_timer(device, 0.5, rotator_timer_callback, &PRIVATE_DATA->rotator_timer);
@@ -705,7 +705,7 @@ static void process_unplug_event(indigo_device *unused) {
 		removed = true;
 	}
 	if (!removed) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No ASI CAA device unplugged (maybe ASI Camera)!");
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No ZWO CAA device unplugged (maybe ASI Camera)!");
 	}
 	pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 }
@@ -718,7 +718,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Device plugged has PID:VID = %x:%x", descriptor.idVendor, descriptor.idProduct);
 			for (int i = 0; i < caa_id_count; i++) {
 				if (descriptor.idVendor != ASI_VENDOR_ID || caa_products[i] != descriptor.idProduct) {
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No ASI CAA device plugged (maybe ASI Camera)!");
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No ZWO CAA device plugged (maybe ASI Camera)!");
 					continue;
 				}
 				indigo_set_timer(NULL, 0.5, process_plug_event, NULL);
@@ -754,7 +754,7 @@ static libusb_hotplug_callback_handle callback_handle;
 indigo_result indigo_rotator_asi(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
-	SET_DRIVER_INFO(info, "ZWO ASI Rotator", __FUNCTION__, DRIVER_VERSION, true, last_action);
+	SET_DRIVER_INFO(info, "ZWO CAA Rotator", __FUNCTION__, DRIVER_VERSION, true, last_action);
 
 	if (action == last_action)
 		return INDIGO_OK;
