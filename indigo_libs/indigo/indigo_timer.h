@@ -88,6 +88,10 @@ static inline void normalize_timespec(struct timespec *ts) {
  */
 extern bool indigo_set_timer(indigo_device *device, double delay, indigo_timer_callback callback, indigo_timer **timer);
 
+/** Set timer.
+ */
+extern bool indigo_set_timer_at(indigo_device *device, long start_at, indigo_timer_with_data_callback callback, indigo_timer **timer, void *data);
+
 /** Set timer with arbitrary data.
  */
 extern bool indigo_set_timer_with_data(indigo_device *device, double delay, indigo_timer_with_data_callback callback, indigo_timer **timer, void *data);

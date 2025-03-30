@@ -26,6 +26,10 @@ Sequence.prototype.wait = function(seconds) {
 	this.sequence.push({ execute: 'wait(' + seconds + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
+Sequence.prototype.wait_until = function(time) {
+	this.sequence.push({ execute: 'wait_until(' + time + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
 Sequence.prototype.evaluate = function(code) {
 	this.sequence.push({ execute: 'evaluate("' + code + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
@@ -746,6 +750,11 @@ var indigo_sequencer = {
 	wait: function(seconds) {
 		indigo_send_message("Suspended for " + seconds + " seconds");
 		this.wait_for_timer = indigo_set_timer(indigo_sequencer_next_handler, seconds);
+	},
+		
+	wait_until: function(time) {
+		indigo_send_message("Suspended until " + time);
+		this.wait_for_timer = indigo_set_timer_at(indigo_sequencer_next_handler, time);
 	},
 		
 	evaluate: function(code) {

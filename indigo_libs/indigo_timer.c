@@ -132,6 +132,14 @@ bool indigo_set_timer(indigo_device *device, double delay, indigo_timer_callback
 	return indigo_set_timer_with_data(device, delay, (indigo_timer_with_data_callback)callback, timer, NULL);
 }
 
+bool indigo_set_timer_at(indigo_device *device, long start_at, indigo_timer_with_data_callback callback, indigo_timer **timer, void *data) {
+	double delay = start_at - time(NULL);
+	if (delay < 0) {
+		delay = 0;
+	}
+	return indigo_set_timer_with_data(device, delay, callback, timer, data);
+}
+
 bool indigo_set_timer_with_data(indigo_device *device, double delay, indigo_timer_with_data_callback callback, indigo_timer **timer, void *data) {
 	indigo_timer *t = NULL;
 	int retry = 0;
