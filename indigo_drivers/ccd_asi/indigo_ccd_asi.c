@@ -1600,7 +1600,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, PIXEL_FORMAT_PROPERTY);
-			//indigo_save_property(device, NULL, ASI_PRESETS_PROPERTY);
 			indigo_save_property(device, NULL, ASI_ADVANCED_PROPERTY);
 		}
 	}
