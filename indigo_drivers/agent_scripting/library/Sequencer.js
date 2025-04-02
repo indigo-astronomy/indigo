@@ -27,6 +27,9 @@ Sequence.prototype.wait = function(seconds) {
 };
 
 Sequence.prototype.wait_until = function(time) {
+	if(typeof time === 'string') {
+		time = '"' + time + '"';
+	}
 	this.sequence.push({ execute: 'wait_until(' + time + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
@@ -751,12 +754,16 @@ var indigo_sequencer = {
 		indigo_send_message("Suspended for " + seconds + " seconds");
 		this.wait_for_timer = indigo_set_timer(indigo_sequencer_next_handler, seconds);
 	},
-		
+
 	wait_until: function(time) {
 		indigo_send_message("Suspended until " + time);
-		this.wait_for_timer = indigo_set_timer_at(indigo_sequencer_next_handler, time);
+		if (typeof time === "number") {
+			this.wait_for_timer = indigo_set_timer_at(indigo_sequencer_next_handler, time);
+		} else {
+			this.wait_for_timer = indigo_set_timer_at_s(indigo_sequencer_next_handler, time);
+		}
 	},
-		
+
 	evaluate: function(code) {
 		eval(code);
 		indigo_set_timer(indigo_sequencer_next_handler, 0);
