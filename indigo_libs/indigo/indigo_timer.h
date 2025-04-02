@@ -90,7 +90,7 @@ extern bool indigo_set_timer(indigo_device *device, double delay, indigo_timer_c
 
 /** Set timer at specific UTC time as string (yyyy-mm-dd hh:mm:ss or yyyy-mm-dd hh:mm).
  */
-extern bool indigo_set_timer_at_s(indigo_device *device, char *time_str, indigo_timer_callback callback, indigo_timer **timer, void *data);
+extern bool indigo_set_timer_at_utc(indigo_device *device, char *time_str, indigo_timer_with_data_callback callback, indigo_timer **timer, void *data);
 
 /** Set timer at specific UTC time as unix timestamp.
  */

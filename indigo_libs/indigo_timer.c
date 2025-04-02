@@ -132,7 +132,7 @@ bool indigo_set_timer(indigo_device *device, double delay, indigo_timer_callback
 	return indigo_set_timer_with_data(device, delay, (indigo_timer_with_data_callback)callback, timer, NULL);
 }
 
-bool indigo_set_timer_at_s(indigo_device *device, char *time_str, indigo_timer_callback callback, indigo_timer **timer, void *data) {
+bool indigo_set_timer_at_utc(indigo_device *device, char *time_str, indigo_timer_with_data_callback callback, indigo_timer **timer, void *data) {
 	struct tm tm_time;
 	time_t target_time;
 	memset(&tm_time, 0, sizeof(struct tm));

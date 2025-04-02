@@ -751,16 +751,27 @@ var indigo_sequencer = {
 	},
 	
 	wait: function(seconds) {
-		indigo_send_message("Suspended for " + seconds + " seconds");
-		this.wait_for_timer = indigo_set_timer(indigo_sequencer_next_handler, seconds);
+		var result = indigo_set_timer(indigo_sequencer_next_handler, seconds);
+		if (result >= 0) {
+			this.wait_for_timer = result;
+			indigo_send_message("Suspended for " + seconds + " seconds");
+		} else {
+			this.failure("Can't schedule timer in " + seconds + " seconds");
+		}
 	},
 
 	wait_until: function(time) {
-		indigo_send_message("Suspended until " + time);
+		var result;
 		if (typeof time === "number") {
-			this.wait_for_timer = indigo_set_timer_at(indigo_sequencer_next_handler, time);
+			result = indigo_set_timer_at(indigo_sequencer_next_handler, time);
 		} else {
-			this.wait_for_timer = indigo_set_timer_at_s(indigo_sequencer_next_handler, time);
+			result = indigo_set_timer_at_utc(indigo_sequencer_next_handler, time);
+		}
+		if (result >= 0) {
+			this.wait_for_timer = result;
+			indigo_send_message("Suspended until " + time);
+		} else {
+			this.failure("Can't schedule timer at " + time);
 		}
 	},
 
