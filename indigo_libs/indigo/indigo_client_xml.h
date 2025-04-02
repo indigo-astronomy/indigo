@@ -46,7 +46,7 @@ extern "C" {
 /** Create initialized instance of XML wire protocol driver side adapter.
  */
 INDIGO_EXTERN indigo_device *indigo_xml_client_adapter(char *name, char *url_prefix, indigo_uni_handle **input, indigo_uni_handle **output);
-INDIGO_EXTERN void indigo_release_xml_device_adapter(indigo_client *client);
+INDIGO_EXTERN void indigo_release_xml_client_adapter(indigo_device *device);
 
 #ifdef __cplusplus
 }

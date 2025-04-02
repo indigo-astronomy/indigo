@@ -376,7 +376,7 @@ indigo_uni_handle *indigo_uni_open_file(const char *path, int log_level) {
 		indigo_log_on_level(log_level, "%d <- // %s opened", handle->index, path);
 		return handle;
 	}
-	indigo_error("Failed to open %s", path);
+	indigo_log_on_level(log_level, "Failed to open %s", path);
 	return NULL;
 }
 

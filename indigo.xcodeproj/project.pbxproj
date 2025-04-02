@@ -2916,7 +2916,7 @@
 		59BBD17821823693008199D6 /* altaircam.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = altaircam.h; sourceTree = "<group>"; };
 		59BBD17921823693008199D6 /* en.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = en.html; sourceTree = "<group>"; };
 		59BBD17C21823693008199D6 /* libaltaircam.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libaltaircam.dylib; sourceTree = "<group>"; };
-		59BBD17F21823693008199D6 /* libaltaircam.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libaltaircam.so; sourceTree = "<group>"; };
+		59BBD17F21823693008199D6 /* libaltaircam.so */ = {isa = PBXFileReference; lastKnownFileType = text; path = libaltaircam.so; sourceTree = "<group>"; };
 		59BBD18121823693008199D6 /* libaltaircam.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libaltaircam.so; sourceTree = "<group>"; };
 		59BBD18321823693008199D6 /* libaltaircam.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libaltaircam.so; sourceTree = "<group>"; };
 		59BBD18521823693008199D6 /* libaltaircam.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libaltaircam.so; sourceTree = "<group>"; };
@@ -5418,9 +5418,9 @@
 				594C6FBC24DF2900000E4BF0 /* INDIGO_SERVER_AND_DRIVERS_GUIDE.md */,
 				594C6FBB24DF2900000E4BF0 /* MAKEFILES.md */,
 				594C6FBF24DF2901000E4BF0 /* PROPERTY_MANIPULATION.md */,
-				5912C80A23D2447400A48B75 /* PROPERTIES.md */,
 				5912C80D23D2447400A48B75 /* DEVELOPMENT.md */,
 				5912C80E23D2447400A48B75 /* PROTOCOLS.md */,
+				5912C80A23D2447400A48B75 /* PROPERTIES.md */,
 				5912C80C23D2447400A48B75 /* INDI-COMPARISON.md */,
 				5912C80823D2447400A48B75 /* CLIENT_DEVELOPMENT_BASICS.md */,
 				5912C80B23D2447400A48B75 /* DRIVER_DEVELOPMENT_BASICS.md */,

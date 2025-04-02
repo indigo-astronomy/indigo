@@ -59,3 +59,10 @@ indigo_device *indigo_xml_client_adapter(char *name, char *url_prefix, indigo_un
 	device->device_context = device_context;
 	return device;
 }
+
+void indigo_release_xml_client_adapter(indigo_device *device) {
+	assert(device != NULL);
+	assert(device->device_context != NULL);
+	indigo_safe_free(device->device_context);
+	indigo_safe_free(device);
+}

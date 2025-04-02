@@ -219,6 +219,8 @@ static void *get_properties_handler(parser_state state, parser_context *context,
 				version = INDIGO_VERSION_LEGACY;
 			else if (!strcmp(value, "2.0"))
 				version = INDIGO_VERSION_2_0;
+			else if (!strcmp(value, "3.0"))
+				version = INDIGO_VERSION_3_0;
 			client->version = version;
 		} else if (!strcmp(name, "switch")) {
 			indigo_version version = INDIGO_VERSION_LEGACY;
@@ -226,6 +228,8 @@ static void *get_properties_handler(parser_state state, parser_context *context,
 				version = INDIGO_VERSION_LEGACY;
 			else if (!strcmp(value, "2.0"))
 				version = INDIGO_VERSION_2_0;
+			else if (!strcmp(value, "3.0"))
+				version = INDIGO_VERSION_3_0;
 			if (version > client->version) {
 				assert(client->client_context != NULL);
 				indigo_uni_handle **handle = ((indigo_adapter_context *)(client->client_context))->output;
@@ -240,6 +244,9 @@ static void *get_properties_handler(parser_state state, parser_context *context,
 			indigo_copy_name(client->name, value);
 		}
 	} else if (state == END_TAG_STATE) {
+		if (client->version == INDIGO_VERSION_NONE) {
+			client->version = INDIGO_VERSION_LEGACY;
+		}
 		indigo_enumerate_properties(client, property);
 		indigo_clear_property(property);
 		return top_level_handler;
