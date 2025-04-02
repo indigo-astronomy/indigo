@@ -7,7 +7,7 @@
 <body>
 <h1 align="center">Starshootg API Manual</h1>
 <hr/><h1><font color="#0000FF">1. Version &amp; Platform</font></h1>
-<hr/><ul><li>Version: 57.27650.20250209</li></ul>
+<hr/><ul><li>Version: 57.28165.20250401</li></ul>
 <ul><li>Platform<ul>
       <li>Win32:<ul>
           <li>x64: Win7 or above</li>
@@ -1436,6 +1436,12 @@ STARSHOOTG_PIXELFORMAT_HDR14HL (HDR, Bitdepth: 14, Conversion Gain: High + Low)<
 		3: both</td>
 		<td>NA</td><td>Yes</td>
       </tr><tr>
+        <td>STARSHOOTG_OPTION_MODE_SEQ_TIMESTAMP</td><td>RW</td>
+        <td>Mode of seq &amp; timestamp:<br/>
+		0: reset to 0 automatically<br/>
+		1: never reset automatically</td>
+		<td>0</td><td>Yes</td>
+      </tr><tr>
         <td>STARSHOOTG_OPTION_CHAMBER_HT</td><td>RO</td>
         <td>get chamber humidity &amp; temperature:<br/>
         high 16 bits: humidity, in 0.1%, such as: 325 means humidity is 32.5%<br/>
@@ -1494,6 +1500,15 @@ STARSHOOTG_PIXELFORMAT_HDR14HL (HDR, Bitdepth: 14, Conversion Gain: High + Low)<
 			n&gt;0: every n millisecond(s)<br/>
 			n&lt;0: every -n frame</blockquote>
 		</td><td>0 (Disable)</td><td>Yes</td>
+      </tr><tr>
+		<td>TOUPCAP_OPTION_TIMED_TRIGGER_NUM</td><td>RW</td>
+		<td>Timed trigger number</td><td>0 (Disable)</td><td>Yes</td>
+      </tr><tr>
+		<td>STARSHOOTG_OPTION_TIMED_TRIGGER_LOW</td><td>RW</td>
+		<td>Timed trigger: lower 32 bits of 64-bit integer, nanosecond since epoch (00:00:00 UTC on Thursday, 1 January 1970, see https://en.wikipedia.org/wiki/Unix_time)</td><td>0</td><td>Yes</td>
+      </tr><tr>
+		<td>STARSHOOTG_OPTION_TIMED_TRIGGER_HIGH</td><td>RW</td>
+		<td>Timed trigger: high 32 bits. The lower 32 bits must be set first, followed by the higher 32 bits</td><td>0</td><td>Yes</td>
       </tr><tr>
         <td>STARSHOOTG_OPTION_THREAD_PRIORITY</td><td>RW</td>
         <td>set the priority of the internal thread which grab data from the usb device.<br/>
