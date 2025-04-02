@@ -160,15 +160,19 @@ bool indigo_set_timer_at_utc(indigo_device *device, char *time_str, indigo_timer
 	time_t target_time;
 	memset(&tm_time, 0, sizeof(struct tm));
 
-	// Try to parse with seconds (yyyy-mm-dd hh:mm:ss)
 	int year, month, day, hour, minute, second = 0;
 
 	int items = sscanf(time_str, "%d-%d-%d %d:%d:%d", &year, &month, &day, &hour, &minute, &second);
 	if (items < 6) {
 		items = sscanf(time_str, "%d-%d-%d %d:%d", &year, &month, &day, &hour, &minute);
+		second = 0;
 	}
+
 	if (items < 5) {
-		indigo_error("Failed to parse datetime string '%s' (expected format: yyyy-mm-dd hh:mm:ss or yyyy-mm-dd hh:mm)", time_str);
+		return false;
+	}
+
+	if (year < 1900 || month < 1 || month > 12 || day < 1 || day > 31 || hour < 0 || hour > 23 || minute < 0 || minute > 59 || second < 0 || second > 59) {
 		return false;
 	}
 
@@ -182,7 +186,6 @@ bool indigo_set_timer_at_utc(indigo_device *device, char *time_str, indigo_timer
 
 	target_time = timegm(&tm_time);
 	if (target_time == (time_t)-1) {
-		indigo_error("Failed to convert parsed time to timestamp");
 		return false;
 	}
 
@@ -190,6 +193,7 @@ bool indigo_set_timer_at_utc(indigo_device *device, char *time_str, indigo_timer
 	if (delay < 0) {
 		delay = 0;
 	}
+
 	return indigo_set_timer_with_data(device, delay, (indigo_timer_with_data_callback)callback, timer, data);
 }
 

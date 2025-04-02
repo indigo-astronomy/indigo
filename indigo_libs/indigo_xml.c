@@ -214,7 +214,7 @@ static void *get_properties_handler(parser_state state, parser_context *context,
 	INDIGO_TRACE_PARSER(indigo_trace("XML Parser: get_properties_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == ATTRIBUTE_VALUE_STATE) {
 		if (!strcmp(name, "version")) {
-			indigo_version version = INDIGO_VERSION_LEGACY;
+			indigo_version version = INDIGO_VERSION_CURRENT;
 			if (!strncmp(value, "1.", 2))
 				version = INDIGO_VERSION_LEGACY;
 			else if (!strcmp(value, "2.0"))
@@ -223,7 +223,7 @@ static void *get_properties_handler(parser_state state, parser_context *context,
 				version = INDIGO_VERSION_3_0;
 			client->version = version;
 		} else if (!strcmp(name, "switch")) {
-			indigo_version version = INDIGO_VERSION_LEGACY;
+			indigo_version version = INDIGO_VERSION_CURRENT;
 			if (!strncmp(value, "1.", 2))
 				version = INDIGO_VERSION_LEGACY;
 			else if (!strcmp(value, "2.0"))
