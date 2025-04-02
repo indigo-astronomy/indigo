@@ -832,7 +832,6 @@ static duk_ret_t set_timer_at_s(duk_context *ctx) {
 			duk_push_number(PRIVATE_DATA->ctx, (double)index);
 			duk_dup(PRIVATE_DATA->ctx, 0);
 			duk_put_prop(PRIVATE_DATA->ctx, -3);
-
 			const char *time_str = duk_require_string(ctx, 1);
 			if (indigo_set_timer_at_s(agent_device, (char *)time_str, timer_handler, PRIVATE_DATA->timers + index, (void *)(index + 1))) {
 				duk_push_int(ctx, (int)index);

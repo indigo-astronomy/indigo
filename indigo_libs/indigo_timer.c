@@ -155,9 +155,9 @@ bool indigo_set_timer_at_s(indigo_device *device, char *time_str, indigo_timer_c
 	tm_time.tm_hour = hour;
 	tm_time.tm_min = minute;
 	tm_time.tm_sec = second;
-	tm_time.tm_isdst = -1;
+	tm_time.tm_isdst = 0;
 
-	target_time = mktime(&tm_time);
+	target_time = timegm(&tm_time);
 	if (target_time == (time_t)-1) {
 		indigo_error("Failed to convert parsed time to timestamp");
 		return false;
