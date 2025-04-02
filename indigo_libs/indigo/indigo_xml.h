@@ -56,6 +56,23 @@ INDIGO_EXTERN void indigo_xml_parse(indigo_device *device, indigo_client *client
  */
 INDIGO_EXTERN const char *indigo_xml_escape(const char *string);
 
+/** Generate enumerate request.
+ */
+INDIGO_EXTERN indigo_result indigo_xml_client_parser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
+
+/** Generate change request.
+ */
+INDIGO_EXTERN indigo_result indigo_xml_client_parser_change_property(indigo_device *device, indigo_client *client, indigo_property *property);
+
+/** Generate enable BLOB request.
+ */
+INDIGO_EXTERN indigo_result indigo_xml_client_parser_enable_blob(indigo_device *device, indigo_client *client, indigo_property *property, indigo_enable_blob_mode mode);
+
+indigo_result indigo_xml_device_adapter_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message);
+indigo_result indigo_xml_device_adapter_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message);
+indigo_result indigo_xml_device_adapter_delete_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message);
+indigo_result indigo_xml_device_adapter_send_message(indigo_client *client, indigo_device *device, const char *message);
+
 #ifdef __cplusplus
 }
 #endif

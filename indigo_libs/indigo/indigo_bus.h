@@ -100,8 +100,9 @@ typedef enum {
 typedef enum {
 	INDIGO_VERSION_NONE			= 0x0000, ///< undefined version
 	INDIGO_VERSION_LEGACY		= 0x0107, ///< INDI compatible version
-	INDIGO_VERSION_2_0			= 0x0200,  ///< INDIGO version
-	INDIGO_VERSION_CURRENT		= 0x0200  ///< INDIGO version
+	INDIGO_VERSION_2_0			= 0x0200, ///< INDIGO version
+	INDIGO_VERSION_3_0			= 0x0200, ///< INDIGO version
+	INDIGO_VERSION_CURRENT	= 0x0300  ///< INDIGO version
 } indigo_version;
 
 /** Bus operation return status.
@@ -373,10 +374,12 @@ typedef struct indigo_client {
 /** Wire protocol adapter private data structure.
  */
 typedef struct {
-	indigo_uni_handle **input;						///< input handle
+	indigo_uni_handle **input;					///< input handle
 	indigo_uni_handle **output;					///< output handle
 	bool web_socket;										///< connection over WebSocket (RFC6455)
 	char url_prefix[INDIGO_NAME_SIZE];	///< server url prefix (for BLOB download)
+	indigo_client *client;							///< associated client
+	indigo_device *device;							///< associated device
 } indigo_adapter_context;
 
 /** BLOB entry type.
