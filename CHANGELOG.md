@@ -2,6 +2,35 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-326] - 02 Apr Wed 2025
+## Overall:
+- indigo_raw_utis: indigo_equalize_bayer_channels() for subframe fixed
+- indigo_timer: indigo_set_timer_at() and indigo_set_timer_at_utc()
+- Procol version handling fixed
+
+## Driver Fixes:
+- indigo_ccd_simulator:
+	- RA guide pulse sign changes depending on the pier side
+
+- indigo_agent_scripting:
+	- Sequencer.js: loop end condition fixed
+	- Sequencer.js: AGENT_PAUSE_PROCESS added
+	- Sequencer.js: add tolerance to wait for value and use it in CCD temperature
+	- Sequencer.js: better abort handling
+	- Sequencer.js: set_fits_header/remove_fits_header added
+	- Sequencer.js: fixed property states during enumeration
+	- Sequencer.js: wait_until() added
+
+- indigo_ccd_asi:
+	- fix gain and offset seting at load config
+	- cleanup
+
+- indigo_ccd_qhy2:
+	- update SDK v.2025.03.25
+
+- indigo_ccd_touptek & OEM:
+	- update SDK v.57.28165.20250401
+
 # [2.0-324] - 20 Mar Thu 2025
 ## New Drivers:
 - indigo_rotator_asi:
