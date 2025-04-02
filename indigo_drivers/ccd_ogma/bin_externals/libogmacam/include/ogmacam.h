@@ -1,7 +1,7 @@
 #ifndef __ogmacam_h__
 #define __ogmacam_h__
 
-/* Version: 57.27650.20250209 */
+/* Version: 57.28165.20250401 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -113,149 +113,153 @@ extern "C" {
 #define E_BUSY              (HRESULT)(0x800700aa) /* The requested resource is in use */ /* Remark: The camera is already in use, such as duplicated opening/starting the camera, or being used by other application, etc */
 #define E_PENDING           (HRESULT)(0x8000000a) /* The data necessary to complete this operation is not yet available */ /* Remark: No data is available at this time */
 #define E_TIMEOUT           (HRESULT)(0x8001011f) /* This operation returned because the timeout period expired */
+#define E_UNREACH           (HRESULT)(0x80072743) /* Network is unreachable */
 #endif
 
 /* handle */
 typedef struct Ogmacam_t { int unused; } *HOgmacam;
 
-#define OGMACAM_MAX                      128
+#define OGMACAM_MAX                       128
                                          
-#define OGMACAM_FLAG_CMOS                0x00000001  /* cmos sensor */
-#define OGMACAM_FLAG_CCD_PROGRESSIVE     0x00000002  /* progressive ccd sensor */
-#define OGMACAM_FLAG_CCD_INTERLACED      0x00000004  /* interlaced ccd sensor */
-#define OGMACAM_FLAG_ROI_HARDWARE        0x00000008  /* support hardware ROI */
-#define OGMACAM_FLAG_MONO                0x00000010  /* monochromatic */
-#define OGMACAM_FLAG_BINSKIP_SUPPORTED   0x00000020  /* support bin/skip mode, see Ogmacam_put_Mode and Ogmacam_get_Mode */
-#define OGMACAM_FLAG_USB30               0x00000040  /* usb3.0 */
-#define OGMACAM_FLAG_TEC                 0x00000080  /* Thermoelectric Cooler */
-#define OGMACAM_FLAG_USB30_OVER_USB20    0x00000100  /* usb3.0 camera connected to usb2.0 port */
-#define OGMACAM_FLAG_ST4                 0x00000200  /* ST4 port */
-#define OGMACAM_FLAG_GETTEMPERATURE      0x00000400  /* support to get the temperature of the sensor */
-#define OGMACAM_FLAG_HIGH_FULLWELL       0x00000800  /* high fullwell capacity */
-#define OGMACAM_FLAG_RAW10               0x00001000  /* pixel format, RAW 10bits */
-#define OGMACAM_FLAG_RAW12               0x00002000  /* pixel format, RAW 12bits */
-#define OGMACAM_FLAG_RAW14               0x00004000  /* pixel format, RAW 14bits */
-#define OGMACAM_FLAG_RAW16               0x00008000  /* pixel format, RAW 16bits */
-#define OGMACAM_FLAG_FAN                 0x00010000  /* cooling fan */
-#define OGMACAM_FLAG_TEC_ONOFF           0x00020000  /* Thermoelectric Cooler can be turn on or off, support to set the target temperature of TEC */
-#define OGMACAM_FLAG_ISP                 0x00040000  /* ISP (Image Signal Processing) chip */
-#define OGMACAM_FLAG_TRIGGER_SOFTWARE    0x00080000  /* support software trigger */
-#define OGMACAM_FLAG_TRIGGER_EXTERNAL    0x00100000  /* support external trigger */
-#define OGMACAM_FLAG_TRIGGER_SINGLE      0x00200000  /* only support trigger single: one trigger, one image */
-#define OGMACAM_FLAG_BLACKLEVEL          0x00400000  /* support set and get the black level */
-#define OGMACAM_FLAG_AUTO_FOCUS          0x00800000  /* support auto focus */
-#define OGMACAM_FLAG_BUFFER              0x01000000  /* frame buffer */
-#define OGMACAM_FLAG_DDR                 0x02000000  /* use very large capacity DDR (Double Data Rate SDRAM) for frame buffer. The capacity is not less than one full frame */
-#define OGMACAM_FLAG_CG                  0x04000000  /* Conversion Gain: HCG, LCG */
-#define OGMACAM_FLAG_YUV411              0x08000000  /* pixel format, yuv411 */
-#define OGMACAM_FLAG_VUYY                0x10000000  /* pixel format, yuv422, VUYY */
-#define OGMACAM_FLAG_YUV444              0x20000000  /* pixel format, yuv444 */
-#define OGMACAM_FLAG_RGB888              0x40000000  /* pixel format, RGB888 */
-#define OGMACAM_FLAG_RAW8                0x80000000  /* pixel format, RAW 8 bits */
-#define OGMACAM_FLAG_GMCY8               0x0000000100000000  /* pixel format, GMCY, 8bits */
-#define OGMACAM_FLAG_GMCY12              0x0000000200000000  /* pixel format, GMCY, 12bits */
-#define OGMACAM_FLAG_UYVY                0x0000000400000000  /* pixel format, yuv422, UYVY */
-#define OGMACAM_FLAG_CGHDR               0x0000000800000000  /* Conversion Gain: HCG, LCG, HDR */
-#define OGMACAM_FLAG_GLOBALSHUTTER       0x0000001000000000  /* global shutter */
-#define OGMACAM_FLAG_FOCUSMOTOR          0x0000002000000000  /* support focus motor */
-#define OGMACAM_FLAG_PRECISE_FRAMERATE   0x0000004000000000  /* support precise framerate & bandwidth, see OGMACAM_OPTION_PRECISE_FRAMERATE & OGMACAM_OPTION_BANDWIDTH */
-#define OGMACAM_FLAG_HEAT                0x0000008000000000  /* support heat to prevent fogging up */
-#define OGMACAM_FLAG_LOW_NOISE           0x0000010000000000  /* support low noise mode (Higher signal noise ratio, lower frame rate) */
-#define OGMACAM_FLAG_LEVELRANGE_HARDWARE 0x0000020000000000  /* hardware level range, put(get)_LevelRangeV2 */
-#define OGMACAM_FLAG_EVENT_HARDWARE      0x0000040000000000  /* hardware event, such as exposure start & stop */
-#define OGMACAM_FLAG_LIGHTSOURCE         0x0000080000000000  /* embedded light source */
-#define OGMACAM_FLAG_FILTERWHEEL         0x0000100000000000  /* astro filter wheel */
-#define OGMACAM_FLAG_GIGE                0x0000200000000000  /* 1 Gigabit GigE */
-#define OGMACAM_FLAG_10GIGE              0x0000400000000000  /* 10 Gigabit GigE */
-#define OGMACAM_FLAG_5GIGE               0x0000800000000000  /* 5 Gigabit GigE */
-#define OGMACAM_FLAG_25GIGE              0x0001000000000000  /* 2.5 Gigabit GigE */
-#define OGMACAM_FLAG_AUTOFOCUSER         0x0002000000000000  /* astro auto focuser */
-#define OGMACAM_FLAG_LIGHT_SOURCE        0x0004000000000000  /* stand alone light source */
-#define OGMACAM_FLAG_CAMERALINK          0x0008000000000000  /* camera link */
-#define OGMACAM_FLAG_CXP                 0x0010000000000000  /* CXP: CoaXPress */
-#define OGMACAM_FLAG_RAW12PACK           0x0020000000000000  /* pixel format, RAW 12bits packed */
-#define OGMACAM_FLAG_SELFTRIGGER         0x0040000000000000  /* self trigger */
-#define OGMACAM_FLAG_RAW11               0x0080000000000000  /* pixel format, RAW 11bits */
-#define OGMACAM_FLAG_GHOPTO              0x0100000000000000  /* ghopto sensor */
+#define OGMACAM_FLAG_CMOS                 0x00000001  /* cmos sensor */
+#define OGMACAM_FLAG_CCD_PROGRESSIVE      0x00000002  /* progressive ccd sensor */
+#define OGMACAM_FLAG_CCD_INTERLACED       0x00000004  /* interlaced ccd sensor */
+#define OGMACAM_FLAG_ROI_HARDWARE         0x00000008  /* support hardware ROI */
+#define OGMACAM_FLAG_MONO                 0x00000010  /* monochromatic */
+#define OGMACAM_FLAG_BINSKIP_SUPPORTED    0x00000020  /* support bin/skip mode, see Ogmacam_put_Mode and Ogmacam_get_Mode */
+#define OGMACAM_FLAG_USB30                0x00000040  /* usb3.0 */
+#define OGMACAM_FLAG_TEC                  0x00000080  /* Thermoelectric Cooler */
+#define OGMACAM_FLAG_USB30_OVER_USB20     0x00000100  /* usb3.0 camera connected to usb2.0 port */
+#define OGMACAM_FLAG_ST4                  0x00000200  /* ST4 port */
+#define OGMACAM_FLAG_GETTEMPERATURE       0x00000400  /* support to get the temperature of the sensor */
+#define OGMACAM_FLAG_HIGH_FULLWELL        0x00000800  /* high fullwell capacity */
+#define OGMACAM_FLAG_RAW10                0x00001000  /* pixel format, RAW 10bits */
+#define OGMACAM_FLAG_RAW12                0x00002000  /* pixel format, RAW 12bits */
+#define OGMACAM_FLAG_RAW14                0x00004000  /* pixel format, RAW 14bits */
+#define OGMACAM_FLAG_RAW16                0x00008000  /* pixel format, RAW 16bits */
+#define OGMACAM_FLAG_FAN                  0x00010000  /* cooling fan */
+#define OGMACAM_FLAG_TEC_ONOFF            0x00020000  /* Thermoelectric Cooler can be turn on or off, support to set the target temperature of TEC */
+#define OGMACAM_FLAG_ISP                  0x00040000  /* ISP (Image Signal Processing) chip */
+#define OGMACAM_FLAG_TRIGGER_SOFTWARE     0x00080000  /* support software trigger */
+#define OGMACAM_FLAG_TRIGGER_EXTERNAL     0x00100000  /* support external trigger */
+#define OGMACAM_FLAG_TRIGGER_SINGLE       0x00200000  /* only support trigger single: one trigger, one image */
+#define OGMACAM_FLAG_BLACKLEVEL           0x00400000  /* support set and get the black level */
+#define OGMACAM_FLAG_AUTO_FOCUS           0x00800000  /* support auto focus */
+#define OGMACAM_FLAG_BUFFER               0x01000000  /* frame buffer */
+#define OGMACAM_FLAG_DDR                  0x02000000  /* use very large capacity DDR (Double Data Rate SDRAM) for frame buffer. The capacity is not less than one full frame */
+#define OGMACAM_FLAG_CG                   0x04000000  /* Conversion Gain: HCG, LCG */
+#define OGMACAM_FLAG_YUV411               0x08000000  /* pixel format, yuv411 */
+#define OGMACAM_FLAG_VUYY                 0x10000000  /* pixel format, yuv422, VUYY */
+#define OGMACAM_FLAG_YUV444               0x20000000  /* pixel format, yuv444 */
+#define OGMACAM_FLAG_RGB888               0x40000000  /* pixel format, RGB888 */
+#define OGMACAM_FLAG_RAW8                 0x80000000  /* pixel format, RAW 8 bits */
+#define OGMACAM_FLAG_GMCY8                0x0000000100000000  /* pixel format, GMCY, 8bits */
+#define OGMACAM_FLAG_GMCY12               0x0000000200000000  /* pixel format, GMCY, 12bits */
+#define OGMACAM_FLAG_UYVY                 0x0000000400000000  /* pixel format, yuv422, UYVY */
+#define OGMACAM_FLAG_CGHDR                0x0000000800000000  /* Conversion Gain: HCG, LCG, HDR */
+#define OGMACAM_FLAG_GLOBALSHUTTER        0x0000001000000000  /* global shutter */
+#define OGMACAM_FLAG_FOCUSMOTOR           0x0000002000000000  /* support focus motor */
+#define OGMACAM_FLAG_PRECISE_FRAMERATE    0x0000004000000000  /* support precise framerate & bandwidth, see OGMACAM_OPTION_PRECISE_FRAMERATE & OGMACAM_OPTION_BANDWIDTH */
+#define OGMACAM_FLAG_HEAT                 0x0000008000000000  /* support heat to prevent fogging up */
+#define OGMACAM_FLAG_LOW_NOISE            0x0000010000000000  /* support low noise mode (Higher signal noise ratio, lower frame rate) */
+#define OGMACAM_FLAG_LEVELRANGE_HARDWARE  0x0000020000000000  /* hardware level range, put(get)_LevelRangeV2 */
+#define OGMACAM_FLAG_EVENT_HARDWARE       0x0000040000000000  /* hardware event, such as exposure start & stop */
+#define OGMACAM_FLAG_LIGHTSOURCE          0x0000080000000000  /* embedded light source */
+#define OGMACAM_FLAG_FILTERWHEEL          0x0000100000000000  /* astro filter wheel */
+#define OGMACAM_FLAG_GIGE                 0x0000200000000000  /* 1 Gigabit GigE */
+#define OGMACAM_FLAG_10GIGE               0x0000400000000000  /* 10 Gigabit GigE */
+#define OGMACAM_FLAG_5GIGE                0x0000800000000000  /* 5 Gigabit GigE */
+#define OGMACAM_FLAG_25GIGE               0x0001000000000000  /* 2.5 Gigabit GigE */
+#define OGMACAM_FLAG_AUTOFOCUSER          0x0002000000000000  /* astro auto focuser */
+#define OGMACAM_FLAG_LIGHT_SOURCE         0x0004000000000000  /* stand alone light source */
+#define OGMACAM_FLAG_CAMERALINK           0x0008000000000000  /* camera link */
+#define OGMACAM_FLAG_CXP                  0x0010000000000000  /* CXP: CoaXPress */
+#define OGMACAM_FLAG_RAW12PACK            0x0020000000000000  /* pixel format, RAW 12bits packed */
+#define OGMACAM_FLAG_SELFTRIGGER          0x0040000000000000  /* self trigger */
+#define OGMACAM_FLAG_RAW11                0x0080000000000000  /* pixel format, RAW 11bits */
+#define OGMACAM_FLAG_GHOPTO               0x0100000000000000  /* ghopto sensor */
 
-#define OGMACAM_EXPOGAIN_DEF             100     /* exposure gain, default value */
-#define OGMACAM_EXPOGAIN_MIN             100     /* exposure gain, minimum value */
-#define OGMACAM_TEMP_DEF                 6503    /* color temperature, default value */
-#define OGMACAM_TEMP_MIN                 2000    /* color temperature, minimum value */
-#define OGMACAM_TEMP_MAX                 15000   /* color temperature, maximum value */
-#define OGMACAM_TINT_DEF                 1000    /* tint */
-#define OGMACAM_TINT_MIN                 200     /* tint */
-#define OGMACAM_TINT_MAX                 2500    /* tint */
-#define OGMACAM_HUE_DEF                  0       /* hue */
-#define OGMACAM_HUE_MIN                  (-180)  /* hue */
-#define OGMACAM_HUE_MAX                  180     /* hue */
-#define OGMACAM_SATURATION_DEF           128     /* saturation */
-#define OGMACAM_SATURATION_MIN           0       /* saturation */
-#define OGMACAM_SATURATION_MAX           255     /* saturation */
-#define OGMACAM_BRIGHTNESS_DEF           0       /* brightness */
-#define OGMACAM_BRIGHTNESS_MIN           (-255)  /* brightness */
-#define OGMACAM_BRIGHTNESS_MAX           255     /* brightness */
-#define OGMACAM_CONTRAST_DEF             0       /* contrast */
-#define OGMACAM_CONTRAST_MIN             (-255)  /* contrast */
-#define OGMACAM_CONTRAST_MAX             255     /* contrast */
-#define OGMACAM_GAMMA_DEF                100     /* gamma */
-#define OGMACAM_GAMMA_MIN                20      /* gamma */
-#define OGMACAM_GAMMA_MAX                180     /* gamma */
-#define OGMACAM_AETARGET_DEF             120     /* target of auto exposure */
-#define OGMACAM_AETARGET_MIN             16      /* target of auto exposure */
-#define OGMACAM_AETARGET_MAX             220     /* target of auto exposure */
-#define OGMACAM_WBGAIN_DEF               0       /* white balance gain */
-#define OGMACAM_WBGAIN_MIN               (-127)  /* white balance gain */
-#define OGMACAM_WBGAIN_MAX               127     /* white balance gain */
-#define OGMACAM_BLACKLEVEL_MIN           0       /* minimum black level */
-#define OGMACAM_BLACKLEVEL8_MAX          31              /* maximum black level for bitdepth = 8 */
-#define OGMACAM_BLACKLEVEL10_MAX         (31 * 4)        /* maximum black level for bitdepth = 10 */
-#define OGMACAM_BLACKLEVEL11_MAX         (31 * 8)        /* maximum black level for bitdepth = 11 */
-#define OGMACAM_BLACKLEVEL12_MAX         (31 * 16)       /* maximum black level for bitdepth = 12 */
-#define OGMACAM_BLACKLEVEL14_MAX         (31 * 64)       /* maximum black level for bitdepth = 14 */
-#define OGMACAM_BLACKLEVEL16_MAX         (31 * 256)      /* maximum black level for bitdepth = 16 */
-#define OGMACAM_SHARPENING_STRENGTH_DEF  0       /* sharpening strength */
-#define OGMACAM_SHARPENING_STRENGTH_MIN  0       /* sharpening strength */
-#define OGMACAM_SHARPENING_STRENGTH_MAX  500     /* sharpening strength */
-#define OGMACAM_SHARPENING_RADIUS_DEF    2       /* sharpening radius */
-#define OGMACAM_SHARPENING_RADIUS_MIN    1       /* sharpening radius */
-#define OGMACAM_SHARPENING_RADIUS_MAX    10      /* sharpening radius */
-#define OGMACAM_SHARPENING_THRESHOLD_DEF 0       /* sharpening threshold */
-#define OGMACAM_SHARPENING_THRESHOLD_MIN 0       /* sharpening threshold */
-#define OGMACAM_SHARPENING_THRESHOLD_MAX 255     /* sharpening threshold */
-#define OGMACAM_AUTOEXPO_THRESHOLD_DEF   5       /* auto exposure threshold */
-#define OGMACAM_AUTOEXPO_THRESHOLD_MIN   2       /* auto exposure threshold */
-#define OGMACAM_AUTOEXPO_THRESHOLD_MAX   15      /* auto exposure threshold */
-#define OGMACAM_AUTOEXPO_DAMP_DEF        0       /* auto exposure damping coefficient: thousandths */
-#define OGMACAM_AUTOEXPO_DAMP_MIN        0       /* auto exposure damping coefficient: thousandths */
-#define OGMACAM_AUTOEXPO_DAMP_MAX        1000    /* auto exposure damping coefficient: thousandths */
-#define OGMACAM_BANDWIDTH_DEF            100     /* bandwidth */
-#define OGMACAM_BANDWIDTH_MIN            1       /* bandwidth */
-#define OGMACAM_BANDWIDTH_MAX            100     /* bandwidth */
-#define OGMACAM_DENOISE_DEF              0       /* denoise */
-#define OGMACAM_DENOISE_MIN              0       /* denoise */
-#define OGMACAM_DENOISE_MAX              100     /* denoise */
-#define OGMACAM_HEARTBEAT_MIN            100     /* millisecond */
-#define OGMACAM_HEARTBEAT_MAX            10000   /* millisecond */
-#define OGMACAM_AE_PERCENT_MIN           0       /* auto exposure percent; 0 or 100 => full roi average, means "disabled" */
-#define OGMACAM_AE_PERCENT_MAX           100
-#define OGMACAM_AE_PERCENT_DEF           10      /* auto exposure percent: enabled, percentage = 10% */
-#define OGMACAM_NOPACKET_TIMEOUT_MIN     500     /* no packet timeout minimum: 500ms */
-#define OGMACAM_NOFRAME_TIMEOUT_MIN      500     /* no frame timeout minimum: 500ms */
-#define OGMACAM_DYNAMIC_DEFECT_T1_MIN    0       /* dynamic defect pixel correction, dead pixel ratio: the smaller the dead ratio is, the more stringent the conditions for processing dead pixels are, and fewer pixels will be processed */
-#define OGMACAM_DYNAMIC_DEFECT_T1_MAX    100     /* means: 1.0 */
-#define OGMACAM_DYNAMIC_DEFECT_T1_DEF    90      /* means: 0.9 */
-#define OGMACAM_DYNAMIC_DEFECT_T2_MIN    0       /* dynamic defect pixel correction, hot pixel ratio: the smaller the hot ratio is, the more stringent the conditions for processing hot pixels are, and fewer pixels will be processed */
-#define OGMACAM_DYNAMIC_DEFECT_T2_MAX    100
-#define OGMACAM_DYNAMIC_DEFECT_T2_DEF    90
-#define OGMACAM_HDR_K_MIN                1       /* HDR synthesize */
-#define OGMACAM_HDR_K_MAX                25500
-#define OGMACAM_HDR_B_MIN                0
-#define OGMACAM_HDR_B_MAX                65535
-#define OGMACAM_HDR_THRESHOLD_MIN        0
-#define OGMACAM_HDR_THRESHOLD_MAX        4094
-#define OGMACAM_CDS_MIN                  0       /* Correlated Double Sampling */
-#define OGMACAM_CDS_MAX                  100
+#define OGMACAM_EXPOGAIN_DEF              100     /* exposure gain, default value */
+#define OGMACAM_EXPOGAIN_MIN              100     /* exposure gain, minimum value */
+#define OGMACAM_TEMP_DEF                  6503    /* color temperature, default value */
+#define OGMACAM_TEMP_MIN                  2000    /* color temperature, minimum value */
+#define OGMACAM_TEMP_MAX                  15000   /* color temperature, maximum value */
+#define OGMACAM_TINT_DEF                  1000    /* tint */
+#define OGMACAM_TINT_MIN                  200     /* tint */
+#define OGMACAM_TINT_MAX                  2500    /* tint */
+#define OGMACAM_HUE_DEF                   0       /* hue */
+#define OGMACAM_HUE_MIN                   (-180)  /* hue */
+#define OGMACAM_HUE_MAX                   180     /* hue */
+#define OGMACAM_SATURATION_DEF            128     /* saturation */
+#define OGMACAM_SATURATION_MIN            0       /* saturation */
+#define OGMACAM_SATURATION_MAX            255     /* saturation */
+#define OGMACAM_BRIGHTNESS_DEF            0       /* brightness */
+#define OGMACAM_BRIGHTNESS_MIN            (-255)  /* brightness */
+#define OGMACAM_BRIGHTNESS_MAX            255     /* brightness */
+#define OGMACAM_CONTRAST_DEF              0       /* contrast */
+#define OGMACAM_CONTRAST_MIN              (-255)  /* contrast */
+#define OGMACAM_CONTRAST_MAX              255     /* contrast */
+#define OGMACAM_GAMMA_DEF                 100     /* gamma */
+#define OGMACAM_GAMMA_MIN                 20      /* gamma */
+#define OGMACAM_GAMMA_MAX                 180     /* gamma */
+#define OGMACAM_AETARGET_DEF              120     /* target of auto exposure */
+#define OGMACAM_AETARGET_MIN              16      /* target of auto exposure */
+#define OGMACAM_AETARGET_MAX              220     /* target of auto exposure */
+#define OGMACAM_WBGAIN_DEF                0       /* white balance gain */
+#define OGMACAM_WBGAIN_MIN                (-127)  /* white balance gain */
+#define OGMACAM_WBGAIN_MAX                127     /* white balance gain */
+#define OGMACAM_BLACKLEVEL_MIN            0       /* minimum black level */
+#define OGMACAM_BLACKLEVEL8_MAX           31              /* maximum black level for bitdepth = 8 */
+#define OGMACAM_BLACKLEVEL10_MAX          (31 * 4)        /* maximum black level for bitdepth = 10 */
+#define OGMACAM_BLACKLEVEL11_MAX          (31 * 8)        /* maximum black level for bitdepth = 11 */
+#define OGMACAM_BLACKLEVEL12_MAX          (31 * 16)       /* maximum black level for bitdepth = 12 */
+#define OGMACAM_BLACKLEVEL14_MAX          (31 * 64)       /* maximum black level for bitdepth = 14 */
+#define OGMACAM_BLACKLEVEL16_MAX          (31 * 256)      /* maximum black level for bitdepth = 16 */
+#define OGMACAM_SHARPENING_STRENGTH_DEF   0       /* sharpening strength */
+#define OGMACAM_SHARPENING_STRENGTH_MIN   0       /* sharpening strength */
+#define OGMACAM_SHARPENING_STRENGTH_MAX   500     /* sharpening strength */
+#define OGMACAM_SHARPENING_RADIUS_DEF     2       /* sharpening radius */
+#define OGMACAM_SHARPENING_RADIUS_MIN     1       /* sharpening radius */
+#define OGMACAM_SHARPENING_RADIUS_MAX     10      /* sharpening radius */
+#define OGMACAM_SHARPENING_THRESHOLD_DEF  0       /* sharpening threshold */
+#define OGMACAM_SHARPENING_THRESHOLD_MIN  0       /* sharpening threshold */
+#define OGMACAM_SHARPENING_THRESHOLD_MAX  255     /* sharpening threshold */
+#define OGMACAM_AUTOEXPO_THRESHOLD_DEF    5       /* auto exposure threshold */
+#define OGMACAM_AUTOEXPO_THRESHOLD_MIN    2       /* auto exposure threshold */
+#define OGMACAM_AUTOEXPO_THRESHOLD_MAX    15      /* auto exposure threshold */
+#define OGMACAM_AUTOEXPO_THLD_TRIGGER_DEF 5       /* auto exposure trigger threshold */
+#define OGMACAM_AUTOEXPO_THLD_TRIGGER_MIN 2       /* auto exposure trigger threshold */
+#define OGMACAM_AUTOEXPO_THLD_TRIGGER_MAX 64      /* auto exposure trigger threshold */
+#define OGMACAM_AUTOEXPO_DAMP_DEF         0       /* auto exposure damping coefficient: thousandths */
+#define OGMACAM_AUTOEXPO_DAMP_MIN         0       /* auto exposure damping coefficient: thousandths */
+#define OGMACAM_AUTOEXPO_DAMP_MAX         1000    /* auto exposure damping coefficient: thousandths */
+#define OGMACAM_BANDWIDTH_DEF             100     /* bandwidth */
+#define OGMACAM_BANDWIDTH_MIN             1       /* bandwidth */
+#define OGMACAM_BANDWIDTH_MAX             100     /* bandwidth */
+#define OGMACAM_DENOISE_DEF               0       /* denoise */
+#define OGMACAM_DENOISE_MIN               0       /* denoise */
+#define OGMACAM_DENOISE_MAX               100     /* denoise */
+#define OGMACAM_HEARTBEAT_MIN             100     /* millisecond */
+#define OGMACAM_HEARTBEAT_MAX             10000   /* millisecond */
+#define OGMACAM_AE_PERCENT_MIN            0       /* auto exposure percent; 0 or 100 => full roi average, means "disabled" */
+#define OGMACAM_AE_PERCENT_MAX            100
+#define OGMACAM_AE_PERCENT_DEF            10      /* auto exposure percent: enabled, percentage = 10% */
+#define OGMACAM_NOPACKET_TIMEOUT_MIN      500     /* no packet timeout minimum: 500ms */
+#define OGMACAM_NOFRAME_TIMEOUT_MIN       500     /* no frame timeout minimum: 500ms */
+#define OGMACAM_DYNAMIC_DEFECT_T1_MIN     0       /* dynamic defect pixel correction, dead pixel ratio: the smaller the dead ratio is, the more stringent the conditions for processing dead pixels are, and fewer pixels will be processed */
+#define OGMACAM_DYNAMIC_DEFECT_T1_MAX     100     /* means: 1.0 */
+#define OGMACAM_DYNAMIC_DEFECT_T1_DEF     90      /* means: 0.9 */
+#define OGMACAM_DYNAMIC_DEFECT_T2_MIN     0       /* dynamic defect pixel correction, hot pixel ratio: the smaller the hot ratio is, the more stringent the conditions for processing hot pixels are, and fewer pixels will be processed */
+#define OGMACAM_DYNAMIC_DEFECT_T2_MAX     100
+#define OGMACAM_DYNAMIC_DEFECT_T2_DEF     90
+#define OGMACAM_HDR_K_MIN                 1       /* HDR synthesize */
+#define OGMACAM_HDR_K_MAX                 25500
+#define OGMACAM_HDR_B_MIN                 0
+#define OGMACAM_HDR_B_MAX                 65535
+#define OGMACAM_HDR_THRESHOLD_MIN         0
+#define OGMACAM_HDR_THRESHOLD_MAX         4094
+#define OGMACAM_CDS_MIN                   0       /* Correlated Double Sampling */
+#define OGMACAM_CDS_MAX                   100
 
 typedef struct {
     unsigned    width;
@@ -294,7 +298,7 @@ typedef struct {
 } OgmacamDeviceV2; /* device instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 57.27650.20250209
+    get the version of this dll/so/dylib, which is: 57.28165.20250401
 */
 #if defined(_WIN32)
 OGMACAM_API(const wchar_t*)   Ogmacam_Version();
@@ -1152,6 +1156,12 @@ OGMACAM_API(HRESULT)  Ogmacam_feed_Pipe(HOgmacam h, unsigned pipeId);
 #define OGMACAM_OPTION_ZERO_PADDING           0x78       /* Zero padding: 0 => high, 1 => low; default: 0 */
 #define OGMACAM_OPTION_UPTIME                 0x79       /* device uptime in millisecond */
 #define OGMACAM_OPTION_BITRANGE               0x7a       /* Bit range: [0, 8] */
+#define OGMACAM_OPTION_MODE_SEQ_TIMESTAMP     0x7b       /* Mode of seq & timestamp: 0 => reset to 0 automatically; 1 => never reset automatically; default: 0 */
+#define TOUPCAP_OPTION_TIMED_TRIGGER_NUM      0x7c       /* Timed trigger number */
+#define OGMACAM_OPTION_TIMED_TRIGGER_LOW      0x20000000 /* Timed trigger: lower 32 bits of  64-bit integer, nanosecond since epoch (00:00:00 UTC on Thursday, 1 January 1970, see https://en.wikipedia.org/wiki/Unix_time) */
+#define OGMACAM_OPTION_TIMED_TRIGGER_HIGH     0x40000000 /* Timed trigger: high 32 bits. The lower 32 bits must be set first, followed by the higher 32 bits */
+#define OGMACAM_OPTION_AUTOEXP_THLD_TRIGGER   0x7d       /* trigger threshold of auto exposure */
+#define OGMACAM_OPTION_LANE                   0x7e
 
 /* pixel format */
 #define OGMACAM_PIXELFORMAT_RAW8              0x00
