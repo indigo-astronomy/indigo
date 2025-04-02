@@ -39,6 +39,7 @@
 
 #include <indigo/indigo_base64.h>
 #include <indigo/indigo_xml.h>
+#include <indigo/indigo_client_xml.h>
 #include <indigo/indigo_uni_io.h>
 #include <indigo/indigo_version.h>
 #include <indigo/indigo_names.h>
@@ -129,6 +130,9 @@ static indigo_rule parse_rule(char *value) {
 
 typedef struct {
 	indigo_property *property;
+	char call_back_name[INDIGO_NAME_SIZE];
+	char call_back_url[INDIGO_NAME_SIZE];
+	pthread_t call_back_thread;
 	indigo_device *device;
 	indigo_client *client;
 	int count;
@@ -252,6 +256,32 @@ static void *get_properties_handler(parser_state state, parser_context *context,
 		return top_level_handler;
 	}
 	return get_properties_handler;
+}
+
+static void *call_back_client_handler(parser_context *context) {
+	indigo_uni_handle **handle = ((indigo_adapter_context *)(context->client->client_context))->output;
+	indigo_device *protocol_adapter = indigo_xml_client_adapter(context->call_back_name, context->call_back_url, handle, handle);
+	indigo_attach_device(protocol_adapter);
+	indigo_xml_parse(protocol_adapter, NULL);
+	indigo_detach_device(protocol_adapter);
+	indigo_release_xml_client_adapter(protocol_adapter);
+	return NULL;
+}
+
+static void *call_back_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
+	indigo_client *client = context->client;
+	assert(client != NULL);
+	if (state == ATTRIBUTE_VALUE_STATE) {
+		if (!strcmp(name, "name")) {
+			indigo_copy_name(context->call_back_name, value);
+		} else if (!strcmp(name, "url")) {
+			indigo_copy_name(context->call_back_url, value);
+		}
+	} else if (state == END_TAG_STATE) {
+		pthread_create(&context->call_back_thread, NULL, (void * (*)(void*))call_back_client_handler, context);
+		return top_level_handler;
+	}
+	return call_back_handler;
 }
 
 static void *new_one_text_vector_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
@@ -1221,6 +1251,8 @@ static void *top_level_handler(parser_state state, parser_context *context, char
 			return enable_blob_handler;
 		if (!strcmp(name, "getProperties") && client != NULL)
 			return get_properties_handler;
+		if (!strcmp(name, "callBack"))
+			return call_back_handler;
 		if (!strcmp(name, "newTextVector")) {
 			property->type = INDIGO_TEXT_VECTOR;
 			return new_text_vector_handler;

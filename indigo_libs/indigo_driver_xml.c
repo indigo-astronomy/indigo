@@ -66,12 +66,6 @@ indigo_client *indigo_xml_device_adapter(indigo_uni_handle **input, indigo_uni_h
 void indigo_release_xml_device_adapter(indigo_client *client) {
 	assert(client != NULL);
 	assert(client->client_context != NULL);
-	indigo_device *device = ((indigo_adapter_context *)client->client_context)->device;
-	if (device != NULL) {
-		indigo_detach_device(device);
-		indigo_safe_free(device->device_context);
-		indigo_safe_free(device);
-	}
 	indigo_enable_blob_mode_record *blob_record = client->enable_blob_mode_records;
 	while (blob_record) {
 		client->enable_blob_mode_records = blob_record->next;

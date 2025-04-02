@@ -378,8 +378,6 @@ typedef struct {
 	indigo_uni_handle **output;					///< output handle
 	bool web_socket;										///< connection over WebSocket (RFC6455)
 	char url_prefix[INDIGO_NAME_SIZE];	///< server url prefix (for BLOB download)
-	indigo_client *client;							///< associated client
-	indigo_device *device;							///< associated device
 } indigo_adapter_context;
 
 /** BLOB entry type.

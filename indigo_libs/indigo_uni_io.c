@@ -58,6 +58,8 @@
 #include <indigo/indigo_uni_io.h>
 
 static int handle_index = 0;
+static pthread_mutex_t mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER;
+
 
 indigo_uni_handle _indigo_stdin_handle = { INDIGO_FILE_HANDLE, 0, 0 };
 indigo_uni_handle _indigo_stdout_handle = { INDIGO_FILE_HANDLE, 1, 0 };
@@ -1370,6 +1372,7 @@ void indigo_uni_close(indigo_uni_handle **handle) {
 		indigo_error("%s used with NULL handle", __FUNCTION__);
 		return;
 	}
+	pthread_mutex_lock(&mutex);
 	if (*handle) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 		if ((*handle)->type != INDIGO_FILE_HANDLE) {
@@ -1395,6 +1398,7 @@ void indigo_uni_close(indigo_uni_handle **handle) {
 		indigo_safe_free(*handle);
 		*handle = NULL;
 	}
+	pthread_mutex_unlock(&mutex);
 }
 
 const char* indigo_uni_home_folder(void) {
