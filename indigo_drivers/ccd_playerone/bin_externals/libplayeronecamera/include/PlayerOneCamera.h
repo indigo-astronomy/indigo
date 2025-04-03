@@ -124,7 +124,7 @@ typedef enum _POAConfig                 ///< Camera Config Definition
     POA_USB_BANDWIDTH_LIMIT,            ///< USB bandwidth limit, read-write, valueType == VAL_INT
     POA_PIXEL_BIN_SUM,                  ///< take the sum of pixels after binning, POA_TRUE is sum and POA_FLASE is average, default is POA_FLASE, read-write, valueType == VAL_BOOL
     POA_MONO_BIN,                       ///< only for color camera, when set to POA_TRUE, pixel binning will use neighbour pixels and image after binning will lose the bayer pattern, read-write, valueType == VAL_BOOL
-    POA_EXP                             ///< exposure time(unit: s),range [0.00001 - 3600.0], read-write, valueType == VAL_FLOAT
+    POA_EXP                             ///< exposure time(unit: s),range [0.00001 - 7200.0], read-write, valueType == VAL_FLOAT
 
 } POAConfig;
 
