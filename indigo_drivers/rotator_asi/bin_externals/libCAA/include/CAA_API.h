@@ -1,4 +1,4 @@
-﻿/**************************************************
+/**************************************************
 this is the ZWO caa CAA SDK
 any question feel free contact us:yang.zhou@zwoptical.com
 

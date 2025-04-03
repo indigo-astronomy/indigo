@@ -958,6 +958,8 @@
 		9D8D9EA92D4B9FBD007A5BA3 /* indigo_uni_io.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D8D9EA72D4B9FBD007A5BA3 /* indigo_uni_io.c */; };
 		9D8D9EAA2D4B9FBD007A5BA3 /* indigo_uni_io.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D8D9EA72D4B9FBD007A5BA3 /* indigo_uni_io.c */; };
 		9D8D9EAB2D4B9FBD007A5BA3 /* indigo_uni_io.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D8D9EA72D4B9FBD007A5BA3 /* indigo_uni_io.c */; };
+		9D91E6042D9EB8200003A99C /* CAA_API.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D74A4F72D4B63F700A31003 /* CAA_API.h */; };
+		9D91E6052D9EB8200003A99C /* CAA_API.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D74A4F72D4B63F700A31003 /* CAA_API.h */; };
 		9D9691DA23687C0C00E0CACE /* indigo_aux_fbc.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D9691D923687AD800E0CACE /* indigo_aux_fbc.c */; };
 		9D9696C42D5C83A40051F9E3 /* indigo_ccd_svb2.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D9696BE2D5C83710051F9E3 /* indigo_ccd_svb2.c */; };
 		9D9696C52D5C83A40051F9E3 /* indigo_ccd_svb2.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D9696BE2D5C83710051F9E3 /* indigo_ccd_svb2.c */; };
@@ -14816,6 +14818,7 @@
 				598A1C5C259BA94A00C0B34C /* DDHidLib.h in Headers */,
 				591CD11529806D47003243AE /* mallincam.h in Headers */,
 				598A1C5D259BA94A00C0B34C /* config.h in Headers */,
+				9D91E6052D9EB8200003A99C /* CAA_API.h in Headers */,
 				59B51360297077920075C8A1 /* indigo_rotator_falcon.h in Headers */,
 				598A1C5E259BA94A00C0B34C /* indigo_token.h in Headers */,
 				598A1C5F259BA94A00C0B34C /* indigo_wheel_driver.h in Headers */,
@@ -14913,6 +14916,7 @@
 				595A8E5B2C9479E600E7998C /* indigo_ccd_pentax.h in Headers */,
 				59DD69CF1FC1D30300AEF0DF /* indigo_dome_driver.h in Headers */,
 				59C76F0C237872480091B966 /* nexstar.h in Headers */,
+				9D91E6042D9EB8200003A99C /* CAA_API.h in Headers */,
 				59111D13285F53D500E57194 /* indigocat_dynamical_time.h in Headers */,
 				59790B2D29B2796300F73B1D /* indigo_service_discovery.h in Headers */,
 				5995A8CF25A9ABEC003987F1 /* indigo_platesolver.h in Headers */,
