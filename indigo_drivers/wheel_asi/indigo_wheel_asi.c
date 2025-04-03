@@ -221,8 +221,6 @@ static void wheel_connect_callback(indigo_device *device) {
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 			int res = EFWClose(PRIVATE_DATA->dev_id);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWClose(%d) = %d", PRIVATE_DATA->dev_id, res);
-			res = EFWGetID(index, &(PRIVATE_DATA->dev_id));
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetID(%d, -> %d) = %d", index, PRIVATE_DATA->dev_id, res);
 			indigo_delete_property(device, X_CALIBRATE_PROPERTY, NULL);
 			indigo_delete_property(device, X_CUSTOM_SUFFIX_PROPERTY, NULL);
 			indigo_global_unlock(device);
