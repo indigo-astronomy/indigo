@@ -23,7 +23,7 @@
  \file indigo_rotator_asi.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME "indigo_rotator_asi"
 
 #include <stdlib.h>
@@ -79,7 +79,6 @@ typedef struct {
 } asi_private_data;
 
 static int find_index_by_device_id(int id);
-static void compensate_focus(indigo_device *device, double new_temp);
 
 // -------------------------------------------------------------------------------- INDIGO rotator device implementation
 static void rotator_timer_callback(indigo_device *device) {
@@ -99,7 +98,7 @@ static void rotator_timer_callback(indigo_device *device) {
 		ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		ROTATOR_RELATIVE_MOVE_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CAAGetDegree(%d, -> %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->current_position, res);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CAAGetDegree(%d, -> %f) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->current_position, res);
 
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	ROTATOR_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
@@ -226,7 +225,7 @@ static void rotator_connect_callback(indigo_device *device) {
 
 						res = CAAGetDegree(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->target_position));
 						if (res != CAA_SUCCESS) {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, "CAAGetDegree(%d, -> %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position, res);
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "CAAGetDegree(%d, -> %f) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position, res);
 						}
 						ROTATOR_POSITION_ITEM->number.value = PRIVATE_DATA->target_position;
 
@@ -273,12 +272,6 @@ static void rotator_connect_callback(indigo_device *device) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CAAClose(%d) = %d", PRIVATE_DATA->dev_id, res);
 			} else {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CAAClose(%d) = %d", PRIVATE_DATA->dev_id, res);
-			}
-			res = CAAGetID(index, &(PRIVATE_DATA->dev_id));
-			if (res != CAA_SUCCESS) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CAAGetID(%d, -> %d) = %d", index, PRIVATE_DATA->dev_id, res);
-			} else {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CAAGetID(%d, -> %d) = %d", index, PRIVATE_DATA->dev_id, res);
 			}
 			indigo_global_unlock(device);
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
