@@ -145,8 +145,8 @@ void indigo_get_version(int *major, int *minor, int *build) {
 }
 
 static void free_log_buffers(void) {
-	indigo_safe_free(indigo_last_message);
-	indigo_safe_free(indigo_temp_log_buffer);
+//	indigo_safe_free(indigo_last_message);
+//	indigo_safe_free(indigo_temp_log_buffer);
 }
 
 #if defined(INDIGO_WINDOWS)

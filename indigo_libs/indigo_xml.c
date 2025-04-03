@@ -467,6 +467,12 @@ static void *switch_protocol_handler(parser_state state, parser_context *context
 			device->version = major << 8 | minor;
 		}
 	} else if (state == END_TAG_STATE) {
+		indigo_uni_handle **output = ((indigo_adapter_context *)(context->device->device_context))->output;
+		indigo_uni_handle **input = ((indigo_adapter_context *)(context->device->device_context))->input;
+		if (input == output) {
+			// TBD!!!
+			indigo_uni_printf(*output, "<callBack name='%s' url='http://%s:7624'/>\n", indigo_local_service_name);
+		}
 		return top_level_handler;
 	}
 	return switch_protocol_handler;
