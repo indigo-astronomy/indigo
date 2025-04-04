@@ -769,9 +769,9 @@ var indigo_sequencer = {
 		}
 		if (result >= 0) {
 			this.wait_for_timer = result;
-			indigo_send_message("Suspended until " + time);
+			indigo_send_message("Suspended until " + time + " UTC");
 		} else {
-			this.failure("Can't schedule timer at " + time);
+			this.failure("Can't schedule timer at " + time + " UTC");
 		}
 	},
 
