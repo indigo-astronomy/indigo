@@ -1,3 +1,8 @@
+2025.03.25(3.8.1)
+- The maximum value of POA_EXP is changed to 7200.0, which means that the maximum exposure time that can be set is now 7200s.
+- The range of white balance is changed from [-1200, 1200](db) to [0, 100](%), this to suit the usage habits of most users.
+- Add support for Mars 662M.
+
 2025.02.18(3.8.0)
 - Add 'POA_EXP' in 'POAConfig', please update 'PlayerOneCamera.h' in your project. 
 	Note: In order to increase the maximum exposure to 3600s while maintaining the binary compatibility of the SDK, POA_EXP has been added, please use POA_EXP instead of POA_EXPOSURE in your codes, thanks.
