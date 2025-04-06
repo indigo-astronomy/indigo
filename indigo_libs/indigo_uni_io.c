@@ -1374,29 +1374,30 @@ void indigo_uni_close(indigo_uni_handle **handle) {
 	}
 	pthread_mutex_lock(&mutex);
 	if (*handle) {
+		indigo_uni_handle *copy = *handle;
+		*handle = NULL;
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-		if ((*handle)->type != INDIGO_FILE_HANDLE) {
-			shutdown((*handle)->fd, SHUT_RDWR);
+		if ((copy)->type != INDIGO_FILE_HANDLE) {
+			shutdown((copy)->fd, SHUT_RDWR);
 			indigo_sleep(1);
 		}
-		close((*handle)->fd);
+		close((copy)->fd);
 #elif defined(INDIGO_WINDOWS)
-		if ((*handle)->type == INDIGO_FILE_HANDLE) {
-			_close((*handle)->fd);
-		} else if ((*handle)->type == INDIGO_COM_HANDLE) {
-			CloseHandle((*handle)->ov_read.hEvent);
-			CloseHandle((*handle)->ov_write.hEvent);
-			CloseHandle((*handle)->com);
-		} else if ((*handle)->type == INDIGO_TCP_HANDLE || (*handle)->type == INDIGO_UDP_HANDLE) {
-			shutdown((*handle)->sock, SD_BOTH);
-			closesocket((*handle)->sock);
+		if ((copy)->type == INDIGO_FILE_HANDLE) {
+			_close((copy)->fd);
+		} else if ((copy)->type == INDIGO_COM_HANDLE) {
+			CloseHandle((copy)->ov_read.hEvent);
+			CloseHandle((copy)->ov_write.hEvent);
+			CloseHandle((copy)->com);
+		} else if ((copy)->type == INDIGO_TCP_HANDLE || (copy)->type == INDIGO_UDP_HANDLE) {
+			shutdown((copy)->sock, SD_BOTH);
+			closesocket((copy)->sock);
 		}
 #else
 #pragma message ("TODO: indigo_uni_close()")
 #endif
-		indigo_log_on_level((*handle)->log_level, "%d <- // closed", (*handle)->index);
-		indigo_safe_free(*handle);
-		*handle = NULL;
+		indigo_log_on_level((copy)->log_level, "%d <- // closed", (copy)->index);
+		indigo_safe_free(copy);
 	}
 	pthread_mutex_unlock(&mutex);
 }
