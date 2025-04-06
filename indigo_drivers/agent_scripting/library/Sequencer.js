@@ -846,274 +846,69 @@ var indigo_sequencer = {
 		indigo_set_timer(indigo_sequencer_next_handler, 0);
 	},
 
-	select_imager_camera: function(camera) {
-		var agent = this.devices[2];
-		if (camera == undefined)
-			camera = "NONE";
-		var property = indigo_devices[agent].FILTER_CCD_LIST;
+	select_device: function(agent, filter_property, device) {
+		if (device == undefined)
+			device = "NONE";
+		var property = indigo_devices[agent][filter_property];
 		if (property != null) {
 			for (var name in property.item_defs) {
-				if (property.item_defs[name].label == camera) {
+				if (property.item_defs[name].label == device) {
 					if (property.items[name]) {
-						this.warning(camera + " is already selected");
+						this.warning("'" + device + "' is already selected");
 					} else {
-						this.select_switch(agent, "FILTER_CCD_LIST", name);
+						this.select_switch(agent, filter_property, name);
 					}
 					return;
 				}
 			}
-			if (property.items[camera] != undefined) {
-				if (property.items[camera]) {
-					this.warning(camera + " is already selected");
+			if (property.items[device] != undefined) {
+				if (property.items[device]) {
+					this.warning("'" + device + "' is already selected");
 				} else {
-					this.select_switch(agent, "FILTER_CCD_LIST", camera);
+					this.select_switch(agent, filter_property, device);
 				}
 			} else {
-				this.failure("Camera '" + camera + "' is not available");
+				this.failure("Device '" + device + "' is not available");
 			}
 		} else {
-			this.failure("Can't select " + camera);
+			this.failure("Can't select device '" + drvice + "'");
 		}
+	},
+
+	select_imager_camera: function(camera) {
+		this.select_device(this.devices[2], "FILTER_CCD_LIST", camera);
 	},
 
 	select_filter_wheel: function(wheel) {
-		var agent = this.devices[2];
-		if (wheel == undefined)
-			wheel = "NONE";
-		var property = indigo_devices[agent].FILTER_WHEEL_LIST;
-		if (property != null) {
-			for (var name in property.item_defs) {
-				if (property.item_defs[name].label == wheel) {
-					if (property.items[name]) {
-						this.warning(wheel + " is already selected");
-					} else {
-						this.select_switch(agent, "FILTER_WHEEL_LIST", name);
-					}
-					return;
-				}
-			}
-			if (property.items[wheel] != undefined) {
-				if (property.items[wheel]) {
-					this.warning(wheel + " is already selected");
-				} else {
-					this.select_switch(agent, "FILTER_WHEEL_LIST", wheel);
-				}
-			} else {
-				this.failure("Filter wheel '" + wheel + "' is not available");
-			}
-		} else {
-			this.failure("Can't select " + wheel);
-		}
+		this.select_device(this.devices[2], "FILTER_WHEEL_LIST", wheel);
 	},
 
 	select_focuser: function(focuser) {
-		var agent = this.devices[2];
-		if (focuser == undefined)
-			focuser = "No focuser";
-		var property = indigo_devices[agent].FILTER_FOCUSER_LIST;
-		if (property != null) {
-			for (var name in property.item_defs) {
-				if (property.item_defs[name].label == focuser) {
-					if (property.items[name]) {
-						this.warning(focuser + " is already selected");
-					} else {
-						this.select_switch(agent, "FILTER_FOCUSER_LIST", name);
-					}
-					return;
-				}
-			}
-			if (property.items[focuser] != undefined) {
-				if (property.items[focuser]) {
-					this.warning(focuser + " is already selected");
-				} else {
-					this.select_switch(agent, "FILTER_FOCUSER_LIST", focuser);
-				}
-			} else {
-				this.failure("Focuser '" + focuser + "' is not available");
-			}
-		} else {
-			this.failure("Can't select " + focuser);
-		}
+		this.select_device(this.devices[2], "FILTER_FOCUSER_LIST", focuser);
 	},
 
 	select_rotator: function(rotator) {
-		var agent = this.devices[3];
-		if (rotator == undefined)
-			rotator = "NONE";
-		var property = indigo_devices[agent].FILTER_ROTATOR_LIST;
-		if (property != null) {
-			for (var name in property.item_defs) {
-				if (property.item_defs[name].label == rotator) {
-					if (property.items[name]) {
-						this.warning(rotator + " is already selected");
-					} else {
-						this.select_switch(agent, "FILTER_ROTATOR_LIST", name);
-					}
-					return;
-				}
-			}
-			if (property.items[rotator] != undefined) {
-				if (property.items[rotator]) {
-					this.warning(rotator + " is already selected");
-				} else {
-					this.select_switch(agent, "FILTER_ROTATOR_LIST", rotator);
-				}
-			} else {
-				this.failure("Rotator '" + rotator + "' is not available");
-			}
-		} else {
-			this.failure("Can't select " + rotator);
-		}
+		this.select_device(this.devices[3], "FILTER_ROTATOR_LIST", rotator);
 	},
 
 	select_mount: function(mount) {
-		var agent = this.devices[3];
-		if (mount == undefined)
-			mount = "NONE";
-		var property = indigo_devices[agent].FILTER_MOUNT_LIST;
-		if (property != null) {
-			for (var name in property.item_defs) {
-				if (property.item_defs[name].label == mount) {
-					if (property.items[name]) {
-						this.warning(mount + " is already selected");
-					} else {
-						this.select_switch(agent, "FILTER_MOUNT_LIST", name);
-					}
-					return;
-				}
-			}
-			if (property.items[mount] != undefined) {
-				if (property.items[mount]) {
-					this.warning(mount + " is already selected");
-				} else {
-					this.select_switch(agent, "FILTER_MOUNT_LIST", mount);
-				}
-			} else {
-				this.failure("Mount '" + mount + "' is not available");
-			}
-		} else {
-			this.failure("Can't select " + mount);
-		}
+		this.select_device(this.devices[3], "FILTER_MOUNT_LIST", mount);
 	},
 
 	select_dome: function(dome) {
-		var agent = this.devices[3];
-		if (dome == undefined)
-			dome = "NONE";
-		var property = indigo_devices[agent].FILTER_DOME_LIST;
-		if (property != null) {
-			for (var name in property.item_defs) {
-				if (property.item_defs[name].label == dome) {
-					if (property.items[name]) {
-						this.warning(dome + " is already selected");
-					} else {
-						this.select_switch(agent, "FILTER_DOME_LIST", name);
-					}
-					return;
-				}
-			}
-			if (property.items[dome] != undefined) {
-				if (property.items[dome]) {
-					this.warning(dome + " is already selected");
-				} else {
-					this.select_switch(agent, "FILTER_DOME_LIST", dome);
-				}
-			} else {
-				this.failure("Dome '" + dome + "' is not available");
-			}
-		} else {
-			this.failure("Can't select " + dome);
-		}
+		this.select_device(this.devices[3], "FILTER_DOME_LIST", dome);
 	},
 
 	select_gps: function(gps) {
-		var agent = this.devices[3];
-		if (gps == undefined)
-			gps = "NONE";
-		var property = indigo_devices[agent].FILTER_GPS_LIST;
-		if (property != null) {
-			for (var name in property.item_defs) {
-				if (property.item_defs[name].label == gps) {
-					if (property.items[name]) {
-						this.warning(gps + " is already selected");
-					} else {
-						this.select_switch(agent, "FILTER_GPS_LIST", name);
-					}
-					return;
-				}
-			}
-			if (property.items[gps] != undefined) {
-				if (property.items[gps]) {
-					this.warning(gps + " is already selected");
-				} else {
-					this.select_switch(agent, "FILTER_GPS_LIST", gps);
-				}
-			} else {
-				this.failure("GPS '" + gps + "' is not available");
-			}
-		} else {
-			this.failure("Can't select " + gps);
-		}
+		this.select_device(this.devices[3], "FILTER_GPS_LIST", gps);
 	},
 
 	select_guider_camera: function(camera) {
-		var agent = this.devices[4];
-		if (camera == undefined)
-			camera = "NONE";
-		var property = indigo_devices[agent].FILTER_CCD_LIST;
-		if (property != null) {
-			for (var name in property.item_defs) {
-				if (property.item_defs[name].label == camera) {
-					if (property.items[name]) {
-						this.warning(camera + " is already selected");
-					} else {
-						this.select_switch(agent, "FILTER_CCD_LIST", name);
-					}
-					return;
-				}
-			}
-			if (property.items[camera] != undefined) {
-				if (property.items[camera]) {
-					this.warning(camera + " is already selected");
-				} else {
-					this.select_switch(agent, "FILTER_CCD_LIST", camera);
-				}
-			} else {
-				this.failure("Guider camera '" + camera + "' is not available");
-			}
-		} else {
-			this.failure("Can't select " + camera);
-		}
+		this.select_device(this.devices[4], "FILTER_CCD_LIST", camera);
 	},
 
 	select_guider: function(guider) {
-		var agent = this.devices[4];
-		if (guider == undefined)
-			guider = "NONE";
-		var property = indigo_devices[agent].FILTER_GUIDER_LIST;
-		if (property != null) {
-			for (var name in property.item_defs) {
-				if (property.item_defs[name].label == guider) {
-					if (property.items[name]) {
-						this.warning(guider + " is already selected");
-					} else {
-						this.select_switch(agent, "FILTER_GUIDER_LIST", name);
-					}
-					return;
-				}
-			}
-			if (property.items[guider] != undefined) {
-				if (property.items[guider]) {
-					this.warning(guider + " is already selected");
-				} else {
-					this.select_switch(agent, "FILTER_GUIDER_LIST", guider);
-				}
-			} else {
-				this.failure("Guider '" + guider + "' is not available");
-			}
-		} else {
-			this.failure("Can't select " + guider);
-		}
+		this.select_device(this.devices[4], "FILTER_GUIDER_LIST", guider);
 	},
 
 	select_frame_type: function(type) {
