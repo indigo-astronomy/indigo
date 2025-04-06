@@ -65,7 +65,6 @@ static bool shutdown_initiated = false;
 static int client_count = 0;
 static void (*server_callback)(int);
 
-char indigo_server_host[1024];
 int indigo_server_tcp_port = 7624;
 bool indigo_use_bonjour = true;
 bool indigo_is_ephemeral_port = false;

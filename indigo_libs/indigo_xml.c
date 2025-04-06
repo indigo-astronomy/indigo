@@ -132,7 +132,6 @@ typedef struct {
 	indigo_property *property;
 	char call_back_name[INDIGO_NAME_SIZE];
 	char call_back_url[INDIGO_NAME_SIZE];
-	pthread_t call_back_thread;
 	indigo_device *device;
 	indigo_client *client;
 	int count;
@@ -258,13 +257,20 @@ static void *get_properties_handler(parser_state state, parser_context *context,
 	return get_properties_handler;
 }
 
-static void *call_back_client_handler(parser_context *context) {
-	indigo_uni_handle **handle = ((indigo_adapter_context *)(context->client->client_context))->output;
-	indigo_device *protocol_adapter = indigo_xml_client_adapter(context->call_back_name, context->call_back_url, handle, handle);
+struct call_back_data {
+	indigo_uni_handle **handle;
+	char call_back_name[INDIGO_NAME_SIZE];
+	char call_back_url[INDIGO_NAME_SIZE];
+};
+
+static void *call_back_client_handler(struct call_back_data *data) {
+	indigo_device *protocol_adapter = indigo_xml_client_adapter(data->call_back_name, data->call_back_url, data->handle, data->handle);
 	indigo_attach_device(protocol_adapter);
 	indigo_xml_parse(protocol_adapter, NULL);
+	((indigo_adapter_context *)(protocol_adapter->device_context))->output = ((indigo_adapter_context *)(protocol_adapter->device_context))->input = NULL;
 	indigo_detach_device(protocol_adapter);
 	indigo_release_xml_client_adapter(protocol_adapter);
+	indigo_safe_free(data);
 	return NULL;
 }
 
@@ -278,7 +284,12 @@ static void *call_back_handler(parser_state state, parser_context *context, char
 			indigo_copy_name(context->call_back_url, value);
 		}
 	} else if (state == END_TAG_STATE) {
-		pthread_create(&context->call_back_thread, NULL, (void * (*)(void*))call_back_client_handler, context);
+		pthread_t call_back_thread;
+		struct call_back_data *data = indigo_safe_malloc(sizeof(struct call_back_data));
+		data->handle = ((indigo_adapter_context *)(context->client->client_context))->output;
+		indigo_copy_name(data->call_back_name, context->call_back_name);
+		indigo_copy_name(data->call_back_url, context->call_back_url);
+		pthread_create(&call_back_thread, NULL, (void * (*)(void*))call_back_client_handler, data);
 		return top_level_handler;
 	}
 	return call_back_handler;
@@ -471,7 +482,7 @@ static void *switch_protocol_handler(parser_state state, parser_context *context
 		indigo_uni_handle **input = ((indigo_adapter_context *)(context->device->device_context))->input;
 		if (input == output) {
 			// TBD!!!
-			indigo_uni_printf(*output, "<callBack name='%s' url='http://%s:7624'/>\n", indigo_local_service_name);
+			indigo_uni_printf(*output, "<callBack name='%s' url='http://%s:7624'/>\n", indigo_local_service_name, indigo_local_service_name);
 		}
 		return top_level_handler;
 	}

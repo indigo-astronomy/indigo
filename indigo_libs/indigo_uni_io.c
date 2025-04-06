@@ -1072,7 +1072,7 @@ long indigo_uni_read_available(indigo_uni_handle *handle, void *buffer, long len
 		return -1;
 	}
 	long bytes_read = read_data(handle, buffer, length);
-	if (bytes_read < 0) {
+	if (bytes_read > 0) {
 		if (handle->log_level < 0) {
 			indigo_log_on_level(-handle->log_level, "%d -> // %ld bytes read", handle->index, bytes_read);
 		} else {

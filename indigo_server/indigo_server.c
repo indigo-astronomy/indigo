@@ -1944,7 +1944,6 @@ int main(int argc, const char * argv[]) {
 					prctl(PR_SET_NAME, process_name, 0, 0, 0);
 				}
 #endif
-				gethostname(indigo_server_host, sizeof(indigo_server_host));
 				server_main();
 				return EXIT_SUCCESS;
 			} else {
@@ -1965,7 +1964,6 @@ int main(int argc, const char * argv[]) {
 		}
 		INDIGO_LOG(indigo_log("Shutdown complete! See you!"));
 	} else {
-		gethostname(indigo_server_host, sizeof(indigo_server_host));
 		server_main();
 	}
 #elif defined(INDIGO_WINDOWS)
@@ -1974,7 +1972,6 @@ int main(int argc, const char * argv[]) {
 		indigo_error("WSAStartup failed: %d", WSAGetLastError());
 		exit(0);
 	}
-	gethostname(indigo_server_host, sizeof(indigo_server_host));
 	server_main();
 #endif
 }

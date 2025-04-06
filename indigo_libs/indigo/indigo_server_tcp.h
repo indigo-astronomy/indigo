@@ -49,10 +49,6 @@ extern "C" {
  */
 INDIGO_EXTERN int indigo_server_tcp_port;
 
-/** IP host name.
- */
-INDIGO_EXTERN char indigo_server_host[1024];
-
 /** Use bonjour.
  */
 INDIGO_EXTERN bool indigo_use_bonjour;
