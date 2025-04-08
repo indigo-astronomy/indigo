@@ -1,17 +1,92 @@
 // PegasusAstro UPB v3 aux driver
 
-driver {
-	name = "upb3";
-	label = "PegasusAstro Ultimate Powerbox v3";
-	version = 2;
+driver upb3 {
+	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>"
+	copyright = "Copyright (c) 2025 CloudMakers, s. r. o."
+	label = "PegasusAstro Ultimate Powerbox v3"
+	version = 2
 	code {
+		static bool upb_command(indigo_device *device, char *command, char *response, int max) {
+			if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
+				if (indigo_uni_printf(PRIVATE_DATA->handle, "%s\n", command) > 0) {
+					if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "\n", "\r\n", INDIGO_DELAY(1)) > 0) {
+						return true;
+					}
+				}
+			}
+			return false;
+		}
 	}
 	data {
+		indigo_uni_handle *handle;
 	}
 	aux {
-		name = "Ultimate Powerbox 3";
+		text AUX_OUTLET_NAMES {
+			label = "Outlet names"
+			item AUX_POWER_OUTLET_NAME_1 {
+				label = "Outlet #1"
+			}
+			item AUX_POWER_OUTLET_NAME_2 {
+				label = "Outlet #2"
+			}
+			item AUX_POWER_OUTLET_NAME_3 {
+				label = "Outlet #3"
+			}
+			item AUX_POWER_OUTLET_NAME_4 {
+				label = "Outlet #4"
+			}
+			item AUX_POWER_OUTLET_NAME_5 {
+				label = "Outlet #5"
+			}
+			item AUX_POWER_OUTLET_NAME_6 {
+				label = "Outlet #6"
+			}
+			item AUX_POWER_OUTLET_NAME_7 {
+				label = "Outlet #7"
+			}
+			item AUX_POWER_OUTLET_NAME_8 {
+				label = "Outlet #8"
+			}
+			item AUX_POWER_OUTLET_NAME_9 {
+				label = "Outlet #9"
+			}
+			item AUX_HEATER_OUTLET_NAME_1 {
+				label = "Heater #1"
+			}
+			item AUX_HEATER_OUTLET_NAME_2 {
+				label = "Heater #2"
+			}
+			item AUX_HEATER_OUTLET_NAME_3 {
+				label = "Heater #3"
+			}
+			item AUX_USB_PORT_NAME_1 {
+				label = "Port #1"
+			}
+			item AUX_USB_PORT_NAME_2 {
+				label = "Port #2"
+			}
+			item AUX_USB_PORT_NAME_3 {
+				label = "Port #3"
+			}
+			item AUX_USB_PORT_NAME_4 {
+				label = "Port #4"
+			}
+			item AUX_USB_PORT_NAME_5 {
+				label = "Port #5"
+			}
+			item AUX_USB_PORT_NAME_6 {
+				label = "Port #6"
+			}
+			item AUX_USB_PORT_NAME_7 {
+				label = "Port #7"
+			}
+			item AUX_USB_PORT_NAME_8 {
+				label = "Port #8"
+			}
+		}
+		name = "Ultimate Powerbox 3"
 	}
 	focuser {
-		name = "Ultimate Powerbox 3 (focuser)";
+		name = "Ultimate Powerbox 3 (focuser)"
 	}
 }
