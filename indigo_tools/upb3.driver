@@ -1,0 +1,17 @@
+// PegasusAstro UPB v3 aux driver
+
+driver {
+	name = "upb3";
+	label = "PegasusAstro Ultimate Powerbox v3";
+	version = 2;
+	code {
+	}
+	data {
+	}
+	aux {
+		name = "Ultimate Powerbox 3";
+	}
+	focuser {
+		name = "Ultimate Powerbox 3 (focuser)";
+	}
+}
