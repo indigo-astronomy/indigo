@@ -1,10 +1,13 @@
 // PegasusAstro UPB v3 aux driver
 
 driver upb3 {
-	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>"
-	copyright = "Copyright (c) 2025 CloudMakers, s. r. o."
-	label = "PegasusAstro Ultimate Powerbox v3"
-	version = 2
+	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
+	copyright = "Copyright (c) 2025 CloudMakers, s. r. o.";
+	label = "PegasusAstro Ultimate Powerbox v3";
+	version = 2;
+	define {
+		#define POWERBOX_GROUP "Powerbox"
+	}
 	code {
 		static bool upb_command(indigo_device *device, char *command, char *response, int max) {
 			if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
@@ -21,72 +24,98 @@ driver upb3 {
 		indigo_uni_handle *handle;
 	}
 	aux {
+		name = "Ultimate Powerbox 3";
+		interface = INDIGO_INTERFACE_AUX_POWERBOX | INDIGO_INTERFACE_AUX_WEATHER;
+		additional_instances = true;
 		text AUX_OUTLET_NAMES {
-			label = "Outlet names"
+			label = "Outlet names";
+			group = POWERBOX_GROUP;
+			perm = RW;
+			always_defined = true;
 			item AUX_POWER_OUTLET_NAME_1 {
-				label = "Outlet #1"
+				label = "Outlet #1";
+				value = "Outlet #1";
 			}
 			item AUX_POWER_OUTLET_NAME_2 {
-				label = "Outlet #2"
+				label = "Outlet #2";
+				value = "Outlet #2";
 			}
 			item AUX_POWER_OUTLET_NAME_3 {
-				label = "Outlet #3"
+				label = "Outlet #3";
+				value = "Outlet #3";
 			}
 			item AUX_POWER_OUTLET_NAME_4 {
-				label = "Outlet #4"
+				label = "Outlet #4";
+				value = "Outlet #4";
 			}
 			item AUX_POWER_OUTLET_NAME_5 {
-				label = "Outlet #5"
+				label = "Outlet #5";
+				value = "Outlet #5";
 			}
 			item AUX_POWER_OUTLET_NAME_6 {
-				label = "Outlet #6"
+				label = "Outlet #6";
+				value = "Outlet #6";
 			}
 			item AUX_POWER_OUTLET_NAME_7 {
-				label = "Outlet #7"
+				label = "Outlet #7";
+				value = "Outlet #7";
 			}
 			item AUX_POWER_OUTLET_NAME_8 {
-				label = "Outlet #8"
+				label = "Outlet #8";
+				value = "Outlet #8";
 			}
 			item AUX_POWER_OUTLET_NAME_9 {
-				label = "Outlet #9"
+				label = "Outlet #9";
+				value = "Outlet #9";
 			}
 			item AUX_HEATER_OUTLET_NAME_1 {
-				label = "Heater #1"
+				label = "Heater #1";
+				value = "Heater #1";
 			}
 			item AUX_HEATER_OUTLET_NAME_2 {
-				label = "Heater #2"
+				label = "Heater #2";
+				value = "Heater #2";
 			}
 			item AUX_HEATER_OUTLET_NAME_3 {
-				label = "Heater #3"
+				label = "Heater #3";
+				value = "Heater #3";
 			}
 			item AUX_USB_PORT_NAME_1 {
-				label = "Port #1"
+				label = "Port #1";
+				value = "Port #1";
 			}
 			item AUX_USB_PORT_NAME_2 {
-				label = "Port #2"
+				label = "Port #2";
+				value = "Port #2";
 			}
 			item AUX_USB_PORT_NAME_3 {
-				label = "Port #3"
+				label = "Port #3";
+				value = "Port #3";
 			}
 			item AUX_USB_PORT_NAME_4 {
-				label = "Port #4"
+				label = "Port #4";
+				value = "Port #4";
 			}
 			item AUX_USB_PORT_NAME_5 {
-				label = "Port #5"
+				label = "Port #5";
+				value = "Port #5";
 			}
 			item AUX_USB_PORT_NAME_6 {
-				label = "Port #6"
+				label = "Port #6";
+				value = "Port #6";
 			}
 			item AUX_USB_PORT_NAME_7 {
-				label = "Port #7"
+				label = "Port #7";
+				value = "Port #7";
 			}
 			item AUX_USB_PORT_NAME_8 {
-				label = "Port #8"
+				label = "Port #8";
+				value = "Port #8";
 			}
 		}
-		name = "Ultimate Powerbox 3"
 	}
 	focuser {
-		name = "Ultimate Powerbox 3 (focuser)"
+		name = "Ultimate Powerbox 3 (focuser)";
+		additional_instances = true;
 	}
 }
