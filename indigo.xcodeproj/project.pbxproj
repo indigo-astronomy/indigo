@@ -4689,7 +4689,7 @@
 		9D3E907328995B140093C9EB /* prodigy_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = prodigy_simulator.ino; sourceTree = "<group>"; };
 		9D44F3802DA55CCD00AB7377 /* indigo_generator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_generator.c; sourceTree = "<group>"; };
 		9D44F3852DA55E3500AB7377 /* indigo_generator */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = indigo_generator; sourceTree = BUILT_PRODUCTS_DIR; };
-		9D44F38D2DA55EAE00AB7377 /* aux_upb3.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = aux_upb3.driver; sourceTree = "<group>"; };
+		9D44F38D2DA55EAE00AB7377 /* indigo_aux_upb3.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_aux_upb3.driver; sourceTree = "<group>"; };
 		9D45254120E0F9A1004D1137 /* indigo_ccd_gphoto2_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_gphoto2_main.c; sourceTree = "<group>"; };
 		9D45254220E0F9A1004D1137 /* indigo_ccd_gphoto2.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_gphoto2.h; sourceTree = "<group>"; };
 		9D45254320E0F9A1004D1137 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -6231,7 +6231,7 @@
 				593894AD2C4C22B100CEF4A5 /* indigo_aux_upb3.h */,
 				593894AC2C4C22B100CEF4A5 /* indigo_aux_upb3.c */,
 				593894AB2C4C22B100CEF4A5 /* indigo_aux_upb3_main.c */,
-				9D44F38D2DA55EAE00AB7377 /* aux_upb3.driver */,
+				9D44F38D2DA55EAE00AB7377 /* indigo_aux_upb3.driver */,
 				593894AA2C4C22B100CEF4A5 /* 99-indigo_aux_upb3.rules */,
 				593894A92C4C22B100CEF4A5 /* upb3_simulator */,
 			);
