@@ -26,45 +26,12 @@
 #include <errno.h>
 #include <ctype.h>
 #include <stdarg.h>
+#include <time.h>
+#include <libgen.h>
 
 typedef enum {
-	TOKEN_NONE = 0,
-	TOKEN_LBRACE = '{',
-	TOKEN_RBRACE = '}',
-	TOKEN_EQUAL = '=',
-	TOKEN_SEMICOLON = ';',
-	TOKEN_IDENTIFIER = 'I',
-	TOKEN_STRING = 'S',
-	TOKEN_NUMBER = 'N',
-	TOKEN_TRUE = 'T',
-	TOKEN_FALSE = 'F',
-	TOKEN_CODE = 'C',
-	TOKEN_EXPRESSION = 'E'
+	TOKEN_NONE = 0, TOKEN_LBRACE = '{', TOKEN_RBRACE = '}', TOKEN_EQUAL = '=', TOKEN_SEMICOLON = ';', TOKEN_IDENTIFIER = 'I', TOKEN_STRING = 'S', TOKEN_NUMBER = 'N', TOKEN_TRUE = 'T', TOKEN_FALSE = 'F', TOKEN_CODE = 'C', TOKEN_EXPRESSION = 'E'
 } token_type;
-
-typedef struct item_type {
-	struct item_type *next;
-	char handle[64];
-	char name[64];
-	char label[256];
-	char value[256];
-	char min[256];
-	char max[256];
-	char step[256];
-} item_type;
-
-typedef struct property_type {
-	struct property_type *next;
-	char type[8];
-	char handle[64];
-	char name[64];
-	char pointer[64];
-	char label[256];
-	char group[32];
-	char perm[3];
-	bool always_defined;
-	item_type *item;
-} property_type;
 
 typedef struct code_type {
 	struct code_type *next;
@@ -72,36 +39,45 @@ typedef struct code_type {
 	int size;
 } code_type;
 
+typedef struct item_type {
+	struct item_type *next;
+	char handle[64], name[64], label[256], value[256], min[256], max[256], step[256];
+} item_type;
+
+typedef struct property_type {
+	struct property_type *next;
+	char type[8], handle[64], name[64], pointer[64], handler[64], label[256], group[32],  perm[32], rule[32];
+	bool always_defined, handle_change, synchronized_change;
+	code_type *code, *attach,  *change, *detach;
+	item_type *item;
+} property_type;
+
 typedef struct device_type {
 	struct device_type *next;
-	char type[16];
-	char name[64];
-	char interface[128];
+	char type[16], name[64], interface[128];
 	bool additional_instances;
-	code_type *code;
-	code_type *attach;
-	code_type *detach;
+	code_type *code, *timer, *attach, *detach;
 	property_type *property;
 } device_type;
 
 typedef struct driver_type {
-	char name[64];
-	char label[256];
-	char author[256];
-	char copyright[256];
+	char name[64], label[256], author[256], copyright[256];
 	int version;
 	device_type *device;
-	code_type *define;
-	code_type *code;
-	code_type *data;
+	code_type *include, *define, *code, *data;
 } driver_type;
 
-bool parsing_code = false;
-bool parsing_expression = false;
-char *definition_source, *current, *begin, *end;
+bool parsing_code = false, parsing_expression = false;
+char *definition_source, *definition_source_basename, *current, *begin, *end;
 token_type last_token;
 driver_type *driver;
 int indentation = 0;
+
+void *allocate(int size) {
+	void *result = malloc(size);
+	memset(result, 0, size);
+	return result;
+}
 
 void write_line(const char *format, ...) {
 	va_list args;
@@ -109,12 +85,6 @@ void write_line(const char *format, ...) {
 	vprintf(format, args);
 	putchar('\n');
 	va_end(args);
-}
-
-void *allocate(int size) {
-	void *result = malloc(size);
-	memset(result, 0, size);
-	return result;
 }
 
 void write_code(code_type *code, int indentation) {
@@ -129,17 +99,21 @@ void write_code(code_type *code, int indentation) {
 	while (pnt - code->text < code->size) {
 		char c = *pnt++;
 		for (int i = 0; i < skip && pnt - code->text < code->size; i++) {
-			if (!isspace(c))
+			if (!isspace(c) || c == '\n')
 				break;
 			c = *pnt++;
 		}
-		for (int i = 0; i < indentation; i++)
-			putchar('\t');
-		putchar(c);
-		while (pnt - code->text < code->size) {
-			putchar(c = *pnt++);
-			if (c == '\n')
-				break;
+		if (c != '\n') {
+			for (int i = 0; i < indentation; i++)
+				putchar('\t');
+			putchar(c);
+			while (pnt - code->text < code->size) {
+				putchar(c = *pnt++);
+				if (c == '\n')
+					break;
+			}
+		} else {
+			putchar(c);
 		}
 	}
 	putchar('\n');
@@ -452,6 +426,18 @@ bool parse_item(char *type, item_type **items) {
 			make_upper_case(id);
 			snprintf(item->handle, sizeof(item->handle), "%s_ITEM", id);
 			snprintf(item->name, sizeof(item->name), "%s_ITEM_NAME", id);
+			if (*type == 't') {
+				strcpy(item->value, "\"\"");
+			} else if (*type == 'n') {
+				strcpy(item->min, "0");
+				strcpy(item->max, "0");
+				strcpy(item->step, "0");
+				strcpy(item->value, "0");
+			} else if (*type == 's') {
+				strcpy(item->value, "false");
+			} else if (*type == 'l') {
+				strcpy(item->value, "INDIGO_IDLE_STATE");
+			}
 			debug("item %s {", item->handle);
 			if (match(TOKEN_LBRACE, NULL)) {
 				while (!match(TOKEN_RBRACE, NULL)) {
@@ -469,10 +455,8 @@ bool parse_item(char *type, item_type **items) {
 						if (parse_expression("step", item->step, sizeof(item->step)))
 							continue;
 					}
-					if (*type != 'l') {
-						if (parse_expression("value", item->value, sizeof(item->value)))
-							continue;
-					}
+					if (parse_expression("value", item->value, sizeof(item->value)))
+						continue;
 					report_error("Invalid token");
 					return false;
 				}
@@ -488,8 +472,8 @@ bool parse_item(char *type, item_type **items) {
 	return false;
 }
 
-bool parse_property(property_type **properties) {
-	if (match(TOKEN_IDENTIFIER, "text") || match(TOKEN_IDENTIFIER, "number") || match(TOKEN_IDENTIFIER, "switch") || match(TOKEN_IDENTIFIER, "light")) {
+bool parse_property(device_type *device, property_type **properties) {
+	if (match(TOKEN_IDENTIFIER, "text") || match(TOKEN_IDENTIFIER, "number") || match(TOKEN_IDENTIFIER, "switch") || match(TOKEN_IDENTIFIER, "light") || match(TOKEN_IDENTIFIER, "inherited")) {
 		property_type *property = allocate(sizeof(property_type));
 		copy(property->type, sizeof(property->type));
 		if (match(TOKEN_IDENTIFIER, NULL)) {
@@ -501,8 +485,17 @@ bool parse_property(property_type **properties) {
 			snprintf(property->name, sizeof(property->name), "%s_PROPERTY_NAME", id);
 			make_lower_case(id);
 			snprintf(property->pointer, sizeof(property->pointer), "%s_property", id);
+			if (strncmp(id, device->type, strlen(device->type)) != 0) {
+				snprintf(property->handler, sizeof(property->handler), "%s_%s_handler", device->type, id);
+			} else {
+				snprintf(property->handler, sizeof(property->handler), "%s_handler", id);
+			}
 			strcpy(property->group, "MAIN_GROUP");
-			strcpy(property->perm, "RW");
+			strcpy(property->perm, "INDIGO_RW_PERM");
+			strcpy(property->rule, "INDIGO_ONE_OF_MANY_RULE");
+			property->always_defined = false;
+			property->handle_change = property->type[0] != 'l';
+			property->synchronized_change = true;
 			debug("%s %s {", property->type, property->handle);
 			if (match(TOKEN_LBRACE, NULL)) {
 				while (!match(TOKEN_RBRACE, NULL)) {
@@ -512,18 +505,40 @@ bool parse_property(property_type **properties) {
 						continue;
 					if (parse_expression("name", property->name, sizeof(property->name)))
 						continue;
-					if (parse_expression("pointer", property->pointer, sizeof(property->pointer)))
+					if (parse_expression("handler", property->handler, sizeof(property->handler)))
 						continue;
-					if (parse_expression("group", property->group, sizeof(property->group)))
+					if (parse_bool("handle_change", &property->handle_change))
 						continue;
-					if (parse_expression("perm", property->perm, sizeof(property->perm)))
+					if (parse_bool("synchronized_change", &property->synchronized_change))
 						continue;
-					if (parse_expression("pointer", property->pointer, sizeof(property->pointer)))
+					if (parse_code("code", &property->code))
 						continue;
-					if (parse_bool("always_defined", &property->always_defined))
+					if (parse_code("attach", &property->attach))
 						continue;
-					if (parse_item(property->type, &property->item))
+					if (parse_code("change", &property->change))
 						continue;
+					if (parse_code("detach", &property->detach))
+						continue;
+					if (property->type[0] != 'i') {
+						if (parse_expression("group", property->group, sizeof(property->group)))
+							continue;
+						if (parse_expression("pointer", property->pointer, sizeof(property->pointer)))
+							continue;
+						if (parse_expression("pointer", property->pointer, sizeof(property->pointer)))
+							continue;
+						if (parse_bool("always_defined", &property->always_defined))
+							continue;
+						if (parse_expression("perm", property->perm, sizeof(property->perm))) {
+							if (!strcmp(property->perm, "INDIGO_RO_PERM")) {
+								property->handle_change = false;
+							}
+							continue;
+						}
+						if (parse_expression("rule", property->rule, sizeof(property->rule)))
+							continue;
+						if (parse_item(property->type, &property->item))
+							continue;
+					}
 				}
 				debug("}");
 				append((void **)properties, property);
@@ -541,6 +556,7 @@ bool parse_device(device_type **devices) {
 	if (match(TOKEN_IDENTIFIER, "ccd") || match(TOKEN_IDENTIFIER, "wheel") || match(TOKEN_IDENTIFIER, "focuser") || match(TOKEN_IDENTIFIER, "mount") || match(TOKEN_IDENTIFIER, "gps") || match(TOKEN_IDENTIFIER, "aux")) {
 		device_type *device = allocate(sizeof(device_type));
 		copy(device->type, sizeof(device->type));
+		device->additional_instances = false;
 		debug("%s {", device->type);
 		if (match(TOKEN_LBRACE, NULL)) {
 			while (!match(TOKEN_RBRACE, NULL)) {
@@ -550,9 +566,11 @@ bool parse_device(device_type **devices) {
 					continue;
 				if (parse_bool("additional_instances", &device->additional_instances))
 					continue;
-				if (parse_property(&device->property))
+				if (parse_property(device, &device->property))
 					continue;
 				if (parse_code("code", &device->code))
+					continue;
+				if (parse_code("timer", &device->timer))
 					continue;
 				if (parse_code("attach", &device->attach))
 					continue;
@@ -586,6 +604,8 @@ bool parse_driver(void) {
 					if (parse_int("version", &driver->version))
 						continue;
 					if (parse_device(&driver->device))
+						continue;
+					if (parse_code("include", &driver->include))
 						continue;
 					if (parse_code("define", &driver->define))
 						continue;
@@ -626,8 +646,12 @@ void read_definition_source(void) {
 }
 
 void write_license(void) {
-	write_line("// DO NOT MODIFY THIS FILE, IT IS MACHINE GENERATED!");
-	write_line("");
+	time_t now;
+	struct tm *tm_info;
+	char time_buffer[26];
+	time(&now);
+	tm_info = localtime(&now);
+	strftime(time_buffer, 26, "%Y-%m-%d %H:%M:%S", tm_info);
 	write_line("// %s", driver->copyright);
 	write_line("// All rights reserved.");
 	write_line("");
@@ -644,6 +668,8 @@ void write_license(void) {
 	write_line("// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING");
 	write_line("// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS");
 	write_line("// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.");
+	write_line("");
+	write_line("// This file generated from %s at %s.", definition_source_basename, time_buffer);
 	write_line("");
 	write_line("// version history");
 	write_line("// 3.0 %s", driver->author);
@@ -701,6 +727,7 @@ void write_c_main_source(void) {
 }
 
 void write_c_source(void) {
+	bool is_multi_device = driver->device != NULL && driver->device->next != NULL;
 	write_license();
 	write_line("#pragma mark - Includes");
 	write_line("");
@@ -710,6 +737,14 @@ void write_c_source(void) {
 	write_line("#include <assert.h>");
 	write_line("#include <pthread.h>");
 	write_line("");
+	code_type *code = driver->include;
+	if (code) {
+		while (code) {
+			write_code(code, 0);
+			code = code->next;
+		}
+		write_line("");
+	}
 	write_line("#include <indigo/indigo_driver_xml.h>");
 	device_type *device = driver->device;
 	while (device) {
@@ -725,7 +760,7 @@ void write_c_source(void) {
 	write_line("#define DRIVER_VERSION %04X", driver->version);
 	write_line("#define DRIVER_NAME \"indigo_%s_%s\"", driver->device->type, driver->name);
 	write_line("");
-	code_type *code = driver->define;
+	code = driver->define;
 	while (code) {
 		write_code(code, 0);
 		code = code->next;
@@ -737,36 +772,44 @@ void write_c_source(void) {
 	while (device) {
 		property_type *property = device->property;
 		while (property) {
-			write_line("// %s", property->name);
-			write_line("");
-			write_line("#define %s (PRIVATE_DATA->%s_property)", property->handle, property->pointer);
-			item_type *item = property->item;
-			int index = 0;
-			while (item) {
-				write_line("#define %s_ITEM (%s->items + %d)", item->handle, property->handle, index++);
-				item = item->next;
+			if (property->type[0] != 'i') {
+				write_line("// %s", property->name);
+				write_line("");
+				write_line("#define %s (PRIVATE_DATA->%s)", property->handle, property->pointer);
+				item_type *item = property->item;
+				int index = 0;
+				while (item) {
+					write_line("#define %s_ITEM (%s->items + %d)", item->handle, property->handle, index++);
+					item = item->next;
+				}
+				write_line("");
 			}
 			property = property->next;
 		}
 		device = device->next;
 	}
-	write_line("");
 	write_line("#pragma mark - Private data definition");
 	write_line("");
 	write_line("#define PRIVATE_DATA ((%s_private_data *)device->private_data)", driver->name);
 	write_line("");
 	write_line("typedef struct {");
-	write_line("\tpthread_mutex_t mutex;");
 	code = driver->data;
 	while (code) {
 		write_code(code, 1);
 		code = code->next;
 	}
+	write_line("\tpthread_mutex_t mutex;");
+	if (is_multi_device) {
+		write_line("\tint count;");
+	}
 	device = driver->device;
 	while (device) {
+		if (device->timer != NULL)
+			write_line("\tindigo_timer *%s_timer;", device->type);
 		property_type *property = device->property;
 		while (property) {
-			write_line("\tindigo_property *%s;", property->pointer);
+			if (property->type[0] != 'i')
+				write_line("\tindigo_property *%s;", property->pointer);
 			property = property->next;
 		}
 		device = device->next;
@@ -777,8 +820,6 @@ void write_c_source(void) {
 	write_line("");
 	code = driver->code;
 	if (code) {
-		write_line("// Custom code ");
-		write_line("");
 		while (code) {
 			write_code(code, 0);
 			write_line("");
@@ -792,26 +833,139 @@ void write_c_source(void) {
 		write_line("");
 		code = device->code;
 		if (code) {
-			write_line("// Custom code ");
 			while (code) {
 				write_code(code, 0);
 				write_line("");
 				code = code->next;
 			}
 		}
+		property_type *property = device->property;
+		while (property) {
+			code = property->code;
+			if (code) {
+				while (code) {
+					write_code(code, 0);
+					write_line("");
+					code = code->next;
+				}
+			}
+			property = property->next;
+		}
 		write_line("#pragma mark - High level communication (%s)", device->type);
 		write_line("");
+		if (device->timer != NULL) {
+			write_line("static void %s_timer_callback(indigo_device *device) {", device->type);
+			write_line("\tif (!IS_CONNECTED) {");
+			write_line("\t\treturn;");
+			write_line("\t}");
+			write_line("\tpthread_mutex_lock(&PRIVATE_DATA->mutex);");
+			code = device->timer;
+			if (code) {
+				while (code) {
+					write_code(code, 1);
+					code = code->next;
+				}
+			}
+			write_line("\tpthread_mutex_unlock(&PRIVATE_DATA->mutex);");
+			write_line("}");
+			write_line("");
+		}
+		property = device->property;
+		while (property) {
+			if (property->handle_change) {
+				write_line("static void %s(indigo_device *device) {", property->handler);
+				if (strcmp(property->handle, "CONNECTION_PROPERTY") == 0) {
+					write_line("\tindigo_lock_master_device(device);");
+					if (property->synchronized_change)
+						write_line("\tpthread_mutex_lock(&PRIVATE_DATA->mutex);");
+
+					write_line("\tif (CONNECTION_CONNECTED_ITEM->sw.value) {");
+					write_line("\t\tbool connection_result = true;");
+					if (is_multi_device) {
+						write_line("\t\tif (PRIVATE_DATA->count++ == 0) {");
+						write_line("\t\t\tconnection_result = %s_open(device);", driver->name);
+						write_line("\t\t}");
+					} else {
+						write_line("\t\tconnection_result = %s_open(device);", driver->name);
+					}
+					write_line("\t\tif (connection_result) {");
+					code = property->change;
+					if (code) {
+						while (code) {
+							write_code(code, 3);
+							code = code->next;
+						}
+					}
+					property_type *property2 = device->property;
+					while (property2) {
+						if (property2->type[0] != 'i' && !property2->always_defined) {
+							write_line("\t\t\tindigo_define_property(device, %s, NULL);", property2->handle);
+						}
+						property2 = property2->next;
+					}
+					if (device->timer != NULL)
+						write_line("\t\t\tindigo_set_timer(device, 0, %s_timer_callback, &PRIVATE_DATA->%s_timer);", device->type);
+					write_line("\t\t\tCONNECTION_PROPERTY->state = INDIGO_OK_STATE;");
+					write_line("\t\t} else {");
+					write_line("\t\t\tINDIGO_DRIVER_ERROR(DRIVER_NAME, \"Failed to connect to %s\", DEVICE_PORT_ITEM->text.value);");
+					if (is_multi_device) {
+						write_line("\t\t\tPRIVATE_DATA->count--;");
+					}
+					write_line("\t\t\tCONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;");
+					write_line("\t\t\tindigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);");
+					write_line("\t\t}");
+					write_line("\t} else {");
+					if (device->timer != NULL)
+						write_line("\t\tindigo_cancel_timer_sync(device, &PRIVATE_DATA->%s_timer);", device->type);
+					property2 = device->property;
+					while (property2) {
+						if (property2->type[0] != 'i' && !property2->always_defined) {
+							write_line("\t\tindigo_delete_property(device, %s, NULL);", property2->handle);
+						}
+						property2 = property2->next;
+					}
+					if (is_multi_device) {
+						write_line("\t\tif (--PRIVATE_DATA->count == 0) {");
+						write_line("\t\t\t%s_close(device);", driver->name);
+						write_line("\t\t}");
+					} else {
+						write_line("\t\t%s_close(device);", driver->name);
+					}
+					write_line("\t\tCONNECTION_PROPERTY->state = INDIGO_OK_STATE;");
+					write_line("\t}");
+					write_line("\tindigo_%s_change_property(device, NULL, CONNECTION_PROPERTY);", device->type);
+					if (property->synchronized_change)
+						write_line("\tpthread_mutex_unlock(&PRIVATE_DATA->mutex);");
+					write_line("\tindigo_unlock_master_device(device);");
+				} else {
+					if (property->synchronized_change)
+						write_line("\tpthread_mutex_lock(&PRIVATE_DATA->mutex);");
+					code = property->change;
+					if (code) {
+						while (code) {
+							write_code(code, 1);
+							code = code->next;
+						}
+					}
+					write_line("\t%s->state = INDIGO_OK_STATE;", property->handle);
+					write_line("\tindigo_update_property(device, %s, NULL);", property->handle);
+					if (property->synchronized_change)
+						write_line("\tpthread_mutex_unlock(&PRIVATE_DATA->mutex);");
+				}
+				write_line("}");
+				write_line("");
+			}
+			property = property->next;
+		}
 		write_line("static indigo_result %s_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);", device->type);
 		write_line("");
 		write_line("static indigo_result %s_attach(indigo_device *device) {", device->type);
-		if (*device->type == 'a')
+		if (device->type[0] == 'a')
 			write_line("\tif (indigo_aux_attach(device, DRIVER_NAME, DRIVER_VERSION, %s) == INDIGO_OK) {", device->interface);
 		else
 			write_line("\tif (indigo_%s_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {", device->type);
-		write_line("");
 		code = device->attach;
 		if (code) {
-			write_line("\t\t// Custom code ");
 			write_line("");
 			while (code) {
 				write_code(code, 2);
@@ -819,43 +973,74 @@ void write_c_source(void) {
 				code = code->next;
 			}
 		}
-		property_type *property = device->property;
+		property = device->property;
 		while (property) {
-			write_line("\t\t// %s", property->name);
-			write_line("");
-			item_type *item = property->item;
-			int count = 0;
-			while (item) {
-				count++;
-				item = item->next;
+			if (property->type[0] != 'i' || property->attach) {
+				write_line("\t\t// %s", property->name);
+				write_line("");
 			}
-			switch (*property->type) {
-				case 't':
-					write_line("\t\t%s = indigo_init_text_property(NULL, device->name, %s, %s, %s, INDIGO_OK_STATE, INDIGO_%s_PERM, %d);", property->handle, property->name, property->group, property->label, property->perm, count);
-					write_line("\t\tif (%s == NULL) {", property->handle);
-					write_line("\t\t\treturn INDIGO_FAILED;");
-					write_line("\t\t}");
-					item = property->item;
-					while (item) {
-						write_line("\t\tindigo_init_text_item(%s, %s, %s, %s);", item->handle, item->name, item->label, item->value);
-						item = item->next;
-					}
-					break;
-				case 'n':
-					write_line("\t\t%s = indigo_init_number_property(NULL, device->name, %s, %s, %s, INDIGO_OK_STATE, INDIGO_%s_PERM, %d);", property->handle, property->name, property->group, property->label, property->perm, count);
-					write_line("\t\tif (%s == NULL) {", property->handle);
-					write_line("\t\t\treturn INDIGO_FAILED;");
-					write_line("\t\t}");
-					item = property->item;
-					while (item) {
-						write_line("\t\tindigo_init_number_item(%s, %s, %s, %s, %s, %s, %s);", item->handle, item->name, item->label, item->min, item->max, item->step, item->value);
-						item = item->next;
-					}
-					break;
-				case 's':
-					break;
-				case 'l':
-					break;
+			if (property->type[0] != 'i') {
+				item_type *item = property->item;
+				int count = 0;
+				while (item) {
+					count++;
+					item = item->next;
+				}
+				switch (property->type[0]) {
+					case 't':
+						write_line("\t\t%s = indigo_init_text_property(NULL, device->name, %s, %s, %s, INDIGO_OK_STATE, %s, %d);", property->handle, property->name, property->group, property->label, property->perm, count);
+						write_line("\t\tif (%s == NULL) {", property->handle);
+						write_line("\t\t\treturn INDIGO_FAILED;");
+						write_line("\t\t}");
+						item = property->item;
+						while (item) {
+							write_line("\t\tindigo_init_text_item(%s, %s, %s, %s);", item->handle, item->name, item->label, item->value);
+							item = item->next;
+						}
+						break;
+					case 'n':
+						write_line("\t\t%s = indigo_init_number_property(NULL, device->name, %s, %s, %s, INDIGO_OK_STATE, %s, %d);", property->handle, property->name, property->group, property->label, property->perm, count);
+						write_line("\t\tif (%s == NULL) {", property->handle);
+						write_line("\t\t\treturn INDIGO_FAILED;");
+						write_line("\t\t}");
+						item = property->item;
+						while (item) {
+							write_line("\t\tindigo_init_number_item(%s, %s, %s, %s, %s, %s, %s);", item->handle, item->name, item->label, item->min, item->max, item->step, item->value);
+							item = item->next;
+						}
+						break;
+					case 's':
+						write_line("\t\t%s = indigo_init_switch_property(NULL, device->name, %s, %s, %s, INDIGO_OK_STATE, %s, %s, %d);", property->handle, property->name, property->group, property->label, property->perm, property->rule, count);
+						write_line("\t\tif (%s == NULL) {", property->handle);
+						write_line("\t\t\treturn INDIGO_FAILED;");
+						write_line("\t\t}");
+						item = property->item;
+						while (item) {
+							write_line("\t\tindigo_init_switch_item(%s, %s, %s, %s);", item->handle, item->name, item->label, item->value);
+							item = item->next;
+						}
+						break;
+					case 'l':
+						write_line("\t\t%s = indigo_init_light_property(NULL, device->name, %s, %s, %s, INDIGO_OK_STATE, %d);", property->handle, property->name, property->group, property->label, count);
+						write_line("\t\tif (%s == NULL) {", property->handle);
+						write_line("\t\t\treturn INDIGO_FAILED;");
+						write_line("\t\t}");
+						item = property->item;
+						while (item) {
+							write_line("\t\tindigo_init_light_item(%s, %s, %s, %s);", item->handle, item->name, item->label, item->value);
+							item = item->next;
+						}
+						break;
+				}
+			}
+			code = property->attach;
+			if (code) {
+				write_line("");
+				while (code) {
+					write_code(code, 0);
+					write_line("");
+					code = code->next;
+				}
 			}
 			write_line("");
 			property = property->next;
@@ -874,12 +1059,14 @@ void write_c_source(void) {
 		bool first_one = true;
 		property = device->property;
 		while (property) {
-			if (!property->always_defined) {
-				if (first_one) {
-					write_line("\tif (IS_CONNECTED) {");
-					first_one = false;
+			if (property->type[0] != 'i') {
+				if (!property->always_defined) {
+					if (first_one) {
+						write_line("\tif (IS_CONNECTED) {");
+						first_one = false;
+					}
+					write_line("\t\tindigo_define_matching_property(%s);", property->handle);
 				}
-				write_line("\t\tindigo_define_matching_property(%s);", property->handle);
 			}
 			property = property->next;
 		}
@@ -888,8 +1075,10 @@ void write_c_source(void) {
 		}
 		property = device->property;
 		while (property) {
-			if (property->always_defined) {
-				write_line("\tindigo_define_matching_property(%s);", property->handle);
+			if (property->type[0] != 'i') {
+				if (property->always_defined) {
+					write_line("\tindigo_define_matching_property(%s);", property->handle);
+				}
 			}
 			property = property->next;
 		}
@@ -897,6 +1086,32 @@ void write_c_source(void) {
 		write_line("}");
 		write_line("");
 		write_line("static indigo_result %s_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {", device->type);
+
+		first_one = true;
+		property = device->property;
+		while (property) {
+			if (property->handle_change) {
+				if (first_one) {
+					write_line("\tif (indigo_property_match_changeable(%s, property)) {", property->handle);
+					first_one = false;
+				} else {
+					write_line("\t} else if (indigo_property_match_changeable(%s, property)) {", property->handle);
+				}
+				if (strcmp(property->handle, "CONNECTION_PROPERTY") == 0) {
+					write_line("\t\tif (indigo_ignore_connection_change(device, property)) {");
+					write_line("\t\t\treturn INDIGO_OK;");
+					write_line("\t\t}");
+				}
+				write_line("\t\tindigo_property_copy_values(%s, property, false);", property->handle);
+				write_line("\t\t%s->state = INDIGO_BUSY_STATE;", property->handle);
+				write_line("\t\tindigo_update_property(device, %s, NULL);", property->handle);
+				write_line("\t\tindigo_set_timer(device, 0, %s, NULL);", property->handler);
+				write_line("\t\treturn INDIGO_OK;");
+			}
+			property = property->next;
+		}
+		if (!first_one)
+			write_line("\t}");
 		write_line("\treturn indigo_%s_change_property(device, client, property);", device->type);
 		write_line("}");
 		write_line("");
@@ -907,17 +1122,26 @@ void write_c_source(void) {
 		write_line("\t}");
 		code = device->detach;
 		if (code) {
-			write_line("\t\t// Custom code ");
 			write_line("");
 			while (code) {
-				write_code(code, 0);
+				write_code(code, 1);
 				write_line("");
 				code = code->next;
 			}
 		}
 		property = device->property;
 		while (property) {
-			write_line("\tindigo_release_property(%s);", property->handle);
+			code = property->detach;
+			if (code) {
+				write_line("");
+				while (code) {
+					write_code(code, 0);
+					write_line("");
+					code = code->next;
+				}
+			}
+			if (property->type[0] != 'i')
+				write_line("\tindigo_release_property(%s);", property->handle);
 			property = property->next;
 		}
 		write_line("\tINDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);");
@@ -932,6 +1156,7 @@ void write_c_source(void) {
 }
 
 int main(int argc, char **argv) {
+	definition_source_basename = basename(argv[1]);
 	freopen(argv[1], "r", stdin);
 	fprintf(stderr, "Reading %s ...\n", argv[1]);
 	read_definition_source();
