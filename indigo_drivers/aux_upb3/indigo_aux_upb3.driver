@@ -502,7 +502,7 @@ driver upb3 {
 			}
 			item AUX_VARIABLE_POWER_OUTLET_8 {
 				label = "Voltage of adjustable boost output";
-				name = "OUTLET_7";
+				name = "OUTLET_8";
 				min = 12;
 				max = 24;
 				step = 1;
@@ -696,7 +696,7 @@ driver upb3 {
 			change {
 				char command[16], response[64];
 				if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) {
-					snprintf(command, sizeof(command), "SM:%d", (int)FOCUSER_POSITION_ITEM->number.value);
+					snprintf(command, sizeof(command), "SM:%d", (int)FOCUSER_POSITION_ITEM->number.target);
 					if (upb3_command(device, command, response, sizeof(response))) {
 						FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 						FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -706,7 +706,7 @@ driver upb3 {
 					}
 					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 				} else if (FOCUSER_ON_POSITION_SET_SYNC_ITEM->sw.value) {
-					snprintf(command, sizeof(command), "SC:%d", (int)FOCUSER_POSITION_ITEM->number.value);
+					snprintf(command, sizeof(command), "SC:%d", (int)FOCUSER_POSITION_ITEM->number.target);
 					if (!upb3_command(device, command, response, sizeof(response))) {
 						FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 					}
@@ -784,7 +784,7 @@ driver upb3 {
 				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 				indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 			}
-			indigo_reschedule_timer(device, 0.5, &PRIVATE_DATA->focuser_timer);
+			indigo_reschedule_timer(device, 1, &PRIVATE_DATA->focuser_timer);
 		}
 		attach {
 			INFO_PROPERTY->count = 6;
@@ -820,43 +820,42 @@ driver upb3 {
 		static bool upb3_command(indigo_device *device, char *command, char *response, int max) {
 			if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
 				if (indigo_uni_printf(PRIVATE_DATA->handle, "%s\n", command) > 0) {
-					if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "\n", "\r\n", INDIGO_DELAY(1)) > 0) {
+					if (response) {
+						if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "\n", "\r\n", INDIGO_DELAY(1)) > 0) {
+							return true;
+						}
+					} else {
 						return true;
 					}
 				}
 			}
 			return false;
 		}
-		
+
 		static bool upb3_open(indigo_device *device) {
 			char response[128];
 			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 115200, INDIGO_LOG_DEBUG);
 			if (PRIVATE_DATA->handle != NULL) {
 				int attempt = 0;
 				while (true) {
-					if (upb3_command(device, "P#", response, sizeof(response))) {
-						if (!strncmp(response, "UPBv3_", 6)) {
-							INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s %s", response, DEVICE_PORT_ITEM->text.value);
-							PRIVATE_DATA->version = 3;
-							if (upb3_command(device, "PV", response, sizeof(response))) {
-								strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro UPBv3");
-								strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, response + 3);
-								indigo_update_property(device, INFO_PROPERTY, NULL);
-							}
-							break;
-						} else {
-							indigo_uni_close(&PRIVATE_DATA->handle);
+					if (upb3_command(device, "P#", response, sizeof(response)) && !strncmp(response, "UPBv3_", 6)) {
+						PRIVATE_DATA->version = 3;
+						if (upb3_command(device, "PV", response, sizeof(response))) {
+							strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro UPBv3");
+							strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, response + 3);
+							indigo_update_property(device, INFO_PROPERTY, NULL);
+							return true;
 						}
 					}
 					if (attempt++ == 3) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "UPB not detected");
+						indigo_uni_close(&PRIVATE_DATA->handle);
 						break;
 					}
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "UPB not detected - retrying in 1 second...");
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "Device not detected - retrying in 1 second...");
 					indigo_sleep(1);
 				}
 			}
-			return PRIVATE_DATA->handle != NULL;
+			return false;
 		}
 		
 		static void upb3_close(indigo_device *device) {

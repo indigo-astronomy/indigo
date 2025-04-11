@@ -273,7 +273,7 @@ int main() {
 			} else if (!strcmp(buffer, "ES")) {
 				sim_printf(fd, "ES:22.5:50.1:12.2\n");
 			} else if (!strcmp(buffer, "SA")) {
-				sim_printf(fd, "SA:%d:%d:%d:1:1:0:1\n", position, target == position ? 0 : 1, direction, speed);
+				sim_printf(fd, "SA:%d:%d:%d:%d:1:0:1\n", position, target == position ? 0 : 1, direction, speed);
 			} else if (!strcmp(buffer, "SP")) {
 				sim_printf(fd, "SP:%d\n", position);
 			} else if (!strncmp(buffer, "SC:", 3)) {

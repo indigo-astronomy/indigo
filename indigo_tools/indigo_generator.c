@@ -57,7 +57,7 @@ typedef struct property_type {
 
 typedef struct device_type {
 	struct device_type *next;
-	char type[16], name[64], interface[128];
+	char type[16], handle[64], name[64], interface[128];
 	bool additional_instances;
 	code_type *code, *timer, *attach, *detach;
 	property_type *property;
@@ -607,7 +607,12 @@ bool parse_device_block(device_type **devices) {
 		return false;
 	}
 	device_type *device = allocate(sizeof(device_type));
-	copy(device->type, sizeof(device->type));
+	char type[8];
+	copy(type, sizeof(type));
+	make_lower_case(type);
+	snprintf(device->type, sizeof(device->type), "%s", type);
+	make_upper_case(type);
+	snprintf(device->handle, sizeof(device->handle), "%s_DEVICE_NAME", type);
 	device->additional_instances = false;
 	debug("%s {", device->type);
 	while (!match(TOKEN_RBRACE, NULL)) {
@@ -742,10 +747,13 @@ void write_code_block(code_type *code, int indentation) {
 	putchar('\n');
 }
 
-void write_c_code_blocks(code_type *code, int indentation, bool append_empty_line) {
+void write_c_code_blocks(code_type *code, int indentation, bool prepend_empty_line, bool append_empty_line) {
 	static char *spaces = "\t\t\t\t\t\t\t\t\t\t";
 	if (code) {
-		printf("\n%s// Custom code below\n\n", spaces + 10 - indentation);
+		if (prepend_empty_line) {
+			write_line("");
+		}
+		printf("%s// Custom code below\n\n", spaces + 10 - indentation);
 		for (; code; code = code->next) {
 			write_code_block(code, indentation);
 			write_line("");
@@ -845,7 +853,7 @@ void write_c_include_section(void) {
 	write_line("#include <math.h>");
 	write_line("#include <assert.h>");
 	write_line("#include <pthread.h>");
-	write_c_code_blocks(driver->include, 0, true);
+	write_c_code_blocks(driver->include, 0, true, true);
 	write_line("#include <indigo/indigo_driver_xml.h>");
 	for (device_type *device = driver->device; device; device = device->next) {
 		write_line("#include <indigo/indigo_%s_driver.h>", device->type);
@@ -861,7 +869,11 @@ void write_c_define_section(void) {
 	write_line("");
 	write_line("#define DRIVER_VERSION %04X", driver->version);
 	write_line("#define DRIVER_NAME \"indigo_%s_%s\"", driver->device->type, driver->name);
-	write_c_code_blocks(driver->define, 0, true);
+	write_line("#define DRIVER_LABEL \"%s\"", driver->label);
+	for (device_type *device = driver->device; device; device = device->next) {
+		write_line("#define %s \"%s\"", device->handle, device->name);
+	}
+	write_c_code_blocks(driver->define, 0, true, true);
 }
 
 void write_c_property_definition_section(void) {
@@ -890,15 +902,17 @@ void write_c_private_data_section(void) {
 	write_line("#define PRIVATE_DATA ((%s_private_data *)device->private_data)", driver->name);
 	write_line("");
 	write_line("typedef struct {");
-	write_c_code_blocks(driver->data, 1, false);
 	write_line("\tpthread_mutex_t mutex;");
 	if (is_multi_device) {
 		write_line("\tint count;");
 	}
+	write_c_code_blocks(driver->data, 1, true, false);
 	for (device_type *device = driver->device; device; device = device->next) {
 		if (device->timer != NULL) {
 			write_line("\tindigo_timer *%s_timer;", device->type);
 		}
+	}
+	for (device_type *device = driver->device; device; device = device->next) {
 		for (property_type *property = device->property; property; property = property->next) {
 			if (property->type[0] != 'i') {
 				write_line("\tindigo_property *%s;", property->pointer);
@@ -912,11 +926,11 @@ void write_c_private_data_section(void) {
 void write_c_low_level_code_section(void) {
 	write_line("#pragma mark - Low level code");
 	write_line("");
-	write_c_code_blocks(driver->code, 0, false);
+	write_c_code_blocks(driver->code, 0, false, false);
 	for (device_type *device = driver->device; device; device = device->next) {
-		write_c_code_blocks(device->code, 0, false);
+		write_c_code_blocks(device->code, 0, false, false);
 		for (property_type *property = device->property; property; property = property->next) {
-			write_c_code_blocks(property->code, 0, false);
+			write_c_code_blocks(property->code, 0, false, false);
 		}
 	}
 }
@@ -929,7 +943,7 @@ void write_c_timer_callback(device_type *device) {
 	write_line("\t\treturn;");
 	write_line("\t}");
 	write_line("\tpthread_mutex_lock(&PRIVATE_DATA->mutex);");
-	write_c_code_blocks(device->timer, 1, false);
+	write_c_code_blocks(device->timer, 1, true, false);
 	write_line("\tpthread_mutex_unlock(&PRIVATE_DATA->mutex);");
 	write_line("}");
 	write_line("");
@@ -937,6 +951,7 @@ void write_c_timer_callback(device_type *device) {
 
 void write_c_property_change_handler(device_type *device, property_type *property) {
 	bool is_multi_device = driver->device != NULL && driver->device->next != NULL;
+	bool is_master_device = device == driver->device;
 	write_line("// %s change handler", property->id);
 	write_line("");
 	write_line("static void %s(indigo_device *device) {", property->handler);
@@ -949,13 +964,21 @@ void write_c_property_change_handler(device_type *device, property_type *propert
 		write_line("\t\tbool connection_result = true;");
 		if (is_multi_device) {
 			write_line("\t\tif (PRIVATE_DATA->count++ == 0) {");
-			write_line("\t\t\tconnection_result = %s_open(device);", driver->name);
+			if (is_master_device) {
+				write_line("\t\t\tconnection_result = %s_open(device);", driver->name);
+			} else {
+				write_line("\t\t\tconnection_result = %s_open(device->master_device);", driver->name);
+			}
 			write_line("\t\t}");
 		} else {
-			write_line("\t\tconnection_result = %s_open(device);", driver->name);
+			if (is_master_device) {
+				write_line("\t\tconnection_result = %s_open(device);", driver->name);
+			} else {
+				write_line("\t\tconnection_result = %s_open(device->master_device);", driver->name);
+			}
 		}
 		write_line("\t\tif (connection_result) {");
-		write_c_code_blocks(property->change, 3, false);
+		write_c_code_blocks(property->change, 3, true, false);
 		for (property_type *property2 = device->property; property2; property2 = property2->next) {
 			if (property2->type[0] != 'i' && !property2->always_defined) {
 				write_line("\t\t\tindigo_define_property(device, %s, NULL);", property2->handle);
@@ -965,8 +988,9 @@ void write_c_property_change_handler(device_type *device, property_type *propert
 			write_line("\t\t\tindigo_set_timer(device, 0, %s_timer_callback, &PRIVATE_DATA->%s_timer);", device->type, device->type);
 		}
 		write_line("\t\t\tCONNECTION_PROPERTY->state = INDIGO_OK_STATE;");
+		write_line("\t\t\tindigo_send_message(device, \"Connected to %%s on %%s\", %s, DEVICE_PORT_ITEM->text.value);", device->handle);
 		write_line("\t\t} else {");
-		write_line("\t\t\tINDIGO_DRIVER_ERROR(DRIVER_NAME, \"Failed to connect to %s\", DEVICE_PORT_ITEM->text.value);");
+		write_line("\t\t\tindigo_send_message(device, \"Failed to connect to %%s on %%s\", %s, DEVICE_PORT_ITEM->text.value);", device->handle);
 		if (is_multi_device) {
 			write_line("\t\t\tPRIVATE_DATA->count--;");
 		}
@@ -1001,7 +1025,7 @@ void write_c_property_change_handler(device_type *device, property_type *propert
 			write_line("\tpthread_mutex_lock(&PRIVATE_DATA->mutex);");
 		}
 		write_line("\t%s->state = INDIGO_OK_STATE;", property->handle);
-		write_c_code_blocks(property->change, 1, false);
+		write_c_code_blocks(property->change, 1, true, false);
 		write_line("\tindigo_update_property(device, %s, NULL);", property->handle);
 		if (property->synchronized_change) {
 			write_line("\tpthread_mutex_unlock(&PRIVATE_DATA->mutex);");
@@ -1025,7 +1049,7 @@ void write_c_high_level_code_section(device_type *device) {
 }
 
 void write_c_attach(device_type *device) {
-	bool master_device = device == driver->device;
+	bool is_master_device = device == driver->device;
 	write_line("// %s attach API callback", device->type);
 	write_line("");
 	write_line("static indigo_result %s_attach(indigo_device *device) {", device->type);
@@ -1034,7 +1058,7 @@ void write_c_attach(device_type *device) {
 	} else {
 		write_line("\tif (indigo_%s_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {", device->type);
 	}
-	write_c_code_blocks(device->attach, 2, false);
+	write_c_code_blocks(device->attach, 2, true, false);
 	for (property_type *property = device->property; property; property = property->next) {
 		if (property->type[0] != 'i' || property->attach) {
 			write_line("\t\t// %s initialisation", property->id);
@@ -1085,13 +1109,13 @@ void write_c_attach(device_type *device) {
 			}
 			write_line("");
 		}
-		write_c_code_blocks(property->attach, 0, false);
+		write_c_code_blocks(property->attach, 0, true, false);
 	}
 	if (device->additional_instances) {
 		write_line("\t\tADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;");
 	}
 	write_line("\t\tINDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);");
-	if (master_device) {
+	if (is_master_device) {
 		write_line("\t\tpthread_mutex_init(&PRIVATE_DATA->mutex, NULL);");
 	}
 	write_line("\t\treturn %s_enumerate_properties(device, NULL, NULL);", device->type);
@@ -1172,23 +1196,23 @@ void write_c_change_property(device_type *device) {
 }
 
 void write_c_detach(device_type *device) {
+	bool is_master_device = device == driver->device;
 	write_line("// %s detach API callback", device->type);
 	write_line("");
-	bool master_device = device == driver->device;
 	write_line("static indigo_result %s_detach(indigo_device *device) {", device->type);
 	write_line("\tif (IS_CONNECTED) {");
 	write_line("\t\tindigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);");
 	write_line("\t\t%s_connection_handler(device);", device->type);
 	write_line("\t}");
-	write_c_code_blocks(device->detach, 1, false);
+	write_c_code_blocks(device->detach, 1, true, false);
 	for (property_type *property = device->property; property; property = property->next) {
-		write_c_code_blocks(property->detach, 0, false);
+		write_c_code_blocks(property->detach, 0, true, false);
 		if (property->type[0] != 'i') {
 			write_line("\tindigo_release_property(%s);", property->handle);
 		}
 	}
 	write_line("\tINDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);");
-	if (master_device) {
+	if (is_master_device) {
 		write_line("\tpthread_mutex_destroy(&PRIVATE_DATA->mutex);");
 	}
 	write_line("\treturn indigo_%s_detach(device);", device->type);
@@ -1221,7 +1245,7 @@ void write_c_main_section(void) {
 	write_line("");
 	for (device_type *device = driver->device; device; device = device->next) {
 		write_line("\tstatic indigo_device %s_template = INDIGO_DEVICE_INITIALIZER(", device->type);
-		write_line("\t\t\"%s\",", device->name);
+		write_line("\t\t%s,", device->handle);
 		write_line("\t\t%s_attach,", device->type);
 		write_line("\t\t%s_enumerate_properties,", device->type);
 		write_line("\t\t%s_change_property,", device->type);
@@ -1230,7 +1254,7 @@ void write_c_main_section(void) {
 		write_line("\t);");
 		write_line("");
 	}
-	write_line("\tSET_DRIVER_INFO(info, \"%s\", __FUNCTION__, DRIVER_VERSION, false, last_action);", driver->label);
+	write_line("\tSET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, false, last_action);");
 	write_line("");
 	write_line("\tif (action == last_action) {");
 	write_line("\t\treturn INDIGO_OK;");

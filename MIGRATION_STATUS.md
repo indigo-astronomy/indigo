@@ -1,4 +1,15 @@
-# ALREADY DONE
+# Migration to code generator
+
+## Already done
+
+aux_upb3
+
+## In progress
+
+# Migration to Windows
+
+
+## Already done
 
 agent_alpaca
 agent_auxiliary
@@ -23,7 +34,6 @@ aux_skyalert
 aux_sqm
 aux_uch
 aux_upb
-aux_upb3
 aux_usbdp
 aux_wbplusv3
 aux_wbprov3
@@ -82,7 +92,7 @@ wheel_quantum
 wheel_trutek
 wheel_xagyl
 
-# IN PROGRESS
+## In progress
 
 
 # TODO

@@ -1,9 +1,9 @@
-// Copyright (c) 2024 CloudMakers, s. r. o.
+// Copyright (c) 2025 CloudMakers, s. r. o.
 // All rights reserved.
-//
+
 // You can use this software under the terms of 'INDIGO Astronomy
 // open-source license' (see LICENSE.md).
-//
+
 // THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
 // OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 // WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -16,15 +16,10 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+// This file generated from indigo_aux_upb3.driver at 2025-04-11 11:21:13.
+
 // version history
-// 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
-
-/** INDIGO PegasusAstro UPB v3 aux driver main
- \file indigo_aux_upb3_main.c
- */
-
-#include <stdio.h>
-#include <string.h>
+// 3.0 Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
 #include <indigo/indigo_driver_xml.h>
 
@@ -38,8 +33,7 @@ int main(int argc, const char * argv[]) {
 	indigo_aux_upb3(INDIGO_DRIVER_INIT, NULL);
 	indigo_attach_client(protocol_adapter);
 	indigo_xml_parse(NULL, protocol_adapter);
-	indigo_aux_upb3(INDIGO_DRIVER_SHUTDOWN, NULL);
+	indigo_aux_ppb(INDIGO_DRIVER_SHUTDOWN, NULL);
 	indigo_stop();
 	return 0;
 }
-
