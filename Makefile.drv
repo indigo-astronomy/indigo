@@ -39,6 +39,7 @@ endif
 DRIVER = indigo_$(notdir $(shell pwd))
 rwildcard=$(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2) $(filter $(subst *,%,$2),$d))
 
+DEFINITION = $(wildcard *.driver)
 SOURCES = $(wildcard *.c) $(wildcard *.cpp) $(wildcard *.m) $(ADDITIONAL_SOURCES)
 DRIVER_A = $(BUILD_DRIVERS)/$(DRIVER).a
 DRIVER_SO = $(BUILD_DRIVERS)/$(DRIVER).$(SOEXT)
@@ -85,6 +86,7 @@ all: status $(MAKE_SDK) $(DRIVER_A) $(DRIVER_SO) $(DRIVER_EXECUTABLE)
 endif
 
 status:
+	@printf "Definition: $(notdir $(DEFINITION))\n"
 	@printf "Sources:    $(notdir $(SOURCES))\n"
 	@printf "Archive:    $(notdir $(DRIVER_A))\n"
 	@printf "SO library: $(notdir $(DRIVER_SO))\n"
@@ -105,6 +107,9 @@ ifneq ($(strip $(SDK_LIB_A) $(SDK_LIB_SO) $(SDK_INCLUDE)),)
 	@printf "SDK:        $(strip $(SDK_LIB_A) $(SDK_LIB_SO)  $(SDK_INCLUDE) $(SDK_LIB))\n"
 endif
 	@printf "\n"
+
+$(SOURCES): $(DEFINITION) ../../indigo_tools/indigo_generator.c
+	$(BUILD_BIN)/indigo_generator $(DEFINITION)
 
 $(DRIVER_A): $(DRIVER_O)
 	$(AR) $(ARFLAGS) $@ $^

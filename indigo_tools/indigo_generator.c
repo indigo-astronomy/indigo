@@ -774,7 +774,7 @@ void write_license(void) {
 	char time_buffer[26];
 	time(&now);
 	tm_info = localtime(&now);
-	strftime(time_buffer, 26, "%Y-%m-%d %H:%M:%S", tm_info);
+	strftime(time_buffer, 26, "%Y-%m-%d %H:%M", tm_info);
 	write_line("// %s", driver->copyright);
 	write_line("// All rights reserved.");
 	write_line("");
@@ -792,7 +792,7 @@ void write_license(void) {
 	write_line("// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS");
 	write_line("// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.");
 	write_line("");
-	write_line("// This file generated from %s at %s.", definition_source_basename, time_buffer);
+	write_line("// This file generated from %s (%s).", definition_source_basename, time_buffer);
 	write_line("");
 	write_line("// version history");
 	write_line("// 3.0 %s", driver->author);
@@ -843,7 +843,7 @@ void write_c_main_source(void) {
 	write_line("\tindigo_%s_%s(INDIGO_DRIVER_INIT, NULL);", driver->device->type, driver->name);
 	write_line("\tindigo_attach_client(protocol_adapter);");
 	write_line("\tindigo_xml_parse(NULL, protocol_adapter);");
-	write_line("\tindigo_aux_ppb(INDIGO_DRIVER_SHUTDOWN, NULL);");
+	write_line("\tindigo_%s_%s(INDIGO_DRIVER_SHUTDOWN, NULL);", driver->device->type, driver->name);
 	write_line("\tindigo_stop();");
 	write_line("\treturn 0;");
 	write_line("}");

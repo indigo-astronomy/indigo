@@ -16,7 +16,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// This file generated from indigo_aux_upb3.driver at 2025-04-11 12:23:47.
+// This file generated from indigo_aux_upb3.driver (2025-04-11 13:08).
 
 // version history
 // 3.0 Peter Polakovic <peter.polakovic@cloudmakers.eu>
@@ -33,7 +33,7 @@ int main(int argc, const char * argv[]) {
 	indigo_aux_upb3(INDIGO_DRIVER_INIT, NULL);
 	indigo_attach_client(protocol_adapter);
 	indigo_xml_parse(NULL, protocol_adapter);
-	indigo_aux_ppb(INDIGO_DRIVER_SHUTDOWN, NULL);
+	indigo_aux_upb3(INDIGO_DRIVER_SHUTDOWN, NULL);
 	indigo_stop();
 	return 0;
 }
