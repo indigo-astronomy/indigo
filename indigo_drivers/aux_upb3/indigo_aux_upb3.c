@@ -16,7 +16,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// This file generated from indigo_aux_upb3.driver at 2025-04-11 11:21:13.
+// This file generated from indigo_aux_upb3.driver at 2025-04-11 12:23:47.
 
 // version history
 // 3.0 Peter Polakovic <peter.polakovic@cloudmakers.eu>
@@ -1058,11 +1058,7 @@ static void focuser_timer_callback(indigo_device *device) {
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 	}
-	if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
-		indigo_reschedule_timer(device, 0.3, &PRIVATE_DATA->focuser_timer);
-	} else {
-		indigo_reschedule_timer(device, 1, &PRIVATE_DATA->focuser_timer);
-	}
+	indigo_reschedule_timer(device, 1, &PRIVATE_DATA->focuser_timer);
 
 	// Custom code above
 
