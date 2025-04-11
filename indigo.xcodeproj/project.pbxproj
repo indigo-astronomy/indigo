@@ -13069,9 +13069,9 @@
 		9D1880BF1E534B89002F75D7 /* indigo_tools */ = {
 			isa = PBXGroup;
 			children = (
+				598C583E21A890B5001CA8C0 /* Makefile */,
 				9D44F3802DA55CCD00AB7377 /* indigo_generator.c */,
 				59E21BE12651940F00C1E912 /* indigo_raw_to_fits.c */,
-				598C583E21A890B5001CA8C0 /* Makefile */,
 				595705A321866D9700E713A9 /* indigo_drivers.c */,
 				9D1880C01E534BB5002F75D7 /* indigo_prop_tool.c */,
 				9DF4DCCB2C5A182B00A1852B /* indigo_driver_metadata.c */,

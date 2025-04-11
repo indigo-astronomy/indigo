@@ -70,7 +70,9 @@ typedef struct driver_type {
 	code_type *include, *define, *code, *data;
 } driver_type;
 
-bool parsing_code = false, parsing_expression = false;
+#pragma mark - shared variables
+
+bool parsing_code = false, parsing_expression = false, verbose_log = false;
 char *definition_source, *definition_source_basename, *current, *begin, *end;
 token_type last_token;
 driver_type *driver;
@@ -99,13 +101,15 @@ void make_lower_case(char *name) {
 }
 
 void debug(const char *format, ...) {
-	static char *spaces = "\t\t\t\t\t\t\t\t\t\t";
-	va_list args;
-	va_start(args, format);
-	char buffer[256];
-	vsnprintf(buffer, sizeof(buffer), format, args);
-	fprintf(stderr, "%s%s\n", spaces + 10 - indentation, buffer);
-	va_end(args);
+	if (verbose_log) {
+		static char *spaces = "\t\t\t\t\t\t\t\t\t\t";
+		va_list args;
+		va_start(args, format);
+		char buffer[256];
+		vsnprintf(buffer, sizeof(buffer), format, args);
+		fprintf(stderr, "%s%s\n", spaces + 10 - indentation, buffer);
+		va_end(args);
+	}
 }
 
 void report_error(const char *format, ...) {
@@ -1331,16 +1335,31 @@ void read_definition_source(void) {
 }
 
 int main(int argc, char **argv) {
-	definition_source_basename = basename(argv[1]);
-	freopen(argv[1], "r", stdin);
-	fprintf(stderr, "Reading %s ...\n", argv[1]);
-	read_definition_source();
-	fprintf(stderr, "Parsing ...\n\n");
-	if (!parse_driver_block()) {
-		fprintf(stderr, "\nFailed ...\n");
+	char **arg = argv;
+	char *definition_file = NULL;
+	bool help = false;
+	while (*++arg) {
+		if (!strcmp(*arg, "-v") || !strcmp(*arg, "--verbose")) {
+			verbose_log = true;
+		} else if (!strcmp(*arg, "-h") || !strcmp(*arg, "--help")) {
+			help = true;
+		} else {
+			definition_file = *arg;
+		}
+	}
+	if (help || definition_file == NULL) {
+		fprintf(stderr, "indigo_generator [-h|--help] [-v|--verbose] definition_file\n");
 		return 0;
 	}
-	fprintf(stderr, "\nParsed ...\n");
+	definition_source_basename = basename(argv[1]);
+	freopen(argv[1], "r", stdin);
+	fprintf(stderr, "Reading %s ...\n", definition_source_basename);
+	read_definition_source();
+	debug("Parsing ...\n\n");
+	if (!parse_driver_block()) {
+		fprintf(stderr, "\nFailed to parse definition file\n");
+		return 0;
+	}
 	char file_name[64];
 	snprintf(file_name, sizeof(file_name), "indigo_%s_%s.h", driver->device->type, driver->name);
 	fprintf(stderr, "Writing %s ...\n", file_name);
