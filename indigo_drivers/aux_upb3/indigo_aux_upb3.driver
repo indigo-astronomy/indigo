@@ -22,8 +22,69 @@ driver upb3 {
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2025 CloudMakers, s. r. o.";
 	label = "PegasusAstro Ultimate Powerbox v3";
-	version = 2;
+	version = 3;
 	type = serial;
+	define {
+#define POWERBOX_GROUP "Powerbox"
+	}
+	data {
+		indigo_uni_handle *handle;
+		int version;
+	}
+	code {
+		static bool upb3_command(indigo_device *device, char *command, char *response, int max) {
+			if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
+				if (indigo_uni_printf(PRIVATE_DATA->handle, "%s\n", command) > 0) {
+					if (response) {
+						if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "\n", "\r\n", INDIGO_DELAY(1)) > 0) {
+							return true;
+						}
+					} else {
+						return true;
+					}
+				}
+			}
+			return false;
+		}
+		
+		static bool upb3_open(indigo_device *device) {
+			char response[128];
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 115200, INDIGO_LOG_DEBUG);
+			if (PRIVATE_DATA->handle != NULL) {
+				int attempt = 0;
+				while (true) {
+					if (upb3_command(device, "P#", response, sizeof(response)) && !strncmp(response, "UPBv3_", 6)) {
+						PRIVATE_DATA->version = 3;
+						if (upb3_command(device, "PV", response, sizeof(response))) {
+							strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro UPBv3");
+							strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, response + 3);
+							indigo_update_property(device, INFO_PROPERTY, NULL);
+							return true;
+						}
+					}
+					if (attempt++ == 3) {
+						indigo_uni_close(&PRIVATE_DATA->handle);
+						break;
+					}
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "Device not detected - retrying in 1 second...");
+					indigo_sleep(1);
+				}
+			}
+			return false;
+		}
+		
+		static void upb3_close(indigo_device *device) {
+			char response[128];
+			strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+			indigo_update_property(device, INFO_PROPERTY, NULL);
+			if (PRIVATE_DATA->handle != NULL) {
+				upb3_command(device, "PL:0", response, sizeof(response));
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
+				indigo_uni_close(&PRIVATE_DATA->handle);
+			}
+		}
+	}
 	aux {
 		name = "Ultimate Powerbox 3";
 		interface = INDIGO_INTERFACE_AUX_POWERBOX | INDIGO_INTERFACE_AUX_WEATHER;
@@ -807,67 +868,6 @@ driver upb3 {
 			FOCUSER_POSITION_ITEM->number.min = 0;
 			FOCUSER_POSITION_ITEM->number.max = 9999999;
 			FOCUSER_POSITION_ITEM->number.step = 1;
-		}
-	}
-	define {
-		#define POWERBOX_GROUP "Powerbox"
-	}
-	data {
-		indigo_uni_handle *handle;
-		int version;
-	}
-	code {
-		static bool upb3_command(indigo_device *device, char *command, char *response, int max) {
-			if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
-				if (indigo_uni_printf(PRIVATE_DATA->handle, "%s\n", command) > 0) {
-					if (response) {
-						if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "\n", "\r\n", INDIGO_DELAY(1)) > 0) {
-							return true;
-						}
-					} else {
-						return true;
-					}
-				}
-			}
-			return false;
-		}
-
-		static bool upb3_open(indigo_device *device) {
-			char response[128];
-			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 115200, INDIGO_LOG_DEBUG);
-			if (PRIVATE_DATA->handle != NULL) {
-				int attempt = 0;
-				while (true) {
-					if (upb3_command(device, "P#", response, sizeof(response)) && !strncmp(response, "UPBv3_", 6)) {
-						PRIVATE_DATA->version = 3;
-						if (upb3_command(device, "PV", response, sizeof(response))) {
-							strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro UPBv3");
-							strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, response + 3);
-							indigo_update_property(device, INFO_PROPERTY, NULL);
-							return true;
-						}
-					}
-					if (attempt++ == 3) {
-						indigo_uni_close(&PRIVATE_DATA->handle);
-						break;
-					}
-					INDIGO_DRIVER_LOG(DRIVER_NAME, "Device not detected - retrying in 1 second...");
-					indigo_sleep(1);
-				}
-			}
-			return false;
-		}
-		
-		static void upb3_close(indigo_device *device) {
-			char response[128];
-			strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-			strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
-			indigo_update_property(device, INFO_PROPERTY, NULL);
-			if (PRIVATE_DATA->handle != NULL) {
-				upb3_command(device, "PL:0", response, sizeof(response));
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
-				indigo_uni_close(&PRIVATE_DATA->handle);
-			}
 		}
 	}
 }

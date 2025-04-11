@@ -871,7 +871,7 @@ void write_c_include_section(void) {
 void write_c_define_section(void) {
 	write_line("#pragma mark - Common definitions");
 	write_line("");
-	write_line("#define DRIVER_VERSION %04X", driver->version);
+	write_line("#define DRIVER_VERSION 0x%04X", driver->version);
 	write_line("#define DRIVER_NAME \"indigo_%s_%s\"", driver->device->type, driver->name);
 	write_line("#define DRIVER_LABEL \"%s\"", driver->label);
 	for (device_type *device = driver->device; device; device = device->next) {
@@ -982,7 +982,7 @@ void write_c_property_change_handler(device_type *device, property_type *propert
 			}
 		}
 		write_line("\t\tif (connection_result) {");
-		write_c_code_blocks(property->change, 3, true, false);
+		write_c_code_blocks(property->change, 3, true, true);
 		for (property_type *property2 = device->property; property2; property2 = property2->next) {
 			if (property2->type[0] != 'i' && !property2->always_defined) {
 				write_line("\t\t\tindigo_define_property(device, %s, NULL);", property2->handle);
@@ -1113,7 +1113,7 @@ void write_c_attach(device_type *device) {
 			}
 			write_line("");
 		}
-		write_c_code_blocks(property->attach, 0, true, false);
+		write_c_code_blocks(property->attach, 0, false, false);
 	}
 	if (device->additional_instances) {
 		write_line("\t\tADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;");

@@ -16,7 +16,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// This file generated from indigo_aux_upb3.driver (2025-04-11 13:08).
+// This file generated from indigo_aux_upb3.driver (2025-04-11 14:03).
 
 // version history
 // 3.0 Peter Polakovic <peter.polakovic@cloudmakers.eu>
@@ -38,7 +38,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION 0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME "indigo_aux_upb3"
 #define DRIVER_LABEL "PegasusAstro Ultimate Powerbox v3"
 #define AUX_DEVICE_NAME "Ultimate Powerbox 3"

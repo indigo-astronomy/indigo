@@ -108,8 +108,10 @@ ifneq ($(strip $(SDK_LIB_A) $(SDK_LIB_SO) $(SDK_INCLUDE)),)
 endif
 	@printf "\n"
 
+ifneq ($(DEFINITION),)
 $(SOURCES): $(DEFINITION) ../../indigo_tools/indigo_generator.c
 	$(BUILD_BIN)/indigo_generator $(DEFINITION)
+endif
 
 $(DRIVER_A): $(DRIVER_O)
 	$(AR) $(ARFLAGS) $@ $^

@@ -4590,6 +4590,7 @@
 		9D285A572B61373500B2642A /* Sequencer.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = Sequencer.md; sourceTree = "<group>"; };
 		9D285A5E2B61453F00B2642A /* Sequencer_screenshot_2.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = Sequencer_screenshot_2.jpg; sourceTree = "<group>"; };
 		9D285A5F2B61453F00B2642A /* Sequencer_screenshot_1.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = Sequencer_screenshot_1.jpg; sourceTree = "<group>"; };
+		9D2AB26B2DA930D500537411 /* indigo_gps_simulator.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_gps_simulator.driver; sourceTree = "<group>"; };
 		9D335BB0288036E6004D9F30 /* Apx60 Programmers Guide.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "Apx60 Programmers Guide.pdf"; sourceTree = "<group>"; };
 		9D335BB328803C34004D9F30 /* QHY5III200.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY5III200.img; sourceTree = "<group>"; };
 		9D335BB428803C34004D9F30 /* QHY5III334.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY5III334.img; sourceTree = "<group>"; };
@@ -9879,6 +9880,7 @@
 				59CBD47C1FAF6C80000DAFDB /* indigo_gps_simulator.h */,
 				59CBD47B1FAF6C80000DAFDB /* indigo_gps_simulator.c */,
 				59CBD47E1FAF6C80000DAFDB /* indigo_gps_simulator_main.c */,
+				9D2AB26B2DA930D500537411 /* indigo_gps_simulator.driver */,
 			);
 			path = gps_simulator;
 			sourceTree = "<group>";
