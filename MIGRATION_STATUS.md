@@ -4,6 +4,8 @@
 
 aux_upb3
 
+gps_simulator
+
 ## In progress
 
 # Migration to Windows
@@ -69,7 +71,6 @@ focuser_focusdreampro
 focuser_ioptron
 
 gps_nmea
-gps_simulator
 
 mount_asi
 mount_ioptron
