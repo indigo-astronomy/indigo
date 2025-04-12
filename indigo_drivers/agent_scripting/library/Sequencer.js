@@ -33,6 +33,14 @@ Sequence.prototype.wait_until = function(time) {
 	this.sequence.push({ execute: 'wait_until(' + time + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
+Sequence.prototype.ignore_failures = function() {
+	this.sequence.push({ execute: 'set_ignore_failures(true)', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
+Sequence.prototype.abort_on_failures = function() {
+	this.sequence.push({ execute: 'set_ignore_failures(false)', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
 Sequence.prototype.evaluate = function(code) {
 	this.sequence.push({ execute: 'evaluate("' + code + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
@@ -488,6 +496,7 @@ var indigo_sequencer = {
 	wait_for_value_tolerance: null,
 	wait_for_timer: null,
 	ignore_failure: false,
+	ignore_failures: false,
 	use_solver: false,
 	paused: false,
 	capturing_batch: false,
@@ -517,7 +526,7 @@ var indigo_sequencer = {
 					this.wait_for_item = null;
 					this.wait_for_value = null;
 					this.wait_for_value_tolerance = null;
-					if (property.state == "Ok" || this.ignore_failure) {
+					if (property.state == "Ok" || this.ignore_failure || this.ignore_failures) {
 						this.ignore_failure = false;
 						indigo_set_timer(indigo_sequencer_next_handler, 0);
 					} else if (property.state == "Alert") {
@@ -754,9 +763,9 @@ var indigo_sequencer = {
 		var result = indigo_set_timer(indigo_sequencer_next_handler, seconds);
 		if (result >= 0) {
 			this.wait_for_timer = result;
-			indigo_send_message("Suspended for " + seconds + " seconds");
+			indigo_send_message("Suspended for " + seconds + " second(s)");
 		} else {
-			this.failure("Can't schedule timer in " + seconds + " seconds");
+			this.failure("Can't schedule timer in " + seconds + " second(s)");
 		}
 	},
 
@@ -773,6 +782,11 @@ var indigo_sequencer = {
 		} else {
 			this.failure("Can't schedule timer at " + time + " UTC");
 		}
+	},
+
+	set_ignore_failures: function(state) {
+		this.ignore_failures = state;
+		indigo_set_timer(indigo_sequencer_next_handler, 0);
 	},
 
 	evaluate: function(code) {
