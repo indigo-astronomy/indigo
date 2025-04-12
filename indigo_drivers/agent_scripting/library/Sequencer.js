@@ -33,11 +33,11 @@ Sequence.prototype.wait_until = function(time) {
 	this.sequence.push({ execute: 'wait_until(' + time + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.ignore_failures = function() {
+Sequence.prototype.continue_on_failure = function() {
 	this.sequence.push({ execute: 'set_ignore_failures(true)', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.abort_on_failures = function() {
+Sequence.prototype.abort_on_failure = function() {
 	this.sequence.push({ execute: 'set_ignore_failures(false)', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
