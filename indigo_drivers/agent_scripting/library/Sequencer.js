@@ -8,14 +8,16 @@ function Sequence(name) {
 }
 
 Sequence.prototype.repeat = function(count, block) {
-	var step_backup = this.step;
+	var loop = this.step;
 	var recovery_point_index_backup = this.recovery_point_index;
-	this.sequence.push({ execute: 'enter_loop()', step: step_backup, progress: this.progress, exposure: this.exposure });
-	for (i = 0; i < count; i++) {
-		this.step = step_backup + 1;
+	var i = 0;
+	this.sequence.push({ execute: 'enter_loop()', step: loop, progress: this.progress, exposure: this.exposure });
+	while (i < count) {
+		this.step = loop + 1;
 		this.recovery_point_index = recovery_point_index_backup;
 		block();
-		this.sequence.push({ execute: 'increment_loop(' + (i + 1) + ')', step: step_backup, progress: this.progress, exposure: this.exposure });
+		i++;
+		this.sequence.push({ execute: 'increment_loop(' + i + ')', step: loop, progress: this.progress, exposure: this.exposure });
 	}
 	this.sequence.push({ execute: 'exit_loop()', step: this.step, progress: this.progress, exposure: this.exposure });
 	if (count <= 0) {
@@ -498,6 +500,8 @@ var indigo_sequencer = {
 	exposure_total: 0,
 	index: -1,
 	loop_level: -1,
+	loop_step: [],
+	loop_count: [],
 	sequence: null,
 	wait_for_device: null,
 	wait_for_name: null,
@@ -567,6 +571,11 @@ var indigo_sequencer = {
 			}
 			if (property.name == null || property.name == "SEQUENCE_RESET") {
 				indigo_define_switch_property(this.devices[0], "SEQUENCE_RESET", "Sequencer", "Reset sequence", { RESET: false }, { RESET: { label: "Reset" }}, "Ok", "RW", "OneOfMany");
+			}
+			for (var i = 0; i < this.loop_level; i++) {
+				if (property.name == null || property.name == "LOOP_" + i) {
+					indigo_define_number_property(this.devices[0], "LOOP_" + i, "Sequencer", "Loop " + this.loop_level, { STEP: this.loop_step[i], COUNT: this.loop_count[i] }, { STEP: { label: "Loop at", format: "%g", min: 0, max: 10000, step: 1 }, COUNT: { label: "Itreations elapsed", format: "%g", min: 0, max: 10000, step: 1 }}, "Ok", "RO");
+				}
 			}
 		}
 	},
@@ -716,17 +725,21 @@ var indigo_sequencer = {
 	
 	enter_loop: function() {
 		this.loop_level++;
-		indigo_define_number_property(this.devices[0], "LOOP_" + this.loop_level, "Sequencer", "Loop " + this.loop_level, { STEP: this.step, COUNT: 0 }, { STEP: { label: "Loop at", format: "%g", min: 0, max: 10000, step: 1 }, COUNT: { label: "Itreations elapsed", format: "%g", min: 0, max: 10000, step: 1 }}, "Ok", "RO");
+		this.loop_count.push(0);
+		this.loop_step.push(this.step);
+		indigo_define_number_property(this.devices[0], "LOOP_" + this.loop_level, "Sequencer", "Loop " + this.loop_step[this.loop_level], { STEP: this.step, COUNT: this.loop_count[this.loop_level] }, { STEP: { label: "Loop at", format: "%g", min: 0, max: 10000, step: 1 }, COUNT: { label: "Itreations elapsed", format: "%g", min: 0, max: 10000, step: 1 }}, "Ok", "RO");
 		indigo_set_timer(indigo_sequencer_next_handler, 0);
 	},
 	
 	increment_loop: function(i) {
-		indigo_update_number_property(this.devices[0], "LOOP_" + this.loop_level, { COUNT: i }, "Ok");
+		indigo_update_number_property(this.devices[0], "LOOP_" + this.loop_level, { COUNT: this.loop_count[this.loop_level] = i }, "Ok");
 		indigo_set_timer(indigo_sequencer_next_handler, 0);
 	},
 		
 	exit_loop: function() {
 		indigo_delete_property(this.devices[0], "LOOP_" + this.loop_level--);
+		this.loop_count.pop();
+		this.loop_step.pop();
 		indigo_set_timer(indigo_sequencer_next_handler, 0);
 	},
 	
