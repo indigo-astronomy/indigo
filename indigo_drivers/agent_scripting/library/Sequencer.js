@@ -644,10 +644,10 @@ var indigo_sequencer = {
 					while (this.loop_level >= 0) {
 						indigo_delete_property(this.devices[0], "LOOP_" + this.loop_level--);
 					}
-					for (var key in this.step_states) {
-						this.step_states[key] = "Idle";
-					}
-					indigo_update_light_property(this.devices[0], "SEQUENCE_STEP_STATE", this.step_states, "Ok");
+					this.step_states = {};
+					this.step_states_defs = {};
+					indigo_delete_property(this.devices[0], "SEQUENCE_STEP_STATE");
+					indigo_define_light_property(this.devices[0], "SEQUENCE_STEP_STATE", "Sequencer", "Step state", this.step_states, this.step_states_defs, "Ok");
 					indigo_update_switch_property(this.devices[0], "SEQUENCE_RESET", { RESET: false }, "Ok");
 				}
 			}
@@ -715,8 +715,8 @@ var indigo_sequencer = {
 					last_step = entry.step;
 					var name = "" + last_step;
 					this.step_states[name] = "Idle";
-					this.step_states_defs[name] = { label: entry.execute }
-					//this.step_states_defs[name] = { label: name }
+					//this.step_states_defs[name] = { label: entry.execute }
+					this.step_states_defs[name] = { label: name }
 				}
 			}
 			indigo_delete_property(this.devices[0], "SEQUENCE_STEP_STATE");
