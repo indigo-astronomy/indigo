@@ -503,6 +503,8 @@ var indigo_sequencer = {
 	loop_step: [],
 	loop_count: [],
 	sequence: null,
+	step_states: {},
+	step_states_defs: {},
 	wait_for_device: null,
 	wait_for_name: null,
 	wait_for_item: null,
@@ -515,6 +517,12 @@ var indigo_sequencer = {
 	use_solver: false,
 	paused: false,
 	capturing_batch: false,
+	
+	update_step_state: function(step, state) {
+		this.step_states["" + step] = state;
+		//indigo_error("update:" + JSON.stringify(this.step_states));
+		indigo_update_light_property(this.devices[0], "SEQUENCE_STEP_STATE", this.step_states, "Ok");
+	},
 	
 	on_update: function(property) {
 		if (this.sequence != null) {
@@ -541,13 +549,19 @@ var indigo_sequencer = {
 					this.wait_for_item = null;
 					this.wait_for_value = null;
 					this.wait_for_value_tolerance = null;
-					if (property.state == "Ok" || this.ignore_failure || this.failure_handling == 2) {
+					if (property.state == "Ok") {
 						this.ignore_failure = false;
+						indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
+					} else if (this.ignore_failure || this.failure_handling == 2) {
+						this.ignore_failure = false;
+						this.update_step_state(this.step, "Alert");
 						indigo_set_timer(indigo_sequencer_next_handler, 0);
 					} else if (this.failure_handling == 1) {
 						this.skip_to_recovery_point = true;
+						this.update_step_state(this.step, "Alert");
 						indigo_set_timer(indigo_sequencer_next_handler, 0);
 					} else if (property.state == "Alert") {
+						this.update_step_state(this.step, "Alert");
 						this.failure("Sequence failed");
 					}
 				}
@@ -562,6 +576,9 @@ var indigo_sequencer = {
 			}
 			if (property.name == null || property.name == "SEQUENCE_STATE") {
 				indigo_define_number_property(this.devices[0], "SEQUENCE_STATE", "Sequencer", "State", { STEP: this.step, PROGRESS: this.progress, PROGRESS_TOTAL: this.progress_total, EXPOSURE: this.exposure, EXPOSURE_TOTAL: this.exposure_total }, { STEP: { label: "Executing step", format: "%g", min: -1, max: 1000000, step: 1 }, PROGRESS: { label: "Progress", format: "%g", min: 0, max: 1000000, step: 1 }, PROGRESS_TOTAL: { label: "Progress total", format: "%g", min: 0, max: 1000000, step: 1 }, EXPOSURE: { label: "Exposure time elapsed", format: "%g", min: 0, max: 1000000, step: 1 }, EXPOSURE_TOTAL: { label: "Exposure time total", format: "%g", min: 0, max: 1000000, step: 1 }}, this.state, "RO");
+			}
+			if (property.name == null || property.name == "SEQUENCE_STEP_STATE") {
+				indigo_define_light_property(this.devices[0], "SEQUENCE_STEP_STATE", "Sequencer", "Step state", this.step_states, this.step_states_defs, "Ok");
 			}
 			if (property.name == null || property.name == "AGENT_ABORT_PROCESS") {
 				indigo_define_switch_property(this.devices[0], "AGENT_ABORT_PROCESS", "Sequencer", "Abort sequence", { ABORT: false }, { ABORT: { label: "Abort" }}, this.abort_state, "RW", "OneOfMany");
@@ -627,6 +644,10 @@ var indigo_sequencer = {
 					while (this.loop_level >= 0) {
 						indigo_delete_property(this.devices[0], "LOOP_" + this.loop_level--);
 					}
+					for (var key in this.step_states) {
+						this.step_states[key] = "Idle";
+					}
+					indigo_update_light_property(this.devices[0], "SEQUENCE_STEP_STATE", this.step_states, "Ok");
 					indigo_update_switch_property(this.devices[0], "SEQUENCE_RESET", { RESET: false }, "Ok");
 				}
 			}
@@ -681,20 +702,42 @@ var indigo_sequencer = {
 				indigo_delete_property(this.devices[0], "LOOP_" + this.loop_level--);
 			}
 			this.sequence = sequence;
+			var last_step = -1;
+			this.step_states = {};
+			this.step_states_defs = {};
+			for (var i = 0; i < sequence.length; i++) {
+				var entry = sequence[i];
+				if (entry.execute.startsWith("increment_loop(") || entry.execute.startsWith("exit_loop(")) {
+					continue;
+				}
+				//indigo_error(JSON.stringify(entry));
+				if (entry.step > last_step) {
+					last_step = entry.step;
+					var name = "" + last_step;
+					this.step_states[name] = "Idle";
+					this.step_states_defs[name] = { label: entry.execute }
+					//this.step_states_defs[name] = { label: name }
+				}
+			}
+			indigo_delete_property(this.devices[0], "SEQUENCE_STEP_STATE");
+			indigo_define_light_property(this.devices[0], "SEQUENCE_STEP_STATE", "Sequencer", "Step state", this.step_states, this.step_states_defs, "Ok");
 			indigo_send_message("Sequence started");
-			indigo_set_timer(indigo_sequencer_next_handler, 0);
+			indigo_set_timer(indigo_sequencer_next_handler, 0.1);
 		}
 	},
 
-	next: function() {
+	execute_next: function() {
 		if (this.paused) {
 			indigo_set_timer(indigo_sequencer_next_handler, 0.01);
 		} else if (this.sequence != null) {
+			var state = "Alert";
 			while (true) {
 				current = this.sequence[++this.index];
 				if (current == null || !this.skip_to_recovery_point || current.execute == "exit_loop()" || current.execute.startsWith("recovery_point(")) {
 					break;
 				}
+				this.update_step_state(current.step, state);
+				state = "Idle";
 			}
 			if (current != null) {
 				this.step = current.step;
@@ -703,6 +746,7 @@ var indigo_sequencer = {
 				this.capturing_batch = false;
 				indigo_log(current.execute);
 				indigo_update_number_property(this.devices[0], "SEQUENCE_STATE", { STEP: this.step, PROGRESS: this.progress, PROGRESS_TOTAL: this.progress_total, EXPOSURE: this.exposure, EXPOSURE_TOTAL: this.exposure_total }, this.state = "Busy");
+				this.update_step_state(this.step, "Busy");
 				eval("indigo_sequencer." + current.execute);
 			} else {
 				this.progress = this.progress_total;
@@ -739,7 +783,7 @@ var indigo_sequencer = {
 	exit_loop: function() {
 		indigo_delete_property(this.devices[0], "LOOP_" + this.loop_level--);
 		this.loop_count.pop();
-		this.loop_step.pop();
+		this.update_step_state(this.loop_step.pop(), "Ok");
 		indigo_set_timer(indigo_sequencer_next_handler, 0);
 	},
 	
@@ -748,7 +792,7 @@ var indigo_sequencer = {
 			this.skip_to_recovery_point = false;
 			indigo_send_message("Recovered from failure at recovery point #" + index);
 		}
-		indigo_set_timer(indigo_sequencer_next_handler, 0);
+		indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
 	},
 	
 	select_switch: function(device, property, item) {
@@ -789,7 +833,7 @@ var indigo_sequencer = {
 	
 	warning: function(message) {
 		indigo_send_message(message);
-		indigo_set_timer(indigo_sequencer_next_handler, 0);
+		indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
 	},
 	
 	failure: function(message) {
@@ -808,7 +852,7 @@ var indigo_sequencer = {
 	},
 	
 	wait: function(seconds) {
-		var result = indigo_set_timer(indigo_sequencer_next_handler, seconds);
+		var result = indigo_set_timer(indigo_sequencer_next_ok_handler, seconds);
 		if (result >= 0) {
 			this.wait_for_timer = result;
 			indigo_send_message("Suspended for " + seconds + " second(s)");
@@ -820,9 +864,9 @@ var indigo_sequencer = {
 	wait_until: function(time) {
 		var result;
 		if (typeof time === "number") {
-			result = indigo_set_timer_at(indigo_sequencer_next_handler, time);
+			result = indigo_set_timer_at(indigo_sequencer_next_ok_handler, time);
 		} else {
-			result = indigo_set_timer_at_utc(indigo_sequencer_next_handler, time);
+			result = indigo_set_timer_at_utc(indigo_sequencer_next_ok_handler, time);
 		}
 		if (result >= 0) {
 			this.wait_for_timer = result;
@@ -834,17 +878,17 @@ var indigo_sequencer = {
 
 	set_failure_handling: function(failure_handling) {
 		this.failure_handling = failure_handling;
-		indigo_set_timer(indigo_sequencer_next_handler, 0);
+		indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
 	},
 
 	evaluate: function(code) {
 		eval(code);
-		indigo_set_timer(indigo_sequencer_next_handler, 0);
+		indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
 	},
 
 	send_message: function(message) {
 		indigo_send_message(message);
-		indigo_set_timer(indigo_sequencer_next_handler, 0);
+		indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
 	},
 
 	load_config: function(name) {
@@ -895,17 +939,17 @@ var indigo_sequencer = {
 	
 	select_imager_agent: function(agent) {
 		this.devices[2] = agent;
-		indigo_set_timer(indigo_sequencer_next_handler, 0);
+		indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
 	},
 		
 	select_mount_agent: function(agent) {
 		this.devices[3] = agent;
-		indigo_set_timer(indigo_sequencer_next_handler, 0);
+		indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
 	},
 		
 	select_guider_agent: function(agent) {
 		this.devices[4] = agent;
-		indigo_set_timer(indigo_sequencer_next_handler, 0);
+		indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
 	},
 
 	select_device: function(agent, filter_property, device) {
@@ -1229,7 +1273,7 @@ var indigo_sequencer = {
 	
 	set_use_solver: function(use_solver) {
 		this.use_solver = use_solver;
-		indigo_set_timer(indigo_sequencer_next_handler, 0);
+		indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
 	},
 	
 	set_pause_after_transit: function(time) {
@@ -1339,7 +1383,7 @@ var indigo_sequencer = {
 		var property = indigo_devices[agent].AGENT_IMAGER_BATCH;
 		if (property != null) {
 			this.saved_batch = property.items;
-			indigo_set_timer(indigo_sequencer_next_handler, 0);
+			indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
 		} else {
 			this.failure("Can't save batch");
 		}
@@ -1491,7 +1535,7 @@ var indigo_sequencer = {
 				this.wait_for_device = agent;
 				this.wait_for_name =  "GPS_GEOGRAPHIC_COORDINATES";
 			} else {
-				indigo_set_timer(indigo_sequencer_next_handler, 0);
+				indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
 			}
 		} else {
 			this.failure("Can't wait for GPS");
@@ -1523,7 +1567,7 @@ var indigo_sequencer = {
 		var property = indigo_devices[agent].AGENT_START_PROCESS;
 		if (property != null) {
 			indigo_change_switch_property(agent, "AGENT_START_PROCESS", { GUIDING: true });
-			indigo_set_timer(indigo_sequencer_next_handler, 0);
+			indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
 		} else {
 			this.failure("Can't start guiding");
 		}
@@ -1595,7 +1639,7 @@ var indigo_sequencer = {
 		if (property != null) {
 			this.select_switch(agent, "ROTATOR_ON_POSITION_SET", "GOTO");
 		} else {
-			indigo_set_timer(indigo_sequencer_next_handler, 0);
+			this.failure("Can't set rotator position");
 		}
 	},
 
@@ -1615,7 +1659,7 @@ var indigo_sequencer = {
 		if (property != null) {
 			this.select_switch(agent, "FOCUSER_ON_POSITION_SET", "GOTO");
 		} else {
-			indigo_set_timer(indigo_sequencer_next_handler, 0);
+			this.failure("Can't set focuser position");
 		}
 	},
 
@@ -1632,7 +1676,13 @@ var indigo_sequencer = {
 
 function indigo_sequencer_next_handler() {
 	indigo_sequencer.wait_for_timer = null;
-	indigo_sequencer.next();
+	indigo_sequencer.execute_next();
+}
+
+function indigo_sequencer_next_ok_handler() {
+	indigo_sequencer.wait_for_timer = null;
+	indigo_sequencer.update_step_state(indigo_sequencer.step, "Ok");
+	indigo_sequencer.execute_next();
 }
 
 function indigo_sequencer_abort_handler() {
