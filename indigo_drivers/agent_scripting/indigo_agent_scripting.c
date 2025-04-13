@@ -731,7 +731,7 @@ static duk_ret_t update_light_property(duk_context *ctx) {
 					indigo_item *item = tmp->items + j;
 					if (!strcmp(item->name, name)) {
 						indigo_copy_name(tmp->items[j].name, name);
-						tmp->items[j].sw.value = require_state(ctx, -1);
+						tmp->items[j].light.value = require_state(ctx, -1);
 						break;
 					}
 				}
