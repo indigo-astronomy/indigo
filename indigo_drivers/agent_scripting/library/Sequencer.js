@@ -22,8 +22,8 @@ Sequence.prototype.repeat = function(count, block) {
 	}
 };
 
-Sequence.prototype.block = function() {
-	this.sequence.push({ execute: 'block()', step: this.step++, progress: this.progress++, exposure: this.exposure });
+Sequence.prototype.recovery_point = function() {
+	this.sequence.push({ execute: 'recovery_point()', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 
@@ -42,7 +42,7 @@ Sequence.prototype.continue_on_failure = function() {
 	this.sequence.push({ execute: 'set_failure_handling(2)', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.abort_block_on_failure = function() {
+Sequence.prototype.recover_on_failure = function() {
 	this.sequence.push({ execute: 'set_failure_handling(1)', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
@@ -506,7 +506,7 @@ var indigo_sequencer = {
 	wait_for_value_tolerance: null,
 	wait_for_timer: null,
 	ignore_failure: false,
-	skip_to_block: false,
+	skip_to_recovery_point: false,
 	failure_handling: 0,
 	use_solver: false,
 	paused: false,
@@ -541,7 +541,7 @@ var indigo_sequencer = {
 						this.ignore_failure = false;
 						indigo_set_timer(indigo_sequencer_next_handler, 0);
 					} else if (this.failure_handling == 1) {
-						this.skip_to_block = true;
+						this.skip_to_recovery_point = true;
 						indigo_set_timer(indigo_sequencer_next_handler, 0);
 					} else if (property.state == "Alert") {
 						this.failure("Sequence failed");
@@ -681,7 +681,7 @@ var indigo_sequencer = {
 		} else if (this.sequence != null) {
 			while (true) {
 				current = this.sequence[++this.index];
-				if (!this.skip_to_block || current.execute == "block()") {
+				if (!this.skip_to_recovery_point || current.execute == "recovery_point()") {
 					break;
 				}
 			}
@@ -723,9 +723,9 @@ var indigo_sequencer = {
 		indigo_set_timer(indigo_sequencer_next_handler, 0);
 	},
 	
-	block: function() {
-		if (this.skip_to_block) {
-			this.skip_to_block = false;
+	recovery_point: function() {
+		if (this.skip_to_recovery_point) {
+			this.skip_to_recovery_point = false;
 			indigo_send_message("Recovered from failure");
 		}
 		this.block_index++;
