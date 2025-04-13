@@ -22,6 +22,11 @@ Sequence.prototype.repeat = function(count, block) {
 	}
 };
 
+Sequence.prototype.block = function() {
+	this.sequence.push({ execute: 'block()', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
+
 Sequence.prototype.wait = function(seconds) {
 	this.sequence.push({ execute: 'wait(' + seconds + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
@@ -34,11 +39,15 @@ Sequence.prototype.wait_until = function(time) {
 };
 
 Sequence.prototype.continue_on_failure = function() {
-	this.sequence.push({ execute: 'set_ignore_failures(true)', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'set_failure_handling(2)', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
+Sequence.prototype.abort_block_on_failure = function() {
+	this.sequence.push({ execute: 'set_failure_handling(1)', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.abort_on_failure = function() {
-	this.sequence.push({ execute: 'set_ignore_failures(false)', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'set_failure_handling(0)', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.evaluate = function(code) {
@@ -488,6 +497,7 @@ var indigo_sequencer = {
 	exposure_total: 0,
 	index: -1,
 	loop_level: -1,
+	block_index: 1,
 	sequence: null,
 	wait_for_device: null,
 	wait_for_name: null,
@@ -496,7 +506,8 @@ var indigo_sequencer = {
 	wait_for_value_tolerance: null,
 	wait_for_timer: null,
 	ignore_failure: false,
-	ignore_failures: false,
+	skip_to_block: false,
+	failure_handling: 0,
 	use_solver: false,
 	paused: false,
 	capturing_batch: false,
@@ -526,8 +537,11 @@ var indigo_sequencer = {
 					this.wait_for_item = null;
 					this.wait_for_value = null;
 					this.wait_for_value_tolerance = null;
-					if (property.state == "Ok" || this.ignore_failure || this.ignore_failures) {
+					if (property.state == "Ok" || this.ignore_failure || this.failure_handling == 2) {
 						this.ignore_failure = false;
+						indigo_set_timer(indigo_sequencer_next_handler, 0);
+					} else if (this.failure_handling == 1) {
+						this.skip_to_block = true;
 						indigo_set_timer(indigo_sequencer_next_handler, 0);
 					} else if (property.state == "Alert") {
 						this.failure("Sequence failed");
@@ -639,6 +653,7 @@ var indigo_sequencer = {
 			indigo_send_message("Other sequence is executed");
 		} else {
 			this.index = -1;
+			this.block_index = 1;
 			this.step = 0;
 			this.progress = 0;
 			this.progress_total = progress_total;
@@ -664,7 +679,12 @@ var indigo_sequencer = {
 		if (this.paused) {
 			indigo_set_timer(indigo_sequencer_next_handler, 0.01);
 		} else if (this.sequence != null) {
-			current = this.sequence[++this.index];
+			while (true) {
+				current = this.sequence[++this.index];
+				if (!this.skip_to_block || current.execute == "block()") {
+					break;
+				}
+			}
 			if (current != null) {
 				this.step = current.step;
 				this.progress = current.progress;
@@ -700,6 +720,16 @@ var indigo_sequencer = {
 		
 	exit_loop: function() {
 		indigo_delete_property(this.devices[0], "LOOP_" + this.loop_level--);
+		indigo_set_timer(indigo_sequencer_next_handler, 0);
+	},
+	
+	block: function() {
+		if (this.skip_to_block) {
+			this.skip_to_block = false;
+			indigo_send_message("Recovered from failure");
+		}
+		this.block_index++;
+		indigo_send_message("Executing block #" + this.block_index);
 		indigo_set_timer(indigo_sequencer_next_handler, 0);
 	},
 	
@@ -784,8 +814,8 @@ var indigo_sequencer = {
 		}
 	},
 
-	set_ignore_failures: function(state) {
-		this.ignore_failures = state;
+	set_failure_handling: function(failure_handling) {
+		this.failure_handling = failure_handling;
 		indigo_set_timer(indigo_sequencer_next_handler, 0);
 	},
 
