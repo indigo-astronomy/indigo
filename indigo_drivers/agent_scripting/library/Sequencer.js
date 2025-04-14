@@ -1720,6 +1720,7 @@ function indigo_sequencer_next_ok_handler() {
 
 function indigo_sequencer_abort_handler() {
 	indigo_sequencer.abort();
+	indigo_sequencer.update_step_state(indigo_sequencer.step, "Alert");
 }
 
 if (indigo_event_handlers.indigo_sequencer == null) {
