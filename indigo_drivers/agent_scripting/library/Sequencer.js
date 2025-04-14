@@ -5,6 +5,7 @@ function Sequence(name) {
 	this.progress = 0;
 	this.exposure = 0;
 	this.sequence = [];
+	this.reset_loop_content_state = true;
 }
 
 Sequence.prototype.repeat = function(count, block) {
@@ -13,6 +14,9 @@ Sequence.prototype.repeat = function(count, block) {
 	var i = 0;
 	this.sequence.push({ execute: 'enter_loop()', step: loop, progress: this.progress, exposure: this.exposure });
 	while (i < count) {
+		if (this.reset_loop_content_state) {
+			this.sequence.push({ execute: 'reset_loop_content()', step: loop, progress: this.progress, exposure: this.exposure });
+		}
 		this.step = loop + 1;
 		this.recovery_point_index = recovery_point_index_backup;
 		block();
@@ -500,11 +504,11 @@ var indigo_sequencer = {
 	exposure_total: 0,
 	index: -1,
 	loop_level: -1,
-	loop_step: [],
-	loop_count: [],
+	loop_step: [ ],
+	loop_count: [ ],
 	sequence: null,
-	step_states: {},
-	step_states_defs: {},
+	step_states: { },
+	step_states_defs: { },
 	wait_for_device: null,
 	wait_for_name: null,
 	wait_for_item: null,
@@ -772,6 +776,22 @@ var indigo_sequencer = {
 		this.loop_count.push(0);
 		this.loop_step.push(this.step);
 		indigo_define_number_property(this.devices[0], "LOOP_" + this.loop_level, "Sequencer", "Loop " + this.loop_step[this.loop_level], { STEP: this.step, COUNT: this.loop_count[this.loop_level] }, { STEP: { label: "Loop at", format: "%g", min: 0, max: 10000, step: 1 }, COUNT: { label: "Itreations elapsed", format: "%g", min: 0, max: 10000, step: 1 }}, "Ok", "RO");
+		indigo_set_timer(indigo_sequencer_next_handler, 0);
+	},
+	
+	reset_loop_content: function() {
+		var nesting = 0;
+		for (var i = this.index + 1; i < this.sequence.length; i++) {
+			var next = this.sequence[i];
+			if (nesting == 0 && next.execute.startsWith("increment_loop(")) {
+				break;
+			} else if (next.execute == "enter_loop()") {
+				nesting++;
+			} else if (next.execute == "exit_loop()") {
+				nesting--;
+			}
+			this.step_states[next.step] = "Idle";
+		}
 		indigo_set_timer(indigo_sequencer_next_handler, 0);
 	},
 	
