@@ -721,7 +721,6 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 						DEVICE_PRIVATE_DATA->equatorial_coordinates_defined = false;
 						DEVICE_PRIVATE_DATA->show_show_negative_time_past_transit = false;
 						DEVICE_PRIVATE_DATA->mount_eq_coordinates_state = INDIGO_IDLE_STATE;
-						indigo_error("Selected mount changed: %s", property->items[i].label);
 					}
 					break;
 				}

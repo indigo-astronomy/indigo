@@ -313,7 +313,8 @@ Sequence.prototype.unpark = function() {
 };
 
 Sequence.prototype.slew = function(ra, dec) {
-	this.sequence.push({ execute: 'slew(' + ra + ',' + dec + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'set_coordinates(' + ra + ',' + dec + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'slew()', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.wait_for_gps = function() {
@@ -832,11 +833,11 @@ var indigo_sequencer = {
 	set_switch: function(device, property_name, item, value, state) {
 		var property = indigo_devices[device][property_name];
 		if (property == null) {
-			this.failure("There is no " + property_name + " on " + device);
+			this.failure("Failed to set '" + property_name + "' on '" + device + "'");
 			return;
 		}
 		if (property.state == "Busy") {
-			this.failure(device + " is busy");
+			this.failure("Failed to set '" + property.label + "' '" + device + "' is busy");
 			return;
 		}
 		var current_value = property.items[item];
@@ -851,12 +852,17 @@ var indigo_sequencer = {
 				}
 			}
 			if (!found) {
-				this.failure(property.name + " has no " + item);
+				if (!property_name.conta)
+				this.failure("Failed to set '" + item + "' on '" + property_name + "'");
 				return;
 			}
 		}
 		if (current_value) {
-			this.warning(property.item_defs[item].label + " is already selected");
+			if (!property_name.includes("_ON_")) {
+				this.warning("'" + property.item_defs[item].label + "' is already selected");
+			} else {
+				indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
+			}
 			return;
 		}
 		var items = { };
@@ -875,16 +881,52 @@ var indigo_sequencer = {
 		this.set_switch(device, property, item, false, state);
 	},
 	
-	change_texts: function(device, property, items) {
+	change_texts: function(device, property_name, items) {
+		var property = indigo_devices[device][property_name];
+		if (property == null) {
+			this.failure("There is no " + property_name + " on " + device);
+			return;
+		}
+		if (property.state == "Busy") {
+			this.failure(device + " is busy");
+			return;
+		}
+		for (var name in items) {
+			if (items[name] == undefined) {
+				delete items[name];
+			}
+		}
+		if (items.length == 0) {
+			indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
+			return;
+		}
 		this.wait_for_device = device;
-		this.wait_for_property = property;
-		indigo_change_text_property(device, property, items);
+		this.wait_for_property = property_name;
+		indigo_change_text_property(device, property_name, items);
 	},
 
-	change_numbers: function(device, property, items) {
+	change_numbers: function(device, property_name, items) {
+		var property = indigo_devices[device][property_name];
+		if (property == null) {
+			this.failure("There is no " + property_name + " on " + device);
+			return;
+		}
+		if (property.state == "Busy") {
+			this.failure(device + " is busy");
+			return;
+		}
+		for (var name in items) {
+			if (items[name] == undefined) {
+				delete items[name];
+			}
+		}
+		if (items.length == 0) {
+			indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
+			return;
+		}
 		this.wait_for_device = device;
-		this.wait_for_property = property;
-		indigo_change_number_property(device, property, items);
+		this.wait_for_property = property_name;
+		indigo_change_number_property(device, property_name, items);
 	},
 	
 	warning: function(message) {
@@ -1041,33 +1083,15 @@ var indigo_sequencer = {
 	},
 
 	set_gain: function(value) {
-		var agent = this.devices[2];
-		var property = indigo_devices[agent].CCD_GAIN;
-		if (property != null  && property.items.GAIN != undefined) {
-			this.change_numbers(agent, "CCD_GAIN", { GAIN: value });
-		} else {
-			this.failure("Can't set gain");
-		}
+		this.change_numbers(this.devices[2], "CCD_GAIN", { GAIN: value });
 	},
 
 	set_offset: function(value) {
-		var agent = this.devices[2];
-		var property = indigo_devices[agent].CCD_OFFSET;
-		if (property != null  && property.items.OFFSET != undefined) {
-			this.change_numbers(agent, "CCD_OFFSET", { OFFSET: value });
-		} else {
-			this.failure("Can't set offset");
-		}
+		this.change_numbers(this.devices[2], "CCD_OFFSET", { OFFSET: value });
 	},
 
 	set_gamma: function(value) {
-		var agent = this.devices[2];
-		var property = indigo_devices[agent].CCD_GAMMA;
-		if (property != null  && property.items.GAMMA != undefined) {
-			this.change_numbers(agent, "CCD_GAMMA", { GAMMA: value });
-		} else {
-			this.failure("Can't set gamma");
-		}
+		this.change_numbers(this.devices[2], "CCD_GAMMA", { GAMMA: value });
 	},
 
 	select_program: function(program) {
@@ -1091,17 +1115,10 @@ var indigo_sequencer = {
 	},
 	
 	set_temperature: function(temperature) {
-		var agent = this.devices[2];
-		var property = indigo_devices[agent].CCD_TEMPERATURE;
-		if (property != null) {
-			this.wait_for_item = "TEMPERATURE";
-			this.wait_for_value = temperature;
-			this.wait_for_value_tolerance = 1; // Allow large tolerance for the temperature. The property state will remain "Busy"
-			                                   // until temperature reaches the driver's tolerance.
-			this.change_numbers(agent, "CCD_TEMPERATURE", { TEMPERATURE: temperature });
-		} else {
-			this.failure("Can't set temperature");
-		}
+		this.wait_for_item = "TEMPERATURE";
+		this.wait_for_value = temperature;
+		this.wait_for_value_tolerance = 1; // Allow large tolerance for the temperature. The property state will remain "Busy" until temperature reaches the driver's tolerance.
+		this.change_numbers(this.devices[2], "CCD_TEMPERATURE", { TEMPERATURE: temperature });
 	},
 	
 	set_use_solver: function(use_solver) {
@@ -1110,23 +1127,11 @@ var indigo_sequencer = {
 	},
 	
 	set_pause_after_transit: function(time) {
-		var agent = this.devices[2];
-		var property = indigo_devices[agent].AGENT_IMAGER_BATCH;
-		if (property != null) {
-			this.change_numbers(agent, "AGENT_IMAGER_BATCH", { PAUSE_AFTER_TRANSIT: time });
-		} else {
-			this.failure("Can't set pause after transit");
-		}
+		this.change_numbers(this.devices[2], "AGENT_IMAGER_BATCH", { PAUSE_AFTER_TRANSIT: time });
 	},
 	
 	set_imager_dithering: function(skip_frames) {
-		var agent = this.devices[2];
-		var property = indigo_devices[agent].AGENT_IMAGER_BATCH;
-		if (property != null) {
-			this.change_numbers(agent, "AGENT_IMAGER_BATCH", { FRAMES_TO_SKIP_BEFORE_DITHER: skip_frames });
-		} else {
-			this.failure("Can't set dithering on imager side");
-		}
+		this.change_numbers(this.devices[2], "AGENT_IMAGER_BATCH", { FRAMES_TO_SKIP_BEFORE_DITHER: skip_frames });
 	},
 
 	set_fits_header: function(keyword, value) {
@@ -1138,20 +1143,7 @@ var indigo_sequencer = {
 	},
 	
 	set_guider_dithering: function(amount, time_limit) {
-		var agent = this.devices[4];
-		var property = indigo_devices[agent].AGENT_GUIDER_SETTINGS;
-		if (property != null) {
-			var items = { };
-			if (amount != null) {
-				items.DITHERING_MAX_AMOUNT = amount;
-			}
-			if (time_limit != null) {
-				items.DITHERING_SETTLE_TIME_LIMIT = time_limit;
-			}
-			this.change_numbers(agent, "AGENT_GUIDER_SETTINGS", items);
-		} else {
-			this.failure("Can't set dithering on imager side");
-		}
+		this.change_numbers(this.devices[4], "AGENT_GUIDER_SETTINGS", { DITHERING_MAX_AMOUNT: amount, DITHERING_SETTLE_TIME_LIMIT: time_limit});
 	},
 
 	set_imager_feature: function(name, value) {
@@ -1163,25 +1155,7 @@ var indigo_sequencer = {
 	},
 	
 	set_local_mode: function(directory, prefix, object) {
-		var agent = this.devices[2];
-		var items = { };
-		if (directory != null) {
-			items.DIR = directory;
-		}
-		if (prefix != null) {
-			if (!prefix.includes("XXX") && !prefix.includes("%"))
-				prefix += "_%3S";
-			items.PREFIX = prefix;
-		}
-		if (object != null) {
-			items.OBJECT = object;
-		}
-		var property = indigo_devices[agent].CCD_LOCAL_MODE;
-		if (property != null) {
-			this.change_texts(agent, "CCD_LOCAL_MODE", items);
-		} else {
-			this.failure("Can't set name template");
-		}
+		this.change_texts(this.devices[2], "CCD_LOCAL_MODE", { DIR: directory, PREFIX: prefix, OBJECT: object});
 	},
 
 	save_batch: function() {
@@ -1196,12 +1170,7 @@ var indigo_sequencer = {
 	},
 
 	restore_batch: function() {
-		var agent = this.devices[2];
-		if (this.saved_batch != null) {
-			this.change_numbers(agent, "AGENT_IMAGER_BATCH", this.saved_batch);
-		} else {
-			this.failure("Can't restore batch");
-		}
+		this.change_numbers(this.devices[2], "AGENT_IMAGER_BATCH", this.saved_batch);
 	},
 
 	set_upload_mode: function(mode) {
@@ -1209,22 +1178,11 @@ var indigo_sequencer = {
 	},
 
 	set_batch: function(count, exposure) {
-		var agent = this.devices[2];
-		var property = indigo_devices[agent].AGENT_IMAGER_BATCH;
-		if (property != null) {
-			var items = { };
-			if (count != null)
-				items.COUNT = count;
-			if (exposure != null)
-				items.EXPOSURE = exposure;
-			this.change_numbers(agent, "AGENT_IMAGER_BATCH", items);
-		} else {
-			this.failure("Can't set batch");
-		}
+		this.change_numbers(this.devices[2], "AGENT_IMAGER_BATCH", { COUNT: count, EXPOSURE: exposure});
 	},
 
 	capture_batch: function() {
-		this.capturing_batch = true; // TODO: verify
+		this.capturing_batch = true;
 		this.select_switch(this.devices[2], "AGENT_START_PROCESS", "EXPOSURE");
 	},
 
@@ -1249,16 +1207,12 @@ var indigo_sequencer = {
 		this.select_switch(this.devices[3], "MOUNT_PARK", "UNPARKED");
 	},
 	
-	slew: function(ra, dec) {  // TODO: verify
-		var agent = this.devices[3];
-		var coordinates_property = indigo_devices[agent].AGENT_MOUNT_EQUATORIAL_COORDINATES;
-		var process_property = indigo_devices[agent].AGENT_START_PROCESS;
-		if (coordinates_property != null && process_property) {
-			this.change_numbers(agent, "AGENT_MOUNT_EQUATORIAL_COORDINATES", { RA: ra, DEC: dec});
-			this.select_switch(agent, "AGENT_START_PROCESS", "SLEW");
-		} else {
-			this.failure("Can't slew the mount");
-		}
+	set_coordinates: function(ra, dec) {
+		this.change_numbers(this.devices[3], "AGENT_MOUNT_EQUATORIAL_COORDINATES", { RA: ra, DEC: dec});
+	},
+	
+	slew: function(ra, dec) {
+		this.select_switch(this.devices[3], "AGENT_START_PROCESS", "SLEW");
 	},
 	
 	park: function() {
@@ -1286,13 +1240,7 @@ var indigo_sequencer = {
 	},
 	
 	set_guider_exposure: function(exposure) {
-		var agent = this.devices[4];
-		var property = indigo_devices[agent].AGENT_GUIDER_SETTINGS;
-		if (property != null) {
-			this.change_numbers(agent, "AGENT_GUIDER_SETTINGS", { EXPOSURE: exposure });
-		} else {
-			this.failure("Can't set guider exposure");
-		}
+		this.change_numbers(this.devices[4], "AGENT_GUIDER_SETTINGS", { EXPOSURE: exposure });
 	},
 
 	calibrate_guiding: function() {
@@ -1312,23 +1260,11 @@ var indigo_sequencer = {
 	},
 	
 	set_solver_exposure: function(exposure) {
-		var agent = this.devices[5];
-		var property = indigo_devices[agent].AGENT_PLATESOLVER_EXPOSURE;
-		if (property != null) {
-			this.change_numbers(agent, "AGENT_PLATESOLVER_EXPOSURE", { EXPOSURE: exposure });
-		} else {
-			this.failure("Can't set solver exposure");
-		}
+		this.change_numbers(this.devices[5], "AGENT_PLATESOLVER_EXPOSURE", { EXPOSURE: exposure });
 	},
 
 	set_solver_target: function(ra, dec) {
-		var agent = this.devices[5];
-		var property = indigo_devices[agent].AGENT_PLATESOLVER_GOTO_SETTINGS;
-		if (property != null) {
-			this.change_numbers(agent, "AGENT_PLATESOLVER_GOTO_SETTINGS", { RA: ra, DEC: dec });
-		} else {
-			this.failure("Can't set solver target");
-		}
+		this.change_numbers(this.devices[5], "AGENT_PLATESOLVER_GOTO_SETTINGS", { RA: ra, DEC: dec });
 	},
 
 	precise_goto: function() {
@@ -1344,13 +1280,7 @@ var indigo_sequencer = {
 	},
 
 	set_rotator_angle: function(angle) {
-		var agent = this.devices[3];
-		property = indigo_devices[agent].ROTATOR_POSITION;
-		if (property != null  && property.items.POSITION != undefined) {
-			this.change_numbers(agent, "ROTATOR_POSITION", { POSITION: angle });
-		} else {
-			this.failure("Can't set rotator angle");
-		}
+		this.change_numbers(this.devices[3], "ROTATOR_POSITION", { POSITION: angle });
 	},
 
 	set_focuser_goto: function() {
@@ -1358,13 +1288,7 @@ var indigo_sequencer = {
 	},
 
 	set_focuser_position: function(position) {
-		var agent = this.devices[2];
-		property = indigo_devices[agent].FOCUSER_POSITION;
-		if (property != null  && property.items.POSITION != undefined) {
-			this.change_numbers(agent, "FOCUSER_POSITION", { POSITION: position });
-		} else {
-			this.failure("Can't set focuser position");
-		}
+		this.change_numbers( this.devices[2], "FOCUSER_POSITION", { POSITION: position });
 	}
 };
 
