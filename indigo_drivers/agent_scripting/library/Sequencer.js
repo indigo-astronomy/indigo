@@ -1,3 +1,5 @@
+// MARK: Sequence class
+
 function Sequence(name) {
 	this.name = name == undefined ? "" : name;
 	this.step = 0;
@@ -223,7 +225,6 @@ Sequence.prototype.capture_batch = function(p1, p2, p3) {
 	var name_template = null;
 	var count = 0;
 	var exposure = 0;
-
 	if (typeof p1 === 'string') {
 		name_template = p1;
 		count = p2;
@@ -232,14 +233,12 @@ Sequence.prototype.capture_batch = function(p1, p2, p3) {
 		count = p1;
 		exposure = p2;
 	}
-
 	if (arguments.length === 3 && typeof p1 === 'string') {
 		this.sequence.push({ execute: 'set_local_mode(null, "' + name_template + '", null)', step: this.step, progress: this.progress++, exposure: this.exposure });
 	}
 	this.sequence.push({ execute: 'set_batch(' + count + ',' + exposure + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'set_upload_mode("BOTH")', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'capture_batch()', step: this.step++, progress: this.progress++, exposure: this.exposure });
-
 	this.exposure += exposure * count;
 };
 
@@ -249,7 +248,6 @@ Sequence.prototype.capture_stream = function(p1, p2, p3) {
 	var name_template = null;
 	var count = 0;
 	var exposure = 0;
-
 	if (typeof p1 === 'string') {
 		name_template = p1;
 		count = p2;
@@ -258,14 +256,12 @@ Sequence.prototype.capture_stream = function(p1, p2, p3) {
 		count = p1;
 		exposure = p2;
 	}
-
 	if (arguments.length === 3 && typeof p1 === 'string') {
 		this.sequence.push({ execute: 'set_local_mode(null, "' + name_template + '", null)', step: this.step, progress: this.progress++, exposure: this.exposure });
 	}
 	this.sequence.push({ execute: 'set_stream(' + count + ',' + exposure + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'set_upload_mode("BOTH")', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'capture_stream()', step: this.step++, progress: this.progress++, exposure: this.exposure });
-
 	this.exposure += exposure * count;
 };
 
@@ -328,7 +324,6 @@ Sequence.prototype.calibrate_guiding = function(exposure) {
 	this.sequence.push({ execute: 'calibrate_guiding()', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-
 // TO BE REMOVED IN FUTURE RELEASE - USE calibrate_guiding() INSTEAD
 Sequence.prototype.calibrate_guiding_exposure = function(exposure) {
 	this.sequence.push({ execute: 'set_guider_exposure(' + exposure + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
@@ -356,7 +351,6 @@ Sequence.prototype.clear_guider_selection = function() {
 	this.sequence.push({ execute: 'clear_guider_selection()', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-
 Sequence.prototype.sync_center = function(exposure) {
 	this.sequence.push({ execute: 'set_solver_exposure(' + exposure + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'sync_center()', step: this.step++, progress: this.progress++, exposure: this.exposure });
@@ -380,17 +374,10 @@ Sequence.prototype.start = function(imager_agent, mount_agent, guider_agent) {
 	indigo_sequencer.start(this.sequence, this.name, this.progress, this.exposure);
 };
 
-var indigo_flipper = {
-	devices: [
-		"Scripting Agent",
-		"Configuration Agent",
-		"Imager Agent",
-		"Mount Agent",
-		"Guider Agent",
-		"Astrometry Agent",
-		"Server"
-	],
+// MARK: Flipper object
 
+var indigo_flipper = {
+	devices: [ "Scripting Agent", "Configuration Agent", "Imager Agent", "Mount Agent", "Guider Agent", "Astrometry Agent", "Server" ],
 	waiting_for_transit: false,
 	waiting_for_slew: false,
 	waiting_for_sync_and_center: false,
@@ -482,17 +469,10 @@ var indigo_flipper = {
 	}
 };
 
-var indigo_sequencer = {
-	devices: [
-		"Scripting Agent",
-		"Configuration Agent",
-		"Imager Agent",
-		"Mount Agent",
-		"Guider Agent",
-		"Astrometry Agent",
-		"Server"
-	],
+// MARK: Sequencer object
 
+var indigo_sequencer = {
+	devices: [ "Scripting Agent", "Configuration Agent", "Imager Agent", "Mount Agent", "Guider Agent", "Astrometry Agent", "Server" ],
 	name: "",
 	sequence_state: "Ok",
 	abort_state: "Ok",
@@ -525,7 +505,6 @@ var indigo_sequencer = {
 	
 	update_step_state: function(step, state) {
 		this.step_states["" + step] = state;
-		//indigo_error("update:" + JSON.stringify(this.step_states));
 		indigo_update_light_property(this.devices[0], "SEQUENCE_STEP_STATE", this.step_states, "Ok");
 	},
 	
@@ -1292,6 +1271,8 @@ var indigo_sequencer = {
 	}
 };
 
+// MARK: Timers callback functions
+
 function indigo_sequencer_next_handler() {
 	indigo_sequencer.wait_for_timer = null;
 	indigo_sequencer.execute_next();
@@ -1306,6 +1287,8 @@ function indigo_sequencer_next_ok_handler() {
 function indigo_sequencer_abort_handler() {
 	indigo_sequencer.abort();
 }
+
+// MARK: Main code
 
 if (indigo_event_handlers.indigo_sequencer == null) {
 	indigo_send_message("Sequencer installed");
