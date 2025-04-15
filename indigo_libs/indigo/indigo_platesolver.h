@@ -80,6 +80,9 @@ extern "C" {
 #define AGENT_PLATESOLVER_START_CALCULATE_PA_ERROR_ITEM		(AGENT_START_PROCESS_PROPERTY->items+4)
 #define AGENT_PLATESOLVER_START_RECALCULATE_PA_ERROR_ITEM	(AGENT_START_PROCESS_PROPERTY->items+5)
 
+#define AGENT_ABORT_PROCESS_PROPERTY					(INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->agent_abort_process_property)
+#define AGENT_ABORT_PROCESS_ITEM      				(AGENT_ABORT_PROCESS_PROPERTY->items+0)
+
 #define AGENT_PLATESOLVER_PA_STATE_PROPERTY				(INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->polar_alignment_state_property)
 #define AGENT_PLATESOLVER_PA_STATE_ITEM					(AGENT_PLATESOLVER_PA_STATE_PROPERTY->items+0)
 #define AGENT_PLATESOLVER_PA_STATE_DEC_DRIFT_2_ITEM		(AGENT_PLATESOLVER_PA_STATE_PROPERTY->items+1)
@@ -140,6 +143,7 @@ typedef struct {
 	indigo_property *wcs_property;
 	indigo_property *sync_mode_property;
 	indigo_property *start_process_property;
+	indigo_property *agent_abort_process_property;
 	indigo_property *abort_property;
 	indigo_property *image_property;
 	indigo_property *image_output_property;

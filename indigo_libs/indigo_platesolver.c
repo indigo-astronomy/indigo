@@ -39,6 +39,8 @@
 #include <indigo/indigo_align.h>
 #include <indigo/indigo_platesolver.h>
 
+// TODO: remove obsoleted AGENT_PLATESOLVER_SYNC and AGENT_PLATESOLVER_ABORT properties in future
+
 // -------------------------------------------------------------------------------- INDIGO agent device implementation
 
 static bool validate_related_agent(indigo_device *device, indigo_property *info_property, int mask) {
@@ -766,7 +768,7 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		strcpy(AGENT_PLATESOLVER_WCS_WIDTH_ITEM->number.format, "%m");
 		strcpy(AGENT_PLATESOLVER_WCS_HEIGHT_ITEM->number.format, "%m");
 		strcpy(AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.format, "%m");
-		// -------------------------------------------------------------------------------- SYNC property /* OBSOLETED */
+		// -------------------------------------------------------------------------------- AGENT_PLATESOLVER_SYNC property /* OBSOLETED */
 		AGENT_PLATESOLVER_SYNC_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_PLATESOLVER_SYNC_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Sync mode (obsolete)", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 5);
 		if (AGENT_PLATESOLVER_SYNC_PROPERTY == NULL)
 			return INDIGO_FAILED;
@@ -775,7 +777,7 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		indigo_init_switch_item(AGENT_PLATESOLVER_SYNC_CENTER_ITEM, AGENT_PLATESOLVER_SYNC_CENTER_ITEM_NAME, "Sync and center", false);
 		indigo_init_switch_item(AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM, AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM_NAME, "Calclulate polar alignment error", false);
 		indigo_init_switch_item(AGENT_PLATESOLVER_SYNC_RECALCULATE_PA_ERROR_ITEM, AGENT_PLATESOLVER_SYNC_RECALCULATE_PA_ERROR_ITEM_NAME, "Recalclulate polar alignment error", false);
-		// -------------------------------------------------------------------------------- AGENT_START_PROCESS property /* replaces SYNC */
+		// -------------------------------------------------------------------------------- AGENT_START_PROCESS property /* replaces AGENT_PLATESOLVER_SYNC */
 		AGENT_START_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_START_PROCESS_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Start process", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 6);
 		if (AGENT_PLATESOLVER_SYNC_PROPERTY == NULL)
 			return INDIGO_FAILED;
@@ -785,13 +787,18 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		indigo_init_switch_item(AGENT_PLATESOLVER_START_PRECISE_GOTO_ITEM, AGENT_PLATESOLVER_START_PRECISE_GOTO_ITEM_NAME, "Precise GOTO", false);
 		indigo_init_switch_item(AGENT_PLATESOLVER_START_CALCULATE_PA_ERROR_ITEM, AGENT_PLATESOLVER_START_CALCULATE_PA_ERROR_ITEM_NAME, "Calclulate polar alignment error", false);
 		indigo_init_switch_item(AGENT_PLATESOLVER_START_RECALCULATE_PA_ERROR_ITEM, AGENT_PLATESOLVER_START_RECALCULATE_PA_ERROR_ITEM_NAME, "Recalclulate polar alignment error", false);
+		// -------------------------------------------------------------------------------- AGENT_ABORT_PROCESS property /* replaces AGENT_PLATESOLVER_ABORT */
+		AGENT_ABORT_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_ABORT_PROCESS_PROPERTY_NAME, "Agent", "Abort process", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
+		if (AGENT_ABORT_PROCESS_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(AGENT_ABORT_PROCESS_ITEM, AGENT_ABORT_PROCESS_ITEM_NAME, "Abort process", false);
 		// -------------------------------------------------------------------------------- AGENT_PLATESOLVER_SOLVE_IMAGES
 		AGENT_PLATESOLVER_SOLVE_IMAGES_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_PLATESOLVER_SOLVE_IMAGES_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Solve images from related agents", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (AGENT_PLATESOLVER_SOLVE_IMAGES_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(AGENT_PLATESOLVER_SOLVE_IMAGES_ENABLED_ITEM, AGENT_PLATESOLVER_SOLVE_IMAGES_ENABLED_ITEM_NAME, "Enabled", true);
 		indigo_init_switch_item(AGENT_PLATESOLVER_SOLVE_IMAGES_DISABLED_ITEM, AGENT_PLATESOLVER_SOLVE_IMAGES_DISABLED_ITEM_NAME, "Disabled", false);
-		// -------------------------------------------------------------------------------- _SETTINGS property
+		// -------------------------------------------------------------------------------- SETTINGS property
 		AGENT_PLATESOLVER_EXPOSURE_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_PLATESOLVER_EXPOSURE_SETTINGS_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Exposure settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (AGENT_PLATESOLVER_EXPOSURE_SETTINGS_PROPERTY == NULL)
 			return INDIGO_FAILED;
@@ -839,12 +846,12 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 			return INDIGO_FAILED;
 		indigo_init_sexagesimal_number_item(AGENT_PLATESOLVER_GOTO_SETTINGS_RA_ITEM, AGENT_PLATESOLVER_GOTO_SETTINGS_RA_ITEM_NAME, "Right ascension (0 to 24 hrs)", 0, 24, 0, 0);
 		indigo_init_sexagesimal_number_item(AGENT_PLATESOLVER_GOTO_SETTINGS_DEC_ITEM, AGENT_PLATESOLVER_GOTO_SETTINGS_DEC_ITEM_NAME, "Declination (-90 to 90°)", -90, 90, 0, 90);
-		// -------------------------------------------------------------------------------- _MOUNT_SETTLE_TIME property
+		// -------------------------------------------------------------------------------- MOUNT_SETTLE_TIME property
 		AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Mount settle time", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_ITEM, AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_ITEM_NAME, "Settle time (s)", 0, 60, 1, 3);
-		// -------------------------------------------------------------------------------- ABORT property
+		// -------------------------------------------------------------------------------- AGENT_PLATESOLVER_ABORT property /* OBSOLETED */
 		AGENT_PLATESOLVER_ABORT_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_PLATESOLVER_ABORT_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Abort", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
 		if (AGENT_PLATESOLVER_ABORT_PROPERTY == NULL)
 			return INDIGO_FAILED;
@@ -880,6 +887,7 @@ indigo_result indigo_platesolver_enumerate_properties(indigo_device *device, ind
 	indigo_define_matching_property(AGENT_PLATESOLVER_WCS_PROPERTY);
 	indigo_define_matching_property(AGENT_PLATESOLVER_SYNC_PROPERTY);
 	indigo_define_matching_property(AGENT_START_PROCESS_PROPERTY);
+	indigo_define_matching_property(AGENT_ABORT_PROCESS_PROPERTY);
 	indigo_define_matching_property(AGENT_PLATESOLVER_SOLVE_IMAGES_PROPERTY);
 	indigo_define_matching_property(AGENT_PLATESOLVER_EXPOSURE_SETTINGS_PROPERTY);
 	indigo_define_matching_property(AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY);
@@ -977,6 +985,15 @@ indigo_result indigo_platesolver_change_property(indigo_device *device, indigo_c
 			indigo_set_timer(device, 0, start_process, NULL);
 		}
 		return INDIGO_OK;
+	} else if (indigo_property_match(AGENT_ABORT_PROCESS_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- AGENT_ABORT_PROCESS
+		indigo_property_copy_values(AGENT_ABORT_PROCESS_PROPERTY, property, false);
+		if (AGENT_ABORT_PROCESS_ITEM->sw.value) {
+			indigo_async((void *(*)(void *))abort_process, device);
+			AGENT_ABORT_PROCESS_ITEM->sw.value = false;
+			AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
+		}
 	} else if (indigo_property_match(AGENT_PLATESOLVER_IMAGE_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- AGENT_PLATESOLVER_IMAGE
 		indigo_property_copy_values(AGENT_PLATESOLVER_IMAGE_PROPERTY, property, false);
@@ -1019,6 +1036,7 @@ indigo_result indigo_platesolver_device_detach(indigo_device *device) {
 	indigo_release_property(AGENT_PLATESOLVER_WCS_PROPERTY);
 	indigo_release_property(AGENT_PLATESOLVER_SYNC_PROPERTY);
 	indigo_release_property(AGENT_START_PROCESS_PROPERTY);
+	indigo_release_property(AGENT_ABORT_PROCESS_PROPERTY);
 	indigo_release_property(AGENT_PLATESOLVER_SOLVE_IMAGES_PROPERTY);
 	indigo_release_property(AGENT_PLATESOLVER_EXPOSURE_SETTINGS_PROPERTY);
 	indigo_release_property(AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY);
