@@ -841,18 +841,22 @@ var indigo_sequencer = {
 		}
 		var current_value = property.items[item];
 		if (current_value == null) {
+			var found = false;
 			for (var name in property.item_defs) {
 				if (property.item_defs[name].label === item) {
 					item = name;
 					current_value = property.items[item];
+					found = true;
 					break;
 				}
 			}
-			this.failure(property.name + " has no " + item);
-			return;
+			if (!found) {
+				this.failure(property.name + " has no " + item);
+				return;
+			}
 		}
 		if (current_value) {
-			this.warning(item + " is already selected");
+			this.warning(property.item_defs[item].label + " is already selected");
 			return;
 		}
 		var items = { };
