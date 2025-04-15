@@ -870,12 +870,15 @@ var indigo_sequencer = {
 			this.failure(device + " is busy");
 			return;
 		}
+		var empty = true;
 		for (var name in items) {
 			if (items[name] == undefined) {
 				delete items[name];
+			} else {
+				empty = false;
 			}
 		}
-		if (items.length == 0) {
+		if (empty) {
 			indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
 			return;
 		}
@@ -894,12 +897,15 @@ var indigo_sequencer = {
 			this.failure(device + " is busy");
 			return;
 		}
+		var empty = true;
 		for (var name in items) {
 			if (items[name] == undefined) {
 				delete items[name];
+			} else {
+				empty = false;
 			}
 		}
-		if (items.length == 0) {
+		if (empty) {
 			indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
 			return;
 		}
