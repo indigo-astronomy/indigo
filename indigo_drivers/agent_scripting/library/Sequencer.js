@@ -510,7 +510,8 @@ var indigo_sequencer = {
 	step_states: { },
 	step_states_defs: { },
 	wait_for_device: null,
-	wait_for_name: null,
+	wait_for_property: null,
+	wait_for_property_state: "Ok",
 	wait_for_item: null,
 	wait_for_value: null,
 	wait_for_value_tolerance: null,
@@ -533,7 +534,7 @@ var indigo_sequencer = {
 			if (property.device == this.devices[2] && property.name == "AGENT_PAUSE_PROCESS" && property.state == "Busy" && property.items.PAUSE_AFTER_TRANSIT) {
 				indigo_flipper.devices = this.devices;
 				indigo_flipper.start(this.use_solver);
-			} else if (property.device == this.wait_for_device && property.name == this.wait_for_name) {
+			} else if (property.device == this.wait_for_device && property.name == this.wait_for_property) {
 				if (this.wait_for_item != null && this.wait_for_value != null) {
 					if (this.wait_for_value_tolerance != null) {
 						diff = Math.abs(property.items[this.wait_for_item] - this.wait_for_value);
@@ -547,18 +548,23 @@ var indigo_sequencer = {
 					}
 				}
 				indigo_log("wait_for '" + property.device + "', '" + property.name + "' -> " + property.state);
-				if (property.state != "Busy") {
+				if (property.state == "Alert") {
 					this.wait_for_device = null;
-					this.wait_for_name = null;
+					this.wait_for_property = null;
+					this.wait_for_property_state = "Ok";
 					this.wait_for_item = null;
 					this.wait_for_value = null;
 					this.wait_for_value_tolerance = null;
-					if (property.state == "Ok") {
-						this.ignore_failure = false;
-						indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
-					} else if (property.state == "Alert") {
-						this.failure(property.name + " setting failed");
-					}
+					this.failure(property.name + " reports alert");
+				} else if (property.state == this.wait_for_property_state) {
+					this.wait_for_device = null;
+					this.wait_for_property = null;
+					this.wait_for_property_state = "Ok";
+					this.wait_for_item = null;
+					this.wait_for_value = null;
+					this.wait_for_value_tolerance = null;
+					this.ignore_failure = false;
+					indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
 				}
 			}
 		}
@@ -651,7 +657,8 @@ var indigo_sequencer = {
 	
 	abort: function() {
 		this.wait_for_device = null;
-		this.wait_for_name = null;
+		this.wait_for_property = null;
+		this.wait_for_property_state = "Ok";
 		this.wait_for_item = null;
 		this.wait_for_value = null;
 		this.wait_for_value_tolerance = null;
@@ -662,14 +669,19 @@ var indigo_sequencer = {
 		}
 		for (var device in this.devices) {
 			if (device != 0) {
-				indigo_change_switch_property(this.devices[device], "AGENT_ABORT_PROCESS", { "ABORT": true });
+				if (device.startsWith("Astrometry Agent")) {
+					indigo_change_switch_property(this.devices[device], "AGENT_PLATESOLVER_ABORT", { "ABORT": true });
+				} else {
+					indigo_change_switch_property(this.devices[device], "AGENT_ABORT_PROCESS", { "ABORT": true });
+				}
 			}
 		}
 		if (this.wait_for_timer != null) {
 			indigo_cancel_timer(this.wait_for_timer);
 			this.wait_for_timer = null;
 		}
-		indigo_update_number_property(this.devices[0], "SEQUENCE_STATE", { STEP: this.step, PROGRESS: this.progress, PROGRESS_TOTAL: this.progress_total, EXPOSURE: this.exposure, EXPOSURE_TOTAL: this.exposure_total }, this.sequence_state = "Alert", "Sequence aborted at step " + this.step);
+		indigo_sequencer.update_step_state(indigo_sequencer.step, "Alert");
+		indigo_update_number_property(this.devices[0], "SEQUENCE_STATE", { STEP: this.step, PROGRESS: this.progress, PROGRESS_TOTAL: this.progress_total, EXPOSURE: this.exposure, EXPOSURE_TOTAL: this.exposure_total }, this.sequence_state = "Alert", "Sequence aborted");
 		indigo_update_switch_property(this.devices[0], "AGENT_ABORT_PROCESS", { ABORT: false }, this.abort_state = "Ok");
 	},
 	
@@ -818,11 +830,12 @@ var indigo_sequencer = {
 		indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
 	},
 	
-	select_switch: function(device, property, item) {
+	select_switch: function(device, property, item, state) {
 		var items = { };
 		items[item] = true;
 		this.wait_for_device = device;
-		this.wait_for_name = property;
+		this.wait_for_property = property;
+		this.wait_for_property_state = state != null ? state : "Ok";
 		indigo_change_switch_property(device, property, items);
 	},
 	
@@ -830,7 +843,7 @@ var indigo_sequencer = {
 		var items = { };
 		items[item] = value;
 		this.wait_for_device = device;
-		this.wait_for_name = property;
+		this.wait_for_property = property;
 		indigo_change_switch_property(device, property, items);
 	},
 
@@ -838,19 +851,19 @@ var indigo_sequencer = {
 		var items = { };
 		items[item] = false;
 		this.wait_for_device = device;
-		this.wait_for_name = property;
+		this.wait_for_property = property;
 		indigo_change_switch_property(device, property, items);
 	},
 	
 	change_texts: function(device, property, items) {
 		this.wait_for_device = device;
-		this.wait_for_name = property;
+		this.wait_for_property = property;
 		indigo_change_text_property(device, property, items);
 	},
 
 	change_numbers: function(device, property, items) {
 		this.wait_for_device = device;
-		this.wait_for_name = property;
+		this.wait_for_property = property;
 		indigo_change_number_property(device, property, items);
 	},
 	
@@ -871,7 +884,8 @@ var indigo_sequencer = {
 			indigo_set_timer(indigo_sequencer_next_handler, 0);
 		} else {
 			this.wait_for_device = null;
-			this.wait_for_name = null;
+			this.wait_for_property = null;
+			this.wait_for_property_state = "Ok";
 			this.wait_for_item = null;
 			this.wait_for_value = null;
 			this.wait_for_value_tolerance = null;
@@ -1566,7 +1580,7 @@ var indigo_sequencer = {
 			if (property.state == "Busy") {
 				indigo_send_message("Waiting for GPS");
 				this.wait_for_device = agent;
-				this.wait_for_name =  "GPS_GEOGRAPHIC_COORDINATES";
+				this.wait_for_property =  "GPS_GEOGRAPHIC_COORDINATES";
 			} else {
 				indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
 			}
@@ -1599,8 +1613,7 @@ var indigo_sequencer = {
 		var agent = this.devices[4];
 		var property = indigo_devices[agent].AGENT_START_PROCESS;
 		if (property != null) {
-			indigo_change_switch_property(agent, "AGENT_START_PROCESS", { GUIDING: true });
-			indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
+			this.select_switch(agent, "AGENT_START_PROCESS", "GUIDING", "Busy");
 		} else {
 			this.failure("Can't start guiding");
 		}
@@ -1720,7 +1733,6 @@ function indigo_sequencer_next_ok_handler() {
 
 function indigo_sequencer_abort_handler() {
 	indigo_sequencer.abort();
-	indigo_sequencer.update_step_state(indigo_sequencer.step, "Alert");
 }
 
 if (indigo_event_handlers.indigo_sequencer == null) {
