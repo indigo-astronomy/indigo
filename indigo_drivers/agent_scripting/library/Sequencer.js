@@ -33,7 +33,6 @@ Sequence.prototype.recovery_point = function() {
 	this.sequence.push({ execute: 'recovery_point(' + (++this.recovery_point_index) + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-
 Sequence.prototype.wait = function(seconds) {
 	this.sequence.push({ execute: 'wait(' + seconds + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
@@ -830,29 +829,46 @@ var indigo_sequencer = {
 		indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
 	},
 	
-	select_switch: function(device, property, item, state) {
-		var items = { };
-		items[item] = true;
-		this.wait_for_device = device;
-		this.wait_for_property = property;
-		this.wait_for_property_state = state != null ? state : "Ok";
-		indigo_change_switch_property(device, property, items);
-	},
-	
-	set_switch: function(device, property, item, value) {
+	set_switch: function(device, property_name, item, value, state) {
+		var property = indigo_devices[device][property_name];
+		if (property == null) {
+			this.failure("There is no " + property_name + " on " + device);
+			return;
+		}
+		if (property.state == "Busy") {
+			this.failure(device + " is busy");
+			return;
+		}
+		var current_value = property.items[item];
+		if (current_value == null) {
+			for (var name in property.item_defs) {
+				if (property.item_defs[name].label === item) {
+					item = name;
+					current_value = property.items[item];
+					break;
+				}
+			}
+			this.failure(property.name + " has no " + item);
+			return;
+		}
+		if (current_value) {
+			this.warning(item + " is already selected");
+			return;
+		}
 		var items = { };
 		items[item] = value;
 		this.wait_for_device = device;
-		this.wait_for_property = property;
-		indigo_change_switch_property(device, property, items);
+		this.wait_for_property = property_name;
+		this.wait_for_property_state = state != null ? state : "Ok";
+		indigo_change_switch_property(device, property_name, items);
 	},
 
+	select_switch: function(device, property, item, state) {
+		this.set_switch(device, property, item, true, state);
+	},
+	
 	deselect_switch: function(device, property, item) {
-		var items = { };
-		items[item] = false;
-		this.wait_for_device = device;
-		this.wait_for_property = property;
-		indigo_change_switch_property(device, property, items);
+		this.set_switch(device, property, item, false, state);
 	},
 	
 	change_texts: function(device, property, items) {
@@ -940,49 +956,15 @@ var indigo_sequencer = {
 	},
 
 	load_config: function(name) {
-		var agent = this.devices[1];
-		var property = indigo_devices[agent].AGENT_CONFIG_LOAD;
-		if (property != null && property.items[name] != null) {
-			this.select_switch(agent, "AGENT_CONFIG_LOAD", name);
-		} else {
-			this.failure("Can't load configuration " + name);
-		}
+		this.select_switch(this.devices[1], "AGENT_CONFIG_LOAD", name);
 	},
 
 	load_driver: function(name) {
-		var property = indigo_devices["Server"].DRIVERS;
-		if (property != null) {
-			var item = property.items[name];
-			if (item != null) {
-				if (property.items[name]) {
-					this.warning(name + " is already loaded");
-				} else {
-					this.select_switch("Server", "DRIVERS", name);
-				}
-			} else {
-				this.failure("Can't load " + name);
-			}
-		} else {
-			this.failure("Can't load drivers");
-		}
+		this.select_switch("Server", "DRIVERS", name);
 	},
 	
 	unload_driver: function(name) {
-		var property = indigo_devices["Server"].DRIVERS;
-		if (property != null) {
-			var item = property.items[name];
-			if (item != null) {
-				if (property.items[name]) {
-					this.deselect_switch("Server", "DRIVERS", name);
-				} else {
-					this.warning(name + " is not loaded");
-				}
-			} else {
-				this.failure("Can't unload " + name);
-			}
-		} else {
-			this.failure("Can't unload drivers");
-		}
+		this.deselect_switch("Server", "DRIVERS", name);
 	},
 	
 	select_imager_agent: function(agent) {
@@ -1001,32 +983,9 @@ var indigo_sequencer = {
 	},
 
 	select_device: function(agent, filter_property, device) {
-		if (device == undefined)
-			device = "NONE";
-		var property = indigo_devices[agent][filter_property];
-		if (property != null) {
-			for (var name in property.item_defs) {
-				if (property.item_defs[name].label == device) {
-					if (property.items[name]) {
-						this.warning("'" + device + "' is already selected");
-					} else {
-						this.select_switch(agent, filter_property, name);
-					}
-					return;
-				}
-			}
-			if (property.items[device] != undefined) {
-				if (property.items[device]) {
-					this.warning("'" + device + "' is already selected");
-				} else {
-					this.select_switch(agent, filter_property, device);
-				}
-			} else {
-				this.failure("Device '" + device + "' is not available");
-			}
-		} else {
-			this.failure("Can't select device '" + drvice + "'");
-		}
+		if (agent == undefined)
+			agent = "NONE";
+		this.select_switch(agent, filter_property, device);
 	},
 
 	select_imager_camera: function(camera) {
@@ -1066,87 +1025,15 @@ var indigo_sequencer = {
 	},
 
 	select_frame_type: function(type) {
-		var agent = this.devices[2];
-		var property = indigo_devices[agent].CCD_FRAME_TYPE;
-		if (property != null) {
-			for (var name in property.item_defs) {
-				if (property.item_defs[name].label === type) {
-					if (property.items[name]) {
-						this.warning("Frame type '" + type + "' is already selected");
-					} else {
-						this.select_switch(agent, "CCD_FRAME_TYPE", name);
-					}
-					return;
-				}
-			}
-			if (property.items[type] != undefined) {
-				if (property.items[type]) {
-					this.warning("Frame type " + type + " is already selected");
-				} else {
-					this.select_switch(agent, "CCD_FRAME_TYPE", type);
-				}
-			} else {
-				this.failure("Frame type '" + type + "' is not available");
-			}
-		} else {
-			this.failure("Can't select frame type '" + type + "'");
-		}
+		this.select_switch(this.devices[2], "CCD_FRAME_TYPE", type);
 	},
 
 	select_image_format: function(format) {
-		var agent = this.devices[2];
-		var property = indigo_devices[agent].CCD_IMAGE_FORMAT;
-		if (property != null) {
-			for (var name in property.item_defs) {
-				if (property.item_defs[name].label === format) {
-					if (property.items[name]) {
-						this.warning("Image format '" + format + "' is already selected");
-					} else {
-						this.select_switch(agent, "CCD_IMAGE_FORMAT", name);
-					}
-					return;
-				}
-			}
-			if (property.items[format] != undefined) {
-				if (property.items[format]) {
-					this.warning("Image format " + format + " is already selected");
-				} else {
-					this.select_switch(agent, "CCD_IMAGE_FORMAT", format);
-				}
-			} else {
-				this.failure("Image format '" + format + "' is not available");
-			}
-		} else {
-			this.failure("Can't select image format '" + format + "'");
-		}
+		this.select_switch(this.devices[2], "CCD_IMAGE_FORMAT", format);
 	},
 
 	select_camera_mode: function(mode) {
-		var agent = this.devices[2];
-		var property = indigo_devices[agent].CCD_MODE;
-		if (property != null) {
-			for (var name in property.item_defs) {
-				if (property.item_defs[name].label === mode) {
-					if (property.items[name]) {
-						this.warning("Camera mode '" + mode + "' is already selected");
-					} else {
-						this.select_switch(agent, "CCD_MODE", name);
-					}
-					return;
-				}
-			}
-			if (property.items[mode] != undefined) {
-				if (property.items[mode]) {
-					this.warning("Camera mode " + mode + " is already selected");
-				} else {
-					this.select_switch(agent, "CCD_MODE", mode);
-				}
-			} else {
-				this.failure("Camera mode '" + mode + "' is not available");
-			}
-		} else {
-			this.failure("Can't select camera mode '" + mode + "'");
-		}
+		this.select_switch(this.devices[2], "CCD_MODE", mode);
 	},
 
 	set_gain: function(value) {
@@ -1180,129 +1067,23 @@ var indigo_sequencer = {
 	},
 
 	select_program: function(program) {
-		var agent = this.devices[2];
-		var property = indigo_devices[agent].DSLR_PROGRAM;
-		if (property != null) {
-			for (var name in property.item_defs) {
-				if (property.item_defs[name].label === program) {
-					if (property.items[name]) {
-						this.warning("Program '" + program + "' is already selected");
-					} else {
-						this.select_switch(agent, "DSLR_PROGRAM", name);
-					}
-					return;
-				}
-			}
-			if (property.items[program] != undefined) {
-				if (property.items[program]) {
-					this.warning("Program " + program + " is already selected");
-				} else {
-					this.select_switch(agent, "DSLR_PROGRAM", program);
-				}
-			} else {
-				this.failure("Program '" + program + "' is not available");
-			}
-		} else {
-			this.failure("Can't select program '" + program + "'");
-		}
+		this.select_switch(this.devices[2], "DSLR_PROGRAM", program);
 	},
 
 	select_aperture: function(aperture) {
-		var agent = this.devices[2];
-		var property = indigo_devices[agent].DSLR_APERTURE;
-		if (property != null) {
-			for (var name in property.item_defs) {
-				if (property.item_defs[name].label === aperture) {
-					if (property.items[name]) {
-						this.warning("Aperture '" + aperture + "' is already selected");
-					} else {
-						this.select_switch(agent, "DSLR_APERTURE", name);
-					}
-					return;
-				}
-			}
-			if (property.items[aperture] != undefined) {
-				if (property.items[aperture]) {
-					this.warning("Aperture " + aperture + " is already selected");
-				} else {
-					this.select_switch(agent, "DSLR_APERTURE", aperture);
-				}
-			} else {
-				this.failure("Aperture '" + aperture + "' is not available");
-			}
-		} else {
-			this.failure("Can't select aperture '" + aperture + "'");
-		}
+		this.select_switch(this.devices[2], "DSLR_APERTURE", aperture);
 	},
 
 	select_shutter: function(shutter) {
-		var agent = this.devices[2];
-		var property = indigo_devices[agent].DSLR_SHUTTER;
-		if (property != null) {
-			for (var name in property.item_defs) {
-				if (property.item_defs[name].label === shutter) {
-					if (property.items[name]) {
-						this.warning("Shutter '" + shutter + "' is already selected");
-					} else {
-						this.select_switch(agent, "DSLR_SHUTTER", name);
-					}
-					return;
-				}
-			}
-			if (property.items[shutter] != undefined) {
-				if (property.items[shutter]) {
-					this.warning("Shutter " + shutter + " is already selected");
-				} else {
-					this.select_switch(agent, "DSLR_SHUTTER", shutter);
-				}
-			} else {
-				this.failure("Shutter speed '" + shutter + "' is not available");
-			}
-		} else {
-			this.failure("Can't select shutter speed '" + shutter + "'");
-		}
+		this.select_switch(this.devices[2], "DSLR_SHUTTER", shutter);
 	},
 
 	select_iso: function(iso) {
-		var agent = this.devices[2];
-		var property = indigo_devices[agent].DSLR_ISO;
-		if (property != null) {
-			for (var name in property.item_defs) {
-				if (property.item_defs[name].label === iso) {
-					if (property.items[name]) {
-						this.warning("ISO '" + iso + "' is already selected");
-					} else {
-						this.select_switch(agent, "DSLR_ISO", name);
-					}
-					return;
-				}
-			}
-			if (property.items[iso] != undefined) {
-				if (property.items[iso]) {
-					this.warning("ISO " + iso + " is already selected");
-				} else {
-					this.select_switch(agent, "DSLR_ISO", iso);
-				}
-			} else {
-				this.failure("ISO '" + iso + "' is not available");
-			}
-		} else {
-			this.failure("Can't select ISO '" + iso + "'");
-		}
+		this.select_switch(this.devices[2], "DSLR_ISO", iso);
 	},
 
 	select_cooler: function(name) {
-		var agent = this.devices[2];
-		var property = indigo_devices[agent].CCD_COOLER;
-		if (property != null && property.items[name] != undefined) {
-			if (property.items[name]) {
-				this.warning("Cooler state " + name + " is already selected");
-			} else {
-				this.select_switch(agent, "CCD_COOLER", name);
-			}
-		} else {
-			this.failure("Can't set cooler state");
-		}
+		this.select_switch(this.devices[2], "CCD_COOLER", name);
 	},
 	
 	set_temperature: function(temperature) {
@@ -1345,13 +1126,11 @@ var indigo_sequencer = {
 	},
 
 	set_fits_header: function(keyword, value) {
-		var agent = this.devices[2];
-		this.change_texts(agent, "CCD_SET_FITS_HEADER", { "KEYWORD": keyword, "VALUE": value });
+		this.change_texts(this.devices[2], "CCD_SET_FITS_HEADER", { "KEYWORD": keyword, "VALUE": value });
 	},
 	
 	remove_fits_header: function(keyword, value) {
-		var agent = this.devices[2];
-		this.change_texts(agent, "CCD_REMOVE_FITS_HEADER", { "KEYWORD": keyword });
+		this.change_texts(this.devices[2], "CCD_REMOVE_FITS_HEADER", { "KEYWORD": keyword });
 	},
 	
 	set_guider_dithering: function(amount, time_limit) {
@@ -1372,36 +1151,11 @@ var indigo_sequencer = {
 	},
 
 	set_imager_feature: function(name, value) {
-		var agent = this.devices[2];
-		this.set_switch(agent, "AGENT_PROCESS_FEATURES", name, value);
+		this.set_switch(this.devices[2], "AGENT_PROCESS_FEATURES", name, value);
 	},
 	
 	select_filter: function(filter) {
-		var agent = this.devices[2];
-		var property = indigo_devices[agent].AGENT_WHEEL_FILTER;
-		if (property != null) {
-			for (var name in property.item_defs) {
-				if (property.item_defs[name].label === filter) {
-					if (property.items[name]) {
-						this.warning("Filter '" + filter + "' is already selected");
-					} else {
-						this.select_switch(agent, "AGENT_WHEEL_FILTER", name);
-					}
-					return;
-				}
-			}
-			if (property.items[filter] != undefined) {
-				if (property.items[filter]) {
-					this.warning("Filter " + filter + " is already selected");
-				} else {
-					this.select_switch(agent, "AGENT_WHEEL_FILTER", filter);
-				}
-			} else {
-				this.failure("Filter '" + filter + "' is not available");
-			}
-		} else {
-			this.failure("Can't select filter '" + filter + "'");
-		}
+		this.select_switch(this.devices[2], "AGENT_WHEEL_FILTER", filter);
 	},
 	
 	set_local_mode: function(directory, prefix, object) {
@@ -1447,13 +1201,7 @@ var indigo_sequencer = {
 	},
 
 	set_upload_mode: function(mode) {
-		var agent = this.devices[2];
-		var property = indigo_devices[agent].CCD_UPLOAD_MODE;
-		if (property != null) {
-			this.select_switch(agent, "CCD_UPLOAD_MODE", mode);
-		} else {
-			this.failure("Can't set upload mode");
-		}
+		this.select_switch(this.devices[2], "CCD_UPLOAD_MODE", mode);
 	},
 
 	set_batch: function(count, exposure) {
@@ -1472,72 +1220,32 @@ var indigo_sequencer = {
 	},
 
 	capture_batch: function() {
-		var agent = this.devices[2];
-		var property = indigo_devices[agent].AGENT_START_PROCESS;
-		if (property != null) {
-			this.capturing_batch = true;
-			this.select_switch(agent, "AGENT_START_PROCESS", "EXPOSURE");
-		} else {
-			this.failure("Can't capture batch");
-		}
+		this.capturing_batch = true; // TODO: verify
+		this.select_switch(this.devices[2], "AGENT_START_PROCESS", "EXPOSURE");
 	},
 
 	capture_stream: function() {
-		var agent = this.devices[2];
-		var property = indigo_devices[agent].AGENT_START_PROCESS;
-		if (property != null) {
-			this.select_switch(agent, "AGENT_START_PROCESS", "STREAMING");
-		} else {
-			this.failure("Can't capture stream");
-		}
+		this.select_switch(this.devices[2], "AGENT_START_PROCESS", "STREAMING");
 	},
 
 	set_focuser_mode: function(mode) {
-		var agent = this.devices[2];
-		var property = indigo_devices[agent].AGENT_START_PROCESS;
-		if (property != null) {
-			this.select_switch(agent, "FOCUSER_MODE", mode);
-		} else {
-			this.failure("Can't change focuser mode");
-		}
+		this.select_switch(this.devices[2], "FOCUSER_MODE", mode);
 	},
 	
 	focus: function(ignore_failure) {
-		var agent = this.devices[2];
-		var property = indigo_devices[agent].AGENT_START_PROCESS;
-		if (property != null) {
-			this.ignore_failure = ignore_failure;
-			this.select_switch(agent, "AGENT_START_PROCESS", "FOCUSING");
-		} else {
-			this.failure("Can't focus");
-		}
+		this.ignore_failure = ignore_failure;
+		this.select_switch(this.devices[2], "AGENT_START_PROCESS", "FOCUSING");
 	},
 
 	clear_focuser_selection: function() {
-		var agent = this.devices[2];
-		var property = indigo_devices[agent].AGENT_START_PROCESS;
-		if (property != null) {
-			this.select_switch(agent, "AGENT_START_PROCESS", "CLEAR_SELECTION");
-		} else {
-			this.failure("Can't clear selection");
-		}
+		this.select_switch(this.devices[2], "AGENT_START_PROCESS", "CLEAR_SELECTION");
 	},
 	
 	unpark: function() {
-		var agent = this.devices[3];
-		var property = indigo_devices[agent].MOUNT_PARK;
-		if (property != null) {
-			if (property.items.PARKED) {
-				this.select_switch(agent, "MOUNT_PARK", "UNPARKED");
-			} else {
-				this.warning("The mount is already unparked");
-			}
-		} else {
-			this.failure("Can't unpark the mount");
-		}
+		this.select_switch(this.devices[3], "MOUNT_PARK", "UNPARKED");
 	},
 	
-	slew: function(ra, dec) {
+	slew: function(ra, dec) {  // TODO: verify
 		var agent = this.devices[3];
 		var coordinates_property = indigo_devices[agent].AGENT_MOUNT_EQUATORIAL_COORDINATES;
 		var process_property = indigo_devices[agent].AGENT_START_PROCESS;
@@ -1550,27 +1258,11 @@ var indigo_sequencer = {
 	},
 	
 	park: function() {
-		var agent = this.devices[3];
-		var property = indigo_devices[agent].MOUNT_PARK;
-		if (property != null) {
-			if (property.items.UNPARKED) {
-				this.select_switch(agent, "MOUNT_PARK", "PARKED");
-			} else {
-				this.warning("The mount is already parked");
-			}
-		} else {
-			this.failure("Can't park the mount");
-		}
+		this.select_switch(this.devices[3], "MOUNT_PARK", "PARKED");
 	},
 	
 	home: function() {
-		var agent = this.devices[3];
-		var property = indigo_devices[agent].MOUNT_PARK;
-		if (property != null) {
-			this.select_switch(agent, "MOUNT_HOME", "HOME");
-		} else {
-			this.failure("Can't home the mount");
-		}
+		this.select_switch(this.devices[3], "MOUNT_HOME", "HOME");
 	},
 
 	wait_for_gps: function() {
@@ -1600,43 +1292,19 @@ var indigo_sequencer = {
 	},
 
 	calibrate_guiding: function() {
-		var agent = this.devices[4];
-		var property = indigo_devices[agent].AGENT_START_PROCESS;
-		if (property != null) {
-			this.select_switch(agent, "AGENT_START_PROCESS", "CALIBRATION");
-		} else {
-			this.failure("Can't calibrate");
-		}
+		this.select_switch(this.devices[4], "AGENT_START_PROCESS", "CALIBRATION");
 	},
 
 	start_guiding: function() {
-		var agent = this.devices[4];
-		var property = indigo_devices[agent].AGENT_START_PROCESS;
-		if (property != null) {
-			this.select_switch(agent, "AGENT_START_PROCESS", "GUIDING", "Busy");
-		} else {
-			this.failure("Can't start guiding");
-		}
+		this.select_switch(this.devices[4], "AGENT_START_PROCESS", "GUIDING", "Busy");
 	},
 
 	stop_guiding: function() {
-		var agent = this.devices[4];
-		var property = indigo_devices[agent].AGENT_ABORT_PROCESS;
-		if (property != null) {
-			this.select_switch(agent, "AGENT_ABORT_PROCESS", "ABORT");
-		} else {
-			this.failure("Can't stop guiding");
-		}
+		this.select_switch(this.devices[4], "AGENT_ABORT_PROCESS", "ABORT");
 	},
 
 	clear_guider_selection: function() {
-		var agent = this.devices[4];
-		var property = indigo_devices[agent].AGENT_START_PROCESS;
-		if (property != null) {
-			this.select_switch(agent, "AGENT_START_PROCESS", "CLEAR_SELECTION");
-		} else {
-			this.failure("Can't clear selection");
-		}
+		this.select_switch(this.devices[4], "AGENT_START_PROCESS", "CLEAR_SELECTION");
 	},
 	
 	set_solver_exposure: function(exposure) {
@@ -1660,33 +1328,15 @@ var indigo_sequencer = {
 	},
 
 	precise_goto: function() {
-		var agent = this.devices[5];
-		var property = indigo_devices[agent].AGENT_START_PROCESS;
-		if (property != null) {
-			this.select_switch(agent, "AGENT_START_PROCESS", "PRECISE_GOTO");
-		} else {
-			this.failure("Can't initiate precise goto");
-		}
+		this.select_switch(this.devices[5], "AGENT_START_PROCESS", "PRECISE_GOTO");
 	},
 
 	sync_center: function() {
-		var agent = this.devices[5];
-		var property = indigo_devices[agent].AGENT_START_PROCESS;
-		if (property != null) {
-			this.select_switch(agent, "AGENT_START_PROCESS", "CENTER");
-		} else {
-			this.failure("Can't sync and center");
-		}
+		this.select_switch(this.devices[5], "AGENT_START_PROCESS", "CENTER");
 	},
 
 	set_rotator_goto: function() {
-		var agent = this.devices[3];
-		var property = indigo_devices[agent].ROTATOR_ON_POSITION_SET;
-		if (property != null) {
-			this.select_switch(agent, "ROTATOR_ON_POSITION_SET", "GOTO");
-		} else {
-			this.failure("Can't set rotator position");
-		}
+		this.select_switch(this.devices[3], "ROTATOR_ON_POSITION_SET", "GOTO");
 	},
 
 	set_rotator_angle: function(angle) {
@@ -1700,13 +1350,7 @@ var indigo_sequencer = {
 	},
 
 	set_focuser_goto: function() {
-		var agent = this.devices[2];
-		var property = indigo_devices[agent].FOCUSER_ON_POSITION_SET;
-		if (property != null) {
-			this.select_switch(agent, "FOCUSER_ON_POSITION_SET", "GOTO");
-		} else {
-			this.failure("Can't set focuser position");
-		}
+		this.select_switch(this.devices[2], "FOCUSER_ON_POSITION_SET", "GOTO");
 	},
 
 	set_focuser_position: function(position) {
