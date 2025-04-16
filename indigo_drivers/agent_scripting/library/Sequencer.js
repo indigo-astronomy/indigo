@@ -647,15 +647,19 @@ var indigo_sequencer = {
 			indigo_update_switch_property(this.devices[0], "AGENT_PAUSE_PROCESS", { PAUSE_WAIT: false }, this.pause_state = "Ok");
 		}
 		for (var device in this.devices) {
-			if (device != 0) {
-				if (this.devices[device].startsWith("Guider Agent")) {
-					// Do not abort guiding it may be started by the user!!!
+			if (device == 0) {
+				continue;
+			}
+			if (this.devices[device].startsWith("Guider Agent")) {
+				var property = indigo_devices[this.devices[device]].AGENT_START_PROCESS;
+				if (property != null && property.items.GUIDING) {
 					continue;
-				} else if (this.devices[device].startsWith("Astrometry Agent")) {
-					indigo_change_switch_property(this.devices[device], "AGENT_PLATESOLVER_ABORT", { "ABORT": true });
-				} else {
-					indigo_change_switch_property(this.devices[device], "AGENT_ABORT_PROCESS", { "ABORT": true });
 				}
+				indigo_change_switch_property(this.devices[device], "AGENT_ABORT_PROCESS", { "ABORT": true });
+			} else if (this.devices[device].startsWith("Astrometry Agent")) {
+				indigo_change_switch_property(this.devices[device], "AGENT_PLATESOLVER_ABORT", { "ABORT": true });
+			} else {
+				indigo_change_switch_property(this.devices[device], "AGENT_ABORT_PROCESS", { "ABORT": true });
 			}
 		}
 		if (this.wait_for_timer != null) {
