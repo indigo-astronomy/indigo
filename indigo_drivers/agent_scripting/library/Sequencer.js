@@ -10,7 +10,7 @@ function Sequence(name) {
 	this.reset_loop_content_state = true;
 }
 
-Sequence.prototype.repeat = function(count, block) {
+Sequence.prototype.repeat = function (count, block) {
 	var loop = this.step;
 	var recovery_point_index_backup = this.recovery_point_index;
 	var i = 0;
@@ -31,195 +31,203 @@ Sequence.prototype.repeat = function(count, block) {
 	}
 };
 
-Sequence.prototype.recovery_point = function() {
+Sequence.prototype.recovery_point = function () {
 	this.sequence.push({ execute: 'recovery_point(' + (++this.recovery_point_index) + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.wait = function(seconds) {
+Sequence.prototype.wait = function (seconds) {
 	this.sequence.push({ execute: 'wait(' + seconds + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.wait_until = function(time) {
-	if(typeof time === 'string') {
+Sequence.prototype.wait_until = function (time) {
+	if (typeof time === 'string') {
 		time = '"' + time + '"';
 	}
 	this.sequence.push({ execute: 'wait_until(' + time + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.continue_on_failure = function() {
+Sequence.prototype.continue_on_failure = function () {
 	this.sequence.push({ execute: 'set_failure_handling(2)', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.recover_on_failure = function() {
+Sequence.prototype.recover_on_failure = function () {
 	this.sequence.push({ execute: 'set_failure_handling(1)', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.abort_on_failure = function() {
+Sequence.prototype.abort_on_failure = function () {
 	this.sequence.push({ execute: 'set_failure_handling(0)', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.evaluate = function(code) {
+Sequence.prototype.evaluate = function (code) {
 	this.sequence.push({ execute: 'evaluate("' + code + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.send_message = function(message) {
+Sequence.prototype.send_message = function (message) {
 	this.sequence.push({ execute: 'send_message("' + message + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.load_config = function(name) {
+Sequence.prototype.load_config = function (name) {
 	this.sequence.push({ execute: 'load_config("' + name + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.load_driver = function(name) {
+Sequence.prototype.load_driver = function (name) {
 	this.sequence.push({ execute: 'load_driver("' + name + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.unload_driver = function(name) {
+Sequence.prototype.unload_driver = function (name) {
 	this.sequence.push({ execute: 'unload_driver("' + name + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.select_imager_agent = function(agent) {
+Sequence.prototype.select_imager_agent = function (agent) {
 	this.sequence.push({ execute: 'select_imager_agent("' + agent + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.select_mount_agent = function(agent) {
+Sequence.prototype.select_mount_agent = function (agent) {
 	this.sequence.push({ execute: 'select_mount_agent("' + agent + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.select_guider_agent = function(agent) {
+Sequence.prototype.select_guider_agent = function (agent) {
 	this.sequence.push({ execute: 'select_guider_agent("' + agent + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.select_imager_camera = function(camera) {
+Sequence.prototype.select_imager_camera = function (camera) {
 	this.sequence.push({ execute: 'select_imager_camera("' + camera + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.select_filter_wheel = function(wheel) {
+Sequence.prototype.select_filter_wheel = function (wheel) {
 	this.sequence.push({ execute: 'select_filter_wheel("' + wheel + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.select_focuser = function(focuser) {
+Sequence.prototype.select_focuser = function (focuser) {
 	this.sequence.push({ execute: 'select_focuser("' + focuser + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.select_rotator = function(rotator) {
+Sequence.prototype.select_rotator = function (rotator) {
 	this.sequence.push({ execute: 'select_rotator("' + rotator + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.select_mount = function(mount) {
+Sequence.prototype.select_mount = function (mount) {
 	this.sequence.push({ execute: 'select_mount("' + mount + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.select_dome = function(dome) {
+Sequence.prototype.select_dome = function (dome) {
 	this.sequence.push({ execute: 'select_dome("' + dome + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.select_gps = function(gps) {
+Sequence.prototype.select_gps = function (gps) {
 	this.sequence.push({ execute: 'select_gps("' + gps + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.select_guider_camera = function(camera) {
+Sequence.prototype.select_guider_camera = function (camera) {
 	this.sequence.push({ execute: 'select_guider_camera("' + camera + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.select_guider = function(guider) {
+Sequence.prototype.select_guider = function (guider) {
 	this.sequence.push({ execute: 'select_guider("' + guider + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.select_frame_type = function(type) {
+Sequence.prototype.select_frame_type = function (type) {
 	this.sequence.push({ execute: 'select_frame_type("' + type + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.select_image_format = function(format) {
+Sequence.prototype.select_image_format = function (format) {
 	this.sequence.push({ execute: 'select_image_format("' + format + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.select_camera_mode = function(mode) {
+Sequence.prototype.select_camera_mode = function (mode) {
 	this.sequence.push({ execute: 'select_camera_mode("' + mode + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.set_gain = function(value) {
+Sequence.prototype.set_gain = function (value) {
 	this.sequence.push({ execute: 'set_gain(' + value + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.set_offset = function(value) {
+Sequence.prototype.set_offset = function (value) {
 	this.sequence.push({ execute: 'set_offset(' + value + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.set_gamma = function(value) {
+Sequence.prototype.set_gamma = function (value) {
 	this.sequence.push({ execute: 'set_gamma(' + value + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.select_program = function(program) {
+Sequence.prototype.select_program = function (program) {
 	this.sequence.push({ execute: 'select_program("' + program + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.select_aperture = function(aperture) {
+Sequence.prototype.select_aperture = function (aperture) {
 	this.sequence.push({ execute: 'select_aperture("' + aperture + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.select_shutter = function(shutter) {
+Sequence.prototype.select_shutter = function (shutter) {
 	this.sequence.push({ execute: 'select_shutter("' + shutter + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.select_iso = function(iso) {
+Sequence.prototype.select_iso = function (iso) {
 	this.sequence.push({ execute: 'select_iso("' + iso + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.enable_cooler = function(temperature) {
+Sequence.prototype.enable_cooler = function (temperature) {
 	this.sequence.push({ execute: 'select_cooler("ON")', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'set_temperature(' + temperature + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.disable_cooler = function() {
+Sequence.prototype.disable_cooler = function () {
 	this.sequence.push({ execute: 'select_cooler("OFF")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.enable_dithering = function(amount, time_limit, skip_frames) {
+Sequence.prototype.enable_dithering = function (amount, time_limit, skip_frames) {
 	this.sequence.push({ execute: 'set_imager_dithering(' + skip_frames + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'set_guider_dithering(' + amount + ',' + time_limit + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'set_imager_feature("ENABLE_DITHERING", true)', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.disable_dithering = function() {
+Sequence.prototype.disable_dithering = function () {
 	this.sequence.push({ execute: 'set_imager_feature("ENABLE_DITHERING", false)', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.enable_meridian_flip = function(use_solver, time) {
+Sequence.prototype.enable_meridian_flip = function (use_solver, time) {
 	this.sequence.push({ execute: 'set_use_solver(' + use_solver + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'set_pause_after_transit(' + time + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'set_imager_feature("PAUSE_AFTER_TRANSIT", true)', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.disable_meridian_flip = function() {
+Sequence.prototype.disable_meridian_flip = function () {
 	this.sequence.push({ execute: 'set_imager_feature("PAUSE_AFTER_TRANSIT", false)', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.set_fits_header = function(keyword, value) {
-	this.sequence.push({ execute: 'set_fits_header("' + keyword + '", "' + value +'")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+Sequence.prototype.set_fits_header = function (keyword, value) {
+	this.sequence.push({ execute: 'set_fits_header("' + keyword + '", "' + value + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.remove_fits_header = function(keyword) {
+Sequence.prototype.remove_fits_header = function (keyword) {
 	this.sequence.push({ execute: 'remove_fits_header("' + keyword + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.select_filter = function(filter) {
+Sequence.prototype.select_reference_filter = function () {
+	this.sequence.push({ execute: 'select_reference_filter()', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
+Sequence.prototype.select_filter = function (filter) {
 	this.sequence.push({ execute: 'select_filter("' + filter + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.set_directory = function(directory) {
+Sequence.prototype.select_filter_with_offset = function (filter) {
+	this.sequence.push({ execute: 'select_filter_with_offset("' + filter + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
+Sequence.prototype.set_directory = function (directory) {
 	this.sequence.push({ execute: 'set_local_mode("' + directory + '", null, null)', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.set_file_template = function(template) {
+Sequence.prototype.set_file_template = function (template) {
 	this.sequence.push({ execute: 'set_local_mode(null, "' + template + '", null)', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.set_object_name = function(name) {
+Sequence.prototype.set_object_name = function (name) {
 	this.sequence.push({ execute: 'set_local_mode(null, null, "' + name + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.capture_batch = function(p1, p2, p3) {
+Sequence.prototype.capture_batch = function (p1, p2, p3) {
 	// If p1 is not string, treat p1 as count and p2 as exposure
 	// Else treat p1 as name_template, p2 as count, and p3 as exposure
 	var name_template = null;
@@ -242,7 +250,7 @@ Sequence.prototype.capture_batch = function(p1, p2, p3) {
 	this.exposure += exposure * count;
 };
 
-Sequence.prototype.capture_stream = function(p1, p2, p3) {
+Sequence.prototype.capture_stream = function (p1, p2, p3) {
 	// If p1 is not string, treat p1 as count and p2 as exposure
 	// Else treat p1 as name_template, p2 as count, and p3 as exposure
 	var name_template = null;
@@ -265,59 +273,59 @@ Sequence.prototype.capture_stream = function(p1, p2, p3) {
 	this.exposure += exposure * count;
 };
 
-Sequence.prototype.set_manual_focuser_mode = function() {
+Sequence.prototype.set_manual_focuser_mode = function () {
 	this.sequence.push({ execute: 'set_focuser_mode("MANUAL")', step: this.step++, progress: this.progress++, exposure: this.exposure });
-}
+};
 
-Sequence.prototype.set_automatic_focuser_mode = function() {
+Sequence.prototype.set_automatic_focuser_mode = function () {
 	this.sequence.push({ execute: 'set_focuser_mode("AUTOMATIC")', step: this.step++, progress: this.progress++, exposure: this.exposure });
-}
+};
 
-Sequence.prototype.focus = function(exposure) {
+Sequence.prototype.focus = function (exposure) {
 	this.sequence.push({ execute: 'save_batch()', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'set_batch(1, ' + exposure + ', 0)', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'focus(false)', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'restore_batch()', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.focus_ignore_failure = function(exposure) {
+Sequence.prototype.focus_ignore_failure = function (exposure) {
 	this.sequence.push({ execute: 'save_batch()', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'set_batch(1, ' + exposure + ', 0)', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'focus(true)', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'restore_batch()', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.clear_focuser_selection = function() {
+Sequence.prototype.clear_focuser_selection = function () {
 	this.sequence.push({ execute: 'clear_focuser_selection()', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.set_focuser_position = function(position) {
+Sequence.prototype.set_focuser_position = function (position) {
 	this.sequence.push({ execute: 'set_focuser_goto()', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'set_focuser_position(' + position + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.park = function() {
+Sequence.prototype.park = function () {
 	this.sequence.push({ execute: 'park()', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.home = function() {
+Sequence.prototype.home = function () {
 	this.sequence.push({ execute: 'home()', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.unpark = function() {
+Sequence.prototype.unpark = function () {
 	this.sequence.push({ execute: 'unpark()', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.slew = function(ra, dec) {
+Sequence.prototype.slew = function (ra, dec) {
 	this.sequence.push({ execute: 'set_coordinates(' + ra + ',' + dec + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'slew()', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.wait_for_gps = function() {
+Sequence.prototype.wait_for_gps = function () {
 	this.sequence.push({ execute: 'wait_for_gps()', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.calibrate_guiding = function(exposure) {
+Sequence.prototype.calibrate_guiding = function (exposure) {
 	if (exposure != undefined) {
 		this.sequence.push({ execute: 'set_guider_exposure(' + exposure + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
 	}
@@ -325,12 +333,12 @@ Sequence.prototype.calibrate_guiding = function(exposure) {
 };
 
 // TO BE REMOVED IN FUTURE RELEASE - USE calibrate_guiding() INSTEAD
-Sequence.prototype.calibrate_guiding_exposure = function(exposure) {
+Sequence.prototype.calibrate_guiding_exposure = function (exposure) {
 	this.sequence.push({ execute: 'set_guider_exposure(' + exposure + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'calibrate_guiding()', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.start_guiding = function(exposure) {
+Sequence.prototype.start_guiding = function (exposure) {
 	if (exposure != undefined) {
 		this.sequence.push({ execute: 'set_guider_exposure(' + exposure + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
 	}
@@ -338,36 +346,36 @@ Sequence.prototype.start_guiding = function(exposure) {
 };
 
 // TO BE REMOVED IN FUTURE RELEASE - USE start_guiding() INSTEAD
-Sequence.prototype.start_guiding_exposure = function(exposure) {
+Sequence.prototype.start_guiding_exposure = function (exposure) {
 	this.sequence.push({ execute: 'set_guider_exposure(' + exposure + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'start_guiding()', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.stop_guiding = function() {
+Sequence.prototype.stop_guiding = function () {
 	this.sequence.push({ execute: 'stop_guiding()', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.clear_guider_selection = function() {
+Sequence.prototype.clear_guider_selection = function () {
 	this.sequence.push({ execute: 'clear_guider_selection()', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.sync_center = function(exposure) {
+Sequence.prototype.sync_center = function (exposure) {
 	this.sequence.push({ execute: 'set_solver_exposure(' + exposure + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'sync_center()', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.precise_goto = function(exposure, ra, dec) {
+Sequence.prototype.precise_goto = function (exposure, ra, dec) {
 	this.sequence.push({ execute: 'set_solver_exposure(' + exposure + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'set_solver_target(' + ra + ', ' + dec + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'precise_goto()', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.set_rotator_angle = function(value) {
+Sequence.prototype.set_rotator_angle = function (value) {
 	this.sequence.push({ execute: 'set_rotator_goto()', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'set_rotator_angle(' + value + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.start = function(imager_agent, mount_agent, guider_agent) {
+Sequence.prototype.start = function (imager_agent, mount_agent, guider_agent) {
 	indigo_sequencer.devices[2] = imager_agent == undefined ? "Imager Agent" : imager_agent;
 	indigo_sequencer.devices[3] = mount_agent == undefined ? "Mount Agent" : mount_agent;
 	indigo_sequencer.devices[4] = guider_agent == undefined ? "Guider Agent" : guider_agent;
@@ -377,7 +385,7 @@ Sequence.prototype.start = function(imager_agent, mount_agent, guider_agent) {
 // MARK: Flipper object
 
 var indigo_flipper = {
-	devices: [ "Scripting Agent", "Configuration Agent", "Imager Agent", "Mount Agent", "Guider Agent", "Astrometry Agent", "Server" ],
+	devices: ["Scripting Agent", "Configuration Agent", "Imager Agent", "Mount Agent", "Guider Agent", "Astrometry Agent", "Server"],
 	waiting_for_transit: false,
 	waiting_for_slew: false,
 	waiting_for_sync_and_center: false,
@@ -385,7 +393,7 @@ var indigo_flipper = {
 	resume_guiding: false,
 	use_solver: false,
 
-	on_update: function(property) {
+	on_update: function (property) {
 		if (this.waiting_for_transit)
 			indigo_log("waiting_for_transit " + property.name + " -> " + property.state);
 		else if (this.waiting_for_slew)
@@ -399,7 +407,7 @@ var indigo_flipper = {
 				indigo_send_message("Meridian flip started");
 				this.waiting_for_transit = false;
 				this.waiting_for_slew = true;
-				indigo_change_switch_property(this.devices[3], "AGENT_START_PROCESS", { SLEW: true});
+				indigo_change_switch_property(this.devices[3], "AGENT_START_PROCESS", { SLEW: true });
 			}
 		} else if (this.waiting_for_slew && property.device == this.devices[3] && property.name == "AGENT_START_PROCESS") {
 			if (property.state == "Alert") {
@@ -410,14 +418,14 @@ var indigo_flipper = {
 				this.waiting_for_slew = false;
 				if (this.use_solver) {
 					this.waiting_for_sync_and_center = true;
-					indigo_change_switch_property(this.devices[5], "AGENT_START_PROCESS", { CENTER: true});
+					indigo_change_switch_property(this.devices[5], "AGENT_START_PROCESS", { CENTER: true });
 				} else if (this.resume_guiding) {
 					this.waiting_for_guiding = true;
-					indigo_change_switch_property(this.devices[4], "AGENT_START_PROCESS", { GUIDING: true});
+					indigo_change_switch_property(this.devices[4], "AGENT_START_PROCESS", { GUIDING: true });
 				} else {
 					delete indigo_event_handlers.indigo_flipper;
 					indigo_send_message("Meridian flip finished");
-					indigo_change_switch_property(this.devices[2], "AGENT_PAUSE_PROCESS", { PAUSE_AFTER_TRANSIT: false});
+					indigo_change_switch_property(this.devices[2], "AGENT_PAUSE_PROCESS", { PAUSE_AFTER_TRANSIT: false });
 				}
 			}
 		} else if (this.waiting_for_sync_and_center && property.device == this.devices[5] && property.name == "AGENT_START_PROCESS") {
@@ -429,11 +437,11 @@ var indigo_flipper = {
 				this.waiting_for_sync_and_center = false;
 				if (this.resume_guiding) {
 					this.waiting_for_guiding = true;
-					indigo_change_switch_property(this.devices[4], "AGENT_START_PROCESS", { GUIDING: true});
+					indigo_change_switch_property(this.devices[4], "AGENT_START_PROCESS", { GUIDING: true });
 				} else {
 					delete indigo_event_handlers.indigo_flipper;
 					indigo_send_message("Meridian flip finished");
-					indigo_change_switch_property(this.devices[2], "AGENT_PAUSE_PROCESS", { PAUSE_AFTER_TRANSIT: false});
+					indigo_change_switch_property(this.devices[2], "AGENT_PAUSE_PROCESS", { PAUSE_AFTER_TRANSIT: false });
 				}
 			}
 		} else if (this.waiting_for_guiding && property.device == this.devices[4] && property.name == "AGENT_START_PROCESS") {
@@ -444,12 +452,12 @@ var indigo_flipper = {
 			} else if (property.state == "Busy") {
 				delete indigo_event_handlers.indigo_flipper;
 				indigo_send_message("Meridian flip finished");
-				indigo_change_switch_property(this.devices[2], "AGENT_PAUSE_PROCESS", { PAUSE_AFTER_TRANSIT: false});
+				indigo_change_switch_property(this.devices[2], "AGENT_PAUSE_PROCESS", { PAUSE_AFTER_TRANSIT: false });
 			}
 		}
 	},
-	
-	start: function(use_solver) {
+
+	start: function (use_solver) {
 		var guider_agent = indigo_devices[this.devices[4]];
 		if (guider_agent != null) {
 			var guider_process = guider_agent.AGENT_START_PROCESS;
@@ -472,7 +480,7 @@ var indigo_flipper = {
 // MARK: Sequencer object
 
 var indigo_sequencer = {
-	devices: [ "Scripting Agent", "Configuration Agent", "Imager Agent", "Mount Agent", "Guider Agent", "Astrometry Agent", "Server" ],
+	devices: ["Scripting Agent", "Configuration Agent", "Imager Agent", "Mount Agent", "Guider Agent", "Astrometry Agent", "Server"],
 	name: "",
 	sequence_state: "Ok",
 	abort_state: "Ok",
@@ -484,11 +492,11 @@ var indigo_sequencer = {
 	exposure_total: 0,
 	index: -1,
 	loop_level: -1,
-	loop_step: [ ],
-	loop_count: [ ],
+	loop_step: [],
+	loop_count: [],
 	sequence: null,
-	step_states: { },
-	step_states_defs: { },
+	step_states: {},
+	step_states_defs: {},
 	wait_for_device: null,
 	wait_for_property: null,
 	wait_for_property_state: "Ok",
@@ -502,13 +510,13 @@ var indigo_sequencer = {
 	use_solver: false,
 	paused: false,
 	capturing_batch: false,
-	
-	update_step_state: function(step, state) {
+
+	update_step_state: function (step, state) {
 		this.step_states["" + step] = state;
 		indigo_update_light_property(this.devices[0], "SEQUENCE_STEP_STATE", this.step_states, "Ok");
 	},
-	
-	on_update: function(property) {
+
+	on_update: function (property) {
 		if (this.sequence != null) {
 			if (property.device == this.devices[2] && property.name == "AGENT_PAUSE_PROCESS" && property.state == "Busy" && property.items.PAUSE_AFTER_TRANSIT) {
 				indigo_flipper.devices = this.devices;
@@ -548,36 +556,36 @@ var indigo_sequencer = {
 			}
 		}
 	},
-	
-	on_enumerate_properties: function(property) {
+
+	on_enumerate_properties: function (property) {
 		if (property.device == null || property.device == this.devices[0]) {
 			if (property.name == null || property.name == "SEQUENCE_NAME") {
-				indigo_define_text_property(this.devices[0], "SEQUENCE_NAME", "Sequencer", "Sequence name", { NAME: this.name }, { NAME: { label: "Name" }}, "Ok", "RO");
+				indigo_define_text_property(this.devices[0], "SEQUENCE_NAME", "Sequencer", "Sequence name", { NAME: this.name }, { NAME: { label: "Name" } }, "Ok", "RO");
 			}
 			if (property.name == null || property.name == "SEQUENCE_STATE") {
-				indigo_define_number_property(this.devices[0], "SEQUENCE_STATE", "Sequencer", "State", { STEP: this.step, PROGRESS: this.progress, PROGRESS_TOTAL: this.progress_total, EXPOSURE: this.exposure, EXPOSURE_TOTAL: this.exposure_total }, { STEP: { label: "Executing step", format: "%g", min: -1, max: 1000000, step: 1 }, PROGRESS: { label: "Progress", format: "%g", min: 0, max: 1000000, step: 1 }, PROGRESS_TOTAL: { label: "Progress total", format: "%g", min: 0, max: 1000000, step: 1 }, EXPOSURE: { label: "Exposure time elapsed", format: "%g", min: 0, max: 1000000, step: 1 }, EXPOSURE_TOTAL: { label: "Exposure time total", format: "%g", min: 0, max: 1000000, step: 1 }}, this.sequence_state, "RO");
+				indigo_define_number_property(this.devices[0], "SEQUENCE_STATE", "Sequencer", "State", { STEP: this.step, PROGRESS: this.progress, PROGRESS_TOTAL: this.progress_total, EXPOSURE: this.exposure, EXPOSURE_TOTAL: this.exposure_total }, { STEP: { label: "Executing step", format: "%g", min: -1, max: 1000000, step: 1 }, PROGRESS: { label: "Progress", format: "%g", min: 0, max: 1000000, step: 1 }, PROGRESS_TOTAL: { label: "Progress total", format: "%g", min: 0, max: 1000000, step: 1 }, EXPOSURE: { label: "Exposure time elapsed", format: "%g", min: 0, max: 1000000, step: 1 }, EXPOSURE_TOTAL: { label: "Exposure time total", format: "%g", min: 0, max: 1000000, step: 1 } }, this.sequence_state, "RO");
 			}
 			if (property.name == null || property.name == "SEQUENCE_STEP_STATE") {
 				indigo_define_light_property(this.devices[0], "SEQUENCE_STEP_STATE", "Sequencer", "Step state", this.step_states, this.step_states_defs, "Ok");
 			}
 			if (property.name == null || property.name == "AGENT_ABORT_PROCESS") {
-				indigo_define_switch_property(this.devices[0], "AGENT_ABORT_PROCESS", "Sequencer", "Abort sequence", { ABORT: false }, { ABORT: { label: "Abort" }}, this.abort_state, "RW", "OneOfMany");
+				indigo_define_switch_property(this.devices[0], "AGENT_ABORT_PROCESS", "Sequencer", "Abort sequence", { ABORT: false }, { ABORT: { label: "Abort" } }, this.abort_state, "RW", "OneOfMany");
 			}
 			if (property.name == null || property.name == "AGENT_PAUSE_PROCESS") {
-				indigo_define_switch_property(this.devices[0], "AGENT_PAUSE_PROCESS", "Sequencer", "Pause sequence", { PAUSE_WAIT: this.paused }, { PAUSE_WAIT: { label: "Pause (before next operation)" }}, this.pause_state, "RW", "OneOfMany");
+				indigo_define_switch_property(this.devices[0], "AGENT_PAUSE_PROCESS", "Sequencer", "Pause sequence", { PAUSE_WAIT: this.paused }, { PAUSE_WAIT: { label: "Pause (before next operation)" } }, this.pause_state, "RW", "OneOfMany");
 			}
 			if (property.name == null || property.name == "SEQUENCE_RESET") {
-				indigo_define_switch_property(this.devices[0], "SEQUENCE_RESET", "Sequencer", "Reset sequence", { RESET: false }, { RESET: { label: "Reset" }}, "Ok", "RW", "OneOfMany");
+				indigo_define_switch_property(this.devices[0], "SEQUENCE_RESET", "Sequencer", "Reset sequence", { RESET: false }, { RESET: { label: "Reset" } }, "Ok", "RW", "OneOfMany");
 			}
 			for (var i = 0; i < this.loop_level; i++) {
 				if (property.name == null || property.name == "LOOP_" + i) {
-					indigo_define_number_property(this.devices[0], "LOOP_" + i, "Sequencer", "Loop " + this.loop_level, { STEP: this.loop_step[i], COUNT: this.loop_count[i] }, { STEP: { label: "Loop at", format: "%g", min: 0, max: 10000, step: 1 }, COUNT: { label: "Itreations elapsed", format: "%g", min: 0, max: 10000, step: 1 }}, "Ok", "RO");
+					indigo_define_number_property(this.devices[0], "LOOP_" + i, "Sequencer", "Loop " + this.loop_level, { STEP: this.loop_step[i], COUNT: this.loop_count[i] }, { STEP: { label: "Loop at", format: "%g", min: 0, max: 10000, step: 1 }, COUNT: { label: "Itreations elapsed", format: "%g", min: 0, max: 10000, step: 1 } }, "Ok", "RO");
 				}
 			}
 		}
 	},
-	
-	on_change_property: function(property) {
+
+	on_change_property: function (property) {
 		if (property.device == this.devices[0]) {
 			if (property.name == "AGENT_ABORT_PROCESS") {
 				if (this.sequence != null) {
@@ -633,8 +641,8 @@ var indigo_sequencer = {
 			}
 		}
 	},
-	
-	abort: function() {
+
+	abort: function () {
 		this.wait_for_device = null;
 		this.wait_for_property = null;
 		this.wait_for_property_state = "Ok";
@@ -670,8 +678,8 @@ var indigo_sequencer = {
 		indigo_update_number_property(this.devices[0], "SEQUENCE_STATE", { STEP: this.step, PROGRESS: this.progress, PROGRESS_TOTAL: this.progress_total, EXPOSURE: this.exposure, EXPOSURE_TOTAL: this.exposure_total }, this.sequence_state = "Alert", "Sequence aborted");
 		indigo_update_switch_property(this.devices[0], "AGENT_ABORT_PROCESS", { ABORT: false }, this.abort_state = "Ok");
 	},
-	
-	start: function(sequence, name, progress_total, exposure_total) {
+
+	start: function (sequence, name, progress_total, exposure_total) {
 		if (this.sequence != null) {
 			indigo_send_message("Other sequence is executed");
 		} else {
@@ -706,10 +714,10 @@ var indigo_sequencer = {
 				//indigo_error(JSON.stringify(entry));
 				if (entry.step > last_step) {
 					last_step = entry.step;
-					var name = "" + last_step;
-					this.step_states[name] = "Idle";
+					var step_name = "" + last_step;
+					this.step_states[step_name] = "Idle";
 					//this.step_states_defs[name] = { label: entry.execute }
-					this.step_states_defs[name] = { label: name }
+					this.step_states_defs[step_name] = { label: step_name }
 				}
 			}
 			indigo_delete_property(this.devices[0], "SEQUENCE_STEP_STATE");
@@ -718,7 +726,7 @@ var indigo_sequencer = {
 		}
 	},
 
-	execute_next: function() {
+	execute_next: function () {
 		if (this.index == -1) {
 			indigo_define_light_property(this.devices[0], "SEQUENCE_STEP_STATE", "Sequencer", "Step state", this.step_states, this.step_states_defs, "Ok");
 		}
@@ -773,16 +781,16 @@ var indigo_sequencer = {
 			}
 		}
 	},
-	
-	enter_loop: function() {
+
+	enter_loop: function () {
 		this.loop_level++;
 		this.loop_count.push(0);
 		this.loop_step.push(this.step);
-		indigo_define_number_property(this.devices[0], "LOOP_" + this.loop_level, "Sequencer", "Loop " + this.loop_step[this.loop_level], { STEP: this.step, COUNT: this.loop_count[this.loop_level] }, { STEP: { label: "Loop at", format: "%g", min: 0, max: 10000, step: 1 }, COUNT: { label: "Itreations elapsed", format: "%g", min: 0, max: 10000, step: 1 }}, "Ok", "RO");
+		indigo_define_number_property(this.devices[0], "LOOP_" + this.loop_level, "Sequencer", "Loop " + this.loop_step[this.loop_level], { STEP: this.step, COUNT: this.loop_count[this.loop_level] }, { STEP: { label: "Loop at", format: "%g", min: 0, max: 10000, step: 1 }, COUNT: { label: "Itreations elapsed", format: "%g", min: 0, max: 10000, step: 1 } }, "Ok", "RO");
 		indigo_set_timer(indigo_sequencer_next_handler, 0);
 	},
-	
-	reset_loop_content: function() {
+
+	reset_loop_content: function () {
 		var nesting = 0;
 		for (var i = this.index + 1; i < this.sequence.length; i++) {
 			var next = this.sequence[i];
@@ -797,28 +805,28 @@ var indigo_sequencer = {
 		}
 		indigo_set_timer(indigo_sequencer_next_handler, 0);
 	},
-	
-	increment_loop: function(i) {
+
+	increment_loop: function (i) {
 		indigo_update_number_property(this.devices[0], "LOOP_" + this.loop_level, { COUNT: this.loop_count[this.loop_level] = i }, "Ok");
 		indigo_set_timer(indigo_sequencer_next_handler, 0);
 	},
-		
-	exit_loop: function() {
+
+	exit_loop: function () {
 		indigo_delete_property(this.devices[0], "LOOP_" + this.loop_level--);
 		this.loop_count.pop();
 		this.update_step_state(this.loop_step.pop(), "Ok");
 		indigo_set_timer(indigo_sequencer_next_handler, 0);
 	},
-	
-	recovery_point: function(index) {
+
+	recovery_point: function (index) {
 		if (this.skip_to_recovery_point) {
 			this.skip_to_recovery_point = false;
 			indigo_send_message("Recovered from failure at recovery point #" + index);
 		}
 		indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
 	},
-	
-	set_switch: function(device, property_name, item, value, state) {
+
+	set_switch: function (device, property_name, item, value, state) {
 		var property = indigo_devices[device][property_name];
 		if (property == null) {
 			this.failure("Failed to set '" + property_name + "' on '" + device + "'");
@@ -842,7 +850,7 @@ var indigo_sequencer = {
 			}
 			if (!found) {
 				if (!property_name.conta)
-				this.failure("Failed to set '" + item + "' on '" + property_name + "'");
+					this.failure("Failed to set '" + item + "' on '" + property_name + "'");
 				return;
 			}
 		}
@@ -854,7 +862,7 @@ var indigo_sequencer = {
 			}
 			return;
 		}
-		var items = { };
+		var items = {};
 		items[item] = value;
 		this.wait_for_device = device;
 		this.wait_for_property = property_name;
@@ -862,15 +870,15 @@ var indigo_sequencer = {
 		indigo_change_switch_property(device, property_name, items);
 	},
 
-	select_switch: function(device, property, item, state) {
+	select_switch: function (device, property, item, state) {
 		this.set_switch(device, property, item, true, state);
 	},
-	
-	deselect_switch: function(device, property, item) {
+
+	deselect_switch: function (device, property, item) {
 		this.set_switch(device, property, item, false, state);
 	},
-	
-	change_texts: function(device, property_name, items) {
+
+	change_texts: function (device, property_name, items) {
 		var property = indigo_devices[device][property_name];
 		if (property == null) {
 			this.failure("There is no " + property_name + " on " + device);
@@ -897,7 +905,7 @@ var indigo_sequencer = {
 		indigo_change_text_property(device, property_name, items);
 	},
 
-	change_numbers: function(device, property_name, items) {
+	change_numbers: function (device, property_name, items) {
 		var property = indigo_devices[device][property_name];
 		if (property == null) {
 			this.failure("There is no " + property_name + " on " + device);
@@ -923,13 +931,13 @@ var indigo_sequencer = {
 		this.wait_for_property = property_name;
 		indigo_change_number_property(device, property_name, items);
 	},
-	
-	warning: function(message) {
+
+	warning: function (message) {
 		indigo_send_message(message);
 		indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
 	},
-	
-	failure: function(message) {
+
+	failure: function (message) {
 		indigo_send_message(message);
 		if (this.ignore_failure || this.failure_handling == 2) {
 			this.ignore_failure = false;
@@ -955,8 +963,8 @@ var indigo_sequencer = {
 			indigo_update_number_property(this.devices[0], "SEQUENCE_STATE", { STEP: this.step, PROGRESS: this.progress, PROGRESS_TOTAL: this.progress_total, EXPOSURE: this.exposure, EXPOSURE_TOTAL: this.exposure_total }, this.sequence_state = "Alert", "Sequence failed");
 		}
 	},
-	
-	wait: function(seconds) {
+
+	wait: function (seconds) {
 		var result = indigo_set_timer(indigo_sequencer_next_ok_handler, seconds);
 		if (result >= 0) {
 			this.wait_for_timer = result;
@@ -966,7 +974,7 @@ var indigo_sequencer = {
 		}
 	},
 
-	wait_until: function(time) {
+	wait_until: function (time) {
 		var result;
 		if (typeof time === "number") {
 			result = indigo_set_timer_at(indigo_sequencer_next_ok_handler, time);
@@ -981,179 +989,227 @@ var indigo_sequencer = {
 		}
 	},
 
-	set_failure_handling: function(failure_handling) {
+	set_failure_handling: function (failure_handling) {
 		this.failure_handling = failure_handling;
 		indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
 	},
 
-	evaluate: function(code) {
+	evaluate: function (code) {
 		eval(code);
 		indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
 	},
 
-	send_message: function(message) {
+	send_message: function (message) {
 		indigo_send_message(message);
 		indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
 	},
 
-	load_config: function(name) {
+	load_config: function (name) {
 		this.select_switch(this.devices[1], "AGENT_CONFIG_LOAD", name);
 	},
 
-	load_driver: function(name) {
+	load_driver: function (name) {
 		this.select_switch("Server", "DRIVERS", name);
 	},
-	
-	unload_driver: function(name) {
+
+	unload_driver: function (name) {
 		this.deselect_switch("Server", "DRIVERS", name);
 	},
-	
-	select_imager_agent: function(agent) {
+
+	select_imager_agent: function (agent) {
 		this.devices[2] = agent;
 		indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
 	},
-		
-	select_mount_agent: function(agent) {
+
+	select_mount_agent: function (agent) {
 		this.devices[3] = agent;
 		indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
 	},
-		
-	select_guider_agent: function(agent) {
+
+	select_guider_agent: function (agent) {
 		this.devices[4] = agent;
 		indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
 	},
 
-	select_device: function(agent, filter_property, device) {
+	select_device: function (agent, filter_property, device) {
 		if (agent == undefined)
 			agent = "NONE";
 		this.select_switch(agent, filter_property, device);
 	},
 
-	select_imager_camera: function(camera) {
+	select_imager_camera: function (camera) {
 		this.select_device(this.devices[2], "FILTER_CCD_LIST", camera);
 	},
 
-	select_filter_wheel: function(wheel) {
+	select_filter_wheel: function (wheel) {
 		this.select_device(this.devices[2], "FILTER_WHEEL_LIST", wheel);
 	},
 
-	select_focuser: function(focuser) {
+	select_focuser: function (focuser) {
 		this.select_device(this.devices[2], "FILTER_FOCUSER_LIST", focuser);
 	},
 
-	select_rotator: function(rotator) {
+	select_rotator: function (rotator) {
 		this.select_device(this.devices[3], "FILTER_ROTATOR_LIST", rotator);
 	},
 
-	select_mount: function(mount) {
+	select_mount: function (mount) {
 		this.select_device(this.devices[3], "FILTER_MOUNT_LIST", mount);
 	},
 
-	select_dome: function(dome) {
+	select_dome: function (dome) {
 		this.select_device(this.devices[3], "FILTER_DOME_LIST", dome);
 	},
 
-	select_gps: function(gps) {
+	select_gps: function (gps) {
 		this.select_device(this.devices[3], "FILTER_GPS_LIST", gps);
 	},
 
-	select_guider_camera: function(camera) {
+	select_guider_camera: function (camera) {
 		this.select_device(this.devices[4], "FILTER_CCD_LIST", camera);
 	},
 
-	select_guider: function(guider) {
+	select_guider: function (guider) {
 		this.select_device(this.devices[4], "FILTER_GUIDER_LIST", guider);
 	},
 
-	select_frame_type: function(type) {
+	select_frame_type: function (type) {
 		this.select_switch(this.devices[2], "CCD_FRAME_TYPE", type);
 	},
 
-	select_image_format: function(format) {
+	select_image_format: function (format) {
 		this.select_switch(this.devices[2], "CCD_IMAGE_FORMAT", format);
 	},
 
-	select_camera_mode: function(mode) {
+	select_camera_mode: function (mode) {
 		this.select_switch(this.devices[2], "CCD_MODE", mode);
 	},
 
-	set_gain: function(value) {
+	set_gain: function (value) {
 		this.change_numbers(this.devices[2], "CCD_GAIN", { GAIN: value });
 	},
 
-	set_offset: function(value) {
+	set_offset: function (value) {
 		this.change_numbers(this.devices[2], "CCD_OFFSET", { OFFSET: value });
 	},
 
-	set_gamma: function(value) {
+	set_gamma: function (value) {
 		this.change_numbers(this.devices[2], "CCD_GAMMA", { GAMMA: value });
 	},
 
-	select_program: function(program) {
+	select_program: function (program) {
 		this.select_switch(this.devices[2], "DSLR_PROGRAM", program);
 	},
 
-	select_aperture: function(aperture) {
+	select_aperture: function (aperture) {
 		this.select_switch(this.devices[2], "DSLR_APERTURE", aperture);
 	},
 
-	select_shutter: function(shutter) {
+	select_shutter: function (shutter) {
 		this.select_switch(this.devices[2], "DSLR_SHUTTER", shutter);
 	},
 
-	select_iso: function(iso) {
+	select_iso: function (iso) {
 		this.select_switch(this.devices[2], "DSLR_ISO", iso);
 	},
 
-	select_cooler: function(name) {
+	select_cooler: function (name) {
 		this.select_switch(this.devices[2], "CCD_COOLER", name);
 	},
-	
-	set_temperature: function(temperature) {
+
+	set_temperature: function (temperature) {
 		this.wait_for_item = "TEMPERATURE";
 		this.wait_for_value = temperature;
 		this.wait_for_value_tolerance = 1; // Allow large tolerance for the temperature. The property state will remain "Busy" until temperature reaches the driver's tolerance.
 		this.change_numbers(this.devices[2], "CCD_TEMPERATURE", { TEMPERATURE: temperature });
 	},
-	
-	set_use_solver: function(use_solver) {
+
+	set_use_solver: function (use_solver) {
 		this.use_solver = use_solver;
 		indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
 	},
-	
-	set_pause_after_transit: function(time) {
+
+	set_pause_after_transit: function (time) {
 		this.change_numbers(this.devices[2], "AGENT_IMAGER_BATCH", { PAUSE_AFTER_TRANSIT: time });
 	},
-	
-	set_imager_dithering: function(skip_frames) {
+
+	set_imager_dithering: function (skip_frames) {
 		this.change_numbers(this.devices[2], "AGENT_IMAGER_BATCH", { FRAMES_TO_SKIP_BEFORE_DITHER: skip_frames });
 	},
 
-	set_fits_header: function(keyword, value) {
+	set_fits_header: function (keyword, value) {
 		this.change_texts(this.devices[2], "CCD_SET_FITS_HEADER", { "KEYWORD": keyword, "VALUE": value });
 	},
-	
-	remove_fits_header: function(keyword, value) {
+
+	remove_fits_header: function (keyword, value) {
 		this.change_texts(this.devices[2], "CCD_REMOVE_FITS_HEADER", { "KEYWORD": keyword });
 	},
-	
-	set_guider_dithering: function(amount, time_limit) {
-		this.change_numbers(this.devices[4], "AGENT_GUIDER_SETTINGS", { DITHERING_MAX_AMOUNT: amount, DITHERING_SETTLE_TIME_LIMIT: time_limit});
+
+	set_guider_dithering: function (amount, time_limit) {
+		this.change_numbers(this.devices[4], "AGENT_GUIDER_SETTINGS", { DITHERING_MAX_AMOUNT: amount, DITHERING_SETTLE_TIME_LIMIT: time_limit });
 	},
 
-	set_imager_feature: function(name, value) {
+	set_imager_feature: function (name, value) {
 		this.set_switch(this.devices[2], "AGENT_PROCESS_FEATURES", name, value);
 	},
-	
-	select_filter: function(filter) {
-		this.select_switch(this.devices[2], "AGENT_WHEEL_FILTER", filter);
-	},
-	
-	set_local_mode: function(directory, prefix, object) {
-		this.change_texts(this.devices[2], "CCD_LOCAL_MODE", { DIR: directory, PREFIX: prefix, OBJECT: object});
+
+	select_reference_filter: function () {
+		var agent = this.devices[2];
+		var property = indigo_devices[agent].WHEEL_SLOT_OFFSET;
+		if (property == null || property.items == undefined) {
+			this.failure("Can't get filter offset");
+		}
+
+		var reference_filter = 0;
+		var offset_zero_count = 0;
+		for (var name in property.items) {
+			if (property.items[name] == 0) {
+				filter = name.substring("SLOT_OFFSET_".length);
+				offset_zero_count++;
+			}
+		}
+
+		if (offset_zero_count > 1) {
+			this.failure("More than one filter has offset 0");
+		}
+
+		if (reference_filter == 0) {
+			this.failure("Can't find reference filter");
+		}
+
+		this.select_filter(filter);
 	},
 
-	save_batch: function() {
+	select_filter: function (filter) {
+		this.select_switch(this.devices[2], "AGENT_WHEEL_FILTER", filter);
+	},
+
+	select_filter_with_offset: function (filter) {
+		this.select_filter(filter);
+
+		var agent = this.devices[2];
+		var position = null;
+
+		var offset_property = indigo_devices[agent].WHEEL_SLOT_OFFSET;
+		var position_property = indigo_devices[agent].FOCUSER_POSITION;
+
+		if (offset_property == null || offset_property.items["SLOT_OFFSET_" + filter] == undefined) {
+			this.failure("Can't get filter offset");
+		}
+
+		if (position_property == null || property.items.POSITION == undefined) {
+			this.failure("Can't get focuser position");
+		}
+
+		position = position_property.items.POSITION + offset_property.items["SLOT_OFFSET_" + filter];
+		this.sequence.push({ execute: 'set_focuser_position(' + position + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	},
+
+	set_local_mode: function (directory, prefix, object) {
+		this.change_texts(this.devices[2], "CCD_LOCAL_MODE", { DIR: directory, PREFIX: prefix, OBJECT: object });
+	},
+
+	save_batch: function () {
 		var agent = this.devices[2];
 		var property = indigo_devices[agent].AGENT_IMAGER_BATCH;
 		if (property != null) {
@@ -1164,68 +1220,68 @@ var indigo_sequencer = {
 		}
 	},
 
-	restore_batch: function() {
+	restore_batch: function () {
 		this.change_numbers(this.devices[2], "AGENT_IMAGER_BATCH", this.saved_batch);
 	},
 
-	set_upload_mode: function(mode) {
+	set_upload_mode: function (mode) {
 		this.select_switch(this.devices[2], "CCD_UPLOAD_MODE", mode);
 	},
 
-	set_batch: function(count, exposure) {
-		this.change_numbers(this.devices[2], "AGENT_IMAGER_BATCH", { COUNT: count, EXPOSURE: exposure});
+	set_batch: function (count, exposure) {
+		this.change_numbers(this.devices[2], "AGENT_IMAGER_BATCH", { COUNT: count, EXPOSURE: exposure });
 	},
 
-	capture_batch: function() {
+	capture_batch: function () {
 		this.capturing_batch = true;
 		this.select_switch(this.devices[2], "AGENT_START_PROCESS", "EXPOSURE");
 	},
 
-	capture_stream: function() {
+	capture_stream: function () {
 		this.select_switch(this.devices[2], "AGENT_START_PROCESS", "STREAMING");
 	},
 
-	set_focuser_mode: function(mode) {
+	set_focuser_mode: function (mode) {
 		this.select_switch(this.devices[2], "FOCUSER_MODE", mode);
 	},
-	
-	focus: function(ignore_failure) {
+
+	focus: function (ignore_failure) {
 		this.ignore_failure = ignore_failure;
 		this.select_switch(this.devices[2], "AGENT_START_PROCESS", "FOCUSING");
 	},
 
-	clear_focuser_selection: function() {
+	clear_focuser_selection: function () {
 		this.select_switch(this.devices[2], "AGENT_START_PROCESS", "CLEAR_SELECTION");
 	},
-	
-	unpark: function() {
+
+	unpark: function () {
 		this.select_switch(this.devices[3], "MOUNT_PARK", "UNPARKED");
 	},
-	
-	set_coordinates: function(ra, dec) {
-		this.change_numbers(this.devices[3], "AGENT_MOUNT_EQUATORIAL_COORDINATES", { RA: ra, DEC: dec});
+
+	set_coordinates: function (ra, dec) {
+		this.change_numbers(this.devices[3], "AGENT_MOUNT_EQUATORIAL_COORDINATES", { RA: ra, DEC: dec });
 	},
-	
-	slew: function(ra, dec) {
+
+	slew: function (ra, dec) {
 		this.select_switch(this.devices[3], "AGENT_START_PROCESS", "SLEW");
 	},
-	
-	park: function() {
+
+	park: function () {
 		this.select_switch(this.devices[3], "MOUNT_PARK", "PARKED");
 	},
-	
-	home: function() {
+
+	home: function () {
 		this.select_switch(this.devices[3], "MOUNT_HOME", "HOME");
 	},
 
-	wait_for_gps: function() {
+	wait_for_gps: function () {
 		var agent = this.devices[3];
 		var property = indigo_devices[agent].GPS_GEOGRAPHIC_COORDINATES;
 		if (property != null) {
 			if (property.state == "Busy") {
 				indigo_send_message("Waiting for GPS");
 				this.wait_for_device = agent;
-				this.wait_for_property =  "GPS_GEOGRAPHIC_COORDINATES";
+				this.wait_for_property = "GPS_GEOGRAPHIC_COORDINATES";
 			} else {
 				indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
 			}
@@ -1233,57 +1289,57 @@ var indigo_sequencer = {
 			this.failure("Can't wait for GPS");
 		}
 	},
-	
-	set_guider_exposure: function(exposure) {
+
+	set_guider_exposure: function (exposure) {
 		this.change_numbers(this.devices[4], "AGENT_GUIDER_SETTINGS", { EXPOSURE: exposure });
 	},
 
-	calibrate_guiding: function() {
+	calibrate_guiding: function () {
 		this.select_switch(this.devices[4], "AGENT_START_PROCESS", "CALIBRATION");
 	},
 
-	start_guiding: function() {
+	start_guiding: function () {
 		this.select_switch(this.devices[4], "AGENT_START_PROCESS", "GUIDING", "Busy");
 	},
 
-	stop_guiding: function() {
+	stop_guiding: function () {
 		this.select_switch(this.devices[4], "AGENT_ABORT_PROCESS", "ABORT");
 	},
 
-	clear_guider_selection: function() {
+	clear_guider_selection: function () {
 		this.select_switch(this.devices[4], "AGENT_START_PROCESS", "CLEAR_SELECTION");
 	},
-	
-	set_solver_exposure: function(exposure) {
+
+	set_solver_exposure: function (exposure) {
 		this.change_numbers(this.devices[5], "AGENT_PLATESOLVER_EXPOSURE", { EXPOSURE: exposure });
 	},
 
-	set_solver_target: function(ra, dec) {
+	set_solver_target: function (ra, dec) {
 		this.change_numbers(this.devices[5], "AGENT_PLATESOLVER_GOTO_SETTINGS", { RA: ra, DEC: dec });
 	},
 
-	precise_goto: function() {
+	precise_goto: function () {
 		this.select_switch(this.devices[5], "AGENT_START_PROCESS", "PRECISE_GOTO");
 	},
 
-	sync_center: function() {
+	sync_center: function () {
 		this.select_switch(this.devices[5], "AGENT_START_PROCESS", "CENTER");
 	},
 
-	set_rotator_goto: function() {
+	set_rotator_goto: function () {
 		this.select_switch(this.devices[3], "ROTATOR_ON_POSITION_SET", "GOTO");
 	},
 
-	set_rotator_angle: function(angle) {
+	set_rotator_angle: function (angle) {
 		this.change_numbers(this.devices[3], "ROTATOR_POSITION", { POSITION: angle });
 	},
 
-	set_focuser_goto: function() {
+	set_focuser_goto: function () {
 		this.select_switch(this.devices[2], "FOCUSER_ON_POSITION_SET", "GOTO");
 	},
 
-	set_focuser_position: function(position) {
-		this.change_numbers( this.devices[2], "FOCUSER_POSITION", { POSITION: position });
+	set_focuser_position: function (position) {
+		this.change_numbers(this.devices[2], "FOCUSER_POSITION", { POSITION: position });
 	}
 };
 
