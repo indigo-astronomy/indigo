@@ -265,6 +265,8 @@
 		595F2936211E22CC00380EF4 /* indigo_aux_joystick.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F2935211E22CC00380EF4 /* indigo_aux_joystick.m */; };
 		5967BB1929B3D83B0003BF22 /* indigo_service_discovery.c in Sources */ = {isa = PBXBuildFile; fileRef = 59790B2F29B2798A00F73B1D /* indigo_service_discovery.c */; };
 		59689AA3245DE40D00F950CE /* indigo_wheel_manual.c in Sources */ = {isa = PBXBuildFile; fileRef = 59689AA2245DE3E100F950CE /* indigo_wheel_manual.c */; };
+		596E15452DAC1A150004569F /* CAA_API.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D74A4F72D4B63F700A31003 /* CAA_API.h */; };
+		596E15462DAC1A150004569F /* CAA_API.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D74A4F72D4B63F700A31003 /* CAA_API.h */; };
 		596FCA8F2BD0320E00F5BACB /* gxccd.h in Headers */ = {isa = PBXBuildFile; fileRef = 596FCA772BD0320E00F5BACB /* gxccd.h */; };
 		596FCA902BD0320E00F5BACB /* gxccd.h in Headers */ = {isa = PBXBuildFile; fileRef = 596FCA772BD0320E00F5BACB /* gxccd.h */; };
 		596FCA912BD0320E00F5BACB /* libgxccd.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 596FCA792BD0320E00F5BACB /* libgxccd.a */; };
@@ -14805,6 +14807,7 @@
 				598A1C45259BA94A00C0B34C /* indigo_guider_cgusbst4.h in Headers */,
 				598A1C46259BA94A00C0B34C /* indigo_guider_driver.h in Headers */,
 				59A68E33277DE627000439CC /* indigo_ccd_asi.h in Headers */,
+				596E15462DAC1A150004569F /* CAA_API.h in Headers */,
 				598A1C47259BA94A00C0B34C /* indigo_aux_dsusb.h in Headers */,
 				596FCAB52BD0328000F5BACB /* indigo_rotator_wa.h in Headers */,
 				598A1C48259BA94A00C0B34C /* DDHidKeyboardBarcodeScanner.h in Headers */,
@@ -15057,6 +15060,7 @@
 				595567C724B882DD00DF303D /* qhyccdstruct.h in Headers */,
 				593CFE451DFC8A12003B63D4 /* indigo_wheel_atik.h in Headers */,
 				59D9681921A2FE3F0069A64C /* USB2ST4_Conv.h in Headers */,
+				596E15452DAC1A150004569F /* CAA_API.h in Headers */,
 				59D6718F22FDBB7500D08A2A /* indigo_ptp_nikon.h in Headers */,
 				593894B42C4C22B100CEF4A5 /* indigo_aux_upb3.h in Headers */,
 				59A68E32277DE626000439CC /* indigo_ccd_asi.h in Headers */,

@@ -447,7 +447,13 @@ static void define_property_handler(indigo_device *device, void *data) {
 	indigo_define_property(device, property, NULL);
 }
 
-static duk_ret_t define_text_property(duk_context *ctx) {
+static void redefine_property_handler(indigo_device *device, void *data) {
+	indigo_property *property = (indigo_property *)data;
+	indigo_delete_property(device, property, NULL);
+	indigo_define_property(device, property, NULL);
+}
+
+static duk_ret_t _define_text_property(duk_context *ctx, bool redefine) {
 	const char *device = duk_require_string(ctx, 0);
 	const char *property_name = duk_require_string(ctx, 1);
 	const char *property_group = duk_require_string(ctx, 2);
@@ -474,7 +480,7 @@ static duk_ret_t define_text_property(duk_context *ctx) {
 				duk_pop_2(ctx); // item
 				tmp->count++;
 			}
-			indigo_set_timer_with_data(agent_device, 0, define_property_handler, NULL, tmp);
+			indigo_set_timer_with_data(agent_device, 0, redefine ? redefine_property_handler : define_property_handler, NULL, tmp);
 			if (message)
 				indigo_set_timer_with_data(agent_device, 0, send_message_handler, NULL, (void *)strdup(message));
 			return 0;
@@ -483,9 +489,17 @@ static duk_ret_t define_text_property(duk_context *ctx) {
 	return DUK_RET_ERROR;
 }
 
+static duk_ret_t define_text_property(duk_context *ctx) {
+	return _define_text_property(ctx, false);
+}
+
+static duk_ret_t redefine_text_property(duk_context *ctx) {
+	return _define_text_property(ctx, true);
+}
+
 //function indigo_define_number_property(device_name, property_name, property_group, property_label, items, item_labels, state, perm, message)
 
-static duk_ret_t define_number_property(duk_context *ctx) {
+static duk_ret_t _define_number_property(duk_context *ctx, bool redefine) {
 	const char *device = duk_require_string(ctx, 0);
 	const char *property = duk_require_string(ctx, 1);
 	const char *property_group = duk_require_string(ctx, 2);
@@ -524,7 +538,7 @@ static duk_ret_t define_number_property(duk_context *ctx) {
 				duk_pop_2(ctx); // item
 				tmp->count++;
 			}
-			indigo_set_timer_with_data(agent_device, 0, define_property_handler, NULL, tmp);
+			indigo_set_timer_with_data(agent_device, 0, redefine ? redefine_property_handler : define_property_handler, NULL, tmp);
 			if (message)
 				indigo_set_timer_with_data(agent_device, 0, send_message_handler, NULL, (void *)strdup(message));
 			return 0;
@@ -533,9 +547,17 @@ static duk_ret_t define_number_property(duk_context *ctx) {
 	return DUK_RET_ERROR;
 }
 
+static duk_ret_t define_number_property(duk_context *ctx) {
+	return _define_number_property(ctx, false);
+}
+
+static duk_ret_t redefine_number_property(duk_context *ctx) {
+	return _define_number_property(ctx, true);
+}
+
 //function indigo_define_switch_property(device_name, property_name, property_group, property_label, items, item_labels, state, perm, rule, message)
 
-static duk_ret_t define_switch_property(duk_context *ctx) {
+static duk_ret_t _define_switch_property(duk_context *ctx, bool redefine) {
 	const char *device = duk_require_string(ctx, 0);
 	const char *property = duk_require_string(ctx, 1);
 	const char *property_group = duk_require_string(ctx, 2);
@@ -563,7 +585,7 @@ static duk_ret_t define_switch_property(duk_context *ctx) {
 				duk_pop_2(ctx); // item
 				tmp->count++;
 			}
-			indigo_set_timer_with_data(agent_device, 0, define_property_handler, NULL, tmp);
+			indigo_set_timer_with_data(agent_device, 0, redefine ? redefine_property_handler : define_property_handler, NULL, tmp);
 			if (message)
 				indigo_set_timer_with_data(agent_device, 0, send_message_handler, NULL, (void *)strdup(message));
 			return 0;
@@ -572,9 +594,17 @@ static duk_ret_t define_switch_property(duk_context *ctx) {
 	return DUK_RET_ERROR;
 }
 
+static duk_ret_t define_switch_property(duk_context *ctx) {
+	return _define_switch_property(ctx, false);
+}
+
+static duk_ret_t redefine_switch_property(duk_context *ctx) {
+	return _define_switch_property(ctx, true);
+}
+
 //function indigo_define_light_property(device_name, property_name, property_group, property_label, items, item_labels, state, message)
 
-static duk_ret_t define_light_property(duk_context *ctx) {
+static duk_ret_t _define_light_property(duk_context *ctx, bool redefine) {
 	const char *device = duk_require_string(ctx, 0);
 	const char *property = duk_require_string(ctx, 1);
 	const char *property_group = duk_require_string(ctx, 2);
@@ -600,13 +630,21 @@ static duk_ret_t define_light_property(duk_context *ctx) {
 				duk_pop_2(ctx); // item
 				tmp->count++;
 			}
-			indigo_set_timer_with_data(agent_device, 0, define_property_handler, NULL, tmp);
+			indigo_set_timer_with_data(agent_device, 0, redefine ? redefine_property_handler : define_property_handler, NULL, tmp);
 			if (message)
 				indigo_set_timer_with_data(agent_device, 0, send_message_handler, NULL, (void *)strdup(message));
 			return 0;
 		}
 	}
 	return DUK_RET_ERROR;
+}
+
+static duk_ret_t define_light_property(duk_context *ctx) {
+	return _define_light_property(ctx, false);
+}
+
+static duk_ret_t redefine_light_property(duk_context *ctx) {
+	return _define_light_property(ctx, true);
 }
 
 //function indigo_update_text_property(device_name, property_name, items, state, message)
@@ -727,7 +765,7 @@ static duk_ret_t update_light_property(duk_context *ctx) {
 					indigo_item *item = tmp->items + j;
 					if (!strcmp(item->name, name)) {
 						indigo_copy_name(tmp->items[j].name, name);
-						tmp->items[j].sw.value = require_state(ctx, -1);
+						tmp->items[j].light.value = require_state(ctx, -1);
 						break;
 					}
 				}
@@ -952,12 +990,20 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_change_switch_property");
 			duk_push_c_function(PRIVATE_DATA->ctx, define_text_property, 9);
 			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_define_text_property");
+			duk_push_c_function(PRIVATE_DATA->ctx, redefine_text_property, 9);
+			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_redefine_text_property");
 			duk_push_c_function(PRIVATE_DATA->ctx, define_number_property, 9);
 			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_define_number_property");
+			duk_push_c_function(PRIVATE_DATA->ctx, redefine_number_property, 9);
+			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_redefine_number_property");
 			duk_push_c_function(PRIVATE_DATA->ctx, define_switch_property, 10);
 			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_define_switch_property");
+			duk_push_c_function(PRIVATE_DATA->ctx, redefine_switch_property, 10);
+			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_redefine_switch_property");
 			duk_push_c_function(PRIVATE_DATA->ctx, define_light_property, 8);
 			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_define_light_property");
+			duk_push_c_function(PRIVATE_DATA->ctx, redefine_light_property, 8);
+			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_redefine_light_property");
 			duk_push_c_function(PRIVATE_DATA->ctx, update_text_property, 5);
 			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_update_text_property");
 			duk_push_c_function(PRIVATE_DATA->ctx, update_number_property, 5);

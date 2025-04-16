@@ -3156,11 +3156,17 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		AGENT_IMAGER_SELECTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
 	} else if (indigo_property_match(AGENT_IMAGER_CAPTURE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- AGENT_IMAGER_CAPTURE
 		if (AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE || AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 			indigo_property_copy_values(AGENT_IMAGER_CAPTURE_PROPERTY, property, false);
 			AGENT_IMAGER_CAPTURE_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, AGENT_IMAGER_CAPTURE_PROPERTY, NULL);
-			indigo_set_timer(device, 0, capture, NULL);
+			if (INDIGO_FILTER_CCD_SELECTED) {
+				indigo_update_property(device, AGENT_IMAGER_CAPTURE_PROPERTY, NULL);
+				indigo_set_timer(device, 0, capture, NULL);
+			} else {
+				AGENT_IMAGER_CAPTURE_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, AGENT_IMAGER_CAPTURE_PROPERTY, "No CCD is selected");
+			}
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_START_PROCESS_PROPERTY, property)) {
