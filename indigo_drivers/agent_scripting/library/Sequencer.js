@@ -18,6 +18,14 @@ function Sequence(name) {
 	this.reset_loop_content_state = true;
 }
 
+Sequence.prototype.enable_reset_loop_content_state = function() {
+	this.reset_loop_content_state = true;
+}
+
+Sequence.prototype.disable_reset_loop_content_state = function() {
+	this.reset_loop_content_state = false;
+}
+
 Sequence.prototype.repeat = function(count, block) {
 	var loop = this.step;
 	var recovery_point_index_backup = this.recovery_point_index;
@@ -687,12 +695,10 @@ var indigo_sequencer = {
 				if (entry.execute.startsWith("increment_loop(") || entry.execute.startsWith("exit_loop(")) {
 					continue;
 				}
-				//indigo_error(JSON.stringify(entry));
 				if (entry.step > last_step) {
 					last_step = entry.step;
 					var name = "" + last_step;
 					this.step_states[name] = "Idle";
-					//this.step_states_defs[name] = { label: entry.execute }
 					this.step_states_defs[name] = { label: name }
 				}
 			}
