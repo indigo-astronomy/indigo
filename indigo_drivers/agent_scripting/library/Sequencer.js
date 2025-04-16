@@ -626,8 +626,7 @@ var indigo_sequencer = {
 					}
 					this.step_states = {};
 					this.step_states_defs = {};
-					indigo_delete_property(this.devices[0], "SEQUENCE_STEP_STATE");
-					indigo_define_light_property(this.devices[0], "SEQUENCE_STEP_STATE", "Sequencer", "Step state", this.step_states, this.step_states_defs, "Ok");
+					indigo_redefine_light_property(this.devices[0], "SEQUENCE_STEP_STATE", "Sequencer", "Step state", this.step_states, this.step_states_defs, "Ok");
 					indigo_update_switch_property(this.devices[0], "SEQUENCE_RESET", { RESET: false }, "Ok");
 				}
 			}
@@ -712,16 +711,13 @@ var indigo_sequencer = {
 					this.step_states_defs[name] = { label: name }
 				}
 			}
-			indigo_delete_property(this.devices[0], "SEQUENCE_STEP_STATE");
+			indigo_redefine_light_property(this.devices[0], "SEQUENCE_STEP_STATE", "Sequencer", "Step state", this.step_states, this.step_states_defs, "Ok");
 			indigo_send_message("Sequence started");
 			indigo_set_timer(indigo_sequencer_next_handler, 0.1);
 		}
 	},
 
 	execute_next: function() {
-		if (this.index == -1) {
-			indigo_define_light_property(this.devices[0], "SEQUENCE_STEP_STATE", "Sequencer", "Step state", this.step_states, this.step_states_defs, "Ok");
-		}
 		if (this.paused) {
 			indigo_set_timer(indigo_sequencer_next_handler, 0.01);
 		} else if (this.sequence != null) {
@@ -779,7 +775,7 @@ var indigo_sequencer = {
 		this.loop_count.push(0);
 		this.loop_step.push(this.step);
 		indigo_define_number_property(this.devices[0], "LOOP_" + this.loop_level, "Sequencer", "Loop " + this.loop_step[this.loop_level], { STEP: this.step, COUNT: this.loop_count[this.loop_level] }, { STEP: { label: "Loop at", format: "%g", min: 0, max: 10000, step: 1 }, COUNT: { label: "Itreations elapsed", format: "%g", min: 0, max: 10000, step: 1 }}, "Ok", "RO");
-		indigo_set_timer(indigo_sequencer_next_handler, 0);
+		indigo_set_timer(indigo_sequencer_next_handler, 0.1);
 	},
 	
 	reset_loop_content: function() {
@@ -800,14 +796,14 @@ var indigo_sequencer = {
 	
 	increment_loop: function(i) {
 		indigo_update_number_property(this.devices[0], "LOOP_" + this.loop_level, { COUNT: this.loop_count[this.loop_level] = i }, "Ok");
-		indigo_set_timer(indigo_sequencer_next_handler, 0);
+		indigo_set_timer(indigo_sequencer_next_handler, 0.1);
 	},
 		
 	exit_loop: function() {
 		indigo_delete_property(this.devices[0], "LOOP_" + this.loop_level--);
 		this.loop_count.pop();
 		this.update_step_state(this.loop_step.pop(), "Ok");
-		indigo_set_timer(indigo_sequencer_next_handler, 0);
+		indigo_set_timer(indigo_sequencer_next_handler, 0.1);
 	},
 	
 	recovery_point: function(index) {
