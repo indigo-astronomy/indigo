@@ -709,13 +709,15 @@ var indigo_sequencer = {
 				}
 			}
 			indigo_delete_property(this.devices[0], "SEQUENCE_STEP_STATE");
-			indigo_define_light_property(this.devices[0], "SEQUENCE_STEP_STATE", "Sequencer", "Step state", this.step_states, this.step_states_defs, "Ok");
 			indigo_send_message("Sequence started");
 			indigo_set_timer(indigo_sequencer_next_handler, 0.1);
 		}
 	},
 
 	execute_next: function() {
+		if (this.index == -1) {
+			indigo_define_light_property(this.devices[0], "SEQUENCE_STEP_STATE", "Sequencer", "Step state", this.step_states, this.step_states_defs, "Ok");
+		}
 		if (this.paused) {
 			indigo_set_timer(indigo_sequencer_next_handler, 0.01);
 		} else if (this.sequence != null) {
@@ -812,15 +814,14 @@ var indigo_sequencer = {
 		indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
 	},
 	
-	set_switch: function(device, property_name, item, value, state, continue_if_busy) {
+	set_switch: function(device, property_name, item, value, state) {
 		var property = indigo_devices[device][property_name];
 		if (property == null) {
 			this.failure("Failed to set '" + property_name + "' on '" + device + "'");
 			return;
 		}
 
-		continue_if_busy = continue_if_busy == undefined ? false : continue_if_busy;
-		if (!continue_if_busy && property.state == "Busy") {
+		if (state != "Busy" && property.state == "Busy") {
 			this.failure("Failed to set '" + property_name + "' '" + device + "' is busy");
 			return;
 		}
@@ -857,8 +858,8 @@ var indigo_sequencer = {
 		indigo_change_switch_property(device, property_name, items);
 	},
 
-	select_switch: function(device, property, item, state, continue_if_busy) {
-		this.set_switch(device, property, item, true, state, continue_if_busy);
+	select_switch: function(device, property, item, state) {
+		this.set_switch(device, property, item, true, state);
 	},
 	
 	deselect_switch: function(device, property, item) {
@@ -1238,7 +1239,7 @@ var indigo_sequencer = {
 	},
 
 	start_guiding: function() {
-		this.select_switch(this.devices[4], "AGENT_START_PROCESS", "GUIDING", "Busy", true);
+		this.select_switch(this.devices[4], "AGENT_START_PROCESS", "GUIDING", "Busy");
 	},
 
 	stop_guiding: function() {
