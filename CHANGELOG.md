@@ -1,6 +1,50 @@
 # Changelog
 
 All notable changes to INDIGO framework will be documented in this file.
+# [2.0-328] - 18 Apr Fri 2025
+## Overall:
+- changed minimum requirement for debian bullseye
+- platesolver error handling fixed
+- AGENT_ABORT_PROCESS added to platesolvers, AGENT_PLATESOLVER_ABORT marked obsolete
+- Default absolute and relative position limits changed to 999999 for focusers
+
+## Driver Fixes:
+- indigo_agent_scripting:
+	- Sequencer.js: refactored
+	- Sequencer.js: add utc because both time stamp and date/time are UTC
+	- Sequencer.js: select devices by label not by item otherwise 'No camera', 'No focuser' etc, can not be selected
+	- Sequencer.js: select_xxx(device) finctions accept both item labels and items
+	- Sequencer.js: continue_on_failure() and abort_on_failure() added
+	- Sequencer.js: recovery point suport added
+	- Sequencer.js: SEQUENCE_STEP_STATE property added
+	- Sequencer.js: optionally resets content state before iteration
+	- Sequencer.js: handles start_guiding() state correctly
+	- Sequencer.js: delete/define race fixed in sequencer
+	- Sequencer.js: Symbolic constants for devices added in sequencer
+	- Sequencer.js: enable/disable warnings added to sequencer
+
+- indigo_agent_guider:
+	- fix randomized spiral division by zero if amount is 0
+
+- indigo_rotator_asi:
+	- add Apple/arm64 support
+	- fixes and cleanup
+
+- indigo_wheel_asi:
+	- code cleanup
+
+- indigo_focuser_asi:
+	- code cleanup
+
+- indigo_focuser_asi:
+	- code cleanup
+
+- indigo_ccd_ptp:
+	- add Nikon Z fc
+
+- indigo_ccd_playerone:
+	- updated SDK v.3.8.1
+
 
 # [2.0-326] - 02 Apr Wed 2025
 ## Overall:
