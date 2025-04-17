@@ -78,8 +78,8 @@ function indigo_error_with_property(message, property) {
 		indigo_error("  message: "+message);
 }
 
-function indigo_on_define_property(device_name, property_name, items, item_defs, state, perm, message) {
-	var property = { device: device_name, name: property_name, items: items, item_defs: item_defs, state: state, perm: perm, message: message };
+function indigo_on_define_property(device_name, property_name, property_label, items, item_defs, state, perm, message) {
+	var property = { device: device_name, name: property_name, label: property_label, items: items, item_defs: item_defs, state: state, perm: perm, message: message };
 	var properties = indigo_devices[device_name];
 	if (properties == null) {
 		indigo_devices[device_name] = { [property_name]: property };

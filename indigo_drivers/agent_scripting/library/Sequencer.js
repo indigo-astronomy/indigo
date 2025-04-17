@@ -411,13 +411,13 @@ var indigo_flipper = {
 
 	on_update: function(property) {
 		if (this.waiting_for_transit)
-			indigo_log("waiting_for_transit " + property.name + " -> " + property.state);
+			indigo_log("waiting_for_transit " + property.name + " → " + property.state);
 		else if (this.waiting_for_slew)
-			indigo_log("waiting_for_slew " + property.name + " -> " + property.state);
+			indigo_log("waiting_for_slew " + property.name + " → " + property.state);
 		else if (this.waiting_for_sync_and_center)
-			indigo_log("waiting_for_sync_and_center " + property.name + " -> " + property.state);
+			indigo_log("waiting_for_sync_and_center " + property.name + " → " + property.state);
 		else if (this.waiting_for_guiding)
-			indigo_log("waiting_for_guiding " + property.name + " -> " + property.state);
+			indigo_log("waiting_for_guiding " + property.name + " → " + property.state);
 		if (this.waiting_for_transit && property.device == this.devices[MOUNT_AGENT] && property.name == "AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY") {
 			if (property.items.TIME_TO_TRANSIT <= 0) {
 				indigo_send_message("Meridian flip started");
@@ -537,7 +537,7 @@ var indigo_sequencer = {
 				indigo_flipper.devices = this.devices;
 				indigo_flipper.start(this.use_solver);
 			} else if (property.device == this.wait_for_device && property.name == this.wait_for_property) {
-				indigo_log("wait_for '" + property.device + "', '" + property.name + "' -> " + property.state);
+				indigo_log("wait_for '" + property.device + " → " + property.name + "' → " + property.state);
 				if (property.state == "Alert") {
 					this.wait_for_device = null;
 					this.wait_for_property = null;
@@ -827,7 +827,7 @@ var indigo_sequencer = {
 		}
 		if (property.state == "Busy") {
 			if (!this.allow_busy_state) {
-				this.failure("Failed to set '" + property_name + "', '" + device + "' is busy");
+				this.failure("Failed to set '" + property.label + "', '" + device + "' is busy");
 				return;
 			}
 			this.allow_busy_state = false;
@@ -844,13 +844,13 @@ var indigo_sequencer = {
 				}
 			}
 			if (!found) {
-				this.failure("Failed to set '" + item + "' on '" + property_name + "'");
+				this.failure("Failed to set '" + device + " → " + property.label + " → " + property.item_defs[item].label + "'");
 				return;
 			}
 		}
 		if (current_value == value) {
 			if (!property_name.includes("_ON_") && property_name != "CCD_UPLOAD_MODE" ) {
-				this.warning("'" + property.item_defs[item].label + "' is already " + (value ? "selected" : "unselected"));
+				this.warning("'" + device + " → " + property.label + " → " + property.item_defs[item].label + "' is already " + (value ? "selected" : "unselected"));
 			} else {
 				indigo_set_timer(indigo_sequencer_next_ok_handler, 0.1);
 			}
@@ -880,7 +880,7 @@ var indigo_sequencer = {
 		}
 		if (property.state == "Busy") {
 			if (!this.allow_busy_state) {
-				this.failure("Failed to set '" + property_name + "', '" + device + "' is busy");
+				this.failure("Failed to set '" + property.label + "', '" + device + "' is busy");
 				return;
 			}
 			this.allow_busy_state = false;
@@ -910,7 +910,7 @@ var indigo_sequencer = {
 		}
 		if (property.state == "Busy") {
 			if (!this.allow_busy_state) {
-				this.failure("Failed to set '" + property_name + "', '" + device + "' is busy");
+				this.failure("Failed to set '" + property.label + "', '" + device + "' is busy");
 				return;
 			}
 			this.allow_busy_state = false;
