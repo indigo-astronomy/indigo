@@ -508,9 +508,6 @@ var indigo_sequencer = {
 	wait_for_device: null,
 	wait_for_property: null,
 	wait_for_property_state: "Ok",
-	wait_for_item: null,
-	wait_for_value: null,
-	wait_for_value_tolerance: null,
 	wait_for_timer: null,
 	ignore_failure: false,
 	allow_busy_state: false,
@@ -531,33 +528,15 @@ var indigo_sequencer = {
 				indigo_flipper.devices = this.devices;
 				indigo_flipper.start(this.use_solver);
 			} else if (property.device == this.wait_for_device && property.name == this.wait_for_property) {
-				if (this.wait_for_item != null && this.wait_for_value != null) {
-					if (this.wait_for_value_tolerance != null) {
-						diff = Math.abs(property.items[this.wait_for_item] - this.wait_for_value);
-						if (diff > this.wait_for_value_tolerance) {
-							indigo_log("wait_for_item '" + this.wait_for_item + "' -> " + property.items[this.wait_for_item] + " (" + diff + " > " + this.wait_for_value_tolerance + ")");
-							return;
-						}
-					} else if (property.items[this.wait_for_item] != this.wait_for_value) {
-						indigo_log("wait_for_item '" + this.wait_for_item + "' -> " + property.items[this.wait_for_item]);
-						return;
-					}
-				}
 				indigo_log("wait_for '" + property.device + "', '" + property.name + "' -> " + property.state);
 				if (property.state == "Alert") {
 					this.wait_for_device = null;
 					this.wait_for_property = null;
-					this.wait_for_item = null;
-					this.wait_for_value = null;
-					this.wait_for_value_tolerance = null;
 					this.wait_for_property_state = "Ok";
 					this.failure(property.name + " reports alert");
 				} else if (property.state == this.wait_for_property_state) {
 					this.wait_for_device = null;
 					this.wait_for_property = null;
-					this.wait_for_item = null;
-					this.wait_for_value = null;
-					this.wait_for_value_tolerance = null;
 					this.wait_for_property_state = "Ok";
 					this.ignore_failure = false;
 					indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
@@ -654,9 +633,6 @@ var indigo_sequencer = {
 		this.wait_for_device = null;
 		this.wait_for_property = null;
 		this.wait_for_property_state = "Ok";
-		this.wait_for_item = null;
-		this.wait_for_value = null;
-		this.wait_for_value_tolerance = null;
 		this.sequence = null;
 		if (this.paused) {
 			this.paused = false;
@@ -961,9 +937,6 @@ var indigo_sequencer = {
 			this.wait_for_device = null;
 			this.wait_for_property = null;
 			this.wait_for_property_state = "Ok";
-			this.wait_for_item = null;
-			this.wait_for_value = null;
-			this.wait_for_value_tolerance = null;
 			this.sequence = null;
 			this.update_step_state(this.step, "Alert");
 			if (this.paused) {
@@ -1128,14 +1101,6 @@ var indigo_sequencer = {
 	},
 	
 	set_temperature: function(temperature) {
-		// Allow large tolerance for the temperature. The property state will remain BUSY
-		// until temperature reaches the driver's tolerance. We need this because CCD_TEMPERATURE property
-		// is updated in a timer callback in CCD drivers and may take several seconds to become BUSY from OK
-		// after the value is set. This is why we need to monitor the item value until we are close to the
-		// target and only then monotor the property state.
-		this.wait_for_item = "TEMPERATURE";
-		this.wait_for_value = temperature;
-		this.wait_for_value_tolerance = 1;
 		this.allow_busy_state = true;
 		this.change_numbers(this.devices[IMAGER_AGENT], "CCD_TEMPERATURE", { TEMPERATURE: temperature });
 	},
