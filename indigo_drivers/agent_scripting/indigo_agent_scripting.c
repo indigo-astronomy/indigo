@@ -1348,12 +1348,13 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 	if (duk_get_prop_string(PRIVATE_DATA->ctx, -1, "indigo_on_define_property")) {
 		duk_push_string(PRIVATE_DATA->ctx, property->device);
 		duk_push_string(PRIVATE_DATA->ctx, property->name);
+		duk_push_string(PRIVATE_DATA->ctx, property->label);
 		push_items(property, false);
 		push_item_descriptors(property);
 		push_state(property->state);
 		duk_push_string(PRIVATE_DATA->ctx, property->perm == INDIGO_RW_PERM ? "RW" : property->perm == INDIGO_RO_PERM ? "RO" : "WO");
 		duk_push_string(PRIVATE_DATA->ctx, message);
-		if (duk_pcall(PRIVATE_DATA->ctx, 7)) {
+		if (duk_pcall(PRIVATE_DATA->ctx, 8)) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_on_define_property() call failed (%s)", duk_safe_to_string(PRIVATE_DATA->ctx, -1));
 		}
 	}

@@ -64,7 +64,7 @@ indigo_result indigo_focuser_attach(indigo_device *device, const char* driver_na
 			FOCUSER_STEPS_PROPERTY = indigo_init_number_property(NULL, device->name, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Relative move", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 			if (FOCUSER_STEPS_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			indigo_init_number_item(FOCUSER_STEPS_ITEM, FOCUSER_STEPS_ITEM_NAME, "Relative move (steps)", 0, 65535, 1, 0);
+			indigo_init_number_item(FOCUSER_STEPS_ITEM, FOCUSER_STEPS_ITEM_NAME, "Relative move (steps)", 0, 9999999, 1, 0);
 			// -------------------------------------------------------------------------------- FOCUSER_ON_POSITION_SET
 			FOCUSER_ON_POSITION_SET_PROPERTY = indigo_init_switch_property(NULL, device->name,FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "On position set", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 			if (FOCUSER_ON_POSITION_SET_PROPERTY == NULL)
@@ -76,7 +76,7 @@ indigo_result indigo_focuser_attach(indigo_device *device, const char* driver_na
 			FOCUSER_POSITION_PROPERTY = indigo_init_number_property(NULL, device->name, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Absolute position", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 			if (FOCUSER_POSITION_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			indigo_init_number_item(FOCUSER_POSITION_ITEM, FOCUSER_POSITION_ITEM_NAME, "Absolute position", -10000, 10000, 1, 0);
+			indigo_init_number_item(FOCUSER_POSITION_ITEM, FOCUSER_POSITION_ITEM_NAME, "Absolute position", -9999999, 9999999, 1, 0);
 			// -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION
 			FOCUSER_ABORT_MOTION_PROPERTY = indigo_init_switch_property(NULL, device->name, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Abort motion", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
 			if (FOCUSER_ABORT_MOTION_PROPERTY == NULL)
