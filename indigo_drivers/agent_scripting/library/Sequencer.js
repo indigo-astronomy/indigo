@@ -838,7 +838,7 @@ var indigo_sequencer = {
 			if (!property_name.includes("_ON_") && property_name != "CCD_UPLOAD_MODE" ) {
 				this.warning("'" + property.item_defs[item].label + "' is already selected");
 			} else {
-				indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
+				indigo_set_timer(indigo_sequencer_next_ok_handler, 0.1);
 			}
 			return;
 		}
@@ -880,7 +880,7 @@ var indigo_sequencer = {
 			}
 		}
 		if (empty) {
-			indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
+			indigo_set_timer(indigo_sequencer_next_ok_handler, 0.1);
 			return;
 		}
 		this.wait_for_device = device;
@@ -910,7 +910,7 @@ var indigo_sequencer = {
 			}
 		}
 		if (empty) {
-			indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
+			indigo_set_timer(indigo_sequencer_next_ok_handler, 0.1);
 			return;
 		}
 		this.wait_for_device = device;
