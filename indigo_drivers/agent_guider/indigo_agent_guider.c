@@ -23,7 +23,7 @@
  \file indigo_agent_guider.c
  */
 
-#define DRIVER_VERSION 0x0028
+#define DRIVER_VERSION 0x0029
 #define DRIVER_NAME	"indigo_agent_guider"
 
 #include <stdlib.h>
@@ -408,8 +408,14 @@ static void spiral_dither_values(unsigned int dither_number, double amount, bool
 		dx = -1;
 		dy = -1;
 	}
-	*dither_x = (double)(dx * dither_num % (int)round(amount/2) + dx);
-	*dither_y = (double)(dy * dither_num % (int)round(amount/2) + dy);
+	int amount2 = (int)round(amount/2);
+	if (amount2 == 0) {
+		*dither_x = 0;
+		*dither_y = 0;
+	} else {
+		*dither_x = (double)(dx * dither_num % amount2 + dx);
+		*dither_y = (double)(dy * dither_num % amount2 + dy);
+	}
 	if (randomize) {
 		*dither_x = *dither_x - dx * (drand48()/1.1);
 		*dither_y = *dither_y - dy * (drand48()/1.1);
