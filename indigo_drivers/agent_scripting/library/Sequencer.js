@@ -519,6 +519,7 @@ var indigo_sequencer = {
 	wait_for_timer: null,
 	ignore_failure: false,
 	allow_busy_state: false,
+	allow_same_value: false,
 	skip_to_recovery_point: false,
 	failure_handling: 0,
 	use_solver: false,
@@ -849,10 +850,11 @@ var indigo_sequencer = {
 			}
 		}
 		if (current_value == value) {
-			if (!property_name.includes("_ON_") && property_name != "CCD_UPLOAD_MODE" ) {
-				this.warning("'" + device + " → " + property.label + " → " + property.item_defs[item].label + "' is already " + (value ? "selected" : "unselected"));
-			} else {
+			if (this.allow_same_value) {
+				this.allow_same_value = false;
 				indigo_set_timer(indigo_sequencer_next_ok_handler, 0.1);
+			} else {
+				this.warning("'" + device + " → " + property.label + " → " + property.item_defs[item].label + "' is already " + (value ? "selected" : "unselected"));
 			}
 			return;
 		}
@@ -1174,6 +1176,7 @@ var indigo_sequencer = {
 	},
 
 	set_upload_mode: function(mode) {
+		this.allow_same_value = true;
 		this.select_switch(this.devices[IMAGER_AGENT], "CCD_UPLOAD_MODE", mode);
 	},
 
@@ -1277,6 +1280,7 @@ var indigo_sequencer = {
 	},
 
 	set_rotator_goto: function() {
+		this.allow_same_value = true;
 		this.select_switch(this.devices[MOUNT_AGENT], "ROTATOR_ON_POSITION_SET", "GOTO");
 	},
 
@@ -1285,6 +1289,7 @@ var indigo_sequencer = {
 	},
 
 	set_focuser_goto: function() {
+		this.allow_same_value = true;
 		this.select_switch(this.devices[IMAGER_AGENT], "FOCUSER_ON_POSITION_SET", "GOTO");
 	},
 
