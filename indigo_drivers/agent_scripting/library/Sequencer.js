@@ -834,7 +834,7 @@ var indigo_sequencer = {
 				return;
 			}
 		}
-		if (current_value && value) {
+		if (current_value == value) {
 			if (!property_name.includes("_ON_") && property_name != "CCD_UPLOAD_MODE" ) {
 				this.warning("'" + property.item_defs[item].label + "' is already selected");
 			} else {
