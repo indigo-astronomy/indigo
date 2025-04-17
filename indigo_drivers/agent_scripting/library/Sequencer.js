@@ -227,8 +227,16 @@ Sequence.prototype.remove_fits_header = function(keyword) {
 	this.sequence.push({ execute: 'remove_fits_header("' + keyword + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
+Sequence.prototype.select_reference_filter = function(filter) {
+	this.sequence.push({ execute: 'select_reference_filter("' + filter + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
 Sequence.prototype.select_filter = function(filter) {
 	this.sequence.push({ execute: 'select_filter("' + filter + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
+Sequence.prototype.select_filter_with_offset = function (filter) {
+	this.sequence.push({ execute: 'select_filter_with_offset("' + filter + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.set_directory = function(directory) {
@@ -291,11 +299,11 @@ Sequence.prototype.capture_stream = function(p1, p2, p3) {
 
 Sequence.prototype.set_manual_focuser_mode = function() {
 	this.sequence.push({ execute: 'set_focuser_mode("MANUAL")', step: this.step++, progress: this.progress++, exposure: this.exposure });
-}
+};
 
 Sequence.prototype.set_automatic_focuser_mode = function() {
 	this.sequence.push({ execute: 'set_focuser_mode("AUTOMATIC")', step: this.step++, progress: this.progress++, exposure: this.exposure });
-}
+};
 
 Sequence.prototype.focus = function(exposure) {
 	this.sequence.push({ execute: 'save_batch()', step: this.step, progress: this.progress++, exposure: this.exposure });
@@ -1150,8 +1158,36 @@ var indigo_sequencer = {
 		this.set_switch(this.devices[IMAGER_AGENT], "AGENT_PROCESS_FEATURES", name, value);
 	},
 	
+	select_reference_filter: function (filter) {
+		var agent = this.devices[IMAGER_AGENT];
+		var property = indigo_devices[agent].WHEEL_SLOT_OFFSET;
+		if (property != null && property.items["SLOT_OFFSET_" + filter] == 0) {
+			this.select_filter(filter);
+		} else {
+			this.failure("Can't set reference fitler");
+		}
+	},
+	
 	select_filter: function(filter) {
 		this.select_switch(this.devices[IMAGER_AGENT], "AGENT_WHEEL_FILTER", filter);
+	},
+
+  select_filter_with_offset: function (filter) {
+		var agent = this.devices[IMAGER_AGENT];
+		var offset_property = indigo_devices[agent].WHEEL_SLOT_OFFSET;
+		var position_property = indigo_devices[agent].FOCUSER_POSITION;
+		var position = null;
+
+		if (offset_property == null || offset_property.items["SLOT_OFFSET_" + filter] == undefined) {
+			this.failure("Can't get filter offset");
+		}
+
+		if (position_property == null || position_property.items.POSITION == undefined) {
+			this.failure("Can't get focuser position");
+		}
+
+		position = position_property.items.POSITION + offset_property.items["SLOT_OFFSET_" + filter];
+		this.change_numbers(agent, "FOCUSER_POSITION", { POSITION: position });
 	},
 	
 	set_local_mode: function(directory, prefix, object) {
