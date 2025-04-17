@@ -47,6 +47,14 @@ Sequence.prototype.repeat = function(count, block) {
 	}
 };
 
+Sequence.prototype.enable_verbose = function() {
+	this.sequence.push({ execute: 'set_verbose(true)', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
+Sequence.prototype.disable_verbose = function() {
+	this.sequence.push({ execute: 'set_verbose(false)', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
 Sequence.prototype.recovery_point = function() {
 	this.sequence.push({ execute: 'recovery_point(' + (++this.recovery_point_index) + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
@@ -516,6 +524,7 @@ var indigo_sequencer = {
 	use_solver: false,
 	paused: false,
 	capturing_batch: false,
+	verbose: true,
 	
 	update_step_state: function(step, state) {
 		this.step_states["" + step] = state;
@@ -796,7 +805,12 @@ var indigo_sequencer = {
 		this.update_step_state(this.loop_step.pop(), "Ok");
 		indigo_set_timer(indigo_sequencer_next_handler, 0.1);
 	},
-	
+
+	set_verbose: function(value) {
+		this.verbose = value;
+		indigo_set_timer(indigo_sequencer_next_handler, 0.1);
+	},
+
 	recovery_point: function(index) {
 		if (this.skip_to_recovery_point) {
 			this.skip_to_recovery_point = false;
@@ -836,7 +850,7 @@ var indigo_sequencer = {
 		}
 		if (current_value == value) {
 			if (!property_name.includes("_ON_") && property_name != "CCD_UPLOAD_MODE" ) {
-				this.warning("'" + property.item_defs[item].label + "' is already selected");
+				this.warning("'" + property.item_defs[item].label + "' is already " + (value ? "selected" : "unselected"));
 			} else {
 				indigo_set_timer(indigo_sequencer_next_ok_handler, 0.1);
 			}
@@ -919,7 +933,9 @@ var indigo_sequencer = {
 	},
 	
 	warning: function(message) {
-		indigo_send_message(message);
+		if (this.verbose) {
+			indigo_send_message(message);
+		}
 		indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
 	},
 	
