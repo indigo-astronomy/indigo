@@ -332,6 +332,14 @@ Sequence.prototype.unpark = function() {
 	this.sequence.push({ execute: 'unpark()', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
+Sequence.prototype.enable_tracking = function() {
+	this.sequence.push({ execute: 'set_tracking("ON")', step: this.step, progress: this.progress++, exposure: this.exposure });
+};
+
+Sequence.prototype.disable_tracking = function() {
+	this.sequence.push({ execute: 'set_tracking("OFF")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
 Sequence.prototype.slew = function(ra, dec) {
 	this.sequence.push({ execute: 'set_coordinates(' + ra + ',' + dec + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'slew()', step: this.step++, progress: this.progress++, exposure: this.exposure });
@@ -1224,6 +1232,10 @@ var indigo_sequencer = {
 	
 	home: function() {
 		this.select_switch(this.devices[MOUNT_AGENT], "MOUNT_HOME", "HOME");
+	},
+
+	set_tracking: function(on_off) {
+		this.select_switch(this.devices[MOUNT_AGENT], "MOUNT_TRACKING", on_off);
 	},
 
 	wait_for_gps: function() {
