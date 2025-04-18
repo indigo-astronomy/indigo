@@ -333,7 +333,7 @@ Sequence.prototype.unpark = function() {
 };
 
 Sequence.prototype.enable_tracking = function() {
-	this.sequence.push({ execute: 'set_tracking("ON")', step: this.step, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'set_tracking("ON")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.disable_tracking = function() {
