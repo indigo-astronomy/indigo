@@ -853,7 +853,7 @@ var indigo_sequencer = {
 				}
 			}
 			if (!found) {
-				this.failure("Failed to set '" + device + " → " + property.label + " → " + property.item_defs[item].label + "'");
+				this.failure("Failed to set '" + device + " → " + property.label + " → " + item + "'");
 				return;
 			}
 		}
