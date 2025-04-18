@@ -817,7 +817,7 @@ var indigo_sequencer = {
 
 	set_verbose: function(value) {
 		this.verbose = value;
-		indigo_set_timer(indigo_sequencer_next_handler, 0.1);
+		indigo_set_timer(indigo_sequencer_next_ok_handler, 0.1);
 	},
 
 	recovery_point: function(index) {
