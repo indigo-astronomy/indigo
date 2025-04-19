@@ -528,6 +528,7 @@ var indigo_sequencer = {
 	ignore_failure: false,
 	allow_busy_state: false,
 	allow_same_value: false,
+	allow_missing_property: false,
 	skip_to_recovery_point: false,
 	failure_handling: 0,
 	use_solver: false,
@@ -830,16 +831,28 @@ var indigo_sequencer = {
 	
 	set_switch: function(device, property_name, item, value, state) {
 		var property = indigo_devices[device][property_name];
+
+		var allow_busy_state = this.allow_busy_state;
+		var allow_missing_property = this.allow_missing_property;
+		var allow_same_value = this.allow_same_value;
+
+		this.allow_busy_state = false;
+		this.allow_missing_property = false;
+		this.allow_same_value = false;
+
 		if (property == null) {
+			if (allow_missing_property) {
+				indigo_set_timer(indigo_sequencer_next_ok_handler, 0.1);
+				return;
+			}
 			this.failure("Failed to set '" + property_name + "' on '" + device + "'");
 			return;
 		}
 		if (property.state == "Busy") {
-			if (!this.allow_busy_state) {
+			if (!allow_busy_state) {
 				this.failure("Failed to set '" + property.label + "', '" + device + "' is busy");
 				return;
 			}
-			this.allow_busy_state = false;
 		}
 		var current_value = property.items[item];
 		if (current_value == null) {
@@ -858,8 +871,7 @@ var indigo_sequencer = {
 			}
 		}
 		if (current_value == value) {
-			if (this.allow_same_value) {
-				this.allow_same_value = false;
+			if (allow_same_value) {
 				indigo_set_timer(indigo_sequencer_next_ok_handler, 0.1);
 			} else {
 				this.warning("'" + device + " → " + property.label + " → " + property.item_defs[item].label + "' is already " + (value ? "selected" : "unselected"));
@@ -884,16 +896,27 @@ var indigo_sequencer = {
 	
 	change_texts: function(device, property_name, items) {
 		var property = indigo_devices[device][property_name];
+
+		var allow_busy_state = this.allow_busy_state;
+		var allow_missing_property = this.allow_missing_property;
+
+		this.allow_busy_state = false;
+		this.allow_missing_property = false;
+		this.allow_same_value = false;
+
 		if (property == null) {
+			if (allow_missing_property) {
+				indigo_set_timer(indigo_sequencer_next_ok_handler, 0.1);
+				return;
+			}
 			this.failure("There is no " + property_name + " on " + device);
 			return;
 		}
 		if (property.state == "Busy") {
-			if (!this.allow_busy_state) {
+			if (!allow_busy_state) {
 				this.failure("Failed to set '" + property.label + "', '" + device + "' is busy");
 				return;
 			}
-			this.allow_busy_state = false;
 		}
 		var empty = true;
 		for (var name in items) {
@@ -914,16 +937,27 @@ var indigo_sequencer = {
 
 	change_numbers: function(device, property_name, items) {
 		var property = indigo_devices[device][property_name];
+
+		var allow_busy_state = this.allow_busy_state;
+		var allow_missing_property = this.allow_missing_property;
+
+		this.allow_busy_state = false;
+		this.allow_missing_property = false;
+		this.allow_same_value = false;
+
 		if (property == null) {
+			if (allow_missing_property) {
+				indigo_set_timer(indigo_sequencer_next_ok_handler, 0.1);
+				return;
+			}
 			this.failure("There is no " + property_name + " on " + device);
 			return;
 		}
 		if (property.state == "Busy") {
-			if (!this.allow_busy_state) {
+			if (!allow_busy_state) {
 				this.failure("Failed to set '" + property.label + "', '" + device + "' is busy");
 				return;
 			}
-			this.allow_busy_state = false;
 		}
 		var empty = true;
 		for (var name in items) {
@@ -1293,6 +1327,7 @@ var indigo_sequencer = {
 
 	set_rotator_goto: function() {
 		this.allow_same_value = true;
+		this.allow_missing_property = true;
 		this.select_switch(this.devices[MOUNT_AGENT], "ROTATOR_ON_POSITION_SET", "GOTO");
 	},
 
@@ -1302,6 +1337,7 @@ var indigo_sequencer = {
 
 	set_focuser_goto: function() {
 		this.allow_same_value = true;
+		this.allow_missing_property = true;
 		this.select_switch(this.devices[IMAGER_AGENT], "FOCUSER_ON_POSITION_SET", "GOTO");
 	},
 
