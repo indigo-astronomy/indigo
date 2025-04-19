@@ -534,6 +534,7 @@ var indigo_sequencer = {
 	use_solver: false,
 	paused: false,
 	capturing_batch: false,
+	batch_exposure: 0,
 	verbose: true,
 	
 	update_step_state: function(step, state) {
@@ -559,6 +560,13 @@ var indigo_sequencer = {
 					this.wait_for_property_state = "Ok";
 					this.ignore_failure = false;
 					indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
+				}
+			} else if (this.capturing_batch && property.device == this.wait_for_device) {
+				if (property.name == "AGENT_IMAGER_STATS") {
+					var remaining_exposure = property.items.EXPOSURE;
+					var frame = property.items.FRAME;
+					this.exposure = this.sequence[this.index].exposure + frame * this.batch_exposure - remaining_exposure;
+					indigo_update_number_property(this.devices[SCRIPTING_AGENT], "SEQUENCE_STATE", { STEP: this.step, PROGRESS: this.progress, PROGRESS_TOTAL: this.progress_total, EXPOSURE: this.exposure, EXPOSURE_TOTAL: this.exposure_total }, this.sequence_state = "Busy");
 				}
 			}
 		}
@@ -1223,6 +1231,7 @@ var indigo_sequencer = {
 	},
 
 	set_batch: function(count, exposure) {
+		this.batch_exposure = exposure;
 		this.change_numbers(this.devices[IMAGER_AGENT], "AGENT_IMAGER_BATCH", { COUNT: count, EXPOSURE: exposure});
 	},
 
