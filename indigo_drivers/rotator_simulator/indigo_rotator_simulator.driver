@@ -1,0 +1,103 @@
+// Copyright (c) 2025 Rumen G. Bogdanovski
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// Field rotator simulator driver definition
+
+driver simulator {
+	author = "Rumen G. Bogdanovski";
+	copyright = "Copyright (c) 2025 Rumen G. Bogdanovski";
+	label = "Field Rotator Simulator";
+	version = 3;
+	define {
+		#define ROTATOR_SPEED 1
+	}
+	data {
+		double target_position, current_position;
+	}
+	code {
+		static bool simulator_open(indigo_device *device) {
+			return true;
+		}
+		
+		static void simulator_close(indigo_device *device) {
+		}
+	}
+	rotator {
+		name = "Field Rotator Simulator";
+		additional_instances = true;
+		inherited CONNECTION {
+		}
+		inherited ROTATOR_POSITION {
+			change {
+				if (ROTATOR_ON_POSITION_SET_SYNC_ITEM->sw.value) {
+					PRIVATE_DATA->target_position = ROTATOR_POSITION_ITEM->number.target;
+					PRIVATE_DATA->current_position = ROTATOR_POSITION_ITEM->number.value;
+				} else {
+					ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+					ROTATOR_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
+					PRIVATE_DATA->target_position = ROTATOR_POSITION_ITEM->number.target;
+					indigo_set_timer(device, 0.1, rotator_timer_callback, &PRIVATE_DATA->rotator_timer);
+				}
+			}
+		}
+		inherited ROTATOR_ABORT_MOTION {
+			change {
+				if (ROTATOR_ABORT_MOTION_ITEM->sw.value && ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
+					ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+					ROTATOR_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
+					indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+				}
+				ROTATOR_ABORT_MOTION_ITEM->sw.value = false;
+			}
+		}
+		timer {
+			if (ROTATOR_POSITION_PROPERTY->state == INDIGO_ALERT_STATE) {
+				ROTATOR_POSITION_ITEM->number.value = PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
+				indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+			} else {
+				if (PRIVATE_DATA->current_position < PRIVATE_DATA->target_position) {
+					ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+					if (PRIVATE_DATA->target_position - PRIVATE_DATA->current_position > ROTATOR_SPEED)
+						ROTATOR_POSITION_ITEM->number.value = PRIVATE_DATA->current_position = (PRIVATE_DATA->current_position + ROTATOR_SPEED);
+					else
+						ROTATOR_POSITION_ITEM->number.value = PRIVATE_DATA->current_position = PRIVATE_DATA->target_position;
+					indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+					indigo_reschedule_timer(device, 0.1, &PRIVATE_DATA->rotator_timer);
+				} else if (PRIVATE_DATA->current_position > PRIVATE_DATA->target_position) {
+					ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+					if (PRIVATE_DATA->current_position - PRIVATE_DATA->target_position > ROTATOR_SPEED)
+						ROTATOR_POSITION_ITEM->number.value = PRIVATE_DATA->current_position = (PRIVATE_DATA->current_position - ROTATOR_SPEED);
+					else
+						ROTATOR_POSITION_ITEM->number.value = PRIVATE_DATA->current_position = PRIVATE_DATA->target_position;
+					indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+					indigo_reschedule_timer(device, 0.1, &PRIVATE_DATA->rotator_timer);
+				} else {
+					ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+					ROTATOR_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
+					indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+				}
+			}
+		}
+		attach {
+			DEVICE_PORT_PROPERTY->hidden = true;
+			DEVICE_PORTS_PROPERTY->hidden = true;
+		}
+	}
+}
+
+

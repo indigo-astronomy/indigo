@@ -2398,6 +2398,7 @@
 		599F618F2BB494E9009065BC /* indigo_dslr_raw.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_dslr_raw.h; sourceTree = "<group>"; };
 		599F61902BB494EA009065BC /* indigo_polynomial_fit.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_polynomial_fit.h; sourceTree = "<group>"; };
 		59A0772A21FE1C2F00244521 /* indigocat_star.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigocat_star.c; sourceTree = "<group>"; wrapsLines = 0; };
+		59A1CA822DB5515C00554D6E /* indigo_rotator_simulator.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_rotator_simulator.driver; sourceTree = "<group>"; };
 		59A242E922A5B45E001C38F8 /* indigo_focuser_steeldrive2.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_steeldrive2.h; sourceTree = "<group>"; };
 		59A242F222A5B45E001C38F8 /* indigo_focuser_steeldrive2_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_steeldrive2_main.c; sourceTree = "<group>"; };
 		59A242F322A5B45E001C38F8 /* indigo_focuser_steeldrive2.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_steeldrive2.c; sourceTree = "<group>"; };
@@ -13651,6 +13652,7 @@
 				9D743A5823FD56EF0093319F /* indigo_rotator_simulator.h */,
 				9D743A5623FD56EF0093319F /* indigo_rotator_simulator.c */,
 				9D743A5523FD56EF0093319F /* indigo_rotator_simulator_main.c */,
+				59A1CA822DB5515C00554D6E /* indigo_rotator_simulator.driver */,
 			);
 			path = rotator_simulator;
 			sourceTree = "<group>";

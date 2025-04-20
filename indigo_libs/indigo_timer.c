@@ -88,7 +88,7 @@ static void *timer_func(indigo_timer *timer) {
 				struct timespec end;
 				utc_time(&end);
 				end.tv_sec += (int)timer->delay;
-				end.tv_nsec += NANO * (long)(timer->delay - (int)timer->delay);
+				end.tv_nsec += (long)(NANO * (timer->delay - (int)timer->delay));
 				normalize_timespec(&end);
 				while (!timer->canceled) {
 					pthread_mutex_lock(&timer->mutex);

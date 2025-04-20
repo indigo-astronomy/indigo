@@ -77,6 +77,7 @@ char *definition_source, *definition_source_basename, *current, *begin, *end;
 token_type last_token;
 driver_type *driver;
 int indentation = 0;
+int line = 0, column = 0;
 
 #pragma mark - helpers
 
@@ -117,11 +118,13 @@ void report_error(const char *format, ...) {
 	va_start(args, format);
 	char buffer[256];
 	vsnprintf(buffer, sizeof(buffer), format, args);
-	fprintf(stderr, "ERROR: %s\n", buffer);
+	fprintf(stderr, "ERROR (%d:%d): %s\n", line, column, buffer);
 	va_end(args);
 }
 
 #pragma mark - parser
+
+#define FORWARD(n) if (*(current += n) == '\n') { line++; column = 0; } else { column++; }
 
 bool get_token(void) {
 	if (parsing_code) {
@@ -132,7 +135,7 @@ bool get_token(void) {
 			if (*current != '\n') {
 				break;
 			}
-			current++;
+			FORWARD(1);
 		}
 		int depth = 0;
 		begin = current;
@@ -156,7 +159,7 @@ bool get_token(void) {
 					return true;
 				}
 			}
-			current++;
+			FORWARD(1);
 		}
 		return true;
 	} else if (parsing_expression) {
@@ -167,7 +170,7 @@ bool get_token(void) {
 			if (!isspace(*current)) {
 				break;
 			}
-			current++;
+			FORWARD(1);
 		}
 		begin = current;
 		while (true) {
@@ -192,56 +195,60 @@ bool get_token(void) {
 	} else {
 		while (*current != 0) {
 			if (isspace(*current)) {
-				current++;
+				FORWARD(1);
 			} else if (*current == '{') {
-				current++;
+				FORWARD(1);
 				indentation += 1;
 				last_token = TOKEN_LBRACE;
 				return true;
 			} else if (*current == '}') {
-				current++;
+				FORWARD(1);
 				indentation -= 1;
 				last_token = TOKEN_RBRACE;
 				return true;
 			} else if (*current == '=') {
-				current++;
+				FORWARD(1);
 				last_token = TOKEN_EQUAL;
 				return true;
 			} else if (*current == ';') {
-				current++;
+				FORWARD(1);
 				last_token = TOKEN_SEMICOLON;
 				return true;
 			} else if (*current == '/' && *(current + 1) == '/') {
 				while (*current != 0 && *current != '\n') {
-					current++;
+					FORWARD(1);
 				}
 			} else if (*current == '"') {
-				begin = ++current;
+				FORWARD(1);
+				begin = current;
 				while (*current != 0 && *current != '"') {
-					current++;
+					FORWARD(1);
 				}
-				end = current++;
+				end = current;
+				FORWARD(1);
 				last_token = TOKEN_STRING;
 				return true;
 			} else if (strncmp(current, "true", 4) == 0) {
-				current += 4;
+				FORWARD(4);
 				last_token = TOKEN_TRUE;
 				return true;
 			} else if (strncmp(current, "false", 5) == 0) {
-				current += 4;
+				FORWARD(4);
 				return TOKEN_FALSE;
 			} else if (isalpha(*current)) {
-				begin = current++;
+				begin = current;
+				FORWARD(1);
 				while (isalnum(*current) || *current == '_') {
-					current++;
+					FORWARD(1);
 				}
 				end = current;
 				last_token = TOKEN_IDENTIFIER;
 				return true;
 			} else if (isnumber(*current) || *current == '-') {
-				begin = current++;
+				begin = current;
+				FORWARD(1);
 				while (isnumber(*current) || *current == '.' || *current == '-' || *current == 'E' || *current == 'e') {
-					current++;
+					FORWARD(1);
 				}
 				end = current;
 				last_token = TOKEN_NUMBER;
@@ -603,7 +610,7 @@ bool parse_property_block(device_type *device, property_type **properties) {
 }
 
 bool parse_device_block(device_type **devices) {
-	if (!(match(TOKEN_IDENTIFIER, "ccd") || match(TOKEN_IDENTIFIER, "wheel") || match(TOKEN_IDENTIFIER, "focuser") || match(TOKEN_IDENTIFIER, "mount") || match(TOKEN_IDENTIFIER, "gps") || match(TOKEN_IDENTIFIER, "aux"))) {
+	if (!(match(TOKEN_IDENTIFIER, "ccd") || match(TOKEN_IDENTIFIER, "wheel") || match(TOKEN_IDENTIFIER, "focuser") || match(TOKEN_IDENTIFIER, "mount") || match(TOKEN_IDENTIFIER, "rotator") || match(TOKEN_IDENTIFIER, "gps") || match(TOKEN_IDENTIFIER, "aux"))) {
 		return false;
 	}
 	if (!match(TOKEN_LBRACE, NULL)) {
@@ -982,7 +989,7 @@ void write_c_property_change_handler(device_type *device, property_type *propert
 			}
 		}
 		write_line("\t\tif (connection_result) {");
-		write_c_code_blocks(property->change, 3, true, true);
+		write_c_code_blocks(property->change, 3, true, false);
 		for (property_type *property2 = device->property; property2; property2 = property2->next) {
 			if (property2->type[0] != 'i' && !property2->always_defined) {
 				write_line("\t\t\tindigo_define_property(device, %s, NULL);", property2->handle);
