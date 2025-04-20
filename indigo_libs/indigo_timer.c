@@ -184,7 +184,7 @@ bool indigo_set_timer_at_utc(indigo_device *device, char *time_str, indigo_timer
 	tm_time.tm_sec = second;
 	tm_time.tm_isdst = 0;
 
-	target_time = timegm(&tm_time);
+	target_time = indigo_timegm(&tm_time);
 	if (target_time == (time_t)-1) {
 		return false;
 	}

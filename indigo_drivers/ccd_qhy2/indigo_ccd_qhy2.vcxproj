@@ -273,7 +273,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\indigo_windows\dllmain.cpp" />
-    <ClCompile Include="\\Mac\Home\Development\indigo\indigo_drivers\ccd_qhy\indigo_ccd_qhy.cpp" />
+    <ClCompile Include="..\ccd_qhy\indigo_ccd_qhy.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\indigo_libs\indigo.vcxproj">
