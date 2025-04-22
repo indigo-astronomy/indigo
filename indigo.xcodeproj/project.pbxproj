@@ -4586,6 +4586,8 @@
 		9D0829452C198614002166E1 /* indigo_ccd_bresser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_bresser.h; sourceTree = "<group>"; };
 		9D0829462C198614002166E1 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9D09DF6821DF5D0E00683399 /* skywatcher_motor_controller_command_set.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = skywatcher_motor_controller_command_set.pdf; sourceTree = "<group>"; };
+		9D0AE75E2DB7A4380012933D /* indigo_ao_sx.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_ao_sx.driver; sourceTree = "<group>"; };
+		9D0AE7602DB7A5F40012933D /* indigo_gps_nmea.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_gps_nmea.driver; sourceTree = "<group>"; };
 		9D1880BE1E534B5E002F75D7 /* indigo_prop_tool */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = indigo_prop_tool; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D1880C01E534BB5002F75D7 /* indigo_prop_tool.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_prop_tool.c; sourceTree = "<group>"; };
 		9D2696E422A56BD8008BE82C /* steeldrive2_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = steeldrive2_simulator.ino; sourceTree = "<group>"; };
@@ -5240,6 +5242,7 @@
 				590BF1AF21EBCF7500C24DBA /* indigo_ao_sx.h */,
 				590BF1B121EBCF7500C24DBA /* indigo_ao_sx.c */,
 				590BF1AE21EBCF7500C24DBA /* indigo_ao_sx_main.c */,
+				9D0AE75E2DB7A4380012933D /* indigo_ao_sx.driver */,
 				5996614522CE69F500330652 /* Handbook.pdf */,
 				5996614E22CE6A5F00330652 /* ao_simulator */,
 			);
@@ -12537,6 +12540,7 @@
 				59DD69C61FC1CF8D00AEF0DF /* indigo_gps_nmea.h */,
 				59DD69C51FC1CF8D00AEF0DF /* indigo_gps_nmea.c */,
 				59DD69C81FC1CF8D00AEF0DF /* indigo_gps_nmea_main.c */,
+				9D0AE7602DB7A5F40012933D /* indigo_gps_nmea.driver */,
 			);
 			path = gps_nmea;
 			sourceTree = "<group>";

@@ -16,7 +16,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// This file generated from indigo_aux_upb3.driver (2025-04-20 19:14).
+// This file generated from indigo_aux_upb3.driver (2025-04-22 15:38).
 
 // version history
 // 3.0 Peter Polakovic <peter.polakovic@cloudmakers.eu>
@@ -163,10 +163,10 @@
 typedef struct {
 	pthread_mutex_t mutex;
 	int count;
+	indigo_uni_handle *handle;
 
 	// Custom code below
 
-	indigo_uni_handle *handle;
 	int version;
 
 	// Custom code above
@@ -719,14 +719,15 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 
 static indigo_result aux_attach(indigo_device *device) {
 	if (indigo_aux_attach(device, DRIVER_NAME, DRIVER_VERSION, INDIGO_INTERFACE_AUX_POWERBOX | INDIGO_INTERFACE_AUX_WEATHER) == INDIGO_OK) {
+		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
+		DEVICE_PORT_PROPERTY->hidden = false;
+		DEVICE_PORTS_PROPERTY->hidden = false;
 
 		// Custom code below
 
 		INFO_PROPERTY->count = 6;
 		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
-		DEVICE_PORT_PROPERTY->hidden = false;
-		DEVICE_PORTS_PROPERTY->hidden = false;
 
 		// TODO automatic port selection
 
@@ -869,7 +870,6 @@ static indigo_result aux_attach(indigo_device *device) {
 		indigo_init_number_item(AUX_VARIABLE_POWER_OUTLET_7_ITEM, "OUTLET_7", "Voltage of adjustable buck output", 3, 12, 1, 3);
 		indigo_init_number_item(AUX_VARIABLE_POWER_OUTLET_8_ITEM, "OUTLET_8", "Voltage of adjustable boost output", 12, 24, 1, 12);
 
-		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		return aux_enumerate_properties(device, NULL, NULL);
@@ -1279,6 +1279,9 @@ static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_
 
 static indigo_result focuser_attach(indigo_device *device) {
 	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
+		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
+		DEVICE_PORT_PROPERTY->hidden = false;
+		DEVICE_PORTS_PROPERTY->hidden = false;
 
 		// Custom code below
 
@@ -1305,7 +1308,6 @@ static indigo_result focuser_attach(indigo_device *device) {
 
 		// Custom code above
 
-		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return focuser_enumerate_properties(device, NULL, NULL);
 	}

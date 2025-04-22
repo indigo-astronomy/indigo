@@ -63,11 +63,24 @@ typedef struct device_type {
 	property_type *property;
 } device_type;
 
+typedef struct pattern_type {
+	struct pattern_type *next;
+	char product[64];
+	char vendor[64];
+	char serial[64];
+} pattern_type;
+
+typedef struct serial_type {
+	bool configurable_speed;
+	pattern_type *pattern;
+} serial_type;
+
 typedef struct driver_type {
-	char type[8], name[64], label[256], author[256], copyright[256];
+	char name[64], label[256], author[256], copyright[256];
 	int version;
 	device_type *device;
-	code_type *include, *define, *code, *data;
+	serial_type *serial;
+	code_type *include, *define, *code, *data, *init, *shutdown;
 } driver_type;
 
 #pragma mark - shared variables
@@ -610,7 +623,7 @@ bool parse_property_block(device_type *device, property_type **properties) {
 }
 
 bool parse_device_block(device_type **devices) {
-	if (!(match(TOKEN_IDENTIFIER, "ccd") || match(TOKEN_IDENTIFIER, "wheel") || match(TOKEN_IDENTIFIER, "focuser") || match(TOKEN_IDENTIFIER, "mount") || match(TOKEN_IDENTIFIER, "rotator") || match(TOKEN_IDENTIFIER, "gps") || match(TOKEN_IDENTIFIER, "aux"))) {
+	if (!(match(TOKEN_IDENTIFIER, "ccd") || match(TOKEN_IDENTIFIER, "wheel") || match(TOKEN_IDENTIFIER, "focuser") || match(TOKEN_IDENTIFIER, "mount") || match(TOKEN_IDENTIFIER, "rotator") || match(TOKEN_IDENTIFIER, "gps") || match(TOKEN_IDENTIFIER, "ao") || match(TOKEN_IDENTIFIER, "aux"))) {
 		return false;
 	}
 	if (!match(TOKEN_LBRACE, NULL)) {
@@ -659,6 +672,58 @@ bool parse_device_block(device_type **devices) {
 	return true;
 }
 
+bool parse_pattern_block(pattern_type **patterns) {
+	if (!match(TOKEN_IDENTIFIER, "pattern")) {
+		return false;
+	}
+	if (!match(TOKEN_LBRACE, NULL)) {
+		report_error("Missing '{'");
+		return false;
+	}
+	pattern_type *pattern = allocate(sizeof(pattern_type));
+	debug("pattern {");
+	while (!match(TOKEN_RBRACE, NULL)) {
+		if (parse_string_attribute("product", pattern->product, sizeof(pattern->product))) {
+			continue;
+		}
+		if (parse_string_attribute("vendor", pattern->vendor, sizeof(pattern->vendor))) {
+			continue;
+		}
+		if (parse_string_attribute("serial", pattern->serial, sizeof(pattern->serial))) {
+			continue;
+		}
+		report_error("Unexpected token %c", last_token);
+		return false;
+	}
+	debug("}");
+	append((void **)patterns, pattern);
+	return true;
+}
+
+bool parse_serial_block(serial_type **serial) {
+	if (!match(TOKEN_IDENTIFIER, "serial")) {
+		return false;
+	}
+	if (!match(TOKEN_LBRACE, NULL)) {
+		report_error("Missing '{'");
+		return false;
+	}
+	*serial = (serial_type*)allocate(sizeof(serial_type));
+	debug("serial {");
+	while (!match(TOKEN_RBRACE, NULL)) {
+		if (parse_bool_attribute("configurable_speed", &(*serial)->configurable_speed)) {
+			continue;
+		}
+		if (parse_pattern_block(&(*serial)->pattern)) {
+			continue;
+		}
+		report_error("Unexpected token %c", last_token);
+		return false;
+	}
+	debug("}");
+	return true;
+}
+
 bool parse_driver_block(void) {
 	driver = allocate(sizeof(driver_type));
 	if (!match(TOKEN_IDENTIFIER, "driver")) {
@@ -688,7 +753,7 @@ bool parse_driver_block(void) {
 		if (parse_int_attribute("version", &driver->version)) {
 			continue;
 		}
-		if (parse_identifier_attribute("type", driver->type, sizeof(driver->type))) {
+		if (parse_serial_block(&driver->serial)) {
 			continue;
 		}
 		if (parse_device_block(&driver->device)) {
@@ -704,6 +769,12 @@ bool parse_driver_block(void) {
 			continue;
 		}
 		if (parse_code_block("code", &driver->code)) {
+			continue;
+		}
+		if (parse_code_block("init", &driver->init)) {
+			continue;
+		}
+		if (parse_code_block("shutdown", &driver->shutdown)) {
 			continue;
 		}
 		report_error("Unexpected token %c", last_token);
@@ -917,6 +988,9 @@ void write_c_private_data_section(void) {
 	if (is_multi_device) {
 		write_line("\tint count;");
 	}
+	if (driver->serial) {
+		write_line("\tindigo_uni_handle *handle;");
+	}
 	write_c_code_blocks(driver->data, 1, true, false);
 	for (device_type *device = driver->device; device; device = device->next) {
 		if (device->timer != NULL) {
@@ -1069,6 +1143,16 @@ void write_c_attach(device_type *device) {
 	} else {
 		write_line("\tif (indigo_%s_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {", device->type);
 	}
+	if (device->additional_instances) {
+		write_line("\t\tADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;");
+	}
+	if (driver->serial && is_master_device) {
+		write_line("\t\tDEVICE_PORT_PROPERTY->hidden = false;");
+		write_line("\t\tDEVICE_PORTS_PROPERTY->hidden = false;");
+		if (driver->serial->configurable_speed) {
+			write_line("\t\tDEVICE_BAUDRATE_PROPERTY->hidden = false;");
+		}
+	}
 	write_c_code_blocks(device->attach, 2, true, false);
 	for (property_type *property = device->property; property; property = property->next) {
 		if (property->type[0] != 'i' || property->attach) {
@@ -1121,9 +1205,6 @@ void write_c_attach(device_type *device) {
 			write_line("");
 		}
 		write_c_code_blocks(property->attach, 0, false, false);
-	}
-	if (device->additional_instances) {
-		write_line("\t\tADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;");
 	}
 	write_line("\t\tINDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);");
 	if (is_master_device) {
@@ -1264,6 +1345,28 @@ void write_c_main_section(void) {
 		write_line("\t\t%s_detach", device->type);
 		write_line("\t);");
 		write_line("");
+		
+		if (device == driver->device && driver->serial && driver->serial->pattern) {
+			int index = 0;
+			for (pattern_type *pattern = driver->serial->pattern; pattern; pattern = pattern->next) {
+				index++;
+			}
+			write_line("\tstatic indigo_device_match_pattern patterns[%d] = { 0 };", index);
+			index = 0;
+			for (pattern_type *pattern = driver->serial->pattern; pattern; pattern = pattern->next) {
+				if (*pattern->product) {
+					write_line("\tstrcpy(patterns[%d].product_string, \"%s\");");
+				}
+				if (*pattern->vendor) {
+					write_line("\tstrcpy(patterns[%d].vendor_string, \"%s\");");
+				}
+				if (*pattern->serial) {
+					write_line("\tstrcpy(patterns[%d].serial_string, \"%s\");");
+				}
+				index++;
+			}
+			write_line("\tINDIGO_REGISER_MATCH_PATTERNS(%s_template, patterns, %d);", device->type, index);
+		}
 	}
 	write_line("\tSET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, false, last_action);");
 	write_line("");
@@ -1274,6 +1377,7 @@ void write_c_main_section(void) {
 	write_line("\tswitch (action) {");
 	write_line("\t\tcase INDIGO_DRIVER_INIT:");
 	write_line("\t\t\tlast_action = action;");
+	write_c_code_blocks(driver->init, 3, true, false);
 	write_line("\t\t\tprivate_data = indigo_safe_malloc(sizeof(%s_private_data));", driver->name);
 	for (device_type *device = driver->device; device; device = device->next) {
 		write_line("\t\t\t%s = indigo_safe_malloc_copy(sizeof(indigo_device), &%s_template);", device->type, device->type);
@@ -1300,6 +1404,7 @@ void write_c_main_section(void) {
 	write_line("\t\t\t\tfree(private_data);");
 	write_line("\t\t\t\tprivate_data = NULL;");
 	write_line("\t\t\t}");
+	write_c_code_blocks(driver->shutdown, 2, true, false);
 	write_line("\t\t\tbreak;");
 	write_line("\t\tcase INDIGO_DRIVER_INFO:");
 	write_line("\t\t\tbreak;");

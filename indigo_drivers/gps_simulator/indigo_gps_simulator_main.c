@@ -16,7 +16,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// This file generated from indigo_gps_simulator.driver (2025-04-20 19:14).
+// This file generated from indigo_gps_simulator.driver (2025-04-22 16:18).
 
 // version history
 // 3.0 Rumen G. Bogdanovski

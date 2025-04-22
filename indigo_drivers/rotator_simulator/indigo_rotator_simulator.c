@@ -16,7 +16,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// This file generated from indigo_rotator_simulator.driver (2025-04-20 19:14).
+// This file generated from indigo_rotator_simulator.driver (2025-04-22 16:18).
 
 // version history
 // 3.0 Rumen G. Bogdanovski
@@ -203,6 +203,7 @@ static indigo_result rotator_enumerate_properties(indigo_device *device, indigo_
 
 static indigo_result rotator_attach(indigo_device *device) {
 	if (indigo_rotator_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
+		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 
 		// Custom code below
 
@@ -211,7 +212,6 @@ static indigo_result rotator_attach(indigo_device *device) {
 
 		// Custom code above
 
-		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		return rotator_enumerate_properties(device, NULL, NULL);

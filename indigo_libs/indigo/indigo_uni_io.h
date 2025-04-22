@@ -209,7 +209,7 @@ INDIGO_EXTERN long indigo_uni_discard(indigo_uni_handle *handle);
  */
 INDIGO_EXTERN long indigo_uni_read_section(indigo_uni_handle *handle, char *buffer, long length, const char *terminators, const char *ignore, long timeout);
 
-#define indigo_uni_read_line(handle, buffer, length) indigo_uni_read_section(handle, buffer, length, "\n", "\r\n", -1)
+#define indigo_uni_read_line(handle, buffer, length) indigo_uni_read_section(handle, buffer, length, "\n", "\r\n", INDIGO_DELAY(5))
 
 /** Read formatted.
  */

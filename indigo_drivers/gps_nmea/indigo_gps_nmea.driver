@@ -1,0 +1,359 @@
+// Copyright (c) 2017-2025 Rumen G. Bogdanovski
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// GPS NMEA 0183  driver definition
+
+driver nmea {
+	author = "Rumen G. Bogdanovski";
+	copyright = "Copyright (c) 2017-2025 Rumen G. Bogdanovski";
+	label = "Generic NMEA 0183 GPS";
+	version = 17;
+	type = serial;
+	define {
+#define MAX_NB_OF_SYSTEMS 26
+	}
+	data {
+		int satellites_in_view[MAX_NB_OF_SYSTEMS];
+		char selected_system;
+	}
+	code {
+		static bool nmea_open(indigo_device *device) {
+			char *name = DEVICE_PORT_ITEM->text.value;
+			if (indigo_uni_is_url(name, "gps")) {
+				PRIVATE_DATA->handle = indigo_uni_client_tcp_socket(name, 9999, INDIGO_LOG_DEBUG);
+			} else {
+				PRIVATE_DATA->handle = indigo_uni_open_serial_with_config(name, DEVICE_BAUDRATE_ITEM->text.value, INDIGO_LOG_DEBUG);
+			}
+			return PRIVATE_DATA->handle != NULL;
+		}
+		
+		static void nmea_close(indigo_device *device) {
+			indigo_uni_close(&PRIVATE_DATA->handle);
+		}
+		
+		static char **nmea_parse(char *buffer) {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s", buffer);
+			if (strncmp("$G", buffer, 2)) {// Disregard "non positioning" sentences
+				return NULL;
+			}
+			char *index = strchr(buffer, '*');
+			if (index) {
+				*index++ = 0;
+				int c1 = (int)strtol(index, NULL, 16);
+				int c2 = 0;
+				index = buffer + 1;
+				while (*index) {
+					c2 ^= *index++;
+				}
+				if (c1 != c2) {
+					return NULL;
+				}
+			}
+			char **tokens = indigo_safe_malloc(32 * sizeof(char *));
+			int token = 0;
+			memset(tokens, 0, 32 * sizeof(char *));
+			index = buffer + 3;
+			while (index) {
+				tokens[token++] = index;
+				index = strchr(index, ',');
+				if (index) {
+					*index++ = 0;
+				}
+			}
+			return tokens;
+		}
+		
+		static void nmea_reset(indigo_device *device) {
+			if (AUTOMATIC_SYSTEM_ITEM->sw.value) {
+				PRIVATE_DATA->selected_system = 0;
+			} else if (MULTIPLE_SYSTEM_ITEM->sw.value) {
+				PRIVATE_DATA->selected_system = 'N';
+			} else if (GPS_SYSTEM_ITEM->sw.value) {
+				PRIVATE_DATA->selected_system = 'P';
+			} else if (GALILEO_SYSTEM_ITEM->sw.value) {
+				PRIVATE_DATA->selected_system = 'A';
+			} else if (GLONASS_SYSTEM_ITEM->sw.value) {
+				PRIVATE_DATA->selected_system = 'L';
+			} else if (BEIDOU_SYSTEM_ITEM->sw.value) {
+				PRIVATE_DATA->selected_system = 'B';
+			} else if (NAVIC_SYSTEM_ITEM->sw.value) {
+				PRIVATE_DATA->selected_system = 'I';
+			} else if (QZSS_SYSTEM_ITEM->sw.value) {
+				PRIVATE_DATA->selected_system = 'Q';
+			}
+			GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+			GPS_UTC_TIME_PROPERTY->state = INDIGO_BUSY_STATE;
+			GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+			GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+			GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+			GPS_STATUS_PROPERTY->state = INDIGO_BUSY_STATE;
+			GPS_ADVANCED_STATUS_SVS_IN_USE_ITEM->number.value = 0;
+			GPS_ADVANCED_STATUS_SVS_IN_VIEW_ITEM->number.value = 0;
+			GPS_ADVANCED_STATUS_PDOP_ITEM->number.value = 0.0;
+			GPS_ADVANCED_STATUS_HDOP_ITEM->number.value = 0.0;
+			GPS_ADVANCED_STATUS_VDOP_ITEM->number.value = 0.0;
+			GPS_ADVANCED_STATUS_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+			indigo_update_property(device, GPS_STATUS_PROPERTY, NULL);
+			indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
+			indigo_update_property(device, GPS_ADVANCED_STATUS_PROPERTY, NULL);
+			memset(PRIVATE_DATA->satellites_in_view, 0, sizeof(int) * MAX_NB_OF_SYSTEMS);
+		}
+		
+		static void gps_connection_handler(indigo_device *device);
+	}
+	gps {
+		name = "NMEA 0183 GPS";
+		additional_instances = true;
+		inherited CONNECTION {
+			change {
+				GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = 0;
+				GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = 0;
+				GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value = 0;
+				sprintf(GPS_UTC_ITEM->text.value, "0000-00-00T00:00:00.00");
+				nmea_reset(device);
+			}
+		}
+		switch GPS_SELECTED_SYSTEM {
+			label = "Selected positioning system";
+			group = MAIN_GROUP;
+			name = "X_GPS_SELECTED_SYSTEM";
+			always_defined = true;
+			item AUTOMATIC_SYSTEM {
+				label = "Autodetect";
+				name = "AUTO";
+				value = true;
+			}
+			item MULTIPLE_SYSTEM {
+				label = "Multiple";
+				name = "MULTIPLE";
+			}
+			item GPS_SYSTEM {
+				label = "GPS";
+				name = "GPS";
+			}
+			item GALILEO_SYSTEM {
+				label = "Galileo";
+				name = "GALILEO";
+			}
+			item GLONASS_SYSTEM {
+				label = "GLONASS";
+				name = "GLONASS";
+			}
+			item BEIDOU_SYSTEM {
+				label = "BeiDou";
+				name = "BEIDOU";
+			}
+			item NAVIC_SYSTEM {
+				label = "NavIC";
+				name = "NAVIC";
+			}
+			item QZSS_SYSTEM {
+				label = "QZSS1";
+				name = "QZSS";
+			}
+			change {
+				nmea_reset(device);
+			}
+		}
+		timer {
+			char buffer[128];
+			long length = indigo_uni_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer));
+			char **tokens = nmea_parse(buffer);
+			
+			if (length > 0 && tokens) {
+				char nmea_system = buffer[2];
+				if (!strcmp(tokens[0], "RMC") && (PRIVATE_DATA->selected_system == 0 ||  PRIVATE_DATA->selected_system == nmea_system)) {
+					// Recommended Minimum sentence C
+					bool hasFix = (*tokens[2] == 'A');
+					int time = atoi(tokens[1]);
+					int date = atoi(tokens[9]);
+					sprintf(GPS_UTC_ITEM->text.value, "20%02d-%02d-%02dT%02d:%02d:%02d", date % 100, (date / 100) % 100, date / 10000, time / 10000, (time / 100) % 100, time % 100);
+					GPS_UTC_TIME_PROPERTY->state = hasFix ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+					indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
+					double lat = indigo_atod(tokens[3]);
+					lat = floor(lat / 100) + fmod(lat, 100) / 60;
+					if (!strcmp(tokens[4], "S")) {
+						lat = -lat;
+					}
+					lat = round(lat * 10000) / 10000;
+					double lon = indigo_atod(tokens[5]);
+					lon = floor(lon / 100) + fmod(lon, 100) / 60;
+					if (!strcmp(tokens[6], "W")) {
+						lon = -lon;
+					}
+					lon = round(lon * 10000) / 10000;
+					if (GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value != lon || GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value != lat) {
+						GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = lon;
+						GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = lat;
+						GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = hasFix ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+						indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+					}
+					if (hasFix && PRIVATE_DATA->selected_system == 0) {
+						PRIVATE_DATA->selected_system = nmea_system;
+						memset(PRIVATE_DATA->satellites_in_view, 0, sizeof(int) * MAX_NB_OF_SYSTEMS);
+					}
+				} else if (!strcmp(tokens[0], "GGA") && (PRIVATE_DATA->selected_system == 0 ||  PRIVATE_DATA->selected_system == nmea_system)) {
+					// Global Positioning System Fix Data
+					bool hasFix = (*tokens[6] != 0 && *tokens[6] != '0');
+					double lat = indigo_atod(tokens[2]);
+					lat = floor(lat / 100) + fmod(lat, 100) / 60;
+					if (!strcmp(tokens[3], "S")) {
+						lat = -lat;
+					}
+					lat = round(lat * 10000) / 10000;
+					double lon = indigo_atod(tokens[4]);
+					lon = floor(lon / 100) + fmod(lon, 100) / 60;
+					if (!strcmp(tokens[5], "W")) {
+						lon = -lon;
+					}
+					lon = round(lon * 10000) / 10000;
+					if (GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value != lon || GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value != lat) {
+						GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = lon;
+						GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = lat;
+					}
+					double elv = round(indigo_atod(tokens[9]));
+					if (GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value != elv) {
+						GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value = elv;
+					}
+					GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = hasFix ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+					indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+					int in_use = atoi(tokens[7]);
+					if (GPS_ADVANCED_STATUS_SVS_IN_USE_ITEM->number.value != in_use) {
+						GPS_ADVANCED_STATUS_SVS_IN_USE_ITEM->number.value = in_use;
+						GPS_ADVANCED_STATUS_PROPERTY->state = hasFix ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+						if (GPS_ADVANCED_ENABLED_ITEM->sw.value) {
+							indigo_update_property(device, GPS_ADVANCED_STATUS_PROPERTY, NULL);
+						}
+					}
+					if (hasFix && PRIVATE_DATA->selected_system == 0) {
+						PRIVATE_DATA->selected_system = nmea_system;
+						memset(PRIVATE_DATA->satellites_in_view, 0, sizeof(int) * MAX_NB_OF_SYSTEMS);
+					}
+				} else if (!strcmp(tokens[0], "GSV") && (PRIVATE_DATA->selected_system == 0 || PRIVATE_DATA->selected_system == 'N' || PRIVATE_DATA->selected_system == nmea_system)) {
+					// Satellites in view
+					int in_view = atoi(tokens[3]), total_in_view = 0;
+					if ((PRIVATE_DATA->selected_system == 0 || PRIVATE_DATA->selected_system == 'N') && nmea_system != 'N') {
+						// When the nmea system is not yet selected, or if using a multi-constellation fix
+						// count satellites from all constellations
+						// As an exception, if the GSV is sent with the GNSS talker id 'N', it is assumed to comprise all SVs
+						if (nmea_system >= 'A' && nmea_system <= 'Z') {
+							PRIVATE_DATA->satellites_in_view[nmea_system - 'A'] = in_view;
+							for (int i = 0; i < MAX_NB_OF_SYSTEMS; i++)
+								total_in_view += PRIVATE_DATA->satellites_in_view[i];
+						}
+					} else {
+						// Otherwise, count only satellites from the selected system
+						total_in_view = in_view;
+					}
+					if (GPS_ADVANCED_STATUS_SVS_IN_VIEW_ITEM->number.value != total_in_view) {
+						GPS_ADVANCED_STATUS_SVS_IN_VIEW_ITEM->number.value = total_in_view;
+						GPS_ADVANCED_STATUS_PROPERTY->state = INDIGO_OK_STATE;
+						if (GPS_ADVANCED_ENABLED_ITEM->sw.value) {
+							indigo_update_property(device, GPS_ADVANCED_STATUS_PROPERTY, NULL);
+						}
+					}
+				} else if (!strcmp(tokens[0], "GSA") && (PRIVATE_DATA->selected_system == 0 || PRIVATE_DATA->selected_system == 'N' || PRIVATE_DATA->selected_system == nmea_system)) {
+					// Satellite status
+					// When providing a multiple GNSS fix, the receiver may provide a GSA for each constellation, and none with 'N' id
+					// As the fix is a combined fix, the values should be the same in each GSA, as observed with the receiver I have in hand.
+					// We therefore process equally all GSA in this specific case
+					char fix = *tokens[2] - '0';
+					if (fix == 1 && GPS_STATUS_NO_FIX_ITEM->light.value != INDIGO_ALERT_STATE) {
+						GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_ALERT_STATE;
+						GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+						GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+						GPS_STATUS_PROPERTY->state = INDIGO_OK_STATE;
+						if (GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) {
+							GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+							indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+						}
+						if (GPS_UTC_TIME_PROPERTY->state != INDIGO_BUSY_STATE) {
+							GPS_UTC_TIME_PROPERTY->state = INDIGO_BUSY_STATE;
+							indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
+						}
+						indigo_update_property(device, GPS_STATUS_PROPERTY, NULL);
+					} else if (fix == 2 && GPS_STATUS_2D_FIX_ITEM->light.value != INDIGO_BUSY_STATE) {
+						GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+						GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_BUSY_STATE;
+						GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+						GPS_STATUS_PROPERTY->state = INDIGO_OK_STATE;
+						indigo_update_property(device, GPS_STATUS_PROPERTY, NULL);
+						if (GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) {
+							GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+							indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+						}
+						if (GPS_UTC_TIME_PROPERTY->state != INDIGO_BUSY_STATE) {
+							GPS_UTC_TIME_PROPERTY->state = INDIGO_BUSY_STATE;
+							indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
+						}
+					} else if (fix == 3 && GPS_STATUS_3D_FIX_ITEM->light.value != INDIGO_OK_STATE) {
+						GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+						GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+						GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_OK_STATE;
+						GPS_STATUS_PROPERTY->state = INDIGO_OK_STATE;
+						if (GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state != INDIGO_OK_STATE) {
+							GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+							indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+						}
+						if (GPS_UTC_TIME_PROPERTY->state != INDIGO_OK_STATE) {
+							GPS_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
+							indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
+						}
+						indigo_update_property(device, GPS_STATUS_PROPERTY, NULL);
+					}
+					double pdop = indigo_atod(tokens[15]);
+					double hdop = indigo_atod(tokens[16]);
+					double vdop = indigo_atod(tokens[17]);
+					if (GPS_ADVANCED_STATUS_PDOP_ITEM->number.value != pdop || GPS_ADVANCED_STATUS_HDOP_ITEM->number.value != hdop || GPS_ADVANCED_STATUS_VDOP_ITEM->number.value != vdop) {
+						GPS_ADVANCED_STATUS_PDOP_ITEM->number.value = pdop;
+						GPS_ADVANCED_STATUS_HDOP_ITEM->number.value = hdop;
+						GPS_ADVANCED_STATUS_VDOP_ITEM->number.value = vdop;
+						GPS_ADVANCED_STATUS_PROPERTY->state = INDIGO_OK_STATE;
+						if (GPS_ADVANCED_ENABLED_ITEM->sw.value) {
+							indigo_update_property(device, GPS_ADVANCED_STATUS_PROPERTY, NULL);
+						}
+					}
+				}
+				indigo_safe_free(tokens);
+				indigo_reschedule_timer(device, 0, &PRIVATE_DATA->gps_timer);
+			} else {
+				indigo_send_message(device, "Failed to read from GPS unit");
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+				indigo_set_timer(device, 0, gps_connection_handler, NULL);
+			}
+		}
+		attach {			
+			GPS_ADVANCED_PROPERTY->hidden = false;
+			GPS_GEOGRAPHIC_COORDINATES_PROPERTY->hidden = false;
+			GPS_GEOGRAPHIC_COORDINATES_PROPERTY->count = 3;
+			GPS_UTC_TIME_PROPERTY->hidden = false;
+			GPS_UTC_TIME_PROPERTY->count = 1;
+		}
+	}
+	serial {
+		configurable_speed = true;
+		pattern {
+			product = "GPS";
+		}
+		pattern {
+			product = "GNSS";
+		}
+	}
+}
+
