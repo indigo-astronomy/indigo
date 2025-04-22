@@ -43,14 +43,14 @@ typedef struct code_type {
 
 typedef struct item_type {
 	struct item_type *next;
-	char handle[64], name[64], label[256], value[256], min[256], max[256], step[256];
+	char handle[64], name[64], label[256], value[256], min[256], max[256], step[256], format[16];
 	code_type *attach;
 } item_type;
 
 typedef struct property_type {
 	struct property_type *next;
 	char type[8], id[64], handle[64], name[64], pointer[64], handler[64], label[256], group[32],  perm[32], rule[32];
-	bool always_defined, handle_change, synchronized_change;
+	bool always_defined, handle_change, synchronized_change, persistent;
 	code_type *code, *attach,  *change, *detach;
 	item_type *item;
 } property_type;
@@ -547,6 +547,9 @@ bool parse_item_block(char *type, item_type **items) {
 			if (parse_expression_attribute("step", item->step, sizeof(item->step))) {
 				continue;
 			}
+			if (parse_expression_attribute("format", item->format, sizeof(item->format))) {
+				continue;
+			}
 		}
 		report_unexpected_token_error();
 		return false;
@@ -583,7 +586,6 @@ bool parse_property_block(device_type *device, property_type **properties) {
 	strcpy(property->group, "MAIN_GROUP");
 	strcpy(property->perm, "INDIGO_RW_PERM");
 	strcpy(property->rule, "INDIGO_ONE_OF_MANY_RULE");
-	property->always_defined = false;
 	property->handle_change = property->type[0] != 'l';
 	property->synchronized_change = true;
 	if (!match(TOKEN_LBRACE, NULL)) {
@@ -608,6 +610,9 @@ bool parse_property_block(device_type *device, property_type **properties) {
 			continue;
 		}
 		if (parse_bool_attribute("synchronized_change", &property->synchronized_change)) {
+			continue;
+		}
+		if (parse_bool_attribute("persistent", &property->persistent)) {
 			continue;
 		}
 		if (parse_code_block("code", &property->code)) {
@@ -1199,6 +1204,7 @@ void write_c_attach(device_type *device) {
 		if (driver->serial->configurable_speed) {
 			write_line("\t\tDEVICE_BAUDRATE_PROPERTY->hidden = false;");
 		}
+		write_line("");
 	}
 	write_c_code_blocks(device->attach, 2, true, false);
 	for (property_type *property = device->property; property; property = property->next) {
@@ -1228,6 +1234,9 @@ void write_c_attach(device_type *device) {
 					write_line("\t\t}");
 					for (item_type *item = property->item; item; item = item->next) {
 						write_line("\t\tindigo_init_number_item(%s, %s, %s, %s, %s, %s, %s);", item->handle, item->name, item->label, item->min, item->max, item->step, item->value);
+						if (*item->format) {
+							write_line("\t\tstrcpy(%s->number.format, %s);", item->handle, item->format);
+						}
 					}
 					break;
 				case 's':
@@ -1299,7 +1308,9 @@ void write_c_change_property(device_type *device) {
 	write_line("");
 	write_line("static indigo_result %s_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {", device->type);
 	bool first_one = true;
+	bool persistent = false;
 	for (property_type *property = device->property; property; property = property->next) {
+		persistent |= property->persistent;
 		if (property->handle_change) {
 			if (first_one) {
 				write_line("");
@@ -1324,6 +1335,27 @@ void write_c_change_property(device_type *device) {
 			write_line("\t\tindigo_set_timer(device, 0, %s, NULL);", property->handler);
 			write_line("\t\treturn INDIGO_OK;");
 		}
+	}
+	if (persistent) {
+		if (first_one) {
+			write_line("");
+			write_line("  // CONFIG change handling");
+			write_line("");
+			write_line("\tif (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {");
+			first_one = false;
+		} else {
+			write_line("");
+			write_line("  // CONFIG change handling");
+			write_line("");
+			write_line("\t} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {");
+		}
+		write_line("\t\tif (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {");
+		for (property_type *property = device->property; property; property = property->next) {
+			if (property->persistent) {
+				write_line("\t\t\tindigo_save_property(device, NULL, %s);", property->handle);
+			}
+		}
+		write_line("\t\t}");
 	}
 	if (!first_one) {
 		write_line("\t}");

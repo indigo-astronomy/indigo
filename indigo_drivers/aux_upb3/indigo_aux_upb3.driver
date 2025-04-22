@@ -168,6 +168,7 @@ driver upb3 {
 			label = "Outlet names";
 			group = POWERBOX_GROUP;
 			always_defined = true;
+			persistent = true;
 			item AUX_POWER_OUTLET_NAME_1 {
 				label = "Outlet #1";
 				value = "Outlet #1";

@@ -16,7 +16,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// This file generated from indigo_aux_upb3.driver (2025-04-22 20:06).
+// This file generated from indigo_aux_upb3.driver (2025-04-22 20:51).
 
 // version history
 // 3.0 Peter Polakovic <peter.polakovic@cloudmakers.eu>
@@ -723,6 +723,7 @@ static indigo_result aux_attach(indigo_device *device) {
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
 
+
 		// Custom code below
 
 		INFO_PROPERTY->count = 6;
@@ -981,6 +982,13 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, AUX_VARIABLE_POWER_OUTLET_PROPERTY, NULL);
 		indigo_set_timer(device, 0, aux_variable_power_outlet_handler, NULL);
 		return INDIGO_OK;
+
+  // CONFIG change handling
+
+	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
+		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
+			indigo_save_property(device, NULL, AUX_OUTLET_NAMES_PROPERTY);
+		}
 	}
 	return indigo_aux_change_property(device, client, property);
 }

@@ -16,7 +16,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// This file generated from indigo_gps_nmea.driver (2025-04-22 20:06).
+// This file generated from indigo_gps_nmea.driver (2025-04-22 20:51).
 
 // version history
 // 3.0 Rumen G. Bogdanovski
@@ -420,6 +420,7 @@ static indigo_result gps_attach(indigo_device *device) {
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
+
 
 		// Custom code below
 

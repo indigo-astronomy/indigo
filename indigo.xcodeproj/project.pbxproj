@@ -1458,6 +1458,7 @@
 		594C6FBD24DF2901000E4BF0 /* INDIGO_AGENTS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = INDIGO_AGENTS.md; sourceTree = "<group>"; };
 		594C6FBE24DF2901000E4BF0 /* INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md; sourceTree = "<group>"; };
 		594C6FBF24DF2901000E4BF0 /* PROPERTY_MANIPULATION.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PROPERTY_MANIPULATION.md; sourceTree = "<group>"; };
+		594CDE882DB812F200CE1AF5 /* indigo_aux_arteskyflat.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_aux_arteskyflat.driver; sourceTree = "<group>"; };
 		594EF3172770FD15002D0EC8 /* indigo_align.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_align.c; sourceTree = "<group>"; };
 		594EF3182770FD15002D0EC8 /* indigo_fits.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_fits.c; sourceTree = "<group>"; };
 		59508B4F2A6F096A00A0B97D /* AtikDefs.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AtikDefs.h; sourceTree = "<group>"; };
@@ -9634,6 +9635,7 @@
 				59B81EC023376A1A00DFA81B /* indigo_aux_arteskyflat.h */,
 				59B81EC423376A1A00DFA81B /* indigo_aux_arteskyflat.c */,
 				59B81EC223376A1A00DFA81B /* indigo_aux_arteskyflat_main.c */,
+				594CDE882DB812F200CE1AF5 /* indigo_aux_arteskyflat.driver */,
 				59B81EC323376A1A00DFA81B /* arteskyflat.rules */,
 				59B81EC6233774AD00DFA81B /* arteskyflat_simulator */,
 			);
