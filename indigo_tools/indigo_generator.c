@@ -93,7 +93,7 @@ char *definition_source, *definition_source_basename, *current, *begin, *end;
 token_type last_token;
 driver_type *driver;
 int indentation = 0;
-int line = 0, column = 0;
+int line = 1, column = 1;
 
 #pragma mark - helpers
 
@@ -136,6 +136,37 @@ void report_error(const char *format, ...) {
 	vsnprintf(buffer, sizeof(buffer), format, args);
 	fprintf(stderr, "ERROR (%d:%d): %s\n", line, column, buffer);
 	va_end(args);
+}
+
+void report_unexpected_token_error(void) {
+	switch (last_token) {
+		case TOKEN_NONE:
+			report_error("Unexpected token NONE");
+			break;
+		case TOKEN_LBRACE:
+		case TOKEN_RBRACE:
+		case TOKEN_EQUAL:
+		case TOKEN_SEMICOLON:
+			report_error("Unexpected token '%c'", last_token);
+			break;
+		case TOKEN_IDENTIFIER:
+		case TOKEN_STRING:
+		case TOKEN_NUMBER:
+			report_error("Unexpected token '%.*s'", end - begin, begin);
+			break;
+		case TOKEN_TRUE:
+			report_error("Unexpected token 'true");
+			break;
+		case TOKEN_FALSE:
+			report_error("Unexpected token 'false");
+			break;
+		case TOKEN_CODE:
+			report_error("Unexpected token CODE");
+		case TOKEN_EXPRESSION:
+			report_error("Unexpected token EXPRESSION");
+		default:
+			break;
+	}
 }
 
 #pragma mark - parser
@@ -517,7 +548,7 @@ bool parse_item_block(char *type, item_type **items) {
 				continue;
 			}
 		}
-		report_error("Unexpected token %c", last_token);
+		report_unexpected_token_error();
 		return false;
 	}
 	debug("}");
@@ -617,7 +648,7 @@ bool parse_property_block(device_type *device, property_type **properties) {
 				continue;
 			}
 		}
-		report_error("Unexpected token %c", last_token);
+		report_unexpected_token_error();
 		return false;
 	}
 	debug("}");
@@ -626,7 +657,7 @@ bool parse_property_block(device_type *device, property_type **properties) {
 }
 
 bool parse_device_block(device_type **devices) {
-	if (!(match(TOKEN_IDENTIFIER, "ccd") || match(TOKEN_IDENTIFIER, "wheel") || match(TOKEN_IDENTIFIER, "focuser") || match(TOKEN_IDENTIFIER, "mount") || match(TOKEN_IDENTIFIER, "rotator") || match(TOKEN_IDENTIFIER, "gps") || match(TOKEN_IDENTIFIER, "ao") || match(TOKEN_IDENTIFIER, "aux"))) {
+	if (!(match(TOKEN_IDENTIFIER, "ccd") || match(TOKEN_IDENTIFIER, "wheel") || match(TOKEN_IDENTIFIER, "focuser") || match(TOKEN_IDENTIFIER, "mount") || match(TOKEN_IDENTIFIER, "guider") || match(TOKEN_IDENTIFIER, "rotator") || match(TOKEN_IDENTIFIER, "gps") || match(TOKEN_IDENTIFIER, "ao") || match(TOKEN_IDENTIFIER, "aux"))) {
 		return false;
 	}
 	if (!match(TOKEN_LBRACE, NULL)) {
@@ -667,7 +698,7 @@ bool parse_device_block(device_type **devices) {
 		if (parse_code_block("detach", &device->detach)) {
 			continue;
 		}
-		report_error("Unexpected token %c", last_token);
+		report_unexpected_token_error();
 		return false;
 	}
 	debug("}");
@@ -704,7 +735,7 @@ bool parse_pattern_block(pattern_type **patterns) {
 		if (parse_string_attribute("serial", pattern->serial, sizeof(pattern->serial))) {
 			continue;
 		}
-		report_error("Unexpected token %c", last_token);
+		report_unexpected_token_error();
 		return false;
 	}
 	debug("}");
@@ -729,7 +760,7 @@ bool parse_serial_block(serial_type **serial) {
 		if (parse_pattern_block(&(*serial)->pattern)) {
 			continue;
 		}
-		report_error("Unexpected token %c", last_token);
+		report_unexpected_token_error();
 		return false;
 	}
 	debug("}");
@@ -789,7 +820,7 @@ bool parse_driver_block(void) {
 		if (parse_code_block("shutdown", &driver->shutdown)) {
 			continue;
 		}
-		report_error("Unexpected token %c", last_token);
+		report_unexpected_token_error();
 		return false;
 	}
 	debug("}");
@@ -971,11 +1002,15 @@ void write_c_define_section(void) {
 }
 
 void write_c_property_definition_section(void) {
-	write_line("#pragma mark - Property definitions");
-	write_line("");
+	bool first_one = true;
 	for (device_type *device = driver->device; device; device = device->next) {
 		for (property_type *property = device->property; property; property = property->next) {
 			if (property->type[0] != 'i') {
+				if (first_one) {
+					write_line("#pragma mark - Property definitions");
+					write_line("");
+					first_one = false;
+				}
 				write_line("// %s handles definition", property->id);
 				write_line("");
 				write_line("#define %s (PRIVATE_DATA->%s)", property->handle, property->pointer);
@@ -1150,7 +1185,7 @@ void write_c_attach(device_type *device) {
 	write_line("// %s attach API callback", device->type);
 	write_line("");
 	write_line("static indigo_result %s_attach(indigo_device *device) {", device->type);
-	if (device->type[0] == 'a') {
+	if (!strcmp(device->type, "aux")) {
 		write_line("\tif (indigo_aux_attach(device, DRIVER_NAME, DRIVER_VERSION, %s) == INDIGO_OK) {", device->interface);
 	} else {
 		write_line("\tif (indigo_%s_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {", device->type);

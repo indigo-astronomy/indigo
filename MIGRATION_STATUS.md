@@ -2,6 +2,8 @@
 
 ## Already done
 
+ao_sx
+
 aux_upb3
 
 gps_simulator
@@ -23,8 +25,6 @@ agent_guider
 agent_imager
 agent_mount
 agent_scripting
-
-ao_sx
 
 aux_arteskyflat
 aux_astromechanics
@@ -73,8 +73,6 @@ focuser_fli
 focuser_focusdreampro
 focuser_ioptron
 
-gps_nmea
-
 mount_asi
 mount_ioptron
 mount_lx200
@@ -82,7 +80,6 @@ mount_rainbow
 mount_simulator
 
 rotator_falcon
-rotator_simulator
 
 wheel_asi
 wheel_astroasis

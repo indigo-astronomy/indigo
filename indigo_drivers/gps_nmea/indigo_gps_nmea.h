@@ -16,7 +16,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// This file generated from indigo_gps_nmea.driver (2025-04-22 18:29).
+// This file generated from indigo_gps_nmea.driver (2025-04-22 20:06).
 
 // version history
 // 3.0 Rumen G. Bogdanovski

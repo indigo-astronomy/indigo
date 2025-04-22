@@ -865,7 +865,6 @@ driver upb3 {
 		}
 	}
 	serial {
-		configurable_speed = true;
 		pattern {
 			product = "UPBv3";
 		}

@@ -346,7 +346,6 @@ driver nmea {
 		}
 	}
 	serial {
-		configurable_speed = true;
 		pattern {
 			product = "GPS";
 		}
