@@ -16,7 +16,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// This file generated from indigo_gps_nmea.driver (2025-04-22 15:38).
+// This file generated from indigo_gps_nmea.driver (2025-04-22 18:29).
 
 // version history
 // 3.0 Rumen G. Bogdanovski
@@ -40,7 +40,7 @@
 #define DRIVER_VERSION 0x0011
 #define DRIVER_NAME "indigo_gps_nmea"
 #define DRIVER_LABEL "Generic NMEA 0183 GPS"
-#define GPS_DEVICE_NAME "NMEA 0183 GPS"
+#define GPS_DEVICE_NAME "NMEA GPS"
 
 // Custom code below
 
@@ -420,10 +420,11 @@ static indigo_result gps_attach(indigo_device *device) {
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
+		DEVICE_BAUDRATE_PROPERTY->hidden = false;
 
 		// Custom code below
 
-		DEVICE_BAUDRATE_PROPERTY->hidden = false;
+
 		GPS_ADVANCED_PROPERTY->hidden = false;
 		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->hidden = false;
 		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->count = 3;
@@ -520,6 +521,11 @@ indigo_result indigo_gps_nmea(indigo_driver_action action, indigo_driver_info *i
 		gps_detach
 	);
 
+	static indigo_device_match_pattern gps_patterns[2] = { 0 };
+	strcpy(gps_patterns[0].product_string, "GPS");
+	strcpy(gps_patterns[1].product_string, "GNSS");
+	INDIGO_REGISER_MATCH_PATTERNS(gps_template, gps_patterns, 2);
+
 	SET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, false, last_action);
 
 	if (action == last_action) {
@@ -529,16 +535,6 @@ indigo_result indigo_gps_nmea(indigo_driver_action action, indigo_driver_info *i
 	switch (action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
-
-			// Custom code below
-
-			static indigo_device_match_pattern patterns[2] = { 0 };
-			strcpy(patterns[0].product_string, "GPS");
-			strcpy(patterns[1].product_string, "GNSS");
-			INDIGO_REGISER_MATCH_PATTERNS(gps_template, patterns, 2);
-
-			// Custom code above
-
 			private_data = indigo_safe_malloc(sizeof(nmea_private_data));
 			gps = indigo_safe_malloc_copy(sizeof(indigo_device), &gps_template);
 			gps->private_data = private_data;
@@ -556,13 +552,6 @@ indigo_result indigo_gps_nmea(indigo_driver_action action, indigo_driver_info *i
 				free(private_data);
 				private_data = NULL;
 			}
-
-		// Custom code below
-
-		// shutdhown
-
-		// Custom code above
-
 			break;
 		case INDIGO_DRIVER_INFO:
 			break;

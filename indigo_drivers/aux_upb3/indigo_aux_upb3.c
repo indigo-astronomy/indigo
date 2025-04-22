@@ -16,7 +16,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// This file generated from indigo_aux_upb3.driver (2025-04-22 15:38).
+// This file generated from indigo_aux_upb3.driver (2025-04-22 18:14).
 
 // version history
 // 3.0 Peter Polakovic <peter.polakovic@cloudmakers.eu>
@@ -722,14 +722,13 @@ static indigo_result aux_attach(indigo_device *device) {
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
+		DEVICE_BAUDRATE_PROPERTY->hidden = false;
 
 		// Custom code below
 
 		INFO_PROPERTY->count = 6;
 		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
-
-		// TODO automatic port selection
 
 		// Custom code above
 
@@ -1280,8 +1279,6 @@ static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_
 static indigo_result focuser_attach(indigo_device *device) {
 	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
-		DEVICE_PORT_PROPERTY->hidden = false;
-		DEVICE_PORTS_PROPERTY->hidden = false;
 
 		// Custom code below
 
@@ -1422,6 +1419,10 @@ indigo_result indigo_aux_upb3(indigo_driver_action action, indigo_driver_info *i
 		NULL,
 		aux_detach
 	);
+
+	static indigo_device_match_pattern aux_patterns[1] = { 0 };
+	strcpy(aux_patterns[0].product_string, "UPBv3");
+	INDIGO_REGISER_MATCH_PATTERNS(aux_template, aux_patterns, 1);
 
 	static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(
 		FOCUSER_DEVICE_NAME,

@@ -5,6 +5,9 @@
 aux_upb3
 
 gps_simulator
+gps_nmea
+
+rotator_simulator
 
 ## In progress
 

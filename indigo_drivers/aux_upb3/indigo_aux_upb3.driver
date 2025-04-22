@@ -23,7 +23,6 @@ driver upb3 {
 	copyright = "Copyright (c) 2025 CloudMakers, s. r. o.";
 	label = "PegasusAstro Ultimate Powerbox v3";
 	version = 3;
-	type = serial;
 	define {
 #define POWERBOX_GROUP "Powerbox"
 	}
@@ -692,8 +691,6 @@ driver upb3 {
 			INFO_PROPERTY->count = 6;
 			strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 			strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
-			
-			// TODO automatic port selection
 		}
 	}
 	focuser {
@@ -865,6 +862,12 @@ driver upb3 {
 			FOCUSER_POSITION_ITEM->number.min = 0;
 			FOCUSER_POSITION_ITEM->number.max = 9999999;
 			FOCUSER_POSITION_ITEM->number.step = 1;
+		}
+	}
+	serial {
+		configurable_speed = true;
+		pattern {
+			product = "UPBv3";
 		}
 	}
 }

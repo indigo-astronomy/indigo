@@ -23,9 +23,8 @@ driver nmea {
 	copyright = "Copyright (c) 2017-2025 Rumen G. Bogdanovski";
 	label = "Generic NMEA 0183 GPS";
 	version = 17;
-	type = serial;
 	define {
-#define MAX_NB_OF_SYSTEMS 26
+		#define MAX_NB_OF_SYSTEMS 26
 	}
 	data {
 		int satellites_in_view[MAX_NB_OF_SYSTEMS];
@@ -118,7 +117,7 @@ driver nmea {
 		static void gps_connection_handler(indigo_device *device);
 	}
 	gps {
-		name = "NMEA 0183 GPS";
+		name = "NMEA GPS";
 		additional_instances = true;
 		inherited CONNECTION {
 			change {

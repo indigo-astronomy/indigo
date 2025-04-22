@@ -65,9 +65,12 @@ typedef struct device_type {
 
 typedef struct pattern_type {
 	struct pattern_type *next;
+	int product_id;
+	int vendor_id;
 	char product[64];
 	char vendor[64];
 	char serial[64];
+	bool exact_match;
 } pattern_type;
 
 typedef struct serial_type {
@@ -683,6 +686,15 @@ bool parse_pattern_block(pattern_type **patterns) {
 	pattern_type *pattern = allocate(sizeof(pattern_type));
 	debug("pattern {");
 	while (!match(TOKEN_RBRACE, NULL)) {
+		if (parse_int_attribute("product_id", &pattern->product_id)) {
+			continue;
+		}
+		if (parse_int_attribute("vendor_id", &pattern->vendor_id)) {
+			continue;
+		}
+		if (parse_bool_attribute("exact_match", &pattern->exact_match)) {
+			continue;
+		}
 		if (parse_string_attribute("product", pattern->product, sizeof(pattern->product))) {
 			continue;
 		}
@@ -1351,21 +1363,22 @@ void write_c_main_section(void) {
 			for (pattern_type *pattern = driver->serial->pattern; pattern; pattern = pattern->next) {
 				index++;
 			}
-			write_line("\tstatic indigo_device_match_pattern patterns[%d] = { 0 };", index);
+			write_line("\tstatic indigo_device_match_pattern %s_patterns[%d] = { 0 };", device->type, index);
 			index = 0;
 			for (pattern_type *pattern = driver->serial->pattern; pattern; pattern = pattern->next) {
 				if (*pattern->product) {
-					write_line("\tstrcpy(patterns[%d].product_string, \"%s\");");
+					write_line("\tstrcpy(%s_patterns[%d].product_string, \"%s\");", device->type, index, pattern->product);
 				}
 				if (*pattern->vendor) {
-					write_line("\tstrcpy(patterns[%d].vendor_string, \"%s\");");
+					write_line("\tstrcpy(%s_patterns[%d].vendor_string, \"%s\");", device->type, index, pattern->vendor);
 				}
 				if (*pattern->serial) {
-					write_line("\tstrcpy(patterns[%d].serial_string, \"%s\");");
+					write_line("\tstrcpy(%s_patterns[%d].serial_string, \"%s\");", device->type, index, pattern->serial);
 				}
 				index++;
 			}
-			write_line("\tINDIGO_REGISER_MATCH_PATTERNS(%s_template, patterns, %d);", device->type, index);
+			write_line("\tINDIGO_REGISER_MATCH_PATTERNS(%s_template, %s_patterns, %d);", device->type, device->type, index);
+			write_line("");
 		}
 	}
 	write_line("\tSET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, false, last_action);");
