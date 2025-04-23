@@ -1,0 +1,165 @@
+// Copyright (c) 2025 XXXXX
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// XXXXX driver definition
+
+driver XXXXX { // replace XXXXX with driver base name without indigo_aux_ prefix (identifier literal)
+	author = "XXXXX"; // replace XXXXX with author name and surname (string literal)
+	copyright = "Copyright (c) 2025 XXXXXX"; // replace XXXXX with copyright holder (string literal)
+	label = "XXXXX"; // replace XXXXX with descriptive driver label (string literal)
+	version = XXXXX; // replace XXXXX with driver minor version, major version is always set to 3.0 (number literal)
+	include {
+		// optional C code block
+		// replace content of this section with common preprocessor include directives
+	}
+	define {
+		// optional C code block
+		// replace content of this section with common preprocessor define directions
+	}
+	code {
+		// optional C code block
+		// replace content of this section with common low level communication code, at least with XXXXX_command(), XXXXX_open() and XXXXX_close() functions
+	}
+	init {
+		// optional C code block
+		// replace content of this section with common code for driver initialization, it will be put at the beginning of INDIGO_DRIVER_INIT handling code
+	}
+	shutdown {
+		// optional C code block
+		// replace content of this section with common code for driver deinitialization, it will be put at the end of INDIGO_DRIVER_SHUTDOWN handling code
+	}
+	serial { // this block is mandatory for serial devices, but may be empty if no pattern is defined
+		configurable_speed = true; // use this if driver should support configurable baud rate (bool literal, default is false)
+		pattern {  // this block is optional serial port pattern matching definition and may be repeated as many times as you need
+			product = "XXXXX"; // replace XXXXX with product name pattern (optional string literal)
+			vendor = "XXXXX"; // replace XXXXX with vendor name pattern (optional string literal)
+			serial = "XXXXX"; // replace XXXXX with serial number pattern (optional string literal)
+			product_id = XXXXX; // replace XXXXX with product ID (optional number literal)
+			vendor_id = XXXXX; // replace XXXXX with vendor ID (optional number literal)
+		}
+	}
+	XXXXX { // replace XXXXX with aux, ccd, wheel, focuser, mount, guider, rotator, gps, ao or aux, additional device definitions may follow, but the first one is the master device)
+		name = "XXXXX";  // replace XXXXX with device name  (string literal)
+		additional_instances = true; // use this if the driver can create additional device instances  (bool literal)
+		interface = XXXXX; // for replace XXXXX with additional AUX interface like INDIGO_INTERFACE_AUX_LIGHTBOX (C uint32 expression)
+		inherited CONNECTION {
+			change {
+				// optional C code block
+				// replace content of this section with intialization code in case of sucessfull connection
+				// locking, code for handling multiple devices sharing the same port, opening the port, handling result and disconnection is generated boilerplate.
+			}
+		}
+		inherited XXXXX { // replace XXXXX with inherited property base name without _PROPERTY suffix, repeat block as many times as you need
+			handle_change = false; // use this if property change shouldn't be handled (bool C expression, default is true)
+			change {
+				// optional C code block
+				// replace content of this section with property change handling code
+				// locking, initial setting of property state to Ok, final property updating and unlocking is generated boilerplate
+			}
+		}
+		switch XXXXX { // replace XXXXX with switch property base name without _PROPERTY suffix, repeat block as many times as you need
+			label = XXXXX; // replace XXXXX with descriptive property label (C string expression)
+			group = XXXXX; // replace XXXXX with group name (C string expression, default is MAIN_GROUP)
+			perm = XXXXX; // replace XXXXX with permission (C int expression, default is INDIGO_PERM_RW)
+			rule = XXXXX; // replace XXXXX with switch rule (C int expression, default is INDIGO_ONE_OF_MANY_RULE)
+			persistent = true; // use this if property can be saved in driver configuration (bool literal, default is false)
+			handle_change = false; // use this if property change shouldn't be handled (bool C expression, default depend on perm)
+			synchronized_change = false; // use this if property change should be synchronized (bool C expression, default is true)
+			always_defined = true; // use this if property should be always defined (bool literal, default is false)
+			item XXXXX { // replace XXXXX with item base name without _ITEM suffix, repeat block as many times as you need
+				label = XXXXX; // replace XXXXX with descriptive item label (C string expression)
+				value = XXXXX; // replace XXXXX with item initial value (C bool expression, default value is false)
+			}
+			change {
+				// optional C code block
+				// replace content of this section with property change handling code
+				// locking, initial setting of property state to Ok, final property updating and unlocking is generated boilerplate
+			}
+		}
+		text XXXXX { // replace XXXXX with text property base name without _PROPERTY suffix, repeat block as many times as you need
+			label = XXXXX; // replace XXXXX with descriptive property label (C string expression)
+			group = XXXXX; // replace XXXXX with group name (C string expression, default is MAIN_GROUP)
+			perm = XXXXX; // replace XXXXX with permission (C int expression, default is INDIGO_PERM_RW)
+			persistent = true; // use this if property can be saved in driver configuration (bool literal, default is false)
+			handle_change = false; // use this if property change shouldn't be handled (bool C expression, default depend on perm)
+			synchronized_change = false; // use this if property change should be synchronized (bool C expression, default is true)
+			always_defined = true; // use this if property should be always defined (bool literal, default is false)
+			item XXXXX { // replace XXXXX with item base name without _ITEM suffix, repeat block as many times as you need
+				label = XXXXX; // replace XXXXX with descriptive item label (C string expression)
+				value = XXXXX; // replace XXXXX with item initial value (C string expression)
+			}
+			change {
+				// optional C code block
+				// replace content of this section with property change handling code
+				// locking, initial setting of property state to Ok, final property updating and unlocking is generated boilerplate
+			}
+		}
+		number XXXXX { // replace XXXXX with number property base name without _PROPERTY suffix, repeat block as many times as you need
+			label = XXXXX; // replace XXXXX with descriptive property label (C string expression)
+			group = XXXXX; // replace XXXXX with group name (C string expression, default is MAIN_GROUP)
+			perm = XXXXX; // replace XXXXX with permission (C int expression, default is INDIGO_PERM_RW)
+			persistent = true; // keep this if property can be saved in driver configuration
+			handle_change = false; // use this if property change shouldn't be handled (bool C expression, default depend on perm)
+			synchronized_change = false; // use this if property change should be synchronized (bool C expression, default is true)
+			always_defined = true; // use this if property should be always defined (bool literal, default is false)
+			item XXXXX { // replace XXXXX with item base name without _ITEM suffix, repeat block as many times as you need
+				label = XXXXX; // replace XXXXX with descriptive item label (C string expression)
+				value = XXXXX; // replace XXXXX with item initial value (C double expression, default value is 0)
+				min = XXXXX; // replace XXXXX with item initial value (C double expression, default value is 0)
+				max = XXXXX; // replace XXXXX with item initial value (C double expression, default value is 0)
+				step = XXXXX; // replace XXXXX with item initial value (C double expression, default value is 0)
+				format = XXXXX; // replace XXXXX with descriptive item label (C string expression)
+			}
+		}
+		light XXXXX { // replace XXXXX with light property base name without _PROPERTY suffix, repeat block as many times as you need
+			label = XXXXX; // replace XXXXX with descriptive property label (C string expression)
+			group = XXXXX; // replace XXXXX with group name (C string expression, default is MAIN_GROUP)
+			always_defined = true; // use this if property should be always defined (bool literal, default is false)
+			item XXXXX { // replace XXXXX with item base name without _ITEM suffix, repeat block as many times as you need
+				label = XXXXX; // replace XXXXX with descriptive item label (C string expression)
+				value = XXXXX; // replace XXXXX with item initial value (C int expression, default value is INDIGO_IDLE_STATE)
+			}
+			change {
+				// optional C code block
+				// replace content of this section with property change handling code
+				// locking, initial setting of property state to Ok, final property updating and unlocking is generated boilerplate
+			}
+		}
+		code {
+			// optional C code block
+			// replace content of this section with low level communication code
+		}
+		timer {
+			// optional C code block
+			// replace content of this section with the code for background timer
+			// started when device is connected and terminated when device is disconnected
+			// locking is handled by boilerplate code, rescheduling is not
+		}
+		attach {
+			// optional C code block
+			// replace content of this section is customization of attach code
+			// it is injected before definitions of local properties
+		}
+		detach {
+			// optional C code block
+			// replace content of this section is customization of detach code
+			// it is injected before releses of local properties
+		}
+	}
+}
+
