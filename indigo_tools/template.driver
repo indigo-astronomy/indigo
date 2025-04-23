@@ -18,11 +18,11 @@
 
 // XXXXX driver definition
 
-driver XXXXX { // replace XXXXX with driver base name without indigo_aux_ prefix (identifier literal)
-	author = "XXXXX"; // replace XXXXX with author name and surname (string literal)
-	copyright = "Copyright (c) 2025 XXXXXX"; // replace XXXXX with copyright holder (string literal)
-	label = "XXXXX"; // replace XXXXX with descriptive driver label (string literal)
-	version = XXXXX; // replace XXXXX with driver minor version, major version is always set to 3.0 (number literal)
+driver XXXXX { // replace XXXXX with driver base name without indigo_aux_ prefix (mandatory identifier literal)
+	author = "XXXXX"; // replace XXXXX with author name and surname (mandatory string literal)
+	copyright = "Copyright (c) 2025 XXXXXX"; // replace XXXXX with copyright holder (mandatory string literal)
+	label = "XXXXX"; // replace XXXXX with descriptive driver label (mandatory string literal)
+	version = XXXXX; // replace XXXXX with driver minor version, major version is always set to 3.0 (mandatory number literal)
 	include {
 		// optional C code block
 		// replace content of this section with common preprocessor include directives
@@ -55,8 +55,8 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_aux_ prefix
 	}
 	XXXXX { // replace XXXXX with aux, ccd, wheel, focuser, mount, guider, rotator, gps, ao or aux, additional device definitions may follow, but the first one is the master device)
 		name = "XXXXX";  // replace XXXXX with device name  (string literal)
-		additional_instances = true; // use this if the driver can create additional device instances  (bool literal)
-		interface = XXXXX; // for replace XXXXX with additional AUX interface like INDIGO_INTERFACE_AUX_LIGHTBOX (C uint32 expression)
+		additional_instances = true; // use this if the driver can create additional device instances  (bool literal, default is false)
+		interface = XXXXX; // replace XXXXX with additional AUX interface like INDIGO_INTERFACE_AUX_LIGHTBOX (C uint32 expression, default is 0)
 		inherited CONNECTION {
 			change {
 				// optional C code block
@@ -64,7 +64,7 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_aux_ prefix
 				// locking, code for handling multiple devices sharing the same port, opening the port, handling result and disconnection is generated boilerplate.
 			}
 		}
-		inherited XXXXX { // replace XXXXX with inherited property base name without _PROPERTY suffix, repeat block as many times as you need
+		inherited XXXXX { // replace XXXXX with inherited property base name without _PROPERTY suffix, repeat block as many times as you need (mandatory identifier literal)
 			handle_change = false; // use this if property change shouldn't be handled (bool C expression, default is true)
 			change {
 				// optional C code block
@@ -72,7 +72,7 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_aux_ prefix
 				// locking, initial setting of property state to Ok, final property updating and unlocking is generated boilerplate
 			}
 		}
-		switch XXXXX { // replace XXXXX with switch property base name without _PROPERTY suffix, repeat block as many times as you need
+		switch XXXXX { // replace XXXXX with switch property base name without _PROPERTY suffix, repeat block as many times as you need (mandatory identifier literal)
 			label = XXXXX; // replace XXXXX with descriptive property label (C string expression)
 			group = XXXXX; // replace XXXXX with group name (C string expression, default is MAIN_GROUP)
 			perm = XXXXX; // replace XXXXX with permission (C int expression, default is INDIGO_PERM_RW)
@@ -81,7 +81,7 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_aux_ prefix
 			handle_change = false; // use this if property change shouldn't be handled (bool C expression, default depend on perm)
 			synchronized_change = false; // use this if property change should be synchronized (bool C expression, default is true)
 			always_defined = true; // use this if property should be always defined (bool literal, default is false)
-			item XXXXX { // replace XXXXX with item base name without _ITEM suffix, repeat block as many times as you need
+			item XXXXX { // replace XXXXX with item base name without _ITEM suffix, repeat block as many times as you need (mandatory identifier literal)
 				label = XXXXX; // replace XXXXX with descriptive item label (C string expression)
 				value = XXXXX; // replace XXXXX with item initial value (C bool expression, default value is false)
 			}
@@ -91,7 +91,7 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_aux_ prefix
 				// locking, initial setting of property state to Ok, final property updating and unlocking is generated boilerplate
 			}
 		}
-		text XXXXX { // replace XXXXX with text property base name without _PROPERTY suffix, repeat block as many times as you need
+		text XXXXX { // replace XXXXX with text property base name without _PROPERTY suffix, repeat block as many times as you need (mandatory identifier literal)
 			label = XXXXX; // replace XXXXX with descriptive property label (C string expression)
 			group = XXXXX; // replace XXXXX with group name (C string expression, default is MAIN_GROUP)
 			perm = XXXXX; // replace XXXXX with permission (C int expression, default is INDIGO_PERM_RW)
@@ -99,7 +99,7 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_aux_ prefix
 			handle_change = false; // use this if property change shouldn't be handled (bool C expression, default depend on perm)
 			synchronized_change = false; // use this if property change should be synchronized (bool C expression, default is true)
 			always_defined = true; // use this if property should be always defined (bool literal, default is false)
-			item XXXXX { // replace XXXXX with item base name without _ITEM suffix, repeat block as many times as you need
+			item XXXXX { // replace XXXXX with item base name without _ITEM suffix, repeat block as many times as you need (mandatory identifier literal)
 				label = XXXXX; // replace XXXXX with descriptive item label (C string expression)
 				value = XXXXX; // replace XXXXX with item initial value (C string expression)
 			}
@@ -109,28 +109,28 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_aux_ prefix
 				// locking, initial setting of property state to Ok, final property updating and unlocking is generated boilerplate
 			}
 		}
-		number XXXXX { // replace XXXXX with number property base name without _PROPERTY suffix, repeat block as many times as you need
+		number XXXXX { // replace XXXXX with number property base name without _PROPERTY suffix, repeat block as many times as you need (mandatory identifier literal)
 			label = XXXXX; // replace XXXXX with descriptive property label (C string expression)
 			group = XXXXX; // replace XXXXX with group name (C string expression, default is MAIN_GROUP)
 			perm = XXXXX; // replace XXXXX with permission (C int expression, default is INDIGO_PERM_RW)
-			persistent = true; // keep this if property can be saved in driver configuration
+			persistent = true; // keep this if property can be saved in driver configuration (bool C expression, default is false)
 			handle_change = false; // use this if property change shouldn't be handled (bool C expression, default depend on perm)
 			synchronized_change = false; // use this if property change should be synchronized (bool C expression, default is true)
 			always_defined = true; // use this if property should be always defined (bool literal, default is false)
-			item XXXXX { // replace XXXXX with item base name without _ITEM suffix, repeat block as many times as you need
+			item XXXXX { // replace XXXXX with item base name without _ITEM suffix, repeat block as many times as you need (mandatory identifier literal)
 				label = XXXXX; // replace XXXXX with descriptive item label (C string expression)
 				value = XXXXX; // replace XXXXX with item initial value (C double expression, default value is 0)
-				min = XXXXX; // replace XXXXX with item initial value (C double expression, default value is 0)
-				max = XXXXX; // replace XXXXX with item initial value (C double expression, default value is 0)
-				step = XXXXX; // replace XXXXX with item initial value (C double expression, default value is 0)
+				min = XXXXX; // replace XXXXX with item min value (C double expression, default value is 0)
+				max = XXXXX; // replace XXXXX with item max value (C double expression, default value is 0)
+				step = XXXXX; // replace XXXXX with item step value (C double expression, default value is 0)
 				format = XXXXX; // replace XXXXX with descriptive item label (C string expression)
 			}
 		}
-		light XXXXX { // replace XXXXX with light property base name without _PROPERTY suffix, repeat block as many times as you need
+		light XXXXX { // replace XXXXX with light property base name without _PROPERTY suffix, repeat block as many times as you need (mandatory identifier literal)
 			label = XXXXX; // replace XXXXX with descriptive property label (C string expression)
 			group = XXXXX; // replace XXXXX with group name (C string expression, default is MAIN_GROUP)
 			always_defined = true; // use this if property should be always defined (bool literal, default is false)
-			item XXXXX { // replace XXXXX with item base name without _ITEM suffix, repeat block as many times as you need
+			item XXXXX { // replace XXXXX with item base name without _ITEM suffix, repeat block as many times as you need (mandatory identifier literal)
 				label = XXXXX; // replace XXXXX with descriptive item label (C string expression)
 				value = XXXXX; // replace XXXXX with item initial value (C int expression, default value is INDIGO_IDLE_STATE)
 			}

@@ -673,6 +673,7 @@ bool parse_device_block(device_type **devices) {
 	snprintf(device->type, sizeof(device->type), "%s", type);
 	make_upper_case(type);
 	snprintf(device->handle, sizeof(device->handle), "%s_DEVICE_NAME", type);
+	snprintf(device->interface, sizeof(device->interface), "0");
 	device->additional_instances = false;
 	debug("%s {", device->type);
 	while (!match(TOKEN_RBRACE, NULL)) {
