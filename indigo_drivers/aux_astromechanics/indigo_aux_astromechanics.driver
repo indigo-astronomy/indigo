@@ -54,7 +54,6 @@ driver astromechanics {
 		inherited CONNECTION { }
 		number AUX_WEATHER {
 			label = "Sky quality";
-			name = "";
 			group = AUX_MAIN_GROUP;
 			perm = INDIGO_RO_PERM;
 			item AUX_WEATHER_SKY_BRIGHTNESS {

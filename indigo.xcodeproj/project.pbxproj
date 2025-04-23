@@ -4960,6 +4960,7 @@
 		9DC496A622C39AC80052AB3E /* SQM-LU-DL_Users_manual.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "SQM-LU-DL_Users_manual.pdf"; sourceTree = "<group>"; };
 		9DC774FA2DB8BAD400CE859C /* template.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = template.driver; sourceTree = "<group>"; };
 		9DC774FB2DB8D3E700CE859C /* indigo_aux_astromechanics.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_aux_astromechanics.driver; sourceTree = "<group>"; };
+		9DC774FC2DB8DB4C00CE859C /* astromechanics_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = astromechanics_simulator.ino; sourceTree = "<group>"; };
 		9DC782F421A6D919009859FD /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
 		9DC782F621A6FCC7009859FD /* indigo_system_ascol.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_system_ascol.c; sourceTree = "<group>"; };
 		9DC782F821A6FCC7009859FD /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
@@ -6495,6 +6496,7 @@
 				5955CB782684E78200685071 /* indigo_aux_astromechanics_main.c */,
 				9DC774FB2DB8D3E700CE859C /* indigo_aux_astromechanics.driver */,
 				5955CB7B2684E78200685071 /* LPM_PRO User manual.pdf */,
+				9DC774FD2DB8DB4C00CE859C /* astromechanics_simulator */,
 			);
 			name = aux_astromechanics;
 			path = indigo_drivers/aux_astromechanics;
@@ -14436,6 +14438,14 @@
 				9DE0E78E22C6294100289234 /* sqm_simulator */,
 			);
 			path = aux_sqm;
+			sourceTree = "<group>";
+		};
+		9DC774FD2DB8DB4C00CE859C /* astromechanics_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				9DC774FC2DB8DB4C00CE859C /* astromechanics_simulator.ino */,
+			);
+			path = astromechanics_simulator;
 			sourceTree = "<group>";
 		};
 		9DC782F521A6FCC7009859FD /* system_ascol */ = {

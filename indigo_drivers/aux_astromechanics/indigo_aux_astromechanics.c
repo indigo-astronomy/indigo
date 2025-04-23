@@ -16,7 +16,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// This file generated from indigo_aux_astromechanics.driver (2025-04-23 10:16).
+// This file generated from indigo_aux_astromechanics.driver (2025-04-23 10:31).
 
 // version history
 // 3.0 Peter Polakovic
@@ -160,7 +160,7 @@ static indigo_result aux_attach(indigo_device *device) {
 
 		// AUX_WEATHER initialisation
 
-		AUX_WEATHER_PROPERTY = indigo_init_number_property(NULL, device->name, "", AUX_MAIN_GROUP, "Sky quality", INDIGO_OK_STATE, INDIGO_RO_PERM, 2);
+		AUX_WEATHER_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_WEATHER_PROPERTY_NAME, AUX_MAIN_GROUP, "Sky quality", INDIGO_OK_STATE, INDIGO_RO_PERM, 2);
 		if (AUX_WEATHER_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}

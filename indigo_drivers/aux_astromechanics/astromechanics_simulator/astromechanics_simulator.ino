@@ -1,9 +1,11 @@
-// Copyright (c) 2016-2025 CloudMakers, s. r. o.
+// ASTROMECHANICS LPM simulator for Arduino
+//
+// Copyright (c) 2025 CloudMakers, s. r. o.
 // All rights reserved.
-
+//
 // You can use this software under the terms of 'INDIGO Astronomy
 // open-source license' (see LICENSE.md).
-
+//
 // THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
 // OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 // WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -16,34 +18,23 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// This file generated from indigo_ao_sx.driver (2025-04-23 10:31).
-
-// version history
-// 3.0 Peter Polakovic
-
-#ifndef ao_sx_h
-#define ao_sx_h
-
-#include <indigo/indigo_driver.h>
-
-#if defined(INDIGO_WINDOWS)
-#if defined(INDIGO_WINDOWS_DLL)
-#define INDIGO_EXTERN __declspec(dllexport)
-#else
-#define INDIGO_EXTERN __declspec(dllimport)
-#endif
-#else
-#define INDIGO_EXTERN extern
+#ifdef ARDUINO_SAM_DUE
+#define Serial SerialUSB
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-INDIGO_EXTERN indigo_result indigo_ao_sx(indigo_driver_action action, indigo_driver_info *info);
-
-#ifdef __cplusplus
+void setup() {
+  Serial.begin(38400);
+  Serial.setTimeout(1000);
+  randomSeed(analogRead(0));
+  while (!Serial)
+    ;
 }
-#endif
 
-#endif
+void loop() {
+  if (Serial.available()) {
+    String command = Serial.readStringUntil('#');
+    if (command.equals("V")) {
+      Serial.print("17.34#\n");
+    }
+  }
+}
