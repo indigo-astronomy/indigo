@@ -1607,38 +1607,40 @@ void write_c_main_section(void) {
 			write_line("\tstatic indigo_device *%s = NULL;", device->type);
 		}
 	}
+	write_line("");
 	device_type *master_device = driver->devices;
-	if (driver->serial && driver->serial->patterns) {
-		int index = 0;
-		for (pattern_type *pattern = driver->serial->patterns; pattern; pattern = pattern->next) {
-			index++;
-		}
-		write_line("\tstatic indigo_device_match_pattern %s_patterns[%d] = { 0 };", master_device->type, index);
-		index = 0;
-		for (pattern_type *pattern = driver->serial->patterns; pattern; pattern = pattern->next) {
-			if (*pattern->product) {
-				write_line("\tstrcpy(%s_patterns[%d].product_string, \"%s\");", master_device->type, index, pattern->product);
-			}
-			if (*pattern->vendor) {
-				write_line("\tstrcpy(%s_patterns[%d].vendor_string, \"%s\");", master_device->type, index, pattern->vendor);
-			}
-			if (*pattern->serial) {
-				write_line("\tstrcpy(%s_patterns[%d].serial_string, \"%s\");", master_device->type, index, pattern->serial);
-			}
-			index++;
-		}
-		write_line("\tINDIGO_REGISER_MATCH_PATTERNS(%s_template, %s_patterns, %d);", master_device->type, master_device->type, index);
-		write_line("");
-	}
 	write_line("\tSET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, false, last_action);");
+	write_line("");
 	write_line("\tif (action == last_action) {");
 	write_line("\t\treturn INDIGO_OK;");
 	write_line("\t}");
+	write_line("");
 	write_line("\tswitch (action) {");
 	write_line("\t\tcase INDIGO_DRIVER_INIT:");
 	write_line("\t\t\tlast_action = action;");
 	write_c_code_blocks(driver->init, 3, true, false);
 	if (driver->serial) {
+		if (driver->serial && driver->serial->patterns) {
+			int index = 0;
+			for (pattern_type *pattern = driver->serial->patterns; pattern; pattern = pattern->next) {
+				index++;
+			}
+			write_line("\t\t\tstatic indigo_device_match_pattern %s_patterns[%d] = { 0 };", master_device->type, index);
+			index = 0;
+			for (pattern_type *pattern = driver->serial->patterns; pattern; pattern = pattern->next) {
+				if (*pattern->product) {
+					write_line("\t\t\tstrcpy(%s_patterns[%d].product_string, \"%s\");", master_device->type, index, pattern->product);
+				}
+				if (*pattern->vendor) {
+					write_line("\t\t\tstrcpy(%s_patterns[%d].vendor_string, \"%s\");", master_device->type, index, pattern->vendor);
+				}
+				if (*pattern->serial) {
+					write_line("\t\t\tstrcpy(%s_patterns[%d].serial_string, \"%s\");", master_device->type, index, pattern->serial);
+				}
+				index++;
+			}
+			write_line("\t\t\tINDIGO_REGISER_MATCH_PATTERNS(%s_template, %s_patterns, %d);", master_device->type, master_device->type, index);
+		}
 		write_line("\t\t\tprivate_data = indigo_safe_malloc(sizeof(%s_private_data));", driver->name);
 		for (device_type *device = driver->devices; device; device = device->next) {
 			write_line("\t\t\t%s = indigo_safe_malloc_copy(sizeof(indigo_device), &%s_template);", device->type, device->type);

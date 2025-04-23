@@ -1439,17 +1439,19 @@ indigo_result indigo_aux_upb3(indigo_driver_action action, indigo_driver_info *i
 	static upb3_private_data *private_data = NULL;
 	static indigo_device *aux = NULL;
 	static indigo_device *focuser = NULL;
-	static indigo_device_match_pattern aux_patterns[1] = { 0 };
-	strcpy(aux_patterns[0].product_string, "UPBv3");
-	INDIGO_REGISER_MATCH_PATTERNS(aux_template, aux_patterns, 1);
 
 	SET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, false, last_action);
+
 	if (action == last_action) {
 		return INDIGO_OK;
 	}
+
 	switch (action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
+			static indigo_device_match_pattern aux_patterns[1] = { 0 };
+			strcpy(aux_patterns[0].product_string, "UPBv3");
+			INDIGO_REGISER_MATCH_PATTERNS(aux_template, aux_patterns, 1);
 			private_data = indigo_safe_malloc(sizeof(upb3_private_data));
 			aux = indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);
 			aux->private_data = private_data;
