@@ -16,7 +16,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// This file generated from indigo_ao_sx.driver (2025-04-22 20:51).
+// This file generated from indigo_ao_sx.driver (2025-04-23 10:13).
 
 // version history
 // 3.0 Peter Polakovic
@@ -86,7 +86,7 @@ static bool sx_open(indigo_device *device) {
 }
 
 static void sx_close(indigo_device *device) {
-	if (PRIVATE_DATA->handle > 0) {
+	if (PRIVATE_DATA->handle != NULL) {
 		indigo_uni_close(&PRIVATE_DATA->handle);
 	}
 }

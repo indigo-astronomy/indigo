@@ -16,7 +16,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// This file generated from indigo_aux_arteskyflat.driver (2025-04-22 20:49).
+// This file generated from indigo_aux_arteskyflat.driver (2025-04-23 10:13).
 
 // version history
 // 3.0 Peter Polakovic
@@ -82,7 +82,8 @@ static bool arteskyflat_command(indigo_device *device, char *command, char *resp
 }
 
 static bool arteskyflat_open(indigo_device *device) {
-	return (PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG)) != NULL;
+	PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
+	return PRIVATE_DATA->handle != NULL;
 }
 
 static void arteskyflat_close(indigo_device *device) {

@@ -31,6 +31,10 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_aux_ prefix
 		// optional C code block
 		// replace content of this section with common preprocessor define directions
 	}
+	data {
+		// optional C code block
+		// replace content of this section with additional private data attributes declaration
+	}
 	code {
 		// optional C code block
 		// replace content of this section with common low level communication code, at least with XXXXX_command(), XXXXX_open() and XXXXX_close() functions
@@ -75,7 +79,7 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_aux_ prefix
 		switch XXXXX { // replace XXXXX with switch property base name without _PROPERTY suffix, repeat block as many times as you need (mandatory identifier literal)
 			label = XXXXX; // replace XXXXX with descriptive property label (C string expression)
 			group = XXXXX; // replace XXXXX with group name (C string expression, default is MAIN_GROUP)
-			perm = XXXXX; // replace XXXXX with permission (C int expression, default is INDIGO_PERM_RW)
+			perm = XXXXX; // replace XXXXX with permission (C int expression, default is INDIGO_RW_PERM)
 			rule = XXXXX; // replace XXXXX with switch rule (C int expression, default is INDIGO_ONE_OF_MANY_RULE)
 			persistent = true; // use this if property can be saved in driver configuration (bool literal, default is false)
 			handle_change = false; // use this if property change shouldn't be handled (bool C expression, default depend on perm)
@@ -94,7 +98,7 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_aux_ prefix
 		text XXXXX { // replace XXXXX with text property base name without _PROPERTY suffix, repeat block as many times as you need (mandatory identifier literal)
 			label = XXXXX; // replace XXXXX with descriptive property label (C string expression)
 			group = XXXXX; // replace XXXXX with group name (C string expression, default is MAIN_GROUP)
-			perm = XXXXX; // replace XXXXX with permission (C int expression, default is INDIGO_PERM_RW)
+			perm = XXXXX; // replace XXXXX with permission (C int expression, default is INDIGO_RW_PERM)
 			persistent = true; // use this if property can be saved in driver configuration (bool literal, default is false)
 			handle_change = false; // use this if property change shouldn't be handled (bool C expression, default depend on perm)
 			synchronized_change = false; // use this if property change should be synchronized (bool C expression, default is true)
@@ -112,7 +116,7 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_aux_ prefix
 		number XXXXX { // replace XXXXX with number property base name without _PROPERTY suffix, repeat block as many times as you need (mandatory identifier literal)
 			label = XXXXX; // replace XXXXX with descriptive property label (C string expression)
 			group = XXXXX; // replace XXXXX with group name (C string expression, default is MAIN_GROUP)
-			perm = XXXXX; // replace XXXXX with permission (C int expression, default is INDIGO_PERM_RW)
+			perm = XXXXX; // replace XXXXX with permission (C int expression, default is INDIGO_RW_PERM)
 			persistent = true; // keep this if property can be saved in driver configuration (bool C expression, default is false)
 			handle_change = false; // use this if property change shouldn't be handled (bool C expression, default depend on perm)
 			synchronized_change = false; // use this if property change should be synchronized (bool C expression, default is true)
@@ -123,7 +127,7 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_aux_ prefix
 				min = XXXXX; // replace XXXXX with item min value (C double expression, default value is 0)
 				max = XXXXX; // replace XXXXX with item max value (C double expression, default value is 0)
 				step = XXXXX; // replace XXXXX with item step value (C double expression, default value is 0)
-				format = XXXXX; // replace XXXXX with descriptive item label (C string expression)
+				format = XXXXX; // replace XXXXX with descriptive item label (C string expression, default is INDIGO default)
 			}
 		}
 		light XXXXX { // replace XXXXX with light property base name without _PROPERTY suffix, repeat block as many times as you need (mandatory identifier literal)

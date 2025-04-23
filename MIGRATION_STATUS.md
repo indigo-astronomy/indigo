@@ -5,6 +5,7 @@
 ao_sx
 
 aux_arteskyflat
+aux_astromechanics
 aux_upb3
 
 gps_simulator
@@ -27,7 +28,6 @@ agent_imager
 agent_mount
 agent_scripting
 
-aux_astromechanics
 aux_fbc
 aux_flatmaster
 aux_flipflat

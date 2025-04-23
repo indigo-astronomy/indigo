@@ -1,0 +1,84 @@
+// Copyright (c) 2021-2025 CloudMakers, s. r. o.
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// ASTROMECHANICS Light Pollution Meter driver definition
+
+driver astromechanics {
+	author = "Peter Polakovic";
+	copyright = "Copyright (c) 2021-2025 CloudMakers, s. r. o.";
+	label = "ASTROMECHANICS LPM";
+	version = 5;
+	code {
+		static bool astromechanics_command(indigo_device *device, char *command, char *response) {
+			if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
+				if (indigo_uni_printf(PRIVATE_DATA->handle, "%s", command) > 0) {
+					if (indigo_uni_read_section(PRIVATE_DATA->handle, response, 10, "#", "#", INDIGO_DELAY(1)) > 0) {
+						return true;
+					}
+				}
+			}
+			return false;
+		}
+		
+		static bool astromechanics_open(indigo_device *device) {
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 38400, INDIGO_LOG_DEBUG);
+			return PRIVATE_DATA->handle != NULL;
+		}
+		
+		static void astromechanics_close(indigo_device *device) {
+			if (PRIVATE_DATA->handle != NULL) {
+				indigo_uni_close(&PRIVATE_DATA->handle);
+			}
+		}
+	}
+	serial { }
+	aux {
+		name = "ASTROMECHANICS LPM";
+		additional_instances = true;
+		interface = INDIGO_INTERFACE_AUX_SQM;
+		inherited CONNECTION { }
+		number AUX_WEATHER {
+			label = "Sky quality";
+			name = "";
+			group = AUX_MAIN_GROUP;
+			perm = INDIGO_RO_PERM;
+			item AUX_WEATHER_SKY_BRIGHTNESS {
+				label = "Sky brightness [m/arcsec\u00B2]";
+				min = -20;
+				max = 30;
+			}
+			item AUX_WEATHER_SKY_BORTLE_CLASS {
+				label = "Sky Bortle class";
+				min = 1;
+				max = 9;
+			}
+		}
+		timer {
+			char response[16];
+			if (astromechanics_command(device, "V#", response)) {
+				AUX_WEATHER_SKY_BRIGHTNESS_ITEM->number.value = indigo_atod(response);
+				AUX_WEATHER_SKY_BORTLE_CLASS_ITEM->number.value = indigo_aux_sky_bortle(AUX_WEATHER_SKY_BRIGHTNESS_ITEM->number.value);
+				AUX_WEATHER_PROPERTY->state = INDIGO_OK_STATE;
+			} else {
+				AUX_WEATHER_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+			indigo_update_property(device, AUX_WEATHER_PROPERTY, NULL);
+			indigo_reschedule_timer(device, 10, &PRIVATE_DATA->aux_timer);
+		}
+	}
+}
