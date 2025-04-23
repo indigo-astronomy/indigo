@@ -1478,6 +1478,7 @@
 		59540AD226D00CCF000C2A1B /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		59540AD326D00CCF000C2A1B /* indigo_aux_geoptikflat.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_aux_geoptikflat.c; sourceTree = "<group>"; };
 		59550A4822F33FFC00C719C4 /* Makefile.inc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
+		595516262DB953100041C716 /* indigo_aux_dsusb.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_aux_dsusb.driver; sourceTree = "<group>"; };
 		595567CB24B886FA00DF303D /* indigo_ccd_qhy.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_qhy.h; sourceTree = "<group>"; };
 		595567D024BA00DA00DF303D /* indigo_mount_pmc8.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_mount_pmc8.h; sourceTree = "<group>"; };
 		595567D224BA00DA00DF303D /* indigo_mount_pmc8_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_pmc8_main.c; sourceTree = "<group>"; };
@@ -12819,6 +12820,7 @@
 				59FE34632187B2F7004FB5D4 /* indigo_aux_dsusb.h */,
 				59FE34622187B2F7004FB5D4 /* indigo_aux_dsusb.c */,
 				59FE34612187B2F7004FB5D4 /* indigo_aux_dsusb_main.c */,
+				595516262DB953100041C716 /* indigo_aux_dsusb.driver */,
 				5992351E22A82685006E98B4 /* dsusb.rules */,
 				59FE34592187B269004FB5D4 /* bin_externals */,
 			);

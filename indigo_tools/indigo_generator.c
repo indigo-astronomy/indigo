@@ -53,7 +53,7 @@ typedef struct property_type {
 	bool always_defined, handle_change, synchronized_change, persistent;
 	int max_name_length;
 	code_type *code, *attach,  *change, *detach;
-	item_type *item;
+	item_type *items;
 } property_type;
 
 typedef struct device_type {
@@ -61,13 +61,19 @@ typedef struct device_type {
 	char type[16], handle[64], name[64], interface[128];
 	bool additional_instances;
 	code_type *code, *timer, *attach, *detach;
-	property_type *property;
+	property_type *properties;
 } device_type;
+
+typedef struct libusb_type {
+	bool hotplug;
+	char pid[128];
+	char vid[128];
+} libusb_type;
 
 typedef struct pattern_type {
 	struct pattern_type *next;
-	int product_id;
-	int vendor_id;
+	int pid;
+	int vid;
 	char product[64];
 	char vendor[64];
 	char serial[64];
@@ -76,14 +82,15 @@ typedef struct pattern_type {
 
 typedef struct serial_type {
 	bool configurable_speed;
-	pattern_type *pattern;
+	pattern_type *patterns;
 } serial_type;
 
 typedef struct driver_type {
 	char name[64], label[256], author[256], copyright[256];
 	int version;
-	device_type *device;
+	device_type *devices;
 	serial_type *serial;
+	libusb_type *libusb;
 	code_type *include, *define, *code, *data, *init, *shutdown;
 } driver_type;
 
@@ -239,7 +246,6 @@ bool get_token(void) {
 			current++;
 		}
 		return true;
-
 	} else {
 		while (*current != 0) {
 			if (isspace(*current)) {
@@ -532,10 +538,12 @@ bool parse_item_block(char *type, item_type **items) {
 		if (parse_expression_attribute("handle", item->handle, sizeof(item->handle))) {
 			continue;
 		}
-		if (parse_string_attribute("name", item->define_name, sizeof(item->define_name))) {
-			continue;
-		}
-		if (parse_expression_attribute("name", item->name, sizeof(item->name))) {
+		if (parse_expression_attribute("name", id, sizeof(id))) {
+			if (id[0] == '"') {
+				strncpy(item->define_name, id + 1, strlen(id) - 2);
+			} else {
+				strcpy(item->name, id);
+			}
 			continue;
 		}
 		if (parse_expression_attribute("value", item->value, sizeof(item->value))) {
@@ -604,10 +612,12 @@ bool parse_property_block(device_type *device, property_type **properties) {
 		if (parse_expression_attribute("handle", property->handle, sizeof(property->handle))) {
 			continue;
 		}
-		if (parse_string_attribute("name", property->define_name, sizeof(property->define_name))) {
-			continue;
-		}
-		if (parse_expression_attribute("name", property->name, sizeof(property->name))) {
+		if (parse_expression_attribute("name", id, sizeof(id))) {
+			if (id[0] == '"') {
+				strncpy(property->define_name, id + 1, strlen(id) - 2);
+			} else {
+				strcpy(property->name, id);
+			}
 			continue;
 		}
 		if (parse_expression_attribute("handler", property->handler, sizeof(property->handler))) {
@@ -653,7 +663,7 @@ bool parse_property_block(device_type *device, property_type **properties) {
 			if (parse_expression_attribute("rule", property->rule, sizeof(property->rule))) {
 				continue;
 			}
-			if (parse_item_block(property->type, &property->item)) {
+			if (parse_item_block(property->type, &property->items)) {
 				continue;
 			}
 		}
@@ -667,7 +677,7 @@ bool parse_property_block(device_type *device, property_type **properties) {
 	if (name_length > property->max_name_length) {
 		property->max_name_length = name_length;
 	}
-	for (item_type *item = property->item; item; item = item->next) {
+	for (item_type *item = property->items; item; item = item->next) {
 		if (*item->define_name) {
 			name_length = (int)strlen(item->name);
 			if (name_length > property->max_name_length) {
@@ -681,7 +691,7 @@ bool parse_property_block(device_type *device, property_type **properties) {
 			property->max_name_length = name_length;
 		}
 	}
-	for (item_type *item = property->item; item; item = item->next) {
+	for (item_type *item = property->items; item; item = item->next) {
 		name_length = (int)strlen(item->handle);
 		if (name_length > property->max_name_length) {
 			property->max_name_length = name_length;
@@ -718,7 +728,7 @@ bool parse_device_block(device_type **devices) {
 		if (parse_bool_attribute("additional_instances", &device->additional_instances)) {
 			continue;
 		}
-		if (parse_property_block(device, &device->property)) {
+		if (parse_property_block(device, &device->properties)) {
 			continue;
 		}
 		if (parse_code_block("code", &device->code)) {
@@ -741,6 +751,34 @@ bool parse_device_block(device_type **devices) {
 	return true;
 }
 
+bool parse_libusb_block(driver_type *driver) {
+	if (!match(TOKEN_IDENTIFIER, "libusb")) {
+		return false;
+	}
+	if (!match(TOKEN_LBRACE, NULL)) {
+		report_error("Missing '{'");
+		return false;
+	}
+	libusb_type *libusb = allocate(sizeof(libusb_type));
+	debug("pattern {");
+	while (!match(TOKEN_RBRACE, NULL)) {
+		if (parse_bool_attribute("hotplug", &libusb->hotplug)) {
+			continue;
+		}
+		if (parse_expression_attribute("pid", libusb->pid, sizeof(libusb->pid))) {
+			continue;
+		}
+		if (parse_expression_attribute("vid", libusb->vid, sizeof(libusb->vid))) {
+			continue;
+		}
+		report_unexpected_token_error();
+		return false;
+	}
+	driver->libusb = libusb;
+	debug("}");
+	return true;
+}
+
 bool parse_pattern_block(pattern_type **patterns) {
 	if (!match(TOKEN_IDENTIFIER, "pattern")) {
 		return false;
@@ -752,10 +790,10 @@ bool parse_pattern_block(pattern_type **patterns) {
 	pattern_type *pattern = allocate(sizeof(pattern_type));
 	debug("pattern {");
 	while (!match(TOKEN_RBRACE, NULL)) {
-		if (parse_int_attribute("product_id", &pattern->product_id)) {
+		if (parse_int_attribute("pid", &pattern->pid)) {
 			continue;
 		}
-		if (parse_int_attribute("vendor_id", &pattern->vendor_id)) {
+		if (parse_int_attribute("vid", &pattern->vid)) {
 			continue;
 		}
 		if (parse_bool_attribute("exact_match", &pattern->exact_match)) {
@@ -792,7 +830,7 @@ bool parse_serial_block(serial_type **serial) {
 		if (parse_bool_attribute("configurable_speed", &(*serial)->configurable_speed)) {
 			continue;
 		}
-		if (parse_pattern_block(&(*serial)->pattern)) {
+		if (parse_pattern_block(&(*serial)->patterns)) {
 			continue;
 		}
 		report_unexpected_token_error();
@@ -834,7 +872,10 @@ bool parse_driver_block(void) {
 		if (parse_serial_block(&driver->serial)) {
 			continue;
 		}
-		if (parse_device_block(&driver->device)) {
+		if (parse_libusb_block(driver)) {
+			continue;
+		}
+		if (parse_device_block(&driver->devices)) {
 			continue;
 		}
 		if (parse_code_block("include", &driver->include)) {
@@ -973,8 +1014,8 @@ void write_license(void) {
 
 void write_h_source(void) {
 	write_license();
-	write_line("#ifndef %s_%s_h", driver->device->type, driver->name);
-	write_line("#define %s_%s_h", driver->device->type, driver->name);
+	write_line("#ifndef %s_%s_h", driver->devices->type, driver->name);
+	write_line("#define %s_%s_h", driver->devices->type, driver->name);
 	write_line("");
 	write_line("#include <indigo/indigo_driver.h>");
 	write_line("");
@@ -992,7 +1033,7 @@ void write_h_source(void) {
 	write_line("extern \"C\" {");
 	write_line("#endif");
 	write_line("");
-	write_line("INDIGO_EXTERN indigo_result indigo_%s_%s(indigo_driver_action action, indigo_driver_info *info);", driver->device->type, driver->name);
+	write_line("INDIGO_EXTERN indigo_result indigo_%s_%s(indigo_driver_action action, indigo_driver_info *info);", driver->devices->type, driver->name);
 	write_line("");
 	write_line("#ifdef __cplusplus");
 	write_line("}");
@@ -1005,17 +1046,17 @@ void write_c_main_source(void) {
 	write_license();
 	write_line("#include <indigo/indigo_driver_xml.h>");
 	write_line("");
-	write_line("#include \"indigo_%s_%s.h\"", driver->device->type, driver->name);
+	write_line("#include \"indigo_%s_%s.h\"", driver->devices->type, driver->name);
 	write_line("");
 	write_line("int main(int argc, const char * argv[]) {");
 	write_line("\tindigo_main_argc = argc;");
 	write_line("\tindigo_main_argv = argv;");
 	write_line("\tindigo_client *protocol_adapter = indigo_xml_device_adapter(&indigo_stdin_handle, &indigo_stdout_handle);");
 	write_line("\tindigo_start();");
-	write_line("\tindigo_%s_%s(INDIGO_DRIVER_INIT, NULL);", driver->device->type, driver->name);
+	write_line("\tindigo_%s_%s(INDIGO_DRIVER_INIT, NULL);", driver->devices->type, driver->name);
 	write_line("\tindigo_attach_client(protocol_adapter);");
 	write_line("\tindigo_xml_parse(NULL, protocol_adapter);");
-	write_line("\tindigo_%s_%s(INDIGO_DRIVER_SHUTDOWN, NULL);", driver->device->type, driver->name);
+	write_line("\tindigo_%s_%s(INDIGO_DRIVER_SHUTDOWN, NULL);", driver->devices->type, driver->name);
 	write_line("\tindigo_stop();");
 	write_line("\treturn 0;");
 	write_line("}");
@@ -1031,12 +1072,12 @@ void write_c_include_section(void) {
 	write_line("#include <pthread.h>");
 	write_c_code_blocks(driver->include, 0, true, true);
 	write_line("#include <indigo/indigo_driver_xml.h>");
-	for (device_type *device = driver->device; device; device = device->next) {
+	for (device_type *device = driver->devices; device; device = device->next) {
 		write_line("#include <indigo/indigo_%s_driver.h>", device->type);
 	}
 	write_line("#include <indigo/indigo_uni_io.h>");
 	write_line("");
-	write_line("#include \"indigo_%s_%s.h\"", driver->device->type, driver->name);
+	write_line("#include \"indigo_%s_%s.h\"", driver->devices->type, driver->name);
 	write_line("");
 }
 
@@ -1044,9 +1085,9 @@ void write_c_define_section(void) {
 	write_line("#pragma mark - Common definitions");
 	write_line("");
 	write_line("#define %-20s 0x%04X", "DRIVER_VERSION", driver->version);
-	write_line("#define %-20s \"indigo_%s_%s\"", "DRIVER_NAME", driver->device->type, driver->name);
+	write_line("#define %-20s \"indigo_%s_%s\"", "DRIVER_NAME", driver->devices->type, driver->name);
 	write_line("#define %-20s \"%s\"", "DRIVER_LABEL", driver->label);
-	for (device_type *device = driver->device; device; device = device->next) {
+	for (device_type *device = driver->devices; device; device = device->next) {
 		write_line("#define %-20s \"%s\"", device->handle, device->name);
 	}
 	write_line("");
@@ -1056,8 +1097,8 @@ void write_c_define_section(void) {
 
 void write_c_property_definition_section(void) {
 	bool first_one = true;
-	for (device_type *device = driver->device; device; device = device->next) {
-		for (property_type *property = device->property; property; property = property->next) {
+	for (device_type *device = driver->devices; device; device = device->next) {
+		for (property_type *property = device->properties; property; property = property->next) {
 			if (property->type[0] != 'i') {
 				if (first_one) {
 					write_line("#pragma mark - Property definitions");
@@ -1068,7 +1109,7 @@ void write_c_property_definition_section(void) {
 				write_line("");
 				write_line("#define %-*s (PRIVATE_DATA->%s)", property->max_name_length, property->handle, property->pointer);
 				int index = 0;
-				for (item_type *item = property->item; item; item = item->next) {
+				for (item_type *item = property->items; item; item = item->next) {
 					write_line("#define %-*s (%s->items + %d)", property->max_name_length, item->handle, property->handle, index++);
 				}
 				write_line("");
@@ -1077,7 +1118,7 @@ void write_c_property_definition_section(void) {
 					write_line("#define %-*s \"%s\"", property->max_name_length, property->name, property->define_name);
 					append_line = true;
 				}
-				for (item_type *item = property->item; item; item = item->next) {
+				for (item_type *item = property->items; item; item = item->next) {
 					if (*item->define_name) {
 						write_line("#define %-*s \"%s\"", property->max_name_length, item->name, item->define_name);
 						append_line = true;
@@ -1092,7 +1133,7 @@ void write_c_property_definition_section(void) {
 }
 
 void write_c_private_data_section(void) {
-	bool is_multi_device = driver->device != NULL && driver->device->next != NULL;
+	bool is_multi_device = driver->devices != NULL && driver->devices->next != NULL;
 	write_line("#pragma mark - Private data definition");
 	write_line("");
 	write_line("typedef struct {");
@@ -1102,15 +1143,17 @@ void write_c_private_data_section(void) {
 	}
 	if (driver->serial) {
 		write_line("\tindigo_uni_handle *handle;");
+	} else if (driver->libusb) {
+		write_line("\tlibusb_device *usbdev;");
 	}
 	write_c_code_blocks(driver->data, 1, true, false);
-	for (device_type *device = driver->device; device; device = device->next) {
+	for (device_type *device = driver->devices; device; device = device->next) {
 		if (device->timer != NULL) {
 			write_line("\tindigo_timer *%s_timer;", device->type);
 		}
 	}
-	for (device_type *device = driver->device; device; device = device->next) {
-		for (property_type *property = device->property; property; property = property->next) {
+	for (device_type *device = driver->devices; device; device = device->next) {
+		for (property_type *property = device->properties; property; property = property->next) {
 			if (property->type[0] != 'i') {
 				write_line("\tindigo_property *%s;", property->pointer);
 			}
@@ -1124,9 +1167,9 @@ void write_c_low_level_code_section(void) {
 	write_line("#pragma mark - Low level code");
 	write_line("");
 	write_c_code_blocks(driver->code, 0, false, false);
-	for (device_type *device = driver->device; device; device = device->next) {
+	for (device_type *device = driver->devices; device; device = device->next) {
 		write_c_code_blocks(device->code, 0, false, false);
-		for (property_type *property = device->property; property; property = property->next) {
+		for (property_type *property = device->properties; property; property = property->next) {
 			write_c_code_blocks(property->code, 0, false, false);
 		}
 	}
@@ -1147,8 +1190,8 @@ void write_c_timer_callback(device_type *device) {
 }
 
 void write_c_property_change_handler(device_type *device, property_type *property) {
-	bool is_multi_device = driver->device != NULL && driver->device->next != NULL;
-	bool is_master_device = device == driver->device;
+	bool is_multi_device = driver->devices != NULL && driver->devices->next != NULL;
+	bool is_master_device = device == driver->devices;
 	write_line("// %s change handler", property->id);
 	write_line("");
 	write_line("static void %s(indigo_device *device) {", property->handler);
@@ -1176,7 +1219,7 @@ void write_c_property_change_handler(device_type *device, property_type *propert
 		}
 		write_line("\t\tif (connection_result) {");
 		write_c_code_blocks(property->change, 3, true, false);
-		for (property_type *property2 = device->property; property2; property2 = property2->next) {
+		for (property_type *property2 = device->properties; property2; property2 = property2->next) {
 			if (property2->type[0] != 'i' && !property2->always_defined) {
 				write_line("\t\t\tindigo_define_property(device, %s, NULL);", property2->handle);
 			}
@@ -1198,7 +1241,7 @@ void write_c_property_change_handler(device_type *device, property_type *propert
 		if (device->timer != NULL) {
 			write_line("\t\tindigo_cancel_timer_sync(device, &PRIVATE_DATA->%s_timer);", device->type);
 		}
-		for (property_type *property2 = device->property; property2; property2 = property2->next) {
+		for (property_type *property2 = device->properties; property2; property2 = property2->next) {
 			if (property2->type[0] != 'i' && !property2->always_defined) {
 				write_line("\t\tindigo_delete_property(device, %s, NULL);", property2->handle);
 			}
@@ -1238,7 +1281,7 @@ void write_c_high_level_code_section(device_type *device) {
 	if (device->timer != NULL) {
 		write_c_timer_callback(device);
 	}
-	for (property_type *property = device->property; property; property = property->next) {
+	for (property_type *property = device->properties; property; property = property->next) {
 		if (property->handle_change) {
 			write_c_property_change_handler(device, property);
 		}
@@ -1246,7 +1289,7 @@ void write_c_high_level_code_section(device_type *device) {
 }
 
 void write_c_attach(device_type *device) {
-	bool is_master_device = device == driver->device;
+	bool is_master_device = device == driver->devices;
 	write_line("// %s attach API callback", device->type);
 	write_line("");
 	write_line("static indigo_result %s_attach(indigo_device *device) {", device->type);
@@ -1267,14 +1310,14 @@ void write_c_attach(device_type *device) {
 		write_line("");
 	}
 	write_c_code_blocks(device->attach, 2, true, false);
-	for (property_type *property = device->property; property; property = property->next) {
+	for (property_type *property = device->properties; property; property = property->next) {
 		if (property->type[0] != 'i' || property->attach) {
 			write_line("\t\t// %s initialisation", property->id);
 			write_line("");
 		}
 		if (property->type[0] != 'i') {
 			int count = 0;
-			for (item_type *item = property->item; item; item = item->next) {
+			for (item_type *item = property->items; item; item = item->next) {
 				count++;
 			}
 			switch (property->type[0]) {
@@ -1283,7 +1326,7 @@ void write_c_attach(device_type *device) {
 					write_line("\t\tif (%s == NULL) {", property->handle);
 					write_line("\t\t\treturn INDIGO_FAILED;");
 					write_line("\t\t}");
-					for (item_type *item = property->item; item; item = item->next) {
+					for (item_type *item = property->items; item; item = item->next) {
 						write_line("\t\tindigo_init_text_item(%s, %s, %s, %s);", item->handle, item->name, item->label, item->value);
 					}
 					break;
@@ -1292,7 +1335,7 @@ void write_c_attach(device_type *device) {
 					write_line("\t\tif (%s == NULL) {", property->handle);
 					write_line("\t\t\treturn INDIGO_FAILED;");
 					write_line("\t\t}");
-					for (item_type *item = property->item; item; item = item->next) {
+					for (item_type *item = property->items; item; item = item->next) {
 						write_line("\t\tindigo_init_number_item(%s, %s, %s, %s, %s, %s, %s);", item->handle, item->name, item->label, item->min, item->max, item->step, item->value);
 						if (*item->format) {
 							write_line("\t\tstrcpy(%s->number.format, %s);", item->handle, item->format);
@@ -1304,7 +1347,7 @@ void write_c_attach(device_type *device) {
 					write_line("\t\tif (%s == NULL) {", property->handle);
 					write_line("\t\t\treturn INDIGO_FAILED;");
 					write_line("\t\t}");
-					for (item_type *item = property->item; item; item = item->next) {
+					for (item_type *item = property->items; item; item = item->next) {
 						write_line("\t\tindigo_init_switch_item(%s, %s, %s, %s);", item->handle, item->name, item->label, item->value);
 					}
 					break;
@@ -1313,7 +1356,7 @@ void write_c_attach(device_type *device) {
 					write_line("\t\tif (%s == NULL) {", property->handle);
 					write_line("\t\t\treturn INDIGO_FAILED;");
 					write_line("\t\t}");
-					for (item_type *item = property->item; item; item = item->next) {
+					for (item_type *item = property->items; item; item = item->next) {
 						write_line("\t\tindigo_init_light_item(%s, %s, %s, %s);", item->handle, item->name, item->label, item->value);
 					}
 					break;
@@ -1337,7 +1380,7 @@ void write_c_enumerate(device_type *device) {
 	write_line("");
 	write_line("static indigo_result %s_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {", device->type);
 	bool first_one = true;
-	for (property_type *property = device->property; property; property = property->next) {
+	for (property_type *property = device->properties; property; property = property->next) {
 		if (property->type[0] != 'i') {
 			if (!property->always_defined) {
 				if (first_one) {
@@ -1351,7 +1394,7 @@ void write_c_enumerate(device_type *device) {
 	if (!first_one) {
 		write_line("\t}");
 	}
-	for (property_type *property = device->property; property; property = property->next) {
+	for (property_type *property = device->properties; property; property = property->next) {
 		if (property->type[0] != 'i') {
 			if (property->always_defined) {
 				write_line("\tindigo_define_matching_property(%s);", property->handle);
@@ -1369,7 +1412,7 @@ void write_c_change_property(device_type *device) {
 	write_line("static indigo_result %s_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {", device->type);
 	bool first_one = true;
 	bool persistent = false;
-	for (property_type *property = device->property; property; property = property->next) {
+	for (property_type *property = device->properties; property; property = property->next) {
 		persistent |= property->persistent;
 		if (property->handle_change) {
 			if (first_one) {
@@ -1410,7 +1453,7 @@ void write_c_change_property(device_type *device) {
 			write_line("\t} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {");
 		}
 		write_line("\t\tif (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {");
-		for (property_type *property = device->property; property; property = property->next) {
+		for (property_type *property = device->properties; property; property = property->next) {
 			if (property->persistent) {
 				write_line("\t\t\tindigo_save_property(device, NULL, %s);", property->handle);
 			}
@@ -1427,7 +1470,7 @@ void write_c_change_property(device_type *device) {
 }
 
 void write_c_detach(device_type *device) {
-	bool is_master_device = device == driver->device;
+	bool is_master_device = device == driver->devices;
 	write_line("// %s detach API callback", device->type);
 	write_line("");
 	write_line("static indigo_result %s_detach(indigo_device *device) {", device->type);
@@ -1436,7 +1479,7 @@ void write_c_detach(device_type *device) {
 	write_line("\t\t%s_connection_handler(device);", device->type);
 	write_line("\t}");
 	write_c_code_blocks(device->detach, 1, true, false);
-	for (property_type *property = device->property; property; property = property->next) {
+	for (property_type *property = device->properties; property; property = property->next) {
 		write_c_code_blocks(property->detach, 0, true, false);
 		if (property->type[0] != 'i') {
 			write_line("\tindigo_release_property(%s);", property->handle);
@@ -1462,51 +1505,128 @@ void write_c_device_api_section(device_type *device) {
 	write_c_detach(device);
 }
 
+void write_c_device_templates_section(void) {
+	write_line("#pragma mark - device templates");
+	write_line("");
+	for (device_type *device = driver->devices; device; device = device->next) {
+		write_line("static indigo_device %s_template = INDIGO_DEVICE_INITIALIZER(", device->type);
+		write_line("\t%s,", device->handle);
+		write_line("\t%s_attach,", device->type);
+		write_line("\t%s_enumerate_properties,", device->type);
+		write_line("\t%s_change_property,", device->type);
+		write_line("\tNULL,");
+		write_line("\t%s_detach", device->type);
+		write_line(");");
+		write_line("");
+	}
+}
+
+void write_c_hotplug_section(void) {
+	write_line("#pragma mark - Hot-plug code");
+	write_line("");
+	write_line("#define %-20s 5", "MAX_DEVICES");
+	write_line("");
+	write_line("static indigo_device *devices[MAX_DEVICES];");
+	write_line("static pthread_mutex_t hotplug_mutex = PTHREAD_MUTEX_INITIALIZER;");
+	write_line("");	
+	write_line("static void process_plug_event(libusb_device *dev) {");
+	write_line("\tconst char *name;");
+	write_line("\tpthread_mutex_lock(&hotplug_mutex);");
+	write_line("\tif (%s_match(dev, &name)) {", driver->name);
+	write_line("\t\t%s_private_data *private_data = indigo_safe_malloc(sizeof(%s_private_data));", driver->name, driver->name);
+	write_line("\t\tprivate_data->usbdev = dev;");
+	write_line("\t\tlibusb_ref_device(dev);");
+	for (device_type *device = driver->devices; device; device = device->next) {
+		write_line("\t\t\tindigo_device *%s = indigo_safe_malloc_copy(sizeof(indigo_device), &%s_template);", device->type, device->type);
+		write_line("\t\t\t%s->private_data = private_data;", device->type);
+		if (device != driver->devices) {
+			write_line("\t\t\t%s->master_device = %s;", device->type, driver->devices->type);
+		}
+		write_line("\t\t\tsnprintf(%s->name, INDIGO_NAME_SIZE, \"%s\", name);", device->type, device->name);
+		write_line("\t\t\tfor (int j = 0; j < MAX_DEVICES; j++) {");
+		write_line("\t\t\t\tif (devices[j] == NULL) {");
+		write_line("\t\t\t\t\tindigo_async((void *)(void *)indigo_attach_device, devices[j] = %s);", device->type);
+		write_line("\t\t\t\t\tbreak;");
+		write_line("\t\t\t\t}");
+		write_line("\t\t\t}");
+	}
+	write_line("\t}");
+	write_line("\tpthread_mutex_unlock(&hotplug_mutex);");
+	write_line("}");
+	write_line("");
+	write_line("static void process_unplug_event(libusb_device *dev) {");
+	write_line("\tpthread_mutex_lock(&hotplug_mutex);");
+	write_line("\t%s_private_data *private_data = NULL;", driver->name);
+	write_line("\tfor (int j = 0; j < MAX_DEVICES; j++) {");
+	write_line("\t\tif (devices[j] != NULL) {");
+	write_line("\t\t\tindigo_device *device = devices[j];");
+	write_line("\t\t\tif (PRIVATE_DATA->usbdev == dev) {");
+	write_line("\t\t\t\tprivate_data = PRIVATE_DATA;");
+	write_line("\t\t\t\tindigo_detach_device(device);");
+	write_line("\t\t\t\tfree(device);");
+	write_line("\t\t\t\tdevices[j] = NULL;");
+	write_line("\t\t\t}");
+	write_line("\t\t}");
+	write_line("\t}");
+	write_line("\tif (private_data != NULL) {");
+	write_line("\t\tlibusb_unref_device(dev);");
+	write_line("\t\tfree(private_data);");
+	write_line("\t}");
+	write_line("\tpthread_mutex_unlock(&hotplug_mutex);");
+	write_line("}");
+	write_line("");
+	write_line("static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {");
+	write_line("\tswitch (event) {");
+	write_line("\t\tcase LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {");
+	write_line("\t\t\tINDIGO_ASYNC(process_plug_event, dev);");
+	write_line("\t\t\tbreak;");
+	write_line("\t\t}");
+	write_line("\t\tcase LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {");
+	write_line("\t\t\tprocess_unplug_event(dev);");
+	write_line("\t\t\tbreak;");
+	write_line("\t\t}");
+	write_line("\t}");
+	write_line("\treturn 0;");
+	write_line("}");
+	write_line("");
+	write_line("static libusb_hotplug_callback_handle callback_handle;");
+	write_line("");
+}
+
 void write_c_main_section(void) {
 	write_line("#pragma mark - Main code");
 	write_line("");
 	write_line("// %s driver entry point", driver->label);
 	write_line("");
-	write_line("indigo_result indigo_%s_%s(indigo_driver_action action, indigo_driver_info *info) {", driver->device->type, driver->name);
+	write_line("indigo_result indigo_%s_%s(indigo_driver_action action, indigo_driver_info *info) {", driver->devices->type, driver->name);
 	write_line("\tstatic indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;");
 	write_line("\tstatic %s_private_data *private_data = NULL;", driver->name);
-	for (device_type *device = driver->device; device; device = device->next) {
+	for (device_type *device = driver->devices; device; device = device->next) {
 		write_line("\tstatic indigo_device *%s = NULL;", device->type);
 	}
 	write_line("");
-	for (device_type *device = driver->device; device; device = device->next) {
-		write_line("\tstatic indigo_device %s_template = INDIGO_DEVICE_INITIALIZER(", device->type);
-		write_line("\t\t%s,", device->handle);
-		write_line("\t\t%s_attach,", device->type);
-		write_line("\t\t%s_enumerate_properties,", device->type);
-		write_line("\t\t%s_change_property,", device->type);
-		write_line("\t\tNULL,");
-		write_line("\t\t%s_detach", device->type);
-		write_line("\t);");
-		write_line("");
-		
-		if (device == driver->device && driver->serial && driver->serial->pattern) {
-			int index = 0;
-			for (pattern_type *pattern = driver->serial->pattern; pattern; pattern = pattern->next) {
-				index++;
-			}
-			write_line("\tstatic indigo_device_match_pattern %s_patterns[%d] = { 0 };", device->type, index);
-			index = 0;
-			for (pattern_type *pattern = driver->serial->pattern; pattern; pattern = pattern->next) {
-				if (*pattern->product) {
-					write_line("\tstrcpy(%s_patterns[%d].product_string, \"%s\");", device->type, index, pattern->product);
-				}
-				if (*pattern->vendor) {
-					write_line("\tstrcpy(%s_patterns[%d].vendor_string, \"%s\");", device->type, index, pattern->vendor);
-				}
-				if (*pattern->serial) {
-					write_line("\tstrcpy(%s_patterns[%d].serial_string, \"%s\");", device->type, index, pattern->serial);
-				}
-				index++;
-			}
-			write_line("\tINDIGO_REGISER_MATCH_PATTERNS(%s_template, %s_patterns, %d);", device->type, device->type, index);
-			write_line("");
+	device_type *master_device = driver->devices;
+	if (driver->serial && driver->serial->patterns) {
+		int index = 0;
+		for (pattern_type *pattern = driver->serial->patterns; pattern; pattern = pattern->next) {
+			index++;
 		}
+		write_line("\tstatic indigo_device_match_pattern %s_patterns[%d] = { 0 };", master_device->type, index);
+		index = 0;
+		for (pattern_type *pattern = driver->serial->patterns; pattern; pattern = pattern->next) {
+			if (*pattern->product) {
+				write_line("\tstrcpy(%s_patterns[%d].product_string, \"%s\");", master_device->type, index, pattern->product);
+			}
+			if (*pattern->vendor) {
+				write_line("\tstrcpy(%s_patterns[%d].vendor_string, \"%s\");", master_device->type, index, pattern->vendor);
+			}
+			if (*pattern->serial) {
+				write_line("\tstrcpy(%s_patterns[%d].serial_string, \"%s\");", master_device->type, index, pattern->serial);
+			}
+			index++;
+		}
+		write_line("\tINDIGO_REGISER_MATCH_PATTERNS(%s_template, %s_patterns, %d);", master_device->type, master_device->type, index);
+		write_line("");
 	}
 	write_line("\tSET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, false, last_action);");
 	write_line("");
@@ -1518,32 +1638,66 @@ void write_c_main_section(void) {
 	write_line("\t\tcase INDIGO_DRIVER_INIT:");
 	write_line("\t\t\tlast_action = action;");
 	write_c_code_blocks(driver->init, 3, true, false);
-	write_line("\t\t\tprivate_data = indigo_safe_malloc(sizeof(%s_private_data));", driver->name);
-	for (device_type *device = driver->device; device; device = device->next) {
-		write_line("\t\t\t%s = indigo_safe_malloc_copy(sizeof(indigo_device), &%s_template);", device->type, device->type);
-		write_line("\t\t\t%s->private_data = private_data;", device->type);
-		if (device != driver->device) {
-			write_line("\t\t\t%s->master_device = %s;", device->type, driver->device->type);
+	if (driver->serial) {
+		write_line("\t\t\tprivate_data = indigo_safe_malloc(sizeof(%s_private_data));", driver->name);
+		for (device_type *device = driver->devices; device; device = device->next) {
+			write_line("\t\t\t%s = indigo_safe_malloc_copy(sizeof(indigo_device), &%s_template);", device->type, device->type);
+			write_line("\t\t\t%s->private_data = private_data;", device->type);
+			if (device != driver->devices) {
+				write_line("\t\t\t%s->master_device = %s;", device->type, driver->devices->type);
+			}
+			write_line("\t\t\tindigo_attach_device(%s);", device->type);
 		}
-		write_line("\t\t\tindigo_attach_device(%s);", device->type);
+	} else if (driver->libusb) {
+		if (driver->libusb->hotplug) {
+			write_line("\t\t\tlast_action = action;");
+			write_line("\t\t\tfor (int i = 0; i < MAX_DEVICES; i++) {");
+			write_line("\t\t\t\tdevices[i] = 0;");
+			write_line("\t\t\t}");
+			write_line("\t\t\tindigo_start_usb_event_handler();");
+			write_line("\t\t\tint rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, %s, %s, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);", *driver->libusb->vid ? driver->libusb->vid : "LIBUSB_HOTPLUG_MATCH_ANY", *driver->libusb->pid ? driver->libusb->pid : "LIBUSB_HOTPLUG_MATCH_ANY");
+			write_line("\t\t\tINDIGO_DRIVER_DEBUG(DRIVER_NAME, \"libusb_hotplug_register_callback ->  %s\", rc < 0 ? libusb_error_name(rc) : \"OK\");");
+			write_line("\t\t\treturn rc >= 0 ? INDIGO_OK : INDIGO_FAILED;");
+
+		} else {
+			// TBD
+		}
 	}
 	write_line("\t\t\tbreak;");
 	write_line("\t\tcase INDIGO_DRIVER_SHUTDOWN:");
-	for (device_type *device = driver->device; device; device = device->next) {
-		write_line("\t\t\tVERIFY_NOT_CONNECTED(%s);", device->type);
+	if (driver->serial) {
+		for (device_type *device = driver->devices; device; device = device->next) {
+			write_line("\t\t\tVERIFY_NOT_CONNECTED(%s);", device->type);
+		}
+		write_line("\t\t\tlast_action = action;");
+		for (device_type *device = driver->devices; device; device = device->next) {
+			write_line("\t\t\tif (%s != NULL) {", device->type);
+			write_line("\t\t\t\tindigo_detach_device(%s);", device->type);
+			write_line("\t\t\t\tfree(%s);", device->type);
+			write_line("\t\t\t\t%s = NULL;", device->type);
+			write_line("\t\t\t}", device->type);
+		}
+		write_line("\t\t\tif (private_data != NULL) {");
+		write_line("\t\t\t\tfree(private_data);");
+		write_line("\t\t\t\tprivate_data = NULL;");
+		write_line("\t\t\t}");
+	} else if (driver->libusb) {
+		if (driver->libusb->hotplug) {
+			write_line("\t\t\tfor (int i = 0; i < MAX_DEVICES; i++)");
+			write_line("\t\t\t\tVERIFY_NOT_CONNECTED(devices[i]);");
+			write_line("\t\t\tlast_action = action;");
+			write_line("\t\t\tlibusb_hotplug_deregister_callback(NULL, callback_handle);");
+			write_line("\t\t\tINDIGO_DRIVER_DEBUG(DRIVER_NAME, \"libusb_hotplug_deregister_callback\");");
+			write_line("\t\t\tfor (int i = 0; i < MAX_DEVICES; i++) {");
+			write_line("\t\t\t\tif (devices[i] != NULL) {");
+			write_line("\t\t\t\t\tindigo_device *device = devices[i];");
+			write_line("\t\t\t\t\thotplug_callback(NULL, PRIVATE_DATA->usbdev, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);");
+			write_line("\t\t\t\t}");
+			write_line("\t\t\t}");
+		} else {
+			// TBD
+		}
 	}
-	write_line("\t\t\tlast_action = action;");
-	for (device_type *device = driver->device; device; device = device->next) {
-		write_line("\t\t\tif (%s != NULL) {", device->type);
-		write_line("\t\t\t\tindigo_detach_device(%s);", device->type);
-		write_line("\t\t\t\tfree(%s);", device->type);
-		write_line("\t\t\t\t%s = NULL;", device->type);
-		write_line("\t\t\t}", device->type);
-	}
-	write_line("\t\t\tif (private_data != NULL) {");
-	write_line("\t\t\t\tfree(private_data);");
-	write_line("\t\t\t\tprivate_data = NULL;");
-	write_line("\t\t\t}");
 	write_c_code_blocks(driver->shutdown, 2, true, false);
 	write_line("\t\t\tbreak;");
 	write_line("\t\tcase INDIGO_DRIVER_INFO:");
@@ -1561,9 +1715,13 @@ void write_c_source(void) {
 	write_c_property_definition_section();
 	write_c_private_data_section();
 	write_c_low_level_code_section();
-	for (device_type *device = driver->device; device; device = device->next) {
+	for (device_type *device = driver->devices; device; device = device->next) {
 		write_c_high_level_code_section(device);
 		write_c_device_api_section(device);
+	}
+	write_c_device_templates_section();
+	if (driver->libusb && driver->libusb->hotplug) {
+		write_c_hotplug_section();
 	}
 	write_c_main_section();
 }
@@ -1613,15 +1771,15 @@ int main(int argc, char **argv) {
 		return 0;
 	}
 	char file_name[64];
-	snprintf(file_name, sizeof(file_name), "indigo_%s_%s.h", driver->device->type, driver->name);
+	snprintf(file_name, sizeof(file_name), "indigo_%s_%s.h", driver->devices->type, driver->name);
 	fprintf(stderr, "Writing %s ...\n", file_name);
 	freopen(file_name, "w", stdout);
 	write_h_source();
-	snprintf(file_name, sizeof(file_name), "indigo_%s_%s_main.c", driver->device->type, driver->name);
+	snprintf(file_name, sizeof(file_name), "indigo_%s_%s_main.c", driver->devices->type, driver->name);
 	fprintf(stderr, "Writing %s ...\n", file_name);
 	freopen(file_name, "w", stdout);
 	write_c_main_source();
-	snprintf(file_name, sizeof(file_name), "indigo_%s_%s.c", driver->device->type, driver->name);
+	snprintf(file_name, sizeof(file_name), "indigo_%s_%s.c", driver->devices->type, driver->name);
 	fprintf(stderr, "Writing %s ...\n", file_name);
 	freopen(file_name, "w", stdout);
 	write_c_source();

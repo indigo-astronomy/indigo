@@ -1,0 +1,130 @@
+// Copyright (c) 2016-2025 CloudMakers, s. r. o.
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// DSUSB shutter driver definition
+
+driver dsusb {
+	author = "Peter Polakovic";
+	copyright = "Copyright (c) 2016-2025 CloudMakers, s. r. o.";
+	label = "Shoestring DSUSB shutter release";
+	version = 11;
+	libusb {
+		hotplug = true;
+		vid = DSUSB_VID;
+	}
+	include {
+		#include <libdsusb.h>
+	}
+	data {
+		libdsusb_device_context *device_context;
+	}
+	code {
+		static bool dsusb_match(libusb_device *dev, const char **name) {
+			return libdsusb_shutter(dev, name);
+		}
+		
+		static bool dsusb_open(indigo_device *device) {
+			return libdsusb_open(PRIVATE_DATA->usbdev, &PRIVATE_DATA->device_context);
+		}
+		
+		static void dsusb_close(indigo_device *device) {
+			libdsusb_stop(PRIVATE_DATA->device_context);
+			libdsusb_close(PRIVATE_DATA->device_context);
+		}
+		
+		static void dsusb_debug(const char *message) {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libdsusb: %s\n", message);
+		}
+
+	}
+	aux {
+		name = "%s";
+		interface = INDIGO_INTERFACE_AUX_SHUTTER;
+		inherited CONNECTION { }
+		switch X_CONFIG {
+			label = "Configure";
+			name = "X_CONFIG";
+			group = AUX_MAIN_GROUP;
+			rule = INDIGO_ANY_OF_MANY_RULE;
+			persistent = true;
+			item X_CONFIG_FOCUS {
+				label = "Focus before capture";
+				name = "FOCUS";
+			}
+		}
+		switch X_CCD_ABORT_EXPOSURE {
+			label = "Abort exposure";
+			name = CCD_ABORT_EXPOSURE_PROPERTY_NAME;
+			group = AUX_MAIN_GROUP;
+			rule = INDIGO_ANY_OF_MANY_RULE;
+			item X_CCD_ABORT_EXPOSURE {
+				label = "Abort exposure";
+				name = CCD_ABORT_EXPOSURE_ITEM_NAME;
+			}
+			change {
+				if (X_CCD_ABORT_EXPOSURE_ITEM->sw.value && X_CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+					indigo_cancel_timer(device, &PRIVATE_DATA->aux_timer);
+					libdsusb_stop(PRIVATE_DATA->device_context);
+					X_CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, X_CCD_EXPOSURE_PROPERTY, NULL);
+				}
+				X_CCD_ABORT_EXPOSURE_ITEM->sw.value = false;
+				X_CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+			}
+		}
+		number X_CCD_EXPOSURE {
+			label = "Start exposure";
+			name = CCD_EXPOSURE_PROPERTY_NAME;
+			group = AUX_MAIN_GROUP;
+			item X_CCD_EXPOSURE {
+				label = "Start exposure";
+				name = CCD_EXPOSURE_ITEM_NAME;
+				max = 1000;
+				step = 1;
+				format = "%g";
+			}
+			change {
+				X_CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
+				if (X_CONFIG_FOCUS_ITEM->sw.value) {
+					libdsusb_focus(PRIVATE_DATA->device_context);
+					indigo_usleep(1000000);
+				}
+				libdsusb_start(PRIVATE_DATA->device_context);
+				X_CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_set_timer(device, X_CCD_EXPOSURE_ITEM->number.value < 1 ? X_CCD_EXPOSURE_ITEM->number.value : 1, aux_timer_callback, &PRIVATE_DATA->aux_timer);
+			}
+		}
+		timer {
+			if (X_CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+				X_CCD_EXPOSURE_ITEM->number.value--;
+				if (X_CCD_EXPOSURE_ITEM->number.value <= 0) {
+					X_CCD_EXPOSURE_ITEM->number.value = 0;
+					X_CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+					libdsusb_stop(PRIVATE_DATA->device_context);
+				}
+				indigo_update_property(device, X_CCD_EXPOSURE_PROPERTY, NULL);
+				if (X_CCD_EXPOSURE_ITEM->number.value > 0)
+					indigo_reschedule_timer(device, X_CCD_EXPOSURE_ITEM->number.value < 1 ? X_CCD_EXPOSURE_ITEM->number.value : 1, &PRIVATE_DATA->aux_timer);
+			}
+		}
+	}
+	init {
+		libdsusb_debug = &dsusb_debug;
+	}
+}
+

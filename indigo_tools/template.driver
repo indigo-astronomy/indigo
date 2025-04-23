@@ -53,9 +53,14 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_aux_ prefix
 			product = "XXXXX"; // replace XXXXX with product name pattern (optional string literal)
 			vendor = "XXXXX"; // replace XXXXX with vendor name pattern (optional string literal)
 			serial = "XXXXX"; // replace XXXXX with serial number pattern (optional string literal)
-			product_id = XXXXX; // replace XXXXX with product ID (optional number literal)
-			vendor_id = XXXXX; // replace XXXXX with vendor ID (optional number literal)
+			pid = XXXXX; // replace XXXXX with product ID (optional number literal)
+			vid = XXXXX; // replace XXXXX with vendor ID (optional number literal)
 		}
+	}
+	libusb { // this block is mandatory for libusb devices
+		hotplug = true; // use to enable hotplug (bool literal, default is false)
+		pid = XXXXX; // replace XXXXX with product ID (optional number C expression)
+		vid = XXXXX; // replace XXXXX with vendor ID (optional number C expression)
 	}
 	XXXXX { // replace XXXXX with aux, ccd, wheel, focuser, mount, guider, rotator, gps, ao or aux, additional device definitions may follow, but the first one is the master device)
 		name = "XXXXX";  // replace XXXXX with device name  (string literal)
@@ -78,6 +83,7 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_aux_ prefix
 		}
 		switch XXXXX { // replace XXXXX with switch property base name without _PROPERTY suffix, repeat block as many times as you need (mandatory identifier literal)
 			label = XXXXX; // replace XXXXX with descriptive property label (C string expression)
+			name = XXXXX;  // replace XXXXX with item name  (string literal)
 			group = XXXXX; // replace XXXXX with group name (C string expression, default is MAIN_GROUP)
 			perm = XXXXX; // replace XXXXX with permission (C int expression, default is INDIGO_RW_PERM)
 			rule = XXXXX; // replace XXXXX with switch rule (C int expression, default is INDIGO_ONE_OF_MANY_RULE)
@@ -97,6 +103,7 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_aux_ prefix
 		}
 		text XXXXX { // replace XXXXX with text property base name without _PROPERTY suffix, repeat block as many times as you need (mandatory identifier literal)
 			label = XXXXX; // replace XXXXX with descriptive property label (C string expression)
+			name = XXXXX;  // replace XXXXX with item name  (string literal)
 			group = XXXXX; // replace XXXXX with group name (C string expression, default is MAIN_GROUP)
 			perm = XXXXX; // replace XXXXX with permission (C int expression, default is INDIGO_RW_PERM)
 			persistent = true; // use this if property can be saved in driver configuration (bool literal, default is false)
@@ -115,6 +122,7 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_aux_ prefix
 		}
 		number XXXXX { // replace XXXXX with number property base name without _PROPERTY suffix, repeat block as many times as you need (mandatory identifier literal)
 			label = XXXXX; // replace XXXXX with descriptive property label (C string expression)
+			name = XXXXX;  // replace XXXXX with item name  (string literal)
 			group = XXXXX; // replace XXXXX with group name (C string expression, default is MAIN_GROUP)
 			perm = XXXXX; // replace XXXXX with permission (C int expression, default is INDIGO_RW_PERM)
 			persistent = true; // keep this if property can be saved in driver configuration (bool C expression, default is false)
@@ -129,19 +137,20 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_aux_ prefix
 				step = XXXXX; // replace XXXXX with item step value (C double expression, default value is 0)
 				format = XXXXX; // replace XXXXX with descriptive item label (C string expression, default is INDIGO default)
 			}
+			change {
+				// optional C code block
+				// replace content of this section with property change handling code
+				// locking, initial setting of property state to Ok, final property updating and unlocking is generated boilerplate
+			}
 		}
 		light XXXXX { // replace XXXXX with light property base name without _PROPERTY suffix, repeat block as many times as you need (mandatory identifier literal)
 			label = XXXXX; // replace XXXXX with descriptive property label (C string expression)
+			name = XXXXX;  // replace XXXXX with item name  (string literal)
 			group = XXXXX; // replace XXXXX with group name (C string expression, default is MAIN_GROUP)
 			always_defined = true; // use this if property should be always defined (bool literal, default is false)
 			item XXXXX { // replace XXXXX with item base name without _ITEM suffix, repeat block as many times as you need (mandatory identifier literal)
 				label = XXXXX; // replace XXXXX with descriptive item label (C string expression)
 				value = XXXXX; // replace XXXXX with item initial value (C int expression, default value is INDIGO_IDLE_STATE)
-			}
-			change {
-				// optional C code block
-				// replace content of this section with property change handling code
-				// locking, initial setting of property state to Ok, final property updating and unlocking is generated boilerplate
 			}
 		}
 		code {
