@@ -16,7 +16,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// This file generated from indigo_gps_nmea.driver (2025-04-23 10:31).
+// This file generated from indigo_gps_nmea.driver (2025-04-23 16:09).
 
 // version history
 // 3.0 Rumen G. Bogdanovski
@@ -37,14 +37,14 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION 0x0011
-#define DRIVER_NAME "indigo_gps_nmea"
-#define DRIVER_LABEL "Generic NMEA 0183 GPS"
-#define GPS_DEVICE_NAME "NMEA GPS"
+#define DRIVER_VERSION       0x0011
+#define DRIVER_NAME          "indigo_gps_nmea"
+#define DRIVER_LABEL         "Generic NMEA 0183 GPS"
+#define GPS_DEVICE_NAME      "NMEA GPS"
 
 // Custom code below
 
-#define MAX_NB_OF_SYSTEMS 26
+#define MAX_NB_OF_SYSTEMS    26
 
 // Custom code above
 
@@ -52,15 +52,25 @@
 
 // GPS_SELECTED_SYSTEM handles definition
 
-#define GPS_SELECTED_SYSTEM_PROPERTY (PRIVATE_DATA->gps_selected_system_property)
-#define AUTOMATIC_SYSTEM_ITEM (GPS_SELECTED_SYSTEM_PROPERTY->items + 0)
-#define MULTIPLE_SYSTEM_ITEM (GPS_SELECTED_SYSTEM_PROPERTY->items + 1)
-#define GPS_SYSTEM_ITEM (GPS_SELECTED_SYSTEM_PROPERTY->items + 2)
-#define GALILEO_SYSTEM_ITEM (GPS_SELECTED_SYSTEM_PROPERTY->items + 3)
-#define GLONASS_SYSTEM_ITEM (GPS_SELECTED_SYSTEM_PROPERTY->items + 4)
-#define BEIDOU_SYSTEM_ITEM (GPS_SELECTED_SYSTEM_PROPERTY->items + 5)
-#define NAVIC_SYSTEM_ITEM (GPS_SELECTED_SYSTEM_PROPERTY->items + 6)
-#define QZSS_SYSTEM_ITEM (GPS_SELECTED_SYSTEM_PROPERTY->items + 7)
+#define GPS_SELECTED_SYSTEM_PROPERTY             (PRIVATE_DATA->gps_selected_system_property)
+#define AUTOMATIC_SYSTEM_ITEM                    (GPS_SELECTED_SYSTEM_PROPERTY->items + 0)
+#define MULTIPLE_SYSTEM_ITEM                     (GPS_SELECTED_SYSTEM_PROPERTY->items + 1)
+#define GPS_SYSTEM_ITEM                          (GPS_SELECTED_SYSTEM_PROPERTY->items + 2)
+#define GALILEO_SYSTEM_ITEM                      (GPS_SELECTED_SYSTEM_PROPERTY->items + 3)
+#define GLONASS_SYSTEM_ITEM                      (GPS_SELECTED_SYSTEM_PROPERTY->items + 4)
+#define BEIDOU_SYSTEM_ITEM                       (GPS_SELECTED_SYSTEM_PROPERTY->items + 5)
+#define NAVIC_SYSTEM_ITEM                        (GPS_SELECTED_SYSTEM_PROPERTY->items + 6)
+#define QZSS_SYSTEM_ITEM                         (GPS_SELECTED_SYSTEM_PROPERTY->items + 7)
+
+#define GPS_SELECTED_SYSTEM_PROPERTY_NAME        "X_GPS_SELECTED_SYSTEM"
+#define AUTOMATIC_SYSTEM_ITEM_NAME               "AUTO"
+#define MULTIPLE_SYSTEM_ITEM_NAME                "MULTIPLE"
+#define GPS_SYSTEM_ITEM_NAME                     "GPS"
+#define GALILEO_SYSTEM_ITEM_NAME                 "GALILEO"
+#define GLONASS_SYSTEM_ITEM_NAME                 "GLONASS"
+#define BEIDOU_SYSTEM_ITEM_NAME                  "BEIDOU"
+#define NAVIC_SYSTEM_ITEM_NAME                   "NAVIC"
+#define QZSS_SYSTEM_ITEM_NAME                    "QZSS"
 
 #pragma mark - Private data definition
 
@@ -435,18 +445,18 @@ static indigo_result gps_attach(indigo_device *device) {
 
 		// GPS_SELECTED_SYSTEM initialisation
 
-		GPS_SELECTED_SYSTEM_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_GPS_SELECTED_SYSTEM", MAIN_GROUP, "Selected positioning system", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 8);
+		GPS_SELECTED_SYSTEM_PROPERTY = indigo_init_switch_property(NULL, device->name, GPS_SELECTED_SYSTEM_PROPERTY_NAME, MAIN_GROUP, "Selected positioning system", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 8);
 		if (GPS_SELECTED_SYSTEM_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
-		indigo_init_switch_item(AUTOMATIC_SYSTEM_ITEM, "AUTO", "Autodetect", true);
-		indigo_init_switch_item(MULTIPLE_SYSTEM_ITEM, "MULTIPLE", "Multiple", false);
-		indigo_init_switch_item(GPS_SYSTEM_ITEM, "GPS", "GPS", false);
-		indigo_init_switch_item(GALILEO_SYSTEM_ITEM, "GALILEO", "Galileo", false);
-		indigo_init_switch_item(GLONASS_SYSTEM_ITEM, "GLONASS", "GLONASS", false);
-		indigo_init_switch_item(BEIDOU_SYSTEM_ITEM, "BEIDOU", "BeiDou", false);
-		indigo_init_switch_item(NAVIC_SYSTEM_ITEM, "NAVIC", "NavIC", false);
-		indigo_init_switch_item(QZSS_SYSTEM_ITEM, "QZSS", "QZSS1", false);
+		indigo_init_switch_item(AUTOMATIC_SYSTEM_ITEM, AUTOMATIC_SYSTEM_ITEM_NAME, "Autodetect", true);
+		indigo_init_switch_item(MULTIPLE_SYSTEM_ITEM, MULTIPLE_SYSTEM_ITEM_NAME, "Multiple", false);
+		indigo_init_switch_item(GPS_SYSTEM_ITEM, GPS_SYSTEM_ITEM_NAME, "GPS", false);
+		indigo_init_switch_item(GALILEO_SYSTEM_ITEM, GALILEO_SYSTEM_ITEM_NAME, "Galileo", false);
+		indigo_init_switch_item(GLONASS_SYSTEM_ITEM, GLONASS_SYSTEM_ITEM_NAME, "GLONASS", false);
+		indigo_init_switch_item(BEIDOU_SYSTEM_ITEM, BEIDOU_SYSTEM_ITEM_NAME, "BeiDou", false);
+		indigo_init_switch_item(NAVIC_SYSTEM_ITEM, NAVIC_SYSTEM_ITEM_NAME, "NavIC", false);
+		indigo_init_switch_item(QZSS_SYSTEM_ITEM, QZSS_SYSTEM_ITEM_NAME, "QZSS1", false);
 
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);

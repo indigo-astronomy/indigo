@@ -16,7 +16,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// This file generated from indigo_gps_simulator.driver (2025-04-23 10:27).
+// This file generated from indigo_gps_simulator.driver (2025-04-23 16:09).
 
 // version history
 // 3.0 Rumen G. Bogdanovski
@@ -37,26 +37,26 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION 0x0009
-#define DRIVER_NAME "indigo_gps_simulator"
-#define DRIVER_LABEL "GPS Simulator"
-#define GPS_DEVICE_NAME "GPS Simulator"
+#define DRIVER_VERSION       0x0009
+#define DRIVER_NAME          "indigo_gps_simulator"
+#define DRIVER_LABEL         "GPS Simulator"
+#define GPS_DEVICE_NAME      "GPS Simulator"
 
 // Custom code below
 
-#define SIM_LONGITUDE      22.675
-#define SIM_LATITUDE       43.625
-#define SIM_ELEVATION      650
+#define SIM_LONGITUDE        22.675
+#define SIM_LATITUDE         43.625
+#define SIM_ELEVATION        650
 		
-#define SIM_SV_IN_USE      3
-#define SIM_SV_IN_VIEW     7
-#define SIM_PDOP           2
-#define SIM_HDOP           3
-#define SIM_VDOP           3
+#define SIM_SV_IN_USE        3
+#define SIM_SV_IN_VIEW       7
+#define SIM_PDOP             2
+#define SIM_HDOP             3
+#define SIM_VDOP             3
 		
-#define REFRESH_SECONDS    (1.0)
-#define TICKS_TO_2D_FIX    10
-#define TICKS_TO_3D_FIX    20
+#define REFRESH_SECONDS      (1.0)
+#define TICKS_TO_2D_FIX      10
+#define TICKS_TO_3D_FIX      20
 
 // Custom code above
 

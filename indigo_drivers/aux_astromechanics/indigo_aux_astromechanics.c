@@ -16,7 +16,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// This file generated from indigo_aux_astromechanics.driver (2025-04-23 10:31).
+// This file generated from indigo_aux_astromechanics.driver (2025-04-23 16:09).
 
 // version history
 // 3.0 Peter Polakovic
@@ -37,18 +37,18 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION 0x0005
-#define DRIVER_NAME "indigo_aux_astromechanics"
-#define DRIVER_LABEL "ASTROMECHANICS LPM"
-#define AUX_DEVICE_NAME "ASTROMECHANICS LPM"
+#define DRIVER_VERSION       0x0005
+#define DRIVER_NAME          "indigo_aux_astromechanics"
+#define DRIVER_LABEL         "ASTROMECHANICS LPM"
+#define AUX_DEVICE_NAME      "ASTROMECHANICS LPM"
 
 #pragma mark - Property definitions
 
 // AUX_WEATHER handles definition
 
-#define AUX_WEATHER_PROPERTY (PRIVATE_DATA->aux_weather_property)
-#define AUX_WEATHER_SKY_BRIGHTNESS_ITEM (AUX_WEATHER_PROPERTY->items + 0)
-#define AUX_WEATHER_SKY_BORTLE_CLASS_ITEM (AUX_WEATHER_PROPERTY->items + 1)
+#define AUX_WEATHER_PROPERTY                     (PRIVATE_DATA->aux_weather_property)
+#define AUX_WEATHER_SKY_BRIGHTNESS_ITEM          (AUX_WEATHER_PROPERTY->items + 0)
+#define AUX_WEATHER_SKY_BORTLE_CLASS_ITEM        (AUX_WEATHER_PROPERTY->items + 1)
 
 #pragma mark - Private data definition
 

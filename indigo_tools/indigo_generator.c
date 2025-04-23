@@ -43,14 +43,15 @@ typedef struct code_type {
 
 typedef struct item_type {
 	struct item_type *next;
-	char handle[64], name[64], label[256], value[256], min[256], max[256], step[256], format[16];
+	char handle[64], name[64], define_name[64], label[256], value[256], min[256], max[256], step[256], format[16];
 	code_type *attach;
 } item_type;
 
 typedef struct property_type {
 	struct property_type *next;
-	char type[8], id[64], handle[64], name[64], pointer[64], handler[64], label[256], group[32],  perm[32], rule[32];
+	char type[8], id[64], handle[64], name[64], define_name[64], pointer[64], handler[64], label[256], group[32],  perm[32], rule[32];
 	bool always_defined, handle_change, synchronized_change, persistent;
+	int max_name_length;
 	code_type *code, *attach,  *change, *detach;
 	item_type *item;
 } property_type;
@@ -531,6 +532,9 @@ bool parse_item_block(char *type, item_type **items) {
 		if (parse_expression_attribute("handle", item->handle, sizeof(item->handle))) {
 			continue;
 		}
+		if (parse_string_attribute("name", item->define_name, sizeof(item->define_name))) {
+			continue;
+		}
 		if (parse_expression_attribute("name", item->name, sizeof(item->name))) {
 			continue;
 		}
@@ -600,6 +604,9 @@ bool parse_property_block(device_type *device, property_type **properties) {
 		if (parse_expression_attribute("handle", property->handle, sizeof(property->handle))) {
 			continue;
 		}
+		if (parse_string_attribute("name", property->define_name, sizeof(property->define_name))) {
+			continue;
+		}
 		if (parse_expression_attribute("name", property->name, sizeof(property->name))) {
 			continue;
 		}
@@ -655,6 +662,31 @@ bool parse_property_block(device_type *device, property_type **properties) {
 	}
 	debug("}");
 	append((void **)properties, property);
+	property->max_name_length = 40;
+	int name_length = (int)strlen(property->handle);
+	if (name_length > property->max_name_length) {
+		property->max_name_length = name_length;
+	}
+	for (item_type *item = property->item; item; item = item->next) {
+		if (*item->define_name) {
+			name_length = (int)strlen(item->name);
+			if (name_length > property->max_name_length) {
+				property->max_name_length = name_length;
+			}
+		}
+	}
+	if (*property->define_name) {
+		name_length = (int)strlen(property->name);
+		if (name_length > property->max_name_length) {
+			property->max_name_length = name_length;
+		}
+	}
+	for (item_type *item = property->item; item; item = item->next) {
+		name_length = (int)strlen(item->handle);
+		if (name_length > property->max_name_length) {
+			property->max_name_length = name_length;
+		}
+	}
 	return true;
 }
 
@@ -858,8 +890,24 @@ void write_code_block(code_type *code, int indentation) {
 			c = *pnt++;
 		}
 		if (c != '\n') {
-			for (int i = 0; i < indentation; i++) {
-				putchar('\t');
+			if (indentation == 0) {
+				if (c == '#' && !(strncmp(pnt, "define ", 7))) {
+					char *name = pnt + 7;
+					pnt = pnt + 7;
+					while (*pnt && *pnt != ' ') {
+						pnt++;
+					}
+					printf("#define %-*.*s ", 20, (int)(pnt - name), name);
+					while (*pnt && *pnt == ' ') {
+						pnt++;
+					}
+					c = *pnt;
+					pnt++;
+				}
+			} else {
+				for (int i = 0; i < indentation; i++) {
+					putchar('\t');
+				}
 			}
 			putchar(c);
 			while (pnt - code->text < code->size) {
@@ -995,11 +1043,11 @@ void write_c_include_section(void) {
 void write_c_define_section(void) {
 	write_line("#pragma mark - Common definitions");
 	write_line("");
-	write_line("#define DRIVER_VERSION 0x%04X", driver->version);
-	write_line("#define DRIVER_NAME \"indigo_%s_%s\"", driver->device->type, driver->name);
-	write_line("#define DRIVER_LABEL \"%s\"", driver->label);
+	write_line("#define %-20s 0x%04X", "DRIVER_VERSION", driver->version);
+	write_line("#define %-20s \"indigo_%s_%s\"", "DRIVER_NAME", driver->device->type, driver->name);
+	write_line("#define %-20s \"%s\"", "DRIVER_LABEL", driver->label);
 	for (device_type *device = driver->device; device; device = device->next) {
-		write_line("#define %s \"%s\"", device->handle, device->name);
+		write_line("#define %-20s \"%s\"", device->handle, device->name);
 	}
 	write_c_code_blocks(driver->define, 0, true, true);
 }
@@ -1016,12 +1064,26 @@ void write_c_property_definition_section(void) {
 				}
 				write_line("// %s handles definition", property->id);
 				write_line("");
-				write_line("#define %s (PRIVATE_DATA->%s)", property->handle, property->pointer);
+				write_line("#define %-*s (PRIVATE_DATA->%s)", property->max_name_length, property->handle, property->pointer);
 				int index = 0;
 				for (item_type *item = property->item; item; item = item->next) {
-					write_line("#define %s (%s->items + %d)", item->handle, property->handle, index++);
+					write_line("#define %-*s (%s->items + %d)", property->max_name_length, item->handle, property->handle, index++);
 				}
 				write_line("");
+				bool append_line = false;
+				if (*property->define_name) {
+					write_line("#define %-*s \"%s\"", property->max_name_length, property->name, property->define_name);
+					append_line = true;
+				}
+				for (item_type *item = property->item; item; item = item->next) {
+					if (*item->define_name) {
+						write_line("#define %-*s \"%s\"", property->max_name_length, item->name, item->define_name);
+						append_line = true;
+					}
+				}
+				if (append_line) {
+					write_line("");
+				}
 			}
 		}
 	}

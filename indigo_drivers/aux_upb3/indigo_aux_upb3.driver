@@ -24,7 +24,7 @@ driver upb3 {
 	label = "PegasusAstro Ultimate Powerbox v3";
 	version = 3;
 	define {
-#define POWERBOX_GROUP "Powerbox"
+		#define POWERBOX_GROUP "Powerbox"
 	}
 	data {
 		int version;
@@ -492,18 +492,18 @@ driver upb3 {
 			perm = INDIGO_RO_PERM;
 			item AUX_AVERAGE {
 				label = "Avereage current [A]";
-				name = "AUX_AVERAGE";
+				name = "AVERAGE_CURRENT";
 				min = 0;
 				max = 100;
 			}
 			item AUX_AMP_HOUR {
 				label = "Amp-hour [Ah]";
-				name = "AUX_AMP_HOUR";
+				name = "AMP_HOUR";
 				max = 100;
 			}
 			item AUX_WATT_HOUR {
 				label = "Watt-hour [Wh]";
-				name = "AUX_WATT_HOUR";
+				name = "WATT_HOUR";
 				max = 100;
 			}
 			item AUX_INFO_VOLTAGE {
@@ -521,6 +521,7 @@ driver upb3 {
 			name = "AUX_SAVE_OUTLET_STATES_AS_DEFAULT";
 			item AUX_SAVE_OUTLET_STATES_AS_DEFAULT {
 				label = "Save";
+				name = "SAVE";
 			}
 			change {
 				char response[128];
