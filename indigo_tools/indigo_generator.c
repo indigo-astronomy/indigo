@@ -634,9 +634,6 @@ bool parse_property_block(device_type *device, property_type **properties) {
 			if (parse_expression_attribute("pointer", property->pointer, sizeof(property->pointer))) {
 				continue;
 			}
-			if (parse_expression_attribute("pointer", property->pointer, sizeof(property->pointer))) {
-				continue;
-			}
 			if (parse_bool_attribute("always_defined", &property->always_defined)) {
 				continue;
 			}

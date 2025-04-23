@@ -52,7 +52,7 @@ driver sx {
 		}
 		
 		static void sx_close(indigo_device *device) {
-			if (PRIVATE_DATA->handle > 0) {
+			if (PRIVATE_DATA->handle != NULL) {
 				indigo_uni_close(&PRIVATE_DATA->handle);
 			}
 		}

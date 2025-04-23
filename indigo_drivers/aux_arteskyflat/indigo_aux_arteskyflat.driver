@@ -36,11 +36,12 @@ driver arteskyflat {
 		}
 
 		static bool arteskyflat_open(indigo_device *device) {
-			return (PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG)) != NULL;
+			PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
+			return PRIVATE_DATA->handle != NULL;
 		}
 		
 		static void arteskyflat_close(indigo_device *device) {
-			if (PRIVATE_DATA->handle > 0) {
+			if (PRIVATE_DATA->handle != NULL) {
 				indigo_uni_close(&PRIVATE_DATA->handle);
 			}
 		}

@@ -137,7 +137,7 @@ static void aux_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		for (int i = 0; i < 2; i++) {
 			PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
-			if (PRIVATE_DATA->handle > 0) {
+			if (PRIVATE_DATA->handle != NULL) {
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected on %s", DEVICE_PORT_ITEM->text.value);
 				indigo_uni_set_dtr(PRIVATE_DATA->handle, true);
 				indigo_usleep(100000);
@@ -185,7 +185,7 @@ static void aux_connection_handler(indigo_device *device) {
 				}
 			}
 		}
-		if (PRIVATE_DATA->handle > 0) {
+		if (PRIVATE_DATA->handle != NULL) {
 			if (!AUX_LIGHT_SWITCH_PROPERTY->hidden) {
 				AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
 				AUX_COVER_PROPERTY->state = INDIGO_ALERT_STATE;

@@ -282,7 +282,7 @@ static void aux_connection_handler(indigo_device *device) {
 				}
 			}
 		}
-		if (PRIVATE_DATA->handle > 0) {
+		if (PRIVATE_DATA->handle != NULL) {
 			if (uch_command(device, "PA", response, sizeof(response)) && !strncmp(response, "UCH", 3)) {
 				char *pnt, *token = strtok_r(response, ":", &pnt);
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Voltage
@@ -335,7 +335,7 @@ static void aux_connection_handler(indigo_device *device) {
 		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		indigo_update_property(device, INFO_PROPERTY, NULL);
 		if (--PRIVATE_DATA->count == 0) {
-			if (PRIVATE_DATA->handle > 0) {
+			if (PRIVATE_DATA->handle != NULL) {
 				uch_command(device, "PL:0", response, sizeof(response));
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
 				indigo_uni_close(&PRIVATE_DATA->handle);

@@ -123,7 +123,7 @@ static void focuser_connection_handler(indigo_device *device) {
 	char response[16];
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 38400, INDIGO_LOG_DEBUG);
-		if (PRIVATE_DATA->handle > 0) {
+		if (PRIVATE_DATA->handle != NULL) {
 			if (astromechanics_command(device, "P#", response)) {
 				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = atoi(response);
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "ASTROMECHANICS focuser detected");

@@ -151,7 +151,7 @@ static void aux_connection_handler(indigo_device *device) {
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
-		if (PRIVATE_DATA->handle > 0) {
+		if (PRIVATE_DATA->handle != NULL) {
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer_callback);
 			indigo_delete_property(device, AUX_WEATHER_PROPERTY, NULL);
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");

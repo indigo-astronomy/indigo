@@ -129,7 +129,7 @@ static void aux_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		for (int i = 0; i < 2; i++) {
 			PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
-			if (PRIVATE_DATA->handle > 0) {
+			if (PRIVATE_DATA->handle != NULL) {
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected on %s", DEVICE_PORT_ITEM->text.value);
 				if (flatmaster_command(PRIVATE_DATA->handle, "#", response, sizeof(response)) && !strcmp("OK_FM", response)) {
 					break;
@@ -139,7 +139,7 @@ static void aux_connection_handler(indigo_device *device) {
 				}
 			}
 		}
-		if (PRIVATE_DATA->handle > 0) {
+		if (PRIVATE_DATA->handle != NULL) {
 			if (flatmaster_command(PRIVATE_DATA->handle, "V", response, sizeof(response))) {
 				snprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, INDIGO_VALUE_SIZE, "%s", response);
 				indigo_update_property(device, INFO_PROPERTY, NULL);

@@ -213,7 +213,7 @@ static void aux_connection_handler(indigo_device *device) {
 				}
 			}
 		}
-		if (PRIVATE_DATA->handle > 0) {
+		if (PRIVATE_DATA->handle != NULL) {
 			if (goflat_firmware(PRIVATE_DATA->handle, response)) {
 				snprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, INDIGO_VALUE_SIZE, "%s", response);
 				indigo_update_property(device, INFO_PROPERTY, NULL);

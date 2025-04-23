@@ -191,7 +191,7 @@ static void aux_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		for (int i = 0; i < 2; i++) {
 			PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
-			if (PRIVATE_DATA->handle > 0) {
+			if (PRIVATE_DATA->handle != NULL) {
 				indigo_uni_set_rts(PRIVATE_DATA->handle, false);
 				// TODO: retest on windows (indigo_uni_set_cts() is no-op)
 				indigo_uni_set_cts(PRIVATE_DATA->handle, false);
@@ -211,7 +211,7 @@ static void aux_connection_handler(indigo_device *device) {
 				}
 			}
 		}
-		if (PRIVATE_DATA->handle > 0) {
+		if (PRIVATE_DATA->handle != NULL) {
 			if (fbc_command(PRIVATE_DATA->handle, ": V #", response, sizeof(response))) {
 				sscanf(response, "V %s", INFO_DEVICE_FW_REVISION_ITEM->text.value);
 				indigo_update_property(device, INFO_PROPERTY, NULL);

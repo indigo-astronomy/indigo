@@ -4958,6 +4958,7 @@
 		9DC4969922C39A170052AB3E /* indigo_aux_sqm_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_aux_sqm_main.c; sourceTree = "<group>"; };
 		9DC4969A22C39A170052AB3E /* indigo_aux_sqm.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_aux_sqm.c; sourceTree = "<group>"; };
 		9DC496A622C39AC80052AB3E /* SQM-LU-DL_Users_manual.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "SQM-LU-DL_Users_manual.pdf"; sourceTree = "<group>"; };
+		9DC774FA2DB8BAD400CE859C /* template.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = template.driver; sourceTree = "<group>"; };
 		9DC782F421A6D919009859FD /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
 		9DC782F621A6FCC7009859FD /* indigo_system_ascol.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_system_ascol.c; sourceTree = "<group>"; };
 		9DC782F821A6FCC7009859FD /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
@@ -13080,6 +13081,7 @@
 		9D1880BF1E534B89002F75D7 /* indigo_tools */ = {
 			isa = PBXGroup;
 			children = (
+				9DC774FA2DB8BAD400CE859C /* template.driver */,
 				598C583E21A890B5001CA8C0 /* Makefile */,
 				9D44F3802DA55CCD00AB7377 /* indigo_generator.c */,
 				59E21BE12651940F00C1E912 /* indigo_raw_to_fits.c */,

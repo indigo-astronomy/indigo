@@ -86,7 +86,7 @@ static bool arteskyflat_open(indigo_device *device) {
 }
 
 static void arteskyflat_close(indigo_device *device) {
-	if (PRIVATE_DATA->handle > 0) {
+	if (PRIVATE_DATA->handle != NULL) {
 		indigo_uni_close(&PRIVATE_DATA->handle);
 	}
 }

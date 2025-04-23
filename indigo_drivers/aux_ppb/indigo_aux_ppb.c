@@ -380,7 +380,7 @@ static void aux_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (PRIVATE_DATA->count++ == 0) {
 			PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
-			if (PRIVATE_DATA->handle > 0) {
+			if (PRIVATE_DATA->handle != NULL) {
 				int attempt = 0;
 				while (true) {
 					if (ppb_command(device, "P#", response, sizeof(response))) {
@@ -433,7 +433,7 @@ static void aux_connection_handler(indigo_device *device) {
 				}
 			}
 		}
-		if (PRIVATE_DATA->handle > 0) {
+		if (PRIVATE_DATA->handle != NULL) {
 			if (ppb_command(device, "PA", response, sizeof(response))) {
 				char *pnt, *token = strtok_r(response, ":", &pnt);
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Voltage
@@ -491,7 +491,7 @@ static void aux_connection_handler(indigo_device *device) {
 				indigo_uni_close(&PRIVATE_DATA->handle);
 			}
 		}
-		if (PRIVATE_DATA->handle > 0) {
+		if (PRIVATE_DATA->handle != NULL) {
 			if (PRIVATE_DATA->is_advance) {
 				if (PRIVATE_DATA->is_micro) {
 					strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "PPBM");
@@ -542,7 +542,7 @@ static void aux_connection_handler(indigo_device *device) {
 		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		indigo_update_property(device, INFO_PROPERTY, NULL);
 		if (--PRIVATE_DATA->count == 0) {
-			if (PRIVATE_DATA->handle > 0) {
+			if (PRIVATE_DATA->handle != NULL) {
 				if (!PRIVATE_DATA->is_saddle) {
 					ppb_command(device, "PL:0", response, sizeof(response));
 				}

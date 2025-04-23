@@ -401,7 +401,7 @@ static bool primaluce_open(indigo_device *device) {
 }
 
 static void primaluce_close(indigo_device *device) {
-	if (PRIVATE_DATA->handle > 0) {
+	if (PRIVATE_DATA->handle != NULL) {
 		indigo_uni_close(&PRIVATE_DATA->handle);
 		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "N/A");
 		indigo_copy_value(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, "N/A");
@@ -828,7 +828,7 @@ static void focuser_connection_handler(indigo_device *device) {
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
-		if (PRIVATE_DATA->handle > 0) {
+		if (PRIVATE_DATA->handle != NULL) {
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer);
 			indigo_delete_property(device, X_STATE_PROPERTY, NULL);
 			indigo_delete_property(device, X_CONFIG_PROPERTY, NULL);
@@ -1393,7 +1393,7 @@ static void rotator_connection_handler(indigo_device *device) {
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
-		if (PRIVATE_DATA->handle > 0) {
+		if (PRIVATE_DATA->handle != NULL) {
 			if (primaluce_command(device, "{\"req\":{\"set\": {\"ARCO\":0}}}}", response, sizeof(response), tokens, 1024)) {
 			}
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer);
