@@ -16,7 +16,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// This file generated from indigo_aux_upb3.driver (2025-04-23 16:15).
+// This file generated from indigo_aux_upb3.driver
 
 // version history
 // 3.0 Peter Polakovic <peter.polakovic@cloudmakers.eu>
@@ -511,6 +511,7 @@ static void aux_connection_handler(indigo_device *device) {
 		if (--PRIVATE_DATA->count == 0) {
 			upb3_close(device);
 		}
+		indigo_send_message(device, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_aux_change_property(device, NULL, CONNECTION_PROPERTY);
@@ -1140,6 +1141,7 @@ static void focuser_connection_handler(indigo_device *device) {
 		if (--PRIVATE_DATA->count == 0) {
 			upb3_close(device);
 		}
+		indigo_send_message(device, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
@@ -1422,6 +1424,12 @@ static indigo_result focuser_detach(indigo_device *device) {
 	return indigo_focuser_detach(device);
 }
 
+#pragma mark - Device templates
+
+static indigo_device aux_template = INDIGO_DEVICE_INITIALIZER(AUX_DEVICE_NAME, aux_attach, aux_enumerate_properties, aux_change_property, NULL, aux_detach);
+
+static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(FOCUSER_DEVICE_NAME, focuser_attach, focuser_enumerate_properties, focuser_change_property, NULL, focuser_detach);
+
 #pragma mark - Main code
 
 // PegasusAstro Ultimate Powerbox v3 driver entry point
@@ -1431,35 +1439,14 @@ indigo_result indigo_aux_upb3(indigo_driver_action action, indigo_driver_info *i
 	static upb3_private_data *private_data = NULL;
 	static indigo_device *aux = NULL;
 	static indigo_device *focuser = NULL;
-
-	static indigo_device aux_template = INDIGO_DEVICE_INITIALIZER(
-		AUX_DEVICE_NAME,
-		aux_attach,
-		aux_enumerate_properties,
-		aux_change_property,
-		NULL,
-		aux_detach
-	);
-
 	static indigo_device_match_pattern aux_patterns[1] = { 0 };
 	strcpy(aux_patterns[0].product_string, "UPBv3");
 	INDIGO_REGISER_MATCH_PATTERNS(aux_template, aux_patterns, 1);
 
-	static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(
-		FOCUSER_DEVICE_NAME,
-		focuser_attach,
-		focuser_enumerate_properties,
-		focuser_change_property,
-		NULL,
-		focuser_detach
-	);
-
 	SET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, false, last_action);
-
 	if (action == last_action) {
 		return INDIGO_OK;
 	}
-
 	switch (action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
@@ -1472,6 +1459,7 @@ indigo_result indigo_aux_upb3(indigo_driver_action action, indigo_driver_info *i
 			focuser->master_device = aux;
 			indigo_attach_device(focuser);
 			break;
+
 		case INDIGO_DRIVER_SHUTDOWN:
 			VERIFY_NOT_CONNECTED(aux);
 			VERIFY_NOT_CONNECTED(focuser);
@@ -1491,6 +1479,7 @@ indigo_result indigo_aux_upb3(indigo_driver_action action, indigo_driver_info *i
 				private_data = NULL;
 			}
 			break;
+
 		case INDIGO_DRIVER_INFO:
 			break;
 	}

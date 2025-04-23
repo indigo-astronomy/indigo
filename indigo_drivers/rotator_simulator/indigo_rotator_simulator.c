@@ -16,7 +16,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// This file generated from indigo_rotator_simulator.driver (2025-04-23 16:17).
+// This file generated from indigo_rotator_simulator.driver
 
 // version history
 // 3.0 Rumen G. Bogdanovski
@@ -132,15 +132,16 @@ static void rotator_connection_handler(indigo_device *device) {
 		if (connection_result) {
 			indigo_set_timer(device, 0, rotator_timer_callback, &PRIVATE_DATA->rotator_timer);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_send_message(device, "Connected to %s on %s", ROTATOR_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+			indigo_send_message(device, "Connected to %s", device->name);
 		} else {
-			indigo_send_message(device, "Failed to connect to %s on %s", ROTATOR_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+			indigo_send_message(device, "Failed to connect to %s", device->name);
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->rotator_timer);
 		simulator_close(device);
+		indigo_send_message(device, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_rotator_change_property(device, NULL, CONNECTION_PROPERTY);
@@ -272,51 +273,28 @@ static indigo_result rotator_detach(indigo_device *device) {
 	return indigo_rotator_detach(device);
 }
 
+#pragma mark - Device templates
+
+static indigo_device rotator_template = INDIGO_DEVICE_INITIALIZER(ROTATOR_DEVICE_NAME, rotator_attach, rotator_enumerate_properties, rotator_change_property, NULL, rotator_detach);
+
 #pragma mark - Main code
 
 // Field Rotator Simulator driver entry point
 
 indigo_result indigo_rotator_simulator(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
-	static simulator_private_data *private_data = NULL;
-	static indigo_device *rotator = NULL;
-
-	static indigo_device rotator_template = INDIGO_DEVICE_INITIALIZER(
-		ROTATOR_DEVICE_NAME,
-		rotator_attach,
-		rotator_enumerate_properties,
-		rotator_change_property,
-		NULL,
-		rotator_detach
-	);
-
 	SET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, false, last_action);
-
 	if (action == last_action) {
 		return INDIGO_OK;
 	}
-
 	switch (action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
-			private_data = indigo_safe_malloc(sizeof(simulator_private_data));
-			rotator = indigo_safe_malloc_copy(sizeof(indigo_device), &rotator_template);
-			rotator->private_data = private_data;
-			indigo_attach_device(rotator);
 			break;
+
 		case INDIGO_DRIVER_SHUTDOWN:
-			VERIFY_NOT_CONNECTED(rotator);
-			last_action = action;
-			if (rotator != NULL) {
-				indigo_detach_device(rotator);
-				free(rotator);
-				rotator = NULL;
-			}
-			if (private_data != NULL) {
-				free(private_data);
-				private_data = NULL;
-			}
 			break;
+
 		case INDIGO_DRIVER_INFO:
 			break;
 	}

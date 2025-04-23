@@ -16,7 +16,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// This file generated from indigo_gps_nmea.driver (2025-04-23 16:17).
+// This file generated from indigo_gps_nmea.driver
 
 // version history
 // 3.0 Rumen G. Bogdanovski
@@ -396,6 +396,7 @@ static void gps_connection_handler(indigo_device *device) {
 	} else {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->gps_timer);
 		nmea_close(device);
+		indigo_send_message(device, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_gps_change_property(device, NULL, CONNECTION_PROPERTY);
@@ -513,6 +514,10 @@ static indigo_result gps_detach(indigo_device *device) {
 	return indigo_gps_detach(device);
 }
 
+#pragma mark - Device templates
+
+static indigo_device gps_template = INDIGO_DEVICE_INITIALIZER(GPS_DEVICE_NAME, gps_attach, gps_enumerate_properties, gps_change_property, NULL, gps_detach);
+
 #pragma mark - Main code
 
 // Generic NMEA 0183 GPS driver entry point
@@ -521,27 +526,15 @@ indigo_result indigo_gps_nmea(indigo_driver_action action, indigo_driver_info *i
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 	static nmea_private_data *private_data = NULL;
 	static indigo_device *gps = NULL;
-
-	static indigo_device gps_template = INDIGO_DEVICE_INITIALIZER(
-		GPS_DEVICE_NAME,
-		gps_attach,
-		gps_enumerate_properties,
-		gps_change_property,
-		NULL,
-		gps_detach
-	);
-
 	static indigo_device_match_pattern gps_patterns[2] = { 0 };
 	strcpy(gps_patterns[0].product_string, "GPS");
 	strcpy(gps_patterns[1].product_string, "GNSS");
 	INDIGO_REGISER_MATCH_PATTERNS(gps_template, gps_patterns, 2);
 
 	SET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, false, last_action);
-
 	if (action == last_action) {
 		return INDIGO_OK;
 	}
-
 	switch (action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
@@ -550,6 +543,7 @@ indigo_result indigo_gps_nmea(indigo_driver_action action, indigo_driver_info *i
 			gps->private_data = private_data;
 			indigo_attach_device(gps);
 			break;
+
 		case INDIGO_DRIVER_SHUTDOWN:
 			VERIFY_NOT_CONNECTED(gps);
 			last_action = action;
@@ -563,6 +557,7 @@ indigo_result indigo_gps_nmea(indigo_driver_action action, indigo_driver_info *i
 				private_data = NULL;
 			}
 			break;
+
 		case INDIGO_DRIVER_INFO:
 			break;
 	}

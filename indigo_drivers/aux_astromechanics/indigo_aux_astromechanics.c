@@ -16,7 +16,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// This file generated from indigo_aux_astromechanics.driver (2025-04-23 16:17).
+// This file generated from indigo_aux_astromechanics.driver
 
 // version history
 // 3.0 Peter Polakovic
@@ -139,6 +139,7 @@ static void aux_connection_handler(indigo_device *device) {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->aux_timer);
 		indigo_delete_property(device, AUX_WEATHER_PROPERTY, NULL);
 		astromechanics_close(device);
+		indigo_send_message(device, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_aux_change_property(device, NULL, CONNECTION_PROPERTY);
@@ -215,6 +216,10 @@ static indigo_result aux_detach(indigo_device *device) {
 	return indigo_aux_detach(device);
 }
 
+#pragma mark - Device templates
+
+static indigo_device aux_template = INDIGO_DEVICE_INITIALIZER(AUX_DEVICE_NAME, aux_attach, aux_enumerate_properties, aux_change_property, NULL, aux_detach);
+
 #pragma mark - Main code
 
 // ASTROMECHANICS LPM driver entry point
@@ -223,22 +228,10 @@ indigo_result indigo_aux_astromechanics(indigo_driver_action action, indigo_driv
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 	static astromechanics_private_data *private_data = NULL;
 	static indigo_device *aux = NULL;
-
-	static indigo_device aux_template = INDIGO_DEVICE_INITIALIZER(
-		AUX_DEVICE_NAME,
-		aux_attach,
-		aux_enumerate_properties,
-		aux_change_property,
-		NULL,
-		aux_detach
-	);
-
 	SET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, false, last_action);
-
 	if (action == last_action) {
 		return INDIGO_OK;
 	}
-
 	switch (action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
@@ -247,6 +240,7 @@ indigo_result indigo_aux_astromechanics(indigo_driver_action action, indigo_driv
 			aux->private_data = private_data;
 			indigo_attach_device(aux);
 			break;
+
 		case INDIGO_DRIVER_SHUTDOWN:
 			VERIFY_NOT_CONNECTED(aux);
 			last_action = action;
@@ -260,6 +254,7 @@ indigo_result indigo_aux_astromechanics(indigo_driver_action action, indigo_driv
 				private_data = NULL;
 			}
 			break;
+
 		case INDIGO_DRIVER_INFO:
 			break;
 	}

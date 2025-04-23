@@ -16,7 +16,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// This file generated from indigo_ao_sx.driver (2025-04-23 16:17).
+// This file generated from indigo_ao_sx.driver
 
 // version history
 // 3.0 Peter Polakovic
@@ -133,6 +133,7 @@ static void ao_connection_handler(indigo_device *device) {
 		if (--PRIVATE_DATA->count == 0) {
 			sx_close(device);
 		}
+		indigo_send_message(device, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_ao_change_property(device, NULL, CONNECTION_PROPERTY);
@@ -342,6 +343,7 @@ static void guider_connection_handler(indigo_device *device) {
 		if (--PRIVATE_DATA->count == 0) {
 			sx_close(device);
 		}
+		indigo_send_message(device, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
@@ -471,6 +473,12 @@ static indigo_result guider_detach(indigo_device *device) {
 	return indigo_guider_detach(device);
 }
 
+#pragma mark - Device templates
+
+static indigo_device ao_template = INDIGO_DEVICE_INITIALIZER(AO_DEVICE_NAME, ao_attach, ao_enumerate_properties, ao_change_property, NULL, ao_detach);
+
+static indigo_device guider_template = INDIGO_DEVICE_INITIALIZER(GUIDER_DEVICE_NAME, guider_attach, guider_enumerate_properties, guider_change_property, NULL, guider_detach);
+
 #pragma mark - Main code
 
 // StarlightXpress AO driver entry point
@@ -480,31 +488,10 @@ indigo_result indigo_ao_sx(indigo_driver_action action, indigo_driver_info *info
 	static sx_private_data *private_data = NULL;
 	static indigo_device *ao = NULL;
 	static indigo_device *guider = NULL;
-
-	static indigo_device ao_template = INDIGO_DEVICE_INITIALIZER(
-		AO_DEVICE_NAME,
-		ao_attach,
-		ao_enumerate_properties,
-		ao_change_property,
-		NULL,
-		ao_detach
-	);
-
-	static indigo_device guider_template = INDIGO_DEVICE_INITIALIZER(
-		GUIDER_DEVICE_NAME,
-		guider_attach,
-		guider_enumerate_properties,
-		guider_change_property,
-		NULL,
-		guider_detach
-	);
-
 	SET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, false, last_action);
-
 	if (action == last_action) {
 		return INDIGO_OK;
 	}
-
 	switch (action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
@@ -517,6 +504,7 @@ indigo_result indigo_ao_sx(indigo_driver_action action, indigo_driver_info *info
 			guider->master_device = ao;
 			indigo_attach_device(guider);
 			break;
+
 		case INDIGO_DRIVER_SHUTDOWN:
 			VERIFY_NOT_CONNECTED(ao);
 			VERIFY_NOT_CONNECTED(guider);
@@ -536,6 +524,7 @@ indigo_result indigo_ao_sx(indigo_driver_action action, indigo_driver_info *info
 				private_data = NULL;
 			}
 			break;
+
 		case INDIGO_DRIVER_INFO:
 			break;
 	}

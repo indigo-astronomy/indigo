@@ -982,12 +982,6 @@ void write_c_code_blocks(code_type *code, int indentation, bool prepend_empty_li
 }
 
 void write_license(void) {
-	time_t now;
-	struct tm *tm_info;
-	char time_buffer[26];
-	time(&now);
-	tm_info = localtime(&now);
-	strftime(time_buffer, 26, "%Y-%m-%d %H:%M", tm_info);
 	write_line("// %s", driver->copyright);
 	write_line("// All rights reserved.");
 	write_line("");
@@ -1005,7 +999,7 @@ void write_license(void) {
 	write_line("// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS");
 	write_line("// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.");
 	write_line("");
-	write_line("// This file generated from %s (%s).", definition_source_basename, time_buffer);
+	write_line("// This file generated from %s", definition_source_basename);
 	write_line("");
 	write_line("// version history");
 	write_line("// 3.0 %s", driver->author);
@@ -1076,6 +1070,10 @@ void write_c_include_section(void) {
 		write_line("#include <indigo/indigo_%s_driver.h>", device->type);
 	}
 	write_line("#include <indigo/indigo_uni_io.h>");
+	if (driver->libusb) {
+		write_line("#include <indigo/indigo_usb_utils.h>");
+	}
+
 	write_line("");
 	write_line("#include \"indigo_%s_%s.h\"", driver->devices->type, driver->name);
 	write_line("");
@@ -1089,6 +1087,9 @@ void write_c_define_section(void) {
 	write_line("#define %-20s \"%s\"", "DRIVER_LABEL", driver->label);
 	for (device_type *device = driver->devices; device; device = device->next) {
 		write_line("#define %-20s \"%s\"", device->handle, device->name);
+	}
+	if (driver->libusb) {
+		write_line("#define %-20s 5", "MAX_DEVICES");
 	}
 	write_line("");
 	write_line("#define %-20s ((%s_private_data *)device->private_data)", "PRIVATE_DATA", driver->name);
@@ -1228,9 +1229,17 @@ void write_c_property_change_handler(device_type *device, property_type *propert
 			write_line("\t\t\tindigo_set_timer(device, 0, %s_timer_callback, &PRIVATE_DATA->%s_timer);", device->type, device->type);
 		}
 		write_line("\t\t\tCONNECTION_PROPERTY->state = INDIGO_OK_STATE;");
-		write_line("\t\t\tindigo_send_message(device, \"Connected to %%s on %%s\", %s, DEVICE_PORT_ITEM->text.value);", device->handle);
+		if (driver->serial) {
+			write_line("\t\t\tindigo_send_message(device, \"Connected to %%s on %%s\", %s, DEVICE_PORT_ITEM->text.value);", device->handle);
+		} else {
+			write_line("\t\t\tindigo_send_message(device, \"Connected to %%s\", device->name);");
+		}
 		write_line("\t\t} else {");
-		write_line("\t\t\tindigo_send_message(device, \"Failed to connect to %%s on %%s\", %s, DEVICE_PORT_ITEM->text.value);", device->handle);
+		if (driver->serial) {
+			write_line("\t\t\tindigo_send_message(device, \"Failed to connect to %%s on %%s\", %s, DEVICE_PORT_ITEM->text.value);", device->handle);
+		} else {
+			write_line("\t\t\tindigo_send_message(device, \"Failed to connect to %%s\", device->name);");
+		}
 		if (is_multi_device) {
 			write_line("\t\t\tPRIVATE_DATA->count--;");
 		}
@@ -1253,6 +1262,7 @@ void write_c_property_change_handler(device_type *device, property_type *propert
 		} else {
 			write_line("\t\t%s_close(device);", driver->name);
 		}
+		write_line("\t\tindigo_send_message(device, \"Disconnected from %%s\", device->name);");
 		write_line("\t\tCONNECTION_PROPERTY->state = INDIGO_OK_STATE;");
 		write_line("\t}");
 		write_line("\tindigo_%s_change_property(device, NULL, CONNECTION_PROPERTY);", device->type);
@@ -1506,25 +1516,16 @@ void write_c_device_api_section(device_type *device) {
 }
 
 void write_c_device_templates_section(void) {
-	write_line("#pragma mark - device templates");
+	write_line("#pragma mark - Device templates");
 	write_line("");
 	for (device_type *device = driver->devices; device; device = device->next) {
-		write_line("static indigo_device %s_template = INDIGO_DEVICE_INITIALIZER(", device->type);
-		write_line("\t%s,", device->handle);
-		write_line("\t%s_attach,", device->type);
-		write_line("\t%s_enumerate_properties,", device->type);
-		write_line("\t%s_change_property,", device->type);
-		write_line("\tNULL,");
-		write_line("\t%s_detach", device->type);
-		write_line(");");
+		write_line("static indigo_device %s_template = INDIGO_DEVICE_INITIALIZER(%s, %s_attach, %s_enumerate_properties, %s_change_property, NULL, %s_detach);", device->type, device->handle, device->type, device->type, device->type, device->type);
 		write_line("");
 	}
 }
 
 void write_c_hotplug_section(void) {
 	write_line("#pragma mark - Hot-plug code");
-	write_line("");
-	write_line("#define %-20s 5", "MAX_DEVICES");
 	write_line("");
 	write_line("static indigo_device *devices[MAX_DEVICES];");
 	write_line("static pthread_mutex_t hotplug_mutex = PTHREAD_MUTEX_INITIALIZER;");
@@ -1600,11 +1601,12 @@ void write_c_main_section(void) {
 	write_line("");
 	write_line("indigo_result indigo_%s_%s(indigo_driver_action action, indigo_driver_info *info) {", driver->devices->type, driver->name);
 	write_line("\tstatic indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;");
-	write_line("\tstatic %s_private_data *private_data = NULL;", driver->name);
-	for (device_type *device = driver->devices; device; device = device->next) {
-		write_line("\tstatic indigo_device *%s = NULL;", device->type);
+	if (driver->serial) {
+		write_line("\tstatic %s_private_data *private_data = NULL;", driver->name);
+		for (device_type *device = driver->devices; device; device = device->next) {
+			write_line("\tstatic indigo_device *%s = NULL;", device->type);
+		}
 	}
-	write_line("");
 	device_type *master_device = driver->devices;
 	if (driver->serial && driver->serial->patterns) {
 		int index = 0;
@@ -1629,11 +1631,9 @@ void write_c_main_section(void) {
 		write_line("");
 	}
 	write_line("\tSET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, false, last_action);");
-	write_line("");
 	write_line("\tif (action == last_action) {");
 	write_line("\t\treturn INDIGO_OK;");
 	write_line("\t}");
-	write_line("");
 	write_line("\tswitch (action) {");
 	write_line("\t\tcase INDIGO_DRIVER_INIT:");
 	write_line("\t\t\tlast_action = action;");
@@ -1656,14 +1656,13 @@ void write_c_main_section(void) {
 			write_line("\t\t\t}");
 			write_line("\t\t\tindigo_start_usb_event_handler();");
 			write_line("\t\t\tint rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, %s, %s, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);", *driver->libusb->vid ? driver->libusb->vid : "LIBUSB_HOTPLUG_MATCH_ANY", *driver->libusb->pid ? driver->libusb->pid : "LIBUSB_HOTPLUG_MATCH_ANY");
-			write_line("\t\t\tINDIGO_DRIVER_DEBUG(DRIVER_NAME, \"libusb_hotplug_register_callback ->  %s\", rc < 0 ? libusb_error_name(rc) : \"OK\");");
-			write_line("\t\t\treturn rc >= 0 ? INDIGO_OK : INDIGO_FAILED;");
-
+			write_line("\t\t\tINDIGO_DRIVER_DEBUG(DRIVER_NAME, \"libusb_hotplug_register_callback ->  %%s\", rc < 0 ? libusb_error_name(rc) : \"OK\");");
 		} else {
 			// TBD
 		}
 	}
 	write_line("\t\t\tbreak;");
+	write_line("");
 	write_line("\t\tcase INDIGO_DRIVER_SHUTDOWN:");
 	if (driver->serial) {
 		for (device_type *device = driver->devices; device; device = device->next) {
@@ -1683,8 +1682,9 @@ void write_c_main_section(void) {
 		write_line("\t\t\t}");
 	} else if (driver->libusb) {
 		if (driver->libusb->hotplug) {
-			write_line("\t\t\tfor (int i = 0; i < MAX_DEVICES; i++)");
+			write_line("\t\t\tfor (int i = 0; i < MAX_DEVICES; i++) {");
 			write_line("\t\t\t\tVERIFY_NOT_CONNECTED(devices[i]);");
+			write_line("\t\t\t}");
 			write_line("\t\t\tlast_action = action;");
 			write_line("\t\t\tlibusb_hotplug_deregister_callback(NULL, callback_handle);");
 			write_line("\t\t\tINDIGO_DRIVER_DEBUG(DRIVER_NAME, \"libusb_hotplug_deregister_callback\");");
@@ -1700,6 +1700,7 @@ void write_c_main_section(void) {
 	}
 	write_c_code_blocks(driver->shutdown, 2, true, false);
 	write_line("\t\t\tbreak;");
+	write_line("");
 	write_line("\t\tcase INDIGO_DRIVER_INFO:");
 	write_line("\t\t\tbreak;");
 	write_line("\t}");
