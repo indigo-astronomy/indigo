@@ -16,7 +16,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// This file generated from indigo_aux_upb3.driver (2025-04-23 16:09).
+// This file generated from indigo_aux_upb3.driver (2025-04-23 16:15).
 
 // version history
 // 3.0 Peter Polakovic <peter.polakovic@cloudmakers.eu>
@@ -44,6 +44,8 @@
 #define AUX_DEVICE_NAME      "Ultimate Powerbox 3"
 #define FOCUSER_DEVICE_NAME  "Ultimate Powerbox 3 (focuser)"
 
+#define PRIVATE_DATA         ((upb3_private_data *)device->private_data)
+
 // Custom code below
 
 #define POWERBOX_GROUP       "Powerbox"
@@ -54,95 +56,95 @@
 
 // AUX_OUTLET_NAMES handles definition
 
-#define AUX_OUTLET_NAMES_PROPERTY                (PRIVATE_DATA->aux_outlet_names_property)
-#define AUX_POWER_OUTLET_NAME_1_ITEM             (AUX_OUTLET_NAMES_PROPERTY->items + 0)
-#define AUX_POWER_OUTLET_NAME_2_ITEM             (AUX_OUTLET_NAMES_PROPERTY->items + 1)
-#define AUX_POWER_OUTLET_NAME_3_ITEM             (AUX_OUTLET_NAMES_PROPERTY->items + 2)
-#define AUX_POWER_OUTLET_NAME_4_ITEM             (AUX_OUTLET_NAMES_PROPERTY->items + 3)
-#define AUX_POWER_OUTLET_NAME_5_ITEM             (AUX_OUTLET_NAMES_PROPERTY->items + 4)
-#define AUX_POWER_OUTLET_NAME_6_ITEM             (AUX_OUTLET_NAMES_PROPERTY->items + 5)
-#define AUX_POWER_OUTLET_NAME_7_ITEM             (AUX_OUTLET_NAMES_PROPERTY->items + 6)
-#define AUX_POWER_OUTLET_NAME_8_ITEM             (AUX_OUTLET_NAMES_PROPERTY->items + 7)
-#define AUX_POWER_OUTLET_NAME_9_ITEM             (AUX_OUTLET_NAMES_PROPERTY->items + 8)
-#define AUX_HEATER_OUTLET_NAME_1_ITEM            (AUX_OUTLET_NAMES_PROPERTY->items + 9)
-#define AUX_HEATER_OUTLET_NAME_2_ITEM            (AUX_OUTLET_NAMES_PROPERTY->items + 10)
-#define AUX_HEATER_OUTLET_NAME_3_ITEM            (AUX_OUTLET_NAMES_PROPERTY->items + 11)
-#define AUX_USB_PORT_NAME_1_ITEM                 (AUX_OUTLET_NAMES_PROPERTY->items + 12)
-#define AUX_USB_PORT_NAME_2_ITEM                 (AUX_OUTLET_NAMES_PROPERTY->items + 13)
-#define AUX_USB_PORT_NAME_3_ITEM                 (AUX_OUTLET_NAMES_PROPERTY->items + 14)
-#define AUX_USB_PORT_NAME_4_ITEM                 (AUX_OUTLET_NAMES_PROPERTY->items + 15)
-#define AUX_USB_PORT_NAME_5_ITEM                 (AUX_OUTLET_NAMES_PROPERTY->items + 16)
-#define AUX_USB_PORT_NAME_6_ITEM                 (AUX_OUTLET_NAMES_PROPERTY->items + 17)
-#define AUX_USB_PORT_NAME_7_ITEM                 (AUX_OUTLET_NAMES_PROPERTY->items + 18)
-#define AUX_USB_PORT_NAME_8_ITEM                 (AUX_OUTLET_NAMES_PROPERTY->items + 19)
+#define AUX_OUTLET_NAMES_PROPERTY      (PRIVATE_DATA->aux_outlet_names_property)
+#define AUX_POWER_OUTLET_NAME_1_ITEM   (AUX_OUTLET_NAMES_PROPERTY->items + 0)
+#define AUX_POWER_OUTLET_NAME_2_ITEM   (AUX_OUTLET_NAMES_PROPERTY->items + 1)
+#define AUX_POWER_OUTLET_NAME_3_ITEM   (AUX_OUTLET_NAMES_PROPERTY->items + 2)
+#define AUX_POWER_OUTLET_NAME_4_ITEM   (AUX_OUTLET_NAMES_PROPERTY->items + 3)
+#define AUX_POWER_OUTLET_NAME_5_ITEM   (AUX_OUTLET_NAMES_PROPERTY->items + 4)
+#define AUX_POWER_OUTLET_NAME_6_ITEM   (AUX_OUTLET_NAMES_PROPERTY->items + 5)
+#define AUX_POWER_OUTLET_NAME_7_ITEM   (AUX_OUTLET_NAMES_PROPERTY->items + 6)
+#define AUX_POWER_OUTLET_NAME_8_ITEM   (AUX_OUTLET_NAMES_PROPERTY->items + 7)
+#define AUX_POWER_OUTLET_NAME_9_ITEM   (AUX_OUTLET_NAMES_PROPERTY->items + 8)
+#define AUX_HEATER_OUTLET_NAME_1_ITEM  (AUX_OUTLET_NAMES_PROPERTY->items + 9)
+#define AUX_HEATER_OUTLET_NAME_2_ITEM  (AUX_OUTLET_NAMES_PROPERTY->items + 10)
+#define AUX_HEATER_OUTLET_NAME_3_ITEM  (AUX_OUTLET_NAMES_PROPERTY->items + 11)
+#define AUX_USB_PORT_NAME_1_ITEM       (AUX_OUTLET_NAMES_PROPERTY->items + 12)
+#define AUX_USB_PORT_NAME_2_ITEM       (AUX_OUTLET_NAMES_PROPERTY->items + 13)
+#define AUX_USB_PORT_NAME_3_ITEM       (AUX_OUTLET_NAMES_PROPERTY->items + 14)
+#define AUX_USB_PORT_NAME_4_ITEM       (AUX_OUTLET_NAMES_PROPERTY->items + 15)
+#define AUX_USB_PORT_NAME_5_ITEM       (AUX_OUTLET_NAMES_PROPERTY->items + 16)
+#define AUX_USB_PORT_NAME_6_ITEM       (AUX_OUTLET_NAMES_PROPERTY->items + 17)
+#define AUX_USB_PORT_NAME_7_ITEM       (AUX_OUTLET_NAMES_PROPERTY->items + 18)
+#define AUX_USB_PORT_NAME_8_ITEM       (AUX_OUTLET_NAMES_PROPERTY->items + 19)
 
 // AUX_POWER_OUTLET handles definition
 
-#define AUX_POWER_OUTLET_PROPERTY                (PRIVATE_DATA->aux_power_outlet_property)
-#define AUX_POWER_OUTLET_1_ITEM                  (AUX_POWER_OUTLET_PROPERTY->items + 0)
-#define AUX_POWER_OUTLET_2_ITEM                  (AUX_POWER_OUTLET_PROPERTY->items + 1)
-#define AUX_POWER_OUTLET_3_ITEM                  (AUX_POWER_OUTLET_PROPERTY->items + 2)
-#define AUX_POWER_OUTLET_4_ITEM                  (AUX_POWER_OUTLET_PROPERTY->items + 3)
-#define AUX_POWER_OUTLET_5_ITEM                  (AUX_POWER_OUTLET_PROPERTY->items + 4)
-#define AUX_POWER_OUTLET_6_ITEM                  (AUX_POWER_OUTLET_PROPERTY->items + 5)
-#define AUX_POWER_OUTLET_7_ITEM                  (AUX_POWER_OUTLET_PROPERTY->items + 6)
-#define AUX_POWER_OUTLET_8_ITEM                  (AUX_POWER_OUTLET_PROPERTY->items + 7)
-#define AUX_POWER_OUTLET_9_ITEM                  (AUX_POWER_OUTLET_PROPERTY->items + 8)
+#define AUX_POWER_OUTLET_PROPERTY      (PRIVATE_DATA->aux_power_outlet_property)
+#define AUX_POWER_OUTLET_1_ITEM        (AUX_POWER_OUTLET_PROPERTY->items + 0)
+#define AUX_POWER_OUTLET_2_ITEM        (AUX_POWER_OUTLET_PROPERTY->items + 1)
+#define AUX_POWER_OUTLET_3_ITEM        (AUX_POWER_OUTLET_PROPERTY->items + 2)
+#define AUX_POWER_OUTLET_4_ITEM        (AUX_POWER_OUTLET_PROPERTY->items + 3)
+#define AUX_POWER_OUTLET_5_ITEM        (AUX_POWER_OUTLET_PROPERTY->items + 4)
+#define AUX_POWER_OUTLET_6_ITEM        (AUX_POWER_OUTLET_PROPERTY->items + 5)
+#define AUX_POWER_OUTLET_7_ITEM        (AUX_POWER_OUTLET_PROPERTY->items + 6)
+#define AUX_POWER_OUTLET_8_ITEM        (AUX_POWER_OUTLET_PROPERTY->items + 7)
+#define AUX_POWER_OUTLET_9_ITEM        (AUX_POWER_OUTLET_PROPERTY->items + 8)
 
 // AUX_POWER_OUTLET_STATE handles definition
 
-#define AUX_POWER_OUTLET_STATE_PROPERTY          (PRIVATE_DATA->aux_power_outlet_state_property)
-#define AUX_POWER_OUTLET_STATE_1_ITEM            (AUX_POWER_OUTLET_STATE_PROPERTY->items + 0)
-#define AUX_POWER_OUTLET_STATE_2_ITEM            (AUX_POWER_OUTLET_STATE_PROPERTY->items + 1)
-#define AUX_POWER_OUTLET_STATE_3_ITEM            (AUX_POWER_OUTLET_STATE_PROPERTY->items + 2)
-#define AUX_POWER_OUTLET_STATE_4_ITEM            (AUX_POWER_OUTLET_STATE_PROPERTY->items + 3)
-#define AUX_POWER_OUTLET_STATE_5_ITEM            (AUX_POWER_OUTLET_STATE_PROPERTY->items + 4)
-#define AUX_POWER_OUTLET_STATE_6_ITEM            (AUX_POWER_OUTLET_STATE_PROPERTY->items + 5)
+#define AUX_POWER_OUTLET_STATE_PROPERTY (PRIVATE_DATA->aux_power_outlet_state_property)
+#define AUX_POWER_OUTLET_STATE_1_ITEM   (AUX_POWER_OUTLET_STATE_PROPERTY->items + 0)
+#define AUX_POWER_OUTLET_STATE_2_ITEM   (AUX_POWER_OUTLET_STATE_PROPERTY->items + 1)
+#define AUX_POWER_OUTLET_STATE_3_ITEM   (AUX_POWER_OUTLET_STATE_PROPERTY->items + 2)
+#define AUX_POWER_OUTLET_STATE_4_ITEM   (AUX_POWER_OUTLET_STATE_PROPERTY->items + 3)
+#define AUX_POWER_OUTLET_STATE_5_ITEM   (AUX_POWER_OUTLET_STATE_PROPERTY->items + 4)
+#define AUX_POWER_OUTLET_STATE_6_ITEM   (AUX_POWER_OUTLET_STATE_PROPERTY->items + 5)
 
 // AUX_HEATER_OUTLET handles definition
 
-#define AUX_HEATER_OUTLET_PROPERTY               (PRIVATE_DATA->aux_heater_outlet_property)
-#define AUX_HEATER_OUTLET_1_ITEM                 (AUX_HEATER_OUTLET_PROPERTY->items + 0)
-#define AUX_HEATER_OUTLET_2_ITEM                 (AUX_HEATER_OUTLET_PROPERTY->items + 1)
-#define AUX_HEATER_OUTLET_3_ITEM                 (AUX_HEATER_OUTLET_PROPERTY->items + 2)
+#define AUX_HEATER_OUTLET_PROPERTY     (PRIVATE_DATA->aux_heater_outlet_property)
+#define AUX_HEATER_OUTLET_1_ITEM       (AUX_HEATER_OUTLET_PROPERTY->items + 0)
+#define AUX_HEATER_OUTLET_2_ITEM       (AUX_HEATER_OUTLET_PROPERTY->items + 1)
+#define AUX_HEATER_OUTLET_3_ITEM       (AUX_HEATER_OUTLET_PROPERTY->items + 2)
 
 // AUX_DEW_CONTROL handles definition
 
-#define AUX_DEW_CONTROL_PROPERTY                 (PRIVATE_DATA->aux_dew_control_property)
-#define AUX_DEW_CONTROL_MANUAL_ITEM              (AUX_DEW_CONTROL_PROPERTY->items + 0)
-#define AUX_DEW_CONTROL_AUTOMATIC_ITEM           (AUX_DEW_CONTROL_PROPERTY->items + 1)
+#define AUX_DEW_CONTROL_PROPERTY       (PRIVATE_DATA->aux_dew_control_property)
+#define AUX_DEW_CONTROL_MANUAL_ITEM    (AUX_DEW_CONTROL_PROPERTY->items + 0)
+#define AUX_DEW_CONTROL_AUTOMATIC_ITEM (AUX_DEW_CONTROL_PROPERTY->items + 1)
 
 // AUX_USB_PORT handles definition
 
-#define AUX_USB_PORT_PROPERTY                    (PRIVATE_DATA->aux_usb_port_property)
-#define AUX_USB_PORT_1_ITEM                      (AUX_USB_PORT_PROPERTY->items + 0)
-#define AUX_USB_PORT_2_ITEM                      (AUX_USB_PORT_PROPERTY->items + 1)
-#define AUX_USB_PORT_3_ITEM                      (AUX_USB_PORT_PROPERTY->items + 2)
-#define AUX_USB_PORT_4_ITEM                      (AUX_USB_PORT_PROPERTY->items + 3)
-#define AUX_USB_PORT_5_ITEM                      (AUX_USB_PORT_PROPERTY->items + 4)
-#define AUX_USB_PORT_6_ITEM                      (AUX_USB_PORT_PROPERTY->items + 5)
-#define AUX_USB_PORT_7_ITEM                      (AUX_USB_PORT_PROPERTY->items + 6)
-#define AUX_USB_PORT_8_ITEM                      (AUX_USB_PORT_PROPERTY->items + 7)
+#define AUX_USB_PORT_PROPERTY          (PRIVATE_DATA->aux_usb_port_property)
+#define AUX_USB_PORT_1_ITEM            (AUX_USB_PORT_PROPERTY->items + 0)
+#define AUX_USB_PORT_2_ITEM            (AUX_USB_PORT_PROPERTY->items + 1)
+#define AUX_USB_PORT_3_ITEM            (AUX_USB_PORT_PROPERTY->items + 2)
+#define AUX_USB_PORT_4_ITEM            (AUX_USB_PORT_PROPERTY->items + 3)
+#define AUX_USB_PORT_5_ITEM            (AUX_USB_PORT_PROPERTY->items + 4)
+#define AUX_USB_PORT_6_ITEM            (AUX_USB_PORT_PROPERTY->items + 5)
+#define AUX_USB_PORT_7_ITEM            (AUX_USB_PORT_PROPERTY->items + 6)
+#define AUX_USB_PORT_8_ITEM            (AUX_USB_PORT_PROPERTY->items + 7)
 
 // AUX_WEATHER handles definition
 
-#define AUX_WEATHER_PROPERTY                     (PRIVATE_DATA->aux_weather_property)
-#define AUX_WEATHER_TEMPERATURE_ITEM             (AUX_WEATHER_PROPERTY->items + 0)
-#define AUX_WEATHER_HUMIDITY_ITEM                (AUX_WEATHER_PROPERTY->items + 1)
-#define AUX_WEATHER_DEWPOINT_ITEM                (AUX_WEATHER_PROPERTY->items + 2)
+#define AUX_WEATHER_PROPERTY           (PRIVATE_DATA->aux_weather_property)
+#define AUX_WEATHER_TEMPERATURE_ITEM   (AUX_WEATHER_PROPERTY->items + 0)
+#define AUX_WEATHER_HUMIDITY_ITEM      (AUX_WEATHER_PROPERTY->items + 1)
+#define AUX_WEATHER_DEWPOINT_ITEM      (AUX_WEATHER_PROPERTY->items + 2)
 
 // AUX_INFO handles definition
 
-#define AUX_INFO_PROPERTY                        (PRIVATE_DATA->aux_info_property)
-#define AUX_AVERAGE_ITEM                         (AUX_INFO_PROPERTY->items + 0)
-#define AUX_AMP_HOUR_ITEM                        (AUX_INFO_PROPERTY->items + 1)
-#define AUX_WATT_HOUR_ITEM                       (AUX_INFO_PROPERTY->items + 2)
-#define AUX_INFO_VOLTAGE_ITEM                    (AUX_INFO_PROPERTY->items + 3)
-#define AUX_INFO_CURRENT_ITEM                    (AUX_INFO_PROPERTY->items + 4)
+#define AUX_INFO_PROPERTY              (PRIVATE_DATA->aux_info_property)
+#define AUX_AVERAGE_ITEM               (AUX_INFO_PROPERTY->items + 0)
+#define AUX_AMP_HOUR_ITEM              (AUX_INFO_PROPERTY->items + 1)
+#define AUX_WATT_HOUR_ITEM             (AUX_INFO_PROPERTY->items + 2)
+#define AUX_INFO_VOLTAGE_ITEM          (AUX_INFO_PROPERTY->items + 3)
+#define AUX_INFO_CURRENT_ITEM          (AUX_INFO_PROPERTY->items + 4)
 
-#define AUX_AVERAGE_ITEM_NAME                    "AVERAGE_CURRENT"
-#define AUX_AMP_HOUR_ITEM_NAME                   "AMP_HOUR"
-#define AUX_WATT_HOUR_ITEM_NAME                  "WATT_HOUR"
+#define AUX_AVERAGE_ITEM_NAME          "AVERAGE_CURRENT"
+#define AUX_AMP_HOUR_ITEM_NAME         "AMP_HOUR"
+#define AUX_WATT_HOUR_ITEM_NAME        "WATT_HOUR"
 
 // AUX_SAVE_OUTLET_STATES_AS_DEFAULT handles definition
 
@@ -154,25 +156,23 @@
 
 // AUX_REBOOT handles definition
 
-#define AUX_REBOOT_PROPERTY                      (PRIVATE_DATA->aux_reboot_property)
-#define AUX_REBOOT_ITEM                          (AUX_REBOOT_PROPERTY->items + 0)
+#define AUX_REBOOT_PROPERTY            (PRIVATE_DATA->aux_reboot_property)
+#define AUX_REBOOT_ITEM                (AUX_REBOOT_PROPERTY->items + 0)
 
-#define AUX_REBOOT_PROPERTY_NAME                 "AUX_REBOOT"
-#define AUX_REBOOT_ITEM_NAME                     "REBOOT"
+#define AUX_REBOOT_PROPERTY_NAME       "AUX_REBOOT"
+#define AUX_REBOOT_ITEM_NAME           "REBOOT"
 
 // AUX_VARIABLE_POWER_OUTLET handles definition
 
-#define AUX_VARIABLE_POWER_OUTLET_PROPERTY       (PRIVATE_DATA->aux_variable_power_outlet_property)
-#define AUX_VARIABLE_POWER_OUTLET_7_ITEM         (AUX_VARIABLE_POWER_OUTLET_PROPERTY->items + 0)
-#define AUX_VARIABLE_POWER_OUTLET_8_ITEM         (AUX_VARIABLE_POWER_OUTLET_PROPERTY->items + 1)
+#define AUX_VARIABLE_POWER_OUTLET_PROPERTY      (PRIVATE_DATA->aux_variable_power_outlet_property)
+#define AUX_VARIABLE_POWER_OUTLET_7_ITEM        (AUX_VARIABLE_POWER_OUTLET_PROPERTY->items + 0)
+#define AUX_VARIABLE_POWER_OUTLET_8_ITEM        (AUX_VARIABLE_POWER_OUTLET_PROPERTY->items + 1)
 
-#define AUX_VARIABLE_POWER_OUTLET_PROPERTY_NAME  "AUX_VARIABLE_POWER_OUTLET"
-#define AUX_VARIABLE_POWER_OUTLET_7_ITEM_NAME    "OUTLET_7"
-#define AUX_VARIABLE_POWER_OUTLET_8_ITEM_NAME    "OUTLET_8"
+#define AUX_VARIABLE_POWER_OUTLET_PROPERTY_NAME "AUX_VARIABLE_POWER_OUTLET"
+#define AUX_VARIABLE_POWER_OUTLET_7_ITEM_NAME   "OUTLET_7"
+#define AUX_VARIABLE_POWER_OUTLET_8_ITEM_NAME   "OUTLET_8"
 
 #pragma mark - Private data definition
-
-#define PRIVATE_DATA ((upb3_private_data *)device->private_data)
 
 typedef struct {
 	pthread_mutex_t mutex;

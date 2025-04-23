@@ -662,7 +662,7 @@ bool parse_property_block(device_type *device, property_type **properties) {
 	}
 	debug("}");
 	append((void **)properties, property);
-	property->max_name_length = 40;
+	property->max_name_length = 30;
 	int name_length = (int)strlen(property->handle);
 	if (name_length > property->max_name_length) {
 		property->max_name_length = name_length;
@@ -897,7 +897,7 @@ void write_code_block(code_type *code, int indentation) {
 					while (*pnt && *pnt != ' ') {
 						pnt++;
 					}
-					printf("#define %-*.*s ", 20, (int)(pnt - name), name);
+					printf("#define %-20.*s ", (int)(pnt - name), name);
 					while (*pnt && *pnt == ' ') {
 						pnt++;
 					}
@@ -1049,6 +1049,8 @@ void write_c_define_section(void) {
 	for (device_type *device = driver->device; device; device = device->next) {
 		write_line("#define %-20s \"%s\"", device->handle, device->name);
 	}
+	write_line("");
+	write_line("#define %-20s ((%s_private_data *)device->private_data)", "PRIVATE_DATA", driver->name);
 	write_c_code_blocks(driver->define, 0, true, true);
 }
 
@@ -1092,8 +1094,6 @@ void write_c_property_definition_section(void) {
 void write_c_private_data_section(void) {
 	bool is_multi_device = driver->device != NULL && driver->device->next != NULL;
 	write_line("#pragma mark - Private data definition");
-	write_line("");
-	write_line("#define PRIVATE_DATA ((%s_private_data *)device->private_data)", driver->name);
 	write_line("");
 	write_line("typedef struct {");
 	write_line("\tpthread_mutex_t mutex;");

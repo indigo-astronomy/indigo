@@ -16,7 +16,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// This file generated from indigo_gps_nmea.driver (2025-04-23 16:09).
+// This file generated from indigo_gps_nmea.driver (2025-04-23 16:17).
 
 // version history
 // 3.0 Rumen G. Bogdanovski
@@ -42,6 +42,8 @@
 #define DRIVER_LABEL         "Generic NMEA 0183 GPS"
 #define GPS_DEVICE_NAME      "NMEA GPS"
 
+#define PRIVATE_DATA         ((nmea_private_data *)device->private_data)
+
 // Custom code below
 
 #define MAX_NB_OF_SYSTEMS    26
@@ -52,29 +54,27 @@
 
 // GPS_SELECTED_SYSTEM handles definition
 
-#define GPS_SELECTED_SYSTEM_PROPERTY             (PRIVATE_DATA->gps_selected_system_property)
-#define AUTOMATIC_SYSTEM_ITEM                    (GPS_SELECTED_SYSTEM_PROPERTY->items + 0)
-#define MULTIPLE_SYSTEM_ITEM                     (GPS_SELECTED_SYSTEM_PROPERTY->items + 1)
-#define GPS_SYSTEM_ITEM                          (GPS_SELECTED_SYSTEM_PROPERTY->items + 2)
-#define GALILEO_SYSTEM_ITEM                      (GPS_SELECTED_SYSTEM_PROPERTY->items + 3)
-#define GLONASS_SYSTEM_ITEM                      (GPS_SELECTED_SYSTEM_PROPERTY->items + 4)
-#define BEIDOU_SYSTEM_ITEM                       (GPS_SELECTED_SYSTEM_PROPERTY->items + 5)
-#define NAVIC_SYSTEM_ITEM                        (GPS_SELECTED_SYSTEM_PROPERTY->items + 6)
-#define QZSS_SYSTEM_ITEM                         (GPS_SELECTED_SYSTEM_PROPERTY->items + 7)
+#define GPS_SELECTED_SYSTEM_PROPERTY      (PRIVATE_DATA->gps_selected_system_property)
+#define AUTOMATIC_SYSTEM_ITEM             (GPS_SELECTED_SYSTEM_PROPERTY->items + 0)
+#define MULTIPLE_SYSTEM_ITEM              (GPS_SELECTED_SYSTEM_PROPERTY->items + 1)
+#define GPS_SYSTEM_ITEM                   (GPS_SELECTED_SYSTEM_PROPERTY->items + 2)
+#define GALILEO_SYSTEM_ITEM               (GPS_SELECTED_SYSTEM_PROPERTY->items + 3)
+#define GLONASS_SYSTEM_ITEM               (GPS_SELECTED_SYSTEM_PROPERTY->items + 4)
+#define BEIDOU_SYSTEM_ITEM                (GPS_SELECTED_SYSTEM_PROPERTY->items + 5)
+#define NAVIC_SYSTEM_ITEM                 (GPS_SELECTED_SYSTEM_PROPERTY->items + 6)
+#define QZSS_SYSTEM_ITEM                  (GPS_SELECTED_SYSTEM_PROPERTY->items + 7)
 
-#define GPS_SELECTED_SYSTEM_PROPERTY_NAME        "X_GPS_SELECTED_SYSTEM"
-#define AUTOMATIC_SYSTEM_ITEM_NAME               "AUTO"
-#define MULTIPLE_SYSTEM_ITEM_NAME                "MULTIPLE"
-#define GPS_SYSTEM_ITEM_NAME                     "GPS"
-#define GALILEO_SYSTEM_ITEM_NAME                 "GALILEO"
-#define GLONASS_SYSTEM_ITEM_NAME                 "GLONASS"
-#define BEIDOU_SYSTEM_ITEM_NAME                  "BEIDOU"
-#define NAVIC_SYSTEM_ITEM_NAME                   "NAVIC"
-#define QZSS_SYSTEM_ITEM_NAME                    "QZSS"
+#define GPS_SELECTED_SYSTEM_PROPERTY_NAME "X_GPS_SELECTED_SYSTEM"
+#define AUTOMATIC_SYSTEM_ITEM_NAME        "AUTO"
+#define MULTIPLE_SYSTEM_ITEM_NAME         "MULTIPLE"
+#define GPS_SYSTEM_ITEM_NAME              "GPS"
+#define GALILEO_SYSTEM_ITEM_NAME          "GALILEO"
+#define GLONASS_SYSTEM_ITEM_NAME          "GLONASS"
+#define BEIDOU_SYSTEM_ITEM_NAME           "BEIDOU"
+#define NAVIC_SYSTEM_ITEM_NAME            "NAVIC"
+#define QZSS_SYSTEM_ITEM_NAME             "QZSS"
 
 #pragma mark - Private data definition
-
-#define PRIVATE_DATA ((nmea_private_data *)device->private_data)
 
 typedef struct {
 	pthread_mutex_t mutex;

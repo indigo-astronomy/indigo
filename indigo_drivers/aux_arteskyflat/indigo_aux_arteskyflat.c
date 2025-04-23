@@ -16,7 +16,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// This file generated from indigo_aux_arteskyflat.driver (2025-04-23 16:09).
+// This file generated from indigo_aux_arteskyflat.driver (2025-04-23 16:17).
 
 // version history
 // 3.0 Peter Polakovic
@@ -42,22 +42,22 @@
 #define DRIVER_LABEL         "Artesky Flat Box USB"
 #define AUX_DEVICE_NAME      "Artesky Flat Box"
 
+#define PRIVATE_DATA         ((arteskyflat_private_data *)device->private_data)
+
 #pragma mark - Property definitions
 
 // AUX_LIGHT_SWITCH handles definition
 
-#define AUX_LIGHT_SWITCH_PROPERTY                (PRIVATE_DATA->aux_light_switch_property)
-#define AUX_LIGHT_SWITCH_ON_ITEM                 (AUX_LIGHT_SWITCH_PROPERTY->items + 0)
-#define AUX_LIGHT_SWITCH_OFF_ITEM                (AUX_LIGHT_SWITCH_PROPERTY->items + 1)
+#define AUX_LIGHT_SWITCH_PROPERTY      (PRIVATE_DATA->aux_light_switch_property)
+#define AUX_LIGHT_SWITCH_ON_ITEM       (AUX_LIGHT_SWITCH_PROPERTY->items + 0)
+#define AUX_LIGHT_SWITCH_OFF_ITEM      (AUX_LIGHT_SWITCH_PROPERTY->items + 1)
 
 // AUX_LIGHT_INTENSITY handles definition
 
-#define AUX_LIGHT_INTENSITY_PROPERTY             (PRIVATE_DATA->aux_light_intensity_property)
-#define AUX_LIGHT_INTENSITY_ITEM                 (AUX_LIGHT_INTENSITY_PROPERTY->items + 0)
+#define AUX_LIGHT_INTENSITY_PROPERTY   (PRIVATE_DATA->aux_light_intensity_property)
+#define AUX_LIGHT_INTENSITY_ITEM       (AUX_LIGHT_INTENSITY_PROPERTY->items + 0)
 
 #pragma mark - Private data definition
-
-#define PRIVATE_DATA ((arteskyflat_private_data *)device->private_data)
 
 typedef struct {
 	pthread_mutex_t mutex;

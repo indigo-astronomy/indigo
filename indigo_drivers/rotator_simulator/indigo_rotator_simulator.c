@@ -16,7 +16,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// This file generated from indigo_rotator_simulator.driver (2025-04-23 16:10).
+// This file generated from indigo_rotator_simulator.driver (2025-04-23 16:17).
 
 // version history
 // 3.0 Rumen G. Bogdanovski
@@ -42,6 +42,8 @@
 #define DRIVER_LABEL         "Field Rotator Simulator"
 #define ROTATOR_DEVICE_NAME  "Field Rotator Simulator"
 
+#define PRIVATE_DATA         ((simulator_private_data *)device->private_data)
+
 // Custom code below
 
 #define ROTATOR_SPEED        1
@@ -49,8 +51,6 @@
 // Custom code above
 
 #pragma mark - Private data definition
-
-#define PRIVATE_DATA ((simulator_private_data *)device->private_data)
 
 typedef struct {
 	pthread_mutex_t mutex;
