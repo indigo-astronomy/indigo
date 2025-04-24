@@ -1,9 +1,9 @@
-// Copyright (c) 2019 Rumen G. Bogdanovski
+// Copyright (c) 2019 - 2025 Rumen G.Bogdanovski
 // All rights reserved.
-//
+
 // You can use this software under the terms of 'INDIGO Astronomy
 // open-source license' (see LICENSE.md).
-//
+
 // THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
 // OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 // WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -16,18 +16,15 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// version history
-// 2.0 by by Rumen G. Bogdanovski <rumenastro@gmail.com>
+// This file generated from indigo_aux_flatmaster.driver
 
-/** INDIGO Pegasus Astro FlatMaster aux driver
- \file indigo_aux_flatmaster.h
- */
+// version history
+// 3.0 Rumen G.Bogdanovski
 
 #ifndef aux_flatmaster_h
 #define aux_flatmaster_h
 
 #include <indigo/indigo_driver.h>
-#include <indigo/indigo_aux_driver.h>
 
 #if defined(INDIGO_WINDOWS)
 #if defined(INDIGO_WINDOWS_DLL)
@@ -43,13 +40,10 @@
 extern "C" {
 #endif
 
-/** Register Pegasus Astro FlatMaster aux driver
- */
-
 INDIGO_EXTERN indigo_result indigo_aux_flatmaster(indigo_driver_action action, indigo_driver_info *info);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* aux_flatmaster_h */
+#endif

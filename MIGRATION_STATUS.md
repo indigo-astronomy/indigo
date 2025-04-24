@@ -7,6 +7,7 @@ ao_sx
 aux_arteskyflat
 aux_astromechanics
 aux_dsusb
+aux_flatmaster
 aux_upb3
 
 gps_simulator
@@ -32,7 +33,6 @@ agent_mount
 agent_scripting
 
 aux_fbc
-aux_flatmaster
 aux_flipflat
 aux_geoptikflat
 aux_mgbox

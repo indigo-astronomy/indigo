@@ -1,0 +1,136 @@
+// Copyright (c) 2019 - 2025 Rumen G.Bogdanovski
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+//Pegasus Astro FlatMaster aux driver definition
+
+driver flatmaster {
+	author = "Rumen G.Bogdanovski";
+	copyright = "Copyright (c) 2019 - 2025 Rumen G.Bogdanovski";
+	label = "PegasusAstro FlatMaster";
+	version = 8;
+	serial {
+		pattern {
+			vid = 0x0403;
+			pid = 0x6015;
+		}
+	}
+
+	define {
+		#define INTENSITY(val) ((int)floor((100 - (int)(val) - 0) * (220 - 20) / (100 - 0) + 20))
+	}
+
+	code {
+		static bool flatmaster_command(indigo_uni_handle *handle, char *command, char *response, int resp_len) {
+			if (indigo_uni_discard(handle) >= 0) {
+				if (indigo_uni_printf(handle, "%s\n", command) > 0) {
+					if (indigo_uni_read_section(handle, response, resp_len, "\n", "\r\n", INDIGO_DELAY(1)) > 0) {
+						return true;
+					}
+				}
+			}
+			return false;
+		}
+
+		static bool flatmaster_open(indigo_device *device) {
+			PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
+			if (PRIVATE_DATA->handle != NULL) {
+				char response[16];
+				if (flatmaster_command(PRIVATE_DATA->handle, "#", response, sizeof(response)) && !strcmp("OK_FM", response)) {
+					return true;
+				}
+				indigo_uni_close(&PRIVATE_DATA->handle);
+			}
+			return false;
+		}
+
+		static void flatmaster_close(indigo_device *device) {
+			char response[16];
+			flatmaster_command(PRIVATE_DATA->handle, "E:0", response, sizeof(response));
+			indigo_uni_close(&PRIVATE_DATA->handle);
+		}
+	}
+
+	aux {
+		name = "Pegasus FlatMaster";
+		additional_instances = true;
+		interface = INDIGO_INTERFACE_AUX_LIGHTBOX;
+		inherited CONNECTION {
+			change {
+				char command[16], response[16];
+				if (flatmaster_command(PRIVATE_DATA->handle, "V", response, sizeof(response))) {
+					snprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, INDIGO_VALUE_SIZE, "%s", response);
+					indigo_update_property(device, INFO_PROPERTY, NULL);
+				}
+				/* FlatMaster does not report intensity and ON/OFF state, so we set it to be consistent */
+				sprintf(command, "L:%d", INTENSITY(AUX_LIGHT_INTENSITY_ITEM->number.value));
+				if (flatmaster_command(PRIVATE_DATA->handle, command, response, sizeof(response))) {
+					AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
+				} else {
+					AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				sprintf(command, "E:%d", AUX_LIGHT_SWITCH_ON_ITEM->sw.value);
+				if (flatmaster_command(PRIVATE_DATA->handle, command, response, sizeof(response))) {
+					AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_OK_STATE;
+				} else {
+					AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+		}
+		switch AUX_LIGHT_SWITCH {
+			label = "Light (on/off)";
+			group = AUX_MAIN_GROUP;
+			persistent = true;
+			item AUX_LIGHT_SWITCH_ON {
+				label = "On";
+			}
+			item AUX_LIGHT_SWITCH_OFF {
+				label = "Off";
+				value = true;
+			}
+			change {
+				char command[16],	response[16];
+				sprintf(command, "E:%d", AUX_LIGHT_SWITCH_ON_ITEM->sw.value);
+				if (!flatmaster_command(PRIVATE_DATA->handle, command, response, sizeof(response))) {
+					AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+		}
+		number AUX_LIGHT_INTENSITY {
+			label = "Light intensity";
+			group = AUX_MAIN_GROUP;
+			persistent = true;
+			item AUX_LIGHT_INTENSITY {
+				label = "Intensity (%)";
+				format = "%g";
+				max = 100;
+				step = 1;
+				value = 50;
+			}
+			change {
+				char command[16],	response[16];
+				sprintf(command, "L:%d", INTENSITY(AUX_LIGHT_INTENSITY_ITEM->number.value));
+				if (!flatmaster_command(PRIVATE_DATA->handle, command, response, sizeof(response))) {
+					AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+		}
+		attach {
+			INFO_PROPERTY->count = 6;
+		}
+	}
+}

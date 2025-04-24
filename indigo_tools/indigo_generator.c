@@ -66,17 +66,12 @@ typedef struct device_type {
 
 typedef struct libusb_type {
 	bool hotplug;
-	char pid[128];
-	char vid[128];
+	char pid[128],vid[128];
 } libusb_type;
 
 typedef struct pattern_type {
 	struct pattern_type *next;
-	int pid;
-	int vid;
-	char product[64];
-	char vendor[64];
-	char serial[64];
+	char pid[16],vid[16], product[64], vendor[64], serial[64];
 	bool exact_match;
 } pattern_type;
 
@@ -820,10 +815,10 @@ bool parse_pattern_block(serial_type *serial) {
 	if (match(TOKEN_LBRACE, NULL)) {
 		debug(0, "pattern {");
 		while (!match(TOKEN_RBRACE, NULL)) {
-			if (parse_int_attribute("pid", &pattern->pid)) {
+			if (parse_expression_attribute("pid", pattern->pid, sizeof(pattern->pid))) {
 				continue;
 			}
-			if (parse_int_attribute("vid", &pattern->vid)) {
+			if (parse_expression_attribute("vid", pattern->vid, sizeof(pattern->vid))) {
 				continue;
 			}
 			if (parse_bool_attribute("exact_match", &pattern->exact_match)) {
@@ -994,7 +989,7 @@ void write_code_block(code_type *code, int indentation) {
 						pnt++;
 					}
 					printf("#define %-20.*s ", (int)(pnt - name), name);
-					while (*pnt && *pnt == ' ' && *pnt == '\t') {
+					while (*pnt && (*pnt == ' ' || *pnt == '\t')) {
 						pnt++;
 					}
 					c = *pnt;
@@ -1706,6 +1701,12 @@ void write_c_main_section(void) {
 				}
 				if (*pattern->serial) {
 					write_line("\t\t\tstrcpy(%s_patterns[%d].serial_string, \"%s\");", master_device->type, index, pattern->serial);
+				}
+				if (*pattern->vid) {
+					write_line("\t\t\t%s_patterns[%d].vendor_id = %s;", master_device->type, index, pattern->vid);
+				}
+				if (*pattern->pid) {
+					write_line("\t\t\t%s_patterns[%d].product_id = %s;", master_device->type, index, pattern->pid);
 				}
 				index++;
 			}
