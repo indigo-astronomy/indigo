@@ -1614,6 +1614,8 @@
 		5973456C256704CB001741D4 /* indigo_focuser_mypro2_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_mypro2_main.c; sourceTree = "<group>"; };
 		5973456D256704CB001741D4 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		5973456E256704CB001741D4 /* indigo_focuser_mypro2.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_mypro2.h; sourceTree = "<group>"; };
+		597846DA2DBA963D00B8D5B1 /* indigo_aux_fbc.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_aux_fbc.driver; sourceTree = "<group>"; };
+		597846DB2DBAA8B500B8D5B1 /* fbc_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = fbc_simulator.ino; sourceTree = "<group>"; };
 		59790B2C29B2796300F73B1D /* indigo_service_discovery.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_service_discovery.h; sourceTree = "<group>"; };
 		59790B2F29B2798A00F73B1D /* indigo_service_discovery.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_service_discovery.c; sourceTree = "<group>"; };
 		5979C85F254710B0005395BE /* indigo_tiff.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_tiff.h; sourceTree = "<group>"; };
@@ -6835,6 +6837,14 @@
 				5973456C256704CB001741D4 /* indigo_focuser_mypro2_main.c */,
 			);
 			path = focuser_mypro2;
+			sourceTree = "<group>";
+		};
+		597846DC2DBAA8B500B8D5B1 /* fbc_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				597846DB2DBAA8B500B8D5B1 /* fbc_simulator.ino */,
+			);
+			path = fbc_simulator;
 			sourceTree = "<group>";
 		};
 		5979C87F254A9EED005395BE /* wheel_qhy */ = {
@@ -14034,7 +14044,9 @@
 				9D9691D523687AD800E0CACE /* indigo_aux_fbc.h */,
 				9D9691D923687AD800E0CACE /* indigo_aux_fbc.c */,
 				9D9691D623687AD800E0CACE /* indigo_aux_fbc_main.c */,
+				597846DA2DBA963D00B8D5B1 /* indigo_aux_fbc.driver */,
 				9D9691D723687AD800E0CACE /* lacertafbc.rules */,
+				597846DC2DBAA8B500B8D5B1 /* fbc_simulator */,
 			);
 			path = aux_fbc;
 			sourceTree = "<group>";
