@@ -7,8 +7,9 @@ ao_sx
 aux_arteskyflat
 aux_astromechanics
 aux_dsusb
-aux_flatmaster
 aux_fbc - needs retest with physical hw
+aux_flatmaster
+aux_flipflat
 aux_upb3
 
 gps_simulator
@@ -33,7 +34,6 @@ agent_imager
 agent_mount
 agent_scripting
 
-aux_flipflat
 aux_geoptikflat
 aux_mgbox
 aux_ppb

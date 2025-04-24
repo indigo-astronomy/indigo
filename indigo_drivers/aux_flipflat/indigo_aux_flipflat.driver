@@ -1,0 +1,217 @@
+// Copyright (c) 2019-2025 CloudMakers, s. r. o.
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+//  Alnitak Astrosystems FlipFlat aux driver definition
+
+driver flipflat {
+	author = "Peter Polakovic";
+	copyright = "Copyright (c) 2019-2025 CloudMakers, s. r. o.";
+	label = "Alnitak Astrosystems FlipFlat";
+	version = 8;
+	serial;
+	data {
+		int type;
+	}
+
+	// Shared code
+	
+	code {
+		static bool flipflat_command(indigo_uni_handle *handle, char *command, char *response) {
+			if (indigo_uni_discard(handle) >= 0) {
+				if (indigo_uni_printf(handle, "%s\r", command) > 0) {
+					if (indigo_uni_read_section(handle, response, 16, "\n", "\n", INDIGO_DELAY(1)) > 0) {
+						return true;
+					}
+				}
+			}
+			return false;
+		}
+
+		static bool flipflat_open(indigo_device *device) {
+			PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
+			if (PRIVATE_DATA->handle != NULL) {
+				char response[16];
+				indigo_uni_set_dtr(PRIVATE_DATA->handle, true);
+				indigo_usleep(INDIGO_DELAY(0.1));
+				indigo_uni_set_rts(PRIVATE_DATA->handle, false);
+				indigo_usleep(INDIGO_DELAY(2));
+				if (flipflat_command(PRIVATE_DATA->handle, ">P000", response) && *response == '*') {
+					if (sscanf(response, "*P%02d000", &PRIVATE_DATA->type) != 1) {
+						PRIVATE_DATA->type = 0;
+					}
+					switch (PRIVATE_DATA->type) {
+						case 10:
+							AUX_LIGHT_SWITCH_PROPERTY->hidden = AUX_LIGHT_INTENSITY_PROPERTY->hidden = false;
+							AUX_COVER_PROPERTY->hidden = true;
+							strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Flat-Man_XL");
+							break;
+						case 15:
+							AUX_LIGHT_SWITCH_PROPERTY->hidden = AUX_LIGHT_INTENSITY_PROPERTY->hidden = false;
+							AUX_COVER_PROPERTY->hidden = true;
+							strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Flat-Man_L");
+							break;
+						case 19:
+							AUX_LIGHT_SWITCH_PROPERTY->hidden = AUX_LIGHT_INTENSITY_PROPERTY->hidden = false;
+							AUX_COVER_PROPERTY->hidden = true;
+							strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Flat-Man");
+							break;
+						case 98:
+							AUX_LIGHT_SWITCH_PROPERTY->hidden = AUX_LIGHT_INTENSITY_PROPERTY->hidden = true;
+							AUX_COVER_PROPERTY->hidden = false;
+							strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Flip-Mask/Remote Dust Cover");
+							break;
+						case 99:
+							AUX_LIGHT_SWITCH_PROPERTY->hidden = AUX_LIGHT_INTENSITY_PROPERTY->hidden = false;
+							AUX_COVER_PROPERTY->hidden = false;
+							strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Flip-Flap");
+							break;
+						default:
+							AUX_LIGHT_SWITCH_PROPERTY->hidden = AUX_LIGHT_INTENSITY_PROPERTY->hidden = false;
+							AUX_COVER_PROPERTY->hidden = false;
+							strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown device");
+							break;
+					}
+					indigo_update_property(device, INFO_PROPERTY, NULL);
+					return true;
+				} else {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed");
+					indigo_uni_close(&PRIVATE_DATA->handle);
+				}
+			}
+			return false;
+		}
+
+		static void flipflat_close(indigo_device *device) {
+			indigo_uni_close(&PRIVATE_DATA->handle);
+		}
+	}
+
+	// AUX definition
+	
+	aux {
+		name = "FlipFlat";
+		additional_instances = true;
+		interface = INDIGO_INTERFACE_AUX_LIGHTBOX;
+		inherited CONNECTION {
+			change {
+				char response[16];
+				if (!AUX_LIGHT_SWITCH_PROPERTY->hidden) {
+					AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
+					AUX_COVER_PROPERTY->state = INDIGO_ALERT_STATE;
+					if (flipflat_command(PRIVATE_DATA->handle, ">S000", response) && *response == '*') {
+						int type, q, r, s;
+						if (sscanf(response, "*S%02d%1d%1d%1d", &type, &q, &r, &s) == 4) {
+							if (s == 1 || s == 2) {
+								AUX_COVER_PROPERTY->state = INDIGO_OK_STATE;
+								indigo_set_switch(AUX_COVER_PROPERTY, s == 1 ? AUX_COVER_CLOSE_ITEM : AUX_COVER_OPEN_ITEM, true);
+							}
+							AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_OK_STATE;
+							indigo_set_switch(AUX_LIGHT_SWITCH_PROPERTY, r == 1 ? AUX_LIGHT_SWITCH_ON_ITEM : AUX_LIGHT_SWITCH_OFF_ITEM, true);
+						}
+					}
+				}
+				if (!AUX_LIGHT_INTENSITY_PROPERTY->hidden) {
+					AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
+					if (flipflat_command(PRIVATE_DATA->handle, ">J000", response) && *response == '*') {
+						int type, value;
+						if (sscanf(response, "*J%02d%3d", &type, &value) == 2) {
+							AUX_LIGHT_INTENSITY_ITEM->number.value = AUX_LIGHT_INTENSITY_ITEM->number.target = value;
+							AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
+						}
+					}
+				}
+
+			}
+		}
+		switch AUX_COVER {
+			label = "Cover";
+			group = AUX_MAIN_GROUP;
+			item AUX_COVER_OPEN {
+				label = "Open";
+			}
+			item AUX_COVER_CLOSE {
+				label = "Close";
+				value = true;
+			}
+			change {
+				char command[16],	response[16];
+				strcpy(command, AUX_COVER_OPEN_ITEM->sw.value ? ">O000" : ">C000");
+				if (flipflat_command(PRIVATE_DATA->handle, command, response) && *response == '*') {
+					AUX_COVER_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_update_property(device, AUX_COVER_PROPERTY, NULL);
+					AUX_COVER_PROPERTY->state = INDIGO_ALERT_STATE;
+					for (int i = 0; i < 10; i++) {
+						indigo_sleep(1);
+						if (flipflat_command(PRIVATE_DATA->handle, ">S000", response) && *response == '*') {
+							int type, q, r, s;
+							if (sscanf(response, "*S%02d%1d%1d%1d", &type, &q, &r, &s) == 4) {
+								if ((AUX_COVER_OPEN_ITEM->sw.value && s == 2) || (AUX_COVER_CLOSE_ITEM->sw.value && s == 1)) {
+									AUX_COVER_PROPERTY->state = INDIGO_OK_STATE;
+									break;
+								}
+							}
+						}
+					}
+				} else {
+					AUX_COVER_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+		}
+		switch AUX_LIGHT_SWITCH {
+			label = "Light (on/off)";
+			group = AUX_MAIN_GROUP;
+			persistent = true;
+			item AUX_LIGHT_SWITCH_ON {
+				label = "On";
+			}
+			item AUX_LIGHT_SWITCH_OFF {
+				label = "Off";
+				value = true;
+			}
+			change {
+				char command[16],	response[16];
+				strcpy(command, AUX_LIGHT_SWITCH_ON_ITEM->sw.value ? ">L000" : ">D000");
+				if (!flipflat_command(PRIVATE_DATA->handle, command, response) || *response != '*') {
+					AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+		}
+		number AUX_LIGHT_INTENSITY {
+			label = "Light intensity";
+			group = AUX_MAIN_GROUP;
+			persistent = true;
+			item AUX_LIGHT_INTENSITY {
+				label = "Intensity (%)";
+				format = "%g";
+				max = 100;
+				step = 1;
+				value = 50;
+			}
+			change {
+				char command[16],	response[16];
+				sprintf(command, ">B%03d", (int)(AUX_LIGHT_INTENSITY_ITEM->number.value));
+				if (!flipflat_command(PRIVATE_DATA->handle, command, response) || *response != '*') {
+					AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+		}
+		attach {
+			INFO_PROPERTY->count = 5;
+		}
+	}
+}

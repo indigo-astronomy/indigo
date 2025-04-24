@@ -36,7 +36,9 @@ driver fbc {
 	define {
 		#define INTENSITY(val) ((int)floor((100 - (int)(val) - 0) * (220 - 20) / (100 - 0) + 20))
 	}
-
+	
+	// Shared code
+	
 	code {
 		static bool fbc_command(indigo_device *device, char *command, char *response, int count) {
 			if (response != NULL) {
@@ -92,6 +94,8 @@ driver fbc {
 		}
 	}
 
+	// AUX definition
+	
 	aux {
 		name = "Lacerta FBC";
 		additional_instances = true;
