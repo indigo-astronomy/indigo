@@ -23,20 +23,13 @@ driver simulator {
 	copyright = "Copyright (c) 2025 Rumen G. Bogdanovski";
 	label = "Field Rotator Simulator";
 	version = 3;
-	define {
-		#define ROTATOR_SPEED 1
-	}
+	ROTATOR_SPEED = 1;
 	data {
 		double target_position, current_position;
 	}
-	code {
-		static bool simulator_open(indigo_device *device) {
-			return true;
-		}
-		
-		static void simulator_close(indigo_device *device) {
-		}
-	}
+	
+	// ROTATOR definition
+	
 	rotator {
 		name = "Field Rotator Simulator";
 		additional_instances = true;
@@ -92,10 +85,6 @@ driver simulator {
 					indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 				}
 			}
-		}
-		attach {
-			DEVICE_PORT_PROPERTY->hidden = true;
-			DEVICE_PORTS_PROPERTY->hidden = true;
 		}
 	}
 }

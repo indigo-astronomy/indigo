@@ -52,6 +52,7 @@
 
 #define PRIVATE_DATA         ((dsusb_private_data *)device->private_data)
 
+
 #pragma mark - Property definitions
 
 // X_CONFIG handles definition

@@ -85,10 +85,16 @@ typedef struct serial_type {
 	pattern_type *patterns;
 } serial_type;
 
+typedef struct definition_type {
+	struct definition_type *next;
+	char name[64], value[128];
+} definition_type;
+
 typedef struct driver_type {
 	char name[64], label[256], author[256], copyright[256];
 	int version;
 	bool virtual;
+	definition_type *definions;
 	device_type *devices;
 	serial_type *serial;
 	libusb_type *libusb;
@@ -930,6 +936,14 @@ bool parse_driver_block(void) {
 		if (parse_code_block("shutdown", &driver->shutdown)) {
 			continue;
 		}
+		if (last_token == TOKEN_IDENTIFIER) {
+			definition_type *definition = allocate(sizeof(definition_type));
+			copy(definition->name, sizeof(definition->name));
+			if (parse_expression_attribute(definition->name, definition->value, sizeof(definition->value))) {
+				append((void **)&driver->definions, definition);
+				continue;
+			}
+		}
 		report_unexpected_token_error();
 		return false;
 	}
@@ -1134,6 +1148,10 @@ void write_c_define_section(void) {
 	}
 	write_line("");
 	write_line("#define %-20s ((%s_private_data *)device->private_data)", "PRIVATE_DATA", driver->name);
+	write_line("");
+	for (definition_type *definiton = driver->definions; definiton; definiton = definiton->next) {
+		write_line("#define %-20s %s", definiton->name, definiton->value);
+	}
 	write_c_code_blocks(driver->define, 0, true, true);
 }
 
@@ -1208,12 +1226,22 @@ void write_c_private_data_section(void) {
 void write_c_low_level_code_section(void) {
 	write_line("#pragma mark - Low level code");
 	write_line("");
-	write_c_code_blocks(driver->code, 0, false, false);
-	for (device_type *device = driver->devices; device; device = device->next) {
-		write_c_code_blocks(device->code, 0, false, false);
-		for (property_type *property = device->properties; property; property = property->next) {
-			write_c_code_blocks(property->code, 0, false, false);
+	if (driver->code) {
+		write_c_code_blocks(driver->code, 0, false, false);
+		for (device_type *device = driver->devices; device; device = device->next) {
+			write_c_code_blocks(device->code, 0, false, false);
+			for (property_type *property = device->properties; property; property = property->next) {
+				write_c_code_blocks(property->code, 0, false, false);
+			}
 		}
+	} else if (driver->virtual) {
+		write_line("static bool %s_open(indigo_device *device) {", driver->name);
+		write_line("\treturn true;");
+		write_line("}");
+		write_line("");
+		write_line("static void %s_close(indigo_device *device) {", driver->name);
+		write_line("}");
+		write_line("");
 	}
 }
 

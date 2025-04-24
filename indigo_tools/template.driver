@@ -23,6 +23,7 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_aux_ prefix
 	copyright = "Copyright (c) 2025 XXXXXX"; // replace XXXXX with copyright holder (mandatory string literal)
 	label = "XXXXX"; // replace XXXXX with descriptive driver label (mandatory string literal)
 	version = XXXXX; // replace XXXXX with driver minor version, major version is always set to 3.0 (mandatory number literal)
+	XXXXX = YYYYY; // replace XXXXX with name and YYYYY with value of any constant (identifier and C expression literal)
 	include {
 		// optional C code block
 		// replace content of this section with common preprocessor include directives

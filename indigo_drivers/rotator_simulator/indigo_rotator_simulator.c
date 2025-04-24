@@ -44,11 +44,7 @@
 
 #define PRIVATE_DATA         ((simulator_private_data *)device->private_data)
 
-// Custom code below
-
 #define ROTATOR_SPEED        1
-
-// Custom code above
 
 #pragma mark - Private data definition
 
@@ -66,16 +62,12 @@ typedef struct {
 
 #pragma mark - Low level code
 
-// Custom code below
-
 static bool simulator_open(indigo_device *device) {
 	return true;
 }
 
 static void simulator_close(indigo_device *device) {
 }
-
-// Custom code above
 
 #pragma mark - High level code (rotator)
 
@@ -283,6 +275,8 @@ static indigo_device rotator_template = INDIGO_DEVICE_INITIALIZER(ROTATOR_DEVICE
 
 indigo_result indigo_rotator_simulator(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
+	static simulator_private_data *private_data = NULL;
+	static indigo_device *rotator = NULL;
 
 	SET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, false, last_action);
 
@@ -293,9 +287,24 @@ indigo_result indigo_rotator_simulator(indigo_driver_action action, indigo_drive
 	switch (action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
+			private_data = indigo_safe_malloc(sizeof(simulator_private_data));
+			rotator = indigo_safe_malloc_copy(sizeof(indigo_device), &rotator_template);
+			rotator->private_data = private_data;
+			indigo_attach_device(rotator);
 			break;
 
 		case INDIGO_DRIVER_SHUTDOWN:
+			VERIFY_NOT_CONNECTED(rotator);
+			last_action = action;
+			if (rotator != NULL) {
+				indigo_detach_device(rotator);
+				free(rotator);
+				rotator = NULL;
+			}
+			if (private_data != NULL) {
+				free(private_data);
+				private_data = NULL;
+			}
 			break;
 
 		case INDIGO_DRIVER_INFO:

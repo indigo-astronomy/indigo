@@ -44,9 +44,10 @@
 
 #define PRIVATE_DATA         ((nmea_private_data *)device->private_data)
 
+
 // Custom code below
 
-#define MAX_NB_OF_SYSTEMS    26
+#define MAX_NB_OF_SYSTEMS     26
 
 // Custom code above
 

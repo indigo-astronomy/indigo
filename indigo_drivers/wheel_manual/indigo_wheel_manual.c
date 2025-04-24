@@ -44,11 +44,7 @@
 
 #define PRIVATE_DATA         ((manual_private_data *)device->private_data)
 
-// Custom code below
-
-#define FILTER_COUNT          8
-
-// Custom code above
+#define FILTER_COUNT         8
 
 #pragma mark - Private data definition
 
@@ -58,16 +54,12 @@ typedef struct {
 
 #pragma mark - Low level code
 
-// Custom code below
-
 static bool manual_open(indigo_device *device) {
 	return true;
 }
 
 static void manual_close(indigo_device *device) {
 }
-
-// Custom code above
 
 #pragma mark - High level code (wheel)
 

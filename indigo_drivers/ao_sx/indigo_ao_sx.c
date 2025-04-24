@@ -46,6 +46,7 @@
 
 #define PRIVATE_DATA         ((sx_private_data *)device->private_data)
 
+
 #pragma mark - Private data definition
 
 typedef struct {
@@ -240,6 +241,7 @@ static indigo_result ao_attach(indigo_device *device) {
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
+
 
 		// Custom code below
 

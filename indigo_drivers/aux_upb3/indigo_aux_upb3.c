@@ -46,9 +46,10 @@
 
 #define PRIVATE_DATA         ((upb3_private_data *)device->private_data)
 
+
 // Custom code below
 
-#define POWERBOX_GROUP       "Powerbox"
+#define POWERBOX_GROUP        "Powerbox"
 
 // Custom code above
 

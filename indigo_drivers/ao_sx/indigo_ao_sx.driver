@@ -24,6 +24,9 @@ driver sx {
 	label = "StarlightXpress AO";
 	version = 11;
 	serial;
+	
+	// Shared code
+	
 	code {
 		static bool sx_command(indigo_device *device, char *command, char *response, int count) {
 			if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
@@ -58,6 +61,9 @@ driver sx {
 			}
 		}
 	}
+	
+	// AO definition
+	
 	ao {
 		name = "SX AO";
 		additional_instances = true;
@@ -132,6 +138,9 @@ driver sx {
 			AO_GUIDE_NORTH_ITEM->number.max = AO_GUIDE_SOUTH_ITEM->number.max = AO_GUIDE_EAST_ITEM->number.max = AO_GUIDE_WEST_ITEM->number.max = 50;
 		}
 	}
+	
+	// GUIDER definition
+	
 	guider {
 		name = "SX AO (guider)";
 		inherited CONNECTION;

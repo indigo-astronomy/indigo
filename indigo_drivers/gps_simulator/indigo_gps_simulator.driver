@@ -23,39 +23,30 @@ driver simulator {
 	copyright = "Copyright (c) 2025 Rumen G. Bogdanovski";
 	label = "GPS Simulator";
 	version = 9;
-	define {
-		#define SIM_LONGITUDE      22.675
-		#define SIM_LATITUDE       43.625
-		#define SIM_ELEVATION      650
-				
-		#define SIM_SV_IN_USE      3
-		#define SIM_SV_IN_VIEW     7
-		#define SIM_PDOP           2
-		#define SIM_HDOP           3
-		#define SIM_VDOP           3
-				
-		#define REFRESH_SECONDS    (1.0)
-		#define TICKS_TO_2D_FIX    10
-		#define TICKS_TO_3D_FIX    20
-	}
+	SIM_LONGITUDE = 22.675;
+	SIM_LATITUDE = 43.625;
+	SIM_ELEVATION = 650;
+	SIM_SV_IN_USE = 3;
+	SIM_SV_IN_VIEW = 7;
+	SIM_PDOP = 2;
+	SIM_HDOP = 3;
+	SIM_VDOP = 3;
+	REFRESH_SECONDS = 1.0;
+	TICKS_TO_2D_FIX = 10;
+	TICKS_TO_3D_FIX = 20;
 	data {
 		int timer_ticks;
 	}
-	code {
-		static bool simulator_open(indigo_device *device) {
-			srand((unsigned)time(NULL));
-			PRIVATE_DATA->timer_ticks = 0;
-			return true;
-		}
-		
-		static void simulator_close(indigo_device *device) {
-		}
-	}
+	
+	// GPS definition
+	
 	gps {
 		name = "GPS Simulator";
 		additional_instances = true;
 		inherited CONNECTION {
 			change {
+				srand((unsigned)time(NULL));
+				PRIVATE_DATA->timer_ticks = 0;
 				GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
 				GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
 				GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
@@ -70,7 +61,6 @@ driver simulator {
 				GPS_GEOGRAPHIC_COORDINATES_ACCURACY_ITEM->number.value = (int)(5 + 0.5 + (double)(rand()) / RAND_MAX);
 				time_t ttime = time(NULL);
 				indigo_timetoisogm(ttime, GPS_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
-				/* Simulate SVs used / visible and DOP values */
 				GPS_ADVANCED_STATUS_SVS_IN_USE_ITEM->number.value = (int)(SIM_SV_IN_USE + 0.5 + (double)(rand()) / RAND_MAX);
 				GPS_ADVANCED_STATUS_SVS_IN_VIEW_ITEM->number.value = (int)(SIM_SV_IN_VIEW + 0.5 + (double)(rand()) / RAND_MAX);
 				GPS_ADVANCED_STATUS_PDOP_ITEM->number.value = (SIM_PDOP + (double)(rand()) / RAND_MAX);
@@ -107,7 +97,6 @@ driver simulator {
 				time_t ttime = 0;
 				GPS_UTC_TIME_PROPERTY->state = INDIGO_BUSY_STATE;
 				indigo_timetoisogm(ttime, GPS_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
-				/* Simulate 0 or 1 SVs used / visible if there is no fix */
 				GPS_ADVANCED_STATUS_SVS_IN_USE_ITEM->number.value = (int)(0.5 + (double)(rand())/RAND_MAX);
 				GPS_ADVANCED_STATUS_SVS_IN_VIEW_ITEM->number.value = (int)(0.5 + (double)(rand())/RAND_MAX);
 				GPS_ADVANCED_STATUS_PDOP_ITEM->number.value = 0;

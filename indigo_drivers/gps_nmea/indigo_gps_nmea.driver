@@ -23,13 +23,22 @@ driver nmea {
 	copyright = "Copyright (c) 2017-2025 Rumen G. Bogdanovski";
 	label = "Generic NMEA 0183 GPS";
 	version = 17;
-	define {
-		#define MAX_NB_OF_SYSTEMS 26
+	MAX_NB_OF_SYSTEMS = 26;
+	serial {
+		pattern {
+			product = "GPS";
+		}
+		pattern {
+			product = "GNSS";
+		}
 	}
 	data {
 		int satellites_in_view[MAX_NB_OF_SYSTEMS];
 		char selected_system;
 	}
+	
+	// Shared code
+	
 	code {
 		static bool nmea_open(indigo_device *device) {
 			char *name = DEVICE_PORT_ITEM->text.value;
@@ -116,6 +125,9 @@ driver nmea {
 		
 		static void gps_connection_handler(indigo_device *device);
 	}
+	
+	// GPS definition
+	
 	gps {
 		name = "NMEA GPS";
 		additional_instances = true;
@@ -343,14 +355,6 @@ driver nmea {
 			GPS_GEOGRAPHIC_COORDINATES_PROPERTY->count = 3;
 			GPS_UTC_TIME_PROPERTY->hidden = false;
 			GPS_UTC_TIME_PROPERTY->count = 1;
-		}
-	}
-	serial {
-		pattern {
-			product = "GPS";
-		}
-		pattern {
-			product = "GNSS";
 		}
 	}
 }

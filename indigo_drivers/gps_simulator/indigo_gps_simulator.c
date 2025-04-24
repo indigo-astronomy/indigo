@@ -44,23 +44,17 @@
 
 #define PRIVATE_DATA         ((simulator_private_data *)device->private_data)
 
-// Custom code below
-
 #define SIM_LONGITUDE        22.675
 #define SIM_LATITUDE         43.625
 #define SIM_ELEVATION        650
-		
 #define SIM_SV_IN_USE        3
 #define SIM_SV_IN_VIEW       7
 #define SIM_PDOP             2
 #define SIM_HDOP             3
 #define SIM_VDOP             3
-		
-#define REFRESH_SECONDS      (1.0)
+#define REFRESH_SECONDS      1.0
 #define TICKS_TO_2D_FIX      10
 #define TICKS_TO_3D_FIX      20
-
-// Custom code above
 
 #pragma mark - Private data definition
 
@@ -78,18 +72,12 @@ typedef struct {
 
 #pragma mark - Low level code
 
-// Custom code below
-
 static bool simulator_open(indigo_device *device) {
-	srand((unsigned)time(NULL));
-	PRIVATE_DATA->timer_ticks = 0;
 	return true;
 }
 
 static void simulator_close(indigo_device *device) {
 }
-
-// Custom code above
 
 #pragma mark - High level code (gps)
 
@@ -110,7 +98,6 @@ static void gps_timer_callback(indigo_device *device) {
 		GPS_GEOGRAPHIC_COORDINATES_ACCURACY_ITEM->number.value = (int)(5 + 0.5 + (double)(rand()) / RAND_MAX);
 		time_t ttime = time(NULL);
 		indigo_timetoisogm(ttime, GPS_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
-		/* Simulate SVs used / visible and DOP values */
 		GPS_ADVANCED_STATUS_SVS_IN_USE_ITEM->number.value = (int)(SIM_SV_IN_USE + 0.5 + (double)(rand()) / RAND_MAX);
 		GPS_ADVANCED_STATUS_SVS_IN_VIEW_ITEM->number.value = (int)(SIM_SV_IN_VIEW + 0.5 + (double)(rand()) / RAND_MAX);
 		GPS_ADVANCED_STATUS_PDOP_ITEM->number.value = (SIM_PDOP + (double)(rand()) / RAND_MAX);
@@ -185,6 +172,8 @@ static void gps_connection_handler(indigo_device *device) {
 
 			// Custom code below
 
+			srand((unsigned)time(NULL));
+			PRIVATE_DATA->timer_ticks = 0;
 			GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
 			GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
 			GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
@@ -287,6 +276,8 @@ static indigo_device gps_template = INDIGO_DEVICE_INITIALIZER(GPS_DEVICE_NAME, g
 
 indigo_result indigo_gps_simulator(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
+	static simulator_private_data *private_data = NULL;
+	static indigo_device *gps = NULL;
 
 	SET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, false, last_action);
 
@@ -297,9 +288,24 @@ indigo_result indigo_gps_simulator(indigo_driver_action action, indigo_driver_in
 	switch (action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
+			private_data = indigo_safe_malloc(sizeof(simulator_private_data));
+			gps = indigo_safe_malloc_copy(sizeof(indigo_device), &gps_template);
+			gps->private_data = private_data;
+			indigo_attach_device(gps);
 			break;
 
 		case INDIGO_DRIVER_SHUTDOWN:
+			VERIFY_NOT_CONNECTED(gps);
+			last_action = action;
+			if (gps != NULL) {
+				indigo_detach_device(gps);
+				free(gps);
+				gps = NULL;
+			}
+			if (private_data != NULL) {
+				free(private_data);
+				private_data = NULL;
+			}
 			break;
 
 		case INDIGO_DRIVER_INFO:

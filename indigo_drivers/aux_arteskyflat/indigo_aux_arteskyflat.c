@@ -44,6 +44,7 @@
 
 #define PRIVATE_DATA         ((arteskyflat_private_data *)device->private_data)
 
+
 #pragma mark - Property definitions
 
 // AUX_LIGHT_SWITCH handles definition

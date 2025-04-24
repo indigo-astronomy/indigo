@@ -23,17 +23,10 @@ driver manual {
 	copyright = "Copyright (c) 2020 - 2025 Rumen G.Bogdanovski";
 	label = "Manual filter wheel";
 	version = 4;
-	define {
-		#define FILTER_COUNT 8
-	}
-	code {
-		static bool manual_open(indigo_device *device) {
-			return true;
-		}
-
-		static void manual_close(indigo_device *device) {
-		}
-	}
+	FILTER_COUNT = 8;
+	
+	// WHEEL definition
+	
 	wheel {
 		inherited CONNECTION;
 		inherited WHEEL_SLOT {

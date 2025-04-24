@@ -23,6 +23,10 @@ driver arteskyflat {
 	copyright = "Copyright (c) 2019-2025 CloudMakers, s. r. o.";
 	label = "Artesky Flat Box USB";
 	version = 7;
+	serial;
+	
+	// Shared code
+	
 	code {
 		static bool arteskyflat_command(indigo_device *device, char *command, char *response) {
 			if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
@@ -46,6 +50,9 @@ driver arteskyflat {
 			}
 		}
 	}
+	
+	// AUX definition
+	
 	aux {
 		name = "Artesky Flat Box";
 		additional_instances = true;
@@ -91,8 +98,6 @@ driver arteskyflat {
 				}
 			}
 		}
-	}
-	serial {
 	}
 }
 

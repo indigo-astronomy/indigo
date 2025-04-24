@@ -44,6 +44,7 @@
 
 #define PRIVATE_DATA         ((astromechanics_private_data *)device->private_data)
 
+
 #pragma mark - Property definitions
 
 // AUX_WEATHER handles definition

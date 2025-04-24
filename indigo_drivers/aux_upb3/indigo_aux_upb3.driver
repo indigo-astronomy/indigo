@@ -23,12 +23,18 @@ driver upb3 {
 	copyright = "Copyright (c) 2025 CloudMakers, s. r. o.";
 	label = "PegasusAstro Ultimate Powerbox v3";
 	version = 3;
-	define {
-		#define POWERBOX_GROUP "Powerbox"
+	POWERBOX_GROUP = "Powerbox";
+	serial {
+		pattern {
+			product = "UPBv3";
+		}
 	}
 	data {
 		int version;
 	}
+	
+	// Shared code
+	
 	code {
 		static bool upb3_command(indigo_device *device, char *command, char *response, int max) {
 			if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
@@ -83,6 +89,9 @@ driver upb3 {
 			}
 		}
 	}
+	
+	// AUX definition
+	
 	aux {
 		name = "Ultimate Powerbox 3";
 		interface = INDIGO_INTERFACE_AUX_POWERBOX | INDIGO_INTERFACE_AUX_WEATHER;
@@ -695,6 +704,9 @@ driver upb3 {
 			strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		}
 	}
+	
+	// FOCUSER definition
+	
 	focuser {
 		name = "Ultimate Powerbox 3 (focuser)";
 		additional_instances = true;
@@ -864,11 +876,6 @@ driver upb3 {
 			FOCUSER_POSITION_ITEM->number.min = 0;
 			FOCUSER_POSITION_ITEM->number.max = 9999999;
 			FOCUSER_POSITION_ITEM->number.step = 1;
-		}
-	}
-	serial {
-		pattern {
-			product = "UPBv3";
 		}
 	}
 }

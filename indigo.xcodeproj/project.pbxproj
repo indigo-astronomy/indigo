@@ -6705,11 +6705,11 @@
 		59689A9E245DE3E100F950CE /* wheel_manual */ = {
 			isa = PBXGroup;
 			children = (
-				9D20345F2DBA4BEE00AB28A3 /* indigo_wheel_manual.driver */,
 				59689AA1245DE3E100F950CE /* README.md */,
 				59689A9F245DE3E100F950CE /* indigo_wheel_manual.h */,
 				59689AA2245DE3E100F950CE /* indigo_wheel_manual.c */,
 				59689AA0245DE3E100F950CE /* indigo_wheel_manual_main.c */,
+				9D20345F2DBA4BEE00AB28A3 /* indigo_wheel_manual.driver */,
 			);
 			path = wheel_manual;
 			sourceTree = "<group>";

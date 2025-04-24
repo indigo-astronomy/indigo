@@ -32,6 +32,9 @@ driver dsusb {
 	data {
 		libdsusb_device_context *device_context;
 	}
+	
+	// Shared code
+	
 	code {
 		static bool dsusb_match(libusb_device *dev, const char **name) {
 			return libdsusb_shutter(dev, name);
@@ -51,6 +54,9 @@ driver dsusb {
 		}
 
 	}
+	
+	// AUX definition
+	
 	aux {
 		name = "%s";
 		interface = INDIGO_INTERFACE_AUX_SHUTTER;
@@ -122,6 +128,9 @@ driver dsusb {
 			}
 		}
 	}
+	
+	// Main code
+	
 	init {
 		libdsusb_debug = &dsusb_debug;
 	}
