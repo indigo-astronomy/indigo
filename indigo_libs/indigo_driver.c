@@ -399,7 +399,6 @@ indigo_result indigo_device_attach(indigo_device *device, const char* driver_nam
 		}
 		DEVICE_PORTS_PROPERTY->hidden = true;
 		indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items, DEVICE_PORTS_REFRESH_ITEM_NAME, "Refresh", false);
-		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
 		// -------------------------------------------------------------------------------- DEVICE_BAUDRATE
 		DEVICE_BAUDRATE_PROPERTY = indigo_init_text_property(NULL, device->name, DEVICE_BAUDRATE_PROPERTY_NAME, MAIN_GROUP, "Serial port baud rate", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (DEVICE_BAUDRATE_PROPERTY == NULL) {

@@ -24,7 +24,6 @@ driver dsusb {
 	label = "Shoestring DSUSB shutter release";
 	version = 11;
 	libusb {
-		hotplug = true;
 		vid = DSUSB_VID;
 	}
 	include {

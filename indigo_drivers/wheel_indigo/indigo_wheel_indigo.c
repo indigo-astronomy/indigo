@@ -145,6 +145,7 @@ static indigo_result wheel_attach(indigo_device *device) {
 		WHEEL_SLOT_OFFSET_PROPERTY->count = 7;
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
+		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
 		INFO_PROPERTY->count = 6;
 		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Indigo Filter Wheel");
 		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "undefined");

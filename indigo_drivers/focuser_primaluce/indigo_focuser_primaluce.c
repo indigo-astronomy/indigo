@@ -574,6 +574,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
+		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
 		FOCUSER_POSITION_ITEM->number.min = 0;
 		FOCUSER_POSITION_ITEM->number.max = 1000000;
 		strcpy(FOCUSER_POSITION_ITEM->number.format, "%.0f");

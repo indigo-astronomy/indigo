@@ -328,6 +328,7 @@ static indigo_result aux_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
+		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
 #ifdef INDIGO_LINUX
 		strcpy(DEVICE_PORT_ITEM->text.value, "/dev/ttyACM0");
 #endif

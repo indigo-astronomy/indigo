@@ -58,11 +58,11 @@ typedef struct {
 
 // Custom code below
 
-static bool sx_command(indigo_device *device, char *command, char *response, int max) {
+static bool sx_command(indigo_device *device, char *command, char *response, int count) {
 	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
 		if (indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command)) > 0) {
 			if (response != NULL) {
-				if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "", "", INDIGO_DELAY((*command == 'K' || *command == 'R') ? 15 : 1)) > 0) {
+				if (indigo_uni_read_section(PRIVATE_DATA->handle, response, count, "", "", INDIGO_DELAY((*command == 'K' || *command == 'R') ? 15 : 1)) > 0) {
 					return true;
 				}
 			}
@@ -74,9 +74,9 @@ static bool sx_command(indigo_device *device, char *command, char *response, int
 static bool sx_open(indigo_device *device) {
 	PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
 	if (PRIVATE_DATA->handle != NULL) {
-		char response[5];
-		if (sx_command(device, "X", response, 1) && *response == 'Y') {
-			if (sx_command(device, "V", response, 4) && *response == 'V') {
+		char response[6];
+		if (sx_command(device, "X", response, 1) && response[0] == 'Y') {
+			if (sx_command(device, "V", response, 4) && response[0] == 'V') {
 				return true;
 			}
 		}
@@ -149,7 +149,7 @@ static void ao_guide_dec_handler(indigo_device *device) {
 
 	// Custom code below
 
-	char response[2], command[16];
+	char response[2], command[8];
 	if (AO_GUIDE_NORTH_ITEM->number.value > 0) {
 		sprintf(command, "GN%05d", (int)AO_GUIDE_NORTH_ITEM->number.value);
 		sx_command(device, command, response, 1);
@@ -158,7 +158,7 @@ static void ao_guide_dec_handler(indigo_device *device) {
 		sx_command(device, command, response, 1);
 	}
 	AO_GUIDE_NORTH_ITEM->number.value = AO_GUIDE_SOUTH_ITEM->number.value = AO_GUIDE_NORTH_ITEM->number.target = AO_GUIDE_SOUTH_ITEM->number.target = 0;
-	if (*response != 'G') {
+	if (response[0] != 'G') {
 		AO_GUIDE_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 
@@ -176,7 +176,7 @@ static void ao_guide_ra_handler(indigo_device *device) {
 
 	// Custom code below
 
-	char response[2], command[16];
+	char response[2], command[8];
 	if (AO_GUIDE_WEST_ITEM->number.value > 0) {
 		sprintf(command, "GW%05d", (int)AO_GUIDE_WEST_ITEM->number.value);
 		sx_command(device, command, response, 1);
@@ -185,7 +185,7 @@ static void ao_guide_ra_handler(indigo_device *device) {
 		sx_command(device, command, response, 1);
 	}
 	AO_GUIDE_WEST_ITEM->number.value = AO_GUIDE_EAST_ITEM->number.value = AO_GUIDE_WEST_ITEM->number.target = AO_GUIDE_EAST_ITEM->number.target = 0;
-	if (*response != 'G') {
+	if (response[0] != 'G') {
 		AO_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 
@@ -203,7 +203,7 @@ static void ao_reset_handler(indigo_device *device) {
 
 	// Custom code below
 
-	char response[2] = { 0 };
+	char response[2];
 	if (AO_CENTER_ITEM->sw.value) {
 		sx_command(device, "K", response, 1);
 		AO_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
@@ -218,7 +218,7 @@ static void ao_reset_handler(indigo_device *device) {
 		indigo_update_property(device, AO_GUIDE_RA_PROPERTY, NULL);
 	}
 	AO_CENTER_ITEM->sw.value = AO_UNJAM_ITEM->sw.value = false;
-	if (*response != 'K') {
+	if (response[0] != 'K') {
 		AO_RESET_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 
@@ -239,7 +239,7 @@ static indigo_result ao_attach(indigo_device *device) {
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
-
+		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
 
 		// Custom code below
 
@@ -359,7 +359,7 @@ static void guider_guide_dec_handler(indigo_device *device) {
 
 	// Custom code below
 
-	char response[2], command[16];
+	char response[2], command[8];
 	if (GUIDER_GUIDE_NORTH_ITEM->number.value > 0) {
 		sprintf(command, "MN%05d", (int)GUIDER_GUIDE_NORTH_ITEM->number.value / 10);
 		sx_command(device, command, response, 1);
@@ -368,7 +368,7 @@ static void guider_guide_dec_handler(indigo_device *device) {
 		sx_command(device, command, response, 1);
 	}
 	GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = GUIDER_GUIDE_NORTH_ITEM->number.target = GUIDER_GUIDE_SOUTH_ITEM->number.target = 0;
-	if (*response != 'M') {
+	if (response[0] != 'M') {
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 
@@ -386,7 +386,7 @@ static void guider_guide_ra_handler(indigo_device *device) {
 
 	// Custom code below
 
-	char response[2], command[16];
+	char response[2], command[8];
 	if (AO_GUIDE_WEST_ITEM->number.value > 0) {
 		sprintf(command, "MW%05d", (int)AO_GUIDE_WEST_ITEM->number.value);
 		sx_command(device, command, response, 1);
@@ -395,7 +395,7 @@ static void guider_guide_ra_handler(indigo_device *device) {
 		sx_command(device, command, response, 1);
 	}
 	AO_GUIDE_WEST_ITEM->number.value = AO_GUIDE_EAST_ITEM->number.value = AO_GUIDE_WEST_ITEM->number.target = AO_GUIDE_EAST_ITEM->number.target = 0;
-	if (*response != 'M') {
+	if (response[0] != 'M') {
 		AO_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 

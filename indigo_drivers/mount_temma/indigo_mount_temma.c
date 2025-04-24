@@ -362,6 +362,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_ON_COORDINATES_SET_PROPERTY->count = 2;
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
+		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
 
 		// CORRECTION_SPEED
 		CORRECTION_SPEED_PROPERTY = indigo_init_number_property(NULL, device->name, CORRECTION_SPEED_PROPERTY_NAME, CCD_ADVANCED_GROUP, "Correction speed", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);

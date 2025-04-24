@@ -515,6 +515,7 @@ static indigo_result gps_attach(indigo_device *device) {
 	if (indigo_gps_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
+		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
 		DEVICE_BAUDRATE_PROPERTY->hidden = false;
 		GPS_ADVANCED_PROPERTY->hidden = false;
 		indigo_copy_value(DEVICE_BAUDRATE_ITEM->text.value, DEFAULT_BAUDRATE);

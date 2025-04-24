@@ -58,7 +58,7 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_aux_ prefix
 		}
 	}
 	libusb { // this block is mandatory for libusb devices
-		hotplug = true; // use to enable hotplug (bool literal, default is false)
+		hotplug = false; // use to disable hotplug (bool literal, default is true)
 		pid = XXXXX; // replace XXXXX with product ID (optional number C expression)
 		vid = XXXXX; // replace XXXXX with vendor ID (optional number C expression)
 	}

@@ -559,6 +559,7 @@ static indigo_result dome_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
+		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
 		// -------------------------------------------------------------------------------- X_SENSORS
 		X_SENSORS_PROPERTY = indigo_init_light_property(NULL, device->name, X_SENSORS_PROPERTY_NAME, DOME_MAIN_GROUP, "Sensors", INDIGO_OK_STATE, 8);
 		if (X_SENSORS_PROPERTY == NULL) {

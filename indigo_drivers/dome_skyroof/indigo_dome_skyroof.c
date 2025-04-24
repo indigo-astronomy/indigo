@@ -281,6 +281,7 @@ static indigo_result dome_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
+		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
 		// -------------------------------------------------------------------------------- X_MOUNT_PARKED
 		X_MOUNT_PARK_STATUS_PROPERTY = indigo_init_light_property(NULL, device->name, X_MOUNT_PARK_STATUS_PROPERTY_NAME, DOME_MAIN_GROUP, "Mount park status", INDIGO_OK_STATE, 1);
 		if (X_MOUNT_PARK_STATUS_PROPERTY == NULL) {

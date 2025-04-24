@@ -1837,6 +1837,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_ON_COORDINATES_SET_PROPERTY->count = 2;
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
+		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
 		MOUNT_TRACK_RATE_PROPERTY->hidden = false;
 		MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
 		MOUNT_UTC_TIME_PROPERTY->hidden = false;

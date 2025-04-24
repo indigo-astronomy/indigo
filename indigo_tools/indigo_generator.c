@@ -49,7 +49,7 @@ typedef struct item_type {
 
 typedef struct property_type {
 	struct property_type *next;
-	char type[8], id[64], handle[64], name[64], define_name[64], pointer[64], handler[64], label[256], group[32],  perm[32], rule[32];
+	char type[12], id[64], handle[64], name[64], define_name[64], pointer[64], handler[64], label[256], group[32],  perm[32], rule[32];
 	bool always_defined, handle_change, synchronized_change, persistent;
 	int max_name_length;
 	code_type *code, *attach,  *change, *detach;
@@ -88,6 +88,7 @@ typedef struct serial_type {
 typedef struct driver_type {
 	char name[64], label[256], author[256], copyright[256];
 	int version;
+	bool virtual;
 	device_type *devices;
 	serial_type *serial;
 	libusb_type *libusb;
@@ -125,14 +126,14 @@ void make_lower_case(char *name) {
 	}
 }
 
-void debug(const char *format, ...) {
+void debug(int offset, const char *format, ...) {
 	if (verbose_log) {
 		static char *spaces = "\t\t\t\t\t\t\t\t\t\t";
 		va_list args;
 		va_start(args, format);
 		char buffer[256];
 		vsnprintf(buffer, sizeof(buffer), format, args);
-		fprintf(stderr, "%s%s\n", spaces + 10 - indentation, buffer);
+		fprintf(stderr, "%s%s\n", spaces + 10 - indentation - offset, buffer);
 		va_end(args);
 	}
 }
@@ -363,7 +364,7 @@ bool parse_string_attribute(char *name, char *value, int max_size) {
 		return false;
 	}
 	copy(value, max_size);
-	debug("%s = \"%s\";", name, value);
+	debug(0, "%s = \"%s\";", name, value);
 	match(TOKEN_SEMICOLON, NULL);
 	return true;
 }
@@ -381,7 +382,7 @@ bool parse_identifier_attribute(char *name, char *value, int max_size) {
 		return false;
 	}
 	copy(value, max_size);
-	debug("%s = %s;", name, value);
+	debug(0, "%s = %s;", name, value);
 	match(TOKEN_SEMICOLON, NULL);
 	return true;
 }
@@ -423,7 +424,7 @@ bool parse_int_attribute(char *name, int *value) {
 	char number[18];
 	copy(number, sizeof(number));
 	*value = (int)atof(number);
-	debug("%s = %d;", name, *value);
+	debug(0, "%s = %d;", name, *value);
 	match(TOKEN_SEMICOLON, NULL);
 	return true;
 }
@@ -443,7 +444,7 @@ bool parse_double_attribute(char *name, double *value) {
 	char number[18];
 	copy(number, sizeof(number));
 	*value = atof(number);
-	debug("%s = %g;", name, *value);
+	debug(0, "%s = %g;", name, *value);
 	match(TOKEN_SEMICOLON, NULL);
 	return true;
 }
@@ -465,7 +466,7 @@ bool parse_expression_attribute(char *name, char *value, int max_size) {
 		return false;
 	}
 	copy(value, max_size);
-	debug("%s = %s;", name, value);
+	debug(0, "%s = %s;", name, value);
 	match(TOKEN_SEMICOLON, NULL);
 	return true;
 }
@@ -477,7 +478,7 @@ bool parse_code_block(char *name, code_type **codes) {
 		report_error("Missing '{'");
 		return false;
 	}
-	debug("%s {", name);
+	debug(-1, "%s {", name);
 	parsing_code = true;
 	bool result = get_token();
 	parsing_code = false;
@@ -494,8 +495,8 @@ bool parse_code_block(char *name, code_type **codes) {
 	code->text = begin;
 	code->size = (int)(end - begin);
 	append((void **)codes, code);
-	debug("  ... %d character(s) ...", code->size);
-	debug("}");
+	debug(0, "  ... %d character(s) ...", code->size);
+	debug(0, "}");
 	return true;
 }
 
@@ -526,47 +527,50 @@ bool parse_item_block(char *type, item_type **items) {
 	} else if (*type == 'l') {
 		strcpy(item->value, "INDIGO_IDLE_STATE");
 	}
-	if (!match(TOKEN_LBRACE, NULL)) {
-		report_error("Missing '{'");
+	if (match(TOKEN_LBRACE, NULL)) {
+		debug(-1, "item %s {", item->handle);
+		while (!match(TOKEN_RBRACE, NULL)) {
+			if (parse_expression_attribute("label", item->label, sizeof(item->label))) {
+				continue;
+			}
+			if (parse_expression_attribute("handle", item->handle, sizeof(item->handle))) {
+				continue;
+			}
+			if (parse_expression_attribute("name", id, sizeof(id))) {
+				if (id[0] == '"') {
+					strncpy(item->define_name, id + 1, strlen(id) - 2);
+				} else {
+					strcpy(item->name, id);
+				}
+				continue;
+			}
+			if (parse_expression_attribute("value", item->value, sizeof(item->value))) {
+				continue;
+			}
+			if (*type == 'n') {
+				if (parse_expression_attribute("min", item->min, sizeof(item->min))) {
+					continue;
+				}
+				if (parse_expression_attribute("max", item->max, sizeof(item->max))) {
+					continue;
+				}
+				if (parse_expression_attribute("step", item->step, sizeof(item->step))) {
+					continue;
+				}
+				if (parse_expression_attribute("format", item->format, sizeof(item->format))) {
+					continue;
+				}
+			}
+			report_unexpected_token_error();
+			return false;
+		}
+		debug(0, "}");
+	} else if (match(TOKEN_SEMICOLON, NULL)) {
+		debug(0, "item %s;", item->handle);
+	} else {
+		report_error("Missing '{' or ';'");
 		return false;
 	}
-	debug("item %s {", item->handle);
-	while (!match(TOKEN_RBRACE, NULL)) {
-		if (parse_expression_attribute("label", item->label, sizeof(item->label))) {
-			continue;
-		}
-		if (parse_expression_attribute("handle", item->handle, sizeof(item->handle))) {
-			continue;
-		}
-		if (parse_expression_attribute("name", id, sizeof(id))) {
-			if (id[0] == '"') {
-				strncpy(item->define_name, id + 1, strlen(id) - 2);
-			} else {
-				strcpy(item->name, id);
-			}
-			continue;
-		}
-		if (parse_expression_attribute("value", item->value, sizeof(item->value))) {
-			continue;
-		}
-		if (*type == 'n') {
-			if (parse_expression_attribute("min", item->min, sizeof(item->min))) {
-				continue;
-			}
-			if (parse_expression_attribute("max", item->max, sizeof(item->max))) {
-				continue;
-			}
-			if (parse_expression_attribute("step", item->step, sizeof(item->step))) {
-				continue;
-			}
-			if (parse_expression_attribute("format", item->format, sizeof(item->format))) {
-				continue;
-			}
-		}
-		report_unexpected_token_error();
-		return false;
-	}
-	debug("}");
 	append((void **)items, item);
 	return true;
 }
@@ -600,77 +604,80 @@ bool parse_property_block(device_type *device, property_type **properties) {
 	strcpy(property->rule, "INDIGO_ONE_OF_MANY_RULE");
 	property->handle_change = property->type[0] != 'l';
 	property->synchronized_change = true;
-	if (!match(TOKEN_LBRACE, NULL)) {
-		report_error("Missing '{'");
-		return false;
-	}
-	debug("%s %s {", property->type, property->handle);
-	while (!match(TOKEN_RBRACE, NULL)) {
-		if (parse_expression_attribute("label", property->label, sizeof(property->label))) {
-			continue;
-		}
-		if (parse_expression_attribute("handle", property->handle, sizeof(property->handle))) {
-			continue;
-		}
-		if (parse_expression_attribute("name", id, sizeof(id))) {
-			if (id[0] == '"') {
-				strncpy(property->define_name, id + 1, strlen(id) - 2);
-			} else {
-				strcpy(property->name, id);
-			}
-			continue;
-		}
-		if (parse_expression_attribute("handler", property->handler, sizeof(property->handler))) {
-			continue;
-		}
-		if (parse_bool_attribute("handle_change", &property->handle_change)) {
-			continue;
-		}
-		if (parse_bool_attribute("synchronized_change", &property->synchronized_change)) {
-			continue;
-		}
-		if (parse_bool_attribute("persistent", &property->persistent)) {
-			continue;
-		}
-		if (parse_code_block("code", &property->code)) {
-			continue;
-		}
-		if (parse_code_block("attach", &property->attach)) {
-			continue;
-		}
-		if (parse_code_block("change", &property->change)) {
-			continue;
-		}
-		if (parse_code_block("detach", &property->detach)) {
-			continue;
-		}
-		if (property->type[0] != 'i') {
-			if (parse_expression_attribute("group", property->group, sizeof(property->group))) {
+	if (match(TOKEN_LBRACE, NULL)) {
+		debug(-1, "%s %s {", property->type, property->handle);
+		while (!match(TOKEN_RBRACE, NULL)) {
+			if (parse_expression_attribute("label", property->label, sizeof(property->label))) {
 				continue;
 			}
-			if (parse_expression_attribute("pointer", property->pointer, sizeof(property->pointer))) {
+			if (parse_expression_attribute("handle", property->handle, sizeof(property->handle))) {
 				continue;
 			}
-			if (parse_bool_attribute("always_defined", &property->always_defined)) {
-				continue;
-			}
-			if (parse_expression_attribute("perm", property->perm, sizeof(property->perm))) {
-				if (!strcmp(property->perm, "INDIGO_RO_PERM")) {
-					property->handle_change = false;
+			if (parse_expression_attribute("name", id, sizeof(id))) {
+				if (id[0] == '"') {
+					strncpy(property->define_name, id + 1, strlen(id) - 2);
+				} else {
+					strcpy(property->name, id);
 				}
 				continue;
 			}
-			if (parse_expression_attribute("rule", property->rule, sizeof(property->rule))) {
+			if (parse_expression_attribute("handler", property->handler, sizeof(property->handler))) {
 				continue;
 			}
-			if (parse_item_block(property->type, &property->items)) {
+			if (parse_bool_attribute("handle_change", &property->handle_change)) {
 				continue;
 			}
+			if (parse_bool_attribute("synchronized_change", &property->synchronized_change)) {
+				continue;
+			}
+			if (parse_bool_attribute("persistent", &property->persistent)) {
+				continue;
+			}
+			if (parse_code_block("code", &property->code)) {
+				continue;
+			}
+			if (parse_code_block("attach", &property->attach)) {
+				continue;
+			}
+			if (parse_code_block("change", &property->change)) {
+				continue;
+			}
+			if (parse_code_block("detach", &property->detach)) {
+				continue;
+			}
+			if (property->type[0] != 'i') {
+				if (parse_expression_attribute("group", property->group, sizeof(property->group))) {
+					continue;
+				}
+				if (parse_expression_attribute("pointer", property->pointer, sizeof(property->pointer))) {
+					continue;
+				}
+				if (parse_bool_attribute("always_defined", &property->always_defined)) {
+					continue;
+				}
+				if (parse_expression_attribute("perm", property->perm, sizeof(property->perm))) {
+					if (!strcmp(property->perm, "INDIGO_RO_PERM")) {
+						property->handle_change = false;
+					}
+					continue;
+				}
+				if (parse_expression_attribute("rule", property->rule, sizeof(property->rule))) {
+					continue;
+				}
+				if (parse_item_block(property->type, &property->items)) {
+					continue;
+				}
+			}
+			report_unexpected_token_error();
+			return false;
 		}
-		report_unexpected_token_error();
+		debug(0, "}");
+	} else if (match(TOKEN_SEMICOLON, NULL)) {
+		debug(0, "%s %s;", property->type, property->handle);
+	} else {
+		report_error("Missing '{' or ';'");
 		return false;
 	}
-	debug("}");
 	append((void **)properties, property);
 	property->max_name_length = 30;
 	int name_length = (int)strlen(property->handle);
@@ -700,12 +707,8 @@ bool parse_property_block(device_type *device, property_type **properties) {
 	return true;
 }
 
-bool parse_device_block(device_type **devices) {
+bool parse_device_block(driver_type *driver) {
 	if (!(match(TOKEN_IDENTIFIER, "ccd") || match(TOKEN_IDENTIFIER, "wheel") || match(TOKEN_IDENTIFIER, "focuser") || match(TOKEN_IDENTIFIER, "mount") || match(TOKEN_IDENTIFIER, "guider") || match(TOKEN_IDENTIFIER, "rotator") || match(TOKEN_IDENTIFIER, "gps") || match(TOKEN_IDENTIFIER, "ao") || match(TOKEN_IDENTIFIER, "aux"))) {
-		return false;
-	}
-	if (!match(TOKEN_LBRACE, NULL)) {
-		report_error("Missing '{'");
 		return false;
 	}
 	device_type *device = allocate(sizeof(device_type));
@@ -716,38 +719,58 @@ bool parse_device_block(device_type **devices) {
 	make_upper_case(type);
 	snprintf(device->handle, sizeof(device->handle), "%s_DEVICE_NAME", type);
 	snprintf(device->interface, sizeof(device->interface), "0");
+	if (driver->devices) {
+		snprintf(device->name, sizeof(device->name), "%s (%s)", driver->label, device->type);
+	} else {
+		snprintf(device->name, sizeof(device->name), "%s", driver->label);
+	}
 	device->additional_instances = false;
-	debug("%s {", device->type);
-	while (!match(TOKEN_RBRACE, NULL)) {
-		if (parse_string_attribute("name", device->name, sizeof(device->name))) {
-			continue;
+	if (match(TOKEN_LBRACE, NULL)) {
+		debug(-1, "%s {", device->type);
+		while (!match(TOKEN_RBRACE, NULL)) {
+			if (parse_string_attribute("name", device->name, sizeof(device->name))) {
+				continue;
+			}
+			if (parse_expression_attribute("interface", device->interface, sizeof(device->interface))) {
+				continue;
+			}
+			if (parse_bool_attribute("additional_instances", &device->additional_instances)) {
+				continue;
+			}
+			if (parse_property_block(device, &device->properties)) {
+				continue;
+			}
+			if (parse_code_block("code", &device->code)) {
+				continue;
+			}
+			if (parse_code_block("timer", &device->timer)) {
+				continue;
+			}
+			if (parse_code_block("attach", &device->attach)) {
+				continue;
+			}
+			if (parse_code_block("detach", &device->detach)) {
+				continue;
+			}
+			report_unexpected_token_error();
+			return false;
 		}
-		if (parse_expression_attribute("interface", device->interface, sizeof(device->interface))) {
-			continue;
-		}
-		if (parse_bool_attribute("additional_instances", &device->additional_instances)) {
-			continue;
-		}
-		if (parse_property_block(device, &device->properties)) {
-			continue;
-		}
-		if (parse_code_block("code", &device->code)) {
-			continue;
-		}
-		if (parse_code_block("timer", &device->timer)) {
-			continue;
-		}
-		if (parse_code_block("attach", &device->attach)) {
-			continue;
-		}
-		if (parse_code_block("detach", &device->detach)) {
-			continue;
-		}
-		report_unexpected_token_error();
+		debug(0, "}");
+	} else if (match(TOKEN_SEMICOLON, NULL)) {
+		debug(0, "%s;", device->type);
+	} else {
+		report_error("Missing '{'");
 		return false;
 	}
-	debug("}");
-	append((void **)devices, device);
+	if (device->properties == NULL) {
+		property_type *property = allocate(sizeof(property_type));
+		strcpy(property->type, "inherited");
+		strcpy(property->handle, "CONNECTION_PROPERTY");
+		sprintf(property->handler, "%s_connection_handler", device->type);
+		property->handle_change = true;
+		device->properties = property;
+	}
+	append((void **)&driver->devices, device);
 	return true;
 }
 
@@ -755,88 +778,99 @@ bool parse_libusb_block(driver_type *driver) {
 	if (!match(TOKEN_IDENTIFIER, "libusb")) {
 		return false;
 	}
-	if (!match(TOKEN_LBRACE, NULL)) {
-		report_error("Missing '{'");
-		return false;
-	}
 	libusb_type *libusb = allocate(sizeof(libusb_type));
-	debug("pattern {");
-	while (!match(TOKEN_RBRACE, NULL)) {
-		if (parse_bool_attribute("hotplug", &libusb->hotplug)) {
-			continue;
+	libusb->hotplug = true;
+	if (match(TOKEN_LBRACE, NULL)) {
+		debug(0, "pattern {");
+		while (!match(TOKEN_RBRACE, NULL)) {
+			if (parse_bool_attribute("hotplug", &libusb->hotplug)) {
+				continue;
+			}
+			if (parse_expression_attribute("pid", libusb->pid, sizeof(libusb->pid))) {
+				continue;
+			}
+			if (parse_expression_attribute("vid", libusb->vid, sizeof(libusb->vid))) {
+				continue;
+			}
+			report_unexpected_token_error();
+			return false;
 		}
-		if (parse_expression_attribute("pid", libusb->pid, sizeof(libusb->pid))) {
-			continue;
-		}
-		if (parse_expression_attribute("vid", libusb->vid, sizeof(libusb->vid))) {
-			continue;
-		}
-		report_unexpected_token_error();
+		debug(0, "}");
+	} else if (match(TOKEN_SEMICOLON, NULL)) {
+		debug(0, "libusb;");
+	} else {
+		report_error("Missing '{'");
 		return false;
 	}
 	driver->libusb = libusb;
-	debug("}");
 	return true;
 }
 
-bool parse_pattern_block(pattern_type **patterns) {
+bool parse_pattern_block(serial_type *serial) {
 	if (!match(TOKEN_IDENTIFIER, "pattern")) {
 		return false;
 	}
-	if (!match(TOKEN_LBRACE, NULL)) {
+	pattern_type *pattern = allocate(sizeof(pattern_type));
+	if (match(TOKEN_LBRACE, NULL)) {
+		debug(0, "pattern {");
+		while (!match(TOKEN_RBRACE, NULL)) {
+			if (parse_int_attribute("pid", &pattern->pid)) {
+				continue;
+			}
+			if (parse_int_attribute("vid", &pattern->vid)) {
+				continue;
+			}
+			if (parse_bool_attribute("exact_match", &pattern->exact_match)) {
+				continue;
+			}
+			if (parse_string_attribute("product", pattern->product, sizeof(pattern->product))) {
+				continue;
+			}
+			if (parse_string_attribute("vendor", pattern->vendor, sizeof(pattern->vendor))) {
+				continue;
+			}
+			if (parse_string_attribute("serial", pattern->serial, sizeof(pattern->serial))) {
+				continue;
+			}
+			report_unexpected_token_error();
+			return false;
+		}
+		debug(0, "}");
+	} else if (match(TOKEN_SEMICOLON, NULL)) {
+		debug(0, "pattern;");
+	} else {
 		report_error("Missing '{'");
 		return false;
 	}
-	pattern_type *pattern = allocate(sizeof(pattern_type));
-	debug("pattern {");
-	while (!match(TOKEN_RBRACE, NULL)) {
-		if (parse_int_attribute("pid", &pattern->pid)) {
-			continue;
-		}
-		if (parse_int_attribute("vid", &pattern->vid)) {
-			continue;
-		}
-		if (parse_bool_attribute("exact_match", &pattern->exact_match)) {
-			continue;
-		}
-		if (parse_string_attribute("product", pattern->product, sizeof(pattern->product))) {
-			continue;
-		}
-		if (parse_string_attribute("vendor", pattern->vendor, sizeof(pattern->vendor))) {
-			continue;
-		}
-		if (parse_string_attribute("serial", pattern->serial, sizeof(pattern->serial))) {
-			continue;
-		}
-		report_unexpected_token_error();
-		return false;
-	}
-	debug("}");
-	append((void **)patterns, pattern);
+	append((void **)&serial->patterns, pattern);
 	return true;
 }
 
-bool parse_serial_block(serial_type **serial) {
+bool parse_serial_block(driver_type *driver) {
 	if (!match(TOKEN_IDENTIFIER, "serial")) {
 		return false;
 	}
-	if (!match(TOKEN_LBRACE, NULL)) {
-		report_error("Missing '{'");
+	serial_type *serial = (serial_type*)allocate(sizeof(serial_type));
+	if (match(TOKEN_LBRACE, NULL)) {
+		debug(-1, "serial {");
+		while (!match(TOKEN_RBRACE, NULL)) {
+			if (parse_bool_attribute("configurable_speed", &serial->configurable_speed)) {
+				continue;
+			}
+			if (parse_pattern_block(serial)) {
+				continue;
+			}
+			report_unexpected_token_error();
+			return false;
+		}
+		debug(0, "}");
+	} else if (match(TOKEN_SEMICOLON, NULL)) {
+		debug(0, "serial;");
+	} else {
+		report_error("Missing '{' or ';'");
 		return false;
 	}
-	*serial = (serial_type*)allocate(sizeof(serial_type));
-	debug("serial {");
-	while (!match(TOKEN_RBRACE, NULL)) {
-		if (parse_bool_attribute("configurable_speed", &(*serial)->configurable_speed)) {
-			continue;
-		}
-		if (parse_pattern_block(&(*serial)->patterns)) {
-			continue;
-		}
-		report_unexpected_token_error();
-		return false;
-	}
-	debug("}");
+	driver->serial = serial;
 	return true;
 }
 
@@ -855,7 +889,7 @@ bool parse_driver_block(void) {
 		report_error("Missing '{'");
 		return false;
 	}
-	debug("driver %s {", driver->name);
+	debug(-1, "driver %s {", driver->name);
 	while (!match(TOKEN_RBRACE, NULL)) {
 		if (parse_string_attribute("author", driver->author, sizeof(driver->author))) {
 			continue;
@@ -869,13 +903,13 @@ bool parse_driver_block(void) {
 		if (parse_int_attribute("version", &driver->version)) {
 			continue;
 		}
-		if (parse_serial_block(&driver->serial)) {
+		if (parse_serial_block(driver)) {
 			continue;
 		}
 		if (parse_libusb_block(driver)) {
 			continue;
 		}
-		if (parse_device_block(&driver->devices)) {
+		if (parse_device_block(driver)) {
 			continue;
 		}
 		if (parse_code_block("include", &driver->include)) {
@@ -899,7 +933,14 @@ bool parse_driver_block(void) {
 		report_unexpected_token_error();
 		return false;
 	}
-	debug("}");
+	debug(0, "}");
+	if (driver->devices == NULL) {
+		report_error("No device defined");
+		return false;
+	}
+	if (driver->serial == NULL && driver->libusb == NULL) {
+		driver->virtual = true;
+	}
 	return true;
 }
 
@@ -935,11 +976,11 @@ void write_code_block(code_type *code, int indentation) {
 				if (c == '#' && !(strncmp(pnt, "define ", 7))) {
 					char *name = pnt + 7;
 					pnt = pnt + 7;
-					while (*pnt && *pnt != ' ') {
+					while (*pnt && *pnt != ' ' && *pnt != '\t') {
 						pnt++;
 					}
 					printf("#define %-20.*s ", (int)(pnt - name), name);
-					while (*pnt && *pnt == ' ') {
+					while (*pnt && *pnt == ' ' && *pnt == '\t') {
 						pnt++;
 					}
 					c = *pnt;
@@ -1314,6 +1355,7 @@ void write_c_attach(device_type *device) {
 	if (driver->serial && is_master_device) {
 		write_line("\t\tDEVICE_PORT_PROPERTY->hidden = false;");
 		write_line("\t\tDEVICE_PORTS_PROPERTY->hidden = false;");
+		write_line("\t\tindigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);");
 		if (driver->serial->configurable_speed) {
 			write_line("\t\tDEVICE_BAUDRATE_PROPERTY->hidden = false;");
 		}
@@ -1601,7 +1643,7 @@ void write_c_main_section(void) {
 	write_line("");
 	write_line("indigo_result indigo_%s_%s(indigo_driver_action action, indigo_driver_info *info) {", driver->devices->type, driver->name);
 	write_line("\tstatic indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;");
-	if (driver->serial) {
+	if (driver->virtual || driver->serial) {
 		write_line("\tstatic %s_private_data *private_data = NULL;", driver->name);
 		for (device_type *device = driver->devices; device; device = device->next) {
 			write_line("\tstatic indigo_device *%s = NULL;", device->type);
@@ -1619,7 +1661,7 @@ void write_c_main_section(void) {
 	write_line("\t\tcase INDIGO_DRIVER_INIT:");
 	write_line("\t\t\tlast_action = action;");
 	write_c_code_blocks(driver->init, 3, true, false);
-	if (driver->serial) {
+	if (driver->virtual || driver->serial) {
 		if (driver->serial && driver->serial->patterns) {
 			int index = 0;
 			for (pattern_type *pattern = driver->serial->patterns; pattern; pattern = pattern->next) {
@@ -1666,7 +1708,7 @@ void write_c_main_section(void) {
 	write_line("\t\t\tbreak;");
 	write_line("");
 	write_line("\t\tcase INDIGO_DRIVER_SHUTDOWN:");
-	if (driver->serial) {
+	if (driver->virtual || driver->serial) {
 		for (device_type *device = driver->devices; device; device = device->next) {
 			write_line("\t\t\tVERIFY_NOT_CONNECTED(%s);", device->type);
 		}
@@ -1762,16 +1804,16 @@ int main(int argc, char **argv) {
 	}
 	if (help || definition_file == NULL) {
 		fprintf(stderr, "indigo_generator [-h|--help] [-v|--verbose] definition_file\n");
-		return 0;
+		return 1;
 	}
-	definition_source_basename = basename(argv[1]);
-	freopen(argv[1], "r", stdin);
+	definition_source_basename = basename(definition_file);
+	freopen(definition_file, "r", stdin);
 	fprintf(stderr, "Reading %s ...\n", definition_source_basename);
 	read_definition_source();
-	debug("Parsing ...\n\n");
+	debug(0, "Parsing ...\n\n");
 	if (!parse_driver_block()) {
 		fprintf(stderr, "\nFailed to parse definition file\n");
-		return 0;
+		return 1;
 	}
 	char file_name[64];
 	snprintf(file_name, sizeof(file_name), "indigo_%s_%s.h", driver->devices->type, driver->name);

@@ -6,12 +6,15 @@ ao_sx
 
 aux_arteskyflat
 aux_astromechanics
+aux_dsusb
 aux_upb3
 
 gps_simulator
 gps_nmea
 
 rotator_simulator
+
+wheel_manual
 
 ## In progress
 
@@ -85,7 +88,6 @@ wheel_asi
 wheel_astroasis
 wheel_indigo
 wheel_fli
-wheel_manual
 wheel_optec
 wheel_playerone
 wheel_qhy
@@ -104,7 +106,6 @@ agent_snoop
 
 aux_cloudwatcher
 aux_dragonfly
-aux_dsusb
 aux_joystick
 
 ccd_apogee
