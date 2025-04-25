@@ -23,7 +23,7 @@
  \file indigo_focuser_fcusb.c
  */
 
-#define DRIVER_VERSION 0x0006
+#define DRIVER_VERSION 0x02000006
 #define DRIVER_NAME "indigo_ccd_fcusb"
 
 #include <stdlib.h>

@@ -23,7 +23,7 @@
  \file indigo_aux_upb.c
  */
 
-#define DRIVER_VERSION 0x0017
+#define DRIVER_VERSION 0x03000017
 #define DRIVER_NAME "indigo_aux_upb"
 
 #include <stdlib.h>

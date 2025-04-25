@@ -23,7 +23,7 @@
  \file indigo_agent_mount.c
  */
 
-#define DRIVER_VERSION 0x0012
+#define DRIVER_VERSION 0x03000012
 #define DRIVER_NAME	"indigo_agent_mount"
 
 #include <stdlib.h>
@@ -36,7 +36,6 @@
 
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_filter.h>
-#include <indigo/indigo_uni_io.h>
 #include <indigo/indigo_mount_driver.h>
 #include <indigo/indigo_ccd_driver.h>
 #include <indigo/indigo_rotator_driver.h>

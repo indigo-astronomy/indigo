@@ -23,7 +23,7 @@
  \file indigo_focuser_dsd.c
  */
 
-#define DRIVER_VERSION 0x000F
+#define DRIVER_VERSION 0x0200000F
 #define DRIVER_NAME "indigo_focuser_dsd"
 
 #include <stdlib.h>

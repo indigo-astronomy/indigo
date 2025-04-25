@@ -23,7 +23,7 @@
  \file indigo_focuser_mjkzz_bt.m
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x02000002
 #define DRIVER_NAME "indigo_ccd_mjkzz_bt"
 
 #include <stdlib.h>

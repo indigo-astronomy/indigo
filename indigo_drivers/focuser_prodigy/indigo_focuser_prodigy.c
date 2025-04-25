@@ -23,7 +23,7 @@
  \file indigo_focuser_prodigy.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x02000002
 #define DRIVER_NAME "indigo_focuser_prodigy"
 
 #include <stdlib.h>

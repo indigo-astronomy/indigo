@@ -44,7 +44,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x000B
+#define DRIVER_VERSION       0x0300000B
 #define DRIVER_NAME          "indigo_aux_dsusb"
 #define DRIVER_LABEL         "Shoestring DSUSB shutter release"
 #define AUX_DEVICE_NAME      "%s"

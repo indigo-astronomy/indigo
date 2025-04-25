@@ -23,7 +23,7 @@
  \file indigo_focuser_dmfc.c
  */
 
-#define DRIVER_VERSION 0x000E
+#define DRIVER_VERSION 0x0300000E
 #define DRIVER_NAME "indigo_focuser_dmfc"
 
 #include <stdlib.h>

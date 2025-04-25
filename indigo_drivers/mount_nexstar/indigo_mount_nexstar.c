@@ -24,7 +24,7 @@
  \file indigo_mount_nexstar.c
  */
 
-#define DRIVER_VERSION 0x001E
+#define DRIVER_VERSION 0x0200001E
 #define DRIVER_NAME	"indigo_mount_nexstar"
 
 #include <stdlib.h>

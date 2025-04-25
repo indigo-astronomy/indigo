@@ -23,7 +23,7 @@
  \file indigo_dome_talon6ror.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x02000002
 #define DRIVER_NAME	"indigo_dome_talon6ror"
 
 #include <stdlib.h>

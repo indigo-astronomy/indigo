@@ -23,7 +23,7 @@
  \file indigo_ccd_qhy.c
  */
 
-#define DRIVER_VERSION 0x0009
+#define DRIVER_VERSION 0x03000009
 #define DRIVER_NAME "indigo_wheel_qhy"
 
 #include <stdlib.h>

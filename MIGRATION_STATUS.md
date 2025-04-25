@@ -69,6 +69,7 @@ focuser_fc3
 focuser_fli
 focuser_focusdreampro
 focuser_ioptron
+focuser_primaluce
 
 mount_asi
 mount_ioptron
@@ -132,7 +133,6 @@ focuser_nfocus
 focuser_nstep
 focuser_optec
 focuser_optecfl
-focuser_primaluce
 focuser_prodigy
 focuser_qhy
 focuser_robofocus
@@ -170,7 +170,7 @@ On Linux or macOS for files, serial ports and TCP and UDP streams can be used un
 
 On Linux or macOS either ASCI or UTF-8 is used for strings, while on Windows may be used UTF-16, so special handling is necessary for communication with Windows SDKs.
 
-Use Visual Studio 2022 with Desktop C++ development option installed and MSC. Porting with various GCC clones and Linux compatibility layers may look easier, but makes no sense, don't waste time on it. You will sooner or later hit compatibility issues between such binaries and standard Windows SDKs and applications. 
+Use Visual Studio 2022 with Desktop C++ development option installed and MSC. Porting with various GCC clones and Linux compatibility layers may look easier, but makes no sense, don't waste time on it. You will sooner or later hit compatibility issues between such binaries and standard Windows SDKs and applications.
 
 ## Serial communication drivers
 
@@ -191,9 +191,9 @@ Use Visual Studio 2022 with Desktop C++ development option installed and MSC. Po
 ```
 static bool xxx_command(indigo_device *device, char *command, char *response, int max) {
   // discard pending input with short timeout
-  if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) { 
+  if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
      // write command
-    if (indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command)) > 0) { 
+    if (indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command)) > 0) {
       if (response != NULL) {
         // read input terminated with \n, don't copy \r and \n with 1 second timeout.
         if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "\n", "\r\n", INDIGO_DELAY(1)) > 0) {
@@ -245,5 +245,5 @@ Make sure that Windows SDK uses the same API as Linux/macOS SDK, it is not neces
 8. Make sure SDK API doesn't use wide chars. If it does, use INDIGO_WCHAR_TO_CHAR() or INDIGO_CHAR_TO_WCHAR() macros defined in <indigo/indigo_uni_io.h> to handle them correctly.
 
 9. If the driver can be build, add project as dependency to indigo project.
- 
+
 10. Move the driver from TODO section to ALREADY_DONE section in this file.

@@ -23,7 +23,7 @@
  \file indigo_rotator_asi.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x02000003
 #define DRIVER_NAME "indigo_rotator_asi"
 
 #include <stdlib.h>

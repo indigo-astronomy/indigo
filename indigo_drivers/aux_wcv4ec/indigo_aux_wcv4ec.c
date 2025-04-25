@@ -23,7 +23,7 @@
  \file indigo_aux_wcv4ec.c
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x03000004
 #define DRIVER_NAME "indigo_aux_wcv4ec"
 
 #include <stdlib.h>

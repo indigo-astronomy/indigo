@@ -23,7 +23,7 @@
  \file indigo_mount_pmc8.c
  */
 
-#define DRIVER_VERSION 0x0009
+#define DRIVER_VERSION 0x02000009
 #define DRIVER_NAME	"indigo_mount_pmc8"
 
 #include <stdlib.h>

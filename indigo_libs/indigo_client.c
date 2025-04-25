@@ -172,7 +172,7 @@ static indigo_result add_driver(driver_entry_point entry_point, void *dl_handle,
 	indigo_copy_name(indigo_available_drivers[empty_slot].name, info.name);
 	indigo_available_drivers[empty_slot].driver = entry_point;
 	indigo_available_drivers[empty_slot].dl_handle = dl_handle;
-	INDIGO_LOG(indigo_log("Driver %s %d.%d.%d.%d loaded", info.name, INDIGO_VERSION_MAJOR(INDIGO_VERSION_CURRENT), INDIGO_VERSION_MINOR(INDIGO_VERSION_CURRENT), INDIGO_VERSION_MAJOR(info.version), INDIGO_VERSION_MINOR(info.version)));
+	INDIGO_LOG(indigo_log("Driver %s %d.%d.%d.%d loaded", info.name, INDIGO_VERSION_MAJOR(info.version >> 16), INDIGO_VERSION_MINOR(info.version >> 16), INDIGO_VERSION_MAJOR(info.version), INDIGO_VERSION_MINOR(info.version)));
 	if (empty_slot == used_driver_slots) {
 		used_driver_slots++;
 	} /* if we are not filling a gap - increase used_slots */

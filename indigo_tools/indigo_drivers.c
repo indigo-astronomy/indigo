@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
 			indigo_driver_entry *driver;
 			if (indigo_load_driver(argv[i], false, &driver) == INDIGO_OK) {
 				indigo_available_drivers[entry++].driver(INDIGO_DRIVER_INFO, &info);
-				printf(" <driver name=\"%s\" version=\"%d.%d.%d.%d\" state=\"%s\">%s</driver>\n", info.name, INDIGO_VERSION_MAJOR(INDIGO_VERSION_CURRENT), INDIGO_VERSION_MINOR(INDIGO_VERSION_CURRENT), INDIGO_VERSION_MAJOR(info.version), INDIGO_VERSION_MINOR(info.version), state, info.description);
+				printf(" <driver name=\"%s\" version=\"%d.%d.%d.%d\" state=\"%s\">%s</driver>\n", info.name, INDIGO_VERSION_MAJOR(info.version >> 16), INDIGO_VERSION_MINOR(info.version >> 16), INDIGO_VERSION_MAJOR(info.version), INDIGO_VERSION_MINOR(info.version), state, info.description);
 				//indigo_remove_driver(driver); // atik driver will fail here :(
 			}
 		}

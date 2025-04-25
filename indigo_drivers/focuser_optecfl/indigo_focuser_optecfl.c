@@ -23,7 +23,7 @@
  \file indigo_focuser_optecfl.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x02000001
 #define DRIVER_NAME "indigo_focuser_optecfl"
 
 #include <stdlib.h>

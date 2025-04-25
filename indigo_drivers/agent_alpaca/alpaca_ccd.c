@@ -30,7 +30,6 @@
 #include <fcntl.h>
 #endif
 
-#include <indigo/indigo_io.h>
 #include <indigo/indigo_ccd_driver.h>
 
 #include "alpaca_common.h"

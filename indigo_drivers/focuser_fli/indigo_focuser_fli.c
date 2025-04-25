@@ -24,7 +24,7 @@
  */
 
 #define DRIVER_NAME		"indigo_focuser_fli"
-#define DRIVER_VERSION             0x000C
+#define DRIVER_VERSION             0x0300000C
 #define FLI_VENDOR_ID              0x0f18
 
 #define POLL_TIME                       1     /* Seconds */

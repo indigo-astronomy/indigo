@@ -37,7 +37,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0005
+#define DRIVER_VERSION       0x03000005
 #define DRIVER_NAME          "indigo_aux_geoptikflat"
 #define DRIVER_LABEL         "Geoptik flat field generato"
 #define AUX_DEVICE_NAME      "Geoptik Flat Generator"

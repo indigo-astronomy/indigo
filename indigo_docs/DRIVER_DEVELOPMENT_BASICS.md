@@ -586,7 +586,7 @@ Main driver source file **indigo_wheel_atik.c**:
  \file indigo_wheel_atik.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x02000001
 #define DRIVER_NAME "indigo_wheel_atik"
 
 #include <stdlib.h>

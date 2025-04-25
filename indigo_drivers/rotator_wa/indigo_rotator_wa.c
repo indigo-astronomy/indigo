@@ -23,7 +23,7 @@
  \file indigo_rotator_wa.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x02000002
 #define DRIVER_NAME	"indigo_rotator_wa"
 
 #include <stdlib.h>

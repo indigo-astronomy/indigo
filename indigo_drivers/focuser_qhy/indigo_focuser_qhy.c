@@ -23,7 +23,7 @@
 	\file indigo_focuser_qhy.c
 */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x02000003
 #define DRIVER_NAME "indigo_focuser_qhy"
 
 #include <stdlib.h>

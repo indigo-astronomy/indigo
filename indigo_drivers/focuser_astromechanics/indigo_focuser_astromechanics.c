@@ -24,7 +24,7 @@
  */
 
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x03000003
 #define DRIVER_NAME "indigo_focuser_astromechanics"
 
 #include <stdlib.h>

@@ -23,7 +23,7 @@
  \file indigo_focuser_moonlite.c
  */
 
-#define DRIVER_VERSION 0x000A
+#define DRIVER_VERSION 0x0200000A
 #define DRIVER_NAME "indigo_focuser_moonlite"
 
 #include <stdlib.h>

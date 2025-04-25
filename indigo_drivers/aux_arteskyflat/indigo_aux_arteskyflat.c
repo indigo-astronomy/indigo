@@ -37,7 +37,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0007
+#define DRIVER_VERSION       0x03000007
 #define DRIVER_NAME          "indigo_aux_arteskyflat"
 #define DRIVER_LABEL         "Artesky Flat Box USB"
 #define AUX_DEVICE_NAME      "Artesky Flat Box"

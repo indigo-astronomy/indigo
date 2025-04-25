@@ -23,7 +23,7 @@
  \file indigo_aux_sqm.c
  */
 
-#define DRIVER_VERSION 0x00011
+#define DRIVER_VERSION 0x030000011
 #define DRIVER_NAME "indigo_aux_sqm"
 
 #include <stdlib.h>

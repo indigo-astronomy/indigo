@@ -23,7 +23,7 @@
  \file indigo_aux_skyalert.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x03000003
 #define DRIVER_NAME "indigo_aux_skyalert"
 
 #include <stdlib.h>

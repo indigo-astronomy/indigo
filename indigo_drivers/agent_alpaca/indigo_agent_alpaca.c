@@ -23,7 +23,7 @@
  \file indigo_agent_alpaca.c
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x03000004
 #define DRIVER_NAME	"indigo_agent_alpaca"
 
 #include <stdlib.h>
@@ -44,8 +44,6 @@
 #endif
 
 #include <indigo/indigo_bus.h>
-#include <indigo/indigo_io.h>
-#include <indigo/indigo_uni_io.h>
 #include <indigo/indigo_server_tcp.h>
 
 #include "indigo_agent_alpaca.h"

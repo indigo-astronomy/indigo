@@ -23,7 +23,7 @@
  \file indigo_agent_scripting.c
  */
 
-#define DRIVER_VERSION 0x0009
+#define DRIVER_VERSION 0x03000009
 
 #define DRIVER_NAME	"indigo_agent_scripting"
 
@@ -37,7 +37,6 @@
 #include <fcntl.h>
 
 #include <indigo/indigo_bus.h>
-#include <indigo/indigo_uni_io.h>
 #include <indigo/indigo_driver.h>
 
 #include "duktape.h"

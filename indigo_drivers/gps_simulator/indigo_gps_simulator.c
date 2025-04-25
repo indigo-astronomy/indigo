@@ -37,7 +37,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0009
+#define DRIVER_VERSION       0x03000009
 #define DRIVER_NAME          "indigo_gps_simulator"
 #define DRIVER_LABEL         "GPS Simulator"
 #define GPS_DEVICE_NAME      "GPS Simulator"

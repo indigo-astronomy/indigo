@@ -23,7 +23,7 @@
  \file indigo_dome_simulator.c
  */
 
-#define DRIVER_VERSION 0x0006
+#define DRIVER_VERSION 0x03000006
 #define DRIVER_NAME	"indigo_dome_simulator"
 
 #include <stdlib.h>

@@ -24,7 +24,7 @@
  \file indigo_ccd_apogee.cpp
  */
 
-#define DRIVER_VERSION 0x000B
+#define DRIVER_VERSION 0x0200000B
 #define DRIVER_NAME	   "indigo_ccd_apogee"
 
 #include <stdlib.h>

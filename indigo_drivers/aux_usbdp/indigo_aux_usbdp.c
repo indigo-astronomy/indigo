@@ -23,7 +23,7 @@
  \file indigo_aux_usbdp.c
  */
 
-#define DRIVER_VERSION 0x0008
+#define DRIVER_VERSION 0x03000008
 #define DRIVER_NAME "indigo_aux_usbdp"
 
 #include <stdlib.h>

@@ -23,7 +23,7 @@ int main(int argc, char **argv) {
 		indigo_driver_entry *driver;
 		if (indigo_load_driver(name, false, &driver) == INDIGO_OK) {
 			indigo_available_drivers[entry++].driver(INDIGO_DRIVER_INFO, &info);
-			printf("\"%s\", \"%s\", %04x\n", info.name, info.description, info.version);
+			printf("\"%s\", \"%s\", %08x\n", info.name, info.description, info.version);
 		}
 	}
 }

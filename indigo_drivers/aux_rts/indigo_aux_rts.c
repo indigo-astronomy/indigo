@@ -23,7 +23,7 @@
  \file indigo_aux_rts.c
  */
 
-#define DRIVER_VERSION 0x0007
+#define DRIVER_VERSION 0x03000007
 #define DRIVER_NAME "indigo_aux_rts"
 
 #include <stdlib.h>

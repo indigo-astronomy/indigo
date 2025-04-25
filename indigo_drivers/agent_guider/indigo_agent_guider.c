@@ -23,7 +23,7 @@
  \file indigo_agent_guider.c
  */
 
-#define DRIVER_VERSION 0x0029
+#define DRIVER_VERSION 0x03000029
 #define DRIVER_NAME	"indigo_agent_guider"
 
 #include <stdlib.h>
@@ -41,7 +41,6 @@
 #include <indigo/indigo_filter.h>
 #include <indigo/indigo_ccd_driver.h>
 #include <indigo/indigo_raw_utils.h>
-#include <indigo/indigo_io.h>
 #include <indigo/indigo_server_tcp.h>
 
 #include "indigo_agent_guider.h"

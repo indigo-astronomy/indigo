@@ -23,7 +23,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x0035
+#define DRIVER_VERSION 0x03000035
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>
@@ -39,7 +39,6 @@
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_filter.h>
 #include <indigo/indigo_ccd_driver.h>
-#include <indigo/indigo_io.h>
 #include <indigo/indigo_raw_utils.h>
 #include <indigo/indigo_align.h>
 #include <indigo/indigo_polynomial_fit.h>

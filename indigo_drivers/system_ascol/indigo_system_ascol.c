@@ -24,7 +24,7 @@
  \file indigo_system_ascol.c
  */
 
-#define DRIVER_VERSION 0x0009
+#define DRIVER_VERSION 0x02000009
 #define DRIVER_NAME	"indigo_system_ascol"
 
 #include <stdlib.h>

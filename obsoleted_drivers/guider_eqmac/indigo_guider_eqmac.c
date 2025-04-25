@@ -29,7 +29,7 @@
  \file indigo_guider_eqmac.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x02000002
 #define DRIVER_NAME "indigo_guider_eqmac"
 
 #include <stdlib.h>

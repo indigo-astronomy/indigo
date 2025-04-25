@@ -23,7 +23,7 @@
  \file indigo_wheel_asi.c
  */
 
-#define DRIVER_VERSION 0x000D
+#define DRIVER_VERSION 0x0300000D
 #define DRIVER_NAME "indigo_wheel_asi"
 
 #include <stdlib.h>

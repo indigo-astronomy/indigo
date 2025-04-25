@@ -24,7 +24,7 @@
  \file indigo_mount_simulator.c
  */
 
-#define DRIVER_VERSION 0x000A
+#define DRIVER_VERSION 0x0300000A
 #define DRIVER_NAME "indigo_mount_simulator"
 
 #include <stdlib.h>

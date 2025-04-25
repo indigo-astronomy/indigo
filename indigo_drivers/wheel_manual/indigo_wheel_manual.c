@@ -37,7 +37,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0004
+#define DRIVER_VERSION       0x03000004
 #define DRIVER_NAME          "indigo_wheel_manual"
 #define DRIVER_LABEL         "Manual filter wheel"
 #define WHEEL_DEVICE_NAME    "Manual filter wheel"

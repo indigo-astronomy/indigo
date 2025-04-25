@@ -23,7 +23,7 @@
  \file indigo_ccd_quantum.c
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x03000004
 #define DRIVER_NAME "indigo_wheel_quantum"
 
 #include <stdlib.h>

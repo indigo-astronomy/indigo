@@ -23,7 +23,7 @@
  \file indigo_wheel_astroasis.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x03000003
 #define DRIVER_NAME "indigo_wheel_astroasis"
 
 #include <stdlib.h>

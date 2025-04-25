@@ -25,7 +25,7 @@
  \NOTE: This file should be .cpp as qhy headers are in C++
  */
 
-#define DRIVER_VERSION 0x0019
+#define DRIVER_VERSION 0x03000019
 
 #include <stdlib.h>
 #include <string.h>

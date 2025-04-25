@@ -23,7 +23,7 @@
  \file indigo_rotator_optec.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x02000001
 #define DRIVER_NAME	"indigo_rotator_optec"
 
 #include <stdlib.h>

@@ -26,7 +26,7 @@
  \file indigo_ccd_ssag.c
  */
 
-#define DRIVER_VERSION 0x000C
+#define DRIVER_VERSION 0x0300000C
 #define DRIVER_NAME "indigo_ccd_ssag"
 
 #include <stdlib.h>

@@ -24,7 +24,7 @@
  */
 
 
-#define DRIVER_VERSION 0x0010
+#define DRIVER_VERSION 0x02000010
 #define DRIVER_NAME "indigo_ccd_sbig"
 
 #include <stdlib.h>

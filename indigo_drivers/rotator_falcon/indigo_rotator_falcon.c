@@ -23,7 +23,7 @@
  \file indigo_rotator_falcon.c
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x03000004
 #define DRIVER_NAME	"indigo_rotator_falcon"
 
 #include <stdlib.h>

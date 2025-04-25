@@ -23,7 +23,7 @@
  \file indigo_focuser_wemacro.c
  */
 
-#define DRIVER_VERSION 0x0005
+#define DRIVER_VERSION 0x02000005
 #define DRIVER_NAME "indigo_focuser_wemacro"
 
 #include <stdlib.h>

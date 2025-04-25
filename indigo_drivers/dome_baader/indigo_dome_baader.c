@@ -23,7 +23,7 @@
  \file indigo_dome_baader.c
  */
 
-#define DRIVER_VERSION 0x00005
+#define DRIVER_VERSION 0x020000005
 #define DRIVER_NAME	"indigo_dome_baader"
 
 #include <stdlib.h>

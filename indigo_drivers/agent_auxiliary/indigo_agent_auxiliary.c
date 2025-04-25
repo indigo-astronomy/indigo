@@ -23,7 +23,7 @@
  \file indigo_agent_auxiliary.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x03000003
 #define DRIVER_NAME	"indigo_agent_auxiliary"
 
 #include <stdlib.h>
@@ -36,7 +36,6 @@
 
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_filter.h>
-#include <indigo/indigo_io.h>
 
 #include "indigo_agent_auxiliary.h"
 

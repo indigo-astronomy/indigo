@@ -23,7 +23,7 @@
  \file indigo_dome_skyroof.c
  */
 
-#define DRIVER_VERSION 0x0007
+#define DRIVER_VERSION 0x02000007
 #define DRIVER_NAME	"indigo_dome_skyroof"
 
 #include <stdlib.h>

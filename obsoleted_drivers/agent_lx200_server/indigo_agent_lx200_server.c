@@ -23,7 +23,7 @@
  \file indigo_agent_lx200_server.c
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x02000004
 #define DRIVER_NAME	"indigo_agent_lx200_server"
 
 #include <stdio.h>

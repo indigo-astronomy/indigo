@@ -38,7 +38,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0003
+#define DRIVER_VERSION       0x03000003
 #define DRIVER_NAME          "indigo_aux_upb3"
 #define DRIVER_LABEL         "PegasusAstro Ultimate Powerbox v3"
 #define AUX_DEVICE_NAME      "Ultimate Powerbox 3"

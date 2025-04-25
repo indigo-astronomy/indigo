@@ -1132,7 +1132,7 @@ void write_c_include_section(void) {
 void write_c_define_section(void) {
 	write_line("#pragma mark - Common definitions");
 	write_line("");
-	write_line("#define %-20s 0x%04X", "DRIVER_VERSION", driver->version);
+	write_line("#define %-20s 0x%08X", "DRIVER_VERSION", 0x03000000 + driver->version);
 	write_line("#define %-20s \"indigo_%s_%s\"", "DRIVER_NAME", driver->devices->type, driver->name);
 	write_line("#define %-20s \"%s\"", "DRIVER_LABEL", driver->label);
 	for (device_type *device = driver->devices; device; device = device->next) {

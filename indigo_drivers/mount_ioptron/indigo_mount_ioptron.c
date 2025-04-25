@@ -23,7 +23,7 @@
  \file indigo_mount_ioptron.c
  */
 
-#define DRIVER_VERSION 0x002B
+#define DRIVER_VERSION 0x0300002B
 #define DRIVER_NAME	"indigo_mount_ioptron"
 
 #include <stdlib.h>

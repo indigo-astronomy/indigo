@@ -23,7 +23,7 @@
  \file indigo_ccd_uvc.c
  */
 
-#define DRIVER_VERSION 0x000F
+#define DRIVER_VERSION 0x0200000F
 #define DRIVER_NAME "indigo_ccd_uvc"
 
 #include <stdlib.h>

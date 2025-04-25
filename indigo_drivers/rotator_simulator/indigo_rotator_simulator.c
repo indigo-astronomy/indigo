@@ -37,7 +37,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0003
+#define DRIVER_VERSION       0x03000003
 #define DRIVER_NAME          "indigo_rotator_simulator"
 #define DRIVER_LABEL         "Field Rotator Simulator"
 #define ROTATOR_DEVICE_NAME  "Field Rotator Simulator"

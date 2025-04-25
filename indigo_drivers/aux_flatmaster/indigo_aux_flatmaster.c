@@ -37,7 +37,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0008
+#define DRIVER_VERSION       0x03000008
 #define DRIVER_NAME          "indigo_aux_flatmaster"
 #define DRIVER_LABEL         "PegasusAstro FlatMaster"
 #define AUX_DEVICE_NAME      "Pegasus FlatMaster"

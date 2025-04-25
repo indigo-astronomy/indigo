@@ -23,7 +23,7 @@
  \file indigo_agent_alignment.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x02000001
 #define DRIVER_NAME	"indigo_agent_alignment"
 
 #include <stdlib.h>

@@ -38,7 +38,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x000B
+#define DRIVER_VERSION       0x0300000B
 #define DRIVER_NAME          "indigo_ao_sx"
 #define DRIVER_LABEL         "StarlightXpress AO"
 #define AO_DEVICE_NAME       "SX AO"

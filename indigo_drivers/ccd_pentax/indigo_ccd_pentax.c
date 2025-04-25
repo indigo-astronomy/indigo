@@ -26,7 +26,7 @@
  \file indigo_ccd_pentax.c
  */
 
-#define DRIVER_VERSION 0x0000
+#define DRIVER_VERSION 0x02000000
 #define DRIVER_NAME "indigo_ccd_pentax"
 
 #include <stdlib.h>

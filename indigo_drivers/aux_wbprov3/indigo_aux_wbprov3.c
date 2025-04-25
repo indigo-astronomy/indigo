@@ -23,7 +23,7 @@
  \file indigo_aux_wbprov3.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x03000002
 #define DRIVER_NAME "indigo_aux_wbprov3"
 
 #include <stdlib.h>

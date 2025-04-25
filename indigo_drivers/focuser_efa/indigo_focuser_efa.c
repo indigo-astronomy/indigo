@@ -27,7 +27,7 @@
  */
 
 
-#define DRIVER_VERSION 0x0011
+#define DRIVER_VERSION 0x02000011
 #define DRIVER_NAME "indigo_focuser_efa"
 
 #include <stdlib.h>

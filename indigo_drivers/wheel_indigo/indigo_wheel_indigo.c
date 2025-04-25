@@ -23,7 +23,7 @@
  \file indigo_ccd_indigo.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x03000002
 #define DRIVER_NAME "indigo_wheel_indigo"
 
 #include <stdlib.h>

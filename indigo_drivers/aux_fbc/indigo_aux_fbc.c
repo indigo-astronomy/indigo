@@ -37,7 +37,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0006
+#define DRIVER_VERSION       0x03000006
 #define DRIVER_NAME          "indigo_aux_fbc"
 #define DRIVER_LABEL         "Lacerta FBC"
 #define AUX_DEVICE_NAME      "Lacerta FBC"

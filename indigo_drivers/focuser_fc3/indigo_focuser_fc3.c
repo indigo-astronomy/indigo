@@ -23,7 +23,7 @@
  \file indigo_focuser_fc3.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x03000002
 #define DRIVER_NAME "indigo_focuser_fc3"
 
 #include <stdlib.h>

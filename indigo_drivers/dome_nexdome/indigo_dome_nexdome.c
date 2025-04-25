@@ -23,7 +23,7 @@
  \file indigo_dome_nexdome.c
  */
 
-#define DRIVER_VERSION 0x00009
+#define DRIVER_VERSION 0x020000009
 #define DRIVER_NAME	"indigo_dome_nexdome"
 
 #include <stdlib.h>

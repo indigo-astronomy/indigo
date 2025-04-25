@@ -23,7 +23,7 @@
  \file indigo_ccd_xagyl.c
  */
 
-#define DRIVER_VERSION 0x0005
+#define DRIVER_VERSION 0x03000005
 #define DRIVER_NAME "indigo_wheel_xagyl"
 
 #include <stdlib.h>

@@ -24,7 +24,7 @@
  \file indigo_aux_mgbox.c
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x03000004
 #define DRIVER_NAME	"idnigo_aux_mgbox"
 
 #define DEFAULT_BAUDRATE "38400"

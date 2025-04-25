@@ -23,7 +23,7 @@
  \file indigo_mount_nexstaraux.c
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x02000004
 #define DRIVER_NAME	"indigo_mount_nexstaraux"
 
 #include <stdlib.h>

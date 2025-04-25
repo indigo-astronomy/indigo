@@ -257,7 +257,7 @@ typedef enum {
 typedef struct {
 	char description[INDIGO_NAME_SIZE];
 	char name[INDIGO_NAME_SIZE];
-	uint16_t version;  /* version - MSB, revision - LSB */
+	uint32_t version;  /* version - MSB, revision - LSB */
 	bool multi_device_support;
 	indigo_driver_action status;
 } indigo_driver_info;

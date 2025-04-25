@@ -24,7 +24,7 @@
  \file indigo_ccd_dsi.c
  */
 
-#define DRIVER_VERSION 0x000E
+#define DRIVER_VERSION 0x0300000E
 #define DRIVER_NAME		"indigo_ccd_dsi"
 
 #include <stdlib.h>

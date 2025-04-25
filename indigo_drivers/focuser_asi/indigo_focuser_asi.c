@@ -23,7 +23,7 @@
  \file indigo_focuser_asi.c
  */
 
-#define DRIVER_VERSION 0x001B
+#define DRIVER_VERSION 0x0300001B
 #define DRIVER_NAME "indigo_focuser_asi"
 
 #include <stdlib.h>
