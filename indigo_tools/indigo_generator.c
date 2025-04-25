@@ -1141,9 +1141,7 @@ void write_c_define_section(void) {
 	if (driver->libusb) {
 		write_line("#define %-20s 5", "MAX_DEVICES");
 	}
-	write_line("");
 	write_line("#define %-20s ((%s_private_data *)device->private_data)", "PRIVATE_DATA", driver->name);
-	write_line("");
 	for (definition_type *definiton = driver->definions; definiton; definiton = definiton->next) {
 		write_line("#define %-20s %s", definiton->name, definiton->value);
 	}

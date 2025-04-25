@@ -41,9 +41,7 @@
 #define DRIVER_NAME          "indigo_aux_flatmaster"
 #define DRIVER_LABEL         "PegasusAstro FlatMaster"
 #define AUX_DEVICE_NAME      "Pegasus FlatMaster"
-
 #define PRIVATE_DATA         ((flatmaster_private_data *)device->private_data)
-
 
 // Custom code below
 

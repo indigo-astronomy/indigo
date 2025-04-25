@@ -41,9 +41,7 @@
 #define DRIVER_NAME          "indigo_aux_astromechanics"
 #define DRIVER_LABEL         "ASTROMECHANICS LPM"
 #define AUX_DEVICE_NAME      "ASTROMECHANICS LPM"
-
 #define PRIVATE_DATA         ((astromechanics_private_data *)device->private_data)
-
 
 #pragma mark - Property definitions
 

@@ -43,15 +43,8 @@
 #define DRIVER_LABEL         "PegasusAstro Ultimate Powerbox v3"
 #define AUX_DEVICE_NAME      "Ultimate Powerbox 3"
 #define FOCUSER_DEVICE_NAME  "Ultimate Powerbox 3 (focuser)"
-
 #define PRIVATE_DATA         ((upb3_private_data *)device->private_data)
-
-
-// Custom code below
-
-#define POWERBOX_GROUP        "Powerbox"
-
-// Custom code above
+#define POWERBOX_GROUP       "Powerbox"
 
 #pragma mark - Property definitions
 

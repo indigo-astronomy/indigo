@@ -41,9 +41,7 @@
 #define DRIVER_NAME          "indigo_gps_simulator"
 #define DRIVER_LABEL         "GPS Simulator"
 #define GPS_DEVICE_NAME      "GPS Simulator"
-
 #define PRIVATE_DATA         ((simulator_private_data *)device->private_data)
-
 #define SIM_LONGITUDE        22.675
 #define SIM_LATITUDE         43.625
 #define SIM_ELEVATION        650
@@ -134,7 +132,6 @@ static void gps_timer_callback(indigo_device *device) {
 		time_t ttime = 0;
 		GPS_UTC_TIME_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_timetoisogm(ttime, GPS_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
-		/* Simulate 0 or 1 SVs used / visible if there is no fix */
 		GPS_ADVANCED_STATUS_SVS_IN_USE_ITEM->number.value = (int)(0.5 + (double)(rand())/RAND_MAX);
 		GPS_ADVANCED_STATUS_SVS_IN_VIEW_ITEM->number.value = (int)(0.5 + (double)(rand())/RAND_MAX);
 		GPS_ADVANCED_STATUS_PDOP_ITEM->number.value = 0;

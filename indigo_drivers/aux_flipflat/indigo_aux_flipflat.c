@@ -41,9 +41,7 @@
 #define DRIVER_NAME          "indigo_aux_flipflat"
 #define DRIVER_LABEL         "Alnitak Astrosystems FlipFlat"
 #define AUX_DEVICE_NAME      "FlipFlat"
-
 #define PRIVATE_DATA         ((flipflat_private_data *)device->private_data)
-
 
 #pragma mark - Property definitions
 

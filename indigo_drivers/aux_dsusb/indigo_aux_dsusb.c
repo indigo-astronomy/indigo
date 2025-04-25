@@ -49,9 +49,7 @@
 #define DRIVER_LABEL         "Shoestring DSUSB shutter release"
 #define AUX_DEVICE_NAME      "%s"
 #define MAX_DEVICES          5
-
 #define PRIVATE_DATA         ((dsusb_private_data *)device->private_data)
-
 
 #pragma mark - Property definitions
 

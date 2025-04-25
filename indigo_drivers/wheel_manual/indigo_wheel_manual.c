@@ -41,9 +41,7 @@
 #define DRIVER_NAME          "indigo_wheel_manual"
 #define DRIVER_LABEL         "Manual filter wheel"
 #define WHEEL_DEVICE_NAME    "Manual filter wheel"
-
 #define PRIVATE_DATA         ((manual_private_data *)device->private_data)
-
 #define FILTER_COUNT         8
 
 #pragma mark - Private data definition

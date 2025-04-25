@@ -41,9 +41,7 @@
 #define DRIVER_NAME          "indigo_aux_fbc"
 #define DRIVER_LABEL         "Lacerta FBC"
 #define AUX_DEVICE_NAME      "Lacerta FBC"
-
 #define PRIVATE_DATA         ((fbc_private_data *)device->private_data)
-
 
 // Custom code below
 

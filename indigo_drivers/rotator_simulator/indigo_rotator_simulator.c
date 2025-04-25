@@ -41,9 +41,7 @@
 #define DRIVER_NAME          "indigo_rotator_simulator"
 #define DRIVER_LABEL         "Field Rotator Simulator"
 #define ROTATOR_DEVICE_NAME  "Field Rotator Simulator"
-
 #define PRIVATE_DATA         ((simulator_private_data *)device->private_data)
-
 #define ROTATOR_SPEED        1
 
 #pragma mark - Private data definition
@@ -195,14 +193,6 @@ static indigo_result rotator_enumerate_properties(indigo_device *device, indigo_
 static indigo_result rotator_attach(indigo_device *device) {
 	if (indigo_rotator_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
-
-		// Custom code below
-
-		DEVICE_PORT_PROPERTY->hidden = true;
-		DEVICE_PORTS_PROPERTY->hidden = true;
-
-		// Custom code above
-
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		return rotator_enumerate_properties(device, NULL, NULL);

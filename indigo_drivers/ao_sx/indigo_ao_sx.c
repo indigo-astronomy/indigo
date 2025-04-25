@@ -43,9 +43,7 @@
 #define DRIVER_LABEL         "StarlightXpress AO"
 #define AO_DEVICE_NAME       "SX AO"
 #define GUIDER_DEVICE_NAME   "SX AO (guider)"
-
 #define PRIVATE_DATA         ((sx_private_data *)device->private_data)
-
 
 #pragma mark - Private data definition
 

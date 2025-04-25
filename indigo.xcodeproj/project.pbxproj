@@ -4955,6 +4955,7 @@
 		9DBC34701DCB26E500588DB9 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
 		9DBC34721DCB26F200588DB9 /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = System/Library/Frameworks/IOKit.framework; sourceTree = SDKROOT; };
 		9DBF2E732164BA7100A48C02 /* Protocol_V1.01 (8406).pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "Protocol_V1.01 (8406).pdf"; sourceTree = "<group>"; };
+		9DC41E702DBB8392006F679D /* indigo_aux_geoptikflat.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_aux_geoptikflat.driver; sourceTree = "<group>"; };
 		9DC4736C21A4596500EE561A /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
 		9DC4967D22BA7B810052AB3E /* indigo_agent_auxiliary.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_agent_auxiliary.h; sourceTree = "<group>"; };
 		9DC4967E22BA7B810052AB3E /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -6445,6 +6446,7 @@
 				59540AD126D00CCF000C2A1B /* indigo_aux_geoptikflat.h */,
 				59540AD326D00CCF000C2A1B /* indigo_aux_geoptikflat.c */,
 				59540AD026D00CCF000C2A1B /* indigo_aux_geoptikflat_main.c */,
+				9DC41E702DBB8392006F679D /* indigo_aux_geoptikflat.driver */,
 			);
 			path = aux_geoptikflat;
 			sourceTree = "<group>";

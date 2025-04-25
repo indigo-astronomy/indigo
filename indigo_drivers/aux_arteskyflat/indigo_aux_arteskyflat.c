@@ -41,9 +41,7 @@
 #define DRIVER_NAME          "indigo_aux_arteskyflat"
 #define DRIVER_LABEL         "Artesky Flat Box USB"
 #define AUX_DEVICE_NAME      "Artesky Flat Box"
-
 #define PRIVATE_DATA         ((arteskyflat_private_data *)device->private_data)
-
 
 #pragma mark - Property definitions
 

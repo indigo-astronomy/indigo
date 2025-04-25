@@ -1,6 +1,4 @@
-# Migration to code generator
-
-## Already done
+# Migrated to code generator
 
 ao_sx
 
@@ -10,6 +8,7 @@ aux_dsusb
 aux_fbc - needs retest with physical hw
 aux_flatmaster
 aux_flipflat
+aux_geoptikflat
 aux_upb3
 
 gps_simulator
@@ -19,12 +18,8 @@ rotator_simulator
 
 wheel_manual
 
-## In progress
+# Migrated to Windows
 
-# Migration to Windows
-
-
-## Already done
 
 agent_alpaca
 agent_auxiliary
@@ -34,7 +29,6 @@ agent_imager
 agent_mount
 agent_scripting
 
-aux_geoptikflat
 aux_mgbox
 aux_ppb
 aux_rts
@@ -94,9 +88,6 @@ wheel_qhy
 wheel_quantum
 wheel_trutek
 wheel_xagyl
-
-## In progress
-
 
 # TODO
 

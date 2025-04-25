@@ -41,15 +41,8 @@
 #define DRIVER_NAME          "indigo_gps_nmea"
 #define DRIVER_LABEL         "Generic NMEA 0183 GPS"
 #define GPS_DEVICE_NAME      "NMEA GPS"
-
 #define PRIVATE_DATA         ((nmea_private_data *)device->private_data)
-
-
-// Custom code below
-
-#define MAX_NB_OF_SYSTEMS     26
-
-// Custom code above
+#define MAX_NB_OF_SYSTEMS    26
 
 #pragma mark - Property definitions
 
