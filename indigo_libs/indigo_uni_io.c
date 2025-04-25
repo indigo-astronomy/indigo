@@ -58,7 +58,7 @@
 #include <indigo/indigo_uni_io.h>
 
 static int handle_index = 0;
-static pthread_mutex_t mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER;
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 
 indigo_uni_handle _indigo_stdin_handle = { INDIGO_FILE_HANDLE, 0, 0 };
