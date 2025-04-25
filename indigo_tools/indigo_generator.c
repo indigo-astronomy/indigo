@@ -300,10 +300,10 @@ bool get_token(void) {
 				end = current;
 				last_token = TOKEN_IDENTIFIER;
 				return true;
-			} else if (isnumber(*current) || *current == '-') {
+			} else if (isdigit(*current) || *current == '-') {
 				begin = current;
 				FORWARD(1);
-				while (isnumber(*current) || *current == '.' || *current == '-' || *current == 'E' || *current == 'e') {
+				while (isdigit(*current) || *current == '.' || *current == '-' || *current == 'E' || *current == 'e') {
 					FORWARD(1);
 				}
 				end = current;
