@@ -115,8 +115,6 @@ static bool fbc_open(indigo_device *device) {
 	if (PRIVATE_DATA->handle != NULL) {
 		char response[80];
 		indigo_uni_set_rts(PRIVATE_DATA->handle, false);
-		// TODO: retest on windows (indigo_uni_set_cts() is no-op)
-		indigo_uni_set_cts(PRIVATE_DATA->handle, false);
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected on %s", DEVICE_PORT_ITEM->text.value);
 		if (fbc_command(device, ": I #", response, sizeof(response)) && !strcmp("I FBC", response)) {
 			if (fbc_command(device, ": P #", response, sizeof(response))) {
@@ -199,9 +197,9 @@ static void aux_light_switch_handler(indigo_device *device) {
 
 	// Custom code below
 
-	char command[16],	response[80];
+	char command[16];
 	sprintf(command, "E:%d", AUX_LIGHT_SWITCH_ON_ITEM->sw.value);
-	if (!fbc_command(device, command, response, sizeof(response))) {
+	if (!fbc_command(device, command, NULL, 0)) {
 		AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 
@@ -251,8 +249,6 @@ static void aux_light_impulse_handler(indigo_device *device) {
 			} else if (AUX_LIGHT_IMPULSE_DURATION_ITEM->number.value >= 0) {
 				indigo_usleep(INDIGO_DELAY(AUX_LIGHT_IMPULSE_DURATION_ITEM->number.value));
 				AUX_LIGHT_IMPULSE_DURATION_ITEM->number.value = 0;
-			} else {
-				
 			}
 		}
 		AUX_LIGHT_IMPULSE_PROPERTY->state = INDIGO_OK_STATE;
@@ -286,8 +282,6 @@ static void aux_ccd_exposure_handler(indigo_device *device) {
 			} else if (CCD_EXPOSURE_ITEM->number.value >= 0) {
 				indigo_usleep(INDIGO_DELAY(CCD_EXPOSURE_ITEM->number.value));
 				CCD_EXPOSURE_ITEM->number.value = 0;
-			} else {
-				
 			}
 		}
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;

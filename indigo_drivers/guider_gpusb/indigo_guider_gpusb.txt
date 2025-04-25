@@ -1,0 +1,99 @@
+// Copyright (c) 2016-2025 CloudMakers, s. r. o.
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// GPUSB guider driver definition
+
+driver gpusb {
+	author = "Peter Polakovic";
+	copyright = "Copyright (c) 2016-2025 CloudMakers, s. r. o.";
+	label = "Shoestring GPUSB guider";
+	version = 6;
+	libusb {
+		vid = GPUSB_VID;
+	}
+	include {
+		#include <libgpusb.h>
+	}
+	data {
+		libgpusb_device_context *device_context;
+		unsigned short relay_mask;
+	}
+	
+	// Shared code
+	
+	code {
+		static bool gpusb_match(libusb_device *dev, const char **name) {
+			return libgpusb_guider(dev, name);
+		}
+		
+		static bool gpusb_open(indigo_device *device) {
+			return libgpusb_open(PRIVATE_DATA->usbdev, &PRIVATE_DATA->device_context);
+		}
+		
+		static void gpusb_close(indigo_device *device) {
+			libgpusb_stop(PRIVATE_DATA->device_context);
+			libgpusb_close(PRIVATE_DATA->device_context);
+		}
+		
+		static void gpusb_debug(const char *message) {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libgpusb: %s\n", message);
+		}
+	}
+	
+	// FOCUSER definition
+	
+	guider {
+		name = "%s";
+		inherited CONNECTION;
+		inherited GUIDER_GUIDE_DEC {
+			change {
+				if (!(PRIVATE_DATA->relay_mask & (GPUSB_DEC_NORTH | GPUSB_DEC_SOUTH))) {
+					int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
+					if (duration > 0) {
+						PRIVATE_DATA->relay_mask |= GPUSB_DEC_NORTH;
+						indigo_set_timer(device, duration/1000.0, guider_dec_timer_callback, &PRIVATE_DATA->dec_guider_timer);
+					} else {
+						int duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
+						if (duration > 0) {
+							PRIVATE_DATA->relay_mask |= GPUSB_DEC_SOUTH;
+							indigo_set_timer(device, duration/1000.0, guider_dec_timer_callback, &PRIVATE_DATA->dec_guider_timer);
+						}
+					}
+					libgpusb_set(PRIVATE_DATA->device_context, PRIVATE_DATA->relay_mask);
+					GUIDER_GUIDE_DEC_PROPERTY->state = PRIVATE_DATA->relay_mask & (GPUSB_DEC_NORTH | GPUSB_DEC_SOUTH) ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
+					if (GUIDER_GUIDE_DEC_PROPERTY->state == INDIGO_BUSY_STATE) {
+						indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+						pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+						
+						
+						pthread_mutex_lock(&PRIVATE_DATA->mutex);
+						PRIVATE_DATA->relay_mask &= ~(GPUSB_DEC_NORTH | GPUSB_DEC_SOUTH);
+						GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+					}
+				}
+			}
+		}
+	}
+	
+	// Main code
+	
+	init {
+		libgpusb_debug = &gpusb_debug;
+	}
+}
+

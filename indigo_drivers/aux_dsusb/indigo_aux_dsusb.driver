@@ -52,7 +52,6 @@ driver dsusb {
 		static void dsusb_debug(const char *message) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libdsusb: %s\n", message);
 		}
-
 	}
 	
 	// AUX definition
@@ -60,7 +59,7 @@ driver dsusb {
 	aux {
 		name = "%s";
 		interface = INDIGO_INTERFACE_AUX_SHUTTER;
-		inherited CONNECTION { }
+		inherited CONNECTION;
 		switch X_CONFIG {
 			label = "Configure";
 			name = "X_CONFIG";

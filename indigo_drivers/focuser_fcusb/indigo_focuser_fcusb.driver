@@ -52,7 +52,6 @@ driver fcusb {
 		static void fcusb_debug(const char *message) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libfcusb: %s\n", message);
 		}
-
 	}
 	
 	// FOCUSER definition
@@ -105,12 +104,6 @@ driver fcusb {
 
 			}
 		}
-		attach {
-			FOCUSER_POSITION_PROPERTY->hidden = true;
-			FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.max = 255;
-			indigo_copy_value(FOCUSER_SPEED_ITEM->label, "Power (0-255)");
-			indigo_copy_value(FOCUSER_SPEED_PROPERTY->label, "Power");
-		}
 		switch X_FOCUSER_FREQUENCY {
 			label = "Frequency";
 			name = "X_FOCUSER_FREQUENCY";
@@ -130,6 +123,12 @@ driver fcusb {
 				label = "25 kHz (16x)";
 				name = "FREQUENCY_16";
 			}
+		}
+		attach {
+			FOCUSER_POSITION_PROPERTY->hidden = true;
+			FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.max = 255;
+			indigo_copy_value(FOCUSER_SPEED_ITEM->label, "Power (0-255)");
+			indigo_copy_value(FOCUSER_SPEED_PROPERTY->label, "Power");
 		}
 	}
 	
