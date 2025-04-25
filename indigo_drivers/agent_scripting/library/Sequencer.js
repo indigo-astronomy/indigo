@@ -219,6 +219,14 @@ Sequence.prototype.disable_meridian_flip = function() {
 	this.sequence.push({ execute: 'set_imager_feature("PAUSE_AFTER_TRANSIT", false)', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
+Sequence.prototype.enable_filter_offsets = function() {
+	this.sequence.push({ execute: 'set_imager_feature("APPLY_FILTER_OFFSETS", true)', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
+Sequence.prototype.disable_filter_offsets = function() {
+	this.sequence.push({ execute: 'set_imager_feature("APPLY_FILTER_OFFSETS", false)', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
 Sequence.prototype.set_fits_header = function(keyword, value) {
 	this.sequence.push({ execute: 'set_fits_header("' + keyword + '", "' + value +'")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
