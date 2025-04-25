@@ -885,10 +885,12 @@ void mount_handle_abort(indigo_device *device) {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_coordinates(device, NULL);
 
-		//  Disable tracking
-		indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
-		MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+		// resume tracking if it was on
+		if (MOUNT_TRACKING_ON_ITEM->sw.value) {
+			double axisRate = synscan_tracking_rate(device);
+			synscan_slew_axis_at_rate(device, kAxisRA, axisRate);
+			PRIVATE_DATA->raAxisMode = kAxisModeTracking;
+		}
 
 		//  Reset the abort switch
 		MOUNT_ABORT_MOTION_ITEM->sw.value = false;

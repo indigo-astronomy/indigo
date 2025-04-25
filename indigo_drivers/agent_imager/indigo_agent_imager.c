@@ -23,7 +23,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x0034
+#define DRIVER_VERSION 0x0035
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>
@@ -118,7 +118,8 @@
 #define AGENT_IMAGER_ENABLE_DITHERING_FEATURE_ITEM	(AGENT_PROCESS_FEATURES_PROPERTY->items+0)
 #define AGENT_IMAGER_DITHER_AFTER_BATCH_FEATURE_ITEM	(AGENT_PROCESS_FEATURES_PROPERTY->items+1)
 #define AGENT_IMAGER_PAUSE_AFTER_TRANSIT_FEATURE_ITEM		(AGENT_PROCESS_FEATURES_PROPERTY->items+2)
-#define AGENT_IMAGER_MACRO_MODE_FEATURE_ITEM	(AGENT_PROCESS_FEATURES_PROPERTY->items+3)
+#define AGENT_IMAGER_APPLY_FILTER_OFFSETS_FEATURE_ITEM				(AGENT_PROCESS_FEATURES_PROPERTY->items+3)
+#define AGENT_IMAGER_MACRO_MODE_FEATURE_ITEM	(AGENT_PROCESS_FEATURES_PROPERTY->items+4)
 
 #define AGENT_WHEEL_FILTER_PROPERTY						(DEVICE_PRIVATE_DATA->agent_wheel_filter_property)
 #define FILTER_SLOT_COUNT											24
@@ -242,6 +243,9 @@ typedef struct {
 	indigo_property *agent_breakpoint_property;
 	indigo_property *agent_resume_condition_property;
 	indigo_property *agent_barrier_property;
+	double filter_offsets[FILTER_SLOT_COUNT];
+	int current_filter_index;
+	int requested_filter_index;
 	double remaining_exposure_time;
 	indigo_property_state exposure_state;
 	double remaining_streaming_count;
@@ -813,7 +817,7 @@ static inline void set_backlash_if_overshoot(indigo_device *device, double backl
 	}
 }
 
-static bool move_focuser(indigo_device *device, bool moving_out, double steps) {
+static bool _move_focuser(indigo_device *device, bool moving_out, double steps, bool restore_backlash) {
 	if (steps == 0) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Not moving");
 		return true;
@@ -824,29 +828,42 @@ static bool move_focuser(indigo_device *device, bool moving_out, double steps) {
 	for (int i = 0; i < BUSY_TIMEOUT * 1000 && (state = DEVICE_PRIVATE_DATA->steps_state) != INDIGO_BUSY_STATE && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE; i++)
 		indigo_usleep(1000);
 	if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
-		set_backlash_if_overshoot(device, DEVICE_PRIVATE_DATA->saved_backlash);
+		if (restore_backlash) {
+			set_backlash_if_overshoot(device, DEVICE_PRIVATE_DATA->saved_backlash);
+		}
 		return false;
 	}
 	if (state != INDIGO_BUSY_STATE) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FOCUSER_STEPS_PROPERTY didn't become busy in %d second(s)", BUSY_TIMEOUT);
-		set_backlash_if_overshoot(device, DEVICE_PRIVATE_DATA->saved_backlash);
+		if (restore_backlash) {
+			set_backlash_if_overshoot(device, DEVICE_PRIVATE_DATA->saved_backlash);
+		}
 		return false;
 	}
 	while ((state = DEVICE_PRIVATE_DATA->steps_state) == INDIGO_BUSY_STATE) {
 		indigo_usleep(200000);
 	}
 	if (state != INDIGO_OK_STATE) {
-		if (AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE)
+		if (AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "FOCUSER_STEPS_PROPERTY didn't become OK");
-		set_backlash_if_overshoot(device, DEVICE_PRIVATE_DATA->saved_backlash);
+		}
+		if (restore_backlash) {
+			set_backlash_if_overshoot(device, DEVICE_PRIVATE_DATA->saved_backlash);
+		}
 		return false;
 	}
 	if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
-		set_backlash_if_overshoot(device, DEVICE_PRIVATE_DATA->saved_backlash);
+		if (restore_backlash) {
+			set_backlash_if_overshoot(device, DEVICE_PRIVATE_DATA->saved_backlash);
+		}
 		return false;
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Moving %s %f steps", moving_out ? "OUT" : "IN", steps);
 	return true;
+}
+
+static bool move_focuser(indigo_device *device, bool moving_out, double steps) {
+	return _move_focuser(device, moving_out, steps, true);
 }
 
 static bool move_focuser_with_overshoot_if_needed(indigo_device *device, bool move_out, double steps, double approx_backlash, bool apply_backlash) {
@@ -2678,6 +2695,35 @@ static void sequence_process(indigo_device *device) {
 	FILTER_DEVICE_CONTEXT->running_process = false;
 }
 
+static void filter_handler(indigo_device *device) {
+	if (AGENT_IMAGER_APPLY_FILTER_OFFSETS_FEATURE_ITEM->sw.value && INDIGO_FILTER_FOCUSER_SELECTED) {
+		double steps = DEVICE_PRIVATE_DATA->filter_offsets[DEVICE_PRIVATE_DATA->requested_filter_index] - DEVICE_PRIVATE_DATA->filter_offsets[DEVICE_PRIVATE_DATA->current_filter_index];
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME,
+			"Moving to filter '%s' with offset %.3f from filter '%s' with offset %.3f. Applying diff offset %.3f",
+			AGENT_WHEEL_FILTER_PROPERTY->items[DEVICE_PRIVATE_DATA->requested_filter_index].label,
+			DEVICE_PRIVATE_DATA->filter_offsets[DEVICE_PRIVATE_DATA->requested_filter_index],
+			AGENT_WHEEL_FILTER_PROPERTY->items[DEVICE_PRIVATE_DATA->current_filter_index].label,
+			DEVICE_PRIVATE_DATA->filter_offsets[DEVICE_PRIVATE_DATA->current_filter_index],
+			steps
+		);
+		if (_move_focuser(device, steps > 0, fabs(steps), false)) {
+			indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device->name, WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, DEVICE_PRIVATE_DATA->requested_filter_index + 1);
+		} else {
+			AGENT_WHEEL_FILTER_PROPERTY->state = INDIGO_ALERT_STATE;
+			AGENT_WHEEL_FILTER_PROPERTY->items[DEVICE_PRIVATE_DATA->requested_filter_index].sw.value = false;
+			AGENT_WHEEL_FILTER_PROPERTY->items[DEVICE_PRIVATE_DATA->current_filter_index].sw.value = true;
+			indigo_update_property(device, AGENT_WHEEL_FILTER_PROPERTY, "Failed to set filter offset");
+		}
+	} else {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME,
+			"Moving to filter '%s' without offset from filter '%s'",
+			AGENT_WHEEL_FILTER_PROPERTY->items[DEVICE_PRIVATE_DATA->requested_filter_index].label,
+			AGENT_WHEEL_FILTER_PROPERTY->items[DEVICE_PRIVATE_DATA->current_filter_index].label
+		);
+		indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device->name, WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, DEVICE_PRIVATE_DATA->requested_filter_index + 1);
+	}
+}
+
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
 #endif
@@ -2776,14 +2822,16 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		}
 		indigo_init_switch_item(AGENT_ABORT_PROCESS_ITEM, AGENT_ABORT_PROCESS_ITEM_NAME, "Abort process", false);
-		AGENT_PROCESS_FEATURES_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_PROCESS_FEATURES_PROPERTY_NAME, "Agent", "Process features", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 4);
-		if (AGENT_PROCESS_FEATURES_PROPERTY == NULL) {
+		AGENT_PROCESS_FEATURES_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_PROCESS_FEATURES_PROPERTY_NAME, "Agent", "Process features", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 5);
+		if (AGENT_PROCESS_FEATURES_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		}
 		indigo_init_switch_item(AGENT_IMAGER_ENABLE_DITHERING_FEATURE_ITEM, AGENT_IMAGER_ENABLE_DITHERING_FEATURE_ITEM_NAME, "Enable dithering", true);
 		indigo_init_switch_item(AGENT_IMAGER_DITHER_AFTER_BATCH_FEATURE_ITEM, AGENT_IMAGER_DITHER_AFTER_BATCH_FEATURE_ITEM_NAME, "Dither after last frame", false);
 		indigo_init_switch_item(AGENT_IMAGER_PAUSE_AFTER_TRANSIT_FEATURE_ITEM, AGENT_IMAGER_PAUSE_AFTER_TRANSIT_FEATURE_ITEM_NAME, "Pause after transit", false);
+		indigo_init_switch_item(AGENT_IMAGER_APPLY_FILTER_OFFSETS_FEATURE_ITEM, AGENT_IMAGER_APPLY_FILTER_OFFSETS_FEATURE_ITEM_NAME, "Apply focus offsets for filters", false);
 		indigo_init_switch_item(AGENT_IMAGER_MACRO_MODE_FEATURE_ITEM, AGENT_IMAGER_MACRO_MODE_FEATURE_ITEM_NAME, "Use macro mode", false);
+
 		// -------------------------------------------------------------------------------- Download properties
 		AGENT_IMAGER_DOWNLOAD_FILE_PROPERTY = indigo_init_text_property(NULL, device->name, AGENT_IMAGER_DOWNLOAD_FILE_PROPERTY_NAME, "Agent", "Download image", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (AGENT_IMAGER_DOWNLOAD_FILE_PROPERTY == NULL) {
@@ -3390,15 +3438,24 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- AGENT_WHEEL_FILTER
 	} else if (indigo_property_match(AGENT_WHEEL_FILTER_PROPERTY, property)) {
+		DEVICE_PRIVATE_DATA-> current_filter_index = 0;
+		DEVICE_PRIVATE_DATA-> requested_filter_index = 0;
+		for (int i = 0; i < AGENT_WHEEL_FILTER_PROPERTY->count; i++) {
+			if (AGENT_WHEEL_FILTER_PROPERTY->items[i].sw.value) {
+				DEVICE_PRIVATE_DATA->current_filter_index = i;
+				break;
+			}
+		}
 		indigo_property_copy_values(AGENT_WHEEL_FILTER_PROPERTY, property, false);
 		for (int i = 0; i < AGENT_WHEEL_FILTER_PROPERTY->count; i++) {
 			if (AGENT_WHEEL_FILTER_PROPERTY->items[i].sw.value) {
-				indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device->name, WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, i + 1);
+				DEVICE_PRIVATE_DATA->requested_filter_index = i;
 				break;
 			}
 		}
 		AGENT_WHEEL_FILTER_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, AGENT_WHEEL_FILTER_PROPERTY,NULL);
+		indigo_set_timer(device, 0, filter_handler, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- AGENT_FOCUSER_CONTROL
 	} else if (indigo_property_match(AGENT_FOCUSER_CONTROL_PROPERTY, property)) {
@@ -3681,6 +3738,12 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 			indigo_set_switch(AGENT_WHEEL_FILTER_PROPERTY, AGENT_WHEEL_FILTER_PROPERTY->items, false);
 		AGENT_WHEEL_FILTER_PROPERTY->state = property->state;
 		indigo_update_property(FILTER_CLIENT_CONTEXT->device, AGENT_WHEEL_FILTER_PROPERTY, NULL);
+	} else if (!strcmp(property->name, WHEEL_SLOT_OFFSET_PROPERTY_NAME)) { // Snoop filter offsets
+		indigo_device *device = FILTER_CLIENT_CONTEXT->device;
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = property->items + i;
+			DEVICE_PRIVATE_DATA->filter_offsets[i] = item->number.value;
+		}
 	} else if (!strcmp(property->name, FILTER_RELATED_AGENT_LIST_PROPERTY_NAME)) { // Snoop related agent list
 		if (property->state == INDIGO_OK_STATE) {
 			 AGENT_IMAGER_BARRIER_STATE_PROPERTY->count = 0;
