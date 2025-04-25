@@ -50,7 +50,7 @@ driver fbc {
 					return true;
 				} else {
 					while (true) {
-						if (indigo_uni_read_section(PRIVATE_DATA->handle, response, count, "\r\n", "\r\n", INDIGO_DELAY(1)) > 0) {
+						if (indigo_uni_read_section(PRIVATE_DATA->handle, response, count, "\n", "\r\n", INDIGO_DELAY(1)) > 0) {
 							if (!strncmp("D -", response, 3)) {
 								continue;
 							}
@@ -66,7 +66,7 @@ driver fbc {
 		static bool fbc_open(indigo_device *device) {
 			PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
 			if (PRIVATE_DATA->handle != NULL) {
-				char response[16];
+				char response[80];
 				indigo_uni_set_rts(PRIVATE_DATA->handle, false);
 				// TODO: retest on windows (indigo_uni_set_cts() is no-op)
 				indigo_uni_set_cts(PRIVATE_DATA->handle, false);
@@ -102,7 +102,7 @@ driver fbc {
 		interface = INDIGO_INTERFACE_AUX_LIGHTBOX;
 		inherited CONNECTION {
 			change {
-				char command[16], response[16];
+				char command[16], response[80];
 				if (fbc_command(device, ": V #", response, sizeof(response))) {
 					sscanf(response, "V %s", INFO_DEVICE_FW_REVISION_ITEM->text.value);
 					indigo_update_property(device, INFO_PROPERTY, NULL);
@@ -122,9 +122,9 @@ driver fbc {
 				value = true;
 			}
 			change {
-				char command[16],	response[16];
+				char command[16];
 				sprintf(command, "E:%d", AUX_LIGHT_SWITCH_ON_ITEM->sw.value);
-				if (!fbc_command(device, command, response, sizeof(response))) {
+				if (!fbc_command(device, command, NULL, 0)) {
 					AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 			}

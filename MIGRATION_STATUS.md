@@ -11,6 +11,8 @@ aux_flipflat
 aux_geoptikflat
 aux_upb3
 
+focuser_fcusb
+
 gps_simulator
 gps_nmea
 
@@ -122,7 +124,6 @@ dome_talon6ror
 
 focuser_dsd
 focuser_efa
-focuser_fcusb
 focuser_lacerta
 focuser_lakeside
 focuser_lunatico

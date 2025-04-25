@@ -1472,6 +1472,7 @@
 		5951E145235CDBD900D2DEF1 /* protocol.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = protocol.txt; sourceTree = "<group>"; };
 		5951E146235CDBD900D2DEF1 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		5951E148235CDBD900D2DEF1 /* indigo_aux_usbdp.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_usbdp.c; sourceTree = "<group>"; };
+		595200652DBC19E00027566F /* indigo_focuser_fcusb.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_focuser_fcusb.driver; sourceTree = "<group>"; };
 		595355EC1F6B140300478BEC /* libftd2xx.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libftd2xx.a; path = build/lib/libftd2xx.a; sourceTree = "<group>"; };
 		59540AD026D00CCF000C2A1B /* indigo_aux_geoptikflat_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_aux_geoptikflat_main.c; sourceTree = "<group>"; };
 		59540AD126D00CCF000C2A1B /* indigo_aux_geoptikflat.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_aux_geoptikflat.h; sourceTree = "<group>"; };
@@ -7736,6 +7737,7 @@
 				9DAC59D71DC24E1400AE410D /* indigo_focuser_fcusb.h */,
 				9DAC59D61DC24E1400AE410D /* indigo_focuser_fcusb.c */,
 				9DAC59D51DC24E1400AE410D /* indigo_focuser_fcusb_main.c */,
+				595200652DBC19E00027566F /* indigo_focuser_fcusb.driver */,
 				59C5D2B327B9243B003B2815 /* fcusb.rules */,
 				5981C8DA1DC2918300C7705F /* bin_externals */,
 			);

@@ -1,0 +1,142 @@
+// Copyright (c) 2016-2025 CloudMakers, s. r. o.
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// FCUSB focuser driver definition
+
+driver fcusb {
+	author = "Peter Polakovic";
+	copyright = "Copyright (c) 2016-2025 CloudMakers, s. r. o.";
+	label = "Shoestring FCUSB focuser";
+	version = 7;
+	libusb {
+		vid = FCUSB_VID;
+	}
+	include {
+		#include <libfcusb.h>
+	}
+	data {
+		libfcusb_device_context *device_context;
+	}
+	
+	// Shared code
+	
+	code {
+		static bool fcusb_match(libusb_device *dev, const char **name) {
+			return libfcusb_focuser(dev, name);
+		}
+		
+		static bool fcusb_open(indigo_device *device) {
+			return libfcusb_open(PRIVATE_DATA->usbdev, &PRIVATE_DATA->device_context);
+		}
+		
+		static void fcusb_close(indigo_device *device) {
+			libfcusb_stop(PRIVATE_DATA->device_context);
+			libfcusb_close(PRIVATE_DATA->device_context);
+		}
+		
+		static void fcusb_debug(const char *message) {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libfcusb: %s\n", message);
+		}
+
+	}
+	
+	// FOCUSER definition
+	
+	focuser {
+		name = "%s";
+		inherited CONNECTION;
+		inherited FOCUSER_ABORT_MOTION {
+			change {
+				if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
+					FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
+			}
+		}
+		inherited FOCUSER_STEPS {
+			change {
+				if (FOCUSER_STEPS_ITEM->number.value > 0) {
+					libfcusb_set_power(PRIVATE_DATA->device_context, FOCUSER_SPEED_ITEM->number.value);
+					if (X_FOCUSER_FREQUENCY_1_ITEM->sw.value)
+						libfcusb_set_frequency(PRIVATE_DATA->device_context, 1);
+					else if (X_FOCUSER_FREQUENCY_4_ITEM->sw.value)
+						libfcusb_set_frequency(PRIVATE_DATA->device_context, 4);
+					else if (X_FOCUSER_FREQUENCY_16_ITEM->sw.value)
+						libfcusb_set_frequency(PRIVATE_DATA->device_context, 16);
+					if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
+						libfcusb_move_in(PRIVATE_DATA->device_context);
+					} else if (FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value) {
+						libfcusb_move_out(PRIVATE_DATA->device_context);
+					}
+					FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+					pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+					int delay = FOCUSER_STEPS_ITEM->number.target;
+					while (delay > 0) {
+						if (FOCUSER_STEPS_PROPERTY->state != INDIGO_BUSY_STATE) {
+							break;
+						}
+						indigo_usleep(1000);
+						delay--;
+					}
+					pthread_mutex_lock(&PRIVATE_DATA->mutex);
+					libfcusb_stop(PRIVATE_DATA->device_context);
+					if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
+						FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+					}
+				} else {
+					FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+
+			}
+		}
+		attach {
+			FOCUSER_POSITION_PROPERTY->hidden = true;
+			FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.max = 255;
+			indigo_copy_value(FOCUSER_SPEED_ITEM->label, "Power (0-255)");
+			indigo_copy_value(FOCUSER_SPEED_PROPERTY->label, "Power");
+		}
+		switch X_FOCUSER_FREQUENCY {
+			label = "Frequency";
+			name = "X_FOCUSER_FREQUENCY";
+			group = FOCUSER_MAIN_GROUP;
+			rule = INDIGO_ONE_OF_MANY_RULE;
+			persistent = true;
+			item X_FOCUSER_FREQUENCY_1 {
+				label = "1.6 kHz (1x)";
+				name = "FREQUENCY_1";
+				value = true;
+			}
+			item X_FOCUSER_FREQUENCY_4 {
+				label = "6 kHz (4x)";
+				name = "FREQUENCY_4";
+			}
+			item X_FOCUSER_FREQUENCY_16 {
+				label = "25 kHz (16x)";
+				name = "FREQUENCY_16";
+			}
+		}
+	}
+	
+	// Main code
+	
+	init {
+		libfcusb_debug = &fcusb_debug;
+	}
+}
+
