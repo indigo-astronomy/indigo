@@ -381,8 +381,8 @@ static void aux_timer_callback(indigo_device *device) {
 
 static void aux_connection_handler(indigo_device *device) {
 	indigo_lock_master_device(device);
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		pthread_mutex_lock(&PRIVATE_DATA->mutex);
 		bool connection_result = true;
 		if (PRIVATE_DATA->count++ == 0) {
 			connection_result = upb3_open(device);
@@ -482,6 +482,7 @@ static void aux_connection_handler(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
+		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 	} else {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->aux_timer);
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->aux_outlet_names_handler_timer);
@@ -515,7 +516,6 @@ static void aux_connection_handler(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_aux_change_property(device, NULL, CONNECTION_PROPERTY);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 	indigo_unlock_master_device(device);
 }
 
@@ -1002,8 +1002,8 @@ static void focuser_timer_callback(indigo_device *device) {
 
 static void focuser_connection_handler(indigo_device *device) {
 	indigo_lock_master_device(device);
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		pthread_mutex_lock(&PRIVATE_DATA->mutex);
 		bool connection_result = true;
 		if (PRIVATE_DATA->count++ == 0) {
 			connection_result = upb3_open(device->master_device);
@@ -1044,6 +1044,7 @@ static void focuser_connection_handler(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
+		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 	} else {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_timer);
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->aux_outlet_names_handler_timer);
@@ -1067,7 +1068,6 @@ static void focuser_connection_handler(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 	indigo_unlock_master_device(device);
 }
 

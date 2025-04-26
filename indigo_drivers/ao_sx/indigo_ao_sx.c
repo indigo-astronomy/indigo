@@ -104,8 +104,8 @@ static void sx_close(indigo_device *device) {
 
 static void ao_connection_handler(indigo_device *device) {
 	indigo_lock_master_device(device);
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		pthread_mutex_lock(&PRIVATE_DATA->mutex);
 		bool connection_result = true;
 		if (PRIVATE_DATA->count++ == 0) {
 			connection_result = sx_open(device);
@@ -130,6 +130,7 @@ static void ao_connection_handler(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
+		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 	} else {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->ao_guide_dec_handler_timer);
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->ao_guide_ra_handler_timer);
@@ -143,7 +144,6 @@ static void ao_connection_handler(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_ao_change_property(device, NULL, CONNECTION_PROPERTY);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 	indigo_unlock_master_device(device);
 }
 
@@ -307,8 +307,8 @@ static indigo_result ao_detach(indigo_device *device) {
 
 static void guider_connection_handler(indigo_device *device) {
 	indigo_lock_master_device(device);
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		pthread_mutex_lock(&PRIVATE_DATA->mutex);
 		bool connection_result = true;
 		if (PRIVATE_DATA->count++ == 0) {
 			connection_result = sx_open(device->master_device);
@@ -322,6 +322,7 @@ static void guider_connection_handler(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
+		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 	} else {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->ao_guide_dec_handler_timer);
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->ao_guide_ra_handler_timer);
@@ -335,7 +336,6 @@ static void guider_connection_handler(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 	indigo_unlock_master_device(device);
 }
 

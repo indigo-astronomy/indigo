@@ -85,13 +85,13 @@
  */
 #define CONFIG_PROPERTY_NAME									"CONFIG"
 
-/** CONFIG.LOAD property item name.
- */
-#define CONFIG_LOAD_ITEM_NAME									"LOAD"
-
 /** CONFIG.SAVE property item name.
  */
 #define CONFIG_SAVE_ITEM_NAME									"SAVE"
+
+/** CONFIG.LOAD property item name.
+ */
+#define CONFIG_LOAD_ITEM_NAME									"LOAD"
 
 /** CONFIG.DEFAULT property item name.
  */

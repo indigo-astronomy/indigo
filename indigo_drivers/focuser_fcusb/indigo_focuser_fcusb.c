@@ -108,8 +108,8 @@ static void fcusb_debug(const char *message) {
 
 static void focuser_connection_handler(indigo_device *device) {
 	indigo_lock_master_device(device);
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		pthread_mutex_lock(&PRIVATE_DATA->mutex);
 		bool connection_result = true;
 		connection_result = fcusb_open(device);
 		if (connection_result) {
@@ -121,6 +121,7 @@ static void focuser_connection_handler(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
+		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 	} else {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_abort_motion_handler_timer);
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_steps_handler_timer);
@@ -131,7 +132,6 @@ static void focuser_connection_handler(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 	indigo_unlock_master_device(device);
 }
 

@@ -144,8 +144,8 @@ static void gps_timer_callback(indigo_device *device) {
 
 static void gps_connection_handler(indigo_device *device) {
 	indigo_lock_master_device(device);
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		pthread_mutex_lock(&PRIVATE_DATA->mutex);
 		// Custom code below
 		srand((unsigned)time(NULL));
 		PRIVATE_DATA->timer_ticks = 0;
@@ -157,13 +157,13 @@ static void gps_connection_handler(indigo_device *device) {
 		indigo_set_timer(device, 0, gps_timer_callback, &PRIVATE_DATA->gps_timer);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_send_message(device, "Connected to %s", device->name);
+		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 	} else {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->gps_timer);
 		indigo_send_message(device, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_gps_change_property(device, NULL, CONNECTION_PROPERTY);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 	indigo_unlock_master_device(device);
 }
 

@@ -16,6 +16,8 @@ focuser_fcusb
 gps_simulator
 gps_nmea
 
+guider_gpusb
+
 rotator_simulator
 
 wheel_manual
@@ -145,7 +147,6 @@ gps_gpsd
 
 guider_asi
 guider_cgusbst4
-guider_gpusb
 
 mount_nexstar
 mount_nexstaraux

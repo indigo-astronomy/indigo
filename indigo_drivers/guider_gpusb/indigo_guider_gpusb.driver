@@ -46,7 +46,7 @@ driver gpusb {
 		}
 		
 		static void gpusb_close(indigo_device *device) {
-			libgpusb_stop(PRIVATE_DATA->device_context);
+			libgpusb_set(PRIVATE_DATA->device_context, 0);
 			libgpusb_close(PRIVATE_DATA->device_context);
 		}
 		
@@ -61,29 +61,51 @@ driver gpusb {
 		name = "%s";
 		inherited GUIDER_GUIDE_DEC {
 			on_change {
-				if (!(PRIVATE_DATA->relay_mask & (GPUSB_DEC_NORTH | GPUSB_DEC_SOUTH))) {
-					int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
+				PRIVATE_DATA->relay_mask &= ~(GPUSB_DEC_NORTH | GPUSB_DEC_SOUTH);
+				int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
+				if (duration > 0) {
+					PRIVATE_DATA->relay_mask |= GPUSB_DEC_NORTH;
+				} else {
+					duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
 					if (duration > 0) {
-						PRIVATE_DATA->relay_mask |= GPUSB_DEC_NORTH;
-						indigo_set_timer(device, duration/1000.0, guider_dec_timer_callback, &PRIVATE_DATA->dec_guider_timer);
-					} else {
-						int duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
-						if (duration > 0) {
-							PRIVATE_DATA->relay_mask |= GPUSB_DEC_SOUTH;
-							indigo_set_timer(device, duration/1000.0, guider_dec_timer_callback, &PRIVATE_DATA->dec_guider_timer);
-						}
+						PRIVATE_DATA->relay_mask |= GPUSB_DEC_SOUTH;
 					}
+				}
+				libgpusb_set(PRIVATE_DATA->device_context, PRIVATE_DATA->relay_mask);
+				if (duration > 0) {
+					GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+					pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+					indigo_usleep(duration * 1000.0);
+					pthread_mutex_lock(&PRIVATE_DATA->mutex);
+					PRIVATE_DATA->relay_mask &= ~(GPUSB_DEC_NORTH | GPUSB_DEC_SOUTH);
 					libgpusb_set(PRIVATE_DATA->device_context, PRIVATE_DATA->relay_mask);
-					GUIDER_GUIDE_DEC_PROPERTY->state = PRIVATE_DATA->relay_mask & (GPUSB_DEC_NORTH | GPUSB_DEC_SOUTH) ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
-					if (GUIDER_GUIDE_DEC_PROPERTY->state == INDIGO_BUSY_STATE) {
-						indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
-						pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-						
-						
-						pthread_mutex_lock(&PRIVATE_DATA->mutex);
-						PRIVATE_DATA->relay_mask &= ~(GPUSB_DEC_NORTH | GPUSB_DEC_SOUTH);
-						GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+					GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+				}
+			}
+		}
+		inherited GUIDER_GUIDE_RA {
+			on_change {
+				PRIVATE_DATA->relay_mask &= ~(GPUSB_RA_EAST | GPUSB_RA_WEST);
+				int duration = GUIDER_GUIDE_EAST_ITEM->number.value;
+				if (duration > 0) {
+					PRIVATE_DATA->relay_mask |= GPUSB_RA_EAST;
+				} else {
+					duration = GUIDER_GUIDE_WEST_ITEM->number.value;
+					if (duration > 0) {
+						PRIVATE_DATA->relay_mask |= GPUSB_RA_WEST;
 					}
+				}
+				libgpusb_set(PRIVATE_DATA->device_context, PRIVATE_DATA->relay_mask);
+				if (duration > 0) {
+					GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+					pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+					indigo_usleep(duration * 1000.0);
+					pthread_mutex_lock(&PRIVATE_DATA->mutex);
+					PRIVATE_DATA->relay_mask &= ~(GPUSB_RA_EAST | GPUSB_RA_WEST);
+					libgpusb_set(PRIVATE_DATA->device_context, PRIVATE_DATA->relay_mask);
+					GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 				}
 			}
 		}
@@ -91,7 +113,7 @@ driver gpusb {
 	
 	// Main code
 	
-	init {
+	on_init {
 		libgpusb_debug = &gpusb_debug;
 	}
 }

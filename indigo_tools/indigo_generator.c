@@ -1271,8 +1271,8 @@ void write_c_connection_change_handler(device_type *device) {
 	write_line("");
 	write_line("static void %s_connection_handler(indigo_device *device) {", device->type);
 	write_line("\tindigo_lock_master_device(device);");
-	write_line("\tpthread_mutex_lock(&PRIVATE_DATA->mutex);");
 	write_line("\tif (CONNECTION_CONNECTED_ITEM->sw.value) {");
+	write_line("\t\tpthread_mutex_lock(&PRIVATE_DATA->mutex);");
 	if (driver->virtual) {
 		write_c_code_blocks(device->on_connect, 2);
 		for (property_type *property2 = device->properties; property2; property2 = property2->next) {
@@ -1331,6 +1331,7 @@ void write_c_connection_change_handler(device_type *device) {
 		write_line("\t\t\tindigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);");
 		write_line("\t\t}");
 	}
+	write_line("\t\tpthread_mutex_unlock(&PRIVATE_DATA->mutex);");
 	write_line("\t} else {");
 	if (device->on_timer != NULL) {
 		write_line("\t\tindigo_cancel_timer_sync(device, &PRIVATE_DATA->%s_timer);", device->type);
@@ -1361,7 +1362,6 @@ void write_c_connection_change_handler(device_type *device) {
 	write_line("\t\tCONNECTION_PROPERTY->state = INDIGO_OK_STATE;");
 	write_line("\t}");
 	write_line("\tindigo_%s_change_property(device, NULL, CONNECTION_PROPERTY);", device->type);
-	write_line("\tpthread_mutex_unlock(&PRIVATE_DATA->mutex);");
 	write_line("\tindigo_unlock_master_device(device);");
 	write_line("}");
 	write_line("");

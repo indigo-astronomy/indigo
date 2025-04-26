@@ -1473,7 +1473,7 @@
 		5951E146235CDBD900D2DEF1 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		5951E148235CDBD900D2DEF1 /* indigo_aux_usbdp.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_usbdp.c; sourceTree = "<group>"; };
 		595200652DBC19E00027566F /* indigo_focuser_fcusb.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_focuser_fcusb.driver; sourceTree = "<group>"; };
-		595200662DBC285A0027566F /* indigo_guider_gpusb.txt */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_guider_gpusb.txt; sourceTree = "<group>"; };
+		595200662DBC285A0027566F /* indigo_guider_gpusb.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_guider_gpusb.driver; sourceTree = "<group>"; };
 		595355EC1F6B140300478BEC /* libftd2xx.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libftd2xx.a; path = build/lib/libftd2xx.a; sourceTree = "<group>"; };
 		59540AD026D00CCF000C2A1B /* indigo_aux_geoptikflat_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_aux_geoptikflat_main.c; sourceTree = "<group>"; };
 		59540AD126D00CCF000C2A1B /* indigo_aux_geoptikflat.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_aux_geoptikflat.h; sourceTree = "<group>"; };
@@ -12861,7 +12861,7 @@
 				59FE34692187B5FD004FB5D4 /* indigo_guider_gpusb.h */,
 				59FE346B2187B5FD004FB5D4 /* indigo_guider_gpusb.c */,
 				59FE34682187B5FD004FB5D4 /* indigo_guider_gpusb_main.c */,
-				595200662DBC285A0027566F /* indigo_guider_gpusb.txt */,
+				595200662DBC285A0027566F /* indigo_guider_gpusb.driver */,
 				5992352722A826E3006E98B4 /* gpusb.rules */,
 				59FE346C2187B5FD004FB5D4 /* bin_externals */,
 			);

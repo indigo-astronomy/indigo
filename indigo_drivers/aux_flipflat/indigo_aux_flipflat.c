@@ -156,8 +156,8 @@ static void flipflat_close(indigo_device *device) {
 
 static void aux_connection_handler(indigo_device *device) {
 	indigo_lock_master_device(device);
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		pthread_mutex_lock(&PRIVATE_DATA->mutex);
 		bool connection_result = true;
 		connection_result = flipflat_open(device);
 		if (connection_result) {
@@ -199,6 +199,7 @@ static void aux_connection_handler(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
+		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 	} else {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->aux_cover_handler_timer);
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->aux_light_switch_handler_timer);
@@ -211,7 +212,6 @@ static void aux_connection_handler(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_aux_change_property(device, NULL, CONNECTION_PROPERTY);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 	indigo_unlock_master_device(device);
 }
 

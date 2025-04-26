@@ -157,13 +157,13 @@ extern "C" {
  */
 #define CONFIG_PROPERTY               (DEVICE_CONTEXT->configuration_property)
 
-/** CONFIG.LOAD property item pointer.
- */
-#define CONFIG_LOAD_ITEM              (CONFIG_PROPERTY->items+0)
-
 /** CONFIG.SAVE property item pointer.
  */
-#define CONFIG_SAVE_ITEM              (CONFIG_PROPERTY->items+1)
+#define CONFIG_SAVE_ITEM              (CONFIG_PROPERTY->items+0)
+
+/** CONFIG.LOAD property item pointer.
+ */
+#define CONFIG_LOAD_ITEM              (CONFIG_PROPERTY->items+1)
 
 /** CONFIG.DEFAULT property item pointer.
  */
