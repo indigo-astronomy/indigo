@@ -17,6 +17,8 @@ gps_simulator
 gps_nmea
 
 guider_gpusb
+guider_cgusbst4
+
 
 rotator_simulator
 
@@ -146,7 +148,6 @@ focuser_wemacro
 gps_gpsd
 
 guider_asi
-guider_cgusbst4
 
 mount_nexstar
 mount_nexstaraux

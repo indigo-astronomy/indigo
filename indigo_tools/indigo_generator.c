@@ -1348,7 +1348,7 @@ void write_c_connection_change_handler(device_type *device) {
 			write_line("\t\tindigo_delete_property(device, %s, NULL);", property2->handle);
 		}
 	}
-	write_c_code_blocks(device->on_disconnect, 3);
+	write_c_code_blocks(device->on_disconnect, 2);
 	if (!driver->virtual) {
 		if (is_multi_device) {
 			write_line("\t\tif (--PRIVATE_DATA->count == 0) {");

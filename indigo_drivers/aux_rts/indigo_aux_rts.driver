@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2025 CloudMakers, s. r. o.
+// Copyright (c) 2018-2025 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -16,65 +16,49 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// DSUSB shutter driver definition
+// RTS-on-COM shutter release driver definition
 
-driver dsusb {
+driver rts {
 	author = "Peter Polakovic";
-	copyright = "Copyright (c) 2016-2025 CloudMakers, s. r. o.";
-	label = "Shoestring DSUSB shutter release";
-	version = 11;
-	libusb {
-		vid = DSUSB_VID;
-	}
-	include {
-		#include <libdsusb.h>
-	}
-	data {
-		libdsusb_device_context *device_context;
-	}
-	
+	copyright = "Copyright (c) 2018-2025 CloudMakers, s. r. o.";
+	label = "RTS-on-COM shutter release";
+	version = 8;
+	serial;
+
 	// Shared code
 	
 	code {
-		static bool dsusb_match(libusb_device *dev, const char **name) {
-			return libdsusb_shutter(dev, name);
+		static void rts_on(indigo_device *device) {
+			indigo_uni_set_rts(PRIVATE_DATA->handle, true);
+		}
+
+		static void rts_off(indigo_device *device) {
+			indigo_uni_set_rts(PRIVATE_DATA->handle, false);
+		}
+
+		static bool rts_open(indigo_device *device) {
+			PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
+			return PRIVATE_DATA->handle != NULL;
 		}
 		
-		static bool dsusb_open(indigo_device *device) {
-			return libdsusb_open(PRIVATE_DATA->usbdev, &PRIVATE_DATA->device_context);
-		}
-		
-		static void dsusb_close(indigo_device *device) {
-			libdsusb_close(PRIVATE_DATA->device_context);
-		}
-		
-		static void dsusb_debug(const char *message) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libdsusb: %s\n", message);
+		static void rts_close(indigo_device *device) {
+			if (PRIVATE_DATA->handle != NULL) {
+				indigo_uni_close(&PRIVATE_DATA->handle);
+			}
 		}
 	}
 	
 	// AUX definition
 	
 	aux {
-		name = "%s";
+		name = "RTS-on-COM shutter";
 		interface = INDIGO_INTERFACE_AUX_SHUTTER;
 		on_connect {
 			CCD_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.target = 0;
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 		}
 		on_disconnect {
-			libdsusb_stop(PRIVATE_DATA->device_context);
-		}
-		switch X_CONFIG {
-			label = "Configure";
-			name = "X_CONFIG";
-			group = AUX_MAIN_GROUP;
-			rule = INDIGO_ANY_OF_MANY_RULE;
-			persistent = true;
-			item X_CONFIG_FOCUS {
-				label = "Focus before capture";
-				name = "FOCUS";
-			}
+			rts_off(device);
 		}
 		switch CCD_ABORT_EXPOSURE {
 			label = "Abort exposure";
@@ -88,7 +72,7 @@ driver dsusb {
 			on_change {
 				if (CCD_ABORT_EXPOSURE_ITEM->sw.value && CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 					indigo_cancel_timer(device, &PRIVATE_DATA->aux_timer);
-					libdsusb_stop(PRIVATE_DATA->device_context);
+					rts_off(device);
 					CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 				}
@@ -109,11 +93,7 @@ driver dsusb {
 			}
 			on_change {
 				CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-				if (X_CONFIG_FOCUS_ITEM->sw.value) {
-					libdsusb_focus(PRIVATE_DATA->device_context);
-					indigo_usleep(1000000);
-				}
-				libdsusb_start(PRIVATE_DATA->device_context);
+				rts_on(device);
 				CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 				indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value < 1 ? CCD_EXPOSURE_ITEM->number.value : 1, aux_timer_callback, &PRIVATE_DATA->aux_timer);
 			}
@@ -124,7 +104,7 @@ driver dsusb {
 				if (CCD_EXPOSURE_ITEM->number.value <= 0) {
 					CCD_EXPOSURE_ITEM->number.value = 0;
 					CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-					libdsusb_stop(PRIVATE_DATA->device_context);
+					rts_off(device);
 				}
 				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 				if (CCD_EXPOSURE_ITEM->number.value > 0) {
@@ -132,12 +112,6 @@ driver dsusb {
 				}
 			}
 		}
-	}
-	
-	// Main code
-	
-	on_init {
-		libdsusb_debug = &dsusb_debug;
 	}
 }
 

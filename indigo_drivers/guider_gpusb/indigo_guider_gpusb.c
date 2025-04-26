@@ -143,6 +143,7 @@ static void guider_guide_dec_handler(indigo_device *device) {
 		pthread_mutex_lock(&PRIVATE_DATA->mutex);
 		PRIVATE_DATA->relay_mask &= ~(GPUSB_DEC_NORTH | GPUSB_DEC_SOUTH);
 		libgpusb_set(PRIVATE_DATA->device_context, PRIVATE_DATA->relay_mask);
+		GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	// Custom code above
@@ -175,6 +176,7 @@ static void guider_guide_ra_handler(indigo_device *device) {
 		pthread_mutex_lock(&PRIVATE_DATA->mutex);
 		PRIVATE_DATA->relay_mask &= ~(GPUSB_RA_EAST | GPUSB_RA_WEST);
 		libgpusb_set(PRIVATE_DATA->device_context, PRIVATE_DATA->relay_mask);
+		GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.value = 0;
 		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	// Custom code above

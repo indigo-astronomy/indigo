@@ -1256,6 +1256,7 @@
 		5913653428BF4A4D00ABB99B /* readme.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = readme.txt; sourceTree = "<group>"; };
 		5913653528CFB42000ABB99B /* indigo_md5.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_md5.h; sourceTree = "<group>"; };
 		5913653628CFB42000ABB99B /* indigo_md5.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_md5.c; sourceTree = "<group>"; };
+		5915CEA82DBD56E300736802 /* indigo_aux_rts.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_aux_rts.driver; sourceTree = "<group>"; };
 		5917AC4921A3586D00AC018A /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
 		5917AC4A21A3588800AC018A /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
 		5917AC4C21A35F9000AC018A /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
@@ -4506,6 +4507,7 @@
 		59E717D52D5022CD00BA2CBE /* indigo_focuser_qhy_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_qhy_main.c; sourceTree = "<group>"; };
 		59E717D62D5022CD00BA2CBE /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		59E86E5C236CE83C00727D18 /* USB_Video_Class_1.1.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = USB_Video_Class_1.1.pdf; sourceTree = "<group>"; };
+		59E9D55D2DBD48E000D1534A /* indigo_guider_cgusbst4.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_guider_cgusbst4.driver; sourceTree = "<group>"; };
 		59EF8BC024683B10009D75C5 /* indigo_dome_baader.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_dome_baader.c; sourceTree = "<group>"; };
 		59EF8BC224683B10009D75C5 /* baader_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = baader_simulator.ino; sourceTree = "<group>"; };
 		59EF8BC324683B10009D75C5 /* baader_command_set.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = baader_command_set.txt; sourceTree = "<group>"; };
@@ -9809,6 +9811,7 @@
 				59BBD18C2182472E008199D6 /* indigo_aux_rts.h */,
 				59BBD18A2182472E008199D6 /* indigo_aux_rts.c */,
 				59BBD18B2182472E008199D6 /* indigo_aux_rts_main.c */,
+				5915CEA82DBD56E300736802 /* indigo_aux_rts.driver */,
 			);
 			path = aux_rts;
 			sourceTree = "<group>";
@@ -14252,6 +14255,7 @@
 				9DAD523B21258801002FCC79 /* indigo_guider_cgusbst4.h */,
 				9DAD523921258801002FCC79 /* indigo_guider_cgusbst4.c */,
 				9DAD523821258801002FCC79 /* indigo_guider_cgusbst4_main.c */,
+				59E9D55D2DBD48E000D1534A /* indigo_guider_cgusbst4.driver */,
 			);
 			path = guider_cgusbst4;
 			sourceTree = "<group>";

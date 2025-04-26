@@ -60,13 +60,13 @@
 #define X_CONFIG_PROPERTY_NAME         "X_CONFIG"
 #define X_CONFIG_FOCUS_ITEM_NAME       "FOCUS"
 
-// X_CCD_ABORT_EXPOSURE handles definition
-#define X_CCD_ABORT_EXPOSURE_PROPERTY  (PRIVATE_DATA->x_ccd_abort_exposure_property)
-#define X_CCD_ABORT_EXPOSURE_ITEM      (X_CCD_ABORT_EXPOSURE_PROPERTY->items + 0)
+// CCD_ABORT_EXPOSURE handles definition
+#define CCD_ABORT_EXPOSURE_PROPERTY    (PRIVATE_DATA->ccd_abort_exposure_property)
+#define CCD_ABORT_EXPOSURE_ITEM        (CCD_ABORT_EXPOSURE_PROPERTY->items + 0)
 
-// X_CCD_EXPOSURE handles definition
-#define X_CCD_EXPOSURE_PROPERTY        (PRIVATE_DATA->x_ccd_exposure_property)
-#define X_CCD_EXPOSURE_ITEM            (X_CCD_EXPOSURE_PROPERTY->items + 0)
+// CCD_EXPOSURE handles definition
+#define CCD_EXPOSURE_PROPERTY          (PRIVATE_DATA->ccd_exposure_property)
+#define CCD_EXPOSURE_ITEM              (CCD_EXPOSURE_PROPERTY->items + 0)
 
 #pragma mark - Private data definition
 
@@ -77,13 +77,13 @@ typedef struct {
 	libdsusb_device_context *device_context;
 	// Custom code above
 	indigo_property *x_config_property;
-	indigo_property *x_ccd_abort_exposure_property;
-	indigo_property *x_ccd_exposure_property;
+	indigo_property *ccd_abort_exposure_property;
+	indigo_property *ccd_exposure_property;
 	indigo_timer *aux_timer;
 	indigo_timer *aux_connection_handler_timer;
 	indigo_timer *aux_x_config_handler_timer;
-	indigo_timer *aux_x_ccd_abort_exposure_handler_timer;
-	indigo_timer *aux_x_ccd_exposure_handler_timer;
+	indigo_timer *aux_ccd_abort_exposure_handler_timer;
+	indigo_timer *aux_ccd_exposure_handler_timer;
 } dsusb_private_data;
 
 #pragma mark - Low level code
@@ -99,7 +99,6 @@ static bool dsusb_open(indigo_device *device) {
 }
 
 static void dsusb_close(indigo_device *device) {
-	libdsusb_stop(PRIVATE_DATA->device_context);
 	libdsusb_close(PRIVATE_DATA->device_context);
 }
 
@@ -119,16 +118,16 @@ static void aux_timer_callback(indigo_device *device) {
 	}
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	// Custom code below
-	if (X_CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-		X_CCD_EXPOSURE_ITEM->number.value--;
-		if (X_CCD_EXPOSURE_ITEM->number.value <= 0) {
-			X_CCD_EXPOSURE_ITEM->number.value = 0;
-			X_CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+		CCD_EXPOSURE_ITEM->number.value--;
+		if (CCD_EXPOSURE_ITEM->number.value <= 0) {
+			CCD_EXPOSURE_ITEM->number.value = 0;
+			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 			libdsusb_stop(PRIVATE_DATA->device_context);
 		}
-		indigo_update_property(device, X_CCD_EXPOSURE_PROPERTY, NULL);
-		if (X_CCD_EXPOSURE_ITEM->number.value > 0) {
-			indigo_reschedule_timer(device, X_CCD_EXPOSURE_ITEM->number.value < 1 ? X_CCD_EXPOSURE_ITEM->number.value : 1, &PRIVATE_DATA->aux_timer);
+		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+		if (CCD_EXPOSURE_ITEM->number.value > 0) {
+			indigo_reschedule_timer(device, CCD_EXPOSURE_ITEM->number.value < 1 ? CCD_EXPOSURE_ITEM->number.value : 1, &PRIVATE_DATA->aux_timer);
 		}
 	}
 	// Custom code above
@@ -144,9 +143,13 @@ static void aux_connection_handler(indigo_device *device) {
 		bool connection_result = true;
 		connection_result = dsusb_open(device);
 		if (connection_result) {
+			// Custom code below
+			CCD_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.target = 0;
+			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+			// Custom code above
 			indigo_define_property(device, X_CONFIG_PROPERTY, NULL);
-			indigo_define_property(device, X_CCD_ABORT_EXPOSURE_PROPERTY, NULL);
-			indigo_define_property(device, X_CCD_EXPOSURE_PROPERTY, NULL);
+			indigo_define_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
+			indigo_define_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 			indigo_set_timer(device, 0, aux_timer_callback, &PRIVATE_DATA->aux_timer);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, "Connected to %s", device->name);
@@ -159,11 +162,14 @@ static void aux_connection_handler(indigo_device *device) {
 	} else {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->aux_timer);
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->aux_x_config_handler_timer);
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->aux_x_ccd_abort_exposure_handler_timer);
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->aux_x_ccd_exposure_handler_timer);
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->aux_ccd_abort_exposure_handler_timer);
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->aux_ccd_exposure_handler_timer);
 		indigo_delete_property(device, X_CONFIG_PROPERTY, NULL);
-		indigo_delete_property(device, X_CCD_ABORT_EXPOSURE_PROPERTY, NULL);
-		indigo_delete_property(device, X_CCD_EXPOSURE_PROPERTY, NULL);
+		indigo_delete_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
+		indigo_delete_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+		// Custom code below
+		libdsusb_stop(PRIVATE_DATA->device_context);
+		// Custom code above
 		dsusb_close(device);
 		indigo_send_message(device, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -181,41 +187,41 @@ static void aux_x_config_handler(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
-// X_CCD_ABORT_EXPOSURE change handler
+// CCD_ABORT_EXPOSURE change handler
 
-static void aux_x_ccd_abort_exposure_handler(indigo_device *device) {
+static void aux_ccd_abort_exposure_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	X_CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+	CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 	// Custom code below
-	if (X_CCD_ABORT_EXPOSURE_ITEM->sw.value && X_CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+	if (CCD_ABORT_EXPOSURE_ITEM->sw.value && CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		indigo_cancel_timer(device, &PRIVATE_DATA->aux_timer);
 		libdsusb_stop(PRIVATE_DATA->device_context);
-		X_CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, X_CCD_EXPOSURE_PROPERTY, NULL);
+		CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 	}
-	X_CCD_ABORT_EXPOSURE_ITEM->sw.value = false;
-	X_CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+	CCD_ABORT_EXPOSURE_ITEM->sw.value = false;
+	CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 	// Custom code above
-	indigo_update_property(device, X_CCD_ABORT_EXPOSURE_PROPERTY, NULL);
+	indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
-// X_CCD_EXPOSURE change handler
+// CCD_EXPOSURE change handler
 
-static void aux_x_ccd_exposure_handler(indigo_device *device) {
+static void aux_ccd_exposure_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	X_CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+	CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 	// Custom code below
-	X_CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
+	CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 	if (X_CONFIG_FOCUS_ITEM->sw.value) {
 		libdsusb_focus(PRIVATE_DATA->device_context);
 		indigo_usleep(1000000);
 	}
 	libdsusb_start(PRIVATE_DATA->device_context);
-	X_CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-	indigo_set_timer(device, X_CCD_EXPOSURE_ITEM->number.value < 1 ? X_CCD_EXPOSURE_ITEM->number.value : 1, aux_timer_callback, &PRIVATE_DATA->aux_timer);
+	CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
+	indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value < 1 ? CCD_EXPOSURE_ITEM->number.value : 1, aux_timer_callback, &PRIVATE_DATA->aux_timer);
 	// Custom code above
-	indigo_update_property(device, X_CCD_EXPOSURE_PROPERTY, NULL);
+	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
@@ -232,17 +238,17 @@ static indigo_result aux_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		}
 		indigo_init_switch_item(X_CONFIG_FOCUS_ITEM, X_CONFIG_FOCUS_ITEM_NAME, "Focus before capture", false);
-		X_CCD_ABORT_EXPOSURE_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_ABORT_EXPOSURE_PROPERTY_NAME, AUX_MAIN_GROUP, "Abort exposure", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
-		if (X_CCD_ABORT_EXPOSURE_PROPERTY == NULL) {
+		CCD_ABORT_EXPOSURE_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_ABORT_EXPOSURE_PROPERTY_NAME, AUX_MAIN_GROUP, "Abort exposure", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
+		if (CCD_ABORT_EXPOSURE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
-		indigo_init_switch_item(X_CCD_ABORT_EXPOSURE_ITEM, CCD_ABORT_EXPOSURE_ITEM_NAME, "Abort exposure", false);
-		X_CCD_EXPOSURE_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_EXPOSURE_PROPERTY_NAME, AUX_MAIN_GROUP, "Start exposure", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		if (X_CCD_EXPOSURE_PROPERTY == NULL) {
+		indigo_init_switch_item(CCD_ABORT_EXPOSURE_ITEM, CCD_ABORT_EXPOSURE_ITEM_NAME, "Abort exposure", false);
+		CCD_EXPOSURE_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_EXPOSURE_PROPERTY_NAME, AUX_MAIN_GROUP, "Start exposure", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+		if (CCD_EXPOSURE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
-		indigo_init_number_item(X_CCD_EXPOSURE_ITEM, CCD_EXPOSURE_ITEM_NAME, "Start exposure", 0, 1000, 1, 0);
-		strcpy(X_CCD_EXPOSURE_ITEM->number.format, "%g");
+		indigo_init_number_item(CCD_EXPOSURE_ITEM, CCD_EXPOSURE_ITEM_NAME, "Start exposure", 0, 1000, 1, 0);
+		strcpy(CCD_EXPOSURE_ITEM->number.format, "%g");
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		return aux_enumerate_properties(device, NULL, NULL);
@@ -255,8 +261,8 @@ static indigo_result aux_attach(indigo_device *device) {
 static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
 		indigo_define_matching_property(X_CONFIG_PROPERTY);
-		indigo_define_matching_property(X_CCD_ABORT_EXPOSURE_PROPERTY);
-		indigo_define_matching_property(X_CCD_EXPOSURE_PROPERTY);
+		indigo_define_matching_property(CCD_ABORT_EXPOSURE_PROPERTY);
+		indigo_define_matching_property(CCD_EXPOSURE_PROPERTY);
 	}
 	return indigo_aux_enumerate_properties(device, NULL, NULL);
 }
@@ -280,20 +286,20 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 			indigo_set_timer(device, 0, aux_x_config_handler, &PRIVATE_DATA->aux_x_config_handler_timer);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(X_CCD_ABORT_EXPOSURE_PROPERTY, property)) {
-		if (PRIVATE_DATA->aux_x_ccd_abort_exposure_handler_timer == NULL) {
-			indigo_property_copy_values(X_CCD_ABORT_EXPOSURE_PROPERTY, property, false);
-			X_CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, X_CCD_ABORT_EXPOSURE_PROPERTY, NULL);
-			indigo_set_timer(device, 0, aux_x_ccd_abort_exposure_handler, &PRIVATE_DATA->aux_x_ccd_abort_exposure_handler_timer);
+	} else if (indigo_property_match_changeable(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
+		if (PRIVATE_DATA->aux_ccd_abort_exposure_handler_timer == NULL) {
+			indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
+			CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
+			indigo_set_timer(device, 0, aux_ccd_abort_exposure_handler, &PRIVATE_DATA->aux_ccd_abort_exposure_handler_timer);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(X_CCD_EXPOSURE_PROPERTY, property)) {
-		if (PRIVATE_DATA->aux_x_ccd_exposure_handler_timer == NULL) {
-			indigo_property_copy_values(X_CCD_EXPOSURE_PROPERTY, property, false);
-			X_CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, X_CCD_EXPOSURE_PROPERTY, NULL);
-			indigo_set_timer(device, 0, aux_x_ccd_exposure_handler, &PRIVATE_DATA->aux_x_ccd_exposure_handler_timer);
+	} else if (indigo_property_match_changeable(CCD_EXPOSURE_PROPERTY, property)) {
+		if (PRIVATE_DATA->aux_ccd_exposure_handler_timer == NULL) {
+			indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
+			CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+			indigo_set_timer(device, 0, aux_ccd_exposure_handler, &PRIVATE_DATA->aux_ccd_exposure_handler_timer);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
@@ -312,8 +318,8 @@ static indigo_result aux_detach(indigo_device *device) {
 		aux_connection_handler(device);
 	}
 	indigo_release_property(X_CONFIG_PROPERTY);
-	indigo_release_property(X_CCD_ABORT_EXPOSURE_PROPERTY);
-	indigo_release_property(X_CCD_EXPOSURE_PROPERTY);
+	indigo_release_property(CCD_ABORT_EXPOSURE_PROPERTY);
+	indigo_release_property(CCD_EXPOSURE_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
 	return indigo_aux_detach(device);
