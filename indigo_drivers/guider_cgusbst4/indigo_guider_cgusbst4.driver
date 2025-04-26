@@ -1,0 +1,128 @@
+// Copyright (c) 2016-2025 CloudMakers, s. r. o.
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// CG-USB-ST4 Adapter driver definition
+
+driver cgusbst4 {
+	author = "Peter Polakovic";
+	copyright = "Copyright (c) 2016-2025 CloudMakers, s. r. o.";
+	label = "CG-USB-ST4 Adapter";
+	version = 5;
+	serial {
+		pattern {
+			product = "USB to ST4 Astrogene_1000"	
+		}
+	}
+	
+	// Shared code
+	
+	code {
+		static bool cgusbst4_command(indigo_device *device, char *command, char *response, int max) {
+			if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
+				if (indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command)) > 0) {
+					if (response != NULL) {
+						indigo_usleep(INDIGO_DELAY(1));
+						if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "#", "", INDIGO_DELAY(1) > 0)) {
+							return true;
+						}
+					}
+				}
+			}
+			return false;
+		}
+
+		static bool cgusbst4_open(indigo_device *device) {
+			char *name = DEVICE_PORT_ITEM->text.value;
+			PRIVATE_DATA->handle = indigo_uni_open_serial(name, INDIGO_LOG_DEBUG);
+			if (PRIVATE_DATA->handle != NULL) {
+				char response[2];
+				if (cgusbst4_command(device, "\006", response, 1) && *response == 'A') {
+					return true;
+				}
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed");
+				indigo_uni_close(&PRIVATE_DATA->handle);
+			}
+			return false;
+		}
+
+		static void cgusbst4_close(indigo_device *device) {
+			if (PRIVATE_DATA->handle != NULL) {
+				indigo_uni_close(&PRIVATE_DATA->handle);
+				PRIVATE_DATA->handle = 0;
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
+			}
+		}
+	}
+	
+	// GUIDER definition
+	
+	guider {
+		name = "CG-USB-ST4 Adapter";
+		inherited GUIDER_GUIDE_DEC {
+			on_change {
+				char command[16];
+				int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
+				if (duration > 0) {
+					sprintf(command, ":Mgn%4d#", (int)GUIDER_GUIDE_NORTH_ITEM->number.value);
+					cgusbst4_command(device, command, NULL, 0);
+				} else {
+					duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
+					if (duration > 0) {
+						sprintf(command, ":Mgs%4d#", (int)GUIDER_GUIDE_SOUTH_ITEM->number.value);
+						cgusbst4_command(device, command, NULL, 0);
+					}
+				}
+				if (duration > 0) {
+					GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+					pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+					indigo_usleep(duration * 1000.0);
+					pthread_mutex_lock(&PRIVATE_DATA->mutex);
+					GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
+					GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+				}
+			}
+		}
+		inherited GUIDER_GUIDE_RA {
+			on_change {
+				char command[128];
+				int duration = GUIDER_GUIDE_EAST_ITEM->number.value;
+				if (duration > 0) {
+					sprintf(command, ":Mge%4d#", (int)GUIDER_GUIDE_EAST_ITEM->number.value);
+					cgusbst4_command(device, command, NULL, 0);
+				} else {
+					duration = GUIDER_GUIDE_WEST_ITEM->number.value;
+					if (duration > 0) {
+						sprintf(command, ":Mgw%4d#", (int)GUIDER_GUIDE_WEST_ITEM->number.value);
+						cgusbst4_command(device, command, NULL, 0);
+					}
+				}
+				if (duration > 0) {
+					GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+					pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+					indigo_usleep(duration * 1000.0);
+					pthread_mutex_lock(&PRIVATE_DATA->mutex);
+					GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.value = 0;
+					GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
+				}
+			}
+		}
+	}
+}
+
