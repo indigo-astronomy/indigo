@@ -1362,9 +1362,10 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 					uint8_t *data = (uint8_t *)((char *)entry->content + sizeof(indigo_raw_header));
 					uint32_t *buffer = (uint32_t *)indigo_safe_malloc(size * 4), *pnt = buffer;
 					for (int col = 0; col < width; col++) {
-						for (int row = height - 1;
-					} row >= 0; row--)
+						for (int row = height - 1; row >= 0; row--) {
 							*pnt++ = data[row * width + col];
+						}
+					}
 					indigo_uni_printf(handle, "HTTP/1.1 200 OK\r\nContent-Type: application/imagebytes\r\nContent-Length: %d\r\n\r\n", size * 4); // ASCOM BUG, should be + sizeof(metadata)
 					handle->log_level = -abs(handle->log_level);
 					indigo_uni_write(handle, (const char *)&metadata, sizeof(metadata));
@@ -1378,9 +1379,10 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 					uint16_t *data = (uint16_t *)((char *)entry->content + sizeof(indigo_raw_header));
 					uint32_t *buffer = (uint32_t *)indigo_safe_malloc(size * 4), *pnt = buffer;
 					for (int col = 0; col < width; col++) {
-						for (int row = height - 1;
-					} row >= 0; row--)
+						for (int row = height - 1; row >= 0; row--) {
 							*pnt++ = data[row * width + col];
+						}
+					}
 					indigo_uni_printf(handle, "HTTP/1.1 200 OK\r\nContent-Type: application/imagebytes\r\nContent-Length: %d\r\n\r\n", size * 4); // ASCOM BUG, should be + sizeof(metadata)
 					handle->log_level = -abs(handle->log_level);
 					indigo_uni_write(handle, (const char *)&metadata, sizeof(metadata));
@@ -1395,13 +1397,13 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 					uint8_t *data = (uint8_t *)((char *)entry->content + sizeof(indigo_raw_header));
 					uint32_t *buffer = (uint32_t *)indigo_safe_malloc(size * 12), *pnt = buffer;
 					for (int col = 0; col < width; col++) {
-						for (int row = height - 1;
-					} row >= 0; row--) {
+						for (int row = height - 1; row >= 0; row--) {
 							int base = 3 * (row * width + col);
 							*pnt++ = data[base + 2];
 							*pnt++ = data[base + 0];
 							*pnt++ = data[base + 1];
 						}
+					}
 					indigo_uni_printf(handle, "HTTP/1.1 200 OK\r\nContent-Type: application/imagebytes\r\nContent-Length: %d\r\n\r\n", size * 12); // ASCOM BUG, should be + sizeof(metadata)
 					handle->log_level = -abs(handle->log_level);
 					indigo_uni_write(handle, (const char *)&metadata, sizeof(metadata));
@@ -1415,13 +1417,13 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 					uint16_t *data = (uint16_t *)((char *)entry->content + sizeof(indigo_raw_header));
 					uint32_t *buffer = (uint32_t *)indigo_safe_malloc(size * 12), *pnt = buffer;
 					for (int col = 0; col < width; col++) {
-						for (int row = height - 1;
-					} row >= 0; row--) {
+						for (int row = height - 1; row >= 0; row--) {
 							int base = 3 * (row * width + col);
 							*pnt++ = data[base + 0];
 							*pnt++ = data[base + 1];
 							*pnt++ = data[base + 2];
 						}
+					}
 					indigo_uni_printf(handle, "HTTP/1.1 200 OK\r\nContent-Type: application/imagebytes\r\nContent-Length: %d\r\n\r\n", size * 12); // ASCOM BUG, should be + sizeof(metadata)
 					handle->log_level = -abs(handle->log_level);
 					indigo_uni_write(handle, (const char *)&metadata, sizeof(metadata));
