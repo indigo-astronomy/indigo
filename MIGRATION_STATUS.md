@@ -19,7 +19,6 @@ gps_nmea
 guider_gpusb
 guider_cgusbst4
 
-
 rotator_simulator
 
 wheel_manual

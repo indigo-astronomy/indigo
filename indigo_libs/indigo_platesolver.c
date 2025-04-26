@@ -37,7 +37,7 @@
 #include <indigo/indigo_align.h>
 #include <indigo/indigo_platesolver.h>
 
-// TODO: remove obsoleted AGENT_PLATESOLVER_SYNC and AGENT_PLATESOLVER_ABORT properties in future
+// TODO: Remove obsoleted AGENT_PLATESOLVER_SYNC and AGENT_PLATESOLVER_ABORT properties in future
 
 // -------------------------------------------------------------------------------- INDIGO agent device implementation
 

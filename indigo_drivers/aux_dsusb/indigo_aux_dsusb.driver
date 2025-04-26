@@ -18,6 +18,8 @@
 
 // DSUSB shutter driver definition
 
+// TODO: Add libdsusb for windows
+
 driver dsusb {
 	author = "Peter Polakovic";
 	copyright = "Copyright (c) 2016-2025 CloudMakers, s. r. o.";

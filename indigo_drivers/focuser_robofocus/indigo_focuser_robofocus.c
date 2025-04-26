@@ -109,7 +109,7 @@ static bool robofocus_command(indigo_device *device, char *command, char *respon
 		}
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command '%c%c %02x %02x %02x %02x %02x %02x %02x' -> '%c%c %02x %02x %02x %02x %02x %02x %02x'", buffer[0], buffer[1], buffer[2] & 0xFF, buffer[3] & 0xFF, buffer[4] & 0xFF, buffer[5] & 0xFF, buffer[6] & 0xFF, buffer[7] & 0xFF, buffer[8] & 0xFF, response[0], response[1], response[2] & 0xFF, response[3] & 0xFF, response[4] & 0xFF, response[5] & 0xFF, response[6] & 0xFF, response[7] & 0xFF, response[8] & 0xFF);
-	response[8] = 0; // TODO checksum
+	response[8] = 0; // TODO: Checksum is not implemented
 	return true;
 }
 

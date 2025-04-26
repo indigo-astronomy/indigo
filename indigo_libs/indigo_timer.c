@@ -279,8 +279,6 @@ bool indigo_set_timer_with_data(indigo_device *device, double delay, indigo_time
 	return true;
 }
 
-// TODO: do we need device?
-
 bool indigo_reschedule_timer(indigo_device *device, double delay, indigo_timer **timer) {
 	if (*timer != NULL) {
 		return indigo_reschedule_timer_with_callback(device, delay, (*timer)->callback, timer);
@@ -309,8 +307,6 @@ bool indigo_reschedule_timer_with_callback(indigo_device *device, double delay, 
 	pthread_mutex_unlock(&cancel_timer_mutex);
 	return result;
 }
-
-// TODO: do we need device?
 
 bool indigo_cancel_timer(indigo_device *device, indigo_timer **timer) {
 	bool result = false;

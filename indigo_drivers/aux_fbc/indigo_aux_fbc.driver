@@ -18,9 +18,6 @@
 
 // Lacerta FBC aux driver definition
 
-// TODO: retest on windows (indigo_uni_set_cts() is no-op)
-// TODO: verify that there is no abort exposure/impulse command
-
 driver fbc {
 	author = "Rumen G.Bogdanovski";
 	copyright = "Copyright (c) 2019 - 2025 Rumen G.Bogdanovski";

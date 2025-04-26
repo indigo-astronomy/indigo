@@ -18,6 +18,8 @@
 
 // FCUSB focuser driver definition
 
+// TODO: Add libfcusb for windows
+
 driver fcusb {
 	author = "Peter Polakovic";
 	copyright = "Copyright (c) 2016-2025 CloudMakers, s. r. o.";

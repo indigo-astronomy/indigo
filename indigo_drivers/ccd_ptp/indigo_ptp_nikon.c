@@ -68,7 +68,7 @@
 	PRIVATE_DATA->model.product == NIKON_PRODUCT_D3000 || \
 	PRIVATE_DATA->model.product == NIKON_PRODUCT_D3100 )
 
-// TODO: there is a doubt if 3200 and 3300 can really zoom in LV and control the lens!!!
+// TODO: There is a doubt if 3200 and 3300 can really zoom in LV and control the lens!!!
 
 #define IS_NIKON_D3200_OR_LATER() ( \
 	PRIVATE_DATA->model.product == NIKON_PRODUCT_D3200 || \

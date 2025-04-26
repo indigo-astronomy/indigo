@@ -2461,7 +2461,7 @@ static bool set_property(indigo_device *device, char *name, char *value) {
 			solver_precise_goto(device);
 			wait_for_solver = true;
 		} else if (!strcmp(value, "slew")) {
-			// TODO: non-precise goto is not implemented in solver agent yet
+			// TODO: Non-precise goto is not implemented in solver agent yet
 			wait_for_solver = true;
 		}
 	} else if (!strcasecmp(name, "calibrate")) {

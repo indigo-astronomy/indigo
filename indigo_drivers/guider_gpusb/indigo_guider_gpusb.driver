@@ -18,6 +18,8 @@
 
 // GPUSB guider driver definition
 
+// TODO: Add libgpusb for windows
+
 driver gpusb {
 	author = "Peter Polakovic";
 	copyright = "Copyright (c) 2016-2025 CloudMakers, s. r. o.";
