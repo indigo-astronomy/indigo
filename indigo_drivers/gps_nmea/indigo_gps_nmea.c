@@ -264,8 +264,9 @@ static void gps_timer_callback(indigo_device *device) {
 				// As an exception, if the GSV is sent with the GNSS talker id 'N', it is assumed to comprise all SVs
 				if (nmea_system >= 'A' && nmea_system <= 'Z') {
 					PRIVATE_DATA->satellites_in_view[nmea_system - 'A'] = in_view;
-					for (int i = 0; i < MAX_NB_OF_SYSTEMS; i++)
+					for (int i = 0; i < MAX_NB_OF_SYSTEMS; i++) {
 						total_in_view += PRIVATE_DATA->satellites_in_view[i];
+					}
 				}
 			} else {
 				// Otherwise, count only satellites from the selected system

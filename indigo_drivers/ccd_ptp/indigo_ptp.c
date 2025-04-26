@@ -519,19 +519,23 @@ uint8_t *ptp_decode_uint32_array(uint8_t *source, uint32_t *target, uint32_t *co
 
 void ptp_append_uint16_16_array(uint16_t *target, uint16_t *source) {
 	int index = 0;
-	for (index = 0; target[index]; index++)
+	for (index = 0; target[index]; index++) {
 		;
-	for (int i = 0; source[i]; i++)
+	}
+	for (int i = 0; source[i]; i++) {
 		target[index++] = source[i];
+	}
 	target[index] = 0;
 }
 
 void ptp_append_uint16_32_array(uint16_t *target, uint32_t *source) {
 	int index = 0;
-	for (index = 0; target[index]; index++)
+	for (index = 0; target[index]; index++) {
 		;
-	for (int i = 0; source[i]; i++)
+	}
+	for (int i = 0; source[i]; i++) {
 		target[index++] = source[i];
+	}
 	target[index] = 0;
 }
 

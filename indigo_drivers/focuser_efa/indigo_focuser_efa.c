@@ -99,8 +99,9 @@ static bool efa_command(indigo_device *device, uint8_t *packet_out, uint8_t *pac
 		count = packet_out[1] = 4;
 		packet_out[5] = 0;
 	}
-	for (int i = 0; i <= count; i++)
+	for (int i = 0; i <= count; i++) {
 		sum += packet_out[i + 1];
+	}
 	packet_out[count + 2] = (-sum) & 0xFF;
 	if (count == 3) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d <- %02X %02X %02X→%02X [%02X] %02X", PRIVATE_DATA->handle, packet_out[0], packet_out[1], packet_out[2], packet_out[3], packet_out[4], packet_out[5]);

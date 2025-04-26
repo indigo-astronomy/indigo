@@ -559,8 +559,9 @@ static void remove_all_devices() {
 		free(*device);
 		*device = NULL;
 	}
-	for (int index = 0; index < EFW_ID_MAX; index++)
+	for (int index = 0; index < EFW_ID_MAX; index++) {
 		connected_ids[index] = false;
+	}
 }
 
 
@@ -582,8 +583,9 @@ indigo_result indigo_wheel_asi(indigo_driver_action action, indigo_driver_info *
 			char *sdk_version = EFWGetSDKVersion();
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "EFW SDK v. %s", sdk_version);
 
-			for(int index = 0; index < EFW_ID_MAX; index++)
+			for (int index = 0; index < EFW_ID_MAX; index++) {
 				connected_ids[index] = false;
+			}
 			efw_id_count = EFWGetProductIDs(efw_products);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetProductIDs(-> [ %d, %d, ... ]) = %d", efw_products[0], efw_products[1], efw_id_count);
 			if (efw_id_count <= 0) {
@@ -596,8 +598,9 @@ indigo_result indigo_wheel_asi(indigo_driver_action action, indigo_driver_info *
 			return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
 
 		case INDIGO_DRIVER_SHUTDOWN:
-			for (int i = 0; i < MAX_DEVICES; i++)
+			for (int i = 0; i < MAX_DEVICES; i++) {
 				VERIFY_NOT_CONNECTED(devices[i]);
+			}
 			last_action = action;
 			libusb_hotplug_deregister_callback(NULL, callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");

@@ -1474,20 +1474,24 @@ static int aag_init_properties(indigo_device *device) {
 static void aag_reset_properties(indigo_device *device) {
 	int i;
 	X_HEATER_CONTROL_STATE_PROPERTY->state = INDIGO_BUSY_STATE;
-	for (i = 0; i < X_HEATER_CONTROL_STATE_PROPERTY->count; i++)
+	for (i = 0; i < X_HEATER_CONTROL_STATE_PROPERTY->count; i++) {
 		X_HEATER_CONTROL_STATE_PROPERTY->items[i].sw.value = false;
+	}
 
 	X_CONSTANTS_PROPERTY->state = INDIGO_BUSY_STATE;
-	for (i = 0; i < X_CONSTANTS_PROPERTY->count; i++)
+	for (i = 0; i < X_CONSTANTS_PROPERTY->count; i++) {
 		X_CONSTANTS_PROPERTY->items[i].number.value = 0;
+	}
 
 	X_SENSOR_READINGS_PROPERTY->state = INDIGO_BUSY_STATE;
-	for (i = 0; i < X_SENSOR_READINGS_PROPERTY->count; i++)
+	for (i = 0; i < X_SENSOR_READINGS_PROPERTY->count; i++) {
 		X_SENSOR_READINGS_PROPERTY->items[i].number.value = 0;
+	}
 
 	AUX_WEATHER_PROPERTY->state = INDIGO_BUSY_STATE;
-	for (i = 0; i < AUX_WEATHER_PROPERTY->count; i++)
+	for (i = 0; i < AUX_WEATHER_PROPERTY->count; i++) {
 		AUX_WEATHER_PROPERTY->items[i].number.value = 0;
+	}
 
 	AUX_DEW_WARNING_PROPERTY->state = INDIGO_BUSY_STATE;
 	AUX_DEW_WARNING_SENSOR_1_ITEM->light.value = INDIGO_IDLE_STATE;
@@ -1499,24 +1503,29 @@ static void aag_reset_properties(indigo_device *device) {
 	AUX_WIND_WARNING_SENSOR_1_ITEM->light.value = INDIGO_IDLE_STATE;
 
 	AUX_HUMIDITY_PROPERTY->state = INDIGO_BUSY_STATE;
-	for (i = 0; i < AUX_HUMIDITY_PROPERTY->count; i++)
+	for (i = 0; i < AUX_HUMIDITY_PROPERTY->count; i++) {
 		AUX_HUMIDITY_PROPERTY->items[i].sw.value = NULL;
+	}
 
 	AUX_WIND_PROPERTY->state = INDIGO_BUSY_STATE;
-	for (i = 0; i < AUX_WIND_PROPERTY->count; i++)
+	for (i = 0; i < AUX_WIND_PROPERTY->count; i++) {
 		AUX_WIND_PROPERTY->items[i].sw.value = NULL;
+	}
 
 	AUX_RAIN_PROPERTY->state = INDIGO_BUSY_STATE;
-	for (i = 0; i < AUX_RAIN_PROPERTY->count; i++)
+	for (i = 0; i < AUX_RAIN_PROPERTY->count; i++) {
 		AUX_RAIN_PROPERTY->items[i].sw.value = NULL;
+	}
 
 	AUX_CLOUD_PROPERTY->state = INDIGO_BUSY_STATE;
-	for (i = 0; i < AUX_CLOUD_PROPERTY->count; i++)
+	for (i = 0; i < AUX_CLOUD_PROPERTY->count; i++) {
 		AUX_CLOUD_PROPERTY->items[i].sw.value = NULL;
+	}
 
 	AUX_SKY_PROPERTY->state = INDIGO_BUSY_STATE;
-	for (i = 0; i < AUX_SKY_PROPERTY->count; i++)
+	for (i = 0; i < AUX_SKY_PROPERTY->count; i++) {
 		AUX_SKY_PROPERTY->items[i].sw.value = NULL;
+	}
 }
 
 

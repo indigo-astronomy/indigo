@@ -271,8 +271,9 @@ static void box_blur_h(uint16_t *scl, uint16_t *tcl, int w, int h, double r) {
 	for (int i = 0; i < h; i++) {
 		int ti = i * w, li = ti, ri = (int)(ti + r);
 		int fv = scl[ti], lv = scl[ti + w - 1], val = (int)((r + 1) * fv);
-		for (int j = 0; j < r; j++)
+		for (int j = 0; j < r; j++) {
 			val += scl[ti + j];
+		}
 		for (int j = 0  ; j <= r ; j++) {
 			val += scl[ri++] - fv;
 			tcl[ti++] = (uint16_t)round(val * iarr);
@@ -299,8 +300,9 @@ static void box_blur_t(uint16_t *scl, uint16_t *tcl, int w, int h, double r) {
 	for (int i = 0; i < w; i++) {
 		int ti = i, li = ti, ri = (int)(ti + r * w);
 		int fv = scl[ti], lv = scl[ti + w * (h - 1)], val = (int)((r + 1) * fv);
-		for (int j = 0; j < r; j++)
+		for (int j = 0; j < r; j++) {
 			val += scl[ti + j * w];
+		}
 		for (int j = 0  ; j <= r ; j++) {
 			val += scl[ri] - fv;
 			tcl[ti] = (uint16_t)round(val * iarr);
@@ -325,8 +327,9 @@ static void box_blur_t(uint16_t *scl, uint16_t *tcl, int w, int h, double r) {
 
 static void box_blur(uint16_t *scl, uint16_t *tcl, int w, int h, double r) {
 	int length = w * h;
-	for (int i = 0; i < length; i++)
+	for (int i = 0; i < length; i++) {
 		tcl[i] = scl[i];
+	}
 	box_blur_h(tcl, scl, w, h, r);
 	box_blur_t(scl, tcl, w, h, r);
 }
@@ -341,8 +344,9 @@ static void gauss_blur(uint16_t *scl, uint16_t *tcl, int w, int h, double r) {
 	ideal = (12 * r * r - 3 * wl * wl - 12 * wl - 9)/(-4 * wl - 4);
 	int m = (int)round(ideal);
 	int sizes[3];
-	for (int i = 0; i < 3; i++)
+	for (int i = 0; i < 3; i++) {
 		sizes[i] = i < m ? wl : wu;
+	}
 	box_blur(scl, tcl, w, h, (sizes[0] - 1) / 2);
 	box_blur(tcl, scl, w, h, (sizes[1] - 1) / 2);
 	box_blur(scl, tcl, w, h, (sizes[2] - 1) / 2);
@@ -500,8 +504,9 @@ static void create_frame(indigo_device *device) {
 				}
 			}
 		} else {
-			for (int i = 0; i < size; i++)
+			for (int i = 0; i < size; i++) {
 				raw[i] = (rand() & 0x7F);
+			}
 		}
 		if (device == PRIVATE_DATA->guider && light_frame) {
 			static time_t start_time = 0;
@@ -620,8 +625,9 @@ static void create_frame(indigo_device *device) {
 				raw[i] = (value > 65535) ? 65535 : value;
 			}
 		} else {
-			for (int i = 0; i < size; i++)
+			for (int i = 0; i < size; i++) {
 				raw[i] = (rand() & 0x7F);
+			}
 		}
 		
 		for (int i = 0; i <= GUIDER_IMAGE_HOTPIXELS_ITEM->number.target; i++) {

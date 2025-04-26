@@ -925,8 +925,9 @@ static void remove_all_devices() {
 		free(*device);
 		*device = NULL;
 	}
-	for (int index = 0; index < EAF_ID_MAX; index++)
+	for (int index = 0; index < EAF_ID_MAX; index++) {
 		connected_ids[index] = false;
+	}
 }
 
 
@@ -948,8 +949,9 @@ indigo_result indigo_focuser_asi(indigo_driver_action action, indigo_driver_info
 			const char *sdk_version = EAFGetSDKVersion();
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "EAF SDK v. %s ", sdk_version);
 
-			for(int index = 0; index < EAF_ID_MAX; index++)
+			for (int index = 0; index < EAF_ID_MAX; index++) {
 				connected_ids[index] = false;
+			}
 	//		eaf_id_count = EAFGetProductIDs(eaf_products);
 	//		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFGetProductIDs(-> [ %d, %d, ... ]) = %d", eaf_products[0], eaf_products[1], eaf_id_count);
 			eaf_products[0] = EAF_PRODUCT_ID;
@@ -960,8 +962,9 @@ indigo_result indigo_focuser_asi(indigo_driver_action action, indigo_driver_info
 			return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
 
 		case INDIGO_DRIVER_SHUTDOWN:
-			for (int i = 0; i < MAX_DEVICES; i++)
+			for (int i = 0; i < MAX_DEVICES; i++) {
 				VERIFY_NOT_CONNECTED(devices[i]);
+			}
 			last_action = action;
 			libusb_hotplug_deregister_callback(NULL, callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");

@@ -195,14 +195,16 @@ static void handle_connection(indigo_device *device) {
 				indigo_define_property(device, DSLR_LOCK_PROPERTY, NULL);
 				indigo_define_property(device, DSLR_AF_PROPERTY, NULL);
 				indigo_define_property(device, DSLR_SET_HOST_TIME_PROPERTY, NULL);
-				for (int i = 0; PRIVATE_DATA->info_properties_supported[i]; i++)
+				for (int i = 0; PRIVATE_DATA->info_properties_supported[i]; i++) {
 					indigo_define_property(device, PRIVATE_DATA->properties[i].property, NULL);
+				}
 				if (PRIVATE_DATA->focuser) {
 					indigo_attach_device(PRIVATE_DATA->focuser);
 				}
 			} else {
-				for (int i = 0; PRIVATE_DATA->properties[i].property; i++)
+				for (int i = 0; PRIVATE_DATA->properties[i].property; i++) {
 					indigo_release_property(PRIVATE_DATA->properties[i].property);
+				}
 				memset(PRIVATE_DATA->properties, 0, sizeof(PRIVATE_DATA->properties));
 			}
 		}
@@ -840,8 +842,9 @@ indigo_result indigo_ccd_ptp(indigo_driver_action action, indigo_driver_info *in
 			return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
 #endif
 		case INDIGO_DRIVER_SHUTDOWN:
-			for (int i = 0; i < MAX_DEVICES; i++)
+			for (int i = 0; i < MAX_DEVICES; i++) {
 				VERIFY_NOT_CONNECTED(devices[i]);
+			}
 			last_action = action;
 #ifdef USE_ICA_TRANSPORT
 			[browser stop];

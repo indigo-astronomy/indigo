@@ -69,8 +69,9 @@ static bool robofocus_command(indigo_device *device, char *command, char *respon
 	struct timeval tv;
 	unsigned sum = 0, i_count = 0, o_count = 0;
 	char buffer[9];
-	for (int i = 0; i < 8; i++)
+	for (int i = 0; i < 8; i++) {
 		sum += buffer[i] = command[i];
+	}
 	buffer[8] = sum & 0xFF;
 	indigo_write(PRIVATE_DATA->handle, buffer, 9);
 	bool done = false;

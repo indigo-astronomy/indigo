@@ -496,11 +496,13 @@ static bool sx_read_pixels(indigo_device *device) {
 					if (rc >= 0) {
 						unsigned long long odd_sum = 0, even_sum = 0;
 						uint16_t *pnt = (uint16_t *)odd;
-						for (int i = 0; i < size / 2; i += 32)
+						for (int i = 0; i < size / 2; i += 32) {
 							odd_sum += *pnt++;
+						}
 						pnt = (uint16_t *)even;
-						for (int i = 0; i < size / 2; i += 32)
+						for (int i = 0; i < size / 2; i += 32) {
 							even_sum += *pnt++;
+						}
 						double ratio = (double)odd_sum/(double)even_sum;
 						pnt = (uint16_t *)even;
 						for (int i = 0; i < size / 2; i ++) {
@@ -1241,8 +1243,9 @@ indigo_result indigo_ccd_sx(indigo_driver_action action, indigo_driver_info *inf
 			return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
 
 		case INDIGO_DRIVER_SHUTDOWN:
-			for (int i = 0; i < MAX_DEVICES; i++)
+			for (int i = 0; i < MAX_DEVICES; i++) {
 				VERIFY_NOT_CONNECTED(devices[i]);
+			}
 			last_action = action;
 			libusb_hotplug_deregister_callback(NULL, callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");

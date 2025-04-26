@@ -1078,8 +1078,9 @@ indigo_result indigo_focuser_astroasis(indigo_driver_action action, indigo_drive
 			return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
 
 		case INDIGO_DRIVER_SHUTDOWN:
-			for (int i = 0; i < gFocusers.count; i++)
+			for (int i = 0; i < gFocusers.count; i++) {
 				VERIFY_NOT_CONNECTED(gFocusers.device[i]);
+			}
 			last_action = action;
 			libusb_hotplug_deregister_callback(NULL, callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");

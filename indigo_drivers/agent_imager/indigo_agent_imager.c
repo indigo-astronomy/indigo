@@ -3743,8 +3743,9 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 	} else if (!strcmp(property->name, WHEEL_SLOT_NAME_PROPERTY_NAME)) {
 		indigo_delete_property(FILTER_CLIENT_CONTEXT->device, AGENT_WHEEL_FILTER_PROPERTY, NULL);
 		AGENT_WHEEL_FILTER_PROPERTY->count = property->count;
-		for (int i = 0; i < property->count; i++)
+		for (int i = 0; i < property->count; i++) {
 			strcpy(AGENT_WHEEL_FILTER_PROPERTY->items[i].label, property->items[i].text.value);
+		}
 		indigo_define_property(FILTER_CLIENT_CONTEXT->device, AGENT_WHEEL_FILTER_PROPERTY, NULL);
 	} else if (!strcmp(property->name, WHEEL_SLOT_PROPERTY_NAME)) {
 		indigo_device *device = FILTER_CLIENT_CONTEXT->device;

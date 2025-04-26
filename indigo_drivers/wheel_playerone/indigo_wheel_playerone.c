@@ -531,8 +531,9 @@ static void remove_all_devices() {
 		free(*device);
 		*device = NULL;
 	}
-	for (int index = 0; index < PONE_HANDLE_MAX; index++)
+	for (int index = 0; index < PONE_HANDLE_MAX; index++) {
 		connected_handles[index] = false;
+	}
 }
 
 
@@ -554,8 +555,9 @@ indigo_result indigo_wheel_playerone(indigo_driver_action action, indigo_driver_
 			const char *sdk_version = POAGetPWSDKVer();
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Player One filter wheel SDK v. %s", sdk_version);
 
-			for(int index = 0; index < PONE_HANDLE_MAX; index++)
+			for (int index = 0; index < PONE_HANDLE_MAX; index++) {
 				connected_handles[index] = false;
+			}
 
 			indigo_start_usb_event_handler();
 			int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, PONE_VENDOR_ID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
@@ -563,8 +565,9 @@ indigo_result indigo_wheel_playerone(indigo_driver_action action, indigo_driver_
 			return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
 
 		case INDIGO_DRIVER_SHUTDOWN:
-			for (int i = 0; i < MAX_DEVICES; i++)
+			for (int i = 0; i < MAX_DEVICES; i++) {
 				VERIFY_NOT_CONNECTED(devices[i]);
+			}
 			last_action = action;
 			libusb_hotplug_deregister_callback(NULL, callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");

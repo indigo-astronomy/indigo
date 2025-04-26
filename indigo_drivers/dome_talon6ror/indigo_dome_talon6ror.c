@@ -223,8 +223,9 @@ static char *dump_hex(const uint8_t *data) {
 	static char buffer[RESPONSE_LENGTH * 3];
 	buffer[0] = (char)data[0];
 	buffer[1] = 0;
-	for (int i = 1; data[i]; i++)
+	for (int i = 1; data[i]; i++) {
 		sprintf(buffer + i * 3 - 2, " %02X", data[i]);
+	}
 	return buffer;
 }
 
@@ -280,8 +281,9 @@ static void talon6ror_get_status(indigo_device *device) {
 	uint8_t response[RESPONSE_LENGTH];
 	if (talon6ror_command(device, "G", response) && (response[0] == 'G')) {
 		int sum = 0;
-		for (int i = 1; i < 21; i++)
+		for (int i = 1; i < 21; i++) {
 			sum += response[i];
+		}
 		if (response[21] == (uint8_t)(0x80 | -(sum % 128))) {
 			switch (response[1] & 0x70) {
 				case 0x00:
@@ -389,8 +391,9 @@ static void dome_connect_handler(indigo_device *device) {
 		if (CONNECTION_PROPERTY->state == INDIGO_BUSY_STATE) {
 			if (talon6ror_command(device, "p", response) && response[0] == 'p') {
 				int sum = 0;
-				for (int i = 1; i < 55; i++)
+				for (int i = 1; i < 55; i++) {
 					sum += response[i];
+				}
 				if (response[55] == (uint8_t)(0x80 | -(sum % 128))) {
 					memcpy(PRIVATE_DATA->configuration, response, sizeof(PRIVATE_DATA->configuration));
 					PRIVATE_DATA->configuration[0] = 'a';
@@ -499,8 +502,9 @@ static void dome_abort_handler(indigo_device *device) {
 static void write_configuration_handler(indigo_device *device) {
 	uint8_t response[RESPONSE_LENGTH];
 	int checksum = 0;
-	for (int i = 1; i< 55; i++)
+	for (int i = 1; i< 55; i++) {
 		checksum += PRIVATE_DATA->configuration[i];
+	}
 	PRIVATE_DATA->configuration[55] = -(checksum % 128);
 	if (talon6ror_command(device, (char *)PRIVATE_DATA->configuration, response)) {
 		if (X_MOTOR_CONF_PROPERTY->state == INDIGO_BUSY_STATE) {

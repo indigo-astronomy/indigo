@@ -1881,8 +1881,9 @@ static void remove_all_devices() {
 		}
 	}
 
-	for (i = 0; i < SVBCAMERA_ID_MAX; i++)
+	for (i = 0; i < SVBCAMERA_ID_MAX; i++) {
 		connected_ids[i] = false;
+	}
 }
 
 

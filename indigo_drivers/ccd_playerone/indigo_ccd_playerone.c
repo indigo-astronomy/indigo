@@ -2175,8 +2175,9 @@ static void remove_all_devices() {
 		}
 	}
 
-	for (i = 0; i < MAX_DEVICES; i++)
+	for (i = 0; i < MAX_DEVICES; i++) {
 		connected_ids[i] = false;
+	}
 }
 
 

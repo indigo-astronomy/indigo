@@ -532,8 +532,9 @@ static long escape_buffer_size[BUFFER_COUNT] = { 0 };
 static bool free_escape_buffers_registered = false;
 
 static void free_escape_buffers(void) {
-	for (int i = 0; i < BUFFER_COUNT; i++)
+	for (int i = 0; i < BUFFER_COUNT; i++) {
 		indigo_safe_free(escape_buffer[i]);
+	}
 }
 
 const char* indigo_json_escape(const char* string) {

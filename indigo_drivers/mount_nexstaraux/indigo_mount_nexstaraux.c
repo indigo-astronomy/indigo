@@ -146,8 +146,9 @@ static bool nexstaraux_command(indigo_device *device, targets src, targets dst, 
 		memcpy(buffer + 5, data, length);
 	}
 	int checksum = 0;
-	for (int i = 1; i < length + 2; i++)
+	for (int i = 1; i < length + 2; i++) {
 		checksum += buffer[i];
+	}
 	buffer[length + 2] = (unsigned char)(((~checksum) + 1) & 0xFF);
 	nexstaraux_dump(device, "<-", buffer);
 	if (indigo_write(PRIVATE_DATA->handle, (char *)buffer, length + 3)) {

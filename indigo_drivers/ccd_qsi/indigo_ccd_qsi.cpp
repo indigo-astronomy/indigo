@@ -984,8 +984,9 @@ indigo_result indigo_ccd_qsi(indigo_driver_action action, indigo_driver_info *in
 			return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
 		}
 		case INDIGO_DRIVER_SHUTDOWN: {
-			for (int i = 0; i < QSICamera::MAXCAMERAS; i++)
+			for (int i = 0; i < QSICamera::MAXCAMERAS; i++) {
 				VERIFY_NOT_CONNECTED(devices[i]);
+			}
 			last_action = action;
 			libusb_hotplug_deregister_callback(NULL, callback_handle1);
 			libusb_hotplug_deregister_callback(NULL, callback_handle2);

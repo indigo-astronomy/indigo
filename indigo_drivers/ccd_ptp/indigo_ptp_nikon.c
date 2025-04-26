@@ -779,8 +779,9 @@ bool ptp_nikon_initialise(indigo_device *device) {
 			buffer = NULL;
 			uint16_t *target = PRIVATE_DATA->info_properties_supported;
 			int index = 0;
-			for (index = 0; target[index]; index++)
+			for (index = 0; target[index]; index++) {
 				;
+			}
 			uint32_t size = 0;
 			for (int i = 0; properties[i]; i++) {
 				uint16_t code = properties[i];

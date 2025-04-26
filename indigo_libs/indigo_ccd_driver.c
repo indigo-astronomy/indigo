@@ -2133,8 +2133,9 @@ void indigo_process_dslr_image(indigo_device *device, void *data, unsigned long 
 	INDIGO_DEBUG(clock_t start = clock());
 	char standard_suffix[16];
 	strncpy(standard_suffix, suffix, sizeof(standard_suffix));
-	for (char *pnt = standard_suffix; *pnt; pnt++)
+	for (char *pnt = standard_suffix; *pnt; pnt++) {
 		*pnt = tolower(*pnt);
+	}
 	if (!strcmp(standard_suffix, ".jpg"))
 		strcpy(standard_suffix, ".jpeg");
 	if (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value && !strcmp(standard_suffix, ".jpeg")) {

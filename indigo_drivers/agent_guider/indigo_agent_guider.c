@@ -2533,8 +2533,9 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_release_property(AGENT_GUIDER_DITHER_PROPERTY);
 	indigo_release_property(AGENT_GUIDER_LOG_PROPERTY);
 	indigo_release_property(AGENT_PROCESS_FEATURES_PROPERTY);
-	for (int i = 0; i <= INDIGO_MAX_MULTISTAR_COUNT; i++)
+	for (int i = 0; i <= INDIGO_MAX_MULTISTAR_COUNT; i++) {
 		indigo_delete_frame_digest(DEVICE_PRIVATE_DATA->reference + i);
+	}
 	pthread_mutex_destroy(&DEVICE_PRIVATE_DATA->mutex);
 	pthread_mutex_destroy(&DEVICE_PRIVATE_DATA->last_image_mutex);
 	indigo_safe_free(DEVICE_PRIVATE_DATA->last_image);

@@ -852,8 +852,9 @@ static void rescan() {
 	struct dirent * dir;
 	bool found[MAX_DEVICES];
 	pthread_mutex_lock(&mutex);
-	for (int i = 0; i < MAX_DEVICES; i++)
+	for (int i = 0; i < MAX_DEVICES; i++) {
 		found[i] = false;
+	}
 	while ((dir = readdir(dev_input)) != NULL) {
 		int index = 0;
 		if (sscanf(dir->d_name, "js%d", &index) == 1) {
@@ -949,8 +950,9 @@ indigo_result indigo_aux_joystick(indigo_driver_action action, indigo_driver_inf
 
 		case INDIGO_DRIVER_SHUTDOWN:
 	#ifdef INDIGO_LINUX
-			for (int i = 0; i < MAX_DEVICES; i++)
+			for (int i = 0; i < MAX_DEVICES; i++) {
 				VERIFY_NOT_CONNECTED(devices[i]);
+			}
 	#endif
 	#ifdef INDIGO_MACOS
 			//TBD

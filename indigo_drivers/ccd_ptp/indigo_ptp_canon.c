@@ -1117,8 +1117,9 @@ static void ptp_canon_get_event(indigo_device *device) {
 					if (count > 0) {
 						property->count = count;
 						if (code == ptp_property_canon_ImageFormat || code == ptp_property_canon_ImageFormatCF || code == ptp_property_canon_ImageFormatSD || code == ptp_property_canon_ImageFormatExtHD) {
-							for (int i = 0; i < count; i++)
+							for (int i = 0; i < count; i++) {
 								source = ptp_copy_image_format(source, (uint64_t *)&property->value.sw.values[i]);
+							}
 						} else {
 							if (type == 1) {
 								for (int i = 0; i < count; i++) {
@@ -1245,30 +1246,34 @@ static void ptp_canon_get_event(indigo_device *device) {
 				case ptp_property_canon_ExAutoLightingOptimizer:
 				case ptp_property_canon_ExMirrorLockup: {
 					(*property)->count = 2;
-					for (int i = 0; i < 2; i++)
+					for (int i = 0; i < 2; i++) {
 						(*property)->value.sw.values[i] = i;
+					}
 					break;
 				}
 				case ptp_property_canon_ExFlasSyncSpeedInAvMode:
 				case ptp_property_canon_ExLongExposureNoiseReduction:
 				case ptp_property_canon_ExAFDuringLiveView: {
 					(*property)->count = 3;
-					for (int i = 0; i < 3; i++)
+					for (int i = 0; i < 3; i++) {
 						(*property)->value.sw.values[i] = i;
+					}
 					break;
 				}
 				case ptp_property_canon_ExAFAssistBeamFiring:
 				case ptp_property_canon_ExHighISONoiseReduction:
 				case ptp_property_canon_ExShutterAELockButton: {
 					(*property)->count = 4;
-					for (int i = 0; i < 4; i++)
+					for (int i = 0; i < 4; i++) {
 						(*property)->value.sw.values[i] = i;
+					}
 					break;
 				}
 				case ptp_property_canon_ExSetButtonWhenShooting: {
 					(*property)->count = 5;
-					for (int i = 0; i < 5; i++)
+					for (int i = 0; i < 5; i++) {
 						(*property)->value.sw.values[i] = i;
+					}
 					break;
 				}
 			}
