@@ -582,12 +582,9 @@ static void *indigo_add_dso_json_resource(int max_mag) {
 	indigocat_dso_entry *dso_data = indigocat_get_dso_data();
 	for (int i = 0; dso_data[i].id; i++) {
 		/* Filter by magnitude, but remove objects without name or mesier designation*/
-		if (
-			dso_data[i].mag > max_mag
-			|| dso_data[i].name[0] == '\0'
-			|| (dso_data[i].name[0] == 'I' && dso_data[i].name[1] == 'C')
-			//|| (dso_data[i].name[0] == 'N' && dso_data[i].name[1] == 'G' && dso_data[i].name[2] == 'C')
-		) continue;
+		if (dso_data[i].mag > max_mag || dso_data[i].name[0] == '\0' || (dso_data[i].name[0] == 'I' && dso_data[i].name[1] == 'C')) {
+			continue;
+		}
 		size += sprintf(buffer + size, "%s{\"type\":\"Feature\",\"id\":\"%s\",\"properties\":{\"name\": \"%s\",\"desig\": \"%s\",\"type\":\"oc\",\"mag\": %.2f},\"geometry\":{\"type\":\"Point\",\"coordinates\":[%.4f,%.4f]}}", sep, dso_data[i].id, dso_data[i].id, dso_data[i].name, dso_data[i].mag, h2deg(dso_data[i].ra), dso_data[i].dec);
 		if (buffer_size - size < 1024) {
 			buffer = indigo_safe_realloc(buffer, buffer_size *= 2);

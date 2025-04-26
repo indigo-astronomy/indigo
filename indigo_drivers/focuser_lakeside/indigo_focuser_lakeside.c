@@ -533,8 +533,9 @@ indigo_result indigo_focuser_lakeside(indigo_driver_action action, indigo_driver
 
 	SET_DRIVER_INFO(info, "LakesideAstro Focuser", __FUNCTION__, DRIVER_VERSION, false, last_action);
 
-	if (action == last_action)
+	if (action == last_action) {
 		return INDIGO_OK;
+	}
 
 	switch (action) {
 		case INDIGO_DRIVER_INIT:

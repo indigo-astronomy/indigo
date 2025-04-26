@@ -1266,8 +1266,9 @@ indigo_result indigo_focuser_steeldrive2(indigo_driver_action action, indigo_dri
 	
 	SET_DRIVER_INFO(info, "Baader Planetarium SteelDriveII Focuser", __FUNCTION__, DRIVER_VERSION, false, last_action);
 
-	if (action == last_action)
+	if (action == last_action) {
 		return INDIGO_OK;
+	}
 
 	switch (action) {
 		case INDIGO_DRIVER_INIT:

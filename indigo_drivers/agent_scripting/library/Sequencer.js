@@ -418,14 +418,15 @@ var indigo_flipper = {
 	use_solver: false,
 
 	on_update: function(property) {
-		if (this.waiting_for_transit)
+		if (this.waiting_for_transit) {
 			indigo_log("waiting_for_transit " + property.name + " → " + property.state);
-		else if (this.waiting_for_slew)
+		} else if (this.waiting_for_slew) {
 			indigo_log("waiting_for_slew " + property.name + " → " + property.state);
-		else if (this.waiting_for_sync_and_center)
+		} else if (this.waiting_for_sync_and_center) {
 			indigo_log("waiting_for_sync_and_center " + property.name + " → " + property.state);
-		else if (this.waiting_for_guiding)
+		} else if (this.waiting_for_guiding) {
 			indigo_log("waiting_for_guiding " + property.name + " → " + property.state);
+		}
 		if (this.waiting_for_transit && property.device == this.devices[MOUNT_AGENT] && property.name == "AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY") {
 			if (property.items.TIME_TO_TRANSIT <= 0) {
 				indigo_send_message("Meridian flip started");
@@ -1083,8 +1084,9 @@ var indigo_sequencer = {
 	},
 
 	select_device: function(agent, filter_property, device) {
-		if (agent == undefined)
+		if (agent == undefined) {
 			agent = "NONE";
+		}
 		this.select_switch(agent, filter_property, device);
 	},
 

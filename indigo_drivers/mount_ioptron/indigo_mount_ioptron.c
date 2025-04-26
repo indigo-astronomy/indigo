@@ -2128,8 +2128,9 @@ indigo_result indigo_mount_ioptron(indigo_driver_action action, indigo_driver_in
 	SET_DRIVER_INFO(info, "iOptron Mount", __FUNCTION__, DRIVER_VERSION, false, last_action);
 
 
-	if (action == last_action)
+	if (action == last_action) {
 		return INDIGO_OK;
+	}
 
 	switch (action) {
 		case INDIGO_DRIVER_INIT:

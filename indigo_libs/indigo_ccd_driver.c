@@ -86,12 +86,7 @@ static void countdown_timer_callback(indigo_device *device) {
 	double now;
 	while(!CCD_CONTEXT->countdown_canceled) {
 		now = get_time_hd();
-		if (
-			CCD_CONTEXT->countdown_enabled &&
-			CCD_CONTEXT->countdown_endtime >= now &&
-			CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE &&
-			CCD_EXPOSURE_ITEM->number.value >= 1
-		) {
+		if (CCD_CONTEXT->countdown_enabled && CCD_CONTEXT->countdown_endtime >= now && CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE && CCD_EXPOSURE_ITEM->number.value >= 1) {
 			//indigo_error("%lf - %lf = %lf (%f)", CCD_CONTEXT->countdown_endtime, now, CCD_CONTEXT->countdown_endtime - now, ceil(CCD_CONTEXT->countdown_endtime - now));
 			double last_reported = CCD_EXPOSURE_ITEM->number.value;
 			double time_left = CCD_CONTEXT->countdown_endtime - now;
@@ -804,25 +799,13 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CCD_JPEG_SETTINGS_PROPERTY, property, false);
 		CCD_JPEG_SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
 		CCD_JPEG_STRETCH_PRESETS_PROPERTY->state = INDIGO_OK_STATE;
-		if (
-			fabs(CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.value - ccd_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_SLIGHT].clipping_point) < 0.001 &&
-			fabs(CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.value - ccd_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_SLIGHT].target_background) < 0.001
-		) {
+		if (fabs(CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.value - ccd_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_SLIGHT].clipping_point) < 0.001 && fabs(CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.value - ccd_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_SLIGHT].target_background) < 0.001) {
 			indigo_set_switch(CCD_JPEG_STRETCH_PRESETS_PROPERTY, CCD_JPEG_STRETCH_PRESETS_SLIGHT_ITEM, true);
-		} else if (
-			fabs(CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.value - ccd_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_MODERATE].clipping_point) < 0.001 &&
-			fabs(CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.value - ccd_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_MODERATE].target_background) < 0.001
-		) {
+		} else if (fabs(CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.value - ccd_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_MODERATE].clipping_point) < 0.001 && fabs(CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.value - ccd_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_MODERATE].target_background) < 0.001) {
 			indigo_set_switch(CCD_JPEG_STRETCH_PRESETS_PROPERTY, CCD_JPEG_STRETCH_PRESETS_MODERATE_ITEM, true);
-		} else if (
-			fabs(CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.value - ccd_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_NORMAL].clipping_point) < 0.001 &&
-			fabs(CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.value - ccd_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_NORMAL].target_background) < 0.001
-		) {
+		} else if (fabs(CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.value - ccd_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_NORMAL].clipping_point) < 0.001 && fabs(CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.value - ccd_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_NORMAL].target_background) < 0.001) {
 			indigo_set_switch(CCD_JPEG_STRETCH_PRESETS_PROPERTY, CCD_JPEG_STRETCH_PRESETS_NORMAL_ITEM, true);
-		} else if (
-			fabs(CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.value - ccd_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_HARD].clipping_point) < 0.001 &&
-			fabs(CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.value - ccd_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_HARD].target_background) < 0.001
-		) {
+		} else if (fabs(CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.value - ccd_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_HARD].clipping_point) < 0.001 && fabs(CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.value - ccd_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_HARD].target_background) < 0.001) {
 			indigo_set_switch(CCD_JPEG_STRETCH_PRESETS_PROPERTY, CCD_JPEG_STRETCH_PRESETS_HARD_ITEM, true);
 		} else {
 			CCD_JPEG_STRETCH_PRESETS_SLIGHT_ITEM->sw.value =

@@ -469,8 +469,9 @@ static indigo_alpaca_error alpaca_set_setswitchname(indigo_alpaca_device *device
 void indigo_alpaca_switch_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property) {
 	if (!strcmp(property->name, AUX_POWER_OUTLET_PROPERTY_NAME)) {
 		int count = property->count;
-		if (count > 8)
+		if (count > 8) {
 			count = 8;
+		}
 		alpaca_device->sw.maxswitch_power_outlet = count;
 		int offset = 0 * ALPACA_MAX_SWITCHES;
 		alpaca_device->sw.valueset[0] = property->state == INDIGO_OK_STATE;
@@ -486,8 +487,9 @@ void indigo_alpaca_switch_update_property(indigo_alpaca_device *alpaca_device, i
 		}
 	} else if (!strcmp(property->name, AUX_HEATER_OUTLET_PROPERTY_NAME)) {
 		int count = property->count;
-		if (count > 8)
+		if (count > 8) {
 			count = 8;
+		}
 		alpaca_device->sw.maxswitch_heater_outlet = count;
 		int offset = 1 * ALPACA_MAX_SWITCHES;
 		alpaca_device->sw.valueset[1] = property->state == INDIGO_OK_STATE;
@@ -503,8 +505,9 @@ void indigo_alpaca_switch_update_property(indigo_alpaca_device *alpaca_device, i
 		}
 	} else if (!strcmp(property->name, AUX_USB_PORT_PROPERTY_NAME)) {
 		int count = property->count;
-		if (count > 8)
+		if (count > 8) {
 			count = 8;
+		}
 		alpaca_device->sw.maxswitch_usb_port = count;
 		int offset = 2 * ALPACA_MAX_SWITCHES;
 		alpaca_device->sw.valueset[2] = property->state == INDIGO_OK_STATE;
@@ -520,8 +523,9 @@ void indigo_alpaca_switch_update_property(indigo_alpaca_device *alpaca_device, i
 		}
 	} else if (!strcmp(property->name, AUX_GPIO_OUTLETS_PROPERTY_NAME)) {
 		int count = property->count;
-		if (count > 8)
+		if (count > 8) {
 			count = 8;
+		}
 		alpaca_device->sw.maxswitch_gpio_outlet = count;
 		int offset = 3 * ALPACA_MAX_SWITCHES;
 		alpaca_device->sw.valueset[3] = property->state == INDIGO_OK_STATE;
@@ -537,8 +541,9 @@ void indigo_alpaca_switch_update_property(indigo_alpaca_device *alpaca_device, i
 		}
 	} else if (!strcmp(property->name, AUX_GPIO_SENSORS_PROPERTY_NAME)) {
 		int count = property->count;
-		if (count > 8)
+		if (count > 8) {
 			count = 8;
+		}
 		alpaca_device->sw.maxswitch_gpio_sensor = count;
 		int offset = 4 * ALPACA_MAX_SWITCHES;
 		alpaca_device->sw.valueset[4] = property->state == INDIGO_OK_STATE;

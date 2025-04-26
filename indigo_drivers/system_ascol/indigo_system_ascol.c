@@ -3208,37 +3208,38 @@ indigo_result indigo_system_ascol(indigo_driver_action action, indigo_driver_inf
 
 	SET_DRIVER_INFO(info, "ASCOL Telescope System", __FUNCTION__, DRIVER_VERSION, false, last_action);
 
-	if (action == last_action)
+	if (action == last_action) {
 		return INDIGO_OK;
+	}
 
 	switch (action) {
-	case INDIGO_DRIVER_INIT:
-		last_action = action;
-		private_data = indigo_safe_malloc(sizeof(ascol_private_data));
-		private_data->dev_id = -1;
-		private_data->count_open = 0;
+		case INDIGO_DRIVER_INIT:
+			last_action = action;
+			private_data = indigo_safe_malloc(sizeof(ascol_private_data));
+			private_data->dev_id = -1;
+			private_data->count_open = 0;
 
-		panel = indigo_safe_malloc_copy(sizeof(indigo_device), &panel_template);
-		panel->private_data = private_data;
-		indigo_attach_device(panel);
-		break;
+			panel = indigo_safe_malloc_copy(sizeof(indigo_device), &panel_template);
+			panel->private_data = private_data;
+			indigo_attach_device(panel);
+			break;
 
-	case INDIGO_DRIVER_SHUTDOWN:
-		VERIFY_NOT_CONNECTED(panel);
-		last_action = action;
-		if (panel != NULL) {
-			indigo_detach_device(panel);
-			free(panel);
-			panel = NULL;
-		}
-		if (private_data != NULL) {
-			free(private_data);
-			private_data = NULL;
-		}
-		break;
+		case INDIGO_DRIVER_SHUTDOWN:
+			VERIFY_NOT_CONNECTED(panel);
+			last_action = action;
+			if (panel != NULL) {
+				indigo_detach_device(panel);
+				free(panel);
+				panel = NULL;
+			}
+			if (private_data != NULL) {
+				free(private_data);
+				private_data = NULL;
+			}
+			break;
 
-	case INDIGO_DRIVER_INFO:
-		break;
+		case INDIGO_DRIVER_INFO:
+			break;
 	}
 
 	return INDIGO_OK;

@@ -127,8 +127,9 @@ static void populate_list(indigo_device *device) {
 		int valid_count = 0;
 		for (int i = 0; i < count; i++) {
 			char *ext = strstr(list[i], EXTENSION);
-			if (ext)
+			if (ext) {
 				*ext = 0;
+			}
 			indigo_init_switch_item(AGENT_CONFIG_LOAD_PROPERTY->items + valid_count, list[i], list[i], false);
 			valid_count++;
 			free(list[i]);
@@ -181,8 +182,9 @@ static void load_configuration(indigo_device *device) {
 				for (int j = 0; j < agent->count; j++) {
 					indigo_item *item = agent->items + j;
 					if (*item->text.value) {
-						if (k == 0)
+						if (k == 0) {
 							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Waiting for %s to disconnect", item->text.value);
+						}
 						done = false;
 					}
 				}
@@ -300,8 +302,9 @@ static void process_configuration_property(indigo_device *device) {
 						if (done) {
 							break;
 						}
-						if (k == 0)
+						if (k == 0) {
 							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Waiting for '%s'", item->name);
+						}
 						indigo_usleep(500000);
 					}
 					if (done) {
@@ -565,10 +568,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		} else {
 			indigo_update_property(device, AGENT_CONFIG_DELETE_PROPERTY, message);
 		}
-		if (
-			AGENT_CONFIG_DELETE_PROPERTY->state == INDIGO_OK_STATE &&
-			!strncmp(AGENT_CONFIG_DELETE_NAME_ITEM->text.value, AGENT_CONFIG_LAST_CONFIG_NAME_ITEM->text.value, INDIGO_VALUE_SIZE)
-		) {
+		if (AGENT_CONFIG_DELETE_PROPERTY->state == INDIGO_OK_STATE && !strncmp(AGENT_CONFIG_DELETE_NAME_ITEM->text.value, AGENT_CONFIG_LAST_CONFIG_NAME_ITEM->text.value, INDIGO_VALUE_SIZE)) {
 			AGENT_CONFIG_LAST_CONFIG_PROPERTY->state = INDIGO_OK_STATE;
 			AGENT_CONFIG_LAST_CONFIG_NAME_ITEM->text.value[0] = '\0';
 			indigo_update_property(device, AGENT_CONFIG_LAST_CONFIG_PROPERTY, NULL);
@@ -695,10 +695,12 @@ static void add_device(indigo_device *device, indigo_property *property) {
 	for (int i = 0; i < property->count; i++) {
 		indigo_item *item = property->items + i;
 		if (item->sw.value) {
-			if (*filter->text.value)
+			if (*filter->text.value) {
 				strcat(filter->text.value, ";");
-			if (strcmp(item->name, "NONE"))
+			}
+			if (strcmp(item->name, "NONE")) {
 				strcat(filter->text.value, item->name);
+			}
 		}
 	}
 	agent->state = property->state;
@@ -750,8 +752,9 @@ static indigo_result agent_delete_property(indigo_client *client, indigo_device 
 				indigo_item *item = AGENT_CONFIG_PROFILES_PROPERTY->items + i;
 				if (!strcmp(item->name, property->device)) {
 					int count = AGENT_CONFIG_PROFILES_PROPERTY->count - i - 1;
-					if (count > 0)
+					if (count > 0) {
 						memmove(AGENT_CONFIG_PROFILES_PROPERTY->items + i, AGENT_CONFIG_PROFILES_PROPERTY->items + i + 1, count * sizeof(indigo_item));
+					}
 					AGENT_CONFIG_PROFILES_PROPERTY->count--;
 					break;
 				}
@@ -774,8 +777,9 @@ static indigo_result agent_delete_property(indigo_client *client, indigo_device 
 							indigo_item *item = agent->items + j;
 							if (!strcmp(item->name, property->name)) {
 								int count = agent->count - j - 1;
-								if (count > 0)
+								if (count > 0) {
 									memmove(agent->items + j, agent->items + j + 1, count * sizeof(indigo_item));
+								}
 								agent->count--;
 								break;
 							}
@@ -817,8 +821,9 @@ indigo_result indigo_agent_config(indigo_driver_action action, indigo_driver_inf
 
 	SET_DRIVER_INFO(info, CONFIG_AGENT_NAME, __FUNCTION__, DRIVER_VERSION, false, last_action);
 
-	if (action == last_action)
+	if (action == last_action) {
 		return INDIGO_OK;
+	}
 
 	switch(action) {
 		case INDIGO_DRIVER_INIT:

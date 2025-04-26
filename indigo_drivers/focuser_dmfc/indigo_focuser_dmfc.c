@@ -543,8 +543,9 @@ indigo_result indigo_focuser_dmfc(indigo_driver_action action, indigo_driver_inf
 
 	SET_DRIVER_INFO(info, "PegasusAstro DMFC Focuser", __FUNCTION__, DRIVER_VERSION, false, last_action);
 
-	if (action == last_action)
+	if (action == last_action) {
 		return INDIGO_OK;
+	}
 
 	switch (action) {
 		case INDIGO_DRIVER_INIT:

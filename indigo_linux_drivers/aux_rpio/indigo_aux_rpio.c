@@ -1164,23 +1164,24 @@ indigo_result indigo_aux_rpio(indigo_driver_action action, indigo_driver_info *i
 
 	SET_DRIVER_INFO(info, DRIVER_INFO, __FUNCTION__, DRIVER_VERSION, false, last_action);
 
-	if (action == last_action)
+	if (action == last_action) {
 		return INDIGO_OK;
+	}
 
 	switch (action) {
-	case INDIGO_DRIVER_INIT:
-		last_action = action;
-		create_device();
-		break;
+		case INDIGO_DRIVER_INIT:
+			last_action = action;
+			create_device();
+			break;
 
-	case INDIGO_DRIVER_SHUTDOWN:
-		VERIFY_NOT_CONNECTED(device_data.device);
-		last_action = action;
-		delete_device();
-		break;
+		case INDIGO_DRIVER_SHUTDOWN:
+			VERIFY_NOT_CONNECTED(device_data.device);
+			last_action = action;
+			delete_device();
+			break;
 
-	case INDIGO_DRIVER_INFO:
-		break;
+		case INDIGO_DRIVER_INFO:
+			break;
 	}
 
 	return INDIGO_OK;

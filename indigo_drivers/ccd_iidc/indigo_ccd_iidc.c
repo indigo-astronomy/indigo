@@ -858,62 +858,63 @@ indigo_result indigo_ccd_iidc(indigo_driver_action action, indigo_driver_info *i
 
 	SET_DRIVER_INFO(info, "IIDC Compatible Camera", __FUNCTION__, DRIVER_VERSION, true, last_action);
 
-	if (action == last_action)
+	if (action == last_action) {
 		return INDIGO_OK;
+	}
 
 	switch (action) {
-	case INDIGO_DRIVER_INIT:
-		dc1394_log_register_handler(DC1394_LOG_ERROR, errorlog_handler, NULL);
-		dc1394_log_register_handler(DC1394_LOG_WARNING, errorlog_handler, NULL);
-		dc1394_log_register_handler(DC1394_LOG_DEBUG, debuglog_handler, NULL);
-		context = dc1394_new();
-		if (context != NULL) {
-			for (int i = 0; i < MAX_DEVICES; i++) {
-				devices[i] = 0;
-			}
-//#ifdef INDIGO_MACOS
-//			pthread_t hotplug_thread_handle;
-//			pthread_create(&hotplug_thread_handle, NULL, firewire_hotplug_thread, NULL);
-//#endif
-			indigo_start_usb_event_handler();
-			int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, /* LIBUSB_HOTPLUG_NO_FLAGS */ 0, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
-			hotplug_callback(NULL, NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED, NULL);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback() ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
-			if (rc >= 0) {
-				last_action = action;
-				break;
-			}
-		}
-		return INDIGO_FAILED;
-
-	case INDIGO_DRIVER_SHUTDOWN:
-		for (int i = 0; i < MAX_DEVICES; i++)
-			VERIFY_NOT_CONNECTED(devices[i]);
-		last_action = action;
-		libusb_hotplug_deregister_callback(NULL, callback_handle);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
-//#ifdef INDIGO_MACOS
-//			CFRunLoopStop(runloop);
-//#endif
-		for (int j = 0; j < MAX_DEVICES; j++) {
-			indigo_device *device = devices[j];
-			if (device != NULL) {
-				if (PRIVATE_DATA != NULL) {
-					if (PRIVATE_DATA->buffer)
-						free(PRIVATE_DATA->buffer);
-					free(PRIVATE_DATA);
+		case INDIGO_DRIVER_INIT:
+			dc1394_log_register_handler(DC1394_LOG_ERROR, errorlog_handler, NULL);
+			dc1394_log_register_handler(DC1394_LOG_WARNING, errorlog_handler, NULL);
+			dc1394_log_register_handler(DC1394_LOG_DEBUG, debuglog_handler, NULL);
+			context = dc1394_new();
+			if (context != NULL) {
+				for (int i = 0; i < MAX_DEVICES; i++) {
+					devices[i] = 0;
 				}
-				indigo_detach_device(device);
-				free(device);
-				devices[j] = NULL;
+	//#ifdef INDIGO_MACOS
+	//			pthread_t hotplug_thread_handle;
+	//			pthread_create(&hotplug_thread_handle, NULL, firewire_hotplug_thread, NULL);
+	//#endif
+				indigo_start_usb_event_handler();
+				int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, /* LIBUSB_HOTPLUG_NO_FLAGS */ 0, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
+				hotplug_callback(NULL, NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED, NULL);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback() ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
+				if (rc >= 0) {
+					last_action = action;
+					break;
+				}
 			}
-		}
-		dc1394_free(context);
-		context = NULL;
-		break;
+			return INDIGO_FAILED;
 
-	case INDIGO_DRIVER_INFO:
-		break;
+		case INDIGO_DRIVER_SHUTDOWN:
+			for (int i = 0; i < MAX_DEVICES; i++)
+				VERIFY_NOT_CONNECTED(devices[i]);
+			last_action = action;
+			libusb_hotplug_deregister_callback(NULL, callback_handle);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
+	//#ifdef INDIGO_MACOS
+	//			CFRunLoopStop(runloop);
+	//#endif
+			for (int j = 0; j < MAX_DEVICES; j++) {
+				indigo_device *device = devices[j];
+				if (device != NULL) {
+					if (PRIVATE_DATA != NULL) {
+						if (PRIVATE_DATA->buffer)
+							free(PRIVATE_DATA->buffer);
+						free(PRIVATE_DATA);
+					}
+					indigo_detach_device(device);
+					free(device);
+					devices[j] = NULL;
+				}
+			}
+			dc1394_free(context);
+			context = NULL;
+			break;
+
+		case INDIGO_DRIVER_INFO:
+			break;
 	}
 
 	return INDIGO_OK;

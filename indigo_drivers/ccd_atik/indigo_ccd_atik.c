@@ -986,8 +986,9 @@ indigo_result indigo_ccd_atik(indigo_driver_action action, indigo_driver_info *i
 	
 	SET_DRIVER_INFO(info, "Atik Camera", __FUNCTION__, DRIVER_VERSION, true, last_action);
 	
-	if (action == last_action)
+	if (action == last_action) {
 		return INDIGO_OK;
+	}
 	
 	switch(action) {
 		case INDIGO_DRIVER_INIT:

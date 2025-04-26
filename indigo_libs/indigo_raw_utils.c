@@ -1531,11 +1531,7 @@ indigo_result indigo_update_saturation_mask(indigo_raw_type raw_type, const void
 			for (int y = 1; y < end_y; y++) {
 				for (int x = 1; x < end_x; x++) {
 					int off = y * width + x;
-					if (
-						data8[off] > max_luminance &&
-						/* also check median of the neighbouring pixels to avoid hot pixels and lines */
-						median3(data8[off - 1], data8[off], data8[off + 1]) > threshold
-					) {
+					if (data8[off] > max_luminance && median3(data8[off - 1], data8[off], data8[off + 1]) > threshold) { /* also check median of the neighbouring pixels to avoid hot pixels and lines */
 						int min_i = MAX(0, x - mask_size);
 						int max_i = MIN(width - 1, x + mask_size);
 						int min_j = MAX(0, y - mask_size);
@@ -1555,11 +1551,7 @@ indigo_result indigo_update_saturation_mask(indigo_raw_type raw_type, const void
 			for (int y = 1; y < end_y; y++) {
 				for (int x = 1; x < end_x; x++) {
 					int off = y * width + x;
-					if (
-						data16[off] > max_luminance &&
-						/* also check median of the neighbouring pixels to avoid hot pixels and lines */
-						median3(data16[off - 1], data16[off], data16[off + 1]) > threshold
-					) {
+					if (data16[off] > max_luminance && median3(data16[off - 1], data16[off], data16[off + 1]) > threshold) {
 						int min_i = MAX(0, x - mask_size);
 						int max_i = MIN(width - 1, x + mask_size);
 						int min_j = MAX(0, y - mask_size);
@@ -1579,20 +1571,11 @@ indigo_result indigo_update_saturation_mask(indigo_raw_type raw_type, const void
 			for (int y = 1; y < end_y; y++) {
 				for (int x = 1; x < end_x; x++) {
 					int off = 3 * (y * width + x);
-					if (
-						data8[off] > max_luminance &&
-						/* also check median of the neighbouring pixels to avoid hot pixels and lines */
-						(
-							median3(data8[off - 3], data8[off], data8[off + 3]) > threshold ||       /* Red Saturated? */
-							median3(data8[off - 2], data8[off + 1], data8[off + 4]) > threshold ||   /* Green Saturated? */
-							median3(data8[off - 1], data8[off + 2], data8[off + 5]) > threshold      /* Blue Saturated? */
-						)
-					) {
+					if (data8[off] > max_luminance && (median3(data8[off - 3], data8[off], data8[off + 3]) > threshold || median3(data8[off - 2], data8[off + 1], data8[off + 4]) > threshold || median3(data8[off - 1], data8[off + 2], data8[off + 5]) > threshold)) {
 						int min_i = MAX(0, x - mask_size);
 						int max_i = MIN(width - 1, x + mask_size);
 						int min_j = MAX(0, y - mask_size);
 						int max_j = MIN(height - 1, y + mask_size);
-
 						for (int j = min_j; j <= max_j; j++) {
 							for (int i = min_i; i <= max_i; i++) {
 								mask[j * width + i] = 0;
@@ -1607,20 +1590,11 @@ indigo_result indigo_update_saturation_mask(indigo_raw_type raw_type, const void
 			for (int y = 1; y < end_y; y++) {
 				for (int x = 1; x < end_x; x++) {
 					int off = 3 * (y * width + x);
-					if (
-						data16[off] > max_luminance &&
-						/* also check median of the neighbouring pixels to avoid hot pixels and lines */
-						(
-							median3(data16[off - 3], data16[off], data16[off + 3]) > threshold ||       /* Red Saturated? */
-							median3(data16[off - 2], data16[off + 1], data16[off + 4]) > threshold ||   /* Green Saturated? */
-							median3(data16[off - 1], data16[off + 2], data16[off + 5]) > threshold      /* Blue Saturated? */
-						)
-					) {
+					if (data16[off] > max_luminance && (median3(data16[off - 3], data16[off], data16[off + 3]) > threshold || median3(data16[off - 2], data16[off + 1], data16[off + 4]) > threshold || median3(data16[off - 1], data16[off + 2], data16[off + 5]) > threshold)) {
 						int min_i = MAX(0, x - mask_size);
 						int max_i = MIN(width - 1, x + mask_size);
 						int min_j = MAX(0, y - mask_size);
 						int max_j = MIN(height - 1, y + mask_size);
-
 						for (int j = min_j; j <= max_j; j++) {
 							for (int i = min_i; i <= max_i; i++) {
 								mask[j * width + i] = 0;
@@ -1774,17 +1748,7 @@ static double indigo_stddev_masked_rgb24(uint8_t set[], const uint8_t mask[], co
 			i = index * 3;
 			if (mask[index]) {
 				/* Check if saturated feature or hotpixel, hotpixels do not break the estimation */
-				if (
-					(
-						set[i] > SATURATION_8 ||
-						set[i + 1] > SATURATION_8 ||
-						set[i + 2] > SATURATION_8
-					) && (
-						median3(set[i - 3], set[i], set[i + 3]) > threshold ||
-						median3(set[i - 2], set[i + 1], set[i + 4]) > threshold ||
-						median3(set[i - 1], set[i + 2], set[i + 5]) > threshold
-					)
-				) {
+				if ((set[i] > SATURATION_8 || set[i + 1] > SATURATION_8 || set[i + 2] > SATURATION_8) && (median3(set[i - 3], set[i], set[i + 3]) > threshold || median3(set[i - 2], set[i + 1], set[i + 4]) > threshold || median3(set[i - 1], set[i + 2], set[i + 5]) > threshold)) {
 					if (saturated) {
 						if (!(*saturated)) INDIGO_DEBUG(indigo_debug("Saturation detected: threshold = %.2f, mean = %.2f", threshold, m));
 						*saturated = true;
@@ -1834,17 +1798,7 @@ static double indigo_stddev_rgb24(uint8_t set[], const int width, const int heig
 		for (int x = 1; x < end_x; x++) {
 			i = (y * width + x) * 3;
 			/* Check if saturated feature or hotpixel, hotpixels do not break the estimation */
-			if (
-				(
-					set[i] > SATURATION_8 ||
-					set[i + 1] > SATURATION_8 ||
-					set[i + 2] > SATURATION_8
-				) && (
-					median3(set[i - 3], set[i], set[i + 3]) > threshold ||
-					median3(set[i - 2], set[i + 1], set[i + 4]) > threshold ||
-					median3(set[i - 1], set[i + 2], set[i + 5]) > threshold
-				)
-			) {
+			if ((set[i] > SATURATION_8 || set[i + 1] > SATURATION_8 || set[i + 2] > SATURATION_8) && (median3(set[i - 3], set[i], set[i + 3]) > threshold || median3(set[i - 2], set[i + 1], set[i + 4]) > threshold || median3(set[i - 1], set[i + 2], set[i + 5]) > threshold)) {
 				if (saturated) {
 					if (!(*saturated)) INDIGO_DEBUG(indigo_debug("Saturation detected: threshold = %.2f, mean = %.2f", threshold, m));
 					*saturated = true;
@@ -1983,17 +1937,7 @@ static double indigo_stddev_masked_rgb48(uint16_t set[], const uint8_t mask[], c
 			i = index * 3;
 			if (mask[index]) {
 				/* Check if saturated feature or hotpixel, hotpixels do not break the estimation */
-				if (
-					(
-						set[i] > SATURATION_16 ||
-						set[i + 1] > SATURATION_16 ||
-						set[i + 2] > SATURATION_16
-					) && (
-						median3(set[i - 3], set[i], set[i + 3]) > threshold ||
-						median3(set[i - 2], set[i + 1], set[i + 4]) > threshold ||
-						median3(set[i - 1], set[i + 2], set[i + 5]) > threshold
-					)
-				) {
+				if ((set[i] > SATURATION_16 || set[i + 1] > SATURATION_16 || set[i + 2] > SATURATION_16) && ( median3(set[i - 3], set[i], set[i + 3]) > threshold || median3(set[i - 2], set[i + 1], set[i + 4]) > threshold || median3(set[i - 1], set[i + 2], set[i + 5]) > threshold)) {
 					if (saturated) {
 						if (!(*saturated)) INDIGO_DEBUG(indigo_debug("Saturation detected: threshold = %.2f, mean = %.2f", threshold, m));
 						*saturated = true;
@@ -2043,17 +1987,7 @@ static double indigo_stddev_rgb48(uint16_t set[], const int width, const int hei
 		for (int x = 1; x < end_x; x++) {
 			i = (y * width + x) * 3;
 			/* Check if saturated feature or hotpixel, hotpixels do not break the estimation */
-			if (
-				(
-					set[i] > SATURATION_16 ||
-					set[i + 1] > SATURATION_16 ||
-					set[i + 2] > SATURATION_16
-				) && (
-					median3(set[i - 3], set[i], set[i + 3]) > threshold ||
-					median3(set[i - 2], set[i + 1], set[i + 4]) > threshold ||
-					median3(set[i - 1], set[i + 2], set[i + 5]) > threshold
-				)
-			) {
+			if ((set[i] > SATURATION_16 || set[i + 1] > SATURATION_16 || set[i + 2] > SATURATION_16) && (median3(set[i - 3], set[i], set[i + 3]) > threshold || median3(set[i - 2], set[i + 1], set[i + 4]) > threshold || median3(set[i - 1], set[i + 2], set[i + 5]) > threshold)) {
 				if (saturated) {
 					if (!(*saturated)) INDIGO_DEBUG(indigo_debug("Saturation detected: threshold = %.2f, mean = %.2f", threshold, m));
 					*saturated = true;
@@ -2125,13 +2059,9 @@ indigo_result indigo_reduce_multistar_digest(const indigo_frame_digest *avg_ref,
 	double average = 0;
 	double drift_x, drift_y;
 
-	if (
-		count < 1 ||
-		avg_ref->algorithm != centroid ||
-		ref[0].algorithm != centroid ||
-		new_digest[0].algorithm != centroid ||
-		digest == NULL
-	) return INDIGO_FAILED;
+	if (count < 1 || avg_ref->algorithm != centroid || ref[0].algorithm != centroid || new_digest[0].algorithm != centroid || digest == NULL) {
+		return INDIGO_FAILED;
+	}
 
 	digest->algorithm = centroid;
 	digest->width = new_digest[0].width;
@@ -2187,14 +2117,9 @@ indigo_result indigo_reduce_weighted_multistar_digest(const indigo_frame_digest 
 	double average = 0;
 	double drift_x, drift_y;
 
-	if (
-		count < 1 ||
-		avg_ref->algorithm != centroid ||
-		ref[0].algorithm != centroid ||
-		new_digest[0].algorithm != centroid ||
-		digest == NULL
-	) return INDIGO_FAILED;
-
+	if (count < 1 || avg_ref->algorithm != centroid || ref[0].algorithm != centroid || new_digest[0].algorithm != centroid || digest == NULL) {
+		return INDIGO_FAILED;
+	}
 	digest->algorithm = centroid;
 	digest->width = new_digest[0].width;
 	digest->height = new_digest[0].height;
@@ -2417,18 +2342,11 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 		for (int j = clip_edge; j < clip_height; j++) {
 			for (int i = clip_edge; i < clip_width; i++) {
 				int off = j * width + i;
-				if (
-						buf[off] > lmax &&
-						/* also check median of the neighbouring pixels to avoid hot pixels and lines */
-						median3(buf[off - 1], buf[off], buf[off + 1]) > threshold &&
-						median3(buf[off - width], buf[off], buf[off + width]) > threshold &&
-						median3(buf[off - width - 1], buf[off], buf[off + width + 1]) > threshold &&
-						median3(buf[off - width + 1], buf[off], buf[off + width - 1]) > threshold
-						) {
-							lmax = buf[off];
-							star.x = i;
-							star.y = j;
-						}
+				if (buf[off] > lmax && median3(buf[off - 1], buf[off], buf[off + 1]) > threshold && median3(buf[off - width], buf[off], buf[off + width]) > threshold && median3(buf[off - width - 1], buf[off], buf[off + width + 1]) > threshold && median3(buf[off - width + 1], buf[off], buf[off + width - 1]) > threshold) { /* also check median of the neighbouring pixels to avoid hot pixels and lines */
+					lmax = buf[off];
+					star.x = i;
+					star.y = j;
+				}
 			}
 		}
 		if (lmax > threshold) {

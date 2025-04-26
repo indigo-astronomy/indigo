@@ -1441,8 +1441,9 @@ indigo_result indigo_dome_beaver(indigo_driver_action action, indigo_driver_info
 
 	SET_DRIVER_INFO(info, DOME_BEAVER_NAME, __FUNCTION__, DRIVER_VERSION, false, last_action);
 
-	if (action == last_action)
+	if (action == last_action) {
 		return INDIGO_OK;
+	}
 
 	switch(action) {
 		case INDIGO_DRIVER_INIT:

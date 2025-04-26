@@ -511,20 +511,14 @@ static void aux_update_states(indigo_device *device) {
 		}
 
 		if (AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value && AUX_WEATHER_PROPERTY->state == INDIGO_OK_STATE) {
-			if (
-				((AUX_WEATHER_DEWPOINT_ITEM->number.value + 1) > wb_stat.dht22_temperature) &&
-				(wb_stat.dc5_pwm != 255 || wb_stat.dc6_pwm != 255 || wb_stat.dc7_pwm != 255)
-			) {
+			if (((AUX_WEATHER_DEWPOINT_ITEM->number.value + 1) > wb_stat.dht22_temperature) && (wb_stat.dc5_pwm != 255 || wb_stat.dc6_pwm != 255 || wb_stat.dc7_pwm != 255)) {
 				wbprov3_command(device, "5255");
 				wbprov3_command(device, "6255");
 				wbprov3_command(device, "7255");
 				indigo_send_message(device, "Heating started: Aproaching dewpoint");
 			}
 
-			if (
-				((AUX_WEATHER_DEWPOINT_ITEM->number.value + 2) < wb_stat.dht22_temperature) &&
-				(wb_stat.dc5_pwm != 0 || wb_stat.dc6_pwm != 0 || wb_stat.dc7_pwm != 0)
-			) {
+			if (((AUX_WEATHER_DEWPOINT_ITEM->number.value + 2) < wb_stat.dht22_temperature) && (wb_stat.dc5_pwm != 0 || wb_stat.dc6_pwm != 0 || wb_stat.dc7_pwm != 0)) {
 				wbprov3_command(device, "5000");
 				wbprov3_command(device, "6000");
 				wbprov3_command(device, "7000");
@@ -812,8 +806,9 @@ indigo_result indigo_aux_wbprov3(indigo_driver_action action, indigo_driver_info
 
 	SET_DRIVER_INFO(info, "WandererBox Pro V3 Powerbox", __FUNCTION__, DRIVER_VERSION, false, last_action);
 
-	if (action == last_action)
+	if (action == last_action) {
 		return INDIGO_OK;
+	}
 
 	switch (action) {
 		case INDIGO_DRIVER_INIT:

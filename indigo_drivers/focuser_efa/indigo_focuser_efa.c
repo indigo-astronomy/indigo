@@ -644,8 +644,9 @@ indigo_result indigo_focuser_efa(indigo_driver_action action, indigo_driver_info
 
 	SET_DRIVER_INFO(info, "Celestron / PlaneWave EFA Focuser", __FUNCTION__, DRIVER_VERSION, false, last_action);
 
-	if (action == last_action)
+	if (action == last_action) {
 		return INDIGO_OK;
+	}
 
 	switch (action) {
 		case INDIGO_DRIVER_INIT:

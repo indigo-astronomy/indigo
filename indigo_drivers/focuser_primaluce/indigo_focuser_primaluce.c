@@ -1581,8 +1581,9 @@ indigo_result indigo_focuser_primaluce(indigo_driver_action action, indigo_drive
 
 	SET_DRIVER_INFO(info, "PrimaluceLab Focuser/Rotator", __FUNCTION__, DRIVER_VERSION, false, last_action);
 	
-	if (action == last_action)
+	if (action == last_action) {
 		return INDIGO_OK;
+	}
 	
 	switch (action) {
 		case INDIGO_DRIVER_INIT:

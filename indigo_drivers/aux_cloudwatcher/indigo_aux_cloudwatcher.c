@@ -2013,33 +2013,34 @@ indigo_result indigo_aux_cloudwatcher(indigo_driver_action action, indigo_driver
 
 	SET_DRIVER_INFO(info, DRIVER_INFO, __FUNCTION__, DRIVER_VERSION, false, last_action);
 
-	if (action == last_action)
+	if (action == last_action) {
 		return INDIGO_OK;
+	}
 
 	switch (action) {
-	case INDIGO_DRIVER_INIT:
-		last_action = action;
-		private_data = indigo_safe_malloc(sizeof(aag_private_data));
-		aag_cw = indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);
-		aag_cw->private_data = private_data;
-		indigo_attach_device(aag_cw);
-		break;
+		case INDIGO_DRIVER_INIT:
+			last_action = action;
+			private_data = indigo_safe_malloc(sizeof(aag_private_data));
+			aag_cw = indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);
+			aag_cw->private_data = private_data;
+			indigo_attach_device(aag_cw);
+			break;
 
-	case INDIGO_DRIVER_SHUTDOWN:
-		VERIFY_NOT_CONNECTED(aag_cw);
-		last_action = action;
-		if (aag_cw != NULL) {
-			indigo_detach_device(aag_cw);
-			free(aag_cw);
-			aag_cw = NULL;
-		}
-		if (private_data != NULL) {
-			free(private_data);
-			private_data = NULL;
-		}
+		case INDIGO_DRIVER_SHUTDOWN:
+			VERIFY_NOT_CONNECTED(aag_cw);
+			last_action = action;
+			if (aag_cw != NULL) {
+				indigo_detach_device(aag_cw);
+				free(aag_cw);
+				aag_cw = NULL;
+			}
+			if (private_data != NULL) {
+				free(private_data);
+				private_data = NULL;
+			}
 
-	case INDIGO_DRIVER_INFO:
-		break;
+		case INDIGO_DRIVER_INFO:
+			break;
 	}
 
 	return INDIGO_OK;

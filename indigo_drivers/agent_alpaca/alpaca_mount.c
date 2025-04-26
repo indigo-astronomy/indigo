@@ -626,8 +626,9 @@ void indigo_alpaca_mount_update_property(indigo_alpaca_device *alpaca_device, in
 					alpaca_device->mount.guideratedeclination = item->number.value;
 				} else if (!strcmp(item->name, MOUNT_GUIDE_RATE_RA_ITEM_NAME)) {
 					alpaca_device->mount.guideraterightascension = item->number.value;
-					if (property->count == 1)
+					if (property->count == 1) {
 						alpaca_device->mount.guideratedeclination = item->number.value;
+					}
 				}
 			}
 		}
@@ -718,20 +719,24 @@ void indigo_alpaca_mount_update_property(indigo_alpaca_device *alpaca_device, in
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = property->items + i;
 				if (!strcmp(item->name, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME)) {
-					if (item->sw.value)
+					if (item->sw.value) {
 						alpaca_device->mount.trackingrate = 0;
+					}
 					alpaca_device->mount.trackingrates[0] = true;
 				} else if (!strcmp(item->name, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME)) {
-					if (item->sw.value)
+					if (item->sw.value) {
 						alpaca_device->mount.trackingrate = 1;
+					}
 					alpaca_device->mount.trackingrates[1] = true;
 				} else if (!strcmp(item->name, MOUNT_TRACK_RATE_SOLAR_ITEM_NAME)) {
-					if (item->sw.value)
+					if (item->sw.value) {
 						alpaca_device->mount.trackingrate = 2;
+					}
 					alpaca_device->mount.trackingrates[2] = true;
 				} else if (!strcmp(item->name, MOUNT_TRACK_RATE_KING_ITEM_NAME)) {
-					if (item->sw.value)
+					if (item->sw.value) {
 						alpaca_device->mount.trackingrate = 3;
+					}
 					alpaca_device->mount.trackingrates[3] = true;
 				}
 			}
@@ -860,8 +865,9 @@ long indigo_alpaca_mount_get_command(indigo_alpaca_device *alpaca_device, int ve
 	if (!strcmp(command, "trackingrates")) {
 		bool value[4] = { false };
 		indigo_alpaca_error result = alpaca_get_trackingrates(alpaca_device, version, value);
-		if (value[0])
+		if (value[0]) {
 			return snprintf(buffer, buffer_length, "\"Value\": [ 0%s%s%s ], \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value[0] ? ", 1" : "", value[1] ? ", 2" : "", value[3] ? ", 3" : "", result, indigo_alpaca_error_string(result));
+		}
 		return snprintf(buffer, buffer_length, "\"Value\": [ ], \"ErrorNumber\": 0, \"ErrorMessage\": \"\"");
 	}
 	if (!strcmp(command, "sideofpier")) {

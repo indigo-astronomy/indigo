@@ -266,8 +266,9 @@ extern char **environ;
 
 static void parse_line(indigo_device *device, char *line) {
 	char *s = strchr(line, '\n');
-	if (s)
+	if (s) {
 		*s = 0;
+	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "< %s", line);
 	if ((s = strstr(line, "PLTSOLVD="))) {
 		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed = s[9] != 'T';
@@ -498,10 +499,11 @@ static bool astap_solve(indigo_device *device, void *image, unsigned long image_
 	cleanup:
 		/* globs do not work in quotes */
 		execute_command(device, "rm -rf \"%s\"/image_*", base_dir);
-		if (message[0] == '\0')
+		if (message[0] == '\0') {
 			indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
-		else
+		} else {
 			indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, message);
+		}
 		pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
 		return !INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed;
 	}
@@ -593,8 +595,9 @@ static void index_handler(indigo_device *device) {
 	instances++;
 	sync_installed_indexes(device, "index", AGENT_ASTAP_INDEX_PROPERTY);
 	instances--;
-	if (AGENT_ASTAP_INDEX_PROPERTY->state == INDIGO_BUSY_STATE)
+	if (AGENT_ASTAP_INDEX_PROPERTY->state == INDIGO_BUSY_STATE) {
 		AGENT_ASTAP_INDEX_PROPERTY->state = instances ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
+	}
 	indigo_update_property(device, AGENT_ASTAP_INDEX_PROPERTY, NULL);
 }
 
@@ -628,8 +631,9 @@ static indigo_result agent_device_attach(indigo_device *device) {
 				}
 			}
 			indigo_init_switch_item(AGENT_ASTAP_INDEX_PROPERTY->items + i, name, label, present);
-			if (present)
+			if (present) {
 				indigo_init_switch_item(AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items + AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count++, name, label, false);
+			}
 			AGENT_ASTAP_INDEX_PROPERTY->count++;
 		}
 		indigo_property_sort_items(AGENT_PLATESOLVER_USE_INDEX_PROPERTY, 0);
@@ -645,8 +649,9 @@ static indigo_result agent_device_attach(indigo_device *device) {
 }
 
 static indigo_result agent_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	if (client != NULL && client == FILTER_DEVICE_CONTEXT->client)
+	if (client != NULL && client == FILTER_DEVICE_CONTEXT->client) {
 		return INDIGO_OK;
+	}
 	indigo_define_matching_property(AGENT_ASTAP_INDEX_PROPERTY);
 	return indigo_platesolver_enumerate_properties(device, client, property);
 }
@@ -655,8 +660,9 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (client == FILTER_DEVICE_CONTEXT->client)
+	if (client == FILTER_DEVICE_CONTEXT->client) {
 		return INDIGO_OK;
+	}
 	if (indigo_property_match(AGENT_ASTAP_INDEX_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- AGENT_ASTAP_INDEX
 		indigo_property_copy_values(AGENT_ASTAP_INDEX_PROPERTY, property, false);
@@ -682,14 +688,16 @@ static indigo_client *agent_client = NULL;
 static void kill_children() {
 	indigo_device *device = agent_device;
 	if (device && device->private_data) {
-		if (ASTAP_DEVICE_PRIVATE_DATA->pid)
+		if (ASTAP_DEVICE_PRIVATE_DATA->pid) {
 			kill(-ASTAP_DEVICE_PRIVATE_DATA->pid, SIGTERM);
+		}
 		indigo_device **additional_devices = DEVICE_CONTEXT->additional_device_instances;
 		if (additional_devices) {
 			for (int i = 0; i < MAX_ADDITIONAL_INSTANCES; i++) {
 				device = additional_devices[i];
-				if (device && device->private_data && ASTAP_DEVICE_PRIVATE_DATA->pid)
+				if (device && device->private_data && ASTAP_DEVICE_PRIVATE_DATA->pid) {
 					kill(-ASTAP_DEVICE_PRIVATE_DATA->pid, SIGTERM);
+				}
 			}
 		}
 	}
@@ -719,8 +727,9 @@ indigo_result indigo_agent_astap(indigo_driver_action action, indigo_driver_info
 
 	SET_DRIVER_INFO(info, ASTAP_AGENT_NAME, __FUNCTION__, DRIVER_VERSION, false, last_action);
 
-	if (action == last_action)
+	if (action == last_action) {
 		return INDIGO_OK;
+	}
 
 	switch(action) {
 		case INDIGO_DRIVER_INIT:

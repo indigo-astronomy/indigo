@@ -177,8 +177,9 @@ void indigo_alpaca_guider_update_property(indigo_alpaca_device *alpaca_device, i
 					alpaca_device->guider.guideratedeclination = item->number.value;
 				} else if (!strcmp(item->name, GUIDER_RATE_ITEM_NAME)) {
 					alpaca_device->guider.guideraterightascension = item->number.value;
-					if (property->count == 1)
+					if (property->count == 1) {
 						alpaca_device->guider.guideratedeclination = item->number.value;
+					}
 				}
 			}
 		}

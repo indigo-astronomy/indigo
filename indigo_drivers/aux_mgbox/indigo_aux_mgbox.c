@@ -1004,47 +1004,48 @@ indigo_result indigo_aux_mgbox(indigo_driver_action action, indigo_driver_info *
 
 	SET_DRIVER_INFO(info, "Astromi.ch MGBox", __FUNCTION__, DRIVER_VERSION, false, last_action);
 
-	if (action == last_action)
+	if (action == last_action) {
 		return INDIGO_OK;
+	}
 
 	switch (action) {
-	case INDIGO_DRIVER_INIT:
-		last_action = action;
+		case INDIGO_DRIVER_INIT:
+			last_action = action;
 
-		private_data = indigo_safe_malloc(sizeof(mg_private_data));
-		aux_weather = indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);
-		aux_weather->private_data = private_data;
-		indigo_attach_device(aux_weather);
+			private_data = indigo_safe_malloc(sizeof(mg_private_data));
+			aux_weather = indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);
+			aux_weather->private_data = private_data;
+			indigo_attach_device(aux_weather);
 
-		gps = indigo_safe_malloc_copy(sizeof(indigo_device), &gps_template);
-		gps->private_data = private_data;
-		gps->master_device = aux_weather;
-		indigo_attach_device(gps);
+			gps = indigo_safe_malloc_copy(sizeof(indigo_device), &gps_template);
+			gps->private_data = private_data;
+			gps->master_device = aux_weather;
+			indigo_attach_device(gps);
 
-		break;
+			break;
 
-	case INDIGO_DRIVER_SHUTDOWN:
-		VERIFY_NOT_CONNECTED(gps);
-		VERIFY_NOT_CONNECTED(aux_weather);
-		last_action = action;
-		if (aux_weather != NULL) {
-			indigo_detach_device(aux_weather);
-			free(aux_weather);
-			aux_weather = NULL;
-		}
-		if (gps != NULL) {
-			indigo_detach_device(gps);
-			free(gps);
-			gps = NULL;
-		}
-		if (private_data != NULL) {
-			free(private_data);
-			private_data = NULL;
-		}
-		break;
+		case INDIGO_DRIVER_SHUTDOWN:
+			VERIFY_NOT_CONNECTED(gps);
+			VERIFY_NOT_CONNECTED(aux_weather);
+			last_action = action;
+			if (aux_weather != NULL) {
+				indigo_detach_device(aux_weather);
+				free(aux_weather);
+				aux_weather = NULL;
+			}
+			if (gps != NULL) {
+				indigo_detach_device(gps);
+				free(gps);
+				gps = NULL;
+			}
+			if (private_data != NULL) {
+				free(private_data);
+				private_data = NULL;
+			}
+			break;
 
-	case INDIGO_DRIVER_INFO:
-		break;
+		case INDIGO_DRIVER_INFO:
+			break;
 	}
 
 	return INDIGO_OK;

@@ -16,12 +16,13 @@ function indigo_call_handlers(event, device_name, value, check_devices) {
 function indigo_change_property(device, property, items) {
 	for (var name in items) {
 		var value = items[name];
-		if (typeof value == "string")
+		if (typeof value == "string") {
 			indigo_change_text_property(device, property, items);
-		else if (typeof value == "number")
+		} else if (typeof value == "number") {
 			indigo_change_number_property(device, property, items);
-		else if (typeof value == "boolean")
+		} else if (typeof value == "boolean") {
 			indigo_change_switch_property(device, property, items);
+		}
 		break;
 	}
 }
@@ -30,52 +31,60 @@ function indigo_log_with_property(message, property) {
 	indigo_log(message + " property '"+property.device+"'."+property.name+", state = "+property.state+", perm = "+property.perm);
 	for (name in property.items) {
 		var value = property.items[name];
-		if (typeof value == "string")
+		if (typeof value == "string") {
 			value = "'"+value+"'";
+		}
 		if (typeof value == "object") {
 			var str = "[";
 			var next = false;
 			for (field in value) {
 				var subvalue = value[field];
-				if (next)
+				if (next) {
 					str += ", ";
+				}
 				next = true;
-				if (typeof subvalue == "string")
+				if (typeof subvalue == "string") {
 					subvalue = "'"+subvalue+"'";
+				}
 				str += field + ": " + subvalue;
 			}
 			value = str + "]";
 		}
 		indigo_log("  "+name+" = "+value+"");
 	}
-	if (property.message)
+	if (property.message) {
 		indigo_log("  message: "+message);
+	}
 }
 
 function indigo_error_with_property(message, property) {
 	indigo_error(message + " property '"+property.device+"'."+property.name+", state = "+property.state+", perm = "+property.perm);
 	for (name in property.items) {
 		var value = property.items[name];
-		if (typeof value == "string")
+		if (typeof value == "string") {
 			value = "'"+value+"'";
+		}
 		if (typeof value == "object") {
 			var str = "[";
 			var next = false;
 			for (field in value) {
 				var subvalue = value[field];
-				if (next)
+				if (next) {
 					str += ", ";
+				}
 				next = true;
-				if (typeof subvalue == "string")
+				if (typeof subvalue == "string") {
 					subvalue = "'"+subvalue+"'";
+				}
 				str += field + ": " + subvalue;
 			}
 			value = str + "]";
 		}
 		indigo_error("  "+name+" = "+value+"");
 	}
-	if (property.message)
+	if (property.message) {
 		indigo_error("  message: "+message);
+	}
 }
 
 function indigo_on_define_property(device_name, property_name, property_label, items, item_defs, state, perm, message) {
@@ -143,10 +152,12 @@ function indigo_on_send_message(device_name, message) {
 
 function indigo_on_enumerate_properties(device_name, property_name) {
 	var property = { };
-	if (device_name)
+	if (device_name) {
 		property.device = device_name;
-	if (property_name)
+	}
+	if (property_name) {
 		property.name = property_name;
+	}
 	indigo_call_handlers("on_enumerate_properties", device_name, property, false);
 }
 

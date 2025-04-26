@@ -2305,11 +2305,7 @@ static void unplug_wheel(char *master_name, int fw_model) {
 			continue;
 		}
 		if (PRIVATE_DATA) {
-			if (
-				!strncmp(master_name, PRIVATE_DATA->dev_name, MAX_PATH) &&
-				(fw_model == PRIVATE_DATA->fw_device) &&
-				(device->attach == wheel_attach)
-			) {
+			if (!strncmp(master_name, PRIVATE_DATA->dev_name, MAX_PATH) && (fw_model == PRIVATE_DATA->fw_device) && (device->attach == wheel_attach)) {
 				indigo_detach_device(device);
 				free(device);
 				devices[i] = NULL;
@@ -2330,11 +2326,7 @@ static void unplug_ao(char *master_name) {
 			continue;
 		}
 		if (PRIVATE_DATA) {
-			if (
-				!strncmp(master_name, PRIVATE_DATA->dev_name, MAX_PATH) &&
-				(device->attach == ao_attach) &&
-				(PRIVATE_DATA->ao_non_auto)
-			) {
+			if (!strncmp(master_name, PRIVATE_DATA->dev_name, MAX_PATH) && (device->attach == ao_attach) && (PRIVATE_DATA->ao_non_auto)) {
 				indigo_detach_device(device);
 				free(device);
 				devices[i] = NULL;
@@ -2818,82 +2810,83 @@ indigo_result indigo_ccd_sbig(indigo_driver_action action, indigo_driver_info *i
 
 	SET_DRIVER_INFO(info, "SBIG Camera", __FUNCTION__, DRIVER_VERSION, true, last_action);
 
-	if (action == last_action)
+	if (action == last_action) {
 		return INDIGO_OK;
+	}
 
 	switch (action) {
-	case INDIGO_DRIVER_INIT:
-		sbig_command = SBIGUnivDrvCommand;
+		case INDIGO_DRIVER_INIT:
+			sbig_command = SBIGUnivDrvCommand;
 
-		pthread_mutexattr_t attr;
-		pthread_mutexattr_init(&attr);
-		pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
-		pthread_mutex_init(&driver_mutex, &attr);
-		pthread_mutexattr_destroy(&attr);
+			pthread_mutexattr_t attr;
+			pthread_mutexattr_init(&attr);
+			pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+			pthread_mutex_init(&driver_mutex, &attr);
+			pthread_mutexattr_destroy(&attr);
 
-		GetDriverInfoParams di_req = {
-			.request = DRIVER_STD
-		};
-		GetDriverInfoResults0 di;
+			GetDriverInfoParams di_req = {
+				.request = DRIVER_STD
+			};
+			GetDriverInfoResults0 di;
 
-		int res = sbig_command(CC_OPEN_DRIVER, NULL, NULL);
-		if (res != CE_NO_ERROR) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_OPEN_DRIVER error = %d (%s)", res, sbig_error_string(res));
+			int res = sbig_command(CC_OPEN_DRIVER, NULL, NULL);
+			if (res != CE_NO_ERROR) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_OPEN_DRIVER error = %d (%s)", res, sbig_error_string(res));
+				return INDIGO_FAILED;
+			}
+
+			global_handle = get_sbig_handle();
+			if (global_handle == INVALID_HANDLE_VALUE) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "error get_sbig_handle() = %d", global_handle);
+			}
+
+			res = sbig_command(CC_GET_DRIVER_INFO, &di_req, &di);
+			if (res != CE_NO_ERROR) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_GET_DRIVER_INFO error = %d (%s)", res, sbig_error_string(res));
+			} else {
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "Driver: %s (%x.%x)", di.name, di.version >> 8, di.version & 0x00ff);
+			}
+
+			sbig_eth = indigo_safe_malloc_copy(sizeof(indigo_device), &sbig_eth_template);
+			sbig_eth->private_data = NULL;
+			indigo_attach_device(sbig_eth);
+
+			indigo_start_usb_event_handler();
+			int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, SBIG_VENDOR_ID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
+			if (rc >= 0) {
+				last_action = action;
+				return INDIGO_OK;
+			}
 			return INDIGO_FAILED;
-		}
 
-		global_handle = get_sbig_handle();
-		if (global_handle == INVALID_HANDLE_VALUE) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "error get_sbig_handle() = %d", global_handle);
-		}
-
-		res = sbig_command(CC_GET_DRIVER_INFO, &di_req, &di);
-		if (res != CE_NO_ERROR) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_GET_DRIVER_INFO error = %d (%s)", res, sbig_error_string(res));
-		} else {
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "Driver: %s (%x.%x)", di.name, di.version >> 8, di.version & 0x00ff);
-		}
-
-		sbig_eth = indigo_safe_malloc_copy(sizeof(indigo_device), &sbig_eth_template);
-		sbig_eth->private_data = NULL;
-		indigo_attach_device(sbig_eth);
-
-		indigo_start_usb_event_handler();
-		int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, SBIG_VENDOR_ID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
-		if (rc >= 0) {
+		case INDIGO_DRIVER_SHUTDOWN:
+			for (int i = 0; i < MAX_DEVICES; i++)
+				VERIFY_NOT_CONNECTED(devices[i]);
 			last_action = action;
-			return INDIGO_OK;
-		}
-		return INDIGO_FAILED;
+			libusb_hotplug_deregister_callback(NULL, callback_handle);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
+			remove_usb_devices();
+			remove_eth_devices();
+			indigo_detach_device(sbig_eth);
+			free(sbig_eth);
 
-	case INDIGO_DRIVER_SHUTDOWN:
-		for (int i = 0; i < MAX_DEVICES; i++)
-			VERIFY_NOT_CONNECTED(devices[i]);
-		last_action = action;
-		libusb_hotplug_deregister_callback(NULL, callback_handle);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
-		remove_usb_devices();
-		remove_eth_devices();
-		indigo_detach_device(sbig_eth);
-		free(sbig_eth);
+			pthread_mutex_destroy(&driver_mutex);
 
-		pthread_mutex_destroy(&driver_mutex);
+			res = set_sbig_handle(global_handle);
+			if (res != CE_NO_ERROR) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "error set_sbig_handle() = %d (%s)", res, sbig_error_string(res));
+			}
 
-		res = set_sbig_handle(global_handle);
-		if (res != CE_NO_ERROR) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "error set_sbig_handle() = %d (%s)", res, sbig_error_string(res));
-		}
+			res = sbig_command(CC_CLOSE_DRIVER, NULL, NULL);
+			if (res != CE_NO_ERROR) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_CLOSE_DRIVER error = %d (%s)", res, sbig_error_string(res));
+			}
 
-		res = sbig_command(CC_CLOSE_DRIVER, NULL, NULL);
-		if (res != CE_NO_ERROR) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_CLOSE_DRIVER error = %d (%s)", res, sbig_error_string(res));
-		}
+			break;
 
-		break;
-
-	case INDIGO_DRIVER_INFO:
-		break;
+		case INDIGO_DRIVER_INFO:
+			break;
 	}
 
 	return INDIGO_OK;

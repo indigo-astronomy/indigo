@@ -507,13 +507,15 @@ static bool capture_frame(indigo_device *device) {
 		DEVICE_PRIVATE_DATA->last_image_size = 0;
 	}
 	for (int exposure_attempt = 0; exposure_attempt < 3; exposure_attempt++) {
-		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
+		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 			return false;
+		}
 		indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.target);
 		for (int i = 0; i < BUSY_TIMEOUT * 1000 && (state = DEVICE_PRIVATE_DATA->exposure_state) != INDIGO_BUSY_STATE && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE; i++)
 			indigo_usleep(1000);
-		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
+		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 			return false;
+		}
 		if (state != INDIGO_BUSY_STATE) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_EXPOSURE didn't become busy in %d second(s)", BUSY_TIMEOUT);
 			indigo_sleep(1);
@@ -521,16 +523,18 @@ static bool capture_frame(indigo_device *device) {
 		}
 		double remaining_exposure_time = DEVICE_PRIVATE_DATA->remaining_exposure_time;
 		while ((state = DEVICE_PRIVATE_DATA->exposure_state) == INDIGO_BUSY_STATE) {
-			if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
+			if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 				return false;
+			}
 			if (remaining_exposure_time > 1) {
 				indigo_usleep(200000);
 			} else {
 				indigo_usleep(10000);
 			}
 		}
-		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
+		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 			return false;
+		}
 		if (state != INDIGO_OK_STATE) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_EXPOSURE_PROPERTY didn't become OK");
 			indigo_sleep(1);
@@ -957,14 +961,17 @@ static bool select_subframe(indigo_device *device) {
 		selection_x += (int)(DEVICE_PRIVATE_DATA->frame[0] / bin_x); // left
 		selection_y += (int)(DEVICE_PRIVATE_DATA->frame[1] / bin_y); // top
 		int window_size = (int)(AGENT_GUIDER_SELECTION_SUBFRAME_ITEM->number.value * AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value);
-		if (window_size < GRID)
+		if (window_size < GRID) {
 			window_size = GRID;
+		}
 		int frame_left = (int)(rint((selection_x - window_size) / (double)GRID) * GRID);
 		int frame_top = (int)(rint((selection_y - window_size) / (double)GRID) * GRID);
-		if (selection_x - frame_left < AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value)
+		if (selection_x - frame_left < AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value) {
 			frame_left -= GRID;
-		if (selection_y - frame_top < AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value)
+		}
+		if (selection_y - frame_top < AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value) {
 			frame_top -= GRID;
+		}
 		int frame_width = (2 * window_size / GRID + 1) * GRID;
 		int frame_height = (2 * window_size / GRID + 1) * GRID;
 		AGENT_GUIDER_SELECTION_X_ITEM->number.value = selection_x -= frame_left;
@@ -979,10 +986,12 @@ static bool select_subframe(indigo_device *device) {
 		DEVICE_PRIVATE_DATA->saved_exclude_region[3] = AGENT_GUIDER_SELECTION_EXCLUDE_HEIGHT_ITEM->number.value;
 		AGENT_GUIDER_SELECTION_INCLUDE_LEFT_ITEM->number.value = AGENT_GUIDER_SELECTION_INCLUDE_TOP_ITEM->number.value = AGENT_GUIDER_SELECTION_INCLUDE_WIDTH_ITEM->number.value = AGENT_GUIDER_SELECTION_INCLUDE_HEIGHT_ITEM->number.value = AGENT_GUIDER_SELECTION_EXCLUDE_LEFT_ITEM->number.value = AGENT_GUIDER_SELECTION_EXCLUDE_TOP_ITEM->number.value = AGENT_GUIDER_SELECTION_EXCLUDE_WIDTH_ITEM->number.value = AGENT_GUIDER_SELECTION_EXCLUDE_HEIGHT_ITEM->number.value = 0;
 		indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
-		if (frame_width - selection_x < AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value)
+		if (frame_width - selection_x < AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value) {
 			frame_width += GRID;
-		if (frame_height - selection_y < AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value)
+		}
+		if (frame_height - selection_y < AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value) {
 			frame_height += GRID;
+		}
 		static const char *names[] = { CCD_FRAME_LEFT_ITEM_NAME, CCD_FRAME_TOP_ITEM_NAME, CCD_FRAME_WIDTH_ITEM_NAME, CCD_FRAME_HEIGHT_ITEM_NAME };
 		double values[] = { frame_left * bin_x, frame_top * bin_y,  frame_width * bin_x, frame_height * bin_y };
 		indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device->name, CCD_FRAME_PROPERTY_NAME, 4, (const char **)names, values);
@@ -2104,8 +2113,9 @@ static indigo_result agent_device_attach(indigo_device *device) {
 }
 
 static indigo_result agent_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	if (client != NULL && client == FILTER_DEVICE_CONTEXT->client)
+	if (client != NULL && client == FILTER_DEVICE_CONTEXT->client) {
 		return INDIGO_OK;
+	}
 	indigo_define_matching_property(AGENT_GUIDER_DETECTION_MODE_PROPERTY);
 	indigo_define_matching_property(AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY);
 	indigo_define_matching_property(AGENT_GUIDER_SETTINGS_PROPERTY);
@@ -2169,11 +2179,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 // -------------------------------------------------------------------------------- AGENT_GUIDER_DEC_MODE
 		bool is_current_dec_guiding_both = AGENT_GUIDER_DEC_MODE_BOTH_ITEM->sw.value;
 		bool is_requested_dec_guiding_both = indigo_get_switch(property, AGENT_GUIDER_DEC_MODE_BOTH_ITEM_NAME);
-		if (
-			(!FILTER_DEVICE_CONTEXT->running_process) ||
-			(FILTER_DEVICE_CONTEXT->running_process && !AGENT_GUIDER_START_GUIDING_ITEM->sw.value) ||
-			(FILTER_DEVICE_CONTEXT->running_process && AGENT_GUIDER_START_GUIDING_ITEM->sw.value && !(is_current_dec_guiding_both || is_requested_dec_guiding_both))
-		) {
+		if ((!FILTER_DEVICE_CONTEXT->running_process) || (FILTER_DEVICE_CONTEXT->running_process && !AGENT_GUIDER_START_GUIDING_ITEM->sw.value) || (FILTER_DEVICE_CONTEXT->running_process && AGENT_GUIDER_START_GUIDING_ITEM->sw.value && !(is_current_dec_guiding_both || is_requested_dec_guiding_both))) {
 			indigo_property_copy_values(AGENT_GUIDER_DEC_MODE_PROPERTY, property, false);
 			AGENT_GUIDER_DEC_MODE_PROPERTY->state = INDIGO_OK_STATE;
 			save_config(device);
@@ -2666,8 +2672,9 @@ indigo_result indigo_agent_guider(indigo_driver_action action, indigo_driver_inf
 
 	SET_DRIVER_INFO(info, GUIDER_AGENT_NAME, __FUNCTION__, DRIVER_VERSION, false, last_action);
 
-	if (action == last_action)
+	if (action == last_action) {
 		return INDIGO_OK;
+	}
 
 	switch(action) {
 		case INDIGO_DRIVER_INIT:

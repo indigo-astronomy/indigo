@@ -284,8 +284,9 @@ indigo_result indigo_guider_cgusbst4(indigo_driver_action action, indigo_driver_
 
 	SET_DRIVER_INFO(info, "CG-USB-ST4 Adapter", __FUNCTION__, DRIVER_VERSION, false, last_action);
 
-	if (action == last_action)
+	if (action == last_action) {
 		return INDIGO_OK;
+	}
 
 	switch (action) {
 		case INDIGO_DRIVER_INIT:

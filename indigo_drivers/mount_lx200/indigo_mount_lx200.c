@@ -405,13 +405,7 @@ static bool meade_set_utc(indigo_device *device, time_t *secs, int utc_offset) {
 	// "1Updating Planetary Data#                                #"
 	// readout progress part
 	bool result;
-	if (
-		MOUNT_TYPE_ON_STEP_ITEM->sw.value ||
-		MOUNT_TYPE_ZWO_ITEM->sw.value ||
-		MOUNT_TYPE_STARGO2_ITEM->sw.value ||
-		MOUNT_TYPE_NYX_ITEM->sw.value ||
-		MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value
-	) {
+	if (MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_ZWO_ITEM->sw.value || MOUNT_TYPE_STARGO2_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value) {
 		result = meade_command(device, command, response, 1, 0);
 	} else {
 		result = meade_command_progress(device, command, response, sizeof(response), 0);
@@ -438,18 +432,7 @@ static bool meade_set_utc(indigo_device *device, time_t *secs, int utc_offset) {
 }
 
 static bool meade_get_utc(indigo_device *device, time_t *secs, int *utc_offset) {
-	if (
-		MOUNT_TYPE_MEADE_ITEM->sw.value ||
-		MOUNT_TYPE_GEMINI_ITEM->sw.value ||
-		MOUNT_TYPE_10MICRONS_ITEM->sw.value ||
-		MOUNT_TYPE_AP_ITEM->sw.value ||
-		MOUNT_TYPE_ZWO_ITEM->sw.value ||
-		MOUNT_TYPE_NYX_ITEM->sw.value ||
-		MOUNT_TYPE_OAT_ITEM->sw.value ||
-		MOUNT_TYPE_ON_STEP_ITEM->sw.value ||
-		MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value ||
-		MOUNT_TYPE_GENERIC_ITEM->sw.value
-	) {
+	if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_GEMINI_ITEM->sw.value || MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_AP_ITEM->sw.value || MOUNT_TYPE_ZWO_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value || MOUNT_TYPE_GENERIC_ITEM->sw.value) {
 		struct tm tm;
 		char response[128];
 		memset(&tm, 0, sizeof(tm));
@@ -587,12 +570,7 @@ static bool meade_get_coordinates(indigo_device *device, double *ra, double *dec
 			} else if (MOUNT_TYPE_10MICRONS_ITEM->sw.value) {
 				meade_command(device, ":U1#", NULL, 0, 0);
 				meade_command(device, ":GR#", response, sizeof(response), 0);
-			} else if (
-				MOUNT_TYPE_GEMINI_ITEM->sw.value ||
-				MOUNT_TYPE_AP_ITEM->sw.value ||
-				MOUNT_TYPE_ON_STEP_ITEM->sw.value ||
-				MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value
-			) {
+			} else if (MOUNT_TYPE_GEMINI_ITEM->sw.value || MOUNT_TYPE_AP_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value) {
 				meade_command(device, ":U#", NULL, 0, 0);
 				meade_command(device, ":GR#", response, sizeof(response), 0);
 			}
@@ -940,14 +918,7 @@ static bool meade_motion_ra(indigo_device *device) {
 
 static bool meade_park(indigo_device *device) {
 	char response[128];
-	if (
-		MOUNT_TYPE_MEADE_ITEM->sw.value ||
-		MOUNT_TYPE_EQMAC_ITEM->sw.value ||
-		MOUNT_TYPE_ON_STEP_ITEM->sw.value ||
-		MOUNT_TYPE_NYX_ITEM->sw.value ||
-		MOUNT_TYPE_OAT_ITEM->sw.value ||
-		MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value
-	) {
+	if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_EQMAC_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value || MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value) {
 		return meade_command(device, ":hP#", NULL, 0, 0);
 	}
 	if (MOUNT_TYPE_AP_ITEM->sw.value || MOUNT_TYPE_10MICRONS_ITEM->sw.value)
@@ -3856,8 +3827,9 @@ indigo_result indigo_mount_lx200(indigo_driver_action action, indigo_driver_info
 
 	SET_DRIVER_INFO(info, "LX200 Mount", __FUNCTION__, DRIVER_VERSION, false, last_action);
 
-	if (action == last_action)
+	if (action == last_action) {
 		return INDIGO_OK;
+	}
 
 	switch (action) {
 		case INDIGO_DRIVER_INIT:

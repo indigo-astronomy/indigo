@@ -954,8 +954,9 @@ static indigo_result agent_device_attach(indigo_device *device) {
 }
 
 static indigo_result agent_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	if (client != NULL && client == FILTER_DEVICE_CONTEXT->client)
+	if (client != NULL && client == FILTER_DEVICE_CONTEXT->client) {
 		return INDIGO_OK;
+	}
 	indigo_define_matching_property(AGENT_GEOGRAPHIC_COORDINATES_PROPERTY);
 	indigo_define_matching_property(AGENT_SITE_DATA_SOURCE_PROPERTY);
 	indigo_define_matching_property(AGENT_SET_HOST_TIME_PROPERTY);
@@ -988,10 +989,12 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match(AGENT_SET_HOST_TIME_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- AGENT_SET_HOST_TIME
 		indigo_property_copy_values(AGENT_SET_HOST_TIME_PROPERTY, property, false);
-		if (AGENT_SET_HOST_TIME_MOUNT_ITEM->sw.value && INDIGO_FILTER_MOUNT_SELECTED)
+		if (AGENT_SET_HOST_TIME_MOUNT_ITEM->sw.value && INDIGO_FILTER_MOUNT_SELECTED) {
 			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, MOUNT_SET_HOST_TIME_PROPERTY_NAME, MOUNT_SET_HOST_TIME_ITEM_NAME, true);
-		if (AGENT_SET_HOST_TIME_DOME_ITEM->sw.value && INDIGO_FILTER_DOME_SELECTED)
+		}
+		if (AGENT_SET_HOST_TIME_DOME_ITEM->sw.value && INDIGO_FILTER_DOME_SELECTED) {
 			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, DOME_SET_HOST_TIME_PROPERTY_NAME, DOME_SET_HOST_TIME_ITEM_NAME, true);
+		}
 		AGENT_SET_HOST_TIME_PROPERTY->state = INDIGO_OK_STATE;
 		save_config(device);
 		indigo_update_property(device, AGENT_SET_HOST_TIME_PROPERTY, NULL);
@@ -1245,8 +1248,9 @@ indigo_result indigo_agent_mount(indigo_driver_action action, indigo_driver_info
 
 	SET_DRIVER_INFO(info, MOUNT_AGENT_NAME, __FUNCTION__, DRIVER_VERSION, false, last_action);
 
-	if (action == last_action)
+	if (action == last_action) {
 		return INDIGO_OK;
+	}
 
 	switch(action) {
 		case INDIGO_DRIVER_INIT:

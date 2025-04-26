@@ -640,30 +640,31 @@ indigo_result indigo_aux_dragonfly(indigo_driver_action action, indigo_driver_in
 
 	SET_DRIVER_INFO(info, DRIVER_INFO, __FUNCTION__, DRIVER_VERSION, false, last_action);
 
-	if (action == last_action)
+	if (action == last_action) {
 		return INDIGO_OK;
+	}
 
 	switch (action) {
-	case INDIGO_DRIVER_INIT:
-		last_action = action;
-		if (indigo_driver_initialized(CONFLICTING_DRIVER)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Conflicting driver %s is already loaded", CONFLICTING_DRIVER);
-			last_action = INDIGO_DRIVER_SHUTDOWN;
-			return INDIGO_FAILED;
-		}
-		create_port_device(0, 0);
-		break;
+		case INDIGO_DRIVER_INIT:
+			last_action = action;
+			if (indigo_driver_initialized(CONFLICTING_DRIVER)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Conflicting driver %s is already loaded", CONFLICTING_DRIVER);
+				last_action = INDIGO_DRIVER_SHUTDOWN;
+				return INDIGO_FAILED;
+			}
+			create_port_device(0, 0);
+			break;
 
-	case INDIGO_DRIVER_SHUTDOWN:
-		if (at_least_one_device_connected() == true) return INDIGO_BUSY;
-		last_action = action;
-		for (int index = 0; index < MAX_LOGICAL_DEVICES; index++) {
-			delete_port_device(0, index);
-		}
-		break;
+		case INDIGO_DRIVER_SHUTDOWN:
+			if (at_least_one_device_connected() == true) return INDIGO_BUSY;
+			last_action = action;
+			for (int index = 0; index < MAX_LOGICAL_DEVICES; index++) {
+				delete_port_device(0, index);
+			}
+			break;
 
-	case INDIGO_DRIVER_INFO:
-		break;
+		case INDIGO_DRIVER_INFO:
+			break;
 	}
 
 	return INDIGO_OK;

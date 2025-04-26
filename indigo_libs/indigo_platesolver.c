@@ -230,10 +230,7 @@ static bool start_exposure(indigo_device *device, double exposure) {
 
 static void reset_pa_state(indigo_device * device, bool force) {
 	if (force || AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == INDIGO_POLAR_ALIGN_IN_PROGRESS) {
-		if (
-			AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == INDIGO_POLAR_ALIGN_IN_PROGRESS ||
-			AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == INDIGO_POLAR_ALIGN_IDLE
-		) {
+		if (AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == INDIGO_POLAR_ALIGN_IN_PROGRESS || AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == INDIGO_POLAR_ALIGN_IDLE) {
 			AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -382,14 +379,7 @@ static void start_process(indigo_device *device) {
 		AGENT_PLATESOLVER_WCS_STATE_ITEM->number.value = INDIGO_SOLVER_STATE_GOTO;
 		AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
-		if (
-			!mount_slew(
-				device,
-				AGENT_PLATESOLVER_GOTO_SETTINGS_RA_ITEM->number.target,
-				AGENT_PLATESOLVER_GOTO_SETTINGS_DEC_ITEM->number.target,
-				AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_ITEM->number.value
-			)
-		) {
+		if (!mount_slew(device, AGENT_PLATESOLVER_GOTO_SETTINGS_RA_ITEM->number.target,AGENT_PLATESOLVER_GOTO_SETTINGS_DEC_ITEM->number.target, AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_ITEM->number.value)) {
 			process_failed(device, "Slew failed");
 			return;
 		}
@@ -455,10 +445,7 @@ static void solve(indigo_platesolver_task *task) {
 	// Continue with a generic process
 	set_fov(device, AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value, AGENT_PLATESOLVER_WCS_WIDTH_ITEM->number.value, AGENT_PLATESOLVER_WCS_HEIGHT_ITEM->number.value);
 
-	if (
-		AGENT_PLATESOLVER_SYNC_SYNC_ITEM->sw.value ||
-		AGENT_PLATESOLVER_SYNC_CENTER_ITEM->sw.value
-	) {
+	if (AGENT_PLATESOLVER_SYNC_SYNC_ITEM->sw.value || AGENT_PLATESOLVER_SYNC_CENTER_ITEM->sw.value) {
 		AGENT_PLATESOLVER_WCS_STATE_ITEM->number.value = INDIGO_SOLVER_STATE_SYNCING;
 		indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
 		if (!mount_sync(device, AGENT_PLATESOLVER_WCS_RA_ITEM->number.value, AGENT_PLATESOLVER_WCS_DEC_ITEM->number.value, 2)) {

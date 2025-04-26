@@ -232,8 +232,9 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 	bool res = true;
 	while (getline(&line, &size, output) >= 0) {
 		char *nl = strchr(line, '\n');
-		if (nl)
+		if (nl) {
 			*nl = 0;
+		}
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "< %s", line);
 		double d1, d2;
 		char s[16];
@@ -563,10 +564,11 @@ static bool astrometry_solve(indigo_device *device, void *image, unsigned long i
 	cleanup:
 		/* globs do not work in quotes */
 		execute_command(device, "rm -rf \"%s/image_\"*", base_dir);
-		if (message[0] == '\0')
+		if (message[0] == '\0') {
 			indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
-		else
+		} else {
 			indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, message);
+		}
 		pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
 		return !INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed;
 	}
@@ -671,8 +673,9 @@ static void index_41xx_handler(indigo_device *device) {
 	instances++;
 	sync_installed_indexes(device, "4100", AGENT_ASTROMETRY_INDEX_41XX_PROPERTY);
 	instances--;
-	if (AGENT_ASTROMETRY_INDEX_41XX_PROPERTY->state == INDIGO_BUSY_STATE)
+	if (AGENT_ASTROMETRY_INDEX_41XX_PROPERTY->state == INDIGO_BUSY_STATE) {
 		AGENT_ASTROMETRY_INDEX_41XX_PROPERTY->state = instances ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
+	}
 	indigo_update_property(device, AGENT_ASTROMETRY_INDEX_41XX_PROPERTY, NULL);
 }
 
@@ -681,8 +684,9 @@ static void index_42xx_handler(indigo_device *device) {
 	instances++;
 	sync_installed_indexes(device, "4200", AGENT_ASTROMETRY_INDEX_42XX_PROPERTY);
 	instances--;
-	if (AGENT_ASTROMETRY_INDEX_42XX_PROPERTY->state == INDIGO_BUSY_STATE)
+	if (AGENT_ASTROMETRY_INDEX_42XX_PROPERTY->state == INDIGO_BUSY_STATE) {
 		AGENT_ASTROMETRY_INDEX_42XX_PROPERTY->state = instances ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
+	}
 	indigo_update_property(device, AGENT_ASTROMETRY_INDEX_42XX_PROPERTY, NULL);
 }
 
@@ -703,10 +707,11 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		}
 		for (int i = 19; i >=7; i--) {
 			sprintf(name, "41%02d", i);
-			if (index_diameters[i][0] > 60)
+			if (index_diameters[i][0] > 60) {
 				sprintf(label, "Index 41%02d (%.0f-%.0f°, %sB)", i, index_diameters[i][0] / 60, index_diameters[i][1] / 60, index_size[i][0]);
-			else
+			} else {
 				sprintf(label, "Index 41%02d (%.0f-%.0f\', %sB)", i, index_diameters[i][0], index_diameters[i][1], index_size[i][0]);
+			}
 			present = true;
 			for (int j = 0; index_files[j]; j++) {
 				char *file_name = index_files[j];
@@ -733,10 +738,11 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		}
 		for (int i = 19; i >=0; i--) {
 			sprintf(name, "42%02d", i);
-			if (index_diameters[i][0] > 60)
+			if (index_diameters[i][0] > 60) {
 				sprintf(label, "Index 42%02d (%.0f-%.0f°, %sB)", i, index_diameters[i][0] / 60, index_diameters[i][1] / 60, index_size[i][1]);
-			else
+			} else {
 				sprintf(label, "Index 42%02d (%.0f-%.0f\', %sB)", i, index_diameters[i][0], index_diameters[i][1], index_size[i][1]);
+			}
 			present = true;
 			for (int j = 0; index_files[j]; j++) {
 				char *file_name = index_files[j];
@@ -769,8 +775,9 @@ static indigo_result agent_device_attach(indigo_device *device) {
 }
 
 static indigo_result agent_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	if (client != NULL && client == FILTER_DEVICE_CONTEXT->client)
+	if (client != NULL && client == FILTER_DEVICE_CONTEXT->client) {
 		return INDIGO_OK;
+	}
 	indigo_define_matching_property(AGENT_ASTROMETRY_INDEX_41XX_PROPERTY);
 	indigo_define_matching_property(AGENT_ASTROMETRY_INDEX_42XX_PROPERTY);
 	return indigo_platesolver_enumerate_properties(device, client, property);
@@ -780,8 +787,9 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (client == FILTER_DEVICE_CONTEXT->client)
+	if (client == FILTER_DEVICE_CONTEXT->client) {
 		return INDIGO_OK;
+	}
 	if (indigo_property_match(AGENT_ASTROMETRY_INDEX_41XX_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- AGENT_ASTROMETRY_INDEX_41XX
 		indigo_property_copy_values(AGENT_ASTROMETRY_INDEX_41XX_PROPERTY, property, false);
@@ -815,14 +823,16 @@ static indigo_client *agent_client = NULL;
 static void kill_children() {
 	indigo_device *device = agent_device;
 	if (device && device->private_data) {
-		if (ASTROMETRY_DEVICE_PRIVATE_DATA->pid)
+		if (ASTROMETRY_DEVICE_PRIVATE_DATA->pid) {
 			kill(-ASTROMETRY_DEVICE_PRIVATE_DATA->pid, SIGKILL);
+		}
 		indigo_device **additional_devices = DEVICE_CONTEXT->additional_device_instances;
 		if (additional_devices) {
 			for (int i = 0; i < MAX_ADDITIONAL_INSTANCES; i++) {
 				device = additional_devices[i];
-				if (device && device->private_data && ASTROMETRY_DEVICE_PRIVATE_DATA->pid)
+				if (device && device->private_data && ASTROMETRY_DEVICE_PRIVATE_DATA->pid) {
 					kill(-ASTROMETRY_DEVICE_PRIVATE_DATA->pid, SIGKILL);
+				}
 			}
 		}
 	}
@@ -852,8 +862,9 @@ indigo_result indigo_agent_astrometry(indigo_driver_action action, indigo_driver
 
 	SET_DRIVER_INFO(info, ASTROMETRY_AGENT_NAME, __FUNCTION__, DRIVER_VERSION, false, last_action);
 
-	if (action == last_action)
+	if (action == last_action) {
 		return INDIGO_OK;
+	}
 
 	switch(action) {
 		case INDIGO_DRIVER_INIT:

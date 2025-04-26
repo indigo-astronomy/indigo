@@ -1657,8 +1657,9 @@ indigo_result indigo_aux_upb(indigo_driver_action action, indigo_driver_info *in
 
 	SET_DRIVER_INFO(info, "PegasusAstro Ultimate Powerbox", __FUNCTION__, DRIVER_VERSION, false, last_action);
 
-	if (action == last_action)
+	if (action == last_action) {
 		return INDIGO_OK;
+	}
 
 	switch (action) {
 		case INDIGO_DRIVER_INIT:

@@ -407,8 +407,9 @@ indigo_result indigo_focuser_mjkzz_bt(indigo_driver_action action, indigo_driver
 	
 	SET_DRIVER_INFO(info, FOCUSER_MJKZZ_BT_NAME, __FUNCTION__, DRIVER_VERSION, false, last_action);
 
-	if (action == last_action)
+	if (action == last_action) {
 		return INDIGO_OK;
+	}
 
 	switch (action) {
 		case INDIGO_DRIVER_INIT:

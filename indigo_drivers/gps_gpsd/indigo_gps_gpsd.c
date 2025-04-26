@@ -286,34 +286,35 @@ indigo_result indigo_gps_gpsd(indigo_driver_action action, indigo_driver_info *i
 
 	SET_DRIVER_INFO(info, GPS_GPSD_DRIVER_DESCRIPTION, __FUNCTION__, DRIVER_VERSION, false, last_action);
 
-	if (action == last_action)
+	if (action == last_action) {
 		return INDIGO_OK;
+	}
 
 	switch (action) {
-	case INDIGO_DRIVER_INIT:
-		last_action = action;
-		private_data = indigo_safe_malloc(sizeof(gpsd_private_data));
-		gps = indigo_safe_malloc_copy(sizeof(indigo_device), &gps_template);
-		gps->private_data = private_data;
-		indigo_attach_device(gps);
-		break;
+		case INDIGO_DRIVER_INIT:
+			last_action = action;
+			private_data = indigo_safe_malloc(sizeof(gpsd_private_data));
+			gps = indigo_safe_malloc_copy(sizeof(indigo_device), &gps_template);
+			gps->private_data = private_data;
+			indigo_attach_device(gps);
+			break;
 
-	case INDIGO_DRIVER_SHUTDOWN:
-		VERIFY_NOT_CONNECTED(gps);
-		last_action = action;
-		if (gps != NULL) {
-			indigo_detach_device(gps);
-			free(gps);
-			gps = NULL;
-		}
-		if (private_data != NULL) {
-			free(private_data);
-			private_data = NULL;
-		}
-		break;
+		case INDIGO_DRIVER_SHUTDOWN:
+			VERIFY_NOT_CONNECTED(gps);
+			last_action = action;
+			if (gps != NULL) {
+				indigo_detach_device(gps);
+				free(gps);
+				gps = NULL;
+			}
+			if (private_data != NULL) {
+				free(private_data);
+				private_data = NULL;
+			}
+			break;
 
-	case INDIGO_DRIVER_INFO:
-		break;
+		case INDIGO_DRIVER_INFO:
+			break;
 	}
 
 	return INDIGO_OK;

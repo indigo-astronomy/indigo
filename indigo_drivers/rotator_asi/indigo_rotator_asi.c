@@ -753,38 +753,39 @@ indigo_result indigo_rotator_asi(indigo_driver_action action, indigo_driver_info
 
 	SET_DRIVER_INFO(info, "ZWO CAA Rotator", __FUNCTION__, DRIVER_VERSION, true, last_action);
 
-	if (action == last_action)
+	if (action == last_action) {
 		return INDIGO_OK;
+	}
 
 	switch (action) {
-	case INDIGO_DRIVER_INIT:
-		last_action = action;
+		case INDIGO_DRIVER_INIT:
+			last_action = action;
 
-		const char *sdk_version = CAAGetSDKVersion();
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "CAA SDK v. %s ", sdk_version);
+			const char *sdk_version = CAAGetSDKVersion();
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "CAA SDK v. %s ", sdk_version);
 
-		for(int index = 0; index < CAA_ID_MAX; index++)
-			connected_ids[index] = false;
-		caa_id_count = CAAGetProductIDs(caa_products);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CAAGetProductIDs(-> [ %d, %d, ... ]) = %d", caa_products[0], caa_products[1], caa_id_count);
-		//caa_products[0] = CAA_PRODUCT_ID;
-		//caa_id_count = 1;
-		indigo_start_usb_event_handler();
-		int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, ASI_VENDOR_ID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
-		return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
+			for(int index = 0; index < CAA_ID_MAX; index++)
+				connected_ids[index] = false;
+			caa_id_count = CAAGetProductIDs(caa_products);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CAAGetProductIDs(-> [ %d, %d, ... ]) = %d", caa_products[0], caa_products[1], caa_id_count);
+			//caa_products[0] = CAA_PRODUCT_ID;
+			//caa_id_count = 1;
+			indigo_start_usb_event_handler();
+			int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, ASI_VENDOR_ID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
+			return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
 
-	case INDIGO_DRIVER_SHUTDOWN:
-		for (int i = 0; i < MAX_DEVICES; i++)
-			VERIFY_NOT_CONNECTED(devices[i]);
-		last_action = action;
-		libusb_hotplug_deregister_callback(NULL, callback_handle);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
-		remove_all_devices();
-		break;
+		case INDIGO_DRIVER_SHUTDOWN:
+			for (int i = 0; i < MAX_DEVICES; i++)
+				VERIFY_NOT_CONNECTED(devices[i]);
+			last_action = action;
+			libusb_hotplug_deregister_callback(NULL, callback_handle);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
+			remove_all_devices();
+			break;
 
-	case INDIGO_DRIVER_INFO:
-		break;
+		case INDIGO_DRIVER_INFO:
+			break;
 	}
 
 	return INDIGO_OK;

@@ -929,44 +929,45 @@ indigo_result indigo_aux_joystick(indigo_driver_action action, indigo_driver_inf
 
 	SET_DRIVER_INFO(info, "HID Joystick", __FUNCTION__, DRIVER_VERSION, true, last_action);
 
-	if (action == last_action)
+	if (action == last_action) {
 		return INDIGO_OK;
+	}
 
 	switch (action) {
-	case INDIGO_DRIVER_INIT:
-		last_action = action;
-#ifdef INDIGO_MACOS
-		[DDHidJoystickWrapper rescan];
-#endif
-#ifdef INDIGO_LINUX
-			rescan();
-#endif
-		indigo_start_usb_event_handler();
-		int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_NO_FLAGS, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
-		return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
+		case INDIGO_DRIVER_INIT:
+			last_action = action;
+	#ifdef INDIGO_MACOS
+			[DDHidJoystickWrapper rescan];
+	#endif
+	#ifdef INDIGO_LINUX
+				rescan();
+	#endif
+			indigo_start_usb_event_handler();
+			int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_NO_FLAGS, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
+			return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
 
-	case INDIGO_DRIVER_SHUTDOWN:
-#ifdef INDIGO_LINUX
-		for (int i = 0; i < MAX_DEVICES; i++)
-			VERIFY_NOT_CONNECTED(devices[i]);
-#endif
-#ifdef INDIGO_MACOS
-		//TBD
-#endif
-		last_action = action;
-		libusb_hotplug_deregister_callback(NULL, callback_handle);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
-#ifdef INDIGO_MACOS
-		[DDHidJoystickWrapper shutdown];
-#endif
-#ifdef INDIGO_LINUX
-			shutdown_joystick();
-#endif
-		break;
+		case INDIGO_DRIVER_SHUTDOWN:
+	#ifdef INDIGO_LINUX
+			for (int i = 0; i < MAX_DEVICES; i++)
+				VERIFY_NOT_CONNECTED(devices[i]);
+	#endif
+	#ifdef INDIGO_MACOS
+			//TBD
+	#endif
+			last_action = action;
+			libusb_hotplug_deregister_callback(NULL, callback_handle);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
+	#ifdef INDIGO_MACOS
+			[DDHidJoystickWrapper shutdown];
+	#endif
+	#ifdef INDIGO_LINUX
+				shutdown_joystick();
+	#endif
+			break;
 
-	case INDIGO_DRIVER_INFO:
-		break;
+		case INDIGO_DRIVER_INFO:
+			break;
 	}
 
 	return INDIGO_OK;

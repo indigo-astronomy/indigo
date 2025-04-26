@@ -139,17 +139,11 @@ static void position_timer_callback(indigo_device *device) {
 
 	if (!PRIVATE_DATA->guiding_in_progress) {
 		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-		if (
-				tc_goto_in_progress(dev_id) ||
-				MOUNT_MOTION_NORTH_ITEM->sw.value ||
-				MOUNT_MOTION_SOUTH_ITEM->sw.value ||
-				MOUNT_MOTION_EAST_ITEM->sw.value ||
-				MOUNT_MOTION_WEST_ITEM->sw.value
-				) {
-					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-				} else {
-					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-				}
+		if (tc_goto_in_progress(dev_id) || MOUNT_MOTION_NORTH_ITEM->sw.value || MOUNT_MOTION_SOUTH_ITEM->sw.value || MOUNT_MOTION_EAST_ITEM->sw.value || MOUNT_MOTION_WEST_ITEM->sw.value) {
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+		} else {
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+		}
 		res = tc_get_rade_p(dev_id, &ra, &dec);
 		ra = d2h(ra);
 		indigo_eq_to_j2k(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
@@ -1335,49 +1329,50 @@ indigo_result indigo_mount_nexstar(indigo_driver_action action, indigo_driver_in
 
 	SET_DRIVER_INFO(info, "Nexstar Mount", __FUNCTION__, DRIVER_VERSION, false, last_action);
 
-	if (action == last_action)
+	if (action == last_action) {
 		return INDIGO_OK;
+	}
 
 	INDIGO_DEBUG(tc_debug = indigo_debug);
 
 	switch (action) {
-	case INDIGO_DRIVER_INIT:
-		last_action = action;
-		private_data = indigo_safe_malloc(sizeof(nexstar_private_data));
-		private_data->dev_id = -1;
-		private_data->count_open = 0;
-		mount = indigo_safe_malloc_copy(sizeof(indigo_device), &mount_template);
-		mount->private_data = private_data;
-		mount->master_device = mount;
-		indigo_attach_device(mount);
-		mount_guider = indigo_safe_malloc_copy(sizeof(indigo_device), &mount_guider_template);
-		mount_guider->private_data = private_data;
-		mount_guider->master_device = mount;
-		indigo_attach_device(mount_guider);
-		break;
+		case INDIGO_DRIVER_INIT:
+			last_action = action;
+			private_data = indigo_safe_malloc(sizeof(nexstar_private_data));
+			private_data->dev_id = -1;
+			private_data->count_open = 0;
+			mount = indigo_safe_malloc_copy(sizeof(indigo_device), &mount_template);
+			mount->private_data = private_data;
+			mount->master_device = mount;
+			indigo_attach_device(mount);
+			mount_guider = indigo_safe_malloc_copy(sizeof(indigo_device), &mount_guider_template);
+			mount_guider->private_data = private_data;
+			mount_guider->master_device = mount;
+			indigo_attach_device(mount_guider);
+			break;
 
-	case INDIGO_DRIVER_SHUTDOWN:
-		VERIFY_NOT_CONNECTED(mount);
-		VERIFY_NOT_CONNECTED(mount_guider);
-		last_action = action;
-		if (mount != NULL) {
-			indigo_detach_device(mount);
-			free(mount);
-			mount = NULL;
-		}
-		if (mount_guider != NULL) {
-			indigo_detach_device(mount_guider);
-			free(mount_guider);
-			mount_guider = NULL;
-		}
-		if (private_data != NULL) {
-			free(private_data);
-			private_data = NULL;
-		}
-		break;
+		case INDIGO_DRIVER_SHUTDOWN:
+			VERIFY_NOT_CONNECTED(mount);
+			VERIFY_NOT_CONNECTED(mount_guider);
+			last_action = action;
+			if (mount != NULL) {
+				indigo_detach_device(mount);
+				free(mount);
+				mount = NULL;
+			}
+			if (mount_guider != NULL) {
+				indigo_detach_device(mount_guider);
+				free(mount_guider);
+				mount_guider = NULL;
+			}
+			if (private_data != NULL) {
+				free(private_data);
+				private_data = NULL;
+			}
+			break;
 
-	case INDIGO_DRIVER_INFO:
-		break;
+		case INDIGO_DRIVER_INFO:
+			break;
 	}
 
 	return INDIGO_OK;

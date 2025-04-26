@@ -1913,8 +1913,9 @@ indigo_result INDIGO_CCD_QHY(indigo_driver_action action, indigo_driver_info *in
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 	int rc;
 	SET_DRIVER_INFO(info, DRIVER_DESCRIPTION, __FUNCTION__, DRIVER_VERSION, true, last_action);
-	if (action == last_action)
+	if (action == last_action) {
 		return INDIGO_OK;
+	}
 
 	switch (action) {
 		case INDIGO_DRIVER_INIT:

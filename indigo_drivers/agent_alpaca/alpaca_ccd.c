@@ -844,10 +844,12 @@ void indigo_alpaca_ccd_update_property(indigo_alpaca_device *alpaca_device, indi
 		}
 	} else if (!strcmp(property->name, CCD_FRAME_PROPERTY_NAME)) {
 		if (property->state == INDIGO_OK_STATE) {
-			if (alpaca_device->ccd.binx == 0)
+			if (alpaca_device->ccd.binx == 0) {
 				alpaca_device->ccd.binx = 1;
-			if (alpaca_device->ccd.biny == 0)
+			}
+			if (alpaca_device->ccd.biny == 0) {
 				alpaca_device->ccd.biny = 1;
+			}
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = property->items + i;
 				if (!strcmp(item->name, CCD_FRAME_LEFT_ITEM_NAME)) {
@@ -866,10 +868,12 @@ void indigo_alpaca_ccd_update_property(indigo_alpaca_device *alpaca_device, indi
 		}
 	} else if (!strcmp(property->name, CCD_INFO_PROPERTY_NAME)) {
 		if (property->state == INDIGO_OK_STATE) {
-			if (alpaca_device->ccd.binx == 0)
+			if (alpaca_device->ccd.binx == 0) {
 				alpaca_device->ccd.binx = 1;
-			if (alpaca_device->ccd.biny == 0)
+			}
+			if (alpaca_device->ccd.biny == 0) {
 				alpaca_device->ccd.biny = 1;
+			}
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = property->items + i;
 				if (!strcmp(item->name, CCD_INFO_WIDTH_ITEM_NAME)) {
@@ -897,10 +901,11 @@ void indigo_alpaca_ccd_update_property(indigo_alpaca_device *alpaca_device, indi
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = property->items + i;
 				if (!strcmp(item->name, CCD_IMAGE_ITEM_NAME)) {
-					if (item->blob.value && item->blob.size > 0 && *alpaca_device->ccd.lastexposuretarttime)
+					if (item->blob.value && item->blob.size > 0 && *alpaca_device->ccd.lastexposuretarttime) {
 						alpaca_device->ccd.imageready = item;
-					else
+					} else {
 						alpaca_device->ccd.imageready = NULL;
+					}
 				}
 			}
 		}
@@ -941,8 +946,9 @@ void indigo_alpaca_ccd_update_property(indigo_alpaca_device *alpaca_device, indi
 				indigo_item *item = property->items + i;
 				alpaca_device->ccd.readoutmodes_labels[i] = item->label;
 				alpaca_device->ccd.readoutmodes_names[i] = item->name;
-				if (item->sw.value)
+				if (item->sw.value) {
 					alpaca_device->ccd.readoutmode = i;
+				}
 			}
 		}
 	}

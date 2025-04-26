@@ -561,8 +561,9 @@ indigo_result indigo_mount_simulator(indigo_driver_action action, indigo_driver_
 
 	SET_DRIVER_INFO(info, "Mount Simulator", __FUNCTION__, DRIVER_VERSION, false, last_action);
 
-	if (action == last_action)
+	if (action == last_action) {
 		return INDIGO_OK;
+	}
 
 	switch (action) {
 		case INDIGO_DRIVER_INIT:

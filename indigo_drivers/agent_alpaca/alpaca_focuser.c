@@ -166,8 +166,9 @@ static indigo_alpaca_error alpaca_move(indigo_alpaca_device *device, int version
 		return indigo_alpaca_error_InvalidOperation;
 	}
 	if (device->focuser.absolute) {
-		if (value < 0)
+		if (value < 0) {
 			value = 0;
+		}
 		if (value > device->focuser.maxstep) {
 			value = device->focuser.maxstep;
 		}

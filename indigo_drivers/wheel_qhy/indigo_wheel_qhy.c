@@ -270,33 +270,34 @@ indigo_result indigo_wheel_qhy(indigo_driver_action action, indigo_driver_info *
 
 	SET_DRIVER_INFO(info, "QHY CFW Filter Wheel", __FUNCTION__, DRIVER_VERSION, false, last_action);
 
-	if (action == last_action)
+	if (action == last_action) {
 		return INDIGO_OK;
+	}
 
 	switch (action) {
-	case INDIGO_DRIVER_INIT:
-		last_action = action;
-		if (wheel == NULL) {
-			wheel = indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
-			qhy_private_data *private_data = indigo_safe_malloc(sizeof(qhy_private_data));
-			wheel->private_data = private_data;
-			indigo_attach_device(wheel);
-		}
-		break;
+		case INDIGO_DRIVER_INIT:
+			last_action = action;
+			if (wheel == NULL) {
+				wheel = indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
+				qhy_private_data *private_data = indigo_safe_malloc(sizeof(qhy_private_data));
+				wheel->private_data = private_data;
+				indigo_attach_device(wheel);
+			}
+			break;
 
-	case INDIGO_DRIVER_SHUTDOWN:
-		VERIFY_NOT_CONNECTED(wheel);
-		last_action = action;
-		if (wheel != NULL) {
-			indigo_detach_device(wheel);
-			free(wheel->private_data);
-			free(wheel);
-			wheel = NULL;
-		}
-		break;
+		case INDIGO_DRIVER_SHUTDOWN:
+			VERIFY_NOT_CONNECTED(wheel);
+			last_action = action;
+			if (wheel != NULL) {
+				indigo_detach_device(wheel);
+				free(wheel->private_data);
+				free(wheel);
+				wheel = NULL;
+			}
+			break;
 
-	case INDIGO_DRIVER_INFO:
-		break;
+		case INDIGO_DRIVER_INFO:
+			break;
 	}
 
 	return INDIGO_OK;

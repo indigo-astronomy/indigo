@@ -95,8 +95,9 @@ static indigo_result forward_property(indigo_device *device, indigo_client *clie
 				break;
 			}
 		}
-		if (!any_set)
+		if (!any_set) {
 			return INDIGO_OK;
+		}
 	}
 	indigo_property *property = indigo_copy_property(NULL, source_property);
 	indigo_copy_name(property->device, r->target_device_name);
@@ -157,8 +158,9 @@ static indigo_result agent_device_attach(indigo_device *device) {
 }
 
 static indigo_result agent_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	if (client!= NULL && client == DEVICE_PRIVATE_DATA->client)
+	if (client!= NULL && client == DEVICE_PRIVATE_DATA->client) {
 		return INDIGO_OK;
+	}
 	indigo_result result = INDIGO_OK;
 	if ((result = indigo_agent_enumerate_properties(device, client, property)) == INDIGO_OK) {
 		indigo_define_matching_property(SNOOP_ADD_RULE_PROPERTY);
@@ -172,8 +174,9 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (client == DEVICE_PRIVATE_DATA->client)
+	if (client == DEVICE_PRIVATE_DATA->client) {
 		return INDIGO_OK;
+	}
 	if (indigo_property_match(SNOOP_ADD_RULE_PROPERTY, property)) {
 		indigo_property_copy_values(SNOOP_ADD_RULE_PROPERTY, property, false);
 		rule *r = DEVICE_PRIVATE_DATA->rules;
@@ -222,10 +225,11 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			r = r->next;
 		}
 		if (r) {
-			if (rr)
+			if (rr) {
 				rr->next = r->next;
-			else
+			} else {
 				DEVICE_PRIVATE_DATA->rules = r->next;
+			}
 			SNOOP_RULES_PROPERTY = indigo_resize_property(SNOOP_RULES_PROPERTY, SNOOP_RULES_PROPERTY->count - 1);
 			sync_rules(device);
 			SNOOP_REMOVE_RULE_PROPERTY->state = INDIGO_OK_STATE;
@@ -371,8 +375,9 @@ indigo_result indigo_agent_snoop(indigo_driver_action action, indigo_driver_info
 
 	SET_DRIVER_INFO(info, "Snoop agent", __FUNCTION__, DRIVER_VERSION, false, last_action);
 
-	if (action == last_action)
+	if (action == last_action) {
 		return INDIGO_OK;
+	}
 
 	switch(action) {
 		case INDIGO_DRIVER_INIT:
