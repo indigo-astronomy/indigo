@@ -127,10 +127,11 @@ static void focuser_timer_callback(indigo_device *device) {
 			}
 		}
 	}
-	if (target == 1)
+	if (target == 1) {
 		indigo_reschedule_timer(device, 1, &PRIVATE_DATA->timer_1);
-	else
+	} else {
 		indigo_reschedule_timer(device, 1, &PRIVATE_DATA->timer_2);
+	}
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
@@ -216,10 +217,11 @@ static void focuser_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (optecfl_open(device)) {
 			indigo_define_property(device, X_FOCUSER_TYPE_PROPERTY, NULL);
-			if (target == 1)
+			if (target == 1) {
 				indigo_set_timer(device, 0, focuser_timer_callback, &PRIVATE_DATA->timer_1);
-			else
+			} else {
 				indigo_set_timer(device, 0, focuser_timer_callback, &PRIVATE_DATA->timer_2);
+			}
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -227,10 +229,11 @@ static void focuser_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_delete_property(device, X_FOCUSER_TYPE_PROPERTY, NULL);
-		if (target == 1)
+		if (target == 1) {
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer_1);
-		else
+		} else {
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer_2);
+		}
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
 		optecfl_close(device);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;

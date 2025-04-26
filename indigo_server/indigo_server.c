@@ -531,8 +531,9 @@ static void *indigo_add_star_json_resource(int max_mag) {
 	char *sep = "";
 	indigocat_star_entry *star_data = indigocat_get_star_data();
 	for (int i = 0; star_data[i].hip; i++) {
-		if (star_data[i].mag > max_mag)
+		if (star_data[i].mag > max_mag) {
 			continue;
+		}
 		char desig[256] = "";
 		char *name = "";
 		if (star_data[i].name) {
@@ -555,8 +556,9 @@ static void *indigo_add_star_json_resource(int max_mag) {
 	indigocat_ss_entry *ss_data = indigocat_get_ss_data();
 	for (int i = 0; ss_data[i].id; i++) {
 		double mag = ss_data[i].mag;
-		if (mag < -4.5)
+		if (mag < -4.5) {
 			mag = -4.5;
+		}
 		size += sprintf(buffer + size, "%s{\"type\":\"Feature\",\"id\":%d,\"properties\":{\"name\": \"%s\",\"desig\": \"\",\"mag\": %.2f,\"bv\":-5},\"geometry\":{\"type\":\"Point\",\"coordinates\":[%.4f,%.4f]}}", sep, -ss_data[i].id, ss_data[i].name, mag, h2deg(ss_data[i].ra), ss_data[i].dec);
 		if (buffer_size - size < 1024) {
 			buffer = indigo_safe_realloc(buffer, buffer_size *= 2);
@@ -770,8 +772,9 @@ static indigo_result execute_command(indigo_device *device, indigo_property *pro
 		size_t size = 0;
 		if (getline(&line, &size, output) >= 0) {
 			char *nl = strchr(line, '\n');
-			if (nl)
+			if (nl) {
 				*nl = 0;
+			}
 			if (!strncmp(line, "ALERT", 5)) {
 				property->state = INDIGO_ALERT_STATE;
 				char *message = strchr(line, ':');
@@ -785,8 +788,9 @@ static indigo_result execute_command(indigo_device *device, indigo_property *pro
 			property->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, property, "No reply from rpi_ctrl.sh");
 		}
-		if (line)
+		if (line) {
 			free(line);
+		}
 		pclose(output);
 
 		return INDIGO_OK;
@@ -808,8 +812,9 @@ static char *execute_query(char *command, ...) {
 		size_t size = 0;
 		if (getline(&line, &size, output) >= 0) {
 			char *nl = strchr(line, '\n');
-			if (nl)
+			if (nl) {
 				*nl = 0;
+			}
 			pclose(output);
 			return line;
 		}
@@ -828,27 +833,31 @@ static void check_versions(indigo_device *device) {
 				redefine = true;
 			}
 			pthread_mutex_lock(&install_property_mutex);
-			if (redefine)
+			if (redefine) {
 				indigo_release_property(SERVER_INSTALL_PROPERTY);
+			}
 			SERVER_INSTALL_PROPERTY = indigo_init_switch_property(NULL, server_device.name, SERVER_INSTALL_PROPERTY_NAME, MAIN_GROUP, "Available versions", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 10);
 			SERVER_INSTALL_PROPERTY->count = 0;
 			char *pnt, *versions[10] = { strtok_r(line, " ", &pnt) };
 			int count = 1;
 			while ((versions[count] = strtok_r(NULL, " ", &pnt))) {
-				if (count == 9)
+				if (count == 9) {
 					count = 1;
-				else
+				} else {
 					count++;
+				}
 			}
 			for (int i = 0; i < count; i++) {
 				int smallest = 100000;
 				int ii = 0;
 				for (int j = 0; j < count; j++) {
-					if (versions[j] == NULL)
+					if (versions[j] == NULL) {
 						continue;
+					}
 					char *build = strchr(versions[j], '-');
-					if (build == NULL)
+					if (build == NULL) {
 						continue;
+					}
 					int build_number = atoi(build + 1);
 					if (build_number < smallest) {
 						smallest = build_number;
@@ -862,8 +871,9 @@ static void check_versions(indigo_device *device) {
 			}
 			pthread_mutex_unlock(&install_property_mutex);
 			free(line);
-			if (redefine)
+			if (redefine) {
 				indigo_define_property(device, SERVER_INSTALL_PROPERTY, NULL);
+			}
 		}
 		indigo_sleep(10 * 60);
 	}
@@ -970,8 +980,9 @@ static indigo_result attach(indigo_device *device) {
 	SERVER_DRIVERS_PROPERTY = indigo_init_switch_property(NULL, server_device.name, SERVER_DRIVERS_PROPERTY_NAME, MAIN_GROUP, "Available drivers", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, INDIGO_MAX_DRIVERS);
 	SERVER_DRIVERS_PROPERTY->count = 0;
 	for (int i = 0; i < INDIGO_MAX_DRIVERS; i++)
-		if (indigo_available_drivers[i].driver != NULL)
+		if (indigo_available_drivers[i].driver != NULL) {
 			indigo_init_switch_item(&SERVER_DRIVERS_PROPERTY->items[SERVER_DRIVERS_PROPERTY->count++], indigo_available_drivers[i].name, indigo_available_drivers[i].description, indigo_available_drivers[i].initialized);
+		}
 	for (int i = 0; i < dynamic_drivers_count && SERVER_DRIVERS_PROPERTY->count < INDIGO_MAX_DRIVERS; i++)
 		indigo_init_switch_item(&SERVER_DRIVERS_PROPERTY->items[SERVER_DRIVERS_PROPERTY->count++], dynamic_drivers[i].name, dynamic_drivers[i].description, false);
 	indigo_property_sort_items(SERVER_DRIVERS_PROPERTY, 0);
@@ -981,10 +992,11 @@ static indigo_result attach(indigo_device *device) {
 		indigo_server_entry *entry = indigo_available_servers + i;
 		if (*entry->host) {
 			char buf[INDIGO_NAME_SIZE];
-			if (entry->port == 7624)
+			if (entry->port == 7624) {
 				strncpy(buf, entry->host, sizeof(buf));
-			else
+			} else {
 				snprintf(buf, sizeof(buf), "%s:%d", entry->host, entry->port);
+			}
 			indigo_init_light_item(&SERVER_SERVERS_PROPERTY->items[SERVER_SERVERS_PROPERTY->count++], buf, buf, INDIGO_OK_STATE);
 		}
 	}
@@ -1087,8 +1099,9 @@ static indigo_result attach(indigo_device *device) {
 		default:
 			break;
 	}
-	if (!command_line_drivers)
+	if (!command_line_drivers) {
 		indigo_load_properties(device, false);
+	}
 	INDIGO_LOG(indigo_log("%s attached", device->name));
 	return INDIGO_OK;
 }
@@ -1097,8 +1110,9 @@ static indigo_result enumerate_properties(indigo_device *device, indigo_client *
 	assert(device != NULL);
 	indigo_define_property(device, SERVER_INFO_PROPERTY, NULL);
 	indigo_define_property(device, SERVER_DRIVERS_PROPERTY, NULL);
-	if (SERVER_SERVERS_PROPERTY->count > 0)
+	if (SERVER_SERVERS_PROPERTY->count > 0) {
 		indigo_define_property(device, SERVER_SERVERS_PROPERTY, NULL);
+	}
 	indigo_define_property(device, SERVER_LOAD_PROPERTY, NULL);
 	indigo_define_property(device, SERVER_UNLOAD_PROPERTY, NULL);
 	indigo_define_property(device, SERVER_RESTART_PROPERTY, NULL);
@@ -1174,8 +1188,9 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 						indigo_result result = driver->driver(INDIGO_DRIVER_INIT, NULL);
 						SERVER_DRIVERS_PROPERTY->items[i].sw.value = driver->initialized = result == INDIGO_OK;
 						send_driver_load_error_message(result, driver->name);
-						if (driver && !driver->initialized)
+						if (driver && !driver->initialized) {
 							indigo_remove_driver(driver);
+						}
 					}
 				} else {
 					indigo_result result = indigo_load_driver(name, true, &driver);
@@ -1416,8 +1431,9 @@ static indigo_result detach(indigo_device *device) {
 	assert(device != NULL);
 	indigo_delete_property(device, SERVER_INFO_PROPERTY, NULL);
 	indigo_delete_property(device, SERVER_DRIVERS_PROPERTY, NULL);
-	if (SERVER_SERVERS_PROPERTY->count > 0)
+	if (SERVER_SERVERS_PROPERTY->count > 0) {
 		indigo_delete_property(device, SERVER_SERVERS_PROPERTY, NULL);
+	}
 	indigo_delete_property(device, SERVER_LOAD_PROPERTY, NULL);
 	indigo_delete_property(device, SERVER_UNLOAD_PROPERTY, NULL);
 	indigo_delete_property(device, SERVER_RESTART_PROPERTY, NULL);
@@ -1802,24 +1818,29 @@ static void server_main() {
 	}
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	for (int i = 0; i < INDIGO_MAX_SERVERS; i++) {
-		if (indigo_available_subprocesses[i].thread_started)
+		if (indigo_available_subprocesses[i].thread_started) {
 			indigo_kill_subprocess(&indigo_available_subprocesses[i]);
+		}
 	}
 #endif
 	indigo_detach_device(&server_device);
 	indigo_stop();
 	indigo_server_remove_resources();
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-	if (star_data)
+	if (star_data) {
 		free(star_data);
-	if (dso_data)
+	}
+	if (dso_data) {
 		free(dso_data);
-	if (constellation_data)
+	}
+	if (constellation_data) {
 		free(constellation_data);
+	}
 #endif
 	for (int i = 0; i < INDIGO_MAX_SERVERS; i++) {
-		if (indigo_available_servers[i].thread_started)
+		if (indigo_available_servers[i].thread_started) {
 			indigo_disconnect_server(&indigo_available_servers[i]);
+		}
 	}
 	exit(EXIT_SUCCESS);
 }
@@ -1846,10 +1867,11 @@ static void signal_handler(int signo) {
 	} else {
 		INDIGO_LOG(indigo_log("Signal %d received...", signo));
 		keep_server_running = (signo == SIGHUP);
-		if (use_sigkill)
+		if (use_sigkill) {
 			kill(server_pid, SIGKILL);
-		else
+		} else {
 			kill(server_pid, SIGINT);
+		}
 		use_sigkill = true;
 	}
 }

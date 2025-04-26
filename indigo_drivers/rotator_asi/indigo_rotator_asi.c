@@ -573,8 +573,9 @@ static int find_unplugged_device_id() {
 	for (int index = 0; index < count; index++) {
 		int res = CAAGetID(index, &id);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CAAGetID(%d, -> %d) = %d", index, id, res);
-		if (res == CAA_SUCCESS)
+		if (res == CAA_SUCCESS) {
 			dev_tmp[id] = true;
+		}
 	}
 	id = -1;
 	for (int index = 0; index < CAA_ID_MAX; index++) {
@@ -734,8 +735,9 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 static void remove_all_devices() {
 	for (int index = 0; index < MAX_DEVICES; index++) {
 		indigo_device **device = &devices[index];
-		if (*device == NULL)
+		if (*device == NULL) {
 			continue;
+		}
 		indigo_detach_device(*device);
 		free((*device)->private_data);
 		free(*device);

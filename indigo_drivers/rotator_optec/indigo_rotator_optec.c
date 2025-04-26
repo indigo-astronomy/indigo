@@ -182,10 +182,11 @@ static void rotator_connect_callback(indigo_device *device) {
 			}
 			indigo_define_property(device, X_HOME_PROPERTY, NULL);
 			indigo_define_property(device, X_RATE_PROPERTY, NULL);
-			if (indigo_printf(PRIVATE_DATA->handle, "CTxx%02d", (int)X_RATE_ITEM->number.target) && read(PRIVATE_DATA->handle, response, 15) == 1 && *response == '!')
+			if (indigo_printf(PRIVATE_DATA->handle, "CTxx%02d", (int)X_RATE_ITEM->number.target) && read(PRIVATE_DATA->handle, response, 15) == 1 && *response == '!') {
 				X_RATE_PROPERTY->state = INDIGO_OK_STATE;
-			else
+			} else {
 				X_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
 			INDIGO_TRACE_PROTOCOL(indigo_trace("%d -> %s", PRIVATE_DATA->handle, response));
 			tcflush(PRIVATE_DATA->handle, TCIOFLUSH);
 			optec_sleep(device);
@@ -208,10 +209,11 @@ static void rotator_connect_callback(indigo_device *device) {
 
 static void rotator_direction_callback(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	if (optec_wakeup(device) && indigo_printf(PRIVATE_DATA->handle, "CD%dxxx", ROTATOR_DIRECTION_NORMAL_ITEM->sw.value ? 0 : 1))
+	if (optec_wakeup(device) && indigo_printf(PRIVATE_DATA->handle, "CD%dxxx", ROTATOR_DIRECTION_NORMAL_ITEM->sw.value ? 0 : 1)) {
 		ROTATOR_DIRECTION_PROPERTY->state = INDIGO_OK_STATE;
-	else
+	} else {
 		ROTATOR_DIRECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
 	tcflush(PRIVATE_DATA->handle, TCIOFLUSH);
 	optec_sleep(device);
 	indigo_update_property(device, ROTATOR_DIRECTION_PROPERTY, NULL);
@@ -293,10 +295,11 @@ static void rotator_home_callback(indigo_device *device) {
 static void rotator_rate_callback(indigo_device *device) {
 	char response[16] = { 0 };
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	if (optec_wakeup(device) && indigo_printf(PRIVATE_DATA->handle, "CTxx%02d", (int)X_RATE_ITEM->number.target) && read(PRIVATE_DATA->handle, response, 15) == 1 && *response == '!')
+	if (optec_wakeup(device) && indigo_printf(PRIVATE_DATA->handle, "CTxx%02d", (int)X_RATE_ITEM->number.target) && read(PRIVATE_DATA->handle, response, 15) == 1 && *response == '!') {
 		X_RATE_PROPERTY->state = INDIGO_OK_STATE;
-	else
+	} else {
 		X_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
 	INDIGO_TRACE_PROTOCOL(indigo_trace("%d -> %s", PRIVATE_DATA->handle, response));
 	tcflush(PRIVATE_DATA->handle, TCIOFLUSH);
 	optec_sleep(device);
@@ -308,10 +311,11 @@ static void rotator_rotate_callback(indigo_device *device) {
 	char response[16] = { 0 };
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	int value = X_ROTATE_ITEM->number.target > 0 ? (int)X_ROTATE_ITEM->number.target : 10 - (int)X_ROTATE_ITEM->number.target;
-	if (optec_wakeup(device) && indigo_printf(PRIVATE_DATA->handle, "CXxx%02d", value) && read(PRIVATE_DATA->handle, response, 15) == 1 && *response == '!')
+	if (optec_wakeup(device) && indigo_printf(PRIVATE_DATA->handle, "CXxx%02d", value) && read(PRIVATE_DATA->handle, response, 15) == 1 && *response == '!') {
 		X_ROTATE_PROPERTY->state = INDIGO_OK_STATE;
-	else
+	} else {
 		X_ROTATE_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
 	INDIGO_TRACE_PROTOCOL(indigo_trace("%d -> %s", PRIVATE_DATA->handle, response));
 	tcflush(PRIVATE_DATA->handle, TCIOFLUSH);
 	optec_sleep(device);

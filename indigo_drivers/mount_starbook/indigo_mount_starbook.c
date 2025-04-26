@@ -226,8 +226,7 @@ static bool starbook_get(indigo_device *device, const char *path, char *buffer, 
 	if (response_size >= length) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Error: not enough memory");
 		return false;
-	}
-	else if (response_size < 0) {
+	} else if (response_size < 0) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Parse error: %s", temp);
 		return false;
 	}
@@ -286,18 +285,14 @@ static bool starbook_set(indigo_device *device, const char *path, int *error) {
 		if (error) {
 			if (strcmp(buffer, "ERROR:ILLEGAL STATE") == 0) {
 				*error = STARBOOK_ERROR_ILLEGAL_STATE;
-			}
-			else if (strcmp(buffer, "ERROR:FORMAT") == 0) {
+			} else if (strcmp(buffer, "ERROR:FORMAT") == 0) {
 				*error = STARBOOK_ERROR_FORMAT;
-			}
-			else if (strcmp(buffer, "ERROR:BELOW HORIZON") == 0
+			} else if (strcmp(buffer, "ERROR:BELOW HORIZON") == 0
 							 || strcmp(buffer, "ERROR:BELOW HORIZONE") == 0) {  // maybe typo
 				*error = STARBOOK_ERROR_BELOW_HORIZON;
-			}
-			else if (strcmp(buffer, "WARNING:NEAR SUN") == 0) {
+			} else if (strcmp(buffer, "WARNING:NEAR SUN") == 0) {
 				*error = STARBOOK_WARNING_NEAR_SUN;
-			}
-			else {
+			} else {
 				*error = STARBOOK_ERROR_UNKNOWN;
 			}
 		}
@@ -715,20 +710,15 @@ static bool starbook_get_status(indigo_device *device, double *ra, double *dec, 
 		}
 		if (strcmp(temp, "SCOPE") == 0) {
 			*state = STARBOOK_STATE_SCOPE;
-		}
-		else if (strcmp(temp, "STOP") == 0) {
+		} else if (strcmp(temp, "STOP") == 0) {
 			*state = STARBOOK_STATE_STOP;
-		}
-		else if (strcmp(temp, "INIT") == 0) {
+		} else if (strcmp(temp, "INIT") == 0) {
 			*state = STARBOOK_STATE_INIT;
-		}
-		else if (strcmp(temp, "CHART") == 0) {
+		} else if (strcmp(temp, "CHART") == 0) {
 			*state = STARBOOK_STATE_CHART;
-		}
-		else if (strcmp(temp, "TRACK") == 0) {
+		} else if (strcmp(temp, "TRACK") == 0) {
 			*state = STARBOOK_STATE_TRACK;
-		}
-		else {
+		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unknown state: %s", temp);
 			*state = STARBOOK_STATE_UNKNOWN;
 		}

@@ -193,10 +193,11 @@ static void *enable_blob_handler(parser_state state, parser_context *context, ch
 			record = indigo_safe_malloc(sizeof(indigo_enable_blob_mode_record));
 			indigo_copy_name(record->device, property->device);
 			indigo_copy_name(record->name, property->name);
-			if (!strcmp(value, "URL") && indigo_use_blob_urls)
+			if (!strcmp(value, "URL") && indigo_use_blob_urls) {
 				record->mode = INDIGO_ENABLE_BLOB_URL;
-			else
+			} else {
 				record->mode = INDIGO_ENABLE_BLOB_ALSO;
+			}
 			record->next = client->enable_blob_mode_records;
 			client->enable_blob_mode_records = record;
 			indigo_enable_blob(client, property, record->mode);
@@ -456,8 +457,9 @@ static void *new_blob_vector_handler(parser_state state, parser_context *context
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = property->items + i;
 			indigo_blob_entry *entry = indigo_find_blob(property, item);
-			if (entry)
+			if (entry) {
 				item->blob.value = indigo_safe_malloc_copy(item->blob.size = entry->size, entry->content);
+			}
 		}
 		property->perm = INDIGO_WO_PERM;
 		indigo_change_property(client, property);
@@ -541,10 +543,11 @@ static void set_property(parser_context *context, indigo_property *other, char *
 								if (property->perm == INDIGO_RO_PERM) {
 									property_item->blob.size = other_item->blob.size;
 									if (other_item->blob.value) {
-										if (property_item->blob.value != NULL)
+										if (property_item->blob.value != NULL) {
 											property_item->blob.value = indigo_safe_realloc(property_item->blob.value, property_item->blob.size);
-										else
+										} else {
 											property_item->blob.value = indigo_safe_malloc(property_item->blob.size);
+										}
 										memcpy(property_item->blob.value, other_item->blob.value, property_item->blob.size);
 									} else {
 										if (property_item->blob.value != NULL) {
@@ -552,8 +555,9 @@ static void set_property(parser_context *context, indigo_property *other, char *
 											property_item->blob.value = NULL;
 										}
 										char *ext = strrchr(property_item->blob.url, '.');
-										if (ext)
+										if (ext) {
 											strcpy(property_item->blob.format, ext);
+										}
 									}
 								}
 								break;
@@ -597,10 +601,11 @@ static void *set_text_vector_handler(parser_state state, parser_context *context
 		}
 	} else if (state == ATTRIBUTE_VALUE_STATE) {
 		if (!strcmp(name, "device")) {
-			if (indigo_use_host_suffix)
+			if (indigo_use_host_suffix) {
 				snprintf(property->device, INDIGO_NAME_SIZE, "%s %s", value, context->device->name);
-			else
+			} else {
 				indigo_copy_name(property->device, value);
+			}
 		} else if (!strcmp(name, "name")) {
 			indigo_copy_property_name(device->version, property, value);
 		} else if (!strcmp(name, "state")) {
@@ -656,10 +661,11 @@ static void *set_number_vector_handler(parser_state state, parser_context *conte
 		}
 	} else if (state == ATTRIBUTE_VALUE_STATE) {
 		if (!strcmp(name, "device")) {
-			if (indigo_use_host_suffix)
+			if (indigo_use_host_suffix) {
 				snprintf(property->device, INDIGO_NAME_SIZE, "%s %s", value, context->device->name);
-			else
+			} else {
 				indigo_copy_name(property->device, value);
+			}
 		} else if (!strcmp(name, "name")) {
 			indigo_copy_property_name(device->version, property, value);
 		} else if (!strcmp(name, "state")) {
@@ -702,10 +708,11 @@ static void *set_switch_vector_handler(parser_state state, parser_context *conte
 		}
 	} else if (state == ATTRIBUTE_VALUE_STATE) {
 		if (!strcmp(name, "device")) {
-			if (indigo_use_host_suffix)
+			if (indigo_use_host_suffix) {
 				snprintf(property->device, INDIGO_NAME_SIZE, "%s %s", value, context->device->name);
-			else
+			} else {
 				indigo_copy_name(property->device, value);
+			}
 		} else if (!strcmp(name, "name")) {
 			indigo_copy_property_name(device->version, property, value);
 		} else if (!strcmp(name, "state")) {
@@ -748,10 +755,11 @@ static void *set_light_vector_handler(parser_state state, parser_context *contex
 		}
 	} else if (state == ATTRIBUTE_VALUE_STATE) {
 		if (!strcmp(name, "device")) {
-			if (indigo_use_host_suffix)
+			if (indigo_use_host_suffix) {
 				snprintf(property->device, INDIGO_NAME_SIZE, "%s %s", value, context->device->name);
-			else
+			} else {
 				indigo_copy_name(property->device, value);
+			}
 		} else if (!strcmp(name, "name")) {
 			indigo_copy_property_name(device->version, property, value);
 		} else if (!strcmp(name, "state")) {
@@ -805,10 +813,11 @@ static void *set_blob_vector_handler(parser_state state, parser_context *context
 		}
 	} else if (state == ATTRIBUTE_VALUE_STATE) {
 		if (!strcmp(name, "device")) {
-			if (indigo_use_host_suffix)
+			if (indigo_use_host_suffix) {
 				snprintf(property->device, INDIGO_NAME_SIZE, "%s %s", value, context->device->name);
-			else
+			} else {
 				indigo_copy_name(property->device, value);
+			}
 		} else if (!strcmp(name, "name")) {
 			indigo_copy_property_name(device->version, property, value);
 		} else if (!strcmp(name, "state")) {
@@ -920,10 +929,11 @@ static void *def_text_vector_handler(parser_state state, parser_context *context
 		}
 	} else if (state == ATTRIBUTE_VALUE_STATE) {
 		if (!strcmp(name, "device")) {
-			if (indigo_use_host_suffix)
+			if (indigo_use_host_suffix) {
 				snprintf(property->device, INDIGO_NAME_SIZE, "%s %s", value, context->device->name);
-			else
+			} else {
 				indigo_copy_name(property->device, value);
+			}
 		} else if (!strcmp(name, "name")) {
 			indigo_copy_property_name(device->version, property, value);
 		} else if (!strcmp(name, "group")) {
@@ -988,10 +998,11 @@ static void *def_number_vector_handler(parser_state state, parser_context *conte
 		}
 	} else if (state == ATTRIBUTE_VALUE_STATE) {
 		if (!strcmp(name, "device")) {
-			if (indigo_use_host_suffix)
+			if (indigo_use_host_suffix) {
 				snprintf(property->device, INDIGO_NAME_SIZE, "%s %s", value, context->device->name);
-			else
+			} else {
 				indigo_copy_name(property->device, value);
+			}
 		} else if (!strcmp(name, "name")) {
 			indigo_copy_property_name(device->version, property, value);
 		} else if (!strcmp(name, "group")) {
@@ -1046,10 +1057,11 @@ static void *def_switch_vector_handler(parser_state state, parser_context *conte
 		}
 	} else if (state == ATTRIBUTE_VALUE_STATE) {
 		if (!strcmp(name, "device")) {
-			if (indigo_use_host_suffix)
+			if (indigo_use_host_suffix) {
 				snprintf(property->device, INDIGO_NAME_SIZE, "%s %s", value, context->device->name);
-			else
+			} else {
 				indigo_copy_name(property->device, value);
+			}
 		} else if (!strcmp(name, "name")) {
 			indigo_copy_property_name(device->version, property, value);
 		} else if (!strcmp(name, "group")) {
@@ -1106,10 +1118,11 @@ static void *def_light_vector_handler(parser_state state, parser_context *contex
 		}
 	} else if (state == ATTRIBUTE_VALUE_STATE) {
 		if (!strcmp(name, "device")) {
-			if (indigo_use_host_suffix)
+			if (indigo_use_host_suffix) {
 				snprintf(property->device, INDIGO_NAME_SIZE, "%s %s", value, context->device->name);
-			else
+			} else {
 				indigo_copy_name(property->device, value);
+			}
 		} else if (!strcmp(name, "name")) {
 			indigo_copy_property_name(device->version, property, value);
 		} else if (!strcmp(name, "group")) {
@@ -1164,10 +1177,11 @@ static void *def_blob_vector_handler(parser_state state, parser_context *context
 		}
 	} else if (state == ATTRIBUTE_VALUE_STATE) {
 		if (!strcmp(name, "device")) {
-			if (indigo_use_host_suffix)
+			if (indigo_use_host_suffix) {
 				snprintf(property->device, INDIGO_NAME_SIZE, "%s %s", value, context->device->name);
-			else
+			} else {
 				indigo_copy_name(property->device, value);
+			}
 		} else if (!strcmp(name, "name")) {
 			indigo_copy_property_name(device->version, property, value);
 		} else if (!strcmp(name, "group")) {
@@ -1198,10 +1212,11 @@ static void *del_property_handler(parser_state state, parser_context *context, c
 	INDIGO_TRACE_PARSER(indigo_trace("XML Parser: del_property_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == ATTRIBUTE_VALUE_STATE) {
 		if (!strncmp(name, "device", INDIGO_NAME_SIZE)) {
-			if (indigo_use_host_suffix)
+			if (indigo_use_host_suffix) {
 				snprintf(property->device, INDIGO_NAME_SIZE, "%s %s", value, context->device->name);
-			else
+			} else {
 				indigo_copy_name(property->device, value);
+			}
 		} else if (!strncmp(name, "name",INDIGO_NAME_SIZE)) {
 			indigo_copy_property_name(device->version, property, value);;
 		} else if (!strcmp(name, "message")) {
@@ -1242,10 +1257,11 @@ static void *message_handler(parser_state state, parser_context *context, char *
 	INDIGO_TRACE_PARSER(indigo_trace("XML Parser: message_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == ATTRIBUTE_VALUE_STATE) {
 		if (!strncmp(name, "device", INDIGO_NAME_SIZE)) {
-			if (indigo_use_host_suffix)
+			if (indigo_use_host_suffix) {
 				snprintf(message, INDIGO_NAME_SIZE, "%s %s: ", value, context->device->name);
-			else
+			} else {
 				snprintf(message, INDIGO_NAME_SIZE, "%s: ", value);
+			}
 		} else if (!strcmp(name, "message")) {
 			strcat(message, value);
 		}
@@ -1576,12 +1592,14 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 					unsigned long len = (long)(buffer_end - pointer);
 					len = (len < blob_len) ? len : blob_len;
 					long bytes_needed = len % 4;
-					if (bytes_needed)
+					if (bytes_needed) {
 						bytes_needed = 4 - bytes_needed;
+					}
 					while (bytes_needed) {
 						count = indigo_uni_read(*handle, (void *)buffer_end, bytes_needed);
-						if (count <= 0)
+						if (count <= 0) {
 							goto exit_loop;
+						}
 						len += count;
 						bytes_needed -= count;
 						buffer_end += count;
@@ -1595,8 +1613,9 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 						char *ptr = buffer;
 						while(to_read) {
 							count = indigo_uni_read(*handle, (void *)ptr, to_read);
-							if (count <= 0)
+							if (count <= 0) {
 								goto exit_loop;
+							}
 							ptr += count;
 							to_read -= count;
 						}
@@ -1775,12 +1794,13 @@ const char *indigo_xml_escape(const char *string) {
 		static int	buffer_index = 0;
 		int index = buffer_index = (buffer_index + 1) % BUFFER_COUNT;
 		char *buffer;
-		if (escape_buffer[index] == NULL)
+		if (escape_buffer[index] == NULL) {
 			escape_buffer[index] = buffer = indigo_safe_malloc(escape_buffer_size[index] = length);
-		else if (escape_buffer_size[index] < length)
+		} else if (escape_buffer_size[index] < length) {
 			escape_buffer[index] = buffer = indigo_safe_realloc(escape_buffer[index], escape_buffer_size[index] = length);
-		else
+		} else {
 			buffer = escape_buffer[index];
+		}
 		const char *in = string;
 		char *out = buffer;
 		char c;
@@ -1841,11 +1861,13 @@ static pthread_mutex_t xml_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 indigo_result indigo_xml_client_parser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
-	if (!indigo_reshare_remote_devices && client && client->is_remote)
+	if (!indigo_reshare_remote_devices && client && client->is_remote) {
 		return INDIGO_OK;
+	}
 	indigo_adapter_context *device_context = (indigo_adapter_context *)device->device_context;
-	if (device_context->output == NULL)
+	if (device_context->output == NULL) {
 		return INDIGO_OK;
+	}
 	pthread_mutex_lock(&xml_mutex);
 	assert(device_context != NULL);
 	indigo_uni_handle **handle = device_context->output;
@@ -1892,11 +1914,13 @@ failure:
 indigo_result indigo_xml_client_parser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(property != NULL);
-	if (!indigo_reshare_remote_devices && client && client->is_remote)
+	if (!indigo_reshare_remote_devices && client && client->is_remote) {
 		return INDIGO_OK;
+	}
 	indigo_adapter_context *device_context = (indigo_adapter_context *)device->device_context;
-	if (device_context->output == NULL)
+	if (device_context->output == NULL) {
 		return INDIGO_OK;
+	}
 	pthread_mutex_lock(&xml_mutex);
 	assert(device_context != NULL);
 	indigo_uni_handle **handle = device_context->output;
@@ -1967,11 +1991,13 @@ failure:
 indigo_result indigo_xml_client_parser_enable_blob(indigo_device *device, indigo_client *client, indigo_property *property, indigo_enable_blob_mode mode) {
 	assert(device != NULL);
 	assert(property != NULL);
-	if (!indigo_reshare_remote_devices && client && client->is_remote)
+	if (!indigo_reshare_remote_devices && client && client->is_remote) {
 		return INDIGO_OK;
+	}
 	indigo_adapter_context *device_context = (indigo_adapter_context *)device->device_context;
-	if (device_context->output == NULL)
+	if (device_context->output == NULL) {
 		return INDIGO_OK;
+	}
 	pthread_mutex_lock(&xml_mutex);
 	assert(device_context != NULL);
 	indigo_uni_handle **handle = device_context->output;
@@ -1986,9 +2012,9 @@ indigo_result indigo_xml_client_parser_enable_blob(indigo_device *device, indigo
 		}
 	}
 	char *mode_text = "Also";
-	if (mode == INDIGO_ENABLE_BLOB_NEVER)
+	if (mode == INDIGO_ENABLE_BLOB_NEVER) {
 		mode_text = "Never";
-	else if (mode == INDIGO_ENABLE_BLOB_URL && device->version >= INDIGO_VERSION_2_0)
+	} else if (mode == INDIGO_ENABLE_BLOB_URL && device->version >= INDIGO_VERSION_2_0)
 		mode_text = "URL";
 	if (*property->name) {
 		INDIGO_PRINTF(*handle, "<enableBLOB device='%s' name='%s'>%s</enableBLOB>\n", indigo_xml_escape(device_name), indigo_property_name(device->version, property), mode_text);
@@ -2028,13 +2054,16 @@ indigo_result indigo_xml_device_adapter_define_property(indigo_client *client, i
 	assert(device != NULL);
 	assert(client != NULL);
 	assert(property != NULL);
-	if (!indigo_reshare_remote_devices && device->is_remote)
+	if (!indigo_reshare_remote_devices && device->is_remote) {
 		return INDIGO_OK;
-	if (client->version == INDIGO_VERSION_NONE)
+	}
+	if (client->version == INDIGO_VERSION_NONE) {
 		return INDIGO_OK;
+	}
 	indigo_adapter_context *client_context = (indigo_adapter_context *)client->client_context;
-	if (client_context->output == NULL)
+	if (client_context->output == NULL) {
 		return INDIGO_OK;
+	}
 	pthread_mutex_lock(&write_mutex);
 	assert(client_context != NULL);
 	indigo_uni_handle **handle = client_context->output;
@@ -2106,13 +2135,16 @@ indigo_result indigo_xml_device_adapter_update_property(indigo_client *client, i
 	assert(device != NULL);
 	assert(client != NULL);
 	assert(property != NULL);
-	if (!indigo_reshare_remote_devices && device->is_remote)
+	if (!indigo_reshare_remote_devices && device->is_remote) {
 		return INDIGO_OK;
-	if (client->version == INDIGO_VERSION_NONE)
+	}
+	if (client->version == INDIGO_VERSION_NONE) {
 		return INDIGO_OK;
+	}
 	indigo_adapter_context *client_context = (indigo_adapter_context *)client->client_context;
-	if (client_context->output == NULL)
+	if (client_context->output == NULL) {
 		return INDIGO_OK;
+	}
 	pthread_mutex_lock(&write_mutex);
 	assert(client_context != NULL);
 	indigo_uni_handle **handle = client_context->output;
@@ -2221,13 +2253,16 @@ indigo_result indigo_xml_device_adapter_delete_property(indigo_client *client, i
 	assert(device != NULL);
 	assert(client != NULL);
 	assert(property != NULL);
-	if (!indigo_reshare_remote_devices && device->is_remote)
+	if (!indigo_reshare_remote_devices && device->is_remote) {
 		return INDIGO_OK;
-	if (client->version == INDIGO_VERSION_NONE)
+	}
+	if (client->version == INDIGO_VERSION_NONE) {
 		return INDIGO_OK;
+	}
 	indigo_adapter_context *client_context = (indigo_adapter_context *)client->client_context;
-	if (client_context->output == NULL)
+	if (client_context->output == NULL) {
 		return INDIGO_OK;
+	}
 	pthread_mutex_lock(&write_mutex);
 	assert(client_context != NULL);
 	indigo_uni_handle **handle = client_context->output;
@@ -2248,13 +2283,16 @@ failure:
 indigo_result indigo_xml_device_adapter_send_message(indigo_client *client, indigo_device *device, const char *message) {
 	assert(device != NULL);
 	assert(client != NULL);
-	if (!indigo_reshare_remote_devices && device->is_remote)
+	if (!indigo_reshare_remote_devices && device->is_remote) {
 		return INDIGO_OK;
-	if (client->version == INDIGO_VERSION_NONE)
+	}
+	if (client->version == INDIGO_VERSION_NONE) {
 		return INDIGO_OK;
+	}
 	indigo_adapter_context *client_context = (indigo_adapter_context *)client->client_context;
-	if (client_context->output == NULL)
+	if (client_context->output == NULL) {
 		return INDIGO_OK;
+	}
 	pthread_mutex_lock(&write_mutex);
 	assert(client_context != NULL);
 	indigo_uni_handle **handle = client_context->output;

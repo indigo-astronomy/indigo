@@ -358,10 +358,11 @@ static void create_frame(indigo_device *device) {
 		int size = DSLR_WIDTH * DSLR_HEIGHT * 3;
 		for (int i = 0; i < size; i++) {
 			int rgb = indigo_ccd_simulator_rgb_image[i];
-			if (rgb < 0xF0)
+			if (rgb < 0xF0) {
 				raw[i] = rgb  + (rand() & 0x0F);
-			else
+			} else {
 				raw[i] = rgb;
+			}
 		}
 		if (CCD_IMAGE_FORMAT_NATIVE_ITEM->sw.value) {
 			void *data_out;
@@ -396,15 +397,17 @@ static void create_frame(indigo_device *device) {
 		static int frame_counter = 0;
 		static int x_offset = 0;
 		static int y_offset = 0;
-		if (frame_counter++ % 2)
+		if (frame_counter++ % 2) {
 			x_offset = (x_offset + 1) % 10;
-		else
+		} else {
 			y_offset = (y_offset + 1) % 10;
+		}
 		int offset = (y_offset * PRIVATE_DATA->file_image_header.width + x_offset) * bpp / 8;
 		memcpy(PRIVATE_DATA->file_image, PRIVATE_DATA->raw_file_image, FITS_HEADER_SIZE);
 		memcpy(PRIVATE_DATA->file_image + FITS_HEADER_SIZE, PRIVATE_DATA->raw_file_image + FITS_HEADER_SIZE + offset, size - offset);
-		if (offset)
+		if (offset) {
 			memcpy(PRIVATE_DATA->file_image + FITS_HEADER_SIZE + size - offset, PRIVATE_DATA->raw_file_image + FITS_HEADER_SIZE, offset);
+		}
 #else
 		memcpy(PRIVATE_DATA->file_image, PRIVATE_DATA->raw_file_image, size + FITS_HEADER_SIZE);
 #endif
@@ -502,8 +505,9 @@ static void create_frame(indigo_device *device) {
 		}
 		if (device == PRIVATE_DATA->guider && light_frame) {
 			static time_t start_time = 0;
-			if (start_time == 0)
+			if (start_time == 0) {
 				start_time = time(NULL);
+			}
 			search_stars(device);
 			double ra_offset = GUIDER_IMAGE_PERR_VAL_ITEM->number.target * sin(GUIDER_IMAGE_PERR_SPD_ITEM->number.target * 0.6 * M_PI * ((time(NULL) - start_time) % 360) / 180) + GUIDER_IMAGE_RA_OFFSET_ITEM->number.value;
 			double guider_sin = sin(M_PI * GUIDER_IMAGE_ANGLE_ITEM->number.target / 180.0);
@@ -516,15 +520,19 @@ static void create_frame(indigo_device *device) {
 			if (GUIDER_MODE_STARS_ITEM->sw.value || y_flip) {
 				for (int i = 0; i < PRIVATE_DATA->star_count; i++) {
 					double center_x = (PRIVATE_DATA->star_x[i] + x_offset) / horizontal_bin;
-					if (center_x < 0)
+					if (center_x < 0) {
 						center_x += GUIDER_IMAGE_WIDTH_ITEM->number.target;
-					if (center_x >= GUIDER_IMAGE_WIDTH_ITEM->number.target)
+					}
+					if (center_x >= GUIDER_IMAGE_WIDTH_ITEM->number.target) {
 						center_x -= GUIDER_IMAGE_WIDTH_ITEM->number.target;
+					}
 					double center_y = (PRIVATE_DATA->star_y[i] + (y_flip ? -y_offset : y_offset)) / vertical_bin;
-					if (center_y < 0)
+					if (center_y < 0) {
 						center_y += GUIDER_IMAGE_HEIGHT_ITEM->number.target;
-					if (center_y >= GUIDER_IMAGE_HEIGHT_ITEM->number.target)
+					}
+					if (center_y >= GUIDER_IMAGE_HEIGHT_ITEM->number.target) {
 						center_y -= GUIDER_IMAGE_HEIGHT_ITEM->number.target;
+					}
 					center_x -= frame_left;
 					center_y -= frame_top;
 					int a = PRIVATE_DATA->star_a[i];
@@ -565,28 +573,33 @@ static void create_frame(indigo_device *device) {
 						double xx = (center_x - x) * horizontal_bin;
 						double eclipse_xx = (eclipse_x - x) * horizontal_bin;
 						double value = 500000 * exp(-((xx * xx + yy * yy) / 20000.0));
-						if (GUIDER_MODE_ECLIPSE_ITEM->sw.value && eclipse_xx*eclipse_xx+eclipse_yy*eclipse_yy < 50000)
+						if (GUIDER_MODE_ECLIPSE_ITEM->sw.value && eclipse_xx*eclipse_xx+eclipse_yy*eclipse_yy < 50000) {
 							value = 0;
-						if (value < 65535)
+						}
+						if (value < 65535) {
 							raw[yw + x] += (unsigned short)value;
-						else
+						} else {
 							raw[yw + x] = 65535;
+						}
 					}
 				}
 				if (GUIDER_MODE_ECLIPSE_ITEM->sw.value) {
 					PRIVATE_DATA->eclipse++;
-					if (PRIVATE_DATA->eclipse > ECLIPSE)
+					if (PRIVATE_DATA->eclipse > ECLIPSE) {
 						PRIVATE_DATA->eclipse = -ECLIPSE;
+					}
 				}
 			}
 		}
 		for (int i = 0; i < size; i++) {
 			double value = raw[i] - offset;
-			if (value < 0)
+			if (value < 0) {
 				value = 0;
+			}
 			value = gain * pow(value, gamma);
-			if (value > 65535)
+			if (value > 65535) {
 				value = 65535;
+			}
 			raw[i] = (unsigned short)value;
 		}
 		if (FOCUSER_SETTINGS_FOCUS_ITEM->number.value != 0) {
@@ -682,11 +695,12 @@ static void streaming_timer_callback(indigo_device *device) {
 	}
 	if (device == PRIVATE_DATA->dslr) {
 		indigo_finalize_dslr_video_stream(device);
-	}
-	else
+	} else {
 		indigo_finalize_video_stream(device);
-	if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
+	}
+	if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
+	}
 	indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 }
 
@@ -929,8 +943,9 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_STREAMING_EXPOSURE_ITEM->number.min = 0.001;
 		CCD_STREAMING_EXPOSURE_ITEM->number.max = 0.5;
 		// --------------------------------------------------------------------------------
-		if (device == PRIVATE_DATA->imager)
+		if (device == PRIVATE_DATA->imager) {
 			ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
+		}
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return ccd_enumerate_properties(device, NULL, NULL);
 	}
@@ -978,8 +993,9 @@ static void ccd_connect_callback(indigo_device *device) {
 				indigo_define_property(device, DSLR_BATTERY_LEVEL_PROPERTY, NULL);
 			} else if (device == PRIVATE_DATA->file) {
 				indigo_uni_handle *handle = indigo_uni_open_file(FILE_NAME_ITEM->text.value, -INDIGO_LOG_TRACE);
-				if (handle == NULL)
+				if (handle == NULL) {
 					goto failure;
+				}
 				if (!indigo_uni_read(handle, (char *)&PRIVATE_DATA->file_image_header, sizeof(PRIVATE_DATA->file_image_header)))
 					goto failure;
 				CCD_FRAME_TOP_ITEM->number.value = CCD_FRAME_LEFT_ITEM->number.value = 0;
@@ -1087,8 +1103,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
-		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE)
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 			return INDIGO_OK;
+		}
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
 		indigo_use_shortest_exposure_if_bias(device);
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -1101,9 +1118,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		}
-		if (device == PRIVATE_DATA->imager)
+		if (device == PRIVATE_DATA->imager) {
 			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value > 0 ? CCD_EXPOSURE_ITEM->number.value : 0.1, exposure_timer_callback, &PRIVATE_DATA->imager_exposure_timer);
-		else if (device == PRIVATE_DATA->guider)
+		} else if (device == PRIVATE_DATA->guider)
 			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value > 0 ? CCD_EXPOSURE_ITEM->number.value : 0.1, exposure_timer_callback, &PRIVATE_DATA->guider_exposure_timer);
 		else if (device == PRIVATE_DATA->bahtinov)
 			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value > 0 ? CCD_EXPOSURE_ITEM->number.value : 0.1, exposure_timer_callback, &PRIVATE_DATA->bahtinov_exposure_timer);
@@ -1113,8 +1130,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value > 0 ? CCD_EXPOSURE_ITEM->number.value : 0.1, exposure_timer_callback, &PRIVATE_DATA->file_exposure_timer);
 	} else if (indigo_property_match_changeable(CCD_STREAMING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_STREAMING
-		if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
+		if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 			return INDIGO_OK;
+		}
 		indigo_property_copy_values(CCD_STREAMING_PROPERTY, property, false);
 		indigo_use_shortest_exposure_if_bias(device);
 		CCD_STREAMING_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -1125,9 +1143,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
 		CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
-		if (device == PRIVATE_DATA->imager)
+		if (device == PRIVATE_DATA->imager) {
 			indigo_cancel_timer(device, &PRIVATE_DATA->imager_exposure_timer);
-		else if (device == PRIVATE_DATA->guider)
+		} else if (device == PRIVATE_DATA->guider)
 			indigo_cancel_timer(device, &PRIVATE_DATA->guider_exposure_timer);
 		else if (device == PRIVATE_DATA->bahtinov)
 			indigo_cancel_timer(device, &PRIVATE_DATA->bahtinov_exposure_timer);
@@ -1171,10 +1189,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- DSLR_PROGRAM
 		indigo_property_copy_values(DSLR_PROGRAM_PROPERTY, property, false);
 		indigo_delete_property(device, DSLR_SHUTTER_PROPERTY, NULL);
-		if (DSLR_PROGRAM_PROPERTY->items[1].sw.value)
+		if (DSLR_PROGRAM_PROPERTY->items[1].sw.value) {
 			DSLR_SHUTTER_PROPERTY->hidden = true;
-		else
+		} else {
 			DSLR_SHUTTER_PROPERTY->hidden = false;
+		}
 		indigo_define_property(device, DSLR_SHUTTER_PROPERTY, NULL);
 		DSLR_PROGRAM_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, DSLR_PROGRAM_PROPERTY, NULL);
@@ -1259,8 +1278,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				GUIDER_IMAGE_LONG_ITEM->number.value = GUIDER_IMAGE_LONG_ITEM->number.target = (abs(d) + m / 60.0 + s / 3600.0) * (d >= 0 ? 1 : -1);
 				update = true;
 			}
-			if (update)
+			if (update) {
 				indigo_update_property(device, GUIDER_SETTINGS_PROPERTY, NULL);
+			}
 		}
 		// -------------------------------------------------------------------------------- BAHTINOV_SETTINGS
 	} else if (BAHTINOV_SETTINGS_PROPERTY && indigo_property_match_changeable(BAHTINOV_SETTINGS_PROPERTY, property)) {

@@ -210,8 +210,9 @@ indigo_result indigo_wheel_atik(indigo_driver_action action, indigo_driver_info 
 			last_action = action;
 			libusb_hotplug_deregister_callback(NULL, callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
-			if (wheel)
+			if (wheel) {
 				hotplug_callback(NULL, NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
+			}
 			break;
 
 		case INDIGO_DRIVER_INFO:

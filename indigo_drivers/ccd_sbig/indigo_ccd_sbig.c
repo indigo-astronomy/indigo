@@ -203,10 +203,11 @@ static char *sbig_error_string(long err) {
 static short get_sbig_handle() {
 	GetDriverHandleResults gdhr;
 	int res = sbig_command(CC_GET_DRIVER_HANDLE, NULL, &gdhr);
-	if (res == CE_NO_ERROR)
+	if (res == CE_NO_ERROR) {
 		return gdhr.handle;
-	else
+	} else {
 		return INVALID_HANDLE_VALUE;
+	}
 }
 
 
@@ -250,8 +251,9 @@ static short close_driver(short *handle) {
 	}
 
 	res = sbig_command(CC_CLOSE_DRIVER, NULL, NULL);
-	if (res == CE_NO_ERROR)
+	if (res == CE_NO_ERROR) {
 		*handle = INVALID_HANDLE_VALUE;
+	}
 
 	return res;
 }
@@ -1324,8 +1326,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- CCD_EXPOSURE
 	} else if (indigo_property_match_changeable(CCD_EXPOSURE_PROPERTY, property)) {
-		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE)
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 			return INDIGO_OK;
+		}
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			indigo_use_shortest_exposure_if_bias(device);
@@ -1666,10 +1669,11 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			}
 		}
 
-		if (PRIVATE_DATA->relay_map & (RELAY_NORTH | RELAY_SOUTH))
+		if (PRIVATE_DATA->relay_map & (RELAY_NORTH | RELAY_SOUTH)) {
 			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
-		else
+		} else {
 			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+		}
 
 		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 		return INDIGO_OK;
@@ -1697,10 +1701,11 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			}
 		}
 
-		if (PRIVATE_DATA->relay_map & (RELAY_EAST | RELAY_WEST))
+		if (PRIVATE_DATA->relay_map & (RELAY_EAST | RELAY_WEST)) {
 			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
-		else
+		} else {
 			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
+		}
 
 		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 		return INDIGO_OK;
@@ -1802,10 +1807,11 @@ static void eth_connect_callback(indigo_device *device) {
 			clear_connected_flag(device);
 		}
 	}
-	if (message[0] == '\0')
+	if (message[0] == '\0') {
 		indigo_device_change_property(device, NULL, CONNECTION_PROPERTY);
-	else
+	} else {
 		indigo_device_change_property(device, NULL, CONNECTION_PROPERTY);
+	}
 	indigo_unlock_master_device(device);
 }
 

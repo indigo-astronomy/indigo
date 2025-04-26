@@ -390,8 +390,9 @@ static int find_unplugged_device_id() {
 	for (int index = 0; index < count; index++) {
 		int res = EFWGetID(index, &id);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetID(%d, -> %d) = %d", index, id, res);
-		if (res == EFW_SUCCESS)
+		if (res == EFW_SUCCESS) {
 			dev_tmp[id] = true;
+		}
 	}
 	id = -1;
 	for (int index = 0; index < EFW_ID_MAX; index++) {

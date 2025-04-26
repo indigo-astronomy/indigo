@@ -314,8 +314,7 @@ static pthread_t thread_id_capture;
 static indigo_device *devices[MAX_DEVICES] = {NULL};
 static libusb_hotplug_callback_handle callback_handle;
 
-static char *debayer_algorithm_str_id(const int algorithm)
-{
+static char *debayer_algorithm_str_id(const int algorithm) {
 	switch (algorithm) {
 	case 0:
 		return GPHOTO2_NAME_DEBAYER_ALGORITHM_LIN_NAME;
@@ -338,31 +337,30 @@ static char *debayer_algorithm_str_id(const int algorithm)
 	}
 }
 
-static int debayer_algorithm_value_id(const char *algorithm)
-{
-	if (STRNCMP(algorithm, GPHOTO2_NAME_DEBAYER_ALGORITHM_LIN_NAME))
+static int debayer_algorithm_value_id(const char *algorithm) {
+	if (STRNCMP(algorithm, GPHOTO2_NAME_DEBAYER_ALGORITHM_LIN_NAME)) {
 		return 0;
-	else if (STRNCMP(algorithm, GPHOTO2_NAME_DEBAYER_ALGORITHM_VNG_NAME))
+	} else if (STRNCMP(algorithm, GPHOTO2_NAME_DEBAYER_ALGORITHM_VNG_NAME)) {
 		return 1;
-	else if (STRNCMP(algorithm, GPHOTO2_NAME_DEBAYER_ALGORITHM_PPG_NAME))
+	} else if (STRNCMP(algorithm, GPHOTO2_NAME_DEBAYER_ALGORITHM_PPG_NAME)) {
 		return 2;
-	else if (STRNCMP(algorithm, GPHOTO2_NAME_DEBAYER_ALGORITHM_AHD_NAME))
+	} else if (STRNCMP(algorithm, GPHOTO2_NAME_DEBAYER_ALGORITHM_AHD_NAME)) {
 		return 3;
-	else if (STRNCMP(algorithm, GPHOTO2_NAME_DEBAYER_ALGORITHM_DCB_NAME))
+	} else if (STRNCMP(algorithm, GPHOTO2_NAME_DEBAYER_ALGORITHM_DCB_NAME)) {
 		return 4;
-	else if (STRNCMP(algorithm, GPHOTO2_NAME_DEBAYER_ALGORITHM_DHT_NAME))
+	} else if (STRNCMP(algorithm, GPHOTO2_NAME_DEBAYER_ALGORITHM_DHT_NAME)) {
 		return 11;
-	else if (STRNCMP(algorithm, GPHOTO2_NAME_DEBAYER_ALGORITHM_BAYER_RAW_NAME))
+	} else if (STRNCMP(algorithm, GPHOTO2_NAME_DEBAYER_ALGORITHM_BAYER_RAW_NAME)) {
 		return 254;
-	else if (STRNCMP(algorithm, GPHOTO2_NAME_DEBAYER_ALGORITHM_BAYER_RAW_BIN2_NAME))
+	} else if (STRNCMP(algorithm, GPHOTO2_NAME_DEBAYER_ALGORITHM_BAYER_RAW_BIN2_NAME)) {
 		return 255;
-	else
-		return -1;	/* Unknown. */
+	} else {
+		return -1;
+	}	/* Unknown. */
 }
 
 static int progress_cb(void *callback_data,
-		       enum LibRaw_progress stage, int iteration, int expected)
-{
+		       enum LibRaw_progress stage, int iteration, int expected) {
 	(void)callback_data;
 
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libraw: %s, step %i/%i",
@@ -373,8 +371,7 @@ static int progress_cb(void *callback_data,
 
 static int image_bayered_data(libraw_data_t *raw_data,
 			      struct libraw_image_s *libraw_image,
-			      const bool binning)
-{
+			      const bool binning) {
 	uint16_t *data;
 	uint16_t width, height, raw_width;
 	uint32_t npixels;
@@ -427,8 +424,7 @@ static int image_bayered_data(libraw_data_t *raw_data,
 	return 0;
 }
 
-static int image_debayered_data(libraw_data_t *raw_data, struct libraw_image_s *libraw_image)
-{
+static int image_debayered_data(libraw_data_t *raw_data, struct libraw_image_s *libraw_image) {
 	int rc;
 	libraw_processed_image_t *processed_image = NULL;
 
@@ -485,8 +481,9 @@ static int image_debayered_data(libraw_data_t *raw_data, struct libraw_image_s *
 	libraw_image->size = processed_image->data_size;
 	libraw_image->colors = processed_image->colors;
 
-	if (libraw_image->data)
+	if (libraw_image->data) {
 		free(libraw_image->data);
+	}
 
 	libraw_image->data = malloc(libraw_image->size);
 	if (!libraw_image->data) {
@@ -504,8 +501,7 @@ cleanup:
 }
 
 static int process_dslr_image_debayer(indigo_device *device,
-				      void *buffer, size_t buffer_size)
-{
+				      void *buffer, size_t buffer_size) {
         int rc;
         libraw_data_t *raw_data;
 	struct libraw_image_s libraw_image = {
@@ -566,18 +562,20 @@ static int process_dslr_image_debayer(indigo_device *device,
 
 	/* Change CCD_BIN_HORIZONTAL_ITEM->number.value; */
 	if (PRIVATE_DATA->debayer_algorithm == 254 ||
-	    PRIVATE_DATA->debayer_algorithm == 255)
+			PRIVATE_DATA->debayer_algorithm == 255) {
 		rc = image_bayered_data(raw_data, &libraw_image,
 					PRIVATE_DATA->debayer_algorithm == 255);
-	else
+	else {
 		rc = image_debayered_data(raw_data, &libraw_image);
-	if (rc)
+	}
+	if (rc) {
 		goto cleanup;
+	}
 
 	float cam_sensor_temperature = -273.15f;
-	if (raw_data->makernotes.common.SensorTemperature > -273.15f)
+	if (raw_data->makernotes.common.SensorTemperature > -273.15f) {
 		cam_sensor_temperature = raw_data->makernotes.common.SensorTemperature;
-	else if (raw_data->makernotes.common.CameraTemperature > -273.15f)
+	} else if (raw_data->makernotes.common.CameraTemperature > -273.15f)
 		cam_sensor_temperature = raw_data->makernotes.common.CameraTemperature;
 
 	indigo_fits_keyword keywords[] = {
@@ -589,22 +587,19 @@ static int process_dslr_image_debayer(indigo_device *device,
 		{ 0 }
 	};
 	if (PRIVATE_DATA->debayer_algorithm == 254)
-		keywords[1] = (indigo_fits_keyword)
-			{ INDIGO_FITS_STRING, "BAYERPAT",
+		keywords[1] = (indigo_fits_keyword) { INDIGO_FITS_STRING, "BAYERPAT",
 			  .string = libraw_image.bayer_pattern,
 			  "bayer color pattern"
 			};
 	else if (PRIVATE_DATA->debayer_algorithm < 254)
-		keywords[1] = (indigo_fits_keyword)
-			{ INDIGO_FITS_STRING, "CTYPE3  ",
+		keywords[1] = (indigo_fits_keyword) { INDIGO_FITS_STRING, "CTYPE3  ",
 			  .string = "rgb",
 			  "coordinate axis red=1, green=2, blue=3"
 			};
 
 	if (cam_sensor_temperature > -273.15f) {
 		const uint8_t i = PRIVATE_DATA->debayer_algorithm == 255 ? 1 : 2;
-		keywords[i] = (indigo_fits_keyword)
-			{ INDIGO_FITS_NUMBER, "CCD-TEMP",
+		keywords[i] = (indigo_fits_keyword) { INDIGO_FITS_NUMBER, "CCD-TEMP",
 			  .number = cam_sensor_temperature,
 			  "CCD temperature [celcius]"
 			};
@@ -615,8 +610,9 @@ static int process_dslr_image_debayer(indigo_device *device,
 		FITS_HEADER_SIZE;
 	int padding = 0;
         int mod2880 = data_size % 2880;
-	if (mod2880)
+	if (mod2880) {
 		padding = 2880 - mod2880;
+	}
 	data_size += padding;
 
 	if (data_size > PRIVATE_DATA->buffer_size_max) {
@@ -653,14 +649,14 @@ cleanup:
 	libraw_recycle(raw_data);
         libraw_close(raw_data);
 
-	if (libraw_image.data)
+	if (libraw_image.data) {
 		free(libraw_image.data);
+	}
 
 	return rc;
 }
 
-static void vendor_generic_widget(indigo_device *device)
-{
+static void vendor_generic_widget(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 
@@ -694,8 +690,7 @@ static void vendor_generic_widget(indigo_device *device)
 	}
 }
 
-static double parse_shutterspeed(const char *s)
-{
+static double parse_shutterspeed(const char *s) {
 	assert(s != NULL);
 
 	const char *delim = "/'";
@@ -712,27 +707,27 @@ static double parse_shutterspeed(const char *s)
 		token = strtok_r(NULL, delim, &saveptr);
 	}
 
-	if (str)
+	if (str) {
 		free(str);
+	}
 
 	return (nom_denom[1] == 0 ? nom_denom[0] :
 		nom_denom[0] / nom_denom[1]);
 }
 
 static int lookup_widget(CameraWidget *widget, const char *key,
-			 CameraWidget **child)
-{
+			 CameraWidget **child) {
 	int rc;
 
 	rc = gp_widget_get_child_by_name(widget, key, child);
-	if (rc < GP_OK)
+	if (rc < GP_OK) {
 		rc = gp_widget_get_child_by_label(widget, key, child);
+	}
 
 	return rc;
 }
 
-static int exists_widget_label(const char *key, indigo_device *device)
-{
+static int exists_widget_label(const char *key, indigo_device *device) {
 	CameraWidget *widget = NULL, *child = NULL;
 	int rc;
 
@@ -748,8 +743,9 @@ static int exists_widget_label(const char *key, indigo_device *device)
 	}
 
 	rc = lookup_widget(widget, key, &child);
-	if (rc < GP_OK)
+	if (rc < GP_OK) {
 		goto cleanup;
+	}
 
 cleanup:
 	gp_widget_free(widget);
@@ -760,8 +756,7 @@ cleanup:
 }
 
 static int enumerate_widget(const char *key, indigo_device *device,
-			    indigo_property *property)
-{
+			    indigo_property *property) {
 	CameraWidget *widget = NULL, *child = NULL;
 	CameraWidgetType type;
 	int rc;
@@ -779,8 +774,9 @@ static int enumerate_widget(const char *key, indigo_device *device,
 	}
 
 	rc = lookup_widget(widget, key, &child);
-	if (rc < GP_OK)
+	if (rc < GP_OK) {
 		goto cleanup;
+	}
 
 	/* This type check is optional, if you know what type the label
 	 * has already. If you are not sure, better check. */
@@ -817,8 +813,9 @@ static int enumerate_widget(const char *key, indigo_device *device,
 
 	/* If property is NULL we are interested in number of choices only
 	   which is stored in rc. */
-	if (!property)
+	if (!property) {
 		goto cleanup;
+	}
 
 	const char *widget_choice;
 	int i = 0;
@@ -859,8 +856,9 @@ static int enumerate_widget(const char *key, indigo_device *device,
 			shutter_d = parse_shutterspeed(!is_sony_alpha_a7r_iii ?
 						       widget_choice : widget_choice_sony_alpha_a7r_iii[i]);
 
-			if (shutter_d > 0.0)
+			if (shutter_d > 0.0) {
 				snprintf(label, sizeof(label), "%f", shutter_d);
+			}
 		}
 
 		/* Init and set value same as on camera. */
@@ -881,8 +879,7 @@ cleanup:
 
 static int gphoto2_set_key_val(const char *key, const void *val,
 			       CameraWidgetType widget_type,
-			       indigo_device *device)
-{
+			       indigo_device *device) {
 	CameraWidget *widget = NULL, *child = NULL;
 	CameraWidgetType type;
 	int rc;
@@ -936,8 +933,9 @@ static int gphoto2_set_key_val(const char *key, const void *val,
 	/* This stores it on the camera again */
 	rc = gp_camera_set_config(PRIVATE_DATA->camera, widget,
 				  context);
-	if (rc < GP_OK)
+	if (rc < GP_OK) {
 		goto cleanup;
+	}
 
 cleanup:
 	gp_widget_free(widget);
@@ -948,36 +946,31 @@ cleanup:
 }
 
 static int gphoto2_set_key_val_char(const char *key, const char *val,
-				    indigo_device *device)
-{
+				    indigo_device *device) {
 	/* char* := {GP_WIDGET_TEXT, GP_WIDGET_RADIO, GP_WIDGET_MENU}. */
 	return gphoto2_set_key_val(key, val, GP_WIDGET_TEXT, device);
 }
 
 static int gphoto2_set_key_val_int(const char *key, const int val,
-				   indigo_device *device)
-{
+				   indigo_device *device) {
 	/* int := {GP_WIDGET_TOGGLE}. */
 	return gphoto2_set_key_val(key, &val, GP_WIDGET_TOGGLE, device);
 }
 
 static int gphoto2_set_key_val_date(const char *key, const int val,
-				    indigo_device *device)
-{
+				    indigo_device *device) {
 	/* int := {GP_WIDGET_DATE}. */
 	return gphoto2_set_key_val(key, &val, GP_WIDGET_DATE, device);
 }
 
 static int gphoto2_set_key_val_float(const char *key, const float val,
-				     indigo_device *device)
-{
+				     indigo_device *device) {
 	/* float := {GP_WIDGET_RANGE}. */
 	return gphoto2_set_key_val(key, &val, GP_WIDGET_RANGE, device);
 }
 
 static int gphoto2_get_key_val(const char *key, char **str,
-			       indigo_device *device)
-{
+			       indigo_device *device) {
 	CameraWidget *widget = NULL, *child = NULL;
 	CameraWidgetType type;
 	int rc;
@@ -1028,8 +1021,7 @@ cleanup:
 	return rc;
 }
 
-static void ctx_error_func(GPContext *context, const char *str, void *data)
-{
+static void ctx_error_func(GPContext *context, const char *str, void *data) {
 	UNUSED(context);
 	if ( data ) {
 		indigo_device *device = *(indigo_device **)(data);
@@ -1041,8 +1033,7 @@ static void ctx_error_func(GPContext *context, const char *str, void *data)
 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s", str);
 }
 
-static void ctx_status_func(GPContext *context, const char *str, void *data)
-{
+static void ctx_status_func(GPContext *context, const char *str, void *data) {
 	UNUSED(context);
 	if ( data ) {
 		indigo_device *device = *(indigo_device **)(data);
@@ -1054,16 +1045,14 @@ static void ctx_status_func(GPContext *context, const char *str, void *data)
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s", str);
 }
 
-static int eos_mirror_lockup(const float secs, indigo_device *device)
-{
+static int eos_mirror_lockup(const float secs, indigo_device *device) {
 	return gphoto2_set_key_val_char(EOS_CUSTOMFUNCEX, secs > 0 ?
 				   EOS_MIRROR_LOCKUP_ENABLE :
 				   EOS_MIRROR_LOCKUP_DISABLE,
 				   device);
 }
 
-static bool can_preview(indigo_device *device)
-{
+static bool can_preview(indigo_device *device) {
 	int rc;
 
 	rc = gphoto2_set_key_val_int(EOS_VIEWFINDER, 0, device);
@@ -1071,8 +1060,7 @@ static bool can_preview(indigo_device *device)
 	return (rc == GP_OK);
 }
 
-static indigo_result update_battery_level(indigo_device *device)
-{
+static indigo_result update_battery_level(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 
@@ -1097,8 +1085,9 @@ static indigo_result update_battery_level(indigo_device *device)
 
 	/* Remove percent character '%' at end if exists. */
 	percent_symb = strchr(battery_level, '%');
-	if (percent_symb)
+	if (percent_symb) {
 		battery_level[percent_symb - battery_level] = '\0';
+	}
 
 	val = strtod(battery_level, &end);
 	if (*end != '\0') {
@@ -1115,14 +1104,14 @@ static indigo_result update_battery_level(indigo_device *device)
 		rc = INDIGO_OK;
 	}
 
-	if (battery_level)
+	if (battery_level) {
 		free(battery_level);
+	}
 
 	return rc;
 }
 
-static void battery_level_timer_callback(indigo_device *device)
-{
+static void battery_level_timer_callback(indigo_device *device) {
 	int rc;
 
 	if (!(CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE ||
@@ -1138,10 +1127,10 @@ static void battery_level_timer_callback(indigo_device *device)
 				&PRIVATE_DATA->battery_level_timer);
 }
 
-static void counter_timer_callback(indigo_device *device)
-{
-	if (!CONNECTION_CONNECTED_ITEM->sw.value)
+static void counter_timer_callback(indigo_device *device) {
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
 		return;
+	}
 
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		if (CCD_EXPOSURE_ITEM->number.value - TIMER_COUNTER_STEP_SEC > 0) {
@@ -1155,13 +1144,13 @@ static void counter_timer_callback(indigo_device *device)
 	}
 }
 
-static void exposure_timer_callback(indigo_device *device)
-{
+static void exposure_timer_callback(indigo_device *device) {
 	void *retval;
 
 
-	if (!CONNECTION_CONNECTED_ITEM->sw.value)
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
 		return;
+	}
 
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		int rc;
@@ -1233,10 +1222,10 @@ static void exposure_timer_callback(indigo_device *device)
 	}
 }
 
-static void streaming_timer_callback(indigo_device *device)
-{
-	if (!CONNECTION_CONNECTED_ITEM->sw.value)
+static void streaming_timer_callback(indigo_device *device) {
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
 		return;
+	}
 
 	int rc = 0;
 	CameraFile *camera_file = NULL;
@@ -1326,8 +1315,9 @@ static void streaming_timer_callback(indigo_device *device)
 		CCD_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 
-		if (CCD_STREAMING_COUNT_ITEM->number.value > 0)
+		if (CCD_STREAMING_COUNT_ITEM->number.value > 0) {
 			CCD_STREAMING_COUNT_ITEM->number.value -= 1;
+		}
 
 		CCD_STREAMING_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
@@ -1345,15 +1335,15 @@ static void streaming_timer_callback(indigo_device *device)
 				    0);
 
 cleanup:
-	if (camera_file)
+	if (camera_file) {
 		gp_file_unref(camera_file);
+	}
 
 	CCD_STREAMING_PROPERTY->state = rc ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
 	indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 }
 
-static void thread_capture_abort(void *user_data)
-{
+static void thread_capture_abort(void *user_data) {
 	int rc;
 	struct capture_abort *capture_abort;
 	indigo_device *device;
@@ -1373,8 +1363,9 @@ static void thread_capture_abort(void *user_data)
 				    EOS_REMOTE_RELEASE,
 				    EOS_RELEASE_FULL);
 
-	if (capture_abort->camera_file)
+	if (capture_abort->camera_file) {
 		gp_file_unref(capture_abort->camera_file);
+	}
 
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "capture thread aborted");
 }
@@ -1441,8 +1432,7 @@ static void download_image(indigo_device *device, CameraFilePath *camera_file_pa
 	*buffer_size = temp_size;
 }
 
-static void *thread_capture(void *user_data)
-{
+static void *thread_capture(void *user_data) {
 	int rc;
 	CameraFile *camera_file = NULL;
 	CameraFilePath camera_file_path_1st;
@@ -1681,8 +1671,9 @@ static void *thread_capture(void *user_data)
 cleanup:
 	/* If GP_FILE_ACCESSTYPE_MEMORY (which it is), then gp_file_unref
 	   free's buffer and set buffer_size = 0, when reference counter == 0. */
-	if (camera_file)
+	if (camera_file) {
 		gp_file_unref(camera_file);
+	}
 	if (camera_file_path_2nd) {
 		free(camera_file_path_2nd);
 	}
@@ -1693,8 +1684,7 @@ cleanup:
 }
 
 static void update_property(indigo_device *device, indigo_property *property,
-			    const char *widget)
-{
+			    const char *widget) {
 	assert(device != NULL);
 	assert(property != NULL);
 	assert(widget != NULL);
@@ -1717,43 +1707,45 @@ static void update_property(indigo_device *device, indigo_property *property,
 					     DSLR_SHUTTER_PROPERTY_NAME,
 					     INDIGO_NAME_SIZE))
 					if (property->items[p].name[0] == 'b' ||
-					    property->items[p].name[0] == 'B')
+					    property->items[p].name[0] == 'B') {
 						PRIVATE_DATA->shutterspeed_bulb = true;
-					else
+					} else {
 						PRIVATE_DATA->shutterspeed_bulb = false;
+					}
 			}
 		}
 	}
 }
 
 static void update_ccd_property(indigo_device *device,
-				indigo_property *property)
-{
+				indigo_property *property) {
 	for (int p = 0; p < property->count; p++)
 		if (property->items[p].sw.value) {
 			const double value = parse_shutterspeed(
 				property->items[p].name);
 			CCD_EXPOSURE_ITEM->number.target = value;
 
-			if (!PRIVATE_DATA->shutterspeed_bulb)
+			if (!PRIVATE_DATA->shutterspeed_bulb) {
 				CCD_EXPOSURE_ITEM->number.value = value;
+			}
 
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY,
 					       NULL);
 		}
 }
 
-static void shutterspeed_closest(indigo_device *device)
-{
+static void shutterspeed_closest(indigo_device *device) {
 	assert(device != NULL);
 
-	if (!CCD_EXPOSURE_ITEM || !DSLR_SHUTTER_PROPERTY || DSLR_SHUTTER_PROPERTY->count == 0)
+	if (!CCD_EXPOSURE_ITEM || !DSLR_SHUTTER_PROPERTY || DSLR_SHUTTER_PROPERTY->count == 0) {
 		return;
+	}
 
 	const double val = CCD_EXPOSURE_ITEM->number.value;
 
-	if (val < 0)
+	if (val < 0) {
 		return;
+	}
 	if (val == 0) {
 		CCD_EXPOSURE_ITEM->number.target =
 			CCD_EXPOSURE_ITEM->number.value =
@@ -1796,8 +1788,7 @@ static void shutterspeed_closest(indigo_device *device)
 	}
 }
 
-static indigo_result ccd_attach(indigo_device *device)
-{
+static indigo_result ccd_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 
@@ -1828,14 +1819,15 @@ static indigo_result ccd_attach(indigo_device *device)
 				CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
 				CCD_INFO_PROPERTY->hidden = false;
 			}
-			if (strstr(name, "CANON"))
+			if (strstr(name, "CANON")) {
 				PRIVATE_DATA->vendor = CANON;
-			else if (strstr(name, "NIKON"))
+			} else if (strstr(name, "NIKON")) {
 				PRIVATE_DATA->vendor = NIKON;
-			else if (strstr(name, "SONY"))
+			} else if (strstr(name, "SONY")) {
 				PRIVATE_DATA->vendor = SONY;
-			else
+			} else {
 				PRIVATE_DATA->vendor = OTHER;
+			}
 		}
 
 		/*--------------- IDENTIFY-VENDOR-SPECIFIC-WIDGETS -----------*/
@@ -1905,10 +1897,11 @@ static indigo_result ccd_attach(indigo_device *device)
 								    INDIGO_RW_PERM,
 								    INDIGO_ONE_OF_MANY_RULE,
 								    count < 0 ? 0 : count);
-		if (count > 0)
+		if (count > 0) {
 			enumerate_widget(EOS_SHUTTERSPEED, device, DSLR_SHUTTER_PROPERTY);
-		else
+		} else {
 			DSLR_SHUTTER_PROPERTY->hidden = true;
+		}
 
 		/*---------------------------- ISO ---------------------------*/
 		count = enumerate_widget(EOS_ISO, device, NULL);
@@ -1921,10 +1914,11 @@ static indigo_result ccd_attach(indigo_device *device)
 								INDIGO_RW_PERM,
 								INDIGO_ONE_OF_MANY_RULE,
 								count < 0 ? 0 : count);
-		if (count > 0)
+		if (count > 0) {
 			enumerate_widget(EOS_ISO, device, DSLR_ISO_PROPERTY);
-		else
+		} else {
 			DSLR_ISO_PROPERTY->hidden = true;
+		}
 
 		/*------------------------ COMPRESSION -----------------------*/
 		count = enumerate_widget(COMPRESSION, device, NULL);
@@ -1937,10 +1931,11 @@ static indigo_result ccd_attach(indigo_device *device)
 									INDIGO_RW_PERM,
 									INDIGO_ONE_OF_MANY_RULE,
 									count < 0 ? 0 : count);
-		if (count > 0)
+		if (count > 0) {
 			enumerate_widget(COMPRESSION, device, DSLR_COMPRESSION_PROPERTY);
-		else
+		} else {
 			DSLR_COMPRESSION_PROPERTY->hidden = true;
+		}
 
 		/*------------------------- APERTURE  ------------------------*/
 		count = enumerate_widget(APERTURE, device, NULL);
@@ -1953,10 +1948,11 @@ static indigo_result ccd_attach(indigo_device *device)
 								     INDIGO_RW_PERM,
 								     INDIGO_ONE_OF_MANY_RULE,
 								     count < 0 ? 0 : count);
-		if (count > 0)
+		if (count > 0) {
 			enumerate_widget(APERTURE, device, DSLR_APERTURE_PROPERTY);
-		else
+		} else {
 			DSLR_APERTURE_PROPERTY->hidden = true;
+		}
 
 		/*------------------------ WHITEBALANCE ----------------------*/
 		count = enumerate_widget(EOS_WHITEBALANCE, device, NULL);
@@ -1969,10 +1965,11 @@ static indigo_result ccd_attach(indigo_device *device)
 									 INDIGO_RW_PERM,
 									 INDIGO_ONE_OF_MANY_RULE,
 									 count < 0 ? 0 : count);
-		if (count > 0)
+		if (count > 0) {
 			enumerate_widget(EOS_WHITEBALANCE, device, DSLR_WHITEBALANCE_PROPERTY);
-		else
+		} else {
 			DSLR_WHITEBALANCE_PROPERTY->hidden = true;
+		}
 
 		/*------------------- EXPOSURE-COMPENSATION ------------------*/
 		count = enumerate_widget(EOS_EXPOSURE_COMPENSATION, device, NULL);
@@ -1985,10 +1982,11 @@ static indigo_result ccd_attach(indigo_device *device)
 										  INDIGO_RW_PERM,
 										  INDIGO_ONE_OF_MANY_RULE,
 										  count < 0 ? 0 : count);
-		if (count > 0)
+		if (count > 0) {
 			enumerate_widget(EOS_EXPOSURE_COMPENSATION, device, DSLR_EXPOSURE_COMPENSATION_PROPERTY);
-		else
+		} else {
 			DSLR_EXPOSURE_COMPENSATION_PROPERTY->hidden = true;
+		}
 
 		/*--------------------- EXPOSURE-METERING --------------------*/
 		count = enumerate_widget(EXPOSURE_METERING, device, NULL);
@@ -2001,10 +1999,11 @@ static indigo_result ccd_attach(indigo_device *device)
 									      INDIGO_RW_PERM,
 									      INDIGO_ONE_OF_MANY_RULE,
 									      count < 0 ? 0 : count);
-		if (count > 0)
+		if (count > 0) {
 			enumerate_widget(EXPOSURE_METERING, device, DSLR_EXPOSURE_METERING_PROPERTY);
-		else
+		} else {
 			DSLR_EXPOSURE_METERING_PROPERTY->hidden = true;
+		}
 
 		/*---------------------- FOCUS-METERING ----------------------*/
 		count = enumerate_widget(FOCUS_METERING, device, NULL);
@@ -2017,10 +2016,11 @@ static indigo_result ccd_attach(indigo_device *device)
 									   INDIGO_RW_PERM,
 									   INDIGO_ONE_OF_MANY_RULE,
 									   count < 0 ? 0 : count);
-		if (count > 0)
+		if (count > 0) {
 			enumerate_widget(FOCUS_METERING, device, DSLR_FOCUS_METERING_PROPERTY);
-		else
+		} else {
 			DSLR_FOCUS_METERING_PROPERTY->hidden = true;
+		}
 
 		/*--------------------- EXPOSURE-PROGRAM ---------------------*/
 		count = enumerate_widget(EXPOSURE_PROGRAM, device, NULL);
@@ -2033,10 +2033,11 @@ static indigo_result ccd_attach(indigo_device *device)
 									     INDIGO_RO_PERM,
 									     INDIGO_ONE_OF_MANY_RULE,
 									     count < 0 ? 0 : count);
-		if (count > 0)
+		if (count > 0) {
 			enumerate_widget(EXPOSURE_PROGRAM, device, DSLR_EXPOSURE_PROGRAM_PROPERTY);
-		else
+		} else {
 			DSLR_EXPOSURE_PROGRAM_PROPERTY->hidden = true;
+		}
 
 		/*---------------------- BATTERY-LEVEL -----------------------*/
 		DSLR_BATTERY_LEVEL_PROPERTY = indigo_init_number_property(NULL,
@@ -2056,11 +2057,10 @@ static indigo_result ccd_attach(indigo_device *device)
 					1.0, /* step */
 					PRIVATE_DATA->battery_level);
 
-		if (exists_widget_label(EOS_BATTERY_LEVEL, device) != GP_OK)
+		if (exists_widget_label(EOS_BATTERY_LEVEL, device) != GP_OK) {
 			DSLR_BATTERY_LEVEL_PROPERTY->hidden = true;
-		else {
-				indigo_set_timer(device, TIMER_BATTERY_LEVEL_UPDATE_SEC,
-						 battery_level_timer_callback, &PRIVATE_DATA->battery_level_timer);
+		} else {
+			indigo_set_timer(device, TIMER_BATTERY_LEVEL_UPDATE_SEC, battery_level_timer_callback, &PRIVATE_DATA->battery_level_timer);
 		}
 
 		/*----------------------- ZOOM-PREVIEW -----------------------*/
@@ -2099,8 +2099,9 @@ static indigo_result ccd_attach(indigo_device *device)
 					"Seconds", 0, 30, 0.1, 0);
 
 		int rc = eos_mirror_lockup(0, device);
-		if (rc)
+		if (rc) {
 			DSLR_MIRROR_LOCKUP_PROPERTY->hidden = true;
+		}
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' %s available for camera '%s'",
 				  "Mirror lockup (customfuncex)",
 				  !rc ? "is" : "is not",
@@ -2143,8 +2144,9 @@ static indigo_result ccd_attach(indigo_device *device)
 					GPHOTO2_NAME_SYNC_HOST_DATE_OFF_ITEM,
 					GPHOTO2_NAME_SYNC_HOST_DATE_OFF,
 					true);
-		if (!PRIVATE_DATA->has_datetime)
+		if (!PRIVATE_DATA->has_datetime) {
 			DSLR_SYNC_HOST_DATE_PROPERTY->hidden = true;
+		}
 
 		/*--------------------- DEBAYER-ALGORITHM --------------------*/
 		DSLR_DEBAYER_ALGORITHM_PROPERTY = indigo_init_switch_property(NULL,
@@ -2214,8 +2216,9 @@ static indigo_result ccd_attach(indigo_device *device)
 		for (int i = 0; i < DSLR_SHUTTER_PROPERTY->count; i++) {
 			/* Skip {B,b}ulb widget. */
 			if (DSLR_SHUTTER_PROPERTY->items[i].name[0] == 'b' ||
-			    DSLR_SHUTTER_PROPERTY->items[i].name[0] == 'B')
+			    DSLR_SHUTTER_PROPERTY->items[i].name[0] == 'B') {
 				continue;
+			}
 
 			double number_shutter = parse_shutterspeed(
 				DSLR_SHUTTER_PROPERTY->items[i].name);
@@ -2283,12 +2286,12 @@ static indigo_result ccd_attach(indigo_device *device)
 	return INDIGO_FAILED;
 }
 
-static indigo_result ccd_detach(indigo_device *device)
-{
+static indigo_result ccd_detach(indigo_device *device) {
 	assert(device != NULL);
 
-	if (CONNECTION_CONNECTED_ITEM->sw.value)
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		indigo_device_disconnect(NULL, device->name);
+	}
 
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 
@@ -2322,19 +2325,20 @@ static indigo_result ccd_detach(indigo_device *device)
 		PRIVATE_DATA->preview_buffer_size_max = 0;
 	}
 
-	if (PRIVATE_DATA->name_pure_raw_format)
+	if (PRIVATE_DATA->name_pure_raw_format) {
 		free(PRIVATE_DATA->name_pure_raw_format);
+	}
 
-	if (PRIVATE_DATA->name_best_jpeg_format)
+	if (PRIVATE_DATA->name_best_jpeg_format) {
 		free(PRIVATE_DATA->name_best_jpeg_format);
+	}
 
 	return indigo_ccd_detach(device);
 }
 
 static indigo_result ccd_enumerate_properties(indigo_device *device,
 					      indigo_client *client,
-					      indigo_property *property)
-{
+					      indigo_property *property) {
 	indigo_result result = INDIGO_OK;
 	if ((result = indigo_ccd_enumerate_properties(device, client, property))
 	    == INDIGO_OK) {
@@ -2395,8 +2399,7 @@ static indigo_result ccd_enumerate_properties(indigo_device *device,
 
 static indigo_result ccd_change_property(indigo_device *device,
 					 indigo_client *client,
-					 indigo_property *property)
-{
+					 indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
@@ -2525,9 +2528,9 @@ static indigo_result ccd_change_property(indigo_device *device,
 		PRIVATE_DATA->mirror_lockup_secs = DSLR_MIRROR_LOCKUP_ITEM->number.target;
 
 		int rc = eos_mirror_lockup(PRIVATE_DATA->mirror_lockup_secs, device);
-		if (rc == GP_OK)
+		if (rc == GP_OK) {
 			DSLR_MIRROR_LOCKUP_PROPERTY->state = INDIGO_OK_STATE;
-		else {
+		} else {
 			PRIVATE_DATA->mirror_lockup_secs = DSLR_MIRROR_LOCKUP_ITEM->number.target =
 				DSLR_MIRROR_LOCKUP_ITEM->number.value = 0;
 			DSLR_MIRROR_LOCKUP_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -2576,8 +2579,9 @@ static indigo_result ccd_change_property(indigo_device *device,
 			if (DSLR_DEBAYER_ALGORITHM_PROPERTY->items[i].sw.value) {
 				PRIVATE_DATA->debayer_algorithm =
 					debayer_algorithm_value_id(DSLR_DEBAYER_ALGORITHM_PROPERTY->items[i].name);
-				if (PRIVATE_DATA->debayer_algorithm >= 0)
+				if (PRIVATE_DATA->debayer_algorithm >= 0) {
 					DSLR_DEBAYER_ALGORITHM_PROPERTY->state = INDIGO_OK_STATE;
+				}
 				if (PRIVATE_DATA->debayer_algorithm == 255)
 					CCD_BIN_HORIZONTAL_ITEM->number.value =
 						CCD_BIN_VERTICAL_ITEM->number.value = 2;
@@ -2626,8 +2630,9 @@ static indigo_result ccd_change_property(indigo_device *device,
 	/*--------------------------- CCD-EXPOSURE ---------------------------*/
 	else if (indigo_property_match_changeable(CCD_EXPOSURE_PROPERTY, property)) {
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE ||
-		    CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
+		    CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 			return INDIGO_OK;
+		}
 
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
 		if (CCD_FRAME_TYPE_BIAS_ITEM->sw.value) {
@@ -2700,8 +2705,9 @@ static indigo_result ccd_change_property(indigo_device *device,
 	/*---------------------------- CCD-STREAMING -------------------------*/
 	else if (indigo_property_match_changeable(CCD_STREAMING_PROPERTY, property)) {
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE ||
-		    CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
+		    CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 			return INDIGO_OK;
+		}
 
 		indigo_property_copy_values(CCD_STREAMING_PROPERTY, property, false);
 		CCD_STREAMING_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -2752,17 +2758,16 @@ static indigo_result ccd_change_property(indigo_device *device,
 	return indigo_ccd_change_property(device, client, property);
 }
 
-static int find_available_device_slot(void)
-{
+static int find_available_device_slot(void) {
 	for (uint8_t slot = 0; slot < MAX_DEVICES; slot++)
-		if (!devices[slot])
+		if (!devices[slot]) {
 			return slot;
+		}
 
 	return -1;
 }
 
-static int find_device_slot(const struct gphoto2_id_s *gphoto2_id)
-{
+static int find_device_slot(const struct gphoto2_id_s *gphoto2_id) {
 	for (uint8_t slot = 0; slot < MAX_DEVICES; slot++) {
 		indigo_device *device = devices[slot];
 
@@ -2778,8 +2783,7 @@ static int find_device_slot(const struct gphoto2_id_s *gphoto2_id)
 }
 
 static int device_connect(indigo_device *gphoto2_template,
-			  const struct gphoto2_id_s *gphoto2_id, const int slot)
-{
+			  const struct gphoto2_id_s *gphoto2_id, const int slot) {
 	int rc;
 	gphoto2_private_data *private_data;
 	indigo_device *device = NULL;
@@ -2853,8 +2857,7 @@ cleanup:
 }
 
 static int device_attach(indigo_device *gphoto2_template,
-			 struct gphoto2_id_s *gphoto2_id)
-{
+			 struct gphoto2_id_s *gphoto2_id) {
 	int rc;
 	int slot;
 	CameraList *list = NULL;
@@ -2866,12 +2869,14 @@ static int device_attach(indigo_device *gphoto2_template,
 		 gphoto2_id->bus, gphoto2_id->port);
 
 	rc = gp_list_new(&list);
-	if (rc < GP_OK)
+	if (rc < GP_OK) {
 		goto out;
+	}
 
 	rc = gp_camera_autodetect(list, context);
-	if (rc < GP_OK)
+	if (rc < GP_OK) {
 		goto out;
+	}
 
 	/* For some cameras such as Nikon D50 the elapsed time between
 	   gp_camera_autodetect(...) and gp_camera_init(...) calls is too short,
@@ -2914,14 +2919,14 @@ static int device_attach(indigo_device *gphoto2_template,
 	}
 
 out:
-	if (list)
+	if (list) {
 		gp_list_free(list);
+	}
 
 	return rc;
 }
 
-static int device_detach(const struct gphoto2_id_s *gphoto2_id)
-{
+static int device_detach(const struct gphoto2_id_s *gphoto2_id) {
 	int rc = -1, slot;
 	gphoto2_private_data *private_data = NULL;
 
@@ -3001,8 +3006,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev,
 	return 0;
 }
 
-indigo_result indigo_ccd_gphoto2(indigo_driver_action action, indigo_driver_info *info)
-{
+indigo_result indigo_ccd_gphoto2(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_device gphoto2_template = INDIGO_DEVICE_INITIALIZER(
 		"gphoto2",
 		ccd_attach,

@@ -43,27 +43,29 @@ static const double decRates[] = { 0.5, 1, 8, 16, 32, 70, 100, 625, 725, 825 };
 #define REFRESH_SECONDS (0.5)
 
 static int mount_manual_slew_rate(indigo_device* device) {
-	if (MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value)
+	if (MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value) {
 		return 1;
-	else if (MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value)
+	} else if (MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value) {
 		return 4;
-	else if (MOUNT_SLEW_RATE_FIND_ITEM->sw.value)
+	} else if (MOUNT_SLEW_RATE_FIND_ITEM->sw.value) {
 		return 6;
-	else if (MOUNT_SLEW_RATE_MAX_ITEM->sw.value)
+	} else if (MOUNT_SLEW_RATE_MAX_ITEM->sw.value) {
 		return 9;
-	else
+	} else {
 		return 1;
+	}
 }
 
 double synscan_tracking_rate(indigo_device* device) {
-	if (MOUNT_TRACK_RATE_SIDEREAL_ITEM->sw.value)
+	if (MOUNT_TRACK_RATE_SIDEREAL_ITEM->sw.value) {
 		return SIDEREAL_RATE;
-	else if (MOUNT_TRACK_RATE_SOLAR_ITEM->sw.value)
+	} else if (MOUNT_TRACK_RATE_SOLAR_ITEM->sw.value) {
 		return SOLAR_RATE;
-	else if (MOUNT_TRACK_RATE_LUNAR_ITEM->sw.value)
+	} else if (MOUNT_TRACK_RATE_LUNAR_ITEM->sw.value) {
 		return LUNAR_RATE;
-	else
+	} else {
 		return 0.0;
+	}
 }
 
 static void
@@ -86,10 +88,11 @@ sla_de2h(double ha, double dec, double phi, double* az, double* el) {
 	//*  To spherical
 	double r = hypot(x, y);
 	double a;
-	if (r == 0.0)
+	if (r == 0.0) {
 		a = 0.0;
-	else
+	} else {
 		a = atan2(y, x);
+	}
 	if (fabs(a) < 0.00001 /*DBL_EPSILON*/)
 		a = 0.0;
 	if (a < 0.0) a += D2PI;
@@ -120,14 +123,17 @@ static void position_timer_callback(indigo_device *device) {
 			//  Add in LST to get RA
 			MOUNT_RAW_COORDINATES_RA_ITEM->number.value = (lst - (raw_ha * 12.0 / M_PI));
 			MOUNT_RAW_COORDINATES_DEC_ITEM->number.value = raw_dec * 180.0 / M_PI;
-			if (MOUNT_RAW_COORDINATES_RA_ITEM->number.value < 0)
+			if (MOUNT_RAW_COORDINATES_RA_ITEM->number.value < 0) {
 				MOUNT_RAW_COORDINATES_RA_ITEM->number.value += 24.0;
-			if (MOUNT_RAW_COORDINATES_RA_ITEM->number.value >= 24.0)
+			}
+			if (MOUNT_RAW_COORDINATES_RA_ITEM->number.value >= 24.0) {
 				MOUNT_RAW_COORDINATES_RA_ITEM->number.value -= 24.0;
-			if (raw_sop == MOUNT_SIDE_EAST)
+			}
+			if (raw_sop == MOUNT_SIDE_EAST) {
 				indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_EAST_ITEM, true);
-			else
+			} else {
 				indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
+			}
 
 			//INDIGO_DRIVER_DEBUG(DRIVER_NAME, "LST: %g, HA: %g, RA: %g, DEC: %g", lst, ha, (lst-(ha*12.0 / M_PI)), dec);
 			indigo_update_property(device, MOUNT_RAW_COORDINATES_PROPERTY, NULL);
@@ -178,14 +184,16 @@ static void synscan_connect_timer_callback(indigo_device* device) {
 			result = synscan_configure(device);
 			if (!result && !PRIVATE_DATA->udp) {
 				synscan_close(device);
-				if (strcmp(DEVICE_BAUDRATE_ITEM->text.value, "9600-8N1"))
+				if (strcmp(DEVICE_BAUDRATE_ITEM->text.value, "9600-8N1")) {
 					strcpy(DEVICE_BAUDRATE_ITEM->text.value, "9600-8N1");
-				else
+				} else {
 					strcpy(DEVICE_BAUDRATE_ITEM->text.value, "115200-8N1");
+				}
 				indigo_update_property(device, DEVICE_BAUDRATE_PROPERTY, "Trying to change baudrate");
 				result = synscan_open(device);
-				if (result)
+				if (result) {
 					result = synscan_configure(device);
+				}
 			}
 		}
 	}
@@ -279,8 +287,9 @@ static void mount_slew_timer_callback(indigo_device* device) {
 	int idx = synscan_select_best_encoder_point(device, translated_haPos, translated_decPos);
 
 	//  Abort slew if requested
-	if (PRIVATE_DATA->abort_motion)
+	if (PRIVATE_DATA->abort_motion) {
 		goto finish;
+	}
 
 	//  Start the first slew
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "1ST SLEW TO:  %g / %g     (HA %g / DEC %g)", haPos[idx], decPos[idx], ha, dec);
@@ -304,8 +313,9 @@ static void mount_slew_timer_callback(indigo_device* device) {
 	coords_eq_to_encoder2(device, ha, dec, haPos, decPos);
 
 	//  Abort slew if requested
-	if (PRIVATE_DATA->abort_motion)
+	if (PRIVATE_DATA->abort_motion) {
 		goto finish;
+	}
 
 	//  We use the same index as the preliminary slew to avoid issues with target crossing meridian during first slew
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "2ND SLEW TO:  %g / %g     (HA %g / DEC %g)", haPos[idx], decPos[idx], ha, dec);
@@ -319,8 +329,9 @@ static void mount_slew_timer_callback(indigo_device* device) {
 	PRIVATE_DATA->raAxisMode = kAxisModeIdle;
 
 	//  Abort slew if requested
-	if (PRIVATE_DATA->abort_motion)
+	if (PRIVATE_DATA->abort_motion) {
 		goto finish;
+	}
 
 	//**  Wait for LST to match target LST
 	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "HA slew complete.");
@@ -354,8 +365,9 @@ static void mount_slew_timer_callback(indigo_device* device) {
 	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "DEC slew complete.");
 
 	//  Abort slew if requested
-	if (PRIVATE_DATA->abort_motion)
+	if (PRIVATE_DATA->abort_motion) {
 		goto finish;
+	}
 
 	//**  Do precise DEC slew correction
 	//  Start new DEC slew
@@ -367,8 +379,9 @@ static void mount_slew_timer_callback(indigo_device* device) {
 	PRIVATE_DATA->decAxisMode = kAxisModeIdle;
 
 	//  Abort slew if requested
-	if (PRIVATE_DATA->abort_motion)
+	if (PRIVATE_DATA->abort_motion) {
 		goto finish;
+	}
 
 	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "DEC slew complete.");
 	message = "Slew complete.";
@@ -412,8 +425,9 @@ static void mount_slew_aa_timer_callback(indigo_device* device) {
 	int idx = synscan_select_best_encoder_point_aa(device, azPos, altPos);
 
 	//  Abort slew if requested
-	if (PRIVATE_DATA->abort_motion)
+	if (PRIVATE_DATA->abort_motion) {
 		goto finish;
+	}
 
 	//  Start the first slew
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "1ST SLEW TO:  %g / %g     (AZ %g / ALT %g)", azPos[idx], altPos[idx], az, alt);
@@ -438,8 +452,9 @@ static void mount_slew_aa_timer_callback(indigo_device* device) {
 //	coords_eq_to_encoder2(device, ha, dec, haPos, decPos);
 
 	//  Abort slew if requested
-	if (PRIVATE_DATA->abort_motion)
+	if (PRIVATE_DATA->abort_motion) {
 		goto finish;
+	}
 
 	//  We use the same index as the preliminary slew to avoid issues with target crossing meridian during first slew
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "2ND SLEW TO:  %g / %g     (HA %g / DEC %g)", azPos[idx], altPos[idx], az, alt);
@@ -453,8 +468,9 @@ static void mount_slew_aa_timer_callback(indigo_device* device) {
 	PRIVATE_DATA->raAxisMode = kAxisModeIdle;
 
 	//  Abort slew if requested
-	if (PRIVATE_DATA->abort_motion)
+	if (PRIVATE_DATA->abort_motion) {
 		goto finish;
+	}
 
 	//**  Wait for LST to match target LST
 	indigo_update_property(device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY, "AZ slew complete.");
@@ -488,8 +504,9 @@ static void mount_slew_aa_timer_callback(indigo_device* device) {
 	indigo_update_property(device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY, "ALT slew complete.");
 
 	//  Abort slew if requested
-	if (PRIVATE_DATA->abort_motion)
+	if (PRIVATE_DATA->abort_motion) {
 		goto finish;
+	}
 
 	//**  Do precise DEC slew correction
 	//  Start new DEC slew
@@ -501,8 +518,9 @@ static void mount_slew_aa_timer_callback(indigo_device* device) {
 	PRIVATE_DATA->decAxisMode = kAxisModeIdle;
 
 	//  Abort slew if requested
-	if (PRIVATE_DATA->abort_motion)
+	if (PRIVATE_DATA->abort_motion) {
 		goto finish;
+	}
 
 	indigo_update_property(device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY, "ALT slew complete.");
 	message = "Slew complete.";
@@ -567,8 +585,7 @@ void mount_handle_tracking_rate(indigo_device* device) {
 		MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
 		indigo_set_timer(device, 0, mount_update_tracking_rate_timer_callback, NULL);
-	}
-	else {
+	} else {
 		MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
 	}
@@ -783,8 +800,7 @@ void mount_handle_park(indigo_device* device) {
 			MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parking not started - mount is busy.");
 		}
-	}
-	else {
+	} else {
 		MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_PARK_PROPERTY, "Mount unparked.");
 	}
@@ -809,16 +825,17 @@ void mount_handle_home(indigo_device* device) {
 }
 
 static enum GuideRate mount_guide_rate(int rate) {
-	if (rate < 19)
+	if (rate < 19) {
 		return kGuideRate_x0_125;
-	else if (rate < 38)
+	} else if (rate < 38) {
 		return kGuideRate_x0_25;
-	else if (rate < 63)
+	} else if (rate < 63) {
 		return kGuideRate_x0_50;
-	else if (rate < 88)
+	} else if (rate < 88) {
 		return kGuideRate_x0_75;
-	else
+	} else {
 		return kGuideRate_x1_00;
+	}
 }
 
 static int mount_guide_rate_percent(enum GuideRate rate) {
@@ -947,8 +964,9 @@ void mount_handle_train_ppec(indigo_device *device) {
 		MOUNT_PEC_TRAINING_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_PEC_TRAINING_PROPERTY, "Updated PPEC training state");
 	}
-	if (MOUNT_PEC_TRAINIG_STARTED_ITEM->sw.value || MOUNT_PEC_TRAINIG_STARTED_ITEM->sw.value)
+	if (MOUNT_PEC_TRAINIG_STARTED_ITEM->sw.value || MOUNT_PEC_TRAINIG_STARTED_ITEM->sw.value) {
 		indigo_set_timer(device, 1, mount_train_ppec_callback, NULL);
+	}
 }
 
 // Code based on: https://stargazerslounge.com/topic/238364-eq8-tools-autohome-without-handset/

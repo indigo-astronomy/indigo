@@ -160,13 +160,15 @@ static void focuser_steps_handler(indigo_device *device) {
 	int position;
 	if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
 		position = (int)FOCUSER_POSITION_ITEM->number.value - (int)FOCUSER_STEPS_ITEM->number.value;
-		if (position < 0)
+		if (position < 0) {
 			position = 0;
+		}
 		sprintf(command, "M%04d#", position);
 	} else {
 		position = (int)FOCUSER_POSITION_ITEM->number.value + (int)FOCUSER_STEPS_ITEM->number.value;
-		if (position > 9999)
+		if (position > 9999) {
 			position = 9999;
+		}
 		sprintf(command, "M%04d#", position);
 	}
 	if (astromechanics_command(device, command, NULL)) {
@@ -204,9 +206,9 @@ static void focuser_position_handler(indigo_device *device) {
 	char command[16], response[16];
 	int position;
 	position = (int)FOCUSER_POSITION_ITEM->number.target;
-	if (position < 0)
+	if (position < 0) {
 		position = 0;
-	else if (position > 9999)
+	} else if (position > 9999)
 		position = 9999;
 	FOCUSER_POSITION_ITEM->number.target = position;
 	sprintf(command, "M%04d#", position);

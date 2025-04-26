@@ -25,7 +25,7 @@
 
 #include <indigo/indigo_dome_driver.h>
 
-#include "alpaca_common.h"
+#include "indigo_alpaca_common.h"
 
 typedef enum {
 	SHUTTER_OPEN = 0,

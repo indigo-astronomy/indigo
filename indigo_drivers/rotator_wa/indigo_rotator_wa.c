@@ -539,8 +539,9 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ROTATOR_RELATIVE_MOVE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- ROTATOR_RELATIVE_MOVE
-		if (ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || ROTATOR_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE)
+		if (ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || ROTATOR_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE) {
 			return INDIGO_OK;
+		}
 		indigo_property_copy_values(ROTATOR_RELATIVE_MOVE_PROPERTY, property, false);
 		ROTATOR_RELATIVE_MOVE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, ROTATOR_RELATIVE_MOVE_PROPERTY, NULL);
@@ -548,8 +549,9 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ROTATOR_POSITION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- ROTATOR_POSITION
-		if (ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || ROTATOR_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE)
+		if (ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE || ROTATOR_RELATIVE_MOVE_PROPERTY->state == INDIGO_BUSY_STATE) {
 			return INDIGO_OK;
+		}
 		indigo_property_copy_values(ROTATOR_POSITION_PROPERTY, property, false);
 		if (ROTATOR_ON_POSITION_SET_GOTO_ITEM->sw.value) {
 			ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;

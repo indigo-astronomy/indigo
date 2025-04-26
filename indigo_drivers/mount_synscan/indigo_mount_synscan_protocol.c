@@ -48,12 +48,13 @@ enum MountType {
 static const char hexDigit[] = "0123456789ABCDEF";
 
 static inline int hexValue(char h) {
-	if (h >= '0' && h <= '9')
+	if (h >= '0' && h <= '9') {
 		return h - '0';
-	else if (h >= 'A' && h <= 'F')
+	} else if (h >= 'A' && h <= 'F') {
 		return h - 'A' + 10;
-	else
+	} else {
 		return 0;
+	}
 }
 
 static const char* longToHex(long n) {
@@ -223,8 +224,9 @@ static bool synscan_command_with_long_result(indigo_device* device, char* cmd, l
 	if (!synscan_command(device, cmd, buffer)) {
 		return false;
 	}
-	if (val)
+	if (val) {
 		*val = hexResponseToLong(buffer);
+	}
 	return true;
 }
 
@@ -233,8 +235,9 @@ static bool synscan_command_with_code_result(indigo_device* device, char* cmd, l
 	if (!synscan_command(device, cmd, buffer)) {
 		return false;
 	}
-	if (val)
+	if (val) {
 		*val = hexToLong(buffer);
+	}
 	return true;
 }
 

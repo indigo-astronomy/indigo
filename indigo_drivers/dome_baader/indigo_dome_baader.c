@@ -505,8 +505,7 @@ static void dome_timer_callback(indigo_device *device) {
 		    PRIVATE_DATA->rain != rain ||
 		    PRIVATE_DATA->wind != wind ||
 		    PRIVATE_DATA->timeout != timeout ||
-		    PRIVATE_DATA->powercut != powercut)
-		{
+		    PRIVATE_DATA->powercut != powercut) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating X_EMERGENCY_CLOSE");
 			X_EMERGENCY_CLOSE_PROPERTY->state = INDIGO_OK_STATE;
 			X_EMERGENCY_RAIN_ITEM->light.value = rain ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;

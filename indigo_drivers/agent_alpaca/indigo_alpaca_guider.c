@@ -25,7 +25,7 @@
 
 #include <indigo/indigo_guider_driver.h>
 
-#include "alpaca_common.h"
+#include "indigo_alpaca_common.h"
 
 static indigo_alpaca_error alpaca_get_interfaceversion(indigo_alpaca_device *device, int version, int *value) {
 	*value = 3;
@@ -257,29 +257,32 @@ long indigo_alpaca_guider_set_command(indigo_alpaca_device *alpaca_device, int v
 	if (!strcmp(command, "guideratedeclination")) {
 		double value = 0;
 		indigo_alpaca_error result;
-		if (sscanf(param_1, "GuideRateDeclination=%lf", &value) == 1)
+		if (sscanf(param_1, "GuideRateDeclination=%lf", &value) == 1) {
 			result = alpaca_set_guideratedeclination(alpaca_device, version, value);
-		else
+		} else {
 			result = indigo_alpaca_error_InvalidValue;
+		}
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strcmp(command, "guideraterightascensionrate")) {
 		double value = 0;
 		indigo_alpaca_error result;
-		if (sscanf(param_1, "GuideRateRightAscension=%lf", &value) == 1)
+		if (sscanf(param_1, "GuideRateRightAscension=%lf", &value) == 1) {
 			result = alpaca_set_guideraterightascension(alpaca_device, version, value);
-		else
+		} else {
 			result = indigo_alpaca_error_InvalidValue;
+		}
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strcmp(command, "pulseguide")) {
 		int direction = 0;
 		double duration = 0;
 		indigo_alpaca_error result;
-		if (sscanf(param_1, "Direction=%d", &direction) == 1 && sscanf(param_2, "Duration=%lf", &duration) == 1)
+		if (sscanf(param_1, "Direction=%d", &direction) == 1 && sscanf(param_2, "Duration=%lf", &duration) == 1) {
 			result = alpaca_pulseguide(alpaca_device, version, direction, duration);
-		else
+		} else {
 			result = indigo_alpaca_error_InvalidValue;
+		}
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strncmp(command, "slew", 4)) {

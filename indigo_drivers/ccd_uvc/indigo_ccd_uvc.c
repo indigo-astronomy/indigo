@@ -225,17 +225,20 @@ static void ccd_connect_callback(indigo_device *device) {
 					if (format->bDescriptorSubtype == UVC_VS_FORMAT_UNCOMPRESSED || format->bDescriptorSubtype == UVC_VS_FORMAT_FRAME_BASED) {
 						uvc_frame_desc_t *frame = format->frame_descs;
 						while (frame) {
-							if (CCD_INFO_WIDTH_ITEM->number.value < frame->wWidth)
+							if (CCD_INFO_WIDTH_ITEM->number.value < frame->wWidth) {
 								CCD_INFO_WIDTH_ITEM->number.value = frame->wWidth;
-							if (CCD_INFO_HEIGHT_ITEM->number.value < frame->wHeight)
+							}
+							if (CCD_INFO_HEIGHT_ITEM->number.value < frame->wHeight) {
 								CCD_INFO_HEIGHT_ITEM->number.value = frame->wHeight;
+							}
 							if (CCD_MODE_PROPERTY->count == 0) {
 								CCD_FRAME_WIDTH_ITEM->number.value = frame->wWidth;
 								CCD_FRAME_HEIGHT_ITEM->number.value = frame->wHeight;
-								if (formats[frame_format].format == UVC_FRAME_FORMAT_GRAY16)
+								if (formats[frame_format].format == UVC_FRAME_FORMAT_GRAY16) {
 									CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = 16;
-								else
+								} else {
 									CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = 8;
+								}
 								PRIVATE_DATA->format = formats[frame_format].format;
 							}
 							CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = 0;
@@ -261,12 +264,14 @@ static void ccd_connect_callback(indigo_device *device) {
 				uint32_t value_32;
 				res = uvc_get_exposure_abs(PRIVATE_DATA->handle, &value_32, UVC_GET_MIN);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_get_exposure_abs(..., -> %d, UVC_GET_MIN) -> %s", value_32, uvc_strerror(res));
-				if (res == UVC_SUCCESS)
+				if (res == UVC_SUCCESS) {
 					CCD_EXPOSURE_ITEM->number.min = CCD_STREAMING_EXPOSURE_ITEM->number.min = value_32 / 10000.0;
+				}
 				res = uvc_get_exposure_abs(PRIVATE_DATA->handle, &value_32, UVC_GET_MAX);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_get_exposure_abs(..., -> %d, UVC_GET_MAX) -> %s", value_32, uvc_strerror(res));
-				if (res == UVC_SUCCESS)
+				if (res == UVC_SUCCESS) {
 					CCD_EXPOSURE_ITEM->number.max = CCD_STREAMING_EXPOSURE_ITEM->number.max = value_32 / 10000.0;
+				}
 				uint16_t value_16;
 				res = uvc_get_gain(PRIVATE_DATA->handle, &value_16, UVC_GET_INFO);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_get_gain(..., -> %d, UVC_GET_INFO) -> %s", value_16, uvc_strerror(res));
@@ -275,16 +280,19 @@ static void ccd_connect_callback(indigo_device *device) {
 					CCD_GAIN_PROPERTY->perm = value_16 & UVC_CTRL_FLAG_SET_CUR ? INDIGO_RW_PERM : INDIGO_RO_PERM;
 					res = uvc_get_gain(PRIVATE_DATA->handle, &value_16, UVC_GET_CUR);
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_get_gain(..., -> %d, UVC_GET_CUR) -> %s", value_16, uvc_strerror(res));
-					if (res == UVC_SUCCESS)
+					if (res == UVC_SUCCESS) {
 						CCD_GAIN_ITEM->number.value = CCD_GAIN_ITEM->number.target = value_16;
+					}
 					res = uvc_get_gain(PRIVATE_DATA->handle, &value_16, UVC_GET_MIN);
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_get_gain(..., -> %d, UVC_GET_MIN) -> %s", value_16, uvc_strerror(res));
-					if (res == UVC_SUCCESS)
+					if (res == UVC_SUCCESS) {
 						CCD_GAIN_ITEM->number.min = value_16;
+					}
 					res = uvc_get_gain(PRIVATE_DATA->handle, &value_16, UVC_GET_MAX);
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_get_gain(..., -> %d, UVC_GET_MAX) -> %s", value_16, uvc_strerror(res));
-					if (res == UVC_SUCCESS)
+					if (res == UVC_SUCCESS) {
 						CCD_GAIN_ITEM->number.max = value_16;
+					}
 				}
 				res = uvc_get_gamma(PRIVATE_DATA->handle, &value_16, UVC_GET_INFO);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_get_gamma(..., -> %d, UVC_GET_INFO) -> %s", value_16, uvc_strerror(res));
@@ -293,16 +301,19 @@ static void ccd_connect_callback(indigo_device *device) {
 					CCD_GAMMA_PROPERTY->perm = value_16 & UVC_CTRL_FLAG_SET_CUR ? INDIGO_RW_PERM : INDIGO_RO_PERM;
 					res = uvc_get_gamma(PRIVATE_DATA->handle, &value_16, UVC_GET_CUR);
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_get_gamma(..., -> %d, UVC_GET_CUR) -> %s", value_16, uvc_strerror(res));
-					if (res == UVC_SUCCESS)
+					if (res == UVC_SUCCESS) {
 						CCD_GAMMA_ITEM->number.value = CCD_GAMMA_ITEM->number.target = value_16;
+					}
 					res = uvc_get_gamma(PRIVATE_DATA->handle, &value_16, UVC_GET_MIN);
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_get_gamma(..., -> %d, UVC_GET_MIN) -> %s", value_16, uvc_strerror(res));
-					if (res == UVC_SUCCESS)
+					if (res == UVC_SUCCESS) {
 						CCD_GAMMA_ITEM->number.min = value_16;
+					}
 					res = uvc_get_gamma(PRIVATE_DATA->handle, &value_16, UVC_GET_MAX);
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_get_gamma(..., -> %d, UVC_GET_MAX) -> %s", value_16, uvc_strerror(res));
-					if (res == UVC_SUCCESS)
+					if (res == UVC_SUCCESS) {
 						CCD_GAMMA_ITEM->number.max = value_16;
+					}
 				}
 				PRIVATE_DATA->buffer = indigo_alloc_blob_buffer(FITS_HEADER_SIZE + (int)CCD_INFO_WIDTH_ITEM->number.value * (int)CCD_INFO_HEIGHT_ITEM->number.value * 6);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -349,10 +360,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				if (sscanf(item->name, "%d_%dx%d", &m, &w, &h) == 3) {
 					CCD_FRAME_WIDTH_ITEM->number.value = w;
 					CCD_FRAME_HEIGHT_ITEM->number.value = h;
-					if (formats[m].format == UVC_FRAME_FORMAT_GRAY16)
+					if (formats[m].format == UVC_FRAME_FORMAT_GRAY16) {
 						CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = 16;
-					else
+					} else {
 						CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = 8;
+					}
 					PRIVATE_DATA->format = formats[m].format;
 					uvc_error_t res = uvc_get_stream_ctrl_format_size(PRIVATE_DATA->handle, &PRIVATE_DATA->ctrl, formats[m].format, w, h, 0);
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_get_stream_ctrl_format_size(..., %d, %d, %d, 0) -> %s", formats[m].format, w, h, uvc_strerror(res));

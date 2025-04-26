@@ -370,12 +370,14 @@ static bool pmc8_get_position(indigo_device *device, int32_t *ha, int32_t *dec) 
 	int32_t raw_ha = 0, raw_dec = 0;
 	if (pmc8_command(device, "ESGp0!", response, sizeof(response), 0)) {
 		raw_ha = (int)strtol(response + 5, NULL, 16);
-		if (raw_ha & 0x800000)
+		if (raw_ha & 0x800000) {
 			raw_ha |= 0xFF000000;
+		}
 		if (pmc8_command(device, "ESGp1!", response, sizeof(response), 0)) {
 			raw_dec = (int)strtol(response + 5, NULL, 16);
-			if (raw_dec & 0x800000)
+			if (raw_dec & 0x800000) {
 				raw_dec |= 0xFF000000;
+			}
 			*ha = raw_ha;
 			*dec = raw_dec;
 			return true;
@@ -512,9 +514,9 @@ static void position_timer_callback(indigo_device *device) {
 				}
 			}
 			ra = lst - ha;
-			if (ra < 0)
+			if (ra < 0) {
 				ra += 24;
-			else if (ra > 24)
+			} else if (ra > 24)
 				ra -= 24;
 			indigo_eq_to_j2k(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
 			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
@@ -680,9 +682,9 @@ static void mount_abort_motion_handler(indigo_device *device) {
 
 static void mount_motion_handler(indigo_device *device) {
 	int rate = 0, direction = 0;
-	if (MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value)
+	if (MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value) {
 		rate = PRIVATE_DATA->rate[0];
-	else if (MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value)
+	} else if (MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value)
 		rate = 0x1000;
 	else if (MOUNT_SLEW_RATE_FIND_ITEM->sw.value)
 		rate = 0x3000;
@@ -696,16 +698,18 @@ static void mount_motion_handler(indigo_device *device) {
 		rate = 0;
 	}
 	if (MOUNT_MOTION_DEC_PROPERTY->state == INDIGO_BUSY_STATE) {
-		if (pmc8_move(device, 1, direction, rate))
+		if (pmc8_move(device, 1, direction, rate)) {
 			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
-		else
+		} else {
 			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 		indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
 	} else if (MOUNT_MOTION_RA_PROPERTY->state == INDIGO_BUSY_STATE) {
-		if (pmc8_move(device, 0, direction, rate))
+		if (pmc8_move(device, 0, direction, rate)) {
 			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
-		else
+		} else {
 			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 		indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
 	}
 }
@@ -752,10 +756,11 @@ static void mount_switch_connection_handler(indigo_device *device) {
 		} else if (CONNECTION_TCP_ITEM->sw.value) {
 			strcpy(DEVICE_PORT_ITEM->text.value, "tcp://192.168.47.1");
 		} else {
-			if (DEVICE_PORTS_PROPERTY->count > 1)
+			if (DEVICE_PORTS_PROPERTY->count > 1) {
 				strcpy(DEVICE_PORT_ITEM->text.value, DEVICE_PORTS_PROPERTY->items[1].name);
-			else
+			} else {
 				strcpy(DEVICE_PORT_ITEM->text.value, "");
+			}
 		}
 		DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, DEVICE_PORT_PROPERTY, NULL);
@@ -872,10 +877,11 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			} else if (CONNECTION_TCP_ITEM->sw.value) {
 				strcpy(DEVICE_PORT_ITEM->text.value, "tcp://192.168.47.1");
 			} else {
-				if (DEVICE_PORTS_PROPERTY->count > 1)
+				if (DEVICE_PORTS_PROPERTY->count > 1) {
 					strcpy(DEVICE_PORT_ITEM->text.value, DEVICE_PORTS_PROPERTY->items[1].name);
-				else
+				} else {
 					strcpy(DEVICE_PORT_ITEM->text.value, "");
+				}
 			}
 			DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, DEVICE_PORT_PROPERTY, NULL);

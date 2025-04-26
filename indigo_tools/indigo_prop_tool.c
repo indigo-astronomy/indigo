@@ -448,10 +448,11 @@ static void print_property_get_filtered(indigo_property *property, const char *m
 				sprintf(value_string[items_found], item->sw.value ? "ON" : "OFF");
 				break;
 			case INDIGO_LIGHT_VECTOR:
-				if (item->light.value)
+				if (item->light.value) {
 					sprintf(value_string[items_found], "ON");
-				else
+				} else {
 					sprintf(value_string[items_found], "OFF");
+				}
 				break;
 			case INDIGO_BLOB_VECTOR:
 				if ((save_blobs) && (!indigo_use_blob_urls) && (item->blob.size > 0) && (property->state == INDIGO_OK_STATE)) {
@@ -683,11 +684,11 @@ static indigo_result client_define_property(indigo_client *client, indigo_device
 				break;
 			case INDIGO_SWITCH_VECTOR:
 				for (i = 0; i< change_request.item_count; i++) {
-					if (!strcmp("ON", str_upper_case(change_request.value_string[i])))
+					if (!strcmp("ON", str_upper_case(change_request.value_string[i]))) {
 						bool_values[i] = true;
-					else if (!strcmp("OFF", str_upper_case(change_request.value_string[i])))
+					} else if (!strcmp("OFF", str_upper_case(change_request.value_string[i]))) {
 						bool_values[i] = false;
-					else {
+					} else {
 						/* should indicate error */
 					}
 				}

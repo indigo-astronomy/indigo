@@ -417,8 +417,9 @@ static void focuser_connect_callback(indigo_device *device) {
 			} else {
 				ret = AOFocuserGetConfig(PRIVATE_DATA->dev_id, &PRIVATE_DATA->config);
 
-				if (ret != AO_SUCCESS)
+				if (ret != AO_SUCCESS) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "AOFocuserGetConfig() failed, ret = %d", ret);
+				}
 			}
 
 			if (ret == AO_SUCCESS) {
@@ -479,8 +480,9 @@ static void focuser_connect_callback(indigo_device *device) {
 		indigo_delete_property(device, FOCUSER_TEMPERATURE_BOARD_PROPERTY, NULL);
 
 		AOReturn ret = AOFocuserStopMove(PRIVATE_DATA->dev_id);
-		if (ret != AO_SUCCESS)
+		if (ret != AO_SUCCESS) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "AOFocuserStopMove() failed, ret = %d", ret);
+		}
 
 		AOFocuserClose(PRIVATE_DATA->dev_id);
 
@@ -508,10 +510,11 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		// FOCUSER_REVERSE_MOTION
 		indigo_property_copy_values(FOCUSER_REVERSE_MOTION_PROPERTY, property, false);
 
-		if (focuser_config(device, MASK_REVERSE_DIRECTION, FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value))
+		if (focuser_config(device, MASK_REVERSE_DIRECTION, FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value)) {
 			FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-		else
+		} else {
 			FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 
 		indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
 
@@ -543,8 +546,9 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				/* Goto position */
 				AOReturn ret = AOFocuserMoveTo(PRIVATE_DATA->dev_id, (int)FOCUSER_POSITION_ITEM->number.target);
 
-				if (ret != AO_SUCCESS)
+				if (ret != AO_SUCCESS) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to move Oasis Focuser, ret = %d\n", ret);
+				}
 
 				indigo_set_timer(device, 0.5, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
 			} else {
@@ -584,10 +588,11 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 
 		int max_position = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target;
 
-		if (focuser_config(device, MASK_MAX_STEP, max_position))
+		if (focuser_config(device, MASK_MAX_STEP, max_position)) {
 			FOCUSER_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
-		else
+		} else {
 			FOCUSER_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 
 		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = max_position;
 		indigo_update_property(device, FOCUSER_LIMITS_PROPERTY, NULL);
@@ -598,10 +603,11 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 
 		int backlash = (int)FOCUSER_BACKLASH_ITEM->number.target;
 
-		if (focuser_config(device, MASK_BACKLASH, backlash))
+		if (focuser_config(device, MASK_BACKLASH, backlash)) {
 			FOCUSER_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
-		else
+		} else {
 			FOCUSER_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 
 		FOCUSER_BACKLASH_ITEM->number.value = backlash;
 		indigo_update_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
@@ -626,8 +632,9 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			int step = (int)((FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) ? (-FOCUSER_STEPS_ITEM->number.value) : FOCUSER_STEPS_ITEM->number.value);
 			AOReturn ret = AOFocuserMove(PRIVATE_DATA->dev_id, step);
 
-			if (ret != AO_SUCCESS)
+			if (ret != AO_SUCCESS) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to move Oasis Focuser, ret = %d\n", ret);
+			}
 
 			indigo_set_timer(device, 0.5, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
 		}
@@ -675,10 +682,11 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		// BEEP_ON_POWER_UP_PROPERTY
 		indigo_property_copy_values(BEEP_ON_POWER_UP_PROPERTY, property, false);
 
-		if (focuser_config(device, MASK_BEEP_ON_STARTUP, BEEP_ON_POWER_UP_ON_ITEM->sw.value))
+		if (focuser_config(device, MASK_BEEP_ON_STARTUP, BEEP_ON_POWER_UP_ON_ITEM->sw.value)) {
 			BEEP_ON_POWER_UP_PROPERTY->state = INDIGO_OK_STATE;
-		else
+		} else {
 			BEEP_ON_POWER_UP_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 
 		indigo_update_property(device, BEEP_ON_POWER_UP_PROPERTY, NULL);
 
@@ -687,10 +695,11 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		// BEEP_ON_MOVE_PROPERTY
 		indigo_property_copy_values(BEEP_ON_MOVE_PROPERTY, property, false);
 
-		if (focuser_config(device, MASK_BEEP_ON_MOVE, BEEP_ON_MOVE_ON_ITEM->sw.value))
+		if (focuser_config(device, MASK_BEEP_ON_MOVE, BEEP_ON_MOVE_ON_ITEM->sw.value)) {
 			BEEP_ON_MOVE_PROPERTY->state = INDIGO_OK_STATE;
-		else
+		} else {
 			BEEP_ON_MOVE_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 
 		indigo_update_property(device, BEEP_ON_MOVE_PROPERTY, NULL);
 
@@ -699,10 +708,11 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		// BACKLASH_DIRECTION_PROPERTY
 		indigo_property_copy_values(BACKLASH_DIRECTION_PROPERTY, property, false);
 
-		if (focuser_config(device, MASK_BACKLASH_DIRECTION, BACKLASH_DIRECTION_OUT_ITEM->sw.value))
+		if (focuser_config(device, MASK_BACKLASH_DIRECTION, BACKLASH_DIRECTION_OUT_ITEM->sw.value)) {
 			BACKLASH_DIRECTION_PROPERTY->state = INDIGO_OK_STATE;
-		else
+		} else {
 			BACKLASH_DIRECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 
 		indigo_update_property(device, BACKLASH_DIRECTION_PROPERTY, NULL);
 
@@ -735,10 +745,11 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		// BLUETOOTH_PROPERTY
 		indigo_property_copy_values(BLUETOOTH_PROPERTY, property, false);
 
-		if (focuser_config(device, MASK_BLUETOOTH, BLUETOOTH_ON_ITEM->sw.value))
+		if (focuser_config(device, MASK_BLUETOOTH, BLUETOOTH_ON_ITEM->sw.value)) {
 			BLUETOOTH_PROPERTY->state = INDIGO_OK_STATE;
-		else
+		} else {
 			BLUETOOTH_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 
 		indigo_update_property(device, BLUETOOTH_PROPERTY, NULL);
 
@@ -931,10 +942,11 @@ static indigo_device *focuser_create(int id) {
 	strcpy(private_data->custom_suffix, custom_suffix);
 	strcpy(private_data->bluetooth_name, bluetooth_name);
 
-	if (strlen(private_data->custom_suffix) > 0)
+	if (strlen(private_data->custom_suffix) > 0) {
 		sprintf(device->name, "%s #%s", "Oasis Focuser", private_data->custom_suffix);
-	else
+	} else {
 		sprintf(device->name, "%s", "Oasis Focuser");
+	}
 
 	memcpy(&private_data->config, &config, sizeof(AOFocuserConfig));
 

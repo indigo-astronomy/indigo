@@ -45,37 +45,42 @@ indigo_result indigo_gps_attach(indigo_device *device, const char* driver_name, 
 		if (indigo_device_attach(device, driver_name, version, INDIGO_INTERFACE_GPS) == INDIGO_OK) {
 			// -------------------------------------------------------------------------------- GPS_STATUS
 			GPS_STATUS_PROPERTY = indigo_init_light_property(NULL, device->name, GPS_STATUS_PROPERTY_NAME, GPS_SITE_GROUP, "Status", INDIGO_OK_STATE, 3);
-			if (GPS_STATUS_PROPERTY == NULL)
+			if (GPS_STATUS_PROPERTY == NULL) {
 				return INDIGO_FAILED;
+			}
 			indigo_init_light_item(GPS_STATUS_NO_FIX_ITEM, GPS_STATUS_NO_FIX_ITEM_NAME, "No Fix", INDIGO_IDLE_STATE);
 			indigo_init_light_item(GPS_STATUS_2D_FIX_ITEM, GPS_STATUS_2D_FIX_ITEM_NAME, "2D Fix", INDIGO_IDLE_STATE);
 			indigo_init_light_item(GPS_STATUS_3D_FIX_ITEM, GPS_STATUS_3D_FIX_ITEM_NAME, "3D Fix", INDIGO_IDLE_STATE);
 			// -------------------------------------------------------------------------------- GPS_GEOGRAPHIC_COORDINATES
 			GPS_GEOGRAPHIC_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GPS_SITE_GROUP, "Location", INDIGO_OK_STATE, INDIGO_RO_PERM, 4);
-			if (GPS_GEOGRAPHIC_COORDINATES_PROPERTY == NULL)
+			if (GPS_GEOGRAPHIC_COORDINATES_PROPERTY == NULL) {
 				return INDIGO_FAILED;
+			}
 			indigo_init_sexagesimal_number_item(GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, "Latitude (-S / +N)", -90, 90, 0, 0);
 			indigo_init_sexagesimal_number_item(GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, "Longitude (-W / +E)", -180, 360, 0, 0);
 			indigo_init_number_item(GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME, "Elevation (m)", 0, 9000, 0, 0);
 			indigo_init_number_item(GPS_GEOGRAPHIC_COORDINATES_ACCURACY_ITEM, GEOGRAPHIC_COORDINATES_ACCURACY_ITEM_NAME, "Position accuracy (+/-m)", 0, 200, 0, 0);
 			// -------------------------------------------------------------------------------- GPS_UTC_TIME
 			GPS_UTC_TIME_PROPERTY = indigo_init_text_property(NULL, device->name, UTC_TIME_PROPERTY_NAME, GPS_SITE_GROUP, "UTC time", INDIGO_OK_STATE, INDIGO_RO_PERM, 2);
-			if (GPS_UTC_TIME_PROPERTY == NULL)
+			if (GPS_UTC_TIME_PROPERTY == NULL) {
 				return INDIGO_FAILED;
+			}
 			GPS_UTC_TIME_PROPERTY->hidden = true;
 			indigo_init_text_item(GPS_UTC_ITEM, UTC_TIME_ITEM_NAME, "UTC Time", "0000-00-00T00:00:00");
 			indigo_init_text_item(GPS_UTC_OFFEST_ITEM, UTC_OFFSET_ITEM_NAME, "UTC Offset", "0"); /* step is 0.5 as there are timezones at 30 min */
 			// -------------------------------------------------------------------------------- GPS_ADVANCED
 			GPS_ADVANCED_PROPERTY = indigo_init_switch_property(NULL, device->name, GPS_ADVANCED_PROPERTY_NAME, GPS_ADVANCED_GROUP, "Show advanced status", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-			if (GPS_ADVANCED_PROPERTY == NULL)
+			if (GPS_ADVANCED_PROPERTY == NULL) {
 				return INDIGO_FAILED;
+			}
 			GPS_ADVANCED_PROPERTY->hidden = true;
 			indigo_init_switch_item(GPS_ADVANCED_ENABLED_ITEM, GPS_ADVANCED_ENABLED_ITEM_NAME, "Enable", false);
 			indigo_init_switch_item(GPS_ADVANCED_DISABLED_ITEM, GPS_ADVANCED_DISABLED_ITEM_NAME, "Disable", true);
 			// -------------------------------------------------------------------------------- GPS_ADVANCED_STATUS
 			GPS_ADVANCED_STATUS_PROPERTY = indigo_init_number_property(NULL, device->name, GPS_ADVANCED_STATUS_PROPERTY_MANE, GPS_ADVANCED_GROUP, "Advanced status", INDIGO_OK_STATE, INDIGO_RO_PERM, 5);
-			if (GPS_ADVANCED_STATUS_PROPERTY == NULL)
+			if (GPS_ADVANCED_STATUS_PROPERTY == NULL) {
 				return INDIGO_FAILED;
+			}
 			GPS_ADVANCED_STATUS_PROPERTY->hidden = true;
 			indigo_init_number_item(GPS_ADVANCED_STATUS_SVS_IN_USE_ITEM, GPS_ADVANCED_STATUS_SVS_IN_USE_ITEM_NAME, "SVs in use", 0, 36, 0, 0);
 			indigo_init_number_item(GPS_ADVANCED_STATUS_SVS_IN_VIEW_ITEM, GPS_ADVANCED_STATUS_SVS_IN_VIEW_ITEM_NAME, "SVs in view", 0, 36, 0, 0);
@@ -131,8 +136,9 @@ indigo_result indigo_gps_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match_changeable(GPS_GEOGRAPHIC_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GPS_GEOGRAPHIC_COORDINATES
 		indigo_property_copy_values(GPS_GEOGRAPHIC_COORDINATES_PROPERTY, property, false);
-		if (GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value < 0)
+		if (GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value < 0) {
 			GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value += 360;
+		}
 		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 		return INDIGO_OK;

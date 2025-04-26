@@ -102,9 +102,9 @@ static bool efa_command(indigo_device *device, uint8_t *packet_out, uint8_t *pac
 	for (int i = 0; i <= count; i++)
 		sum += packet_out[i + 1];
 	packet_out[count + 2] = (-sum) & 0xFF;
-	if (count == 3)
+	if (count == 3) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d <- %02X %02X %02X→%02X [%02X] %02X", PRIVATE_DATA->handle, packet_out[0], packet_out[1], packet_out[2], packet_out[3], packet_out[4], packet_out[5]);
-	else if (count == 4)
+	} else if (count == 4)
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d <- %02X %02X %02X→%02X [%02X %02X] %02X", PRIVATE_DATA->handle, packet_out[0], packet_out[1], packet_out[2], packet_out[3], packet_out[4], packet_out[5], packet_out[6]);
 	else if (count == 5)
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d <- %02X %02X %02X→%02X [%02X %02X %02X] %02X", PRIVATE_DATA->handle, packet_out[0], packet_out[1], packet_out[2], packet_out[3], packet_out[4], packet_out[5], packet_out[6], packet_out[7]);
@@ -116,10 +116,11 @@ static bool efa_command(indigo_device *device, uint8_t *packet_out, uint8_t *pac
 		for (int i = 0; i < 10; i++) {
 			long result = read(PRIVATE_DATA->handle, packet_in, 1);
 			if (result <= 0) {
-				if (result == 0 || errno == EAGAIN)
+				if (result == 0 || errno == EAGAIN) {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d -> TIMEOUT", PRIVATE_DATA->handle);
-				else
+				} else {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d -> ERROR (%s)", PRIVATE_DATA->handle, strerror(errno));
+				}
 				break;
 			}
 			if (packet_in[0] != 0x3B) {
@@ -128,18 +129,19 @@ static bool efa_command(indigo_device *device, uint8_t *packet_out, uint8_t *pac
 			}
 			result = read(PRIVATE_DATA->handle, packet_in + 1, 1);
 			if (result <= 0) {
-				if (result == 0 || errno == EAGAIN)
+				if (result == 0 || errno == EAGAIN) {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d -> TIMEOUT", PRIVATE_DATA->handle);
-				else
+				} else {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d -> ERROR (%s)", PRIVATE_DATA->handle, strerror(errno));
+				}
 				break;
 			}
 			count = packet_in[1];
 			result = indigo_read(PRIVATE_DATA->handle, (char *)packet_in + 2, count + 1);
 			if (result > 0) {
-				if (count == 3)
+				if (count == 3) {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d -> %02X %02X %02X→%02X [%02X] %02X", PRIVATE_DATA->handle, packet_in[0], packet_in[1], packet_in[2], packet_in[3], packet_in[4], packet_in[5]);
-				else if (count == 4)
+				} else if (count == 4)
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d -> %02X %02X %02X→%02X [%02X %02X] %02X", PRIVATE_DATA->handle, packet_in[0], packet_in[1], packet_in[2], packet_in[3], packet_in[4], packet_in[5], packet_in[6]);
 				else if (count == 5)
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d -> %02X %02X %02X→%02X [%02X %02X %02X] %02X", PRIVATE_DATA->handle, packet_in[0], packet_in[1], packet_in[2], packet_in[3], packet_in[4], packet_in[5], packet_in[6], packet_in[7]);
@@ -165,10 +167,11 @@ static bool efa_command(indigo_device *device, uint8_t *packet_out, uint8_t *pac
 				pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 				return packet_in[2] == packet_out[3] && packet_in[4] == packet_out[4];
 			} else {
-				if (result == 0 || errno == EAGAIN)
+				if (result == 0 || errno == EAGAIN) {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d -> TIMEOUT", PRIVATE_DATA->handle);
-				else
+				} else {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d -> ERROR (%s)", PRIVATE_DATA->handle, strerror(errno));
+				}
 				break;
 			}
 		}
@@ -278,8 +281,9 @@ static long focuser_position(indigo_device *device) {
 	uint8_t get_position_packet[16] = { SOM, 0x03, APP, FOC, 0x01, 0 };
 	if (efa_command(device, get_position_packet, response_packet)) {
 		long position = response_packet[5] << 16 | response_packet[6] << 8 | response_packet[7];
-		if (position & 0x800000)
+		if (position & 0x800000) {
 			position = -(position ^ 0xFFFFFF) - 1;
+		}
 		return position;
 	}
 	return 0;
@@ -305,8 +309,9 @@ static void focuser_goto(indigo_device *device, long target) {
 				goto failure;
 			while (true) {
 				if (efa_command(device, check_state_packet, response_packet)) {
-					if (response_packet[5] != 0x00)
+					if (response_packet[5] != 0x00) {
 						goto failure;
+					}
 				}
 				position = focuser_position(device);
 				FOCUSER_POSITION_ITEM->number.value = position;
@@ -328,8 +333,9 @@ static void focuser_goto(indigo_device *device, long target) {
 		FOCUSER_POSITION_ITEM->number.value = position;
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		if (efa_command(device, check_state_packet, response_packet)) {
-			if (response_packet[5] == 0xFE)
+			if (response_packet[5] == 0xFE) {
 				goto failure;
+			}
 			if (response_packet[5] == 0xFF) {
 				break;
 			}
@@ -491,10 +497,12 @@ static void focuser_connection_handler(indigo_device *device) {
 static void focuser_steps_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	long position = FOCUSER_POSITION_ITEM->number.value + (FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value ? 1 : -1) * FOCUSER_STEPS_ITEM->number.value;
-	if (position < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value)
+	if (position < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value) {
 		position = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
-	if (position > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value)
+	}
+	if (position > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value) {
 		position = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
+	}
 	focuser_goto(device, position);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -502,17 +510,20 @@ static void focuser_steps_handler(indigo_device *device) {
 static void focuser_position_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	long position = FOCUSER_POSITION_ITEM->number.value;
-	if (position < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value)
+	if (position < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value) {
 		position = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
-	if (position > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value)
+	}
+	if (position > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value) {
 		position = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
+	}
 	if (FOCUSER_ON_POSITION_SET_SYNC_ITEM->sw.value) {
 		uint8_t response_packet[16];
 		uint8_t sync_packet[16] = { SOM, 0x06, APP, FOC, 0x04, (position >> 16) & 0xFF, (position >> 8) & 0xFF, position & 0xFF, 0 };
-		if (efa_command(device, sync_packet, response_packet))
+		if (efa_command(device, sync_packet, response_packet)) {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-		else
+		} else {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 	} else {
 		focuser_goto(device, position);

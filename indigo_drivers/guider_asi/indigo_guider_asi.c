@@ -237,10 +237,11 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			}
 		}
 
-		if (PRIVATE_DATA->guide_relays[USB2ST4_SOUTH] || PRIVATE_DATA->guide_relays[USB2ST4_NORTH])
+		if (PRIVATE_DATA->guide_relays[USB2ST4_SOUTH] || PRIVATE_DATA->guide_relays[USB2ST4_NORTH]) {
 			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
-		else
+		} else {
 			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+		}
 
 		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 		return INDIGO_OK;
@@ -270,10 +271,11 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			}
 		}
 
-		if (PRIVATE_DATA->guide_relays[USB2ST4_EAST] || PRIVATE_DATA->guide_relays[USB2ST4_WEST])
+		if (PRIVATE_DATA->guide_relays[USB2ST4_EAST] || PRIVATE_DATA->guide_relays[USB2ST4_WEST]) {
 			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
-		else
+		} else {
 			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
+		}
 
 		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 		return INDIGO_OK;

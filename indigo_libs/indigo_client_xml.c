@@ -34,8 +34,9 @@
 static indigo_result xml_client_detach(indigo_device *device) {
 	assert(device != NULL);
 	indigo_adapter_context *device_context = (indigo_adapter_context *)(device->device_context);
-	if (device_context->output == NULL)
+	if (device_context->output == NULL) {
 		return INDIGO_OK;
+	}
 	indigo_uni_close(device_context->input);
 	indigo_uni_close(device_context->output);
 	return INDIGO_OK;

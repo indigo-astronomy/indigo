@@ -172,8 +172,9 @@ static void start_worker_thread(handler_data *data) {
 		*buffer_in = 0;
 		*buffer_out = 0;
 		result = read(client_socket, buffer_in, 1);
-		if (result <= 0)
+		if (result <= 0) {
 			break;
+		}
 		if (*buffer_in == 6) {
 			strcpy(buffer_out, "P");
 		} else if (*buffer_in == '#') {
@@ -182,16 +183,18 @@ static void start_worker_thread(handler_data *data) {
 			int i = 0;
 			while (i < sizeof(buffer_in)) {
 				result = read(client_socket, buffer_in + i, 1);
-				if (result <= 0)
+				if (result <= 0) {
 					break;
+				}
 				if (buffer_in[i] == '#') {
 					buffer_in[i] = 0;
 					break;
 				}
 				i++;
 			}
-			if (result == -1)
+			if (result == -1) {
 				break;
+			}
 			if (strcmp(buffer_in, "GVP") == 0) {
 				strcpy(buffer_out, "indigo#");
 			} else if (strcmp(buffer_in, "GR") == 0) {
@@ -334,10 +337,11 @@ static void start_worker_thread(handler_data *data) {
 			}
 			if (*buffer_out) {
 				indigo_write(client_socket, buffer_out, strlen(buffer_out));
-				if (*buffer_in == 'G')
+				if (*buffer_in == 'G') {
 					INDIGO_DRIVER_TRACE(LX200_SERVER_AGENT_NAME, "%d: '%s' -> '%s'", client_socket, buffer_in, buffer_out);
-				else
+				} else {
 					INDIGO_DRIVER_DEBUG(LX200_SERVER_AGENT_NAME, "%d: '%s' -> '%s'", client_socket, buffer_in, buffer_out);
+				}
 			} else {
 				INDIGO_DRIVER_DEBUG(LX200_SERVER_AGENT_NAME, "%d: '%s' -> ", client_socket, buffer_in);
 			}
@@ -521,8 +525,9 @@ static indigo_result agent_device_attach(indigo_device *device) {
 }
 
 static indigo_result agent_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	if (client!= NULL && client == DEVICE_PRIVATE_DATA->client)
+	if (client!= NULL && client == DEVICE_PRIVATE_DATA->client) {
 		return INDIGO_OK;
+	}
 	indigo_result result = INDIGO_OK;
 	if ((result = indigo_agent_enumerate_properties(device, client, property)) == INDIGO_OK) {
 		if (indigo_property_match(LX200_DEVICES_PROPERTY, property))
@@ -539,8 +544,9 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (client == DEVICE_PRIVATE_DATA->client)
+	if (client == DEVICE_PRIVATE_DATA->client) {
 		return INDIGO_OK;
+	}
 	if (indigo_property_match(LX200_DEVICES_PROPERTY, property)) {
 		indigo_property_copy_values(LX200_DEVICES_PROPERTY, property, false);
 		indigo_copy_name(MOUNT_EQUATORIAL_COORDINATES_PROPERTY->device, LX200_DEVICES_MOUNT_ITEM->text.value);
@@ -599,8 +605,9 @@ static indigo_result agent_client_attach(indigo_client *client) {
 }
 
 static indigo_result agent_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	if (device == CLIENT_PRIVATE_DATA->device)
+	if (device == CLIENT_PRIVATE_DATA->device) {
 		return INDIGO_OK;
+	}
 	if (strcmp(device->name, CLIENT_PRIVATE_DATA->lx200_devices_property->items[0].text.value) == 0) {
 		indigo_item *item;
 		if (strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME) == 0) {
@@ -617,8 +624,9 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 }
 
 static indigo_result agent_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	if (device == CLIENT_PRIVATE_DATA->device)
+	if (device == CLIENT_PRIVATE_DATA->device) {
 		return INDIGO_OK;
+	}
 	if (strcmp(device->name, CLIENT_PRIVATE_DATA->lx200_devices_property->items[0].text.value) == 0) {
 		agent_update_property(client, device, property, message);
 	}

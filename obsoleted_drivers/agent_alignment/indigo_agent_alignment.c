@@ -76,8 +76,9 @@ static indigo_result agent_device_attach(indigo_device *device) {
 }
 
 static indigo_result agent_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	if (client != NULL && client == FILTER_DEVICE_CONTEXT->client)
+	if (client != NULL && client == FILTER_DEVICE_CONTEXT->client) {
 		return INDIGO_OK;
+	}
 	int alignment_point_count = DEVICE_PRIVATE_DATA->alignment_point_count;
 	indigo_property **alignment_properties = DEVICE_PRIVATE_DATA->alignment_point_properties;
 	if (alignment_properties) {
@@ -92,8 +93,9 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (client == FILTER_DEVICE_CONTEXT->client)
+	if (client == FILTER_DEVICE_CONTEXT->client) {
 		return INDIGO_OK;
+	}
 	int alignment_point_count = DEVICE_PRIVATE_DATA->alignment_point_count;
 	indigo_property **alignment_properties = DEVICE_PRIVATE_DATA->alignment_point_properties;
 	indigo_device *mount = DEVICE_PRIVATE_DATA->mount;

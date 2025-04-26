@@ -106,10 +106,11 @@ static bool wemacro_write(indigo_device *device, uint8_t cmd, uint8_t a, uint8_t
 	for (int i = 0; i < 10; i++) {
 		crc = crc ^ out[i];
 		for (int j = 0; j < 8; j++) {
-			if (crc & 0x0001)
+			if (crc & 0x0001) {
 				crc = (crc >> 1) ^ 0xA001;
-			else
+			} else {
 				crc = crc >> 1;
+			}
 		}
 	}
 	out[10] = crc & 0xFF;
@@ -157,8 +158,9 @@ static char *wemacro_reader(indigo_device *device) {
 					X_RAIL_EXECUTE_COUNT_ITEM->number.value--;
 				}
 				if (X_RAIL_CONFIG_BACK_ITEM->sw.value) {
-					if (state == 0xf6)
+					if (state == 0xf6) {
 						X_RAIL_EXECUTE_PROPERTY->state = INDIGO_OK_STATE;
+					}
 				} else if (X_RAIL_EXECUTE_COUNT_ITEM->number.value == 0) {
 					X_RAIL_EXECUTE_PROPERTY->state = INDIGO_OK_STATE;
 				}

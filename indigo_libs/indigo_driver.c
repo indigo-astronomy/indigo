@@ -71,17 +71,21 @@ pthread_mutex_t indigo_device_enumeration_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 indigo_result indigo_try_global_lock(indigo_device *device) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-	if (indigo_is_sandboxed)
+	if (indigo_is_sandboxed) {
 		return INDIGO_OK;
-	if (device->master_device != NULL)
+	}
+	if (device->master_device != NULL) {
 		device = device->master_device;
-	if (device->lock != NULL)
+	}
+	if (device->lock != NULL) {
 		return INDIGO_FAILED;
+	}
 	char tmp_lock_file[255] = "/tmp/indigo_lock_";
 	strncat(tmp_lock_file, device->name, 250);
 	indigo_uni_handle *handle = indigo_uni_create_file(tmp_lock_file, INDIGO_LOG_DEBUG);
-	if (handle == NULL)
+	if (handle == NULL) {
 		return INDIGO_LOCK_ERROR;
+	}
 	if (!indigo_uni_lock_file(handle)) {
 		indigo_uni_close(&handle);
 		return INDIGO_LOCK_ERROR;
@@ -95,12 +99,15 @@ indigo_result indigo_try_global_lock(indigo_device *device) {
 
 indigo_result indigo_global_unlock(indigo_device *device) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-	if (indigo_is_sandboxed)
+	if (indigo_is_sandboxed) {
 		return INDIGO_OK;
-	if (device->master_device != NULL)
+	}
+	if (device->master_device != NULL) {
 		device = device->master_device;
-	if (device->lock == NULL)
+	}
+	if (device->lock == NULL) {
 		return INDIGO_FAILED;
+	}
 	indigo_uni_close(&device->lock);
 	char tmp_lock_file[255] = "/tmp/indigo_lock_";
 	strncat(tmp_lock_file, device->name, 250);
@@ -197,15 +204,17 @@ static bool make_config_file_name(char *device_name, int profile, const char *su
 	int path_end = snprintf(path, size, "%s", indigo_uni_config_folder());
 	if (indigo_uni_mkdir(path)) {
 		if (indigo_server_tcp_port == 7624 || indigo_is_ephemeral_port) {
-			if (profile)
+			if (profile) {
 				snprintf(path + path_end, size - path_end, "%c%s#%d%s", INDIGO_PATH_SEPATATOR, device_name, profile, suffix);
-			else
+			} else {
 				snprintf(path + path_end, size - path_end, "%c%s%s", INDIGO_PATH_SEPATATOR, device_name, suffix);
+			}
 		} else {
-			if (profile)
+			if (profile) {
 				snprintf(path + path_end, size - path_end, "%c%s#%d_%d%s", INDIGO_PATH_SEPATATOR, device_name, profile, indigo_server_tcp_port, suffix);
-			else
+			} else {
 				snprintf(path + path_end, size - path_end, "%c%s_%d%s", INDIGO_PATH_SEPATATOR, device_name, indigo_server_tcp_port, suffix);
+			}
 		}
 		char *space = strchr(path, ' ');
 		while (space != NULL) {
@@ -746,8 +755,9 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 	assert(property != NULL);
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
-		if (CONNECTION_PROPERTY->state == INDIGO_ALERT_STATE)
+		if (CONNECTION_PROPERTY->state == INDIGO_ALERT_STATE) {
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		}
 		indigo_token token = indigo_get_device_token(device->name);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (token > 0) {
@@ -1161,8 +1171,9 @@ int indigo_get_dst_state(void) {
 bool indigo_ignore_connection_change(indigo_device *device, indigo_property *request) {
 	indigo_item *connected_item = NULL;
 	indigo_item *disconnected_item = NULL;
-	if (CONNECTION_PROPERTY->state == INDIGO_BUSY_STATE)
+	if (CONNECTION_PROPERTY->state == INDIGO_BUSY_STATE) {
 		return true;
+	}
 	for (int i = 0; i < request->count; i++) {
 		indigo_item *item = request->items + i;
 		if (!strcmp(item->name, CONNECTION_CONNECTED_ITEM_NAME)) {
@@ -1174,32 +1185,38 @@ bool indigo_ignore_connection_change(indigo_device *device, indigo_property *req
 	// if CONNECTED and DISCONNECTED are set
 	if (connected_item != NULL && disconnected_item != NULL) {
 		// ON & ON and OFF & OFF is not valid
-		if (connected_item->sw.value == disconnected_item->sw.value)
+		if (connected_item->sw.value == disconnected_item->sw.value) {
 			return true;
+		}
 		/* REQUESTED == CURRENT is not a state change.
 		   Checking DISCONNECTED is not needed, as we already made sure CONNECTED = !DISCONNECTED
 		*/
-		if (connected_item->sw.value == CONNECTION_CONNECTED_ITEM->sw.value)
+		if (connected_item->sw.value == CONNECTION_CONNECTED_ITEM->sw.value) {
 			return true;
+		}
 	}
 	// if only CONNECTED is set
 	if (connected_item != NULL && disconnected_item == NULL) {
 		// CURRENT == REQUSTED is not a state change.
-		if (CONNECTION_CONNECTED_ITEM->sw.value == connected_item->sw.value)
+		if (CONNECTION_CONNECTED_ITEM->sw.value == connected_item->sw.value) {
 			return true;
+		}
 		/* request CONNECTED = OFF is illegal:
 		   1. If current CONNECTED = OFF -> not a state change.
 		   2. If current CONNECTED = ON -> reults in invalid state CONNECTED = OFF and DISCONNECTED = OFF.
 		*/
-		if (connected_item->sw.value == false)
+		if (connected_item->sw.value == false) {
 			return true;
+		}
 	}
 	// if only DISCONNECTED is set - analogous to CONNECTED
 	if (connected_item == NULL && disconnected_item != NULL) {
-		if (CONNECTION_DISCONNECTED_ITEM->sw.value == disconnected_item->sw.value)
+		if (CONNECTION_DISCONNECTED_ITEM->sw.value == disconnected_item->sw.value) {
 			return true;
-		if (disconnected_item->sw.value == false)
+		}
+		if (disconnected_item->sw.value == false) {
 			return true;
+		}
 	}
 	/* reqquest is valid */
 	return false;

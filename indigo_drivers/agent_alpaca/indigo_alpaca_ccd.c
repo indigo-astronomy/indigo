@@ -32,7 +32,7 @@
 
 #include <indigo/indigo_ccd_driver.h>
 
-#include "alpaca_common.h"
+#include "indigo_alpaca_common.h"
 
 static indigo_alpaca_error alpaca_get_interfaceversion(indigo_alpaca_device *device, int version, int *value) {
 	*value = 3;
@@ -1211,28 +1211,31 @@ long indigo_alpaca_ccd_set_command(indigo_alpaca_device *alpaca_device, int vers
 	if (!strcmp(command, "binx")) {
 		int value = 0;
 		indigo_alpaca_error result;
-		if (sscanf(param_1, "BinX=%d", &value) == 1)
+		if (sscanf(param_1, "BinX=%d", &value) == 1) {
 			result = alpaca_set_binx(alpaca_device, version, value);
-		else
+		} else {
 			result = indigo_alpaca_error_InvalidValue;
+		}
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strcmp(command, "biny")) {
 		int value = 0;
 		indigo_alpaca_error result;
-		if (sscanf(param_1, "BinY=%d", &value) == 1)
+		if (sscanf(param_1, "BinY=%d", &value) == 1) {
 			result = alpaca_set_biny(alpaca_device, version, value);
-		else
+		} else {
 			result = indigo_alpaca_error_InvalidValue;
+		}
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strcmp(command, "setccdtemperature")) {
 		double value = 0;
 		indigo_alpaca_error result;
-		if (sscanf(param_1, "SetCCDTemperature=%lf", &value) == 1)
+		if (sscanf(param_1, "SetCCDTemperature=%lf", &value) == 1) {
 			result = alpaca_set_setccdtemperature(alpaca_device, version, value);
-		else
+		} else {
 			result = indigo_alpaca_error_InvalidValue;
+		}
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strcmp(command, "cooleron")) {
@@ -1243,64 +1246,71 @@ long indigo_alpaca_ccd_set_command(indigo_alpaca_device *alpaca_device, int vers
 	if (!strcmp(command, "startx")) {
 		double value = 0;
 		indigo_alpaca_error result;
-		if (sscanf(param_1, "StartX=%lf", &value) == 1)
+		if (sscanf(param_1, "StartX=%lf", &value) == 1) {
 			result = alpaca_set_startx(alpaca_device, version, (int)value);
-		else
+		} else {
 			result = indigo_alpaca_error_InvalidValue;
+		}
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strcmp(command, "starty")) {
 		double value = 0;
 		indigo_alpaca_error result;
-		if (sscanf(param_1, "StartY=%lf", &value) == 1)
+		if (sscanf(param_1, "StartY=%lf", &value) == 1) {
 			result = alpaca_set_starty(alpaca_device, version, (int)value);
-		else
+		} else {
 			result = indigo_alpaca_error_InvalidValue;
+		}
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strcmp(command, "numx")) {
 		double value = 0;
 		indigo_alpaca_error result;
-		if (sscanf(param_1, "NumX=%lf", &value) == 1)
+		if (sscanf(param_1, "NumX=%lf", &value) == 1) {
 			result = alpaca_set_numx(alpaca_device, version, (int)value);
-		else
+		} else {
 			result = indigo_alpaca_error_InvalidValue;
+		}
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strcmp(command, "numy")) {
 		double value = 0;
 		indigo_alpaca_error result;
-		if (sscanf(param_1, "NumY=%lf", &value) == 1)
+		if (sscanf(param_1, "NumY=%lf", &value) == 1) {
 			result = alpaca_set_numy(alpaca_device, version, (int)value);
-		else
+		} else {
 			result = indigo_alpaca_error_InvalidValue;
+		}
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strcmp(command, "gain")) {
 		int value = 0;
 		indigo_alpaca_error result;
-		if (sscanf(param_1, "Gain=%d", &value) == 1)
+		if (sscanf(param_1, "Gain=%d", &value) == 1) {
 			result = alpaca_set_gain(alpaca_device, version, value);
-		else
+		} else {
 			result = indigo_alpaca_error_InvalidValue;
+		}
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strcmp(command, "offset")) {
 		int value = 0;
 		indigo_alpaca_error result;
-		if (sscanf(param_1, "Offset=%d", &value) == 1)
+		if (sscanf(param_1, "Offset=%d", &value) == 1) {
 			result = alpaca_set_offset(alpaca_device, version, value);
-		else
+		} else {
 			result = indigo_alpaca_error_InvalidValue;
+		}
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strcmp(command, "readoutmode")) {
 		int value = 0;
 		indigo_alpaca_error result;
-		if (sscanf(param_1, "ReadoutMode=%d", &value) == 1)
+		if (sscanf(param_1, "ReadoutMode=%d", &value) == 1) {
 			result = alpaca_set_readoutmode(alpaca_device, version, value);
-		else
+		} else {
 			result = indigo_alpaca_error_InvalidValue;
+		}
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strcmp(command, "startexposure")) {

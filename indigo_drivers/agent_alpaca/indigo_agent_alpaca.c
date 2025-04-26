@@ -47,7 +47,7 @@
 #include <indigo/indigo_server_tcp.h>
 
 #include "indigo_agent_alpaca.h"
-#include "alpaca_common.h"
+#include "indigo_alpaca_common.h"
 
 #define PRIVATE_DATA													private_data
 
@@ -396,8 +396,9 @@ static bool alpaca_v1_api_handler(indigo_uni_handle *handle, char *method, char 
 				strncpy(args[count++], token, 128);
 			}
 		}
-		if (count > 1)
+		if (count > 1) {
 			qsort(args, count, 128, string_cmp);
+		}
 		long index = snprintf(buffer, INDIGO_BUFFER_SIZE, "{ ");
 		long length = indigo_alpaca_set_command(alpaca_device, 1, command, buffer + index, INDIGO_BUFFER_SIZE - index, args[0], args[1]);
 		if (length > 0) {
@@ -471,8 +472,9 @@ static indigo_result agent_device_attach(indigo_device *device) {
 }
 
 static indigo_result agent_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	if (client == indigo_agent_alpaca_client)
+	if (client == indigo_agent_alpaca_client) {
 		return INDIGO_OK;
+	}
 	indigo_define_matching_property(AGENT_DISCOVERY_PROPERTY);
 	indigo_define_matching_property(AGENT_DEVICES_PROPERTY);
 	indigo_define_matching_property(AGENT_CAMERA_BAYERPAT_PROPERTY);
@@ -483,8 +485,9 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (client == indigo_agent_alpaca_client)
+	if (client == indigo_agent_alpaca_client) {
 		return INDIGO_OK;
+	}
 	if (indigo_property_match(AGENT_DISCOVERY_PROPERTY, property)) {
 		indigo_property_copy_values(AGENT_DISCOVERY_PROPERTY, property, false);
 		shutdown_discovery_server();
@@ -548,8 +551,9 @@ static indigo_result agent_device_detach(indigo_device *device) {
 // -------------------------------------------------------------------------------- INDIGO agent client implementation
 
 static indigo_result agent_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	if (device == indigo_agent_alpaca_device)
+	if (device == indigo_agent_alpaca_device) {
 		return INDIGO_OK;
+	}
 	indigo_alpaca_device *alpaca_device = alpaca_devices;
 	while (alpaca_device) {
 		if (!strcmp(property->device, alpaca_device->indigo_device))

@@ -88,10 +88,12 @@ static indigo_result json_define_property(indigo_client *client, indigo_device *
 	assert(device != NULL);
 	assert(client != NULL);
 	assert(property != NULL);
-	if (!indigo_reshare_remote_devices && device->is_remote)
+	if (!indigo_reshare_remote_devices && device->is_remote) {
 		return INDIGO_OK;
-	if (client->version == INDIGO_VERSION_NONE)
+	}
+	if (client->version == INDIGO_VERSION_NONE) {
 		return INDIGO_OK;
+	}
 	pthread_mutex_lock(&json_mutex);
 	indigo_adapter_context *client_context = (indigo_adapter_context *)client->client_context;
 	assert(client_context != NULL);
@@ -210,14 +212,17 @@ static indigo_result json_update_property(indigo_client *client, indigo_device *
 	assert(device != NULL);
 	assert(client != NULL);
 	assert(property != NULL);
-	if (!indigo_reshare_remote_devices && device->is_remote)
+	if (!indigo_reshare_remote_devices && device->is_remote) {
 		return INDIGO_OK;
-	if (client->version == INDIGO_VERSION_NONE)
+	}
+	if (client->version == INDIGO_VERSION_NONE) {
 		return INDIGO_OK;
+	}
 	indigo_adapter_context *client_context = (indigo_adapter_context *)client->client_context;
 	indigo_uni_handle **handle = client_context->output;
-	if (handle == NULL)
+	if (handle == NULL) {
 		return INDIGO_OK;
+	}
 	pthread_mutex_lock(&json_mutex);
 	assert(client_context != NULL);
 	long buffer_size = JSON_BUFFER_SIZE;
@@ -320,10 +325,12 @@ static indigo_result json_delete_property(indigo_client *client, indigo_device *
 	assert(device != NULL);
 	assert(client != NULL);
 	assert(property != NULL);
-	if (!indigo_reshare_remote_devices && device->is_remote)
+	if (!indigo_reshare_remote_devices && device->is_remote) {
 		return INDIGO_OK;
-	if (client->version == INDIGO_VERSION_NONE)
+	}
+	if (client->version == INDIGO_VERSION_NONE) {
 		return INDIGO_OK;
+	}
 	pthread_mutex_lock(&json_mutex);
 	indigo_adapter_context *client_context = (indigo_adapter_context *)client->client_context;
 	assert(client_context != NULL);
@@ -331,10 +338,11 @@ static indigo_result json_delete_property(indigo_client *client, indigo_device *
 	char *output_buffer = indigo_safe_malloc(JSON_BUFFER_SIZE);
 	char *pnt = output_buffer;
 	long size;
-	if (*property->name == 0)
+	if (*property->name == 0) {
 		size = sprintf(pnt, "{ \"deleteProperty\": { \"device\": \"%s\"", device->name);
-	else
+	} else {
 		size = sprintf(pnt, "{ \"deleteProperty\": { \"device\": \"%s\", \"name\": \"%s\"", property->device, property->name);
+	}
 	pnt += size;
 	if (message) {
 		size = sprintf(pnt, ", \"message\": \"%s\" } }", message);
@@ -342,10 +350,11 @@ static indigo_result json_delete_property(indigo_client *client, indigo_device *
 		size = sprintf(pnt, " } }");
 	}
 	size += (long)(pnt - output_buffer);
-	if (client_context->web_socket)
+	if (client_context->web_socket) {
 		ws_write(*handle, output_buffer, size);
-	else
+	} else {
 		indigo_uni_write(*handle, output_buffer, size);
+	}
 	if ((client_context->web_socket ? ws_write(*handle, output_buffer, size) : indigo_uni_write(*handle, output_buffer, size)) < 0) {
 		indigo_uni_close(client_context->input);
 		indigo_uni_close(client_context->output);
@@ -358,8 +367,9 @@ static indigo_result json_delete_property(indigo_client *client, indigo_device *
 static indigo_result json_message_property(indigo_client *client, indigo_device *device, const char *message) {
 	assert(device != NULL);
 	assert(client != NULL);
-	if (!indigo_reshare_remote_devices && device->is_remote)
+	if (!indigo_reshare_remote_devices && device->is_remote) {
 		return INDIGO_OK;
+	}
 	pthread_mutex_lock(&json_mutex);
 	indigo_adapter_context *client_context = (indigo_adapter_context *)client->client_context;
 	assert(client_context != NULL);

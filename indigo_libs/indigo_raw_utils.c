@@ -422,10 +422,12 @@ indigo_result indigo_selection_psf(indigo_raw_type raw_type, const void *data, d
 		return INDIGO_FAILED;
 	int xx = (int)round(x);
 	int yy = (int)round(y);
-	if (xx < radius || width - radius < xx)
+	if (xx < radius || width - radius < xx) {
 		return INDIGO_FAILED;
-	if (yy < radius || height - radius < yy)
+	}
+	if (yy < radius || height - radius < yy) {
 		return INDIGO_FAILED;
+	}
 	if ((data == NULL) || (hfd == NULL) || (peak == NULL))
 		return INDIGO_FAILED;
 
@@ -433,8 +435,9 @@ indigo_result indigo_selection_psf(indigo_raw_type raw_type, const void *data, d
 	int background_count = 0;
 
 	int *values = (int*)malloc(8 * radius * sizeof(int));
-	if (values == NULL)
+	if (values == NULL) {
 		return INDIGO_FAILED;
+	}
 
 	int ce = xx + radius, le = yy + radius;
 	int cb = xx - radius, lb = yy - radius;
@@ -479,8 +482,9 @@ indigo_result indigo_selection_psf(indigo_raw_type raw_type, const void *data, d
 				values[background_count] = (int)value;
 				background_count++;
 			}
-			if (value > max)
+			if (value > max) {
 				max = value;
+			}
 		}
 	}
 
@@ -595,19 +599,22 @@ indigo_result indigo_selection_psf(indigo_raw_type raw_type, const void *data, d
 					}
 				}
 				if (value <= half_max) {
-					if (value == previous)
+					if (value == previous) {
 						d3[d] = k;
-					else
+					} else {
 						d3[d] = k - 1 + (previous - half_max) / (previous - value);
+					}
 					break;
 				}
-				if (value < previous)
+				if (value < previous) {
 					previous = value;
+				}
 			}
 		}
 		double tmp = (d3[0] + d3[1] + d3[2] + d3[3]) / 2;
-		if (tmp < 1 || tmp > 2 * radius)
+		if (tmp < 1 || tmp > 2 * radius) {
 			tmp = 2 * radius + 1;
+		}
 		*fwhm = tmp;
 	}
 	return INDIGO_OK;
@@ -643,10 +650,12 @@ indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void
 
 	if ((width <= 2 * radius + 1) || (height <= 2 * radius + 1) || radius > MAX_RADIUS)
 		return INDIGO_FAILED;
-	if (xx < radius || width - radius < xx)
+	if (xx < radius || width - radius < xx) {
 		return INDIGO_FAILED;
-	if (yy < radius || height - radius < yy)
+	}
+	if (yy < radius || height - radius < yy) {
 		return INDIGO_FAILED;
+	}
 	if ((data == NULL) || (digest == NULL))
 		return INDIGO_FAILED;
 
@@ -1212,10 +1221,12 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 }
 
 indigo_result indigo_donuts_frame_digest_clipped(indigo_raw_type raw_type, const void *data, const int width, const int height, const int include_left, const int include_top, const int include_width, const int include_height, indigo_frame_digest *digest) {
-	if (include_width <= 0)
+	if (include_width <= 0) {
 		return INDIGO_FAILED;
-	if (include_height <= 0)
+	}
+	if (include_height <= 0) {
 		return INDIGO_FAILED;
+	}
 	if ((data == NULL) || (digest == NULL))
 		return INDIGO_FAILED;
 
@@ -1454,8 +1465,9 @@ indigo_result indigo_donuts_frame_digest_clipped(indigo_raw_type raw_type, const
 indigo_result indigo_init_saturation_mask(const int width, const int height, uint8_t **mask) {
 	int size = width * height;
 	uint8_t *buf = indigo_safe_malloc(size * sizeof(uint8_t));
-	if (buf == NULL)
+	if (buf == NULL) {
 		return INDIGO_FAILED;
+	}
 
 	memset(buf, 1, size);
 	*mask = buf;
@@ -2177,8 +2189,9 @@ double indigo_guider_reponse(double p_gain, double i_gain, double guide_cycle_ti
 }
 
 indigo_result indigo_calculate_drift(const indigo_frame_digest *ref, const indigo_frame_digest *new_digest, double *drift_x, double *drift_y) {
-	if (ref == NULL || new_digest == NULL || drift_x == NULL || drift_y == NULL)
+	if (ref == NULL || new_digest == NULL || drift_x == NULL || drift_y == NULL) {
 		return INDIGO_FAILED;
+	}
 	if ((ref->width != new_digest->width) || (ref->height != new_digest->height))
 		return INDIGO_FAILED;
 	if (ref->algorithm == centroid) {
@@ -2588,8 +2601,9 @@ indigo_result indigo_make_psf_map(indigo_raw_type image_raw_type, const void *im
 				label = "peak";
 				break;
 		}
-		if (i > used_stars)
+		if (i > used_stars) {
 			memcpy(stars + used_stars, star, sizeof(indigo_star_detection));
+		}
 		used_stars++;
 		//INDIGO_DEBUG(indigo_debug("%g %g %g %g", star->x, star->y, fwhm, hfd, peak));
 	}
@@ -2619,22 +2633,27 @@ indigo_result indigo_make_psf_map(indigo_raw_type image_raw_type, const void *im
 			int ii = jj +  i;
 			if (count > 0) {
 				avg = avg / count;
-				if (avg < min_psf)
+				if (avg < min_psf) {
 					min_psf = avg;
-				if (avg > max_psf)
+				}
+				if (avg > max_psf) {
 					max_psf = avg;
+				}
 				psfs[ii] = avg;
 			} else {
 				psfs[ii] = 0;
 			}
-			if (map_raw_type == INDIGO_RAW_RGBA32)
+			if (map_raw_type == INDIGO_RAW_RGBA32) {
 				map_data[ii + 3] = 255;
+			}
 		}
 	}
-	if (psf_min)
+	if (psf_min) {
 		*psf_min = min_psf;
-	if (psf_max)
+	}
+	if (psf_max) {
 		*psf_max = max_psf;
+	}
 	indigo_log("Inspect %s: Star count = %d, MIN = %g, MAX = %g", label, last_star - first_star, min_psf, max_psf);
 	// create PSF map from PSF averages
 	double psf_scale = (max_psf - min_psf) / 8;
@@ -2653,8 +2672,9 @@ indigo_result indigo_make_psf_map(indigo_raw_type image_raw_type, const void *im
 				map_data[iii] = map_data[iii + 1] = 0;
 				map_data[iii + 2] = 255;
 			}
-			if (map_raw_type == INDIGO_RAW_RGBA32)
+			if (map_raw_type == INDIGO_RAW_RGBA32) {
 				map_data[iii + 3] = 255;
+			}
 		}
 	}
 // draw stars over PSF map
@@ -2930,8 +2950,9 @@ static double focus_error(const int width, const int height, double rho1, double
 	line_intersection(m2, b2, m3, b3, &x23, &y23);
 	double x_m = (x12 + x23) / 2;
 	double y_m = (y12 + y23) / 2;
-	if (x_m < w10 || x_m > w90 || y_m < h10 || y_m > h90)
+	if (x_m < w10 || x_m > w90 || y_m < h10 || y_m > h90) {
 		return INFINITY;
+	}
 	double x2, y2;
 	line_intersection(m1, b1, m3, b3, &x2, &y2);
 	return sqrt((x2 - x_m) * (x2 - x_m) + (y2 - y_m) * (y2 - y_m));

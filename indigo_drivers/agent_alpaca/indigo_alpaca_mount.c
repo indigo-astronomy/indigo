@@ -25,7 +25,7 @@
 
 #include <indigo/indigo_mount_driver.h>
 
-#include "alpaca_common.h"
+#include "indigo_alpaca_common.h"
 
 static indigo_alpaca_error alpaca_get_interfaceversion(indigo_alpaca_device *device, int version, int *value) {
 	*value = 3;
@@ -900,19 +900,21 @@ long indigo_alpaca_mount_set_command(indigo_alpaca_device *alpaca_device, int ve
 	if (!strcmp(command, "guideratedeclination")) {
 		double value = 0;
 		indigo_alpaca_error result;
-		if (sscanf(param_1, "GuideRateDeclination=%lf", &value) == 1)
+		if (sscanf(param_1, "GuideRateDeclination=%lf", &value) == 1) {
 			result = alpaca_set_guideratedeclination(alpaca_device, version, value);
-		else
+		} else {
 			result = indigo_alpaca_error_InvalidValue;
+		}
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strcmp(command, "guideraterightascension")) {
 		double value = 0;
 		indigo_alpaca_error result;
-		if (sscanf(param_1, "GuideRateRightAscension=%lf", &value) == 1)
+		if (sscanf(param_1, "GuideRateRightAscension=%lf", &value) == 1) {
 			result = alpaca_set_guideraterightascension(alpaca_device, version, value);
-		else
+		} else {
 			result = indigo_alpaca_error_InvalidValue;
+		}
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strcmp(command, "tracking")) {
@@ -923,28 +925,31 @@ long indigo_alpaca_mount_set_command(indigo_alpaca_device *alpaca_device, int ve
 	if (!strcmp(command, "trackingrate")) {
 		int value = 0;
 		indigo_alpaca_error result;
-		if (sscanf(param_1, "TrackingRate=%d", &value) == 1)
+		if (sscanf(param_1, "TrackingRate=%d", &value) == 1) {
 			result = alpaca_set_trackingrate(alpaca_device, version, value);
-		else
+		} else {
 			result = indigo_alpaca_error_InvalidValue;
+		}
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strcmp(command, "targetdeclination")) {
 		double value = 0;
 		indigo_alpaca_error result;
-		if (sscanf(param_1, "TargetDeclination=%lf", &value) == 1)
+		if (sscanf(param_1, "TargetDeclination=%lf", &value) == 1) {
 			result = alpaca_set_targetdeclination(alpaca_device, version, value);
-		else
+		} else {
 			result = indigo_alpaca_error_InvalidValue;
+		}
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strcmp(command, "targetrightascension")) {
 		double value = 0;
 		indigo_alpaca_error result;
-		if (sscanf(param_1, "TargetRightAscension=%lf", &value) == 1)
+		if (sscanf(param_1, "TargetRightAscension=%lf", &value) == 1) {
 			result = alpaca_set_targetrightascension(alpaca_device, version, value);
-		else
+		} else {
 			result = indigo_alpaca_error_InvalidValue;
+		}
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strcmp(command, "park")) {
@@ -975,30 +980,33 @@ long indigo_alpaca_mount_set_command(indigo_alpaca_device *alpaca_device, int ve
 		double rightascension = 0;
 		double declination = 0;
 		indigo_alpaca_error result;
-		if (sscanf(param_1, "Declination=%lf", &declination) == 1 && sscanf(param_2, "RightAscension=%lf", &rightascension) == 1)
+		if (sscanf(param_1, "Declination=%lf", &declination) == 1 && sscanf(param_2, "RightAscension=%lf", &rightascension) == 1) {
 			result = alpaca_slewtocoordinates(alpaca_device, version, rightascension, declination);
-		else
+		} else {
 			result = indigo_alpaca_error_InvalidValue;
+		}
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strcmp(command, "slewtocoordinatesasync")) {
 		double rightascension = 0;
 		double declination = 0;
 		indigo_alpaca_error result;
-		if (sscanf(param_1, "Declination=%lf", &declination) == 1 && sscanf(param_2, "RightAscension=%lf", &rightascension) == 1)
+		if (sscanf(param_1, "Declination=%lf", &declination) == 1 && sscanf(param_2, "RightAscension=%lf", &rightascension) == 1) {
 			result = alpaca_slewtocoordinatesasync(alpaca_device, version, rightascension, declination);
-		else
+		} else {
 			result = indigo_alpaca_error_InvalidValue;
+		}
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strcmp(command, "synctocoordinates")) {
 		double rightascension = 0;
 		double declination = 0;
 		indigo_alpaca_error result;
-		if (sscanf(param_1, "Declination=%lf", &declination) == 1 && sscanf(param_2, "RightAscension=%lf", &rightascension) == 1)
+		if (sscanf(param_1, "Declination=%lf", &declination) == 1 && sscanf(param_2, "RightAscension=%lf", &rightascension) == 1) {
 			result = alpaca_synctocoordinates(alpaca_device, version, rightascension, declination);
-		else
+		} else {
 			result = indigo_alpaca_error_InvalidValue;
+		}
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", indigo_alpaca_error_NotImplemented, indigo_alpaca_error_string(indigo_alpaca_error_NotImplemented));

@@ -264,10 +264,11 @@ static bool asi_open(indigo_device *device) {
 		}
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ASIInitCamera(%d) = %d", id, res);
 		if (PRIVATE_DATA->buffer == NULL) {
-			if (PRIVATE_DATA->info.IsColorCam)
+			if (PRIVATE_DATA->info.IsColorCam) {
 				PRIVATE_DATA->buffer_size = PRIVATE_DATA->info.MaxHeight*PRIVATE_DATA->info.MaxWidth*3 + FITS_HEADER_SIZE;
-			else
+			} else {
 				PRIVATE_DATA->buffer_size = PRIVATE_DATA->info.MaxHeight*PRIVATE_DATA->info.MaxWidth*2 + FITS_HEADER_SIZE;
+			}
 
 			PRIVATE_DATA->buffer = (unsigned char*)indigo_alloc_blob_buffer(PRIVATE_DATA->buffer_size);
 		}
@@ -421,10 +422,11 @@ static bool asi_set_cooler(indigo_device *device, bool status, double target, do
 
 	if (PRIVATE_DATA->has_temperature_sensor) {
 		res = ASIGetControlValue(id, ASI_TEMPERATURE, &temp_x10, &unused);
-		if (res)
+		if (res) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetControlValue(%d, ASI_TEMPERATURE) = %d", id, res);
-		else
+		} else {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ASIGetControlValue(%d, ASI_TEMPERATURE) = %d", id, res);
+		}
 		*current = temp_x10/10.0; /* ASI_TEMPERATURE gives temp x 10 */
 	} else {
 		*current = 0;
@@ -472,10 +474,11 @@ static bool asi_set_cooler(indigo_device *device, bool status, double target, do
 	}
 
 	res = ASIGetControlValue(id, ASI_COOLER_POWER_PERC, cooler_power, &unused);
-	if (res)
+	if (res) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetControlValue(%d, ASI_COOLER_POWER_PERC) = %d", id, res);
-	else
+	} else {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ASIGetControlValue(%d, ASI_COOLER_POWER_PERC) = %d", id, res);
+	}
 
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return success;
@@ -608,10 +611,11 @@ static void streaming_timer_callback(indigo_device *device) {
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 			res = ASIStopVideoCapture(id);
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-			if (res)
+			if (res) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIStopVideoCapture(%d) = %d", id, res);
-			else
+			} else {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ASIStopVideoCapture(%d) = %d", id, res);
+			}
 		}
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	} else {
@@ -640,10 +644,11 @@ static void ccd_temperature_callback(indigo_device *device) {
 	if (PRIVATE_DATA->can_check_temperature) {
 		if (asi_set_cooler(device, CCD_COOLER_ON_ITEM->sw.value, PRIVATE_DATA->target_temperature, &PRIVATE_DATA->current_temperature, &PRIVATE_DATA->cooler_power)) {
 			double diff = PRIVATE_DATA->current_temperature - PRIVATE_DATA->target_temperature;
-			if (CCD_COOLER_ON_ITEM->sw.value)
+			if (CCD_COOLER_ON_ITEM->sw.value) {
 				CCD_TEMPERATURE_PROPERTY->state = fabs(diff) > 0.5 ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
-			else
+			} else {
 				CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
+			}
 			CCD_TEMPERATURE_ITEM->number.value = PRIVATE_DATA->current_temperature;
 			CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
 			CCD_COOLER_POWER_PROPERTY->state = INDIGO_OK_STATE;
@@ -881,10 +886,11 @@ static indigo_result init_camera_property(indigo_device *device, ASI_CONTROL_CAP
 
 	if (ctrl_caps.ControlType == ASI_EXPOSURE) {
 		CCD_EXPOSURE_PROPERTY->hidden = false;
-		if (ctrl_caps.IsWritable)
+		if (ctrl_caps.IsWritable) {
 			CCD_EXPOSURE_PROPERTY->perm = INDIGO_RW_PERM;
-		else
+		} else {
 			CCD_EXPOSURE_PROPERTY->perm = INDIGO_RO_PERM;
+		}
 
 		CCD_EXPOSURE_ITEM->number.min = us2s(ctrl_caps.MinValue);
 		CCD_EXPOSURE_ITEM->number.max = us2s(ctrl_caps.MaxValue);
@@ -899,10 +905,11 @@ static indigo_result init_camera_property(indigo_device *device, ASI_CONTROL_CAP
 	if (ctrl_caps.ControlType == ASI_GAIN) {
 		CCD_GAIN_PROPERTY->hidden = false;
 		CCD_EGAIN_PROPERTY->hidden = false;
-		if (ctrl_caps.IsWritable)
+		if (ctrl_caps.IsWritable) {
 			CCD_GAIN_PROPERTY->perm = INDIGO_RW_PERM;
-		else
+		} else {
 			CCD_GAIN_PROPERTY->perm = INDIGO_RO_PERM;
+		}
 
 		CCD_GAIN_ITEM->number.min = ctrl_caps.MinValue;
 		CCD_GAIN_ITEM->number.max = ctrl_caps.MaxValue;
@@ -921,10 +928,11 @@ static indigo_result init_camera_property(indigo_device *device, ASI_CONTROL_CAP
 
 	if (ctrl_caps.ControlType == ASI_GAMMA) {
 		CCD_GAMMA_PROPERTY->hidden = false;
-		if (ctrl_caps.IsWritable)
+		if (ctrl_caps.IsWritable) {
 			CCD_GAMMA_PROPERTY->perm = INDIGO_RW_PERM;
-		else
+		} else {
 			CCD_GAMMA_PROPERTY->perm = INDIGO_RO_PERM;
+		}
 
 		CCD_GAMMA_ITEM->number.min = ctrl_caps.MinValue;
 		CCD_GAMMA_ITEM->number.max = ctrl_caps.MaxValue;
@@ -943,10 +951,11 @@ static indigo_result init_camera_property(indigo_device *device, ASI_CONTROL_CAP
 
 	if (ctrl_caps.ControlType == ASI_OFFSET) {
 		CCD_OFFSET_PROPERTY->hidden = false;
-		if (ctrl_caps.IsWritable)
+		if (ctrl_caps.IsWritable) {
 			CCD_OFFSET_PROPERTY->perm = INDIGO_RW_PERM;
-		else
+		} else {
 			CCD_OFFSET_PROPERTY->perm = INDIGO_RO_PERM;
+		}
 
 		CCD_OFFSET_ITEM->number.min = ctrl_caps.MinValue;
 		CCD_OFFSET_ITEM->number.max = ctrl_caps.MaxValue;
@@ -965,10 +974,11 @@ static indigo_result init_camera_property(indigo_device *device, ASI_CONTROL_CAP
 
 	if (ctrl_caps.ControlType == ASI_TARGET_TEMP) {
 		CCD_TEMPERATURE_PROPERTY->hidden = false;
-		if (ctrl_caps.IsWritable)
+		if (ctrl_caps.IsWritable) {
 			CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
-		else
+		} else {
 			CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
+		}
 
 		CCD_TEMPERATURE_ITEM->number.min = ctrl_caps.MinValue;
 		CCD_TEMPERATURE_ITEM->number.max = ctrl_caps.MaxValue;
@@ -990,20 +1000,22 @@ static indigo_result init_camera_property(indigo_device *device, ASI_CONTROL_CAP
 
 	if (ctrl_caps.ControlType == ASI_COOLER_ON) {
 		CCD_COOLER_PROPERTY->hidden = false;
-		if (ctrl_caps.IsWritable)
+		if (ctrl_caps.IsWritable) {
 			CCD_COOLER_PROPERTY->perm = INDIGO_RW_PERM;
-		else
+		} else {
 			CCD_COOLER_PROPERTY->perm = INDIGO_RO_PERM;
+		}
 
 		return INDIGO_OK;
 	}
 
 	if (ctrl_caps.ControlType == ASI_COOLER_POWER_PERC) {
 		CCD_COOLER_POWER_PROPERTY->hidden = false;
-		if (ctrl_caps.IsWritable)
+		if (ctrl_caps.IsWritable) {
 			CCD_COOLER_POWER_PROPERTY->perm = INDIGO_RW_PERM;
-		else
+		} else {
 			CCD_COOLER_POWER_PROPERTY->perm = INDIGO_RO_PERM;
+		}
 
 		CCD_COOLER_POWER_ITEM->number.min = ctrl_caps.MinValue;
 		CCD_COOLER_POWER_ITEM->number.max = ctrl_caps.MaxValue;
@@ -1305,8 +1317,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
 	} else if (indigo_property_match_changeable(CCD_EXPOSURE_PROPERTY, property)) {
-		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 			return INDIGO_OK;
+		}
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
 		indigo_use_shortest_exposure_if_bias(device);
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -1314,8 +1327,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_set_timer(device, 0, handle_ccd_exposure, NULL);
 	} else if (indigo_property_match_changeable(CCD_STREAMING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_STREAMING
-		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 			return INDIGO_OK;
+		}
 		indigo_property_copy_values(CCD_STREAMING_PROPERTY, property, false);
 		indigo_use_shortest_exposure_if_bias(device);
 		CCD_STREAMING_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -1439,10 +1453,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CCD_FRAME_PROPERTY, property, false);
 		CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.target = 8 * (int)(CCD_FRAME_WIDTH_ITEM->number.value / 8);
 		CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.target = 2 * (int)(CCD_FRAME_HEIGHT_ITEM->number.value / 2);
-		if (CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value < 64)
+		if (CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value < 64) {
 			CCD_FRAME_WIDTH_ITEM->number.value = 64 * CCD_BIN_HORIZONTAL_ITEM->number.value;
-		if (CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value < 64)
+		}
+		if (CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value < 64) {
 			CCD_FRAME_HEIGHT_ITEM->number.value = 64 * CCD_BIN_VERTICAL_ITEM->number.value;
+		}
 		CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
 
 		if (CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value < 12) {

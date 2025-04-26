@@ -158,9 +158,9 @@ static void focuser_steps_handler(indigo_device *device) {
 	// Custom code below
 	if (FOCUSER_STEPS_ITEM->number.value > 0) {
 		libfcusb_set_power(PRIVATE_DATA->device_context, FOCUSER_SPEED_ITEM->number.value);
-		if (X_FOCUSER_FREQUENCY_1_ITEM->sw.value)
+		if (X_FOCUSER_FREQUENCY_1_ITEM->sw.value) {
 			libfcusb_set_frequency(PRIVATE_DATA->device_context, 1);
-		else if (X_FOCUSER_FREQUENCY_4_ITEM->sw.value)
+		} else if (X_FOCUSER_FREQUENCY_4_ITEM->sw.value)
 			libfcusb_set_frequency(PRIVATE_DATA->device_context, 4);
 		else if (X_FOCUSER_FREQUENCY_16_ITEM->sw.value)
 			libfcusb_set_frequency(PRIVATE_DATA->device_context, 16);

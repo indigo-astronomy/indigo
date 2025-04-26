@@ -18,8 +18,9 @@ int main(int argc, char **argv) {
 	for (int i = 1; i < argc; i++) {
 		strcpy(name, argv[i]);
 		int last = strlen(name) - 1;
-		if (name[last] == '/')
+		if (name[last] == '/') {
 			name[last] = 0;
+		}
 		indigo_driver_entry *driver;
 		if (indigo_load_driver(name, false, &driver) == INDIGO_OK) {
 			indigo_available_drivers[entry++].driver(INDIGO_DRIVER_INFO, &info);

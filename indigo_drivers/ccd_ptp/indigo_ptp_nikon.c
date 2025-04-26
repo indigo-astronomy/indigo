@@ -690,10 +690,12 @@ char *ptp_property_nikon_value_code_label(indigo_device *device, uint16_t proper
 			return label;
 		}
 		case ptp_property_nikon_ExposureTime: {
-			if (code == 0xffffffff)
+			if (code == 0xffffffff) {
 				return "Bulb";
-			if (code == 0xfffffffd)
+			}
+			if (code == 0xfffffffd) {
 				return "Time";
+			}
 			const uint32_t denominator = code & 0xffff;
 			const uint32_t numerator = (code >> 16) & 0xffff;
 			if (denominator == 1) {
@@ -1120,10 +1122,11 @@ bool ptp_nikon_fix_property(indigo_device *device, ptp_property *property) {
 			return true;
 		}
 		case ptp_property_CompressionSetting: {
-			if (IS_NIKON_EXPEED5_OR_LATER())
+			if (IS_NIKON_EXPEED5_OR_LATER()) {
 				NIKON_PRIVATE_DATA->is_dual_compression = property->value.sw.value >= 8 && property->value.sw.value <= 13;
-			else
+			} else {
 				NIKON_PRIVATE_DATA->is_dual_compression = property->value.sw.value >= 5 && property->value.sw.value <= 7;
+			}
 			return true;
 		}
 	}
@@ -1133,10 +1136,11 @@ bool ptp_nikon_fix_property(indigo_device *device, ptp_property *property) {
 bool ptp_nikon_set_property(indigo_device *device, ptp_property *property) {
 	bool result = ptp_set_property(device, property);
 	if (property->code == ptp_property_CompressionSetting) {
-		if (IS_NIKON_EXPEED5_OR_LATER())
+		if (IS_NIKON_EXPEED5_OR_LATER()) {
 			NIKON_PRIVATE_DATA->is_dual_compression = property->value.sw.value >= 8 && property->value.sw.value <= 13;
-		else
+		} else {
 			NIKON_PRIVATE_DATA->is_dual_compression = property->value.sw.value >= 5 && property->value.sw.value <= 7;
+		}
 	}
 	return result;
 }
@@ -1154,15 +1158,17 @@ bool ptp_nikon_exposure(indigo_device *device) {
 	if (property) {
 		uint8_t value;
 		if (DSLR_MIRROR_LOCKUP_LOCK_ITEM->sw.value) {
-			if (property->form == ptp_enum_form && property->count == 6)
+			if (property->form == ptp_enum_form && property->count == 6) {
 				value = 10;
-			else
+			} else {
 				value = 1;
+			}
 		} else {
-			if (property->form == ptp_range_form && property->value.number.max == 3)
+			if (property->form == ptp_range_form && property->value.number.max == 3) {
 				value = 3;
-			else
+			} else {
 				value = 0;
+			}
 		}
 		result = result && ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, ptp_property_nikon_ExposureDelayMode, &value, sizeof(uint8_t));
 	}
@@ -1244,8 +1250,9 @@ bool ptp_nikon_liveview(indigo_device *device) {
 						buffer = NULL;
 					}
 					CCD_STREAMING_COUNT_ITEM->number.value--;
-					if (CCD_STREAMING_COUNT_ITEM->number.value < 0)
+					if (CCD_STREAMING_COUNT_ITEM->number.value < 0) {
 						CCD_STREAMING_COUNT_ITEM->number.value = -1;
+					}
 					indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 				} else if ((buffer[128] & 0xFF) == 0xFF && (buffer[129] & 0xFF) == 0xD8) {
 					if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
@@ -1265,8 +1272,9 @@ bool ptp_nikon_liveview(indigo_device *device) {
 						buffer = NULL;
 					}
 					CCD_STREAMING_COUNT_ITEM->number.value--;
-					if (CCD_STREAMING_COUNT_ITEM->number.value < 0)
+					if (CCD_STREAMING_COUNT_ITEM->number.value < 0) {
 						CCD_STREAMING_COUNT_ITEM->number.value = -1;
+					}
 					indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 				} else if ((buffer[384] & 0xFF) == 0xFF && (buffer[385] & 0xFF) == 0xD8) {
 					if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
@@ -1286,8 +1294,9 @@ bool ptp_nikon_liveview(indigo_device *device) {
 						buffer = NULL;
 					}
 					CCD_STREAMING_COUNT_ITEM->number.value--;
-					if (CCD_STREAMING_COUNT_ITEM->number.value < 0)
+					if (CCD_STREAMING_COUNT_ITEM->number.value < 0) {
 						CCD_STREAMING_COUNT_ITEM->number.value = -1;
+					}
 					indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 				}
 			}
@@ -1306,8 +1315,9 @@ bool ptp_nikon_liveview(indigo_device *device) {
 
 bool ptp_nikon_lock(indigo_device *device) {
 	if (ptp_operation_supported(device, ptp_operation_nikon_SetControlMode)) {
-		if (DSLR_LOCK_ITEM->sw.value)
+		if (DSLR_LOCK_ITEM->sw.value) {
 			return ptp_transaction_1_0(device, ptp_operation_nikon_SetControlMode, 1) && ptp_refresh_property(device, ptp_property_supported(device, ptp_property_ExposureProgramMode));
+		}
 		return ptp_transaction_1_0(device, ptp_operation_nikon_SetControlMode, 0) && ptp_refresh_property(device, ptp_property_supported(device, ptp_property_ExposureProgramMode));
 	}
 	return false;
@@ -1327,8 +1337,9 @@ bool ptp_nikon_zoom(indigo_device *device) {
 }
 
 bool ptp_nikon_focus(indigo_device *device, int steps) {
-	if (steps == 0)
+	if (steps == 0) {
 		return true;
+	}
 	bool result = true;
 	if (ptp_operation_supported(device, ptp_operation_nikon_MfDrive)) {
 		bool temporary_lv = false;
@@ -1337,10 +1348,11 @@ bool ptp_nikon_focus(indigo_device *device, int steps) {
 		}
 		if (result) {
 			for (int i = 0; i < 100; i++) {
-				if (steps > 0)
+				if (steps > 0) {
 					result = ptp_transaction_2_0(device, ptp_operation_nikon_MfDrive, 1, steps);
-				else
+				} else {
 					result = ptp_transaction_2_0(device, ptp_operation_nikon_MfDrive, 2, -steps);
+				}
 				if (result) {
 					break;
 				}

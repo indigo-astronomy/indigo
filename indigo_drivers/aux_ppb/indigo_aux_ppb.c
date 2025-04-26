@@ -572,9 +572,9 @@ static void aux_power_outlet_handler(indigo_device *device) {
 static void aux_dslr_power_handler(indigo_device *device) {
 	char response[128];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	if (AUX_DSLR_POWER_3_ITEM->sw.value)
+	if (AUX_DSLR_POWER_3_ITEM->sw.value) {
 		ppb_command(device, "P2:3", response, sizeof(response));
-	else if (AUX_DSLR_POWER_5_ITEM->sw.value)
+	} else if (AUX_DSLR_POWER_5_ITEM->sw.value)
 		ppb_command(device, "P2:5", response, sizeof(response));
 	else if (AUX_DSLR_POWER_8_ITEM->sw.value)
 		ppb_command(device, "P2:8", response, sizeof(response));

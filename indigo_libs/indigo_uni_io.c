@@ -351,8 +351,9 @@ char *indigo_uni_strerror(indigo_uni_handle *handle) {
 }
 
 bool indigo_uni_is_url(const char *name, const char *prefix) {
-	if (name == NULL || *name == '\0')
+	if (name == NULL || *name == '\0') {
 		return false;
+	}
 	if (prefix) {
 		char prefix_full[INDIGO_NAME_SIZE];
 		sprintf(prefix_full, "%s://", prefix);
@@ -407,8 +408,9 @@ static int map_str_baudrate(const char *baudrate) {
 	static int valid_baud_rate [] = { 50, 75, 110, 134, 150, 200, 300, 600, 1200, 1800, 2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400, 0 };
 	int br = atoi(baudrate);
 	for (int *vbr = valid_baud_rate; *vbr; vbr++) {
-		if (*vbr == br)
+		if (*vbr == br) {
 			return br;
+		}
 	}
 	return -1;
 }
@@ -1199,8 +1201,7 @@ long indigo_uni_read_section(indigo_uni_handle *handle, char *buffer, long lengt
 			case 0:
 				if (handle->log_level < 0) {
 					indigo_log_on_level(-handle->log_level, "%d -> // %ld bytes read", handle->index, bytes_read - 1);
-				}
-				else {
+				} else {
 					indigo_log_on_level(handle->log_level, "%d -> %.*s", handle->index, bytes_read, buffer);
 				}
 				return 0;

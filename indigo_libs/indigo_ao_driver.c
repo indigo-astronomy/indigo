@@ -44,20 +44,23 @@ indigo_result indigo_ao_attach(indigo_device *device, const char* driver_name, u
 		if (indigo_device_attach(device, driver_name, version, INDIGO_INTERFACE_AO) == INDIGO_OK) {
 			// -------------------------------------------------------------------------------- AO_GUIDE_DEC
 			AO_GUIDE_DEC_PROPERTY = indigo_init_number_property(NULL, device->name, AO_GUIDE_DEC_PROPERTY_NAME, AO_MAIN_GROUP, "DEC guiding", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
-			if (AO_GUIDE_DEC_PROPERTY == NULL)
+			if (AO_GUIDE_DEC_PROPERTY == NULL) {
 				return INDIGO_FAILED;
+			}
 			indigo_init_number_item(AO_GUIDE_NORTH_ITEM, AO_GUIDE_NORTH_ITEM_NAME, "Guide north", 0, 100, 0, 0);
 			indigo_init_number_item(AO_GUIDE_SOUTH_ITEM, AO_GUIDE_SOUTH_ITEM_NAME, "Guide south", 0, 100, 0, 0);
 			// -------------------------------------------------------------------------------- AO_GUIDE_RA
 			AO_GUIDE_RA_PROPERTY = indigo_init_number_property(NULL, device->name, AO_GUIDE_RA_PROPERTY_NAME, AO_MAIN_GROUP, "RA guiding", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
-			if (AO_GUIDE_RA_PROPERTY == NULL)
+			if (AO_GUIDE_RA_PROPERTY == NULL) {
 				return INDIGO_FAILED;
+			}
 			indigo_init_number_item(AO_GUIDE_EAST_ITEM, AO_GUIDE_EAST_ITEM_NAME, "Guide east", 0, 100, 0, 0);
 			indigo_init_number_item(AO_GUIDE_WEST_ITEM, AO_GUIDE_WEST_ITEM_NAME, "Guide west", 0, 100, 0, 0);
 			// -------------------------------------------------------------------------------- AO_RESET
 			AO_RESET_PROPERTY = indigo_init_switch_property(NULL, device->name, AO_RESET_PROPERTY_NAME, AO_MAIN_GROUP, "Reset", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 2);
-			if (AO_RESET_PROPERTY == NULL)
+			if (AO_RESET_PROPERTY == NULL) {
 				return INDIGO_FAILED;
+			}
 			indigo_init_switch_item(AO_CENTER_ITEM, AO_CENTER_ITEM_NAME, "Center", false);
 			indigo_init_switch_item(AO_UNJAM_ITEM, AO_UNJAM_ITEM_NAME, "Unjam", false);
 			// --------------------------------------------------------------------------------

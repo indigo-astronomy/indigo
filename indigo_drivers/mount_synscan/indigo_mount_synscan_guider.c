@@ -64,8 +64,7 @@ void guider_timer_callback_ra(indigo_device *device) {
 		if (pulse_length_ms < 0) {
 			guideRate -= GUIDER_RATE_ITEM->number.value * guideRate / 100.0;
 			pulse_length_ms = -pulse_length_ms;
-		}
-		else {
+		} else {
 			guideRate += GUIDER_RATE_ITEM->number.value * guideRate / 100.0;
 		}
 
@@ -119,8 +118,7 @@ void guider_timer_callback_dec(indigo_device *device) {
 		if (pulse_length_ms < 0) {
 			guideRate = -GUIDER_DEC_RATE_ITEM->number.value * guideRate / 100.0;
 			pulse_length_ms = -pulse_length_ms;
-		}
-		else {
+		} else {
 			guideRate = GUIDER_DEC_RATE_ITEM->number.value * guideRate / 100.0;
 		}
 
@@ -159,14 +157,16 @@ static void synscan_connect_timer_callback(indigo_device* device) {
 			result = synscan_configure(device->master_device);
 			if (!result && !PRIVATE_DATA->udp) {
 				synscan_close(device);
-				if (strcmp(DEVICE_BAUDRATE_ITEM->text.value, "9600-8N1"))
+				if (strcmp(DEVICE_BAUDRATE_ITEM->text.value, "9600-8N1")) {
 					strcpy(DEVICE_BAUDRATE_ITEM->text.value, "9600-8N1");
-				else
+				} else {
 					strcpy(DEVICE_BAUDRATE_ITEM->text.value, "115200-8N1");
+				}
 				indigo_update_property(device, DEVICE_BAUDRATE_PROPERTY, "Trying to change baudrate");
 				result = synscan_open(device->master_device);
-				if (result)
+				if (result) {
 					result = synscan_configure(device->master_device);
+				}
 			}
 		}
 	}

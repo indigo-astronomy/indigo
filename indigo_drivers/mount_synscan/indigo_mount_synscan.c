@@ -236,8 +236,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 //			if (PRIVATE_DATA->globalMode == kGlobalModeIdle) {
 //				//  Pass sync requests through to indigo common code
 //				return indigo_mount_change_property(device, client, property);
-//			}
-//			else {
+//			} else {
 //				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 //				indigo_update_coordinates(device, "Sync not performed - mount is busy.");
 //				return INDIGO_OK;
@@ -250,8 +249,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = az;
 				MOUNT_HORIZONTAL_COORDINATES_ALT_ITEM->number.value = alt;
 				mount_handle_aa_coordinates(device);
-			}
-			else {
+			} else {
 				MOUNT_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 				//  FIXME - is there an assumption about coordinates here?
 				//indigo_update_coordinates(device, "Slew not started - mount is busy.");
@@ -304,8 +302,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(MOUNT_ABORT_MOTION_PROPERTY, property, false);
 		mount_handle_abort(device);
 		return INDIGO_OK;
-	}
-	else if (indigo_property_match_changeable(MOUNT_GUIDE_RATE_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(MOUNT_GUIDE_RATE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_GUIDE_RATE
 		indigo_property_copy_values(MOUNT_GUIDE_RATE_PROPERTY, property, false);
 		mount_handle_st4_guiding_rate(device);
@@ -420,8 +417,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		return synscan_guider_connect(device);
-	}
-	else if (indigo_property_match_changeable(GUIDER_GUIDE_RA_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(GUIDER_GUIDE_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
 		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
 		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
@@ -431,14 +427,12 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			duration = -GUIDER_GUIDE_EAST_ITEM->number.value;
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Guiding %dms EAST", -duration);
 			indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
-		}
-		else if (GUIDER_GUIDE_WEST_ITEM->number.value > 0) {
+		} else if (GUIDER_GUIDE_WEST_ITEM->number.value > 0) {
 			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
 			duration = GUIDER_GUIDE_WEST_ITEM->number.value;
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Guiding %dms WEST", duration);
 			indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
-		}
-		else {
+		} else {
 			indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 		}
 
@@ -457,14 +451,12 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			PRIVATE_DATA->ha_pulse_ms = duration;
 			pthread_cond_signal(&PRIVATE_DATA->ha_pulse_cond);
 			pthread_mutex_unlock(&PRIVATE_DATA->ha_mutex);
-		}
-		else if (duration != 0 && !tracking_enabled) {
+		} else if (duration != 0 && !tracking_enabled) {
 			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, "Ignoring RA guide pulse - mount is not tracking.");
 		}
 		return INDIGO_OK;
-	}
-	else if (indigo_property_match_changeable(GUIDER_GUIDE_DEC_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(GUIDER_GUIDE_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
 		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
@@ -474,14 +466,12 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Guiding %dms NORTH", duration);
 			indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
-		}
-		else if (GUIDER_GUIDE_SOUTH_ITEM->number.value > 0) {
+		} else if (GUIDER_GUIDE_SOUTH_ITEM->number.value > 0) {
 			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
 			duration = -GUIDER_GUIDE_SOUTH_ITEM->number.value;
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Guiding %dms SOUTH", -duration);
 			indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
-		}
-		else {
+		} else {
 			indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 		}
 
@@ -493,14 +483,12 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			pthread_mutex_unlock(&PRIVATE_DATA->dec_mutex);
 		}
 		return INDIGO_OK;
-	}
-	else if (indigo_property_match_changeable(GUIDER_RATE_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(GUIDER_RATE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDE_RATE
 		indigo_property_copy_values(GUIDER_RATE_PROPERTY, property, false);
 		indigo_update_property(device, GUIDER_RATE_PROPERTY, "Guide rate updated.");
 		return INDIGO_OK;
-	}
-	else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property))
 			indigo_save_property(device, NULL, GUIDER_RATE_PROPERTY);

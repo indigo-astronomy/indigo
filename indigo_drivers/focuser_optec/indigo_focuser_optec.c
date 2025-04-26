@@ -80,8 +80,9 @@ static bool optec_open(indigo_device *device) {
 			}
 			indigo_printf(PRIVATE_DATA->handle, "FTxxxA");
 			if (indigo_scanf(PRIVATE_DATA->handle, "A=%lf", &value) == 1) {
-				if (value == 1)
+				if (value == 1) {
 					FOCUSER_COMPENSATION_ITEM->number.value = -FOCUSER_COMPENSATION_ITEM->number.value;
+				}
 			} else {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read current compensation");
 			}

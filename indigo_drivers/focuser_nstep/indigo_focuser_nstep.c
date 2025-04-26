@@ -249,10 +249,11 @@ static void focuser_connection_handler(indigo_device *device) {
 					if (nstep_command(device, ":RB", response, 3)) {
 						ts = atoi(response);
 					}
-					if (tt == 0)
+					if (tt == 0) {
 						FOCUSER_COMPENSATION_ITEM->number.value = 0;
-					else
+					} else {
 						FOCUSER_COMPENSATION_ITEM->number.value = ts / tt;
+					}
 					FOCUSER_MODE_PROPERTY->hidden = false;
 					if (nstep_command(device, ":RG", response, 1)) {
 						indigo_set_switch(FOCUSER_MODE_PROPERTY, *response == '2' ? FOCUSER_MODE_AUTOMATIC_ITEM : FOCUSER_MODE_MANUAL_ITEM, true);
@@ -365,12 +366,13 @@ static void focuser_abort_handler(indigo_device *device) {
 static void focuser_phase_wiring_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char command[16];
-	if (X_FOCUSER_PHASE_WIRING_1_ITEM->sw.value)
+	if (X_FOCUSER_PHASE_WIRING_1_ITEM->sw.value) {
 		strcpy(command, ":CW1#");
-	else if (X_FOCUSER_PHASE_WIRING_2_ITEM->sw.value)
+	} else if (X_FOCUSER_PHASE_WIRING_2_ITEM->sw.value) {
 		strcpy(command, ":CW2#");
-	else
+	} else {
 		strcpy(command, ":CW0#");
+	}
 	if (nstep_command(device, command, NULL, 0)) {
 		X_FOCUSER_PHASE_WIRING_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
@@ -400,10 +402,11 @@ static void focuser_mode_handler(indigo_device *device) {
 static void focuser_compensation_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char command[16];
-	if (FOCUSER_COMPENSATION_ITEM->number.value > 0)
+	if (FOCUSER_COMPENSATION_ITEM->number.value > 0) {
 		sprintf(command, ":TT+010#:TS%03d#", (int)FOCUSER_COMPENSATION_ITEM->number.value);
-	else
+	} else {
 		sprintf(command, ":TT-010#:TS%03d#", (int)FOCUSER_COMPENSATION_ITEM->number.value);
+	}
 	if (nstep_command(device, command, NULL, 0)) {
 		FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_OK_STATE;
 	} else {

@@ -326,15 +326,16 @@ static PTPSonyProperty *ptpReadSonyProperty(unsigned char** buf) {
     case PTPPropertyCodeSonyShutterSpeed: {
 			shutterSpeed = property.value.intValue;
 			NSString *value;
-			if (shutterSpeed == 0)
+			if (shutterSpeed == 0) {
 				value = @"Bulb";
-			else {
+			} else {
 				int a = shutterSpeed >> 16;
 				int b = shutterSpeed & 0xFFFF;
-				if (b == 10)
+				if (b == 10) {
 					value = [NSString stringWithFormat:@"%g\"", (double)a / b];
-				else
+				} else {
 					value = [NSString stringWithFormat:@"1/%d", b];
+				}
 			}
 			NSArray *values = @[ @"-", property.value.description,  @"+" ];
 			NSArray *labels = @[ @"+", value, @"-" ];

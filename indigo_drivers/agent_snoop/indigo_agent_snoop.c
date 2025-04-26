@@ -259,8 +259,9 @@ static indigo_result agent_device_detach(indigo_device *device) {
 }
 
 static indigo_result agent_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	if (device == CLIENT_PRIVATE_DATA->device)
+	if (device == CLIENT_PRIVATE_DATA->device) {
 		return INDIGO_OK;
+	}
 	rule *r = CLIENT_PRIVATE_DATA->rules;
 	int index = 0;
 	while (r) {
@@ -278,8 +279,9 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 			if (r->source_property && r->target_property) {
 				CLIENT_PRIVATE_DATA->rules_property->items[index].light.value = r->state = INDIGO_OK_STATE;
 				indigo_update_property(CLIENT_PRIVATE_DATA->device, CLIENT_PRIVATE_DATA->rules_property, "Rule '%s'.%s > '%s'.%s is active", r->source_device_name, r->source_property_name, r->target_device_name, r->target_property_name);
-				if (r->source_property->state != INDIGO_ALERT_STATE)
+				if (r->source_property->state != INDIGO_ALERT_STATE) {
 					forward_property(device, client, r);
+				}
 			} else {
 				CLIENT_PRIVATE_DATA->rules_property->items[index].light.value = r->state = INDIGO_BUSY_STATE;
 				indigo_update_property(CLIENT_PRIVATE_DATA->device, CLIENT_PRIVATE_DATA->rules_property, NULL);
@@ -292,10 +294,12 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 }
 
 static indigo_result agent_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	if (device == CLIENT_PRIVATE_DATA->device)
+	if (device == CLIENT_PRIVATE_DATA->device) {
 		return INDIGO_OK;
-	if (property->state == INDIGO_ALERT_STATE)
+	}
+	if (property->state == INDIGO_ALERT_STATE) {
 		return INDIGO_OK;
+	}
 	rule *r = CLIENT_PRIVATE_DATA->rules;
 	while (r) {
 		if (r->source_property == property) {
@@ -312,8 +316,9 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 }
 
 static indigo_result agent_delete_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	if (device == CLIENT_PRIVATE_DATA->device)
+	if (device == CLIENT_PRIVATE_DATA->device) {
 		return INDIGO_OK;
+	}
 	rule *r = CLIENT_PRIVATE_DATA->rules;
 	int index = 0;
 	while (r) {

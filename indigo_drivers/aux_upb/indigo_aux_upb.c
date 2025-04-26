@@ -1483,10 +1483,12 @@ static void focuser_position_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) {
 		int position = (int)FOCUSER_POSITION_ITEM->number.value;
-		if (position < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value)
+		if (position < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value) {
 			position = (int)FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
-		if (position > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value)
+		}
+		if (position > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value) {
 			position = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
+		}
 		FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
 		snprintf(command, sizeof(command), "SM:%d", position);
 		if (upb_command(device, command, response, sizeof(response))) {

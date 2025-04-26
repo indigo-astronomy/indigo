@@ -112,10 +112,11 @@ static void rotator_connection_handler(indigo_device *device) {
 					token = strtok_r(NULL, ":", &pnt); // do_derotation
 					token = strtok_r(NULL, ":", &pnt); // motor_reverse
 					if (token) {
-						if (*token == '0')
+						if (*token == '0') {
 							indigo_set_switch(ROTATOR_DIRECTION_PROPERTY, ROTATOR_DIRECTION_NORMAL_ITEM, true);
-						else
+						} else {
 							indigo_set_switch(ROTATOR_DIRECTION_PROPERTY, ROTATOR_DIRECTION_REVERSED_ITEM, true);
+						}
 					} else {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to parse 'FA' response");
 						indigo_uni_close(&PRIVATE_DATA->handle);
@@ -130,10 +131,11 @@ static void rotator_connection_handler(indigo_device *device) {
 					token = strtok_r(NULL, ":", &pnt); // microsteps
 					token = strtok_r(NULL, ":", &pnt); // direction
 					if (token) {
-						if (*token == '0')
+						if (*token == '0') {
 							indigo_set_switch(ROTATOR_DIRECTION_PROPERTY, ROTATOR_DIRECTION_NORMAL_ITEM, true);
-						else
+						} else {
 							indigo_set_switch(ROTATOR_DIRECTION_PROPERTY, ROTATOR_DIRECTION_REVERSED_ITEM, true);
+						}
 					} else {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to parse 'FA' response");
 						indigo_uni_close(&PRIVATE_DATA->handle);
@@ -168,10 +170,11 @@ static void rotator_connection_handler(indigo_device *device) {
 static void rotator_position_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char command[16], response[64];
-	if (ROTATOR_ON_POSITION_SET_GOTO_ITEM->sw.value)
+	if (ROTATOR_ON_POSITION_SET_GOTO_ITEM->sw.value) {
 		sprintf(command, "MD:%0.2f", ROTATOR_POSITION_ITEM->number.target);
-	else
+	} else {
 		sprintf(command, "SD:%0.2f", ROTATOR_POSITION_ITEM->number.target);
+	}
 	if (falcon_command(device, command, response, sizeof(response)) && !strcmp(response, command)) {
 		while (true) {
 			if (falcon_command(device, "FD", response, sizeof(response)) && !strncmp(response, "FD:", 3)) {
@@ -286,8 +289,9 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ROTATOR_POSITION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- ROTATOR_POSITION
-		if (ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE)
+		if (ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
 			return INDIGO_OK;
+		}
 		indigo_property_copy_values(ROTATOR_POSITION_PROPERTY, property, false);
 		ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);

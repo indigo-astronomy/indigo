@@ -1767,8 +1767,9 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match_changeable(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_GEOGRAPTHIC_COORDINATES
 		indigo_property_copy_values(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property, false);
-		if (MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value < 0)
+		if (MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value < 0) {
 			MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value += 360;
+		}
 		MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 		return INDIGO_OK;
@@ -1930,8 +1931,9 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 
 static indigo_result mount_detach(indigo_device *device) {
 	assert(device != NULL);
-	if (CONNECTION_CONNECTED_ITEM->sw.value)
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		indigo_device_disconnect(NULL, device->name);
+	}
 
 	indigo_release_property(OIL_STATE_PROPERTY);
 	indigo_release_property(OIMV_PROPERTY);
@@ -2183,8 +2185,9 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 
 static indigo_result guider_detach(indigo_device *device) {
 	assert(device != NULL);
-	if (CONNECTION_CONNECTED_ITEM->sw.value)
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		indigo_device_disconnect(NULL, device->name);
+	}
 
 	indigo_release_property(GUIDE_CORRECTION_PROPERTY);
 
@@ -2465,8 +2468,9 @@ static void dome_handle_steps(indigo_device *device) {
 	}
 	DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 	/* Dome relative GOTO requested */
-	if (DOME_DIRECTION_MOVE_CLOCKWISE_ITEM->sw.value)
-		sign = 1; /* move clockwise */
+	if (DOME_DIRECTION_MOVE_CLOCKWISE_ITEM->sw.value) {
+		sign = 1;
+	} /* move clockwise */
 	else if (DOME_DIRECTION_MOVE_COUNTERCLOCKWISE_ITEM->sw.value)
 		sign = -1; /* move counterclockwise */
 	res = ascol_DOSR(PRIVATE_DATA->dev_id, sign * DOME_STEPS_ITEM->number.target);
@@ -2647,8 +2651,9 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 
 static indigo_result dome_detach(indigo_device *device) {
 	assert(device != NULL);
-	if (CONNECTION_CONNECTED_ITEM->sw.value)
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		indigo_device_disconnect(NULL, device->name);
+	}
 
 	indigo_release_property(DOME_POWER_PROPERTY);
 	indigo_release_property(DOME_STATE_PROPERTY);
@@ -2774,8 +2779,9 @@ static void focus_handle_steps(indigo_device *device) {
 	}
 	FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 	/* focuser relative GOTO requested */
-	if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value)
-		sign = -1; /* move in */
+	if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
+		sign = -1;
+	} /* move in */
 	else if (FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value)
 		sign = 1; /* move out */
 	res = ascol_FOSR(PRIVATE_DATA->dev_id, sign * FOCUSER_STEPS_ITEM->number.target);
@@ -2916,8 +2922,9 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 
 static indigo_result focuser_detach(indigo_device *device) {
 	assert(device != NULL);
-	if (CONNECTION_CONNECTED_ITEM->sw.value)
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		indigo_device_disconnect(NULL, device->name);
+	}
 
 	indigo_release_property(FOCUSER_STATE_PROPERTY);
 

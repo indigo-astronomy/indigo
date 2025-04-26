@@ -104,18 +104,21 @@ static void *timer_func(indigo_timer *timer) {
 				pthread_mutex_lock(&timer->callback_mutex);
 				timer->callback_running = true;
 				INDIGO_TRACE(indigo_trace("timer #%d - callback %p started (%p)", timer->timer_id, timer->callback, timer->reference));
-				if (timer->data)
+				if (timer->data) {
 					((indigo_timer_with_data_callback)timer->callback)(timer->device, timer->data);
-				else
+				} else {
 					((indigo_timer_callback)timer->callback)(timer->device);
+				}
 				timer->callback_running = false;
-				if (!timer->scheduled && timer->reference)
+				if (!timer->scheduled && timer->reference) {
 					*timer->reference = NULL;
+				}
 				INDIGO_TRACE(indigo_trace("timer #%d - callback %p finished (%p)", timer->timer_id, timer->callback, timer->reference));
 				pthread_mutex_unlock(&timer->callback_mutex);
 			} else {
-				if (timer->reference)
+				if (timer->reference) {
 					*timer->reference = NULL;
+				}
 				INDIGO_TRACE(indigo_trace("timer #%d - canceled", timer->timer_id));
 			}
 		}
@@ -369,8 +372,9 @@ void indigo_cancel_all_timers(indigo_device *device) {
 	while (true) {
 		pthread_mutex_lock(&cancel_timer_mutex);
 		timer = DEVICE_CONTEXT->timers;
-		if (timer)
+		if (timer) {
 			DEVICE_CONTEXT->timers = timer->next;
+		}
 		pthread_mutex_unlock(&cancel_timer_mutex);
 		if (timer == NULL) {
 			break;

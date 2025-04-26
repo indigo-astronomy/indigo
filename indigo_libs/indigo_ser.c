@@ -97,8 +97,9 @@ indigo_ser *indigo_ser_open(const char *filename, void *buffer) {
 	long timezone_diff = (indigo_get_timezone() - indigo_get_dst_state() ? 3600 : 0) * 10000000L;
 	result = result && write_long(handle, time_utc); // 162
 	result = result && write_long(handle, time_utc + timezone_diff); // 170
-	if (!result)
+	if (!result) {
 		goto failure;
+	}
 	return ser;
 failure:
 	indigo_uni_close(&handle);

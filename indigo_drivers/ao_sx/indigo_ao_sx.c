@@ -116,10 +116,12 @@ static void ao_connection_handler(indigo_device *device) {
 			if (sx_command(device, "L", response, 1)) {
 				AO_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 				AO_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
-				if (response[0] & 0x05)
+				if (response[0] & 0x05) {
 					AO_GUIDE_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
-				if (response[0] & 0x0A)
+				}
+				if (response[0] & 0x0A) {
 					AO_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
 			}
 			// Custom code above
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;

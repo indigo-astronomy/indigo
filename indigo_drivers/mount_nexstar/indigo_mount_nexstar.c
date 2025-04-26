@@ -154,8 +154,9 @@ static void position_timer_callback(indigo_device *device) {
 		if (res != RC_OK) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_location(%d) = %d (%s)", dev_id, res, strerror(errno));
 		}
-		if (lon < 0)
+		if (lon < 0) {
 			lon += 360;
+		}
 		time_t ttime;
 		int tz, dst;
 		res = (int)tc_get_time(dev_id, &ttime, &tz, &dst);
@@ -210,8 +211,9 @@ static void position_timer_callback(indigo_device *device) {
 		snprintf(MOUNT_UTC_OFFSET_ITEM->text.value, INDIGO_VALUE_SIZE, "%d", tz + dst);
 		indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
 		indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
-		if (!TRACKING_MODE_PROPERTY->hidden)
+		if (!TRACKING_MODE_PROPERTY->hidden) {
 			indigo_update_property(device, TRACKING_MODE_PROPERTY, NULL);
+		}
 		if (!MOUNT_SIDE_OF_PIER_PROPERTY->hidden) {
 			if (side_of_pier == 'W' && MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value) {
 				indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
@@ -314,8 +316,9 @@ static void mount_handle_connect(indigo_device *device) {
 				if (PRIVATE_DATA->capabilities & CAN_GET_SET_GUIDE_RATE) {
 					MOUNT_GUIDE_RATE_PROPERTY->hidden = false;
 					int offset = 1;                                             /* for Ceslestron 0 is 1% and 99 is 100% */
-					if (PRIVATE_DATA->vendor_id == VNDR_SKYWATCHER)
-						offset = 0; /* there is no offset for Sky-Watcher */
+					if (PRIVATE_DATA->vendor_id == VNDR_SKYWATCHER) {
+						offset = 0;
+					} /* there is no offset for Sky-Watcher */
 					int st4_ra_rate = tc_get_autoguide_rate(dev_id, TC_AXIS_RA);
 					if (st4_ra_rate < 0) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_autoguide_rate(%d) = %d (%s)", dev_id, st4_ra_rate, strerror(errno));
@@ -444,8 +447,9 @@ static void mount_handle_park(indigo_device *device) {
 		*/
 		double dec = fabs(MOUNT_PARK_POSITION_DEC_ITEM->number.value);
 		double ha = (MOUNT_PARK_POSITION_HA_ITEM->number.value+12) * 15;
-		if (ha < 0)
+		if (ha < 0) {
 			ha += 360.0;
+		}
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Going to park position: HA = %.5f Dec = %.5f", ha, dec);
 		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 		int res = tc_goto_azalt_p(PRIVATE_DATA->dev_id, ha, dec);
@@ -472,15 +476,17 @@ static void mount_handle_geo_coordinates(indigo_device *device) {
 	int res;
 	MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 	double lon = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value;
-	if (lon > 180)
+	if (lon > 180) {
 		lon -= 360.0;
+	}
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 	res = tc_set_location(PRIVATE_DATA->dev_id, lon, MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value);
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 	if (res == RC_FORBIDDEN) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_location(%d) = RC_FORBIDDEN", PRIVATE_DATA->dev_id);
-		if (nexstar_hc_type == HC_STARSENSE)
+		if (nexstar_hc_type == HC_STARSENSE) {
 			indigo_send_message(device, "Can't set location to StarSense controller.");
+		}
 		MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else if (res != RC_OK) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_location(%d) = %d (%s)", PRIVATE_DATA->dev_id, res, strerror(errno));
@@ -515,8 +521,9 @@ static void mount_handle_set_utc_from_host(indigo_device *device) {
 			if (res == RC_FORBIDDEN) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_time(%d) = RC_FORBIDDEN", PRIVATE_DATA->dev_id);
 				MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-				if (nexstar_hc_type == HC_STARSENSE)
+				if (nexstar_hc_type == HC_STARSENSE) {
 					indigo_send_message(device, "Can't set time to StarSense controller.");
+				}
 			} else if (res != RC_OK) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_time(%d) = %d (%s)", PRIVATE_DATA->dev_id, res, strerror(errno));
 				MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -572,9 +579,9 @@ static void mount_handle_tracking(indigo_device *device) {
 	TRACKING_MODE_PROPERTY->state = INDIGO_OK_STATE;
 	if (MOUNT_TRACKING_ON_ITEM->sw.value) {
 		int tracking_mode = 0;
-		if (TRACKING_EQ_ITEM->sw.value || PRIVATE_DATA->capabilities & TRUE_EQ_MOUNT)
+		if (TRACKING_EQ_ITEM->sw.value || PRIVATE_DATA->capabilities & TRUE_EQ_MOUNT) {
 			tracking_mode = TC_TRACK_EQ;
-		else if (TRACKING_AA_ITEM->sw.value)
+		} else if (TRACKING_AA_ITEM->sw.value)
 			tracking_mode = TC_TRACK_ALT_AZ;
 		if (tracking_mode) {
 			pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
@@ -608,8 +615,9 @@ static void mount_handle_st4_guiding_rate(indigo_device *device) {
 	int dev_id = PRIVATE_DATA->dev_id;
 	int res = RC_OK;
 	int offset = 1;                                             /* for Ceslestron 0 is 1% and 99 is 100% */
-	if (PRIVATE_DATA->vendor_id == VNDR_SKYWATCHER)
-		offset = 0; /* there is no offset for Sky-Watcher */
+	if (PRIVATE_DATA->vendor_id == VNDR_SKYWATCHER) {
+		offset = 0;
+	} /* there is no offset for Sky-Watcher */
 	MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_OK_STATE;
 	/* reset only if input value is changed - better begaviour for Sky-Watcher as there are no separate RA and DEC rates */
 	if ((int)(MOUNT_GUIDE_RATE_RA_ITEM->number.value) != PRIVATE_DATA->st4_ra_rate) {
@@ -744,8 +752,9 @@ static void mount_handle_utc(indigo_device *device) {
 	if (res == RC_FORBIDDEN) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_time(%d) = RC_FORBIDDEN", PRIVATE_DATA->dev_id);
 		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-		if (nexstar_hc_type == HC_STARSENSE)
+		if (nexstar_hc_type == HC_STARSENSE) {
 			indigo_send_message(device, "Can't set time to StarSense controller.");
+		}
 	} else if (res != RC_OK) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_time(%d) = %d (%s)", PRIVATE_DATA->dev_id, res, strerror(errno));
 		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -855,8 +864,9 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match_changeable(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_GEOGRAPTHIC_COORDINATES
 		indigo_property_copy_values(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property, false);
-		if (MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value < 0)
+		if (MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value < 0) {
 			MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value += 360;
+		}
 		MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 		indigo_set_timer(device, 0, mount_handle_geo_coordinates, NULL);
@@ -1207,12 +1217,13 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			PRIVATE_DATA->guide_rate = 2;
 		}
 		COMMAND_GUIDE_RATE_PROPERTY->state = INDIGO_OK_STATE;
-		if (PRIVATE_DATA->guide_rate == 1)
+		if (PRIVATE_DATA->guide_rate == 1) {
 			indigo_update_property(device, COMMAND_GUIDE_RATE_PROPERTY, "Command guide rate set to 7.5\"/s (1/2 sidereal).");
-		else if (PRIVATE_DATA->guide_rate == 2)
+		} else if (PRIVATE_DATA->guide_rate == 2) {
 			indigo_update_property(device, COMMAND_GUIDE_RATE_PROPERTY, "Command guide rate set to 15\"/s (sidereal).");
-		else
+		} else {
 			indigo_update_property(device, COMMAND_GUIDE_RATE_PROPERTY, "Command guide rate set.");
+		}
 		return INDIGO_OK;
 	}
 	// --------------------------------------------------------------------------------

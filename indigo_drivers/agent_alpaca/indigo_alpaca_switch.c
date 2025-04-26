@@ -25,7 +25,7 @@
 
 #include <indigo/indigo_aux_driver.h>
 
-#include "alpaca_common.h"
+#include "indigo_alpaca_common.h"
 
 static int get_switch_number(indigo_alpaca_device *device) {
 	return device->sw.maxswitch_power_outlet + device->sw.maxswitch_heater_outlet + device->sw.maxswitch_usb_port + device->sw.maxswitch_gpio_outlet + device->sw.maxswitch_gpio_sensor;

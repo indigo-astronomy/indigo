@@ -189,8 +189,9 @@ static bool write_index(indigo_uni_handle *handle, int count, unsigned int *offs
 		write_chars_bin(handle, "idx1", 4) &&
 		tell(handle, &marker) &&
 		write_int(handle, 0);
-	if (!result)
+	if (!result) {
 		return false;
+	}
 	for (t = 0; t < count; t++) {
 		if ((offsets[t] & 0x80000000) == 0) {
 			result = write_chars(handle, "00dc");
@@ -199,8 +200,9 @@ static bool write_index(indigo_uni_handle *handle, int count, unsigned int *offs
 			offsets[t] &= 0x7fffffff;
 		}
 		result = result && write_int(handle, 0x10) && write_int(handle, offset) && write_int(handle, offsets[t]);
-		if (!result)
+		if (!result) {
 			return false;
+		}
 		offset = offset + offsets[t] + 8;
 	}
 	result = tell(handle, &t) && seek(handle, marker) && write_int(handle, (unsigned int)(t - marker - 4)) && seek(handle, t);
@@ -314,13 +316,15 @@ bool gwavi_add_frame(struct gwavi_t *gwavi, unsigned char *buffer, size_t len) {
 	size_t maxi_pad;  /* if your frame is raggin, give it some paddin' */
 	size_t t;
 	char zero = 0;
-	if (!gwavi || !buffer || len < 256)
+	if (!gwavi || !buffer || len < 256) {
 		return false;
+	}
 	gwavi->offset_count++;
 	gwavi->stream_header.data_length++;
 	maxi_pad = len % 4;
-	if (maxi_pad > 0)
+	if (maxi_pad > 0) {
 		maxi_pad = 4 - maxi_pad;
+	}
 	if (gwavi->offset_count >= gwavi->offsets_len) {
 		gwavi->offsets_len += 1024;
 		gwavi->offsets = (unsigned int *)realloc(gwavi->offsets, (size_t)gwavi->offsets_len * sizeof(unsigned int));
@@ -346,8 +350,9 @@ bool gwavi_add_frame(struct gwavi_t *gwavi, unsigned char *buffer, size_t len) {
  */
 bool gwavi_close(struct gwavi_t *gwavi) {
 	long t;
-	if (!gwavi)
+	if (!gwavi) {
 		return false;
+	}
 	indigo_uni_handle *handle = gwavi->handle;
 	if (!tell(handle, &t) || !seek(handle, gwavi->marker) || !write_int(handle, (unsigned int)(t - gwavi->marker - 4)))
 		goto failure;

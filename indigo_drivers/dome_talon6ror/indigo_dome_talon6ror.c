@@ -239,8 +239,9 @@ static bool talon6ror_command(indigo_device *device, const char *command, uint8_
 		bool start = false;
 		while (pnt - response < RESPONSE_LENGTH) {
 			if (indigo_read(PRIVATE_DATA->handle,(char *) &c, 1) < 1) {
-				if (pnt)
+				if (pnt) {
 					*pnt = 0;
+				}
 				break;
 			}
 			if (c == '&') {
@@ -251,13 +252,15 @@ static bool talon6ror_command(indigo_device *device, const char *command, uint8_
 				continue;
 			}
 			if (c == '#') {
-				if (pnt)
+				if (pnt) {
 					*pnt = 0;
+				}
 				result = true;
 				break;
 			}
-			if (pnt)
+			if (pnt) {
 				*pnt++ = c;
+			}
 		}
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d -> \"%s\" (%s)", PRIVATE_DATA->handle, dump_hex(response), result ? "OK" : strerror(errno));
 	}

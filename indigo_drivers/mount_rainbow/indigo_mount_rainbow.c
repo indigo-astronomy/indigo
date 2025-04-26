@@ -81,8 +81,9 @@ static bool rainbow_sync_command(indigo_device *device, char *command, indigo_pr
 		for (int i = 0; i < 100; i++) {
 			indigo_usleep(10000);
 			if (property->state == INDIGO_OK_STATE) {
-				if (IS_CONNECTED)
+				if (IS_CONNECTED) {
 					indigo_update_property(device, property, NULL);
+				}
 				return true;
 			}
 		}
@@ -214,12 +215,14 @@ static void rainbow_reader(indigo_device *device) {
 		}
 		if (!strncmp(response, ":Gg", 3)) {
 			double longitude = indigo_stod(response + 3);
-			if (longitude < 0)
+			if (longitude < 0) {
 				longitude += 360;
+			}
 			MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = 360 - longitude;
 			MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-			if (IS_CONNECTED)
+			if (IS_CONNECTED) {
 				indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+			}
 			continue;
 		}
 		if (!strncmp(response, ":AV#", 3)) {
@@ -237,8 +240,9 @@ static void rainbow_reader(indigo_device *device) {
 			if (!MOUNT_TRACKING_OFF_ITEM->sw.value || MOUNT_TRACKING_PROPERTY->state != INDIGO_OK_STATE) {
 				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
 				MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
-				if (IS_CONNECTED)
+				if (IS_CONNECTED) {
 					indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+				}
 			}
 			continue;
 		}
@@ -246,8 +250,9 @@ static void rainbow_reader(indigo_device *device) {
 			if (!MOUNT_TRACKING_ON_ITEM->sw.value || MOUNT_TRACKING_PROPERTY->state != INDIGO_OK_STATE) {
 				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
 				MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
-				if (IS_CONNECTED)
+				if (IS_CONNECTED) {
 					indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+				}
 			}
 			continue;
 		}
@@ -255,8 +260,9 @@ static void rainbow_reader(indigo_device *device) {
 			if (!MOUNT_TRACK_RATE_SIDEREAL_ITEM->sw.value || MOUNT_TRACK_RATE_PROPERTY->state != INDIGO_OK_STATE) {
 				indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SIDEREAL_ITEM, true);
 				MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_OK_STATE;
-				if (IS_CONNECTED)
+				if (IS_CONNECTED) {
 					indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
+				}
 			}
 			continue;
 		}
@@ -264,8 +270,9 @@ static void rainbow_reader(indigo_device *device) {
 			if (!MOUNT_TRACK_RATE_SOLAR_ITEM->sw.value || MOUNT_TRACK_RATE_PROPERTY->state != INDIGO_OK_STATE) {
 				indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SOLAR_ITEM, true);
 				MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_OK_STATE;
-				if (IS_CONNECTED)
+				if (IS_CONNECTED) {
 					indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
+				}
 			}
 			continue;
 		}
@@ -273,8 +280,9 @@ static void rainbow_reader(indigo_device *device) {
 			if (!MOUNT_TRACK_RATE_LUNAR_ITEM->sw.value || MOUNT_TRACK_RATE_PROPERTY->state != INDIGO_OK_STATE) {
 				indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_LUNAR_ITEM, true);
 				MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_OK_STATE;
-				if (IS_CONNECTED)
+				if (IS_CONNECTED) {
 					indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
+				}
 			}
 			continue;
 		}
@@ -282,8 +290,9 @@ static void rainbow_reader(indigo_device *device) {
 			if (!MOUNT_TRACK_RATE_CUSTOM_ITEM->sw.value || MOUNT_TRACK_RATE_PROPERTY->state != INDIGO_OK_STATE) {
 				indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_CUSTOM_ITEM, true);
 				MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_OK_STATE;
-				if (IS_CONNECTED)
+				if (IS_CONNECTED) {
 					indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
+				}
 			}
 			continue;
 		}
@@ -292,8 +301,9 @@ static void rainbow_reader(indigo_device *device) {
 			if (MOUNT_GUIDE_RATE_RA_ITEM->number.value != value || MOUNT_GUIDE_RATE_PROPERTY->state != INDIGO_OK_STATE) {
 				MOUNT_GUIDE_RATE_RA_ITEM->number.value = value;
 				MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_OK_STATE;
-				if (IS_CONNECTED)
+				if (IS_CONNECTED) {
 					indigo_update_property(device, MOUNT_GUIDE_RATE_PROPERTY, NULL);
+				}
 			}
 		}
 	}
@@ -385,8 +395,9 @@ static void mount_park_callback(indigo_device *device) {
 
 static void mount_geographic_coordinates_callback(indigo_device *device) {
 	char command[128];
-	if (MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value < 0)
+	if (MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value < 0) {
 		MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value += 360;
+	}
 	double longitude = (360 - MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) - 360;
 	sprintf(command, ":St%s#:Sg%s#", indigo_dtos(MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, "%+03d*%02d'%02d"), indigo_dtos(longitude, "%+04d*%02d'%02d"));
 	MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;

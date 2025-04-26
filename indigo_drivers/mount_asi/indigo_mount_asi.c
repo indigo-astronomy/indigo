@@ -243,8 +243,9 @@ static void asi_get_site(indigo_device *device, double *latitude, double *longit
 	// LX200 protocol returns negative longitude for the east
 	if (asi_command(device, ":Gg#", response, sizeof(response), 0)) {
 		*longitude = indigo_stod(response);
-		if (*longitude < 0)
+		if (*longitude < 0) {
 			*longitude += 360;
+		}
 		*longitude = 360 - *longitude;
 	}
 }
@@ -884,10 +885,11 @@ static void mount_clear_alignmnet_callback(indigo_device *device) {
 }
 
 static void mount_geo_coords_callback(indigo_device *device) {
-	if (asi_set_site(device, MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value))
+	if (asi_set_site(device, MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value)) {
 		MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-	else
+	} else {
 		MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
 	indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 }
 
@@ -956,10 +958,11 @@ static void mount_abort_callback(indigo_device *device) {
 
 static void mount_motion_dec_callback(indigo_device *device) {
 	if (asi_set_slew_rate(device) && asi_motion_dec(device)) {
-		if (PRIVATE_DATA->lastMotionNS)
+		if (PRIVATE_DATA->lastMotionNS) {
 			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
-		else
+		} else {
 			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
+		}
 	} else {
 		MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
@@ -968,10 +971,11 @@ static void mount_motion_dec_callback(indigo_device *device) {
 
 static void mount_motion_ra_callback(indigo_device *device) {
 	if (asi_set_slew_rate(device) && asi_motion_ra(device)) {
-		if (PRIVATE_DATA->lastMotionWE)
+		if (PRIVATE_DATA->lastMotionWE) {
 			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_BUSY_STATE;
-		else
+		} else {
 			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
+		}
 	} else {
 		MOUNT_MOTION_RA_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
@@ -1033,10 +1037,11 @@ static void mount_guide_rate_callback(indigo_device *device) {
 	MOUNT_GUIDE_RATE_DEC_ITEM->number.value =
 	MOUNT_GUIDE_RATE_DEC_ITEM->number.target =
 	MOUNT_GUIDE_RATE_RA_ITEM->number.value = MOUNT_GUIDE_RATE_RA_ITEM->number.target;
-	if (asi_set_guide_rate(device, (int)MOUNT_GUIDE_RATE_RA_ITEM->number.target, (int)MOUNT_GUIDE_RATE_DEC_ITEM->number.target))
+	if (asi_set_guide_rate(device, (int)MOUNT_GUIDE_RATE_RA_ITEM->number.target, (int)MOUNT_GUIDE_RATE_DEC_ITEM->number.target)) {
 		MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_OK_STATE;
-	else
+	} else {
 		MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
 	indigo_update_property(device, MOUNT_GUIDE_RATE_PROPERTY, NULL);
 }
 

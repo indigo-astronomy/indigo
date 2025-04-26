@@ -728,8 +728,9 @@ char *ptp_property_canon_value_code_label(indigo_device *device, uint16_t proper
 			break;
 		}
 		case ptp_property_canon_CaptureDestination: {
-			if (code == 0x4)
+			if (code == 0x4) {
 				return "RAM";
+			}
 			return "Card";
 		}
 		case ptp_property_canon_EVFOutputDevice: {
@@ -928,12 +929,13 @@ static void ptp_canon_get_event(indigo_device *device) {
 						case ptp_property_canon_WhiteBalanceAdjustB:
 							property->type = ptp_int32_type;
 						default: {
-							if (size == 3 * sizeof(uint32_t) + sizeof(uint16_t))
+							if (size == 3 * sizeof(uint32_t) + sizeof(uint16_t)) {
 								property->type = ptp_uint16_type;
-							else if (size == 3 * sizeof(uint32_t) + sizeof(uint32_t))
+							} else if (size == 3 * sizeof(uint32_t) + sizeof(uint32_t)) {
 								property->type = ptp_uint32_type;
-							else
+							} else {
 								property->type = ptp_undef_type;
+							}
 						}
 					}
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "type = %s (%04x), %s", ptp_type_code_label(property->type), property->type, property->writable ? "rw" : "ro");
@@ -1080,14 +1082,15 @@ static void ptp_canon_get_event(indigo_device *device) {
 					}
 					if (property) {
 						*next_updated++ = property;
-						if (property->type == ptp_str_type)
+						if (property->type == ptp_str_type) {
 							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "value = '%s'", property->value.text.value);
-						else if (property->type == ptp_uint8_type || property->type == ptp_int8_type)
+						} else if (property->type == ptp_uint8_type || property->type == ptp_int8_type) {
 							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "value = %02lx", property->value.number.value);
-						else if (property->type == ptp_uint16_type || property->type == ptp_int16_type)
+						} else if (property->type == ptp_uint16_type || property->type == ptp_int16_type) {
 							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "value = %04lx", property->value.number.value);
-						else
+						} else {
 							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "value = %08lx", property->value.number.value);
+						}
 					}
 					break;
 				}
@@ -1170,8 +1173,9 @@ static void ptp_canon_get_event(indigo_device *device) {
 								PRIVATE_DATA->image_buffer = buffer;
 								buffer = NULL;
 							}
-							if (DSLR_DELETE_IMAGE_ON_ITEM->sw.value)
+							if (DSLR_DELETE_IMAGE_ON_ITEM->sw.value) {
 								ptp_transaction_1_0(device, ptp_operation_canon_DeleteObject, handle);
+							}
 						}
 						if (buffer) {
 							free(buffer);
@@ -1214,20 +1218,23 @@ static void ptp_canon_get_event(indigo_device *device) {
 				case ptp_property_canon_EVFWBMode:
 				case ptp_property_canon_WhiteBalance:
 				case ptp_property_canon_PictureStyle: {
-					if (CANON_PRIVATE_DATA->mode >= 8)
+					if (CANON_PRIVATE_DATA->mode >= 8) {
 						(*property)->count = -1;
+					}
 					break;
 				}
 				case ptp_property_canon_FocusMode: {
-					if (CANON_PRIVATE_DATA->mode >= 8 || (*property)->value.sw.value == 3)
+					if (CANON_PRIVATE_DATA->mode >= 8 || (*property)->value.sw.value == 3) {
 						(*property)->count = -1;
-					else
-						(*property)->count = 3; // AvailListChanged is not sent again
+					} else {
+						(*property)->count = 3;
+					} // AvailListChanged is not sent again
 					break;
 				}
 				case ptp_property_canon_ExpCompensation: {
-					if (CANON_PRIVATE_DATA->mode >= 8 || CANON_PRIVATE_DATA->mode == 3)
+					if (CANON_PRIVATE_DATA->mode >= 8 || CANON_PRIVATE_DATA->mode == 3) {
 						(*property)->count = -1;
+					}
 					break;
 				}
 				case ptp_property_canon_ExExposureLevelIncrements:
@@ -1531,8 +1538,9 @@ bool ptp_canon_liveview(indigo_device *device) {
 							buffer = NULL;
 						}
 						CCD_STREAMING_COUNT_ITEM->number.value--;
-						if (CCD_STREAMING_COUNT_ITEM->number.value < 0)
+						if (CCD_STREAMING_COUNT_ITEM->number.value < 0) {
 							CCD_STREAMING_COUNT_ITEM->number.value = -1;
+						}
 						indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 						break;
 					}
@@ -1554,8 +1562,9 @@ bool ptp_canon_liveview(indigo_device *device) {
 
 bool ptp_canon_lock(indigo_device *device) {
 	if (ptp_operation_supported(device, ptp_operation_canon_SetUILock) && ptp_operation_supported(device, ptp_operation_canon_ResetUILock)) {
-		if (DSLR_LOCK_ITEM->sw.value)
+		if (DSLR_LOCK_ITEM->sw.value) {
 			return ptp_transaction_0_0(device, ptp_operation_canon_SetUILock);
+		}
 		return ptp_transaction_0_0(device, ptp_operation_canon_ResetUILock);
 	}
 	return false;

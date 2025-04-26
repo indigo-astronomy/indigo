@@ -44,14 +44,18 @@
 char *ptp_type_code_label(uint16_t code) {
 	static char *scalar_type_label[] = { "int8", "uint8", "int16", "uint16", "int32", "uint32", "int64", "uint64", "int128", "uint128" };
 	static char *array_type_label[] = { "int8[]", "uint8[]", "int16[]", "uint16[]", "int32[]", "uint32[]", "int64[]", "uint64[]", "int128[]", "uint128[]" };
-	if (code == 0)
+	if (code == 0) {
 		return "undef";
-	if (code <= ptp_uint128_type)
+	}
+	if (code <= ptp_uint128_type) {
 		return scalar_type_label[code - 1];
-	if (code <= ptp_auint128_type)
+	}
+	if (code <= ptp_auint128_type) {
 		return array_type_label[code & 0xFF - 1];
-	if (code == 0xFFFF)
+	}
+	if (code == 0xFFFF) {
 		return "string";
+	}
 	return "undef!";
 }
 
@@ -266,28 +270,39 @@ char *ptp_property_value_code_label(indigo_device *device, uint16_t property, ui
 			return label;
 		}
 		case ptp_property_ExposureTime: {
-			if (code == 0xffffffff)
+			if (code == 0xffffffff) {
 				return "Bulb";
-			if (code == 0xfffffffd)
+			}
+			if (code == 0xfffffffd) {
 				return "Time";
-			if (code == 1)
+			}
+			if (code == 1) {
 				return "1/8000s";
-			if (code == 2)
+			}
+			if (code == 2) {
 				return "1/4000s";
-			if (code == 3)
+			}
+			if (code == 3) {
 				return "1/3200s";
-			if (code == 6)
+			}
+			if (code == 6) {
 				return "1/1600s";
-			if (code == 12)
+			}
+			if (code == 12) {
 				return "1/800s";
-			if (code == 13)
+			}
+			if (code == 13) {
 				return "1/750s";
-			if (code == 15)
+			}
+			if (code == 15) {
 				return "1/640s";
-			if (code == 28)
+			}
+			if (code == 28) {
 				return "1/350s";
-			if (code == 80)
+			}
+			if (code == 80) {
 				return "1/125s";
+			}
 			if (code < 100) {
 				snprintf(label, PTP_MAX_CHARS,  "1/%gs", round(1000.0 / code) * 10);
 				return label;
@@ -482,8 +497,9 @@ uint8_t *ptp_decode_uint16_array(uint8_t *source, uint16_t *target, uint32_t *co
 		source = ptp_decode_uint16(source, target++);
 	}
 	*target = 0;
-	if (count)
+	if (count) {
 		*count = length;
+	}
 	return source;
 }
 
@@ -495,8 +511,9 @@ uint8_t *ptp_decode_uint32_array(uint8_t *source, uint32_t *target, uint32_t *co
 		source = ptp_decode_uint32(source, target++);
 	}
 	*target = 0;
-	if (count)
+	if (count) {
 		*count = length;
+	}
 	return source;
 }
 
@@ -791,8 +808,9 @@ uint8_t *ptp_decode_property(uint8_t *source, uint32_t size, indigo_device *devi
 						break;
 					}
 					case ptp_str_type: {
-						if (i < 16)
+						if (i < 16) {
 							source = ptp_decode_string(source, target->value.sw_str.values[i]);
+						}
 						break;
 					}
 					default:
@@ -803,8 +821,9 @@ uint8_t *ptp_decode_property(uint8_t *source, uint32_t size, indigo_device *devi
 			break;
 		}
 	}
-	if (PRIVATE_DATA->fix_property)
+	if (PRIVATE_DATA->fix_property) {
 		PRIVATE_DATA->fix_property(device, target);
+	}
 	ptp_update_property(device, target);
 	return source;
 }
@@ -873,15 +892,17 @@ uint8_t *ptp_decode_property_value(uint8_t *source, indigo_device *device, ptp_p
 
 ptp_property *ptp_property_supported(indigo_device *device, uint16_t code) {
 	for (int i = 0; PRIVATE_DATA->info_properties_supported[i]; i++)
-		if (PRIVATE_DATA->info_properties_supported[i] == code)
+		if (PRIVATE_DATA->info_properties_supported[i] == code) {
 			return PRIVATE_DATA->properties + i;
+		}
 	return NULL;
 }
 
 bool ptp_operation_supported(indigo_device *device, uint16_t code) {
 	for (int i = 0; PRIVATE_DATA->info_operations_supported[i]; i++)
-		if (PRIVATE_DATA->info_operations_supported[i] == code)
+		if (PRIVATE_DATA->info_operations_supported[i] == code) {
 			return true;
+		}
 	return false;
 }
 
@@ -1073,16 +1094,21 @@ bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t o
 	}
  	[delegate.ptpResponse getBytes:&container length:sizeof(container)];
 	PTP_DUMP_CONTAINER(&container);
-	if (in_1)
+	if (in_1) {
 		*in_1 = container.payload.params[0];
-	if (in_2)
+	}
+	if (in_2) {
 		*in_2 = container.payload.params[1];
-	if (in_3)
+	}
+	if (in_3) {
 		*in_3 = container.payload.params[2];
-	if (in_4)
+	}
+	if (in_4) {
 		*in_4 = container.payload.params[3];
-	if (in_5)
+	}
+	if (in_5) {
 		*in_5 = container.payload.params[4];
+	}
 	delegate.ptpResponse = nil;
 	if (data_in) {
 		if (delegate.ptpInput) {
@@ -1243,8 +1269,9 @@ bool ptp_open(indigo_device *device) {
 
 bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t out_1, uint32_t out_2, uint32_t out_3, uint32_t out_4, uint32_t out_5, void *data_out, uint32_t data_out_size, uint32_t *in_1, uint32_t *in_2, uint32_t *in_3, uint32_t *in_4, uint32_t *in_5, void **data_in, uint32_t *data_in_size) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	if (PRIVATE_DATA->handle == NULL)
+	if (PRIVATE_DATA->handle == NULL) {
 		return false;
+	}
 	ptp_container request, response;
 	int length = 0;
 	memset(&request, 0, sizeof(request));
@@ -1317,8 +1344,9 @@ bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t o
 		unsigned char *buffer = indigo_safe_malloc(total + 1024); // 1024 added to avoid mysterious LIBUSB_ERROR_OVERFLOWs
 		memcpy(buffer, &response.payload, length);
 		int offset = length;
-		if (data_in_size)
+		if (data_in_size) {
 			*data_in_size = total;
+		}
 		total -= length;
 		while (total > 0) {
 			rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_in, buffer + offset, total + 1024 > PTP_MAX_BULK_TRANSFER_SIZE ? PTP_MAX_BULK_TRANSFER_SIZE : total + 1024, &length, PTP_TIMEOUT);
@@ -1331,8 +1359,9 @@ bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t o
 			offset += length;
 			total -= length;
 		}
-		if (data_in)
+		if (data_in) {
 			*data_in = buffer;
+		}
 		while (true) {
 			memset(&response, 0, sizeof(response));
 			length = 0;
@@ -1350,16 +1379,21 @@ bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t o
 		}
 		PTP_DUMP_CONTAINER(&response);
 	}
-	if (in_1)
+	if (in_1) {
 		*in_1 = response.payload.params[0];
-	if (in_2)
+	}
+	if (in_2) {
 		*in_2 = response.payload.params[1];
-	if (in_3)
+	}
+	if (in_3) {
 		*in_3 = response.payload.params[2];
-	if (in_4)
+	}
+	if (in_4) {
 		*in_4 = response.payload.params[3];
-	if (in_5)
+	}
+	if (in_5) {
 		*in_5 = response.payload.params[4];
+	}
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	PRIVATE_DATA->last_error = response.code;
 	return rc >= 0 && response.code == ptp_response_OK;
@@ -1479,10 +1513,11 @@ bool ptp_update_property(indigo_device *device, ptp_property *property) {
 			}
 		} else if (property->count > 0) {
 				if (property->property->count != property->count) {
-					if (property->count > property->property->count)
+					if (property->count > property->property->count) {
 						property->property = indigo_resize_property(property->property, property->count);
-					else
+					} else {
 						property->property->count = property->count;
+					}
 					define = true;
 				}
 				char str[INDIGO_NAME_SIZE];
@@ -1503,8 +1538,9 @@ bool ptp_update_property(indigo_device *device, ptp_property *property) {
 							update = true;
 						property->property->items[i].sw.value = !strcmp(property->value.sw_str.value, property->value.sw_str.values[i]);
 					} else {
-						if (property->value.sw.value == property->value.sw.values[i] && !property->property->items[i].sw.value)
+						if (property->value.sw.value == property->value.sw.values[i] && !property->property->items[i].sw.value) {
 							update = true;
+						}
 						property->property->items[i].sw.value = (property->value.sw.value == property->value.sw.values[i]);
 					}
 				}
@@ -1521,9 +1557,9 @@ bool ptp_update_property(indigo_device *device, ptp_property *property) {
 			define = true;
 		}
 	}
-	if (property->type == ptp_str_type)
+	if (property->type == ptp_str_type) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s (%04x), type = str -> %s ('%s')", PRIVATE_DATA->property_code_label(property->code), property->code, property->property ? property->property->name : "NONE", property->value.text.value);
-	else if (property->form == ptp_none_form)
+	} else if (property->form == ptp_none_form)
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s (%04x), type = %s -> %s (%lld)", PRIVATE_DATA->property_code_label(property->code), property->code, ptp_type_code_label(property->type), property->property ? property->property->name : "NONE", property->value.number.value);
 	else if (property->form == ptp_range_form)
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s (%04x), type = %s -> %s (%lld<%lld<%lld)", PRIVATE_DATA->property_code_label(property->code), property->code, ptp_type_code_label(property->type), property->property ? property->property->name : "NONE", property->value.number.min, property->value.number.value, property->value.number.max);
@@ -1560,8 +1596,9 @@ bool ptp_update_property(indigo_device *device, ptp_property *property) {
 	}
 	if (IS_CONNECTED) {
 		if (define) {
-			if (delete)
+			if (delete) {
 				indigo_delete_property(device, property->property, NULL);
+			}
 			indigo_define_property(device, property->property, NULL);
 		} else if (update) {
 			indigo_update_property(device, property->property, NULL);
@@ -1680,8 +1717,9 @@ bool ptp_handle_event(indigo_device *device, ptp_event_code code, uint32_t *para
 							PRIVATE_DATA->image_buffer = buffer;
 							buffer = NULL;
 						}
-						if (DSLR_DELETE_IMAGE_ON_ITEM->sw.value)
+						if (DSLR_DELETE_IMAGE_ON_ITEM->sw.value) {
 							ptp_transaction_1_0(device, ptp_operation_DeleteObject, params[0]);
+						}
 					}
 				}
 				if (buffer) {
@@ -1797,8 +1835,9 @@ void ptp_blob_exposure_timer(indigo_device *device) {
 	while (!PRIVATE_DATA->abort_capture && remains > 0) {
 		indigo_usleep(10000);
 		remains = finish - timestamp();
-		if (remains < 0)
+		if (remains < 0) {
 			remains = 0;
+		}
 		double remains_ceil = ceil(remains);
 		if (remains_ceil != CCD_EXPOSURE_ITEM->number.value) {
 			CCD_EXPOSURE_ITEM->number.value = remains_ceil;

@@ -360,8 +360,9 @@ static int find_unplugged_device_handle() {
 	for (int index = 0; index < count; index++) {
 		int res = POAGetPWProperties(index, &props);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetPWProperties(%d, -> %d) = %d", index, props.Handle, res);
-		if (res == PW_OK)
+		if (res == PW_OK) {
 			dev_tmp[props.Handle] = true;
+		}
 	}
 	int handle = -1;
 	for (int index = 0; index < PONE_HANDLE_MAX; index++) {

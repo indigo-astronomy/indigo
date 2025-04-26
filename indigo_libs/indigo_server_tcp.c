@@ -118,11 +118,13 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 				if (!strncmp(request, "GET /", 5)) {
 					char *path = request + 4;
 					char *space = strchr(path, ' ');
-					if (space)
+					if (space) {
 						*space = 0;
+					}
 					char *params = strchr(path, '?');
-					if (params)
+					if (params) {
 						*params++ = 0;
+					}
 					char websocket_key[256] = "";
 					bool use_gzip = false;
 					bool use_imagebytes = false;
@@ -212,8 +214,9 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 									INDIGO_PRINTF(*handle, "Content-Type: application/octet-stream\r\n");
 									INDIGO_PRINTF(*handle, "Content-Disposition: attachment; filename=\"%p%s\"\r\n", item, working_format);
 								}
-								if (keep_alive)
+								if (keep_alive) {
 									INDIGO_PRINTF(*handle, "Connection: keep-alive\r\n");
+								}
 								INDIGO_PRINTF(*handle, "Content-Length: %ld\r\n", working_size);
 								INDIGO_PRINTF(*handle, "\r\n");
 								if (indigo_uni_write(*handle, working_copy, working_size) < 0) {
@@ -315,8 +318,9 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 				} else if (!strncmp(request, "PUT /", 5)) {
 					char *path = request + 4;
 					char *space = strchr(path, ' ');
-					if (space)
+					if (space) {
 						*space = 0;
+					}
 					if (!strncmp(path, "/blob/", 6)) {
 						indigo_item *item;
 						indigo_blob_entry *entry;
@@ -446,10 +450,11 @@ void indigo_server_remove_resource(const char *path) {
 	struct resource *prev = NULL;
 	while (resource) {
 		if (!strcmp(resource->path, path)) {
-			if (prev == NULL)
+			if (prev == NULL) {
 				resources = resource->next;
-			else
+			} else {
 				prev->next = resource->next;
+			}
 			free(resource);
 			pthread_mutex_unlock(&resource_list_mutex);
 			INDIGO_TRACE(indigo_trace("Resource %s removed", path));

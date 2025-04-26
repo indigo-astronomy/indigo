@@ -247,10 +247,11 @@ static void handle_lock(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->message_mutex);
 	DSLR_LOCK_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, DSLR_LOCK_PROPERTY, NULL);
-	if (PRIVATE_DATA->lock(device))
+	if (PRIVATE_DATA->lock(device)) {
 		DSLR_LOCK_PROPERTY->state = INDIGO_OK_STATE;
-	else
+	} else {
 		DSLR_LOCK_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
 	indigo_update_property(device, DSLR_LOCK_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->message_mutex);
 }
@@ -259,10 +260,11 @@ static void handle_af(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->message_mutex);
 	DSLR_AF_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, DSLR_AF_PROPERTY, NULL);
-	if (PRIVATE_DATA->af(device))
+	if (PRIVATE_DATA->af(device)) {
 		DSLR_AF_PROPERTY->state = INDIGO_OK_STATE;
-	else
+	} else {
 		DSLR_AF_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
 	DSLR_AF_ITEM->sw.value = false;
 	indigo_update_property(device, DSLR_AF_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->message_mutex);
@@ -272,10 +274,11 @@ static void handle_set_host_time(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->message_mutex);
 	DSLR_SET_HOST_TIME_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, DSLR_SET_HOST_TIME_PROPERTY, NULL);
-	if (PRIVATE_DATA->set_host_time(device))
+	if (PRIVATE_DATA->set_host_time(device)) {
 		DSLR_SET_HOST_TIME_PROPERTY->state = INDIGO_OK_STATE;
-	else
+	} else {
 		DSLR_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
 	DSLR_SET_HOST_TIME_ITEM->sw.value = false;
 	indigo_update_property(device, DSLR_SET_HOST_TIME_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->message_mutex);
@@ -284,10 +287,11 @@ static void handle_set_host_time(indigo_device *device) {
 static void handle_zoom(indigo_device *device) {
 	DSLR_ZOOM_PREVIEW_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
-	if (PRIVATE_DATA->zoom(device))
+	if (PRIVATE_DATA->zoom(device)) {
 		DSLR_ZOOM_PREVIEW_PROPERTY->state = INDIGO_OK_STATE;
-	else
+	} else {
 		DSLR_ZOOM_PREVIEW_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
 	indigo_update_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
 }
 
@@ -297,10 +301,11 @@ static void handle_set_property(indigo_device *device) {
 	if (property) {
 		property->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, property, NULL);
-		if (PRIVATE_DATA->set_property(device, PRIVATE_DATA->properties + PRIVATE_DATA->message_property_index))
+		if (PRIVATE_DATA->set_property(device, PRIVATE_DATA->properties + PRIVATE_DATA->message_property_index)) {
 			property->state = INDIGO_OK_STATE;
-		else
+		} else {
 			property->state = INDIGO_ALERT_STATE;
+		}
 	} else {
 		property->state = INDIGO_ALERT_STATE;
 	}
@@ -313,9 +318,9 @@ static void handle_streaming(indigo_device *device) {
 	PRIVATE_DATA->abort_capture = false;
 	CCD_STREAMING_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
-	if (PRIVATE_DATA->liveview(device))
+	if (PRIVATE_DATA->liveview(device)) {
 		CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
-	else {
+	} else {
 		CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	if (CCD_STREAMING_PROPERTY->state == INDIGO_ALERT_STATE) {
@@ -331,10 +336,12 @@ static void handle_exposure(indigo_device *device) {
 	PRIVATE_DATA->abort_capture = false;
 	CCD_IMAGE_FILE_PROPERTY->state = INDIGO_OK_STATE;
 	CCD_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
-	if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value)
+	if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
 		CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
-	if (CCD_UPLOAD_MODE_CLIENT_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value)
+	}
+	if (CCD_UPLOAD_MODE_CLIENT_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
 		CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
+	}
 	CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
 	indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
@@ -478,10 +485,11 @@ static indigo_result focuser_attach(indigo_device *device) {
 static void handle_focus(indigo_device *device) {
 	FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-	if (PRIVATE_DATA->focus(device->master_device, (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? -1 : 1) * FOCUSER_STEPS_ITEM->number.value))
+	if (PRIVATE_DATA->focus(device->master_device, (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? -1 : 1) * FOCUSER_STEPS_ITEM->number.value)) {
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-	else
+	} else {
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 }
 

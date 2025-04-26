@@ -224,10 +224,12 @@ static bool sx_open(indigo_device *device) {
 				PRIVATE_DATA->model = result & 0x1F;
 				PRIVATE_DATA->is_color = result > 0x50;
 				PRIVATE_DATA->is_interlaced = result & 0x40;
-				if (result == 0x84)
+				if (result == 0x84) {
 					PRIVATE_DATA->is_interlaced = true;
-				if (PRIVATE_DATA->model == 0x16 || PRIVATE_DATA->model == 0x17 || PRIVATE_DATA->model == 0x18 || PRIVATE_DATA->model == 0x19)
+				}
+				if (PRIVATE_DATA->model == 0x16 || PRIVATE_DATA->model == 0x17 || PRIVATE_DATA->model == 0x18 || PRIVATE_DATA->model == 0x19) {
 					PRIVATE_DATA->is_interlaced =  false;
+				}
 				PRIVATE_DATA->is_icx453 = result == 0x59;
 				PRIVATE_DATA->has_flood_led = result == 0x21 || result == 0x25 || result == 0xA5 || result == 0x2A || result == 0xAA;
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s %s model %d\n", PRIVATE_DATA->is_interlaced ? "INTERLACED" : "NON-INTERLACED", PRIVATE_DATA->is_color ? "COLOR" : "MONO", PRIVATE_DATA->model);
@@ -308,8 +310,9 @@ static bool sx_start_exposure(indigo_device *device, double exposure, bool dark,
 		setup_data[REQ_DATA + 11] = (milis>>8) & 0xFF;
 		setup_data[REQ_DATA + 12] = (milis>>16) & 0xFF;
 		setup_data[REQ_DATA + 13] = (milis>>24) & 0xFF;
-		if (PRIVATE_DATA->extra_caps & CAPS_SHUTTER)
+		if (PRIVATE_DATA->extra_caps & CAPS_SHUTTER) {
 			setup_data[REQ_VALUE_H] = dark ? FLAGS_SHUTTER_CLOSE : FLAGS_SHUTTER_OPEN;
+		}
 		if (PRIVATE_DATA->is_interlaced) {
 			if (vertical_bin > 1) {
 				setup_data[REQ_DATA + 2] = (frame_top/2) & 0xFF;
@@ -396,8 +399,9 @@ static bool sx_download_pixels(indigo_device *device, unsigned char *pixels, uns
 	int rc=0;
 	while (read < count && rc >= 0) {
 		int size = (int)(count - read);
-		if (size > CHUNK_SIZE)
+		if (size > CHUNK_SIZE) {
 			size = CHUNK_SIZE;
+		}
 		rc = libusb_bulk_transfer(handle, BULK_IN, pixels + read, size, &transferred, BULK_DATA_TIMEOUT);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer -> %lu bytes %s", transferred, rc < 0 ? libusb_error_name(rc) : "OK");
 		if (transferred >= 0) {
@@ -709,10 +713,11 @@ static void ccd_temperature_callback(indigo_device *device) {
 	if (PRIVATE_DATA->can_check_temperature) {
 		if (sx_set_cooler(device, CCD_COOLER_ON_ITEM->sw.value, PRIVATE_DATA->target_temperature, &PRIVATE_DATA->current_temperature)) {
 			double diff = PRIVATE_DATA->current_temperature - PRIVATE_DATA->target_temperature;
-			if (CCD_COOLER_ON_ITEM->sw.value)
+			if (CCD_COOLER_ON_ITEM->sw.value) {
 				CCD_TEMPERATURE_PROPERTY->state = fabs(diff) > 0.5 ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
-			else
+			} else {
 				CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
+			}
 			CCD_TEMPERATURE_ITEM->number.value = PRIVATE_DATA->current_temperature;
 			CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
@@ -814,8 +819,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
-		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE)
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 			return INDIGO_OK;
+		}
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
 		indigo_use_shortest_exposure_if_bias(device);
 		sx_start_exposure(device, (int)CCD_EXPOSURE_ITEM->number.target, CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_DARKFLAT_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value, (int)CCD_FRAME_LEFT_ITEM->number.value, (int)CCD_FRAME_TOP_ITEM->number.value, (int)CCD_FRAME_WIDTH_ITEM->number.value, (int)CCD_FRAME_HEIGHT_ITEM->number.value, (int)CCD_BIN_HORIZONTAL_ITEM->number.value, (int)CCD_BIN_VERTICAL_ITEM->number.value);
@@ -829,9 +835,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-		if (CCD_EXPOSURE_ITEM->number.target > 3)
+		if (CCD_EXPOSURE_ITEM->number.target > 3) {
 			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 3, clear_reg_timer_callback, &PRIVATE_DATA->exposure_timer);
-		else {
+		} else {
 			PRIVATE_DATA->can_check_temperature = false;
 			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
 		}

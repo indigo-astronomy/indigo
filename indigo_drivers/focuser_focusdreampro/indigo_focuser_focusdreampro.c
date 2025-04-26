@@ -299,10 +299,12 @@ static void focuser_position_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char command[16], response[16];
 	int position = (int)FOCUSER_POSITION_ITEM->number.target;
-	if (position < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target)
+	if (position < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target) {
 		position = (int)FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target;
-	if (position > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target)
+	}
+	if (position > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target) {
 		position = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target;
+	}
 	FOCUSER_POSITION_ITEM->number.target = position;
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 	snprintf(command, sizeof(command), "%c:%d", FOCUSER_ON_POSITION_SET_SYNC_ITEM->sw.value ? 'R': 'M', position);
@@ -321,10 +323,12 @@ static void focuser_steps_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char command[16], response[16];
 	int position = (int)FOCUSER_POSITION_ITEM->number.value + (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? -(int)FOCUSER_STEPS_ITEM->number.value : (int)FOCUSER_STEPS_ITEM->number.value);
-	if (position < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target)
+	if (position < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target) {
 		position = (int)FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target;
-	if (position > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target)
+	}
+	if (position > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target) {
 		position = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target;
+	}
 	snprintf(command, sizeof(command), "M:%d", position);
 	if (focusdreampro_command(device, command, response, sizeof(response)) && *response == *command) {
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;

@@ -216,11 +216,13 @@ bool synscan_configure(indigo_device* device) {
 			MOUNT_POLARSCOPE_BRIGHTNESS_ITEM->number.value = 255;
 		}
 		
-		if (!MOUNT_PEC_PROPERTY->hidden)
+		if (!MOUNT_PEC_PROPERTY->hidden) {
 			indigo_set_switch(MOUNT_PEC_PROPERTY, PRIVATE_DATA->raFeatures & kInPPEC ? MOUNT_PEC_ENABLED_ITEM : MOUNT_PEC_DISABLED_ITEM, true);
+		}
 		
-		if (!MOUNT_PEC_TRAINING_PROPERTY->hidden)
+		if (!MOUNT_PEC_TRAINING_PROPERTY->hidden) {
 			indigo_set_switch(MOUNT_PEC_TRAINING_PROPERTY, (PRIVATE_DATA->raFeatures & kInPPECTraining) || (PRIVATE_DATA->decFeatures & kInPPECTraining) ? MOUNT_PEC_TRAINIG_STARTED_ITEM : MOUNT_PEC_TRAINIG_STOPPED_ITEM, true);
+		}
 
 		//  Determine ZERO positions
 		PRIVATE_DATA->raHomePosition = 0x800000;
@@ -320,27 +322,32 @@ bool synscan_configure(indigo_device* device) {
 static bool synscan_should_reconfigure_axis(indigo_device* device, enum AxisID axis, struct AxisConfig* config) {
 	//  Check if we need to re-configure
 	//  Mount seems to lose the turbo status and needs to be reconfigured each time
-	if (config->turbo)
+	if (config->turbo) {
 		return true;
+	}
 
 	//  Reference the relevant axis config cache
 	struct AxisConfig* cachedConfig = (axis == kAxisRA) ? &PRIVATE_DATA->raAxisConfig : &PRIVATE_DATA->decAxisConfig;
 
 	//  Check if reconfiguration is needed
-	if (!cachedConfig->valid)
+	if (!cachedConfig->valid) {
 		return true;
-	if (cachedConfig->direction != config->direction)
+	}
+	if (cachedConfig->direction != config->direction) {
 		return true;
-	if (cachedConfig->turbo)
+	}
+	if (cachedConfig->turbo) {
 		return true;
+	}
 	return false;
 }
 
 static void synscan_axis_config_for_rate(indigo_device* device, enum AxisID axis, double rate, struct AxisConfig* config) {
 	//  Invert RA direction for southern hemisphere
 	bool south = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value < 0;
-	if (south && axis == kAxisRA)
+	if (south && axis == kAxisRA) {
 		rate = -rate;
+	}
 
 	//  Capture original rate
 	config->slewRate = rate;
@@ -391,12 +398,14 @@ static bool synscan_configure_axis_for_rate(indigo_device* device, enum AxisID a
 	bool ok = true;
 	//if (reconfigure) { // attempt to fix https://bb.cloudmakers.eu/viewtopic.php?f=7&t=772&start=30
 		ok = ok && synscan_set_axis_gearing(device, axis, requiredConfig.direction, requiredConfig.turbo ? kAxisSpeedHigh : kAxisSpeedLow);
-		if (!ok)
+		if (!ok) {
 			return false;
+		}
 	//}
 	ok = ok && synscan_set_axis_slew_rate(device, axis, requiredConfig.rateCode);
-	if (!ok)
+	if (!ok) {
 		return false;
+	}
 
 	//  Validate the axis config cache
 	*cachedConfig = requiredConfig;
@@ -424,8 +433,9 @@ bool synscan_update_axis_to_rate(indigo_device* device, enum AxisID axis, double
 	cachedConfig->valid = false;
 
 	bool ok = synscan_set_axis_slew_rate(device, axis, requiredConfig.rateCode);
-	if (!ok)
+	if (!ok) {
 		return false;
+	}
 
 	//  Validate the axis config cache
 	*cachedConfig = requiredConfig;
@@ -437,8 +447,9 @@ bool synscan_guide_axis_at_rate(indigo_device* device, enum AxisID axis, double 
 	struct AxisConfig pulseConfig;
 	struct AxisConfig resumeConfig;
 	synscan_axis_config_for_rate(device, axis, rate, &pulseConfig);
-	if (resume_rate != 0)
+	if (resume_rate != 0) {
 		synscan_axis_config_for_rate(device, axis, resume_rate, &resumeConfig);
+	}
 
 #if 0
 	//  Determine if simple rate change is sufficient (or full reconfiguration)
@@ -458,10 +469,11 @@ bool synscan_guide_axis_at_rate(indigo_device* device, enum AxisID axis, double 
 #endif
 
 	//  Do the pulse
-	if (axis == kAxisRA)
+	if (axis == kAxisRA) {
 		return synscan_guide_pulse_ra(device, pulseConfig.rateCode, duration, resumeConfig.rateCode);
-	else
+	} else {
 		return synscan_guide_pulse_dec(device, pulseConfig.direction, pulseConfig.rateCode, duration);
+	}
 
 //	bool ok = synscan_set_axis_slew_rate(device, axis, requiredConfig.rateCode);
 //	if (!ok)
@@ -474,27 +486,31 @@ bool synscan_guide_axis_at_rate(indigo_device* device, enum AxisID axis, double 
 
 static double ha_steps_to_position(indigo_device* device, AxisPosition steps) {
 	double hapos = (double)(steps - PRIVATE_DATA->raZeroPos) / (double)PRIVATE_DATA->raTotalSteps;
-	if (hapos < 0)
+	if (hapos < 0) {
 		hapos += 1;
+	}
 	return hapos;
 }
 
 static double dec_steps_to_position(indigo_device* device, AxisPosition steps) {
 	double decpos = (double)(steps - PRIVATE_DATA->decZeroPos) / (double)PRIVATE_DATA->decTotalSteps;
-	if (decpos < 0)
+	if (decpos < 0) {
 		decpos += 1;
+	}
 	return decpos;
 }
 
 static AxisPosition ha_position_to_steps(indigo_device* device, double position) {
-	if (position > 0.75)
+	if (position > 0.75) {
 		position -= 1.0;
+	}
 	return lrint(PRIVATE_DATA->raZeroPos + (position * PRIVATE_DATA->raTotalSteps));
 }
 
 static AxisPosition dec_position_to_steps(indigo_device* device, double position) {
-	if (position > 0.75)
+	if (position > 0.75) {
 		position -= 1.0;
+	}
 	return lrint(PRIVATE_DATA->decZeroPos + (position * PRIVATE_DATA->decTotalSteps));
 }
 
@@ -523,13 +539,14 @@ void coords_encoder_to_eq(indigo_device* device, double ha_enc, double dec_enc, 
 
 	//  Normal DEC
 	double epdec = dec_enc;
-	if (epdec < 0)
+	if (epdec < 0) {
 		epdec += 1.0;
+	}
 
 	bool west = false;
-	if (epdec < 0.25)
+	if (epdec < 0.25) {
 		*dec = epdec;
-	else if (epdec < 0.75) {
+	} else if (epdec < 0.75) {
 		*dec = 0.5 - epdec;
 		west = true;
 	} else // decPos in [0.75, 1.0]
@@ -584,24 +601,28 @@ void coords_encoder_to_eq(indigo_device* device, double ha_enc, double dec_enc, 
 	//      [24, 18] E      HA = 24 - Hours
 
 	if (!south) {
-		if (!west)
+		if (!west) {
 			*ha = ha_enc - 0.5;
-		else if (ha_enc < 0.5)
+		} else if (ha_enc < 0.5) {
 			*ha = ha_enc;
-		else
+		} else {
 			*ha = ha_enc - 1.0;
+		}
 	} else {
-		if (west)
+		if (west) {
 			*ha = 0.5 - ha_enc;
-		else if (ha_enc < 0.5)
+		} else if (ha_enc < 0.5) {
 			*ha = -ha_enc;
-		else
+		} else {
 			*ha = 1.0 - ha_enc;
+		}
 	}
-	if (*ha < -0.5)
+	if (*ha < -0.5) {
 		*ha += 1.0;
-	if (*ha >= 0.5)
+	}
+	if (*ha >= 0.5) {
 		*ha -= 1.0;
+	}
 
 	//  Convert to radians
 	*ha *= 2.0 * M_PI;
@@ -661,25 +682,29 @@ void coords_eq_to_encoder2(indigo_device* device, double ha, double dec, double 
 	//  Generate the two DEC positions (east and west of meridian)
 	double degw = M_PI - dec;   //  NORTH variant by default
 	if (south) {
-		if (dec < 0)
+		if (dec < 0) {
 			degw = -dec;
-		else
+		} else {
 			degw = M_PI + M_PI - dec;
+		}
 	}
 
 	double dege = M_PI + dec;   //  SOUTH variant by default
 	if (!south) {
-		if (dec < 0)
+		if (dec < 0) {
 			dege = M_PI + M_PI + dec;
-		else
+		} else {
 			dege = dec;
+		}
 	}
 
 	//  Rebase the angles to optimise the DEC slew relative to HOME
-	if (degw > M_PI + M_PI_2)
+	if (degw > M_PI + M_PI_2) {
 		degw -= M_PI + M_PI;
-	if (dege > M_PI + M_PI_2)
+	}
+	if (dege > M_PI + M_PI_2) {
 		dege -= M_PI + M_PI;
+	}
 	degw /= M_PI + M_PI;
 	dege /= M_PI + M_PI;
 
@@ -687,27 +712,32 @@ void coords_eq_to_encoder2(indigo_device* device, double ha, double dec, double 
 	//  < 0 means object has yet to transit
 	//
 	//  convert to [-12,12]
-	if (ha > M_PI)
+	if (ha > M_PI) {
 		ha -= M_PI + M_PI;
-	if (ha < -M_PI)
+	}
+	if (ha < -M_PI) {
 		ha += M_PI + M_PI;
+	}
 	assert(ha >= -M_PI && ha <= M_PI);	///  assertion if ha < -M_PI or ha > M_PI
 
 	//  Compute HA positions to match each DEC position
 	double haw;
-	if (ha >= 0)
+	if (ha >= 0) {
 		haw = ha;
-	else
+	} else {
 		haw = ha + M_PI + M_PI;
-	if (south)
+	}
+	if (south) {
 		haw = M_PI - ha;
+	}
 
 	double hae = ha + M_PI;
 	if (south) {
-		if (ha >= 0)
+		if (ha >= 0) {
 			hae = M_PI + M_PI - ha;
-		else
+		} else {
 			hae = -ha;
+		}
 	}
 	haw /= M_PI + M_PI;
 	hae /= M_PI + M_PI;
@@ -827,8 +857,9 @@ bool synscan_slew_axis_to_position(indigo_device* device, enum AxisID axis, doub
 	//  Get axis position
 	AxisPosition currentPosition;
 	bool ok = synscan_axis_position(device, axis, &currentPosition);
-	if (!ok)
+	if (!ok) {
 		return false;
+	}
 
 	//  Convert position argument to steps
 	AxisPosition steps = (axis == kAxisRA) ? ha_position_to_steps(device, position) : dec_position_to_steps(device, position);
@@ -849,8 +880,9 @@ bool synscan_slew_axis_to_position(indigo_device* device, enum AxisID axis, doub
 		//		}
 
 		AxisPosition slowdown = delta - 80000;
-		if (slowdown < 0)
+		if (slowdown < 0) {
 			slowdown = delta / 2;
+		}
 
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SLEW DEBUG:  axis %s  current pos %ld  requested pos %ld   delta %ld   slowdown %ld\n", axis == kAxisRA ? "RA" : "DEC", currentPosition, steps, delta, slowdown);
 
@@ -880,10 +912,11 @@ int synscan_select_best_encoder_point(indigo_device* device, double haPos[], dou
 	//  Return the SAFE point if CW-UP slews are disabled or limits are disabled in general
 	//if (ra_slew_priority == 0 || !limitsEnabled)
 	//	return &eps[0];
-	if (haPos[0] <= 0.5)
+	if (haPos[0] <= 0.5) {
 		return 0;
-	else
+	} else {
 		return 1;
+	}
 
 #if 0
 	//  Load limits from prefs
@@ -893,19 +926,23 @@ int synscan_select_best_encoder_point(indigo_device* device, double haPos[], dou
 	//  Cache RA limit positions
 	double leftLimitPosition = 0.5;
 	double rightLimitPosition = 0.0;
-	if (leftPosition)
+	if (leftPosition) {
 		leftLimitPosition = [leftPosition doubleValue];
-		if (rightPosition)
+	}
+		if (rightPosition) {
 			rightLimitPosition = [rightPosition doubleValue];
+		}
 
 			//  Rebase right limit
-			if (rightLimitPosition > 0.75)
+			if (rightLimitPosition > 0.75) {
 				rightLimitPosition -= 1.0;
+			}
 
 				//  Normalise the cwup_h for comparison
 				double cwup_h = eps[1].ha;
-				if (cwup_h > 0.75)
+				if (cwup_h > 0.75) {
 					cwup_h -= 1.0;
+				}
 
 					//  Check if the CW-UP point is within limits
 					if (cwup_h > leftLimitPosition || cwup_h < rightLimitPosition) {
@@ -935,10 +972,11 @@ int synscan_select_best_encoder_point(indigo_device* device, double haPos[], dou
 }
 
 int synscan_select_best_encoder_point_aa(indigo_device* device, double azPos[], double altPos[]) {
-	if (azPos[0] >= 0.0)
+	if (azPos[0] >= 0.0) {
 		return 0;
-	else
+	} else {
 		return 1;
+	}
 }
 
 void synscan_wait_for_axis_stopped(indigo_device* device, enum AxisID axis, bool* abort) {

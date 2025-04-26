@@ -142,8 +142,9 @@ static bool nexstaraux_command(indigo_device *device, targets src, targets dst, 
 	buffer[2] = src;
 	buffer[3] = dst;
 	buffer[4] = cmd;
-	if (data)
+	if (data) {
 		memcpy(buffer + 5, data, length);
+	}
 	int checksum = 0;
 	for (int i = 1; i < length + 2; i++)
 		checksum += buffer[i];
@@ -537,9 +538,9 @@ static void mount_motion_handler(indigo_device *device) {
 	unsigned char reply[16] = { 0 };
 	unsigned char rate = 0;
 	commands direction = 0;
-	if (MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value)
+	if (MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value) {
 		rate = 1;
-	else if (MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value)
+	} else if (MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value)
 		rate = 2;
 	else if (MOUNT_SLEW_RATE_FIND_ITEM->sw.value)
 		rate = 5;
@@ -554,16 +555,18 @@ static void mount_motion_handler(indigo_device *device) {
 		rate = 0;
 	}
 	if (MOUNT_MOTION_DEC_PROPERTY->state == INDIGO_BUSY_STATE) {
-		if (nexstaraux_command(device, APP, ALT, direction, &rate, 1, reply))
+		if (nexstaraux_command(device, APP, ALT, direction, &rate, 1, reply)) {
 			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
-		else
+		} else {
 			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 		indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
 	} else if (MOUNT_MOTION_RA_PROPERTY->state == INDIGO_BUSY_STATE) {
-		if (nexstaraux_command(device, APP, AZM, direction, &rate, 1, reply))
+		if (nexstaraux_command(device, APP, AZM, direction, &rate, 1, reply)) {
 			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
-		else
+		} else {
 			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 		indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
 	}
 }

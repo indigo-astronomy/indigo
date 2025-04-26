@@ -25,7 +25,7 @@
 
 #include <indigo/indigo_wheel_driver.h>
 
-#include "alpaca_common.h"
+#include "indigo_alpaca_common.h"
 
 static indigo_alpaca_error alpaca_get_interfaceversion(indigo_alpaca_device *device, int version, int *value) {
 	*value = 2;
@@ -177,10 +177,11 @@ long indigo_alpaca_wheel_set_command(indigo_alpaca_device *alpaca_device, int ve
 	if (!strcmp(command, "position")) {
 		int value = 1;
 		indigo_alpaca_error result;
-		if (sscanf(param_1, "Position=%d", &value) == 1)
+		if (sscanf(param_1, "Position=%d", &value) == 1) {
 			result = alpaca_set_position(alpaca_device, version, value);
-		else
+		} else {
 			result = indigo_alpaca_error_InvalidValue;
+		}
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", indigo_alpaca_error_NotImplemented, indigo_alpaca_error_string(indigo_alpaca_error_NotImplemented));

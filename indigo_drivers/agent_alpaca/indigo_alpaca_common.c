@@ -25,7 +25,7 @@
 
 #include <indigo/indigo_driver.h>
 
-#include "alpaca_common.h"
+#include "indigo_alpaca_common.h"
 
 bool get_bayer_RGGB_offsets(const char *pattern, int *x_offset, int *y_offset) {
 	if (pattern == NULL) {
@@ -142,8 +142,9 @@ void indigo_alpaca_update_property(indigo_alpaca_device *alpaca_device, indigo_p
 
 bool indigo_alpaca_wait_for_bool(bool *reference, bool value, int timeout) {
 	for (int i = 0; i < timeout; i++) {
-		if (*reference == value)
+		if (*reference == value) {
 			return indigo_alpaca_error_OK;
+		}
 		indigo_usleep(500000);
 	}
 	return indigo_alpaca_error_ValueNotSet;
@@ -151,8 +152,9 @@ bool indigo_alpaca_wait_for_bool(bool *reference, bool value, int timeout) {
 
 bool indigo_alpaca_wait_for_int32(int *reference, int value, int timeout) {
 	for (int i = 0; i < timeout; i++) {
-		if (*reference == value)
+		if (*reference == value) {
 			return indigo_alpaca_error_OK;
+		}
 		indigo_usleep(500000);
 	}
 	return indigo_alpaca_error_ValueNotSet;
@@ -160,8 +162,9 @@ bool indigo_alpaca_wait_for_int32(int *reference, int value, int timeout) {
 
 bool indigo_alpaca_wait_for_double(double *reference, double value, int timeout) {
 	for (int i = 0; i < timeout; i++) {
-		if (*reference == value)
+		if (*reference == value) {
 			return indigo_alpaca_error_OK;
+		}
 		indigo_usleep(500000);
 	}
 	return indigo_alpaca_error_ValueNotSet;
@@ -279,8 +282,9 @@ static indigo_alpaca_error alpaca_set_longitude(indigo_alpaca_device *device, in
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_InvalidValue;
 	}
-	if (value < 0)
+	if (value < 0) {
 		value += 360;
+	}
 	indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, value);
 	pthread_mutex_unlock(&device->mutex);
 	return indigo_alpaca_error_OK;
@@ -422,28 +426,31 @@ long indigo_alpaca_set_command(indigo_alpaca_device *alpaca_device, int version,
 	if (!strcmp(command, "sitelatitude")) {
 		double value;
 		indigo_alpaca_error result;
-		if (sscanf(param_1, "SiteLatitude=%lf", &value) == 1)
+		if (sscanf(param_1, "SiteLatitude=%lf", &value) == 1) {
 			result = alpaca_set_latitude(alpaca_device, version, value);
-		else
+		} else {
 			result = indigo_alpaca_error_InvalidValue;
+		}
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strcmp(command, "sitelongitude")) {
 		double value;
 		indigo_alpaca_error result;
-		if (sscanf(param_1, "SiteLongitude=%lf", &value) == 1)
+		if (sscanf(param_1, "SiteLongitude=%lf", &value) == 1) {
 			result = alpaca_set_longitude(alpaca_device, version, value);
-		else
+		} else {
 			result = indigo_alpaca_error_InvalidValue;
+		}
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strcmp(command, "siteelevation")) {
 		double value;
 		indigo_alpaca_error result;
-		if (sscanf(param_1, "SiteElevation=%lf", &value) == 1)
+		if (sscanf(param_1, "SiteElevation=%lf", &value) == 1) {
 			result = alpaca_set_elevation(alpaca_device, version, value);
-		else
+		} else {
 			result = indigo_alpaca_error_InvalidValue;
+		}
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	long result;

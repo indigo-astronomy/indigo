@@ -189,10 +189,11 @@ double indigo_polynomial_min_x(int coefficient_count, double* polynomial_coeffic
 		double f_mid1 = indigo_polynomial_value(mid1, coefficient_count, polynomial_coefficients);
 		double f_mid2 = indigo_polynomial_value(mid2, coefficient_count, polynomial_coefficients);
 
-		if (f_mid1 < f_mid2)
+		if (f_mid1 < f_mid2) {
 			high = mid2;
-		else
+		} else {
 			low = mid1;
+		}
 	}
 	return low + (high - low) / 2;
 }

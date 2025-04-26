@@ -736,10 +736,11 @@ static void ccd_temperature_callback(indigo_device *device) {
 	if (!PRIVATE_DATA->no_check_temperature && CAP_GET_TEMPERATURE) {
 		long res = GetTemperatureF(&PRIVATE_DATA->current_temperature);
 
-		if (CCD_COOLER_ON_ITEM->sw.value)
+		if (CCD_COOLER_ON_ITEM->sw.value) {
 			CCD_TEMPERATURE_PROPERTY->state = (res != DRV_TEMP_STABILIZED) ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
-		else
+		} else {
 			CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
+		}
 
 		CCD_TEMPERATURE_ITEM->number.value = round(PRIVATE_DATA->current_temperature * 10) / 10.;
 		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
@@ -1011,8 +1012,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
-		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE)
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 			return INDIGO_OK;
+		}
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
 		handle_exposure_property(device, property);
 	} else if (indigo_property_match_changeable(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
@@ -1476,10 +1478,14 @@ indigo_result indigo_ccd_andor(indigo_driver_action action, indigo_driver_info *
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Andor SDK v.%s", sdk_version);
 
 			res = GetAvailableCameras(&device_num);
-			if (res!= DRV_SUCCESS) INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetAvailableCameras() error: %d", res);
-			else {
-				if (device_num > 0) INDIGO_DRIVER_LOG(DRIVER_NAME, "Detected %d Andor camera(s). Initializing...", device_num);
-				else INDIGO_DRIVER_LOG(DRIVER_NAME, "No Andor cameras detected");
+			if (res!= DRV_SUCCESS) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetAvailableCameras() error: %d", res);
+			} else {
+				if (device_num > 0) {
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "Detected %d Andor camera(s). Initializing...", device_num);
+				} else {
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "No Andor cameras detected");
+				}
 			}
 
 			for (int i = 0; i < device_num; i++) {

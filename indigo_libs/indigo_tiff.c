@@ -32,10 +32,11 @@
 tsize_t indigo_tiff_read(thandle_t handle, tdata_t data, tsize_t size) {
 	indigo_tiff_memory_handle *memory_handle = (indigo_tiff_memory_handle *)handle;
 	size_t length;
-	if ((size_t)(memory_handle->file_offset + size) <= (size_t)memory_handle->file_length)
+	if ((size_t)(memory_handle->file_offset + size) <= (size_t)memory_handle->file_length) {
 		length = size;
-	else
+	} else {
 		length = memory_handle->file_length - memory_handle->file_offset;
+	}
 	memcpy(data, memory_handle->data + memory_handle->file_offset, length);
 	memory_handle->file_offset += length;
 	return length;

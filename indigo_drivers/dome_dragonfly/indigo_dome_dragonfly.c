@@ -211,8 +211,9 @@ static int lunatico_init_properties(indigo_device *device) {
 	INFO_PROPERTY->count = 6;
 	// -------------------------------------------------------------------------------- OUTLET_NAMES
 	AUX_OUTLET_NAMES_PROPERTY = indigo_init_text_property(NULL, device->name, AUX_OUTLET_NAMES_PROPERTY_NAME, AUX_RELAYS_GROUP, "Relay names", INDIGO_OK_STATE, INDIGO_RW_PERM, 5);
-	if (AUX_OUTLET_NAMES_PROPERTY == NULL)
+	if (AUX_OUTLET_NAMES_PROPERTY == NULL) {
 		return INDIGO_FAILED;
+	}
 	indigo_init_text_item(AUX_OUTLET_NAME_4_ITEM, AUX_GPIO_OUTLET_NAME_4_ITEM_NAME, "Relay 4", "Relay #4");
 	indigo_init_text_item(AUX_OUTLET_NAME_5_ITEM, AUX_GPIO_OUTLET_NAME_5_ITEM_NAME, "Relay 5", "Relay #5");
 	indigo_init_text_item(AUX_OUTLET_NAME_6_ITEM, AUX_GPIO_OUTLET_NAME_6_ITEM_NAME, "Relay 6", "Relay #6");
@@ -221,8 +222,9 @@ static int lunatico_init_properties(indigo_device *device) {
 	if (DEVICE_DATA.device_type != TYPE_AUX) AUX_OUTLET_NAMES_PROPERTY->hidden = true;
 	// -------------------------------------------------------------------------------- GPIO OUTLETS
 	AUX_GPIO_OUTLET_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_GPIO_OUTLETS_PROPERTY_NAME, AUX_RELAYS_GROUP, "Relay outlets", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 5);
-	if (AUX_GPIO_OUTLET_PROPERTY == NULL)
+	if (AUX_GPIO_OUTLET_PROPERTY == NULL) {
 		return INDIGO_FAILED;
+	}
 	indigo_init_switch_item(AUX_GPIO_OUTLET_4_ITEM, AUX_GPIO_OUTLETS_OUTLET_4_ITEM_NAME, "Relay #4", false);
 	indigo_init_switch_item(AUX_GPIO_OUTLET_5_ITEM, AUX_GPIO_OUTLETS_OUTLET_5_ITEM_NAME, "Relay #5", false);
 	indigo_init_switch_item(AUX_GPIO_OUTLET_6_ITEM, AUX_GPIO_OUTLETS_OUTLET_6_ITEM_NAME, "Relay #6", false);
@@ -231,8 +233,9 @@ static int lunatico_init_properties(indigo_device *device) {
 	if (DEVICE_DATA.device_type != TYPE_AUX) AUX_GPIO_OUTLET_PROPERTY->hidden = true;
 	// -------------------------------------------------------------------------------- GPIO PULSE OUTLETS
 	AUX_OUTLET_PULSE_LENGTHS_PROPERTY = indigo_init_number_property(NULL, device->name, "AUX_OUTLET_PULSE_LENGTHS", AUX_RELAYS_GROUP, "Relay pulse lengths (ms)", INDIGO_OK_STATE, INDIGO_RW_PERM, 5);
-	if (AUX_OUTLET_PULSE_LENGTHS_PROPERTY == NULL)
+	if (AUX_OUTLET_PULSE_LENGTHS_PROPERTY == NULL) {
 		return INDIGO_FAILED;
+	}
 	indigo_init_number_item(AUX_OUTLET_PULSE_LENGTHS_4_ITEM, AUX_GPIO_OUTLETS_OUTLET_4_ITEM_NAME, "Relay #4", 0, 100000, 100, 0);
 	indigo_init_number_item(AUX_OUTLET_PULSE_LENGTHS_5_ITEM, AUX_GPIO_OUTLETS_OUTLET_5_ITEM_NAME, "Relay #5", 0, 100000, 100, 0);
 	indigo_init_number_item(AUX_OUTLET_PULSE_LENGTHS_6_ITEM, AUX_GPIO_OUTLETS_OUTLET_6_ITEM_NAME, "Relay #6", 0, 100000, 100, 0);
@@ -241,8 +244,9 @@ static int lunatico_init_properties(indigo_device *device) {
 	if (DEVICE_DATA.device_type != TYPE_AUX) AUX_OUTLET_PULSE_LENGTHS_PROPERTY->hidden = true;
 	// -------------------------------------------------------------------------------- SENSOR_NAMES
 	AUX_SENSOR_NAMES_PROPERTY = indigo_init_text_property(NULL, device->name, AUX_SENSOR_NAMES_PROPERTY_NAME, AUX_SENSORS_GROUP, "Sensor names", INDIGO_OK_STATE, INDIGO_RW_PERM, 5);
-	if (AUX_SENSOR_NAMES_PROPERTY == NULL)
+	if (AUX_SENSOR_NAMES_PROPERTY == NULL) {
 		return INDIGO_FAILED;
+	}
 	indigo_init_text_item(AUX_SENSOR_NAME_3_ITEM, AUX_GPIO_SENSOR_NAME_3_ITEM_NAME, "Sensor 3", "Sensor #3");
 	indigo_init_text_item(AUX_SENSOR_NAME_4_ITEM, AUX_GPIO_SENSOR_NAME_4_ITEM_NAME, "Sensor 4", "Sensor #4");
 	indigo_init_text_item(AUX_SENSOR_NAME_5_ITEM, AUX_GPIO_SENSOR_NAME_5_ITEM_NAME, "Sensor 5", "Sensor #5");
@@ -251,8 +255,9 @@ static int lunatico_init_properties(indigo_device *device) {
 	if (DEVICE_DATA.device_type != TYPE_AUX) AUX_SENSOR_NAMES_PROPERTY->hidden = true;
 	// -------------------------------------------------------------------------------- GPIO_SENSORS
 	AUX_GPIO_SENSORS_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_GPIO_SENSORS_PROPERTY_NAME, AUX_SENSORS_GROUP, "Sensors", INDIGO_OK_STATE, INDIGO_RO_PERM, 5);
-	if (AUX_GPIO_SENSORS_PROPERTY == NULL)
+	if (AUX_GPIO_SENSORS_PROPERTY == NULL) {
 		return INDIGO_FAILED;
+	}
 	indigo_init_number_item(AUX_GPIO_SENSOR_3_ITEM, AUX_GPIO_SENSOR_NAME_3_ITEM_NAME, "Sensor #3", 0, 1024, 1, 0);
 	indigo_init_number_item(AUX_GPIO_SENSOR_4_ITEM, AUX_GPIO_SENSOR_NAME_4_ITEM_NAME, "Sensor #4", 0, 1024, 1, 0);
 	indigo_init_number_item(AUX_GPIO_SENSOR_5_ITEM, AUX_GPIO_SENSOR_NAME_5_ITEM_NAME, "Sensor #5", 0, 1024, 1, 0);
@@ -261,8 +266,9 @@ static int lunatico_init_properties(indigo_device *device) {
 	if (DEVICE_DATA.device_type != TYPE_AUX) AUX_GPIO_SENSORS_PROPERTY->hidden = true;
 	// -------------------------------------------------------------------------------- LA_DOME_SETTINGS
 	LA_DOME_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, LA_DOME_SETTINGS_PROPERTY_NAME, "Settings", "Dome Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 4);
-	if (LA_DOME_SETTINGS_PROPERTY == NULL)
+	if (LA_DOME_SETTINGS_PROPERTY == NULL) {
 		return INDIGO_FAILED;
+	}
 	indigo_init_number_item(LA_DOME_SETTINGS_BUTTON_PULSE_ITEM, LA_DOME_SETTINGS_BUTTON_PULSE_ITEM_NAME, "Open/Close push duration (sec)", 0, 3, 0.5, 0.5);
 	indigo_init_number_item(LA_DOME_SETTINGS_READ_SENSORS_DELAY_ITEM, LA_DOME_SETTINGS_READ_SENSORS_DELAY_ITEM_NAME, "Read sensors delay after push (sec)", 0, 6, 0.5, 2.5);
 	indigo_init_number_item(LA_DOME_SETTINGS_OPEN_CLOSE_TIMEOUT_ITEM, LA_DOME_SETTINGS_OPEN_CLOSE_TIMEOUT_ITEM_NAME, "Open/Close tumeout (sec)", 0, 300, 1, 60);
@@ -270,8 +276,9 @@ static int lunatico_init_properties(indigo_device *device) {
 	if (DEVICE_DATA.device_type != TYPE_DOME) LA_DOME_SETTINGS_PROPERTY->hidden = true;
 	// -------------------------------------------------------------------------------- LA_DOME_FUNCTION
 	LA_DOME_FUNCTION_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_DOME_FUNCTION_PROPERTY_NAME, "Settings", "Buttons Function Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
-	if (LA_DOME_FUNCTION_PROPERTY == NULL)
+	if (LA_DOME_FUNCTION_PROPERTY == NULL) {
 		return INDIGO_FAILED;
+	}
 	indigo_init_switch_item(LA_DOME_FUNCTION_1_BUTTON_ITEM, LA_DOME_FUNCTION_1_BUTTON_ITEM_NAME, "1 Button, push (relay #1-open/close/stop)", true);
 	indigo_init_switch_item(LA_DOME_FUNCTION_2_BUTTONS_ITEM, LA_DOME_FUNCTION_2_BUTTONS_ITEM_NAME, "2 Buttons, push and hold (relays: #2-open, #3-close)", false);
 	indigo_init_switch_item(LA_DOME_FUNCTION_3_BUTTONS_ITEM, LA_DOME_FUNCTION_3_BUTTONS_ITEM_NAME, "3 Buttons, push (relays: #1-stop, #2-open, #3-close)", false);
@@ -801,11 +808,11 @@ static void dome_handle_shutter(indigo_device *device) {
 	// Do not move when not parked!
 	if (!parked) {
 		DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
-		if (DEVICE_DATA.roof_state == ROOF_OPENED)
+		if (DEVICE_DATA.roof_state == ROOF_OPENED) {
 			indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM, true);
-		else if (DEVICE_DATA.roof_state == ROOF_CLOSED)
+		} else if (DEVICE_DATA.roof_state == ROOF_CLOSED) {
 			indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_CLOSED_ITEM, true);
-		else {
+		} else {
 			DOME_SHUTTER_OPENED_ITEM->sw.value = false;
 			DOME_SHUTTER_CLOSED_ITEM->sw.value = false;
 		}

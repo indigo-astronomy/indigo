@@ -1020,11 +1020,13 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		PROPERTY_LOCK();
 		if (DOME_ABORT_MOTION_ITEM->sw.value) {
 			nexdome_command(device, "SWR");
-			if (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE)
+			if (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
 				PRIVATE_DATA->rotator_stop_requested = true;
+			}
 			nexdome_command(device, "SWS");
-			if (DOME_SHUTTER_PROPERTY->state == INDIGO_BUSY_STATE)
+			if (DOME_SHUTTER_PROPERTY->state == INDIGO_BUSY_STATE) {
 				PRIVATE_DATA->shutter_stop_requested = true;
+			}
 		}
 		DOME_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 		DOME_ABORT_MOTION_ITEM->sw.value = false;

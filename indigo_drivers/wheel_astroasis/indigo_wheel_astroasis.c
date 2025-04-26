@@ -384,10 +384,11 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		// -------------------------------------------------------------------------------- X_BLUETOOTH
 	} else if (indigo_property_match_changeable(X_BLUETOOTH_PROPERTY, property)) {
 		indigo_property_copy_values(X_BLUETOOTH_PROPERTY, property, false);
-		if (wheel_config(device, MASK_BLUETOOTH, X_BLUETOOTH_ON_ITEM->sw.value))
+		if (wheel_config(device, MASK_BLUETOOTH, X_BLUETOOTH_ON_ITEM->sw.value)) {
 			X_BLUETOOTH_PROPERTY->state = INDIGO_OK_STATE;
-		else
+		} else {
 			X_BLUETOOTH_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 		indigo_update_property(device, X_BLUETOOTH_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- X_BLUETOOTH_NAME
@@ -533,10 +534,11 @@ static indigo_device *wheel_create(int id) {
 	strcpy(private_data->custom_suffix, custom_suffix);
 	strcpy(private_data->bluetooth_name, bluetooth_name);
 
-	if (strlen(private_data->custom_suffix) > 0)
+	if (strlen(private_data->custom_suffix) > 0) {
 		sprintf(device->name, "%s #%s", "Oasis Filter Wheel", private_data->custom_suffix);
-	else
+	} else {
 		sprintf(device->name, "%s", "Oasis Filter Wheel");
+	}
 
 	memcpy(&private_data->config, &config, sizeof(OFWConfig));
 

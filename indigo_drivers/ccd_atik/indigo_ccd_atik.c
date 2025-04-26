@@ -86,8 +86,9 @@ typedef struct {
 static bool do_log = true;
 
 static void debug_log(const char *message) {
-	if (do_log)
+	if (do_log) {
 		indigo_debug("%s: SDK - %s", DRIVER_NAME, message);
+	}
 }
 
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
@@ -96,8 +97,9 @@ static void exposure_timer_callback(indigo_device *device) {
 	CCD_EXPOSURE_ITEM->number.value = 0;
 	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 	double remaining = ArtemisExposureTimeRemaining(PRIVATE_DATA->handle);
-	if (remaining > 0)
+	if (remaining > 0) {
 		indigo_sleep(remaining);
+	}
 	PRIVATE_DATA->can_check_temperature = false;
 	while (!ArtemisImageReady(PRIVATE_DATA->handle)) {
 		do_log = false;
@@ -203,12 +205,14 @@ static void ccd_connect_callback(indigo_device *device) {
 					CCD_COOLER_POWER_PROPERTY->perm = INDIGO_RO_PERM;
 					CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
 					CCD_TEMPERATURE_ITEM->number.target = round(set_point / 10.0) / 10.0;
-					if (CCD_TEMPERATURE_ITEM->number.target > 100)
+					if (CCD_TEMPERATURE_ITEM->number.target > 100) {
 						CCD_TEMPERATURE_ITEM->number.target = CCD_TEMPERATURE_ITEM->number.value;
-					if (CCD_COOLER_ON_ITEM->sw.value)
+					}
+					if (CCD_COOLER_ON_ITEM->sw.value) {
 						CCD_TEMPERATURE_PROPERTY->state = fabs(CCD_TEMPERATURE_ITEM->number.value - CCD_TEMPERATURE_ITEM->number.target) > 1 ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
-					else
+					} else {
 						CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
+					}
 					CCD_COOLER_POWER_PROPERTY->state = INDIGO_OK_STATE;
 					CCD_COOLER_POWER_ITEM->number.value = round(100.0 * (level - min_level) / (max_level - min_level));
 				}
@@ -433,8 +437,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
-		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE)
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 			return INDIGO_OK;
+		}
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
 		indigo_use_shortest_exposure_if_bias(device);
 		if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
@@ -515,8 +520,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(ATIK_WINDOW_HEATER_PROPERTY, property, false);
 		int heaterPower = (int)(ATIK_WINDOW_HEATER_POWER_ITEM->number.target + 0.5);
 		ATIK_WINDOW_HEATER_PROPERTY->state = ArtemisSetWindowHeaterPower(PRIVATE_DATA->handle, heaterPower) == ARTEMIS_OK ? INDIGO_OK_STATE : INDIGO_ALERT_STATE ;
-		if (ATIK_WINDOW_HEATER_PROPERTY->state != INDIGO_OK_STATE)
+		if (ATIK_WINDOW_HEATER_PROPERTY->state != INDIGO_OK_STATE) {
 			ArtemisGetWindowHeaterPower(PRIVATE_DATA->handle, &heaterPower);
+		}
 		ATIK_WINDOW_HEATER_POWER_ITEM->number.value = heaterPower;
 		indigo_update_property(device, ATIK_WINDOW_HEATER_PROPERTY, NULL);
 		return INDIGO_OK;
@@ -699,10 +705,12 @@ static void wheel_timer_callback(indigo_device *device) {
 
 	int num_filters, moving, current_pos, target_pos;
 	if (ArtemisFilterWheelInfo(PRIVATE_DATA->handle, &num_filters, &moving, &current_pos, &target_pos) == ARTEMIS_OK) {
-		if (current_pos >= num_filters)
+		if (current_pos >= num_filters) {
 			current_pos = 0;
-		if (target_pos >= num_filters)
+		}
+		if (target_pos >= num_filters) {
 			target_pos = 0;
+		}
 		WHEEL_SLOT_ITEM->number.value = current_pos + 1;
 		WHEEL_SLOT_ITEM->number.target = target_pos + 1;
 		if (moving) {
@@ -742,17 +750,18 @@ static void wheel_connect_callback(indigo_device *device) {
 			int num_filters, moving, current_pos, target_pos;
 			if (ArtemisFilterWheelInfo(PRIVATE_DATA->handle, &num_filters, &moving, &current_pos, &target_pos) == ARTEMIS_OK) {
 				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = num_filters;
-				if (current_pos >= num_filters)
+				if (current_pos >= num_filters) {
 					current_pos = 0;
-				if (target_pos >= num_filters)
+				}
+				if (target_pos >= num_filters) {
 					target_pos = 0;
+				}
 				if (moving) {
 					INDIGO_DRIVER_LOG(DRIVER_NAME, "Wheel is moving!");
 					WHEEL_SLOT_ITEM->number.value = current_pos + 1;
 					WHEEL_SLOT_ITEM->number.target = target_pos + 1;
 					indigo_set_timer(device, 0.5, wheel_timer_callback, NULL);
-				}
-				else {
+				} else {
 					WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = current_pos + 1;
 				}
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -852,8 +861,9 @@ static void plug_handler(indigo_device *device) {
 	pthread_mutex_lock(&mutex);
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
-		if (device)
+		if (device) {
 			PRIVATE_DATA->index = -1;
+		}
 	}
 	int count = ArtemisDeviceCount();
 	bool found = false;
@@ -922,8 +932,9 @@ static void unplug_handler(indigo_device *device) {
 	pthread_mutex_lock(&mutex);
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
-		if (device)
+		if (device) {
 			device->gp_bits = 0;
+		}
 	}
 	int count = ArtemisDeviceCount();
 	for (int j = 0; j < count; j++) {
@@ -1004,8 +1015,9 @@ indigo_result indigo_ccd_atik(indigo_driver_action action, indigo_driver_info *i
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Artemis SDK %d", ArtemisDLLVersion());
 			indigo_start_usb_event_handler();
 			int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, ATIK_VID1, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle1);
-			if (rc >= 0)
+			if (rc >= 0) {
 				rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, ATIK_VID2, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle2);
+			}
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
 			return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
 			

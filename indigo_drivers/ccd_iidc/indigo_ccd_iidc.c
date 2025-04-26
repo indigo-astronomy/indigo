@@ -181,11 +181,13 @@ static bool setup_feature(indigo_device *device, indigo_item *item, dc1394featur
 		}
 		item->number.value = info.abs_value;
 		item->number.min = info.abs_min;
-		if (item->number.value <  info.abs_min)
+		if (item->number.value <  info.abs_min) {
 			item->number.value =  info.abs_min;
+		}
 		item->number.max =  info.abs_max;
-		if (item->number.value > info.abs_max)
+		if (item->number.value > info.abs_max) {
 			item->number.value = info.abs_max;
+		}
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "feature %s: value=%g min=%g max=%g", f, info.abs_value, info.abs_min, info.abs_max);
 		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 		return true;
@@ -286,8 +288,9 @@ static void streaming_timer_callback(indigo_device *device) {
 					break;
 				}
 			}
-			if (CCD_STREAMING_COUNT_ITEM->number.value > 0)
+			if (CCD_STREAMING_COUNT_ITEM->number.value > 0) {
 				CCD_STREAMING_COUNT_ITEM->number.value -= 1;
+			}
 			CCD_STREAMING_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 		}
@@ -357,12 +360,15 @@ static indigo_result ccd_attach(indigo_device *device) {
 					snprintf(name, sizeof(name), "MODE_%d", CCD_MODE_PROPERTY->count);
 					snprintf(label, sizeof(label), "%s %dx%d", COLOR_CODING[mode_data->color_coding - DC1394_COLOR_CODING_MIN].name, mode_data->width, mode_data->height);
 					indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, label, false);
-					if (CCD_INFO_WIDTH_ITEM->number.value < mode_data->width)
+					if (CCD_INFO_WIDTH_ITEM->number.value < mode_data->width) {
 						CCD_INFO_WIDTH_ITEM->number.value = mode_data->width;
-					if (CCD_INFO_HEIGHT_ITEM->number.value < mode_data->height)
+					}
+					if (CCD_INFO_HEIGHT_ITEM->number.value < mode_data->height) {
 						CCD_INFO_HEIGHT_ITEM->number.value = mode_data->height;
-					if (CCD_INFO_BITS_PER_PIXEL_ITEM->number.value < mode_data->bits_per_pixel)
+					}
+					if (CCD_INFO_BITS_PER_PIXEL_ITEM->number.value < mode_data->bits_per_pixel) {
 						CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = mode_data->bits_per_pixel;
+					}
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "MODE_%d: %s %dx%d [%dx%d]", CCD_MODE_PROPERTY->count, COLOR_CODING[mode_data->color_coding - DC1394_COLOR_CODING_MIN].name, mode_data->width, mode_data->height, mode_data->width_unit, mode_data->height_unit);
 					mode_data++;
 					CCD_MODE_PROPERTY->count++;
@@ -381,12 +387,15 @@ static indigo_result ccd_attach(indigo_device *device) {
 				snprintf(name, sizeof(name), "MODE_%d", CCD_MODE_PROPERTY->count);
 				snprintf(label, sizeof(name), "%s (legacy)", LEGACY_MODE[m].name);
 				indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, label, false);
-				if (CCD_INFO_WIDTH_ITEM->number.value < mode_data->width)
+				if (CCD_INFO_WIDTH_ITEM->number.value < mode_data->width) {
 					CCD_INFO_WIDTH_ITEM->number.value = mode_data->width;
-				if (CCD_INFO_HEIGHT_ITEM->number.value < mode_data->height)
+				}
+				if (CCD_INFO_HEIGHT_ITEM->number.value < mode_data->height) {
 					CCD_INFO_HEIGHT_ITEM->number.value = mode_data->height;
-				if (CCD_INFO_BITS_PER_PIXEL_ITEM->number.value < mode_data->bits_per_pixel)
+				}
+				if (CCD_INFO_BITS_PER_PIXEL_ITEM->number.value < mode_data->bits_per_pixel) {
 					CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = mode_data->bits_per_pixel;
+				}
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "MODE_%d: %s", CCD_MODE_PROPERTY->count, LEGACY_MODE[m].name);
 				mode_data++;
 				CCD_MODE_PROPERTY->count++;
@@ -534,11 +543,13 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			CCD_FRAME_LEFT_ITEM->number.value = (((int)CCD_FRAME_LEFT_ITEM->number.value) / mode_data->width_unit) * mode_data->width_unit;
 			CCD_FRAME_TOP_ITEM->number.value = (((int)CCD_FRAME_TOP_ITEM->number.value) / mode_data->height_unit) * mode_data->height_unit;
 			CCD_FRAME_WIDTH_ITEM->number.value = (((int)CCD_FRAME_WIDTH_ITEM->number.value) / mode_data->width_unit) * mode_data->width_unit;
-			if (CCD_FRAME_WIDTH_ITEM->number.value == 0)
+			if (CCD_FRAME_WIDTH_ITEM->number.value == 0) {
 				CCD_FRAME_WIDTH_ITEM->number.value = mode_data->width_unit;
+			}
 			CCD_FRAME_HEIGHT_ITEM->number.value = (((int)CCD_FRAME_HEIGHT_ITEM->number.value) / mode_data->height_unit) * mode_data->height_unit;
-			if (CCD_FRAME_HEIGHT_ITEM->number.value == 0)
+			if (CCD_FRAME_HEIGHT_ITEM->number.value == 0) {
 				CCD_FRAME_HEIGHT_ITEM->number.value = mode_data->height_unit;
+			}
 			CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
 		} else {
@@ -548,8 +559,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
-		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 			return INDIGO_OK;
+		}
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
 		indigo_use_shortest_exposure_if_bias(device);
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -565,8 +577,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_set_timer(device, 0, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
 	} else if (indigo_property_match_changeable(CCD_STREAMING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_STREAMING
-		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 			return INDIGO_OK;
+		}
 		indigo_property_copy_values(CCD_STREAMING_PROPERTY, property, false);
 		indigo_use_shortest_exposure_if_bias(device);
 		CCD_STREAMING_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -650,8 +663,9 @@ static void process_plug_event(libusb_device *dev) {
 					break;
 				}
 			}
-			if (guid == 0)
+			if (guid == 0) {
 				continue;
+			}
 			dc1394camera_t *camera = dc1394_camera_new_unit(context, guid, unit);
 			if (camera) {
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Camera %s detected", camera->model);
@@ -714,8 +728,9 @@ static void process_unplug_event(libusb_device *dev) {
 	pthread_mutex_lock(&device_mutex);
 	for (int j = 0; j < MAX_DEVICES; j++) {
 		indigo_device *device = devices[j];
-		if (device != NULL)
+		if (device != NULL) {
 			PRIVATE_DATA->present = false;
+		}
 	}
 	dc1394camera_list_t *list;
 	dc1394error_t err=dc1394_camera_enumerate(context, &list);
@@ -743,8 +758,9 @@ static void process_unplug_event(libusb_device *dev) {
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Camera %s removed", private_data->camera->model);
 				indigo_detach_device(device);
 				dc1394_camera_free(private_data->camera);
-				if (private_data->buffer)
+				if (private_data->buffer) {
 					free(private_data->buffer);
+				}
 				free(private_data);
 				free(device);
 				devices[j] = NULL;
@@ -900,8 +916,9 @@ indigo_result indigo_ccd_iidc(indigo_driver_action action, indigo_driver_info *i
 				indigo_device *device = devices[j];
 				if (device != NULL) {
 					if (PRIVATE_DATA != NULL) {
-						if (PRIVATE_DATA->buffer)
+						if (PRIVATE_DATA->buffer) {
 							free(PRIVATE_DATA->buffer);
+						}
 						free(PRIVATE_DATA);
 					}
 					indigo_detach_device(device);

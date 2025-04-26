@@ -460,10 +460,11 @@ static void enumerate_devices() {
 	/* There is a mem leak heree!!! 8,192 constant + 20 bytes on every new connected device */
 	num_devices = 0;
 	long res = FLICreateList(enum_domain);
-	if (res)
+	if (res) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLICreateList(%d) = %d", enum_domain , res);
-	else
+	} else {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "FLICreateList(%d) = %d", enum_domain , res);
+	}
 	res = FLIListFirst(&fli_domains[num_devices], fli_file_names[num_devices], PATH_MAX, fli_dev_names[num_devices], PATH_MAX);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "FLIListFirst(-> %d, -> '%s', ->'%s') = %d", fli_domains[num_devices], fli_file_names[num_devices], fli_dev_names[num_devices], res);
 	if (res == 0) {

@@ -167,10 +167,12 @@ static int get_pixel_format(indigo_device *device) {
 
 static bool pixel_format_supported(indigo_device *device, POAImgFormat type) {
 	for (int i = 0; i < POA_MAX_FORMATS; i++) {
-		if (i == POA_END)
+		if (i == POA_END) {
 			return false;
-		if (type == PRIVATE_DATA->property.imgFormats[i])
+		}
+		if (type == PRIVATE_DATA->property.imgFormats[i]) {
 			return true;
+		}
 	}
 	return false;
 }
@@ -189,8 +191,9 @@ static bool playerone_open(indigo_device *device) {
 	int id = PRIVATE_DATA->dev_id;
 	POAErrors res;
 
-	if (device->is_connected)
+	if (device->is_connected) {
 		return false;
+	}
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	if (PRIVATE_DATA->count_open++ == 0) {
@@ -217,10 +220,11 @@ static bool playerone_open(indigo_device *device) {
 		}
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAInitCamera(%d)", id);
 		if (PRIVATE_DATA->buffer == NULL) {
-			if (PRIVATE_DATA->property.isColorCamera)
+			if (PRIVATE_DATA->property.isColorCamera) {
 				PRIVATE_DATA->buffer_size = PRIVATE_DATA->property.maxHeight * PRIVATE_DATA->property.maxWidth * 3 + FITS_HEADER_SIZE + 1024;
-			else
+			} else {
 				PRIVATE_DATA->buffer_size = PRIVATE_DATA->property.maxHeight * PRIVATE_DATA->property.maxWidth * 2 + FITS_HEADER_SIZE + 1024;
+			}
 			PRIVATE_DATA->buffer = (unsigned char*)indigo_alloc_blob_buffer(PRIVATE_DATA->buffer_size);
 		}
 	}
@@ -321,10 +325,11 @@ static bool playerone_set_cooler(indigo_device *device, bool status, double targ
 
 	if (PRIVATE_DATA->has_temperature_sensor) {
 		res = POAGetConfig(id, POA_TEMPERATURE, &value, &unused);
-		if (res)
+		if (res) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetConfig(%d, POA_CURRENT_TEMPERATURE) > %d", id, res);
-		else
+		} else {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetConfig(%d, POA_CURRENT_TEMPERATURE, > %g)", id, value.floatValue);
+		}
 		*current = value.floatValue ;
 	} else {
 		*current = 0;
@@ -355,31 +360,35 @@ static bool playerone_set_cooler(indigo_device *device, bool status, double targ
 		}
 		value.intValue = status ? 100 : 0;
 		res = POASetConfig(id, POA_FAN_POWER, value, false);
-		if (res)
+		if (res) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "POASetConfig(%d, POA_FAN_POWER, %d) > %d", id, value.intValue, res);
-		else
+		} else {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetConfig(%d, POA_FAN_POWER, %d)", id, value.intValue);
+		}
 	} else if (status) {
 		res = POAGetConfig(id, POA_TARGET_TEMP, &value, &unused);
-		if (res)
+		if (res) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetConfig(%d, POA_TARGET_TEMP) > %d", id, res);
-		else
+		} else {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetConfig(%d, POA_TARGET_TEMP, > %d)", id, value.intValue);
+		}
 		if ((int)target != value.intValue) {
 			value.intValue = (int)target;
 			res = POASetConfig(id, POA_TARGET_TEMP, value, false);
-			if (res)
+			if (res) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "POASetConfig(%d, POA_TARGET_TEMP, %d) > %d", id, value.intValue, res);
-			else
+			} else {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetConfig(%d, POA_TARGET_TEMP, %d)", id, value.intValue);
+			}
 		}
 	}
 
 	res = POAGetConfig(id, POA_COOLER_POWER, &value, &unused);
-	if (res)
+	if (res) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetConfig(%d, POA_COOLER_POWER) > %d", id, res);
-	else
+	} else {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetConfig(%d, POA_COOLER_POWER, > %d)", id, value.intValue);
+	}
 	*power = value.intValue;
 
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
@@ -626,8 +635,9 @@ static void streaming_timer_callback(indigo_device *device) {
 					} else {
 						indigo_process_image(device, PRIVATE_DATA->buffer, (int)(PRIVATE_DATA->exp_frame_width / PRIVATE_DATA->exp_bin), (int)(PRIVATE_DATA->exp_frame_height / PRIVATE_DATA->exp_bin), PRIVATE_DATA->exp_bpp, true, false, NULL, true);
 					}
-					if (CCD_STREAMING_COUNT_ITEM->number.value > 0)
+					if (CCD_STREAMING_COUNT_ITEM->number.value > 0) {
 						CCD_STREAMING_COUNT_ITEM->number.value -= 1;
+					}
 					CCD_STREAMING_EXPOSURE_ITEM->number.value = CCD_STREAMING_EXPOSURE_ITEM->number.target;
 					CCD_STREAMING_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
@@ -677,10 +687,11 @@ static void ccd_temperature_callback(indigo_device *device) {
 	if (PRIVATE_DATA->can_check_temperature) {
 		if (playerone_set_cooler(device, CCD_COOLER_ON_ITEM->sw.value, PRIVATE_DATA->target_temperature, &PRIVATE_DATA->current_temperature, &PRIVATE_DATA->cooler_power)) {
 			double diff = PRIVATE_DATA->current_temperature - PRIVATE_DATA->target_temperature;
-			if (CCD_COOLER_ON_ITEM->sw.value)
+			if (CCD_COOLER_ON_ITEM->sw.value) {
 				CCD_TEMPERATURE_PROPERTY->state = fabs(diff) > 0.5 ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
-			else
+			} else {
 				CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
+			}
 			CCD_TEMPERATURE_ITEM->number.value = round(PRIVATE_DATA->current_temperature * 10.0) / 10.0;
 			CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
 			CCD_COOLER_POWER_PROPERTY->state = INDIGO_OK_STATE;
@@ -705,15 +716,17 @@ static void guider_timer_callback_ra(indigo_device *device) {
 	int id = PRIVATE_DATA->dev_id;
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	res = POASetConfig(PRIVATE_DATA->dev_id, POA_GUIDE_EAST, value, false);
-	if (res)
+	if (res) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "POASetConfig(%d, POA_GUIDE_EAST, false, false) > %d", id, res);
-	else
+	} else {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetConfig(%d, POA_GUIDE_EAST, false, false)", id);
+	}
 	res = POASetConfig(PRIVATE_DATA->dev_id, POA_GUIDE_WEST, value, false);
-	if (res)
+	if (res) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "POASetConfig(%d, POA_GUIDE_WEST, false, false) > %d", id, res);
-	else
+	} else {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetConfig(%d, POA_GUIDE_WEST, false, false)", id);
+	}
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	
 	PRIVATE_DATA->guider_timer_ra = NULL;
@@ -735,15 +748,17 @@ static void guider_timer_callback_dec(indigo_device *device) {
 	int id = PRIVATE_DATA->dev_id;
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	res = POASetConfig(id, POA_GUIDE_NORTH, value, false);
-	if (res)
+	if (res) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "POASetConfig(%d, POA_GUIDE_NORTH, false, false) > %d", id, res);
-	else
+	} else {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetConfig(%d, POA_GUIDE_NORTH, false, false)", id);
+	}
 	res = POASetConfig(id, POA_GUIDE_SOUTH, value, false);
-	if (res)
+	if (res) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "POASetConfig(%d, POA_GUIDE_SOUTH, false, false) > %d", id, res);
-	else
+	} else {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetConfig(%d, POA_GUIDE_SOUTH, false, false)", id);
+	}
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	PRIVATE_DATA->guider_timer_dec = NULL;
 	
@@ -923,30 +938,33 @@ static void handle_advanced_property(indigo_device *device) {
 		for (int i = 0; i < POA_ADVANCED_PROPERTY->count; i++) {
 			indigo_item *item = POA_ADVANCED_PROPERTY->items + i;
 			if (!strncmp(ctrl_caps.szConfName, item->name, INDIGO_NAME_SIZE)) {
-				if (ctrl_caps.valueType == VAL_BOOL)
+				if (ctrl_caps.valueType == VAL_BOOL) {
 					value.boolValue = item->number.value != 0;
-				else if (ctrl_caps.valueType == VAL_FLOAT)
+				} else if (ctrl_caps.valueType == VAL_FLOAT) {
 					value.floatValue = item->number.value;
-				else
+				} else {
 					value.intValue = (long)item->number.value;
+				}
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 				res = POASetConfig(id, ctrl_caps.configID, value, POA_FALSE);
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 				if (res) {
 					POA_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
-					if (ctrl_caps.valueType == VAL_BOOL)
+					if (ctrl_caps.valueType == VAL_BOOL) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "POASetConfig(%d, %s, %s) > %d", id, ctrl_caps.szConfName, value.boolValue ? "true" : "false", res);
-					else if (ctrl_caps.valueType == VAL_FLOAT)
+					} else if (ctrl_caps.valueType == VAL_FLOAT) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "POASetConfig(%d, %s, %g) > %d", id, ctrl_caps.szConfName, value.floatValue, res);
-					else
+					} else {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "POASetConfig(%d, %s, %d) > %d", id, ctrl_caps.szConfName, value.intValue, res);
+					}
 				} else {
-					if (ctrl_caps.valueType == VAL_BOOL)
+					if (ctrl_caps.valueType == VAL_BOOL) {
 						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetConfig(%d, %s, %s)", id, ctrl_caps.szConfName, value.boolValue ? "true" : "false");
-					else if (ctrl_caps.valueType == VAL_FLOAT)
+					} else if (ctrl_caps.valueType == VAL_FLOAT) {
 						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetConfig(%d, %s, %g)", id, ctrl_caps.szConfName, value.floatValue);
-					else
+					} else {
 						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetConfig(%d, %s, %d)", id, ctrl_caps.szConfName, value.intValue);
+					}
 				}
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 				res = POAGetConfig(id, ctrl_caps.configID, &value, &unused);
@@ -980,10 +998,11 @@ static indigo_result init_camera_property(indigo_device *device, POAConfigAttrib
 
 	if (ctrl_caps.configID == POA_EXPOSURE) {
 		CCD_EXPOSURE_PROPERTY->hidden = false;
-		if (ctrl_caps.isWritable)
+		if (ctrl_caps.isWritable) {
 			CCD_EXPOSURE_PROPERTY->perm = INDIGO_RW_PERM;
-		else
+		} else {
 			CCD_EXPOSURE_PROPERTY->perm = INDIGO_RO_PERM;
+		}
 
 		CCD_EXPOSURE_ITEM->number.min = CCD_STREAMING_EXPOSURE_ITEM->number.min = us2s(ctrl_caps.minValue.intValue);
 		CCD_EXPOSURE_ITEM->number.max = CCD_STREAMING_EXPOSURE_ITEM->number.max = us2s(ctrl_caps.maxValue.intValue);
@@ -991,20 +1010,22 @@ static indigo_result init_camera_property(indigo_device *device, POAConfigAttrib
 		unused = false;
 		res = POAGetConfig(id, POA_EXPOSURE, &value, &unused);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		if (res)
+		if (res) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetConfig(%d, POA_EXPOSURE) > %d", id, res);
-		else
+		} else {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetConfig(%d, POA_EXPOSURE, > %d)", id, value.intValue);
+		}
 		CCD_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.target = us2s(value.intValue);
 		return INDIGO_OK;
 	}
 
 	if (ctrl_caps.configID == POA_OFFSET) {
 		CCD_OFFSET_PROPERTY->hidden = false;
-		if (ctrl_caps.isWritable)
+		if (ctrl_caps.isWritable) {
 			CCD_OFFSET_PROPERTY->perm = INDIGO_RW_PERM;
-		else
+		} else {
 			CCD_OFFSET_PROPERTY->perm = INDIGO_RO_PERM;
+		}
 
 		CCD_OFFSET_ITEM->number.min = ctrl_caps.minValue.intValue;
 		CCD_OFFSET_ITEM->number.max = ctrl_caps.maxValue.intValue;
@@ -1012,10 +1033,11 @@ static indigo_result init_camera_property(indigo_device *device, POAConfigAttrib
 		unused = false;
 		res = POAGetConfig(id, POA_OFFSET, &value, &unused);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		if (res)
+		if (res) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetConfig(%d, POA_OFFSET) > %d", id, res);
-		else
+		} else {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetConfig(%d, POA_OFFSET,  > %d)", id, value.intValue);
+		}
 		CCD_OFFSET_ITEM->number.value = CCD_OFFSET_ITEM->number.target = value.intValue;
 		CCD_OFFSET_ITEM->number.step = 1;
 		return INDIGO_OK;
@@ -1023,10 +1045,11 @@ static indigo_result init_camera_property(indigo_device *device, POAConfigAttrib
 
 	if (ctrl_caps.configID == POA_GAIN) {
 		CCD_GAIN_PROPERTY->hidden = false;
-		if (ctrl_caps.isWritable)
+		if (ctrl_caps.isWritable) {
 			CCD_GAIN_PROPERTY->perm = INDIGO_RW_PERM;
-		else
+		} else {
 			CCD_GAIN_PROPERTY->perm = INDIGO_RO_PERM;
+		}
 
 		CCD_GAIN_ITEM->number.min = ctrl_caps.minValue.intValue;
 		CCD_GAIN_ITEM->number.max = ctrl_caps.maxValue.intValue;
@@ -1034,10 +1057,11 @@ static indigo_result init_camera_property(indigo_device *device, POAConfigAttrib
 		unused = false;
 		res = POAGetConfig(id, POA_GAIN, &value, &unused);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		if (res)
+		if (res) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetConfig(%d, POA_GAIN) > %d", id, res);
-		else
+		} else {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetConfig(%d, POA_GAIN,  > %d)", id, value.intValue);
+		}
 		CCD_GAIN_ITEM->number.value = CCD_GAIN_ITEM->number.target = value.intValue;
 		CCD_GAIN_ITEM->number.step = 1;
 		return INDIGO_OK;
@@ -1045,10 +1069,11 @@ static indigo_result init_camera_property(indigo_device *device, POAConfigAttrib
 
 	if (ctrl_caps.configID == POA_EGAIN) {
 		CCD_EGAIN_PROPERTY->hidden = false;
-		if (ctrl_caps.isWritable)
+		if (ctrl_caps.isWritable) {
 			CCD_EGAIN_PROPERTY->perm = INDIGO_RW_PERM;
-		else
+		} else {
 			CCD_EGAIN_PROPERTY->perm = INDIGO_RO_PERM;
+		}
 
 		CCD_EGAIN_ITEM->number.min = ctrl_caps.minValue.intValue;
 		CCD_EGAIN_ITEM->number.max = ctrl_caps.maxValue.intValue;
@@ -1056,20 +1081,22 @@ static indigo_result init_camera_property(indigo_device *device, POAConfigAttrib
 		unused = false;
 		res = POAGetConfig(id, POA_EGAIN, &value, &unused);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		if (res)
+		if (res) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetConfig(%d, POA_EGAIN) > %d", id, res);
-		else
+		} else {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetConfig(%d, POA_EGAIN,  > %d)", id, value.floatValue);
+		}
 		CCD_EGAIN_ITEM->number.value = CCD_EGAIN_ITEM->number.target = value.floatValue;
 		return INDIGO_OK;
 	}
 
 	if (ctrl_caps.configID == POA_TARGET_TEMP) {
 		CCD_TEMPERATURE_PROPERTY->hidden = false;
-		if (ctrl_caps.isWritable)
+		if (ctrl_caps.isWritable) {
 			CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
-		else
+		} else {
 			CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
+		}
 
 		CCD_TEMPERATURE_ITEM->number.min = ctrl_caps.minValue.intValue;
 		CCD_TEMPERATURE_ITEM->number.max = ctrl_caps.maxValue.intValue;
@@ -1091,29 +1118,32 @@ static indigo_result init_camera_property(indigo_device *device, POAConfigAttrib
 
 	if (ctrl_caps.configID == POA_COOLER) {
 		CCD_COOLER_PROPERTY->hidden = false;
-		if (ctrl_caps.isWritable)
+		if (ctrl_caps.isWritable) {
 			CCD_COOLER_PROPERTY->perm = INDIGO_RW_PERM;
-		else
+		} else {
 			CCD_COOLER_PROPERTY->perm = INDIGO_RO_PERM;
+		}
 		return INDIGO_OK;
 	}
 
 	if (ctrl_caps.configID == POA_COOLER_POWER) {
 		CCD_COOLER_POWER_PROPERTY->hidden = false;
-		if (ctrl_caps.isWritable)
+		if (ctrl_caps.isWritable) {
 			CCD_COOLER_POWER_PROPERTY->perm = INDIGO_RW_PERM;
-		else
+		} else {
 			CCD_COOLER_POWER_PROPERTY->perm = INDIGO_RO_PERM;
+		}
 
 		CCD_COOLER_POWER_ITEM->number.min = ctrl_caps.minValue.intValue;
 		CCD_COOLER_POWER_ITEM->number.max = ctrl_caps.maxValue.intValue;
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		res = POAGetConfig(id, POA_COOLER_POWER, &value, &unused);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		if (res)
+		if (res) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetConfig(%d, POA_COOLER_POWER) > %d", id, res);
-		else
+		} else {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetConfig(%d, POA_COOLER_POWER,  > %d)", id, value.intValue);
+		}
 		CCD_COOLER_POWER_ITEM->number.value = CCD_COOLER_POWER_ITEM->number.target = value.intValue;
 		return INDIGO_OK;
 	}
@@ -1194,10 +1224,11 @@ static void handle_ccd_connect_property(indigo_device *device) {
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 				POAErrors res = POAGetConfigsCount(id, &ctrl_count);
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-				if (res)
+				if (res) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetNumOfControls(%d) > %d", id, res);
-				else
+				} else {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetNumOfControls(%d, > %d)", id, ctrl_count);
+				}
 				POA_ADVANCED_PROPERTY = indigo_resize_property(POA_ADVANCED_PROPERTY, 0);
 				for (int ctrl_no = 0; ctrl_no < ctrl_count; ctrl_no++) {
 					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
@@ -1293,8 +1324,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
 	} else if (indigo_property_match_changeable(CCD_EXPOSURE_PROPERTY, property)) {
-		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 			return INDIGO_OK;
+		}
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
 		indigo_use_shortest_exposure_if_bias(device);
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -1311,8 +1343,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_STREAMING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_STREAMING
-		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 			return INDIGO_OK;
+		}
 		indigo_property_copy_values(CCD_STREAMING_PROPERTY, property, false);
 		indigo_use_shortest_exposure_if_bias(device);
 		CCD_STREAMING_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -1530,10 +1563,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CCD_FRAME_PROPERTY, property, false);
 		CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.target = 2 * (int)(CCD_FRAME_WIDTH_ITEM->number.value / 2);
 		CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.target = 2 * (int)(CCD_FRAME_HEIGHT_ITEM->number.value / 2);
-		if (CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value < 64)
+		if (CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value < 64) {
 			CCD_FRAME_WIDTH_ITEM->number.value = 64 * CCD_BIN_HORIZONTAL_ITEM->number.value;
-		if (CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value < 64)
+		}
+		if (CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value < 64) {
 			CCD_FRAME_HEIGHT_ITEM->number.value = 64 * CCD_BIN_VERTICAL_ITEM->number.value;
+		}
 		CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
 		if (CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value < 12) {
 			CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = 8;
@@ -1776,10 +1811,11 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 			res = POASetConfig(id, POA_GUIDE_NORTH, value, false);
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-			if (res)
+			if (res) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "POASetConfig(%d, POA_GUIDE_NORTH, true, false) > %d", id, res);
-			else
+			} else {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetConfig(%d, POA_GUIDE_NORTH, true, false)", id);
+			}
 			indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec, &PRIVATE_DATA->guider_timer_dec);
 			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
 		} else {
@@ -1788,10 +1824,11 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 				res = POASetConfig(id, POA_GUIDE_SOUTH, value, false);
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-				if (res)
+				if (res) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "POASetConfig(%d, POA_GUIDE_SOUTH, true, false) > %d", id, res);
-				else
+				} else {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetConfig(%d, POA_GUIDE_SOUTH, true, false)", id);
+				}
 				indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec, &PRIVATE_DATA->guider_timer_dec);
 				GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
 			}
@@ -1809,10 +1846,11 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 			res = POASetConfig(id, POA_GUIDE_EAST, value, false);
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-			if (res)
+			if (res) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "POASetConfig(%d, POA_GUIDE_EAST, true, false) > %d", id, res);
-			else
+			} else {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetConfig(%d, POA_GUIDE_EAST, true, false)", id);
+			}
 			indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra, &PRIVATE_DATA->guider_timer_ra);
 			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
 		} else {
@@ -1821,10 +1859,11 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 				res = POASetConfig(id, POA_GUIDE_WEST, value, false);
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-				if (res)
+				if (res) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "POASetConfig(%d, POA_GUIDE_WEST, true, false) > %d", id, res);
-				else
+				} else {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetConfig(%d, POA_GUIDE_WEST, true, false)", id);
+				}
 				indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra, &PRIVATE_DATA->guider_timer_ra);
 				GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
 			}
@@ -2095,8 +2134,9 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 			libusb_get_device_descriptor(dev, &descriptor);
-			if (descriptor.idVendor == POA_VENDOR_ID)
+			if (descriptor.idVendor == POA_VENDOR_ID) {
 				indigo_set_timer(NULL, 0.5, process_plug_event, NULL);
+			}
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {

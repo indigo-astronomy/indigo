@@ -55,9 +55,9 @@ static void position_timer_callback(indigo_device *device) {
 	}
 	pthread_mutex_lock(&PRIVATE_DATA->position_mutex);
 	double diffRA = MOUNT_RAW_COORDINATES_RA_ITEM->number.target - MOUNT_RAW_COORDINATES_RA_ITEM->number.value;
-	if (diffRA > 12)
+	if (diffRA > 12) {
 		diffRA = -(24 - diffRA);
-	else if (diffRA < -12) {
+	} else if (diffRA < -12) {
 		diffRA = (24 - diffRA);
 	}
 	double diffDec = MOUNT_RAW_COORDINATES_DEC_ITEM->number.target - MOUNT_RAW_COORDINATES_DEC_ITEM->number.value;
@@ -95,12 +95,14 @@ static void position_timer_callback(indigo_device *device) {
 				MOUNT_RAW_COORDINATES_RA_ITEM->number.value = MOUNT_RAW_COORDINATES_RA_ITEM->number.target;
 			} else if (diffRA > 0) {
 				MOUNT_RAW_COORDINATES_RA_ITEM->number.value += speedRA;
-				if (MOUNT_RAW_COORDINATES_RA_ITEM->number.value > 24)
+				if (MOUNT_RAW_COORDINATES_RA_ITEM->number.value > 24) {
 					MOUNT_RAW_COORDINATES_RA_ITEM->number.value -= 24;
+				}
 			} else if (diffRA < 0) {
 				MOUNT_RAW_COORDINATES_RA_ITEM->number.value -= speedRA;
-				if (MOUNT_RAW_COORDINATES_RA_ITEM->number.value < 0)
+				if (MOUNT_RAW_COORDINATES_RA_ITEM->number.value < 0) {
 					MOUNT_RAW_COORDINATES_RA_ITEM->number.value += 24;
+				}
 			}
 			if (fabs(diffDec) < speedDec)
 				MOUNT_RAW_COORDINATES_DEC_ITEM->number.value = MOUNT_RAW_COORDINATES_DEC_ITEM->number.target;
@@ -129,23 +131,23 @@ static void position_timer_callback(indigo_device *device) {
 static void move_timer_callback(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->position_mutex);
 	double speed = 0;
-	if (MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value)
+	if (MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value) {
 		speed = 0.01;
-	else if (MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value)
+	} else if (MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value)
 		speed = 0.025;
 	else if (MOUNT_SLEW_RATE_FIND_ITEM->sw.value)
 		speed = 0.1;
 	else if (MOUNT_SLEW_RATE_MAX_ITEM->sw.value)
 		speed = 0.5;
 	double decStep = 0;
-	if (MOUNT_MOTION_NORTH_ITEM->sw.value)
+	if (MOUNT_MOTION_NORTH_ITEM->sw.value) {
 		decStep = speed * 15;
-	else if (MOUNT_MOTION_SOUTH_ITEM->sw.value)
+	} else if (MOUNT_MOTION_SOUTH_ITEM->sw.value)
 		decStep = -speed * 15;
 	double raStep = 0;
-	if (MOUNT_MOTION_WEST_ITEM->sw.value)
+	if (MOUNT_MOTION_WEST_ITEM->sw.value) {
 		raStep = speed;
-	else if (MOUNT_MOTION_EAST_ITEM->sw.value)
+	} else if (MOUNT_MOTION_EAST_ITEM->sw.value)
 		raStep = -speed;
 	if (raStep == 0 && decStep == 0) {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = MOUNT_RAW_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
@@ -325,8 +327,9 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			double alt, az;
 			indigo_radec_to_altaz(ra, dec, &utc, MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value, MOUNT_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value, &alt, &az);
 			bool west = az > 180;
-			if (MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value < 0)
+			if (MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value < 0) {
 				west = !west;
+			}
 			indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, west ? MOUNT_SIDE_OF_PIER_WEST_ITEM : MOUNT_SIDE_OF_PIER_EAST_ITEM, true);
 			MOUNT_SIDE_OF_PIER_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
@@ -343,8 +346,9 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			indigo_property_copy_values(MOUNT_MOTION_DEC_PROPERTY, property, false);
 			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
-			if (PRIVATE_DATA->move_timer == NULL)
+			if (PRIVATE_DATA->move_timer == NULL) {
 				indigo_set_timer(device, 0, move_timer_callback, &PRIVATE_DATA->move_timer);
+			}
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_MOTION_RA_PROPERTY, property)) {
@@ -356,8 +360,9 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			indigo_property_copy_values(MOUNT_MOTION_RA_PROPERTY, property, false);
 			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
-			if (PRIVATE_DATA->move_timer == NULL)
+			if (PRIVATE_DATA->move_timer == NULL) {
 				indigo_set_timer(device, 0, move_timer_callback, &PRIVATE_DATA->move_timer);
+			}
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_ABORT_MOTION_PROPERTY, property)) {

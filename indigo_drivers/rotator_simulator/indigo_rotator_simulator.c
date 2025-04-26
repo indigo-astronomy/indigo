@@ -72,18 +72,20 @@ static void rotator_timer_callback(indigo_device *device) {
 	} else {
 		if (PRIVATE_DATA->current_position < PRIVATE_DATA->target_position) {
 			ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-			if (PRIVATE_DATA->target_position - PRIVATE_DATA->current_position > ROTATOR_SPEED)
+			if (PRIVATE_DATA->target_position - PRIVATE_DATA->current_position > ROTATOR_SPEED) {
 				ROTATOR_POSITION_ITEM->number.value = PRIVATE_DATA->current_position = (PRIVATE_DATA->current_position + ROTATOR_SPEED);
-			else
+			} else {
 				ROTATOR_POSITION_ITEM->number.value = PRIVATE_DATA->current_position = PRIVATE_DATA->target_position;
+			}
 			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 			indigo_reschedule_timer(device, 0.1, &PRIVATE_DATA->rotator_timer);
 		} else if (PRIVATE_DATA->current_position > PRIVATE_DATA->target_position) {
 			ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-			if (PRIVATE_DATA->current_position - PRIVATE_DATA->target_position > ROTATOR_SPEED)
+			if (PRIVATE_DATA->current_position - PRIVATE_DATA->target_position > ROTATOR_SPEED) {
 				ROTATOR_POSITION_ITEM->number.value = PRIVATE_DATA->current_position = (PRIVATE_DATA->current_position - ROTATOR_SPEED);
-			else
+			} else {
 				ROTATOR_POSITION_ITEM->number.value = PRIVATE_DATA->current_position = PRIVATE_DATA->target_position;
+			}
 			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 			indigo_reschedule_timer(device, 0.1, &PRIVATE_DATA->rotator_timer);
 		} else {

@@ -245,10 +245,12 @@ static void focuser_position_handler(indigo_device *device) {
 
 static void focuser_steps_handler(indigo_device *device) {
 	FOCUSER_POSITION_ITEM->number.target += (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? -FOCUSER_STEPS_ITEM->number.value : FOCUSER_STEPS_ITEM->number.value);
-	if (FOCUSER_POSITION_ITEM->number.target < 0)
+	if (FOCUSER_POSITION_ITEM->number.target < 0) {
 		FOCUSER_POSITION_ITEM->number.target = 0;
-	if (FOCUSER_POSITION_ITEM->number.target > FOCUSER_POSITION_ITEM->number.max)
+	}
+	if (FOCUSER_POSITION_ITEM->number.target > FOCUSER_POSITION_ITEM->number.max) {
 		FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.max;
+	}
 	focuser_position_handler(device);
 }
 

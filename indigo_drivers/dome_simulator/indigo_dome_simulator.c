@@ -56,10 +56,11 @@ static void dome_timer_callback(indigo_device *device) {
 		if (DOME_DIRECTION_MOVE_CLOCKWISE_ITEM->sw.value && PRIVATE_DATA->current_position != PRIVATE_DATA->target_position) {
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 			int dif = (int)(PRIVATE_DATA->target_position - PRIVATE_DATA->current_position + 360) % 360;
-			if (dif > DOME_SPEED_ITEM->number.value)
+			if (dif > DOME_SPEED_ITEM->number.value) {
 				DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position = (int)(PRIVATE_DATA->current_position + DOME_SPEED_ITEM->number.value + 360) % 360;
-			else
+			} else {
 				DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position = PRIVATE_DATA->target_position;
+			}
 			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 			DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
@@ -67,10 +68,11 @@ static void dome_timer_callback(indigo_device *device) {
 		} else if (DOME_DIRECTION_MOVE_COUNTERCLOCKWISE_ITEM->sw.value && PRIVATE_DATA->current_position != PRIVATE_DATA->target_position) {
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 			int dif = (int)(PRIVATE_DATA->current_position - PRIVATE_DATA->target_position + 360) % 360;
-			if (dif > DOME_SPEED_ITEM->number.value)
+			if (dif > DOME_SPEED_ITEM->number.value) {
 				DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position = (int)(PRIVATE_DATA->current_position - DOME_SPEED_ITEM->number.value + 360) % 360;
-			else
+			} else {
 				DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position = PRIVATE_DATA->target_position;
+			}
 			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 			DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);

@@ -81,8 +81,9 @@ static bool robofocus_command(indigo_device *device, char *command, char *respon
 		FD_ZERO(&readout);
 		FD_SET(PRIVATE_DATA->handle, &readout);
 		long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-		if (result <= 0)
+		if (result <= 0) {
 			return false;
+		}
 		result = read(PRIVATE_DATA->handle, &c, 1);
 		if (result <= 0) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
@@ -296,14 +297,18 @@ static void focuser_steps_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char command[9], response[9];
 	int position = FOCUSER_POSITION_ITEM->number.value + (int)FOCUSER_STEPS_ITEM->number.value * (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? -1 : 1) * (FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value ? -1 : 1);
-	if (position < 1)
+	if (position < 1) {
 		position = 1;
-	if (position < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value)
+	}
+	if (position < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value) {
 		position = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
-	if (position > 0xFFFF)
+	}
+	if (position > 0xFFFF) {
 		position = 0xFFFF;
-	if (position > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value)
+	}
+	if (position > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value) {
 		position = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
+	}
 	snprintf(command, sizeof(command), "FG%06d", position);
 	FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 	FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -311,10 +316,12 @@ static void focuser_steps_handler(indigo_device *device) {
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 	if (robofocus_command(device, command, response)) {
 		FOCUSER_POSITION_ITEM->number.value = atol(response + 3);
-		if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE)
+		if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-		if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE)
+		}
+		if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+		}
 	} else {
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -328,18 +335,21 @@ static void focuser_position_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char command[9], response[9];
 	int position = (int)FOCUSER_POSITION_ITEM->number.target;
-	if (position < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value)
+	if (position < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value) {
 		position = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
-	if (position > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value)
+	}
+	if (position > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value) {
 		position = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
+	}
 	FOCUSER_POSITION_ITEM->number.target = position;
 	snprintf(command, sizeof(command), "FG%06d", position);
 	FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 	if (robofocus_command(device, command, response)) {
 		FOCUSER_POSITION_ITEM->number.value = atol(response + 3);
-		if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE)
+		if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+		}
 	} else {
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 	}

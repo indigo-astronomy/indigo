@@ -239,8 +239,9 @@ int indigo_open_serial_with_config(const char *dev_file, const char *baudconfig)
 	struct termios to;
 
 	int res = configure_tty_options(&to, baudconfig);
-	if (res == -1)
+	if (res == -1) {
 		return res;
+	}
 
 	return open_tty(dev_file, &to, NULL);
 }
@@ -257,8 +258,9 @@ static int open_socket(const char *host, int port, int type) {
 	int handle = -1;
 	for (address = address_list; address != NULL; address = address->ai_next) {
 		handle = socket(AF_INET, type, 0);
-		if (handle == -1)
+		if (handle == -1) {
 			return handle;
+		}
 		*(uint16_t *)(address->ai_addr->sa_data) = htons(port);
 		if (connect(handle, address->ai_addr, address->ai_addrlen) == 0) {
 			struct timeval timeout;
@@ -384,8 +386,9 @@ int indigo_read(int handle, char *buffer, long length) {
 		long bytes_read = read(handle, buffer, remains);
 #endif
 		if (bytes_read <= 0) {
-			if (bytes_read < 0)
+			if (bytes_read < 0) {
 				INDIGO_ERROR(indigo_error("%d -> // %s", handle, strerror(errno)));
+			}
 			return (int)bytes_read;
 		}
 		total_bytes += bytes_read;
@@ -428,12 +431,13 @@ int indigo_read_line(int handle, char *buffer, int length) {
 		long bytes_read = read(handle, &c, 1);
 #endif
 		if (bytes_read > 0) {
-			if (c == '\r')
+			if (c == '\r') {
 				;
-			else if (c != '\n')
+			} else if (c != '\n') {
 				buffer[total_bytes++] = c;
-			else
+			} else {
 				break;
+			}
 		} else {
 			errno = ECONNRESET;
 			INDIGO_TRACE_PROTOCOL(indigo_trace("%d -> // Connection reset", handle));
@@ -458,8 +462,9 @@ bool indigo_write(int handle, const char *buffer, long length) {
 			INDIGO_ERROR(indigo_error("%d <- // %s", handle, strerror(errno)));
 			return false;
 		}
-		if (bytes_written == remains)
+		if (bytes_written == remains) {
 			return true;
+		}
 		buffer += bytes_written;
 		remains -= bytes_written;
 	}

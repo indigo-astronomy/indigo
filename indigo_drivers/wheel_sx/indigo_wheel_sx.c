@@ -58,8 +58,9 @@ static bool sx_message(indigo_device *device, int a, int b) {
 	unsigned char buf[2] = { a, b };
 	int rc = hid_write(PRIVATE_DATA->handle, buf, 2);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "hid_write({ %02x, %02x }) ->  %d", buf[0], buf[1], rc);
-	if (rc != 2)
+	if (rc != 2) {
 		return false;
+	}
 	indigo_usleep(100);
 	rc = hid_read(PRIVATE_DATA->handle, buf, 2);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "hid_read() ->  %d, { %02x, %02x }", rc, buf[0], buf[1]);
@@ -234,8 +235,9 @@ indigo_result indigo_wheel_sx(indigo_driver_action action, indigo_driver_info *i
 			last_action = action;
 			libusb_hotplug_deregister_callback(NULL, callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
-			if (wheel)
+			if (wheel) {
 				hotplug_callback(NULL, NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
+			}
 			break;
 
 		case INDIGO_DRIVER_INFO:

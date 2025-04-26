@@ -25,7 +25,7 @@
 
 #include <indigo/indigo_rotator_driver.h>
 
-#include "alpaca_common.h"
+#include "indigo_alpaca_common.h"
 
 static indigo_alpaca_error alpaca_get_interfaceversion(indigo_alpaca_device *device, int version, int *value) {
 	*value = 1;
@@ -286,19 +286,21 @@ long indigo_alpaca_rotator_set_command(indigo_alpaca_device *alpaca_device, int 
 	if (!strcmp(command, "sync")) {
 		double value = 0;
 		indigo_alpaca_error result;
-		if (sscanf(param_1, "Position=%lf", &value) == 1)
+		if (sscanf(param_1, "Position=%lf", &value) == 1) {
 			result = alpaca_move_relative(alpaca_device, version, value);
-		else
+		} else {
 			result = indigo_alpaca_error_InvalidValue;
+		}
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strcmp(command, "move")) {
 		double value = 0;
 		indigo_alpaca_error result;
-		if (sscanf(param_1, "Position=%lf", &value) == 1)
+		if (sscanf(param_1, "Position=%lf", &value) == 1) {
 			result = alpaca_move_relative(alpaca_device, version, value);
-		else
+		} else {
 			result = indigo_alpaca_error_InvalidValue;
+		}
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (
@@ -307,10 +309,11 @@ long indigo_alpaca_rotator_set_command(indigo_alpaca_device *alpaca_device, int 
 	) {
 		double value = 0;
 		indigo_alpaca_error result;
-		if (sscanf(param_1, "Position=%lf", &value) == 1)
+		if (sscanf(param_1, "Position=%lf", &value) == 1) {
 			result = alpaca_move_absolute(alpaca_device, version, value);
-		else
+		} else {
 			result = indigo_alpaca_error_InvalidValue;
+		}
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strcmp(command, "halt")) {

@@ -80,10 +80,11 @@ static void gpsd_close(indigo_device *device) {
 
 	(void)gps_stream(&PRIVATE_DATA->gps_data, WATCH_DISABLE, NULL);
 	rc = gps_close(&PRIVATE_DATA->gps_data);
-	if (rc)
+	if (rc) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to disconnect from gpsd.");
-	else
+	} else {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from gpsd.");
+	}
 }
 
 
@@ -175,17 +176,21 @@ static void gps_refresh_callback(indigo_device *device) {
 			GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		}
 		if (PRIVATE_DATA->gps_data.set & MODE_SET) {
-			if (PRIVATE_DATA->gps_data.fix.mode == MODE_NO_FIX)
+			if (PRIVATE_DATA->gps_data.fix.mode == MODE_NO_FIX) {
 				GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_ALERT_STATE;
-			if (PRIVATE_DATA->gps_data.fix.mode == MODE_2D)
+			}
+			if (PRIVATE_DATA->gps_data.fix.mode == MODE_2D) {
 				GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_BUSY_STATE;
-			if (PRIVATE_DATA->gps_data.fix.mode == MODE_3D)
+			}
+			if (PRIVATE_DATA->gps_data.fix.mode == MODE_3D) {
 				GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_OK_STATE;
+			}
 
-			if (PRIVATE_DATA->gps_data.fix.mode == MODE_NOT_SEEN)
+			if (PRIVATE_DATA->gps_data.fix.mode == MODE_NOT_SEEN) {
 				GPS_STATUS_PROPERTY->state = INDIGO_BUSY_STATE;
-			else
+			} else {
 				GPS_STATUS_PROPERTY->state = INDIGO_OK_STATE;
+			}
 		}
 		/* DOP_SET does not seem to be set even when there is DOP data */
 		if (!isnan(PRIVATE_DATA->gps_data.dop.pdop))
@@ -198,15 +203,17 @@ static void gps_refresh_callback(indigo_device *device) {
 		if (PRIVATE_DATA->gps_data.set & SATELLITE_SET) {
 			GPS_ADVANCED_STATUS_SVS_IN_USE_ITEM->number.value = PRIVATE_DATA->gps_data.satellites_used;
 			GPS_ADVANCED_STATUS_SVS_IN_VIEW_ITEM->number.value = PRIVATE_DATA->gps_data.satellites_visible;
-			if (PRIVATE_DATA->gps_data.set & DOP_SET)
+			if (PRIVATE_DATA->gps_data.set & DOP_SET) {
 				GPS_ADVANCED_STATUS_PROPERTY->state = INDIGO_OK_STATE;
+			}
 		}
 
 		indigo_update_property(device, GPS_STATUS_PROPERTY, NULL);
 		indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 		indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
-		if (GPS_ADVANCED_ENABLED_ITEM->sw.value)
+		if (GPS_ADVANCED_ENABLED_ITEM->sw.value) {
 			indigo_update_property(device, GPS_ADVANCED_STATUS_PROPERTY, NULL);
+		}
 	}
 }
 
@@ -271,8 +278,7 @@ static indigo_result gps_detach(indigo_device *device) {
 static gpsd_private_data *private_data = NULL;
 static indigo_device *gps = NULL;
 
-indigo_result indigo_gps_gpsd(indigo_driver_action action, indigo_driver_info *info)
-{
+indigo_result indigo_gps_gpsd(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_device gps_template = INDIGO_DEVICE_INITIALIZER(
 		GPS_GPSD_DEVICE_NAME,
 		gps_attach,

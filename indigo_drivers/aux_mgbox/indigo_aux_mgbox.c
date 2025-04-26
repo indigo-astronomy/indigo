@@ -718,40 +718,47 @@ static int aux_init_properties(indigo_device *device) {
 	INFO_PROPERTY->count = 6;
 	// -------------------------------------------------------------------------------- GPIO OUTLETS
 	AUX_GPIO_OUTLET_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_GPIO_OUTLETS_PROPERTY_NAME, SWITCH_GROUP, "Switch outlet", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
-	if (AUX_GPIO_OUTLET_PROPERTY == NULL)
+	if (AUX_GPIO_OUTLET_PROPERTY == NULL) {
 		return INDIGO_FAILED;
+	}
 	indigo_init_switch_item(AUX_GPIO_OUTLET_1_ITEM, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, "Pulse switch", false);
 	// -------------------------------------------------------------------------------- OUTLET_NAMES
 	AUX_OUTLET_NAMES_PROPERTY = indigo_init_text_property(NULL, device->name, AUX_OUTLET_NAMES_PROPERTY_NAME, SETTINGS_GROUP, "Switch name", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-	if (AUX_OUTLET_NAMES_PROPERTY == NULL)
+	if (AUX_OUTLET_NAMES_PROPERTY == NULL) {
 		return INDIGO_FAILED;
+	}
 	indigo_init_text_item(AUX_OUTLET_NAME_1_ITEM, AUX_GPIO_OUTLET_NAME_1_ITEM_NAME, "Switch name", "Pulse switch");
 	// -------------------------------------------------------------------------------- AUX_OUTLET_PULSE_LENGTHS
 	AUX_OUTLET_PULSE_LENGTHS_PROPERTY = indigo_init_number_property(NULL, device->name, "AUX_OUTLET_PULSE_LENGTHS", SWITCH_GROUP, "Switch pulse length (ms)", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-	if (AUX_OUTLET_PULSE_LENGTHS_PROPERTY == NULL)
+	if (AUX_OUTLET_PULSE_LENGTHS_PROPERTY == NULL) {
 		return INDIGO_FAILED;
+	}
 	indigo_init_number_item(AUX_OUTLET_PULSE_LENGTHS_1_ITEM, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, "Pulse switch", 1, 10000, 100, 1000);
 	// -------------------------------------------------------------------------------- DEW_THRESHOLD
 	AUX_DEW_THRESHOLD_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_DEW_THRESHOLD_PROPERTY_NAME, SETTINGS_GROUP, "Dew warning threshold", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-	if (AUX_DEW_THRESHOLD_PROPERTY == NULL)
+	if (AUX_DEW_THRESHOLD_PROPERTY == NULL) {
 		return INDIGO_FAILED;
+	}
 	indigo_init_number_item(AUX_DEW_THRESHOLD_SENSOR_1_ITEM, AUX_DEW_THRESHOLD_SENSOR_1_ITEM_NAME, "Temperature difference (°C)", 0, 9, 0, 2);
 	// -------------------------------------------------------------------------------- DEW_WARNING
 	AUX_DEW_WARNING_PROPERTY = indigo_init_light_property(NULL, device->name, AUX_DEW_WARNING_PROPERTY_NAME, WEATHER_GROUP, "Dew warning", INDIGO_BUSY_STATE, 1);
-	if (AUX_DEW_WARNING_PROPERTY == NULL)
+	if (AUX_DEW_WARNING_PROPERTY == NULL) {
 		return INDIGO_FAILED;
+	}
 	indigo_init_light_item(AUX_DEW_WARNING_SENSOR_1_ITEM, AUX_DEW_WARNING_SENSOR_1_ITEM_NAME, "Dew warning", INDIGO_IDLE_STATE);
 	// -------------------------------------------------------------------------------- X_CALIBRATION
 	X_CALIBRATION_PROPERTY = indigo_init_number_property(NULL, device->name, X_CALIBRATION_PROPERTY_NAME, SETTINGS_GROUP, "Weather calibration factors", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
-	if (X_CALIBRATION_PROPERTY == NULL)
+	if (X_CALIBRATION_PROPERTY == NULL) {
 		return INDIGO_FAILED;
+	}
 	indigo_init_number_item(X_CALIBRATION_TEMPERATURE_ITEM, AUX_WEATHER_TEMPERATURE_ITEM_NAME, "Temperature (°C)", -200, 200, 0, 0);
 	indigo_init_number_item(X_CALIBRATION_HUMIDIDTY_ITEM, AUX_WEATHER_HUMIDITY_ITEM_NAME, "Relative Humidity (%)", -99, 99, 0, 0);
 	indigo_init_number_item(X_CALIBRATION_PRESSURE_ITEM, AUX_WEATHER_PRESSURE_ITEM_NAME, "Atmospheric Pressure (Pa)", -999, 999, 0, 0);
 	// -------------------------------------------------------------------------------- AUX_WEATHER
 	AUX_WEATHER_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_WEATHER_PROPERTY_NAME, WEATHER_GROUP, "Weather conditions", INDIGO_BUSY_STATE, INDIGO_RO_PERM, 4);
-	if (AUX_WEATHER_PROPERTY == NULL)
+	if (AUX_WEATHER_PROPERTY == NULL) {
 		return INDIGO_FAILED;
+	}
 	indigo_init_number_item(AUX_WEATHER_TEMPERATURE_ITEM, AUX_WEATHER_TEMPERATURE_ITEM_NAME, "Ambient temperature (°C)", -200, 80, 0, 0);
 	indigo_copy_value(AUX_WEATHER_TEMPERATURE_ITEM->number.format, "%.1f");
 	indigo_init_number_item(AUX_WEATHER_DEWPOINT_ITEM, AUX_WEATHER_DEWPOINT_ITEM_NAME, "Dewpoint (°C)", -200, 80, 1, 0);
@@ -762,13 +769,15 @@ static int aux_init_properties(indigo_device *device) {
 	indigo_copy_value(AUX_WEATHER_PRESSURE_ITEM->number.format, "%.2f");
 	//--------------------------------------------------------------------------- X_SEND_WEATHER_MOUNT
 	X_SEND_WEATHER_MOUNT_PROPERTY = indigo_init_switch_property(NULL, device->name, X_SEND_WEATHER_MOUNT_PROPERTY_NAME, SETTINGS_GROUP, "Send weather data to mount", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
-	if (X_SEND_WEATHER_MOUNT_PROPERTY == NULL)
+	if (X_SEND_WEATHER_MOUNT_PROPERTY == NULL) {
 		return INDIGO_FAILED;
+	}
 	indigo_init_switch_item(X_SEND_WEATHER_MOUNT_ITEM, X_SEND_WEATHER_MOUNT_ITEM_NAME, "Enable", false);
 	//--------------------------------------------------------------------------- X_REBOOT_DEVICE
 	X_REBOOT_PROPERTY = indigo_init_switch_property(NULL, device->name, X_REBOOT_PROPERTY_NAME, SETTINGS_GROUP, "Reboot device", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
-	if (X_REBOOT_PROPERTY == NULL)
+	if (X_REBOOT_PROPERTY == NULL) {
 		return INDIGO_FAILED;
+	}
 	indigo_init_switch_item(X_REBOOT_ITEM, X_REBOOT_ITEM_NAME, "Reboot!", false);
 	//---------------------------------------------------------------------------
 	return INDIGO_OK;

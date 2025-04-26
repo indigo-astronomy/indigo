@@ -733,8 +733,9 @@ bool ptp_fuji_liveview(indigo_device *device) {
 				buffer = NULL;
 				ptp_transaction_1_0(device, ptp_operation_DeleteObject, handle);
 				CCD_STREAMING_COUNT_ITEM->number.value--;
-				if (CCD_STREAMING_COUNT_ITEM->number.value < 0)
+				if (CCD_STREAMING_COUNT_ITEM->number.value < 0) {
 					CCD_STREAMING_COUNT_ITEM->number.value = -1;
+				}
 				indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 				retry_count = 0;
 			}

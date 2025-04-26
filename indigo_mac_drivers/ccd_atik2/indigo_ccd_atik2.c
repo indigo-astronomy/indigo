@@ -126,10 +126,11 @@ static void ccd_temperature_callback(indigo_device *device) {
 			//if (CCD_COOLER_ON_ITEM->sw.value != status)
 			libatik_set_cooler(PRIVATE_DATA->device_context, CCD_COOLER_ON_ITEM->sw.value, PRIVATE_DATA->target_temperature);
 			double diff = PRIVATE_DATA->current_temperature - PRIVATE_DATA->target_temperature;
-			if (CCD_COOLER_ON_ITEM->sw.value)
+			if (CCD_COOLER_ON_ITEM->sw.value) {
 				CCD_TEMPERATURE_PROPERTY->state = fabs(diff) > 1 ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
-			else
+			} else {
 				CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
+			}
 			CCD_TEMPERATURE_ITEM->number.value = round(PRIVATE_DATA->current_temperature * 10) / 10;
 			CCD_COOLER_POWER_PROPERTY->state = INDIGO_OK_STATE;
 			CCD_COOLER_POWER_ITEM->number.value = round(PRIVATE_DATA->cooler_power);
@@ -233,22 +234,24 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
-		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE)
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 			return INDIGO_OK;
+		}
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
 		indigo_use_shortest_exposure_if_bias(device);
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-		if (CCD_EXPOSURE_ITEM->number.target < PRIVATE_DATA->device_context->min_exposure)
+		if (CCD_EXPOSURE_ITEM->number.target < PRIVATE_DATA->device_context->min_exposure) {
 			CCD_EXPOSURE_ITEM->number.target = PRIVATE_DATA->device_context->min_exposure;
+		}
 		if (CCD_EXPOSURE_ITEM->number.target < 1) {
 			PRIVATE_DATA->can_check_temperature = false;
 			indigo_set_timer(device, 0, short_exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
 		} else {
 			libatik_start_exposure(PRIVATE_DATA->device_context, CCD_FRAME_TYPE_DARK_ITEM->sw.value);
-			if (CCD_EXPOSURE_ITEM->number.target > 2)
+			if (CCD_EXPOSURE_ITEM->number.target > 2) {
 				indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 2, pre_exposure_timer_callback, &PRIVATE_DATA->pre_exposure_timer);
-			else {
+			} else {
 				PRIVATE_DATA->can_check_temperature = false;
 				indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
 			}
@@ -303,8 +306,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 static indigo_result ccd_detach(indigo_device *device) {
 	assert(device != NULL);
-	if (CONNECTION_CONNECTED_ITEM->sw.value)
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		indigo_device_disconnect(NULL, device->name);
+	}
 	if (device == device->master_device) {
 		indigo_global_unlock(device);
 	}
@@ -426,8 +430,9 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 
 static indigo_result guider_detach(indigo_device *device) {
 	assert(device != NULL);
-	if (CONNECTION_CONNECTED_ITEM->sw.value)
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		indigo_device_disconnect(NULL, device->name);
+	}
 	if (device == device->master_device) {
 		indigo_global_unlock(device);
 	}
@@ -522,8 +527,9 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 
 static indigo_result wheel_detach(indigo_device *device) {
 	assert(device != NULL);
-	if (CONNECTION_CONNECTED_ITEM->sw.value)
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		indigo_device_disconnect(NULL, device->name);
+	}
 	if (device == device->master_device) {
 		indigo_global_unlock(device);
 	}
@@ -675,8 +681,9 @@ indigo_result indigo_ccd_atik2(indigo_driver_action action, indigo_driver_info *
 		}
 		indigo_start_usb_event_handler();
 		int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, ATIK_VID1, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle1);
-		if (rc >= 0)
+		if (rc >= 0) {
 			rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, ATIK_VID2, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle2);
+		}
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
 		return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
 

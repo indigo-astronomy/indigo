@@ -211,12 +211,14 @@ static void ccd_connect_callback(indigo_device *device) {
 			CCD_BIN_VERTICAL_ITEM->number.max = CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = int_value;
 			gxccd_get_integer_parameter(PRIVATE_DATA->camera, GIP_MINIMAL_EXPOSURE, &int_value);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gxccd_get_integer_parameter(..., GIP_MINIMAL_EXPOSURE, -> %d)", int_value);
-			if (int_value > 0)
+			if (int_value > 0) {
 				CCD_EXPOSURE_ITEM->number.min = int_value / 1000000.0;
+			}
 			gxccd_get_integer_parameter(PRIVATE_DATA->camera, GIP_MAXIMAL_EXPOSURE, &int_value);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gxccd_get_integer_parameter(..., GIP_MAXIMAL_EXPOSURE, -> %d)", int_value);
-			if (int_value > 0)
+			if (int_value > 0) {
 				CCD_EXPOSURE_ITEM->number.max = int_value / 1000.0;
+			}
 
 			int_value = 1;
 			CCD_MODE_PROPERTY->count = 0;
@@ -358,8 +360,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
-		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE)
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 			return INDIGO_OK;
+		}
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
 		indigo_use_shortest_exposure_if_bias(device);
 		if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
@@ -388,9 +391,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			state = gxccd_start_exposure(PRIVATE_DATA->camera, CCD_EXPOSURE_ITEM->number.target, !(CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_DARKFLAT_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value), left, top, width, height);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gxccd_start_exposure(..., %g, %d, %d, %d, %d, %d) -> %d", CCD_EXPOSURE_ITEM->number.target, !(CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_DARKFLAT_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value), left, top, width, height, state);
 		}
-		if (state != -1)
+		if (state != -1) {
 			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
-		else {
+		} else {
 			mi_report_error(device, CCD_EXPOSURE_PROPERTY);
 			return INDIGO_OK;
 		}

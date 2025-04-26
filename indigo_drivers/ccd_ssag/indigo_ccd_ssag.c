@@ -168,13 +168,15 @@ static int ssag_init_sequence(indigo_device *device) {
 }
 
 static void ssag_set_gain(indigo_device *device, int gain) {
-	if (gain < 1)
+	if (gain < 1) {
 		gain = 1;
-	if (gain > 15)
+	}
+	if (gain > 15) {
 		gain = 15;
-	if (gain == 7)
+	}
+	if (gain == 7) {
 		PRIVATE_DATA->gain = 0x3b;
-	else if (gain <= 4)
+	} else if (gain <= 4)
 		PRIVATE_DATA->gain = gain * 8;
 	else if (gain <= 8)
 		PRIVATE_DATA->gain = (gain * 4) + 0x40;
@@ -384,8 +386,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
-		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 			return INDIGO_OK;
+		}
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
 		indigo_use_shortest_exposure_if_bias(device);
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -685,8 +688,9 @@ indigo_result indigo_ccd_ssag(indigo_driver_action action, indigo_driver_info *i
 				custom_vid = (int)strtol(env, NULL, 16);
 			if ((env = getenv("SSAG_PID")))
 				custom_pid = (int)strtol(env, NULL, 16);
-			if (custom_vid && custom_pid)
+			if (custom_vid && custom_pid) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "using custom VID = 0x%04x, PID = 0x%04x", custom_vid, custom_pid);
+			}
 			int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
 			return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;

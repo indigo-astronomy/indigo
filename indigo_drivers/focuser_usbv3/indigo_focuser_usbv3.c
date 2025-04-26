@@ -300,15 +300,17 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
-				if (FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value)
+				if (FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value) {
 					usbv3_command(device, "I%05d", (int)(FOCUSER_STEPS_ITEM->number.value));
-				else
+				} else {
 					usbv3_command(device, "O%05d", (int)(FOCUSER_STEPS_ITEM->number.value));
+				}
 			} else {
-				if (FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value)
+				if (FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value) {
 					usbv3_command(device, "O%05d", (int)(FOCUSER_STEPS_ITEM->number.value));
-				else
+				} else {
 					usbv3_command(device, "I%05d", (int)(FOCUSER_STEPS_ITEM->number.value));
+				}
 			}
 			indigo_set_timer(device, 0.2, focuser_position_callback, &PRIVATE_DATA->position_timer);
 		}

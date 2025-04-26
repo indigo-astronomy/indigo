@@ -441,8 +441,7 @@ static void rbi_exposure_timer_callback(indigo_device *device) {
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Taking exposure...");
 			if (fli_start_exposure(device, CCD_EXPOSURE_ITEM->number.target, CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_DARKFLAT_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value, false,
 				(int)CCD_FRAME_LEFT_ITEM->number.value, (int)CCD_FRAME_TOP_ITEM->number.value, (int)CCD_FRAME_WIDTH_ITEM->number.value, (int)CCD_FRAME_HEIGHT_ITEM->number.value,
-				(int)CCD_BIN_HORIZONTAL_ITEM->number.value, (int)CCD_BIN_VERTICAL_ITEM->number.value))
-			{
+				(int)CCD_BIN_HORIZONTAL_ITEM->number.value, (int)CCD_BIN_VERTICAL_ITEM->number.value)) {
 				if (PRIVATE_DATA->abort_flag) {
 					return;
 				}
@@ -515,8 +514,9 @@ static indigo_result ccd_attach(indigo_device *device) {
 
 		// -------------------------------------------------------------------------------- FLI_CAMERA_MODE
 		FLI_CAMERA_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, "FLI_CAMERA_MODE", CCD_ADVANCED_GROUP, "Camera mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, MAX_MODES);
-				if (FLI_CAMERA_MODE_PROPERTY == NULL)
+				if (FLI_CAMERA_MODE_PROPERTY == NULL) {
 				return INDIGO_FAILED;
+				}
 				/* will be populated on connect */
 		//---------------------------------------------------------------------------------
 
@@ -776,8 +776,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_set_timer(device, 0, ccd_connect_callback, NULL);
 	// -------------------------------------------------------------------------------- CCD_EXPOSURE
 	} else if (indigo_property_match_changeable(CCD_EXPOSURE_PROPERTY, property)) {
-		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE)
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 			return INDIGO_OK;
+		}
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
 		indigo_use_shortest_exposure_if_bias(device);
 		handle_exposure_property(device, property);
@@ -822,20 +823,23 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number.value;
 		CCD_TEMPERATURE_ITEM->number.value = PRIVATE_DATA->current_temperature;
 		CCD_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;
-		if (CCD_COOLER_ON_ITEM->sw.value)
+		if (CCD_COOLER_ON_ITEM->sw.value) {
 			indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, "Target Temperature = %.2f", PRIVATE_DATA->target_temperature);
-		else
+		} else {
 			indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, "Target Temperature = %.2f but the cooler is OFF", PRIVATE_DATA->target_temperature);
+		}
 		return INDIGO_OK;
 	// ------------------------------------------------------------------------------- CCD_FRAME
 	} else if (indigo_property_match_changeable(CCD_FRAME_PROPERTY, property)) {
 		indigo_property_copy_values(CCD_FRAME_PROPERTY, property, false);
 		CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.target = 8 * (int)(CCD_FRAME_WIDTH_ITEM->number.value / 8);
 		CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.target = 2 * (int)(CCD_FRAME_HEIGHT_ITEM->number.value / 2);
-		if (CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value < 64)
+		if (CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value < 64) {
 			CCD_FRAME_WIDTH_ITEM->number.value = 64 * CCD_BIN_HORIZONTAL_ITEM->number.value;
-		if (CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value < 64)
+		}
+		if (CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value < 64) {
 			CCD_FRAME_HEIGHT_ITEM->number.value = 64 * CCD_BIN_VERTICAL_ITEM->number.value;
+		}
 		/* FLISetBitDepth() does not seem to work so this should be always 16 bits */
 		if (CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value < 12.0) {
 			CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = 8.0;
@@ -889,10 +893,11 @@ static void enumerate_devices() {
 	/* There is a mem leak heree!!! 8,192 constant + 20 bytes on every new connected device */
 	num_devices = 0;
 	long res = FLICreateList(enum_domain);
-	if (res)
+	if (res) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLICreateList(%d) = %d", enum_domain , res);
-	else
+	} else {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "FLICreateList(%d) = %d", enum_domain , res);
+	}
 	res = FLIListFirst(&fli_domains[num_devices], fli_file_names[num_devices], PATH_MAX, fli_dev_names[num_devices], PATH_MAX);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "FLIListFirst(-> %d, -> '%s', ->'%s') = %d", fli_domains[num_devices], fli_file_names[num_devices], fli_dev_names[num_devices], res);
 	if (res == 0) {

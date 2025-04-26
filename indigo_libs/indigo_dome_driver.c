@@ -57,94 +57,109 @@ indigo_result indigo_dome_attach(indigo_device *device, const char* driver_name,
 		if (indigo_device_attach(device, driver_name, version, INDIGO_INTERFACE_DOME) == INDIGO_OK) {
 			// -------------------------------------------------------------------------------- DOME_SPEED
 			DOME_SPEED_PROPERTY = indigo_init_number_property(NULL, device->name, DOME_SPEED_PROPERTY_NAME, DOME_MAIN_GROUP, "Dome speed", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-			if (DOME_SPEED_PROPERTY == NULL)
+			if (DOME_SPEED_PROPERTY == NULL) {
 				return INDIGO_FAILED;
+			}
 			indigo_init_number_item(DOME_SPEED_ITEM, DOME_SPEED_ITEM_NAME, "Speed", 1, 100, 1, 1);
 			// -------------------------------------------------------------------------------- DOME_DIRECTION
 			DOME_DIRECTION_PROPERTY = indigo_init_switch_property(NULL, device->name, DOME_DIRECTION_PROPERTY_NAME, DOME_MAIN_GROUP, "Movement direction", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-			if (DOME_DIRECTION_PROPERTY == NULL)
+			if (DOME_DIRECTION_PROPERTY == NULL) {
 				return INDIGO_FAILED;
+			}
 			indigo_init_switch_item(DOME_DIRECTION_MOVE_CLOCKWISE_ITEM, DOME_DIRECTION_MOVE_CLOCKWISE_ITEM_NAME, "Move clockwise", true);
 			indigo_init_switch_item(DOME_DIRECTION_MOVE_COUNTERCLOCKWISE_ITEM, DOME_DIRECTION_MOVE_COUNTERCLOCKWISE_ITEM_NAME, "Move counterclockwise", false);
 			// -------------------------------------------------------------------------------- DOME_ON_HORIZONTAL_COORDINATES_SET
 			DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY = indigo_init_switch_property(NULL, device->name, DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY_NAME, DOME_MAIN_GROUP, "On absolute position set", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-			if (DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY == NULL)
+			if (DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY == NULL) {
 				return INDIGO_FAILED;
+			}
 			DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY->hidden = true;
 			indigo_init_switch_item(DOME_ON_HORIZONTAL_COORDINATES_SET_GOTO_ITEM, DOME_ON_HORIZONTAL_COORDINATES_SET_GOTO_ITEM_NAME, "Go to position", true);
 			indigo_init_switch_item(DOME_ON_HORIZONTAL_COORDINATES_SET_SYNC_ITEM, DOME_ON_HORIZONTAL_COORDINATES_SET_SYNC_ITEM_NAME, "Sync to position", false);
 			// -------------------------------------------------------------------------------- DOME_STEPS
 			DOME_STEPS_PROPERTY = indigo_init_number_property(NULL, device->name, DOME_STEPS_PROPERTY_NAME, DOME_MAIN_GROUP, "Relative move", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-			if (DOME_STEPS_PROPERTY == NULL)
+			if (DOME_STEPS_PROPERTY == NULL) {
 				return INDIGO_FAILED;
+			}
 			indigo_init_number_item(DOME_STEPS_ITEM, DOME_STEPS_ITEM_NAME, "Relative move (steps/ms)", 0, 65535, 1, 0);
 			// -------------------------------------------------------------------------------- DOME_EQUATORIAL_COORDINATES
 			DOME_EQUATORIAL_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, DOME_EQUATORIAL_COORDINATES_PROPERTY_NAME, DOME_MAIN_GROUP, "Equatorial coordinates", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
-			if (DOME_EQUATORIAL_COORDINATES_PROPERTY == NULL)
+			if (DOME_EQUATORIAL_COORDINATES_PROPERTY == NULL) {
 				return INDIGO_FAILED;
+			}
 			indigo_init_sexagesimal_number_item(DOME_EQUATORIAL_COORDINATES_RA_ITEM, DOME_EQUATORIAL_COORDINATES_RA_ITEM_NAME, "Right ascension (0 to 24 hrs)", 0, 24, 0, 0);
 			indigo_init_sexagesimal_number_item(DOME_EQUATORIAL_COORDINATES_DEC_ITEM, DOME_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, "Declination (-90 to 90°)", -90, 90, 0, 90);
 			// -------------------------------------------------------------------------------- DOME_HORIZONTAL_COORDINATES
 			DOME_HORIZONTAL_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_MAIN_GROUP, "Absolute position", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
-			if (DOME_HORIZONTAL_COORDINATES_PROPERTY == NULL)
+			if (DOME_HORIZONTAL_COORDINATES_PROPERTY == NULL) {
 				return INDIGO_FAILED;
+			}
 			indigo_init_sexagesimal_number_item(DOME_HORIZONTAL_COORDINATES_AZ_ITEM, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, "Azimuth (0 to 360°)", 0, 360, 0, 0);
 			indigo_init_sexagesimal_number_item(DOME_HORIZONTAL_COORDINATES_ALT_ITEM, DOME_HORIZONTAL_COORDINATES_ALT_ITEM_NAME, "Altitude (0 to 90°)", 0, 90, 0, 0);
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->count = 1;
 			// -------------------------------------------------------------------------------- DOME_SLAVING
 			DOME_SLAVING_PROPERTY = indigo_init_switch_property(NULL, device->name, DOME_SLAVING_PROPERTY_NAME, DOME_MAIN_GROUP, "Slave dome to mount", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);;
-			if (DOME_SLAVING_PROPERTY == NULL)
+			if (DOME_SLAVING_PROPERTY == NULL) {
 				return INDIGO_FAILED;
+			}
 			indigo_init_switch_item(DOME_SLAVING_ENABLE_ITEM, DOME_SLAVING_ENABLE_ITEM_NAME, "Enable", false);
 			indigo_init_switch_item(DOME_SLAVING_DISABLE_ITEM, DOME_SLAVING_DISABLE_ITEM_NAME, "Disable", true);
 			// -------------------------------------------------------------------------------- DOME_SYNC
 			DOME_SLAVING_PARAMETERS_PROPERTY = indigo_init_number_property(NULL, device->name, DOME_SLAVING_PARAMETERS_PROPERTY_NAME, DOME_MAIN_GROUP, "Slaving parameteres", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-			if (DOME_SLAVING_PARAMETERS_PROPERTY == NULL)
+			if (DOME_SLAVING_PARAMETERS_PROPERTY == NULL) {
 				return INDIGO_FAILED;
+			}
 			DOME_SLAVING_PARAMETERS_PROPERTY->hidden = true;
 			indigo_init_number_item(DOME_SLAVING_THRESHOLD_ITEM, DOME_SLAVING_THRESHOLD_ITEM_NAME, "Minimal move threshold (0 to 20°)", 0, 20, 0, 1);
 			// -------------------------------------------------------------------------------- DOME_ABORT_MOTION
 			DOME_ABORT_MOTION_PROPERTY = indigo_init_switch_property(NULL, device->name, DOME_ABORT_MOTION_PROPERTY_NAME, DOME_MAIN_GROUP, "Abort motion", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
-			if (DOME_ABORT_MOTION_PROPERTY == NULL)
+			if (DOME_ABORT_MOTION_PROPERTY == NULL) {
 				return INDIGO_FAILED;
+			}
 			indigo_init_switch_item(DOME_ABORT_MOTION_ITEM, DOME_ABORT_MOTION_ITEM_NAME, "Abort motion", false);
 			// -------------------------------------------------------------------------------- DOME_SHUTTER
 			DOME_SHUTTER_PROPERTY = indigo_init_switch_property(NULL, device->name, DOME_SHUTTER_PROPERTY_NAME, DOME_MAIN_GROUP, "Shutter", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-			if (DOME_SHUTTER_PROPERTY == NULL)
+			if (DOME_SHUTTER_PROPERTY == NULL) {
 				return INDIGO_FAILED;
+			}
 			indigo_init_switch_item(DOME_SHUTTER_CLOSED_ITEM, DOME_SHUTTER_CLOSED_ITEM_NAME, "Shutter closed", true);
 			indigo_init_switch_item(DOME_SHUTTER_OPENED_ITEM, DOME_SHUTTER_OPENED_ITEM_NAME, "Shutter opened", false);
 			// -------------------------------------------------------------------------------- DOME_FLAP
 			DOME_FLAP_PROPERTY = indigo_init_switch_property(NULL, device->name, DOME_FLAP_PROPERTY_NAME, DOME_MAIN_GROUP, "Flap", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-			if (DOME_FLAP_PROPERTY == NULL)
+			if (DOME_FLAP_PROPERTY == NULL) {
 				return INDIGO_FAILED;
+			}
 			DOME_FLAP_PROPERTY->hidden = true;
 			indigo_init_switch_item(DOME_FLAP_CLOSED_ITEM, DOME_FLAP_CLOSED_ITEM_NAME, "Flap closed", true);
 			indigo_init_switch_item(DOME_FLAP_OPENED_ITEM, DOME_FLAP_OPENED_ITEM_NAME, "Flap opened", false);
 			// -------------------------------------------------------------------------------- DOME_PARK
 			DOME_PARK_PROPERTY = indigo_init_switch_property(NULL, device->name, DOME_PARK_PROPERTY_NAME, DOME_MAIN_GROUP, "Park", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-			if (DOME_PARK_PROPERTY == NULL)
+			if (DOME_PARK_PROPERTY == NULL) {
 				return INDIGO_FAILED;
+			}
 			indigo_init_switch_item(DOME_PARK_PARKED_ITEM, DOME_PARK_PARKED_ITEM_NAME, "Dome parked", true);
 			indigo_init_switch_item(DOME_PARK_UNPARKED_ITEM, DOME_PARK_UNPARKED_ITEM_NAME, "Dome unparked", false);
 			// -------------------------------------------------------------------------------- DOME_PARK_POSITION
 			DOME_PARK_POSITION_PROPERTY = indigo_init_number_property(NULL, device->name, DOME_PARK_POSITION_PROPERTY_NAME, DOME_MAIN_GROUP, "Park position", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
-			if (DOME_PARK_POSITION_PROPERTY == NULL)
+			if (DOME_PARK_POSITION_PROPERTY == NULL) {
 				return INDIGO_FAILED;
+			}
 			DOME_PARK_POSITION_PROPERTY->hidden = true;
 			indigo_init_sexagesimal_number_item(DOME_PARK_POSITION_AZ_ITEM, DOME_PARK_POSITION_AZ_ITEM_NAME, "Azimuth (0 to 360°)", 0, 360, 0, 0);
 			indigo_init_sexagesimal_number_item(DOME_PARK_POSITION_ALT_ITEM, DOME_PARK_POSITION_ALT_ITEM_NAME, "Altitude (0 to 90°)", 0, 90, 0, 0);
 			DOME_PARK_POSITION_PROPERTY->count = 1;
 			// -------------------------------------------------------------------------------- DOME_HOME
 			DOME_HOME_PROPERTY = indigo_init_switch_property(NULL, device->name, DOME_HOME_PROPERTY_NAME, DOME_MAIN_GROUP, "Home", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
-			if (DOME_HOME_PROPERTY == NULL)
+			if (DOME_HOME_PROPERTY == NULL) {
 				return INDIGO_FAILED;
+			}
 			DOME_HOME_PROPERTY->hidden = true;
 			indigo_init_switch_item(DOME_HOME_ITEM, DOME_HOME_ITEM_NAME, "Go to home position", false);
 			// -------------------------------------------------------------------------------- DOME_MEASUREMENT
 			DOME_DIMENSION_PROPERTY = indigo_init_number_property(NULL, device->name, DOME_DIMENSION_PROPERTY_NAME, DOME_MAIN_GROUP, "Dome dimension", INDIGO_OK_STATE, INDIGO_RW_PERM, 6);
-			if (DOME_DIMENSION_PROPERTY == NULL)
+			if (DOME_DIMENSION_PROPERTY == NULL) {
 				return INDIGO_FAILED;
+			}
 			indigo_init_number_item(DOME_RADIUS_ITEM, DOME_RADIUS_ITEM_NAME, "Dome radius (m)", 0.1, 50, 0, 0.1);
 			indigo_init_number_item(DOME_SHUTTER_WIDTH_ITEM, DOME_SHUTTER_WIDTH_ITEM_NAME, "Dome shutter width (m)", 0.1, 50, 0, 0.1);
 			indigo_init_number_item(DOME_MOUNT_PIVOT_OFFSET_NS_ITEM, DOME_MOUNT_PIVOT_OFFSET_NS_ITEM_NAME, "Mount Pivot Offset N/S (m, +N/-S)", -30, 30, 0, 0);
@@ -153,8 +168,9 @@ indigo_result indigo_dome_attach(indigo_device *device, const char* driver_name,
 			indigo_init_number_item(DOME_MOUNT_PIVOT_OTA_OFFSET_ITEM, DOME_MOUNT_PIVOT_OTA_OFFSET_ITEM_NAME, "Optical axis offset from the RA axis (m)", 0, 10, 0, 0);
 			// -------------------------------------------------------------------------------- DOME_GEOGRAPHIC_COORDINATES
 			DOME_GEOGRAPHIC_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, DOME_SITE_GROUP, "Location", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
-			if (DOME_GEOGRAPHIC_COORDINATES_PROPERTY == NULL)
+			if (DOME_GEOGRAPHIC_COORDINATES_PROPERTY == NULL) {
 				return INDIGO_FAILED;
+			}
 			indigo_init_sexagesimal_number_item(DOME_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, "Latitude (-90 to +90° +N)", -90, 90, 0, 0);
 			indigo_init_sexagesimal_number_item(DOME_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, "Longitude (0 to 360° +E)", -180, 360, 0, 0);
 			indigo_init_number_item(DOME_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME, "Elevation (m)", 0, 8000, 0, 0);
@@ -168,14 +184,16 @@ indigo_result indigo_dome_attach(indigo_device *device, const char* driver_name,
 			indigo_init_text_item(DOME_UTC_OFFSET_ITEM, UTC_OFFSET_ITEM_NAME, "UTC Offset", "0"); /* step is 0.5 as there are timezones at 30 min */
 			// -------------------------------------------------------------------------------- DOME_UTC_FROM_HOST
 			DOME_SET_HOST_TIME_PROPERTY = indigo_init_switch_property(NULL, device->name, DOME_SET_HOST_TIME_PROPERTY_NAME, DOME_SITE_GROUP, "Set UTC", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
-			if (DOME_SET_HOST_TIME_PROPERTY == NULL)
+			if (DOME_SET_HOST_TIME_PROPERTY == NULL) {
 				return INDIGO_FAILED;
+			}
 			DOME_SET_HOST_TIME_PROPERTY->hidden = true;
 			indigo_init_switch_item(DOME_SET_HOST_TIME_ITEM, DOME_SET_HOST_TIME_ITEM_NAME, "From host", false);
 			// -------------------------------------------------------------------------------- SNOOP_DEVICES
 			DOME_SNOOP_DEVICES_PROPERTY = indigo_init_text_property(NULL, device->name, SNOOP_DEVICES_PROPERTY_NAME, MAIN_GROUP, "Snoop devices", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
-			if (DOME_SNOOP_DEVICES_PROPERTY == NULL)
+			if (DOME_SNOOP_DEVICES_PROPERTY == NULL) {
 				return INDIGO_FAILED;
+			}
 			indigo_init_text_item(DOME_SNOOP_MOUNT_ITEM, SNOOP_MOUNT_ITEM_NAME, "Mount", "");
 			indigo_init_text_item(DOME_SNOOP_GPS_ITEM, SNOOP_GPS_ITEM_NAME, "GPS", "");
 			// --------------------------------------------------------------------------------

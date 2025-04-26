@@ -128,8 +128,9 @@ static void aux_timer_callback(indigo_device *device) {
 			rts_off(device);
 		}
 		indigo_update_property(device, X_CCD_EXPOSURE_PROPERTY, NULL);
-		if (X_CCD_EXPOSURE_ITEM->number.value > 0)
+		if (X_CCD_EXPOSURE_ITEM->number.value > 0) {
 			indigo_reschedule_timer(device, X_CCD_EXPOSURE_ITEM->number.value < 1 ? X_CCD_EXPOSURE_ITEM->number.value : 1, &PRIVATE_DATA->timer_callback);
+		}
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }

@@ -487,10 +487,11 @@ static void ccd_temperature_callback(indigo_device *device) {
 	if (result >= 0) {
 		PRIVATE_DATA->current_temperature = CCD_TEMPERATURE_ITEM->number.value = temperature / 10.0;
 		if (CCD_TEMPERATURE_PROPERTY->perm == INDIGO_RW_PERM && fabs(CCD_TEMPERATURE_ITEM->number.value - CCD_TEMPERATURE_ITEM->number.target) > 1.0) {
-			if (!CCD_COOLER_PROPERTY->hidden && CCD_COOLER_OFF_ITEM->sw.value)
+			if (!CCD_COOLER_PROPERTY->hidden && CCD_COOLER_OFF_ITEM->sw.value) {
 				CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
-			else
+			} else {
 				CCD_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;
+			}
 		} else {
 			CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
 		}
@@ -644,32 +645,36 @@ static indigo_result ccd_attach(indigo_device *device) {
 					snprintf(name, sizeof(name), "RAW10_%d", bin);
 					snprintf(label, sizeof(label), "RAW 10 %dx%d", frame_width, frame_height);
 					indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, label, false);
-					if (CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max < 10)
+					if (CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max < 10) {
 						CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = 10;
+					}
 					CCD_MODE_PROPERTY->count++;
 				}
 				if (flags & SDK_DEF(FLAG_RAW12)) {
 					snprintf(name, sizeof(name), "RAW12_%d", bin);
 					snprintf(label, sizeof(label), "RAW 12 %dx%d", frame_width, frame_height);
 					indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, label, false);
-					if (CCD_INFO_BITS_PER_PIXEL_ITEM->number.value < 12)
+					if (CCD_INFO_BITS_PER_PIXEL_ITEM->number.value < 12) {
 						CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = 12;
+					}
 					CCD_MODE_PROPERTY->count++;
 				}
 				if (flags & SDK_DEF(FLAG_RAW14)) {
 					snprintf(name, sizeof(name), "RAW14_%d", bin);
 					snprintf(label, sizeof(label), "RAW 14 %dx%d", frame_width, frame_height);
 					indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, label, false);
-					if (CCD_INFO_BITS_PER_PIXEL_ITEM->number.value < 14)
+					if (CCD_INFO_BITS_PER_PIXEL_ITEM->number.value < 14) {
 						CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = 14;
+					}
 					CCD_MODE_PROPERTY->count++;
 				}
 				if (flags & SDK_DEF(FLAG_RAW16)) {
 					snprintf(name, sizeof(name), "RAW16_%d", bin);
 					snprintf(label, sizeof(label), "RAW 16 %dx%d", frame_width, frame_height);
 					indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, label, false);
-					if (CCD_INFO_BITS_PER_PIXEL_ITEM->number.value < 16)
+					if (CCD_INFO_BITS_PER_PIXEL_ITEM->number.value < 16) {
 						CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = 16;
+					}
 					CCD_MODE_PROPERTY->count++;
 				}
 				snprintf(name, sizeof(name), "RGB08_%d", bin);
@@ -687,32 +692,36 @@ static indigo_result ccd_attach(indigo_device *device) {
 					snprintf(name, sizeof(name), "MON10_%d", bin);
 					snprintf(label, sizeof(label), "MON 10 %dx%d", frame_width, frame_height);
 					indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, label, false);
-					if (CCD_INFO_BITS_PER_PIXEL_ITEM->number.value < 10)
+					if (CCD_INFO_BITS_PER_PIXEL_ITEM->number.value < 10) {
 						CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = 10;
+					}
 					CCD_MODE_PROPERTY->count++;
 				}
 				if (flags & SDK_DEF(FLAG_RAW12)) {
 					snprintf(name, sizeof(name), "MON12_%d", bin);
 					snprintf(label, sizeof(label), "MON 12 %dx%d", frame_width, frame_height);
 					indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, label, false);
-					if (CCD_INFO_BITS_PER_PIXEL_ITEM->number.value < 12)
+					if (CCD_INFO_BITS_PER_PIXEL_ITEM->number.value < 12) {
 						CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = 12;
+					}
 					CCD_MODE_PROPERTY->count++;
 				}
 				if (flags & SDK_DEF(FLAG_RAW14)) {
 					snprintf(name, sizeof(name), "MON14_%d", bin);
 					snprintf(label, sizeof(label), "MON 14 %dx%d", frame_width, frame_height);
 					indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, label, false);
-					if (CCD_INFO_BITS_PER_PIXEL_ITEM->number.value < 14)
+					if (CCD_INFO_BITS_PER_PIXEL_ITEM->number.value < 14) {
 						CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = 14;
+					}
 					CCD_MODE_PROPERTY->count++;
 				}
 				if (flags & SDK_DEF(FLAG_RAW16)) {
 					snprintf(name, sizeof(name), "MON16_%d", bin);
 					snprintf(label, sizeof(label), "MON 16 %d x %d", frame_width, frame_height);
 					indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, label, false);
-					if (CCD_INFO_BITS_PER_PIXEL_ITEM->number.value < 16)
+					if (CCD_INFO_BITS_PER_PIXEL_ITEM->number.value < 16) {
 						CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = 16;
+					}
 					CCD_MODE_PROPERTY->count++;
 				}
 			}
@@ -760,20 +769,23 @@ static indigo_result ccd_attach(indigo_device *device) {
 
 		if (flags & SDK_DEF(FLAG_FAN)) {
 			X_CCD_FAN_PROPERTY = indigo_init_number_property(NULL, device->name, "X_CCD_FAN", CCD_ADVANCED_GROUP, "Fan control", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-			if (X_CCD_FAN_PROPERTY == NULL)
+			if (X_CCD_FAN_PROPERTY == NULL) {
 				return INDIGO_FAILED;
+			}
 			indigo_init_number_item(X_CCD_FAN_SPEED_ITEM, "FAN_SPEED", "Fan speed", 0, 0, 1, 0);
 		}
 		if (flags & SDK_DEF(FLAG_HEAT)) {
 			X_CCD_HEATER_PROPERTY = indigo_init_number_property(NULL, device->name, "X_CCD_HEATER", CCD_ADVANCED_GROUP, "Window heater", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-			if (X_CCD_HEATER_PROPERTY == NULL)
+			if (X_CCD_HEATER_PROPERTY == NULL) {
 				return INDIGO_FAILED;
+			}
 			indigo_init_number_item(X_CCD_HEATER_POWER_ITEM, "POWER", "Power", 0, 0, 1, 0);
 		}
 		if (flags & SDK_DEF(FLAG_CG) || flags & SDK_DEF(FLAG_CGHDR)) {
 			X_CCD_CONVERSION_GAIN_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_CCD_CONVERSION_GAIN", CCD_ADVANCED_GROUP, "Conversion gain", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
-			if (X_CCD_CONVERSION_GAIN_PROPERTY == NULL)
+			if (X_CCD_CONVERSION_GAIN_PROPERTY == NULL) {
 				return INDIGO_FAILED;
+			}
 			indigo_init_switch_item(X_CCD_CONVERSION_GAIN_LCG_ITEM, "LCG", "Low conversion gain", true);
 			indigo_init_switch_item(X_CCD_CONVERSION_GAIN_HCG_ITEM, "HCG", "High conversion gain", false);
 			indigo_init_switch_item(X_CCD_CONVERSION_GAIN_HDR_ITEM, "HDR", "High dynamic range", false);
@@ -1011,18 +1023,24 @@ static void ccd_connect_callback(indigo_device *device) {
 			free(PRIVATE_DATA->buffer);
 			PRIVATE_DATA->buffer = NULL;
 		}
-		if (X_CCD_ADVANCED_PROPERTY)
+		if (X_CCD_ADVANCED_PROPERTY) {
 			indigo_delete_property(device, X_CCD_ADVANCED_PROPERTY, NULL);
-		if (X_CCD_FAN_PROPERTY)
+		}
+		if (X_CCD_FAN_PROPERTY) {
 			indigo_delete_property(device, X_CCD_FAN_PROPERTY, NULL);
-		if (X_CCD_HEATER_PROPERTY)
+		}
+		if (X_CCD_HEATER_PROPERTY) {
 			indigo_delete_property(device, X_CCD_HEATER_PROPERTY, NULL);
-		if (X_CCD_CONVERSION_GAIN_PROPERTY)
+		}
+		if (X_CCD_CONVERSION_GAIN_PROPERTY) {
 			indigo_delete_property(device, X_CCD_CONVERSION_GAIN_PROPERTY, NULL);
-		if (X_CCD_BIN_MODE_PROPERTY)
+		}
+		if (X_CCD_BIN_MODE_PROPERTY) {
 			indigo_delete_property(device, X_CCD_BIN_MODE_PROPERTY, NULL);
-		if (X_CCD_LED_PROPERTY)
+		}
+		if (X_CCD_LED_PROPERTY) {
 			indigo_delete_property(device, X_CCD_LED_PROPERTY, NULL);
+		}
 		if (PRIVATE_DATA->guider && PRIVATE_DATA->guider->gp_bits == 0) {
 			if (PRIVATE_DATA->handle != NULL) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Closing camera");
@@ -1145,8 +1163,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
-		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE)
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 			return INDIGO_OK;
+		}
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
 		indigo_use_shortest_exposure_if_bias(device);
 		if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
@@ -1172,8 +1191,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 	} else if (indigo_property_match_changeable(CCD_STREAMING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_STREAMING
-		if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
+		if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 			return INDIGO_OK;
+		}
 		indigo_property_copy_values(CCD_STREAMING_PROPERTY, property, false);
 		indigo_use_shortest_exposure_if_bias(device);
 		if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
@@ -2553,8 +2573,9 @@ static void process_plug_event(indigo_device *unusued) {
 	pthread_mutex_lock(&mutex);
 	for (int i = 0; i < SDK_DEF(MAX); i++) {
 		indigo_device *device = devices[i];
-		if (device)
+		if (device) {
 			PRIVATE_DATA->present = false;
+		}
 	}
 	SDK_TYPE(DeviceV2) cams[SDK_DEF(MAX)];
 	int count = SDK_CALL(EnumV2)(cams);

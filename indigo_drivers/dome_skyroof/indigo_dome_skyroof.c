@@ -202,8 +202,9 @@ static void dome_open_handler(indigo_device *device) {
 	} else {
 		DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-	if (DOME_SHUTTER_PROPERTY->state == INDIGO_ALERT_STATE)
+	if (DOME_SHUTTER_PROPERTY->state == INDIGO_ALERT_STATE) {
 		DOME_SHUTTER_CLOSED_ITEM->sw.value = DOME_SHUTTER_OPENED_ITEM->sw.value = false;
+	}
 	indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 }
 
@@ -228,8 +229,9 @@ static void dome_close_handler(indigo_device *device) {
 	} else {
 		DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-	if (DOME_SHUTTER_PROPERTY->state == INDIGO_ALERT_STATE)
+	if (DOME_SHUTTER_PROPERTY->state == INDIGO_ALERT_STATE) {
 		DOME_SHUTTER_CLOSED_ITEM->sw.value = DOME_SHUTTER_OPENED_ITEM->sw.value = false;
+	}
 	indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 }
 
@@ -246,10 +248,11 @@ static void dome_abort_handler(indigo_device *device) {
 }
 
 static void heater_handler(indigo_device *device) {
-	if (skyroof_command(device, X_HEATER_CONTROL_ON_ITEM->sw.value ? "HeaterOn#" : "HeaterOff#", NULL))
+	if (skyroof_command(device, X_HEATER_CONTROL_ON_ITEM->sw.value ? "HeaterOn#" : "HeaterOff#", NULL)) {
 		X_HEATER_CONTROL_PROPERTY->state = INDIGO_OK_STATE;
-	else
+	} else {
 		X_HEATER_CONTROL_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
 	indigo_update_property(device, X_HEATER_CONTROL_PROPERTY, NULL);
 }
 

@@ -151,14 +151,15 @@ typedef struct {
 static char *get_bayer_string(indigo_device *device) {
 	int pattern = IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CAM_COLOR);
 	if (pattern != QHYCCD_ERROR) {
-		if (pattern == BAYER_GB)
+		if (pattern == BAYER_GB) {
 			return (char*)"GBRG";
-		else if (pattern == BAYER_GR)
+		} else if (pattern == BAYER_GR)
 			return (char*)"GRBG";
-		else if (pattern == BAYER_BG)
+		else if (pattern == BAYER_BG) {
 			return (char*)"BGGR";
-		else
+		} else {
 			return (char*)"RGGB";
+		}
 	}
 	return NULL;
 }
@@ -184,8 +185,9 @@ static indigo_result qhy_enumerate_properties(indigo_device *device, indigo_clie
 
 static bool qhy_open(indigo_device *device) {
 	int res;
-	if (device->is_connected)
+	if (device->is_connected) {
 		return false;
+	}
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	if (PRIVATE_DATA->count_open++ == 0) {
 		if (indigo_try_global_lock(device) != INDIGO_OK) {
@@ -358,10 +360,11 @@ static bool qhy_start_exposure(indigo_device *device, double exposure, bool dark
 	res = live ? BeginQHYCCDLive(PRIVATE_DATA->handle) : ExpQHYCCDSingleFrame(PRIVATE_DATA->handle);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	if (res != QHYCCD_SUCCESS && res != QHYCCD_READ_DIRECTLY) {
-		if (live)
+		if (live) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "BeginQHYCCDLive(%s) = %d", PRIVATE_DATA->dev_sid, res);
-		else
+		} else {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ExpQHYCCDSingleFrame(%s) = %d", PRIVATE_DATA->dev_sid, res);
+		}
 		return false;
 	}
 	return true;
@@ -401,8 +404,9 @@ static bool qhy_read_pixels(indigo_device *device, bool live) {
 	);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	if (res != QHYCCD_SUCCESS) {
-		if (!live)
+		if (!live) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetQHYCCDSingleFrame(%s) = %d", PRIVATE_DATA->dev_sid, res);
+		}
 		return false;
 	}
 	return true;
@@ -533,8 +537,9 @@ static void streaming_timer_callback(indigo_device *device) {
 				} else {
 					indigo_process_image(device, PRIVATE_DATA->buffer, PRIVATE_DATA->ci_params.width, PRIVATE_DATA->ci_params.height, PRIVATE_DATA->ci_params.bpp, true, true, NULL, true);
 				}
-				if (CCD_STREAMING_COUNT_ITEM->number.value > 0)
+				if (CCD_STREAMING_COUNT_ITEM->number.value > 0) {
 					CCD_STREAMING_COUNT_ITEM->number.value -= 1;
+				}
 				CCD_STREAMING_PROPERTY->state = INDIGO_BUSY_STATE;
 				indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 			}
@@ -601,16 +606,18 @@ static void guider_timer_callback_ra(indigo_device *device) {
 		/* No sync possible here, ControlQHYCCDGuide is blocking. Let us hope is will work... */
 		res = ControlQHYCCDGuide(PRIVATE_DATA->handle, QHY_GUIDE_EAST, duration);
 
-		if (res != QHYCCD_SUCCESS)
+		if (res != QHYCCD_SUCCESS) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ControlQHYCCDGuide(%s, GUIDE_EAST) = %d", PRIVATE_DATA->dev_sid, res);
+		}
 	} else {
 		int duration = (int)GUIDER_GUIDE_WEST_ITEM->number.value;
 		if (duration > 0) {
 			/* No sync possible here, ControlQHYCCDGuide is blocking. Let us hope is will work... */
 			res = ControlQHYCCDGuide(PRIVATE_DATA->handle, QHY_GUIDE_WEST, duration);
 
-			if (res != QHYCCD_SUCCESS)
+			if (res != QHYCCD_SUCCESS) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "ControlQHYCCDGuide(%s, GUIDE_WEST) = %d", PRIVATE_DATA->dev_sid, res);
+			}
 		}
 	}
 
@@ -631,16 +638,18 @@ static void guider_timer_callback_dec(indigo_device *device) {
 		/* No sync possible here, ControlQHYCCDGuide is blocking. Let us hope is will work... */
 		res = ControlQHYCCDGuide(PRIVATE_DATA->handle, QHY_GUIDE_NORTH, duration);
 
-		if (res != QHYCCD_SUCCESS)
+		if (res != QHYCCD_SUCCESS) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ControlQHYCCDGuide(%s, GUIDE_NORTH) = %d", PRIVATE_DATA->dev_sid, res);
+		}
 	} else {
 		int duration = (int)GUIDER_GUIDE_SOUTH_ITEM->number.value;
 		if (duration > 0) {
 			/* No sync possible here, ControlQHYCCDGuide is blocking. Let us hope is will work... */
 			res = ControlQHYCCDGuide(PRIVATE_DATA->handle, QHY_GUIDE_SOUTH, duration);
 
-			if (res != QHYCCD_SUCCESS)
+			if (res != QHYCCD_SUCCESS) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "ControlQHYCCDGuide(%s, GUIDE_SOUTH) = %d", PRIVATE_DATA->dev_sid, res);
+			}
 		}
 	}
 
@@ -956,8 +965,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
 	} else if (indigo_property_match_changeable(CCD_EXPOSURE_PROPERTY, property)) {
-		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 			return INDIGO_OK;
+		}
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
 		indigo_use_shortest_exposure_if_bias(device);
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -972,16 +982,17 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		}
-		if (CCD_EXPOSURE_ITEM->number.target > 4)
+		if (CCD_EXPOSURE_ITEM->number.target > 4) {
 			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 4, clear_reg_timer_callback, &PRIVATE_DATA->exposure_timer);
-		else {
+		} else {
 			PRIVATE_DATA->can_check_temperature = false;
 			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
 		}
 	} else if (indigo_property_match_changeable(CCD_STREAMING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_STREAMING
-		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 			return INDIGO_OK;
+		}
 		indigo_property_copy_values(CCD_STREAMING_PROPERTY, property, false);
 		indigo_use_shortest_exposure_if_bias(device);
 		CCD_STREAMING_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -1081,10 +1092,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		// ------------------------------------------------------------------------------- CCD_FRAME
 	} else if (indigo_property_match_changeable(CCD_FRAME_PROPERTY, property)) {
 		indigo_property_copy_values(CCD_FRAME_PROPERTY, property, false);
-		if (CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value < 64)
+		if (CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value < 64) {
 			CCD_FRAME_WIDTH_ITEM->number.value = 64 * CCD_BIN_HORIZONTAL_ITEM->number.value;
-		if (CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value < 64)
+		}
+		if (CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value < 64) {
 			CCD_FRAME_HEIGHT_ITEM->number.value = 64 * CCD_BIN_VERTICAL_ITEM->number.value;
+		}
 		CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
 		CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = (CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value > 8) ? 16 : 8;
 		indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
@@ -1596,8 +1609,9 @@ static bool find_plugged_device_sid(char *new_sid) {
 
 static int find_available_device_slot() {
 	for (int slot = 0; slot < MAX_DEVICES; slot++) {
-		if (devices[slot] == NULL)
+		if (devices[slot] == NULL) {
 			return slot;
+		}
 	}
 	return NOT_FOUND;
 }
@@ -1932,8 +1946,9 @@ indigo_result INDIGO_CCD_QHY(indigo_driver_action action, indigo_driver_info *in
 #endif  // new SDK
 			SetQHYCCDLogLevel(6);
 			rc = InitQHYCCDResource();
-			if (rc != QHYCCD_SUCCESS)
+			if (rc != QHYCCD_SUCCESS) {
 				return INDIGO_FAILED;
+			}
 #ifdef HOTPLUG
 			indigo_start_usb_event_handler();
 			rc = libusb_hotplug_register_callback(NULL, (libusb_hotplug_event)(LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT), LIBUSB_HOTPLUG_ENUMERATE, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
