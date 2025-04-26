@@ -97,7 +97,7 @@ static bool fbc_command(indigo_device *device, char *command, char *response, in
 			return true;
 		} else {
 			while (true) {
-				if (indigo_uni_read_section(PRIVATE_DATA->handle, response, count, "\n", "\r\n", INDIGO_DELAY(1)) > 0) {
+				if (indigo_uni_read_section(PRIVATE_DATA->handle, response, count, "\n", "\r\n", INDIGO_DELAY(1)) > 0) { // TODO: Check if this timeout is valid
 					if (!strncmp("D -", response, 3)) {
 						continue;
 					}
@@ -196,7 +196,7 @@ static void aux_light_switch_handler(indigo_device *device) {
 	AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_OK_STATE;
 	// Custom code below
 	char command[16];
-	sprintf(command, "E:%d", AUX_LIGHT_SWITCH_ON_ITEM->sw.value);
+	sprintf(command, "E:%d", AUX_LIGHT_SWITCH_ON_ITEM->sw.value); // TODO: This command is not understood
 	if (!fbc_command(device, command, NULL, 0)) {
 		AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
