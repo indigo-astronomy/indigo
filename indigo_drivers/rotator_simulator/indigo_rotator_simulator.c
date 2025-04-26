@@ -28,7 +28,6 @@
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
-
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_rotator_driver.h>
 #include <indigo/indigo_uni_io.h>
@@ -48,24 +47,14 @@
 
 typedef struct {
 	pthread_mutex_t mutex;
-
 	// Custom code below
-
 	double target_position, current_position;
-
 	// Custom code above
-
 	indigo_timer *rotator_timer;
+	indigo_timer *rotator_connection_handler_timer;
+	indigo_timer *rotator_position_handler_timer;
+	indigo_timer *rotator_abort_motion_handler_timer;
 } simulator_private_data;
-
-#pragma mark - Low level code
-
-static bool simulator_open(indigo_device *device) {
-	return true;
-}
-
-static void simulator_close(indigo_device *device) {
-}
 
 #pragma mark - High level code (rotator)
 
@@ -76,9 +65,7 @@ static void rotator_timer_callback(indigo_device *device) {
 		return;
 	}
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-
 	// Custom code below
-
 	if (ROTATOR_POSITION_PROPERTY->state == INDIGO_ALERT_STATE) {
 		ROTATOR_POSITION_ITEM->number.value = PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
 		indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
@@ -105,9 +92,7 @@ static void rotator_timer_callback(indigo_device *device) {
 			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 		}
 	}
-
 	// Custom code above
-
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
@@ -117,20 +102,13 @@ static void rotator_connection_handler(indigo_device *device) {
 	indigo_lock_master_device(device);
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		bool connection_result = true;
-		connection_result = simulator_open(device);
-		if (connection_result) {
-			indigo_set_timer(device, 0, rotator_timer_callback, &PRIVATE_DATA->rotator_timer);
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_send_message(device, "Connected to %s", device->name);
-		} else {
-			indigo_send_message(device, "Failed to connect to %s", device->name);
-			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-		}
+		indigo_set_timer(device, 0, rotator_timer_callback, &PRIVATE_DATA->rotator_timer);
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_send_message(device, "Connected to %s", device->name);
 	} else {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->rotator_timer);
-		simulator_close(device);
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->rotator_position_handler_timer);
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->rotator_abort_motion_handler_timer);
 		indigo_send_message(device, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
@@ -144,9 +122,7 @@ static void rotator_connection_handler(indigo_device *device) {
 static void rotator_position_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-
 	// Custom code below
-
 	if (ROTATOR_ON_POSITION_SET_SYNC_ITEM->sw.value) {
 		PRIVATE_DATA->target_position = ROTATOR_POSITION_ITEM->number.target;
 		PRIVATE_DATA->current_position = ROTATOR_POSITION_ITEM->number.value;
@@ -156,9 +132,7 @@ static void rotator_position_handler(indigo_device *device) {
 		PRIVATE_DATA->target_position = ROTATOR_POSITION_ITEM->number.target;
 		indigo_set_timer(device, 0.1, rotator_timer_callback, &PRIVATE_DATA->rotator_timer);
 	}
-
 	// Custom code above
-
 	indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -168,18 +142,14 @@ static void rotator_position_handler(indigo_device *device) {
 static void rotator_abort_motion_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	ROTATOR_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-
 	// Custom code below
-
 	if (ROTATOR_ABORT_MOTION_ITEM->sw.value && ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
 		ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		ROTATOR_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
 		indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 	}
 	ROTATOR_ABORT_MOTION_ITEM->sw.value = false;
-
 	// Custom code above
-
 	indigo_update_property(device, ROTATOR_ABORT_MOTION_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -209,35 +179,29 @@ static indigo_result rotator_enumerate_properties(indigo_device *device, indigo_
 // rotator change property API callback
 
 static indigo_result rotator_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
-
-  // CONNECTION change handling
-
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (indigo_ignore_connection_change(device, property)) {
-			return INDIGO_OK;
+		if (!indigo_ignore_connection_change(device, property)) {
+			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			indigo_set_timer(device, 0, rotator_connection_handler, &PRIVATE_DATA->rotator_connection_handler_timer);
 		}
-		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, rotator_connection_handler, NULL);
 		return INDIGO_OK;
-
-  // ROTATOR_POSITION change handling
-
 	} else if (indigo_property_match_changeable(ROTATOR_POSITION_PROPERTY, property)) {
-		indigo_property_copy_values(ROTATOR_POSITION_PROPERTY, property, false);
-		ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, rotator_position_handler, NULL);
+		if (PRIVATE_DATA->rotator_position_handler_timer == NULL) {
+			indigo_property_copy_values(ROTATOR_POSITION_PROPERTY, property, false);
+			ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+			indigo_set_timer(device, 0, rotator_position_handler, &PRIVATE_DATA->rotator_position_handler_timer);
+		}
 		return INDIGO_OK;
-
-  // ROTATOR_ABORT_MOTION change handling
-
 	} else if (indigo_property_match_changeable(ROTATOR_ABORT_MOTION_PROPERTY, property)) {
-		indigo_property_copy_values(ROTATOR_ABORT_MOTION_PROPERTY, property, false);
-		ROTATOR_ABORT_MOTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, ROTATOR_ABORT_MOTION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, rotator_abort_motion_handler, NULL);
+		if (PRIVATE_DATA->rotator_abort_motion_handler_timer == NULL) {
+			indigo_property_copy_values(ROTATOR_ABORT_MOTION_PROPERTY, property, false);
+			ROTATOR_ABORT_MOTION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, ROTATOR_ABORT_MOTION_PROPERTY, NULL);
+			indigo_set_timer(device, 0, rotator_abort_motion_handler, &PRIVATE_DATA->rotator_abort_motion_handler_timer);
+		}
 		return INDIGO_OK;
 	}
 	return indigo_rotator_change_property(device, client, property);

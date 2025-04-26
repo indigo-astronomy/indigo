@@ -59,9 +59,8 @@ driver gpusb {
 	
 	guider {
 		name = "%s";
-		inherited CONNECTION;
 		inherited GUIDER_GUIDE_DEC {
-			change {
+			on_change {
 				if (!(PRIVATE_DATA->relay_mask & (GPUSB_DEC_NORTH | GPUSB_DEC_SOUTH))) {
 					int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
 					if (duration > 0) {

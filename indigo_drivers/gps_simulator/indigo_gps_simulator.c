@@ -28,7 +28,6 @@
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
-
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_gps_driver.h>
 #include <indigo/indigo_uni_io.h>
@@ -58,24 +57,12 @@
 
 typedef struct {
 	pthread_mutex_t mutex;
-
 	// Custom code below
-
 	int timer_ticks;
-
 	// Custom code above
-
 	indigo_timer *gps_timer;
+	indigo_timer *gps_connection_handler_timer;
 } simulator_private_data;
-
-#pragma mark - Low level code
-
-static bool simulator_open(indigo_device *device) {
-	return true;
-}
-
-static void simulator_close(indigo_device *device) {
-}
 
 #pragma mark - High level code (gps)
 
@@ -86,9 +73,7 @@ static void gps_timer_callback(indigo_device *device) {
 		return;
 	}
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-
 	// Custom code below
-
 	if (PRIVATE_DATA->timer_ticks >= TICKS_TO_2D_FIX) {
 		GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = SIM_LONGITUDE + rand() / ((double)(RAND_MAX) * 1000);
 		GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = SIM_LATITUDE + rand() / ((double)(RAND_MAX) * 1000);
@@ -151,9 +136,7 @@ static void gps_timer_callback(indigo_device *device) {
 	}
 	PRIVATE_DATA->timer_ticks++;
 	indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->gps_timer);
-
 	// Custom code above
-
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
@@ -163,32 +146,19 @@ static void gps_connection_handler(indigo_device *device) {
 	indigo_lock_master_device(device);
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		bool connection_result = true;
-		connection_result = simulator_open(device);
-		if (connection_result) {
-
-			// Custom code below
-
-			srand((unsigned)time(NULL));
-			PRIVATE_DATA->timer_ticks = 0;
-			GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
-			GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
-			GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
-			GPS_STATUS_PROPERTY->state = INDIGO_BUSY_STATE;
-
-			// Custom code above
-
-			indigo_set_timer(device, 0, gps_timer_callback, &PRIVATE_DATA->gps_timer);
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_send_message(device, "Connected to %s", device->name);
-		} else {
-			indigo_send_message(device, "Failed to connect to %s", device->name);
-			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-		}
+		// Custom code below
+		srand((unsigned)time(NULL));
+		PRIVATE_DATA->timer_ticks = 0;
+		GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+		GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+		GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+		GPS_STATUS_PROPERTY->state = INDIGO_BUSY_STATE;
+		// Custom code above
+		indigo_set_timer(device, 0, gps_timer_callback, &PRIVATE_DATA->gps_timer);
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_send_message(device, "Connected to %s", device->name);
 	} else {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->gps_timer);
-		simulator_close(device);
 		indigo_send_message(device, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
@@ -206,9 +176,7 @@ static indigo_result gps_enumerate_properties(indigo_device *device, indigo_clie
 static indigo_result gps_attach(indigo_device *device) {
 	if (indigo_gps_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
-
 		// Custom code below
-
 		DEVICE_PORT_PROPERTY->hidden = true;
 		DEVICE_PORTS_PROPERTY->hidden = true;
 		GPS_ADVANCED_PROPERTY->hidden = false;
@@ -216,9 +184,7 @@ static indigo_result gps_attach(indigo_device *device) {
 		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->count = 4;
 		GPS_UTC_TIME_PROPERTY->hidden = false;
 		GPS_UTC_TIME_PROPERTY->count = 1;
-
 		// Custom code above
-
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		return gps_enumerate_properties(device, NULL, NULL);
@@ -235,17 +201,13 @@ static indigo_result gps_enumerate_properties(indigo_device *device, indigo_clie
 // gps change property API callback
 
 static indigo_result gps_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
-
-  // CONNECTION change handling
-
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (indigo_ignore_connection_change(device, property)) {
-			return INDIGO_OK;
+		if (!indigo_ignore_connection_change(device, property)) {
+			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			indigo_set_timer(device, 0, gps_connection_handler, &PRIVATE_DATA->gps_connection_handler_timer);
 		}
-		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, gps_connection_handler, NULL);
 		return INDIGO_OK;
 	}
 	return indigo_gps_change_property(device, client, property);

@@ -28,7 +28,6 @@
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
-
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_aux_driver.h>
 #include <indigo/indigo_uni_io.h>
@@ -52,23 +51,19 @@
 #pragma mark - Property definitions
 
 // AUX_LIGHT_SWITCH handles definition
-
 #define AUX_LIGHT_SWITCH_PROPERTY      (PRIVATE_DATA->aux_light_switch_property)
 #define AUX_LIGHT_SWITCH_ON_ITEM       (AUX_LIGHT_SWITCH_PROPERTY->items + 0)
 #define AUX_LIGHT_SWITCH_OFF_ITEM      (AUX_LIGHT_SWITCH_PROPERTY->items + 1)
 
 // AUX_LIGHT_INTENSITY handles definition
-
 #define AUX_LIGHT_INTENSITY_PROPERTY   (PRIVATE_DATA->aux_light_intensity_property)
 #define AUX_LIGHT_INTENSITY_ITEM       (AUX_LIGHT_INTENSITY_PROPERTY->items + 0)
 
 // AUX_LIGHT_IMPULSE handles definition
-
 #define AUX_LIGHT_IMPULSE_PROPERTY      (PRIVATE_DATA->aux_light_impulse_property)
 #define AUX_LIGHT_IMPULSE_DURATION_ITEM (AUX_LIGHT_IMPULSE_PROPERTY->items + 0)
 
 // CCD_EXPOSURE handles definition
-
 #define CCD_EXPOSURE_PROPERTY          (PRIVATE_DATA->ccd_exposure_property)
 #define CCD_EXPOSURE_ITEM              (CCD_EXPOSURE_PROPERTY->items + 0)
 
@@ -81,6 +76,11 @@ typedef struct {
 	indigo_property *aux_light_intensity_property;
 	indigo_property *aux_light_impulse_property;
 	indigo_property *ccd_exposure_property;
+	indigo_timer *aux_connection_handler_timer;
+	indigo_timer *aux_light_switch_handler_timer;
+	indigo_timer *aux_light_intensity_handler_timer;
+	indigo_timer *aux_light_impulse_handler_timer;
+	indigo_timer *aux_ccd_exposure_handler_timer;
 } fbc_private_data;
 
 #pragma mark - Low level code
@@ -151,9 +151,7 @@ static void aux_connection_handler(indigo_device *device) {
 		bool connection_result = true;
 		connection_result = fbc_open(device);
 		if (connection_result) {
-
 			// Custom code below
-
 			char command[16], response[80];
 			if (fbc_command(device, ": V #", response, sizeof(response))) {
 				sscanf(response, "V %s", INFO_DEVICE_FW_REVISION_ITEM->text.value);
@@ -161,9 +159,7 @@ static void aux_connection_handler(indigo_device *device) {
 			}
 			sprintf(command, ": B %d #", (int)AUX_LIGHT_INTENSITY_ITEM->number.value);
 			fbc_command(device, command, NULL, 0);
-
 			// Custom code above
-
 			indigo_define_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
 			indigo_define_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
 			indigo_define_property(device, AUX_LIGHT_IMPULSE_PROPERTY, NULL);
@@ -176,6 +172,10 @@ static void aux_connection_handler(indigo_device *device) {
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->aux_light_switch_handler_timer);
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->aux_light_intensity_handler_timer);
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->aux_light_impulse_handler_timer);
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->aux_ccd_exposure_handler_timer);
 		indigo_delete_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_LIGHT_IMPULSE_PROPERTY, NULL);
@@ -194,17 +194,13 @@ static void aux_connection_handler(indigo_device *device) {
 static void aux_light_switch_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_OK_STATE;
-
 	// Custom code below
-
 	char command[16];
 	sprintf(command, "E:%d", AUX_LIGHT_SWITCH_ON_ITEM->sw.value);
 	if (!fbc_command(device, command, NULL, 0)) {
 		AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-
 	// Custom code above
-
 	indigo_update_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -214,17 +210,13 @@ static void aux_light_switch_handler(indigo_device *device) {
 static void aux_light_intensity_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
-
 	// Custom code below
-
 	char command[16];
 	sprintf(command, ": B %d #", (int)AUX_LIGHT_INTENSITY_ITEM->number.value);
 	if (!fbc_command(device, command, NULL, 0)) {
 		AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-
 	// Custom code above
-
 	indigo_update_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -234,9 +226,7 @@ static void aux_light_intensity_handler(indigo_device *device) {
 static void aux_light_impulse_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_LIGHT_IMPULSE_PROPERTY->state = INDIGO_OK_STATE;
-
 	// Custom code below
-
 	char command[16];
 	sprintf(command, ": F %d #", (int)(AUX_LIGHT_IMPULSE_DURATION_ITEM->number.value * 1000));
 	if (fbc_command(device, command, NULL, 0)) {
@@ -255,9 +245,7 @@ static void aux_light_impulse_handler(indigo_device *device) {
 	} else {
 		AUX_LIGHT_IMPULSE_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-
 	// Custom code above
-
 	indigo_update_property(device, AUX_LIGHT_IMPULSE_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -267,9 +255,7 @@ static void aux_light_impulse_handler(indigo_device *device) {
 static void aux_ccd_exposure_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-
 	// Custom code below
-
 	char command[16];
 	sprintf(command, ": E %d #", (int)(CCD_EXPOSURE_ITEM->number.value * 1000));
 	if (fbc_command(device, command, NULL, 0)) {
@@ -288,9 +274,7 @@ static void aux_ccd_exposure_handler(indigo_device *device) {
 	} else {
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-
 	// Custom code above
-
 	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -307,48 +291,31 @@ static indigo_result aux_attach(indigo_device *device) {
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
-
-
 		// Custom code below
-
 		INFO_PROPERTY->count = 6;
-
 		// Custom code above
-
-		// AUX_LIGHT_SWITCH initialisation
-
 		AUX_LIGHT_SWITCH_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_MAIN_GROUP, "Light (on/off)", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (AUX_LIGHT_SWITCH_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
 		indigo_init_switch_item(AUX_LIGHT_SWITCH_ON_ITEM, AUX_LIGHT_SWITCH_ON_ITEM_NAME, "On", false);
 		indigo_init_switch_item(AUX_LIGHT_SWITCH_OFF_ITEM, AUX_LIGHT_SWITCH_OFF_ITEM_NAME, "Off", true);
-
-		// AUX_LIGHT_INTENSITY initialisation
-
 		AUX_LIGHT_INTENSITY_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_LIGHT_INTENSITY_PROPERTY_NAME, AUX_MAIN_GROUP, "Light intensity", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (AUX_LIGHT_INTENSITY_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
 		indigo_init_number_item(AUX_LIGHT_INTENSITY_ITEM, AUX_LIGHT_INTENSITY_ITEM_NAME, "Intensity (%)", 0, 100, 1, 50);
 		strcpy(AUX_LIGHT_INTENSITY_ITEM->number.format, "%g");
-
-		// AUX_LIGHT_IMPULSE initialisation
-
 		AUX_LIGHT_IMPULSE_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_LIGHT_IMPULSE_PROPERTY_NAME, AUX_MAIN_GROUP, "Light impulse", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (AUX_LIGHT_IMPULSE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
 		indigo_init_number_item(AUX_LIGHT_IMPULSE_DURATION_ITEM, AUX_LIGHT_IMPULSE_DURATION_ITEM_NAME, "Duration (s)", 0, 30, 1, 0);
-
-		// CCD_EXPOSURE initialisation
-
 		CCD_EXPOSURE_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_EXPOSURE_PROPERTY_NAME, AUX_MAIN_GROUP, "Shutter Control", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (CCD_EXPOSURE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
 		indigo_init_number_item(CCD_EXPOSURE_ITEM, CCD_EXPOSURE_ITEM_NAME, "Exposure (s)", 0, 30, 1, 0);
-
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		return aux_enumerate_properties(device, NULL, NULL);
@@ -371,57 +338,46 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 // aux change property API callback
 
 static indigo_result aux_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
-
-  // CONNECTION change handling
-
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (indigo_ignore_connection_change(device, property)) {
-			return INDIGO_OK;
+		if (!indigo_ignore_connection_change(device, property)) {
+			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			indigo_set_timer(device, 0, aux_connection_handler, &PRIVATE_DATA->aux_connection_handler_timer);
 		}
-		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, aux_connection_handler, NULL);
 		return INDIGO_OK;
-
-  // AUX_LIGHT_SWITCH change handling
-
 	} else if (indigo_property_match_changeable(AUX_LIGHT_SWITCH_PROPERTY, property)) {
-		indigo_property_copy_values(AUX_LIGHT_SWITCH_PROPERTY, property, false);
-		AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
-		indigo_set_timer(device, 0, aux_light_switch_handler, NULL);
+		if (PRIVATE_DATA->aux_light_switch_handler_timer == NULL) {
+			indigo_property_copy_values(AUX_LIGHT_SWITCH_PROPERTY, property, false);
+			AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
+			indigo_set_timer(device, 0, aux_light_switch_handler, &PRIVATE_DATA->aux_light_switch_handler_timer);
+		}
 		return INDIGO_OK;
-
-  // AUX_LIGHT_INTENSITY change handling
-
 	} else if (indigo_property_match_changeable(AUX_LIGHT_INTENSITY_PROPERTY, property)) {
-		indigo_property_copy_values(AUX_LIGHT_INTENSITY_PROPERTY, property, false);
-		AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
-		indigo_set_timer(device, 0, aux_light_intensity_handler, NULL);
+		if (PRIVATE_DATA->aux_light_intensity_handler_timer == NULL) {
+			indigo_property_copy_values(AUX_LIGHT_INTENSITY_PROPERTY, property, false);
+			AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
+			indigo_set_timer(device, 0, aux_light_intensity_handler, &PRIVATE_DATA->aux_light_intensity_handler_timer);
+		}
 		return INDIGO_OK;
-
-  // AUX_LIGHT_IMPULSE change handling
-
 	} else if (indigo_property_match_changeable(AUX_LIGHT_IMPULSE_PROPERTY, property)) {
-		indigo_property_copy_values(AUX_LIGHT_IMPULSE_PROPERTY, property, false);
-		AUX_LIGHT_IMPULSE_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, AUX_LIGHT_IMPULSE_PROPERTY, NULL);
-		indigo_set_timer(device, 0, aux_light_impulse_handler, NULL);
+		if (PRIVATE_DATA->aux_light_impulse_handler_timer == NULL) {
+			indigo_property_copy_values(AUX_LIGHT_IMPULSE_PROPERTY, property, false);
+			AUX_LIGHT_IMPULSE_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, AUX_LIGHT_IMPULSE_PROPERTY, NULL);
+			indigo_set_timer(device, 0, aux_light_impulse_handler, &PRIVATE_DATA->aux_light_impulse_handler_timer);
+		}
 		return INDIGO_OK;
-
-  // CCD_EXPOSURE change handling
-
 	} else if (indigo_property_match_changeable(CCD_EXPOSURE_PROPERTY, property)) {
-		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
-		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-		indigo_set_timer(device, 0, aux_ccd_exposure_handler, NULL);
+		if (PRIVATE_DATA->aux_ccd_exposure_handler_timer == NULL) {
+			indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
+			CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+			indigo_set_timer(device, 0, aux_ccd_exposure_handler, &PRIVATE_DATA->aux_ccd_exposure_handler_timer);
+		}
 		return INDIGO_OK;
-
-  // CONFIG change handling
-
 	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, AUX_LIGHT_INTENSITY_PROPERTY);

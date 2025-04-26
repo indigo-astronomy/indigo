@@ -40,11 +40,11 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_aux_ prefix
 		// optional C code block
 		// replace content of this section with common low level communication code, at least with XXXXX_command(), XXXXX_open() and XXXXX_close() functions
 	}
-	init {
+	on_init {
 		// optional C code block
 		// replace content of this section with common code for driver initialization, it will be put at the beginning of INDIGO_DRIVER_INIT handling code
 	}
-	shutdown {
+	on_shutdown {
 		// optional C code block
 		// replace content of this section with common code for driver deinitialization, it will be put at the end of INDIGO_DRIVER_SHUTDOWN handling code
 	}
@@ -67,16 +67,17 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_aux_ prefix
 		name = "XXXXX";  // replace XXXXX with device name  (string literal)
 		additional_instances = true; // use this if the driver can create additional device instances  (bool literal, default is false)
 		interface = XXXXX; // replace XXXXX with additional AUX interface like INDIGO_INTERFACE_AUX_LIGHTBOX (C uint32 expression, default is 0)
-		inherited CONNECTION {
-			change {
-				// optional C code block
-				// replace content of this section with intialization code in case of sucessfull connection
-				// locking, code for handling multiple devices sharing the same port, opening the port, handling result and disconnection is generated boilerplate.
-			}
+		on_connect {
+			// optional C code block
+			// replace content of this section with intialization code in case of sucessfull connection
+		}
+		on_disconnect {
+			// optional C code block
+			// replace content of this section with intialization code in case of sucessfull connection
 		}
 		inherited XXXXX { // replace XXXXX with inherited property base name without _PROPERTY suffix, repeat block as many times as you need (mandatory identifier literal)
 			handle_change = false; // use this if property change shouldn't be handled (bool C expression, default is true)
-			change {
+			on_change {
 				// optional C code block
 				// replace content of this section with property change handling code
 				// locking, initial setting of property state to Ok, final property updating and unlocking is generated boilerplate
@@ -96,7 +97,7 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_aux_ prefix
 				label = XXXXX; // replace XXXXX with descriptive item label (C string expression)
 				value = XXXXX; // replace XXXXX with item initial value (C bool expression, default value is false)
 			}
-			change {
+			on_change {
 				// optional C code block
 				// replace content of this section with property change handling code
 				// locking, initial setting of property state to Ok, final property updating and unlocking is generated boilerplate
@@ -115,7 +116,7 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_aux_ prefix
 				label = XXXXX; // replace XXXXX with descriptive item label (C string expression)
 				value = XXXXX; // replace XXXXX with item initial value (C string expression)
 			}
-			change {
+			on_change {
 				// optional C code block
 				// replace content of this section with property change handling code
 				// locking, initial setting of property state to Ok, final property updating and unlocking is generated boilerplate
@@ -138,7 +139,7 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_aux_ prefix
 				step = XXXXX; // replace XXXXX with item step value (C double expression, default value is 0)
 				format = XXXXX; // replace XXXXX with descriptive item label (C string expression, default is INDIGO default)
 			}
-			change {
+			on_change {
 				// optional C code block
 				// replace content of this section with property change handling code
 				// locking, initial setting of property state to Ok, final property updating and unlocking is generated boilerplate
@@ -158,18 +159,18 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_aux_ prefix
 			// optional C code block
 			// replace content of this section with low level communication code
 		}
-		timer {
+		on_timer {
 			// optional C code block
 			// replace content of this section with the code for background timer
 			// started when device is connected and terminated when device is disconnected
 			// locking is handled by boilerplate code, rescheduling is not
 		}
-		attach {
+		on_attach {
 			// optional C code block
 			// replace content of this section is customization of attach code
 			// it is injected before definitions of local properties
 		}
-		detach {
+		on_detach {
 			// optional C code block
 			// replace content of this section is customization of detach code
 			// it is injected before releses of local properties

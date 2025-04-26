@@ -58,9 +58,8 @@ driver fcusb {
 	
 	focuser {
 		name = "%s";
-		inherited CONNECTION;
 		inherited FOCUSER_ABORT_MOTION {
-			change {
+			on_change {
 				if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
 					FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
@@ -68,7 +67,7 @@ driver fcusb {
 			}
 		}
 		inherited FOCUSER_STEPS {
-			change {
+			on_change {
 				if (FOCUSER_STEPS_ITEM->number.value > 0) {
 					libfcusb_set_power(PRIVATE_DATA->device_context, FOCUSER_SPEED_ITEM->number.value);
 					if (X_FOCUSER_FREQUENCY_1_ITEM->sw.value)
@@ -124,7 +123,7 @@ driver fcusb {
 				name = "FREQUENCY_16";
 			}
 		}
-		attach {
+		on_attach {
 			FOCUSER_POSITION_PROPERTY->hidden = true;
 			FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.max = 255;
 			indigo_copy_value(FOCUSER_SPEED_ITEM->label, "Power (0-255)");
@@ -134,7 +133,7 @@ driver fcusb {
 	
 	// Main code
 	
-	init {
+	on_init {
 		libfcusb_debug = &fcusb_debug;
 	}
 }

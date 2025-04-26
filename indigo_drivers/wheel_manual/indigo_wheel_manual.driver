@@ -28,9 +28,8 @@ driver manual {
 	// WHEEL definition
 	
 	wheel {
-		inherited CONNECTION;
 		inherited WHEEL_SLOT {
-			change {
+			on_change {
 				if (WHEEL_SLOT_ITEM->number.value < 1 || WHEEL_SLOT_ITEM->number.value > WHEEL_SLOT_ITEM->number.max) {
 					WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
@@ -38,7 +37,7 @@ driver manual {
 				}
 			}
 		}
-		attach {
+		on_attach {
 			WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = FILTER_COUNT;
 			WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = 1;
 		}

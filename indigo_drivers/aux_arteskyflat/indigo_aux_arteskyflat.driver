@@ -57,8 +57,6 @@ driver arteskyflat {
 		name = "Artesky Flat Box";
 		additional_instances = true;
 		interface = INDIGO_INTERFACE_AUX_LIGHTBOX;
-		inherited CONNECTION {
-		}
 		switch AUX_LIGHT_SWITCH {
 			label = "Light (on/off)";
 			group = AUX_MAIN_GROUP;
@@ -70,7 +68,7 @@ driver arteskyflat {
 				label = "Off";
 				value = true;
 			}
-			change {
+			on_change {
 				char command[16],	response[16];
 				strcpy(command, AUX_LIGHT_SWITCH_ON_ITEM->sw.value ? ">L000" : ">D000");
 				if (!arteskyflat_command(device, command, response) || *response != '*') {
@@ -90,7 +88,7 @@ driver arteskyflat {
 				value = 0;
 				format = "%d";
 			}
-			change {
+			on_change {
 				char command[16],	response[16];
 				sprintf(command, ">B%03d", (int)(AUX_LIGHT_INTENSITY_ITEM->number.value));
 				if (!arteskyflat_command(device, command, response) || *response != '*') {

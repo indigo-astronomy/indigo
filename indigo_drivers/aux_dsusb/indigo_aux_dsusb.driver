@@ -59,7 +59,6 @@ driver dsusb {
 	aux {
 		name = "%s";
 		interface = INDIGO_INTERFACE_AUX_SHUTTER;
-		inherited CONNECTION;
 		switch X_CONFIG {
 			label = "Configure";
 			name = "X_CONFIG";
@@ -80,7 +79,7 @@ driver dsusb {
 				label = "Abort exposure";
 				name = CCD_ABORT_EXPOSURE_ITEM_NAME;
 			}
-			change {
+			on_change {
 				if (X_CCD_ABORT_EXPOSURE_ITEM->sw.value && X_CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 					indigo_cancel_timer(device, &PRIVATE_DATA->aux_timer);
 					libdsusb_stop(PRIVATE_DATA->device_context);
@@ -102,7 +101,7 @@ driver dsusb {
 				step = 1;
 				format = "%g";
 			}
-			change {
+			on_change {
 				X_CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 				if (X_CONFIG_FOCUS_ITEM->sw.value) {
 					libdsusb_focus(PRIVATE_DATA->device_context);
@@ -113,7 +112,7 @@ driver dsusb {
 				indigo_set_timer(device, X_CCD_EXPOSURE_ITEM->number.value < 1 ? X_CCD_EXPOSURE_ITEM->number.value : 1, aux_timer_callback, &PRIVATE_DATA->aux_timer);
 			}
 		}
-		timer {
+		on_timer {
 			if (X_CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 				X_CCD_EXPOSURE_ITEM->number.value--;
 				if (X_CCD_EXPOSURE_ITEM->number.value <= 0) {
@@ -130,7 +129,7 @@ driver dsusb {
 	
 	// Main code
 	
-	init {
+	on_init {
 		libdsusb_debug = &dsusb_debug;
 	}
 }

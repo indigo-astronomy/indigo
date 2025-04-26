@@ -67,21 +67,19 @@ driver sx {
 	ao {
 		name = "SX AO";
 		additional_instances = true;
-		inherited CONNECTION {
-			change {
-				char response[2];
-				if (sx_command(device, "L", response, 1)) {
-					AO_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
-					AO_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
-					if (response[0] & 0x05)
-						AO_GUIDE_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
-					if (response[0] & 0x0A)
-						AO_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
-				}
+		on_connect {
+			char response[2];
+			if (sx_command(device, "L", response, 1)) {
+				AO_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+				AO_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
+				if (response[0] & 0x05)
+					AO_GUIDE_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
+				if (response[0] & 0x0A)
+					AO_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 		}
 		inherited AO_GUIDE_DEC {
-			change {
+			on_change {
 				char response[2], command[8];
 				if (AO_GUIDE_NORTH_ITEM->number.value > 0) {
 					sprintf(command, "GN%05d", (int)AO_GUIDE_NORTH_ITEM->number.value);
@@ -97,7 +95,7 @@ driver sx {
 			}
 		}
 		inherited AO_GUIDE_RA {
-			change {
+			on_change {
 				char response[2], command[8];
 				if (AO_GUIDE_WEST_ITEM->number.value > 0) {
 					sprintf(command, "GW%05d", (int)AO_GUIDE_WEST_ITEM->number.value);
@@ -113,7 +111,7 @@ driver sx {
 			}
 		}
 		inherited AO_RESET {
-			change {
+			on_change {
 				char response[2];
 				if (AO_CENTER_ITEM->sw.value) {
 					sx_command(device, "K", response, 1);
@@ -134,7 +132,7 @@ driver sx {
 				}
 			}
 		}
-		attach {
+		on_attach {
 			AO_GUIDE_NORTH_ITEM->number.max = AO_GUIDE_SOUTH_ITEM->number.max = AO_GUIDE_EAST_ITEM->number.max = AO_GUIDE_WEST_ITEM->number.max = 50;
 		}
 	}
@@ -143,9 +141,8 @@ driver sx {
 	
 	guider {
 		name = "SX AO (guider)";
-		inherited CONNECTION;
 		inherited GUIDER_GUIDE_DEC {
-			change {
+			on_change {
 				char response[2], command[8];
 				if (GUIDER_GUIDE_NORTH_ITEM->number.value > 0) {
 					sprintf(command, "MN%05d", (int)GUIDER_GUIDE_NORTH_ITEM->number.value / 10);
@@ -161,7 +158,7 @@ driver sx {
 			}
 		}
 		inherited GUIDER_GUIDE_RA {
-			change {
+			on_change {
 				char response[2], command[8];
 				if (AO_GUIDE_WEST_ITEM->number.value > 0) {
 					sprintf(command, "MW%05d", (int)AO_GUIDE_WEST_ITEM->number.value);

@@ -98,16 +98,14 @@ driver fbc {
 		name = "Lacerta FBC";
 		additional_instances = true;
 		interface = INDIGO_INTERFACE_AUX_LIGHTBOX;
-		inherited CONNECTION {
-			change {
-				char command[16], response[80];
-				if (fbc_command(device, ": V #", response, sizeof(response))) {
-					sscanf(response, "V %s", INFO_DEVICE_FW_REVISION_ITEM->text.value);
-					indigo_update_property(device, INFO_PROPERTY, NULL);
-				}
-				sprintf(command, ": B %d #", (int)AUX_LIGHT_INTENSITY_ITEM->number.value);
-				fbc_command(device, command, NULL, 0);
+		on_connect {
+			char command[16], response[80];
+			if (fbc_command(device, ": V #", response, sizeof(response))) {
+				sscanf(response, "V %s", INFO_DEVICE_FW_REVISION_ITEM->text.value);
+				indigo_update_property(device, INFO_PROPERTY, NULL);
 			}
+			sprintf(command, ": B %d #", (int)AUX_LIGHT_INTENSITY_ITEM->number.value);
+			fbc_command(device, command, NULL, 0);
 		}
 		switch AUX_LIGHT_SWITCH {
 			label = "Light (on/off)";
@@ -119,7 +117,7 @@ driver fbc {
 				label = "Off";
 				value = true;
 			}
-			change {
+			on_change {
 				char command[16];
 				sprintf(command, "E:%d", AUX_LIGHT_SWITCH_ON_ITEM->sw.value);
 				if (!fbc_command(device, command, NULL, 0)) {
@@ -138,7 +136,7 @@ driver fbc {
 				step = 1;
 				value = 50;
 			}
-			change {
+			on_change {
 				char command[16];
 				sprintf(command, ": B %d #", (int)AUX_LIGHT_INTENSITY_ITEM->number.value);
 				if (!fbc_command(device, command, NULL, 0)) {
@@ -155,7 +153,7 @@ driver fbc {
 				step = 1;
 				value = 0;
 			}
-			change {
+			on_change {
 				char command[16];
 				sprintf(command, ": F %d #", (int)(AUX_LIGHT_IMPULSE_DURATION_ITEM->number.value * 1000));
 				if (fbc_command(device, command, NULL, 0)) {
@@ -185,7 +183,7 @@ driver fbc {
 				step = 1;
 				value = 0;
 			}
-			change {
+			on_change {
 				char command[16];
 				sprintf(command, ": E %d #", (int)(CCD_EXPOSURE_ITEM->number.value * 1000));
 				if (fbc_command(device, command, NULL, 0)) {
@@ -206,7 +204,7 @@ driver fbc {
 				}
 			}
 		}
-		attach {
+		on_attach {
 			INFO_PROPERTY->count = 6;
 		}
 	}

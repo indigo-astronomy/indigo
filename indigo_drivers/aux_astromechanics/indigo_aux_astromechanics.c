@@ -28,7 +28,6 @@
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
-
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_aux_driver.h>
 #include <indigo/indigo_uni_io.h>
@@ -46,7 +45,6 @@
 #pragma mark - Property definitions
 
 // AUX_WEATHER handles definition
-
 #define AUX_WEATHER_PROPERTY              (PRIVATE_DATA->aux_weather_property)
 #define AUX_WEATHER_SKY_BRIGHTNESS_ITEM   (AUX_WEATHER_PROPERTY->items + 0)
 #define AUX_WEATHER_SKY_BORTLE_CLASS_ITEM (AUX_WEATHER_PROPERTY->items + 1)
@@ -56,8 +54,9 @@
 typedef struct {
 	pthread_mutex_t mutex;
 	indigo_uni_handle *handle;
-	indigo_timer *aux_timer;
 	indigo_property *aux_weather_property;
+	indigo_timer *aux_timer;
+	indigo_timer *aux_connection_handler_timer;
 } astromechanics_private_data;
 
 #pragma mark - Low level code
@@ -97,9 +96,7 @@ static void aux_timer_callback(indigo_device *device) {
 		return;
 	}
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-
 	// Custom code below
-
 	char response[16];
 	if (astromechanics_command(device, "V#", response)) {
 		AUX_WEATHER_SKY_BRIGHTNESS_ITEM->number.value = indigo_atod(response);
@@ -110,9 +107,7 @@ static void aux_timer_callback(indigo_device *device) {
 	}
 	indigo_update_property(device, AUX_WEATHER_PROPERTY, NULL);
 	indigo_reschedule_timer(device, 10, &PRIVATE_DATA->aux_timer);
-
 	// Custom code above
-
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
@@ -158,16 +153,12 @@ static indigo_result aux_attach(indigo_device *device) {
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
-
-		// AUX_WEATHER initialisation
-
 		AUX_WEATHER_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_WEATHER_PROPERTY_NAME, AUX_MAIN_GROUP, "Sky quality", INDIGO_OK_STATE, INDIGO_RO_PERM, 2);
 		if (AUX_WEATHER_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
 		indigo_init_number_item(AUX_WEATHER_SKY_BRIGHTNESS_ITEM, AUX_WEATHER_SKY_BRIGHTNESS_ITEM_NAME, "Sky brightness [m/arcsec\u00B2]", -20, 30, 0, 0);
 		indigo_init_number_item(AUX_WEATHER_SKY_BORTLE_CLASS_ITEM, AUX_WEATHER_SKY_BORTLE_CLASS_ITEM_NAME, "Sky Bortle class", 1, 9, 0, 0);
-
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		return aux_enumerate_properties(device, NULL, NULL);
@@ -187,17 +178,13 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 // aux change property API callback
 
 static indigo_result aux_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
-
-  // CONNECTION change handling
-
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		if (indigo_ignore_connection_change(device, property)) {
-			return INDIGO_OK;
+		if (!indigo_ignore_connection_change(device, property)) {
+			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			indigo_set_timer(device, 0, aux_connection_handler, &PRIVATE_DATA->aux_connection_handler_timer);
 		}
-		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, aux_connection_handler, NULL);
 		return INDIGO_OK;
 	}
 	return indigo_aux_change_property(device, client, property);

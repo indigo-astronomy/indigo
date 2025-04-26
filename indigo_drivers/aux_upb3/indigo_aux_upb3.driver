@@ -96,82 +96,80 @@ driver upb3 {
 		name = "Ultimate Powerbox 3";
 		interface = INDIGO_INTERFACE_AUX_POWERBOX | INDIGO_INTERFACE_AUX_WEATHER;
 		additional_instances = true;
-		inherited CONNECTION {
-			change {
-				char response[128];
-				if (upb3_command(device, "PA", response, sizeof(response))) {
-					char *pnt, *token = strtok_r(response, ":", &pnt);
-					for (int i = 0; i < 6; i++) { // output 1-6
-						indigo_item *item = AUX_POWER_OUTLET_PROPERTY->items + i;
-						if ((token = strtok_r(NULL, ":", &pnt))) {
-							bool value = atoi(token) > 0;
-							if (item->sw.value != value) {
-								item->sw.value = value;
-							}
-						}
-					}
-					for (int i = 0; i < 3; i++) { // dew 1-3
-						indigo_item *item = AUX_HEATER_OUTLET_PROPERTY->items + i;
-						if ((token = strtok_r(NULL, ":", &pnt))) {
-							int value = atoi(token);
-							if (item->number.value != value) {
-								item->number.value = value;
-							}
-						}
-					}
-					for (int i = 6; i < 9; i++) { // buck, boost, relay
-						indigo_item *item = AUX_POWER_OUTLET_PROPERTY->items + i;
-						if ((token = strtok_r(NULL, ":", &pnt))) {
-							bool value = *token == '1';
-							if (item->sw.value != value) {
-								item->sw.value = value;
-							}
+		on_connect {
+			char response[128];
+			if (upb3_command(device, "PA", response, sizeof(response))) {
+				char *pnt, *token = strtok_r(response, ":", &pnt);
+				for (int i = 0; i < 6; i++) { // output 1-6
+					indigo_item *item = AUX_POWER_OUTLET_PROPERTY->items + i;
+					if ((token = strtok_r(NULL, ":", &pnt))) {
+						bool value = atoi(token) > 0;
+						if (item->sw.value != value) {
+							item->sw.value = value;
 						}
 					}
 				}
-				if (upb3_command(device, "AJ", response, sizeof(response))) {
-					char *pnt, *token = strtok_r(response, ":", &pnt);
-					if ((token = strtok_r(NULL, ":", &pnt))) { // Buck voltage
+				for (int i = 0; i < 3; i++) { // dew 1-3
+					indigo_item *item = AUX_HEATER_OUTLET_PROPERTY->items + i;
+					if ((token = strtok_r(NULL, ":", &pnt))) {
 						int value = atoi(token);
-						if (AUX_VARIABLE_POWER_OUTLET_7_ITEM->number.value != value) {
-							AUX_VARIABLE_POWER_OUTLET_7_ITEM->number.target = AUX_VARIABLE_POWER_OUTLET_7_ITEM->number.value = value;
-						}
-					}
-					if ((token = strtok_r(NULL, ":", &pnt))) { // Buck status
-						AUX_POWER_OUTLET_7_ITEM->sw.value = *token == '1';
-					}
-					if ((token = strtok_r(NULL, ":", &pnt))) { // Boost voltage
-						AUX_VARIABLE_POWER_OUTLET_8_ITEM->number.target = AUX_VARIABLE_POWER_OUTLET_8_ITEM->number.value = atoi(token);
-					}
-					if ((token = strtok_r(NULL, ":", &pnt))) { // Boost status
-						AUX_POWER_OUTLET_8_ITEM->sw.value = *token == '1';
-					}
-				}
-				if (upb3_command(device, "UA", response, sizeof(response))) {
-					char *pnt, *token = strtok_r(response, ":", &pnt);
-					for (int i = 0; i < 8; i++) { // usb 1-8
-						indigo_item *item = AUX_USB_PORT_PROPERTY->items + i;
-						if ((token = strtok_r(NULL, ":", &pnt))) {
-							bool value = *token == '1';
-							if (item->sw.value != value) {
-								item->sw.value = value;
-							}
+						if (item->number.value != value) {
+							item->number.value = value;
 						}
 					}
 				}
-				if (upb3_command(device, "PD", response, sizeof(response))) {
-					if (!strcmp(response, "PD:000")) {
-						if (AUX_DEW_CONTROL_MANUAL_ITEM->sw.value) {
-							indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, AUX_DEW_CONTROL_MANUAL_ITEM, true);
-						}
-					} else {
-						if (AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value) {
-							indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, AUX_DEW_CONTROL_AUTOMATIC_ITEM, true);
+				for (int i = 6; i < 9; i++) { // buck, boost, relay
+					indigo_item *item = AUX_POWER_OUTLET_PROPERTY->items + i;
+					if ((token = strtok_r(NULL, ":", &pnt))) {
+						bool value = *token == '1';
+						if (item->sw.value != value) {
+							item->sw.value = value;
 						}
 					}
 				}
-				upb3_command(device, "PL:1", response, sizeof(response));
 			}
+			if (upb3_command(device, "AJ", response, sizeof(response))) {
+				char *pnt, *token = strtok_r(response, ":", &pnt);
+				if ((token = strtok_r(NULL, ":", &pnt))) { // Buck voltage
+					int value = atoi(token);
+					if (AUX_VARIABLE_POWER_OUTLET_7_ITEM->number.value != value) {
+						AUX_VARIABLE_POWER_OUTLET_7_ITEM->number.target = AUX_VARIABLE_POWER_OUTLET_7_ITEM->number.value = value;
+					}
+				}
+				if ((token = strtok_r(NULL, ":", &pnt))) { // Buck status
+					AUX_POWER_OUTLET_7_ITEM->sw.value = *token == '1';
+				}
+				if ((token = strtok_r(NULL, ":", &pnt))) { // Boost voltage
+					AUX_VARIABLE_POWER_OUTLET_8_ITEM->number.target = AUX_VARIABLE_POWER_OUTLET_8_ITEM->number.value = atoi(token);
+				}
+				if ((token = strtok_r(NULL, ":", &pnt))) { // Boost status
+					AUX_POWER_OUTLET_8_ITEM->sw.value = *token == '1';
+				}
+			}
+			if (upb3_command(device, "UA", response, sizeof(response))) {
+				char *pnt, *token = strtok_r(response, ":", &pnt);
+				for (int i = 0; i < 8; i++) { // usb 1-8
+					indigo_item *item = AUX_USB_PORT_PROPERTY->items + i;
+					if ((token = strtok_r(NULL, ":", &pnt))) {
+						bool value = *token == '1';
+						if (item->sw.value != value) {
+							item->sw.value = value;
+						}
+					}
+				}
+			}
+			if (upb3_command(device, "PD", response, sizeof(response))) {
+				if (!strcmp(response, "PD:000")) {
+					if (AUX_DEW_CONTROL_MANUAL_ITEM->sw.value) {
+						indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, AUX_DEW_CONTROL_MANUAL_ITEM, true);
+					}
+				} else {
+					if (AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value) {
+						indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, AUX_DEW_CONTROL_AUTOMATIC_ITEM, true);
+					}
+				}
+			}
+			upb3_command(device, "PL:1", response, sizeof(response));
 		}
 		text AUX_OUTLET_NAMES {
 			label = "Outlet names";
@@ -258,7 +256,7 @@ driver upb3 {
 				label = "Port #8";
 				value = "Port #8";
 			}
-			change {
+			on_change {
 				snprintf(AUX_POWER_OUTLET_1_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_POWER_OUTLET_NAME_1_ITEM->text.value);
 				snprintf(AUX_POWER_OUTLET_2_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_POWER_OUTLET_NAME_2_ITEM->text.value);
 				snprintf(AUX_POWER_OUTLET_3_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_POWER_OUTLET_NAME_3_ITEM->text.value);
@@ -338,7 +336,7 @@ driver upb3 {
 				label = "Relay switch";
 				value = true;
 			}
-			change {
+			on_change {
 				char response[128];
 				upb3_command(device, AUX_POWER_OUTLET_1_ITEM->sw.value ? "P1:100" : "P1:0", response, sizeof(response));
 				upb3_command(device, AUX_POWER_OUTLET_2_ITEM->sw.value ? "P2:100" : "P2:0", response, sizeof(response));
@@ -397,7 +395,7 @@ driver upb3 {
 				max = 100;
 				step = 5;
 			}
-			change {
+			on_change {
 				char command[16], response[128];
 				sprintf(command, "D1:%d", (int)AUX_HEATER_OUTLET_1_ITEM->number.value);
 				upb3_command(device, command, response, sizeof(response));
@@ -418,7 +416,7 @@ driver upb3 {
 				label = "Automatic";
 				value = true;
 			}
-			change {
+			on_change {
 				char response[128];
 				if (AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value) {
 					upb3_command(device, "ADW1:1", response, sizeof(response));
@@ -468,7 +466,7 @@ driver upb3 {
 				label = "Port #8";
 				value = true;
 			}
-			change {
+			on_change {
 				char command[16], response[128];
 				for (int i = 0; i < AUX_USB_PORT_PROPERTY->count; i++) {
 					sprintf(command, "U%d:%d", i + 1, AUX_USB_PORT_PROPERTY->items[i].sw.value ? 1 : 0);
@@ -532,7 +530,7 @@ driver upb3 {
 				label = "Save";
 				name = "SAVE";
 			}
-			change {
+			on_change {
 				char response[128];
 				if (AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM->sw.value) {
 					upb3_command(device, "PS", response, sizeof(response));
@@ -550,7 +548,7 @@ driver upb3 {
 				label = "Manual";
 				name = "REBOOT";
 			}
-			change {
+			on_change {
 				char response[128];
 				if (AUX_REBOOT_ITEM->sw.value) {
 					upb3_command(device, "PF", response, sizeof(response));
@@ -578,7 +576,7 @@ driver upb3 {
 				step = 1;
 				value = 12;
 			}
-			change {
+			on_change {
 				char response[128], command[32];
 				sprintf(command, "PJ:%d", (int)AUX_VARIABLE_POWER_OUTLET_7_ITEM->number.value);
 				upb3_command(device, command, response, sizeof(response));
@@ -586,7 +584,7 @@ driver upb3 {
 				upb3_command(device, command, response, sizeof(response));
 			}
 		}
-		timer {
+		on_timer {
 			char response[128];
 			bool updatePowerOutletState = false;
 			bool updateWeather = false;
@@ -698,7 +696,7 @@ driver upb3 {
 			}
 			indigo_reschedule_timer(device, 2, &PRIVATE_DATA->aux_timer);
 		}
-		attach {
+		on_attach {
 			INFO_PROPERTY->count = 6;
 			strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 			strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
@@ -710,36 +708,34 @@ driver upb3 {
 	focuser {
 		name = "Ultimate Powerbox 3 (focuser)";
 		additional_instances = true;
-		inherited CONNECTION {
-			change {
-				char response[128];
-				if (upb3_command(device, "SA", response, sizeof(response))) {
-					char *pnt, *token = strtok_r(response, ":", &pnt);
-					token = strtok_r(NULL, ":", &pnt); // position
-					if (token) {
-						FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = atoi(token);
-					}
-					token = strtok_r(NULL, ":", &pnt); // is_running
-					if (token) {
-						FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = *token == '1' ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
-					}
-					token = strtok_r(NULL, ":", &pnt); // direction
-					if (token) {
-						indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, *token == '1' ? FOCUSER_REVERSE_MOTION_ENABLED_ITEM : FOCUSER_REVERSE_MOTION_DISABLED_ITEM, true);
-					}
-					token = strtok_r(NULL, ":", &pnt);
-					if (token) { // speed
-						FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = atoi(token);
-					}
+		on_connect {
+			char response[128];
+			if (upb3_command(device, "SA", response, sizeof(response))) {
+				char *pnt, *token = strtok_r(response, ":", &pnt);
+				token = strtok_r(NULL, ":", &pnt); // position
+				if (token) {
+					FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = atoi(token);
 				}
-				if (upb3_command(device, "PV", response, sizeof(response)) && !strncmp(response, "PV:", 3)) {
-					strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, response + 3);
+				token = strtok_r(NULL, ":", &pnt); // is_running
+				if (token) {
+					FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = *token == '1' ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
 				}
-				upb3_command(device, "PL:1", response, sizeof(response));
+				token = strtok_r(NULL, ":", &pnt); // direction
+				if (token) {
+					indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, *token == '1' ? FOCUSER_REVERSE_MOTION_ENABLED_ITEM : FOCUSER_REVERSE_MOTION_DISABLED_ITEM, true);
+				}
+				token = strtok_r(NULL, ":", &pnt);
+				if (token) { // speed
+					FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = atoi(token);
+				}
 			}
+			if (upb3_command(device, "PV", response, sizeof(response)) && !strncmp(response, "PV:", 3)) {
+				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, response + 3);
+			}
+			upb3_command(device, "PL:1", response, sizeof(response));
 		}
 		inherited FOCUSER_SPEED {
-			change {
+			on_change {
 				char command[16], response[128];
 				snprintf(command, sizeof(command), "SS:%d", (int)FOCUSER_SPEED_ITEM->number.value);
 				if (!upb3_command(device, command, response, sizeof(response))) {
@@ -748,7 +744,7 @@ driver upb3 {
 			}
 		}
 		inherited FOCUSER_STEPS {
-			change {
+			on_change {
 				char command[16];
 				snprintf(command, sizeof(command), "SG:%d", (int)FOCUSER_STEPS_ITEM->number.value * (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? -1 : 1));
 				if (upb3_command(device, command, NULL, 0)) {
@@ -762,7 +758,7 @@ driver upb3 {
 			}
 		}
 		inherited FOCUSER_POSITION {
-			change {
+			on_change {
 				char command[16], response[64];
 				if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) {
 					snprintf(command, sizeof(command), "SM:%d", (int)FOCUSER_POSITION_ITEM->number.target);
@@ -783,7 +779,7 @@ driver upb3 {
 			}
 		}
 		inherited FOCUSER_ABORT_MOTION {
-			change {
+			on_change {
 				char response[128];
 				if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
 					FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
@@ -799,7 +795,7 @@ driver upb3 {
 			}
 		}
 		inherited FOCUSER_REVERSE_MOTION {
-			change {
+			on_change {
 				char command[16], response[128];
 				snprintf(command, sizeof(command), "SR:%d", (int)FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value? 0 : 1);
 				if (!upb3_command(device, command, response, sizeof(response))) {
@@ -808,7 +804,7 @@ driver upb3 {
 			}
 		}
 		inherited FOCUSER_BACKLASH {
-			change {
+			on_change {
 				char command[16], response[128];
 				snprintf(command, sizeof(command), "SB:%d", (int)FOCUSER_BACKLASH_ITEM->number.value);
 				if (!upb3_command(device, command, response, sizeof(response))) {
@@ -816,7 +812,7 @@ driver upb3 {
 				}
 			}
 		}
-		timer {
+		on_timer {
 			char response[128];
 			if (upb3_command(device, "ES", response, sizeof(response))) {
 				double temp = indigo_atod(response + 3);
@@ -855,7 +851,7 @@ driver upb3 {
 			}
 			indigo_reschedule_timer(device, 1, &PRIVATE_DATA->focuser_timer);
 		}
-		attach {
+		on_attach {
 			INFO_PROPERTY->count = 6;
 			strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 			strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");

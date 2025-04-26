@@ -131,14 +131,12 @@ driver nmea {
 	gps {
 		name = "NMEA GPS";
 		additional_instances = true;
-		inherited CONNECTION {
-			change {
-				GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = 0;
-				GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = 0;
-				GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value = 0;
-				sprintf(GPS_UTC_ITEM->text.value, "0000-00-00T00:00:00.00");
-				nmea_reset(device);
-			}
+		on_connect {
+			GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = 0;
+			GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = 0;
+			GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value = 0;
+			sprintf(GPS_UTC_ITEM->text.value, "0000-00-00T00:00:00.00");
+			nmea_reset(device);
 		}
 		switch GPS_SELECTED_SYSTEM {
 			label = "Selected positioning system";
@@ -178,11 +176,11 @@ driver nmea {
 				label = "QZSS1";
 				name = "QZSS";
 			}
-			change {
+			on_change {
 				nmea_reset(device);
 			}
 		}
-		timer {
+		on_timer {
 			char buffer[128];
 			long length = indigo_uni_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer));
 			char **tokens = nmea_parse(buffer);
@@ -349,7 +347,7 @@ driver nmea {
 				indigo_set_timer(device, 0, gps_connection_handler, NULL);
 			}
 		}
-		attach {			
+		on_attach {
 			GPS_ADVANCED_PROPERTY->hidden = false;
 			GPS_GEOGRAPHIC_COORDINATES_PROPERTY->hidden = false;
 			GPS_GEOGRAPHIC_COORDINATES_PROPERTY->count = 3;

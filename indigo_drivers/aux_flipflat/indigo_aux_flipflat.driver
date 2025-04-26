@@ -107,35 +107,32 @@ driver flipflat {
 		name = "FlipFlat";
 		additional_instances = true;
 		interface = INDIGO_INTERFACE_AUX_LIGHTBOX;
-		inherited CONNECTION {
-			change {
-				char response[16];
-				if (!AUX_LIGHT_SWITCH_PROPERTY->hidden) {
-					AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
-					AUX_COVER_PROPERTY->state = INDIGO_ALERT_STATE;
-					if (flipflat_command(PRIVATE_DATA->handle, ">S000", response) && *response == '*') {
-						int type, q, r, s;
-						if (sscanf(response, "*S%02d%1d%1d%1d", &type, &q, &r, &s) == 4) {
-							if (s == 1 || s == 2) {
-								AUX_COVER_PROPERTY->state = INDIGO_OK_STATE;
-								indigo_set_switch(AUX_COVER_PROPERTY, s == 1 ? AUX_COVER_CLOSE_ITEM : AUX_COVER_OPEN_ITEM, true);
-							}
-							AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_OK_STATE;
-							indigo_set_switch(AUX_LIGHT_SWITCH_PROPERTY, r == 1 ? AUX_LIGHT_SWITCH_ON_ITEM : AUX_LIGHT_SWITCH_OFF_ITEM, true);
+		on_connect {
+			char response[16];
+			if (!AUX_LIGHT_SWITCH_PROPERTY->hidden) {
+				AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
+				AUX_COVER_PROPERTY->state = INDIGO_ALERT_STATE;
+				if (flipflat_command(PRIVATE_DATA->handle, ">S000", response) && *response == '*') {
+					int type, q, r, s;
+					if (sscanf(response, "*S%02d%1d%1d%1d", &type, &q, &r, &s) == 4) {
+						if (s == 1 || s == 2) {
+							AUX_COVER_PROPERTY->state = INDIGO_OK_STATE;
+							indigo_set_switch(AUX_COVER_PROPERTY, s == 1 ? AUX_COVER_CLOSE_ITEM : AUX_COVER_OPEN_ITEM, true);
 						}
+						AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_OK_STATE;
+						indigo_set_switch(AUX_LIGHT_SWITCH_PROPERTY, r == 1 ? AUX_LIGHT_SWITCH_ON_ITEM : AUX_LIGHT_SWITCH_OFF_ITEM, true);
 					}
 				}
-				if (!AUX_LIGHT_INTENSITY_PROPERTY->hidden) {
-					AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
-					if (flipflat_command(PRIVATE_DATA->handle, ">J000", response) && *response == '*') {
-						int type, value;
-						if (sscanf(response, "*J%02d%3d", &type, &value) == 2) {
-							AUX_LIGHT_INTENSITY_ITEM->number.value = AUX_LIGHT_INTENSITY_ITEM->number.target = value;
-							AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
-						}
+			}
+			if (!AUX_LIGHT_INTENSITY_PROPERTY->hidden) {
+				AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
+				if (flipflat_command(PRIVATE_DATA->handle, ">J000", response) && *response == '*') {
+					int type, value;
+					if (sscanf(response, "*J%02d%3d", &type, &value) == 2) {
+						AUX_LIGHT_INTENSITY_ITEM->number.value = AUX_LIGHT_INTENSITY_ITEM->number.target = value;
+						AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
 					}
 				}
-
 			}
 		}
 		switch AUX_COVER {
@@ -148,7 +145,7 @@ driver flipflat {
 				label = "Close";
 				value = true;
 			}
-			change {
+			on_change {
 				char command[16],	response[16];
 				strcpy(command, AUX_COVER_OPEN_ITEM->sw.value ? ">O000" : ">C000");
 				if (flipflat_command(PRIVATE_DATA->handle, command, response) && *response == '*') {
@@ -183,7 +180,7 @@ driver flipflat {
 				label = "Off";
 				value = true;
 			}
-			change {
+			on_change {
 				char command[16],	response[16];
 				strcpy(command, AUX_LIGHT_SWITCH_ON_ITEM->sw.value ? ">L000" : ">D000");
 				if (!flipflat_command(PRIVATE_DATA->handle, command, response) || *response != '*') {
@@ -202,7 +199,7 @@ driver flipflat {
 				step = 1;
 				value = 50;
 			}
-			change {
+			on_change {
 				char command[16],	response[16];
 				sprintf(command, ">B%03d", (int)(AUX_LIGHT_INTENSITY_ITEM->number.value));
 				if (!flipflat_command(PRIVATE_DATA->handle, command, response) || *response != '*') {
@@ -210,7 +207,7 @@ driver flipflat {
 				}
 			}
 		}
-		attach {
+		on_attach {
 			INFO_PROPERTY->count = 5;
 		}
 	}

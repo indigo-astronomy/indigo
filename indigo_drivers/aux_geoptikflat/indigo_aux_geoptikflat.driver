@@ -68,24 +68,22 @@ driver geoptikflat {
 		name = "Geoptik Flat Generator";
 		additional_instances = true;
 		interface = INDIGO_INTERFACE_AUX_LIGHTBOX;
-		inherited CONNECTION {
-			change {
-				char command[16],	response[16];
-				if (geoptikflat_command(PRIVATE_DATA->handle, ">VOOO", response)) {
-					snprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, INDIGO_VALUE_SIZE, "%s", response);
-					indigo_update_property(device, INFO_PROPERTY, NULL);
-				}
-				sprintf(command, ">B%03d", INTENSITY(AUX_LIGHT_INTENSITY_ITEM->number.value));
-				if (geoptikflat_command(PRIVATE_DATA->handle, command, response) && !strncmp(response, "*B", 2)) {
-					AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
-				} else {
-					AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
-				}
-				if (geoptikflat_command(PRIVATE_DATA->handle, AUX_LIGHT_SWITCH_ON_ITEM->sw.value ? ">LOOO" : ">DOOO", response) && !strncmp(response, AUX_LIGHT_SWITCH_ON_ITEM->sw.value ? "*L" : "*D", 2)) {
-					AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_OK_STATE;
-				} else {
-					AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
-				}
+		on_connect {
+			char command[16],	response[16];
+			if (geoptikflat_command(PRIVATE_DATA->handle, ">VOOO", response)) {
+				snprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, INDIGO_VALUE_SIZE, "%s", response);
+				indigo_update_property(device, INFO_PROPERTY, NULL);
+			}
+			sprintf(command, ">B%03d", INTENSITY(AUX_LIGHT_INTENSITY_ITEM->number.value));
+			if (geoptikflat_command(PRIVATE_DATA->handle, command, response) && !strncmp(response, "*B", 2)) {
+				AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
+			} else {
+				AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+			if (geoptikflat_command(PRIVATE_DATA->handle, AUX_LIGHT_SWITCH_ON_ITEM->sw.value ? ">LOOO" : ">DOOO", response) && !strncmp(response, AUX_LIGHT_SWITCH_ON_ITEM->sw.value ? "*L" : "*D", 2)) {
+				AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_OK_STATE;
+			} else {
+				AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 		}
 		switch AUX_LIGHT_SWITCH {
@@ -99,7 +97,7 @@ driver geoptikflat {
 				label = "Off";
 				value = true;
 			}
-			change {
+			on_change {
 				char response[16];
 				if (!geoptikflat_command(PRIVATE_DATA->handle, AUX_LIGHT_SWITCH_ON_ITEM->sw.value ? ">LOOO" : ">DOOO", response) || strncmp(response, AUX_LIGHT_SWITCH_ON_ITEM->sw.value ? "*L" : "*D", 2)) {
 					AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -117,7 +115,7 @@ driver geoptikflat {
 				step = 1;
 				value = 50;
 			}
-			change {
+			on_change {
 				char command[16],	response[16];
 				sprintf(command, ">B%03d", INTENSITY(AUX_LIGHT_INTENSITY_ITEM->number.value));
 				if (!geoptikflat_command(PRIVATE_DATA->handle, command, response) || strncmp(response, "*B", 2)) {
@@ -125,7 +123,7 @@ driver geoptikflat {
 				}
 			}
 		}
-		attach {
+		on_attach {
 			INFO_PROPERTY->count = 6;
 		}
 	}
