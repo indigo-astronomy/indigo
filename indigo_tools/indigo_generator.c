@@ -50,7 +50,7 @@ typedef struct item_type {
 typedef struct property_type {
 	struct property_type *next;
 	char type[12], id[64], handle[64], name[64], define_name[64], pointer[64], handler[64], label[256], group[32],  perm[32], rule[32];
-	bool always_defined, handle_change, synchronized_change, persistent;
+	bool always_defined, handle_change, synchronized_change, persistent, hidden;
 	int max_name_length;
 	code_type *code, *on_attach, *on_change, *on_detach;
 	item_type *items;
@@ -651,6 +651,9 @@ bool parse_property_block(device_type *device, property_type **properties) {
 					continue;
 				}
 				if (parse_expression_attribute("pointer", property->pointer, sizeof(property->pointer))) {
+					continue;
+				}
+				if (parse_bool_attribute("hidden", &property->hidden)) {
 					continue;
 				}
 				if (parse_bool_attribute("always_defined", &property->always_defined)) {
@@ -1470,6 +1473,10 @@ void write_c_attach(device_type *device) {
 					}
 					break;
 			}
+			if (property->hidden) {
+				write_line("\t\t%s->hidden = true;");
+
+			}
 		}
 		write_c_code_blocks(property->on_attach, 0);
 	}
@@ -1865,17 +1872,19 @@ int main(int argc, char **argv) {
 		fprintf(stderr, "\nFailed to parse definition file\n");
 		return 1;
 	}
-	char file_name[64];
-	snprintf(file_name, sizeof(file_name), "indigo_%s_%s.h", driver->devices->type, driver->name);
-	fprintf(stderr, "Writing %s ...\n", file_name);
-	freopen(file_name, "w", stdout);
-	write_h_source();
-	snprintf(file_name, sizeof(file_name), "indigo_%s_%s_main.c", driver->devices->type, driver->name);
-	fprintf(stderr, "Writing %s ...\n", file_name);
-	freopen(file_name, "w", stdout);
-	write_c_main_source();
-	snprintf(file_name, sizeof(file_name), "indigo_%s_%s.c", driver->devices->type, driver->name);
-	fprintf(stderr, "Writing %s ...\n", file_name);
-	freopen(file_name, "w", stdout);
-	write_c_source();
+	if (driver->devices) {
+		char file_name[64];
+		snprintf(file_name, sizeof(file_name), "indigo_%s_%s.h", driver->devices->type, driver->name);
+		fprintf(stderr, "Writing %s ...\n", file_name);
+		freopen(file_name, "w", stdout);
+		write_h_source();
+		snprintf(file_name, sizeof(file_name), "indigo_%s_%s_main.c", driver->devices->type, driver->name);
+		fprintf(stderr, "Writing %s ...\n", file_name);
+		freopen(file_name, "w", stdout);
+		write_c_main_source();
+		snprintf(file_name, sizeof(file_name), "indigo_%s_%s.c", driver->devices->type, driver->name);
+		fprintf(stderr, "Writing %s ...\n", file_name);
+		freopen(file_name, "w", stdout);
+		write_c_source();
+	}
 }
