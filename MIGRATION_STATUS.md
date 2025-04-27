@@ -18,8 +18,8 @@
 | aux_astromechanics | 3️⃣ | ✅ Yes | ✅ Yes | |
 | aux_cloudwatcher | 2️⃣ | ❌ No | ❌ No | |
 | aux_dragonfly | 2️⃣ | ❌ No | ❌ No | |
-| aux_dsusb | 3️⃣ | ❌ No | ✅ Yes | ⏰ TODO -  make libdsusb for Windows |
-| aux_fbc | 3️⃣ | ✅ Yes | ✅ Yes | ⏰ TODO -  needs debugging with physical device |
+| aux_dsusb | 3️⃣ | ❌ No | ✅ Yes | ⏰ TODO - make libdsusb for Windows |
+| aux_fbc | 3️⃣ | ✅ Yes | ✅ Yes | ⏰ TODO - needs debugging with physical device |
 | aux_flatmaster | 3️⃣ | ✅ Yes | ✅ Yes | |
 | aux_flipflat | 3️⃣ | ✅ Yes | ✅ Yes | |
 | aux_geoptikflat | 3️⃣ | ✅ Yes | ✅ Yes | |
@@ -38,14 +38,14 @@
 | aux_wbprov3 | 3️⃣ | ✅ Yes | ❌ No | |
 | aux_wcv4ec | 3️⃣ | ✅ Yes | ❌ No | |
 | ccd_altair | 3️⃣ | ✅ Yes | ❌ No | |
-| ccd_apogee | 2️⃣ | ❌ No | ❌ No | ⏰ TODO -  compile boost_regex and libapogee on Windows |
+| ccd_apogee | 2️⃣ | ❌ No | ❌ No | ⏰ TODO - make boost_regex and libapogee for Windows |
 | ccd_asi | 3️⃣ | ✅ Yes | ❌ No | |
-| ccd_atik | 3️⃣ | ✅ Yes | ❌ No | ⏰ TODO -  find SDK for arm64 macOS |
+| ccd_atik | 3️⃣ | ✅ Yes | ❌ No | ⏰ TODO - find SDK for arm64 macOS |
 | ccd_atik2 | 3️⃣ | ❌ No | ❌ No | ⛔ macOS only, temporary workaround for ccd_atik on arm64 |
 | ccd_bresser | 3️⃣ | ✅ Yes | ❌ No | ➡️ Touptek |
 | ccd_dsi | 3️⃣ | ✅ Yes | ❌ No | |
 | ccd_fli | 3️⃣ | ✅ Yes | ❌ No | |
-| ccd_iidc | 2️⃣ | ❌ No | ❌ No | ⏰ TODO -  make libdc1394 run on Windows |
+| ccd_iidc | 2️⃣ | ❌ No | ❌ No | ⏰ TODO - make libdc1394 for Windows |
 | ccd_mallin | 3️⃣ | ✅ Yes | ❌ No | ➡️ Touptek |
 | ccd_mi | 2️⃣ | ❌ No | ❌ No | ⛔ Unix and Windows SDKs are not compatible |
 | ccd_ogma | 3️⃣ | ✅ Yes | ❌ No | ➡️ Touptek |
@@ -53,15 +53,15 @@
 | ccd_pentax | 2️⃣ | ❌ No | ❌ No | 🚧 Unfinished & stalled |
 | ccd_playerone | 3️⃣ | ✅ Yes | ❌ No | |
 | ccd_ptp | 2️⃣ | ❌ No | ❌ No | |
-| ccd_qhy | 3️⃣ | ❌ No | ❌ No | ⏰ TODO -  make libqhy for Windows |
+| ccd_qhy | 3️⃣ | ❌ No | ❌ No | ⏰ TODO - make libqhy for Windows |
 | ccd_qhy2 | 3️⃣ | ✅ Yes | ❌ No | |
-| ccd_qsi | 2️⃣ | ❌ No | ❌ No | ⏰ TODO -  find SDK for windows |
+| ccd_qsi | 2️⃣ | ❌ No | ❌ No | ⏰ TODO - find SDK for windows |
 | ccd_rising | 3️⃣ | ✅ Yes | ❌ No | ➡️ Touptek |
-| ccd_sbig | 2️⃣ | ❌ No | ❌ No | ⏰ TODO -  find SDK for windows |
+| ccd_sbig | 2️⃣ | ❌ No | ❌ No | ⏰ TODO - find SDK for windows |
 | ccd_simulator | 3️⃣ | ✅ Yes | ❌ No | |
 | ccd_ssag | 3️⃣ | ✅ Yes | ❌ No | |
 | ccd_ssg | 3️⃣ | ✅ Yes | ❌ No | ➡️ Touptek |
-| ccd_svb | 2️⃣ | ❌ No | ❌ No | ⏰ TODO -  find SDK for windows |
+| ccd_svb | 2️⃣ | ❌ No | ❌ No | ⏰ TODO - find SDK for windows |
 | ccd_svb2 | 3️⃣ | ✅ Yes | ❌ No | ➡️ Touptek |
 | ccd_sx | 3️⃣ | ✅ Yes | ❌ No | |
 | ccd_touptek | 3️⃣ | ✅ Yes | ❌ No | |
@@ -81,7 +81,7 @@
 | focuser_dsd | 2️⃣ | ❌ No | ❌ No | |
 | focuser_efa | 2️⃣ | ❌ No | ❌ No | |
 | focuser_fc3 | 3️⃣ | ✅ Yes | ❌ No | |
-| focuser_fcusb | 3️⃣ | ❌ No | ✅ Yes | ⏰ TODO -  make libfcusb for Windows |
+| focuser_fcusb | 3️⃣ | ❌ No | ✅ Yes | ⏰ TODO - make libfcusb for Windows |
 | focuser_fli | 3️⃣ | ✅ Yes | ❌ No | |
 | focuser_focusdreampro | 3️⃣ | ✅ Yes | ❌ No | |
 | focuser_ioptron | 3️⃣ | ✅ Yes | ❌ No | |
@@ -104,16 +104,16 @@
 | focuser_usbv3 | 2️⃣ | ❌ No | ❌ No | |
 | focuser_wemacro | 2️⃣ | ❌ No | ❌ No | |
 | focuser_wemacro_bt | 2️⃣ | ❌ No | ❌ No | ⛔ macOS only |
-| gps_gpsd | 2️⃣ | ❌ No | ❌ No | ⏰ TODO -  make libgps run on Windows |
+| gps_gpsd | 2️⃣ | ❌ No | ❌ No | ⏰ TODO - make libgps for Windows |
 | gps_nmea | 3️⃣ | ✅ Yes | ✅ Yes | |
 | gps_simulator | 3️⃣ | ✅ Yes | ✅ Yes | |
-| guider_asi | 2️⃣ | ❌ No | ❌ No | ⏰ TODO -  find SDK for windows |
+| guider_asi | 2️⃣ | ❌ No | ❌ No | ⏰ TODO - find SDK for windows |
 | guider_cgusbst4 | 3️⃣ | ✅ Yes | ✅ Yes | |
-| guider_gpusb | 3️⃣ | ❌ No | ✅ Yes | ⏰ TODO -  make libgpusb for Windows |
+| guider_gpusb | 3️⃣ | ❌ No | ✅ Yes | ⏰ TODO - make libgpusb for Windows |
 | mount_asi | 2️⃣ | ❌ No | ❌ No | |
 | mount_ioptron | 2️⃣ | ❌ No | ❌ No | |
 | mount_lx200 | 2️⃣ | ❌ No | ❌ No | |
-| mount_nexstar | 2️⃣ | ❌ No | ❌ No | ⏰ TODO -  make libnexstar run on Windows |
+| mount_nexstar | 2️⃣ | ❌ No | ❌ No | ⏰ TODO - make libnexstar for Windows |
 | mount_nexstaraux | 2️⃣ | ❌ No | ❌ No | |
 | mount_pmc8 | 2️⃣ | ❌ No | ❌ No | |
 | mount_rainbow | 2️⃣ | ❌ No | ❌ No | |
@@ -139,7 +139,7 @@
 | wheel_playerone | 3️⃣ | ✅ Yes | ❌ No | |
 | wheel_qhy | 3️⃣ | ✅ Yes | ❌ No | |
 | wheel_quantum | 3️⃣ | ✅ Yes | ❌ No | |
-| wheel_sx | 2️⃣ | ❌ No | ❌ No | |
+| wheel_sx | 2️⃣ | ❌ No | ❌ No | ⏰ TODO - make hidapi for Windows |
 | wheel_trutek | 3️⃣ | ✅ Yes | ❌ No | |
 | wheel_xagyl | 3️⃣ | ✅ Yes | ❌ No | |
 
