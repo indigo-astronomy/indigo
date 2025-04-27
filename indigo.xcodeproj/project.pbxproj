@@ -838,6 +838,7 @@
 		59E6B7FB27E383B9007A2A7B /* libgxccd.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A52D5B21A3360B000B6F27 /* libgxccd.a */; };
 		59E717D82D50234B00BA2CBE /* indigo_focuser_qhy.c in Sources */ = {isa = PBXBuildFile; fileRef = 59E717D32D5022CD00BA2CBE /* indigo_focuser_qhy.c */; };
 		59E717D92D50234B00BA2CBE /* indigo_focuser_qhy.c in Sources */ = {isa = PBXBuildFile; fileRef = 59E717D32D5022CD00BA2CBE /* indigo_focuser_qhy.c */; };
+		59E7C83A2DBE2D0B00C84BAB /* indigo_metadata_extractor.c in Sources */ = {isa = PBXBuildFile; fileRef = 59E7C8392DBE2D0B00C84BAB /* indigo_metadata_extractor.c */; };
 		59EF8BC924683B2A009D75C5 /* indigo_dome_baader.c in Sources */ = {isa = PBXBuildFile; fileRef = 59EF8BC024683B10009D75C5 /* indigo_dome_baader.c */; };
 		59EFE8A62363483000ED5337 /* indigo_focuser_focusdreampro.c in Sources */ = {isa = PBXBuildFile; fileRef = 59EFE8A22363481D00ED5337 /* indigo_focuser_focusdreampro.c */; };
 		59F0FE2D2083EA4F001B34E9 /* indigo_ccd_simulator_data.c in Sources */ = {isa = PBXBuildFile; fileRef = 59F0FE2C2083EA47001B34E9 /* indigo_ccd_simulator_data.c */; };
@@ -1137,6 +1138,15 @@
 			);
 			name = "Embed Libraries";
 			runOnlyForDeploymentPostprocessing = 0;
+		};
+		59E7C8342DBE2CD500C84BAB /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
 		};
 		9D1880BA1E534B5E002F75D7 /* CopyFiles */ = {
 			isa = PBXCopyFilesBuildPhase;
@@ -4448,6 +4458,8 @@
 		59E717D32D5022CD00BA2CBE /* indigo_focuser_qhy.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_qhy.c; sourceTree = "<group>"; };
 		59E717D52D5022CD00BA2CBE /* indigo_focuser_qhy_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_qhy_main.c; sourceTree = "<group>"; };
 		59E717D62D5022CD00BA2CBE /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		59E7C8382DBE2CD500C84BAB /* indigo_metadata_extractor */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = indigo_metadata_extractor; sourceTree = BUILT_PRODUCTS_DIR; };
+		59E7C8392DBE2D0B00C84BAB /* indigo_metadata_extractor.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_metadata_extractor.c; sourceTree = "<group>"; };
 		59E86E5C236CE83C00727D18 /* USB_Video_Class_1.1.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = USB_Video_Class_1.1.pdf; sourceTree = "<group>"; };
 		59E9D55D2DBD48E000D1534A /* indigo_guider_cgusbst4.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_guider_cgusbst4.driver; sourceTree = "<group>"; };
 		59EF8BC024683B10009D75C5 /* indigo_dome_baader.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_dome_baader.c; sourceTree = "<group>"; };
@@ -5126,6 +5138,13 @@
 				5947BB922990272400040E99 /* libPlayerOneCamera.dylib in Frameworks */,
 				5947BB932990272400040E99 /* libPlayerOnePW.dylib in Frameworks */,
 				5947BB942990272400040E99 /* libSVBCameraSDK.dylib in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		59E7C8332DBE2CD500C84BAB /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -6084,6 +6103,7 @@
 				598A1CB8259BA95500C0B34C /* indigo_server_m1 */,
 				5903564325AB0C02001DC5DB /* solver_test */,
 				9D44F3852DA55E3500AB7377 /* indigo_generator */,
+				59E7C8382DBE2CD500C84BAB /* indigo_metadata_extractor */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -12924,6 +12944,7 @@
 			children = (
 				598C583E21A890B5001CA8C0 /* Makefile */,
 				9D44F3802DA55CCD00AB7377 /* indigo_generator.c */,
+				59E7C8392DBE2D0B00C84BAB /* indigo_metadata_extractor.c */,
 				9DC774FA2DB8BAD400CE859C /* template.driver */,
 				59E21BE12651940F00C1E912 /* indigo_raw_to_fits.c */,
 				595705A321866D9700E713A9 /* indigo_drivers.c */,
@@ -15088,6 +15109,25 @@
 			productReference = 599C9A481DA022C0008BBCC1 /* libindigo.dylib */;
 			productType = "com.apple.product-type.library.dynamic";
 		};
+		59E7C8302DBE2CD500C84BAB /* indigo_metadata_extractor */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 59E7C8352DBE2CD500C84BAB /* Build configuration list for PBXNativeTarget "indigo_metadata_extractor" */;
+			buildPhases = (
+				59E7C8312DBE2CD500C84BAB /* Sources */,
+				59E7C8332DBE2CD500C84BAB /* Frameworks */,
+				59E7C8342DBE2CD500C84BAB /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = indigo_metadata_extractor;
+			packageProductDependencies = (
+			);
+			productName = indigo_generator;
+			productReference = 59E7C8382DBE2CD500C84BAB /* indigo_metadata_extractor */;
+			productType = "com.apple.product-type.tool";
+		};
 		9D1880A71E534B5E002F75D7 /* indigo_prop_tool */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 9D1880BB1E534B5E002F75D7 /* Build configuration list for PBXNativeTarget "indigo_prop_tool" */;
@@ -15193,6 +15233,7 @@
 				598A1CA8259BA95500C0B34C /* indigo_server_m1 */,
 				5903563B25AB0C02001DC5DB /* solver_test */,
 				9D44F3842DA55E3500AB7377 /* indigo_generator */,
+				59E7C8302DBE2CD500C84BAB /* indigo_metadata_extractor */,
 			);
 		};
 /* End PBXProject section */
@@ -15816,6 +15857,14 @@
 				594F347E278E1739002F1B21 /* indigocat_star.c in Sources */,
 				59111D0B285F524800E57194 /* indigocat_ss.c in Sources */,
 				595567D924BA00DA00DF303D /* indigo_mount_pmc8.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		59E7C8312DBE2CD500C84BAB /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				59E7C83A2DBE2D0B00C84BAB /* indigo_metadata_extractor.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -16514,6 +16563,54 @@
 			};
 			name = Release;
 		};
+		59E7C8362DBE2CD500C84BAB /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = AG8BXW65A2;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.3;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		59E7C8372DBE2CD500C84BAB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = AG8BXW65A2;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.3;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
 		9D1880BC1E534B5E002F75D7 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -16742,6 +16839,15 @@
 			buildConfigurations = (
 				599C9A4A1DA022C0008BBCC1 /* Debug */,
 				599C9A4B1DA022C0008BBCC1 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		59E7C8352DBE2CD500C84BAB /* Build configuration list for PBXNativeTarget "indigo_metadata_extractor" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				59E7C8362DBE2CD500C84BAB /* Debug */,
+				59E7C8372DBE2CD500C84BAB /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
