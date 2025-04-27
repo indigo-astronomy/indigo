@@ -1,21 +1,17 @@
 # Migration status
 
-| Agent | API | Windows support | Comment |
-| ----- | ----- | ----- | ----- |
-| agent_alpaca | 3.0 | Yes | |
-| agent_auxiliary | 3.0 | Yes | |
-| agent_config | 3.0 | Yes | |
-| agent_guider | 3.0 | Yes | |
-| agent_imager | 3.0 | Yes | |
-| agent_mount | 3.0 | Yes | |
-| agent_scripting | 3.0 | Yes | |
-| agent_astrometry | 2.0 | No | Needs fork() & pipes |
-| agent_astap | 2.0 | No | Needs fork() & pipes |
-| agent_snoop | 2.0 | No | Obsolete |
-
-
 | Driver | API | Windows support | Code generator | Comment |
 | ----- | ----- | ----- | ----- | ----- |
+| agent_alpaca | 3.0 | Yes | N/A | |
+| agent_auxiliary | 3.0 | Yes | N/A | |
+| agent_config | 3.0 | Yes | N/A | |
+| agent_guider | 3.0 | Yes | N/A | |
+| agent_imager | 3.0 | Yes | N/A | |
+| agent_mount | 3.0 | Yes | N/A | |
+| agent_scripting | 3.0 | Yes | N/A| |
+| agent_astrometry | 2.0 | No | N/A| Needs fork() & pipes |
+| agent_astap | 2.0 | No | N/A| Needs fork() & pipes |
+| agent_snoop | 2.0 | No | N/A| Obsolete |
 | ao_sx | 3.0 | Yes | Yes | |
 | aux_arteskyflat | 3.0 | Yes | Yes | |
 | aux_asiair | 2.0 | No | No | RPi only |
