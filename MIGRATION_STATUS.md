@@ -110,14 +110,14 @@
 | guider_asi | 2️⃣ | ❌ No | ❌ No | ⏰ TODO - find SDK for windows |
 | guider_cgusbst4 | 3️⃣ | ✅ Yes | ✅ Yes | |
 | guider_gpusb | 3️⃣ | ❌ No | ✅ Yes | ⏰ TODO - make libgpusb for Windows |
-| mount_asi | 2️⃣ | ❌ No | ❌ No | |
-| mount_ioptron | 2️⃣ | ❌ No | ❌ No | |
-| mount_lx200 | 2️⃣ | ❌ No | ❌ No | |
+| mount_asi | 3️⃣ | ✅ Yes | ❌ No | |
+| mount_ioptron | 3️⃣ | ✅ Yes | ❌ No | |
+| mount_lx200 | 3️⃣ | ✅ Yes | ❌ No | |
 | mount_nexstar | 2️⃣ | ❌ No | ❌ No | ⏰ TODO - make libnexstar for Windows |
 | mount_nexstaraux | 2️⃣ | ❌ No | ❌ No | |
 | mount_pmc8 | 2️⃣ | ❌ No | ❌ No | |
-| mount_rainbow | 2️⃣ | ❌ No | ❌ No | |
-| mount_simulator | 2️⃣ | ❌ No | ❌ No | |
+| mount_rainbow | 3️⃣ | ✅ Yes | ❌ No | |
+| mount_simulator | 3️⃣ | ✅ Yes | ❌ No | |
 | mount_starbook | 2️⃣ | ❌ No | ❌ No | |
 | mount_synscan | 2️⃣ | ❌ No | ❌ No | |
 | mount_temma | 2️⃣ | ❌ No | ❌ No | |
