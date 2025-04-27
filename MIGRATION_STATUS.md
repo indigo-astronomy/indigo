@@ -1,7 +1,7 @@
 # Migration status
 
 | Agent | API | Windows support | Comment |
-| ----- | ----- | ----- | ----- | ----- |
+| ----- | ----- | ----- | ----- |
 | agent_alpaca | 3.0 | Yes | |
 | agent_auxiliary | 3.0 | Yes | |
 | agent_config | 3.0 | Yes | |
