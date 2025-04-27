@@ -93,6 +93,7 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_aux_ prefix
 			handle_change = false; // use this if property change shouldn't be handled (bool C expression, default depend on perm)
 			synchronized_change = false; // use this if property change should be synchronized (bool C expression, default is true)
 			always_defined = true; // use this if property should be always defined (bool literal, default is false)
+			hidden = true; // use if this property should be initially hidden
 			item XXXXX { // replace XXXXX with item base name without _ITEM suffix, repeat block as many times as you need (mandatory identifier literal)
 				label = XXXXX; // replace XXXXX with descriptive item label (C string expression)
 				value = XXXXX; // replace XXXXX with item initial value (C bool expression, default value is false)
@@ -112,6 +113,7 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_aux_ prefix
 			handle_change = false; // use this if property change shouldn't be handled (bool C expression, default depend on perm)
 			synchronized_change = false; // use this if property change should be synchronized (bool C expression, default is true)
 			always_defined = true; // use this if property should be always defined (bool literal, default is false)
+			hidden = true; // use if this property should be initially hidden
 			item XXXXX { // replace XXXXX with item base name without _ITEM suffix, repeat block as many times as you need (mandatory identifier literal)
 				label = XXXXX; // replace XXXXX with descriptive item label (C string expression)
 				value = XXXXX; // replace XXXXX with item initial value (C string expression)
@@ -131,6 +133,7 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_aux_ prefix
 			handle_change = false; // use this if property change shouldn't be handled (bool C expression, default depend on perm)
 			synchronized_change = false; // use this if property change should be synchronized (bool C expression, default is true)
 			always_defined = true; // use this if property should be always defined (bool literal, default is false)
+			hidden = true; // use if this property should be initially hidden
 			item XXXXX { // replace XXXXX with item base name without _ITEM suffix, repeat block as many times as you need (mandatory identifier literal)
 				label = XXXXX; // replace XXXXX with descriptive item label (C string expression)
 				value = XXXXX; // replace XXXXX with item initial value (C double expression, default value is 0)
@@ -150,6 +153,7 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_aux_ prefix
 			name = XXXXX;  // replace XXXXX with item name  (string literal)
 			group = XXXXX; // replace XXXXX with group name (C string expression, default is MAIN_GROUP)
 			always_defined = true; // use this if property should be always defined (bool literal, default is false)
+			hidden = true; // use if this property should be initially hidden
 			item XXXXX { // replace XXXXX with item base name without _ITEM suffix, repeat block as many times as you need (mandatory identifier literal)
 				label = XXXXX; // replace XXXXX with descriptive item label (C string expression)
 				value = XXXXX; // replace XXXXX with item initial value (C int expression, default value is INDIGO_IDLE_STATE)

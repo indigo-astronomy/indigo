@@ -2069,6 +2069,7 @@ void write_definition_source(void) {
 				write_line("\t\t\t// handle_change = false;");
 				write_line("\t\t\t// synchronized_change = false;");
 				write_line("\t\t\t// always_defined = true;");
+				write_line("\t\t\t// hidden = true;");
 				for (item_type *item = property->items; item; item = item->next) {
 					write_line("\t\t\t%s {", item->id);
 					write_line("\t\t\t\tname = %s;", item->name);
