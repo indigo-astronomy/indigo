@@ -1,6 +1,6 @@
 # Migration status
 
-| Driver | API | Windows support | Code generator | Comment |
+| Driver | API | Windows | Generator | Comment |
 | ----- | ----- | ----- | ----- | ----- |
 | agent_alpaca | 3️⃣ | ✅ Yes | ⛔ N/A | |
 | agent_auxiliary | 3️⃣ | ✅ Yes | ⛔ N/A | |
@@ -34,14 +34,14 @@
 | aux_upb | 3️⃣ | ✅ Yes | ❌ No | |
 | aux_upb3 | 3️⃣ | ✅ Yes | ✅ Yes | |
 | aux_usbdp | 3️⃣ | ✅ Yes | ❌ No | |
-| aux_wbplusv3 | 2️⃣ |Yes | ❌ No | |
+| aux_wbplusv3 | 3️⃣ | ✅ Yes | ❌ No | |
 | aux_wbprov3 | 3️⃣ | ✅ Yes | ❌ No | |
 | aux_wcv4ec | 3️⃣ | ✅ Yes | ❌ No | |
 | ccd_altair | 3️⃣ | ✅ Yes | ❌ No | |
 | ccd_apogee | 2️⃣ | ❌ No | ❌ No | ⏰ TODO - make boost_regex and libapogee for Windows |
 | ccd_asi | 3️⃣ | ✅ Yes | ❌ No | |
 | ccd_atik | 3️⃣ | ✅ Yes | ❌ No | ⏰ TODO - find SDK for arm64 macOS |
-| ccd_atik2 | 3️⃣ | ❌ No | ❌ No | ⛔ macOS only, temporary workaround for ccd_atik on arm64 |
+| ccd_atik2 | 3️⃣ | ❌ No | ❌ No | ⛔ macOS only, temporary workaround |
 | ccd_bresser | 3️⃣ | ✅ Yes | ❌ No | ➡️ Touptek |
 | ccd_dsi | 3️⃣ | ✅ Yes | ❌ No | |
 | ccd_fli | 3️⃣ | ✅ Yes | ❌ No | |
