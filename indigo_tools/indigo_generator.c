@@ -1861,6 +1861,10 @@ void read_c_source(void) {
 			if (device) {
 				device->additional_instances = true;
 			}
+		} else if (sscanf(line, " %127[^-]->hidden = %127[^;];", s1, s2) == 2 && strcmp(s2, "true") == 0) {
+			if (property && strcmp(s1, property->handle) == 0) {
+				property->hidden = true;
+			}
 		} else if (sscanf(line, " static indigo_device %127[^_]_template = %127[^(](", s1, s2) == 2 && strcmp(s2, "INDIGO_DEVICE_INITIALIZER") == 0) {
 			if (fgets(line, sizeof(line), stdin)) {
 				if (sscanf(line, " \"%127[^\"]\"", s3) == 1) {
@@ -1916,6 +1920,7 @@ void read_c_source(void) {
 			if (device) {
 				property = allocate(sizeof(property_type));
 				strncpy(property->type, "switch", sizeof(property->type));
+				snprintf(property->handle, sizeof(property->handle), "%s", s1);
 				int l = (int)strlen(s1);
 				if (l > 9 && strncmp(s1 + l - 9, "_PROPERTY", 9) == 0) {
 					s1[l - 9] = 0;
@@ -1932,6 +1937,7 @@ void read_c_source(void) {
 			if (device) {
 				property = allocate(sizeof(property_type));
 				strncpy(property->type, "light", sizeof(property->type));
+				snprintf(property->handle, sizeof(property->handle), "%s", s1);
 				int l = (int)strlen(s1);
 				if (l > 9 && strncmp(s1 + l - 9, "_PROPERTY", 9) == 0) {
 					s1[l - 9] = 0;
@@ -1946,6 +1952,7 @@ void read_c_source(void) {
 			if (device) {
 				property = allocate(sizeof(property_type));
 				strncpy(property->type, s2, sizeof(property->type));
+				snprintf(property->handle, sizeof(property->handle), "%s", s1);
 				int l = (int)strlen(s1);
 				if (l > 9 && strncmp(s1 + l - 9, "_PROPERTY", 9) == 0) {
 					s1[l - 9] = 0;
@@ -1987,21 +1994,23 @@ void read_c_source(void) {
 				append((void **)&property->items, item);
 			}
 		} else if (sscanf(line, " } else if (%127[^(](%127[^,], property)) {", s1, s2) == 2 && strcmp(s1, "indigo_property_match_changeable") == 0) {
-			int l = (int)strlen(s2);
-			if (l > 9 && strncmp(s2 + l - 9, "_PROPERTY", 9) == 0) {
-				s2[l - 9] = 0;
-			}
-			if (strcmp(s2, "CONFIG") && strcmp(s2, "CONNECTION")) {
+			if (strcmp(s2, "CONFIG_PROPERTY") && strcmp(s2, "CONNECTION_PROPERTY")) {
 				if (device) {
 					property = NULL;
 					for (property_type *p = device->properties; p; p = p->next) {
-						if (strncmp(p->id, s2, strlen(s2)) == 0) {
+						if (strcmp(p->handle, s2) == 0) {
 							property = p;
 							break;
 						}
 					}
 					if (property == NULL) {
 						property = allocate(sizeof(property_type));
+						snprintf(property->handle, sizeof(property->id), "%s", s2);
+						int l = (int)strlen(s2);
+						if (l > 9 && strncmp(s2 + l - 9, "_PROPERTY", 9) == 0) {
+							s2[l - 9] = 0;
+							snprintf(property->id, sizeof(property->id), "%s", s2);
+						}
 						strncpy(property->type, "inherited", sizeof(property->type));
 						snprintf(property->id, sizeof(property->id), "%s", s2);
 						append((void **)&device->properties, property);
@@ -2065,11 +2074,13 @@ void write_definition_source(void) {
 				if (*property->rule && strcmp(property->rule, "INDIGO_ONE_OF_MANY_RULE")) {
 					write_line("\t\t\trule = %s;", property->rule);
 				}
+				if (property->hidden) {
+					write_line("\t\t\thidden = true;");
+				}
 				write_line("\t\t\t// persistent = true;");
 				write_line("\t\t\t// handle_change = false;");
 				write_line("\t\t\t// synchronized_change = false;");
 				write_line("\t\t\t// always_defined = true;");
-				write_line("\t\t\t// hidden = true;");
 				for (item_type *item = property->items; item; item = item->next) {
 					write_line("\t\t\t%s {", item->id);
 					write_line("\t\t\t\tname = %s;", item->name);

@@ -4831,6 +4831,7 @@
 		9D97F81A1D9A8A5D00582EAF /* indigo_server.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_server.c; sourceTree = "<group>"; wrapsLines = 0; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		9D97F81E1D9E9E4F00582EAF /* indigo_version.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_version.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		9D97F81F1D9E9E4F00582EAF /* indigo_version.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_version.h; sourceTree = "<group>"; };
+		9D9A0E932DBF535C009EE542 /* indigo_aux_upb.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_aux_upb.driver; sourceTree = "<group>"; };
 		9D9EA6A01DBE1F7300E11841 /* indigo_ccd_atik_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_atik_main.c; sourceTree = "<group>"; };
 		9D9EA6A11DBE1F7300E11841 /* indigo_ccd_atik.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_ccd_atik.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		9D9EA6A21DBE1F7300E11841 /* indigo_ccd_atik.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_atik.h; sourceTree = "<group>"; };
@@ -13462,9 +13463,10 @@
 				9D6940832180B9F600AB112C /* indigo_aux_upb.h */,
 				9D6940892180B9F600AB112C /* indigo_aux_upb.c */,
 				9D69408B2180B9F600AB112C /* indigo_aux_upb_main.c */,
+				9D9A0E932DBF535C009EE542 /* indigo_aux_upb.driver */,
+				59CD7311218EF88600F646D4 /* 99-indigo_aux_upb.rules */,
 				9D69408E2180BA4300AB112C /* Ultimate_Powerbox_Serial_Command_Table.pdf */,
 				59C5806922EB6C33005BE502 /* Ultimate_Powerbox_v2_Serial_Command_Table.pdf */,
-				59CD7311218EF88600F646D4 /* 99-indigo_aux_upb.rules */,
 				9D69408C2180BA1800AB112C /* upb_simulator */,
 			);
 			path = aux_upb;
