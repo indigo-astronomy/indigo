@@ -483,8 +483,8 @@ static void *switch_protocol_handler(parser_state state, parser_context *context
 		indigo_uni_handle **output = ((indigo_adapter_context *)(context->device->device_context))->output;
 		indigo_uni_handle **input = ((indigo_adapter_context *)(context->device->device_context))->input;
 		if (input == output) {
-			// TBD!!!
-			indigo_uni_printf(*output, "<callBack name='%s' url='http://%s:7624'/>\n", indigo_local_service_name, indigo_local_service_name);
+//			TODO: Finish callBack support
+//			indigo_uni_printf(*output, "<callBack name='%s' url='http://%s:7624'/>\n", indigo_local_service_name, indigo_local_service_name);
 		}
 		return top_level_handler;
 	}
@@ -1284,8 +1284,9 @@ static void *top_level_handler(parser_state state, parser_context *context, char
 			return enable_blob_handler;
 		if (!strcmp(name, "getProperties") && client != NULL)
 			return get_properties_handler;
-		if (!strcmp(name, "callBack"))
-			return call_back_handler;
+// TODO: Finish callBack support
+//		if (!strcmp(name, "callBack"))
+//			return call_back_handler;
 		if (!strcmp(name, "newTextVector")) {
 			property->type = INDIGO_TEXT_VECTOR;
 			return new_text_vector_handler;
