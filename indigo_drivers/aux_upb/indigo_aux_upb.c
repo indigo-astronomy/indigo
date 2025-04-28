@@ -136,7 +136,9 @@
 #define AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROPERTY		(PRIVATE_DATA->save_defaults_property)
 #define AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM				(AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROPERTY->items + 0)
 
+//+ "definitions"
 #define AUX_GROUP															"Powerbox"
+//-
 
 typedef struct {
 	indigo_uni_handle *handle;
@@ -159,12 +161,17 @@ typedef struct {
 	indigo_property *reboot_property;
 	indigo_property *variable_power_outlet_property;
 	int count;
+	//+ "data"
 	int version;
 	libusb_device_handle *smart_hub;
+	//- "data"
 	pthread_mutex_t mutex;
 } upb_private_data;
 
 // -------------------------------------------------------------------------------- Low level communication routines
+
+//+ "code"
+
 
 static bool upb_command(indigo_device *device, char *command, char *response, int max) {
 	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
@@ -208,6 +215,8 @@ static void upb_open(indigo_device *device) {
 	}
 }
 
+//-
+
 // -------------------------------------------------------------------------------- INDIGO aux device implementation
 
 static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
@@ -216,9 +225,11 @@ static indigo_result aux_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_aux_attach(device, DRIVER_NAME, DRIVER_VERSION, INDIGO_INTERFACE_AUX_POWERBOX | INDIGO_INTERFACE_AUX_WEATHER) == INDIGO_OK) {
+		//+ "aux.on_attach"
 		INFO_PROPERTY->count = 6;
 		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+		//-
 		// -------------------------------------------------------------------------------- OUTLET_NAMES
 		AUX_OUTLET_NAMES_PROPERTY = indigo_init_text_property(NULL, device->name, AUX_OUTLET_NAMES_PROPERTY_NAME, AUX_GROUP, "Outlet names", INDIGO_OK_STATE, INDIGO_RW_PERM, 13);
 		if (AUX_OUTLET_NAMES_PROPERTY == NULL) {

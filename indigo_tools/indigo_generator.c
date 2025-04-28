@@ -1852,7 +1852,7 @@ void read_c_source(void) {
 	item_type *item = NULL;
 	while (fgets(line, sizeof(line), stdin)) {
 		line[strcspn(line, "\n")] = 0;
-		if (!strncmp(line, "//", 2)) {
+		if (!strncmp(line, "// ", 3) || !strncmp(line, "//\n", 3)) {
 			if (sscanf(line, "// Copyright (c) %d %127[^\0]", &i1, s1) == 2) {
 				if (i1 < 2025) {
 					snprintf(driver.copyright, sizeof(driver.copyright), "Copyright (c) %d-2025 %s", i1, s1);
@@ -1861,6 +1861,75 @@ void read_c_source(void) {
 				}
 			} else if (sscanf(line, "// %lf by %127[^\0]", &d1, s1) == 2) {
 				strncpy(driver.author, s1, sizeof(driver.author));
+			}
+		} else if (sscanf(line, " //+ \"%127[^\"]\"", s1) == 1) {
+			code_type *code = allocate(sizeof(code_type));
+			int current_length = 0;
+			int current_size = 1024;
+			code->text = malloc(current_size);
+			while (fgets(line, sizeof(line), stdin)) {
+				if (strstr(line, "//-")) {
+					break;
+				}
+				int line_length = (int)strlen(line);
+				if (line_length == 1 && current_length == 0) {
+					continue;
+				}
+				if (current_length + line_length >= current_size) {
+					code->text = realloc(code->text, current_size += 1024);
+				}
+				strcpy(code->text + current_length, line);
+				current_length += line_length;
+			}
+			while (current_length > 1 && code->text[current_length - 1] == '\n') {
+				current_length--;
+			}
+			code->size = current_length;
+			if (code->size <= 1) {
+				free(code->text);
+				free(code);
+			} else if (strcmp(s1, "include") == 0) {
+				append((void **)&driver.include, code);
+			} else if (strcmp(s1, "define") == 0 || strcmp(s1, "definitions") == 0) {
+				append((void **)&driver.define, code);
+			} else if (strcmp(s1, "data") == 0) {
+				append((void **)&driver.data, code);
+			} else if (strcmp(s1, "code") == 0) {
+				append((void **)&driver.code, code);
+			} else if (strcmp(s1, "on_init") == 0) {
+				append((void **)&driver.on_init, code);
+			} else if (strcmp(s1, "on_shutdown") == 0) {
+				append((void **)&driver.on_shutdown, code);
+			} else if (sscanf(s1, "%127[^.].%127[^.]", s2, s3) == 2) {
+				for (device_type *device = driver.devices; device; device = device->next) {
+					if (strcmp(device->type, s2) == 0) {
+						if (strcmp(s1, "code") == 0) {
+							append((void **)&device->code, code);
+						} else if (strcmp(s3, "on_timer") == 0) {
+							append((void **)&device->on_timer, code);
+						} else if (strcmp(s3, "on_attach") == 0) {
+							append((void **)&device->on_attach, code);
+						} else if (strcmp(s3, "on_detach") == 0) {
+							append((void **)&device->on_detach, code);
+						}
+					}
+				}
+			} else if (sscanf(s1, "%127[^.].%127[^.].%127[^.]", s2, s3, s4) == 3) {
+				for (device_type *device = driver.devices; device; device = device->next) {
+					if (strcmp(device->type, s2) == 0) {
+						for (property_type *property = device->properties; property; property = property->next) {
+							if (strcmp(property->id, s3) == 0) {
+								if (strcmp(s4, "on_change") == 0) {
+									append((void **)&property->on_change, code);
+								} else if (strcmp(s4, "on_attach") == 0) {
+									append((void **)&property->on_attach, code);
+								} else if (strcmp(s4, "on_detach") == 0) {
+									append((void **)&property->on_detach, code);
+								}
+							}
+						}
+					}
+				}
 			}
 		} else if (sscanf(line, "#define DRIVER_VERSION 0x%x", &i1) == 1) {
 			driver.version = (i1 & 0xFF) + 1;
@@ -2215,10 +2284,34 @@ void write_definition_source(void) {
 		}
 		write_line("\t}");
 	}
-	write_line("\t// include { }");
-	write_line("\t// define { }");
-	write_line("\t// data { }");
-	write_line("\t// code { }");
+	if (driver.include) {
+		write_line("\tinclude {");
+		write_code_block(driver.include, 2);
+		write_line("\t}");
+	} else {
+		write_line("\t// include { }");
+	}
+	if (driver.define) {
+		write_line("\tdefine {");
+		write_code_block(driver.define, 2);
+		write_line("\t}");
+	} else {
+		write_line("\t// define { }");
+	}
+	if (driver.data) {
+		write_line("\tdata {");
+		write_code_block(driver.data, 2);
+		write_line("\t}");
+	} else {
+		write_line("\t// data { }");
+	}
+	if (driver.code) {
+		write_line("\tcode {");
+		write_code_block(driver.code, 2);
+		write_line("\t}");
+	} else {
+		write_line("\t// code { }");
+	}
 	write_line("\t// on_init { }");
 	write_line("\t// on_shutdown { }");
 	for (device_type *device = driver.devices; device; device = device->next) {
@@ -2230,16 +2323,58 @@ void write_definition_source(void) {
 		if (device->additional_instances) {
 			write_line("\t\tadditional_instances = true;");
 		}
-		write_line("\t\t// code { }");
-		write_line("\t\t// on_timer { }");
-		write_line("\t\t// on_connect { }");
-		write_line("\t\t// on_disconnect { }");
-		write_line("\t\t// on_attach { }");
-		write_line("\t\t// on_detach { }");
+		if (device->code) {
+			write_line("\t\tcode {");
+			write_code_block(device->code, 3);
+			write_line("\t\t}");
+		} else {
+			write_line("\t\t// code { }");
+		}
+		if (device->on_timer) {
+			write_line("\t\ton_timer {");
+			write_code_block(device->on_timer, 3);
+			write_line("\t\t}");
+		} else {
+			write_line("\t\t// on_timer { }");
+		}
+		if (device->on_connect) {
+			write_line("\t\ton_connect {");
+			write_code_block(device->on_connect, 3);
+			write_line("\t\t}");
+		} else {
+			write_line("\t\t// on_connect { }");
+		}
+		if (device->on_disconnect) {
+			write_line("\t\toon_disconnect {");
+			write_code_block(device->on_disconnect, 3);
+			write_line("\t\t}");
+		} else {
+			write_line("\t\t// on_disconnect { }");
+		}
+		if (device->on_attach) {
+			write_line("\t\toon_attach {");
+			write_code_block(device->on_attach, 3);
+			write_line("\t\t}");
+		} else {
+			write_line("\t\t// on_attach { }");
+		}
+		if (device->on_detach) {
+			write_line("\t\toon_detach {");
+			write_code_block(device->on_detach, 3);
+			write_line("\t\t}");
+		} else {
+			write_line("\t\t// on_detach { }");
+		}
 		for (property_type *property = device->properties; property; property = property->next) {
 			write_line("\t\t%s %s {", property->type, property->id);
 			if (property->type[0] == 'i') {
-				write_line("\t\t\t// on_change { }");
+				if (property->on_change) {
+					write_line("\t\t\toon_change {");
+					write_code_block(property->on_change, 4);
+					write_line("\t\t\t}");
+				} else {
+					write_line("\t\t\t// on_change { }");
+				}
 			} else {
 				write_line("\t\t\tname = %s;", property->name);
 				write_line("\t\t\tgroup = %s;", property->group);
@@ -2261,9 +2396,27 @@ void write_definition_source(void) {
 				}
 				write_line("\t\t\t// handle_change = false;");
 				write_line("\t\t\t// synchronized_change = false;");
-				write_line("\t\t\t// on_attach { }");
-				write_line("\t\t\t// on_change { }");
-				write_line("\t\t\t// on_detach { }");
+				if (property->on_change) {
+					write_line("\t\t\toon_change {");
+					write_code_block(property->on_change, 4);
+					write_line("\t\t\t}");
+				} else {
+					write_line("\t\t\t// on_change { }");
+				}
+				if (property->on_attach) {
+					write_line("\t\t\ton_attach {");
+					write_code_block(property->on_attach, 3);
+					write_line("\t\t\t}");
+				} else {
+					write_line("\t\t\t// on_attach { }");
+				}
+				if (property->on_detach) {
+					write_line("\t\t\ton_detach {");
+					write_code_block(property->on_detach, 3);
+					write_line("\t\t\t}");
+				} else {
+					write_line("\t\t\t// on_detach { }");
+				}
 				for (item_type *item = property->items; item; item = item->next) {
 					write_line("\t\t\titem %s {", item->id);
 					write_line("\t\t\t\tname = %s;", item->name);

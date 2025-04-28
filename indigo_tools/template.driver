@@ -67,6 +67,26 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_aux_ prefix
 		name = "XXXXX";  // replace XXXXX with device name  (string literal)
 		additional_instances = true; // use this if the driver can create additional device instances  (bool literal, default is false)
 		interface = XXXXX; // replace XXXXX with additional AUX interface like INDIGO_INTERFACE_AUX_LIGHTBOX (C uint32 expression, default is 0)
+		code {
+			// optional C code block
+			// replace content of this section with low level communication code
+		}
+		on_timer {
+			// optional C code block
+			// replace content of this section with the code for background timer
+			// started when device is connected and terminated when device is disconnected
+			// locking is handled by boilerplate code, rescheduling is not
+		}
+		on_attach {
+			// optional C code block
+			// replace content of this section is customization of attach code
+			// it is injected before definitions of local properties
+		}
+		on_detach {
+			// optional C code block
+			// replace content of this section is customization of detach code
+			// it is injected before releses of local properties
+		}
 		on_connect {
 			// optional C code block
 			// replace content of this section with intialization code in case of sucessfull connection
@@ -97,6 +117,14 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_aux_ prefix
 				label = XXXXX; // replace XXXXX with descriptive item label (C string expression)
 				value = XXXXX; // replace XXXXX with item initial value (C bool expression, default value is false)
 			}
+			on_attach {
+				// optional C code block
+				// replace content of this section with property attach handling code
+			}
+			on_detach {
+				// optional C code block
+				// replace content of this section with property detach handling code
+			}
 			on_change {
 				// optional C code block
 				// replace content of this section with property change handling code
@@ -116,6 +144,14 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_aux_ prefix
 			item XXXXX { // replace XXXXX with item base name without _ITEM suffix, repeat block as many times as you need (mandatory identifier literal)
 				label = XXXXX; // replace XXXXX with descriptive item label (C string expression)
 				value = XXXXX; // replace XXXXX with item initial value (C string expression)
+			}
+			on_attach {
+				// optional C code block
+				// replace content of this section with property attach handling code
+			}
+			on_detach {
+				// optional C code block
+				// replace content of this section with property detach handling code
 			}
 			on_change {
 				// optional C code block
@@ -141,6 +177,14 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_aux_ prefix
 				step = XXXXX; // replace XXXXX with item step value (C double expression, default value is 0)
 				format = XXXXX; // replace XXXXX with descriptive item label (C string expression, default is INDIGO default)
 			}
+			on_attach {
+				// optional C code block
+				// replace content of this section with property attach handling code
+			}
+			on_detach {
+				// optional C code block
+				// replace content of this section with property detach handling code
+			}
 			on_change {
 				// optional C code block
 				// replace content of this section with property change handling code
@@ -157,26 +201,14 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_aux_ prefix
 				label = XXXXX; // replace XXXXX with descriptive item label (C string expression)
 				value = XXXXX; // replace XXXXX with item initial value (C int expression, default value is INDIGO_IDLE_STATE)
 			}
-		}
-		code {
-			// optional C code block
-			// replace content of this section with low level communication code
-		}
-		on_timer {
-			// optional C code block
-			// replace content of this section with the code for background timer
-			// started when device is connected and terminated when device is disconnected
-			// locking is handled by boilerplate code, rescheduling is not
-		}
-		on_attach {
-			// optional C code block
-			// replace content of this section is customization of attach code
-			// it is injected before definitions of local properties
-		}
-		on_detach {
-			// optional C code block
-			// replace content of this section is customization of detach code
-			// it is injected before releses of local properties
+			on_attach {
+				// optional C code block
+				// replace content of this section with property attach handling code
+			}
+			on_detach {
+				// optional C code block
+				// replace content of this section with property detach handling code
+			}
 		}
 	}
 }
