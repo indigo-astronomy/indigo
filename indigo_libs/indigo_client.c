@@ -470,9 +470,9 @@ indigo_result indigo_connect_server_id(const char *name, const char *host, int p
 
 bool indigo_connection_status(indigo_server_entry *server, char *last_error) {
 	pthread_mutex_lock(&mutex);
-	if (server != NULL && server->handle != NULL) {
+	if (server != NULL && server->handle != NULL && last_error != NULL) {
 		strcpy(last_error, indigo_uni_strerror(server->handle));
-	} else {
+	} else if (last_error != NULL) {
 		*last_error = 0;
 	}
 	pthread_mutex_unlock(&mutex);
