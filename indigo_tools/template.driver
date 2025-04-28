@@ -76,7 +76,6 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_aux_ prefix
 			// replace content of this section with intialization code in case of sucessfull connection
 		}
 		inherited XXXXX { // replace XXXXX with inherited property base name without _PROPERTY suffix, repeat block as many times as you need (mandatory identifier literal)
-			handle_change = false; // use this if property change shouldn't be handled (bool C expression, default is true)
 			on_change {
 				// optional C code block
 				// replace content of this section with property change handling code

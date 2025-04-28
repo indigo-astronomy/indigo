@@ -72,8 +72,7 @@ typedef struct libusb_type {
 
 typedef struct pattern_type {
 	struct pattern_type *next;
-	char pid[16],vid[16], product[64], vendor[64], serial[64];
-	bool exact_match;
+	char pid[16],vid[16], product[64], vendor[64], serial[64], exact_match[64];
 } pattern_type;
 
 typedef struct serial_type {
@@ -824,16 +823,16 @@ bool parse_pattern_block(serial_type *serial) {
 			if (parse_expression_attribute("vid", pattern->vid, sizeof(pattern->vid))) {
 				continue;
 			}
-			if (parse_bool_attribute("exact_match", &pattern->exact_match)) {
+			if (parse_expression_attribute("exact_match", pattern->exact_match, sizeof(pattern->exact_match))) {
 				continue;
 			}
-			if (parse_string_attribute("product", pattern->product, sizeof(pattern->product))) {
+			if (parse_expression_attribute("product", pattern->product, sizeof(pattern->product))) {
 				continue;
 			}
-			if (parse_string_attribute("vendor", pattern->vendor, sizeof(pattern->vendor))) {
+			if (parse_expression_attribute("vendor", pattern->vendor, sizeof(pattern->vendor))) {
 				continue;
 			}
-			if (parse_string_attribute("serial", pattern->serial, sizeof(pattern->serial))) {
+			if (parse_expression_attribute("serial", pattern->serial, sizeof(pattern->serial))) {
 				continue;
 			}
 			report_unexpected_token_error();
@@ -1723,19 +1722,22 @@ void write_c_main_section(void) {
 			index = 0;
 			for (pattern_type *pattern = driver.serial->patterns; pattern; pattern = pattern->next) {
 				if (*pattern->product) {
-					write_line("\t\t\tstrcpy(%s_patterns[%d].product_string, \"%s\");", master_device->type, index, pattern->product);
+					write_line("\t\t\tstrcpy(%s_patterns[%d].product_string, %s);", master_device->type, index, pattern->product);
 				}
 				if (*pattern->vendor) {
-					write_line("\t\t\tstrcpy(%s_patterns[%d].vendor_string, \"%s\");", master_device->type, index, pattern->vendor);
+					write_line("\t\t\tstrcpy(%s_patterns[%d].vendor_string, %s);", master_device->type, index, pattern->vendor);
 				}
 				if (*pattern->serial) {
-					write_line("\t\t\tstrcpy(%s_patterns[%d].serial_string, \"%s\");", master_device->type, index, pattern->serial);
+					write_line("\t\t\tstrcpy(%s_patterns[%d].serial_string, %s);", master_device->type, index, pattern->serial);
 				}
 				if (*pattern->vid) {
 					write_line("\t\t\t%s_patterns[%d].vendor_id = %s;", master_device->type, index, pattern->vid);
 				}
 				if (*pattern->pid) {
 					write_line("\t\t\t%s_patterns[%d].product_id = %s;", master_device->type, index, pattern->pid);
+				}
+				if (*pattern->exact_match) {
+					write_line("\t\t\t%s_patterns[%d].exact_match = %s;", master_device->type, index, pattern->exact_match);
 				}
 				index++;
 			}
@@ -1855,12 +1857,63 @@ void read_c_source(void) {
 			driver.version = (i1 & 0xFF) + 1;
 		} else if (sscanf(line, "#define DRIVER_NAME \"indigo_%*[^_]_%127[^\"]\"", s1) == 1) {
 			strncpy(driver.name, s1, sizeof(driver.name));
-		} else if (sscanf(line, "	SET_DRIVER_INFO(%*[^,], \"%127[^\"]\",", s1) == 1) {
+		} else if (sscanf(line, "	SET_DRIVER_INFO(%*[^,], \"%127[^\"]\")", s1) == 1) {
 			strncpy(driver.label, s1, sizeof(driver.label));
 		} else if (strstr(line, "ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;")) {
 			if (device) {
 				device->additional_instances = true;
 			}
+		} else if (strstr(line, "indigo_uni_open_serial")) {
+			if (driver.serial == NULL) {
+				driver.serial = allocate(sizeof(serial_type));
+			}
+		} else if (strstr(line, "DEVICE_BAUDRATE_PROPERTY->hidden = false;")) {
+			if (driver.serial == NULL) {
+				driver.serial = allocate(sizeof(serial_type));
+			}
+			driver.serial->configurable_speed = true;
+		} else if (sscanf(line, " strcpy(patterns[%d].%127[^,], %127[^)]);", &i1, s1, s2) == 3) {
+			if (driver.serial == NULL) {
+				driver.serial = allocate(sizeof(serial_type));
+			}
+			pattern_type *pattern = driver.serial->patterns;
+			for (int i = 0; i < i1; i++) {
+				if (pattern != NULL) {
+					pattern = pattern->next;
+				} else {
+					append((void **)&driver.serial->patterns, pattern = allocate(sizeof(pattern_type)));
+				}
+			}
+			if (pattern == NULL) {
+				append((void **)&driver.serial->patterns, pattern = allocate(sizeof(pattern_type)));
+			}
+			if (strcmp(s1, "product_string") == 0) {
+				strncpy(pattern->product, s2, sizeof(pattern->product));
+			} else if (strcmp(s1, "vendor_string") == 0) {
+				strncpy(pattern->vendor, s2, sizeof(pattern->vendor));
+			} else if (strcmp(s1, "serial_string") == 0) {
+				strncpy(pattern->serial, s2, sizeof(pattern->serial));
+			} else if (strcmp(s1, "product_id") == 0) {
+				strncpy(pattern->pid, s2, sizeof(pattern->pid));
+			} else if (strcmp(s1, "vendor_id") == 0) {
+				strncpy(pattern->vid, s2, sizeof(pattern->vid));
+			}
+		} else if (sscanf(line, " patterns[%d].exact_match = %127[^;];", &i1, s1) == 2) {
+			if (driver.serial == NULL) {
+				driver.serial = allocate(sizeof(serial_type));
+			}
+			pattern_type *pattern = driver.serial->patterns;
+			for (int i = 0; i < i1; i++) {
+				if (pattern != NULL) {
+					pattern = pattern->next;
+				} else {
+					append((void **)&driver.serial->patterns, pattern = allocate(sizeof(pattern_type)));
+				}
+			}
+			if (pattern == NULL) {
+				append((void **)&driver.serial->patterns, pattern = allocate(sizeof(pattern_type)));
+			}
+			strncpy(pattern->exact_match, s1, sizeof(pattern->exact_match));
 		} else if (sscanf(line, " %127[^-]->hidden = %127[^;];", s1, s2) == 2 && strcmp(s2, "true") == 0) {
 			if (property && strcmp(s1, property->handle) == 0) {
 				property->hidden = true;
@@ -2102,6 +2155,39 @@ void write_definition_source(void) {
 	write_line("\tauthor = \"%s\";", driver.author);
 	write_line("\tcopyright = \"%s\";", driver.copyright);
 	write_line("\tversion = %d;", driver.version);
+	if (driver.serial) {
+		if (driver.serial->configurable_speed || driver.serial->patterns) {
+			write_line("\tserial {");
+			if (driver.serial->configurable_speed) {
+				write_line("\t\tconfigurable_speed = true;");
+			}
+			for (pattern_type *pattern = driver.serial->patterns; pattern; pattern = pattern->next) {
+				write_line("\t\tpattern {");
+				if (*pattern->product) {
+					write_line("\t\t\tproduct = %s;", pattern->product);
+				}
+				if (*pattern->vendor) {
+					write_line("\t\t\tvendor = %s;", pattern->vendor);
+				}
+				if (*pattern->serial) {
+					write_line("\t\t\tserial = %s;", pattern->serial);
+				}
+				if (*pattern->vid) {
+					write_line("\t\t\tvid = %s;", pattern->vid);
+				}
+				if (*pattern->pid) {
+					write_line("\t\t\tpid = %s;", pattern->pid);
+				}
+				if (*pattern->exact_match) {
+					write_line("\t\t\texact_match = %s;", pattern->exact_match);
+				}
+				write_line("\t\t}");
+			}
+			write_line("\t}");
+		} else {
+			write_line("\tserial;");
+		}
+	}
 	write_line("\t// include { }");
 	write_line("\t// define { }");
 	write_line("\t// data { }");
@@ -2117,9 +2203,17 @@ void write_definition_source(void) {
 		if (device->additional_instances) {
 			write_line("\t\tadditional_instances = true;");
 		}
+		write_line("\t\t// code { }");
+		write_line("\t\t// on_timer { }");
+		write_line("\t\t// on_connect { }");
+		write_line("\t\t// on_disconnect { }");
+		write_line("\t\t// on_attach { }");
+		write_line("\t\t// on_detach { }");
 		for (property_type *property = device->properties; property; property = property->next) {
 			write_line("\t\t%s %s {", property->type, property->id);
-			if (property->type[0] != 'i') {
+			if (property->type[0] == 'i') {
+				write_line("\t\t\t// on_change { }");
+			} else {
 				write_line("\t\t\tname = %s;", property->name);
 				write_line("\t\t\tgroup = %s;", property->group);
 				write_line("\t\t\tlabel = %s;", property->label);
@@ -2140,6 +2234,9 @@ void write_definition_source(void) {
 				}
 				write_line("\t\t\t// handle_change = false;");
 				write_line("\t\t\t// synchronized_change = false;");
+				write_line("\t\t\t// on_attach { }");
+				write_line("\t\t\t// on_change { }");
+				write_line("\t\t\t// on_detach { }");
 				for (item_type *item = property->items; item; item = item->next) {
 					write_line("\t\t\t%s {", item->id);
 					write_line("\t\t\t\tname = %s;", item->name);
@@ -2159,15 +2256,8 @@ void write_definition_source(void) {
 					write_line("\t\t\t}");
 				}
 			}
-			write_line("\t\t\t// on_change { }");
 			write_line("\t\t}");
 		}
-		write_line("\t\t// code { }");
-		write_line("\t\t// on_timer { }");
-		write_line("\t\t// on_connect { }");
-		write_line("\t\t// on_disconnect { }");
-		write_line("\t\t// on_attach { }");
-		write_line("\t\t// on_detach { }");
 		write_line("\t}");
 	}
 	write_line("}");
