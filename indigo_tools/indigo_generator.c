@@ -1914,6 +1914,14 @@ void read_c_source(void) {
 				append((void **)&driver.serial->patterns, pattern = allocate(sizeof(pattern_type)));
 			}
 			strncpy(pattern->exact_match, s1, sizeof(pattern->exact_match));
+		} else if (sscanf(line, " int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, %127[^,], %127[^,])", s1, s2) == 2) {
+			driver.libusb = allocate(sizeof(libusb_type));
+			if (strcmp(s1, "LIBUSB_HOTPLUG_MATCH_ANY")) {
+				strncpy(driver.libusb->vid, s1, sizeof(driver.libusb->vid));
+			}
+			if (strcmp(s2, "LIBUSB_HOTPLUG_MATCH_ANY")) {
+				strncpy(driver.libusb->pid, s2, sizeof(driver.libusb->pid));
+			}
 		} else if (sscanf(line, " %127[^-]->hidden = %127[^;];", s1, s2) == 2 && strcmp(s2, "true") == 0) {
 			if (property && strcmp(s1, property->handle) == 0) {
 				property->hidden = true;
@@ -2187,6 +2195,16 @@ void write_definition_source(void) {
 		} else {
 			write_line("\tserial;");
 		}
+	} else if (driver.libusb) {
+		write_line("\tlibusb {");
+		write_line("\t\thotplug = true;");
+		if (*driver.libusb->vid) {
+			write_line("\t\tvid = %s;", driver.libusb->vid);
+		}
+		if (*driver.libusb->pid) {
+			write_line("\t\tpid = %s;", driver.libusb->pid);
+		}
+		write_line("\t}");
 	}
 	write_line("\t// include { }");
 	write_line("\t// define { }");
