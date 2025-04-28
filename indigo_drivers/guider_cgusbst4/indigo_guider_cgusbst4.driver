@@ -25,7 +25,7 @@ driver cgusbst4 {
 	version = 5;
 	serial {
 		pattern {
-			product = "USB to ST4 Astrogene_1000"	
+			product = "USB to ST4 Astrogene_1000";
 		}
 	}
 	

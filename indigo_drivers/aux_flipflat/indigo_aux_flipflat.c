@@ -63,9 +63,9 @@
 typedef struct {
 	pthread_mutex_t mutex;
 	indigo_uni_handle *handle;
-	// Custom code below
+	//+ "data" custom code below
 	int type;
-	// Custom code above
+	//- "data" custom code above
 	indigo_property *aux_cover_property;
 	indigo_property *aux_light_switch_property;
 	indigo_property *aux_light_intensity_property;
@@ -77,7 +77,7 @@ typedef struct {
 
 #pragma mark - Low level code
 
-// Custom code below
+//+ "code" custom code below
 
 static bool flipflat_command(indigo_uni_handle *handle, char *command, char *response) {
 	if (indigo_uni_discard(handle) >= 0) {
@@ -148,7 +148,7 @@ static void flipflat_close(indigo_device *device) {
 	indigo_uni_close(&PRIVATE_DATA->handle);
 }
 
-// Custom code above
+//- "code" custom code above
 
 #pragma mark - High level code (aux)
 
@@ -161,7 +161,7 @@ static void aux_connection_handler(indigo_device *device) {
 		bool connection_result = true;
 		connection_result = flipflat_open(device);
 		if (connection_result) {
-			// Custom code below
+			//+ "aux.on_connect" custom code below
 			char response[16];
 			if (!AUX_LIGHT_SWITCH_PROPERTY->hidden) {
 				AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -188,7 +188,7 @@ static void aux_connection_handler(indigo_device *device) {
 					}
 				}
 			}
-			// Custom code above
+			//- "aux.on_connect" custom code above
 			indigo_define_property(device, AUX_COVER_PROPERTY, NULL);
 			indigo_define_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
 			indigo_define_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
@@ -220,7 +220,7 @@ static void aux_connection_handler(indigo_device *device) {
 static void aux_cover_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_COVER_PROPERTY->state = INDIGO_OK_STATE;
-	// Custom code below
+	//+ "aux.AUX_COVER.on_change" custom code below
 	char command[16],	response[16];
 	strcpy(command, AUX_COVER_OPEN_ITEM->sw.value ? ">O000" : ">C000");
 	if (flipflat_command(PRIVATE_DATA->handle, command, response) && *response == '*') {
@@ -242,7 +242,7 @@ static void aux_cover_handler(indigo_device *device) {
 	} else {
 		AUX_COVER_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-	// Custom code above
+	//- "aux.AUX_COVER.on_change" custom code above
 	indigo_update_property(device, AUX_COVER_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -252,13 +252,13 @@ static void aux_cover_handler(indigo_device *device) {
 static void aux_light_switch_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_OK_STATE;
-	// Custom code below
+	//+ "aux.AUX_LIGHT_SWITCH.on_change" custom code below
 	char command[16],	response[16];
 	strcpy(command, AUX_LIGHT_SWITCH_ON_ITEM->sw.value ? ">L000" : ">D000");
 	if (!flipflat_command(PRIVATE_DATA->handle, command, response) || *response != '*') {
 		AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-	// Custom code above
+	//- "aux.AUX_LIGHT_SWITCH.on_change" custom code above
 	indigo_update_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -268,13 +268,13 @@ static void aux_light_switch_handler(indigo_device *device) {
 static void aux_light_intensity_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
-	// Custom code below
+	//+ "aux.AUX_LIGHT_INTENSITY.on_change" custom code below
 	char command[16],	response[16];
 	sprintf(command, ">B%03d", (int)(AUX_LIGHT_INTENSITY_ITEM->number.value));
 	if (!flipflat_command(PRIVATE_DATA->handle, command, response) || *response != '*') {
 		AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-	// Custom code above
+	//- "aux.AUX_LIGHT_INTENSITY.on_change" custom code above
 	indigo_update_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -291,9 +291,9 @@ static indigo_result aux_attach(indigo_device *device) {
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
-		// Custom code below
+		//+ "aux.on_attach" custom code below
 		INFO_PROPERTY->count = 5;
-		// Custom code above
+		//- "aux.on_attach" custom code above
 		AUX_COVER_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_COVER_PROPERTY_NAME, AUX_MAIN_GROUP, "Cover", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (AUX_COVER_PROPERTY == NULL) {
 			return INDIGO_FAILED;

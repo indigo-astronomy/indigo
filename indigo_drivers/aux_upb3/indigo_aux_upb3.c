@@ -43,7 +43,9 @@
 #define AUX_DEVICE_NAME      "Ultimate Powerbox 3"
 #define FOCUSER_DEVICE_NAME  "Ultimate Powerbox 3 (focuser)"
 #define PRIVATE_DATA         ((upb3_private_data *)device->private_data)
+//+ "definitions" below
 #define POWERBOX_GROUP       "Powerbox"
+//- "definitions" above
 
 #pragma mark - Property definitions
 
@@ -160,9 +162,9 @@ typedef struct {
 	pthread_mutex_t mutex;
 	int count;
 	indigo_uni_handle *handle;
-	// Custom code below
+	//+ "data" custom code below
 	int version;
-	// Custom code above
+	//- "data" custom code above
 	indigo_property *aux_outlet_names_property;
 	indigo_property *aux_power_outlet_property;
 	indigo_property *aux_power_outlet_state_property;
@@ -196,7 +198,7 @@ typedef struct {
 
 #pragma mark - Low level code
 
-// Custom code below
+//+ "code" custom code below
 
 static bool upb3_command(indigo_device *device, char *command, char *response, int max) {
 	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
@@ -251,7 +253,7 @@ static void upb3_close(indigo_device *device) {
 	}
 }
 
-// Custom code above
+//- "code" custom code above
 
 #pragma mark - High level code (aux)
 
@@ -262,7 +264,7 @@ static void aux_timer_callback(indigo_device *device) {
 		return;
 	}
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	// Custom code below
+	//+ "aux.on_timer" custom code below
 	char response[128];
 	bool updatePowerOutletState = false;
 	bool updateWeather = false;
@@ -373,7 +375,7 @@ static void aux_timer_callback(indigo_device *device) {
 		indigo_update_property(device, AUX_INFO_PROPERTY, NULL);
 	}
 	indigo_reschedule_timer(device, 2, &PRIVATE_DATA->aux_timer);
-	// Custom code above
+	//- "aux.on_timer" custom code above
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
@@ -388,7 +390,7 @@ static void aux_connection_handler(indigo_device *device) {
 			connection_result = upb3_open(device);
 		}
 		if (connection_result) {
-			// Custom code below
+			//+ "aux.on_connect" custom code below
 			char response[128];
 			if (upb3_command(device, "PA", response, sizeof(response))) {
 				char *pnt, *token = strtok_r(response, ":", &pnt);
@@ -462,7 +464,7 @@ static void aux_connection_handler(indigo_device *device) {
 				}
 			}
 			upb3_command(device, "PL:1", response, sizeof(response));
-			// Custom code above
+			//- "aux.on_connect" custom code above
 			indigo_define_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
 			indigo_define_property(device, AUX_POWER_OUTLET_STATE_PROPERTY, NULL);
 			indigo_define_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
@@ -524,7 +526,7 @@ static void aux_connection_handler(indigo_device *device) {
 static void aux_outlet_names_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_OUTLET_NAMES_PROPERTY->state = INDIGO_OK_STATE;
-	// Custom code below
+	//+ "aux.AUX_OUTLET_NAMES.on_change" custom code below
 	snprintf(AUX_POWER_OUTLET_1_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_POWER_OUTLET_NAME_1_ITEM->text.value);
 	snprintf(AUX_POWER_OUTLET_2_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_POWER_OUTLET_NAME_2_ITEM->text.value);
 	snprintf(AUX_POWER_OUTLET_3_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_POWER_OUTLET_NAME_3_ITEM->text.value);
@@ -562,7 +564,7 @@ static void aux_outlet_names_handler(indigo_device *device) {
 		indigo_define_property(device, AUX_USB_PORT_PROPERTY, NULL);
 		indigo_update_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
 	}
-	// Custom code above
+	//- "aux.AUX_OUTLET_NAMES.on_change" custom code above
 	indigo_update_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -572,7 +574,7 @@ static void aux_outlet_names_handler(indigo_device *device) {
 static void aux_power_outlet_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_POWER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
-	// Custom code below
+	//+ "aux.AUX_POWER_OUTLET.on_change" custom code below
 	char response[128];
 	upb3_command(device, AUX_POWER_OUTLET_1_ITEM->sw.value ? "P1:100" : "P1:0", response, sizeof(response));
 	upb3_command(device, AUX_POWER_OUTLET_2_ITEM->sw.value ? "P2:100" : "P2:0", response, sizeof(response));
@@ -583,7 +585,7 @@ static void aux_power_outlet_handler(indigo_device *device) {
 	upb3_command(device, AUX_POWER_OUTLET_7_ITEM->sw.value ? "PJ:1" : "PJ:0", response, sizeof(response));
 	upb3_command(device, AUX_POWER_OUTLET_8_ITEM->sw.value ? "PB:1" : "PB:0", response, sizeof(response));
 	upb3_command(device, AUX_POWER_OUTLET_9_ITEM->sw.value ? "RL:1" : "RL:0", response, sizeof(response));
-	// Custom code above
+	//- "aux.AUX_POWER_OUTLET.on_change" custom code above
 	indigo_update_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -593,7 +595,7 @@ static void aux_power_outlet_handler(indigo_device *device) {
 static void aux_heater_outlet_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_HEATER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
-	// Custom code below
+	//+ "aux.AUX_HEATER_OUTLET.on_change" custom code below
 	char command[16], response[128];
 	sprintf(command, "D1:%d", (int)AUX_HEATER_OUTLET_1_ITEM->number.value);
 	upb3_command(device, command, response, sizeof(response));
@@ -601,7 +603,7 @@ static void aux_heater_outlet_handler(indigo_device *device) {
 	upb3_command(device, command, response, sizeof(response));
 	sprintf(command, "D3:%d", (int)AUX_HEATER_OUTLET_3_ITEM->number.value);
 	upb3_command(device, command, response, sizeof(response));
-	// Custom code above
+	//- "aux.AUX_HEATER_OUTLET.on_change" custom code above
 	indigo_update_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -611,7 +613,7 @@ static void aux_heater_outlet_handler(indigo_device *device) {
 static void aux_dew_control_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_DEW_CONTROL_PROPERTY->state = INDIGO_OK_STATE;
-	// Custom code below
+	//+ "aux.AUX_DEW_CONTROL.on_change" custom code below
 	char response[128];
 	if (AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value) {
 		upb3_command(device, "ADW1:1", response, sizeof(response));
@@ -623,7 +625,7 @@ static void aux_dew_control_handler(indigo_device *device) {
 		upb3_command(device, "ADW2:0", response, sizeof(response));
 		upb3_command(device, "ADW3:0", response, sizeof(response));
 	}
-	// Custom code above
+	//- "aux.AUX_DEW_CONTROL.on_change" custom code above
 	indigo_update_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -633,13 +635,13 @@ static void aux_dew_control_handler(indigo_device *device) {
 static void aux_usb_port_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_USB_PORT_PROPERTY->state = INDIGO_OK_STATE;
-	// Custom code below
+	//+ "aux.AUX_USB_PORT.on_change" custom code below
 	char command[16], response[128];
 	for (int i = 0; i < AUX_USB_PORT_PROPERTY->count; i++) {
 		sprintf(command, "U%d:%d", i + 1, AUX_USB_PORT_PROPERTY->items[i].sw.value ? 1 : 0);
 		upb3_command(device, command, response, sizeof(response));
 	}
-	// Custom code above
+	//- "aux.AUX_USB_PORT.on_change" custom code above
 	indigo_update_property(device, AUX_USB_PORT_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -649,7 +651,7 @@ static void aux_usb_port_handler(indigo_device *device) {
 static void aux_save_outlet_states_as_default_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROPERTY->state = INDIGO_OK_STATE;
-	// Custom code below
+	//+ "aux.AUX_SAVE_OUTLET_STATES_AS_DEFAULT.on_change" custom code below
 	char response[128];
 	if (AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM->sw.value) {
 		upb3_command(device, "PS", response, sizeof(response));
@@ -657,7 +659,7 @@ static void aux_save_outlet_states_as_default_handler(indigo_device *device) {
 		upb3_command(device, "DSTR", response, sizeof(response));
 		AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM->sw.value = false;
 	}
-	// Custom code above
+	//- "aux.AUX_SAVE_OUTLET_STATES_AS_DEFAULT.on_change" custom code above
 	indigo_update_property(device, AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -667,13 +669,13 @@ static void aux_save_outlet_states_as_default_handler(indigo_device *device) {
 static void aux_reboot_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_REBOOT_PROPERTY->state = INDIGO_OK_STATE;
-	// Custom code below
+	//+ "aux.AUX_REBOOT.on_change" custom code below
 	char response[128];
 	if (AUX_REBOOT_ITEM->sw.value) {
 		upb3_command(device, "PF", response, sizeof(response));
 		AUX_REBOOT_ITEM->sw.value = false;
 	}
-	// Custom code above
+	//- "aux.AUX_REBOOT.on_change" custom code above
 	indigo_update_property(device, AUX_REBOOT_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -683,13 +685,13 @@ static void aux_reboot_handler(indigo_device *device) {
 static void aux_variable_power_outlet_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_VARIABLE_POWER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
-	// Custom code below
+	//+ "aux.AUX_VARIABLE_POWER_OUTLET.on_change" custom code below
 	char response[128], command[32];
 	sprintf(command, "PJ:%d", (int)AUX_VARIABLE_POWER_OUTLET_7_ITEM->number.value);
 	upb3_command(device, command, response, sizeof(response));
 	sprintf(command, "PB:%d", (int)AUX_VARIABLE_POWER_OUTLET_8_ITEM->number.value);
 	upb3_command(device, command, response, sizeof(response));
-	// Custom code above
+	//- "aux.AUX_VARIABLE_POWER_OUTLET.on_change" custom code above
 	indigo_update_property(device, AUX_VARIABLE_POWER_OUTLET_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -706,11 +708,11 @@ static indigo_result aux_attach(indigo_device *device) {
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
-		// Custom code below
+		//+ "aux.on_attach" custom code below
 		INFO_PROPERTY->count = 6;
 		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
-		// Custom code above
+		//- "aux.on_attach" custom code above
 		AUX_OUTLET_NAMES_PROPERTY = indigo_init_text_property(NULL, device->name, AUX_OUTLET_NAMES_PROPERTY_NAME, POWERBOX_GROUP, "Outlet names", INDIGO_OK_STATE, INDIGO_RW_PERM, 20);
 		if (AUX_OUTLET_NAMES_PROPERTY == NULL) {
 			return INDIGO_FAILED;
@@ -956,7 +958,7 @@ static void focuser_timer_callback(indigo_device *device) {
 		return;
 	}
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	// Custom code below
+	//+ "focuser.on_timer" custom code below
 	char response[128];
 	if (upb3_command(device, "ES", response, sizeof(response))) {
 		double temp = indigo_atod(response + 3);
@@ -994,7 +996,7 @@ static void focuser_timer_callback(indigo_device *device) {
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 	}
 	indigo_reschedule_timer(device, 1, &PRIVATE_DATA->focuser_timer);
-	// Custom code above
+	//- "focuser.on_timer" custom code above
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
@@ -1009,7 +1011,7 @@ static void focuser_connection_handler(indigo_device *device) {
 			connection_result = upb3_open(device->master_device);
 		}
 		if (connection_result) {
-			// Custom code below
+			//+ "focuser.on_connect" custom code below
 			char response[128];
 			if (upb3_command(device, "SA", response, sizeof(response))) {
 				char *pnt, *token = strtok_r(response, ":", &pnt);
@@ -1034,7 +1036,7 @@ static void focuser_connection_handler(indigo_device *device) {
 				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, response + 3);
 			}
 			upb3_command(device, "PL:1", response, sizeof(response));
-			// Custom code above
+			//- "focuser.on_connect" custom code above
 			indigo_set_timer(device, 0, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, "Connected to %s on %s", FOCUSER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
@@ -1076,13 +1078,13 @@ static void focuser_connection_handler(indigo_device *device) {
 static void focuser_speed_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
-	// Custom code below
+	//+ "focuser.FOCUSER_SPEED.on_change" custom code below
 	char command[16], response[128];
 	snprintf(command, sizeof(command), "SS:%d", (int)FOCUSER_SPEED_ITEM->number.value);
 	if (!upb3_command(device, command, response, sizeof(response))) {
 		FOCUSER_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-	// Custom code above
+	//- "focuser.FOCUSER_SPEED.on_change" custom code above
 	indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -1092,7 +1094,7 @@ static void focuser_speed_handler(indigo_device *device) {
 static void focuser_steps_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-	// Custom code below
+	//+ "focuser.FOCUSER_STEPS.on_change" custom code below
 	char command[16];
 	snprintf(command, sizeof(command), "SG:%d", (int)FOCUSER_STEPS_ITEM->number.value * (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? -1 : 1));
 	if (upb3_command(device, command, NULL, 0)) {
@@ -1103,7 +1105,7 @@ static void focuser_steps_handler(indigo_device *device) {
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-	// Custom code above
+	//- "focuser.FOCUSER_STEPS.on_change" custom code above
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -1113,7 +1115,7 @@ static void focuser_steps_handler(indigo_device *device) {
 static void focuser_position_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-	// Custom code below
+	//+ "focuser.FOCUSER_POSITION.on_change" custom code below
 	char command[16], response[64];
 	if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) {
 		snprintf(command, sizeof(command), "SM:%d", (int)FOCUSER_POSITION_ITEM->number.target);
@@ -1131,7 +1133,7 @@ static void focuser_position_handler(indigo_device *device) {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 	}
-	// Custom code above
+	//- "focuser.FOCUSER_POSITION.on_change" custom code above
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -1141,7 +1143,7 @@ static void focuser_position_handler(indigo_device *device) {
 static void focuser_abort_motion_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-	// Custom code below
+	//+ "focuser.FOCUSER_ABORT_MOTION.on_change" custom code below
 	char response[128];
 	if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
 		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
@@ -1154,7 +1156,7 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 	}
-	// Custom code above
+	//- "focuser.FOCUSER_ABORT_MOTION.on_change" custom code above
 	indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -1164,13 +1166,13 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 static void focuser_reverse_motion_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-	// Custom code below
+	//+ "focuser.FOCUSER_REVERSE_MOTION.on_change" custom code below
 	char command[16], response[128];
 	snprintf(command, sizeof(command), "SR:%d", (int)FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value? 0 : 1);
 	if (!upb3_command(device, command, response, sizeof(response))) {
 		FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-	// Custom code above
+	//- "focuser.FOCUSER_REVERSE_MOTION.on_change" custom code above
 	indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -1180,13 +1182,13 @@ static void focuser_reverse_motion_handler(indigo_device *device) {
 static void focuser_backlash_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	FOCUSER_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
-	// Custom code below
+	//+ "focuser.FOCUSER_BACKLASH.on_change" custom code below
 	char command[16], response[128];
 	snprintf(command, sizeof(command), "SB:%d", (int)FOCUSER_BACKLASH_ITEM->number.value);
 	if (!upb3_command(device, command, response, sizeof(response))) {
 		FOCUSER_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-	// Custom code above
+	//- "focuser.FOCUSER_BACKLASH.on_change" custom code above
 	indigo_update_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -1200,7 +1202,7 @@ static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_
 static indigo_result focuser_attach(indigo_device *device) {
 	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
-		// Custom code below
+		//+ "focuser.on_attach" custom code below
 		INFO_PROPERTY->count = 6;
 		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
@@ -1221,7 +1223,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_POSITION_ITEM->number.min = 0;
 		FOCUSER_POSITION_ITEM->number.max = 9999999;
 		FOCUSER_POSITION_ITEM->number.step = 1;
-		// Custom code above
+		//- "focuser.on_attach" custom code above
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return focuser_enumerate_properties(device, NULL, NULL);
 	}

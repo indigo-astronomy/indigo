@@ -41,7 +41,9 @@
 #define DRIVER_LABEL         "Generic NMEA 0183 GPS"
 #define GPS_DEVICE_NAME      "NMEA GPS"
 #define PRIVATE_DATA         ((nmea_private_data *)device->private_data)
+//+ "definitions" below
 #define MAX_NB_OF_SYSTEMS    26
+//- "definitions" above
 
 #pragma mark - Property definitions
 
@@ -71,10 +73,10 @@
 typedef struct {
 	pthread_mutex_t mutex;
 	indigo_uni_handle *handle;
-	// Custom code below
+	//+ "data" custom code below
 	int satellites_in_view[MAX_NB_OF_SYSTEMS];
 	char selected_system;
-	// Custom code above
+	//- "data" custom code above
 	indigo_property *gps_selected_system_property;
 	indigo_timer *gps_timer;
 	indigo_timer *gps_connection_handler_timer;
@@ -83,7 +85,7 @@ typedef struct {
 
 #pragma mark - Low level code
 
-// Custom code below
+//+ "code" custom code below
 
 static bool nmea_open(indigo_device *device) {
 	char *name = DEVICE_PORT_ITEM->text.value;
@@ -170,7 +172,7 @@ static void nmea_reset(indigo_device *device) {
 
 static void gps_connection_handler(indigo_device *device);
 
-// Custom code above
+//- "code" custom code above
 
 #pragma mark - High level code (gps)
 
@@ -181,7 +183,7 @@ static void gps_timer_callback(indigo_device *device) {
 		return;
 	}
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	// Custom code below
+	//+ "gps.on_timer" custom code below
 	char buffer[128];
 	long length = indigo_uni_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer));
 	char **tokens = nmea_parse(buffer);
@@ -347,7 +349,7 @@ static void gps_timer_callback(indigo_device *device) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		indigo_set_timer(device, 0, gps_connection_handler, NULL);
 	}
-	// Custom code above
+	//- "gps.on_timer" custom code above
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
@@ -360,13 +362,13 @@ static void gps_connection_handler(indigo_device *device) {
 		bool connection_result = true;
 		connection_result = nmea_open(device);
 		if (connection_result) {
-			// Custom code below
+			//+ "gps.on_connect" custom code below
 			GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = 0;
 			GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = 0;
 			GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value = 0;
 			sprintf(GPS_UTC_ITEM->text.value, "0000-00-00T00:00:00.00");
 			nmea_reset(device);
-			// Custom code above
+			//- "gps.on_connect" custom code above
 			indigo_set_timer(device, 0, gps_timer_callback, &PRIVATE_DATA->gps_timer);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, "Connected to %s on %s", GPS_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
@@ -392,9 +394,9 @@ static void gps_connection_handler(indigo_device *device) {
 static void gps_selected_system_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	GPS_SELECTED_SYSTEM_PROPERTY->state = INDIGO_OK_STATE;
-	// Custom code below
+	//+ "gps.GPS_SELECTED_SYSTEM.on_change" custom code below
 	nmea_reset(device);
-	// Custom code above
+	//- "gps.GPS_SELECTED_SYSTEM.on_change" custom code above
 	indigo_update_property(device, GPS_SELECTED_SYSTEM_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -411,13 +413,13 @@ static indigo_result gps_attach(indigo_device *device) {
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
-		// Custom code below
+		//+ "gps.on_attach" custom code below
 		GPS_ADVANCED_PROPERTY->hidden = false;
 		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->hidden = false;
 		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->count = 3;
 		GPS_UTC_TIME_PROPERTY->hidden = false;
 		GPS_UTC_TIME_PROPERTY->count = 1;
-		// Custom code above
+		//- "gps.on_attach" custom code above
 		GPS_SELECTED_SYSTEM_PROPERTY = indigo_init_switch_property(NULL, device->name, GPS_SELECTED_SYSTEM_PROPERTY_NAME, MAIN_GROUP, "Selected positioning system", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 8);
 		if (GPS_SELECTED_SYSTEM_PROPERTY == NULL) {
 			return INDIGO_FAILED;

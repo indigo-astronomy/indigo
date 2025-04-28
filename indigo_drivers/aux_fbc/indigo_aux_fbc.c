@@ -42,11 +42,11 @@
 #define AUX_DEVICE_NAME      "Lacerta FBC"
 #define PRIVATE_DATA         ((fbc_private_data *)device->private_data)
 
-// Custom code below
+//+ "define" custom code below
 
 #define INTENSITY(val)       ((int)floor((100 - (int)(val) - 0) * (220 - 20) / (100 - 0) + 20))
 
-// Custom code above
+//- "define" custom code above
 
 #pragma mark - Property definitions
 
@@ -85,7 +85,7 @@ typedef struct {
 
 #pragma mark - Low level code
 
-// Custom code below
+//+ "code" custom code below
 
 static bool fbc_command(indigo_device *device, char *command, char *response, int count) {
 	if (response != NULL) {
@@ -138,7 +138,7 @@ static void fbc_close(indigo_device *device) {
 	indigo_uni_close(&PRIVATE_DATA->handle);
 }
 
-// Custom code above
+//- "code" custom code above
 
 #pragma mark - High level code (aux)
 
@@ -151,7 +151,7 @@ static void aux_connection_handler(indigo_device *device) {
 		bool connection_result = true;
 		connection_result = fbc_open(device);
 		if (connection_result) {
-			// Custom code below
+			//+ "aux.on_connect" custom code below
 			char command[16], response[80];
 			if (fbc_command(device, ": V #", response, sizeof(response))) {
 				sscanf(response, "V %s", INFO_DEVICE_FW_REVISION_ITEM->text.value);
@@ -159,7 +159,7 @@ static void aux_connection_handler(indigo_device *device) {
 			}
 			sprintf(command, ": B %d #", (int)AUX_LIGHT_INTENSITY_ITEM->number.value);
 			fbc_command(device, command, NULL, 0);
-			// Custom code above
+			//- "aux.on_connect" custom code above
 			indigo_define_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
 			indigo_define_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
 			indigo_define_property(device, AUX_LIGHT_IMPULSE_PROPERTY, NULL);
@@ -194,13 +194,13 @@ static void aux_connection_handler(indigo_device *device) {
 static void aux_light_switch_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_OK_STATE;
-	// Custom code below
+	//+ "aux.AUX_LIGHT_SWITCH.on_change" custom code below
 	char command[16];
 	sprintf(command, "E:%d", AUX_LIGHT_SWITCH_ON_ITEM->sw.value); // TODO: This command is not understood
 	if (!fbc_command(device, command, NULL, 0)) {
 		AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-	// Custom code above
+	//- "aux.AUX_LIGHT_SWITCH.on_change" custom code above
 	indigo_update_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -210,13 +210,13 @@ static void aux_light_switch_handler(indigo_device *device) {
 static void aux_light_intensity_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
-	// Custom code below
+	//+ "aux.AUX_LIGHT_INTENSITY.on_change" custom code below
 	char command[16];
 	sprintf(command, ": B %d #", (int)AUX_LIGHT_INTENSITY_ITEM->number.value);
 	if (!fbc_command(device, command, NULL, 0)) {
 		AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-	// Custom code above
+	//- "aux.AUX_LIGHT_INTENSITY.on_change" custom code above
 	indigo_update_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -226,7 +226,7 @@ static void aux_light_intensity_handler(indigo_device *device) {
 static void aux_light_impulse_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_LIGHT_IMPULSE_PROPERTY->state = INDIGO_OK_STATE;
-	// Custom code below
+	//+ "aux.AUX_LIGHT_IMPULSE.on_change" custom code below
 	char command[16];
 	sprintf(command, ": F %d #", (int)(AUX_LIGHT_IMPULSE_DURATION_ITEM->number.value * 1000));
 	if (fbc_command(device, command, NULL, 0)) {
@@ -245,7 +245,7 @@ static void aux_light_impulse_handler(indigo_device *device) {
 	} else {
 		AUX_LIGHT_IMPULSE_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-	// Custom code above
+	//- "aux.AUX_LIGHT_IMPULSE.on_change" custom code above
 	indigo_update_property(device, AUX_LIGHT_IMPULSE_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -255,7 +255,7 @@ static void aux_light_impulse_handler(indigo_device *device) {
 static void aux_ccd_exposure_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-	// Custom code below
+	//+ "aux.CCD_EXPOSURE.on_change" custom code below
 	char command[16];
 	sprintf(command, ": E %d #", (int)(CCD_EXPOSURE_ITEM->number.value * 1000));
 	if (fbc_command(device, command, NULL, 0)) {
@@ -274,7 +274,7 @@ static void aux_ccd_exposure_handler(indigo_device *device) {
 	} else {
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-	// Custom code above
+	//- "aux.CCD_EXPOSURE.on_change" custom code above
 	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -291,9 +291,9 @@ static indigo_result aux_attach(indigo_device *device) {
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
-		// Custom code below
+		//+ "aux.on_attach" custom code below
 		INFO_PROPERTY->count = 6;
-		// Custom code above
+		//- "aux.on_attach" custom code above
 		AUX_LIGHT_SWITCH_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_MAIN_GROUP, "Light (on/off)", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (AUX_LIGHT_SWITCH_PROPERTY == NULL) {
 			return INDIGO_FAILED;

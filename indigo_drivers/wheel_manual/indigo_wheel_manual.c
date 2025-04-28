@@ -41,7 +41,9 @@
 #define DRIVER_LABEL         "Manual filter wheel"
 #define WHEEL_DEVICE_NAME    "Manual filter wheel"
 #define PRIVATE_DATA         ((manual_private_data *)device->private_data)
+//+ "definitions" below
 #define FILTER_COUNT         8
+//- "definitions" above
 
 #pragma mark - Private data definition
 
@@ -76,13 +78,13 @@ static void wheel_connection_handler(indigo_device *device) {
 static void wheel_slot_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
-	// Custom code below
+	//+ "wheel.WHEEL_SLOT.on_change" custom code below
 	if (WHEEL_SLOT_ITEM->number.value < 1 || WHEEL_SLOT_ITEM->number.value > WHEEL_SLOT_ITEM->number.max) {
 		WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
 		indigo_send_message(device, "Make sure filter '%s' is selected on the device", WHEEL_SLOT_NAME_PROPERTY->items[(int)WHEEL_SLOT_ITEM->number.value - 1].text.value);
 	}
-	// Custom code above
+	//- "wheel.WHEEL_SLOT.on_change" custom code above
 	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -95,10 +97,10 @@ static indigo_result wheel_enumerate_properties(indigo_device *device, indigo_cl
 
 static indigo_result wheel_attach(indigo_device *device) {
 	if (indigo_wheel_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
-		// Custom code below
+		//+ "wheel.on_attach" custom code below
 		WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = FILTER_COUNT;
 		WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = 1;
-		// Custom code above
+		//- "wheel.on_attach" custom code above
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		return wheel_enumerate_properties(device, NULL, NULL);

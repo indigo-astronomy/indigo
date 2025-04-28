@@ -61,7 +61,7 @@ typedef struct {
 
 #pragma mark - Low level code
 
-// Custom code below
+//+ "code" custom code below
 
 static bool astromechanics_command(indigo_device *device, char *command, char *response) {
 	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
@@ -85,7 +85,7 @@ static void astromechanics_close(indigo_device *device) {
 	}
 }
 
-// Custom code above
+//- "code" custom code above
 
 #pragma mark - High level code (aux)
 
@@ -96,7 +96,7 @@ static void aux_timer_callback(indigo_device *device) {
 		return;
 	}
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	// Custom code below
+	//+ "aux.on_timer" custom code below
 	char response[16];
 	if (astromechanics_command(device, "V#", response)) {
 		AUX_WEATHER_SKY_BRIGHTNESS_ITEM->number.value = indigo_atod(response);
@@ -107,7 +107,7 @@ static void aux_timer_callback(indigo_device *device) {
 	}
 	indigo_update_property(device, AUX_WEATHER_PROPERTY, NULL);
 	indigo_reschedule_timer(device, 10, &PRIVATE_DATA->aux_timer);
-	// Custom code above
+	//- "aux.on_timer" custom code above
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 

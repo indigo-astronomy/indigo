@@ -54,7 +54,7 @@ typedef struct {
 
 #pragma mark - Low level code
 
-// Custom code below
+//+ "code" custom code below
 
 static bool cgusbst4_command(indigo_device *device, char *command, char *response, int max) {
 	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
@@ -92,7 +92,7 @@ static void cgusbst4_close(indigo_device *device) {
 	}
 }
 
-// Custom code above
+//- "code" custom code above
 
 #pragma mark - High level code (guider)
 
@@ -129,7 +129,7 @@ static void guider_connection_handler(indigo_device *device) {
 static void guider_guide_dec_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
-	// Custom code below
+	//+ "guider.GUIDER_GUIDE_DEC.on_change" custom code below
 	char command[16];
 	int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
 	if (duration > 0) {
@@ -151,7 +151,7 @@ static void guider_guide_dec_handler(indigo_device *device) {
 		GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 	}
-	// Custom code above
+	//- "guider.GUIDER_GUIDE_DEC.on_change" custom code above
 	indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -161,7 +161,7 @@ static void guider_guide_dec_handler(indigo_device *device) {
 static void guider_guide_ra_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
-	// Custom code below
+	//+ "guider.GUIDER_GUIDE_RA.on_change" custom code below
 	char command[128];
 	int duration = GUIDER_GUIDE_EAST_ITEM->number.value;
 	if (duration > 0) {
@@ -183,7 +183,7 @@ static void guider_guide_ra_handler(indigo_device *device) {
 		GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.value = 0;
 		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 	}
-	// Custom code above
+	//- "guider.GUIDER_GUIDE_RA.on_change" custom code above
 	indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }

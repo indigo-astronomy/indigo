@@ -1019,15 +1019,20 @@ void write_code_block(code_type *code, int indentation) {
 	putchar('\n');
 }
 
-void write_c_code_blocks(code_type *code, int indentation) {
+void write_c_code_blocks(code_type *code, int indentation, char *format, ...) {
 	static char *spaces = "\t\t\t\t\t\t\t\t\t\t";
+	char id[128];
+	va_list args;
+	va_start(args, format);
+	vsnprintf(id, sizeof(id), format, args);
+	va_end(args);
 	if (code) {
 		if (indentation == 0) {
 			write_line("");
-			write_line("%s// Custom code below", spaces + 10 - indentation);
+			write_line("%s//+ \"%s\" custom code below", spaces + 10 - indentation, id);
 			write_line("");
 		} else {
-			write_line("%s// Custom code below", spaces + 10 - indentation);
+			write_line("%s//+ \"%s\" custom code below", spaces + 10 - indentation, id);
 		}
 		for (; code; code = code->next) {
 			write_code_block(code, indentation);
@@ -1035,10 +1040,10 @@ void write_c_code_blocks(code_type *code, int indentation) {
 		if (indentation == 0) {
 			empty_line = false;
 			write_line("");
-			write_line("%s// Custom code above", spaces + 10 - indentation);
+			write_line("%s//- \"%s\" custom code above", spaces + 10 - indentation, id);
 			write_line("");
 		} else {
-			write_line("%s// Custom code above", spaces + 10 - indentation);
+			write_line("%s//- \"%s\" custom code above", spaces + 10 - indentation, id);
 		}
 	}
 }
@@ -1129,7 +1134,7 @@ void write_c_include_section(void) {
 	write_line("#include <math.h>");
 	write_line("#include <assert.h>");
 	write_line("#include <pthread.h>");
-	write_c_code_blocks(driver.include, 0);
+	write_c_code_blocks(driver.include, 0, "include");
 	write_line("#include <indigo/indigo_driver_xml.h>");
 	for (device_type *device = driver.devices; device; device = device->next) {
 		write_line("#include <indigo/indigo_%s_driver.h>", device->type);
@@ -1158,10 +1163,14 @@ void write_c_define_section(void) {
 		write_line("#define %-20s 5", "MAX_DEVICES");
 	}
 	write_line("#define %-20s ((%s_private_data *)device->private_data)", "PRIVATE_DATA", driver.name);
-	for (definition_type *definiton = driver.definions; definiton; definiton = definiton->next) {
-		write_line("#define %-20s %s", definiton->name, definiton->value);
+	if (driver.definions) {
+		write_line("//+ \"definitions\" below");
+		for (definition_type *definiton = driver.definions; definiton; definiton = definiton->next) {
+			write_line("#define %-20s %s", definiton->name, definiton->value);
+		}
+		write_line("//- \"definitions\" above");
 	}
-	write_c_code_blocks(driver.define, 0);
+	write_c_code_blocks(driver.define, 0, "define");
 }
 
 void write_c_property_definition_section(void) {
@@ -1211,7 +1220,7 @@ void write_c_private_data_section(void) {
 	} else if (driver.libusb) {
 		write_line("\tlibusb_device *usbdev;");
 	}
-	write_c_code_blocks(driver.data, 1);
+	write_c_code_blocks(driver.data, 1, "data");
 	for (device_type *device = driver.devices; device; device = device->next) {
 		for (property_type *property = device->properties; property; property = property->next) {
 			if (property->type[0] != 'i') {
@@ -1241,11 +1250,11 @@ void write_c_low_level_code_section(void) {
 		write_line("");
 		write_line("#pragma mark - Low level code");
 		write_line("");
-		write_c_code_blocks(driver.code, 0);
+		write_c_code_blocks(driver.code, 0, "code");
 		for (device_type *device = driver.devices; device; device = device->next) {
-			write_c_code_blocks(device->code, 0);
+			write_c_code_blocks(device->code, 0, "%s.code", device->type);
 			for (property_type *property = device->properties; property; property = property->next) {
-				write_c_code_blocks(property->code, 0);
+				write_c_code_blocks(property->code, 0, "%s.%s.code", device->type, property->id);
 			}
 		}
 	}
@@ -1260,7 +1269,7 @@ void write_c_timer_callback(device_type *device) {
 	write_line("\t\treturn;");
 	write_line("\t}");
 	write_line("\tpthread_mutex_lock(&PRIVATE_DATA->mutex);");
-	write_c_code_blocks(device->on_timer, 1);
+	write_c_code_blocks(device->on_timer, 1, "%s.on_timer", device->type);
 	write_line("\tpthread_mutex_unlock(&PRIVATE_DATA->mutex);");
 	write_line("}");
 	write_line("");
@@ -1277,7 +1286,7 @@ void write_c_connection_change_handler(device_type *device) {
 	write_line("\tif (CONNECTION_CONNECTED_ITEM->sw.value) {");
 	write_line("\t\tpthread_mutex_lock(&PRIVATE_DATA->mutex);");
 	if (driver.virtual) {
-		write_c_code_blocks(device->on_connect, 2);
+		write_c_code_blocks(device->on_connect, 2, "%s.on_connect", device->type);
 		for (property_type *property2 = device->properties; property2; property2 = property2->next) {
 			if (property2->type[0] != 'i' && !property2->always_defined) {
 				write_line("\t\t\tindigo_define_property(device, %s, NULL);", property2->handle);
@@ -1306,7 +1315,7 @@ void write_c_connection_change_handler(device_type *device) {
 			}
 		}
 		write_line("\t\tif (connection_result) {");
-		write_c_code_blocks(device->on_connect, 3);
+		write_c_code_blocks(device->on_connect, 3, "%s.on_connect", device->type);
 		for (property_type *property2 = device->properties; property2; property2 = property2->next) {
 			if (property2->type[0] != 'i' && !property2->always_defined) {
 				write_line("\t\t\tindigo_define_property(device, %s, NULL);", property2->handle);
@@ -1351,7 +1360,7 @@ void write_c_connection_change_handler(device_type *device) {
 			write_line("\t\tindigo_delete_property(device, %s, NULL);", property2->handle);
 		}
 	}
-	write_c_code_blocks(device->on_disconnect, 2);
+	write_c_code_blocks(device->on_disconnect, 2, "%s.on_disconnect", device->type);
 	if (!driver.virtual) {
 		if (is_multi_device) {
 			write_line("\t\tif (--PRIVATE_DATA->count == 0) {");
@@ -1379,7 +1388,7 @@ void write_c_property_change_handler(device_type *device, property_type *propert
 		write_line("\tpthread_mutex_lock(&PRIVATE_DATA->mutex);");
 	}
 	write_line("\t%s->state = INDIGO_OK_STATE;", property->handle);
-	write_c_code_blocks(property->on_change, 1);
+	write_c_code_blocks(property->on_change, 1, "%s.%s.on_change", device->type, property->id);
 	write_line("\tindigo_update_property(device, %s, NULL);", property->handle);
 	if (property->synchronized_change) {
 		write_line("\tpthread_mutex_unlock(&PRIVATE_DATA->mutex);");
@@ -1425,7 +1434,7 @@ void write_c_attach(device_type *device) {
 			write_line("\t\tDEVICE_BAUDRATE_PROPERTY->hidden = false;");
 		}
 	}
-	write_c_code_blocks(device->on_attach, 2);
+	write_c_code_blocks(device->on_attach, 2, "%s.on_attach", device->type);
 	for (property_type *property = device->properties; property; property = property->next) {
 		if (property->type[0] != 'i') {
 			int count = 0;
@@ -1478,7 +1487,7 @@ void write_c_attach(device_type *device) {
 
 			}
 		}
-		write_c_code_blocks(property->on_attach, 0);
+		write_c_code_blocks(property->on_attach, 0, "%s.%s.on_attach", device->type, property->id);
 	}
 	write_line("\t\tINDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);");
 	if (is_master_device) {
@@ -1576,9 +1585,9 @@ void write_c_detach(device_type *device) {
 	write_line("\t\tindigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);");
 	write_line("\t\t%s_connection_handler(device);", device->type);
 	write_line("\t}");
-	write_c_code_blocks(device->on_detach, 1);
+	write_c_code_blocks(device->on_detach, 1, "%s.on_detach", device->type);
 	for (property_type *property = device->properties; property; property = property->next) {
-		write_c_code_blocks(property->on_detach, 0);
+		write_c_code_blocks(property->on_detach, 0, "%s.%s.on_attach", device->type, property->id);
 		if (property->type[0] != 'i') {
 			write_line("\tindigo_release_property(%s);", property->handle);
 		}
@@ -1711,7 +1720,7 @@ void write_c_main_section(void) {
 	write_line("\tswitch (action) {");
 	write_line("\t\tcase INDIGO_DRIVER_INIT:");
 	write_line("\t\t\tlast_action = action;");
-	write_c_code_blocks(driver.on_init, 3);
+	write_c_code_blocks(driver.on_init, 3, "on_init");
 	if (driver.virtual || driver.serial) {
 		if (driver.serial && driver.serial->patterns) {
 			int index = 0;
@@ -1802,7 +1811,7 @@ void write_c_main_section(void) {
 			// TBD
 		}
 	}
-	write_c_code_blocks(driver.on_shutdown, 2);
+	write_c_code_blocks(driver.on_shutdown, 2, "on_shutdown");
 	write_line("\t\t\tbreak;");
 	write_line("");
 	write_line("\t\tcase INDIGO_DRIVER_INFO:");
@@ -2256,7 +2265,7 @@ void write_definition_source(void) {
 				write_line("\t\t\t// on_change { }");
 				write_line("\t\t\t// on_detach { }");
 				for (item_type *item = property->items; item; item = item->next) {
-					write_line("\t\t\t%s {", item->id);
+					write_line("\t\t\titem %s {", item->id);
 					write_line("\t\t\t\tname = %s;", item->name);
 					write_line("\t\t\t\tlabel = %s;", item->label);
 					write_line("\t\t\t\tvalue = %s;", item->value);

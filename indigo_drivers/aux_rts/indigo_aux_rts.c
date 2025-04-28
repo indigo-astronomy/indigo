@@ -67,7 +67,7 @@ typedef struct {
 
 #pragma mark - Low level code
 
-// Custom code below
+//+ "code" custom code below
 
 static void rts_on(indigo_device *device) {
 	indigo_uni_set_rts(PRIVATE_DATA->handle, true);
@@ -88,7 +88,7 @@ static void rts_close(indigo_device *device) {
 	}
 }
 
-// Custom code above
+//- "code" custom code above
 
 #pragma mark - High level code (aux)
 
@@ -99,7 +99,7 @@ static void aux_timer_callback(indigo_device *device) {
 		return;
 	}
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	// Custom code below
+	//+ "aux.on_timer" custom code below
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_EXPOSURE_ITEM->number.value--;
 		if (CCD_EXPOSURE_ITEM->number.value <= 0) {
@@ -112,7 +112,7 @@ static void aux_timer_callback(indigo_device *device) {
 			indigo_reschedule_timer(device, CCD_EXPOSURE_ITEM->number.value < 1 ? CCD_EXPOSURE_ITEM->number.value : 1, &PRIVATE_DATA->aux_timer);
 		}
 	}
-	// Custom code above
+	//- "aux.on_timer" custom code above
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
@@ -125,10 +125,10 @@ static void aux_connection_handler(indigo_device *device) {
 		bool connection_result = true;
 		connection_result = rts_open(device);
 		if (connection_result) {
-			// Custom code below
+			//+ "aux.on_connect" custom code below
 			CCD_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.target = 0;
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-			// Custom code above
+			//- "aux.on_connect" custom code above
 			indigo_define_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 			indigo_define_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 			indigo_set_timer(device, 0, aux_timer_callback, &PRIVATE_DATA->aux_timer);
@@ -146,9 +146,9 @@ static void aux_connection_handler(indigo_device *device) {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->aux_ccd_exposure_handler_timer);
 		indigo_delete_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 		indigo_delete_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-		// Custom code below
+		//+ "aux.on_disconnect" custom code below
 		rts_off(device);
-		// Custom code above
+		//- "aux.on_disconnect" custom code above
 		rts_close(device);
 		indigo_send_message(device, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -162,7 +162,7 @@ static void aux_connection_handler(indigo_device *device) {
 static void aux_ccd_abort_exposure_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-	// Custom code below
+	//+ "aux.CCD_ABORT_EXPOSURE.on_change" custom code below
 	if (CCD_ABORT_EXPOSURE_ITEM->sw.value && CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		indigo_cancel_timer(device, &PRIVATE_DATA->aux_timer);
 		rts_off(device);
@@ -171,7 +171,7 @@ static void aux_ccd_abort_exposure_handler(indigo_device *device) {
 	}
 	CCD_ABORT_EXPOSURE_ITEM->sw.value = false;
 	CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-	// Custom code above
+	//- "aux.CCD_ABORT_EXPOSURE.on_change" custom code above
 	indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -181,12 +181,12 @@ static void aux_ccd_abort_exposure_handler(indigo_device *device) {
 static void aux_ccd_exposure_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-	// Custom code below
+	//+ "aux.CCD_EXPOSURE.on_change" custom code below
 	CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 	rts_on(device);
 	CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value < 1 ? CCD_EXPOSURE_ITEM->number.value : 1, aux_timer_callback, &PRIVATE_DATA->aux_timer);
-	// Custom code above
+	//- "aux.CCD_EXPOSURE.on_change" custom code above
 	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
