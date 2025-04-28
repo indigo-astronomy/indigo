@@ -29,6 +29,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <libgen.h>
+#include <limits.h>
 
 #pragma mark - typedefs
 
