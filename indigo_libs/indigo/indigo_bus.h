@@ -38,6 +38,8 @@
 #include <indigo/indigo_token.h>
 #include <indigo/indigo_uni_io.h>
 
+#define INDIGO_VERSION_3
+
 #if defined(INDIGO_WINDOWS)
 #if defined(INDIGO_WINDOWS_DLL)
 #define INDIGO_EXTERN __declspec(dllexport)
@@ -753,7 +755,9 @@ INDIGO_EXTERN char* indigo_dtos(double value, const char *format);
  */
 INDIGO_EXTERN void indigo_usleep(long delay);
 
-#define INDIGO_DELAY(fraction) ((long)(1000000L * (fraction)))
+#define ONE_SECOND_DELAY 1000000L
+
+#define INDIGO_DELAY(fraction) ((long)(ONE_SECOND_DELAY * (fraction)))
 #define indigo_sleep(fraction) indigo_usleep(INDIGO_DELAY(fraction))
 
 /** Locale independent atod()
