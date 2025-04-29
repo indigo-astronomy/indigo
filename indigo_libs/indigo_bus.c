@@ -330,7 +330,7 @@ void indigo_trace_bus(const char *format, ...) {
 }
 
 void indigo_log_on_level(indigo_log_levels log_level, const char *format, ...) {
-	if (indigo_log_level >= log_level) {
+	if ((int)indigo_log_level >= abs((int)log_level)) {
 		va_list argList;
 		va_start(argList, format);
 		indigo_log_base(log_level, format, argList);
@@ -1186,7 +1186,7 @@ bool indigo_download_blob(char *url, void **value, long *size, char *format) {
 	if (handle == NULL) {
 		return false;
 	}
-	indigo_uni_set_socket_read_timeout(handle, INDIGO_DELAY(15));
+	indigo_uni_set_socket_read_timeout(handle, INDIGO_DELAY(30));
 	indigo_uni_set_socket_write_timeout(handle, INDIGO_DELAY(5));
 	char line[256];
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)

@@ -113,7 +113,7 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 		} else if (c == 'G' || c == 'P') {
 			char request[BUFFER_SIZE];
 			char header[BUFFER_SIZE];
-			while ((res = indigo_uni_read_line(*handle, request, BUFFER_SIZE)) >= 0) {
+			while ((res = indigo_uni_read_line(*handle, request, BUFFER_SIZE)) > 0) {
 				bool keep_alive = true;
 				if (!strncmp(request, "GET /", 5)) {
 					char *path = request + 4;

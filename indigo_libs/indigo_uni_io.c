@@ -1183,10 +1183,12 @@ long indigo_uni_read_section(indigo_uni_handle *handle, char *buffer, long lengt
 				case -1:
 					return -1;
 				case 0:
-					if (handle->log_level < 0) {
-						indigo_log_on_level(-handle->log_level, "%d -> // %ld bytes read", handle->index, bytes_read - 1);
-					} else {
-						indigo_log_on_level(handle->log_level, "%d -> %.*s", handle->index, bytes_read, buffer);
+					if (bytes_read > 0) {
+						if (handle->log_level < 0) {
+							indigo_log_on_level(-handle->log_level, "%d -> // %ld bytes read", handle->index, bytes_read - 1);
+						} else {
+							indigo_log_on_level(handle->log_level, "%d -> %.*s", handle->index, bytes_read, buffer);
+						}
 					}
 					buffer[bytes_read] = 0;
 					return bytes_read;
