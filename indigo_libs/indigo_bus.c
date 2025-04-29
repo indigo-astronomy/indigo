@@ -1182,7 +1182,7 @@ bool indigo_download_blob(char *url, void **value, long *size, char *format) {
 	if (sscanf(url, "http://%255[^:]:%5d/%255[^\n]", host, &port, file) != 3) {
 		return false;
 	}
-	indigo_uni_handle *handle = indigo_uni_client_tcp_socket(host, port, -INDIGO_LOG_TRACE);
+	indigo_uni_handle *handle = indigo_uni_client_tcp_socket(host, port, INDIGO_LOG_TRACE);
 	if (handle == NULL) {
 		return false;
 	}
@@ -1235,9 +1235,12 @@ bool indigo_download_blob(char *url, void **value, long *size, char *format) {
 			*size = uncompressed_content_len;
 			*value = indigo_safe_realloc(*value, *size);
 			char *compressed_buffer = indigo_safe_malloc(content_len);
+			handle->log_level = -abs(handle->log_level);
 			if (indigo_uni_read(handle, compressed_buffer, content_len) < 0) {
+				handle->log_level = abs(handle->log_level);
 				goto error_return;
 			}
+			handle->log_level = -abs(handle->log_level);
 			unsigned out_size = (unsigned)uncompressed_content_len;
 			indigo_uni_decompress(compressed_buffer, (unsigned)content_len, *value, &out_size);
 			free(compressed_buffer);
@@ -1246,9 +1249,13 @@ bool indigo_download_blob(char *url, void **value, long *size, char *format) {
 		} else {
 			*size = content_len;
 			*value = indigo_safe_realloc(*value, *size);
+			memset(*value, 0, content_len);
+			handle->log_level = -abs(handle->log_level);
 			if (indigo_uni_read(handle, *value, *size) < 0) {
+				handle->log_level = abs(handle->log_level);
 				goto error_return;
 			}
+			handle->log_level = abs(handle->log_level);
 			indigo_uni_close(&handle);
 			return true;
 		}

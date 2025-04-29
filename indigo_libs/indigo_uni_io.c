@@ -1125,7 +1125,7 @@ long indigo_uni_read(indigo_uni_handle *handle, void *buffer, long length) {
 	long remaining = length;
 	char *pnt = (char *)buffer;
 	while (true) {
-		long bytes_read = read_data(handle, buffer, remaining);
+		long bytes_read = read_data(handle, pnt, remaining);
 		if (bytes_read < 0) {
 			indigo_error("%d -> // Failed to read (%s)", handle->index, indigo_uni_strerror(handle));
 			return -1;
