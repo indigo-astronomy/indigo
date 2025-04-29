@@ -1,0 +1,6 @@
+": I #" Request Identification - If it is the answer: "I FBC"
+": V #" Version Query - If it is the answer: "V (VERSION)";
+": P #" Mode Query -  Answer: "SerialMode" vagy "AnalogMode" If the answer is "SerialMode", you can go if not then the connection is broken. 
+": B 100 #" The strength of the illumination (0-100%)
+": E 1500 #" The beginning shot and the exposure time /ms
+": F 500 #" The beginning of the illumination and the Flash time /ms
