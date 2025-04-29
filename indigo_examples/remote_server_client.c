@@ -33,7 +33,8 @@
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_client.h>
 
-#define CCD_SIMULATOR "CCD Imager Simulator @ indigosky"
+#define SERVICE	"localhost"
+#define CCD_SIMULATOR "CCD Imager Simulator @ " SERVICE
 
 static bool connected = false;
 static int count = 1;
@@ -160,12 +161,12 @@ int main(int argc, const char * argv[]) {
 //	freopen("indigo.log", "w", stderr);
 //#endif
 
-	indigo_set_log_level(INDIGO_LOG_INFO);
+	indigo_set_log_level(INDIGO_LOG_TRACE);
 	indigo_start();
 
 	indigo_server_entry *server;
 	indigo_attach_client(&client);
-	indigo_connect_server("indigosky", "indigosky.local", 7624, &server); // Check correct host name in 2nd arg!!!
+	indigo_connect_server(SERVICE, SERVICE ".local", 7624, &server); // Check correct host name in 2nd arg!!!
 	while (count > 0) {
 		  indigo_sleep(1);
 	}
