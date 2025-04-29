@@ -219,9 +219,12 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 								}
 								INDIGO_PRINTF(*handle, "Content-Length: %ld\r\n", working_size);
 								INDIGO_PRINTF(*handle, "\r\n");
+								(*handle)->log_level = -abs((*handle)->log_level);
 								if (indigo_uni_write(*handle, working_copy, working_size) < 0) {
+									(*handle)->log_level = abs((*handle)->log_level);
 									goto failure;
 								}
+								(*handle)->log_level = abs((*handle)->log_level);
 								if (indigo_use_blob_buffering) {
 									free(working_copy);
 									free_on_exit = NULL;
@@ -272,8 +275,12 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 							INDIGO_PRINTF(*handle, "Content-Length: %d\r\n", resource->length);
 							INDIGO_PRINTF(*handle, "Content-Encoding: gzip\r\n");
 							INDIGO_PRINTF(*handle, "\r\n");
-							indigo_uni_write(*handle, (const char *)resource->data, resource->length);
-							INDIGO_TRACE(indigo_trace("%d <- // %d bytes", (*handle)->index, resource->length));
+							(*handle)->log_level = -abs((*handle)->log_level);
+							if (indigo_uni_write(*handle, (const char *)resource->data, resource->length) < 0) {
+								(*handle)->log_level = abs((*handle)->log_level);
+								goto failure;
+							}
+							(*handle)->log_level = abs((*handle)->log_level);
 						} else if (resource->file_name) {
 							char file_name[256];
 							if (*resource->file_name == '/') {
@@ -306,9 +313,12 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 									if (count < 0) {
 										break;
 									}
+									(*handle)->log_level = -abs((*handle)->log_level);
 									if (indigo_uni_write(*handle, buffer, count) < 0) {
+										(*handle)->log_level = abs((*handle)->log_level);
 										goto failure;
 									}
+									(*handle)->log_level = abs((*handle)->log_level);
 									remaining -= count;
 								}
 								indigo_uni_close(&file_handle);
@@ -335,9 +345,12 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 							pthread_mutex_lock(unlock_at_exit = &entry->mutext);
 							entry->content = indigo_safe_realloc(entry->content, entry->size = content_length);
 							if (entry->content) {
+								(*handle)->log_level = -abs((*handle)->log_level);
 								if (!indigo_uni_read(*handle, entry->content, content_length)) {
+									(*handle)->log_level = abs((*handle)->log_level);
 									goto failure;
 								}
+								(*handle)->log_level = abs((*handle)->log_level);
 								pthread_mutex_unlock(&entry->mutext);
 								unlock_at_exit = NULL;
 								INDIGO_PRINTF(*handle, "HTTP/1.1 200 OK\r\n");

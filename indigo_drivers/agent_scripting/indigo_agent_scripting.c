@@ -304,7 +304,7 @@ static duk_ret_t save_blob(duk_context *ctx) {
 	duk_pop(ctx);
 	if (*item->blob.url != 0 && item->blob.size == 0) {
 		if (!indigo_populate_http_blob_item(item)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_populate_blob() failed");
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_populate_http_blob_item() failed");
 			return 0;
 		}
 		duk_push_number(PRIVATE_DATA->ctx, item->blob.size);
@@ -329,7 +329,7 @@ static duk_ret_t populate_blob(duk_context *ctx) {
 	duk_pop(ctx);
 	if (*item->blob.url != 0 && item->blob.size == 0) {
 		if (!indigo_populate_http_blob_item(item)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_populate_blob() failed");
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_populate_http_blob_item() failed");
 			return 0;
 		}
 		duk_push_number(PRIVATE_DATA->ctx, item->blob.size);

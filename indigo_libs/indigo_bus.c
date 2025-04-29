@@ -1292,8 +1292,8 @@ bool indigo_upload_http_blob_item(indigo_item *blob_item) {
 	if (handle == NULL) {
 		return false;
 	}
-	indigo_uni_set_socket_read_timeout(handle, INDIGO_DELAY(5));
-	indigo_uni_set_socket_write_timeout(handle, INDIGO_DELAY(5));
+	indigo_uni_set_socket_read_timeout(handle, INDIGO_DELAY(30));
+	indigo_uni_set_socket_write_timeout(handle, INDIGO_DELAY(30));
 	char line[256];
 	int length = snprintf(line, sizeof(line), "PUT /%s HTTP/1.1\r\nContent-Length: %ld\r\n\r\n", file, blob_item->blob.size);
 	if (indigo_uni_write(handle, line, length) < 0) {
