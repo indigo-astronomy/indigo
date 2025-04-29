@@ -2353,7 +2353,7 @@ void write_definition_source(void) {
 			write_line("\t\t// on_disconnect { }");
 		}
 		if (device->on_attach) {
-			write_line("\t\toon_attach {");
+			write_line("\t\ton_attach {");
 			write_code_block(device->on_attach, 3);
 			write_line("\t\t}");
 		} else {

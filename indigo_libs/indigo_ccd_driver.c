@@ -771,6 +771,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 		if (indigo_uni_is_writable(CCD_LOCAL_MODE_DIR_ITEM->text.value)) {
 			CCD_LOCAL_MODE_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
+			indigo_send_message(device, "Folder %s is not writtable", CCD_LOCAL_MODE_DIR_ITEM->text.value);
 			CCD_LOCAL_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		indigo_update_property(device, CCD_LOCAL_MODE_PROPERTY, NULL);
