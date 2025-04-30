@@ -19,14 +19,14 @@
 // Artesky Flat Box USB driver definition
 
 driver arteskyflat {
+	label = "Artesky Flat Box USB";
 	author = "Peter Polakovic";
 	copyright = "Copyright (c) 2019-2025 CloudMakers, s. r. o.";
-	label = "Artesky Flat Box USB";
 	version = 7;
 	serial;
-	
-	// Shared code
-	
+	// include { }
+	// define { }
+	// data { }
 	code {
 		static bool arteskyflat_command(indigo_device *device, char *command, char *response) {
 			if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
@@ -43,31 +43,31 @@ driver arteskyflat {
 			PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
 			return PRIVATE_DATA->handle != NULL;
 		}
-		
+
 		static void arteskyflat_close(indigo_device *device) {
 			if (PRIVATE_DATA->handle != NULL) {
 				indigo_uni_close(&PRIVATE_DATA->handle);
 			}
 		}
 	}
-	
-	// AUX definition
-	
+	// on_init { }
+	// on_shutdown { }
 	aux {
 		name = "Artesky Flat Box";
-		additional_instances = true;
 		interface = INDIGO_INTERFACE_AUX_LIGHTBOX;
+		additional_instances = true;
+		// code { }
+		// on_timer { }
+		// on_connect { }
+		// on_disconnect { }
+		// on_attach { }
+		// on_detach { }
 		switch AUX_LIGHT_SWITCH {
-			label = "Light (on/off)";
+			name = AUX_LIGHT_SWITCH_PROPERTY_NAME;
 			group = AUX_MAIN_GROUP;
-			item AUX_LIGHT_SWITCH_ON {
-				label = "On";
-				value = false;
-			}
-			item AUX_LIGHT_SWITCH_OFF {
-				label = "Off";
-				value = true;
-			}
+			label = "Light (on/off)";
+			// handle_change = false;
+			// synchronized_change = false;
 			on_change {
 				char command[16],	response[16];
 				strcpy(command, AUX_LIGHT_SWITCH_ON_ITEM->sw.value ? ">L000" : ">D000");
@@ -75,19 +75,26 @@ driver arteskyflat {
 					AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 			}
+			// on_attach { }
+			// on_detach { }
+			item AUX_LIGHT_SWITCH_ON {
+				name = AUX_LIGHT_SWITCH_ON_ITEM_NAME;
+				label = "On";
+				value = false;
+			}
+			item AUX_LIGHT_SWITCH_OFF {
+				name = AUX_LIGHT_SWITCH_OFF_ITEM_NAME;
+				label = "Off";
+				value = true;
+			}
 		}
 		number AUX_LIGHT_INTENSITY {
-			label = "Light intensity";
+			name = AUX_LIGHT_INTENSITY_PROPERTY_NAME;
 			group = AUX_MAIN_GROUP;
+			label = "Light intensity";
 			persistent = true;
-			item AUX_LIGHT_INTENSITY {
-				label = "Intensity";
-				min = 0;
-				max = 255;
-				step = 1;
-				value = 0;
-				format = "%d";
-			}
+			// handle_change = false;
+			// synchronized_change = false;
 			on_change {
 				char command[16],	response[16];
 				sprintf(command, ">B%03d", (int)(AUX_LIGHT_INTENSITY_ITEM->number.value));
@@ -95,7 +102,16 @@ driver arteskyflat {
 					AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 			}
+			// on_attach { }
+			// on_detach { }
+			item AUX_LIGHT_INTENSITY {
+				name = AUX_LIGHT_INTENSITY_ITEM_NAME;
+				label = "Intensity";
+				value = 0;
+				max = 255;
+				step = 1;
+				format = "%d";
+			}
 		}
 	}
 }
-

@@ -2133,11 +2133,18 @@ void read_c_source(void) {
 				snprintf(item->label, sizeof(item->label), "%s", s4);
 				snprintf(item->value, sizeof(item->value), "%s", s5);
 			}
+		} else if (sscanf(line, " strcpy(%127[^-]->number.format, %127[^)]);", s1, s2) == 2) {
+			if (property) {
+				item_type *item = get_item(property, s1);
+				strncpy(item->format, s2, sizeof(item->format));
+			}
 		} else if (sscanf(line, " } else if (%127[^(](%127[^,], property)) {", s1, s2) == 2 && strcmp(s1, "indigo_property_match_changeable") == 0) {
 			if (strcmp(s2, "CONFIG_PROPERTY") && strcmp(s2, "CONNECTION_PROPERTY")) {
 				if (device) {
 					property_type *property = get_property(device, s2);
-					strncpy(property->type, "inherited", sizeof(property->type));
+					if (*property->type == 0) {
+						strncpy(property->type, "inherited", sizeof(property->type));
+					}
 				}
 			}
 		} else if (sscanf(line, " %127[^(](device, NULL, %127[^)])", s1, s2) == 2 && strcmp(s1, "indigo_save_property") == 0) {
@@ -2252,7 +2259,7 @@ void write_definition_source(void) {
 		write_line("\t%s {", device->type);
 		write_line("\t\tname = \"%s\";", device->name);
 		if (*device->interface) {
-			write_line("\t\tinterface = \"%s\";", device->interface);
+			write_line("\t\tinterface = %s;", device->interface);
 		}
 		if (device->additional_instances) {
 			write_line("\t\tadditional_instances = true;");
@@ -2365,6 +2372,9 @@ void write_definition_source(void) {
 						}
 						if (*item->step && strcmp(item->step, "0")) {
 							write_line("\t\t\t\tstep = %s;", item->step);
+						}
+						if (*item->format) {
+							write_line("\t\t\t\tformat = %s;", item->format);
 						}
 					}
 					write_line("\t\t\t}");
