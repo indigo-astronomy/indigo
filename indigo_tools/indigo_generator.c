@@ -1070,7 +1070,7 @@ void write_license(void) {
 	write_line("// This file generated from %s", definition_source_basename);
 	write_line("");
 	write_line("// version history");
-	write_line("// 3.0 %s", driver.author);
+	write_line("// 3.0 by %s", driver.author);
 	write_line("");
 }
 
@@ -1843,24 +1843,73 @@ void write_c_source(void) {
 
 #pragma mark - parse c code
 
+device_type *get_device(char *type) {
+	for (device_type *device = driver.devices; device; device = device->next) {
+		if (strcmp(device->type, type) == 0) {
+			return device;
+		}
+	}
+	device_type *device = allocate(sizeof(device_type));
+	strncpy(device->type, type, sizeof(device->type));
+	append((void **)&driver.devices, device);
+	return device;
+}
+
+property_type *get_property(device_type *device, char *property_handle) {
+	for (property_type *property = device->properties; property; property = property->next) {
+		if (strcmp(property->handle, property_handle) == 0) {
+			return property;
+		}
+	}
+	property_type*property = allocate(sizeof(property_type));
+	strncpy(property->handle, property_handle, sizeof(property->id));
+	int l = (int)strlen(property_handle);
+	if (l > 9 && strncmp(property_handle + l - 9, "_PROPERTY", 9) == 0) {
+		property_handle[l - 9] = 0;
+		strncpy(property->id, property_handle, sizeof(property->id));
+	}
+	append((void **)&device->properties, property);
+	return property;
+}
+
+item_type *get_item(property_type *property, char *item_handle) {
+	for (item_type *item = property->items; item; item = item->next) {
+		if (strcmp(item->handle, item_handle) == 0) {
+			return item;
+		}
+	}
+	item_type *item = allocate(sizeof(item_type));
+	int l = (int)strlen(item_handle);
+	strncpy(item->handle, item_handle, sizeof(item->handle));
+	if (l > 5 && strncmp(item_handle + l - 5, "_ITEM", 5) == 0) {
+		item_handle[l - 5] = 0;
+		strncpy(item->id, item_handle, sizeof(item->id));
+	}
+	append((void **)&property->items, item);
+	return item;
+}
+
 void read_c_source(void) {
 	char line[1024];
 	char s1[128], s2[128], s3[128], s4[128], s5[128], s6[128], s7[128];
-	int i1;
+	int i1, i2;
 	double d1;
 	device_type *device = NULL;
 	property_type *property = NULL;
-	item_type *item = NULL;
 	while (fgets(line, sizeof(line), stdin)) {
 		line[strcspn(line, "\n")] = 0;
 		if (!strncmp(line, "// ", 3) || !strncmp(line, "//\n", 3)) {
-			if (sscanf(line, "// Copyright (c) %d %127[^\0]", &i1, s1) == 2) {
+			if (sscanf(line, "// Copyright (c) %d - %d %127[^\0]", &i1, &i2, s1) == 3) {
+				snprintf(driver.copyright, sizeof(driver.copyright), "Copyright (c) %d-2025 %s", i1, s1);
+			} else if (sscanf(line, "// Copyright (c) %d %127[^\0]", &i1, s1) == 2) {
 				if (i1 < 2025) {
 					snprintf(driver.copyright, sizeof(driver.copyright), "Copyright (c) %d-2025 %s", i1, s1);
 				} else {
 					snprintf(driver.copyright, sizeof(driver.copyright), "Copyright (c) 2025 %s", s1);
 				}
 			} else if (sscanf(line, "// %lf by %127[^\0]", &d1, s1) == 2) {
+				strncpy(driver.author, s1, sizeof(driver.author));
+			} else if (sscanf(line, "// %lf %127[^\0]", &d1, s1) == 2) {
 				strncpy(driver.author, s1, sizeof(driver.author));
 			}
 		} else if (sscanf(line, " //+ \"%127[^\"]\"", s1) == 1) {
@@ -1889,6 +1938,32 @@ void read_c_source(void) {
 			if (code->size <= 1) {
 				free(code->text);
 				free(code);
+			} else if (sscanf(s1, "%127[^.].%127[^.].%127s", s2, s3, s4) == 3) {
+				device_type *device = get_device(s2);
+				strcat(s3, "_PROPERTY");
+				property_type *property = get_property(device, s3);
+				if (strcmp(s4, "on_change") == 0) {
+					append((void **)&property->on_change, code);
+				} else if (strcmp(s4, "on_attach") == 0) {
+					append((void **)&property->on_attach, code);
+				} else if (strcmp(s4, "on_detach") == 0) {
+					append((void **)&property->on_detach, code);
+				}
+			} else if (sscanf(s1, "%127[^.].%127s", s2, s3) == 2) {
+				device_type *device = get_device(s2);
+				if (strcmp(s1, "code") == 0) {
+					append((void **)&device->code, code);
+				} else if (strcmp(s3, "on_timer") == 0) {
+					append((void **)&device->on_timer, code);
+				} else if (strcmp(s3, "on_attach") == 0) {
+					append((void **)&device->on_attach, code);
+				} else if (strcmp(s3, "on_detach") == 0) {
+					append((void **)&device->on_detach, code);
+				} else if (strcmp(s3, "on_connect") == 0) {
+					append((void **)&device->on_connect, code);
+				} else if (strcmp(s3, "on_disconnect") == 0) {
+					append((void **)&device->on_disconnect, code);
+				}
 			} else if (strcmp(s1, "include") == 0) {
 				append((void **)&driver.include, code);
 			} else if (strcmp(s1, "define") == 0 || strcmp(s1, "definitions") == 0) {
@@ -1901,48 +1976,20 @@ void read_c_source(void) {
 				append((void **)&driver.on_init, code);
 			} else if (strcmp(s1, "on_shutdown") == 0) {
 				append((void **)&driver.on_shutdown, code);
-			} else if (sscanf(s1, "%127[^.].%127[^.]", s2, s3) == 2) {
-				for (device_type *device = driver.devices; device; device = device->next) {
-					if (strcmp(device->type, s2) == 0) {
-						if (strcmp(s1, "code") == 0) {
-							append((void **)&device->code, code);
-						} else if (strcmp(s3, "on_timer") == 0) {
-							append((void **)&device->on_timer, code);
-						} else if (strcmp(s3, "on_attach") == 0) {
-							append((void **)&device->on_attach, code);
-						} else if (strcmp(s3, "on_detach") == 0) {
-							append((void **)&device->on_detach, code);
-						}
-					}
-				}
-			} else if (sscanf(s1, "%127[^.].%127[^.].%127[^.]", s2, s3, s4) == 3) {
-				for (device_type *device = driver.devices; device; device = device->next) {
-					if (strcmp(device->type, s2) == 0) {
-						for (property_type *property = device->properties; property; property = property->next) {
-							if (strcmp(property->id, s3) == 0) {
-								if (strcmp(s4, "on_change") == 0) {
-									append((void **)&property->on_change, code);
-								} else if (strcmp(s4, "on_attach") == 0) {
-									append((void **)&property->on_attach, code);
-								} else if (strcmp(s4, "on_detach") == 0) {
-									append((void **)&property->on_detach, code);
-								}
-							}
-						}
-					}
-				}
 			}
 		} else if (sscanf(line, "#define DRIVER_VERSION 0x%x", &i1) == 1) {
-			driver.version = (i1 & 0xFF) + 1;
+			driver.version = (i1 & 0xFF);
 		} else if (sscanf(line, "#define DRIVER_NAME \"indigo_%*[^_]_%127[^\"]\"", s1) == 1) {
 			strncpy(driver.name, s1, sizeof(driver.name));
+		} else if (sscanf(line, "#define DRIVER_LABEL \"%127[^\"]\"", s1) == 1) {
+			strncpy(driver.label, s1, sizeof(driver.label));
 		} else if (sscanf(line, "	SET_DRIVER_INFO(%*[^,], \"%127[^\"]\")", s1) == 1) {
 			strncpy(driver.label, s1, sizeof(driver.label));
 		} else if (strstr(line, "ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;")) {
 			if (device) {
 				device->additional_instances = true;
 			}
-		} else if (strstr(line, "indigo_uni_open_serial")) {
+		} else if (strstr(line, "DEVICE_PORT_PROPERTY->hidden = false;")) {
 			if (driver.serial == NULL) {
 				driver.serial = allocate(sizeof(serial_type));
 			}
@@ -2002,73 +2049,30 @@ void read_c_source(void) {
 				strncpy(driver.libusb->pid, s2, sizeof(driver.libusb->pid));
 			}
 		} else if (sscanf(line, " %127[^-]->hidden = %127[^;];", s1, s2) == 2 && strcmp(s2, "true") == 0) {
-			if (property && strcmp(s1, property->handle) == 0) {
+			if (device) {
+				property_type *property = get_property(device, s1);
 				property->hidden = true;
 			}
+		} else if (sscanf(line, "#define %127[^_]_DEVICE_NAME \"%127[^\"]\"", s1, s2) == 2) {
+			make_lower_case(s1);
+			device = get_device(s1);
+			strncpy(device->name, s2, sizeof(device->name));
 		} else if (sscanf(line, " static indigo_device %127[^_]_template = %127[^(](", s1, s2) == 2 && strcmp(s2, "INDIGO_DEVICE_INITIALIZER") == 0) {
 			if (fgets(line, sizeof(line), stdin)) {
 				if (sscanf(line, " \"%127[^\"]\"", s3) == 1) {
-					for (device_type *device = driver.devices; device; device = device->next) {
-						if (strcmp(device->type, s1) == 0) {
-							snprintf(device->name, sizeof(device->name), "%s", s3);
-							break;
-						}
-					}
+					device = get_device(s1);
+					strncpy(device->name, s3, sizeof(device->name));
 				}
 			}
 		} else if (sscanf(line, " if (indigo_aux_attach(device, DRIVER_NAME, DRIVER_VERSION, %127[^)])", s1) == 1) {
-			device = NULL;
-			for (device_type *d = driver.devices; d; d = d->next) {
-				if (strcmp(d->type, "aux") == 0) {
-					device = d;
-					break;
-				}
-			}
-			if (device == NULL) {
-				device = allocate(sizeof(device_type));
-				append((void **)&driver.devices, device);
-				strncpy(device->type, "aux", sizeof(device->type));
-			}
+			device = get_device("aux");
 			strncpy(device->interface, s1, sizeof(device->interface));
 		} else if (sscanf(line, " if (indigo_%127[^_]_%127[^(]()", s1, s2) == 2 && strcmp(s2, "attach") == 0) {
-			device = NULL;
-			for (device_type *d = driver.devices; d; d = d->next) {
-				if (strcmp(d->type, s1) == 0) {
-					device = d;
-					break;
-				}
-			}
-			if (device == NULL) {
-				device = allocate(sizeof(device_type));
-				append((void **)&driver.devices, device);
-				strncpy(device->type, s1, sizeof(device->type));
-			}
+			device = get_device(s1);
 		} else if (sscanf(line, "static indigo_result %127[^_]_%127[^(]() {", s1, s2) == 2 && strcmp(s2, "change_property") == 0) {
-			device = NULL;
-			for (device_type *d = driver.devices; d; d = d->next) {
-				if (strcmp(d->type, s1) == 0) {
-					device = d;
-					break;
-				}
-			}
-			if (device == NULL) {
-				device = allocate(sizeof(device_type));
-				append((void **)&driver.devices, device);
-				strncpy(device->type, s1, sizeof(device->type));
-			}
+			device = get_device(s1);
 		} else if (sscanf(line, "static indigo_result %127[^_]_%127[^(]()", s1, s2) == 2 && strcmp(s2, "enumerate_properties") == 0 && line[strlen(line) - 1] == '{') {
-			device = NULL;
-			for (device_type *d = driver.devices; d; d = d->next) {
-				if (strcmp(d->type, s1) == 0) {
-					device = d;
-					break;
-				}
-			}
-			if (device == NULL) {
-				device = allocate(sizeof(device_type));
-				append((void **)&driver.devices, device);
-				strncpy(device->type, s1, sizeof(device->type));
-			}
+			device = get_device(s1);
 			bool in_is_connected = false;
 			while (fgets(line, sizeof(line), stdin)) {
 				line[strcspn(line, "\n")] = 0;
@@ -2081,136 +2085,65 @@ void read_c_source(void) {
 				} else if (strstr(line, "if (IS_CONNECTED) {")) {
 					in_is_connected = true;
 				} else if (sscanf(line, " %127[^(](%127[^)])", s1, s2) == 2 && strcmp(s1, "indigo_define_matching_property") == 0) {
-					property = NULL;
-					for (property_type *p = device->properties; p; p = p->next) {
-						if (strcmp(p->handle, s2) == 0) {
-							property = p;
-							break;
-						}
-					}
-					if (property == NULL) {
-						property = allocate(sizeof(property_type));
-						snprintf(property->handle, sizeof(property->id), "%s", s2);
-						int l = (int)strlen(s2);
-						if (l > 9 && strncmp(s2 + l - 9, "_PROPERTY", 9) == 0) {
-							s2[l - 9] = 0;
-							snprintf(property->id, sizeof(property->id), "%s", s2);
-						}
-						snprintf(property->id, sizeof(property->id), "%s", s2);
-						append((void **)&device->properties, property);
-					}
-					property->always_defined = !in_is_connected;					
+					property_type *property = get_property(device, s2);
+					property->always_defined = !in_is_connected;
 				}
 			}
 		} else if (sscanf(line, " %s = indigo_init_switch_property(NULL, device->name, %127[^,], %127[^,], %127[^,], INDIGO_OK_STATE, %127[^,], %127[^,], %*d)", s1, s2, s3, s4, s5, s6) == 6) {
 			if (device) {
-				property = allocate(sizeof(property_type));
+				property = get_property(device, s1);
 				strncpy(property->type, "switch", sizeof(property->type));
-				snprintf(property->handle, sizeof(property->handle), "%s", s1);
-				int l = (int)strlen(s1);
-				if (l > 9 && strncmp(s1 + l - 9, "_PROPERTY", 9) == 0) {
-					s1[l - 9] = 0;
-					snprintf(property->id, sizeof(property->id), "%s", s1);
-				}
 				snprintf(property->name, sizeof(property->name), "%s", s2);
 				snprintf(property->group, sizeof(property->group), "%s", s3);
 				snprintf(property->label, sizeof(property->label), "%s", s4);
 				snprintf(property->perm, sizeof(property->perm), "%s", s5);
 				snprintf(property->rule, sizeof(property->rule), "%s", s6);
-				append((void **)&device->properties, property);
 			}
 		} else if (sscanf(line, " %s = indigo_init_light_property(NULL, device->name, %127[^,], %127[^,], %127[^,], INDIGO_OK_STATE, %*d)", s1, s2, s3, s4) == 4) {
 			if (device) {
-				property = allocate(sizeof(property_type));
+				property = get_property(device, s1);
 				strncpy(property->type, "light", sizeof(property->type));
-				snprintf(property->handle, sizeof(property->handle), "%s", s1);
-				int l = (int)strlen(s1);
-				if (l > 9 && strncmp(s1 + l - 9, "_PROPERTY", 9) == 0) {
-					s1[l - 9] = 0;
-					snprintf(property->id, sizeof(property->id), "%s", s1);
-				}
 				snprintf(property->name, sizeof(property->name), "%s", s2);
 				snprintf(property->group, sizeof(property->group), "%s", s3);
 				snprintf(property->label, sizeof(property->label), "%s", s4);
-				append((void **)&device->properties, property);
 			}
 		} else if (sscanf(line, " %s = indigo_init_%127[^_]_property(NULL, device->name, %127[^,], %127[^,], %127[^,], INDIGO_OK_STATE, %127[^,], %*d)", s1, s2, s3, s4, s5, s6) == 6) {
 			if (device) {
-				property = allocate(sizeof(property_type));
+				property = get_property(device, s1);
 				strncpy(property->type, s2, sizeof(property->type));
-				snprintf(property->handle, sizeof(property->handle), "%s", s1);
-				int l = (int)strlen(s1);
-				if (l > 9 && strncmp(s1 + l - 9, "_PROPERTY", 9) == 0) {
-					s1[l - 9] = 0;
-					snprintf(property->id, sizeof(property->id), "%s", s1);
-				}
 				snprintf(property->name, sizeof(property->name), "%s", s3);
 				snprintf(property->group, sizeof(property->group), "%s", s4);
 				snprintf(property->label, sizeof(property->label), "%s", s5);
 				snprintf(property->perm, sizeof(property->perm), "%s", s6);
-				append((void **)&device->properties, property);
 			}
 		} else if (sscanf(line, " indigo_init_number_item(%127[^,], %127[^,], %127[^,], %127[^,], %127[^,], %127[^,], %127[^)]);", s1, s2, s3, s4, s5, s6, s7) == 7) {
 			if (property) {
-				item = allocate(sizeof(item_type));
-				int l = (int)strlen(s1);
-				if (l > 5 && strncmp(s1 + l - 5, "_ITEM", 5) == 0) {
-					s1[l - 5] = 0;
-					snprintf(item->id, sizeof(item->id), "%s", s1);
-				}
+				item_type *item = get_item(property, s1);
 				snprintf(item->name, sizeof(item->name), "%s", s2);
 				snprintf(item->label, sizeof(item->label), "%s", s3);
 				snprintf(item->min, sizeof(item->min), "%s", s4);
 				snprintf(item->max, sizeof(item->max), "%s", s5);
 				snprintf(item->step, sizeof(item->step), "%s", s6);
 				snprintf(item->value, sizeof(item->value), "%s", s7);
-				append((void **)&property->items, item);
 			}
 		} else if (sscanf(line, " indigo_init_%127[^_]_item(%127[^,], %127[^,], %127[^,], %127[^)]);", s1, s2, s3, s4, s5) == 5) {
 			if (property) {
-				item = allocate(sizeof(item_type));
-				int l = (int)strlen(s2);
-				if (l > 5 && strncmp(s2 + l - 5, "_ITEM", 5) == 0) {
-					s2[l - 5] = 0;
-					snprintf(item->id, sizeof(item->id), "%s", s2);
-				}
+				item_type *item = get_item(property, s2);
 				snprintf(item->name, sizeof(item->name), "%s", s3);
 				snprintf(item->label, sizeof(item->label), "%s", s4);
 				snprintf(item->value, sizeof(item->value), "%s", s5);
-				append((void **)&property->items, item);
 			}
 		} else if (sscanf(line, " } else if (%127[^(](%127[^,], property)) {", s1, s2) == 2 && strcmp(s1, "indigo_property_match_changeable") == 0) {
 			if (strcmp(s2, "CONFIG_PROPERTY") && strcmp(s2, "CONNECTION_PROPERTY")) {
 				if (device) {
-					property = NULL;
-					for (property_type *p = device->properties; p; p = p->next) {
-						if (strcmp(p->handle, s2) == 0) {
-							property = p;
-							break;
-						}
-					}
-					if (property == NULL) {
-						property = allocate(sizeof(property_type));
-						snprintf(property->handle, sizeof(property->id), "%s", s2);
-						int l = (int)strlen(s2);
-						if (l > 9 && strncmp(s2 + l - 9, "_PROPERTY", 9) == 0) {
-							s2[l - 9] = 0;
-							snprintf(property->id, sizeof(property->id), "%s", s2);
-						}
-						strncpy(property->type, "inherited", sizeof(property->type));
-						snprintf(property->id, sizeof(property->id), "%s", s2);
-						append((void **)&device->properties, property);
-					}
+					property_type *property = get_property(device, s2);
+					strncpy(property->type, "inherited", sizeof(property->type));
 				}
 			}
 		} else if (sscanf(line, " %127[^(](device, NULL, %127[^)])", s1, s2) == 2 && strcmp(s1, "indigo_save_property") == 0) {
 			if (device) {
-				for (property_type *p = device->properties; p; p = p->next) {
-					if (strcmp(p->handle, s2) == 0) {
-						p->persistent = true;
-						break;
-					}
-				}
+				property_type *property = get_property(device, s2);
+				property->persistent = true;
 			}
 		}
 	}
@@ -2370,7 +2303,7 @@ void write_definition_source(void) {
 			write_line("\t\t%s %s {", property->type, property->id);
 			if (property->type[0] == 'i') {
 				if (property->on_change) {
-					write_line("\t\t\toon_change {");
+					write_line("\t\t\ton_change {");
 					write_code_block(property->on_change, 4);
 					write_line("\t\t\t}");
 				} else {
@@ -2398,7 +2331,7 @@ void write_definition_source(void) {
 				write_line("\t\t\t// handle_change = false;");
 				write_line("\t\t\t// synchronized_change = false;");
 				if (property->on_change) {
-					write_line("\t\t\toon_change {");
+					write_line("\t\t\ton_change {");
 					write_code_block(property->on_change, 4);
 					write_line("\t\t\t}");
 				} else {

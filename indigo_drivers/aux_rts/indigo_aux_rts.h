@@ -19,7 +19,7 @@
 // This file generated from indigo_aux_rts.driver
 
 // version history
-// 3.0 Peter Polakovic
+// 3.0 by Peter Polakovic
 
 #ifndef aux_rts_h
 #define aux_rts_h

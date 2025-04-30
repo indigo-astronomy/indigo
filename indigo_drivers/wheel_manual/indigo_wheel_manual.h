@@ -19,7 +19,7 @@
 // This file generated from indigo_wheel_manual.driver
 
 // version history
-// 3.0 Rumen G.Bogdanovski
+// 3.0 by Rumen G.Bogdanovski
 
 #ifndef wheel_manual_h
 #define wheel_manual_h

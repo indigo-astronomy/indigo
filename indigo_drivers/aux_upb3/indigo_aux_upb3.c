@@ -19,7 +19,7 @@
 // This file generated from indigo_aux_upb3.driver
 
 // version history
-// 3.0 Peter Polakovic <peter.polakovic@cloudmakers.eu>
+// 3.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
 #pragma mark - Includes
 

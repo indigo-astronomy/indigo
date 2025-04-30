@@ -19,7 +19,7 @@
 // This file generated from indigo_rotator_simulator.driver
 
 // version history
-// 3.0 Rumen G. Bogdanovski
+// 3.0 by Rumen G. Bogdanovski
 
 #pragma mark - Includes
 

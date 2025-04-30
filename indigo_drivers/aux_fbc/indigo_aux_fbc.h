@@ -19,7 +19,7 @@
 // This file generated from indigo_aux_fbc.driver
 
 // version history
-// 3.0 Rumen G.Bogdanovski
+// 3.0 by Rumen G.Bogdanovski
 
 #ifndef aux_fbc_h
 #define aux_fbc_h

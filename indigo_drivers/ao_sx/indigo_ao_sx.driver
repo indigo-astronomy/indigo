@@ -16,17 +16,17 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// StarlighXpress AO driver definition
+// StarlightXpress AO driver definition
 
 driver sx {
+	label = "StarlightXpress AO";
 	author = "Peter Polakovic";
 	copyright = "Copyright (c) 2016-2025 CloudMakers, s. r. o.";
-	label = "StarlightXpress AO";
 	version = 11;
 	serial;
-	
-	// Shared code
-	
+	// include { }
+	// define { }
+	// data { }
 	code {
 		static bool sx_command(indigo_device *device, char *command, char *response, int count) {
 			if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
@@ -40,7 +40,7 @@ driver sx {
 			}
 			return false;
 		}
-		
+
 		static bool sx_open(indigo_device *device) {
 			PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
 			if (PRIVATE_DATA->handle != NULL) {
@@ -54,19 +54,20 @@ driver sx {
 			}
 			return false;
 		}
-		
+
 		static void sx_close(indigo_device *device) {
 			if (PRIVATE_DATA->handle != NULL) {
 				indigo_uni_close(&PRIVATE_DATA->handle);
 			}
 		}
 	}
-	
-	// AO definition
-	
+	// on_init { }
+	// on_shutdown { }
 	ao {
 		name = "SX AO";
 		additional_instances = true;
+		// code { }
+		// on_timer { }
 		on_connect {
 			char response[2];
 			if (sx_command(device, "L", response, 1)) {
@@ -78,6 +79,11 @@ driver sx {
 					AO_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 		}
+		// on_disconnect { }
+		on_attach {
+			AO_GUIDE_NORTH_ITEM->number.max = AO_GUIDE_SOUTH_ITEM->number.max = AO_GUIDE_EAST_ITEM->number.max = AO_GUIDE_WEST_ITEM->number.max = 50;
+		}
+		// on_detach { }
 		inherited AO_GUIDE_DEC {
 			on_change {
 				char response[2], command[8];
@@ -132,15 +138,15 @@ driver sx {
 				}
 			}
 		}
-		on_attach {
-			AO_GUIDE_NORTH_ITEM->number.max = AO_GUIDE_SOUTH_ITEM->number.max = AO_GUIDE_EAST_ITEM->number.max = AO_GUIDE_WEST_ITEM->number.max = 50;
-		}
 	}
-	
-	// GUIDER definition
-	
 	guider {
 		name = "SX AO (guider)";
+		// code { }
+		// on_timer { }
+		// on_connect { }
+		// on_disconnect { }
+		// on_attach { }
+		// on_detach { }
 		inherited GUIDER_GUIDE_DEC {
 			on_change {
 				char response[2], command[8];
@@ -175,4 +181,3 @@ driver sx {
 		}
 	}
 }
-
