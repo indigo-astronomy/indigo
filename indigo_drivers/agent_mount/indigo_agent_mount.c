@@ -23,7 +23,7 @@
  \file indigo_agent_mount.c
  */
 
-#define DRIVER_VERSION 0x0012
+#define DRIVER_VERSION 0x0013
 #define DRIVER_NAME	"indigo_agent_mount"
 
 #include <stdlib.h>
@@ -142,13 +142,14 @@ typedef struct {
 	double gps_latitude, gps_longitude, gps_elevation;
 	indigo_property_state mount_eq_coordinates_state;
 	double mount_ra, mount_dec;
+	double mount_target_ra, mount_target_dec;
 	int mount_side_of_pier;
 
 	bool show_show_negative_time_past_transit;
 	bool equatorial_coordinates_defined;
 
 	int selected_mount_index;
-	double mount_target_ra, mount_target_dec;
+	double mount_requested_ra, mount_requested_dec;
 	indigo_property_state rotator_position_state;
 	double rotator_position;
 	double initial_frame_rotation;
@@ -310,10 +311,10 @@ static void lx200_server_worker_thread(handler_data *data) {
 				double s = 0;
 				char c;
 				if (sscanf(buffer_in + 2, "%d%c%d%c%lf", &h, &c, &m, &c, &s) == 5) {
-					DEVICE_PRIVATE_DATA->mount_target_ra = h + m/60.0 + s/3600.0;
+					DEVICE_PRIVATE_DATA->mount_requested_ra = h + m/60.0 + s/3600.0;
 					strcpy(buffer_out, "1");
 				} else if (sscanf(buffer_in + 2, "%d%c%d", &h, &c, &m) == 3) {
-					DEVICE_PRIVATE_DATA->mount_target_ra = h + m/60.0;
+					DEVICE_PRIVATE_DATA->mount_requested_ra = h + m/60.0;
 					strcpy(buffer_out, "1");
 				} else {
 					strcpy(buffer_out, "0");
@@ -323,17 +324,17 @@ static void lx200_server_worker_thread(handler_data *data) {
 				double s = 0;
 				char c;
 				if (sscanf(buffer_in + 2, "%d%c%d%c%lf", &d, &c, &m, &c, &s) == 5) {
-					DEVICE_PRIVATE_DATA->mount_target_dec = d > 0 ? d + m/60.0 + s/3600.0 : d - m/60.0 - s/3600.0;
+					DEVICE_PRIVATE_DATA->mount_requested_dec = d > 0 ? d + m/60.0 + s/3600.0 : d - m/60.0 - s/3600.0;
 					strcpy(buffer_out, "1");
 				} else if (sscanf(buffer_in + 2, "%d%c%d", &d, &c, &m) == 3) {
-					DEVICE_PRIVATE_DATA->mount_target_dec = d > 0 ? d + m/60.0 : d - m/60.0;
+					DEVICE_PRIVATE_DATA->mount_requested_dec = d > 0 ? d + m/60.0 : d - m/60.0;
 					strcpy(buffer_out, "1");
 				} else {
 					strcpy(buffer_out, "0");
 				}
 			} else if (strncmp(buffer_in, "MS", 2) == 0) {
-				double ra = DEVICE_PRIVATE_DATA->mount_target_ra;
-				double dec = DEVICE_PRIVATE_DATA->mount_target_dec;
+				double ra = DEVICE_PRIVATE_DATA->mount_requested_ra;
+				double dec = DEVICE_PRIVATE_DATA->mount_requested_dec;
 				indigo_eq_to_j2k(AGENT_LX200_CONFIGURATION_EPOCH_ITEM->number.value, &ra, &dec);
 				AGENT_MOUNT_TARGET_COORDINATES_RA_ITEM->number.target = AGENT_MOUNT_TARGET_COORDINATES_RA_ITEM->number.value = ra;
 				AGENT_MOUNT_TARGET_COORDINATES_DEC_ITEM->number.target = AGENT_MOUNT_TARGET_COORDINATES_DEC_ITEM->number.value = dec;
@@ -346,8 +347,8 @@ static void lx200_server_worker_thread(handler_data *data) {
 				}
 				strcpy(buffer_out, "0");
 			} else if (strncmp(buffer_in, "CM", 2) == 0) {
-				double ra = DEVICE_PRIVATE_DATA->mount_target_ra;
-				double dec = DEVICE_PRIVATE_DATA->mount_target_dec;
+				double ra = DEVICE_PRIVATE_DATA->mount_requested_ra;
+				double dec = DEVICE_PRIVATE_DATA->mount_requested_dec;
 				indigo_eq_to_j2k(AGENT_LX200_CONFIGURATION_EPOCH_ITEM->number.value, &ra, &dec);
 				AGENT_MOUNT_TARGET_COORDINATES_RA_ITEM->number.target = AGENT_MOUNT_TARGET_COORDINATES_RA_ITEM->number.value = ra;
 				AGENT_MOUNT_TARGET_COORDINATES_DEC_ITEM->number.target = AGENT_MOUNT_TARGET_COORDINATES_DEC_ITEM->number.value = dec;
@@ -547,7 +548,8 @@ static void handle_mount_change(indigo_device *device) {
 	double latitude = AGENT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value;
 	double elevation = AGENT_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value;
 	double lst = indigo_lst(&utc, longitude);
-	double values[] = { ra, dec, DEVICE_PRIVATE_DATA->mount_side_of_pier };
+	double current_radec[] = { ra, dec, DEVICE_PRIVATE_DATA->mount_side_of_pier };
+	double target_radec[] = { DEVICE_PRIVATE_DATA->mount_target_ra, DEVICE_PRIVATE_DATA->mount_target_dec};
 	// update target coordinates
 	AGENT_MOUNT_TARGET_COORDINATES_RA_ITEM->number.value = ra;
 	AGENT_MOUNT_TARGET_COORDINATES_DEC_ITEM->number.value = dec;
@@ -616,10 +618,22 @@ static void handle_mount_change(indigo_device *device) {
 			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true);
 		}
 	}
-	// slave dome
+	/*
+	Slave Dome to Mount
+	1. If the mount is slewing, synchronize the dome with the target mount coordinates.
+	   The mount and the dome will meet at the target. This will avoid excessive dome motion.
+	2. If the mount is not slewing, synchronize the dome with the current mount coordinates.
+	   This way the dome will follow the mount.
+	3. If the mount is moved by hand, wait until it stops and then synchronize the dome with the current mount coordinates.
+	   This will avoid excessive dome motion.
+	*/
 	if (INDIGO_FILTER_DOME_SELECTED && DEVICE_PRIVATE_DATA->dome_unparked && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_ALERT_STATE) {
 		static const char *names[] = { DOME_EQUATORIAL_COORDINATES_RA_ITEM_NAME, DOME_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
-		indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device->name, DOME_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, names, values);
+		if (DEVICE_PRIVATE_DATA->mount_eq_coordinates_state == INDIGO_BUSY_STATE && AGENT_MOUNT_START_SLEW_ITEM->sw.value) {
+			indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device->name, DOME_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, names, target_radec);
+		} else if (DEVICE_PRIVATE_DATA->mount_eq_coordinates_state == INDIGO_OK_STATE) {
+			indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device->name, DOME_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, names, current_radec);
+		}
 	}
 	// derotate field
 	if (INDIGO_FILTER_ROTATOR_SELECTED && AGENT_FIELD_DEROTATION_ENABLED_ITEM->sw.value) {
@@ -651,7 +665,7 @@ static void handle_mount_change(indigo_device *device) {
 	related_agent_name = indigo_filter_first_related_agent(device, "Guider Agent");
 	if (related_agent_name) {
 		static const char *names[] = { AGENT_GUIDER_MOUNT_COORDINATES_RA_ITEM_NAME, AGENT_GUIDER_MOUNT_COORDINATES_DEC_ITEM_NAME, AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM_NAME };
-		indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY_NAME, 3, names, values);
+		indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY_NAME, 3, names, current_radec);
 		indigo_set_fits_header(FILTER_DEVICE_CONTEXT->client, related_agent_name, "OBJCTRA", "'%d %02d %02d'", (int)(DEVICE_PRIVATE_DATA->mount_ra), ((int)(fabs(DEVICE_PRIVATE_DATA->mount_ra) * 60)) % 60, ((int)(fabs(DEVICE_PRIVATE_DATA->mount_ra) * 3600)) % 60);
 		indigo_set_fits_header(FILTER_DEVICE_CONTEXT->client, related_agent_name, "OBJCTDEC", "'%d %02d %02d'", (int)(DEVICE_PRIVATE_DATA->mount_dec), ((int)(fabs(DEVICE_PRIVATE_DATA->mount_dec) * 60)) % 60, ((int)(fabs(DEVICE_PRIVATE_DATA->mount_dec) * 3600)) % 60);
 		indigo_set_fits_header(FILTER_DEVICE_CONTEXT->client, related_agent_name, "PIERSIDE", "%d", (int)(DEVICE_PRIVATE_DATA->mount_side_of_pier == 1 ? 1 : 0));
@@ -779,8 +793,10 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 			indigo_item *item = property->items + i;
 			if (!strcmp(item->name, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME)) {
 				CLIENT_PRIVATE_DATA->mount_ra = item->number.value;
+				CLIENT_PRIVATE_DATA->mount_target_ra = item->number.target;
 			} else if (!strcmp(item->name, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME)) {
 				CLIENT_PRIVATE_DATA->mount_dec = item->number.value;
+				CLIENT_PRIVATE_DATA->mount_target_dec = item->number.target;
 			}
 		}
 		if (CLIENT_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_BUSY_STATE && property->state == INDIGO_BUSY_STATE) {
