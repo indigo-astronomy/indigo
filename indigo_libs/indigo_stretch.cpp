@@ -163,7 +163,7 @@ template <typename T> static inline void debayer(T *raw, int index, int row, int
 // B, C - background, contrast params
 
 template <typename T> void indigo_compute_stretch_params(const T *buffer, int width, int height, int sample_columns_by, int sample_rows_by, double *shadows, double *midtones, double *highlights, unsigned long *histogram, unsigned long *totals, double B = 0.25, double C = -2.8) {
-	const int sample_size = (int)(ceil(width / sample_columns_by) * ceil(height / sample_rows_by));
+	const int sample_size = (int)((ceil((double)width / sample_columns_by) * ceil((double)height / sample_rows_by)));
 	const int sample_size_2 = sample_size / 2;
 	const int histo_divider = (sizeof(T) == 1) ? 1 : 256; // TBD for 32 bits
 	unsigned long total = 0;
@@ -203,7 +203,7 @@ template <typename T> void indigo_compute_stretch_params(const T *buffer, int wi
 	const double input_range = (sizeof(T) == 1) ? 0xFFL : 0XFFFFL; // TBD for 32 bits
 	const double median_deviation = deviations[sample_size_2];
 	const double normalized_median = median_sample / input_range;
-	const double MADN = 1.4826f * median_deviation / input_range;
+	const double MADN = 1.4826 * median_deviation / input_range;
 	const bool upperHalf = normalized_median > 0.5;
 	*shadows = (upperHalf || MADN == 0) ? 0.0 : fmin(1.0, fmax(0.0, (normalized_median + C * MADN)));
 	*highlights = (!upperHalf || MADN == 0) ? 1.0 : fmin(1.0, fmax(0.0, (normalized_median - C * MADN)));
@@ -267,7 +267,7 @@ template <typename T> void indigo_stretch(T *input_buffer, int step, int width, 
 	} else {
 		std::vector<std::thread> threads(max_threads);
 		for (int rank = 0; rank < max_threads; rank++) {
-			const int chunk = (int)ceil(size / max_threads);
+			const int chunk = (int)ceil((double)size / max_threads);
 			threads[rank] = std::thread([=]() {
 				const int start = chunk * rank;
 				int end = start + chunk;
@@ -335,7 +335,7 @@ template <typename T> void indigo_debayer_stretch(T *input_buffer, int width, in
 	} else {
 		std::vector<std::thread> threads(max_threads);
 		for (int rank = 0; rank < max_threads; rank++) {
-			const int chunk = ceil(height / max_threads);
+			const int chunk = ceil((double)height / max_threads);
 			threads[rank] = std::thread([=]() {
 				const int start = chunk * rank;
 				int end = start + chunk;
@@ -409,7 +409,7 @@ template <typename T> void indigo_debayer_stretch(T *input_buffer, int width, in
 	} else {
 		std::vector<std::thread> threads(max_threads);
 		for (int rank = 0; rank < max_threads; rank++) {
-			const int chunk = (int)ceil(height / max_threads);
+			const int chunk = (int)ceil((double)height / max_threads);
 			threads[rank] = std::thread([=]() {
 				const int start = chunk * rank;
 				int end = start + chunk;
@@ -454,7 +454,7 @@ template <typename T> void indigo_debayer(T *input_buffer, int width, int height
 	} else {
 		std::vector<std::thread> threads(max_threads);
 		for (int rank = 0; rank < max_threads; rank++) {
-			const int chunk = (int)ceil(height / max_threads);
+			const int chunk = (int)ceil((double)height / max_threads);
 			threads[rank] = std::thread([=]() {
 				const int start = chunk * rank;
 				int end = start + chunk;
