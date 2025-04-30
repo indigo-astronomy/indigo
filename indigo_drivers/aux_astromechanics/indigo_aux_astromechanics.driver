@@ -16,17 +16,17 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// ASTROMECHANICS Light Pollution Meter driver definition
+// ASTROMECHANICS LPM driver definition
 
 driver astromechanics {
+	label = "ASTROMECHANICS LPM";
 	author = "Peter Polakovic";
 	copyright = "Copyright (c) 2021-2025 CloudMakers, s. r. o.";
-	label = "ASTROMECHANICS LPM";
 	version = 5;
 	serial;
-	
-	// Shared code
-	
+	// include { }
+	// define { }
+	// data { }
 	code {
 		static bool astromechanics_command(indigo_device *device, char *command, char *response) {
 			if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
@@ -38,40 +38,25 @@ driver astromechanics {
 			}
 			return false;
 		}
-		
+
 		static bool astromechanics_open(indigo_device *device) {
 			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 38400, INDIGO_LOG_DEBUG);
 			return PRIVATE_DATA->handle != NULL;
 		}
-		
+
 		static void astromechanics_close(indigo_device *device) {
 			if (PRIVATE_DATA->handle != NULL) {
 				indigo_uni_close(&PRIVATE_DATA->handle);
 			}
 		}
 	}
-	
-	// AUX definition
-	
+	// on_init { }
+	// on_shutdown { }
 	aux {
 		name = "ASTROMECHANICS LPM";
-		additional_instances = true;
 		interface = INDIGO_INTERFACE_AUX_SQM;
-		number AUX_WEATHER {
-			label = "Sky quality";
-			group = AUX_MAIN_GROUP;
-			perm = INDIGO_RO_PERM;
-			item AUX_WEATHER_SKY_BRIGHTNESS {
-				label = "Sky brightness [m/arcsec\u00B2]";
-				min = -20;
-				max = 30;
-			}
-			item AUX_WEATHER_SKY_BORTLE_CLASS {
-				label = "Sky Bortle class";
-				min = 1;
-				max = 9;
-			}
-		}
+		additional_instances = true;
+		// code { }
 		on_timer {
 			char response[16];
 			if (astromechanics_command(device, "V#", response)) {
@@ -83,6 +68,35 @@ driver astromechanics {
 			}
 			indigo_update_property(device, AUX_WEATHER_PROPERTY, NULL);
 			indigo_reschedule_timer(device, 10, &PRIVATE_DATA->aux_timer);
+		}
+		// on_connect { }
+		// on_disconnect { }
+		// on_attach { }
+		// on_detach { }
+		number AUX_WEATHER {
+			name = AUX_WEATHER_PROPERTY_NAME;
+			group = AUX_MAIN_GROUP;
+			label = "Sky quality";
+			perm = INDIGO_RO_PERM;
+			// handle_change = false;
+			// synchronized_change = false;
+			// on_change { }
+			// on_attach { }
+			// on_detach { }
+			item AUX_WEATHER_SKY_BRIGHTNESS {
+				name = AUX_WEATHER_SKY_BRIGHTNESS_ITEM_NAME;
+				label = "Sky brightness [m/arcsec\u00B2]";
+				value = 0;
+				min = -20;
+				max = 30;
+			}
+			item AUX_WEATHER_SKY_BORTLE_CLASS {
+				name = AUX_WEATHER_SKY_BORTLE_CLASS_ITEM_NAME;
+				label = "Sky Bortle class";
+				value = 0;
+				min = 1;
+				max = 9;
+			}
 		}
 	}
 }

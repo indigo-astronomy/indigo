@@ -16,50 +16,61 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// FCUSB focuser driver definition
+// Shoestring FCUSB focuser driver definition
 
 // TODO: Add libfcusb for windows
 
 driver fcusb {
+	label = "Shoestring FCUSB focuser";
 	author = "Peter Polakovic";
 	copyright = "Copyright (c) 2016-2025 CloudMakers, s. r. o.";
-	label = "Shoestring FCUSB focuser";
 	version = 7;
 	libusb {
+		hotplug = true;
 		vid = FCUSB_VID;
 	}
 	include {
 		#include <libfcusb.h>
 	}
+	// define { }
 	data {
 		libfcusb_device_context *device_context;
 	}
-	
-	// Shared code
-	
 	code {
 		static bool fcusb_match(libusb_device *dev, const char **name) {
 			return libfcusb_focuser(dev, name);
 		}
-		
+
 		static bool fcusb_open(indigo_device *device) {
 			return libfcusb_open(PRIVATE_DATA->usbdev, &PRIVATE_DATA->device_context);
 		}
-		
+
 		static void fcusb_close(indigo_device *device) {
 			libfcusb_stop(PRIVATE_DATA->device_context);
 			libfcusb_close(PRIVATE_DATA->device_context);
 		}
-		
+
 		static void fcusb_debug(const char *message) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libfcusb: %s\n", message);
 		}
 	}
-	
-	// FOCUSER definition
-	
+	on_init {
+		libfcusb_debug = &fcusb_debug;
+	}
+	// on_shutdown { }
 	focuser {
 		name = "%s";
+		// code { }
+		// on_timer { }
+		// on_connect { }
+		// on_disconnect { }
+		on_attach {
+			FOCUSER_POSITION_PROPERTY->hidden = true;
+			FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.max = 255;
+			indigo_copy_value(FOCUSER_SPEED_ITEM->label, "Power (0-255)");
+			indigo_copy_value(FOCUSER_SPEED_PROPERTY->label, "Power");
+		}
+		// on_detach { }
 		inherited FOCUSER_ABORT_MOTION {
 			on_change {
 				if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -102,41 +113,33 @@ driver fcusb {
 				} else {
 					FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
-
 			}
 		}
 		switch X_FOCUSER_FREQUENCY {
-			label = "Frequency";
 			name = "X_FOCUSER_FREQUENCY";
 			group = FOCUSER_MAIN_GROUP;
-			rule = INDIGO_ONE_OF_MANY_RULE;
+			label = "Frequency";
 			persistent = true;
+			// handle_change = false;
+			// synchronized_change = false;
+			// on_change { }
+			// on_attach { }
+			// on_detach { }
 			item X_FOCUSER_FREQUENCY_1 {
-				label = "1.6 kHz (1x)";
 				name = "FREQUENCY_1";
+				label = "1.6 kHz (1x)";
 				value = true;
 			}
 			item X_FOCUSER_FREQUENCY_4 {
-				label = "6 kHz (4x)";
 				name = "FREQUENCY_4";
+				label = "6 kHz (4x)";
+				value = false;
 			}
 			item X_FOCUSER_FREQUENCY_16 {
-				label = "25 kHz (16x)";
 				name = "FREQUENCY_16";
+				label = "25 kHz (16x)";
+				value = false;
 			}
 		}
-		on_attach {
-			FOCUSER_POSITION_PROPERTY->hidden = true;
-			FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.max = 255;
-			indigo_copy_value(FOCUSER_SPEED_ITEM->label, "Power (0-255)");
-			indigo_copy_value(FOCUSER_SPEED_PROPERTY->label, "Power");
-		}
-	}
-	
-	// Main code
-	
-	on_init {
-		libfcusb_debug = &fcusb_debug;
 	}
 }
-

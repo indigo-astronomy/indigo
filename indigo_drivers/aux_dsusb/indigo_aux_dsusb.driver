@@ -16,110 +16,51 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// DSUSB shutter driver definition
+// Shoestring DSUSB shutter release driver definition
 
 // TODO: Add libdsusb for windows
 
 driver dsusb {
+	label = "Shoestring DSUSB shutter release";
 	author = "Peter Polakovic";
 	copyright = "Copyright (c) 2016-2025 CloudMakers, s. r. o.";
-	label = "Shoestring DSUSB shutter release";
 	version = 11;
 	libusb {
+		hotplug = true;
 		vid = DSUSB_VID;
 	}
 	include {
 		#include <libdsusb.h>
 	}
+	// define { }
 	data {
 		libdsusb_device_context *device_context;
 	}
-	
-	// Shared code
-	
 	code {
 		static bool dsusb_match(libusb_device *dev, const char **name) {
 			return libdsusb_shutter(dev, name);
 		}
-		
+
 		static bool dsusb_open(indigo_device *device) {
 			return libdsusb_open(PRIVATE_DATA->usbdev, &PRIVATE_DATA->device_context);
 		}
-		
+
 		static void dsusb_close(indigo_device *device) {
 			libdsusb_close(PRIVATE_DATA->device_context);
 		}
-		
+
 		static void dsusb_debug(const char *message) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libdsusb: %s\n", message);
 		}
 	}
-	
-	// AUX definition
-	
+	on_init {
+		libdsusb_debug = &dsusb_debug;
+	}
+	// on_shutdown { }
 	aux {
 		name = "%s";
 		interface = INDIGO_INTERFACE_AUX_SHUTTER;
-		on_connect {
-			CCD_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.target = 0;
-			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-		}
-		on_disconnect {
-			libdsusb_stop(PRIVATE_DATA->device_context);
-		}
-		switch X_CONFIG {
-			label = "Configure";
-			name = "X_CONFIG";
-			group = AUX_MAIN_GROUP;
-			rule = INDIGO_ANY_OF_MANY_RULE;
-			persistent = true;
-			item X_CONFIG_FOCUS {
-				label = "Focus before capture";
-				name = "FOCUS";
-			}
-		}
-		switch CCD_ABORT_EXPOSURE {
-			label = "Abort exposure";
-			name = CCD_ABORT_EXPOSURE_PROPERTY_NAME;
-			group = AUX_MAIN_GROUP;
-			rule = INDIGO_ANY_OF_MANY_RULE;
-			item CCD_ABORT_EXPOSURE {
-				label = "Abort exposure";
-				name = CCD_ABORT_EXPOSURE_ITEM_NAME;
-			}
-			on_change {
-				if (CCD_ABORT_EXPOSURE_ITEM->sw.value && CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-					indigo_cancel_timer(device, &PRIVATE_DATA->aux_timer);
-					libdsusb_stop(PRIVATE_DATA->device_context);
-					CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
-					indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-				}
-				CCD_ABORT_EXPOSURE_ITEM->sw.value = false;
-				CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-			}
-		}
-		number CCD_EXPOSURE {
-			label = "Start exposure";
-			name = CCD_EXPOSURE_PROPERTY_NAME;
-			group = AUX_MAIN_GROUP;
-			item CCD_EXPOSURE {
-				label = "Start exposure";
-				name = CCD_EXPOSURE_ITEM_NAME;
-				max = 1000;
-				step = 1;
-				format = "%g";
-			}
-			on_change {
-				CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-				if (X_CONFIG_FOCUS_ITEM->sw.value) {
-					libdsusb_focus(PRIVATE_DATA->device_context);
-					indigo_usleep(1000000);
-				}
-				libdsusb_start(PRIVATE_DATA->device_context);
-				CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value < 1 ? CCD_EXPOSURE_ITEM->number.value : 1, aux_timer_callback, &PRIVATE_DATA->aux_timer);
-			}
-		}
+		// code { }
 		on_timer {
 			if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 				CCD_EXPOSURE_ITEM->number.value--;
@@ -134,12 +75,84 @@ driver dsusb {
 				}
 			}
 		}
-	}
-	
-	// Main code
-	
-	on_init {
-		libdsusb_debug = &dsusb_debug;
+		on_connect {
+			CCD_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.target = 0;
+			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+		}
+		on_disconnect {
+			libdsusb_stop(PRIVATE_DATA->device_context);
+		}
+		// on_attach { }
+		// on_detach { }
+		switch CCD_ABORT_EXPOSURE {
+			name = CCD_ABORT_EXPOSURE_PROPERTY_NAME;
+			group = AUX_MAIN_GROUP;
+			label = "Abort exposure";
+			rule = INDIGO_ANY_OF_MANY_RULE;
+			// handle_change = false;
+			// synchronized_change = false;
+			on_change {
+				if (CCD_ABORT_EXPOSURE_ITEM->sw.value && CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+					indigo_cancel_timer(device, &PRIVATE_DATA->aux_timer);
+					libdsusb_stop(PRIVATE_DATA->device_context);
+					CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+				}
+				CCD_ABORT_EXPOSURE_ITEM->sw.value = false;
+				CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+			}
+			// on_attach { }
+			// on_detach { }
+			item CCD_ABORT_EXPOSURE {
+				name = CCD_ABORT_EXPOSURE_ITEM_NAME;
+				label = "Abort exposure";
+				value = false;
+			}
+		}
+		number CCD_EXPOSURE {
+			name = CCD_EXPOSURE_PROPERTY_NAME;
+			group = AUX_MAIN_GROUP;
+			label = "Start exposure";
+			// handle_change = false;
+			// synchronized_change = false;
+			on_change {
+				CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
+				if (X_CONFIG_FOCUS_ITEM->sw.value) {
+					libdsusb_focus(PRIVATE_DATA->device_context);
+					indigo_usleep(1000000);
+				}
+				libdsusb_start(PRIVATE_DATA->device_context);
+				CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value < 1 ? CCD_EXPOSURE_ITEM->number.value : 1, aux_timer_callback, &PRIVATE_DATA->aux_timer);
+			}
+			// on_attach { }
+			// on_detach { }
+			item CCD_EXPOSURE {
+				name = CCD_EXPOSURE_ITEM_NAME;
+				label = "Start exposure";
+				value = 0;
+				min = 0;
+				max = 1000;
+				step = 1;
+				format = "%g";
+			}
+		}
+		switch X_CONFIG {
+			name = "X_CONFIG";
+			group = AUX_MAIN_GROUP;
+			label = "Configure";
+			rule = INDIGO_ANY_OF_MANY_RULE;
+			persistent = true;
+			// handle_change = false;
+			// synchronized_change = false;
+			// on_change { }
+			// on_attach { }
+			// on_detach { }
+			item X_CONFIG_FOCUS {
+				name = "FOCUS";
+				label = "Focus before capture";
+				value = false;
+			}
+		}
 	}
 }
-

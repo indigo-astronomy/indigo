@@ -157,8 +157,6 @@ ifeq ($(OS_DETECTED),Linux)
 endif
 	@$(MAKE)	-C indigo_server all
 	@echo
-	@grep --color=always -ro '// TODO.*' */*/*.driver
-	@echo
 	@grep --color=always -ro '// TODO.*' */*/*.c */*.cpp */*/*.cpp
 	@echo
 	@grep --color=always -ro '// TODO.*' */*.c */*.cpp

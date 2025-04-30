@@ -21,6 +21,8 @@
 // version history
 // 3.0 by Peter Polakovic
 
+// TODO: Add libfcusb for windows
+
 #pragma mark - Includes
 
 #include <stdlib.h>
@@ -380,7 +382,6 @@ indigo_result indigo_focuser_fcusb(indigo_driver_action action, indigo_driver_in
 			//+ "on_init" custom code below
 			libfcusb_debug = &fcusb_debug;
 			//- "on_init" custom code above
-			last_action = action;
 			for (int i = 0; i < MAX_DEVICES; i++) {
 				devices[i] = 0;
 			}

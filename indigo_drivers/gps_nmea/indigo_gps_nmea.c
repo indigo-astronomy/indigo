@@ -41,9 +41,12 @@
 #define DRIVER_LABEL         "Generic NMEA 0183 GPS"
 #define GPS_DEVICE_NAME      "NMEA GPS"
 #define PRIVATE_DATA         ((nmea_private_data *)device->private_data)
-//+ "definitions" below
+
+//+ "define" custom code below
+
 #define MAX_NB_OF_SYSTEMS    26
-//- "definitions" above
+
+//- "define" custom code above
 
 #pragma mark - Property definitions
 
@@ -504,10 +507,10 @@ indigo_result indigo_gps_nmea(indigo_driver_action action, indigo_driver_info *i
 	switch (action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
-			static indigo_device_match_pattern gps_patterns[2] = { 0 };
-			strcpy(gps_patterns[0].product_string, "GPS");
-			strcpy(gps_patterns[1].product_string, "GNSS");
-			INDIGO_REGISER_MATCH_PATTERNS(gps_template, gps_patterns, 2);
+			static indigo_device_match_pattern patterns[2] = { 0 };
+			strcpy(patterns[0].product_string, "GPS");
+			strcpy(patterns[1].product_string, "GNSS");
+			INDIGO_REGISER_MATCH_PATTERNS(gps_template, patterns, 2);
 			private_data = indigo_safe_malloc(sizeof(nmea_private_data));
 			gps = indigo_safe_malloc_copy(sizeof(indigo_device), &gps_template);
 			gps->private_data = private_data;

@@ -16,51 +16,57 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// GPUSB guider driver definition
+// Shoestring GPUSB guider driver definition
 
 // TODO: Add libgpusb for windows
 
 driver gpusb {
+	label = "Shoestring GPUSB guider";
 	author = "Peter Polakovic";
 	copyright = "Copyright (c) 2016-2025 CloudMakers, s. r. o.";
-	label = "Shoestring GPUSB guider";
 	version = 6;
 	libusb {
+		hotplug = true;
 		vid = GPUSB_VID;
 	}
 	include {
 		#include <libgpusb.h>
 	}
+	// define { }
 	data {
 		libgpusb_device_context *device_context;
 		unsigned short relay_mask;
 	}
-	
-	// Shared code
-	
 	code {
 		static bool gpusb_match(libusb_device *dev, const char **name) {
 			return libgpusb_guider(dev, name);
 		}
-		
+
 		static bool gpusb_open(indigo_device *device) {
 			return libgpusb_open(PRIVATE_DATA->usbdev, &PRIVATE_DATA->device_context);
 		}
-		
+
 		static void gpusb_close(indigo_device *device) {
 			libgpusb_set(PRIVATE_DATA->device_context, 0);
 			libgpusb_close(PRIVATE_DATA->device_context);
 		}
-		
+
 		static void gpusb_debug(const char *message) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libgpusb: %s\n", message);
 		}
 	}
-	
-	// GUIDER definition
-	
+	on_init {
+		libgpusb_debug = &gpusb_debug;
+	}
+	// on_shutdown { }
 	guider {
 		name = "%s";
+		// code { }
+		// on_timer { }
+		// on_connect { }
+		// on_disconnect { }
+		// on_attach { }
+		// on_detach { }
 		inherited GUIDER_GUIDE_DEC {
 			on_change {
 				PRIVATE_DATA->relay_mask &= ~(GPUSB_DEC_NORTH | GPUSB_DEC_SOUTH);
@@ -114,11 +120,4 @@ driver gpusb {
 			}
 		}
 	}
-	
-	// Main code
-	
-	on_init {
-		libgpusb_debug = &gpusb_debug;
-	}
 }
-

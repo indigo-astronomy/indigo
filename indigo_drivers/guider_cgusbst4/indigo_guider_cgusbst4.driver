@@ -19,18 +19,18 @@
 // CG-USB-ST4 Adapter driver definition
 
 driver cgusbst4 {
+	label = "CG-USB-ST4 Adapter";
 	author = "Peter Polakovic";
 	copyright = "Copyright (c) 2016-2025 CloudMakers, s. r. o.";
-	label = "CG-USB-ST4 Adapter";
 	version = 5;
 	serial {
 		pattern {
 			product = "USB to ST4 Astrogene_1000";
 		}
 	}
-	
-	// Shared code
-	
+	// include { }
+	// define { }
+	// data { }
 	code {
 		static bool cgusbst4_command(indigo_device *device, char *command, char *response, int max) {
 			if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
@@ -68,11 +68,16 @@ driver cgusbst4 {
 			}
 		}
 	}
-	
-	// GUIDER definition
-	
+	// on_init { }
+	// on_shutdown { }
 	guider {
 		name = "CG-USB-ST4 Adapter";
+		// code { }
+		// on_timer { }
+		// on_connect { }
+		// on_disconnect { }
+		// on_attach { }
+		// on_detach { }
 		inherited GUIDER_GUIDE_DEC {
 			on_change {
 				char command[16];
@@ -125,4 +130,3 @@ driver cgusbst4 {
 		}
 	}
 }
-

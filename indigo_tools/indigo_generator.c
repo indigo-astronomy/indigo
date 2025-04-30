@@ -100,8 +100,12 @@ typedef struct driver_type {
 #pragma mark - shared variables
 
 bool parsing_code = false, parsing_expression = false, verbose_log = false, empty_line = false;
-char *definition_source, *definition_source_basename, *current, *begin, *end;
+char *definition_source, *definition_source_basename, *definition_source_dirname, *current, *begin, *end;
 token_type last_token;
+device_type *device = NULL;
+property_type *property = NULL;
+definition_type *defs = NULL;
+code_type *todos = NULL;
 driver_type driver;
 int indentation = 0;
 int line = 1, column = 1;
@@ -183,6 +187,23 @@ void report_unexpected_token_error(void) {
 #pragma mark - parser
 
 #define FORWARD(n) if (*(current += n) == '\n') { line++; column = 0; } else { column++; }
+
+void copy(char *target, int max_size) {
+	memset(target, 0, max_size);
+	int size = (int)(end - begin);
+	if (size > max_size) {
+		size = max_size - 1;
+	}
+	strncpy(target, begin, size);
+}
+
+void append(void **head, void *next) {
+	if (*head == NULL) {
+		*head = next;
+	} else {
+		append(*head, next);
+	}
+}
 
 bool get_token(void) {
 	if (parsing_code) {
@@ -272,8 +293,17 @@ bool get_token(void) {
 				last_token = TOKEN_SEMICOLON;
 				return true;
 			} else if (*current == '/' && *(current + 1) == '/') {
+				code_type *todo = NULL;
+				if (strncmp(current, "// TODO:", 8) == 0) {
+					todo = allocate(sizeof(code_type));
+					todo->text = current;
+				}
 				while (*current != 0 && *current != '\n') {
 					FORWARD(1);
+				}
+				if (todo) {
+					todo->size = (int)(current - todo->text);
+					append((void **)&todos, todo);
 				}
 			} else if (*current == '"') {
 				FORWARD(1);
@@ -334,23 +364,6 @@ bool match(token_type token, char *value) {
 	}
 	last_token = TOKEN_NONE;
 	return true;
-}
-
-void copy(char *target, int max_size) {
-	memset(target, 0, max_size);
-	int size = (int)(end - begin);
-	if (size > max_size) {
-		size = max_size - 1;
-	}
-	strncpy(target, begin, size);
-}
-
-void append(void **head, void *next) {
-	if (*head == NULL) {
-		*head = next;
-	} else {
-		append(*head, next);
-	}
 }
 
 bool parse_string_attribute(char *name, char *value, int max_size) {
@@ -662,7 +675,7 @@ bool parse_property_block(device_type *device, property_type **properties) {
 					continue;
 				}
 				if (parse_expression_attribute("perm", property->perm, sizeof(property->perm))) {
-					if (!strcmp(property->perm, "INDIGO_RO_PERM")) {
+					if (strcmp(property->perm, "INDIGO_RO_PERM") == 0) {
 						property->handle_change = false;
 					}
 					continue;
@@ -956,6 +969,22 @@ bool parse_driver_block(void) {
 }
 
 #pragma mark - code generator
+
+void read_definition_source(void) {
+	int max_size = 16 * 1024;
+	current = definition_source = allocate(max_size);
+	int c;
+	while ((c = getchar()) != -1) {
+		*current++ = c;
+		long size = current - definition_source;
+		if (size == max_size - 1) {
+			definition_source = realloc(definition_source, max_size *= 2);
+			current = definition_source + size;
+		}
+	}
+	*current = 0;
+	current = definition_source;
+}
 
 void write_line(const char *format, ...) {
 	if (*format == 0 && empty_line) {
@@ -1419,7 +1448,7 @@ void write_c_attach(device_type *device) {
 	write_line("// %s attach API callback", device->type);
 	write_line("");
 	write_line("static indigo_result %s_attach(indigo_device *device) {", device->type);
-	if (!strcmp(device->type, "aux")) {
+	if (strcmp(device->type, "aux") == 0) {
 		write_line("\tif (indigo_aux_attach(device, DRIVER_NAME, DRIVER_VERSION, %s) == INDIGO_OK) {", device->interface);
 	} else {
 		write_line("\tif (indigo_%s_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {", device->type);
@@ -1728,30 +1757,30 @@ void write_c_main_section(void) {
 			for (pattern_type *pattern = driver.serial->patterns; pattern; pattern = pattern->next) {
 				index++;
 			}
-			write_line("\t\t\tstatic indigo_device_match_pattern %s_patterns[%d] = { 0 };", master_device->type, index);
+			write_line("\t\t\tstatic indigo_device_match_pattern patterns[%d] = { 0 };", index);
 			index = 0;
 			for (pattern_type *pattern = driver.serial->patterns; pattern; pattern = pattern->next) {
 				if (*pattern->product) {
-					write_line("\t\t\tstrcpy(%s_patterns[%d].product_string, %s);", master_device->type, index, pattern->product);
+					write_line("\t\t\tstrcpy(patterns[%d].product_string, %s);", index, pattern->product);
 				}
 				if (*pattern->vendor) {
-					write_line("\t\t\tstrcpy(%s_patterns[%d].vendor_string, %s);", master_device->type, index, pattern->vendor);
+					write_line("\t\t\tstrcpy(patterns[%d].vendor_string, %s);", index, pattern->vendor);
 				}
 				if (*pattern->serial) {
-					write_line("\t\t\tstrcpy(%s_patterns[%d].serial_string, %s);", master_device->type, index, pattern->serial);
+					write_line("\t\t\tstrcpy(patterns[%d].serial_string, %s);", index, pattern->serial);
 				}
 				if (*pattern->vid) {
-					write_line("\t\t\t%s_patterns[%d].vendor_id = %s;", master_device->type, index, pattern->vid);
+					write_line("\t\t\tpatterns[%d].vendor_id = %s;", index, pattern->vid);
 				}
 				if (*pattern->pid) {
-					write_line("\t\t\t%s_patterns[%d].product_id = %s;", master_device->type, index, pattern->pid);
+					write_line("\t\t\tpatterns[%d].product_id = %s;", index, pattern->pid);
 				}
 				if (*pattern->exact_match) {
-					write_line("\t\t\t%s_patterns[%d].exact_match = %s;", master_device->type, index, pattern->exact_match);
+					write_line("\t\t\tpatterns[%d].exact_match = %s;", index, pattern->exact_match);
 				}
 				index++;
 			}
-			write_line("\t\t\tINDIGO_REGISER_MATCH_PATTERNS(%s_template, %s_patterns, %d);", master_device->type, master_device->type, index);
+			write_line("\t\t\tINDIGO_REGISER_MATCH_PATTERNS(%s_template, patterns, %d);", master_device->type, index);
 		}
 		write_line("\t\t\tprivate_data = indigo_safe_malloc(sizeof(%s_private_data));", driver.name);
 		for (device_type *device = driver.devices; device; device = device->next) {
@@ -1764,7 +1793,6 @@ void write_c_main_section(void) {
 		}
 	} else if (driver.libusb) {
 		if (driver.libusb->hotplug) {
-			write_line("\t\t\tlast_action = action;");
 			write_line("\t\t\tfor (int i = 0; i < MAX_DEVICES; i++) {");
 			write_line("\t\t\t\tdevices[i] = 0;");
 			write_line("\t\t\t}");
@@ -1825,6 +1853,12 @@ void write_c_main_section(void) {
 
 void write_c_source(void) {
 	write_license();
+	if (todos) {
+		for (code_type *todo = todos; todo; todo = todo->next) {
+			write_line("%.*s", todo->size, todo->text);
+		}
+		write_line("");
+	}
 	write_c_include_section();
 	write_c_define_section();
 	write_c_property_definition_section();
@@ -1889,16 +1923,28 @@ item_type *get_item(property_type *property, char *item_handle) {
 	return item;
 }
 
+char *translate_name(char *name) {
+	for (definition_type *def = defs; def; def = def->next) {
+		if (strcmp(def->name, name) == 0) {
+			return def->value;
+		}
+	}
+	return name;
+}
+
 void read_c_source(void) {
 	char line[1024];
 	char s1[128], s2[128], s3[128], s4[128], s5[128], s6[128], s7[128];
 	int i1, i2;
 	double d1;
-	device_type *device = NULL;
-	property_type *property = NULL;
 	while (fgets(line, sizeof(line), stdin)) {
 		line[strcspn(line, "\n")] = 0;
 		if (!strncmp(line, "// ", 3) || !strncmp(line, "//\n", 3)) {
+			if (strncmp(line, "// TODO:", 8) == 0) {
+				code_type *todo = allocate(sizeof(code_type));
+				todo->text = strdup(line);
+				append((void **)&todos, todo);
+			}
 			if (sscanf(line, "// Copyright (c) %d - %d %127[^\0]", &i1, &i2, s1) == 3) {
 				snprintf(driver.copyright, sizeof(driver.copyright), "Copyright (c) %d-2025 %s", i1, s1);
 			} else if (sscanf(line, "// Copyright (c) %d %127[^\0]", &i1, s1) == 2) {
@@ -1983,6 +2029,23 @@ void read_c_source(void) {
 			strncpy(driver.name, s1, sizeof(driver.name));
 		} else if (sscanf(line, "#define DRIVER_LABEL \"%127[^\"]\"", s1) == 1) {
 			strncpy(driver.label, s1, sizeof(driver.label));
+		} else if (sscanf(line, "#define %127[^_]_DEVICE_NAME \"%127[^\"]\"", s1, s2) == 2) {
+			make_lower_case(s1);
+			device = get_device(s1);
+			strncpy(device->name, s2, sizeof(device->name));
+		} else if (sscanf(line, "#define %127s %127[^\0]", s1, s2) == 2) {
+			int len = (int)strlen(s1);
+			if (strncmp(s1 + len - 14, "_PROPERTY_NAME", 14) == 0) {
+				definition_type *def = allocate(sizeof(definition_type));
+				strncpy(def->name, s1, sizeof(def->name));
+				strncpy(def->value, s2, sizeof(def->value));
+				append((void **)&defs, def);
+			} else if (strncmp(s1 + len - 10, "_ITEM_NAME", 10) == 0) {
+				definition_type *def = allocate(sizeof(definition_type));
+				strncpy(def->name, s1, sizeof(def->name));
+				strncpy(def->value, s2, sizeof(def->value));
+				append((void **)&defs, def);
+			}
 		} else if (sscanf(line, "	SET_DRIVER_INFO(%*[^,], \"%127[^\"]\")", s1) == 1) {
 			strncpy(driver.label, s1, sizeof(driver.label));
 		} else if (strstr(line, "ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;")) {
@@ -2019,12 +2082,8 @@ void read_c_source(void) {
 				strncpy(pattern->vendor, s2, sizeof(pattern->vendor));
 			} else if (strcmp(s1, "serial_string") == 0) {
 				strncpy(pattern->serial, s2, sizeof(pattern->serial));
-			} else if (strcmp(s1, "product_id") == 0) {
-				strncpy(pattern->pid, s2, sizeof(pattern->pid));
-			} else if (strcmp(s1, "vendor_id") == 0) {
-				strncpy(pattern->vid, s2, sizeof(pattern->vid));
 			}
-		} else if (sscanf(line, " patterns[%d].exact_match = %127[^;];", &i1, s1) == 2) {
+		} else if (sscanf(line, " patterns[%d].%127[^= ] = %127[^;];", &i1, s1, s2) == 3) {
 			if (driver.serial == NULL) {
 				driver.serial = allocate(sizeof(serial_type));
 			}
@@ -2039,7 +2098,13 @@ void read_c_source(void) {
 			if (pattern == NULL) {
 				append((void **)&driver.serial->patterns, pattern = allocate(sizeof(pattern_type)));
 			}
-			strncpy(pattern->exact_match, s1, sizeof(pattern->exact_match));
+			if (strcmp(s1, "product_id") == 0) {
+				strncpy(pattern->pid, s2, sizeof(pattern->pid));
+			} else if (strcmp(s1, "vendor_id") == 0) {
+				strncpy(pattern->vid, s2, sizeof(pattern->vid));
+			} else if (strcmp(s1, "vendor_id") == 0) {
+				strncpy(pattern->exact_match, s2, sizeof(pattern->exact_match));
+			}
 		} else if (sscanf(line, " int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, %127[^,], %127[^,])", s1, s2) == 2) {
 			driver.libusb = allocate(sizeof(libusb_type));
 			if (strcmp(s1, "LIBUSB_HOTPLUG_MATCH_ANY")) {
@@ -2053,10 +2118,6 @@ void read_c_source(void) {
 				property_type *property = get_property(device, s1);
 				property->hidden = true;
 			}
-		} else if (sscanf(line, "#define %127[^_]_DEVICE_NAME \"%127[^\"]\"", s1, s2) == 2) {
-			make_lower_case(s1);
-			device = get_device(s1);
-			strncpy(device->name, s2, sizeof(device->name));
 		} else if (sscanf(line, " static indigo_device %127[^_]_template = %127[^(](", s1, s2) == 2 && strcmp(s2, "INDIGO_DEVICE_INITIALIZER") == 0) {
 			if (fgets(line, sizeof(line), stdin)) {
 				if (sscanf(line, " \"%127[^\"]\"", s3) == 1) {
@@ -2093,45 +2154,45 @@ void read_c_source(void) {
 			if (device) {
 				property = get_property(device, s1);
 				strncpy(property->type, "switch", sizeof(property->type));
-				snprintf(property->name, sizeof(property->name), "%s", s2);
-				snprintf(property->group, sizeof(property->group), "%s", s3);
-				snprintf(property->label, sizeof(property->label), "%s", s4);
-				snprintf(property->perm, sizeof(property->perm), "%s", s5);
-				snprintf(property->rule, sizeof(property->rule), "%s", s6);
+				strncpy(property->name, translate_name(s2), sizeof(property->name));
+				strncpy(property->group, s3, sizeof(property->group));
+				strncpy(property->label, s4, sizeof(property->label));
+				strncpy(property->perm, s5, sizeof(property->perm));
+				strncpy(property->rule, s6, sizeof(property->rule));
 			}
 		} else if (sscanf(line, " %s = indigo_init_light_property(NULL, device->name, %127[^,], %127[^,], %127[^,], INDIGO_OK_STATE, %*d)", s1, s2, s3, s4) == 4) {
 			if (device) {
 				property = get_property(device, s1);
 				strncpy(property->type, "light", sizeof(property->type));
-				snprintf(property->name, sizeof(property->name), "%s", s2);
-				snprintf(property->group, sizeof(property->group), "%s", s3);
-				snprintf(property->label, sizeof(property->label), "%s", s4);
+				strncpy(property->name, translate_name(s2), sizeof(property->name));
+				strncpy(property->group, s3, sizeof(property->group));
+				strncpy(property->label, s4, sizeof(property->label));
 			}
 		} else if (sscanf(line, " %s = indigo_init_%127[^_]_property(NULL, device->name, %127[^,], %127[^,], %127[^,], INDIGO_OK_STATE, %127[^,], %*d)", s1, s2, s3, s4, s5, s6) == 6) {
 			if (device) {
 				property = get_property(device, s1);
 				strncpy(property->type, s2, sizeof(property->type));
-				snprintf(property->name, sizeof(property->name), "%s", s3);
-				snprintf(property->group, sizeof(property->group), "%s", s4);
-				snprintf(property->label, sizeof(property->label), "%s", s5);
-				snprintf(property->perm, sizeof(property->perm), "%s", s6);
+				strncpy(property->name, translate_name(s3), sizeof(property->name));
+				strncpy(property->group, s4, sizeof(property->group));
+				strncpy(property->label, s5, sizeof(property->label));
+				strncpy(property->perm, s6, sizeof(property->perm));
 			}
 		} else if (sscanf(line, " indigo_init_number_item(%127[^,], %127[^,], %127[^,], %127[^,], %127[^,], %127[^,], %127[^)]);", s1, s2, s3, s4, s5, s6, s7) == 7) {
 			if (property) {
 				item_type *item = get_item(property, s1);
-				snprintf(item->name, sizeof(item->name), "%s", s2);
-				snprintf(item->label, sizeof(item->label), "%s", s3);
-				snprintf(item->min, sizeof(item->min), "%s", s4);
-				snprintf(item->max, sizeof(item->max), "%s", s5);
-				snprintf(item->step, sizeof(item->step), "%s", s6);
-				snprintf(item->value, sizeof(item->value), "%s", s7);
+				strncpy(item->name, translate_name(s2), sizeof(item->name));
+				strncpy(item->label, s3, sizeof(item->label));
+				strncpy(item->min, s4, sizeof(item->min));
+				strncpy(item->max, s5, sizeof(item->max));
+				strncpy(item->step, s6, sizeof(item->step));
+				strncpy(item->value, s7, sizeof(item->value));
 			}
 		} else if (sscanf(line, " indigo_init_%127[^_]_item(%127[^,], %127[^,], %127[^,], %127[^)]);", s1, s2, s3, s4, s5) == 5) {
 			if (property) {
 				item_type *item = get_item(property, s2);
-				snprintf(item->name, sizeof(item->name), "%s", s3);
-				snprintf(item->label, sizeof(item->label), "%s", s4);
-				snprintf(item->value, sizeof(item->value), "%s", s5);
+				strncpy(item->name, translate_name(s3), sizeof(item->name));
+				strncpy(item->label, s4, sizeof(item->label));
+				strncpy(item->value, s5, sizeof(item->value));
 			}
 		} else if (sscanf(line, " strcpy(%127[^-]->number.format, %127[^)]);", s1, s2) == 2) {
 			if (property) {
@@ -2177,6 +2238,12 @@ void write_definition_source(void) {
 	write_line("");
 	write_line("// %s driver definition", driver.label);
 	write_line("");
+	if (todos) {
+		for (code_type *todo = todos; todo; todo = todo->next) {
+			write_line(todo->text);
+		}
+		write_line("");
+	}
 	write_line("driver %s {", driver.name);
 	write_line("\tlabel = \"%s\";", driver.label);
 	write_line("\tauthor = \"%s\";", driver.author);
@@ -2253,8 +2320,20 @@ void write_definition_source(void) {
 	} else {
 		write_line("\t// code { }");
 	}
-	write_line("\t// on_init { }");
-	write_line("\t// on_shutdown { }");
+	if (driver.on_init) {
+		write_line("\ton_init {");
+		write_code_block(driver.on_init, 2);
+		write_line("\t}");
+	} else {
+		write_line("\t// on_init { }");
+	}
+	if (driver.on_shutdown) {
+		write_line("\ton_shutdown {");
+		write_code_block(driver.on_shutdown, 2);
+		write_line("\t}");
+	} else {
+		write_line("\t// on_shutdown { }");
+	}
 	for (device_type *device = driver.devices; device; device = device->next) {
 		write_line("\t%s {", device->type);
 		write_line("\t\tname = \"%s\";", device->name);
@@ -2286,7 +2365,7 @@ void write_definition_source(void) {
 			write_line("\t\t// on_connect { }");
 		}
 		if (device->on_disconnect) {
-			write_line("\t\toon_disconnect {");
+			write_line("\t\ton_disconnect {");
 			write_code_block(device->on_disconnect, 3);
 			write_line("\t\t}");
 		} else {
@@ -2300,7 +2379,7 @@ void write_definition_source(void) {
 			write_line("\t\t// on_attach { }");
 		}
 		if (device->on_detach) {
-			write_line("\t\toon_detach {");
+			write_line("\t\ton_detach {");
 			write_code_block(device->on_detach, 3);
 			write_line("\t\t}");
 		} else {
@@ -2364,18 +2443,10 @@ void write_definition_source(void) {
 					write_line("\t\t\t\tlabel = %s;", item->label);
 					write_line("\t\t\t\tvalue = %s;", item->value);
 					if (property->type[0] == 'n') {
-						if (*item->min && strcmp(item->min, "0")) {
-							write_line("\t\t\t\tmin = %s;", item->min);
-						}
-						if (*item->max && strcmp(item->max, "0")) {
-							write_line("\t\t\t\tmax = %s;", item->max);
-						}
-						if (*item->step && strcmp(item->step, "0")) {
-							write_line("\t\t\t\tstep = %s;", item->step);
-						}
-						if (*item->format) {
-							write_line("\t\t\t\tformat = %s;", item->format);
-						}
+						write_line("\t\t\t\tmin = %s;", item->min);
+						write_line("\t\t\t\tmax = %s;", item->max);
+						write_line("\t\t\t\tstep = %s;", item->step);
+						write_line("\t\t\t\tformat = %s;", item->format);
 					}
 					write_line("\t\t\t}");
 				}
@@ -2388,33 +2459,17 @@ void write_definition_source(void) {
 }
 #pragma mark - main
 
-void read_definition_source(void) {
-	int max_size = 16 * 1024;
-	current = definition_source = allocate(max_size);
-	int c;
-	while ((c = getchar()) != -1) {
-		*current++ = c;
-		long size = current - definition_source;
-		if (size == max_size - 1) {
-			definition_source = realloc(definition_source, max_size *= 2);
-			current = definition_source + size;
-		}
-	}
-	*current = 0;
-	current = definition_source;
-}
-
 int main(int argc, char **argv) {
 	char **arg = argv;
 	char *definition_file = NULL;
 	bool help = false;
 	bool create = false;
 	while (*++arg) {
-		if (!strcmp(*arg, "-v") || !strcmp(*arg, "--verbose")) {
+		if (strcmp(*arg, "-v") == 0 || strcmp(*arg, "--verbose") == 0) {
 			verbose_log = true;
-		} else if (!strcmp(*arg, "-c") || !strcmp(*arg, "--create")) {
+		} else if (strcmp(*arg, "-c") == 0 || strcmp(*arg, "--create") == 0) {
 			create = true;
-		} else if (!strcmp(*arg, "-h") || !strcmp(*arg, "--help")) {
+		} else if (strcmp(*arg, "-h") == 0 || strcmp(*arg, "--help") == 0) {
 			help = true;
 		} else {
 			definition_file = *arg;
@@ -2425,6 +2480,7 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 	definition_source_basename = basename(definition_file);
+	definition_source_dirname = dirname(definition_file);
 	if (!create && access(definition_file, F_OK) == 0) {
 		freopen(definition_file, "r", stdin);
 		fprintf(stderr, "Reading %s ...\n", definition_source_basename);
@@ -2435,16 +2491,16 @@ int main(int argc, char **argv) {
 			return 1;
 		}
 		if (driver.devices) {
-			char file_name[64];
-			snprintf(file_name, sizeof(file_name), "indigo_%s_%s.h", driver.devices->type, driver.name);
+			char file_name[PASS_MAX];
+			snprintf(file_name, sizeof(file_name), "%s/indigo_%s_%s.h", definition_source_dirname, driver.devices->type, driver.name);
 			fprintf(stderr, "Writing %s ...\n", file_name);
 			freopen(file_name, "w", stdout);
 			write_h_source();
-			snprintf(file_name, sizeof(file_name), "indigo_%s_%s_main.c", driver.devices->type, driver.name);
+			snprintf(file_name, sizeof(file_name), "%s/indigo_%s_%s_main.c", definition_source_dirname, driver.devices->type, driver.name);
 			fprintf(stderr, "Writing %s ...\n", file_name);
 			freopen(file_name, "w", stdout);
 			write_c_main_source();
-			snprintf(file_name, sizeof(file_name), "indigo_%s_%s.c", driver.devices->type, driver.name);
+			snprintf(file_name, sizeof(file_name), "%s/indigo_%s_%s.c", definition_source_dirname, driver.devices->type, driver.name);
 			fprintf(stderr, "Writing %s ...\n", file_name);
 			freopen(file_name, "w", stdout);
 			write_c_source();

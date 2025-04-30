@@ -1,4 +1,4 @@
-// Copyright (c) 2019 - 2025 Rumen G.Bogdanovski
+// Copyright (c) 2019-2025 Rumen G.Bogdanovski
 // All rights reserved.
 
 // You can use this software under the terms of 'INDIGO Astronomy

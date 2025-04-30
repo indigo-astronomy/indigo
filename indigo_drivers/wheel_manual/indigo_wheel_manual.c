@@ -1,4 +1,4 @@
-// Copyright (c) 2020 - 2025 Rumen G.Bogdanovski
+// Copyright (c) 2020-2025 Rumen G.Bogdanovski
 // All rights reserved.
 
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -41,9 +41,12 @@
 #define DRIVER_LABEL         "Manual filter wheel"
 #define WHEEL_DEVICE_NAME    "Manual filter wheel"
 #define PRIVATE_DATA         ((manual_private_data *)device->private_data)
-//+ "definitions" below
+
+//+ "define" custom code below
+
 #define FILTER_COUNT         8
-//- "definitions" above
+
+//- "define" custom code above
 
 #pragma mark - Private data definition
 

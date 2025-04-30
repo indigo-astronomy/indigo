@@ -1,4 +1,4 @@
-// Copyright (c) 2019 - 2025 Rumen G.Bogdanovski
+// Copyright (c) 2019-2025 Rumen G.Bogdanovski
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -16,12 +16,12 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// Lacerta FBC aux driver definition
+// Lacerta FBC driver definition
 
 driver fbc {
-	author = "Rumen G.Bogdanovski";
-	copyright = "Copyright (c) 2019 - 2025 Rumen G.Bogdanovski";
 	label = "Lacerta FBC";
+	author = "Rumen G.Bogdanovski";
+	copyright = "Copyright (c) 2019-2025 Rumen G.Bogdanovski";
 	version = 6;
 	serial {
 		pattern {
@@ -29,13 +29,11 @@ driver fbc {
 			pid = 0x6001;
 		}
 	}
-
+	// include { }
 	define {
-		#define INTENSITY(val) ((int)floor((100 - (int)(val) - 0) * (220 - 20) / (100 - 0) + 20))
+		#define INTENSITY(val)       ((int)floor((100 - (int)(val) - 0) * (220 - 20) / (100 - 0) + 20))
 	}
-	
-	// Shared code
-	
+	// data { }
 	code {
 		static bool fbc_command(indigo_device *device, char *command, char *response, int count) {
 			if (response != NULL) {
@@ -88,13 +86,14 @@ driver fbc {
 			indigo_uni_close(&PRIVATE_DATA->handle);
 		}
 	}
-
-	// AUX definition
-	
+	// on_init { }
+	// on_shutdown { }
 	aux {
 		name = "Lacerta FBC";
-		additional_instances = true;
 		interface = INDIGO_INTERFACE_AUX_LIGHTBOX;
+		additional_instances = true;
+		// code { }
+		// on_timer { }
 		on_connect {
 			char command[16], response[80];
 			if (fbc_command(device, ": V #", response, sizeof(response))) {
@@ -104,16 +103,17 @@ driver fbc {
 			sprintf(command, ": B %d #", (int)AUX_LIGHT_INTENSITY_ITEM->number.value);
 			fbc_command(device, command, NULL, 0);
 		}
+		// on_disconnect { }
+		on_attach {
+			INFO_PROPERTY->count = 6;
+		}
+		// on_detach { }
 		switch AUX_LIGHT_SWITCH {
-			label = "Light (on/off)";
+			name = AUX_LIGHT_SWITCH_PROPERTY_NAME;
 			group = AUX_MAIN_GROUP;
-			item AUX_LIGHT_SWITCH_ON {
-				label = "On";
-			}
-			item AUX_LIGHT_SWITCH_OFF {
-				label = "Off";
-				value = true;
-			}
+			label = "Light (on/off)";
+			// handle_change = false;
+			// synchronized_change = false;
 			on_change {
 				char command[16];
 				sprintf(command, "E:%d", AUX_LIGHT_SWITCH_ON_ITEM->sw.value); // TODO: This command is not understood
@@ -121,18 +121,26 @@ driver fbc {
 					AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 			}
+			// on_attach { }
+			// on_detach { }
+			item AUX_LIGHT_SWITCH_ON {
+				name = AUX_LIGHT_SWITCH_ON_ITEM_NAME;
+				label = "On";
+				value = false;
+			}
+			item AUX_LIGHT_SWITCH_OFF {
+				name = AUX_LIGHT_SWITCH_OFF_ITEM_NAME;
+				label = "Off";
+				value = true;
+			}
 		}
 		number AUX_LIGHT_INTENSITY {
-			label = "Light intensity";
+			name = AUX_LIGHT_INTENSITY_PROPERTY_NAME;
 			group = AUX_MAIN_GROUP;
+			label = "Light intensity";
 			persistent = true;
-			item AUX_LIGHT_INTENSITY {
-				label = "Intensity (%)";
-				format = "%g";
-				max = 100;
-				step = 1;
-				value = 50;
-			}
+			// handle_change = false;
+			// synchronized_change = false;
 			on_change {
 				char command[16];
 				sprintf(command, ": B %d #", (int)AUX_LIGHT_INTENSITY_ITEM->number.value);
@@ -140,16 +148,24 @@ driver fbc {
 					AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 			}
+			// on_attach { }
+			// on_detach { }
+			item AUX_LIGHT_INTENSITY {
+				name = AUX_LIGHT_INTENSITY_ITEM_NAME;
+				label = "Intensity (%)";
+				value = 50;
+				min = 0;
+				max = 100;
+				step = 1;
+				format = "%g";
+			}
 		}
 		number AUX_LIGHT_IMPULSE {
-			label = "Light impulse";
+			name = AUX_LIGHT_IMPULSE_PROPERTY_NAME;
 			group = AUX_MAIN_GROUP;
-			item AUX_LIGHT_IMPULSE_DURATION {
-				label = "Duration (s)";
-				max = 30;
-				step = 1;
-				value = 0;
-			}
+			label = "Light impulse";
+			// handle_change = false;
+			// synchronized_change = false;
 			on_change {
 				char command[16];
 				sprintf(command, ": F %d #", (int)(AUX_LIGHT_IMPULSE_DURATION_ITEM->number.value * 1000));
@@ -170,16 +186,24 @@ driver fbc {
 					AUX_LIGHT_IMPULSE_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 			}
-		}
-		number CCD_EXPOSURE {
-			label = "Shutter Control";
-			group = AUX_MAIN_GROUP;
-			item CCD_EXPOSURE {
-				label = "Exposure (s)";
+			// on_attach { }
+			// on_detach { }
+			item AUX_LIGHT_IMPULSE_DURATION {
+				name = AUX_LIGHT_IMPULSE_DURATION_ITEM_NAME;
+				label = "Duration (s)";
+				value = 0;
+				min = 0;
 				max = 30;
 				step = 1;
-				value = 0;
+				format = ;
 			}
+		}
+		number CCD_EXPOSURE {
+			name = CCD_EXPOSURE_PROPERTY_NAME;
+			group = AUX_MAIN_GROUP;
+			label = "Shutter Control";
+			// handle_change = false;
+			// synchronized_change = false;
 			on_change {
 				char command[16];
 				sprintf(command, ": E %d #", (int)(CCD_EXPOSURE_ITEM->number.value * 1000));
@@ -200,9 +224,17 @@ driver fbc {
 					CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 			}
-		}
-		on_attach {
-			INFO_PROPERTY->count = 6;
+			// on_attach { }
+			// on_detach { }
+			item CCD_EXPOSURE {
+				name = CCD_EXPOSURE_ITEM_NAME;
+				label = "Exposure (s)";
+				value = 0;
+				min = 0;
+				max = 30;
+				step = 1;
+				format = ;
+			}
 		}
 	}
 }

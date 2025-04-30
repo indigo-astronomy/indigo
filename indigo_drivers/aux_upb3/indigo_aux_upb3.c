@@ -43,9 +43,12 @@
 #define AUX_DEVICE_NAME      "Ultimate Powerbox 3"
 #define FOCUSER_DEVICE_NAME  "Ultimate Powerbox 3 (focuser)"
 #define PRIVATE_DATA         ((upb3_private_data *)device->private_data)
-//+ "definitions" below
+
+//+ "define" custom code below
+
 #define POWERBOX_GROUP       "Powerbox"
-//- "definitions" above
+
+//- "define" custom code above
 
 #pragma mark - Property definitions
 
@@ -84,15 +87,6 @@
 #define AUX_POWER_OUTLET_8_ITEM        (AUX_POWER_OUTLET_PROPERTY->items + 7)
 #define AUX_POWER_OUTLET_9_ITEM        (AUX_POWER_OUTLET_PROPERTY->items + 8)
 
-// AUX_POWER_OUTLET_STATE handles definition
-#define AUX_POWER_OUTLET_STATE_PROPERTY (PRIVATE_DATA->aux_power_outlet_state_property)
-#define AUX_POWER_OUTLET_STATE_1_ITEM   (AUX_POWER_OUTLET_STATE_PROPERTY->items + 0)
-#define AUX_POWER_OUTLET_STATE_2_ITEM   (AUX_POWER_OUTLET_STATE_PROPERTY->items + 1)
-#define AUX_POWER_OUTLET_STATE_3_ITEM   (AUX_POWER_OUTLET_STATE_PROPERTY->items + 2)
-#define AUX_POWER_OUTLET_STATE_4_ITEM   (AUX_POWER_OUTLET_STATE_PROPERTY->items + 3)
-#define AUX_POWER_OUTLET_STATE_5_ITEM   (AUX_POWER_OUTLET_STATE_PROPERTY->items + 4)
-#define AUX_POWER_OUTLET_STATE_6_ITEM   (AUX_POWER_OUTLET_STATE_PROPERTY->items + 5)
-
 // AUX_HEATER_OUTLET handles definition
 #define AUX_HEATER_OUTLET_PROPERTY     (PRIVATE_DATA->aux_heater_outlet_property)
 #define AUX_HEATER_OUTLET_1_ITEM       (AUX_HEATER_OUTLET_PROPERTY->items + 0)
@@ -114,24 +108,6 @@
 #define AUX_USB_PORT_6_ITEM            (AUX_USB_PORT_PROPERTY->items + 5)
 #define AUX_USB_PORT_7_ITEM            (AUX_USB_PORT_PROPERTY->items + 6)
 #define AUX_USB_PORT_8_ITEM            (AUX_USB_PORT_PROPERTY->items + 7)
-
-// AUX_WEATHER handles definition
-#define AUX_WEATHER_PROPERTY           (PRIVATE_DATA->aux_weather_property)
-#define AUX_WEATHER_TEMPERATURE_ITEM   (AUX_WEATHER_PROPERTY->items + 0)
-#define AUX_WEATHER_HUMIDITY_ITEM      (AUX_WEATHER_PROPERTY->items + 1)
-#define AUX_WEATHER_DEWPOINT_ITEM      (AUX_WEATHER_PROPERTY->items + 2)
-
-// AUX_INFO handles definition
-#define AUX_INFO_PROPERTY              (PRIVATE_DATA->aux_info_property)
-#define AUX_AVERAGE_ITEM               (AUX_INFO_PROPERTY->items + 0)
-#define AUX_AMP_HOUR_ITEM              (AUX_INFO_PROPERTY->items + 1)
-#define AUX_WATT_HOUR_ITEM             (AUX_INFO_PROPERTY->items + 2)
-#define AUX_INFO_VOLTAGE_ITEM          (AUX_INFO_PROPERTY->items + 3)
-#define AUX_INFO_CURRENT_ITEM          (AUX_INFO_PROPERTY->items + 4)
-
-#define AUX_AVERAGE_ITEM_NAME          "AVERAGE_CURRENT"
-#define AUX_AMP_HOUR_ITEM_NAME         "AMP_HOUR"
-#define AUX_WATT_HOUR_ITEM_NAME        "WATT_HOUR"
 
 // AUX_SAVE_OUTLET_STATES_AS_DEFAULT handles definition
 #define AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROPERTY      (PRIVATE_DATA->aux_save_outlet_states_as_default_property)
@@ -156,6 +132,33 @@
 #define AUX_VARIABLE_POWER_OUTLET_7_ITEM_NAME   "OUTLET_7"
 #define AUX_VARIABLE_POWER_OUTLET_8_ITEM_NAME   "OUTLET_8"
 
+// AUX_POWER_OUTLET_STATE handles definition
+#define AUX_POWER_OUTLET_STATE_PROPERTY (PRIVATE_DATA->aux_power_outlet_state_property)
+#define AUX_POWER_OUTLET_STATE_1_ITEM   (AUX_POWER_OUTLET_STATE_PROPERTY->items + 0)
+#define AUX_POWER_OUTLET_STATE_2_ITEM   (AUX_POWER_OUTLET_STATE_PROPERTY->items + 1)
+#define AUX_POWER_OUTLET_STATE_3_ITEM   (AUX_POWER_OUTLET_STATE_PROPERTY->items + 2)
+#define AUX_POWER_OUTLET_STATE_4_ITEM   (AUX_POWER_OUTLET_STATE_PROPERTY->items + 3)
+#define AUX_POWER_OUTLET_STATE_5_ITEM   (AUX_POWER_OUTLET_STATE_PROPERTY->items + 4)
+#define AUX_POWER_OUTLET_STATE_6_ITEM   (AUX_POWER_OUTLET_STATE_PROPERTY->items + 5)
+
+// AUX_WEATHER handles definition
+#define AUX_WEATHER_PROPERTY           (PRIVATE_DATA->aux_weather_property)
+#define AUX_WEATHER_TEMPERATURE_ITEM   (AUX_WEATHER_PROPERTY->items + 0)
+#define AUX_WEATHER_HUMIDITY_ITEM      (AUX_WEATHER_PROPERTY->items + 1)
+#define AUX_WEATHER_DEWPOINT_ITEM      (AUX_WEATHER_PROPERTY->items + 2)
+
+// AUX_INFO handles definition
+#define AUX_INFO_PROPERTY              (PRIVATE_DATA->aux_info_property)
+#define AUX_AVERAGE_ITEM               (AUX_INFO_PROPERTY->items + 0)
+#define AUX_AMP_HOUR_ITEM              (AUX_INFO_PROPERTY->items + 1)
+#define AUX_WATT_HOUR_ITEM             (AUX_INFO_PROPERTY->items + 2)
+#define AUX_INFO_VOLTAGE_ITEM          (AUX_INFO_PROPERTY->items + 3)
+#define AUX_INFO_CURRENT_ITEM          (AUX_INFO_PROPERTY->items + 4)
+
+#define AUX_AVERAGE_ITEM_NAME          "AVERAGE_CURRENT"
+#define AUX_AMP_HOUR_ITEM_NAME         "AMP_HOUR"
+#define AUX_WATT_HOUR_ITEM_NAME        "WATT_HOUR"
+
 #pragma mark - Private data definition
 
 typedef struct {
@@ -167,15 +170,15 @@ typedef struct {
 	//- "data" custom code above
 	indigo_property *aux_outlet_names_property;
 	indigo_property *aux_power_outlet_property;
-	indigo_property *aux_power_outlet_state_property;
 	indigo_property *aux_heater_outlet_property;
 	indigo_property *aux_dew_control_property;
 	indigo_property *aux_usb_port_property;
-	indigo_property *aux_weather_property;
-	indigo_property *aux_info_property;
 	indigo_property *aux_save_outlet_states_as_default_property;
 	indigo_property *aux_reboot_property;
 	indigo_property *aux_variable_power_outlet_property;
+	indigo_property *aux_power_outlet_state_property;
+	indigo_property *aux_weather_property;
+	indigo_property *aux_info_property;
 	indigo_timer *aux_timer;
 	indigo_timer *aux_connection_handler_timer;
 	indigo_timer *focuser_timer;
@@ -466,15 +469,15 @@ static void aux_connection_handler(indigo_device *device) {
 			upb3_command(device, "PL:1", response, sizeof(response));
 			//- "aux.on_connect" custom code above
 			indigo_define_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
-			indigo_define_property(device, AUX_POWER_OUTLET_STATE_PROPERTY, NULL);
 			indigo_define_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
 			indigo_define_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
 			indigo_define_property(device, AUX_USB_PORT_PROPERTY, NULL);
-			indigo_define_property(device, AUX_WEATHER_PROPERTY, NULL);
-			indigo_define_property(device, AUX_INFO_PROPERTY, NULL);
 			indigo_define_property(device, AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROPERTY, NULL);
 			indigo_define_property(device, AUX_REBOOT_PROPERTY, NULL);
 			indigo_define_property(device, AUX_VARIABLE_POWER_OUTLET_PROPERTY, NULL);
+			indigo_define_property(device, AUX_POWER_OUTLET_STATE_PROPERTY, NULL);
+			indigo_define_property(device, AUX_WEATHER_PROPERTY, NULL);
+			indigo_define_property(device, AUX_INFO_PROPERTY, NULL);
 			indigo_set_timer(device, 0, aux_timer_callback, &PRIVATE_DATA->aux_timer);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, "Connected to %s on %s", AUX_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
@@ -502,15 +505,15 @@ static void aux_connection_handler(indigo_device *device) {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_reverse_motion_handler_timer);
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_backlash_handler_timer);
 		indigo_delete_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
-		indigo_delete_property(device, AUX_POWER_OUTLET_STATE_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_USB_PORT_PROPERTY, NULL);
-		indigo_delete_property(device, AUX_WEATHER_PROPERTY, NULL);
-		indigo_delete_property(device, AUX_INFO_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_REBOOT_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_VARIABLE_POWER_OUTLET_PROPERTY, NULL);
+		indigo_delete_property(device, AUX_POWER_OUTLET_STATE_PROPERTY, NULL);
+		indigo_delete_property(device, AUX_WEATHER_PROPERTY, NULL);
+		indigo_delete_property(device, AUX_INFO_PROPERTY, NULL);
 		if (--PRIVATE_DATA->count == 0) {
 			upb3_close(device);
 		}
@@ -750,16 +753,6 @@ static indigo_result aux_attach(indigo_device *device) {
 		indigo_init_switch_item(AUX_POWER_OUTLET_7_ITEM, AUX_POWER_OUTLET_7_ITEM_NAME, "Buck output", true);
 		indigo_init_switch_item(AUX_POWER_OUTLET_8_ITEM, AUX_POWER_OUTLET_8_ITEM_NAME, "Boost output", true);
 		indigo_init_switch_item(AUX_POWER_OUTLET_9_ITEM, AUX_POWER_OUTLET_9_ITEM_NAME, "Relay switch", true);
-		AUX_POWER_OUTLET_STATE_PROPERTY = indigo_init_light_property(NULL, device->name, AUX_POWER_OUTLET_STATE_PROPERTY_NAME, POWERBOX_GROUP, "Power outlets state", INDIGO_OK_STATE, 6);
-		if (AUX_POWER_OUTLET_STATE_PROPERTY == NULL) {
-			return INDIGO_FAILED;
-		}
-		indigo_init_light_item(AUX_POWER_OUTLET_STATE_1_ITEM, AUX_POWER_OUTLET_STATE_1_ITEM_NAME, "Outlet #1 state", INDIGO_OK_STATE);
-		indigo_init_light_item(AUX_POWER_OUTLET_STATE_2_ITEM, AUX_POWER_OUTLET_STATE_2_ITEM_NAME, "Outlet #2 state", INDIGO_OK_STATE);
-		indigo_init_light_item(AUX_POWER_OUTLET_STATE_3_ITEM, AUX_POWER_OUTLET_STATE_3_ITEM_NAME, "Outlet #3 state", INDIGO_OK_STATE);
-		indigo_init_light_item(AUX_POWER_OUTLET_STATE_4_ITEM, AUX_POWER_OUTLET_STATE_4_ITEM_NAME, "Outlet #4 state", INDIGO_OK_STATE);
-		indigo_init_light_item(AUX_POWER_OUTLET_STATE_5_ITEM, AUX_POWER_OUTLET_STATE_5_ITEM_NAME, "Outlet #5 state", INDIGO_OK_STATE);
-		indigo_init_light_item(AUX_POWER_OUTLET_STATE_6_ITEM, AUX_POWER_OUTLET_STATE_6_ITEM_NAME, "Outlet #6 state", INDIGO_OK_STATE);
 		AUX_HEATER_OUTLET_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_HEATER_OUTLET_PROPERTY_NAME, POWERBOX_GROUP, "Heater outlets", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
 		if (AUX_HEATER_OUTLET_PROPERTY == NULL) {
 			return INDIGO_FAILED;
@@ -785,22 +778,6 @@ static indigo_result aux_attach(indigo_device *device) {
 		indigo_init_switch_item(AUX_USB_PORT_6_ITEM, AUX_USB_PORT_6_ITEM_NAME, "Port #6", true);
 		indigo_init_switch_item(AUX_USB_PORT_7_ITEM, AUX_USB_PORT_7_ITEM_NAME, "Port #7", true);
 		indigo_init_switch_item(AUX_USB_PORT_8_ITEM, AUX_USB_PORT_8_ITEM_NAME, "Port #8", true);
-		AUX_WEATHER_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_WEATHER_PROPERTY_NAME, POWERBOX_GROUP, "Weather info", INDIGO_OK_STATE, INDIGO_RO_PERM, 3);
-		if (AUX_WEATHER_PROPERTY == NULL) {
-			return INDIGO_FAILED;
-		}
-		indigo_init_number_item(AUX_WEATHER_TEMPERATURE_ITEM, AUX_WEATHER_TEMPERATURE_ITEM_NAME, "Temperature [C]", -50, 100, 0, 0);
-		indigo_init_number_item(AUX_WEATHER_HUMIDITY_ITEM, AUX_WEATHER_HUMIDITY_ITEM_NAME, "Humidity [%]", 0, 100, 0, 0);
-		indigo_init_number_item(AUX_WEATHER_DEWPOINT_ITEM, AUX_WEATHER_DEWPOINT_ITEM_NAME, "Dewpoint [C]", -50, 100, 0, 0);
-		AUX_INFO_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_INFO_PROPERTY_NAME, POWERBOX_GROUP, "Sensors", INDIGO_OK_STATE, INDIGO_RO_PERM, 5);
-		if (AUX_INFO_PROPERTY == NULL) {
-			return INDIGO_FAILED;
-		}
-		indigo_init_number_item(AUX_AVERAGE_ITEM, AUX_AVERAGE_ITEM_NAME, "Avereage current [A]", 0, 100, 0, 0);
-		indigo_init_number_item(AUX_AMP_HOUR_ITEM, AUX_AMP_HOUR_ITEM_NAME, "Amp-hour [Ah]", 0, 100, 0, 0);
-		indigo_init_number_item(AUX_WATT_HOUR_ITEM, AUX_WATT_HOUR_ITEM_NAME, "Watt-hour [Wh]", 0, 100, 0, 0);
-		indigo_init_number_item(AUX_INFO_VOLTAGE_ITEM, AUX_INFO_VOLTAGE_ITEM_NAME, "Voltage [V]", 0, 15, 0, 0);
-		indigo_init_number_item(AUX_INFO_CURRENT_ITEM, AUX_INFO_CURRENT_ITEM_NAME, "Current [A]", 0, 20, 0, 0);
 		AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROPERTY_NAME, POWERBOX_GROUP, "Save current outlet states as default", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
 		if (AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROPERTY == NULL) {
 			return INDIGO_FAILED;
@@ -817,6 +794,32 @@ static indigo_result aux_attach(indigo_device *device) {
 		}
 		indigo_init_number_item(AUX_VARIABLE_POWER_OUTLET_7_ITEM, AUX_VARIABLE_POWER_OUTLET_7_ITEM_NAME, "Voltage of adjustable buck output", 3, 12, 1, 3);
 		indigo_init_number_item(AUX_VARIABLE_POWER_OUTLET_8_ITEM, AUX_VARIABLE_POWER_OUTLET_8_ITEM_NAME, "Voltage of adjustable boost output", 12, 24, 1, 12);
+		AUX_POWER_OUTLET_STATE_PROPERTY = indigo_init_light_property(NULL, device->name, AUX_POWER_OUTLET_STATE_PROPERTY_NAME, POWERBOX_GROUP, "Power outlets state", INDIGO_OK_STATE, 6);
+		if (AUX_POWER_OUTLET_STATE_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_light_item(AUX_POWER_OUTLET_STATE_1_ITEM, AUX_POWER_OUTLET_STATE_1_ITEM_NAME, "Outlet #1 state", INDIGO_OK_STATE);
+		indigo_init_light_item(AUX_POWER_OUTLET_STATE_2_ITEM, AUX_POWER_OUTLET_STATE_2_ITEM_NAME, "Outlet #2 state", INDIGO_OK_STATE);
+		indigo_init_light_item(AUX_POWER_OUTLET_STATE_3_ITEM, AUX_POWER_OUTLET_STATE_3_ITEM_NAME, "Outlet #3 state", INDIGO_OK_STATE);
+		indigo_init_light_item(AUX_POWER_OUTLET_STATE_4_ITEM, AUX_POWER_OUTLET_STATE_4_ITEM_NAME, "Outlet #4 state", INDIGO_OK_STATE);
+		indigo_init_light_item(AUX_POWER_OUTLET_STATE_5_ITEM, AUX_POWER_OUTLET_STATE_5_ITEM_NAME, "Outlet #5 state", INDIGO_OK_STATE);
+		indigo_init_light_item(AUX_POWER_OUTLET_STATE_6_ITEM, AUX_POWER_OUTLET_STATE_6_ITEM_NAME, "Outlet #6 state", INDIGO_OK_STATE);
+		AUX_WEATHER_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_WEATHER_PROPERTY_NAME, POWERBOX_GROUP, "Weather info", INDIGO_OK_STATE, INDIGO_RO_PERM, 3);
+		if (AUX_WEATHER_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_number_item(AUX_WEATHER_TEMPERATURE_ITEM, AUX_WEATHER_TEMPERATURE_ITEM_NAME, "Temperature [C]", -50, 100, 0, 0);
+		indigo_init_number_item(AUX_WEATHER_HUMIDITY_ITEM, AUX_WEATHER_HUMIDITY_ITEM_NAME, "Humidity [%]", 0, 100, 0, 0);
+		indigo_init_number_item(AUX_WEATHER_DEWPOINT_ITEM, AUX_WEATHER_DEWPOINT_ITEM_NAME, "Dewpoint [C]", -50, 100, 0, 0);
+		AUX_INFO_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_INFO_PROPERTY_NAME, POWERBOX_GROUP, "Sensors", INDIGO_OK_STATE, INDIGO_RO_PERM, 5);
+		if (AUX_INFO_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_number_item(AUX_AVERAGE_ITEM, AUX_AVERAGE_ITEM_NAME, "Avereage current [A]", 0, 100, 0, 0);
+		indigo_init_number_item(AUX_AMP_HOUR_ITEM, AUX_AMP_HOUR_ITEM_NAME, "Amp-hour [Ah]", 0, 100, 0, 0);
+		indigo_init_number_item(AUX_WATT_HOUR_ITEM, AUX_WATT_HOUR_ITEM_NAME, "Watt-hour [Wh]", 0, 100, 0, 0);
+		indigo_init_number_item(AUX_INFO_VOLTAGE_ITEM, AUX_INFO_VOLTAGE_ITEM_NAME, "Voltage [V]", 0, 15, 0, 0);
+		indigo_init_number_item(AUX_INFO_CURRENT_ITEM, AUX_INFO_CURRENT_ITEM_NAME, "Current [A]", 0, 20, 0, 0);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		return aux_enumerate_properties(device, NULL, NULL);
@@ -829,15 +832,15 @@ static indigo_result aux_attach(indigo_device *device) {
 static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
 		indigo_define_matching_property(AUX_POWER_OUTLET_PROPERTY);
-		indigo_define_matching_property(AUX_POWER_OUTLET_STATE_PROPERTY);
 		indigo_define_matching_property(AUX_HEATER_OUTLET_PROPERTY);
 		indigo_define_matching_property(AUX_DEW_CONTROL_PROPERTY);
 		indigo_define_matching_property(AUX_USB_PORT_PROPERTY);
-		indigo_define_matching_property(AUX_WEATHER_PROPERTY);
-		indigo_define_matching_property(AUX_INFO_PROPERTY);
 		indigo_define_matching_property(AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROPERTY);
 		indigo_define_matching_property(AUX_REBOOT_PROPERTY);
 		indigo_define_matching_property(AUX_VARIABLE_POWER_OUTLET_PROPERTY);
+		indigo_define_matching_property(AUX_POWER_OUTLET_STATE_PROPERTY);
+		indigo_define_matching_property(AUX_WEATHER_PROPERTY);
+		indigo_define_matching_property(AUX_INFO_PROPERTY);
 	}
 	indigo_define_matching_property(AUX_OUTLET_NAMES_PROPERTY);
 	return indigo_aux_enumerate_properties(device, NULL, NULL);
@@ -935,15 +938,15 @@ static indigo_result aux_detach(indigo_device *device) {
 	}
 	indigo_release_property(AUX_OUTLET_NAMES_PROPERTY);
 	indigo_release_property(AUX_POWER_OUTLET_PROPERTY);
-	indigo_release_property(AUX_POWER_OUTLET_STATE_PROPERTY);
 	indigo_release_property(AUX_HEATER_OUTLET_PROPERTY);
 	indigo_release_property(AUX_DEW_CONTROL_PROPERTY);
 	indigo_release_property(AUX_USB_PORT_PROPERTY);
-	indigo_release_property(AUX_WEATHER_PROPERTY);
-	indigo_release_property(AUX_INFO_PROPERTY);
 	indigo_release_property(AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROPERTY);
 	indigo_release_property(AUX_REBOOT_PROPERTY);
 	indigo_release_property(AUX_VARIABLE_POWER_OUTLET_PROPERTY);
+	indigo_release_property(AUX_POWER_OUTLET_STATE_PROPERTY);
+	indigo_release_property(AUX_WEATHER_PROPERTY);
+	indigo_release_property(AUX_INFO_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
 	return indigo_aux_detach(device);
@@ -1335,9 +1338,9 @@ indigo_result indigo_aux_upb3(indigo_driver_action action, indigo_driver_info *i
 	switch (action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
-			static indigo_device_match_pattern aux_patterns[1] = { 0 };
-			strcpy(aux_patterns[0].product_string, "UPBv3");
-			INDIGO_REGISER_MATCH_PATTERNS(aux_template, aux_patterns, 1);
+			static indigo_device_match_pattern patterns[1] = { 0 };
+			strcpy(patterns[0].product_string, "UPBv3");
+			INDIGO_REGISER_MATCH_PATTERNS(aux_template, patterns, 1);
 			private_data = indigo_safe_malloc(sizeof(upb3_private_data));
 			aux = indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);
 			aux->private_data = private_data;

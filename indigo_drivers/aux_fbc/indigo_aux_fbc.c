@@ -1,4 +1,4 @@
-// Copyright (c) 2019 - 2025 Rumen G.Bogdanovski
+// Copyright (c) 2019-2025 Rumen G.Bogdanovski
 // All rights reserved.
 
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -424,10 +424,10 @@ indigo_result indigo_aux_fbc(indigo_driver_action action, indigo_driver_info *in
 	switch (action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
-			static indigo_device_match_pattern aux_patterns[1] = { 0 };
-			aux_patterns[0].vendor_id = 0x0403;
-			aux_patterns[0].product_id = 0x6001;
-			INDIGO_REGISER_MATCH_PATTERNS(aux_template, aux_patterns, 1);
+			static indigo_device_match_pattern patterns[1] = { 0 };
+			patterns[0].vendor_id = 0x0403;
+			patterns[0].product_id = 0x6001;
+			INDIGO_REGISER_MATCH_PATTERNS(aux_template, patterns, 1);
 			private_data = indigo_safe_malloc(sizeof(fbc_private_data));
 			aux = indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);
 			aux->private_data = private_data;

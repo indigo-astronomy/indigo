@@ -41,9 +41,12 @@
 #define DRIVER_LABEL         "Field Rotator Simulator"
 #define ROTATOR_DEVICE_NAME  "Field Rotator Simulator"
 #define PRIVATE_DATA         ((simulator_private_data *)device->private_data)
-//+ "definitions" below
+
+//+ "define" custom code below
+
 #define ROTATOR_SPEED        1
-//- "definitions" above
+
+//- "define" custom code above
 
 #pragma mark - Private data definition
 

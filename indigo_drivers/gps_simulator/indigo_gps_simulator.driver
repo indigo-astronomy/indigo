@@ -16,41 +16,37 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// GPS simulator driver definition
+// GPS Simulator driver definition
 
 driver simulator {
+	label = "GPS Simulator";
 	author = "Rumen G. Bogdanovski";
 	copyright = "Copyright (c) 2025 Rumen G. Bogdanovski";
-	label = "GPS Simulator";
 	version = 9;
-	SIM_LONGITUDE = 22.675;
-	SIM_LATITUDE = 43.625;
-	SIM_ELEVATION = 650;
-	SIM_SV_IN_USE = 3;
-	SIM_SV_IN_VIEW = 7;
-	SIM_PDOP = 2;
-	SIM_HDOP = 3;
-	SIM_VDOP = 3;
-	REFRESH_SECONDS = 1.0;
-	TICKS_TO_2D_FIX = 10;
-	TICKS_TO_3D_FIX = 20;
+	// include { }
+	define {
+		#define SIM_LONGITUDE        22.675
+		#define SIM_LATITUDE         43.625
+		#define SIM_ELEVATION        650
+		#define SIM_SV_IN_USE        3
+		#define SIM_SV_IN_VIEW       7
+		#define SIM_PDOP             2
+		#define SIM_HDOP             3
+		#define SIM_VDOP             3
+		#define REFRESH_SECONDS      1.0
+		#define TICKS_TO_2D_FIX      10
+		#define TICKS_TO_3D_FIX      20
+	}
 	data {
 		int timer_ticks;
 	}
-	
-	// GPS definition
-	
+	// code { }
+	// on_init { }
+	// on_shutdown { }
 	gps {
 		name = "GPS Simulator";
 		additional_instances = true;
-		on_connect {
-			srand((unsigned)time(NULL));
-			PRIVATE_DATA->timer_ticks = 0;
-			GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
-			GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
-			GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
-			GPS_STATUS_PROPERTY->state = INDIGO_BUSY_STATE;
-		}
+		// code { }
 		on_timer {
 			if (PRIVATE_DATA->timer_ticks >= TICKS_TO_2D_FIX) {
 				GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = SIM_LONGITUDE + rand() / ((double)(RAND_MAX) * 1000);
@@ -115,6 +111,15 @@ driver simulator {
 			PRIVATE_DATA->timer_ticks++;
 			indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->gps_timer);
 		}
+		on_connect {
+			srand((unsigned)time(NULL));
+			PRIVATE_DATA->timer_ticks = 0;
+			GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+			GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+			GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+			GPS_STATUS_PROPERTY->state = INDIGO_BUSY_STATE;
+		}
+		// on_disconnect { }
 		on_attach {
 			DEVICE_PORT_PROPERTY->hidden = true;
 			DEVICE_PORTS_PROPERTY->hidden = true;
@@ -124,6 +129,6 @@ driver simulator {
 			GPS_UTC_TIME_PROPERTY->hidden = false;
 			GPS_UTC_TIME_PROPERTY->count = 1;
 		}
+		// on_detach { }
 	}
 }
-

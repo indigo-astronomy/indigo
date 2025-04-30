@@ -16,14 +16,13 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// GPS NMEA 0183  driver definition
+// Generic NMEA 0183 GPS driver definition
 
 driver nmea {
+	label = "Generic NMEA 0183 GPS";
 	author = "Rumen G. Bogdanovski";
 	copyright = "Copyright (c) 2017-2025 Rumen G. Bogdanovski";
-	label = "Generic NMEA 0183 GPS";
 	version = 17;
-	MAX_NB_OF_SYSTEMS = 26;
 	serial {
 		pattern {
 			product = "GPS";
@@ -32,13 +31,14 @@ driver nmea {
 			product = "GNSS";
 		}
 	}
+	// include { }
+	define {
+		#define MAX_NB_OF_SYSTEMS    26
+	}
 	data {
 		int satellites_in_view[MAX_NB_OF_SYSTEMS];
 		char selected_system;
 	}
-	
-	// Shared code
-	
 	code {
 		static bool nmea_open(indigo_device *device) {
 			char *name = DEVICE_PORT_ITEM->text.value;
@@ -49,11 +49,11 @@ driver nmea {
 			}
 			return PRIVATE_DATA->handle != NULL;
 		}
-		
+
 		static void nmea_close(indigo_device *device) {
 			indigo_uni_close(&PRIVATE_DATA->handle);
 		}
-		
+
 		static char **nmea_parse(char *buffer) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s", buffer);
 			if (strncmp("$G", buffer, 2)) {// Disregard "non positioning" sentences
@@ -85,7 +85,7 @@ driver nmea {
 			}
 			return tokens;
 		}
-		
+
 		static void nmea_reset(indigo_device *device) {
 			if (AUTOMATIC_SYSTEM_ITEM->sw.value) {
 				PRIVATE_DATA->selected_system = 0;
@@ -122,69 +122,20 @@ driver nmea {
 			indigo_update_property(device, GPS_ADVANCED_STATUS_PROPERTY, NULL);
 			memset(PRIVATE_DATA->satellites_in_view, 0, sizeof(int) * MAX_NB_OF_SYSTEMS);
 		}
-		
+
 		static void gps_connection_handler(indigo_device *device);
 	}
-	
-	// GPS definition
-	
+	// on_init { }
+	// on_shutdown { }
 	gps {
 		name = "NMEA GPS";
 		additional_instances = true;
-		on_connect {
-			GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = 0;
-			GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = 0;
-			GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value = 0;
-			sprintf(GPS_UTC_ITEM->text.value, "0000-00-00T00:00:00.00");
-			nmea_reset(device);
-		}
-		switch GPS_SELECTED_SYSTEM {
-			label = "Selected positioning system";
-			group = MAIN_GROUP;
-			name = "X_GPS_SELECTED_SYSTEM";
-			always_defined = true;
-			item AUTOMATIC_SYSTEM {
-				label = "Autodetect";
-				name = "AUTO";
-				value = true;
-			}
-			item MULTIPLE_SYSTEM {
-				label = "Multiple";
-				name = "MULTIPLE";
-			}
-			item GPS_SYSTEM {
-				label = "GPS";
-				name = "GPS";
-			}
-			item GALILEO_SYSTEM {
-				label = "Galileo";
-				name = "GALILEO";
-			}
-			item GLONASS_SYSTEM {
-				label = "GLONASS";
-				name = "GLONASS";
-			}
-			item BEIDOU_SYSTEM {
-				label = "BeiDou";
-				name = "BEIDOU";
-			}
-			item NAVIC_SYSTEM {
-				label = "NavIC";
-				name = "NAVIC";
-			}
-			item QZSS_SYSTEM {
-				label = "QZSS1";
-				name = "QZSS";
-			}
-			on_change {
-				nmea_reset(device);
-			}
-		}
+		// code { }
 		on_timer {
 			char buffer[128];
 			long length = indigo_uni_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer));
 			char **tokens = nmea_parse(buffer);
-			
+
 			if (length > 0 && tokens) {
 				char nmea_system = buffer[2];
 				if (!strcmp(tokens[0], "RMC") && (PRIVATE_DATA->selected_system == 0 ||  PRIVATE_DATA->selected_system == nmea_system)) {
@@ -347,6 +298,14 @@ driver nmea {
 				indigo_set_timer(device, 0, gps_connection_handler, NULL);
 			}
 		}
+		on_connect {
+			GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = 0;
+			GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = 0;
+			GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value = 0;
+			sprintf(GPS_UTC_ITEM->text.value, "0000-00-00T00:00:00.00");
+			nmea_reset(device);
+		}
+		// on_disconnect { }
 		on_attach {
 			GPS_ADVANCED_PROPERTY->hidden = false;
 			GPS_GEOGRAPHIC_COORDINATES_PROPERTY->hidden = false;
@@ -354,6 +313,59 @@ driver nmea {
 			GPS_UTC_TIME_PROPERTY->hidden = false;
 			GPS_UTC_TIME_PROPERTY->count = 1;
 		}
+		// on_detach { }
+		switch GPS_SELECTED_SYSTEM {
+			name = "X_GPS_SELECTED_SYSTEM";
+			group = MAIN_GROUP;
+			label = "Selected positioning system";
+			always_defined = true;
+			// handle_change = false;
+			// synchronized_change = false;
+			on_change {
+				nmea_reset(device);
+			}
+			// on_attach { }
+			// on_detach { }
+			item AUTOMATIC_SYSTEM {
+				name = "AUTO";
+				label = "Autodetect";
+				value = true;
+			}
+			item MULTIPLE_SYSTEM {
+				name = "MULTIPLE";
+				label = "Multiple";
+				value = false;
+			}
+			item GPS_SYSTEM {
+				name = "GPS";
+				label = "GPS";
+				value = false;
+			}
+			item GALILEO_SYSTEM {
+				name = "GALILEO";
+				label = "Galileo";
+				value = false;
+			}
+			item GLONASS_SYSTEM {
+				name = "GLONASS";
+				label = "GLONASS";
+				value = false;
+			}
+			item BEIDOU_SYSTEM {
+				name = "BEIDOU";
+				label = "BeiDou";
+				value = false;
+			}
+			item NAVIC_SYSTEM {
+				name = "NAVIC";
+				label = "NavIC";
+				value = false;
+			}
+			item QZSS_SYSTEM {
+				name = "QZSS";
+				label = "QZSS1";
+				value = false;
+			}
+		}
 	}
 }
-

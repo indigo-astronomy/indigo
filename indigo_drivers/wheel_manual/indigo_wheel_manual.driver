@@ -1,4 +1,4 @@
-// Copyright (c) 2020 - 2025 Rumen G.Bogdanovski
+// Copyright (c) 2020-2025 Rumen G.Bogdanovski
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -19,15 +19,29 @@
 // Manual filter wheel driver definition
 
 driver manual {
-	author = "Rumen G.Bogdanovski";
-	copyright = "Copyright (c) 2020 - 2025 Rumen G.Bogdanovski";
 	label = "Manual filter wheel";
+	author = "Rumen G.Bogdanovski";
+	copyright = "Copyright (c) 2020-2025 Rumen G.Bogdanovski";
 	version = 4;
-	FILTER_COUNT = 8;
-	
-	// WHEEL definition
-	
+	// include { }
+	define {
+		#define FILTER_COUNT         8
+	}
+	// data { }
+	// code { }
+	// on_init { }
+	// on_shutdown { }
 	wheel {
+		name = "Manual filter wheel";
+		// code { }
+		// on_timer { }
+		// on_connect { }
+		// on_disconnect { }
+		on_attach {
+			WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = FILTER_COUNT;
+			WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = 1;
+		}
+		// on_detach { }
 		inherited WHEEL_SLOT {
 			on_change {
 				if (WHEEL_SLOT_ITEM->number.value < 1 || WHEEL_SLOT_ITEM->number.value > WHEEL_SLOT_ITEM->number.max) {
@@ -36,10 +50,6 @@ driver manual {
 					indigo_send_message(device, "Make sure filter '%s' is selected on the device", WHEEL_SLOT_NAME_PROPERTY->items[(int)WHEEL_SLOT_ITEM->number.value - 1].text.value);
 				}
 			}
-		}
-		on_attach {
-			WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = FILTER_COUNT;
-			WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = 1;
 		}
 	}
 }

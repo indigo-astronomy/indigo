@@ -1,4 +1,4 @@
-// Copyright (c) 2019 - 2025 Rumen G.Bogdanovski
+// Copyright (c) 2019-2025 Rumen G.Bogdanovski
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -16,12 +16,12 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// Pegasus Astro FlatMaster aux driver definition
+// PegasusAstro FlatMaster driver definition
 
 driver flatmaster {
-	author = "Rumen G.Bogdanovski";
-	copyright = "Copyright (c) 2019 - 2025 Rumen G.Bogdanovski";
 	label = "PegasusAstro FlatMaster";
+	author = "Rumen G.Bogdanovski";
+	copyright = "Copyright (c) 2019-2025 Rumen G.Bogdanovski";
 	version = 8;
 	serial {
 		pattern {
@@ -29,11 +29,11 @@ driver flatmaster {
 			pid = 0x6015;
 		}
 	}
-
+	// include { }
 	define {
-		#define INTENSITY(val) ((int)floor((100 - (int)(val) - 0) * (220 - 20) / (100 - 0) + 20))
+		#define INTENSITY(val)       ((int)floor((100 - (int)(val) - 0) * (220 - 20) / (100 - 0) + 20))
 	}
-
+	// data { }
 	code {
 		static bool flatmaster_command(indigo_uni_handle *handle, char *command, char *response, int resp_len) {
 			if (indigo_uni_discard(handle) >= 0) {
@@ -64,11 +64,14 @@ driver flatmaster {
 			indigo_uni_close(&PRIVATE_DATA->handle);
 		}
 	}
-
+	// on_init { }
+	// on_shutdown { }
 	aux {
 		name = "Pegasus FlatMaster";
-		additional_instances = true;
 		interface = INDIGO_INTERFACE_AUX_LIGHTBOX;
+		additional_instances = true;
+		// code { }
+		// on_timer { }
 		on_connect {
 			char command[16], response[16];
 			if (flatmaster_command(PRIVATE_DATA->handle, "V", response, sizeof(response))) {
@@ -89,17 +92,18 @@ driver flatmaster {
 				AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 		}
+		// on_disconnect { }
+		on_attach {
+			INFO_PROPERTY->count = 6;
+		}
+		// on_detach { }
 		switch AUX_LIGHT_SWITCH {
-			label = "Light (on/off)";
+			name = AUX_LIGHT_SWITCH_PROPERTY_NAME;
 			group = AUX_MAIN_GROUP;
+			label = "Light (on/off)";
 			persistent = true;
-			item AUX_LIGHT_SWITCH_ON {
-				label = "On";
-			}
-			item AUX_LIGHT_SWITCH_OFF {
-				label = "Off";
-				value = true;
-			}
+			// handle_change = false;
+			// synchronized_change = false;
 			on_change {
 				char command[16],	response[16];
 				sprintf(command, "E:%d", AUX_LIGHT_SWITCH_ON_ITEM->sw.value);
@@ -107,18 +111,26 @@ driver flatmaster {
 					AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 			}
+			// on_attach { }
+			// on_detach { }
+			item AUX_LIGHT_SWITCH_ON {
+				name = AUX_LIGHT_SWITCH_ON_ITEM_NAME;
+				label = "On";
+				value = false;
+			}
+			item AUX_LIGHT_SWITCH_OFF {
+				name = AUX_LIGHT_SWITCH_OFF_ITEM_NAME;
+				label = "Off";
+				value = true;
+			}
 		}
 		number AUX_LIGHT_INTENSITY {
-			label = "Light intensity";
+			name = AUX_LIGHT_INTENSITY_PROPERTY_NAME;
 			group = AUX_MAIN_GROUP;
+			label = "Light intensity";
 			persistent = true;
-			item AUX_LIGHT_INTENSITY {
-				label = "Intensity (%)";
-				format = "%g";
-				max = 100;
-				step = 1;
-				value = 50;
-			}
+			// handle_change = false;
+			// synchronized_change = false;
 			on_change {
 				char command[16],	response[16];
 				sprintf(command, "L:%d", INTENSITY(AUX_LIGHT_INTENSITY_ITEM->number.value));
@@ -126,9 +138,16 @@ driver flatmaster {
 					AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 			}
-		}
-		on_attach {
-			INFO_PROPERTY->count = 6;
+			// on_attach { }
+			// on_detach { }
+			item AUX_LIGHT_INTENSITY {
+				name = AUX_LIGHT_INTENSITY_ITEM_NAME;
+				label = "Intensity (%)";
+				value = 50;
+				max = 100;
+				step = 1;
+				format = "%g";
+			}
 		}
 	}
 }

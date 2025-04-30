@@ -21,6 +21,8 @@
 // version history
 // 3.0 by Peter Polakovic
 
+// TODO: Add libgpusb for windows
+
 #pragma mark - Includes
 
 #include <stdlib.h>
@@ -333,7 +335,6 @@ indigo_result indigo_guider_gpusb(indigo_driver_action action, indigo_driver_inf
 			//+ "on_init" custom code below
 			libgpusb_debug = &gpusb_debug;
 			//- "on_init" custom code above
-			last_action = action;
 			for (int i = 0; i < MAX_DEVICES; i++) {
 				devices[i] = 0;
 			}

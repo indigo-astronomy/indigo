@@ -16,21 +16,19 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-//  Geoptik flat field generator driver definition
+// Geoptik flat field generato driver definition
 
 driver geoptikflat {
+	label = "Geoptik flat field generato";
 	author = "Rumen G. Bogdanovski";
 	copyright = "Copyright (c) 2021-2025 Rumen G. Bogdanovski";
-	label = "Geoptik flat field generato";
 	version = 5;
 	serial;
-	
+	// include { }
 	define {
-		#define INTENSITY(val) (int)(val / 100.0 * 255)
+		#define INTENSITY(val)       (int)(val / 100.0 * 255)
 	}
-
-	// Shared code
-	
+	// data { }
 	code {
 		static bool geoptikflat_command(indigo_uni_handle *handle, char *command, char *response) {
 			if (indigo_uni_discard(handle) >= 0) {
@@ -61,13 +59,14 @@ driver geoptikflat {
 			indigo_uni_close(&PRIVATE_DATA->handle);
 		}
 	}
-
-	// AUX definition
-	
+	// on_init { }
+	// on_shutdown { }
 	aux {
 		name = "Geoptik Flat Generator";
-		additional_instances = true;
 		interface = INDIGO_INTERFACE_AUX_LIGHTBOX;
+		additional_instances = true;
+		// code { }
+		// on_timer { }
 		on_connect {
 			char command[16],	response[16];
 			if (geoptikflat_command(PRIVATE_DATA->handle, ">VOOO", response)) {
@@ -86,35 +85,44 @@ driver geoptikflat {
 				AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 		}
+		// on_disconnect { }
+		on_attach {
+			INFO_PROPERTY->count = 6;
+		}
+		// on_detach { }
 		switch AUX_LIGHT_SWITCH {
-			label = "Light (on/off)";
+			name = AUX_LIGHT_SWITCH_PROPERTY_NAME;
 			group = AUX_MAIN_GROUP;
+			label = "Light (on/off)";
 			persistent = true;
-			item AUX_LIGHT_SWITCH_ON {
-				label = "On";
-			}
-			item AUX_LIGHT_SWITCH_OFF {
-				label = "Off";
-				value = true;
-			}
+			// handle_change = false;
+			// synchronized_change = false;
 			on_change {
 				char response[16];
 				if (!geoptikflat_command(PRIVATE_DATA->handle, AUX_LIGHT_SWITCH_ON_ITEM->sw.value ? ">LOOO" : ">DOOO", response) || strncmp(response, AUX_LIGHT_SWITCH_ON_ITEM->sw.value ? "*L" : "*D", 2)) {
 					AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 			}
+			// on_attach { }
+			// on_detach { }
+			item AUX_LIGHT_SWITCH_ON {
+				name = AUX_LIGHT_SWITCH_ON_ITEM_NAME;
+				label = "On";
+				value = false;
+			}
+			item AUX_LIGHT_SWITCH_OFF {
+				name = AUX_LIGHT_SWITCH_OFF_ITEM_NAME;
+				label = "Off";
+				value = true;
+			}
 		}
 		number AUX_LIGHT_INTENSITY {
-			label = "Light intensity";
+			name = AUX_LIGHT_INTENSITY_PROPERTY_NAME;
 			group = AUX_MAIN_GROUP;
+			label = "Light intensity";
 			persistent = true;
-			item AUX_LIGHT_INTENSITY {
-				label = "Intensity (%)";
-				format = "%g";
-				max = 100;
-				step = 1;
-				value = 50;
-			}
+			// handle_change = false;
+			// synchronized_change = false;
 			on_change {
 				char command[16],	response[16];
 				sprintf(command, ">B%03d", INTENSITY(AUX_LIGHT_INTENSITY_ITEM->number.value));
@@ -122,9 +130,16 @@ driver geoptikflat {
 					AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 			}
-		}
-		on_attach {
-			INFO_PROPERTY->count = 6;
+			// on_attach { }
+			// on_detach { }
+			item AUX_LIGHT_INTENSITY {
+				name = AUX_LIGHT_INTENSITY_ITEM_NAME;
+				label = "Intensity (%)";
+				value = 50;
+				max = 100;
+				step = 1;
+				format = "%g";
+			}
 		}
 	}
 }

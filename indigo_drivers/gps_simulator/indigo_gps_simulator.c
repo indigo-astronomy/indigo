@@ -41,7 +41,9 @@
 #define DRIVER_LABEL         "GPS Simulator"
 #define GPS_DEVICE_NAME      "GPS Simulator"
 #define PRIVATE_DATA         ((simulator_private_data *)device->private_data)
-//+ "definitions" below
+
+//+ "define" custom code below
+
 #define SIM_LONGITUDE        22.675
 #define SIM_LATITUDE         43.625
 #define SIM_ELEVATION        650
@@ -53,7 +55,8 @@
 #define REFRESH_SECONDS      1.0
 #define TICKS_TO_2D_FIX      10
 #define TICKS_TO_3D_FIX      20
-//- "definitions" above
+
+//- "define" custom code above
 
 #pragma mark - Private data definition
 
