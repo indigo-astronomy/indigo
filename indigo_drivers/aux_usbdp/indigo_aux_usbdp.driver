@@ -346,7 +346,6 @@ driver usbdp {
 				snprintf(AUX_DEW_THRESHOLD_SENSOR_2_ITEM->label, INDIGO_NAME_SIZE, "%s (°C)", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
 				snprintf(AUX_DEW_WARNING_SENSOR_1_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
 				snprintf(AUX_DEW_WARNING_SENSOR_2_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
-				AUX_OUTLET_NAMES_PROPERTY->state = INDIGO_OK_STATE;
 				if (IS_CONNECTED) {
 					indigo_delete_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
 					indigo_delete_property(device, AUX_HEATER_OUTLET_STATE_PROPERTY, NULL);

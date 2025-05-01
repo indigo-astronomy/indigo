@@ -4479,6 +4479,7 @@
 		59F087FD2DC3D17800F272E4 /* indigo_aux_sqm.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_aux_sqm.driver; sourceTree = "<group>"; };
 		59F087FE2DC3DF3B00F272E4 /* indigo_aux_usbdp.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_aux_usbdp.driver; sourceTree = "<group>"; };
 		59F087FF2DC3EC6C00F272E4 /* indigo_aux_wbplusv3.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_aux_wbplusv3.driver; sourceTree = "<group>"; };
+		59F088002DC3F43600F272E4 /* indigo_aux_wbprov3.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_aux_wbprov3.driver; sourceTree = "<group>"; };
 		59F0FE2C2083EA47001B34E9 /* indigo_ccd_simulator_data.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_simulator_data.c; sourceTree = "<group>"; };
 		59F1AD0E23FB15A400008F02 /* indigo_focuser_lunatico.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_lunatico.c; sourceTree = "<group>"; };
 		59F1AD0F23FB15A400008F02 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -8055,6 +8056,7 @@
 				599EB1642B52ECE300B333E4 /* indigo_aux_wbprov3.h */,
 				599EB1682B52ECE300B333E4 /* indigo_aux_wbprov3.c */,
 				599EB1662B52ECE300B333E4 /* indigo_aux_wbprov3_main.c */,
+				59F088002DC3F43600F272E4 /* indigo_aux_wbprov3.driver */,
 				599EB1652B52ECE300B333E4 /* Serial protocol for WandererBox Pro V3(20231211).pdf */,
 			);
 			path = aux_wbprov3;

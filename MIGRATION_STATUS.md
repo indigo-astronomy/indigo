@@ -35,7 +35,7 @@
 | aux_upb3 | 3️⃣ | ✅ Yes | ✅ Yes | |
 | aux_usbdp | 3️⃣ | ✅ Yes | ✅ Yes | |
 | aux_wbplusv3 | 3️⃣ | ✅ Yes | ✅ Yes | |
-| aux_wbprov3 | 3️⃣ | ✅ Yes | ❌ No | |
+| aux_wbprov3 | 3️⃣ | ✅ Yes | ✅ Yes | |
 | aux_wcv4ec | 3️⃣ | ✅ Yes | ❌ No | |
 | ccd_altair | 3️⃣ | ✅ Yes | ❌ No | |
 | ccd_apogee | 2️⃣ | ❌ No | ❌ No | ⏰ TODO - make boost_regex and libapogee for Windows |

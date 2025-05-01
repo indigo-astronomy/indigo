@@ -16,38 +16,49 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// WandererBox Plus V3 Powerbox driver definition
+// WandererBox Pro V3 Powerbox driver definition
 
 // TODO: Test with real hardware or simulator!!!
 
-driver wbplusv3 {
-	label = "WandererBox Plus V3 Powerbox";
+driver wbprov3 {
+	label = "WandererBox Pro V3 Powerbox";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "";
-	version = 4;
+	version = 3;
 	serial;
 	// include { }
 	define {
 		#define AUX_GROUP	"Powerbox"
 		#define WEATHER_GROUP	"Weather"
-		#define DEVICE_ID "ZXWBPlusV3"
+		#define DEVICE_ID "ZXWBProV3"
 	}
 	data {
-		char model_id[1550];
+		char model_id[50];
 		char firmware[20];
-		double probe_temperature;
+		double probe1_temperature;
+		double probe2_temperature;
+		double probe3_temperature;
 		double dht22_hunidity;
 		double dht22_temperature;
 		double input_current;
+		double dc2_current;
+		double dc3_4_current;
 		double input_voltage;
-		bool usb_status;
-		bool dc2_status;
-		uint8_t dc3_pwm;
-		bool dc4_6_status;
-		double dc2_voltage;
+		bool usb31_1_status;
+		bool usb31_2_status;
+		bool usb31_3_status;
+		bool usb20_1_3_status;
+		bool usb20_4_6_status;
+		bool dc3_4_status;
+		uint8_t dc5_pwm;
+		uint8_t dc6_pwm;
+		uint8_t dc7_pwm;
+		bool dc8_9_status;
+		bool dc10_11_status;
+		double dc3_4_voltage;
 	}
 	code {
-		static bool wbplusv3_read_status(indigo_device *device) {
+		static bool wbprov3_read_status(indigo_device *device) {
 			char status[256] = { 0 };
 			indigo_uni_discard(PRIVATE_DATA->handle);
 			long res = indigo_uni_read_line(PRIVATE_DATA->handle, status, 256);
@@ -73,7 +84,17 @@ driver wbplusv3 {
 				if (token == NULL) {
 					return false;
 				}
-				PRIVATE_DATA->probe_temperature = atof(token);
+				PRIVATE_DATA->probe1_temperature = atof(token);
+				token = strtok_r(NULL, "A", &buf);
+				if (token == NULL) {
+					return false;
+				}
+				PRIVATE_DATA->probe2_temperature = atof(token);
+				token = strtok_r(NULL, "A", &buf);
+				if (token == NULL) {
+					return false;
+				}
+				PRIVATE_DATA->probe3_temperature = atof(token);
 				token = strtok_r(NULL, "A", &buf);
 				if (token == NULL) {
 					return false;
@@ -101,39 +122,83 @@ driver wbplusv3 {
 				if (token == NULL) {
 					return false;
 				}
+				PRIVATE_DATA->dc2_current = atof(token);
+				token = strtok_r(NULL, "A", &buf);
+				if (token == NULL) {
+					return false;
+				}
+				PRIVATE_DATA->dc3_4_current = atof(token);
+				token = strtok_r(NULL, "A", &buf);
+				if (token == NULL) {
+					return false;
+				}
 				PRIVATE_DATA->input_voltage = atof(token);
 				token = strtok_r(NULL, "A", &buf);
 				if (token == NULL) {
 					return false;
 				}
-				PRIVATE_DATA->usb_status = atoi(token);
+				PRIVATE_DATA->usb31_1_status = atoi(token);
 				token = strtok_r(NULL, "A", &buf);
 				if (token == NULL) {
 					return false;
 				}
-				PRIVATE_DATA->dc2_status = atoi(token);
+				PRIVATE_DATA->usb31_2_status = atoi(token);
 				token = strtok_r(NULL, "A", &buf);
 				if (token == NULL) {
 					return false;
 				}
-				PRIVATE_DATA->dc3_pwm = atoi(token);
+				PRIVATE_DATA->usb31_3_status = atoi(token);
 				token = strtok_r(NULL, "A", &buf);
 				if (token == NULL) {
 					return false;
 				}
-				PRIVATE_DATA->dc4_6_status = atoi(token);
+				PRIVATE_DATA->usb20_1_3_status = atoi(token);
 				token = strtok_r(NULL, "A", &buf);
 				if (token == NULL) {
 					return false;
 				}
-				PRIVATE_DATA->dc2_voltage = atof(token)/10.0;
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "model_id = '%s'\nfirmware = '%s'\nprobe_temperature = %.2fC\ndht22_hunidity = %.2f%%\ndht22_temperature = %.2fC\ninput_current = %.2fA\ninput_voltage = %.2fV\nusb_status = %d\ndc2_status = %d\ndc3_pwm = %d\ndc4_6_status = %d\ndc2_voltage = %.1fV\n", PRIVATE_DATA->model_id, PRIVATE_DATA->firmware, PRIVATE_DATA->probe_temperature, PRIVATE_DATA->dht22_hunidity, PRIVATE_DATA->dht22_temperature, PRIVATE_DATA->input_current, PRIVATE_DATA->input_voltage, PRIVATE_DATA->usb_status, PRIVATE_DATA->dc2_status, PRIVATE_DATA->dc3_pwm, PRIVATE_DATA->dc4_6_status, PRIVATE_DATA->dc2_voltage);
-				return true;
-			}
+				PRIVATE_DATA->usb20_4_6_status = atoi(token);
+				token = strtok_r(NULL, "A", &buf);
+				if (token == NULL) {
+					return false;
+				}
+				PRIVATE_DATA->dc3_4_status = atoi(token);
+				token = strtok_r(NULL, "A", &buf);
+				if (token == NULL) {
+					return false;
+				}
+				PRIVATE_DATA->dc5_pwm = atoi(token);
+				token = strtok_r(NULL, "A", &buf);
+				if (token == NULL) {
+					return false;
+				}
+				PRIVATE_DATA->dc6_pwm = atoi(token);
+				token = strtok_r(NULL, "A", &buf);
+				if (token == NULL) {
+					return false;
+				}
+				PRIVATE_DATA->dc7_pwm = atoi(token);
+				token = strtok_r(NULL, "A", &buf);
+				if (token == NULL) {
+					return false;
+				}
+				PRIVATE_DATA->dc8_9_status = atoi(token);
+				token = strtok_r(NULL, "A", &buf);
+				if (token == NULL) {
+					return false;
+				}
+				PRIVATE_DATA->dc10_11_status = atoi(token);
+				token = strtok_r(NULL, "A", &buf);
+				if (token == NULL) {
+					return false;
+				}
+				PRIVATE_DATA->dc3_4_voltage = atof(token)/10.0;
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "model_id = '%s'\nfirmware = '%s'\nprobe1_temperature = %.2fC\nprobe2_temperature = %.2fC\nprobe3_temperature = %.2fC\ndht22_hunidity = %.2f%%\ndht22_temperature = %.2fC\ninput_current = %.2fA\ndc2_current = %.2fA\ndc3_4_current = %.2fA\ninput_voltage = %.2fV\nusb31_1_status = %d\nusb31_2_status = %d\nusb31_3_status = %d\nusb20_1_3_status = %d\nusb20_4_6_status = %d\ndc3_4_status = %d\ndc5_pwm = %d\ndc6_pwm = %d\ndc7_pwm = %d\ndc8_9_status = %d\ndc10_11_status = %d\ndc3_4_voltage = %.1fV\n", PRIVATE_DATA->model_id, PRIVATE_DATA->firmware, PRIVATE_DATA->probe1_temperature, PRIVATE_DATA->probe2_temperature, PRIVATE_DATA->probe3_temperature, PRIVATE_DATA->dht22_hunidity, PRIVATE_DATA->dht22_temperature, PRIVATE_DATA->input_current, PRIVATE_DATA->dc2_current, PRIVATE_DATA->dc3_4_current, PRIVATE_DATA->input_voltage, PRIVATE_DATA->usb31_1_status, PRIVATE_DATA->usb31_2_status, PRIVATE_DATA->usb31_3_status, PRIVATE_DATA->usb20_1_3_status, PRIVATE_DATA->usb20_4_6_status, PRIVATE_DATA->dc3_4_status, PRIVATE_DATA->dc5_pwm, PRIVATE_DATA->dc6_pwm, PRIVATE_DATA->dc7_pwm, PRIVATE_DATA->dc8_9_status, PRIVATE_DATA->dc10_11_status, PRIVATE_DATA->dc3_4_voltage);
+				return true;	}
 			return false;
 		}
 
-		static bool wbplusv3_command(indigo_device *device, char *command) {
+		static bool wbprov3_command(indigo_device *device, char *command) {
 			indigo_uni_discard(PRIVATE_DATA->handle);
 			if (indigo_uni_printf(PRIVATE_DATA->handle, "%s\n", command) > 0) {
 				return true;
@@ -141,11 +206,11 @@ driver wbplusv3 {
 			return false;
 		}
 
-		static bool wbplusv3_open(indigo_device *device) {
+		static bool wbprov3_open(indigo_device *device) {
 			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200, INDIGO_LOG_DEBUG);
 			if (PRIVATE_DATA->handle != NULL) {
 				indigo_sleep(1);
-				if (wbplusv3_read_status(device)) {
+				if (wbprov3_read_status(device)) {
 					if (!strcmp(PRIVATE_DATA->model_id, DEVICE_ID)) {
 						strcpy(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->model_id);
 						strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->firmware);
@@ -159,7 +224,7 @@ driver wbplusv3 {
 			return false;
 		}
 
-		static void wbplusv3_close(indigo_device *device) {
+		static void wbprov3_close(indigo_device *device) {
 			if (PRIVATE_DATA->handle != NULL) {
 				indigo_uni_close(&PRIVATE_DATA->handle);
 			}
@@ -168,12 +233,11 @@ driver wbplusv3 {
 	// on_init { }
 	// on_shutdown { }
 	aux {
-		name = "WandererBox Plus V3";
+		name = "WandererBox Pro V3";
 		interface = INDIGO_INTERFACE_AUX_POWERBOX | INDIGO_INTERFACE_AUX_WEATHER;
 		additional_instances = true;
-		// code { }
 		on_timer {
-			if (wbplusv3_read_status(device)) {
+			if (wbprov3_read_status(device)) {
 				AUX_WEATHER_TEMPERATURE_ITEM->number.value = PRIVATE_DATA->dht22_temperature;
 				AUX_WEATHER_HUMIDITY_ITEM->number.value = PRIVATE_DATA->dht22_hunidity;
 				// calculate dew point
@@ -186,8 +250,10 @@ driver wbplusv3 {
 				}
 				indigo_update_property(device, AUX_WEATHER_PROPERTY, NULL);
 				AUX_TEMPERATURE_SENSORS_SENSOR_1_ITEM->number.value = PRIVATE_DATA->dht22_temperature;
-				AUX_TEMPERATURE_SENSORS_SENSOR_2_ITEM->number.value = PRIVATE_DATA->probe_temperature;
-				if (PRIVATE_DATA->dht22_temperature < -100 && PRIVATE_DATA->probe_temperature <-100) {
+				AUX_TEMPERATURE_SENSORS_SENSOR_2_ITEM->number.value = PRIVATE_DATA->probe1_temperature;
+				AUX_TEMPERATURE_SENSORS_SENSOR_3_ITEM->number.value = PRIVATE_DATA->probe2_temperature;
+				AUX_TEMPERATURE_SENSORS_SENSOR_4_ITEM->number.value = PRIVATE_DATA->probe3_temperature;
+				if (PRIVATE_DATA->dht22_temperature < -100 && PRIVATE_DATA->probe1_temperature <-100 && PRIVATE_DATA->probe2_temperature && PRIVATE_DATA->probe3_temperature) {
 					AUX_TEMPERATURE_SENSORS_PROPERTY->state = INDIGO_IDLE_STATE;
 				} else {
 					AUX_TEMPERATURE_SENSORS_PROPERTY->state = INDIGO_OK_STATE;
@@ -197,29 +263,43 @@ driver wbplusv3 {
 				AUX_INFO_CURRENT_ITEM->number.value = PRIVATE_DATA->input_current;
 				indigo_update_property(device, AUX_INFO_PROPERTY, NULL);
 				if (AUX_USB_PORT_PROPERTY->state != INDIGO_BUSY_STATE) {
-					AUX_USB_PORT_1_ITEM->sw.value = PRIVATE_DATA->usb_status;
+					AUX_USB_PORT_1_ITEM->sw.value = PRIVATE_DATA->usb31_1_status;
+					AUX_USB_PORT_2_ITEM->sw.value = PRIVATE_DATA->usb31_2_status;
+					AUX_USB_PORT_3_ITEM->sw.value = PRIVATE_DATA->usb31_3_status;
+					AUX_USB_PORT_4_ITEM->sw.value = PRIVATE_DATA->usb20_1_3_status;
+					AUX_USB_PORT_5_ITEM->sw.value = PRIVATE_DATA->usb20_4_6_status;
 					indigo_update_property(device, AUX_USB_PORT_PROPERTY, NULL);
 				}
 				if (AUX_POWER_OUTLET_PROPERTY->state != INDIGO_BUSY_STATE) {
-					AUX_POWER_OUTLET_1_ITEM->sw.value = PRIVATE_DATA->dc2_status;
-					AUX_POWER_OUTLET_2_ITEM->sw.value = PRIVATE_DATA->dc4_6_status;
+					AUX_POWER_OUTLET_1_ITEM->sw.value = PRIVATE_DATA->dc3_4_status;
+					AUX_POWER_OUTLET_2_ITEM->sw.value = PRIVATE_DATA->dc8_9_status;
+					AUX_POWER_OUTLET_3_ITEM->sw.value = PRIVATE_DATA->dc10_11_status;
 					indigo_update_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
 				}
 				if (AUX_POWER_OUTLET_VOLTAGE_PROPERTY->state != INDIGO_BUSY_STATE) {
-					AUX_POWER_OUTLET_VOLTAGE_1_ITEM->number.value = PRIVATE_DATA->dc2_voltage;
+					AUX_POWER_OUTLET_VOLTAGE_1_ITEM->number.value = PRIVATE_DATA->dc3_4_voltage;
 					indigo_update_property(device, AUX_POWER_OUTLET_VOLTAGE_PROPERTY, NULL);
 				}
+				AUX_POWER_OUTLET_CURRENT_1_ITEM->number.value = PRIVATE_DATA->dc2_current;
+				AUX_POWER_OUTLET_CURRENT_2_ITEM->number.value = PRIVATE_DATA->dc3_4_current;
+				indigo_update_property(device, AUX_POWER_OUTLET_CURRENT_PROPERTY, NULL);
 				if (AUX_HEATER_OUTLET_PROPERTY->state != INDIGO_BUSY_STATE) {
-					AUX_HEATER_OUTLET_1_ITEM->number.value = (PRIVATE_DATA->dc3_pwm / 255.0) * 100;
+					AUX_HEATER_OUTLET_1_ITEM->number.value = (PRIVATE_DATA->dc5_pwm / 255.0) * 100;
+					AUX_HEATER_OUTLET_2_ITEM->number.value = (PRIVATE_DATA->dc6_pwm / 255.0) * 100;
+					AUX_HEATER_OUTLET_3_ITEM->number.value = (PRIVATE_DATA->dc7_pwm / 255.0) * 100;
 					indigo_update_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
 				}
 				if (AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value && AUX_WEATHER_PROPERTY->state == INDIGO_OK_STATE) {
-					if (((AUX_WEATHER_DEWPOINT_ITEM->number.value + 1) > PRIVATE_DATA->dht22_temperature) && PRIVATE_DATA->dc3_pwm != 255) {
-						wbplusv3_command(device, "3255");
+					if (((AUX_WEATHER_DEWPOINT_ITEM->number.value + 1) > PRIVATE_DATA->dht22_temperature) && (PRIVATE_DATA->dc5_pwm != 255 || PRIVATE_DATA->dc6_pwm != 255 || PRIVATE_DATA->dc7_pwm != 255)) {
+						wbprov3_command(device, "5255");
+						wbprov3_command(device, "6255");
+						wbprov3_command(device, "7255");
 						indigo_send_message(device, "Heating started: Aproaching dewpoint");
 					}
-					if (((AUX_WEATHER_DEWPOINT_ITEM->number.value + 2) < PRIVATE_DATA->dht22_temperature) && PRIVATE_DATA->dc3_pwm != 0) {
-						wbplusv3_command(device, "3000");
+					if (((AUX_WEATHER_DEWPOINT_ITEM->number.value + 2) < PRIVATE_DATA->dht22_temperature) && (PRIVATE_DATA->dc5_pwm != 0 || PRIVATE_DATA->dc6_pwm != 0 || PRIVATE_DATA->dc7_pwm != 0)) {
+						wbprov3_command(device, "5000");
+						wbprov3_command(device, "6000");
+						wbprov3_command(device, "7000");
 						indigo_send_message(device, "Heating stopped: Conditions are dry");
 					}
 				}
@@ -244,11 +324,7 @@ driver wbplusv3 {
 			strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 		}
-		on_attach {
-			INFO_PROPERTY->count = 6;
-			strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-			strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
-		}
+		// on_attach { }
 		// on_detach { }
 		text AUX_OUTLET_NAMES {
 			name = AUX_OUTLET_NAMES_PROPERTY_NAME;
@@ -259,10 +335,13 @@ driver wbplusv3 {
 			// handle_change = false;
 			// synchronized_change = false;
 			on_change {
-				snprintf(AUX_HEATER_OUTLET_1_ITEM->label, INDIGO_NAME_SIZE, "%s (DC3) [%%]", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
-				snprintf(AUX_POWER_OUTLET_1_ITEM->label, INDIGO_NAME_SIZE, "%s (DC2)", AUX_POWER_OUTLET_NAME_1_ITEM->text.value);
-				snprintf(AUX_POWER_OUTLET_VOLTAGE_1_ITEM->label, INDIGO_NAME_SIZE, "%s (DC2) [V]", AUX_POWER_OUTLET_NAME_1_ITEM->text.value);
-				snprintf(AUX_POWER_OUTLET_2_ITEM->label, INDIGO_NAME_SIZE, "%s (DC4-DC6)", AUX_POWER_OUTLET_NAME_2_ITEM->text.value);
+				snprintf(AUX_HEATER_OUTLET_1_ITEM->label, INDIGO_NAME_SIZE, "%s (DC5) [%%]", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
+				snprintf(AUX_HEATER_OUTLET_2_ITEM->label, INDIGO_NAME_SIZE, "%s (DC6) [%%]", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
+				snprintf(AUX_HEATER_OUTLET_3_ITEM->label, INDIGO_NAME_SIZE, "%s (DC7) [%%]", AUX_HEATER_OUTLET_NAME_3_ITEM->text.value);
+				snprintf(AUX_POWER_OUTLET_1_ITEM->label, INDIGO_NAME_SIZE, "%s (DC3-DC4)", AUX_POWER_OUTLET_NAME_1_ITEM->text.value);
+				snprintf(AUX_POWER_OUTLET_VOLTAGE_1_ITEM->label, INDIGO_NAME_SIZE, "%s (DC3-DC4) [V]", AUX_POWER_OUTLET_NAME_1_ITEM->text.value);
+				snprintf(AUX_POWER_OUTLET_2_ITEM->label, INDIGO_NAME_SIZE, "%s (DC8-DC9)", AUX_POWER_OUTLET_NAME_2_ITEM->text.value);
+				snprintf(AUX_POWER_OUTLET_3_ITEM->label, INDIGO_NAME_SIZE, "%s (DC10-DC11)", AUX_POWER_OUTLET_NAME_3_ITEM->text.value);
 				if (IS_CONNECTED) {
 					indigo_delete_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
 					indigo_define_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
@@ -277,17 +356,32 @@ driver wbplusv3 {
 			// on_detach { }
 			item AUX_POWER_OUTLET_NAME_1 {
 				name = AUX_POWER_OUTLET_NAME_1_ITEM_NAME;
-				label = "Regulated outlet (DC2)";
-				value = "Regulated outlet";
+				label = "Regulated outlets (DC3-DC4)";
+				value = "Regulated outlets";
 			}
 			item AUX_HEATER_OUTLET_NAME_1 {
 				name = AUX_HEATER_OUTLET_NAME_1_ITEM_NAME;
-				label = "Heater outlet (DC3)";
+				label = "Heater outlet (DC5)";
+				value = "Heater outlet";
+			}
+			item AUX_HEATER_OUTLET_NAME_2 {
+				name = AUX_HEATER_OUTLET_NAME_2_ITEM_NAME;
+				label = "Heater outlet (DC6)";
+				value = "Heater outlet";
+			}
+			item AUX_HEATER_OUTLET_NAME_3 {
+				name = AUX_HEATER_OUTLET_NAME_3_ITEM_NAME;
+				label = "Heater outlet (DC7)";
 				value = "Heater outlet";
 			}
 			item AUX_POWER_OUTLET_NAME_2 {
 				name = AUX_POWER_OUTLET_NAME_2_ITEM_NAME;
-				label = "Power outlets (DC4-DC6)";
+				label = "Power outlets (DC8-DC9)";
+				value = "Power outlets";
+			}
+			item AUX_POWER_OUTLET_NAME_3 {
+				name = AUX_POWER_OUTLET_NAME_3_ITEM_NAME;
+				label = "Power outlets (DC10-DC11)";
 				value = "Power outlets";
 			}
 		}
@@ -299,20 +393,26 @@ driver wbplusv3 {
 			// handle_change = false;
 			// synchronized_change = false;
 			on_change {
-				wbplusv3_command(device, AUX_POWER_OUTLET_1_ITEM->sw.value ? "121" : "120");
-				wbplusv3_command(device, AUX_POWER_OUTLET_2_ITEM->sw.value ? "101" : "100");
+				wbprov3_command(device, AUX_POWER_OUTLET_1_ITEM->sw.value ? "101" : "100");
+				wbprov3_command(device, AUX_POWER_OUTLET_2_ITEM->sw.value ? "201" : "200");
+				wbprov3_command(device, AUX_POWER_OUTLET_3_ITEM->sw.value ? "211" : "210");
 				indigo_sleep(1);
 			}
 			// on_attach { }
 			// on_detach { }
 			item AUX_POWER_OUTLET_1 {
 				name = AUX_POWER_OUTLET_1_ITEM_NAME;
-				label = "Regulated outlet (DC2)";
+				label = "Regulated outlets (DC3-DC4)";
 				value = true;
 			}
 			item AUX_POWER_OUTLET_2 {
 				name = AUX_POWER_OUTLET_2_ITEM_NAME;
-				label = "Power outlets (DC4-DC6)";
+				label = "Power outlets (DC8-DC9)";
+				value = true;
+			}
+			item AUX_POWER_OUTLET_3 {
+				name = AUX_POWER_OUTLET_3_ITEM_NAME;
+				label = "Power outlets (DC10-DC11)";
 				value = true;
 			}
 		}
@@ -325,18 +425,45 @@ driver wbplusv3 {
 			on_change {
 				char command[16];
 				snprintf(command, sizeof(command), "%d", 20000 + (int)(AUX_POWER_OUTLET_VOLTAGE_1_ITEM->number.target * 10));
-				wbplusv3_command(device, command);
+				wbprov3_command(device, command);
 				indigo_sleep(1);
 			}
 			// on_attach { }
 			// on_detach { }
 			item AUX_POWER_OUTLET_VOLTAGE_1 {
 				name = AUX_POWER_OUTLET_VOLTAGE_1_ITEM_NAME;
-				label = "Regulated outlet (DC2) [V]";
+				label = "Regulated outlet (DC3-DC4) [V]";
 				value = 13.2;
 				min = 0;
 				max = 13.2;
 				step = 0.2;
+			}
+		}
+		number AUX_POWER_OUTLET_CURRENT {
+			name = AUX_POWER_OUTLET_CURRENT_PROPERTY_NAME;
+			group = AUX_GROUP;
+			label = "Output currents";
+			perm = INDIGO_RO_PERM;
+			// handle_change = false;
+			// synchronized_change = false;
+			// on_change { }
+			// on_attach { }
+			// on_detach { }
+			item AUX_POWER_OUTLET_CURRENT_1 {
+				name = AUX_POWER_OUTLET_CURRENT_1_ITEM_NAME;
+				label = "Output current (DC2) [A]";
+				value = 0;
+				min = 0;
+				max = 20;
+				step = 0;
+			}
+			item AUX_POWER_OUTLET_CURRENT_2 {
+				name = AUX_POWER_OUTLET_CURRENT_2_ITEM_NAME;
+				label = "Output current (DC3-DC4) [A]";
+				value = 0;
+				min = 0;
+				max = 20;
+				step = 0;
 			}
 		}
 		switch AUX_USB_PORT {
@@ -347,14 +474,38 @@ driver wbplusv3 {
 			// handle_change = false;
 			// synchronized_change = false;
 			on_change {
-				wbplusv3_command(device, AUX_USB_PORT_1_ITEM->sw.value ? "111" : "110");
+				wbprov3_command(device, AUX_USB_PORT_1_ITEM->sw.value ? "111" : "110");
+				wbprov3_command(device, AUX_USB_PORT_2_ITEM->sw.value ? "121" : "120");
+				wbprov3_command(device, AUX_USB_PORT_3_ITEM->sw.value ? "131" : "130");
+				wbprov3_command(device, AUX_USB_PORT_4_ITEM->sw.value ? "141" : "140");
+				wbprov3_command(device, AUX_USB_PORT_5_ITEM->sw.value ? "151" : "150");
 				indigo_sleep(1);
 			}
 			// on_attach { }
 			// on_detach { }
 			item AUX_USB_PORT_1 {
 				name = AUX_USB_PORT_1_ITEM_NAME;
-				label = "USB 2.0 && 3.1 ports";
+				label = "USB 3.1 port (1)";
+				value = true;
+			}
+			item AUX_USB_PORT_2 {
+				name = AUX_USB_PORT_2_ITEM_NAME;
+				label = "USB 3.1 port (2)";
+				value = true;
+			}
+			item AUX_USB_PORT_3 {
+				name = AUX_USB_PORT_3_ITEM_NAME;
+				label = "USB 3.1 port (3)";
+				value = true;
+			}
+			item AUX_USB_PORT_4 {
+				name = AUX_USB_PORT_4_ITEM_NAME;
+				label = "USB 2.0 ports (1-3)";
+				value = true;
+			}
+			item AUX_USB_PORT_5 {
+				name = AUX_USB_PORT_5_ITEM_NAME;
+				label = "USB 2.0 ports (4-6)";
 				value = true;
 			}
 		}
@@ -366,15 +517,35 @@ driver wbplusv3 {
 			// synchronized_change = false;
 			on_change {
 				char command[16];
-				snprintf(command, sizeof(command), "%d", 3000 + (int)(AUX_HEATER_OUTLET_1_ITEM->number.target * 255.0 / 100.0));
-				wbplusv3_command(device, command);
+				snprintf(command, sizeof(command), "%d", 5000 + (int)(AUX_HEATER_OUTLET_1_ITEM->number.target * 255.0 / 100.0));
+				wbprov3_command(device, command);
+				snprintf(command, sizeof(command), "%d", 6000 + (int)(AUX_HEATER_OUTLET_2_ITEM->number.target * 255.0 / 100.0));
+				wbprov3_command(device, command);
+				snprintf(command, sizeof(command), "%d", 7000 + (int)(AUX_HEATER_OUTLET_3_ITEM->number.target * 255.0 / 100.0));
+				wbprov3_command(device, command);
 				indigo_sleep(1);
 			}
 			// on_attach { }
 			// on_detach { }
 			item AUX_HEATER_OUTLET_1 {
 				name = AUX_HEATER_OUTLET_1_ITEM_NAME;
-				label = "Heater outlet (DC3) [%]";
+				label = "Heater outlet (DC5) [%]";
+				value = 0;
+				min = 0;
+				max = 100;
+				step = 5;
+			}
+			item AUX_HEATER_OUTLET_2 {
+				name = AUX_HEATER_OUTLET_2_ITEM_NAME;
+				label = "Heater outlet (DC6) [%]";
+				value = 0;
+				min = 0;
+				max = 100;
+				step = 5;
+			}
+			item AUX_HEATER_OUTLET_3 {
+				name = AUX_HEATER_OUTLET_3_ITEM_NAME;
+				label = "Heater outlet (DC7) [%]";
 				value = 0;
 				min = 0;
 				max = 100;
@@ -456,7 +627,23 @@ driver wbplusv3 {
 			}
 			item AUX_TEMPERATURE_SENSORS_SENSOR_2 {
 				name = AUX_TEMPERATURE_SENSORS_SENSOR_2_ITEM_NAME;
-				label = "Temperature (Temp probe) [°C]";
+				label = "Temperature (Temp probe 1) [°C]";
+				value = 0;
+				min = -50;
+				max = 100;
+				step = 0;
+			}
+			item AUX_TEMPERATURE_SENSORS_SENSOR_3 {
+				name = AUX_TEMPERATURE_SENSORS_SENSOR_3_ITEM_NAME;
+				label = "Temperature (Temp probe 2) [°C]";
+				value = 0;
+				min = -50;
+				max = 100;
+				step = 0;
+			}
+			item AUX_TEMPERATURE_SENSORS_SENSOR_4 {
+				name = AUX_TEMPERATURE_SENSORS_SENSOR_4_ITEM_NAME;
+				label = "Temperature (Temp probe 3) [°C]";
 				value = 0;
 				min = -50;
 				max = 100;
@@ -513,10 +700,9 @@ driver wbplusv3 {
 			// synchronized_change = false;
 			on_change {
 				if (X_AUX_CALIBRATE_ITEM->sw.value) {
-					wbplusv3_command(device, "66300744");
+					wbprov3_command(device, "66300744");
 					indigo_sleep(1);
 					X_AUX_CALIBRATE_ITEM->sw.value = false;
-					indigo_send_message(device, "Seensors recallibrated");
 				}
 			}
 			// on_attach { }

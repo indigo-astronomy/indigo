@@ -1,9 +1,9 @@
-// Copyright (C) 2024 Rumen G. Bogdanovski
+// 
 // All rights reserved.
-//
+
 // You can use this software under the terms of 'INDIGO Astronomy
 // open-source license' (see LICENSE.md).
-//
+
 // THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
 // OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 // WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -16,19 +16,15 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// version history
-// 2.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
+// This file generated from indigo_aux_wbprov3.driver
 
-/** INDIGO WandererBox Pro V3 aux driver
- \file indigo_aux_wbprov3.h
- */
+// version history
+// 3.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
 
 #ifndef aux_wbprov3_h
 #define aux_wbprov3_h
 
-#include <indigo/indigo_bus.h>
 #include <indigo/indigo_driver.h>
-#include <indigo/indigo_aux_driver.h>
 
 #if defined(INDIGO_WINDOWS)
 #if defined(INDIGO_WINDOWS_DLL)
@@ -44,14 +40,10 @@
 extern "C" {
 #endif
 
-/** Register WBProv3 driver
- */
-
 INDIGO_EXTERN indigo_result indigo_aux_wbprov3(indigo_driver_action action, indigo_driver_info *info);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* aux_wbprov3_h */
-
+#endif
