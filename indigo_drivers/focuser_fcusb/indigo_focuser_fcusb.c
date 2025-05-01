@@ -31,11 +31,11 @@
 #include <assert.h>
 #include <pthread.h>
 
-//+ "include" custom code below
+//+ include
 
 #include <libfcusb.h>
 
-//- "include" custom code above
+//- include
 
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_focuser_driver.h>
@@ -71,9 +71,9 @@
 typedef struct {
 	pthread_mutex_t mutex;
 	libusb_device *usbdev;
-	//+ "data" custom code below
+	//+ data
 	libfcusb_device_context *device_context;
-	//- "data" custom code above
+	//- data
 	indigo_property *x_focuser_frequency_property;
 	indigo_timer *focuser_connection_handler_timer;
 	indigo_timer *focuser_abort_motion_handler_timer;
@@ -83,7 +83,7 @@ typedef struct {
 
 #pragma mark - Low level code
 
-//+ "code" custom code below
+//+ code
 
 static bool fcusb_match(libusb_device *dev, const char **name) {
 	return libfcusb_focuser(dev, name);
@@ -102,7 +102,7 @@ static void fcusb_debug(const char *message) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libfcusb: %s\n", message);
 }
 
-//- "code" custom code above
+//- code
 
 #pragma mark - High level code (focuser)
 
@@ -142,12 +142,12 @@ static void focuser_connection_handler(indigo_device *device) {
 static void focuser_abort_motion_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-	//+ "focuser.FOCUSER_ABORT_MOTION.on_change" custom code below
+	//+ focuser.FOCUSER_ABORT_MOTION.on_change
 	if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
-	//- "focuser.FOCUSER_ABORT_MOTION.on_change" custom code above
+	//- focuser.FOCUSER_ABORT_MOTION.on_change
 	indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -157,7 +157,7 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 static void focuser_steps_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-	//+ "focuser.FOCUSER_STEPS.on_change" custom code below
+	//+ focuser.FOCUSER_STEPS.on_change
 	if (FOCUSER_STEPS_ITEM->number.value > 0) {
 		libfcusb_set_power(PRIVATE_DATA->device_context, FOCUSER_SPEED_ITEM->number.value);
 		if (X_FOCUSER_FREQUENCY_1_ITEM->sw.value)
@@ -190,7 +190,7 @@ static void focuser_steps_handler(indigo_device *device) {
 	} else {
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-	//- "focuser.FOCUSER_STEPS.on_change" custom code above
+	//- focuser.FOCUSER_STEPS.on_change
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -212,12 +212,12 @@ static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_
 
 static indigo_result focuser_attach(indigo_device *device) {
 	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
-		//+ "focuser.on_attach" custom code below
+		//+ focuser.on_attach
 		FOCUSER_POSITION_PROPERTY->hidden = true;
 		FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.max = 255;
 		indigo_copy_value(FOCUSER_SPEED_ITEM->label, "Power (0-255)");
 		indigo_copy_value(FOCUSER_SPEED_PROPERTY->label, "Power");
-		//- "focuser.on_attach" custom code above
+		//- focuser.on_attach
 		X_FOCUSER_FREQUENCY_PROPERTY = indigo_init_switch_property(NULL, device->name, X_FOCUSER_FREQUENCY_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Frequency", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 		if (X_FOCUSER_FREQUENCY_PROPERTY == NULL) {
 			return INDIGO_FAILED;
@@ -379,9 +379,9 @@ indigo_result indigo_focuser_fcusb(indigo_driver_action action, indigo_driver_in
 	switch (action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
-			//+ "on_init" custom code below
+			//+ on_init
 			libfcusb_debug = &fcusb_debug;
-			//- "on_init" custom code above
+			//- on_init
 			for (int i = 0; i < MAX_DEVICES; i++) {
 				devices[i] = 0;
 			}

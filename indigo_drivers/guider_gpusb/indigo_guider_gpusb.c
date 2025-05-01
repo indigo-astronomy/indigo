@@ -31,11 +31,11 @@
 #include <assert.h>
 #include <pthread.h>
 
-//+ "include" custom code below
+//+ include
 
 #include <libgpusb.h>
 
-//- "include" custom code above
+//- include
 
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_guider_driver.h>
@@ -58,10 +58,10 @@
 typedef struct {
 	pthread_mutex_t mutex;
 	libusb_device *usbdev;
-	//+ "data" custom code below
+	//+ data
 	libgpusb_device_context *device_context;
 	unsigned short relay_mask;
-	//- "data" custom code above
+	//- data
 	indigo_timer *guider_connection_handler_timer;
 	indigo_timer *guider_guide_dec_handler_timer;
 	indigo_timer *guider_guide_ra_handler_timer;
@@ -69,7 +69,7 @@ typedef struct {
 
 #pragma mark - Low level code
 
-//+ "code" custom code below
+//+ code
 
 static bool gpusb_match(libusb_device *dev, const char **name) {
 	return libgpusb_guider(dev, name);
@@ -88,7 +88,7 @@ static void gpusb_debug(const char *message) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libgpusb: %s\n", message);
 }
 
-//- "code" custom code above
+//- code
 
 #pragma mark - High level code (guider)
 
@@ -125,7 +125,7 @@ static void guider_connection_handler(indigo_device *device) {
 static void guider_guide_dec_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
-	//+ "guider.GUIDER_GUIDE_DEC.on_change" custom code below
+	//+ guider.GUIDER_GUIDE_DEC.on_change
 	PRIVATE_DATA->relay_mask &= ~(GPUSB_DEC_NORTH | GPUSB_DEC_SOUTH);
 	int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
 	if (duration > 0) {
@@ -148,7 +148,7 @@ static void guider_guide_dec_handler(indigo_device *device) {
 		GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 	}
-	//- "guider.GUIDER_GUIDE_DEC.on_change" custom code above
+	//- guider.GUIDER_GUIDE_DEC.on_change
 	indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -158,7 +158,7 @@ static void guider_guide_dec_handler(indigo_device *device) {
 static void guider_guide_ra_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
-	//+ "guider.GUIDER_GUIDE_RA.on_change" custom code below
+	//+ guider.GUIDER_GUIDE_RA.on_change
 	PRIVATE_DATA->relay_mask &= ~(GPUSB_RA_EAST | GPUSB_RA_WEST);
 	int duration = GUIDER_GUIDE_EAST_ITEM->number.value;
 	if (duration > 0) {
@@ -181,7 +181,7 @@ static void guider_guide_ra_handler(indigo_device *device) {
 		GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.value = 0;
 		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 	}
-	//- "guider.GUIDER_GUIDE_RA.on_change" custom code above
+	//- guider.GUIDER_GUIDE_RA.on_change
 	indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -332,9 +332,9 @@ indigo_result indigo_guider_gpusb(indigo_driver_action action, indigo_driver_inf
 	switch (action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
-			//+ "on_init" custom code below
+			//+ on_init
 			libgpusb_debug = &gpusb_debug;
-			//- "on_init" custom code above
+			//- on_init
 			for (int i = 0; i < MAX_DEVICES; i++) {
 				devices[i] = 0;
 			}

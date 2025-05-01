@@ -61,7 +61,7 @@ typedef struct {
 
 #pragma mark - Low level code
 
-//+ "code" custom code below
+//+ code
 
 static bool sx_command(indigo_device *device, char *command, char *response, int count) {
 	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
@@ -96,7 +96,7 @@ static void sx_close(indigo_device *device) {
 	}
 }
 
-//- "code" custom code above
+//- code
 
 #pragma mark - High level code (ao)
 
@@ -111,7 +111,7 @@ static void ao_connection_handler(indigo_device *device) {
 			connection_result = sx_open(device);
 		}
 		if (connection_result) {
-			//+ "ao.on_connect" custom code below
+			//+ ao.on_connect
 			char response[2];
 			if (sx_command(device, "L", response, 1)) {
 				AO_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
@@ -121,7 +121,7 @@ static void ao_connection_handler(indigo_device *device) {
 				if (response[0] & 0x0A)
 					AO_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
-			//- "ao.on_connect" custom code above
+			//- ao.on_connect
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, "Connected to %s on %s", AO_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
@@ -152,7 +152,7 @@ static void ao_connection_handler(indigo_device *device) {
 static void ao_guide_dec_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AO_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
-	//+ "ao.AO_GUIDE_DEC.on_change" custom code below
+	//+ ao.AO_GUIDE_DEC.on_change
 	char response[2], command[8];
 	if (AO_GUIDE_NORTH_ITEM->number.value > 0) {
 		sprintf(command, "GN%05d", (int)AO_GUIDE_NORTH_ITEM->number.value);
@@ -165,7 +165,7 @@ static void ao_guide_dec_handler(indigo_device *device) {
 	if (response[0] != 'G') {
 		AO_GUIDE_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-	//- "ao.AO_GUIDE_DEC.on_change" custom code above
+	//- ao.AO_GUIDE_DEC.on_change
 	indigo_update_property(device, AO_GUIDE_DEC_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -175,7 +175,7 @@ static void ao_guide_dec_handler(indigo_device *device) {
 static void ao_guide_ra_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AO_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
-	//+ "ao.AO_GUIDE_RA.on_change" custom code below
+	//+ ao.AO_GUIDE_RA.on_change
 	char response[2], command[8];
 	if (AO_GUIDE_WEST_ITEM->number.value > 0) {
 		sprintf(command, "GW%05d", (int)AO_GUIDE_WEST_ITEM->number.value);
@@ -188,7 +188,7 @@ static void ao_guide_ra_handler(indigo_device *device) {
 	if (response[0] != 'G') {
 		AO_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-	//- "ao.AO_GUIDE_RA.on_change" custom code above
+	//- ao.AO_GUIDE_RA.on_change
 	indigo_update_property(device, AO_GUIDE_RA_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -198,7 +198,7 @@ static void ao_guide_ra_handler(indigo_device *device) {
 static void ao_reset_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AO_RESET_PROPERTY->state = INDIGO_OK_STATE;
-	//+ "ao.AO_RESET.on_change" custom code below
+	//+ ao.AO_RESET.on_change
 	char response[2];
 	if (AO_CENTER_ITEM->sw.value) {
 		sx_command(device, "K", response, 1);
@@ -217,7 +217,7 @@ static void ao_reset_handler(indigo_device *device) {
 	if (response[0] != 'K') {
 		AO_RESET_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-	//- "ao.AO_RESET.on_change" custom code above
+	//- ao.AO_RESET.on_change
 	indigo_update_property(device, AO_RESET_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -234,9 +234,9 @@ static indigo_result ao_attach(indigo_device *device) {
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
-		//+ "ao.on_attach" custom code below
+		//+ ao.on_attach
 		AO_GUIDE_NORTH_ITEM->number.max = AO_GUIDE_SOUTH_ITEM->number.max = AO_GUIDE_EAST_ITEM->number.max = AO_GUIDE_WEST_ITEM->number.max = 50;
-		//- "ao.on_attach" custom code above
+		//- ao.on_attach
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		return ao_enumerate_properties(device, NULL, NULL);
@@ -344,7 +344,7 @@ static void guider_connection_handler(indigo_device *device) {
 static void guider_guide_dec_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
-	//+ "guider.GUIDER_GUIDE_DEC.on_change" custom code below
+	//+ guider.GUIDER_GUIDE_DEC.on_change
 	char response[2], command[8];
 	if (GUIDER_GUIDE_NORTH_ITEM->number.value > 0) {
 		sprintf(command, "MN%05d", (int)GUIDER_GUIDE_NORTH_ITEM->number.value / 10);
@@ -357,7 +357,7 @@ static void guider_guide_dec_handler(indigo_device *device) {
 	if (response[0] != 'M') {
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-	//- "guider.GUIDER_GUIDE_DEC.on_change" custom code above
+	//- guider.GUIDER_GUIDE_DEC.on_change
 	indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -367,7 +367,7 @@ static void guider_guide_dec_handler(indigo_device *device) {
 static void guider_guide_ra_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
-	//+ "guider.GUIDER_GUIDE_RA.on_change" custom code below
+	//+ guider.GUIDER_GUIDE_RA.on_change
 	char response[2], command[8];
 	if (AO_GUIDE_WEST_ITEM->number.value > 0) {
 		sprintf(command, "MW%05d", (int)AO_GUIDE_WEST_ITEM->number.value);
@@ -380,7 +380,7 @@ static void guider_guide_ra_handler(indigo_device *device) {
 	if (response[0] != 'M') {
 		AO_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-	//- "guider.GUIDER_GUIDE_RA.on_change" custom code above
+	//- guider.GUIDER_GUIDE_RA.on_change
 	indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }

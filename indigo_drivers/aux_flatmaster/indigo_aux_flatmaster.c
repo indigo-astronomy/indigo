@@ -42,11 +42,11 @@
 #define AUX_DEVICE_NAME      "Pegasus FlatMaster"
 #define PRIVATE_DATA         ((flatmaster_private_data *)device->private_data)
 
-//+ "define" custom code below
+//+ define
 
 #define INTENSITY(val)       ((int)floor((100 - (int)(val) - 0) * (220 - 20) / (100 - 0) + 20))
 
-//- "define" custom code above
+//- define
 
 #pragma mark - Property definitions
 
@@ -73,7 +73,7 @@ typedef struct {
 
 #pragma mark - Low level code
 
-//+ "code" custom code below
+//+ code
 
 static bool flatmaster_command(indigo_uni_handle *handle, char *command, char *response, int resp_len) {
 	if (indigo_uni_discard(handle) >= 0) {
@@ -104,7 +104,7 @@ static void flatmaster_close(indigo_device *device) {
 	indigo_uni_close(&PRIVATE_DATA->handle);
 }
 
-//- "code" custom code above
+//- code
 
 #pragma mark - High level code (aux)
 
@@ -117,7 +117,7 @@ static void aux_connection_handler(indigo_device *device) {
 		bool connection_result = true;
 		connection_result = flatmaster_open(device);
 		if (connection_result) {
-			//+ "aux.on_connect" custom code below
+			//+ aux.on_connect
 			char command[16], response[16];
 			if (flatmaster_command(PRIVATE_DATA->handle, "V", response, sizeof(response))) {
 				snprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, INDIGO_VALUE_SIZE, "%s", response);
@@ -136,7 +136,7 @@ static void aux_connection_handler(indigo_device *device) {
 			} else {
 				AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
-			//- "aux.on_connect" custom code above
+			//- aux.on_connect
 			indigo_define_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
 			indigo_define_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -165,13 +165,13 @@ static void aux_connection_handler(indigo_device *device) {
 static void aux_light_switch_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_OK_STATE;
-	//+ "aux.AUX_LIGHT_SWITCH.on_change" custom code below
+	//+ aux.AUX_LIGHT_SWITCH.on_change
 	char command[16],	response[16];
 	sprintf(command, "E:%d", AUX_LIGHT_SWITCH_ON_ITEM->sw.value);
 	if (!flatmaster_command(PRIVATE_DATA->handle, command, response, sizeof(response))) {
 		AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-	//- "aux.AUX_LIGHT_SWITCH.on_change" custom code above
+	//- aux.AUX_LIGHT_SWITCH.on_change
 	indigo_update_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -181,13 +181,13 @@ static void aux_light_switch_handler(indigo_device *device) {
 static void aux_light_intensity_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
-	//+ "aux.AUX_LIGHT_INTENSITY.on_change" custom code below
+	//+ aux.AUX_LIGHT_INTENSITY.on_change
 	char command[16],	response[16];
 	sprintf(command, "L:%d", INTENSITY(AUX_LIGHT_INTENSITY_ITEM->number.value));
 	if (!flatmaster_command(PRIVATE_DATA->handle, command, response, sizeof(response))) {
 		AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-	//- "aux.AUX_LIGHT_INTENSITY.on_change" custom code above
+	//- aux.AUX_LIGHT_INTENSITY.on_change
 	indigo_update_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -204,9 +204,9 @@ static indigo_result aux_attach(indigo_device *device) {
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
-		//+ "aux.on_attach" custom code below
+		//+ aux.on_attach
 		INFO_PROPERTY->count = 6;
-		//- "aux.on_attach" custom code above
+		//- aux.on_attach
 		AUX_LIGHT_SWITCH_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_MAIN_GROUP, "Light (on/off)", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (AUX_LIGHT_SWITCH_PROPERTY == NULL) {
 			return INDIGO_FAILED;

@@ -1059,10 +1059,10 @@ void write_c_code_blocks(code_type *code, int indentation, char *format, ...) {
 	if (code) {
 		if (indentation == 0) {
 			write_line("");
-			write_line("%s//+ \"%s\" custom code below", spaces + 10 - indentation, id);
+			write_line("%s//+ %s", spaces + 10 - indentation, id);
 			write_line("");
 		} else {
-			write_line("%s//+ \"%s\" custom code below", spaces + 10 - indentation, id);
+			write_line("%s//+ %s", spaces + 10 - indentation, id);
 		}
 		for (; code; code = code->next) {
 			write_code_block(code, indentation);
@@ -1070,10 +1070,10 @@ void write_c_code_blocks(code_type *code, int indentation, char *format, ...) {
 		if (indentation == 0) {
 			empty_line = false;
 			write_line("");
-			write_line("%s//- \"%s\" custom code above", spaces + 10 - indentation, id);
+			write_line("%s//- %s", spaces + 10 - indentation, id);
 			write_line("");
 		} else {
-			write_line("%s//- \"%s\" custom code above", spaces + 10 - indentation, id);
+			write_line("%s//- %s", spaces + 10 - indentation, id);
 		}
 	}
 }
@@ -1194,11 +1194,11 @@ void write_c_define_section(void) {
 	}
 	write_line("#define %-20s ((%s_private_data *)device->private_data)", "PRIVATE_DATA", driver.name);
 	if (driver.definions) {
-		write_line("//+ \"definitions\" below");
+		write_line("//+ definitions\" below");
 		for (definition_type *definiton = driver.definions; definiton; definiton = definiton->next) {
 			write_line("#define %-20s %s", definiton->name, definiton->value);
 		}
-		write_line("//- \"definitions\" above");
+		write_line("//- definitions\" above");
 	}
 	write_c_code_blocks(driver.define, 0, "define");
 }
@@ -1958,7 +1958,7 @@ void read_c_source(void) {
 			} else if (sscanf(line, "// %lf %127[^\0]", &d1, s1) == 2) {
 				strncpy(driver.author, s1, sizeof(driver.author));
 			}
-		} else if (sscanf(line, " //+ \"%127[^\"]\"", s1) == 1) {
+		} else if (sscanf(line, " //+ %127[^\"]\"", s1) == 1) {
 			code_type *code = allocate(sizeof(code_type));
 			int current_length = 0;
 			int current_size = 1024;

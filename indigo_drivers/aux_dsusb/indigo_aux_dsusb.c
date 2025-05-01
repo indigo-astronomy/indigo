@@ -31,11 +31,11 @@
 #include <assert.h>
 #include <pthread.h>
 
-//+ "include" custom code below
+//+ include
 
 #include <libdsusb.h>
 
-//- "include" custom code above
+//- include
 
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_aux_driver.h>
@@ -75,9 +75,9 @@
 typedef struct {
 	pthread_mutex_t mutex;
 	libusb_device *usbdev;
-	//+ "data" custom code below
+	//+ data
 	libdsusb_device_context *device_context;
-	//- "data" custom code above
+	//- data
 	indigo_property *ccd_abort_exposure_property;
 	indigo_property *ccd_exposure_property;
 	indigo_property *x_config_property;
@@ -90,7 +90,7 @@ typedef struct {
 
 #pragma mark - Low level code
 
-//+ "code" custom code below
+//+ code
 
 static bool dsusb_match(libusb_device *dev, const char **name) {
 	return libdsusb_shutter(dev, name);
@@ -108,7 +108,7 @@ static void dsusb_debug(const char *message) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libdsusb: %s\n", message);
 }
 
-//- "code" custom code above
+//- code
 
 #pragma mark - High level code (aux)
 
@@ -119,7 +119,7 @@ static void aux_timer_callback(indigo_device *device) {
 		return;
 	}
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	//+ "aux.on_timer" custom code below
+	//+ aux.on_timer
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_EXPOSURE_ITEM->number.value--;
 		if (CCD_EXPOSURE_ITEM->number.value <= 0) {
@@ -132,7 +132,7 @@ static void aux_timer_callback(indigo_device *device) {
 			indigo_reschedule_timer(device, CCD_EXPOSURE_ITEM->number.value < 1 ? CCD_EXPOSURE_ITEM->number.value : 1, &PRIVATE_DATA->aux_timer);
 		}
 	}
-	//- "aux.on_timer" custom code above
+	//- aux.on_timer
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
@@ -145,10 +145,10 @@ static void aux_connection_handler(indigo_device *device) {
 		bool connection_result = true;
 		connection_result = dsusb_open(device);
 		if (connection_result) {
-			//+ "aux.on_connect" custom code below
+			//+ aux.on_connect
 			CCD_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.target = 0;
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-			//- "aux.on_connect" custom code above
+			//- aux.on_connect
 			indigo_define_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 			indigo_define_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 			indigo_define_property(device, X_CONFIG_PROPERTY, NULL);
@@ -169,9 +169,9 @@ static void aux_connection_handler(indigo_device *device) {
 		indigo_delete_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 		indigo_delete_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		indigo_delete_property(device, X_CONFIG_PROPERTY, NULL);
-		//+ "aux.on_disconnect" custom code below
+		//+ aux.on_disconnect
 		libdsusb_stop(PRIVATE_DATA->device_context);
-		//- "aux.on_disconnect" custom code above
+		//- aux.on_disconnect
 		dsusb_close(device);
 		indigo_send_message(device, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -185,7 +185,7 @@ static void aux_connection_handler(indigo_device *device) {
 static void aux_ccd_abort_exposure_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-	//+ "aux.CCD_ABORT_EXPOSURE.on_change" custom code below
+	//+ aux.CCD_ABORT_EXPOSURE.on_change
 	if (CCD_ABORT_EXPOSURE_ITEM->sw.value && CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		indigo_cancel_timer(device, &PRIVATE_DATA->aux_timer);
 		libdsusb_stop(PRIVATE_DATA->device_context);
@@ -194,7 +194,7 @@ static void aux_ccd_abort_exposure_handler(indigo_device *device) {
 	}
 	CCD_ABORT_EXPOSURE_ITEM->sw.value = false;
 	CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-	//- "aux.CCD_ABORT_EXPOSURE.on_change" custom code above
+	//- aux.CCD_ABORT_EXPOSURE.on_change
 	indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -204,7 +204,7 @@ static void aux_ccd_abort_exposure_handler(indigo_device *device) {
 static void aux_ccd_exposure_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-	//+ "aux.CCD_EXPOSURE.on_change" custom code below
+	//+ aux.CCD_EXPOSURE.on_change
 	CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 	if (X_CONFIG_FOCUS_ITEM->sw.value) {
 		libdsusb_focus(PRIVATE_DATA->device_context);
@@ -213,7 +213,7 @@ static void aux_ccd_exposure_handler(indigo_device *device) {
 	libdsusb_start(PRIVATE_DATA->device_context);
 	CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value < 1 ? CCD_EXPOSURE_ITEM->number.value : 1, aux_timer_callback, &PRIVATE_DATA->aux_timer);
-	//- "aux.CCD_EXPOSURE.on_change" custom code above
+	//- aux.CCD_EXPOSURE.on_change
 	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -409,9 +409,9 @@ indigo_result indigo_aux_dsusb(indigo_driver_action action, indigo_driver_info *
 	switch (action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
-			//+ "on_init" custom code below
+			//+ on_init
 			libdsusb_debug = &dsusb_debug;
-			//- "on_init" custom code above
+			//- on_init
 			for (int i = 0; i < MAX_DEVICES; i++) {
 				devices[i] = 0;
 			}

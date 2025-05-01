@@ -67,7 +67,7 @@ typedef struct {
 
 #pragma mark - Low level code
 
-//+ "code" custom code below
+//+ code
 
 static bool arteskyflat_command(indigo_device *device, char *command, char *response) {
 	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
@@ -91,7 +91,7 @@ static void arteskyflat_close(indigo_device *device) {
 	}
 }
 
-//- "code" custom code above
+//- code
 
 #pragma mark - High level code (aux)
 
@@ -132,13 +132,13 @@ static void aux_connection_handler(indigo_device *device) {
 static void aux_light_switch_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_OK_STATE;
-	//+ "aux.AUX_LIGHT_SWITCH.on_change" custom code below
+	//+ aux.AUX_LIGHT_SWITCH.on_change
 	char command[16],	response[16];
 	strcpy(command, AUX_LIGHT_SWITCH_ON_ITEM->sw.value ? ">L000" : ">D000");
 	if (!arteskyflat_command(device, command, response) || *response != '*') {
 		AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-	//- "aux.AUX_LIGHT_SWITCH.on_change" custom code above
+	//- aux.AUX_LIGHT_SWITCH.on_change
 	indigo_update_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -148,13 +148,13 @@ static void aux_light_switch_handler(indigo_device *device) {
 static void aux_light_intensity_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
-	//+ "aux.AUX_LIGHT_INTENSITY.on_change" custom code below
+	//+ aux.AUX_LIGHT_INTENSITY.on_change
 	char command[16],	response[16];
 	sprintf(command, ">B%03d", (int)(AUX_LIGHT_INTENSITY_ITEM->number.value));
 	if (!arteskyflat_command(device, command, response) || *response != '*') {
 		AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-	//- "aux.AUX_LIGHT_INTENSITY.on_change" custom code above
+	//- aux.AUX_LIGHT_INTENSITY.on_change
 	indigo_update_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }

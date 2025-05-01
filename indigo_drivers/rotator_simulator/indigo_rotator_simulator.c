@@ -42,19 +42,19 @@
 #define ROTATOR_DEVICE_NAME  "Field Rotator Simulator"
 #define PRIVATE_DATA         ((simulator_private_data *)device->private_data)
 
-//+ "define" custom code below
+//+ define
 
 #define ROTATOR_SPEED        1
 
-//- "define" custom code above
+//- define
 
 #pragma mark - Private data definition
 
 typedef struct {
 	pthread_mutex_t mutex;
-	//+ "data" custom code below
+	//+ data
 	double target_position, current_position;
-	//- "data" custom code above
+	//- data
 	indigo_timer *rotator_timer;
 	indigo_timer *rotator_connection_handler_timer;
 	indigo_timer *rotator_position_handler_timer;
@@ -70,7 +70,7 @@ static void rotator_timer_callback(indigo_device *device) {
 		return;
 	}
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	//+ "rotator.on_timer" custom code below
+	//+ rotator.on_timer
 	if (ROTATOR_POSITION_PROPERTY->state == INDIGO_ALERT_STATE) {
 		ROTATOR_POSITION_ITEM->number.value = PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
 		indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
@@ -97,7 +97,7 @@ static void rotator_timer_callback(indigo_device *device) {
 			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 		}
 	}
-	//- "rotator.on_timer" custom code above
+	//- rotator.on_timer
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
@@ -127,7 +127,7 @@ static void rotator_connection_handler(indigo_device *device) {
 static void rotator_position_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-	//+ "rotator.ROTATOR_POSITION.on_change" custom code below
+	//+ rotator.ROTATOR_POSITION.on_change
 	if (ROTATOR_ON_POSITION_SET_SYNC_ITEM->sw.value) {
 		PRIVATE_DATA->target_position = ROTATOR_POSITION_ITEM->number.target;
 		PRIVATE_DATA->current_position = ROTATOR_POSITION_ITEM->number.value;
@@ -137,7 +137,7 @@ static void rotator_position_handler(indigo_device *device) {
 		PRIVATE_DATA->target_position = ROTATOR_POSITION_ITEM->number.target;
 		indigo_set_timer(device, 0.1, rotator_timer_callback, &PRIVATE_DATA->rotator_timer);
 	}
-	//- "rotator.ROTATOR_POSITION.on_change" custom code above
+	//- rotator.ROTATOR_POSITION.on_change
 	indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -147,14 +147,14 @@ static void rotator_position_handler(indigo_device *device) {
 static void rotator_abort_motion_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	ROTATOR_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-	//+ "rotator.ROTATOR_ABORT_MOTION.on_change" custom code below
+	//+ rotator.ROTATOR_ABORT_MOTION.on_change
 	if (ROTATOR_ABORT_MOTION_ITEM->sw.value && ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
 		ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		ROTATOR_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
 		indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 	}
 	ROTATOR_ABORT_MOTION_ITEM->sw.value = false;
-	//- "rotator.ROTATOR_ABORT_MOTION.on_change" custom code above
+	//- rotator.ROTATOR_ABORT_MOTION.on_change
 	indigo_update_property(device, ROTATOR_ABORT_MOTION_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
