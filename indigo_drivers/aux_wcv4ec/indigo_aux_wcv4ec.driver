@@ -1,0 +1,452 @@
+// 
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// WandererCover V4-EC Cover driver definition
+
+// TODO: Test with real hardware or simulator!!!
+
+driver wcv4ec {
+	label = "WandererCover V4-EC Cover";
+	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
+	copyright = "";
+	version = 5;
+	serial;
+	// include { }
+	define {
+		#define DEVICE_ID "WandererCoverV4"
+	}
+	data {
+		time_t operation_start_time;
+		bool operation_running;
+		char model_id[1550];
+		char firmware[20];
+		double close_position;
+		double open_position;
+		double current_position;
+		double input_voltage;
+		int brightness;
+		bool ready;
+	}
+	code {
+		static bool wcv4ec_read_status(indigo_device *device) {
+			char status[256] = { 0 };
+			indigo_uni_discard(PRIVATE_DATA->handle);
+			PRIVATE_DATA->ready = false;
+			long res = indigo_uni_read_line(PRIVATE_DATA->handle, status, 256);
+			if (strncmp(status, DEVICE_ID, strlen(DEVICE_ID))) {   // first part of the message is cleared by tcflush() or "done";
+				if (status[0] == '\0') {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "BRANCH: no id, status= '%s'", status);
+					res = indigo_uni_read_line(PRIVATE_DATA->handle, status, 256);
+				}
+				if (!strncmp(status, "done", strlen("done"))) {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "BRANCH: done");
+					PRIVATE_DATA->ready = true;
+					res = indigo_uni_read_line(PRIVATE_DATA->handle, status, 256);
+				}
+			}
+			if (res > 0) {
+				char *buf;
+				char* token = strtok_r(status, "A", &buf);
+				if (token == NULL) {
+					return false;
+				}
+				strncpy(PRIVATE_DATA->model_id, token, sizeof(PRIVATE_DATA->model_id));
+				if (strcmp(PRIVATE_DATA->model_id, DEVICE_ID)) {
+					return false;
+				}
+				token = strtok_r(NULL, "A", &buf);
+				if (token == NULL) {
+					return false;
+				}
+				strncpy(PRIVATE_DATA->firmware, token, sizeof(PRIVATE_DATA->firmware));
+				token = strtok_r(NULL, "A", &buf);
+				if (token == NULL) {
+					return false;
+				}
+				PRIVATE_DATA->close_position = atof(token);
+				token = strtok_r(NULL, "A", &buf);
+				if (token == NULL) {
+					return false;
+				}
+				PRIVATE_DATA->open_position = atof(token);
+				token = strtok_r(NULL, "A", &buf);
+				if (token == NULL) {
+					return false;
+				}
+				PRIVATE_DATA->current_position = atof(token);
+				token = strtok_r(NULL, "A", &buf);
+				if (token == NULL) {
+					return false;
+				}
+				PRIVATE_DATA->input_voltage = atof(token);
+				/* inctroduced with firmware 20240618 */
+				token = strtok_r(NULL, "A", &buf);
+				if (token != NULL) {
+					PRIVATE_DATA->brightness = atoi(token);
+				} else {
+					PRIVATE_DATA->brightness = 0;
+				}
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "model_id = '%s'\nfirmware = '%s'\nclose_position = %.2f\nopen_position = %.2f\ncurrent_position = %.2f\ninput_voltage = %.2fV\nbrightness = %d/255\ndone = %d\n",
+				PRIVATE_DATA->model_id, PRIVATE_DATA->firmware, PRIVATE_DATA->close_position, PRIVATE_DATA->open_position, PRIVATE_DATA->current_position, PRIVATE_DATA->input_voltage, PRIVATE_DATA->brightness, PRIVATE_DATA->ready);
+				return true;
+			}
+			return false;
+		}
+
+		static bool wcv4ec_command(indigo_device *device, char *command) {
+			indigo_uni_discard(PRIVATE_DATA->handle);
+			if (indigo_uni_printf(PRIVATE_DATA->handle, "%s\n", command) > 0) {
+				return true;
+			}
+			return false;
+		}
+
+		static bool wcv4ec_open(indigo_device *device) {
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200, INDIGO_LOG_DEBUG);
+			if (PRIVATE_DATA->handle != NULL) {
+				indigo_sleep(1);
+				if (wcv4ec_read_status(device)) {
+					if (!strcmp(PRIVATE_DATA->model_id, DEVICE_ID)) {
+						strcpy(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->model_id);
+						strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->firmware);
+						indigo_update_property(device, INFO_PROPERTY, NULL);
+						return true;
+					}
+				}
+				indigo_uni_close(&PRIVATE_DATA->handle);
+				indigo_send_message(device, "Handshake failed");
+			}
+			return false;
+		}
+
+		static void wcv4ec_close(indigo_device *device) {
+			if (PRIVATE_DATA->handle != NULL) {
+				indigo_uni_close(&PRIVATE_DATA->handle);
+			}
+		}
+	}
+	// on_init { }
+	// on_shutdown { }
+	aux {
+		name = "WandererCover V4-EC";
+		interface = INDIGO_INTERFACE_AUX_LIGHTBOX;
+		additional_instances = true;
+		// code { }
+		on_timer {
+			if (wcv4ec_read_status(device)) {
+				bool update = false;
+				if (fabs(PRIVATE_DATA->close_position - PRIVATE_DATA->current_position) < 6 && PRIVATE_DATA->operation_running) {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME,"Close");
+					AUX_COVER_CLOSE_ITEM->sw.value = true;
+					AUX_COVER_OPEN_ITEM->sw.value = false;
+					AUX_COVER_PROPERTY->state = INDIGO_OK_STATE;
+					PRIVATE_DATA->operation_running = false;
+					PRIVATE_DATA->operation_start_time = 0;
+					update = true;
+				} else if (fabs(PRIVATE_DATA->open_position - PRIVATE_DATA->current_position) < 6 && PRIVATE_DATA->operation_running) {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME,"Open");
+					AUX_COVER_CLOSE_ITEM->sw.value = false;
+					AUX_COVER_OPEN_ITEM->sw.value = true;
+					AUX_COVER_PROPERTY->state = INDIGO_OK_STATE;
+					PRIVATE_DATA->operation_running = false;
+					PRIVATE_DATA->operation_start_time = 0;
+					update = true;
+				} else if (PRIVATE_DATA->operation_running && AUX_COVER_PROPERTY->state != INDIGO_BUSY_STATE) {
+					AUX_COVER_CLOSE_ITEM->sw.value = false;
+					AUX_COVER_OPEN_ITEM->sw.value = false;
+					PRIVATE_DATA->operation_running = false;
+					PRIVATE_DATA->operation_start_time = 0;
+					update = true;
+				}
+				if (update) {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME,"Update");
+					indigo_update_property(device, AUX_COVER_PROPERTY, NULL);
+				}
+				update = false;
+				if (fabs(AUX_SET_OPEN_CLOSE_OPEN_ITEM->number.value - PRIVATE_DATA->open_position) > 0.01) {
+					AUX_SET_OPEN_CLOSE_OPEN_ITEM->number.value = PRIVATE_DATA->open_position;
+					update = true;
+				}
+				if (fabs(AUX_SET_OPEN_CLOSE_CLOSE_ITEM->number.value - PRIVATE_DATA->close_position) > 0.01) {
+					AUX_SET_OPEN_CLOSE_CLOSE_ITEM->number.value = PRIVATE_DATA->close_position;
+					update = true;
+				}
+				if (update) {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME,"Update open close positions");
+					if (AUX_SET_OPEN_CLOSE_PROPERTY->state == INDIGO_BUSY_STATE) {
+						AUX_SET_OPEN_CLOSE_PROPERTY->state = INDIGO_OK_STATE;
+					}
+					indigo_update_property(device, AUX_SET_OPEN_CLOSE_PROPERTY, NULL);
+				}
+			}
+			// timeout if open or close get stuck somewhere
+			if (time(NULL) - PRIVATE_DATA->operation_start_time > 60 && PRIVATE_DATA->operation_start_time > 0) {
+				AUX_COVER_CLOSE_ITEM->sw.value = false;
+				AUX_COVER_OPEN_ITEM->sw.value = false;
+				AUX_COVER_PROPERTY->state = INDIGO_ALERT_STATE;
+				PRIVATE_DATA->operation_running = false;
+				PRIVATE_DATA->operation_start_time = 0;
+				INDIGO_DRIVER_ERROR(DRIVER_NAME,"Open/close operation timeout");
+				indigo_update_property(device, AUX_COVER_PROPERTY, "Open/close operation timeout");
+			}
+			indigo_reschedule_timer(device, 1, &PRIVATE_DATA->aux_timer);
+		}
+		// on_connect { }
+		on_disconnect {
+			strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+			indigo_update_property(device, INFO_PROPERTY, NULL);
+			wcv4ec_command(device, "9999"); // turn light off
+			wcv4ec_command(device, "2000"); // turn the heater off
+		}
+		on_attach {
+			INFO_PROPERTY->count = 6;
+			strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+		}
+		// on_detach { }
+		switch AUX_LIGHT_SWITCH {
+			name = AUX_LIGHT_SWITCH_PROPERTY_NAME;
+			group = AUX_MAIN_GROUP;
+			label = "Light (on/off)";
+			// handle_change = false;
+			// synchronized_change = false;
+			on_change {
+				char command[16];
+				if (AUX_LIGHT_SWITCH_ON_ITEM->sw.value) {
+					sprintf(command, "%d", (int)(AUX_LIGHT_INTENSITY_ITEM->number.value));
+				} else {
+					strcpy(command, "9999");
+				}
+				if (!wcv4ec_command(device, command)) {
+					AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+			item AUX_LIGHT_SWITCH_ON {
+				name = AUX_LIGHT_SWITCH_ON_ITEM_NAME;
+				label = "On";
+				value = false;
+			}
+			item AUX_LIGHT_SWITCH_OFF {
+				name = AUX_LIGHT_SWITCH_OFF_ITEM_NAME;
+				label = "Off";
+				value = true;
+			}
+		}
+		number AUX_LIGHT_INTENSITY {
+			name = AUX_LIGHT_INTENSITY_PROPERTY_NAME;
+			group = AUX_MAIN_GROUP;
+			label = "Light intensity";
+			persistent = true;
+			// handle_change = false;
+			// synchronized_change = false;
+			on_change {
+				char command[16];
+				if (AUX_LIGHT_SWITCH_ON_ITEM->sw.value) {
+					sprintf(command, "%d", (int)(AUX_LIGHT_INTENSITY_ITEM->number.value));
+					if (!wcv4ec_command(device, command)) {
+						AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
+					}
+					AUX_LIGHT_SWITCH_ON_ITEM->sw.value = false;
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+			item AUX_LIGHT_INTENSITY {
+				name = AUX_LIGHT_INTENSITY_ITEM_NAME;
+				label = "Intensity";
+				value = 50;
+				min = 0;
+				max = 255;
+				step = 1;
+				format = "%g";
+			}
+		}
+		switch AUX_DETECT_OPEN_CLOSE {
+			name = "X_COVER_DETECT_OPEN_CLOSE";
+			group = AUX_ADVANCED_GROUP;
+			label = "Detect cover open/close position";
+			// handle_change = false;
+			// synchronized_change = false;
+			on_change {
+				if (PRIVATE_DATA->operation_running) {
+					pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+					return;
+				}
+				bool success = false;
+				if (AUX_DETECT_OPEN_CLOSE_OPEN_ITEM->sw.value) {
+					success = wcv4ec_command(device, "100001");
+				} else if (AUX_DETECT_OPEN_CLOSE_CLOSE_ITEM->sw.value) {
+					success = wcv4ec_command(device, "100000");
+				}
+				if (success) {
+					PRIVATE_DATA->operation_running = true; // let the status callback set correct open/close when we are done
+					char status_line[128] = {0};
+					indigo_uni_discard(PRIVATE_DATA->handle);
+					do {
+						indigo_uni_read_line(PRIVATE_DATA->handle, status_line, 128);
+					} while (strncmp(status_line, "OpenSet", strlen("OpenSet")) && strncmp(status_line, "CloseSet", strlen("CloseSet")));
+				} else {
+					AUX_DETECT_OPEN_CLOSE_PROPERTY->state = INDIGO_ALERT_STATE;
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Autodetect open/close failed");
+				}
+				AUX_DETECT_OPEN_CLOSE_OPEN_ITEM->sw.value = false;
+				AUX_DETECT_OPEN_CLOSE_CLOSE_ITEM->sw.value = false;
+			}
+			// on_attach { }
+			// on_detach { }
+			item AUX_DETECT_OPEN_CLOSE_OPEN {
+				name = AUX_COVER_OPEN_ITEM_NAME;
+				label = "Detect Open";
+				value = false;
+			}
+			item AUX_DETECT_OPEN_CLOSE_CLOSE {
+				name = AUX_COVER_CLOSE_ITEM_NAME;
+				label = "Detect Close";
+				value = false;
+			}
+		}
+		number AUX_SET_OPEN_CLOSE {
+			name = "X_COVER_SET_OPEN_CLOSE";
+			group = AUX_ADVANCED_GROUP;
+			label = "Set cover open/close position";
+			// handle_change = false;
+			// synchronized_change = false;
+			on_change {
+				char command[32];
+				if (PRIVATE_DATA->operation_running) {
+					AUX_SET_OPEN_CLOSE_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, AUX_SET_OPEN_CLOSE_PROPERTY, "Operation in progress");
+					pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+					return;
+				}
+				if (AUX_SET_OPEN_CLOSE_OPEN_ITEM->number.target <= AUX_SET_OPEN_CLOSE_CLOSE_ITEM->number.target + 45) {
+					AUX_SET_OPEN_CLOSE_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, AUX_SET_OPEN_CLOSE_PROPERTY, "Open position can not be smaller than Close + 45");
+					pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+					return;
+				}
+				sprintf(command, "%d", 40000 + (int)(AUX_SET_OPEN_CLOSE_OPEN_ITEM->number.target * 100));
+				bool success = wcv4ec_command(device, command);
+				sprintf(command, "%d", 10000 + (int)(AUX_SET_OPEN_CLOSE_CLOSE_ITEM->number.target * 100));
+				success = success && wcv4ec_command(device, command);
+				if (success) {
+					indigo_sleep(1);
+				} else {
+					AUX_SET_OPEN_CLOSE_PROPERTY->state = INDIGO_ALERT_STATE;
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Set open/close failed");
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+			item AUX_SET_OPEN_CLOSE_OPEN {
+				name = AUX_COVER_OPEN_ITEM_NAME;
+				label = "Set Open [°]";
+				value = 110;
+				min = 0;
+				max = 290;
+				step = 1;
+			}
+			item AUX_SET_OPEN_CLOSE_CLOSE {
+				name = AUX_COVER_CLOSE_ITEM_NAME;
+				label = "Set Close [°]";
+				value = 22;
+				min = 0;
+				max = 290;
+				step = 1;
+			}
+		}
+		switch AUX_HEATER {
+			name = "X_HEATER";
+			group = AUX_MAIN_GROUP;
+			label = "Heater";
+			// handle_change = false;
+			// synchronized_change = false;
+			on_change {
+				bool success = true;
+				if (AUX_HEATER_OFF_ITEM->sw.value) {
+					success = wcv4ec_command(device, "2000");
+				} else if (AUX_HEATER_LOW_ITEM->sw.value) {
+					success = wcv4ec_command(device, "2050");
+				} else if (AUX_HEATER_HIGH_ITEM->sw.value) {
+					success = wcv4ec_command(device, "2100");
+				} else if (AUX_HEATER_MAX_ITEM->sw.value) {
+					success = wcv4ec_command(device, "2150");
+				}
+				if (success) {
+					indigo_sleep(1);
+				} else {
+					AUX_HEATER_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+			item AUX_HEATER_OFF {
+				name = "OFF";
+				label = "Off";
+				value = true;
+			}
+			item AUX_HEATER_LOW {
+				name = "LOW";
+				label = "Low";
+				value = false;
+			}
+			item AUX_HEATER_HIGH {
+				name = "HIGH";
+				label = "High";
+				value = false;
+			}
+			item AUX_HEATER_MAX {
+				name = "MAX";
+				label = "Max";
+				value = false;
+			}
+		}
+		switch AUX_COVER {
+			name = AUX_COVER_PROPERTY_NAME;
+			label = "Cover (open/close)";
+			group = AUX_MAIN_GROUP;
+			on_change {
+				if (!PRIVATE_DATA->operation_running) {
+					pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+					return;
+				}
+				char command[16];
+				strcpy(command, AUX_COVER_OPEN_ITEM->sw.value ? "1001" : "1000");
+				if (wcv4ec_command(device, command)) {
+					PRIVATE_DATA->operation_start_time = time(NULL);
+					PRIVATE_DATA->operation_running = true;
+					AUX_COVER_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_sleep(1);
+				} else {
+					AUX_COVER_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			item AUX_COVER_OPEN {
+				name = AUX_COVER_OPEN_ITEM_NAME;
+				label = "Open";
+			}
+			item AUX_COVER_CLOSE {
+				name = AUX_COVER_CLOSE_ITEM_NAME;
+				label = "Close";
+			}
+		}
+	}
+}
