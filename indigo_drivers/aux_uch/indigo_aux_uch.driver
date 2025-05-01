@@ -1,0 +1,362 @@
+// Copyright (c) 2023-2025 Rumen G. Bogdanovski
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// PegasusAstro USB Control Hub driver definition
+
+driver uch {
+	label = "PegasusAstro USB Control Hub";
+	author = "Rumen Bogdanovski <rumenastro@gmail.com>";
+	copyright = "Copyright (c) 2023-2025 Rumen G. Bogdanovski";
+	version = 3;
+	serial {
+		pattern {
+			product = "USB Control Hub";
+			vendor = "Pegasus Astro";
+		}
+	}
+	// include { }
+	define {
+		#define AUX_GROUP											"USB Ports"
+	}
+	// data { }
+	code {
+		static bool uch_command(indigo_device *device, char *command, char *response, int max) {
+			if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
+				if (indigo_uni_printf(PRIVATE_DATA->handle, "%s\n", command) > 0) {
+					if (response) {
+						if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "\n", "\r\n", INDIGO_DELAY(1)) > 0) {
+							return true;
+						}
+					} else {
+						return true;
+					}
+				}
+			}
+			return false;
+		}
+
+		static bool uch_open(indigo_device *device) {
+			char response[128];
+			PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
+			if (PRIVATE_DATA->handle != NULL) {
+				if (uch_command(device, "P#", response, sizeof(response))) {
+					if (!strcmp(response, "UCH_OK")) {
+						strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro UCH");
+						uch_command(device, "PL:1", response, sizeof(response));
+						return true;
+					}
+				}
+				indigo_uni_close(&PRIVATE_DATA->handle);
+				indigo_send_message(device, "Handshake failed");
+			}
+			return false;
+		}
+
+		static void uch_close(indigo_device *device) {
+			char response[128];
+			if (PRIVATE_DATA->handle != NULL) {
+				uch_command(device, "PL:0", response, sizeof(response));
+				indigo_uni_close(&PRIVATE_DATA->handle);
+			}
+		}
+	}
+	// on_init { }
+	// on_shutdown { }
+	aux {
+		name = "USB Control Hub";
+		interface = INDIGO_INTERFACE_AUX_POWERBOX;
+		additional_instances = true;
+		// code { }
+		on_timer {
+			char response[128];
+			bool updateInfo = false;
+			bool updateUSBPorts = false;
+			if (uch_command(device, "PA", response, sizeof(response))) {
+				char *pnt = NULL, *token = strtok_r(response, ":", &pnt);
+				if ((token = strtok_r(NULL, ":", &pnt))) { // Voltage
+					double value = indigo_atod(token);
+					if (AUX_INFO_VOLTAGE_ITEM->number.value != value) {
+						updateInfo = true;
+						AUX_INFO_VOLTAGE_ITEM->number.value = value;
+					}
+				}	
+				if ((token = strtok_r(NULL, ":", &pnt))) { // USB status
+					bool state = token[0] == '1';
+					if (AUX_USB_PORT_1_ITEM->sw.value != state) {
+						AUX_USB_PORT_1_ITEM->sw.value = state;
+						updateUSBPorts = true;
+					}
+					state = token[1] == '1';
+					if (AUX_USB_PORT_2_ITEM->sw.value != state) {
+						AUX_USB_PORT_2_ITEM->sw.value = state;
+						updateUSBPorts = true;
+					}
+					state = token[2] == '1';
+					if (AUX_USB_PORT_3_ITEM->sw.value != state) {
+						AUX_USB_PORT_3_ITEM->sw.value = state;
+						updateUSBPorts = true;
+					}
+					state = token[3] == '1';
+					if (AUX_USB_PORT_4_ITEM->sw.value != state) {
+						AUX_USB_PORT_4_ITEM->sw.value = state;
+						updateUSBPorts = true;
+					}
+					state = token[4] == '1';
+					if (AUX_USB_PORT_5_ITEM->sw.value != state) {
+						AUX_USB_PORT_5_ITEM->sw.value = state;
+						updateUSBPorts = true;
+					}
+					state = token[5] == '1';
+					if (AUX_USB_PORT_6_ITEM->sw.value != state) {
+						AUX_USB_PORT_6_ITEM->sw.value = state;
+						updateUSBPorts = true;
+					}
+				}
+			}
+			if (uch_command(device, "PC", response, sizeof(response))) {
+				char *pnt = NULL, *token = strtok_r(response, ":", &pnt);
+				if ((token = strtok_r(NULL, ":", &pnt))) {
+					double value = indigo_atod(token)/(1000*3600); // convert to seconds;
+					if (AUX_INFO_UPTIME_ITEM->number.value != value) {
+						updateInfo = true;
+						AUX_INFO_UPTIME_ITEM->number.value = value;
+					}
+				}
+			}
+			if (updateInfo) {
+				AUX_INFO_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, AUX_INFO_PROPERTY, NULL);
+			}
+			if (updateUSBPorts) {
+				AUX_USB_PORT_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, AUX_USB_PORT_PROPERTY, NULL);
+			}
+			indigo_reschedule_timer(device, 2, &PRIVATE_DATA->aux_timer);
+		}
+		on_connect {
+			char response[128];
+			if (uch_command(device, "PA", response, sizeof(response)) && !strncmp(response, "UCH", 3)) {
+				char *pnt, *token = strtok_r(response, ":", &pnt);
+				if ((token = strtok_r(NULL, ":", &pnt))) { // Voltage
+					AUX_INFO_VOLTAGE_ITEM->number.value = indigo_atod(token);
+				}	
+				if ((token = strtok_r(NULL, ":", &pnt))) { // USB status
+					AUX_USB_PORT_1_ITEM->sw.value =  token[0] == '1';
+					AUX_USB_PORT_2_ITEM->sw.value =  token[1] == '1';
+					AUX_USB_PORT_3_ITEM->sw.value =  token[2] == '1';
+					AUX_USB_PORT_4_ITEM->sw.value =  token[3] == '1';
+					AUX_USB_PORT_5_ITEM->sw.value =  token[4] == '1';
+					AUX_USB_PORT_6_ITEM->sw.value =  token[5] == '1';
+				}
+			}
+			if (uch_command(device, "PV", response, sizeof(response))) {
+				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, response + 3);
+				indigo_update_property(device, INFO_PROPERTY, NULL);
+			}
+		}
+		on_disconnect {
+			strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+			indigo_update_property(device, INFO_PROPERTY, NULL);
+		}
+		on_attach {
+			INFO_PROPERTY->count = 6;
+			strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+		}
+		// on_detach { }
+		text AUX_OUTLET_NAMES {
+			name = AUX_OUTLET_NAMES_PROPERTY_NAME;
+			group = AUX_GROUP;
+			label = "Outlet names";
+			persistent = true;
+			always_defined = true;
+			// handle_change = false;
+			// synchronized_change = false;
+			on_change {
+				snprintf(AUX_USB_PORT_1_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_USB_PORT_NAME_1_ITEM->text.value);
+				snprintf(AUX_USB_PORT_2_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_USB_PORT_NAME_2_ITEM->text.value);
+				snprintf(AUX_USB_PORT_3_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_USB_PORT_NAME_3_ITEM->text.value);
+				snprintf(AUX_USB_PORT_4_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_USB_PORT_NAME_4_ITEM->text.value);
+				snprintf(AUX_USB_PORT_5_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_USB_PORT_NAME_5_ITEM->text.value);
+				snprintf(AUX_USB_PORT_6_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_USB_PORT_NAME_6_ITEM->text.value);
+				AUX_OUTLET_NAMES_PROPERTY->state = INDIGO_OK_STATE;
+				if (IS_CONNECTED) {
+					indigo_delete_property(device, AUX_USB_PORT_PROPERTY, NULL);
+					indigo_define_property(device, AUX_USB_PORT_PROPERTY, NULL);
+					indigo_update_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+			item AUX_USB_PORT_NAME_1 {
+				name = AUX_USB_PORT_NAME_1_ITEM_NAME;
+				label = "Port #1";
+				value = "Port #1";
+			}
+			item AUX_USB_PORT_NAME_2 {
+				name = AUX_USB_PORT_NAME_2_ITEM_NAME;
+				label = "Port #2";
+				value = "Port #2";
+			}
+			item AUX_USB_PORT_NAME_3 {
+				name = AUX_USB_PORT_NAME_3_ITEM_NAME;
+				label = "Port #3";
+				value = "Port #3";
+			}
+			item AUX_USB_PORT_NAME_4 {
+				name = AUX_USB_PORT_NAME_4_ITEM_NAME;
+				label = "Port #4";
+				value = "Port #4";
+			}
+			item AUX_USB_PORT_NAME_5 {
+				name = AUX_USB_PORT_NAME_5_ITEM_NAME;
+				label = "Port #5";
+				value = "Port #5";
+			}
+			item AUX_USB_PORT_NAME_6 {
+				name = AUX_USB_PORT_NAME_6_ITEM_NAME;
+				label = "Port #6";
+				value = "Port #6";
+			}
+		}
+		switch AUX_USB_PORT {
+			name = AUX_USB_PORT_PROPERTY_NAME;
+			group = AUX_GROUP;
+			label = "USB ports";
+			rule = INDIGO_ANY_OF_MANY_RULE;
+			persistent = true;
+			// handle_change = false;
+			// synchronized_change = false;
+			on_change {
+				char command[16], response[128];
+				for (int i = 0; i < AUX_USB_PORT_PROPERTY->count; i++) {
+					sprintf(command, "U%d:%d", i + 1, AUX_USB_PORT_PROPERTY->items[i].sw.value ? 1 : 0);
+					uch_command(device, command, response, sizeof(response));
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+			item AUX_USB_PORT_1 {
+				name = AUX_USB_PORT_1_ITEM_NAME;
+				label = "Port #1";
+				value = true;
+			}
+			item AUX_USB_PORT_2 {
+				name = AUX_USB_PORT_2_ITEM_NAME;
+				label = "Port #2";
+				value = true;
+			}
+			item AUX_USB_PORT_3 {
+				name = AUX_USB_PORT_3_ITEM_NAME;
+				label = "Port #3";
+				value = true;
+			}
+			item AUX_USB_PORT_4 {
+				name = AUX_USB_PORT_4_ITEM_NAME;
+				label = "Port #4";
+				value = true;
+			}
+			item AUX_USB_PORT_5 {
+				name = AUX_USB_PORT_5_ITEM_NAME;
+				label = "Port #5";
+				value = true;
+			}
+			item AUX_USB_PORT_6 {
+				name = AUX_USB_PORT_6_ITEM_NAME;
+				label = "Port #6";
+				value = true;
+			}
+		}
+		number AUX_INFO {
+			name = AUX_INFO_PROPERTY_NAME;
+			group = AUX_GROUP;
+			label = "Sensors";
+			perm = INDIGO_RO_PERM;
+			// handle_change = false;
+			// synchronized_change = false;
+			// on_change { }
+			// on_attach { }
+			// on_detach { }
+			item AUX_INFO_VOLTAGE {
+				name = AUX_INFO_VOLTAGE_ITEM_NAME;
+				label = "Voltage [V]";
+				value = 0;
+				min = 0;
+				max = 15;
+				step = 0;
+			}
+			item AUX_INFO_UPTIME {
+				name = "UPTIME";
+				label = "Uptime [hours]";
+				value = 0;
+				min = 0;
+				max = 1e10;
+				step = 0;
+				format = "%12.9m";
+			}
+		}
+		switch X_AUX_REBOOT {
+			name = "X_AUX_REBOOT";
+			group = AUX_GROUP;
+			label = "Reboot";
+			// handle_change = false;
+			// synchronized_change = false;
+			on_change {
+				char response[128];
+				if (X_AUX_REBOOT_ITEM->sw.value) {
+					uch_command(device, "PF", response, sizeof(response));
+					X_AUX_REBOOT_ITEM->sw.value = false;
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+			item X_AUX_REBOOT {
+				name = "REBOOT";
+				label = "Reboot";
+				value = false;
+			}
+		}
+		switch AUX_SAVE_OUTLET_STATES_AS_DEFAULT {
+			name = AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROPERTY_NAME;
+			group = AUX_GROUP;
+			label = "Save current outlet states as default";
+			// handle_change = false;
+			// synchronized_change = false;
+			on_change {
+				char response[128];
+				if (AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM->sw.value) {
+					char command[] = "PE:000000";
+					char *port_mask = command + 3;
+					for (int i = 0; i < AUX_USB_PORT_PROPERTY->count; i++) {
+						port_mask[i] = AUX_USB_PORT_PROPERTY->items[i].sw.value ? '1' : '0';
+					}
+					uch_command(device, command, response, sizeof(response));
+					AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM->sw.value = false;
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+			item AUX_SAVE_OUTLET_STATES_AS_DEFAULT {
+				name = AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM_NAME;
+				label = "Save";
+				value = false;
+			}
+		}
+	}
+}

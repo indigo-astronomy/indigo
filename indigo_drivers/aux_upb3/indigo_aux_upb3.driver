@@ -527,7 +527,6 @@ driver upb3 {
 				min = 0;
 				max = 100;
 				step = 5;
-				format = ;
 			}
 			item AUX_HEATER_OUTLET_2 {
 				name = AUX_HEATER_OUTLET_2_ITEM_NAME;
@@ -536,7 +535,6 @@ driver upb3 {
 				min = 0;
 				max = 100;
 				step = 5;
-				format = ;
 			}
 			item AUX_HEATER_OUTLET_3 {
 				name = AUX_HEATER_OUTLET_3_ITEM_NAME;
@@ -545,7 +543,6 @@ driver upb3 {
 				min = 0;
 				max = 100;
 				step = 5;
-				format = ;
 			}
 		}
 		switch AUX_DEW_CONTROL {
@@ -703,7 +700,6 @@ driver upb3 {
 				min = 3;
 				max = 12;
 				step = 1;
-				format = ;
 			}
 			item AUX_VARIABLE_POWER_OUTLET_8 {
 				name = "OUTLET_8";
@@ -712,7 +708,6 @@ driver upb3 {
 				min = 12;
 				max = 24;
 				step = 1;
-				format = ;
 			}
 		}
 		light AUX_POWER_OUTLET_STATE {
@@ -772,7 +767,6 @@ driver upb3 {
 				min = -50;
 				max = 100;
 				step = 0;
-				format = ;
 			}
 			item AUX_WEATHER_HUMIDITY {
 				name = AUX_WEATHER_HUMIDITY_ITEM_NAME;
@@ -781,7 +775,6 @@ driver upb3 {
 				min = 0;
 				max = 100;
 				step = 0;
-				format = ;
 			}
 			item AUX_WEATHER_DEWPOINT {
 				name = AUX_WEATHER_DEWPOINT_ITEM_NAME;
@@ -790,7 +783,6 @@ driver upb3 {
 				min = -50;
 				max = 100;
 				step = 0;
-				format = ;
 			}
 		}
 		number AUX_INFO {
@@ -810,7 +802,6 @@ driver upb3 {
 				min = 0;
 				max = 100;
 				step = 0;
-				format = ;
 			}
 			item AUX_AMP_HOUR {
 				name = "AMP_HOUR";
@@ -819,7 +810,6 @@ driver upb3 {
 				min = 0;
 				max = 100;
 				step = 0;
-				format = ;
 			}
 			item AUX_WATT_HOUR {
 				name = "WATT_HOUR";
@@ -828,7 +818,6 @@ driver upb3 {
 				min = 0;
 				max = 100;
 				step = 0;
-				format = ;
 			}
 			item AUX_INFO_VOLTAGE {
 				name = AUX_INFO_VOLTAGE_ITEM_NAME;
@@ -837,7 +826,6 @@ driver upb3 {
 				min = 0;
 				max = 15;
 				step = 0;
-				format = ;
 			}
 			item AUX_INFO_CURRENT {
 				name = AUX_INFO_CURRENT_ITEM_NAME;
@@ -846,7 +834,6 @@ driver upb3 {
 				min = 0;
 				max = 20;
 				step = 0;
-				format = ;
 			}
 		}
 	}

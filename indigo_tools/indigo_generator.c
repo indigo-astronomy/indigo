@@ -2199,6 +2199,17 @@ void read_c_source(void) {
 				strncpy(item->step, s6, sizeof(item->step));
 				strncpy(item->value, s7, sizeof(item->value));
 			}
+		} else if (sscanf(line, " indigo_init_sexagesimal_number_item(%127[^,], %127[^,], %127[^,], %127[^,], %127[^,], %127[^,], %127[^)]);", s1, s2, s3, s4, s5, s6, s7) == 7) {
+			if (property) {
+				item_type *item = get_item(property, s1);
+				strncpy(item->name, translate_name(s2), sizeof(item->name));
+				strncpy(item->label, s3, sizeof(item->label));
+				strncpy(item->min, s4, sizeof(item->min));
+				strncpy(item->max, s5, sizeof(item->max));
+				strncpy(item->step, s6, sizeof(item->step));
+				strncpy(item->value, s7, sizeof(item->value));
+				strncpy(item->format, "%12.9m", sizeof(item->format));
+			}
 		} else if (sscanf(line, " indigo_init_%127[^_]_item(%127[^,], %127[^,], %127[^,], %127[^)]);", s1, s2, s3, s4, s5) == 5) {
 			if (property) {
 				item_type *item = get_item(property, s2);
@@ -2490,7 +2501,9 @@ void write_definition_source(void) {
 						write_line("\t\t\t\tmin = %s;", item->min);
 						write_line("\t\t\t\tmax = %s;", item->max);
 						write_line("\t\t\t\tstep = %s;", item->step);
-						write_line("\t\t\t\tformat = %s;", item->format);
+						if (*item->format) {
+							write_line("\t\t\t\tformat = %s;", item->format);
+						}
 					}
 					write_line("\t\t\t}");
 				}

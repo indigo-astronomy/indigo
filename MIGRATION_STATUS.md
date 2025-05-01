@@ -30,7 +30,7 @@
 | aux_rts | 3️⃣ | ✅ Yes | ✅ Yes | |
 | aux_skyalert | 3️⃣ | ✅ Yes | ❌ No | |
 | aux_sqm | 3️⃣ | ✅ Yes | ❌ No | |
-| aux_uch | 3️⃣ | ✅ Yes | ❌ No | |
+| aux_uch | 3️⃣ | ✅ Yes | ✅ Yes | |
 | aux_upb | 3️⃣ | ✅ Yes | ✅ Yes | |
 | aux_upb3 | 3️⃣ | ✅ Yes | ✅ Yes | |
 | aux_usbdp | 3️⃣ | ✅ Yes | ❌ No | |
