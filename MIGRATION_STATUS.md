@@ -33,7 +33,7 @@
 | aux_uch | 3️⃣ | ✅ Yes | ✅ Yes | |
 | aux_upb | 3️⃣ | ✅ Yes | ✅ Yes | |
 | aux_upb3 | 3️⃣ | ✅ Yes | ✅ Yes | |
-| aux_usbdp | 3️⃣ | ✅ Yes | ❌ No | |
+| aux_usbdp | 3️⃣ | ✅ Yes | ✅ Yes | |
 | aux_wbplusv3 | 3️⃣ | ✅ Yes | ❌ No | |
 | aux_wbprov3 | 3️⃣ | ✅ Yes | ❌ No | |
 | aux_wcv4ec | 3️⃣ | ✅ Yes | ❌ No | |
