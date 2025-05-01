@@ -189,10 +189,6 @@ typedef struct {
 	pthread_mutex_t mutex;
 	int count;
 	indigo_uni_handle *handle;
-	//+ data
-	int version;
-	libusb_device_handle *smart_hub;
-	//- data
 	indigo_property *aux_outlet_names_property;
 	indigo_property *aux_power_outlet_property;
 	indigo_property *aux_power_outlet_state_property;
@@ -231,6 +227,10 @@ typedef struct {
 	indigo_timer *focuser_limits_handler_timer;
 	indigo_timer *focuser_position_handler_timer;
 	indigo_timer *focuser_abort_motion_handler_timer;
+	//+ data
+	int version;
+	libusb_device_handle *smart_hub;
+	//- data
 } upb_private_data;
 
 #pragma mark - Low level code
@@ -1690,7 +1690,7 @@ static void focuser_position_handler(indigo_device *device) {
 	//+ focuser.FOCUSER_POSITION.on_change
 	char command[16], response[128];
 	if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) {
-		int position = (int)FOCUSER_POSITION_ITEM->number.target;
+		int position = (int)FOCUSER_POSITION_ITEM->number.value;
 		if (position < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value) {
 			position = (int)FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
 		}

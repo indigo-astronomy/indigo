@@ -62,11 +62,11 @@
 
 typedef struct {
 	pthread_mutex_t mutex;
+	indigo_timer *gps_timer;
+	indigo_timer *gps_connection_handler_timer;
 	//+ data
 	int timer_ticks;
 	//- data
-	indigo_timer *gps_timer;
-	indigo_timer *gps_connection_handler_timer;
 } simulator_private_data;
 
 #pragma mark - High level code (gps)

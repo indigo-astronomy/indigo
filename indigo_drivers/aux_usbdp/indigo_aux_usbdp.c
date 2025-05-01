@@ -153,10 +153,6 @@
 typedef struct {
 	pthread_mutex_t mutex;
 	indigo_uni_handle *handle;
-	//+ data
-	int version;
-	uint8_t requested_aggressivity;
-	//- data
 	indigo_property *aux_outlet_names_property;
 	indigo_property *aux_heater_outlet_property;
 	indigo_property *aux_heater_outlet_state_property;
@@ -177,6 +173,10 @@ typedef struct {
 	indigo_timer *aux_dew_threshold_handler_timer;
 	indigo_timer *aux_link_ch_2and3_handler_timer;
 	indigo_timer *aux_heater_aggressivity_handler_timer;
+	//+ data
+	int version;
+	uint8_t requested_aggressivity;
+	//- data
 } usbdp_private_data;
 
 #pragma mark - Low level code

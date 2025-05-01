@@ -52,13 +52,13 @@
 
 typedef struct {
 	pthread_mutex_t mutex;
-	//+ data
-	double target_position, current_position;
-	//- data
 	indigo_timer *rotator_timer;
 	indigo_timer *rotator_connection_handler_timer;
 	indigo_timer *rotator_position_handler_timer;
 	indigo_timer *rotator_abort_motion_handler_timer;
+	//+ data
+	double target_position, current_position;
+	//- data
 } simulator_private_data;
 
 #pragma mark - High level code (rotator)
@@ -168,6 +168,8 @@ static indigo_result rotator_enumerate_properties(indigo_device *device, indigo_
 static indigo_result rotator_attach(indigo_device *device) {
 	if (indigo_rotator_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
+		ROTATOR_POSITION_PROPERTY->hidden = false;
+		ROTATOR_ABORT_MOTION_PROPERTY->hidden = false;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		return rotator_enumerate_properties(device, NULL, NULL);

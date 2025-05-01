@@ -71,14 +71,14 @@
 typedef struct {
 	pthread_mutex_t mutex;
 	libusb_device *usbdev;
-	//+ data
-	libfcusb_device_context *device_context;
-	//- data
 	indigo_property *x_focuser_frequency_property;
 	indigo_timer *focuser_connection_handler_timer;
 	indigo_timer *focuser_abort_motion_handler_timer;
 	indigo_timer *focuser_steps_handler_timer;
 	indigo_timer *focuser_x_focuser_frequency_handler_timer;
+	//+ data
+	libfcusb_device_context *device_context;
+	//- data
 } fcusb_private_data;
 
 #pragma mark - Low level code
@@ -218,6 +218,8 @@ static indigo_result focuser_attach(indigo_device *device) {
 		indigo_copy_value(FOCUSER_SPEED_ITEM->label, "Power (0-255)");
 		indigo_copy_value(FOCUSER_SPEED_PROPERTY->label, "Power");
 		//- focuser.on_attach
+		FOCUSER_ABORT_MOTION_PROPERTY->hidden = false;
+		FOCUSER_STEPS_PROPERTY->hidden = false;
 		X_FOCUSER_FREQUENCY_PROPERTY = indigo_init_switch_property(NULL, device->name, X_FOCUSER_FREQUENCY_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Frequency", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 		if (X_FOCUSER_FREQUENCY_PROPERTY == NULL) {
 			return INDIGO_FAILED;
@@ -225,6 +227,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		indigo_init_switch_item(X_FOCUSER_FREQUENCY_1_ITEM, X_FOCUSER_FREQUENCY_1_ITEM_NAME, "1.6 kHz (1x)", true);
 		indigo_init_switch_item(X_FOCUSER_FREQUENCY_4_ITEM, X_FOCUSER_FREQUENCY_4_ITEM_NAME, "6 kHz (4x)", false);
 		indigo_init_switch_item(X_FOCUSER_FREQUENCY_16_ITEM, X_FOCUSER_FREQUENCY_16_ITEM_NAME, "25 kHz (16x)", false);
+		X_FOCUSER_FREQUENCY_PROPERTY->hidden = false;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		return focuser_enumerate_properties(device, NULL, NULL);

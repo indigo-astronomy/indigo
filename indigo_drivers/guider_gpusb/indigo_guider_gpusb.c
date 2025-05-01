@@ -58,13 +58,13 @@
 typedef struct {
 	pthread_mutex_t mutex;
 	libusb_device *usbdev;
+	indigo_timer *guider_connection_handler_timer;
+	indigo_timer *guider_guide_dec_handler_timer;
+	indigo_timer *guider_guide_ra_handler_timer;
 	//+ data
 	libgpusb_device_context *device_context;
 	unsigned short relay_mask;
 	//- data
-	indigo_timer *guider_connection_handler_timer;
-	indigo_timer *guider_guide_dec_handler_timer;
-	indigo_timer *guider_guide_ra_handler_timer;
 } gpusb_private_data;
 
 #pragma mark - Low level code
@@ -194,6 +194,8 @@ static indigo_result guider_enumerate_properties(indigo_device *device, indigo_c
 
 static indigo_result guider_attach(indigo_device *device) {
 	if (indigo_guider_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
+		GUIDER_GUIDE_DEC_PROPERTY->hidden = false;
+		GUIDER_GUIDE_RA_PROPERTY->hidden = false;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		return guider_enumerate_properties(device, NULL, NULL);

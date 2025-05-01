@@ -76,14 +76,14 @@
 typedef struct {
 	pthread_mutex_t mutex;
 	indigo_uni_handle *handle;
-	//+ data
-	int satellites_in_view[MAX_NB_OF_SYSTEMS];
-	char selected_system;
-	//- data
 	indigo_property *gps_selected_system_property;
 	indigo_timer *gps_timer;
 	indigo_timer *gps_connection_handler_timer;
 	indigo_timer *gps_selected_system_handler_timer;
+	//+ data
+	int satellites_in_view[MAX_NB_OF_SYSTEMS];
+	char selected_system;
+	//- data
 } nmea_private_data;
 
 #pragma mark - Low level code
@@ -435,6 +435,7 @@ static indigo_result gps_attach(indigo_device *device) {
 		indigo_init_switch_item(BEIDOU_SYSTEM_ITEM, BEIDOU_SYSTEM_ITEM_NAME, "BeiDou", false);
 		indigo_init_switch_item(NAVIC_SYSTEM_ITEM, NAVIC_SYSTEM_ITEM_NAME, "NavIC", false);
 		indigo_init_switch_item(QZSS_SYSTEM_ITEM, QZSS_SYSTEM_ITEM_NAME, "QZSS1", false);
+		GPS_SELECTED_SYSTEM_PROPERTY->hidden = false;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		return gps_enumerate_properties(device, NULL, NULL);

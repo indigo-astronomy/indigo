@@ -75,9 +75,6 @@
 typedef struct {
 	pthread_mutex_t mutex;
 	libusb_device *usbdev;
-	//+ data
-	libdsusb_device_context *device_context;
-	//- data
 	indigo_property *ccd_abort_exposure_property;
 	indigo_property *ccd_exposure_property;
 	indigo_property *x_config_property;
@@ -86,6 +83,9 @@ typedef struct {
 	indigo_timer *aux_ccd_abort_exposure_handler_timer;
 	indigo_timer *aux_ccd_exposure_handler_timer;
 	indigo_timer *aux_x_config_handler_timer;
+	//+ data
+	libdsusb_device_context *device_context;
+	//- data
 } dsusb_private_data;
 
 #pragma mark - Low level code
@@ -240,17 +240,20 @@ static indigo_result aux_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		}
 		indigo_init_switch_item(CCD_ABORT_EXPOSURE_ITEM, CCD_ABORT_EXPOSURE_ITEM_NAME, "Abort exposure", false);
+		CCD_ABORT_EXPOSURE_PROPERTY->hidden = false;
 		CCD_EXPOSURE_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_EXPOSURE_PROPERTY_NAME, AUX_MAIN_GROUP, "Start exposure", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (CCD_EXPOSURE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
 		indigo_init_number_item(CCD_EXPOSURE_ITEM, CCD_EXPOSURE_ITEM_NAME, "Start exposure", 0, 1000, 1, 0);
 		strcpy(CCD_EXPOSURE_ITEM->number.format, "%g");
+		CCD_EXPOSURE_PROPERTY->hidden = false;
 		X_CONFIG_PROPERTY = indigo_init_switch_property(NULL, device->name, X_CONFIG_PROPERTY_NAME, AUX_MAIN_GROUP, "Configure", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 		if (X_CONFIG_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
 		indigo_init_switch_item(X_CONFIG_FOCUS_ITEM, X_CONFIG_FOCUS_ITEM_NAME, "Focus before capture", false);
+		X_CONFIG_PROPERTY->hidden = false;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		return aux_enumerate_properties(device, NULL, NULL);

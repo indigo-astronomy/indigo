@@ -36,7 +36,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000003
+#define DRIVER_VERSION       0x03000004
 #define DRIVER_NAME          "indigo_aux_uch"
 #define DRIVER_LABEL         "PegasusAstro USB Control Hub"
 #define AUX_DEVICE_NAME      "USB Control Hub"

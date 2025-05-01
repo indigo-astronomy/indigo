@@ -36,7 +36,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000011
+#define DRIVER_VERSION       0x03000012
 #define DRIVER_NAME          "indigo_aux_sqm"
 #define DRIVER_LABEL         "Unihedron SQM"
 #define AUX_DEVICE_NAME      "Unihedron SQM"
@@ -82,19 +82,22 @@ typedef struct {
 //+ code
 
 static bool sqm_command(indigo_device *device, const char *command, char *response, int max) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
 		if (indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command)) > 0) {
 			if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "\n", "\r\n", INDIGO_DELAY(1)) > 0) {
+				pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 				return true;
 			}
 		}
 	}
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 	return false;
 }
 
 static bool sqm_open(indigo_device *device) {
 	PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 115200, INDIGO_LOG_DEBUG);
-	if (PRIVATE_DATA->handle != NULL) {
+	if (PRIVATE_DATA->handle == NULL) {
 		char response[128];
 		if (sqm_command(device, "ix", response, sizeof(response))) {
 			if (response[0] == 'i' && response[1] == ',') {

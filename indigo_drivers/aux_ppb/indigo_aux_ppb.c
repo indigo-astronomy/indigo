@@ -36,7 +36,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300001A
+#define DRIVER_VERSION       0x0300001B
 #define DRIVER_NAME          "indigo_aux_ppb"
 #define DRIVER_LABEL         "PegasusAstro Pocket Powerbox"
 #define AUX_DEVICE_NAME      "Pocket Powerbox"
@@ -116,11 +116,6 @@
 typedef struct {
 	pthread_mutex_t mutex;
 	indigo_uni_handle *handle;
-	//+ data
-	bool is_advance;
-	bool is_micro;
-	bool is_saddle;
-	//- data
 	indigo_property *aux_outlet_names_property;
 	indigo_property *aux_power_outlet_property;
 	indigo_property *aux_dslr_power_property;
@@ -140,6 +135,11 @@ typedef struct {
 	indigo_timer *aux_dew_control_handler_timer;
 	indigo_timer *aux_x_aux_reboot_handler_timer;
 	indigo_timer *aux_save_outlet_states_as_default_handler_timer;
+	//+ data
+	bool is_advance;
+	bool is_micro;
+	bool is_saddle;
+	//- data
 } ppb_private_data;
 
 #pragma mark - Low level code

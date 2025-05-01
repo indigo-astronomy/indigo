@@ -114,20 +114,6 @@
 typedef struct {
 	pthread_mutex_t mutex;
 	indigo_uni_handle *handle;
-	//+ data
-	char model_id[1550];
-	char firmware[20];
-	double probe_temperature;
-	double dht22_hunidity;
-	double dht22_temperature;
-	double input_current;
-	double input_voltage;
-	bool usb_status;
-	bool dc2_status;
-	uint8_t dc3_pwm;
-	bool dc4_6_status;
-	double dc2_voltage;
-	//- data
 	indigo_property *aux_outlet_names_property;
 	indigo_property *aux_power_outlet_property;
 	indigo_property *aux_power_outlet_voltage_property;
@@ -148,6 +134,20 @@ typedef struct {
 	indigo_timer *aux_heater_outlet_handler_timer;
 	indigo_timer *aux_dew_control_handler_timer;
 	indigo_timer *aux_x_aux_calibrate_handler_timer;
+	//+ data
+	char model_id[1550];
+	char firmware[20];
+	double probe_temperature;
+	double dht22_hunidity;
+	double dht22_temperature;
+	double input_current;
+	double input_voltage;
+	bool usb_status;
+	bool dc2_status;
+	uint8_t dc3_pwm;
+	bool dc4_6_status;
+	double dc2_voltage;
+	//- data
 } wbplusv3_private_data;
 
 #pragma mark - Low level code

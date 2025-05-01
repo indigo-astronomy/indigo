@@ -1252,7 +1252,6 @@ void write_c_private_data_section(void) {
 	} else if (driver.libusb) {
 		write_line("\tlibusb_device *usbdev;");
 	}
-	write_c_code_blocks(driver.data, 1, "data");
 	for (device_type *device = driver.devices; device; device = device->next) {
 		for (property_type *property = device->properties; property; property = property->next) {
 			if (property->type[0] != 'i') {
@@ -1273,6 +1272,7 @@ void write_c_private_data_section(void) {
 			}
 		}
 	}
+	write_c_code_blocks(driver.data, 1, "data");
 	write_line("} %s_private_data;", driver.name);
 	write_line("");
 }

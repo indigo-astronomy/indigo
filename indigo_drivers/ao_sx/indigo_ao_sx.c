@@ -237,6 +237,9 @@ static indigo_result ao_attach(indigo_device *device) {
 		//+ ao.on_attach
 		AO_GUIDE_NORTH_ITEM->number.max = AO_GUIDE_SOUTH_ITEM->number.max = AO_GUIDE_EAST_ITEM->number.max = AO_GUIDE_WEST_ITEM->number.max = 50;
 		//- ao.on_attach
+		AO_GUIDE_DEC_PROPERTY->hidden = false;
+		AO_GUIDE_RA_PROPERTY->hidden = false;
+		AO_RESET_PROPERTY->hidden = false;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		return ao_enumerate_properties(device, NULL, NULL);
@@ -393,6 +396,8 @@ static indigo_result guider_enumerate_properties(indigo_device *device, indigo_c
 
 static indigo_result guider_attach(indigo_device *device) {
 	if (indigo_guider_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
+		GUIDER_GUIDE_DEC_PROPERTY->hidden = false;
+		GUIDER_GUIDE_RA_PROPERTY->hidden = false;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return guider_enumerate_properties(device, NULL, NULL);
 	}
