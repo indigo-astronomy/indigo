@@ -1,0 +1,1541 @@
+// Copyright (c) 2018-2025 CloudMakers, s. r. o.
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// PegasusAstro Ultimate Powerbox driver definition
+
+driver upb {
+	label = "PegasusAstro Ultimate Powerbox";
+	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
+	copyright = "Copyright (c) 2018-2025 CloudMakers, s. r. o.";
+	version = 24;
+	serial {
+		pattern {
+			product = "UPB";
+			vendor = "Pegasus Astro";
+		}
+	}
+	include {
+		#include <indigo/indigo_usb_utils.h>
+	}
+	define {
+		#define AUX_GROUP															"Powerbox"
+	}
+	data {
+		int version;
+		libusb_device_handle *smart_hub;
+	}
+	code {
+		static bool upb_command(indigo_device *device, char *command, char *response, int max) {
+			if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
+				if (indigo_uni_printf(PRIVATE_DATA->handle, "%s\n", command) > 0) {
+					if (response) {
+						if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "\n", "\r\n", INDIGO_DELAY(1)) > 0) {
+							return true;
+						}
+					} else {
+						return true;
+					}
+				}
+			}
+			return false;
+		}
+
+		static bool upb_open(indigo_device *device) {
+			char response[128];
+			PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
+			if (PRIVATE_DATA->handle != NULL) {
+				if (upb_command(device, "P#", response, sizeof(response))) {
+					if (!strcmp(response, "UPB_OK")) {
+						strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro UPB");
+						PRIVATE_DATA->version = 1;
+						upb_command(device, "PL:1", response, sizeof(response));
+						return true;
+					} else if (!strcmp(response, "UPB2_OK")) {
+						strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro UPB2");
+						PRIVATE_DATA->version = 2;
+						upb_command(device, "PL:1", response, sizeof(response));
+						return true;
+					}
+				}
+				indigo_uni_close(&PRIVATE_DATA->handle);
+				indigo_send_message(device, "Handshake failed");
+			}
+			return false;
+		}
+
+		static void upb_close(indigo_device *device) {
+			char response[128];
+			if (PRIVATE_DATA->handle != NULL) {
+				upb_command(device, "PL:0", response, sizeof(response));
+				indigo_uni_close(&PRIVATE_DATA->handle);
+			}
+		}
+	}
+	// on_init { }
+	// on_shutdown { }
+	aux {
+		name = "Ultimate Powerbox";
+		interface = INDIGO_INTERFACE_AUX_POWERBOX | INDIGO_INTERFACE_AUX_WEATHER;
+		additional_instances = true;
+		// code { }
+		on_timer {
+			char response[128];
+			bool updatePowerOutlet = false;
+			bool updatePowerOutletState = false;
+			bool updatePowerOutletCurrent = false;
+			bool updateHeaterOutlet = false;
+			bool updateHeaterOutletState = false;
+			bool updateHeaterOutletCurrent = false;
+			bool updateWeather = false;
+			bool updateInfo = false;
+			bool updateAutoHeater = false;
+			bool updateHub = false;
+			bool updateUSBPorts = false;
+			if (upb_command(device, "PA", response, sizeof(response))) {
+				char *pnt = NULL, *token = strtok_r(response, ":", &pnt);
+				if ((token = strtok_r(NULL, ":", &pnt))) { // Voltage
+					double value = indigo_atod(token);
+					if (AUX_INFO_VOLTAGE_ITEM->number.value != value) {
+						updateInfo = true;
+						AUX_INFO_VOLTAGE_ITEM->number.value = value;
+					}
+				}
+				if ((token = strtok_r(NULL, ":", &pnt))) { // Current
+					double value = indigo_atod(token);
+					if (AUX_INFO_CURRENT_ITEM->number.value != value) {
+						updateInfo = true;
+						AUX_INFO_CURRENT_ITEM->number.value = value;
+					}
+				}
+				if ((token = strtok_r(NULL, ":", &pnt))) { // Power
+					double value = indigo_atod(token);
+					if (AUX_INFO_POWER_ITEM->number.value != value) {
+						updateInfo = true;
+						AUX_INFO_POWER_ITEM->number.value = value;
+					}
+				}
+				if ((token = strtok_r(NULL, ":", &pnt))) { // Temp
+					double value = indigo_atod(token);
+					if (AUX_WEATHER_TEMPERATURE_ITEM->number.value != value) {
+						updateWeather = true;
+						AUX_WEATHER_TEMPERATURE_ITEM->number.value = value;
+					}
+				}
+				if ((token = strtok_r(NULL, ":", &pnt))) { // Humidity
+					double value = indigo_atod(token);
+					if (AUX_WEATHER_HUMIDITY_ITEM->number.value != value) {
+						updateWeather = true;
+						AUX_WEATHER_HUMIDITY_ITEM->number.value = value;
+					}
+				}
+				if ((token = strtok_r(NULL, ":", &pnt))) { // Dewpoint
+					double value = indigo_atod(token);
+					if (AUX_WEATHER_DEWPOINT_ITEM->number.value != value) {
+						updateWeather = true;
+						AUX_WEATHER_DEWPOINT_ITEM->number.value = value;
+					}
+				}
+				if ((token = strtok_r(NULL, ":", &pnt))) { // portstatus
+					bool state = token[0] == '1';
+					if (AUX_POWER_OUTLET_1_ITEM->sw.value != state) {
+						AUX_POWER_OUTLET_1_ITEM->sw.value = state;
+						updatePowerOutletState = true;
+					}
+					state = token[1] == '1';
+					if (AUX_POWER_OUTLET_2_ITEM->sw.value != state) {
+						AUX_POWER_OUTLET_2_ITEM->sw.value = state;
+						updatePowerOutletState = true;
+					}
+					state = token[2] == '1';
+					if (AUX_POWER_OUTLET_3_ITEM->sw.value != state) {
+						AUX_POWER_OUTLET_3_ITEM->sw.value = state;
+						updatePowerOutletState = true;
+					}
+					state = token[3] == '1';
+					if (AUX_POWER_OUTLET_4_ITEM->sw.value != state) {
+						AUX_POWER_OUTLET_4_ITEM->sw.value = state;
+						updatePowerOutletState = true;
+					}
+				}
+				if (PRIVATE_DATA->version == 1) {
+					if ((token = strtok_r(NULL, ":", &pnt))) { // USB Hub
+						bool state = token[0] == '0';
+						if (X_AUX_HUB_ENABLED_ITEM->sw.value != state) {
+							indigo_set_switch(X_AUX_HUB_PROPERTY, state ? X_AUX_HUB_ENABLED_ITEM : X_AUX_HUB_DISABLED_ITEM, true);
+							updateAutoHeater = true;
+						}
+					}
+				}
+				if (PRIVATE_DATA->version == 2) {
+					if ((token = strtok_r(NULL, ":", &pnt))) { // USB status
+						bool state = token[0] == '1';
+						if (AUX_USB_PORT_1_ITEM->sw.value != state) {
+							AUX_USB_PORT_1_ITEM->sw.value = state;
+							updateUSBPorts = true;
+						}
+						state = token[1] == '1';
+						if (AUX_USB_PORT_2_ITEM->sw.value != state) {
+							AUX_USB_PORT_2_ITEM->sw.value = state;
+							updateUSBPorts = true;
+						}
+						state = token[2] == '1';
+						if (AUX_USB_PORT_3_ITEM->sw.value != state) {
+							AUX_USB_PORT_3_ITEM->sw.value = state;
+							updateUSBPorts = true;
+						}
+						state = token[3] == '1';
+						if (AUX_USB_PORT_4_ITEM->sw.value != state) {
+							AUX_USB_PORT_4_ITEM->sw.value = state;
+							updateUSBPorts = true;
+						}
+						state = token[4] == '1';
+						if (AUX_USB_PORT_5_ITEM->sw.value != state) {
+							AUX_USB_PORT_5_ITEM->sw.value = state;
+							updateUSBPorts = true;
+						}
+						state = token[5] == '1';
+						if (AUX_USB_PORT_6_ITEM->sw.value != state) {
+							AUX_USB_PORT_6_ITEM->sw.value = state;
+							updateUSBPorts = true;
+						}
+					}
+				}
+				if ((token = strtok_r(NULL, ":", &pnt))) { // Dew1
+					double value = round(indigo_atod(token) * 100.0 / 255.0);
+					if (AUX_HEATER_OUTLET_1_ITEM->number.value != value) {
+						updateHeaterOutlet = true;
+						AUX_HEATER_OUTLET_1_ITEM->number.value = value;
+					}
+				}
+				if ((token = strtok_r(NULL, ":", &pnt))) { // Dew2
+					double value = round(indigo_atod(token) * 100.0 / 255.0);
+					if (AUX_HEATER_OUTLET_2_ITEM->number.value != value) {
+						updateHeaterOutlet = true;
+						AUX_HEATER_OUTLET_2_ITEM->number.value = value;
+					}
+				}
+				if (PRIVATE_DATA->version == 2) {
+					if ((token = strtok_r(NULL, ":", &pnt))) { // Dew3
+						double value = round(indigo_atod(token) * 100.0 / 255.0);
+						if (AUX_HEATER_OUTLET_3_ITEM->number.value != value) {
+							updateHeaterOutlet = true;
+							AUX_HEATER_OUTLET_3_ITEM->number.value = value;
+						}
+					}
+				}
+				double div_by = 400.0;
+				if (PRIVATE_DATA->version == 2) {
+					div_by = 300.0;
+				}
+				if ((token = strtok_r(NULL, ":", &pnt))) { // Current_port1
+					double value = indigo_atod(token) / div_by;
+					if (AUX_POWER_OUTLET_CURRENT_1_ITEM->number.value != value) {
+						updatePowerOutletCurrent = true;
+						AUX_POWER_OUTLET_CURRENT_1_ITEM->number.value = value;
+					}
+				}
+				if ((token = strtok_r(NULL, ":", &pnt))) { // Current_port2
+					double value = indigo_atod(token) / div_by;
+					if (AUX_POWER_OUTLET_CURRENT_2_ITEM->number.value != value) {
+						updatePowerOutletCurrent = true;
+						AUX_POWER_OUTLET_CURRENT_2_ITEM->number.value = value;
+					}
+				}
+				if ((token = strtok_r(NULL, ":", &pnt))) { // Current_port2
+					double value = indigo_atod(token) / div_by;
+					if (AUX_POWER_OUTLET_CURRENT_3_ITEM->number.value != value) {
+						updatePowerOutletCurrent = true;
+						AUX_POWER_OUTLET_CURRENT_3_ITEM->number.value = value;
+					}
+				}
+				if ((token = strtok_r(NULL, ":", &pnt))) { // Current_port2
+					double value = indigo_atod(token) / div_by;
+					if (AUX_POWER_OUTLET_CURRENT_4_ITEM->number.value != value) {
+						updatePowerOutletCurrent = true;
+						AUX_POWER_OUTLET_CURRENT_4_ITEM->number.value = value;
+					}
+				}
+				if ((token = strtok_r(NULL, ":", &pnt))) { // Current_dew1
+					double value = indigo_atod(token) / div_by;
+					if (AUX_HEATER_OUTLET_CURRENT_1_ITEM->number.value != value) {
+						updateHeaterOutletCurrent = true;
+						AUX_HEATER_OUTLET_CURRENT_1_ITEM->number.value = value;
+					}
+				}
+				if ((token = strtok_r(NULL, ":", &pnt))) { // Current_dew2
+					double value = indigo_atod(token) / div_by;
+					if (AUX_HEATER_OUTLET_CURRENT_2_ITEM->number.value != value) {
+						updateHeaterOutletCurrent = true;
+						AUX_HEATER_OUTLET_CURRENT_2_ITEM->number.value = value;
+					}
+				}
+				if (PRIVATE_DATA->version == 2) {
+					if ((token = strtok_r(NULL, ":", &pnt))) { // Current_dew3
+						double value = indigo_atod(token) / 600.0;
+						if (AUX_HEATER_OUTLET_CURRENT_3_ITEM->number.value != value) {
+							updateHeaterOutletCurrent = true;
+							AUX_HEATER_OUTLET_CURRENT_3_ITEM->number.value = value;
+						}
+					}
+				}
+				if ((token = strtok_r(NULL, ":", &pnt))) { // Overcurrent
+					indigo_property_state state = token[0] == '1' ? INDIGO_ALERT_STATE : AUX_POWER_OUTLET_1_ITEM->sw.value ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
+					if (AUX_POWER_OUTLET_STATE_1_ITEM->light.value != state) {
+						AUX_POWER_OUTLET_STATE_1_ITEM->light.value = state;
+						updatePowerOutletState = true;
+					}
+					state = token[1] == '1' ? INDIGO_ALERT_STATE : AUX_POWER_OUTLET_2_ITEM->sw.value ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
+					if (AUX_POWER_OUTLET_STATE_2_ITEM->light.value != state) {
+						AUX_POWER_OUTLET_STATE_2_ITEM->light.value = state;
+						updatePowerOutletState = true;
+					}
+					state = token[2] == '1' ? INDIGO_ALERT_STATE : AUX_POWER_OUTLET_3_ITEM->sw.value ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
+					if (AUX_POWER_OUTLET_STATE_3_ITEM->light.value != state) {
+						AUX_POWER_OUTLET_STATE_3_ITEM->light.value = state;
+						updatePowerOutletState = true;
+					}
+					state = token[3] == '1' ? INDIGO_ALERT_STATE : AUX_POWER_OUTLET_4_ITEM->sw.value ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
+					if (AUX_POWER_OUTLET_STATE_4_ITEM->light.value != state) {
+						AUX_POWER_OUTLET_STATE_4_ITEM->light.value = state;
+						updatePowerOutletState = true;
+					}
+					state = token[4] == '1' ? INDIGO_ALERT_STATE : AUX_HEATER_OUTLET_1_ITEM->number.value > 0 ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
+					if (AUX_HEATER_OUTLET_STATE_1_ITEM->light.value != state) {
+						AUX_HEATER_OUTLET_STATE_1_ITEM->light.value = state;
+						updateHeaterOutletState = true;
+					}
+					state = token[5] == '1' ? INDIGO_ALERT_STATE : AUX_HEATER_OUTLET_2_ITEM->number.value > 0 ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
+					if (AUX_HEATER_OUTLET_STATE_2_ITEM->light.value != state) {
+						AUX_HEATER_OUTLET_STATE_2_ITEM->light.value = state;
+						updateHeaterOutletState = true;
+					}
+					if (PRIVATE_DATA->version == 2) {
+						state = token[6] == '1' ? INDIGO_ALERT_STATE : AUX_HEATER_OUTLET_3_ITEM->number.value > 0 ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
+						if (AUX_HEATER_OUTLET_STATE_3_ITEM->light.value != state) {
+							AUX_HEATER_OUTLET_STATE_3_ITEM->light.value = state;
+							updateHeaterOutletState = true;
+						}
+					}
+				}
+				if ((token = strtok_r(NULL, ":", &pnt))) { // Autodew
+					bool state = token[0] == '1';
+					if (AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value != state) {
+						indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, state ? AUX_DEW_CONTROL_AUTOMATIC_ITEM : AUX_DEW_CONTROL_MANUAL_ITEM, true);
+						updateAutoHeater = true;
+					}
+				}
+			}
+			if (upb_command(device, "PC", response, sizeof(response))) {
+				char *pnt = NULL, *token = strtok_r(response, ":", &pnt);
+				if (token) {
+					double value = indigo_atod(token);
+					if (X_AUX_AVERAGE_ITEM->number.value != value) {
+						updateInfo = true;
+						X_AUX_AVERAGE_ITEM->number.value = value;
+					}
+				}
+				token = strtok_r(NULL, ":", &pnt);
+				if (token) {
+					double value = indigo_atod(token);
+					if (X_AUX_AMP_HOUR_ITEM->number.value != value) {
+						updateInfo = true;
+						X_AUX_AMP_HOUR_ITEM->number.value = value;
+					}
+				}
+				token = strtok_r(NULL, ":", &pnt);
+				if (token) {
+					double value = indigo_atod(token);
+					if (X_AUX_WATT_HOUR_ITEM->number.value != value) {
+						updateInfo = true;
+						X_AUX_WATT_HOUR_ITEM->number.value = value;
+					}
+				}
+			}
+			if (PRIVATE_DATA->version == 1) {
+				if (PRIVATE_DATA->smart_hub) {
+					for (int i = 1; i < 7; i++) {
+						uint32_t port_state;
+						int rc;
+						if ((rc = libusb_control_transfer(PRIVATE_DATA->smart_hub, LIBUSB_ENDPOINT_IN | LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_OTHER, LIBUSB_REQUEST_GET_STATUS, 0, i, (unsigned char*)&port_state, sizeof(port_state), 3000)) == sizeof(port_state)) {
+							bool is_enabled = port_state & 0x00000100;
+							indigo_property_state state = INDIGO_IDLE_STATE;
+							if (port_state & 0x00000015) {
+								state = INDIGO_BUSY_STATE;
+							}
+							if (port_state & 0x00000002) {
+								state = INDIGO_OK_STATE;
+							}
+							if (port_state & 0x00000008) {
+								state = INDIGO_ALERT_STATE;
+							}
+							if (AUX_USB_PORT_PROPERTY->items[i - 1].sw.value != is_enabled || AUX_USB_PORT_STATE_PROPERTY->items[i - 1].light.value != state) {
+								AUX_USB_PORT_PROPERTY->items[i - 1].sw.value = is_enabled;
+								AUX_USB_PORT_STATE_PROPERTY->items[i - 1].light.value = state;
+								updateUSBPorts = true;
+							}
+						} else {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to get USB port status (%s)", libusb_strerror(rc));
+							break;
+						}
+					}
+				}
+			}
+			if (updatePowerOutlet) {
+				AUX_POWER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
+			}
+			if (updatePowerOutletState) {
+				AUX_POWER_OUTLET_STATE_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, AUX_POWER_OUTLET_STATE_PROPERTY, NULL);
+			}
+			if (updatePowerOutletCurrent) {
+				AUX_POWER_OUTLET_CURRENT_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, AUX_POWER_OUTLET_CURRENT_PROPERTY, NULL);
+			}
+			if (updateHeaterOutlet) {
+				AUX_HEATER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
+			}
+			if (updateHeaterOutletState) {
+				AUX_HEATER_OUTLET_STATE_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, AUX_HEATER_OUTLET_STATE_PROPERTY, NULL);
+			}
+			if (updateHeaterOutletCurrent) {
+				AUX_HEATER_OUTLET_CURRENT_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, AUX_HEATER_OUTLET_CURRENT_PROPERTY, NULL);
+			}
+			if (updateAutoHeater) {
+				AUX_DEW_CONTROL_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
+			}
+			if (updateWeather) {
+				AUX_WEATHER_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, AUX_WEATHER_PROPERTY, NULL);
+			}
+			if (updateInfo) {
+				AUX_INFO_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, AUX_INFO_PROPERTY, NULL);
+			}
+			if (updateHub) {
+				X_AUX_HUB_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, X_AUX_HUB_PROPERTY, NULL);
+			}
+			if (updateUSBPorts) {
+				AUX_USB_PORT_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, AUX_USB_PORT_PROPERTY, NULL);
+				AUX_USB_PORT_STATE_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, AUX_USB_PORT_STATE_PROPERTY, NULL);
+			}
+			indigo_reschedule_timer(device, 2, &PRIVATE_DATA->aux_timer);
+		}
+		on_connect {
+			char response[128];
+			if (PRIVATE_DATA->version == 1) {
+				AUX_HEATER_OUTLET_PROPERTY->count = 2;
+				AUX_HEATER_OUTLET_STATE_PROPERTY->count = 2;
+				AUX_HEATER_OUTLET_CURRENT_PROPERTY->count = 2;
+				X_AUX_VARIABLE_POWER_OUTLET_PROPERTY->hidden = true;
+			} else {
+				AUX_HEATER_OUTLET_PROPERTY->count = 3;
+				AUX_HEATER_OUTLET_STATE_PROPERTY->count = 3;
+				AUX_HEATER_OUTLET_CURRENT_PROPERTY->count = 3;
+				X_AUX_VARIABLE_POWER_OUTLET_PROPERTY->hidden = false;
+				AUX_USB_PORT_PROPERTY->hidden = false;
+				AUX_USB_PORT_STATE_PROPERTY->hidden = true;
+			}
+			if (upb_command(device, "PA", response, sizeof(response)) && !strncmp(response, "UPB", 3)) {
+				char *pnt = NULL, *token = strtok_r(response, ":", &pnt);
+				if ((token = strtok_r(NULL, ":", &pnt))) { // Voltage
+					AUX_INFO_VOLTAGE_ITEM->number.value = indigo_atod(token);
+				}
+				if ((token = strtok_r(NULL, ":", &pnt))) { // Current
+					AUX_INFO_CURRENT_ITEM->number.value = indigo_atod(token);
+				}
+				if ((token = strtok_r(NULL, ":", &pnt))) { // Power
+					AUX_INFO_POWER_ITEM->number.value = atoi(token);
+				}
+				if ((token = strtok_r(NULL, ":", &pnt))) { // Temp
+					AUX_WEATHER_TEMPERATURE_ITEM->number.value = indigo_atod(token);
+				}
+				if ((token = strtok_r(NULL, ":", &pnt))) { // Humidity
+					AUX_WEATHER_HUMIDITY_ITEM->number.value = indigo_atod(token);
+				}
+				if ((token = strtok_r(NULL, ":", &pnt))) { // Dewpoint
+					AUX_WEATHER_DEWPOINT_ITEM->number.value = indigo_atod(token);
+				}
+				if ((token = strtok_r(NULL, ":", &pnt))) { // portstatus
+					AUX_POWER_OUTLET_1_ITEM->sw.value = token[0] == '1';
+					AUX_POWER_OUTLET_2_ITEM->sw.value = token[1] == '1';
+					AUX_POWER_OUTLET_3_ITEM->sw.value = token[2] == '1';
+					AUX_POWER_OUTLET_4_ITEM->sw.value = token[3] == '1';
+				}
+				if (PRIVATE_DATA->version == 1) {
+					if ((token = strtok_r(NULL, ":", &pnt))) { // USB Hub
+						indigo_set_switch(X_AUX_HUB_PROPERTY, atoi(token) == 0 ? X_AUX_HUB_ENABLED_ITEM : X_AUX_HUB_DISABLED_ITEM, true);
+					}
+				}
+				if (PRIVATE_DATA->version == 2) {
+					if ((token = strtok_r(NULL, ":", &pnt))) { // USB status
+						AUX_USB_PORT_1_ITEM->sw.value =  token[0] == '1';
+						AUX_USB_PORT_2_ITEM->sw.value =  token[1] == '1';
+						AUX_USB_PORT_3_ITEM->sw.value =  token[2] == '1';
+						AUX_USB_PORT_4_ITEM->sw.value =  token[3] == '1';
+						AUX_USB_PORT_5_ITEM->sw.value =  token[4] == '1';
+						AUX_USB_PORT_6_ITEM->sw.value =  token[5] == '1';
+					}
+				}
+				if ((token = strtok_r(NULL, ":", &pnt))) { // Dew1
+					AUX_HEATER_OUTLET_1_ITEM->number.value = AUX_HEATER_OUTLET_1_ITEM->number.target = round(indigo_atod(token) * 100.0 / 255.0);
+				}
+				if ((token = strtok_r(NULL, ":", &pnt))) { // Dew2
+					AUX_HEATER_OUTLET_2_ITEM->number.value = AUX_HEATER_OUTLET_2_ITEM->number.target = round(indigo_atod(token) * 100.0 / 255.0);
+				}
+				if (PRIVATE_DATA->version == 2) {
+					if ((token = strtok_r(NULL, ":", &pnt))) { // Dew3
+						AUX_HEATER_OUTLET_3_ITEM->number.value = AUX_HEATER_OUTLET_3_ITEM->number.target = round(indigo_atod(token) * 100.0 / 255.0);
+					}
+				}
+				double div_by = 400.0;
+				if (PRIVATE_DATA->version == 2) {
+					div_by = 300.0;
+				}
+				if ((token = strtok_r(NULL, ":", &pnt))) { // Current_port1
+					AUX_POWER_OUTLET_CURRENT_1_ITEM->number.value = atoi(token) / div_by;
+				}
+				if ((token = strtok_r(NULL, ":", &pnt))) { // Current_port2
+					AUX_POWER_OUTLET_CURRENT_2_ITEM->number.value = atoi(token) / div_by;
+				}
+				if ((token = strtok_r(NULL, ":", &pnt))) { // Current_port2
+					AUX_POWER_OUTLET_CURRENT_3_ITEM->number.value = atoi(token) / div_by;
+				}
+				if ((token = strtok_r(NULL, ":", &pnt))) { // Current_port2
+					AUX_POWER_OUTLET_CURRENT_4_ITEM->number.value = atoi(token) / div_by;
+				}
+				if ((token = strtok_r(NULL, ":", &pnt))) { // Current_dew1
+					AUX_HEATER_OUTLET_CURRENT_1_ITEM->number.value = atoi(token) / div_by;
+				}
+				if ((token = strtok_r(NULL, ":", &pnt))) { // Current_dew2
+					AUX_HEATER_OUTLET_CURRENT_2_ITEM->number.value = atoi(token) / div_by;
+				}
+				if (PRIVATE_DATA->version == 2) {
+					if ((token = strtok_r(NULL, ":", &pnt))) { // Current_dew3
+						AUX_HEATER_OUTLET_CURRENT_3_ITEM->number.value = atoi(token) / 600.0;
+					}
+				}
+				if ((token = strtok_r(NULL, ":", &pnt))) { // Overcurrent
+					AUX_POWER_OUTLET_STATE_1_ITEM->light.value = token[0] == '1' ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+					AUX_POWER_OUTLET_STATE_2_ITEM->light.value = token[1] == '1' ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+					AUX_POWER_OUTLET_STATE_3_ITEM->light.value = token[2] == '1' ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+					AUX_POWER_OUTLET_STATE_4_ITEM->light.value = token[3] == '1' ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+					AUX_HEATER_OUTLET_STATE_1_ITEM->light.value = token[4] == '1' ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+					AUX_HEATER_OUTLET_STATE_2_ITEM->light.value = token[5] == '1' ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+					if (PRIVATE_DATA->version == 2) {
+						AUX_HEATER_OUTLET_STATE_3_ITEM->light.value = token[6] == '1' ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+					}
+				}
+				if ((token = strtok_r(NULL, ":", &pnt))) { // Autodew
+					indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, atoi(token) == 0 ? AUX_DEW_CONTROL_MANUAL_ITEM : AUX_DEW_CONTROL_AUTOMATIC_ITEM, true);
+				} else {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to parse 'PA' response");
+					indigo_uni_close(&PRIVATE_DATA->handle);
+				}
+			}
+			if (upb_command(device, "PV", response, sizeof(response))) {
+				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->version == 2 ? "UPBv2" : "UPB");
+				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, response + 3); // remove "PV:" prefix
+				indigo_update_property(device, INFO_PROPERTY, NULL);
+			}
+			upb_command(device, "PU:1", response, sizeof(response));
+			indigo_set_switch(X_AUX_HUB_PROPERTY, X_AUX_HUB_ENABLED_ITEM, true);
+			if (PRIVATE_DATA->version == 1) {
+				libusb_context *ctx = NULL;
+				libusb_device **usb_devices;
+				struct libusb_device_descriptor descriptor;
+				ssize_t total = libusb_get_device_list(ctx, &usb_devices);
+				AUX_USB_PORT_PROPERTY->hidden = true;
+				AUX_USB_PORT_STATE_PROPERTY->hidden = true;
+				for (int i = 0; i < total; i++) {
+					libusb_device *dev = usb_devices[i];
+					if (libusb_get_device_descriptor(dev, &descriptor) == LIBUSB_SUCCESS && descriptor.idVendor == 0x0424 && descriptor.idProduct == 0x2517) {
+						int rc;
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "USB hub found");
+						if ((rc = libusb_open(dev, &PRIVATE_DATA->smart_hub)) == LIBUSB_SUCCESS) {
+							for (int i = 1; i < 7; i++) {
+								uint32_t port_state;
+								if ((rc = libusb_control_transfer(PRIVATE_DATA->smart_hub, LIBUSB_ENDPOINT_IN | LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_OTHER, LIBUSB_REQUEST_GET_STATUS, 0, i, (unsigned char*)&port_state, sizeof(port_state), 3000)) == sizeof(port_state)) {
+									indigo_property_state state = INDIGO_IDLE_STATE;
+									if (port_state & 0x00000015) {
+										state = INDIGO_BUSY_STATE;
+									}
+									if (port_state & 0x00000002) {
+										state = INDIGO_OK_STATE;
+									}
+									if (port_state & 0x00000008) {
+										state = INDIGO_ALERT_STATE;
+									}
+									AUX_USB_PORT_PROPERTY->items[i - 1].sw.value = port_state & 0x00000100;
+									AUX_USB_PORT_STATE_PROPERTY->items[i - 1].light.value = state;
+								} else {
+									INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to get USB port status (%s)", libusb_strerror(rc));
+									break;
+								}
+							}
+							AUX_USB_PORT_PROPERTY->hidden = false;
+							AUX_USB_PORT_STATE_PROPERTY->hidden = false;
+						} else {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to USB hub (%s)", libusb_strerror(rc));
+						}
+						break;
+					}
+				}
+				libusb_free_device_list(usb_devices, 1);
+			}
+			if (PRIVATE_DATA->version == 2) {
+				if (upb_command(device, "PS", response, sizeof(response)) && !strncmp(response, "PS", 2)) {
+					char *pnt = NULL, *token = strtok_r(response, ":", &pnt);
+					if ((token = strtok_r(NULL, ":", &pnt))) { // Power-up state
+					}
+					if ((token = strtok_r(NULL, ":", &pnt))) { // Variable voltage
+						X_AUX_VARIABLE_POWER_OUTLET_1_ITEM->number.target = X_AUX_VARIABLE_POWER_OUTLET_1_ITEM->number.value = atoi(token);
+					}
+				}
+			}
+		}
+		on_disconnect {
+			strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+			indigo_update_property(device, INFO_PROPERTY, NULL);
+			if (PRIVATE_DATA->smart_hub) {
+				libusb_close(PRIVATE_DATA->smart_hub);
+				PRIVATE_DATA->smart_hub = 0;
+			}
+		}
+		on_attach {
+			INFO_PROPERTY->count = 6;
+			strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+		}
+		// on_detach { }
+		text AUX_OUTLET_NAMES {
+			name = AUX_OUTLET_NAMES_PROPERTY_NAME;
+			group = AUX_GROUP;
+			label = "Outlet names";
+			persistent = true;
+			always_defined = true;
+			// handle_change = false;
+			// synchronized_change = false;
+			on_change {
+				snprintf(AUX_POWER_OUTLET_1_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_POWER_OUTLET_NAME_1_ITEM->text.value);
+				snprintf(AUX_POWER_OUTLET_2_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_POWER_OUTLET_NAME_2_ITEM->text.value);
+				snprintf(AUX_POWER_OUTLET_3_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_POWER_OUTLET_NAME_3_ITEM->text.value);
+				snprintf(AUX_POWER_OUTLET_4_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_POWER_OUTLET_NAME_4_ITEM->text.value);
+				snprintf(AUX_HEATER_OUTLET_1_ITEM->label, INDIGO_NAME_SIZE, "%s [%%]", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
+				snprintf(AUX_HEATER_OUTLET_2_ITEM->label, INDIGO_NAME_SIZE, "%s [%%]", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
+				snprintf(AUX_HEATER_OUTLET_3_ITEM->label, INDIGO_NAME_SIZE, "%s [%%]", AUX_HEATER_OUTLET_NAME_3_ITEM->text.value);
+				snprintf(AUX_POWER_OUTLET_STATE_1_ITEM->label, INDIGO_NAME_SIZE, "%s state", AUX_POWER_OUTLET_NAME_1_ITEM->text.value);
+				snprintf(AUX_POWER_OUTLET_STATE_2_ITEM->label, INDIGO_NAME_SIZE, "%s state", AUX_POWER_OUTLET_NAME_2_ITEM->text.value);
+				snprintf(AUX_POWER_OUTLET_STATE_3_ITEM->label, INDIGO_NAME_SIZE, "%s state", AUX_POWER_OUTLET_NAME_3_ITEM->text.value);
+				snprintf(AUX_POWER_OUTLET_STATE_4_ITEM->label, INDIGO_NAME_SIZE, "%s state", AUX_POWER_OUTLET_NAME_4_ITEM->text.value);
+				snprintf(AUX_HEATER_OUTLET_STATE_1_ITEM->label, INDIGO_NAME_SIZE, "%s state", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
+				snprintf(AUX_HEATER_OUTLET_STATE_2_ITEM->label, INDIGO_NAME_SIZE, "%s state", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
+				snprintf(AUX_HEATER_OUTLET_STATE_3_ITEM->label, INDIGO_NAME_SIZE, "%s state", AUX_HEATER_OUTLET_NAME_3_ITEM->text.value);
+				snprintf(AUX_POWER_OUTLET_CURRENT_1_ITEM->label, INDIGO_NAME_SIZE, "%s current [A] ", AUX_POWER_OUTLET_NAME_1_ITEM->text.value);
+				snprintf(AUX_POWER_OUTLET_CURRENT_2_ITEM->label, INDIGO_NAME_SIZE, "%s current [A]", AUX_POWER_OUTLET_NAME_2_ITEM->text.value);
+				snprintf(AUX_POWER_OUTLET_CURRENT_3_ITEM->label, INDIGO_NAME_SIZE, "%s current [A]", AUX_POWER_OUTLET_NAME_3_ITEM->text.value);
+				snprintf(AUX_POWER_OUTLET_CURRENT_4_ITEM->label, INDIGO_NAME_SIZE, "%s current [A]", AUX_POWER_OUTLET_NAME_4_ITEM->text.value);
+				snprintf(AUX_HEATER_OUTLET_CURRENT_1_ITEM->label, INDIGO_NAME_SIZE, "%s current [A]", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
+				snprintf(AUX_HEATER_OUTLET_CURRENT_2_ITEM->label, INDIGO_NAME_SIZE, "%s current [A]", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
+				snprintf(AUX_HEATER_OUTLET_CURRENT_3_ITEM->label, INDIGO_NAME_SIZE, "%s current [A]", AUX_HEATER_OUTLET_NAME_3_ITEM->text.value);
+				snprintf(AUX_USB_PORT_1_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_USB_PORT_NAME_1_ITEM->text.value);
+				snprintf(AUX_USB_PORT_2_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_USB_PORT_NAME_2_ITEM->text.value);
+				snprintf(AUX_USB_PORT_3_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_USB_PORT_NAME_3_ITEM->text.value);
+				snprintf(AUX_USB_PORT_4_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_USB_PORT_NAME_4_ITEM->text.value);
+				snprintf(AUX_USB_PORT_5_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_USB_PORT_NAME_5_ITEM->text.value);
+				snprintf(AUX_USB_PORT_6_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_USB_PORT_NAME_6_ITEM->text.value);
+				snprintf(AUX_USB_PORT_STATE_1_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_USB_PORT_NAME_1_ITEM->text.value);
+				snprintf(AUX_USB_PORT_STATE_2_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_USB_PORT_NAME_2_ITEM->text.value);
+				snprintf(AUX_USB_PORT_STATE_3_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_USB_PORT_NAME_3_ITEM->text.value);
+				snprintf(AUX_USB_PORT_STATE_4_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_USB_PORT_NAME_4_ITEM->text.value);
+				snprintf(AUX_USB_PORT_STATE_5_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_USB_PORT_NAME_5_ITEM->text.value);
+				snprintf(AUX_USB_PORT_STATE_6_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_USB_PORT_NAME_6_ITEM->text.value);
+				if (IS_CONNECTED) {
+					indigo_delete_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
+					indigo_delete_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
+					indigo_delete_property(device, AUX_POWER_OUTLET_STATE_PROPERTY, NULL);
+					indigo_delete_property(device, AUX_HEATER_OUTLET_STATE_PROPERTY, NULL);
+					indigo_delete_property(device, AUX_POWER_OUTLET_CURRENT_PROPERTY, NULL);
+					indigo_delete_property(device, AUX_HEATER_OUTLET_CURRENT_PROPERTY, NULL);
+					indigo_delete_property(device, AUX_USB_PORT_PROPERTY, NULL);
+					indigo_delete_property(device, AUX_USB_PORT_STATE_PROPERTY, NULL);
+					indigo_define_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
+					indigo_define_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
+					indigo_define_property(device, AUX_POWER_OUTLET_STATE_PROPERTY, NULL);
+					indigo_define_property(device, AUX_HEATER_OUTLET_STATE_PROPERTY, NULL);
+					indigo_define_property(device, AUX_POWER_OUTLET_CURRENT_PROPERTY, NULL);
+					indigo_define_property(device, AUX_HEATER_OUTLET_CURRENT_PROPERTY, NULL);
+					indigo_define_property(device, AUX_USB_PORT_PROPERTY, NULL);
+					indigo_define_property(device, AUX_USB_PORT_STATE_PROPERTY, NULL);
+					indigo_update_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+			item AUX_POWER_OUTLET_NAME_1 {
+				name = AUX_POWER_OUTLET_NAME_1_ITEM_NAME;
+				label = "Outlet #1";
+				value = "Outlet #1";
+			}
+			item AUX_POWER_OUTLET_NAME_2 {
+				name = AUX_POWER_OUTLET_NAME_2_ITEM_NAME;
+				label = "Outlet #2";
+				value = "Outlet #2";
+			}
+			item AUX_POWER_OUTLET_NAME_3 {
+				name = AUX_POWER_OUTLET_NAME_3_ITEM_NAME;
+				label = "Outlet #3";
+				value = "Outlet #3";
+			}
+			item AUX_POWER_OUTLET_NAME_4 {
+				name = AUX_POWER_OUTLET_NAME_4_ITEM_NAME;
+				label = "Outlet #4";
+				value = "Outlet #4";
+			}
+			item AUX_HEATER_OUTLET_NAME_1 {
+				name = AUX_HEATER_OUTLET_NAME_1_ITEM_NAME;
+				label = "Heater #1";
+				value = "Heater #1";
+			}
+			item AUX_HEATER_OUTLET_NAME_2 {
+				name = AUX_HEATER_OUTLET_NAME_2_ITEM_NAME;
+				label = "Heater #2";
+				value = "Heater #2";
+			}
+			item AUX_HEATER_OUTLET_NAME_3 {
+				name = AUX_HEATER_OUTLET_NAME_3_ITEM_NAME;
+				label = "Heater #3";
+				value = "Heater #3";
+			}
+			item AUX_USB_PORT_NAME_1 {
+				name = AUX_USB_PORT_NAME_1_ITEM_NAME;
+				label = "Port #1";
+				value = "Port #1";
+			}
+			item AUX_USB_PORT_NAME_2 {
+				name = AUX_USB_PORT_NAME_2_ITEM_NAME;
+				label = "Port #2";
+				value = "Port #2";
+			}
+			item AUX_USB_PORT_NAME_3 {
+				name = AUX_USB_PORT_NAME_3_ITEM_NAME;
+				label = "Port #3";
+				value = "Port #3";
+			}
+			item AUX_USB_PORT_NAME_4 {
+				name = AUX_USB_PORT_NAME_4_ITEM_NAME;
+				label = "Port #4";
+				value = "Port #4";
+			}
+			item AUX_USB_PORT_NAME_5 {
+				name = AUX_USB_PORT_NAME_5_ITEM_NAME;
+				label = "Port #5";
+				value = "Port #5";
+			}
+			item AUX_USB_PORT_NAME_6 {
+				name = AUX_USB_PORT_NAME_6_ITEM_NAME;
+				label = "Port #6";
+				value = "Port #6";
+			}
+		}
+		switch AUX_POWER_OUTLET {
+			name = AUX_POWER_OUTLET_PROPERTY_NAME;
+			group = AUX_GROUP;
+			label = "Power outlets";
+			rule = INDIGO_ANY_OF_MANY_RULE;
+			// handle_change = false;
+			// synchronized_change = false;
+			on_change {
+				char response[128];
+				upb_command(device, AUX_POWER_OUTLET_1_ITEM->sw.value ? "P1:1" : "P1:0", response, sizeof(response));
+				upb_command(device, AUX_POWER_OUTLET_2_ITEM->sw.value ? "P2:1" : "P2:0", response, sizeof(response));
+				upb_command(device, AUX_POWER_OUTLET_3_ITEM->sw.value ? "P3:1" : "P3:0", response, sizeof(response));
+				upb_command(device, AUX_POWER_OUTLET_4_ITEM->sw.value ? "P4:1" : "P4:0", response, sizeof(response));
+			}
+			// on_attach { }
+			// on_detach { }
+			item AUX_POWER_OUTLET_1 {
+				name = AUX_POWER_OUTLET_1_ITEM_NAME;
+				label = "Outlet #1";
+				value = true;
+			}
+			item AUX_POWER_OUTLET_2 {
+				name = AUX_POWER_OUTLET_2_ITEM_NAME;
+				label = "Outlet #2";
+				value = true;
+			}
+			item AUX_POWER_OUTLET_3 {
+				name = AUX_POWER_OUTLET_3_ITEM_NAME;
+				label = "Outlet #3";
+				value = true;
+			}
+			item AUX_POWER_OUTLET_4 {
+				name = AUX_POWER_OUTLET_4_ITEM_NAME;
+				label = "Outlet #4";
+				value = true;
+			}
+		}
+		light AUX_POWER_OUTLET_STATE {
+			name = AUX_POWER_OUTLET_STATE_PROPERTY_NAME;
+			group = AUX_GROUP;
+			label = "Power outlets state";
+			// handle_change = false;
+			// synchronized_change = false;
+			// on_change { }
+			// on_attach { }
+			// on_detach { }
+			item AUX_POWER_OUTLET_STATE_1 {
+				name = AUX_POWER_OUTLET_STATE_1_ITEM_NAME;
+				label = "Outlet #1 state";
+				value = INDIGO_OK_STATE;
+			}
+			item AUX_POWER_OUTLET_STATE_2 {
+				name = AUX_POWER_OUTLET_STATE_2_ITEM_NAME;
+				label = "Outlet #2 state";
+				value = INDIGO_OK_STATE;
+			}
+			item AUX_POWER_OUTLET_STATE_3 {
+				name = AUX_POWER_OUTLET_STATE_3_ITEM_NAME;
+				label = "Outlet #3 state";
+				value = INDIGO_OK_STATE;
+			}
+			item AUX_POWER_OUTLET_STATE_4 {
+				name = AUX_POWER_OUTLET_STATE_4_ITEM_NAME;
+				label = "Outlet #4 state";
+				value = INDIGO_OK_STATE;
+			}
+		}
+		number AUX_POWER_OUTLET_CURRENT {
+			name = AUX_POWER_OUTLET_CURRENT_PROPERTY_NAME;
+			group = AUX_GROUP;
+			label = "Power outlets current";
+			perm = INDIGO_RO_PERM;
+			// handle_change = false;
+			// synchronized_change = false;
+			// on_change { }
+			// on_attach { }
+			// on_detach { }
+			item AUX_POWER_OUTLET_CURRENT_1 {
+				name = AUX_POWER_OUTLET_CURRENT_1_ITEM_NAME;
+				label = "Outlet #1 current [A]";
+				value = 0;
+				min = 0;
+				max = 3;
+				step = 0;
+				format = ;
+			}
+			item AUX_POWER_OUTLET_CURRENT_2 {
+				name = AUX_POWER_OUTLET_CURRENT_2_ITEM_NAME;
+				label = "Outlet #2 current [A]";
+				value = 0;
+				min = 0;
+				max = 3;
+				step = 0;
+				format = ;
+			}
+			item AUX_POWER_OUTLET_CURRENT_3 {
+				name = AUX_POWER_OUTLET_CURRENT_3_ITEM_NAME;
+				label = "Outlet #3 current [A]";
+				value = 0;
+				min = 0;
+				max = 3;
+				step = 0;
+				format = ;
+			}
+			item AUX_POWER_OUTLET_CURRENT_4 {
+				name = AUX_POWER_OUTLET_CURRENT_4_ITEM_NAME;
+				label = "Outlet #4 current [A]";
+				value = 0;
+				min = 0;
+				max = 3;
+				step = 0;
+				format = ;
+			}
+		}
+		number AUX_HEATER_OUTLET {
+			name = AUX_HEATER_OUTLET_PROPERTY_NAME;
+			group = AUX_GROUP;
+			label = "Heater outlets";
+			// handle_change = false;
+			// synchronized_change = false;
+			on_change {
+				char command[16], response[128];
+				sprintf(command, "P5:%d", (int)(AUX_HEATER_OUTLET_1_ITEM->number.value * 255.0 / 100.0));
+				upb_command(device, command, response, sizeof(response));
+				sprintf(command, "P6:%d", (int)(AUX_HEATER_OUTLET_2_ITEM->number.value * 255.0 / 100.0));
+				upb_command(device, command, response, sizeof(response));
+				if (PRIVATE_DATA->version == 2) {
+					sprintf(command, "P7:%d", (int)(AUX_HEATER_OUTLET_3_ITEM->number.value * 255.0 / 100.0));
+					upb_command(device, command, response, sizeof(response));
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+			item AUX_HEATER_OUTLET_1 {
+				name = AUX_HEATER_OUTLET_1_ITEM_NAME;
+				label = "Heater #1 [%]";
+				value = 0;
+				min = 0;
+				max = 100;
+				step = 5;
+				format = ;
+			}
+			item AUX_HEATER_OUTLET_2 {
+				name = AUX_HEATER_OUTLET_2_ITEM_NAME;
+				label = "Heater #2 [%]";
+				value = 0;
+				min = 0;
+				max = 100;
+				step = 5;
+				format = ;
+			}
+			item AUX_HEATER_OUTLET_3 {
+				name = AUX_HEATER_OUTLET_3_ITEM_NAME;
+				label = "Heater #3 [%]";
+				value = 0;
+				min = 0;
+				max = 100;
+				step = 5;
+				format = ;
+			}
+		}
+		light AUX_HEATER_OUTLET_STATE {
+			name = AUX_HEATER_OUTLET_STATE_PROPERTY_NAME;
+			group = AUX_GROUP;
+			label = "Heater outlets state";
+			// handle_change = false;
+			// synchronized_change = false;
+			// on_change { }
+			// on_attach { }
+			// on_detach { }
+			item AUX_HEATER_OUTLET_STATE_1 {
+				name = AUX_HEATER_OUTLET_STATE_1_ITEM_NAME;
+				label = "Heater #1 state";
+				value = INDIGO_OK_STATE;
+			}
+			item AUX_HEATER_OUTLET_STATE_2 {
+				name = AUX_HEATER_OUTLET_STATE_2_ITEM_NAME;
+				label = "Heater #2 state";
+				value = INDIGO_OK_STATE;
+			}
+			item AUX_HEATER_OUTLET_STATE_3 {
+				name = AUX_HEATER_OUTLET_STATE_3_ITEM_NAME;
+				label = "Heater #3 state";
+				value = INDIGO_OK_STATE;
+			}
+		}
+		number AUX_HEATER_OUTLET_CURRENT {
+			name = AUX_HEATER_OUTLET_CURRENT_PROPERTY_NAME;
+			group = AUX_GROUP;
+			label = "Heater outlets current";
+			perm = INDIGO_RO_PERM;
+			// handle_change = false;
+			// synchronized_change = false;
+			// on_change { }
+			// on_attach { }
+			// on_detach { }
+			item AUX_HEATER_OUTLET_CURRENT_1 {
+				name = AUX_HEATER_OUTLET_CURRENT_1_ITEM_NAME;
+				label = "Heater #1 current [A]";
+				value = 0;
+				min = 0;
+				max = 3;
+				step = 0;
+				format = ;
+			}
+			item AUX_HEATER_OUTLET_CURRENT_2 {
+				name = AUX_HEATER_OUTLET_CURRENT_2_ITEM_NAME;
+				label = "Heater #2 current [A]";
+				value = 0;
+				min = 0;
+				max = 3;
+				step = 0;
+				format = ;
+			}
+			item AUX_HEATER_OUTLET_CURRENT_3 {
+				name = AUX_HEATER_OUTLET_CURRENT_3_ITEM_NAME;
+				label = "Heater #3 current [A]";
+				value = 0;
+				min = 0;
+				max = 3;
+				step = 0;
+				format = ;
+			}
+		}
+		switch AUX_DEW_CONTROL {
+			name = AUX_DEW_CONTROL_PROPERTY_NAME;
+			group = AUX_GROUP;
+			label = "Dew control";
+			// handle_change = false;
+			// synchronized_change = false;
+			on_change {
+				char response[128];
+				upb_command(device, AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value ? "PD:1" : "PD:0", response, sizeof(response));
+			}
+			// on_attach { }
+			// on_detach { }
+			item AUX_DEW_CONTROL_MANUAL {
+				name = AUX_DEW_CONTROL_MANUAL_ITEM_NAME;
+				label = "Manual";
+				value = true;
+			}
+			item AUX_DEW_CONTROL_AUTOMATIC {
+				name = AUX_DEW_CONTROL_AUTOMATIC_ITEM_NAME;
+				label = "Automatic";
+				value = true;
+			}
+		}
+		switch AUX_USB_PORT {
+			name = AUX_USB_PORT_PROPERTY_NAME;
+			group = AUX_GROUP;
+			label = "USB ports";
+			rule = INDIGO_ANY_OF_MANY_RULE;
+			// handle_change = false;
+			// synchronized_change = false;
+			on_change {
+				if (PRIVATE_DATA->version == 1) {
+					if (PRIVATE_DATA->smart_hub) {
+						for (int i = 1; i < 7; i++) {
+							uint32_t port_state;
+							int rc;
+							if ((rc = libusb_control_transfer(PRIVATE_DATA->smart_hub, LIBUSB_ENDPOINT_IN | LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_OTHER, LIBUSB_REQUEST_GET_STATUS, 0, i, (unsigned char*)&port_state, sizeof(port_state), 3000)) == sizeof(port_state)) {
+								bool is_enabled = port_state & 0x00000100;
+								if (AUX_USB_PORT_PROPERTY->items[i - 1].sw.value != is_enabled) {
+									if (AUX_USB_PORT_PROPERTY->items[i - 1].sw.value) {
+										INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Turning port #%d on", i);
+										rc = libusb_control_transfer(PRIVATE_DATA->smart_hub, LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_OTHER, LIBUSB_REQUEST_SET_FEATURE, 8, i, NULL, 0, 3000);
+									} else {
+										INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Turning port #%d off", i);
+										rc = libusb_control_transfer(PRIVATE_DATA->smart_hub, LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_OTHER, LIBUSB_REQUEST_CLEAR_FEATURE, 8, i, NULL, 0, 3000);
+									}
+									if (rc < 0) {
+										INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to set USB port status (%s)", libusb_strerror(rc));
+										AUX_USB_PORT_PROPERTY->state = INDIGO_ALERT_STATE;
+										break;
+									}
+								}
+							} else {
+								INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to get USB port status (%s)", libusb_strerror(rc));
+								AUX_USB_PORT_PROPERTY->state = INDIGO_ALERT_STATE;
+								break;
+							}
+						}
+					} else {
+						AUX_USB_PORT_PROPERTY->state = INDIGO_ALERT_STATE;
+					}
+				}
+				if (PRIVATE_DATA->version == 2) {
+					char command[16], response[128];
+					for (int i = 0; i < AUX_USB_PORT_PROPERTY->count; i++) {
+						sprintf(command, "U%d:%d", i + 1, AUX_USB_PORT_PROPERTY->items[i].sw.value ? 1 : 0);
+						upb_command(device, command, response, sizeof(response));
+					}
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+			item AUX_USB_PORT_1 {
+				name = AUX_USB_PORT_1_ITEM_NAME;
+				label = "Port #1";
+				value = true;
+			}
+			item AUX_USB_PORT_2 {
+				name = AUX_USB_PORT_2_ITEM_NAME;
+				label = "Port #2";
+				value = true;
+			}
+			item AUX_USB_PORT_3 {
+				name = AUX_USB_PORT_3_ITEM_NAME;
+				label = "Port #3";
+				value = true;
+			}
+			item AUX_USB_PORT_4 {
+				name = AUX_USB_PORT_4_ITEM_NAME;
+				label = "Port #4";
+				value = true;
+			}
+			item AUX_USB_PORT_5 {
+				name = AUX_USB_PORT_5_ITEM_NAME;
+				label = "Port #5";
+				value = true;
+			}
+			item AUX_USB_PORT_6 {
+				name = AUX_USB_PORT_6_ITEM_NAME;
+				label = "Port #6";
+				value = true;
+			}
+		}
+		light AUX_USB_PORT_STATE {
+			name = AUX_USB_PORT_STATE_PROPERTY_NAME;
+			group = AUX_GROUP;
+			label = "USB ports state";
+			// handle_change = false;
+			// synchronized_change = false;
+			// on_change { }
+			// on_attach { }
+			// on_detach { }
+			item AUX_USB_PORT_STATE_1 {
+				name = AUX_USB_PORT_STATE_1_ITEM_NAME;
+				label = "Port #1 state";
+				value = INDIGO_OK_STATE;
+			}
+			item AUX_USB_PORT_STATE_2 {
+				name = AUX_USB_PORT_STATE_2_ITEM_NAME;
+				label = "Port #2 state";
+				value = INDIGO_OK_STATE;
+			}
+			item AUX_USB_PORT_STATE_3 {
+				name = AUX_USB_PORT_STATE_3_ITEM_NAME;
+				label = "Port #3 state";
+				value = INDIGO_OK_STATE;
+			}
+			item AUX_USB_PORT_STATE_4 {
+				name = AUX_USB_PORT_STATE_4_ITEM_NAME;
+				label = "Port #4 state";
+				value = INDIGO_OK_STATE;
+			}
+			item AUX_USB_PORT_STATE_5 {
+				name = AUX_USB_PORT_STATE_5_ITEM_NAME;
+				label = "Port #5 state";
+				value = INDIGO_OK_STATE;
+			}
+			item AUX_USB_PORT_STATE_6 {
+				name = AUX_USB_PORT_STATE_6_ITEM_NAME;
+				label = "Port #6 state";
+				value = INDIGO_OK_STATE;
+			}
+		}
+		number AUX_WEATHER {
+			name = AUX_WEATHER_PROPERTY_NAME;
+			group = AUX_GROUP;
+			label = "Weather info";
+			perm = INDIGO_RO_PERM;
+			// handle_change = false;
+			// synchronized_change = false;
+			// on_change { }
+			// on_attach { }
+			// on_detach { }
+			item AUX_WEATHER_TEMPERATURE {
+				name = AUX_WEATHER_TEMPERATURE_ITEM_NAME;
+				label = "Temperature [C]";
+				value = 0;
+				min = -50;
+				max = 100;
+				step = 0;
+				format = ;
+			}
+			item AUX_WEATHER_HUMIDITY {
+				name = AUX_WEATHER_HUMIDITY_ITEM_NAME;
+				label = "Humidity [%]";
+				value = 0;
+				min = 0;
+				max = 100;
+				step = 0;
+				format = ;
+			}
+			item AUX_WEATHER_DEWPOINT {
+				name = AUX_WEATHER_DEWPOINT_ITEM_NAME;
+				label = "Dewpoint [C]";
+				value = 0;
+				min = -50;
+				max = 100;
+				step = 0;
+				format = ;
+			}
+		}
+		number AUX_INFO {
+			name = AUX_INFO_PROPERTY_NAME;
+			group = AUX_GROUP;
+			label = "Sensors";
+			perm = INDIGO_RO_PERM;
+			// handle_change = false;
+			// synchronized_change = false;
+			// on_change { }
+			// on_attach { }
+			// on_detach { }
+			item X_AUX_AVERAGE {
+				name = "X_AUX_AVERAGE";
+				label = "Avereage current [A]";
+				value = 0;
+				min = 0;
+				max = 100;
+				step = 0;
+				format = ;
+			}
+			item X_AUX_AMP_HOUR {
+				name = "X_AUX_AMP_HOUR";
+				label = "Amp-hour [Ah]";
+				value = 0;
+				min = 0;
+				max = 100;
+				step = 0;
+				format = ;
+			}
+			item X_AUX_WATT_HOUR {
+				name = "X_AUX_WATT_HOUR";
+				label = "Watt-hour [Wh]";
+				value = 0;
+				min = 0;
+				max = 100;
+				step = 0;
+				format = ;
+			}
+			item AUX_INFO_VOLTAGE {
+				name = AUX_INFO_VOLTAGE_ITEM_NAME;
+				label = "Voltage [V]";
+				value = 0;
+				min = 0;
+				max = 15;
+				step = 0;
+				format = ;
+			}
+			item AUX_INFO_CURRENT {
+				name = AUX_INFO_CURRENT_ITEM_NAME;
+				label = "Current [A]";
+				value = 0;
+				min = 0;
+				max = 20;
+				step = 0;
+				format = ;
+			}
+			item AUX_INFO_POWER {
+				name = AUX_INFO_POWER_ITEM_NAME;
+				label = "Power [W]";
+				value = 0;
+				min = 0;
+				max = 200;
+				step = 0;
+				format = ;
+			}
+		}
+		switch X_AUX_HUB {
+			name = "X_AUX_HUB";
+			group = AUX_GROUP;
+			label = "USB hub";
+			// handle_change = false;
+			// synchronized_change = false;
+			on_change {
+				char response[128];
+				upb_command(device, X_AUX_HUB_ENABLED_ITEM->sw.value ? "PU:1" : "PU:0", response, sizeof(response));
+			}
+			// on_attach { }
+			// on_detach { }
+			item X_AUX_HUB_ENABLED {
+				name = "ENABLED";
+				label = "Enabled";
+				value = true;
+			}
+			item X_AUX_HUB_DISABLED {
+				name = "DISABLED";
+				label = "Disabled";
+				value = false;
+			}
+		}
+		switch X_AUX_REBOOT {
+			name = "X_AUX_REBOOT";
+			group = AUX_GROUP;
+			label = "Reboot";
+			// handle_change = false;
+			// synchronized_change = false;
+			on_change {
+				char response[128];
+				if (X_AUX_REBOOT_ITEM->sw.value) {
+					upb_command(device, "PF", response, sizeof(response));
+					X_AUX_REBOOT_ITEM->sw.value = false;
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+			item X_AUX_REBOOT {
+				name = "REBOOT";
+				label = "Reboot";
+				value = false;
+			}
+		}
+		number X_AUX_VARIABLE_POWER_OUTLET {
+			name = "X_AUX_VARIABLE_POWER_OUTLET";
+			group = AUX_GROUP;
+			label = "Variable voltage power outlet";
+			// handle_change = false;
+			// synchronized_change = false;
+			on_change {
+				char command[16], response[128];
+				sprintf(command, "P8:%d", (int)X_AUX_VARIABLE_POWER_OUTLET_1_ITEM->number.target);
+				upb_command(device, command, response, sizeof(response));
+			}
+			// on_attach { }
+			// on_detach { }
+			item X_AUX_VARIABLE_POWER_OUTLET_1 {
+				name = "OUTLET_1";
+				label = "Variable voltage power outlet ";
+				value = 12;
+				min = 3;
+				max = 12;
+				step = 1;
+				format = ;
+			}
+		}
+		switch AUX_SAVE_OUTLET_STATES_AS_DEFAULT {
+			name = AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROPERTY_NAME;
+			group = AUX_GROUP;
+			label = "Save current outlet states as default";
+			// handle_change = false;
+			// synchronized_change = false;
+			on_change {
+				char response[128];
+				if (AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM->sw.value) {
+					char command[] = "PE:0000";
+					char *port_mask = command + 3;
+					for (int i = 0; i < AUX_POWER_OUTLET_PROPERTY->count; i++) {
+						port_mask[i] = AUX_POWER_OUTLET_PROPERTY->items[i].sw.value ? '1' : '0';
+					}
+					upb_command(device, command, response, sizeof(response));
+					AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM->sw.value = false;
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+			item AUX_SAVE_OUTLET_STATES_AS_DEFAULT {
+				name = AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM_NAME;
+				label = "Save";
+				value = false;
+			}
+		}
+	}
+	focuser {
+		name = "Ultimate Powerbox (focuser)";
+		// code { }
+		on_timer {
+			char response[128];
+			if (upb_command(device, "ST", response, sizeof(response))) {
+				double temp = indigo_atod(response);
+				if (FOCUSER_TEMPERATURE_ITEM->number.value != temp) {
+					FOCUSER_TEMPERATURE_ITEM->number.value = temp;
+					FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
+				}
+			}
+			bool update = false;
+			if (upb_command(device, "SP", response, sizeof(response))) {
+				int pos = atoi(response);
+				if (FOCUSER_POSITION_ITEM->number.value != pos) {
+					FOCUSER_POSITION_ITEM->number.value = pos;
+					update = true;
+				}
+			}
+			if (upb_command(device, "SI", response, sizeof(response))) {
+				if (*response == '0') {
+					if (FOCUSER_POSITION_PROPERTY->state != INDIGO_OK_STATE) {
+						FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+						FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+						update = true;
+					}
+				} else {
+					if (FOCUSER_POSITION_PROPERTY->state != INDIGO_BUSY_STATE) {
+						FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+						FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+						update = true;
+					}
+				}
+			}
+			if (update) {
+				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+				indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+			}
+			indigo_reschedule_timer(device, 0.5, &PRIVATE_DATA->focuser_timer);
+		}
+		on_connect {
+			char response[128];
+			if (upb_command(device, "SA", response, sizeof(response))) {
+				char *pnt = NULL, *token = strtok_r(response, ":", &pnt);
+				if (token) { // Stepper position
+					FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = atol(token);
+				}
+				if ((token = strtok_r(NULL, ":", &pnt))) { // Motor is running
+					FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = *token == '1' ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
+				}
+				if ((token = strtok_r(NULL, ":", &pnt))) { // Motor Invert
+					indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, *token == '1' ? FOCUSER_REVERSE_MOTION_ENABLED_ITEM : FOCUSER_REVERSE_MOTION_DISABLED_ITEM, true);
+				}
+				if ((token = strtok_r(NULL, ":", &pnt))) { // Backlash Steps
+					FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = atoi(token);
+				} else {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to parse 'SA' response");
+					indigo_uni_close(&PRIVATE_DATA->handle);
+				}
+			}
+			if (upb_command(device, "PV", response, sizeof(response))) {
+				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->version == 2 ? "UPBv2" : "UPB");
+				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, response);
+				indigo_update_property(device, INFO_PROPERTY, NULL);
+			}
+			if (upb_command(device, "SS", response, sizeof(response))) {
+				FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = atol(response);
+			}
+			upb_command(device, "PL:1", response, sizeof(response));
+		}
+		// on_disconnect { }
+		on_attach {
+			INFO_PROPERTY->count = 6;
+			strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+		}
+		// on_detach { }
+		inherited FOCUSER_BACKLASH {
+			on_attach {
+				FOCUSER_BACKLASH_ITEM->number.min = 0;
+				FOCUSER_BACKLASH_ITEM->number.max = 9999;
+				FOCUSER_BACKLASH_ITEM->number.target = FOCUSER_BACKLASH_ITEM->number.value = 100;
+			}
+			on_change {
+				char command[16], response[128];
+				snprintf(command, sizeof(command), "SB:%d", (int)FOCUSER_BACKLASH_ITEM->number.value);
+				if (!upb_command(device, command, response, sizeof(response))) {
+					FOCUSER_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+		}
+		inherited FOCUSER_REVERSE_MOTION {
+			on_change {
+				char command[16], response[128];
+				snprintf(command, sizeof(command), "SR:%d", (int)FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value? 0 : 1);
+				if (!upb_command(device, command, response, sizeof(response))) {
+					FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+		}
+		inherited FOCUSER_TEMPERATURE {
+			// on_change { }
+		}
+		inherited FOCUSER_SPEED {
+			on_attach {
+				FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = 400;
+				FOCUSER_SPEED_ITEM->number.min = 100;
+				FOCUSER_SPEED_ITEM->number.max = 1000;
+				FOCUSER_SPEED_ITEM->number.step = 1;
+			}
+			on_change {
+				char command[16], response[128];
+				snprintf(command, sizeof(command), "SS:%d", (int)FOCUSER_SPEED_ITEM->number.value);
+				if (!upb_command(device, command, response, sizeof(response))) {
+					FOCUSER_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+		}
+		inherited FOCUSER_STEPS {
+			on_attach {
+				FOCUSER_STEPS_ITEM->number.min = 1;
+				FOCUSER_STEPS_ITEM->number.max = 9999999;
+				FOCUSER_STEPS_ITEM->number.step = 1;
+			}
+			on_change {
+				char command[16], response[128];
+				int position = (int)FOCUSER_POSITION_ITEM->number.value;
+				if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
+					if (position + FOCUSER_STEPS_ITEM->number.value > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value) {
+						FOCUSER_STEPS_ITEM->number.value = FOCUSER_STEPS_ITEM->number.target = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value - position;
+					}
+				} else {
+					if (position - FOCUSER_STEPS_ITEM->number.value < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value) {
+						FOCUSER_STEPS_ITEM->number.value = FOCUSER_STEPS_ITEM->number.target = position - FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
+					}
+				}
+				snprintf(command, sizeof(command), "SG:%d", (int)FOCUSER_STEPS_ITEM->number.value * (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? 1 : -1));
+				if (upb_command(device, command, response, sizeof(response))) {
+					FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+				} else {
+					FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+			}
+		}
+		inherited FOCUSER_ON_POSITION_SET {
+			// on_change { }
+		}
+		inherited FOCUSER_LIMITS {
+			on_attach {
+				FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.min = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min = -9999999;
+				strcpy(FOCUSER_LIMITS_MIN_POSITION_ITEM->number.format, "%.0f");
+				FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.max = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max = 9999999;
+				strcpy(FOCUSER_LIMITS_MAX_POSITION_ITEM->number.format, "%.0f");
+			}
+		}
+		inherited FOCUSER_POSITION {
+			preserve_values = true;
+			on_attach {
+				FOCUSER_POSITION_ITEM->number.min = -9999999;
+				FOCUSER_POSITION_ITEM->number.max = 9999999;
+				FOCUSER_POSITION_ITEM->number.step = 1;
+				strcpy(FOCUSER_POSITION_ITEM->number.format, "%.0f");
+			}
+			on_change {
+				char command[16], response[128];
+				if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) {
+					int position = (int)FOCUSER_POSITION_ITEM->number.value;
+					if (position < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value) {
+						position = (int)FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
+					}
+					if (position > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value) {
+						position = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
+					}
+					FOCUSER_POSITION_ITEM->number.target = position;
+					snprintf(command, sizeof(command), "SM:%d", position);
+					if (upb_command(device, command, response, sizeof(response))) {
+						FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+						FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+					} else {
+						FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+						FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+					}
+					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+				} else if (FOCUSER_ON_POSITION_SET_SYNC_ITEM->sw.value) {
+					snprintf(command, sizeof(command), "SC:%d", (int)FOCUSER_POSITION_ITEM->number.value);
+					if (!upb_command(device, command,  response, sizeof(response))) {
+						FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+					}
+				}
+			}
+		}
+		inherited FOCUSER_ABORT_MOTION {
+			on_change {
+				char response[128];
+				if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
+					FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
+					if (upb_command(device, "SH", response, sizeof(response))) {
+						FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+						FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+						indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+						indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+					} else {
+						FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+					}
+				}
+			}
+		}
+	}
+}

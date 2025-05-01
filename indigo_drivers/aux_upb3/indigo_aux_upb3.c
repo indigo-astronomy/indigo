@@ -222,36 +222,20 @@ static bool upb3_open(indigo_device *device) {
 	char response[128];
 	PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 115200, INDIGO_LOG_DEBUG);
 	if (PRIVATE_DATA->handle != NULL) {
-		int attempt = 0;
-		while (true) {
-			if (upb3_command(device, "P#", response, sizeof(response)) && !strncmp(response, "UPBv3_", 6)) {
-				PRIVATE_DATA->version = 3;
-				if (upb3_command(device, "PV", response, sizeof(response))) {
-					strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro UPBv3");
-					strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, response + 3);
-					indigo_update_property(device, INFO_PROPERTY, NULL);
-					return true;
-				}
-			}
-			if (attempt++ == 3) {
-				indigo_uni_close(&PRIVATE_DATA->handle);
-				break;
-			}
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "Device not detected - retrying in 1 second...");
-			indigo_sleep(1);
+		if (upb3_command(device, "P#", response, sizeof(response)) && !strncmp(response, "UPBv3_", 6)) {
+			PRIVATE_DATA->version = 3;
+			return true;
 		}
+		indigo_uni_close(&PRIVATE_DATA->handle);
+		indigo_send_message(device, "Handshake failed");
 	}
 	return false;
 }
 
 static void upb3_close(indigo_device *device) {
 	char response[128];
-	strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-	strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
-	indigo_update_property(device, INFO_PROPERTY, NULL);
 	if (PRIVATE_DATA->handle != NULL) {
 		upb3_command(device, "PL:0", response, sizeof(response));
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
 		indigo_uni_close(&PRIVATE_DATA->handle);
 	}
 }
@@ -395,6 +379,11 @@ static void aux_connection_handler(indigo_device *device) {
 		if (connection_result) {
 			//+ aux.on_connect
 			char response[128];
+			if (upb3_command(device, "PV", response, sizeof(response))) {
+				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro UPBv3");
+				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, response + 3);
+				indigo_update_property(device, INFO_PROPERTY, NULL);
+			}
 			if (upb3_command(device, "PA", response, sizeof(response))) {
 				char *pnt, *token = strtok_r(response, ":", &pnt);
 				for (int i = 0; i < 6; i++) { // output 1-6

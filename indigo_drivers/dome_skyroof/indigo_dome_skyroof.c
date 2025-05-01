@@ -136,11 +136,11 @@ static void dome_connect_handler(indigo_device *device) {
 					PRIVATE_DATA->closed = false;
 				} else {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed");
+					indigo_send_message(device, "Handshake failed");
 				}
 			} else {
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed");
+				indigo_send_message(device, "Handshake failed");
 			}
 		}
 		if (CONNECTION_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -153,11 +153,11 @@ static void dome_connect_handler(indigo_device *device) {
 					X_MOUNT_PARK_STATUS_PROPERTY->state = INDIGO_OK_STATE;
 				} else {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed");
+					indigo_send_message(device, "Handshake failed");
 				}
 			} else {
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed");
+				indigo_send_message(device, "Handshake failed");
 			}
 		}
 		if (CONNECTION_PROPERTY->state == INDIGO_BUSY_STATE) {

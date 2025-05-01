@@ -136,11 +136,11 @@ static void aux_connection_handler(indigo_device *device) {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Unit info: %s", response);
 				} else {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed");
+					indigo_send_message(device, "Handshake failed");
 				}
 			} else {
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed");
+				indigo_send_message(device, "Handshake failed");
 			}
 		}
 		if (CONNECTION_PROPERTY->state == INDIGO_BUSY_STATE) {

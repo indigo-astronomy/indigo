@@ -78,7 +78,7 @@ static bool cgusbst4_open(indigo_device *device) {
 		if (cgusbst4_command(device, "\006", response, 1) && *response == 'A') {
 			return true;
 		}
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed");
+		indigo_send_message(device, "Handshake failed");
 		indigo_uni_close(&PRIVATE_DATA->handle);
 	}
 	return false;

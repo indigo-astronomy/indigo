@@ -93,7 +93,7 @@ static bool geoptikflat_open(indigo_device *device) {
 		if (geoptikflat_command(PRIVATE_DATA->handle, ">POOO", response) && !strncmp(response, "*P", 2)) {
 			return true;
 		} else {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed");
+			indigo_send_message(device, "Handshake failed");
 			indigo_uni_close(&PRIVATE_DATA->handle);
 		}
 	}

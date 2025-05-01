@@ -385,7 +385,7 @@ static void dome_connect_handler(indigo_device *device) {
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 			} else {
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed");
+				indigo_send_message(device, "Handshake failed");
 			}
 		}
 		if (CONNECTION_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -426,7 +426,7 @@ static void dome_connect_handler(indigo_device *device) {
 				}
 			} else {
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed");
+				indigo_send_message(device, "Handshake failed");
 			}
 		}
 		if (CONNECTION_PROPERTY->state == INDIGO_BUSY_STATE) {

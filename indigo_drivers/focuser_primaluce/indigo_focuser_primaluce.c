@@ -391,7 +391,7 @@ static bool primaluce_open(indigo_device *device) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unsupported device");
 			}
 		} else {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed");
+			indigo_send_message(device, "Handshake failed");
 		}
 		indigo_uni_close(&PRIVATE_DATA->handle);
 	} else {

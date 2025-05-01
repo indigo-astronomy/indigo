@@ -96,6 +96,11 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_aux_ prefix
 			// replace content of this section with intialization code in case of sucessfull connection
 		}
 		inherited XXXXX { // replace XXXXX with inherited property base name without _PROPERTY suffix, repeat block as many times as you need (mandatory identifier literal)
+			preserve_values = true; // preserve values and set only target
+			on_attach {
+				// optional C code block
+				// replace content of this section with property attach code
+			}
 			on_change {
 				// optional C code block
 				// replace content of this section with property change handling code
@@ -169,6 +174,7 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_aux_ prefix
 			synchronized_change = false; // use this if property change should be synchronized (bool C expression, default is true)
 			always_defined = true; // use this if property should be always defined (bool literal, default is false)
 			hidden = true; // use if this property should be initially hidden
+			preserve_values = true; // preserve values and set only target
 			item XXXXX { // replace XXXXX with item base name without _ITEM suffix, repeat block as many times as you need (mandatory identifier literal)
 				label = XXXXX; // replace XXXXX with descriptive item label (C string expression)
 				value = XXXXX; // replace XXXXX with item initial value (C double expression, default value is 0)

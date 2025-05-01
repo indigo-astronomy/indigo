@@ -52,7 +52,7 @@ typedef struct item_type {
 typedef struct property_type {
 	struct property_type *next;
 	char type[12], id[128], handle[128], name[128], define_name[128], pointer[128], handler[64], label[256], group[32],  perm[32], rule[32];
-	bool always_defined, handle_change, synchronized_change, persistent, hidden;
+	bool always_defined, handle_change, synchronized_change, persistent, hidden, preserve_values;
 	int max_name_length;
 	code_type *code, *on_attach, *on_change, *on_detach;
 	item_type *items;
@@ -649,6 +649,9 @@ bool parse_property_block(device_type *device, property_type **properties) {
 			if (parse_bool_attribute("persistent", &property->persistent)) {
 				continue;
 			}
+			if (parse_bool_attribute("preserve_values", &property->preserve_values)) {
+				continue;
+			}
 			if (parse_code_block("code", &property->code)) {
 				continue;
 			}
@@ -1173,7 +1176,6 @@ void write_c_include_section(void) {
 	if (driver.libusb) {
 		write_line("#include <indigo/indigo_usb_utils.h>");
 	}
-
 	write_line("");
 	write_line("#include \"indigo_%s_%s.h\"", driver.devices->type, driver.name);
 	write_line("");
@@ -1512,12 +1514,9 @@ void write_c_attach(device_type *device) {
 					}
 					break;
 			}
-			if (property->hidden) {
-				write_line("\t\t%s->hidden = true;");
-
-			}
 		}
-		write_c_code_blocks(property->on_attach, 0, "%s.%s.on_attach", device->type, property->id);
+		write_line("\t\t%s->hidden = %s;", property->handle, property->hidden ? "true" : "false");
+		write_c_code_blocks(property->on_attach, 2, "%s.%s.on_attach", device->type, property->id);
 	}
 	write_line("\t\tINDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);");
 	if (is_master_device) {
@@ -1580,7 +1579,11 @@ void write_c_change_property(device_type *device) {
 			persistent |= property->persistent;
 			write_line("\t} else if (indigo_property_match_changeable(%s, property)) {", property->handle);
 			write_line("\t\tif (PRIVATE_DATA->%s_timer == NULL) {", property->handler);
-			write_line("\t\t\tindigo_property_copy_values(%s, property, false);", property->handle);
+			if (property->preserve_values) {
+				write_line("\t\t\tindigo_property_copy_targets(%s, property, false);", property->handle);
+			} else {
+				write_line("\t\t\tindigo_property_copy_values(%s, property, false);", property->handle);
+			}
 			write_line("\t\t\t%s->state = INDIGO_BUSY_STATE;", property->handle);
 			write_line("\t\t\tindigo_update_property(device, %s, NULL);", property->handle);
 			write_line("\t\t\tindigo_set_timer(device, 0, %s, &PRIVATE_DATA->%s_timer);", property->handler, property->handler);
@@ -1617,7 +1620,7 @@ void write_c_detach(device_type *device) {
 	write_line("\t}");
 	write_c_code_blocks(device->on_detach, 1, "%s.on_detach", device->type);
 	for (property_type *property = device->properties; property; property = property->next) {
-		write_c_code_blocks(property->on_detach, 0, "%s.%s.on_attach", device->type, property->id);
+		write_c_code_blocks(property->on_detach, 1, "%s.%s.on_attach", device->type, property->id);
 		if (property->type[0] != 'i') {
 			write_line("\tindigo_release_property(%s);", property->handle);
 		}
@@ -1934,12 +1937,15 @@ char *translate_name(char *name) {
 
 void read_c_source(void) {
 	char line[1024];
-	char s1[128], s2[128], s3[128], s4[128], s5[128], s6[128], s7[128];
+	char *s0, s1[128], s2[128], s3[128], s4[128], s5[128], s6[128], s7[128];
 	int i1, i2;
 	double d1;
 	while (fgets(line, sizeof(line), stdin)) {
 		line[strcspn(line, "\n")] = 0;
-		if (!strncmp(line, "// ", 3) || !strncmp(line, "//\n", 3)) {
+		if ((s0 = strstr(line, "//* "))) {
+			memmove(s0, s0 + 4, strlen(s0 + 4) + 1);
+		}
+		if (strncmp(line, "// ", 3) == 0 || strncmp(line, "//\n", 3) == 0) {
 			if (strncmp(line, "// TODO:", 8) == 0) {
 				code_type *todo = allocate(sizeof(code_type));
 				todo->text = strdup(line);
@@ -2052,6 +2058,7 @@ void read_c_source(void) {
 			if (device) {
 				device->additional_instances = true;
 			}
+		} else if (strstr(line, "DEVICE_PORTS_PROPERTY->hidden = false;")) {
 		} else if (strstr(line, "DEVICE_PORT_PROPERTY->hidden = false;")) {
 			if (driver.serial == NULL) {
 				driver.serial = allocate(sizeof(serial_type));
@@ -2061,6 +2068,16 @@ void read_c_source(void) {
 				driver.serial = allocate(sizeof(serial_type));
 			}
 			driver.serial->configurable_speed = true;
+		} else if (sscanf(line, " %127[^-]->hidden = %127[^;];", s1, s2) == 2) {
+			if (device) {
+				property_type *property = get_property(device, s1);
+				if (*property->type == 0) {
+					strncpy(property->type, "inherited", sizeof(property->type));
+				}
+				if (strcmp(s2, "true")) {
+					property->hidden = true;
+				}
+			}
 		} else if (sscanf(line, " strcpy(patterns[%d].%127[^,], %127[^)]);", &i1, s1, s2) == 3) {
 			if (driver.serial == NULL) {
 				driver.serial = allocate(sizeof(serial_type));
@@ -2112,11 +2129,6 @@ void read_c_source(void) {
 			}
 			if (strcmp(s2, "LIBUSB_HOTPLUG_MATCH_ANY")) {
 				strncpy(driver.libusb->pid, s2, sizeof(driver.libusb->pid));
-			}
-		} else if (sscanf(line, " %127[^-]->hidden = %127[^;];", s1, s2) == 2 && strcmp(s2, "true") == 0) {
-			if (device) {
-				property_type *property = get_property(device, s1);
-				property->hidden = true;
 			}
 		} else if (sscanf(line, " static indigo_device %127[^_]_template = %127[^(](", s1, s2) == 2 && strcmp(s2, "INDIGO_DEVICE_INITIALIZER") == 0) {
 			if (fgets(line, sizeof(line), stdin)) {
@@ -2294,42 +2306,54 @@ void write_definition_source(void) {
 	}
 	if (driver.include) {
 		write_line("\tinclude {");
-		write_code_block(driver.include, 2);
+		for (code_type *code = driver.include; code; code = code->next) {
+			write_code_block(code, 2);
+		}
 		write_line("\t}");
 	} else {
 		write_line("\t// include { }");
 	}
 	if (driver.define) {
 		write_line("\tdefine {");
-		write_code_block(driver.define, 2);
+		for (code_type *code = driver.define; code; code = code->next) {
+			write_code_block(code, 2);
+		}
 		write_line("\t}");
 	} else {
 		write_line("\t// define { }");
 	}
 	if (driver.data) {
 		write_line("\tdata {");
-		write_code_block(driver.data, 2);
+		for (code_type *code = driver.data; code; code = code->next) {
+			write_code_block(code, 2);
+		}
 		write_line("\t}");
 	} else {
 		write_line("\t// data { }");
 	}
 	if (driver.code) {
 		write_line("\tcode {");
-		write_code_block(driver.code, 2);
+		for (code_type *code = driver.code; code; code = code->next) {
+			write_code_block(code, 2);
+		}
 		write_line("\t}");
 	} else {
 		write_line("\t// code { }");
 	}
 	if (driver.on_init) {
 		write_line("\ton_init {");
-		write_code_block(driver.on_init, 2);
+		for (code_type *code = driver.on_init; code; code = code->next) {
+			write_code_block(code, 2);
+		}
 		write_line("\t}");
 	} else {
 		write_line("\t// on_init { }");
 	}
 	if (driver.on_shutdown) {
 		write_line("\ton_shutdown {");
-		write_code_block(driver.on_shutdown, 2);
+		for (code_type *code = driver.on_shutdown; code; code = code->next) {
+			write_code_block(code, 2);
+		}
 		write_line("\t}");
 	} else {
 		write_line("\t// on_shutdown { }");
@@ -2345,42 +2369,54 @@ void write_definition_source(void) {
 		}
 		if (device->code) {
 			write_line("\t\tcode {");
-			write_code_block(device->code, 3);
+			for (code_type *code = device->code; code; code = code->next) {
+				write_code_block(code, 3);
+			}
 			write_line("\t\t}");
 		} else {
 			write_line("\t\t// code { }");
 		}
 		if (device->on_timer) {
 			write_line("\t\ton_timer {");
-			write_code_block(device->on_timer, 3);
+			for (code_type *code = device->on_timer; code; code = code->next) {
+				write_code_block(code, 3);
+			}
 			write_line("\t\t}");
 		} else {
 			write_line("\t\t// on_timer { }");
 		}
 		if (device->on_connect) {
 			write_line("\t\ton_connect {");
-			write_code_block(device->on_connect, 3);
+			for (code_type *code = device->on_connect; code; code = code->next) {
+				write_code_block(code, 3);
+			}
 			write_line("\t\t}");
 		} else {
 			write_line("\t\t// on_connect { }");
 		}
 		if (device->on_disconnect) {
 			write_line("\t\ton_disconnect {");
-			write_code_block(device->on_disconnect, 3);
+			for (code_type *code = device->on_disconnect; code; code = code->next) {
+				write_code_block(code, 3);
+			}
 			write_line("\t\t}");
 		} else {
 			write_line("\t\t// on_disconnect { }");
 		}
 		if (device->on_attach) {
 			write_line("\t\ton_attach {");
-			write_code_block(device->on_attach, 3);
+			for (code_type *code = device->on_attach; code; code = code->next) {
+				write_code_block(code, 3);
+			}
 			write_line("\t\t}");
 		} else {
 			write_line("\t\t// on_attach { }");
 		}
 		if (device->on_detach) {
 			write_line("\t\ton_detach {");
-			write_code_block(device->on_detach, 3);
+			for (code_type *code = device->on_detach; code; code = code->next) {
+				write_code_block(code, 3);
+			}
 			write_line("\t\t}");
 		} else {
 			write_line("\t\t// on_detach { }");
@@ -2390,7 +2426,9 @@ void write_definition_source(void) {
 			if (property->type[0] == 'i') {
 				if (property->on_change) {
 					write_line("\t\t\ton_change {");
-					write_code_block(property->on_change, 4);
+					for (code_type *code = property->on_change; code; code = code->next) {
+						write_code_block(code, 4);
+					}
 					write_line("\t\t\t}");
 				} else {
 					write_line("\t\t\t// on_change { }");
@@ -2418,21 +2456,27 @@ void write_definition_source(void) {
 				write_line("\t\t\t// synchronized_change = false;");
 				if (property->on_change) {
 					write_line("\t\t\ton_change {");
-					write_code_block(property->on_change, 4);
+					for (code_type *code = property->on_change; code; code = code->next) {
+						write_code_block(code, 4);
+					}
 					write_line("\t\t\t}");
 				} else {
 					write_line("\t\t\t// on_change { }");
 				}
 				if (property->on_attach) {
 					write_line("\t\t\ton_attach {");
-					write_code_block(property->on_attach, 3);
+					for (code_type *code = property->on_attach; code; code = code->next) {
+						write_code_block(code, 4);
+					}
 					write_line("\t\t\t}");
 				} else {
 					write_line("\t\t\t// on_attach { }");
 				}
 				if (property->on_detach) {
 					write_line("\t\t\ton_detach {");
-					write_code_block(property->on_detach, 3);
+					for (code_type *code = property->on_detach; code; code = code->next) {
+						write_code_block(code, 4);
+					}
 					write_line("\t\t\t}");
 				} else {
 					write_line("\t\t\t// on_detach { }");

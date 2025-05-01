@@ -137,7 +137,7 @@ static bool flipflat_open(indigo_device *device) {
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 			return true;
 		} else {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed");
+			indigo_send_message(device, "Handshake failed");
 			indigo_uni_close(&PRIVATE_DATA->handle);
 		}
 	}
