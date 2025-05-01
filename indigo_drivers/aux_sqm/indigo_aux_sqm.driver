@@ -22,7 +22,7 @@ driver sqm {
 	label = "Unihedron SQM";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2019-2025 CloudMakers, s. r. o.";
-	version = 17;
+	version = 18;
 	serial;
 	// include { }
 	define {

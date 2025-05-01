@@ -22,7 +22,7 @@ driver ppb {
 	label = "PegasusAstro Pocket Powerbox";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>, PPBA support by Aaron Freimark <abf@mac.com>";
 	copyright = "Copyright (c) 2019-2025 CloudMakers, s. r. o.";
-	version = 26;
+	version = 27;
 	serial {
 		pattern {
 			product = "PPB";

@@ -22,7 +22,7 @@ driver uch {
 	label = "PegasusAstro USB Control Hub";
 	author = "Rumen Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2023-2025 Rumen G. Bogdanovski";
-	version = 3;
+	version = 4;
 	serial {
 		pattern {
 			product = "USB Control Hub";
