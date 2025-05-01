@@ -1,6 +1,29 @@
 # Changelog
 
 All notable changes to INDIGO framework will be documented in this file.
+# [2.0-330] - 01 May Thu 2025
+## Overall:
+- update DELTA_UTC_UT1 constant and add script to update it
+
+## Driver Fixes:
+- indigo_agent_scripting:
+	- Sequencer.js: enable/disable tracking
+	- Sequencer.js: set_verbose fixed in sequencer
+	- Sequencer.js: enable_tracking fixed in sequencer
+	- Sequencer.js: Error message fixed for non-existent label in set_switch
+	- Sequencer.js: allow missing non mandatory proeperty setting
+	- Sequencer.js: SEQUENCE_STATE.EXPOSURE changes with every AGENT_IMAGER_STATS in sequencer
+	- Sequencer.js: enable/disable filter offsets
+
+- indigo_agent_imager:
+	- implement filter offsets
+
+- indigo_agent_mount:
+	- add better rules for slaving dome to mount to avoid excessive dome motion
+
+- indigo_mount_synscan:
+	- resume tracking if it was on when slew is aborted
+
 # [2.0-328] - 18 Apr Fri 2025
 ## Overall:
 - changed minimum requirement for debian bullseye
