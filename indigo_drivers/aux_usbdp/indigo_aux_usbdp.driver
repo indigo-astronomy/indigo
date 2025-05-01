@@ -54,42 +54,6 @@ driver usbdp {
 		uint8_t requested_aggressivity;
 	}
 	code {
-		typedef struct {
-			float temp_loc;
-			float temp_amb;
-			float rh;
-			float dewpoint;
-			int threshold;
-			int c;
-		} usbdp_status_v1_t;
-
-		typedef struct {
-			float temp_ch1;
-			float temp_ch2;
-			float temp_amb;
-			float rh;
-			float dewpoint;
-			int  output_ch1;
-			int  output_ch2;
-			int  output_ch3;
-			int  cal_ch1;
-			int  cal_ch2;
-			int  cal_amb;
-			int  threshold_ch1;
-			int  threshold_ch2;
-			int  auto_mode;
-			int  ch2_3_linked;
-			int  aggressivity;
-		} usbdp_status_v2_t;
-
-		typedef struct {
-			char version;
-			union {
-				usbdp_status_v1_t v1;
-				usbdp_status_v2_t v2;
-			};
-		} usbdp_status_t;
-
 		static bool usbdp_command(indigo_device *device, char *command, char *response, int max) {
 			/* Wait a bit before flushing as usb to serial caches data */
 			indigo_usleep(20000);
@@ -105,35 +69,6 @@ driver usbdp {
 				}
 			}
 			return false;
-		}
-
-		static bool usbdp_status(indigo_device *device, usbdp_status_t *status) {
-			char response[80];
-			if (!usbdp_command(device, UDP_STATUS_CMD, response, sizeof(response))) {
-				return false;
-			}
-			status->version = PRIVATE_DATA->version;
-			if (status->version == 1) {
-				int parsed = sscanf(response, UDP1_STATUS_RESPONSE, &status->v1.temp_loc, &status->v1.temp_amb, &status->v1.rh, &status->v1.dewpoint, &status->v1.threshold, &status->v1.c);
-				if (parsed == 6) {
-					status->version = PRIVATE_DATA->version;
-					INDIGO_DRIVER_LOG(DRIVER_NAME, "Tloc=%f Tamb=%f RH=%f DP=%f TH=%d C=%d", status->v1.temp_loc, status->v1.temp_amb, status->v1.rh, status->v1.dewpoint, status->v1.threshold, status->v1.c);
-					return true;
-				} else {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME,"Error: parsed %d of 6 values in response \"%s\"", parsed, response);
-					return false;
-				}
-			} else if (status->version == 2) {
-				int parsed = sscanf(response, UDP2_STATUS_RESPONSE, &status->v2.temp_ch1, &status->v2.temp_ch2, &status->v2.temp_amb, &status->v2.rh, &status->v2.dewpoint, &status->v2.output_ch1, &status->v2.output_ch2, &status->v2.output_ch3, &status->v2.cal_ch1, &status->v2.cal_ch2, &status->v2.cal_amb, &status->v2.threshold_ch1, &status->v2.threshold_ch2, &status->v2.auto_mode, &status->v2.ch2_3_linked, &status->v2.aggressivity);
-				if (parsed == 16) {
-					return true;
-				} else {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME,"Error: parsed %d of 16 values in response \"%s\"", parsed, response);
-					return false;
-				}
-			} else {
-				return false;
-			}
 		}
 
 		static bool usbdp_open(indigo_device *device) {
@@ -194,113 +129,122 @@ driver usbdp {
 			bool updateThreshold = false;
 			bool updateAggressivity = false;
 			bool updateLinked = false;
-			int channel_1_state;
-			int channel_2_state;
-			int channel_3_state;
-			int dew_warning_1;
-			int dew_warning_2;
-			usbdp_status_t status;
-			if (usbdp_status(device, &status)) {
-				if (status.version == 1) {
-					if ((fabs(((double)status.v1.temp_amb - AUX_WEATHER_TEMPERATURE_ITEM->number.value)*100) >= 1) || (fabs(((double)status.v1.rh - AUX_WEATHER_HUMIDITY_ITEM->number.value)*100) >= 1) || (fabs(((double)status.v1.dewpoint - AUX_WEATHER_DEWPOINT_ITEM->number.value)*100) >= 1)) {
-						AUX_WEATHER_TEMPERATURE_ITEM->number.value = status.v1.temp_amb;
-						AUX_WEATHER_HUMIDITY_ITEM->number.value = status.v1.rh;
-						AUX_WEATHER_DEWPOINT_ITEM->number.value = status.v1.dewpoint;
-						updateWeather = true;
+			int channel_1_state, channel_2_state, channel_3_state, dew_warning_1, dew_warning_2;
+			char response[80];
+			if (usbdp_command(device, UDP_STATUS_CMD, response, sizeof(response))) {
+				if (PRIVATE_DATA->version == 1) {
+					float temp_loc, temp_amb, rh, dewpoint;
+					int threshold, c;
+					int parsed = sscanf(response, UDP1_STATUS_RESPONSE, &temp_loc, &temp_amb, &rh, &dewpoint, &threshold, &c);
+					if (parsed == 6) {
+						if ((fabs(((double)temp_amb - AUX_WEATHER_TEMPERATURE_ITEM->number.value)*100) >= 1) || (fabs(((double)rh - AUX_WEATHER_HUMIDITY_ITEM->number.value)*100) >= 1) || (fabs(((double)dewpoint - AUX_WEATHER_DEWPOINT_ITEM->number.value)*100) >= 1)) {
+							AUX_WEATHER_TEMPERATURE_ITEM->number.value = temp_amb;
+							AUX_WEATHER_HUMIDITY_ITEM->number.value = rh;
+							AUX_WEATHER_DEWPOINT_ITEM->number.value = dewpoint;
+							updateWeather = true;
+						}
+						if (fabs(((double)temp_loc - AUX_TEMPERATURE_SENSOR_1_ITEM->number.value)*100) >= 1) {
+							AUX_TEMPERATURE_SENSOR_1_ITEM->number.value = temp_loc;
+							updateSensors = true;
+						}
+					} else {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME,"Error: parsed %d of 6 values in response \"%s\"", parsed, response);
 					}
-					if (fabs(((double)status.v1.temp_loc - AUX_TEMPERATURE_SENSOR_1_ITEM->number.value)*100) >= 1) {
-						AUX_TEMPERATURE_SENSOR_1_ITEM->number.value = status.v1.temp_loc;
-						updateSensors = true;
-					}
-				} else if (status.version == 2) {
-					if ((fabs(((double)status.v2.temp_amb - AUX_WEATHER_TEMPERATURE_ITEM->number.value)*100) >= 1) || (fabs(((double)status.v2.rh - AUX_WEATHER_HUMIDITY_ITEM->number.value)*100) >= 1) ||  (fabs(((double)status.v2.dewpoint - AUX_WEATHER_DEWPOINT_ITEM->number.value)*100) >= 1)) {
-						AUX_WEATHER_TEMPERATURE_ITEM->number.value = status.v2.temp_amb;
-						AUX_WEATHER_HUMIDITY_ITEM->number.value = status.v2.rh;
-						AUX_WEATHER_DEWPOINT_ITEM->number.value = status.v2.dewpoint;
-						updateWeather = true;
-					}
-					if ((fabs(((double)status.v2.temp_ch1 - AUX_TEMPERATURE_SENSOR_1_ITEM->number.value)*100) >= 1) || (fabs(((double)status.v2.temp_ch1 - AUX_TEMPERATURE_SENSOR_1_ITEM->number.value)*100) >= 1)) {
-						AUX_TEMPERATURE_SENSOR_1_ITEM->number.value = status.v2.temp_ch1;
-						AUX_TEMPERATURE_SENSOR_2_ITEM->number.value = status.v2.temp_ch2;
-						updateSensors = true;
-					}
-					if (AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value != status.v2.auto_mode) {
-						if (status.v2.auto_mode) {
-							indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, AUX_DEW_CONTROL_AUTOMATIC_ITEM, true);
+				} else if (PRIVATE_DATA->version == 2) {
+					float temp_ch1, temp_ch2, temp_amb, rh, dewpoint;
+					int output_ch1, output_ch2, output_ch3, cal_ch1, cal_ch2, cal_amb, threshold_ch1, threshold_ch2, auto_mode, ch2_3_linked, aggressivity;
+					int parsed = sscanf(response, UDP2_STATUS_RESPONSE, &temp_ch1, &temp_ch2, &temp_amb, &rh, &dewpoint, &output_ch1, &output_ch2, &output_ch3, &cal_ch1, &cal_ch2, &cal_amb, &threshold_ch1, &threshold_ch2, &auto_mode, &ch2_3_linked, &aggressivity);
+					if (parsed == 16) {
+						if ((fabs(((double)temp_amb - AUX_WEATHER_TEMPERATURE_ITEM->number.value)*100) >= 1) || (fabs(((double)rh - AUX_WEATHER_HUMIDITY_ITEM->number.value)*100) >= 1) ||  (fabs(((double)dewpoint - AUX_WEATHER_DEWPOINT_ITEM->number.value)*100) >= 1)) {
+							AUX_WEATHER_TEMPERATURE_ITEM->number.value = temp_amb;
+							AUX_WEATHER_HUMIDITY_ITEM->number.value = rh;
+							AUX_WEATHER_DEWPOINT_ITEM->number.value = dewpoint;
+							updateWeather = true;
+						}
+						if ((fabs(((double)temp_ch1 - AUX_TEMPERATURE_SENSOR_1_ITEM->number.value)*100) >= 1) || (fabs(((double)temp_ch1 - AUX_TEMPERATURE_SENSOR_1_ITEM->number.value)*100) >= 1)) {
+							AUX_TEMPERATURE_SENSOR_1_ITEM->number.value = temp_ch1;
+							AUX_TEMPERATURE_SENSOR_2_ITEM->number.value = temp_ch2;
+							updateSensors = true;
+						}
+						if (AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value != auto_mode) {
+							if (auto_mode) {
+								indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, AUX_DEW_CONTROL_AUTOMATIC_ITEM, true);
+							} else {
+								indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, AUX_DEW_CONTROL_MANUAL_ITEM, true);
+							}
+							updateAutoHeater = true;
+						}
+						if (((int)(AUX_HEATER_OUTLET_1_ITEM->number.value) != output_ch1) ||  ((int)(AUX_HEATER_OUTLET_2_ITEM->number.value) != output_ch2) || ((int)(AUX_HEATER_OUTLET_3_ITEM->number.value) != output_ch3)) {
+							AUX_HEATER_OUTLET_1_ITEM->number.value = output_ch1;
+							AUX_HEATER_OUTLET_2_ITEM->number.value = output_ch2;
+							AUX_HEATER_OUTLET_3_ITEM->number.value = output_ch3;
+							updateHeaterOutlet = true;
+						}
+						if ((bool)output_ch1 && auto_mode) {
+							channel_1_state = INDIGO_BUSY_STATE;
+						} else if ((bool)output_ch1) {
+							channel_1_state = INDIGO_OK_STATE;
 						} else {
-							indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, AUX_DEW_CONTROL_MANUAL_ITEM, true);
+							channel_1_state = INDIGO_IDLE_STATE;
 						}
-						updateAutoHeater = true;
-					}
-					if (((int)(AUX_HEATER_OUTLET_1_ITEM->number.value) != status.v2.output_ch1) ||  ((int)(AUX_HEATER_OUTLET_2_ITEM->number.value) != status.v2.output_ch2) || ((int)(AUX_HEATER_OUTLET_3_ITEM->number.value) != status.v2.output_ch3)) {
-						AUX_HEATER_OUTLET_1_ITEM->number.value = status.v2.output_ch1;
-						AUX_HEATER_OUTLET_2_ITEM->number.value = status.v2.output_ch2;
-						AUX_HEATER_OUTLET_3_ITEM->number.value = status.v2.output_ch3;
-						updateHeaterOutlet = true;
-					}
-					if ((bool)status.v2.output_ch1 && status.v2.auto_mode) {
-						channel_1_state = INDIGO_BUSY_STATE;
-					} else if ((bool)status.v2.output_ch1) {
-						channel_1_state = INDIGO_OK_STATE;
-					} else {
-						channel_1_state = INDIGO_IDLE_STATE;
-					}
-					if ((bool)status.v2.output_ch2 && status.v2.auto_mode) {
-						channel_2_state = INDIGO_BUSY_STATE;
-					} else if ((bool)status.v2.output_ch2) {
-						channel_2_state = INDIGO_OK_STATE;
-					} else {
-						channel_2_state = INDIGO_IDLE_STATE;
-					}
-					if ((bool)status.v2.output_ch3 && status.v2.auto_mode && status.v2.ch2_3_linked) {
-						channel_3_state = INDIGO_BUSY_STATE;
-					} else if ((bool)status.v2.output_ch3) {
-						channel_3_state = INDIGO_OK_STATE;
-					} else {
-						channel_3_state = INDIGO_IDLE_STATE;
-					}
-					if ((AUX_HEATER_OUTLET_STATE_1_ITEM->light.value != channel_1_state) || (AUX_HEATER_OUTLET_STATE_2_ITEM->light.value != channel_2_state) || (AUX_HEATER_OUTLET_STATE_3_ITEM->light.value != channel_3_state)) {
-						AUX_HEATER_OUTLET_STATE_1_ITEM->light.value = channel_1_state;
-						AUX_HEATER_OUTLET_STATE_2_ITEM->light.value = channel_2_state;
-						AUX_HEATER_OUTLET_STATE_3_ITEM->light.value = channel_3_state;
-						updateHeaterOutletState = true;
-					}
-					if (((int)(AUX_CALLIBRATION_SENSOR_1_ITEM->number.value) != status.v2.cal_ch1) || ((int)(AUX_CALLIBRATION_SENSOR_2_ITEM->number.value) != status.v2.cal_ch2) || ((int)(AUX_CALLIBRATION_SENSOR_3_ITEM->number.value) != status.v2.cal_amb)) {
-						AUX_CALLIBRATION_SENSOR_1_ITEM->number.value = status.v2.cal_ch1;
-						AUX_CALLIBRATION_SENSOR_2_ITEM->number.value = status.v2.cal_ch2;
-						AUX_CALLIBRATION_SENSOR_3_ITEM->number.value = status.v2.cal_amb;
-						updateCallibration = true;
-					}
-					if (((int)(AUX_DEW_THRESHOLD_SENSOR_1_ITEM->number.value) != status.v2.threshold_ch1) || ((int)(AUX_DEW_THRESHOLD_SENSOR_2_ITEM->number.value) != status.v2.threshold_ch2)) {
-						AUX_DEW_THRESHOLD_SENSOR_1_ITEM->number.value = status.v2.threshold_ch1;
-						AUX_DEW_THRESHOLD_SENSOR_2_ITEM->number.value = status.v2.threshold_ch2;
-						updateThreshold = true;
-					}
-					if (PRIVATE_DATA->requested_aggressivity != status.v2.aggressivity) {
-						switch (status.v2.aggressivity) {
-						case(1):
-							indigo_set_switch(AUX_HEATER_AGGRESSIVITY_PROPERTY, AUX_HEATER_AGGRESSIVITY_1_ITEM, true);
-							break;
-						case(2):
-							indigo_set_switch(AUX_HEATER_AGGRESSIVITY_PROPERTY, AUX_HEATER_AGGRESSIVITY_2_ITEM, true);
-							break;
-						case(3):
-							indigo_set_switch(AUX_HEATER_AGGRESSIVITY_PROPERTY, AUX_HEATER_AGGRESSIVITY_5_ITEM, true);
-							break;
-						case(4):
-							indigo_set_switch(AUX_HEATER_AGGRESSIVITY_PROPERTY, AUX_HEATER_AGGRESSIVITY_10_ITEM, true);
-							break;
-						}
-						PRIVATE_DATA->requested_aggressivity = status.v2.aggressivity;
-						updateAggressivity = true;
-					}
-					if (AUX_LINK_CH_2AND3_LINKED_ITEM->sw.value != status.v2.ch2_3_linked) {
-						if (status.v2.ch2_3_linked) {
-							indigo_set_switch(AUX_LINK_CH_2AND3_PROPERTY, AUX_LINK_CH_2AND3_LINKED_ITEM, true);
+						if ((bool)output_ch2 && auto_mode) {
+							channel_2_state = INDIGO_BUSY_STATE;
+						} else if ((bool)output_ch2) {
+							channel_2_state = INDIGO_OK_STATE;
 						} else {
-							indigo_set_switch(AUX_LINK_CH_2AND3_PROPERTY, AUX_LINK_CH_2AND3_NOT_LINKED_ITEM, true);
+							channel_2_state = INDIGO_IDLE_STATE;
 						}
-						updateLinked = true;
+						if ((bool)output_ch3 && auto_mode && ch2_3_linked) {
+							channel_3_state = INDIGO_BUSY_STATE;
+						} else if ((bool)output_ch3) {
+							channel_3_state = INDIGO_OK_STATE;
+						} else {
+							channel_3_state = INDIGO_IDLE_STATE;
+						}
+						if ((AUX_HEATER_OUTLET_STATE_1_ITEM->light.value != channel_1_state) || (AUX_HEATER_OUTLET_STATE_2_ITEM->light.value != channel_2_state) || (AUX_HEATER_OUTLET_STATE_3_ITEM->light.value != channel_3_state)) {
+							AUX_HEATER_OUTLET_STATE_1_ITEM->light.value = channel_1_state;
+							AUX_HEATER_OUTLET_STATE_2_ITEM->light.value = channel_2_state;
+							AUX_HEATER_OUTLET_STATE_3_ITEM->light.value = channel_3_state;
+							updateHeaterOutletState = true;
+						}
+						if (((int)(AUX_CALLIBRATION_SENSOR_1_ITEM->number.value) != cal_ch1) || ((int)(AUX_CALLIBRATION_SENSOR_2_ITEM->number.value) != cal_ch2) || ((int)(AUX_CALLIBRATION_SENSOR_3_ITEM->number.value) != cal_amb)) {
+							AUX_CALLIBRATION_SENSOR_1_ITEM->number.value = cal_ch1;
+							AUX_CALLIBRATION_SENSOR_2_ITEM->number.value = cal_ch2;
+							AUX_CALLIBRATION_SENSOR_3_ITEM->number.value = cal_amb;
+							updateCallibration = true;
+						}
+						if (((int)(AUX_DEW_THRESHOLD_SENSOR_1_ITEM->number.value) != threshold_ch1) || ((int)(AUX_DEW_THRESHOLD_SENSOR_2_ITEM->number.value) != threshold_ch2)) {
+							AUX_DEW_THRESHOLD_SENSOR_1_ITEM->number.value = threshold_ch1;
+							AUX_DEW_THRESHOLD_SENSOR_2_ITEM->number.value = threshold_ch2;
+							updateThreshold = true;
+						}
+						if (PRIVATE_DATA->requested_aggressivity != aggressivity) {
+							switch (aggressivity) {
+							case(1):
+								indigo_set_switch(AUX_HEATER_AGGRESSIVITY_PROPERTY, AUX_HEATER_AGGRESSIVITY_1_ITEM, true);
+								break;
+							case(2):
+								indigo_set_switch(AUX_HEATER_AGGRESSIVITY_PROPERTY, AUX_HEATER_AGGRESSIVITY_2_ITEM, true);
+								break;
+							case(3):
+								indigo_set_switch(AUX_HEATER_AGGRESSIVITY_PROPERTY, AUX_HEATER_AGGRESSIVITY_5_ITEM, true);
+								break;
+							case(4):
+								indigo_set_switch(AUX_HEATER_AGGRESSIVITY_PROPERTY, AUX_HEATER_AGGRESSIVITY_10_ITEM, true);
+								break;
+							}
+							PRIVATE_DATA->requested_aggressivity = aggressivity;
+							updateAggressivity = true;
+						}
+						if (AUX_LINK_CH_2AND3_LINKED_ITEM->sw.value != ch2_3_linked) {
+							if (ch2_3_linked) {
+								indigo_set_switch(AUX_LINK_CH_2AND3_PROPERTY, AUX_LINK_CH_2AND3_LINKED_ITEM, true);
+							} else {
+								indigo_set_switch(AUX_LINK_CH_2AND3_PROPERTY, AUX_LINK_CH_2AND3_NOT_LINKED_ITEM, true);
+							}
+							updateLinked = true;
+						}			} else {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME,"Error: parsed %d of 16 values in response \"%s\"", parsed, response);
 					}
 				}
 			}
