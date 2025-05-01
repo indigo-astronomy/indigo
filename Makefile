@@ -157,9 +157,9 @@ ifeq ($(OS_DETECTED),Linux)
 endif
 	@$(MAKE)	-C indigo_server all
 	@echo
-	@grep --color=always -ro '// TODO.*' */*/*.c */*.cpp */*/*.cpp
+	@grep --color=always -ro '// TODO.*' indigo_drivers/*/*.c*
 	@echo
-	@grep --color=always -ro '// TODO.*' */*.c */*.cpp
+	@grep --color=always -ro '// TODO.*' indigo_libs/*.c* indigo_libs/*/*.c*
 
 $(BUILD_LIB)/libindigo.$(SOEXT): $(filter-out $(INDIGO_ROOT)/indigo_libs/indigo/indigo_config.h, $(wildcard $(INDIGO_ROOT)/indigo_libs/indigo/*.h))
 	@echo --------------------------------------------------------------------- Forced clean - framework headers are changed
