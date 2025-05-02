@@ -52,6 +52,8 @@ static bool falcon_command(indigo_device *device, char *command, char *response,
 				if (indigo_uni_read_line(PRIVATE_DATA->handle, response, max) > 0) {
 					return true;
 				}
+			} else {
+				return true;
 			}
 		}
 	}
