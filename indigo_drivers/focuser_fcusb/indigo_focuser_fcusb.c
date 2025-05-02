@@ -227,7 +227,6 @@ static indigo_result focuser_attach(indigo_device *device) {
 		indigo_init_switch_item(X_FOCUSER_FREQUENCY_1_ITEM, X_FOCUSER_FREQUENCY_1_ITEM_NAME, "1.6 kHz (1x)", true);
 		indigo_init_switch_item(X_FOCUSER_FREQUENCY_4_ITEM, X_FOCUSER_FREQUENCY_4_ITEM_NAME, "6 kHz (4x)", false);
 		indigo_init_switch_item(X_FOCUSER_FREQUENCY_16_ITEM, X_FOCUSER_FREQUENCY_16_ITEM_NAME, "25 kHz (16x)", false);
-		X_FOCUSER_FREQUENCY_PROPERTY->hidden = false;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		return focuser_enumerate_properties(device, NULL, NULL);

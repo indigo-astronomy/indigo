@@ -51,8 +51,8 @@ typedef struct item_type {
 
 typedef struct property_type {
 	struct property_type *next;
-	char type[12], id[128], handle[128], name[128], define_name[128], pointer[128], handler[64], label[256], group[32],  perm[32], rule[32];
-	bool always_defined, handle_change, synchronized_change, persistent, hidden, preserve_values;
+	char type[12], id[128], handle[128], name[128], define_name[128], pointer[128], handler[64], label[256], group[32],  perm[32], rule[32], hidden[64];
+	bool always_defined, handle_change, synchronized_change, persistent, preserve_values;
 	int max_name_length;
 	code_type *code, *on_attach, *on_change, *on_detach;
 	item_type *items;
@@ -664,14 +664,14 @@ bool parse_property_block(device_type *device, property_type **properties) {
 			if (parse_code_block("on_detach", &property->on_detach)) {
 				continue;
 			}
+			if (parse_expression_attribute("hidden", property->hidden, sizeof(property->hidden))) {
+				continue;
+			}
 			if (property->type[0] != 'i') {
 				if (parse_expression_attribute("group", property->group, sizeof(property->group))) {
 					continue;
 				}
 				if (parse_expression_attribute("pointer", property->pointer, sizeof(property->pointer))) {
-					continue;
-				}
-				if (parse_bool_attribute("hidden", &property->hidden)) {
 					continue;
 				}
 				if (parse_bool_attribute("always_defined", &property->always_defined)) {
@@ -1515,7 +1515,17 @@ void write_c_attach(device_type *device) {
 					break;
 			}
 		}
-		write_line("\t\t%s->hidden = %s;", property->handle, property->hidden ? "true" : "false");
+		if (property->type[0] == 'i') {
+			if (*property->hidden) {
+				write_line("\t\t%s->hidden = %s;", property->handle, property->hidden);
+			} else {
+				write_line("\t\t%s->hidden = false;", property->handle);
+			}
+		} else {
+			if (*property->hidden && strcmp(property->hidden, "true") == 0) {
+				write_line("\t\t%s->hidden = true;", property->handle);
+			}
+		}
 		write_c_code_blocks(property->on_attach, 2, "%s.%s.on_attach", device->type, property->id);
 	}
 	write_line("\t\tINDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);");
@@ -1905,6 +1915,9 @@ property_type *get_property(device_type *device, char *property_handle) {
 		property_handle[l - 9] = 0;
 		strncpy(property->id, property_handle, sizeof(property->id));
 	}
+	if (*property->type == 0) {
+		strncpy(property->type, "inherited", sizeof(property->type));
+	}
 	append((void **)&device->properties, property);
 	return property;
 }
@@ -2071,12 +2084,7 @@ void read_c_source(void) {
 		} else if (sscanf(line, " %127[^-]->hidden = %127[^;];", s1, s2) == 2) {
 			if (device) {
 				property_type *property = get_property(device, s1);
-				if (*property->type == 0) {
-					strncpy(property->type, "inherited", sizeof(property->type));
-				}
-				if (strcmp(s2, "true")) {
-					property->hidden = true;
-				}
+				strncpy(property->hidden, s2, sizeof(property->hidden));
 			}
 		} else if (sscanf(line, " strcpy(patterns[%d].%127[^,], %127[^)]);", &i1, s1, s2) == 3) {
 			if (driver.serial == NULL) {
@@ -2225,10 +2233,7 @@ void read_c_source(void) {
 		} else if (sscanf(line, " } else if (%127[^(](%127[^,], property)) {", s1, s2) == 2 && strcmp(s1, "indigo_property_match_changeable") == 0) {
 			if (strcmp(s2, "CONFIG_PROPERTY") && strcmp(s2, "CONNECTION_PROPERTY")) {
 				if (device) {
-					property_type *property = get_property(device, s2);
-					if (*property->type == 0) {
-						strncpy(property->type, "inherited", sizeof(property->type));
-					}
+					get_property(device, s2);
 				}
 			}
 		} else if (sscanf(line, " %127[^(](device, NULL, %127[^)])", s1, s2) == 2 && strcmp(s1, "indigo_save_property") == 0) {
@@ -2434,16 +2439,40 @@ void write_definition_source(void) {
 		}
 		for (property_type *property = device->properties; property; property = property->next) {
 			write_line("\t\t%s %s {", property->type, property->id);
-			if (property->type[0] == 'i') {
-				if (property->on_change) {
-					write_line("\t\t\ton_change {");
-					for (code_type *code = property->on_change; code; code = code->next) {
-						write_code_block(code, 4);
-					}
-					write_line("\t\t\t}");
-				} else {
-					write_line("\t\t\t// on_change { }");
+			if (property->persistent) {
+				write_line("\t\t\tpersistent = true;");
+			}
+			if (*property->hidden) {
+				write_line("\t\t\thidden = %s;", property->hidden);
+			}
+			if (property->on_change) {
+				write_line("\t\t\ton_change {");
+				for (code_type *code = property->on_change; code; code = code->next) {
+					write_code_block(code, 4);
 				}
+				write_line("\t\t\t}");
+			} else {
+				write_line("\t\t\t// on_change { }");
+			}
+			if (property->on_attach) {
+				write_line("\t\t\ton_attach {");
+				for (code_type *code = property->on_attach; code; code = code->next) {
+					write_code_block(code, 4);
+				}
+				write_line("\t\t\t}");
+			} else {
+				write_line("\t\t\t// on_attach { }");
+			}
+			if (property->on_detach) {
+				write_line("\t\t\ton_detach {");
+				for (code_type *code = property->on_detach; code; code = code->next) {
+					write_code_block(code, 4);
+				}
+				write_line("\t\t\t}");
+			} else {
+				write_line("\t\t\t// on_detach { }");
+			}
+			if (property->type[0] == 'i') {
 			} else {
 				write_line("\t\t\tname = %s;", property->name);
 				write_line("\t\t\tgroup = %s;", property->group);
@@ -2454,44 +2483,11 @@ void write_definition_source(void) {
 				if (*property->rule && strcmp(property->rule, "INDIGO_ONE_OF_MANY_RULE")) {
 					write_line("\t\t\trule = %s;", property->rule);
 				}
-				if (property->hidden) {
-					write_line("\t\t\thidden = true;");
-				}
-				if (property->persistent) {
-					write_line("\t\t\tpersistent = true;");
-				}
 				if (property->always_defined) {
 					write_line("\t\t\talways_defined = true;");
 				}
 				write_line("\t\t\t// handle_change = false;");
 				write_line("\t\t\t// synchronized_change = false;");
-				if (property->on_change) {
-					write_line("\t\t\ton_change {");
-					for (code_type *code = property->on_change; code; code = code->next) {
-						write_code_block(code, 4);
-					}
-					write_line("\t\t\t}");
-				} else {
-					write_line("\t\t\t// on_change { }");
-				}
-				if (property->on_attach) {
-					write_line("\t\t\ton_attach {");
-					for (code_type *code = property->on_attach; code; code = code->next) {
-						write_code_block(code, 4);
-					}
-					write_line("\t\t\t}");
-				} else {
-					write_line("\t\t\t// on_attach { }");
-				}
-				if (property->on_detach) {
-					write_line("\t\t\ton_detach {");
-					for (code_type *code = property->on_detach; code; code = code->next) {
-						write_code_block(code, 4);
-					}
-					write_line("\t\t\t}");
-				} else {
-					write_line("\t\t\t// on_detach { }");
-				}
 				for (item_type *item = property->items; item; item = item->next) {
 					write_line("\t\t\titem %s {", item->id);
 					write_line("\t\t\t\tname = %s;", item->name);

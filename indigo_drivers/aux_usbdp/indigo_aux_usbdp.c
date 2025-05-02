@@ -528,7 +528,6 @@ static void aux_outlet_names_handler(indigo_device *device) {
 	snprintf(AUX_DEW_THRESHOLD_SENSOR_2_ITEM->label, INDIGO_NAME_SIZE, "%s (°C)", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
 	snprintf(AUX_DEW_WARNING_SENSOR_1_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
 	snprintf(AUX_DEW_WARNING_SENSOR_2_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
-	AUX_OUTLET_NAMES_PROPERTY->state = INDIGO_OK_STATE;
 	if (IS_CONNECTED) {
 		indigo_delete_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_HEATER_OUTLET_STATE_PROPERTY, NULL);
@@ -669,7 +668,6 @@ static indigo_result aux_attach(indigo_device *device) {
 		indigo_init_text_item(AUX_HEATER_OUTLET_NAME_1_ITEM, AUX_HEATER_OUTLET_NAME_1_ITEM_NAME, "Heater/Sensor #1", "Heater/Sensor #1");
 		indigo_init_text_item(AUX_HEATER_OUTLET_NAME_2_ITEM, AUX_HEATER_OUTLET_NAME_2_ITEM_NAME, "Heater/Sensor #2", "Heater/Sensor #2");
 		indigo_init_text_item(AUX_HEATER_OUTLET_NAME_3_ITEM, AUX_HEATER_OUTLET_NAME_3_ITEM_NAME, "Heater #3", "Heater #3");
-		AUX_OUTLET_NAMES_PROPERTY->hidden = false;
 		AUX_HEATER_OUTLET_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_HEATER_OUTLET_PROPERTY_NAME, AUX_GROUP, "Heater outlets", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
 		if (AUX_HEATER_OUTLET_PROPERTY == NULL) {
 			return INDIGO_FAILED;
@@ -677,7 +675,6 @@ static indigo_result aux_attach(indigo_device *device) {
 		indigo_init_number_item(AUX_HEATER_OUTLET_1_ITEM, AUX_HEATER_OUTLET_1_ITEM_NAME, "Heater #1 [%]", 0, 100, 5, 0);
 		indigo_init_number_item(AUX_HEATER_OUTLET_2_ITEM, AUX_HEATER_OUTLET_2_ITEM_NAME, "Heater #2 [%]", 0, 100, 5, 0);
 		indigo_init_number_item(AUX_HEATER_OUTLET_3_ITEM, AUX_HEATER_OUTLET_3_ITEM_NAME, "Heater #3 [%]", 0, 100, 5, 0);
-		AUX_HEATER_OUTLET_PROPERTY->hidden = false;
 		AUX_HEATER_OUTLET_STATE_PROPERTY = indigo_init_light_property(NULL, device->name, AUX_HEATER_OUTLET_STATE_PROPERTY_NAME, AUX_GROUP, "Heater outlets state", INDIGO_OK_STATE, 3);
 		if (AUX_HEATER_OUTLET_STATE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
@@ -685,14 +682,12 @@ static indigo_result aux_attach(indigo_device *device) {
 		indigo_init_light_item(AUX_HEATER_OUTLET_STATE_1_ITEM, AUX_HEATER_OUTLET_STATE_1_ITEM_NAME, "Heater #1", INDIGO_IDLE_STATE);
 		indigo_init_light_item(AUX_HEATER_OUTLET_STATE_2_ITEM, AUX_HEATER_OUTLET_STATE_2_ITEM_NAME, "Heater #2", INDIGO_IDLE_STATE);
 		indigo_init_light_item(AUX_HEATER_OUTLET_STATE_3_ITEM, AUX_HEATER_OUTLET_STATE_3_ITEM_NAME, "Heater #3", INDIGO_IDLE_STATE);
-		AUX_HEATER_OUTLET_STATE_PROPERTY->hidden = false;
 		AUX_DEW_CONTROL_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_DEW_CONTROL_PROPERTY_NAME, AUX_GROUP, "Dew control", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (AUX_DEW_CONTROL_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
 		indigo_init_switch_item(AUX_DEW_CONTROL_MANUAL_ITEM, AUX_DEW_CONTROL_MANUAL_ITEM_NAME, "Manual", true);
 		indigo_init_switch_item(AUX_DEW_CONTROL_AUTOMATIC_ITEM, AUX_DEW_CONTROL_AUTOMATIC_ITEM_NAME, "Automatic", false);
-		AUX_DEW_CONTROL_PROPERTY->hidden = false;
 		AUX_WEATHER_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_WEATHER_PROPERTY_NAME, AUX_GROUP, "Weather info", INDIGO_OK_STATE, INDIGO_RO_PERM, 3);
 		if (AUX_WEATHER_PROPERTY == NULL) {
 			return INDIGO_FAILED;
@@ -700,14 +695,12 @@ static indigo_result aux_attach(indigo_device *device) {
 		indigo_init_number_item(AUX_WEATHER_TEMPERATURE_ITEM, AUX_WEATHER_TEMPERATURE_ITEM_NAME, "Ambient Temperature (°C)", -50, 100, 0, 0);
 		indigo_init_number_item(AUX_WEATHER_HUMIDITY_ITEM, AUX_WEATHER_HUMIDITY_ITEM_NAME, "Humidity [%]", 0, 100, 0, 0);
 		indigo_init_number_item(AUX_WEATHER_DEWPOINT_ITEM, AUX_WEATHER_DEWPOINT_ITEM_NAME, "Dewpoint (°C)", -50, 100, 0, 0);
-		AUX_WEATHER_PROPERTY->hidden = false;
 		AUX_TEMPERATURE_SENSORS_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_TEMPERATURE_SENSORS_PROPERTY_NAME, AUX_GROUP, "Temperature Sensors", INDIGO_OK_STATE, INDIGO_RO_PERM, 2);
 		if (AUX_TEMPERATURE_SENSORS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
 		indigo_init_number_item(AUX_TEMPERATURE_SENSOR_1_ITEM, AUX_TEMPERATURE_SENSORS_SENSOR_1_ITEM_NAME, "Sensor #1 (°C)", -50, 100, 0, 0);
 		indigo_init_number_item(AUX_TEMPERATURE_SENSOR_2_ITEM, AUX_TEMPERATURE_SENSORS_SENSOR_2_ITEM_NAME, "Sensor #2 (°C)", -50, 100, 0, 0);
-		AUX_TEMPERATURE_SENSORS_PROPERTY->hidden = false;
 		AUX_CALLIBRATION_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_CALLIBRATION_PROPERTY_NAME, SETTINGS_GROUP, "Temperature Sensors Callibration", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
 		if (AUX_CALLIBRATION_PROPERTY == NULL) {
 			return INDIGO_FAILED;
@@ -715,21 +708,18 @@ static indigo_result aux_attach(indigo_device *device) {
 		indigo_init_number_item(AUX_CALLIBRATION_SENSOR_1_ITEM, AUX_CALLIBRATION_SENSOR_1_ITEM_NAME, "Sensor #1 (°C)", 0, 9, 1, 0);
 		indigo_init_number_item(AUX_CALLIBRATION_SENSOR_2_ITEM, AUX_CALLIBRATION_SENSOR_2_ITEM_NAME, "Sensor #2 (°C)", 0, 9, 1, 0);
 		indigo_init_number_item(AUX_CALLIBRATION_SENSOR_3_ITEM, AUX_CALLIBRATION_SENSOR_3_ITEM_NAME, "Ambient sensor (°C)", 0, 9, 1, 0);
-		AUX_CALLIBRATION_PROPERTY->hidden = false;
 		AUX_DEW_THRESHOLD_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_DEW_THRESHOLD_PROPERTY_NAME, SETTINGS_GROUP, "Dew Thresholds", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		if (AUX_DEW_THRESHOLD_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
 		indigo_init_number_item(AUX_DEW_THRESHOLD_SENSOR_1_ITEM, AUX_DEW_THRESHOLD_SENSOR_1_ITEM_NAME, "Sensor #1 (°C)", 0, 9, 1, 0);
 		indigo_init_number_item(AUX_DEW_THRESHOLD_SENSOR_2_ITEM, AUX_DEW_THRESHOLD_SENSOR_2_ITEM_NAME, "Sensor #2 (°C)", 0, 9, 1, 0);
-		AUX_DEW_THRESHOLD_PROPERTY->hidden = false;
 		AUX_LINK_CH_2AND3_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_LINK_CH_2AND3_PROPERTY_NAME, SETTINGS_GROUP, "Link chanels 2 and 3", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (AUX_LINK_CH_2AND3_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
 		indigo_init_switch_item(AUX_LINK_CH_2AND3_LINKED_ITEM, AUX_LINK_CH_2AND3_LINKED_ITEM_NAME, "Linked", false);
 		indigo_init_switch_item(AUX_LINK_CH_2AND3_NOT_LINKED_ITEM, AUX_LINK_CH_2AND3_NOT_LINKED_ITEM_NAME, "Not Linked", true);
-		AUX_LINK_CH_2AND3_PROPERTY->hidden = false;
 		AUX_HEATER_AGGRESSIVITY_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_HEATER_AGGRESSIVITY_PROPERTY_NAME, SETTINGS_GROUP, "Auto mode heater aggressivity", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
 		if (AUX_HEATER_AGGRESSIVITY_PROPERTY == NULL) {
 			return INDIGO_FAILED;
@@ -738,14 +728,12 @@ static indigo_result aux_attach(indigo_device *device) {
 		indigo_init_switch_item(AUX_HEATER_AGGRESSIVITY_2_ITEM, AUX_HEATER_AGGRESSIVITY_2_ITEM_NAME, "Aggressivity 2%", false);
 		indigo_init_switch_item(AUX_HEATER_AGGRESSIVITY_5_ITEM, AUX_HEATER_AGGRESSIVITY_5_ITEM_NAME, "Aggressivity 5%", false);
 		indigo_init_switch_item(AUX_HEATER_AGGRESSIVITY_10_ITEM, AUX_HEATER_AGGRESSIVITY_10_ITEM_NAME, "Aggressivity 10%", false);
-		AUX_HEATER_AGGRESSIVITY_PROPERTY->hidden = false;
 		AUX_DEW_WARNING_PROPERTY = indigo_init_light_property(NULL, device->name, AUX_DEW_WARNING_PROPERTY_NAME, AUX_GROUP, "Dew warning", INDIGO_OK_STATE, 2);
 		if (AUX_DEW_WARNING_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
 		indigo_init_light_item(AUX_DEW_WARNING_SENSOR_1_ITEM, AUX_DEW_WARNING_SENSOR_1_ITEM_NAME, "Sensor #1", INDIGO_OK_STATE);
 		indigo_init_light_item(AUX_DEW_WARNING_SENSOR_2_ITEM, AUX_DEW_WARNING_SENSOR_2_ITEM_NAME, "Sesnor #2", INDIGO_OK_STATE);
-		AUX_DEW_WARNING_PROPERTY->hidden = false;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		return aux_enumerate_properties(device, NULL, NULL);

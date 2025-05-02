@@ -435,7 +435,6 @@ static indigo_result gps_attach(indigo_device *device) {
 		indigo_init_switch_item(BEIDOU_SYSTEM_ITEM, BEIDOU_SYSTEM_ITEM_NAME, "BeiDou", false);
 		indigo_init_switch_item(NAVIC_SYSTEM_ITEM, NAVIC_SYSTEM_ITEM_NAME, "NavIC", false);
 		indigo_init_switch_item(QZSS_SYSTEM_ITEM, QZSS_SYSTEM_ITEM_NAME, "QZSS1", false);
-		GPS_SELECTED_SYSTEM_PROPERTY->hidden = false;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		return gps_enumerate_properties(device, NULL, NULL);

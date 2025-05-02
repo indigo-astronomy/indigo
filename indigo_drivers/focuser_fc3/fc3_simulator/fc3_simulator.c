@@ -146,7 +146,7 @@ int main() {
 		sim_read_line(fd, buffer, sizeof(buffer));
 		if (version == 3) {
 			if (!strcmp(buffer, "F#") || !strcmp(buffer, "##")) {
-				sim_printf(fd, "F3C_%s_A\n", id);
+				sim_printf(fd, "FC3_%s_A\n", id);
 			} else if (!strcmp(buffer, "FA")) {
 				sim_printf(fd, "FC3:%d:%d:%.2f:%d:%d\n", position, target == position ? 0 : 1, temperature, direction, backlash);
 			} else if (!strncmp(buffer, "FN:", 3)) {

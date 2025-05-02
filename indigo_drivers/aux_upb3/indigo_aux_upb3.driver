@@ -72,7 +72,6 @@ driver upb3 {
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 			if (PRIVATE_DATA->handle != NULL) {
 				upb3_command(device, "PL:0", response, sizeof(response));
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
 				indigo_uni_close(&PRIVATE_DATA->handle);
 			}
 		}

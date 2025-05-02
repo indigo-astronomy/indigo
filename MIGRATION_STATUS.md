@@ -80,7 +80,7 @@
 | focuser_dmfc | 3️⃣ | ✅ Yes | ❌ No | |
 | focuser_dsd | 2️⃣ | ❌ No | ❌ No | |
 | focuser_efa | 2️⃣ | ❌ No | ❌ No | |
-| focuser_fc3 | 3️⃣ | ✅ Yes | ❌ No | |
+| focuser_fc3 | 3️⃣ | ✅ Yes | ✅ Yes | |
 | focuser_fcusb | 3️⃣ | ❌ No | ✅ Yes | ⏰ TODO - make libfcusb for Windows |
 | focuser_fli | 3️⃣ | ✅ Yes | ❌ No | |
 | focuser_focusdreampro | 3️⃣ | ✅ Yes | ❌ No | |
