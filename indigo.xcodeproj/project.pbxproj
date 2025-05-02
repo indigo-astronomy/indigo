@@ -4999,6 +4999,7 @@
 		9DF312C42C2593F900A35CE3 /* optecfl_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = optecfl_simulator.c; sourceTree = "<group>"; };
 		9DF4DCCB2C5A182B00A1852B /* indigo_driver_metadata.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_driver_metadata.c; sourceTree = "<group>"; };
 		9DF4DCCD2C5A768700A1852B /* eq8_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = eq8_simulator.c; sourceTree = "<group>"; };
+		9DF4FD582DC4973A00302AA0 /* wbplusv3_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = wbplusv3_simulator.c; sourceTree = "<group>"; };
 		9DF7E64C1F6AA17900156652 /* indigo_ccd_qsi_main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = indigo_ccd_qsi_main.cpp; sourceTree = "<group>"; };
 		9DF7E64D1F6AA17900156652 /* indigo_ccd_qsi.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = indigo_ccd_qsi.cpp; sourceTree = "<group>"; };
 		9DF7E64E1F6AA17900156652 /* indigo_ccd_qsi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_qsi.h; sourceTree = "<group>"; };
@@ -8047,6 +8048,7 @@
 				599EB15A2B52ECE300B333E4 /* indigo_aux_wbplusv3_main.c */,
 				59F087FF2DC3EC6C00F272E4 /* indigo_aux_wbplusv3.driver */,
 				599EB15B2B52ECE300B333E4 /* Serial protocol for WandererBox Plus V3(20231211).pdf */,
+				9DF4FD592DC4973A00302AA0 /* wbplusv3_simulator */,
 			);
 			path = aux_wbplusv3;
 			sourceTree = "<group>";
@@ -14564,6 +14566,14 @@
 				9DF312B52C255D3800A35CE3 /* optecfl_simulator */,
 			);
 			path = focuser_optecfl;
+			sourceTree = "<group>";
+		};
+		9DF4FD592DC4973A00302AA0 /* wbplusv3_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				9DF4FD582DC4973A00302AA0 /* wbplusv3_simulator.c */,
+			);
+			path = wbplusv3_simulator;
 			sourceTree = "<group>";
 		};
 		9DF7E64B1F6AA0E600156652 /* ccd_qsi */ = {

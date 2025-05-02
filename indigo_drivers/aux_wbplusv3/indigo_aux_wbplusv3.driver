@@ -337,6 +337,7 @@ driver wbplusv3 {
 				min = 0;
 				max = 13.2;
 				step = 0.2;
+				format = "%.2f";
 			}
 		}
 		switch AUX_USB_PORT {
@@ -368,6 +369,10 @@ driver wbplusv3 {
 				char command[16];
 				snprintf(command, sizeof(command), "%d", 3000 + (int)(AUX_HEATER_OUTLET_1_ITEM->number.target * 255.0 / 100.0));
 				wbplusv3_command(device, command);
+				if (AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value) {
+					indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, AUX_DEW_CONTROL_MANUAL_ITEM, true);
+					indigo_update_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
+				}
 				indigo_sleep(1);
 			}
 			// on_attach { }
@@ -379,6 +384,7 @@ driver wbplusv3 {
 				min = 0;
 				max = 100;
 				step = 5;
+				format = "%.0f";
 			}
 		}
 		switch AUX_DEW_CONTROL {
@@ -418,6 +424,7 @@ driver wbplusv3 {
 				min = -50;
 				max = 100;
 				step = 0;
+				format = "%.2f";
 			}
 			item AUX_WEATHER_HUMIDITY {
 				name = AUX_WEATHER_HUMIDITY_ITEM_NAME;
@@ -426,6 +433,7 @@ driver wbplusv3 {
 				min = 0;
 				max = 100;
 				step = 0;
+				format = "%.0f";
 			}
 			item AUX_WEATHER_DEWPOINT {
 				name = AUX_WEATHER_DEWPOINT_ITEM_NAME;
@@ -434,6 +442,7 @@ driver wbplusv3 {
 				min = -50;
 				max = 100;
 				step = 0;
+				format = "%.2f";
 			}
 		}
 		number AUX_TEMPERATURE_SENSORS {
@@ -453,6 +462,7 @@ driver wbplusv3 {
 				min = -50;
 				max = 100;
 				step = 0;
+				format = "%.2f";
 			}
 			item AUX_TEMPERATURE_SENSORS_SENSOR_2 {
 				name = AUX_TEMPERATURE_SENSORS_SENSOR_2_ITEM_NAME;
@@ -461,6 +471,7 @@ driver wbplusv3 {
 				min = -50;
 				max = 100;
 				step = 0;
+				format = "%.2f";
 			}
 		}
 		light AUX_DEW_WARNING {
@@ -495,6 +506,7 @@ driver wbplusv3 {
 				min = 0;
 				max = 15;
 				step = 0;
+				format = "%.2f";
 			}
 			item AUX_INFO_CURRENT {
 				name = AUX_INFO_CURRENT_ITEM_NAME;
@@ -503,6 +515,7 @@ driver wbplusv3 {
 				min = 0;
 				max = 20;
 				step = 0;
+				format = "%.2f";
 			}
 		}
 		switch X_AUX_CALIBRATE {
