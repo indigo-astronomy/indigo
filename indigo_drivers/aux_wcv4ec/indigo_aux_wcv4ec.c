@@ -384,7 +384,7 @@ static void aux_light_intensity_handler(indigo_device *device) {
 		if (!wcv4ec_command(device, command)) {
 			AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
-		AUX_LIGHT_SWITCH_ON_ITEM->sw.value = false;
+		indigo_set_switch(AUX_LIGHT_SWITCH_PROPERTY, AUX_LIGHT_SWITCH_ON_ITEM, true);
 	}
 	//- aux.AUX_LIGHT_INTENSITY.on_change
 	indigo_update_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
@@ -491,7 +491,7 @@ static void aux_cover_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_COVER_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_COVER.on_change
-	if (!PRIVATE_DATA->operation_running) {
+	if (PRIVATE_DATA->operation_running) {
 		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 		return;
 	}
@@ -539,7 +539,7 @@ static indigo_result aux_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		}
 		indigo_init_number_item(AUX_LIGHT_INTENSITY_ITEM, AUX_LIGHT_INTENSITY_ITEM_NAME, "Intensity", 0, 255, 1, 50);
-		strcpy(AUX_LIGHT_INTENSITY_ITEM->number.format, "%g");
+		strcpy(AUX_LIGHT_INTENSITY_ITEM->number.format, "%.0f");
 		AUX_LIGHT_INTENSITY_PROPERTY->hidden = false;
 		AUX_DETECT_OPEN_CLOSE_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_DETECT_OPEN_CLOSE_PROPERTY_NAME, AUX_ADVANCED_GROUP, "Detect cover open/close position", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (AUX_DETECT_OPEN_CLOSE_PROPERTY == NULL) {

@@ -263,7 +263,7 @@ driver wcv4ec {
 					if (!wcv4ec_command(device, command)) {
 						AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
 					}
-					AUX_LIGHT_SWITCH_ON_ITEM->sw.value = false;
+					indigo_set_switch(AUX_LIGHT_SWITCH_PROPERTY, AUX_LIGHT_SWITCH_ON_ITEM, true);
 				}
 			}
 			// on_attach { }
@@ -275,7 +275,7 @@ driver wcv4ec {
 				min = 0;
 				max = 255;
 				step = 1;
-				format = "%g";
+				format = "%.0f";
 			}
 		}
 		switch AUX_DETECT_OPEN_CLOSE {
@@ -423,7 +423,7 @@ driver wcv4ec {
 			label = "Cover (open/close)";
 			group = AUX_MAIN_GROUP;
 			on_change {
-				if (!PRIVATE_DATA->operation_running) {
+				if (PRIVATE_DATA->operation_running) {
 					pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 					return;
 				}
