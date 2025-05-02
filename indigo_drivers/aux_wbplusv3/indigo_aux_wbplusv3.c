@@ -241,7 +241,6 @@ static bool wbplusv3_read_status(indigo_device *device) {
 }
 
 static bool wbplusv3_command(indigo_device *device, char *command) {
-	indigo_uni_discard(PRIVATE_DATA->handle);
 	if (indigo_uni_printf(PRIVATE_DATA->handle, "%s\n", command) > 0) {
 		return true;
 	}

@@ -199,7 +199,6 @@ driver wbprov3 {
 		}
 
 		static bool wbprov3_command(indigo_device *device, char *command) {
-			indigo_uni_discard(PRIVATE_DATA->handle);
 			if (indigo_uni_printf(PRIVATE_DATA->handle, "%s\n", command) > 0) {
 				return true;
 			}
@@ -318,13 +317,16 @@ driver wbprov3 {
 			}
 			indigo_reschedule_timer(device, 1, &PRIVATE_DATA->aux_timer);
 		}
-		// on_connect { }
 		on_disconnect {
 			strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 			strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 		}
-		// on_attach { }
+		on_attach {
+			INFO_PROPERTY->count = 6;
+			strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+		}
 		// on_detach { }
 		text AUX_OUTLET_NAMES {
 			name = AUX_OUTLET_NAMES_PROPERTY_NAME;
@@ -437,6 +439,7 @@ driver wbprov3 {
 				min = 0;
 				max = 13.2;
 				step = 0.2;
+				format = "%.2f";
 			}
 		}
 		number AUX_POWER_OUTLET_CURRENT {
@@ -456,6 +459,7 @@ driver wbprov3 {
 				min = 0;
 				max = 20;
 				step = 0;
+				format = "%.2f";
 			}
 			item AUX_POWER_OUTLET_CURRENT_2 {
 				name = AUX_POWER_OUTLET_CURRENT_2_ITEM_NAME;
@@ -464,6 +468,7 @@ driver wbprov3 {
 				min = 0;
 				max = 20;
 				step = 0;
+				format = "%.2f";
 			}
 		}
 		switch AUX_USB_PORT {
@@ -523,6 +528,10 @@ driver wbprov3 {
 				wbprov3_command(device, command);
 				snprintf(command, sizeof(command), "%d", 7000 + (int)(AUX_HEATER_OUTLET_3_ITEM->number.target * 255.0 / 100.0));
 				wbprov3_command(device, command);
+				if (AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value) {
+					indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, AUX_DEW_CONTROL_MANUAL_ITEM, true);
+					indigo_update_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
+				}
 				indigo_sleep(1);
 			}
 			// on_attach { }
@@ -534,6 +543,7 @@ driver wbprov3 {
 				min = 0;
 				max = 100;
 				step = 5;
+				format = "%.0f";
 			}
 			item AUX_HEATER_OUTLET_2 {
 				name = AUX_HEATER_OUTLET_2_ITEM_NAME;
@@ -542,6 +552,7 @@ driver wbprov3 {
 				min = 0;
 				max = 100;
 				step = 5;
+				format = "%.0f";
 			}
 			item AUX_HEATER_OUTLET_3 {
 				name = AUX_HEATER_OUTLET_3_ITEM_NAME;
@@ -550,6 +561,7 @@ driver wbprov3 {
 				min = 0;
 				max = 100;
 				step = 5;
+				format = "%.0f";
 			}
 		}
 		switch AUX_DEW_CONTROL {
@@ -589,6 +601,7 @@ driver wbprov3 {
 				min = -50;
 				max = 100;
 				step = 0;
+				format = "%.2f";
 			}
 			item AUX_WEATHER_HUMIDITY {
 				name = AUX_WEATHER_HUMIDITY_ITEM_NAME;
@@ -597,6 +610,7 @@ driver wbprov3 {
 				min = 0;
 				max = 100;
 				step = 0;
+				format = "%.2f";
 			}
 			item AUX_WEATHER_DEWPOINT {
 				name = AUX_WEATHER_DEWPOINT_ITEM_NAME;
@@ -605,6 +619,7 @@ driver wbprov3 {
 				min = -50;
 				max = 100;
 				step = 0;
+				format = "%.2f";
 			}
 		}
 		number AUX_TEMPERATURE_SENSORS {
@@ -624,6 +639,7 @@ driver wbprov3 {
 				min = -50;
 				max = 100;
 				step = 0;
+				format = "%.2f";
 			}
 			item AUX_TEMPERATURE_SENSORS_SENSOR_2 {
 				name = AUX_TEMPERATURE_SENSORS_SENSOR_2_ITEM_NAME;
@@ -632,6 +648,7 @@ driver wbprov3 {
 				min = -50;
 				max = 100;
 				step = 0;
+				format = "%.2f";
 			}
 			item AUX_TEMPERATURE_SENSORS_SENSOR_3 {
 				name = AUX_TEMPERATURE_SENSORS_SENSOR_3_ITEM_NAME;
@@ -640,6 +657,7 @@ driver wbprov3 {
 				min = -50;
 				max = 100;
 				step = 0;
+				format = "%.2f";
 			}
 			item AUX_TEMPERATURE_SENSORS_SENSOR_4 {
 				name = AUX_TEMPERATURE_SENSORS_SENSOR_4_ITEM_NAME;
@@ -648,6 +666,7 @@ driver wbprov3 {
 				min = -50;
 				max = 100;
 				step = 0;
+				format = "%.2f";
 			}
 		}
 		light AUX_DEW_WARNING {
@@ -682,6 +701,7 @@ driver wbprov3 {
 				min = 0;
 				max = 15;
 				step = 0;
+				format = "%.2f";
 			}
 			item AUX_INFO_CURRENT {
 				name = AUX_INFO_CURRENT_ITEM_NAME;
@@ -690,6 +710,7 @@ driver wbprov3 {
 				min = 0;
 				max = 20;
 				step = 0;
+				format = "%.2f";
 			}
 		}
 		switch X_AUX_CALIBRATE {

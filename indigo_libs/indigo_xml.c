@@ -275,26 +275,26 @@ static void *call_back_client_handler(struct call_back_data *data) {
 	return NULL;
 }
 
-static void *call_back_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
-	indigo_client *client = context->client;
-	assert(client != NULL);
-	if (state == ATTRIBUTE_VALUE_STATE) {
-		if (!strcmp(name, "name")) {
-			indigo_copy_name(context->call_back_name, value);
-		} else if (!strcmp(name, "url")) {
-			indigo_copy_name(context->call_back_url, value);
-		}
-	} else if (state == END_TAG_STATE) {
-		pthread_t call_back_thread;
-		struct call_back_data *data = indigo_safe_malloc(sizeof(struct call_back_data));
-		data->handle = ((indigo_adapter_context *)(context->client->client_context))->output;
-		indigo_copy_name(data->call_back_name, context->call_back_name);
-		indigo_copy_name(data->call_back_url, context->call_back_url);
-		pthread_create(&call_back_thread, NULL, (void * (*)(void*))call_back_client_handler, data);
-		return top_level_handler;
-	}
-	return call_back_handler;
-}
+//static void *call_back_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
+//	indigo_client *client = context->client;
+//	assert(client != NULL);
+//	if (state == ATTRIBUTE_VALUE_STATE) {
+//		if (!strcmp(name, "name")) {
+//			indigo_copy_name(context->call_back_name, value);
+//		} else if (!strcmp(name, "url")) {
+//			indigo_copy_name(context->call_back_url, value);
+//		}
+//	} else if (state == END_TAG_STATE) {
+//		pthread_t call_back_thread;
+//		struct call_back_data *data = indigo_safe_malloc(sizeof(struct call_back_data));
+//		data->handle = ((indigo_adapter_context *)(context->client->client_context))->output;
+//		indigo_copy_name(data->call_back_name, context->call_back_name);
+//		indigo_copy_name(data->call_back_url, context->call_back_url);
+//		pthread_create(&call_back_thread, NULL, (void * (*)(void*))call_back_client_handler, data);
+//		return top_level_handler;
+//	}
+//	return call_back_handler;
+//}
 
 static void *new_one_text_vector_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
 	indigo_property *property = (indigo_property *)context->property;
