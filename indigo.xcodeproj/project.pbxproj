@@ -5001,6 +5001,7 @@
 		9DF4DCCD2C5A768700A1852B /* eq8_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = eq8_simulator.c; sourceTree = "<group>"; };
 		9DF4FD582DC4973A00302AA0 /* wbplusv3_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = wbplusv3_simulator.c; sourceTree = "<group>"; };
 		9DF4FD5B2DC4A4F700302AA0 /* wbprov3_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = wbprov3_simulator.c; sourceTree = "<group>"; };
+		9DF4FD5E2DC4BCD300302AA0 /* wcv4ec_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = wcv4ec_simulator.c; sourceTree = "<group>"; };
 		9DF7E64C1F6AA17900156652 /* indigo_ccd_qsi_main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = indigo_ccd_qsi_main.cpp; sourceTree = "<group>"; };
 		9DF7E64D1F6AA17900156652 /* indigo_ccd_qsi.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = indigo_ccd_qsi.cpp; sourceTree = "<group>"; };
 		9DF7E64E1F6AA17900156652 /* indigo_ccd_qsi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_qsi.h; sourceTree = "<group>"; };
@@ -6161,6 +6162,7 @@
 				592E8B952B56E9DA008E0AFC /* indigo_aux_wcv4ec_main.c */,
 				59F088012DC3FAB400F272E4 /* indigo_aux_wcv4ec.driver */,
 				592E8B932B56E9DA008E0AFC /* Serial protocol for WandererCover V4-EC(20231225).pdf */,
+				9DF4FD5F2DC4BCD300302AA0 /* wcv4ec_simulator */,
 			);
 			path = aux_wcv4ec;
 			sourceTree = "<group>";
@@ -14584,6 +14586,14 @@
 				9DF4FD5B2DC4A4F700302AA0 /* wbprov3_simulator.c */,
 			);
 			path = wbprov3_simulator;
+			sourceTree = "<group>";
+		};
+		9DF4FD5F2DC4BCD300302AA0 /* wcv4ec_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				9DF4FD5E2DC4BCD300302AA0 /* wcv4ec_simulator.c */,
+			);
+			path = wcv4ec_simulator;
 			sourceTree = "<group>";
 		};
 		9DF7E64B1F6AA0E600156652 /* ccd_qsi */ = {
