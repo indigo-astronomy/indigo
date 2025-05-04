@@ -1,7 +1,7 @@
 // Copyright (c) 2016-2025 CloudMakers, s. r. o.
 // All rights reserved.
 
-// You can use this software under the terms of 'INDIGO Astronomy
+// You may use this software under the terms of 'INDIGO Astronomy
 // open-source license' (see LICENSE.md).
 
 // THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
@@ -50,24 +50,28 @@ typedef struct {
 	indigo_timer *guider_connection_handler_timer;
 	indigo_timer *guider_guide_dec_handler_timer;
 	indigo_timer *guider_guide_ra_handler_timer;
+	//+ data
+	char response[2];
+	//- data
 } cgusbst4_private_data;
 
 #pragma mark - Low level code
 
 //+ code
 
-static bool cgusbst4_command(indigo_device *device, char *command, char *response, int max) {
-	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
-		if (indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command)) > 0) {
-			if (response != NULL) {
-				indigo_usleep(INDIGO_DELAY(1));
-				if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "#", "", INDIGO_DELAY(1) > 0)) {
-					return true;
-				}
-			}
+static bool cgusbst4_command(indigo_device *device, char *command, int response, ...) {
+	long result = indigo_uni_discard(PRIVATE_DATA->handle);
+	if (result >= 0) {
+		va_list args;
+		va_start(args, response);
+		result = indigo_uni_vprintf(PRIVATE_DATA->handle, command, args);
+		va_end(args);
+		if (result > 0 && response > 0) {
+			indigo_usleep(INDIGO_DELAY(1));
+			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, response, "#", "", INDIGO_DELAY(1));
 		}
 	}
-	return false;
+	return result > 0;
 }
 
 static bool cgusbst4_open(indigo_device *device) {
@@ -75,7 +79,7 @@ static bool cgusbst4_open(indigo_device *device) {
 	PRIVATE_DATA->handle = indigo_uni_open_serial(name, INDIGO_LOG_DEBUG);
 	if (PRIVATE_DATA->handle != NULL) {
 		char response[2];
-		if (cgusbst4_command(device, "\006", response, 1) && *response == 'A') {
+		if (cgusbst4_command(device, "\006", 1) && PRIVATE_DATA->response[0] == 'A') {
 			return true;
 		}
 		indigo_send_message(device, "Handshake failed");
@@ -130,16 +134,13 @@ static void guider_guide_dec_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 	//+ guider.GUIDER_GUIDE_DEC.on_change
-	char command[16];
 	int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
 	if (duration > 0) {
-		sprintf(command, ":Mgn%4d#", (int)GUIDER_GUIDE_NORTH_ITEM->number.value);
-		cgusbst4_command(device, command, NULL, 0);
+		cgusbst4_command(device, ":Mgn%4d#", 0, (int)GUIDER_GUIDE_NORTH_ITEM->number.value);
 	} else {
 		duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
 		if (duration > 0) {
-			sprintf(command, ":Mgs%4d#", (int)GUIDER_GUIDE_SOUTH_ITEM->number.value);
-			cgusbst4_command(device, command, NULL, 0);
+			cgusbst4_command(device, ":Mgs%4d#", 0, (int)GUIDER_GUIDE_SOUTH_ITEM->number.value);
 		}
 	}
 	if (duration > 0) {
@@ -162,16 +163,13 @@ static void guider_guide_ra_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 	//+ guider.GUIDER_GUIDE_RA.on_change
-	char command[128];
 	int duration = GUIDER_GUIDE_EAST_ITEM->number.value;
 	if (duration > 0) {
-		sprintf(command, ":Mge%4d#", (int)GUIDER_GUIDE_EAST_ITEM->number.value);
-		cgusbst4_command(device, command, NULL, 0);
+		cgusbst4_command(device, ":Mge%4d#", 0, (int)GUIDER_GUIDE_EAST_ITEM->number.value);
 	} else {
 		duration = GUIDER_GUIDE_WEST_ITEM->number.value;
 		if (duration > 0) {
-			sprintf(command, ":Mgw%4d#", (int)GUIDER_GUIDE_WEST_ITEM->number.value);
-			cgusbst4_command(device, command, NULL, 0);
+			cgusbst4_command(device, ":Mgw%4d#", 0, (int)GUIDER_GUIDE_WEST_ITEM->number.value);
 		}
 	}
 	if (duration > 0) {
