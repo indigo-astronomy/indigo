@@ -130,8 +130,6 @@ driver dsusb {
 			item CCD_EXPOSURE {
 				name = CCD_EXPOSURE_ITEM_NAME;
 				label = "Start exposure";
-				value = 0;
-				min = 0;
 				max = 1000;
 				step = 1;
 				format = "%g";
