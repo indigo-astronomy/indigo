@@ -1,7 +1,7 @@
 // Copyright (c) 2021-2025 CloudMakers, s. r. o.
 // All rights reserved.
 
-// You can use this software under the terms of 'INDIGO Astronomy
+// You may use this software under the terms of 'INDIGO Astronomy
 // open-source license' (see LICENSE.md).
 
 // THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
@@ -57,21 +57,24 @@ typedef struct {
 	indigo_property *aux_weather_property;
 	indigo_timer *aux_timer;
 	indigo_timer *aux_connection_handler_timer;
+	//+ data
+	char response[16];
+	//- data
 } astromechanics_private_data;
 
 #pragma mark - Low level code
 
 //+ code
 
-static bool astromechanics_command(indigo_device *device, char *command, char *response) {
-	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
-		if (indigo_uni_printf(PRIVATE_DATA->handle, "%s", command) > 0) {
-			if (indigo_uni_read_section(PRIVATE_DATA->handle, response, 10, "#", "#", INDIGO_DELAY(1)) > 0) {
-				return true;
-			}
+static bool astromechanics_command(indigo_device *device, char *command) {
+	long result = indigo_uni_discard(PRIVATE_DATA->handle);
+	if (result >= 0) {
+		result = indigo_uni_printf(PRIVATE_DATA->handle, command);
+		if (result > 0) {
+			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "#", "#", INDIGO_DELAY(1));
 		}
 	}
-	return false;
+	return result > 0;
 }
 
 static bool astromechanics_open(indigo_device *device) {
@@ -80,9 +83,7 @@ static bool astromechanics_open(indigo_device *device) {
 }
 
 static void astromechanics_close(indigo_device *device) {
-	if (PRIVATE_DATA->handle != NULL) {
-		indigo_uni_close(&PRIVATE_DATA->handle);
-	}
+	indigo_uni_close(&PRIVATE_DATA->handle);
 }
 
 //- code
@@ -97,9 +98,8 @@ static void aux_timer_callback(indigo_device *device) {
 	}
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	//+ aux.on_timer
-	char response[16];
-	if (astromechanics_command(device, "V#", response)) {
-		AUX_WEATHER_SKY_BRIGHTNESS_ITEM->number.value = indigo_atod(response);
+	if (astromechanics_command(device, "V#")) {
+		AUX_WEATHER_SKY_BRIGHTNESS_ITEM->number.value = indigo_atod(PRIVATE_DATA->response);
 		AUX_WEATHER_SKY_BORTLE_CLASS_ITEM->number.value = indigo_aux_sky_bortle(AUX_WEATHER_SKY_BRIGHTNESS_ITEM->number.value);
 		AUX_WEATHER_PROPERTY->state = INDIGO_OK_STATE;
 	} else {

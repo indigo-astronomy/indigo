@@ -26,17 +26,19 @@ driver astromechanics {
 	serial;
 	// include { }
 	// define { }
-	// data { }
+	data {
+		char response[16];
+	}
 	code {
-		static bool astromechanics_command(indigo_device *device, char *command, char *response) {
-			if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
-				if (indigo_uni_printf(PRIVATE_DATA->handle, "%s", command) > 0) {
-					if (indigo_uni_read_section(PRIVATE_DATA->handle, response, 10, "#", "#", INDIGO_DELAY(1)) > 0) {
-						return true;
-					}
+		static bool astromechanics_command(indigo_device *device, char *command) {
+			long result = indigo_uni_discard(PRIVATE_DATA->handle);
+			if (result >= 0) {
+				result = indigo_uni_printf(PRIVATE_DATA->handle, command);
+				if (result > 0) {
+					result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "#", "#", INDIGO_DELAY(1));
 				}
 			}
-			return false;
+			return result > 0;
 		}
 
 		static bool astromechanics_open(indigo_device *device) {
@@ -45,9 +47,7 @@ driver astromechanics {
 		}
 
 		static void astromechanics_close(indigo_device *device) {
-			if (PRIVATE_DATA->handle != NULL) {
-				indigo_uni_close(&PRIVATE_DATA->handle);
-			}
+			indigo_uni_close(&PRIVATE_DATA->handle);
 		}
 	}
 	// on_init { }
@@ -58,9 +58,8 @@ driver astromechanics {
 		additional_instances = true;
 		// code { }
 		on_timer {
-			char response[16];
-			if (astromechanics_command(device, "V#", response)) {
-				AUX_WEATHER_SKY_BRIGHTNESS_ITEM->number.value = indigo_atod(response);
+			if (astromechanics_command(device, "V#")) {
+				AUX_WEATHER_SKY_BRIGHTNESS_ITEM->number.value = indigo_atod(PRIVATE_DATA->response);
 				AUX_WEATHER_SKY_BORTLE_CLASS_ITEM->number.value = indigo_aux_sky_bortle(AUX_WEATHER_SKY_BRIGHTNESS_ITEM->number.value);
 				AUX_WEATHER_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
@@ -86,14 +85,12 @@ driver astromechanics {
 			item AUX_WEATHER_SKY_BRIGHTNESS {
 				name = AUX_WEATHER_SKY_BRIGHTNESS_ITEM_NAME;
 				label = "Sky brightness [m/arcsec\u00B2]";
-				value = 0;
 				min = -20;
 				max = 30;
 			}
 			item AUX_WEATHER_SKY_BORTLE_CLASS {
 				name = AUX_WEATHER_SKY_BORTLE_CLASS_ITEM_NAME;
 				label = "Sky Bortle class";
-				value = 0;
 				min = 1;
 				max = 9;
 			}
