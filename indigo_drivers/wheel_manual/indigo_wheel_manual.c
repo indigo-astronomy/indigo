@@ -1,7 +1,7 @@
 // Copyright (c) 2020-2025 Rumen G.Bogdanovski
 // All rights reserved.
 
-// You can use this software under the terms of 'INDIGO Astronomy
+// You may use this software under the terms of 'INDIGO Astronomy
 // open-source license' (see LICENSE.md).
 
 // THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
