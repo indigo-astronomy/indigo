@@ -1,7 +1,7 @@
 // Copyright (c) 2019-2025 CloudMakers, s. r. o.
 // All rights reserved.
 
-// You can use this software under the terms of 'INDIGO Astronomy
+// You may use this software under the terms of 'INDIGO Astronomy
 // open-source license' (see LICENSE.md).
 
 // THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
@@ -139,6 +139,7 @@ typedef struct {
 	bool is_advance;
 	bool is_micro;
 	bool is_saddle;
+	char response[128];
 	//- data
 } ppb_private_data;
 
@@ -146,27 +147,25 @@ typedef struct {
 
 //+ code
 
-static bool ppb_command(indigo_device *device, char *command, char *response, int max) {
-	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
-		if (indigo_uni_printf(PRIVATE_DATA->handle, "%s\n", command) > 0) {
-			if (response) {
-				if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "\n", "\r\n", INDIGO_DELAY(1)) > 0) {
-					return true;
-				}
-			} else {
-				return true;
-			}
+static bool ppb_command(indigo_device *device, char *command, ...) {
+	long result = indigo_uni_discard(PRIVATE_DATA->handle);
+	if (result >= 0) {
+		va_list args;
+		va_start(args, command);
+		result = indigo_uni_vprintf_line(PRIVATE_DATA->handle, command, args);
+		va_end(args);
+		if (result > 0) {
+			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", INDIGO_DELAY(1));
 		}
 	}
-	return false;
+	return result > 0;
 }
 
 static bool ppb_open(indigo_device *device) {
-	char response[128];
 	PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
 	if (PRIVATE_DATA->handle != NULL) {
-		if (ppb_command(device, "P#", response, sizeof(response))) {
-			if (!strcmp(response, "PPB_OK")) {
+		if (ppb_command(device, "P#")) {
+			if (!strcmp(PRIVATE_DATA->response, "PPB_OK")) {
 				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro PPB");
 				PRIVATE_DATA->is_advance = false;
 				PRIVATE_DATA->is_micro = false;
@@ -174,9 +173,9 @@ static bool ppb_open(indigo_device *device) {
 				AUX_POWER_OUTLET_STATE_PROPERTY->hidden = true;
 				AUX_DSLR_POWER_PROPERTY->hidden = true;
 				AUX_POWER_OUTLET_PROPERTY->count = 2;
-				ppb_command(device, "PL:1", response, sizeof(response));
+				ppb_command(device, "PL:1");
 				return true;
-			} else if (!strcmp(response, "PPBA_OK")) {
+			} else if (!strcmp(PRIVATE_DATA->response, "PPBA_OK")) {
 				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro PPBA");
 				PRIVATE_DATA->is_advance = true;
 				PRIVATE_DATA->is_micro = false;
@@ -184,9 +183,9 @@ static bool ppb_open(indigo_device *device) {
 				AUX_POWER_OUTLET_STATE_PROPERTY->hidden = false;
 				AUX_DSLR_POWER_PROPERTY->hidden = false;
 				AUX_POWER_OUTLET_PROPERTY->count = 2;
-				ppb_command(device, "PL:1", response, sizeof(response));
+				ppb_command(device, "PL:1");
 				return true;
-			} else if (!strcmp(response, "PPBM_OK")) {
+			} else if (!strcmp(PRIVATE_DATA->response, "PPBM_OK")) {
 				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro PPBM");
 				PRIVATE_DATA->is_advance = true;
 				PRIVATE_DATA->is_micro = true;
@@ -194,9 +193,9 @@ static bool ppb_open(indigo_device *device) {
 				AUX_POWER_OUTLET_STATE_PROPERTY->hidden = false;
 				AUX_DSLR_POWER_PROPERTY->hidden = false;
 				AUX_POWER_OUTLET_PROPERTY->count = 2;
-				ppb_command(device, "PL:1", response, sizeof(response));
+				ppb_command(device, "PL:1");
 				return true;
-			} else if (!strcmp(response, "SPB")) {
+			} else if (!strcmp(PRIVATE_DATA->response, "SPB")) {
 				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro SPB");
 				PRIVATE_DATA->is_advance = false;
 				PRIVATE_DATA->is_micro = false;
@@ -204,7 +203,7 @@ static bool ppb_open(indigo_device *device) {
 				AUX_POWER_OUTLET_STATE_PROPERTY->hidden = true;
 				AUX_DSLR_POWER_PROPERTY->hidden = true;
 				AUX_POWER_OUTLET_PROPERTY->count = 1;
-				ppb_command(device, "PL:1", response, sizeof(response));
+				ppb_command(device, "PL:1");
 				return true;
 			}
 		}
@@ -215,9 +214,8 @@ static bool ppb_open(indigo_device *device) {
 }
 
 static void ppb_close(indigo_device *device) {
-	char response[128];
 	if (PRIVATE_DATA->handle != NULL) {
-		ppb_command(device, "PL:0", response, sizeof(response));
+		ppb_command(device, "PL:0");
 		indigo_uni_close(&PRIVATE_DATA->handle);
 	}
 }
@@ -234,7 +232,6 @@ static void aux_timer_callback(indigo_device *device) {
 	}
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	//+ aux.on_timer
-	char response[128];
 	bool updatePowerOutlet = false;
 	bool updatePowerOutletState = false;
 	bool updateDSLRPower = false;
@@ -242,8 +239,8 @@ static void aux_timer_callback(indigo_device *device) {
 	bool updateWeather = false;
 	bool updateInfo = false;
 	bool updateAutoHeater = false;
-	if (ppb_command(device, "PA", response, sizeof(response))) {
-		char *pnt, *token = strtok_r(response, ":", &pnt);
+	if (ppb_command(device, "PA")) {
+		char *pnt, *token = strtok_r(PRIVATE_DATA->response, ":", &pnt);
 		if ((token = strtok_r(NULL, ":", &pnt))) { // Voltage
 			double value = indigo_atod(token);
 			if (AUX_INFO_VOLTAGE_ITEM->number.value != value) {
@@ -384,13 +381,12 @@ static void aux_connection_handler(indigo_device *device) {
 		connection_result = ppb_open(device);
 		if (connection_result) {
 			//+ aux.on_connect
-			char response[128];
-			if (ppb_command(device, "PV", response, sizeof(response))) {
-				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, response);
+			if (ppb_command(device, "PV")) {
+				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response);
 			}
 			indigo_update_property(device, INFO_PROPERTY, NULL);
-			if (ppb_command(device, "PA", response, sizeof(response))) {
-				char *pnt, *token = strtok_r(response, ":", &pnt);
+			if (ppb_command(device, "PA")) {
+				char *pnt, *token = strtok_r(PRIVATE_DATA->response, ":", &pnt);
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Voltage
 					AUX_INFO_VOLTAGE_ITEM->number.value = indigo_atod(token);
 				}
@@ -410,7 +406,7 @@ static void aux_connection_handler(indigo_device *device) {
 					AUX_POWER_OUTLET_1_ITEM->sw.value = token[0] == '1';
 				}
 				if (PRIVATE_DATA->is_saddle) {
-					token = strtok_r(response, ":", &pnt); // adjustment status
+					token = strtok_r(PRIVATE_DATA->response, ":", &pnt); // adjustment status
 				} else {
 					if ((token = strtok_r(NULL, ":", &pnt))) { // DSLR port status
 						AUX_POWER_OUTLET_2_ITEM->sw.value = token[0] == '1';
@@ -516,10 +512,9 @@ static void aux_power_outlet_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_POWER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_POWER_OUTLET.on_change
-	char response[128];
-	ppb_command(device, AUX_POWER_OUTLET_1_ITEM->sw.value ? "P1:1" : "P1:0", response, sizeof(response));
+	ppb_command(device, "P1:%d", AUX_POWER_OUTLET_1_ITEM->sw.value ? 1 : 0);
 	if (!PRIVATE_DATA->is_saddle) {
-		ppb_command(device, AUX_POWER_OUTLET_2_ITEM->sw.value ? "P2:1" : "P2:0", response, sizeof(response));
+		ppb_command(device, "P2:%d", AUX_POWER_OUTLET_2_ITEM->sw.value ? 1 : 0);
 	}
 	//- aux.AUX_POWER_OUTLET.on_change
 	indigo_update_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
@@ -532,17 +527,16 @@ static void aux_dslr_power_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_DSLR_POWER_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_DSLR_POWER.on_change
-	char response[128];
 	if (AUX_DSLR_POWER_3_ITEM->sw.value) {
-		ppb_command(device, "P2:3", response, sizeof(response));
+		ppb_command(device, "P2:3");
 	} else if (AUX_DSLR_POWER_5_ITEM->sw.value)
-		ppb_command(device, "P2:5", response, sizeof(response));
+		ppb_command(device, "P2:5");
 	else if (AUX_DSLR_POWER_8_ITEM->sw.value)
-		ppb_command(device, "P2:8", response, sizeof(response));
+		ppb_command(device, "P2:8");
 	else if (AUX_DSLR_POWER_9_ITEM->sw.value)
-		ppb_command(device, "P2:9", response, sizeof(response));
+		ppb_command(device, "P2:9");
 	else if (AUX_DSLR_POWER_12_ITEM->sw.value)
-		ppb_command(device, "P2:12", response, sizeof(response));
+		ppb_command(device, "P2:12");
 	//- aux.AUX_DSLR_POWER.on_change
 	indigo_update_property(device, AUX_DSLR_POWER_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -554,11 +548,8 @@ static void aux_heater_outlet_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_HEATER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_HEATER_OUTLET.on_change
-	char command[16], response[128];
-	sprintf(command, "P3:%d", (int)(AUX_HEATER_OUTLET_1_ITEM->number.value * 255.0 / 100.0));
-	ppb_command(device, command, response, sizeof(response));
-	sprintf(command, "P4:%d", (int)(AUX_HEATER_OUTLET_2_ITEM->number.value * 255.0 / 100.0));
-	ppb_command(device, command, response, sizeof(response));
+	ppb_command(device, "P3:%d", (int)(AUX_HEATER_OUTLET_1_ITEM->number.value * 255.0 / 100.0));
+	ppb_command(device, "P4:%d", (int)(AUX_HEATER_OUTLET_2_ITEM->number.value * 255.0 / 100.0));
 	//- aux.AUX_HEATER_OUTLET.on_change
 	indigo_update_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -570,8 +561,7 @@ static void aux_dew_control_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_DEW_CONTROL_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_DEW_CONTROL.on_change
-	char response[128];
-	ppb_command(device, AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value ? "PD:1" : "PD:0", response, sizeof(response));
+	ppb_command(device, "PD:%d", AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value ? 1 : 0);
 	//- aux.AUX_DEW_CONTROL.on_change
 	indigo_update_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -583,9 +573,8 @@ static void aux_x_aux_reboot_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	X_AUX_REBOOT_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.X_AUX_REBOOT.on_change
-	char response[128];
 	if (X_AUX_REBOOT_ITEM->sw.value) {
-		ppb_command(device, "PF", response, sizeof(response));
+		indigo_uni_printf(PRIVATE_DATA->handle, "PF\n");
 		X_AUX_REBOOT_ITEM->sw.value = false;
 	}
 	//- aux.X_AUX_REBOOT.on_change
@@ -599,14 +588,13 @@ static void aux_save_outlet_states_as_default_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_SAVE_OUTLET_STATES_AS_DEFAULT.on_change
-	char response[128];
 	if (AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM->sw.value) {
 		char command[] = "PE:0000";
 		char *port_mask = command + 3;
 		for (int i = 0; i < AUX_POWER_OUTLET_PROPERTY->count; i++) {
 			port_mask[i] = AUX_POWER_OUTLET_PROPERTY->items[i].sw.value ? '1' : '0';
 		}
-		ppb_command(device, command, response, sizeof(response));
+		ppb_command(device, command);
 		AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM->sw.value = false;
 	}
 	//- aux.AUX_SAVE_OUTLET_STATES_AS_DEFAULT.on_change
@@ -840,7 +828,7 @@ indigo_result indigo_aux_ppb(indigo_driver_action action, indigo_driver_info *in
 			last_action = action;
 			static indigo_device_match_pattern patterns[1] = { 0 };
 			strcpy(patterns[0].product_string, "PPB");
-			strcpy(patterns[0].vendor_string, "Pegasus Astro");
+			patterns[0].vendor_id = 0x0403;
 			INDIGO_REGISER_MATCH_PATTERNS(aux_template, patterns, 1);
 			private_data = indigo_safe_malloc(sizeof(ppb_private_data));
 			aux = indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);

@@ -82,7 +82,7 @@ driver flipflat {
 						default:
 							AUX_LIGHT_SWITCH_PROPERTY->hidden = AUX_LIGHT_INTENSITY_PROPERTY->hidden = false;
 							AUX_COVER_PROPERTY->hidden = false;
-							strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown device");
+							strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 							break;
 					}
 					indigo_update_property(device, INFO_PROPERTY, NULL);
@@ -96,6 +96,8 @@ driver flipflat {
 		}
 
 		static void flipflat_close(indigo_device *device) {
+			strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			indigo_update_property(device, INFO_PROPERTY, NULL);
 			indigo_uni_close(&PRIVATE_DATA->handle);
 		}
 	}
@@ -138,6 +140,7 @@ driver flipflat {
 		// on_disconnect { }
 		on_attach {
 			INFO_PROPERTY->count = 5;
+			strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 		}
 		// on_detach { }
 		switch AUX_COVER {

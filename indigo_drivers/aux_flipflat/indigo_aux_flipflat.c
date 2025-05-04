@@ -1,7 +1,7 @@
 // Copyright (c) 2019-2025 CloudMakers, s. r. o.
 // All rights reserved.
 
-// You can use this software under the terms of 'INDIGO Astronomy
+// You may use this software under the terms of 'INDIGO Astronomy
 // open-source license' (see LICENSE.md).
 
 // THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
@@ -131,7 +131,7 @@ static bool flipflat_open(indigo_device *device) {
 				default:
 					AUX_LIGHT_SWITCH_PROPERTY->hidden = AUX_LIGHT_INTENSITY_PROPERTY->hidden = false;
 					AUX_COVER_PROPERTY->hidden = false;
-					strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown device");
+					strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 					break;
 			}
 			indigo_update_property(device, INFO_PROPERTY, NULL);
@@ -145,6 +145,8 @@ static bool flipflat_open(indigo_device *device) {
 }
 
 static void flipflat_close(indigo_device *device) {
+	strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+	indigo_update_property(device, INFO_PROPERTY, NULL);
 	indigo_uni_close(&PRIVATE_DATA->handle);
 }
 
@@ -293,6 +295,7 @@ static indigo_result aux_attach(indigo_device *device) {
 		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
 		//+ aux.on_attach
 		INFO_PROPERTY->count = 5;
+		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 		//- aux.on_attach
 		AUX_COVER_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_COVER_PROPERTY_NAME, AUX_MAIN_GROUP, "Cover", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (AUX_COVER_PROPERTY == NULL) {

@@ -297,6 +297,8 @@ int main() {
 				speed = atoi(buffer + 3);
 				sim_printf(fd, "%s\n", buffer);
 			} else if (!strcmp(buffer, "PF")) {
+			} else if (!strncmp(buffer, "BL:", 3)) {
+				sim_printf(fd, "%s\n", buffer);
 			}
 		}
 	}

@@ -1,7 +1,7 @@
 // Copyright (c) 2023-2025 Rumen G. Bogdanovski
 // All rights reserved.
 
-// You can use this software under the terms of 'INDIGO Astronomy
+// You may use this software under the terms of 'INDIGO Astronomy
 // open-source license' (see LICENSE.md).
 
 // THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
@@ -102,35 +102,36 @@ typedef struct {
 	indigo_timer *aux_usb_port_handler_timer;
 	indigo_timer *aux_x_aux_reboot_handler_timer;
 	indigo_timer *aux_save_outlet_states_as_default_handler_timer;
+	//+ data
+	char response[128];
+	//- data
 } uch_private_data;
 
 #pragma mark - Low level code
 
 //+ code
 
-static bool uch_command(indigo_device *device, char *command, char *response, int max) {
-	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
-		if (indigo_uni_printf(PRIVATE_DATA->handle, "%s\n", command) > 0) {
-			if (response) {
-				if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "\n", "\r\n", INDIGO_DELAY(1)) > 0) {
-					return true;
-				}
-			} else {
-				return true;
-			}
+static bool uch_command(indigo_device *device, char *command, ...) {
+	long result = indigo_uni_discard(PRIVATE_DATA->handle);
+	if (result >= 0) {
+		va_list args;
+		va_start(args, command);
+		result = indigo_uni_vprintf_line(PRIVATE_DATA->handle, command, args);
+		va_end(args);
+		if (result > 0) {
+			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", INDIGO_DELAY(1));
 		}
 	}
-	return false;
+	return result > 0;
 }
 
 static bool uch_open(indigo_device *device) {
-	char response[128];
 	PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
 	if (PRIVATE_DATA->handle != NULL) {
-		if (uch_command(device, "P#", response, sizeof(response))) {
-			if (!strcmp(response, "UCH_OK")) {
+		if (uch_command(device, "P#")) {
+			if (!strcmp(PRIVATE_DATA->response, "UCH_OK")) {
 				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro UCH");
-				uch_command(device, "PL:1", response, sizeof(response));
+				uch_command(device, "PL:1");
 				return true;
 			}
 		}
@@ -141,9 +142,8 @@ static bool uch_open(indigo_device *device) {
 }
 
 static void uch_close(indigo_device *device) {
-	char response[128];
 	if (PRIVATE_DATA->handle != NULL) {
-		uch_command(device, "PL:0", response, sizeof(response));
+		uch_command(device, "PL:0");
 		indigo_uni_close(&PRIVATE_DATA->handle);
 	}
 }
@@ -160,11 +160,10 @@ static void aux_timer_callback(indigo_device *device) {
 	}
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	//+ aux.on_timer
-	char response[128];
 	bool updateInfo = false;
 	bool updateUSBPorts = false;
-	if (uch_command(device, "PA", response, sizeof(response))) {
-		char *pnt = NULL, *token = strtok_r(response, ":", &pnt);
+	if (uch_command(device, "PA")) {
+		char *pnt = NULL, *token = strtok_r(PRIVATE_DATA->response, ":", &pnt);
 		if ((token = strtok_r(NULL, ":", &pnt))) { // Voltage
 			double value = indigo_atod(token);
 			if (AUX_INFO_VOLTAGE_ITEM->number.value != value) {
@@ -205,8 +204,8 @@ static void aux_timer_callback(indigo_device *device) {
 			}
 		}
 	}
-	if (uch_command(device, "PC", response, sizeof(response))) {
-		char *pnt = NULL, *token = strtok_r(response, ":", &pnt);
+	if (uch_command(device, "PC")) {
+		char *pnt = NULL, *token = strtok_r(PRIVATE_DATA->response, ":", &pnt);
 		if ((token = strtok_r(NULL, ":", &pnt))) {
 			double value = indigo_atod(token)/(1000*3600); // convert to seconds;
 			if (AUX_INFO_UPTIME_ITEM->number.value != value) {
@@ -238,9 +237,8 @@ static void aux_connection_handler(indigo_device *device) {
 		connection_result = uch_open(device);
 		if (connection_result) {
 			//+ aux.on_connect
-			char response[128];
-			if (uch_command(device, "PA", response, sizeof(response)) && !strncmp(response, "UCH", 3)) {
-				char *pnt, *token = strtok_r(response, ":", &pnt);
+			if (uch_command(device, "PA") && !strncmp(PRIVATE_DATA->response, "UCH", 3)) {
+				char *pnt, *token = strtok_r(PRIVATE_DATA->response, ":", &pnt);
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Voltage
 					AUX_INFO_VOLTAGE_ITEM->number.value = indigo_atod(token);
 				}	
@@ -253,8 +251,8 @@ static void aux_connection_handler(indigo_device *device) {
 					AUX_USB_PORT_6_ITEM->sw.value =  token[5] == '1';
 				}
 			}
-			if (uch_command(device, "PV", response, sizeof(response))) {
-				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, response + 3);
+			if (uch_command(device, "PV")) {
+				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 3);
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 			}
 			//- aux.on_connect
@@ -322,10 +320,8 @@ static void aux_usb_port_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_USB_PORT_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_USB_PORT.on_change
-	char command[16], response[128];
 	for (int i = 0; i < AUX_USB_PORT_PROPERTY->count; i++) {
-		sprintf(command, "U%d:%d", i + 1, AUX_USB_PORT_PROPERTY->items[i].sw.value ? 1 : 0);
-		uch_command(device, command, response, sizeof(response));
+		uch_command(device, "U%d:%d", i + 1, AUX_USB_PORT_PROPERTY->items[i].sw.value ? 1 : 0);
 	}
 	//- aux.AUX_USB_PORT.on_change
 	indigo_update_property(device, AUX_USB_PORT_PROPERTY, NULL);
@@ -338,9 +334,8 @@ static void aux_x_aux_reboot_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	X_AUX_REBOOT_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.X_AUX_REBOOT.on_change
-	char response[128];
 	if (X_AUX_REBOOT_ITEM->sw.value) {
-		uch_command(device, "PF", response, sizeof(response));
+		uch_command(device, "PF");
 		X_AUX_REBOOT_ITEM->sw.value = false;
 	}
 	//- aux.X_AUX_REBOOT.on_change
@@ -354,14 +349,13 @@ static void aux_save_outlet_states_as_default_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_SAVE_OUTLET_STATES_AS_DEFAULT.on_change
-	char response[128];
 	if (AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM->sw.value) {
 		char command[] = "PE:000000";
 		char *port_mask = command + 3;
 		for (int i = 0; i < AUX_USB_PORT_PROPERTY->count; i++) {
 			port_mask[i] = AUX_USB_PORT_PROPERTY->items[i].sw.value ? '1' : '0';
 		}
-		uch_command(device, command, response, sizeof(response));
+		uch_command(device, command);
 		AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM->sw.value = false;
 	}
 	//- aux.AUX_SAVE_OUTLET_STATES_AS_DEFAULT.on_change
@@ -536,7 +530,7 @@ indigo_result indigo_aux_uch(indigo_driver_action action, indigo_driver_info *in
 			last_action = action;
 			static indigo_device_match_pattern patterns[1] = { 0 };
 			strcpy(patterns[0].product_string, "USB Control Hub");
-			strcpy(patterns[0].vendor_string, "Pegasus Astro");
+			patterns[0].vendor_id = 0x0403;
 			INDIGO_REGISER_MATCH_PATTERNS(aux_template, patterns, 1);
 			private_data = indigo_safe_malloc(sizeof(uch_private_data));
 			aux = indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);

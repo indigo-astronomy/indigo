@@ -264,16 +264,16 @@ struct call_back_data {
 	char call_back_url[INDIGO_NAME_SIZE];
 };
 
-static void *call_back_client_handler(struct call_back_data *data) {
-	indigo_device *protocol_adapter = indigo_xml_client_adapter(data->call_back_name, data->call_back_url, data->handle, data->handle);
-	indigo_attach_device(protocol_adapter);
-	indigo_xml_parse(protocol_adapter, NULL);
-	((indigo_adapter_context *)(protocol_adapter->device_context))->output = ((indigo_adapter_context *)(protocol_adapter->device_context))->input = NULL;
-	indigo_detach_device(protocol_adapter);
-	indigo_release_xml_client_adapter(protocol_adapter);
-	indigo_safe_free(data);
-	return NULL;
-}
+//static void *call_back_client_handler(struct call_back_data *data) {
+//	indigo_device *protocol_adapter = indigo_xml_client_adapter(data->call_back_name, data->call_back_url, data->handle, data->handle);
+//	indigo_attach_device(protocol_adapter);
+//	indigo_xml_parse(protocol_adapter, NULL);
+//	((indigo_adapter_context *)(protocol_adapter->device_context))->output = ((indigo_adapter_context *)(protocol_adapter->device_context))->input = NULL;
+//	indigo_detach_device(protocol_adapter);
+//	indigo_release_xml_client_adapter(protocol_adapter);
+//	indigo_safe_free(data);
+//	return NULL;
+//}
 
 //static void *call_back_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
 //	indigo_client *client = context->client;

@@ -220,15 +220,20 @@ INDIGO_EXTERN int indigo_uni_scanf_line(indigo_uni_handle *handle, const char *f
  */
 INDIGO_EXTERN long indigo_uni_write(indigo_uni_handle *handle, const char *buffer, long length);
 
-/** Write formatted.
+/** Write formatted string.
  */
 
 INDIGO_EXTERN long indigo_uni_printf(indigo_uni_handle *handle, const char *format, ...);
 
-/** Write formatted.
+/** Write formatted string.
  */
 
 INDIGO_EXTERN long indigo_uni_vprintf(indigo_uni_handle *handle, const char *format, va_list args);
+
+/** Write formatted line.
+ */
+
+INDIGO_EXTERN long indigo_uni_vprintf_line(indigo_uni_handle *handle, const char *format, va_list args);
 
 /** Seek.
  */

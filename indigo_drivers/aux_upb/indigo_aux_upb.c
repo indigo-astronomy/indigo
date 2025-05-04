@@ -1,7 +1,7 @@
 // Copyright (c) 2018-2025 CloudMakers, s. r. o.
 // All rights reserved.
 
-// You can use this software under the terms of 'INDIGO Astronomy
+// You may use this software under the terms of 'INDIGO Astronomy
 // open-source license' (see LICENSE.md).
 
 // THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
@@ -230,6 +230,7 @@ typedef struct {
 	//+ data
 	int version;
 	libusb_device_handle *smart_hub;
+	char response[128];
 	//- data
 } upb_private_data;
 
@@ -237,35 +238,33 @@ typedef struct {
 
 //+ code
 
-static bool upb_command(indigo_device *device, char *command, char *response, int max) {
-	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
-		if (indigo_uni_printf(PRIVATE_DATA->handle, "%s\n", command) > 0) {
-			if (response) {
-				if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "\n", "\r\n", INDIGO_DELAY(1)) > 0) {
-					return true;
-				}
-			} else {
-				return true;
-			}
+static bool upb_command(indigo_device *device, char *command, ...) {
+	long result = indigo_uni_discard(PRIVATE_DATA->handle);
+	if (result >= 0) {
+		va_list args;
+		va_start(args, command);
+		result = indigo_uni_vprintf_line(PRIVATE_DATA->handle, command, args);
+		va_end(args);
+		if (result > 0) {
+			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", INDIGO_DELAY(1));
 		}
 	}
-	return false;
+	return result > 0;
 }
 
 static bool upb_open(indigo_device *device) {
-	char response[128];
 	PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
 	if (PRIVATE_DATA->handle != NULL) {
-		if (upb_command(device, "P#", response, sizeof(response))) {
-			if (!strcmp(response, "UPB_OK")) {
+		if (upb_command(device, "P#")) {
+			if (!strcmp(PRIVATE_DATA->response, "UPB_OK")) {
 				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro UPB");
 				PRIVATE_DATA->version = 1;
-				upb_command(device, "PL:1", response, sizeof(response));
+				upb_command(device, "PL:1");
 				return true;
-			} else if (!strcmp(response, "UPB2_OK")) {
+			} else if (!strcmp(PRIVATE_DATA->response, "UPB2_OK")) {
 				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro UPB2");
 				PRIVATE_DATA->version = 2;
-				upb_command(device, "PL:1", response, sizeof(response));
+				upb_command(device, "PL:1");
 				return true;
 			}
 		}
@@ -276,9 +275,8 @@ static bool upb_open(indigo_device *device) {
 }
 
 static void upb_close(indigo_device *device) {
-	char response[128];
 	if (PRIVATE_DATA->handle != NULL) {
-		upb_command(device, "PL:0", response, sizeof(response));
+		upb_command(device, "PL:0");
 		indigo_uni_close(&PRIVATE_DATA->handle);
 	}
 }
@@ -295,7 +293,6 @@ static void aux_timer_callback(indigo_device *device) {
 	}
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	//+ aux.on_timer
-	char response[128];
 	bool updatePowerOutlet = false;
 	bool updatePowerOutletState = false;
 	bool updatePowerOutletCurrent = false;
@@ -307,8 +304,8 @@ static void aux_timer_callback(indigo_device *device) {
 	bool updateAutoHeater = false;
 	bool updateHub = false;
 	bool updateUSBPorts = false;
-	if (upb_command(device, "PA", response, sizeof(response))) {
-		char *pnt = NULL, *token = strtok_r(response, ":", &pnt);
+	if (upb_command(device, "PA")) {
+		char *pnt = NULL, *token = strtok_r(PRIVATE_DATA->response, ":", &pnt);
 		if ((token = strtok_r(NULL, ":", &pnt))) { // Voltage
 			double value = indigo_atod(token);
 			if (AUX_INFO_VOLTAGE_ITEM->number.value != value) {
@@ -541,8 +538,8 @@ static void aux_timer_callback(indigo_device *device) {
 			}
 		}
 	}
-	if (upb_command(device, "PC", response, sizeof(response))) {
-		char *pnt = NULL, *token = strtok_r(response, ":", &pnt);
+	if (upb_command(device, "PC")) {
+		char *pnt = NULL, *token = strtok_r(PRIVATE_DATA->response, ":", &pnt);
 		if (token) {
 			double value = indigo_atod(token);
 			if (X_AUX_AVERAGE_ITEM->number.value != value) {
@@ -659,7 +656,6 @@ static void aux_connection_handler(indigo_device *device) {
 		}
 		if (connection_result) {
 			//+ aux.on_connect
-			char response[128];
 			if (PRIVATE_DATA->version == 1) {
 				AUX_HEATER_OUTLET_PROPERTY->count = 2;
 				AUX_HEATER_OUTLET_STATE_PROPERTY->count = 2;
@@ -673,8 +669,8 @@ static void aux_connection_handler(indigo_device *device) {
 				AUX_USB_PORT_PROPERTY->hidden = false;
 				AUX_USB_PORT_STATE_PROPERTY->hidden = true;
 			}
-			if (upb_command(device, "PA", response, sizeof(response)) && !strncmp(response, "UPB", 3)) {
-				char *pnt = NULL, *token = strtok_r(response, ":", &pnt);
+			if (upb_command(device, "PA") && !strncmp(PRIVATE_DATA->response, "UPB", 3)) {
+				char *pnt = NULL, *token = strtok_r(PRIVATE_DATA->response, ":", &pnt);
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Voltage
 					AUX_INFO_VOLTAGE_ITEM->number.value = indigo_atod(token);
 				}
@@ -770,12 +766,12 @@ static void aux_connection_handler(indigo_device *device) {
 					indigo_uni_close(&PRIVATE_DATA->handle);
 				}
 			}
-			if (upb_command(device, "PV", response, sizeof(response))) {
+			if (upb_command(device, "PV")) {
 				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->version == 2 ? "UPBv2" : "UPB");
-				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, response + 3); // remove "PV:" prefix
+				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 3); // remove "PV:" prefix
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 			}
-			upb_command(device, "PU:1", response, sizeof(response));
+			upb_command(device, "PU:1");
 			indigo_set_switch(X_AUX_HUB_PROPERTY, X_AUX_HUB_ENABLED_ITEM, true);
 			if (PRIVATE_DATA->version == 1) {
 				libusb_context *ctx = NULL;
@@ -821,8 +817,8 @@ static void aux_connection_handler(indigo_device *device) {
 				libusb_free_device_list(usb_devices, 1);
 			}
 			if (PRIVATE_DATA->version == 2) {
-				if (upb_command(device, "PS", response, sizeof(response)) && !strncmp(response, "PS", 2)) {
-					char *pnt = NULL, *token = strtok_r(response, ":", &pnt);
+				if (upb_command(device, "PS") && !strncmp(PRIVATE_DATA->response, "PS", 2)) {
+					char *pnt = NULL, *token = strtok_r(PRIVATE_DATA->response, ":", &pnt);
 					if ((token = strtok_r(NULL, ":", &pnt))) { // Power-up state
 					}
 					if ((token = strtok_r(NULL, ":", &pnt))) { // Variable voltage
@@ -979,11 +975,10 @@ static void aux_power_outlet_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_POWER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_POWER_OUTLET.on_change
-	char response[128];
-	upb_command(device, AUX_POWER_OUTLET_1_ITEM->sw.value ? "P1:1" : "P1:0", response, sizeof(response));
-	upb_command(device, AUX_POWER_OUTLET_2_ITEM->sw.value ? "P2:1" : "P2:0", response, sizeof(response));
-	upb_command(device, AUX_POWER_OUTLET_3_ITEM->sw.value ? "P3:1" : "P3:0", response, sizeof(response));
-	upb_command(device, AUX_POWER_OUTLET_4_ITEM->sw.value ? "P4:1" : "P4:0", response, sizeof(response));
+	upb_command(device, "P1:%d", AUX_POWER_OUTLET_1_ITEM->sw.value ? 1 : 0);
+	upb_command(device, "P2:%d", AUX_POWER_OUTLET_2_ITEM->sw.value ? 1 : 0);
+	upb_command(device, "P3:%d", AUX_POWER_OUTLET_3_ITEM->sw.value ? 1 : 0);
+	upb_command(device, "P4:%d", AUX_POWER_OUTLET_4_ITEM->sw.value ? 1 : 0);
 	//- aux.AUX_POWER_OUTLET.on_change
 	indigo_update_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -995,14 +990,10 @@ static void aux_heater_outlet_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_HEATER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_HEATER_OUTLET.on_change
-	char command[16], response[128];
-	sprintf(command, "P5:%d", (int)(AUX_HEATER_OUTLET_1_ITEM->number.value * 255.0 / 100.0));
-	upb_command(device, command, response, sizeof(response));
-	sprintf(command, "P6:%d", (int)(AUX_HEATER_OUTLET_2_ITEM->number.value * 255.0 / 100.0));
-	upb_command(device, command, response, sizeof(response));
+	upb_command(device, "P5:%d", (int)(AUX_HEATER_OUTLET_1_ITEM->number.value * 255.0 / 100.0));
+	upb_command(device, "P6:%d", (int)(AUX_HEATER_OUTLET_2_ITEM->number.value * 255.0 / 100.0));
 	if (PRIVATE_DATA->version == 2) {
-		sprintf(command, "P7:%d", (int)(AUX_HEATER_OUTLET_3_ITEM->number.value * 255.0 / 100.0));
-		upb_command(device, command, response, sizeof(response));
+		upb_command(device, "P7:%d", (int)(AUX_HEATER_OUTLET_3_ITEM->number.value * 255.0 / 100.0));
 	}
 	//- aux.AUX_HEATER_OUTLET.on_change
 	indigo_update_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
@@ -1015,8 +1006,7 @@ static void aux_dew_control_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_DEW_CONTROL_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_DEW_CONTROL.on_change
-	char response[128];
-	upb_command(device, AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value ? "PD:1" : "PD:0", response, sizeof(response));
+	upb_command(device, "PD:%d", AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value ? 1 : 0);
 	//- aux.AUX_DEW_CONTROL.on_change
 	indigo_update_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -1060,10 +1050,8 @@ static void aux_usb_port_handler(indigo_device *device) {
 		}
 	}
 	if (PRIVATE_DATA->version == 2) {
-		char command[16], response[128];
 		for (int i = 0; i < AUX_USB_PORT_PROPERTY->count; i++) {
-			sprintf(command, "U%d:%d", i + 1, AUX_USB_PORT_PROPERTY->items[i].sw.value ? 1 : 0);
-			upb_command(device, command, response, sizeof(response));
+			upb_command(device, "U%d:%d", i + 1, AUX_USB_PORT_PROPERTY->items[i].sw.value ? 1 : 0);
 		}
 	}
 	//- aux.AUX_USB_PORT.on_change
@@ -1077,8 +1065,7 @@ static void aux_x_aux_hub_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	X_AUX_HUB_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.X_AUX_HUB.on_change
-	char response[128];
-	upb_command(device, X_AUX_HUB_ENABLED_ITEM->sw.value ? "PU:1" : "PU:0", response, sizeof(response));
+	upb_command(device, "PU:%d", X_AUX_HUB_ENABLED_ITEM->sw.value ? 1 : 0);
 	//- aux.X_AUX_HUB.on_change
 	indigo_update_property(device, X_AUX_HUB_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -1090,9 +1077,8 @@ static void aux_x_aux_reboot_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	X_AUX_REBOOT_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.X_AUX_REBOOT.on_change
-	char response[128];
 	if (X_AUX_REBOOT_ITEM->sw.value) {
-		upb_command(device, "PF", response, sizeof(response));
+		upb_command(device, "PF");
 		X_AUX_REBOOT_ITEM->sw.value = false;
 	}
 	//- aux.X_AUX_REBOOT.on_change
@@ -1106,9 +1092,7 @@ static void aux_x_aux_variable_power_outlet_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	X_AUX_VARIABLE_POWER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.X_AUX_VARIABLE_POWER_OUTLET.on_change
-	char command[16], response[128];
-	sprintf(command, "P8:%d", (int)X_AUX_VARIABLE_POWER_OUTLET_1_ITEM->number.target);
-	upb_command(device, command, response, sizeof(response));
+	upb_command(device, "P8:%d",(int)X_AUX_VARIABLE_POWER_OUTLET_1_ITEM->number.target);
 	//- aux.X_AUX_VARIABLE_POWER_OUTLET.on_change
 	indigo_update_property(device, X_AUX_VARIABLE_POWER_OUTLET_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -1120,14 +1104,13 @@ static void aux_save_outlet_states_as_default_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_SAVE_OUTLET_STATES_AS_DEFAULT.on_change
-	char response[128];
 	if (AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM->sw.value) {
 		char command[] = "PE:0000";
 		char *port_mask = command + 3;
 		for (int i = 0; i < AUX_POWER_OUTLET_PROPERTY->count; i++) {
 			port_mask[i] = AUX_POWER_OUTLET_PROPERTY->items[i].sw.value ? '1' : '0';
 		}
-		upb_command(device, command, response, sizeof(response));
+		upb_command(device, command);
 		AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM->sw.value = false;
 	}
 	//- aux.AUX_SAVE_OUTLET_STATES_AS_DEFAULT.on_change
@@ -1438,9 +1421,8 @@ static void focuser_timer_callback(indigo_device *device) {
 	}
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	//+ focuser.on_timer
-	char response[128];
-	if (upb_command(device, "ST", response, sizeof(response))) {
-		double temp = indigo_atod(response);
+	if (upb_command(device, "ST")) {
+		double temp = indigo_atod(PRIVATE_DATA->response);
 		if (FOCUSER_TEMPERATURE_ITEM->number.value != temp) {
 			FOCUSER_TEMPERATURE_ITEM->number.value = temp;
 			FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
@@ -1448,15 +1430,15 @@ static void focuser_timer_callback(indigo_device *device) {
 		}
 	}
 	bool update = false;
-	if (upb_command(device, "SP", response, sizeof(response))) {
-		int pos = atoi(response);
+	if (upb_command(device, "SP")) {
+		int pos = atoi(PRIVATE_DATA->response);
 		if (FOCUSER_POSITION_ITEM->number.value != pos) {
 			FOCUSER_POSITION_ITEM->number.value = pos;
 			update = true;
 		}
 	}
-	if (upb_command(device, "SI", response, sizeof(response))) {
-		if (*response == '0') {
+	if (upb_command(device, "SI")) {
+		if (PRIVATE_DATA->response[0] == '0') {
 			if (FOCUSER_POSITION_PROPERTY->state != INDIGO_OK_STATE) {
 				FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
@@ -1491,9 +1473,8 @@ static void focuser_connection_handler(indigo_device *device) {
 		}
 		if (connection_result) {
 			//+ focuser.on_connect
-			char response[128];
-			if (upb_command(device, "SA", response, sizeof(response))) {
-				char *pnt = NULL, *token = strtok_r(response, ":", &pnt);
+			if (upb_command(device, "SA")) {
+				char *pnt = NULL, *token = strtok_r(PRIVATE_DATA->response, ":", &pnt);
 				if (token) { // Stepper position
 					FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = atol(token);
 				}
@@ -1510,15 +1491,15 @@ static void focuser_connection_handler(indigo_device *device) {
 					indigo_uni_close(&PRIVATE_DATA->handle);
 				}
 			}
-			if (upb_command(device, "PV", response, sizeof(response))) {
+			if (upb_command(device, "PV")) {
 				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->version == 2 ? "UPBv2" : "UPB");
-				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, response);
+				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response);
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 			}
-			if (upb_command(device, "SS", response, sizeof(response))) {
-				FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = atol(response);
+			if (upb_command(device, "SS")) {
+				FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = atol(PRIVATE_DATA->response);
 			}
-			upb_command(device, "PL:1", response, sizeof(response));
+			upb_command(device, "PL:1");
 			//- focuser.on_connect
 			indigo_set_timer(device, 0, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -1566,9 +1547,7 @@ static void focuser_backlash_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	FOCUSER_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_BACKLASH.on_change
-	char command[16], response[128];
-	snprintf(command, sizeof(command), "SB:%d", (int)FOCUSER_BACKLASH_ITEM->number.value);
-	if (!upb_command(device, command, response, sizeof(response))) {
+	if (!upb_command(device, "SB:%d", (int)FOCUSER_BACKLASH_ITEM->number.value)) {
 		FOCUSER_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- focuser.FOCUSER_BACKLASH.on_change
@@ -1582,9 +1561,7 @@ static void focuser_reverse_motion_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_REVERSE_MOTION.on_change
-	char command[16], response[128];
-	snprintf(command, sizeof(command), "SR:%d", (int)FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value? 0 : 1);
-	if (!upb_command(device, command, response, sizeof(response))) {
+	if (!upb_command(device, "SR:%d", (int)FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value? 0 : 1)) {
 		FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- focuser.FOCUSER_REVERSE_MOTION.on_change
@@ -1607,9 +1584,7 @@ static void focuser_speed_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_SPEED.on_change
-	char command[16], response[128];
-	snprintf(command, sizeof(command), "SS:%d", (int)FOCUSER_SPEED_ITEM->number.value);
-	if (!upb_command(device, command, response, sizeof(response))) {
+	if (!upb_command(device, "SS:%d", (int)FOCUSER_SPEED_ITEM->number.value)) {
 		FOCUSER_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- focuser.FOCUSER_SPEED.on_change
@@ -1623,19 +1598,17 @@ static void focuser_steps_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_STEPS.on_change
-	char command[16], response[128];
 	int position = (int)FOCUSER_POSITION_ITEM->number.value;
 	if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
-		if (position + FOCUSER_STEPS_ITEM->number.value > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value) {
+		if (position + FOCUSER_STEPS_ITEM->number.target > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value) {
 			FOCUSER_STEPS_ITEM->number.value = FOCUSER_STEPS_ITEM->number.target = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value - position;
 		}
 	} else {
-		if (position - FOCUSER_STEPS_ITEM->number.value < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value) {
+		if (position - FOCUSER_STEPS_ITEM->number.target < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value) {
 			FOCUSER_STEPS_ITEM->number.value = FOCUSER_STEPS_ITEM->number.target = position - FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
 		}
 	}
-	snprintf(command, sizeof(command), "SG:%d", (int)FOCUSER_STEPS_ITEM->number.value * (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? 1 : -1));
-	if (upb_command(device, command, response, sizeof(response))) {
+	if (upb_command(device, "SG:%d", (int)FOCUSER_STEPS_ITEM->number.target * (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? 1 : -1))) {
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else {
@@ -1672,7 +1645,6 @@ static void focuser_position_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_POSITION.on_change
-	char command[16], response[128];
 	if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) {
 		int position = (int)FOCUSER_POSITION_ITEM->number.value;
 		if (position < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value) {
@@ -1681,9 +1653,8 @@ static void focuser_position_handler(indigo_device *device) {
 		if (position > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value) {
 			position = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
 		}
-		FOCUSER_POSITION_ITEM->number.target = position;
-		snprintf(command, sizeof(command), "SM:%d", position);
-		if (upb_command(device, command, response, sizeof(response))) {
+		FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
+		if (upb_command(device, "SM:%d", position)) {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		} else {
@@ -1692,8 +1663,7 @@ static void focuser_position_handler(indigo_device *device) {
 		}
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 	} else if (FOCUSER_ON_POSITION_SET_SYNC_ITEM->sw.value) {
-		snprintf(command, sizeof(command), "SC:%d", (int)FOCUSER_POSITION_ITEM->number.value);
-		if (!upb_command(device, command,  response, sizeof(response))) {
+		if (!upb_command(device, "SC:%d", (int)FOCUSER_POSITION_ITEM->number.target)) {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 	}
@@ -1708,10 +1678,9 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_ABORT_MOTION.on_change
-	char response[128];
 	if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
 		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
-		if (upb_command(device, "SH", response, sizeof(response))) {
+		if (upb_command(device, "SH")) {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
@@ -1912,7 +1881,7 @@ indigo_result indigo_aux_upb(indigo_driver_action action, indigo_driver_info *in
 			last_action = action;
 			static indigo_device_match_pattern patterns[1] = { 0 };
 			strcpy(patterns[0].product_string, "UPB");
-			strcpy(patterns[0].vendor_string, "Pegasus Astro");
+			patterns[0].vendor_id = 0x0403;
 			INDIGO_REGISER_MATCH_PATTERNS(aux_template, patterns, 1);
 			private_data = indigo_safe_malloc(sizeof(upb_private_data));
 			aux = indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);

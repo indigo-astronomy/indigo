@@ -78,7 +78,6 @@ static bool cgusbst4_open(indigo_device *device) {
 	char *name = DEVICE_PORT_ITEM->text.value;
 	PRIVATE_DATA->handle = indigo_uni_open_serial(name, INDIGO_LOG_DEBUG);
 	if (PRIVATE_DATA->handle != NULL) {
-		char response[2];
 		if (cgusbst4_command(device, "\006", 1) && PRIVATE_DATA->response[0] == 'A') {
 			return true;
 		}

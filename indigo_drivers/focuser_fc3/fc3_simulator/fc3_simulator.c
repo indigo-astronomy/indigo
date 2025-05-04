@@ -18,7 +18,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// https:#pegasusastro.com/command-list-for-focuscube3/
+// https://pegasusastro.com/command-list-for-focuscube3/
 
 #include <pthread.h>
 #include <stdio.h>
