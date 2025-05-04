@@ -26,17 +26,22 @@ driver arteskyflat {
 	serial;
 	// include { }
 	// define { }
-	// data { }
+	data {
+		char response[16];
+	}
 	code {
-		static bool arteskyflat_command(indigo_device *device, char *command, char *response) {
-			if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
-				if (indigo_uni_printf(PRIVATE_DATA->handle, "%s\n", command) > 0) {
-					if (indigo_uni_read_section(PRIVATE_DATA->handle, response, 16, "\n", "\r\n", INDIGO_DELAY(1)) > 0) {
-						return true;
-					}
+		static bool arteskyflat_command(indigo_device *device, char *command, ...) {
+			long result = indigo_uni_discard(PRIVATE_DATA->handle);
+			if (result >= 0) {
+				va_list args;
+				va_start(args, command);
+				result = indigo_uni_vprintf(PRIVATE_DATA->handle, command, args);
+				va_end(args);
+				if (result > 0) {
+					result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", INDIGO_DELAY(1));
 				}
 			}
-			return false;
+			return result > 0;
 		}
 
 		static bool arteskyflat_open(indigo_device *device) {
@@ -45,9 +50,7 @@ driver arteskyflat {
 		}
 
 		static void arteskyflat_close(indigo_device *device) {
-			if (PRIVATE_DATA->handle != NULL) {
-				indigo_uni_close(&PRIVATE_DATA->handle);
-			}
+			indigo_uni_close(&PRIVATE_DATA->handle);
 		}
 	}
 	// on_init { }
@@ -69,9 +72,7 @@ driver arteskyflat {
 			// handle_change = false;
 			// synchronized_change = false;
 			on_change {
-				char command[16],	response[16];
-				strcpy(command, AUX_LIGHT_SWITCH_ON_ITEM->sw.value ? ">L000" : ">D000");
-				if (!arteskyflat_command(device, command, response) || *response != '*') {
+				if (!arteskyflat_command(device, AUX_LIGHT_SWITCH_ON_ITEM->sw.value ? ">L000\n" : ">D000\n") || PRIVATE_DATA->response[0] != '*') {
 					AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 			}
@@ -96,9 +97,7 @@ driver arteskyflat {
 			// handle_change = false;
 			// synchronized_change = false;
 			on_change {
-				char command[16],	response[16];
-				sprintf(command, ">B%03d", (int)(AUX_LIGHT_INTENSITY_ITEM->number.value));
-				if (!arteskyflat_command(device, command, response) || *response != '*') {
+				if (!arteskyflat_command(device, ">B%03d\n", (int)(255 * AUX_LIGHT_INTENSITY_ITEM->number.value / 100)) || PRIVATE_DATA->response[0] != '*') {
 					AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 			}
@@ -106,11 +105,11 @@ driver arteskyflat {
 			// on_detach { }
 			item AUX_LIGHT_INTENSITY {
 				name = AUX_LIGHT_INTENSITY_ITEM_NAME;
-				label = "Intensity";
+				label = "Intensity [%]";
 				value = 0;
-				max = 255;
+				max = 100;
 				step = 1;
-				format = "%d";
+				format = "%.0f";
 			}
 		}
 	}

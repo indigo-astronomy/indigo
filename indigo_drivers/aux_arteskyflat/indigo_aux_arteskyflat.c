@@ -1,7 +1,7 @@
 // Copyright (c) 2019-2025 CloudMakers, s. r. o.
 // All rights reserved.
 
-// You can use this software under the terms of 'INDIGO Astronomy
+// You may use this software under the terms of 'INDIGO Astronomy
 // open-source license' (see LICENSE.md).
 
 // THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
@@ -63,21 +63,27 @@ typedef struct {
 	indigo_timer *aux_connection_handler_timer;
 	indigo_timer *aux_light_switch_handler_timer;
 	indigo_timer *aux_light_intensity_handler_timer;
+	//+ data
+	char response[16];
+	//- data
 } arteskyflat_private_data;
 
 #pragma mark - Low level code
 
 //+ code
 
-static bool arteskyflat_command(indigo_device *device, char *command, char *response) {
-	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
-		if (indigo_uni_printf(PRIVATE_DATA->handle, "%s\n", command) > 0) {
-			if (indigo_uni_read_section(PRIVATE_DATA->handle, response, 16, "\n", "\r\n", INDIGO_DELAY(1)) > 0) {
-				return true;
-			}
+static bool arteskyflat_command(indigo_device *device, char *command, ...) {
+	long result = indigo_uni_discard(PRIVATE_DATA->handle);
+	if (result >= 0) {
+		va_list args;
+		va_start(args, command);
+		result = indigo_uni_vprintf(PRIVATE_DATA->handle, command, args);
+		va_end(args);
+		if (result > 0) {
+			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", INDIGO_DELAY(1));
 		}
 	}
-	return false;
+	return result > 0;
 }
 
 static bool arteskyflat_open(indigo_device *device) {
@@ -86,9 +92,7 @@ static bool arteskyflat_open(indigo_device *device) {
 }
 
 static void arteskyflat_close(indigo_device *device) {
-	if (PRIVATE_DATA->handle != NULL) {
-		indigo_uni_close(&PRIVATE_DATA->handle);
-	}
+	indigo_uni_close(&PRIVATE_DATA->handle);
 }
 
 //- code
@@ -133,9 +137,7 @@ static void aux_light_switch_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_LIGHT_SWITCH.on_change
-	char command[16],	response[16];
-	strcpy(command, AUX_LIGHT_SWITCH_ON_ITEM->sw.value ? ">L000" : ">D000");
-	if (!arteskyflat_command(device, command, response) || *response != '*') {
+	if (!arteskyflat_command(device, AUX_LIGHT_SWITCH_ON_ITEM->sw.value ? ">L000\n" : ">D000\n") || PRIVATE_DATA->response[0] != '*') {
 		AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- aux.AUX_LIGHT_SWITCH.on_change
@@ -149,9 +151,7 @@ static void aux_light_intensity_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_LIGHT_INTENSITY.on_change
-	char command[16],	response[16];
-	sprintf(command, ">B%03d", (int)(AUX_LIGHT_INTENSITY_ITEM->number.value));
-	if (!arteskyflat_command(device, command, response) || *response != '*') {
+	if (!arteskyflat_command(device, ">B%03d\n", (int)(255 * AUX_LIGHT_INTENSITY_ITEM->number.value / 100)) || PRIVATE_DATA->response[0] != '*') {
 		AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- aux.AUX_LIGHT_INTENSITY.on_change
@@ -181,8 +181,8 @@ static indigo_result aux_attach(indigo_device *device) {
 		if (AUX_LIGHT_INTENSITY_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
-		indigo_init_number_item(AUX_LIGHT_INTENSITY_ITEM, AUX_LIGHT_INTENSITY_ITEM_NAME, "Intensity", 0, 255, 1, 0);
-		strcpy(AUX_LIGHT_INTENSITY_ITEM->number.format, "%d");
+		indigo_init_number_item(AUX_LIGHT_INTENSITY_ITEM, AUX_LIGHT_INTENSITY_ITEM_NAME, "Intensity [%]", 0, 100, 1, 0);
+		strcpy(AUX_LIGHT_INTENSITY_ITEM->number.format, "%.0f");
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		return aux_enumerate_properties(device, NULL, NULL);
