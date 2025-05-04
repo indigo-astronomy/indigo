@@ -225,6 +225,11 @@ INDIGO_EXTERN long indigo_uni_write(indigo_uni_handle *handle, const char *buffe
 
 INDIGO_EXTERN long indigo_uni_printf(indigo_uni_handle *handle, const char *format, ...);
 
+/** Write formatted.
+ */
+
+INDIGO_EXTERN long indigo_uni_vprintf(indigo_uni_handle *handle, const char *format, va_list args);
+
 /** Seek.
  */
 
