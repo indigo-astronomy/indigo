@@ -30,15 +30,15 @@ driver sx {
 		char response[6];
 	}
 	code {
-		static bool sx_command(indigo_device *device, char *command, int count, ...) {
+		static bool sx_command(indigo_device *device, char *command, int response, ...) {
 			long result = indigo_uni_discard(PRIVATE_DATA->handle);
 			if (result >= 0) {
 				va_list args;
-				va_start(args, count);
+				va_start(args, response);
 				result = indigo_uni_vprintf(PRIVATE_DATA->handle, command, args);
 				va_end(args);
-				if (result > 0 && count > 0) {
-					result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, count, "", "", INDIGO_DELAY((*command == 'K' || *command == 'R') ? 15 : 1));
+				if (result > 0 && response > 0) {
+					result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, response, "", "", INDIGO_DELAY((*command == 'K' || *command == 'R') ? 15 : 1));
 				}
 			}
 			return result > 0;
@@ -62,9 +62,7 @@ driver sx {
 		static void sx_close(indigo_device *device) {
 			strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 			indigo_update_property(device, INFO_PROPERTY, NULL);
-			if (PRIVATE_DATA->handle != NULL) {
-				indigo_uni_close(&PRIVATE_DATA->handle);
-			}
+			indigo_uni_close(&PRIVATE_DATA->handle);
 		}
 	}
 	// on_init { }
