@@ -23,7 +23,12 @@ driver fc3 {
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2024-2025 CloudMakers, s. r. o.";
 	version = 3;
-	serial;
+	serial {
+		pattern {
+			pid = 0x9000;
+			vid = 0x303a;
+		}
+	}
 	// include { }
 	// define { }
 	data {
@@ -34,7 +39,7 @@ driver fc3 {
 			long result = indigo_uni_discard(PRIVATE_DATA->handle);
 			if (result >= 0) {
 				va_list args;
-				va_start(args, command);
+				va_start(args, response);
 				result = indigo_uni_vprintf(PRIVATE_DATA->handle, command, args);
 				va_end(args);
 				if (result > 0 && response) {
@@ -156,8 +161,7 @@ driver fc3 {
 		inherited FOCUSER_BACKLASH {
 			hidden = false;
 			on_change {
-				snprintf(command, sizeof(command), "BL:%d", (int)FOCUSER_BACKLASH_ITEM->number.value);
-				if (!fc3_command(device, command, true)) {
+				if (!fc3_command(device, "BL:%d", true, (int)FOCUSER_BACKLASH_ITEM->number.value)) {
 					FOCUSER_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 			}

@@ -60,35 +60,36 @@ typedef struct {
 	indigo_timer *focuser_abort_motion_handler_timer;
 	indigo_timer *focuser_direction_handler_timer;
 	indigo_timer *focuser_limits_handler_timer;
+	//+ data
+	char response[128];
+	//- data
 } fc3_private_data;
 
 #pragma mark - Low level code
 
 //+ code
 
-static bool fc3_command(indigo_device *device, char *command, char *response, int max) {
-	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
-		if (indigo_uni_printf(PRIVATE_DATA->handle, "%s\n", command) > 0) {
-			if (response != NULL) {
-				if (indigo_uni_read_line(PRIVATE_DATA->handle, response, max) > 0) {
-					return true;
-				}
-			} else {
-				return true;
-			}
+static bool fc3_command(indigo_device *device, char *command, int response, ...) {
+	long result = indigo_uni_discard(PRIVATE_DATA->handle);
+	if (result >= 0) {
+		va_list args;
+		va_start(args, response);
+		result = indigo_uni_vprintf(PRIVATE_DATA->handle, command, args);
+		va_end(args);
+		if (result > 0 && response) {
+			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", INDIGO_DELAY(1));
 		}
 	}
-	return false;
+	return result > 0;
 }
 
 static bool fc3_open(indigo_device *device) {
-	char response[128];
 	PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 115200, INDIGO_LOG_DEBUG);
 	if (PRIVATE_DATA->handle != NULL) {
-		if (fc3_command(device, "##", response, sizeof(response)) && !strncmp(response, "FC3_", 4)) {
+		if (fc3_command(device, "##", true) && !strncmp(PRIVATE_DATA->response, "FC3_", 4)) {
 			strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "FocusCube v3");
-			if (fc3_command(device, "FV", response, sizeof(response)) && !strncmp(response, "FV:", 3)) {
-				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, response + 3);
+			if (fc3_command(device, "FV", true) && !strncmp(PRIVATE_DATA->response, "FV:", 3)) {
+				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 3);
 			}
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 			return true;
@@ -120,10 +121,9 @@ static void focuser_timer_callback(indigo_device *device) {
 	}
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	//+ focuser.on_timer
-	char response[32];
 	bool update = false;
-	if (fc3_command(device, "FA", response, sizeof(response)) && !strncmp(response, "FC3:", 4)) {
-		char *pnt, *token = strtok_r(response, ":", &pnt);
+	if (fc3_command(device, "FA", true) && !strncmp(PRIVATE_DATA->response, "FC3:", 4)) {
+		char *pnt, *token = strtok_r(PRIVATE_DATA->response, ":", &pnt);
 		token = strtok_r(NULL, ":", &pnt); // position
 		if (token) {
 			int pos = atoi(token);
@@ -177,9 +177,8 @@ static void focuser_connection_handler(indigo_device *device) {
 		connection_result = fc3_open(device);
 		if (connection_result) {
 			//+ focuser.on_connect
-			char response[64];
-			if (fc3_command(device, "FA", response, sizeof(response)) && !strncmp(response, "FC3:", 4)) {
-				char *pnt, *token = strtok_r(response, ":", &pnt);
+			if (fc3_command(device, "FA", true) && !strncmp(PRIVATE_DATA->response, "FC3:", 4)) {
+				char *pnt, *token = strtok_r(PRIVATE_DATA->response, ":", &pnt);
 				token = strtok_r(NULL, ":", &pnt); // position
 				if (token) {
 					FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = atoi(token);
@@ -201,8 +200,8 @@ static void focuser_connection_handler(indigo_device *device) {
 					FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = atoi(token);
 				}
 			}
-			if (fc3_command(device, "SP", response, sizeof(response)) && !strncmp(response, "SP:", 3)) {
-				FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = atoi(response + 3);
+			if (fc3_command(device, "SP", true) && !strncmp(PRIVATE_DATA->response, "SP:", 3)) {
+				FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = atoi(PRIVATE_DATA->response + 3);
 			}
 			//- focuser.on_connect
 			indigo_set_timer(device, 0, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
@@ -228,8 +227,7 @@ static void focuser_connection_handler(indigo_device *device) {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_direction_handler_timer);
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_limits_handler_timer);
 		//+ focuser.on_disconnect
-		char response[64];
-		fc3_command(device, "FH", response, sizeof(response));
+		fc3_command(device, "FH", true);
 		//- focuser.on_disconnect
 		fc3_close(device);
 		indigo_send_message(device, "Disconnected from %s", device->name);
@@ -245,9 +243,7 @@ static void focuser_backlash_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	FOCUSER_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_BACKLASH.on_change
-	char command[16], response[64];
-	snprintf(command, sizeof(command), "BL:%d", (int)FOCUSER_BACKLASH_ITEM->number.value);
-	if (!fc3_command(device, command, response, sizeof(response))) {
+	if (!fc3_command(device, "BL:%d", true, (int)FOCUSER_BACKLASH_ITEM->number.value)) {
 		FOCUSER_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- focuser.FOCUSER_BACKLASH.on_change
@@ -270,9 +266,7 @@ static void focuser_reverse_motion_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_REVERSE_MOTION.on_change
-	char command[16], response[64];
-	snprintf(command, sizeof(command), "FD:%d", (int)FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value? 0 : 1);
-	if (!fc3_command(device, command, response, sizeof(response))) {
+	if (!fc3_command(device, "FD:%d", true, (int)FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value? 0 : 1)) {
 		FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- focuser.FOCUSER_REVERSE_MOTION.on_change
@@ -295,9 +289,7 @@ static void focuser_speed_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_SPEED.on_change
-	char command[16], response[64];
-	snprintf(command, sizeof(command), "SP:%d", (int)FOCUSER_SPEED_ITEM->number.value);
-	if (!fc3_command(device, command, response, sizeof(response))) {
+	if (!fc3_command(device, "SP:%d", true, (int)FOCUSER_SPEED_ITEM->number.value)) {
 		FOCUSER_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- focuser.FOCUSER_SPEED.on_change
@@ -311,9 +303,7 @@ static void focuser_steps_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_STEPS.on_change
-	char command[16];
-	snprintf(command, sizeof(command), "FG:%d", (int)FOCUSER_STEPS_ITEM->number.value * (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? -1 : 1));
-	if (fc3_command(device, command, NULL, 0)) {
+	if (fc3_command(device, "FG:%d", false, (int)FOCUSER_STEPS_ITEM->number.value * (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? -1 : 1))) {
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else {
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -340,10 +330,8 @@ static void focuser_position_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_POSITION.on_change
-	char command[16], response[64];
 	if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) {
-		snprintf(command, sizeof(command), "FM:%d", (int)FOCUSER_POSITION_ITEM->number.value);
-		if (fc3_command(device, command, response, sizeof(response))) {
+		if (fc3_command(device, "FM:%d", true, (int)FOCUSER_POSITION_ITEM->number.value)) {
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		} else {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -351,8 +339,7 @@ static void focuser_position_handler(indigo_device *device) {
 		}
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 	} else if (FOCUSER_ON_POSITION_SET_SYNC_ITEM->sw.value) {
-		snprintf(command, sizeof(command), "FN:%d", (int)FOCUSER_POSITION_ITEM->number.value);
-		if (!fc3_command(device, command, response, sizeof(response))) {
+		if (!fc3_command(device, "FN:%d", true, (int)FOCUSER_POSITION_ITEM->number.value)) {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 	}
@@ -367,10 +354,9 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_ABORT_MOTION.on_change
-	char response[64];
 	if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
 		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
-		if (fc3_command(device, "FH", response, sizeof(response))) {
+		if (fc3_command(device, "FH", true)) {
 			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -601,6 +587,10 @@ indigo_result indigo_focuser_fc3(indigo_driver_action action, indigo_driver_info
 	switch (action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
+			static indigo_device_match_pattern patterns[1] = { 0 };
+			patterns[0].vendor_id = 0x303a;
+			patterns[0].product_id = 0x9000;
+			INDIGO_REGISER_MATCH_PATTERNS(focuser_template, patterns, 1);
 			private_data = indigo_safe_malloc(sizeof(fc3_private_data));
 			focuser = indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
 			focuser->private_data = private_data;
