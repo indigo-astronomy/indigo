@@ -1085,8 +1085,9 @@ void write_license(void) {
 	write_line("// %s", driver.copyright);
 	write_line("// All rights reserved.");
 	write_line("");
-	write_line("// You can use this software under the terms of 'INDIGO Astronomy");
-	write_line("// open-source license' (see LICENSE.md).\n");
+	write_line("// You may use this software under the terms of 'INDIGO Astronomy");
+	write_line("// open-source license' (see LICENSE.md).");
+	write_line("");
 	write_line("// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS");
 	write_line("// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED");
 	write_line("// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE");
