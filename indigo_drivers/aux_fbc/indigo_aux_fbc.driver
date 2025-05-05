@@ -33,42 +33,42 @@ driver fbc {
 	define {
 		#define INTENSITY(val)       ((int)floor((100 - (int)(val) - 0) * (220 - 20) / (100 - 0) + 20))
 	}
-	// data { }
+	data {
+		char response[80];
+	}
 	code {
-		static bool fbc_command(indigo_device *device, char *command, char *response, int count) {
-			if (response != NULL) {
+		static bool fbc_command(indigo_device *device, char *command, int response, ...) {
+			long result = 1;
+			if (response) {
 				indigo_usleep(20000);
-				indigo_uni_discard(PRIVATE_DATA->handle);
+				result = indigo_uni_discard(PRIVATE_DATA->handle);
 			}
-			if (indigo_uni_printf(PRIVATE_DATA->handle, command) > 0) {
-				if (response == NULL) {
-					return true;
-				} else {
-					while (true) {
-						if (indigo_uni_read_section(PRIVATE_DATA->handle, response, count, "\n", "\r\n", INDIGO_DELAY(1)) > 0) { // TODO: Check if this timeout is valid
-							if (!strncmp("D -", response, 3)) {
-								continue;
-							}
-							return true;
-						}
-						return false;
+			if (result >= 0) {
+				va_list args;
+				va_start(args, response);
+				result = indigo_uni_vprintf(PRIVATE_DATA->handle, command, args);
+				va_end(args);
+				while (result > 0 && response) {
+					result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", INDIGO_DELAY(1));
+					if (result > 0 && strncmp("D -", PRIVATE_DATA->response, 3)) {
+						break;
 					}
 				}
 			}
-			return false;
+			return result > 0;
+
 		}
 
 		static bool fbc_open(indigo_device *device) {
 			PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
 			if (PRIVATE_DATA->handle != NULL) {
-				char response[80];
 				indigo_uni_set_rts(PRIVATE_DATA->handle, false);
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected on %s", DEVICE_PORT_ITEM->text.value);
-				if (fbc_command(device, ": I #", response, sizeof(response)) && !strcmp("I FBC", response)) {
-					if (fbc_command(device, ": P #", response, sizeof(response))) {
-						if (!strcmp("P SerialMode", response)) {
-							fbc_command(device, ": E 0 #", NULL, 0);
-							fbc_command(device, ": F 0 #", NULL, 0);
+				if (fbc_command(device, ": I #", true) && !strcmp("I FBC", PRIVATE_DATA->response)) {
+					if (fbc_command(device, ": P #", true)) {
+						if (!strcmp("P SerialMode", PRIVATE_DATA->response)) {
+							fbc_command(device, ": E 0 #", false);
+							fbc_command(device, ": F 0 #", false);
 							return true;
 						}
 						indigo_send_message(device, "FBC is not in SerialMode. Turn all knobs to 0 and powercycle the device.");
@@ -81,8 +81,8 @@ driver fbc {
 		}
 
 		static void fbc_close(indigo_device *device) {
-			fbc_command(device, ": E 0 #", NULL, 0);
-			fbc_command(device, ": F 0 #", NULL, 0);
+			fbc_command(device, ": E 0 #", false);
+			fbc_command(device, ": F 0 #", false);
 			indigo_uni_close(&PRIVATE_DATA->handle);
 		}
 	}
@@ -95,13 +95,11 @@ driver fbc {
 		// code { }
 		// on_timer { }
 		on_connect {
-			char command[16], response[80];
-			if (fbc_command(device, ": V #", response, sizeof(response))) {
-				sscanf(response, "V %s", INFO_DEVICE_FW_REVISION_ITEM->text.value);
+			if (fbc_command(device, ": V #", true)) {
+				sscanf(PRIVATE_DATA->response, "V %s", INFO_DEVICE_FW_REVISION_ITEM->text.value);
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 			}
-			sprintf(command, ": B %d #", (int)AUX_LIGHT_INTENSITY_ITEM->number.value);
-			fbc_command(device, command, NULL, 0);
+			fbc_command(device, ": B %d #", false, (int)AUX_LIGHT_INTENSITY_ITEM->number.value);
 		}
 		// on_disconnect { }
 		on_attach {
@@ -115,9 +113,7 @@ driver fbc {
 			// handle_change = false;
 			// synchronized_change = false;
 			on_change {
-				char command[16];
-				sprintf(command, "E:%d", AUX_LIGHT_SWITCH_ON_ITEM->sw.value); // TODO: This command is not understood
-				if (!fbc_command(device, command, NULL, 0)) {
+				if (!fbc_command(device, "E:%d", false, AUX_LIGHT_SWITCH_ON_ITEM->sw.value)) { // TODO: This command is not understood
 					AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 			}
@@ -142,9 +138,7 @@ driver fbc {
 			// handle_change = false;
 			// synchronized_change = false;
 			on_change {
-				char command[16];
-				sprintf(command, ": B %d #", (int)AUX_LIGHT_INTENSITY_ITEM->number.value);
-				if (!fbc_command(device, command, NULL, 0)) {
+				if (!fbc_command(device, ": B %d #", false, (int)AUX_LIGHT_INTENSITY_ITEM->number.value)) {
 					AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 			}
@@ -167,9 +161,7 @@ driver fbc {
 			// handle_change = false;
 			// synchronized_change = false;
 			on_change {
-				char command[16];
-				sprintf(command, ": F %d #", (int)(AUX_LIGHT_IMPULSE_DURATION_ITEM->number.value * 1000));
-				if (fbc_command(device, command, NULL, 0)) {
+				if (fbc_command(device, ": F %d #", false, (int)(AUX_LIGHT_IMPULSE_DURATION_ITEM->number.value * 1000))) {
 					AUX_LIGHT_IMPULSE_PROPERTY->state = INDIGO_BUSY_STATE;
 					while (AUX_LIGHT_IMPULSE_DURATION_ITEM->number.value > 0) {
 						indigo_update_property(device, AUX_LIGHT_IMPULSE_PROPERTY, NULL);
@@ -205,8 +197,7 @@ driver fbc {
 			// synchronized_change = false;
 			on_change {
 				char command[16];
-				sprintf(command, ": E %d #", (int)(CCD_EXPOSURE_ITEM->number.value * 1000));
-				if (fbc_command(device, command, NULL, 0)) {
+				if (fbc_command(device, ": E %d #", false, (int)(CCD_EXPOSURE_ITEM->number.value * 1000))) {
 					CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 					while (CCD_EXPOSURE_ITEM->number.value > 0) {
 						indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);

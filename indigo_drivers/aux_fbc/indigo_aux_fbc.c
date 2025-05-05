@@ -81,46 +81,47 @@ typedef struct {
 	indigo_timer *aux_light_intensity_handler_timer;
 	indigo_timer *aux_light_impulse_handler_timer;
 	indigo_timer *aux_ccd_exposure_handler_timer;
+	//+ data
+	char response[80];
+	//- data
 } fbc_private_data;
 
 #pragma mark - Low level code
 
 //+ code
 
-static bool fbc_command(indigo_device *device, char *command, char *response, int count) {
-	if (response != NULL) {
+static bool fbc_command(indigo_device *device, char *command, int response, ...) {
+	long result = 1;
+	if (response) {
 		indigo_usleep(20000);
-		indigo_uni_discard(PRIVATE_DATA->handle);
+		result = indigo_uni_discard(PRIVATE_DATA->handle);
 	}
-	if (indigo_uni_printf(PRIVATE_DATA->handle, command) > 0) {
-		if (response == NULL) {
-			return true;
-		} else {
-			while (true) {
-				if (indigo_uni_read_section(PRIVATE_DATA->handle, response, count, "\n", "\r\n", INDIGO_DELAY(1)) > 0) { // TODO: Check if this timeout is valid
-					if (!strncmp("D -", response, 3)) {
-						continue;
-					}
-					return true;
-				}
-				return false;
+	if (result >= 0) {
+		va_list args;
+		va_start(args, response);
+		result = indigo_uni_vprintf(PRIVATE_DATA->handle, command, args);
+		va_end(args);
+		while (result > 0 && response) {
+			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", INDIGO_DELAY(1));
+			if (result > 0 && strncmp("D -", PRIVATE_DATA->response, 3)) {
+				break;
 			}
 		}
 	}
-	return false;
+	return result > 0;
+
 }
 
 static bool fbc_open(indigo_device *device) {
 	PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
 	if (PRIVATE_DATA->handle != NULL) {
-		char response[80];
 		indigo_uni_set_rts(PRIVATE_DATA->handle, false);
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected on %s", DEVICE_PORT_ITEM->text.value);
-		if (fbc_command(device, ": I #", response, sizeof(response)) && !strcmp("I FBC", response)) {
-			if (fbc_command(device, ": P #", response, sizeof(response))) {
-				if (!strcmp("P SerialMode", response)) {
-					fbc_command(device, ": E 0 #", NULL, 0);
-					fbc_command(device, ": F 0 #", NULL, 0);
+		if (fbc_command(device, ": I #", true) && !strcmp("I FBC", PRIVATE_DATA->response)) {
+			if (fbc_command(device, ": P #", true)) {
+				if (!strcmp("P SerialMode", PRIVATE_DATA->response)) {
+					fbc_command(device, ": E 0 #", false);
+					fbc_command(device, ": F 0 #", false);
 					return true;
 				}
 				indigo_send_message(device, "FBC is not in SerialMode. Turn all knobs to 0 and powercycle the device.");
@@ -133,8 +134,8 @@ static bool fbc_open(indigo_device *device) {
 }
 
 static void fbc_close(indigo_device *device) {
-	fbc_command(device, ": E 0 #", NULL, 0);
-	fbc_command(device, ": F 0 #", NULL, 0);
+	fbc_command(device, ": E 0 #", false);
+	fbc_command(device, ": F 0 #", false);
 	indigo_uni_close(&PRIVATE_DATA->handle);
 }
 
@@ -152,13 +153,11 @@ static void aux_connection_handler(indigo_device *device) {
 		connection_result = fbc_open(device);
 		if (connection_result) {
 			//+ aux.on_connect
-			char command[16], response[80];
-			if (fbc_command(device, ": V #", response, sizeof(response))) {
-				sscanf(response, "V %s", INFO_DEVICE_FW_REVISION_ITEM->text.value);
+			if (fbc_command(device, ": V #", true)) {
+				sscanf(PRIVATE_DATA->response, "V %s", INFO_DEVICE_FW_REVISION_ITEM->text.value);
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 			}
-			sprintf(command, ": B %d #", (int)AUX_LIGHT_INTENSITY_ITEM->number.value);
-			fbc_command(device, command, NULL, 0);
+			fbc_command(device, ": B %d #", false, (int)AUX_LIGHT_INTENSITY_ITEM->number.value);
 			//- aux.on_connect
 			indigo_define_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
 			indigo_define_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
@@ -195,9 +194,7 @@ static void aux_light_switch_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_LIGHT_SWITCH.on_change
-	char command[16];
-	sprintf(command, "E:%d", AUX_LIGHT_SWITCH_ON_ITEM->sw.value); // TODO: This command is not understood
-	if (!fbc_command(device, command, NULL, 0)) {
+	if (!fbc_command(device, "E:%d", false, AUX_LIGHT_SWITCH_ON_ITEM->sw.value)) { // TODO: This command is not understood
 		AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- aux.AUX_LIGHT_SWITCH.on_change
@@ -211,9 +208,7 @@ static void aux_light_intensity_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_LIGHT_INTENSITY.on_change
-	char command[16];
-	sprintf(command, ": B %d #", (int)AUX_LIGHT_INTENSITY_ITEM->number.value);
-	if (!fbc_command(device, command, NULL, 0)) {
+	if (!fbc_command(device, ": B %d #", false, (int)AUX_LIGHT_INTENSITY_ITEM->number.value)) {
 		AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- aux.AUX_LIGHT_INTENSITY.on_change
@@ -227,9 +222,7 @@ static void aux_light_impulse_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_LIGHT_IMPULSE_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_LIGHT_IMPULSE.on_change
-	char command[16];
-	sprintf(command, ": F %d #", (int)(AUX_LIGHT_IMPULSE_DURATION_ITEM->number.value * 1000));
-	if (fbc_command(device, command, NULL, 0)) {
+	if (fbc_command(device, ": F %d #", false, (int)(AUX_LIGHT_IMPULSE_DURATION_ITEM->number.value * 1000))) {
 		AUX_LIGHT_IMPULSE_PROPERTY->state = INDIGO_BUSY_STATE;
 		while (AUX_LIGHT_IMPULSE_DURATION_ITEM->number.value > 0) {
 			indigo_update_property(device, AUX_LIGHT_IMPULSE_PROPERTY, NULL);
@@ -257,8 +250,7 @@ static void aux_ccd_exposure_handler(indigo_device *device) {
 	CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.CCD_EXPOSURE.on_change
 	char command[16];
-	sprintf(command, ": E %d #", (int)(CCD_EXPOSURE_ITEM->number.value * 1000));
-	if (fbc_command(device, command, NULL, 0)) {
+	if (fbc_command(device, ": E %d #", false, (int)(CCD_EXPOSURE_ITEM->number.value * 1000))) {
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 		while (CCD_EXPOSURE_ITEM->number.value > 0) {
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
