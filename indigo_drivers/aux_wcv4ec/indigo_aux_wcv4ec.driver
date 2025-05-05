@@ -121,8 +121,8 @@ driver wcv4ec {
 				indigo_sleep(1);
 				if (wcv4ec_read_status(device)) {
 					if (!strcmp(PRIVATE_DATA->model_id, DEVICE_ID)) {
-						strcpy(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->model_id);
-						strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->firmware);
+						indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->model_id);
+						indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->firmware);
 						indigo_update_property(device, INFO_PROPERTY, NULL);
 						return true;
 					}
@@ -207,16 +207,16 @@ driver wcv4ec {
 		}
 		// on_connect { }
 		on_disconnect {
-			strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-			strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 			wcv4ec_command(device, "9999"); // turn light off
 			wcv4ec_command(device, "2000"); // turn the heater off
 		}
 		on_attach {
 			INFO_PROPERTY->count = 6;
-			strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-			strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		}
 		// on_detach { }
 		switch AUX_LIGHT_SWITCH {

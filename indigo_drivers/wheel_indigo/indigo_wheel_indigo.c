@@ -81,7 +81,7 @@ static void wheel_connection_handler(indigo_device *device) {
 		}
 		if (PRIVATE_DATA->handle != NULL) {
 			if (indigo_command(device, "WV", response, sizeof(response)) && !strncmp(response, "WV:", 3)) {
-				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, response + 3);
+				indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, response + 3);
 			} else {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read 'WV' response");
 				indigo_uni_close(&PRIVATE_DATA->handle);
@@ -96,7 +96,7 @@ static void wheel_connection_handler(indigo_device *device) {
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
-		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "undefined");
+		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "undefined");
 		if (PRIVATE_DATA->handle != NULL) {
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
 			indigo_uni_close(&PRIVATE_DATA->handle);
@@ -149,8 +149,8 @@ static indigo_result wheel_attach(indigo_device *device) {
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
 		INFO_PROPERTY->count = 6;
-		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Indigo Filter Wheel");
-		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "undefined");
+		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Indigo Filter Wheel");
+		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "undefined");
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);

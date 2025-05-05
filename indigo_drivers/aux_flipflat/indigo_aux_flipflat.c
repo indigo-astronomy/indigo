@@ -106,32 +106,32 @@ static bool flipflat_open(indigo_device *device) {
 				case 10:
 					AUX_LIGHT_SWITCH_PROPERTY->hidden = AUX_LIGHT_INTENSITY_PROPERTY->hidden = false;
 					AUX_COVER_PROPERTY->hidden = true;
-					strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Flat-Man_XL");
+					indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Flat-Man_XL");
 					break;
 				case 15:
 					AUX_LIGHT_SWITCH_PROPERTY->hidden = AUX_LIGHT_INTENSITY_PROPERTY->hidden = false;
 					AUX_COVER_PROPERTY->hidden = true;
-					strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Flat-Man_L");
+					indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Flat-Man_L");
 					break;
 				case 19:
 					AUX_LIGHT_SWITCH_PROPERTY->hidden = AUX_LIGHT_INTENSITY_PROPERTY->hidden = false;
 					AUX_COVER_PROPERTY->hidden = true;
-					strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Flat-Man");
+					indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Flat-Man");
 					break;
 				case 98:
 					AUX_LIGHT_SWITCH_PROPERTY->hidden = AUX_LIGHT_INTENSITY_PROPERTY->hidden = true;
 					AUX_COVER_PROPERTY->hidden = false;
-					strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Flip-Mask/Remote Dust Cover");
+					indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Flip-Mask/Remote Dust Cover");
 					break;
 				case 99:
 					AUX_LIGHT_SWITCH_PROPERTY->hidden = AUX_LIGHT_INTENSITY_PROPERTY->hidden = false;
 					AUX_COVER_PROPERTY->hidden = false;
-					strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Flip-Flap");
+					indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Flip-Flap");
 					break;
 				default:
 					AUX_LIGHT_SWITCH_PROPERTY->hidden = AUX_LIGHT_INTENSITY_PROPERTY->hidden = false;
 					AUX_COVER_PROPERTY->hidden = false;
-					strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+					indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 					break;
 			}
 			indigo_update_property(device, INFO_PROPERTY, NULL);
@@ -145,7 +145,7 @@ static bool flipflat_open(indigo_device *device) {
 }
 
 static void flipflat_close(indigo_device *device) {
-	strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+	indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 	indigo_update_property(device, INFO_PROPERTY, NULL);
 	indigo_uni_close(&PRIVATE_DATA->handle);
 }
@@ -295,7 +295,7 @@ static indigo_result aux_attach(indigo_device *device) {
 		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
 		//+ aux.on_attach
 		INFO_PROPERTY->count = 5;
-		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 		//- aux.on_attach
 		AUX_COVER_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_COVER_PROPERTY_NAME, AUX_MAIN_GROUP, "Cover", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (AUX_COVER_PROPERTY == NULL) {

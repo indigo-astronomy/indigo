@@ -130,7 +130,7 @@ static bool uch_open(indigo_device *device) {
 	if (PRIVATE_DATA->handle != NULL) {
 		if (uch_command(device, "P#")) {
 			if (!strcmp(PRIVATE_DATA->response, "UCH_OK")) {
-				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro UCH");
+				indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro UCH");
 				uch_command(device, "PL:1");
 				return true;
 			}
@@ -252,7 +252,7 @@ static void aux_connection_handler(indigo_device *device) {
 				}
 			}
 			if (uch_command(device, "PV")) {
-				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 3);
+				indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 3);
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 			}
 			//- aux.on_connect
@@ -280,8 +280,8 @@ static void aux_connection_handler(indigo_device *device) {
 		indigo_delete_property(device, X_AUX_REBOOT_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROPERTY, NULL);
 		//+ aux.on_disconnect
-		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		indigo_update_property(device, INFO_PROPERTY, NULL);
 		//- aux.on_disconnect
 		uch_close(device);
@@ -377,8 +377,8 @@ static indigo_result aux_attach(indigo_device *device) {
 		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
 		//+ aux.on_attach
 		INFO_PROPERTY->count = 6;
-		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		//- aux.on_attach
 		AUX_OUTLET_NAMES_PROPERTY = indigo_init_text_property(NULL, device->name, AUX_OUTLET_NAMES_PROPERTY_NAME, AUX_GROUP, "Outlet names", INDIGO_OK_STATE, INDIGO_RW_PERM, 6);
 		if (AUX_OUTLET_NAMES_PROPERTY == NULL) {

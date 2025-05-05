@@ -274,8 +274,8 @@ static void rotator_connection_handler(indigo_device *device) {
 					ROTATOR_BACKLASH_ITEM->number.value = status.backlash;
 					ROTATOR_DIRECTION_NORMAL_ITEM->sw.value = !status.reverse;
 					ROTATOR_DIRECTION_REVERSED_ITEM->sw.value = status.reverse;
-					strcpy(INFO_DEVICE_MODEL_ITEM->text.value, status.model_id);
-					strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, status.firmware);
+					indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, status.model_id);
+					indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, status.firmware);
 					indigo_update_property(device, ROTATOR_DIRECTION_PROPERTY, NULL);
 					indigo_update_property(device, ROTATOR_BACKLASH_PROPERTY, NULL);
 					indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
@@ -302,8 +302,8 @@ static void rotator_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_delete_property(device, X_SET_ZERO_POSITION_PROPERTY, NULL);
-		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		indigo_update_property(device, INFO_PROPERTY, NULL);
 		if (PRIVATE_DATA->handle > 0) {
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
@@ -479,7 +479,7 @@ static indigo_result rotator_attach(indigo_device *device) {
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		DEVICE_PORT_PROPERTY->hidden = false;
 		INFO_PROPERTY->count = 6;
-		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "WandederAstro Rotator");
+		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "WandederAstro Rotator");
 		// -------------------------------------------------------------------------- BEEP_PROPERTY
 		X_SET_ZERO_POSITION_PROPERTY = indigo_init_switch_property(NULL, device->name, X_SET_ZERO_POSITION_PROPERTY_NAME, ROTATOR_ADVANCED_GROUP, "Set current position as mechanical zero", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
 		if (X_SET_ZERO_POSITION_PROPERTY == NULL) {

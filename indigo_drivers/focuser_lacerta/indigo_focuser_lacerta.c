@@ -110,15 +110,15 @@ static bool lacerta_open(indigo_device *device) {
 		if (lacerta_command(device, ": i #", response, sizeof(response), 'i')) {
 			if (!strcmp(response + 2, "FMC")) {
 				PRIVATE_DATA->model = FMC;
-				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, response + 2);
+				indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, response + 2);
 			} else if (!strcmp(response + 2, "MFOC")) {
 				PRIVATE_DATA->model = MFOC;
 			} else {
 				PRIVATE_DATA->model = UNKNOWN;
 			}
-			strcpy(INFO_DEVICE_MODEL_ITEM->text.value, response + 2);
+			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, response + 2);
 			if (lacerta_command(device, ": v #", response, sizeof(response), 'v')) {
-				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, response + 1);
+				indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, response + 1);
 			}
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 		} else {

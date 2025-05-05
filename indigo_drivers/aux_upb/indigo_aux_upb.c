@@ -257,12 +257,12 @@ static bool upb_open(indigo_device *device) {
 	if (PRIVATE_DATA->handle != NULL) {
 		if (upb_command(device, "P#")) {
 			if (!strcmp(PRIVATE_DATA->response, "UPB_OK")) {
-				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro UPB");
+				indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro UPB");
 				PRIVATE_DATA->version = 1;
 				upb_command(device, "PL:1");
 				return true;
 			} else if (!strcmp(PRIVATE_DATA->response, "UPB2_OK")) {
-				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro UPB2");
+				indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro UPB2");
 				PRIVATE_DATA->version = 2;
 				upb_command(device, "PL:1");
 				return true;
@@ -767,8 +767,8 @@ static void aux_connection_handler(indigo_device *device) {
 				}
 			}
 			if (upb_command(device, "PV")) {
-				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->version == 2 ? "UPBv2" : "UPB");
-				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 3); // remove "PV:" prefix
+				indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->version == 2 ? "UPBv2" : "UPB");
+				indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 3); // remove "PV:" prefix
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 			}
 			upb_command(device, "PU:1");
@@ -888,8 +888,8 @@ static void aux_connection_handler(indigo_device *device) {
 		indigo_delete_property(device, X_AUX_VARIABLE_POWER_OUTLET_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROPERTY, NULL);
 		//+ aux.on_disconnect
-		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		indigo_update_property(device, INFO_PROPERTY, NULL);
 		if (PRIVATE_DATA->smart_hub) {
 			libusb_close(PRIVATE_DATA->smart_hub);
@@ -1132,8 +1132,8 @@ static indigo_result aux_attach(indigo_device *device) {
 		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
 		//+ aux.on_attach
 		INFO_PROPERTY->count = 6;
-		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		//- aux.on_attach
 		AUX_OUTLET_NAMES_PROPERTY = indigo_init_text_property(NULL, device->name, AUX_OUTLET_NAMES_PROPERTY_NAME, AUX_GROUP, "Outlet names", INDIGO_OK_STATE, INDIGO_RW_PERM, 13);
 		if (AUX_OUTLET_NAMES_PROPERTY == NULL) {
@@ -1492,8 +1492,8 @@ static void focuser_connection_handler(indigo_device *device) {
 				}
 			}
 			if (upb_command(device, "PV")) {
-				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->version == 2 ? "UPBv2" : "UPB");
-				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response);
+				indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->version == 2 ? "UPBv2" : "UPB");
+				indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response);
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 			}
 			if (upb_command(device, "SS")) {
@@ -1704,8 +1704,8 @@ static indigo_result focuser_attach(indigo_device *device) {
 	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		//+ focuser.on_attach
 		INFO_PROPERTY->count = 6;
-		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		//- focuser.on_attach
 		FOCUSER_BACKLASH_PROPERTY->hidden = false;
 		//+ focuser.FOCUSER_BACKLASH.on_attach

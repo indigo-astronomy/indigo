@@ -33,25 +33,34 @@ driver flatmaster {
 	define {
 		#define INTENSITY(val)       ((int)floor((100 - (int)(val) - 0) * (220 - 20) / (100 - 0) + 20))
 	}
-	// data { }
+	data {
+		char response[6];
+	}
 	code {
-		static bool flatmaster_command(indigo_uni_handle *handle, char *command, char *response, int resp_len) {
-			if (indigo_uni_discard(handle) >= 0) {
-				if (indigo_uni_printf(handle, "%s\n", command) > 0) {
-					if (indigo_uni_read_section(handle, response, resp_len, "\n", "\r\n", INDIGO_DELAY(1)) > 0) {
-						return true;
-					}
+		static bool flatmaster_command(indigo_device *device, char *command, ...) {
+			long result = indigo_uni_discard(PRIVATE_DATA->handle);
+			if (result >= 0) {
+				va_list args;
+				va_start(args, command);
+				result = indigo_uni_vprintf_line(PRIVATE_DATA->handle, command, args);
+				va_end(args);
+				if (result > 0) {
+					result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", INDIGO_DELAY(1));
 				}
 			}
-			return false;
+			return result > 0;
 		}
 
 		static bool flatmaster_open(indigo_device *device) {
 			PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
 			if (PRIVATE_DATA->handle != NULL) {
-				char response[16];
-				if (flatmaster_command(PRIVATE_DATA->handle, "#", response, sizeof(response)) && !strcmp("OK_FM", response)) {
-					return true;
+				if (flatmaster_command(device, "#") && !strcmp("OK_FM", PRIVATE_DATA->response)) {
+					if (flatmaster_command(device, "V")) {
+						indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, DRIVER_LABEL);
+						indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response);
+						indigo_update_property(device, INFO_PROPERTY, NULL);
+						return true;
+					}
 				}
 				indigo_uni_close(&PRIVATE_DATA->handle);
 			}
@@ -59,34 +68,29 @@ driver flatmaster {
 		}
 
 		static void flatmaster_close(indigo_device *device) {
-			char response[16];
-			flatmaster_command(PRIVATE_DATA->handle, "E:0", response, sizeof(response));
+			flatmaster_command(device, "E:0");
+			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+			indigo_update_property(device, INFO_PROPERTY, NULL);
 			indigo_uni_close(&PRIVATE_DATA->handle);
 		}
 	}
 	// on_init { }
 	// on_shutdown { }
 	aux {
-		name = "Pegasus FlatMaster";
+		name = "PegasusAstro FlatMaster";
 		interface = INDIGO_INTERFACE_AUX_LIGHTBOX;
 		additional_instances = true;
 		// code { }
 		// on_timer { }
 		on_connect {
-			char command[16], response[16];
-			if (flatmaster_command(PRIVATE_DATA->handle, "V", response, sizeof(response))) {
-				snprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, INDIGO_VALUE_SIZE, "%s", response);
-				indigo_update_property(device, INFO_PROPERTY, NULL);
-			}
 			/* FlatMaster does not report intensity and ON/OFF state, so we set it to be consistent */
-			sprintf(command, "L:%d", INTENSITY(AUX_LIGHT_INTENSITY_ITEM->number.value));
-			if (flatmaster_command(PRIVATE_DATA->handle, command, response, sizeof(response))) {
+			if (flatmaster_command(device, "L:%d", INTENSITY(AUX_LIGHT_INTENSITY_ITEM->number.value))) {
 				AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
 				AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
-			sprintf(command, "E:%d", AUX_LIGHT_SWITCH_ON_ITEM->sw.value);
-			if (flatmaster_command(PRIVATE_DATA->handle, command, response, sizeof(response))) {
+			if (flatmaster_command(device, "E:%d", AUX_LIGHT_SWITCH_ON_ITEM->sw.value)) {
 				AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
 				AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -95,6 +99,8 @@ driver flatmaster {
 		// on_disconnect { }
 		on_attach {
 			INFO_PROPERTY->count = 6;
+			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		}
 		// on_detach { }
 		switch AUX_LIGHT_SWITCH {
@@ -105,9 +111,7 @@ driver flatmaster {
 			// handle_change = false;
 			// synchronized_change = false;
 			on_change {
-				char command[16],	response[16];
-				sprintf(command, "E:%d", AUX_LIGHT_SWITCH_ON_ITEM->sw.value);
-				if (!flatmaster_command(PRIVATE_DATA->handle, command, response, sizeof(response))) {
+				if (!flatmaster_command(device, "E:%d", AUX_LIGHT_SWITCH_ON_ITEM->sw.value)) {
 					AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 			}
@@ -132,9 +136,7 @@ driver flatmaster {
 			// handle_change = false;
 			// synchronized_change = false;
 			on_change {
-				char command[16],	response[16];
-				sprintf(command, "L:%d", INTENSITY(AUX_LIGHT_INTENSITY_ITEM->number.value));
-				if (!flatmaster_command(PRIVATE_DATA->handle, command, response, sizeof(response))) {
+				if (!flatmaster_command(device, "L:%d", INTENSITY(AUX_LIGHT_INTENSITY_ITEM->number.value))) {
 					AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 			}

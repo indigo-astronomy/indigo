@@ -56,7 +56,7 @@ driver uch {
 			if (PRIVATE_DATA->handle != NULL) {
 				if (uch_command(device, "P#")) {
 					if (!strcmp(PRIVATE_DATA->response, "UCH_OK")) {
-						strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro UCH");
+						indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro UCH");
 						uch_command(device, "PL:1");
 						return true;
 					}
@@ -162,19 +162,19 @@ driver uch {
 				}
 			}
 			if (uch_command(device, "PV")) {
-				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 3);
+				indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 3);
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 			}
 		}
 		on_disconnect {
-			strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-			strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 		}
 		on_attach {
 			INFO_PROPERTY->count = 6;
-			strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-			strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		}
 		// on_detach { }
 		text AUX_OUTLET_NAMES {

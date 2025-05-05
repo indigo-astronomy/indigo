@@ -66,8 +66,8 @@ driver upb3 {
 		}
 
 		static void upb3_close(indigo_device *device) {
-			strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-			strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 			if (PRIVATE_DATA->handle != NULL) {
 				upb3_command(device, "PL:0");
@@ -195,8 +195,8 @@ driver upb3 {
 		}
 		on_connect {
 			if (upb3_command(device, "PV")) {
-				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro UPBv3");
-				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 3);
+				indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro UPBv3");
+				indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 3);
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 			}
 			if (upb3_command(device, "PA")) {
@@ -272,14 +272,14 @@ driver upb3 {
 			}
 		}
 		on_disconnect {
-			strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-			strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 		}
 		on_attach {
 			INFO_PROPERTY->count = 6;
-			strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-			strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		}
 		// on_detach { }
 		text AUX_OUTLET_NAMES {
@@ -883,7 +883,7 @@ driver upb3 {
 				}
 			}
 			if (upb3_command(device, "PV") && !strncmp(PRIVATE_DATA->response, "PV:", 3)) {
-				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 3);
+				indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 3);
 			}
 		}
 		// on_disconnect { }

@@ -87,9 +87,9 @@ static bool fc3_open(indigo_device *device) {
 	PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 115200, INDIGO_LOG_DEBUG);
 	if (PRIVATE_DATA->handle != NULL) {
 		if (fc3_command(device, "##") && !strncmp(PRIVATE_DATA->response, "FC3_", 4)) {
-			strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "FocusCube v3");
+			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "FocusCube v3");
 			if (fc3_command(device, "FV") && !strncmp(PRIVATE_DATA->response, "FV:", 3)) {
-				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 3);
+				indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 3);
 			}
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 			return true;
@@ -101,8 +101,8 @@ static bool fc3_open(indigo_device *device) {
 }
 
 static void fc3_close(indigo_device *device) {
-	strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-	strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+	indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+	indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 	indigo_update_property(device, INFO_PROPERTY, NULL);
 	if (PRIVATE_DATA->handle != NULL) {
 		indigo_uni_close(&PRIVATE_DATA->handle);
@@ -428,7 +428,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		INFO_PROPERTY->hidden = false;
 		//+ focuser.INFO.on_attach
 		INFO_PROPERTY->count = 6;
-		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Undefined");
+		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Undefined");
 		//- focuser.INFO.on_attach
 		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
 		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;

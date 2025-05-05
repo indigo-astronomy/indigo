@@ -69,7 +69,12 @@ driver fbc {
 						if (!strcmp("P SerialMode", PRIVATE_DATA->response)) {
 							fbc_command(device, ": E 0 #", false);
 							fbc_command(device, ": F 0 #", false);
-							return true;
+							if (fbc_command(device, ": V #", true)) {
+								indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, DRIVER_LABEL);
+								indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 2);
+								indigo_update_property(device, INFO_PROPERTY, NULL);
+								return true;
+							}
 						}
 						indigo_send_message(device, "FBC is not in SerialMode. Turn all knobs to 0 and powercycle the device.");
 					}
@@ -83,6 +88,9 @@ driver fbc {
 		static void fbc_close(indigo_device *device) {
 			fbc_command(device, ": E 0 #", false);
 			fbc_command(device, ": F 0 #", false);
+			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+			indigo_update_property(device, INFO_PROPERTY, NULL);
 			indigo_uni_close(&PRIVATE_DATA->handle);
 		}
 	}
@@ -95,15 +103,13 @@ driver fbc {
 		// code { }
 		// on_timer { }
 		on_connect {
-			if (fbc_command(device, ": V #", true)) {
-				sscanf(PRIVATE_DATA->response, "V %s", INFO_DEVICE_FW_REVISION_ITEM->text.value);
-				indigo_update_property(device, INFO_PROPERTY, NULL);
-			}
 			fbc_command(device, ": B %d #", false, (int)AUX_LIGHT_INTENSITY_ITEM->number.value);
 		}
 		// on_disconnect { }
 		on_attach {
 			INFO_PROPERTY->count = 6;
+			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		}
 		// on_detach { }
 		switch AUX_LIGHT_SWITCH {

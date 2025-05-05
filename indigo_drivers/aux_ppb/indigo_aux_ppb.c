@@ -166,7 +166,7 @@ static bool ppb_open(indigo_device *device) {
 	if (PRIVATE_DATA->handle != NULL) {
 		if (ppb_command(device, "P#")) {
 			if (!strcmp(PRIVATE_DATA->response, "PPB_OK")) {
-				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro PPB");
+				indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro PPB");
 				PRIVATE_DATA->is_advance = false;
 				PRIVATE_DATA->is_micro = false;
 				PRIVATE_DATA->is_saddle = false;
@@ -176,7 +176,7 @@ static bool ppb_open(indigo_device *device) {
 				ppb_command(device, "PL:1");
 				return true;
 			} else if (!strcmp(PRIVATE_DATA->response, "PPBA_OK")) {
-				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro PPBA");
+				indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro PPBA");
 				PRIVATE_DATA->is_advance = true;
 				PRIVATE_DATA->is_micro = false;
 				PRIVATE_DATA->is_saddle = false;
@@ -186,7 +186,7 @@ static bool ppb_open(indigo_device *device) {
 				ppb_command(device, "PL:1");
 				return true;
 			} else if (!strcmp(PRIVATE_DATA->response, "PPBM_OK")) {
-				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro PPBM");
+				indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro PPBM");
 				PRIVATE_DATA->is_advance = true;
 				PRIVATE_DATA->is_micro = true;
 				PRIVATE_DATA->is_saddle = false;
@@ -196,7 +196,7 @@ static bool ppb_open(indigo_device *device) {
 				ppb_command(device, "PL:1");
 				return true;
 			} else if (!strcmp(PRIVATE_DATA->response, "SPB")) {
-				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro SPB");
+				indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro SPB");
 				PRIVATE_DATA->is_advance = false;
 				PRIVATE_DATA->is_micro = false;
 				PRIVATE_DATA->is_saddle = true;
@@ -382,7 +382,7 @@ static void aux_connection_handler(indigo_device *device) {
 		if (connection_result) {
 			//+ aux.on_connect
 			if (ppb_command(device, "PV")) {
-				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response);
+				indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response);
 			}
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 			if (ppb_command(device, "PA")) {
@@ -476,8 +476,8 @@ static void aux_connection_handler(indigo_device *device) {
 		indigo_delete_property(device, X_AUX_REBOOT_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROPERTY, NULL);
 		//+ aux.on_disconnect
-		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		indigo_update_property(device, INFO_PROPERTY, NULL);
 		//- aux.on_disconnect
 		ppb_close(device);
@@ -616,8 +616,8 @@ static indigo_result aux_attach(indigo_device *device) {
 		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
 		//+ aux.on_attach
 		INFO_PROPERTY->count = 6;
-		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		//- aux.on_attach
 		AUX_OUTLET_NAMES_PROPERTY = indigo_init_text_property(NULL, device->name, AUX_OUTLET_NAMES_PROPERTY_NAME, AUX_GROUP, "Outlet names", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		if (AUX_OUTLET_NAMES_PROPERTY == NULL) {

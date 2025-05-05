@@ -336,8 +336,8 @@ static bool wbprov3_open(indigo_device *device) {
 		indigo_sleep(1);
 		if (wbprov3_read_status(device)) {
 			if (!strcmp(PRIVATE_DATA->model_id, DEVICE_ID)) {
-				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->model_id);
-				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->firmware);
+				indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->model_id);
+				indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->firmware);
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 				return true;
 			}
@@ -500,8 +500,8 @@ static void aux_connection_handler(indigo_device *device) {
 		indigo_delete_property(device, AUX_INFO_PROPERTY, NULL);
 		indigo_delete_property(device, X_AUX_CALIBRATE_PROPERTY, NULL);
 		//+ aux.on_disconnect
-		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		indigo_update_property(device, INFO_PROPERTY, NULL);
 		//- aux.on_disconnect
 		wbprov3_close(device);
@@ -648,8 +648,8 @@ static indigo_result aux_attach(indigo_device *device) {
 		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
 		//+ aux.on_attach
 		INFO_PROPERTY->count = 6;
-		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		//- aux.on_attach
 		AUX_OUTLET_NAMES_PROPERTY = indigo_init_text_property(NULL, device->name, AUX_OUTLET_NAMES_PROPERTY_NAME, AUX_GROUP, "Outlet names", INDIGO_OK_STATE, INDIGO_RW_PERM, 6);
 		if (AUX_OUTLET_NAMES_PROPERTY == NULL) {

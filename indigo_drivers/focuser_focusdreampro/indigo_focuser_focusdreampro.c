@@ -99,7 +99,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 #endif
 		// -------------------------------------------------------------------------------- INFO
 		INFO_PROPERTY->count = 5;
-		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 		// -------------------------------------------------------------------------------- FOCUSER_REVERSE_MOTION
 		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- FOCUSER_TEMPERATURE
@@ -212,11 +212,11 @@ static void focuser_connection_handler(indigo_device *device) {
 				if (!strcmp(response, "FD")) {
 					INDIGO_DRIVER_LOG(DRIVER_NAME, "FocusDreamPro detected");
 					PRIVATE_DATA->fdp = true;
-					strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "AGadget FocusDreamPro");
+					indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "AGadget FocusDreamPro");
 				} else if (!strncmp(response, "Jolo", 4)) {
 					INDIGO_DRIVER_LOG(DRIVER_NAME, "Astrojolo detected");
 					PRIVATE_DATA->jolo = true;
-					strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "ASCOM Jolo focuser");
+					indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "ASCOM Jolo focuser");
 				}
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 			} else {

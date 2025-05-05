@@ -78,7 +78,7 @@ driver usbdp {
 				if (usbdp_command(device, UDP_IDENTIFY_CMD, response, sizeof(response))) {
 					if (!strcmp(response, UDP1_IDENTIFY_RESPONSE)) {
 						PRIVATE_DATA->version = 1;
-						strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "USB_Dewpoint v1");
+						indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "USB_Dewpoint v1");
 						indigo_update_property(device, INFO_PROPERTY, NULL);
 						// for V1 we need one name only
 						// indigo_delete_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
@@ -94,7 +94,7 @@ driver usbdp {
 						return true;
 					} else if (!strncmp(response, UDP2_IDENTIFY_RESPONSE, 4)) {
 						PRIVATE_DATA->version = 2;
-						strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "USB_Dewpoint v2");
+						indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "USB_Dewpoint v2");
 						sprintf(INFO_DEVICE_INTERFACE_ITEM->text.value, "%d", INDIGO_INTERFACE_AUX_WEATHER | INDIGO_INTERFACE_AUX_POWERBOX);
 						indigo_update_property(device, INFO_PROPERTY, NULL);
 						return true;
@@ -320,7 +320,7 @@ driver usbdp {
 		}
 		on_attach {
 			INFO_PROPERTY->count = 5;
-			strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 		}
 		// on_detach { }
 		text AUX_OUTLET_NAMES {

@@ -1256,7 +1256,7 @@ static void gps_handle_connect(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			device->gp_bits = 0;
-			strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "N/A");
+			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "N/A");
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 			indigo_send_message(device, "No GPS unit detected");
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -1273,7 +1273,7 @@ static indigo_result gps_attach(indigo_device *device) {
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_gps_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		INFO_PROPERTY->count = 6;
-		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Celestron GPS");
+		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Celestron GPS");
 		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->count = 2;
 		GPS_UTC_TIME_PROPERTY->hidden = false;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);

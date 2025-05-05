@@ -233,8 +233,8 @@ static bool upb3_open(indigo_device *device) {
 }
 
 static void upb3_close(indigo_device *device) {
-	strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-	strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+	indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+	indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 	indigo_update_property(device, INFO_PROPERTY, NULL);
 	if (PRIVATE_DATA->handle != NULL) {
 		upb3_command(device, "PL:0");
@@ -380,8 +380,8 @@ static void aux_connection_handler(indigo_device *device) {
 		if (connection_result) {
 			//+ aux.on_connect
 			if (upb3_command(device, "PV")) {
-				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro UPBv3");
-				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 3);
+				indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro UPBv3");
+				indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 3);
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 			}
 			if (upb3_command(device, "PA")) {
@@ -503,8 +503,8 @@ static void aux_connection_handler(indigo_device *device) {
 		indigo_delete_property(device, AUX_WEATHER_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_INFO_PROPERTY, NULL);
 		//+ aux.on_disconnect
-		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		indigo_update_property(device, INFO_PROPERTY, NULL);
 		//- aux.on_disconnect
 		if (--PRIVATE_DATA->count == 0) {
@@ -693,8 +693,8 @@ static indigo_result aux_attach(indigo_device *device) {
 		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
 		//+ aux.on_attach
 		INFO_PROPERTY->count = 6;
-		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		//- aux.on_attach
 		AUX_OUTLET_NAMES_PROPERTY = indigo_init_text_property(NULL, device->name, AUX_OUTLET_NAMES_PROPERTY_NAME, POWERBOX_GROUP, "Outlet names", INDIGO_OK_STATE, INDIGO_RW_PERM, 20);
 		if (AUX_OUTLET_NAMES_PROPERTY == NULL) {
@@ -1014,7 +1014,7 @@ static void focuser_connection_handler(indigo_device *device) {
 				}
 			}
 			if (upb3_command(device, "PV") && !strncmp(PRIVATE_DATA->response, "PV:", 3)) {
-				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 3);
+				indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 3);
 			}
 			//- focuser.on_connect
 			indigo_set_timer(device, 0, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);

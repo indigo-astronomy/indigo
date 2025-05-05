@@ -219,8 +219,8 @@ static void steeldrive2_connect(indigo_device *device) {
 		for (int i = 0; i < 3; i++) {
 			if (indigo_read_line(PRIVATE_DATA->handle, response, sizeof(response)) > 0 && !strcmp(response, "$BS Hello World!")) {
 				if (steeldrive2_command(device, "$BS GET VERSION", response, sizeof(response)) && (colon = strchr(response, ':'))) {
-					strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Baader Planetarium SteelDriveII");
-					strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, colon + 1);
+					indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Baader Planetarium SteelDriveII");
+					indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, colon + 1);
 					indigo_update_property(device, INFO_PROPERTY, NULL);
 #ifdef USE_CRC
 					if (steeldrive2_command(device, "$BS CRC_ENABLE", response, sizeof(response))) {

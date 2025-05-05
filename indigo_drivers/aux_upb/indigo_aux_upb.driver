@@ -60,12 +60,12 @@ driver upb {
 			if (PRIVATE_DATA->handle != NULL) {
 				if (upb_command(device, "P#")) {
 					if (!strcmp(PRIVATE_DATA->response, "UPB_OK")) {
-						strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro UPB");
+						indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro UPB");
 						PRIVATE_DATA->version = 1;
 						upb_command(device, "PL:1");
 						return true;
 					} else if (!strcmp(PRIVATE_DATA->response, "UPB2_OK")) {
-						strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro UPB2");
+						indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro UPB2");
 						PRIVATE_DATA->version = 2;
 						upb_command(device, "PL:1");
 						return true;
@@ -552,8 +552,8 @@ driver upb {
 				}
 			}
 			if (upb_command(device, "PV")) {
-				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->version == 2 ? "UPBv2" : "UPB");
-				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 3); // remove "PV:" prefix
+				indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->version == 2 ? "UPBv2" : "UPB");
+				indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 3); // remove "PV:" prefix
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 			}
 			upb_command(device, "PU:1");
@@ -613,8 +613,8 @@ driver upb {
 			}
 		}
 		on_disconnect {
-			strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-			strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 			if (PRIVATE_DATA->smart_hub) {
 				libusb_close(PRIVATE_DATA->smart_hub);
@@ -623,8 +623,8 @@ driver upb {
 		}
 		on_attach {
 			INFO_PROPERTY->count = 6;
-			strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-			strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		}
 		// on_detach { }
 		text AUX_OUTLET_NAMES {
@@ -1349,8 +1349,8 @@ driver upb {
 				}
 			}
 			if (upb_command(device, "PV")) {
-				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->version == 2 ? "UPBv2" : "UPB");
-				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response);
+				indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->version == 2 ? "UPBv2" : "UPB");
+				indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response);
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 			}
 			if (upb_command(device, "SS")) {
@@ -1361,8 +1361,8 @@ driver upb {
 		// on_disconnect { }
 		on_attach {
 			INFO_PROPERTY->count = 6;
-			strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-			strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		}
 		// on_detach { }
 		inherited FOCUSER_BACKLASH {

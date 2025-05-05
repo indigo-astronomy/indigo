@@ -92,7 +92,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		}
 #endif
 		// -------------------------------------------------------------------------------- INFO
-		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "ASTROMECHANICS Focuser");
+		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "ASTROMECHANICS Focuser");
 		// -------------------------------------------------------------------------------- FOCUSER_SPEED
 		FOCUSER_SPEED_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- FOCUSER_STEPS

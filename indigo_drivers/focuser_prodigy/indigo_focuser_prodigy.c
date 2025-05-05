@@ -131,8 +131,8 @@ static indigo_result focuser_attach(indigo_device *device) {
 #endif
 		// -------------------------------------------------------------------------------- INFO
 		INFO_PROPERTY->count = 6;
-		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Undefined");
-		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Undefined");
+		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Undefined");
+		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Undefined");
 		// -------------------------------------------------------------------------------- FOCUSER_REVERSE_MOTION
 		//FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- FOCUSER_TEMPERATURE
@@ -233,10 +233,10 @@ static void focuser_connection_handler(indigo_device *device) {
 		if (PRIVATE_DATA->handle > 0) {
 			if (prodigy_command(device, "A", response, sizeof(response)) && !strncmp(response, "OK_", 3)) {
 				char *pnt, *token = strtok_r(response, ":", &pnt);
-				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, token + 3);
+				indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, token + 3);
 				token = strtok_r(NULL, ":", &pnt); // status
 				if (token) { // version
-					strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, token);
+					indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, token);
 				}
 				token = strtok_r(NULL, ":", &pnt); // motor
 				token = strtok_r(NULL, ":", &pnt);
@@ -281,8 +281,8 @@ static void focuser_connection_handler(indigo_device *device) {
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
-		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Undefined");
-		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Undefined");
+		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Undefined");
+		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Undefined");
 		indigo_update_property(device, INFO_PROPERTY, NULL);
 		indigo_delete_property(device, X_FOCUSER_PARK_PROPERTY, NULL);
 		if (--PRIVATE_DATA->count == 0) {

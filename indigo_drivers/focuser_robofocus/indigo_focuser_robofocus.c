@@ -156,7 +156,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 #endif
 		// -------------------------------------------------------------------------------- INFO
 		INFO_PROPERTY->count = 6;
-		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "RoboFocus Focuser");
+		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "RoboFocus Focuser");
 		// -------------------------------------------------------------------------------- FOCUSER_TEMPERATURE
 		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- FOCUSER_REVERSE_MOTION
@@ -225,7 +225,7 @@ static void focuser_connection_handler(indigo_device *device) {
 			for (int i = 0; true; i++) {
 				if (robofocus_command(device, "FV000000", response) && !strncmp(response, "FV", 2)) {
 					INDIGO_DRIVER_LOG(DRIVER_NAME, "RoboFocus focuser %s", response + 2);
-					strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, response + 2);
+					indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, response + 2);
 					break;
 				} else if (i < 5) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "No reply from RoboFocus focuser - retrying");

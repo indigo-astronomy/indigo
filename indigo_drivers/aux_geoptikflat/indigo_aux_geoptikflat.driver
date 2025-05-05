@@ -46,7 +46,12 @@ driver geoptikflat {
 			if (PRIVATE_DATA->handle != NULL) {
 				char response[16];
 				if (geoptikflat_command(PRIVATE_DATA->handle, ">POOO", response) && !strncmp(response, "*P", 2)) {
-					return true;
+					if (geoptikflat_command(PRIVATE_DATA->handle, ">VOOO", response)) {
+						indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, DRIVER_LABEL);
+						indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, response);
+						indigo_update_property(device, INFO_PROPERTY, NULL);
+						return true;
+					}
 				} else {
 					indigo_send_message(device, "Handshake failed");
 					indigo_uni_close(&PRIVATE_DATA->handle);
@@ -56,6 +61,9 @@ driver geoptikflat {
 		}
 
 		static void geoptikflat_close(indigo_device *device) {
+			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+			indigo_update_property(device, INFO_PROPERTY, NULL);
 			indigo_uni_close(&PRIVATE_DATA->handle);
 		}
 	}
@@ -69,10 +77,6 @@ driver geoptikflat {
 		// on_timer { }
 		on_connect {
 			char command[16],	response[16];
-			if (geoptikflat_command(PRIVATE_DATA->handle, ">VOOO", response)) {
-				snprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, INDIGO_VALUE_SIZE, "%s", response);
-				indigo_update_property(device, INFO_PROPERTY, NULL);
-			}
 			sprintf(command, ">B%03d", INTENSITY(AUX_LIGHT_INTENSITY_ITEM->number.value));
 			if (geoptikflat_command(PRIVATE_DATA->handle, command, response) && !strncmp(response, "*B", 2)) {
 				AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
@@ -88,6 +92,8 @@ driver geoptikflat {
 		// on_disconnect { }
 		on_attach {
 			INFO_PROPERTY->count = 6;
+			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		}
 		// on_detach { }
 		switch AUX_LIGHT_SWITCH {

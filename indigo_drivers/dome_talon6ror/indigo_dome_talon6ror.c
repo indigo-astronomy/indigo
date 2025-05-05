@@ -544,11 +544,11 @@ static indigo_result dome_attach(indigo_device *device) {
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_dome_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		INFO_PROPERTY->count = 5;
-		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Talon6");
+		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Talon6");
 		// -------------------------------------------------------------------------------- standard properties
 		INFO_PROPERTY->count = 6;
-		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Talon6 ROR");
-		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Talon6 ROR");
+		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		DOME_SPEED_PROPERTY->hidden = true;
 		DOME_DIRECTION_PROPERTY->hidden = true;
 		DOME_HORIZONTAL_COORDINATES_PROPERTY->hidden = true;
