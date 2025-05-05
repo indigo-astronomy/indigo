@@ -85,6 +85,7 @@ static bool sx_open(indigo_device *device) {
 	if (PRIVATE_DATA->handle != NULL) {
 		if (sx_command(device, "X", 1) && PRIVATE_DATA->response[0] == 'Y') {
 			if (sx_command(device, "V", 4) && PRIVATE_DATA->response[0] == 'V') {
+				indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, DRIVER_LABEL);
 				indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 1);
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 				return true;
@@ -96,6 +97,7 @@ static bool sx_open(indigo_device *device) {
 }
 
 static void sx_close(indigo_device *device) {
+	indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 	indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 	indigo_update_property(device, INFO_PROPERTY, NULL);
 	indigo_uni_close(&PRIVATE_DATA->handle);
@@ -233,7 +235,7 @@ static indigo_result ao_attach(indigo_device *device) {
 		//+ ao.on_attach
 		AO_GUIDE_NORTH_ITEM->number.max = AO_GUIDE_SOUTH_ITEM->number.max = AO_GUIDE_EAST_ITEM->number.max = AO_GUIDE_WEST_ITEM->number.max = 50;
 		INFO_PROPERTY->count = 6;
-		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, DRIVER_LABEL);
+		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		//- ao.on_attach
 		AO_GUIDE_DEC_PROPERTY->hidden = false;

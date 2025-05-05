@@ -83,7 +83,7 @@ static bool flatmaster_command(indigo_device *device, char *command, ...) {
 	if (result >= 0) {
 		va_list args;
 		va_start(args, command);
-		result = indigo_uni_vprintf_line(PRIVATE_DATA->handle, command, args);
+		result = indigo_uni_vtprintf(PRIVATE_DATA->handle, command, args, "\n");
 		va_end(args);
 		if (result > 0) {
 			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", INDIGO_DELAY(1));
@@ -104,6 +104,7 @@ static bool flatmaster_open(indigo_device *device) {
 			}
 		}
 		indigo_uni_close(&PRIVATE_DATA->handle);
+		indigo_send_message(device, "Handshake failed");
 	}
 	return false;
 }

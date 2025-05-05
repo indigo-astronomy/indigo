@@ -83,9 +83,7 @@ static bool rts_open(indigo_device *device) {
 }
 
 static void rts_close(indigo_device *device) {
-	if (PRIVATE_DATA->handle != NULL) {
-		indigo_uni_close(&PRIVATE_DATA->handle);
-	}
+	indigo_uni_close(&PRIVATE_DATA->handle);
 }
 
 //- code
@@ -212,7 +210,7 @@ static indigo_result aux_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		}
 		indigo_init_number_item(CCD_EXPOSURE_ITEM, CCD_EXPOSURE_ITEM_NAME, "Start exposure", 0, 1000, 1, 0);
-		strcpy(CCD_EXPOSURE_ITEM->number.format, "%g");
+		strcpy(CCD_EXPOSURE_ITEM->number.format, "%f");
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		return aux_enumerate_properties(device, NULL, NULL);

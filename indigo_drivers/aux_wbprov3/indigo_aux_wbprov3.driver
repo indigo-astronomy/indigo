@@ -26,7 +26,6 @@ driver wbprov3 {
 	copyright = "";
 	version = 3;
 	serial;
-	// include { }
 	define {
 		#define AUX_GROUP	"Powerbox"
 		#define WEATHER_GROUP	"Weather"
@@ -198,8 +197,8 @@ driver wbprov3 {
 			return false;
 		}
 
-		static bool wbprov3_command(indigo_device *device, char *command) {
-			if (indigo_uni_printf(PRIVATE_DATA->handle, "%s\n", command) > 0) {
+		static bool wbprov3_command(indigo_device *device, int command) {
+			if (indigo_uni_printf(PRIVATE_DATA->handle, "%d\n", command) > 0) {
 				return true;
 			}
 			return false;
@@ -224,13 +223,12 @@ driver wbprov3 {
 		}
 
 		static void wbprov3_close(indigo_device *device) {
-			if (PRIVATE_DATA->handle != NULL) {
-				indigo_uni_close(&PRIVATE_DATA->handle);
-			}
+			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+			indigo_update_property(device, INFO_PROPERTY, NULL);
+			indigo_uni_close(&PRIVATE_DATA->handle);
 		}
 	}
-	// on_init { }
-	// on_shutdown { }
 	aux {
 		name = "WandererBox Pro V3";
 		interface = INDIGO_INTERFACE_AUX_POWERBOX | INDIGO_INTERFACE_AUX_WEATHER;
@@ -290,15 +288,15 @@ driver wbprov3 {
 				}
 				if (AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value && AUX_WEATHER_PROPERTY->state == INDIGO_OK_STATE) {
 					if (((AUX_WEATHER_DEWPOINT_ITEM->number.value + 1) > PRIVATE_DATA->dht22_temperature) && (PRIVATE_DATA->dc5_pwm != 255 || PRIVATE_DATA->dc6_pwm != 255 || PRIVATE_DATA->dc7_pwm != 255)) {
-						wbprov3_command(device, "5255");
-						wbprov3_command(device, "6255");
-						wbprov3_command(device, "7255");
+						wbprov3_command(device, 5255);
+						wbprov3_command(device, 6255);
+						wbprov3_command(device, 7255);
 						indigo_send_message(device, "Heating started: Aproaching dewpoint");
 					}
 					if (((AUX_WEATHER_DEWPOINT_ITEM->number.value + 2) < PRIVATE_DATA->dht22_temperature) && (PRIVATE_DATA->dc5_pwm != 0 || PRIVATE_DATA->dc6_pwm != 0 || PRIVATE_DATA->dc7_pwm != 0)) {
-						wbprov3_command(device, "5000");
-						wbprov3_command(device, "6000");
-						wbprov3_command(device, "7000");
+						wbprov3_command(device, 5000);
+						wbprov3_command(device, 6000);
+						wbprov3_command(device, 7000);
 						indigo_send_message(device, "Heating stopped: Conditions are dry");
 					}
 				}
@@ -317,25 +315,17 @@ driver wbprov3 {
 			}
 			indigo_reschedule_timer(device, 1, &PRIVATE_DATA->aux_timer);
 		}
-		on_disconnect {
-			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
-			indigo_update_property(device, INFO_PROPERTY, NULL);
-		}
 		on_attach {
 			INFO_PROPERTY->count = 6;
 			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		}
-		// on_detach { }
 		text AUX_OUTLET_NAMES {
 			name = AUX_OUTLET_NAMES_PROPERTY_NAME;
 			group = AUX_GROUP;
 			label = "Outlet names";
 			persistent = true;
 			always_defined = true;
-			// handle_change = false;
-			// synchronized_change = false;
 			on_change {
 				snprintf(AUX_HEATER_OUTLET_1_ITEM->label, INDIGO_NAME_SIZE, "%s (DC5) [%%]", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
 				snprintf(AUX_HEATER_OUTLET_2_ITEM->label, INDIGO_NAME_SIZE, "%s (DC6) [%%]", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
@@ -354,8 +344,6 @@ driver wbprov3 {
 					indigo_update_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
 				}
 			}
-			// on_attach { }
-			// on_detach { }
 			item AUX_POWER_OUTLET_NAME_1 {
 				name = AUX_POWER_OUTLET_NAME_1_ITEM_NAME;
 				label = "Regulated outlets (DC3-DC4)";
@@ -392,16 +380,12 @@ driver wbprov3 {
 			group = AUX_GROUP;
 			label = "Power outlets";
 			rule = INDIGO_ANY_OF_MANY_RULE;
-			// handle_change = false;
-			// synchronized_change = false;
 			on_change {
-				wbprov3_command(device, AUX_POWER_OUTLET_1_ITEM->sw.value ? "101" : "100");
-				wbprov3_command(device, AUX_POWER_OUTLET_2_ITEM->sw.value ? "201" : "200");
-				wbprov3_command(device, AUX_POWER_OUTLET_3_ITEM->sw.value ? "211" : "210");
+				wbprov3_command(device, AUX_POWER_OUTLET_1_ITEM->sw.value ? 101 : 100);
+				wbprov3_command(device, AUX_POWER_OUTLET_2_ITEM->sw.value ? 201 : 200);
+				wbprov3_command(device, AUX_POWER_OUTLET_3_ITEM->sw.value ? 211 : 210);
 				indigo_sleep(1);
 			}
-			// on_attach { }
-			// on_detach { }
 			item AUX_POWER_OUTLET_1 {
 				name = AUX_POWER_OUTLET_1_ITEM_NAME;
 				label = "Regulated outlets (DC3-DC4)";
@@ -422,16 +406,10 @@ driver wbprov3 {
 			name = AUX_POWER_OUTLET_VOLTAGE_PROPERTY_NAME;
 			group = AUX_GROUP;
 			label = "Regulated outlets voltage";
-			// handle_change = false;
-			// synchronized_change = false;
 			on_change {
-				char command[16];
-				snprintf(command, sizeof(command), "%d", 20000 + (int)(AUX_POWER_OUTLET_VOLTAGE_1_ITEM->number.target * 10));
-				wbprov3_command(device, command);
+				wbprov3_command(device, 20000 + (int)(AUX_POWER_OUTLET_VOLTAGE_1_ITEM->number.target * 10));
 				indigo_sleep(1);
 			}
-			// on_attach { }
-			// on_detach { }
 			item AUX_POWER_OUTLET_VOLTAGE_1 {
 				name = AUX_POWER_OUTLET_VOLTAGE_1_ITEM_NAME;
 				label = "Regulated outlet (DC3-DC4) [V]";
@@ -447,27 +425,14 @@ driver wbprov3 {
 			group = AUX_GROUP;
 			label = "Output currents";
 			perm = INDIGO_RO_PERM;
-			// handle_change = false;
-			// synchronized_change = false;
-			// on_change { }
-			// on_attach { }
-			// on_detach { }
 			item AUX_POWER_OUTLET_CURRENT_1 {
 				name = AUX_POWER_OUTLET_CURRENT_1_ITEM_NAME;
 				label = "Output current (DC2) [A]";
-				value = 0;
-				min = 0;
-				max = 20;
-				step = 0;
 				format = "%.2f";
 			}
 			item AUX_POWER_OUTLET_CURRENT_2 {
 				name = AUX_POWER_OUTLET_CURRENT_2_ITEM_NAME;
 				label = "Output current (DC3-DC4) [A]";
-				value = 0;
-				min = 0;
-				max = 20;
-				step = 0;
 				format = "%.2f";
 			}
 		}
@@ -476,18 +441,14 @@ driver wbprov3 {
 			group = AUX_GROUP;
 			label = "USB Ports";
 			rule = INDIGO_ANY_OF_MANY_RULE;
-			// handle_change = false;
-			// synchronized_change = false;
 			on_change {
-				wbprov3_command(device, AUX_USB_PORT_1_ITEM->sw.value ? "111" : "110");
-				wbprov3_command(device, AUX_USB_PORT_2_ITEM->sw.value ? "121" : "120");
-				wbprov3_command(device, AUX_USB_PORT_3_ITEM->sw.value ? "131" : "130");
-				wbprov3_command(device, AUX_USB_PORT_4_ITEM->sw.value ? "141" : "140");
-				wbprov3_command(device, AUX_USB_PORT_5_ITEM->sw.value ? "151" : "150");
+				wbprov3_command(device, AUX_USB_PORT_1_ITEM->sw.value ? 111 : 110);
+				wbprov3_command(device, AUX_USB_PORT_2_ITEM->sw.value ? 121 : 120);
+				wbprov3_command(device, AUX_USB_PORT_3_ITEM->sw.value ? 131 : 130);
+				wbprov3_command(device, AUX_USB_PORT_4_ITEM->sw.value ? 141 : 140);
+				wbprov3_command(device, AUX_USB_PORT_5_ITEM->sw.value ? 151 : 150);
 				indigo_sleep(1);
 			}
-			// on_attach { }
-			// on_detach { }
 			item AUX_USB_PORT_1 {
 				name = AUX_USB_PORT_1_ITEM_NAME;
 				label = "USB 3.1 port (1)";
@@ -518,24 +479,16 @@ driver wbprov3 {
 			name = AUX_HEATER_OUTLET_PROPERTY_NAME;
 			group = AUX_GROUP;
 			label = "Heater outlets";
-			// handle_change = false;
-			// synchronized_change = false;
 			on_change {
-				char command[16];
-				snprintf(command, sizeof(command), "%d", 5000 + (int)(AUX_HEATER_OUTLET_1_ITEM->number.target * 255.0 / 100.0));
-				wbprov3_command(device, command);
-				snprintf(command, sizeof(command), "%d", 6000 + (int)(AUX_HEATER_OUTLET_2_ITEM->number.target * 255.0 / 100.0));
-				wbprov3_command(device, command);
-				snprintf(command, sizeof(command), "%d", 7000 + (int)(AUX_HEATER_OUTLET_3_ITEM->number.target * 255.0 / 100.0));
-				wbprov3_command(device, command);
+				wbprov3_command(device, 5000 + (int)(AUX_HEATER_OUTLET_1_ITEM->number.target * 255.0 / 100.0));
+				wbprov3_command(device, 6000 + (int)(AUX_HEATER_OUTLET_2_ITEM->number.target * 255.0 / 100.0));
+				wbprov3_command(device, 7000 + (int)(AUX_HEATER_OUTLET_3_ITEM->number.target * 255.0 / 100.0));
 				if (AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value) {
 					indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, AUX_DEW_CONTROL_MANUAL_ITEM, true);
 					indigo_update_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
 				}
 				indigo_sleep(1);
 			}
-			// on_attach { }
-			// on_detach { }
 			item AUX_HEATER_OUTLET_1 {
 				name = AUX_HEATER_OUTLET_1_ITEM_NAME;
 				label = "Heater outlet (DC5) [%]";
@@ -568,11 +521,6 @@ driver wbprov3 {
 			name = AUX_DEW_CONTROL_PROPERTY_NAME;
 			group = AUX_GROUP;
 			label = "Dew control";
-			// handle_change = false;
-			// synchronized_change = false;
-			// on_change { }
-			// on_attach { }
-			// on_detach { }
 			item AUX_DEW_CONTROL_MANUAL {
 				name = AUX_DEW_CONTROL_MANUAL_ITEM_NAME;
 				label = "Manual";
@@ -589,36 +537,19 @@ driver wbprov3 {
 			group = WEATHER_GROUP;
 			label = "Weather info (DHT22)";
 			perm = INDIGO_RO_PERM;
-			// handle_change = false;
-			// synchronized_change = false;
-			// on_change { }
-			// on_attach { }
-			// on_detach { }
 			item AUX_WEATHER_TEMPERATURE {
 				name = AUX_WEATHER_TEMPERATURE_ITEM_NAME;
 				label = "Temperature [°C]";
-				value = 0;
-				min = -50;
-				max = 100;
-				step = 0;
 				format = "%.2f";
 			}
 			item AUX_WEATHER_HUMIDITY {
 				name = AUX_WEATHER_HUMIDITY_ITEM_NAME;
 				label = "Humidity [%]";
-				value = 0;
-				min = 0;
-				max = 100;
-				step = 0;
 				format = "%.2f";
 			}
 			item AUX_WEATHER_DEWPOINT {
 				name = AUX_WEATHER_DEWPOINT_ITEM_NAME;
 				label = "Dewpoint [°C]";
-				value = 0;
-				min = -50;
-				max = 100;
-				step = 0;
 				format = "%.2f";
 			}
 		}
@@ -627,45 +558,24 @@ driver wbprov3 {
 			group = WEATHER_GROUP;
 			label = "Temperature sensors";
 			perm = INDIGO_RO_PERM;
-			// handle_change = false;
-			// synchronized_change = false;
-			// on_change { }
-			// on_attach { }
-			// on_detach { }
 			item AUX_TEMPERATURE_SENSORS_SENSOR_1 {
 				name = AUX_TEMPERATURE_SENSORS_SENSOR_1_ITEM_NAME;
 				label = "Temperature (DHT22) [°C]";
-				value = 0;
-				min = -50;
-				max = 100;
-				step = 0;
 				format = "%.2f";
 			}
 			item AUX_TEMPERATURE_SENSORS_SENSOR_2 {
 				name = AUX_TEMPERATURE_SENSORS_SENSOR_2_ITEM_NAME;
 				label = "Temperature (Temp probe 1) [°C]";
-				value = 0;
-				min = -50;
-				max = 100;
-				step = 0;
 				format = "%.2f";
 			}
 			item AUX_TEMPERATURE_SENSORS_SENSOR_3 {
 				name = AUX_TEMPERATURE_SENSORS_SENSOR_3_ITEM_NAME;
 				label = "Temperature (Temp probe 2) [°C]";
-				value = 0;
-				min = -50;
-				max = 100;
-				step = 0;
 				format = "%.2f";
 			}
 			item AUX_TEMPERATURE_SENSORS_SENSOR_4 {
 				name = AUX_TEMPERATURE_SENSORS_SENSOR_4_ITEM_NAME;
 				label = "Temperature (Temp probe 3) [°C]";
-				value = 0;
-				min = -50;
-				max = 100;
-				step = 0;
 				format = "%.2f";
 			}
 		}
@@ -673,11 +583,6 @@ driver wbprov3 {
 			name = AUX_DEW_WARNING_PROPERTY_NAME;
 			group = WEATHER_GROUP;
 			label = "Dew warning";
-			// handle_change = false;
-			// synchronized_change = false;
-			// on_change { }
-			// on_attach { }
-			// on_detach { }
 			item AUX_DEW_WARNING_SENSOR_1 {
 				name = AUX_DEW_WARNING_SENSOR_1_ITEM_NAME;
 				label = "Dew warning (DHT22)";
@@ -689,27 +594,14 @@ driver wbprov3 {
 			group = AUX_GROUP;
 			label = "Sensors";
 			perm = INDIGO_RO_PERM;
-			// handle_change = false;
-			// synchronized_change = false;
-			// on_change { }
-			// on_attach { }
-			// on_detach { }
 			item AUX_INFO_VOLTAGE {
 				name = AUX_INFO_VOLTAGE_ITEM_NAME;
 				label = "Voltage [V]";
-				value = 0;
-				min = 0;
-				max = 15;
-				step = 0;
 				format = "%.2f";
 			}
 			item AUX_INFO_CURRENT {
 				name = AUX_INFO_CURRENT_ITEM_NAME;
 				label = "Current [A]";
-				value = 0;
-				min = 0;
-				max = 20;
-				step = 0;
 				format = "%.2f";
 			}
 		}
@@ -717,17 +609,13 @@ driver wbprov3 {
 			name = "X_AUX_CALIBRATE";
 			group = AUX_ADVANCED_GROUP;
 			label = "Calibrate sensors";
-			// handle_change = false;
-			// synchronized_change = false;
 			on_change {
 				if (X_AUX_CALIBRATE_ITEM->sw.value) {
-					wbprov3_command(device, "66300744");
+					wbprov3_command(device, 66300744);
 					indigo_sleep(1);
 					X_AUX_CALIBRATE_ITEM->sw.value = false;
 				}
 			}
-			// on_attach { }
-			// on_detach { }
 			item X_AUX_CALIBRATE {
 				name = "CALIBRATE";
 				label = "Calibrate";

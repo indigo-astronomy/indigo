@@ -24,31 +24,31 @@ driver geoptikflat {
 	copyright = "Copyright (c) 2021-2025 Rumen G. Bogdanovski";
 	version = 5;
 	serial;
-	// include { }
-	define {
-		#define INTENSITY(val)       (int)(val / 100.0 * 255)
+	data {
+		char response[16];
 	}
-	// data { }
 	code {
-		static bool geoptikflat_command(indigo_uni_handle *handle, char *command, char *response) {
-			if (indigo_uni_discard(handle) >= 0) {
-				if (indigo_uni_printf(handle, "%s\r", command) > 0) {
-					if (indigo_uni_read_section(handle, response, 16, "\n", "\n", INDIGO_DELAY(1)) > 0) {
-						return true;
-					}
+		static bool geoptikflat_command(indigo_device *device, char *command, ...) {
+			long result = indigo_uni_discard(PRIVATE_DATA->handle);
+			if (result >= 0) {
+				va_list args;
+				va_start(args, command);
+				result = indigo_uni_vtprintf(PRIVATE_DATA->handle, command, args, "\r");
+				va_end(args);
+				if (result > 0) {
+					result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\n", INDIGO_DELAY(1));
 				}
 			}
-			return false;
+			return result > 0 && PRIVATE_DATA->response[0] == '*';
 		}
 
 		static bool geoptikflat_open(indigo_device *device) {
 			PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
 			if (PRIVATE_DATA->handle != NULL) {
-				char response[16];
-				if (geoptikflat_command(PRIVATE_DATA->handle, ">POOO", response) && !strncmp(response, "*P", 2)) {
-					if (geoptikflat_command(PRIVATE_DATA->handle, ">VOOO", response)) {
+				if (geoptikflat_command(device, ">POOO")) {
+					if (geoptikflat_command(device, ">VOOO")) {
 						indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, DRIVER_LABEL);
-						indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, response);
+						indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 2);
 						indigo_update_property(device, INFO_PROPERTY, NULL);
 						return true;
 					}
@@ -67,50 +67,37 @@ driver geoptikflat {
 			indigo_uni_close(&PRIVATE_DATA->handle);
 		}
 	}
-	// on_init { }
-	// on_shutdown { }
 	aux {
 		name = "Geoptik Flat Generator";
 		interface = INDIGO_INTERFACE_AUX_LIGHTBOX;
 		additional_instances = true;
-		// code { }
-		// on_timer { }
 		on_connect {
-			char command[16],	response[16];
-			sprintf(command, ">B%03d", INTENSITY(AUX_LIGHT_INTENSITY_ITEM->number.value));
-			if (geoptikflat_command(PRIVATE_DATA->handle, command, response) && !strncmp(response, "*B", 2)) {
+			if (geoptikflat_command(device, ">B%03d", (int)(255 * AUX_LIGHT_INTENSITY_ITEM->number.value / 100))) {
 				AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
 				AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
-			if (geoptikflat_command(PRIVATE_DATA->handle, AUX_LIGHT_SWITCH_ON_ITEM->sw.value ? ">LOOO" : ">DOOO", response) && !strncmp(response, AUX_LIGHT_SWITCH_ON_ITEM->sw.value ? "*L" : "*D", 2)) {
+			if (geoptikflat_command(device, ">%cOOO", AUX_LIGHT_SWITCH_ON_ITEM->sw.value ? 'L' : 'D')) {
 				AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
 				AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 		}
-		// on_disconnect { }
 		on_attach {
 			INFO_PROPERTY->count = 6;
 			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		}
-		// on_detach { }
 		switch AUX_LIGHT_SWITCH {
 			name = AUX_LIGHT_SWITCH_PROPERTY_NAME;
 			group = AUX_MAIN_GROUP;
 			label = "Light (on/off)";
 			persistent = true;
-			// handle_change = false;
-			// synchronized_change = false;
 			on_change {
-				char response[16];
-				if (!geoptikflat_command(PRIVATE_DATA->handle, AUX_LIGHT_SWITCH_ON_ITEM->sw.value ? ">LOOO" : ">DOOO", response) || strncmp(response, AUX_LIGHT_SWITCH_ON_ITEM->sw.value ? "*L" : "*D", 2)) {
+				if (!geoptikflat_command(device, ">%cOOO", AUX_LIGHT_SWITCH_ON_ITEM->sw.value ? 'L' : 'D')) {
 					AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 			}
-			// on_attach { }
-			// on_detach { }
 			item AUX_LIGHT_SWITCH_ON {
 				name = AUX_LIGHT_SWITCH_ON_ITEM_NAME;
 				label = "On";
@@ -127,17 +114,11 @@ driver geoptikflat {
 			group = AUX_MAIN_GROUP;
 			label = "Light intensity";
 			persistent = true;
-			// handle_change = false;
-			// synchronized_change = false;
 			on_change {
-				char command[16],	response[16];
-				sprintf(command, ">B%03d", INTENSITY(AUX_LIGHT_INTENSITY_ITEM->number.value));
-				if (!geoptikflat_command(PRIVATE_DATA->handle, command, response) || strncmp(response, "*B", 2)) {
+				if (!geoptikflat_command(device, ">B%03d", (int)(255 * AUX_LIGHT_INTENSITY_ITEM->number.value / 100))) {
 					AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 			}
-			// on_attach { }
-			// on_detach { }
 			item AUX_LIGHT_INTENSITY {
 				name = AUX_LIGHT_INTENSITY_ITEM_NAME;
 				label = "Intensity (%)";

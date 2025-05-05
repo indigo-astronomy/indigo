@@ -29,8 +29,6 @@ driver fc3 {
 			vid = 0x303a;
 		}
 	}
-	// include { }
-	// define { }
 	data {
 		char response[128];
 	}
@@ -40,7 +38,7 @@ driver fc3 {
 			if (result >= 0) {
 				va_list args;
 				va_start(args, command);
-				result = indigo_uni_vprintf_line(PRIVATE_DATA->handle, command, args);
+				result = indigo_uni_vtprintf(PRIVATE_DATA->handle, command, args, "\n");
 				va_end(args);
 				if (result > 0) {
 					result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", INDIGO_DELAY(1));
@@ -70,17 +68,17 @@ driver fc3 {
 			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 			indigo_update_property(device, INFO_PROPERTY, NULL);
-			if (PRIVATE_DATA->handle != NULL) {
-				indigo_uni_close(&PRIVATE_DATA->handle);
-			}
+			indigo_uni_close(&PRIVATE_DATA->handle);
 		}
 	}
-	// on_init { }
-	// on_shutdown { }
 	focuser {
 		name = "Pegasus FocusCube3";
 		additional_instances = true;
-		// code { }
+		on_attach {
+			INFO_PROPERTY->count = 6;
+			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+		}
 		on_timer {
 			bool update = false;
 			if (fc3_command(device, "FA") && !strncmp(PRIVATE_DATA->response, "FC3:", 4)) {
@@ -156,8 +154,6 @@ driver fc3 {
 		on_disconnect {
 			fc3_command(device, "FH");
 		}
-		// on_attach { }
-		// on_detach { }
 		inherited FOCUSER_BACKLASH {
 			hidden = false;
 			on_change {
@@ -170,15 +166,6 @@ driver fc3 {
 				FOCUSER_BACKLASH_ITEM->number.max = 9999;
 				FOCUSER_BACKLASH_ITEM->number.target = FOCUSER_BACKLASH_ITEM->number.value = 100;
 			}
-			// on_detach { }
-		}
-		inherited INFO {
-			// on_change { }
-			on_attach {
-				INFO_PROPERTY->count = 6;
-				indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Undefined");
-			}
-			// on_detach { }
 		}
 		inherited FOCUSER_REVERSE_MOTION {
 			hidden = false;
@@ -187,14 +174,9 @@ driver fc3 {
 					FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 			}
-			// on_attach { }
-			// on_detach { }
 		}
 		inherited FOCUSER_TEMPERATURE {
 			hidden = false;
-			// on_change { }
-			// on_attach { }
-			// on_detach { }
 		}
 		inherited FOCUSER_SPEED {
 			on_change {
@@ -208,7 +190,6 @@ driver fc3 {
 				FOCUSER_SPEED_ITEM->number.max = 1000;
 				FOCUSER_SPEED_ITEM->number.step = 1;
 			}
-			// on_detach { }
 		}
 		inherited FOCUSER_STEPS {
 			on_change {
@@ -235,13 +216,9 @@ driver fc3 {
 				FOCUSER_STEPS_ITEM->number.max = 9999999;
 				FOCUSER_STEPS_ITEM->number.step = 1;
 			}
-			// on_detach { }
 		}
 		inherited FOCUSER_ON_POSITION_SET {
 			hidden = false;
-			// on_change { }
-			// on_attach { }
-			// on_detach { }
 		}
 		inherited FOCUSER_POSITION {
 			on_change {
@@ -267,8 +244,6 @@ driver fc3 {
 					}
 				}
 			}
-			// on_attach { }
-			// on_detach { }
 		}
 		inherited FOCUSER_ABORT_MOTION {
 			on_change {
@@ -285,25 +260,18 @@ driver fc3 {
 					}
 				}
 			}
-			// on_attach { }
-			// on_detach { }
 		}
 		inherited FOCUSER_DIRECTION {
 			persistent = true;
-			// on_change { }
-			// on_attach { }
-			// on_detach { }
 		}
 		inherited FOCUSER_LIMITS {
 			persistent = true;
-			// on_change { }
 			on_attach {
 				FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.min = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min = -9999999;
 				strcpy(FOCUSER_LIMITS_MIN_POSITION_ITEM->number.format, "%.0f");
 				FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.max = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max = 9999999;
 				strcpy(FOCUSER_LIMITS_MAX_POSITION_ITEM->number.format, "%.0f");
 			}
-			// on_detach { }
 		}
 	}
 }

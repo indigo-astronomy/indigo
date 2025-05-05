@@ -1327,33 +1327,27 @@ long indigo_uni_vprintf(indigo_uni_handle *handle, const char *format, va_list a
 	}
 }
 
-long indigo_uni_vprintf_line(indigo_uni_handle *handle, const char *format, va_list args) {
+long indigo_uni_vtprintf(indigo_uni_handle *handle, const char *format, va_list args, char *terminator) {
 	if (handle == NULL) {
 		indigo_error("%s used with NULL handle", __FUNCTION__);
 		return -1;
 	}
+	long result;
 	if (strchr(format, '%')) {
 		char *buffer = indigo_alloc_large_buffer();
 		int length = vsnprintf(buffer, INDIGO_BUFFER_SIZE, format, args);
-		long result = indigo_uni_write(handle, buffer, length);
+		result = indigo_uni_write(handle, buffer, length);
 		indigo_free_large_buffer(buffer);
-		if (result >= 0) {
-			indigo_log_levels saved = handle->log_level;
-			handle->log_level = INDIGO_LOG_NONE;
-			result += indigo_uni_write(handle, "\n", 1);
-			handle->log_level = saved;
-		}
- 		return result;
 	} else {
-		long result = indigo_uni_write(handle, format, (long)strlen(format));
-		if (result >= 0) {
-			indigo_log_levels saved = handle->log_level;
-			handle->log_level = INDIGO_LOG_NONE;
-			result += indigo_uni_write(handle, "\n", 1);
-			handle->log_level = saved;
-		}
-		return result;
+		result = indigo_uni_write(handle, format, (long)strlen(format));
 	}
+	if (result >= 0) {
+		indigo_log_levels saved = handle->log_level;
+		handle->log_level = INDIGO_LOG_NONE;
+		result += indigo_uni_write(handle, terminator, strlen(terminator));
+		handle->log_level = saved;
+	}
+	return result;
 }
 
 long indigo_uni_seek(indigo_uni_handle *handle, long position, int whence) {

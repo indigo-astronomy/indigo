@@ -24,8 +24,6 @@ driver astromechanics {
 	copyright = "Copyright (c) 2021-2025 CloudMakers, s. r. o.";
 	version = 5;
 	serial;
-	// include { }
-	// define { }
 	data {
 		char response[16];
 	}
@@ -50,13 +48,10 @@ driver astromechanics {
 			indigo_uni_close(&PRIVATE_DATA->handle);
 		}
 	}
-	// on_init { }
-	// on_shutdown { }
 	aux {
 		name = "ASTROMECHANICS LPM";
 		interface = INDIGO_INTERFACE_AUX_SQM;
 		additional_instances = true;
-		// code { }
 		on_timer {
 			if (astromechanics_command(device, "V#")) {
 				AUX_WEATHER_SKY_BRIGHTNESS_ITEM->number.value = indigo_atod(PRIVATE_DATA->response);
@@ -68,31 +63,18 @@ driver astromechanics {
 			indigo_update_property(device, AUX_WEATHER_PROPERTY, NULL);
 			indigo_reschedule_timer(device, 10, &PRIVATE_DATA->aux_timer);
 		}
-		// on_connect { }
-		// on_disconnect { }
-		// on_attach { }
-		// on_detach { }
 		number AUX_WEATHER {
 			name = AUX_WEATHER_PROPERTY_NAME;
 			group = AUX_MAIN_GROUP;
 			label = "Sky quality";
 			perm = INDIGO_RO_PERM;
-			// handle_change = false;
-			// synchronized_change = false;
-			// on_change { }
-			// on_attach { }
-			// on_detach { }
 			item AUX_WEATHER_SKY_BRIGHTNESS {
 				name = AUX_WEATHER_SKY_BRIGHTNESS_ITEM_NAME;
 				label = "Sky brightness [m/arcsec\u00B2]";
-				min = -20;
-				max = 30;
 			}
 			item AUX_WEATHER_SKY_BORTLE_CLASS {
 				name = AUX_WEATHER_SKY_BORTLE_CLASS_ITEM_NAME;
 				label = "Sky Bortle class";
-				min = 1;
-				max = 9;
 			}
 		}
 	}

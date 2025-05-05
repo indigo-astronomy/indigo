@@ -233,7 +233,7 @@ INDIGO_EXTERN long indigo_uni_vprintf(indigo_uni_handle *handle, const char *for
 /** Write formatted line.
  */
 
-INDIGO_EXTERN long indigo_uni_vprintf_line(indigo_uni_handle *handle, const char *format, va_list args);
+INDIGO_EXTERN long indigo_uni_vtprintf(indigo_uni_handle *handle, const char *format, va_list args, char *terminator);
 
 /** Seek.
  */

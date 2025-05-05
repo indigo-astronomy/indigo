@@ -24,8 +24,6 @@ driver sx {
 	copyright = "Copyright (c) 2016-2025 CloudMakers, s. r. o.";
 	version = 11;
 	serial;
-	// include { }
-	// define { }
 	data {
 		char response[6];
 	}
@@ -67,13 +65,9 @@ driver sx {
 			indigo_uni_close(&PRIVATE_DATA->handle);
 		}
 	}
-	// on_init { }
-	// on_shutdown { }
 	ao {
 		name = "SX AO";
 		additional_instances = true;
-		// code { }
-		// on_timer { }
 		on_connect {
 			if (sx_command(device, "L", 1)) {
 				AO_GUIDE_DEC_PROPERTY->state = AO_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
@@ -83,14 +77,12 @@ driver sx {
 					AO_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 		}
-		// on_disconnect { }
 		on_attach {
 			AO_GUIDE_NORTH_ITEM->number.max = AO_GUIDE_SOUTH_ITEM->number.max = AO_GUIDE_EAST_ITEM->number.max = AO_GUIDE_WEST_ITEM->number.max = 50;
 			INFO_PROPERTY->count = 6;
 			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		}
-		// on_detach { }
 		inherited AO_GUIDE_DEC {
 			on_change {
 				if (AO_GUIDE_NORTH_ITEM->number.value > 0) {
@@ -141,12 +133,6 @@ driver sx {
 	}
 	guider {
 		name = "SX AO (guider)";
-		// code { }
-		// on_timer { }
-		// on_connect { }
-		// on_disconnect { }
-		// on_attach { }
-		// on_detach { }
 		inherited GUIDER_GUIDE_DEC {
 			on_change {
 				if (GUIDER_GUIDE_NORTH_ITEM->number.value > 0) {

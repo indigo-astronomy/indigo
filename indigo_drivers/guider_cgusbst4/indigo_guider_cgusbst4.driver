@@ -28,8 +28,6 @@ driver cgusbst4 {
 			product = "USB to ST4 Astrogene_1000";
 		}
 	}
-	// include { }
-	// define { }
 	data {
 		char response[2];
 	}
@@ -70,16 +68,8 @@ driver cgusbst4 {
 			}
 		}
 	}
-	// on_init { }
-	// on_shutdown { }
 	guider {
 		name = "CG-USB-ST4 Adapter";
-		// code { }
-		// on_timer { }
-		// on_connect { }
-		// on_disconnect { }
-		// on_attach { }
-		// on_detach { }
 		inherited GUIDER_GUIDE_DEC {
 			on_change {
 				int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;

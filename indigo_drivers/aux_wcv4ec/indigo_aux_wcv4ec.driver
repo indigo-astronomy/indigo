@@ -26,7 +26,6 @@ driver wcv4ec {
 	copyright = "";
 	version = 5;
 	serial;
-	// include { }
 	define {
 		#define DEVICE_ID "WandererCoverV4"
 	}
@@ -108,8 +107,8 @@ driver wcv4ec {
 			return false;
 		}
 
-		static bool wcv4ec_command(indigo_device *device, char *command) {
-			if (indigo_uni_printf(PRIVATE_DATA->handle, "%s\n", command) > 0) {
+		static bool wcv4ec_command(indigo_device *device, int command) {
+			if (indigo_uni_printf(PRIVATE_DATA->handle, "%d\n", command) > 0) {
 				return true;
 			}
 			return false;
@@ -134,18 +133,16 @@ driver wcv4ec {
 		}
 
 		static void wcv4ec_close(indigo_device *device) {
-			if (PRIVATE_DATA->handle != NULL) {
-				indigo_uni_close(&PRIVATE_DATA->handle);
-			}
+			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+			indigo_update_property(device, INFO_PROPERTY, NULL);
+			indigo_uni_close(&PRIVATE_DATA->handle);
 		}
 	}
-	// on_init { }
-	// on_shutdown { }
 	aux {
 		name = "WandererCover V4-EC";
 		interface = INDIGO_INTERFACE_AUX_LIGHTBOX;
 		additional_instances = true;
-		// code { }
 		on_timer {
 			if (wcv4ec_read_status(device)) {
 				bool update = false;
@@ -205,39 +202,24 @@ driver wcv4ec {
 			}
 			indigo_reschedule_timer(device, 1, &PRIVATE_DATA->aux_timer);
 		}
-		// on_connect { }
 		on_disconnect {
-			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
-			indigo_update_property(device, INFO_PROPERTY, NULL);
-			wcv4ec_command(device, "9999"); // turn light off
-			wcv4ec_command(device, "2000"); // turn the heater off
+			wcv4ec_command(device, 9999); // turn light off
+			wcv4ec_command(device, 2000); // turn the heater off
 		}
 		on_attach {
 			INFO_PROPERTY->count = 6;
 			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		}
-		// on_detach { }
 		switch AUX_LIGHT_SWITCH {
 			name = AUX_LIGHT_SWITCH_PROPERTY_NAME;
 			group = AUX_MAIN_GROUP;
 			label = "Light (on/off)";
-			// handle_change = false;
-			// synchronized_change = false;
 			on_change {
-				char command[16];
-				if (AUX_LIGHT_SWITCH_ON_ITEM->sw.value) {
-					sprintf(command, "%d", (int)(AUX_LIGHT_INTENSITY_ITEM->number.value));
-				} else {
-					strcpy(command, "9999");
-				}
-				if (!wcv4ec_command(device, command)) {
+				if (!wcv4ec_command(device, AUX_LIGHT_SWITCH_ON_ITEM->sw.value ? (int)(AUX_LIGHT_INTENSITY_ITEM->number.value) : 9999)) {
 					AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 			}
-			// on_attach { }
-			// on_detach { }
 			item AUX_LIGHT_SWITCH_ON {
 				name = AUX_LIGHT_SWITCH_ON_ITEM_NAME;
 				label = "On";
@@ -254,20 +236,14 @@ driver wcv4ec {
 			group = AUX_MAIN_GROUP;
 			label = "Light intensity";
 			persistent = true;
-			// handle_change = false;
-			// synchronized_change = false;
 			on_change {
-				char command[16];
 				if (AUX_LIGHT_SWITCH_ON_ITEM->sw.value) {
-					sprintf(command, "%d", (int)(AUX_LIGHT_INTENSITY_ITEM->number.value));
-					if (!wcv4ec_command(device, command)) {
+					if (!wcv4ec_command(device, (int)(AUX_LIGHT_INTENSITY_ITEM->number.value))) {
 						AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
 					}
 					indigo_set_switch(AUX_LIGHT_SWITCH_PROPERTY, AUX_LIGHT_SWITCH_ON_ITEM, true);
 				}
 			}
-			// on_attach { }
-			// on_detach { }
 			item AUX_LIGHT_INTENSITY {
 				name = AUX_LIGHT_INTENSITY_ITEM_NAME;
 				label = "Intensity";
@@ -282,8 +258,6 @@ driver wcv4ec {
 			name = "X_COVER_DETECT_OPEN_CLOSE";
 			group = AUX_ADVANCED_GROUP;
 			label = "Detect cover open/close position";
-			// handle_change = false;
-			// synchronized_change = false;
 			on_change {
 				if (PRIVATE_DATA->operation_running) {
 					pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -291,9 +265,9 @@ driver wcv4ec {
 				}
 				bool success = false;
 				if (AUX_DETECT_OPEN_CLOSE_OPEN_ITEM->sw.value) {
-					success = wcv4ec_command(device, "100001");
+					success = wcv4ec_command(device, 100001);
 				} else if (AUX_DETECT_OPEN_CLOSE_CLOSE_ITEM->sw.value) {
-					success = wcv4ec_command(device, "100000");
+					success = wcv4ec_command(device, 100000);
 				}
 				if (success) {
 					PRIVATE_DATA->operation_running = true; // let the status callback set correct open/close when we are done
@@ -309,8 +283,6 @@ driver wcv4ec {
 				AUX_DETECT_OPEN_CLOSE_OPEN_ITEM->sw.value = false;
 				AUX_DETECT_OPEN_CLOSE_CLOSE_ITEM->sw.value = false;
 			}
-			// on_attach { }
-			// on_detach { }
 			item AUX_DETECT_OPEN_CLOSE_OPEN {
 				name = AUX_COVER_OPEN_ITEM_NAME;
 				label = "Detect Open";
@@ -326,8 +298,6 @@ driver wcv4ec {
 			name = "X_COVER_SET_OPEN_CLOSE";
 			group = AUX_ADVANCED_GROUP;
 			label = "Set cover open/close position";
-			// handle_change = false;
-			// synchronized_change = false;
 			on_change {
 				char command[32];
 				if (PRIVATE_DATA->operation_running) {
@@ -342,10 +312,8 @@ driver wcv4ec {
 					pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 					return;
 				}
-				sprintf(command, "%d", 40000 + (int)(AUX_SET_OPEN_CLOSE_OPEN_ITEM->number.target * 100));
-				bool success = wcv4ec_command(device, command);
-				sprintf(command, "%d", 10000 + (int)(AUX_SET_OPEN_CLOSE_CLOSE_ITEM->number.target * 100));
-				success = success && wcv4ec_command(device, command);
+				bool success = wcv4ec_command(device, 40000 + (int)(AUX_SET_OPEN_CLOSE_OPEN_ITEM->number.target * 100));
+				success = success && wcv4ec_command(device, 10000 + (int)(AUX_SET_OPEN_CLOSE_CLOSE_ITEM->number.target * 100));
 				if (success) {
 					indigo_sleep(1);
 				} else {
@@ -353,8 +321,6 @@ driver wcv4ec {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Set open/close failed");
 				}
 			}
-			// on_attach { }
-			// on_detach { }
 			item AUX_SET_OPEN_CLOSE_OPEN {
 				name = AUX_COVER_OPEN_ITEM_NAME;
 				label = "Set Open [°]";
@@ -376,18 +342,16 @@ driver wcv4ec {
 			name = "X_HEATER";
 			group = AUX_MAIN_GROUP;
 			label = "Heater";
-			// handle_change = false;
-			// synchronized_change = false;
 			on_change {
 				bool success = true;
 				if (AUX_HEATER_OFF_ITEM->sw.value) {
-					success = wcv4ec_command(device, "2000");
+					success = wcv4ec_command(device, 2000);
 				} else if (AUX_HEATER_LOW_ITEM->sw.value) {
-					success = wcv4ec_command(device, "2050");
+					success = wcv4ec_command(device, 2050);
 				} else if (AUX_HEATER_HIGH_ITEM->sw.value) {
-					success = wcv4ec_command(device, "2100");
+					success = wcv4ec_command(device, 2100);
 				} else if (AUX_HEATER_MAX_ITEM->sw.value) {
-					success = wcv4ec_command(device, "2150");
+					success = wcv4ec_command(device, 2150);
 				}
 				if (success) {
 					indigo_sleep(1);
@@ -395,8 +359,6 @@ driver wcv4ec {
 					AUX_HEATER_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 			}
-			// on_attach { }
-			// on_detach { }
 			item AUX_HEATER_OFF {
 				name = "OFF";
 				label = "Off";
@@ -427,9 +389,7 @@ driver wcv4ec {
 					pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 					return;
 				}
-				char command[16];
-				strcpy(command, AUX_COVER_OPEN_ITEM->sw.value ? "1001" : "1000");
-				if (wcv4ec_command(device, command)) {
+				if (wcv4ec_command(device, AUX_COVER_OPEN_ITEM->sw.value ? 1001 : 1000)) {
 					PRIVATE_DATA->operation_start_time = time(NULL);
 					PRIVATE_DATA->operation_running = true;
 					AUX_COVER_PROPERTY->state = INDIGO_BUSY_STATE;

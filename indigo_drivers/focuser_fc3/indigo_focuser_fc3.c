@@ -50,7 +50,6 @@ typedef struct {
 	indigo_timer *focuser_timer;
 	indigo_timer *focuser_connection_handler_timer;
 	indigo_timer *focuser_backlash_handler_timer;
-	indigo_timer *focuser_info_handler_timer;
 	indigo_timer *focuser_reverse_motion_handler_timer;
 	indigo_timer *focuser_temperature_handler_timer;
 	indigo_timer *focuser_speed_handler_timer;
@@ -74,7 +73,7 @@ static bool fc3_command(indigo_device *device, char *command, ...) {
 	if (result >= 0) {
 		va_list args;
 		va_start(args, command);
-		result = indigo_uni_vprintf_line(PRIVATE_DATA->handle, command, args);
+		result = indigo_uni_vtprintf(PRIVATE_DATA->handle, command, args, "\n");
 		va_end(args);
 		if (result > 0) {
 			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", INDIGO_DELAY(1));
@@ -104,9 +103,7 @@ static void fc3_close(indigo_device *device) {
 	indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 	indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 	indigo_update_property(device, INFO_PROPERTY, NULL);
-	if (PRIVATE_DATA->handle != NULL) {
-		indigo_uni_close(&PRIVATE_DATA->handle);
-	}
+	indigo_uni_close(&PRIVATE_DATA->handle);
 }
 
 //- code
@@ -216,7 +213,6 @@ static void focuser_connection_handler(indigo_device *device) {
 	} else {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_timer);
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_backlash_handler_timer);
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_info_handler_timer);
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_reverse_motion_handler_timer);
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_temperature_handler_timer);
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_speed_handler_timer);
@@ -248,15 +244,6 @@ static void focuser_backlash_handler(indigo_device *device) {
 	}
 	//- focuser.FOCUSER_BACKLASH.on_change
 	indigo_update_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-}
-
-// INFO change handler
-
-static void focuser_info_handler(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	INFO_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, INFO_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
@@ -419,17 +406,17 @@ static indigo_result focuser_attach(indigo_device *device) {
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
+		//+ focuser.on_attach
+		INFO_PROPERTY->count = 6;
+		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+		//- focuser.on_attach
 		FOCUSER_BACKLASH_PROPERTY->hidden = false;
 		//+ focuser.FOCUSER_BACKLASH.on_attach
 		FOCUSER_BACKLASH_ITEM->number.min = 0;
 		FOCUSER_BACKLASH_ITEM->number.max = 9999;
 		FOCUSER_BACKLASH_ITEM->number.target = FOCUSER_BACKLASH_ITEM->number.value = 100;
 		//- focuser.FOCUSER_BACKLASH.on_attach
-		INFO_PROPERTY->hidden = false;
-		//+ focuser.INFO.on_attach
-		INFO_PROPERTY->count = 6;
-		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Undefined");
-		//- focuser.INFO.on_attach
 		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
 		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
 		FOCUSER_SPEED_PROPERTY->hidden = false;
@@ -486,14 +473,6 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			FOCUSER_BACKLASH_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
 			indigo_set_timer(device, 0, focuser_backlash_handler, &PRIVATE_DATA->focuser_backlash_handler_timer);
-		}
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(INFO_PROPERTY, property)) {
-		if (PRIVATE_DATA->focuser_info_handler_timer == NULL) {
-			indigo_property_copy_values(INFO_PROPERTY, property, false);
-			INFO_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, INFO_PROPERTY, NULL);
-			indigo_set_timer(device, 0, focuser_info_handler, &PRIVATE_DATA->focuser_info_handler_timer);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_REVERSE_MOTION_PROPERTY, property)) {

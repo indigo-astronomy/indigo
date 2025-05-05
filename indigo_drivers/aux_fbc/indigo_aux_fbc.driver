@@ -29,9 +29,8 @@ driver fbc {
 			pid = 0x6001;
 		}
 	}
-	// include { }
 	define {
-		#define INTENSITY(val)       ((int)floor((100 - (int)(val) - 0) * (220 - 20) / (100 - 0) + 20))
+		#define INTENSITY(val) ((int)floor((100 - (int)(val) - 0) * (220 - 20) / (100 - 0) + 20))
 	}
 	data {
 		char response[80];
@@ -56,7 +55,6 @@ driver fbc {
 				}
 			}
 			return result > 0;
-
 		}
 
 		static bool fbc_open(indigo_device *device) {
@@ -94,37 +92,27 @@ driver fbc {
 			indigo_uni_close(&PRIVATE_DATA->handle);
 		}
 	}
-	// on_init { }
-	// on_shutdown { }
 	aux {
 		name = "Lacerta FBC";
 		interface = INDIGO_INTERFACE_AUX_LIGHTBOX;
 		additional_instances = true;
-		// code { }
-		// on_timer { }
 		on_connect {
 			fbc_command(device, ": B %d #", false, (int)AUX_LIGHT_INTENSITY_ITEM->number.value);
 		}
-		// on_disconnect { }
 		on_attach {
 			INFO_PROPERTY->count = 6;
 			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		}
-		// on_detach { }
 		switch AUX_LIGHT_SWITCH {
 			name = AUX_LIGHT_SWITCH_PROPERTY_NAME;
 			group = AUX_MAIN_GROUP;
 			label = "Light (on/off)";
-			// handle_change = false;
-			// synchronized_change = false;
 			on_change {
 				if (!fbc_command(device, "E:%d", false, AUX_LIGHT_SWITCH_ON_ITEM->sw.value)) { // TODO: This command is not understood
 					AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 			}
-			// on_attach { }
-			// on_detach { }
 			item AUX_LIGHT_SWITCH_ON {
 				name = AUX_LIGHT_SWITCH_ON_ITEM_NAME;
 				label = "On";
@@ -141,15 +129,11 @@ driver fbc {
 			group = AUX_MAIN_GROUP;
 			label = "Light intensity";
 			persistent = true;
-			// handle_change = false;
-			// synchronized_change = false;
 			on_change {
 				if (!fbc_command(device, ": B %d #", false, (int)AUX_LIGHT_INTENSITY_ITEM->number.value)) {
 					AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 			}
-			// on_attach { }
-			// on_detach { }
 			item AUX_LIGHT_INTENSITY {
 				name = AUX_LIGHT_INTENSITY_ITEM_NAME;
 				label = "Intensity (%)";
@@ -164,8 +148,6 @@ driver fbc {
 			name = AUX_LIGHT_IMPULSE_PROPERTY_NAME;
 			group = AUX_MAIN_GROUP;
 			label = "Light impulse";
-			// handle_change = false;
-			// synchronized_change = false;
 			on_change {
 				if (fbc_command(device, ": F %d #", false, (int)(AUX_LIGHT_IMPULSE_DURATION_ITEM->number.value * 1000))) {
 					AUX_LIGHT_IMPULSE_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -184,8 +166,6 @@ driver fbc {
 					AUX_LIGHT_IMPULSE_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 			}
-			// on_attach { }
-			// on_detach { }
 			item AUX_LIGHT_IMPULSE_DURATION {
 				name = AUX_LIGHT_IMPULSE_DURATION_ITEM_NAME;
 				label = "Duration (s)";
@@ -199,10 +179,7 @@ driver fbc {
 			name = CCD_EXPOSURE_PROPERTY_NAME;
 			group = AUX_MAIN_GROUP;
 			label = "Shutter Control";
-			// handle_change = false;
-			// synchronized_change = false;
 			on_change {
-				char command[16];
 				if (fbc_command(device, ": E %d #", false, (int)(CCD_EXPOSURE_ITEM->number.value * 1000))) {
 					CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 					while (CCD_EXPOSURE_ITEM->number.value > 0) {
@@ -220,8 +197,6 @@ driver fbc {
 					CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 			}
-			// on_attach { }
-			// on_detach { }
 			item CCD_EXPOSURE {
 				name = CCD_EXPOSURE_ITEM_NAME;
 				label = "Exposure (s)";

@@ -23,20 +23,15 @@ driver simulator {
 	author = "Rumen G. Bogdanovski";
 	copyright = "Copyright (c) 2025 Rumen G. Bogdanovski";
 	version = 3;
-	// include { }
 	define {
-		#define ROTATOR_SPEED        1
+		#define ROTATOR_SPEED 1
 	}
 	data {
 		double target_position, current_position;
 	}
-	// code { }
-	// on_init { }
-	// on_shutdown { }
 	rotator {
 		name = "Field Rotator Simulator";
 		additional_instances = true;
-		// code { }
 		on_timer {
 			if (ROTATOR_POSITION_PROPERTY->state == INDIGO_ALERT_STATE) {
 				ROTATOR_POSITION_ITEM->number.value = PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
@@ -65,10 +60,6 @@ driver simulator {
 				}
 			}
 		}
-		// on_connect { }
-		// on_disconnect { }
-		// on_attach { }
-		// on_detach { }
 		inherited ROTATOR_POSITION {
 			on_change {
 				if (ROTATOR_ON_POSITION_SET_SYNC_ITEM->sw.value) {

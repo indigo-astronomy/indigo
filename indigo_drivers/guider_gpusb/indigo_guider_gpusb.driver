@@ -32,7 +32,6 @@ driver gpusb {
 	include {
 		#include <libgpusb.h>
 	}
-	// define { }
 	data {
 		libgpusb_device_context *device_context;
 		unsigned short relay_mask;
@@ -58,15 +57,8 @@ driver gpusb {
 	on_init {
 		libgpusb_debug = &gpusb_debug;
 	}
-	// on_shutdown { }
 	guider {
 		name = "%s";
-		// code { }
-		// on_timer { }
-		// on_connect { }
-		// on_disconnect { }
-		// on_attach { }
-		// on_detach { }
 		inherited GUIDER_GUIDE_DEC {
 			on_change {
 				PRIVATE_DATA->relay_mask &= ~(GPUSB_DEC_NORTH | GPUSB_DEC_SOUTH);

@@ -323,8 +323,8 @@ static bool wbprov3_read_status(indigo_device *device) {
 	return false;
 }
 
-static bool wbprov3_command(indigo_device *device, char *command) {
-	if (indigo_uni_printf(PRIVATE_DATA->handle, "%s\n", command) > 0) {
+static bool wbprov3_command(indigo_device *device, int command) {
+	if (indigo_uni_printf(PRIVATE_DATA->handle, "%d\n", command) > 0) {
 		return true;
 	}
 	return false;
@@ -349,9 +349,10 @@ static bool wbprov3_open(indigo_device *device) {
 }
 
 static void wbprov3_close(indigo_device *device) {
-	if (PRIVATE_DATA->handle != NULL) {
-		indigo_uni_close(&PRIVATE_DATA->handle);
-	}
+	indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+	indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+	indigo_update_property(device, INFO_PROPERTY, NULL);
+	indigo_uni_close(&PRIVATE_DATA->handle);
 }
 
 //- code
@@ -420,15 +421,15 @@ static void aux_timer_callback(indigo_device *device) {
 		}
 		if (AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value && AUX_WEATHER_PROPERTY->state == INDIGO_OK_STATE) {
 			if (((AUX_WEATHER_DEWPOINT_ITEM->number.value + 1) > PRIVATE_DATA->dht22_temperature) && (PRIVATE_DATA->dc5_pwm != 255 || PRIVATE_DATA->dc6_pwm != 255 || PRIVATE_DATA->dc7_pwm != 255)) {
-				wbprov3_command(device, "5255");
-				wbprov3_command(device, "6255");
-				wbprov3_command(device, "7255");
+				wbprov3_command(device, 5255);
+				wbprov3_command(device, 6255);
+				wbprov3_command(device, 7255);
 				indigo_send_message(device, "Heating started: Aproaching dewpoint");
 			}
 			if (((AUX_WEATHER_DEWPOINT_ITEM->number.value + 2) < PRIVATE_DATA->dht22_temperature) && (PRIVATE_DATA->dc5_pwm != 0 || PRIVATE_DATA->dc6_pwm != 0 || PRIVATE_DATA->dc7_pwm != 0)) {
-				wbprov3_command(device, "5000");
-				wbprov3_command(device, "6000");
-				wbprov3_command(device, "7000");
+				wbprov3_command(device, 5000);
+				wbprov3_command(device, 6000);
+				wbprov3_command(device, 7000);
 				indigo_send_message(device, "Heating stopped: Conditions are dry");
 			}
 		}
@@ -499,11 +500,6 @@ static void aux_connection_handler(indigo_device *device) {
 		indigo_delete_property(device, AUX_DEW_WARNING_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_INFO_PROPERTY, NULL);
 		indigo_delete_property(device, X_AUX_CALIBRATE_PROPERTY, NULL);
-		//+ aux.on_disconnect
-		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
-		indigo_update_property(device, INFO_PROPERTY, NULL);
-		//- aux.on_disconnect
 		wbprov3_close(device);
 		indigo_send_message(device, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -545,9 +541,9 @@ static void aux_power_outlet_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_POWER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_POWER_OUTLET.on_change
-	wbprov3_command(device, AUX_POWER_OUTLET_1_ITEM->sw.value ? "101" : "100");
-	wbprov3_command(device, AUX_POWER_OUTLET_2_ITEM->sw.value ? "201" : "200");
-	wbprov3_command(device, AUX_POWER_OUTLET_3_ITEM->sw.value ? "211" : "210");
+	wbprov3_command(device, AUX_POWER_OUTLET_1_ITEM->sw.value ? 101 : 100);
+	wbprov3_command(device, AUX_POWER_OUTLET_2_ITEM->sw.value ? 201 : 200);
+	wbprov3_command(device, AUX_POWER_OUTLET_3_ITEM->sw.value ? 211 : 210);
 	indigo_sleep(1);
 	//- aux.AUX_POWER_OUTLET.on_change
 	indigo_update_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
@@ -560,9 +556,7 @@ static void aux_power_outlet_voltage_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_POWER_OUTLET_VOLTAGE_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_POWER_OUTLET_VOLTAGE.on_change
-	char command[16];
-	snprintf(command, sizeof(command), "%d", 20000 + (int)(AUX_POWER_OUTLET_VOLTAGE_1_ITEM->number.target * 10));
-	wbprov3_command(device, command);
+	wbprov3_command(device, 20000 + (int)(AUX_POWER_OUTLET_VOLTAGE_1_ITEM->number.target * 10));
 	indigo_sleep(1);
 	//- aux.AUX_POWER_OUTLET_VOLTAGE.on_change
 	indigo_update_property(device, AUX_POWER_OUTLET_VOLTAGE_PROPERTY, NULL);
@@ -575,11 +569,11 @@ static void aux_usb_port_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_USB_PORT_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_USB_PORT.on_change
-	wbprov3_command(device, AUX_USB_PORT_1_ITEM->sw.value ? "111" : "110");
-	wbprov3_command(device, AUX_USB_PORT_2_ITEM->sw.value ? "121" : "120");
-	wbprov3_command(device, AUX_USB_PORT_3_ITEM->sw.value ? "131" : "130");
-	wbprov3_command(device, AUX_USB_PORT_4_ITEM->sw.value ? "141" : "140");
-	wbprov3_command(device, AUX_USB_PORT_5_ITEM->sw.value ? "151" : "150");
+	wbprov3_command(device, AUX_USB_PORT_1_ITEM->sw.value ? 111 : 110);
+	wbprov3_command(device, AUX_USB_PORT_2_ITEM->sw.value ? 121 : 120);
+	wbprov3_command(device, AUX_USB_PORT_3_ITEM->sw.value ? 131 : 130);
+	wbprov3_command(device, AUX_USB_PORT_4_ITEM->sw.value ? 141 : 140);
+	wbprov3_command(device, AUX_USB_PORT_5_ITEM->sw.value ? 151 : 150);
 	indigo_sleep(1);
 	//- aux.AUX_USB_PORT.on_change
 	indigo_update_property(device, AUX_USB_PORT_PROPERTY, NULL);
@@ -592,13 +586,9 @@ static void aux_heater_outlet_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_HEATER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_HEATER_OUTLET.on_change
-	char command[16];
-	snprintf(command, sizeof(command), "%d", 5000 + (int)(AUX_HEATER_OUTLET_1_ITEM->number.target * 255.0 / 100.0));
-	wbprov3_command(device, command);
-	snprintf(command, sizeof(command), "%d", 6000 + (int)(AUX_HEATER_OUTLET_2_ITEM->number.target * 255.0 / 100.0));
-	wbprov3_command(device, command);
-	snprintf(command, sizeof(command), "%d", 7000 + (int)(AUX_HEATER_OUTLET_3_ITEM->number.target * 255.0 / 100.0));
-	wbprov3_command(device, command);
+	wbprov3_command(device, 5000 + (int)(AUX_HEATER_OUTLET_1_ITEM->number.target * 255.0 / 100.0));
+	wbprov3_command(device, 6000 + (int)(AUX_HEATER_OUTLET_2_ITEM->number.target * 255.0 / 100.0));
+	wbprov3_command(device, 7000 + (int)(AUX_HEATER_OUTLET_3_ITEM->number.target * 255.0 / 100.0));
 	if (AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value) {
 		indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, AUX_DEW_CONTROL_MANUAL_ITEM, true);
 		indigo_update_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
@@ -625,7 +615,7 @@ static void aux_x_aux_calibrate_handler(indigo_device *device) {
 	X_AUX_CALIBRATE_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.X_AUX_CALIBRATE.on_change
 	if (X_AUX_CALIBRATE_ITEM->sw.value) {
-		wbprov3_command(device, "66300744");
+		wbprov3_command(device, 66300744);
 		indigo_sleep(1);
 		X_AUX_CALIBRATE_ITEM->sw.value = false;
 	}
@@ -678,9 +668,9 @@ static indigo_result aux_attach(indigo_device *device) {
 		if (AUX_POWER_OUTLET_CURRENT_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
-		indigo_init_number_item(AUX_POWER_OUTLET_CURRENT_1_ITEM, AUX_POWER_OUTLET_CURRENT_1_ITEM_NAME, "Output current (DC2) [A]", 0, 20, 0, 0);
+		indigo_init_number_item(AUX_POWER_OUTLET_CURRENT_1_ITEM, AUX_POWER_OUTLET_CURRENT_1_ITEM_NAME, "Output current (DC2) [A]", 0, 0, 0, 0);
 		strcpy(AUX_POWER_OUTLET_CURRENT_1_ITEM->number.format, "%.2f");
-		indigo_init_number_item(AUX_POWER_OUTLET_CURRENT_2_ITEM, AUX_POWER_OUTLET_CURRENT_2_ITEM_NAME, "Output current (DC3-DC4) [A]", 0, 20, 0, 0);
+		indigo_init_number_item(AUX_POWER_OUTLET_CURRENT_2_ITEM, AUX_POWER_OUTLET_CURRENT_2_ITEM_NAME, "Output current (DC3-DC4) [A]", 0, 0, 0, 0);
 		strcpy(AUX_POWER_OUTLET_CURRENT_2_ITEM->number.format, "%.2f");
 		AUX_USB_PORT_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_USB_PORT_PROPERTY_NAME, AUX_GROUP, "USB Ports", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 5);
 		if (AUX_USB_PORT_PROPERTY == NULL) {
@@ -711,23 +701,23 @@ static indigo_result aux_attach(indigo_device *device) {
 		if (AUX_WEATHER_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
-		indigo_init_number_item(AUX_WEATHER_TEMPERATURE_ITEM, AUX_WEATHER_TEMPERATURE_ITEM_NAME, "Temperature [°C]", -50, 100, 0, 0);
+		indigo_init_number_item(AUX_WEATHER_TEMPERATURE_ITEM, AUX_WEATHER_TEMPERATURE_ITEM_NAME, "Temperature [°C]", 0, 0, 0, 0);
 		strcpy(AUX_WEATHER_TEMPERATURE_ITEM->number.format, "%.2f");
-		indigo_init_number_item(AUX_WEATHER_HUMIDITY_ITEM, AUX_WEATHER_HUMIDITY_ITEM_NAME, "Humidity [%]", 0, 100, 0, 0);
+		indigo_init_number_item(AUX_WEATHER_HUMIDITY_ITEM, AUX_WEATHER_HUMIDITY_ITEM_NAME, "Humidity [%]", 0, 0, 0, 0);
 		strcpy(AUX_WEATHER_HUMIDITY_ITEM->number.format, "%.2f");
-		indigo_init_number_item(AUX_WEATHER_DEWPOINT_ITEM, AUX_WEATHER_DEWPOINT_ITEM_NAME, "Dewpoint [°C]", -50, 100, 0, 0);
+		indigo_init_number_item(AUX_WEATHER_DEWPOINT_ITEM, AUX_WEATHER_DEWPOINT_ITEM_NAME, "Dewpoint [°C]", 0, 0, 0, 0);
 		strcpy(AUX_WEATHER_DEWPOINT_ITEM->number.format, "%.2f");
 		AUX_TEMPERATURE_SENSORS_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_TEMPERATURE_SENSORS_PROPERTY_NAME, WEATHER_GROUP, "Temperature sensors", INDIGO_OK_STATE, INDIGO_RO_PERM, 4);
 		if (AUX_TEMPERATURE_SENSORS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
-		indigo_init_number_item(AUX_TEMPERATURE_SENSORS_SENSOR_1_ITEM, AUX_TEMPERATURE_SENSORS_SENSOR_1_ITEM_NAME, "Temperature (DHT22) [°C]", -50, 100, 0, 0);
+		indigo_init_number_item(AUX_TEMPERATURE_SENSORS_SENSOR_1_ITEM, AUX_TEMPERATURE_SENSORS_SENSOR_1_ITEM_NAME, "Temperature (DHT22) [°C]", 0, 0, 0, 0);
 		strcpy(AUX_TEMPERATURE_SENSORS_SENSOR_1_ITEM->number.format, "%.2f");
-		indigo_init_number_item(AUX_TEMPERATURE_SENSORS_SENSOR_2_ITEM, AUX_TEMPERATURE_SENSORS_SENSOR_2_ITEM_NAME, "Temperature (Temp probe 1) [°C]", -50, 100, 0, 0);
+		indigo_init_number_item(AUX_TEMPERATURE_SENSORS_SENSOR_2_ITEM, AUX_TEMPERATURE_SENSORS_SENSOR_2_ITEM_NAME, "Temperature (Temp probe 1) [°C]", 0, 0, 0, 0);
 		strcpy(AUX_TEMPERATURE_SENSORS_SENSOR_2_ITEM->number.format, "%.2f");
-		indigo_init_number_item(AUX_TEMPERATURE_SENSORS_SENSOR_3_ITEM, AUX_TEMPERATURE_SENSORS_SENSOR_3_ITEM_NAME, "Temperature (Temp probe 2) [°C]", -50, 100, 0, 0);
+		indigo_init_number_item(AUX_TEMPERATURE_SENSORS_SENSOR_3_ITEM, AUX_TEMPERATURE_SENSORS_SENSOR_3_ITEM_NAME, "Temperature (Temp probe 2) [°C]", 0, 0, 0, 0);
 		strcpy(AUX_TEMPERATURE_SENSORS_SENSOR_3_ITEM->number.format, "%.2f");
-		indigo_init_number_item(AUX_TEMPERATURE_SENSORS_SENSOR_4_ITEM, AUX_TEMPERATURE_SENSORS_SENSOR_4_ITEM_NAME, "Temperature (Temp probe 3) [°C]", -50, 100, 0, 0);
+		indigo_init_number_item(AUX_TEMPERATURE_SENSORS_SENSOR_4_ITEM, AUX_TEMPERATURE_SENSORS_SENSOR_4_ITEM_NAME, "Temperature (Temp probe 3) [°C]", 0, 0, 0, 0);
 		strcpy(AUX_TEMPERATURE_SENSORS_SENSOR_4_ITEM->number.format, "%.2f");
 		AUX_DEW_WARNING_PROPERTY = indigo_init_light_property(NULL, device->name, AUX_DEW_WARNING_PROPERTY_NAME, WEATHER_GROUP, "Dew warning", INDIGO_OK_STATE, 1);
 		if (AUX_DEW_WARNING_PROPERTY == NULL) {
@@ -738,9 +728,9 @@ static indigo_result aux_attach(indigo_device *device) {
 		if (AUX_INFO_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
-		indigo_init_number_item(AUX_INFO_VOLTAGE_ITEM, AUX_INFO_VOLTAGE_ITEM_NAME, "Voltage [V]", 0, 15, 0, 0);
+		indigo_init_number_item(AUX_INFO_VOLTAGE_ITEM, AUX_INFO_VOLTAGE_ITEM_NAME, "Voltage [V]", 0, 0, 0, 0);
 		strcpy(AUX_INFO_VOLTAGE_ITEM->number.format, "%.2f");
-		indigo_init_number_item(AUX_INFO_CURRENT_ITEM, AUX_INFO_CURRENT_ITEM_NAME, "Current [A]", 0, 20, 0, 0);
+		indigo_init_number_item(AUX_INFO_CURRENT_ITEM, AUX_INFO_CURRENT_ITEM_NAME, "Current [A]", 0, 0, 0, 0);
 		strcpy(AUX_INFO_CURRENT_ITEM->number.format, "%.2f");
 		X_AUX_CALIBRATE_PROPERTY = indigo_init_switch_property(NULL, device->name, X_AUX_CALIBRATE_PROPERTY_NAME, AUX_ADVANCED_GROUP, "Calibrate sensors", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
 		if (X_AUX_CALIBRATE_PROPERTY == NULL) {

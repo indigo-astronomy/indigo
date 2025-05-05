@@ -29,9 +29,8 @@ driver flatmaster {
 			pid = 0x6015;
 		}
 	}
-	// include { }
 	define {
-		#define INTENSITY(val)       ((int)floor((100 - (int)(val) - 0) * (220 - 20) / (100 - 0) + 20))
+		#define INTENSITY(val) ((int)floor((100 - (int)(val) - 0) * (220 - 20) / (100 - 0) + 20))
 	}
 	data {
 		char response[6];
@@ -42,7 +41,7 @@ driver flatmaster {
 			if (result >= 0) {
 				va_list args;
 				va_start(args, command);
-				result = indigo_uni_vprintf_line(PRIVATE_DATA->handle, command, args);
+				result = indigo_uni_vtprintf(PRIVATE_DATA->handle, command, args, "\n");
 				va_end(args);
 				if (result > 0) {
 					result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", INDIGO_DELAY(1));
@@ -63,6 +62,7 @@ driver flatmaster {
 					}
 				}
 				indigo_uni_close(&PRIVATE_DATA->handle);
+				indigo_send_message(device, "Handshake failed");
 			}
 			return false;
 		}
@@ -75,14 +75,10 @@ driver flatmaster {
 			indigo_uni_close(&PRIVATE_DATA->handle);
 		}
 	}
-	// on_init { }
-	// on_shutdown { }
 	aux {
 		name = "PegasusAstro FlatMaster";
 		interface = INDIGO_INTERFACE_AUX_LIGHTBOX;
 		additional_instances = true;
-		// code { }
-		// on_timer { }
 		on_connect {
 			/* FlatMaster does not report intensity and ON/OFF state, so we set it to be consistent */
 			if (flatmaster_command(device, "L:%d", INTENSITY(AUX_LIGHT_INTENSITY_ITEM->number.value))) {
@@ -96,27 +92,21 @@ driver flatmaster {
 				AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 		}
-		// on_disconnect { }
 		on_attach {
 			INFO_PROPERTY->count = 6;
 			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		}
-		// on_detach { }
 		switch AUX_LIGHT_SWITCH {
 			name = AUX_LIGHT_SWITCH_PROPERTY_NAME;
 			group = AUX_MAIN_GROUP;
 			label = "Light (on/off)";
 			persistent = true;
-			// handle_change = false;
-			// synchronized_change = false;
 			on_change {
 				if (!flatmaster_command(device, "E:%d", AUX_LIGHT_SWITCH_ON_ITEM->sw.value)) {
 					AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 			}
-			// on_attach { }
-			// on_detach { }
 			item AUX_LIGHT_SWITCH_ON {
 				name = AUX_LIGHT_SWITCH_ON_ITEM_NAME;
 				label = "On";
@@ -133,15 +123,11 @@ driver flatmaster {
 			group = AUX_MAIN_GROUP;
 			label = "Light intensity";
 			persistent = true;
-			// handle_change = false;
-			// synchronized_change = false;
 			on_change {
 				if (!flatmaster_command(device, "L:%d", INTENSITY(AUX_LIGHT_INTENSITY_ITEM->number.value))) {
 					AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 			}
-			// on_attach { }
-			// on_detach { }
 			item AUX_LIGHT_INTENSITY {
 				name = AUX_LIGHT_INTENSITY_ITEM_NAME;
 				label = "Intensity (%)";

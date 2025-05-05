@@ -29,9 +29,8 @@ driver ppb {
 			vid = 0x0403;
 		}
 	}
-	// include { }
 	define {
-		#define AUX_GROUP															"Powerbox"
+		#define AUX_GROUP "Powerbox"
 	}
 	data {
 		bool is_advance;
@@ -45,7 +44,7 @@ driver ppb {
 			if (result >= 0) {
 				va_list args;
 				va_start(args, command);
-				result = indigo_uni_vprintf_line(PRIVATE_DATA->handle, command, args);
+				result = indigo_uni_vtprintf(PRIVATE_DATA->handle, command, args, "\n");
 				va_end(args);
 				if (result > 0) {
 					result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", INDIGO_DELAY(1));
@@ -58,6 +57,7 @@ driver ppb {
 			PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
 			if (PRIVATE_DATA->handle != NULL) {
 				if (ppb_command(device, "P#")) {
+					bool ok = false;
 					if (!strcmp(PRIVATE_DATA->response, "PPB_OK")) {
 						indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro PPB");
 						PRIVATE_DATA->is_advance = false;
@@ -66,8 +66,7 @@ driver ppb {
 						AUX_POWER_OUTLET_STATE_PROPERTY->hidden = true;
 						AUX_DSLR_POWER_PROPERTY->hidden = true;
 						AUX_POWER_OUTLET_PROPERTY->count = 2;
-						ppb_command(device, "PL:1");
-						return true;
+						ok = true;
 					} else if (!strcmp(PRIVATE_DATA->response, "PPBA_OK")) {
 						indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro PPBA");
 						PRIVATE_DATA->is_advance = true;
@@ -76,8 +75,7 @@ driver ppb {
 						AUX_POWER_OUTLET_STATE_PROPERTY->hidden = false;
 						AUX_DSLR_POWER_PROPERTY->hidden = false;
 						AUX_POWER_OUTLET_PROPERTY->count = 2;
-						ppb_command(device, "PL:1");
-						return true;
+						ok = true;
 					} else if (!strcmp(PRIVATE_DATA->response, "PPBM_OK")) {
 						indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro PPBM");
 						PRIVATE_DATA->is_advance = true;
@@ -86,8 +84,7 @@ driver ppb {
 						AUX_POWER_OUTLET_STATE_PROPERTY->hidden = false;
 						AUX_DSLR_POWER_PROPERTY->hidden = false;
 						AUX_POWER_OUTLET_PROPERTY->count = 2;
-						ppb_command(device, "PL:1");
-						return true;
+						ok = true;
 					} else if (!strcmp(PRIVATE_DATA->response, "SPB")) {
 						indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro SPB");
 						PRIVATE_DATA->is_advance = false;
@@ -96,6 +93,12 @@ driver ppb {
 						AUX_POWER_OUTLET_STATE_PROPERTY->hidden = true;
 						AUX_DSLR_POWER_PROPERTY->hidden = true;
 						AUX_POWER_OUTLET_PROPERTY->count = 1;
+						ok = true;
+					}
+					if (ok) {
+						if (ppb_command(device, "PV")) {
+							indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response);
+						}
 						ppb_command(device, "PL:1");
 						return true;
 					}
@@ -107,19 +110,17 @@ driver ppb {
 		}
 
 		static void ppb_close(indigo_device *device) {
-			if (PRIVATE_DATA->handle != NULL) {
-				ppb_command(device, "PL:0");
-				indigo_uni_close(&PRIVATE_DATA->handle);
-			}
+			ppb_command(device, "PL:0");
+			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+			indigo_update_property(device, INFO_PROPERTY, NULL);
+			indigo_uni_close(&PRIVATE_DATA->handle);
 		}
 	}
-	// on_init { }
-	// on_shutdown { }
 	aux {
 		name = "Pocket Powerbox";
 		interface = INDIGO_INTERFACE_AUX_POWERBOX | INDIGO_INTERFACE_AUX_WEATHER;
 		additional_instances = true;
-		// code { }
 		on_timer {
 			bool updatePowerOutlet = false;
 			bool updatePowerOutletState = false;
@@ -257,84 +258,17 @@ driver ppb {
 			}
 			indigo_reschedule_timer(device, 2, &PRIVATE_DATA->aux_timer);
 		}
-		on_connect {
-			if (ppb_command(device, "PV")) {
-				indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response);
-			}
-			indigo_update_property(device, INFO_PROPERTY, NULL);
-			if (ppb_command(device, "PA")) {
-				char *pnt, *token = strtok_r(PRIVATE_DATA->response, ":", &pnt);
-				if ((token = strtok_r(NULL, ":", &pnt))) { // Voltage
-					AUX_INFO_VOLTAGE_ITEM->number.value = indigo_atod(token);
-				}
-				if ((token = strtok_r(NULL, ":", &pnt))) { // Current
-					AUX_INFO_CURRENT_ITEM->number.value = indigo_atod(token) / 65.0;
-				}
-				if ((token = strtok_r(NULL, ":", &pnt))) { // Temp
-					AUX_WEATHER_TEMPERATURE_ITEM->number.value = indigo_atod(token);
-				}
-				if ((token = strtok_r(NULL, ":", &pnt))) { // Humidity
-					AUX_WEATHER_HUMIDITY_ITEM->number.value = indigo_atod(token);
-				}
-				if ((token = strtok_r(NULL, ":", &pnt))) { // Dewpoint
-					AUX_WEATHER_DEWPOINT_ITEM->number.value = indigo_atod(token);
-				}
-				if ((token = strtok_r(NULL, ":", &pnt))) { // Power port status
-					AUX_POWER_OUTLET_1_ITEM->sw.value = token[0] == '1';
-				}
-				if (PRIVATE_DATA->is_saddle) {
-					token = strtok_r(PRIVATE_DATA->response, ":", &pnt); // adjustment status
-				} else {
-					if ((token = strtok_r(NULL, ":", &pnt))) { // DSLR port status
-						AUX_POWER_OUTLET_2_ITEM->sw.value = token[0] == '1';
-					}
-				}
-				if ((token = strtok_r(NULL, ":", &pnt))) { // Dew1
-					AUX_HEATER_OUTLET_1_ITEM->number.value = AUX_HEATER_OUTLET_1_ITEM->number.target = round(indigo_atod(token) * 100.0 / 255.0);
-				}
-				if ((token = strtok_r(NULL, ":", &pnt))) { // Dew2
-					AUX_HEATER_OUTLET_2_ITEM->number.value = AUX_HEATER_OUTLET_2_ITEM->number.target = round(indigo_atod(token) * 100.0 / 255.0);
-				}
-				if ((token = strtok_r(NULL, ":", &pnt))) { // Autodew
-					indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, atoi(token) == 1 ? AUX_DEW_CONTROL_AUTOMATIC_ITEM : AUX_DEW_CONTROL_MANUAL_ITEM, true);
-				}
-				if (PRIVATE_DATA->is_advance && (token = strtok_r(NULL, ":", &pnt))) { // Power warning
-					AUX_POWER_OUTLET_STATE_1_ITEM->light.value = token[0] == 1 ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
-				}
-				if (PRIVATE_DATA->is_advance && (token = strtok_r(NULL, ":", &pnt))) { // DSLR power
-					if (!strcmp(token, "3")) {
-						indigo_set_switch(AUX_DSLR_POWER_PROPERTY, AUX_DSLR_POWER_3_ITEM, true);
-					} else if (!strcmp(token, "5")) {
-						indigo_set_switch(AUX_DSLR_POWER_PROPERTY, AUX_DSLR_POWER_5_ITEM, true);
-					} else if (!strcmp(token, "8")) {
-						indigo_set_switch(AUX_DSLR_POWER_PROPERTY, AUX_DSLR_POWER_8_ITEM, true);
-					} else if (!strcmp(token, "9")) {
-						indigo_set_switch(AUX_DSLR_POWER_PROPERTY, AUX_DSLR_POWER_9_ITEM, true);
-					} else if (!strcmp(token, "12")) {
-						indigo_set_switch(AUX_DSLR_POWER_PROPERTY, AUX_DSLR_POWER_12_ITEM, true);
-					}
-				}
-			}
-		}
-		on_disconnect {
-			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
-			indigo_update_property(device, INFO_PROPERTY, NULL);
-		}
 		on_attach {
 			INFO_PROPERTY->count = 6;
 			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		}
-		// on_detach { }
 		text AUX_OUTLET_NAMES {
 			name = AUX_OUTLET_NAMES_PROPERTY_NAME;
 			group = AUX_GROUP;
 			label = "Outlet names";
 			persistent = true;
 			always_defined = true;
-			// handle_change = false;
-			// synchronized_change = false;
 			on_change {
 				snprintf(AUX_HEATER_OUTLET_1_ITEM->label, INDIGO_NAME_SIZE, "%s [%%]", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
 				snprintf(AUX_HEATER_OUTLET_2_ITEM->label, INDIGO_NAME_SIZE, "%s [%%]", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
@@ -344,8 +278,6 @@ driver ppb {
 					indigo_update_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
 				}
 			}
-			// on_attach { }
-			// on_detach { }
 			item AUX_HEATER_OUTLET_NAME_1 {
 				name = AUX_HEATER_OUTLET_NAME_1_ITEM_NAME;
 				label = "Heater #1";
@@ -362,16 +294,12 @@ driver ppb {
 			group = AUX_GROUP;
 			label = "Power outlets";
 			rule = INDIGO_ANY_OF_MANY_RULE;
-			// handle_change = false;
-			// synchronized_change = false;
 			on_change {
 				ppb_command(device, "P1:%d", AUX_POWER_OUTLET_1_ITEM->sw.value ? 1 : 0);
 				if (!PRIVATE_DATA->is_saddle) {
 					ppb_command(device, "P2:%d", AUX_POWER_OUTLET_2_ITEM->sw.value ? 1 : 0);
 				}
 			}
-			// on_attach { }
-			// on_detach { }
 			item AUX_POWER_OUTLET_1 {
 				name = AUX_POWER_OUTLET_1_ITEM_NAME;
 				label = "Power outlets";
@@ -388,8 +316,6 @@ driver ppb {
 			group = AUX_GROUP;
 			label = "DSLR Power";
 			hidden = true;
-			// handle_change = false;
-			// synchronized_change = false;
 			on_change {
 				if (AUX_DSLR_POWER_3_ITEM->sw.value) {
 					ppb_command(device, "P2:3");
@@ -402,8 +328,6 @@ driver ppb {
 				else if (AUX_DSLR_POWER_12_ITEM->sw.value)
 					ppb_command(device, "P2:12");
 			}
-			// on_attach { }
-			// on_detach { }
 			item AUX_DSLR_POWER_3 {
 				name = "3";
 				label = "3V";
@@ -435,11 +359,6 @@ driver ppb {
 			group = AUX_GROUP;
 			label = "Power outlets state";
 			hidden = true;
-			// handle_change = false;
-			// synchronized_change = false;
-			// on_change { }
-			// on_attach { }
-			// on_detach { }
 			item AUX_POWER_OUTLET_STATE_1 {
 				name = AUX_POWER_OUTLET_STATE_1_ITEM_NAME;
 				label = "Power warning state";
@@ -450,14 +369,10 @@ driver ppb {
 			name = AUX_HEATER_OUTLET_PROPERTY_NAME;
 			group = AUX_GROUP;
 			label = "Heater outlets";
-			// handle_change = false;
-			// synchronized_change = false;
 			on_change {
 				ppb_command(device, "P3:%d", (int)(AUX_HEATER_OUTLET_1_ITEM->number.value * 255.0 / 100.0));
 				ppb_command(device, "P4:%d", (int)(AUX_HEATER_OUTLET_2_ITEM->number.value * 255.0 / 100.0));
 			}
-			// on_attach { }
-			// on_detach { }
 			item AUX_HEATER_OUTLET_1 {
 				name = AUX_HEATER_OUTLET_1_ITEM_NAME;
 				label = "Heater #1 [%]";
@@ -479,13 +394,9 @@ driver ppb {
 			name = AUX_DEW_CONTROL_PROPERTY_NAME;
 			group = AUX_GROUP;
 			label = "Dew control";
-			// handle_change = false;
-			// synchronized_change = false;
 			on_change {
 				ppb_command(device, "PD:%d", AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value ? 1 : 0);
 			}
-			// on_attach { }
-			// on_detach { }
 			item AUX_DEW_CONTROL_MANUAL {
 				name = AUX_DEW_CONTROL_MANUAL_ITEM_NAME;
 				label = "Manual";
@@ -502,34 +413,17 @@ driver ppb {
 			group = AUX_GROUP;
 			label = "Weather info";
 			perm = INDIGO_RO_PERM;
-			// handle_change = false;
-			// synchronized_change = false;
-			// on_change { }
-			// on_attach { }
-			// on_detach { }
 			item AUX_WEATHER_TEMPERATURE {
 				name = AUX_WEATHER_TEMPERATURE_ITEM_NAME;
 				label = "Temperature [C]";
-				value = 0;
-				min = -50;
-				max = 100;
-				step = 0;
 			}
 			item AUX_WEATHER_HUMIDITY {
 				name = AUX_WEATHER_HUMIDITY_ITEM_NAME;
 				label = "Humidity [%]";
-				value = 0;
-				min = 0;
-				max = 100;
-				step = 0;
 			}
 			item AUX_WEATHER_DEWPOINT {
 				name = AUX_WEATHER_DEWPOINT_ITEM_NAME;
 				label = "Dewpoint [C]";
-				value = 0;
-				min = -50;
-				max = 100;
-				step = 0;
 			}
 		}
 		number AUX_INFO {
@@ -537,42 +431,25 @@ driver ppb {
 			group = AUX_GROUP;
 			label = "Sensors";
 			perm = INDIGO_RO_PERM;
-			// handle_change = false;
-			// synchronized_change = false;
-			// on_change { }
-			// on_attach { }
-			// on_detach { }
 			item AUX_INFO_VOLTAGE {
 				name = AUX_INFO_VOLTAGE_ITEM_NAME;
 				label = "Voltage [V]";
-				value = 0;
-				min = 0;
-				max = 15;
-				step = 0;
 			}
 			item AUX_INFO_CURRENT {
 				name = AUX_INFO_CURRENT_ITEM_NAME;
 				label = "Current [A]";
-				value = 0;
-				min = 0;
-				max = 20;
-				step = 0;
 			}
 		}
 		switch X_AUX_REBOOT {
 			name = "X_AUX_REBOOT";
 			group = AUX_GROUP;
 			label = "Reboot";
-			// handle_change = false;
-			// synchronized_change = false;
 			on_change {
 				if (X_AUX_REBOOT_ITEM->sw.value) {
 					indigo_uni_printf(PRIVATE_DATA->handle, "PF\n");
 					X_AUX_REBOOT_ITEM->sw.value = false;
 				}
 			}
-			// on_attach { }
-			// on_detach { }
 			item X_AUX_REBOOT {
 				name = "REBOOT";
 				label = "Reboot";
@@ -583,8 +460,6 @@ driver ppb {
 			name = AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROPERTY_NAME;
 			group = AUX_GROUP;
 			label = "Save current outlet states as default";
-			// handle_change = false;
-			// synchronized_change = false;
 			on_change {
 				if (AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM->sw.value) {
 					char command[] = "PE:0000";
@@ -596,8 +471,6 @@ driver ppb {
 					AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM->sw.value = false;
 				}
 			}
-			// on_attach { }
-			// on_detach { }
 			item AUX_SAVE_OUTLET_STATES_AS_DEFAULT {
 				name = AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM_NAME;
 				label = "Save";

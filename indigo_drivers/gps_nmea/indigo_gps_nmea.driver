@@ -31,7 +31,6 @@ driver nmea {
 			product = "GNSS";
 		}
 	}
-	// include { }
 	define {
 		#define MAX_NB_OF_SYSTEMS    26
 	}
@@ -125,12 +124,9 @@ driver nmea {
 
 		static void gps_connection_handler(indigo_device *device);
 	}
-	// on_init { }
-	// on_shutdown { }
 	gps {
 		name = "NMEA GPS";
 		additional_instances = true;
-		// code { }
 		on_timer {
 			char buffer[128];
 			long length = indigo_uni_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer));
@@ -305,7 +301,6 @@ driver nmea {
 			sprintf(GPS_UTC_ITEM->text.value, "0000-00-00T00:00:00.00");
 			nmea_reset(device);
 		}
-		// on_disconnect { }
 		on_attach {
 			GPS_ADVANCED_PROPERTY->hidden = false;
 			GPS_GEOGRAPHIC_COORDINATES_PROPERTY->hidden = false;
@@ -313,7 +308,6 @@ driver nmea {
 			GPS_UTC_TIME_PROPERTY->hidden = false;
 			GPS_UTC_TIME_PROPERTY->count = 1;
 		}
-		// on_detach { }
 		switch GPS_SELECTED_SYSTEM {
 			name = "X_GPS_SELECTED_SYSTEM";
 			group = MAIN_GROUP;
@@ -324,8 +318,6 @@ driver nmea {
 			on_change {
 				nmea_reset(device);
 			}
-			// on_attach { }
-			// on_detach { }
 			item AUTOMATIC_SYSTEM {
 				name = "AUTO";
 				label = "Autodetect";

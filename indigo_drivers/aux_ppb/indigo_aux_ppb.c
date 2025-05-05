@@ -152,7 +152,7 @@ static bool ppb_command(indigo_device *device, char *command, ...) {
 	if (result >= 0) {
 		va_list args;
 		va_start(args, command);
-		result = indigo_uni_vprintf_line(PRIVATE_DATA->handle, command, args);
+		result = indigo_uni_vtprintf(PRIVATE_DATA->handle, command, args, "\n");
 		va_end(args);
 		if (result > 0) {
 			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", INDIGO_DELAY(1));
@@ -165,6 +165,7 @@ static bool ppb_open(indigo_device *device) {
 	PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
 	if (PRIVATE_DATA->handle != NULL) {
 		if (ppb_command(device, "P#")) {
+			bool ok = false;
 			if (!strcmp(PRIVATE_DATA->response, "PPB_OK")) {
 				indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro PPB");
 				PRIVATE_DATA->is_advance = false;
@@ -173,8 +174,7 @@ static bool ppb_open(indigo_device *device) {
 				AUX_POWER_OUTLET_STATE_PROPERTY->hidden = true;
 				AUX_DSLR_POWER_PROPERTY->hidden = true;
 				AUX_POWER_OUTLET_PROPERTY->count = 2;
-				ppb_command(device, "PL:1");
-				return true;
+				ok = true;
 			} else if (!strcmp(PRIVATE_DATA->response, "PPBA_OK")) {
 				indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro PPBA");
 				PRIVATE_DATA->is_advance = true;
@@ -183,8 +183,7 @@ static bool ppb_open(indigo_device *device) {
 				AUX_POWER_OUTLET_STATE_PROPERTY->hidden = false;
 				AUX_DSLR_POWER_PROPERTY->hidden = false;
 				AUX_POWER_OUTLET_PROPERTY->count = 2;
-				ppb_command(device, "PL:1");
-				return true;
+				ok = true;
 			} else if (!strcmp(PRIVATE_DATA->response, "PPBM_OK")) {
 				indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro PPBM");
 				PRIVATE_DATA->is_advance = true;
@@ -193,8 +192,7 @@ static bool ppb_open(indigo_device *device) {
 				AUX_POWER_OUTLET_STATE_PROPERTY->hidden = false;
 				AUX_DSLR_POWER_PROPERTY->hidden = false;
 				AUX_POWER_OUTLET_PROPERTY->count = 2;
-				ppb_command(device, "PL:1");
-				return true;
+				ok = true;
 			} else if (!strcmp(PRIVATE_DATA->response, "SPB")) {
 				indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro SPB");
 				PRIVATE_DATA->is_advance = false;
@@ -203,6 +201,12 @@ static bool ppb_open(indigo_device *device) {
 				AUX_POWER_OUTLET_STATE_PROPERTY->hidden = true;
 				AUX_DSLR_POWER_PROPERTY->hidden = true;
 				AUX_POWER_OUTLET_PROPERTY->count = 1;
+				ok = true;
+			}
+			if (ok) {
+				if (ppb_command(device, "PV")) {
+					indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response);
+				}
 				ppb_command(device, "PL:1");
 				return true;
 			}
@@ -214,10 +218,11 @@ static bool ppb_open(indigo_device *device) {
 }
 
 static void ppb_close(indigo_device *device) {
-	if (PRIVATE_DATA->handle != NULL) {
-		ppb_command(device, "PL:0");
-		indigo_uni_close(&PRIVATE_DATA->handle);
-	}
+	ppb_command(device, "PL:0");
+	indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+	indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+	indigo_update_property(device, INFO_PROPERTY, NULL);
+	indigo_uni_close(&PRIVATE_DATA->handle);
 }
 
 //- code
@@ -380,65 +385,6 @@ static void aux_connection_handler(indigo_device *device) {
 		bool connection_result = true;
 		connection_result = ppb_open(device);
 		if (connection_result) {
-			//+ aux.on_connect
-			if (ppb_command(device, "PV")) {
-				indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response);
-			}
-			indigo_update_property(device, INFO_PROPERTY, NULL);
-			if (ppb_command(device, "PA")) {
-				char *pnt, *token = strtok_r(PRIVATE_DATA->response, ":", &pnt);
-				if ((token = strtok_r(NULL, ":", &pnt))) { // Voltage
-					AUX_INFO_VOLTAGE_ITEM->number.value = indigo_atod(token);
-				}
-				if ((token = strtok_r(NULL, ":", &pnt))) { // Current
-					AUX_INFO_CURRENT_ITEM->number.value = indigo_atod(token) / 65.0;
-				}
-				if ((token = strtok_r(NULL, ":", &pnt))) { // Temp
-					AUX_WEATHER_TEMPERATURE_ITEM->number.value = indigo_atod(token);
-				}
-				if ((token = strtok_r(NULL, ":", &pnt))) { // Humidity
-					AUX_WEATHER_HUMIDITY_ITEM->number.value = indigo_atod(token);
-				}
-				if ((token = strtok_r(NULL, ":", &pnt))) { // Dewpoint
-					AUX_WEATHER_DEWPOINT_ITEM->number.value = indigo_atod(token);
-				}
-				if ((token = strtok_r(NULL, ":", &pnt))) { // Power port status
-					AUX_POWER_OUTLET_1_ITEM->sw.value = token[0] == '1';
-				}
-				if (PRIVATE_DATA->is_saddle) {
-					token = strtok_r(PRIVATE_DATA->response, ":", &pnt); // adjustment status
-				} else {
-					if ((token = strtok_r(NULL, ":", &pnt))) { // DSLR port status
-						AUX_POWER_OUTLET_2_ITEM->sw.value = token[0] == '1';
-					}
-				}
-				if ((token = strtok_r(NULL, ":", &pnt))) { // Dew1
-					AUX_HEATER_OUTLET_1_ITEM->number.value = AUX_HEATER_OUTLET_1_ITEM->number.target = round(indigo_atod(token) * 100.0 / 255.0);
-				}
-				if ((token = strtok_r(NULL, ":", &pnt))) { // Dew2
-					AUX_HEATER_OUTLET_2_ITEM->number.value = AUX_HEATER_OUTLET_2_ITEM->number.target = round(indigo_atod(token) * 100.0 / 255.0);
-				}
-				if ((token = strtok_r(NULL, ":", &pnt))) { // Autodew
-					indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, atoi(token) == 1 ? AUX_DEW_CONTROL_AUTOMATIC_ITEM : AUX_DEW_CONTROL_MANUAL_ITEM, true);
-				}
-				if (PRIVATE_DATA->is_advance && (token = strtok_r(NULL, ":", &pnt))) { // Power warning
-					AUX_POWER_OUTLET_STATE_1_ITEM->light.value = token[0] == 1 ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
-				}
-				if (PRIVATE_DATA->is_advance && (token = strtok_r(NULL, ":", &pnt))) { // DSLR power
-					if (!strcmp(token, "3")) {
-						indigo_set_switch(AUX_DSLR_POWER_PROPERTY, AUX_DSLR_POWER_3_ITEM, true);
-					} else if (!strcmp(token, "5")) {
-						indigo_set_switch(AUX_DSLR_POWER_PROPERTY, AUX_DSLR_POWER_5_ITEM, true);
-					} else if (!strcmp(token, "8")) {
-						indigo_set_switch(AUX_DSLR_POWER_PROPERTY, AUX_DSLR_POWER_8_ITEM, true);
-					} else if (!strcmp(token, "9")) {
-						indigo_set_switch(AUX_DSLR_POWER_PROPERTY, AUX_DSLR_POWER_9_ITEM, true);
-					} else if (!strcmp(token, "12")) {
-						indigo_set_switch(AUX_DSLR_POWER_PROPERTY, AUX_DSLR_POWER_12_ITEM, true);
-					}
-				}
-			}
-			//- aux.on_connect
 			indigo_define_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
 			indigo_define_property(device, AUX_DSLR_POWER_PROPERTY, NULL);
 			indigo_define_property(device, AUX_POWER_OUTLET_STATE_PROPERTY, NULL);
@@ -475,11 +421,6 @@ static void aux_connection_handler(indigo_device *device) {
 		indigo_delete_property(device, AUX_INFO_PROPERTY, NULL);
 		indigo_delete_property(device, X_AUX_REBOOT_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROPERTY, NULL);
-		//+ aux.on_disconnect
-		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
-		indigo_update_property(device, INFO_PROPERTY, NULL);
-		//- aux.on_disconnect
 		ppb_close(device);
 		indigo_send_message(device, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -663,15 +604,15 @@ static indigo_result aux_attach(indigo_device *device) {
 		if (AUX_WEATHER_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
-		indigo_init_number_item(AUX_WEATHER_TEMPERATURE_ITEM, AUX_WEATHER_TEMPERATURE_ITEM_NAME, "Temperature [C]", -50, 100, 0, 0);
-		indigo_init_number_item(AUX_WEATHER_HUMIDITY_ITEM, AUX_WEATHER_HUMIDITY_ITEM_NAME, "Humidity [%]", 0, 100, 0, 0);
-		indigo_init_number_item(AUX_WEATHER_DEWPOINT_ITEM, AUX_WEATHER_DEWPOINT_ITEM_NAME, "Dewpoint [C]", -50, 100, 0, 0);
+		indigo_init_number_item(AUX_WEATHER_TEMPERATURE_ITEM, AUX_WEATHER_TEMPERATURE_ITEM_NAME, "Temperature [C]", 0, 0, 0, 0);
+		indigo_init_number_item(AUX_WEATHER_HUMIDITY_ITEM, AUX_WEATHER_HUMIDITY_ITEM_NAME, "Humidity [%]", 0, 0, 0, 0);
+		indigo_init_number_item(AUX_WEATHER_DEWPOINT_ITEM, AUX_WEATHER_DEWPOINT_ITEM_NAME, "Dewpoint [C]", 0, 0, 0, 0);
 		AUX_INFO_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_INFO_PROPERTY_NAME, AUX_GROUP, "Sensors", INDIGO_OK_STATE, INDIGO_RO_PERM, 2);
 		if (AUX_INFO_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
-		indigo_init_number_item(AUX_INFO_VOLTAGE_ITEM, AUX_INFO_VOLTAGE_ITEM_NAME, "Voltage [V]", 0, 15, 0, 0);
-		indigo_init_number_item(AUX_INFO_CURRENT_ITEM, AUX_INFO_CURRENT_ITEM_NAME, "Current [A]", 0, 20, 0, 0);
+		indigo_init_number_item(AUX_INFO_VOLTAGE_ITEM, AUX_INFO_VOLTAGE_ITEM_NAME, "Voltage [V]", 0, 0, 0, 0);
+		indigo_init_number_item(AUX_INFO_CURRENT_ITEM, AUX_INFO_CURRENT_ITEM_NAME, "Current [A]", 0, 0, 0, 0);
 		X_AUX_REBOOT_PROPERTY = indigo_init_switch_property(NULL, device->name, X_AUX_REBOOT_PROPERTY_NAME, AUX_GROUP, "Reboot", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
 		if (X_AUX_REBOOT_PROPERTY == NULL) {
 			return INDIGO_FAILED;

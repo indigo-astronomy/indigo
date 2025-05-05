@@ -209,7 +209,7 @@ static bool upb3_command(indigo_device *device, char *command, ...) {
 	if (result >= 0) {
 		va_list args;
 		va_start(args, command);
-		result = indigo_uni_vprintf_line(PRIVATE_DATA->handle, command, args);
+		result = indigo_uni_vtprintf(PRIVATE_DATA->handle, command, args, "\n");
 		va_end(args);
 		if (result > 0) {
 			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", INDIGO_DELAY(1));
@@ -223,8 +223,13 @@ static bool upb3_open(indigo_device *device) {
 	if (PRIVATE_DATA->handle != NULL) {
 		if (upb3_command(device, "P#") && !strncmp(PRIVATE_DATA->response, "UPBv3_", 6)) {
 			PRIVATE_DATA->version = 3;
-			upb3_command(device, "PL:1");
-			return true;
+			if (upb3_command(device, "PV")) {
+				indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro UPBv3");
+				indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 3);
+				indigo_update_property(device, INFO_PROPERTY, NULL);
+				upb3_command(device, "PL:1");
+				return true;
+			}
 		}
 		indigo_uni_close(&PRIVATE_DATA->handle);
 		indigo_send_message(device, "Handshake failed");
@@ -379,11 +384,6 @@ static void aux_connection_handler(indigo_device *device) {
 		}
 		if (connection_result) {
 			//+ aux.on_connect
-			if (upb3_command(device, "PV")) {
-				indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro UPBv3");
-				indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 3);
-				indigo_update_property(device, INFO_PROPERTY, NULL);
-			}
 			if (upb3_command(device, "PA")) {
 				char *pnt, *token = strtok_r(PRIVATE_DATA->response, ":", &pnt);
 				for (int i = 0; i < 6; i++) { // output 1-6
@@ -502,11 +502,6 @@ static void aux_connection_handler(indigo_device *device) {
 		indigo_delete_property(device, AUX_POWER_OUTLET_STATE_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_WEATHER_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_INFO_PROPERTY, NULL);
-		//+ aux.on_disconnect
-		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
-		indigo_update_property(device, INFO_PROPERTY, NULL);
-		//- aux.on_disconnect
 		if (--PRIVATE_DATA->count == 0) {
 			upb3_close(device);
 		}
@@ -1012,9 +1007,6 @@ static void focuser_connection_handler(indigo_device *device) {
 				if (token) { // speed
 					FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = atoi(token);
 				}
-			}
-			if (upb3_command(device, "PV") && !strncmp(PRIVATE_DATA->response, "PV:", 3)) {
-				indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 3);
 			}
 			//- focuser.on_connect
 			indigo_set_timer(device, 0, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);

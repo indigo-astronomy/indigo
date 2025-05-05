@@ -28,7 +28,7 @@
 | aux_ppb | 3️⃣ | ✅ Yes | ✅ Yes | |
 | aux_rpio | 2️⃣ | ❌ No | ❌ No | ⛔ RPi only |
 | aux_rts | 3️⃣ | ✅ Yes | ✅ Yes | |
-| aux_skyalert | 3️⃣ | ✅ Yes | ❌ No | |
+| aux_skyalert | 3️⃣ | ✅ Yes | ✅ Yes | |
 | aux_sqm | 3️⃣ | ✅ Yes | ✅ Yes | |
 | aux_uch | 3️⃣ | ✅ Yes | ✅ Yes | |
 | aux_upb | 3️⃣ | ✅ Yes | ✅ Yes | |

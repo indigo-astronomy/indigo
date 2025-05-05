@@ -24,9 +24,6 @@ driver rts {
 	copyright = "Copyright (c) 2018-2025 CloudMakers, s. r. o.";
 	version = 8;
 	serial;
-	// include { }
-	// define { }
-	// data { }
 	code {
 		static void rts_on(indigo_device *device) {
 			indigo_uni_set_rts(PRIVATE_DATA->handle, true);
@@ -42,17 +39,12 @@ driver rts {
 		}
 
 		static void rts_close(indigo_device *device) {
-			if (PRIVATE_DATA->handle != NULL) {
-				indigo_uni_close(&PRIVATE_DATA->handle);
-			}
+			indigo_uni_close(&PRIVATE_DATA->handle);
 		}
 	}
-	// on_init { }
-	// on_shutdown { }
 	aux {
 		name = "RTS-on-COM shutter";
 		interface = INDIGO_INTERFACE_AUX_SHUTTER;
-		// code { }
 		on_timer {
 			if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 				CCD_EXPOSURE_ITEM->number.value--;
@@ -74,15 +66,11 @@ driver rts {
 		on_disconnect {
 			rts_off(device);
 		}
-		// on_attach { }
-		// on_detach { }
 		switch CCD_ABORT_EXPOSURE {
 			name = CCD_ABORT_EXPOSURE_PROPERTY_NAME;
 			group = AUX_MAIN_GROUP;
 			label = "Abort exposure";
 			rule = INDIGO_ANY_OF_MANY_RULE;
-			// handle_change = false;
-			// synchronized_change = false;
 			on_change {
 				if (CCD_ABORT_EXPOSURE_ITEM->sw.value && CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 					indigo_cancel_timer(device, &PRIVATE_DATA->aux_timer);
@@ -93,8 +81,6 @@ driver rts {
 				CCD_ABORT_EXPOSURE_ITEM->sw.value = false;
 				CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 			}
-			// on_attach { }
-			// on_detach { }
 			item CCD_ABORT_EXPOSURE {
 				name = CCD_ABORT_EXPOSURE_ITEM_NAME;
 				label = "Abort exposure";
@@ -105,23 +91,18 @@ driver rts {
 			name = CCD_EXPOSURE_PROPERTY_NAME;
 			group = AUX_MAIN_GROUP;
 			label = "Start exposure";
-			// handle_change = false;
-			// synchronized_change = false;
 			on_change {
 				CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 				rts_on(device);
 				CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 				indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value < 1 ? CCD_EXPOSURE_ITEM->number.value : 1, aux_timer_callback, &PRIVATE_DATA->aux_timer);
 			}
-			// on_attach { }
-			// on_detach { }
 			item CCD_EXPOSURE {
 				name = CCD_EXPOSURE_ITEM_NAME;
 				label = "Start exposure";
-				value = 0;
 				max = 1000;
 				step = 1;
-				format = "%g";
+				format = "%f";
 			}
 		}
 	}

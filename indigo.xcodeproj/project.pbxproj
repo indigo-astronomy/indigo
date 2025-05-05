@@ -2390,6 +2390,7 @@
 		599AD89F2552F64A0008D481 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		599AD8A02552F64A0008D481 /* indigo_mount_nexstaraux.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_nexstaraux.c; sourceTree = "<group>"; };
 		599C988B2DC55352004FB2CC /* indigo_focuser_fc3.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_focuser_fc3.driver; sourceTree = "<group>"; };
+		599C988E2DC92B4B004FB2CC /* indigo_aux_skyalert.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_aux_skyalert.driver; sourceTree = "<group>"; };
 		599C9A281D998345008BBCC1 /* indigo_config.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_config.h; sourceTree = "<group>"; };
 		599C9A481DA022C0008BBCC1 /* libindigo.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libindigo.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
 		599C9A561DA026C5008BBCC1 /* indigo_ccd_simulator_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_simulator_main.c; sourceTree = "<group>"; };
@@ -7893,6 +7894,7 @@
 				59958E2E25CC833B00BEFA1B /* indigo_aux_skyalert.h */,
 				59958E2925CC833B00BEFA1B /* indigo_aux_skyalert.c */,
 				59958E2A25CC833B00BEFA1B /* indigo_aux_skyalert_main.c */,
+				599C988E2DC92B4B004FB2CC /* indigo_aux_skyalert.driver */,
 				59958E2C25CC833B00BEFA1B /* skyalert_simulator */,
 			);
 			path = aux_skyalert;

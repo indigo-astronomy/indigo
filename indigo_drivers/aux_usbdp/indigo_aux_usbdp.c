@@ -176,6 +176,7 @@ typedef struct {
 	//+ data
 	int version;
 	uint8_t requested_aggressivity;
+	char response[128];
 	//- data
 } usbdp_private_data;
 
@@ -183,29 +184,26 @@ typedef struct {
 
 //+ code
 
-static bool usbdp_command(indigo_device *device, char *command, char *response, int max) {
-	/* Wait a bit before flushing as usb to serial caches data */
+static bool usbdp_command(indigo_device *device, char *command, ...) {
 	indigo_usleep(20000);
-	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
-		if (indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command)) > 0) {
-			if (response != NULL) {
-				if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "\n", "\r\n", INDIGO_DELAY(1)) > 0) {
-					return true;
-				}
-			} else {
-				return true;
-			}
+	long result = indigo_uni_discard(PRIVATE_DATA->handle);
+	if (result >= 0) {
+		va_list args;
+		va_start(args, command);
+		result = indigo_uni_vprintf(PRIVATE_DATA->handle, command, args);
+		va_end(args);
+		if (result > 0) {
+			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", INDIGO_DELAY(1));
 		}
 	}
-	return false;
+	return result > 0;
 }
 
 static bool usbdp_open(indigo_device *device) {
 	PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200, INDIGO_LOG_DEBUG);
 	if (PRIVATE_DATA->handle != NULL) {
-		char response[128];
-		if (usbdp_command(device, UDP_IDENTIFY_CMD, response, sizeof(response))) {
-			if (!strcmp(response, UDP1_IDENTIFY_RESPONSE)) {
+		if (usbdp_command(device, UDP_IDENTIFY_CMD)) {
+			if (!strcmp(PRIVATE_DATA->response, UDP1_IDENTIFY_RESPONSE)) {
 				PRIVATE_DATA->version = 1;
 				indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "USB_Dewpoint v1");
 				indigo_update_property(device, INFO_PROPERTY, NULL);
@@ -221,7 +219,7 @@ static bool usbdp_open(indigo_device *device) {
 				AUX_TEMPERATURE_SENSORS_PROPERTY->count = 1;
 				AUX_DEW_WARNING_PROPERTY->count = 1;
 				return true;
-			} else if (!strncmp(response, UDP2_IDENTIFY_RESPONSE, 4)) {
+			} else if (!strncmp(PRIVATE_DATA->response, UDP2_IDENTIFY_RESPONSE, 4)) {
 				PRIVATE_DATA->version = 2;
 				indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "USB_Dewpoint v2");
 				sprintf(INFO_DEVICE_INTERFACE_ITEM->text.value, "%d", INDIGO_INTERFACE_AUX_WEATHER | INDIGO_INTERFACE_AUX_POWERBOX);
@@ -263,12 +261,11 @@ static void aux_timer_callback(indigo_device *device) {
 	bool updateAggressivity = false;
 	bool updateLinked = false;
 	int channel_1_state, channel_2_state, channel_3_state, dew_warning_1, dew_warning_2;
-	char response[80];
-	if (usbdp_command(device, UDP_STATUS_CMD, response, sizeof(response))) {
+	if (usbdp_command(device, UDP_STATUS_CMD)) {
 		if (PRIVATE_DATA->version == 1) {
 			float temp_loc, temp_amb, rh, dewpoint;
 			int threshold, c;
-			int parsed = sscanf(response, UDP1_STATUS_RESPONSE, &temp_loc, &temp_amb, &rh, &dewpoint, &threshold, &c);
+			int parsed = sscanf(PRIVATE_DATA->response, UDP1_STATUS_RESPONSE, &temp_loc, &temp_amb, &rh, &dewpoint, &threshold, &c);
 			if (parsed == 6) {
 				if ((fabs(((double)temp_amb - AUX_WEATHER_TEMPERATURE_ITEM->number.value)*100) >= 1) || (fabs(((double)rh - AUX_WEATHER_HUMIDITY_ITEM->number.value)*100) >= 1) || (fabs(((double)dewpoint - AUX_WEATHER_DEWPOINT_ITEM->number.value)*100) >= 1)) {
 					AUX_WEATHER_TEMPERATURE_ITEM->number.value = temp_amb;
@@ -281,12 +278,12 @@ static void aux_timer_callback(indigo_device *device) {
 					updateSensors = true;
 				}
 			} else {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME,"Error: parsed %d of 6 values in response \"%s\"", parsed, response);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME,"Error: parsed %d of 6 values in response \"%s\"", parsed, PRIVATE_DATA->response);
 			}
 		} else if (PRIVATE_DATA->version == 2) {
 			float temp_ch1, temp_ch2, temp_amb, rh, dewpoint;
 			int output_ch1, output_ch2, output_ch3, cal_ch1, cal_ch2, cal_amb, threshold_ch1, threshold_ch2, auto_mode, ch2_3_linked, aggressivity;
-			int parsed = sscanf(response, UDP2_STATUS_RESPONSE, &temp_ch1, &temp_ch2, &temp_amb, &rh, &dewpoint, &output_ch1, &output_ch2, &output_ch3, &cal_ch1, &cal_ch2, &cal_amb, &threshold_ch1, &threshold_ch2, &auto_mode, &ch2_3_linked, &aggressivity);
+			int parsed = sscanf(PRIVATE_DATA->response, UDP2_STATUS_RESPONSE, &temp_ch1, &temp_ch2, &temp_amb, &rh, &dewpoint, &output_ch1, &output_ch2, &output_ch3, &cal_ch1, &cal_ch2, &cal_amb, &threshold_ch1, &threshold_ch2, &auto_mode, &ch2_3_linked, &aggressivity);
 			if (parsed == 16) {
 				if ((fabs(((double)temp_amb - AUX_WEATHER_TEMPERATURE_ITEM->number.value)*100) >= 1) || (fabs(((double)rh - AUX_WEATHER_HUMIDITY_ITEM->number.value)*100) >= 1) ||  (fabs(((double)dewpoint - AUX_WEATHER_DEWPOINT_ITEM->number.value)*100) >= 1)) {
 					AUX_WEATHER_TEMPERATURE_ITEM->number.value = temp_amb;
@@ -377,7 +374,7 @@ static void aux_timer_callback(indigo_device *device) {
 					}
 					updateLinked = true;
 				}			} else {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME,"Error: parsed %d of 16 values in response \"%s\"", parsed, response);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME,"Error: parsed %d of 16 values in response \"%s\"", parsed, PRIVATE_DATA->response);
 			}
 		}
 	}
@@ -489,15 +486,11 @@ static void aux_connection_handler(indigo_device *device) {
 		indigo_delete_property(device, AUX_HEATER_AGGRESSIVITY_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_DEW_WARNING_PROPERTY, NULL);
 		//+ aux.on_disconnect
-		char command[16], response[128];
 		if (PRIVATE_DATA->version == 2) {
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Stopping heaters...");
-			snprintf(command, sizeof(command), UDP2_OUTPUT_CMD, 1, 0);
-			usbdp_command(device, command, response, sizeof(response));
-			snprintf(command, sizeof(command), UDP2_OUTPUT_CMD, 2, 0);
-			usbdp_command(device, command, response, sizeof(response));
-			snprintf(command, sizeof(command), UDP2_OUTPUT_CMD, 3, 0);
-			usbdp_command(device, command, response, sizeof(response));
+			usbdp_command(device, UDP2_OUTPUT_CMD, 1, 0);
+			usbdp_command(device, UDP2_OUTPUT_CMD, 2, 0);
+			usbdp_command(device, UDP2_OUTPUT_CMD, 3, 0);
 		}
 		//- aux.on_disconnect
 		usbdp_close(device);
@@ -554,13 +547,9 @@ static void aux_heater_outlet_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_HEATER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_HEATER_OUTLET.on_change
-	char command[16], response[128];
-	snprintf(command, sizeof(command), UDP2_OUTPUT_CMD, 1, (int)(AUX_HEATER_OUTLET_1_ITEM->number.value));
-	usbdp_command(device, command, response, sizeof(response));
-	snprintf(command, sizeof(command), UDP2_OUTPUT_CMD, 2, (int)(AUX_HEATER_OUTLET_2_ITEM->number.value));
-	usbdp_command(device, command, response, sizeof(response));
-	snprintf(command, sizeof(command), UDP2_OUTPUT_CMD, 3, (int)(AUX_HEATER_OUTLET_3_ITEM->number.value));
-	usbdp_command(device, command, response, sizeof(response));
+	usbdp_command(device, UDP2_OUTPUT_CMD, 1, (int)(AUX_HEATER_OUTLET_1_ITEM->number.value));
+	usbdp_command(device, UDP2_OUTPUT_CMD, 2, (int)(AUX_HEATER_OUTLET_2_ITEM->number.value));
+	usbdp_command(device, UDP2_OUTPUT_CMD, 3, (int)(AUX_HEATER_OUTLET_3_ITEM->number.value));
 	//- aux.AUX_HEATER_OUTLET.on_change
 	indigo_update_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -572,9 +561,7 @@ static void aux_dew_control_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_DEW_CONTROL_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_DEW_CONTROL.on_change
-	char command[16], response[128];
-	snprintf(command, sizeof(command), UDP2_AUTO_CMD, AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value ? 1 : 0);
-	usbdp_command(device, command, response, sizeof(response));
+	usbdp_command(device, UDP2_AUTO_CMD, AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value ? 1 : 0);
 	//- aux.AUX_DEW_CONTROL.on_change
 	indigo_update_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -586,9 +573,7 @@ static void aux_callibration_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_CALLIBRATION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_CALLIBRATION.on_change
-	char command[16], response[128];
-	snprintf(command, sizeof(command), UDP2_CALIBRATION_CMD, (int)(AUX_CALLIBRATION_SENSOR_1_ITEM->number.value), (int)(AUX_CALLIBRATION_SENSOR_2_ITEM->number.value), (int)(AUX_CALLIBRATION_SENSOR_3_ITEM->number.value));
-	usbdp_command(device, command, response, sizeof(response));
+	usbdp_command(device, UDP2_CALIBRATION_CMD, (int)(AUX_CALLIBRATION_SENSOR_1_ITEM->number.value), (int)(AUX_CALLIBRATION_SENSOR_2_ITEM->number.value), (int)(AUX_CALLIBRATION_SENSOR_3_ITEM->number.value));
 	//- aux.AUX_CALLIBRATION.on_change
 	indigo_update_property(device, AUX_CALLIBRATION_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -600,9 +585,7 @@ static void aux_dew_threshold_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_DEW_THRESHOLD_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_DEW_THRESHOLD.on_change
-	char command[16], response[128];
-	snprintf(command, sizeof(command), UDP2_THRESHOLD_CMD, (int)(AUX_DEW_THRESHOLD_SENSOR_1_ITEM->number.value), (int)(AUX_DEW_THRESHOLD_SENSOR_2_ITEM->number.value));
-	usbdp_command(device, command, response, sizeof(response));
+	usbdp_command(device, UDP2_THRESHOLD_CMD, (int)(AUX_DEW_THRESHOLD_SENSOR_1_ITEM->number.value), (int)(AUX_DEW_THRESHOLD_SENSOR_2_ITEM->number.value));
 	//- aux.AUX_DEW_THRESHOLD.on_change
 	indigo_update_property(device, AUX_DEW_THRESHOLD_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -614,9 +597,7 @@ static void aux_link_ch_2and3_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_LINK_CH_2AND3_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_LINK_CH_2AND3.on_change
-	char command[16], response[128];
-	snprintf(command, sizeof(command), UDP2_LINK_CMD, AUX_LINK_CH_2AND3_LINKED_ITEM->sw.value ? 1 : 0);
-	usbdp_command(device, command, response, sizeof(response));
+	usbdp_command(device, UDP2_LINK_CMD, AUX_LINK_CH_2AND3_LINKED_ITEM->sw.value ? 1 : 0);
 	//- aux.AUX_LINK_CH_2AND3.on_change
 	indigo_update_property(device, AUX_LINK_CH_2AND3_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -628,7 +609,6 @@ static void aux_heater_aggressivity_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_HEATER_AGGRESSIVITY_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_HEATER_AGGRESSIVITY.on_change
-	char command[16], response[128];
 	if (AUX_HEATER_AGGRESSIVITY_1_ITEM->sw.value) {
 		PRIVATE_DATA->requested_aggressivity = 1;
 	} else if (AUX_HEATER_AGGRESSIVITY_2_ITEM->sw.value) {
@@ -638,8 +618,7 @@ static void aux_heater_aggressivity_handler(indigo_device *device) {
 	} else if (AUX_HEATER_AGGRESSIVITY_10_ITEM->sw.value) {
 		PRIVATE_DATA->requested_aggressivity = 4;
 	}
-	snprintf(command, sizeof(command), UDP2_AGGRESSIVITY_CMD, PRIVATE_DATA->requested_aggressivity);
-	usbdp_command(device, command, response, sizeof(response));
+	usbdp_command(device, UDP2_AGGRESSIVITY_CMD, PRIVATE_DATA->requested_aggressivity);
 	//- aux.AUX_HEATER_AGGRESSIVITY.on_change
 	indigo_update_property(device, AUX_HEATER_AGGRESSIVITY_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -692,15 +671,15 @@ static indigo_result aux_attach(indigo_device *device) {
 		if (AUX_WEATHER_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
-		indigo_init_number_item(AUX_WEATHER_TEMPERATURE_ITEM, AUX_WEATHER_TEMPERATURE_ITEM_NAME, "Ambient Temperature (°C)", -50, 100, 0, 0);
-		indigo_init_number_item(AUX_WEATHER_HUMIDITY_ITEM, AUX_WEATHER_HUMIDITY_ITEM_NAME, "Humidity [%]", 0, 100, 0, 0);
-		indigo_init_number_item(AUX_WEATHER_DEWPOINT_ITEM, AUX_WEATHER_DEWPOINT_ITEM_NAME, "Dewpoint (°C)", -50, 100, 0, 0);
+		indigo_init_number_item(AUX_WEATHER_TEMPERATURE_ITEM, AUX_WEATHER_TEMPERATURE_ITEM_NAME, "Ambient Temperature (°C)", 0, 0, 0, 0);
+		indigo_init_number_item(AUX_WEATHER_HUMIDITY_ITEM, AUX_WEATHER_HUMIDITY_ITEM_NAME, "Humidity [%]", 0, 0, 0, 0);
+		indigo_init_number_item(AUX_WEATHER_DEWPOINT_ITEM, AUX_WEATHER_DEWPOINT_ITEM_NAME, "Dewpoint (°C)", 0, 0, 0, 0);
 		AUX_TEMPERATURE_SENSORS_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_TEMPERATURE_SENSORS_PROPERTY_NAME, AUX_GROUP, "Temperature Sensors", INDIGO_OK_STATE, INDIGO_RO_PERM, 2);
 		if (AUX_TEMPERATURE_SENSORS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
-		indigo_init_number_item(AUX_TEMPERATURE_SENSOR_1_ITEM, AUX_TEMPERATURE_SENSORS_SENSOR_1_ITEM_NAME, "Sensor #1 (°C)", -50, 100, 0, 0);
-		indigo_init_number_item(AUX_TEMPERATURE_SENSOR_2_ITEM, AUX_TEMPERATURE_SENSORS_SENSOR_2_ITEM_NAME, "Sensor #2 (°C)", -50, 100, 0, 0);
+		indigo_init_number_item(AUX_TEMPERATURE_SENSOR_1_ITEM, AUX_TEMPERATURE_SENSORS_SENSOR_1_ITEM_NAME, "Sensor #1 (°C)", 0, 0, 0, 0);
+		indigo_init_number_item(AUX_TEMPERATURE_SENSOR_2_ITEM, AUX_TEMPERATURE_SENSORS_SENSOR_2_ITEM_NAME, "Sensor #2 (°C)", 0, 0, 0, 0);
 		AUX_CALLIBRATION_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_CALLIBRATION_PROPERTY_NAME, SETTINGS_GROUP, "Temperature Sensors Callibration", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
 		if (AUX_CALLIBRATION_PROPERTY == NULL) {
 			return INDIGO_FAILED;

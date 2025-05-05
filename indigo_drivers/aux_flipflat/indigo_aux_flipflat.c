@@ -72,6 +72,7 @@ typedef struct {
 	indigo_timer *aux_light_intensity_handler_timer;
 	//+ data
 	int type;
+	char response[16];
 	//- data
 } flipflat_private_data;
 
@@ -79,27 +80,29 @@ typedef struct {
 
 //+ code
 
-static bool flipflat_command(indigo_uni_handle *handle, char *command, char *response) {
-	if (indigo_uni_discard(handle) >= 0) {
-		if (indigo_uni_printf(handle, "%s\r", command) > 0) {
-			if (indigo_uni_read_section(handle, response, 16, "\n", "\n", INDIGO_DELAY(1)) > 0) {
-				return true;
-			}
+static bool flipflat_command(indigo_device *device, char *command, ...) {
+	long result = indigo_uni_discard(PRIVATE_DATA->handle);
+	if (result >= 0) {
+		va_list args;
+		va_start(args, command);
+		result = indigo_uni_vtprintf(PRIVATE_DATA->handle, command, args, "\r");
+		va_end(args);
+		if (result > 0) {
+			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\n", INDIGO_DELAY(1));
 		}
 	}
-	return false;
+	return result > 0 && PRIVATE_DATA->response[0] == '*';
 }
 
 static bool flipflat_open(indigo_device *device) {
 	PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
 	if (PRIVATE_DATA->handle != NULL) {
-		char response[16];
 		indigo_uni_set_dtr(PRIVATE_DATA->handle, true);
 		indigo_usleep(INDIGO_DELAY(0.1));
 		indigo_uni_set_rts(PRIVATE_DATA->handle, false);
 		indigo_usleep(INDIGO_DELAY(2));
-		if (flipflat_command(PRIVATE_DATA->handle, ">P000", response) && *response == '*') {
-			if (sscanf(response, "*P%02d000", &PRIVATE_DATA->type) != 1) {
+		if (flipflat_command(device, ">POOO")) {
+			if (sscanf(PRIVATE_DATA->response, "*P%02dOOO", &PRIVATE_DATA->type) != 1) {
 				PRIVATE_DATA->type = 0;
 			}
 			switch (PRIVATE_DATA->type) {
@@ -134,12 +137,14 @@ static bool flipflat_open(indigo_device *device) {
 					indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 					break;
 			}
-			indigo_update_property(device, INFO_PROPERTY, NULL);
-			return true;
-		} else {
-			indigo_send_message(device, "Handshake failed");
-			indigo_uni_close(&PRIVATE_DATA->handle);
+			if (flipflat_command(device, ">VOOO")) {
+				indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 4);
+				indigo_update_property(device, INFO_PROPERTY, NULL);
+				return true;
+			}
 		}
+		indigo_send_message(device, "Handshake failed");
+		indigo_uni_close(&PRIVATE_DATA->handle);
 	}
 	return false;
 }
@@ -164,13 +169,12 @@ static void aux_connection_handler(indigo_device *device) {
 		connection_result = flipflat_open(device);
 		if (connection_result) {
 			//+ aux.on_connect
-			char response[16];
 			if (!AUX_LIGHT_SWITCH_PROPERTY->hidden) {
 				AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
 				AUX_COVER_PROPERTY->state = INDIGO_ALERT_STATE;
-				if (flipflat_command(PRIVATE_DATA->handle, ">S000", response) && *response == '*') {
+				if (flipflat_command(device, ">SOOO")) {
 					int type, q, r, s;
-					if (sscanf(response, "*S%02d%1d%1d%1d", &type, &q, &r, &s) == 4) {
+					if (sscanf(PRIVATE_DATA->response, "*S%02d%1d%1d%1d", &type, &q, &r, &s) == 4) {
 						if (s == 1 || s == 2) {
 							AUX_COVER_PROPERTY->state = INDIGO_OK_STATE;
 							indigo_set_switch(AUX_COVER_PROPERTY, s == 1 ? AUX_COVER_CLOSE_ITEM : AUX_COVER_OPEN_ITEM, true);
@@ -182,10 +186,10 @@ static void aux_connection_handler(indigo_device *device) {
 			}
 			if (!AUX_LIGHT_INTENSITY_PROPERTY->hidden) {
 				AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
-				if (flipflat_command(PRIVATE_DATA->handle, ">J000", response) && *response == '*') {
+				if (flipflat_command(device, ">JOOO")) {
 					int type, value;
-					if (sscanf(response, "*J%02d%3d", &type, &value) == 2) {
-						AUX_LIGHT_INTENSITY_ITEM->number.value = AUX_LIGHT_INTENSITY_ITEM->number.target = value;
+					if (sscanf(PRIVATE_DATA->response, "*J%02d%3d", &type, &value) == 2) {
+						AUX_LIGHT_INTENSITY_ITEM->number.value = AUX_LIGHT_INTENSITY_ITEM->number.target = (100.0 * value) / 255;
 						AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
 					}
 				}
@@ -223,17 +227,15 @@ static void aux_cover_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_COVER_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_COVER.on_change
-	char command[16],	response[16];
-	strcpy(command, AUX_COVER_OPEN_ITEM->sw.value ? ">O000" : ">C000");
-	if (flipflat_command(PRIVATE_DATA->handle, command, response) && *response == '*') {
+	if (flipflat_command(device, ">%cOOO", AUX_COVER_OPEN_ITEM->sw.value ? 'O' : 'C')) {
 		AUX_COVER_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, AUX_COVER_PROPERTY, NULL);
 		AUX_COVER_PROPERTY->state = INDIGO_ALERT_STATE;
 		for (int i = 0; i < 10; i++) {
 			indigo_sleep(1);
-			if (flipflat_command(PRIVATE_DATA->handle, ">S000", response) && *response == '*') {
+			if (flipflat_command(device, ">SOOO")) {
 				int type, q, r, s;
-				if (sscanf(response, "*S%02d%1d%1d%1d", &type, &q, &r, &s) == 4) {
+				if (sscanf(PRIVATE_DATA->response, "*S%02d%1d%1d%1d", &type, &q, &r, &s) == 4) {
 					if ((AUX_COVER_OPEN_ITEM->sw.value && s == 2) || (AUX_COVER_CLOSE_ITEM->sw.value && s == 1)) {
 						AUX_COVER_PROPERTY->state = INDIGO_OK_STATE;
 						break;
@@ -255,9 +257,7 @@ static void aux_light_switch_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_LIGHT_SWITCH.on_change
-	char command[16],	response[16];
-	strcpy(command, AUX_LIGHT_SWITCH_ON_ITEM->sw.value ? ">L000" : ">D000");
-	if (!flipflat_command(PRIVATE_DATA->handle, command, response) || *response != '*') {
+	if (!flipflat_command(device, ">%cOOO", AUX_LIGHT_SWITCH_ON_ITEM->sw.value ? 'L' : 'D')) {
 		AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- aux.AUX_LIGHT_SWITCH.on_change
@@ -271,9 +271,7 @@ static void aux_light_intensity_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_LIGHT_INTENSITY.on_change
-	char command[16],	response[16];
-	sprintf(command, ">B%03d", (int)(AUX_LIGHT_INTENSITY_ITEM->number.value));
-	if (!flipflat_command(PRIVATE_DATA->handle, command, response) || *response != '*') {
+	if (!flipflat_command(device, ">B%03d", (int)(255 * AUX_LIGHT_INTENSITY_ITEM->number.value / 100))) {
 		AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	//- aux.AUX_LIGHT_INTENSITY.on_change
@@ -294,8 +292,9 @@ static indigo_result aux_attach(indigo_device *device) {
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
 		//+ aux.on_attach
-		INFO_PROPERTY->count = 5;
+		INFO_PROPERTY->count = 6;
 		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		//- aux.on_attach
 		AUX_COVER_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_COVER_PROPERTY_NAME, AUX_MAIN_GROUP, "Cover", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (AUX_COVER_PROPERTY == NULL) {
@@ -314,7 +313,7 @@ static indigo_result aux_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		}
 		indigo_init_number_item(AUX_LIGHT_INTENSITY_ITEM, AUX_LIGHT_INTENSITY_ITEM_NAME, "Intensity (%)", 0, 100, 1, 50);
-		strcpy(AUX_LIGHT_INTENSITY_ITEM->number.format, "%g");
+		strcpy(AUX_LIGHT_INTENSITY_ITEM->number.format, "%.0f");
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		return aux_enumerate_properties(device, NULL, NULL);

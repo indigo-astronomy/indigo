@@ -24,58 +24,50 @@ driver sqm {
 	copyright = "Copyright (c) 2019-2025 CloudMakers, s. r. o.";
 	version = 18;
 	serial;
-	// include { }
 	define {
-		#define AUX_GROUP				"Sensor"
+		#define AUX_GROUP "Sensor"
 	}
-	// data { }
+	data {
+		char response[128];
+	}
 	code {
-		static bool sqm_command(indigo_device *device, const char *command, char *response, int max) {
-			pthread_mutex_lock(&PRIVATE_DATA->mutex);
-			if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
-				if (indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command)) > 0) {
-					if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "\n", "\r\n", INDIGO_DELAY(1)) > 0) {
-						pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-						return true;
-					}
-				}
+		static bool sqm_command(indigo_device *device, const char *command) {
+			long result = indigo_uni_discard(PRIVATE_DATA->handle);
+			if (result >= 0) {
+				result = indigo_uni_write(PRIVATE_DATA->handle, command, strlen(command));
 			}
-			pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-			return false;
+			if (result > 0) {
+				result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", INDIGO_DELAY(1));
+			}
+			return result > 0;
 		}
 
 		static bool sqm_open(indigo_device *device) {
 			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 115200, INDIGO_LOG_DEBUG);
-			if (PRIVATE_DATA->handle == NULL) {
-				char response[128];
-				if (sqm_command(device, "ix", response, sizeof(response))) {
-					if (response[0] == 'i' && response[1] == ',') {
+			if (PRIVATE_DATA->handle != NULL) {
+				if (sqm_command(device, "ix")) {
+					if (PRIVATE_DATA->response[0] == 'i' && PRIVATE_DATA->response[1] == ',') {
 						return true;
 					}
 				}
+				indigo_uni_close(&PRIVATE_DATA->handle);
 				indigo_send_message(device, "Handshake failed");
-				return false;
 			}
-			return true;
+			return false;
 		}
 
 		static void sqm_close(indigo_device *device) {
-			if (PRIVATE_DATA->handle >= 0) {
-				indigo_uni_close(&PRIVATE_DATA->handle);
-			}
+			indigo_uni_close(&PRIVATE_DATA->handle);
 		}
 	}
-	// on_init { }
-	// on_shutdown { }
 	aux {
 		name = "Unihedron SQM";
 		interface = INDIGO_INTERFACE_AUX_SQM;
 		additional_instances = true;
-		// code { }
 		on_timer {
-			char response[128] = { 0 }, *pnt;
-			if (sqm_command(device, "rx", response, sizeof(response))) {
-				char *tok = strtok_r(response, ",", &pnt);
+			char *pnt;
+			if (sqm_command(device, "rx")) {
+				char *tok = strtok_r(PRIVATE_DATA->response, ",", &pnt);
 				if (tok == NULL) {
 					AUX_INFO_PROPERTY->state = INDIGO_ALERT_STATE;
 					AUX_WEATHER_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -97,45 +89,24 @@ driver sqm {
 			indigo_update_property(device, AUX_WEATHER_PROPERTY, NULL);
 			indigo_reschedule_timer(device, 10, &PRIVATE_DATA->aux_timer);
 		}
-		// on_connect { }
-		// on_disconnect { }
-		// on_attach { }
-		// on_detach { }
 		number AUX_INFO {
 			name = AUX_INFO_PROPERTY_NAME;
 			group = AUX_GROUP;
 			label = "Sensor readings";
 			perm = INDIGO_RO_PERM;
-			// handle_change = false;
-			// synchronized_change = false;
-			// on_change { }
-			// on_attach { }
-			// on_detach { }
 			item X_AUX_SENSOR_FREQUENCY {
 				name = "X_AUX_SENSOR_FREQUENCY";
 				label = "SQM sensor frequency [Hz]";
-				value = 0;
-				min = 0;
-				max = 1000000000;
-				step = 0;
 				format = "%.0f";
 			}
 			item X_AUX_SENSOR_COUNTS {
 				name = "X_AUX_SENSOR_COUNTS";
 				label = "SQM sensor period [counts]";
-				value = 0;
-				min = 0;
-				max = 1000000000;
-				step = 0;
 				format = "%.0f";
 			}
 			item X_AUX_SENSOR_PERIOD {
 				name = "X_AUX_SENSOR_PERIOD";
 				label = "SQM sensor period [sec]";
-				value = 0;
-				min = 0;
-				max = 1000000000;
-				step = 0;
 			}
 		}
 		number AUX_WEATHER {
@@ -143,34 +114,17 @@ driver sqm {
 			group = AUX_GROUP;
 			label = "Sky quality";
 			perm = INDIGO_RO_PERM;
-			// handle_change = false;
-			// synchronized_change = false;
-			// on_change { }
-			// on_attach { }
-			// on_detach { }
 			item AUX_WEATHER_SKY_BRIGHTNESS {
 				name = AUX_WEATHER_SKY_BRIGHTNESS_ITEM_NAME;
 				label = "Sky brightness [m/arcsec\u00B2]";
-				value = 0;
-				min = -20;
-				max = 30;
-				step = 0;
 			}
 			item AUX_WEATHER_SKY_TEMPERATURE {
 				name = AUX_WEATHER_SKY_TEMPERATURE_ITEM_NAME;
 				label = "Sky temperature [\u00B0C]";
-				value = 0;
-				min = -100;
-				max = 100;
-				step = 0;
 			}
 			item AUX_WEATHER_SKY_BORTLE_CLASS {
 				name = AUX_WEATHER_SKY_BORTLE_CLASS_ITEM_NAME;
 				label = "Sky Bortle class";
-				value = 0;
-				min = 1;
-				max = 9;
-				step = 0;
 			}
 		}
 	}

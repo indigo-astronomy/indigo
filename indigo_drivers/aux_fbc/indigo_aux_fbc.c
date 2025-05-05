@@ -109,7 +109,6 @@ static bool fbc_command(indigo_device *device, char *command, int response, ...)
 		}
 	}
 	return result > 0;
-
 }
 
 static bool fbc_open(indigo_device *device) {
@@ -122,7 +121,12 @@ static bool fbc_open(indigo_device *device) {
 				if (!strcmp("P SerialMode", PRIVATE_DATA->response)) {
 					fbc_command(device, ": E 0 #", false);
 					fbc_command(device, ": F 0 #", false);
-					return true;
+					if (fbc_command(device, ": V #", true)) {
+						indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, DRIVER_LABEL);
+						indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 2);
+						indigo_update_property(device, INFO_PROPERTY, NULL);
+						return true;
+					}
 				}
 				indigo_send_message(device, "FBC is not in SerialMode. Turn all knobs to 0 and powercycle the device.");
 			}
@@ -136,6 +140,9 @@ static bool fbc_open(indigo_device *device) {
 static void fbc_close(indigo_device *device) {
 	fbc_command(device, ": E 0 #", false);
 	fbc_command(device, ": F 0 #", false);
+	indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+	indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+	indigo_update_property(device, INFO_PROPERTY, NULL);
 	indigo_uni_close(&PRIVATE_DATA->handle);
 }
 
@@ -153,10 +160,6 @@ static void aux_connection_handler(indigo_device *device) {
 		connection_result = fbc_open(device);
 		if (connection_result) {
 			//+ aux.on_connect
-			if (fbc_command(device, ": V #", true)) {
-				sscanf(PRIVATE_DATA->response, "V %s", INFO_DEVICE_FW_REVISION_ITEM->text.value);
-				indigo_update_property(device, INFO_PROPERTY, NULL);
-			}
 			fbc_command(device, ": B %d #", false, (int)AUX_LIGHT_INTENSITY_ITEM->number.value);
 			//- aux.on_connect
 			indigo_define_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
@@ -249,7 +252,6 @@ static void aux_ccd_exposure_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.CCD_EXPOSURE.on_change
-	char command[16];
 	if (fbc_command(device, ": E %d #", false, (int)(CCD_EXPOSURE_ITEM->number.value * 1000))) {
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 		while (CCD_EXPOSURE_ITEM->number.value > 0) {
@@ -285,6 +287,8 @@ static indigo_result aux_attach(indigo_device *device) {
 		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
 		//+ aux.on_attach
 		INFO_PROPERTY->count = 6;
+		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		//- aux.on_attach
 		AUX_LIGHT_SWITCH_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_LIGHT_SWITCH_PROPERTY_NAME, AUX_MAIN_GROUP, "Light (on/off)", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (AUX_LIGHT_SWITCH_PROPERTY == NULL) {

@@ -29,9 +29,8 @@ driver uch {
 			vid = 0x0403;
 		}
 	}
-	// include { }
 	define {
-		#define AUX_GROUP											"USB Ports"
+		#define AUX_GROUP	"USB Ports"
 	}
 	data {
 		char response[128];
@@ -42,7 +41,7 @@ driver uch {
 			if (result >= 0) {
 				va_list args;
 				va_start(args, command);
-				result = indigo_uni_vprintf_line(PRIVATE_DATA->handle, command, args);
+				result = indigo_uni_vtprintf(PRIVATE_DATA->handle, command, args, "\n");
 				va_end(args);
 				if (result > 0) {
 					result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", INDIGO_DELAY(1));
@@ -50,15 +49,19 @@ driver uch {
 			}
 			return result > 0;
 		}
-
+		
 		static bool uch_open(indigo_device *device) {
 			PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
 			if (PRIVATE_DATA->handle != NULL) {
 				if (uch_command(device, "P#")) {
 					if (!strcmp(PRIVATE_DATA->response, "UCH_OK")) {
-						indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro UCH");
-						uch_command(device, "PL:1");
-						return true;
+						indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, DRIVER_LABEL);
+						if (uch_command(device, "PV")) {
+							indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 3);
+							indigo_update_property(device, INFO_PROPERTY, NULL);
+							uch_command(device, "PL:1");
+							return true;
+						}
 					}
 				}
 				indigo_uni_close(&PRIVATE_DATA->handle);
@@ -66,21 +69,19 @@ driver uch {
 			}
 			return false;
 		}
-
+		
 		static void uch_close(indigo_device *device) {
-			if (PRIVATE_DATA->handle != NULL) {
-				uch_command(device, "PL:0");
-				indigo_uni_close(&PRIVATE_DATA->handle);
-			}
+			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+			indigo_update_property(device, INFO_PROPERTY, NULL);
+			uch_command(device, "PL:0");
+			indigo_uni_close(&PRIVATE_DATA->handle);
 		}
 	}
-	// on_init { }
-	// on_shutdown { }
 	aux {
 		name = "USB Control Hub";
 		interface = INDIGO_INTERFACE_AUX_POWERBOX;
 		additional_instances = true;
-		// code { }
 		on_timer {
 			bool updateInfo = false;
 			bool updateUSBPorts = false;
@@ -161,30 +162,18 @@ driver uch {
 					AUX_USB_PORT_6_ITEM->sw.value =  token[5] == '1';
 				}
 			}
-			if (uch_command(device, "PV")) {
-				indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 3);
-				indigo_update_property(device, INFO_PROPERTY, NULL);
-			}
-		}
-		on_disconnect {
-			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
-			indigo_update_property(device, INFO_PROPERTY, NULL);
 		}
 		on_attach {
 			INFO_PROPERTY->count = 6;
 			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		}
-		// on_detach { }
 		text AUX_OUTLET_NAMES {
 			name = AUX_OUTLET_NAMES_PROPERTY_NAME;
 			group = AUX_GROUP;
 			label = "Outlet names";
 			persistent = true;
 			always_defined = true;
-			// handle_change = false;
-			// synchronized_change = false;
 			on_change {
 				snprintf(AUX_USB_PORT_1_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_USB_PORT_NAME_1_ITEM->text.value);
 				snprintf(AUX_USB_PORT_2_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_USB_PORT_NAME_2_ITEM->text.value);
@@ -198,8 +187,6 @@ driver uch {
 					indigo_update_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
 				}
 			}
-			// on_attach { }
-			// on_detach { }
 			item AUX_USB_PORT_NAME_1 {
 				name = AUX_USB_PORT_NAME_1_ITEM_NAME;
 				label = "Port #1";
@@ -237,15 +224,11 @@ driver uch {
 			label = "USB ports";
 			rule = INDIGO_ANY_OF_MANY_RULE;
 			persistent = true;
-			// handle_change = false;
-			// synchronized_change = false;
 			on_change {
 				for (int i = 0; i < AUX_USB_PORT_PROPERTY->count; i++) {
 					uch_command(device, "U%d:%d", i + 1, AUX_USB_PORT_PROPERTY->items[i].sw.value ? 1 : 0);
 				}
 			}
-			// on_attach { }
-			// on_detach { }
 			item AUX_USB_PORT_1 {
 				name = AUX_USB_PORT_1_ITEM_NAME;
 				label = "Port #1";
@@ -282,26 +265,13 @@ driver uch {
 			group = AUX_GROUP;
 			label = "Sensors";
 			perm = INDIGO_RO_PERM;
-			// handle_change = false;
-			// synchronized_change = false;
-			// on_change { }
-			// on_attach { }
-			// on_detach { }
 			item AUX_INFO_VOLTAGE {
 				name = AUX_INFO_VOLTAGE_ITEM_NAME;
 				label = "Voltage [V]";
-				value = 0;
-				min = 0;
-				max = 15;
-				step = 0;
 			}
 			item AUX_INFO_UPTIME {
 				name = "UPTIME";
 				label = "Uptime [hours]";
-				value = 0;
-				min = 0;
-				max = 1e10;
-				step = 0;
 				format = "%12.9m";
 			}
 		}
@@ -309,16 +279,12 @@ driver uch {
 			name = "X_AUX_REBOOT";
 			group = AUX_GROUP;
 			label = "Reboot";
-			// handle_change = false;
-			// synchronized_change = false;
 			on_change {
 				if (X_AUX_REBOOT_ITEM->sw.value) {
 					uch_command(device, "PF");
 					X_AUX_REBOOT_ITEM->sw.value = false;
 				}
 			}
-			// on_attach { }
-			// on_detach { }
 			item X_AUX_REBOOT {
 				name = "REBOOT";
 				label = "Reboot";
@@ -329,8 +295,6 @@ driver uch {
 			name = AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROPERTY_NAME;
 			group = AUX_GROUP;
 			label = "Save current outlet states as default";
-			// handle_change = false;
-			// synchronized_change = false;
 			on_change {
 				if (AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM->sw.value) {
 					char command[] = "PE:000000";
@@ -342,8 +306,6 @@ driver uch {
 					AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM->sw.value = false;
 				}
 			}
-			// on_attach { }
-			// on_detach { }
 			item AUX_SAVE_OUTLET_STATES_AS_DEFAULT {
 				name = AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM_NAME;
 				label = "Save";

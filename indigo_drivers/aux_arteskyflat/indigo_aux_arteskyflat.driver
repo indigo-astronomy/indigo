@@ -24,8 +24,6 @@ driver arteskyflat {
 	copyright = "Copyright (c) 2019-2025 CloudMakers, s. r. o.";
 	version = 7;
 	serial;
-	// include { }
-	// define { }
 	data {
 		char response[16];
 	}
@@ -53,31 +51,19 @@ driver arteskyflat {
 			indigo_uni_close(&PRIVATE_DATA->handle);
 		}
 	}
-	// on_init { }
-	// on_shutdown { }
 	aux {
 		name = "Artesky Flat Box";
 		interface = INDIGO_INTERFACE_AUX_LIGHTBOX;
 		additional_instances = true;
-		// code { }
-		// on_timer { }
-		// on_connect { }
-		// on_disconnect { }
-		// on_attach { }
-		// on_detach { }
 		switch AUX_LIGHT_SWITCH {
 			name = AUX_LIGHT_SWITCH_PROPERTY_NAME;
 			group = AUX_MAIN_GROUP;
 			label = "Light (on/off)";
-			// handle_change = false;
-			// synchronized_change = false;
 			on_change {
 				if (!arteskyflat_command(device, AUX_LIGHT_SWITCH_ON_ITEM->sw.value ? ">L000\n" : ">D000\n") || PRIVATE_DATA->response[0] != '*') {
 					AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 			}
-			// on_attach { }
-			// on_detach { }
 			item AUX_LIGHT_SWITCH_ON {
 				name = AUX_LIGHT_SWITCH_ON_ITEM_NAME;
 				label = "On";
@@ -94,15 +80,11 @@ driver arteskyflat {
 			group = AUX_MAIN_GROUP;
 			label = "Light intensity";
 			persistent = true;
-			// handle_change = false;
-			// synchronized_change = false;
 			on_change {
 				if (!arteskyflat_command(device, ">B%03d\n", (int)(255 * AUX_LIGHT_INTENSITY_ITEM->number.value / 100)) || PRIVATE_DATA->response[0] != '*') {
 					AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 			}
-			// on_attach { }
-			// on_detach { }
 			item AUX_LIGHT_INTENSITY {
 				name = AUX_LIGHT_INTENSITY_ITEM_NAME;
 				label = "Intensity [%]";

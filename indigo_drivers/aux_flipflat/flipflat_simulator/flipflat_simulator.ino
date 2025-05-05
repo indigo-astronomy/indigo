@@ -87,38 +87,38 @@ void loop() {
     char buffer[32];
     memset(buffer, 0, sizeof(buffer));
     Serial.readBytesUntil('\r', buffer, sizeof(buffer));
-    if (!strcmp(buffer, ">P000")) {
-      Serial.print("*P" DEVICE "000\n");
-    } else if (!strcmp(buffer, ">O000")) {
+    if (!strcmp(buffer, ">POOO")) {
+      Serial.print("*P" DEVICE "OOO\n");
+    } else if (!strcmp(buffer, ">OOOO")) {
       motor = 2000;
       cover = 2;
-      Serial.print("*O" DEVICE "000\n");
-    } else if (!strcmp(buffer, ">C000")) {
+      Serial.print("*O" DEVICE "OOO\n");
+    } else if (!strcmp(buffer, ">COOO")) {
       motor = 2000;
       cover = 1;
-      Serial.print("*C" DEVICE "000\n");
-    } else if (!strcmp(buffer, ">L000")) {
+      Serial.print("*C" DEVICE "OOO\n");
+    } else if (!strcmp(buffer, ">LOOO")) {
       light = 1;
-      Serial.print("*L" DEVICE "000\n");
-    } else if (!strcmp(buffer, ">D000")) {
+      Serial.print("*L" DEVICE "OOO\n");
+    } else if (!strcmp(buffer, ">DOOO")) {
       light = 0;
-      Serial.print("*D" DEVICE "000\n");
+      Serial.print("*D" DEVICE "OOO\n");
     } else if (!strncmp(buffer, ">B", 2)) {
       strncpy(brightness, buffer + 2, 3);
       Serial.print("*B" DEVICE);
       Serial.print(brightness);
       Serial.print("\n");
-    } else if (!strcmp(buffer, ">J000")) {
+    } else if (!strcmp(buffer, ">JOOO")) {
       Serial.print("*J" DEVICE);
       Serial.print(brightness);
       Serial.print("\n");
-    } else if (!strcmp(buffer, ">S000")) {
+    } else if (!strcmp(buffer, ">SOOO")) {
       Serial.print("*S" DEVICE);
       Serial.print(motor > 0 ? 1 : 0);
       Serial.print(light);
       Serial.print(motor > 0 ? 0 : cover);
       Serial.print("\n");
-    } else if (!strcmp(buffer, ">V000")) {
+    } else if (!strcmp(buffer, ">VOOO")) {
       Serial.print("*V" DEVICE "123\n");
     }
     DISPLAY_BEGIN();

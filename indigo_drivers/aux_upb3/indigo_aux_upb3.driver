@@ -30,7 +30,7 @@ driver upb3 {
 		}
 	}
 	define {
-		#define POWERBOX_GROUP       "Powerbox"
+		#define POWERBOX_GROUP "Powerbox"
 	}
 	data {
 		int version;
@@ -42,7 +42,7 @@ driver upb3 {
 			if (result >= 0) {
 				va_list args;
 				va_start(args, command);
-				result = indigo_uni_vprintf_line(PRIVATE_DATA->handle, command, args);
+				result = indigo_uni_vtprintf(PRIVATE_DATA->handle, command, args, "\n");
 				va_end(args);
 				if (result > 0) {
 					result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", INDIGO_DELAY(1));
@@ -56,8 +56,13 @@ driver upb3 {
 			if (PRIVATE_DATA->handle != NULL) {
 				if (upb3_command(device, "P#") && !strncmp(PRIVATE_DATA->response, "UPBv3_", 6)) {
 					PRIVATE_DATA->version = 3;
-					upb3_command(device, "PL:1");
-					return true;
+					if (upb3_command(device, "PV")) {
+						indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro UPBv3");
+						indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 3);
+						indigo_update_property(device, INFO_PROPERTY, NULL);
+						upb3_command(device, "PL:1");
+						return true;
+					}
 				}
 				indigo_uni_close(&PRIVATE_DATA->handle);
 				indigo_send_message(device, "Handshake failed");
@@ -194,11 +199,6 @@ driver upb3 {
 			indigo_reschedule_timer(device, 2, &PRIVATE_DATA->aux_timer);
 		}
 		on_connect {
-			if (upb3_command(device, "PV")) {
-				indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro UPBv3");
-				indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 3);
-				indigo_update_property(device, INFO_PROPERTY, NULL);
-			}
 			if (upb3_command(device, "PA")) {
 				char *pnt, *token = strtok_r(PRIVATE_DATA->response, ":", &pnt);
 				for (int i = 0; i < 6; i++) { // output 1-6
@@ -271,11 +271,6 @@ driver upb3 {
 				}
 			}
 		}
-		on_disconnect {
-			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
-			indigo_update_property(device, INFO_PROPERTY, NULL);
-		}
 		on_attach {
 			INFO_PROPERTY->count = 6;
 			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
@@ -329,8 +324,6 @@ driver upb3 {
 					indigo_update_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
 				}
 			}
-			// on_attach { }
-			// on_detach { }
 			item AUX_POWER_OUTLET_NAME_1 {
 				name = AUX_POWER_OUTLET_NAME_1_ITEM_NAME;
 				label = "Outlet #1";
@@ -450,8 +443,6 @@ driver upb3 {
 				upb3_command(device, "PB:%d", AUX_POWER_OUTLET_8_ITEM->sw.value ? 1 : 0);
 				upb3_command(device, "RL:%d", AUX_POWER_OUTLET_9_ITEM->sw.value ? 1 : 0);
 			}
-			// on_attach { }
-			// on_detach { }
 			item AUX_POWER_OUTLET_1 {
 				name = AUX_POWER_OUTLET_1_ITEM_NAME;
 				label = "Outlet #1";
@@ -509,8 +500,6 @@ driver upb3 {
 				upb3_command(device, "D2:%d", (int)AUX_HEATER_OUTLET_2_ITEM->number.value);
 				upb3_command(device, "D3:%d", (int)AUX_HEATER_OUTLET_3_ITEM->number.value);
 			}
-			// on_attach { }
-			// on_detach { }
 			item AUX_HEATER_OUTLET_1 {
 				name = AUX_HEATER_OUTLET_1_ITEM_NAME;
 				label = "Heater #1 [%]";
@@ -554,8 +543,6 @@ driver upb3 {
 					upb3_command(device, "ADW3:0");
 				}
 			}
-			// on_attach { }
-			// on_detach { }
 			item AUX_DEW_CONTROL_MANUAL {
 				name = AUX_DEW_CONTROL_MANUAL_ITEM_NAME;
 				label = "Manual";
@@ -572,15 +559,11 @@ driver upb3 {
 			group = POWERBOX_GROUP;
 			label = "USB ports";
 			rule = INDIGO_ANY_OF_MANY_RULE;
-			// handle_change = false;
-			// synchronized_change = false;
 			on_change {
 				for (int i = 0; i < AUX_USB_PORT_PROPERTY->count; i++) {
 					upb3_command(device, "U%d:%d", i + 1, AUX_USB_PORT_PROPERTY->items[i].sw.value ? 1 : 0);
 				}
 			}
-			// on_attach { }
-			// on_detach { }
 			item AUX_USB_PORT_1 {
 				name = AUX_USB_PORT_1_ITEM_NAME;
 				label = "Port #1";
@@ -636,8 +619,6 @@ driver upb3 {
 					AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM->sw.value = false;
 				}
 			}
-			// on_attach { }
-			// on_detach { }
 			item AUX_SAVE_OUTLET_STATES_AS_DEFAULT {
 				name = "SAVE";
 				label = "Save";
@@ -648,16 +629,12 @@ driver upb3 {
 			name = "AUX_REBOOT";
 			group = POWERBOX_GROUP;
 			label = "Reboot";
-			// handle_change = false;
-			// synchronized_change = false;
 			on_change {
 					if (AUX_REBOOT_ITEM->sw.value) {
 					upb3_command(device, "PF");
 					AUX_REBOOT_ITEM->sw.value = false;
 				}
 			}
-			// on_attach { }
-			// on_detach { }
 			item AUX_REBOOT {
 				name = "REBOOT";
 				label = "Manual";
@@ -668,14 +645,10 @@ driver upb3 {
 			name = "AUX_VARIABLE_POWER_OUTLET";
 			group = POWERBOX_GROUP;
 			label = "Variable voltage power outlets";
-			// handle_change = false;
-			// synchronized_change = false;
 			on_change {
 				upb3_command(device, "PJ:%d", (int)AUX_VARIABLE_POWER_OUTLET_7_ITEM->number.value);
 				upb3_command(device, "PB:%d", (int)AUX_VARIABLE_POWER_OUTLET_8_ITEM->number.value);
 			}
-			// on_attach { }
-			// on_detach { }
 			item AUX_VARIABLE_POWER_OUTLET_7 {
 				name = "OUTLET_7";
 				label = "Voltage of adjustable buck output";
@@ -697,11 +670,6 @@ driver upb3 {
 			name = AUX_POWER_OUTLET_STATE_PROPERTY_NAME;
 			group = POWERBOX_GROUP;
 			label = "Power outlets state";
-			// handle_change = false;
-			// synchronized_change = false;
-			// on_change { }
-			// on_attach { }
-			// on_detach { }
 			item AUX_POWER_OUTLET_STATE_1 {
 				name = AUX_POWER_OUTLET_STATE_1_ITEM_NAME;
 				label = "Outlet #1 state";
@@ -738,11 +706,6 @@ driver upb3 {
 			group = POWERBOX_GROUP;
 			label = "Weather info";
 			perm = INDIGO_RO_PERM;
-			// handle_change = false;
-			// synchronized_change = false;
-			// on_change { }
-			// on_attach { }
-			// on_detach { }
 			item AUX_WEATHER_TEMPERATURE {
 				name = AUX_WEATHER_TEMPERATURE_ITEM_NAME;
 				label = "Temperature [C]";
@@ -773,11 +736,6 @@ driver upb3 {
 			group = POWERBOX_GROUP;
 			label = "Sensors";
 			perm = INDIGO_RO_PERM;
-			// handle_change = false;
-			// synchronized_change = false;
-			// on_change { }
-			// on_attach { }
-			// on_detach { }
 			item AUX_AVERAGE {
 				name = "AVERAGE_CURRENT";
 				label = "Avereage current [A]";
@@ -823,7 +781,6 @@ driver upb3 {
 	focuser {
 		name = "Ultimate Powerbox 3 (focuser)";
 		additional_instances = true;
-		// code { }
 		on_timer {
 			if (upb3_command(device, "ES")) {
 				double temp = indigo_atod(PRIVATE_DATA->response + 3);
@@ -882,11 +839,7 @@ driver upb3 {
 					FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = atoi(token);
 				}
 			}
-			if (upb3_command(device, "PV") && !strncmp(PRIVATE_DATA->response, "PV:", 3)) {
-				indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 3);
-			}
 		}
-		// on_disconnect { }
 		on_attach {
 			FOCUSER_BACKLASH_PROPERTY->hidden = false;
 			FOCUSER_BACKLASH_ITEM->number.min = 0;
@@ -906,7 +859,6 @@ driver upb3 {
 			FOCUSER_POSITION_ITEM->number.max = 9999999;
 			FOCUSER_POSITION_ITEM->number.step = 1;
 		}
-		// on_detach { }
 		inherited FOCUSER_SPEED {
 			on_change {
 				if (!upb3_command(device, "SS:%d", (int)FOCUSER_SPEED_ITEM->number.value)) {

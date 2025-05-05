@@ -116,7 +116,7 @@ static bool uch_command(indigo_device *device, char *command, ...) {
 	if (result >= 0) {
 		va_list args;
 		va_start(args, command);
-		result = indigo_uni_vprintf_line(PRIVATE_DATA->handle, command, args);
+		result = indigo_uni_vtprintf(PRIVATE_DATA->handle, command, args, "\n");
 		va_end(args);
 		if (result > 0) {
 			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", INDIGO_DELAY(1));
@@ -130,9 +130,13 @@ static bool uch_open(indigo_device *device) {
 	if (PRIVATE_DATA->handle != NULL) {
 		if (uch_command(device, "P#")) {
 			if (!strcmp(PRIVATE_DATA->response, "UCH_OK")) {
-				indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro UCH");
-				uch_command(device, "PL:1");
-				return true;
+				indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, DRIVER_LABEL);
+				if (uch_command(device, "PV")) {
+					indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 3);
+					indigo_update_property(device, INFO_PROPERTY, NULL);
+					uch_command(device, "PL:1");
+					return true;
+				}
 			}
 		}
 		indigo_uni_close(&PRIVATE_DATA->handle);
@@ -142,10 +146,11 @@ static bool uch_open(indigo_device *device) {
 }
 
 static void uch_close(indigo_device *device) {
-	if (PRIVATE_DATA->handle != NULL) {
-		uch_command(device, "PL:0");
-		indigo_uni_close(&PRIVATE_DATA->handle);
-	}
+	indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+	indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+	indigo_update_property(device, INFO_PROPERTY, NULL);
+	uch_command(device, "PL:0");
+	indigo_uni_close(&PRIVATE_DATA->handle);
 }
 
 //- code
@@ -251,10 +256,6 @@ static void aux_connection_handler(indigo_device *device) {
 					AUX_USB_PORT_6_ITEM->sw.value =  token[5] == '1';
 				}
 			}
-			if (uch_command(device, "PV")) {
-				indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 3);
-				indigo_update_property(device, INFO_PROPERTY, NULL);
-			}
 			//- aux.on_connect
 			indigo_define_property(device, AUX_USB_PORT_PROPERTY, NULL);
 			indigo_define_property(device, AUX_INFO_PROPERTY, NULL);
@@ -279,11 +280,6 @@ static void aux_connection_handler(indigo_device *device) {
 		indigo_delete_property(device, AUX_INFO_PROPERTY, NULL);
 		indigo_delete_property(device, X_AUX_REBOOT_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROPERTY, NULL);
-		//+ aux.on_disconnect
-		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
-		indigo_update_property(device, INFO_PROPERTY, NULL);
-		//- aux.on_disconnect
 		uch_close(device);
 		indigo_send_message(device, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -404,8 +400,8 @@ static indigo_result aux_attach(indigo_device *device) {
 		if (AUX_INFO_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
-		indigo_init_number_item(AUX_INFO_VOLTAGE_ITEM, AUX_INFO_VOLTAGE_ITEM_NAME, "Voltage [V]", 0, 15, 0, 0);
-		indigo_init_number_item(AUX_INFO_UPTIME_ITEM, AUX_INFO_UPTIME_ITEM_NAME, "Uptime [hours]", 0, 1e10, 0, 0);
+		indigo_init_number_item(AUX_INFO_VOLTAGE_ITEM, AUX_INFO_VOLTAGE_ITEM_NAME, "Voltage [V]", 0, 0, 0, 0);
+		indigo_init_number_item(AUX_INFO_UPTIME_ITEM, AUX_INFO_UPTIME_ITEM_NAME, "Uptime [hours]", 0, 0, 0, 0);
 		strcpy(AUX_INFO_UPTIME_ITEM->number.format, "%12.9m");
 		X_AUX_REBOOT_PROPERTY = indigo_init_switch_property(NULL, device->name, X_AUX_REBOOT_PROPERTY_NAME, AUX_GROUP, "Reboot", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
 		if (X_AUX_REBOOT_PROPERTY == NULL) {
