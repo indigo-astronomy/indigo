@@ -63,8 +63,6 @@ typedef struct {
 
 #pragma mark - High level code (rotator)
 
-// rotator state checking timer callback
-
 static void rotator_timer_callback(indigo_device *device) {
 	if (!IS_CONNECTED) {
 		return;
@@ -101,8 +99,6 @@ static void rotator_timer_callback(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
-// CONNECTION change handler
-
 static void rotator_connection_handler(indigo_device *device) {
 	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
@@ -122,8 +118,6 @@ static void rotator_connection_handler(indigo_device *device) {
 	indigo_unlock_master_device(device);
 }
 
-// ROTATOR_POSITION change handler
-
 static void rotator_position_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
@@ -141,8 +135,6 @@ static void rotator_position_handler(indigo_device *device) {
 	indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
-
-// ROTATOR_ABORT_MOTION change handler
 
 static void rotator_abort_motion_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
@@ -163,8 +155,6 @@ static void rotator_abort_motion_handler(indigo_device *device) {
 
 static indigo_result rotator_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
 
-// rotator attach API callback
-
 static indigo_result rotator_attach(indigo_device *device) {
 	if (indigo_rotator_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
@@ -177,13 +167,9 @@ static indigo_result rotator_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
-// rotator enumerate API callback
-
 static indigo_result rotator_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	return indigo_rotator_enumerate_properties(device, NULL, NULL);
 }
-
-// rotator change property API callback
 
 static indigo_result rotator_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
@@ -214,8 +200,6 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 	return indigo_rotator_change_property(device, client, property);
 }
 
-// rotator detach API callback
-
 static indigo_result rotator_detach(indigo_device *device) {
 	if (IS_CONNECTED) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -231,8 +215,6 @@ static indigo_result rotator_detach(indigo_device *device) {
 static indigo_device rotator_template = INDIGO_DEVICE_INITIALIZER(ROTATOR_DEVICE_NAME, rotator_attach, rotator_enumerate_properties, rotator_change_property, NULL, rotator_detach);
 
 #pragma mark - Main code
-
-// Field Rotator Simulator driver entry point
 
 indigo_result indigo_rotator_simulator(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;

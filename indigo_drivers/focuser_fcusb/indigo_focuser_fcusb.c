@@ -55,7 +55,6 @@
 
 #pragma mark - Property definitions
 
-// X_FOCUSER_FREQUENCY handles definition
 #define X_FOCUSER_FREQUENCY_PROPERTY      (PRIVATE_DATA->x_focuser_frequency_property)
 #define X_FOCUSER_FREQUENCY_1_ITEM        (X_FOCUSER_FREQUENCY_PROPERTY->items + 0)
 #define X_FOCUSER_FREQUENCY_4_ITEM        (X_FOCUSER_FREQUENCY_PROPERTY->items + 1)
@@ -106,8 +105,6 @@ static void fcusb_debug(const char *message) {
 
 #pragma mark - High level code (focuser)
 
-// CONNECTION change handler
-
 static void focuser_connection_handler(indigo_device *device) {
 	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
@@ -137,8 +134,6 @@ static void focuser_connection_handler(indigo_device *device) {
 	indigo_unlock_master_device(device);
 }
 
-// FOCUSER_ABORT_MOTION change handler
-
 static void focuser_abort_motion_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -151,8 +146,6 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 	indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
-
-// FOCUSER_STEPS change handler
 
 static void focuser_steps_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
@@ -195,8 +188,6 @@ static void focuser_steps_handler(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
-// X_FOCUSER_FREQUENCY change handler
-
 static void focuser_x_focuser_frequency_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	X_FOCUSER_FREQUENCY_PROPERTY->state = INDIGO_OK_STATE;
@@ -207,8 +198,6 @@ static void focuser_x_focuser_frequency_handler(indigo_device *device) {
 #pragma mark - Device API (focuser)
 
 static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
-
-// focuser attach API callback
 
 static indigo_result focuser_attach(indigo_device *device) {
 	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
@@ -234,16 +223,12 @@ static indigo_result focuser_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
-// focuser enumerate API callback
-
 static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
 		indigo_define_matching_property(X_FOCUSER_FREQUENCY_PROPERTY);
 	}
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
 }
-
-// focuser change property API callback
 
 static indigo_result focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
@@ -285,8 +270,6 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	}
 	return indigo_focuser_change_property(device, client, property);
 }
-
-// focuser detach API callback
 
 static indigo_result focuser_detach(indigo_device *device) {
 	if (IS_CONNECTED) {
@@ -366,8 +349,6 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 static libusb_hotplug_callback_handle callback_handle;
 
 #pragma mark - Main code
-
-// Shoestring FCUSB focuser driver entry point
 
 indigo_result indigo_focuser_fcusb(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;

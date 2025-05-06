@@ -52,7 +52,6 @@
 
 #pragma mark - Property definitions
 
-// AUX_OUTLET_NAMES handles definition
 #define AUX_OUTLET_NAMES_PROPERTY      (PRIVATE_DATA->aux_outlet_names_property)
 #define AUX_POWER_OUTLET_NAME_1_ITEM   (AUX_OUTLET_NAMES_PROPERTY->items + 0)
 #define AUX_POWER_OUTLET_NAME_2_ITEM   (AUX_OUTLET_NAMES_PROPERTY->items + 1)
@@ -75,7 +74,6 @@
 #define AUX_USB_PORT_NAME_7_ITEM       (AUX_OUTLET_NAMES_PROPERTY->items + 18)
 #define AUX_USB_PORT_NAME_8_ITEM       (AUX_OUTLET_NAMES_PROPERTY->items + 19)
 
-// AUX_POWER_OUTLET handles definition
 #define AUX_POWER_OUTLET_PROPERTY      (PRIVATE_DATA->aux_power_outlet_property)
 #define AUX_POWER_OUTLET_1_ITEM        (AUX_POWER_OUTLET_PROPERTY->items + 0)
 #define AUX_POWER_OUTLET_2_ITEM        (AUX_POWER_OUTLET_PROPERTY->items + 1)
@@ -87,18 +85,15 @@
 #define AUX_POWER_OUTLET_8_ITEM        (AUX_POWER_OUTLET_PROPERTY->items + 7)
 #define AUX_POWER_OUTLET_9_ITEM        (AUX_POWER_OUTLET_PROPERTY->items + 8)
 
-// AUX_HEATER_OUTLET handles definition
 #define AUX_HEATER_OUTLET_PROPERTY     (PRIVATE_DATA->aux_heater_outlet_property)
 #define AUX_HEATER_OUTLET_1_ITEM       (AUX_HEATER_OUTLET_PROPERTY->items + 0)
 #define AUX_HEATER_OUTLET_2_ITEM       (AUX_HEATER_OUTLET_PROPERTY->items + 1)
 #define AUX_HEATER_OUTLET_3_ITEM       (AUX_HEATER_OUTLET_PROPERTY->items + 2)
 
-// AUX_DEW_CONTROL handles definition
 #define AUX_DEW_CONTROL_PROPERTY       (PRIVATE_DATA->aux_dew_control_property)
 #define AUX_DEW_CONTROL_MANUAL_ITEM    (AUX_DEW_CONTROL_PROPERTY->items + 0)
 #define AUX_DEW_CONTROL_AUTOMATIC_ITEM (AUX_DEW_CONTROL_PROPERTY->items + 1)
 
-// AUX_USB_PORT handles definition
 #define AUX_USB_PORT_PROPERTY          (PRIVATE_DATA->aux_usb_port_property)
 #define AUX_USB_PORT_1_ITEM            (AUX_USB_PORT_PROPERTY->items + 0)
 #define AUX_USB_PORT_2_ITEM            (AUX_USB_PORT_PROPERTY->items + 1)
@@ -109,21 +104,18 @@
 #define AUX_USB_PORT_7_ITEM            (AUX_USB_PORT_PROPERTY->items + 6)
 #define AUX_USB_PORT_8_ITEM            (AUX_USB_PORT_PROPERTY->items + 7)
 
-// AUX_SAVE_OUTLET_STATES_AS_DEFAULT handles definition
 #define AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROPERTY      (PRIVATE_DATA->aux_save_outlet_states_as_default_property)
 #define AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM          (AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROPERTY->items + 0)
 
 #define AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROPERTY_NAME "AUX_SAVE_OUTLET_STATES_AS_DEFAULT"
 #define AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM_NAME     "SAVE"
 
-// AUX_REBOOT handles definition
 #define AUX_REBOOT_PROPERTY            (PRIVATE_DATA->aux_reboot_property)
 #define AUX_REBOOT_ITEM                (AUX_REBOOT_PROPERTY->items + 0)
 
 #define AUX_REBOOT_PROPERTY_NAME       "AUX_REBOOT"
 #define AUX_REBOOT_ITEM_NAME           "REBOOT"
 
-// AUX_VARIABLE_POWER_OUTLET handles definition
 #define AUX_VARIABLE_POWER_OUTLET_PROPERTY      (PRIVATE_DATA->aux_variable_power_outlet_property)
 #define AUX_VARIABLE_POWER_OUTLET_7_ITEM        (AUX_VARIABLE_POWER_OUTLET_PROPERTY->items + 0)
 #define AUX_VARIABLE_POWER_OUTLET_8_ITEM        (AUX_VARIABLE_POWER_OUTLET_PROPERTY->items + 1)
@@ -132,7 +124,6 @@
 #define AUX_VARIABLE_POWER_OUTLET_7_ITEM_NAME   "OUTLET_7"
 #define AUX_VARIABLE_POWER_OUTLET_8_ITEM_NAME   "OUTLET_8"
 
-// AUX_POWER_OUTLET_STATE handles definition
 #define AUX_POWER_OUTLET_STATE_PROPERTY (PRIVATE_DATA->aux_power_outlet_state_property)
 #define AUX_POWER_OUTLET_STATE_1_ITEM   (AUX_POWER_OUTLET_STATE_PROPERTY->items + 0)
 #define AUX_POWER_OUTLET_STATE_2_ITEM   (AUX_POWER_OUTLET_STATE_PROPERTY->items + 1)
@@ -141,13 +132,11 @@
 #define AUX_POWER_OUTLET_STATE_5_ITEM   (AUX_POWER_OUTLET_STATE_PROPERTY->items + 4)
 #define AUX_POWER_OUTLET_STATE_6_ITEM   (AUX_POWER_OUTLET_STATE_PROPERTY->items + 5)
 
-// AUX_WEATHER handles definition
 #define AUX_WEATHER_PROPERTY           (PRIVATE_DATA->aux_weather_property)
 #define AUX_WEATHER_TEMPERATURE_ITEM   (AUX_WEATHER_PROPERTY->items + 0)
 #define AUX_WEATHER_HUMIDITY_ITEM      (AUX_WEATHER_PROPERTY->items + 1)
 #define AUX_WEATHER_DEWPOINT_ITEM      (AUX_WEATHER_PROPERTY->items + 2)
 
-// AUX_INFO handles definition
 #define AUX_INFO_PROPERTY              (PRIVATE_DATA->aux_info_property)
 #define AUX_AVERAGE_ITEM               (AUX_INFO_PROPERTY->items + 0)
 #define AUX_AMP_HOUR_ITEM              (AUX_INFO_PROPERTY->items + 1)
@@ -250,8 +239,6 @@ static void upb3_close(indigo_device *device) {
 //- code
 
 #pragma mark - High level code (aux)
-
-// aux state checking timer callback
 
 static void aux_timer_callback(indigo_device *device) {
 	if (!IS_CONNECTED) {
@@ -371,8 +358,6 @@ static void aux_timer_callback(indigo_device *device) {
 	//- aux.on_timer
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
-
-// CONNECTION change handler
 
 static void aux_connection_handler(indigo_device *device) {
 	indigo_lock_master_device(device);
@@ -512,8 +497,6 @@ static void aux_connection_handler(indigo_device *device) {
 	indigo_unlock_master_device(device);
 }
 
-// AUX_OUTLET_NAMES change handler
-
 static void aux_outlet_names_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_OUTLET_NAMES_PROPERTY->state = INDIGO_OK_STATE;
@@ -560,8 +543,6 @@ static void aux_outlet_names_handler(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
-// AUX_POWER_OUTLET change handler
-
 static void aux_power_outlet_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_POWER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
@@ -580,8 +561,6 @@ static void aux_power_outlet_handler(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
-// AUX_HEATER_OUTLET change handler
-
 static void aux_heater_outlet_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_HEATER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
@@ -593,8 +572,6 @@ static void aux_heater_outlet_handler(indigo_device *device) {
 	indigo_update_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
-
-// AUX_DEW_CONTROL change handler
 
 static void aux_dew_control_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
@@ -615,8 +592,6 @@ static void aux_dew_control_handler(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
-// AUX_USB_PORT change handler
-
 static void aux_usb_port_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_USB_PORT_PROPERTY->state = INDIGO_OK_STATE;
@@ -628,8 +603,6 @@ static void aux_usb_port_handler(indigo_device *device) {
 	indigo_update_property(device, AUX_USB_PORT_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
-
-// AUX_SAVE_OUTLET_STATES_AS_DEFAULT change handler
 
 static void aux_save_outlet_states_as_default_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
@@ -646,8 +619,6 @@ static void aux_save_outlet_states_as_default_handler(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
-// AUX_REBOOT change handler
-
 static void aux_reboot_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_REBOOT_PROPERTY->state = INDIGO_OK_STATE;
@@ -660,8 +631,6 @@ static void aux_reboot_handler(indigo_device *device) {
 	indigo_update_property(device, AUX_REBOOT_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
-
-// AUX_VARIABLE_POWER_OUTLET change handler
 
 static void aux_variable_power_outlet_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
@@ -677,8 +646,6 @@ static void aux_variable_power_outlet_handler(indigo_device *device) {
 #pragma mark - Device API (aux)
 
 static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
-
-// aux attach API callback
 
 static indigo_result aux_attach(indigo_device *device) {
 	if (indigo_aux_attach(device, DRIVER_NAME, DRIVER_VERSION, INDIGO_INTERFACE_AUX_POWERBOX | INDIGO_INTERFACE_AUX_WEATHER) == INDIGO_OK) {
@@ -802,8 +769,6 @@ static indigo_result aux_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
-// aux enumerate API callback
-
 static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
 		indigo_define_matching_property(AUX_POWER_OUTLET_PROPERTY);
@@ -820,8 +785,6 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 	indigo_define_matching_property(AUX_OUTLET_NAMES_PROPERTY);
 	return indigo_aux_enumerate_properties(device, NULL, NULL);
 }
-
-// aux change property API callback
 
 static indigo_result aux_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
@@ -904,8 +867,6 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	return indigo_aux_change_property(device, client, property);
 }
 
-// aux detach API callback
-
 static indigo_result aux_detach(indigo_device *device) {
 	if (IS_CONNECTED) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -928,8 +889,6 @@ static indigo_result aux_detach(indigo_device *device) {
 }
 
 #pragma mark - High level code (focuser)
-
-// focuser state checking timer callback
 
 static void focuser_timer_callback(indigo_device *device) {
 	if (!IS_CONNECTED) {
@@ -976,8 +935,6 @@ static void focuser_timer_callback(indigo_device *device) {
 	//- focuser.on_timer
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
-
-// CONNECTION change handler
 
 static void focuser_connection_handler(indigo_device *device) {
 	indigo_lock_master_device(device);
@@ -1045,8 +1002,6 @@ static void focuser_connection_handler(indigo_device *device) {
 	indigo_unlock_master_device(device);
 }
 
-// FOCUSER_SPEED change handler
-
 static void focuser_speed_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
@@ -1058,8 +1013,6 @@ static void focuser_speed_handler(indigo_device *device) {
 	indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
-
-// FOCUSER_STEPS change handler
 
 static void focuser_steps_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
@@ -1077,8 +1030,6 @@ static void focuser_steps_handler(indigo_device *device) {
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
-
-// FOCUSER_POSITION change handler
 
 static void focuser_position_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
@@ -1103,8 +1054,6 @@ static void focuser_position_handler(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
-// FOCUSER_ABORT_MOTION change handler
-
 static void focuser_abort_motion_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -1125,8 +1074,6 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
-// FOCUSER_REVERSE_MOTION change handler
-
 static void focuser_reverse_motion_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -1138,8 +1085,6 @@ static void focuser_reverse_motion_handler(indigo_device *device) {
 	indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
-
-// FOCUSER_BACKLASH change handler
 
 static void focuser_backlash_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
@@ -1156,8 +1101,6 @@ static void focuser_backlash_handler(indigo_device *device) {
 #pragma mark - Device API (focuser)
 
 static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
-
-// focuser attach API callback
 
 static indigo_result focuser_attach(indigo_device *device) {
 	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
@@ -1193,13 +1136,9 @@ static indigo_result focuser_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
-// focuser enumerate API callback
-
 static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
 }
-
-// focuser change property API callback
 
 static indigo_result focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
@@ -1262,8 +1201,6 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	return indigo_focuser_change_property(device, client, property);
 }
 
-// focuser detach API callback
-
 static indigo_result focuser_detach(indigo_device *device) {
 	if (IS_CONNECTED) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -1280,8 +1217,6 @@ static indigo_device aux_template = INDIGO_DEVICE_INITIALIZER(AUX_DEVICE_NAME, a
 static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(FOCUSER_DEVICE_NAME, focuser_attach, focuser_enumerate_properties, focuser_change_property, NULL, focuser_detach);
 
 #pragma mark - Main code
-
-// PegasusAstro Ultimate Powerbox v3 driver entry point
 
 indigo_result indigo_aux_upb3(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;

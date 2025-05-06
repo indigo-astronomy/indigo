@@ -58,8 +58,6 @@ typedef struct {
 
 #pragma mark - High level code (wheel)
 
-// CONNECTION change handler
-
 static void wheel_connection_handler(indigo_device *device) {
 	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
@@ -75,8 +73,6 @@ static void wheel_connection_handler(indigo_device *device) {
 	indigo_wheel_change_property(device, NULL, CONNECTION_PROPERTY);
 	indigo_unlock_master_device(device);
 }
-
-// WHEEL_SLOT change handler
 
 static void wheel_slot_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
@@ -96,8 +92,6 @@ static void wheel_slot_handler(indigo_device *device) {
 
 static indigo_result wheel_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
 
-// wheel attach API callback
-
 static indigo_result wheel_attach(indigo_device *device) {
 	if (indigo_wheel_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		//+ wheel.on_attach
@@ -112,13 +106,9 @@ static indigo_result wheel_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
-// wheel enumerate API callback
-
 static indigo_result wheel_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	return indigo_wheel_enumerate_properties(device, NULL, NULL);
 }
-
-// wheel change property API callback
 
 static indigo_result wheel_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
@@ -141,8 +131,6 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 	return indigo_wheel_change_property(device, client, property);
 }
 
-// wheel detach API callback
-
 static indigo_result wheel_detach(indigo_device *device) {
 	if (IS_CONNECTED) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -158,8 +146,6 @@ static indigo_result wheel_detach(indigo_device *device) {
 static indigo_device wheel_template = INDIGO_DEVICE_INITIALIZER(WHEEL_DEVICE_NAME, wheel_attach, wheel_enumerate_properties, wheel_change_property, NULL, wheel_detach);
 
 #pragma mark - Main code
-
-// Manual filter wheel driver entry point
 
 indigo_result indigo_wheel_manual(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;

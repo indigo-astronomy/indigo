@@ -1217,7 +1217,7 @@ void write_c_property_definition_section(void) {
 					write_line("");
 					first_one = false;
 				}
-				write_line("// %s handles definition", property->id);
+//				write_line("// %s handles definition", property->id);
 				write_line("#define %-*s (PRIVATE_DATA->%s)", property->max_name_length, property->handle, property->pointer);
 				int index = 0;
 				for (item_type *item = property->items; item; item = item->next) {
@@ -1294,8 +1294,8 @@ void write_c_low_level_code_section(void) {
 }
 
 void write_c_timer_callback(device_type *device) {
-	write_line("");
-	write_line("// %s state checking timer callback", device->type);
+//	write_line("");
+//	write_line("// %s state checking timer callback", device->type);
 	write_line("");
 	write_line("static void %s_timer_callback(indigo_device *device) {", device->type);
 	write_line("\tif (!IS_CONNECTED) {");
@@ -1311,8 +1311,8 @@ void write_c_timer_callback(device_type *device) {
 void write_c_connection_change_handler(device_type *device) {
 	bool is_multi_device = driver.devices != NULL && driver.devices->next != NULL;
 	bool is_master_device = device == driver.devices;
-	write_line("");
-	write_line("// CONNECTION change handler");
+//	write_line("");
+//	write_line("// CONNECTION change handler");
 	write_line("");
 	write_line("static void %s_connection_handler(indigo_device *device) {", device->type);
 	write_line("\tindigo_lock_master_device(device);");
@@ -1413,8 +1413,8 @@ void write_c_connection_change_handler(device_type *device) {
 }
 
 void write_c_property_change_handler(device_type *device, property_type *property) {
-	write_line("");
-	write_line("// %s change handler", property->id);
+//	write_line("");
+//	write_line("// %s change handler", property->id);
 	write_line("");
 	write_line("static void %s(indigo_device *device) {", property->handler);
 	if (property->synchronized_change) {
@@ -1447,8 +1447,8 @@ void write_c_high_level_code_section(device_type *device) {
 
 void write_c_attach(device_type *device) {
 	bool is_master_device = device == driver.devices;
-	write_line("");
-	write_line("// %s attach API callback", device->type);
+//	write_line("");
+//	write_line("// %s attach API callback", device->type);
 	write_line("");
 	write_line("static indigo_result %s_attach(indigo_device *device) {", device->type);
 	if (strcmp(device->type, "aux") == 0) {
@@ -1540,8 +1540,8 @@ void write_c_attach(device_type *device) {
 	write_line("");}
 
 void write_c_enumerate(device_type *device) {
-	write_line("");
-	write_line("// %s enumerate API callback", device->type);
+//	write_line("");
+//	write_line("// %s enumerate API callback", device->type);
 	write_line("");
 	write_line("static indigo_result %s_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {", device->type);
 	bool first_one = true;
@@ -1572,8 +1572,8 @@ void write_c_enumerate(device_type *device) {
 }
 
 void write_c_change_property(device_type *device) {
-	write_line("");
-	write_line("// %s change property API callback", device->type);
+//	write_line("");
+//	write_line("// %s change property API callback", device->type);
 	write_line("");
 	write_line("static indigo_result %s_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {", device->type);
 	bool persistent = false;
@@ -1621,8 +1621,8 @@ void write_c_change_property(device_type *device) {
 
 void write_c_detach(device_type *device) {
 	bool is_master_device = device == driver.devices;
-	write_line("");
-	write_line("// %s detach API callback", device->type);
+//	write_line("");
+//	write_line("// %s detach API callback", device->type);
 	write_line("");
 	write_line("static indigo_result %s_detach(indigo_device *device) {", device->type);
 	write_line("\tif (IS_CONNECTED) {");
@@ -1742,8 +1742,8 @@ void write_c_hotplug_section(void) {
 void write_c_main_section(void) {
 	write_line("");
 	write_line("#pragma mark - Main code");
-	write_line("");
-	write_line("// %s driver entry point", driver.label);
+//	write_line("");
+//	write_line("// %s driver entry point", driver.label);
 	write_line("");
 	write_line("indigo_result indigo_%s_%s(indigo_driver_action action, indigo_driver_info *info) {", driver.devices->type, driver.name);
 	write_line("\tstatic indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;");

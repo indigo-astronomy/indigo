@@ -92,8 +92,6 @@ static void gpusb_debug(const char *message) {
 
 #pragma mark - High level code (guider)
 
-// CONNECTION change handler
-
 static void guider_connection_handler(indigo_device *device) {
 	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
@@ -119,8 +117,6 @@ static void guider_connection_handler(indigo_device *device) {
 	indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
 	indigo_unlock_master_device(device);
 }
-
-// GUIDER_GUIDE_DEC change handler
 
 static void guider_guide_dec_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
@@ -152,8 +148,6 @@ static void guider_guide_dec_handler(indigo_device *device) {
 	indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
-
-// GUIDER_GUIDE_RA change handler
 
 static void guider_guide_ra_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
@@ -190,8 +184,6 @@ static void guider_guide_ra_handler(indigo_device *device) {
 
 static indigo_result guider_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
 
-// guider attach API callback
-
 static indigo_result guider_attach(indigo_device *device) {
 	if (indigo_guider_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		GUIDER_GUIDE_DEC_PROPERTY->hidden = false;
@@ -203,13 +195,9 @@ static indigo_result guider_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
-// guider enumerate API callback
-
 static indigo_result guider_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	return indigo_guider_enumerate_properties(device, NULL, NULL);
 }
-
-// guider change property API callback
 
 static indigo_result guider_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
@@ -239,8 +227,6 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	}
 	return indigo_guider_change_property(device, client, property);
 }
-
-// guider detach API callback
 
 static indigo_result guider_detach(indigo_device *device) {
 	if (IS_CONNECTED) {
@@ -319,8 +305,6 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 static libusb_hotplug_callback_handle callback_handle;
 
 #pragma mark - Main code
-
-// Shoestring GPUSB guider driver entry point
 
 indigo_result indigo_guider_gpusb(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;

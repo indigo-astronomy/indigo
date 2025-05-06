@@ -110,8 +110,6 @@ static void fc3_close(indigo_device *device) {
 
 #pragma mark - High level code (focuser)
 
-// focuser state checking timer callback
-
 static void focuser_timer_callback(indigo_device *device) {
 	if (!IS_CONNECTED) {
 		return;
@@ -163,8 +161,6 @@ static void focuser_timer_callback(indigo_device *device) {
 	//- focuser.on_timer
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
-
-// CONNECTION change handler
 
 static void focuser_connection_handler(indigo_device *device) {
 	indigo_lock_master_device(device);
@@ -233,8 +229,6 @@ static void focuser_connection_handler(indigo_device *device) {
 	indigo_unlock_master_device(device);
 }
 
-// FOCUSER_BACKLASH change handler
-
 static void focuser_backlash_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	FOCUSER_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
@@ -246,8 +240,6 @@ static void focuser_backlash_handler(indigo_device *device) {
 	indigo_update_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
-
-// FOCUSER_REVERSE_MOTION change handler
 
 static void focuser_reverse_motion_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
@@ -261,16 +253,12 @@ static void focuser_reverse_motion_handler(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
-// FOCUSER_TEMPERATURE change handler
-
 static void focuser_temperature_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
-
-// FOCUSER_SPEED change handler
 
 static void focuser_speed_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
@@ -283,8 +271,6 @@ static void focuser_speed_handler(indigo_device *device) {
 	indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
-
-// FOCUSER_STEPS change handler
 
 static void focuser_steps_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
@@ -312,16 +298,12 @@ static void focuser_steps_handler(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
-// FOCUSER_ON_POSITION_SET change handler
-
 static void focuser_on_position_set_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	FOCUSER_ON_POSITION_SET_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, FOCUSER_ON_POSITION_SET_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
-
-// FOCUSER_POSITION change handler
 
 static void focuser_position_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
@@ -353,8 +335,6 @@ static void focuser_position_handler(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
-// FOCUSER_ABORT_MOTION change handler
-
 static void focuser_abort_motion_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -376,16 +356,12 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
-// FOCUSER_DIRECTION change handler
-
 static void focuser_direction_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	FOCUSER_DIRECTION_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, FOCUSER_DIRECTION_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
-
-// FOCUSER_LIMITS change handler
 
 static void focuser_limits_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
@@ -397,8 +373,6 @@ static void focuser_limits_handler(indigo_device *device) {
 #pragma mark - Device API (focuser)
 
 static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
-
-// focuser attach API callback
 
 static indigo_result focuser_attach(indigo_device *device) {
 	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
@@ -450,13 +424,9 @@ static indigo_result focuser_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
-// focuser enumerate API callback
-
 static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
 }
-
-// focuser change property API callback
 
 static indigo_result focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
@@ -556,8 +526,6 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	return indigo_focuser_change_property(device, client, property);
 }
 
-// focuser detach API callback
-
 static indigo_result focuser_detach(indigo_device *device) {
 	if (IS_CONNECTED) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -573,8 +541,6 @@ static indigo_result focuser_detach(indigo_device *device) {
 static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(FOCUSER_DEVICE_NAME, focuser_attach, focuser_enumerate_properties, focuser_change_property, NULL, focuser_detach);
 
 #pragma mark - Main code
-
-// PegasusAstro FocusCube v3 Focuser driver entry point
 
 indigo_result indigo_focuser_fc3(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;

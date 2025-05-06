@@ -50,7 +50,6 @@
 
 #pragma mark - Property definitions
 
-// AUX_OUTLET_NAMES handles definition
 #define AUX_OUTLET_NAMES_PROPERTY      (PRIVATE_DATA->aux_outlet_names_property)
 #define AUX_USB_PORT_NAME_1_ITEM       (AUX_OUTLET_NAMES_PROPERTY->items + 0)
 #define AUX_USB_PORT_NAME_2_ITEM       (AUX_OUTLET_NAMES_PROPERTY->items + 1)
@@ -59,7 +58,6 @@
 #define AUX_USB_PORT_NAME_5_ITEM       (AUX_OUTLET_NAMES_PROPERTY->items + 4)
 #define AUX_USB_PORT_NAME_6_ITEM       (AUX_OUTLET_NAMES_PROPERTY->items + 5)
 
-// AUX_USB_PORT handles definition
 #define AUX_USB_PORT_PROPERTY          (PRIVATE_DATA->aux_usb_port_property)
 #define AUX_USB_PORT_1_ITEM            (AUX_USB_PORT_PROPERTY->items + 0)
 #define AUX_USB_PORT_2_ITEM            (AUX_USB_PORT_PROPERTY->items + 1)
@@ -68,21 +66,18 @@
 #define AUX_USB_PORT_5_ITEM            (AUX_USB_PORT_PROPERTY->items + 4)
 #define AUX_USB_PORT_6_ITEM            (AUX_USB_PORT_PROPERTY->items + 5)
 
-// AUX_INFO handles definition
 #define AUX_INFO_PROPERTY              (PRIVATE_DATA->aux_info_property)
 #define AUX_INFO_VOLTAGE_ITEM          (AUX_INFO_PROPERTY->items + 0)
 #define AUX_INFO_UPTIME_ITEM           (AUX_INFO_PROPERTY->items + 1)
 
 #define AUX_INFO_UPTIME_ITEM_NAME      "UPTIME"
 
-// X_AUX_REBOOT handles definition
 #define X_AUX_REBOOT_PROPERTY          (PRIVATE_DATA->x_aux_reboot_property)
 #define X_AUX_REBOOT_ITEM              (X_AUX_REBOOT_PROPERTY->items + 0)
 
 #define X_AUX_REBOOT_PROPERTY_NAME     "X_AUX_REBOOT"
 #define X_AUX_REBOOT_ITEM_NAME         "REBOOT"
 
-// AUX_SAVE_OUTLET_STATES_AS_DEFAULT handles definition
 #define AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROPERTY (PRIVATE_DATA->aux_save_outlet_states_as_default_property)
 #define AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM     (AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROPERTY->items + 0)
 
@@ -157,8 +152,6 @@ static void uch_close(indigo_device *device) {
 
 #pragma mark - High level code (aux)
 
-// aux state checking timer callback
-
 static void aux_timer_callback(indigo_device *device) {
 	if (!IS_CONNECTED) {
 		return;
@@ -232,8 +225,6 @@ static void aux_timer_callback(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
-// CONNECTION change handler
-
 static void aux_connection_handler(indigo_device *device) {
 	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
@@ -288,8 +279,6 @@ static void aux_connection_handler(indigo_device *device) {
 	indigo_unlock_master_device(device);
 }
 
-// AUX_OUTLET_NAMES change handler
-
 static void aux_outlet_names_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_OUTLET_NAMES_PROPERTY->state = INDIGO_OK_STATE;
@@ -310,8 +299,6 @@ static void aux_outlet_names_handler(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
-// AUX_USB_PORT change handler
-
 static void aux_usb_port_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_USB_PORT_PROPERTY->state = INDIGO_OK_STATE;
@@ -323,8 +310,6 @@ static void aux_usb_port_handler(indigo_device *device) {
 	indigo_update_property(device, AUX_USB_PORT_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
-
-// X_AUX_REBOOT change handler
 
 static void aux_x_aux_reboot_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
@@ -338,8 +323,6 @@ static void aux_x_aux_reboot_handler(indigo_device *device) {
 	indigo_update_property(device, X_AUX_REBOOT_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
-
-// AUX_SAVE_OUTLET_STATES_AS_DEFAULT change handler
 
 static void aux_save_outlet_states_as_default_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
@@ -362,8 +345,6 @@ static void aux_save_outlet_states_as_default_handler(indigo_device *device) {
 #pragma mark - Device API (aux)
 
 static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
-
-// aux attach API callback
 
 static indigo_result aux_attach(indigo_device *device) {
 	if (indigo_aux_attach(device, DRIVER_NAME, DRIVER_VERSION, INDIGO_INTERFACE_AUX_POWERBOX) == INDIGO_OK) {
@@ -420,8 +401,6 @@ static indigo_result aux_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
-// aux enumerate API callback
-
 static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
 		indigo_define_matching_property(AUX_USB_PORT_PROPERTY);
@@ -432,8 +411,6 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 	indigo_define_matching_property(AUX_OUTLET_NAMES_PROPERTY);
 	return indigo_aux_enumerate_properties(device, NULL, NULL);
 }
-
-// aux change property API callback
 
 static indigo_result aux_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
@@ -485,8 +462,6 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	return indigo_aux_change_property(device, client, property);
 }
 
-// aux detach API callback
-
 static indigo_result aux_detach(indigo_device *device) {
 	if (IS_CONNECTED) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -507,8 +482,6 @@ static indigo_result aux_detach(indigo_device *device) {
 static indigo_device aux_template = INDIGO_DEVICE_INITIALIZER(AUX_DEVICE_NAME, aux_attach, aux_enumerate_properties, aux_change_property, NULL, aux_detach);
 
 #pragma mark - Main code
-
-// PegasusAstro USB Control Hub driver entry point
 
 indigo_result indigo_aux_uch(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;

@@ -44,12 +44,10 @@
 
 #pragma mark - Property definitions
 
-// AUX_INFO handles definition
 #define AUX_INFO_PROPERTY              (PRIVATE_DATA->aux_info_property)
 #define AUX_INFO_SKY_BRIGHTNESS_ITEM   (AUX_INFO_PROPERTY->items + 0)
 #define AUX_INFO_POWER_ITEM            (AUX_INFO_PROPERTY->items + 1)
 
-// AUX_WEATHER handles definition
 #define AUX_WEATHER_PROPERTY             (PRIVATE_DATA->aux_weather_property)
 #define AUX_WEATHER_TEMPERATURE_ITEM     (AUX_WEATHER_PROPERTY->items + 0)
 #define AUX_WEATHER_HUMIDITY_ITEM        (AUX_WEATHER_PROPERTY->items + 1)
@@ -135,8 +133,6 @@ static void skyalert_close(indigo_device *device) {
 
 #pragma mark - High level code (aux)
 
-// CONNECTION change handler
-
 static void aux_connection_handler(indigo_device *device) {
 	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
@@ -168,8 +164,6 @@ static void aux_connection_handler(indigo_device *device) {
 #pragma mark - Device API (aux)
 
 static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
-
-// aux attach API callback
 
 static indigo_result aux_attach(indigo_device *device) {
 	if (indigo_aux_attach(device, DRIVER_NAME, DRIVER_VERSION, INDIGO_INTERFACE_AUX_SQM) == INDIGO_OK) {
@@ -205,8 +199,6 @@ static indigo_result aux_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
-// aux enumerate API callback
-
 static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
 		indigo_define_matching_property(AUX_INFO_PROPERTY);
@@ -214,8 +206,6 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 	}
 	return indigo_aux_enumerate_properties(device, NULL, NULL);
 }
-
-// aux change property API callback
 
 static indigo_result aux_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
@@ -229,8 +219,6 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	}
 	return indigo_aux_change_property(device, client, property);
 }
-
-// aux detach API callback
 
 static indigo_result aux_detach(indigo_device *device) {
 	if (IS_CONNECTED) {
@@ -249,8 +237,6 @@ static indigo_result aux_detach(indigo_device *device) {
 static indigo_device aux_template = INDIGO_DEVICE_INITIALIZER(AUX_DEVICE_NAME, aux_attach, aux_enumerate_properties, aux_change_property, NULL, aux_detach);
 
 #pragma mark - Main code
-
-// Interactive Astronomy SkyAlert driver entry point
 
 indigo_result indigo_aux_skyalert(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;

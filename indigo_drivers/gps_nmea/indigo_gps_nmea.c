@@ -50,7 +50,6 @@
 
 #pragma mark - Property definitions
 
-// GPS_SELECTED_SYSTEM handles definition
 #define GPS_SELECTED_SYSTEM_PROPERTY      (PRIVATE_DATA->gps_selected_system_property)
 #define AUTOMATIC_SYSTEM_ITEM             (GPS_SELECTED_SYSTEM_PROPERTY->items + 0)
 #define MULTIPLE_SYSTEM_ITEM              (GPS_SELECTED_SYSTEM_PROPERTY->items + 1)
@@ -178,8 +177,6 @@ static void gps_connection_handler(indigo_device *device);
 //- code
 
 #pragma mark - High level code (gps)
-
-// gps state checking timer callback
 
 static void gps_timer_callback(indigo_device *device) {
 	if (!IS_CONNECTED) {
@@ -356,8 +353,6 @@ static void gps_timer_callback(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
-// CONNECTION change handler
-
 static void gps_connection_handler(indigo_device *device) {
 	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
@@ -392,8 +387,6 @@ static void gps_connection_handler(indigo_device *device) {
 	indigo_unlock_master_device(device);
 }
 
-// GPS_SELECTED_SYSTEM change handler
-
 static void gps_selected_system_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	GPS_SELECTED_SYSTEM_PROPERTY->state = INDIGO_OK_STATE;
@@ -407,8 +400,6 @@ static void gps_selected_system_handler(indigo_device *device) {
 #pragma mark - Device API (gps)
 
 static indigo_result gps_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
-
-// gps attach API callback
 
 static indigo_result gps_attach(indigo_device *device) {
 	if (indigo_gps_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
@@ -442,14 +433,10 @@ static indigo_result gps_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
-// gps enumerate API callback
-
 static indigo_result gps_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	indigo_define_matching_property(GPS_SELECTED_SYSTEM_PROPERTY);
 	return indigo_gps_enumerate_properties(device, NULL, NULL);
 }
-
-// gps change property API callback
 
 static indigo_result gps_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
@@ -472,8 +459,6 @@ static indigo_result gps_change_property(indigo_device *device, indigo_client *c
 	return indigo_gps_change_property(device, client, property);
 }
 
-// gps detach API callback
-
 static indigo_result gps_detach(indigo_device *device) {
 	if (IS_CONNECTED) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -490,8 +475,6 @@ static indigo_result gps_detach(indigo_device *device) {
 static indigo_device gps_template = INDIGO_DEVICE_INITIALIZER(GPS_DEVICE_NAME, gps_attach, gps_enumerate_properties, gps_change_property, NULL, gps_detach);
 
 #pragma mark - Main code
-
-// Generic NMEA 0183 GPS driver entry point
 
 indigo_result indigo_gps_nmea(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;

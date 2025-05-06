@@ -107,8 +107,6 @@ static void sx_close(indigo_device *device) {
 
 #pragma mark - High level code (ao)
 
-// CONNECTION change handler
-
 static void ao_connection_handler(indigo_device *device) {
 	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
@@ -152,8 +150,6 @@ static void ao_connection_handler(indigo_device *device) {
 	indigo_unlock_master_device(device);
 }
 
-// AO_GUIDE_DEC change handler
-
 static void ao_guide_dec_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AO_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
@@ -172,8 +168,6 @@ static void ao_guide_dec_handler(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
-// AO_GUIDE_RA change handler
-
 static void ao_guide_ra_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AO_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
@@ -191,8 +185,6 @@ static void ao_guide_ra_handler(indigo_device *device) {
 	indigo_update_property(device, AO_GUIDE_RA_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
-
-// AO_RESET change handler
 
 static void ao_reset_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
@@ -224,8 +216,6 @@ static void ao_reset_handler(indigo_device *device) {
 
 static indigo_result ao_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
 
-// ao attach API callback
-
 static indigo_result ao_attach(indigo_device *device) {
 	if (indigo_ao_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
@@ -248,13 +238,9 @@ static indigo_result ao_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
-// ao enumerate API callback
-
 static indigo_result ao_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	return indigo_ao_enumerate_properties(device, NULL, NULL);
 }
-
-// ao change property API callback
 
 static indigo_result ao_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
@@ -293,8 +279,6 @@ static indigo_result ao_change_property(indigo_device *device, indigo_client *cl
 	return indigo_ao_change_property(device, client, property);
 }
 
-// ao detach API callback
-
 static indigo_result ao_detach(indigo_device *device) {
 	if (IS_CONNECTED) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -306,8 +290,6 @@ static indigo_result ao_detach(indigo_device *device) {
 }
 
 #pragma mark - High level code (guider)
-
-// CONNECTION change handler
 
 static void guider_connection_handler(indigo_device *device) {
 	indigo_lock_master_device(device);
@@ -343,8 +325,6 @@ static void guider_connection_handler(indigo_device *device) {
 	indigo_unlock_master_device(device);
 }
 
-// GUIDER_GUIDE_DEC change handler
-
 static void guider_guide_dec_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
@@ -362,8 +342,6 @@ static void guider_guide_dec_handler(indigo_device *device) {
 	indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
-
-// GUIDER_GUIDE_RA change handler
 
 static void guider_guide_ra_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
@@ -387,8 +365,6 @@ static void guider_guide_ra_handler(indigo_device *device) {
 
 static indigo_result guider_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
 
-// guider attach API callback
-
 static indigo_result guider_attach(indigo_device *device) {
 	if (indigo_guider_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		GUIDER_GUIDE_DEC_PROPERTY->hidden = false;
@@ -399,13 +375,9 @@ static indigo_result guider_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
-// guider enumerate API callback
-
 static indigo_result guider_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	return indigo_guider_enumerate_properties(device, NULL, NULL);
 }
-
-// guider change property API callback
 
 static indigo_result guider_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
@@ -436,8 +408,6 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	return indigo_guider_change_property(device, client, property);
 }
 
-// guider detach API callback
-
 static indigo_result guider_detach(indigo_device *device) {
 	if (IS_CONNECTED) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -454,8 +424,6 @@ static indigo_device ao_template = INDIGO_DEVICE_INITIALIZER(AO_DEVICE_NAME, ao_
 static indigo_device guider_template = INDIGO_DEVICE_INITIALIZER(GUIDER_DEVICE_NAME, guider_attach, guider_enumerate_properties, guider_change_property, NULL, guider_detach);
 
 #pragma mark - Main code
-
-// StarlightXpress AO driver entry point
 
 indigo_result indigo_ao_sx(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;

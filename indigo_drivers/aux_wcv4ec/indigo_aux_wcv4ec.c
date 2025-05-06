@@ -52,30 +52,25 @@
 
 #pragma mark - Property definitions
 
-// AUX_LIGHT_SWITCH handles definition
 #define AUX_LIGHT_SWITCH_PROPERTY      (PRIVATE_DATA->aux_light_switch_property)
 #define AUX_LIGHT_SWITCH_ON_ITEM       (AUX_LIGHT_SWITCH_PROPERTY->items + 0)
 #define AUX_LIGHT_SWITCH_OFF_ITEM      (AUX_LIGHT_SWITCH_PROPERTY->items + 1)
 
-// AUX_LIGHT_INTENSITY handles definition
 #define AUX_LIGHT_INTENSITY_PROPERTY   (PRIVATE_DATA->aux_light_intensity_property)
 #define AUX_LIGHT_INTENSITY_ITEM       (AUX_LIGHT_INTENSITY_PROPERTY->items + 0)
 
-// AUX_DETECT_OPEN_CLOSE handles definition
 #define AUX_DETECT_OPEN_CLOSE_PROPERTY      (PRIVATE_DATA->aux_detect_open_close_property)
 #define AUX_DETECT_OPEN_CLOSE_OPEN_ITEM     (AUX_DETECT_OPEN_CLOSE_PROPERTY->items + 0)
 #define AUX_DETECT_OPEN_CLOSE_CLOSE_ITEM    (AUX_DETECT_OPEN_CLOSE_PROPERTY->items + 1)
 
 #define AUX_DETECT_OPEN_CLOSE_PROPERTY_NAME "X_COVER_DETECT_OPEN_CLOSE"
 
-// AUX_SET_OPEN_CLOSE handles definition
 #define AUX_SET_OPEN_CLOSE_PROPERTY      (PRIVATE_DATA->aux_set_open_close_property)
 #define AUX_SET_OPEN_CLOSE_OPEN_ITEM     (AUX_SET_OPEN_CLOSE_PROPERTY->items + 0)
 #define AUX_SET_OPEN_CLOSE_CLOSE_ITEM    (AUX_SET_OPEN_CLOSE_PROPERTY->items + 1)
 
 #define AUX_SET_OPEN_CLOSE_PROPERTY_NAME "X_COVER_SET_OPEN_CLOSE"
 
-// AUX_HEATER handles definition
 #define AUX_HEATER_PROPERTY            (PRIVATE_DATA->aux_heater_property)
 #define AUX_HEATER_OFF_ITEM            (AUX_HEATER_PROPERTY->items + 0)
 #define AUX_HEATER_LOW_ITEM            (AUX_HEATER_PROPERTY->items + 1)
@@ -88,7 +83,6 @@
 #define AUX_HEATER_HIGH_ITEM_NAME      "HIGH"
 #define AUX_HEATER_MAX_ITEM_NAME       "MAX"
 
-// AUX_COVER handles definition
 #define AUX_COVER_PROPERTY             (PRIVATE_DATA->aux_cover_property)
 #define AUX_COVER_OPEN_ITEM            (AUX_COVER_PROPERTY->items + 0)
 #define AUX_COVER_CLOSE_ITEM           (AUX_COVER_PROPERTY->items + 1)
@@ -231,8 +225,6 @@ static void wcv4ec_close(indigo_device *device) {
 
 #pragma mark - High level code (aux)
 
-// aux state checking timer callback
-
 static void aux_timer_callback(indigo_device *device) {
 	if (!IS_CONNECTED) {
 		return;
@@ -300,8 +292,6 @@ static void aux_timer_callback(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
-// CONNECTION change handler
-
 static void aux_connection_handler(indigo_device *device) {
 	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
@@ -350,8 +340,6 @@ static void aux_connection_handler(indigo_device *device) {
 	indigo_unlock_master_device(device);
 }
 
-// AUX_LIGHT_SWITCH change handler
-
 static void aux_light_switch_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_OK_STATE;
@@ -363,8 +351,6 @@ static void aux_light_switch_handler(indigo_device *device) {
 	indigo_update_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
-
-// AUX_LIGHT_INTENSITY change handler
 
 static void aux_light_intensity_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
@@ -380,8 +366,6 @@ static void aux_light_intensity_handler(indigo_device *device) {
 	indigo_update_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
-
-// AUX_DETECT_OPEN_CLOSE change handler
 
 static void aux_detect_open_close_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
@@ -415,8 +399,6 @@ static void aux_detect_open_close_handler(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
-// AUX_SET_OPEN_CLOSE change handler
-
 static void aux_set_open_close_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_SET_OPEN_CLOSE_PROPERTY->state = INDIGO_OK_STATE;
@@ -447,8 +429,6 @@ static void aux_set_open_close_handler(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
-// AUX_HEATER change handler
-
 static void aux_heater_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_HEATER_PROPERTY->state = INDIGO_OK_STATE;
@@ -472,8 +452,6 @@ static void aux_heater_handler(indigo_device *device) {
 	indigo_update_property(device, AUX_HEATER_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
-
-// AUX_COVER change handler
 
 static void aux_cover_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
@@ -499,8 +477,6 @@ static void aux_cover_handler(indigo_device *device) {
 #pragma mark - Device API (aux)
 
 static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
-
-// aux attach API callback
 
 static indigo_result aux_attach(indigo_device *device) {
 	if (indigo_aux_attach(device, DRIVER_NAME, DRIVER_VERSION, INDIGO_INTERFACE_AUX_LIGHTBOX) == INDIGO_OK) {
@@ -558,8 +534,6 @@ static indigo_result aux_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
-// aux enumerate API callback
-
 static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
 		indigo_define_matching_property(AUX_LIGHT_SWITCH_PROPERTY);
@@ -571,8 +545,6 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 	}
 	return indigo_aux_enumerate_properties(device, NULL, NULL);
 }
-
-// aux change property API callback
 
 static indigo_result aux_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
@@ -639,8 +611,6 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	return indigo_aux_change_property(device, client, property);
 }
 
-// aux detach API callback
-
 static indigo_result aux_detach(indigo_device *device) {
 	if (IS_CONNECTED) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -662,8 +632,6 @@ static indigo_result aux_detach(indigo_device *device) {
 static indigo_device aux_template = INDIGO_DEVICE_INITIALIZER(AUX_DEVICE_NAME, aux_attach, aux_enumerate_properties, aux_change_property, NULL, aux_detach);
 
 #pragma mark - Main code
-
-// WandererCover V4-EC Cover driver entry point
 
 indigo_result indigo_aux_wcv4ec(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;

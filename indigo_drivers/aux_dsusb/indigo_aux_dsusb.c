@@ -55,15 +55,12 @@
 
 #pragma mark - Property definitions
 
-// CCD_ABORT_EXPOSURE handles definition
 #define CCD_ABORT_EXPOSURE_PROPERTY    (PRIVATE_DATA->ccd_abort_exposure_property)
 #define CCD_ABORT_EXPOSURE_ITEM        (CCD_ABORT_EXPOSURE_PROPERTY->items + 0)
 
-// CCD_EXPOSURE handles definition
 #define CCD_EXPOSURE_PROPERTY          (PRIVATE_DATA->ccd_exposure_property)
 #define CCD_EXPOSURE_ITEM              (CCD_EXPOSURE_PROPERTY->items + 0)
 
-// X_CONFIG handles definition
 #define X_CONFIG_PROPERTY              (PRIVATE_DATA->x_config_property)
 #define X_CONFIG_FOCUS_ITEM            (X_CONFIG_PROPERTY->items + 0)
 
@@ -112,8 +109,6 @@ static void dsusb_debug(const char *message) {
 
 #pragma mark - High level code (aux)
 
-// aux state checking timer callback
-
 static void aux_timer_callback(indigo_device *device) {
 	if (!IS_CONNECTED) {
 		return;
@@ -135,8 +130,6 @@ static void aux_timer_callback(indigo_device *device) {
 	//- aux.on_timer
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
-
-// CONNECTION change handler
 
 static void aux_connection_handler(indigo_device *device) {
 	indigo_lock_master_device(device);
@@ -180,8 +173,6 @@ static void aux_connection_handler(indigo_device *device) {
 	indigo_unlock_master_device(device);
 }
 
-// CCD_ABORT_EXPOSURE change handler
-
 static void aux_ccd_abort_exposure_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
@@ -198,8 +189,6 @@ static void aux_ccd_abort_exposure_handler(indigo_device *device) {
 	indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
-
-// CCD_EXPOSURE change handler
 
 static void aux_ccd_exposure_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
@@ -218,8 +207,6 @@ static void aux_ccd_exposure_handler(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
-// X_CONFIG change handler
-
 static void aux_x_config_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	X_CONFIG_PROPERTY->state = INDIGO_OK_STATE;
@@ -230,8 +217,6 @@ static void aux_x_config_handler(indigo_device *device) {
 #pragma mark - Device API (aux)
 
 static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
-
-// aux attach API callback
 
 static indigo_result aux_attach(indigo_device *device) {
 	if (indigo_aux_attach(device, DRIVER_NAME, DRIVER_VERSION, INDIGO_INTERFACE_AUX_SHUTTER) == INDIGO_OK) {
@@ -258,8 +243,6 @@ static indigo_result aux_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
-// aux enumerate API callback
-
 static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
 		indigo_define_matching_property(CCD_ABORT_EXPOSURE_PROPERTY);
@@ -268,8 +251,6 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 	}
 	return indigo_aux_enumerate_properties(device, NULL, NULL);
 }
-
-// aux change property API callback
 
 static indigo_result aux_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
@@ -311,8 +292,6 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	}
 	return indigo_aux_change_property(device, client, property);
 }
-
-// aux detach API callback
 
 static indigo_result aux_detach(indigo_device *device) {
 	if (IS_CONNECTED) {
@@ -394,8 +373,6 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 static libusb_hotplug_callback_handle callback_handle;
 
 #pragma mark - Main code
-
-// Shoestring DSUSB shutter release driver entry point
 
 indigo_result indigo_aux_dsusb(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;

@@ -71,8 +71,6 @@ typedef struct {
 
 #pragma mark - High level code (gps)
 
-// gps state checking timer callback
-
 static void gps_timer_callback(indigo_device *device) {
 	if (!IS_CONNECTED) {
 		return;
@@ -145,8 +143,6 @@ static void gps_timer_callback(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
-// CONNECTION change handler
-
 static void gps_connection_handler(indigo_device *device) {
 	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
@@ -176,8 +172,6 @@ static void gps_connection_handler(indigo_device *device) {
 
 static indigo_result gps_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
 
-// gps attach API callback
-
 static indigo_result gps_attach(indigo_device *device) {
 	if (indigo_gps_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
@@ -197,13 +191,9 @@ static indigo_result gps_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
-// gps enumerate API callback
-
 static indigo_result gps_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	return indigo_gps_enumerate_properties(device, NULL, NULL);
 }
-
-// gps change property API callback
 
 static indigo_result gps_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
@@ -217,8 +207,6 @@ static indigo_result gps_change_property(indigo_device *device, indigo_client *c
 	}
 	return indigo_gps_change_property(device, client, property);
 }
-
-// gps detach API callback
 
 static indigo_result gps_detach(indigo_device *device) {
 	if (IS_CONNECTED) {
@@ -235,8 +223,6 @@ static indigo_result gps_detach(indigo_device *device) {
 static indigo_device gps_template = INDIGO_DEVICE_INITIALIZER(GPS_DEVICE_NAME, gps_attach, gps_enumerate_properties, gps_change_property, NULL, gps_detach);
 
 #pragma mark - Main code
-
-// GPS Simulator driver entry point
 
 indigo_result indigo_gps_simulator(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
