@@ -2545,7 +2545,7 @@ int main(int argc, char **argv) {
 			return 1;
 		}
 		if (driver.devices) {
-			char file_name[PASS_MAX];
+			char file_name[PATH_MAX];
 			snprintf(file_name, sizeof(file_name), "%s/indigo_%s_%s.h", definition_source_dirname, driver.devices->type, driver.name);
 			fprintf(stderr, "Writing %s ...\n", file_name);
 			freopen(file_name, "w", stdout);
