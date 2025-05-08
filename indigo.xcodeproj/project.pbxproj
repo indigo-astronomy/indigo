@@ -4448,6 +4448,7 @@
 		59E38B501F1577A000187839 /* indigo_ica_ptp_canon.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = indigo_ica_ptp_canon.m; sourceTree = "<group>"; };
 		59E38B511F1577A000187839 /* indigo_ica_ptp_nikon.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ica_ptp_nikon.h; sourceTree = "<group>"; };
 		59E38B521F1577A000187839 /* indigo_ica_ptp_nikon.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = indigo_ica_ptp_nikon.m; sourceTree = "<group>"; };
+		59E4FE432DCCD21700A10A06 /* indigo_focuser_usbv3.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_focuser_usbv3.driver; sourceTree = "<group>"; };
 		59E5A29323C1231F00E8BBBF /* CHANGELOG.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = CHANGELOG.md; sourceTree = "<group>"; wrapsLines = 1; };
 		59E5A29523C1238400E8BBBF /* RainbowAstro_191217.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = RainbowAstro_191217.pdf; sourceTree = "<group>"; };
 		59E5A29823C1238400E8BBBF /* indigo_mount_rainbow.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_mount_rainbow.c; sourceTree = "<group>"; };
@@ -10057,6 +10058,7 @@
 				59D62CD91E731490004DDD9C /* indigo_focuser_usbv3.h */,
 				59D62CD81E731490004DDD9C /* indigo_focuser_usbv3.c */,
 				59D62CD71E731490004DDD9C /* indigo_focuser_usbv3_main.c */,
+				59E4FE432DCCD21700A10A06 /* indigo_focuser_usbv3.driver */,
 				59D62CDE1E7727DE004DDD9C /* indigo_focuser_usbv3.rules */,
 			);
 			path = focuser_usbv3;

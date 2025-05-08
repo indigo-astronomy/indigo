@@ -1,9 +1,9 @@
-// Copyright (c) 2017 CloudMakers, s. r. o.
+// Copyright (c) 2017-2025 CloudMakers, s. r. o.
 // All rights reserved.
-//
-// You can use this software under the terms of 'INDIGO Astronomy
+
+// You may use this software under the terms of 'INDIGO Astronomy
 // open-source license' (see LICENSE.md).
-//
+
 // THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
 // OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 // WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -16,216 +16,432 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+// This file generated from indigo_focuser_usbv3.driver
+
 // version history
-// 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+// 3.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO USBV3 focuser driver
- \file indigo_focuser_usbv3.c
- */
-
-#define DRIVER_VERSION 0x02000004
-#define DRIVER_NAME "indigo_focuser_usbv3"
+#pragma mark - Includes
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
-#include <errno.h>
 #include <pthread.h>
-#include <stdarg.h>
-
-#include <sys/time.h>
-
 #include <indigo/indigo_driver_xml.h>
-#include <indigo/indigo_io.h>
+#include <indigo/indigo_focuser_driver.h>
+#include <indigo/indigo_uni_io.h>
 
 #include "indigo_focuser_usbv3.h"
 
-#define PRIVATE_DATA													((usbv3_private_data *)device->private_data)
+#pragma mark - Common definitions
 
-#define X_FOCUSER_STEP_SIZE_PROPERTY					(PRIVATE_DATA->step_size_property)
-#define X_FOCUSER_FULL_STEP_ITEM							(X_FOCUSER_STEP_SIZE_PROPERTY->items+0)
-#define X_FOCUSER_HALF_STEP_ITEM							(X_FOCUSER_STEP_SIZE_PROPERTY->items+1)
+#define DRIVER_VERSION       0x03000005
+#define DRIVER_NAME          "indigo_focuser_usbv3"
+#define DRIVER_LABEL         "USB_Focus v3 Focuser"
+#define FOCUSER_DEVICE_NAME  "USB_Focus v3"
+#define PRIVATE_DATA         ((usbv3_private_data *)device->private_data)
 
+#pragma mark - Property definitions
+
+#define X_FOCUSER_STEP_SIZE_PROPERTY      (PRIVATE_DATA->x_focuser_step_size_property)
+#define X_FOCUSER_FULL_STEP_ITEM          (X_FOCUSER_STEP_SIZE_PROPERTY->items + 0)
+#define X_FOCUSER_HALF_STEP_ITEM          (X_FOCUSER_STEP_SIZE_PROPERTY->items + 1)
+
+#define X_FOCUSER_STEP_SIZE_PROPERTY_NAME "X_FOCUSER_STEP_SIZE"
+#define X_FOCUSER_FULL_STEP_ITEM_NAME     "FULL_STEP"
+#define X_FOCUSER_HALF_STEP_ITEM_NAME     "HALF_STEP"
+
+#pragma mark - Private data definition
 
 typedef struct {
-	int handle;
-	pthread_mutex_t port_mutex;
-	indigo_timer *position_timer;
-	indigo_timer *temperature_timer;
-	pthread_t thread;
-	indigo_property *step_size_property;
+	pthread_mutex_t mutex;
+	indigo_uni_handle *handle;
+	indigo_property *x_focuser_step_size_property;
+	indigo_timer *focuser_timer;
+	indigo_timer *focuser_connection_handler_timer;
+	indigo_timer *focuser_x_focuser_step_size_handler_timer;
+	indigo_timer *focuser_reverse_motion_handler_timer;
+	indigo_timer *focuser_temperature_handler_timer;
+	indigo_timer *focuser_compensation_handler_timer;
+	indigo_timer *focuser_mode_handler_timer;
+	indigo_timer *focuser_speed_handler_timer;
+	indigo_timer *focuser_steps_handler_timer;
+	indigo_timer *focuser_position_handler_timer;
+	indigo_timer *focuser_abort_motion_handler_timer;
+	indigo_timer *focuser_limits_handler_timer;
+	//+ data
+	char response[128];
+	bool moving;
+	bool abort;
+	//- data
 } usbv3_private_data;
 
-static void usbv3_command(indigo_device *device, char *format, ...) {
-	char command[128];
-	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
+#pragma mark - Low level code
+
+//+ code
+
+static bool usbv3_command(indigo_device *device, char *command, int response, ...) {
 	va_list args;
-	va_start(args, format);
-	vsnprintf(command, sizeof(command), format, args);
+	va_start(args, response);
+	long result = indigo_uni_vprintf(PRIVATE_DATA->handle, command, args);
 	va_end(args);
-	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s", command);
-	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-}
-
-static char *usbv3_response(indigo_device *device) {
-	static char response[128];
-	char c;
-	int index = 0;
-	while (index < sizeof(response)) {
-		long result = read(PRIVATE_DATA->handle, &c, 1);
-		if (result < 1) {
-			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-			return "";
-		}
-		if (c == '\n') {
-			continue;
-		}
-		if (c == '\r') {
-			break;
-		}
-		response[index++] = c;
-	}
-	response[index] = 0;
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Response %s", response != NULL ? response : "");
-	return response;
-}
-
-static char *usbv3_reader(indigo_device *device) {
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "usbv3_reader started");
-	while (PRIVATE_DATA->handle > 0) {
-		char *response = usbv3_response(device);
-		if (*response == '*') {
-			FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		} else if (*response == 'P') {
-			unsigned position;
-			if (sscanf(response, "P=%d", &position) == 1) {
-				FOCUSER_POSITION_ITEM->number.value = position;
-				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-			}
-		} else if (*response == 'T') {
-			double temperature;
-			if (sscanf(response, "T=%lf", &temperature) == 1) {
-				FOCUSER_TEMPERATURE_ITEM->number.value = temperature;
-				indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
-			}
-		} else {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ignored response: %s", response);
+	if (response && result > 0) {
+		result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", INDIGO_DELAY(1));
+		if (*PRIVATE_DATA->response == '*') {
+			PRIVATE_DATA->moving = false;
+			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", INDIGO_DELAY(1));
 		}
 	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "usbv3_reader finished");
-	return NULL;
-}
-
-static void usbv3_close(indigo_device *device) {
-	if (PRIVATE_DATA->handle > 0) {
-		close(PRIVATE_DATA->handle);
-		PRIVATE_DATA->handle = 0;
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
-	}
+	return result > 0;
 }
 
 static bool usbv3_open(indigo_device *device) {
-	char *name = DEVICE_PORT_ITEM->text.value;
-	PRIVATE_DATA->handle = indigo_open_serial(name);
-	if (PRIVATE_DATA->handle <= 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s (%s)", name, strerror(errno));
-		return false;
+	PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
+	if (PRIVATE_DATA->handle) {
+		if (usbv3_command(device, "SWHOIS", true) && !strcmp(PRIVATE_DATA->response, "UFO")) {
+			return true;
+		}
+		indigo_uni_close(&PRIVATE_DATA->handle);
+		indigo_send_message(device, "Handshake failed");
 	}
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
-	usbv3_command(device, "SGETAL");
-	if (*usbv3_response(device) != 'C') {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "invalid response");
+	return false;
+}
+
+static void usbv3_close(indigo_device *device) {
+	indigo_uni_close(&PRIVATE_DATA->handle);
+}
+
+//- code
+
+#pragma mark - High level code (focuser)
+
+static void focuser_timer_callback(indigo_device *device) {
+	if (!IS_CONNECTED) {
+		return;
+	}
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	//+ focuser.on_timer
+	if (usbv3_command(device, "FTMPRO", true)) {
+		if (sscanf(PRIVATE_DATA->response, "T=%lf", &FOCUSER_TEMPERATURE_ITEM->number.value) == 1) {
+			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
+		}
+	}
+	indigo_reschedule_timer(device, 10, &PRIVATE_DATA->focuser_timer);
+	//- focuser.on_timer
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
+static void focuser_connection_handler(indigo_device *device) {
+	indigo_lock_master_device(device);
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		pthread_mutex_lock(&PRIVATE_DATA->mutex);
+		bool connection_result = true;
+		connection_result = usbv3_open(device);
+		if (connection_result) {
+			//+ focuser.on_connect
+			int direction, stepmode, speed, stepsdeg = 0, threshold = 0, firmware, maxpos, sign;
+			indigo_uni_discard(PRIVATE_DATA->handle);
+			if (usbv3_command(device, "SGETAL", true)) {
+				if (sscanf(PRIVATE_DATA->response, "C=%u-%u-%u-%u-%u-%u-%u", &direction, &stepmode, &speed, &stepsdeg, &threshold, &firmware, &maxpos) == 7) {
+					indigo_set_switch(FOCUSER_DIRECTION_PROPERTY, FOCUSER_DIRECTION_PROPERTY->items + direction % 2, true);
+					indigo_set_switch(X_FOCUSER_STEP_SIZE_PROPERTY, X_FOCUSER_STEP_SIZE_PROPERTY->items + stepmode % 2, true);
+					FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = speed;
+					indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, DRIVER_LABEL);
+					snprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, sizeof(INFO_DEVICE_FW_REVISION_ITEM->text.value), "%d", firmware);
+					FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target = maxpos;
+					indigo_update_property(device, INFO_PROPERTY, NULL);
+				}
+			}
+			if (usbv3_command(device, "FPOSRO", true)) {
+				if (sscanf(PRIVATE_DATA->response, "P=%lf", &FOCUSER_POSITION_ITEM->number.value) == 1) {
+					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+				}
+			}
+			usbv3_command(device, "FMANUA", true);
+			usbv3_command(device, "FTxxxA", true);
+			if (sscanf(PRIVATE_DATA->response, "A=%d", &sign) == 1) {
+				if (sign == 0)
+					stepsdeg = -stepsdeg;
+				FOCUSER_COMPENSATION_ITEM->number.value = FOCUSER_COMPENSATION_ITEM->number.target = stepsdeg;
+				FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.value = FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.target = threshold;
+			}
+			//- focuser.on_connect
+			indigo_define_property(device, X_FOCUSER_STEP_SIZE_PROPERTY, NULL);
+			indigo_set_timer(device, 0, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_send_message(device, "Connected to %s on %s", FOCUSER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+		} else {
+			indigo_send_message(device, "Failed to connect to %s on %s", FOCUSER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		}
+		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+	} else {
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_timer);
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_x_focuser_step_size_handler_timer);
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_reverse_motion_handler_timer);
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_temperature_handler_timer);
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_compensation_handler_timer);
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_mode_handler_timer);
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_speed_handler_timer);
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_steps_handler_timer);
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_position_handler_timer);
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_abort_motion_handler_timer);
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_limits_handler_timer);
+		indigo_delete_property(device, X_FOCUSER_STEP_SIZE_PROPERTY, NULL);
+		//+ focuser.on_disconnect
+		usbv3_command(device, "FQUITx", false);
+		//- focuser.on_disconnect
 		usbv3_close(device);
-		return false;
+		indigo_send_message(device, "Disconnected from %s", device->name);
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
-	usbv3_command(device, "FMANUA");
-	usbv3_response(device);
-	usbv3_command(device, "M65535");
-	usbv3_response(device);
-	usbv3_command(device, "SMROTH");
-	usbv3_command(device, "SMSTPF");
-	usbv3_command(device, "FTMPRO");
-	sscanf(usbv3_response(device), "T=%lf", &FOCUSER_TEMPERATURE_ITEM->number.value);
-	usbv3_command(device, "FPOSRO");
-	unsigned position;
-	if (sscanf(usbv3_response(device), "P=%d", &position) == 1) {
-		FOCUSER_POSITION_ITEM->number.value = position;
-	}
-	//	unsigned sign, compensation;
-	//	usbv3_command(device, "FREADA");
-	//	if (sscanf(usbv3_response(device), "A=%d", &compensation) == 1) {
-	//		usbv3_command(device, "FTxxxA");
-	//		if (sscanf(usbv3_response(device), "A=%d", &sign) == 1) {
-	//			if (sign == 0)
-	//				compensation = -compensation;
-	//			FOCUSER_COMPENSATION_ITEM->number.value = compensation;
-	//		}
-	//	}
-	indigo_async((void * (*)(void*))usbv3_reader, device);
-	return true;
+	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
+	indigo_unlock_master_device(device);
 }
 
-// -------------------------------------------------------------------------------- INDIGO focuser device implementation
-
-
-static void focuser_position_callback(indigo_device *device) {
-	usbv3_command(device, "FPOSRO");
-	if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
-		indigo_reschedule_timer(device, 0.5, &PRIVATE_DATA->position_timer);
+static void focuser_x_focuser_step_size_handler(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	X_FOCUSER_STEP_SIZE_PROPERTY->state = INDIGO_OK_STATE;
+	//+ focuser.X_FOCUSER_STEP_SIZE.on_change
+	if (X_FOCUSER_FULL_STEP_ITEM->sw.value) {
+		usbv3_command(device, "SMSTPF", false);
+	} else {
+		usbv3_command(device, "SMSTPD", false);
 	}
+	//- focuser.X_FOCUSER_STEP_SIZE.on_change
+	indigo_update_property(device, X_FOCUSER_STEP_SIZE_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
-static void focuser_temperature_callback(indigo_device *device) {
-	usbv3_command(device, "FTMPRO");
-	indigo_reschedule_timer(device, 15, &PRIVATE_DATA->temperature_timer);
+static void focuser_reverse_motion_handler(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
+
+static void focuser_temperature_handler(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
+static void focuser_compensation_handler(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_OK_STATE;
+	//+ focuser.FOCUSER_COMPENSATION.on_change
+	usbv3_command(device, "FLX%03d", true, abs((int)FOCUSER_COMPENSATION_ITEM->number.target));
+	usbv3_command(device, "FZSIG%d", true, FOCUSER_COMPENSATION_ITEM->number.target < 0 ? 0 : 1);
+	usbv3_command(device, "SMA%03d", true, (int)FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.target);
+	//- focuser.FOCUSER_COMPENSATION.on_change
+	indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
+static void focuser_mode_handler(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	FOCUSER_MODE_PROPERTY->state = INDIGO_OK_STATE;
+	//+ focuser.FOCUSER_MODE.on_change
+	if (FOCUSER_MODE_AUTOMATIC_ITEM->sw.value) {
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_timer);
+		usbv3_command(device, "FAUTOM", true);
+	} else {
+		usbv3_command(device, "FMANUA", true);
+		if (sscanf(PRIVATE_DATA->response, "P=%lf", &FOCUSER_POSITION_ITEM->number.value) == 1) {
+			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		}
+		indigo_set_timer(device, 0, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
+	}
+	//- focuser.FOCUSER_MODE.on_change
+	indigo_update_property(device, FOCUSER_MODE_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
+static void focuser_speed_handler(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
+	//+ focuser.FOCUSER_SPEED.on_change
+	usbv3_command(device, "SMO%03u", false, (int)FOCUSER_SPEED_ITEM->number.target);
+	//- focuser.FOCUSER_SPEED.on_change
+	indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
+static void focuser_steps_handler(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+	//+ focuser.FOCUSER_STEPS.on_change
+	PRIVATE_DATA->abort = false;
+	int steps = (int)FOCUSER_STEPS_ITEM->number.target;
+	int position = (int)FOCUSER_POSITION_ITEM->number.value;
+	if (FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value ^ FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value) {
+		int max = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
+		if (position + steps > max) {
+			steps = max - position;
+		}
+		if (steps > 0) {
+			usbv3_command(device, "O%05u", false, steps);
+		}
+	} else {
+		int min = (int)FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
+		if (position - steps < min) {
+			steps = position - min;
+		}
+		if (steps > 0) {
+			usbv3_command(device, "I%05u", false, steps);
+		}
+	}
+	if (steps > 0) {
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		PRIVATE_DATA->moving = true;
+		int value;
+		while (PRIVATE_DATA->moving) {
+			if (PRIVATE_DATA->abort) {
+				usbv3_command(device, "FQUITx", false);
+			}
+			usbv3_command(device, "FPOSRO", true);
+			if (sscanf(PRIVATE_DATA->response, "P=%d", &value) == 1) {
+				if (position != value) {
+					FOCUSER_POSITION_ITEM->number.value = position = value;
+					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+				}
+			}
+		}
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+	}
+	//- focuser.FOCUSER_STEPS.on_change
+	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
+static void focuser_position_handler(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+	//+ focuser.FOCUSER_POSITION.on_change
+	PRIVATE_DATA->abort = false;
+	int target = (int)FOCUSER_POSITION_ITEM->number.target;
+	int min = (int)FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
+	int max = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
+	if (target < min) {
+		target = min;
+	}
+	if (target > max) {
+		target = max;
+	}
+	int position = (int)FOCUSER_POSITION_ITEM->number.value;
+	int steps =  FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value ? target - position : position - target;
+	if (steps > 0) {
+		usbv3_command(device, "O%05u", false, steps);
+	} else if (steps < 0) {
+		usbv3_command(device, "I%05u", false, -steps);
+	}
+	if (steps != 0) {
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		PRIVATE_DATA->moving = true;
+		int value;
+		while (PRIVATE_DATA->moving) {
+			if (PRIVATE_DATA->abort) {
+				usbv3_command(device, "FQUITx", false);
+			}
+			usbv3_command(device, "FPOSRO", true);
+			if (sscanf(PRIVATE_DATA->response, "P=%d", &value) == 1) {
+				if (position != value) {
+					FOCUSER_POSITION_ITEM->number.value = position = value;
+					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+				}
+			}
+		}
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+	}
+	//- focuser.FOCUSER_POSITION.on_change
+	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
+static void focuser_abort_motion_handler(indigo_device *device) {
+	FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+	//+ focuser.FOCUSER_ABORT_MOTION.on_change
+	PRIVATE_DATA->abort = true;
+	FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
+	//- focuser.FOCUSER_ABORT_MOTION.on_change
+	indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+}
+
+static void focuser_limits_handler(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	FOCUSER_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
+	//+ focuser.FOCUSER_LIMITS.on_change
+	usbv3_command(device, "M%05u", false, (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target);
+	//- focuser.FOCUSER_LIMITS.on_change
+	indigo_update_property(device, FOCUSER_LIMITS_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
+#pragma mark - Device API (focuser)
 
 static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
 
 static indigo_result focuser_attach(indigo_device *device) {
-	assert(device != NULL);
-	assert(PRIVATE_DATA != NULL);
 	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
-		// -------------------------------------------------------------------------------- X_FOCUSER_STEP_SIZE
-		X_FOCUSER_STEP_SIZE_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_FOCUSER_STEP_SIZE", FOCUSER_MAIN_GROUP, "Step size", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (X_FOCUSER_STEP_SIZE_PROPERTY == NULL) {
-			return INDIGO_FAILED;
-		}
-		indigo_init_switch_item(X_FOCUSER_FULL_STEP_ITEM, "FULL_STEP", "Full step", true);
-		indigo_init_switch_item(X_FOCUSER_HALF_STEP_ITEM, "HALF_STEP", "Half step", false);
-		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS
+		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
-		// -------------------------------------------------------------------------------- FOCUSER_REVERSE_MOTION
+		//+ focuser.on_attach
+		INFO_PROPERTY->count = 6;
+		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+		//- focuser.on_attach
+		X_FOCUSER_STEP_SIZE_PROPERTY = indigo_init_switch_property(NULL, device->name, X_FOCUSER_STEP_SIZE_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Step size", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (X_FOCUSER_STEP_SIZE_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_switch_item(X_FOCUSER_FULL_STEP_ITEM, X_FOCUSER_FULL_STEP_ITEM_NAME, "Full step", true);
+		indigo_init_switch_item(X_FOCUSER_HALF_STEP_ITEM, X_FOCUSER_HALF_STEP_ITEM_NAME, "Half step", false);
 		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
-		// -------------------------------------------------------------------------------- FOCUSER_TEMPERATURE
 		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
-		// -------------------------------------------------------------------------------- FOCUSER_POSITION
-		FOCUSER_POSITION_PROPERTY->perm = INDIGO_RO_PERM;
-		// -------------------------------------------------------------------------------- FOCUSER_SPEED
+		FOCUSER_COMPENSATION_PROPERTY->hidden = false;
+		//+ focuser.FOCUSER_COMPENSATION.on_attach
+		FOCUSER_COMPENSATION_PROPERTY->count = 2;
+		FOCUSER_COMPENSATION_ITEM->number.min = -999;
+		FOCUSER_COMPENSATION_ITEM->number.max = 999;
+		FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.min = 0;
+		FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.max = 5;
+		//- focuser.FOCUSER_COMPENSATION.on_attach
+		FOCUSER_MODE_PROPERTY->hidden = false;
+		FOCUSER_SPEED_PROPERTY->hidden = false;
+		//+ focuser.FOCUSER_SPEED.on_attach
 		FOCUSER_SPEED_ITEM->number.value = 4;
 		FOCUSER_SPEED_ITEM->number.min = 1;
 		FOCUSER_SPEED_ITEM->number.max = 8;
-		// -------------------------------------------------------------------------------- FOCUSER_STEPS
+		//- focuser.FOCUSER_SPEED.on_attach
+		FOCUSER_STEPS_PROPERTY->hidden = false;
+		//+ focuser.FOCUSER_STEPS.on_attach
 		FOCUSER_STEPS_ITEM->number.min = 1;
 		FOCUSER_STEPS_ITEM->number.max = 65535;
-		// -------------------------------------------------------------------------------- FOCUSER_COMPENSATION
-		FOCUSER_COMPENSATION_PROPERTY->hidden = false;
-		FOCUSER_COMPENSATION_ITEM->number.min = -999;
-		FOCUSER_COMPENSATION_ITEM->number.max = 999;
-		// -------------------------------------------------------------------------------- FOCUSER_MODE
-		FOCUSER_MODE_PROPERTY->hidden = false;
-		// --------------------------------------------------------------------------------
-		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
-		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
+		//- focuser.FOCUSER_STEPS.on_attach
+		FOCUSER_POSITION_PROPERTY->hidden = false;
+		FOCUSER_ABORT_MOTION_PROPERTY->hidden = false;
+		FOCUSER_LIMITS_PROPERTY->hidden = false;
+		//+ focuser.FOCUSER_LIMITS.on_attach
+		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.min = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.max = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min = 0;
+		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max = 65535;
+		//- focuser.FOCUSER_LIMITS.on_attach
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
+		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		return focuser_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -238,164 +454,126 @@ static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
 }
 
-static void focuser_connect_callback(indigo_device *device) {
-	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		if (usbv3_open(device)) {
-			indigo_define_property(device, X_FOCUSER_STEP_SIZE_PROPERTY, NULL);
-			indigo_set_timer(device, 0, focuser_temperature_callback, &PRIVATE_DATA->temperature_timer);
-			usbv3_command(device, "SMO00%d", (int)(FOCUSER_SPEED_ITEM->number.value));
-			usbv3_command(device, "FLX%03d", abs((int)FOCUSER_COMPENSATION_ITEM->number.value));
-			usbv3_command(device, "FZSIG%d", FOCUSER_COMPENSATION_ITEM->number.value < 0 ? 0 : 1);
-			if (X_FOCUSER_FULL_STEP_ITEM->sw.value) {
-				usbv3_command(device, "SMSTPF");
-			} else {
-				usbv3_command(device, "SMSTPD");
-			}
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		} else {
-			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-		}
-	} else {
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperature_timer);
-		usbv3_command(device, "FQUITx");
-		indigo_delete_property(device, X_FOCUSER_STEP_SIZE_PROPERTY, NULL);
-		usbv3_close(device);
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-	}
-	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
-}
-
 static indigo_result focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
-	assert(device != NULL);
-	assert(DEVICE_CONTEXT != NULL);
-	assert(property != NULL);
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- CONNECTION
-		if (indigo_ignore_connection_change(device, property))
-			return INDIGO_OK;
-		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, focuser_connect_callback, NULL);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- CONFIG
-		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
-			indigo_save_property(device, NULL, X_FOCUSER_STEP_SIZE_PROPERTY);
+		if (!indigo_ignore_connection_change(device, property)) {
+			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			indigo_set_timer(device, 0, focuser_connection_handler, &PRIVATE_DATA->focuser_connection_handler_timer);
 		}
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(X_FOCUSER_STEP_SIZE_PROPERTY, property)) {
+		if (PRIVATE_DATA->focuser_x_focuser_step_size_handler_timer == NULL) {
+			indigo_property_copy_values(X_FOCUSER_STEP_SIZE_PROPERTY, property, false);
+			X_FOCUSER_STEP_SIZE_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, X_FOCUSER_STEP_SIZE_PROPERTY, NULL);
+			indigo_set_timer(device, 0, focuser_x_focuser_step_size_handler, &PRIVATE_DATA->focuser_x_focuser_step_size_handler_timer);
+		}
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(FOCUSER_REVERSE_MOTION_PROPERTY, property)) {
+		if (PRIVATE_DATA->focuser_reverse_motion_handler_timer == NULL) {
+			indigo_property_copy_values(FOCUSER_REVERSE_MOTION_PROPERTY, property, false);
+			FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
+			indigo_set_timer(device, 0, focuser_reverse_motion_handler, &PRIVATE_DATA->focuser_reverse_motion_handler_timer);
+		}
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(FOCUSER_TEMPERATURE_PROPERTY, property)) {
+		if (PRIVATE_DATA->focuser_temperature_handler_timer == NULL) {
+			indigo_property_copy_values(FOCUSER_TEMPERATURE_PROPERTY, property, false);
+			FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
+			indigo_set_timer(device, 0, focuser_temperature_handler, &PRIVATE_DATA->focuser_temperature_handler_timer);
+		}
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(FOCUSER_COMPENSATION_PROPERTY, property)) {
+		if (PRIVATE_DATA->focuser_compensation_handler_timer == NULL) {
+			indigo_property_copy_values(FOCUSER_COMPENSATION_PROPERTY, property, false);
+			FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
+			indigo_set_timer(device, 0, focuser_compensation_handler, &PRIVATE_DATA->focuser_compensation_handler_timer);
+		}
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(FOCUSER_MODE_PROPERTY, property)) {
+		if (PRIVATE_DATA->focuser_mode_handler_timer == NULL) {
+			indigo_property_copy_values(FOCUSER_MODE_PROPERTY, property, false);
+			FOCUSER_MODE_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, FOCUSER_MODE_PROPERTY, NULL);
+			indigo_set_timer(device, 0, focuser_mode_handler, &PRIVATE_DATA->focuser_mode_handler_timer);
+		}
+		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_SPEED_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- FOCUSER_SPEED
-		indigo_property_copy_values(FOCUSER_SPEED_PROPERTY, property, false);
-		usbv3_command(device, "SMO00%d", 10 - (int)(FOCUSER_SPEED_ITEM->number.value));
-		FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
+		if (PRIVATE_DATA->focuser_speed_handler_timer == NULL) {
+			indigo_property_copy_values(FOCUSER_SPEED_PROPERTY, property, false);
+			FOCUSER_SPEED_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
+			indigo_set_timer(device, 0, focuser_speed_handler, &PRIVATE_DATA->focuser_speed_handler_timer);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_STEPS_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- FOCUSER_STEPS
-		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
-		if (FOCUSER_STEPS_PROPERTY->state != INDIGO_BUSY_STATE) {
+		if (PRIVATE_DATA->focuser_steps_handler_timer == NULL) {
+			indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+			indigo_set_timer(device, 0, focuser_steps_handler, &PRIVATE_DATA->focuser_steps_handler_timer);
+		}
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(FOCUSER_POSITION_PROPERTY, property)) {
+		if (PRIVATE_DATA->focuser_position_handler_timer == NULL) {
+			indigo_property_copy_targets(FOCUSER_POSITION_PROPERTY, property, false);
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-			if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
-				if (FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value) {
-					usbv3_command(device, "I%05d", (int)(FOCUSER_STEPS_ITEM->number.value));
-				} else {
-					usbv3_command(device, "O%05d", (int)(FOCUSER_STEPS_ITEM->number.value));
-				}
-			} else {
-				if (FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value) {
-					usbv3_command(device, "O%05d", (int)(FOCUSER_STEPS_ITEM->number.value));
-				} else {
-					usbv3_command(device, "I%05d", (int)(FOCUSER_STEPS_ITEM->number.value));
-				}
-			}
-			indigo_set_timer(device, 0.2, focuser_position_callback, &PRIVATE_DATA->position_timer);
+			indigo_set_timer(device, 0, focuser_position_handler, &PRIVATE_DATA->focuser_position_handler_timer);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION
-		if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
+		if (PRIVATE_DATA->focuser_abort_motion_handler_timer == NULL) {
 			indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
-			if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
-				usbv3_command(device, "FQUITx");
-			}
-			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-			FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
-		} else {
-			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+			indigo_set_timer(device, 0, focuser_abort_motion_handler, &PRIVATE_DATA->focuser_abort_motion_handler_timer);
 		}
-		indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
 		return INDIGO_OK;
-		// -------------------------------------------------------------------------------- FOCUSER_COMPENSATION
-	} else if (indigo_property_match_changeable(FOCUSER_COMPENSATION_PROPERTY, property)) {
-		indigo_property_copy_values(FOCUSER_COMPENSATION_PROPERTY, property, false);
-		FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
-		usbv3_command(device, "FLX%03d", abs((int)FOCUSER_COMPENSATION_ITEM->number.value));
-		usbv3_command(device, "FZSIG%d", FOCUSER_COMPENSATION_ITEM->number.value < 0 ? 0 : 1);
-		FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
+	} else if (indigo_property_match_changeable(FOCUSER_LIMITS_PROPERTY, property)) {
+		if (PRIVATE_DATA->focuser_limits_handler_timer == NULL) {
+			indigo_property_copy_values(FOCUSER_LIMITS_PROPERTY, property, false);
+			FOCUSER_LIMITS_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, FOCUSER_LIMITS_PROPERTY, NULL);
+			indigo_set_timer(device, 0, focuser_limits_handler, &PRIVATE_DATA->focuser_limits_handler_timer);
+		}
 		return INDIGO_OK;
-		// -------------------------------------------------------------------------------- FOCUSER_MODE
-	} else if (indigo_property_match_changeable(FOCUSER_MODE_PROPERTY, property)) {
-		indigo_property_copy_values(FOCUSER_MODE_PROPERTY, property, false);
-		FOCUSER_MODE_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, FOCUSER_MODE_PROPERTY, NULL);
-		if (FOCUSER_MODE_AUTOMATIC_ITEM->sw.value) {
-			indigo_cancel_timer(device, &PRIVATE_DATA->temperature_timer);
-			usbv3_command(device, "FAUTOM");
-		} else {
-			usbv3_command(device, "FMANUA");
-			indigo_set_timer(device, 0, focuser_temperature_callback, &PRIVATE_DATA->temperature_timer);
+	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
+		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
+			indigo_save_property(device, NULL, FOCUSER_REVERSE_MOTION_PROPERTY);
 		}
-		// -------------------------------------------------------------------------------- X_FOCUSER_STEP_SIZE
-	} else if (indigo_property_match_changeable(X_FOCUSER_STEP_SIZE_PROPERTY, property)) {
-		indigo_property_copy_values(X_FOCUSER_STEP_SIZE_PROPERTY, property, false);
-		if (X_FOCUSER_FULL_STEP_ITEM->sw.value) {
-			usbv3_command(device, "SMSTPF");
-		} else {
-			usbv3_command(device, "SMSTPD");
-		}
-		X_FOCUSER_STEP_SIZE_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, X_FOCUSER_STEP_SIZE_PROPERTY, NULL);
 	}
 	return indigo_focuser_change_property(device, client, property);
 }
 
 static indigo_result focuser_detach(indigo_device *device) {
-	assert(device != NULL);
 	if (IS_CONNECTED) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-		focuser_connect_callback(device);
+		focuser_connection_handler(device);
 	}
 	indigo_release_property(X_FOCUSER_STEP_SIZE_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
+	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
 	return indigo_focuser_detach(device);
 }
+
+#pragma mark - Device templates
+
+static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(FOCUSER_DEVICE_NAME, focuser_attach, focuser_enumerate_properties, focuser_change_property, NULL, focuser_detach);
+
+#pragma mark - Main code
 
 indigo_result indigo_focuser_usbv3(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 	static usbv3_private_data *private_data = NULL;
 	static indigo_device *focuser = NULL;
 
-	static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(
-		"USB_Focus v3",
-		focuser_attach,
-		focuser_enumerate_properties,
-		focuser_change_property,
-		NULL,
-		focuser_detach
-	);
-
-	static indigo_device_match_pattern patterns[1] = { 0 };
-	strcpy(patterns[0].vendor_string, "CCS");
-	strcpy(patterns[0].product_string, "SERIAL DEMO");
-	INDIGO_REGISER_MATCH_PATTERNS(focuser_template, patterns, 1);
-
-	SET_DRIVER_INFO(info, "USB_Focus v3 Focuser", __FUNCTION__, DRIVER_VERSION, false, last_action);
+	SET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, false, last_action);
 
 	if (action == last_action) {
 		return INDIGO_OK;
@@ -404,6 +582,10 @@ indigo_result indigo_focuser_usbv3(indigo_driver_action action, indigo_driver_in
 	switch (action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
+			static indigo_device_match_pattern patterns[1] = { 0 };
+			strcpy(patterns[0].product_string, "SERIAL DEMO");
+			strcpy(patterns[0].vendor_string, "CCS");
+			INDIGO_REGISER_MATCH_PATTERNS(focuser_template, patterns, 1);
 			private_data = indigo_safe_malloc(sizeof(usbv3_private_data));
 			focuser = indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
 			focuser->private_data = private_data;

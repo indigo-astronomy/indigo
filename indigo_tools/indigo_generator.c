@@ -320,8 +320,9 @@ bool get_token(void) {
 				last_token = TOKEN_TRUE;
 				return true;
 			} else if (strncmp(current, "false", 5) == 0) {
-				FORWARD(4);
-				return TOKEN_FALSE;
+				FORWARD(5);
+				last_token = TOKEN_FALSE;
+				return true;
 			} else if (isalpha(*current)) {
 				begin = current;
 				FORWARD(1);
@@ -667,6 +668,15 @@ bool parse_property_block(device_type *device, property_type **properties) {
 			if (parse_expression_attribute("hidden", property->hidden, sizeof(property->hidden))) {
 				continue;
 			}
+			if (parse_expression_attribute("perm", property->perm, sizeof(property->perm))) {
+				if (strcmp(property->perm, "INDIGO_RO_PERM") == 0) {
+					property->handle_change = false;
+				}
+				continue;
+			}
+			if (parse_expression_attribute("rule", property->rule, sizeof(property->rule))) {
+				continue;
+			}
 			if (property->type[0] != 'i') {
 				if (parse_expression_attribute("group", property->group, sizeof(property->group))) {
 					continue;
@@ -675,15 +685,6 @@ bool parse_property_block(device_type *device, property_type **properties) {
 					continue;
 				}
 				if (parse_bool_attribute("always_defined", &property->always_defined)) {
-					continue;
-				}
-				if (parse_expression_attribute("perm", property->perm, sizeof(property->perm))) {
-					if (strcmp(property->perm, "INDIGO_RO_PERM") == 0) {
-						property->handle_change = false;
-					}
-					continue;
-				}
-				if (parse_expression_attribute("rule", property->rule, sizeof(property->rule))) {
 					continue;
 				}
 				if (parse_item_block(property->type, &property->items)) {

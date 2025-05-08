@@ -1,0 +1,299 @@
+// Copyright (c) 2017-2025 CloudMakers, s. r. o.
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// USB_Focus v3 Focuser driver definition
+
+driver usbv3 {
+	label = "USB_Focus v3 Focuser";
+	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
+	copyright = "Copyright (c) 2017-2025 CloudMakers, s. r. o.";
+	version = 5;
+	serial {
+		pattern {
+			product = "SERIAL DEMO";
+			vendor = "CCS";
+		}
+	}
+	data {
+		char response[128];
+		bool moving;
+		bool abort;
+	}
+	code {
+		static bool usbv3_command(indigo_device *device, char *command, int response, ...) {
+			va_list args;
+			va_start(args, response);
+			long result = indigo_uni_vprintf(PRIVATE_DATA->handle, command, args);
+			va_end(args);
+			if (response && result > 0) {
+				result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", INDIGO_DELAY(1));
+				if (*PRIVATE_DATA->response == '*') {
+					PRIVATE_DATA->moving = false;
+					result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", INDIGO_DELAY(1));
+				}
+			}
+			return result > 0;
+		}
+
+		static bool usbv3_open(indigo_device *device) {
+			PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
+			if (PRIVATE_DATA->handle) {
+				if (usbv3_command(device, "SWHOIS", true) && !strcmp(PRIVATE_DATA->response, "UFO")) {
+					return true;
+				}
+				indigo_uni_close(&PRIVATE_DATA->handle);
+				indigo_send_message(device, "Handshake failed");
+			}
+			return false;
+		}
+
+		static void usbv3_close(indigo_device *device) {
+			indigo_uni_close(&PRIVATE_DATA->handle);
+		}
+	}
+	focuser {
+		name = "USB_Focus v3";
+		additional_instances = true;
+		on_timer {
+			if (usbv3_command(device, "FTMPRO", true)) {
+				if (sscanf(PRIVATE_DATA->response, "T=%lf", &FOCUSER_TEMPERATURE_ITEM->number.value) == 1) {
+					indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
+				}
+			}
+			indigo_reschedule_timer(device, 10, &PRIVATE_DATA->focuser_timer);
+		}
+		on_connect {
+			int direction, stepmode, speed, stepsdeg = 0, threshold = 0, firmware, maxpos, sign;
+			indigo_uni_discard(PRIVATE_DATA->handle);
+			if (usbv3_command(device, "SGETAL", true)) {
+				if (sscanf(PRIVATE_DATA->response, "C=%u-%u-%u-%u-%u-%u-%u", &direction, &stepmode, &speed, &stepsdeg, &threshold, &firmware, &maxpos) == 7) {
+					indigo_set_switch(FOCUSER_DIRECTION_PROPERTY, FOCUSER_DIRECTION_PROPERTY->items + direction % 2, true);
+					indigo_set_switch(X_FOCUSER_STEP_SIZE_PROPERTY, X_FOCUSER_STEP_SIZE_PROPERTY->items + stepmode % 2, true);
+					FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = speed;
+					indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, DRIVER_LABEL);
+					snprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, sizeof(INFO_DEVICE_FW_REVISION_ITEM->text.value), "%d", firmware);
+					FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target = maxpos;
+					indigo_update_property(device, INFO_PROPERTY, NULL);
+				}
+			}
+			if (usbv3_command(device, "FPOSRO", true)) {
+				if (sscanf(PRIVATE_DATA->response, "P=%lf", &FOCUSER_POSITION_ITEM->number.value) == 1) {
+					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+				}
+			}
+			usbv3_command(device, "FMANUA", true);
+			usbv3_command(device, "FTxxxA", true);
+			if (sscanf(PRIVATE_DATA->response, "A=%d", &sign) == 1) {
+				if (sign == 0)
+					stepsdeg = -stepsdeg;
+				FOCUSER_COMPENSATION_ITEM->number.value = FOCUSER_COMPENSATION_ITEM->number.target = stepsdeg;
+				FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.value = FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.target = threshold;
+			}
+		}
+		on_disconnect {
+			usbv3_command(device, "FQUITx", false);
+		}
+		on_attach {
+			INFO_PROPERTY->count = 6;
+			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+		}
+		switch X_FOCUSER_STEP_SIZE {
+			name = "X_FOCUSER_STEP_SIZE";
+			group = FOCUSER_MAIN_GROUP;
+			label = "Step size";
+			item X_FOCUSER_FULL_STEP {
+				name = "FULL_STEP";
+				label = "Full step";
+				value = true;
+			}
+			item X_FOCUSER_HALF_STEP {
+				name = "HALF_STEP";
+				label = "Half step";
+				value = false;
+			}
+			on_change {
+				if (X_FOCUSER_FULL_STEP_ITEM->sw.value) {
+					usbv3_command(device, "SMSTPF", false);
+				} else {
+					usbv3_command(device, "SMSTPD", false);
+				}
+			}
+		}
+		inherited FOCUSER_REVERSE_MOTION {
+			hidden = false;
+			persistent = true;
+		}
+		inherited FOCUSER_TEMPERATURE {
+			hidden = false;
+		}
+		inherited FOCUSER_COMPENSATION {
+			hidden = false;
+			on_attach {
+				FOCUSER_COMPENSATION_PROPERTY->count = 2;
+				FOCUSER_COMPENSATION_ITEM->number.min = -999;
+				FOCUSER_COMPENSATION_ITEM->number.max = 999;
+				FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.min = 0;
+				FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.max = 5;
+			}
+			on_change {
+				usbv3_command(device, "FLX%03d", true, abs((int)FOCUSER_COMPENSATION_ITEM->number.target));
+				usbv3_command(device, "FZSIG%d", true, FOCUSER_COMPENSATION_ITEM->number.target < 0 ? 0 : 1);
+				usbv3_command(device, "SMA%03d", true, (int)FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.target);
+			}
+		}
+		inherited FOCUSER_MODE {
+			hidden = false;
+			on_change {
+				if (FOCUSER_MODE_AUTOMATIC_ITEM->sw.value) {
+					indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_timer);
+					usbv3_command(device, "FAUTOM", true);
+				} else {
+					usbv3_command(device, "FMANUA", true);
+					if (sscanf(PRIVATE_DATA->response, "P=%lf", &FOCUSER_POSITION_ITEM->number.value) == 1) {
+						indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+					}
+					indigo_set_timer(device, 0, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
+				}
+			}
+		}
+		inherited FOCUSER_SPEED {
+			on_change {
+				usbv3_command(device, "SMO%03u", false, (int)FOCUSER_SPEED_ITEM->number.target);
+			}
+			on_attach {
+				FOCUSER_SPEED_ITEM->number.value = 4;
+				FOCUSER_SPEED_ITEM->number.min = 1;
+				FOCUSER_SPEED_ITEM->number.max = 8;
+			}
+		}
+		inherited FOCUSER_STEPS {
+			on_attach {
+				FOCUSER_STEPS_ITEM->number.min = 1;
+				FOCUSER_STEPS_ITEM->number.max = 65535;
+			}
+			on_change {
+				PRIVATE_DATA->abort = false;
+				int steps = (int)FOCUSER_STEPS_ITEM->number.target;
+				int position = (int)FOCUSER_POSITION_ITEM->number.value;
+				if (FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value ^ FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value) {
+					int max = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
+					if (position + steps > max) {
+						steps = max - position;
+					}
+					if (steps > 0) {
+						usbv3_command(device, "O%05u", false, steps);
+					}
+				} else {
+					int min = (int)FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
+					if (position - steps < min) {
+						steps = position - min;
+					}
+					if (steps > 0) {
+						usbv3_command(device, "I%05u", false, steps);
+					}
+				}
+				if (steps > 0) {
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+					FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+					PRIVATE_DATA->moving = true;
+					int value;
+					while (PRIVATE_DATA->moving) {
+						if (PRIVATE_DATA->abort) {
+							usbv3_command(device, "FQUITx", false);
+						}
+						usbv3_command(device, "FPOSRO", true);
+						if (sscanf(PRIVATE_DATA->response, "P=%d", &value) == 1) {
+							if (position != value) {
+								FOCUSER_POSITION_ITEM->number.value = position = value;
+								indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+							}
+						}
+					}
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+					FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+				}
+			}
+		}
+		inherited FOCUSER_POSITION {
+			preserve_values = true;
+			on_change {
+				PRIVATE_DATA->abort = false;
+				int target = (int)FOCUSER_POSITION_ITEM->number.target;
+				int min = (int)FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
+				int max = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
+				if (target < min) {
+					target = min;
+				}
+				if (target > max) {
+					target = max;
+				}
+				int position = (int)FOCUSER_POSITION_ITEM->number.value;
+				int steps =  FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value ? target - position : position - target;
+				if (steps > 0) {
+					usbv3_command(device, "O%05u", false, steps);
+				} else if (steps < 0) {
+					usbv3_command(device, "I%05u", false, -steps);
+				}
+				if (steps != 0) {
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+					FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+					PRIVATE_DATA->moving = true;
+					int value;
+					while (PRIVATE_DATA->moving) {
+						if (PRIVATE_DATA->abort) {
+							usbv3_command(device, "FQUITx", false);
+						}
+						usbv3_command(device, "FPOSRO", true);
+						if (sscanf(PRIVATE_DATA->response, "P=%d", &value) == 1) {
+							if (position != value) {
+								FOCUSER_POSITION_ITEM->number.value = position = value;
+								indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+							}
+						}
+					}
+					FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+				}
+			}
+		}
+		inherited FOCUSER_ABORT_MOTION {
+			synchronized_change = false;
+			on_change {
+				PRIVATE_DATA->abort = true;
+				FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
+			}
+		}
+		inherited FOCUSER_LIMITS {
+			hidden = false;
+			on_change {
+				usbv3_command(device, "M%05u", false, (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target);
+			}
+			on_attach {
+				FOCUSER_LIMITS_MIN_POSITION_ITEM->number.min = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.max = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min = 0;
+				FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max = 65535;
+			}
+		}
+	}
+}
