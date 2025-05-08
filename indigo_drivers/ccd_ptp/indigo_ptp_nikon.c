@@ -63,6 +63,7 @@
 // Nikon EXPEED 7 series
 #define NIKON_PRODUCT_Z9    0x0450
 #define NIKON_PRODUCT_Z8    0x0451
+#define NIKON_PRODUCT_Z5II  0x0456
 
 #define IS_NIKON_D3000_OR_D3100() ( \
 	PRIVATE_DATA->model.product == NIKON_PRODUCT_D3000 || \
@@ -94,7 +95,8 @@
 
 #define IS_NIKON_EXPEED7_SERIES() ( \
 	PRIVATE_DATA->model.product == NIKON_PRODUCT_Z9 || \
-	PRIVATE_DATA->model.product == NIKON_PRODUCT_Z8 )
+	PRIVATE_DATA->model.product == NIKON_PRODUCT_Z8 || \
+	PRIVATE_DATA->model.product == NIKON_PRODUCT_Z5II )
 
 #define IS_NIKON_EXPEED5_OR_LATER() ( \
 	IS_NIKON_EXPEED5_SERIES() || \
@@ -522,7 +524,7 @@ char *ptp_property_nikon_value_code_label(indigo_device *device, uint16_t proper
 			return label;
 		}
 		case ptp_property_StillCaptureMode: {
-			switch (code) { case 1: return "Single shot"; case 2: return "Continuous"; case 3:return "Timelapse"; case 32784: return "Continuous low speed"; case 32785: return "Timer"; case 32786: return "Mirror up"; case 32787: return "Remote"; case 32788: return "Timer + Remote"; case 32789: return "Delayed remote"; case 32790: return "Quiet shutter release"; case 32793: return "Continuous *"; case 33024: return "Quick release-mode selection"; case 33054: return "C30"; case 33084: return "C60"; case 33144: return "C120"; }
+			switch (code) { case 1: return "Single shot"; case 2: return "Continuous"; case 3:return "Timelapse"; case 32784: return "Continuous low speed"; case 32785: return "Timer"; case 32786: return "Mirror up"; case 32787: return "Remote"; case 32788: return "Timer + Remote"; case 32789: return "Delayed remote"; case 32790: return "Quiet shutter release"; case 32793: return "Continuous *"; case 33024: return "Quick release-mode selection"; case 33039: return "C15"; case 33054: return "C30"; case 33084: return "C60"; case 33144: return "C120"; }
 			break;
 		}
 		case ptp_property_FocusMeteringMode: {
