@@ -13,30 +13,30 @@
 | agent_astap | 2️⃣ | ❌ No | ⛔ N/A | ❌ No | ⛔ Needs fork() & pipes |
 | agent_snoop | 2️⃣ | ❌ No | ⛔ N/A | ❌ No | 🚧 Obsolete |
 | ao_sx | 3️⃣ | ✅ Yes | ✅ Yes | ✅ HW | |
-| aux_arteskyflat | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Simulator | |
+| aux_arteskyflat | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
 | aux_asiair | 2️⃣ | ❌ No | ❌ No | ❌ No | ⛔ RPi only |
-| aux_astromechanics | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Simulator | |
+| aux_astromechanics | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
 | aux_cloudwatcher | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | aux_dragonfly | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | aux_dsusb | 3️⃣ | ❌ No | ✅ Yes | ✅ HW | ⏰ TODO - make libdsusb for Windows |
 | aux_fbc | 3️⃣ | ✅ Yes | ✅ Yes | ❌ No | ⏰ TODO - needs debugging with physical device |
-| aux_flatmaster | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Simulator | |
-| aux_flipflat | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Simulator | |
-| aux_geoptikflat | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Simulator | |
+| aux_flatmaster | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
+| aux_flipflat | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
+| aux_geoptikflat | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
 | aux_joystick | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | aux_mgbox | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
-| aux_ppb | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Simulator | |
+| aux_ppb | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
 | aux_rpio | 2️⃣ | ❌ No | ❌ No | ❌ No | ⛔ RPi only |
 | aux_rts | 3️⃣ | ✅ Yes | ✅ Yes | ❌ No | |
-| aux_skyalert | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Simulator | |
-| aux_sqm | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Simulator | |
-| aux_uch | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Simulator | |
-| aux_upb | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Simulator | |
-| aux_upb3 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Simulator | |
-| aux_usbdp | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Simulator | |
-| aux_wbplusv3 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Simulator | |
-| aux_wbprov3 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Simulator | |
-| aux_wcv4ec | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Simulator | |
+| aux_skyalert | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
+| aux_sqm | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
+| aux_uch | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
+| aux_upb | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
+| aux_upb3 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
+| aux_usbdp | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
+| aux_wbplusv3 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
+| aux_wbprov3 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
+| aux_wcv4ec | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
 | ccd_altair | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
 | ccd_apogee | 2️⃣ | ❌ No | ❌ No | ❌ No | ⏰ TODO - make boost_regex and libapogee for Windows |
 | ccd_asi | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
