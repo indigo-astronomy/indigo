@@ -31,7 +31,7 @@
 | aux_skyalert | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
 | aux_sqm | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
 | aux_uch | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
-| aux_upb | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
+| aux_upb | 3️⃣ | ✅ Yes | ✅ Yes | ✅ HW | |
 | aux_upb3 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
 | aux_usbdp | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
 | aux_wbplusv3 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
