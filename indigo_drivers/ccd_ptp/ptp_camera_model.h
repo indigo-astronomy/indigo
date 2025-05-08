@@ -1,10 +1,6 @@
 #ifndef PTP_CAMERA_MODEL_H
 #define PTP_CAMERA_MODEL_H
 
-/* Created by tools/make_dslr_table.py
-
-   WARNING! All changes made in this file will be lost! */
-
 static ptp_camera_model CAMERA[] = {
   { 0x045e, 0x0a00, "Microsoft Lumia", 0, 0, 0, 0 },
   { 0x05ac, 0x12a8, "Apple iPhone", 0, 0, 0, 0 },
