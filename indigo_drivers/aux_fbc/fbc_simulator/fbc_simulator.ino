@@ -36,7 +36,8 @@ void loop() {
   } else if (command.equals(": P ")) {
     Serial.println("P SerialMode");
   } else if (command.equals(": V ")) {
-    Serial.println("V 1.1");
+		Serial.println("D - V command was received.");
+    Serial.println("V 1.0.0");
   } else if (command.length() > 0) {
     Serial.println("*");
   }
