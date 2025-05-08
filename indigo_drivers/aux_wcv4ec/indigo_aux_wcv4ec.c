@@ -403,7 +403,6 @@ static void aux_set_open_close_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_SET_OPEN_CLOSE_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_SET_OPEN_CLOSE.on_change
-	char command[32];
 	if (PRIVATE_DATA->operation_running) {
 		AUX_SET_OPEN_CLOSE_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, AUX_SET_OPEN_CLOSE_PROPERTY, "Operation in progress");

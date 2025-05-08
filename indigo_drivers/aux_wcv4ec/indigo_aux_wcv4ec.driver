@@ -299,7 +299,6 @@ driver wcv4ec {
 			group = AUX_ADVANCED_GROUP;
 			label = "Set cover open/close position";
 			on_change {
-				char command[32];
 				if (PRIVATE_DATA->operation_running) {
 					AUX_SET_OPEN_CLOSE_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_update_property(device, AUX_SET_OPEN_CLOSE_PROPERTY, "Operation in progress");
