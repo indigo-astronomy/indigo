@@ -2304,8 +2304,6 @@ static bool plug_wheel(indigo_device *device, CFWResults cfwr) {
 
 static void unplug_wheel(char *master_name, int fw_model) {
 	int i;
-	sbig_private_data *pds[MAX_USB_DEVICES] = {NULL};
-
 	for(i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
 		if (device == NULL) {
@@ -2329,8 +2327,6 @@ static void unplug_wheel(char *master_name, int fw_model) {
 
 static void unplug_ao(char *master_name) {
 	int i;
-	sbig_private_data *pds[MAX_USB_DEVICES] = {NULL};
-
 	for(i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
 		if (device == NULL) {
