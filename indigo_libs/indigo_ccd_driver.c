@@ -1449,7 +1449,7 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 			char buffer[15] = "NA";
 			for (int i = 0; i < CCD_FITS_HEADERS_PROPERTY->count; i++) {
 				indigo_item *item = CCD_FITS_HEADERS_PROPERTY->items + i;
-				if (!strcmp(item->name, "FOCUS")) {
+				if (!strcmp(item->name, "FOCUSPOS")) {
 					strncpy(buffer, item->text.value, sizeof(buffer));
 					break;
 				}
@@ -1938,9 +1938,9 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			if (!strcmp(item->name, "FILTER")) {
 				header += sprintf(header, "<Property id='Instrument:Filter:Name' type='String' value=%s/>", item->text.value);
 				header += sprintf(header, "<FITSKeyword name='FILTER' value=%s comment='Name of the used filter'/>", item->text.value);
-			} else if (!strcmp(item->name, "FOCUS")) {
+			} else if (!strcmp(item->name, "FOCUSPOS")) {
 				header += sprintf(header, "<Property id='Instrument:Focuser:Position' type='String' value='%s'/>", item->text.value);
-				header += sprintf(header, "<FITSKeyword name='FOCUS' value='%s' comment='Focuser position'/>", item->text.value);
+				header += sprintf(header, "<FITSKeyword name='FOCUSPOS' value='%s' comment='Focuser position'/>", item->text.value);
 			}
 		}
 		if (keywords) {

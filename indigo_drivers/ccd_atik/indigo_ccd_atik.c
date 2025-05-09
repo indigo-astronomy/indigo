@@ -991,8 +991,6 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 static libusb_hotplug_callback_handle callback_handle1, callback_handle2;
 
 indigo_result indigo_ccd_atik(indigo_driver_action action, indigo_driver_info *info) {
-	ArtemisSetDebugCallback(debug_log);
-	
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 	
 	SET_DRIVER_INFO(info, "Atik Camera", __FUNCTION__, DRIVER_VERSION, true, last_action);
@@ -1003,6 +1001,7 @@ indigo_result indigo_ccd_atik(indigo_driver_action action, indigo_driver_info *i
 	
 	switch(action) {
 		case INDIGO_DRIVER_INIT:
+			ArtemisSetDebugCallback(debug_log);
 			last_action = action;
 			if (indigo_driver_initialized((char *)"indigo_ccd_atik2")) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Conflicting driver indigo_ccd_atik2 is already loaded");

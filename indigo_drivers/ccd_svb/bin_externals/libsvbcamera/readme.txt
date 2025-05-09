@@ -462,3 +462,23 @@ Date: 2024-10-29
 Version: v1.13.2
 Date: 2024-11-28
 1. Optimize gain settings of SV905C2
+
+
+##########################################################
+版本:v1.13.3
+日期:2025-01-21
+1. 修正SV305CPRO相机长曝光取图超时的问题
+
+Version: v1.13.3
+Date: 2025-01-21
+1. Fixed the issue of long exposure image capture timeout for SV305CPRO camera
+
+
+##########################################################
+版本:v1.13.4
+日期:2025-02-05
+1. 修正SV305MPRO在v1.13.0及更新版本无法正常打开的问题
+
+Version: v1.13.4
+Date: 2025-02-05
+1. Fixed the problem that SV305MPRO cannot be opened normally in v1.13.0 and later versions
