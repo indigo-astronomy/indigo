@@ -58,7 +58,7 @@
 | ccd_qsi | 2️⃣ | ❌ No | ❌ No | ❌ No | ⏰ TODO - find SDK for windows |
 | ccd_rising | 3️⃣ | ✅ Yes | ❌ No | ❌ No | ➡️ Touptek |
 | ccd_sbig | 2️⃣ | ❌ No | ❌ No | ❌ No | ⏰ TODO - find SDK for windows |
-| ccd_simulator | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
+| ccd_simulator | 3️⃣ | ✅ Yes | ❌ No | ⛔ N/A | |
 | ccd_ssag | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
 | ccd_ssg | 3️⃣ | ✅ Yes | ❌ No | ❌ No | ➡️ Touptek |
 | ccd_svb | 2️⃣ | ❌ No | ❌ No | ❌ No | ⏰ TODO - find SDK for windows |
@@ -71,7 +71,7 @@
 | dome_dragonfly | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | dome_nexdome | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | dome_nexdome3 | 2️⃣ | ❌ No | ❌ No | ❌ No | |
-| dome_simulator | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
+| dome_simulator | 3️⃣ | ✅ Yes | ✅ Yes | ⛔ N/A | |
 | dome_skyroof | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | dome_talon6ror | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | focuser_asi | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
@@ -106,7 +106,7 @@
 | focuser_wemacro_bt | 2️⃣ | ❌ No | ❌ No | ❌ No | ⛔ macOS only |
 | gps_gpsd | 2️⃣ | ❌ No | ❌ No | ❌ No | ⏰ TODO - make libgps for Windows |
 | gps_nmea | 3️⃣ | ✅ Yes | ✅ Yes | ❌ No | |
-| gps_simulator | 3️⃣ | ✅ Yes | ✅ Yes | ❌ No | |
+| gps_simulator | 3️⃣ | ✅ Yes | ✅ Yes | ⛔ N/A | |
 | guider_asi | 2️⃣ | ❌ No | ❌ No | ❌ No | ⏰ TODO - find SDK for windows |
 | guider_cgusbst4 | 3️⃣ | ✅ Yes | ✅ Yes | ❌ No | |
 | guider_gpusb | 3️⃣ | ❌ No | ✅ Yes | ✅ HW | ⏰ TODO - make libgpusb for Windows |
@@ -117,7 +117,7 @@
 | mount_nexstaraux | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | mount_pmc8 | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | mount_rainbow | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
-| mount_simulator | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
+| mount_simulator | 3️⃣ | ✅ Yes | ❌ No | ⛔ N/A | |
 | mount_starbook | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | mount_synscan | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | mount_temma | 2️⃣ | ❌ No | ❌ No | ❌ No | |
@@ -125,7 +125,7 @@
 | rotator_falcon | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
 | rotator_lunatico | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | rotator_optec | 2️⃣ | ❌ No | ❌ No | ❌ No | |
-| rotator_simulator | 2️⃣ | ❌ No | ❌ No | ❌ No | |
+| rotator_simulator | 2️⃣ | ❌ No | ❌ No | ⛔ N/A | |
 | rotator_wa | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | system_ascol | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | wheel_asi | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
