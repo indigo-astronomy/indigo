@@ -359,12 +359,15 @@ extern indigo_result indigo_device_detach(indigo_device *device);
 
 /** Open config file.
  */
-
 extern int indigo_open_config_file(char *device_name, int profile, int mode, const char *suffix);
 
 /** Load properties.
  */
 extern indigo_result indigo_load_properties(indigo_device *device, bool default_properties);
+
+/** Save single property to .default.
+ */
+ extern indigo_result indigo_save_property_to_default(indigo_device*device, int *file_handle, indigo_property *property, bool is_default);
 
 /** Save single property.
  */
