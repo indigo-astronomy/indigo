@@ -3232,7 +3232,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 				indigo_set_timer(device, 0, capture, NULL);
 			} else {
 				AGENT_IMAGER_CAPTURE_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, AGENT_IMAGER_CAPTURE_PROPERTY, "No CCD is selected");
+				indigo_update_property(device, AGENT_IMAGER_CAPTURE_PROPERTY, "No imager camera is selected");
 			}
 		}
 		return INDIGO_OK;

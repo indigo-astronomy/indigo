@@ -93,7 +93,7 @@
  */
 #define CONFIG_SAVE_ITEM_NAME									"SAVE"
 
-/** CONFIG.DEFAULT property item name.
+/** CONFIG.REMOVE property item name.
  */
 #define CONFIG_REMOVE_ITEM_NAME							"REMOVE"
 
