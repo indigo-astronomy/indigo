@@ -2331,6 +2331,7 @@
 		598C583E21A890B5001CA8C0 /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		598C584021A9A3C9001CA8C0 /* ASICamera2.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ASICamera2.h; sourceTree = "<group>"; };
 		598C584221A9A886001CA8C0 /* Makefile.inc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
+		598C99E92DCFAF1C00E0D2CE /* indigo_dome_simulator.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_dome_simulator.driver; sourceTree = "<group>"; };
 		598CB77F2D6092A200B7211A /* libsvbonycam.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libsvbonycam.dylib; path = build/lib/libsvbonycam.dylib; sourceTree = "<group>"; };
 		598FE2862615037000E0DA21 /* talon6ror_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = talon6ror_simulator.ino; sourceTree = "<group>"; };
 		599145E624C89AF800304F22 /* Pocket_Powerbox_Advance_Serial_Command_Table.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Pocket_Powerbox_Advance_Serial_Command_Table.pdf; sourceTree = "<group>"; };
@@ -12439,6 +12440,7 @@
 				59DD69D21FC1DC4900AEF0DF /* indigo_dome_simulator.h */,
 				59DD69D41FC1DC4900AEF0DF /* indigo_dome_simulator.c */,
 				59DD69D11FC1DC4900AEF0DF /* indigo_dome_simulator_main.c */,
+				598C99E92DCFAF1C00E0D2CE /* indigo_dome_simulator.driver */,
 			);
 			path = dome_simulator;
 			sourceTree = "<group>";

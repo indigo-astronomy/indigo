@@ -781,7 +781,10 @@ INDIGO_EXTERN void indigo_set_text_item_value(indigo_item *item, const char *val
 #define indigo_copy_name(target, source) { memset(target, 0, INDIGO_NAME_SIZE); strncpy(target, source, INDIGO_NAME_SIZE - 1); }
 #define indigo_copy_value(target, source) { memset(target, 0, INDIGO_VALUE_SIZE); strncpy(target, source, INDIGO_VALUE_SIZE - 1); }
 
-#define indigo_define_matching_property(template); if (indigo_property_match(template, property)) indigo_define_property(device, template, NULL)
+#define indigo_define_matching_property(template) if (indigo_property_match(template, property)) { indigo_define_property(device, template, NULL); }
+#define indigo_copy_values_process_change(property, handler, timer) if (PRIVATE_DATA->timer == NULL) { indigo_property_copy_values(property, property, false); property->state = INDIGO_BUSY_STATE; indigo_update_property(device, property, NULL); indigo_set_timer(device, 0, handler, &PRIVATE_DATA->timer); }
+#define indigo_copy_targets_process_change(property, handler, timer) if (PRIVATE_DATA->timer == NULL) { indigo_property_copy_targets(property, property, false); property->state = INDIGO_BUSY_STATE; indigo_update_property(device, property, NULL); indigo_set_timer(device, 0, handler, &PRIVATE_DATA->timer); }
+
 
 /** Property representing all properties of all devices (used for enumeration broadcast).
  */

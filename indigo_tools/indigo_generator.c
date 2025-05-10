@@ -731,7 +731,7 @@ bool parse_property_block(device_type *device, property_type **properties) {
 }
 
 bool parse_device_block(driver_type *driver) {
-	if (!(match(TOKEN_IDENTIFIER, "ccd") || match(TOKEN_IDENTIFIER, "wheel") || match(TOKEN_IDENTIFIER, "focuser") || match(TOKEN_IDENTIFIER, "mount") || match(TOKEN_IDENTIFIER, "guider") || match(TOKEN_IDENTIFIER, "rotator") || match(TOKEN_IDENTIFIER, "gps") || match(TOKEN_IDENTIFIER, "ao") || match(TOKEN_IDENTIFIER, "aux"))) {
+	if (!(match(TOKEN_IDENTIFIER, "ccd") || match(TOKEN_IDENTIFIER, "wheel") || match(TOKEN_IDENTIFIER, "focuser") || match(TOKEN_IDENTIFIER, "mount") || match(TOKEN_IDENTIFIER, "guider") || match(TOKEN_IDENTIFIER, "rotator") || match(TOKEN_IDENTIFIER, "dome") || match(TOKEN_IDENTIFIER, "gps") || match(TOKEN_IDENTIFIER, "ao") || match(TOKEN_IDENTIFIER, "aux"))) {
 		return false;
 	}
 	device_type *device = allocate(sizeof(device_type));
@@ -751,7 +751,7 @@ bool parse_device_block(driver_type *driver) {
 	if (match(TOKEN_LBRACE, NULL)) {
 		debug(-1, "%s {", device->type);
 		while (!match(TOKEN_RBRACE, NULL)) {
-			if (parse_string_attribute("name", device->name, sizeof(device->name))) {
+			if (parse_expression_attribute("name", device->name, sizeof(device->name))) {
 				continue;
 			}
 			if (parse_expression_attribute("interface", device->interface, sizeof(device->interface))) {
@@ -1191,7 +1191,7 @@ void write_c_define_section(void) {
 	write_line("#define %-20s \"indigo_%s_%s\"", "DRIVER_NAME", driver.devices->type, driver.name);
 	write_line("#define %-20s \"%s\"", "DRIVER_LABEL", driver.label);
 	for (device_type *device = driver.devices; device; device = device->next) {
-		write_line("#define %-20s \"%s\"", device->handle, device->name);
+		write_line("#define %-20s %s", device->handle, device->name);
 	}
 	if (driver.libusb) {
 		write_line("#define %-20s 5", "MAX_DEVICES");
@@ -1590,16 +1590,11 @@ void write_c_change_property(device_type *device) {
 		if (property->handle_change) {
 			persistent |= property->persistent;
 			write_line("\t} else if (indigo_property_match_changeable(%s, property)) {", property->handle);
-			write_line("\t\tif (PRIVATE_DATA->%s_timer == NULL) {", property->handler);
 			if (property->preserve_values) {
-				write_line("\t\t\tindigo_property_copy_targets(%s, property, false);", property->handle);
+				write_line("\t\tindigo_copy_targets_process_change(%s, %s, %s_timer);", property->handle, property->handler, property->handler);
 			} else {
-				write_line("\t\t\tindigo_property_copy_values(%s, property, false);", property->handle);
+				write_line("\t\tindigo_copy_values_process_change(%s, %s, %s_timer);", property->handle, property->handler, property->handler);
 			}
-			write_line("\t\t\t%s->state = INDIGO_BUSY_STATE;", property->handle);
-			write_line("\t\t\tindigo_update_property(device, %s, NULL);", property->handle);
-			write_line("\t\t\tindigo_set_timer(device, 0, %s, &PRIVATE_DATA->%s_timer);", property->handler, property->handler);
-			write_line("\t\t}");
 			write_line("\t\treturn INDIGO_OK;");
 		}
 	}
