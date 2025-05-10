@@ -434,7 +434,7 @@ static indigo_result gps_attach(indigo_device *device) {
 }
 
 static indigo_result gps_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	indigo_define_matching_property(GPS_SELECTED_SYSTEM_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(GPS_SELECTED_SYSTEM_PROPERTY);
 	return indigo_gps_enumerate_properties(device, NULL, NULL);
 }
 
@@ -448,12 +448,7 @@ static indigo_result gps_change_property(indigo_device *device, indigo_client *c
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GPS_SELECTED_SYSTEM_PROPERTY, property)) {
-		if (PRIVATE_DATA->gps_selected_system_handler_timer == NULL) {
-			indigo_property_copy_values(GPS_SELECTED_SYSTEM_PROPERTY, property, false);
-			GPS_SELECTED_SYSTEM_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, GPS_SELECTED_SYSTEM_PROPERTY, NULL);
-			indigo_set_timer(device, 0, gps_selected_system_handler, &PRIVATE_DATA->gps_selected_system_handler_timer);
-		}
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(GPS_SELECTED_SYSTEM_PROPERTY, gps_selected_system_handler, gps_selected_system_handler_timer);
 		return INDIGO_OK;
 	}
 	return indigo_gps_change_property(device, client, property);

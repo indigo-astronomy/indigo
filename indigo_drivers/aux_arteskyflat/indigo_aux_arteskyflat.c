@@ -182,8 +182,8 @@ static indigo_result aux_attach(indigo_device *device) {
 
 static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(AUX_LIGHT_SWITCH_PROPERTY);
-		indigo_define_matching_property(AUX_LIGHT_INTENSITY_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_LIGHT_SWITCH_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_LIGHT_INTENSITY_PROPERTY);
 	}
 	return indigo_aux_enumerate_properties(device, NULL, NULL);
 }
@@ -198,20 +198,10 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_LIGHT_SWITCH_PROPERTY, property)) {
-		if (PRIVATE_DATA->aux_light_switch_handler_timer == NULL) {
-			indigo_property_copy_values(AUX_LIGHT_SWITCH_PROPERTY, property, false);
-			AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
-			indigo_set_timer(device, 0, aux_light_switch_handler, &PRIVATE_DATA->aux_light_switch_handler_timer);
-		}
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_LIGHT_SWITCH_PROPERTY, aux_light_switch_handler, aux_light_switch_handler_timer);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_LIGHT_INTENSITY_PROPERTY, property)) {
-		if (PRIVATE_DATA->aux_light_intensity_handler_timer == NULL) {
-			indigo_property_copy_values(AUX_LIGHT_INTENSITY_PROPERTY, property, false);
-			AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
-			indigo_set_timer(device, 0, aux_light_intensity_handler, &PRIVATE_DATA->aux_light_intensity_handler_timer);
-		}
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_LIGHT_INTENSITY_PROPERTY, aux_light_intensity_handler, aux_light_intensity_handler_timer);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {

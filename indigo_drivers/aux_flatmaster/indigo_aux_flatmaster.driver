@@ -55,8 +55,8 @@ driver flatmaster {
 			if (PRIVATE_DATA->handle != NULL) {
 				if (flatmaster_command(device, "#") && !strcmp("OK_FM", PRIVATE_DATA->response)) {
 					if (flatmaster_command(device, "V")) {
-						indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, DRIVER_LABEL);
-						indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response);
+						INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, DRIVER_LABEL);
+						INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response);
 						indigo_update_property(device, INFO_PROPERTY, NULL);
 						return true;
 					}
@@ -69,8 +69,8 @@ driver flatmaster {
 
 		static void flatmaster_close(indigo_device *device) {
 			flatmaster_command(device, "E:0");
-			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 			indigo_uni_close(&PRIVATE_DATA->handle);
 		}
@@ -94,8 +94,8 @@ driver flatmaster {
 		}
 		on_attach {
 			INFO_PROPERTY->count = 6;
-			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		}
 		switch AUX_LIGHT_SWITCH {
 			name = AUX_LIGHT_SWITCH_PROPERTY_NAME;

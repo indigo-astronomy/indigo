@@ -475,9 +475,9 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 	if (client == indigo_agent_alpaca_client) {
 		return INDIGO_OK;
 	}
-	indigo_define_matching_property(AGENT_DISCOVERY_PROPERTY);
-	indigo_define_matching_property(AGENT_DEVICES_PROPERTY);
-	indigo_define_matching_property(AGENT_CAMERA_BAYERPAT_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(AGENT_DISCOVERY_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(AGENT_DEVICES_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(AGENT_CAMERA_BAYERPAT_PROPERTY);
 	return indigo_device_enumerate_properties(device, client, property);
 }
 

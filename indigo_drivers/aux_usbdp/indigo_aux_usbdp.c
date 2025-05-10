@@ -194,7 +194,7 @@ static bool usbdp_open(indigo_device *device) {
 		if (usbdp_command(device, UDP_IDENTIFY_CMD)) {
 			if (!strcmp(PRIVATE_DATA->response, UDP1_IDENTIFY_RESPONSE)) {
 				PRIVATE_DATA->version = 1;
-				indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "USB_Dewpoint v1");
+				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "USB_Dewpoint v1");
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 				// for V1 we need one name only
 				// indigo_delete_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
@@ -210,7 +210,7 @@ static bool usbdp_open(indigo_device *device) {
 				return true;
 			} else if (!strncmp(PRIVATE_DATA->response, UDP2_IDENTIFY_RESPONSE, 4)) {
 				PRIVATE_DATA->version = 2;
-				indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "USB_Dewpoint v2");
+				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "USB_Dewpoint v2");
 				sprintf(INFO_DEVICE_INTERFACE_ITEM->text.value, "%d", INDIGO_INTERFACE_AUX_WEATHER | INDIGO_INTERFACE_AUX_POWERBOX);
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 				return true;
@@ -607,7 +607,7 @@ static indigo_result aux_attach(indigo_device *device) {
 		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
 		//+ aux.on_attach
 		INFO_PROPERTY->count = 5;
-		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+		INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 		//- aux.on_attach
 		AUX_OUTLET_NAMES_PROPERTY = indigo_init_text_property(NULL, device->name, AUX_OUTLET_NAMES_PROPERTY_NAME, SETTINGS_GROUP, "Outlet/Sensor names", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
 		if (AUX_OUTLET_NAMES_PROPERTY == NULL) {
@@ -691,18 +691,18 @@ static indigo_result aux_attach(indigo_device *device) {
 
 static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(AUX_HEATER_OUTLET_PROPERTY);
-		indigo_define_matching_property(AUX_HEATER_OUTLET_STATE_PROPERTY);
-		indigo_define_matching_property(AUX_DEW_CONTROL_PROPERTY);
-		indigo_define_matching_property(AUX_WEATHER_PROPERTY);
-		indigo_define_matching_property(AUX_TEMPERATURE_SENSORS_PROPERTY);
-		indigo_define_matching_property(AUX_CALLIBRATION_PROPERTY);
-		indigo_define_matching_property(AUX_DEW_THRESHOLD_PROPERTY);
-		indigo_define_matching_property(AUX_LINK_CH_2AND3_PROPERTY);
-		indigo_define_matching_property(AUX_HEATER_AGGRESSIVITY_PROPERTY);
-		indigo_define_matching_property(AUX_DEW_WARNING_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_HEATER_OUTLET_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_HEATER_OUTLET_STATE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_DEW_CONTROL_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_WEATHER_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_TEMPERATURE_SENSORS_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_CALLIBRATION_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_DEW_THRESHOLD_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_LINK_CH_2AND3_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_HEATER_AGGRESSIVITY_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_DEW_WARNING_PROPERTY);
 	}
-	indigo_define_matching_property(AUX_OUTLET_NAMES_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(AUX_OUTLET_NAMES_PROPERTY);
 	return indigo_aux_enumerate_properties(device, NULL, NULL);
 }
 
@@ -716,60 +716,25 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_OUTLET_NAMES_PROPERTY, property)) {
-		if (PRIVATE_DATA->aux_outlet_names_handler_timer == NULL) {
-			indigo_property_copy_values(AUX_OUTLET_NAMES_PROPERTY, property, false);
-			AUX_OUTLET_NAMES_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
-			indigo_set_timer(device, 0, aux_outlet_names_handler, &PRIVATE_DATA->aux_outlet_names_handler_timer);
-		}
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_OUTLET_NAMES_PROPERTY, aux_outlet_names_handler, aux_outlet_names_handler_timer);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_HEATER_OUTLET_PROPERTY, property)) {
-		if (PRIVATE_DATA->aux_heater_outlet_handler_timer == NULL) {
-			indigo_property_copy_values(AUX_HEATER_OUTLET_PROPERTY, property, false);
-			AUX_HEATER_OUTLET_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
-			indigo_set_timer(device, 0, aux_heater_outlet_handler, &PRIVATE_DATA->aux_heater_outlet_handler_timer);
-		}
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_HEATER_OUTLET_PROPERTY, aux_heater_outlet_handler, aux_heater_outlet_handler_timer);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_DEW_CONTROL_PROPERTY, property)) {
-		if (PRIVATE_DATA->aux_dew_control_handler_timer == NULL) {
-			indigo_property_copy_values(AUX_DEW_CONTROL_PROPERTY, property, false);
-			AUX_DEW_CONTROL_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
-			indigo_set_timer(device, 0, aux_dew_control_handler, &PRIVATE_DATA->aux_dew_control_handler_timer);
-		}
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_DEW_CONTROL_PROPERTY, aux_dew_control_handler, aux_dew_control_handler_timer);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_CALLIBRATION_PROPERTY, property)) {
-		if (PRIVATE_DATA->aux_callibration_handler_timer == NULL) {
-			indigo_property_copy_values(AUX_CALLIBRATION_PROPERTY, property, false);
-			AUX_CALLIBRATION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, AUX_CALLIBRATION_PROPERTY, NULL);
-			indigo_set_timer(device, 0, aux_callibration_handler, &PRIVATE_DATA->aux_callibration_handler_timer);
-		}
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_CALLIBRATION_PROPERTY, aux_callibration_handler, aux_callibration_handler_timer);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_DEW_THRESHOLD_PROPERTY, property)) {
-		if (PRIVATE_DATA->aux_dew_threshold_handler_timer == NULL) {
-			indigo_property_copy_values(AUX_DEW_THRESHOLD_PROPERTY, property, false);
-			AUX_DEW_THRESHOLD_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, AUX_DEW_THRESHOLD_PROPERTY, NULL);
-			indigo_set_timer(device, 0, aux_dew_threshold_handler, &PRIVATE_DATA->aux_dew_threshold_handler_timer);
-		}
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_DEW_THRESHOLD_PROPERTY, aux_dew_threshold_handler, aux_dew_threshold_handler_timer);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_LINK_CH_2AND3_PROPERTY, property)) {
-		if (PRIVATE_DATA->aux_link_ch_2and3_handler_timer == NULL) {
-			indigo_property_copy_values(AUX_LINK_CH_2AND3_PROPERTY, property, false);
-			AUX_LINK_CH_2AND3_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, AUX_LINK_CH_2AND3_PROPERTY, NULL);
-			indigo_set_timer(device, 0, aux_link_ch_2and3_handler, &PRIVATE_DATA->aux_link_ch_2and3_handler_timer);
-		}
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_LINK_CH_2AND3_PROPERTY, aux_link_ch_2and3_handler, aux_link_ch_2and3_handler_timer);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_HEATER_AGGRESSIVITY_PROPERTY, property)) {
-		if (PRIVATE_DATA->aux_heater_aggressivity_handler_timer == NULL) {
-			indigo_property_copy_values(AUX_HEATER_AGGRESSIVITY_PROPERTY, property, false);
-			AUX_HEATER_AGGRESSIVITY_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, AUX_HEATER_AGGRESSIVITY_PROPERTY, NULL);
-			indigo_set_timer(device, 0, aux_heater_aggressivity_handler, &PRIVATE_DATA->aux_heater_aggressivity_handler_timer);
-		}
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_HEATER_AGGRESSIVITY_PROPERTY, aux_heater_aggressivity_handler, aux_heater_aggressivity_handler_timer);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {

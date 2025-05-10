@@ -122,8 +122,8 @@ typedef struct {
 
 static indigo_result fli_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(FLI_NFLUSHES_PROPERTY);
-		indigo_define_matching_property(FLI_CAMERA_MODE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(FLI_NFLUSHES_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(FLI_CAMERA_MODE_PROPERTY);
 	}
 	return indigo_ccd_enumerate_properties(device, NULL, NULL);
 }

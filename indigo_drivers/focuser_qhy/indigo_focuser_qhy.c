@@ -692,7 +692,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- DEVICE_BAUDRATE
 		DEVICE_BAUDRATE_PROPERTY->hidden = false;
-		indigo_copy_value(DEVICE_BAUDRATE_ITEM->text.value, SERIAL_BAUDRATE);
+		INDIGO_COPY_VALUE(DEVICE_BAUDRATE_ITEM->text.value, SERIAL_BAUDRATE);
 		// --------------------------------------------------------------------------------
 		INFO_PROPERTY->count = 7;
 
@@ -788,8 +788,8 @@ static void focuser_connect_callback(indigo_device *device) {
 					char board[MAX_CMD_LEN] = "N/A";
 					char firmware[MAX_CMD_LEN] = "N/A";
 					if (qhy_get_version(device, firmware, board) == 0) {
-						indigo_copy_value(INFO_DEVICE_HW_REVISION_ITEM->text.value, board);
-						indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware);
+						INDIGO_COPY_VALUE(INFO_DEVICE_HW_REVISION_ITEM->text.value, board);
+						INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware);
 						indigo_update_property(device, INFO_PROPERTY, NULL);
 					}
 

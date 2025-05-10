@@ -99,8 +99,8 @@ static void wheel_connect_callback(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			if (X_MODEL_3_ITEM->sw.value) {
 				char reply[8];
-				indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "QHY CFW3");
-				indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "N/A");
+				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "QHY CFW3");
+				INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "N/A");
 				bool result = qhy_command(device, "VRS", INFO_DEVICE_FW_REVISION_ITEM->text.value, 8, 1);
 				if (!result) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed, retrying...");
@@ -120,8 +120,8 @@ static void wheel_connect_callback(indigo_device *device) {
 				}
 			}
 			if (X_MODEL_2_ITEM->sw.value) {
-				indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "QHY CFW2");
-				indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "N/A");
+				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "QHY CFW2");
+				INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "N/A");
 				if (!qhy_command(device, "0", NULL, 0, 0)) {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
@@ -129,8 +129,8 @@ static void wheel_connect_callback(indigo_device *device) {
 				WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->current_slot = 1;
 			}
 			if (X_MODEL_1_ITEM->sw.value) {
-				indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "QHY CFW1");
-				indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "N/A");
+				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "QHY CFW1");
+				INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "N/A");
 				if (!qhy_command(device, "0", NULL, 0, 0)) {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
@@ -198,7 +198,7 @@ static indigo_result wheel_attach(indigo_device *device) {
 }
 
 static indigo_result wheel_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	indigo_define_matching_property(X_MODEL_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(X_MODEL_PROPERTY);
 	return indigo_wheel_enumerate_properties(device, NULL, NULL);
 }
 

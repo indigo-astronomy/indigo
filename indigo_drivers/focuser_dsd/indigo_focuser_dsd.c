@@ -599,10 +599,10 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 
 static indigo_result dsd_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(DSD_STEP_MODE_PROPERTY);
-		indigo_define_matching_property(DSD_COILS_MODE_PROPERTY);
-		indigo_define_matching_property(DSD_CURRENT_CONTROL_PROPERTY);
-		indigo_define_matching_property(DSD_TIMINGS_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(DSD_STEP_MODE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(DSD_COILS_MODE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(DSD_CURRENT_CONTROL_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(DSD_TIMINGS_PROPERTY);
 	}
 	indigo_define_property(device, DSD_MODEL_HINT_PROPERTY, NULL);
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
@@ -621,7 +621,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- DEVICE_BAUDRATE
 		DEVICE_BAUDRATE_PROPERTY->hidden = false;
-		indigo_copy_value(DEVICE_BAUDRATE_ITEM->text.value, DSD_AF1_AF2_BAUDRATE);
+		INDIGO_COPY_VALUE(DEVICE_BAUDRATE_ITEM->text.value, DSD_AF1_AF2_BAUDRATE);
 		// --------------------------------------------------------------------------------
 		INFO_PROPERTY->count = 6;
 
@@ -820,8 +820,8 @@ static void focuser_connect_callback(indigo_device *device) {
 					char firmware[DSD_CMD_LEN] = "N/A";
 					uint32_t value;
 					if (dsd_get_info(device, board, firmware)) {
-						indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, board);
-						indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware);
+						INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, board);
+						INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware);
 						indigo_update_property(device, INFO_PROPERTY, NULL);
 						if (strstr(board, "AF1")) {
 							PRIVATE_DATA->focuser_version = 1;
@@ -848,8 +848,8 @@ static void focuser_connect_callback(indigo_device *device) {
 						/* Current mulipliers in AF 3 are in range 1-100 */
 						DSD_CURRENT_CONTROL_MOVE_ITEM->number.min = 1.0;
 						DSD_CURRENT_CONTROL_HOLD_ITEM->number.min = 1.0;
-						indigo_copy_value(DSD_CURRENT_CONTROL_MOVE_ITEM->label, "Move current multiplier (%)");
-						indigo_copy_value(DSD_CURRENT_CONTROL_HOLD_ITEM->label, "Hold current multiplier (%)");
+						INDIGO_COPY_VALUE(DSD_CURRENT_CONTROL_MOVE_ITEM->label, "Move current multiplier (%)");
+						INDIGO_COPY_VALUE(DSD_CURRENT_CONTROL_HOLD_ITEM->label, "Hold current multiplier (%)");
 					}
 
 					dsd_get_position(device, &position);
@@ -985,9 +985,9 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_property_copy_values(DSD_MODEL_HINT_PROPERTY, property, false);
 		DSD_MODEL_HINT_PROPERTY->state = INDIGO_OK_STATE;
 		if (DSD_MODEL_AF3_ITEM->sw.value) {
-			indigo_copy_value(DEVICE_BAUDRATE_ITEM->text.value, DSD_AF3_BAUDRATE);
+			INDIGO_COPY_VALUE(DEVICE_BAUDRATE_ITEM->text.value, DSD_AF3_BAUDRATE);
 		} else {
-			indigo_copy_value(DEVICE_BAUDRATE_ITEM->text.value, DSD_AF1_AF2_BAUDRATE);
+			INDIGO_COPY_VALUE(DEVICE_BAUDRATE_ITEM->text.value, DSD_AF1_AF2_BAUDRATE);
 		}
 		indigo_update_property(device, DEVICE_BAUDRATE_PROPERTY, NULL);
 		indigo_update_property(device, DSD_MODEL_HINT_PROPERTY, NULL);

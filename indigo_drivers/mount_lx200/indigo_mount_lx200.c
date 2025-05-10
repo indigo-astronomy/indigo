@@ -1241,13 +1241,13 @@ static void meade_init_meade_mount(indigo_device *device) {
 		if (sep != NULL) {
 			*sep = 0;
 		}
-		indigo_copy_value(MOUNT_INFO_MODEL_ITEM->text.value, response);
+		INDIGO_COPY_VALUE(MOUNT_INFO_MODEL_ITEM->text.value, response);
 	} else {
-		indigo_copy_value(MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product);
+		INDIGO_COPY_VALUE(MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product);
 	}
 	if (meade_command(device, ":GVN#", response, sizeof(response), 0)) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Firmware: %s", response);
-		indigo_copy_value(MOUNT_INFO_FIRMWARE_ITEM->text.value, response);
+		INDIGO_COPY_VALUE(MOUNT_INFO_FIRMWARE_ITEM->text.value, response);
 	}
 	if (meade_command(device, ":GW#", response, sizeof(response), 0)) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Status: %s", response);
@@ -1290,7 +1290,7 @@ static void meade_init_10microns_mount(indigo_device *device) {
 	FORCE_FLIP_PROPERTY->hidden = true;
 	MOUNT_PARK_PROPERTY->count = 2;
 	strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "10Micron");
-	indigo_copy_value(MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product);
+	INDIGO_COPY_VALUE(MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product);
 	strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, "N/A");
 	indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
 	indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
@@ -1309,7 +1309,7 @@ static void meade_init_gemini_mount(indigo_device *device) {
 	FORCE_FLIP_PROPERTY->hidden = true;
 	MOUNT_PARK_PROPERTY->count = 2;
 	strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Losmandy");
-	indigo_copy_value(MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product);
+	INDIGO_COPY_VALUE(MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product);
 	strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, "N/A");
 	indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
 	indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
@@ -1408,7 +1408,7 @@ static void meade_init_onstep_mount(indigo_device *device) {
 	strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "On-Step");
 	if (meade_command(device, ":GVN#", response, sizeof(response), 0)) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Firmware: %s", response);
-		indigo_copy_value(MOUNT_INFO_FIRMWARE_ITEM->text.value, response);
+		INDIGO_COPY_VALUE(MOUNT_INFO_FIRMWARE_ITEM->text.value, response);
 	}
 	if (meade_command(device, ":$QZ?#", response, sizeof(response), 0)) {
 		indigo_set_switch(MOUNT_PEC_PROPERTY, response[0] == 'P' ? MOUNT_PEC_ENABLED_ITEM : MOUNT_PEC_DISABLED_ITEM, true);
@@ -1547,11 +1547,11 @@ static void meade_init_nyx_mount(indigo_device *device) {
 	strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "PegasusAstro");
 	if (meade_command(device, ":GVN#", response, sizeof(response), 0)) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Firmware: %s", response);
-		indigo_copy_value(MOUNT_INFO_FIRMWARE_ITEM->text.value, response);
+		INDIGO_COPY_VALUE(MOUNT_INFO_FIRMWARE_ITEM->text.value, response);
 	}
 	if (meade_command(device, ":GVP#", response, sizeof(response), 0)) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Model: %s", response);
-		indigo_copy_value(MOUNT_INFO_MODEL_ITEM->text.value, response);
+		INDIGO_COPY_VALUE(MOUNT_INFO_MODEL_ITEM->text.value, response);
 	}
 	if (!meade_command(device, ":SXEM,1#", response, sizeof(response), 0) || *response != '1') {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can't set EQ mode");
@@ -1607,10 +1607,10 @@ static void meade_init_oat_mount(indigo_device *device) {
 	MOUNT_MODE_PROPERTY->hidden = true;
 	FORCE_FLIP_PROPERTY->hidden = true;
 	strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "OpenAstroTech");
-	indigo_copy_value(MOUNT_INFO_MODEL_ITEM->text.value, "N/A");
+	INDIGO_COPY_VALUE(MOUNT_INFO_MODEL_ITEM->text.value, "N/A");
 	if (meade_command(device, ":GVN#", response, sizeof(response), 0)) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Firmware: %s", response);
-		indigo_copy_value(MOUNT_INFO_FIRMWARE_ITEM->text.value, response);
+		INDIGO_COPY_VALUE(MOUNT_INFO_FIRMWARE_ITEM->text.value, response);
 	}
 	PRIVATE_DATA->use_dst_commands = false;
 	meade_update_site_items(device);
@@ -1640,7 +1640,7 @@ static void meade_init_teenastro_mount(indigo_device *device) {
 	strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "TeenAstro");
 	if (meade_command(device, ":GVN#", response, sizeof(response), 0)) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Firmware: %s", response);
-		indigo_copy_value(MOUNT_INFO_FIRMWARE_ITEM->text.value, response);
+		INDIGO_COPY_VALUE(MOUNT_INFO_FIRMWARE_ITEM->text.value, response);
 	}
 
 	time_t secs = time(NULL);
@@ -2932,14 +2932,14 @@ static indigo_result mount_attach(indigo_device *device) {
 }
 
 static indigo_result mount_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	indigo_define_matching_property(MOUNT_TYPE_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_TYPE_PROPERTY);
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(MOUNT_MODE_PROPERTY);
-		indigo_define_matching_property(FORCE_FLIP_PROPERTY);
-		indigo_define_matching_property(ZWO_BUZZER_PROPERTY);
-		indigo_define_matching_property(NYX_WIFI_AP_PROPERTY);
-		indigo_define_matching_property(NYX_WIFI_CL_PROPERTY);
-		indigo_define_matching_property(NYX_WIFI_RESET_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_MODE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(FORCE_FLIP_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(ZWO_BUZZER_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(NYX_WIFI_AP_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(NYX_WIFI_CL_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(NYX_WIFI_RESET_PROPERTY);
 		if (indigo_property_match(NYX_LEVELER_PROPERTY, property))
 			indigo_define_property(device, NYX_WIFI_RESET_PROPERTY, NULL);
 	}
@@ -3493,8 +3493,8 @@ static indigo_result aux_attach(indigo_device *device) {
 
 static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(AUX_WEATHER_PROPERTY);
-		indigo_define_matching_property(AUX_INFO_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_WEATHER_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_INFO_PROPERTY);
 	}
 	return indigo_aux_enumerate_properties(device, NULL, NULL);
 }

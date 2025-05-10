@@ -1244,8 +1244,8 @@ static indigo_result mount_attach(indigo_device *device) {
 
 static indigo_result mount_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(TIMEZONE_PROPERTY);
-		indigo_define_matching_property(RESET_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(TIMEZONE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(RESET_PROPERTY);
 	}
 	return indigo_mount_enumerate_properties(device, NULL, NULL);
 }
@@ -1259,11 +1259,11 @@ static void mount_connect_callback(indigo_device *device) {
 		}
 		if (result) {
 			// MOUNT_INFO
-			indigo_copy_value(MOUNT_INFO_VENDOR_ITEM->text.value, "Vixen");
-			indigo_copy_value(MOUNT_INFO_MODEL_ITEM->text.value, "StarBook");
+			INDIGO_COPY_VALUE(MOUNT_INFO_VENDOR_ITEM->text.value, "Vixen");
+			INDIGO_COPY_VALUE(MOUNT_INFO_MODEL_ITEM->text.value, "StarBook");
 			char temp[128];
 			sprintf(temp, "v%.02f", PRIVATE_DATA->version);
-			indigo_copy_value(MOUNT_INFO_FIRMWARE_ITEM->text.value, temp);
+			INDIGO_COPY_VALUE(MOUNT_INFO_FIRMWARE_ITEM->text.value, temp);
 			// MOUNT_TRACKING
 			MOUNT_TRACKING_PROPERTY->perm = INDIGO_RO_PERM;
 			int track_state = 0;

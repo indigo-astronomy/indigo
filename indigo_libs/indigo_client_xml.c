@@ -56,7 +56,7 @@ indigo_device *indigo_xml_client_adapter(char *name, char *url_prefix, indigo_un
 	indigo_adapter_context *device_context = indigo_safe_malloc(sizeof(indigo_adapter_context));
 	device_context->input = input;
 	device_context->output = output;
-	indigo_copy_name(device_context->url_prefix, url_prefix);
+	INDIGO_COPY_NAME(device_context->url_prefix, url_prefix);
 	device->device_context = device_context;
 	return device;
 }

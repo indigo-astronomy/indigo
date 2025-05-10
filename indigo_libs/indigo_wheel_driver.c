@@ -82,9 +82,9 @@ indigo_result indigo_wheel_enumerate_properties(indigo_device *device, indigo_cl
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(WHEEL_SLOT_PROPERTY);
-		indigo_define_matching_property(WHEEL_SLOT_NAME_PROPERTY);
-		indigo_define_matching_property(WHEEL_SLOT_OFFSET_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(WHEEL_SLOT_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(WHEEL_SLOT_NAME_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(WHEEL_SLOT_OFFSET_PROPERTY);
 	}
 	return indigo_device_enumerate_properties(device, client, property);
 }

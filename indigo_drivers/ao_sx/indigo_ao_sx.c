@@ -85,8 +85,8 @@ static bool sx_open(indigo_device *device) {
 	if (PRIVATE_DATA->handle != NULL) {
 		if (sx_command(device, "X", 1) && PRIVATE_DATA->response[0] == 'Y') {
 			if (sx_command(device, "V", 4) && PRIVATE_DATA->response[0] == 'V') {
-				indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, DRIVER_LABEL);
-				indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 1);
+				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, DRIVER_LABEL);
+				INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 1);
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 				return true;
 			}
@@ -97,8 +97,8 @@ static bool sx_open(indigo_device *device) {
 }
 
 static void sx_close(indigo_device *device) {
-	indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-	indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+	INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+	INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 	indigo_update_property(device, INFO_PROPERTY, NULL);
 	indigo_uni_close(&PRIVATE_DATA->handle);
 }
@@ -225,8 +225,8 @@ static indigo_result ao_attach(indigo_device *device) {
 		//+ ao.on_attach
 		AO_GUIDE_NORTH_ITEM->number.max = AO_GUIDE_SOUTH_ITEM->number.max = AO_GUIDE_EAST_ITEM->number.max = AO_GUIDE_WEST_ITEM->number.max = 50;
 		INFO_PROPERTY->count = 6;
-		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+		INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+		INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		//- ao.on_attach
 		AO_GUIDE_DEC_PROPERTY->hidden = false;
 		AO_GUIDE_RA_PROPERTY->hidden = false;
@@ -252,28 +252,13 @@ static indigo_result ao_change_property(indigo_device *device, indigo_client *cl
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AO_GUIDE_DEC_PROPERTY, property)) {
-		if (PRIVATE_DATA->ao_guide_dec_handler_timer == NULL) {
-			indigo_property_copy_values(AO_GUIDE_DEC_PROPERTY, property, false);
-			AO_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, AO_GUIDE_DEC_PROPERTY, NULL);
-			indigo_set_timer(device, 0, ao_guide_dec_handler, &PRIVATE_DATA->ao_guide_dec_handler_timer);
-		}
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(AO_GUIDE_DEC_PROPERTY, ao_guide_dec_handler, ao_guide_dec_handler_timer);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AO_GUIDE_RA_PROPERTY, property)) {
-		if (PRIVATE_DATA->ao_guide_ra_handler_timer == NULL) {
-			indigo_property_copy_values(AO_GUIDE_RA_PROPERTY, property, false);
-			AO_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, AO_GUIDE_RA_PROPERTY, NULL);
-			indigo_set_timer(device, 0, ao_guide_ra_handler, &PRIVATE_DATA->ao_guide_ra_handler_timer);
-		}
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(AO_GUIDE_RA_PROPERTY, ao_guide_ra_handler, ao_guide_ra_handler_timer);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AO_RESET_PROPERTY, property)) {
-		if (PRIVATE_DATA->ao_reset_handler_timer == NULL) {
-			indigo_property_copy_values(AO_RESET_PROPERTY, property, false);
-			AO_RESET_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, AO_RESET_PROPERTY, NULL);
-			indigo_set_timer(device, 0, ao_reset_handler, &PRIVATE_DATA->ao_reset_handler_timer);
-		}
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(AO_RESET_PROPERTY, ao_reset_handler, ao_reset_handler_timer);
 		return INDIGO_OK;
 	}
 	return indigo_ao_change_property(device, client, property);
@@ -389,20 +374,10 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_DEC_PROPERTY, property)) {
-		if (PRIVATE_DATA->guider_guide_dec_handler_timer == NULL) {
-			indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
-			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
-			indigo_set_timer(device, 0, guider_guide_dec_handler, &PRIVATE_DATA->guider_guide_dec_handler_timer);
-		}
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(GUIDER_GUIDE_DEC_PROPERTY, guider_guide_dec_handler, guider_guide_dec_handler_timer);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_RA_PROPERTY, property)) {
-		if (PRIVATE_DATA->guider_guide_ra_handler_timer == NULL) {
-			indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
-			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
-			indigo_set_timer(device, 0, guider_guide_ra_handler, &PRIVATE_DATA->guider_guide_ra_handler_timer);
-		}
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(GUIDER_GUIDE_RA_PROPERTY, guider_guide_ra_handler, guider_guide_ra_handler_timer);
 		return INDIGO_OK;
 	}
 	return indigo_guider_change_property(device, client, property);

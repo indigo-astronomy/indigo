@@ -526,7 +526,7 @@ static void dome_timer_callback(indigo_device *device) {
 
 static indigo_result baader_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(X_EMERGENCY_CLOSE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_EMERGENCY_CLOSE_PROPERTY);
 	}
 	return indigo_dome_enumerate_properties(device, NULL, NULL);
 }
@@ -540,7 +540,7 @@ static indigo_result dome_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- DOME_SPEED
 		DOME_SPEED_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- DOME_STEPS_PROPERTY
-		indigo_copy_value(DOME_STEPS_ITEM->label, "Relative move (°)");
+		INDIGO_COPY_VALUE(DOME_STEPS_ITEM->label, "Relative move (°)");
 		// -------------------------------------------------------------------------------- DEVICE_PORT
 		DEVICE_PORT_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
@@ -617,7 +617,7 @@ static void dome_connect_callback(indigo_device *device) {
 					indigo_update_property(device, CONNECTION_PROPERTY, "Baader dome did not respond");
 					return;
 				} else { // Successfully connected
-					indigo_copy_value(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, serial_number);
+					INDIGO_COPY_VALUE(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, serial_number);
 					indigo_update_property(device, INFO_PROPERTY, NULL);
 					INDIGO_DRIVER_LOG(DRIVER_NAME, "%s with serial No.%s connected", INFO_DEVICE_MODEL_ITEM->text.value, serial_number);
 

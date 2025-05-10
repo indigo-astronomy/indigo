@@ -68,8 +68,8 @@ driver fbc {
 							fbc_command(device, ": E 0 #", false);
 							fbc_command(device, ": F 0 #", false);
 							if (fbc_command(device, ": V #", true)) {
-								indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, DRIVER_LABEL);
-								indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 2);
+								INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, DRIVER_LABEL);
+								INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 2);
 								indigo_update_property(device, INFO_PROPERTY, NULL);
 								return true;
 							}
@@ -86,8 +86,8 @@ driver fbc {
 		static void fbc_close(indigo_device *device) {
 			fbc_command(device, ": E 0 #", false);
 			fbc_command(device, ": F 0 #", false);
-			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 			indigo_uni_close(&PRIVATE_DATA->handle);
 		}
@@ -101,8 +101,8 @@ driver fbc {
 		}
 		on_attach {
 			INFO_PROPERTY->count = 6;
-			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		}
 		switch AUX_LIGHT_SWITCH {
 			name = AUX_LIGHT_SWITCH_PROPERTY_NAME;

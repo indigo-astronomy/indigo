@@ -271,14 +271,14 @@ static void temperature_timer_callback(indigo_device *device) {
 
 static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(BEEP_ON_POWER_UP_PROPERTY);
-		indigo_define_matching_property(BEEP_ON_MOVE_PROPERTY);
-		indigo_define_matching_property(BACKLASH_DIRECTION_PROPERTY);
-		indigo_define_matching_property(CUSTOM_SUFFIX_PROPERTY);
-		indigo_define_matching_property(BLUETOOTH_PROPERTY);
-		indigo_define_matching_property(BLUETOOTH_NAME_PROPERTY);
-		indigo_define_matching_property(FACTORY_RESET_PROPERTY);
-		indigo_define_matching_property(FOCUSER_TEMPERATURE_BOARD_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(BEEP_ON_POWER_UP_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(BEEP_ON_MOVE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(BACKLASH_DIRECTION_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(CUSTOM_SUFFIX_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(BLUETOOTH_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(BLUETOOTH_NAME_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(FACTORY_RESET_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(FOCUSER_TEMPERATURE_BOARD_PROPERTY);
 	}
 
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
@@ -291,10 +291,10 @@ static indigo_result focuser_attach(indigo_device *device) {
 	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		INFO_PROPERTY->count = 7;
 
-		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->model);
-		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->firmware_version);
-		indigo_copy_value(INFO_DEVICE_HW_REVISION_ITEM->text.value, PRIVATE_DATA->sdk_version);
-		indigo_copy_value(INFO_DEVICE_HW_REVISION_ITEM->label, "SDK version");
+		INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->model);
+		INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->firmware_version);
+		INDIGO_COPY_VALUE(INFO_DEVICE_HW_REVISION_ITEM->text.value, PRIVATE_DATA->sdk_version);
+		INDIGO_COPY_VALUE(INFO_DEVICE_HW_REVISION_ITEM->label, "SDK version");
 
 		FOCUSER_LIMITS_PROPERTY->hidden = false;
 		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min = 0;
@@ -393,7 +393,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_TEMPERATURE_BOARD_PROPERTY = indigo_init_number_property(NULL, device->name, FOCUSER_TEMPERATURE_BOARD_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Temperature 1 (Board)", INDIGO_OK_STATE, INDIGO_RO_PERM, 1);
 		FOCUSER_TEMPERATURE_BOARD_PROPERTY->hidden = false;
 		indigo_init_number_item(FOCUSER_TEMPERATURE_BOARD_ITEM, "Internal Temp.", "Temperature (°C)", -50, 50, 1, 0);
-		indigo_copy_value(FOCUSER_TEMPERATURE_PROPERTY->label, "Temperature 2 (Ambient)");
+		INDIGO_COPY_VALUE(FOCUSER_TEMPERATURE_PROPERTY->label, "Temperature 2 (Ambient)");
 
 		return focuser_enumerate_properties(device, NULL, NULL);
 	}

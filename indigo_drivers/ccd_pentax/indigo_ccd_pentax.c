@@ -1011,10 +1011,10 @@ static indigo_result ccd_attach(indigo_device *device) {
 
 static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(DSLR_PROGRAM_PROPERTY);
-		indigo_define_matching_property(DSLR_APERTURE_PROPERTY);
-		indigo_define_matching_property(DSLR_SHUTTER_PROPERTY);
-		indigo_define_matching_property(DSLR_ISO_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(DSLR_PROGRAM_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(DSLR_APERTURE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(DSLR_SHUTTER_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(DSLR_ISO_PROPERTY);
 	}
 	return indigo_ccd_enumerate_properties(device, client, property);
 }

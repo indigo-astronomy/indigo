@@ -115,7 +115,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
 		// -------------------------------------------------------------------------------- INFO
 		INFO_PROPERTY->count = 6;
-		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Undefined");
+		INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Undefined");
 		// -------------------------------------------------------------------------------- FOCUSER_REVERSE_MOTION
 		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- FOCUSER_TEMPERATURE
@@ -142,9 +142,9 @@ static indigo_result focuser_attach(indigo_device *device) {
 
 static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(X_FOCUSER_MOTOR_TYPE_PROPERTY);
-		indigo_define_matching_property(X_FOCUSER_ENCODER_PROPERTY);
-		indigo_define_matching_property(X_FOCUSER_LED_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_FOCUSER_MOTOR_TYPE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_FOCUSER_ENCODER_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_FOCUSER_LED_PROPERTY);
 	}
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
 }
@@ -210,10 +210,10 @@ static void focuser_connection_handler(indigo_device *device) {
 		if (PRIVATE_DATA->handle != NULL) {
 			if (dmfc_command(device, "A", response, sizeof(response)) && !strncmp(response, "OK_", 3)) {
 				char *pnt, *token = strtok_r(response, ":", &pnt);
-				indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, token + 3);
+				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, token + 3);
 				token = strtok_r(NULL, ":", &pnt); // status
 				if (token) { // version
-					indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, token);
+					INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, token);
 				}
 				token = strtok_r(NULL, ":", &pnt);
 				if (token) { // motor
@@ -275,7 +275,7 @@ static void focuser_connection_handler(indigo_device *device) {
 			indigo_delete_property(device, X_FOCUSER_MOTOR_TYPE_PROPERTY, NULL);
 			indigo_delete_property(device, X_FOCUSER_ENCODER_PROPERTY, NULL);
 			indigo_delete_property(device, X_FOCUSER_LED_PROPERTY, NULL);
-			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Undefined");
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Undefined");
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
 			indigo_uni_close(&PRIVATE_DATA->handle);

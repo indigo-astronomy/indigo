@@ -348,11 +348,11 @@ static void data_refresh_callback(indigo_device *gdevice) {
 				AUX_WEATHER_PROPERTY->state = INDIGO_OK_STATE;
 				update_property_if_connected(device, AUX_WEATHER_PROPERTY, NULL);
 				if (PRIVATE_DATA->firmware[0] == '\0') {
-					indigo_copy_value(PRIVATE_DATA->firmware, tokens[17]);
-					indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->firmware);
+					INDIGO_COPY_VALUE(PRIVATE_DATA->firmware, tokens[17]);
+					INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->firmware);
 					indigo_update_property(device, INFO_PROPERTY, NULL);
 					device = gps;
-					indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->firmware);
+					INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->firmware);
 					indigo_update_property(device, INFO_PROPERTY, NULL);
 					device = aux_weather;
 				}
@@ -396,11 +396,11 @@ static void data_refresh_callback(indigo_device *gdevice) {
 				char device_type[INDIGO_VALUE_SIZE];
 				if (sscanf(tokens[0], "LOG: Device Type: %s", device_type) == 1) {
 					if (PRIVATE_DATA->device_type[0] == '\0') {
-						indigo_copy_value(PRIVATE_DATA->device_type, device_type);
-						indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->device_type);
+						INDIGO_COPY_VALUE(PRIVATE_DATA->device_type, device_type);
+						INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->device_type);
 						indigo_update_property(device, INFO_PROPERTY, NULL);
 						device = gps;
-						indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->device_type);
+						INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->device_type);
 						indigo_update_property(device, INFO_PROPERTY, NULL);
 						device = aux_weather;
 					}
@@ -501,8 +501,8 @@ static void mg_reset_gps(indigo_device *device) {
 
 static indigo_result gps_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(X_SEND_GPS_MOUNT_PROPERTY);
-		indigo_define_matching_property(X_REBOOT_GPS_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_SEND_GPS_MOUNT_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_REBOOT_GPS_PROPERTY);
 
 	}
 	return indigo_gps_enumerate_properties(device, NULL, NULL);
@@ -518,7 +518,7 @@ static indigo_result gps_attach(indigo_device *device) {
 		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
 		DEVICE_BAUDRATE_PROPERTY->hidden = false;
 		GPS_ADVANCED_PROPERTY->hidden = false;
-		indigo_copy_value(DEVICE_BAUDRATE_ITEM->text.value, DEFAULT_BAUDRATE);
+		INDIGO_COPY_VALUE(DEVICE_BAUDRATE_ITEM->text.value, DEFAULT_BAUDRATE);
 		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->hidden = false;
 		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->count = 3;
 		GPS_UTC_TIME_PROPERTY->hidden = false;
@@ -527,7 +527,7 @@ static indigo_result gps_attach(indigo_device *device) {
 		//#ifdef INDIGO_LINUX
 		//for (int i = 0; i < DEVICE_PORTS_PROPERTY->count; i++) {
 		//	if (strstr(DEVICE_PORTS_PROPERTY->items[i].name, "ttyGPS")) {
-		//		indigo_copy_value(DEVICE_PORT_ITEM->text.value, DEVICE_PORTS_PROPERTY->items[i].name);
+		//		INDIGO_COPY_VALUE(DEVICE_PORT_ITEM->text.value, DEVICE_PORTS_PROPERTY->items[i].name);
 		//		break;
 		//	}
 		//}
@@ -567,10 +567,10 @@ static void gps_connect_callback(indigo_device *device) {
 				GPS_UTC_TIME_PROPERTY->state = INDIGO_BUSY_STATE;
 				sprintf(GPS_UTC_ITEM->text.value, "0000-00-00T00:00:00.00");
 				if (PRIVATE_DATA->device_type[0] != '\0') {
-					indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->device_type);
+					INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->device_type);
 				}
 				if (PRIVATE_DATA->firmware[0] != '\0') {
-					indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->firmware);
+					INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->firmware);
 				}
 				if (!strchr(PRIVATE_DATA->device_type, 'G')) {
 					char message[INDIGO_VALUE_SIZE];
@@ -713,7 +713,7 @@ static int aux_init_properties(indigo_device *device) {
 	DEVICE_PORTS_PROPERTY->hidden = false;
 	// -------------------------------------------------------------------------------- DEVICE_BAUDRATE
 	DEVICE_BAUDRATE_PROPERTY->hidden = false;
-	indigo_copy_value(DEVICE_BAUDRATE_ITEM->text.value, DEFAULT_BAUDRATE);
+	INDIGO_COPY_VALUE(DEVICE_BAUDRATE_ITEM->text.value, DEFAULT_BAUDRATE);
 	// --------------------------------------------------------------------------------
 	INFO_PROPERTY->count = 6;
 	// -------------------------------------------------------------------------------- GPIO OUTLETS
@@ -760,13 +760,13 @@ static int aux_init_properties(indigo_device *device) {
 		return INDIGO_FAILED;
 	}
 	indigo_init_number_item(AUX_WEATHER_TEMPERATURE_ITEM, AUX_WEATHER_TEMPERATURE_ITEM_NAME, "Ambient temperature (°C)", -200, 80, 0, 0);
-	indigo_copy_value(AUX_WEATHER_TEMPERATURE_ITEM->number.format, "%.1f");
+	INDIGO_COPY_VALUE(AUX_WEATHER_TEMPERATURE_ITEM->number.format, "%.1f");
 	indigo_init_number_item(AUX_WEATHER_DEWPOINT_ITEM, AUX_WEATHER_DEWPOINT_ITEM_NAME, "Dewpoint (°C)", -200, 80, 1, 0);
-	indigo_copy_value(AUX_WEATHER_DEWPOINT_ITEM->number.format, "%.1f");
+	INDIGO_COPY_VALUE(AUX_WEATHER_DEWPOINT_ITEM->number.format, "%.1f");
 	indigo_init_number_item(AUX_WEATHER_HUMIDITY_ITEM, AUX_WEATHER_HUMIDITY_ITEM_NAME, "Relative humidity (%)", 0, 100, 0, 0);
-	indigo_copy_value(AUX_WEATHER_HUMIDITY_ITEM->number.format, "%.1f");
+	INDIGO_COPY_VALUE(AUX_WEATHER_HUMIDITY_ITEM->number.format, "%.1f");
 	indigo_init_number_item(AUX_WEATHER_PRESSURE_ITEM, AUX_WEATHER_PRESSURE_ITEM_NAME, "Atmospheric Pressure (hPa)", 0, 10000, 0, 0);
-	indigo_copy_value(AUX_WEATHER_PRESSURE_ITEM->number.format, "%.2f");
+	INDIGO_COPY_VALUE(AUX_WEATHER_PRESSURE_ITEM->number.format, "%.2f");
 	//--------------------------------------------------------------------------- X_SEND_WEATHER_MOUNT
 	X_SEND_WEATHER_MOUNT_PROPERTY = indigo_init_switch_property(NULL, device->name, X_SEND_WEATHER_MOUNT_PROPERTY_NAME, SETTINGS_GROUP, "Send weather data to mount", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 	if (X_SEND_WEATHER_MOUNT_PROPERTY == NULL) {
@@ -786,16 +786,16 @@ static int aux_init_properties(indigo_device *device) {
 
 static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(AUX_GPIO_OUTLET_PROPERTY);
-		indigo_define_matching_property(AUX_OUTLET_PULSE_LENGTHS_PROPERTY);
-		indigo_define_matching_property(AUX_WEATHER_PROPERTY);
-		indigo_define_matching_property(AUX_DEW_WARNING_PROPERTY);
-		indigo_define_matching_property(X_CALIBRATION_PROPERTY);
-		indigo_define_matching_property(X_SEND_WEATHER_MOUNT_PROPERTY);
-		indigo_define_matching_property(X_REBOOT_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_GPIO_OUTLET_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_OUTLET_PULSE_LENGTHS_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_WEATHER_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_DEW_WARNING_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_CALIBRATION_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_SEND_WEATHER_MOUNT_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_REBOOT_PROPERTY);
 	}
-	indigo_define_matching_property(AUX_OUTLET_NAMES_PROPERTY);
-	indigo_define_matching_property(AUX_DEW_THRESHOLD_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(AUX_OUTLET_NAMES_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(AUX_DEW_THRESHOLD_PROPERTY);
 
 	return indigo_aux_enumerate_properties(device, NULL, NULL);
 }
@@ -823,10 +823,10 @@ static void handle_aux_connect_property(indigo_device *device) {
 		if (!device->is_connected) {
 			if (mgbox_open(device)) {
 				if (PRIVATE_DATA->device_type[0] != '\0') {
-					indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->device_type);
+					INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->device_type);
 				}
 				if (PRIVATE_DATA->firmware[0] != '\0') {
-					indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->firmware);
+					INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->firmware);
 				}
 				// request callibration data at connect
 				mg_send_command(PRIVATE_DATA->handle, ":calget*");

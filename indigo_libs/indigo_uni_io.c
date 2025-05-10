@@ -811,7 +811,7 @@ indigo_uni_handle *indigo_uni_open_url(const char *url, int default_port, indigo
 		host_name[colon - host] = 0;
 		port = atoi(colon + 1);
 	} else {
-		indigo_copy_name(host_name, host);
+		INDIGO_COPY_NAME(host_name, host);
 	}
 	switch (protocol_hint) {
 		case INDIGO_TCP_HANDLE:

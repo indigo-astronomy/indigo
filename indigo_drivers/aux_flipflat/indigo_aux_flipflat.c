@@ -106,36 +106,36 @@ static bool flipflat_open(indigo_device *device) {
 				case 10:
 					AUX_LIGHT_SWITCH_PROPERTY->hidden = AUX_LIGHT_INTENSITY_PROPERTY->hidden = false;
 					AUX_COVER_PROPERTY->hidden = true;
-					indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Flat-Man_XL");
+					INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Flat-Man_XL");
 					break;
 				case 15:
 					AUX_LIGHT_SWITCH_PROPERTY->hidden = AUX_LIGHT_INTENSITY_PROPERTY->hidden = false;
 					AUX_COVER_PROPERTY->hidden = true;
-					indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Flat-Man_L");
+					INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Flat-Man_L");
 					break;
 				case 19:
 					AUX_LIGHT_SWITCH_PROPERTY->hidden = AUX_LIGHT_INTENSITY_PROPERTY->hidden = false;
 					AUX_COVER_PROPERTY->hidden = true;
-					indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Flat-Man");
+					INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Flat-Man");
 					break;
 				case 98:
 					AUX_LIGHT_SWITCH_PROPERTY->hidden = AUX_LIGHT_INTENSITY_PROPERTY->hidden = true;
 					AUX_COVER_PROPERTY->hidden = false;
-					indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Flip-Mask/Remote Dust Cover");
+					INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Flip-Mask/Remote Dust Cover");
 					break;
 				case 99:
 					AUX_LIGHT_SWITCH_PROPERTY->hidden = AUX_LIGHT_INTENSITY_PROPERTY->hidden = false;
 					AUX_COVER_PROPERTY->hidden = false;
-					indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Flip-Flap");
+					INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Flip-Flap");
 					break;
 				default:
 					AUX_LIGHT_SWITCH_PROPERTY->hidden = AUX_LIGHT_INTENSITY_PROPERTY->hidden = false;
 					AUX_COVER_PROPERTY->hidden = false;
-					indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+					INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 					break;
 			}
 			if (flipflat_command(device, ">VOOO")) {
-				indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 4);
+				INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 4);
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 				return true;
 			}
@@ -147,7 +147,7 @@ static bool flipflat_open(indigo_device *device) {
 }
 
 static void flipflat_close(indigo_device *device) {
-	indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+	INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 	indigo_update_property(device, INFO_PROPERTY, NULL);
 	indigo_uni_close(&PRIVATE_DATA->handle);
 }
@@ -280,8 +280,8 @@ static indigo_result aux_attach(indigo_device *device) {
 		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
 		//+ aux.on_attach
 		INFO_PROPERTY->count = 6;
-		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+		INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+		INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		//- aux.on_attach
 		AUX_COVER_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_COVER_PROPERTY_NAME, AUX_MAIN_GROUP, "Cover", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (AUX_COVER_PROPERTY == NULL) {
@@ -310,9 +310,9 @@ static indigo_result aux_attach(indigo_device *device) {
 
 static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(AUX_COVER_PROPERTY);
-		indigo_define_matching_property(AUX_LIGHT_SWITCH_PROPERTY);
-		indigo_define_matching_property(AUX_LIGHT_INTENSITY_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_COVER_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_LIGHT_SWITCH_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_LIGHT_INTENSITY_PROPERTY);
 	}
 	return indigo_aux_enumerate_properties(device, NULL, NULL);
 }
@@ -327,28 +327,13 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_COVER_PROPERTY, property)) {
-		if (PRIVATE_DATA->aux_cover_handler_timer == NULL) {
-			indigo_property_copy_values(AUX_COVER_PROPERTY, property, false);
-			AUX_COVER_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, AUX_COVER_PROPERTY, NULL);
-			indigo_set_timer(device, 0, aux_cover_handler, &PRIVATE_DATA->aux_cover_handler_timer);
-		}
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_COVER_PROPERTY, aux_cover_handler, aux_cover_handler_timer);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_LIGHT_SWITCH_PROPERTY, property)) {
-		if (PRIVATE_DATA->aux_light_switch_handler_timer == NULL) {
-			indigo_property_copy_values(AUX_LIGHT_SWITCH_PROPERTY, property, false);
-			AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
-			indigo_set_timer(device, 0, aux_light_switch_handler, &PRIVATE_DATA->aux_light_switch_handler_timer);
-		}
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_LIGHT_SWITCH_PROPERTY, aux_light_switch_handler, aux_light_switch_handler_timer);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_LIGHT_INTENSITY_PROPERTY, property)) {
-		if (PRIVATE_DATA->aux_light_intensity_handler_timer == NULL) {
-			indigo_property_copy_values(AUX_LIGHT_INTENSITY_PROPERTY, property, false);
-			AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
-			indigo_set_timer(device, 0, aux_light_intensity_handler, &PRIVATE_DATA->aux_light_intensity_handler_timer);
-		}
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_LIGHT_INTENSITY_PROPERTY, aux_light_intensity_handler, aux_light_intensity_handler_timer);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {

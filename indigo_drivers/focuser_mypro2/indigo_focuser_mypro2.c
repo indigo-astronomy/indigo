@@ -513,9 +513,9 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 
 static indigo_result mfp_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(X_STEP_MODE_PROPERTY);
-		indigo_define_matching_property(X_COILS_MODE_PROPERTY);
-		indigo_define_matching_property(X_SETTLE_TIME_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_STEP_MODE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_COILS_MODE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_SETTLE_TIME_PROPERTY);
 	}
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
 }
@@ -533,7 +533,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- DEVICE_BAUDRATE
 		DEVICE_BAUDRATE_PROPERTY->hidden = false;
-		indigo_copy_value(DEVICE_BAUDRATE_ITEM->text.value, SERIAL_BAUDRATE);
+		INDIGO_COPY_VALUE(DEVICE_BAUDRATE_ITEM->text.value, SERIAL_BAUDRATE);
 		// --------------------------------------------------------------------------------
 		INFO_PROPERTY->count = 6;
 
@@ -715,8 +715,8 @@ static void focuser_connect_callback(indigo_device *device) {
 					char firmware[MFP_CMD_LEN] = "N/A";
 					uint32_t value;
 					if (mfp_get_info(device, board, firmware)) {
-						indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, board);
-						indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware);
+						INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, board);
+						INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware);
 						indigo_update_property(device, INFO_PROPERTY, NULL);
 					}
 

@@ -961,25 +961,25 @@ static indigo_result ccd_attach(indigo_device *device) {
 static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
 		if (device == PRIVATE_DATA->dslr) {
-			indigo_define_matching_property(DSLR_PROGRAM_PROPERTY);
-			indigo_define_matching_property(DSLR_CAPTURE_MODE_PROPERTY);
-			indigo_define_matching_property(DSLR_APERTURE_PROPERTY);
-			indigo_define_matching_property(DSLR_SHUTTER_PROPERTY);
-			indigo_define_matching_property(DSLR_COMPRESSION_PROPERTY);
-			indigo_define_matching_property(DSLR_ISO_PROPERTY);
-			indigo_define_matching_property(DSLR_BATTERY_LEVEL_PROPERTY);
+			INDIGO_DEFINE_MATCHING_PROPERTY(DSLR_PROGRAM_PROPERTY);
+			INDIGO_DEFINE_MATCHING_PROPERTY(DSLR_CAPTURE_MODE_PROPERTY);
+			INDIGO_DEFINE_MATCHING_PROPERTY(DSLR_APERTURE_PROPERTY);
+			INDIGO_DEFINE_MATCHING_PROPERTY(DSLR_SHUTTER_PROPERTY);
+			INDIGO_DEFINE_MATCHING_PROPERTY(DSLR_COMPRESSION_PROPERTY);
+			INDIGO_DEFINE_MATCHING_PROPERTY(DSLR_ISO_PROPERTY);
+			INDIGO_DEFINE_MATCHING_PROPERTY(DSLR_BATTERY_LEVEL_PROPERTY);
 		}
 	}
 	if (device == PRIVATE_DATA->file) {
-		indigo_define_matching_property(FILE_NAME_PROPERTY);
-		indigo_define_matching_property(BAYERPAT_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(FILE_NAME_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(BAYERPAT_PROPERTY);
 	}
 	if (device == PRIVATE_DATA->guider) {
-		indigo_define_matching_property(GUIDER_MODE_PROPERTY);
-		indigo_define_matching_property(GUIDER_SETTINGS_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(GUIDER_MODE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(GUIDER_SETTINGS_PROPERTY);
 	}
 	if (device == PRIVATE_DATA->bahtinov) {
-		indigo_define_matching_property(BAHTINOV_SETTINGS_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(BAHTINOV_SETTINGS_PROPERTY);
 	}
 	return indigo_ccd_enumerate_properties(device, client, property);
 }
@@ -1729,7 +1729,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 }
 
 static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	indigo_define_matching_property(FOCUSER_SETTINGS_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(FOCUSER_SETTINGS_PROPERTY);
 	return indigo_focuser_enumerate_properties(device, client, property);
 }
 

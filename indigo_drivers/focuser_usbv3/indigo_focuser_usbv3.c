@@ -147,7 +147,7 @@ static void focuser_connection_handler(indigo_device *device) {
 					indigo_set_switch(FOCUSER_DIRECTION_PROPERTY, FOCUSER_DIRECTION_PROPERTY->items + direction % 2, true);
 					indigo_set_switch(X_FOCUSER_STEP_SIZE_PROPERTY, X_FOCUSER_STEP_SIZE_PROPERTY->items + stepmode % 2, true);
 					FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = speed;
-					indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, DRIVER_LABEL);
+					INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, DRIVER_LABEL);
 					snprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, sizeof(INFO_DEVICE_FW_REVISION_ITEM->text.value), "%d", firmware);
 					FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target = maxpos;
 					indigo_update_property(device, INFO_PROPERTY, NULL);
@@ -402,8 +402,8 @@ static indigo_result focuser_attach(indigo_device *device) {
 		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
 		//+ focuser.on_attach
 		INFO_PROPERTY->count = 6;
-		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+		INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+		INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		//- focuser.on_attach
 		X_FOCUSER_STEP_SIZE_PROPERTY = indigo_init_switch_property(NULL, device->name, X_FOCUSER_STEP_SIZE_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Step size", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (X_FOCUSER_STEP_SIZE_PROPERTY == NULL) {
@@ -449,7 +449,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 
 static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(X_FOCUSER_STEP_SIZE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_FOCUSER_STEP_SIZE_PROPERTY);
 	}
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
 }
@@ -464,84 +464,34 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_FOCUSER_STEP_SIZE_PROPERTY, property)) {
-		if (PRIVATE_DATA->focuser_x_focuser_step_size_handler_timer == NULL) {
-			indigo_property_copy_values(X_FOCUSER_STEP_SIZE_PROPERTY, property, false);
-			X_FOCUSER_STEP_SIZE_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, X_FOCUSER_STEP_SIZE_PROPERTY, NULL);
-			indigo_set_timer(device, 0, focuser_x_focuser_step_size_handler, &PRIVATE_DATA->focuser_x_focuser_step_size_handler_timer);
-		}
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_FOCUSER_STEP_SIZE_PROPERTY, focuser_x_focuser_step_size_handler, focuser_x_focuser_step_size_handler_timer);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_REVERSE_MOTION_PROPERTY, property)) {
-		if (PRIVATE_DATA->focuser_reverse_motion_handler_timer == NULL) {
-			indigo_property_copy_values(FOCUSER_REVERSE_MOTION_PROPERTY, property, false);
-			FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
-			indigo_set_timer(device, 0, focuser_reverse_motion_handler, &PRIVATE_DATA->focuser_reverse_motion_handler_timer);
-		}
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_REVERSE_MOTION_PROPERTY, focuser_reverse_motion_handler, focuser_reverse_motion_handler_timer);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_TEMPERATURE_PROPERTY, property)) {
-		if (PRIVATE_DATA->focuser_temperature_handler_timer == NULL) {
-			indigo_property_copy_values(FOCUSER_TEMPERATURE_PROPERTY, property, false);
-			FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
-			indigo_set_timer(device, 0, focuser_temperature_handler, &PRIVATE_DATA->focuser_temperature_handler_timer);
-		}
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_TEMPERATURE_PROPERTY, focuser_temperature_handler, focuser_temperature_handler_timer);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_COMPENSATION_PROPERTY, property)) {
-		if (PRIVATE_DATA->focuser_compensation_handler_timer == NULL) {
-			indigo_property_copy_values(FOCUSER_COMPENSATION_PROPERTY, property, false);
-			FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
-			indigo_set_timer(device, 0, focuser_compensation_handler, &PRIVATE_DATA->focuser_compensation_handler_timer);
-		}
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_COMPENSATION_PROPERTY, focuser_compensation_handler, focuser_compensation_handler_timer);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_MODE_PROPERTY, property)) {
-		if (PRIVATE_DATA->focuser_mode_handler_timer == NULL) {
-			indigo_property_copy_values(FOCUSER_MODE_PROPERTY, property, false);
-			FOCUSER_MODE_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, FOCUSER_MODE_PROPERTY, NULL);
-			indigo_set_timer(device, 0, focuser_mode_handler, &PRIVATE_DATA->focuser_mode_handler_timer);
-		}
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_MODE_PROPERTY, focuser_mode_handler, focuser_mode_handler_timer);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_SPEED_PROPERTY, property)) {
-		if (PRIVATE_DATA->focuser_speed_handler_timer == NULL) {
-			indigo_property_copy_values(FOCUSER_SPEED_PROPERTY, property, false);
-			FOCUSER_SPEED_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
-			indigo_set_timer(device, 0, focuser_speed_handler, &PRIVATE_DATA->focuser_speed_handler_timer);
-		}
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_SPEED_PROPERTY, focuser_speed_handler, focuser_speed_handler_timer);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_STEPS_PROPERTY, property)) {
-		if (PRIVATE_DATA->focuser_steps_handler_timer == NULL) {
-			indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
-			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-			indigo_set_timer(device, 0, focuser_steps_handler, &PRIVATE_DATA->focuser_steps_handler_timer);
-		}
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_STEPS_PROPERTY, focuser_steps_handler, focuser_steps_handler_timer);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_POSITION_PROPERTY, property)) {
-		if (PRIVATE_DATA->focuser_position_handler_timer == NULL) {
-			indigo_property_copy_targets(FOCUSER_POSITION_PROPERTY, property, false);
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-			indigo_set_timer(device, 0, focuser_position_handler, &PRIVATE_DATA->focuser_position_handler_timer);
-		}
+		INDIGO_COPY_TARGETS_PROCESS_CHANGE(FOCUSER_POSITION_PROPERTY, focuser_position_handler, focuser_position_handler_timer);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
-		if (PRIVATE_DATA->focuser_abort_motion_handler_timer == NULL) {
-			indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
-			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
-			indigo_set_timer(device, 0, focuser_abort_motion_handler, &PRIVATE_DATA->focuser_abort_motion_handler_timer);
-		}
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_ABORT_MOTION_PROPERTY, focuser_abort_motion_handler, focuser_abort_motion_handler_timer);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_LIMITS_PROPERTY, property)) {
-		if (PRIVATE_DATA->focuser_limits_handler_timer == NULL) {
-			indigo_property_copy_values(FOCUSER_LIMITS_PROPERTY, property, false);
-			FOCUSER_LIMITS_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, FOCUSER_LIMITS_PROPERTY, NULL);
-			indigo_set_timer(device, 0, focuser_limits_handler, &PRIVATE_DATA->focuser_limits_handler_timer);
-		}
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_LIMITS_PROPERTY, focuser_limits_handler, focuser_limits_handler_timer);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {

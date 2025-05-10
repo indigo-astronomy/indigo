@@ -1553,7 +1553,7 @@ void write_c_enumerate(device_type *device) {
 					write_line("\tif (IS_CONNECTED) {");
 					first_one = false;
 				}
-				write_line("\t\tindigo_define_matching_property(%s);", property->handle);
+				write_line("\t\tINDIGO_DEFINE_MATCHING_PROPERTY(%s);", property->handle);
 			}
 		}
 	}
@@ -1563,7 +1563,7 @@ void write_c_enumerate(device_type *device) {
 	for (property_type *property = device->properties; property; property = property->next) {
 		if (property->type[0] != 'i') {
 			if (property->always_defined) {
-				write_line("\tindigo_define_matching_property(%s);", property->handle);
+				write_line("\tINDIGO_DEFINE_MATCHING_PROPERTY(%s);", property->handle);
 			}
 		}
 	}
@@ -1591,9 +1591,9 @@ void write_c_change_property(device_type *device) {
 			persistent |= property->persistent;
 			write_line("\t} else if (indigo_property_match_changeable(%s, property)) {", property->handle);
 			if (property->preserve_values) {
-				write_line("\t\tindigo_copy_targets_process_change(%s, %s, %s_timer);", property->handle, property->handler, property->handler);
+				write_line("\t\tINDIGO_COPY_TARGETS_PROCESS_CHANGE(%s, %s, %s_timer);", property->handle, property->handler, property->handler);
 			} else {
-				write_line("\t\tindigo_copy_values_process_change(%s, %s, %s_timer);", property->handle, property->handler, property->handler);
+				write_line("\t\tINDIGO_COPY_VALUES_PROCESS_CHANGE(%s, %s, %s_timer);", property->handle, property->handler, property->handler);
 			}
 			write_line("\t\treturn INDIGO_OK;");
 		}
@@ -1684,7 +1684,7 @@ void write_c_hotplug_section(void) {
 		if (device != driver.devices) {
 			write_line("\t\t\t%s->master_device = %s;", device->type, driver.devices->type);
 		}
-		write_line("\t\t\tsnprintf(%s->name, INDIGO_NAME_SIZE, \"%s\", name);", device->type, device->name);
+		write_line("\t\t\tsnprintf(%s->name, INDIGO_NAME_SIZE, %s, name);", device->type, device->name);
 		write_line("\t\t\tfor (int j = 0; j < MAX_DEVICES; j++) {");
 		write_line("\t\t\t\tif (devices[j] == NULL) {");
 		write_line("\t\t\t\t\tindigo_async((void *)(void *)indigo_attach_device, devices[j] = %s);", device->type);
@@ -2162,7 +2162,7 @@ void read_c_source(void) {
 					}
 				} else if (strstr(line, "if (IS_CONNECTED) {")) {
 					in_is_connected = true;
-				} else if (sscanf(line, " %127[^(](%127[^)])", s1, s2) == 2 && strcmp(s1, "indigo_define_matching_property") == 0) {
+				} else if (sscanf(line, " %127[^(](%127[^)])", s1, s2) == 2 && strcmp(s1, "INDIGO_DEFINE_MATCHING_PROPERTY") == 0) {
 					property_type *property = get_property(device, s2);
 					property->always_defined = !in_is_connected;
 				}

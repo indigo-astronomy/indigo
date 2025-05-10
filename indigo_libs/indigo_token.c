@@ -64,7 +64,7 @@ bool indigo_add_device_token(const char *device, indigo_token token) {
 	}
 	if (slot >= 0 && slot < MAX_TOKENS) {
 		tokens[slot].token = token;
-		indigo_copy_name(tokens[slot].device, device);
+		INDIGO_COPY_NAME(tokens[slot].device, device);
 		pthread_mutex_unlock(&token_mutex);
 		INDIGO_DEBUG(indigo_debug("ACL: Token for '%s' = 0x%x added at slot %d", device, token, slot));
 		return true;

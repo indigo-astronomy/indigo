@@ -148,11 +148,11 @@ static void* get_properties_handler(parser_state state, char* name, char* value,
 	if (state == NUMBER_VALUE_STATE && !strcmp(name, "version")) {
 		client->version = (int)atol(value);
 	} else if (state == TEXT_VALUE_STATE && !strcmp(name, "client")) {
-		indigo_copy_name(client->name, value);
+		INDIGO_COPY_NAME(client->name, value);
 	} else if (state == TEXT_VALUE_STATE && !strcmp(name, "device")) {
-		indigo_copy_name(property->device, value);
+		INDIGO_COPY_NAME(property->device, value);
 	} else if (state == TEXT_VALUE_STATE && !strcmp(name, "name")) {
-		indigo_copy_name(property->name, value);
+		INDIGO_COPY_NAME(property->name, value);
 	} else if (state == END_STRUCT_STATE) {
 		indigo_enumerate_properties(client, property);
 		return top_level_handler;
@@ -169,7 +169,7 @@ static void* one_text_handler(parser_state state, char* name, char* value, indig
 	if (state == BEGIN_STRUCT_STATE) {
 		*property_ref = property = indigo_resize_property(property, property->count + 1);
 	} else if (state == TEXT_VALUE_STATE && !strcmp(name, "name")) {
-		indigo_copy_name(property->items[property->count - 1].name, value);
+		INDIGO_COPY_NAME(property->items[property->count - 1].name, value);
 	} else if (state == TEXT_VALUE_STATE && !strcmp(name, "value")) {
 		indigo_set_text_item_value(property->items + property->count - 1, value);
 	}
@@ -185,9 +185,9 @@ static void* new_text_vector_handler(parser_state state, char* name, char* value
 	}
 	if (state == TEXT_VALUE_STATE) {
 		if (!strcmp(name, "device")) {
-			indigo_copy_name(property->device, value);
+			INDIGO_COPY_NAME(property->device, value);
 		} else if (!strcmp(name, "name")) {
-			indigo_copy_name(property->name, value);
+			INDIGO_COPY_NAME(property->name, value);
 		} else if (!strcmp(name, "token")) {
 			property->access_token = strtol(value, NULL, 16);
 		}
@@ -208,7 +208,7 @@ static void* one_number_handler(parser_state state, char* name, char* value, ind
 	if (state == BEGIN_STRUCT_STATE) {
 		*property_ref = property = indigo_resize_property(property, property->count + 1);
 	} else if (state == TEXT_VALUE_STATE && !strcmp(name, "name")) {
-		indigo_copy_name(property->items[property->count - 1].name, value);
+		INDIGO_COPY_NAME(property->items[property->count - 1].name, value);
 	} else if (state == NUMBER_VALUE_STATE && !strcmp(name, "value")) {
 		property->items[property->count - 1].number.value = indigo_atod(value);
 	}
@@ -224,9 +224,9 @@ static void* new_number_vector_handler(parser_state state, char* name, char* val
 	}
 	if (state == TEXT_VALUE_STATE) {
 		if (!strcmp(name, "device")) {
-			indigo_copy_name(property->device, value);
+			INDIGO_COPY_NAME(property->device, value);
 		} else if (!strcmp(name, "name")) {
-			indigo_copy_name(property->name, value);
+			INDIGO_COPY_NAME(property->name, value);
 		} else if (!strcmp(name, "token")) {
 			property->access_token = strtol(value, NULL, 16);
 		}
@@ -247,7 +247,7 @@ static void* one_switch_handler(parser_state state, char* name, char* value, ind
 	if (state == BEGIN_STRUCT_STATE) {
 		*property_ref = property = indigo_resize_property(property, property->count + 1);
 	} else if (state == TEXT_VALUE_STATE && !strcmp(name, "name")) {
-		indigo_copy_name(property->items[property->count - 1].name, value);
+		INDIGO_COPY_NAME(property->items[property->count - 1].name, value);
 	} else if (state == LOGICAL_VALUE_STATE && !strcmp(name, "value")) {
 		property->items[property->count - 1].sw.value = strcmp(value, "true") == 0;
 	}
@@ -263,9 +263,9 @@ static void* new_switch_vector_handler(parser_state state, char* name, char* val
 	}
 	if (state == TEXT_VALUE_STATE) {
 		if (!strcmp(name, "device")) {
-			indigo_copy_name(property->device, value);
+			INDIGO_COPY_NAME(property->device, value);
 		} else if (!strcmp(name, "name")) {
-			indigo_copy_name(property->name, value);
+			INDIGO_COPY_NAME(property->name, value);
 		} else if (!strcmp(name, "token")) {
 			property->access_token = strtol(value, NULL, 16);
 		}

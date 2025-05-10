@@ -74,9 +74,9 @@ indigo_result indigo_ao_enumerate_properties(indigo_device *device, indigo_clien
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(AO_GUIDE_DEC_PROPERTY);
-		indigo_define_matching_property(AO_GUIDE_RA_PROPERTY);
-		indigo_define_matching_property(AO_RESET_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(AO_GUIDE_DEC_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(AO_GUIDE_RA_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(AO_RESET_PROPERTY);
 	}
 	return indigo_device_enumerate_properties(device, client, property);
 }

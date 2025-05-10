@@ -399,38 +399,38 @@ indigo_result indigo_ccd_enumerate_properties(indigo_device *device, indigo_clie
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(CCD_INFO_PROPERTY);
-		indigo_define_matching_property(CCD_LENS_PROPERTY);
-		indigo_define_matching_property(CCD_LOCAL_MODE_PROPERTY);
-		indigo_define_matching_property(CCD_IMAGE_FILE_PROPERTY);
-		indigo_define_matching_property(CCD_MODE_PROPERTY);
-		indigo_define_matching_property(CCD_READ_MODE_PROPERTY);
-		indigo_define_matching_property(CCD_EXPOSURE_PROPERTY);
-		indigo_define_matching_property(CCD_STREAMING_PROPERTY);
-		indigo_define_matching_property(CCD_ABORT_EXPOSURE_PROPERTY);
-		indigo_define_matching_property(CCD_FRAME_PROPERTY);
-		indigo_define_matching_property(CCD_BIN_PROPERTY);
-		indigo_define_matching_property(CCD_OFFSET_PROPERTY);
-		indigo_define_matching_property(CCD_GAIN_PROPERTY);
-		indigo_define_matching_property(CCD_EGAIN_PROPERTY);
-		indigo_define_matching_property(CCD_GAMMA_PROPERTY);
-		indigo_define_matching_property(CCD_FRAME_TYPE_PROPERTY);
-		indigo_define_matching_property(CCD_IMAGE_FORMAT_PROPERTY);
-		indigo_define_matching_property(CCD_UPLOAD_MODE_PROPERTY);
-		indigo_define_matching_property(CCD_PREVIEW_PROPERTY);
-		indigo_define_matching_property(CCD_IMAGE_PROPERTY);
-		indigo_define_matching_property(CCD_PREVIEW_IMAGE_PROPERTY);
-		indigo_define_matching_property(CCD_PREVIEW_HISTOGRAM_PROPERTY);
-		indigo_define_matching_property(CCD_COOLER_PROPERTY);
-		indigo_define_matching_property(CCD_COOLER_POWER_PROPERTY);
-		indigo_define_matching_property(CCD_TEMPERATURE_PROPERTY);
-		indigo_define_matching_property(CCD_FITS_HEADERS_PROPERTY);
-		indigo_define_matching_property(CCD_SET_FITS_HEADER_PROPERTY);
-		indigo_define_matching_property(CCD_REMOVE_FITS_HEADER_PROPERTY);
-		indigo_define_matching_property(CCD_JPEG_SETTINGS_PROPERTY);
-		indigo_define_matching_property(CCD_JPEG_STRETCH_PRESETS_PROPERTY);
-		indigo_define_matching_property(CCD_RBI_FLUSH_ENABLE_PROPERTY);
-		indigo_define_matching_property(CCD_RBI_FLUSH_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_INFO_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_LENS_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_LOCAL_MODE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_IMAGE_FILE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_MODE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_READ_MODE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_EXPOSURE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_STREAMING_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_ABORT_EXPOSURE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_FRAME_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_BIN_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_OFFSET_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_GAIN_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_EGAIN_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_GAMMA_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_FRAME_TYPE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_IMAGE_FORMAT_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_UPLOAD_MODE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_PREVIEW_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_IMAGE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_PREVIEW_IMAGE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_PREVIEW_HISTOGRAM_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_COOLER_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_COOLER_POWER_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_TEMPERATURE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_FITS_HEADERS_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_SET_FITS_HEADER_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_REMOVE_FITS_HEADER_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_JPEG_SETTINGS_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_JPEG_STRETCH_PRESETS_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_RBI_FLUSH_ENABLE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_RBI_FLUSH_PROPERTY);
 	}
 	return indigo_device_enumerate_properties(device, client, property);
 }
@@ -2056,7 +2056,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		if (!(use_avi || use_ser) || CCD_CONTEXT->video_stream == NULL) {
 			if (indigo_is_sandboxed || indigo_uni_mkdir(CCD_LOCAL_MODE_DIR_ITEM->text.value)) {
 				if (create_file_name(device, blob_value, blob_size, CCD_LOCAL_MODE_DIR_ITEM->text.value, CCD_LOCAL_MODE_PREFIX_ITEM->text.value, suffix, file_name)) {
-					indigo_copy_value(CCD_IMAGE_FILE_ITEM->text.value, file_name);
+					INDIGO_COPY_VALUE(CCD_IMAGE_FILE_ITEM->text.value, file_name);
 					CCD_IMAGE_FILE_PROPERTY->state = INDIGO_OK_STATE;
 					if (use_avi) {
 						CCD_CONTEXT->video_stream = gwavi_open(file_name, frame_width, frame_height, "MJPG", 5);
@@ -2185,7 +2185,7 @@ void indigo_process_dslr_image(indigo_device *device, void *data, unsigned long 
 				char *message = NULL;
 				if (indigo_is_sandboxed || indigo_uni_mkdir(CCD_LOCAL_MODE_DIR_ITEM->text.value)) {
 					if (create_file_name(device, data, data_size, CCD_LOCAL_MODE_DIR_ITEM->text.value, CCD_LOCAL_MODE_PREFIX_ITEM->text.value, ".raw", file_name)) {
-						indigo_copy_value(CCD_IMAGE_FILE_ITEM->text.value, file_name);
+						INDIGO_COPY_VALUE(CCD_IMAGE_FILE_ITEM->text.value, file_name);
 						CCD_IMAGE_FILE_PROPERTY->state = INDIGO_OK_STATE;
 						indigo_uni_handle *handle = indigo_uni_create_file(file_name, -INDIGO_LOG_TRACE);
 						if (handle != NULL) {
@@ -2216,7 +2216,7 @@ void indigo_process_dslr_image(indigo_device *device, void *data, unsigned long 
 				*CCD_IMAGE_ITEM->blob.url = 0;
 				CCD_IMAGE_ITEM->blob.value = (char*)image + FITS_HEADER_SIZE - sizeof(indigo_raw_header);
 				CCD_IMAGE_ITEM->blob.size = image_size + sizeof(indigo_raw_header);
-				indigo_copy_name(CCD_IMAGE_ITEM->blob.format, ".raw");
+				INDIGO_COPY_NAME(CCD_IMAGE_ITEM->blob.format, ".raw");
 				CCD_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 				INDIGO_DEBUG(indigo_debug("Client upload in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
@@ -2271,7 +2271,7 @@ void indigo_process_dslr_image(indigo_device *device, void *data, unsigned long 
 		if (!use_avi || CCD_CONTEXT->video_stream == NULL) {
 			if (indigo_is_sandboxed || indigo_uni_mkdir(CCD_LOCAL_MODE_DIR_ITEM->text.value)) {
 				if (create_file_name(device, data, data_size, CCD_LOCAL_MODE_DIR_ITEM->text.value, CCD_LOCAL_MODE_PREFIX_ITEM->text.value, standard_suffix, file_name)) {
-					indigo_copy_value(CCD_IMAGE_FILE_ITEM->text.value, file_name);
+					INDIGO_COPY_VALUE(CCD_IMAGE_FILE_ITEM->text.value, file_name);
 					CCD_IMAGE_FILE_PROPERTY->state = INDIGO_OK_STATE;
 					if (use_avi) {
 						struct indigo_jpeg_decompress_struct cinfo;
@@ -2331,7 +2331,7 @@ void indigo_process_dslr_image(indigo_device *device, void *data, unsigned long 
 		*CCD_IMAGE_ITEM->blob.url = 0;
 		CCD_IMAGE_ITEM->blob.value = data;
 		CCD_IMAGE_ITEM->blob.size = data_size;
-		indigo_copy_name(CCD_IMAGE_ITEM->blob.format, standard_suffix);
+		INDIGO_COPY_NAME(CCD_IMAGE_ITEM->blob.format, standard_suffix);
 		CCD_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		INDIGO_DEBUG(indigo_debug("Client upload in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));

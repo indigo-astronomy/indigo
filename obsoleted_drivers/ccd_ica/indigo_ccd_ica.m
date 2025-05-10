@@ -519,7 +519,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 	indigo_device *device = malloc(sizeof(indigo_device));
 	assert(device != NULL);
 	memcpy(device, &ccd_template, sizeof(indigo_device));
-	indigo_copy_name(device->name, [camera.name cStringUsingEncoding:NSUTF8StringEncoding]);
+	INDIGO_COPY_NAME(device->name, [camera.name cStringUsingEncoding:NSUTF8StringEncoding]);
 	device->private_data = private_data;
 	camera.userData = [NSValue valueWithPointer:device];
 	indigo_async((void *)(void *)indigo_attach_device, device);
@@ -555,12 +555,12 @@ static indigo_result focuser_detach(indigo_device *device) {
 	indigo_device *device = [(NSValue *)camera.userData pointerValue];
 	indigo_property *property;
 	sprintf(name, "%04x", code);
-	indigo_copy_name(label, [[camera.propertyClass propertyCodeName:code] cStringUsingEncoding:NSUTF8StringEncoding] + 15);
+	INDIGO_COPY_NAME(label, [[camera.propertyClass propertyCodeName:code] cStringUsingEncoding:NSUTF8StringEncoding] + 15);
   PTPVendorExtension extension = camera.extension;
 	for (int i = 0; i < dslr_properties[i].code; i++) {
 		if (dslr_properties[i].extension == extension && code == dslr_properties[i].code) {
-			indigo_copy_name(name, dslr_properties[i].name);
-			indigo_copy_value(label, dslr_properties[i].label);
+			INDIGO_COPY_NAME(name, dslr_properties[i].name);
+			INDIGO_COPY_VALUE(label, dslr_properties[i].label);
 			group = "DSLR";
       break;
 		}
@@ -607,7 +607,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 		int index = 0;
 		for (NSString *key in values) {
 			char name[INDIGO_NAME_SIZE];
-			indigo_copy_name(name, [key cStringUsingEncoding:NSUTF8StringEncoding]);
+			INDIGO_COPY_NAME(name, [key cStringUsingEncoding:NSUTF8StringEncoding]);
 			if (strcmp(property->items[index].name, name)) {
 				redefine = true;
 				break;
@@ -701,8 +701,8 @@ static indigo_result focuser_detach(indigo_device *device) {
     char name[INDIGO_NAME_SIZE];
     char label[INDIGO_VALUE_SIZE];
 		for (NSString *key in values) {
-			indigo_copy_name(name, [key cStringUsingEncoding:NSUTF8StringEncoding]);
-			indigo_copy_value(label, [labels[i] cStringUsingEncoding:NSUTF8StringEncoding]);
+			INDIGO_COPY_NAME(name, [key cStringUsingEncoding:NSUTF8StringEncoding]);
+			INDIGO_COPY_VALUE(label, [labels[i] cStringUsingEncoding:NSUTF8StringEncoding]);
 			indigo_init_switch_item(property->items + i, name, label, [key isEqual:value]);
 			i++;
 		}
@@ -761,17 +761,17 @@ static indigo_result focuser_detach(indigo_device *device) {
     indigo_property *property = PRIVATE_DATA->dslr_properties[index];
     bool redefine = (property->perm != (readOnly ? INDIGO_RO_PERM : INDIGO_RW_PERM));
     char string[INDIGO_VALUE_SIZE];
-    indigo_copy_value(string, value ? [value cStringUsingEncoding:NSUTF8StringEncoding] : "(NULL)");
+    INDIGO_COPY_VALUE(string, value ? [value cStringUsingEncoding:NSUTF8StringEncoding] : "(NULL)");
     property->hidden = false;
     if (redefine) {
       if (IS_CONNECTED)
         indigo_delete_property(device, property, NULL);
       property->perm = readOnly ? INDIGO_RO_PERM : INDIGO_RW_PERM;
-      indigo_copy_value(property->items[0].text.value, string);
+      INDIGO_COPY_VALUE(property->items[0].text.value, string);
       if (IS_CONNECTED)
         indigo_define_property(device, property, NULL);
     } else if (strcmp(property->items[0].text.value, string) || property->state == INDIGO_BUSY_STATE) {
-      indigo_copy_value(property->items[0].text.value, string);
+      INDIGO_COPY_VALUE(property->items[0].text.value, string);
       property->state = INDIGO_OK_STATE;
       indigo_update_property(device, property, NULL);
     }

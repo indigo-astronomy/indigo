@@ -89,7 +89,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 #ifdef INDIGO_MACOS
 		for (int i = 0; i < DEVICE_PORTS_PROPERTY->count; i++) {
 			if (!strncmp(DEVICE_PORTS_PROPERTY->items[i].name, "/dev/cu.usbmodem", 16)) {
-				indigo_copy_value(DEVICE_PORT_ITEM->text.value, DEVICE_PORTS_PROPERTY->items[i].name);
+				INDIGO_COPY_VALUE(DEVICE_PORT_ITEM->text.value, DEVICE_PORTS_PROPERTY->items[i].name);
 				break;
 			}
 		}
@@ -99,7 +99,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 #endif
 		// -------------------------------------------------------------------------------- INFO
 		INFO_PROPERTY->count = 5;
-		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+		INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 		// -------------------------------------------------------------------------------- FOCUSER_REVERSE_MOTION
 		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- FOCUSER_TEMPERATURE
@@ -140,7 +140,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 
 static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(X_FOCUSER_DUTY_CYCLE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_FOCUSER_DUTY_CYCLE_PROPERTY);
 	}
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
 }
@@ -212,11 +212,11 @@ static void focuser_connection_handler(indigo_device *device) {
 				if (!strcmp(response, "FD")) {
 					INDIGO_DRIVER_LOG(DRIVER_NAME, "FocusDreamPro detected");
 					PRIVATE_DATA->fdp = true;
-					indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "AGadget FocusDreamPro");
+					INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "AGadget FocusDreamPro");
 				} else if (!strncmp(response, "Jolo", 4)) {
 					INDIGO_DRIVER_LOG(DRIVER_NAME, "Astrojolo detected");
 					PRIVATE_DATA->jolo = true;
-					indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "ASCOM Jolo focuser");
+					INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "ASCOM Jolo focuser");
 				}
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 			} else {

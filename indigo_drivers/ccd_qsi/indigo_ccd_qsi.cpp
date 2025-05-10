@@ -303,10 +303,10 @@ static void ccd_exposure_callback(indigo_device *device) {
 
 static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(QSI_READOUT_SPEED_PROPERTY);
-		indigo_define_matching_property(QSI_ANTI_BLOOM_PROPERTY);
-		indigo_define_matching_property(QSI_PRE_EXPOSURE_FLUSH_PROPERTY);
-		indigo_define_matching_property(QSI_FAN_MODE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(QSI_READOUT_SPEED_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(QSI_ANTI_BLOOM_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(QSI_PRE_EXPOSURE_FLUSH_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(QSI_FAN_MODE_PROPERTY);
 	}
 	return indigo_ccd_enumerate_properties(device, NULL, NULL);
 }
@@ -846,8 +846,8 @@ static void process_plug_event(indigo_device *unused) {
 		return;
 	}
 	for (int i = 0; i < count; i++) {
-		indigo_copy_name(serial, camSerial[i].c_str());
-		indigo_copy_name(desc, camDesc[i].c_str());
+		INDIGO_COPY_NAME(serial, camSerial[i].c_str());
+		INDIGO_COPY_NAME(desc, camDesc[i].c_str());
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "camera[%d]: desc = %s serial = %s", i, desc, serial);
 		bool found = false;
 		for (int j = 0; j < QSICamera::MAXCAMERAS; j++) {
@@ -863,7 +863,7 @@ static void process_plug_event(indigo_device *unused) {
 			continue;
 		}
 		qsi_private_data *private_data = (qsi_private_data *)indigo_safe_malloc(sizeof(qsi_private_data));
-		indigo_copy_name(private_data->serial, serial);
+		INDIGO_COPY_NAME(private_data->serial, serial);
 		indigo_device *device = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
 		snprintf(device->name, INDIGO_NAME_SIZE, "%s #%s", desc, serial);
 		device->private_data = private_data;
@@ -899,7 +899,7 @@ static void process_unplug_event(indigo_device *unused) {
 		}
 	}
 	for (int i = 0; i < count; i++) {
-		indigo_copy_name(serial, camSerial[i].c_str());
+		INDIGO_COPY_NAME(serial, camSerial[i].c_str());
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "camera[%d]: serial = %s", i, serial);
 		for (int j = 0; j < QSICamera::MAXCAMERAS; j++) {
 			indigo_device *device = devices[j];

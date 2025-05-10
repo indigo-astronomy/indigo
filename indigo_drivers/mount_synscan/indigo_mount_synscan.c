@@ -161,11 +161,11 @@ static indigo_result mount_enumerate_properties(indigo_device *device, indigo_cl
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(MOUNT_POLARSCOPE_PROPERTY);
-		indigo_define_matching_property(MOUNT_OPERATING_MODE_PROPERTY);
-		indigo_define_matching_property(MOUNT_USE_ENCODERS_PROPERTY);
-		indigo_define_matching_property(MOUNT_AUTOHOME_PROPERTY);
-		indigo_define_matching_property(MOUNT_AUTOHOME_SETTINGS_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_POLARSCOPE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_OPERATING_MODE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_USE_ENCODERS_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_AUTOHOME_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_AUTOHOME_SETTINGS_PROPERTY);
 	}
 	return indigo_mount_enumerate_properties(device, client, property);
 }
@@ -388,7 +388,7 @@ static indigo_result guider_attach(indigo_device *device) {
 		GUIDER_RATE_PROPERTY->hidden = false;
 		GUIDER_RATE_PROPERTY->count = 2;
 		strncpy(GUIDER_RATE_PROPERTY->label,"Pulse-Guide Rate", INDIGO_VALUE_SIZE);
-		indigo_copy_value(GUIDER_RATE_ITEM->label, "RA Guiding rate (% of sidereal)");
+		INDIGO_COPY_VALUE(GUIDER_RATE_ITEM->label, "RA Guiding rate (% of sidereal)");
 
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 

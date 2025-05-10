@@ -174,11 +174,11 @@ static bool bpp_supported(indigo_device *device, int bpp) {
 
 static indigo_result qhy_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(PIXEL_FORMAT_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(PIXEL_FORMAT_PROPERTY);
 #ifdef QHY2
-		indigo_define_matching_property(READ_MODE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(READ_MODE_PROPERTY);
 #endif
-		indigo_define_matching_property(QHY_ADVANCED_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(QHY_ADVANCED_PROPERTY);
 	}
 	return indigo_ccd_enumerate_properties(device, NULL, NULL);
 }

@@ -298,9 +298,9 @@ indigo_result indigo_filter_enumerate_properties(indigo_device *device, indigo_c
 	assert(DEVICE_CONTEXT != NULL);
 	for (int i = 0; i < INDIGO_FILTER_LIST_COUNT; i++) {
 		indigo_property *device_list = FILTER_DEVICE_CONTEXT->filter_device_list_properties[i];
-		indigo_define_matching_property(device_list);
+		INDIGO_DEFINE_MATCHING_PROPERTY(device_list);
 		device_list = FILTER_DEVICE_CONTEXT->filter_related_device_list_properties[i];
-		indigo_define_matching_property(device_list);
+		INDIGO_DEFINE_MATCHING_PROPERTY(device_list);
 	}
 	if (indigo_property_match(FILTER_DEVICE_CONTEXT->filter_related_agent_list_property, property))
 		indigo_define_property(device, FILTER_DEVICE_CONTEXT->filter_related_agent_list_property, NULL);
@@ -313,7 +313,7 @@ indigo_result indigo_filter_enumerate_properties(indigo_device *device, indigo_c
 		FILTER_FORCE_SYMMETRIC_RELATIONS_PROPERTY->hidden = FILTER_RELATED_AGENT_LIST_PROPERTY->hidden;
 		indigo_define_property(device, FILTER_FORCE_SYMMETRIC_RELATIONS_PROPERTY, NULL);
 	}
-	indigo_define_matching_property(CCD_LENS_FOV_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(CCD_LENS_FOV_PROPERTY);
 	return indigo_device_enumerate_properties(device, client, property);
 }
 
@@ -515,7 +515,7 @@ static void set_reverse_relation(indigo_device *device, void *data) {
 		if (strchr(item->name, '@')) {
 			snprintf(reverse_item_name, sizeof(reverse_item_name), "%s @ %s", device->name, indigo_local_service_name);
 		} else {
-			indigo_copy_name(reverse_item_name, device->name);
+			INDIGO_COPY_NAME(reverse_item_name, device->name);
 		}
 		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, item->name, FILTER_RELATED_AGENT_LIST_PROPERTY_NAME, reverse_item_name, item->sw.value);
 	}

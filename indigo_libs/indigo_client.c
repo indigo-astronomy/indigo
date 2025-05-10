@@ -169,8 +169,8 @@ static indigo_result add_driver(driver_entry_point entry_point, void *dl_handle,
 	}
 	indigo_driver_info info;
 	entry_point(INDIGO_DRIVER_INFO, &info);
-	indigo_copy_name(indigo_available_drivers[empty_slot].description, info.description); //TO BE CHANGED - DRIVER SHOULD REPORT NAME!!!
-	indigo_copy_name(indigo_available_drivers[empty_slot].name, info.name);
+	INDIGO_COPY_NAME(indigo_available_drivers[empty_slot].description, info.description); //TO BE CHANGED - DRIVER SHOULD REPORT NAME!!!
+	INDIGO_COPY_NAME(indigo_available_drivers[empty_slot].name, info.name);
 	indigo_available_drivers[empty_slot].driver = entry_point;
 	indigo_available_drivers[empty_slot].dl_handle = dl_handle;
 	INDIGO_LOG(indigo_log("Driver %s %d.%d.%d.%d loaded", info.name, INDIGO_VERSION_MAJOR(info.version >> 16), INDIGO_VERSION_MINOR(info.version >> 16), INDIGO_VERSION_MAJOR(info.version), INDIGO_VERSION_MINOR(info.version)));
@@ -327,7 +327,7 @@ indigo_result indigo_start_subprocess(const char *executable, indigo_subprocess_
 		return INDIGO_TOO_MANY_ELEMENTS;
 	}
 	
-	indigo_copy_name(indigo_available_subprocesses[empty_slot].executable, executable);
+	INDIGO_COPY_NAME(indigo_available_subprocesses[empty_slot].executable, executable);
 	indigo_available_subprocesses[empty_slot].pid = 0;
 	*indigo_available_subprocesses[empty_slot].last_error = 0;
 	if (pthread_create(&indigo_available_subprocesses[empty_slot].thread, NULL, (void*)(void *)subprocess_thread, &indigo_available_subprocesses[empty_slot]) != 0) {
@@ -364,7 +364,7 @@ static int used_server_slots = 0;
 indigo_server_entry indigo_available_servers[INDIGO_MAX_SERVERS];
 
 void indigo_service_name(const char *host, int port, char *name) {
-	indigo_copy_name(name, host);
+	INDIGO_COPY_NAME(name, host);
 	char *dot;
 	if ((dot = strchr(name, '.'))) {
 		*dot = 0;
@@ -444,11 +444,11 @@ indigo_result indigo_connect_server_id(const char *name, const char *host, int p
 		return INDIGO_TOO_MANY_ELEMENTS;
 	}
 	if (name != NULL) {
-		indigo_copy_name(indigo_available_servers[empty_slot].name, name);
+		INDIGO_COPY_NAME(indigo_available_servers[empty_slot].name, name);
 	} else {
 		*indigo_available_servers[empty_slot].name = 0;
 	}
-	indigo_copy_name(indigo_available_servers[empty_slot].host, host);
+	INDIGO_COPY_NAME(indigo_available_servers[empty_slot].host, host);
 	indigo_available_servers[empty_slot].port = port;
 	indigo_available_servers[empty_slot].handle = NULL;
 	indigo_available_servers[empty_slot].connection_id = connection_id;

@@ -612,7 +612,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 //		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "flags = %0LX", flags);
 		char name[128], label[128];
 		INFO_PROPERTY->count = 8;
-		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, INDIGO_WCHAR_TO_CHAR(PRIVATE_DATA->cam.model->name));
+		INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, INDIGO_WCHAR_TO_CHAR(PRIVATE_DATA->cam.model->name));
 		CCD_INFO_PIXEL_WIDTH_ITEM->number.value = PRIVATE_DATA->cam.model->xpixsz;
 		CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = PRIVATE_DATA->cam.model->ypixsz;
 		CCD_INFO_PIXEL_SIZE_ITEM->number.value = (CCD_INFO_PIXEL_WIDTH_ITEM->number.value + CCD_INFO_PIXEL_HEIGHT_ITEM->number.value) / 2.0;
@@ -1469,7 +1469,7 @@ static indigo_result guider_attach(indigo_device *device) {
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_guider_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		INFO_PROPERTY->count = 8;
-		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, INDIGO_WCHAR_TO_CHAR(PRIVATE_DATA->cam.model->name));
+		INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, INDIGO_WCHAR_TO_CHAR(PRIVATE_DATA->cam.model->name));
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_guider_enumerate_properties(device, NULL, NULL);
 	}
@@ -1715,9 +1715,9 @@ static indigo_result wheel_attach(indigo_device *device) {
 
 static indigo_result wheel_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
-	indigo_define_matching_property(X_WHEEL_MODEL_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(X_WHEEL_MODEL_PROPERTY);
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(X_CALIBRATE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_CALIBRATE_PROPERTY);
 	}
 	return indigo_wheel_enumerate_properties(device, client, property);
 }
@@ -2042,7 +2042,7 @@ static void temperature_timer_callback(indigo_device *device) {
 
 static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(X_BEEP_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_BEEP_PROPERTY);
 	}
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
 }

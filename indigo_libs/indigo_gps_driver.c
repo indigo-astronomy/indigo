@@ -99,10 +99,10 @@ indigo_result indigo_gps_enumerate_properties(indigo_device *device, indigo_clie
 	assert(DEVICE_CONTEXT != NULL);
 	GPS_ADVANCED_STATUS_PROPERTY->hidden = GPS_ADVANCED_PROPERTY->hidden;
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(GPS_GEOGRAPHIC_COORDINATES_PROPERTY);
-		indigo_define_matching_property(GPS_UTC_TIME_PROPERTY);
-		indigo_define_matching_property(GPS_STATUS_PROPERTY);
-		indigo_define_matching_property(GPS_ADVANCED_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(GPS_GEOGRAPHIC_COORDINATES_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(GPS_UTC_TIME_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(GPS_STATUS_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(GPS_ADVANCED_PROPERTY);
 		if (indigo_property_match(GPS_ADVANCED_STATUS_PROPERTY, property) && (GPS_ADVANCED_ENABLED_ITEM->sw.value))
 			indigo_define_property(device, GPS_ADVANCED_STATUS_PROPERTY, NULL);
 	}

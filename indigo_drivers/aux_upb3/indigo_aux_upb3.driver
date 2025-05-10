@@ -57,8 +57,8 @@ driver upb3 {
 				if (upb3_command(device, "P#") && !strncmp(PRIVATE_DATA->response, "UPBv3_", 6)) {
 					PRIVATE_DATA->version = 3;
 					if (upb3_command(device, "PV")) {
-						indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro UPBv3");
-						indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 3);
+						INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro UPBv3");
+						INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 3);
 						indigo_update_property(device, INFO_PROPERTY, NULL);
 						upb3_command(device, "PL:1");
 						return true;
@@ -71,8 +71,8 @@ driver upb3 {
 		}
 
 		static void upb3_close(indigo_device *device) {
-			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 			if (PRIVATE_DATA->handle != NULL) {
 				upb3_command(device, "PL:0");
@@ -273,8 +273,8 @@ driver upb3 {
 		}
 		on_attach {
 			INFO_PROPERTY->count = 6;
-			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		}
 		// on_detach { }
 		text AUX_OUTLET_NAMES {

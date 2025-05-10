@@ -110,15 +110,15 @@ static bool lacerta_open(indigo_device *device) {
 		if (lacerta_command(device, ": i #", response, sizeof(response), 'i')) {
 			if (!strcmp(response + 2, "FMC")) {
 				PRIVATE_DATA->model = FMC;
-				indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, response + 2);
+				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, response + 2);
 			} else if (!strcmp(response + 2, "MFOC")) {
 				PRIVATE_DATA->model = MFOC;
 			} else {
 				PRIVATE_DATA->model = UNKNOWN;
 			}
-			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, response + 2);
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, response + 2);
 			if (lacerta_command(device, ": v #", response, sizeof(response), 'v')) {
-				indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, response + 1);
+				INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, response + 1);
 			}
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 		} else {
@@ -317,7 +317,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 #ifdef INDIGO_MACOS
 		for (int i = 0; i < DEVICE_PORTS_PROPERTY->count; i++) {
 			if (!strncmp(DEVICE_PORTS_PROPERTY->items[i].name, "/dev/cu.usbmodem", 16)) {
-				indigo_copy_value(DEVICE_PORT_ITEM->text.value, DEVICE_PORTS_PROPERTY->items[i].name);
+				INDIGO_COPY_VALUE(DEVICE_PORT_ITEM->text.value, DEVICE_PORTS_PROPERTY->items[i].name);
 				break;
 			}
 		}

@@ -51,9 +51,9 @@ driver fc3 {
 			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 115200, INDIGO_LOG_DEBUG);
 			if (PRIVATE_DATA->handle != NULL) {
 				if (fc3_command(device, "##") && !strncmp(PRIVATE_DATA->response, "FC3_", 4)) {
-					indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "FocusCube v3");
+					INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "FocusCube v3");
 					if (fc3_command(device, "FV") && !strncmp(PRIVATE_DATA->response, "FV:", 3)) {
-						indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 3);
+						INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 3);
 					}
 					indigo_update_property(device, INFO_PROPERTY, NULL);
 					return true;
@@ -65,8 +65,8 @@ driver fc3 {
 		}
 
 		static void fc3_close(indigo_device *device) {
-			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 			indigo_uni_close(&PRIVATE_DATA->handle);
 		}
@@ -76,8 +76,8 @@ driver fc3 {
 		additional_instances = true;
 		on_attach {
 			INFO_PROPERTY->count = 6;
-			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		}
 		on_timer {
 			bool update = false;

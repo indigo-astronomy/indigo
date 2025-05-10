@@ -184,9 +184,9 @@ static indigo_result wheel_attach(indigo_device *device) {
 		INFO_PROPERTY->count = 6;
 		char sdk_version[OFW_VERSION_LEN + 1];
 		OFWGetSDKVersion(sdk_version);
-		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, sdk_version);
-		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->model);
-		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->label, "SDK version");
+		INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, sdk_version);
+		INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->model);
+		INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->label, "SDK version");
 
 		// --------------------------------------------------------------------------------- X_CALIBRATE
 		X_CALIBRATE_PROPERTY = indigo_init_switch_property(NULL, device->name, X_CALIBRATE_PROPERTY_NAME, ADVANCED_GROUP, "Calibrate filter wheel", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
@@ -233,11 +233,11 @@ static indigo_result wheel_attach(indigo_device *device) {
 static indigo_result wheel_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	if (device->is_connected) {
-		indigo_define_matching_property(X_CALIBRATE_PROPERTY);
-		indigo_define_matching_property(X_CUSTOM_SUFFIX_PROPERTY);
-		indigo_define_matching_property(X_BLUETOOTH_PROPERTY);
-		indigo_define_matching_property(X_BLUETOOTH_NAME_PROPERTY);
-		indigo_define_matching_property(X_FACTORY_RESET_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_CALIBRATE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_CUSTOM_SUFFIX_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_BLUETOOTH_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_BLUETOOTH_NAME_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_FACTORY_RESET_PROPERTY);
 	}
 	return indigo_wheel_enumerate_properties(device, client, property);
 }

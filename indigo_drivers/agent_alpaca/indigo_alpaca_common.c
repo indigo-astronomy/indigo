@@ -172,28 +172,28 @@ bool indigo_alpaca_wait_for_double(double *reference, double value, int timeout)
 
 static indigo_alpaca_error alpaca_get_name(indigo_alpaca_device *device, int version, char *value) {
 	pthread_mutex_lock(&device->mutex);
-	indigo_copy_name(value, device->device_name);
+	INDIGO_COPY_NAME(value, device->device_name);
 	pthread_mutex_unlock(&device->mutex);
 	return indigo_alpaca_error_OK;
 }
 
 static indigo_alpaca_error alpaca_get_description(indigo_alpaca_device *device, int version, char *value) {
 	pthread_mutex_lock(&device->mutex);
-	indigo_copy_name(value, device->indigo_device);
+	INDIGO_COPY_NAME(value, device->indigo_device);
 	pthread_mutex_unlock(&device->mutex);
 	return indigo_alpaca_error_OK;
 }
 
 static indigo_alpaca_error alpaca_get_driverinfo(indigo_alpaca_device *device, int version, char *value) {
 	pthread_mutex_lock(&device->mutex);
-	indigo_copy_value(value, device->driver_info);
+	INDIGO_COPY_VALUE(value, device->driver_info);
 	pthread_mutex_unlock(&device->mutex);
 	return indigo_alpaca_error_OK;
 }
 
 static indigo_alpaca_error alpaca_get_driverversion(indigo_alpaca_device *device, int version, char *value) {
 	pthread_mutex_lock(&device->mutex);
-	indigo_copy_value(value, device->driver_version);
+	INDIGO_COPY_VALUE(value, device->driver_version);
 	pthread_mutex_unlock(&device->mutex);
 	return indigo_alpaca_error_OK;
 }

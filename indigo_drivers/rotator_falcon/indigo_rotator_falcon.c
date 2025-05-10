@@ -67,13 +67,13 @@ static void rotator_connection_handler(indigo_device *device) {
 		PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 9600, INDIGO_LOG_DEBUG);
 		if (PRIVATE_DATA->handle != NULL) {
 			if (falcon_command(device, "F#", response, sizeof(response)) && !strcmp(response, "FR_OK")) {
-				indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value ,"Falcon Rotator");
+				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value ,"Falcon Rotator");
 			} else {
 				indigo_uni_close(&PRIVATE_DATA->handle);
 				PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 115200, INDIGO_LOG_DEBUG);
 				if (PRIVATE_DATA->handle != NULL) {
 					if (falcon_command(device, "F#", response, sizeof(response)) && !strncmp(response, "F2R_", 4)) {
-						indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Falcon Rotator v2");
+						INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Falcon Rotator v2");
 					} else {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "Rotator not detected");
 						indigo_uni_close(&PRIVATE_DATA->handle);
@@ -83,7 +83,7 @@ static void rotator_connection_handler(indigo_device *device) {
 		}
 		if (PRIVATE_DATA->handle != NULL) {
 			if (falcon_command(device, "FV", response, sizeof(response)) && !strncmp(response, "FV:", 3)) {
-				indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, response + 3);
+				INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, response + 3);
 			} else {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read 'FV' response");
 				indigo_uni_close(&PRIVATE_DATA->handle);
@@ -157,7 +157,7 @@ static void rotator_connection_handler(indigo_device *device) {
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
-		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "undefined");
+		INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "undefined");
 		if (PRIVATE_DATA->handle != NULL) {
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
 			indigo_uni_close(&PRIVATE_DATA->handle);
@@ -259,7 +259,7 @@ static indigo_result rotator_attach(indigo_device *device) {
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		DEVICE_PORT_PROPERTY->hidden = false;
 		INFO_PROPERTY->count = 6;
-		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Falcon Rotator");
+		INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Falcon Rotator");
 		// --------------------------------------------------------------------------------
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;

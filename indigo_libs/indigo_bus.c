@@ -877,10 +877,10 @@ indigo_property *indigo_init_text_property(indigo_property *property, const char
 		allocated_count = property->allocated_count;
 	}
 	memset(property, 0, size);
-	indigo_copy_name(property->device, device);
-	indigo_copy_name(property->name, name);
-	indigo_copy_name(property->group, group ? group : "");
-	indigo_copy_value(property->label, label ? label : "");
+	INDIGO_COPY_NAME(property->device, device);
+	INDIGO_COPY_NAME(property->name, name);
+	INDIGO_COPY_NAME(property->group, group ? group : "");
+	INDIGO_COPY_VALUE(property->label, label ? label : "");
 	property->type = INDIGO_TEXT_VECTOR;
 	property->state = state;
 	property->perm = perm;
@@ -902,10 +902,10 @@ indigo_property *indigo_init_number_property(indigo_property *property, const ch
 		allocated_count = property->allocated_count;
 	}
 	memset(property, 0, size);
-	indigo_copy_name(property->device, device);
-	indigo_copy_name(property->name, name);
-	indigo_copy_name(property->group, group ? group : "");
-	indigo_copy_value(property->label, label ? label : "");
+	INDIGO_COPY_NAME(property->device, device);
+	INDIGO_COPY_NAME(property->name, name);
+	INDIGO_COPY_NAME(property->group, group ? group : "");
+	INDIGO_COPY_VALUE(property->label, label ? label : "");
 	property->type = INDIGO_NUMBER_VECTOR;
 	property->state = state;
 	property->perm = perm;
@@ -927,10 +927,10 @@ indigo_property *indigo_init_switch_property(indigo_property *property, const ch
 		allocated_count = property->allocated_count;
 	}
 	memset(property, 0, size);
-	indigo_copy_name(property->device, device);
-	indigo_copy_name(property->name, name);
-	indigo_copy_name(property->group, group ? group : "");
-	indigo_copy_value(property->label, label ? label : "");
+	INDIGO_COPY_NAME(property->device, device);
+	INDIGO_COPY_NAME(property->name, name);
+	INDIGO_COPY_NAME(property->group, group ? group : "");
+	INDIGO_COPY_VALUE(property->label, label ? label : "");
 	property->type = INDIGO_SWITCH_VECTOR;
 	property->state = state;
 	property->perm = perm;
@@ -953,10 +953,10 @@ indigo_property *indigo_init_light_property(indigo_property *property, const cha
 		allocated_count = property->allocated_count;
 	}
 	memset(property, 0, size);
-	indigo_copy_name(property->device, device);
-	indigo_copy_name(property->name, name);
-	indigo_copy_name(property->group, group ? group : "");
-	indigo_copy_value(property->label, label ? label : "");
+	INDIGO_COPY_NAME(property->device, device);
+	INDIGO_COPY_NAME(property->name, name);
+	INDIGO_COPY_NAME(property->group, group ? group : "");
+	INDIGO_COPY_VALUE(property->label, label ? label : "");
 	property->type = INDIGO_LIGHT_VECTOR;
 	property->perm = INDIGO_RO_PERM;
 	property->state = state;
@@ -985,10 +985,10 @@ indigo_property *indigo_init_blob_property_p(indigo_property *property, const ch
 		allocated_count = property->allocated_count;
 	}
 	memset(property, 0, size);
-	indigo_copy_name(property->device, device);
-	indigo_copy_name(property->name, name);
-	indigo_copy_name(property->group, group ? group : "");
-	indigo_copy_value(property->label, label ? label : "");
+	INDIGO_COPY_NAME(property->device, device);
+	INDIGO_COPY_NAME(property->name, name);
+	INDIGO_COPY_NAME(property->group, group ? group : "");
+	INDIGO_COPY_VALUE(property->label, label ? label : "");
 	property->type = INDIGO_BLOB_VECTOR;
 	property->perm = perm;
 	property->state = state;
@@ -1110,8 +1110,8 @@ void indigo_init_text_item(indigo_item *item, const char *name, const char *labe
 	assert(item != NULL);
 	assert(name != NULL);
 	memset(item, 0, sizeof(indigo_item));
-	indigo_copy_name(item->name, name);
-	indigo_copy_value(item->label, label ? label : "");
+	INDIGO_COPY_NAME(item->name, name);
+	INDIGO_COPY_VALUE(item->label, label ? label : "");
 	va_list args;
 	va_start(args, format);
 	vsnprintf(item->text.value, INDIGO_VALUE_SIZE, format, args);
@@ -1122,8 +1122,8 @@ void indigo_init_text_item_raw(indigo_item *item, const char *name, const char *
 	assert(item != NULL);
 	assert(name != NULL);
 	memset(item, 0, sizeof(indigo_item));
-	indigo_copy_name(item->name, name);
-	indigo_copy_value(item->label, label ? label : "");
+	INDIGO_COPY_NAME(item->name, name);
+	INDIGO_COPY_VALUE(item->label, label ? label : "");
 	indigo_set_text_item_value(item, value);
 }
 
@@ -1131,9 +1131,9 @@ void indigo_init_number_item(indigo_item *item, const char *name, const char *la
 	assert(item != NULL);
 	assert(name != NULL);
 	memset(item, 0, sizeof(indigo_item));
-	indigo_copy_name(item->name, name);
-	indigo_copy_value(item->label, label ? label : "");
-	indigo_copy_value(item->number.format, "%g");
+	INDIGO_COPY_NAME(item->name, name);
+	INDIGO_COPY_VALUE(item->label, label ? label : "");
+	INDIGO_COPY_VALUE(item->number.format, "%g");
 	item->number.min = min;
 	item->number.max = max;
 	item->number.step = step;
@@ -1144,8 +1144,8 @@ void indigo_init_switch_item(indigo_item *item, const char *name, const char *la
 	assert(item != NULL);
 	assert(name != NULL);
 	memset(item, 0, sizeof(indigo_item));
-	indigo_copy_name(item->name, name);
-	indigo_copy_value(item->label, label ? label : "");
+	INDIGO_COPY_NAME(item->name, name);
+	INDIGO_COPY_VALUE(item->label, label ? label : "");
 	item->sw.value = value;
 }
 
@@ -1153,8 +1153,8 @@ void indigo_init_light_item(indigo_item *item, const char *name, const char *lab
 	assert(item != NULL);
 	assert(name != NULL);
 	memset(item, 0, sizeof(indigo_item));
-	indigo_copy_name(item->name, name);
-	indigo_copy_value(item->label, label ? label : "");
+	INDIGO_COPY_NAME(item->name, name);
+	INDIGO_COPY_VALUE(item->label, label ? label : "");
 	item->light.value = value;
 }
 
@@ -1162,8 +1162,8 @@ void indigo_init_blob_item(indigo_item *item, const char *name, const char *labe
 	assert(item != NULL);
 	assert(name != NULL);
 	memset(item, 0, sizeof(indigo_item));
-	indigo_copy_name(item->name, name);
-	indigo_copy_value(item->label, label ? label : "");
+	INDIGO_COPY_NAME(item->name, name);
+	INDIGO_COPY_VALUE(item->label, label ? label : "");
 }
 
 void *indigo_alloc_blob_buffer(long size) {
@@ -1228,7 +1228,7 @@ bool indigo_download_blob(char *url, void **value, long *size, char *format) {
 	if (content_len) {
 		char *image_type = strrchr(file, '.');
 		if (image_type && format != NULL) {
-			indigo_copy_name(format, image_type);
+			INDIGO_COPY_NAME(format, image_type);
 		}
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 		if (use_gzip) {
@@ -1510,7 +1510,7 @@ void indigo_property_copy_values(indigo_property *property, indigo_property *oth
 								free(property_item->text.long_value);
 								property_item->text.long_value = NULL;
 							}
-							indigo_copy_value(property_item->text.value, other_item->text.value);
+							INDIGO_COPY_VALUE(property_item->text.value, other_item->text.value);
 							property_item->text.length = other_item->text.length;
 							if (other_item->text.long_value) {
 								property_item->text.long_value = indigo_safe_malloc(property_item->text.length);
@@ -1531,7 +1531,7 @@ void indigo_property_copy_values(indigo_property *property, indigo_property *oth
 							break;
 						case INDIGO_BLOB_VECTOR:
 							property_item->blob.value = indigo_safe_realloc_copy(property_item->blob.value, property_item->blob.size = other_item->blob.size, other_item->blob.value);
-							indigo_copy_name(property_item->blob.format, other_item->blob.format);
+							INDIGO_COPY_NAME(property_item->blob.format, other_item->blob.format);
 							break;
 						default:
 							break;
@@ -1595,7 +1595,7 @@ void indigo_set_text_item_value(indigo_item *item, const char *value) {
 		item->text.long_value = NULL;
 	}
 	long length = (long)strlen(value);
-	indigo_copy_value(item->text.value, value);
+	INDIGO_COPY_VALUE(item->text.value, value);
 	item->text.length = length + 1;
 	if (length >= INDIGO_VALUE_SIZE) {
 		item->text.long_value = indigo_safe_malloc(item->text.length);
@@ -1690,8 +1690,8 @@ indigo_result indigo_change_blob_property_with_token(indigo_client *client, cons
 		indigo_item *item = property->items + i;
 		indigo_init_blob_item(item, items[i], NULL);
 		item->blob.value = indigo_safe_malloc_copy(item->blob.size = sizes[i], values[i]);
-		indigo_copy_name(item->blob.format, formats[i]);
-		indigo_copy_value(item->blob.url, urls[i]);
+		INDIGO_COPY_NAME(item->blob.format, formats[i]);
+		INDIGO_COPY_VALUE(item->blob.url, urls[i]);
 	}
 	indigo_result result = indigo_change_property(client, property);
 	indigo_release_property(property);
@@ -1707,8 +1707,8 @@ indigo_result indigo_change_blob_property_1_with_token(indigo_client *client, co
 	property->access_token = token;
 	indigo_init_blob_item(property->items, item, NULL);
 	property->items->blob.value = indigo_safe_malloc_copy(property->items->blob.size = size, value);
-	indigo_copy_name(property->items->blob.format, format);
-	indigo_copy_value(property->items->blob.url, url);
+	INDIGO_COPY_NAME(property->items->blob.format, format);
+	INDIGO_COPY_VALUE(property->items->blob.url, url);
 	indigo_result result = indigo_change_property(client, property);
 	indigo_release_property(property);
 	return result;

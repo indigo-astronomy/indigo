@@ -137,12 +137,12 @@ static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_clie
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(DSLR_DELETE_IMAGE_PROPERTY);
-		indigo_define_matching_property(DSLR_MIRROR_LOCKUP_PROPERTY);
-		indigo_define_matching_property(DSLR_ZOOM_PREVIEW_PROPERTY);
-		indigo_define_matching_property(DSLR_LOCK_PROPERTY);
-		indigo_define_matching_property(DSLR_AF_PROPERTY);
-		indigo_define_matching_property(DSLR_SET_HOST_TIME_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(DSLR_DELETE_IMAGE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(DSLR_MIRROR_LOCKUP_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(DSLR_ZOOM_PREVIEW_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(DSLR_LOCK_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(DSLR_AF_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(DSLR_SET_HOST_TIME_PROPERTY);
 		for (int i = 0; PRIVATE_DATA->info_properties_supported[i]; i++)
 			if (indigo_property_match(PRIVATE_DATA->properties[i].property, property))
 				indigo_define_property(device, PRIVATE_DATA->properties[i].property, NULL);

@@ -637,19 +637,19 @@ static void dome_event_handler(indigo_device *device) {
 
 static indigo_result nexdome_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(NEXDOME_FIND_HOME_PROPERTY);
-		indigo_define_matching_property(NEXDOME_HOME_POSITION_PROPERTY);
-		indigo_define_matching_property(NEXDOME_MOVE_THRESHOLD_PROPERTY);
-		indigo_define_matching_property(NEXDOME_POWER_PROPERTY);
-		indigo_define_matching_property(NEXDOME_ACCELERATION_PROPERTY);
-		indigo_define_matching_property(NEXDOME_VELOCITY_PROPERTY);
-		indigo_define_matching_property(NEXDOME_RANGE_PROPERTY);
-		indigo_define_matching_property(NEXDOME_SETTINGS_PROPERTY);
-		indigo_define_matching_property(NEXDOME_RAIN_PROPERTY);
-		indigo_define_matching_property(NEXDOME_XB_STATE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(NEXDOME_FIND_HOME_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(NEXDOME_HOME_POSITION_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(NEXDOME_MOVE_THRESHOLD_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(NEXDOME_POWER_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(NEXDOME_ACCELERATION_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(NEXDOME_VELOCITY_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(NEXDOME_RANGE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(NEXDOME_SETTINGS_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(NEXDOME_RAIN_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(NEXDOME_XB_STATE_PROPERTY);
 
 #ifdef CMD_AID
-		indigo_define_matching_property(NEXDOME_COMMAND_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(NEXDOME_COMMAND_PROPERTY);
 #endif
 	}
 	return indigo_dome_enumerate_properties(device, NULL, NULL);
@@ -666,7 +666,7 @@ static indigo_result dome_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- DOME_SPEED
 		DOME_SPEED_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- DOME_STEPS_PROPERTY
-		indigo_copy_value(DOME_STEPS_ITEM->label, "Relative move (°)");
+		INDIGO_COPY_VALUE(DOME_STEPS_ITEM->label, "Relative move (°)");
 		// -------------------------------------------------------------------------------- DEVICE_PORT
 		DEVICE_PORT_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
@@ -827,8 +827,8 @@ static void dome_connect_callback(indigo_device *device) {
 					return;
 				} else { // Successfully connected
 					//uint32_t value;
-					indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "NexDome");
-					indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware);
+					INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "NexDome");
+					INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware);
 					int version, revision;
 					char leftover[255];
 					sscanf(firmware, "%d.%d.%s", &version, &revision, leftover);

@@ -55,9 +55,9 @@ driver uch {
 			if (PRIVATE_DATA->handle != NULL) {
 				if (uch_command(device, "P#")) {
 					if (!strcmp(PRIVATE_DATA->response, "UCH_OK")) {
-						indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, DRIVER_LABEL);
+						INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, DRIVER_LABEL);
 						if (uch_command(device, "PV")) {
-							indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 3);
+							INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 3);
 							indigo_update_property(device, INFO_PROPERTY, NULL);
 							uch_command(device, "PL:1");
 							return true;
@@ -71,8 +71,8 @@ driver uch {
 		}
 		
 		static void uch_close(indigo_device *device) {
-			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 			uch_command(device, "PL:0");
 			indigo_uni_close(&PRIVATE_DATA->handle);
@@ -165,8 +165,8 @@ driver uch {
 		}
 		on_attach {
 			INFO_PROPERTY->count = 6;
-			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		}
 		text AUX_OUTLET_NAMES {
 			name = AUX_OUTLET_NAMES_PROPERTY_NAME;

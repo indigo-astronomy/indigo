@@ -148,7 +148,7 @@ int process_quotes(char *value) {
 		return -1;
 	}
 
-	indigo_copy_value(buf, value);
+	INDIGO_COPY_VALUE(buf, value);
 	ptr = value;
 	for (int i = 0; i < strlen(buf); i++) {
 		if ((buf[i] == '\\') && (buf[i+1] == '\"')) {
@@ -633,7 +633,7 @@ static indigo_result client_define_property(indigo_client *client, indigo_device
 
 			for (i = 0; i< change_request.item_count; i++) {
 				items[i] = (char *)malloc(INDIGO_NAME_SIZE);
-				indigo_copy_name(items[i], change_request.item_name[i]);
+				INDIGO_COPY_NAME(items[i], change_request.item_name[i]);
 			}
 
 			switch (property->type) {
@@ -654,7 +654,7 @@ static indigo_result client_define_property(indigo_client *client, indigo_device
 								name_provided = true;
 							}
 							txt_values[i] = (char *)malloc(INDIGO_VALUE_SIZE);
-							indigo_copy_value(txt_values[i], change_request.value_string[i]);
+							INDIGO_COPY_VALUE(txt_values[i], change_request.value_string[i]);
 							txt_values[i][INDIGO_VALUE_SIZE-1] = 0;
 						}
 					}
@@ -665,7 +665,7 @@ static indigo_result client_define_property(indigo_client *client, indigo_device
 				} else {
 					for (i = 0; i < change_request.item_count; i++) {
 						txt_values[i] = (char *)malloc(INDIGO_VALUE_SIZE);
-						indigo_copy_value(txt_values[i], change_request.value_string[i]);
+						INDIGO_COPY_VALUE(txt_values[i], change_request.value_string[i]);
 						txt_values[i][INDIGO_VALUE_SIZE-1] = 0;
 					}
 				}

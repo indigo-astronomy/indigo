@@ -190,7 +190,7 @@ static bool indigo_select_matching_usbserial_device(indigo_device *device, indig
 		char buffer[INDIGO_VALUE_SIZE] = {0};
 		snprintf(buffer, INDIGO_VALUE_SIZE-1, "%s%s", USBSERIAL_AUTO_PREFIX, matching->path);
 		INDIGO_DEBUG(indigo_debug("%s(): Selected new port for '%s': %s", __FUNCTION__, device->name, buffer));
-		indigo_copy_value(DEVICE_PORT_ITEM->text.value, buffer);
+		INDIGO_COPY_VALUE(DEVICE_PORT_ITEM->text.value, buffer);
 		return true;
 	}
 	return false;
@@ -825,7 +825,7 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 			indigo_item *name_item = PROFILE_NAME_ITEM + i;
 			if (strlen(name_item->text.value) == 0)
 				sprintf(name_item->text.value, "Profile #%d", i);
-			indigo_copy_name(profile_item->label, name_item->text.value);
+			INDIGO_COPY_NAME(profile_item->label, name_item->text.value);
 		}
 		indigo_define_property(device, PROFILE_PROPERTY, NULL);
 		if (strcmp(client->name, CONFIG_READER)) {
@@ -901,7 +901,7 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 		} else {
 			for (int i = 0; i < DEVICE_PORTS_PROPERTY->count; i++) {
 				if (DEVICE_PORTS_PROPERTY->items[i].sw.value) {
-					indigo_copy_value(DEVICE_PORT_ITEM->text.value, DEVICE_PORTS_PROPERTY->items[i].name);
+					INDIGO_COPY_VALUE(DEVICE_PORT_ITEM->text.value, DEVICE_PORTS_PROPERTY->items[i].name);
 					DEVICE_PORTS_PROPERTY->items[i].sw.value = false;
 				}
 			}

@@ -244,8 +244,8 @@ static indigo_result focuser_attach(indigo_device *device) {
 
 static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(X_FOCUSER_FANS_PROPERTY);
-		indigo_define_matching_property(X_FOCUSER_CALIBRATION_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_FOCUSER_FANS_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_FOCUSER_CALIBRATION_PROPERTY);
 	}
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
 }
@@ -412,18 +412,18 @@ static void focuser_connection_handler(indigo_device *device) {
 			uint8_t get_version_packet[16] = { SOM, 0x03, APP, FOC, 0xFE, 0 };
 			if (efa_command(device, get_version_packet, response_packet)) {
 				if (response_packet[1] == 5) {
-					indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "PlaneWave EFA");
+					INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "PlaneWave EFA");
 					sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%d.%d", response_packet[5], response_packet[6]);
 					PRIVATE_DATA->is_efa = true;
 					PRIVATE_DATA->is_celestron = false;
 				} else if (response_packet[1] == 7) {
-					indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Celestron Focus Motor");
+					INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Celestron Focus Motor");
 					sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%d.%d.%d", response_packet[5], response_packet[6], (response_packet[7] << 8) + response_packet[8]);
 					PRIVATE_DATA->is_efa = false;
 					PRIVATE_DATA->is_celestron = true;
 				} else {
-					indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Uknown device");
-					indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Uknown version");
+					INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Uknown device");
+					INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Uknown version");
 				}
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "%s %s detected", INFO_DEVICE_MODEL_ITEM->text.value, INFO_DEVICE_FW_REVISION_ITEM->text.value);
 				indigo_update_property(device, INFO_PROPERTY, NULL);

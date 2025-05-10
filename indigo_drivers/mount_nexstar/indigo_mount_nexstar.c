@@ -293,9 +293,9 @@ static void mount_handle_connect(indigo_device *device) {
 				if (PRIVATE_DATA->vendor_id < 0) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "guess_mount_vendor(%d) = %d (%s)", dev_id, PRIVATE_DATA->vendor_id, strerror(errno));
 				} else if (PRIVATE_DATA->vendor_id == VNDR_SKYWATCHER) {
-					indigo_copy_value(MOUNT_INFO_VENDOR_ITEM->text.value, "Sky-Watcher");
+					INDIGO_COPY_VALUE(MOUNT_INFO_VENDOR_ITEM->text.value, "Sky-Watcher");
 				} else if (PRIVATE_DATA->vendor_id == VNDR_CELESTRON) {
-					indigo_copy_value(MOUNT_INFO_VENDOR_ITEM->text.value, "Celestron");
+					INDIGO_COPY_VALUE(MOUNT_INFO_VENDOR_ITEM->text.value, "Celestron");
 				}
 				int model_id = tc_get_model(dev_id);
 				if (model_id < 0) {
@@ -1152,7 +1152,7 @@ static void guider_handle_connect(indigo_device *device) {
 
 static indigo_result nexstar_guider_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(COMMAND_GUIDE_RATE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(COMMAND_GUIDE_RATE_PROPERTY);
 	}
 	return indigo_guider_enumerate_properties(device, NULL, NULL);
 }
@@ -1256,7 +1256,7 @@ static void gps_handle_connect(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			device->gp_bits = 0;
-			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "N/A");
+			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "N/A");
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 			indigo_send_message(device, "No GPS unit detected");
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -1273,7 +1273,7 @@ static indigo_result gps_attach(indigo_device *device) {
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_gps_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		INFO_PROPERTY->count = 6;
-		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Celestron GPS");
+		INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Celestron GPS");
 		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->count = 2;
 		GPS_UTC_TIME_PROPERTY->hidden = false;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);

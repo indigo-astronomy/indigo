@@ -219,8 +219,8 @@ static void steeldrive2_connect(indigo_device *device) {
 		for (int i = 0; i < 3; i++) {
 			if (indigo_read_line(PRIVATE_DATA->handle, response, sizeof(response)) > 0 && !strcmp(response, "$BS Hello World!")) {
 				if (steeldrive2_command(device, "$BS GET VERSION", response, sizeof(response)) && (colon = strchr(response, ':'))) {
-					indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Baader Planetarium SteelDriveII");
-					indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, colon + 1);
+					INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Baader Planetarium SteelDriveII");
+					INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, colon + 1);
 					indigo_update_property(device, INFO_PROPERTY, NULL);
 #ifdef USE_CRC
 					if (steeldrive2_command(device, "$BS CRC_ENABLE", response, sizeof(response))) {
@@ -254,7 +254,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 #ifdef INDIGO_MACOS
 		for (int i = 0; i < DEVICE_PORTS_PROPERTY->count; i++) {
 			if (!strncmp(DEVICE_PORTS_PROPERTY->items[i].name, "/dev/cu.usbserial", 17)) {
-				indigo_copy_value(DEVICE_PORT_ITEM->text.value, DEVICE_PORTS_PROPERTY->items[i].name);
+				INDIGO_COPY_VALUE(DEVICE_PORT_ITEM->text.value, DEVICE_PORTS_PROPERTY->items[i].name);
 				break;
 			}
 		}
@@ -350,13 +350,13 @@ static indigo_result focuser_attach(indigo_device *device) {
 
 static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(X_NAME_PROPERTY);
-		indigo_define_matching_property(X_SAVED_VALUES_PROPERTY);
-		indigo_define_matching_property(X_STATUS_PROPERTY);
-		indigo_define_matching_property(X_SELECT_TC_SENSOR_PROPERTY);
-		indigo_define_matching_property(X_RESET_PROPERTY);
-		indigo_define_matching_property(X_USE_ENDSTOP_PROPERTY);
-		indigo_define_matching_property(X_START_ZEROING_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_NAME_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_SAVED_VALUES_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_STATUS_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_SELECT_TC_SENSOR_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_RESET_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_USE_ENDSTOP_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_START_ZEROING_PROPERTY);
 	}
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
 }
@@ -962,12 +962,12 @@ static indigo_result aux_attach(indigo_device *device) {
 
 static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(AUX_HEATER_OUTLET_PROPERTY);
-		indigo_define_matching_property(AUX_DEW_CONTROL_PROPERTY);
-		indigo_define_matching_property(X_USE_PID_PROPERTY);
-		indigo_define_matching_property(X_PID_SETTINGS_PROPERTY);
-		indigo_define_matching_property(X_SELECT_PID_SENSOR_PROPERTY);
-		indigo_define_matching_property(X_SELECT_AMB_SENSOR_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_HEATER_OUTLET_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_DEW_CONTROL_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_USE_PID_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_PID_SETTINGS_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_SELECT_PID_SENSOR_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_SELECT_AMB_SENSOR_PROPERTY);
 	}
 	return indigo_aux_enumerate_properties(device, NULL, NULL);
 }

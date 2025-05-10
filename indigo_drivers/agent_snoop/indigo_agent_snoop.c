@@ -100,8 +100,8 @@ static indigo_result forward_property(indigo_device *device, indigo_client *clie
 		}
 	}
 	indigo_property *property = indigo_copy_property(NULL, source_property);
-	indigo_copy_name(property->device, r->target_device_name);
-	indigo_copy_name(property->name, r->target_property_name);
+	INDIGO_COPY_NAME(property->device, r->target_device_name);
+	INDIGO_COPY_NAME(property->name, r->target_property_name);
 	indigo_trace_property("Property set by rule", NULL, property, false, true);
 	indigo_result result = r->target_device->last_result = r->target_device->change_property(r->target_device, client, property);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Forward: '%s'.%s > '%s'.%s", r->source_device_name, r->source_property_name, r->target_device_name, r->target_property_name);
@@ -163,9 +163,9 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 	}
 	indigo_result result = INDIGO_OK;
 	if ((result = indigo_agent_enumerate_properties(device, client, property)) == INDIGO_OK) {
-		indigo_define_matching_property(SNOOP_ADD_RULE_PROPERTY);
-		indigo_define_matching_property(SNOOP_REMOVE_RULE_PROPERTY);
-		indigo_define_matching_property(SNOOP_RULES_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(SNOOP_ADD_RULE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(SNOOP_REMOVE_RULE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(SNOOP_RULES_PROPERTY);
 	}
 	return result;
 }
@@ -192,10 +192,10 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			r = r->next;
 		}
 		r = indigo_safe_malloc(sizeof(rule));
-		indigo_copy_name(r->source_device_name, SNOOP_ADD_RULE_SOURCE_DEVICE_ITEM->text.value);
-		indigo_copy_name(r->source_property_name, SNOOP_ADD_RULE_SOURCE_PROPERTY_ITEM->text.value);
-		indigo_copy_name(r->target_device_name, SNOOP_ADD_RULE_TARGET_DEVICE_ITEM->text.value);
-		indigo_copy_name(r->target_property_name, SNOOP_ADD_RULE_TARGET_PROPERTY_ITEM->text.value);
+		INDIGO_COPY_NAME(r->source_device_name, SNOOP_ADD_RULE_SOURCE_DEVICE_ITEM->text.value);
+		INDIGO_COPY_NAME(r->source_property_name, SNOOP_ADD_RULE_SOURCE_PROPERTY_ITEM->text.value);
+		INDIGO_COPY_NAME(r->target_device_name, SNOOP_ADD_RULE_TARGET_DEVICE_ITEM->text.value);
+		INDIGO_COPY_NAME(r->target_property_name, SNOOP_ADD_RULE_TARGET_PROPERTY_ITEM->text.value);
 		r->state = INDIGO_OK_STATE;
 		r->next = DEVICE_PRIVATE_DATA->rules;
 		DEVICE_PRIVATE_DATA->rules = r;

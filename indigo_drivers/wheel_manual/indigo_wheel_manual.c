@@ -120,12 +120,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(WHEEL_SLOT_PROPERTY, property)) {
-		if (PRIVATE_DATA->wheel_slot_handler_timer == NULL) {
-			indigo_property_copy_values(WHEEL_SLOT_PROPERTY, property, false);
-			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
-			indigo_set_timer(device, 0, wheel_slot_handler, &PRIVATE_DATA->wheel_slot_handler_timer);
-		}
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(WHEEL_SLOT_PROPERTY, wheel_slot_handler, wheel_slot_handler_timer);
 		return INDIGO_OK;
 	}
 	return indigo_wheel_change_property(device, client, property);

@@ -126,8 +126,8 @@ static void temperature_timer_callback(indigo_device *device) {
 
 static indigo_result caa_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(CAA_BEEP_PROPERTY);
-		indigo_define_matching_property(CAA_CUSTOM_SUFFIX_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(CAA_BEEP_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(CAA_CUSTOM_SUFFIX_PROPERTY);
 	}
 	return indigo_rotator_enumerate_properties(device, NULL, NULL);
 }
@@ -140,10 +140,10 @@ static indigo_result rotator_attach(indigo_device *device) {
 		pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
 
 		INFO_PROPERTY->count = 6;
-		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->model);
+		INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->model);
 		char *sdk_version = CAAGetSDKVersion();
-		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, sdk_version);
-		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->label, "SDK version");
+		INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, sdk_version);
+		INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->label, "SDK version");
 
 
 		ROTATOR_LIMITS_PROPERTY->hidden = false;

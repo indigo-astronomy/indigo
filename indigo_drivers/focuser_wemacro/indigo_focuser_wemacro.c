@@ -218,9 +218,9 @@ static indigo_result focuser_attach(indigo_device *device) {
 
 static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(X_RAIL_CONFIG_PROPERTY);
-		indigo_define_matching_property(X_RAIL_SHUTTER_PROPERTY);
-		indigo_define_matching_property(X_RAIL_EXECUTE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_RAIL_CONFIG_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_RAIL_SHUTTER_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_RAIL_EXECUTE_PROPERTY);
 	}
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
 }

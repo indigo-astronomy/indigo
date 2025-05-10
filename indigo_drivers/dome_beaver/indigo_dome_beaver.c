@@ -383,21 +383,21 @@ static bool beaver_open(indigo_device *device) {
 	if (success) {
 		if (!strncmp(board, "Beaver (rotator)", 16)) {
 			beaver = true;
-			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, board);
-			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware);
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, board);
+			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware);
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 		} else if (!strncmp(board, "Beaver (shutter)", 16)) {
 			beaver = false;
-			indigo_copy_value(message, "Beaver shutter controler found, this driver works with Beaver rotator");
+			INDIGO_COPY_VALUE(message, "Beaver shutter controler found, this driver works with Beaver rotator");
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s", message);
 		} else {
 			beaver = false;
-			indigo_copy_value(message, "Connected device is not a Beaver dome controler");
+			INDIGO_COPY_VALUE(message, "Connected device is not a Beaver dome controler");
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s", message);
 		}
 	} else {
 		beaver = false;
-		indigo_copy_value(message, "No response from the device");
+		INDIGO_COPY_VALUE(message, "No response from the device");
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s", message);
 	}
 	if (!beaver) {
@@ -432,8 +432,8 @@ static void beaver_close(indigo_device *device) {
 		indigo_global_unlock(device);
 		PRIVATE_DATA->handle = 0;
 	}
-	indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, DOME_BEAVER_NAME);
-	indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "N/A");
+	INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, DOME_BEAVER_NAME);
+	INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "N/A");
 	indigo_update_property(device, INFO_PROPERTY, NULL);
 	device->is_connected = false;
 	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
@@ -858,11 +858,11 @@ static void dome_timer_callback(indigo_device *device) {
 
 static indigo_result beaver_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(X_SHUTTER_CALIBRATE_PROPERTY);
-		indigo_define_matching_property(X_ROTATOR_CALIBRATE_PROPERTY);
-		indigo_define_matching_property(X_FAILURE_MESSAGE_PROPERTY);
-		indigo_define_matching_property(X_CLEAR_FAILURE_PROPERTY);
-		indigo_define_matching_property(X_CONDITIONS_SAFETY_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_SHUTTER_CALIBRATE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_ROTATOR_CALIBRATE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_FAILURE_MESSAGE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_CLEAR_FAILURE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_CONDITIONS_SAFETY_PROPERTY);
 	}
 	return indigo_dome_enumerate_properties(device, NULL, NULL);
 }
@@ -877,14 +877,14 @@ static indigo_result dome_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- DOME_SPEED
 		DOME_SPEED_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- DOME_STEPS_PROPERTY
-		indigo_copy_value(DOME_STEPS_ITEM->label, "Relative move (°)");
+		INDIGO_COPY_VALUE(DOME_STEPS_ITEM->label, "Relative move (°)");
 		// -------------------------------------------------------------------------------- DEVICE_PORT
 		DEVICE_PORT_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- DEVICE_BAUDRATE
 		DEVICE_BAUDRATE_PROPERTY->hidden = true;
-		indigo_copy_value(DEVICE_BAUDRATE_ITEM->text.value, DEFAULT_BAUDRATE);
+		INDIGO_COPY_VALUE(DEVICE_BAUDRATE_ITEM->text.value, DEFAULT_BAUDRATE);
 		// --------------------------------------------------------------------------------
 		INFO_PROPERTY->count = 6;
 		// -------------------------------------------------------------------------------- DOME_ON_HORIZONTAL_COORDINATES_SET

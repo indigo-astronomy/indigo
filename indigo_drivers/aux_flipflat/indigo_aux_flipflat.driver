@@ -58,36 +58,36 @@ driver flipflat {
 						case 10:
 							AUX_LIGHT_SWITCH_PROPERTY->hidden = AUX_LIGHT_INTENSITY_PROPERTY->hidden = false;
 							AUX_COVER_PROPERTY->hidden = true;
-							indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Flat-Man_XL");
+							INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Flat-Man_XL");
 							break;
 						case 15:
 							AUX_LIGHT_SWITCH_PROPERTY->hidden = AUX_LIGHT_INTENSITY_PROPERTY->hidden = false;
 							AUX_COVER_PROPERTY->hidden = true;
-							indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Flat-Man_L");
+							INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Flat-Man_L");
 							break;
 						case 19:
 							AUX_LIGHT_SWITCH_PROPERTY->hidden = AUX_LIGHT_INTENSITY_PROPERTY->hidden = false;
 							AUX_COVER_PROPERTY->hidden = true;
-							indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Flat-Man");
+							INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Flat-Man");
 							break;
 						case 98:
 							AUX_LIGHT_SWITCH_PROPERTY->hidden = AUX_LIGHT_INTENSITY_PROPERTY->hidden = true;
 							AUX_COVER_PROPERTY->hidden = false;
-							indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Flip-Mask/Remote Dust Cover");
+							INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Flip-Mask/Remote Dust Cover");
 							break;
 						case 99:
 							AUX_LIGHT_SWITCH_PROPERTY->hidden = AUX_LIGHT_INTENSITY_PROPERTY->hidden = false;
 							AUX_COVER_PROPERTY->hidden = false;
-							indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Flip-Flap");
+							INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Flip-Flap");
 							break;
 						default:
 							AUX_LIGHT_SWITCH_PROPERTY->hidden = AUX_LIGHT_INTENSITY_PROPERTY->hidden = false;
 							AUX_COVER_PROPERTY->hidden = false;
-							indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+							INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 							break;
 					}
 					if (flipflat_command(device, ">VOOO")) {
-						indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 4);
+						INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 4);
 						indigo_update_property(device, INFO_PROPERTY, NULL);
 						return true;
 					}
@@ -99,7 +99,7 @@ driver flipflat {
 		}
 
 		static void flipflat_close(indigo_device *device) {
-			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 			indigo_uni_close(&PRIVATE_DATA->handle);
 		}
@@ -137,8 +137,8 @@ driver flipflat {
 		}
 		on_attach {
 			INFO_PROPERTY->count = 6;
-			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
-			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		}
 		switch AUX_COVER {
 			name = AUX_COVER_PROPERTY_NAME;

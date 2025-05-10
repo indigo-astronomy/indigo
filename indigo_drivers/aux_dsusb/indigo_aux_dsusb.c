@@ -245,9 +245,9 @@ static indigo_result aux_attach(indigo_device *device) {
 
 static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(CCD_ABORT_EXPOSURE_PROPERTY);
-		indigo_define_matching_property(CCD_EXPOSURE_PROPERTY);
-		indigo_define_matching_property(X_CONFIG_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_ABORT_EXPOSURE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_EXPOSURE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_CONFIG_PROPERTY);
 	}
 	return indigo_aux_enumerate_properties(device, NULL, NULL);
 }
@@ -262,28 +262,13 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
-		if (PRIVATE_DATA->aux_ccd_abort_exposure_handler_timer == NULL) {
-			indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
-			CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
-			indigo_set_timer(device, 0, aux_ccd_abort_exposure_handler, &PRIVATE_DATA->aux_ccd_abort_exposure_handler_timer);
-		}
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_ABORT_EXPOSURE_PROPERTY, aux_ccd_abort_exposure_handler, aux_ccd_abort_exposure_handler_timer);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_EXPOSURE_PROPERTY, property)) {
-		if (PRIVATE_DATA->aux_ccd_exposure_handler_timer == NULL) {
-			indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
-			CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-			indigo_set_timer(device, 0, aux_ccd_exposure_handler, &PRIVATE_DATA->aux_ccd_exposure_handler_timer);
-		}
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(CCD_EXPOSURE_PROPERTY, aux_ccd_exposure_handler, aux_ccd_exposure_handler_timer);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_CONFIG_PROPERTY, property)) {
-		if (PRIVATE_DATA->aux_x_config_handler_timer == NULL) {
-			indigo_property_copy_values(X_CONFIG_PROPERTY, property, false);
-			X_CONFIG_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, X_CONFIG_PROPERTY, NULL);
-			indigo_set_timer(device, 0, aux_x_config_handler, &PRIVATE_DATA->aux_x_config_handler_timer);
-		}
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_CONFIG_PROPERTY, aux_x_config_handler, aux_x_config_handler_timer);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {

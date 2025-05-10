@@ -360,7 +360,7 @@ int indigo_open_network_device(const char *url, int default_port, indigo_network
 		host_name[colon - host] = 0;
 		port = atoi(colon + 1);
 	} else {
-		indigo_copy_name(host_name, host);
+		INDIGO_COPY_NAME(host_name, host);
 	}
 
 	INDIGO_DEBUG(indigo_debug("Trying to open: '%s', port = %d, protocol = %d", host_name, port, *protocol_hint));

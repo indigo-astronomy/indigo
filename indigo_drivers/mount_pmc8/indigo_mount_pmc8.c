@@ -471,8 +471,8 @@ static indigo_result mount_attach(indigo_device *device) {
 }
 
 static indigo_result mount_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	indigo_define_matching_property(CONNECTION_MODE_PROPERTY);
-	indigo_define_matching_property(MOUNT_TYPE_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(CONNECTION_MODE_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_TYPE_PROPERTY);
 	return indigo_mount_enumerate_properties(device, NULL, NULL);
 }
 

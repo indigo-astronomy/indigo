@@ -403,9 +403,9 @@ static bool primaluce_open(indigo_device *device) {
 static void primaluce_close(indigo_device *device) {
 	if (PRIVATE_DATA->handle != NULL) {
 		indigo_uni_close(&PRIVATE_DATA->handle);
-		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "N/A");
-		indigo_copy_value(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, "N/A");
-		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "N/A");
+		INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "N/A");
+		INDIGO_COPY_VALUE(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, "N/A");
+		INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "N/A");
 		indigo_update_property(device, INFO_PROPERTY, NULL);
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
 	}
@@ -598,21 +598,21 @@ static indigo_result focuser_attach(indigo_device *device) {
 
 static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(X_STATE_PROPERTY);
-		indigo_define_matching_property(X_CONFIG_PROPERTY);
-		indigo_define_matching_property(X_LEDS_PROPERTY);
-		indigo_define_matching_property(X_WIFI_PROPERTY);
-		indigo_define_matching_property(X_WIFI_AP_PROPERTY);
-		indigo_define_matching_property(X_WIFI_STA_PROPERTY);
-		indigo_define_matching_property(X_RUNPRESET_L_PROPERTY);
-		indigo_define_matching_property(X_RUNPRESET_M_PROPERTY);
-		indigo_define_matching_property(X_RUNPRESET_S_PROPERTY);
-		indigo_define_matching_property(X_RUNPRESET_1_PROPERTY);
-		indigo_define_matching_property(X_RUNPRESET_2_PROPERTY);
-		indigo_define_matching_property(X_RUNPRESET_3_PROPERTY);
-		indigo_define_matching_property(X_RUNPRESET_PROPERTY);
-		indigo_define_matching_property(X_HOLD_CURR_PROPERTY);
-		indigo_define_matching_property(X_CALIBRATE_F_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_STATE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_CONFIG_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_LEDS_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_WIFI_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_WIFI_AP_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_WIFI_STA_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_RUNPRESET_L_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_RUNPRESET_M_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_RUNPRESET_S_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_RUNPRESET_1_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_RUNPRESET_2_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_RUNPRESET_3_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_RUNPRESET_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_HOLD_CURR_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_CALIBRATE_F_PROPERTY);
 	}
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
 }
@@ -653,7 +653,7 @@ static void focuser_connection_handler(indigo_device *device) {
 			if (primaluce_command(device, "{\"req\":{\"get\": \"\"}}}", response, sizeof(response), tokens, 1024)) {
 				if ((text = get_string(response, tokens, GET_MODNAME))) {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Model: %s", text);
-					indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, text);
+					INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, text);
 					if (!strncmp(text, "SESTOSENSO", 10)) {
 						X_STATE_PROPERTY->count = 2;
 						X_CONFIG_PROPERTY->hidden = false;
@@ -692,7 +692,7 @@ static void focuser_connection_handler(indigo_device *device) {
 				}
 				if ((text = get_string(response, tokens, GET_SWAPP))) {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SWAPP: %s", text);
-					indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, text);
+					INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, text);
 					if ((text = get_string(response, tokens, GET_SWWEB))) {
 						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SWWEB: %s", text);
 						strcat(INFO_DEVICE_FW_REVISION_ITEM->text.value, " / ");
@@ -701,7 +701,7 @@ static void focuser_connection_handler(indigo_device *device) {
 				}
 				if ((text = get_string(response, tokens, GET_SN))) {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SN: %s", text);
-					indigo_copy_value(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, text);
+					INDIGO_COPY_VALUE(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, text);
 				}
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 				if ((text = get_string(response, tokens, GET_MOT1_ERROR)) && *text) {
@@ -731,16 +731,16 @@ static void focuser_connection_handler(indigo_device *device) {
 					}
 				}
 				if ((text = get_string(response, tokens, GET_WIFIAP_SSID))) {
-					indigo_copy_value(X_WIFI_AP_SSID_ITEM->text.value, text);
+					INDIGO_COPY_VALUE(X_WIFI_AP_SSID_ITEM->text.value, text);
 				}
 				if ((text = get_string(response, tokens, GET_WIFIAP_PWD))) {
-					indigo_copy_value(X_WIFI_AP_PASSWORD_ITEM->text.value, text);
+					INDIGO_COPY_VALUE(X_WIFI_AP_PASSWORD_ITEM->text.value, text);
 				}
 				if ((text = get_string(response, tokens, GET_WIFISTA_SSID))) {
-					indigo_copy_value(X_WIFI_STA_SSID_ITEM->text.value, text);
+					INDIGO_COPY_VALUE(X_WIFI_STA_SSID_ITEM->text.value, text);
 				}
 				if ((text = get_string(response, tokens, GET_WIFISTA_PWD))) {
-					indigo_copy_value(X_WIFI_STA_PASSWORD_ITEM->text.value, text);
+					INDIGO_COPY_VALUE(X_WIFI_STA_PASSWORD_ITEM->text.value, text);
 				}
 				if ((text = get_string(response, tokens, GET_DIMLEDS))) {
 					if (!strcmp(text, "on")) {

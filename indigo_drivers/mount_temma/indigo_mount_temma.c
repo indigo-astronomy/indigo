@@ -244,9 +244,9 @@ static bool temma_command(indigo_device *device, char *command, bool wait) {
 			case 'v': {
 				switch (buffer[1]) {
 					case 'e':
-						indigo_copy_value(MOUNT_INFO_VENDOR_ITEM->text.value, "Takahashi");
-						indigo_copy_value(MOUNT_INFO_MODEL_ITEM->text.value, buffer + 4);
-						indigo_copy_value(MOUNT_INFO_FIRMWARE_ITEM->text.value, "N/A");
+						INDIGO_COPY_VALUE(MOUNT_INFO_VENDOR_ITEM->text.value, "Takahashi");
+						INDIGO_COPY_VALUE(MOUNT_INFO_MODEL_ITEM->text.value, buffer + 4);
+						INDIGO_COPY_VALUE(MOUNT_INFO_FIRMWARE_ITEM->text.value, "N/A");
 						break;
 					case '1':
 					case '2':
@@ -400,9 +400,9 @@ static indigo_result mount_attach(indigo_device *device) {
 
 static indigo_result mount_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(CORRECTION_SPEED_PROPERTY);
-		indigo_define_matching_property(HIGH_SPEED_PROPERTY);
-		indigo_define_matching_property(ZENITH_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(CORRECTION_SPEED_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(HIGH_SPEED_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(ZENITH_PROPERTY);
 	}
 	return indigo_mount_enumerate_properties(device, NULL, NULL);
 }

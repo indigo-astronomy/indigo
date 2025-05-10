@@ -674,11 +674,11 @@ static void dome_timer_callback(indigo_device *device) {
 
 static indigo_result nexdome_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(NEXDOME_REVERSED_PROPERTY);
-		indigo_define_matching_property(NEXDOME_RESET_SHUTTER_COMM_PROPERTY);
-		indigo_define_matching_property(NEXDOME_FIND_HOME_PROPERTY);
-		indigo_define_matching_property(NEXDOME_CALLIBRATE_PROPERTY);
-		indigo_define_matching_property(NEXDOME_POWER_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(NEXDOME_REVERSED_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(NEXDOME_RESET_SHUTTER_COMM_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(NEXDOME_FIND_HOME_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(NEXDOME_CALLIBRATE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(NEXDOME_POWER_PROPERTY);
 	}
 	return indigo_dome_enumerate_properties(device, NULL, NULL);
 }
@@ -692,7 +692,7 @@ static indigo_result dome_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- DOME_SPEED
 		DOME_SPEED_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- DOME_STEPS_PROPERTY
-		indigo_copy_value(DOME_STEPS_ITEM->label, "Relative move (°)");
+		INDIGO_COPY_VALUE(DOME_STEPS_ITEM->label, "Relative move (°)");
 		// -------------------------------------------------------------------------------- DEVICE_PORT
 		DEVICE_PORT_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
@@ -799,8 +799,8 @@ static void dome_connect_callback(indigo_device *device) {
 					return;
 				} else { // Successfully connected
 					//uint32_t value;
-					indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, name);
-					indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware);
+					INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, name);
+					INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware);
 					indigo_update_property(device, INFO_PROPERTY, NULL);
 					INDIGO_DRIVER_LOG(DRIVER_NAME, "%s with firmware V.%s connected.", name, firmware);
 

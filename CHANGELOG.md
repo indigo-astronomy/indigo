@@ -229,7 +229,7 @@ All notable changes to INDIGO framework will be documented in this file.
 
 - DSO catalogue cleanup
 
-- if-match-define pattern replaced with indigo_define_matching_property()
+- if-match-define pattern replaced with INDIGO_DEFINE_MATCHING_PROPERTY()
 
 - indigo_ccd_driver:
 	- added CCD_LOCAL_MODE.OBJECT

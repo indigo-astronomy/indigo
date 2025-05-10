@@ -181,20 +181,10 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ROTATOR_POSITION_PROPERTY, property)) {
-		if (PRIVATE_DATA->rotator_position_handler_timer == NULL) {
-			indigo_property_copy_values(ROTATOR_POSITION_PROPERTY, property, false);
-			ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
-			indigo_set_timer(device, 0, rotator_position_handler, &PRIVATE_DATA->rotator_position_handler_timer);
-		}
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(ROTATOR_POSITION_PROPERTY, rotator_position_handler, rotator_position_handler_timer);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ROTATOR_ABORT_MOTION_PROPERTY, property)) {
-		if (PRIVATE_DATA->rotator_abort_motion_handler_timer == NULL) {
-			indigo_property_copy_values(ROTATOR_ABORT_MOTION_PROPERTY, property, false);
-			ROTATOR_ABORT_MOTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, ROTATOR_ABORT_MOTION_PROPERTY, NULL);
-			indigo_set_timer(device, 0, rotator_abort_motion_handler, &PRIVATE_DATA->rotator_abort_motion_handler_timer);
-		}
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(ROTATOR_ABORT_MOTION_PROPERTY, rotator_abort_motion_handler, rotator_abort_motion_handler_timer);
 		return INDIGO_OK;
 	}
 	return indigo_rotator_change_property(device, client, property);

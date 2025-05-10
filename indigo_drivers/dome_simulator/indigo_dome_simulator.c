@@ -344,28 +344,28 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DOME_SPEED_PROPERTY, property)) {
-		indigo_copy_values_process_change(DOME_SPEED_PROPERTY, dome_speed_handler, dome_speed_handler_timer);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(DOME_SPEED_PROPERTY, dome_speed_handler, dome_speed_handler_timer);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DOME_HORIZONTAL_COORDINATES_PROPERTY, property)) {
-		indigo_copy_targets_process_change(DOME_HORIZONTAL_COORDINATES_PROPERTY, dome_horizontal_coordinates_handler, dome_horizontal_coordinates_handler_timer);
+		INDIGO_COPY_TARGETS_PROCESS_CHANGE(DOME_HORIZONTAL_COORDINATES_PROPERTY, dome_horizontal_coordinates_handler, dome_horizontal_coordinates_handler_timer);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DOME_SLAVING_PARAMETERS_PROPERTY, property)) {
-		indigo_copy_values_process_change(DOME_SLAVING_PARAMETERS_PROPERTY, dome_slaving_parameters_handler, dome_slaving_parameters_handler_timer);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(DOME_SLAVING_PARAMETERS_PROPERTY, dome_slaving_parameters_handler, dome_slaving_parameters_handler_timer);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DOME_STEPS_PROPERTY, property)) {
-		indigo_copy_values_process_change(DOME_STEPS_PROPERTY, dome_steps_handler, dome_steps_handler_timer);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(DOME_STEPS_PROPERTY, dome_steps_handler, dome_steps_handler_timer);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DOME_EQUATORIAL_COORDINATES_PROPERTY, property)) {
-		indigo_copy_values_process_change(DOME_EQUATORIAL_COORDINATES_PROPERTY, dome_equatorial_coordinates_handler, dome_equatorial_coordinates_handler_timer);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(DOME_EQUATORIAL_COORDINATES_PROPERTY, dome_equatorial_coordinates_handler, dome_equatorial_coordinates_handler_timer);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DOME_ABORT_MOTION_PROPERTY, property)) {
-		indigo_copy_values_process_change(DOME_ABORT_MOTION_PROPERTY, dome_abort_motion_handler, dome_abort_motion_handler_timer);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(DOME_ABORT_MOTION_PROPERTY, dome_abort_motion_handler, dome_abort_motion_handler_timer);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DOME_SHUTTER_PROPERTY, property)) {
-		indigo_copy_values_process_change(DOME_SHUTTER_PROPERTY, dome_shutter_handler, dome_shutter_handler_timer);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(DOME_SHUTTER_PROPERTY, dome_shutter_handler, dome_shutter_handler_timer);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DOME_PARK_PROPERTY, property)) {
-		indigo_copy_values_process_change(DOME_PARK_PROPERTY, dome_park_handler, dome_park_handler_timer);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(DOME_PARK_PROPERTY, dome_park_handler, dome_park_handler_timer);
 		return INDIGO_OK;
 	}
 	return indigo_dome_change_property(device, client, property);

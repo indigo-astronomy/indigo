@@ -76,9 +76,9 @@ indigo_result indigo_guider_enumerate_properties(indigo_device *device, indigo_c
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(GUIDER_GUIDE_DEC_PROPERTY);
-		indigo_define_matching_property(GUIDER_GUIDE_RA_PROPERTY);
-		indigo_define_matching_property(GUIDER_RATE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(GUIDER_GUIDE_DEC_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(GUIDER_GUIDE_RA_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(GUIDER_RATE_PROPERTY);
 	}
 	return indigo_device_enumerate_properties(device, client, property);
 }

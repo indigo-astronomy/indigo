@@ -86,13 +86,13 @@ static indigo_result focuser_attach(indigo_device *device) {
 #ifdef INDIGO_LINUX
 		if (DEVICE_PORTS_PROPERTY->count > 1) {
 			/* 0 is refresh button */
-			indigo_copy_value(DEVICE_PORT_ITEM->text.value, DEVICE_PORTS_PROPERTY->items[1].name);
+			INDIGO_COPY_VALUE(DEVICE_PORT_ITEM->text.value, DEVICE_PORTS_PROPERTY->items[1].name);
 		} else {
 			strcpy(DEVICE_PORT_ITEM->text.value, "/dev/ttyUSB0");
 		}
 #endif
 		// -------------------------------------------------------------------------------- INFO
-		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "ASTROMECHANICS Focuser");
+		INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "ASTROMECHANICS Focuser");
 		// -------------------------------------------------------------------------------- FOCUSER_SPEED
 		FOCUSER_SPEED_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- FOCUSER_STEPS
@@ -114,7 +114,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 
 static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(X_FOCUSER_APERTURE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_FOCUSER_APERTURE_PROPERTY);
 	}
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
 }

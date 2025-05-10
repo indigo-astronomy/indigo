@@ -455,12 +455,12 @@ static int sbig_ao_center() {
 
 static indigo_result sbig_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if ((CONNECTION_CONNECTED_ITEM->sw.value) && (PRIMARY_CCD)) {
-		indigo_define_matching_property(SBIG_FREEZE_TEC_PROPERTY);
-		indigo_define_matching_property(SBIG_ABG_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(SBIG_FREEZE_TEC_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(SBIG_ABG_PROPERTY);
 	}
 	if (PRIMARY_CCD) {
-		indigo_define_matching_property(SBIG_ADD_WHEEL_PROPERTY);
-		indigo_define_matching_property(SBIG_ADD_AO_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(SBIG_ADD_WHEEL_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(SBIG_ADD_AO_PROPERTY);
 	}
 	return indigo_ccd_enumerate_properties(device, NULL, NULL);
 }
@@ -1096,7 +1096,7 @@ static void ccd_connect_callback(indigo_device *device) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_GET_CCD_INFO(%d) = %d (%s)", cip.request, res, sbig_error_string(res));
 					}
 
-					indigo_copy_value(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, PRIVATE_DATA->imager_ccd_extended_info1.serialNumber);
+					INDIGO_COPY_VALUE(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, PRIVATE_DATA->imager_ccd_extended_info1.serialNumber);
 
 					indigo_update_property(device, INFO_PROPERTY, NULL);
 
@@ -1761,9 +1761,9 @@ static indigo_result eth_attach(indigo_device *device) {
 		INFO_PROPERTY->count = 2;
 		// -------------------------------------------------------------------------------- DEVICE_PORT
 		DEVICE_PORT_PROPERTY->hidden = false;
-		indigo_copy_value(DEVICE_PORT_ITEM->text.value, "192.168.0.100");
-		indigo_copy_value(DEVICE_PORT_PROPERTY->label, "Remote camera");
-		indigo_copy_value(DEVICE_PORT_ITEM->label, "IP address / hostname");
+		INDIGO_COPY_VALUE(DEVICE_PORT_ITEM->text.value, "192.168.0.100");
+		INDIGO_COPY_VALUE(DEVICE_PORT_PROPERTY->label, "Remote camera");
+		INDIGO_COPY_VALUE(DEVICE_PORT_ITEM->label, "IP address / hostname");
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
 		DEVICE_PORTS_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------

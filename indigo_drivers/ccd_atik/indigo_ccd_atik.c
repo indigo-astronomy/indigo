@@ -356,8 +356,8 @@ static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_clie
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(ATIK_PRESETS_PROPERTY);
-		indigo_define_matching_property(ATIK_WINDOW_HEATER_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(ATIK_PRESETS_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(ATIK_WINDOW_HEATER_PROPERTY);
 	}
 	return indigo_ccd_enumerate_properties(device, client, property);
 }

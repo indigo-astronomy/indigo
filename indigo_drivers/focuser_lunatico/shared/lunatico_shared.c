@@ -761,7 +761,7 @@ static int lunatico_init_properties(indigo_device *device) {
 	DEVICE_PORTS_PROPERTY->hidden = false;
 	// -------------------------------------------------------------------------------- DEVICE_BAUDRATE
 	DEVICE_BAUDRATE_PROPERTY->hidden = false;
-	indigo_copy_value(DEVICE_BAUDRATE_ITEM->text.value, DEFAULT_BAUDRATE);
+	INDIGO_COPY_VALUE(DEVICE_BAUDRATE_ITEM->text.value, DEFAULT_BAUDRATE);
 	// --------------------------------------------------------------------------------
 	INFO_PROPERTY->count = 6;
 	// --------------------------------------------------------------------------------
@@ -874,19 +874,19 @@ static int lunatico_init_properties(indigo_device *device) {
 
 static indigo_result lunatico_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (DEVICE_CONNECTED) {
-		indigo_define_matching_property(LA_STEP_MODE_PROPERTY);
-		indigo_define_matching_property(LA_POWER_CONTROL_PROPERTY);
-		indigo_define_matching_property(LA_TEMPERATURE_SENSOR_PROPERTY);
-		indigo_define_matching_property(LA_WIRING_PROPERTY);
-		indigo_define_matching_property(LA_MOTOR_TYPE_PROPERTY);
-		indigo_define_matching_property(AUX_POWER_OUTLET_PROPERTY);
-		indigo_define_matching_property(AUX_GPIO_SENSORS_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(LA_STEP_MODE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(LA_POWER_CONTROL_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(LA_TEMPERATURE_SENSOR_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(LA_WIRING_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(LA_MOTOR_TYPE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_POWER_OUTLET_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_GPIO_SENSORS_PROPERTY);
 	}
-	indigo_define_matching_property(LA_MODEL_PROPERTY);
-	indigo_define_matching_property(LA_PORT_EXP_CONFIG_PROPERTY);
-	indigo_define_matching_property(LA_PORT_THIRD_CONFIG_PROPERTY);
-	indigo_define_matching_property(AUX_OUTLET_NAMES_PROPERTY);
-	indigo_define_matching_property(AUX_SENSOR_NAMES_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(LA_MODEL_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(LA_PORT_EXP_CONFIG_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(LA_PORT_THIRD_CONFIG_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(AUX_OUTLET_NAMES_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(AUX_SENSOR_NAMES_PROPERTY);
 	return INDIGO_OK;
 }
 
@@ -895,8 +895,8 @@ static void lunatico_init_device(indigo_device *device) {
 	char board[LUNATICO_CMD_LEN] = "N/A";
 	char firmware[LUNATICO_CMD_LEN] = "N/A";
 	if (lunatico_get_info(device, board, firmware)) {
-		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, board);
-		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware);
+		INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, board);
+		INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware);
 		indigo_update_property(device, INFO_PROPERTY, NULL);
 	}
 
@@ -1201,8 +1201,8 @@ static void handle_aux_connect_property(indigo_device *device) {
 				char board[LUNATICO_CMD_LEN] = "N/A";
 				char firmware[LUNATICO_CMD_LEN] = "N/A";
 				if (lunatico_get_info(device, board, firmware)) {
-					indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, board);
-					indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware);
+					INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, board);
+					INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware);
 					indigo_update_property(device, INFO_PROPERTY, NULL);
 				}
 				indigo_define_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);

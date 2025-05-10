@@ -146,7 +146,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 #ifdef INDIGO_MACOS
 		for (int i = 0; i < DEVICE_PORTS_PROPERTY->count; i++) {
 			if (!strncmp(DEVICE_PORTS_PROPERTY->items[i].name, "/dev/cu.usbmodem", 16)) {
-				indigo_copy_value(DEVICE_PORT_ITEM->text.value, DEVICE_PORTS_PROPERTY->items[i].name);
+				INDIGO_COPY_VALUE(DEVICE_PORT_ITEM->text.value, DEVICE_PORTS_PROPERTY->items[i].name);
 				break;
 			}
 		}
@@ -156,7 +156,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 #endif
 		// -------------------------------------------------------------------------------- INFO
 		INFO_PROPERTY->count = 6;
-		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "RoboFocus Focuser");
+		INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "RoboFocus Focuser");
 		// -------------------------------------------------------------------------------- FOCUSER_TEMPERATURE
 		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- FOCUSER_REVERSE_MOTION
@@ -192,8 +192,8 @@ static indigo_result focuser_attach(indigo_device *device) {
 
 static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(X_FOCUSER_POWER_CHANNELS_PROPERTY);
-		indigo_define_matching_property(X_FOCUSER_CONFIG_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_FOCUSER_POWER_CHANNELS_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_FOCUSER_CONFIG_PROPERTY);
 	}
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
 }
@@ -225,7 +225,7 @@ static void focuser_connection_handler(indigo_device *device) {
 			for (int i = 0; true; i++) {
 				if (robofocus_command(device, "FV000000", response) && !strncmp(response, "FV", 2)) {
 					INDIGO_DRIVER_LOG(DRIVER_NAME, "RoboFocus focuser %s", response + 2);
-					indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, response + 2);
+					INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, response + 2);
 					break;
 				} else if (i < 5) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "No reply from RoboFocus focuser - retrying");

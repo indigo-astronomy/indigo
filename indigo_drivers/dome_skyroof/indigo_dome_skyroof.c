@@ -265,7 +265,7 @@ static indigo_result dome_attach(indigo_device *device) {
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_dome_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		INFO_PROPERTY->count = 5;
-		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "Interactive Astronomy SkyRoof");
+		INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Interactive Astronomy SkyRoof");
 		// -------------------------------------------------------------------------------- standard properties
 		DOME_SPEED_PROPERTY->hidden = true;
 		DOME_DIRECTION_PROPERTY->hidden = true;
@@ -278,9 +278,9 @@ static indigo_result dome_attach(indigo_device *device) {
 		DOME_SLAVING_PROPERTY->hidden = true;
 		DOME_SLAVING_PARAMETERS_PROPERTY->hidden = true;
 		DOME_SHUTTER_PROPERTY->rule = INDIGO_AT_MOST_ONE_RULE;
-		indigo_copy_value(DOME_SHUTTER_PROPERTY->label, "Roof state");
-		indigo_copy_value(DOME_SHUTTER_OPENED_ITEM->label, "Roof opened");
-		indigo_copy_value(DOME_SHUTTER_CLOSED_ITEM->label, "Roof closed");
+		INDIGO_COPY_VALUE(DOME_SHUTTER_PROPERTY->label, "Roof state");
+		INDIGO_COPY_VALUE(DOME_SHUTTER_OPENED_ITEM->label, "Roof opened");
+		INDIGO_COPY_VALUE(DOME_SHUTTER_CLOSED_ITEM->label, "Roof closed");
 		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
@@ -309,8 +309,8 @@ static indigo_result dome_attach(indigo_device *device) {
 
 static indigo_result dome_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(X_MOUNT_PARK_STATUS_PROPERTY);
-		indigo_define_matching_property(X_HEATER_CONTROL_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_MOUNT_PARK_STATUS_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_HEATER_CONTROL_PROPERTY);
 	}
 	return indigo_dome_enumerate_properties(device, NULL, NULL);
 }

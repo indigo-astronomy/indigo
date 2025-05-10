@@ -419,7 +419,7 @@ static void solve(indigo_platesolver_task *task) {
 	if (success) {
 		AGENT_PLATESOLVER_IMAGE_OUTPUT_ITEM->blob.value = task->image;
 		AGENT_PLATESOLVER_IMAGE_OUTPUT_ITEM->blob.size = task->size;
-		indigo_copy_name(AGENT_PLATESOLVER_IMAGE_OUTPUT_ITEM->blob.format, task->format);
+		INDIGO_COPY_NAME(AGENT_PLATESOLVER_IMAGE_OUTPUT_ITEM->blob.format, task->format);
 		AGENT_PLATESOLVER_IMAGE_OUTPUT_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_PLATESOLVER_IMAGE_OUTPUT_PROPERTY, NULL);
 	} else {
@@ -881,21 +881,21 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 }
 
 indigo_result indigo_platesolver_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	indigo_define_matching_property(AGENT_PLATESOLVER_USE_INDEX_PROPERTY);
-	indigo_define_matching_property(AGENT_PLATESOLVER_HINTS_PROPERTY);
-	indigo_define_matching_property(AGENT_PLATESOLVER_WCS_PROPERTY);
-	indigo_define_matching_property(AGENT_PLATESOLVER_SYNC_PROPERTY);
-	indigo_define_matching_property(AGENT_START_PROCESS_PROPERTY);
-	indigo_define_matching_property(AGENT_ABORT_PROCESS_PROPERTY);
-	indigo_define_matching_property(AGENT_PLATESOLVER_SOLVE_IMAGES_PROPERTY);
-	indigo_define_matching_property(AGENT_PLATESOLVER_EXPOSURE_SETTINGS_PROPERTY);
-	indigo_define_matching_property(AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY);
-	indigo_define_matching_property(AGENT_PLATESOLVER_GOTO_SETTINGS_PROPERTY);
-	indigo_define_matching_property(AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_PROPERTY);
-	indigo_define_matching_property(AGENT_PLATESOLVER_PA_STATE_PROPERTY);
-	indigo_define_matching_property(AGENT_PLATESOLVER_ABORT_PROPERTY);
-	indigo_define_matching_property(AGENT_PLATESOLVER_IMAGE_PROPERTY);
-	indigo_define_matching_property(AGENT_PLATESOLVER_IMAGE_OUTPUT_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(AGENT_PLATESOLVER_USE_INDEX_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(AGENT_PLATESOLVER_HINTS_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(AGENT_PLATESOLVER_WCS_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(AGENT_PLATESOLVER_SYNC_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(AGENT_START_PROCESS_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(AGENT_ABORT_PROCESS_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(AGENT_PLATESOLVER_SOLVE_IMAGES_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(AGENT_PLATESOLVER_EXPOSURE_SETTINGS_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(AGENT_PLATESOLVER_GOTO_SETTINGS_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(AGENT_PLATESOLVER_PA_STATE_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(AGENT_PLATESOLVER_ABORT_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(AGENT_PLATESOLVER_IMAGE_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(AGENT_PLATESOLVER_IMAGE_OUTPUT_PROPERTY);
 	return indigo_filter_enumerate_properties(device, client, property);
 }
 
@@ -1000,10 +1000,10 @@ indigo_result indigo_platesolver_change_property(indigo_device *device, indigo_c
 		if (AGENT_PLATESOLVER_IMAGE_ITEM->blob.size > 0 && AGENT_PLATESOLVER_IMAGE_ITEM->blob.value) {
 			indigo_platesolver_task *task = indigo_safe_malloc(sizeof(indigo_platesolver_task));
 			task->device = device;
-			indigo_copy_value(task->image_url, AGENT_PLATESOLVER_IMAGE_ITEM->blob.url);
+			INDIGO_COPY_VALUE(task->image_url, AGENT_PLATESOLVER_IMAGE_ITEM->blob.url);
 			if (AGENT_PLATESOLVER_IMAGE_ITEM->blob.value != NULL) {
 				task->image = indigo_safe_malloc_copy(task->size = AGENT_PLATESOLVER_IMAGE_ITEM->blob.size, AGENT_PLATESOLVER_IMAGE_ITEM->blob.value);
-				indigo_copy_name(task->format, AGENT_PLATESOLVER_IMAGE_ITEM->blob.format);
+				INDIGO_COPY_NAME(task->format, AGENT_PLATESOLVER_IMAGE_ITEM->blob.format);
 			} else {
 				task->image = NULL;
 			}
@@ -1160,10 +1160,10 @@ indigo_result indigo_platesolver_update_property(indigo_client *client, indigo_d
 						if (!strcmp(item->name, CCD_IMAGE_ITEM_NAME)) {
 							indigo_platesolver_task *task = indigo_safe_malloc(sizeof(indigo_platesolver_task));
 							task->device = FILTER_CLIENT_CONTEXT->device;
-							indigo_copy_value(task->image_url, item->blob.url);
+							INDIGO_COPY_VALUE(task->image_url, item->blob.url);
 							if (item->blob.value != NULL) {
 								task->image = indigo_safe_malloc_copy(task->size = item->blob.size, item->blob.value);
-								indigo_copy_name(task->format, item->blob.format);
+								INDIGO_COPY_NAME(task->format, item->blob.format);
 							} else {
 								task->image = NULL;
 							}

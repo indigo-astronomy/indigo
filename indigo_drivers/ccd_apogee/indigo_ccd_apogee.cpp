@@ -261,10 +261,10 @@ void checkStatus(const Apg::Status status) {
 // -------------------------------------------------------------------------------- INDIGO device implementation
 static indigo_result apg_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(APG_ADC_SPEED_PROPERTY);
-		indigo_define_matching_property(APG_FAN_SPEED_PROPERTY);
-		indigo_define_matching_property(APG_GAIN_PROPERTY);
-		indigo_define_matching_property(APG_OFFSET_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(APG_ADC_SPEED_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(APG_FAN_SPEED_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(APG_GAIN_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(APG_OFFSET_PROPERTY);
 	}
 	return indigo_ccd_enumerate_properties(device, NULL, NULL);
 }
@@ -649,7 +649,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 	if (indigo_ccd_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		PRIVATE_DATA->can_check_temperature = true;
 		INFO_PROPERTY->count = 8;
-		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, GetModelName(PRIVATE_DATA->discovery_string).c_str());
+		INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, GetModelName(PRIVATE_DATA->discovery_string).c_str());
 
 		// ---------------------------------------------------------------------------------
 		APG_ADC_SPEED_PROPERTY = indigo_init_switch_property(NULL, device->name, "APG_ADC_SPEED", CCD_ADVANCED_GROUP, "ADC speed", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
@@ -736,7 +736,7 @@ static void ccd_connect_callback(indigo_device *device) {
 				CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = round(pixel_height * 100) / 100;
 				CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
 
-				indigo_copy_value(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, serial_no.c_str());
+				INDIGO_COPY_VALUE(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, serial_no.c_str());
 				snprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, INDIGO_VALUE_SIZE, "0x%x", GetFrmwrRev(PRIVATE_DATA->discovery_string));
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 
@@ -1090,9 +1090,9 @@ static indigo_result ethernet_attach(indigo_device *device) {
 		INFO_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- DEVICE_PORT
 		DEVICE_PORT_PROPERTY->hidden = false;
-		indigo_copy_value(DEVICE_PORT_ITEM->text.value, "192.168.0.255");
-		indigo_copy_value(DEVICE_PORT_PROPERTY->label, "Network");
-		indigo_copy_value(DEVICE_PORT_ITEM->label, "Broadcast address");
+		INDIGO_COPY_VALUE(DEVICE_PORT_ITEM->text.value, "192.168.0.255");
+		INDIGO_COPY_VALUE(DEVICE_PORT_PROPERTY->label, "Network");
+		INDIGO_COPY_VALUE(DEVICE_PORT_ITEM->label, "Broadcast address");
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
 		DEVICE_PORTS_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------

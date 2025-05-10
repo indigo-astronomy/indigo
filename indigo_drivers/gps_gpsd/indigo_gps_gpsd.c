@@ -163,7 +163,7 @@ static void gps_refresh_callback(indigo_device *device) {
 
 			indigo_timetoisogm(PRIVATE_DATA->gps_data.fix.time.tv_sec,
 					   isotime, sizeof(isotime));
-			indigo_copy_value(GPS_UTC_ITEM->text.value, isotime);
+			INDIGO_COPY_VALUE(GPS_UTC_ITEM->text.value, isotime);
 			GPS_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 		}
 		if (PRIVATE_DATA->gps_data.set & LATLON_SET) {

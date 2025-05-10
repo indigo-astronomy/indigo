@@ -451,7 +451,7 @@ void indigo_copy_property_name(indigo_version version, indigo_property *property
 			property_mapping++;
 		}
 	}
-	indigo_copy_name(property->name, name);
+	INDIGO_COPY_NAME(property->name, name);
 }
 
 void indigo_copy_item_name(indigo_version version, indigo_property *property, indigo_item *item, const char *name) {
@@ -463,18 +463,18 @@ void indigo_copy_item_name(indigo_version version, indigo_property *property, in
 				while (item_mapping->legacy) {
 					if (!strcmp(name, item_mapping->legacy)) {
 						INDIGO_TRACE(indigo_trace("version: %s.%s -> %s.%s (current)", property_mapping->legacy, item_mapping->legacy, property_mapping->current, item_mapping->current));
-						indigo_copy_name(item->name, item_mapping->current);
+						INDIGO_COPY_NAME(item->name, item_mapping->current);
 						return;
 					}
 					item_mapping++;
 				}
-				indigo_copy_name(item->name, name);
+				INDIGO_COPY_NAME(item->name, name);
 				return;
 			}
 			property_mapping++;
 		}
 	}
-	indigo_copy_name(item->name, name);
+	INDIGO_COPY_NAME(item->name, name);
 }
 
 const char *indigo_property_name(indigo_version version, indigo_property *property) {

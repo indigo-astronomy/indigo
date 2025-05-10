@@ -549,13 +549,13 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	}
 	if (indigo_property_match(LX200_DEVICES_PROPERTY, property)) {
 		indigo_property_copy_values(LX200_DEVICES_PROPERTY, property, false);
-		indigo_copy_name(MOUNT_EQUATORIAL_COORDINATES_PROPERTY->device, LX200_DEVICES_MOUNT_ITEM->text.value);
-		indigo_copy_name(MOUNT_ON_COORDINATES_SET_PROPERTY->device, LX200_DEVICES_MOUNT_ITEM->text.value);
-		indigo_copy_name(MOUNT_SLEW_RATE_PROPERTY->device, LX200_DEVICES_MOUNT_ITEM->text.value);
-		indigo_copy_name(MOUNT_MOTION_RA_PROPERTY->device, LX200_DEVICES_MOUNT_ITEM->text.value);
-		indigo_copy_name(MOUNT_MOTION_DEC_PROPERTY->device, LX200_DEVICES_MOUNT_ITEM->text.value);
-		indigo_copy_name(MOUNT_ABORT_MOTION_PROPERTY->device, LX200_DEVICES_MOUNT_ITEM->text.value);
-		indigo_copy_name(MOUNT_PARK_PROPERTY->device, LX200_DEVICES_MOUNT_ITEM->text.value);
+		INDIGO_COPY_NAME(MOUNT_EQUATORIAL_COORDINATES_PROPERTY->device, LX200_DEVICES_MOUNT_ITEM->text.value);
+		INDIGO_COPY_NAME(MOUNT_ON_COORDINATES_SET_PROPERTY->device, LX200_DEVICES_MOUNT_ITEM->text.value);
+		INDIGO_COPY_NAME(MOUNT_SLEW_RATE_PROPERTY->device, LX200_DEVICES_MOUNT_ITEM->text.value);
+		INDIGO_COPY_NAME(MOUNT_MOTION_RA_PROPERTY->device, LX200_DEVICES_MOUNT_ITEM->text.value);
+		INDIGO_COPY_NAME(MOUNT_MOTION_DEC_PROPERTY->device, LX200_DEVICES_MOUNT_ITEM->text.value);
+		INDIGO_COPY_NAME(MOUNT_ABORT_MOTION_PROPERTY->device, LX200_DEVICES_MOUNT_ITEM->text.value);
+		INDIGO_COPY_NAME(MOUNT_PARK_PROPERTY->device, LX200_DEVICES_MOUNT_ITEM->text.value);
 		LX200_DEVICES_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, LX200_DEVICES_PROPERTY, NULL);
 	} else if (indigo_property_match(LX200_CONFIGURATION_PROPERTY, property)) {

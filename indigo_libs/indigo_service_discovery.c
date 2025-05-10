@@ -277,7 +277,7 @@ static void *service_process_result_handler(DNSServiceRef s_ref) {
 static void WINAPI resolver_callback(DNSServiceRef sdRef, DNSServiceFlags flags, uint32_t interface_index, DNSServiceErrorType error_code, const char *full_name, const char *host_name, uint16_t port, uint16_t txt_len, const unsigned char *txt_record, void *callback) {
 	if (error_code != kDNSServiceErr_NoError) {
 		char name[INDIGO_NAME_SIZE], *dot;
-		indigo_copy_name(name, full_name);
+		INDIGO_COPY_NAME(name, full_name);
 		if ((dot = strchr(name, '.'))) {
 			*dot = 0;
 		}
@@ -285,11 +285,11 @@ static void WINAPI resolver_callback(DNSServiceRef sdRef, DNSServiceFlags flags,
 		((void (*)(const char *name, uint32_t interface_index, const char *host, int port))callback)(name, interface_index, NULL, 0);
 	} else if ((flags & kDNSServiceFlagsMoreComing) == 0) {
 		char name[INDIGO_NAME_SIZE], host[INDIGO_NAME_SIZE], *dot;
-		indigo_copy_name(name, full_name);
+		INDIGO_COPY_NAME(name, full_name);
 		if ((dot = strchr(name, '.'))) {
 			*dot = 0;
 		}
-		indigo_copy_name(host, host_name);
+		INDIGO_COPY_NAME(host, host_name);
 		if (*(dot = host + strlen(host) - 1) == '.') {
 			*dot = 0;
 		}

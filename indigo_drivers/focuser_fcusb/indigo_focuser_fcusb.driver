@@ -61,8 +61,8 @@ driver fcusb {
 		on_attach {
 			FOCUSER_POSITION_PROPERTY->hidden = true;
 			FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.max = 255;
-			indigo_copy_value(FOCUSER_SPEED_ITEM->label, "Power (0-255)");
-			indigo_copy_value(FOCUSER_SPEED_PROPERTY->label, "Power");
+			INDIGO_COPY_VALUE(FOCUSER_SPEED_ITEM->label, "Power (0-255)");
+			INDIGO_COPY_VALUE(FOCUSER_SPEED_PROPERTY->label, "Power");
 		}
 		inherited FOCUSER_ABORT_MOTION {
 			on_change {

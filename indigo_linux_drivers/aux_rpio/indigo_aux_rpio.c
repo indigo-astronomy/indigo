@@ -839,14 +839,14 @@ static bool set_gpio_outlets(indigo_device *device) {
 
 static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(AUX_GPIO_OUTLET_PROPERTY);
-		indigo_define_matching_property(AUX_OUTLET_PULSE_LENGTHS_PROPERTY);
-		indigo_define_matching_property(AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY);
-		indigo_define_matching_property(AUX_GPIO_OUTLET_DUTY_PROPERTY);
-		indigo_define_matching_property(AUX_GPIO_SENSORS_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_GPIO_OUTLET_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_OUTLET_PULSE_LENGTHS_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_GPIO_OUTLET_DUTY_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_GPIO_SENSORS_PROPERTY);
 	}
-	indigo_define_matching_property(AUX_OUTLET_NAMES_PROPERTY);
-	indigo_define_matching_property(AUX_SENSOR_NAMES_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(AUX_OUTLET_NAMES_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(AUX_SENSOR_NAMES_PROPERTY);
 
 	return indigo_aux_enumerate_properties(device, NULL, NULL);
 }
@@ -881,8 +881,8 @@ static void handle_aux_connect_property(indigo_device *device) {
 		if (rpio_export_all(PRIVATE_DATA->pwm_present)) {
 			char board[INDIGO_VALUE_SIZE] = "N/A";
 			char firmware[INDIGO_VALUE_SIZE] = "N/A";
-			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, board);
-			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware);
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, board);
+			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware);
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 
 			int relay_value[8];

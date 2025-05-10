@@ -275,18 +275,18 @@ static indigo_result aux_attach(indigo_device *device) {
 static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(JOYSTICK_BUTTONS_PROPERTY);
-		indigo_define_matching_property(JOYSTICK_AXES_PROPERTY);
-		indigo_define_matching_property(JOYSTICK_MAPPING_PROPERTY);
-		indigo_define_matching_property(JOYSTICK_OPTIONS_PROPERTY);
-		indigo_define_matching_property(MOUNT_PARK_PROPERTY);
-		indigo_define_matching_property(MOUNT_HOME_PROPERTY);
-		indigo_define_matching_property(MOUNT_SLEW_RATE_PROPERTY);
-		indigo_define_matching_property(MOUNT_MOTION_DEC_PROPERTY);
-		indigo_define_matching_property(MOUNT_MOTION_RA_PROPERTY);
-		indigo_define_matching_property(MOUNT_TRACKING_PROPERTY);
-		indigo_define_matching_property(MOUNT_ABORT_MOTION_PROPERTY);
-		indigo_define_matching_property(FOCUSER_CONTROL_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(JOYSTICK_BUTTONS_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(JOYSTICK_AXES_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(JOYSTICK_MAPPING_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(JOYSTICK_OPTIONS_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_PARK_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_HOME_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_SLEW_RATE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_MOTION_DEC_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_MOTION_RA_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_TRACKING_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_ABORT_MOTION_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(FOCUSER_CONTROL_PROPERTY);
 	}
 	return indigo_aux_enumerate_properties(device, client, property);
 }
