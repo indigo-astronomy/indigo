@@ -125,7 +125,7 @@
 | rotator_falcon | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
 | rotator_lunatico | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | rotator_optec | 2️⃣ | ❌ No | ❌ No | ❌ No | |
-| rotator_simulator | 2️⃣ | ❌ No | ❌ No | ⛔ N/A | |
+| rotator_simulator | 3️⃣ | ✅ Yes | ✅ Yes | ⛔ N/A | |
 | rotator_wa | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | system_ascol | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | wheel_asi | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
