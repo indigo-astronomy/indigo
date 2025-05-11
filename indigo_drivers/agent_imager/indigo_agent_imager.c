@@ -292,6 +292,7 @@ typedef struct {
 	unsigned int dither_num;
 	indigo_property_state related_solver_process_state;
 	indigo_property_state related_guider_process_state;
+	indigo_property_state rotator_position_state;
 	double solver_goto_ra;
 	double solver_goto_dec;
 	double time_to_transit;
@@ -2323,6 +2324,20 @@ static void unpark_mount(indigo_device *device) {
 	}
 }
 
+static void set_rotator_angle(indigo_device *device, int angle) {
+	char *related_agent_name = indigo_filter_first_related_agent(device, "Mount Agent");
+	if (related_agent_name) {
+		indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, related_agent_name, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, angle);
+	}
+}
+
+static void stop_rotator(indigo_device *device) {
+	char *related_agent_name = indigo_filter_first_related_agent(device, "Mount Agent");
+	if (related_agent_name) {
+		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, related_agent_name, ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME, true);
+	}
+}
+
 static void solver_precise_goto(indigo_device *device) {
 	char *related_agent_name = indigo_filter_first_related_agent_2(device, "Astrometry Agent", "ASTAP Agent");
 	if (related_agent_name) {
@@ -2368,6 +2383,7 @@ static bool set_property(indigo_device *device, char *name, char *value) {
 	indigo_property *device_property = NULL;
 	bool wait_for_solver = false;
 	bool wait_for_guider = false;
+	bool wait_for_rotator = false;
 	int upload_mode = -1;
 	int image_format = -1;
 	if (!strcasecmp(name, "object")) {
@@ -2379,6 +2395,9 @@ static bool set_property(indigo_device *device, char *name, char *value) {
 			indigo_usleep(10000);
 			delay -= 0.01;
 		}
+	} else if (!strcmp(name, "angle")) {
+		set_rotator_angle(device, atoi(value));
+		wait_for_rotator = true;
 	} else if (!strcasecmp(name, "focus")) {
 		DEVICE_PRIVATE_DATA->focus_exposure = atof(value);
 	} else if (!strcasecmp(name, "count")) {
@@ -2545,6 +2564,17 @@ static bool set_property(indigo_device *device, char *name, char *value) {
 			stop_guider(device);
 		}
 		return DEVICE_PRIVATE_DATA->guiding;
+	} else if (wait_for_rotator) {
+		while (DEVICE_PRIVATE_DATA->rotator_position_state != INDIGO_BUSY_STATE && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
+			indigo_usleep(200000);
+		}
+		while (DEVICE_PRIVATE_DATA->rotator_position_state == INDIGO_BUSY_STATE && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
+			indigo_usleep(200000);
+		}
+		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+			stop_rotator(device);
+		}
+		return DEVICE_PRIVATE_DATA->rotator_position_state == INDIGO_OK_STATE;
 	}
 	return true;
 }
