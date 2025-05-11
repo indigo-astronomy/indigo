@@ -525,7 +525,8 @@ static void abort_guider_process(indigo_device *device, char *reason) {
 	}
 }
 
-static void reset_star_selection(indigo_device *device) {
+static void reset_star_selection(indigo_device *device, char *reason) {
+	// indigo_send_message(device, "Clearing star selection due to %s", reason);
 	char *related_agent_name = indigo_filter_first_related_agent(device, "Imager Agent");
 	if (related_agent_name) {
 		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_START_PROCESS_PROPERTY_NAME, AGENT_IMAGER_CLEAR_SELECTION_ITEM_NAME, true);
@@ -801,7 +802,9 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 		if (CLIENT_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_BUSY_STATE && property->state == INDIGO_BUSY_STATE) {
 			abort_imager_process(device, "slewing");
 			abort_guider_process(device, "slewing");
-			indigo_set_timer(device, 0.5, reset_star_selection, NULL);
+		}
+		if (CLIENT_PRIVATE_DATA->mount_eq_coordinates_state == INDIGO_BUSY_STATE && property->state != INDIGO_BUSY_STATE) {
+			reset_star_selection(device, "slewing");
 		}
 		CLIENT_PRIVATE_DATA->mount_eq_coordinates_state = property->state;
 		handle_mount_change(device);

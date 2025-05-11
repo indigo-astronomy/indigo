@@ -3242,8 +3242,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			indigo_property_copy_values(AGENT_START_PROCESS_PROPERTY, property, false);
 			if (AGENT_IMAGER_CLEAR_SELECTION_ITEM->sw.value) {
 				AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
-				clear_selection_process(device);
+				indigo_set_timer(device, 0, clear_selection_process, NULL);
 				indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 			} else if (INDIGO_FILTER_CCD_SELECTED) {
 				if (AGENT_IMAGER_START_PREVIEW_1_ITEM->sw.value) {
