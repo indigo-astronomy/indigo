@@ -563,11 +563,16 @@ var indigo_sequencer = {
 					this.wait_for_property_state = "Ok";
 					this.failure(property.name + " reports alert");
 				} else if (property.state == this.wait_for_property_state) {
+					var delay = 0;
+					// NOTE: this avoids a race condition with reseting the star selection process in imager and guider agents !!!
+					if (property.device == this.devices[MOUNT_AGENT] && property.state == "Ok" && (property.name == "AGENT_START_PROCESS" || property.name == "MOUNT_PARK" || property.name == "MOUNT_HOME")) {
+						delay = 0.5;
+					}
 					this.wait_for_device = null;
 					this.wait_for_property = null;
 					this.wait_for_property_state = "Ok";
 					this.ignore_failure = false;
-					indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
+					indigo_set_timer(indigo_sequencer_next_ok_handler, delay);
 				}
 			} else if (this.capturing_batch && property.device == this.wait_for_device) {
 				if (property.name == "AGENT_IMAGER_STATS") {
