@@ -23,7 +23,7 @@
  \file indigo_ccd_mi.c
  */
 
-#define DRIVER_VERSION 0x0200001B
+#define DRIVER_VERSION 0x0200001C
 #define DRIVER_NAME "indigo_ccd_mi"
 
 #include <ctype.h>
