@@ -4,8 +4,8 @@
 #include <math.h>
 #include <time.h>
 
-#define DELTA_UTC_UT1 (0.0340990 / 86400.0) /* For 2025-04-19 */
-#define UT2JD(t) ((t) / 86400.0 + 2440587.5 + DELTA_UTC_UT1)
+#define DELTA_UT1_UTC (0.0340990 / 86400.0) /* For 2025-04-19 */
+#define UT2JD(t) ((t) / 86400.0 + 2440587.5 + DELTA_UT1_UTC)
 #define JD_NOW UT2JD(time(NULL))
 
 
