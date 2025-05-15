@@ -18,6 +18,7 @@
 
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+// 3.0 refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
 /** INDIGO PrimaluceLab focuser/rotator driver
  \file indigo_focuser_primaluce_main.c

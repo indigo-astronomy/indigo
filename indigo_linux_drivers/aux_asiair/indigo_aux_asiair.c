@@ -25,7 +25,7 @@
 
 #include "indigo_aux_asiair.h"
 
-#define DRIVER_VERSION         0x0002
+#define DRIVER_VERSION 0x02000002
 #define AUX_ASIAIR_NAME     "ZWO Power Ports ASIAIR"
 
 #include <stdlib.h>

@@ -5,7 +5,7 @@
 //  Created by Peter Polakovic on 14/04/2019.
 //  Copyright © 2019 CloudMakers, s. r. o. All rights reserved.
 //
-//  Based on libguider by Rumen G. Bogdanovski
+//  Based on libguider by Rumen G. Bogdanovski <rumenastro@gmail.com>
 //  Copyright © 2015 Rumen G. Bogdanovski All rights reserved.
 //
 

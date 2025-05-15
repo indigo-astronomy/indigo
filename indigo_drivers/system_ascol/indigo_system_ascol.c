@@ -18,7 +18,7 @@
 
 
 // version history
-// 2.0 by Rumen G. Bogdanovski
+// 2.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
 
 /** INDIGO ASCOL system driver
  \file indigo_system_ascol.c

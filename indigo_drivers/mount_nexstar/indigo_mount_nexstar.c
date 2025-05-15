@@ -18,7 +18,7 @@
 
 
 // version history
-// 2.0 by Rumen G. Bogdanovski
+// 2.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
 
 /** INDIGO MOUNT Nexstar (celestron & skywatcher) driver
  \file indigo_mount_nexstar.c

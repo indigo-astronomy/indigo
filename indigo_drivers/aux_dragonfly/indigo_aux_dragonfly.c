@@ -1,4 +1,4 @@
-// Copyright (C) 2020 Rumen G. Bogdanovski
+// Copyright (C) 2020-2025 Rumen G. Bogdanovski
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -17,7 +17,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // version history
-// 2.0 by Rumen G. Bogdanovski
+// 2.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
 
 /** INDIGO Lunatico Dragonfly AUX driver
  \file indigo_aux_dragonfly.c
@@ -25,7 +25,7 @@
 
 #include "indigo_aux_dragonfly.h"
 
-#define DRIVER_VERSION         0x0004
+#define DRIVER_VERSION 0x02000004
 #define AUX_DRAGONFLY_NAME     "Dragonfly Controller"
 
 #define DRIVER_NAME              "indigo_aux_dragonfly"

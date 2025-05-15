@@ -1,4 +1,4 @@
-// Copyright (C) 2020 Rumen G. Bogdanovski
+// Copyright (C) 2020-2025 Rumen G. Bogdanovski
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -17,7 +17,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // version history
-// 2.0 by Rumen G. Bogdanovski
+// 2.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
 
 /** INDIGO Lunatico Armadillo, Platypus etc. rotator driver
  \file indigo_rotator_lunatico.c
@@ -30,6 +30,6 @@
 #define CONFLICTING_DRIVER       "indigo_focuser_lunatico"
 #define DRIVER_INFO              "Lunatico Astronomia Rotator"
 #define DEFAULT_DEVICE           TYPE_ROTATOR
-#define DRIVER_VERSION           0x0007
+#define DRIVER_VERSION 0x02000007
 
 #include "../focuser_lunatico/shared/lunatico_shared.c"

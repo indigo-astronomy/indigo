@@ -26,7 +26,7 @@
  \file indigo_ccd_qsi.cpp
  */
 
-#define DRIVER_VERSION    0x000D
+#define DRIVER_VERSION 0x0200000D
 #define DRIVER_NAME       "indigo_ccd_qsi"
 
 #include <stdlib.h>

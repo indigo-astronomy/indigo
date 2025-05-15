@@ -18,6 +18,7 @@
 
 // version history
 // 2.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
+// 3.0 refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
 /** INDIGO CCD FLI driver
  \file indigo_ccd_fli.h

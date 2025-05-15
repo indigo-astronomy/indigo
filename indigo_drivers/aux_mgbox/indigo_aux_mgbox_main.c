@@ -18,7 +18,7 @@
 
 
 // version history
-// 2.0 by Rumen G. Bogdanovski
+// 2.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
 
 /** INDIGO Astromi.ch MGBox driver main
  \file indigo_aux_mgbox_main.c

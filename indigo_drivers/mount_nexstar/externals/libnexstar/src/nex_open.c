@@ -1,7 +1,7 @@
 /**************************************************************
         Celestron NexStar compatible telescope control library
         
-        (C)2013-2016 by Rumen G. Bogdanovski
+        (C)2013-2016 by Rumen G. Bogdanovski <rumenastro@gmail.com>
 ***************************************************************/
 #include <stdio.h>
 #include <string.h>

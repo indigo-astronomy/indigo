@@ -17,7 +17,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // version history
-// 2.0 Build 0 - PoC by Rumen G. Bogdanovski
+// 2.0 Build 0 - PoC by Rumen G. Bogdanovski <rumenastro@gmail.com>
 
 
 /** INDIGO ZWO ASI USB2ST4 guider driver

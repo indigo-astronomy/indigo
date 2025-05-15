@@ -18,6 +18,7 @@
 
 // version history
 // 2.0 by Frank Chen <frank.chen@astroasis.com>
+// 3.0 refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
 /** INDIGO Astroasis Oasis focuser driver main
  \file indigo_focuser_astroasis_main.c

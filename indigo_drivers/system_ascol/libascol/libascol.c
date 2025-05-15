@@ -1,7 +1,7 @@
 /**************************************************************
 	ASCOL telescope control library
 
-	(C)2018 by Rumen G. Bogdanovski
+	(C)2018 by Rumen G. Bogdanovski <rumenastro@gmail.com>
 ***************************************************************/
 #include <stdio.h>
 #include <string.h>
