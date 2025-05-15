@@ -47,6 +47,9 @@ extern const double TWO_PI;
 extern const double DEG2RAD;
 extern const double RAD2DEG;
 
+#define PA_MAX_ERROR           10.0
+#define PA_MAX_INITIAL_ERROR   3.5
+
 //#define DELTA_T          (34 + 32.184 + 0.477677)
 #define JD2000           2451545.0
 

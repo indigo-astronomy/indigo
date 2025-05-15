@@ -166,6 +166,7 @@ typedef struct {
 	double pa_target_dec;
 	double pa_alt_error;
 	double pa_az_error;
+	double pa_initial_error;
 	indigo_property_state imager_capture_state;
 	indigo_property_state guider_process_state;
 	void (*save_config)(indigo_device *);
