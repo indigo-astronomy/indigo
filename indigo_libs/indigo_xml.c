@@ -1885,14 +1885,26 @@ indigo_result indigo_xml_client_parser_enumerate_properties(indigo_device *devic
 		}
 	}
 	if (property != NULL) {
-		if (*property->device && *indigo_property_name(device->version, property)) {
-			INDIGO_PRINTF(*handle, "<getProperties version='1.7' switch='%d.%d' device='%s' name='%s'/>\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, indigo_xml_escape(device_name), indigo_property_name(device->version, property));
-		} else if (*property->device) {
-			INDIGO_PRINTF(*handle, "<getProperties version='1.7' switch='%d.%d' device='%s'/>\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, indigo_xml_escape(device_name));
-		} else if (*indigo_property_name(device->version, property)) {
-			INDIGO_PRINTF(*handle, "<getProperties version='1.7' switch='%d.%d' name='%s'/>\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, indigo_property_name(device->version, property));
+		if (device->version == INDIGO_VERSION_LEGACY) {
+			if (*property->device && *indigo_property_name(device->version, property)) {
+				INDIGO_PRINTF(*handle, "<getProperties version='1.7' device='%s' name='%s'/>\n", indigo_xml_escape(device_name), indigo_property_name(device->version, property));
+			} else if (*property->device) {
+				INDIGO_PRINTF(*handle, "<getProperties version='1.7' device='%s'/>\n", indigo_xml_escape(device_name));
+			} else if (*indigo_property_name(device->version, property)) {
+				INDIGO_PRINTF(*handle, "<getProperties version='1.7' name='%s'/>\n", indigo_property_name(device->version, property));
+			} else {
+				INDIGO_PRINTF(*handle, "<getProperties version='1.7'/>\n");
+			}
 		} else {
-			INDIGO_PRINTF(*handle, "<getProperties version='1.7' switch='%d.%d'/>\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF);
+			if (*property->device && *indigo_property_name(device->version, property)) {
+				INDIGO_PRINTF(*handle, "<getProperties device='%s' name='%s'/>\n", indigo_xml_escape(device_name), indigo_property_name(device->version, property));
+			} else if (*property->device) {
+				INDIGO_PRINTF(*handle, "<getProperties device='%s'/>\n", indigo_xml_escape(device_name));
+			} else if (*indigo_property_name(device->version, property)) {
+				INDIGO_PRINTF(*handle, "<getProperties name='%s'/>\n", indigo_property_name(device->version, property));
+			} else {
+				INDIGO_PRINTF(*handle, "<getProperties/>\n");
+			}
 		}
 	} else if (indigo_client_name) {
 		INDIGO_PRINTF(*handle, "<getProperties version='1.7' client='%s' switch='%d.%d'/>\n", indigo_client_name, (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF);

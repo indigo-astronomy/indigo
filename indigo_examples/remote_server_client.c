@@ -41,7 +41,6 @@ static int count = 1;
 
 static indigo_result client_attach(indigo_client *client) {
 	indigo_log("attached to INDIGO bus...");
-	indigo_enumerate_properties(client, &INDIGO_ALL_PROPERTIES);
 	return INDIGO_OK;
 }
 
