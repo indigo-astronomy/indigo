@@ -18,6 +18,10 @@
 
 // WandererBox Plus V3 Powerbox driver definition
 
+// version history
+// 2.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
+// 3.0 refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+
 // TODO: Test with real hardware or simulator!!!
 
 driver wbplusv3 {

@@ -1,7 +1,7 @@
 # Basics of INDIGO Client Development
 Revision: 13.10.2024 (draft)
 
-Author: **Rumen G.Bogdanovski**
+Author: **Rumen G. Bogdanovski**
 
 e-mail: *rumenastro@gmail.com*
 

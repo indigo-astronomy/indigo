@@ -1,7 +1,7 @@
 # INDIGO Device Access Control and Exclusive Lock System
 Revision: 06.04.2020 (draft)
 
-Author: **Rumen G.Bogdanovski**
+Author: **Rumen G. Bogdanovski**
 
 e-mail: *rumenastro@gmail.com*
 

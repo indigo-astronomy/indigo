@@ -18,9 +18,6 @@
 
 // This file generated from indigo_ao_sx.driver
 
-// version history
-// 3.0 by Peter Polakovic
-
 #include <indigo/indigo_driver_xml.h>
 
 #include "indigo_ao_sx.h"

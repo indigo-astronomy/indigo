@@ -18,9 +18,6 @@
 
 // This file generated from indigo_aux_sqm.driver
 
-// version history
-// 3.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
-
 #ifndef aux_sqm_h
 #define aux_sqm_h
 

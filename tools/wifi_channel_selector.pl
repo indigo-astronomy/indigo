@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# Copyright (c) 2021 Rumen G.Bogdanovski <rumenastro@gmail.com>
+# Copyright (c) 2021-2025 Rumen G. Bogdanovski <rumenastro@gmail.com>
 # All rights reserved.
 #
 # You can use this software under the terms of 'INDIGO Astronomy
@@ -86,7 +86,7 @@ sub help() {
 	print "\t--interface <interface> (default wlan0)\n";
 	print "\t--verbose\n";
 	print "\t--help\n";
-	print "version: $version, written by Rumen G.Bogdanovski <rumen\@skyarchive.org>\n";
+	print "version: $version, written by Rumen G. Bogdanovski <rumen\@skyarchive.org>\n";
 }
 
 sub main() {

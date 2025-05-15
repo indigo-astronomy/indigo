@@ -18,9 +18,6 @@
 
 // This file generated from indigo_aux_skyalert.driver
 
-// version history
-// 3.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
-
 #pragma mark - Includes
 
 #include <stdlib.h>

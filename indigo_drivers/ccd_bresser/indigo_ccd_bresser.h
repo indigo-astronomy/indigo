@@ -1,4 +1,4 @@
-// Copyright (c) 2024, Rumen G.Bogdanovski.
+// Copyright (c) 2024, Rumen G. Bogdanovski.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -17,7 +17,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // version history
-// 2.0 by Rumen G.Bogdanovski <rumenastro@gmail.com>
+// 2.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
 
 /** INDIGO Bresser CCD driver
  \file indigo_ccd_bresser.h

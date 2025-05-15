@@ -2,7 +2,7 @@
 //
 // https://www.baader-planetarium.com/en
 //
-// Copyright (c) 2020 Rumen G. Bogdanovski
+// Copyright (c) 2020-2025 Rumen G. Bogdanovski
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy

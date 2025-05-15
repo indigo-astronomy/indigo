@@ -1,6 +1,6 @@
 #---------------------------------------------------------------------
 #
-# Copyright (c) 2023 Rumen G.Bogdanovski
+# Copyright (c) 2023-2025 Rumen G. Bogdanovski
 # All rights reserved.
 #
 # You can use this software under the terms of 'INDIGO Astronomy

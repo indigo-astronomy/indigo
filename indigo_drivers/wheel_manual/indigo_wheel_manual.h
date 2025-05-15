@@ -1,4 +1,4 @@
-// Copyright (c) 2020-2025 Rumen G.Bogdanovski
+// Copyright (c) 2020-2025 Rumen G. Bogdanovski
 // All rights reserved.
 
 // You may use this software under the terms of 'INDIGO Astronomy
@@ -17,9 +17,6 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // This file generated from indigo_wheel_manual.driver
-
-// version history
-// 3.0 by Rumen G.Bogdanovski
 
 #ifndef wheel_manual_h
 #define wheel_manual_h

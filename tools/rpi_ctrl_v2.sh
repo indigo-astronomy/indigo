@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# Copyright (c) 2023-2024 Rumen G.Bogdanovski <rumenastro@gmail.com>
+# Copyright (c) 2023-2024 Rumen G. Bogdanovski <rumenastro@gmail.com>
 # All rights reserved.
 #
 # This scrpt is based on the original version by
-# Thomas Stibor <thomas@stibor.net> & Rumen G.Bogdanovski <rumenastro@gmail.com>
+# Thomas Stibor <thomas@stibor.net> & Rumen G. Bogdanovski <rumenastro@gmail.com>
 #
 # You can use this software under the terms of 'INDIGO Astronomy open-source license'
 # (see https://github.com/indigo-astronomy/indigo/blob/master/LICENSE.md).
@@ -139,10 +139,10 @@ __usage() {
 	 "\t--poweroff\n" \
 	 "\t--reboot\n" \
 	 "\t--verbose"
-    echo "version: ${VERSION}, written by Rumen G.Bogdanovski <rumen@skyarchive.oer>"
+    echo "version: ${VERSION}, written by Rumen G. Bogdanovski <rumen@skyarchive.oer>"
     echo ""
     echo "Based ot the original script by Thomas Stibor <thomas@stibor.net>"
-    echo "and Rumen G.Bogdanovski <rumen@skyarchive.oer>"
+    echo "and Rumen G. Bogdanovski <rumen@skyarchive.oer>"
     exit 1
 }
 

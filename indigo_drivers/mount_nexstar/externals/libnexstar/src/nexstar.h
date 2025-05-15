@@ -1,7 +1,7 @@
 /**************************************************************
 	Celestron NexStar compatible telescope control library
 
-	(C)2013-2019 by Rumen G.Bogdanovski
+	(C)2013-2019 by Rumen G. Bogdanovski
 ***************************************************************/
 #if !defined(__NEXSTAR_H)
 #define __NEXSTAR_H

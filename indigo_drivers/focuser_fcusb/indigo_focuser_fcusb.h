@@ -18,9 +18,6 @@
 
 // This file generated from indigo_focuser_fcusb.driver
 
-// version history
-// 3.0 by Peter Polakovic
-
 #ifndef focuser_fcusb_h
 #define focuser_fcusb_h
 

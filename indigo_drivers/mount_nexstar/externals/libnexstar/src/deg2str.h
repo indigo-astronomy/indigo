@@ -4,7 +4,7 @@
 	ASCII to double and double to ASCII 
 	conversion routines prototypes.
 	
-	(C)2000 by Rumen G.Bogdanovski
+	(C)2000 by Rumen G. Bogdanovski
 ***************************************************************/
 #if !defined(__DEG2STR_H)
 #define __DEG2STR_H

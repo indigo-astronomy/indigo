@@ -2,7 +2,7 @@
 
 Revision: 12.03.2021 (draft)
 
-Author: **Rumen G.Bogdanovski**
+Author: **Rumen G. Bogdanovski**
 
 e-mail: *rumenastro@gmail.com*
 

@@ -1,4 +1,4 @@
-// Copyright (c) 2021 Rumen G.Bogdanovski
+// Copyright (c) 2021-2025 Rumen G. Bogdanovski
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -17,7 +17,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // version history
-// 2.0 by Rumen G.Bogdanovski <rumenastro@gmail.com>
+// 2.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
 
 // The mathematics for the three point polar alignment were derived independently, based on the common principles of the spherical geometry.
 // The algorythm and the source code were developed based on the math we derived.

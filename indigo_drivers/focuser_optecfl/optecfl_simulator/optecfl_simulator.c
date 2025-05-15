@@ -1,6 +1,6 @@
 // Optec FocusLynx focuser simulator
 //
-// Copyright (c) 2024 CloudMakers, s. r. o.
+// Copyright (c) 2024-2025 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy

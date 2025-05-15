@@ -1,7 +1,7 @@
 # INDIGO Property Manipulation in Examples
 Revision: 05.03.2023 (draft)
 
-Author: **Rumen G.Bogdanovski**
+Author: **Rumen G. Bogdanovski**
 
 e-mail: *rumenastro@gmail.com*
 

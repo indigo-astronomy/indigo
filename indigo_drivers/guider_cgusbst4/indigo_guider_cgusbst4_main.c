@@ -18,9 +18,6 @@
 
 // This file generated from indigo_guider_cgusbst4.driver
 
-// version history
-// 3.0 by Peter Polakovic
-
 #include <indigo/indigo_driver_xml.h>
 
 #include "indigo_guider_cgusbst4.h"

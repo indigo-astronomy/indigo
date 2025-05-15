@@ -1,7 +1,7 @@
 // NexDome Firmware v3 simulator for Arduino
 // https://github.com/nexdome/Firmware
 //
-// Copyright (c) 2019 Ivan Gorchev and Rumen G. Bogdanovski
+// Copyright (c) 2019-2025 Ivan Gorchev and Rumen G. Bogdanovski
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy

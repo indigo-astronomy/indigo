@@ -18,9 +18,6 @@
 
 // This file generated from indigo_aux_upb.driver
 
-// version history
-// 3.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
-
 #ifndef aux_upb_h
 #define aux_upb_h
 

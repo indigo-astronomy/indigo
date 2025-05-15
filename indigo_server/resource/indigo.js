@@ -1,5 +1,5 @@
 /*
- Copyright (c) 2017 CloudMakers, s. r. o. All rights reserved.
+ Copyright (c) 2017-2025 CloudMakers, s. r. o. All rights reserved.
  You can use this software under the terms of 'INDIGO Astronomy open-source license' (see LICENSE.md).
 */
 

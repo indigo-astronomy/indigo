@@ -18,9 +18,6 @@
 
 // This file generated from indigo_rotator_simulator.driver
 
-// version history
-// 3.0 by Rumen G. Bogdanovski
-
 #ifndef rotator_simulator_h
 #define rotator_simulator_h
 

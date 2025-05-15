@@ -1,7 +1,7 @@
 # Basics of INDIGO Driver Development
 Revision: 01.05.2022 (draft)
 
-Author: **Rumen G.Bogdanovski**
+Author: **Rumen G. Bogdanovski**
 
 e-mail: *rumenastro@gmail.com*
 

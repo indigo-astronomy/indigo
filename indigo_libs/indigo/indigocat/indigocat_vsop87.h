@@ -1,4 +1,5 @@
-// Created by Rumen Bogdanovski, 2022
+// Copyright (c) 2022-2025 Rumen G. Bogdanovski
+// All rights reserved.
 //
 // THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
 // OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED

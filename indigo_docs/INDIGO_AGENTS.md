@@ -1,7 +1,7 @@
 # INDIGO Agents
 Revision: 22.12.2023 (early draft)
 
-Authors: **Rumen G.Bogdanovski** & **Peter Polakovic**
+Authors: **Rumen G. Bogdanovski** & **Peter Polakovic**
 
 e-mail: *rumenastro@gmail.com*
 

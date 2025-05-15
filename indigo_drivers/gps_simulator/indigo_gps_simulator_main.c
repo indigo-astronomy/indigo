@@ -18,9 +18,6 @@
 
 // This file generated from indigo_gps_simulator.driver
 
-// version history
-// 3.0 by Rumen G. Bogdanovski
-
 #include <indigo/indigo_driver_xml.h>
 
 #include "indigo_gps_simulator.h"

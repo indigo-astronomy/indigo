@@ -18,9 +18,6 @@
 
 // This file generated from indigo_guider_gpusb.driver
 
-// version history
-// 3.0 by Peter Polakovic
-
 // TODO: Add libgpusb for windows
 
 #pragma mark - Includes

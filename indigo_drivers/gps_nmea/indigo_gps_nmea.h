@@ -18,9 +18,6 @@
 
 // This file generated from indigo_gps_nmea.driver
 
-// version history
-// 3.0 by Rumen G. Bogdanovski
-
 #ifndef gps_nmea_h
 #define gps_nmea_h
 

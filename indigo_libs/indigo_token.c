@@ -17,7 +17,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // version history
-// 2.0 by Rumen G.Bogdanovski <rumen@skyrchive.org>
+// 2.0 by Rumen G. Bogdanovski <rumen@skyrchive.org>
 
 /** INDIGO Token handling
  \file indigo_token.c

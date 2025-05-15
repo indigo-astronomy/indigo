@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Rumen G.Bogdanovski <rumenastro@gmail.com>
+ * Copyright (c) 2017, Rumen G. Bogdanovski <rumenastro@gmail.com>
  * Based on the code by Roland Roberts <roland@astrofoto.org>
  */
 

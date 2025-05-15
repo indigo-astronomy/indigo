@@ -1,7 +1,7 @@
 # INDIGO Raw Image Format
 Revision: 13.01.2024 (draft)
 
-Author: **Rumen G.Bogdanovski**
+Author: **Rumen G. Bogdanovski**
 
 e-mail: *rumenastro@gmail.com*
 

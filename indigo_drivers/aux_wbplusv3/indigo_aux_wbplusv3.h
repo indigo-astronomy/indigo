@@ -18,9 +18,6 @@
 
 // This file generated from indigo_aux_wbplusv3.driver
 
-// version history
-// 3.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
-
 #ifndef aux_wbplusv3_h
 #define aux_wbplusv3_h
 

@@ -1,4 +1,4 @@
-// Copyright (c) 2021 Rumen G. Bogdanovski
+// Copyright (c) 2021-2025 Rumen G. Bogdanovski
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -18,6 +18,7 @@
 
 // version history
 // 2.0 by Rumen G.Bogdanovski <rumenastro@gmail.com>
+// 3.0 refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
 /** INDIGO ASCOM ALPACA bridge agent
  \file alpaca_rotator.c

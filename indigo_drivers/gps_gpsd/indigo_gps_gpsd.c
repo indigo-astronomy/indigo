@@ -1,4 +1,4 @@
-// Copyright (c) 2019 Thomas Stibor
+// Copyright (c) 2019-2025 Thomas Stibor
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy

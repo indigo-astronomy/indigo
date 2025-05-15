@@ -1103,9 +1103,6 @@ void write_license(void) {
 	write_line("");
 	write_line("// This file generated from %s", definition_source_basename);
 	write_line("");
-	write_line("// version history");
-	write_line("// 3.0 by %s", driver.author);
-	write_line("");
 }
 
 void write_h_source(void) {

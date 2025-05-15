@@ -18,9 +18,6 @@
 
 // This file generated from indigo_aux_wbprov3.driver
 
-// version history
-// 3.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
-
 // TODO: Test with real hardware or simulator!!!
 
 #pragma mark - Includes

@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 
-# Copyright (c) 2018 Rumen G. Bogdanovski and Thomas Stibor
+# Copyright (c) 2018-2025 Rumen G. Bogdanovski and Thomas Stibor
 # All rights reserved.
 #
 # You can use this software under the terms of 'INDIGO Astronomy
@@ -19,7 +19,7 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 # version history
-# 0.1 by Rumen Bogdanovski <rumenastro@gmail.com>
+# 0.1 by Rumen G. Bogdanovski <rumenastro@gmail.com>
 #        Thomas Stibor <thomas@stibor.net>
 
 # ASCOL telescope simulator

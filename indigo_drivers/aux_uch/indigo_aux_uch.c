@@ -18,9 +18,6 @@
 
 // This file generated from indigo_aux_uch.driver
 
-// version history
-// 3.0 by Rumen Bogdanovski <rumenastro@gmail.com>
-
 #pragma mark - Includes
 
 #include <stdlib.h>

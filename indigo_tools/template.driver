@@ -18,6 +18,10 @@
 
 // XXXXX driver definition
 
+// version history
+// 2.0 by XXX <XXX>
+// 3.0 refactoring by XXX <XXX>
+
 driver XXXXX { // replace XXXXX with driver base name without indigo_type_ prefix (mandatory identifier literal)
 	author = "XXXXX"; // mandatory attribute; replace XXXXX with author name and surname with optional email enclosed in '<' and '>' (string literal)
 	copyright = "Copyright (c) 2025 XXXXXX"; // mandatory attribute; replace XXXXX with copyright holder (string literal)

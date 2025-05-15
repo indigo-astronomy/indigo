@@ -1,7 +1,7 @@
 /**************************************************************
 	ASCOL telescope control library
 
-	(C)2018 by Rumen G.Bogdanovski
+	(C)2018 by Rumen G. Bogdanovski
 ***************************************************************/
 #if !defined(__LIBASCOL_H)
 #define __LIBASCOL_H

@@ -1,8 +1,8 @@
 ## INDIGO Astronomy open-source license (version 3.0, September 2024)
 
-Copyright (c) 2020 CloudMakers, s. r. o.
+Copyright (c) 2020-2025 CloudMakers, s. r. o.
 
-Copyright (c) 2020 Rumen G.Bogdanovski
+Copyright (c) 2020-2025 Rumen G. Bogdanovski
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions

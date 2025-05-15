@@ -1,6 +1,6 @@
 // Optec rotator simulator for Arduino
 //
-// Copyright (c) 2022 CloudMakers, s. r. o.
+// Copyright (c) 2022-2025 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy

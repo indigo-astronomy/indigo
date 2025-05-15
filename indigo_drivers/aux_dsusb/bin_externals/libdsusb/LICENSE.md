@@ -1,6 +1,6 @@
 ## libfcusb - interface library for Shoestring FCUSB motor controllers
 
-Copyright (c) 2016 CloudMakers, s. r. o. All Rights Reserved.
+Copyright (c) 2016-2025 CloudMakers, s. r. o. All Rights Reserved.
 
 Redistribution and use in binary form is permitted provided that
 the above copyright notice and this paragraph are duplicated in all

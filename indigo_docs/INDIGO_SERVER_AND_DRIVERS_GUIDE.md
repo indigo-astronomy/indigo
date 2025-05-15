@@ -1,7 +1,7 @@
 # Guide to indigo_server and INDIGO Drivers
 Revision: 07.10.2024 (draft)
 
-Author: **Rumen G.Bogdanovski**
+Author: **Rumen G. Bogdanovski**
 
 e-mail: *rumenastro@gmail.com*
 

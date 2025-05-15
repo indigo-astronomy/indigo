@@ -18,9 +18,6 @@
 
 // This file generated from indigo_focuser_usbv3.driver
 
-// version history
-// 3.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
-
 #ifndef focuser_usbv3_h
 #define focuser_usbv3_h
 

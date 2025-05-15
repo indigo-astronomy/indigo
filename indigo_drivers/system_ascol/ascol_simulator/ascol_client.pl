@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# Copyright (c) 2018 Rumen G. Bogdanovski
+# Copyright (c) 2018-2025 Rumen G. Bogdanovski
 # All rights reserved.
 #
 # You can use this software under the terms of 'INDIGO Astronomy
@@ -18,7 +18,7 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 # version history
-# 0.1 by Rumen Bogdanovski <rumenastro@gmail.com>
+# 0.1 by Rumen G. Bogdanovski <rumenastro@gmail.com>
 
 # ASCOL telescope client console
 # file ascol_client.pl

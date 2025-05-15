@@ -18,6 +18,10 @@
 
 // Interactive Astronomy SkyAlert driver definition
 
+// version history
+// 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+// 3.0 refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+
 driver skyalert {
 	label = "Interactive Astronomy SkyAlert";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";

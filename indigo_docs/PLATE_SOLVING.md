@@ -2,7 +2,7 @@
 
 Revision: 25.10.2022 (draft)
 
-Author: **Rumen G.Bogdanovski**
+Author: **Rumen G. Bogdanovski**
 
 e-mail: *rumenastro@gmail.com*
 

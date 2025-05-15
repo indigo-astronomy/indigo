@@ -18,9 +18,6 @@
 
 // This file generated from indigo_aux_dsusb.driver
 
-// version history
-// 3.0 by Peter Polakovic
-
 // TODO: Add libdsusb for windows
 
 #pragma mark - Includes

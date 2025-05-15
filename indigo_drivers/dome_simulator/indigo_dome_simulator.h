@@ -18,9 +18,6 @@
 
 // This file generated from indigo_dome_simulator.driver
 
-// version history
-// 3.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
-
 #ifndef dome_simulator_h
 #define dome_simulator_h
 

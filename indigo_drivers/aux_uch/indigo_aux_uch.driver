@@ -18,9 +18,13 @@
 
 // PegasusAstro USB Control Hub driver definition
 
+// version history
+// 2.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
+// 3.0 refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+
 driver uch {
 	label = "PegasusAstro USB Control Hub";
-	author = "Rumen Bogdanovski <rumenastro@gmail.com>";
+	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2023-2025 Rumen G. Bogdanovski";
 	version = 4;
 	serial {

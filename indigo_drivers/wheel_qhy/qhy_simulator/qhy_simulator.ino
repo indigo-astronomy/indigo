@@ -1,6 +1,6 @@
 // QHY CFW wheel simulator for Arduino
 //
-// Copyright (c) 2020 CloudMakers, s. r. o.
+// Copyright (c) 2020-2025 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy

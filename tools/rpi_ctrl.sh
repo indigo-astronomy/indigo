@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright (c) 2019-2021 Thomas Stibor <thomas@stibor.net> & Rumen G.Bogdanovski <rumenastro@gmail.com>
+# Copyright (c) 2019-2021 Thomas Stibor <thomas@stibor.net> & Rumen G. Bogdanovski <rumenastro@gmail.com>
 # All rights reserved.
 #
 # You can use this software under the terms of 'INDIGO Astronomy
@@ -155,7 +155,7 @@ __usage() {
 	 "\t--reboot\n" \
 	 "\t--verbose"
     echo "version: ${VERSION}, written by Thomas Stibor <thomas@stibor.net>"
-    echo "and Rumen G.Bogdanovski <rumen@skyarchive.oer>"
+    echo "and Rumen G. Bogdanovski <rumen@skyarchive.oer>"
     exit 1
 }
 

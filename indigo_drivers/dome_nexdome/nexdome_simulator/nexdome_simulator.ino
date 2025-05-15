@@ -11,7 +11,7 @@
  *  
  *  The code is not clean as there are many leftovers from the original firmware.
  *  
- *  Created 2019 by Rumen G.Bogdanovski 
+ *  Created 2019 by Rumen G. Bogdanovski 
  */
 
 #define VERSION_MAJOR 1

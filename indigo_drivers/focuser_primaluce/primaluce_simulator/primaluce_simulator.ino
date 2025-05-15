@@ -1,6 +1,6 @@
 // PrimaLuceLab SestoSenso2, Esatto, Arco and Giotto simulator for Arduino
 //
-// Copyright (c) 2023 CloudMakers, s. r. o.
+// Copyright (c) 2023-2025 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy

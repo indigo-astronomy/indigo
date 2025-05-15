@@ -1,4 +1,4 @@
-// Copyright (c) 2017 Rumen G.Bogdanovski.
+// Copyright (c) 2017-2025 Rumen G. Bogdanovski.
 // All rights reserved.
 //
 // Based on PyDome code
@@ -19,7 +19,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // version history
-// 2.0 by Rumen G.Bogdanovski <rumenastro@gmail.com>
+// 2.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
 
 /** INDIGO dome azimuth solver
  \file indigo_dome_azimuth.h

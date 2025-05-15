@@ -18,9 +18,6 @@
 
 // This file generated from indigo_dome_simulator.driver
 
-// version history
-// 3.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
-
 #include <indigo/indigo_driver_xml.h>
 
 #include "indigo_dome_simulator.h"

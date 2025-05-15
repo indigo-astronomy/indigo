@@ -4,7 +4,7 @@
 	ASCII to double and double to ASCII
 	conversion routines.
 
-	(C)2000 by Rumen G.Bogdanovski
+	(C)2000 by Rumen G. Bogdanovski
 ***************************************************************/
 #include<stdlib.h>
 #include<stdio.h>

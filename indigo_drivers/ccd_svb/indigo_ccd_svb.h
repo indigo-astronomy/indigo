@@ -1,5 +1,5 @@
-// Copyright (c) 2021 CloudMakers, s. r. o.
-// Copyright (c) 2016 Rumen G. Bogdanovski
+// Copyright (c) 2021-2025 CloudMakers, s. r. o.
+// Copyright (c) 2016-2025 Rumen G. Bogdanovski
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy

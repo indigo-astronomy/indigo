@@ -18,9 +18,6 @@
 
 // This file generated from indigo_aux_usbdp.driver
 
-// version history
-// 3.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
-
 #pragma mark - Includes
 
 #include <stdlib.h>

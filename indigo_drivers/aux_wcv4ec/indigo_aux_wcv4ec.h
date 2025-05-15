@@ -18,9 +18,6 @@
 
 // This file generated from indigo_aux_wcv4ec.driver
 
-// version history
-// 3.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
-
 #ifndef aux_wcv4ec_h
 #define aux_wcv4ec_h
 

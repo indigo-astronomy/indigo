@@ -18,9 +18,6 @@
 
 // This file generated from indigo_ao_sx.driver
 
-// version history
-// 3.0 by Peter Polakovic
-
 #pragma mark - Includes
 
 #include <stdlib.h>

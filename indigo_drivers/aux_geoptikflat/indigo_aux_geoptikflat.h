@@ -18,9 +18,6 @@
 
 // This file generated from indigo_aux_geoptikflat.driver
 
-// version history
-// 3.0 by Rumen G. Bogdanovski
-
 #ifndef aux_geoptikflat_h
 #define aux_geoptikflat_h
 

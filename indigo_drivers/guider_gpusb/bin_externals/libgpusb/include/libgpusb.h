@@ -1,7 +1,7 @@
 /*
  * libgpusb - interface library for Shoestring GPUSB guiders
  *
- * Copyright (c) 2018 CloudMakers, s. r. o. All Rights Reserved.
+ * Copyright (c) 2018-2025 CloudMakers, s. r. o. All Rights Reserved.
  *
  * Redistribution and use in binary forms are permitted provided that
  * the above copyright notice and this paragraph are duplicated in all
