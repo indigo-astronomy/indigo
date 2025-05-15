@@ -2393,7 +2393,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 				AGENT_GUIDER_START_CALIBRATION_AND_GUIDING_ITEM->sw.value =
 				AGENT_GUIDER_START_GUIDING_ITEM->sw.value = false;
 				AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, "No CCD is selected");
+				indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, "No guider camera is selected");
 			}
 		}
 		return INDIGO_OK;
