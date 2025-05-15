@@ -68,10 +68,21 @@ INDIGO_EXTERN indigo_result indigo_xml_client_parser_change_property(indigo_devi
  */
 INDIGO_EXTERN indigo_result indigo_xml_client_parser_enable_blob(indigo_device *device, indigo_client *client, indigo_property *property, indigo_enable_blob_mode mode);
 
-indigo_result indigo_xml_device_adapter_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message);
-indigo_result indigo_xml_device_adapter_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message);
-indigo_result indigo_xml_device_adapter_delete_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message);
-indigo_result indigo_xml_device_adapter_send_message(indigo_client *client, indigo_device *device, const char *message);
+/** Generate define message.
+ */
+INDIGO_EXTERN indigo_result indigo_xml_device_adapter_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message);
+
+/** Generate update message.
+ */
+INDIGO_EXTERN indigo_result indigo_xml_device_adapter_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message);
+
+/** Generate delete message.
+ */
+INDIGO_EXTERN indigo_result indigo_xml_device_adapter_delete_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message);
+
+/** Generate send message.
+ */
+INDIGO_EXTERN indigo_result indigo_xml_device_adapter_send_message(indigo_client *client, indigo_device *device, const char *message);
 
 #ifdef __cplusplus
 }

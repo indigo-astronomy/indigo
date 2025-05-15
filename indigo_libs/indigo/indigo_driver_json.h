@@ -46,6 +46,9 @@ extern "C" {
 /** Create initialized instance of JSON wire protocol device side adapter.
  */
 INDIGO_EXTERN indigo_client *indigo_json_device_adapter(indigo_uni_handle **input, indigo_uni_handle **output, bool web_socket);
+
+/** Release instance of JSON wire protocol device side adapter.
+ */
 INDIGO_EXTERN void indigo_release_json_device_adapter(indigo_client *client);
 
 #ifdef __cplusplus

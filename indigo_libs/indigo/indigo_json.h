@@ -53,6 +53,22 @@ INDIGO_EXTERN void indigo_json_parse(indigo_device *device, indigo_client *clien
  */
 INDIGO_EXTERN const char *indigo_json_escape(const char *string);
 
+/** Generate define message.
+ */
+INDIGO_EXTERN indigo_result indigo_json_device_adapter_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message);
+
+/** Generate update message.
+ */
+INDIGO_EXTERN indigo_result indigo_json_device_adapter_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message);
+
+/** Generate delete message.
+ */
+INDIGO_EXTERN indigo_result indigo_json_device_adapter_delete_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message);
+
+/** Generate send message.
+ */
+INDIGO_EXTERN indigo_result indigo_json_device_adapter_message_property(indigo_client *client, indigo_device *device, const char *message);
+
 #ifdef __cplusplus
 }
 #endif
