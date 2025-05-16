@@ -259,7 +259,7 @@ static bool ieq_get_utc(indigo_device *device, time_t *secs, int *utc_offset) {
 			int offset = atoi(response);
 			*utc_offset = offset / 60;
 			double jd = atoll(response + 5) / 8.64e+7 + JD2000;
-			*secs = (time_t)((jd - DELTA_UTC_UT1 - 2440587.5) * 86400.0);
+			*secs = (time_t)((jd - DELTA_UT1_UTC - 2440587.5) * 86400.0);
 			return true;
 		}
 	}

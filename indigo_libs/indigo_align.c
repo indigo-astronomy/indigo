@@ -591,7 +591,7 @@ bool indigo_reestimate_polar_error(
 	const indigo_spherical_point_t *target_position,
 	double *u, double *v
 ) {
-	const double search_radius = 5.0;
+	const double search_radius = PA_MAX_ERROR;
 	_reestimate_polar_error(
 		position,
 		target_position,

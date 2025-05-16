@@ -297,11 +297,14 @@ static void populate_pa_state(indigo_device * device) {
 		AGENT_PLATESOLVER_PA_STATE_AZ_ERROR_ITEM->number.value * 60
 	);
 
-	indigo_send_message(
-		device,
-		"Polar error: %.2f'",
-		AGENT_PLATESOLVER_PA_STATE_POLAR_ERROR_ITEM->number.value * 60
-	);
+	char message[256];
+	if(INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_initial_error * 60.0 >= PA_MAX_INITIAL_ERROR) {
+		snprintf(message, sizeof(message), "Polar error: %.2f' (Warning: Initial polar error is loo large, align within 1-2° and restart polar alignment)", AGENT_PLATESOLVER_PA_STATE_POLAR_ERROR_ITEM->number.value * 60);
+	} else {
+		snprintf(message, sizeof(message), "Polar error: %.2f'", AGENT_PLATESOLVER_PA_STATE_POLAR_ERROR_ITEM->number.value * 60);
+	}
+	indigo_send_message( device, message);
+
 	indigo_send_message(
 		device,
 		"Azimuth error: %+.2f', move %s (use azimuth adjustment knob)",
@@ -596,6 +599,13 @@ static void solve(indigo_platesolver_task *task) {
 			AGENT_PLATESOLVER_PA_STATE_DEC_DRIFT_2_ITEM->number.value *= RAD2DEG;
 			AGENT_PLATESOLVER_PA_STATE_DEC_DRIFT_3_ITEM->number.value *= RAD2DEG;
 
+			INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_initial_error = sqrt(
+				INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_alt_error * INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_alt_error +
+				INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_az_error * INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_az_error
+			);
+
+			indigo_debug(device, "Initial polar error: %.2f degrees", INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_initial_error * 60);
+
 			// here we do not care about the refraction since we work with real coordinates
 			indigo_spherical_point_t target_position = {0,0,0};
 			indigo_polar_alignment_target_position(
@@ -661,7 +671,9 @@ static void solve(indigo_platesolver_task *task) {
 				AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_ALERT_STATE;
 				AGENT_PLATESOLVER_PA_STATE_ITEM->number.value = INDIGO_POLAR_ALIGN_IDLE;
 				indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, NULL);
-				process_failed(device, "Polar error exceeds the maximal error, align better and restart");
+				char message[256];
+				snprintf(message, sizeof(message), "Polar error exceeds the maximal error of %.0f°, align better and restart polar alignment", PA_MAX_ERROR);
+				process_failed(device, message);
 				return;
 			}
 
