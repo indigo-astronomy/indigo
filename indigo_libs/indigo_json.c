@@ -48,6 +48,14 @@
 #endif
 #endif
 
+#ifndef htonll
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+#define htonll(x) (((uint64_t)htonl((x) & 0xFFFFFFFF) << 32) | htonl((x) >> 32))
+#else
+#define htonll(x) (x)
+#endif
+#endif
+
 static long ws_read(indigo_uni_handle* handle, char* buffer, long length) {
 	uint8_t header[14];
 	long bytes_read = indigo_uni_read(handle, (char*)header, 6);
