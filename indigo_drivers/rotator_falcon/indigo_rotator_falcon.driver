@@ -1,0 +1,213 @@
+// Copyright (c) 2023-2025 CloudMakers, s. r. o.
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// PegasusAstro Falcon rotator driver definition
+
+driver falcon {
+	label = "PegasusAstro Falcon rotator";
+	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
+	copyright = "Copyright (c) 2023-2025 CloudMakers, s. r. o.";
+	version = 5;
+	serial {
+		pattern {
+			product = "FalconRotator";
+			vendor = "Pegasus Astro";
+		}
+	}
+	data {
+		char response[128];
+	}
+	code {
+		static bool falcon_command(indigo_device *device, char *command, ...) {
+			long result = indigo_uni_discard(PRIVATE_DATA->handle);
+			if (result >= 0) {
+				va_list args;
+				va_start(args, command);
+				result = indigo_uni_vtprintf(PRIVATE_DATA->handle, command, args, "\n");
+				va_end(args);
+				if (result > 0) {
+					result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", INDIGO_DELAY(1));
+				}
+			}
+			return result > 0;
+		}
+
+		static bool falcon_open(indigo_device *device) {
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 9600, INDIGO_LOG_DEBUG);
+			if (PRIVATE_DATA->handle != NULL) {
+				if (falcon_command(device, "F#") && !strncmp(PRIVATE_DATA->response, "FR_OK", 5)) {
+					INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value ,"Falcon Rotator");
+					if (falcon_command(device, "FV") && !strncmp(PRIVATE_DATA->response, "FV:", 3)) {
+						INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 3);
+					}
+					indigo_update_property(device, INFO_PROPERTY, NULL);
+					return true;
+				} else {
+					indigo_uni_close(&PRIVATE_DATA->handle);
+					PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 115200, INDIGO_LOG_DEBUG);
+					if (falcon_command(device, "F#") && !strncmp(PRIVATE_DATA->response, "F2R_", 4)) {
+						INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Falcon Rotator v2");
+						if (falcon_command(device, "FV") && !strncmp(PRIVATE_DATA->response, "FV:", 3)) {
+							INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 3);
+						}
+						indigo_update_property(device, INFO_PROPERTY, NULL);
+						return true;
+					}
+				}
+				indigo_uni_close(&PRIVATE_DATA->handle);
+				indigo_send_message(device, "Handshake failed");
+			}
+			return false;
+		}
+
+		static void falcon_close(indigo_device *device) {
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+			indigo_update_property(device, INFO_PROPERTY, NULL);
+			indigo_uni_close(&PRIVATE_DATA->handle);
+		}
+	}
+	rotator {
+		name = "Pegasus Falcon rotator";
+		additional_instances = true;
+		on_connect {
+			falcon_command(device, "FH");
+			falcon_command(device, "DR:0");
+			if (falcon_command(device, "FA")) {
+				if (!strncmp(PRIVATE_DATA->response, "FR_OK", 5)) {
+					char *pnt, *token = strtok_r(PRIVATE_DATA->response, ":", &pnt);
+					token = strtok_r(NULL, ":", &pnt); // position_in_deg
+					if (token) {
+						ROTATOR_POSITION_ITEM->number.target = ROTATOR_POSITION_ITEM->number.value = indigo_atod(token);
+					}
+					token = strtok_r(NULL, ":", &pnt); // is_running
+					token = strtok_r(NULL, ":", &pnt); // limit_detect
+					token = strtok_r(NULL, ":", &pnt); // do_derotation
+					token = strtok_r(NULL, ":", &pnt); // motor_reverse
+					if (token) {
+						if (*token == '0') {
+							indigo_set_switch(ROTATOR_DIRECTION_PROPERTY, ROTATOR_DIRECTION_NORMAL_ITEM, true);
+						} else {
+							indigo_set_switch(ROTATOR_DIRECTION_PROPERTY, ROTATOR_DIRECTION_REVERSED_ITEM, true);
+						}
+					}
+				} else if (!strncmp(PRIVATE_DATA->response, "F2R:", 4)) {
+					char *pnt, *token = strtok_r(PRIVATE_DATA->response, ":", &pnt); // position_in_deg
+					if (token) {
+						ROTATOR_POSITION_ITEM->number.target = ROTATOR_POSITION_ITEM->number.value = indigo_atod(token);
+					}
+					token = strtok_r(NULL, ":", &pnt); // is_running
+					token = strtok_r(NULL, ":", &pnt); // speed
+					token = strtok_r(NULL, ":", &pnt); // microsteps
+					token = strtok_r(NULL, ":", &pnt); // direction
+					if (token) {
+						if (*token == '0') {
+							indigo_set_switch(ROTATOR_DIRECTION_PROPERTY, ROTATOR_DIRECTION_NORMAL_ITEM, true);
+						} else {
+							indigo_set_switch(ROTATOR_DIRECTION_PROPERTY, ROTATOR_DIRECTION_REVERSED_ITEM, true);
+						}
+					}
+				}
+			}
+		}
+		on_attach {
+			INFO_PROPERTY->count = 6;
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+		}
+		inherited ROTATOR_POSITION {
+			preserve_values = true;
+			on_change {
+				ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+				if (ROTATOR_ON_POSITION_SET_GOTO_ITEM->sw.value) {
+					if (falcon_command(device, "MD:%0.2f", ROTATOR_POSITION_ITEM->number.target) && !strncmp(PRIVATE_DATA->response, "MD:", 3)) {
+						while (true) {
+							if (falcon_command(device, "FD") && !strncmp(PRIVATE_DATA->response, "FD:", 3)) {
+								ROTATOR_POSITION_ITEM->number.value = indigo_atod(PRIVATE_DATA->response + 3);
+								indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+							} else {
+								ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+								break;
+							}
+							if (falcon_command(device, "FR") && !strncmp(PRIVATE_DATA->response, "FR:", 3)) {
+								if (!strcmp(PRIVATE_DATA->response, "FR:1")) {
+									pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+									indigo_sleep(0.5);
+									pthread_mutex_lock(&PRIVATE_DATA->mutex);
+									continue;
+								}
+							}
+							ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+							break;
+						}
+						if (falcon_command(device, "FD") && !strncmp(PRIVATE_DATA->response, "FD:", 3)) {
+							ROTATOR_POSITION_ITEM->number.value = indigo_atod(PRIVATE_DATA->response + 3);
+						} else {
+							ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+						}
+					} else {
+						ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+					}
+				} else {
+					if (falcon_command(device, "SD:%0.2f", ROTATOR_POSITION_ITEM->number.target) && !strncmp(PRIVATE_DATA->response, "SD:", 3)) {
+						if (falcon_command(device, "FD") && !strncmp(PRIVATE_DATA->response, "FD:", 3)) {
+							ROTATOR_POSITION_ITEM->number.value = indigo_atod(PRIVATE_DATA->response + 3);
+							ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+						} else {
+							ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+						}
+					} else {
+						ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+					}
+				}
+			}
+			on_attach {
+				ROTATOR_POSITION_ITEM->number.min = 0;
+				ROTATOR_POSITION_ITEM->number.max = 359.9;
+			}
+		}
+		inherited ROTATOR_DIRECTION {
+			on_change {
+				if (!falcon_command(device, "FN:%d", ROTATOR_DIRECTION_NORMAL_ITEM->sw.value ? 0 : 1) && !strncmp(PRIVATE_DATA->response, "FN:", 3)) {
+					ROTATOR_DIRECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+		}
+		inherited ROTATOR_ABORT_MOTION {
+			on_change {
+				ROTATOR_ABORT_MOTION_ITEM->sw.value = false;
+				if (!falcon_command(device, "FH") && !strncmp(PRIVATE_DATA->response, "FH:", 3)) {
+					ROTATOR_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+		}
+		inherited ROTATOR_RELATIVE_MOVE {
+			on_change {
+				ROTATOR_RELATIVE_MOVE_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, ROTATOR_RELATIVE_MOVE_PROPERTY, NULL);
+				ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+				ROTATOR_POSITION_ITEM->number.target = ROTATOR_POSITION_ITEM->number.value + ROTATOR_RELATIVE_MOVE_ITEM->number.value;
+				indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+				pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+				rotator_position_handler(device);
+				pthread_mutex_lock(&PRIVATE_DATA->mutex);
+				ROTATOR_RELATIVE_MOVE_PROPERTY->state = ROTATOR_POSITION_PROPERTY->state;
+			}
+		}
+	}
+}

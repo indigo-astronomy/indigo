@@ -4560,6 +4560,7 @@
 		9D0829452C198614002166E1 /* indigo_ccd_bresser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_bresser.h; sourceTree = "<group>"; };
 		9D0829462C198614002166E1 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9D09DF6821DF5D0E00683399 /* skywatcher_motor_controller_command_set.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = skywatcher_motor_controller_command_set.pdf; sourceTree = "<group>"; };
+		9D0A8B6E2DD7425200B2F5D2 /* indigo_rotator_falcon.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_rotator_falcon.driver; sourceTree = "<group>"; };
 		9D0AE75E2DB7A4380012933D /* indigo_ao_sx.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_ao_sx.driver; sourceTree = "<group>"; };
 		9D0AE7602DB7A5F40012933D /* indigo_gps_nmea.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_gps_nmea.driver; sourceTree = "<group>"; };
 		9D1880BE1E534B5E002F75D7 /* indigo_prop_tool */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = indigo_prop_tool; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -4801,7 +4802,7 @@
 		9D74A55A2D4B660400A31003 /* indigo_aux_asiair.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_asiair.c; sourceTree = "<group>"; };
 		9D74A55B2D4B660400A31003 /* indigo_aux_asiair_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_asiair_main.c; sourceTree = "<group>"; };
 		9D74A55C2D4B660400A31003 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
-		9D7BA5042C47F18200091C68 /* falcon_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = falcon_simulator.c; sourceTree = "<group>"; };
+		9D7BA5042C47F18200091C68 /* falcon2_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = falcon2_simulator.c; sourceTree = "<group>"; };
 		9D7BA5062C48010100091C68 /* 99-indigo_rotator_falcon.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = "99-indigo_rotator_falcon.rules"; sourceTree = "<group>"; };
 		9D7D59191DF6B21B003D2B59 /* rjsmin.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = rjsmin.py; sourceTree = "<group>"; };
 		9D7FC60B2C4906B2004496F2 /* fc3_simulator.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = fc3_simulator.c; sourceTree = "<group>"; };
@@ -9496,9 +9497,11 @@
 				59B5135A297077920075C8A1 /* indigo_rotator_falcon.h */,
 				59B51355297077920075C8A1 /* indigo_rotator_falcon.c */,
 				59B51359297077920075C8A1 /* indigo_rotator_falcon_main.c */,
+				9D0A8B6E2DD7425200B2F5D2 /* indigo_rotator_falcon.driver */,
 				59B51361297078DE0075C8A1 /* Falcon_Serial_Command_Table.pdf */,
 				9D7BA5062C48010100091C68 /* 99-indigo_rotator_falcon.rules */,
 				59B51357297077920075C8A1 /* falcon_simulator */,
+				9D9BB0AD2DD74D4500A2D03A /* falcon2_simulator */,
 			);
 			path = rotator_falcon;
 			sourceTree = "<group>";
@@ -9506,7 +9509,6 @@
 		59B51357297077920075C8A1 /* falcon_simulator */ = {
 			isa = PBXGroup;
 			children = (
-				9D7BA5042C47F18200091C68 /* falcon_simulator.c */,
 				59B51358297077920075C8A1 /* falcon_simulator.ino */,
 			);
 			path = falcon_simulator;
@@ -14042,6 +14044,14 @@
 			);
 			name = externals;
 			path = externals/libdc1394;
+			sourceTree = "<group>";
+		};
+		9D9BB0AD2DD74D4500A2D03A /* falcon2_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				9D7BA5042C47F18200091C68 /* falcon2_simulator.c */,
+			);
+			path = falcon2_simulator;
 			sourceTree = "<group>";
 		};
 		9D9EA69F1DBE1F5000E11841 /* ccd_atik */ = {

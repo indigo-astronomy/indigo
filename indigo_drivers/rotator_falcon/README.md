@@ -1,11 +1,11 @@
 # PegasusAstro Falcon field rotator
 
-https://pegasusastro.com//products/falcon-rotator/
+https://pegasusastro.com/products/falcon-rotator/
 
 ## Supported devices
 
 * PegasusAstro Falcon field rotator
-* PegasusAstro Falcon v2 field rotator (USB connection only)
+* PegasusAstro Falcon v2 field rotator (USB connection only, only v1 features are supported)
 
 Single device is present on the first startup. Additional devices can be configured on runtime.
 Field derotation is not supported.
@@ -28,4 +28,4 @@ indigo_server -s
 
 ## Status: Stable
 
-Tested with a simulator only. Looking for device owners!!! :)
+Tested with a real device.

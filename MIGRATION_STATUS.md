@@ -122,7 +122,7 @@
 | mount_synscan | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | mount_temma | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | rotator_asi | 2️⃣ | ❌ No | ❌ No | ❌ No | |
-| rotator_falcon | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
+| rotator_falcon | 3️⃣ | ✅ Yes | ✅ Yes | ✅ HW | |
 | rotator_lunatico | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | rotator_optec | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | rotator_simulator | 3️⃣ | ✅ Yes | ✅ Yes | ⛔ N/A | |
