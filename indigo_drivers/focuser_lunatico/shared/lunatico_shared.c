@@ -759,6 +759,7 @@ static int lunatico_init_properties(indigo_device *device) {
 	DEVICE_PORT_PROPERTY->hidden = false;
 	// -------------------------------------------------------------------------------- DEVICE_PORTS
 	DEVICE_PORTS_PROPERTY->hidden = false;
+	indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
 	// -------------------------------------------------------------------------------- DEVICE_BAUDRATE
 	DEVICE_BAUDRATE_PROPERTY->hidden = false;
 	INDIGO_COPY_VALUE(DEVICE_BAUDRATE_ITEM->text.value, DEFAULT_BAUDRATE);

@@ -88,6 +88,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_TARGET_INFO_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
 		DEVICE_PORTS_PROPERTY->hidden = false;
+		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
 		// -------------------------------------------------------------------------------- DEVICE_PORT
 		DEVICE_PORT_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- DEVICE_BAUDRATE

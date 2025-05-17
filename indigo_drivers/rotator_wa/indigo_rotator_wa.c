@@ -477,6 +477,7 @@ static indigo_result rotator_attach(indigo_device *device) {
 		strncpy(ROTATOR_BACKLASH_ITEM->label, "Backlash [°]", INDIGO_VALUE_SIZE);
 		strncpy(ROTATOR_BACKLASH_ITEM->number.format, "%g", INDIGO_VALUE_SIZE);
 		DEVICE_PORTS_PROPERTY->hidden = false;
+		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
 		DEVICE_PORT_PROPERTY->hidden = false;
 		INFO_PROPERTY->count = 6;
 		INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "WandederAstro Rotator");

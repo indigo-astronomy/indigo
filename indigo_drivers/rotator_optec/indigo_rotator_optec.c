@@ -142,6 +142,7 @@ static indigo_result rotator_attach(indigo_device *device) {
 		ROTATOR_POSITION_ITEM->number.min = -359;
 		ROTATOR_POSITION_ITEM->number.max = 359;
 		DEVICE_PORTS_PROPERTY->hidden = false;
+		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
 		DEVICE_PORT_PROPERTY->hidden = false;
 		// --------------------------------------------------------------------------------
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);

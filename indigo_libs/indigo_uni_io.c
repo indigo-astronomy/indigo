@@ -489,7 +489,7 @@ static int configure_tty_options(struct termios *options, const char *baudrate) 
 }
 
 static indigo_uni_handle *open_tty(const char *serial, const struct termios *options, int log_level) {
-	const char auto_prefix[] = "auto://";
+	const char *auto_prefix = "auto://";
 	const int auto_prefix_len = sizeof(auto_prefix) - 1;
 	const char *serial_buf = serial;
 	if (!strncmp(serial_buf, auto_prefix, auto_prefix_len)) {
@@ -570,7 +570,7 @@ static int configure_tty_options(DCB *dcb, const char *baudrate) {
 }
 
 static indigo_uni_handle *open_tty(const char *serial, DCB *dcb, int log_level) {
-	const char auto_prefix[] = "auto://";
+	const char *auto_prefix = "auto://";
 	const int auto_prefix_len = sizeof(auto_prefix) - 1;
 	const char *serial_buf = serial;
 	if (!strncmp(serial_buf, auto_prefix, auto_prefix_len)) {

@@ -267,14 +267,13 @@ static char *GET_RUNPRESET_3_M1HOLD[] = { "res", "get", "RUNPRESET_3", "M1HOLD",
 static bool primaluce_command(indigo_device *device, char *command, char *response, int size, jsmntok_t *tokens, int count) {
 	long result;
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	if (!indigo_uni_write(PRIVATE_DATA->handle, command, strlen(command))) {
+	if (indigo_uni_write(PRIVATE_DATA->handle, command, strlen(command)) <= 0) {
 		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 		return false;
 	}
 	while (true) {
-		result = indigo_uni_read_line(PRIVATE_DATA->handle, response, size);
+		result = indigo_uni_read_section(PRIVATE_DATA->handle, response, size, "\n", "\r\n", -1);
 		if (result < 1) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
 			pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 			return false;
 		}
