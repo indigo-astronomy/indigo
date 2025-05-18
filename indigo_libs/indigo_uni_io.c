@@ -404,13 +404,18 @@ indigo_uni_handle *indigo_uni_create_file(const char *path, int log_level) {
 	return NULL;
 }
 
-static int map_str_baudrate(const char *baudrate) {
+static int map_baudrate(const char *baudrate) {
 	static int valid_baud_rate [] = { 50, 75, 110, 134, 150, 200, 300, 600, 1200, 1800, 2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400, 0 };
+	static int mapped_baud_rate [] = { B50, B75, B110, B134, B150, B200, B300, B600, B1200, B1800, B2400, B4800, B9600, B19200, B38400, B57600, B115200, B230400, 0 };
 	int br = atoi(baudrate);
-	for (int *vbr = valid_baud_rate; *vbr; vbr++) {
+	int *vbr = valid_baud_rate;
+	int *mbr = mapped_baud_rate;
+	while (*vbr) {
 		if (*vbr == br) {
-			return br;
+			return *mbr;
 		}
+		vbr++;
+		mbr++;
 	}
 	return -1;
 }
@@ -419,20 +424,18 @@ static int map_str_baudrate(const char *baudrate) {
 
 /* format is 9600-8N1 */
 
-static int configure_tty_options(struct termios *options, const char *baudrate) {
-	int cbits = CS8, cpar = 0, ipar = IGNPAR, bstop = 0, baudr = 0;
-	char copy[32] = { 0 };
-	strncpy(copy, baudrate, sizeof(copy) - 1);
-	char *mode = strchr(copy, '-');
+static bool configure_tty_options(struct termios *options, const char *baudrate) {
+	int cbits = CS8, cpar = 0, ipar = IGNPAR, bstop = 0;
+	int baudr = map_baudrate(baudrate);
+	char *mode = strchr(baudrate, '-');
 	if (mode == NULL) {
 		errno = EINVAL;
-		return -1;
+		return false;
 	}
-	*mode++ = '\0';
-	baudr = map_str_baudrate(copy);
+	mode++;
 	if (baudr == -1 || strlen(mode) != 3) {
 		errno = EINVAL;
-		return -1;
+		return false;
 	}
 	switch (mode[0]) {
 		case '8':
@@ -443,7 +446,7 @@ static int configure_tty_options(struct termios *options, const char *baudrate) 
 			break;
 		default :
 			errno = EINVAL;
-			return -1;
+			return false;
 			break;
 	}
 	switch (mode[1]) {
@@ -461,7 +464,7 @@ static int configure_tty_options(struct termios *options, const char *baudrate) 
 			break;
 		default :
 			errno = EINVAL;
-			return -1;
+			return false;
 			break;
 	}
 	switch (mode[2]) {
@@ -473,7 +476,7 @@ static int configure_tty_options(struct termios *options, const char *baudrate) 
 			break;
 		default :
 			errno = EINVAL;
-			return -1;
+			return false;
 			break;
 	}
 	memset(options, 0, sizeof(*options));
@@ -485,17 +488,14 @@ static int configure_tty_options(struct termios *options, const char *baudrate) 
 	options->c_cc[VTIME] = 50;
 	cfsetispeed(options, baudr);
 	cfsetospeed(options, baudr);
-	return 0;
+	return true;
 }
 
 static indigo_uni_handle *open_tty(const char *serial, const struct termios *options, int log_level) {
-	const char *auto_prefix = "auto://";
-	const int auto_prefix_len = sizeof(auto_prefix) - 1;
-	const char *serial_buf = serial;
-	if (!strncmp(serial_buf, auto_prefix, auto_prefix_len)) {
-		serial_buf += auto_prefix_len;
+	if (!strncmp(serial, "auto://", 7)) {
+		serial += 7;
 	}
-	int fd = open(serial_buf, O_RDWR | O_NOCTTY | O_SYNC);
+	int fd = open(serial, O_RDWR | O_NOCTTY | O_SYNC);
 	if (fd < 0) {
 		indigo_error("Failed to open %s (%s)", serial, strerror(errno));
 		return NULL;
@@ -517,16 +517,22 @@ static indigo_uni_handle *open_tty(const char *serial, const struct termios *opt
 #elif defined(INDIGO_WINDOWS)
 
 static int configure_tty_options(DCB *dcb, const char *baudrate) {
-	char copy[32] = { 0 };
-	strncpy(copy, baudrate, sizeof(copy) - 1);
-	char *mode = strchr(copy, '-');
+	int baudr = map_baudrate(baudrate);
+	char *mode = strchr(baudrate, '-');
 	if (mode == NULL) {
-		return -1;
+		errno = EINVAL;
+		return false;
 	}
-	*mode++ = '\0';
-	int baudr = map_str_baudrate(copy);
+	mode++;
+	int baudr = map_baudrate(baudrate);
+	char *mode = strchr(baudrate, '-');
+	if (mode == NULL) {
+		errno = EINVAL;
+		return false;
+	}
+	mode++;
 	if (baudr == -1 || strlen(mode) != 3) {
-		return -1;
+		return false;
 	}
 	dcb->BaudRate = baudr;
 	dcb->ByteSize = 8;
@@ -541,7 +547,7 @@ static int configure_tty_options(DCB *dcb, const char *baudrate) {
 			dcb->ByteSize = 7;
 			break;
 		default:
-			return -1;
+			return false;
 	}
 	switch (mode[1]) {
 		case 'N': case 'n':
@@ -554,7 +560,7 @@ static int configure_tty_options(DCB *dcb, const char *baudrate) {
 			dcb->Parity = ODDPARITY;
 			break;
 		default:
-			return -1;
+			return false;
 	}
 	switch (mode[2]) {
 		case '1':
@@ -564,9 +570,9 @@ static int configure_tty_options(DCB *dcb, const char *baudrate) {
 			dcb->StopBits = TWOSTOPBITS;
 			break;
 		default:
-			return -1;
+			return false;
 	}
-	return 0;
+	return true;
 }
 
 static indigo_uni_handle *open_tty(const char *serial, DCB *dcb, int log_level) {
@@ -622,7 +628,7 @@ static indigo_uni_handle *open_tty(const char *serial, DCB *dcb, int log_level) 
 indigo_uni_handle *indigo_uni_open_serial_with_config(const char *serial, const char *baudconfig, int log_level) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	struct termios to;
-	if (configure_tty_options(&to, baudconfig) != 0) {
+	if (!configure_tty_options(&to, baudconfig)) {
 		indigo_error("Failed to open %s (%s)", serial, strerror(errno));
 		return NULL;
 	}
@@ -631,7 +637,7 @@ indigo_uni_handle *indigo_uni_open_serial_with_config(const char *serial, const 
 	DCB dcb;
 	memset(&dcb, 0, sizeof(DCB));
 	dcb.DCBlength = sizeof(DCB);
-	if (configure_tty_options(&dcb, baudconfig) != 0) {
+	if (!configure_tty_options(&dcb, baudconfig)) {
 		indigo_error("Failed to open %s (%s)", serial, indigo_last_windows_error());
 		return NULL;
 	}
