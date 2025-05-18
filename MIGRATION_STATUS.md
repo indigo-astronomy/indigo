@@ -77,7 +77,7 @@
 | focuser_asi | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
 | focuser_astroasis | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
 | focuser_astromechanics | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
-| focuser_dmfc | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
+| focuser_dmfc | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
 | focuser_dsd | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | focuser_efa | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | focuser_fc3 | 3️⃣ | ✅ Yes | ✅ Yes | ❌ No | |

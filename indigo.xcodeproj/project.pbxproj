@@ -2921,6 +2921,7 @@
 		59C499E41EFADFE000E750AA /* indigo_ica_ptp.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = indigo_ica_ptp.m; sourceTree = "<group>"; };
 		59C499E91EFAE08600E750AA /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		59C4B6432DD9F27800496C4B /* indigo_wheel_indigo.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_wheel_indigo.driver; sourceTree = "<group>"; };
+		59C4B6442DD9FA9C00496C4B /* indigo_focuser_dmfc.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_focuser_dmfc.driver; sourceTree = "<group>"; };
 		59C4C88020CEF107007EE330 /* indigo_focuser_wemacro.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_wemacro.h; sourceTree = "<group>"; };
 		59C4C88120CEF107007EE330 /* indigo_focuser_wemacro_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_wemacro_main.c; sourceTree = "<group>"; };
 		59C4C88220CEF107007EE330 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -14681,6 +14682,7 @@
 				9DFE1864213586AB00149BDE /* indigo_focuser_dmfc.h */,
 				9DFE1865213586AB00149BDE /* indigo_focuser_dmfc.c */,
 				9DFE1868213586AB00149BDE /* indigo_focuser_dmfc_main.c */,
+				59C4B6442DD9FA9C00496C4B /* indigo_focuser_dmfc.driver */,
 				9DFE186B2135883A00149BDE /* DMFC-Serial-Command-Table.pdf */,
 				59A886EB225A85E20027680B /* 99-indigo_focuser_dmfc.rules */,
 				9DB88E9D214BEDD900CECBCE /* dmfc_simulator */,

@@ -1,0 +1,375 @@
+// Copyright (c) 2018-2025 CloudMakers, s. r. o.
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// PegasusAstro DMFC Focuser driver definition
+
+// version history
+// 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+// 3.0 refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+
+driver dmfc {
+	label = "PegasusAstro DMFC Focuser";
+	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
+	copyright = "Copyright (c) 2018-2025 CloudMakers, s. r. o.";
+	version = 15;
+	serial {
+		pattern {
+			product = "DMFC";
+			vendor = "Pegasus Astro";
+		}
+		pattern {
+			product = "FocusCube";
+			vendor = "Pegasus Astro";
+		}
+	}
+	// include { }
+	// define { }
+	data {
+		char response[128];
+	}
+	code {
+		static bool dmfc_command(indigo_device *device, char *command, ...) {
+			long result = indigo_uni_discard(PRIVATE_DATA->handle);
+			if (result >= 0) {
+				va_list args;
+				va_start(args, command);
+				result = indigo_uni_vtprintf(PRIVATE_DATA->handle, command, args, "\n");
+				va_end(args);
+				if (result > 0 && command[0] != 'C' && command[0] != 'H' && command[0] != 'M' && command[0] != 'G' && command[0] != 'S' && command[0] != 'W') {
+					result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", INDIGO_DELAY(1));
+				}
+			}
+			return result > 0;
+		}
+
+		static bool dmfc_open(indigo_device *device) {
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 9600, INDIGO_LOG_DEBUG);
+			if (PRIVATE_DATA->handle != NULL) {
+				if (dmfc_command(device, "#") && !strncmp(PRIVATE_DATA->response, "OK_", 3)) {
+					INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value ,"DMFC Focuser");
+					if (dmfc_command(device, "V")) {
+						INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response);
+					}
+					indigo_update_property(device, INFO_PROPERTY, NULL);
+					return true;
+				}
+				indigo_uni_close(&PRIVATE_DATA->handle);
+				indigo_send_message(device, "Handshake failed");
+			}
+			return false;
+		}
+
+		static void dmfc_close(indigo_device *device) {
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+			indigo_update_property(device, INFO_PROPERTY, NULL);
+			indigo_uni_close(&PRIVATE_DATA->handle);
+		}
+	}
+	// on_init { }
+	// on_shutdown { }
+	focuser {
+		name = "Pegasus DMFC";
+		additional_instances = true;
+		// code { }
+		on_timer {
+			if (dmfc_command(device, "T")) {
+				double temp = indigo_atod(PRIVATE_DATA->response);
+				if (FOCUSER_TEMPERATURE_ITEM->number.value != temp) {
+					FOCUSER_TEMPERATURE_ITEM->number.value = temp;
+					FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
+				}
+			}
+			bool update = false;
+			if (dmfc_command(device, "P")) {
+				int pos = atoi(PRIVATE_DATA->response);
+				if (FOCUSER_POSITION_ITEM->number.value != pos) {
+					FOCUSER_POSITION_ITEM->number.value = pos;
+					update = true;
+				}
+			}
+			if (dmfc_command(device, "I")) {
+				if (PRIVATE_DATA->response[0] == '0') {
+					if (FOCUSER_POSITION_PROPERTY->state != INDIGO_OK_STATE) {
+						FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+						FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+						update = true;
+					}
+				} else {
+					if (FOCUSER_POSITION_PROPERTY->state != INDIGO_BUSY_STATE) {
+						FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+						FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+						update = true;
+					}
+				}
+			}
+			if (update) {
+				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+				indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+			}
+			indigo_reschedule_timer(device, 1, &PRIVATE_DATA->focuser_timer);
+		}
+		on_connect {
+			if (dmfc_command(device, "A") && !strncmp(PRIVATE_DATA->response, "OK_", 3)) {
+				char *pnt, *token = strtok_r(PRIVATE_DATA->response, ":", &pnt);
+				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, token + 3);
+				token = strtok_r(NULL, ":", &pnt); // status
+				if (token) { // version
+					INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, token);
+				}
+				token = strtok_r(NULL, ":", &pnt);
+				if (token) { // motor
+					indigo_set_switch(X_FOCUSER_MOTOR_TYPE_PROPERTY, *token == '1' ? X_FOCUSER_MOTOR_TYPE_STEPPER_ITEM : X_FOCUSER_MOTOR_TYPE_DC_ITEM, true);
+				}
+				token = strtok_r(NULL, ":", &pnt);
+				if (token) { // temperature
+					FOCUSER_TEMPERATURE_ITEM->number.value = FOCUSER_TEMPERATURE_ITEM->number.target = indigo_atod(token);
+				}
+				token = strtok_r(NULL, ":", &pnt);
+				if (token) { // position
+					FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = atoi(token);
+				}
+				token = strtok_r(NULL, ":", &pnt);
+				if (token) { // moving status
+					FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = *token == '1' ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
+				}
+				token = strtok_r(NULL, ":", &pnt);
+				if (token) { // led status
+					indigo_set_switch(X_FOCUSER_LED_PROPERTY, *token == '1' ? X_FOCUSER_LED_ENABLED_ITEM : X_FOCUSER_LED_DISABLED_ITEM, true);
+				}
+				token = strtok_r(NULL, ":", &pnt);
+				if (token) { // reverse
+					indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, *token == '1' ? FOCUSER_REVERSE_MOTION_ENABLED_ITEM : FOCUSER_REVERSE_MOTION_DISABLED_ITEM, true);
+				}
+				token = strtok_r(NULL, ":", &pnt);
+				if (token) { // encoder
+					indigo_set_switch(X_FOCUSER_ENCODER_PROPERTY, *token == '1' ? X_FOCUSER_ENCODER_DISABLED_ITEM: X_FOCUSER_ENCODER_ENABLED_ITEM, true);
+				}
+				token = strtok_r(NULL, ":", &pnt);
+				if (token) { // backlash
+					FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = atoi(token);
+				}
+			}
+		}
+		// on_disconnect { }
+		on_attach {
+			INFO_PROPERTY->count = 6;
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+		}
+		// on_detach { }
+		switch X_FOCUSER_MOTOR_TYPE {
+			on_change {
+				if (!dmfc_command(device, "R:%d", X_FOCUSER_MOTOR_TYPE_STEPPER_ITEM->sw.value ? 1 : 0)) {
+					X_FOCUSER_MOTOR_TYPE_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+			name = "X_FOCUSER_MOTOR_TYPE";
+			group = FOCUSER_MAIN_GROUP;
+			label = "Motor type";
+			// handle_change = false;
+			// synchronized_change = false;
+			item X_FOCUSER_MOTOR_TYPE_STEPPER {
+				name = "STEPPER";
+				label = "Stepper motor";
+				value = false;
+			}
+			item X_FOCUSER_MOTOR_TYPE_DC {
+				name = "DC";
+				label = "DC Motor";
+				value = false;
+			}
+		}
+		switch X_FOCUSER_ENCODER {
+			on_change {
+				if (!dmfc_command(device, "E:%d", X_FOCUSER_ENCODER_DISABLED_ITEM->sw.value ? 1 : 0)) {
+					X_FOCUSER_ENCODER_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+			name = "X_FOCUSER_ENCODER";
+			group = FOCUSER_MAIN_GROUP;
+			label = "Encoder state";
+			// handle_change = false;
+			// synchronized_change = false;
+			item X_FOCUSER_ENCODER_ENABLED {
+				name = "ENABLED";
+				label = "Enabled";
+				value = false;
+			}
+			item X_FOCUSER_ENCODER_DISABLED {
+				name = "DISABLED";
+				label = "Disabled";
+				value = false;
+			}
+		}
+		switch X_FOCUSER_LED {
+			on_change {
+				if (!dmfc_command(device, "L:%d", X_FOCUSER_LED_ENABLED_ITEM->sw.value ? 1 : 0)) {
+					X_FOCUSER_LED_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+			name = "X_FOCUSER_LED";
+			group = FOCUSER_MAIN_GROUP;
+			label = "LED status";
+			// handle_change = false;
+			// synchronized_change = false;
+			item X_FOCUSER_LED_ENABLED {
+				name = "ENABLED";
+				label = "Enabled";
+				value = false;
+			}
+			item X_FOCUSER_LED_DISABLED {
+				name = "DISABLED";
+				label = "Disabled";
+				value = false;
+			}
+		}
+		inherited FOCUSER_BACKLASH {
+			on_change {
+				if (!dmfc_command(device, "C:%d", (int)FOCUSER_BACKLASH_ITEM->number.value)) {
+					FOCUSER_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			on_attach {
+				FOCUSER_BACKLASH_PROPERTY->hidden = false;
+				FOCUSER_BACKLASH_ITEM->number.min = 0;
+				FOCUSER_BACKLASH_ITEM->number.max = 9999;
+				FOCUSER_BACKLASH_ITEM->number.target = FOCUSER_BACKLASH_ITEM->number.value = 100;
+			}
+			// on_detach { }
+		}
+		inherited FOCUSER_REVERSE_MOTION {
+			hidden = false;
+			on_change {
+				if (!dmfc_command(device, "N:%d", FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value ? 0 : 1)) {
+					FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited FOCUSER_TEMPERATURE {
+			hidden = false;
+			// on_change { }
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited FOCUSER_SPEED {
+			on_change {
+				if (!dmfc_command(device, "S:%d", (int)FOCUSER_SPEED_ITEM->number.value)) {
+					FOCUSER_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			on_attach {
+				FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = 400;
+				FOCUSER_SPEED_ITEM->number.min = 100;
+				FOCUSER_SPEED_ITEM->number.max = 1000;
+				FOCUSER_SPEED_ITEM->number.step = 1;
+			}
+			// on_detach { }
+		}
+		inherited FOCUSER_STEPS {
+			on_change {
+				if (dmfc_command(device, "G:%d", (int)FOCUSER_STEPS_ITEM->number.target * (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? 1 : -1))) {
+					FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+				} else {
+					FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+			}
+			on_attach {
+				FOCUSER_STEPS_ITEM->number.min = 1;
+				FOCUSER_STEPS_ITEM->number.max = 9999999;
+				FOCUSER_STEPS_ITEM->number.step = 1;
+			}
+			// on_detach { }
+		}
+		inherited FOCUSER_ON_POSITION_SET {
+			hidden = false;
+			// on_change { }
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited FOCUSER_POSITION {
+			preserve_values = true;
+			on_change {
+				int position = (int)FOCUSER_POSITION_ITEM->number.target;
+				if (position < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value) {
+					position = (int)FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
+				}
+				if (position > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value) {
+					position = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
+				}
+				FOCUSER_POSITION_ITEM->number.target = position;
+				if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) {
+					if (dmfc_command(device, "M:%d", position)) {
+						FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+						FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+					} else {
+						FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+						FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+					}
+					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+				} else if (FOCUSER_ON_POSITION_SET_SYNC_ITEM->sw.value) {
+					if (!dmfc_command(device, "W:%d", position)) {
+						FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+					}
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited FOCUSER_ABORT_MOTION {
+			on_change {
+				if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
+					FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
+					if (dmfc_command(device, "H")) {
+						FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+						FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+						FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+						indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+						indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+					} else {
+						FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+					}
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited FOCUSER_LIMITS {
+			persistent = true;
+			on_attach {
+				FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.min = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min = -9999999;
+				strcpy(FOCUSER_LIMITS_MIN_POSITION_ITEM->number.format, "%.0f");
+				FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.max = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max = 9999999;
+				strcpy(FOCUSER_LIMITS_MAX_POSITION_ITEM->number.format, "%.0f");
+			}
+		}
+
+	}
+}

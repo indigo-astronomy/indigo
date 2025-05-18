@@ -1,4 +1,4 @@
-// PegasusAstro FocusCube simulator
+// PegasusAstro FocusCube 2/3 simulator
 //
 // Copyright (c) 2024-2025 CloudMakers, s. r. o.
 // All rights reserved.
@@ -39,6 +39,9 @@ int target = 0;
 int direction = 0;
 int backlash = 3;
 int speed = 400;
+int motor_mode = 1;
+int led_status = 0;
+int encoder = 0;
 
 char id[] = "AA000000";
 char fw[] = "1.4.1";
@@ -129,7 +132,11 @@ bool sim_printf(int handle, const char *format, ...) {
 	}
 }
 
-int main() {
+int main(int argc, char **argv) {
+	if (argc == 2) {
+		version = atoi(argv[1]);
+	}
+	
 	pthread_t thread;
 	char buffer[80];
 
@@ -144,7 +151,48 @@ int main() {
 	
 	while (true) {
 		sim_read_line(fd, buffer, sizeof(buffer));
-		if (version == 3) {
+		if (version == 2) {
+			if (!strcmp(buffer, "#")) {
+				sim_printf(fd, "OK_DMFC\n");
+			} else if (!strcmp(buffer, "A")) {
+				sim_printf(fd, "OK_DMFC:%s:%d:%.2f:%d:%d:%d:%d:%d:%d\n", fw, motor_mode, temperature, position, target == position ? 0 : 1, led_status, direction, encoder, backlash);
+			} else if (!strcmp(buffer, "B")) {
+				sim_printf(fd, "B:%d\n", speed);
+			} else if (!strncmp(buffer, "C:", 2)) {
+				backlash = atoi(buffer + 2);
+			} else if (!strncmp(buffer, "E:", 2)) {
+				encoder = atoi(buffer + 2);
+				sim_printf(fd, "%s\n", buffer);
+			} else if (!strcmp(buffer, "V")) {
+				sim_printf(fd, "%s\n", fw);
+			} else if (!strcmp(buffer, "T")) {
+				sim_printf(fd, "%.2f\n", temperature);
+			} else if (!strcmp(buffer, "P") || !strcmp(buffer, "X")) {
+				sim_printf(fd, "%d\n", position);
+			} else if (!strcmp(buffer, "H")) {
+				target = position;
+			} else if (!strcmp(buffer, "I")) {
+				sim_printf(fd, "%d\n", target == position ? 0 : 1);
+			} else if (!strncmp(buffer, "M:", 2)) {
+				target = atoi(buffer + 2);
+			} else if (!strncmp(buffer, "G:", 2)) {
+				target += atoi(buffer + 2);
+			} else if (!strncmp(buffer, "S:", 2)) {
+				speed = atoi(buffer + 2);
+			} else if (!strcmp(buffer, "L")) {
+				sim_printf(fd, "L:%d\n", led_status);
+			} else if (!strncmp(buffer, "L:", 2)) {
+				led_status = atoi(buffer + 2);
+			} else if (!strncmp(buffer, "R:", 2)) {
+				motor_mode = atoi(buffer + 2);
+				sim_printf(fd, "%d\n", motor_mode);
+			} else if (!strncmp(buffer, "N:", 2)) {
+				direction = atoi(buffer + 2);
+				sim_printf(fd, "N:%d\n", motor_mode);
+			} else if (!strncmp(buffer, "W:", 2)) {
+				target = position = atoi(buffer + 2);
+			}
+		} else if (version == 3) {
 			if (!strcmp(buffer, "F#") || !strcmp(buffer, "##")) {
 				sim_printf(fd, "FC3_%s_A\n", id);
 			} else if (!strcmp(buffer, "FA")) {

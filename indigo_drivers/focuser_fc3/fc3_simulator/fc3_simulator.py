@@ -1,4 +1,4 @@
-# PegasusAstro FocusCube simulator
+# PegasusAstro FocusCube3 simulator
 #
 # Copyright (c) 2024-2025 CloudMakers, s. r. o.
 # All rights reserved.
