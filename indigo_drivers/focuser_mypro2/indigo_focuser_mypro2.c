@@ -87,7 +87,7 @@
 
 typedef struct {
 	int handle;
-	uint32_t current_position, target_position, max_position;
+	int32_t current_position, target_position, max_position;
 	bool positive_last_move;
 	int backlash;
 	double prev_temp;
@@ -597,7 +597,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		X_SETTLE_TIME_PROPERTY = indigo_init_number_property(NULL, device->name, X_SETTLE_TIME_PROPERTY_NAME, FOCUSER_ADVANCED_GROUP, "Settle time", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (X_SETTLE_TIME_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_number_item(X_SETTLE_TIME_ITEM, X_SETTLE_TIME_ITEM_NAME, "Settle time (ms)", 0, 999, 10, 0);
+		indigo_init_number_item(X_SETTLE_TIME_ITEM, X_SETTLE_TIME_ITEM_NAME, "Settle time (ms)", 0, 255, 10, 0);
 		// --------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return mfp_enumerate_properties(device, NULL, NULL);
@@ -681,7 +681,7 @@ static void focuser_connect_callback(indigo_device *device) {
 				if (!indigo_is_device_url(name, "mfp")) {
 					PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, atoi(DEVICE_BAUDRATE_ITEM->text.value));
 					/* MFP resets on RTS, which is manipulated on connect! Wait for 2 seconds to recover! */
-					sleep(1);
+					indigo_usleep(2*ONE_SECOND_DELAY);
 				} else {
 					indigo_network_protocol proto = INDIGO_PROTOCOL_TCP;
 					PRIVATE_DATA->handle = indigo_open_network_device(name, 8080, &proto);
@@ -715,6 +715,10 @@ static void focuser_connect_callback(indigo_device *device) {
 						indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, board);
 						indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware);
 						indigo_update_property(device, INFO_PROPERTY, NULL);
+					}
+					if (strstr(INFO_DEVICE_MODEL_ITEM->text.value, "Gemini") != NULL) {
+						// Gemini supports only Full and 1/2 step
+						X_STEP_MODE_PROPERTY->count = 2;
 					}
 
 					mfp_get_position(device, &position);
