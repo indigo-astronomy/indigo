@@ -23,7 +23,7 @@
 	\file indigo_focuser_qhy.c
 */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME "indigo_focuser_qhy"
 
 #include <stdlib.h>
@@ -61,7 +61,7 @@ typedef struct {
 
 typedef struct {
 	int handle;
-	uint32_t current_position, target_position;
+	int32_t current_position, target_position;
 	double prev_temp;
 	circular_buffer temperature_buffer;
 	indigo_timer *focuser_timer, *temperature_timer;
