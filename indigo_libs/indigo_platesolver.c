@@ -620,7 +620,7 @@ static void solve(indigo_platesolver_task *task) {
 				INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_az_error * INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_az_error
 			);
 
-			indigo_debug(device, "Initial polar error: %.2f degrees", INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_initial_error * 60);
+			indigo_debug("Initial polar error: %.2f degrees", INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_initial_error * 60);
 
 			// here we do not care about the refraction since we work with real coordinates
 			indigo_spherical_point_t target_position = {0,0,0};
