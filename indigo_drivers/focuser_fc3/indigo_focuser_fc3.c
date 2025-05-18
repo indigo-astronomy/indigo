@@ -283,7 +283,7 @@ static void focuser_steps_handler(indigo_device *device) {
 			FOCUSER_STEPS_ITEM->number.value = FOCUSER_STEPS_ITEM->number.target = position - FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
 		}
 	}
-	if (fc3_command(device, "FG:%d", (int)FOCUSER_STEPS_ITEM->number.value * (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? -1 : 1))) {
+	if (fc3_command(device, "FG:%d", (int)FOCUSER_STEPS_ITEM->number.target * (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? -1 : 1))) {
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else {
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -306,16 +306,16 @@ static void focuser_position_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_POSITION.on_change
+	int position = (int)FOCUSER_POSITION_ITEM->number.target;
 	if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) {
-		int position = (int)FOCUSER_POSITION_ITEM->number.target;
 		if (position < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value) {
 			position = (int)FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
 		}
 		if (position > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value) {
 			position = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
 		}
-		FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
-		if (fc3_command(device, "FM:%d", (int)FOCUSER_POSITION_ITEM->number.value)) {
+		FOCUSER_POSITION_ITEM->number.target = position;
+		if (fc3_command(device, "FM:%d", position)) {
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		} else {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -323,7 +323,7 @@ static void focuser_position_handler(indigo_device *device) {
 		}
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 	} else if (FOCUSER_ON_POSITION_SET_SYNC_ITEM->sw.value) {
-		if (!fc3_command(device, "FN:%d", (int)FOCUSER_POSITION_ITEM->number.target)) {
+		if (!fc3_command(device, "FN:%d", position)) {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 	}
@@ -453,7 +453,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_ON_POSITION_SET_PROPERTY, focuser_on_position_set_handler, focuser_on_position_set_handler_timer);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_POSITION_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_POSITION_PROPERTY, focuser_position_handler, focuser_position_handler_timer);
+		INDIGO_COPY_TARGETS_PROCESS_CHANGE(FOCUSER_POSITION_PROPERTY, focuser_position_handler, focuser_position_handler_timer);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_ABORT_MOTION_PROPERTY, focuser_abort_motion_handler, focuser_abort_motion_handler_timer);

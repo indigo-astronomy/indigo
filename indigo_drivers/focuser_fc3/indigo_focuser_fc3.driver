@@ -227,8 +227,8 @@ driver fc3 {
 		inherited FOCUSER_POSITION {
 			preserve_values = true;
 			on_change {
+				int position = (int)FOCUSER_POSITION_ITEM->number.target;
 				if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) {
-					int position = (int)FOCUSER_POSITION_ITEM->number.target;
 					if (position < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value) {
 						position = (int)FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
 					}
