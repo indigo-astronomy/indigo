@@ -26,7 +26,7 @@
 
 driver gpusb {
 	label = "Shoestring GPUSB guider";
-	author = "Peter Polakovic";
+	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2025 CloudMakers, s. r. o.";
 	version = 6;
 	libusb {

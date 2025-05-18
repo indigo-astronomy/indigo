@@ -1,0 +1,119 @@
+// Copyright (c) 2023-2025 CloudMakers, s. r. o.
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// PegasusAstro Indigo Filter Wheel driver definition
+
+// version history
+// 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+// 3.0 refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+
+driver indigo {
+	label = "PegasusAstro Indigo Filter Wheel";
+	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
+	copyright = "Copyright (c) 2023-2025 CloudMakers, s. r. o.";
+	version = 3;
+	serial {
+		pattern {
+			product = "Indigo";
+			vendor = "Pegasus Astro";
+		}
+	}
+	data {
+		char response[128];
+	}
+	code {
+		static bool indigo_command(indigo_device *device, char *command, ...) {
+			long result = indigo_uni_discard(PRIVATE_DATA->handle);
+			if (result >= 0) {
+				va_list args;
+				va_start(args, command);
+				result = indigo_uni_vtprintf(PRIVATE_DATA->handle, command, args, "\n");
+				va_end(args);
+				if (result > 0) {
+					result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", INDIGO_DELAY(1));
+				}
+			}
+			return result > 0;
+		}
+
+		static bool indigo_open(indigo_device *device) {
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 9600, INDIGO_LOG_DEBUG);
+			if (PRIVATE_DATA->handle != NULL) {
+				if (indigo_command(device, "W#") && !strncmp(PRIVATE_DATA->response, "FW_OK", 5)) {
+					INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value ,"Indigo Wheel");
+					if (indigo_command(device, "WV") && !strncmp(PRIVATE_DATA->response, "WV:", 3)) {
+						INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 3);
+					}
+					indigo_update_property(device, INFO_PROPERTY, NULL);
+					return true;
+				}
+				indigo_uni_close(&PRIVATE_DATA->handle);
+				indigo_send_message(device, "Handshake failed");
+			}
+			return false;
+		}
+
+		static void indigo_close(indigo_device *device) {
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+			indigo_update_property(device, INFO_PROPERTY, NULL);
+			indigo_uni_close(&PRIVATE_DATA->handle);
+		}
+	}
+	wheel {
+		name = "Pegasus Indigo Filter Wheel";
+		additional_instances = true;
+		on_connect {
+			if (indigo_command(device, "WI") && !strcmp(PRIVATE_DATA->response, "WI:1")) {
+				WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = 1;
+			}
+		}
+		on_attach {
+			INFO_PROPERTY->count = 6;
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+		}
+		inherited WHEEL_SLOT {
+			on_change {
+				if (indigo_command(device, "WM:%d", (int)WHEEL_SLOT_ITEM->number.target) && !strncmp(PRIVATE_DATA->response, "WM:", 3)) {
+					while (true) {
+						if (indigo_command(device, "WF") && !strncmp(PRIVATE_DATA->response, "WF:", 3)) {
+							if (!strcmp(PRIVATE_DATA->response, "WF:-1")) {
+								indigo_sleep(0.5);
+								continue;
+							}
+							WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+							WHEEL_SLOT_ITEM->number.value = atoi(PRIVATE_DATA->response + 3);
+							break;
+						} else {
+							WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+							break;
+						}
+					}
+				} else {
+					WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			on_attach {
+				WHEEL_SLOT_ITEM->number.max = 7;
+				WHEEL_SLOT_NAME_PROPERTY->count = 7;
+				WHEEL_SLOT_OFFSET_PROPERTY->count = 7;
+			}
+		}
+	}
+}

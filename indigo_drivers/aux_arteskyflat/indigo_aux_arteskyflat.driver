@@ -24,7 +24,7 @@
 
 driver arteskyflat {
 	label = "Artesky Flat Box USB";
-	author = "Peter Polakovic";
+	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2019-2025 CloudMakers, s. r. o.";
 	version = 7;
 	serial;

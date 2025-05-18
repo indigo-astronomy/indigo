@@ -24,7 +24,7 @@
 
 driver simulator {
 	label = "GPS Simulator";
-	author = "Rumen G. Bogdanovski";
+	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2025 Rumen G. Bogdanovski";
 	version = 9;
 	// include { }

@@ -24,7 +24,7 @@
 
 driver astromechanics {
 	label = "ASTROMECHANICS LPM";
-	author = "Peter Polakovic";
+	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2021-2025 CloudMakers, s. r. o.";
 	version = 5;
 	serial;

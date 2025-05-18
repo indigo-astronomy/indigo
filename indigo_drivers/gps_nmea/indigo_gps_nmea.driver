@@ -24,7 +24,7 @@
 
 driver nmea {
 	label = "Generic NMEA 0183 GPS";
-	author = "Rumen G. Bogdanovski";
+	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2017-2025 Rumen G. Bogdanovski";
 	version = 17;
 	serial {

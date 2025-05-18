@@ -24,7 +24,7 @@
 
 driver fbc {
 	label = "Lacerta FBC";
-	author = "Rumen G. Bogdanovski";
+	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2019-2025 Rumen G. Bogdanovski";
 	version = 6;
 	serial {

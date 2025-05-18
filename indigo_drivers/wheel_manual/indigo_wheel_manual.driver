@@ -24,7 +24,7 @@
 
 driver manual {
 	label = "Manual filter wheel";
-	author = "Rumen G. Bogdanovski";
+	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2020-2025 Rumen G. Bogdanovski";
 	version = 4;
 	// include { }

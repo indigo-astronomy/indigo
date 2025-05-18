@@ -26,7 +26,7 @@
 
 driver dsusb {
 	label = "Shoestring DSUSB shutter release";
-	author = "Peter Polakovic";
+	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2016-2025 CloudMakers, s. r. o.";
 	version = 11;
 	libusb {

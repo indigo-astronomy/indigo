@@ -132,7 +132,7 @@
 | wheel_astroasis | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
 | wheel_atik | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | wheel_fli | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
-| wheel_indigo | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
+| wheel_indigo | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
 | wheel_manual | 3️⃣ | ✅ Yes | ✅ Yes | ❌ No | |
 | wheel_mi | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | wheel_optec | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |

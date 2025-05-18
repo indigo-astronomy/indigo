@@ -24,7 +24,7 @@
 
 driver geoptikflat {
 	label = "Geoptik flat field generato";
-	author = "Rumen G. Bogdanovski";
+	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2021-2025 Rumen G. Bogdanovski";
 	version = 5;
 	serial;

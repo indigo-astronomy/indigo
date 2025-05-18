@@ -18,9 +18,13 @@
 
 // PegasusAstro Falcon rotator driver definition
 
+// version history
+// 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+// 3.0 refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+
 driver falcon {
 	label = "PegasusAstro Falcon rotator";
-	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
+	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2023-2025 CloudMakers, s. r. o.";
 	version = 5;
 	serial {
