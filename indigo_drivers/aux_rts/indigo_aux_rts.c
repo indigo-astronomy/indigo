@@ -165,7 +165,6 @@ static void aux_ccd_abort_exposure_handler(indigo_device *device) {
 
 static void aux_ccd_exposure_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.CCD_EXPOSURE.on_change
 	CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 	rts_on(device);

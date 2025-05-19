@@ -260,7 +260,6 @@ static void dome_abort_motion_handler(indigo_device *device) {
 
 static void dome_shutter_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
 	//+ dome.DOME_SHUTTER.on_change
 	DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_usleep(INDIGO_DELAY(6));

@@ -1003,19 +1003,22 @@ void write_line(const char *format, ...) {
 }
 
 bool c_code_starts_with(code_type *code, const char *format, ...) {
-	char buffer[1024];
-	va_list args;
-	va_start(args, format);
-	vsnprintf(buffer, sizeof(buffer), format, args);
-	va_end(args);
-	char *c = code->text;
-	while (isspace(*c) && (c - code->text < code->size)) {
-		c++;
+	if (code) {
+		char buffer[1024];
+		va_list args;
+		va_start(args, format);
+		vsnprintf(buffer, sizeof(buffer), format, args);
+		va_end(args);
+		char *c = code->text;
+		while (isspace(*c) && (c - code->text < code->size)) {
+			c++;
+		}
+		int s1 = code->size - (int)(c - code->text);
+		int s2 = (int)strlen(buffer);
+		int s = s1 < s2 ? s1 : s2;
+		return strncmp(buffer, c, s) == 0;
 	}
-	int s1 = code->size - (int)(c - code->text);
-	int s2 = (int)strlen(buffer);
-	int s = s1 < s2 ? s1 : s2;
-	return strncmp(buffer, c, s) == 0;
+	return false;
 }
 
 void write_code_block(code_type *code, int indentation) {
