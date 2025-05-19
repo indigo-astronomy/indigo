@@ -107,6 +107,50 @@ static void falcon_close(indigo_device *device) {
 	indigo_uni_close(&PRIVATE_DATA->handle);
 }
 
+static void __falcon_move(indigo_device *device) {
+	if (falcon_command(device, "MD:%0.2f", ROTATOR_POSITION_ITEM->number.target) && !strncmp(PRIVATE_DATA->response, "MD:", 3)) {
+		while (true) {
+			if (falcon_command(device, "FD") && !strncmp(PRIVATE_DATA->response, "FD:", 3)) {
+				ROTATOR_POSITION_ITEM->number.value = indigo_atod(PRIVATE_DATA->response + 3);
+				indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+			} else {
+				ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+				break;
+			}
+			if (falcon_command(device, "FR") && !strncmp(PRIVATE_DATA->response, "FR:", 3)) {
+				if (!strcmp(PRIVATE_DATA->response, "FR:1")) {
+					pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+					indigo_sleep(0.5);
+					pthread_mutex_lock(&PRIVATE_DATA->mutex);
+					continue;
+				}
+			}
+			ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+			break;
+		}
+		if (falcon_command(device, "FD") && !strncmp(PRIVATE_DATA->response, "FD:", 3)) {
+			ROTATOR_POSITION_ITEM->number.value = indigo_atod(PRIVATE_DATA->response + 3);
+		} else {
+			ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+	} else {
+		ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+}
+
+static void __falcon_sync(indigo_device *device) {
+	if (falcon_command(device, "SD:%0.2f", ROTATOR_POSITION_ITEM->number.target) && !strncmp(PRIVATE_DATA->response, "SD:", 3)) {
+		if (falcon_command(device, "FD") && !strncmp(PRIVATE_DATA->response, "FD:", 3)) {
+			ROTATOR_POSITION_ITEM->number.value = indigo_atod(PRIVATE_DATA->response + 3);
+			ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+	} else {
+		ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+}
+
 //- code
 
 #pragma mark - High level code (rotator)
@@ -185,45 +229,9 @@ static void rotator_position_handler(indigo_device *device) {
 	//+ rotator.ROTATOR_POSITION.on_change
 	ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 	if (ROTATOR_ON_POSITION_SET_GOTO_ITEM->sw.value) {
-		if (falcon_command(device, "MD:%0.2f", ROTATOR_POSITION_ITEM->number.target) && !strncmp(PRIVATE_DATA->response, "MD:", 3)) {
-			while (true) {
-				if (falcon_command(device, "FD") && !strncmp(PRIVATE_DATA->response, "FD:", 3)) {
-					ROTATOR_POSITION_ITEM->number.value = indigo_atod(PRIVATE_DATA->response + 3);
-					indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
-				} else {
-					ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-					break;
-				}
-				if (falcon_command(device, "FR") && !strncmp(PRIVATE_DATA->response, "FR:", 3)) {
-					if (!strcmp(PRIVATE_DATA->response, "FR:1")) {
-						pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-						indigo_sleep(0.5);
-						pthread_mutex_lock(&PRIVATE_DATA->mutex);
-						continue;
-					}
-				}
-				ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-				break;
-			}
-			if (falcon_command(device, "FD") && !strncmp(PRIVATE_DATA->response, "FD:", 3)) {
-				ROTATOR_POSITION_ITEM->number.value = indigo_atod(PRIVATE_DATA->response + 3);
-			} else {
-				ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
-		} else {
-			ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
+		__falcon_move(device);
 	} else {
-		if (falcon_command(device, "SD:%0.2f", ROTATOR_POSITION_ITEM->number.target) && !strncmp(PRIVATE_DATA->response, "SD:", 3)) {
-			if (falcon_command(device, "FD") && !strncmp(PRIVATE_DATA->response, "FD:", 3)) {
-				ROTATOR_POSITION_ITEM->number.value = indigo_atod(PRIVATE_DATA->response + 3);
-				ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-			} else {
-				ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
-		} else {
-			ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
+		__falcon_sync(device);
 	}
 	//- rotator.ROTATOR_POSITION.on_change
 	indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
@@ -269,9 +277,8 @@ static void rotator_relative_move_handler(indigo_device *device) {
 	}
 	ROTATOR_POSITION_ITEM->number.target = position;
 	indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-	rotator_position_handler(device);
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	__falcon_move(device);
+	indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 	ROTATOR_RELATIVE_MOVE_PROPERTY->state = ROTATOR_POSITION_PROPERTY->state;
 	//- rotator.ROTATOR_RELATIVE_MOVE.on_change
 	indigo_update_property(device, ROTATOR_RELATIVE_MOVE_PROPERTY, NULL);
@@ -296,7 +303,7 @@ static indigo_result rotator_attach(indigo_device *device) {
 		ROTATOR_POSITION_PROPERTY->hidden = false;
 		//+ rotator.ROTATOR_POSITION.on_attach
 		ROTATOR_POSITION_ITEM->number.min = 0;
-		ROTATOR_POSITION_ITEM->number.max = 359.9;
+		ROTATOR_POSITION_ITEM->number.max = 359.99;
 		//- rotator.ROTATOR_POSITION.on_attach
 		ROTATOR_DIRECTION_PROPERTY->hidden = false;
 		ROTATOR_ABORT_MOTION_PROPERTY->hidden = false;
