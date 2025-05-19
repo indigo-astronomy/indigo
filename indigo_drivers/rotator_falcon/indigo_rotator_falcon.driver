@@ -112,6 +112,7 @@ driver falcon {
 					}
 				} else if (!strncmp(PRIVATE_DATA->response, "F2R:", 4)) {
 					char *pnt, *token = strtok_r(PRIVATE_DATA->response, ":", &pnt); // position_in_deg
+					token = strtok_r(NULL, ":", &pnt); // position_in_deg
 					if (token) {
 						ROTATOR_POSITION_ITEM->number.target = ROTATOR_POSITION_ITEM->number.value = indigo_atod(token);
 					}

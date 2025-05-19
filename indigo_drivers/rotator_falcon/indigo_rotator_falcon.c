@@ -141,6 +141,7 @@ static void rotator_connection_handler(indigo_device *device) {
 					}
 				} else if (!strncmp(PRIVATE_DATA->response, "F2R:", 4)) {
 					char *pnt, *token = strtok_r(PRIVATE_DATA->response, ":", &pnt); // position_in_deg
+					token = strtok_r(NULL, ":", &pnt); // position_in_deg
 					if (token) {
 						ROTATOR_POSITION_ITEM->number.target = ROTATOR_POSITION_ITEM->number.value = indigo_atod(token);
 					}
@@ -260,7 +261,13 @@ static void rotator_relative_move_handler(indigo_device *device) {
 	ROTATOR_RELATIVE_MOVE_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, ROTATOR_RELATIVE_MOVE_PROPERTY, NULL);
 	ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-	ROTATOR_POSITION_ITEM->number.target = ROTATOR_POSITION_ITEM->number.value + ROTATOR_RELATIVE_MOVE_ITEM->number.value;
+	double position = ROTATOR_POSITION_ITEM->number.value + ROTATOR_RELATIVE_MOVE_ITEM->number.value;
+	if (position < 0) {
+		position += 360.0;
+	} else if (position >= 360.0) {
+		position -= 360.0;
+	}
+	ROTATOR_POSITION_ITEM->number.target = position;
 	indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 	rotator_position_handler(device);
