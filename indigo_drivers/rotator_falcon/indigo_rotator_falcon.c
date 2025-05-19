@@ -168,7 +168,8 @@ static void rotator_connection_handler(indigo_device *device) {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->direction_handler_timer);
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->abort_motion_handler_timer);
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->relative_move_handler_timer);
-		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "undefined");
+		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 		if (PRIVATE_DATA->handle > 0) {
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
 			close(PRIVATE_DATA->handle);
@@ -302,7 +303,8 @@ static indigo_result rotator_attach(indigo_device *device) {
 		DEVICE_PORT_PROPERTY->hidden = false;
 		ROTATOR_RELATIVE_MOVE_PROPERTY->hidden = false;
 		INFO_PROPERTY->count = 6;
-		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Falcon Rotator");
+		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		// --------------------------------------------------------------------------------
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
