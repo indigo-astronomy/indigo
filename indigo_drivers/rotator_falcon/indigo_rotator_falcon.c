@@ -181,7 +181,6 @@ static void rotator_connection_handler(indigo_device *device) {
 
 static void rotator_position_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ rotator.ROTATOR_POSITION.on_change
 	ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 	if (ROTATOR_ON_POSITION_SET_GOTO_ITEM->sw.value) {
@@ -257,7 +256,6 @@ static void rotator_abort_motion_handler(indigo_device *device) {
 
 static void rotator_relative_move_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	ROTATOR_RELATIVE_MOVE_PROPERTY->state = INDIGO_OK_STATE;
 	//+ rotator.ROTATOR_RELATIVE_MOVE.on_change
 	ROTATOR_RELATIVE_MOVE_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, ROTATOR_RELATIVE_MOVE_PROPERTY, NULL);

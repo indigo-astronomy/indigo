@@ -1002,6 +1002,22 @@ void write_line(const char *format, ...) {
 	empty_line = *format == 0;
 }
 
+bool c_code_starts_with(code_type *code, const char *format, ...) {
+	char buffer[1024];
+	va_list args;
+	va_start(args, format);
+	vsnprintf(buffer, sizeof(buffer), format, args);
+	va_end(args);
+	char *c = code->text;
+	while (isspace(*c) && (c - code->text < code->size)) {
+		c++;
+	}
+	int s1 = code->size - (int)(c - code->text);
+	int s2 = (int)strlen(buffer);
+	int s = s1 < s2 ? s1 : s2;
+	return strncmp(buffer, c, s) == 0;
+}
+
 void write_code_block(code_type *code, int indentation) {
 	char *pnt = code->text;
 	int skip = 0;
@@ -1418,7 +1434,9 @@ void write_c_property_change_handler(device_type *device, property_type *propert
 	if (property->synchronized_change) {
 		write_line("\tpthread_mutex_lock(&PRIVATE_DATA->mutex);");
 	}
-	write_line("\t%s->state = INDIGO_OK_STATE;", property->handle);
+	if (!c_code_starts_with(property->on_change, "%s->state = ", property->handle)) {
+		write_line("\t%s->state = INDIGO_OK_STATE;", property->handle);
+	}
 	write_c_code_blocks(property->on_change, 1, "%s.%s.on_change", device->type, property->id);
 	write_line("\tindigo_update_property(device, %s, NULL);", property->handle);
 	if (property->synchronized_change) {
