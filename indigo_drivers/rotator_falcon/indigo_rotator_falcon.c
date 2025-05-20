@@ -182,7 +182,7 @@ static void rotator_connection_handler(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
-static void __falcon_move(indigo_device *device) {
+static void falcon_move(indigo_device *device) {
 	char command[16], response[64];
 	sprintf(command, "MD:%0.2f", ROTATOR_POSITION_ITEM->number.target);
 	if (falcon_command(device, command, response, sizeof(response)) && !strncmp(response, "MD:", 3)) {
@@ -215,7 +215,7 @@ static void __falcon_move(indigo_device *device) {
 	}
 }
 
-static void __falcon_sync(indigo_device *device) {
+static void falcon_sync(indigo_device *device) {
 	char command[16], response[64];
 	sprintf(command, "SD:%0.2f", ROTATOR_POSITION_ITEM->number.target);
 	if (falcon_command(device, command, response, sizeof(response)) && !strncmp(response, "SD:", 3)) {
@@ -234,9 +234,9 @@ static void rotator_position_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 	if (ROTATOR_ON_POSITION_SET_GOTO_ITEM->sw.value) {
-		__falcon_move(device);
+		falcon_move(device);
 	} else {
-		__falcon_sync(device);
+		falcon_sync(device);
 	}
 	indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -255,7 +255,7 @@ static void rotator_relative_move_handler(indigo_device *device) {
 	}
 	ROTATOR_POSITION_ITEM->number.target = position;
 	indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
-	__falcon_move(device);
+	falcon_move(device);
 	indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 	ROTATOR_RELATIVE_MOVE_PROPERTY->state = ROTATOR_POSITION_PROPERTY->state;
 	indigo_update_property(device, ROTATOR_RELATIVE_MOVE_PROPERTY, NULL);
