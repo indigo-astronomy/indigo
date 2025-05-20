@@ -107,7 +107,11 @@ static void falcon_close(indigo_device *device) {
 	indigo_uni_close(&PRIVATE_DATA->handle);
 }
 
-static void __falcon_move(indigo_device *device) {
+//- code
+
+//+ rotator.code
+
+static void falcon_move(indigo_device *device) {
 	if (falcon_command(device, "MD:%0.2f", ROTATOR_POSITION_ITEM->number.target) && !strncmp(PRIVATE_DATA->response, "MD:", 3)) {
 		while (true) {
 			if (falcon_command(device, "FD") && !strncmp(PRIVATE_DATA->response, "FD:", 3)) {
@@ -138,7 +142,7 @@ static void __falcon_move(indigo_device *device) {
 	}
 }
 
-static void __falcon_sync(indigo_device *device) {
+static void falcon_sync(indigo_device *device) {
 	if (falcon_command(device, "SD:%0.2f", ROTATOR_POSITION_ITEM->number.target) && !strncmp(PRIVATE_DATA->response, "SD:", 3)) {
 		if (falcon_command(device, "FD") && !strncmp(PRIVATE_DATA->response, "FD:", 3)) {
 			ROTATOR_POSITION_ITEM->number.value = indigo_atod(PRIVATE_DATA->response + 3);
@@ -151,7 +155,7 @@ static void __falcon_sync(indigo_device *device) {
 	}
 }
 
-//- code
+//- rotator.code
 
 #pragma mark - High level code (rotator)
 
@@ -229,9 +233,9 @@ static void rotator_position_handler(indigo_device *device) {
 	//+ rotator.ROTATOR_POSITION.on_change
 	ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 	if (ROTATOR_ON_POSITION_SET_GOTO_ITEM->sw.value) {
-		__falcon_move(device);
+		falcon_move(device);
 	} else {
-		__falcon_sync(device);
+		falcon_sync(device);
 	}
 	//- rotator.ROTATOR_POSITION.on_change
 	indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
@@ -277,7 +281,7 @@ static void rotator_relative_move_handler(indigo_device *device) {
 	}
 	ROTATOR_POSITION_ITEM->number.target = position;
 	indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
-	__falcon_move(device);
+	falcon_move(device);
 	indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 	ROTATOR_RELATIVE_MOVE_PROPERTY->state = ROTATOR_POSITION_PROPERTY->state;
 	//- rotator.ROTATOR_RELATIVE_MOVE.on_change
