@@ -1033,6 +1033,7 @@ void write_code_block(code_type *code, int indentation) {
 		if (c == '\n') {
 			skip = 0;
 			text = pnt;
+			c = *pnt++;
 		}
 	}
 	pnt = text;
