@@ -1022,17 +1022,24 @@ bool c_code_starts_with(code_type *code, const char *format, ...) {
 }
 
 void write_code_block(code_type *code, int indentation) {
-	char *pnt = code->text;
+	char *text = code->text;
+	int size = code->size;
+	char *pnt = text;
 	int skip = 0;
 	char c = *pnt++;
 	while (isspace(c) && pnt - code->text < code->size) {
 		c = *pnt++;
 		skip++;
+		if (c == '\n') {
+			skip = 0;
+			text = pnt;
+		}
 	}
-	pnt = code->text;
-	while (pnt - code->text < code->size) {
+	pnt = text;
+	size = code->size - (int)(text - code->text);
+	while (pnt - text < size) {
 		char c = *pnt++;
-		for (int i = 0; i < skip && pnt - code->text < code->size; i++) {
+		for (int i = 0; i < skip && pnt - text < size; i++) {
 			if (!isspace(c) || c == '\n') {
 				break;
 			}
@@ -1059,7 +1066,7 @@ void write_code_block(code_type *code, int indentation) {
 				}
 			}
 			putchar(c);
-			while (pnt - code->text < code->size) {
+			while (pnt - text < size) {
 				putchar(c = *pnt++);
 				if (c == '\n') {
 					break;
