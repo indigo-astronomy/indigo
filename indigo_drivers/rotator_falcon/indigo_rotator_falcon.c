@@ -124,7 +124,7 @@ static void falcon_move(indigo_device *device) {
 			if (falcon_command(device, "FR") && !strncmp(PRIVATE_DATA->response, "FR:", 3)) {
 				if (!strcmp(PRIVATE_DATA->response, "FR:1")) {
 					pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-					indigo_sleep(0.5);
+					indigo_sleep(0.1);
 					pthread_mutex_lock(&PRIVATE_DATA->mutex);
 					continue;
 				}
