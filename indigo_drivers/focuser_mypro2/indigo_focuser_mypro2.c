@@ -23,7 +23,7 @@
  \file indigo_focuser_mypro2.c
  */
 
-#define DRIVER_VERSION 0x0007
+#define DRIVER_VERSION 0x0008
 #define DRIVER_NAME "indigo_focuser_mypro2"
 
 #include <stdlib.h>
@@ -88,8 +88,6 @@
 typedef struct {
 	int handle;
 	int32_t current_position, target_position, max_position;
-	bool positive_last_move;
-	int backlash;
 	double prev_temp;
 	indigo_timer *focuser_timer, *temperature_timer;
 	pthread_mutex_t port_mutex;
@@ -262,9 +260,58 @@ static bool mfp_get_reverse(indigo_device *device, bool *reversed) {
 	return true;
 }
 
+
+static bool mfp_set_backlashes(indigo_device *device, int backlash_in, int backlash_out) {
+	char command_bl_in[MFP_CMD_LEN];
+	char command_bl_out[MFP_CMD_LEN];
+	char command_ebable_in[MFP_CMD_LEN];
+	char command_ebable_out[MFP_CMD_LEN];
+
+	if (backlash_in < 0 || backlash_out < 0) {
+		return false;
+	}
+
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Set backlash_in = %d, backlash_out = %d", backlash_in, backlash_out);
+
+	snprintf(command_bl_in, MFP_CMD_LEN, ":77%02d#", backlash_in);
+	snprintf(command_bl_out, MFP_CMD_LEN, ":79%02d#", backlash_out);
+	snprintf(command_ebable_in, MFP_CMD_LEN, ":73%1d#", backlash_in > 0 ? 1 : 0);
+	snprintf(command_ebable_out, MFP_CMD_LEN, ":75%1d#", backlash_out > 0 ? 1 : 0);
+
+	return (
+		mfp_command(device, command_bl_in, NULL, 0, 100) &&
+		mfp_command(device, command_bl_out, NULL, 0, 100) &&
+		mfp_command(device, command_ebable_in, NULL, 0, 100) &&
+		mfp_command(device, command_ebable_out, NULL, 0, 100)
+	);
+}
+
+
+static bool mfp_get_backlashes(indigo_device *device, int *backlash_in, int *backlash_out) {
+	int _backlash_in, _backlash_out;
+	int in_enabled, out_enabled;
+	if (
+		!mfp_command_get_int_value(device, ":78#", '6', &_backlash_in) ||
+		!mfp_command_get_int_value(device, ":80#", '7', &_backlash_out) ||
+		!mfp_command_get_int_value(device, ":74#", '4', &in_enabled) ||
+		!mfp_command_get_int_value(device, ":76#", '5', &out_enabled)
+	) {
+		return false;
+	}
+
+	*backlash_in = in_enabled ? _backlash_in : 0;
+	*backlash_out = out_enabled ? _backlash_out : 0;
+
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Get backlash_in = %d, backlash_out = %d", *backlash_in, *backlash_out);
+
+	return true;
+}
+
+
 static bool mfp_get_position(indigo_device *device, uint32_t *pos) {
 	return mfp_command_get_int_value(device, ":00#", 'P', pos);
 }
+
 
 static bool mfp_goto_position(indigo_device *device, uint32_t position) {
 	char command[MFP_CMD_LEN];
@@ -272,15 +319,6 @@ static bool mfp_goto_position(indigo_device *device, uint32_t position) {
 	return mfp_command(device, command, NULL, 0, 100);
 }
 
-static bool mfp_goto_position_bl(indigo_device *device, uint32_t position) {
-	uint32_t target_position = indigo_compensate_backlash(
-		position,
-		(int)PRIVATE_DATA->current_position,
-		(int)FOCUSER_BACKLASH_ITEM->number.value,
-		&PRIVATE_DATA->positive_last_move
-	);
-	return mfp_goto_position(device, target_position);
-}
 
 static bool mfp_get_step_mode(indigo_device *device, stepmode_t *mode) {
 	uint32_t _mode;
@@ -296,15 +334,6 @@ static bool mfp_set_step_mode(indigo_device *device, stepmode_t mode) {
 	return mfp_command(device, command, NULL, 0, 100);
 }
 
-static bool mfp_enable_backlash(indigo_device *device, bool enable) {
-	bool res = false;
-	if (enable) {
-		res = mfp_command(device, ":731#", NULL, 0, 100) && mfp_command(device, ":751#", NULL, 0, 100);
-	} else {
-		res = mfp_command(device, ":730#", NULL, 0, 100) && mfp_command(device, ":750#", NULL, 0, 100);
-	}
-	return res;
-}
 
 static bool mfp_get_max_position(indigo_device *device, uint32_t *position) {
 	return mfp_command_get_int_value(device, ":08#", 'M', position);
@@ -498,8 +527,8 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensating: Corrected PRIVATE_DATA->target_position = %d", PRIVATE_DATA->target_position);
 
-	if (!mfp_goto_position_bl(device, (uint32_t)PRIVATE_DATA->target_position)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_goto_position_bl(%d, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
+	if (!mfp_goto_position(device, (uint32_t)PRIVATE_DATA->target_position)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_goto_position(%d, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 
@@ -561,6 +590,9 @@ static indigo_result focuser_attach(indigo_device *device) {
 
 		FOCUSER_ON_POSITION_SET_PROPERTY->hidden = false;
 		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
+
+		FOCUSER_BACKLASH_ITEM->number.min = 0;
+		FOCUSER_BACKLASH_ITEM->number.max = 255;
 		FOCUSER_BACKLASH_PROPERTY->hidden = false;
 
 		FOCUSER_MODE_PROPERTY->hidden = false;
@@ -724,8 +756,15 @@ static void focuser_connect_callback(indigo_device *device) {
 					mfp_get_position(device, &position);
 					FOCUSER_POSITION_ITEM->number.value = (double)position;
 
-					if (!mfp_enable_backlash(device, false)) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_enable_backlash(%d) failed", PRIVATE_DATA->handle);
+					int backlash_in, backlash_out;
+					if (!mfp_get_backlashes(device, &backlash_in, &backlash_out)) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_get_backlashes(%d) failed", PRIVATE_DATA->handle);
+					} else {
+						if (backlash_in != backlash_out) {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "backlash_in != backlash_out, using baclash_in as backlash", PRIVATE_DATA->handle);
+							mfp_set_backlashes(device, backlash_in, backlash_in);
+						}
+						FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = (double)backlash_in;
 					}
 
 					if (!mfp_get_max_position(device, &PRIVATE_DATA->max_position)) {
@@ -838,8 +877,8 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) { /* GOTO POSITION */
-				if (!mfp_goto_position_bl(device, (uint32_t)PRIVATE_DATA->target_position)) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_goto_position_bl(%d, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
+				if (!mfp_goto_position(device, (uint32_t)PRIVATE_DATA->target_position)) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_goto_position(%d, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
 				}
 				indigo_set_timer(device, 0.5, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
 			} else { /* RESET CURRENT POSITION */
@@ -922,8 +961,8 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			}
 
 			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
-			if (!mfp_goto_position_bl(device, (uint32_t)PRIVATE_DATA->target_position)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_goto_position_bl(%d, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
+			if (!mfp_goto_position(device, (uint32_t)PRIVATE_DATA->target_position)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_goto_position(%d, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
 				FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
@@ -964,7 +1003,19 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	} else if (indigo_property_match_changeable(FOCUSER_BACKLASH_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_BACKLASH_PROPERTY
 		indigo_property_copy_values(FOCUSER_BACKLASH_PROPERTY, property, false);
-		FOCUSER_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
+		FOCUSER_BACKLASH_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
+		if (!mfp_set_backlashes(device, (int)FOCUSER_BACKLASH_ITEM->number.target, (int)FOCUSER_BACKLASH_ITEM->number.target)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_set_backlashes(%d, %d, %d) failed", PRIVATE_DATA->handle, (int)FOCUSER_BACKLASH_ITEM->number.target, (int)FOCUSER_BACKLASH_ITEM->number.target);
+			FOCUSER_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else {
+			FOCUSER_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
+		}
+		if (FOCUSER_BACKLASH_PROPERTY->state == INDIGO_ALERT_STATE){
+			int backlash_in, backlash_out;
+			mfp_get_backlashes(device, &backlash_in, &backlash_out);
+			FOCUSER_BACKLASH_ITEM->number.value = (double)backlash_in;
+		}
 		indigo_update_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_STEP_MODE_PROPERTY, property)) {
