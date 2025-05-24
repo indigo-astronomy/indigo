@@ -252,7 +252,8 @@ static void reset_pa_state(indigo_device * device, bool force) {
 		AGENT_PLATESOLVER_PA_STATE_AZ_ERROR_ITEM->number.value =
 		AGENT_PLATESOLVER_PA_STATE_POLAR_ERROR_ITEM->number.value =
 		AGENT_PLATESOLVER_PA_STATE_ALT_CORRECTION_UP_ITEM->number.value =
-		AGENT_PLATESOLVER_PA_STATE_AZ_CORRECTION_CW_ITEM->number.value = 0;
+		AGENT_PLATESOLVER_PA_STATE_AZ_CORRECTION_CW_ITEM->number.value =
+		AGENT_PLATESOLVER_PA_STATE_ACCURACY_WARNING_ITEM->number.value = 0;
 		indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, NULL);
 	}
 }
@@ -305,8 +306,10 @@ static void populate_pa_state(indigo_device * device) {
 
 	char message[256];
 	if(INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_initial_error * 60.0 >= PA_MAX_INITIAL_ERROR) {
+		AGENT_PLATESOLVER_PA_STATE_ACCURACY_WARNING_ITEM->number.value = 1;
 		snprintf(message, sizeof(message), "Polar error: %.2f' (Warning: Initial polar error is loo large, align within 1-2° and restart polar alignment)", AGENT_PLATESOLVER_PA_STATE_POLAR_ERROR_ITEM->number.value * 60);
 	} else {
+		AGENT_PLATESOLVER_PA_STATE_ACCURACY_WARNING_ITEM->number.value = 0;
 		snprintf(message, sizeof(message), "Polar error: %.2f'", AGENT_PLATESOLVER_PA_STATE_POLAR_ERROR_ITEM->number.value * 60);
 	}
 	indigo_send_message( device, message);
@@ -825,7 +828,7 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		strcpy(AGENT_PLATESOLVER_PA_SETTINGS_HA_MOVE_ITEM->number.format, "%m");
 		strcpy(AGENT_PLATESOLVER_PA_SETTINGS_COMPENSATE_REFRACTION_ITEM->number.format, "%.0f");
 		// -------------------------------------------------------------------------------- POLAR_ALIGNMENT_ERROR property
-		AGENT_PLATESOLVER_PA_STATE_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_PLATESOLVER_PA_STATE_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Polar alignment state", INDIGO_OK_STATE, INDIGO_RO_PERM, 12);
+		AGENT_PLATESOLVER_PA_STATE_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_PLATESOLVER_PA_STATE_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Polar alignment state", INDIGO_OK_STATE, INDIGO_RO_PERM, 13);
 		if (AGENT_PLATESOLVER_PA_STATE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AGENT_PLATESOLVER_PA_STATE_ITEM, AGENT_PLATESOLVER_PA_STATE_ITEM_NAME, "Polar alignment state", 0, 10, 0, 0);
@@ -840,6 +843,7 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		indigo_init_number_item(AGENT_PLATESOLVER_PA_STATE_ALT_CORRECTION_UP_ITEM, AGENT_PLATESOLVER_PA_STATE_ALT_CORRECTION_UP_ITEM_NAME, "Altitude correction (1=Up, 0=Down)", 0, 1, 0, 0);
 		indigo_init_number_item(AGENT_PLATESOLVER_PA_STATE_AZ_CORRECTION_CW_ITEM, AGENT_PLATESOLVER_PA_STATE_AZ_CORRECTION_CW_ITEM_NAME, "Azimuth correction (1=C.W., 0=C.C.W.)", 0, 1, 0, 0);
 		indigo_init_number_item(AGENT_PLATESOLVER_PA_STATE_POLAR_ERROR_ITEM, AGENT_PLATESOLVER_PA_STATE_POLAR_ERROR_ITEM_NAME, "Polar error (°)", -45, 45, 0, 0);
+		indigo_init_number_item(AGENT_PLATESOLVER_PA_STATE_ACCURACY_WARNING_ITEM, AGENT_PLATESOLVER_PA_STATE_ACCURACY_WARNING_ITEM_NAME, "Accuracy warning", 0, 1, 0, 0);
 		strcpy(AGENT_PLATESOLVER_PA_STATE_ITEM->number.format, "%.0f");
 		strcpy(AGENT_PLATESOLVER_PA_STATE_DEC_DRIFT_2_ITEM->number.format, "%m");
 		strcpy(AGENT_PLATESOLVER_PA_STATE_DEC_DRIFT_3_ITEM->number.format, "%m");
@@ -852,6 +856,7 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		strcpy(AGENT_PLATESOLVER_PA_STATE_ALT_CORRECTION_UP_ITEM->number.format, "%.0f");
 		strcpy(AGENT_PLATESOLVER_PA_STATE_AZ_CORRECTION_CW_ITEM->number.format, "%.0f");
 		strcpy(AGENT_PLATESOLVER_PA_STATE_POLAR_ERROR_ITEM->number.format, "%m");
+		strcpy(AGENT_PLATESOLVER_PA_STATE_ACCURACY_WARNING_ITEM->number.format, "%.0f");
 		// -------------------------------------------------------------------------------- AGENT_PLATESOLVER_GOTO_SETTINGS
 		AGENT_PLATESOLVER_GOTO_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_PLATESOLVER_GOTO_SETTINGS_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "GOTO Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		if (AGENT_PLATESOLVER_GOTO_SETTINGS_PROPERTY == NULL)
