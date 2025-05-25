@@ -2,6 +2,10 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-334] - 25 May Sun 2025
+## Overall:
+- indigo_platesolver: add ACCURACY_WARNING item to AGENT_PLATESOLVER_PA_STATE to indicate if PA process restart is required
+
 # [2.0-332] - 22 May Thu 2025
 ## Overall:
 - indigo_ccd_driver: focuser position in saved file name fixed
