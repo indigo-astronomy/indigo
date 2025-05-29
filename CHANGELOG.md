@@ -1,6 +1,57 @@
 # Changelog
 
 All notable changes to INDIGO framework will be documented in this file.
+
+# [2.0-334] - 25 May Sun 2025
+## Overall:
+- indigo_platesolver: add ACCURACY_WARNING item to AGENT_PLATESOLVER_PA_STATE to indicate if PA process restart is required
+
+# [2.0-332] - 22 May Thu 2025
+## Overall:
+- indigo_ccd_driver: focuser position in saved file name fixed
+- Rename DELTA_UTC_UT1 to DELTA_UT1_UTC
+- update DELTA_UT1_UTC constant as for 2025-05-22
+- indigo_platesolver: Polar Alignment works with +/-10degrees error but issues a warning if the intial error is too large
+
+## Driver Fixes:
+- indigo_agent_imager:
+	- clarify the message "No CCD is selected"
+
+- indigo_guider_imager:
+	- clarify the message "No CCD is selected"
+
+- indigo_agent_scripting:
+	- Sequencer.js: avoid a race condition with reseting the star selection process in imager and guider agents
+
+- indigo_ccd_ptp:
+	- support Nikon Z5II
+
+- indigo_ccd_atik:
+	- fix driver info and unload
+
+- indigo_ccd_svb:
+	- SDK updated to 1.13.4
+
+- indigo_ccd_mi:
+	- add support for C1+/C2-46000 cameras
+
+- indigo_focuser_qhy:
+	- fix relative move issue
+
+- indigo_rotator_falcon:
+	- add relative move
+	- fix initial position
+	- clear INFO_DEVICE_MODEL_ITEM, INFO_DEVICE_FW_REVISION_ITEM on disconnect
+	- more often checking if it reached the target
+
+- indigo_focuser_mypro2:
+	- fix occasional connection failure
+	- fix settle timeout
+	- fix relative move
+	- implement hardware backlash support
+	- Gemini focuser: show only supported step sizes
+
+
 # [2.0-330] - 01 May Thu 2025
 ## Overall:
 - update DELTA_UTC_UT1 constant and add script to update it
