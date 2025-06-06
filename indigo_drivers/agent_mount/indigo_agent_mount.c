@@ -808,23 +808,6 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 		}
 		CLIENT_PRIVATE_DATA->mount_eq_coordinates_state = property->state;
 		handle_mount_change(device);
-	} else if (!strcmp(property->name, MOUNT_PARK_PROPERTY_NAME)) {
-		CLIENT_PRIVATE_DATA->mount_unparked = false;
-		if (property->state == INDIGO_OK_STATE) {
-			for (int i = 0; i < property->count; i++) {
-				indigo_item *item = property->items + i;
-				if (!strcmp(item->name, MOUNT_PARK_PARKED_ITEM_NAME) && item->sw.value) {
-					indigo_change_switch_property_1(FILTER_CLIENT_CONTEXT->client, device->name, DOME_PARK_PROPERTY_NAME, DOME_PARK_PARKED_ITEM_NAME, true);
-					indigo_change_switch_property_1(FILTER_CLIENT_CONTEXT->client, device->name, DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_CLOSED_ITEM_NAME, true);
-					abort_imager_process(device, "parking");
-					abort_guider_process(device, "parking");
-				} else if (!strcmp(property->items[i].name, MOUNT_PARK_UNPARKED_ITEM_NAME) && item->sw.value) {
-					CLIENT_PRIVATE_DATA->mount_unparked = true;
-					indigo_change_switch_property_1(FILTER_CLIENT_CONTEXT->client, device->name, DOME_PARK_PROPERTY_NAME, DOME_PARK_UNPARKED_ITEM_NAME, true);
-					indigo_change_switch_property_1(FILTER_CLIENT_CONTEXT->client, device->name, DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME, true);
-				}
-			}
-		}
 	} else if (!strcmp(property->name, FILTER_DOME_LIST_PROPERTY_NAME)) { // Snoop dome
 		if (INDIGO_FILTER_DOME_SELECTED) {
 			handle_site_change(device);
@@ -1282,6 +1265,23 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 					}
 				}
 				indigo_change_switch_property(client, related_imager_agent_name, "AGENT_" FOCUSER_CONTROL_PROPERTY_NAME, 2, names, values);
+			}
+		} else if (!strcmp(property->name, MOUNT_PARK_PROPERTY_NAME)) {
+			CLIENT_PRIVATE_DATA->mount_unparked = false;
+			if (property->state == INDIGO_OK_STATE) {
+				for (int i = 0; i < property->count; i++) {
+					indigo_item *item = property->items + i;
+					if (!strcmp(item->name, MOUNT_PARK_PARKED_ITEM_NAME) && item->sw.value) {
+						indigo_change_switch_property_1(FILTER_CLIENT_CONTEXT->client, device->name, DOME_PARK_PROPERTY_NAME, DOME_PARK_PARKED_ITEM_NAME, true);
+						indigo_change_switch_property_1(FILTER_CLIENT_CONTEXT->client, device->name, DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_CLOSED_ITEM_NAME, true);
+						abort_imager_process(device, "parking");
+						abort_guider_process(device, "parking");
+					} else if (!strcmp(property->items[i].name, MOUNT_PARK_UNPARKED_ITEM_NAME) && item->sw.value) {
+						CLIENT_PRIVATE_DATA->mount_unparked = true;
+						indigo_change_switch_property_1(FILTER_CLIENT_CONTEXT->client, device->name, DOME_PARK_PROPERTY_NAME, DOME_PARK_UNPARKED_ITEM_NAME, true);
+						indigo_change_switch_property_1(FILTER_CLIENT_CONTEXT->client, device->name, DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME, true);
+					}
+				}
 			}
 		} else {
 			snoop_changes(client, device, property);
