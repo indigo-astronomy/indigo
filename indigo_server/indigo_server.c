@@ -201,7 +201,7 @@
 #include "rotator_asi/indigo_rotator_asi.h"
 #include "focuser_astroasis/indigo_focuser_astroasis.h"
 #include "wheel_astroasis/indigo_wheel_astroasis.h"
-$include "ccd_rpi/indigo_ccd_rpi.h"
+#include "ccd_rpi/indigo_ccd_rpi.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
