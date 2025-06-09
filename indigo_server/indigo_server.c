@@ -292,7 +292,11 @@ driver_entry_point static_drivers[] = {
 	indigo_ccd_sx,
 	indigo_ccd_touptek,
 	indigo_ccd_uvc,
+#ifdef INDIGO_LINUX
+#ifdef __arm__	
 	indigo_ccd_rpi,
+#endif
+#endif
 	indigo_dome_baader,
 	indigo_dome_beaver,
 	indigo_dome_dragonfly,
