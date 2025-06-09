@@ -201,6 +201,7 @@
 #include "rotator_asi/indigo_rotator_asi.h"
 #include "focuser_astroasis/indigo_focuser_astroasis.h"
 #include "wheel_astroasis/indigo_wheel_astroasis.h"
+$include "ccd_rpi/indigo_ccd_rpi.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -291,6 +292,7 @@ driver_entry_point static_drivers[] = {
 	indigo_ccd_sx,
 	indigo_ccd_touptek,
 	indigo_ccd_uvc,
+	indigo_ccd_rpi,
 	indigo_dome_baader,
 	indigo_dome_beaver,
 	indigo_dome_dragonfly,
