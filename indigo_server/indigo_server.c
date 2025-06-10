@@ -64,6 +64,10 @@
   #define ARCH_NAME "unknown arch"
 #endif
 
+#if defined(__linux__) && (defined(__aarch64__) || defined(__arm__))
+	#define CCD_RPI
+#endif
+
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_io.h>
 #include <indigo/indigo_server_tcp.h>
@@ -292,10 +296,8 @@ driver_entry_point static_drivers[] = {
 	indigo_ccd_sx,
 	indigo_ccd_touptek,
 	indigo_ccd_uvc,
-#ifdef INDIGO_LINUX
-#ifdef __arm__	
+#ifdef CCD_RPI
 	indigo_ccd_rpi,
-#endif
 #endif
 	indigo_dome_baader,
 	indigo_dome_beaver,

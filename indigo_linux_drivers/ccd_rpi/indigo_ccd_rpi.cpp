@@ -22,19 +22,22 @@
  \file indigo_ccd_rpi.c
  */
 
- #define DRIVER_VERSION 0x001
- #define DRIVER_NAME "indigo_ccd_rpi"
- 
- #include <ctype.h>
- #include <stdlib.h>
- #include <string.h>
- #include <unistd.h>
- #include <math.h>
- #include <assert.h>
- #include <pthread.h>
- #include <sys/time.h>
- #include <indigo/indigo_usb_utils.h>
- #include <indigo/indigo_driver_xml.h>
+#define DRIVER_VERSION 0x001
+#define DRIVER_NAME "indigo_ccd_rpi"
+
+#include <ctype.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <math.h>
+#include <assert.h>
+#include <pthread.h>
+#include <sys/time.h>
+#include <indigo/indigo_usb_utils.h>
+#include <indigo/indigo_driver_xml.h>
+
+#include "indigo_ccd_rpi.h"
+#if defined(__linux__) && (defined(__aarch64__) || defined(__arm__))
 
 #include <iomanip>
 #include <iostream>
@@ -57,16 +60,11 @@
 #include <libcamera/formats.h>
 
 #include <mutex>
-#include <queue>
-
-#include "indigo_ccd_rpi.h"
- 
+#include <queue> 
 
 #include <sys/mman.h>
-
-
  
- #define PRIVATE_DATA				((rpi_private_data *)device->private_data)
+#define PRIVATE_DATA				((rpi_private_data *)device->private_data)
 
 #define X_CCD_ADVANCED_PROPERTY						(PRIVATE_DATA->advanced_property)
 
@@ -1706,8 +1704,6 @@ static void attach_rpi_ccd() {
 
         string cameraName = GetCameraName(id); 
         if (IsNew(id)) {
-            //RPiCamera *pRPiCamera = new RPiCamera();
-            /* if (pRPiCamera != nullptr) { */
                 char name[128] = "RPI Camera "; 
                 strcat(name, cameraName.c_str());
             
@@ -1717,8 +1713,6 @@ static void attach_rpi_ccd() {
                 end[1] = '\0';
                 rpi_private_data *private_data = (rpi_private_data*)indigo_safe_malloc(sizeof(rpi_private_data));
                 private_data->eid = id;
-    
-                //private_data->pRPiCamera = pRPiCamera;
     
                 indigo_device *device = (indigo_device*)indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
                 indigo_device *master_device = device;
@@ -1740,7 +1734,6 @@ static void attach_rpi_ccd() {
                         break;
                     }
                 }
-           // }
         }       
     }
  pthread_mutex_unlock(&device_mutex);
@@ -1805,4 +1798,20 @@ indigo_result indigo_ccd_rpi(indigo_driver_action action, indigo_driver_info *in
     return INDIGO_OK;
  }
 
- 
+#else
+
+indigo_result indigo_ccd_rpi(indigo_driver_action action, indigo_driver_info *info) {
+	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
+
+	SET_DRIVER_INFO(info, "Raspberry Pi Camera", __FUNCTION__, DRIVER_VERSION, true, last_action);
+
+	switch(action) {
+		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_SHUTDOWN:
+			return INDIGO_UNSUPPORTED_ARCH;
+		case INDIGO_DRIVER_INFO:
+			break;
+	}
+	return INDIGO_OK;
+}
+#endif
