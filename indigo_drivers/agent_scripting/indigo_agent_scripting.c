@@ -24,7 +24,7 @@
  \file indigo_agent_scripting.c
  */
 
-#define DRIVER_VERSION 0x03000009
+#define DRIVER_VERSION 0x0300000A
 
 #define DRIVER_NAME	"indigo_agent_scripting"
 
@@ -468,7 +468,13 @@ static duk_ret_t _define_text_property(duk_context *ctx, bool redefine) {
 			PRIVATE_DATA->agent_cached_property[i] = tmp = indigo_init_text_property(tmp, device, property_name, property_group, property_label, state, perm, MAX_ITEMS);
 			duk_enum(ctx, 4, DUK_ENUM_OWN_PROPERTIES_ONLY );
 			tmp->count = 0;
-			while (duk_next(ctx, -1, true) && tmp->count < MAX_ITEMS) {
+			while (duk_next(ctx, -1, true)) {
+				if (tmp->count >= tmp->allocated_count) {
+					int saved_count = tmp->count;
+					PRIVATE_DATA->agent_cached_property[i] = tmp = indigo_resize_property(tmp, tmp->allocated_count + MAX_ITEMS);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Resizing property %s.%s from %d to %d items", tmp->device, tmp->name, saved_count, tmp->allocated_count);
+					tmp->count = saved_count;
+				}
 				indigo_item *item = tmp->items + tmp->count;
 				const char *key = duk_require_string(ctx, -2);
 				INDIGO_COPY_NAME(item->name, key);
@@ -515,7 +521,13 @@ static duk_ret_t _define_number_property(duk_context *ctx, bool redefine) {
 			PRIVATE_DATA->agent_cached_property[i] = tmp = indigo_init_number_property(tmp, device, property, property_group, property_label, state, perm, MAX_ITEMS);
 			duk_enum(ctx, 4, DUK_ENUM_OWN_PROPERTIES_ONLY );
 			tmp->count = 0;
-			while (duk_next(ctx, -1, true) && tmp->count < MAX_ITEMS) {
+			while (duk_next(ctx, -1, true)) {
+				if (tmp->count >= tmp->allocated_count) {
+					int saved_count = tmp->count;
+					PRIVATE_DATA->agent_cached_property[i] = tmp = indigo_resize_property(tmp, tmp->allocated_count + MAX_ITEMS);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Resizing property %s.%s from %d to %d items", tmp->device, tmp->name, saved_count, tmp->allocated_count);
+					tmp->count = saved_count;
+				}
 				indigo_item *item = tmp->items + tmp->count;
 				const char *key = duk_require_string(ctx, -2);
 				INDIGO_COPY_NAME(item->name, key);
@@ -575,7 +587,13 @@ static duk_ret_t _define_switch_property(duk_context *ctx, bool redefine) {
 			PRIVATE_DATA->agent_cached_property[i] = tmp = indigo_init_switch_property(tmp, device, property, property_group, property_label, state, perm, rule, MAX_ITEMS);
 			duk_enum(ctx, 4, DUK_ENUM_OWN_PROPERTIES_ONLY );
 			tmp->count = 0;
-			while (duk_next(ctx, -1, true) && tmp->count < MAX_ITEMS) {
+			while (duk_next(ctx, -1, true)) {
+				if (tmp->count >= tmp->allocated_count) {
+					int saved_count = tmp->count;
+					PRIVATE_DATA->agent_cached_property[i] = tmp = indigo_resize_property(tmp, tmp->allocated_count + MAX_ITEMS);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Resizing property %s.%s from %d to %d items", tmp->device, tmp->name, saved_count, tmp->allocated_count);
+					tmp->count = saved_count;
+				}
 				indigo_item *item = tmp->items + tmp->count;
 				const char *key = duk_require_string(ctx, -2);
 				INDIGO_COPY_NAME(item->name, key);
@@ -621,7 +639,13 @@ static duk_ret_t _define_light_property(duk_context *ctx, bool redefine) {
 			PRIVATE_DATA->agent_cached_property[i] = tmp = indigo_init_light_property(tmp, device, property, property_group, property_label, state, MAX_ITEMS);
 			duk_enum(ctx, 4, DUK_ENUM_OWN_PROPERTIES_ONLY );
 			tmp->count = 0;
-			while (duk_next(ctx, -1, true) && tmp->count < MAX_ITEMS) {
+			while (duk_next(ctx, -1, true)) {
+				if (tmp->count >= tmp->allocated_count) {
+					int saved_count = tmp->count;
+					PRIVATE_DATA->agent_cached_property[i] = tmp = indigo_resize_property(tmp, tmp->allocated_count + MAX_ITEMS);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Resizing property %s.%s from %d to %d items", tmp->device, tmp->name, saved_count, tmp->allocated_count);
+					tmp->count = saved_count;
+				}
 				indigo_item *item = tmp->items + tmp->count;
 				const char *key = duk_require_string(ctx, -2);
 				INDIGO_COPY_NAME(item->name, key);
