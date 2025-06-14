@@ -158,6 +158,14 @@ Sequence.prototype.select_image_format = function(format) {
 	this.sequence.push({ execute: 'select_image_format("' + format + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
+Sequence.prototype.set_frame = function(left, top, width, height) {
+	this.sequence.push({ execute: 'set_frame(' + left + ',' + top + ',' + width + ',' + height + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
+Sequence.prototype.reset_frame = function() {
+	this.sequence.push({ execute: 'reset_frame()', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
 Sequence.prototype.select_camera_mode = function(mode) {
 	this.sequence.push({ execute: 'select_camera_mode("' + mode + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
@@ -1143,6 +1151,15 @@ var indigo_sequencer = {
 
 	select_image_format: function(format) {
 		this.select_switch(this.devices[IMAGER_AGENT], "CCD_IMAGE_FORMAT", format);
+	},
+
+	set_frame: function(left, top, width, height) {
+		this.change_numbers(this.devices[IMAGER_AGENT], "CCD_FRAME", { LEFT: left, TOP: top, WIDTH: width, HEIGHT: height });
+	},
+
+	reset_frame: function() {
+		// values are adjusted to max values automatically
+		this.change_numbers(this.devices[IMAGER_AGENT], "CCD_FRAME", { LEFT: 0, TOP: 0, WIDTH: 100000, HEIGHT: 100000 });
 	},
 
 	select_camera_mode: function(mode) {
