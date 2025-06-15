@@ -797,7 +797,7 @@ var indigo_sequencer = {
 					if (nesting <= 0) {
 						indigo_delete_property(this.devices[SCRIPTING_AGENT], "LOOP_" + this.loop_level--);
 						this.loop_count.pop();
-						this.update_step_state(this.loop_step.pop(), "Ok");
+						this.update_step_state(this.loop_step.pop(), this.skip_to_recovery_point ? "Alert" : "Ok");
 					}
 				}
 				if (previous.step < current.step) {
