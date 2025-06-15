@@ -914,6 +914,23 @@ static duk_ret_t set_timer_at_utc(duk_context *ctx) {
 	return DUK_RET_ERROR;
 }
 
+static duk_ret_t utc_diff(duk_context *ctx) {
+	double diff;
+	const char *utc = duk_require_string(ctx, 0);
+	if (indigo_utc_diff((char *)utc, &diff)) {
+		duk_push_number(ctx, diff);
+		return 1;
+	}
+	return DUK_RET_ERROR;
+}
+
+static duk_ret_t local_time_diff(duk_context *ctx) {
+	long local_time = (long)duk_require_number(ctx, 0);
+	double diff = difftime(local_time, time(NULL));
+	duk_push_number(ctx, diff);
+	return 1;
+}
+
 // function indigo_cancel_timer(timer);
 
 static duk_ret_t cancel_timer(duk_context *ctx) {
@@ -1042,6 +1059,10 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_set_timer_at");
 			duk_push_c_function(PRIVATE_DATA->ctx, set_timer_at_utc, 2);
 			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_set_timer_at_utc");
+			duk_push_c_function(PRIVATE_DATA->ctx, utc_diff, 1);
+			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_utc_diff");
+			duk_push_c_function(PRIVATE_DATA->ctx, local_time_diff, 1);
+			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_local_time_diff");
 			duk_push_c_function(PRIVATE_DATA->ctx, cancel_timer, 1);
 			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_cancel_timer");
 			if (duk_peval_string(PRIVATE_DATA->ctx, boot_js)) {

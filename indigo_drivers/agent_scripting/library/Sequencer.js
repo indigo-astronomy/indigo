@@ -64,7 +64,7 @@ Sequence.prototype.wait = function(seconds) {
 };
 
 Sequence.prototype.wait_until = function(time) {
-	if(typeof time === 'string') {
+	if (typeof time === 'string') {
 		time = '"' + time + '"';
 	}
 	this.sequence.push({ execute: 'wait_until(' + time + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
@@ -80,6 +80,17 @@ Sequence.prototype.recover_on_failure = function() {
 
 Sequence.prototype.abort_on_failure = function() {
 	this.sequence.push({ execute: 'set_failure_handling(0)', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
+Sequence.prototype.break_at = function(time) {
+	if (typeof time === 'string') {
+		time = '"' + time + '"';
+	}
+	this.sequence.push({ execute: 'break_at(' + time + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
+Sequence.prototype.resume_point = function() {
+	this.sequence.push({ execute: 'resume_point(' + (++this.recovery_point_index) + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.evaluate = function(code) {
@@ -547,6 +558,7 @@ var indigo_sequencer = {
 	allow_missing_property: false,
 	skip_to_recovery_point: false,
 	failure_handling: 0,
+	skip_to_resume_point: false,
 	use_solver: false,
 	paused: false,
 	capturing_batch: false,
@@ -726,6 +738,7 @@ var indigo_sequencer = {
 			this.failure_handling = 0;
 			this.skip_to_recovery_point = false;
 			this.ignore_failure = false;
+			this.skip_to_resume_point = false;
 			indigo_update_switch_property(this.devices[SCRIPTING_AGENT], "AGENT_PAUSE_PROCESS", { PAUSE_WAIT: false }, this.pause_state = "Ok");
 			indigo_update_switch_property(this.devices[SCRIPTING_AGENT], "AGENT_ABORT_PROCESS", { ABORT: false }, this.abort_state = "Ok");
 			indigo_update_number_property(this.devices[SCRIPTING_AGENT], "SEQUENCE_STATE", { STEP: this.step, PROGRESS: this.progress, PROGRESS_TOTAL: this.progress_total, EXPOSURE: this.exposure, EXPOSURE_TOTAL: this.exposure_total }, this.sequence_state = "Busy");
@@ -764,7 +777,16 @@ var indigo_sequencer = {
 			nesting = 0;
 			while (true) {
 				current = this.sequence[++this.index];
-				if (current == null || !this.skip_to_recovery_point || current.execute.startsWith("recovery_point(")) {
+				if (current == null) {
+					break;
+				}
+				if (!this.skip_to_recovery_point && !this.skip_to_resume_point) {
+					break;
+				}
+				if (this.skip_to_recovery_point && current.execute.startsWith("recovery_point(")) {
+					break;
+				}
+				if (this.skip_to_resume_point && current.execute.startsWith("resume_point(")) {
 					break;
 				}
 				if (current.execute == "enter_loop()") {
@@ -775,6 +797,7 @@ var indigo_sequencer = {
 					if (nesting <= 0) {
 						indigo_delete_property(this.devices[SCRIPTING_AGENT], "LOOP_" + this.loop_level--);
 						this.loop_count.pop();
+						this.update_step_state(this.loop_step.pop(), "Ok");
 					}
 				}
 				if (previous.step < current.step) {
@@ -801,6 +824,9 @@ var indigo_sequencer = {
 				if (this.skip_to_recovery_point) {
 					indigo_update_number_property(this.devices[SCRIPTING_AGENT], "SEQUENCE_STATE", { STEP: this.step, PROGRESS: this.progress, PROGRESS_TOTAL: this.progress_total, EXPOSURE: this.exposure, EXPOSURE_TOTAL: this.exposure_total }, this.sequence_state = "Alert");
 					indigo_send_message("Sequence failed, no recovery point found");
+				} else if (this.skip_to_resume_point) {
+					indigo_update_number_property(this.devices[SCRIPTING_AGENT], "SEQUENCE_STATE", { STEP: this.step, PROGRESS: this.progress, PROGRESS_TOTAL: this.progress_total, EXPOSURE: this.exposure, EXPOSURE_TOTAL: this.exposure_total }, this.sequence_state = "Ok");
+					indigo_send_message("Sequence finished, no resume point found");
 				} else {
 					indigo_update_number_property(this.devices[SCRIPTING_AGENT], "SEQUENCE_STATE", { STEP: this.step, PROGRESS: this.progress, PROGRESS_TOTAL: this.progress_total, EXPOSURE: this.exposure, EXPOSURE_TOTAL: this.exposure_total }, this.sequence_state = "Ok");
 					indigo_send_message("Sequence finished");
@@ -854,6 +880,14 @@ var indigo_sequencer = {
 		if (this.skip_to_recovery_point) {
 			this.skip_to_recovery_point = false;
 			indigo_send_message("Recovered from failure at recovery point #" + index);
+		}
+		indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
+	},
+	
+	resume_point: function(index) {
+		if (this.skip_to_resume_point) {
+			this.skip_to_resume_point = false;
+			indigo_send_message("Resumed from break at resume point #" + index);
 		}
 		indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
 	},
@@ -1063,6 +1097,20 @@ var indigo_sequencer = {
 
 	set_failure_handling: function(failure_handling) {
 		this.failure_handling = failure_handling;
+		indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
+	},
+
+	break_at: function(time) {
+		var result;
+		if (typeof time === "number") {
+			result = indigo_local_time_diff(time);
+		} else {
+			result = indigo_utc_diff(time);
+		}
+		if (result <= 0) {
+			this.skip_to_resume_point = true;
+			indigo_send_message("Break executed");
+		}
 		indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
 	},
 
