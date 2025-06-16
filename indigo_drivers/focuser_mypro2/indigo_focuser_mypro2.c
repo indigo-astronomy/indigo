@@ -87,7 +87,7 @@
 
 typedef struct {
 	int handle;
-	int32_t current_position, target_position, max_position;
+	uint32_t current_position, target_position, max_position;
 	double prev_temp;
 	indigo_timer *focuser_timer, *temperature_timer;
 	pthread_mutex_t port_mutex;
@@ -288,8 +288,8 @@ static bool mfp_set_backlashes(indigo_device *device, int backlash_in, int backl
 
 
 static bool mfp_get_backlashes(indigo_device *device, int *backlash_in, int *backlash_out) {
-	int _backlash_in, _backlash_out;
-	int in_enabled, out_enabled;
+	uint32_t _backlash_in, _backlash_out;
+	uint32_t in_enabled, out_enabled;
 	if (
 		!mfp_command_get_int_value(device, ":78#", '6', &_backlash_in) ||
 		!mfp_command_get_int_value(device, ":80#", '7', &_backlash_out) ||
