@@ -28,7 +28,6 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include <errno.h>
-#include <math.h>
 
 #include <indigo/indigo_timer.h>
 #include <indigo/indigo_driver.h>
@@ -131,6 +130,56 @@ static void *timer_func(indigo_timer *timer) {
 
 bool indigo_set_timer(indigo_device *device, double delay, indigo_timer_callback callback, indigo_timer **timer) {
 	return indigo_set_timer_with_data(device, delay, (indigo_timer_with_data_callback)callback, timer, NULL);
+}
+
+bool indigo_utc_diff(char *time_str, double *diff) {
+	struct tm tm_time;
+	time_t target_time;
+	memset(&tm_time, 0, sizeof(struct tm));
+	int year, month, day, hour, minute, second = 0;
+	int items = sscanf(time_str, "%d-%d-%d %d:%d:%d", &year, &month, &day, &hour, &minute, &second);
+	if (items < 6) {
+		items = sscanf(time_str, "%d-%d-%d %d:%d", &year, &month, &day, &hour, &minute);
+		second = 0;
+	}
+	if (items < 5) {
+		return false;
+	}
+	if (year < 1900 || month < 1 || month > 12 || day < 1 || day > 31 || hour < 0 || hour > 23 || minute < 0 || minute > 59 || second < 0 || second > 59) {
+		return false;
+	}
+	tm_time.tm_year = year - 1900;
+	tm_time.tm_mon = month - 1;
+	tm_time.tm_mday = day;
+	tm_time.tm_hour = hour;
+	tm_time.tm_min = minute;
+	tm_time.tm_sec = second;
+	tm_time.tm_isdst = 0;
+	target_time = timegm(&tm_time);
+	if (target_time == (time_t) - 1) {
+		return false;
+	}
+	*diff = difftime(target_time, time(NULL));
+	return true;
+}
+
+bool indigo_set_timer_at_utc(indigo_device *device, char *time_str, indigo_timer_with_data_callback callback, indigo_timer **timer, void *data) {
+	double delay;
+	if (indigo_utc_diff(time_str, &delay)) {
+		if (delay < 0) {
+			delay = 0;
+		}
+		return indigo_set_timer_with_data(device, delay, (indigo_timer_with_data_callback)callback, timer, data);
+	}
+	return false;
+}
+
+bool indigo_set_timer_at(indigo_device *device, long start_at, indigo_timer_with_data_callback callback, indigo_timer **timer, void *data) {
+	double delay = difftime(start_at, time(NULL));
+	if (delay < 0) {
+		delay = 0;
+	}
+	return indigo_set_timer_with_data(device, delay, callback, timer, data);
 }
 
 bool indigo_set_timer_with_data(indigo_device *device, double delay, indigo_timer_with_data_callback callback, indigo_timer **timer, void *data) {
