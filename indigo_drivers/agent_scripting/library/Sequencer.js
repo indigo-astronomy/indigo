@@ -59,15 +59,13 @@ Sequence.prototype.recovery_point = function() {
 	this.sequence.push({ execute: 'recovery_point(' + (++this.recovery_point_index) + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.wait = function(seconds) {
-	this.sequence.push({ execute: 'wait(' + seconds + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
+Sequence.prototype.wait = function(delay) {
+	this.sequence.push({ execute: 'wait(' + delay + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.wait_until = function(time) {
-	if (typeof time === 'string') {
-		time = '"' + time + '"';
-	}
-	this.sequence.push({ execute: 'wait_until(' + time + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	var delay = (typeof time === 'string') ? indigo_utc_to_delay(time) : indigo_time_to_delay(time);
+	this.sequence.push({ execute: 'wait(' + delay + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.continue_on_failure = function() {
@@ -83,9 +81,7 @@ Sequence.prototype.abort_on_failure = function() {
 };
 
 Sequence.prototype.break_at = function(time) {
-	if (typeof time === 'string') {
-		time = '"' + time + '"';
-	}
+	var time = (typeof time === 'string') ? indigo_utc_to_time(time) : time;
 	this.sequence.push({ execute: 'break_at(' + time + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
@@ -703,11 +699,14 @@ var indigo_sequencer = {
 				continue;
 			}
 			if (this.devices[device].startsWith("Guider Agent")) {
-				var property = indigo_devices[this.devices[device]].AGENT_START_PROCESS;
-				if (property != null && property.items.GUIDING) {
-					continue;
+				var dev = indigo_devices[this.devices[device]];
+				if (dev != null) {
+					var property = dev.AGENT_START_PROCESS;
+					if (property != null && property.items.GUIDING) {
+						continue;
+					}
+					indigo_change_switch_property(this.devices[device], "AGENT_ABORT_PROCESS", { "ABORT": true });
 				}
-				indigo_change_switch_property(this.devices[device], "AGENT_ABORT_PROCESS", { "ABORT": true });
 			} else if (this.devices[device].startsWith("Astrometry Agent")) {
 				indigo_change_switch_property(this.devices[device], "AGENT_PLATESOLVER_ABORT", { "ABORT": true });
 			} else {
@@ -1070,28 +1069,14 @@ var indigo_sequencer = {
 		}
 	},
 	
-	wait: function(seconds) {
-		var result = indigo_set_timer(indigo_sequencer_next_ok_handler, seconds);
+	wait: function(delay) {
+		var result = indigo_set_timer(indigo_sequencer_next_ok_handler, delay);
+		var utc = indigo_delay_to_utc(delay);
 		if (result >= 0) {
 			this.wait_for_timer = result;
-			indigo_send_message("Suspended for " + seconds + " second(s)");
+			indigo_send_message("Suspended for " + delay + "s (until " + utc + " UTC)");
 		} else {
-			this.failure("Can't schedule timer in " + seconds + " second(s)");
-		}
-	},
-
-	wait_until: function(time) {
-		var result;
-		if (typeof time === "number") {
-			result = indigo_set_timer_at(indigo_sequencer_next_ok_handler, time);
-		} else {
-			result = indigo_set_timer_at_utc(indigo_sequencer_next_ok_handler, time);
-		}
-		if (result >= 0) {
-			this.wait_for_timer = result;
-			indigo_send_message("Suspended until " + time + " UTC");
-		} else {
-			this.failure("Can't schedule timer at " + time + " UTC");
+			this.failure("Can't schedule timer in " + delay + " s (at " + utc + " UTC)");
 		}
 	},
 
@@ -1101,13 +1086,7 @@ var indigo_sequencer = {
 	},
 
 	break_at: function(time) {
-		var result;
-		if (typeof time === "number") {
-			result = indigo_local_time_diff(time);
-		} else {
-			result = indigo_utc_diff(time);
-		}
-		if (result <= 0) {
+		if (indigo_time_to_delay(time) == 0) {
 			this.skip_to_resume_point = true;
 			indigo_send_message("Break executed");
 		}

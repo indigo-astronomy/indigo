@@ -47,11 +47,12 @@ function indigo_update_switch_property(device_name, property_name, items, state,
 function indigo_update_light_property(device_name, property_name, items, state, message)
 function indigo_delete_property(device_name, property_name, message)
 function indigo_set_timer(function, delay);
-function indigo_set_timer_at(function, local_time);
-function indigo_set_timer_at_utc(function, utc);
-function indigo_local_time_diff(utc);
-function indigo_utc_diff(utc);
 function indigo_cancel_timer(timer);
+function indigo_utc_to_time(utc);
+function indigo_utc_to_delay(utc);
+function indigo_time_to_delay(time);
+function indigo_delay_to_utc(delay);
+function indigo_time_to_utc(time);
 ```
 
 where ``message`` is any string, ``device`` is device name, ``property`` is property name,  ``items`` is dictionary with item name/value pairs.
