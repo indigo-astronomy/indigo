@@ -832,6 +832,19 @@ static duk_ret_t delete_property(duk_context *ctx) {
 	return 0;
 }
 
+static duk_ret_t dtos(duk_context *ctx) {
+	const double value = duk_require_number(ctx, 0);
+	const char *format = duk_get_string(ctx, 1);
+	duk_push_string(ctx, indigo_dtos(value, format));
+	return 1;
+}
+
+static duk_ret_t stod(duk_context *ctx) {
+	const char *value = duk_get_string(ctx, 0);
+	duk_push_number(ctx, indigo_stod((char *)value));
+	return 1;
+}
+
 // function indigo_set_timer(function, delay);
 
 static void timer_handler(indigo_device *device, void *data) {
@@ -1143,6 +1156,10 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_update_light_property");
 			duk_push_c_function(PRIVATE_DATA->ctx, delete_property, 3);
 			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_delete_property");
+			duk_push_c_function(PRIVATE_DATA->ctx, dtos, 2);
+			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_dtos");
+			duk_push_c_function(PRIVATE_DATA->ctx, stod, 1);
+			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_stod");
 			duk_push_c_function(PRIVATE_DATA->ctx, set_timer, 2);
 			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_set_timer");
 			duk_push_c_function(PRIVATE_DATA->ctx, utc_to_time, 1);

@@ -46,6 +46,8 @@ function indigo_update_number_property(device_name, property_name, items, state,
 function indigo_update_switch_property(device_name, property_name, items, state, message)
 function indigo_update_light_property(device_name, property_name, items, state, message)
 function indigo_delete_property(device_name, property_name, message)
+function indigo_dtos(value, format);
+function indigo_stod(value);
 function indigo_set_timer(function, delay);
 function indigo_cancel_timer(timer);
 function indigo_utc_to_time(utc);
