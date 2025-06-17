@@ -16,6 +16,8 @@ function Sequence(name) {
 	this.exposure = 0;
 	this.sequence = [];
 	this.reset_loop_content_state = true;
+	this.warn_break_at_12 = true;
+	this.warn_wait_until_12 = true;
 }
 
 Sequence.prototype.enable_reset_loop_content_state = function() {
@@ -60,12 +62,16 @@ Sequence.prototype.recovery_point = function() {
 };
 
 Sequence.prototype.wait = function(delay) {
-	this.sequence.push({ execute: 'wait(' + delay + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'wait(' + delay + ',' + false + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.wait_until = function(time) {
 	var delay = (typeof time === 'string') ? indigo_utc_to_delay(time) : indigo_time_to_delay(time);
-	this.sequence.push({ execute: 'wait(' + delay + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	if (this.warn_wait_until_12 && delay > 12 * 60 * 60) {
+		indigo_send_message("Possible error - 'wait_until' will block for more than 12 hours!");
+		this.warn_wait_until_12 = false;
+	}
+	this.sequence.push({ execute: 'wait(' + delay + ',' + true + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.continue_on_failure = function() {
@@ -82,6 +88,11 @@ Sequence.prototype.abort_on_failure = function() {
 
 Sequence.prototype.break_at = function(time) {
 	var time = (typeof time === 'string') ? indigo_utc_to_time(time) : time;
+	if (this.warn_break_at_12 && indigo_time_to_delay(time) > 12 * 60 * 60) {
+		indigo_send_message("Possible error - 'break_at' will fire in more than 12 hours!");
+		this.warn_break_at_12 = false;
+	}
+
 	this.sequence.push({ execute: 'break_at(' + time + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
@@ -1069,14 +1080,14 @@ var indigo_sequencer = {
 		}
 	},
 	
-	wait: function(delay) {
+	wait: function(delay, until) {
 		var result = indigo_set_timer(indigo_sequencer_next_ok_handler, delay);
 		var utc = indigo_delay_to_utc(delay);
 		if (result >= 0) {
 			this.wait_for_timer = result;
-			indigo_send_message("Suspended for " + delay + "s (until " + utc + " UTC)");
+			indigo_send_message("Suspended " + (until ? "until " + utc + " UTC" : "for " + delay + "s"));
 		} else {
-			this.failure("Can't schedule timer in " + delay + " s (at " + utc + " UTC)");
+			this.failure("Can't schedule timer " + (until ? "at " + utc + " UTC" : "in " + delay + "s"));
 		}
 	},
 
