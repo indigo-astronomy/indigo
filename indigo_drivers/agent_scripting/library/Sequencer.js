@@ -92,8 +92,12 @@ Sequence.prototype.break_at = function(time) {
 		indigo_send_message("Possible error - 'break_at' will fire in more than 12 hours!");
 		this.warn_break_at_12 = false;
 	}
-
 	this.sequence.push({ execute: 'break_at(' + time + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
+Sequence.prototype.break_at_ha = function(limit) {
+	var limit = (typeof limit === 'string') ? indigo_stod(limit) : limit;
+	this.sequence.push({ execute: 'break_at_ha(' + limit + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.resume_point = function() {
@@ -1101,6 +1105,21 @@ var indigo_sequencer = {
 		if (indigo_time_to_delay(time) == 0) {
 			this.skip_to_resume_point = true;
 			indigo_send_message("Break executed");
+		}
+		indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
+	},
+
+	break_at_ha: function(limit) {
+		var agent = indigo_devices[this.devices[MOUNT_AGENT]];
+		if (agent != null) {
+			var property = agent.AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY;
+			if (property != null) {
+				var ha = property.items.HA;
+				if ((limit < 12 && ha < 12 && ha > limit) || (limit > 12 && ((ha > 12 &&  ha > limit) || (ha < 12 && ha + 24 > limit)))) {
+					this.skip_to_resume_point = true;
+					indigo_send_message("Break executed");
+				}
+			}
 		}
 		indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
 	},
