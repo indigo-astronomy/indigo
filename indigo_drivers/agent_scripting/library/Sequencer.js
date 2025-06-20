@@ -959,7 +959,7 @@ var indigo_sequencer = {
 		var items = { };
 		items[item] = value;
 		this.wait_for_device = device;
-		this.wait_for_property = property_name;
+		this.wait_for_property = this.wait_for_property == null ? property_name : this.wait_for_property;
 		this.wait_for_property_state = state != null ? state : "Ok";
 		indigo_change_switch_property(device, property_name, items);
 	},
@@ -1009,7 +1009,7 @@ var indigo_sequencer = {
 			return;
 		}
 		this.wait_for_device = device;
-		this.wait_for_property = property_name;
+		this.wait_for_property = this.wait_for_property == null ? property_name : this.wait_for_property;
 		indigo_change_text_property(device, property_name, items);
 	},
 
@@ -1050,7 +1050,7 @@ var indigo_sequencer = {
 			return;
 		}
 		this.wait_for_device = device;
-		this.wait_for_property = property_name;
+		this.wait_for_property = this.wait_for_property == null ? property_name : this.wait_for_property;
 		indigo_change_number_property(device, property_name, items);
 	},
 	
@@ -1400,7 +1400,18 @@ var indigo_sequencer = {
 	},
 
 	stop_guiding: function() {
-		this.select_switch(this.devices[GUIDER_AGENT], "AGENT_ABORT_PROCESS", "ABORT");
+		var agent = this.devices[GUIDER_AGENT];
+		var property = indigo_devices[agent].AGENT_START_PROCESS;
+		if (property != null) {
+			if (property.state == "Busy") {
+				this.wait_for_property = "AGENT_START_PROCESS";
+				this.select_switch(this.devices[GUIDER_AGENT], "AGENT_ABORT_PROCESS", "ABORT");
+			} else {
+				indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
+			}
+		} else {
+			this.failure("There is no AGENT_START_PROCESS on " + agent);
+		}
 	},
 
 	clear_guider_selection: function() {
