@@ -1,0 +1,304 @@
+# SPDX-License-Identifier: CC0-1.0
+proxy_worker_sources = []
+libcamera_public_sources = files([
+    'camera.cpp',
+    'camera_manager.cpp',
+    'color_space.cpp',
+    'controls.cpp',
+    'fence.cpp',
+    'framebuffer.cpp',
+    'framebuffer_allocator.cpp',
+    'geometry.cpp',
+    'orientation.cpp',
+    'pixel_format.cpp',
+    'request.cpp',
+    'stream.cpp',
+    'transform.cpp',
+])
+
+libcamera_internal_sources = files([
+    'bayer_format.cpp',
+    'byte_stream_buffer.cpp',
+    'camera_controls.cpp',
+    'camera_lens.cpp',
+    'control_serializer.cpp',
+    'control_validator.cpp',
+    'converter.cpp',
+    'debug_controls.cpp',
+    'delayed_controls.cpp',
+    'device_enumerator.cpp',
+    'device_enumerator_sysfs.cpp',
+    'dma_buf_allocator.cpp',
+    'formats.cpp',
+    'ipa_controls.cpp',
+    'ipa_data_serializer.cpp',
+    'ipa_interface.cpp',
+    'ipa_manager.cpp',
+    'ipa_module.cpp',
+    'ipa_proxy.cpp',
+    'ipc_pipe.cpp',
+    'ipc_pipe_unixsocket.cpp',
+    'ipc_unixsocket.cpp',
+    'mapped_framebuffer.cpp',
+    'matrix.cpp',
+    'media_device.cpp',
+    'media_object.cpp',
+    'pipeline_handler.cpp',
+    'process.cpp',
+    'pub_key.cpp',
+    'shared_mem_object.cpp',
+    'source_paths.cpp',
+    'sysfs.cpp',
+    'v4l2_device.cpp',
+    'v4l2_pixelformat.cpp',
+    'v4l2_subdevice.cpp',
+    'v4l2_videodevice.cpp',
+    'vector.cpp',
+    'api.c', 
+    'reader.c',
+    'scanner.c', 
+    'parser.c',
+    'loader.c', 
+    'writer.c', 
+    'emitter.c', 
+    'dumper.c',
+    'yaml_parser.cpp',
+    '../ipa/rpi/vc4/vc4.cpp',
+    '../ipa/rpi/common/ipa_base.cpp',
+    '../ipa/rpi/cam_helper/cam_helper.cpp',
+    '../ipa/rpi/controller/algorithm.cpp',
+    '../ipa/rpi/controller/controller.cpp',
+    '../ipa/rpi/controller/device_status.cpp',
+    '../ipa/rpi/controller/histogram.cpp',
+    '../ipa/rpi/controller/rpi/af.cpp',
+    '../ipa/rpi/controller/rpi/agc.cpp',
+    '../ipa/rpi/controller/rpi/agc_channel.cpp',
+    '../ipa/rpi/controller/rpi/alsc.cpp',
+    '../ipa/rpi/controller/rpi/awb.cpp',
+    '../ipa/rpi/controller/rpi/black_level.cpp',
+    '../ipa/rpi/controller/rpi/cac.cpp',
+    '../ipa/rpi/controller/rpi/ccm.cpp',
+    '../ipa/rpi/controller/rpi/contrast.cpp',
+    '../ipa/rpi/controller/rpi/denoise.cpp',
+    '../ipa/rpi/controller/rpi/dpc.cpp',
+    '../ipa/rpi/controller/rpi/geq.cpp',
+    '../ipa/rpi/controller/rpi/hdr.cpp',
+    '../ipa/rpi/controller/rpi/lux.cpp',
+    '../ipa/rpi/controller/rpi/noise.cpp',
+    '../ipa/rpi/controller/rpi/saturation.cpp',
+    '../ipa/rpi/controller/rpi/sdn.cpp',
+    '../ipa/rpi/controller/rpi/sharpen.cpp',
+    '../ipa/rpi/controller/rpi/tonemap.cpp',
+    '../ipa/rpi/cam_helper/cam_helper.cpp',
+    '../ipa/rpi/cam_helper/cam_helper_ov5647.cpp',
+    '../ipa/rpi/cam_helper/cam_helper_imx219.cpp',
+    '../ipa/rpi/cam_helper/cam_helper_imx283.cpp',
+    '../ipa/rpi/cam_helper/cam_helper_imx290.cpp',
+    '../ipa/rpi/cam_helper/cam_helper_imx296.cpp',
+    '../ipa/rpi/cam_helper/cam_helper_imx415.cpp',
+    '../ipa/rpi/cam_helper/cam_helper_imx477.cpp',
+    '../ipa/rpi/cam_helper/cam_helper_imx519.cpp',
+    '../ipa/rpi/cam_helper/cam_helper_imx708.cpp',
+    '../ipa/rpi/cam_helper/cam_helper_ov64a40.cpp',
+    '../ipa/rpi/cam_helper/cam_helper_ov7251.cpp',
+    '../ipa/rpi/cam_helper/cam_helper_ov9281.cpp',
+    '../ipa/rpi/cam_helper/md_parser_smia.cpp',
+    '../ipa/libipa/agc_mean_luminance.cpp',
+    '../ipa/libipa/algorithm.cpp',
+    '../ipa/libipa/awb_bayes.cpp',
+    '../ipa/libipa/awb_grey.cpp',
+    '../ipa/libipa/awb.cpp',
+    '../ipa/libipa/camera_sensor_helper.cpp',
+    '../ipa/libipa/colours.cpp',
+    '../ipa/libipa/exposure_mode_helper.cpp',
+    '../ipa/libipa/fc_queue.cpp',
+    '../ipa/libipa/fixedpoint.cpp',
+    '../ipa/libipa/histogram.cpp',
+    '../ipa/libipa/interpolator.cpp',
+    '../ipa/libipa/lsc_polynomial.cpp',
+    '../ipa/libipa/lux.cpp',
+    '../ipa/libipa/module.cpp',
+    '../ipa/libipa/pwl.cpp',
+])
+
+##libcamera_internal_sources += rpi_ipa_common_sources
+libcamera_internal_sources += proxy_worker_sources 
+libipa_includes = include_directories('../ipa/')
+rpi_includes = include_directories('../ipa/rpi')
+controller_includes = include_directories('../ipa/rpi/controller/')
+
+
+includes = [
+    libcamera_includes,
+    libipa_includes,
+    rpi_includes
+]
+
+includes += include_directories(
+    '..',
+    '../ipa',
+    '../ipa/rpi',
+    '../ipa/rpi/vc4',
+    '../ipa/rpi/controller',
+    '../ipa/rpi/controller/rpi',
+    '../ipa/rpi/common',
+)
+
+libcamera_deps = []
+
+libatomic = cc.find_library('atomic', required : false)
+libthreads = dependency('threads')
+
+subdir('base')
+subdir('converter')
+subdir('ipa')
+subdir('pipeline')
+subdir('proxy')
+subdir('sensor')
+subdir('software_isp')
+
+null_dep = dependency('', required : false)
+
+# TODO: Use dependency('dl') when updating to meson 0.62.0 or newer.
+libdl = null_dep
+if not cc.has_function('dlopen')
+    libdl = cc.find_library('dl')
+endif
+libudev = dependency('libudev', required : get_option('udev'))
+libyaml = dependency('yaml-0.1', required : false)
+
+# Use one of gnutls or libcrypto (provided by OpenSSL), trying gnutls first.
+libcrypto = dependency('gnutls', required : false)
+if libcrypto.found()
+    config_h.set('HAVE_GNUTLS', 0)
+else
+    libcrypto = dependency('libcrypto', required : false)
+    if libcrypto.found()
+        config_h.set('HAVE_CRYPTO', 0)
+    endif
+endif
+
+if not libcrypto.found()
+    warning('Neither gnutls nor libcrypto found, all IPA modules will be isolated')
+    summary({'IPA modules signed with': 'None (modules will run isolated)'},
+            section : 'Configuration')
+else
+    summary({'IPA modules signed with' : libcrypto.name()}, section : 'Configuration')
+endif
+
+
+if libudev.found()
+    config_h.set('HAVE_LIBUDEV', 1)
+    libcamera_internal_sources += files([
+        'device_enumerator_udev.cpp',
+    ])
+endif
+
+# Fallback to a subproject if libyaml isn't found, as it's not packaged in AOSP.
+if not libyaml.found()
+    cmake = import('cmake')
+
+    libyaml_vars = cmake.subproject_options()
+    libyaml_vars.add_cmake_defines({'CMAKE_POSITION_INDEPENDENT_CODE': 'ON'})
+    libyaml_vars.append_compile_args('c', '-Wno-unused-value')
+    libyaml_wrap = cmake.subproject('libyaml', options : libyaml_vars)
+    libyaml = libyaml_wrap.dependency('yaml')
+endif
+
+control_sources = []
+
+controls_mode_files = {
+    'controls': [
+        controls_files,
+        'control_ids.cpp',
+    ],
+    'properties': [
+        properties_files,
+        'property_ids.cpp',
+    ],
+}
+
+foreach mode, inout_files : controls_mode_files
+    input_files = inout_files[0]
+    output_file = inout_files[1]
+
+    template_file = files('control_ids.cpp.in')
+    ranges_file = files('control_ranges.yaml')
+
+    control_sources += custom_target(mode + '_ids_cpp',
+                                     input : input_files,
+                                     output : output_file,
+                                     command : [gen_controls, '-o', '@OUTPUT@',
+                                                '--mode', mode, '-t', template_file,
+                                                '-r', ranges_file, '@INPUT@'],
+                                     env : py_build_env)
+endforeach
+
+libcamera_public_sources += control_sources
+
+gen_version = meson.project_source_root() / 'utils' / 'gen-version.sh'
+
+# Use vcs_tag() and not configure_file() or run_command(), to ensure that the
+# version gets updated with every ninja build and not just at meson setup time.
+version_cpp = vcs_tag(command : [gen_version, meson.project_build_root(), meson.project_source_root()],
+                      input : 'version.cpp.in',
+                      output : 'version.cpp',
+                      fallback : meson.project_version())
+
+libcamera_public_sources += version_cpp
+
+if ipa_sign_module
+    ipa_pub_key_cpp = custom_target('ipa_pub_key_cpp',
+                                    input : [ipa_priv_key, 'ipa_pub_key.cpp.in'],
+                                    output : 'ipa_pub_key.cpp',
+                                    command : [gen_ipa_pub_key, '@INPUT@', '@OUTPUT@'])
+
+    libcamera_internal_sources += ipa_pub_key_cpp
+endif
+
+libcamera_deps += [
+    libatomic,
+    libudev,
+   ]
+
+# We add '/' to the build_rpath as a 'safe' path to act as a boolean flag.
+# The build_rpath is stripped at install time by meson, so we determine at
+# runtime if the library is running from an installed location by checking
+# for the presence or abscence of the dynamic tag.
+
+libcamera = static_library('libcamera',
+                           [
+                               libcamera_public_headers,
+                               libcamera_public_sources,
+                               libcamera_ipa_headers,
+                               libcamera_internal_headers,
+                               libcamera_internal_sources,
+                               libcamera_base_headers,
+                               libcamera_base_internal_sources,
+                               libcamera_base_public_sources
+                           ],
+                           #version : ,
+                           #soversion : '',
+                           name_prefix : '',
+                           install : true,
+                           include_directories : includes,
+                           build_rpath : '/',
+                           dependencies : libcamera_deps)
+
+libcamera_public = declare_dependency(sources : [
+                                          libcamera_public_headers,
+                                      ],
+                                      include_directories : libcamera_includes,
+                                      #dependencies : libcamera_base_deps,
+                                      link_with : libcamera)
+
+# Internal dependency for components and plugins which can use private APIs
+libcamera_private = declare_dependency(sources : [
+                                           libcamera_ipa_headers,
+                                       ],
+                                       dependencies : [
+                                           libcamera_public,
+                                           #libcamera_base_private,
+                                       ])
+
+subdir('proxy/worker')

@@ -2,7 +2,7 @@ ARCH := $(shell uname -m)
 OS := $(shell uname -s)
 
 ifeq ($(OS),Linux)
-  ifneq (,$(filter $(ARCH),aarch64 armv7l))
+  ifneq (,$(filter $(ARCH),aarch64 ))
     CCD_RPI := 1
   endif
 endif

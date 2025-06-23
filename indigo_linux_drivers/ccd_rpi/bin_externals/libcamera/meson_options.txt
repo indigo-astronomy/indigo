@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: CC0-1.0
+
+option('documentation',
+        type : 'feature',
+        value : 'auto',
+        description : 'Generate the project documentation')
+
+option('ipas',
+        type : 'array',
+        choices : [ 'rpi/vc4', ],
+        description : 'Select which IPA modules to build')
+
+option('pipelines',
+        type : 'array',
+    
+        choices : [
+            'rpi/vc4',
+        ],
+        description : 'Select which pipeline handlers to build. If this is set to "auto", all the pipelines applicable to the target architecture will be built. If this is set to "all", all the pipelines will be built. If both are selected then "all" will take precedence.')
+
+option('udev',
+       type : 'feature',
+       value : 'auto',
+       description : 'Enable udev support for hotplug')
+

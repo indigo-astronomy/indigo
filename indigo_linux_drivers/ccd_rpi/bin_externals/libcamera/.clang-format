@@ -1,0 +1,168 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# clang-format configuration file. Intended for clang-format >= 12.
+#
+# For more information, see:
+#
+#   Documentation/process/clang-format.rst
+#   https://clang.llvm.org/docs/ClangFormat.html
+#   https://clang.llvm.org/docs/ClangFormatStyleOptions.html
+#
+---
+Language: Cpp
+AccessModifierOffset: -8
+AlignAfterOpenBracket: Align
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
+AlignEscapedNewlines: Right
+AlignOperands: true
+AlignTrailingComments: false
+AllowAllParametersOfDeclarationOnNextLine: false
+AllowShortBlocksOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: InlineOnly
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+AlwaysBreakAfterDefinitionReturnType: None
+AlwaysBreakAfterReturnType: None
+AlwaysBreakBeforeMultilineStrings: false
+AlwaysBreakTemplateDeclarations: MultiLine
+BinPackArguments: true
+BinPackParameters: true
+BraceWrapping:
+  AfterClass: true
+  AfterControlStatement: false
+  AfterEnum: false
+  AfterFunction: true
+  AfterNamespace: false
+  AfterObjCDeclaration: false
+  AfterStruct: false
+  AfterUnion: false
+  AfterExternBlock: false
+  BeforeCatch: false
+  BeforeElse: false
+  IndentBraces: false
+  SplitEmptyFunction: true
+  SplitEmptyRecord: true
+  SplitEmptyNamespace: true
+BreakBeforeBinaryOperators: None
+BreakBeforeBraces: Custom
+BreakBeforeInheritanceComma: false
+BreakInheritanceList: BeforeColon
+BreakBeforeTernaryOperators: true
+BreakConstructorInitializers: BeforeColon
+BreakAfterJavaFieldAnnotations: false
+BreakStringLiterals: false
+ColumnLimit: 0
+CommentPragmas: '^ IWYU pragma:'
+CompactNamespaces: false
+ConstructorInitializerAllOnOneLineOrOnePerLine: false
+ConstructorInitializerIndentWidth: 8
+ContinuationIndentWidth: 8
+Cpp11BracedListStyle: false
+DerivePointerAlignment: false
+DisableFormat: false
+ExperimentalAutoDetectBinPacking: false
+FixNamespaceComments: true
+ForEachMacros:
+  - 'udev_list_entry_foreach'
+IncludeBlocks: Regroup
+IncludeCategories:
+  # Headers matching the name of the component are matched automatically.
+  # Priority 1
+  # Other library headers (explicit overrides to match before system headers)
+  - Regex:           '(<jpeglib.h>|<libudev.h>|<tiffio.h>|<xf86drm.h>|<xf86drmMode.h>|<yaml.h>)'
+    Priority:        9
+  # Qt includes (match before C++ standard library)
+  - Regex:           '<Q([A-Za-z0-9\-_])+>'
+    CaseSensitive:   true
+    Priority:        9
+  # Headers in <> with an extension. (+system libraries)
+  - Regex:           '<([A-Za-z0-9\-_])+\.h>'
+    Priority:        2
+  # System headers
+  - Regex:           '<sys/.*>'
+    Priority:        2
+  # C++ standard library includes (no extension)
+  - Regex:           '<([A-Za-z0-9\-_/])+>'
+    Priority:        2
+  # Linux headers, as a second group/subset of system headers
+  - Regex:           '<linux/.*>'
+    Priority:        3
+  # Headers for libcamera Base support
+  - Regex:           '<libcamera/base/private.h>'
+    Priority:        4
+  - Regex:           '<libcamera/base/.*\.h>'
+    Priority:        5
+  # Public API Headers for libcamera, which are not in a subdir (i.e. ipa/,internal/)
+  - Regex:           '<libcamera/([A-Za-z0-9\-_])+.h>'
+    Priority:        6
+  # IPA Interfaces
+  - Regex:           '<libcamera/ipa/.*\.h>'
+    Priority:        7
+  # libcamera Internal headers in ""
+  - Regex:           '"libcamera/internal/.*\.h"'
+    Priority:        8
+  # Other libraries headers with one group per library (.h or .hpp)
+  - Regex:           '<.*/.*\.hp*>'
+    Priority:        9
+  # local modular includes "path/file.h" (.h or .hpp)
+  - Regex:           '"(.*/)+.*\.hp*"'
+    Priority:        10
+  # Other local headers "file.h" with extension (.h or .hpp)
+  - Regex:           '".*.hp*"'
+    Priority:        11
+  # Any unmatched line, separated from the last group
+  - Regex:	     '"*"'
+    Priority:        100
+
+IncludeIsMainRegex: '(_test)?$'
+IndentCaseLabels: false
+IndentPPDirectives: None
+IndentWidth: 8
+IndentWrappedFunctionNames: false
+JavaScriptQuotes: Leave
+JavaScriptWrapImports: true
+KeepEmptyLinesAtTheStartOfBlocks: false
+MacroBlockBegin: ''
+MacroBlockEnd: ''
+MaxEmptyLinesToKeep: 1
+NamespaceIndentation: None
+ObjCBinPackProtocolList: Auto
+ObjCBlockIndentWidth: 8
+ObjCSpaceAfterProperty: true
+ObjCSpaceBeforeProtocolList: true
+
+# Taken from git's rules
+PenaltyBreakAssignment: 10
+PenaltyBreakBeforeFirstCallParameter: 30
+PenaltyBreakComment: 10
+PenaltyBreakFirstLessLess: 0
+PenaltyBreakString: 10
+PenaltyBreakTemplateDeclaration: 10
+PenaltyExcessCharacter: 100
+PenaltyReturnTypeOnItsOwnLine: 60
+
+PointerAlignment: Right
+ReflowComments: false
+SortIncludes: true
+SortUsingDeclarations: true
+SpaceAfterCStyleCast: false
+SpaceAfterTemplateKeyword: false
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeCpp11BracedList: false
+SpaceBeforeCtorInitializerColon: true
+SpaceBeforeInheritanceColon: true
+SpaceBeforeParens: ControlStatements
+SpaceBeforeRangeBasedForLoopColon: true
+SpaceInEmptyParentheses: false
+SpacesBeforeTrailingComments: 1
+SpacesInAngles: false
+SpacesInContainerLiterals: false
+SpacesInCStyleCastParentheses: false
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+Standard: Cpp11
+TabWidth: 8
+UseTab: Always
+...

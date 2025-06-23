@@ -70,6 +70,7 @@ enum {
 	HDR_CHANNEL = 44,
 	GAMMA = 45,
 	DEBUG_METADATA_ENABLE = 46,
+	FRAME_WALL_CLOCK = 47,
 };
 
 
@@ -252,6 +253,7 @@ extern const std::map<std::string, int32_t> HdrChannelNameValueMap;
 extern const Control<int32_t> HdrChannel;
 extern const Control<float> Gamma;
 extern const Control<bool> DebugMetadataEnable;
+extern const Control<int64_t> FrameWallClock;
 
 namespace draft {
 
@@ -357,6 +359,16 @@ enum {
 	BCM2835_STATS_OUTPUT = 20002,
 	SCALER_CROPS = 20003,
 	PISP_STATS_OUTPUT = 20004,
+	CNN_OUTPUT_TENSOR = 20005,
+	CNN_OUTPUT_TENSOR_INFO = 20006,
+	CNN_ENABLE_INPUT_TENSOR = 20007,
+	CNN_INPUT_TENSOR = 20008,
+	CNN_INPUT_TENSOR_INFO = 20009,
+	CNN_KPI_INFO = 20010,
+	SYNC_MODE = 20011,
+	SYNC_READY = 20012,
+	SYNC_TIMER = 20013,
+	SYNC_FRAMES = 20014,
 };
 
 
@@ -364,6 +376,23 @@ extern const Control<bool> StatsOutputEnable;
 extern const Control<Span<const uint8_t>> Bcm2835StatsOutput;
 extern const Control<Span<const Rectangle>> ScalerCrops;
 extern const Control<Span<const uint8_t>> PispStatsOutput;
+extern const Control<Span<const float>> CnnOutputTensor;
+extern const Control<Span<const uint8_t>> CnnOutputTensorInfo;
+extern const Control<bool> CnnEnableInputTensor;
+extern const Control<Span<const uint8_t>> CnnInputTensor;
+extern const Control<Span<const uint8_t>> CnnInputTensorInfo;
+extern const Control<Span<const int32_t, 2>> CnnKpiInfo;
+enum SyncModeEnum {
+	SyncModeOff = 0,
+	SyncModeServer = 1,
+	SyncModeClient = 2,
+};
+extern const std::array<const ControlValue, 3> SyncModeValues;
+extern const std::map<std::string, int32_t> SyncModeNameValueMap;
+extern const Control<int32_t> SyncMode;
+extern const Control<bool> SyncReady;
+extern const Control<int64_t> SyncTimer;
+extern const Control<int32_t> SyncFrames;
 
 } /* namespace rpi */
 

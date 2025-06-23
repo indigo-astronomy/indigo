@@ -37,7 +37,7 @@
 #include <indigo/indigo_driver_xml.h>
 
 #include "indigo_ccd_rpi.h"
-#if defined(__linux__) && (defined(__aarch64__) || defined(__arm__))
+#if defined(__linux__) && (defined(__aarch64__))
 
 #include <iomanip>
 #include <iostream>
@@ -707,14 +707,17 @@ void RPiCamera::StreamDimensions(Stream const *stream, uint32_t *w, uint32_t *h,
 		*stride = cfg.stride;
 }
 void RPiCamera::ConfigureStill(int width, int height, PixelFormat format) {
-    printf("Configuring still capture...\n");
+    INDIGO_DRIVER_DEBUG(DRIVER_NAME,"Configuring still capture...");
 
     StreamRole role = (m_isMonochrome || raw_bayer.find(format) != raw_bayer.end()) ? StreamRole::Raw : StreamRole::StillCapture;
     m_config = m_camera->generateConfiguration({ role });
+    INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Configuring camera for still capture with role: %s", role == StreamRole::Raw ? "Raw" : "StillCapture");
     if (width && height) {
         libcamera::Size size(width, height);
         m_config->at(0).size = size;
     }
+
+    INDIGO_DRIVER_DEBUG(DRIVER_NAME, " m_config->at(0).pixelFormat = format: %s", format.toString().c_str());
     m_config->at(0).pixelFormat = format;
     m_config->at(0).bufferCount = 1; // Default buffer count
 
@@ -724,7 +727,7 @@ void RPiCamera::ConfigureStill(int width, int height, PixelFormat format) {
 	else if (validation == CameraConfiguration::Adjusted)
         (DRIVER_NAME, "Stream configuration adjusted");
 
-    printf("Still capture setup complete\n");
+    INDIGO_DRIVER_DEBUG(DRIVER_NAME,"Still capture setup complete...");
 }
 
  int RPiCamera::StartCamera() {
@@ -832,6 +835,7 @@ int RPiCamera::ConfigureCamera()
         if(config_still->validate() == CameraConfiguration::Valid)
         {
             auto formats = config_still->at(0).formats().pixelformats();
+            
             m_pixelFormats.insert(m_pixelFormats.end(), formats.begin(), formats.end());
             m_config = std::move(config_still);
         }else {
@@ -1161,7 +1165,7 @@ static void rpi_report_error(indigo_device *device, indigo_property *property) {
 			            int frame_height = frame.second.height;
                         char description[64];
                         std::string strFormat = "RAW";
-                        strFormat += std::to_string(bayer_formats.find(format)->second);
+                        strFormat += std::to_string(raw_bayer.find(format)->second);
                         sprintf(description, "%s %dx%d", strFormat.c_str(), frame_width, frame_height);
                         sprintf(name, "%s_%d", strFormat.c_str(), frame.first.width);
                         indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, description, CCD_MODE_PROPERTY->count == 0);
