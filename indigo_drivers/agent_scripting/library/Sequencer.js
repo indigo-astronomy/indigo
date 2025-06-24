@@ -583,11 +583,11 @@ var indigo_sequencer = {
 	},
 	
 	on_update: function(property) {
-		if (this.sequence != null) {
-			if (property.device == this.devices[IMAGER_AGENT] && property.name == "AGENT_PAUSE_PROCESS" && property.state == "Busy" && property.items.PAUSE_AFTER_TRANSIT) {
-				indigo_flipper.devices = this.devices;
-				indigo_flipper.start(this.use_solver);
-			} else if (property.device == this.wait_for_device && property.name == this.wait_for_property) {
+		if (property.device == this.devices[IMAGER_AGENT] && property.name == "AGENT_PAUSE_PROCESS" && property.state == "Busy" && property.items.PAUSE_AFTER_TRANSIT) {
+			indigo_flipper.devices = this.devices;
+			indigo_flipper.start(this.use_solver);
+		} else if (this.sequence != null) {
+			if (property.device == this.wait_for_device && property.name == this.wait_for_property) {
 				indigo_log("wait_for '" + property.device + " → " + property.name + "' → " + property.state);
 				if (property.state == "Alert") {
 					this.wait_for_device = null;
