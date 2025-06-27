@@ -452,6 +452,7 @@ var indigo_flipper = {
 	waiting_for_slew: false,
 	waiting_for_sync_and_center: false,
 	waiting_for_guiding: false,
+	wait_for_settle_down: false,
 	resume_guiding: false,
 	use_solver: false,
 
@@ -464,6 +465,8 @@ var indigo_flipper = {
 			indigo_log("waiting_for_sync_and_center " + property.name + " → " + property.state);
 		} else if (this.waiting_for_guiding) {
 			indigo_log("waiting_for_guiding " + property.name + " → " + property.state);
+		} else if (this.wait_for_settle_down) {
+			indigo_log("wait_for_settle_down " + property.name + " → " + property.state);
 		}
 		if (this.waiting_for_transit && property.device == this.devices[MOUNT_AGENT] && property.name == "AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY") {
 			if (property.items.TIME_TO_TRANSIT <= 0) {
@@ -513,6 +516,11 @@ var indigo_flipper = {
 				delete indigo_event_handlers.indigo_flipper;
 				indigo_sequencer.abort();
 			} else if (property.state == "Busy") {
+				indigo_send_message("Settling down...");
+				this.wait_for_settle_down = true;
+			}
+		} else if (this.wait_for_settle_down && property.device == this.devices[GUIDER_AGENT] && property.name == "AGENT_GUIDER_STATS") {
+			if (property.items.FRAME > 3) {
 				delete indigo_event_handlers.indigo_flipper;
 				indigo_send_message("Meridian flip finished");
 				indigo_change_switch_property(this.devices[IMAGER_AGENT], "AGENT_PAUSE_PROCESS", { PAUSE_AFTER_TRANSIT: false});
