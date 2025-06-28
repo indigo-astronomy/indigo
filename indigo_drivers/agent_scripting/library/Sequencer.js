@@ -468,9 +468,17 @@ var indigo_flipper = {
 		else if (this.wait_for_settle_down)
 			indigo_log("wait_for_settle_down " + property.name + " → " + property.state);
 		if (this.waiting_for_transit && property.device == this.devices[MOUNT_AGENT] && property.name == "AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY") {
-			if (property.items.TIME_TO_TRANSIT <= 0) {
-				indigo_send_message("Meridian flip started");
+			if (property.items.FLIP_REQUIRED == 1) {
 				this.waiting_for_transit = false;
+				indigo_send_message("Meridian flip started");
+				this.resume_guiding = false;
+				var guider_agent = indigo_devices[this.devices[GUIDER_AGENT]];
+				if (guider_agent != null) {
+					var guider_process = guider_agent.AGENT_START_PROCESS;
+					if (guider_process.items.CALIBRATION_AND_GUIDING || guider_process.items.GUIDING) {
+						this.resume_guiding = true;
+					}
+				}
 				this.waiting_for_slew = true;
 				indigo_change_switch_property(this.devices[MOUNT_AGENT], "AGENT_START_PROCESS", { SLEW: true});
 			}
@@ -529,21 +537,16 @@ var indigo_flipper = {
 	
 	start: function(use_solver) {
 		var guider_agent = indigo_devices[this.devices[GUIDER_AGENT]];
-		if (guider_agent != null) {
-			var guider_process = guider_agent.AGENT_START_PROCESS;
-			if (guider_process.items.CALIBRATION_AND_GUIDING || guider_process.items.GUIDING) {
-				this.resume_guiding = true;
-			}
-		}
 		indigo_flipper.use_solver = use_solver;
 		indigo_event_handlers.indigo_flipper = indigo_flipper;
-		this.waiting_for_transit = true;
+		this.waiting_for_transit = false;
 		this.waiting_for_slew = false;
 		this.waiting_for_sync_and_center = false;
 		this.waiting_for_guiding = false;
 		indigo_send_message("Meridian flip waits for transit");
 		indigo_log("resume_guiding = " + this.resume_guiding);
 		indigo_log("use_solver = " + this.use_solver);
+		this.waiting_for_transit = true;
 	}
 };
 
