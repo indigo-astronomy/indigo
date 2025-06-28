@@ -543,6 +543,7 @@ var indigo_flipper = {
 		this.waiting_for_slew = false;
 		this.waiting_for_sync_and_center = false;
 		this.waiting_for_guiding = false;
+		this.wait_for_settle_down = false;
 		indigo_send_message("Meridian flip waits for transit");
 		indigo_log("resume_guiding = " + this.resume_guiding);
 		indigo_log("use_solver = " + this.use_solver);
