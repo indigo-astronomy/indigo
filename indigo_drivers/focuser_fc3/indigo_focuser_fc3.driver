@@ -181,6 +181,7 @@ driver fc3 {
 		}
 		inherited FOCUSER_TEMPERATURE {
 			hidden = false;
+			perm = INDIGO_RO_PERM;
 		}
 		inherited FOCUSER_SPEED {
 			on_change {

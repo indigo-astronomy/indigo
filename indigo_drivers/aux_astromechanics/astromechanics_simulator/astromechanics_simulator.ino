@@ -34,7 +34,7 @@ void loop() {
   if (Serial.available()) {
     String command = Serial.readStringUntil('#');
     if (command.equals("V")) {
-      Serial.print("17.34#\n");
+      Serial.print("17.34\n");
     }
   }
 }

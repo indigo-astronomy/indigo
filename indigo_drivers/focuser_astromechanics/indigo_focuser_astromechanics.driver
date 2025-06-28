@@ -1,0 +1,177 @@
+// Copyright (c) 2021-2025 CloudMakers, s. r. o.
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// ASTROMECHANICS Focuser driver definition
+
+driver astromechanics {
+	label = "ASTROMECHANICS Focuser";
+	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
+	copyright = "Copyright (c) 2021-2025 CloudMakers, s. r. o.";
+	version = 3;
+	serial;
+	// include { }
+	// define { }
+	data {
+		char response[16];
+	}
+	code {
+		static bool astromechanics_command(indigo_device *device, char *command, int response, ...) {
+			long result = indigo_uni_discard(PRIVATE_DATA->handle);
+			if (result >= 0) {
+				va_list args;
+				va_start(args, response);
+				result = indigo_uni_vprintf(PRIVATE_DATA->handle, command, args);
+				va_end(args);
+				if (result > 0 && response > 0) {
+					result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n#", "\n#", INDIGO_DELAY(1));
+				}
+			}
+			return result > 0;
+		}
+
+		static bool astromechanics_open(indigo_device *device) {
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 38400, INDIGO_LOG_DEBUG);
+			return PRIVATE_DATA->handle != NULL;
+		}
+
+		static void astromechanics_close(indigo_device *device) {
+			indigo_uni_close(&PRIVATE_DATA->handle);
+		}
+	}
+	// on_init { }
+	// on_shutdown { }
+	focuser {
+		name = "ASTROMECHANICS Focuser";
+		additional_instances = true;
+		// code { }
+		// on_timer { }
+		on_connect {
+			if (astromechanics_command(device, "P#", 16)) {
+				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = atoi(PRIVATE_DATA->response);
+			}
+		}
+		// on_disconnect { }
+		on_attach {
+			FOCUSER_SPEED_PROPERTY->hidden = true;
+			FOCUSER_ABORT_MOTION_PROPERTY->hidden = true;
+		}
+		// on_detach { }
+		number X_FOCUSER_APERTURE {
+			on_change {
+				if (!astromechanics_command(device, "A%02d#", 0, (int)X_FOCUSER_APERTURE_ITEM->number.value)) {
+					X_FOCUSER_APERTURE_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+			name = "X_FOCUSER_APERTURE";
+			group = FOCUSER_ADVANCED_GROUP;
+			label = "Aperture";
+			// handle_change = false;
+			// synchronized_change = false;
+			item X_FOCUSER_APERTURE {
+				name = "APERURE";
+				label = "Aperture";
+				value = 0;
+				min = 0;
+				max = 50;
+				step = 1;
+			}
+		}
+		inherited FOCUSER_STEPS {
+			on_change {
+				int position;
+				FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+				if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
+					position = (int)FOCUSER_POSITION_ITEM->number.value - (int)FOCUSER_STEPS_ITEM->number.value;
+					if (position < 0) {
+						position = 0;
+					}
+				} else {
+					position = (int)FOCUSER_POSITION_ITEM->number.value + (int)FOCUSER_STEPS_ITEM->number.value;
+					if (position > 9999) {
+						position = 9999;
+					}
+					}
+				if (astromechanics_command(device, "M%04d#", 0, position)) {
+					for (int i = 0; i < 50; i++) {
+						if (astromechanics_command(device, "P#", 16)) {
+							FOCUSER_POSITION_ITEM->number.value = position = atoi(PRIVATE_DATA->response);
+							if (FOCUSER_POSITION_ITEM->number.value == position) {
+								break;
+							} else {
+								indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+							}
+						} else {
+							FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+							break;
+						}
+						indigo_usleep(100000);
+					}
+				} else {
+					FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state;
+				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+			}
+			on_attach {
+				FOCUSER_STEPS_ITEM->number.min = 0;
+				FOCUSER_STEPS_ITEM->number.max = 9999;
+				FOCUSER_STEPS_ITEM->number.step = 1;
+			}
+			// on_detach { }
+		}
+		inherited FOCUSER_POSITION {
+			on_change {
+				int position;
+				position = (int)FOCUSER_POSITION_ITEM->number.target;
+				if (position < 0) {
+					position = 0;
+				} else if (position > 9999) {
+					position = 9999;
+				}
+				FOCUSER_POSITION_ITEM->number.target = position;
+				if (astromechanics_command(device, "M%04d#", 0, position)) {
+					for (int i = 0; i < 50; i++) {
+						if (astromechanics_command(device, "P#", 16)) {
+							FOCUSER_POSITION_ITEM->number.value = position = atoi(PRIVATE_DATA->response);
+							if (FOCUSER_POSITION_ITEM->number.value == position) {
+								break;
+							} else {
+								indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+							}
+						} else {
+							FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+							break;
+						}
+						indigo_usleep(100000);
+					}
+				} else {
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			on_attach {
+				FOCUSER_POSITION_ITEM->number.min = 0;
+				FOCUSER_POSITION_ITEM->number.max = 9999;
+				FOCUSER_POSITION_ITEM->number.step = 1;
+			}
+			// on_detach { }
+		}
+	}
+}

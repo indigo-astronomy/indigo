@@ -76,7 +76,7 @@
 | dome_talon6ror | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | focuser_asi | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
 | focuser_astroasis | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
-| focuser_astromechanics | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
+| focuser_astromechanics | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
 | focuser_dmfc | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
 | focuser_dsd | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | focuser_efa | 2️⃣ | ❌ No | ❌ No | ❌ No | |

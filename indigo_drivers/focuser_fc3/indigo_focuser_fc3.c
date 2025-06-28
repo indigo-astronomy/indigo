@@ -48,7 +48,6 @@ typedef struct {
 	indigo_timer *focuser_connection_handler_timer;
 	indigo_timer *focuser_backlash_handler_timer;
 	indigo_timer *focuser_reverse_motion_handler_timer;
-	indigo_timer *focuser_temperature_handler_timer;
 	indigo_timer *focuser_speed_handler_timer;
 	indigo_timer *focuser_steps_handler_timer;
 	indigo_timer *focuser_on_position_set_handler_timer;
@@ -207,7 +206,6 @@ static void focuser_connection_handler(indigo_device *device) {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_timer);
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_backlash_handler_timer);
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_reverse_motion_handler_timer);
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_temperature_handler_timer);
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_speed_handler_timer);
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_steps_handler_timer);
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_on_position_set_handler_timer);
@@ -247,13 +245,6 @@ static void focuser_reverse_motion_handler(indigo_device *device) {
 	}
 	//- focuser.FOCUSER_REVERSE_MOTION.on_change
 	indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-}
-
-static void focuser_temperature_handler(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
@@ -439,9 +430,6 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_REVERSE_MOTION_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_REVERSE_MOTION_PROPERTY, focuser_reverse_motion_handler, focuser_reverse_motion_handler_timer);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(FOCUSER_TEMPERATURE_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_TEMPERATURE_PROPERTY, focuser_temperature_handler, focuser_temperature_handler_timer);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_SPEED_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_SPEED_PROPERTY, focuser_speed_handler, focuser_speed_handler_timer);
