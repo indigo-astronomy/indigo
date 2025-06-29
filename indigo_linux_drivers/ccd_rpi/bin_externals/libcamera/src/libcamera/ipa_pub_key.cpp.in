@@ -1,0 +1,22 @@
+/* SPDX-License-Identifier: LGPL-2.1-or-later */
+/*
+ * Copyright (C) 2020, Laurent Pinchart <laurent.pinchart@ideasonboard.com>
+ *
+ * IPA module signing public key
+ *
+ * This file is auto-generated. Do not edit.
+ */
+
+#include "libcamera/internal/ipa_manager.h"
+
+namespace libcamera {
+
+#if HAVE_IPA_PUBKEY
+const uint8_t IPAManager::publicKeyData_[] = {
+	${ipa_key}
+};
+
+const PubKey IPAManager::pubKey_{ { IPAManager::publicKeyData_ } };
+#endif
+
+} /* namespace libcamera */

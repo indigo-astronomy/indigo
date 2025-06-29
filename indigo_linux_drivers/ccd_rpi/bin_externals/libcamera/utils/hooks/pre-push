@@ -1,0 +1,119 @@
+#!/bin/bash
+
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+# A hook script to prevent pushing unsuitable commits to the master or
+# integration branches. Criteria to determine unsuitable commits are listed
+# below.
+#
+# Information about the commits which are being pushed is supplied as lines to
+# the standard input in the form:
+#
+#   <local ref> <local sha1> <remote ref> <remote sha1>
+
+z40=0000000000000000000000000000000000000000
+
+remote_name="$1"
+remote_url="$2"
+
+while read -r local_ref local_sha remote_ref remote_sha
+do
+	case "$remote_ref" in
+	refs/heads/master)
+		;;
+	refs/heads/integration/*)
+		;;
+	*)
+		continue
+	esac
+
+	# If the remote branch gets deleted, there's nothing to check.
+	if [ "$local_sha" = $z40 ]
+	then
+		continue
+	fi
+
+	# Check if we are creating a new branch or updating an existing one.
+	if [ "$remote_sha" = $z40 ]
+	then
+		if [ "$remote_ref" = "refs/heads/master" ]
+		then
+			# There are known invalid commits in the full history,
+			# skip the checks if we are pushing the master branch
+			# (for instance to an empty repository).
+			continue
+		else
+			# We're pushing a new integration branch, check all
+			# commits on top of the master branch.
+			range="remotes/$remote_name/master..$local_sha"
+		fi
+	else
+		# Update to existing branch, examine new commits only.
+		range="$remote_sha..$local_sha"
+	fi
+
+	#
+	# Find invalid commits.
+	#
+	errors=0
+	for commit in $(git rev-list "$range")
+	do
+		msg=$(git cat-file commit "$commit")
+
+		# 1. The commit message shall not contain a local changelog.
+		if echo -E "$msg" | grep -q '^--- *$'
+		then
+			echo >&2 "Found local changelog in commit $commit"
+			errors=$((errors+1))
+		fi
+
+		# 2. The commit message shall have Signed-off-by lines
+		# corresponding the committer, author, and all co-developers.
+		committer=$(echo "$msg" | grep '^committer ' | head -1 | \
+				cut -d ' ' -f 2- | rev | cut -d ' ' -f 3- | rev)
+		if ! echo -E "$msg" | grep -F -q "Signed-off-by: ${committer}"
+		then
+			echo >&2 "Missing committer Signed-off-by in commit $commit"
+			errors=$((errors+1))
+		fi
+
+		author=$(echo "$msg" | grep '^author ' | head -1 | \
+				cut -d ' ' -f 2- | rev | cut -d ' ' -f 3- | rev)
+		if ! echo -E "$msg" | grep -F -q "Signed-off-by: ${author}"
+		then
+			echo >&2 "Missing author Signed-off-by in commit $commit"
+			errors=$((errors+1))
+		fi
+
+		while read -r codev
+		do
+			if ! echo -E "$msg" | grep -F -q "Signed-off-by: ${codev}"
+			then
+				echo >&2 "Missing co-developer '${codev}' Signed-off-by in commit $commit"
+				errors=$((errors+1))
+			fi
+		done < <(echo "$msg" | grep '^Co-developed-by: ' | cut -d ' ' -f 2-)
+
+		# 3. A Reviewed-by or Acked-by is required.
+		if ! echo -E "$msg" | grep -q '^\(Reviewed\|Acked\)-by: '
+		then
+			echo >&2 "No Reviewed-by or Acked-by in commit $commit"
+			errors=$((errors+1))
+		fi
+
+		# 4. The commit message shall not contain a Change-Id.
+		if echo -E "$msg" | grep -q '^Change-Id:'
+		then
+			echo >&2 "Found Change-Id in commit $commit"
+			errors=$((errors+1))
+		fi
+	done
+
+	if [ $errors != 0 ]
+	then
+		echo >&2 "Found $errors errors in $local_ref, not pushing"
+		exit 1
+	fi
+done
+
+exit 0

@@ -1,0 +1,61 @@
+/* SPDX-License-Identifier: LGPL-2.1-or-later */
+/*
+ * Copyright (C) 2019, Google Inc.
+ *
+ * {{mode|capitalize}} ID list
+ *
+ * This file is auto-generated. Do not edit.
+ */
+
+#pragma once
+
+#include <array>
+#include <map>
+#include <stdint.h>
+#include <string>
+
+#include <libcamera/controls.h>
+
+namespace libcamera {
+
+namespace {{mode}} {
+
+extern const ControlIdMap {{mode}};
+
+{%- for vendor, ctrls in controls -%}
+
+{% if vendor != 'libcamera' %}
+namespace {{vendor}} {
+
+#define LIBCAMERA_HAS_{{vendor|upper}}_VENDOR_{{mode|upper}}
+{%- endif %}
+
+{% if ctrls %}
+enum {
+{%- for ctrl in ctrls %}
+	{{ctrl.name|snake_case|upper}} = {{ctrl.id}},
+{%- endfor %}
+};
+{% endif %}
+
+{% for ctrl in ctrls -%}
+{% if ctrl.is_enum -%}
+enum {{ctrl.name}}Enum {
+{%- for enum in ctrl.enum_values %}
+	{{enum.name}} = {{enum.value}},
+{%- endfor %}
+};
+extern const std::array<const ControlValue, {{ctrl.enum_values_count}}> {{ctrl.name}}Values;
+extern const std::map<std::string, {{ctrl.type}}> {{ctrl.name}}NameValueMap;
+{% endif -%}
+extern const Control<{{ctrl.type}}> {{ctrl.name}};
+{% endfor -%}
+
+{% if vendor != 'libcamera' %}
+} /* namespace {{vendor}} */
+{% endif -%}
+
+{% endfor %}
+} /* namespace {{mode}} */
+
+} /* namespace libcamera */

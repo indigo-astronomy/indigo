@@ -1,0 +1,1284 @@
+
+#
+%YAML 1.1
+---
+# Unless otherwise stated, all controls are bi-directional, i.e. they can be
+# set through Request::controls() and returned out through Request::metadata().
+vendor: libcamera
+controls:
+  - AeEnable:
+      type: bool
+      direction: in
+      description: |
+        Enable or disable the AEGC algorithm. When this control is set to true,
+        both ExposureTimeMode and AnalogueGainMode are set to auto, and if this
+        control is set to false then both are set to manual.
+
+        If ExposureTimeMode or AnalogueGainMode are also set in the same
+        request as AeEnable, then the modes supplied by ExposureTimeMode or
+        AnalogueGainMode will take precedence.
+
+        \sa ExposureTimeMode AnalogueGainMode
+
+  - AeState:
+      type: int32_t
+      direction: out
+      description: |
+        Report the AEGC algorithm state.
+
+        The AEGC algorithm computes the exposure time and the analogue gain
+        to be applied to the image sensor.
+
+        The AEGC algorithm behaviour is controlled by the ExposureTimeMode and
+        AnalogueGainMode controls, which allow applications to decide how
+        the exposure time and gain are computed, in Auto or Manual mode,
+        independently from one another.
+
+        The AeState control reports the AEGC algorithm state through a single
+        value and describes it as a single computation block which computes
+        both the exposure time and the analogue gain values.
+
+        When both the exposure time and analogue gain values are configured to
+        be in Manual mode, the AEGC algorithm is quiescent and does not actively
+        compute any value and the AeState control will report AeStateIdle.
+
+        When at least the exposure time or analogue gain are configured to be
+        computed by the AEGC algorithm, the AeState control will report if the
+        algorithm has converged to stable values for all of the controls set
+        to be computed in Auto mode.
+
+        \sa AnalogueGainMode
+        \sa ExposureTimeMode
+
+      enum:
+        - name: AeStateIdle
+          value: 0
+          description: |
+            The AEGC algorithm is inactive.
+
+            This state is returned when both AnalogueGainMode and
+            ExposureTimeMode are set to Manual and the algorithm is not
+            actively computing any value.
+        - name: AeStateSearching
+          value: 1
+          description: |
+            The AEGC algorithm is actively computing new values, for either the
+            exposure time or the analogue gain, but has not converged to a
+            stable result yet.
+
+            This state is returned if at least one of AnalogueGainMode or
+            ExposureTimeMode is auto and the algorithm hasn't converged yet.
+
+            The AEGC algorithm converges once stable values are computed for
+            all of the controls set to be computed in Auto mode. Once the
+            algorithm converges the state is moved to AeStateConverged.
+        - name: AeStateConverged
+          value: 2
+          description: |
+            The AEGC algorithm has converged.
+
+            This state is returned if at least one of AnalogueGainMode or
+            ExposureTimeMode is Auto, and the AEGC algorithm has converged to a
+            stable value.
+
+            If the measurements move too far away from the convergence point
+            then the AEGC algorithm might start adjusting again, in which case
+            the state is moved to AeStateSearching.
+
+  # AeMeteringMode needs further attention:
+  # - Auto-generate max enum value.
+  # - Better handling of custom types.
+  - AeMeteringMode:
+      type: int32_t
+      direction: inout
+      description: |
+        Specify a metering mode for the AE algorithm to use.
+
+        The metering modes determine which parts of the image are used to
+        determine the scene brightness. Metering modes may be platform specific
+        and not all metering modes may be supported.
+      enum:
+        - name: MeteringCentreWeighted
+          value: 0
+          description: Centre-weighted metering mode.
+        - name: MeteringSpot
+          value: 1
+          description: Spot metering mode.
+        - name: MeteringMatrix
+          value: 2
+          description: Matrix metering mode.
+        - name: MeteringCustom
+          value: 3
+          description: Custom metering mode.
+
+  # AeConstraintMode needs further attention:
+  # - Auto-generate max enum value.
+  # - Better handling of custom types.
+  - AeConstraintMode:
+      type: int32_t
+      direction: inout
+      description: |
+        Specify a constraint mode for the AE algorithm to use.
+
+        The constraint modes determine how the measured scene brightness is
+        adjusted to reach the desired target exposure. Constraint modes may be
+        platform specific, and not all constraint modes may be supported.
+      enum:
+        - name: ConstraintNormal
+          value: 0
+          description: |
+            Default constraint mode.
+
+            This mode aims to balance the exposure of different parts of the
+            image so as to reach a reasonable average level. However, highlights
+            in the image may appear over-exposed and lowlights may appear
+            under-exposed.
+        - name: ConstraintHighlight
+          value: 1
+          description: |
+            Highlight constraint mode.
+
+            This mode adjusts the exposure levels in order to try and avoid
+            over-exposing the brightest parts (highlights) of an image.
+            Other non-highlight parts of the image may appear under-exposed.
+        - name: ConstraintShadows
+          value: 2
+          description: |
+            Shadows constraint mode.
+
+            This mode adjusts the exposure levels in order to try and avoid
+            under-exposing the dark parts (shadows) of an image. Other normally
+            exposed parts of the image may appear over-exposed.
+        - name: ConstraintCustom
+          value: 3
+          description: |
+            Custom constraint mode.
+
+  # AeExposureMode needs further attention:
+  # - Auto-generate max enum value.
+  # - Better handling of custom types.
+  - AeExposureMode:
+      type: int32_t
+      direction: inout
+      description: |
+        Specify an exposure mode for the AE algorithm to use.
+
+        The exposure modes specify how the desired total exposure is divided
+        between the exposure time and the sensor's analogue gain. They are
+        platform specific, and not all exposure modes may be supported.
+
+        When one of AnalogueGainMode or ExposureTimeMode is set to Manual,
+        the fixed values will override any choices made by AeExposureMode.
+
+        \sa AnalogueGainMode
+        \sa ExposureTimeMode
+
+      enum:
+        - name: ExposureNormal
+          value: 0
+          description: Default exposure mode.
+        - name: ExposureShort
+          value: 1
+          description: Exposure mode allowing only short exposure times.
+        - name: ExposureLong
+          value: 2
+          description: Exposure mode allowing long exposure times.
+        - name: ExposureCustom
+          value: 3
+          description: Custom exposure mode.
+
+  - ExposureValue:
+      type: float
+      direction: inout
+      description: |
+        Specify an Exposure Value (EV) parameter.
+
+        The EV parameter will only be applied if the AE algorithm is currently
+        enabled, that is, at least one of AnalogueGainMode and ExposureTimeMode
+        are in Auto mode.
+
+        By convention EV adjusts the exposure as log2. For example
+        EV = [-2, -1, -0.5, 0, 0.5, 1, 2] results in an exposure adjustment
+        of [1/4x, 1/2x, 1/sqrt(2)x, 1x, sqrt(2)x, 2x, 4x].
+
+        \sa AnalogueGainMode
+        \sa ExposureTimeMode
+
+  - ExposureTime:
+      type: int32_t
+      direction: inout
+      description: |
+        Exposure time for the frame applied in the sensor device.
+
+        This value is specified in micro-seconds.
+
+        This control will only take effect if ExposureTimeMode is Manual. If
+        this control is set when ExposureTimeMode is Auto, the value will be
+        ignored and will not be retained.
+
+        When reported in metadata, this control indicates what exposure time
+        was used for the current frame, regardless of ExposureTimeMode.
+        ExposureTimeMode will indicate the source of the exposure time value,
+        whether it came from the AE algorithm or not.
+
+        \sa AnalogueGain
+        \sa ExposureTimeMode
+
+  - ExposureTimeMode:
+      type: int32_t
+      direction: inout
+      description: |
+        Controls the source of the exposure time that is applied to the image
+        sensor.
+
+        When set to Auto, the AE algorithm computes the exposure time and
+        configures the image sensor accordingly. When set to Manual, the value
+        of the ExposureTime control is used.
+
+        When transitioning from Auto to Manual mode and no ExposureTime control
+        is provided by the application, the last value computed by the AE
+        algorithm when the mode was Auto will be used. If the ExposureTimeMode
+        was never set to Auto (either because the camera started in Manual mode,
+        or Auto is not supported by the camera), the camera should use a
+        best-effort default value.
+
+        If ExposureTimeModeManual is supported, the ExposureTime control must
+        also be supported.
+
+        Cameras that support manual control of the sensor shall support manual
+        mode for both ExposureTimeMode and AnalogueGainMode, and shall expose
+        the ExposureTime and AnalogueGain controls. If the camera also has an
+        AEGC implementation, both ExposureTimeMode and AnalogueGainMode shall
+        support both manual and auto mode. If auto mode is available, it shall
+        be the default mode. These rules do not apply to black box cameras
+        such as UVC cameras, where the available gain and exposure modes are
+        completely dependent on what the device exposes.
+
+        \par Flickerless exposure mode transitions
+
+        Applications that wish to transition from ExposureTimeModeAuto to direct
+        control of the exposure time without causing extra flicker can do so by
+        selecting an ExposureTime value as close as possible to the last value
+        computed by the auto exposure algorithm in order to avoid any visible
+        flickering.
+
+        To select the correct value to use as ExposureTime value, applications
+        should accommodate the natural delay in applying controls caused by the
+        capture pipeline frame depth.
+
+        When switching to manual exposure mode, applications should not
+        immediately specify an ExposureTime value in the same request where
+        ExposureTimeMode is set to Manual. They should instead wait for the
+        first Request where ExposureTimeMode is reported as
+        ExposureTimeModeManual in the Request metadata, and use the reported
+        ExposureTime to populate the control value in the next Request to be
+        queued to the Camera.
+
+        The implementation of the auto-exposure algorithm should equally try to
+        minimize flickering and when transitioning from manual exposure mode to
+        auto exposure use the last value provided by the application as starting
+        point.
+
+        1. Start with ExposureTimeMode set to Auto
+
+        2. Set ExposureTimeMode to Manual
+
+        3. Wait for the first completed request that has ExposureTimeMode
+        set to Manual
+
+        4. Copy the value reported in ExposureTime into a new request, and
+        submit it
+
+        5. Proceed to run manual exposure time as desired
+
+        \sa ExposureTime
+      enum:
+        - name: ExposureTimeModeAuto
+          value: 0
+          description: |
+            The exposure time will be calculated automatically and set by the
+            AE algorithm.
+
+            If ExposureTime is set while this mode is active, it will be
+            ignored, and its value will not be retained.
+
+            When transitioning from Manual to Auto mode, the AEGC should start
+            its adjustments based on the last set manual ExposureTime value.
+        - name: ExposureTimeModeManual
+          value: 1
+          description: |
+            The exposure time will not be updated by the AE algorithm.
+
+            When transitioning from Auto to Manual mode, the last computed
+            exposure value is used until a new value is specified through the
+            ExposureTime control. If an ExposureTime value is specified in the
+            same request where the ExposureTimeMode is changed from Auto to
+            Manual, the provided ExposureTime is applied immediately.
+
+  - AnalogueGain:
+      type: float
+      direction: inout
+      description: |
+        Analogue gain value applied in the sensor device.
+
+        The value of the control specifies the gain multiplier applied to all
+        colour channels. This value cannot be lower than 1.0.
+
+        This control will only take effect if AnalogueGainMode is Manual. If
+        this control is set when AnalogueGainMode is Auto, the value will be
+        ignored and will not be retained.
+
+        When reported in metadata, this control indicates what analogue gain
+        was used for the current request, regardless of AnalogueGainMode.
+        AnalogueGainMode will indicate the source of the analogue gain value,
+        whether it came from the AEGC algorithm or not.
+
+        \sa ExposureTime
+        \sa AnalogueGainMode
+
+  - AnalogueGainMode:
+      type: int32_t
+      direction: inout
+      description: |
+        Controls the source of the analogue gain that is applied to the image
+        sensor.
+
+        When set to Auto, the AEGC algorithm computes the analogue gain and
+        configures the image sensor accordingly. When set to Manual, the value
+        of the AnalogueGain control is used.
+
+        When transitioning from Auto to Manual mode and no AnalogueGain control
+        is provided by the application, the last value computed by the AEGC
+        algorithm when the mode was Auto will be used. If the AnalogueGainMode
+        was never set to Auto (either because the camera started in Manual mode,
+        or Auto is not supported by the camera), the camera should use a
+        best-effort default value.
+
+        If AnalogueGainModeManual is supported, the AnalogueGain control must
+        also be supported.
+
+        For cameras where we have control over the ISP, both ExposureTimeMode
+        and AnalogueGainMode are expected to support manual mode, and both
+        controls (as well as ExposureTimeMode and AnalogueGain) are expected to
+        be present. If the camera also has an AEGC implementation, both
+        ExposureTimeMode and AnalogueGainMode shall support both manual and
+        auto mode. If auto mode is available, it shall be the default mode.
+        These rules do not apply to black box cameras such as UVC cameras,
+        where the available gain and exposure modes are completely dependent on
+        what the hardware exposes.
+
+        The same procedure described for performing flickerless transitions in
+        the ExposureTimeMode control documentation can be applied to analogue
+        gain.
+
+        \sa ExposureTimeMode
+        \sa AnalogueGain
+      enum:
+        - name: AnalogueGainModeAuto
+          value: 0
+          description: |
+            The analogue gain will be calculated automatically and set by the
+            AEGC algorithm.
+
+            If AnalogueGain is set while this mode is active, it will be
+            ignored, and it will also not be retained.
+
+            When transitioning from Manual to Auto mode, the AEGC should start
+            its adjustments based on the last set manual AnalogueGain value.
+        - name: AnalogueGainModeManual
+          value: 1
+          description: |
+            The analogue gain will not be updated by the AEGC algorithm.
+
+            When transitioning from Auto to Manual mode, the last computed
+            gain value is used until a new value is specified through the
+            AnalogueGain control. If an AnalogueGain value is specified in the
+            same request where the AnalogueGainMode is changed from Auto to
+            Manual, the provided AnalogueGain is applied immediately.
+
+  - AeFlickerMode:
+      type: int32_t
+      direction: inout
+      description: |
+        Set the flicker avoidance mode for AGC/AEC.
+
+        The flicker mode determines whether, and how, the AGC/AEC algorithm
+        attempts to hide flicker effects caused by the duty cycle of artificial
+        lighting.
+
+        Although implementation dependent, many algorithms for "flicker
+        avoidance" work by restricting this exposure time to integer multiples
+        of the cycle period, wherever possible.
+
+        Implementations may not support all of the flicker modes listed below.
+
+        By default the system will start in FlickerAuto mode if this is
+        supported, otherwise the flicker mode will be set to FlickerOff.
+
+      enum:
+        - name: FlickerOff
+          value: 0
+          description: |
+            No flicker avoidance is performed.
+        - name: FlickerManual
+          value: 1
+          description: |
+            Manual flicker avoidance.
+
+            Suppress flicker effects caused by lighting running with a period
+            specified by the AeFlickerPeriod control.
+            \sa AeFlickerPeriod
+        - name: FlickerAuto
+          value: 2
+          description: |
+            Automatic flicker period detection and avoidance.
+
+            The system will automatically determine the most likely value of
+            flicker period, and avoid flicker of this frequency. Once flicker
+            is being corrected, it is implementation dependent whether the
+            system is still able to detect a change in the flicker period.
+            \sa AeFlickerDetected
+
+  - AeFlickerPeriod:
+      type: int32_t
+      direction: inout
+      description: |
+        Manual flicker period in microseconds.
+
+        This value sets the current flicker period to avoid. It is used when
+        AeFlickerMode is set to FlickerManual.
+
+        To cancel 50Hz mains flicker, this should be set to 10000 (corresponding
+        to 100Hz), or 8333 (120Hz) for 60Hz mains.
+
+        Setting the mode to FlickerManual when no AeFlickerPeriod has ever been
+        set means that no flicker cancellation occurs (until the value of this
+        control is updated).
+
+        Switching to modes other than FlickerManual has no effect on the
+        value of the AeFlickerPeriod control.
+
+        \sa AeFlickerMode
+
+  - AeFlickerDetected:
+      type: int32_t
+      direction: out
+      description: |
+        Flicker period detected in microseconds.
+
+        The value reported here indicates the currently detected flicker
+        period, or zero if no flicker at all is detected.
+
+        When AeFlickerMode is set to FlickerAuto, there may be a period during
+        which the value reported here remains zero. Once a non-zero value is
+        reported, then this is the flicker period that has been detected and is
+        now being cancelled.
+
+        In the case of 50Hz mains flicker, the value would be 10000
+        (corresponding to 100Hz), or 8333 (120Hz) for 60Hz mains flicker.
+
+        It is implementation dependent whether the system can continue to detect
+        flicker of different periods when another frequency is already being
+        cancelled.
+
+        \sa AeFlickerMode
+
+  - Brightness:
+      type: float
+      direction: inout
+      description: |
+        Specify a fixed brightness parameter.
+
+        Positive values (up to 1.0) produce brighter images; negative values
+        (up to -1.0) produce darker images and 0.0 leaves pixels unchanged.
+
+  - Contrast:
+      type: float
+      direction: inout
+      description:  |
+        Specify a fixed contrast parameter.
+
+        Normal contrast is given by the value 1.0; larger values produce images
+        with more contrast.
+
+  - Lux:
+      type: float
+      direction: out
+      description: |
+        Report an estimate of the current illuminance level in lux.
+
+        The Lux control can only be returned in metadata.
+
+  - AwbEnable:
+      type: bool
+      direction: inout
+      description: |
+        Enable or disable the AWB.
+
+        When AWB is enabled, the algorithm estimates the colour temperature of
+        the scene and computes colour gains and the colour correction matrix
+        automatically. The computed colour temperature, gains and correction
+        matrix are reported in metadata. The corresponding controls are ignored
+        if set in a request.
+
+        When AWB is disabled, the colour temperature, gains and correction
+        matrix are not updated automatically and can be set manually in
+        requests.
+
+        \sa ColourCorrectionMatrix
+        \sa ColourGains
+        \sa ColourTemperature
+
+  # AwbMode needs further attention:
+  # - Auto-generate max enum value.
+  # - Better handling of custom types.
+  - AwbMode:
+      type: int32_t
+      direction: inout
+      description: |
+        Specify the range of illuminants to use for the AWB algorithm.
+
+        The modes supported are platform specific, and not all modes may be
+        supported.
+      enum:
+        - name: AwbAuto
+          value: 0
+          description: Search over the whole colour temperature range.
+        - name: AwbIncandescent
+          value: 1
+          description: Incandescent AWB lamp mode.
+        - name: AwbTungsten
+          value: 2
+          description: Tungsten AWB lamp mode.
+        - name: AwbFluorescent
+          value: 3
+          description: Fluorescent AWB lamp mode.
+        - name: AwbIndoor
+          value: 4
+          description: Indoor AWB lighting mode.
+        - name: AwbDaylight
+          value: 5
+          description: Daylight AWB lighting mode.
+        - name: AwbCloudy
+          value: 6
+          description: Cloudy AWB lighting mode.
+        - name: AwbCustom
+          value: 7
+          description: Custom AWB mode.
+
+  - AwbLocked:
+      type: bool
+      direction: out
+      description: |
+        Report the lock status of a running AWB algorithm.
+
+        If the AWB algorithm is locked the value shall be set to true, if it's
+        converging it shall be set to false. If the AWB algorithm is not
+        running the control shall not be present in the metadata control list.
+
+        \sa AwbEnable
+
+  - ColourGains:
+      type: float
+      direction: inout
+      description: |
+        Pair of gain values for the Red and Blue colour channels, in that
+        order.
+
+        ColourGains can only be applied in a Request when the AWB is disabled.
+        If ColourGains is set in a request but ColourTemperature is not, the
+        implementation shall calculate and set the ColourTemperature based on
+        the ColourGains.
+
+        \sa AwbEnable
+        \sa ColourTemperature
+      size: [2]
+
+  - ColourTemperature:
+      type: int32_t
+      direction: out
+      description: |
+        ColourTemperature of the frame, in kelvin.
+
+        ColourTemperature can only be applied in a Request when the AWB is
+        disabled.
+
+        If ColourTemperature is set in a request but ColourGains is not, the
+        implementation shall calculate and set the ColourGains based on the
+        given ColourTemperature. If ColourTemperature is set (either directly,
+        or indirectly by setting ColourGains) but ColourCorrectionMatrix is not,
+        the ColourCorrectionMatrix is updated based on the ColourTemperature.
+
+        The ColourTemperature used to process the frame is reported in metadata.
+
+        \sa AwbEnable
+        \sa ColourCorrectionMatrix
+        \sa ColourGains
+
+  - Saturation:
+      type: float
+      direction: inout
+      description:  |
+        Specify a fixed saturation parameter.
+
+        Normal saturation is given by the value 1.0; larger values produce more
+        saturated colours; 0.0 produces a greyscale image.
+
+  - SensorBlackLevels:
+      type: int32_t
+      direction: out
+      description: |
+        Reports the sensor black levels used for processing a frame.
+
+        The values are in the order R, Gr, Gb, B. They are returned as numbers
+        out of a 16-bit pixel range (as if pixels ranged from 0 to 65535). The
+        SensorBlackLevels control can only be returned in metadata.
+      size: [4]
+
+  - Sharpness:
+      type: float
+      direction: inout
+      description:  |
+        Intensity of the sharpening applied to the image.
+
+        A value of 0.0 means no sharpening. The minimum value means
+        minimal sharpening, and shall be 0.0 unless the camera can't
+        disable sharpening completely. The default value shall give a
+        "reasonable" level of sharpening, suitable for most use cases.
+        The maximum value may apply extremely high levels of sharpening,
+        higher than anyone could reasonably want. Negative values are
+        not allowed. Note also that sharpening is not applied to raw
+        streams.
+
+  - FocusFoM:
+      type: int32_t
+      direction: out
+      description: |
+        Reports a Figure of Merit (FoM) to indicate how in-focus the frame is.
+
+        A larger FocusFoM value indicates a more in-focus frame. This singular
+        value may be based on a combination of statistics gathered from
+        multiple focus regions within an image. The number of focus regions and
+        method of combination is platform dependent. In this respect, it is not
+        necessarily aimed at providing a way to implement a focus algorithm by
+        the application, rather an indication of how in-focus a frame is.
+
+  - ColourCorrectionMatrix:
+      type: float
+      direction: inout
+      description: |
+        The 3x3 matrix that converts camera RGB to sRGB within the imaging
+        pipeline.
+
+        This should describe the matrix that is used after pixels have been
+        white-balanced, but before any gamma transformation. The 3x3 matrix is
+        stored in conventional reading order in an array of 9 floating point
+        values.
+
+        ColourCorrectionMatrix can only be applied in a Request when the AWB is 
+        disabled.
+
+        \sa AwbEnable
+        \sa ColourTemperature
+      size: [3,3]
+
+  - ScalerCrop:
+      type: Rectangle
+      direction: inout
+      description: |
+        Sets the image portion that will be scaled to form the whole of
+        the final output image.
+
+        The (x,y) location of this rectangle is relative to the
+        PixelArrayActiveAreas that is being used. The units remain native
+        sensor pixels, even if the sensor is being used in a binning or
+        skipping mode.
+
+        This control is only present when the pipeline supports scaling. Its
+        maximum valid value is given by the properties::ScalerCropMaximum
+        property, and the two can be used to implement digital zoom.
+
+  - DigitalGain:
+      type: float
+      direction: inout
+      description: |
+        Digital gain value applied during the processing steps applied
+        to the image as captured from the sensor.
+
+        The global digital gain factor is applied to all the colour channels
+        of the RAW image. Different pipeline models are free to
+        specify how the global gain factor applies to each separate
+        channel.
+
+        If an imaging pipeline applies digital gain in distinct
+        processing steps, this value indicates their total sum.
+        Pipelines are free to decide how to adjust each processing
+        step to respect the received gain factor and shall report
+        their total value in the request metadata.
+
+  - FrameDuration:
+      type: int64_t
+      direction: out
+      description: |
+        The instantaneous frame duration from start of frame exposure to start
+        of next exposure, expressed in microseconds.
+
+        This control is meant to be returned in metadata.
+
+  - FrameDurationLimits:
+      type: int64_t
+      direction: inout
+      description: |
+        The minimum and maximum (in that order) frame duration, expressed in
+        microseconds.
+
+        When provided by applications, the control specifies the sensor frame
+        duration interval the pipeline has to use. This limits the largest
+        exposure time the sensor can use. For example, if a maximum frame
+        duration of 33ms is requested (corresponding to 30 frames per second),
+        the sensor will not be able to raise the exposure time above 33ms.
+        A fixed frame duration is achieved by setting the minimum and maximum
+        values to be the same. Setting both values to 0 reverts to using the
+        camera defaults.
+
+        The maximum frame duration provides the absolute limit to the exposure
+        time computed by the AE algorithm and it overrides any exposure mode
+        setting specified with controls::AeExposureMode. Similarly, when a
+        manual exposure time is set through controls::ExposureTime, it also
+        gets clipped to the limits set by this control. When reported in
+        metadata, the control expresses the minimum and maximum frame durations
+        used after being clipped to the sensor provided frame duration limits.
+
+        \sa AeExposureMode
+        \sa ExposureTime
+
+        \todo Define how to calculate the capture frame rate by
+        defining controls to report additional delays introduced by
+        the capture pipeline or post-processing stages (ie JPEG
+        conversion, frame scaling).
+
+        \todo Provide an explicit definition of default control values, for
+        this and all other controls.
+
+      size: [2]
+
+  - SensorTemperature:
+      type: float
+      direction: out
+      description: |
+        Temperature measure from the camera sensor in Celsius.
+
+        This value is typically obtained by a thermal sensor present on-die or
+        in the camera module. The range of reported temperatures is device
+        dependent.
+
+        The SensorTemperature control will only be returned in metadata if a
+        thermal sensor is present.
+
+  - SensorTimestamp:
+      type: int64_t
+      direction: out
+      description: |
+        The time when the first row of the image sensor active array is exposed.
+
+        The timestamp, expressed in nanoseconds, represents a monotonically
+        increasing counter since the system boot time, as defined by the
+        Linux-specific CLOCK_BOOTTIME clock id.
+
+        The SensorTimestamp control can only be returned in metadata.
+
+        \todo Define how the sensor timestamp has to be used in the reprocessing
+        use case.
+
+  - AfMode:
+      type: int32_t
+      direction: inout
+      description: |
+        The mode of the AF (autofocus) algorithm.
+
+        An implementation may choose not to implement all the modes.
+
+      enum:
+        - name: AfModeManual
+          value: 0
+          description: |
+            The AF algorithm is in manual mode.
+
+            In this mode it will never perform any action nor move the lens of
+            its own accord, but an application can specify the desired lens
+            position using the LensPosition control. The AfState will always
+            report AfStateIdle.
+
+            If the camera is started in AfModeManual, it will move the focus
+            lens to the position specified by the LensPosition control.
+
+            This mode is the recommended default value for the AfMode control.
+            External cameras (as reported by the Location property set to
+            CameraLocationExternal) may use a different default value.
+        - name: AfModeAuto
+          value: 1
+          description: |
+            The AF algorithm is in auto mode.
+
+            In this mode the algorithm will never move the lens or change state
+            unless the AfTrigger control is used. The AfTrigger control can be
+            used to initiate a focus scan, the results of which will be
+            reported by AfState.
+
+            If the autofocus algorithm is moved from AfModeAuto to another mode
+            while a scan is in progress, the scan is cancelled immediately,
+            without waiting for the scan to finish.
+
+            When first entering this mode the AfState will report AfStateIdle.
+            When a trigger control is sent, AfState will report AfStateScanning
+            for a period before spontaneously changing to AfStateFocused or
+            AfStateFailed, depending on the outcome of the scan. It will remain
+            in this state until another scan is initiated by the AfTrigger
+            control. If a scan is cancelled (without changing to another mode),
+            AfState will return to AfStateIdle.
+        - name: AfModeContinuous
+          value: 2
+          description: |
+            The AF algorithm is in continuous mode.
+
+            In this mode the lens can re-start a scan spontaneously at any
+            moment, without any user intervention. The AfState still reports
+            whether the algorithm is currently scanning or not, though the
+            application has no ability to initiate or cancel scans, nor to move
+            the lens for itself.
+
+            However, applications can pause the AF algorithm from continuously
+            scanning by using the AfPause control. This allows video or still
+            images to be captured whilst guaranteeing that the focus is fixed.
+
+            When set to AfModeContinuous, the system will immediately initiate a
+            scan so AfState will report AfStateScanning, and will settle on one
+            of AfStateFocused or AfStateFailed, depending on the scan result.
+
+  - AfRange:
+      type: int32_t
+      direction: inout
+      description: |
+        The range of focus distances that is scanned.
+
+        An implementation may choose not to implement all the options here.
+      enum:
+        - name: AfRangeNormal
+          value: 0
+          description: |
+            A wide range of focus distances is scanned.
+
+            Scanned distances cover all the way from infinity down to close
+            distances, though depending on the implementation, possibly not
+            including the very closest macro positions.
+        - name: AfRangeMacro
+          value: 1
+          description: |
+            Only close distances are scanned.
+        - name: AfRangeFull
+          value: 2
+          description: |
+            The full range of focus distances is scanned.
+
+            This range is similar to AfRangeNormal but includes the very
+            closest macro positions.
+
+  - AfSpeed:
+      type: int32_t
+      direction: inout
+      description: |
+        Determine whether the AF is to move the lens as quickly as possible or
+        more steadily.
+
+        For example, during video recording it may be desirable not to move the
+        lens too abruptly, but when in a preview mode (waiting for a still
+        capture) it may be helpful to move the lens as quickly as is reasonably
+        possible.
+      enum:
+        - name: AfSpeedNormal
+          value: 0
+          description: Move the lens at its usual speed.
+        - name: AfSpeedFast
+          value: 1
+          description: Move the lens more quickly.
+
+  - AfMetering:
+      type: int32_t
+      direction: inout
+      description: |
+        The parts of the image used by the AF algorithm to measure focus.
+      enum:
+        - name: AfMeteringAuto
+          value: 0
+          description: |
+            Let the AF algorithm decide for itself where it will measure focus.
+        - name: AfMeteringWindows
+          value: 1
+          description: |
+            Use the rectangles defined by the AfWindows control to measure focus.
+
+            If no windows are specified the behaviour is platform dependent.
+
+  - AfWindows:
+      type: Rectangle
+      direction: inout
+      description: |
+        The focus windows used by the AF algorithm when AfMetering is set to
+        AfMeteringWindows.
+
+        The units used are pixels within the rectangle returned by the
+        ScalerCropMaximum property.
+
+        In order to be activated, a rectangle must be programmed with non-zero
+        width and height. Internally, these rectangles are intersected with the
+        ScalerCropMaximum rectangle. If the window becomes empty after this
+        operation, then the window is ignored. If all the windows end up being
+        ignored, then the behaviour is platform dependent.
+
+        On platforms that support the ScalerCrop control (for implementing
+        digital zoom, for example), no automatic recalculation or adjustment of
+        AF windows is performed internally if the ScalerCrop is changed. If any
+        window lies outside the output image after the scaler crop has been
+        applied, it is up to the application to recalculate them.
+
+        The details of how the windows are used are platform dependent. We note
+        that when there is more than one AF window, a typical implementation
+        might find the optimal focus position for each one and finally select
+        the window where the focal distance for the objects shown in that part
+        of the image are closest to the camera.
+
+      size: [n]
+
+  - AfTrigger:
+      type: int32_t
+      direction: in
+      description: |
+        Start an autofocus scan.
+
+        This control starts an autofocus scan when AfMode is set to AfModeAuto,
+        and is ignored if AfMode is set to AfModeManual or AfModeContinuous. It
+        can also be used to terminate a scan early.
+
+      enum:
+        - name: AfTriggerStart
+          value: 0
+          description: |
+            Start an AF scan.
+
+            Setting the control to AfTriggerStart is ignored if a scan is in
+            progress.
+        - name: AfTriggerCancel
+          value: 1
+          description: |
+            Cancel an AF scan.
+
+            This does not cause the lens to move anywhere else. Ignored if no
+            scan is in progress.
+
+  - AfPause:
+      type: int32_t
+      direction: in
+      description: |
+        Pause lens movements when in continuous autofocus mode.
+
+        This control has no effect except when in continuous autofocus mode
+        (AfModeContinuous). It can be used to pause any lens movements while
+        (for example) images are captured. The algorithm remains inactive
+        until it is instructed to resume.
+
+      enum:
+        - name: AfPauseImmediate
+          value: 0
+          description: |
+            Pause the continuous autofocus algorithm immediately.
+
+            The autofocus algorithm is paused whether or not any kind of scan
+            is underway. AfPauseState will subsequently report
+            AfPauseStatePaused. AfState may report any of AfStateScanning,
+            AfStateFocused or AfStateFailed, depending on the algorithm's state
+            when it received this control.
+        - name: AfPauseDeferred
+          value: 1
+          description: |
+            Pause the continuous autofocus algorithm at the end of the scan.
+
+            This is similar to AfPauseImmediate, and if the AfState is
+            currently reporting AfStateFocused or AfStateFailed it will remain
+            in that state and AfPauseState will report AfPauseStatePaused.
+
+            However, if the algorithm is scanning (AfStateScanning),
+            AfPauseState will report AfPauseStatePausing until the scan is
+            finished, at which point AfState will report one of AfStateFocused
+            or AfStateFailed, and AfPauseState will change to
+            AfPauseStatePaused.
+
+        - name: AfPauseResume
+          value: 2
+          description: |
+            Resume continuous autofocus operation.
+
+            The algorithm starts again from exactly where it left off, and
+            AfPauseState will report AfPauseStateRunning.
+
+  - LensPosition:
+      type: float
+      direction: inout
+      description: |
+        Set and report the focus lens position.
+
+        This control instructs the lens to move to a particular position and
+        also reports back the position of the lens for each frame.
+
+        The LensPosition control is ignored unless the AfMode is set to
+        AfModeManual, though the value is reported back unconditionally in all
+        modes.
+
+        This value, which is generally a non-integer, is the reciprocal of the
+        focal distance in metres, also known as dioptres. That is, to set a
+        focal distance D, the lens position LP is given by
+
+        \f$LP = \frac{1\mathrm{m}}{D}\f$
+
+        For example:
+
+        - 0 moves the lens to infinity.
+        - 0.5 moves the lens to focus on objects 2m away.
+        - 2 moves the lens to focus on objects 50cm away.
+        - And larger values will focus the lens closer.
+
+        The default value of the control should indicate a good general
+        position for the lens, often corresponding to the hyperfocal distance
+        (the closest position for which objects at infinity are still
+        acceptably sharp). The minimum will often be zero (meaning infinity),
+        and the maximum value defines the closest focus position.
+
+        \todo Define a property to report the Hyperfocal distance of calibrated
+        lenses.
+
+  - AfState:
+      type: int32_t
+      direction: out
+      description: |
+        The current state of the AF algorithm.
+
+        This control reports the current state of the AF algorithm in
+        conjunction with the reported AfMode value and (in continuous AF mode)
+        the AfPauseState value. The possible state changes are described below,
+        though we note the following state transitions that occur when the
+        AfMode is changed.
+
+        If the AfMode is set to AfModeManual, then the AfState will always
+        report AfStateIdle (even if the lens is subsequently moved). Changing
+        to the AfModeManual state does not initiate any lens movement.
+
+        If the AfMode is set to AfModeAuto then the AfState will report
+        AfStateIdle. However, if AfModeAuto and AfTriggerStart are sent
+        together then AfState will omit AfStateIdle and move straight to
+        AfStateScanning (and start a scan).
+
+        If the AfMode is set to AfModeContinuous then the AfState will
+        initially report AfStateScanning.
+
+      enum:
+        - name: AfStateIdle
+          value: 0
+          description: |
+            The AF algorithm is in manual mode (AfModeManual) or in auto mode
+            (AfModeAuto) and a scan has not yet been triggered, or an
+            in-progress scan was cancelled.
+        - name: AfStateScanning
+          value: 1
+          description: |
+            The AF algorithm is in auto mode (AfModeAuto), and a scan has been
+            started using the AfTrigger control.
+
+            The scan can be cancelled by sending AfTriggerCancel at which point
+            the algorithm will either move back to AfStateIdle or, if the scan
+            actually completes before the cancel request is processed, to one
+            of AfStateFocused or AfStateFailed.
+
+            Alternatively the AF algorithm could be in continuous mode
+            (AfModeContinuous) at which point it may enter this state
+            spontaneously whenever it determines that a rescan is needed.
+        - name: AfStateFocused
+          value: 2
+          description: |
+            The AF algorithm is in auto (AfModeAuto) or continuous
+            (AfModeContinuous) mode and a scan has completed with the result
+            that the algorithm believes the image is now in focus.
+        - name: AfStateFailed
+          value: 3
+          description: |
+            The AF algorithm is in auto (AfModeAuto) or continuous
+            (AfModeContinuous) mode and a scan has completed with the result
+            that the algorithm did not find a good focus position.
+
+  - AfPauseState:
+      type: int32_t
+      direction: out
+      description: |
+        Report whether the autofocus is currently running, paused or pausing.
+
+        This control is only applicable in continuous (AfModeContinuous) mode,
+        and reports whether the algorithm is currently running, paused or
+        pausing (that is, will pause as soon as any in-progress scan
+        completes).
+
+        Any change to AfMode will cause AfPauseStateRunning to be reported.
+
+      enum:
+        - name: AfPauseStateRunning
+          value: 0
+          description: |
+            Continuous AF is running and the algorithm may restart a scan
+            spontaneously.
+        - name: AfPauseStatePausing
+          value: 1
+          description: |
+            Continuous AF has been sent an AfPauseDeferred control, and will
+            pause as soon as any in-progress scan completes.
+
+            When the scan completes, the AfPauseState control will report
+            AfPauseStatePaused. No new scans will be start spontaneously until
+            the AfPauseResume control is sent.
+        - name: AfPauseStatePaused
+          value: 2
+          description: |
+            Continuous AF is paused.
+
+            No further state changes or lens movements will occur until the
+            AfPauseResume control is sent.
+
+  - HdrMode:
+      type: int32_t
+      direction: inout
+      description: |
+        Set the mode to be used for High Dynamic Range (HDR) imaging.
+
+        HDR techniques typically include multiple exposure, image fusion and
+        tone mapping techniques to improve the dynamic range of the resulting
+        images.
+
+        When using an HDR mode, images are captured with different sets of AGC
+        settings called HDR channels. Channels indicate in particular the type
+        of exposure (short, medium or long) used to capture the raw image,
+        before fusion. Each HDR image is tagged with the corresponding channel
+        using the HdrChannel control.
+
+        \sa HdrChannel
+
+      enum:
+        - name: HdrModeOff
+          value: 0
+          description: |
+            HDR is disabled.
+
+            Metadata for this frame will not include the HdrChannel control.
+        - name: HdrModeMultiExposureUnmerged
+          value: 1
+          description: |
+            Multiple exposures will be generated in an alternating fashion.
+
+            The multiple exposures will not be merged together and will be
+            returned to the application as they are. Each image will be tagged
+            with the correct HDR channel, indicating what kind of exposure it
+            is. The tag should be the same as in the HdrModeMultiExposure case.
+
+            The expectation is that an application using this mode would merge
+            the frames to create HDR images for itself if it requires them.
+        - name: HdrModeMultiExposure
+          value: 2
+          description: |
+            Multiple exposures will be generated and merged to create HDR
+            images.
+
+            Each image will be tagged with the HDR channel (long, medium or
+            short) that arrived and which caused this image to be output.
+
+            Systems that use two channels for HDR will return images tagged
+            alternately as the short and long channel. Systems that use three
+            channels for HDR will cycle through the short, medium and long
+            channel before repeating.
+        - name: HdrModeSingleExposure
+          value: 3
+          description: |
+            Multiple frames all at a single exposure will be used to create HDR
+            images.
+
+            These images should be reported as all corresponding to the HDR
+            short channel.
+        - name: HdrModeNight
+          value: 4
+          description: |
+            Multiple frames will be combined to produce "night mode" images.
+
+            It is up to the implementation exactly which HDR channels it uses,
+            and the images will all be tagged accordingly with the correct HDR
+            channel information.
+
+  - HdrChannel:
+      type: int32_t
+      direction: out
+      description: |
+        The HDR channel used to capture the frame.
+
+        This value is reported back to the application so that it can discover
+        whether this capture corresponds to the short or long exposure image
+        (or any other image used by the HDR procedure). An application can
+        monitor the HDR channel to discover when the differently exposed images
+        have arrived.
+
+        This metadata is only available when an HDR mode has been enabled.
+
+        \sa HdrMode
+
+      enum:
+        - name: HdrChannelNone
+          value: 0
+          description: |
+            This image does not correspond to any of the captures used to create
+            an HDR image.
+        - name: HdrChannelShort
+          value: 1
+          description: |
+            This is a short exposure image.
+        - name: HdrChannelMedium
+          value: 2
+          description: |
+            This is a medium exposure image.
+        - name: HdrChannelLong
+          value: 3
+          description: |
+            This is a long exposure image.
+
+  - Gamma:
+      type: float
+      direction: inout
+      description:  |
+        Specify a fixed gamma value.
+
+        The default gamma value must be 2.2 which closely mimics sRGB gamma.
+        Note that this is camera gamma, so it is applied as 1.0/gamma.
+
+  - DebugMetadataEnable:
+      type: bool
+      direction: inout
+      description: |
+        Enable or disable the debug metadata.
+
+  - FrameWallClock:
+      type: int64_t
+      direction: out
+      description: |
+        This timestamp corresponds to the same moment in time as the
+        SensorTimestamp, but is represented as a wall clock time as measured by
+        the CLOCK_REALTIME clock.
+
+        Being a wall clock measurement, it can be used to synchronise timing
+        across different devices.
+
+        \sa SensorTimestamp
+
+        The FrameWallClock control can only be returned in metadata.
+
+...
