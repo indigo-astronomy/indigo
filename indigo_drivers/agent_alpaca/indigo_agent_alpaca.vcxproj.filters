@@ -24,34 +24,34 @@
     <ClCompile Include="..\..\indigo_windows\dllmain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="alpaca_ccd.c">
+    <ClCompile Include="indigo_alpaca_ccd.c">
       <Filter>Source Files\indigo</Filter>
     </ClCompile>
-    <ClCompile Include="alpaca_common.c">
+    <ClCompile Include="indigo_alpaca_common.c">
       <Filter>Source Files\indigo</Filter>
     </ClCompile>
-    <ClCompile Include="alpaca_dome.c">
+    <ClCompile Include="indigo_alpaca_dome.c">
       <Filter>Source Files\indigo</Filter>
     </ClCompile>
-    <ClCompile Include="alpaca_focuser.c">
+    <ClCompile Include="indigo_alpaca_focuser.c">
       <Filter>Source Files\indigo</Filter>
     </ClCompile>
-    <ClCompile Include="alpaca_guider.c">
+    <ClCompile Include="indigo_alpaca_guider.c">
       <Filter>Source Files\indigo</Filter>
     </ClCompile>
-    <ClCompile Include="alpaca_lightbox.c">
+    <ClCompile Include="indigo_alpaca_lightbox.c">
       <Filter>Source Files\indigo</Filter>
     </ClCompile>
-    <ClCompile Include="alpaca_mount.c">
+    <ClCompile Include="indigo_alpaca_mount.c">
       <Filter>Source Files\indigo</Filter>
     </ClCompile>
-    <ClCompile Include="alpaca_rotator.c">
+    <ClCompile Include="indigo_alpaca_rotator.c">
       <Filter>Source Files\indigo</Filter>
     </ClCompile>
-    <ClCompile Include="alpaca_switch.c">
+    <ClCompile Include="indigo_alpaca_switch.c">
       <Filter>Source Files\indigo</Filter>
     </ClCompile>
-    <ClCompile Include="alpaca_wheel.c">
+    <ClCompile Include="indigo_alpaca_wheel.c">
       <Filter>Source Files\indigo</Filter>
     </ClCompile>
     <ClCompile Include="indigo_agent_alpaca.c">
@@ -59,10 +59,10 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="alpaca_common.h">
+    <ClInclude Include="indigo_agent_alpaca.h">
       <Filter>Header Files\indigo</Filter>
     </ClInclude>
-    <ClInclude Include="indigo_agent_alpaca.h">
+    <ClInclude Include="indigo_alpaca_common.h">
       <Filter>Header Files\indigo</Filter>
     </ClInclude>
   </ItemGroup>

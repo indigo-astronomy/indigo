@@ -405,8 +405,13 @@ indigo_uni_handle *indigo_uni_create_file(const char *path, int log_level) {
 }
 
 static int map_baudrate(const char *baudrate) {
-	static int valid_baud_rate [] = { 50, 75, 110, 134, 150, 200, 300, 600, 1200, 1800, 2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400, 0 };
+#if defined(INDIGO_WINDOWS)
+	static int valid_baud_rate[] = { 2400, 4800, 9600, 19200, 38400, 57600, 115200, 0 };
+	static int mapped_baud_rate[] = { CBR_2400, CBR_4800, CBR_9600, CBR_19200, CBR_38400, CBR_57600, CBR_115200, 0 };
+#else
+	static int valid_baud_rate[] = { 50, 75, 110, 134, 150, 200, 300, 600, 1200, 1800, 2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400, 0 };
 	static int mapped_baud_rate [] = { B50, B75, B110, B134, B150, B200, B300, B600, B1200, B1800, B2400, B4800, B9600, B19200, B38400, B57600, B115200, B230400, 0 };
+#endif
 	int br = atoi(baudrate);
 	int *vbr = valid_baud_rate;
 	int *mbr = mapped_baud_rate;
@@ -517,13 +522,6 @@ static indigo_uni_handle *open_tty(const char *serial, const struct termios *opt
 #elif defined(INDIGO_WINDOWS)
 
 static int configure_tty_options(DCB *dcb, const char *baudrate) {
-	int baudr = map_baudrate(baudrate);
-	char *mode = strchr(baudrate, '-');
-	if (mode == NULL) {
-		errno = EINVAL;
-		return false;
-	}
-	mode++;
 	int baudr = map_baudrate(baudrate);
 	char *mode = strchr(baudrate, '-');
 	if (mode == NULL) {

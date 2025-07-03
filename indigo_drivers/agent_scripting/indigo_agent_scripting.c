@@ -869,7 +869,7 @@ static void timer_handler(indigo_device *device, void *data) {
 
 static bool parse_utc(const char *input, time_t now, struct tm *tm_time) {
 	struct tm now_tm;
-	gmtime_r(&now, &now_tm);
+	indigo_gmtime(&now, &now_tm);
 	*tm_time = now_tm;
 	int y, m, d, H, M, S;
 	if (sscanf(input, "%d-%d-%d %d:%d:%d", &y, &m, &d, &H, &M, &S) == 6) {
@@ -894,10 +894,10 @@ static bool parse_utc(const char *input, time_t now, struct tm *tm_time) {
 		tm_time->tm_hour = H;
 		tm_time->tm_min  = M;
 		tm_time->tm_sec  = S;
-		time_t target_time = timegm(tm_time);
+		time_t target_time = indigo_timegm(tm_time);
 		if (target_time <= now) {
 			tm_time->tm_mday += 1;
-			timegm(tm_time);
+			indigo_timegm(tm_time);
 		}
 		return true;
 	}
@@ -905,10 +905,10 @@ static bool parse_utc(const char *input, time_t now, struct tm *tm_time) {
 		tm_time->tm_hour = H;
 		tm_time->tm_min  = M;
 		tm_time->tm_sec  = 0;
-		time_t target_time = timegm(tm_time);
+		time_t target_time = indigo_timegm(tm_time);
 		if (target_time <= now) {
 			tm_time->tm_mday += 1;
-			timegm(tm_time);
+			indigo_timegm(tm_time);
 		}
 		return true;
 	}
@@ -920,7 +920,7 @@ static duk_ret_t utc_to_time(duk_context *ctx) {
 	struct tm tm_time;
 	memset(&tm_time, 0, sizeof(struct tm));
 	parse_utc(utc, time(NULL), &tm_time);
-	time_t target_time = timegm(&tm_time);
+	time_t target_time = indigo_timegm(&tm_time);
 	if (target_time == -1) {
 		return DUK_RET_ERROR;
 	}
@@ -934,7 +934,7 @@ static duk_ret_t utc_to_delay(duk_context *ctx) {
 	memset(&tm_time, 0, sizeof(struct tm));
 	time_t now = time(NULL);
 	parse_utc(utc, now, &tm_time);
-	time_t target_time = timegm(&tm_time);
+	time_t target_time = indigo_timegm(&tm_time);
 	if (target_time == -1) {
 		return DUK_RET_ERROR;
 	}
@@ -952,7 +952,7 @@ static duk_ret_t time_to_delay(duk_context *ctx) {
 static duk_ret_t time_to_utc(duk_context *ctx) {
 	time_t target_time = (long)duk_require_number(ctx, 0);
 	struct tm utc_time;
-	gmtime_r(&target_time, &utc_time);
+	indigo_gmtime(&target_time, &utc_time);
 	char buffer[20];
 	strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &utc_time);
 	duk_push_string(ctx, buffer);
@@ -962,7 +962,7 @@ static duk_ret_t time_to_utc(duk_context *ctx) {
 static duk_ret_t delay_to_utc(duk_context *ctx) {
 	time_t target_time = time(NULL) + (long)duk_require_number(ctx, 0);
 	struct tm utc_time;
-	gmtime_r(&target_time, &utc_time);
+	indigo_gmtime(&target_time, &utc_time);
 	char buffer[20];
 	strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &utc_time);
 	duk_push_string(ctx, buffer);
@@ -1024,7 +1024,7 @@ static duk_ret_t set_timer_at_utc(duk_context *ctx) {
 			memset(&tm_time, 0, sizeof(struct tm));
 			time_t now = time(NULL);
 			parse_utc(utc, now, &tm_time);
-			time_t target_time = timegm(&tm_time);
+			time_t target_time = indigo_timegm(&tm_time);
 			if (target_time == -1) {
 				return DUK_RET_ERROR;
 			}

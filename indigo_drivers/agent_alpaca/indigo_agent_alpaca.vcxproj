@@ -273,17 +273,17 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\indigo_windows\dllmain.cpp" />
-    <ClCompile Include="alpaca_ccd.c" />
-    <ClCompile Include="alpaca_common.c" />
-    <ClCompile Include="alpaca_dome.c" />
-    <ClCompile Include="alpaca_focuser.c" />
-    <ClCompile Include="alpaca_guider.c" />
-    <ClCompile Include="alpaca_lightbox.c" />
-    <ClCompile Include="alpaca_mount.c" />
-    <ClCompile Include="alpaca_rotator.c" />
-    <ClCompile Include="alpaca_switch.c" />
-    <ClCompile Include="alpaca_wheel.c" />
     <ClCompile Include="indigo_agent_alpaca.c" />
+    <ClCompile Include="indigo_alpaca_ccd.c" />
+    <ClCompile Include="indigo_alpaca_common.c" />
+    <ClCompile Include="indigo_alpaca_dome.c" />
+    <ClCompile Include="indigo_alpaca_focuser.c" />
+    <ClCompile Include="indigo_alpaca_guider.c" />
+    <ClCompile Include="indigo_alpaca_lightbox.c" />
+    <ClCompile Include="indigo_alpaca_mount.c" />
+    <ClCompile Include="indigo_alpaca_rotator.c" />
+    <ClCompile Include="indigo_alpaca_switch.c" />
+    <ClCompile Include="indigo_alpaca_wheel.c" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\indigo_libs\indigo.vcxproj">
@@ -291,8 +291,8 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="alpaca_common.h" />
     <ClInclude Include="indigo_agent_alpaca.h" />
+    <ClInclude Include="indigo_alpaca_common.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

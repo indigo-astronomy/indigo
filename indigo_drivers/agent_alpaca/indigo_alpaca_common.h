@@ -239,61 +239,61 @@ typedef struct {
 	int dimension3; // Bytes 40..43 - Length of image array third dimension (0 for 2D array)
 } indigo_alpaca_metadata;
 
-extern bool get_bayer_RGGB_offsets(const char *pattern, int *x_offset, int *y_offset);
+INDIGO_EXTERN bool get_bayer_RGGB_offsets(const char *pattern, int *x_offset, int *y_offset);
 
-extern char *indigo_alpaca_error_string(int code);
-extern long indigo_alpaca_append_error(char *buffer, long buffer_length, indigo_alpaca_error result);
-extern long indigo_alpaca_append_value_bool(char *buffer, long buffer_length, bool value, indigo_alpaca_error result);
-extern long indigo_alpaca_append_value_int(char *buffer, long buffer_length, int value, indigo_alpaca_error result);
-extern long indigo_alpaca_append_value_double(char *buffer, long buffer_length, double value, indigo_alpaca_error result);
-extern long indigo_alpaca_append_value_string(char *buffer, long buffer_length, char *value, indigo_alpaca_error result);
-extern bool indigo_alpaca_wait_for_bool(bool *reference, bool value, int timeout);
-extern bool indigo_alpaca_wait_for_int32(int *reference, int value, int timeout);
-extern bool indigo_alpaca_wait_for_double(double *reference, double value, int timeout);
+INDIGO_EXTERN char *indigo_alpaca_error_string(int code);
+INDIGO_EXTERN long indigo_alpaca_append_error(char *buffer, long buffer_length, indigo_alpaca_error result);
+INDIGO_EXTERN long indigo_alpaca_append_value_bool(char *buffer, long buffer_length, bool value, indigo_alpaca_error result);
+INDIGO_EXTERN long indigo_alpaca_append_value_int(char *buffer, long buffer_length, int value, indigo_alpaca_error result);
+INDIGO_EXTERN long indigo_alpaca_append_value_double(char *buffer, long buffer_length, double value, indigo_alpaca_error result);
+INDIGO_EXTERN long indigo_alpaca_append_value_string(char *buffer, long buffer_length, char *value, indigo_alpaca_error result);
+INDIGO_EXTERN bool indigo_alpaca_wait_for_bool(bool *reference, bool value, int timeout);
+INDIGO_EXTERN bool indigo_alpaca_wait_for_int32(int *reference, int value, int timeout);
+INDIGO_EXTERN bool indigo_alpaca_wait_for_double(double *reference, double value, int timeout);
 
-extern void indigo_alpaca_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property);
-extern long indigo_alpaca_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, int id, char *buffer, long buffer_length);
-extern long indigo_alpaca_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2);
+INDIGO_EXTERN void indigo_alpaca_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property);
+INDIGO_EXTERN long indigo_alpaca_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, int id, char *buffer, long buffer_length);
+INDIGO_EXTERN long indigo_alpaca_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2);
 
-extern void indigo_alpaca_ccd_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property);
-extern long indigo_alpaca_ccd_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length);
-extern long indigo_alpaca_ccd_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2);
-extern void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int version, indigo_uni_handle *handle, int client_transaction_id, int server_transaction_id, bool use_gzip, bool use_imagebytes);
+INDIGO_EXTERN void indigo_alpaca_ccd_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property);
+INDIGO_EXTERN long indigo_alpaca_ccd_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length);
+INDIGO_EXTERN long indigo_alpaca_ccd_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2);
+INDIGO_EXTERN void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int version, indigo_uni_handle *handle, int client_transaction_id, int server_transaction_id, bool use_gzip, bool use_imagebytes);
 
-extern void indigo_alpaca_wheel_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property);
-extern long indigo_alpaca_wheel_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length);
-extern long indigo_alpaca_wheel_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2);
+INDIGO_EXTERN void indigo_alpaca_wheel_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property);
+INDIGO_EXTERN long indigo_alpaca_wheel_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length);
+INDIGO_EXTERN long indigo_alpaca_wheel_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2);
 
-extern void indigo_alpaca_focuser_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property);
-extern long indigo_alpaca_focuser_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length);
-extern long indigo_alpaca_focuser_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2);
+INDIGO_EXTERN void indigo_alpaca_focuser_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property);
+INDIGO_EXTERN long indigo_alpaca_focuser_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length);
+INDIGO_EXTERN long indigo_alpaca_focuser_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2);
 
-extern void indigo_alpaca_mount_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property);
-extern long indigo_alpaca_mount_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length);
-extern long indigo_alpaca_mount_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2);
+INDIGO_EXTERN void indigo_alpaca_mount_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property);
+INDIGO_EXTERN long indigo_alpaca_mount_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length);
+INDIGO_EXTERN long indigo_alpaca_mount_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2);
 
-extern void indigo_alpaca_guider_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property);
-extern long indigo_alpaca_guider_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length);
-extern long indigo_alpaca_guider_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2);
+INDIGO_EXTERN void indigo_alpaca_guider_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property);
+INDIGO_EXTERN long indigo_alpaca_guider_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length);
+INDIGO_EXTERN long indigo_alpaca_guider_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2);
 
-extern void indigo_alpaca_lightbox_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property);
-extern long indigo_alpaca_lightbox_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length);
-extern long indigo_alpaca_lightbox_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2);
+INDIGO_EXTERN void indigo_alpaca_lightbox_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property);
+INDIGO_EXTERN long indigo_alpaca_lightbox_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length);
+INDIGO_EXTERN long indigo_alpaca_lightbox_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2);
 
-extern void indigo_alpaca_rotator_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property);
-extern long indigo_alpaca_rotator_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length);
-extern long indigo_alpaca_rotator_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2);
+INDIGO_EXTERN void indigo_alpaca_rotator_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property);
+INDIGO_EXTERN long indigo_alpaca_rotator_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length);
+INDIGO_EXTERN long indigo_alpaca_rotator_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2);
 
-extern void indigo_alpaca_dome_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property);
-extern long indigo_alpaca_dome_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length);
-extern long indigo_alpaca_dome_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2);
+INDIGO_EXTERN void indigo_alpaca_dome_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property);
+INDIGO_EXTERN long indigo_alpaca_dome_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length);
+INDIGO_EXTERN long indigo_alpaca_dome_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2);
 
-extern void indigo_alpaca_switch_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property);
-extern long indigo_alpaca_switch_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, int id, char *buffer, long buffer_length);
-extern long indigo_alpaca_switch_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2);
+INDIGO_EXTERN void indigo_alpaca_switch_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property);
+INDIGO_EXTERN long indigo_alpaca_switch_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, int id, char *buffer, long buffer_length);
+INDIGO_EXTERN long indigo_alpaca_switch_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2);
 
-extern indigo_device *indigo_agent_alpaca_device;
-extern indigo_client *indigo_agent_alpaca_client;
+INDIGO_EXTERN indigo_device *indigo_agent_alpaca_device;
+INDIGO_EXTERN indigo_client *indigo_agent_alpaca_client;
 
 #define IS_DEVICE_TYPE(device, type) ((device->indigo_interface & type) == type)
 
