@@ -1,5 +1,5 @@
 # RPi Camera Driver Makefile
-# Copyright (c) 2018 Rumen G. Bogdanovski
+# Copyright (c) 2025 Rohan Salodkar
 # All rights reserved.
 include ../../Makefile.inc
 

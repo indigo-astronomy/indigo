@@ -191,46 +191,6 @@ using PixelFormats = std::vector<libcamera::PixelFormat>;
 using ImageDimensions = std::vector<libcamera::Size>;
 using FrameInfo = std::map<libcamera::Size, libcamera::Size>;
 
-struct Logger {
-    Logger(bool flushOnDestruct = true)
-        : m_flushOnDestruct(flushOnDestruct) {}
-
-    ~Logger() {
-        if (m_flushOnDestruct && !m_stream.str().empty()) {
-            Flush();
-        }
-    }
-    template<typename T>
-    Logger& operator<<(const T& value) {
-        m_stream << value;
-        return *this;
-    }
- 
-    Logger& operator<<(std::ostream& (*manip)(std::ostream&)) {
-
-        if (manip == static_cast<std::ostream& (*)(std::ostream&)>(std::endl) ||
-            manip == static_cast<std::ostream& (*)(std::ostream&)>(std::flush)) {
-            Flush();
-        }
-        return *this;
-    }
-    std::string GetLastError() const{ return m_lastError; }
-    private:
-    void Flush() {
-        m_lastError = m_stream.str();
-        if (!m_lastError.empty()) {
-            INDIGO_DRIVER_ERROR(DRIVER_NAME, "Logger: %s", m_lastError.c_str());
-            m_stream.str("");
-            m_stream.clear();
-        }
-    }
-    std::ostringstream m_stream;
-    std::string m_lastError{};
-    bool m_flushOnDestruct;
-};
-
-Logger logger_;
-
 // Get camera limits: exposure, gain, etc.
 //
 template <typename T>
@@ -309,7 +269,7 @@ struct RegisterCameraManager{
     CameraManager_p m_cm;
     RegisterCameraManager() : m_cm(std::make_unique<CameraManager>()) {
         if (m_cm->start() < 0) {
-            logger_ << "Failed to start CameraManager" << std::endl;
+            INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to start CameraManager"   );
         }       
     }
     ~RegisterCameraManager() {
@@ -354,7 +314,7 @@ struct RPiCamera {
     //
     optional<float> GetAnalogueGain() const {
         if (!m_cameraAcquired) {
-            logger_ << "Camera not acquired" << std::endl;
+            INDIGO_DRIVER_ERROR(DRIVER_NAME, "Camera not acquired" );
             return {};
         }
         return m_controls.get(controls::AnalogueGain);
@@ -362,7 +322,7 @@ struct RPiCamera {
     //
     optional<float> GetDigitalGain() const {
         if (!m_cameraAcquired) {
-            logger_ << "Camera not acquired" << std::endl;
+            INDIGO_DRIVER_ERROR(DRIVER_NAME, "Camera not acquired" );
             return nullopt;
         }
         return m_controls.get(controls::DigitalGain);
@@ -439,7 +399,7 @@ struct RPiCamera {
 
  bool RPiCamera::IsMonochrome() const{
     if (!m_cameraAcquired) {
-        logger_ << "Camera not acquired" << std::endl;
+        INDIGO_DRIVER_ERROR(DRIVER_NAME, "Camera not acquired" );
         return false;
     }
 
@@ -455,11 +415,11 @@ void RPiCamera::OnRequestComplete(Request *request) {
 bool RPiCamera::operator()(indigo_device *device, int steps)
  {
     if (!m_cameraAcquired) {
-        logger_ << "Camera not acquired" << std::endl;
+        INDIGO_DRIVER_ERROR(DRIVER_NAME, "Camera not acquired" );
         return false;
     }
     if (!m_cameraStarted) {
-        logger_ << "Camera not started" << std::endl;
+        INDIGO_DRIVER_ERROR(DRIVER_NAME, "Camera not started" );
         return false;
     }
     m_controls.set(controls::AfMode, controls::AfModeManual); 
@@ -483,13 +443,12 @@ int RPiCamera::InitCamera(std::string cameraId) {
     RegisterCameraManager *cameraManager_ = RegisterCameraManager::getInstance();
     m_camera = cameraManager_->GetCamera(cameraId);
     if (!m_camera) {
-        logger_ << "Camera " << cameraId << " not found" << std::endl;
+        INDIGO_DRIVER_ERROR(DRIVER_NAME, "Camera %s not found", cameraId.c_str());
         return 1;
     }
 
     if (m_camera->acquire()) {
-        logger_ << "Failed to acquire camera " << cameraId
-              << std::endl;
+        INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to acquire camera %s", cameraId.c_str());
         return 1;
     }
     m_cameraAcquired = true;
@@ -499,7 +458,7 @@ int RPiCamera::InitCamera(std::string cameraId) {
 
 const ControlInfoMap RPiCamera::GetControls() const {
         if (!m_cameraAcquired) {
-            logger_ << "Camera not acquired" << std::endl;
+            INDIGO_DRIVER_ERROR(DRIVER_NAME, "Camera not acquired" );
             return {};
         }
         return m_camera->controls();
@@ -509,7 +468,7 @@ bool RPiCamera::GetExposureLimits(Limits<unsigned> &exposureLimits) {
 
     if(!m_cameraAcquired)
     {
-        logger_ << "Camera not acquired" << std::endl;
+        INDIGO_DRIVER_ERROR(DRIVER_NAME, "Camera not acquired" );
         return false;
     }
 
@@ -522,7 +481,7 @@ bool RPiCamera::GetExposureLimits(Limits<unsigned> &exposureLimits) {
         exposureLimits.max = exposureInfo->second.max().get<int32_t>();
 
     } else {
-        logger_ << "Exposure limits not available" << endl;
+        INDIGO_DRIVER_ERROR(DRIVER_NAME, "Exposure limits not available");
 
         return false;
     }
@@ -534,7 +493,7 @@ bool RPiCamera::GetExposureLimits(Limits<unsigned> &exposureLimits) {
     
     if(!m_cameraAcquired)
     {
-        logger_ << "Camera not acquired" << std::endl;
+        INDIGO_DRIVER_ERROR(DRIVER_NAME, "Camera not acquired" );
         return false;
     }
     const ControlInfoMap &controls = m_camera->controls();
@@ -556,7 +515,7 @@ bool RPiCamera::GetExposureLimits(Limits<unsigned> &exposureLimits) {
  optional<Size> RPiCamera::GetPixelSize() {
     if(!m_cameraAcquired)
     {
-        logger_ << "Camera not acquired" << std::endl;
+        INDIGO_DRIVER_ERROR(DRIVER_NAME, "Camera not acquired" );
         return{};
     }
     libcamera::ControlList c = m_camera->properties();
@@ -566,7 +525,7 @@ Size RPiCamera::GetImageSize() const
  {
     if(!m_cameraAcquired)
     {
-        logger_ << "Camera not acquired" << std::endl;
+        INDIGO_DRIVER_ERROR(DRIVER_NAME, "Camera not acquired" );
         return Size(0, 0);
     }
     
@@ -575,13 +534,13 @@ Size RPiCamera::GetImageSize() const
         return m_config->at(0).size;
     }
      
-    logger_ << "Camera configuration not set" << std::endl;
+    INDIGO_DRIVER_ERROR(DRIVER_NAME, "Camera configuration not set" );
     return Size(0, 0);
  }
  optional<Size> RPiCamera::GetBinning() {
     if(!m_cameraAcquired)
     {
-        logger_ << "Camera not acquired" << std::endl;
+        INDIGO_DRIVER_ERROR(DRIVER_NAME, "Camera not acquired" );
         return{};
     }
 
@@ -592,7 +551,7 @@ int RPiCamera::GetMaxBinning()
  {
     if(!m_cameraAcquired)
     {
-        logger_ << "Camera not acquired" << std::endl;
+        INDIGO_DRIVER_ERROR(DRIVER_NAME, "Camera not acquired" );
         return 0;
     }
     return GetFrameInfo(GetPixelFormat()).size();
@@ -611,7 +570,7 @@ int RPiCamera::GetMaxBinning()
 bool RPiCamera::HasAutoFocus() const
  {
     if (!m_cameraAcquired) {
-        logger_ << "Camera not acquired" << std::endl;
+        INDIGO_DRIVER_ERROR(DRIVER_NAME, "Camera not acquired" );
         return false;
     }
     // Check if the camera has a focus control
@@ -655,14 +614,14 @@ Stream *RPiCamera::VideoStream(uint32_t *w, uint32_t *h, uint32_t *stride) const
 Size RPiCamera::GetMaxImageSize() const
 {
     if (!m_cameraAcquired) {
-        logger_ << "Camera not acquired" << std::endl;
+        INDIGO_DRIVER_ERROR(DRIVER_NAME, "Camera not acquired" );
         return {};
     }
 
     std::unique_ptr<CameraConfiguration> config = m_camera->generateConfiguration({ StreamRole::StillCapture });
     libcamera::CameraConfiguration::Status status = config->validate();
     if (status != libcamera::CameraConfiguration::Valid) {
-        logger_ << "Camera configuration is not valid" << std::endl;
+        INDIGO_DRIVER_ERROR(DRIVER_NAME, "Camera configuration is not valid" );
         return {};
     }
     StreamConfiguration &streamConfig = config->at(0);
@@ -697,7 +656,7 @@ bool RPiCamera::af()
  {
     if(!m_cameraAcquired)
     {
-        logger_ << "Camera not acquired" << std::endl;
+        INDIGO_DRIVER_ERROR(DRIVER_NAME, "Camera not acquired" );
         return {};
     }
     const auto &sz = GetMaxImageSize();
@@ -773,7 +732,7 @@ void RPiCamera::ConfigureStill(int width, int height, PixelFormat format) {
     for (StreamConfiguration &cfg : *m_config) {
         ret = m_allocator->allocate(cfg.stream());
         if (ret < 0) {
-            logger_ << "Can't allocate buffers" << std::endl;
+            INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can't allocate buffers" );
             return -ENOMEM;
         }
 
@@ -784,7 +743,7 @@ void RPiCamera::ConfigureStill(int width, int height, PixelFormat format) {
     for (unsigned int i = 0; i < nbuffers; i++) {
         std::unique_ptr<Request> request = m_camera->createRequest();
         if (!request) {
-            logger_ << "Can't create request" << std::endl;
+            INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can't create request" );
             return -ENOMEM;
         }
 
@@ -797,8 +756,7 @@ void RPiCamera::ConfigureStill(int width, int height, PixelFormat format) {
 
             ret = request->addBuffer(stream, buffer.get());
             if (ret < 0) {
-                logger_ << "Can't set buffer for request"
-                      << std::endl;
+                INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can't set buffer for request");
                 return ret;
             }
             for (const FrameBuffer::Plane &plane : buffer->planes()) {
@@ -815,7 +773,7 @@ void RPiCamera::ConfigureStill(int width, int height, PixelFormat format) {
     ret = m_camera->start(&this->m_controls);
     
     if (ret) {
-        logger_ << "Failed to start capture" << std::endl;
+        INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to start capture" );
         return ret;
     }
    
@@ -823,7 +781,7 @@ void RPiCamera::ConfigureStill(int width, int height, PixelFormat format) {
     for (std::unique_ptr<Request> &request : m_requests) {
         ret = QueueRequest(request.get());
         if (ret < 0) {
-            logger_ << "Can't queue request" << std::endl;
+            INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can't queue request" );
             m_camera->stop();
             return ret;
         }
@@ -861,7 +819,7 @@ int RPiCamera::ConfigureCamera()
             m_pixelFormats.insert(m_pixelFormats.end(), formats.begin(), formats.end());
             m_config = std::move(config_still);
         }else {
-            logger_ << "Failed to validate still capture configuration" << std::endl;
+            INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to validate still capture configuration" );
             return -1;
         } 
     }else {
@@ -938,7 +896,7 @@ void RPiCamera::CloseCamera(){
         QueueRequest(req);
     }
     else {
-        logger_ << "Camera not started, cannot return frame buffer" << std::endl;
+        INDIGO_DRIVER_ERROR(DRIVER_NAME, "Camera not started, cannot return frame buffer" );
     }
 }
 
@@ -980,13 +938,7 @@ static void handle_af(indigo_device *device) {
 	 RPI_AF_ITEM->sw.value = false;
 	indigo_update_property(device, RPI_AF_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->message_mutex);    
-}
-static void rpi_report_error(indigo_device *device, indigo_property *property) {
-     property->state = INDIGO_ALERT_STATE;
-     INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s)", logger_.GetLastError().c_str());
-     indigo_update_property(device, property, logger_.GetLastError().c_str());
- }
- 
+} 
  // -------------------------------------------------------------------------------- INDIGO CCD device implementation
  
  static void exposure_timer_callback(indigo_device *device) {
@@ -1024,9 +976,10 @@ static void rpi_report_error(indigo_device *device, indigo_property *property) {
                 bppMap = raw_bayer.find(format);     
             }
             if (bppMap == raw_bayer.end()) {
-                logger_ << "Unsupported pixel format: " << format.toString().c_str() << std::endl;
+                INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unsupported pixel format: %s", format.toString().c_str());
                 indigo_ccd_failure_cleanup(device);
-                rpi_report_error(device, CCD_EXPOSURE_PROPERTY);
+                CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+                indigo_update_property(device, CCD_EXPOSURE_PROPERTY, nullptr);
                 return;
             }
             int bpp = bppMap->second;
@@ -1061,8 +1014,10 @@ static void rpi_report_error(indigo_device *device, indigo_property *property) {
             CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
             indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
          } else {
-             indigo_ccd_failure_cleanup(device);
-             rpi_report_error(device, CCD_EXPOSURE_PROPERTY);
+            indigo_ccd_failure_cleanup(device);
+            CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+            INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read frame data");
+            indigo_update_property(device, CCD_EXPOSURE_PROPERTY, nullptr);
          }
          PRIVATE_DATA->downloading = false;
      }
@@ -1091,7 +1046,7 @@ static void rpi_report_error(indigo_device *device, indigo_property *property) {
      if (CONNECTION_CONNECTED_ITEM->sw.value) {
          if (PRIVATE_DATA->device_count++ == 0) {
              if (indigo_try_global_lock(device) != INDIGO_OK) {
-                 logger_ << "indigo_try_global_lock(): failed to get lock." << std::endl;
+                 INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock." );
              } else {
                 indigo_define_property(device, RPI_AF_PROPERTY, NULL);
                 // Create new camera instance 
@@ -1115,7 +1070,7 @@ static void rpi_report_error(indigo_device *device, indigo_property *property) {
                 CCD_INFO_PIXEL_WIDTH_ITEM->number.value = round(pixelSize->width /  10.0) / 100.0;
                 CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = round(pixelSize->height / 10.0) / 100.0;
             } else {
-                logger_ << "Failed to get pixel size" << std::endl;
+                INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to get pixel size" );
                 CCD_INFO_PIXEL_WIDTH_ITEM->number.value = 0.0;
                 CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = 0.0;
             }
@@ -1133,7 +1088,7 @@ static void rpi_report_error(indigo_device *device, indigo_property *property) {
                 CCD_BIN_VERTICAL_ITEM->number.min = 1;
                 CCD_BIN_VERTICAL_ITEM->number.max = pRPiCamera->GetMaxBinning();
             } else {
-                logger_ << "Failed to get min/max binning" << std::endl;
+                INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to get min/max binning" );
                 CCD_BIN_HORIZONTAL_ITEM->number.min = 1;
                 CCD_BIN_HORIZONTAL_ITEM->number.max = CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = 1;
                 CCD_BIN_VERTICAL_ITEM->number.min = 1;
@@ -1146,7 +1101,7 @@ static void rpi_report_error(indigo_device *device, indigo_property *property) {
                 CCD_EXPOSURE_ITEM->number.max = exposureLimits.max / 1000000.0;
             }
             else {
-                logger_ << "Failed to get exposure limits" << std::endl;
+                INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to get exposure limits" );
                 CCD_EXPOSURE_ITEM->number.min = 0.0;
                 CCD_EXPOSURE_ITEM->number.max = 1.0;
             }
@@ -1254,7 +1209,7 @@ static void rpi_report_error(indigo_device *device, indigo_property *property) {
                     indigo_init_number_item(X_CCD_CONTRAST_ITEM, "CONTRAST", "Contrast", contrast_min, contrast_max, 1, contrast_def);
                 } 
                 else {
-                    logger_ << "Contrast control not found" << std::endl;
+                    INDIGO_DRIVER_ERROR(DRIVER_NAME, "Contrast control not found" );
                 }
 
                 if (controls.find(&controls::Saturation) != controls.end()) {
@@ -1263,7 +1218,7 @@ static void rpi_report_error(indigo_device *device, indigo_property *property) {
                     float saturation_min = controls.find(&controls::Saturation)->second.min().get<float>();
                     indigo_init_number_item(X_CCD_SATURATION_ITEM, "SATURATION", "Saturation", saturation_min, saturation_max, 1, saturation_def);
                 } else {
-                    logger_ << "Saturation control not found" << std::endl;
+                    INDIGO_DRIVER_ERROR(DRIVER_NAME, "Saturation control not found" );
                 }
            
                 if(controls.find(&controls::Brightness) != controls.end()) {
@@ -1272,7 +1227,7 @@ static void rpi_report_error(indigo_device *device, indigo_property *property) {
                     float brightness_min = controls.find(&controls::Brightness)->second.min().get<float>();
                     indigo_init_number_item(X_CCD_BRIGHTNESS_ITEM, "BRIGHTNESS", "Brightness", brightness_min, brightness_max, 0.1, brightness_def);
                 } else {
-                    logger_ << "Brightness control not found" << std::endl;
+                    INDIGO_DRIVER_ERROR(DRIVER_NAME, "Brightness control not found" );
                 }
             }
             INDIGO_DRIVER_DEBUG(DRIVER_NAME,"pRPiCamera->HasAutoFocus() -> %d", pRPiCamera->HasAutoFocus());
@@ -1493,8 +1448,10 @@ static indigo_result focuser_detach(indigo_device *device) {
          if (state != -1)
              indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
          else {
-             rpi_report_error(device, CCD_EXPOSURE_PROPERTY);
-             return INDIGO_OK;
+            property->state = INDIGO_ALERT_STATE;
+            INDIGO_DRIVER_ERROR(DRIVER_NAME, "Exposure failed...pRPiCamera->StartExposure() returned -1");
+            indigo_update_property(device, property, nullptr);
+            return INDIGO_OK;
          }
      } 
      else if (indigo_property_match_changeable(RPI_AF_PROPERTY, property)) {
