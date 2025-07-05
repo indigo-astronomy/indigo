@@ -64,10 +64,6 @@
   #define ARCH_NAME "unknown arch"
 #endif
 
-#if defined(__linux__) && (defined(__aarch64__) || defined(__arm__))
-	#define CCD_RPI
-#endif
-
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_io.h>
 #include <indigo/indigo_server_tcp.h>
@@ -205,7 +201,6 @@
 #include "rotator_asi/indigo_rotator_asi.h"
 #include "focuser_astroasis/indigo_focuser_astroasis.h"
 #include "wheel_astroasis/indigo_wheel_astroasis.h"
-#include "ccd_rpi/indigo_ccd_rpi.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -296,9 +291,6 @@ driver_entry_point static_drivers[] = {
 	indigo_ccd_sx,
 	indigo_ccd_touptek,
 	indigo_ccd_uvc,
-#ifdef CCD_RPI
-	indigo_ccd_rpi,
-#endif
 	indigo_dome_baader,
 	indigo_dome_beaver,
 	indigo_dome_dragonfly,
