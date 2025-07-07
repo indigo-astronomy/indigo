@@ -2,6 +2,43 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-336] - 30 Jun Mon 2025
+## Overall:
+- indigo_timer.c:
+	- remove indigo_set_timer_at()
+	- remove indigo_set_timer_at_utc()
+	- remove indigo_utc_diff()
+	- remove indigo_local_time_diff()
+
+## Driver Fixes:
+- indigo_mount_agent:
+	- park snooping fixed
+
+- indigo_agent_scripting:
+	- remove item count limitation
+	- Sequencer.js: set_frame() and reset_frame() added
+	- Sequencer.js: break_at() and resume_point() added
+	- Sequencer.js: outer loops left in Alert state on failure recovery
+	- Sequencer.js: wait(), wait_until() and break_at() refactored
+	- Sequencer.js: warnings added
+	- Sequencer.js: break_at_ha() added
+	- Sequencer.js: fix race in stop_guiding()
+	- Sequencer.js: out of sequence meridian flip feature restored (regression fixed)
+	- Sequencer.js: waiting 3 frames to settle down guiding after meridian flip
+	- Sequencer.js: 'resume guiding' condition detection fixed
+
+- indigo_agent_guider:
+	- change default to CONTINUE_ON_GUIDING_ERROR
+
+- indigo_focuser_mypro2:
+	- warnings silenced
+
+- indigo_ccd_altair:
+	- SDK version 59.28650.20250608
+
+- indigo_ccd_asi:
+	- SDK version 1.38
+
 # [2.0-334] - 25 May Sun 2025
 ## Overall:
 - indigo_platesolver: add ACCURACY_WARNING item to AGENT_PLATESOLVER_PA_STATE to indicate if PA process restart is required

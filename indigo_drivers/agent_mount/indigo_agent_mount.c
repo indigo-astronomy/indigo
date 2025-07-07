@@ -140,10 +140,8 @@ typedef struct {
 	double mount_ra, mount_dec;
 	double mount_target_ra, mount_target_dec;
 	int mount_side_of_pier;
-
 	bool show_show_negative_time_past_transit;
 	bool equatorial_coordinates_defined;
-
 	int selected_mount_index;
 	double mount_requested_ra, mount_requested_dec;
 	indigo_property_state rotator_position_state;
@@ -152,6 +150,7 @@ typedef struct {
 	indigo_uni_handle *server_handle;
 	bool mount_unparked;
 	bool dome_unparked;
+	bool mount_tracking;
 	pthread_mutex_t mutex;
 } mount_agent_private_data;
 
@@ -509,6 +508,11 @@ static void handle_mount_change(indigo_device *device) {
 	}
 	AGENT_MOUNT_DISPLAY_COORDINATES_DEROTATION_RATE_ITEM->number.value = indigo_derotation_rate(AGENT_MOUNT_DISPLAY_COORDINATES_ALT_ITEM->number.value, AGENT_MOUNT_DISPLAY_COORDINATES_AZ_ITEM->number.value, latitude);
 	AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM->number.value = indigo_parallactic_angle(AGENT_MOUNT_DISPLAY_COORDINATES_HA_ITEM->number.value * 15, dec, latitude);
+	if (!DEVICE_PRIVATE_DATA->mount_tracking && AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY->state == INDIGO_OK_STATE) {
+		AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY->state = INDIGO_IDLE_STATE;
+	} else {
+		AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY->state = DEVICE_PRIVATE_DATA->mount_eq_coordinates_state;
+	}
 	indigo_update_property(device, AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY, NULL);
 	// check limits
 	double ha = fmod(lst - ra + 24, 24);
@@ -657,10 +661,11 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 		if (INDIGO_FILTER_MOUNT_SELECTED) {
 			for (int i = 0; i < property->count; i++) {
 				if (property->items[i].sw.value) {
-					if(DEVICE_PRIVATE_DATA->selected_mount_index != i) {
+					if (DEVICE_PRIVATE_DATA->selected_mount_index != i) {
 						DEVICE_PRIVATE_DATA->selected_mount_index = i;
 						DEVICE_PRIVATE_DATA->equatorial_coordinates_defined = false;
 						DEVICE_PRIVATE_DATA->show_show_negative_time_past_transit = false;
+						DEVICE_PRIVATE_DATA->mount_tracking = false;
 						DEVICE_PRIVATE_DATA->mount_eq_coordinates_state = INDIGO_IDLE_STATE;
 					}
 					break;
@@ -708,10 +713,19 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 		CLIENT_PRIVATE_DATA->mount_side_of_pier = 0;
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = property->items + i;
-			if (item->sw.value && !strcmp(item->name, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME))
+			if (item->sw.value && !strcmp(item->name, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME)) {
 				CLIENT_PRIVATE_DATA->mount_side_of_pier = -1;
-			else if (item->sw.value && !strcmp(item->name, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME))
+			} else if (item->sw.value && !strcmp(item->name, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME)) {
 				CLIENT_PRIVATE_DATA->mount_side_of_pier = 1;
+			}
+		}
+		handle_mount_change(device);
+	} else if (!strcmp(property->name, MOUNT_TRACKING_PROPERTY_NAME)) {
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = property->items + i;
+			if (!strcmp(item->name, MOUNT_TRACKING_ON_ITEM_NAME)) {
+				CLIENT_PRIVATE_DATA->mount_tracking = item->sw.value;
+			}
 		}
 		handle_mount_change(device);
 	} else if (!strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)) {
