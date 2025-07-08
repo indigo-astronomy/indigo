@@ -676,10 +676,11 @@ void RPiCamera::ConfigureStill(int width, int height, PixelFormat format) {
 	m_config->at(0).bufferCount = 1; // Default buffer count
 
 	CameraConfiguration::Status validation = m_config->validate();
-	if (validation == CameraConfiguration::Invalid)
+	if (validation == CameraConfiguration::Invalid) {
 		throw std::runtime_error("failed to valid stream configurations");
-	else if (validation == CameraConfiguration::Adjusted)
+	} else if (validation == CameraConfiguration::Adjusted) {
 		(DRIVER_NAME, "Stream configuration adjusted");
+	}
 
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Still capture setup complete...");
 }
