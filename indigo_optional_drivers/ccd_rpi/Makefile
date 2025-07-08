@@ -15,9 +15,9 @@ DRIVER_SO = $(BUILD_DRIVERS)/$(DRIVER_NAME).$(SOEXT)
 DEBUG_BUILD=-g
 
 ifeq ($(OS),Linux)
-  ifneq (,$(filter $(ARCH),aarch64 armv7l))
-    CCD_RPI := 1
-  endif
+	ifneq (,$(filter $(ARCH),aarch64 armv7l))
+		CCD_RPI := 1
+	endif
 endif
 
 ifeq ($(CCD_RPI), 1)

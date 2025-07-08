@@ -15,33 +15,30 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** INDIGO Moravian Instruments CCD driver
+/** INDIGO Raspberry Pi CCD driver
  \file indigo_ccd_rpi.h
  */
 
- #ifndef ccd_rpi_h
- #define ccd_rpi_h
- 
- #include <indigo/indigo_driver.h>
- #include <indigo/indigo_ccd_driver.h>
- #include <indigo/indigo_guider_driver.h>
- #include <indigo/indigo_wheel_driver.h>
- #include <indigo/indigo_focuser_driver.h>
- 
- #ifdef __cplusplus
- extern "C" {
- #endif
- 
- /** Register RPI CCD hot-plug callback
-  */
- 
- extern indigo_result indigo_ccd_rpi(indigo_driver_action action, indigo_driver_info *info);
- 
- #ifdef __cplusplus
- }
- #endif
- 
- #endif /* ccd_rpi_h */
+#ifndef ccd_rpi_h
+#define ccd_rpi_h
 
+#include <indigo/indigo_ccd_driver.h>
+#include <indigo/indigo_driver.h>
+#include <indigo/indigo_focuser_driver.h>
+#include <indigo/indigo_guider_driver.h>
+#include <indigo/indigo_wheel_driver.h>
 
- 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/** Register RPI CCD hot-plug callback
+ */
+
+extern indigo_result indigo_ccd_rpi(indigo_driver_action action, indigo_driver_info *info);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* ccd_rpi_h */
