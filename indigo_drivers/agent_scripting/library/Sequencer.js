@@ -1145,9 +1145,25 @@ var indigo_sequencer = {
 			var property = agent.AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY;
 			if (property != null) {
 				var ha = property.items.HA;
-				if ((limit < 12 && ha < 12 && ha > limit) || (limit > 12 && ((ha > 12 &&  ha > limit) || (ha < 12 && ha + 24 > limit)))) {
+				var should_break = false;
+
+				// Normalize limit to 0..24 range (just in case).
+				limit = limit % 24;
+				if (limit < 0) limit += 24;
+
+				if (Math.abs(ha - limit) < 12) {
+					// Bboth are on same side of meridian.
+					// Larger value is ahead of the smaller one.
+					should_break = ha > limit;
+				} else {
+					// One is east of meridian, one is west.
+					// Smaller value is ahead of the larger one.
+					should_break = ha < limit;
+				}
+
+				if (should_break) {
 					this.skip_to_resume_point = true;
-					indigo_send_message("Break executed");
+					indigo_send_message("Break executed: HA " + ha.toFixed(3) + " past limit " + limit.toFixed(3));
 				}
 			}
 		}
