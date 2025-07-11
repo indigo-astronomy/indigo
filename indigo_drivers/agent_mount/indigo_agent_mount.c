@@ -600,8 +600,15 @@ static void handle_mount_change(indigo_device *device) {
 		bool park = false;
 		if (AGENT_MOUNT_ENABLE_HA_LIMIT_FEATURE_ITEM->sw.value) {
 			double target = AGENT_HA_TRACKING_LIMIT_ITEM->number.target;
-			if ((target < 12 && ha < 12 && ha > target) || ((target > 12 && target < 24) && ((ha > 12 &&  ha > target) || (ha < 12 && ha + 24 > target)))) {
-				park = true;
+			if (fabs(ha - target) < 12) {
+				// Bboth are on same side of meridian.
+				// Larger value is ahead of the smaller one.
+				park = ha > target;
+				indigo_send_message(device, "Hour angle tracking limit reached");
+			} else {
+				// One is east of meridian, one is west.
+				// Smaller value is ahead of the larger one.
+				park = ha < target;
 				indigo_send_message(device, "Hour angle tracking limit reached");
 			}
 		}
