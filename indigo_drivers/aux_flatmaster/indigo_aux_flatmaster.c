@@ -53,6 +53,9 @@
 /* bring 220-20 in range of 0-100 */
 #define CALCULATE_INTENSITY(intensity)                        ((int)floor((100 - (int)(intensity) - 0) * (220 - 20) / (100 - 0) + 20))
 
+/* make sure switch value is provided as 0 / 1 */
+#define SWITCH_VALUE(item)                                    ((item)->sw.value ? '1' : '0')
+
 typedef struct {
 	int handle;
 	indigo_property *light_switch_property;
@@ -150,21 +153,28 @@ static void aux_connection_handler(indigo_device *device) {
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 
 			}
-			/* FlatMaster does not report intensity and ON/OFF state, so we set it to be consistent */
-			/* bring 220-20 in range of 0-100 */
-			sprintf(command, "L:%d", CALCULATE_INTENSITY(AUX_LIGHT_INTENSITY_ITEM->number.value));
-			if (flatmaster_command(PRIVATE_DATA->handle, command, response, sizeof(response)))
-				AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
-			else
-				AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
+
+			AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_define_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
 
-			sprintf(command, "E:%d", AUX_LIGHT_SWITCH_ON_ITEM->sw.value);
+			/* Switch the panel according to the property state */
+			sprintf(command, "E:%c", SWITCH_VALUE(AUX_LIGHT_SWITCH_ON_ITEM));
 			if (flatmaster_command(PRIVATE_DATA->handle, command, response, sizeof(response)))
 				AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_OK_STATE;
 			else
 				AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_define_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
+
+			/* If, On, set the intensity according to the property */
+			if (AUX_LIGHT_SWITCH_ON_ITEM->sw.value) {
+				/* bring 220-20 in range of 0-100 */
+				sprintf(command, "L:%d", CALCULATE_INTENSITY(AUX_LIGHT_INTENSITY_ITEM->number.value));
+				if (!flatmaster_command(PRIVATE_DATA->handle, command, response, sizeof(response))) {
+					AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
+				}
+			}
+
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", DEVICE_PORT_ITEM->text.value);
@@ -201,12 +211,27 @@ static void aux_intensity_handler(indigo_device *device) {
 static void aux_switch_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char command[16],	response[16];
-	sprintf(command, "E:%d", AUX_LIGHT_SWITCH_ON_ITEM->sw.value);
-	if (flatmaster_command(PRIVATE_DATA->handle, command, response, sizeof(response)))
+	bool success;
+	/* Switch the panel */
+	sprintf(command, "E:%c", SWITCH_VALUE(AUX_LIGHT_SWITCH_ON_ITEM));
+	success = flatmaster_command(PRIVATE_DATA->handle, command, response, sizeof(response));
+	if (AUX_LIGHT_SWITCH_ON_ITEM->sw.value && success) {
+		/* When switching on, restore (or set) the intensity */
+		sprintf(command, "L:%d", CALCULATE_INTENSITY(AUX_LIGHT_INTENSITY_ITEM->number.value));
+		success = flatmaster_command(PRIVATE_DATA->handle, command, response, sizeof(response));
+	}
+	if (success)
 		AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_OK_STATE;
 	else
 		AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
 	indigo_update_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
+	if (AUX_LIGHT_INTENSITY_PROPERTY->state == INDIGO_BUSY_STATE) {
+		if (success)
+			AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
+		else
+			AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
+	}
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
@@ -235,7 +260,16 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(AUX_LIGHT_INTENSITY_PROPERTY, property, false);
 		AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
-		indigo_set_timer(device, 0, aux_intensity_handler, NULL);
+		/* Switch on if needed (it will also apply the intensity) */
+		if (AUX_LIGHT_SWITCH_OFF_ITEM->sw.value) {
+			indigo_set_switch(AUX_LIGHT_SWITCH_PROPERTY, AUX_LIGHT_SWITCH_ON_ITEM, true);
+			AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
+			indigo_set_timer(device, 0.0, aux_switch_handler, NULL);
+		}
+		else
+			/* Already switched on, update the intensity */
+			indigo_set_timer(device, 0.0, aux_intensity_handler, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- CONFIG
 	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
