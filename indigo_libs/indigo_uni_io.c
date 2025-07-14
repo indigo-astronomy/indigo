@@ -69,15 +69,19 @@ indigo_uni_handle *indigo_stdin_handle = &_indigo_stdin_handle;
 indigo_uni_handle *indigo_stdout_handle = &_indigo_stdout_handle;
 indigo_uni_handle *indigo_stderr_handle = &_indigo_stderr_handle;
 
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 indigo_uni_handle *indigo_uni_create_file_handle(int fd, int log_level) {
 	indigo_uni_handle *handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
+	pthread_mutex_lock(&mutex);
 	handle->index = handle_index++;
+	pthread_mutex_unlock(&mutex);
 	handle->type = INDIGO_FILE_HANDLE;
 	handle->fd = fd;
 	handle->log_level = log_level;
 	indigo_log_on_level(log_level, "%d <- // Wrapped %d", handle->index, fd);
 	return handle;
 }
+#endif
 
 static int discard_data(indigo_uni_handle *handle) {
 	if (handle->type != INDIGO_COM_HANDLE) {
@@ -985,7 +989,7 @@ void indigo_uni_open_tcp_server_socket(int *port, indigo_uni_handle **server_han
 		worker_data->handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
 		worker_data->handle->index = handle_index++;
 		worker_data->handle->type = INDIGO_TCP_HANDLE;
-		worker_data->handle->fd = (int)client_socket;
+		worker_data->handle->sock = client_socket;
 		worker_data->handle->log_level = log_level;
 		worker_data->data = data;
 		if (!indigo_async((void* (*)(void*))worker, worker_data)) {

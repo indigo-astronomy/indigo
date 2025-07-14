@@ -97,7 +97,9 @@ INDIGO_EXTERN indigo_uni_handle *indigo_stdin_handle;
 INDIGO_EXTERN indigo_uni_handle *indigo_stdout_handle;
 INDIGO_EXTERN indigo_uni_handle *indigo_stderr_handle;
 
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 INDIGO_EXTERN indigo_uni_handle *indigo_uni_create_file_handle(int fd, int log_level);
+#endif
 
 #if defined(INDIGO_WINDOWS)
 INDIGO_EXTERN char *indigo_last_wsa_error();
