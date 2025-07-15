@@ -925,16 +925,22 @@ var indigo_sequencer = {
 		if (this.skip_to_recovery_point) {
 			this.skip_to_recovery_point = false;
 			indigo_send_message("Recovered from failure at recovery point #" + index);
+			indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
+		} else {
+			indigo_sequencer.update_step_state(indigo_sequencer.step, "Idle");
+			indigo_set_timer(indigo_sequencer_next_handler, 0);
 		}
-		indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
 	},
 
 	resume_point: function(index) {
 		if (this.skip_to_resume_point) {
 			this.skip_to_resume_point = false;
 			indigo_send_message("Resumed from break at resume point #" + index);
+			indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
+		} else {
+			indigo_sequencer.update_step_state(indigo_sequencer.step, "Idle");
+			indigo_set_timer(indigo_sequencer_next_handler, 0);
 		}
-		indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
 	},
 
 	set_switch: function(device, property_name, item, value, state) {
@@ -1135,22 +1141,22 @@ var indigo_sequencer = {
 		if (indigo_time_to_delay(time) == 0) {
 			this.skip_to_resume_point = true;
 			indigo_send_message("Break executed");
+			indigo_sequencer.update_step_state(indigo_sequencer.step, "Alert");
+			indigo_set_timer(indigo_sequencer_next_handler, 0);
+		} else {
+			indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
 		}
-		indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
 	},
 
 	break_at_ha: function(limit) {
 		var agent = indigo_devices[this.devices[MOUNT_AGENT]];
+		var should_break = false;
 		if (agent != null) {
 			var property = agent.AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY;
 			if (property != null) {
 				var ha = property.items.HA;
-				var should_break = false;
-
 				// Normalize limit to 0..24 range (just in case).
-				limit = limit % 24;
-				if (limit < 0) limit += 24;
-
+				limit = (limit + 24) % 24;
 				if (Math.abs(ha - limit) < 12) {
 					// Bboth are on same side of meridian.
 					// Larger value is ahead of the smaller one.
@@ -1160,14 +1166,16 @@ var indigo_sequencer = {
 					// Smaller value is ahead of the larger one.
 					should_break = ha < limit;
 				}
-
-				if (should_break) {
-					this.skip_to_resume_point = true;
-					indigo_send_message("Break executed: HA " + ha.toFixed(3) + " past limit " + limit.toFixed(3));
-				}
 			}
 		}
-		indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
+		if (should_break) {
+			this.skip_to_resume_point = true;
+			indigo_send_message("Break executed: HA " + ha.toFixed(3) + " past limit " + limit.toFixed(3));
+			indigo_sequencer.update_step_state(indigo_sequencer.step, "Alert");
+			indigo_set_timer(indigo_sequencer_next_handler, 0);
+		} else {
+			indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
+		}
 	},
 
 	evaluate: function(code) {

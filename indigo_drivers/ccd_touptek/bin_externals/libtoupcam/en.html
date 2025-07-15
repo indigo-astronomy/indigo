@@ -7,7 +7,7 @@
 <body>
 <h1 align="center">Toupcam API Manual</h1>
 <hr/><h1><font color="#0000FF">1. Version &amp; Platform</font></h1>
-<hr/><ul><li>Version: 57.28165.20250401</li></ul>
+<hr/><ul><li>Version: 59.28926.20250709</li></ul>
 <ul><li>Platform<ul>
       <li>Win32:<ul>
           <li>x64: Win7 or above</li>
@@ -16,9 +16,7 @@
 		  <li>arm: Win10 or above</li>
         </ul></li>
 	  <li><a href="https://learn.microsoft.com/en-us/windows/uwp" target="_blank">WinRT/UWP</a>: x64, x86, arm64, arm; Windows10 or above</li>
-      <li>macOS:<ul>
-	  <li>x64+x86: macOS 10.10 or above</li>
-	  <li>x64+arm64: macOS 11.0 or above, support x64 and <a href="https://en.wikipedia.org/wiki/Apple_silicon" target="_blank">Apple silicon</a> (such as M1, M2, etc)</li>
+      <li>macOS: x64+arm64: macOS 11.0 or above, support x64 and <a href="https://en.wikipedia.org/wiki/Apple_silicon" target="_blank">Apple silicon</a> (such as M1, M2, etc)</li>
 	  </ul></li>
       <li>Linux: kernel 2.6.27 or above<ul><li>x64: GLIBC 2.14 or above</li>
 		  <li>x86: CPU supports SSE3 instruction set or above; GLIBC 2.8 or above</li>
@@ -204,7 +202,7 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
 <h2><font color="#0000FF"><a id="raw">d. Data format: RGB vs RAW</a></font></h2>
 <p>Toupcam supports two data formats: RGB format (default) and RAW format. RAW format could be enabled by assigning TOUPCAM_OPTION_RAW parameter to 1 when calling Toupcam_put_Option function.</p>
 <ul><li>RGB format: The output of every pixel contains 3 componants which stand for R/G/B value respectively. This output is a processed output from the internal color processing engine.</li></ul>
-<ul><li>RAW format: In this format, the output is the raw data directly output from the sensor. The RAW format is for the users that want to skip the internal color processing and obtain the raw data for user-specific purpose. With the raw format output enabled, the functions that are related to the internal color processing will not work, such as Toupcam_put_Hue or Toupcam_AwbOnce function and so on.</li></ul>
+<ul><li>RAW format: In this format, the output is the raw data directly output from the sensor. The RAW format is for the users that want to skip the internal color processing and obtain the raw data for user-specific purpose (RAW = -1 slightly different, indicating partial processing). With the raw format output enabled, the functions that are related to the internal color processing will not work, such as Toupcam_put_Hue or Toupcam_AwbOnce function and so on.</li></ul>
 <p>Users could switch these two format by calling Toupcam_put_Option function with different value setting to <a href="#rawo">TOUPCAM_OPTION_RAW</a>. You change this option only when camera is NOT running.</p>
 <p>Users could change RGB bits by calling Toupcam_put_Option with different value setting to <a href="#rgb">TOUPCAM_OPTION_RGB</a>. You change this option only when camera is NOT running.</p>
 <h2><font color="#0000FF"><a id="wb">e. White Balance and Auto White Balance: Temp/Tint mode vs RGB Gain mode</a></font></h2>
@@ -433,7 +431,7 @@ typedef struct {
    <td width="8%">name</td>
    <td colspan="2">The name of this model</td>
    </tr><tr>
-   <td width="8%" rowspan="56">flag</td>
+   <td width="8%" rowspan="59">flag</td>
    <td colspan="2">Bitwise flag</td>
    </tr><tr>
    <td width="29%">TOUPCAM_FLAG_CMOS</td>
@@ -454,17 +452,23 @@ typedef struct {
    <td>TOUPCAM_FLAG_BINSKIP_SUPPORTED</td>
    <td>support bin/skip mode, see Toupcam_put_Mode and Toupcam_get_Mode</td>
  </tr><tr>
+   <td>TOUPCAM_FLAG_USB32</td>
+   <td>usb3.2</td>
+ </tr><tr>
    <td>TOUPCAM_FLAG_USB30</td>
    <td>usb3.0</td>
  </tr><tr>
-   <td>TOUPCAM_FLAG_TEC</td>
-   <td>Thermoelectric Cooler</td>
+   <td>TOUPCAM_FLAG_USB32_OVER_USB30</td>
+   <td>usb3.2 camera connected to usb3.0 port</td>
  </tr><tr>
    <td>TOUPCAM_FLAG_USB30_OVER_USB20</td>
    <td>usb3.0 camera connected to usb2.0 port</td>
  </tr><tr>
    <td>TOUPCAM_FLAG_ST4</td>
    <td>ST4 port</td>
+ </tr><tr>
+   <td>TOUPCAM_FLAG_TEC</td>
+   <td>Thermoelectric Cooler</td>
  </tr><tr>
    <td>TOUPCAM_FLAG_GETTEMPERATURE</td>
    <td>support to get the temperature of the sensor, Toupcam_get_Temperature</td>
@@ -474,6 +478,9 @@ typedef struct {
  </tr><tr>
    <td>TOUPCAM_FLAG_RAW10</td>
    <td>TOUPCAM_PIXELFORMAT_RAW10 Pixel format, RAW 10 bits</td>
+ </tr><tr>
+   <td>TOUPCAM_FLAG_RAW10PACK</td>
+   <td>TOUPCAM_PIXELFORMAT_RAW10PACK Pixel format, RAW 10 bits, packed</td>
  </tr><tr>
    <td>TOUPCAM_FLAG_RAW11</td>
    <td>TOUPCAM_PIXELFORMAT_RAW11 Pixel format, RAW 11 bits</td>
@@ -653,7 +660,13 @@ typedef struct {
   <p><strong>Parameters:</strong></p>
   	<blockquote>
   		<p><a href="#camidsn">camId</a>: Toupcam camera ID, enumerated by Toupcam_EnumV2. <strong>If camId is NULL, Toupcam_Open will open the first enumerated camera which connects to the computer. So, if we don't care about that multiple cameras connect to the computer simultaneously, Toupcam_EnumV2 is optional, we can simply use NULL as the parameter.</strong></p>
-  	</blockquote>
+	<p>For <strong>USB, GigE or PCIe</strong> camera, the camId can also be specified as (case sensitive):<br/>
+		(a) "sn:xxxxxxxxxxxx" (such as sn:ZP250212241204105) or<br/>
+		(b) "name:xxxxxxxxxxxx" (such as name:Camera1)</p>		
+  	<p>Moreover, for <strong>GigE</strong> camera, the camId can also be specified as (case sensitive):<br/>
+		(a) "ip:xxx.xxx.xxx.xxx" (such as ip:192.168.1.100) or<br/>
+		(b) "mac:xxxxxxxxxxxx" (such as mac:d05f64ffff23) or</p>
+	</blockquote>
   <p><strong>Remarks:</strong> open the camera instance.</p>
   <p>(1) Supports attaching some additional parameters after camId parameter (<strong>Use semicolon (;) to split, case sensitive</strong>), such as:</p>
     <blockquote><table width="100%" border="0" bgcolor="#B0D0B0">
@@ -1026,9 +1039,11 @@ typedef struct {
     	<td width="20%">Can be changed when camera is running?<br/>(Before Toupcam_StartXXXX or after Toupcam_Stop)</td>
 	</tr><tr>
         <td><a id="rawo">TOUPCAM_OPTION_RAW</a></td><td>RW</td>
-        <td>0 means RGB mode.<br/>1 means RAW mode, read the CMOS or CCD raw data.</td>
+        <td>0: RGB mode<br/>1: RAW mode, read the CMOS or CCD raw data<br/>
+		-1: RAW mode, the difference from 1 is the execution of FFC, DFC, FPNC, black balance, and white balance</td>
         <td>0</td>
-        <td><b>No</b><br/>(The return value is E_UNEXPECTED when set this option while camera is running)</td>
+        <td><b>No</b><br/>(When the camera is in running state, changing between RAW and non-RAW returns E_UNEXPECTED)<br/>
+		<b>Yes</b>(changing between 1 and -1)</td>
       </tr><tr>
         <td>TOUPCAM_OPTION_ISP</td><td>RW</td>
         <td>Enable hardware ISP:<br/>0 => auto (disable in RAW mode, otherwise enable)<br/>1 => enable<br/>-1 => disable</td>
@@ -1162,7 +1177,9 @@ TOUPCAM_PIXELFORMAT_HDR8HL (HDR, Bitdepth: 8, Conversion Gain: High + Low)<br/>
 TOUPCAM_PIXELFORMAT_HDR10HL (HDR, Bitdepth: 10, Conversion Gain: High + Low)<br/>
 TOUPCAM_PIXELFORMAT_HDR11HL (HDR, Bitdepth: 11, Conversion Gain: High + Low)<br/>
 TOUPCAM_PIXELFORMAT_HDR12HL (HDR, Bitdepth: 12, Conversion Gain: High + Low)<br/>
-TOUPCAM_PIXELFORMAT_HDR14HL (HDR, Bitdepth: 14, Conversion Gain: High + Low)</a></td>
+TOUPCAM_PIXELFORMAT_HDR14HL (HDR, Bitdepth: 14, Conversion Gain: High + Low)<br/>
+TOUPCAM_PIXELFORMAT_RAW10PACK
+</a></td>
       	<td>Model Specific</td>
       	<td>Yes.<br/>But not recommended to modify too frequently while camera is running, it's relatively heavy operation.</td>
       </tr><tr>
@@ -1393,7 +1410,7 @@ TOUPCAM_PIXELFORMAT_HDR14HL (HDR, Bitdepth: 14, Conversion Gain: High + Low)</a>
       </tr><tr>
         <td>TOUPCAM_OPTION_AUTOEXPOSURE_PERCENT</td><td>RW</td>
         <td>Peak mode of brightness calculation method: Calculate the average brightness of specified percentage top brightest pixels in interest area. Enable this option when the background is dark and the target is overexposed in average mode. Frame rate may be affected when this option is enabled due to higher CPU consumption<br/>
-        1~99: average brightness of specified percentage top brightest pixels in ROI<br/>
+        1~99: average brightness of specified percentage top brightest pixels in ROI, default: 1<br/>
         0 or 100: average brightness of whole pixels in ROI, means "disabled"</td>
 		<td>0(Disabled)</td><td>Yes</td>
       </tr><tr>
@@ -1411,7 +1428,7 @@ TOUPCAM_PIXELFORMAT_HDR14HL (HDR, Bitdepth: 14, Conversion Gain: High + Low)</a>
       </tr><tr>
         <td>TOUPCAM_OPTION_DYNAMIC_DEFECT</td><td>RW</td>
         <td>Dynamic Defect Pixel Correction<br/>dead pixel ratio, t1: (high 16 bits): [0, 100], means: [0.0, 1.0]<br/>hot pixel ratio, t2: (low 16 bits): [0, 100], means: [0.0, 1.0]<br/>See:<br/>TOUPCAM_DYNAMIC_DEFECT_T1_(MIN/MAX/DEF), TOUPCAM_DYNAMIC_DEFECT_T2_(MIN/MAX/DEF)</td>
-		<td>disable<br/>(t1=10, t2=0)</td><td>Yes</td>
+		<td>disable<br/>(t1=0, t2=0)</td><td>Yes</td>
       </tr><tr>
         <td>TOUPCAM_OPTION_ANTI_SHUTTER_EFFECT</td><td>RW</td>
         <td>anti shutter effect: 1 =&gt; enable, 0 =&gt; disable</td>
@@ -1469,7 +1486,7 @@ TOUPCAM_PIXELFORMAT_HDR14HL (HDR, Bitdepth: 14, Conversion Gain: High + Low)</a>
 		<td>0</td><td>Yes</td>
       </tr><tr>
         <td>TOUPCAM_OPTION_AUTOEXPO_CONV</td><td>RO</td>
-        <td>get auto exposure convergence status:<br/>1(YES) or 0(NO), -1(NA)</td>
+        <td>get auto exposure convergence status:<br/>1(YES)<br/>0(NO)<br/>-1(PENDING)</td>
 		<td></td>
 		<td>NA</td>
       </tr><tr>
@@ -1557,8 +1574,8 @@ TOUPCAM_PIXELFORMAT_HDR14HL (HDR, Bitdepth: 14, Conversion Gain: High + Low)</a>
       	<td>Demosaic mothod for still image</td>
       	<td>0</td><td>Yes</td>
       </tr><tr>
-      	<td>TOUPCAM_OPTION_OPEN_USB_ERRORCODE</td><td>RO</td>
-      	<td>get the open usb error code</td>
+      	<td>TOUPCAM_OPTION_OPEN_ERRORCODE</td><td>RO</td>
+      	<td>get the open camera error code</td>
       	<td>NA</td><td>NA</td>
       </tr><tr>
       	<td>TOUPCAM_OPTION_FLUSH</td><td>WO</td>
@@ -1575,6 +1592,14 @@ TOUPCAM_PIXELFORMAT_HDR14HL (HDR, Bitdepth: 14, Conversion Gain: High + Low)</a>
 		1 = ITR (Integrate Then Read)<br/>
 		The working modes of the detector readout circuit can be divided into two types: ITR and IWR. Using the IWR readout mode can greatly increase the frame rate. In the ITR mode, the integration of the (n+1)th frame starts after all the data of the nth frame are read out, while in the IWR mode, the data of the nth frame is read out at the same time when the (n+1)th frame is integrated</td>
       	<td>NA</td><td>YES</td>
+      </tr><tr>
+      	<td>TOUPCAM_OPTION_VOLTAGEBIAS</td><td>RW</td>
+      	<td>Voltage bias</td><td>Model Specific</td><td>YES</td>
+      </tr><tr>
+      	<td>TOUPCAM_OPTION_VOLTAGEBIAS_RANGE</td><td>RO</td>
+      	<td>Voltage bias range:<br/>
+		min (low 16bits)<br/>
+		max (high 16bits)</td><td>NA</td><td>NA</td>
       </tr><tr>
       	<td>TOUPCAM_OPTION_TAILLIGHT</td><td>RW</td>
       	<td>Turn on/off tail Led light:<br/>
@@ -1639,6 +1664,14 @@ TOUPCAM_PIXELFORMAT_HDR14HL (HDR, Bitdepth: 14, Conversion Gain: High + Low)</a>
       	<td>get the current number in backend deque</td>
       	<td>NA</td><td>NA</td>
       </tr><tr>
+      	<td>TOUPCAM_OPTION_FRONTEND_FULL</td><td>RO</td>
+      	<td>get the number of frontend deque full</td>
+      	<td>NA</td><td>NA</td>
+      </tr><tr>
+      	<td>TOUPCAM_OPTION_BACKEND_FULL</td><td>RO</td>
+      	<td>get the number of backend deque full</td>
+      	<td>NA</td><td>NA</td>
+      </tr><tr>
       	<td>TOUPCAM_OPTION_PACKET_NUMBER</td><td>RO</td>
       	<td>get the received packet number</td>
       	<td>NA</td><td>NA</td>
@@ -1682,21 +1715,30 @@ TOUPCAM_PIXELFORMAT_HDR14HL (HDR, Bitdepth: 14, Conversion Gain: High + Low)</a>
 		0: no frame<br/>
 		1: output frame</td>
       	<td>0</td><td>Yes</td></tr><tr>
+      	<td>TOUPCAM_OPTION_SCAN_DIRECTION</td><td>RW</td>
+      	<td>Scan direction:<br/>
+		0: forward<br/>
+		1: reverse<br/>
+		2: alternate</td>
+      	<td>0</td><td>Yes</td></tr><tr>
       	<td>TOUPCAM_OPTION_MECHANICALSHUTTER</td><td>RW</td>
       	<td>Mechanical shutter:<br/>
 		0: open<br/>
 		1: close</td>
       	<td>0</td><td>Yes</td></tr><tr>
+      	<td>TOUPCAM_OPTION_LINE_LENGTH</td><td>RW</td>
+      	<td>Line length in pixel clock</td>
+      	<td>NA</td><td>Yes</td></tr><tr>
       	<td>TOUPCAM_OPTION_LINE_TIME</td><td>RO</td>
       	<td>Line-time of sensor in nanosecond</td>
       	<td>NA</td><td>NA</td></tr><tr>
       	<td>TOUPCAM_OPTION_UPTIME</td><td>RO</td>
       	<td>device uptime in millisecond</td>
       	<td>NA</td><td>NA</td></tr><tr>
-      	<td>TOUPCAM_OPTION_LINE_TIME</td><td>RO</td>
-      	<td>Line-time of sensor in nanosecond</td>
+      	<td>TOUPCAM_OPTION_GPS</td><td>RO</td>
+      	<td>GPS status<br/>0 =&gt; not supported<br/>-1 =&gt; gps device offline<br/>1 =&gt; gps device online</td>
       	<td>NA</td><td>NA</td></tr><tr>
-      	<td>TOUPCAM_OPTION_BITRANGE</td><td>RO</td>
+      	<td>TOUPCAM_OPTION_BITRANGE</td><td>RW</td>
       	<td>Bit range: [0, 8], see: <a href="./images/bitrange.png">snapshot</a></td>
       	<td>0</td><td>Yes</td></tr>
 </table></div></blockquote><blockquote>
@@ -2320,7 +2362,7 @@ public bool Snap(uint nResolutionIndex)
       </tr><tr>
 		<td colspan="2">demosimplest</td>
 		<td rowspan="12">Win32<br/>Linux<br/>macOS<br/>Android</td>
-		<td rowspan="22">C++</td><td rowspan="12">&nbsp;</td>
+		<td rowspan="23">C++</td><td rowspan="12">&nbsp;</td>
 		<td rowspan="12">console</td>
 		<td>simplest sample, about 70 lines of code. <a href="./images/demosimplest.png">snapshot</a>.</td>
 	  </tr><tr>
@@ -2359,13 +2401,13 @@ public bool Snap(uint nResolutionIndex)
 	  </tr><tr>
 		<td colspan="2">demoqt</td>
 		<td rowspan="2">Win32<br/>Linux<br/>macOS</td>
-		<td rowspan="2">Qt</td><td rowspan="16">GUI</td>
+		<td rowspan="2">Qt</td><td rowspan="18">GUI</td>
 		<td>Qt sample, <a href="./images/demoqt.png">snapshot</a>.<br/>Enumerate device, open device, video preview, (still) image capture, preview resolution, image save to file, etc. This sample use Pull Mode, StartPullModeWithCallback.</td>
 	  </tr><tr>
 		<td colspan="2">demotwoqt</td>
 		<td>Qt sample, <a href="./images/demotwoqt.png">snapshot</a>.<br/>Use two cameras simultaneously</td>
 	  </tr><tr>
-		<td colspan="2">democpp</td><td rowspan="8">Win32</td>
+		<td colspan="2">democpp</td><td rowspan="9">Win32</td>
 		<td rowspan="6">ATL/<a href="http://sourceforge.net/projects/wtl" target="_blank">WTL</a></td>
 		<td><a href="./images/democpp.png">snapshot</a>. demonstrates to enumerate device (Respone to <a href="#hotplugnotify">device plugin/unplug notifications</a>), <a href="#apigige">initialize support GigE</a>, open device, video preview, image capture, preview resolution, trigger, image saving multi-format (.bmp, .jpg, .png, etc), wmv format video recording, trigger mode, IO control, read write EEPROM/FLASH, etc. This sample use Pull Mode. To keep the code clean, this sample uses the WTL library which can be downloaded from <a href="http://sourceforge.net/projects/wtl" target="_blank">http://sourceforge.net/projects/wtl</a></td>
 	  </tr><tr>
@@ -2385,19 +2427,25 @@ public bool Snap(uint nResolutionIndex)
 		<td><a href="./images/triggertest.png">snapshot</a>. Soft trigger test, use a background thread to save the image file to disk (SSD is recommended, otherwise, when the disk speed is insufficient, the storage speed will not be able to keep up, more and more images will be stored in the deque, and the memory consumption will also increase).</td>
 	  </tr><tr>
 		<td colspan="2">demomfc</td>
-		<td rowspan="2">MFC</td>
+		<td rowspan="3">MFC</td>
 		<td><a href="./images/demomfc.png">snapshot</a>. use MFC as the GUI library. It demonstrates to open device, video preview, image capture, set the preview resolution, multi-format image saving (.bmp, .jpg, .png, etc). This sample use Pull Mode</td>
+	  </tr><tr>
+		<td colspan="2">demod3d11</td>
+		<td>Similar to demomfc, but uses D3D11 to display video</td>
 	  </tr><tr>
 		<td colspan="2">autotest</td>
 		<td><a href="./images/autotest.png">snapshot</a>. auto test tool used to automatically test, such as open/close the camera, change the resolution, snap, ROI, bitdepth, etc</td>
 	  </tr><tr>
 		<td colspan="2"><a id="dotnetsample">demowpf</a></td>
-		<td rowspan="4">.NET</td><td rowspan="3">C#</td><td>WPF</td>
+		<td rowspan="5">.NET</td><td rowspan="4">C#</td><td>WPF</td>
 		<td>WPF sample, <a href="./images/demowpf.png">snapshot</a>.<br/>Enum camera, open camera, preview video, captuare (still) image, save image to file, auto exposure, white balance, calculate fps (frame per second), etc. This sample use Pull Mode, StartPullModeWithCallback</td>
 	  </tr><tr>
 		<td colspan="2">demowinformcs</td>
-		<td rowspan="3">WinForm</td>
+		<td rowspan="4">WinForm</td>
 		<td>winform sample, <a href="./images/demowinformcs.png">snapshot</a>.<br/>Enum camera, open camera, preview video, captuare (still) image, save image to file, auto exposure, white balance, calculate fps (frame per second), etc. This sample use Pull Mode, StartPullModeWithCallback</td>
+	  </tr><tr>
+		<td colspan="2">demopushcs</td>
+		<td>winform sample, use Push Mode</td>
 	  </tr><tr>
 		<td colspan="2">demotwocs</td>
 		<td>winform sample, <a href="./images/demotwocs.png">snapshot</a>.<br/>Use two cameras simultaneously. This sample use Pull Mode, StartPullModeWithCallback</td>
@@ -2430,7 +2478,7 @@ public bool Snap(uint nResolutionIndex)
 		<td>simplest</td><td rowspan="2">Python</td><td></td><td>console</td>
 		<td>simplest python sample</td>
 	  </tr><tr>
-		<td>qt5<br/>qt6</td><td>PyQt</td><td rowspan="11">GUI</td>
+		<td>qt5<br/>qt6</td><td>PyQt</td><td rowspan="12">GUI</td>
 		<td>PyQt sample, <a href="./images/pyqt.png">snapshot</a>.</td>
 	  </tr><tr>
 		<td colspan="2"><a id="demodshow">demodshow</a></td>
@@ -2453,6 +2501,12 @@ public bool Snap(uint nResolutionIndex)
         <td colspan="2">LVDemo3</td>
         <td>Labview sample, <a href="./images/lvdemo3.png">snapshot</a>.<br />open camera, preview video, captuare (still) image, set the preview resolution, auto exposure, bitdepth, color adjustment, white (black) balance, digital binning, flat (dark) field corrction, etc.</td>
       </tr><tr>
+		<td colspan="2">demoopencv4</td>
+		<td>Win32<br/>Linux<br/>macOS</td>
+		<td>C++</td>
+		<td>OpenCV</td>
+		<td>opencv sample</td>
+	  </tr><tr>
 		<td rowspan="5">imagepro</td>
 		<td rowspan="2">liveedf</td>
 		<td rowspan="5">Win32</td>
@@ -2481,6 +2535,8 @@ public bool Snap(uint nResolutionIndex)
 (3) Select the Advanced tab. Next, select "Jumbo Packet" in the Property box, and then select "9014 Bytes" (Different network card models may have slightly different value) for Value to the right. Click OK to save the change. <a href="./images/mtu.png">snapshot</a><br/>
 (4) Run the following command to view the network card MTU: <a href="./images/mtushow.png">snapshot</a><br/><table width="100%" border="0" bgcolor="#B0D0B0"><tr><td align="center"><pre>netsh interface ipv4 show subinterface</pre></td></tr></table>
 <hr/><h1><font color="#0000FF">10. Changelog</font></h1><hr/>
+<p>v59: Add RAW=-1 mode. Please see <a href="#rawo">here</a></p>
+<p>v58: Open the camera by sn, name (GigE: ip, mac)</p>
 <p>v57: Add Toupcam_PullImageV4, ToupcamFrameInfoV4, GPS</p>
 <p>v56: Performance improvements: reduced frame data copy in RAW mode</p>
 <p>v55: Add Support to HDR Pixel Format</p>

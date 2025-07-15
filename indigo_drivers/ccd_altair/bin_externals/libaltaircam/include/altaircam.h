@@ -1,7 +1,7 @@
-#ifndef __altaircam_h__
+﻿#ifndef __altaircam_h__
 #define __altaircam_h__
 
-/* Version: 59.28650.20250608 */
+/* Version: 59.28926.20250709 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -10,9 +10,7 @@
               (c) arm64: Win10 or above
               (d) arm: Win10 or above
        (2) WinRT: x64, x86, arm64, arm; Win10 or above
-       (3) macOS:
-              (a) x64+x86: macOS 10.10 or above
-              (b) x64+arm64: macOS 11.0 or above, support x64 and Apple silicon (such as M1, M2, etc)
+       (3) macOS: x64+arm64: macOS 11.0 or above, support x64 and Apple silicon (such as M1, M2, etc)
        (4) Linux: kernel 2.6.27 or above
               (a) x64: GLIBC 2.14 or above
               (b) x86: CPU supports SSE3 instruction set or above; GLIBC 2.8 or above
@@ -61,13 +59,17 @@ extern "C" {
 #pragma pack(push, 8)
 #ifdef ALTAIRCAM_EXPORTS
 #define ALTAIRCAM_API(x)    __declspec(dllexport)   x   __stdcall  /* in Windows, we use __stdcall calling convention, see https://docs.microsoft.com/en-us/cpp/cpp/stdcall */
+#define ALTAIRCAM_APIV(x)   __declspec(dllexport)   x   __cdecl
 #elif !defined(ALTAIRCAM_NOIMPORTS)
 #define ALTAIRCAM_API(x)    __declspec(dllimport)   x   __stdcall
+#define ALTAIRCAM_APIV(x)   __declspec(dllimport)   x   __cdecl
 #else
 #define ALTAIRCAM_API(x)    x   __stdcall
+#define ALTAIRCAM_APIV(x)   x   __cdecl
 #endif
 #else   /* Linux or macOS */
 #define ALTAIRCAM_API(x)    x
+#define ALTAIRCAM_APIV(x)   x
 #if (!defined(HRESULT)) && (!defined(__COREFOUNDATION_CFPLUGINCOM__)) /* CFPlugInCOM.h */
 #define HRESULT int
 #endif
@@ -246,7 +248,7 @@ typedef struct Altaircam_t { int unused; } *HAltaircam;
 #define ALTAIRCAM_HEARTBEAT_MAX             10000   /* millisecond */
 #define ALTAIRCAM_AE_PERCENT_MIN            0       /* auto exposure percent; 0 or 100 => full roi average, means "disabled" */
 #define ALTAIRCAM_AE_PERCENT_MAX            100
-#define ALTAIRCAM_AE_PERCENT_DEF            10      /* auto exposure percent: enabled, percentage = 10% */
+#define ALTAIRCAM_AE_PERCENT_DEF            1       /* auto exposure percent: enabled, percentage = 1% */
 #define ALTAIRCAM_NOPACKET_TIMEOUT_MIN      500     /* no packet timeout minimum: 500ms */
 #define ALTAIRCAM_NOFRAME_TIMEOUT_MIN       500     /* no frame timeout minimum: 500ms */
 #define ALTAIRCAM_DYNAMIC_DEFECT_T1_MIN     0       /* dynamic defect pixel correction, dead pixel ratio: the smaller the dead ratio is, the more stringent the conditions for processing dead pixels are, and fewer pixels will be processed */
@@ -301,7 +303,7 @@ typedef struct {
 } AltaircamDeviceV2; /* device instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 59.28650.20250608
+    get the version of this dll/so/dylib, which is: 59.28926.20250709
 */
 #if defined(_WIN32)
 ALTAIRCAM_API(const wchar_t*)   Altaircam_Version();
@@ -678,6 +680,7 @@ ALTAIRCAM_API(HRESULT)  Altaircam_FfcImport(HAltaircam h, const wchar_t* filePat
 ALTAIRCAM_API(HRESULT)  Altaircam_FfcExport(HAltaircam h, const char* filePath);
 ALTAIRCAM_API(HRESULT)  Altaircam_FfcImport(HAltaircam h, const char* filePath);
 #endif
+ALTAIRCAM_API(HRESULT)  Altaircam_FfcFile(const void* data[], unsigned num, unsigned width, unsigned height, unsigned fourcc, unsigned bits, const char* outfile);
 
 /* Dark Field Correction */
 ALTAIRCAM_API(HRESULT)  Altaircam_DfcOnce(HAltaircam h);
@@ -1189,6 +1192,8 @@ ALTAIRCAM_API(HRESULT)  Altaircam_get_Option(HAltaircam h, unsigned iOption, int
 #define ALTAIRCAM_OPTION_FRONTEND_FULL          0x84       /* [RO] get the number of frontend deque full */
 #define ALTAIRCAM_OPTION_BACKEND_FULL           0x85       /* [RO] get the number of backend deque full */
 #define ALTAIRCAM_OPTION_GPS                    0x86       /* [RO] gps status: 0 => not supported; -1 => gps device offline; 1 => gps device online */
+#define ALTAIRCAM_OPTION_LINE_LENGTH            0x87       /* [RW] Line length in pixel clock */
+#define ALTAIRCAM_OPTION_SCAN_DIRECTION         0x88       /* [RW] Scan direction: 0 (forward), 1(reverse), 2(alternate) */
 
 /* pixel format */
 #define ALTAIRCAM_PIXELFORMAT_RAW8              0x00
@@ -1785,6 +1790,16 @@ ALTAIRCAM_API(HRESULT)  Altaircam_log_File(const
 #endif
                                        filePath);
 ALTAIRCAM_API(HRESULT)  Altaircam_log_Level(unsigned level); /* 0 => none; 1 => error; 2 => debug; 3 => verbose */
+ALTAIRCAM_API(void)     Altaircam_log_str(unsigned level, const char* str);
+ALTAIRCAM_APIV(void)    Altaircam_log(unsigned level, const char* format, ...);
+
+#if defined(ALTAIRCAM_LOG)
+#define ALTAIRCAM_LOG_NONE(format, ...)	  Altaircam_log(0, format, ##__VA_ARGS__)
+#define ALTAIRCAM_LOG_ERROR(format, ...)	  Altaircam_log(1, format, ##__VA_ARGS__)
+#define ALTAIRCAM_LOG_DEBUG(format, ...)	  Altaircam_log(2, format, ##__VA_ARGS__)
+#define ALTAIRCAM_LOG_VERBOSE(format, ...)  Altaircam_log(3, format, ##__VA_ARGS__)
+/* for example: ALTAIRCAM_LOG_DEBUG("%s: blahblah, x = %d, y = %f", __func__ x, y); */
+#endif
 
 #if defined(_WIN32)
 #pragma pack(pop)

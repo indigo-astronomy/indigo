@@ -7,7 +7,7 @@
 <body>
 <h1 align="center">Altaircam API Manual</h1>
 <hr/><h1><font color="#0000FF">1. Version &amp; Platform</font></h1>
-<hr/><ul><li>Version: 59.28650.20250608</li></ul>
+<hr/><ul><li>Version: 59.28926.20250709</li></ul>
 <ul><li>Platform<ul>
       <li>Win32:<ul>
           <li>x64: Win7 or above</li>
@@ -16,9 +16,7 @@
 		  <li>arm: Win10 or above</li>
         </ul></li>
 	  <li><a href="https://learn.microsoft.com/en-us/windows/uwp" target="_blank">WinRT/UWP</a>: x64, x86, arm64, arm; Windows10 or above</li>
-      <li>macOS:<ul>
-	  <li>x64+x86: macOS 10.10 or above</li>
-	  <li>x64+arm64: macOS 11.0 or above, support x64 and <a href="https://en.wikipedia.org/wiki/Apple_silicon" target="_blank">Apple silicon</a> (such as M1, M2, etc)</li>
+      <li>macOS: x64+arm64: macOS 11.0 or above, support x64 and <a href="https://en.wikipedia.org/wiki/Apple_silicon" target="_blank">Apple silicon</a> (such as M1, M2, etc)</li>
 	  </ul></li>
       <li>Linux: kernel 2.6.27 or above<ul><li>x64: GLIBC 2.14 or above</li>
 		  <li>x86: CPU supports SSE3 instruction set or above; GLIBC 2.8 or above</li>
@@ -34,7 +32,7 @@
 </ul></li></ul></li></ul>
 <hr/><h1><font color="#0000FF">2. Introduction</font></h1><hr/>
 <p>Altaircam cameras support various kinds of APIs (Application Program Interface), namely
- Native C/C++, <a href="#dotnet">.NET (C# &amp; VB.NET)</a>, <a href="#python">Python</a>, <a href="#java">Java</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/directshow/directshow" target="_blank">DirectShow</a>, <a href="http://twain.org" target="_blank">Twain</a>. Compared with other APIs, Native C/C++ API, as a low level API, don't depend any other runtime libraries. Besides, this interface is simple, flexible and easy to be integrated into the customized applications.
+ Native C/C++, <a href="#dotnet">.NET (C# &amp; VB.NET)</a>, <a href="#python">Python</a>, <a href="#java">Java</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/directshow/directshow" target="_blank">DirectShow</a>, <a href="http://twain.org" target="_blank">Twain</a>, LabView, MabLab and so on. Compared with other APIs, Native C/C++ API, as a low level API, don't depend any other runtime libraries. Besides, this interface is simple, flexible and easy to be integrated into the customized applications. 
 The SDK zip file contains all of the necessary resources and information:</p>
 <ul><li>inc</li></ul>
 <blockquote>
@@ -87,7 +85,16 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
  <ul><li>mac: For macOS, universal dylib: x64+x86, x64+arm64</li></ul>
  <ul><li>python: altaircam.py and <a href="#demopython">sample code</a></li></ul>
  <ul><li>java: altaircam.java and <a href="#demojava">sample code</a></li></ul>
- <ul><li>manuals: User manuals </a></li></ul>
+ <ul><li>doc: User manuals in English and <a href="hans.html" target="_blank">Simplified Chinese</a></li></ul>
+ <ul><li>extra
+       <ul><li>update: tools for update firmware. Remind: they all depend on the camera dynamic library, please copy altaircam.dll/so/dylib to the directory where it is running.
+		<ul><li>updatefw: update firmware, rename camera, set MAC/IP address for GigE camera, GUI, support Windows only</li>
+		<li>updatecli: update firmware, console UI, support Windows/Linux/MacOS</li>
+		</ul></li><li>directshow: DirectShow SDK and <a href="#demodshow">demo</a></li>
+         <li>twain: TWAIN SDK</li>
+         <li>labview: Labview SDK and <a href="#demolabview">demo</a></li>
+		 <li>matlab: MatLab demo</li>		 
+		<li>imagepro: liveedf, live stitch, live stack</li>
 </ul></li></ul>
 <hr/><h1><font color="#0000FF">3. Concepts &amp; Terminology</font></h1><hr/>
 <h2><font color="#0000FF"><a id="camidsn">a. Camera ID (camId) vs Camera SN (Serial Number)</a></font></h2>
@@ -235,7 +242,7 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
 	</blockquote>
 <p>6. Simulated Trigger Mode</p>
 	<blockquote>
-		For cameras that do not support software trigger and external trigger, simulated trigger mode could be available. When in simulated trigger mode, the camera hardware actually works in the same mode as the video mode. But the up-level software will not obtain any images from the camera. The software buffer will stay empty until the user set the trigger conditions by software.
+		For cameras that do not support software trigger and external trigger, simulated trigger mode could be available. When in simulated trigger mode, the camera hardware actually works in the same mode as the video mode. But the up-level software will not obtain any images from the camera. The software buffer will stay empty until the user set the trigger conditions by software. 
 	</blockquote>
 <p>7. How to Enter the Trigger Mode</p>
 	<blockquote>
@@ -655,7 +662,7 @@ typedef struct {
   		<p><a href="#camidsn">camId</a>: Altaircam camera ID, enumerated by Altaircam_EnumV2. <strong>If camId is NULL, Altaircam_Open will open the first enumerated camera which connects to the computer. So, if we don't care about that multiple cameras connect to the computer simultaneously, Altaircam_EnumV2 is optional, we can simply use NULL as the parameter.</strong></p>
 	<p>For <strong>USB, GigE or PCIe</strong> camera, the camId can also be specified as (case sensitive):<br/>
 		(a) "sn:xxxxxxxxxxxx" (such as sn:ZP250212241204105) or<br/>
-		(b) "name:xxxxxxxxxxxx" (such as name:Camera1)</p>
+		(b) "name:xxxxxxxxxxxx" (such as name:Camera1)</p>		
   	<p>Moreover, for <strong>GigE</strong> camera, the camId can also be specified as (case sensitive):<br/>
 		(a) "ip:xxx.xxx.xxx.xxx" (such as ip:192.168.1.100) or<br/>
 		(b) "mac:xxxxxxxxxxxx" (such as mac:d05f64ffff23) or</p>
@@ -990,7 +997,7 @@ typedef struct {
     <p><strong>Remarks:</strong> Altaircam_get_ResolutionNumber means the number of resolution supported. Take UCMOS03100KPA as an example, if we call the function Altaircam_get_ResolutionNumber and get "3", which means it can support three kinds of resolution. Altaircam_get_Resolution gets the width/height of each resolution.</p>
   <blockquote>
     <p align="left">These parameters have also been contained in AltaircamModelV2.</p>
-	<p align="left">Altaircam_get_ResolutionRatio gets the Binning number of the resolution, expressed as a fraction, such as 1/1, 1/2, 1/3, etc.</p>
+	<p align="left">Altaircam_get_ResolutionRatio gets the Binning number of the resolution, expressed as a fraction, such as 1/1, 1/2, 1/3, etc.</p>	
   </blockquote>
 </li></ul><ul><li><h2><font color="#0000FF">Altaircam_get_RawFormat</font></h2>
       <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
@@ -1403,7 +1410,7 @@ ALTAIRCAM_PIXELFORMAT_RAW10PACK
       </tr><tr>
         <td>ALTAIRCAM_OPTION_AUTOEXPOSURE_PERCENT</td><td>RW</td>
         <td>Peak mode of brightness calculation method: Calculate the average brightness of specified percentage top brightest pixels in interest area. Enable this option when the background is dark and the target is overexposed in average mode. Frame rate may be affected when this option is enabled due to higher CPU consumption<br/>
-        1~99: average brightness of specified percentage top brightest pixels in ROI<br/>
+        1~99: average brightness of specified percentage top brightest pixels in ROI, default: 1<br/>
         0 or 100: average brightness of whole pixels in ROI, means "disabled"</td>
 		<td>0(Disabled)</td><td>Yes</td>
       </tr><tr>
@@ -1708,11 +1715,20 @@ ALTAIRCAM_PIXELFORMAT_RAW10PACK
 		0: no frame<br/>
 		1: output frame</td>
       	<td>0</td><td>Yes</td></tr><tr>
+      	<td>ALTAIRCAM_OPTION_SCAN_DIRECTION</td><td>RW</td>
+      	<td>Scan direction:<br/>
+		0: forward<br/>
+		1: reverse<br/>
+		2: alternate</td>
+      	<td>0</td><td>Yes</td></tr><tr>
       	<td>ALTAIRCAM_OPTION_MECHANICALSHUTTER</td><td>RW</td>
       	<td>Mechanical shutter:<br/>
 		0: open<br/>
 		1: close</td>
       	<td>0</td><td>Yes</td></tr><tr>
+      	<td>ALTAIRCAM_OPTION_LINE_LENGTH</td><td>RW</td>
+      	<td>Line length in pixel clock</td>
+      	<td>NA</td><td>Yes</td></tr><tr>
       	<td>ALTAIRCAM_OPTION_LINE_TIME</td><td>RO</td>
       	<td>Line-time of sensor in nanosecond</td>
       	<td>NA</td><td>NA</td></tr><tr>
@@ -2159,7 +2175,15 @@ Altaircam_put_Brightness<br/>Altaircam_get_Brightness<br/>Altaircam_get_Contrast
         <td><div align="center">typedef void (*PALTAIRCAM_DEMOSAIC_CALLBACK)(unsigned nFourCC, int nW, int nH, const void* input, void* output, unsigned char nBitDepth, void* ctxDemosaic);</div></td>
       </tr></table></blockquote>
 	<p>ctxDemosaic: callback context</p></blockquote>
+</li></ul><ul><li><h2><font color="#0000FF">Altaircam_Update</font></h2>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+      <p>camId: camera ID</p>
+      <p>filePath: *.ufw file full path</p>
+      <p>pFun, ctxProgress: progress percent callback</p>
     </blockquote>
+    <p><strong>Remarks:</strong> firmware update. Please do not unplug the camera or lost power during the upgrade process, this is very very important. Once an unplugging or power outage occurs during the upgrade process, the camera will no longer be available and can only be returned to the factory for repair.</p>
 </li></ul><ul><li><h2><font color="#0000FF">Altaircam_Replug</font></h2>
     <p><strong>Return value: </strong> &gt;0: the number of device has been replug; = 0: no device found; E_ACCESSDENIED: no UAC Administrator privileges</p>
     <p><strong>Parameters:</strong></p>
@@ -2377,7 +2401,7 @@ public bool Snap(uint nResolutionIndex)
 	  </tr><tr>
 		<td colspan="2">demoqt</td>
 		<td rowspan="2">Win32<br/>Linux<br/>macOS</td>
-		<td rowspan="2">Qt</td><td rowspan="17">GUI</td>
+		<td rowspan="2">Qt</td><td rowspan="18">GUI</td>
 		<td>Qt sample, <a href="./images/demoqt.png">snapshot</a>.<br/>Enumerate device, open device, video preview, (still) image capture, preview resolution, image save to file, etc. This sample use Pull Mode, StartPullModeWithCallback.</td>
 	  </tr><tr>
 		<td colspan="2">demotwoqt</td>
@@ -2413,12 +2437,15 @@ public bool Snap(uint nResolutionIndex)
 		<td><a href="./images/autotest.png">snapshot</a>. auto test tool used to automatically test, such as open/close the camera, change the resolution, snap, ROI, bitdepth, etc</td>
 	  </tr><tr>
 		<td colspan="2"><a id="dotnetsample">demowpf</a></td>
-		<td rowspan="4">.NET</td><td rowspan="3">C#</td><td>WPF</td>
+		<td rowspan="5">.NET</td><td rowspan="4">C#</td><td>WPF</td>
 		<td>WPF sample, <a href="./images/demowpf.png">snapshot</a>.<br/>Enum camera, open camera, preview video, captuare (still) image, save image to file, auto exposure, white balance, calculate fps (frame per second), etc. This sample use Pull Mode, StartPullModeWithCallback</td>
 	  </tr><tr>
 		<td colspan="2">demowinformcs</td>
-		<td rowspan="3">WinForm</td>
+		<td rowspan="4">WinForm</td>
 		<td>winform sample, <a href="./images/demowinformcs.png">snapshot</a>.<br/>Enum camera, open camera, preview video, captuare (still) image, save image to file, auto exposure, white balance, calculate fps (frame per second), etc. This sample use Pull Mode, StartPullModeWithCallback</td>
+	  </tr><tr>
+		<td colspan="2">demopushcs</td>
+		<td>winform sample, use Push Mode</td>
 	  </tr><tr>
 		<td colspan="2">demotwocs</td>
 		<td>winform sample, <a href="./images/demotwocs.png">snapshot</a>.<br/>Use two cameras simultaneously. This sample use Pull Mode, StartPullModeWithCallback</td>
@@ -2462,13 +2489,25 @@ public bool Snap(uint nResolutionIndex)
 		<td colspan="2">amcap</td><td></td>
 		<td>Microsoft sample demonstrates various tasks related to video capture, see <a href="https://github.com/microsoft/Windows-classic-samples/tree/main/Samples/Win7Samples/multimedia/directshow/capture/amcap" target="_blank">https://github.com/microsoft/Windows-classic-samples/tree/main/Samples/Win7Samples/multimedia/directshow/capture/amcap</a></td>
 	  </tr><tr>
+		<td colspan="2"><a id="demolabview">LVDemo1</a></td>
+		<td rowspan="3">LabView</td>
+		<td rowspan="3">&nbsp;</td>
+		<td rowspan="3">&nbsp;</td>
+		<td>Labview program which works with one camera, <a href="./images/lvdemo1.png">snapshot</a>.</td>
 	  </tr><tr>
+		<td colspan="2">LVDemo2</td>
+		<td>Labview program which opens two cameras and control them respectively</td>
+      </tr><tr>
+        <td colspan="2">LVDemo3</td>
+        <td>Labview sample, <a href="./images/lvdemo3.png">snapshot</a>.<br />open camera, preview video, captuare (still) image, set the preview resolution, auto exposure, bitdepth, color adjustment, white (black) balance, digital binning, flat (dark) field corrction, etc.</td>
+      </tr><tr>
 		<td colspan="2">demoopencv4</td>
 		<td>Win32<br/>Linux<br/>macOS</td>
 		<td>C++</td>
 		<td>OpenCV</td>
 		<td>opencv sample</td>
 	  </tr><tr>
+		<td rowspan="5">imagepro</td>
 		<td rowspan="2">liveedf</td>
 		<td rowspan="5">Win32</td>
 		<td>C++</td><td>Qt</td>
@@ -2500,6 +2539,65 @@ public bool Snap(uint nResolutionIndex)
 <p>v58: Open the camera by sn, name (GigE: ip, mac)</p>
 <p>v57: Add Altaircam_PullImageV4, AltaircamFrameInfoV4, GPS</p>
 <p>v56: Performance improvements: reduced frame data copy in RAW mode</p>
-<p>v55: Add Support to HDR Pixel Format (Please download HRD Firmware for Altair Cameras supporting HDR at <a href="https://www.altairastro.help/downloads">www.altairastro.help/downloads</a>)</p>
+<p>v55: Add Support to HDR Pixel Format</p>
+<p>v54: Add support to GigE. Please see <a href="#apigige">here</a></p>
+<p>v53: Add AltaircamFrameInfoV3, Altaircam_PullImageV3, Altaircam_StartPushModeV4</p>
+<p>v52: Android Java side transfer file descriptor to <a href="#apiopen">Altaircam_Open</a> to open camera. Please see <a href="#androidopen">here</a></p>
+<p>v51: Add support auto exposure "once" mode. Please see <a href="#aexpo">here</a></p>
+<p>v50: SIMD optimize in Windows(x86/x64), Linux(x64) and Android(x64)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;frontend and backend deque length: <a href="#frontend">ALTAIRCAM_OPTION_FRONTEND_DEQUE_LENGTH</a>, <a href="#backend">ALTAIRCAM_OPTION_BACKEND_DEQUE_LENGTH</a></p>
+<p>v49: Add support to save &amp; load configuration. Please see <a href="#cfg">here</a></p>
+<p>v48: hardware event. Please see <a href="#hwflag">here</a>, <a href="#hwevent">here</a> and <a href="#hwoption">here</a></p>
+<p>v47: hardware level range. Please see <a href="#hwlevelrange">here</a> and <a href="#levelrangev2">here</a></p>
+<p>v46: Add support denose. Please see <a href="#denoise">here</a></p>
+<p>v45: Add sequencer trigger, UART, mix trigger (<a href="#mix">external and software trigger both are enabled</a>)</p>
+<p>v44: Extend the realtime mode, Please see <a href="#realtime">here</a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Add ALTAIRCAM_OPTION_CALLBACK_THREAD and ALTAIRCAM_OPTION_FRAME_DEQUE_LENGTH</p>
+<p>v43: Reload the last frame in the trigger mode. Please see <a href="#reload">ALTAIRCAM_OPTION_RELOAD</a></p>
+<p>v42: Precise frame rate and bandwidth. Please see <a href="#precise">here</a> and ALTAIRCAM_FLAG_PRECISE_FRAMERATE</p>
+<p>v41: no packet timeout. Please see <a href="#nopacket">here</a></p>
+<p>v40: Auto test tool, see samples\autotest</p>
+<p>v39: Update C#/VB.NET/Java/Python</p>
+<p>v38: Add support to byte order, change BGR/RGB. Please see <a href="#bgr">here</a></p>
+<p>v37: Add Android support<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Add Altaircam_StartPushModeV3 (Altaircam_StartPushModeV2 and Altaircam_StartPushMode are obsoleted)</p>
+<p>v36: Add Java support. Please see <a href="#java">here</a></p>
+<p>v35: Add Python support. Please see <a href="#python">here</a></p>
+<p>v34: Auto Focus and Focus Motor</p>
+<p>v33: extend ALTAIRCAM_OPTION_AGAIN to ALTAIRCAM_OPTION_AUTOEXP_POLICY, support more options. Please see <a href="#aepolicy">here</a></p>
+<p>v32: Addd support to Windows 10 on ARM and ARM64, both desktop and WinRT</p>
+<p>v31: Add Altaircam_deBayerV2, support RGB48 and RGB64</p>
+<p>v30: Add ALTAIRCAM_FLAG_CGHDR</p>
+<p>v29: Add AltaircamFrameInfoV2, a group of functions (PullImageV2 and StartPushModeV2), some cameras support frame sequence number and timestamp. Please see <a href="#infov2">here</a></p>
+<p>v28: Add Altaircam_read_Pipe, Altaircam_write_Pipe, Altaircam_feed_Pipe</p>
+<p>v27: Add Altaircam_SnapN, support to snap multiple images, please see <a href="#snapn">here</a> and democpp</p>
+<p>v26: Add support to restore factory settings, ALTAIRCAM_OPTION_FACTORY</p>
+<p>v25: Add sharpening, ALTAIRCAM_OPTION_SHARPENING</p>
+<p>v24: Add support to Exposure time with the 50/60 HZ constraint</p>
+<p>v23: Add support to Linux armhf, armel and arm64<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Add FFC and DFC, please see <a href="#ffc">here</a> and <a href="#dfc">here</a></p>
+<p>v22: Add ALTAIRCAM_OPTION_DDR_DEPTH, please see <a href="#ddrdepth">here</a></p>
+<p>v21: Add Altaircam_IoControl</p>
+<p>v20: Add Altaircam_EnumV2, AltaircamModelV2, AltaircamDeviceV2; (Altaircam_Enum, AltaircamModel and AltaircamDevice are obsoleted)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Add Pixel Format, see ALTAIRCAM_OPTION_PIXEL_FORMAT; (ALTAIRCAM_OPTION_PIXEL_FORMAT is the super set of ALTAIRCAM_OPTION_BITDEPTH)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Add Flat Field Correction</p>
+<p>v19: Add Black Balance: please see <a href="#black">here</a></p>
+<p>v18: Add Altaircam_get_Revision</p>
+<p>v17: Add <a href="#rotate">ALTAIRCAM_OPTION_ROTATE</a></p>
+<p>v16: Add <a href="#ddr">ALTAIRCAM_FLAG_DDR</a>, use very large capacity DDR (Double Data Rate SDRAM) for frame buffer</p>
+<p>v15: Add <a href="#binning">ALTAIRCAM_OPTION_BINNING</a></p>
+<p>v14: Add support to WinRT / UWP (Universal Windows Platform) / Windows Store App</p>
+<p>v13: support row pitch, please see <a href="#rowpitch1">Altaircam_PullImageWithRowPitch</a> and <a href="#rowpitch2">Altaircam_PullStillImageWithRowPitch</a></p>
+<p>v12: support RGB32, 8 bits Grey, 16 bits Grey, please see <a href="#rgb">here</a></p>
+<p>v11: black level: please see <a href="#blacklevel">here</a></p>
+<p>v10: demosaic method: please see <a href="#demosaic">here</a></p>
+<p>v9: change the histogram data type from double to float</p>
+<p>v8: support simulated trigger, please see <a href="#trigger">here</a></p>
+<p>v7: support RGB48 when bitdepth &gt; 8, please see <a href="#rgb">here</a></p>
+<p>v6: support trigger mode, please see <a href="#trigger">here</a></p>
+<p>v5: White Balance: Temp/Tint Mode vs RGB Gain Mode, please see <a href="#wb">here</a></p>
+<p>v4: ROI (Region Of Interest) supported: please see <a href="#roi">here</a></p>
+<p>v3: more bitdepth supported: 10bits, 12bits, 14bits, 16bits</p>
+<p>v2: support RAW format, please see <a href="#raw">here</a> and <a href="#rawo">here</a>; support Linux and macOS</p>
+<p>v1: initial release</p>
 </body>
 </html>
