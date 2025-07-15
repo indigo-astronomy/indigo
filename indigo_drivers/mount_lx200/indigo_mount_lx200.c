@@ -3806,13 +3806,11 @@ static void aux_connect_callback(indigo_device *device) {
 				indigo_define_property(device, AUX_INFO_PROPERTY, NULL);
 				indigo_set_timer(device, 0, nyx_aux_timer_callback, &PRIVATE_DATA->aux_timer);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			} 
-			if (MOUNT_TYPE_ON_STEP_ITEM->sw.value) {
+			} else if (MOUNT_TYPE_ON_STEP_ITEM->sw.value) {
 				onstep_aux_connect(device);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_set_timer(device, 0, onstep_aux_timer_callback, &PRIVATE_DATA->aux_timer);
-			}
-			else {
+			} else {
 				PRIVATE_DATA->device_count--;
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
