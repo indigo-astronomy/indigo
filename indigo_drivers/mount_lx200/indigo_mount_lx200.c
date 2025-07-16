@@ -23,8 +23,10 @@
  \file indigo_mount_lx200.c
  */
 
-#define DRIVER_VERSION 0x002E
+#define DRIVER_VERSION 0x002F
 #define DRIVER_NAME	"indigo_mount_lx200"
+
+#define NYX_BASE64_THRESHOLD_VERSION "1.32.0"
 
 #include <stdlib.h>
 #include <string.h>
@@ -219,6 +221,57 @@ typedef struct {
 	// the number of power outlets defined in onstep
 	int onstep_aux_power_outlet_count;
 } lx200_private_data;
+
+/**
+ * Compare two version strings in the format "major.minor.patch"
+ * Returns: -1 if version1 < version2, 0 if equal, 1 if version1 > version2
+ */
+static int compare_versions(const char *version1, const char *version2) {
+	if (!version1 || !version2) {
+		return 0;
+	}
+
+	char *v1_copy = strdup(version1);
+	char *v2_copy = strdup(version2);
+
+	if (!v1_copy || !v2_copy) {
+		indigo_safe_free(v1_copy);
+		indigo_safe_free(v2_copy);
+		return 0;
+	}
+
+	int v1_major = 0, v1_minor = 0, v1_patch = 0;
+	char *token = strtok(v1_copy, ".");
+	if (token) v1_major = atoi(token);
+	token = strtok(NULL, ".");
+	if (token) v1_minor = atoi(token);
+	token = strtok(NULL, ".");
+	if (token) v1_patch = atoi(token);
+
+	indigo_safe_free(v1_copy);
+
+	token = strtok(v2_copy, ".");
+	int v2_major = 0, v2_minor = 0, v2_patch = 0;
+	if (token) v2_major = atoi(token);
+	token = strtok(NULL, ".");
+	if (token) v2_minor = atoi(token);
+	token = strtok(NULL, ".");
+	if (token) v2_patch = atoi(token);
+
+	indigo_safe_free(v2_copy);
+
+	if (v1_major != v2_major) {
+		return (v1_major > v2_major) ? 1 : -1;
+	}
+	if (v1_minor != v2_minor) {
+		return (v1_minor > v2_minor) ? 1 : -1;
+	}
+	if (v1_patch != v2_patch) {
+		return (v1_patch > v2_patch) ? 1 : -1;
+	}
+
+	return 0;
+}
 
 static char *meade_error_string(indigo_device *device, unsigned int code) {
 	if (MOUNT_TYPE_ZWO_ITEM->sw.value) {
@@ -2950,21 +3003,20 @@ static void nyx_cl_callback(indigo_device *device) {
 	const size_t pass_len = strlen(NYX_WIFI_CL_PASSWORD_ITEM->text.value);
 	char command[64], response[64];
 	unsigned char *encoded = indigo_safe_malloc(MAX(ssid_len, pass_len)/3 * 4 + 4);
-	if (!strncmp(PRIVATE_DATA->product, "NYX-88", sizeof(PRIVATE_DATA->product))) {
+	if (compare_versions(MOUNT_INFO_FIRMWARE_ITEM->text.value, NYX_BASE64_THRESHOLD_VERSION) >= 0 && encoded != NULL) {
 		base64_encode(encoded, (unsigned char *)NYX_WIFI_CL_SSID_ITEM->text.value, ssid_len);
 		snprintf(command, sizeof(command), ":WS%s#", encoded);
-	}
-	else
+	} else {
 		snprintf(command, sizeof(command), ":WS%s#", NYX_WIFI_CL_SSID_ITEM->text.value);
+	}
 	NYX_WIFI_CL_PROPERTY->state = INDIGO_ALERT_STATE;
 	if (meade_command(device, command, response, sizeof(response), 0) && *response == '1') {
-		if (!strncmp(PRIVATE_DATA->product, "NYX-88", sizeof(PRIVATE_DATA->product))) {
+		if (compare_versions(MOUNT_INFO_FIRMWARE_ITEM->text.value, NYX_BASE64_THRESHOLD_VERSION) >= 0 && encoded != NULL) {
 			base64_encode(encoded, (unsigned char*)NYX_WIFI_CL_PASSWORD_ITEM->text.value, pass_len);
 			snprintf(command, sizeof(command), ":WP%s#", encoded);
-		}
-		else
+		} else {
 			snprintf(command, sizeof(command), ":WP%s#", NYX_WIFI_CL_PASSWORD_ITEM->text.value);
-
+		}
 		if (meade_command(device, command, response, sizeof(response), 0) && *response == '1') {
 			if (meade_command(device, ":WLC#", response, sizeof(response), 0) && *response == '1') {
 				NYX_WIFI_CL_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -2984,7 +3036,7 @@ static void nyx_cl_callback(indigo_device *device) {
 			}
 		}
 	}
-	free(encoded);
+	indigo_safe_free(encoded);
 	indigo_update_property(device, NYX_WIFI_CL_PROPERTY, NULL);
 }
 
@@ -2993,7 +3045,7 @@ static void nyx_reset_callback(indigo_device *device) {
 	NYX_WIFI_RESET_PROPERTY->state = INDIGO_ALERT_STATE;
 	if (meade_command(device, ":WLZ#", response, sizeof(response), 5 * ONE_SECOND_DELAY) && *response == '1') {
 		indigo_send_message(device, "WiFi reset!");
-	NYX_WIFI_RESET_PROPERTY->state = INDIGO_OK_STATE;
+		NYX_WIFI_RESET_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_update_property(device, NYX_WIFI_RESET_PROPERTY, NULL);
 }
@@ -3989,20 +4041,20 @@ indigo_result indigo_mount_lx200(indigo_driver_action action, indigo_driver_info
 		guider_detach
 	);
 	static indigo_device mount_focuser_template = INDIGO_DEVICE_INITIALIZER(
-	 MOUNT_LX200_FOCUSER_NAME,
-	 focuser_attach,
-	 indigo_focuser_enumerate_properties,
-	 focuser_change_property,
-	 NULL,
-	 focuser_detach
+		MOUNT_LX200_FOCUSER_NAME,
+		focuser_attach,
+		indigo_focuser_enumerate_properties,
+		focuser_change_property,
+		NULL,
+		focuser_detach
 	 );
 	static indigo_device mount_aux_template = INDIGO_DEVICE_INITIALIZER(
-	 MOUNT_LX200_AUX_NAME,
-	 aux_attach,
-	 aux_enumerate_properties,
-	 aux_change_property,
-	 NULL,
-	 aux_detach
+		MOUNT_LX200_AUX_NAME,
+		aux_attach,
+		aux_enumerate_properties,
+		aux_change_property,
+		NULL,
+		aux_detach
 	 );
 
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
