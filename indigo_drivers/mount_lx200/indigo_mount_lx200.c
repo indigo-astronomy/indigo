@@ -429,7 +429,7 @@ static bool meade_command(indigo_device *device, char *command, char *response, 
 		} else {
 			tv.tv_usec = 5000;
 		}
-		
+
 		long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
 		if (result == 0) {
 			break;
@@ -3002,8 +3002,13 @@ static void nyx_cl_callback(indigo_device *device) {
 	const size_t ssid_len = strlen(NYX_WIFI_CL_SSID_ITEM->text.value);
 	const size_t pass_len = strlen(NYX_WIFI_CL_PASSWORD_ITEM->text.value);
 	char command[64], response[64];
-	unsigned char *encoded = indigo_safe_malloc(MAX(ssid_len, pass_len)/3 * 4 + 4);
-	if (compare_versions(MOUNT_INFO_FIRMWARE_ITEM->text.value, NYX_BASE64_THRESHOLD_VERSION) >= 0 && encoded != NULL) {
+	char *encoded = NULL;
+
+	if (compare_versions(MOUNT_INFO_FIRMWARE_ITEM->text.value, NYX_BASE64_THRESHOLD_VERSION) >= 0) {
+		encoded = indigo_safe_malloc(MAX(ssid_len, pass_len)/3 * 4 + 4);
+	}
+
+	if (encoded != NULL) {
 		base64_encode(encoded, (unsigned char *)NYX_WIFI_CL_SSID_ITEM->text.value, ssid_len);
 		snprintf(command, sizeof(command), ":WS%s#", encoded);
 	} else {
@@ -3011,7 +3016,7 @@ static void nyx_cl_callback(indigo_device *device) {
 	}
 	NYX_WIFI_CL_PROPERTY->state = INDIGO_ALERT_STATE;
 	if (meade_command(device, command, response, sizeof(response), 0) && *response == '1') {
-		if (compare_versions(MOUNT_INFO_FIRMWARE_ITEM->text.value, NYX_BASE64_THRESHOLD_VERSION) >= 0 && encoded != NULL) {
+		if (encoded != NULL) {
 			base64_encode(encoded, (unsigned char*)NYX_WIFI_CL_PASSWORD_ITEM->text.value, pass_len);
 			snprintf(command, sizeof(command), ":WP%s#", encoded);
 		} else {
@@ -3744,7 +3749,7 @@ static void nyx_aux_timer_callback(indigo_device *device) {
 }
 
 static void onstep_aux_timer_callback(indigo_device *device) {
-	
+
 	if (!IS_CONNECTED) {
 		return;
 	}
@@ -3789,15 +3794,15 @@ static void onstep_aux_timer_callback(indigo_device *device) {
 	if (update_aux_power_prop) {
 		indigo_update_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
 	}
-	
+
 	indigo_reschedule_timer(device, 2, &PRIVATE_DATA->aux_timer);
-	
+
 }
 
 static void onstep_aux_connect(indigo_device *device) {
 	char aux_device_str[ONSTEP_AUX_DEVICE_COUNT + 1];
 	// first we request Onstep to list active aux slots
-	meade_command(device, ":GXY0#", aux_device_str, sizeof(aux_device_str), 0);	
+	meade_command(device, ":GXY0#", aux_device_str, sizeof(aux_device_str), 0);
 	// Onstep responds with a string like "11000000" to indicate that the first and second aux device is enabled
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Onstep active device string: %s", aux_device_str);
 
@@ -3827,7 +3832,7 @@ static void onstep_aux_connect(indigo_device *device) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Onstep AUX Power Outlet Device at slot %d with name %s and purpose switch", i + 1, name);
 				ONSTEP_AUX_POWER_OUTLET_MAPPING[ONSTEP_AUX_POWER_OUTLET_COUNT] = i + 1;
 				ONSTEP_AUX_POWER_OUTLET_COUNT++;
-			} else {	
+			} else {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Onstep AUX Device at index %d not recognized", i + 1, name);
 			}
 		}
@@ -3976,7 +3981,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		indigo_set_timer(device, 0, onstep_aux_power_outlet_handler, NULL);
 		return INDIGO_OK;
 	}
-	
+
 	return indigo_aux_change_property(device, client, property);
 }
 
