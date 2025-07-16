@@ -48,6 +48,7 @@
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_io.h>
 #include <indigo/indigo_align.h>
+#include <indigo/indigo_base64.h>
 
 #include "indigo_mount_lx200.h"
 
@@ -1712,6 +1713,7 @@ static void meade_init_nyx_mount(indigo_device *device) {
 	if (meade_command(device, ":WL>#", response, sizeof(response), 0) && (separator = strchr(response, ':'))) {
 		*separator++ = 0;
 		strncpy(NYX_WIFI_AP_SSID_ITEM->text.value, response, INDIGO_VALUE_SIZE);
+		strncpy(NYX_WIFI_AP_PASSWORD_ITEM->text.value, separator, INDIGO_VALUE_SIZE);
 	}
 	*NYX_WIFI_CL_SSID_ITEM->text.value = 0;
 	*NYX_WIFI_CL_PASSWORD_ITEM->text.value = 0;
@@ -2935,7 +2937,7 @@ static void nyx_ap_callback(indigo_device *device) {
 		snprintf(command, sizeof(command), ":WB%s#", NYX_WIFI_AP_PASSWORD_ITEM->text.value);
 		if (meade_command(device, command, response, sizeof(response), 0) && *response == '1') {
 			if (meade_command(device, ":WLC#", response, sizeof(response), 0) && *response == '1') {
-				indigo_send_message(device, "Created access point with SSID %s", NYX_WIFI_CL_SSID_ITEM->text.value);
+				indigo_send_message(device, "Created access point with SSID %s", NYX_WIFI_AP_SSID_ITEM->text.value);
 				NYX_WIFI_AP_PROPERTY->state = INDIGO_OK_STATE;
 			}
 		}
@@ -2944,11 +2946,25 @@ static void nyx_ap_callback(indigo_device *device) {
 }
 
 static void nyx_cl_callback(indigo_device *device) {
+	const size_t ssid_len = strlen(NYX_WIFI_CL_SSID_ITEM->text.value);
+	const size_t pass_len = strlen(NYX_WIFI_CL_PASSWORD_ITEM->text.value);
 	char command[64], response[64];
-	snprintf(command, sizeof(command), ":WS%s#", NYX_WIFI_CL_SSID_ITEM->text.value);
+	unsigned char *encoded = indigo_safe_malloc(MAX(ssid_len, pass_len)/3 * 4 + 4);
+	if (!strncmp(PRIVATE_DATA->product, "NYX-88", sizeof(PRIVATE_DATA->product))) {
+		base64_encode(encoded, (unsigned char *)NYX_WIFI_CL_SSID_ITEM->text.value, ssid_len);
+		snprintf(command, sizeof(command), ":WS%s#", encoded);
+	}
+	else
+		snprintf(command, sizeof(command), ":WS%s#", NYX_WIFI_CL_SSID_ITEM->text.value);
 	NYX_WIFI_CL_PROPERTY->state = INDIGO_ALERT_STATE;
 	if (meade_command(device, command, response, sizeof(response), 0) && *response == '1') {
-		snprintf(command, sizeof(command), ":WP%s#", NYX_WIFI_CL_PASSWORD_ITEM->text.value);
+		if (!strncmp(PRIVATE_DATA->product, "NYX-88", sizeof(PRIVATE_DATA->product))) {
+			base64_encode(encoded, (unsigned char*)NYX_WIFI_CL_PASSWORD_ITEM->text.value, pass_len);
+			snprintf(command, sizeof(command), ":WP%s#", encoded);
+		}
+		else
+			snprintf(command, sizeof(command), ":WP%s#", NYX_WIFI_CL_PASSWORD_ITEM->text.value);
+
 		if (meade_command(device, command, response, sizeof(response), 0) && *response == '1') {
 			if (meade_command(device, ":WLC#", response, sizeof(response), 0) && *response == '1') {
 				NYX_WIFI_CL_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -2958,15 +2974,17 @@ static void nyx_cl_callback(indigo_device *device) {
 					if (meade_command(device, ":WLI#", response, sizeof(response), 0) && !strncmp(response, NYX_WIFI_CL_SSID_ITEM->text.value, strlen(NYX_WIFI_CL_SSID_ITEM->text.value))) {
 						indigo_send_message(device, "Connected to %s", NYX_WIFI_CL_SSID_ITEM->text.value);
 						NYX_WIFI_CL_PROPERTY->state = INDIGO_OK_STATE;
-						indigo_update_property(device, NYX_WIFI_CL_PROPERTY, NULL);
-						return;
+						break;
 					}
 				}
-				indigo_send_message(device, "Failed to connect to %s", NYX_WIFI_CL_SSID_ITEM->text.value);
-				NYX_WIFI_CL_PROPERTY->state = INDIGO_ALERT_STATE;
+				if (NYX_WIFI_CL_PROPERTY->state == INDIGO_BUSY_STATE) {
+					indigo_send_message(device, "Failed to connect to %s", NYX_WIFI_CL_SSID_ITEM->text.value);
+					NYX_WIFI_CL_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
 			}
 		}
 	}
+	free(encoded);
 	indigo_update_property(device, NYX_WIFI_CL_PROPERTY, NULL);
 }
 
