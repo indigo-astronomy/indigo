@@ -179,6 +179,7 @@ typedef struct {
 	int handle;
 	int device_count;
 	bool is_network;
+	bool wifi_reset;
 	indigo_timer *position_timer;
 	indigo_timer *keep_alive_timer;
 	pthread_mutex_t port_mutex;
@@ -405,6 +406,7 @@ static bool meade_open(indigo_device *device) {
 			tv.tv_sec = 0;
 			tv.tv_usec = 100000;
 		}
+		PRIVATE_DATA->wifi_reset = false;
 		return true;
 	} else {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", name);
@@ -415,6 +417,9 @@ static bool meade_open(indigo_device *device) {
 static void network_disconnection(__attribute__((unused)) indigo_device *device);
 
 static bool meade_command(indigo_device *device, char *command, char *response, int max, int sleep) {
+	if (PRIVATE_DATA->handle == 0 || PRIVATE_DATA->wifi_reset) {
+		return false;
+	}
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	char c;
 	struct timeval tv;
@@ -489,6 +494,9 @@ static bool meade_command(indigo_device *device, char *command, char *response, 
 }
 
 static bool meade_command_progress(indigo_device *device, char *command, char *response, int max, int sleep) {
+	if (PRIVATE_DATA->handle == 0 || PRIVATE_DATA->wifi_reset) {
+		return false;
+	}
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	char c;
 	struct timeval tv;
@@ -2665,7 +2673,7 @@ static void meade_update_mount_state(indigo_device *device) {
 // -------------------------------------------------------------------------------- INDIGO MOUNT device implementation
 
 static void position_timer_callback(indigo_device *device) {
-	if (PRIVATE_DATA->handle > 0) {
+	if (PRIVATE_DATA->handle > 0 && !PRIVATE_DATA->wifi_reset) {
 		meade_update_site_if_changed(device);
 		meade_update_mount_state(device);
 		indigo_update_coordinates(device, NULL);
@@ -3009,49 +3017,44 @@ static void nyx_cl_callback(indigo_device *device) {
 	}
 
 	if (encoded != NULL) {
-		base64_encode(encoded, (unsigned char *)NYX_WIFI_CL_SSID_ITEM->text.value, ssid_len);
+		base64_encode((unsigned char *)encoded, (unsigned char *)NYX_WIFI_CL_SSID_ITEM->text.value, ssid_len);
 		snprintf(command, sizeof(command), ":WS%s#", encoded);
 	} else {
 		snprintf(command, sizeof(command), ":WS%s#", NYX_WIFI_CL_SSID_ITEM->text.value);
 	}
-	NYX_WIFI_CL_PROPERTY->state = INDIGO_ALERT_STATE;
 	if (meade_command(device, command, response, sizeof(response), 0) && *response == '1') {
 		if (encoded != NULL) {
-			base64_encode(encoded, (unsigned char*)NYX_WIFI_CL_PASSWORD_ITEM->text.value, pass_len);
+			base64_encode((unsigned char *)encoded, (unsigned char*)NYX_WIFI_CL_PASSWORD_ITEM->text.value, pass_len);
 			snprintf(command, sizeof(command), ":WP%s#", encoded);
 		} else {
 			snprintf(command, sizeof(command), ":WP%s#", NYX_WIFI_CL_PASSWORD_ITEM->text.value);
 		}
 		if (meade_command(device, command, response, sizeof(response), 0) && *response == '1') {
-			if (meade_command(device, ":WLC#", response, sizeof(response), 0) && *response == '1') {
-				NYX_WIFI_CL_PROPERTY->state = INDIGO_BUSY_STATE;
+			if (meade_command(device, ":WLC#", NULL, 0, 0)) {
+				PRIVATE_DATA->wifi_reset = true;
+				indigo_send_message(device, "WiFi reset!");
+				NYX_WIFI_CL_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, NYX_WIFI_CL_PROPERTY, NULL);
-				for (int i = 0; i < 10; i++) {
-					indigo_usleep(ONE_SECOND_DELAY);
-					if (meade_command(device, ":WLI#", response, sizeof(response), 0) && !strncmp(response, NYX_WIFI_CL_SSID_ITEM->text.value, strlen(NYX_WIFI_CL_SSID_ITEM->text.value))) {
-						indigo_send_message(device, "Connected to %s", NYX_WIFI_CL_SSID_ITEM->text.value);
-						NYX_WIFI_CL_PROPERTY->state = INDIGO_OK_STATE;
-						break;
-					}
-				}
-				if (NYX_WIFI_CL_PROPERTY->state == INDIGO_BUSY_STATE) {
-					indigo_send_message(device, "Failed to connect to %s", NYX_WIFI_CL_SSID_ITEM->text.value);
-					NYX_WIFI_CL_PROPERTY->state = INDIGO_ALERT_STATE;
-				}
+				indigo_set_timer(device, 0, network_disconnection, NULL);
+				return;
 			}
 		}
 	}
 	indigo_safe_free(encoded);
+	NYX_WIFI_CL_PROPERTY->state = INDIGO_ALERT_STATE;
 	indigo_update_property(device, NYX_WIFI_CL_PROPERTY, NULL);
 }
 
 static void nyx_reset_callback(indigo_device *device) {
-	char response[64];
-	NYX_WIFI_RESET_PROPERTY->state = INDIGO_ALERT_STATE;
-	if (meade_command(device, ":WLZ#", response, sizeof(response), 5 * ONE_SECOND_DELAY) && *response == '1') {
+	if (meade_command(device, ":WLZ#", NULL, 0, 0)) {
+		PRIVATE_DATA->wifi_reset = true;
 		indigo_send_message(device, "WiFi reset!");
 		NYX_WIFI_RESET_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, NYX_WIFI_RESET_PROPERTY, NULL);
+		indigo_set_timer(device, 0, network_disconnection, NULL);
+		return;
 	}
+	NYX_WIFI_RESET_PROPERTY->state = INDIGO_ALERT_STATE;
 	indigo_update_property(device, NYX_WIFI_RESET_PROPERTY, NULL);
 }
 
@@ -4003,10 +4006,12 @@ static void device_network_disconnection(indigo_device* device, indigo_timer_cal
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		callback(device);
-		CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;  // The alert state signals the unexpected disconnection
-		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		// Sending message as this update will not pass through the agent
-		indigo_send_message(device, "Error: Device disconnected unexpectedly", device->name);
+		if (!PRIVATE_DATA->wifi_reset) {
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;  // The alert state signals the unexpected disconnection
+			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			// Sending message as this update will not pass through the agent
+			indigo_send_message(device, "Error: Device disconnected unexpectedly", device->name);
+		}
 	}
 	// Otherwise not previously connected, nothing to do
 }
