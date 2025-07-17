@@ -27,6 +27,8 @@
 #define DRIVER_VERSION 0x0300002F
 #define DRIVER_NAME	"indigo_mount_lx200"
 
+#define NYX_BASE64_THRESHOLD_VERSION "1.32.0"
+
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -39,8 +41,13 @@
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_uni_io.h>
 #include <indigo/indigo_align.h>
+#include <indigo/indigo_base64.h>
 
 #include "indigo_mount_lx200.h"
+
+#ifndef MAX
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
+#endif
 
 #define PRIVATE_DATA				((lx200_private_data *)device->private_data)
 
@@ -169,6 +176,7 @@ typedef enum {
 typedef struct {
 	indigo_uni_handle *handle;
 	int device_count;
+	bool wifi_reset;
 	indigo_timer *position_timer;
 	indigo_timer *keep_alive_timer;
 	pthread_mutex_t port_mutex;
@@ -211,6 +219,57 @@ typedef struct {
 	// the number of power outlets defined in onstep
 	int onstep_aux_power_outlet_count;
 } lx200_private_data;
+
+/**
+ * Compare two version strings in the format "major.minor.patch"
+ * Returns: -1 if version1 < version2, 0 if equal, 1 if version1 > version2
+ */
+static int compare_versions(const char *version1, const char *version2) {
+	if (!version1 || !version2) {
+		return 0;
+	}
+
+	char *v1_copy = strdup(version1);
+	char *v2_copy = strdup(version2);
+
+	if (!v1_copy || !v2_copy) {
+		indigo_safe_free(v1_copy);
+		indigo_safe_free(v2_copy);
+		return 0;
+	}
+
+	int v1_major = 0, v1_minor = 0, v1_patch = 0;
+	char *token = strtok(v1_copy, ".");
+	if (token) v1_major = atoi(token);
+	token = strtok(NULL, ".");
+	if (token) v1_minor = atoi(token);
+	token = strtok(NULL, ".");
+	if (token) v1_patch = atoi(token);
+
+	indigo_safe_free(v1_copy);
+
+	token = strtok(v2_copy, ".");
+	int v2_major = 0, v2_minor = 0, v2_patch = 0;
+	if (token) v2_major = atoi(token);
+	token = strtok(NULL, ".");
+	if (token) v2_minor = atoi(token);
+	token = strtok(NULL, ".");
+	if (token) v2_patch = atoi(token);
+
+	indigo_safe_free(v2_copy);
+
+	if (v1_major != v2_major) {
+		return (v1_major > v2_major) ? 1 : -1;
+	}
+	if (v1_minor != v2_minor) {
+		return (v1_minor > v2_minor) ? 1 : -1;
+	}
+	if (v1_patch != v2_patch) {
+		return (v1_patch > v2_patch) ? 1 : -1;
+	}
+
+	return 0;
+}
 
 static char *meade_error_string(indigo_device *device, unsigned int code) {
 	if (MOUNT_TYPE_ZWO_ITEM->sw.value) {
@@ -314,6 +373,7 @@ static bool meade_open(indigo_device *device) {
 		}
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
 		indigo_uni_discard(PRIVATE_DATA->handle);
+		PRIVATE_DATA->wifi_reset = false;
 		return true;
 	} else {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", name);
@@ -324,6 +384,9 @@ static bool meade_open(indigo_device *device) {
 static void network_disconnection(indigo_device *device);
 
 static bool meade_command(indigo_device *device, char *command, char *response, int max, int sleep) {
+	if (PRIVATE_DATA->handle == 0 || PRIVATE_DATA->wifi_reset) {
+		return false;
+	}
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
 		if (indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command)) > 0) {
@@ -348,6 +411,9 @@ static bool meade_command(indigo_device *device, char *command, char *response, 
 }
 
 static bool meade_command_progress(indigo_device *device, char *command, char *response, int max, int sleep) {
+	if (PRIVATE_DATA->handle == 0 || PRIVATE_DATA->wifi_reset) {
+		return false;
+	}
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
 		if (indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command)) > 0) {
@@ -1566,6 +1632,7 @@ static void meade_init_nyx_mount(indigo_device *device) {
 	if (meade_command(device, ":WL>#", response, sizeof(response), 0) && (separator = strchr(response, ':'))) {
 		*separator++ = 0;
 		strncpy(NYX_WIFI_AP_SSID_ITEM->text.value, response, INDIGO_VALUE_SIZE);
+		strncpy(NYX_WIFI_AP_PASSWORD_ITEM->text.value, separator, INDIGO_VALUE_SIZE);
 	}
 	*NYX_WIFI_CL_SSID_ITEM->text.value = 0;
 	*NYX_WIFI_CL_PASSWORD_ITEM->text.value = 0;
@@ -2453,7 +2520,7 @@ static void meade_update_mount_state(indigo_device *device) {
 // -------------------------------------------------------------------------------- INDIGO MOUNT device implementation
 
 static void position_timer_callback(indigo_device *device) {
-	if (PRIVATE_DATA->handle != NULL) {
+	if (PRIVATE_DATA->handle != NULL && !PRIVATE_DATA->wifi_reset) {
 		meade_update_site_if_changed(device);
 		meade_update_mount_state(device);
 		indigo_update_coordinates(device, NULL);
@@ -2789,7 +2856,7 @@ static void nyx_ap_callback(indigo_device *device) {
 		snprintf(command, sizeof(command), ":WB%s#", NYX_WIFI_AP_PASSWORD_ITEM->text.value);
 		if (meade_command(device, command, response, sizeof(response), 0) && *response == '1') {
 			if (meade_command(device, ":WLC#", response, sizeof(response), 0) && *response == '1') {
-				indigo_send_message(device, "Created access point with SSID %s", NYX_WIFI_CL_SSID_ITEM->text.value);
+				indigo_send_message(device, "Created access point with SSID %s", NYX_WIFI_AP_SSID_ITEM->text.value);
 				NYX_WIFI_AP_PROPERTY->state = INDIGO_OK_STATE;
 			}
 		}
@@ -2798,39 +2865,54 @@ static void nyx_ap_callback(indigo_device *device) {
 }
 
 static void nyx_cl_callback(indigo_device *device) {
+	const size_t ssid_len = strlen(NYX_WIFI_CL_SSID_ITEM->text.value);
+	const size_t pass_len = strlen(NYX_WIFI_CL_PASSWORD_ITEM->text.value);
 	char command[64], response[64];
-	snprintf(command, sizeof(command), ":WS%s#", NYX_WIFI_CL_SSID_ITEM->text.value);
-	NYX_WIFI_CL_PROPERTY->state = INDIGO_ALERT_STATE;
+	char *encoded = NULL;
+
+	if (compare_versions(MOUNT_INFO_FIRMWARE_ITEM->text.value, NYX_BASE64_THRESHOLD_VERSION) >= 0) {
+		encoded = indigo_safe_malloc(MAX(ssid_len, pass_len)/3 * 4 + 4);
+	}
+
+	if (encoded != NULL) {
+		base64_encode((unsigned char *)encoded, (unsigned char *)NYX_WIFI_CL_SSID_ITEM->text.value, ssid_len);
+		snprintf(command, sizeof(command), ":WS%s#", encoded);
+	} else {
+		snprintf(command, sizeof(command), ":WS%s#", NYX_WIFI_CL_SSID_ITEM->text.value);
+	}
 	if (meade_command(device, command, response, sizeof(response), 0) && *response == '1') {
-		snprintf(command, sizeof(command), ":WP%s#", NYX_WIFI_CL_PASSWORD_ITEM->text.value);
+		if (encoded != NULL) {
+			base64_encode((unsigned char *)encoded, (unsigned char*)NYX_WIFI_CL_PASSWORD_ITEM->text.value, pass_len);
+			snprintf(command, sizeof(command), ":WP%s#", encoded);
+		} else {
+			snprintf(command, sizeof(command), ":WP%s#", NYX_WIFI_CL_PASSWORD_ITEM->text.value);
+		}
 		if (meade_command(device, command, response, sizeof(response), 0) && *response == '1') {
-			if (meade_command(device, ":WLC#", response, sizeof(response), 0) && *response == '1') {
-				NYX_WIFI_CL_PROPERTY->state = INDIGO_BUSY_STATE;
+			if (meade_command(device, ":WLC#", NULL, 0, 0)) {
+				PRIVATE_DATA->wifi_reset = true;
+				indigo_send_message(device, "WiFi reset!");
+				NYX_WIFI_CL_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, NYX_WIFI_CL_PROPERTY, NULL);
-				for (int i = 0; i < 10; i++) {
-					indigo_sleep(1);
-					if (meade_command(device, ":WLI#", response, sizeof(response), 0) && !strncmp(response, NYX_WIFI_CL_SSID_ITEM->text.value, strlen(NYX_WIFI_CL_SSID_ITEM->text.value))) {
-						indigo_send_message(device, "Connected to %s", NYX_WIFI_CL_SSID_ITEM->text.value);
-						NYX_WIFI_CL_PROPERTY->state = INDIGO_OK_STATE;
-						indigo_update_property(device, NYX_WIFI_CL_PROPERTY, NULL);
-						return;
-					}
-				}
-				indigo_send_message(device, "Failed to connect to %s", NYX_WIFI_CL_SSID_ITEM->text.value);
-				NYX_WIFI_CL_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_set_timer(device, 0, network_disconnection, NULL);
+				return;
 			}
 		}
 	}
+	indigo_safe_free(encoded);
+	NYX_WIFI_CL_PROPERTY->state = INDIGO_ALERT_STATE;
 	indigo_update_property(device, NYX_WIFI_CL_PROPERTY, NULL);
 }
 
 static void nyx_reset_callback(indigo_device *device) {
-	char response[64];
-	NYX_WIFI_RESET_PROPERTY->state = INDIGO_ALERT_STATE;
-	if (meade_command(device, ":WLZ#", response, sizeof(response), INDIGO_DELAY(5)) && *response == '1') {
+	if (meade_command(device, ":WLZ#", NULL, 0, 0)) {
+		PRIVATE_DATA->wifi_reset = true;
 		indigo_send_message(device, "WiFi reset!");
-	NYX_WIFI_RESET_PROPERTY->state = INDIGO_OK_STATE;
+		NYX_WIFI_RESET_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, NYX_WIFI_RESET_PROPERTY, NULL);
+		indigo_set_timer(device, 0, network_disconnection, NULL);
+		return;
 	}
+	NYX_WIFI_RESET_PROPERTY->state = INDIGO_ALERT_STATE;
 	indigo_update_property(device, NYX_WIFI_RESET_PROPERTY, NULL);
 }
 
@@ -3541,7 +3623,7 @@ static void nyx_aux_timer_callback(indigo_device *device) {
 }
 
 static void onstep_aux_timer_callback(indigo_device *device) {
-	
+
 	if (!IS_CONNECTED) {
 		return;
 	}
@@ -3586,15 +3668,15 @@ static void onstep_aux_timer_callback(indigo_device *device) {
 	if (update_aux_power_prop) {
 		indigo_update_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
 	}
-	
+
 	indigo_reschedule_timer(device, 2, &PRIVATE_DATA->aux_timer);
-	
+
 }
 
 static void onstep_aux_connect(indigo_device *device) {
 	char aux_device_str[ONSTEP_AUX_DEVICE_COUNT + 1];
 	// first we request Onstep to list active aux slots
-	meade_command(device, ":GXY0#", aux_device_str, sizeof(aux_device_str), 0);	
+	meade_command(device, ":GXY0#", aux_device_str, sizeof(aux_device_str), 0);
 	// Onstep responds with a string like "11000000" to indicate that the first and second aux device is enabled
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Onstep active device string: %s", aux_device_str);
 
@@ -3624,7 +3706,7 @@ static void onstep_aux_connect(indigo_device *device) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Onstep AUX Power Outlet Device at slot %d with name %s and purpose switch", i + 1, name);
 				ONSTEP_AUX_POWER_OUTLET_MAPPING[ONSTEP_AUX_POWER_OUTLET_COUNT] = i + 1;
 				ONSTEP_AUX_POWER_OUTLET_COUNT++;
-			} else {	
+			} else {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Onstep AUX Device at index %d not recognized", i + 1, name);
 			}
 		}
@@ -3675,8 +3757,7 @@ static void aux_connect_callback(indigo_device *device) {
 				indigo_define_property(device, AUX_INFO_PROPERTY, NULL);
 				indigo_set_timer(device, 0, nyx_aux_timer_callback, &PRIVATE_DATA->aux_timer);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			} 
-			if (MOUNT_TYPE_ON_STEP_ITEM->sw.value) {
+			} else if (MOUNT_TYPE_ON_STEP_ITEM->sw.value) {
 				onstep_aux_connect(device);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_set_timer(device, 0, onstep_aux_timer_callback, &PRIVATE_DATA->aux_timer);
@@ -3776,7 +3857,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		indigo_set_timer(device, 0, onstep_aux_power_outlet_handler, NULL);
 		return INDIGO_OK;
 	}
-	
+
 	return indigo_aux_change_property(device, client, property);
 }
 
@@ -3798,10 +3879,12 @@ static void device_network_disconnection(indigo_device* device, indigo_timer_cal
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		callback(device);
-		CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;  // The alert state signals the unexpected disconnection
-		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		// Sending message as this update will not pass through the agent
-		indigo_send_message(device, "Error: Device disconnected unexpectedly", device->name);
+		if (!PRIVATE_DATA->wifi_reset) {
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;  // The alert state signals the unexpected disconnection
+			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			// Sending message as this update will not pass through the agent
+			indigo_send_message(device, "Error: Device disconnected unexpectedly", device->name);
+		}
 	}
 	// Otherwise not previously connected, nothing to do
 }
@@ -3841,20 +3924,20 @@ indigo_result indigo_mount_lx200(indigo_driver_action action, indigo_driver_info
 		guider_detach
 	);
 	static indigo_device mount_focuser_template = INDIGO_DEVICE_INITIALIZER(
-	 MOUNT_LX200_FOCUSER_NAME,
-	 focuser_attach,
-	 indigo_focuser_enumerate_properties,
-	 focuser_change_property,
-	 NULL,
-	 focuser_detach
+		MOUNT_LX200_FOCUSER_NAME,
+		focuser_attach,
+		indigo_focuser_enumerate_properties,
+		focuser_change_property,
+		NULL,
+		focuser_detach
 	 );
 	static indigo_device mount_aux_template = INDIGO_DEVICE_INITIALIZER(
-	 MOUNT_LX200_AUX_NAME,
-	 aux_attach,
-	 aux_enumerate_properties,
-	 aux_change_property,
-	 NULL,
-	 aux_detach
+		MOUNT_LX200_AUX_NAME,
+		aux_attach,
+		aux_enumerate_properties,
+		aux_change_property,
+		NULL,
+		aux_detach
 	 );
 
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
