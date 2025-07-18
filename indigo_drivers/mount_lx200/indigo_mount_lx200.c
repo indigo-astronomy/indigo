@@ -3031,11 +3031,13 @@ static void nyx_cl_callback(indigo_device *device) {
 		}
 		if (meade_command(device, command, response, sizeof(response), 0) && *response == '1') {
 			if (meade_command(device, ":WLC#", NULL, 0, 0)) {
-				PRIVATE_DATA->wifi_reset = true;
 				indigo_send_message(device, "WiFi reset!");
 				NYX_WIFI_CL_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, NYX_WIFI_CL_PROPERTY, NULL);
-				indigo_set_timer(device, 0, network_disconnection, NULL);
+				if (PRIVATE_DATA->is_network) {
+					PRIVATE_DATA->wifi_reset = true;
+					indigo_set_timer(device, 0, network_disconnection, NULL);
+				}
 				return;
 			}
 		}
@@ -3047,11 +3049,13 @@ static void nyx_cl_callback(indigo_device *device) {
 
 static void nyx_reset_callback(indigo_device *device) {
 	if (meade_command(device, ":WLZ#", NULL, 0, 0)) {
-		PRIVATE_DATA->wifi_reset = true;
 		indigo_send_message(device, "WiFi reset!");
 		NYX_WIFI_RESET_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, NYX_WIFI_RESET_PROPERTY, NULL);
-		indigo_set_timer(device, 0, network_disconnection, NULL);
+		if (PRIVATE_DATA->is_network) {
+			PRIVATE_DATA->wifi_reset = true;
+			indigo_set_timer(device, 0, network_disconnection, NULL);
+		}
 		return;
 	}
 	NYX_WIFI_RESET_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -4031,6 +4035,7 @@ static void network_disconnection(__attribute__((unused)) indigo_device* device)
 	device_network_disconnection(mount, mount_connect_callback);
 	device_network_disconnection(mount_guider, guider_connect_callback);
 	device_network_disconnection(mount_focuser, focuser_connect_callback);
+	device_network_disconnection(mount_aux, aux_connect_callback);
 }
 
 indigo_result indigo_mount_lx200(indigo_driver_action action, indigo_driver_info *info) {
