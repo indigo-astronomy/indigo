@@ -2892,7 +2892,7 @@ static void nyx_cl_callback(indigo_device *device) {
 				indigo_send_message(device, "WiFi reset!");
 				NYX_WIFI_CL_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, NYX_WIFI_CL_PROPERTY, NULL);
-				if (PRIVATE_DATA->is_network) {
+				if (PRIVATE_DATA->handle->type == INDIGO_TCP_HANDLE) {
 					PRIVATE_DATA->wifi_reset = true;
 					indigo_set_timer(device, 0, network_disconnection, NULL);
 				}
@@ -2910,7 +2910,7 @@ static void nyx_reset_callback(indigo_device *device) {
 		indigo_send_message(device, "WiFi reset!");
 		NYX_WIFI_RESET_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, NYX_WIFI_RESET_PROPERTY, NULL);
-		if (PRIVATE_DATA->is_network) {
+		if (PRIVATE_DATA->handle->type == INDIGO_TCP_HANDLE) {
 			PRIVATE_DATA->wifi_reset = true;
 			indigo_set_timer(device, 0, network_disconnection, NULL);
 		}
