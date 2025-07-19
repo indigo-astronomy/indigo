@@ -24,11 +24,11 @@
 #define DRIVER_NAME "indigo_ccd_rpi"
 
 #include <assert.h>
+#include <condition_variable>
 #include <ctype.h>
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_usb_utils.h>
 #include <math.h>
-#include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
@@ -78,7 +78,7 @@
 using namespace libcamera;
 using namespace std::chrono_literals;
 using namespace std;
-
+static std::mutex device_mutex;
 static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
 // *******************************************************************************************************
 // *************************************IMPORTANT
@@ -181,6 +181,18 @@ using PixelFormats = std::vector<libcamera::PixelFormat>;
 using ImageDimensions = std::vector<libcamera::Size>;
 using FrameInfo = std::map<libcamera::Size, libcamera::Size>;
 
+std::vector<uint8_t> RemovePadding(const uint8_t *imageData, int rowSize, int height, int stride) {
+	std::vector<uint8_t> output(rowSize * height);
+
+	for (int y = 0; y < height; ++y) {
+		const uint8_t *srcRow = imageData + y * stride;
+		uint8_t *dstRow = output.data() + y * rowSize;
+		memcpy(dstRow, srcRow, rowSize);
+	}
+
+	return output;
+}
+
 // Get camera limits: exposure, gain, etc.
 template <typename T> struct Limits {
 	T min;
@@ -196,8 +208,7 @@ template <typename T> struct Limits {
 
 // Image data read from the frame buffer associated with libcamera::Request
 struct FrameData {
-	uint8_t *imageData;
-	uint32_t size;
+	std::vector<uint8_t> imageData;
 	uint64_t request;
 };
 
@@ -371,9 +382,9 @@ struct RPiCamera {
 	std::queue<Request *> m_requestQueue;
 	std::map<int, std::pair<void *, unsigned int>> m_mappedBuffers;
 	ControlList m_controls;
-	std::mutex m_controlMutex;
-	std::mutex m_cameraStopMutex;
-	std::mutex m_freeRequestsMutex;
+	std::mutex m_cameraMutex;
+	std::condition_variable m_cv;
+	bool m_exposureDone = false;
 	void ConfigureStill(int width, int height, PixelFormat format);
 	int StartCapture();
 	int QueueRequest(Request *request);
@@ -391,11 +402,14 @@ bool RPiCamera::IsMonochrome() const {
 }
 
 void RPiCamera::OnRequestComplete(Request *request) {
+	std::lock_guard<std::mutex> lock(m_cameraMutex);
 	// Handle request completion
 	if (request->status() == Request::RequestCancelled) {
 		return;
 	}
 	ProcessRequest(request);
+	m_exposureDone = true; // Mark exposure as done
+	m_cv.notify_one();	   // wake up any ReadFrame waiting on this generation
 }
 
 bool RPiCamera::operator()(indigo_device *device, int steps) {
@@ -557,7 +571,8 @@ bool RPiCamera::HasAutoFocus() const {
 }
 
 bool RPiCamera::ReadFrame(FrameData *frameData) {
-	std::lock_guard<std::mutex> lock(m_freeRequestsMutex);
+	std::unique_lock<std::mutex> lock(m_cameraMutex);
+	m_cv.wait(lock, [this] { return m_exposureDone; }); // Wait until done
 	// int w, h, stride;
 	if (!m_requestQueue.empty()) {
 		Request *request = this->m_requestQueue.front();
@@ -572,8 +587,7 @@ bool RPiCamera::ReadFrame(FrameData *frameData) {
 				void *data = m_mappedBuffers[plane.fd.get()].first;
 				int length = std::min(meta.bytesused, plane.length);
 
-				frameData->size = length;
-				frameData->imageData = (uint8_t *)data;
+				frameData->imageData.assign(static_cast<uint8_t *>(data), static_cast<uint8_t *>(data) + length);
 			}
 		}
 		this->m_requestQueue.pop();
@@ -677,9 +691,9 @@ void RPiCamera::ConfigureStill(int width, int height, PixelFormat format) {
 
 	CameraConfiguration::Status validation = m_config->validate();
 	if (validation == CameraConfiguration::Invalid) {
-		throw std::runtime_error("failed to valid stream configurations");
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "failed to valid stream configurations");
 	} else if (validation == CameraConfiguration::Adjusted) {
-		(DRIVER_NAME, "Stream configuration adjusted");
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Stream configuration adjusted");
 	}
 
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Still capture setup complete...");
@@ -761,10 +775,7 @@ int RPiCamera::StartCapture() {
 	return 0;
 }
 
-void RPiCamera::Set(ControlList controls) {
-	std::lock_guard<std::mutex> lock(m_controlMutex);
-	this->m_controls.merge(controls, ControlList::MergePolicy::OverwriteExisting);
-}
+void RPiCamera::Set(ControlList controls) { this->m_controls.merge(controls, ControlList::MergePolicy::OverwriteExisting); }
 
 int RPiCamera::ConfigureCamera() {
 	Reset();
@@ -810,6 +821,8 @@ int RPiCamera::ConfigureCamera() {
 }
 
 int RPiCamera::StartExposure(int width, int height, PixelFormat format) {
+	std::lock_guard<std::mutex> lock(m_cameraMutex);
+	m_exposureDone = false; // Reset exposure done flag
 	Reset();
 	ConfigureStill(width, height, format);
 	return StartCamera();
@@ -818,10 +831,9 @@ int RPiCamera::StartExposure(int width, int height, PixelFormat format) {
 void RPiCamera::Reset() {
 	if (m_camera) {
 		{
-			std::lock_guard<std::mutex> lock(m_cameraStopMutex);
 			if (m_cameraStarted) {
 				if (m_camera->stop()) {
-					throw std::runtime_error("failed to stop camera");
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "failed to stop camera");
 				}
 				m_cameraStarted = false;
 			}
@@ -869,12 +881,10 @@ void RPiCamera::ReturnFrameBuffer(FrameData frameData) {
 }
 
 int RPiCamera::QueueRequest(Request *request) {
-	std::lock_guard<std::mutex> stop_lock(m_cameraStopMutex);
 	if (!m_cameraStarted) {
 		return -1;
 	}
 	{
-		std::lock_guard<std::mutex> lock(m_controlMutex);
 		request->controls() = std::move(m_controls);
 	}
 	return m_camera->queueRequest(request);
@@ -892,11 +902,12 @@ typedef struct {
 	indigo_device *focuser;
 	indigo_property *rpi_af_property;
 	indigo_property *advanced_property;
-	pthread_mutex_t message_mutex;
 } rpi_private_data;
 
 static void handle_af(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->message_mutex);
+
+	std::lock_guard<std::mutex> lock(device_mutex);
+
 	RPI_AF_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, RPI_AF_PROPERTY, NULL);
 	if (PRIVATE_DATA->pRPiCamera->af()) {
@@ -906,7 +917,6 @@ static void handle_af(indigo_device *device) {
 	}
 	RPI_AF_ITEM->sw.value = false;
 	indigo_update_property(device, RPI_AF_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->message_mutex);
 }
 
 // --------------------------------------------------------------------------------
@@ -954,7 +964,14 @@ static void exposure_timer_callback(indigo_device *device) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Pixel format: %s, BPP: %d", format.toString().c_str(), bpp);
 			uint32_t width, height, stride;
 			pRPiCamera->VideoStream(&width, &height, &stride);
-			memcpy((char *)(PRIVATE_DATA->buffer + FITS_HEADER_SIZE), frameData.imageData, frameData.size);
+
+			unsigned int rowSize = bpp * width / 8; // Calculate row size in bytes
+
+			if (rowSize < stride) {
+				frameData.imageData = RemovePadding(frameData.imageData.data(), rowSize, height, stride);
+			}
+
+			memcpy((char *)(PRIVATE_DATA->buffer + FITS_HEADER_SIZE), frameData.imageData.data(), frameData.imageData.size());
 			std::string bayerPattern = format.toString();
 			bayerPattern.erase(std::remove_if(bayerPattern.begin(), bayerPattern.end(), ::isdigit), bayerPattern.end());
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Bayer pattern: %s", bayerPattern.c_str());
@@ -995,7 +1012,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 		// --------------------------------------------------------------------------------
 		// RPI_AF
 		RPI_AF_PROPERTY = indigo_init_switch_property(NULL, device->name, RPI_AF_PROPERTY_NAME, "RPi AF", "Autofocus", INDIGO_OK_STATE, INDIGO_RW_PERM,
-													INDIGO_AT_MOST_ONE_RULE, 1);
+													  INDIGO_AT_MOST_ONE_RULE, 1);
 		if (RPI_AF_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
@@ -1578,7 +1595,6 @@ static indigo_result ccd_detach(indigo_device *device) {
 
 static indigo_device *devices[MAX_DEVICES];
 static std::string new_eid;
-static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 bool IsNew(std::string eid) {
 	for (int i = 0; i < MAX_DEVICES; i++) {
@@ -1621,7 +1637,7 @@ static void attach_rpi_ccd() {
 		INDIGO_DEVICE_INITIALIZER("", focuser_attach, indigo_focuser_enumerate_properties, focuser_change_property, NULL, focuser_detach);
 
 	new_eid = "-1";
-	pthread_mutex_lock(&device_mutex);
+	std::lock_guard<std::mutex> lock(device_mutex);
 	RegisterCameraManager *cameraManager_ = RegisterCameraManager::getInstance();
 
 	for (std::string id : cameraManager_->GetCameraIDs()) {
@@ -1660,7 +1676,6 @@ static void attach_rpi_ccd() {
 			}
 		}
 	}
-	pthread_mutex_unlock(&device_mutex);
 }
 
 indigo_result indigo_ccd_rpi(indigo_driver_action action, indigo_driver_info *info) {
