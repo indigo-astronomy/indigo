@@ -975,7 +975,6 @@ static void exposure_timer_callback(indigo_device *device) {
 			std::string bayerPattern = format.toString();
 			bayerPattern.erase(std::remove_if(bayerPattern.begin(), bayerPattern.end(), ::isdigit), bayerPattern.end());
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Bayer pattern: %s", bayerPattern.c_str());
-			indigo_fits_keyword_type keywordType = INDIGO_FITS_STRING;
 			indigo_fits_keyword keywords[2];
 			// Make the c++ compiler happy by strongly typing
 			// the nested types
@@ -1020,7 +1019,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 		indigo_init_switch_item(RPI_AF_ITEM, RPI_AF_ITEM_NAME, "Start autofocus", false);
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		return indigo_ccd_enumerate_properties(device, NULL, NULL);
+		return ccd_enumerate_properties(device, NULL, NULL);
 		INDIGO_FAILED;
 	}
 	return INDIGO_FAILED;
@@ -1356,11 +1355,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 
 		RPiCamera *pRPiCamera = PRIVATE_DATA->pRPiCamera;
-
-		int bin_x = (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
-		int bin_y = (int)CCD_BIN_VERTICAL_ITEM->number.value;
-		int left = (int)CCD_FRAME_LEFT_ITEM->number.value / bin_x;
-		int top = (int)CCD_FRAME_TOP_ITEM->number.value / bin_y;
 
 		int state = -1;
 
