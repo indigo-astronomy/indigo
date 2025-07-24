@@ -29,6 +29,7 @@ Tested with:
 * GPCMOS02000KMA
 * GP3M678C
 * GPM462M
+* ATR585M
 * Touptek FILTERWHEEL
 * Touptek AAF
 
