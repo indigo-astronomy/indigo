@@ -2,6 +2,27 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-338] - 20 Jul Sun 2025
+## Overall:
+
+## Driver Fixes:
+- indigo_agent_mount:
+	- AGENT_MOUNT_DISPLAY_COORDINATES is IDLE if mount is not selected or not tracking otherwise it copies MOUNT_EQUATORIAL_COORDINATES state
+	- HA limit handling fixed
+
+- indigo_agent_scripting:
+	- Sequencer.js: Sequencer.FLIPPER_STATE property added
+	- Sequencer.js: fix break_at_ha() to handle meridian crossing correctly
+	- Sequencer.js: break_at, break_at_ha, recovery_point and resume_point state changed
+
+- indigo_mount_lx200:
+	- Fix client WiFi connection for Pegasus NYX mounts with newer firmware
+	- WiFi reset on NYX handled correctly
+
+- indigo_ccd_touptek & OEMs:
+	- update SDK v.59.28926.20250709
+
+
 # [2.0-336] - 30 Jun Mon 2025
 ## Overall:
 - indigo_timer.c:
@@ -598,7 +619,7 @@ All notable changes to INDIGO framework will be documented in this file.
 	- focuser movement can be controlled by joystick buttons
 	- remove the flat bottom of gaus_blur() - better for iterative focusing simulation but U-Curve simulation deteriorated a bit.
 	- single frame preview process added
-	- separation of AGENT_IMAGER_FOCUS_INITIAL_ITEM to AGENT_IMAGER_FOCUS_ITERATVE_INITIAL_ITEM and  
+	- separation of AGENT_IMAGER_FOCUS_INITIAL_ITEM to AGENT_IMAGER_FOCUS_ITERATVE_INITIAL_ITEM and
 	  AGENT_IMAGER_FOCUS_UCURVE_STEP_ITEM and synchronization from AGENT_IMAGER_FOCUS_FINAL_ITEM to
 	  AGENT_IMAGER_FOCUS_ITERATVE_FINAL_ITEM. New clients should prefer AGENT_IMAGER_FOCUS_UCURVE_STEP_ITEM,
 	  AGENT_IMAGER_FOCUS_ITERATVE_INITIAL_ITEM and AGENT_IMAGER_FOCUS_ITERATVE_FINAL_ITEM if present over
@@ -624,7 +645,7 @@ All notable changes to INDIGO framework will be documented in this file.
 - indigo_ccd_qhy2
 	- updated SDK V2024.10.30
 	- native ARM support added to macOS build
-	
+
 - indigo_ccd_svb
 	- updated SDK v1.12.8
 
@@ -864,16 +885,16 @@ indigo_wheel_playerone:
 
 - indigo_ccd_sbig:
 	- SDK updated, external SDK not needed for macOS anymore
-	
+
 - indigo_focuser_primaluce:
 	- max value for FOCUSER_STEPS fixed
-	
+
 - indigo_mount_ioptron:
 	- no_park flag settings fixed
-	
+
 - indigo_mount_starbook:
 	- added support for firmware version lower than 2.7
-	
+
 - indigo_ccd_mi:
 	- SDK updated to 0.11.1 / 0.10.1
 
@@ -939,32 +960,32 @@ indigo_wheel_playerone:
 
 - indigo_rotator_falcon:
 	- support for v2 added
-	
+
 - indigo_ccd_playerone
 	- SDK updated to v3.6.3
-	
+
 - indigo_ccd_touptek & OEMs
 	- SDK updated to v56.25996.20240707
 	- focuser support added
-	
+
 - indigo_aux_wcv4ec
 	- support for firmware 20240618
-	
+
 - indigo_mount_starbook
 	- responsiveness issues fixed
-	
+
 - indigo_agent_mount
-	- broken LX200 server fixed 
+	- broken LX200 server fixed
 
 - indigo_aux_upb:
-	- issues with powerlines persistence fixed 
-	
+	- issues with powerlines persistence fixed
+
 ## New drivers:
 - indigo_aux_upb3:
-	- driver for PegasusAstro UltimatePowebox v3 and newer 
+	- driver for PegasusAstro UltimatePowebox v3 and newer
 
 - indigo_focuser_fc3:
-	- driver for PegasusAstro FocusCube v3 and newer 
+	- driver for PegasusAstro FocusCube v3 and newer
 
 - indigo_focuser_astroasis
 	- driver for Astroasis Oasis focuser
