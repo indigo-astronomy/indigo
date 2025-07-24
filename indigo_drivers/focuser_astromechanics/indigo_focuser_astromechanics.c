@@ -229,7 +229,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
 		//+ focuser.on_attach
 		FOCUSER_SPEED_PROPERTY->hidden = true;
-			FOCUSER_ABORT_MOTION_PROPERTY->hidden = true;
+		FOCUSER_ABORT_MOTION_PROPERTY->hidden = true;
 		//- focuser.on_attach
 		X_FOCUSER_APERTURE_PROPERTY = indigo_init_number_property(NULL, device->name, X_FOCUSER_APERTURE_PROPERTY_NAME, FOCUSER_ADVANCED_GROUP, "Aperture", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (X_FOCUSER_APERTURE_PROPERTY == NULL) {

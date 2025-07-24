@@ -33,7 +33,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000008
+#define DRIVER_VERSION       0x03000009
 #define DRIVER_NAME          "indigo_aux_flatmaster"
 #define DRIVER_LABEL         "PegasusAstro FlatMaster"
 #define AUX_DEVICE_NAME      "PegasusAstro FlatMaster"
@@ -65,7 +65,7 @@ typedef struct {
 	indigo_timer *aux_light_switch_handler_timer;
 	indigo_timer *aux_light_intensity_handler_timer;
 	//+ data
-	char response[6];
+	char response[12];
 	//- data
 } flatmaster_private_data;
 
@@ -151,6 +151,10 @@ static void aux_connection_handler(indigo_device *device) {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->aux_light_intensity_handler_timer);
 		indigo_delete_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
+		//+ aux.on_disconnect
+		flatmaster_command(device, "L:%d", INTENSITY(0));
+		flatmaster_command(device, "E:0");
+		//- aux.on_disconnect
 		flatmaster_close(device);
 		indigo_send_message(device, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -163,6 +167,20 @@ static void aux_light_switch_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_LIGHT_SWITCH.on_change
+	char command[12];
+	// if light is ON, set intensity, otherwise set it to 0
+	if (AUX_LIGHT_SWITCH_ON_ITEM->sw.value) {
+		sprintf(command, "L:%d", INTENSITY(AUX_LIGHT_INTENSITY_ITEM->number.value));
+	} else {
+		sprintf(command, "L:%d", INTENSITY(0));
+	}
+	if (flatmaster_command(device, command)) {
+		AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
+	} else {
+		AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	indigo_update_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
+
 	if (!flatmaster_command(device, "E:%d", AUX_LIGHT_SWITCH_ON_ITEM->sw.value)) {
 		AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
@@ -175,8 +193,12 @@ static void aux_light_intensity_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_LIGHT_INTENSITY.on_change
-	if (!flatmaster_command(device, "L:%d", INTENSITY(AUX_LIGHT_INTENSITY_ITEM->number.value))) {
-		AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
+	// if light is OFF, do not set intensity
+	AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
+	if (AUX_LIGHT_SWITCH_ON_ITEM->sw.value) {
+		if (!flatmaster_command(device, "L:%d", INTENSITY(AUX_LIGHT_INTENSITY_ITEM->number.value))) {
+			AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 	}
 	//- aux.AUX_LIGHT_INTENSITY.on_change
 	indigo_update_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);

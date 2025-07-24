@@ -26,7 +26,7 @@ driver flatmaster {
 	label = "PegasusAstro FlatMaster";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2019-2025 Rumen G. Bogdanovski";
-	version = 8;
+	version = 9;
 	serial {
 		pattern {
 			vid = 0x0403;
@@ -37,7 +37,7 @@ driver flatmaster {
 		#define INTENSITY(val) ((int)floor((100 - (int)(val) - 0) * (220 - 20) / (100 - 0) + 20))
 	}
 	data {
-		char response[6];
+		char response[12];
 	}
 	code {
 		static bool flatmaster_command(indigo_device *device, char *command, ...) {
@@ -96,6 +96,10 @@ driver flatmaster {
 				AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 		}
+		on_disconnect {
+			flatmaster_command(device, "L:%d", INTENSITY(0));
+			flatmaster_command(device, "E:0");
+		}
 		on_attach {
 			INFO_PROPERTY->count = 6;
 			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
@@ -107,6 +111,20 @@ driver flatmaster {
 			label = "Light (on/off)";
 			persistent = true;
 			on_change {
+				char command[12];
+				// if light is ON, set intensity, otherwise set it to 0
+				if (AUX_LIGHT_SWITCH_ON_ITEM->sw.value) {
+					sprintf(command, "L:%d", INTENSITY(AUX_LIGHT_INTENSITY_ITEM->number.value));
+				} else {
+					sprintf(command, "L:%d", INTENSITY(0));
+				}
+				if (flatmaster_command(device, command)) {
+					AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
+				} else {
+					AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				indigo_update_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
+
 				if (!flatmaster_command(device, "E:%d", AUX_LIGHT_SWITCH_ON_ITEM->sw.value)) {
 					AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
@@ -128,8 +146,12 @@ driver flatmaster {
 			label = "Light intensity";
 			persistent = true;
 			on_change {
-				if (!flatmaster_command(device, "L:%d", INTENSITY(AUX_LIGHT_INTENSITY_ITEM->number.value))) {
-					AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
+				// if light is OFF, do not set intensity
+				AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
+				if (AUX_LIGHT_SWITCH_ON_ITEM->sw.value) {
+					if (!flatmaster_command(device, "L:%d", INTENSITY(AUX_LIGHT_INTENSITY_ITEM->number.value))) {
+						AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
+					}
 				}
 			}
 			item AUX_LIGHT_INTENSITY {
