@@ -186,7 +186,7 @@ static int configure_tty_options(struct termios *options, const char *baudrate) 
 	options->c_oflag = 0;
 	options->c_lflag = 0;
 	options->c_cc[VMIN] = 0;       /* block untill n bytes are received */
-	options->c_cc[VTIME] = 50;     /* block untill a timer expires (n * 100 mSec.) */
+	options->c_cc[VTIME] = 2;     /* block untill a timer expires (n * 100 mSec.) */
 
 	cfsetispeed(options, baudr);
 	cfsetospeed(options, baudr);
