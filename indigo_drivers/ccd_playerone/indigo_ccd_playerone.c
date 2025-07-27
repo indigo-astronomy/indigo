@@ -24,7 +24,7 @@
  \file indigo_ccd_playerone.c
  */
 
-#define DRIVER_VERSION 0x000C
+#define DRIVER_VERSION 0x000D
 #define DRIVER_NAME "indigo_ccd_playerone"
 
 /* POA_SAFE_READOUT enables workaround for a bug in POAGetImageData().
@@ -33,6 +33,8 @@
 #if !defined(INDIGO_MACOS)
 #define POA_SAFE_READOUT
 #endif
+
+#define POA_ENABLE_LONG_EXPOSURES
 
 #include <stdlib.h>
 #include <string.h>
@@ -301,6 +303,16 @@ static bool playerone_setup_exposure(indigo_device *device, double exposure, int
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetImageFormat(%d, %d)", id, pf);
 
+#ifdef POA_ENABLE_LONG_EXPOSURES
+	POAConfigValue exposure_value = { .floatValue = exposure };
+	res = POASetConfig(id, POA_EXP, exposure_value, POA_FALSE);
+	if (res) {
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "POASetConfig(%d, POA_EXP, %f) > %d", id, exposure_value.floatValue, res);
+		return false;
+	}
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetConfig(%d, POA_EXP, %f)", id, exposure_value.floatValue);
+#else
 	POAConfigValue exposure_value = { .intValue = (long)s2us(exposure) };
 	res = POASetConfig(id, POA_EXPOSURE, exposure_value, POA_FALSE);
 	if (res) {
@@ -309,6 +321,7 @@ static bool playerone_setup_exposure(indigo_device *device, double exposure, int
 		return false;
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetConfig(%d, POA_EXPOSURE, %d)", id, exposure_value.intValue);
+#endif /* POA_ENABLE_LONG_EXPOSURES */
 
 	PRIVATE_DATA->exp_bin = bin;
 	POAGetImageSize(id, &PRIVATE_DATA->exp_frame_width, &PRIVATE_DATA->exp_frame_height);
@@ -983,6 +996,28 @@ static indigo_result init_camera_property(indigo_device *device, POAConfigAttrib
 	POAErrors res;
 	POABool unused;
 
+#ifdef POA_ENABLE_LONG_EXPOSURES
+	if (ctrl_caps.configID == POA_EXP) {
+		CCD_EXPOSURE_PROPERTY->hidden = false;
+		if (ctrl_caps.isWritable)
+			CCD_EXPOSURE_PROPERTY->perm = INDIGO_RW_PERM;
+		else
+			CCD_EXPOSURE_PROPERTY->perm = INDIGO_RO_PERM;
+
+		CCD_EXPOSURE_ITEM->number.min = CCD_STREAMING_EXPOSURE_ITEM->number.min = us2s(ctrl_caps.minValue.floatValue);
+		CCD_EXPOSURE_ITEM->number.max = CCD_STREAMING_EXPOSURE_ITEM->number.max = us2s(ctrl_caps.maxValue.floatValue);
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		unused = false;
+		res = POAGetConfig(id, POA_EXP, &value, &unused);
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		if (res)
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetConfig(%d, POA_EXP) > %d", id, res);
+		else
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetConfig(%d, POA_EXP, > %f)", id, value.floatValue);
+		CCD_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.target = value.floatValue;
+		return INDIGO_OK;
+	}
+#else
 	if (ctrl_caps.configID == POA_EXPOSURE) {
 		CCD_EXPOSURE_PROPERTY->hidden = false;
 		if (ctrl_caps.isWritable)
@@ -1003,6 +1038,7 @@ static indigo_result init_camera_property(indigo_device *device, POAConfigAttrib
 		CCD_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.target = us2s(value.intValue);
 		return INDIGO_OK;
 	}
+#endif /* POA_ENABLE_LONG_EXPOSURES */
 
 	if (ctrl_caps.configID == POA_OFFSET) {
 		CCD_OFFSET_PROPERTY->hidden = false;
@@ -2168,11 +2204,16 @@ indigo_result indigo_ccd_playerone(indigo_driver_action action, indigo_driver_in
 			last_action = action;
 
 			const char *sdk_version = POAGetSDKVersion();
+
 #ifdef POA_SAFE_READOUT
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "POA SDK v. %s (safe readout enabled)", sdk_version);
 #else
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "POA SDK v. %s", sdk_version);
 #endif /* POA_SAFE_READOUT */
+#ifdef POA_ENABLE_LONG_EXPOSURES
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "Long exposure support enabled");
+#endif /* POA_ENABLE_LONG_EXPOSURES */
+
 			indigo_start_usb_event_handler();
 			int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, POA_VENDOR_ID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
