@@ -124,20 +124,7 @@ static AvahiSimplePoll *simple_poll = NULL;
 static AvahiClient *client = NULL;
 static AvahiServiceBrowser *sb = NULL;
 
-static void resolve_callback(
-	AvahiServiceResolver *r,
-	AvahiIfIndex interface_index,
-	AVAHI_GCC_UNUSED AvahiProtocol protocol,
-	AvahiResolverEvent event,
-	const char *name,
-	AVAHI_GCC_UNUSED const char *type,
-	AVAHI_GCC_UNUSED const char *domain,
-	const char *host_name,
-	AVAHI_GCC_UNUSED const AvahiAddress *address,
-	uint16_t port,
-	AVAHI_GCC_UNUSED AvahiStringList *txt,
-	AVAHI_GCC_UNUSED AvahiLookupResultFlags flags,
-	void* callback) {
+static void resolve_callback(AvahiServiceResolver *r, AvahiIfIndex interface_index, AVAHI_GCC_UNUSED AvahiProtocol protocol, AvahiResolverEvent event, const char *name, AVAHI_GCC_UNUSED const char *type, AVAHI_GCC_UNUSED const char *domain, const char *host_name, AVAHI_GCC_UNUSED const AvahiAddress *address, uint16_t port, AVAHI_GCC_UNUSED AvahiStringList *txt, AVAHI_GCC_UNUSED AvahiLookupResultFlags flags, void* callback) {
 	assert(r);
 	/* Called whenever a service has been resolved successfully or timed out */
 	switch (event) {
@@ -154,16 +141,7 @@ static void resolve_callback(
 	avahi_service_resolver_free(r);
 }
 
-static void browse_callback(
-	AvahiServiceBrowser *b,
-	AvahiIfIndex interface_index,
-	AvahiProtocol protocol,
-	AvahiBrowserEvent event,
-	const char *name,
-	const char *type,
-	const char *domain,
-	AVAHI_GCC_UNUSED AvahiLookupResultFlags flags,
-	void* callback) {
+static void browse_callback(AvahiServiceBrowser *b, AvahiIfIndex interface_index, AvahiProtocol protocol, AvahiBrowserEvent event, const char *name, const char *type, const char *domain, AVAHI_GCC_UNUSED AvahiLookupResultFlags flags, void* callback) {
 	assert(b);
 	int count = 0;
 	switch (event) {
@@ -274,10 +252,27 @@ static void *service_process_result_handler(DNSServiceRef s_ref) {
 	return NULL;
 }
 
+static void copy_unescaped(char *to, const char *from) {
+	for (int i = 0; *from && i < INDIGO_NAME_SIZE - 1; i++) {
+		if (from[0] == '\\') {
+			if (from[1] == '\\') {
+				*to++ = '\\';
+				from += 2;
+			} else {
+				*to++ = 100 * (from[1] - '0') + 10 * (from[2] - '0') + (from[3] - '0');
+				from += 4;
+			}
+		} else {
+			*to++ = *from++;
+		}
+	}
+	*to++ = 0;
+}
+
 static void WINAPI resolver_callback(DNSServiceRef sdRef, DNSServiceFlags flags, uint32_t interface_index, DNSServiceErrorType error_code, const char *full_name, const char *host_name, uint16_t port, uint16_t txt_len, const unsigned char *txt_record, void *callback) {
 	if (error_code != kDNSServiceErr_NoError) {
 		char name[INDIGO_NAME_SIZE], *dot;
-		indigo_copy_name(name, full_name);
+		copy_unescaped(name, full_name);
 		if ((dot = strchr(name, '.'))) {
 			*dot = 0;
 		}
@@ -285,7 +280,7 @@ static void WINAPI resolver_callback(DNSServiceRef sdRef, DNSServiceFlags flags,
 		((void (*)(const char *name, uint32_t interface_index, const char *host, int port))callback)(name, interface_index, NULL, 0);
 	} else if ((flags & kDNSServiceFlagsMoreComing) == 0) {
 		char name[INDIGO_NAME_SIZE], host[INDIGO_NAME_SIZE], *dot;
-		indigo_copy_name(name, full_name);
+		copy_unescaped(name, full_name);
 		if ((dot = strchr(name, '.'))) {
 			*dot = 0;
 		}
