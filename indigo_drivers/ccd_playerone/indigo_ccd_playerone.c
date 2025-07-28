@@ -630,11 +630,11 @@ static void streaming_timer_callback(indigo_device *device) {
 				if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 					res = POAGetImageData(
-																id,
-																PRIVATE_DATA->buffer + FITS_HEADER_SIZE,
-																PRIVATE_DATA->buffer_size - FITS_HEADER_SIZE,
-																2000
-																);
+						id,
+						PRIVATE_DATA->buffer + FITS_HEADER_SIZE,
+						PRIVATE_DATA->buffer_size - FITS_HEADER_SIZE,
+						2000
+					);
 					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 					if (res) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetImageData(%d, ..., ..., %d) > %d", id, 2000, res);
@@ -998,43 +998,37 @@ static indigo_result init_camera_property(indigo_device *device, POAConfigAttrib
 
 #ifdef POA_ENABLE_LONG_EXPOSURES
 	if (ctrl_caps.configID == POA_EXP) {
-		CCD_EXPOSURE_PROPERTY->hidden = false;
-		if (ctrl_caps.isWritable)
-			CCD_EXPOSURE_PROPERTY->perm = INDIGO_RW_PERM;
-		else
-			CCD_EXPOSURE_PROPERTY->perm = INDIGO_RO_PERM;
-
+		CCD_EXPOSURE_PROPERTY->hidden = CCD_STREAMING_PROPERTY->hidden = false;
+		CCD_EXPOSURE_PROPERTY->perm = CCD_STREAMING_PROPERTY->perm = INDIGO_RW_PERM;
 		CCD_EXPOSURE_ITEM->number.min = CCD_STREAMING_EXPOSURE_ITEM->number.min = ctrl_caps.minValue.floatValue;
 		CCD_EXPOSURE_ITEM->number.max = CCD_STREAMING_EXPOSURE_ITEM->number.max = ctrl_caps.maxValue.floatValue;
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		unused = false;
 		res = POAGetConfig(id, POA_EXP, &value, &unused);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		if (res)
+		if (res) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetConfig(%d, POA_EXP) > %d", id, res);
-		else
+		} else {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetConfig(%d, POA_EXP, > %f)", id, value.floatValue);
+		}
 		CCD_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.target = value.floatValue;
 		return INDIGO_OK;
 	}
 #else
 	if (ctrl_caps.configID == POA_EXPOSURE) {
-		CCD_EXPOSURE_PROPERTY->hidden = false;
-		if (ctrl_caps.isWritable)
-			CCD_EXPOSURE_PROPERTY->perm = INDIGO_RW_PERM;
-		else
-			CCD_EXPOSURE_PROPERTY->perm = INDIGO_RO_PERM;
-
+		CCD_EXPOSURE_PROPERTY->hidden = CCD_STREAMING_PROPERTY->hidden = false;
+		CCD_EXPOSURE_PROPERTY->perm = CCD_STREAMING_PROPERTY->perm = INDIGO_RW_PERM;
 		CCD_EXPOSURE_ITEM->number.min = CCD_STREAMING_EXPOSURE_ITEM->number.min = us2s(ctrl_caps.minValue.intValue);
 		CCD_EXPOSURE_ITEM->number.max = CCD_STREAMING_EXPOSURE_ITEM->number.max = us2s(ctrl_caps.maxValue.intValue);
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		unused = false;
 		res = POAGetConfig(id, POA_EXPOSURE, &value, &unused);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		if (res)
+		if (res) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetConfig(%d, POA_EXPOSURE) > %d", id, res);
-		else
+		} else {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetConfig(%d, POA_EXPOSURE, > %d)", id, value.intValue);
+		}
 		CCD_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.target = us2s(value.intValue);
 		return INDIGO_OK;
 	}
@@ -1042,10 +1036,11 @@ static indigo_result init_camera_property(indigo_device *device, POAConfigAttrib
 
 	if (ctrl_caps.configID == POA_OFFSET) {
 		CCD_OFFSET_PROPERTY->hidden = false;
-		if (ctrl_caps.isWritable)
+		if (ctrl_caps.isWritable) {
 			CCD_OFFSET_PROPERTY->perm = INDIGO_RW_PERM;
-		else
+		} else {
 			CCD_OFFSET_PROPERTY->perm = INDIGO_RO_PERM;
+		}
 
 		CCD_OFFSET_ITEM->number.min = ctrl_caps.minValue.intValue;
 		CCD_OFFSET_ITEM->number.max = ctrl_caps.maxValue.intValue;
@@ -1053,10 +1048,11 @@ static indigo_result init_camera_property(indigo_device *device, POAConfigAttrib
 		unused = false;
 		res = POAGetConfig(id, POA_OFFSET, &value, &unused);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		if (res)
+		if (res) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetConfig(%d, POA_OFFSET) > %d", id, res);
-		else
+		} else {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetConfig(%d, POA_OFFSET,  > %d)", id, value.intValue);
+		}
 		CCD_OFFSET_ITEM->number.value = CCD_OFFSET_ITEM->number.target = value.intValue;
 		CCD_OFFSET_ITEM->number.step = 1;
 		return INDIGO_OK;
@@ -1064,10 +1060,11 @@ static indigo_result init_camera_property(indigo_device *device, POAConfigAttrib
 
 	if (ctrl_caps.configID == POA_GAIN) {
 		CCD_GAIN_PROPERTY->hidden = false;
-		if (ctrl_caps.isWritable)
+		if (ctrl_caps.isWritable) {
 			CCD_GAIN_PROPERTY->perm = INDIGO_RW_PERM;
-		else
+		} else {
 			CCD_GAIN_PROPERTY->perm = INDIGO_RO_PERM;
+		}
 
 		CCD_GAIN_ITEM->number.min = ctrl_caps.minValue.intValue;
 		CCD_GAIN_ITEM->number.max = ctrl_caps.maxValue.intValue;
@@ -1075,10 +1072,11 @@ static indigo_result init_camera_property(indigo_device *device, POAConfigAttrib
 		unused = false;
 		res = POAGetConfig(id, POA_GAIN, &value, &unused);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		if (res)
+		if (res) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetConfig(%d, POA_GAIN) > %d", id, res);
-		else
+		} else {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetConfig(%d, POA_GAIN,  > %d)", id, value.intValue);
+		}
 		CCD_GAIN_ITEM->number.value = CCD_GAIN_ITEM->number.target = value.intValue;
 		CCD_GAIN_ITEM->number.step = 1;
 		return INDIGO_OK;
@@ -1086,10 +1084,11 @@ static indigo_result init_camera_property(indigo_device *device, POAConfigAttrib
 
 	if (ctrl_caps.configID == POA_EGAIN) {
 		CCD_EGAIN_PROPERTY->hidden = false;
-		if (ctrl_caps.isWritable)
+		if (ctrl_caps.isWritable) {
 			CCD_EGAIN_PROPERTY->perm = INDIGO_RW_PERM;
-		else
+		} else {
 			CCD_EGAIN_PROPERTY->perm = INDIGO_RO_PERM;
+		}
 
 		CCD_EGAIN_ITEM->number.min = ctrl_caps.minValue.intValue;
 		CCD_EGAIN_ITEM->number.max = ctrl_caps.maxValue.intValue;
@@ -1097,20 +1096,22 @@ static indigo_result init_camera_property(indigo_device *device, POAConfigAttrib
 		unused = false;
 		res = POAGetConfig(id, POA_EGAIN, &value, &unused);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		if (res)
+		if (res) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetConfig(%d, POA_EGAIN) > %d", id, res);
-		else
+		} else {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetConfig(%d, POA_EGAIN,  > %d)", id, value.floatValue);
+		}
 		CCD_EGAIN_ITEM->number.value = CCD_EGAIN_ITEM->number.target = value.floatValue;
 		return INDIGO_OK;
 	}
 
 	if (ctrl_caps.configID == POA_TARGET_TEMP) {
 		CCD_TEMPERATURE_PROPERTY->hidden = false;
-		if (ctrl_caps.isWritable)
+		if (ctrl_caps.isWritable) {
 			CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
-		else
+		} else {
 			CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
+		}
 
 		CCD_TEMPERATURE_ITEM->number.min = ctrl_caps.minValue.intValue;
 		CCD_TEMPERATURE_ITEM->number.max = ctrl_caps.maxValue.intValue;
@@ -1132,19 +1133,21 @@ static indigo_result init_camera_property(indigo_device *device, POAConfigAttrib
 
 	if (ctrl_caps.configID == POA_COOLER) {
 		CCD_COOLER_PROPERTY->hidden = false;
-		if (ctrl_caps.isWritable)
+		if (ctrl_caps.isWritable) {
 			CCD_COOLER_PROPERTY->perm = INDIGO_RW_PERM;
-		else
+		} else {
 			CCD_COOLER_PROPERTY->perm = INDIGO_RO_PERM;
+		}
 		return INDIGO_OK;
 	}
 
 	if (ctrl_caps.configID == POA_COOLER_POWER) {
 		CCD_COOLER_POWER_PROPERTY->hidden = false;
-		if (ctrl_caps.isWritable)
+		if (ctrl_caps.isWritable) {
 			CCD_COOLER_POWER_PROPERTY->perm = INDIGO_RW_PERM;
-		else
+		} else {
 			CCD_COOLER_POWER_PROPERTY->perm = INDIGO_RO_PERM;
+		}
 
 		CCD_COOLER_POWER_ITEM->number.min = ctrl_caps.minValue.intValue;
 		CCD_COOLER_POWER_ITEM->number.max = ctrl_caps.maxValue.intValue;
