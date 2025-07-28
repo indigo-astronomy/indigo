@@ -1625,8 +1625,8 @@ int indigo_uni_scandir(const char* folder, char ***list, bool (*filter)(const ch
 			}
 			indigo_safe_free(entries[i]);
 		}
+		indigo_safe_free(entries);
 	}
-	indigo_safe_free(entries);
 	return result;
 #elif defined(INDIGO_WINDOWS)
 	WIN32_FIND_DATAA findFileData;
