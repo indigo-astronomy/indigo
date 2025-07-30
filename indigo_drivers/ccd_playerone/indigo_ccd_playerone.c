@@ -631,11 +631,11 @@ static void streaming_timer_callback(indigo_device *device) {
 				if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 					res = POAGetImageData(
-																id,
-																PRIVATE_DATA->buffer + FITS_HEADER_SIZE,
-																PRIVATE_DATA->buffer_size - FITS_HEADER_SIZE,
-																2000
-																);
+						id,
+						PRIVATE_DATA->buffer + FITS_HEADER_SIZE,
+						PRIVATE_DATA->buffer_size - FITS_HEADER_SIZE,
+						2000
+					);
 					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 					if (res) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetImageData(%d, ..., ..., %d) > %d", id, 2000, res);
@@ -1012,34 +1012,26 @@ static indigo_result init_camera_property(indigo_device *device, POAConfigAttrib
 
 #ifdef POA_ENABLE_LONG_EXPOSURES
 	if (ctrl_caps.configID == POA_EXP) {
-		CCD_EXPOSURE_PROPERTY->hidden = false;
-		if (ctrl_caps.isWritable)
-			CCD_EXPOSURE_PROPERTY->perm = INDIGO_RW_PERM;
-		else
-			CCD_EXPOSURE_PROPERTY->perm = INDIGO_RO_PERM;
-
+		CCD_EXPOSURE_PROPERTY->hidden = CCD_STREAMING_PROPERTY->hidden = false;
+		CCD_EXPOSURE_PROPERTY->perm = CCD_STREAMING_PROPERTY->perm = INDIGO_RW_PERM;
 		CCD_EXPOSURE_ITEM->number.min = CCD_STREAMING_EXPOSURE_ITEM->number.min = ctrl_caps.minValue.floatValue;
 		CCD_EXPOSURE_ITEM->number.max = CCD_STREAMING_EXPOSURE_ITEM->number.max = ctrl_caps.maxValue.floatValue;
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		unused = false;
 		res = POAGetConfig(id, POA_EXP, &value, &unused);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		if (res)
+		if (res) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetConfig(%d, POA_EXP) > %d", id, res);
-		else
+		} else {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetConfig(%d, POA_EXP, > %f)", id, value.floatValue);
+		}
 		CCD_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.target = value.floatValue;
 		return INDIGO_OK;
 	}
 #else
 	if (ctrl_caps.configID == POA_EXPOSURE) {
-		CCD_EXPOSURE_PROPERTY->hidden = false;
-		if (ctrl_caps.isWritable) {
-			CCD_EXPOSURE_PROPERTY->perm = INDIGO_RW_PERM;
-		} else {
-			CCD_EXPOSURE_PROPERTY->perm = INDIGO_RO_PERM;
-		}
-
+		CCD_EXPOSURE_PROPERTY->hidden = CCD_STREAMING_PROPERTY->hidden = false;
+		CCD_EXPOSURE_PROPERTY->perm = CCD_STREAMING_PROPERTY->perm = INDIGO_RW_PERM;
 		CCD_EXPOSURE_ITEM->number.min = CCD_STREAMING_EXPOSURE_ITEM->number.min = us2s(ctrl_caps.minValue.intValue);
 		CCD_EXPOSURE_ITEM->number.max = CCD_STREAMING_EXPOSURE_ITEM->number.max = us2s(ctrl_caps.maxValue.intValue);
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
