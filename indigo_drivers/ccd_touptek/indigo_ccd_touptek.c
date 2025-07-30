@@ -24,7 +24,7 @@
  \file indigo_ccd_touptek.c
  */
 
-#define DRIVER_VERSION 0x0026
+#define DRIVER_VERSION 0x0027
 
 #include <stdlib.h>
 #include <string.h>
@@ -776,7 +776,9 @@ static indigo_result ccd_attach(indigo_device *device) {
 			indigo_init_switch_item(X_CCD_CONVERSION_GAIN_LCG_ITEM, "LCG", "Low conversion gain", true);
 			indigo_init_switch_item(X_CCD_CONVERSION_GAIN_HCG_ITEM, "HCG", "High conversion gain", false);
 			indigo_init_switch_item(X_CCD_CONVERSION_GAIN_HDR_ITEM, "HDR", "High dynamic range", false);
-			if (flags & SDK_DEF(FLAG_CG)) {
+			if (flags & SDK_DEF(FLAG_CGHDR)) {
+				X_CCD_CONVERSION_GAIN_PROPERTY->count = 3;
+			} else if (flags & SDK_DEF(FLAG_CG)) {
 				X_CCD_CONVERSION_GAIN_PROPERTY->count = 2;
 			}
 		}
