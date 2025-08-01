@@ -1320,6 +1320,115 @@ static indigo_result focuser_detach(indigo_device *device) {
 	return indigo_focuser_detach(device);
 }
 
+static void ccd_start_exposure(indigo_device *device) {
+	if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
+		CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
+	}
+	if (CCD_UPLOAD_MODE_CLIENT_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
+		CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+	}
+	CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
+	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+
+	RPiCamera *pRPiCamera = PRIVATE_DATA->pRPiCamera;
+
+	int state = -1;
+
+	if (pRPiCamera->IsCameraAcquired()) {
+		ControlList m_controls;
+		int64_t frame_time = CCD_EXPOSURE_ITEM->number.target * 1000000;
+		// Set frame rate
+		m_controls.set(controls::FrameDurationLimits, libcamera::Span<const int64_t, 2>({frame_time, frame_time}));
+		m_controls.set(controls::ExposureTimeMode, controls::ExposureTimeModeManual);
+		m_controls.set(controls::ExposureTime,
+					   CCD_EXPOSURE_ITEM->number.target * 1000000); // Convert seconds to microseconds
+		m_controls.set(controls::AeEnable, false);
+		m_controls.set(controls::AwbEnable, true);
+
+		int bin_x = (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
+		int bin_y = (int)CCD_BIN_VERTICAL_ITEM->number.value;
+		int left = (int)CCD_FRAME_LEFT_ITEM->number.value / bin_x;
+		int top = (int)CCD_FRAME_TOP_ITEM->number.value / bin_y;
+
+		int width = CCD_INFO_WIDTH_ITEM->number.value / bin_x;
+		int height = CCD_INFO_HEIGHT_ITEM->number.value / bin_y;
+
+		std::string pixelFormatName = CCD_MODE_ITEM[0].name;
+		for (int i = 0; i < CCD_MODE_PROPERTY->count; i++) {
+			if (CCD_MODE_ITEM[i].sw.value) {
+				// Set the pixel format based on the selected mode
+				pixelFormatName = CCD_MODE_ITEM[i].name;
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CCD_MODE_ITEM[i].name %s", CCD_MODE_ITEM[i].name);
+			}
+		}
+		size_t pos = pixelFormatName.find_last_of("_");
+		pixelFormatName = pixelFormatName.substr(0, pos);
+		PixelFormat format = pRPiCamera->GetPixelFormat();
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pRPiCamera->GetPixelFormat() -> %s", format.toString().c_str());
+
+		//   ROI calculation
+		if (!m_controls.get(controls::ScalerCrop) && !m_controls.get(controls::rpi::ScalerCrops)) {
+			const Rectangle sensor_area = pRPiCamera->GetControls().at(&controls::ScalerCrop).max().get<Rectangle>();
+			const Rectangle default_crop = pRPiCamera->GetControls().at(&controls::ScalerCrop).def().get<Rectangle>();
+			Rectangle crop;
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Sensor area: %s", sensor_area.toString().c_str());
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Default crop: %s", default_crop.toString().c_str());
+
+			unsigned int w = CCD_FRAME_WIDTH_ITEM->number.value;
+			unsigned int h = CCD_FRAME_HEIGHT_ITEM->number.value;
+			if ((left + w < CCD_INFO_WIDTH_ITEM->number.value) || (top + h < CCD_INFO_HEIGHT_ITEM->number.value)) {
+				libcamera::Rectangle roi(left, top, left + w, top + h);
+				m_controls.set(controls::ScalerCrop, roi);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ROI set to: %s", roi.toString().c_str());
+			}
+		}
+		if (!m_controls.get(controls::AnalogueGain) && CCD_GAIN_ITEM->number.value) {
+			m_controls.set(controls::AnalogueGainMode, controls::AnalogueGainModeManual);
+			// Set manual analogue gain
+			m_controls.set(controls::AnalogueGain, CCD_GAIN_ITEM->number.value);
+		} else {
+			// Enable auto gain
+			m_controls.set(controls::AnalogueGainMode, controls::AnalogueGainModeAuto);
+		}
+
+		pRPiCamera->Set(m_controls);
+		PixelFormat pixelFormatTarget =
+			pixelFormatMap.find(pixelFormatName) != pixelFormatMap.end() ? pixelFormatMap.find(pixelFormatName)->second : formats::RGB888;
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pRPiCamera->StartExposure(width %d, height %d, format %s)", width, height, pixelFormatName.c_str());
+		state = pRPiCamera->StartExposure(width, height, pixelFormatTarget);
+	}
+	if (state != -1) {
+		indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
+	} else {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Exposure failed...pRPiCamera->StartExposure() returned -1");
+	}
+}
+
+static void ccd_abort_exposure(indigo_device *device) {
+	RPiCamera *pRPiCamera = PRIVATE_DATA->pRPiCamera;
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pRPiCamera->StopCamera()");
+	pRPiCamera->StopCamera();
+}
+
+static void ccd_handle_advanced_property(indigo_device *device) {
+	X_CCD_ADVANCED_PROPERTY->state = INDIGO_OK_STATE;
+	if (X_CCD_ADVANCED_PROPERTY->count != 1) {
+		RPiCamera *pRPicamera = PRIVATE_DATA->pRPiCamera;
+		ControlList m_controls;
+		auto controlsInfo = pRPicamera->GetControls();
+
+		m_controls.set(controls::Contrast, X_CCD_CONTRAST_ITEM->number.value);
+		m_controls.set(controls::Saturation, X_CCD_SATURATION_ITEM->number.value);
+		m_controls.set(controls::Brightness, X_CCD_BRIGHTNESS_ITEM->number.value);
+
+		pRPicamera->Set(m_controls);
+
+		indigo_update_property(device, X_CCD_ADVANCED_PROPERTY, NULL);
+	}
+}
+
 static indigo_result ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -1343,92 +1452,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
 		indigo_use_shortest_exposure_if_bias(device);
-		if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
-			CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
-		}
-		if (CCD_UPLOAD_MODE_CLIENT_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
-			CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-		}
-		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-
-		RPiCamera *pRPiCamera = PRIVATE_DATA->pRPiCamera;
-
-		int state = -1;
-
-		if (pRPiCamera->IsCameraAcquired()) {
-			ControlList m_controls;
-			int64_t frame_time = CCD_EXPOSURE_ITEM->number.target * 1000000;
-			// Set frame rate
-			m_controls.set(controls::FrameDurationLimits, libcamera::Span<const int64_t, 2>({frame_time, frame_time}));
-			m_controls.set(controls::ExposureTimeMode, controls::ExposureTimeModeManual);
-			m_controls.set(controls::ExposureTime,
-						   CCD_EXPOSURE_ITEM->number.target * 1000000); // Convert seconds to microseconds
-			m_controls.set(controls::AeEnable, false);
-			m_controls.set(controls::AwbEnable, true);
-
-			int bin_x = (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
-			int bin_y = (int)CCD_BIN_VERTICAL_ITEM->number.value;
-			int left = (int)CCD_FRAME_LEFT_ITEM->number.value / bin_x;
-			int top = (int)CCD_FRAME_TOP_ITEM->number.value / bin_y;
-
-			int width = CCD_INFO_WIDTH_ITEM->number.value / bin_x;
-			int height = CCD_INFO_HEIGHT_ITEM->number.value / bin_y;
-
-			std::string pixelFormatName = CCD_MODE_ITEM[0].name;
-			for (int i = 0; i < CCD_MODE_PROPERTY->count; i++) {
-				if (CCD_MODE_ITEM[i].sw.value) {
-					// Set the pixel format based on the selected mode
-					pixelFormatName = CCD_MODE_ITEM[i].name;
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CCD_MODE_ITEM[i].name %s", CCD_MODE_ITEM[i].name);
-				}
-			}
-			size_t pos = pixelFormatName.find_last_of("_");
-			pixelFormatName = pixelFormatName.substr(0, pos);
-			PixelFormat format = pRPiCamera->GetPixelFormat();
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pRPiCamera->GetPixelFormat() -> %s", format.toString().c_str());
-
-			//   ROI calculation
-			if (!m_controls.get(controls::ScalerCrop) && !m_controls.get(controls::rpi::ScalerCrops)) {
-				const Rectangle sensor_area = pRPiCamera->GetControls().at(&controls::ScalerCrop).max().get<Rectangle>();
-				const Rectangle default_crop = pRPiCamera->GetControls().at(&controls::ScalerCrop).def().get<Rectangle>();
-				Rectangle crop;
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Sensor area: %s", sensor_area.toString().c_str());
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Default crop: %s", default_crop.toString().c_str());
-
-				unsigned int w = CCD_FRAME_WIDTH_ITEM->number.value;
-				unsigned int h = CCD_FRAME_HEIGHT_ITEM->number.value;
-				if ((left + w < CCD_INFO_WIDTH_ITEM->number.value) || (top + h < CCD_INFO_HEIGHT_ITEM->number.value)) {
-					libcamera::Rectangle roi(left, top, left + w, top + h);
-					m_controls.set(controls::ScalerCrop, roi);
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ROI set to: %s", roi.toString().c_str());
-				}
-			}
-			if (!m_controls.get(controls::AnalogueGain) && CCD_GAIN_ITEM->number.value) {
-				m_controls.set(controls::AnalogueGainMode, controls::AnalogueGainModeManual);
-				// Set manual analogue gain
-				m_controls.set(controls::AnalogueGain, CCD_GAIN_ITEM->number.value);
-			} else {
-				// Enable auto gain
-				m_controls.set(controls::AnalogueGainMode, controls::AnalogueGainModeAuto);
-			}
-
-			pRPiCamera->Set(m_controls);
-			PixelFormat pixelFormatTarget =
-				pixelFormatMap.find(pixelFormatName) != pixelFormatMap.end() ? pixelFormatMap.find(pixelFormatName)->second : formats::RGB888;
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pRPiCamera->StartExposure(width %d, height %d, format %s)", width, height, pixelFormatName.c_str());
-			state = pRPiCamera->StartExposure(width, height, pixelFormatTarget);
-		}
-		if (state != -1) {
-			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
-		} else {
-			property->state = INDIGO_ALERT_STATE;
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Exposure failed...pRPiCamera->StartExposure() returned -1");
-			indigo_update_property(device, property, nullptr);
-			return INDIGO_OK;
-		}
+		indigo_set_timer(device, 0, ccd_start_exposure, NULL);	
 	} else if (indigo_property_match_changeable(RPI_AF_PROPERTY, property)) {
 		// --------------------------------------------------------------------------------
 		// DSLR_AF
@@ -1440,9 +1464,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		// CCD_ABORT_EXPOSURE
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 			indigo_cancel_timer(device, &PRIVATE_DATA->exposure_timer);
-			RPiCamera *pRPiCamera = PRIVATE_DATA->pRPiCamera;
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pRPiCamera->StopCamera()");
-			pRPiCamera->StopCamera();
+			indigo_set_timer(device, 0, ccd_abort_exposure, NULL);
 		}
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
 	} else if (indigo_property_match_changeable(CCD_MODE_PROPERTY, property)) {
@@ -1550,20 +1572,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		// --------------------------------------------------------------------------------
 		// X_CCD_ADVANCED
 		indigo_property_copy_values(X_CCD_ADVANCED_PROPERTY, property, false);
-		X_CCD_ADVANCED_PROPERTY->state = INDIGO_OK_STATE;
-		if (X_CCD_ADVANCED_PROPERTY->count != 1) {
-			RPiCamera *pRPicamera = PRIVATE_DATA->pRPiCamera;
-			ControlList m_controls;
-			auto controlsInfo = pRPicamera->GetControls();
-
-			m_controls.set(controls::Contrast, X_CCD_CONTRAST_ITEM->number.value);
-			m_controls.set(controls::Saturation, X_CCD_SATURATION_ITEM->number.value);
-			m_controls.set(controls::Brightness, X_CCD_BRIGHTNESS_ITEM->number.value);
-
-			pRPicamera->Set(m_controls);
-
-			indigo_update_property(device, X_CCD_ADVANCED_PROPERTY, NULL);
-		}
+		indigo_set_timer(device, 0, ccd_handle_advanced_property, NULL);
+		
 		return INDIGO_OK;
 	}
 	return indigo_ccd_change_property(device, client, property);
