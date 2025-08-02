@@ -1224,6 +1224,7 @@ static void ccd_connect_callback(indigo_device *device) {
 								CCD_INFO_HEIGHT_ITEM->number.value);
 			assert(PRIVATE_DATA->buffer != NULL);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			device->is_connected = true; // Set the device as connected
 		} else {
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -1247,6 +1248,10 @@ static void ccd_connect_callback(indigo_device *device) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pRPiCamera->StopCamera()");
 			PRIVATE_DATA->pRPiCamera->CloseCamera();
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pRPiCamera->CloseCamera()");
+			// If the focuser is attached, detach it
+			if (PRIVATE_DATA->focuser) {
+				indigo_detach_device(PRIVATE_DATA->focuser);
+			}
 			delete PRIVATE_DATA->pRPiCamera;
 			PRIVATE_DATA->pRPiCamera = nullptr;
 			device->is_connected = false;
