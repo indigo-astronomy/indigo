@@ -75,6 +75,9 @@
 #define RPI_AF_ITEM_NAME "AF"
 #define RPI_AF_PROPERTY_NAME "RPi AF"
 
+// gp_bits is used as boolean
+#define is_connected                     gp_bits
+
 using namespace libcamera;
 using namespace std::chrono_literals;
 using namespace std;
@@ -896,7 +899,6 @@ typedef struct {
 	std::string eid;
 	RPiCamera *pRPiCamera;
 	unsigned char *buffer;
-	int device_count;
 	indigo_timer *exposure_timer;
 	RPiCamera *focus;
 	indigo_device *focuser;
@@ -1027,9 +1029,8 @@ static indigo_result ccd_attach(indigo_device *device) {
 
 static void ccd_connect_callback(indigo_device *device) {
 	indigo_lock_master_device(device);
-	/* RPiCamera *pRPiCamera = PRIVATE_DATA->pRPiCamera; */
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		if (PRIVATE_DATA->device_count++ == 0) {
+		if (!device->is_connected) {
 			if (indigo_try_global_lock(device) != INDIGO_OK) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
 			} else {
@@ -1224,7 +1225,6 @@ static void ccd_connect_callback(indigo_device *device) {
 			assert(PRIVATE_DATA->buffer != NULL);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
-			PRIVATE_DATA->device_count--;
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
@@ -1242,13 +1242,14 @@ static void ccd_connect_callback(indigo_device *device) {
 			free(PRIVATE_DATA->buffer);
 			PRIVATE_DATA->buffer = NULL;
 		}
-		if (--PRIVATE_DATA->device_count == 0) {
+		if (device->is_connected) {
 			PRIVATE_DATA->pRPiCamera->StopCamera();
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pRPiCamera->StopCamera()");
 			PRIVATE_DATA->pRPiCamera->CloseCamera();
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pRPiCamera->CloseCamera()");
 			delete PRIVATE_DATA->pRPiCamera;
 			PRIVATE_DATA->pRPiCamera = nullptr;
+			device->is_connected = false;
 			indigo_global_unlock(device);
 		}
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
