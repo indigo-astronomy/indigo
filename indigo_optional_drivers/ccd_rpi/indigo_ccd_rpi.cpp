@@ -1698,6 +1698,8 @@ indigo_result indigo_ccd_rpi(indigo_driver_action action, indigo_driver_info *in
 
 	switch (action) {
 	case INDIGO_DRIVER_INIT:
+		// Set all libcamera modules to only log error-level messages
+		setenv("LIBCAMERA_LOG_LEVELS", "ERROR", 1);
 		last_action = action;
 		for (int i = 0; i < MAX_DEVICES; i++) {
 			devices[i] = 0;
