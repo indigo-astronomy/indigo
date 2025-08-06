@@ -554,12 +554,12 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			char path[256];
 			snprintf(path, sizeof(path), "%s/.indigo/%s%s", getenv("HOME"), AGENT_CONFIG_DELETE_NAME_ITEM->text.value, EXTENSION);
 			if (indigo_uni_remove(path)) {
+				snprintf(message, INDIGO_VALUE_SIZE, "Configuration '%s' deleted", AGENT_CONFIG_DELETE_NAME_ITEM->text.value);
+				AGENT_CONFIG_DELETE_PROPERTY->state = INDIGO_OK_STATE;
+			} else {
 				snprintf(message, INDIGO_VALUE_SIZE, "Failed to remove configuration '%s'", AGENT_CONFIG_DELETE_NAME_ITEM->text.value);
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can't remove saved configuration %s", path);
 				AGENT_CONFIG_DELETE_PROPERTY->state = INDIGO_ALERT_STATE;
-			} else {
-				snprintf(message, INDIGO_VALUE_SIZE, "Configuration '%s' deleted", AGENT_CONFIG_DELETE_NAME_ITEM->text.value);
-				AGENT_CONFIG_DELETE_PROPERTY->state = INDIGO_OK_STATE;
 			}
 			indigo_delete_property(device, AGENT_CONFIG_LOAD_PROPERTY, NULL);
 			populate_list(device);
