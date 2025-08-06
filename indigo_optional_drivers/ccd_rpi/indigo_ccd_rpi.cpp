@@ -184,6 +184,40 @@ using PixelFormats = std::vector<libcamera::PixelFormat>;
 using ImageDimensions = std::vector<libcamera::Size>;
 using FrameInfo = std::map<libcamera::Size, libcamera::Size>;
 
+static char previousSDKLogLevel[64] = {'\0'};
+
+void ResetSDKLogLevel() {
+	if (previousSDKLogLevel[0] == '\0') {
+		unsetenv("LIBCAMERA_LOG_LEVELS"); // Reset the log level for the libcamera SDK to default
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Unset LIBCAMERA_LOG_LEVELS");
+	} else {
+		// Reset the log level for the libcamera SDK to default
+		setenv("LIBCAMERA_LOG_LEVELS", previousSDKLogLevel, 1);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Reset LIBCAMERA_LOG_LEVELS to %s", previousSDKLogLevel);
+	}
+}
+
+void SetSDKLogLevel() {
+	char *logLevel = getenv("LIBCAMERA_LOG_LEVELS");
+	if (logLevel != nullptr) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Current LIBCAMERA_LOG_LEVELS: %s", logLevel);
+		strcpy(previousSDKLogLevel, logLevel);
+	}
+
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Previous LIBCAMERA_LOG_LEVELS: %s", previousSDKLogLevel);
+	// Set the log level for the libcamera SDK
+	indigo_log_levels indigoLogLevel = indigo_get_log_level();
+	if (indigoLogLevel == INDIGO_LOG_DEBUG) {
+		setenv("LIBCAMERA_LOG_LEVELS", "DEBUG", 1);
+	} else if (indigoLogLevel == INDIGO_LOG_INFO) {
+		setenv("LIBCAMERA_LOG_LEVELS", "WARN", 1);
+	} else if (indigoLogLevel == INDIGO_LOG_ERROR) {
+		setenv("LIBCAMERA_LOG_LEVELS", "ERROR", 1);
+	}
+
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Set LIBCAMERA_LOG_LEVELS to %s", getenv("LIBCAMERA_LOG_LEVELS"));
+}
+
 std::vector<uint8_t> RemovePadding(const uint8_t *imageData, int rowSize, int height, int stride) {
 	std::vector<uint8_t> output(rowSize * height);
 
@@ -1698,8 +1732,8 @@ indigo_result indigo_ccd_rpi(indigo_driver_action action, indigo_driver_info *in
 
 	switch (action) {
 	case INDIGO_DRIVER_INIT:
-		// Set all libcamera modules to only log error-level messages
-		setenv("LIBCAMERA_LOG_LEVELS", "ERROR", 1);
+		// Match the SDK log level to indigo log level
+		SetSDKLogLevel();
 		last_action = action;
 		for (int i = 0; i < MAX_DEVICES; i++) {
 			devices[i] = 0;
@@ -1740,6 +1774,8 @@ indigo_result indigo_ccd_rpi(indigo_driver_action action, indigo_driver_info *in
 				devices[i] = NULL;
 			}
 		}
+		// Reset the SDK log level to default
+		ResetSDKLogLevel();
 		break;
 	case INDIGO_DRIVER_INFO:
 		break;
