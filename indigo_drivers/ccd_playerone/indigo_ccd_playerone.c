@@ -530,9 +530,9 @@ static void exposure_timer_callback(indigo_device *device) {
 		res = POA_ERROR_EXPOSURE_FAILED;
 		exposure_failed = true;
 	}
-	
+
 	PRIVATE_DATA->can_check_temperature = true;
-	
+
 	if (CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_ccd_abort_exposure_cleanup(device);
@@ -631,11 +631,11 @@ static void streaming_timer_callback(indigo_device *device) {
 				if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 					res = POAGetImageData(
-																id,
-																PRIVATE_DATA->buffer + FITS_HEADER_SIZE,
-																PRIVATE_DATA->buffer_size - FITS_HEADER_SIZE,
-																2000
-																);
+						id,
+						PRIVATE_DATA->buffer + FITS_HEADER_SIZE,
+						PRIVATE_DATA->buffer_size - FITS_HEADER_SIZE,
+						2000
+					);
 					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 					if (res) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetImageData(%d, ..., ..., %d) > %d", id, 2000, res);
@@ -665,11 +665,11 @@ static void streaming_timer_callback(indigo_device *device) {
 		res = POA_ERROR_EXPOSURE_FAILED;
 		exposure_failed = true;
 	}
-	
+
 	PRIVATE_DATA->can_check_temperature = true;
 	CCD_STREAMING_EXPOSURE_ITEM->number.value = 0;
 	indigo_finalize_video_stream(device);
-	
+
 	if (CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_STREAMING_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_ccd_abort_exposure_cleanup(device);
@@ -742,13 +742,13 @@ static void guider_timer_callback_ra(indigo_device *device) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetConfig(%d, POA_GUIDE_WEST, false, false)", id);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-	
+
 	PRIVATE_DATA->guider_timer_ra = NULL;
-	
+
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
 		return;
 	}
-	
+
 	GUIDER_GUIDE_EAST_ITEM->number.value = 0;
 	GUIDER_GUIDE_WEST_ITEM->number.value = 0;
 	GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
@@ -775,11 +775,11 @@ static void guider_timer_callback_dec(indigo_device *device) {
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	PRIVATE_DATA->guider_timer_dec = NULL;
-	
+
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
 		return;
 	}
-	
+
 	GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
 	GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
 	GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
@@ -1012,34 +1012,26 @@ static indigo_result init_camera_property(indigo_device *device, POAConfigAttrib
 
 #ifdef POA_ENABLE_LONG_EXPOSURES
 	if (ctrl_caps.configID == POA_EXP) {
-		CCD_EXPOSURE_PROPERTY->hidden = false;
-		if (ctrl_caps.isWritable)
-			CCD_EXPOSURE_PROPERTY->perm = INDIGO_RW_PERM;
-		else
-			CCD_EXPOSURE_PROPERTY->perm = INDIGO_RO_PERM;
-
+		CCD_EXPOSURE_PROPERTY->hidden = CCD_STREAMING_PROPERTY->hidden = false;
+		CCD_EXPOSURE_PROPERTY->perm = CCD_STREAMING_PROPERTY->perm = INDIGO_RW_PERM;
 		CCD_EXPOSURE_ITEM->number.min = CCD_STREAMING_EXPOSURE_ITEM->number.min = ctrl_caps.minValue.floatValue;
 		CCD_EXPOSURE_ITEM->number.max = CCD_STREAMING_EXPOSURE_ITEM->number.max = ctrl_caps.maxValue.floatValue;
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		unused = false;
 		res = POAGetConfig(id, POA_EXP, &value, &unused);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		if (res)
+		if (res) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetConfig(%d, POA_EXP) > %d", id, res);
-		else
+		} else {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetConfig(%d, POA_EXP, > %f)", id, value.floatValue);
+		}
 		CCD_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.target = value.floatValue;
 		return INDIGO_OK;
 	}
 #else
 	if (ctrl_caps.configID == POA_EXPOSURE) {
-		CCD_EXPOSURE_PROPERTY->hidden = false;
-		if (ctrl_caps.isWritable) {
-			CCD_EXPOSURE_PROPERTY->perm = INDIGO_RW_PERM;
-		} else {
-			CCD_EXPOSURE_PROPERTY->perm = INDIGO_RO_PERM;
-		}
-
+		CCD_EXPOSURE_PROPERTY->hidden = CCD_STREAMING_PROPERTY->hidden = false;
+		CCD_EXPOSURE_PROPERTY->perm = CCD_STREAMING_PROPERTY->perm = INDIGO_RW_PERM;
 		CCD_EXPOSURE_ITEM->number.min = CCD_STREAMING_EXPOSURE_ITEM->number.min = us2s(ctrl_caps.minValue.intValue);
 		CCD_EXPOSURE_ITEM->number.max = CCD_STREAMING_EXPOSURE_ITEM->number.max = us2s(ctrl_caps.maxValue.intValue);
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
@@ -2235,14 +2227,15 @@ indigo_result indigo_ccd_playerone(indigo_driver_action action, indigo_driver_in
 
 			const char *sdk_version = POAGetSDKVersion();
 
-#ifdef POA_SAFE_READOUT
+#if  defined(POA_SAFE_READOUT) && defined(POA_ENABLE_LONG_EXPOSURES)
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "POA SDK v. %s (safe readout & long exposure support enabled)", sdk_version);
+#elif defined(POA_SAFE_READOUT)
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "POA SDK v. %s (safe readout enabled)", sdk_version);
+#elif defined(POA_ENABLE_LONG_EXPOSURES)
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "POA SDK v. %s (long exposure support enabled)", sdk_version);
 #else
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "POA SDK v. %s", sdk_version);
-#endif /* POA_SAFE_READOUT */
-#ifdef POA_ENABLE_LONG_EXPOSURES
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "Long exposure support enabled");
-#endif /* POA_ENABLE_LONG_EXPOSURES */
+#endif
 
 			indigo_start_usb_event_handler();
 			int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, POA_VENDOR_ID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
