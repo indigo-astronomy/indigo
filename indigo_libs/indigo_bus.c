@@ -1828,7 +1828,7 @@ bool indigo_async(void *fun(void *data), void *data) {
 	return false;
 }
 
-double indigo_stod(char *string) {
+double indigo_stod(const char *string) {
 	char copy[128] = { 0 };
 	strncpy(copy, string, 127);
 	string = copy;

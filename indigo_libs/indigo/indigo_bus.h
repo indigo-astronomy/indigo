@@ -745,7 +745,7 @@ INDIGO_EXTERN bool indigo_async(void *fun(void *data), void *data);
 
 /** Convert sexagesimal string to double.
  */
-INDIGO_EXTERN double indigo_stod(char *string);
+INDIGO_EXTERN double indigo_stod(const char *string);
 
 /** Convert double to sexagesimal string.
  */
