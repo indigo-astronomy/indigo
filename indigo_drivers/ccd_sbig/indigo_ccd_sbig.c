@@ -24,7 +24,7 @@
  */
 
 
-#define DRIVER_VERSION 0x0010
+#define DRIVER_VERSION 0x0011
 #define DRIVER_NAME "indigo_ccd_sbig"
 
 #include <stdlib.h>
@@ -1558,6 +1558,8 @@ static void guider_timer_callback_ra(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "sbig_set_relaymap(%d) = %d (%s)", driver_handle, res, sbig_error_string(res));
 	}
 
+	pthread_mutex_unlock(&driver_mutex);
+
 	if (PRIVATE_DATA->relay_map & (RELAY_EAST | RELAY_WEST)) {
 		GUIDER_GUIDE_EAST_ITEM->number.value = 0;
 		GUIDER_GUIDE_WEST_ITEM->number.value = 0;
@@ -1565,8 +1567,6 @@ static void guider_timer_callback_ra(indigo_device *device) {
 		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 	}
 	PRIVATE_DATA->relay_map = relay_map;
-
-	pthread_mutex_unlock(&driver_mutex);
 }
 
 
@@ -1595,6 +1595,8 @@ static void guider_timer_callback_dec(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "sbig_set_relaymap(%d) = %d (%s)", driver_handle, res, sbig_error_string(res));
 	}
 
+	pthread_mutex_unlock(&driver_mutex);
+
 	if (PRIVATE_DATA->relay_map & (RELAY_NORTH | RELAY_SOUTH)) {
 		GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
 		GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
@@ -1602,8 +1604,6 @@ static void guider_timer_callback_dec(indigo_device *device) {
 		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 	}
 	PRIVATE_DATA->relay_map = relay_map;
-
-	pthread_mutex_unlock(&driver_mutex);
 }
 
 static void guider_connect_callback(indigo_device *device) {
@@ -2047,8 +2047,8 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			if (res != CE_NO_ERROR) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "set_sbig_handle(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res));
 				WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 				pthread_mutex_unlock(&driver_mutex);
+				indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 				return INDIGO_FAILED;
 			}
 
@@ -2062,8 +2062,8 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			if (res != CE_NO_ERROR) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CFWC_GOTO error = %d (%s).", res, sbig_error_string(res));
 				WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 				pthread_mutex_unlock(&driver_mutex);
+				indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 				return INDIGO_FAILED;
 			}
 			pthread_mutex_unlock(&driver_mutex);
@@ -2746,7 +2746,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 static void remove_usb_devices() {
 	int i;
 	sbig_private_data *pds[MAX_USB_DEVICES] = {NULL};
-	
+
 	for(i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
 		if (device == NULL) {
@@ -2762,7 +2762,7 @@ static void remove_usb_devices() {
 		free(device);
 		devices[i] = NULL;
 	}
-	
+
 	/* free private data */
 	for(i = 0; i < MAX_USB_DEVICES; i++) {
 		if (pds[i]) {
@@ -2782,7 +2782,7 @@ static void remove_usb_devices() {
 static void remove_eth_devices() {
 	int i;
 	sbig_private_data *private_data = NULL;
-	
+
 	for(i = 0; i < MAX_DEVICES -1; i++) {
 		indigo_device *device = devices[i];
 		if (device == NULL) {
