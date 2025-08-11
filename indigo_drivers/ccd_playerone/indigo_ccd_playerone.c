@@ -1267,6 +1267,13 @@ static indigo_result init_sensor_mode_property(indigo_device *device) {
 		return INDIGO_FAILED;
 	}
 
+	if (sensor_mode_count <= 0) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No sensor modes available");
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		POA_SENSOR_MODE_PROPERTY = indigo_resize_property(POA_SENSOR_MODE_PROPERTY, 0);
+		return INDIGO_NOT_FOUND;
+	}
+
 	res = POAGetSensorMode(id, &current_mode);
 	if (res) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetSensorMode(%d) > %d", id, res);
@@ -1339,8 +1346,12 @@ static void handle_ccd_connect_property(indigo_device *device) {
 				}
 				indigo_define_property(device, POA_ADVANCED_PROPERTY, NULL);
 
+				POA_SENSOR_MODE_PROPERTY->hidden = false;
 				POA_SENSOR_MODE_PROPERTY = indigo_resize_property(POA_SENSOR_MODE_PROPERTY, 0);
-				if (init_sensor_mode_property(device) != INDIGO_OK) {
+				indigo_result indigo_res = init_sensor_mode_property(device);
+				if (indigo_res == INDIGO_NOT_FOUND) {
+					POA_SENSOR_MODE_PROPERTY->hidden = true;
+				} else if (indigo_res != INDIGO_OK) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to initialize sensor mode property");
 					POA_SENSOR_MODE_PROPERTY->hidden = true;
 				}
