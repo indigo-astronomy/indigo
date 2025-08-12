@@ -51,7 +51,7 @@ STABLE_DRIVERS = agent_auxiliary agent_guider agent_imager agent_mount agent_sno
 UNSTABLE_DRIVERS = ccd_qhy ccd_qhy2
 UNTESTED_DRIVERS = aux_arteskyflat aux_rts dome_baader dome_nexdome focuser_lakeside focuser_nfocus focuser_nstep focuser_optec focuser_robofocus wheel_optec wheel_quantum wheel_trutek wheel_xagyl dome_skyroof aux_skyalert agent_alpaca dome_beaver focuser_astromechanics aux_astromechanics rotator_optec mount_starbook focuser_prodigy wheel_indigo rotator_falcon focuser_ioptron focuser_optecfl focuser_fc3 aux_upb3 focuser_lacerta
 DEVELOPED_DRIVERS = ccd_pentax
-OPTIONAL_DRIVERS = ccd_andor
+OPTIONAL_DRIVERS = ccd_andor ccd_rpi
 EXCLUDED_DRIVERS =
 
 #---------------------------------------------------------------------

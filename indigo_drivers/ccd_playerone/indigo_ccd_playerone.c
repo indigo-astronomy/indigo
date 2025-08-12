@@ -25,7 +25,7 @@
  \file indigo_ccd_playerone.c
  */
 
-#define DRIVER_VERSION 0x0300000D
+#define DRIVER_VERSION 0x0300000E
 #define DRIVER_NAME "indigo_ccd_playerone"
 
 /* POA_SAFE_READOUT enables workaround for a bug in POAGetImageData().
@@ -85,6 +85,8 @@
 
 #define POA_ADVANCED_PROPERTY      (PRIVATE_DATA->playerone_advanced_property)
 
+#define POA_SENSOR_MODE_PROPERTY   (PRIVATE_DATA->playerone_sensore_mode_property)
+
 // gp_bits is used as boolean
 #define is_connected               gp_bits
 
@@ -122,6 +124,7 @@ typedef struct {
 	indigo_property *playerone_presets_property;
 	indigo_property *playerone_advanced_property;
 	indigo_property *playerone_custom_suffix_property;
+	indigo_property *playerone_sensore_mode_property;
 } playerone_private_data;
 
 static int get_pixel_depth(indigo_device *device) {
@@ -186,6 +189,7 @@ static indigo_result playerone_enumerate_properties(indigo_device *device, indig
 		INDIGO_DEFINE_MATCHING_PROPERTY(POA_PRESETS_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(POA_CUSTOM_SUFFIX_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(POA_ADVANCED_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(POA_SENSOR_MODE_PROPERTY);
 	}
 	return indigo_ccd_enumerate_properties(device, NULL, NULL);
 }
@@ -898,6 +902,11 @@ static indigo_result ccd_attach(indigo_device *device) {
 		if (POA_ADVANCED_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
+		// -------------------------------------------------------------------------------- POA_SENSOR_MODE
+		POA_SENSOR_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, "POA_SENSOR_MODE", CCD_ADVANCED_GROUP, "Sensor readout mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 0);
+		if (POA_SENSOR_MODE_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
 		// --------------------------------------------------------------------------------
 		switch (PRIVATE_DATA->property.bayerPattern) {
 			case POA_BAYER_BG:
@@ -1219,6 +1228,91 @@ static indigo_result init_camera_property(indigo_device *device, POAConfigAttrib
 	return INDIGO_OK;
 }
 
+static void handle_sensor_mode_proeprty(indigo_device *device) {
+	int res;
+	int id = PRIVATE_DATA->dev_id;
+	int selected_mode = -1;
+
+	if (!IS_CONNECTED) {
+		return;
+	}
+
+	for (int i = 0; i < POA_SENSOR_MODE_PROPERTY->count; i++) {
+		if (POA_SENSOR_MODE_PROPERTY->items[i].sw.value) {
+			selected_mode = i;
+			break;
+		}
+	}
+
+	if (selected_mode < 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "No sensor mode selected");
+		POA_SENSOR_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, POA_SENSOR_MODE_PROPERTY, NULL);
+		return;
+	}
+
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	res = POASetSensorMode(id, selected_mode);
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+
+	if (res) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "POASetSensorMode(%d, %d) > %d", id, selected_mode, res);
+		POA_SENSOR_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, POA_SENSOR_MODE_PROPERTY, NULL);
+		return;
+	}
+
+	POA_SENSOR_MODE_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, POA_SENSOR_MODE_PROPERTY, NULL);
+}
+
+static indigo_result init_sensor_mode_property(indigo_device *device) {
+	int res;
+	int id = PRIVATE_DATA->dev_id;
+	int sensor_mode_count = 0;
+	int current_mode = 0;
+
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+
+	res = POAGetSensorModeCount(id, &sensor_mode_count);
+	if (res) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetSensorModeCount(%d) > %d", id, res);
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		return INDIGO_FAILED;
+	}
+
+	if (sensor_mode_count <= 0) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No sensor modes available");
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		POA_SENSOR_MODE_PROPERTY = indigo_resize_property(POA_SENSOR_MODE_PROPERTY, 0);
+		return INDIGO_NOT_FOUND;
+	}
+
+	res = POAGetSensorMode(id, &current_mode);
+	if (res) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetSensorMode(%d) > %d", id, res);
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		return INDIGO_FAILED;
+	}
+
+	POA_SENSOR_MODE_PROPERTY = indigo_resize_property(POA_SENSOR_MODE_PROPERTY, sensor_mode_count);
+
+	for (int i = 0; i < sensor_mode_count; i++) {
+		POASensorModeInfo pSenModeInfo;
+		res = POAGetSensorModeInfo(id, i, &pSenModeInfo);
+		if (res) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetSensorModeInfo(%d, %d) > %d", id, i, res);
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			POA_SENSOR_MODE_PROPERTY = indigo_resize_property(POA_SENSOR_MODE_PROPERTY, 0);
+			return INDIGO_FAILED;
+		}
+		indigo_init_switch_item(POA_SENSOR_MODE_PROPERTY->items + i, pSenModeInfo.name, pSenModeInfo.desc, current_mode == i);
+	}
+
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	return INDIGO_OK;
+}
+
 static void adjust_preset_switches(indigo_device *device) {
 	POA_HIGHEST_DR_ITEM->sw.value = false;
 	POA_UNITY_GAIN_ITEM->sw.value = false;
@@ -1266,6 +1360,17 @@ static void handle_ccd_connect_property(indigo_device *device) {
 					init_camera_property(device, ctrl_caps);
 				}
 				indigo_define_property(device, POA_ADVANCED_PROPERTY, NULL);
+
+				POA_SENSOR_MODE_PROPERTY->hidden = false;
+				POA_SENSOR_MODE_PROPERTY = indigo_resize_property(POA_SENSOR_MODE_PROPERTY, 0);
+				indigo_result indigo_res = init_sensor_mode_property(device);
+				if (indigo_res == INDIGO_NOT_FOUND) {
+					POA_SENSOR_MODE_PROPERTY->hidden = true;
+				} else if (indigo_res != INDIGO_OK) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to initialize sensor mode property");
+					POA_SENSOR_MODE_PROPERTY->hidden = true;
+				}
+				indigo_define_property(device, POA_SENSOR_MODE_PROPERTY, NULL);
 
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 				res = POAGetGainsAndOffsets(
@@ -1328,6 +1433,7 @@ static void handle_ccd_connect_property(indigo_device *device) {
 			indigo_delete_property(device, POA_PRESETS_PROPERTY, NULL);
 			indigo_delete_property(device, POA_CUSTOM_SUFFIX_PROPERTY, NULL);
 			indigo_delete_property(device, POA_ADVANCED_PROPERTY, NULL);
+			indigo_delete_property(device, POA_SENSOR_MODE_PROPERTY, NULL);
 			playerone_close(device);
 			device->is_connected = false;
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -1680,6 +1786,18 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, POA_ADVANCED_PROPERTY, NULL);
 		indigo_set_timer(device, 0, handle_advanced_property, NULL);
 		return INDIGO_OK;
+		// -------------------------------------------------------------------------------- POA_SENSOR_MODE
+	} else if (indigo_property_match_changeable(POA_SENSOR_MODE_PROPERTY, property)) {
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+			POA_SENSOR_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, POA_SENSOR_MODE_PROPERTY, "Exposure in progress, sensor readout mode can not be changed.");
+			return INDIGO_OK;
+		}
+		indigo_property_copy_values(POA_SENSOR_MODE_PROPERTY, property, false);
+		POA_SENSOR_MODE_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, POA_SENSOR_MODE_PROPERTY, NULL);
+		indigo_set_timer(device, 0, handle_sensor_mode_proeprty, NULL);
+		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- CCD_MODE
 	} else if (indigo_property_match_changeable(CCD_MODE_PROPERTY, property)) {
 		indigo_property_copy_values(CCD_MODE_PROPERTY, property, false);
@@ -1745,6 +1863,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, PIXEL_FORMAT_PROPERTY);
 			indigo_save_property(device, NULL, POA_ADVANCED_PROPERTY);
+			indigo_save_property(device, NULL, POA_SENSOR_MODE_PROPERTY);
 		}
 	}
 	return indigo_ccd_change_property(device, client, property);
@@ -1767,6 +1886,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 	indigo_release_property(POA_PRESETS_PROPERTY);
 	indigo_release_property(POA_CUSTOM_SUFFIX_PROPERTY);
 	indigo_release_property(POA_ADVANCED_PROPERTY);
+	indigo_release_property(POA_SENSOR_MODE_PROPERTY);
 
 	return indigo_ccd_detach(device);
 }
