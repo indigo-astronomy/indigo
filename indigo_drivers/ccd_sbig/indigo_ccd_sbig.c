@@ -868,7 +868,7 @@ static const char *camera_type[] = {
 
 
 // callback for image download
-static void imager_ccd_exposure_timer_callback(indigo_device *device) {
+static void ccd_exposure_timer_callback(indigo_device *device) {
 	unsigned char *frame_buffer;
 	indigo_fits_keyword *bayer_keys = NULL;
 	static indigo_fits_keyword keywords[] = {
@@ -935,10 +935,10 @@ static void clear_reg_timer_callback(indigo_device *device) {
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		if (PRIMARY_CCD) {
 			PRIVATE_DATA->imager_no_check_temperature = true;
-			indigo_set_timer(device, 4, imager_ccd_exposure_timer_callback, &PRIVATE_DATA->imager_ccd_exposure_timer);
+			indigo_set_timer(device, 4, ccd_exposure_timer_callback, &PRIVATE_DATA->imager_ccd_exposure_timer);
 		} else {
 			PRIVATE_DATA->guider_no_check_temperature = true;
-			indigo_set_timer(device, 4, imager_ccd_exposure_timer_callback, &PRIVATE_DATA->guider_ccd_exposure_timer);
+			indigo_set_timer(device, 4, ccd_exposure_timer_callback, &PRIVATE_DATA->guider_ccd_exposure_timer);
 		}
 	}
 }
@@ -1083,10 +1083,10 @@ static bool handle_exposure_property(indigo_device *device, indigo_property *pro
 		} else {
 			if (PRIMARY_CCD) {
 				PRIVATE_DATA->imager_no_check_temperature = true;
-				indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, imager_ccd_exposure_timer_callback, &PRIVATE_DATA->imager_ccd_exposure_timer);
+				indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, ccd_exposure_timer_callback, &PRIVATE_DATA->imager_ccd_exposure_timer);
 			} else {
 				PRIVATE_DATA->guider_no_check_temperature = true;
-				indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, imager_ccd_exposure_timer_callback, &PRIVATE_DATA->guider_ccd_exposure_timer);
+				indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, ccd_exposure_timer_callback, &PRIVATE_DATA->guider_ccd_exposure_timer);
 			}
 		}
 	} else {
