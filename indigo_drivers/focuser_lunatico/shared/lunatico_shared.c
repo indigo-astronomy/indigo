@@ -1117,8 +1117,8 @@ static indigo_result lunatico_common_update_property(indigo_device *device, indi
 // --------------------------------------------------------------------------------- INDIGO AUX Powerbox device implementation
 
 static void sensors_timer_callback(indigo_device *device) {
-	int sensor_value;
-	bool success;
+	int sensor_value = 0;
+	bool success = false;
 
 	AUX_GPIO_SENSORS_PROPERTY->state = INDIGO_OK_STATE;
 
