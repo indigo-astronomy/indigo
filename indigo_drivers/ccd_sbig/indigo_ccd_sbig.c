@@ -24,7 +24,7 @@
  */
 
 
-#define DRIVER_VERSION 0x0011
+#define DRIVER_VERSION 0x0012
 #define DRIVER_NAME "indigo_ccd_sbig"
 
 #include <stdlib.h>
@@ -880,7 +880,7 @@ static void imager_ccd_exposure_timer_callback(indigo_device *device) {
 		return;
 	}
 
-	PRIVATE_DATA->imager_no_check_temperature = true;
+	PRIVATE_DATA->imager_ccd_exposure_timer = NULL;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_EXPOSURE_ITEM->number.value = 0;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
@@ -910,6 +910,18 @@ static void imager_ccd_exposure_timer_callback(indigo_device *device) {
 		}
 	}
 	PRIVATE_DATA->imager_no_check_temperature = false;
+}
+
+
+// callback called 4s before image download (e.g. to clear vreg or turn off temperature check)
+static void clear_reg_timer_callback(indigo_device *device) {
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+		PRIVATE_DATA->imager_no_check_temperature = true;
+		indigo_set_timer(device, 4, imager_ccd_exposure_timer_callback, &PRIVATE_DATA->imager_ccd_exposure_timer);
+	} else {
+		PRIVATE_DATA->imager_ccd_exposure_timer = NULL;
+	}
 }
 
 
@@ -1042,7 +1054,13 @@ static bool handle_exposure_property(indigo_device *device, indigo_property *pro
 		}
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-		indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, imager_ccd_exposure_timer_callback, &PRIVATE_DATA->imager_ccd_exposure_timer);
+
+		if (CCD_EXPOSURE_ITEM->number.target > 4) {
+			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 4, clear_reg_timer_callback, &PRIVATE_DATA->imager_ccd_exposure_timer);
+		} else {
+			PRIVATE_DATA->imager_no_check_temperature = true;
+			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, imager_ccd_exposure_timer_callback, &PRIVATE_DATA->imager_ccd_exposure_timer);
+		}
 	} else {
 		indigo_ccd_failure_cleanup(device);
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
