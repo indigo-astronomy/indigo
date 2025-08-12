@@ -880,7 +880,12 @@ static void imager_ccd_exposure_timer_callback(indigo_device *device) {
 		return;
 	}
 
-	PRIVATE_DATA->imager_ccd_exposure_timer = NULL;
+	if (PRIMARY_CCD) {
+		PRIVATE_DATA->imager_ccd_exposure_timer = NULL;
+	} else {
+		PRIVATE_DATA->guider_ccd_exposure_timer = NULL;
+	}
+
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_EXPOSURE_ITEM->number.value = 0;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
@@ -909,18 +914,32 @@ static void imager_ccd_exposure_timer_callback(indigo_device *device) {
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed");
 		}
 	}
-	PRIVATE_DATA->imager_no_check_temperature = false;
+	if( PRIMARY_CCD) {
+		PRIVATE_DATA->imager_no_check_temperature = false;
+	} else {
+		PRIVATE_DATA->guider_no_check_temperature = false;
+	}
 }
 
 
 // callback called 4s before image download (e.g. to clear vreg or turn off temperature check)
 static void clear_reg_timer_callback(indigo_device *device) {
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
-	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-		PRIVATE_DATA->imager_no_check_temperature = true;
-		indigo_set_timer(device, 4, imager_ccd_exposure_timer_callback, &PRIVATE_DATA->imager_ccd_exposure_timer);
-	} else {
+
+	if( PRIMARY_CCD) {
 		PRIVATE_DATA->imager_ccd_exposure_timer = NULL;
+	} else {
+		PRIVATE_DATA->guider_ccd_exposure_timer = NULL;
+	}
+
+	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+		if (PRIMARY_CCD) {
+			PRIVATE_DATA->imager_no_check_temperature = true;
+			indigo_set_timer(device, 4, imager_ccd_exposure_timer_callback, &PRIVATE_DATA->imager_ccd_exposure_timer);
+		} else {
+			PRIVATE_DATA->guider_no_check_temperature = true;
+			indigo_set_timer(device, 4, imager_ccd_exposure_timer_callback, &PRIVATE_DATA->guider_ccd_exposure_timer);
+		}
 	}
 }
 
@@ -1056,10 +1075,19 @@ static bool handle_exposure_property(indigo_device *device, indigo_property *pro
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 
 		if (CCD_EXPOSURE_ITEM->number.target > 4) {
-			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 4, clear_reg_timer_callback, &PRIVATE_DATA->imager_ccd_exposure_timer);
+			if (PRIMARY_CCD) {
+				indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 4, clear_reg_timer_callback, &PRIVATE_DATA->imager_ccd_exposure_timer);
+			} else {
+				indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 4, clear_reg_timer_callback, &PRIVATE_DATA->guider_ccd_exposure_timer);
+			}
 		} else {
-			PRIVATE_DATA->imager_no_check_temperature = true;
-			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, imager_ccd_exposure_timer_callback, &PRIVATE_DATA->imager_ccd_exposure_timer);
+			if (PRIMARY_CCD) {
+				PRIVATE_DATA->imager_no_check_temperature = true;
+				indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, imager_ccd_exposure_timer_callback, &PRIVATE_DATA->imager_ccd_exposure_timer);
+			} else {
+				PRIVATE_DATA->guider_no_check_temperature = true;
+				indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, imager_ccd_exposure_timer_callback, &PRIVATE_DATA->guider_ccd_exposure_timer);
+			}
 		}
 	} else {
 		indigo_ccd_failure_cleanup(device);
@@ -1120,8 +1148,6 @@ static void ccd_connect_callback(indigo_device *device) {
 					}
 
 					indigo_copy_value(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, PRIVATE_DATA->imager_ccd_extended_info1.serialNumber);
-
-					indigo_update_property(device, INFO_PROPERTY, NULL);
 
 					cip.request = CCD_INFO_EXTENDED3; /* imaging CCD */
 					res = sbig_command(CC_GET_CCD_INFO, &cip, &(PRIVATE_DATA->imager_ccd_extended_info6));
@@ -1199,6 +1225,7 @@ static void ccd_connect_callback(indigo_device *device) {
 					indigo_set_timer(device, 0, imager_ccd_temperature_callback, &PRIVATE_DATA->imager_ccd_temperature_timer);
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					pthread_mutex_unlock(&driver_mutex);
+					indigo_update_property(device, INFO_PROPERTY, NULL);
 				} else { /* Secondary CCD */
 					pthread_mutex_lock(&driver_mutex);
 					CCD_MODE_PROPERTY->hidden = false;
@@ -1227,8 +1254,6 @@ static void ccd_connect_callback(indigo_device *device) {
 
 					sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%s", indigo_dtoa(bcd2double(PRIVATE_DATA->guider_ccd_basic_info.firmwareVersion), b1));
 					sprintf(INFO_DEVICE_MODEL_ITEM->text.value, "%s", PRIVATE_DATA->guider_ccd_basic_info.name);
-
-					indigo_update_property(device, INFO_PROPERTY, NULL);
 
 					cip.request = CCD_INFO_EXTENDED2_TRACKING; /* Guider CCD */
 					res = sbig_command(CC_GET_CCD_INFO, &cip, &(PRIVATE_DATA->guider_ccd_extended_info4));
@@ -1298,6 +1323,7 @@ static void ccd_connect_callback(indigo_device *device) {
 					indigo_set_timer(device, 0, guider_ccd_temperature_callback, &PRIVATE_DATA->guider_ccd_temperature_timer);
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					pthread_mutex_unlock(&driver_mutex);
+					indigo_update_property(device, INFO_PROPERTY, NULL);
 				}
 				set_connected_flag(device);
 			} else {
@@ -1310,6 +1336,9 @@ static void ccd_connect_callback(indigo_device *device) {
 			if (PRIMARY_CCD) {
 				PRIVATE_DATA->imager_no_check_temperature = false;
 				indigo_cancel_timer_sync(device, &PRIVATE_DATA->imager_ccd_temperature_timer);
+				if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+					indigo_cancel_timer_sync(device, &PRIVATE_DATA->imager_ccd_exposure_timer);
+				}
 				indigo_delete_property(device, SBIG_FREEZE_TEC_PROPERTY, NULL);
 				indigo_delete_property(device, SBIG_ABG_PROPERTY, NULL);
 				if (PRIVATE_DATA->imager_buffer != NULL) {
@@ -1319,6 +1348,9 @@ static void ccd_connect_callback(indigo_device *device) {
 			} else { /* Secondary CCD */
 				PRIVATE_DATA->guider_no_check_temperature = false;
 				indigo_cancel_timer_sync(device, &PRIVATE_DATA->guider_ccd_temperature_timer);
+				if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+					indigo_cancel_timer_sync(device, &PRIVATE_DATA->guider_ccd_exposure_timer);
+				}
 				if (PRIVATE_DATA->guider_buffer != NULL) {
 					free(PRIVATE_DATA->guider_buffer);
 					PRIVATE_DATA->guider_buffer = NULL;
