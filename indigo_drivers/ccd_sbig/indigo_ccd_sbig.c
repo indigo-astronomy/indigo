@@ -561,6 +561,8 @@ static bool sbig_start_exposure(indigo_device *device, double exposure, bool dar
 	unsigned short binning_mode;
 	unsigned short shutter_mode;
 
+	indigo_use_shortest_exposure_if_bias(device);
+
 	pthread_mutex_lock(&driver_mutex);
 
 	res = set_sbig_handle(PRIVATE_DATA->driver_handle);
@@ -587,6 +589,26 @@ static bool sbig_start_exposure(indigo_device *device, double exposure, bool dar
 		sep->ccd = CCD_IMAGING;
 		sep->abgState = (unsigned short)PRIVATE_DATA->imager_abg_state;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Imager ABG mode = %d", PRIVATE_DATA->imager_abg_state);
+
+		/* Check if the secondary CCD is in use */
+		unsigned short status;
+		res = get_command_status(CC_START_EXPOSURE2, &status);
+		if (res != CE_NO_ERROR) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_QUERY_COMMAND_STATUS error = %d (%s)", res, sbig_error_string(res));
+			pthread_mutex_unlock(&driver_mutex);
+			return false;
+		}
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Primary CCD: status = 0x%x", status);
+		if (status == 8) { /* Secondary CCD exposure is in progress */
+			indigo_ccd_suspend_countdown(device);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Need to wait for the secondary CCD to finish (status = 0x%x)", status);
+		}
+		while (status == 8) { /* Wait for it to finish otherwise it will close the shutter while main camera is exposing */
+			indigo_usleep(100000); // 100ms
+			get_command_status(CC_START_EXPOSURE2, &status);
+		}
+		indigo_ccd_resume_countdown(device);
+
 	} else {
 		sep = &(PRIVATE_DATA->guider_ccd_exp_params);
 		sep->abgState = (unsigned short)ABG_LOW7;
@@ -600,6 +622,7 @@ static bool sbig_start_exposure(indigo_device *device, double exposure, bool dar
 			pthread_mutex_unlock(&driver_mutex);
 			return false;
 		}
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Secondary CCD: status = 0x%x", status);
 		if ((status & 2) == 2) { /* Primary CCD exposure is in progress do not touch the shutter */
 			shutter_mode = SC_LEAVE_SHUTTER;
 		}
@@ -1046,7 +1069,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 }
 
 
-static bool handle_exposure_property(indigo_device *device, indigo_property *property) {
+static bool handle_exposure_property(indigo_device *device) {
 	long ok;
 
 	ok = sbig_start_exposure(device,
@@ -1066,8 +1089,6 @@ static bool handle_exposure_property(indigo_device *device, indigo_property *pro
 			CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		}
-		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 
 		if (CCD_EXPOSURE_ITEM->number.target > 4) {
 			if (PRIMARY_CCD) {
@@ -1381,8 +1402,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			indigo_use_shortest_exposure_if_bias(device);
-			handle_exposure_property(device, property);
+			CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+			indigo_set_timer(device, 0, handle_exposure_property, NULL);
 		}
 	// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 	} else if (indigo_property_match_changeable(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
