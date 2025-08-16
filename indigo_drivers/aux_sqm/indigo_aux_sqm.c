@@ -204,12 +204,12 @@ static indigo_result aux_attach(indigo_device *device) {
 		}
 #endif
 #ifdef INDIGO_LINUX
-	if (DEVICE_PORTS_PROPERTY->count > 1) {
-		/* 0 is refresh button */
-		indigo_copy_value(DEVICE_PORT_ITEM->text.value, DEVICE_PORTS_PROPERTY->items[1].name);
-	} else {
-		strcpy(DEVICE_PORT_ITEM->text.value, "/dev/ttyUSB0");
-	}
+		if (DEVICE_PORTS_PROPERTY->count > 1) {
+			/* 0 is refresh button */
+			indigo_copy_value(DEVICE_PORT_ITEM->text.value, DEVICE_PORTS_PROPERTY->items[1].name);
+		} else {
+			strcpy(DEVICE_PORT_ITEM->text.value, "/dev/ttyUSB0");
+		}
 #endif
 		// --------------------------------------------------------------------------------
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
