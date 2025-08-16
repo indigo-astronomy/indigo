@@ -1069,17 +1069,8 @@ static indigo_result ccd_attach(indigo_device *device) {
 }
 
 
-static bool handle_exposure_property(indigo_device *device) {
-	long ok;
-
-	ok = sbig_start_exposure(device,
-	                         CCD_EXPOSURE_ITEM->number.target,
-	                         CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_DARKFLAT_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value,
-	                         CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value,
-	                         CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value,
-	                         CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value
-	);
-
+static void handle_exposure_property(indigo_device *device) {
+	long ok = sbig_start_exposure(device, CCD_EXPOSURE_ITEM->number.target, CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_DARKFLAT_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value, CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value, CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value);
 	if (ok) {
 		if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
 			CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -1089,7 +1080,6 @@ static bool handle_exposure_property(indigo_device *device) {
 			CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		}
-
 		if (CCD_EXPOSURE_ITEM->number.target > 4) {
 			if (PRIMARY_CCD) {
 				indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 4, clear_reg_timer_callback, &PRIVATE_DATA->imager_ccd_exposure_timer);
@@ -1110,7 +1100,6 @@ static bool handle_exposure_property(indigo_device *device) {
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed.");
 	}
-	return false;
 }
 
 static void ccd_connect_callback(indigo_device *device) {

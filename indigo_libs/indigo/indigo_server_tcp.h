@@ -89,6 +89,10 @@ INDIGO_EXTERN void indigo_server_remove_resources(void);
  */
 INDIGO_EXTERN indigo_result indigo_server_start(void (*callback)(int));
 
+/** Default callback for indigo_server_start()
+ */
+INDIGO_EXTERN void indigo_default_server_callback(int count);
+
 /** Shutdown network server (function will block until server is active).
  */
 INDIGO_EXTERN void indigo_server_shutdown(void);

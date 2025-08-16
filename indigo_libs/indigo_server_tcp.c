@@ -492,7 +492,7 @@ void indigo_server_remove_resources(void) {
 	pthread_mutex_unlock(&resource_list_mutex);
 }
 
-static void default_server_callback(int count) {
+void indigo_default_server_callback(int count) {
 	static DNSServiceRef sd_http;
 	static DNSServiceRef sd_indigo;
 	if (startup_initiated) {
@@ -525,7 +525,7 @@ static void default_server_callback(int count) {
 
 indigo_result indigo_server_start(void (*callback)(int)) {
 	indigo_use_blob_caching = true;
-	server_callback = callback ? callback : default_server_callback;
+	server_callback = callback ? callback : indigo_default_server_callback;
 	shutdown_initiated = false;
 	startup_initiated = true;
 	indigo_is_ephemeral_port = indigo_server_tcp_port == 0;
