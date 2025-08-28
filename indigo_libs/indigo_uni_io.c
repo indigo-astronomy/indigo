@@ -327,7 +327,7 @@ const wchar_t *indigo_char_to_wchar(const char *string) {
 
 char *indigo_uni_strerror(indigo_uni_handle *handle) {
 	if (handle == NULL) {
-		indigo_error("%s used with NULL handle", __FUNCTION__);
+		// indigo_error("%s used with NULL handle", __FUNCTION__);
 		return "NULL handle";
 	}
 	static char buffer[128] = "";
@@ -661,7 +661,7 @@ indigo_uni_handle *indigo_uni_open_serial(const char *serial, int log_level) {
 
 int indigo_uni_set_dtr(indigo_uni_handle *handle, bool state) {
 	if (handle == NULL) {
-		indigo_error("%s used with NULL handle", __FUNCTION__);
+		// indigo_error("%s used with NULL handle", __FUNCTION__);
 		return -1;
 	}
 	if (handle->type != INDIGO_COM_HANDLE) {
@@ -688,7 +688,7 @@ int indigo_uni_set_dtr(indigo_uni_handle *handle, bool state) {
 
 int indigo_uni_set_rts(indigo_uni_handle *handle, bool state) {
 	if (handle == NULL) {
-		indigo_error("%s used with NULL handle", __FUNCTION__);
+		// indigo_error("%s used with NULL handle", __FUNCTION__);
 		return -1;
 	}
 	if (handle->type != INDIGO_COM_HANDLE) {
@@ -715,7 +715,7 @@ int indigo_uni_set_rts(indigo_uni_handle *handle, bool state) {
 
 int indigo_uni_set_cts(indigo_uni_handle *handle, bool state) {
 	if (handle == NULL) {
-		indigo_error("%s used with NULL handle", __FUNCTION__);
+		// indigo_error("%s used with NULL handle", __FUNCTION__);
 		return -1;
 	}
 	if (handle->type != INDIGO_COM_HANDLE) {
@@ -1078,7 +1078,7 @@ void indigo_uni_set_socket_nodelay_option(indigo_uni_handle *handle) {
 
 long indigo_uni_read_available(indigo_uni_handle *handle, void *buffer, long length) {
 	if (handle == NULL) {
-		indigo_error("%s used with NULL handle", __FUNCTION__);
+		// indigo_error("%s used with NULL handle", __FUNCTION__);
 		return -1;
 	}
 	long bytes_read = read_data(handle, buffer, length);
@@ -1094,7 +1094,7 @@ long indigo_uni_read_available(indigo_uni_handle *handle, void *buffer, long len
 
 long indigo_uni_peek_available(indigo_uni_handle *handle, void *buffer, long length) {
 	if (handle == NULL) {
-		indigo_error("%s used with NULL handle", __FUNCTION__);
+		// indigo_error("%s used with NULL handle", __FUNCTION__);
 		return -1;
 	}
 	long bytes_read = -1;
@@ -1124,7 +1124,7 @@ long indigo_uni_peek_available(indigo_uni_handle *handle, void *buffer, long len
 
 long indigo_uni_read(indigo_uni_handle *handle, void *buffer, long length) {
 	if (handle == NULL) {
-		indigo_error("%s used with NULL handle", __FUNCTION__);
+		// indigo_error("%s used with NULL handle", __FUNCTION__);
 		return -1;
 	}
 	if (handle->type == INDIGO_UDP_HANDLE) {
@@ -1153,7 +1153,7 @@ long indigo_uni_read(indigo_uni_handle *handle, void *buffer, long length) {
 
 long indigo_uni_discard(indigo_uni_handle *handle) {
 	if (handle == NULL) {
-		indigo_error("%s used with NULL handle", __FUNCTION__);
+		// indigo_error("%s used with NULL handle", __FUNCTION__);
 		return -1;
 	}
 	if (handle->type == INDIGO_FILE_HANDLE) {
@@ -1179,7 +1179,7 @@ long indigo_uni_discard(indigo_uni_handle *handle) {
 
 long indigo_uni_read_section(indigo_uni_handle *handle, char *buffer, long length, const char *terminators, const char *ignore, long timeout) {
 	if (handle == NULL) {
-		indigo_error("%s used with NULL handle", __FUNCTION__);
+		// indigo_error("%s used with NULL handle", __FUNCTION__);
 		return -1;
 	}
 	long bytes_read = 0;
@@ -1250,7 +1250,7 @@ long indigo_uni_read_section(indigo_uni_handle *handle, char *buffer, long lengt
 
 int indigo_uni_scanf_line(indigo_uni_handle *handle, const char *format, ...) {
 	if (handle == NULL) {
-		indigo_error("%s used with NULL handle", __FUNCTION__);
+		// indigo_error("%s used with NULL handle", __FUNCTION__);
 		return -1;
 	}
 	char *buffer = indigo_alloc_large_buffer();
@@ -1267,7 +1267,7 @@ int indigo_uni_scanf_line(indigo_uni_handle *handle, const char *format, ...) {
 
 long indigo_uni_write(indigo_uni_handle *handle, const char *buffer, long length) {
 	if (handle == NULL) {
-		indigo_error("%s used with NULL handle", __FUNCTION__);
+		// indigo_error("%s used with NULL handle", __FUNCTION__);
 		return -1;
 	}
 	if (handle->type == INDIGO_UDP_HANDLE) {
@@ -1302,7 +1302,7 @@ long indigo_uni_write(indigo_uni_handle *handle, const char *buffer, long length
 
 long indigo_uni_printf(indigo_uni_handle *handle, const char *format, ...) {
 	if (handle == NULL) {
-		indigo_error("%s used with NULL handle", __FUNCTION__);
+		// indigo_error("%s used with NULL handle", __FUNCTION__);
 		return -1;
 	}
 	if (strchr(format, '%')) {
@@ -1321,7 +1321,7 @@ long indigo_uni_printf(indigo_uni_handle *handle, const char *format, ...) {
 
 long indigo_uni_vprintf(indigo_uni_handle *handle, const char *format, va_list args) {
 	if (handle == NULL) {
-		indigo_error("%s used with NULL handle", __FUNCTION__);
+		// indigo_error("%s used with NULL handle", __FUNCTION__);
 		return -1;
 	}
 	if (strchr(format, '%')) {
@@ -1337,7 +1337,7 @@ long indigo_uni_vprintf(indigo_uni_handle *handle, const char *format, va_list a
 
 long indigo_uni_vtprintf(indigo_uni_handle *handle, const char *format, va_list args, char *terminator) {
 	if (handle == NULL) {
-		indigo_error("%s used with NULL handle", __FUNCTION__);
+		// indigo_error("%s used with NULL handle", __FUNCTION__);
 		return -1;
 	}
 	long result;
@@ -1379,7 +1379,7 @@ long indigo_uni_seek(indigo_uni_handle *handle, long position, int whence) {
 
 bool indigo_uni_lock_file(indigo_uni_handle *handle) {
 	if (handle == NULL) {
-		indigo_error("%s used with NULL handle", __FUNCTION__);
+		// indigo_error("%s used with NULL handle", __FUNCTION__);
 		return -1;
 	}
 	if (handle->type == INDIGO_FILE_HANDLE) {
@@ -1419,7 +1419,7 @@ bool indigo_uni_lock_file(indigo_uni_handle *handle) {
 
 void indigo_uni_close(indigo_uni_handle **handle) {
 	if (handle == NULL) {
-		indigo_error("%s used with NULL handle", __FUNCTION__);
+		// indigo_error("%s used with NULL handle", __FUNCTION__);
 		return;
 	}
 	pthread_mutex_lock(&mutex);
