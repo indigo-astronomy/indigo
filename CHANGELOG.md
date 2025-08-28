@@ -1,6 +1,30 @@
 # Changelog
 
 All notable changes to INDIGO framework will be documented in this file.
+# [2.0-340] - 17 Aug Sat 2025
+
+## New Drivers:
+- indigo_ccd_rpi:
+	- Add Raspberry Pi camera driver (this is optional driver and still not shipped with the deb but it is available as a sourse)
+
+## Driver Fixes:
+- indigo_agent_imager:
+	- AGENT_IMAGER_DOWNLOAD_IMAGE state transition fixed
+
+- indigo_aux_flatmaster:
+	- adjust ON/OFF and intensity handling as suggested by Pegasus Astro to mitigate a firmware regression
+
+- indigo_ccd_playerone:
+	- add support for sensor readout modes
+	- add support for long exposures up to 7200s
+	- better messages regarding safe readout and long exposure support
+
+- indigo_ccd_touptek & OEMs:
+	- fix HDR support
+
+- indigo_ccd_sbig:
+	- fix deadlock in the guider
+	- dual CCD operation
 
 # [2.0-338] - 20 Jul Sun 2025
 ## Overall:
