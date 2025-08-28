@@ -62,7 +62,7 @@ However both Dashboard and Control Panel provide a rather static view of the dat
 Another possible source of information is the [PROPERTIES readme](https://github.com/indigo-astronomy/indigo/blob/master/indigo_docs/PROPERTIES.md) and the [PROPERTY MANIPULATION guide](https://github.com/indigo-astronomy/indigo/blob/master/indigo_docs/PROPERTY_MANIPULATION.md) that lists the properties available in Indigo and explains how to read and manipulate these with a command line tool, the *indigo_prop_tool*. These documents are on GitHub as part of the Indigo documentation.
 
 
-The *inigo_prop_tool* can be used to list, get and set properties in the running Indigo system. This tool can also help to find the right devices and properties for your script. The simplest approach to get started is to list devices and their properties, with the following commands;
+The *indigo_prop_tool* can be used to list, get and set properties in the running Indigo system. This tool can also help to find the right devices and properties for your script. The simplest approach to get started is to list devices and their properties, with the following commands;
 ```JS
 pi@ZGAstroScope:~ $ indigo_prop_tool list // Lists every device and property in the system
 pi@ZGAstroScope:~ $ indigo_prop_tool list "Imager Agent" // Lists all properties of the device "Imager Agent"
@@ -520,7 +520,7 @@ if (indigo_devices ["Unihedron SQM"].AUX_INFO.state == "Ok") {
 If we want to change item values of a property, we need to use the change method, where we provide it with *one or more*  { KEYWORD: "xxx", VALUE: "yyy"} tuples of the right type, which are used to update the property;
 ```JS
 if (indigo_devices ["Imager Agent"].CCD_FITS_HEADERS.state == "Ok") {
-	indigo_devices ["Imager Agent"].CCD_SET_FITS_HEADER.change ({ KEYWORD: "MYSTUFF", VALUE: "Something I want to store in the hrader"});
+	indigo_devices ["Imager Agent"].CCD_SET_FITS_HEADER.change ({ KEYWORD: "MYSTUFF", VALUE: "Something I want to store in the header"});
 }
 ```
 ```JS
