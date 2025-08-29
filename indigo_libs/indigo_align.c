@@ -37,8 +37,12 @@ const double RAD2DEG = 180.0 / M_PI;
 
 /* Convenience wrappers for indigo_precess(...) */
 
+static double eq_of_date(double jd) {
+	return 2000.0 + (jd - 2451545.0) / 365.25;
+}
+
 static double jnow(void) {
-	return 2000 + ((time(NULL) / 86400.0 + 2440587.5 - 0.477677 / 86400.0) - 2451545.0) / 365.25;
+	return eq_of_date(UT2JD(time(NULL)));
 }
 
 void indigo_jnow_to_j2k(double *ra, double *dec) {
@@ -71,6 +75,180 @@ void indigo_j2k_to_eq(const double eq, double *ra, double *dec) {
 		*ra = coordinates.a * RAD2DEG / 15;
 		*dec = coordinates.d * RAD2DEG;
 	}
+}
+
+/* Equinox -> apparent (true-of-date) at jd */
+void indigo_eq_to_apparent(const double eq, double *ra, double *dec, double jd) {
+	indigo_spherical_point_t p = { *ra * 15.0 * DEG2RAD, *dec * DEG2RAD, 1 };
+	p = indigo_precess(&p, eq != 0 ? eq : jnow(), eq_of_date(jd));
+	p = indigo_nutate_mean_to_true(&p, jd);
+	*ra  = p.a * RAD2DEG / 15.0;
+	*dec = p.d * RAD2DEG;
+}
+
+void indigo_eq_to_apparent_now(const double eq, double *ra, double *dec) {
+	indigo_eq_to_apparent(eq, ra, dec, UT2JD(time(NULL)));
+}
+
+/* J2000 (mean) -> apparent (true-of-date) at jd */
+void indigo_j2k_to_apparent(double *ra, double *dec, double jd) {
+	indigo_eq_to_apparent(2000.0, ra, dec, jd);
+}
+
+void indigo_j2k_to_apparent_now(double *ra, double *dec) {
+	indigo_eq_to_apparent_now(2000.0, ra, dec);
+}
+
+/* Precesses c0 from eq0 to eq1 */
+indigo_spherical_point_t indigo_precess(const indigo_spherical_point_t *c0, const double eq0, const double eq1) {
+	double rot[3][3];
+	indigo_spherical_point_t c1 = {0, 0, 1};
+
+	double cosd = cos(c0->d);
+
+	double x0 = cosd * cos(c0->a);
+	double y0 = cosd * sin(c0->a);
+	double z0 = sin(c0->d);
+
+	double ST = (eq0 - 2000.0) * 0.001;
+	double T = (eq1 - eq0) * 0.001;
+
+	const double sec2rad = DEG2RAD/3600.0;
+	double A = sec2rad * T * (23062.181 + ST * (139.656 + 0.0139 * ST) + T * (30.188 - 0.344 * ST + 17.998 * T));
+	double B = sec2rad * T * T * (79.280 + 0.410 * ST + 0.205 * T) + A;
+	double C = sec2rad * T * (20043.109 - ST * (85.33 + 0.217 * ST) + T * (-42.665 - 0.217 * ST - 41.833 * T));
+
+	double sinA = sin(A);
+	double sinB = sin(B);
+	double sinC = sin(C);
+	double cosA = cos(A);
+	double cosB = cos(B);
+	double cosC = cos(C);
+
+	rot[0][0] = cosA * cosB * cosC - sinA * sinB;
+	rot[0][1] = (-1) * sinA * cosB * cosC - cosA * sinB;
+	rot[0][2] = (-1) * sinC * cosB;
+
+	rot[1][0] = cosA * cosC * sinB + sinA * cosB;
+	rot[1][1] = (-1) * sinA * cosC * sinB + cosA * cosB;
+	rot[1][2] = (-1) * sinB * sinC;
+
+	rot[2][0] = cosA * sinC;
+	rot[2][1] = (-1) * sinA * sinC;
+	rot[2][2] = cosC;
+
+	double x1 = rot[0][0] * x0 + rot[0][1] * y0 + rot[0][2] * z0;
+	double y1 = rot[1][0] * x0 + rot[1][1] * y0 + rot[1][2] * z0;
+	double z1 = rot[2][0] * x0 + rot[2][1] * y0 + rot[2][2] * z0;
+
+	c1.a = atan2(y1, x1);
+	if (c1.a < 0) {
+		c1.a += TWO_PI;
+	}
+
+	// Clamp z1 to [-1,1] to handle numerical precision issues
+	if (z1 > 1.0) z1 = 1.0;
+	if (z1 < -1.0) z1 = -1.0;
+	c1.d = asin(z1);
+
+	return c1;
+}
+
+/* Apply nutation: mean-of-date -> true-of-date (apparent) */
+indigo_spherical_point_t indigo_nutate_mean_to_true(const indigo_spherical_point_t *mean, double jd) {
+	double T = (jd - 2451545.0) / 36525.0;
+	double T2 = T * T;
+	double T3 = T2 * T;
+
+	/* Fundamental arguments in arcseconds, then convert to radians */
+	/* Mean elongation of the Moon from the Sun */
+	double D = fmod(297.85036 + 445267.111480*T - 0.0019142*T2 + T3/189474.0, 360.0) * DEG2RAD;
+	/* Mean anomaly of the Sun */
+	double M = fmod(357.52772 + 35999.050340*T - 0.0001603*T2 - T3/300000.0, 360.0) * DEG2RAD;
+	/* Mean anomaly of the Moon */
+	double Mp = fmod(134.96298 + 477198.867398*T + 0.0086972*T2 + T3/56250.0, 360.0) * DEG2RAD;
+	/* Moon's argument of latitude */
+	double F = fmod(93.27191 + 483202.017538*T - 0.0036825*T2 + T3/327270.0, 360.0) * DEG2RAD;
+	/* Longitude of the ascending node of the Moon */
+	double Om = fmod(125.04452 - 1934.136261*T + 0.0020708*T2 + T3/450000.0, 360.0) * DEG2RAD;
+
+	/* Nutation series (63 principal terms from IAU 1980) */
+	struct nutation_term {
+		int D, M, Mp, F, Om;
+		double psi_0, psi_1;  /* longitude coefficients */
+		double eps_0, eps_1;  /* obliquity coefficients */
+	};
+
+	static const struct nutation_term terms[] = {
+		/* D   M  Mp   F  Om     psi_0    psi_1     eps_0    eps_1 */
+		{  0,  0,  0,  0,  1, -171996.0, -174.2,  92025.0,   8.9 },
+		{ -2,  0,  0,  2,  2,  -13187.0,   -1.6,   5736.0,  -3.1 },
+		{  0,  0,  0,  2,  2,   -2274.0,   -0.2,    977.0,  -0.5 },
+		{  0,  0,  0,  0,  2,    2062.0,    0.2,   -895.0,   0.5 },
+		{  0,  1,  0,  0,  0,    1426.0,   -3.4,     54.0,  -0.1 },
+		{  0,  0,  1,  0,  0,     712.0,    0.1,     -7.0,   0.0 },
+		{ -2,  1,  0,  2,  2,    -517.0,    1.2,    224.0,  -0.6 },
+		{  0,  0,  0,  2,  1,    -386.0,   -0.4,    200.0,   0.0 },
+		{  0,  0,  1,  2,  2,    -301.0,    0.0,    129.0,  -0.1 },
+		{ -2, -1,  0,  2,  2,     217.0,   -0.5,    -95.0,   0.3 },
+		{ -2,  0,  1,  0,  0,    -158.0,    0.0,      0.0,   0.0 },
+		{ -2,  0,  0,  2,  1,     129.0,    0.1,    -70.0,   0.0 },
+		{  0,  0, -1,  2,  2,     123.0,    0.0,    -53.0,   0.0 },
+		{  2,  0,  0,  0,  0,      63.0,    0.0,      0.0,   0.0 },
+		{  0,  0,  1,  0,  1,      63.0,    0.1,    -33.0,   0.0 },
+		{  2,  0, -1,  2,  2,     -59.0,    0.0,     26.0,   0.0 },
+		{  0,  0, -1,  0,  1,     -58.0,   -0.1,     32.0,   0.0 },
+		{  0,  0,  1,  2,  1,     -51.0,    0.0,     27.0,   0.0 },
+		{ -2,  0,  2,  0,  0,      48.0,    0.0,      0.0,   0.0 },
+		{  0,  0, -2,  2,  1,      46.0,    0.0,    -24.0,   0.0 },
+	};
+
+	double dpsi_0_0001as = 0.0, deps_0_0001as = 0.0;
+
+	for (unsigned i = 0; i < sizeof(terms)/sizeof(terms[0]); i++) {
+		double arg = terms[i].D*D + terms[i].M*M + terms[i].Mp*Mp + terms[i].F*F + terms[i].Om*Om;
+		double sin_arg = sin(arg);
+		double cos_arg = cos(arg);
+
+		dpsi_0_0001as += (terms[i].psi_0 + terms[i].psi_1 * T) * sin_arg;
+		deps_0_0001as += (terms[i].eps_0 + terms[i].eps_1 * T) * cos_arg;
+	}
+
+	/* Convert from 0.0001 arcseconds to radians */
+	const double ASEC2RAD = (M_PI / 180.0) / 3600.0;
+	double dpsi = dpsi_0_0001as * 1e-4 * ASEC2RAD;
+	double deps = deps_0_0001as * 1e-4 * ASEC2RAD;
+
+	/* Mean obliquity of the ecliptic (Laskar's expression) */
+	double eps0_arcsec = 84381.448 - 46.8150*T - 0.00059*T2 + 0.001813*T3;
+	double eps0 = eps0_arcsec * ASEC2RAD;
+	double eps = eps0 + deps;
+
+	/* Apply nutation corrections using spherical trigonometry */
+	double a = mean->a;
+	double d = mean->d;
+	double sin_a = sin(a), cos_a = cos(a);
+	double sin_d = sin(d), cos_d = cos(d);
+	double tan_d = sin_d / cos_d;
+	double sin_eps = sin(eps), cos_eps = cos(eps);
+
+	/* Corrections to right ascension and declination */
+	double da = (cos_eps + sin_eps * sin_a * tan_d) * dpsi - cos_a * tan_d * deps;
+	double dd = sin_eps * cos_a * dpsi + sin_a * deps;
+
+	indigo_spherical_point_t true_coord = *mean;
+	true_coord.a += da;
+	true_coord.d += dd;
+
+	/* Normalize right ascension */
+	if (true_coord.a < 0) true_coord.a += TWO_PI;
+	if (true_coord.a >= TWO_PI) true_coord.a -= TWO_PI;
+
+	/* Check declination bounds */
+	if (true_coord.d > M_PI/2.0) true_coord.d = M_PI/2.0;
+	if (true_coord.d < -M_PI/2.0) true_coord.d = -M_PI/2.0;
+
+	return true_coord;
 }
 
 double indigo_jd_to_mean_gst(double jd) {
@@ -195,17 +373,17 @@ void indigo_raise_set(
 }
 
 double indigo_airmass(double altitude) {
-    altitude *= DEG2RAD;
+	altitude *= DEG2RAD;
 
-    double zenith_angle = M_PI / 2 - altitude;
+	double zenith_angle = M_PI / 2 - altitude;
 
-    double sin_z = sin(zenith_angle);
-    double sin_squared_z = sin_z * sin_z;
+	double sin_z = sin(zenith_angle);
+	double sin_squared_z = sin_z * sin_z;
 
-    // Calculate the airmass using the Kasten and Young formula
-    double airmass = pow(1 - 0.96 * sin_squared_z, -0.5);
+	// Calculate the airmass using the Kasten and Young formula
+	double airmass = pow(1 - 0.96 * sin_squared_z, -0.5);
 
-    return airmass;
+	return airmass;
 }
 
 double indigo_derotation_rate(double alt, double az, double latitude) {
@@ -235,67 +413,7 @@ void indigo_radec_to_altaz(const double ra, const double dec, const time_t *utc,
 	indigo_ra_dec_to_point(ra, dec, lst, &eq_point);
 	indigo_equatorial_to_hotizontal(&eq_point, latitude * DEG2RAD, &h_point);
 	*az = h_point.a * RAD2DEG;
-	*alt = h_point.d *RAD2DEG;
-}
-
-/* Precesses c0 from eq0 to eq1 */
-indigo_spherical_point_t indigo_precess(const indigo_spherical_point_t *c0, const double eq0, const double eq1) {
-	double rot[3][3];
-	indigo_spherical_point_t c1 = {0, 0, 1};
-
-	double cosd = cos(c0->d);
-
-	double x0 = cosd * cos(c0->a);
-	double y0 = cosd * sin(c0->a);
-	double z0 = sin(c0->d);
-
-	double ST = (eq0 - 2000.0) * 0.001;
-	double T = (eq1 - eq0) * 0.001;
-
-	const double sec2rad = DEG2RAD/3600.0;
-	double A = sec2rad * T * (23062.181 + ST * (139.656 + 0.0139 * ST) + T * (30.188 - 0.344 * ST + 17.998 * T));
-	double B = sec2rad * T * T * (79.280 + 0.410 * ST + 0.205 * T) + A;
-	double C = sec2rad * T * (20043.109 - ST * (85.33 + 0.217 * ST) + T * (-42.665 - 0.217 * ST - 41.833 * T));
-
-	double sinA = sin(A);
-	double sinB = sin(B);
-	double sinC = sin(C);
-	double cosA = cos(A);
-	double cosB = cos(B);
-	double cosC = cos(C);
-
-	rot[0][0] = cosA * cosB * cosC - sinA * sinB;
-	rot[0][1] = (-1) * sinA * cosB * cosC - cosA * sinB;
-	rot[0][2] = (-1) * sinC * cosB;
-
-	rot[1][0] = cosA * cosC * sinB + sinA * cosB;
-	rot[1][1] = (-1) * sinA * cosC * sinB + cosA * cosB;
-	rot[1][2] = (-1) * sinB * sinC;
-
-	rot[2][0] = cosA * sinC;
-	rot[2][1] = (-1) * sinA * sinC;
-	rot[2][2] = cosC;
-
-	double x1 = rot[0][0] * x0 + rot[0][1] * y0 + rot[0][2] * z0;
-	double y1 = rot[1][0] * x0 + rot[1][1] * y0 + rot[1][2] * z0;
-	double z1 = rot[2][0] * x0 + rot[2][1] * y0 + rot[2][2] * z0;
-
-	if (x1 == 0) {
-		if (y1 > 0) {
-			c1.a = 90.0 * DEG2RAD;
-		} else {
-			c1.a = 270.0 * DEG2RAD;
-		}
-	} else {
-		c1.a = atan2(y1, x1);
-	}
-	if (c1.a < 0) {
-		c1.a += 360 * DEG2RAD;
-	}
-
-	c1.d = atan2(z1 , sqrt(1 - z1 * z1));
-
-	return c1;
+	*alt = h_point.d * RAD2DEG;
 }
 
 /* convert spherical to cartesian coordinates */
