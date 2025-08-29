@@ -77,26 +77,50 @@ void indigo_j2k_to_eq(const double eq, double *ra, double *dec) {
 	}
 }
 
+/* Apply nutation: mean-of-date -> apparent (true-of-date) coordinates */
+void indigo_nutate_mean_to_apparent(double *ra, double *dec, double jd) {
+	if (jd <= 0) {
+		jd = UT2JD(time(NULL));
+	}
+	indigo_spherical_point_t coord = { *ra * 15.0 * DEG2RAD, *dec * DEG2RAD, 1.0 };
+	coord = indigo_nutate(&coord, jd, NUT_MEAN_TO_APPARENT);
+	*ra = coord.a * RAD2DEG / 15.0;
+	*dec = coord.d * RAD2DEG;
+}
+
+/* Apply inverse nutation: apparent (true-of-date) -> mean-of-date coordinates */
+void indigo_nutate_apparent_to_mean(double *ra, double *dec, double jd) {
+	if (jd <= 0) {
+		jd = UT2JD(time(NULL));
+	}
+	indigo_spherical_point_t coord = { *ra * 15.0 * DEG2RAD, *dec * DEG2RAD, 1.0 };
+	coord = indigo_nutate(&coord, jd, NUT_APPARENT_TO_MEAN);
+	*ra = coord.a * RAD2DEG / 15.0;
+	*dec = coord.d * RAD2DEG;
+}
+
 /* Equinox -> apparent (true-of-date) at jd */
 void indigo_eq_to_apparent(const double eq, double *ra, double *dec, double jd) {
 	indigo_spherical_point_t p = { *ra * 15.0 * DEG2RAD, *dec * DEG2RAD, 1 };
-	p = indigo_precess(&p, eq != 0 ? eq : jnow(), eq_of_date(jd));
-	p = indigo_nutate_mean_to_apparent(&p, jd);
-	*ra  = p.a * RAD2DEG / 15.0;
+	if (jd <= 0) {
+		jd = UT2JD(time(NULL));
+	}
+	p = indigo_precess(&p, eq, eq_of_date(jd));
+	p = indigo_nutate(&p, jd, NUT_MEAN_TO_APPARENT);
+	*ra = p.a * RAD2DEG / 15.0;
 	*dec = p.d * RAD2DEG;
 }
 
-void indigo_eq_to_apparent_now(const double eq, double *ra, double *dec) {
-	indigo_eq_to_apparent(eq, ra, dec, UT2JD(time(NULL)));
-}
-
-/* J2000 (mean) -> apparent (true-of-date) at jd */
-void indigo_j2k_to_apparent(double *ra, double *dec, double jd) {
-	indigo_eq_to_apparent(2000.0, ra, dec, jd);
-}
-
-void indigo_j2k_to_apparent_now(double *ra, double *dec) {
-	indigo_eq_to_apparent_now(2000.0, ra, dec);
+/* Apparent (true-of-date) at jd -> Equinox */
+void indigo_apparent_to_eq(const double eq, double *ra, double *dec, double jd) {
+	indigo_spherical_point_t p = { *ra * 15.0 * DEG2RAD, *dec * DEG2RAD, 1 };
+	if (jd <= 0) {
+		jd = UT2JD(time(NULL));
+	}
+	p = indigo_nutate(&p, jd, NUT_APPARENT_TO_MEAN);
+	p = indigo_precess(&p, eq_of_date(jd), eq);
+	*ra = p.a * RAD2DEG / 15.0;
+	*dec = p.d * RAD2DEG;
 }
 
 /* Precesses c0 from eq0 to eq1 */
@@ -146,7 +170,7 @@ indigo_spherical_point_t indigo_precess(const indigo_spherical_point_t *c0, cons
 		c1.a += TWO_PI;
 	}
 
-	// Clamp z1 to [-1,1] to handle numerical precision issues
+	// Clip z1 to [-1,1] to handle numerical precision issues
 	if (z1 > 1.0) z1 = 1.0;
 	if (z1 < -1.0) z1 = -1.0;
 	c1.d = asin(z1);
@@ -154,8 +178,8 @@ indigo_spherical_point_t indigo_precess(const indigo_spherical_point_t *c0, cons
 	return c1;
 }
 
-/* Apply nutation: mean-of-date -> true-of-date (apparent) coordinates */
-indigo_spherical_point_t indigo_nutate_mean_to_apparent(const indigo_spherical_point_t *mean, double jd) {
+/* Calculate nutation corrections and apply them in specified direction */
+indigo_spherical_point_t indigo_nutate(const indigo_spherical_point_t *coord, double jd, int apply_mode) {
 	double T = (jd - 2451545.0) / 36525.0;
 	double T2 = T * T;
 	double T3 = T2 * T;
@@ -172,7 +196,7 @@ indigo_spherical_point_t indigo_nutate_mean_to_apparent(const indigo_spherical_p
 	/* Longitude of the ascending node of the Moon */
 	double Om = fmod(125.04452 - 1934.136261*T + 0.0020708*T2 + T3/450000.0, 360.0) * DEG2RAD;
 
-	/* Nutation series (63 principal terms from IAU 1980) */
+	/* Nutation series (20 principal terms from IAU 1980) */
 	struct nutation_term {
 		int D, M, Mp, F, Om;
 		double psi_0, psi_1;  /* longitude coefficients */
@@ -225,30 +249,37 @@ indigo_spherical_point_t indigo_nutate_mean_to_apparent(const indigo_spherical_p
 	double eps = eps0 + deps;
 
 	/* Apply nutation corrections using spherical trigonometry */
-	double a = mean->a;
-	double d = mean->d;
+	double a = coord->a;
+	double d = coord->d;
 	double sin_a = sin(a), cos_a = cos(a);
 	double sin_d = sin(d), cos_d = cos(d);
 	double tan_d = sin_d / cos_d;
 	double sin_eps = sin(eps), cos_eps = cos(eps);
 
-	/* Corrections to right ascension and declination */
 	double da = (cos_eps + sin_eps * sin_a * tan_d) * dpsi - cos_a * tan_d * deps;
 	double dd = sin_eps * cos_a * dpsi + sin_a * deps;
 
-	indigo_spherical_point_t true_coord = *mean;
-	true_coord.a += da;
-	true_coord.d += dd;
+	indigo_spherical_point_t result = *coord;
+	if (apply_mode == NUT_MEAN_TO_APPARENT) {
+		/* Apply nutation: mean -> apparent */
+		result.a += da;
+		result.d += dd;
+	} else if (apply_mode == NUT_APPARENT_TO_MEAN) {
+		/* Remove nutation: apparent -> mean */
+		result.a -= da;
+		result.d -= dd;
+	} else {
+		result.a = da;
+		result.d = dd;
+	}
 
-	/* Normalize right ascension */
-	if (true_coord.a < 0) true_coord.a += TWO_PI;
-	if (true_coord.a >= TWO_PI) true_coord.a -= TWO_PI;
+	if (result.a < 0) result.a += TWO_PI;
+	if (result.a >= TWO_PI) result.a -= TWO_PI;
 
-	/* Check declination bounds */
-	if (true_coord.d > M_PI/2.0) true_coord.d = M_PI/2.0;
-	if (true_coord.d < -M_PI/2.0) true_coord.d = -M_PI/2.0;
+	if (result.d > M_PI/2.0) result.d = M_PI/2.0;
+	if (result.d < -M_PI/2.0) result.d = -M_PI/2.0;
 
-	return true_coord;
+	return result;
 }
 
 double indigo_jd_to_mean_gst(double jd) {
