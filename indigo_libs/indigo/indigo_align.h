@@ -190,6 +190,53 @@ extern double indigo_mean_gst(const time_t *utc);
  */
 extern double indigo_lst(const time_t *utc, const double longitude);
 
+/** Convert equinox coordinates to apparent (true-of-date) coordinates
+ *
+ * eq - Source equinox (e.g., 2000.0 for J2000, 1950.0 for B1950, 0 for JNow)
+ * *ra - Right Ascension (hours)
+ * *dec - Declination (degrees)
+ * jd - Julian Date for target apparent coordinates
+ */
+extern void indigo_eq_to_apparent(const double eq, double *ra, double *dec, double jd);
+
+/** Convert equinox coordinates to apparent coordinates for current time
+ *
+ * eq - Source equinox (e.g., 2000.0 for J2000, 1950.0 for B1950, 0 for JNow)
+ * *ra - Right Ascension (hours)
+ * *dec - Declination (degrees)
+ */
+extern void indigo_eq_to_apparent_now(const double eq, double *ra, double *dec);
+
+/** Convert J2000 mean coordinates to apparent (true-of-date) coordinates
+ *
+ * *ra - Right Ascension (hours)
+ * *dec - Declination (degrees)
+ * jd - Julian Date
+ */
+extern void indigo_j2k_to_apparent(double *ra, double *dec, double jd);
+
+/** Convert J2000 mean coordinates to apparent coordinates for current time
+ *
+ * *ra - Right Ascension (hours)
+ * *dec - Declination (degrees)
+ */
+extern void indigo_j2k_to_apparent_now(double *ra, double *dec);
+
+/** Apply nutation correction: mean-of-date -> true-of-date (apparent)
+ *
+ * mean - Mean coordinates (RA/Dec in radians)
+ * jd - Julian Date
+ * returns apparent coordinates
+ */
+extern indigo_spherical_point_t indigo_nutate_mean_to_true(const indigo_spherical_point_t *mean, double jd);
+
+/** Convert Julian Date to Greenwich Mean Sidereal Time
+ *
+ * jd - Julian Date
+ * returns GMST in decimal hours
+ */
+extern double indigo_jd_to_mean_gst(double jd);
+
 /** ra/dec to alt/az (in degrees)
  */
 extern void indigo_radec_to_altaz(const double ra, const double dec, const time_t *utc, const double latitude, const double longitude, const double elevation, double *alt, double *az);
