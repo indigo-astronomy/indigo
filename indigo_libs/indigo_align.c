@@ -81,7 +81,7 @@ void indigo_j2k_to_eq(const double eq, double *ra, double *dec) {
 void indigo_eq_to_apparent(const double eq, double *ra, double *dec, double jd) {
 	indigo_spherical_point_t p = { *ra * 15.0 * DEG2RAD, *dec * DEG2RAD, 1 };
 	p = indigo_precess(&p, eq != 0 ? eq : jnow(), eq_of_date(jd));
-	p = indigo_nutate_mean_to_true(&p, jd);
+	p = indigo_nutate_mean_to_apparent(&p, jd);
 	*ra  = p.a * RAD2DEG / 15.0;
 	*dec = p.d * RAD2DEG;
 }
@@ -154,8 +154,8 @@ indigo_spherical_point_t indigo_precess(const indigo_spherical_point_t *c0, cons
 	return c1;
 }
 
-/* Apply nutation: mean-of-date -> true-of-date (apparent) */
-indigo_spherical_point_t indigo_nutate_mean_to_true(const indigo_spherical_point_t *mean, double jd) {
+/* Apply nutation: mean-of-date -> true-of-date (apparent) coordinates */
+indigo_spherical_point_t indigo_nutate_mean_to_apparent(const indigo_spherical_point_t *mean, double jd) {
 	double T = (jd - 2451545.0) / 36525.0;
 	double T2 = T * T;
 	double T3 = T2 * T;
