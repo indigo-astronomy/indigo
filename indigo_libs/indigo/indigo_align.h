@@ -223,13 +223,13 @@ extern void indigo_j2k_to_apparent(double *ra, double *dec, double jd);
  */
 extern void indigo_j2k_to_apparent_now(double *ra, double *dec);
 
-/** Apply nutation correction: mean-of-date -> true-of-date (apparent)
+/** Apply nutation correction: mean-of-date -> apparent (true-of-date) coordinates
  *
  * mean - Mean coordinates (RA/Dec in radians)
  * jd - Julian Date
  * returns apparent coordinates
  */
-extern indigo_spherical_point_t indigo_nutate_mean_to_true(const indigo_spherical_point_t *mean, double jd);
+extern indigo_spherical_point_t indigo_nutate_mean_to_apparent(const indigo_spherical_point_t *mean, double jd);
 
 /** Convert Julian Date to Greenwich Mean Sidereal Time
  *
