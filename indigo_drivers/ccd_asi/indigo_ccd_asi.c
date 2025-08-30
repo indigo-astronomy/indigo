@@ -366,9 +366,9 @@ static bool asi_read_pixels(indigo_device *device) {
 	ASI_EXPOSURE_STATUS status;
 	int wait_cycles = 30000;    /* 30000*2000us = 1min */
 	status = ASI_EXP_WORKING;
-	
+
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "start checking exposure status: dev_id = %d, wait_cycles = %d", PRIVATE_DATA->dev_id, wait_cycles);
-	
+
 	/* wait for the exposure to complete */
 	while((status == ASI_EXP_WORKING) && wait_cycles--) {
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
@@ -376,9 +376,9 @@ static bool asi_read_pixels(indigo_device *device) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		indigo_usleep(2000);
 	}
-	
+
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "stopped checking exposure status: dev_id = %d, wait_cycles = %d, status = %d", PRIVATE_DATA->dev_id, wait_cycles, status);
-	
+
 	if (status == ASI_EXP_SUCCESS) {
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		res = ASIGetDataAfterExp(PRIVATE_DATA->dev_id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size - FITS_HEADER_SIZE);
@@ -487,11 +487,11 @@ static bool asi_set_cooler(indigo_device *device, bool status, double target, do
 
 
 static void asi_close(indigo_device *device) {
-	
+
 	if (!device->is_connected) {
 		return;
 	}
-	
+
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	if (--PRIVATE_DATA->count_open == 0) {
 		ASICloseCamera(PRIVATE_DATA->dev_id);
@@ -695,16 +695,16 @@ static void guider_timer_callback_ra(indigo_device *device) {
 static void guider_timer_callback_dec(indigo_device *device) {
 	PRIVATE_DATA->guider_timer_dec = NULL;
 	int id = PRIVATE_DATA->dev_id;
-	
+
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
 		return;
 	}
-	
+
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	ASIPulseGuideOff(id, ASI_GUIDE_SOUTH);
 	ASIPulseGuideOff(id, ASI_GUIDE_NORTH);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-	
+
 	if (PRIVATE_DATA->guide_relays[ASI_GUIDE_NORTH] || PRIVATE_DATA->guide_relays[ASI_GUIDE_SOUTH]) {
 		GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
 		GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
@@ -1452,8 +1452,13 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		// ------------------------------------------------------------------------------- CCD_FRAME
 	} else if (indigo_property_match_changeable(CCD_FRAME_PROPERTY, property)) {
 		indigo_property_copy_values(CCD_FRAME_PROPERTY, property, false);
-		CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.target = 8 * (int)(CCD_FRAME_WIDTH_ITEM->number.value / 8);
-		CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.target = 2 * (int)(CCD_FRAME_HEIGHT_ITEM->number.value / 2);
+		if (CCD_FRAME_WIDTH_ITEM->number.value != CCD_FRAME_WIDTH_ITEM->number.max) {
+			CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.target = 8 * (int)(CCD_FRAME_WIDTH_ITEM->number.value / 8);
+		}
+		if (CCD_FRAME_HEIGHT_ITEM->number.value != CCD_FRAME_HEIGHT_ITEM->number.max) {
+			CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.target = 2 * (int)(CCD_FRAME_HEIGHT_ITEM->number.value / 2);
+		}
+
 		if (CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value < 64) {
 			CCD_FRAME_WIDTH_ITEM->number.value = 64 * CCD_BIN_HORIZONTAL_ITEM->number.value;
 		}
@@ -1620,18 +1625,18 @@ static indigo_result ccd_detach(indigo_device *device) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		handle_ccd_connect_property(device);
 	}
-	
+
 	if (device == device->master_device) {
 		indigo_global_unlock(device);
 	}
-	
+
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
-	
+
 	indigo_release_property(PIXEL_FORMAT_PROPERTY);
 	indigo_release_property(ASI_PRESETS_PROPERTY);
 	indigo_release_property(ASI_CUSTOM_SUFFIX_PROPERTY);
 	indigo_release_property(ASI_ADVANCED_PROPERTY);
-	
+
 	return indigo_ccd_detach(device);
 }
 
@@ -1783,11 +1788,11 @@ static indigo_result guider_detach(indigo_device *device) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		handle_guider_connection_property(device);
 	}
-	
+
 	if (device == device->master_device) {
 		indigo_global_unlock(device);
 	}
-	
+
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_guider_detach(device);
 }

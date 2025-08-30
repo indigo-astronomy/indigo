@@ -165,7 +165,7 @@ static void svb_clear_video_buffer(indigo_device *device, bool aggressive) {
 	   this makes SVBGetVideoData() to return previous exposure data when exposure timer
 	   hits. So, in aggressive mode we force exposure timer to finish, so that we can
 	   clear the buffer.
-	   NOTE: this resets the exposure time!!! 
+	   NOTE: this resets the exposure time!!!
 	*/
 	if (aggressive) {
 		SVBSetControlValue(id, SVB_EXPOSURE, 1, SVB_FALSE);
@@ -543,12 +543,12 @@ static void streaming_timer_callback(indigo_device *device) {
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
 		return;
 	}
-	
+
 	indigo_fits_keyword keywords[] = {
 		{ INDIGO_FITS_STRING, "BAYERPAT", .string = PRIVATE_DATA->bayer_pattern, "Bayer color pattern" },
 		{ 0 }
 	};
-	
+
 	int id = PRIVATE_DATA->dev_id;
 	SVB_ERROR_CODE res = SVB_SUCCESS;
 
@@ -720,7 +720,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 		if (PIXEL_FORMAT_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
-		
+
 		int format_count = 0;
 		if (pixel_format_supported(device, SVB_IMG_RAW8)) {
 			indigo_init_switch_item(PIXEL_FORMAT_PROPERTY->items + format_count, RAW8_NAME, RAW8_NAME, true);
@@ -743,7 +743,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 			format_count++;
 		}
 		PIXEL_FORMAT_PROPERTY->count = format_count;
-		
+
 		// -------------------------------------------------------------------------------- INFO
 		INFO_PROPERTY->count = 8;
 		snprintf(INFO_DEVICE_MODEL_ITEM->text.value, INDIGO_NAME_SIZE, "%s", PRIVATE_DATA->info.FriendlyName);
@@ -753,7 +753,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->property.MaxWidth;
 		CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->property.MaxHeight;
 		CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = PRIVATE_DATA->property.MaxBitDepth;
-		
+
 		CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.target = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = PRIVATE_DATA->property.MaxWidth;
 		CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.target = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = PRIVATE_DATA->property.MaxHeight;
 		CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.target = get_pixel_depth(device);
@@ -1293,8 +1293,13 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		// ------------------------------------------------------------------------------- CCD_FRAME
 	} else if (indigo_property_match_changeable(CCD_FRAME_PROPERTY, property)) {
 		indigo_property_copy_values(CCD_FRAME_PROPERTY, property, false);
-		CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.target = 8 * (int)(CCD_FRAME_WIDTH_ITEM->number.value / 8);
-		CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.target = 2 * (int)(CCD_FRAME_HEIGHT_ITEM->number.value / 2);
+		if (CCD_FRAME_WIDTH_ITEM->number.value != CCD_FRAME_WIDTH_ITEM->number.max) {
+			CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.target = 8 * (int)(CCD_FRAME_WIDTH_ITEM->number.value / 8);
+		}
+		if (CCD_FRAME_HEIGHT_ITEM->number.value != CCD_FRAME_HEIGHT_ITEM->number.max) {
+			CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.target = 2 * (int)(CCD_FRAME_HEIGHT_ITEM->number.value / 2);
+		}
+
 		if (CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value < 64) {
 			CCD_FRAME_WIDTH_ITEM->number.value = 64 * CCD_BIN_HORIZONTAL_ITEM->number.value;
 		}
