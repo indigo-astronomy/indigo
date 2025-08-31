@@ -429,7 +429,7 @@ static void do_dither(indigo_device *device) {
 		AGENT_GUIDER_DITHER_RESET_ITEM->sw.value = false;
 		AGENT_GUIDER_DITHER_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, AGENT_GUIDER_DITHER_PROPERTY, NULL);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dither request igored, not guiding");
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dither request ignored, not guiding");
 		return;
 	}
 	AGENT_GUIDER_DITHER_RESET_ITEM->sw.value = false;
@@ -1328,7 +1328,7 @@ static bool calibrate(indigo_device *device) {
 						AGENT_GUIDER_SETTINGS_BACKLASH_ITEM->number.value = AGENT_GUIDER_SETTINGS_BACKLASH_ITEM->number.target = backlash;
 					} else {
 						AGENT_GUIDER_SETTINGS_BACKLASH_ITEM->number.value = AGENT_GUIDER_SETTINGS_BACKLASH_ITEM->number.target = 0;
-						indigo_send_message(device, "Warning: Inconsitent backlash");
+						indigo_send_message(device, "Warning: Inconsistent backlash");
 					}
 					indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
 					DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_MOVING_WEST;
@@ -1405,7 +1405,7 @@ static bool calibrate(indigo_device *device) {
 					/* West speed is already stored in AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM */
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RA speeds: West = %.3lf px/sec, East = %.3lf px/sec", AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value, east_speed);
 					AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value = AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.target = (east_speed + AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value) / 2;
-					
+
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RA speed (without PE) = %.3lf px/sec", AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value);
 					indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
 					DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_DONE;
@@ -1940,7 +1940,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		if (AGENT_ABORT_PROCESS_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(AGENT_ABORT_PROCESS_ITEM, AGENT_ABORT_PROCESS_ITEM_NAME, "Abort", false);
-		
+
 		AGENT_PROCESS_FEATURES_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_PROCESS_FEATURES_PROPERTY_NAME, "Agent", "Process features", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 8);
 		if (AGENT_PROCESS_FEATURES_PROPERTY == NULL)
 			return INDIGO_FAILED;
