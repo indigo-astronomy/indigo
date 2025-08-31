@@ -59,6 +59,10 @@ extern const double RAD2DEG;
 #define JDNOW            UT2JD(time(NULL))
 #endif /* UT2JD */
 
+#define NUT_APPARENT_TO_MEAN 0
+#define NUT_MEAN_TO_APPARENT 1
+#define NUT_DELTA_ONLY       2
+
 /** Cartesian point
  */
 typedef struct {
@@ -75,7 +79,6 @@ typedef struct {
 	double r;   /* radius (1 for celestial coordinates) */
 } indigo_spherical_point_t;
 
-
 /**
  Precesses c0 from eq0 to eq1
 
@@ -85,6 +88,16 @@ typedef struct {
  eq1 - New Equinox (year+fraction)
  */
 extern indigo_spherical_point_t indigo_precess(const indigo_spherical_point_t *c0, const double eq0, const double eq1);
+
+/**
+ Apply, remove ot get nutation corrections for given coordinates
+
+ coord.a - Right Ascension (radians)
+ coord.d - Declination (radians)
+ jd - Julian Date
+ apply_mode - 0 for apparent -> mean-of-date,  1 for mean-of-date -> apparent (true-of-date), 2 for delta only
+ */
+extern indigo_spherical_point_t indigo_nutate(const indigo_spherical_point_t *coord, double jd, int apply_mode);
 
 /** Convenience wrapper for indigo_precess(...)
 
@@ -115,6 +128,40 @@ extern void indigo_j2k_to_jnow(double *ra, double *dec);
 	*dec - Declination (degrees)
  */
 extern void indigo_j2k_to_eq(const double eq, double *ra, double *dec);
+
+/** Apply nutation correction: mean-of-date -> apparent (true-of-date) coordinates
+ *
+ * *ra - Right Ascension (hours), modified in place
+ * *dec - Declination (degrees), modified in place
+ * jd - Julian Date (if <=0 current date is used)
+ */
+extern void indigo_nutate_mean_to_apparent(double *ra, double *dec, double jd);
+
+/** Apply inverse nutation correction: apparent (true-of-date) -> mean-of-date coordinates
+ *
+ * *ra - Right Ascension (hours), modified in place
+ * *dec - Declination (degrees), modified in place
+ * jd - Julian Date (if <=0 current date is used)
+ */
+extern void indigo_nutate_apparent_to_mean(double *ra, double *dec, double jd);
+
+/** Convert equinox coordinates to apparent (true-of-date) coordinates
+ *
+ * eq - Source equinox (e.g., 2000.0 for J2000, 1950.0 for B1950)
+ * *ra - Right Ascension (hours), modified in place
+ * *dec - Declination (degrees), modified in place
+ * jd - Julian Date for target apparent coordinates (if <=0 current date is used)
+ */
+extern void indigo_eq_to_apparent(const double eq, double *ra, double *dec, double jd);
+
+/** Convert apparent (true-of-date) coordinates to equinox coordinates
+ *
+ * eq - Target equinox (e.g., 2000.0 for J2000, 1950.0 for B1950)
+ * *ra - Right Ascension (hours), modified in place
+ * *dec - Declination (degrees), modified in place
+ * jd - Julian Date of the apparent coordinates (if <=0 current date is used)
+ */
+extern void indigo_apparent_to_eq(const double eq, double *ra, double *dec, double jd);
 
 /** calculate time to the next transit
 
@@ -189,6 +236,13 @@ extern double indigo_mean_gst(const time_t *utc);
 /** Local mean sidereal time (in decimal hours)
  */
 extern double indigo_lst(const time_t *utc, const double longitude);
+
+/** Convert Julian Date to Greenwich Mean Sidereal Time
+ *
+ * jd - Julian Date
+ * returns GMST in decimal hours
+ */
+extern double indigo_jd_to_mean_gst(double jd);
 
 /** ra/dec to alt/az (in degrees)
  */
