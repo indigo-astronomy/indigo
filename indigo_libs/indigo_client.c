@@ -141,7 +141,6 @@ static indigo_result add_driver(driver_entry_point entry_point, void *dl_handle,
 	if (empty_slot == used_driver_slots) {
 		used_driver_slots++;
 	} /* if we are not filling a gap - increase used_slots */
-	pthread_mutex_unlock(&mutex);
 	
 	if (driver != NULL)
 		*driver = &indigo_available_drivers[empty_slot];
@@ -151,8 +150,10 @@ static indigo_result add_driver(driver_entry_point entry_point, void *dl_handle,
 		indigo_available_drivers[empty_slot].initialized = result == INDIGO_OK;
 		if (result != INDIGO_OK)
 			indigo_error("Driver %s failed to initialise", info.name);
+		pthread_mutex_unlock(&mutex);
 		return result;
 	}
+	pthread_mutex_unlock(&mutex);
 	return INDIGO_OK;
 }
 
@@ -316,9 +317,9 @@ indigo_result indigo_start_subprocess(const char *executable, indigo_subprocess_
 	if (empty_slot == used_subprocess_slots) {
 		used_subprocess_slots++;
 	}
-	pthread_mutex_unlock(&mutex);
 	if (subprocess != NULL)
 		*subprocess = &indigo_available_subprocesses[empty_slot];
+	pthread_mutex_unlock(&mutex);
 	return INDIGO_OK;
 }
 
@@ -492,9 +493,9 @@ indigo_result indigo_connect_server_id(const char *name, const char *host, int p
 	if (empty_slot == used_server_slots) {
 		used_server_slots++;
 	}
-	pthread_mutex_unlock(&mutex);
 	if (server != NULL)
 		*server = &indigo_available_servers[empty_slot];
+	pthread_mutex_unlock(&mutex);
 	return INDIGO_OK;
 }
 
