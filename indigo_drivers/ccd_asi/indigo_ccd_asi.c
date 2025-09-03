@@ -793,8 +793,8 @@ static indigo_result ccd_attach(indigo_device *device) {
 			int binned_height = CCD_FRAME_HEIGHT_ITEM->number.value / bin;
 			// ASISetROIFormat docs says:
 			// Note: In general make sure iWidth%8=0，iHeight%2=0.
-			binned_width = binned_width % 8;
-			binned_height = binned_height % 2;
+			binned_width -= binned_width % 8;
+			binned_height -= binned_height % 2;
 			if (pixel_format_supported(device, ASI_IMG_RAW8)) {
 				snprintf(name, 32, "%s %dx%d", RAW8_NAME, bin, bin);
 				snprintf(label, 64, "%s %dx%d", RAW8_NAME, binned_width, binned_height);
