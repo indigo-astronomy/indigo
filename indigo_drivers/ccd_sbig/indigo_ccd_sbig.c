@@ -699,7 +699,7 @@ static bool sbig_read_pixels(indigo_device *device) {
 	long wait_cycles = 6000;  /* 6000*2000us = 12s */
 	unsigned char *frame_buffer;
 
-	/* for the exposyre to complete and end it */
+	/* for the exposure to complete and end it */
 	while(!sbig_exposure_complete(device) && wait_cycles--) {
 		usleep(2000);
 	}
@@ -744,6 +744,20 @@ static bool sbig_read_pixels(indigo_device *device) {
 	EndExposureParams eep = {
 		.ccd = srp.ccd
 	};
+	/* Skip end exposure shutter delay for secondary CCD if primary CCD exposure is in progress */
+	if (!PRIMARY_CCD) {
+		unsigned short status;
+		res = get_command_status(CC_START_EXPOSURE2, &status);
+		if (res != CE_NO_ERROR) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_QUERY_COMMAND_STATUS error = %d (%s)", res, sbig_error_string(res));
+			pthread_mutex_unlock(&driver_mutex);
+			return false;
+		}
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Secondary CCD: status = 0x%x", status);
+		if ((status & 2) == 2) { /* Primary CCD exposure is in progress so no need for the shutter delay */
+			eep.ccd |= END_SKIP_DELAY;
+		}		
+	}
 
 	res = sbig_command(CC_END_EXPOSURE, &eep, NULL);
 	if (res != CE_NO_ERROR) {
@@ -1450,8 +1464,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	// ------------------------------------------------------------------------------- CCD_FRAME
 	} else if (indigo_property_match_changeable(CCD_FRAME_PROPERTY, property)) {
 		indigo_property_copy_values(CCD_FRAME_PROPERTY, property, false);
-		CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.target = 8 * (int)(CCD_FRAME_WIDTH_ITEM->number.value / 8);
-		CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.target = 2 * (int)(CCD_FRAME_HEIGHT_ITEM->number.value / 2);
+		if (CCD_FRAME_WIDTH_ITEM->number.value != CCD_FRAME_WIDTH_ITEM->number.max) {
+			CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.target = 8 * (int)(CCD_FRAME_WIDTH_ITEM->number.value / 8);
+		}
+		if (CCD_FRAME_HEIGHT_ITEM->number.value != CCD_FRAME_HEIGHT_ITEM->number.max) {
+			CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.target = 2 * (int)(CCD_FRAME_HEIGHT_ITEM->number.value / 2);
+		}
 
 		if (CCD_FRAME_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value < 64) {
 			CCD_FRAME_WIDTH_ITEM->number.value = 64 * CCD_BIN_HORIZONTAL_ITEM->number.value;

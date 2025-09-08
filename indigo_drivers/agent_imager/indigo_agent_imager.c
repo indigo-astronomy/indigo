@@ -1882,7 +1882,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 		indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 		memcpy(prev_quality, quality, sizeof(double) * star_count);
 		if (abs(current_offset) >= limit) {
-			indigo_send_message(device, "No focus reached within maximum travel limit of %g staps per AF run", limit);
+			indigo_send_message(device, "No focus reached within maximum travel limit of %g steps per AF run", limit);
 			focus_failed = true;
 			goto ucurve_finish;
 		}
