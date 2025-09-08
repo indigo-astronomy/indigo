@@ -1,7 +1,7 @@
 ﻿#ifndef __mallincam_h__
 #define __mallincam_h__
 
-/* Version: 59.28926.20250709 */
+/* Version: 59.29465.20250907 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -14,9 +14,9 @@
        (4) Linux: kernel 2.6.27 or above
               (a) x64: GLIBC 2.14 or above
               (b) x86: CPU supports SSE3 instruction set or above; GLIBC 2.8 or above
-              (c) arm64: GLIBC 2.17 or above; built by toolchain aarch64-linux-gnu (version 5.4.0)
-              (d) armhf: GLIBC 2.8 or above; built by toolchain arm-linux-gnueabihf (version 5.4.0)
-              (e) armel: GLIBC 2.8 or above; built by toolchain arm-linux-gnueabi (version 5.4.0)
+              (c) arm64: GLIBC 2.17 or above
+              (d) armhf: GLIBC 2.8 or above
+              (e) armel: GLIBC 2.8 or above
        (5) Android: __ANDROID_API__ >= 24 (Android 7.0); built by android-ndk-r18b; see https://developer.android.com/ndk/guides/abis
               (a) arm64: arm64-v8a
               (b) arm: armeabi-v7a
@@ -33,6 +33,13 @@
     Please distinguish between camera ID (camId) and camera SN:
         (a) SN is unique and persistent, fixed inside the camera and remains unchanged, and does not change with connection or system restart.
         (b) Camera ID (camId) may change due to connection or system restart. Enumerate the cameras to get the camera ID, and then call the Open function to pass in the camId parameter to open the camera.
+*/
+
+/*
+    Coordinate:
+        (a) Functions with coordinate parameters, such as Mallincam_put_Roi, Mallincam_put_AEAuxRect, etc., the coordinate is always relative to the original resolution,
+            even that the image has been flipped, rotated, digital binning, ROI, or combination of the previous operations.
+        (b) Exception: if the image is upside down (see here), the coordinate must be also upsize down.
 */
 
 #if defined(_WIN32)
@@ -181,8 +188,9 @@ typedef struct Mallincam_t { int unused; } *HMallincam;
 #define MALLINCAM_FLAG_RAW11                0x0080000000000000  /* pixel format, RAW 11bits */
 #define MALLINCAM_FLAG_GHOPTO               0x0100000000000000  /* ghopto sensor */
 #define MALLINCAM_FLAG_RAW10PACK            0x0200000000000000  /* pixel format, RAW 10bits packed */
-#define MALLINCAM_FLAG_USB32                0x0400000000000000  /* usb3.2 */
-#define MALLINCAM_FLAG_USB32_OVER_USB30     0x0800000000000000  /* usb3.2 camera connected to usb3.0 port */
+#define MALLINCAM_FLAG_USB32                0x0400000000000000  /* USB 3.2 Gen 2 */
+#define MALLINCAM_FLAG_USB32_OVER_USB30     0x0800000000000000  /* USB 3.2 Gen 2 camera connected to usb3.0 port */
+#define MALLINCAM_FLAG_LINESCAN             0x1000000000000000  /* line scan camera */
 
 #define MALLINCAM_EXPOGAIN_DEF              100     /* exposure gain, default value */
 #define MALLINCAM_EXPOGAIN_MIN              100     /* exposure gain, minimum value */
@@ -303,7 +311,7 @@ typedef struct {
 } MallincamDeviceV2; /* device instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 59.28926.20250709
+    get the version of this dll/so/dylib, which is: 59.29465.20250907
 */
 #if defined(_WIN32)
 MALLINCAM_API(const wchar_t*)   Mallincam_Version();
@@ -326,12 +334,12 @@ MALLINCAM_API(unsigned) Mallincam_EnumV2(MallincamDeviceV2 arr[MALLINCAM_MAX]);
 
 /* use the camId of MallincamDeviceV2, which is enumerated by Mallincam_EnumV2.
     if camId is NULL, Mallincam_Open will open the first enumerated camera.
-    For USB, GigE or PCIe camera, the camId can the camId can also be specified as (case sensitive):
-        (a) "sn:xxxxxxxxxxxx" (such as sn:ZP250212241204105)
-        (b) "name:xxxxxx" (such as name: Camera1)
+    For USB, GigE, CameraLink or CXP camera, the camId can also be specified as (case sensitive):
+        (a) "sn:xxxxxxxxxxxx" (Use SN, such as sn:ZP250212241204105), or
+        (b) "name:xxxxxx" (Use name, such as name:Camera1)
     Moreover, for GigE camera, the camId can also be specified as (case sensitive):
-        (a) "ip:xxx.xxx.xxx.xxx" (such as ip:192.168.1.100) or
-        (b) "mac:xxxxxxxxxxxx" (such as mac:d05f64ffff23)
+        (a) "ip:xxx.xxx.xxx.xxx" (Use IP address, such as ip:192.168.1.100), or
+        (b) "mac:xxxxxxxxxxxx" (Use MAC address, such as mac:d05f64ffff23)
     For the issue of opening the camera on Android, please refer to the documentation
 */
 #if defined(_WIN32)
@@ -624,13 +632,13 @@ typedef void (__stdcall* PIMALLINCAM_PROGRESS)(int percent, void* ctxProgress);
 typedef void (__stdcall* PIMALLINCAM_HISTOGRAM_CALLBACKV2)(const unsigned* aHist, unsigned nFlag, void* ctxHistogramV2);
 
 /*
-* bAutoExposure:
+* mode:
 *   0: disable auto exposure
 *   1: auto exposure continue mode
 *   2: auto exposure once mode
 */
-MALLINCAM_API(HRESULT)  Mallincam_get_AutoExpoEnable(HMallincam h, int* bAutoExposure);
-MALLINCAM_API(HRESULT)  Mallincam_put_AutoExpoEnable(HMallincam h, int bAutoExposure);
+MALLINCAM_API(HRESULT)  Mallincam_get_AutoExpoEnable(HMallincam h, int* mode);
+MALLINCAM_API(HRESULT)  Mallincam_put_AutoExpoEnable(HMallincam h, int mode);
 
 MALLINCAM_API(HRESULT)  Mallincam_get_AutoExpoTarget(HMallincam h, unsigned short* Target);
 MALLINCAM_API(HRESULT)  Mallincam_put_AutoExpoTarget(HMallincam h, unsigned short Target);
@@ -879,7 +887,7 @@ MALLINCAM_API(HRESULT)  Mallincam_get_Option(HMallincam h, unsigned iOption, int
 #define MALLINCAM_OPTION_NOFRAME_TIMEOUT        0x01       /* [RW] no frame timeout: 0 => disable, positive value (>= MALLINCAM_NOFRAME_TIMEOUT_MIN) => timeout milliseconds. default: disable */
 #define MALLINCAM_OPTION_THREAD_PRIORITY        0x02       /* [RW] set the priority of the internal thread which grab data from the usb device.
                                                              Win: iValue: 0 => THREAD_PRIORITY_NORMAL; 1 => THREAD_PRIORITY_ABOVE_NORMAL; 2 => THREAD_PRIORITY_HIGHEST; 3 => THREAD_PRIORITY_TIME_CRITICAL; default: 1; see: https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setthreadpriority
-                                                             Linux & macOS: The high 16 bits for the scheduling policy, and the low 16 bits for the priority; see: https://linux.die.net/man/3/pthread_setschedparam
+                                                             Linux & macOS: similar to Win
                                                          */
 #define MALLINCAM_OPTION_PROCESSMODE            0x03       /* [RW] obsolete & useless, noop. 0 = better image quality, more cpu usage. this is the default value; 1 = lower image quality, less cpu usage */
 #define MALLINCAM_OPTION_RAW                    0x04       /* [RW]
@@ -915,7 +923,7 @@ MALLINCAM_API(HRESULT)  Mallincam_get_Option(HMallincam h, unsigned iOption, int
 #define MALLINCAM_OPTION_DEMOSAIC_STILL         0x14       /* [RW] demosaic method for still image */
 #define MALLINCAM_OPTION_BLACKLEVEL             0x15       /* [RW] black level */
 #define MALLINCAM_OPTION_MULTITHREAD            0x16       /* [RW] multithread image processing */
-#define MALLINCAM_OPTION_BINNING                0x17       /* [RW] binning
+#define MALLINCAM_OPTION_BINNING                0x17       /* [RW] digital binning
                                                                 0x01: (no binning)
                                                                 n: (saturating add, n*n), 0x02(2*2), 0x03(3*3), 0x04(4*4), 0x05(5*5), 0x06(6*6), 0x07(7*7), 0x08(8*8). The Bitdepth of the data remains unchanged.
                                                                 0x40 | n: (unsaturated add, n*n, works only in RAW mode), 0x42(2*2), 0x43(3*3), 0x44(4*4), 0x45(5*5), 0x46(6*6), 0x47(7*7), 0x48(8*8). The Bitdepth of the data is increased. For example, the original data with bitdepth of 12 will increase the bitdepth by 2 bits and become 14 after 2*2 binning.
@@ -1161,7 +1169,7 @@ MALLINCAM_API(HRESULT)  Mallincam_get_Option(HMallincam h, unsigned iOption, int
                                                                 n<0: every -n frame
                                                          */
 #define MALLINCAM_OPTION_TECTARGET_RANGE        0x6d       /* [RO] TEC target range: min(low 16 bits) = (short)(val & 0xffff), max(high 16 bits) = (short)((val >> 16) & 0xffff) */
-#define MALLINCAM_OPTION_CDS                    0x6e       /* [RW] Correlated Double Sampling */
+#define MALLINCAM_OPTION_CDS                    0x6e       /* [RW] Correlated Double Sampling: 0~100 */
 #define MALLINCAM_OPTION_LOW_POWER_EXPOTIME     0x6f       /* [RW] Low Power Consumption: Enable if exposure time is greater than the set value */
 #define MALLINCAM_OPTION_ZERO_OFFSET            0x70       /* [RW] Sensor output offset to zero: 0 => disable, 1 => eanble; default: 0 */
 #define MALLINCAM_OPTION_GVCP_TIMEOUT           0x71       /* [RW] GVCP Timeout: millisecond, range = [3, 75], default: 15
@@ -1193,7 +1201,14 @@ MALLINCAM_API(HRESULT)  Mallincam_get_Option(HMallincam h, unsigned iOption, int
 #define MALLINCAM_OPTION_BACKEND_FULL           0x85       /* [RO] get the number of backend deque full */
 #define MALLINCAM_OPTION_GPS                    0x86       /* [RO] gps status: 0 => not supported; -1 => gps device offline; 1 => gps device online */
 #define MALLINCAM_OPTION_LINE_LENGTH            0x87       /* [RW] Line length in pixel clock */
-#define MALLINCAM_OPTION_SCAN_DIRECTION         0x88       /* [RW] Scan direction: 0 (forward), 1(reverse), 2(alternate) */
+#define MALLINCAM_OPTION_SCAN_DIRECTION         0x88       /* [RW] Scan direction: 0(forward), 1(reverse), 2(alternate) */
+#define MALLINCAM_OPTION_BLACKLEVEL_AUTOADJUST  0x89       /* [RW] Black level automatic adjustment function: 0: off, 1: on
+                                                                This setting turn on/off black level auto adjust function by OB(Optical Black) level.
+                                                                In case of long exposure and so on, OB level is offset by leak or any other reason.
+                                                                Because of it, if the adjustment becomes a problem, this setting is introduced for one of the solution.
+                                                         */
+#define MALLINCAM_OPTION_USER_SET               0x8a       /* [RW] user set */
+#define MALLINCAM_OPTION_DIGITAL_GAIN           0x1001     /* [RW] digital gain */
 
 /* pixel format */
 #define MALLINCAM_PIXELFORMAT_RAW8              0x00
@@ -1390,6 +1405,11 @@ MALLINCAM_API(HRESULT)  Mallincam_read_UART(HMallincam h, unsigned char* pBuffer
 typedef void (__stdcall* PMALLINCAM_HOTPLUG)(void* ctxHotPlug);
 MALLINCAM_API(HRESULT)  Mallincam_GigeEnable(PMALLINCAM_HOTPLUG funHotPlug, void* ctxHotPlug);
 
+/* opt: semicolon separated options:
+*        "wifi": Enable WiFi adapter support
+*/
+MALLINCAM_API(HRESULT)  Mallincam_GigeEnableV2(PMALLINCAM_HOTPLUG funHotPlug, void* ctxHotPlug, const char* opt);
+
 /* Initialize support for PCIe cameras. If online/offline notifications are not required, the callback function can be set to NULL */
 MALLINCAM_API(HRESULT)  Mallincam_PciEnable(PMALLINCAM_HOTPLUG funHotPlug, void* ctxHotPlug);
 
@@ -1397,9 +1417,9 @@ MALLINCAM_API(HRESULT)  Mallincam_PciEnable(PMALLINCAM_HOTPLUG funHotPlug, void*
 * (1) ctiPath = NULL means all *.cti in GENICAM_GENTL64_PATH/GENICAM_GENTL32_PATH
 * or
 * (2) ctiPath[] = {
-            "/full/path/to/file.cti"
-            ...
-            NULLL
+            "/full/path/to/file.cti",
+            ...,
+            NULLL      // Use NULL pointer to indicate the end of the array
         }
 */
 #if defined(_WIN32)
@@ -1445,7 +1465,7 @@ MALLINCAM_API(HRESULT)  Mallincam_get_Name(const char* camId, char name[64]);
 typedef struct {
     unsigned short lensID;
     unsigned char  lensType;
-    unsigned char  statusAfmf;      /* LENS_AF = 0x00,  LENS_MF = 0x80 */
+    unsigned char  statusAfmf;      /* LENS_AF = 0x00, LENS_MF = 0x80 */
 
     unsigned short maxFocalLength;
     unsigned short curFocalLength;
@@ -1794,9 +1814,9 @@ MALLINCAM_API(void)     Mallincam_log_str(unsigned level, const char* str);
 MALLINCAM_APIV(void)    Mallincam_log(unsigned level, const char* format, ...);
 
 #if defined(MALLINCAM_LOG)
-#define MALLINCAM_LOG_NONE(format, ...)	  Mallincam_log(0, format, ##__VA_ARGS__)
-#define MALLINCAM_LOG_ERROR(format, ...)	  Mallincam_log(1, format, ##__VA_ARGS__)
-#define MALLINCAM_LOG_DEBUG(format, ...)	  Mallincam_log(2, format, ##__VA_ARGS__)
+#define MALLINCAM_LOG_NONE(format, ...)     Mallincam_log(0, format, ##__VA_ARGS__)
+#define MALLINCAM_LOG_ERROR(format, ...)    Mallincam_log(1, format, ##__VA_ARGS__)
+#define MALLINCAM_LOG_DEBUG(format, ...)    Mallincam_log(2, format, ##__VA_ARGS__)
 #define MALLINCAM_LOG_VERBOSE(format, ...)  Mallincam_log(3, format, ##__VA_ARGS__)
 /* for example: MALLINCAM_LOG_DEBUG("%s: blahblah, x = %d, y = %f", __func__ x, y); */
 #endif
