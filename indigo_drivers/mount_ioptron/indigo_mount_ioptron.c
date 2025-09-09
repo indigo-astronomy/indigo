@@ -61,6 +61,13 @@
 #define PROTOCOL_0205_ITEM            (MOUNT_PROTOCOL_PROPERTY->items+6)
 #define PROTOCOL_0300_ITEM            (MOUNT_PROTOCOL_PROPERTY->items+7)
 
+#define MOUNT_MERIDIAN_LIMIT_PROPERTY (PRIVATE_DATA->meridian_limit_property)
+#define MOUNT_MERIDIAN_LIMIT_ITEM 		(MOUNT_MERIDIAN_LIMIT_PROPERTY->items+0)
+
+#define MOUNT_MERIDIAN_HANDLING_PROPERTY	(PRIVATE_DATA->meridian_handling_property)
+#define MOUNT_MERIDIAN_STOP_ITEM  				(MOUNT_MERIDIAN_HANDLING_PROPERTY->items+0)
+#define MOUNT_MERIDIAN_FLIP_ITEM  				(MOUNT_MERIDIAN_HANDLING_PROPERTY->items+1)
+
 #define MOUNT_PROTOCOL_PROPERTY_NAME	"PROTOCOL_VERSION"
 #define PROTOCOL_AUTO_ITEM_NAME       "AUTO"
 #define PROTOCOL_8406_ITEM_NAME       "8406"
@@ -70,6 +77,13 @@
 #define PROTOCOL_0200_ITEM_NAME       "0200"
 #define PROTOCOL_0205_ITEM_NAME       "0205"
 #define PROTOCOL_0300_ITEM_NAME       "0300"
+
+#define MOUNT_MERIDIAN_LIMIT_PROPERTY_NAME		"MOUNT_MERIDIAN_LIMIT"
+#define MOUNT_MERIDIAN_LIMIT_ITEM_NAME				"LIMIT"
+
+#define MOUNT_MERIDIAN_HANDLING_PROPERTY_NAME	"MOUNT_MERIDIAN_HANDLING"
+#define MOUNT_MERIDIAN_STOP_ITEM_NAME					"STOP"
+#define MOUNT_MERIDIAN_FLIP_ITEM_NAME					"FLIP"
 
 #define RA_MIN_DIF					0.1
 #define DEC_MIN_DIF					0.1
@@ -92,6 +106,8 @@ typedef struct {
 	bool has_sp;
 	bool has_encoders;
 	indigo_property *protocol_property;
+	indigo_property *meridian_limit_property;
+	indigo_property *meridian_handling_property;
 } ioptron_private_data;
 
 static bool ieq_command(indigo_device *device, char *command, char *response, int max) {
@@ -407,8 +423,6 @@ static bool ieq_set_utc(indigo_device *device, time_t *secs, int utc_offset) {
 	return false;
 }
 
-
-
 static void position_timer_callback(indigo_device *device) {
 	char response[128];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
@@ -453,7 +467,7 @@ static void position_timer_callback(indigo_device *device) {
 						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 						break;
 					case '4': // meridian flipping
-						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 						break;
 					case '1': // tracking with PEC disabled
 					case '5': // tracking with PEC enabled (only for non-encoder edition)
@@ -584,7 +598,7 @@ static void position_timer_callback(indigo_device *device) {
 						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 						break;
 					case '4': // meridian flipping
-						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 						break;
 					case '1': // tracking with PEC disabled
 					case '5': // tracking with PEC enabled (only for non-encoder edition)
@@ -694,7 +708,7 @@ static void position_timer_callback(indigo_device *device) {
 						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 						break;
 					case '4': // meridian flipping
-						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 						break;
 					case '1': // tracking with PEC disabled
 					case '5': // tracking with PEC enabled (only for non-encoder edition)
@@ -1365,6 +1379,14 @@ static void mount_connect_callback(indigo_device *device) {
 					}
 
 				}
+				if (ieq_command(device, ":GMT#", response, sizeof(response))) {
+					indigo_set_switch(MOUNT_MERIDIAN_HANDLING_PROPERTY, response[0] == '0' ? MOUNT_MERIDIAN_STOP_ITEM : MOUNT_MERIDIAN_FLIP_ITEM, true);
+					MOUNT_MERIDIAN_HANDLING_PROPERTY->hidden = false;
+					indigo_define_property(device, MOUNT_MERIDIAN_HANDLING_PROPERTY, NULL);
+					MOUNT_MERIDIAN_LIMIT_ITEM->number.value = MOUNT_MERIDIAN_LIMIT_ITEM->number.target = MOUNT_MERIDIAN_LIMIT_ITEM->number.target = atoi(response + 1);
+					MOUNT_MERIDIAN_LIMIT_PROPERTY->hidden = false;
+					indigo_define_property(device, MOUNT_MERIDIAN_LIMIT_PROPERTY, NULL);
+				}
 			}
 			PRIVATE_DATA->has_sp = false;
 			if (ieq_command(device, ":pS#", response, sizeof(response))) {
@@ -1386,6 +1408,9 @@ static void mount_connect_callback(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_timer(device, &PRIVATE_DATA->position_timer);
+		indigo_delete_property(device, MOUNT_MERIDIAN_HANDLING_PROPERTY, NULL);
+		indigo_delete_property(device, MOUNT_MERIDIAN_LIMIT_PROPERTY, NULL);
+
 		if (--PRIVATE_DATA->device_count == 0) {
 			ieq_close(device);
 		}
@@ -1846,6 +1871,22 @@ static void mount_pec_training_callback(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
+static void mount_meridian_callback(indigo_device *device) {
+	char command[128], response[128];
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	sprintf(command, ":SMT%c%02d#", MOUNT_MERIDIAN_FLIP_ITEM->sw.value ? '1' : '0', (int)MOUNT_MERIDIAN_LIMIT_ITEM->number.target);
+	ieq_command(device, command, response, 1);
+	if (MOUNT_MERIDIAN_HANDLING_PROPERTY->state == INDIGO_BUSY_STATE) {
+		MOUNT_MERIDIAN_HANDLING_PROPERTY->state = *response == '1' ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+		indigo_update_property(device, MOUNT_MERIDIAN_HANDLING_PROPERTY, NULL);
+	}
+	if (MOUNT_MERIDIAN_LIMIT_PROPERTY->state == INDIGO_BUSY_STATE) {
+		MOUNT_MERIDIAN_LIMIT_PROPERTY->state = *response == '1' ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+		indigo_update_property(device, MOUNT_MERIDIAN_LIMIT_PROPERTY, NULL);
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
 static void start_tracking(indigo_device *device) {
 	char response[2];
 	if (MOUNT_TRACKING_OFF_ITEM->sw.value) {
@@ -1984,6 +2025,19 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_init_switch_item(PROTOCOL_0200_ITEM, PROTOCOL_0200_ITEM_NAME, "2.0", false);
 		indigo_init_switch_item(PROTOCOL_0205_ITEM, PROTOCOL_0205_ITEM_NAME, "2.5", false);
 		indigo_init_switch_item(PROTOCOL_0300_ITEM, PROTOCOL_0300_ITEM_NAME, "3.0", false);
+		// -------------------------------------------------------------------------------- MOUNT_MERIDIAN_HANDLING
+		MOUNT_MERIDIAN_HANDLING_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_MERIDIAN_HANDLING_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Meridian handling", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (MOUNT_MERIDIAN_HANDLING_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(MOUNT_MERIDIAN_STOP_ITEM, MOUNT_MERIDIAN_STOP_ITEM_NAME, "Stop at meridian", true);
+		indigo_init_switch_item(MOUNT_MERIDIAN_FLIP_ITEM, MOUNT_MERIDIAN_FLIP_ITEM_NAME, "Flip at meridian", false);
+		MOUNT_MERIDIAN_HANDLING_PROPERTY->hidden = true;
+		// -------------------------------------------------------------------------------- MOUNT_MERIDIAN_LIMIT
+		MOUNT_MERIDIAN_LIMIT_PROPERTY = indigo_init_number_property(NULL, device->name, MOUNT_MERIDIAN_LIMIT_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Meridian limit", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+		if (MOUNT_MERIDIAN_LIMIT_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_number_item(MOUNT_MERIDIAN_LIMIT_ITEM, MOUNT_MERIDIAN_LIMIT_ITEM_NAME, "Meridian limit [°]", 0, 30, 1, 0);
+		MOUNT_MERIDIAN_LIMIT_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -1994,6 +2048,10 @@ static indigo_result mount_attach(indigo_device *device) {
 
 static indigo_result mount_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	indigo_define_property(device, MOUNT_PROTOCOL_PROPERTY, NULL);
+	if (IS_CONNECTED) {
+		indigo_define_property(device, MOUNT_MERIDIAN_HANDLING_PROPERTY, NULL);
+		indigo_define_property(device, MOUNT_MERIDIAN_LIMIT_PROPERTY, NULL);
+	}
 	return indigo_mount_enumerate_properties(device, NULL, NULL);
 }
 
@@ -2145,6 +2203,20 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, MOUNT_PEC_TRAINING_PROPERTY, NULL);
 		indigo_set_timer(device, 0, mount_pec_training_callback, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(MOUNT_MERIDIAN_HANDLING_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_MERIDIAN_HANDLING
+		indigo_property_copy_values(MOUNT_MERIDIAN_HANDLING_PROPERTY, property, false);
+		MOUNT_MERIDIAN_HANDLING_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, MOUNT_MERIDIAN_HANDLING_PROPERTY, NULL);
+		indigo_set_timer(device, 0, mount_meridian_callback, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(MOUNT_MERIDIAN_LIMIT_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_MERIDIAN_LIMIT
+		indigo_property_copy_values(MOUNT_MERIDIAN_LIMIT_PROPERTY, property, false);
+		MOUNT_MERIDIAN_LIMIT_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, MOUNT_MERIDIAN_LIMIT_PROPERTY, NULL);
+		indigo_set_timer(device, 0, mount_meridian_callback, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_PROTOCOL_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_PROTOCOL
 		indigo_property_copy_values(MOUNT_PROTOCOL_PROPERTY, property, false);
@@ -2168,6 +2240,8 @@ static indigo_result mount_detach(indigo_device *device) {
 		mount_connect_callback(device);
 	}
 	indigo_release_property(MOUNT_PROTOCOL_PROPERTY);
+	indigo_release_property(MOUNT_MERIDIAN_HANDLING_PROPERTY);
+	indigo_release_property(MOUNT_MERIDIAN_LIMIT_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_mount_detach(device);
 }

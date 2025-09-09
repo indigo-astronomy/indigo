@@ -35,6 +35,7 @@ char guide_rate[] = "5050";
 char hemisphere = '1';
 char pec = '0';
 char pec_recording = '0';
+char meridian_handling[] = "000";
 
 void parseCommand() {
   char command[32], buffer[32];
@@ -180,6 +181,12 @@ void parseCommand() {
       Serial.write('1');
     } else if (strncmp(command, "SPR", 3) == 0) {
       pec_recording = command[3];
+      Serial.write('1');
+    } else if (strcmp(command, "GMT") == 0) {
+      Serial.write(meridian_handling);
+      Serial.write('#');
+    } else if (strncmp(command, "SMT", 3) == 0) {
+      strncpy(meridian_handling, command + 3, 3);
       Serial.write('1');
     }
   }
