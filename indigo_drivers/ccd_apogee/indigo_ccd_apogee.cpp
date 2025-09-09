@@ -569,7 +569,7 @@ static void apogee_close(indigo_device *device) {
 	if (!device->is_connected) {
 		return;
 	}
-	
+
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	if (PRIVATE_DATA->camera != NULL) {
 		try {
@@ -594,7 +594,7 @@ static void exposure_timer_callback(indigo_device *device) {
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
 		return;
 	}
-	
+
 	PRIVATE_DATA->can_check_temperature = false;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_EXPOSURE_ITEM->number.value = 0;
@@ -1078,7 +1078,7 @@ static void ethernet_lookup_callback(indigo_device *device) {
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
 		return;
 	}
-	
+
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Looking up cameras in network %s", DEVICE_PORT_ITEM->text.value);
 	//ethernet_discover(DEVICE_PORT_ITEM->text.value, true);
 	ethernet_discover(DEVICE_PORT_ITEM->text.value);
@@ -1210,7 +1210,7 @@ static void ethernet_discover(char *network, bool cam_found) {
 	for(iter = device_strings.begin(); iter != device_strings.end(); ++iter, ++i) {
 		discovery_string = (*iter);
 		if (IsDeviceFilterWheel(discovery_string)) continue;
-		
+
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "LIST device[%d]: %s", i, discovery_string.c_str());
 		interface = GetInterface(discovery_string);
 		if (interface.compare("ethernet") != 0) continue;
@@ -1301,7 +1301,7 @@ static void process_plug_event(indigo_device *unused) {
 	std::string discovery_string;
 	std::vector<std::string> device_strings;
 	FindDeviceUsb look_usb;
-	
+
 	pthread_mutex_lock(&device_mutex);
 	try {
 		msg = look_usb.Find();
@@ -1333,14 +1333,14 @@ static void process_plug_event(indigo_device *unused) {
 			exit(0);
 		}
 	}
-	
+
 	device_strings = GetDeviceVector(msg);
 	std::vector<std::string>::iterator iter;
 	int i = 0;
 	for(iter = device_strings.begin(); iter != device_strings.end(); ++iter, ++i) {
 		discovery_string = (*iter);
 		if (IsDeviceFilterWheel(discovery_string)) continue;
-		
+
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "LIST device[%d]: %s", i, discovery_string.c_str());
 		std::string interface = GetInterface(discovery_string);
 		if (interface.compare("usb") != 0) continue;
@@ -1457,9 +1457,9 @@ static void process_unplug_event(indigo_device *unused) {
 
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
-	
+
 	struct libusb_device_descriptor descriptor;
-	
+
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 			libusb_get_device_descriptor(dev, &descriptor);
