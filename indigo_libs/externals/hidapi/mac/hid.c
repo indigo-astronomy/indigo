@@ -116,7 +116,6 @@ static struct hid_api_version api_version = {
 };
 
 /* - Run context - */
-static	IOHIDManagerRef hid_mgr = 0x0;
 static	int is_macos_10_10_or_greater = 0;
 static	IOOptionBits device_open_options = 0;
 static	wchar_t *last_global_error_str = NULL;
@@ -436,21 +435,6 @@ static wchar_t *dup_wcs(const wchar_t *s)
 	return ret;
 }
 
-/* Initialize the IOHIDManager. Return 0 for success and -1 for failure. */
-static int init_hid_manager(void)
-{
-	/* Initialize all the HID Manager Objects */
-	hid_mgr = IOHIDManagerCreate(kCFAllocatorDefault, kIOHIDOptionsTypeNone);
-	if (hid_mgr) {
-		IOHIDManagerSetDeviceMatching(hid_mgr, NULL);
-		IOHIDManagerScheduleWithRunLoop(hid_mgr, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
-		return 0;
-	}
-
-	register_global_error("Failed to create IOHIDManager");
-	return -1;
-}
-
 HID_API_EXPORT const struct hid_api_version* HID_API_CALL hid_version(void)
 {
 	return &api_version;
@@ -461,32 +445,19 @@ HID_API_EXPORT const char* HID_API_CALL hid_version_str(void)
 	return HID_API_VERSION_STR;
 }
 
-/* Initialize the IOHIDManager if necessary. This is the public function, and
+/* Initialize the HIDAPI if necessary. This is the public function, and
    it is safe to call this function repeatedly. Return 0 for success and -1
    for failure. */
 int HID_API_EXPORT hid_init(void)
 {
 	register_global_error(NULL);
-
-	if (!hid_mgr) {
-		is_macos_10_10_or_greater = (kCFCoreFoundationVersionNumber >= 1151.16); /* kCFCoreFoundationVersionNumber10_10 */
-		hid_darwin_set_open_exclusive(1); /* Backward compatibility */
-		return init_hid_manager();
-	}
-
-	/* Already initialized. */
+	is_macos_10_10_or_greater = (kCFCoreFoundationVersionNumber >= 1151.16); /* kCFCoreFoundationVersionNumber10_10 */
+	hid_darwin_set_open_exclusive(1); /* Backward compatibility */
 	return 0;
 }
 
 int HID_API_EXPORT hid_exit(void)
 {
-	if (hid_mgr) {
-		/* Close the HID manager. */
-		IOHIDManagerClose(hid_mgr, kIOHIDOptionsTypeNone);
-		CFRelease(hid_mgr);
-		hid_mgr = NULL;
-	}
-
 	/* Free global error message */
 	register_global_error(NULL);
 
@@ -707,12 +678,21 @@ struct hid_device_info  HID_API_EXPORT *hid_enumerate(unsigned short vendor_id, 
 	CFIndex num_devices;
 	int i;
 
-	/* Set up the HID Manager if it hasn't been done */
+	/* Set up the HIDAPI if it hasn't been done */
 	if (hid_init() < 0) {
 		return NULL;
 	}
 	/* register_global_error: global error is set/reset by hid_init */
-
+	
+	/* Initialize HID Manager */
+	IOHIDManagerRef hid_mgr = IOHIDManagerCreate(kCFAllocatorDefault, kIOHIDOptionsTypeNone);
+	if (hid_mgr == NULL) {
+		register_global_error("Failed to create IOHIDManager");
+		return NULL;
+	}
+	IOHIDManagerSetDeviceMatching(hid_mgr, NULL);
+	IOHIDManagerScheduleWithRunLoop(hid_mgr, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
+	
 	/* give the IOHIDManager a chance to update itself */
 	process_pending_events();
 
@@ -781,6 +761,10 @@ struct hid_device_info  HID_API_EXPORT *hid_enumerate(unsigned short vendor_id, 
 	free(device_array);
 	if (device_set != NULL)
 		CFRelease(device_set);
+
+	/* Release HID Manager */
+	IOHIDManagerClose(hid_mgr, kIOHIDOptionsTypeNone);
+	CFRelease(hid_mgr);
 
 	if (root == NULL) {
 		if (vendor_id == 0 && product_id == 0) {
