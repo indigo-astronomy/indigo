@@ -54,6 +54,13 @@
 #define PROTOCOL_0205_ITEM            (MOUNT_PROTOCOL_PROPERTY->items+6)
 #define PROTOCOL_0300_ITEM            (MOUNT_PROTOCOL_PROPERTY->items+7)
 
+#define MOUNT_MERIDIAN_LIMIT_PROPERTY (PRIVATE_DATA->meridian_limit_property)
+#define MOUNT_MERIDIAN_LIMIT_ITEM 		(MOUNT_MERIDIAN_LIMIT_PROPERTY->items+0)
+
+#define MOUNT_MERIDIAN_HANDLING_PROPERTY	(PRIVATE_DATA->meridian_handling_property)
+#define MOUNT_MERIDIAN_STOP_ITEM  				(MOUNT_MERIDIAN_HANDLING_PROPERTY->items+0)
+#define MOUNT_MERIDIAN_FLIP_ITEM  				(MOUNT_MERIDIAN_HANDLING_PROPERTY->items+1)
+
 #define MOUNT_PROTOCOL_PROPERTY_NAME	"PROTOCOL_VERSION"
 #define PROTOCOL_AUTO_ITEM_NAME       "AUTO"
 #define PROTOCOL_8406_ITEM_NAME       "8406"
@@ -63,6 +70,13 @@
 #define PROTOCOL_0200_ITEM_NAME       "0200"
 #define PROTOCOL_0205_ITEM_NAME       "0205"
 #define PROTOCOL_0300_ITEM_NAME       "0300"
+
+#define MOUNT_MERIDIAN_LIMIT_PROPERTY_NAME		"MOUNT_MERIDIAN_LIMIT"
+#define MOUNT_MERIDIAN_LIMIT_ITEM_NAME				"LIMIT"
+
+#define MOUNT_MERIDIAN_HANDLING_PROPERTY_NAME	"MOUNT_MERIDIAN_HANDLING"
+#define MOUNT_MERIDIAN_STOP_ITEM_NAME					"STOP"
+#define MOUNT_MERIDIAN_FLIP_ITEM_NAME					"FLIP"
 
 #define RA_MIN_DIF					0.1
 #define DEC_MIN_DIF					0.1
@@ -83,7 +97,10 @@ typedef struct {
 	bool hc8407;
 	bool no_park;
 	bool has_sp;
+	bool has_encoders;
 	indigo_property *protocol_property;
+	indigo_property *meridian_limit_property;
+	indigo_property *meridian_handling_property;
 } ioptron_private_data;
 
 static bool ieq_command(indigo_device *device, char *command, char *response, int max) {
@@ -397,7 +414,7 @@ static void position_timer_callback(indigo_device *device) {
 						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 						break;
 					case '4': // meridian flipping
-						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 						break;
 					case '1': // tracking with PEC disabled
 					case '5': // tracking with PEC enabled (only for non-encoder edition)
@@ -530,7 +547,7 @@ static void position_timer_callback(indigo_device *device) {
 						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 						break;
 					case '4': // meridian flipping
-						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 						break;
 					case '1': // tracking with PEC disabled
 					case '5': // tracking with PEC enabled (only for non-encoder edition)
@@ -641,7 +658,7 @@ static void position_timer_callback(indigo_device *device) {
 						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 						break;
 					case '4': // meridian flipping
-						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 						break;
 					case '1': // tracking with PEC disabled
 					case '5': // tracking with PEC enabled (only for non-encoder edition)
@@ -735,6 +752,7 @@ static void mount_connect_callback(indigo_device *device) {
 			PRIVATE_DATA->hc8406 = false;
 			PRIVATE_DATA->hc8407 = false;
 			PRIVATE_DATA->no_park = true;
+			PRIVATE_DATA->has_encoders = false;
 			if (ieq_command(device, ":MountInfo#", response, sizeof(response)) && *response) {
 				PRIVATE_DATA->protocol = 0x0100;
 				strncpy(PRIVATE_DATA->product, response, 64);
@@ -759,12 +777,15 @@ static void mount_connect_callback(indigo_device *device) {
 					// v2.5 : CEM25-EC
 					// v3.10 : CEM26
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "CEM25-EC");
+					PRIVATE_DATA->has_encoders = true;
 				} else if (!strcmp(PRIVATE_DATA->product, "0027")) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "CEM26-EC");
+					PRIVATE_DATA->has_encoders = true;
 				} else if (!strcmp(PRIVATE_DATA->product, "0028")) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "GEM28");
 				} else if (!strcmp(PRIVATE_DATA->product, "0029")) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "GEM28-EC");
+					PRIVATE_DATA->has_encoders = true;
 				} else if (!strcmp(PRIVATE_DATA->product, "0030")) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "iEQ30 Pro");
 				} else if (!strcmp(PRIVATE_DATA->product, "0036")) {
@@ -773,10 +794,12 @@ static void mount_connect_callback(indigo_device *device) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "CEM40");
 				} else if (!strcmp(PRIVATE_DATA->product, "0041")) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "CEM40-EC");
+					PRIVATE_DATA->has_encoders = true;
 				} else if (!strcmp(PRIVATE_DATA->product, "0043")) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "GEM45");
 				} else if (!strcmp(PRIVATE_DATA->product, "0044")) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "GEM45-EC");
+					PRIVATE_DATA->has_encoders = true;
 				} else if (!strcmp(PRIVATE_DATA->product, "0045")) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "iEQ45 Pro EQ");
 				} else if (!strcmp(PRIVATE_DATA->product, "0046")) {
@@ -785,16 +808,20 @@ static void mount_connect_callback(indigo_device *device) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "CEM60");
 				} else if (!strcmp(PRIVATE_DATA->product, "0061")) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "CEM60-EC");
+					PRIVATE_DATA->has_encoders = true;
 				} else if (!strcmp(PRIVATE_DATA->product, "0070")) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "CEM70");
 				} else if (!strcmp(PRIVATE_DATA->product, "0071")) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "CEM70-EC");
+					PRIVATE_DATA->has_encoders = true;
 				} else if (!strcmp(PRIVATE_DATA->product, "0120")) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "CEM120");
 				} else if (!strcmp(PRIVATE_DATA->product, "0121")) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "CEM120-EC");
+					PRIVATE_DATA->has_encoders = true;
 				} else if (!strcmp(PRIVATE_DATA->product, "0122")) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "CEM120-EC2");
+					PRIVATE_DATA->has_encoders = true;
 				} else if (!strcmp(PRIVATE_DATA->product, "5010")) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "Cube II AA");
 				} else if (!strcmp(PRIVATE_DATA->product, "5035")) {
@@ -802,7 +829,7 @@ static void mount_connect_callback(indigo_device *device) {
 				} else if (!strcmp(PRIVATE_DATA->product, "5045")) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "iEQ45 Pro AA");
 				} else if (strlen(PRIVATE_DATA->product) == 4) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unknown mount '%s'", response);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "iOptron %s", response);
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "Unknown mount");
 				} else if (!strcmp(PRIVATE_DATA->product, ":EQ45")) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "iEQ45");
@@ -1217,6 +1244,8 @@ static void mount_connect_callback(indigo_device *device) {
 					MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value = 1;
 				}
 				MOUNT_HOME_PROPERTY->count = 2;
+				MOUNT_PEC_PROPERTY->hidden = PRIVATE_DATA->has_encoders;
+				MOUNT_PEC_TRAINING_PROPERTY->hidden = PRIVATE_DATA->has_encoders;
 				if (ieq_command(device, ":GLS#", response, sizeof(response))) {
 					indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
 					indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
@@ -1254,7 +1283,11 @@ static void mount_connect_callback(indigo_device *device) {
 							MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 							break;
 						case '1': // tracking with PEC disabled
+							indigo_set_switch(MOUNT_PEC_PROPERTY, MOUNT_PEC_DISABLED_ITEM, true);
+							indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
+							break;
 						case '5': // tracking with PEC enabled (only for non-encoder edition)
+							indigo_set_switch(MOUNT_PEC_PROPERTY, MOUNT_PEC_ENABLED_ITEM, true);
 							indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
 							break;
 						case '6': // parked
@@ -1288,6 +1321,31 @@ static void mount_connect_callback(indigo_device *device) {
 					response[2] = 0;
 					MOUNT_GUIDE_RATE_RA_ITEM->number.value = atoi(response);
 				}
+				if (!PRIVATE_DATA->has_encoders) {
+					if (ieq_command(device, ":GPE#", response, sizeof(response))) {
+						if (response[0] == '0') {
+							indigo_send_message(device, "PEC data incomplete");
+						} else if (response[0] == '1') {
+							indigo_send_message(device, "PEC data complete");
+						}
+					}
+					if (ieq_command(device, ":GPR#", response, sizeof(response))) {
+						if (response[0] == '0') {
+							indigo_set_switch(MOUNT_PEC_TRAINING_PROPERTY, MOUNT_PEC_TRAINIG_STOPPED_ITEM, true);
+						} else if (response[0] == '1') {
+							indigo_set_switch(MOUNT_PEC_TRAINING_PROPERTY, MOUNT_PEC_TRAINIG_STARTED_ITEM, true);
+						}
+					}
+
+				}
+				if (ieq_command(device, ":GMT#", response, sizeof(response))) {
+					indigo_set_switch(MOUNT_MERIDIAN_HANDLING_PROPERTY, response[0] == '0' ? MOUNT_MERIDIAN_STOP_ITEM : MOUNT_MERIDIAN_FLIP_ITEM, true);
+					MOUNT_MERIDIAN_HANDLING_PROPERTY->hidden = false;
+					indigo_define_property(device, MOUNT_MERIDIAN_HANDLING_PROPERTY, NULL);
+					MOUNT_MERIDIAN_LIMIT_ITEM->number.value = MOUNT_MERIDIAN_LIMIT_ITEM->number.target = MOUNT_MERIDIAN_LIMIT_ITEM->number.target = atoi(response + 1);
+					MOUNT_MERIDIAN_LIMIT_PROPERTY->hidden = false;
+					indigo_define_property(device, MOUNT_MERIDIAN_LIMIT_PROPERTY, NULL);
+				}
 			}
 			PRIVATE_DATA->has_sp = false;
 			if (ieq_command(device, ":pS#", response, sizeof(response))) {
@@ -1309,6 +1367,9 @@ static void mount_connect_callback(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_timer(device, &PRIVATE_DATA->position_timer);
+		indigo_delete_property(device, MOUNT_MERIDIAN_HANDLING_PROPERTY, NULL);
+		indigo_delete_property(device, MOUNT_MERIDIAN_LIMIT_PROPERTY, NULL);
+
 		if (--PRIVATE_DATA->device_count == 0) {
 			ieq_close(device);
 		}
@@ -1741,6 +1802,54 @@ static void mount_guide_rate_callback(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
+static void mount_pec_callback(indigo_device *device) {
+	char command[128], response[128];
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	if (MOUNT_PEC_TRAINIG_STARTED_ITEM->sw.value) {
+		ieq_command(device, ":SPR0#", response, 1);
+		MOUNT_PEC_TRAINING_PROPERTY->state = *response == '1' ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+		indigo_set_switch(MOUNT_PEC_TRAINING_PROPERTY, MOUNT_PEC_TRAINIG_STOPPED_ITEM, true);
+		indigo_update_property(device, MOUNT_PEC_TRAINING_PROPERTY, NULL);
+	}
+	sprintf(command, ":SPP%c#", MOUNT_PEC_ENABLED_ITEM->sw.value ? '1' : '0');
+	ieq_command(device, command, response, 1);
+	MOUNT_PEC_PROPERTY->state = *response == '1' ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+	indigo_update_property(device, MOUNT_PEC_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
+static void mount_pec_training_callback(indigo_device *device) {
+	char command[128], response[128];
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	if (MOUNT_PEC_ENABLED_ITEM->sw.value) {
+		ieq_command(device, ":SPP0#", response, 1);
+		MOUNT_PEC_PROPERTY->state = *response == '1' ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+		indigo_set_switch(MOUNT_PEC_PROPERTY, MOUNT_PEC_DISABLED_ITEM, true);
+		indigo_update_property(device, MOUNT_PEC_PROPERTY, NULL);
+	}
+	sprintf(command, ":SPR%c#", MOUNT_PEC_TRAINIG_STARTED_ITEM->sw.value ? '1' : '0');
+	ieq_command(device, command, response, 1);
+	MOUNT_PEC_TRAINING_PROPERTY->state = *response == '1' ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+	indigo_update_property(device, MOUNT_PEC_TRAINING_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
+static void mount_meridian_callback(indigo_device *device) {
+	char command[128], response[128];
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	sprintf(command, ":SMT%c%02d#", MOUNT_MERIDIAN_FLIP_ITEM->sw.value ? '1' : '0', (int)MOUNT_MERIDIAN_LIMIT_ITEM->number.target);
+	ieq_command(device, command, response, 1);
+	if (MOUNT_MERIDIAN_HANDLING_PROPERTY->state == INDIGO_BUSY_STATE) {
+		MOUNT_MERIDIAN_HANDLING_PROPERTY->state = *response == '1' ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+		indigo_update_property(device, MOUNT_MERIDIAN_HANDLING_PROPERTY, NULL);
+	}
+	if (MOUNT_MERIDIAN_LIMIT_PROPERTY->state == INDIGO_BUSY_STATE) {
+		MOUNT_MERIDIAN_LIMIT_PROPERTY->state = *response == '1' ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+		indigo_update_property(device, MOUNT_MERIDIAN_LIMIT_PROPERTY, NULL);
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
 static void start_tracking(indigo_device *device) {
 	char response[2];
 	if (MOUNT_TRACKING_OFF_ITEM->sw.value) {
@@ -1883,6 +1992,19 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_init_switch_item(PROTOCOL_0200_ITEM, PROTOCOL_0200_ITEM_NAME, "2.0", false);
 		indigo_init_switch_item(PROTOCOL_0205_ITEM, PROTOCOL_0205_ITEM_NAME, "2.5", false);
 		indigo_init_switch_item(PROTOCOL_0300_ITEM, PROTOCOL_0300_ITEM_NAME, "3.0", false);
+		// -------------------------------------------------------------------------------- MOUNT_MERIDIAN_HANDLING
+		MOUNT_MERIDIAN_HANDLING_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_MERIDIAN_HANDLING_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Meridian handling", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (MOUNT_MERIDIAN_HANDLING_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(MOUNT_MERIDIAN_STOP_ITEM, MOUNT_MERIDIAN_STOP_ITEM_NAME, "Stop at meridian", true);
+		indigo_init_switch_item(MOUNT_MERIDIAN_FLIP_ITEM, MOUNT_MERIDIAN_FLIP_ITEM_NAME, "Flip at meridian", false);
+		MOUNT_MERIDIAN_HANDLING_PROPERTY->hidden = true;
+		// -------------------------------------------------------------------------------- MOUNT_MERIDIAN_LIMIT
+		MOUNT_MERIDIAN_LIMIT_PROPERTY = indigo_init_number_property(NULL, device->name, MOUNT_MERIDIAN_LIMIT_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Meridian limit", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+		if (MOUNT_MERIDIAN_LIMIT_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_number_item(MOUNT_MERIDIAN_LIMIT_ITEM, MOUNT_MERIDIAN_LIMIT_ITEM_NAME, "Meridian limit [°]", 0, 30, 1, 0);
+		MOUNT_MERIDIAN_LIMIT_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -1893,6 +2015,10 @@ static indigo_result mount_attach(indigo_device *device) {
 
 static indigo_result mount_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	indigo_define_property(device, MOUNT_PROTOCOL_PROPERTY, NULL);
+	if (IS_CONNECTED) {
+		indigo_define_property(device, MOUNT_MERIDIAN_HANDLING_PROPERTY, NULL);
+		indigo_define_property(device, MOUNT_MERIDIAN_LIMIT_PROPERTY, NULL);
+	}
 	return indigo_mount_enumerate_properties(device, NULL, NULL);
 }
 
@@ -2030,6 +2156,34 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, MOUNT_GUIDE_RATE_PROPERTY, NULL);
 		indigo_set_timer(device, 0, mount_guide_rate_callback, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(MOUNT_PEC_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_PEC
+		indigo_property_copy_values(MOUNT_PEC_PROPERTY, property, false);
+		MOUNT_PEC_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, MOUNT_PEC_PROPERTY, NULL);
+		indigo_set_timer(device, 0, mount_pec_callback, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(MOUNT_PEC_TRAINING_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_PEC_TRAINING
+		indigo_property_copy_values(MOUNT_PEC_TRAINING_PROPERTY, property, false);
+		MOUNT_PEC_TRAINING_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, MOUNT_PEC_TRAINING_PROPERTY, NULL);
+		indigo_set_timer(device, 0, mount_pec_training_callback, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(MOUNT_MERIDIAN_HANDLING_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_MERIDIAN_HANDLING
+		indigo_property_copy_values(MOUNT_MERIDIAN_HANDLING_PROPERTY, property, false);
+		MOUNT_MERIDIAN_HANDLING_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, MOUNT_MERIDIAN_HANDLING_PROPERTY, NULL);
+		indigo_set_timer(device, 0, mount_meridian_callback, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(MOUNT_MERIDIAN_LIMIT_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_MERIDIAN_LIMIT
+		indigo_property_copy_values(MOUNT_MERIDIAN_LIMIT_PROPERTY, property, false);
+		MOUNT_MERIDIAN_LIMIT_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, MOUNT_MERIDIAN_LIMIT_PROPERTY, NULL);
+		indigo_set_timer(device, 0, mount_meridian_callback, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_PROTOCOL_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_PROTOCOL
 		indigo_property_copy_values(MOUNT_PROTOCOL_PROPERTY, property, false);
@@ -2053,6 +2207,8 @@ static indigo_result mount_detach(indigo_device *device) {
 		mount_connect_callback(device);
 	}
 	indigo_release_property(MOUNT_PROTOCOL_PROPERTY);
+	indigo_release_property(MOUNT_MERIDIAN_HANDLING_PROPERTY);
+	indigo_release_property(MOUNT_MERIDIAN_LIMIT_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_mount_detach(device);
 }

@@ -139,6 +139,9 @@ static int return_data(hid_device *dev, unsigned char *data, size_t length);
 static hid_device *new_hid_device(void)
 {
 	hid_device *dev = (hid_device*) calloc(1, sizeof(hid_device));
+	if (!dev)
+		return NULL;
+
 	dev->blocking = 1;
 
 	hidapi_thread_state_init(&dev->thread_state);
@@ -1030,7 +1033,7 @@ static void *read_thread(void *param)
 		dev->device_handle,
 		dev->input_endpoint,
 		buf,
-		length,
+		(int)length,
 		read_callback,
 		dev,
 		5000/*timeout*/);
@@ -1272,6 +1275,10 @@ hid_device * HID_API_EXPORT hid_open_path(const char *path)
 		return NULL;
 
 	dev = new_hid_device();
+	if (!dev) {
+		LOG("hid_open_path failed: Couldn't allocate memory\n");
+		return NULL;
+	}
 
 	libusb_get_device_list(usb_context, &devs);
 	while ((usb_dev = devs[d++]) != NULL && !good_open) {
@@ -1343,6 +1350,10 @@ HID_API_EXPORT hid_device * HID_API_CALL hid_libusb_wrap_sys_device(intptr_t sys
 		return NULL;
 
 	dev = new_hid_device();
+	if (!dev) {
+		LOG("libusb_wrap_sys_device failed: Couldn't allocate memory\n");
+		return NULL;
+	}
 
 	res = libusb_wrap_sys_device(usb_context, sys_dev, &dev->device_handle);
 	if (res < 0) {
@@ -1409,6 +1420,11 @@ int HID_API_EXPORT hid_write(hid_device *dev, const unsigned char *data, size_t 
 	int report_number;
 	int skipped_report_id = 0;
 
+	if (dev->output_endpoint <= 0) {
+		/* No interrupt out endpoint. Use the Control Endpoint */
+		return hid_send_output_report(dev, data, length);
+	}
+
 	if (!data || (length ==0)) {
 		return -1;
 	}
@@ -1421,42 +1437,21 @@ int HID_API_EXPORT hid_write(hid_device *dev, const unsigned char *data, size_t 
 		skipped_report_id = 1;
 	}
 
+	/* Use the interrupt out endpoint */
+	int actual_length;
+	res = libusb_interrupt_transfer(dev->device_handle,
+		dev->output_endpoint,
+		(unsigned char*)data,
+		(int)length,
+		&actual_length, 1000);
 
-	if (dev->output_endpoint <= 0) {
-		/* No interrupt out endpoint. Use the Control Endpoint */
-		res = libusb_control_transfer(dev->device_handle,
-			LIBUSB_REQUEST_TYPE_CLASS|LIBUSB_RECIPIENT_INTERFACE|LIBUSB_ENDPOINT_OUT,
-			0x09/*HID Set_Report*/,
-			(2/*HID output*/ << 8) | report_number,
-			dev->interface,
-			(unsigned char *)data, length,
-			1000/*timeout millis*/);
+	if (res < 0)
+		return -1;
 
-		if (res < 0)
-			return -1;
+	if (skipped_report_id)
+		actual_length++;
 
-		if (skipped_report_id)
-			length++;
-
-		return length;
-	}
-	else {
-		/* Use the interrupt out endpoint */
-		int actual_length;
-		res = libusb_interrupt_transfer(dev->device_handle,
-			dev->output_endpoint,
-			(unsigned char*)data,
-			length,
-			&actual_length, 1000);
-
-		if (res < 0)
-			return -1;
-
-		if (skipped_report_id)
-			actual_length++;
-
-		return actual_length;
-	}
+	return actual_length;
 }
 
 /* Helper function, to simplify hid_read().
@@ -1472,7 +1467,7 @@ static int return_data(hid_device *dev, unsigned char *data, size_t length)
 	dev->input_reports = rpt->next;
 	free(rpt->data);
 	free(rpt);
-	return len;
+	return (int)len;
 }
 
 static void cleanup_mutex(void *param)
@@ -1565,10 +1560,19 @@ ret:
 	return bytes_read;
 }
 
+
 int HID_API_EXPORT hid_read(hid_device *dev, unsigned char *data, size_t length)
 {
 	return hid_read_timeout(dev, data, length, dev->blocking ? -1 : 0);
 }
+
+
+HID_API_EXPORT const wchar_t * HID_API_CALL hid_read_error(hid_device *dev)
+{
+	(void)dev;
+	return L"hid_read_error is not implemented yet";
+}
+
 
 int HID_API_EXPORT hid_set_nonblocking(hid_device *dev, int nonblock)
 {
@@ -1605,7 +1609,7 @@ int HID_API_EXPORT hid_send_feature_report(hid_device *dev, const unsigned char 
 	if (skipped_report_id)
 		length++;
 
-	return length;
+	return (int)length;
 }
 
 int HID_API_EXPORT hid_get_feature_report(hid_device *dev, unsigned char *data, size_t length)
@@ -1636,6 +1640,36 @@ int HID_API_EXPORT hid_get_feature_report(hid_device *dev, unsigned char *data, 
 		res++;
 
 	return res;
+}
+
+int HID_API_EXPORT hid_send_output_report(hid_device *dev, const unsigned char *data, size_t length)
+{
+	int res = -1;
+	int skipped_report_id = 0;
+	int report_number = data[0];
+
+	if (report_number == 0x0) {
+		data++;
+		length--;
+		skipped_report_id = 1;
+	}
+
+	res = libusb_control_transfer(dev->device_handle,
+		LIBUSB_REQUEST_TYPE_CLASS|LIBUSB_RECIPIENT_INTERFACE|LIBUSB_ENDPOINT_OUT,
+		0x09/*HID set_report*/,
+		(2/*HID output*/ << 8) | report_number,
+		dev->interface,
+		(unsigned char *)data, length,
+		1000/*timeout millis*/);
+
+	if (res < 0)
+		return -1;
+
+	/* Account for the report ID */
+	if (skipped_report_id)
+		length++;
+
+	return length;
 }
 
 int HID_API_EXPORT HID_API_CALL hid_get_input_report(hid_device *dev, unsigned char *data, size_t length)
@@ -1929,7 +1963,7 @@ uint16_t get_usb_code_for_current_locale(void)
 		return 0x0;
 
 	/* Make a copy of the current locale string. */
-	strncpy(search_string, locale, sizeof(search_string));
+	strncpy(search_string, locale, sizeof(search_string)-1);
 	search_string[sizeof(search_string)-1] = '\0';
 
 	/* Chop off the encoding part, and make it lower case. */

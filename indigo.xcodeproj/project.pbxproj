@@ -964,6 +964,14 @@
 		9D8D9EAB2D4B9FBD007A5BA3 /* indigo_uni_io.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D8D9EA72D4B9FBD007A5BA3 /* indigo_uni_io.c */; };
 		9D91E6042D9EB8200003A99C /* CAA_API.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D74A4F72D4B63F700A31003 /* CAA_API.h */; };
 		9D91E6052D9EB8200003A99C /* CAA_API.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D74A4F72D4B63F700A31003 /* CAA_API.h */; };
+		9D94A8A02E70400A005C5C56 /* config.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D94A89F2E70400A005C5C56 /* config.h */; };
+		9D94A8A12E70400A005C5C56 /* config.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D94A89F2E70400A005C5C56 /* config.h */; };
+		9D94A8A32E70401B005C5C56 /* hidapi.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D94A8A22E70401B005C5C56 /* hidapi.h */; };
+		9D94A8A42E70401B005C5C56 /* hidapi.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D94A8A22E70401B005C5C56 /* hidapi.h */; };
+		9D94A8AE2E7040AC005C5C56 /* hid.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D94A8AC2E7040AC005C5C56 /* hid.c */; };
+		9D94A8AF2E7040AC005C5C56 /* hidapi_darwin.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D94A8AD2E7040AC005C5C56 /* hidapi_darwin.h */; };
+		9D94A8B02E7040AC005C5C56 /* hid.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D94A8AC2E7040AC005C5C56 /* hid.c */; };
+		9D94A8B12E7040AC005C5C56 /* hidapi_darwin.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D94A8AD2E7040AC005C5C56 /* hidapi_darwin.h */; };
 		9D9691DA23687C0C00E0CACE /* indigo_aux_fbc.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D9691D923687AD800E0CACE /* indigo_aux_fbc.c */; };
 		9D9696C42D5C83A40051F9E3 /* indigo_ccd_svb2.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D9696BE2D5C83710051F9E3 /* indigo_ccd_svb2.c */; };
 		9D9696C52D5C83A40051F9E3 /* indigo_ccd_svb2.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D9696BE2D5C83710051F9E3 /* indigo_ccd_svb2.c */; };
@@ -1031,7 +1039,6 @@
 		9DDEFBFE21EE352F00657C8F /* libtoupcam.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 591B017221A49F4A006A1CD8 /* libtoupcam.dylib */; };
 		9DDEFBFF21EE358F00657C8F /* libUSB2ST4Conv.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59D9681321A2FE380069A64C /* libUSB2ST4Conv.a */; };
 		9DDEFC0021EE359C00657C8F /* libftd2xx.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 595355EC1F6B140300478BEC /* libftd2xx.a */; };
-		9DDEFC0221EE35A000657C8F /* libhidapi.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DDEFC0121EE35A000657C8F /* libhidapi.a */; };
 		9DDEFC0321EE35B300657C8F /* libcurl.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 59292E5620D4224F0042E939 /* libcurl.tbd */; };
 		9DDEFC0521EE35C000657C8F /* libc++.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DDEFC0421EE35C000657C8F /* libc++.tbd */; };
 		9DE0E7C222C6465500289234 /* indigo_focuser_dsd.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DE0E7B322C6465500289234 /* indigo_focuser_dsd.c */; };
@@ -4821,6 +4828,10 @@
 		9D89442022DCD297002DFE13 /* eq8_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = eq8_simulator.ino; sourceTree = "<group>"; };
 		9D8D9EA42D4B990E007A5BA3 /* indigo_uni_io.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_uni_io.h; sourceTree = "<group>"; };
 		9D8D9EA72D4B9FBD007A5BA3 /* indigo_uni_io.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_uni_io.c; sourceTree = "<group>"; };
+		9D94A89F2E70400A005C5C56 /* config.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = config.h; sourceTree = "<group>"; };
+		9D94A8A22E70401B005C5C56 /* hidapi.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = hidapi.h; path = hidapi/hidapi.h; sourceTree = "<group>"; };
+		9D94A8AC2E7040AC005C5C56 /* hid.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = hid.c; sourceTree = "<group>"; };
+		9D94A8AD2E7040AC005C5C56 /* hidapi_darwin.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = hidapi_darwin.h; sourceTree = "<group>"; };
 		9D9691D523687AD800E0CACE /* indigo_aux_fbc.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_aux_fbc.h; sourceTree = "<group>"; };
 		9D9691D623687AD800E0CACE /* indigo_aux_fbc_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_fbc_main.c; sourceTree = "<group>"; };
 		9D9691D723687AD800E0CACE /* lacertafbc.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = lacertafbc.rules; sourceTree = "<group>"; };
@@ -5133,7 +5144,6 @@
 				59D138A2283E5A8700FCC514 /* libraw.a in Frameworks */,
 				9DDEFC0021EE359C00657C8F /* libftd2xx.a in Frameworks */,
 				59B95B882C6295450027AD80 /* libsbig.dylib in Frameworks */,
-				9DDEFC0221EE35A000657C8F /* libhidapi.a in Frameworks */,
 				59989A7B2A1BCEB200665AB7 /* libmallincam.dylib in Frameworks */,
 				5980010A22E4E76700021D67 /* libapogee.a in Frameworks */,
 				598005FE22E5001500021D67 /* libqsiapi.a in Frameworks */,
@@ -9838,6 +9848,7 @@
 		59D381A61D9590EA00E87393 /* indigo_libs */ = {
 			isa = PBXGroup;
 			children = (
+				9D94A89E2E703FD7005C5C56 /* hidapi */,
 				59111CCD285F4DCE00E57194 /* indigocat */,
 				9DCB034622E9B9DE00A7A2E5 /* indigo */,
 				59E2DA0D263837BB00D3D4B5 /* libjpeg */,
@@ -13934,6 +13945,26 @@
 			path = eq8_simulator;
 			sourceTree = "<group>";
 		};
+		9D94A89E2E703FD7005C5C56 /* hidapi */ = {
+			isa = PBXGroup;
+			children = (
+				9D94A8AB2E704071005C5C56 /* mac */,
+				9D94A89F2E70400A005C5C56 /* config.h */,
+				9D94A8A22E70401B005C5C56 /* hidapi.h */,
+			);
+			name = hidapi;
+			path = externals/hidapi;
+			sourceTree = "<group>";
+		};
+		9D94A8AB2E704071005C5C56 /* mac */ = {
+			isa = PBXGroup;
+			children = (
+				9D94A8AC2E7040AC005C5C56 /* hid.c */,
+				9D94A8AD2E7040AC005C5C56 /* hidapi_darwin.h */,
+			);
+			path = mac;
+			sourceTree = "<group>";
+		};
 		9D9691D423687AD800E0CACE /* aux_fbc */ = {
 			isa = PBXGroup;
 			children = (
@@ -14762,11 +14793,13 @@
 				598A1C38259BA94A00C0B34C /* DDHidMouse.h in Headers */,
 				599FC68D2A0437F80030ED16 /* indigo_ptp.h in Headers */,
 				598A1C39259BA94A00C0B34C /* EFW_filter.h in Headers */,
+				9D94A8A32E70401B005C5C56 /* hidapi.h in Headers */,
 				591CD0E729805CB6003243AE /* indigo_ccd_rising.h in Headers */,
 				59958E3425CC833C00BEFA1B /* indigo_aux_skyalert.h in Headers */,
 				598A1C3A259BA94A00C0B34C /* indigo_wheel_qhy.h in Headers */,
 				59111D09285F511500E57194 /* indigocat_ss.h in Headers */,
 				593A8F0E285F615400F6CF1C /* indigocat_precession.h in Headers */,
+				9D94A8A02E70400A005C5C56 /* config.h in Headers */,
 				598A1C3C259BA94A00C0B34C /* DDHidElement.h in Headers */,
 				598A1C3E259BA94A00C0B34C /* DDHidDevice.h in Headers */,
 				598A1C3F259BA94A00C0B34C /* indigo_mount_synscan_driver.h in Headers */,
@@ -14805,6 +14838,7 @@
 				598A1C53259BA94A00C0B34C /* indigo_agent_mount.h in Headers */,
 				598A1C54259BA94A00C0B34C /* indigo_wheel_trutek.h in Headers */,
 				598A1C55259BA94A00C0B34C /* indigo_focuser_asi.h in Headers */,
+				9D94A8AF2E7040AC005C5C56 /* hidapi_darwin.h in Headers */,
 				5934588D2C8A0C220049421C /* indigo_focuser_lacerta.h in Headers */,
 				59A413332971E54C00F0A80B /* PlayerOnePW.h in Headers */,
 				598A1C56259BA94A00C0B34C /* indigo_ccd_ptp.h in Headers */,
@@ -15058,6 +15092,8 @@
 				5910D9C52580284E0015D915 /* duktape.h in Headers */,
 				59A3218B21D52C6100EC0F4A /* EAF_focuser.h in Headers */,
 				5911B6DA22633DBE00D6B9EC /* indigo_agent_guider.h in Headers */,
+				9D94A8A12E70400A005C5C56 /* config.h in Headers */,
+				9D94A8A42E70401B005C5C56 /* hidapi.h in Headers */,
 				595F2920211E211100380EF4 /* DDHidQueue.h in Headers */,
 				595F2919211E211100380EF4 /* NSDictionary+DDHidExtras.h in Headers */,
 				59A52D6521A33617000B6F27 /* gxccd.h in Headers */,
@@ -15085,6 +15121,7 @@
 				59B5135F297077920075C8A1 /* indigo_rotator_falcon.h in Headers */,
 				596FCAB42BD0328000F5BACB /* indigo_rotator_wa.h in Headers */,
 				59C76F12237872570091B966 /* deg2str.h in Headers */,
+				9D94A8B12E7040AC005C5C56 /* hidapi_darwin.h in Headers */,
 				59AEF5302CFC7111002C6347 /* indigo_ccd_atik2.h in Headers */,
 				9D73E62121FF3996003CEC15 /* utlist.h in Headers */,
 				9D73E60A21FF37DB003CEC15 /* libuvc.h in Headers */,
@@ -15667,6 +15704,7 @@
 				598A1BF8259BA94A00C0B34C /* indigo_focuser_dsd.c in Sources */,
 				598A1BF9259BA94A00C0B34C /* indigo_usb_utils.c in Sources */,
 				598A1BFA259BA94A00C0B34C /* indigo_token.c in Sources */,
+				9D94A8AE2E7040AC005C5C56 /* hid.c in Sources */,
 				598A1BFB259BA94A00C0B34C /* indigo_focuser_lunatico.c in Sources */,
 				598A1BFC259BA94A00C0B34C /* indigo_gps_simulator.c in Sources */,
 				598A1BFD259BA94A00C0B34C /* indigo_avi.c in Sources */,
@@ -15811,6 +15849,7 @@
 				9D73E61621FF37F9003CEC15 /* libuvc_ctrl.c in Sources */,
 				596FCA9F2BD0320E00F5BACB /* indigo_wheel_mi.c in Sources */,
 				59790B3029B2798A00F73B1D /* indigo_service_discovery.c in Sources */,
+				9D94A8B02E7040AC005C5C56 /* hid.c in Sources */,
 				5955CB6A2684BC9C00685071 /* indigo_dome_beaver.c in Sources */,
 				9D69408F2180BAF700AB112C /* indigo_aux_upb.c in Sources */,
 				9DAD522221246C18002FCC79 /* indigo_mount_synscan.c in Sources */,

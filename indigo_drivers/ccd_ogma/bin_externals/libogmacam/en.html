@@ -7,7 +7,7 @@
 <body>
 <h1 align="center">Ogmacam API Manual</h1>
 <hr/><h1><font color="#0000FF">1. Version &amp; Platform</font></h1>
-<hr/><ul><li>Version: 59.28926.20250709</li></ul>
+<hr/><ul><li>Version: 59.29465.20250907</li></ul>
 <ul><li>Platform<ul>
       <li>Win32:<ul>
           <li>x64: Win7 or above</li>
@@ -17,12 +17,11 @@
         </ul></li>
 	  <li><a href="https://learn.microsoft.com/en-us/windows/uwp" target="_blank">WinRT/UWP</a>: x64, x86, arm64, arm; Windows10 or above</li>
       <li>macOS: x64+arm64: macOS 11.0 or above, support x64 and <a href="https://en.wikipedia.org/wiki/Apple_silicon" target="_blank">Apple silicon</a> (such as M1, M2, etc)</li>
-	  </ul></li>
       <li>Linux: kernel 2.6.27 or above<ul><li>x64: GLIBC 2.14 or above</li>
 		  <li>x86: CPU supports SSE3 instruction set or above; GLIBC 2.8 or above</li>
-		  <li>arm64: GLIBC 2.17 or above; built by aarch64-linux-gnu (version 5.4.0)</li>
-		  <li>armhf: GLIBC 2.8 or above; built by arm-linux-gnueabihf (version 5.4.0)</li>
-		  <li>armel: GLIBC 2.8 or above; built by arm-linux-gnueabi (version 5.4.0)</li>
+		  <li>arm64: GLIBC 2.17 or above</li>
+		  <li>armhf: GLIBC 2.8 or above</li>
+		  <li>armel: GLIBC 2.8 or above</li>
 		</ul></li>
       <li>Android: __ANDROID_API__ &gt;= 24 (Android 7.0); built by android-ndk-r18b; see <a href="https://developer.android.com/ndk/guides/abis" target="_blank">here</a>
         <ul><li>arm64: arm64-v8a</li>
@@ -382,8 +381,8 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
 	(c) <a id="wrongthread2">Do NOT call Ogmacam_put_Roi, it will fail with the error code E_WRONG_THREAD.</a><br/>
 	(d) If try to acquire the same lock when performing the above operations and when callback functions, it will cause waiting forever for the callback to end, deadlock</strong></p>
 </li></ul><ul><li><h2><font color="#0000FF"><a id="cord">Coordinate</a></font></h2>
-<p>Functions with coordinate parameters, such as Ogmacam_put_Roi, Ogmacam_put_AEAuxRect, etc., the coordinate is <strong>always relative to the original resolution</strong>, even that the video has been flipped, rotated, digital binning, ROI, or combination of the previous operations.</p>
-<p>If the image is upside down (see <a href="#upsidedown">here</a>), the coordinate must be also upsize down.</p>
+<p>Functions with coordinate parameters, such as Ogmacam_put_Roi, Ogmacam_put_AEAuxRect, etc., the coordinate is <strong>always relative to the original resolution</strong>, even that the image has been flipped, rotated, digital binning, ROI, or combination of the previous operations.</p>
+<p>Exception: if the image is upside down (see <a href="#upsidedown">here</a>), the coordinate must be also upsize down.</p>
 </li></ul><ul><li><h2><font color="#0000FF">Ogmacam_EnumV2<br/>Ogmacam_EnumWithName</font></h2>
     <p><strong>Return value: </strong> non-negative integer, enumerated camera number</p>
     <p><strong>Parameters:</strong></p>
@@ -431,7 +430,7 @@ typedef struct {
    <td width="8%">name</td>
    <td colspan="2">The name of this model</td>
    </tr><tr>
-   <td width="8%" rowspan="59">flag</td>
+   <td width="8%" rowspan="60">flag</td>
    <td colspan="2">Bitwise flag</td>
    </tr><tr>
    <td width="29%">OGMACAM_FLAG_CMOS</td>
@@ -453,13 +452,13 @@ typedef struct {
    <td>support bin/skip mode, see Ogmacam_put_Mode and Ogmacam_get_Mode</td>
  </tr><tr>
    <td>OGMACAM_FLAG_USB32</td>
-   <td>usb3.2</td>
+   <td>USB 3.2 Gen 2</td>
  </tr><tr>
    <td>OGMACAM_FLAG_USB30</td>
    <td>usb3.0</td>
  </tr><tr>
    <td>OGMACAM_FLAG_USB32_OVER_USB30</td>
-   <td>usb3.2 camera connected to usb3.0 port</td>
+   <td>USB 3.2 Gen 2 camera connected to usb3.0 port</td>
  </tr><tr>
    <td>OGMACAM_FLAG_USB30_OVER_USB20</td>
    <td>usb3.0 camera connected to usb2.0 port</td>
@@ -595,6 +594,9 @@ typedef struct {
     <td>OGMACAM_FLAG_CXP</td>
     <td>CXP: CoaXPress</td>
   </tr><tr>
+    <td>OGMACAM_FLAG_LINESCAN</td>
+    <td>line scan camera</td>
+  </tr><tr>
     <td>OGMACAM_FLAG_FILTERWHEEL</td>
     <td>astro filter wheel</td>
   </tr><tr>
@@ -660,12 +662,12 @@ typedef struct {
   <p><strong>Parameters:</strong></p>
   	<blockquote>
   		<p><a href="#camidsn">camId</a>: Ogmacam camera ID, enumerated by Ogmacam_EnumV2. <strong>If camId is NULL, Ogmacam_Open will open the first enumerated camera which connects to the computer. So, if we don't care about that multiple cameras connect to the computer simultaneously, Ogmacam_EnumV2 is optional, we can simply use NULL as the parameter.</strong></p>
-	<p>For <strong>USB, GigE or PCIe</strong> camera, the camId can also be specified as (case sensitive):<br/>
-		(a) "sn:xxxxxxxxxxxx" (such as sn:ZP250212241204105) or<br/>
-		(b) "name:xxxxxxxxxxxx" (such as name:Camera1)</p>		
+	<p>For <strong>USB, GigE, CameraLink or CXP</strong> camera, the camId can also be specified as (case sensitive):<br/>
+		(a) "sn:xxxxxxxxxxxx" (Use SN, such as sn:ZP250212241204105), or<br/>
+		(b) "name:xxxxxxxxxxxx" (Use name, such as name:Camera1)</p>		
   	<p>Moreover, for <strong>GigE</strong> camera, the camId can also be specified as (case sensitive):<br/>
-		(a) "ip:xxx.xxx.xxx.xxx" (such as ip:192.168.1.100) or<br/>
-		(b) "mac:xxxxxxxxxxxx" (such as mac:d05f64ffff23) or</p>
+		(a) "ip:xxx.xxx.xxx.xxx" (Use IP address, such as ip:192.168.1.100), or<br/>
+		(b) "mac:xxxxxxxxxxxx" (Use MAC address, such as mac:d05f64ffff23) or</p>
 	</blockquote>
   <p><strong>Remarks:</strong> open the camera instance.</p>
   <p>(1) Supports attaching some additional parameters after camId parameter (<strong>Use semicolon (;) to split, case sensitive</strong>), such as:</p>
@@ -1530,10 +1532,8 @@ OGMACAM_PIXELFORMAT_RAW10PACK
         <td>OGMACAM_OPTION_THREAD_PRIORITY</td><td>RW</td>
         <td>set the priority of the internal thread which grab data from the usb device.<br/>
           Win:<blockquote>0 = THREAD_PRIORITY_NORMAL;<br/>1 = THREAD_PRIORITY_ABOVE_NORMAL;<br/>2 = THREAD_PRIORITY_HIGHEST;<br/>3 = THREAD_PRIORITY_TIME_CRITICAL;<br/>Please refer to <a href="https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setthreadpriority" target="_blank">SetThreadPriority</a></blockquote>
-		  Linux &amp; macOS: <blockquote>The high 16 bits for the scheduling policy, and the low 16 bits for the priority.<br/>
-		  Please refer to <a href="https://linux.die.net/man/3/pthread_setschedparam" target="_blank">pthread_setschedparam</a>
-		  </blockquote></td>
-        <td>Win: 1<br/>Linux / macOS: NA</td><td>Yes</td>
+		  Linux &amp; macOS: <blockquote>similar to Win</blockquote></td>
+        <td>1</td><td>Yes</td>
       </tr><tr>
       	<td>OGMACAM_OPTION_LINEAR</td><td>RW</td>
       	<td>Builtin linear tone mapping:<br/>0 = turn off<br/>1 = turn on</td>
@@ -1721,10 +1721,19 @@ OGMACAM_PIXELFORMAT_RAW10PACK
 		1: reverse<br/>
 		2: alternate</td>
       	<td>0</td><td>Yes</td></tr><tr>
+      	<td>OGMACAM_OPTION_BLACKLEVEL_AUTOADJUST</td><td>RW</td>
+      	<td>Black level automatic adjustment function:<br/> 0: off<br/>1: on<br/>
+		This setting turn on/off black level auto adjust function by OB(Optical Black) level.
+In case of long exposure and so on, OB level is offset by leak or any other reason.
+Because of it, if the adjustment becomes a problem, this setting is introduced for one of the solution.</td>
+      	<td>Model Specific</td><td>Yes</td></tr><tr>
       	<td>OGMACAM_OPTION_MECHANICALSHUTTER</td><td>RW</td>
       	<td>Mechanical shutter:<br/>
 		0: open<br/>
 		1: close</td>
+      	<td>0</td><td>Yes</td></tr><tr>
+      	<td>OGMACAM_OPTION_CDS</td><td>RW</td>
+      	<td>Correlated Double Sampling: 0~100</td>
       	<td>0</td><td>Yes</td></tr><tr>
       	<td>OGMACAM_OPTION_LINE_LENGTH</td><td>RW</td>
       	<td>Line length in pixel clock</td>
@@ -1767,7 +1776,7 @@ Ogmacam_get_MaxAutoExpoTimeAGain<br/>Ogmacam_put_MinAutoExpoTimeAGain<br/>Ogmaca
     <p><strong>Parameters:</strong></p>
     <blockquote>
       <p>HOgmacam h: camera handle</p>
-      <p><a id="aexpo">int bAutoExposure:</a></p>
+      <p><a id="aexpo">int mode:</a></p>
 		<blockquote>0: disable auto exposure<br/>
 		1: auto exposure continue mode<br/>
 		2: auto exposure once mode</blockquote>
@@ -2463,7 +2472,7 @@ public bool Snap(uint nResolutionIndex)
 	  </tr><tr>
 		<td rowspan="3"><a id="demojava">demojava</a></td>
 		<td>simplest</td>
-		<td rowspan="5">Win32<br/>Linux<br/>macOS</td>
+		<td rowspan="6">Win32<br/>Linux<br/>macOS</td>
 		<td rowspan="3">Java</td>
 		<td rowspan="3"><a href="http://sourceforge.net/projects/wtl" target="_blank">jna</a></td>
 		<td>console</td>
@@ -2474,9 +2483,11 @@ public bool Snap(uint nResolutionIndex)
 	  </tr><tr>
 		<td>swing</td><td>swing sample. IntelliJ project</td>
 	  </tr><tr>
-		<td rowspan="2"><a id="demopython">demopython</a></td>
-		<td>simplest</td><td rowspan="2">Python</td><td></td><td>console</td>
+		<td rowspan="3"><a id="demopython">demopython</a></td>
+		<td>simplest</td><td rowspan="3">Python</td><td rowspan="2"></td><td rowspan="2">console</td>
 		<td>simplest python sample</td>
+	  </tr><tr>
+		<td>gigesimplest</td><td>simplest python sample to support GigE camera</td>
 	  </tr><tr>
 		<td>qt5<br/>qt6</td><td>PyQt</td><td rowspan="12">GUI</td>
 		<td>PyQt sample, <a href="./images/pyqt.png">snapshot</a>.</td>
