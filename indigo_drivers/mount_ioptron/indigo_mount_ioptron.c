@@ -90,6 +90,7 @@ typedef struct {
 	bool hc8407;
 	bool no_park;
 	bool has_sp;
+	bool has_encoders;
 	indigo_property *protocol_property;
 } ioptron_private_data;
 
@@ -787,6 +788,7 @@ static void mount_connect_callback(indigo_device *device) {
 			PRIVATE_DATA->hc8406 = false;
 			PRIVATE_DATA->hc8407 = false;
 			PRIVATE_DATA->no_park = true;
+			PRIVATE_DATA->has_encoders = false;
 			if (ieq_command(device, ":MountInfo#", response, sizeof(response)) && *response) {
 				PRIVATE_DATA->protocol = 0x0100;
 				strncpy(PRIVATE_DATA->product, response, 64);
@@ -811,12 +813,15 @@ static void mount_connect_callback(indigo_device *device) {
 					// v2.5 : CEM25-EC
 					// v3.10 : CEM26
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "CEM25-EC");
+					PRIVATE_DATA->has_encoders = true;
 				} else if (!strcmp(PRIVATE_DATA->product, "0027")) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "CEM26-EC");
+					PRIVATE_DATA->has_encoders = true;
 				} else if (!strcmp(PRIVATE_DATA->product, "0028")) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "GEM28");
 				} else if (!strcmp(PRIVATE_DATA->product, "0029")) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "GEM28-EC");
+					PRIVATE_DATA->has_encoders = true;
 				} else if (!strcmp(PRIVATE_DATA->product, "0030")) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "iEQ30 Pro");
 				} else if (!strcmp(PRIVATE_DATA->product, "0036")) {
@@ -825,10 +830,12 @@ static void mount_connect_callback(indigo_device *device) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "CEM40");
 				} else if (!strcmp(PRIVATE_DATA->product, "0041")) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "CEM40-EC");
+					PRIVATE_DATA->has_encoders = true;
 				} else if (!strcmp(PRIVATE_DATA->product, "0043")) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "GEM45");
 				} else if (!strcmp(PRIVATE_DATA->product, "0044")) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "GEM45-EC");
+					PRIVATE_DATA->has_encoders = true;
 				} else if (!strcmp(PRIVATE_DATA->product, "0045")) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "iEQ45 Pro EQ");
 				} else if (!strcmp(PRIVATE_DATA->product, "0046")) {
@@ -837,16 +844,20 @@ static void mount_connect_callback(indigo_device *device) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "CEM60");
 				} else if (!strcmp(PRIVATE_DATA->product, "0061")) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "CEM60-EC");
+					PRIVATE_DATA->has_encoders = true;
 				} else if (!strcmp(PRIVATE_DATA->product, "0070")) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "CEM70");
 				} else if (!strcmp(PRIVATE_DATA->product, "0071")) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "CEM70-EC");
+					PRIVATE_DATA->has_encoders = true;
 				} else if (!strcmp(PRIVATE_DATA->product, "0120")) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "CEM120");
 				} else if (!strcmp(PRIVATE_DATA->product, "0121")) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "CEM120-EC");
+					PRIVATE_DATA->has_encoders = true;
 				} else if (!strcmp(PRIVATE_DATA->product, "0122")) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "CEM120-EC2");
+					PRIVATE_DATA->has_encoders = true;
 				} else if (!strcmp(PRIVATE_DATA->product, "5010")) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "Cube II AA");
 				} else if (!strcmp(PRIVATE_DATA->product, "5035")) {
@@ -854,7 +865,7 @@ static void mount_connect_callback(indigo_device *device) {
 				} else if (!strcmp(PRIVATE_DATA->product, "5045")) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "iEQ45 Pro AA");
 				} else if (strlen(PRIVATE_DATA->product) == 4) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unknown mount '%s'", response);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "iOptron %s", response);
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "Unknown mount");
 				} else if (!strcmp(PRIVATE_DATA->product, ":EQ45")) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "iEQ45");
@@ -1261,6 +1272,8 @@ static void mount_connect_callback(indigo_device *device) {
 				if (MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value == 0)
 					MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value = 1;
 				MOUNT_HOME_PROPERTY->count = 2;
+				MOUNT_PEC_PROPERTY->hidden = PRIVATE_DATA->has_encoders;
+				MOUNT_PEC_TRAINING_PROPERTY->hidden = PRIVATE_DATA->has_encoders;
 				if (ieq_command(device, ":GLS#", response, sizeof(response))) {
 					indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
 					indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
@@ -1297,7 +1310,11 @@ static void mount_connect_callback(indigo_device *device) {
 							MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 							break;
 						case '1': // tracking with PEC disabled
+							indigo_set_switch(MOUNT_PEC_PROPERTY, MOUNT_PEC_DISABLED_ITEM, true);
+							indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
+							break;
 						case '5': // tracking with PEC enabled (only for non-encoder edition)
+							indigo_set_switch(MOUNT_PEC_PROPERTY, MOUNT_PEC_ENABLED_ITEM, true);
 							indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
 							break;
 						case '6': // parked
@@ -1330,6 +1347,23 @@ static void mount_connect_callback(indigo_device *device) {
 					MOUNT_GUIDE_RATE_DEC_ITEM->number.value = atoi(response + 2);
 					response[2] = 0;
 					MOUNT_GUIDE_RATE_RA_ITEM->number.value = atoi(response);
+				}
+				if (!PRIVATE_DATA->has_encoders) {
+					if (ieq_command(device, ":GPE#", response, sizeof(response))) {
+						if (response[0] == '0') {
+							indigo_send_message(device, "PEC data incomplete");
+						} else if (response[0] == '1') {
+							indigo_send_message(device, "PEC data complete");
+						}
+					}
+					if (ieq_command(device, ":GPR#", response, sizeof(response))) {
+						if (response[0] == '0') {
+							indigo_set_switch(MOUNT_PEC_TRAINING_PROPERTY, MOUNT_PEC_TRAINIG_STOPPED_ITEM, true);
+						} else if (response[0] == '1') {
+							indigo_set_switch(MOUNT_PEC_TRAINING_PROPERTY, MOUNT_PEC_TRAINIG_STARTED_ITEM, true);
+						}
+					}
+
 				}
 			}
 			PRIVATE_DATA->has_sp = false;
@@ -1780,6 +1814,38 @@ static void mount_guide_rate_callback(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
+static void mount_pec_callback(indigo_device *device) {
+	char command[128], response[128];
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	if (MOUNT_PEC_TRAINIG_STARTED_ITEM->sw.value) {
+		ieq_command(device, ":SPR0#", response, 1);
+		MOUNT_PEC_TRAINING_PROPERTY->state = *response == '1' ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+		indigo_set_switch(MOUNT_PEC_TRAINING_PROPERTY, MOUNT_PEC_TRAINIG_STOPPED_ITEM, true);
+		indigo_update_property(device, MOUNT_PEC_TRAINING_PROPERTY, NULL);
+	}
+	sprintf(command, ":SPP%c#", MOUNT_PEC_ENABLED_ITEM->sw.value ? '1' : '0');
+	ieq_command(device, command, response, 1);
+	MOUNT_PEC_PROPERTY->state = *response == '1' ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+	indigo_update_property(device, MOUNT_PEC_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
+static void mount_pec_training_callback(indigo_device *device) {
+	char command[128], response[128];
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	if (MOUNT_PEC_ENABLED_ITEM->sw.value) {
+		ieq_command(device, ":SPP0#", response, 1);
+		MOUNT_PEC_PROPERTY->state = *response == '1' ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+		indigo_set_switch(MOUNT_PEC_PROPERTY, MOUNT_PEC_DISABLED_ITEM, true);
+		indigo_update_property(device, MOUNT_PEC_PROPERTY, NULL);
+	}
+	sprintf(command, ":SPR%c#", MOUNT_PEC_TRAINIG_STARTED_ITEM->sw.value ? '1' : '0');
+	ieq_command(device, command, response, 1);
+	MOUNT_PEC_TRAINING_PROPERTY->state = *response == '1' ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+	indigo_update_property(device, MOUNT_PEC_TRAINING_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
 static void start_tracking(indigo_device *device) {
 	char response[2];
 	if (MOUNT_TRACKING_OFF_ITEM->sw.value) {
@@ -2064,6 +2130,20 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, MOUNT_GUIDE_RATE_PROPERTY, NULL);
 		indigo_set_timer(device, 0, mount_guide_rate_callback, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(MOUNT_PEC_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_PEC
+		indigo_property_copy_values(MOUNT_PEC_PROPERTY, property, false);
+		MOUNT_PEC_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, MOUNT_PEC_PROPERTY, NULL);
+		indigo_set_timer(device, 0, mount_pec_callback, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(MOUNT_PEC_TRAINING_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_PEC_TRAINING
+		indigo_property_copy_values(MOUNT_PEC_TRAINING_PROPERTY, property, false);
+		MOUNT_PEC_TRAINING_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, MOUNT_PEC_TRAINING_PROPERTY, NULL);
+		indigo_set_timer(device, 0, mount_pec_training_callback, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_PROTOCOL_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_PROTOCOL

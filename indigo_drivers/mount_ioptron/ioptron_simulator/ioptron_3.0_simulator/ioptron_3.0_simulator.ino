@@ -33,6 +33,8 @@ char moving_rate = '0';
 char tracking_rate[] = "10000";
 char guide_rate[] = "5050";
 char hemisphere = '1';
+char pec = '0';
+char pec_recording = '0';
 
 void parseCommand() {
   char command[32], buffer[32];
@@ -40,7 +42,7 @@ void parseCommand() {
     int length = Serial.readBytesUntil('#', command, sizeof(command));
     command[length] = 0;
     if (strcmp(command, "MountInfo") == 0) {
-      Serial.write("0036");
+      Serial.write("0120");
     } else if (strcmp(command, "FW1") == 0) {
       Serial.write("210605xxxxxx#");
     } else if (strcmp(command, "FW2") == 0) {
@@ -54,7 +56,10 @@ void parseCommand() {
       else if (slewing)
         Serial.write('2');
       else if (tracking)
-        Serial.write('1');
+        if (pec == '1')
+          Serial.write('5');
+        else
+          Serial.write('1');
       else if (target_ra == park_ra && target_dec == park_dec)
         Serial.write('7');
       else 
@@ -165,6 +170,16 @@ void parseCommand() {
     } else if (strncmp(command, "CM", 2) == 0) {
       current_ra = target_ra;
       current_dec = target_dec;
+      Serial.write('1');
+    } else if (strncmp(command, "GPE", 2) == 0) {
+      Serial.write(pec_recording == '0' ? '1' : '0');
+    } else if (strcmp(command, "GPR") == 0) {
+      Serial.write(pec_recording);
+    } else if (strncmp(command, "SPP", 3) == 0) {
+      pec = command[3];
+      Serial.write('1');
+    } else if (strncmp(command, "SPR", 3) == 0) {
+      pec_recording = command[3];
       Serial.write('1');
     }
   }
