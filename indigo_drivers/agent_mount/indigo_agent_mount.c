@@ -23,7 +23,7 @@
  \file indigo_agent_mount.c
  */
 
-#define DRIVER_VERSION 0x0013
+#define DRIVER_VERSION 0x0014
 #define DRIVER_NAME	"indigo_agent_mount"
 
 #include <stdlib.h>
@@ -1208,6 +1208,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 static indigo_result agent_device_detach(indigo_device *device) {
 	assert(device != NULL);
 	save_config(device);
+	stop_lx200_server(device);
 	indigo_release_property(AGENT_GEOGRAPHIC_COORDINATES_PROPERTY);
 	indigo_release_property(AGENT_SITE_DATA_SOURCE_PROPERTY);
 	indigo_release_property(AGENT_SET_HOST_TIME_PROPERTY);
