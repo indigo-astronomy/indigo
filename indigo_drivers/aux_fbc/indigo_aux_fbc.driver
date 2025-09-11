@@ -26,7 +26,7 @@ driver fbc {
 	label = "Lacerta FBC";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
 	copyright = "Copyright (c) 2019-2025 Rumen G. Bogdanovski";
-	version = 6;
+	version = 7;
 	serial {
 		pattern {
 			vid = 0x0403;
@@ -69,8 +69,6 @@ driver fbc {
 				if (fbc_command(device, ": I #", true) && !strcmp("I FBC", PRIVATE_DATA->response)) {
 					if (fbc_command(device, ": P #", true)) {
 						if (!strcmp("P SerialMode", PRIVATE_DATA->response)) {
-							fbc_command(device, ": E 0 #", false);
-							fbc_command(device, ": F 0 #", false);
 							if (fbc_command(device, ": V #", true)) {
 								INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, DRIVER_LABEL);
 								INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, PRIVATE_DATA->response + 2);
@@ -101,32 +99,14 @@ driver fbc {
 		interface = INDIGO_INTERFACE_AUX_LIGHTBOX;
 		additional_instances = true;
 		on_connect {
+			fbc_command(device, ": E 0 #", false);
+			fbc_command(device, ": F 0 #", false);
 			fbc_command(device, ": B %d #", false, (int)AUX_LIGHT_INTENSITY_ITEM->number.value);
 		}
 		on_attach {
 			INFO_PROPERTY->count = 6;
 			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
-		}
-		switch AUX_LIGHT_SWITCH {
-			name = AUX_LIGHT_SWITCH_PROPERTY_NAME;
-			group = AUX_MAIN_GROUP;
-			label = "Light (on/off)";
-			on_change {
-				if (!fbc_command(device, "E:%d", false, AUX_LIGHT_SWITCH_ON_ITEM->sw.value)) { // TODO: This command is not understood
-					AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
-				}
-			}
-			item AUX_LIGHT_SWITCH_ON {
-				name = AUX_LIGHT_SWITCH_ON_ITEM_NAME;
-				label = "On";
-				value = false;
-			}
-			item AUX_LIGHT_SWITCH_OFF {
-				name = AUX_LIGHT_SWITCH_OFF_ITEM_NAME;
-				label = "Off";
-				value = true;
-			}
 		}
 		number AUX_LIGHT_INTENSITY {
 			name = AUX_LIGHT_INTENSITY_PROPERTY_NAME;
