@@ -1428,8 +1428,12 @@ void indigo_uni_close(indigo_uni_handle **handle) {
 		*handle = NULL;
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 		if ((copy)->type != INDIGO_FILE_HANDLE) {
+			/* Allow a graceful close without blocking for 1s */
+			struct linger ling;
+			ling.l_onoff = 1;
+			ling.l_linger = 1;
+			setsockopt((copy)->fd, SOL_SOCKET, SO_LINGER, &ling, sizeof(ling));
 			shutdown((copy)->fd, SHUT_RDWR);
-			indigo_sleep(1);
 		}
 		close((copy)->fd);
 #elif defined(INDIGO_WINDOWS)
