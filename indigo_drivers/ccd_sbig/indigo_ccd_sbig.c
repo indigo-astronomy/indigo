@@ -95,6 +95,10 @@
 #define SBIG_ABG_CLK_MED_ITEM            (SBIG_ABG_PROPERTY->items + 2)
 #define SBIG_ABG_CLK_HI_ITEM             (SBIG_ABG_PROPERTY->items + 3)
 
+#define SBIG_FAN_PROPERTY                (PRIVATE_DATA->sbig_fan_property)
+#define SBIG_FAN_ENABLED_ITEM            (SBIG_FAN_PROPERTY->items + 0)
+#define SBIG_FAN_DISABLED_ITEM           (SBIG_FAN_PROPERTY->items + 1)
+
 #define SBIG_ADD_WHEEL_PROPERTY         (PRIVATE_DATA->sbig_add_wheel_property)
 #define SBIG_ADD_WHEEL_CFW6A_ITEM       (SBIG_ADD_WHEEL_PROPERTY->items + 0)
 #define SBIG_ADD_WHEEL_CFW8_ITEM        (SBIG_ADD_WHEEL_PROPERTY->items + 1)
@@ -136,10 +140,12 @@ typedef struct {
 	double target_temperature, current_temperature;
 	double cooler_power;
 	bool freeze_tec;
+	bool fan_state;
 	bool imager_no_check_temperature;
 	unsigned char *imager_buffer;
 	indigo_property *sbig_freeze_tec_property;
 	indigo_property *sbig_abg_property;
+	indigo_property *sbig_fan_property;
 	indigo_property *sbig_add_wheel_property;
 	indigo_property *sbig_add_ao_property;
 
@@ -359,6 +365,32 @@ static int sbig_freeze_tec(bool enable) {
 }
 
 
+static int sbig_get_fan_state(bool *enable) {
+	unsigned short status;
+	int res = get_command_status(CC_MISCELLANEOUS_CONTROL, &status);
+	if (res == CE_NO_ERROR) {
+		*enable = (status & 0x100) != 0;
+	} else {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_QUERY_COMMAND_STATUS error = %d (%s)", res, sbig_error_string(res));
+	}
+	return res;
+}
+
+
+static int sbig_set_fan_state(bool enable) {
+	// Turning the fan off works, but with the current Universal SBIG driver turning it back on doesn't
+	MiscellaneousControlParams mscp;
+	mscp.fanEnable = enable;
+	mscp.shutterCommand = SC_LEAVE_SHUTTER;
+	mscp.ledState = enable ? LED_ON : LED_OFF;
+	int res = sbig_command(CC_MISCELLANEOUS_CONTROL, &mscp, NULL);
+	if (res != CE_NO_ERROR) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_MISCELLANEOUS_CONTROL = %d (%s)", res, sbig_error_string(res));
+	}
+	return res;
+}
+
+
 static ushort sbig_get_relaymap(short handle, ushort *relay_map) {
 	short res;
 	QueryCommandStatusParams csq = { .command = CC_ACTIVATE_RELAY };
@@ -462,6 +494,7 @@ static indigo_result sbig_enumerate_properties(indigo_device *device, indigo_cli
 	if ((CONNECTION_CONNECTED_ITEM->sw.value) && (PRIMARY_CCD)) {
 		indigo_define_matching_property(SBIG_FREEZE_TEC_PROPERTY);
 		indigo_define_matching_property(SBIG_ABG_PROPERTY);
+		indigo_define_matching_property(SBIG_FAN_PROPERTY);
 	}
 	if (PRIMARY_CCD) {
 		indigo_define_matching_property(SBIG_ADD_WHEEL_PROPERTY);
@@ -1067,6 +1100,12 @@ static indigo_result ccd_attach(indigo_device *device) {
 		indigo_init_switch_item(SBIG_ABG_CLK_MED_ITEM, "SBIG_ABG_CLK_MED", "Clock Medium, ABG", false);
 		indigo_init_switch_item(SBIG_ABG_CLK_HI_ITEM, "SBIG_ABG_CLK_LOW_HI", "Clock High, ABG", false);
 
+		SBIG_FAN_PROPERTY = indigo_init_switch_property(NULL, device->name, "SBIG_FAN_STATE", CCD_ADVANCED_GROUP, "Fan State", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (SBIG_FAN_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		SBIG_FAN_PROPERTY->hidden = false;
+
 		SBIG_ADD_WHEEL_PROPERTY = indigo_init_switch_property(NULL, device->name, "SBIG_ADD_WHEEL", MAIN_GROUP, "Add non-autodectable filter wheel", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 2);
 		if (SBIG_ADD_WHEEL_PROPERTY == NULL) {
 			return INDIGO_FAILED;
@@ -1152,6 +1191,11 @@ static void ccd_connect_callback(indigo_device *device) {
 
 					indigo_define_property(device, SBIG_FREEZE_TEC_PROPERTY, NULL);
 					indigo_define_property(device, SBIG_ABG_PROPERTY, NULL);
+
+					if (sbig_get_fan_state(&(PRIVATE_DATA->fan_state)) == CE_NO_ERROR) {
+						indigo_init_switch_item(SBIG_FAN_ENABLED_ITEM, "SBIG_FAN_ENABLED", "Enabled", PRIVATE_DATA->fan_state);
+						indigo_init_switch_item(SBIG_FAN_DISABLED_ITEM, "SBIG_FAN_DISABLED", "Disabled", !PRIVATE_DATA->fan_state);
+					}
 
 					CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->imager_ccd_basic_info.readoutInfo[0].width;
 					CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->imager_ccd_basic_info.readoutInfo[0].height;
@@ -1365,6 +1409,7 @@ static void ccd_connect_callback(indigo_device *device) {
 				}
 				indigo_delete_property(device, SBIG_FREEZE_TEC_PROPERTY, NULL);
 				indigo_delete_property(device, SBIG_ABG_PROPERTY, NULL);
+				indigo_delete_property(device, SBIG_FAN_PROPERTY, NULL);
 				if (PRIVATE_DATA->imager_buffer != NULL) {
 					free(PRIVATE_DATA->imager_buffer);
 					PRIVATE_DATA->imager_buffer = NULL;
@@ -1516,6 +1561,24 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		indigo_update_property(device, SBIG_ABG_PROPERTY, NULL);
 		return INDIGO_OK;
+	// -------------------------------------------------------------------------------- FAN
+	} else if ((PRIMARY_CCD) && (indigo_property_match_changeable(SBIG_FAN_PROPERTY, property))) {
+		indigo_property_copy_values(SBIG_FAN_PROPERTY, property, false);
+		SBIG_FAN_PROPERTY->state = INDIGO_OK_STATE;
+
+		pthread_mutex_lock(&driver_mutex);
+
+		if (SBIG_FAN_ENABLED_ITEM->sw.value) {
+			PRIVATE_DATA->fan_state = true;
+			sbig_set_fan_state(true);
+		} else {
+			PRIVATE_DATA->fan_state = false;
+			sbig_set_fan_state(false);
+		}
+		pthread_mutex_unlock(&driver_mutex);
+
+		indigo_update_property(device, SBIG_FAN_PROPERTY, NULL);
+		return INDIGO_OK;
 	// --------------------------------------------------------------------------------- ADD_WHEEL
 	} else if ((PRIMARY_CCD) && (indigo_property_match_changeable(SBIG_ADD_WHEEL_PROPERTY, property))) {
 		bool cfw6a_state = SBIG_ADD_WHEEL_CFW6A_ITEM->sw.value;
@@ -1591,6 +1654,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 	if (PRIMARY_CCD) {
 		indigo_release_property(SBIG_FREEZE_TEC_PROPERTY);
 		indigo_release_property(SBIG_ABG_PROPERTY);
+		indigo_release_property(SBIG_FAN_PROPERTY);
 		indigo_delete_property(device, SBIG_ADD_WHEEL_PROPERTY, NULL);
 		indigo_release_property(SBIG_ADD_WHEEL_PROPERTY);
 		indigo_delete_property(device, SBIG_ADD_AO_PROPERTY, NULL);
