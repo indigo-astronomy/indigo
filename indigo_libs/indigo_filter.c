@@ -857,7 +857,7 @@ indigo_result indigo_filter_define_property(indigo_client *client, indigo_device
 							strcat(agent_property->group, property->group);
 						}
 						agent_cache[free_index] = agent_property;
-						indigo_define_property(device, agent_property, message);
+						indigo_define_property(device, agent_property, NULL);
 						break;
 					}
 				}
@@ -930,7 +930,7 @@ indigo_result indigo_filter_update_property(indigo_client *client, indigo_device
 								indigo_release_property(device_cache[i]);
 								device_cache[i] = NULL;
 								if (agent_cache[i]) {
-									indigo_delete_property(device, agent_cache[i], message);
+									indigo_delete_property(device, agent_cache[i], NULL);
 									indigo_release_property(agent_cache[i]);
 									agent_cache[i] = NULL;
 								}
@@ -960,7 +960,7 @@ indigo_result indigo_filter_update_property(indigo_client *client, indigo_device
 							memcpy(agent_property->items, property->items, property->count * sizeof(indigo_item));
 						}
 						agent_property->state = property->state;
-						indigo_update_property(device, agent_property, message);
+						indigo_update_property(device, agent_property, NULL);
 					}
 					return INDIGO_OK;
 				}
@@ -998,7 +998,7 @@ indigo_result indigo_filter_delete_property(indigo_client *client, indigo_device
 				indigo_release_property(device_cache[i]);
 				device_cache[i] = NULL;
 				if (agent_cache[i]) {
-					indigo_delete_property(device, agent_cache[i], message);
+					indigo_delete_property(device, agent_cache[i], NULL);
 					indigo_release_property(agent_cache[i]);
 					agent_cache[i] = NULL;
 				}
@@ -1017,7 +1017,7 @@ indigo_result indigo_filter_delete_property(indigo_client *client, indigo_device
 				indigo_release_property(device_cache[i]);
 				device_cache[i] = NULL;
 				if (agent_cache[i]) {
-					indigo_delete_property(device, agent_cache[i], message);
+					indigo_delete_property(device, agent_cache[i], NULL);
 					indigo_release_property(agent_cache[i]);
 					agent_cache[i] = NULL;
 				}
