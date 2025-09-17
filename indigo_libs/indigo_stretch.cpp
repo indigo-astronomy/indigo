@@ -653,3 +653,19 @@ extern "C" void indigo_debayer_8_grbg(const uint8_t *input_buffer, int width, in
 extern "C" void indigo_debayer_8_bggr(const uint8_t *input_buffer, int width, int height, uint8_t *output_buffer) {
 	indigo_debayer(input_buffer, width, height, 0x11, output_buffer);
 }
+
+extern "C" void indigo_debayer_16_rggb(const uint16_t *input_buffer, int width, int height, uint8_t *output_buffer) {
+	indigo_debayer(input_buffer, width, height, 0x00, output_buffer);
+}
+
+extern "C" void indigo_debayer_16_gbrg(const uint16_t *input_buffer, int width, int height, uint8_t *output_buffer) {
+	indigo_debayer(input_buffer, width, height, 0x01, output_buffer);
+}
+
+extern "C" void indigo_debayer_16_grbg(const uint16_t *input_buffer, int width, int height, uint8_t *output_buffer) {
+	indigo_debayer(input_buffer, width, height, 0x10, output_buffer);
+}
+
+extern "C" void indigo_debayer_16_bggr(const uint16_t *input_buffer, int width, int height, uint8_t *output_buffer) {
+	indigo_debayer(input_buffer, width, height, 0x11, output_buffer);
+}

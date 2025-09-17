@@ -1009,23 +1009,45 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 	} else if (bpp == 16) {
 		if (bayerpat) {
 			if (!strcmp(bayerpat, "RGGB")) {
-				indigo_compute_stretch_params_16_rggb((uint16_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, B, C);
-				indigo_stretch_16_rggb((uint16_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights, totals);
+				if (B != 0 && C != 0) {
+					indigo_compute_stretch_params_16_rggb((uint16_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, B, C);
+					indigo_stretch_16_rggb((uint16_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights, totals);
+				} else {
+					indigo_debayer_16_rggb((uint16_t *)(data_in), frame_width, frame_height, copy);
+				}
 			} else if (!strcmp(bayerpat, "GBRG")) {
-				indigo_compute_stretch_params_16_gbrg((uint16_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, B, C);
-				indigo_stretch_16_gbrg((uint16_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights, totals);
+				if (B != 0 && C != 0) {
+					indigo_compute_stretch_params_16_gbrg((uint16_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, B, C);
+					indigo_stretch_16_gbrg((uint16_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights, totals);
+				} else {
+					indigo_debayer_16_gbrg((uint16_t *)(data_in), frame_width, frame_height, copy);
+				}
 			} else if (!strcmp(bayerpat, "GRBG")) {
-				indigo_compute_stretch_params_16_grbg((uint16_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, B, C);
-				indigo_stretch_16_grbg((uint16_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights, totals);
+				if (B != 0 && C != 0) {
+					indigo_compute_stretch_params_16_grbg((uint16_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, B, C);
+					indigo_stretch_16_grbg((uint16_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights, totals);
+				} else {
+					indigo_debayer_16_grbg((uint16_t *)(data_in), frame_width, frame_height, copy);
+				}
 			} else if (!strcmp(bayerpat, "BGGR")) {
-				indigo_compute_stretch_params_16_bggr((uint16_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, B, C);
-				indigo_stretch_16_bggr((uint16_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights, totals);
+				if (B != 0 && C != 0) {
+					indigo_compute_stretch_params_16_bggr((uint16_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, B, C);
+					indigo_stretch_16_bggr((uint16_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights, totals);
+				} else {
+					indigo_debayer_16_bggr((uint16_t *)(data_in), frame_width, frame_height, copy);
+				}
 			} else {
 				assert(false);
 			}
 		} else {
-			indigo_compute_stretch_params_16((uint16_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, B, C);
-			indigo_stretch_16((uint16_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights);
+			if (B != 0 && C != 0) {
+				indigo_compute_stretch_params_16((uint16_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, B, C);
+				indigo_stretch_16((uint16_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights);
+			} else {
+				for (size_t i = 0; i < size_in; i++) {
+					((uint8_t *)copy)[i] = ((uint16_t *)data_in)[i] >> 8;
+				}
+			}
 			cinfo.pub.input_components = 1;
 		}
 	} else if (bpp == 24) {
@@ -1036,8 +1058,14 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 			memcpy(copy, data_in, 3 * frame_width * frame_height);
 		}
 	} else if (bpp == 48) {
-		indigo_compute_stretch_params_48((uint16_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, B, C);
-		indigo_stretch_48((uint16_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights, totals);
+		if (B != 0 && C != 0) {
+			indigo_compute_stretch_params_48((uint16_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, B, C);
+			indigo_stretch_48((uint16_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights, totals);
+		} else {
+			for (size_t i = 0; i < 3 * size_in; i++) {
+				((uint8_t *)copy)[i] = ((uint16_t *)data_in)[i] >> 8;
+			}
+		}
 	} else {
 		assert(false);
 	}
@@ -1544,7 +1572,7 @@ int mkpath(const char *path) {
 void indigo_process_image(indigo_device *device, void *data, int frame_width, int frame_height, int bpp, bool little_endian, bool byte_order_rgb, indigo_fits_keyword *keywords, bool streaming) {
 	assert(device != NULL);
 	assert(data != NULL);
-	
+
 	INDIGO_DEBUG(clock_t start = clock());
 	int horizontal_bin = CCD_BIN_HORIZONTAL_ITEM->number.value;
 	int vertical_bin = CCD_BIN_VERTICAL_ITEM->number.value;
@@ -1898,7 +1926,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			header += sprintf(header, "<FITSKeyword name='EXPTIME'  value='%20.4f' comment='Exposure time in seconds'/>", CCD_EXPOSURE_ITEM->number.target);
 		header += sprintf(header, "<Property id='Instrument:Sensor:XPixelSize' type='Float32' value='%s'/><Property id='Instrument:Sensor:YPixelSize' type='Float32' value='%s'/>", indigo_dtoa(CCD_INFO_PIXEL_WIDTH_ITEM->number.value * horizontal_bin, b1), indigo_dtoa(CCD_INFO_PIXEL_HEIGHT_ITEM->number.value * vertical_bin, b2));
 		header += sprintf(header, "<FITSKeyword name='XPIXSZ'  value='%20.2f' comment='Pixel horizontal width in microns'/><FITSKeyword name='YPIXSZ' value='%20.2f' comment='Pixel vertical width in microns'/>", CCD_INFO_PIXEL_WIDTH_ITEM->number.value * horizontal_bin, CCD_INFO_PIXEL_HEIGHT_ITEM->number.value * vertical_bin);
-		
+
 		if (!CCD_TEMPERATURE_PROPERTY->hidden) {
 			header += sprintf(header, "<Property id='Instrument:Sensor:Temperature' type='Float32' value='%s'/><Property id='Instrument:Sensor:TargetTemperature' type='Float32' value='%s'/>", indigo_dtoa(CCD_TEMPERATURE_ITEM->number.value, b1), indigo_dtoa(CCD_TEMPERATURE_ITEM->number.target, b2));
 			header += sprintf(header, "<FITSKeyword name='CCD-TEMP' value='%20.2f' comment='CCD chip temperature in celsius'/>", CCD_TEMPERATURE_ITEM->number.value);

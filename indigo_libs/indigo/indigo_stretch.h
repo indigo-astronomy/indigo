@@ -65,6 +65,10 @@ extern void indigo_debayer_8_gbrg(const uint8_t *input_buffer, int width, int he
 extern void indigo_debayer_8_grbg(const uint8_t *input_buffer, int width, int height, uint8_t *output_buffer);
 extern void indigo_debayer_8_bggr(const uint8_t *input_buffer, int width, int height, uint8_t *output_buffer);
 
+extern void indigo_debayer_16_rggb(const uint16_t *input_buffer, int width, int height, uint8_t *output_buffer);
+extern void indigo_debayer_16_gbrg(const uint16_t *input_buffer, int width, int height, uint8_t *output_buffer);
+extern void indigo_debayer_16_grbg(const uint16_t *input_buffer, int width, int height, uint8_t *output_buffer);
+extern void indigo_debayer_16_bggr(const uint16_t *input_buffer, int width, int height, uint8_t *output_buffer);
 
 #ifdef __cplusplus
 }
