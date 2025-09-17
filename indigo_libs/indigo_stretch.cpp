@@ -443,7 +443,8 @@ template <typename T> void indigo_debayer_stretch(T *input_buffer, int width, in
 
 #endif // HISTOGRAM_AWB
 
-template <typename T> void indigo_debayer(T *input_buffer, int width, int height, int offsets, uint8_t *output_buffer) {
+// uint8_t input
+void indigo_debayer(const uint8_t *input_buffer, int width, int height, int offsets, uint8_t *output_buffer) {
 	const int size = width * height;
 	if (size < MIN_SIZE_TO_PARALLELIZE) {
 		int input_index = 0;
@@ -452,9 +453,9 @@ template <typename T> void indigo_debayer(T *input_buffer, int width, int height
 				float red = 0, green = 0, blue = 0;
 				int output_index = input_index * 3;
 				debayer(input_buffer, input_index, row_index, column_index, width, height, offsets, red, green, blue);
-				output_buffer[output_index] = red;
-				output_buffer[output_index + 1] = green;
-				output_buffer[output_index + 2] = blue;
+				output_buffer[output_index] = (uint8_t)red;
+				output_buffer[output_index + 1] = (uint8_t)green;
+				output_buffer[output_index + 2] = (uint8_t)blue;
 				input_index++;
 			}
 		}
@@ -474,9 +475,55 @@ template <typename T> void indigo_debayer(T *input_buffer, int width, int height
 						float red = 0, green = 0, blue = 0;
 						int output_index = input_index * 3;
 						debayer(input_buffer, input_index, row_index, column_index, width, height, offsets, red, green, blue);
-						output_buffer[output_index] = red;
-						output_buffer[output_index + 1] = green;
-						output_buffer[output_index + 2] = blue;
+						output_buffer[output_index] = (uint8_t)red;
+						output_buffer[output_index + 1] = (uint8_t)green;
+						output_buffer[output_index + 2] = (uint8_t)blue;
+						input_index++;
+					}
+				}
+			});
+		}
+		for (int rank = 0; rank < max_threads; rank++) {
+			threads[rank].join();
+		}
+	}
+}
+
+// uint16_t input with scaling
+void indigo_debayer(const uint16_t *input_buffer, int width, int height, int offsets, uint8_t *output_buffer) {
+	const int size = width * height;
+	if (size < MIN_SIZE_TO_PARALLELIZE) {
+		int input_index = 0;
+		for (int row_index = 0; row_index < height; row_index++) {
+			for (int column_index = 0; column_index < width; column_index++) {
+				float red = 0, green = 0, blue = 0;
+				int output_index = input_index * 3;
+				debayer(input_buffer, input_index, row_index, column_index, width, height, offsets, red, green, blue);
+				output_buffer[output_index] = (uint8_t)((uint16_t)red >> 8);
+				output_buffer[output_index + 1] = (uint8_t)((uint16_t)green >> 8);
+				output_buffer[output_index + 2] = (uint8_t)((uint16_t)blue >> 8);
+				input_index++;
+			}
+		}
+	} else {
+		int max_threads = (int)sysconf(_SC_NPROCESSORS_ONLN);
+		max_threads = (max_threads > 0) ? max_threads : INDIGO_DEFAULT_THREADS;
+		std::thread threads[max_threads];
+		for (int rank = 0; rank < max_threads; rank++) {
+			const int chunk = ceil(height / (double)max_threads);
+			threads[rank] = std::thread([=]() {
+				const int start = chunk * rank;
+				int end = start + chunk;
+				end = (end > height) ? height : end;
+				int input_index = start * width;
+				for (int row_index = start; row_index < end; row_index++) {
+					for (int column_index = 0; column_index < width; column_index++) {
+						float red = 0, green = 0, blue = 0;
+						int output_index = input_index * 3;
+						debayer(input_buffer, input_index, row_index, column_index, width, height, offsets, red, green, blue);
+						output_buffer[output_index] = (uint8_t)((uint16_t)red >> 8);
+						output_buffer[output_index + 1] = (uint8_t)((uint16_t)green >> 8);
+						output_buffer[output_index + 2] = (uint8_t)((uint16_t)blue >> 8);
 						input_index++;
 					}
 				}
