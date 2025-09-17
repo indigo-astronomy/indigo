@@ -1,6 +1,44 @@
 # Changelog
 
 All notable changes to INDIGO framework will be documented in this file.
+# [2.0-342] - 14 Sep Sun 2025
+## Overall:
+- indigo_align: implement nutation, some refactoring
+- HIDAPI upgraded to 0.16
+
+## Driver Fixes:
+- indigo_agent_mount:
+	- fix lx200 server shutdown
+
+- indigo_ccd_asi:
+	- update SDK to v.1.39
+	- reset frame to sensor width and height fixed
+
+- indigo_ccd_apogee:
+	- fix potential reset to full frame issue
+
+- indigo_ccd_fli:
+	- fix potential reset to full frame issue
+
+- indigo_ccd_svb:
+	- fix potential reset to full frame issue
+
+- indigo_ccd_playerone:
+	- fix potential reset to full frame issue
+	- update SDK to v. 3.9.0
+
+- indigo_ccd_sbig:
+	- skip shutter delay for secondary CCD if primary CCD exposure is in progress
+	- fix reset to full frame issue
+
+- indigo_mount_ioptron:
+	- PEC support added to protocol 3.0+ mounts
+	- meridian handling support added to 3.0+ mounts
+
+- indigo_ccd_touptek & OEM:
+	- update Touptek & oem lib, version: 59.29465.20250907
+
+
 # [2.0-340] - 17 Aug Sat 2025
 
 ## New Drivers:
