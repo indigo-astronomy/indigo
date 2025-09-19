@@ -659,12 +659,16 @@
  */
 #define CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM_NAME     "CLIPPING_POINT"
 
+/** CCD_JPEG_SETTINGS.REFERENCE_CHANNEL property item name.
+ */
+#define CCD_JPEG_SETTINGS_REF_CHANNEL_ITEM_NAME     "REFERENCE_CHANNEL"
+
 // obsolete CCD_JPEG_SETTINGS item names kept for backward compatibility
 
 /** (obsolete) CCD_JPEG_SETTINGS.BLACK property item name.
  */
 #define CCD_JPEG_SETTINGS_BLACK_ITEM_NAME                      "BLACK"
- 
+
 /** (obsolete) CCD_JPEG_SETTINGS.WHITE property item name.
  */
 #define CCD_JPEG_SETTINGS_WHITE_ITEM_NAME                      "WHITE"

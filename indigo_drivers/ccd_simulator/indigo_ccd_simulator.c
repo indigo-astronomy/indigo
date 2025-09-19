@@ -367,7 +367,7 @@ static void create_frame(indigo_device *device) {
 		if (CCD_IMAGE_FORMAT_NATIVE_ITEM->sw.value) {
 			void *data_out;
 			unsigned long size_out;
-			indigo_raw_to_jpeg(device, PRIVATE_DATA->dslr_image + FITS_HEADER_SIZE, DSLR_WIDTH, DSLR_HEIGHT, 24, NULL, &data_out, &size_out, NULL, NULL, 0, 0);
+			indigo_raw_to_jpeg(device, PRIVATE_DATA->dslr_image + FITS_HEADER_SIZE, DSLR_WIDTH, DSLR_HEIGHT, 24, NULL, &data_out, &size_out, NULL, NULL, 0, 0, 0);
 			if (CCD_PREVIEW_ENABLED_ITEM->sw.value) {
 				indigo_process_dslr_preview_image(device, data_out, (int)size_out);
 			}
@@ -413,7 +413,7 @@ static void create_frame(indigo_device *device) {
 			{ INDIGO_FITS_STRING, "BAYERPAT", .string = BAYERPAT_ITEM->text.value, "Bayer color pattern" },
 			{ 0 }
 		};
-		
+
 		if (FOCUSER_SETTINGS_FOCUS_ITEM->number.value != 0 && PRIVATE_DATA->file_image_header.signature == INDIGO_RAW_MONO16) {
 			uint16_t *tmp = indigo_safe_malloc(2 * size);
 			blur_image((uint16_t *)PRIVATE_DATA->file_image, tmp, PRIVATE_DATA->file_image_header.width, PRIVATE_DATA->file_image_header.height, FOCUSER_SETTINGS_FOCUS_ITEM->number.value);
@@ -482,7 +482,7 @@ static void create_frame(indigo_device *device) {
 		int offset = (int)CCD_OFFSET_ITEM->number.value;
 		double gamma = CCD_GAMMA_ITEM->number.value;
 		bool light_frame = CCD_FRAME_TYPE_LIGHT_ITEM->sw.value || CCD_FRAME_TYPE_FLAT_ITEM->sw.value;
-		
+
 		if (device == PRIVATE_DATA->imager && light_frame) {
 			for (int j = 0; j < frame_height; j++) {
 				int jj = (frame_top + j) * vertical_bin;
@@ -611,7 +611,7 @@ static void create_frame(indigo_device *device) {
 			for (int i = 0; i < size; i++)
 				raw[i] = (rand() & 0x7F);
 		}
-		
+
 		for (int i = 0; i <= GUIDER_IMAGE_HOTPIXELS_ITEM->number.target; i++) {
 			unsigned x = PRIVATE_DATA->hotpixel_x[i] / horizontal_bin - frame_left;
 			unsigned y = PRIVATE_DATA->hotpixel_y[i] / vertical_bin - frame_top;
