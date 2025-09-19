@@ -736,8 +736,8 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		snprintf(AUX_USB_PORT_4_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_USB_PORT_NAME_4_ITEM->text.value);
 		snprintf(AUX_USB_PORT_5_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_USB_PORT_NAME_5_ITEM->text.value);
 		snprintf(AUX_USB_PORT_6_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_USB_PORT_NAME_6_ITEM->text.value);
-		snprintf(AUX_USB_PORT_7_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_USB_PORT_NAME_6_ITEM->text.value);
-		snprintf(AUX_USB_PORT_8_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_USB_PORT_NAME_6_ITEM->text.value);
+		snprintf(AUX_USB_PORT_7_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_USB_PORT_NAME_7_ITEM->text.value);
+		snprintf(AUX_USB_PORT_8_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_USB_PORT_NAME_8_ITEM->text.value);
 		AUX_OUTLET_NAMES_PROPERTY->state = INDIGO_OK_STATE;
 		if (IS_CONNECTED) {
 			indigo_delete_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
