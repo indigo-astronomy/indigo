@@ -352,13 +352,14 @@ indigo_result indigo_ccd_attach(indigo_device *device, const char* driver_name, 
 			}
 			indigo_init_text_item(CCD_REMOVE_FITS_HEADER_NAME_ITEM, CCD_REMOVE_FITS_HEADER_KEYWORD_ITEM_NAME, "Keyword", "");
 			// -------------------------------------------------------------------------------- CCD_JPEG_SETTINGS
-			CCD_JPEG_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_JPEG_SETTINGS_PROPERTY_NAME, CCD_IMAGE_GROUP, "JPEG Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
+			CCD_JPEG_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_JPEG_SETTINGS_PROPERTY_NAME, CCD_IMAGE_GROUP, "JPEG Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 4);
 			if (CCD_JPEG_SETTINGS_PROPERTY == NULL) {
 				return INDIGO_FAILED;
 			}
 			indigo_init_number_item(CCD_JPEG_SETTINGS_QUALITY_ITEM, CCD_JPEG_SETTINGS_QUALITY_ITEM_NAME, "Conversion quality", 10, 100, 1, 90);
 			indigo_init_number_item(CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM, CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM_NAME, "Target mean background", 0, 1, 0.05, ccd_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_NORMAL].target_background);
 			indigo_init_number_item(CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM, CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM_NAME, "Clipping point", -3, 0, 0.1, ccd_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_NORMAL].clipping_point);
+			indigo_init_number_item(CCD_JPEG_SETTINGS_REF_CHANNEL_ITEM, CCD_JPEG_SETTINGS_REF_CHANNEL_ITEM_NAME, "Reference channel (0=AWB, 1=R, 2=G, 3=B)", 0, 3, 1, 0);
 			// -------------------------------------------------------------------------------- CCD_RBI_FLUSH_ENABLE
 			CCD_JPEG_STRETCH_PRESETS_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_JPEG_STRETCH_PRESETS_PROPERTY_NAME, CCD_IMAGE_GROUP, "JPEG Stretching Presets", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 4);
 			if (CCD_JPEG_STRETCH_PRESETS_PROPERTY == NULL) {
@@ -846,6 +847,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			CCD_JPEG_STRETCH_PRESETS_NORMAL_ITEM->sw.value =
 			CCD_JPEG_STRETCH_PRESETS_HARD_ITEM->sw.value = false;
 		}
+		CCD_JPEG_SETTINGS_REF_CHANNEL_ITEM->number.value = (int)CCD_JPEG_SETTINGS_REF_CHANNEL_ITEM->number.value;
 		indigo_update_property(device, CCD_JPEG_SETTINGS_PROPERTY, NULL);
 		indigo_update_property(device, CCD_JPEG_STRETCH_PRESETS_PROPERTY, NULL);
 		return INDIGO_OK;
@@ -949,7 +951,17 @@ indigo_result indigo_ccd_detach(indigo_device *device) {
 
 #define STRECH_SAMPLE_SIZE	0x1FF
 
-void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, int frame_height, int bpp, const char *bayerpat, void **data_out, unsigned long *size_out, void **histogram_data, unsigned long *histogram_size, double B, double C) {
+static inline void use_reference_channel(double *shadows, double *midtones, double *highlights, unsigned long *totals, int reference_channel) {
+	if (reference_channel < 1 || reference_channel > 3) {
+		return;
+	}
+	shadows[0] = shadows[1] = shadows[2] =  shadows[reference_channel - 1];
+	midtones[0] = midtones[1] = midtones[2] = midtones[reference_channel - 1];
+	highlights[0] = highlights[1] = highlights[2] = highlights[reference_channel - 1];
+	totals[0] = totals[1] = totals[2] = totals[reference_channel - 1];
+}
+
+void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, int frame_height, int bpp, const char *bayerpat, void **data_out, unsigned long *size_out, void **histogram_data, unsigned long *histogram_size, double B, double C, int reference_channel) {
 	INDIGO_DEBUG(clock_t start = clock());
 	size_t size_in = frame_width * frame_height;
 	int sample_by = frame_width < STRECH_SAMPLE_SIZE ? 1 : frame_width / STRECH_SAMPLE_SIZE;
@@ -983,6 +995,7 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 			if (!strcmp(bayerpat, "RGGB")) {
 				if (B != 0 && C != 0) {
 					indigo_compute_stretch_params_8_rggb((uint8_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, B, C);
+					use_reference_channel(shadows, midtones, highlights, totals, reference_channel);
 					indigo_stretch_8_rggb((uint8_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights, totals);
 				} else {
 					indigo_debayer_8_rggb((uint8_t *)(data_in), frame_width, frame_height, copy);
@@ -990,6 +1003,7 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 			} else if (!strcmp(bayerpat, "GBRG")) {
 				if (B != 0 && C != 0) {
 					indigo_compute_stretch_params_8_gbrg((uint8_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, B, C);
+					use_reference_channel(shadows, midtones, highlights, totals, reference_channel);
 					indigo_stretch_8_gbrg((uint8_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights, totals);
 				} else {
 					indigo_debayer_8_gbrg((uint8_t *)(data_in), frame_width, frame_height, copy);
@@ -997,6 +1011,7 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 			} else if (!strcmp(bayerpat, "GRBG")) {
 				if (B != 0 && C != 0) {
 					indigo_compute_stretch_params_8_grbg((uint8_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, B, C);
+					use_reference_channel(shadows, midtones, highlights, totals, reference_channel);
 					indigo_stretch_8_grbg((uint8_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights, totals);
 				} else {
 					indigo_debayer_8_grbg((uint8_t *)(data_in), frame_width, frame_height, copy);
@@ -1004,6 +1019,7 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 			} else if (!strcmp(bayerpat, "BGGR")) {
 				if (B != 0 && C != 0) {
 					indigo_compute_stretch_params_8_bggr((uint8_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, B, C);
+					use_reference_channel(shadows, midtones, highlights, totals, reference_channel);
 					indigo_stretch_8_bggr((uint8_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights, totals);
 				} else {
 					indigo_debayer_8_bggr((uint8_t *)(data_in), frame_width, frame_height, copy);
@@ -1025,6 +1041,7 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 			if (!strcmp(bayerpat, "RGGB")) {
 				if (B != 0 && C != 0) {
 					indigo_compute_stretch_params_16_rggb((uint16_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, B, C);
+					use_reference_channel(shadows, midtones, highlights, totals, reference_channel);
 					indigo_stretch_16_rggb((uint16_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights, totals);
 				} else {
 					indigo_debayer_16_rggb((uint16_t *)(data_in), frame_width, frame_height, copy);
@@ -1032,6 +1049,7 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 			} else if (!strcmp(bayerpat, "GBRG")) {
 				if (B != 0 && C != 0) {
 					indigo_compute_stretch_params_16_gbrg((uint16_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, B, C);
+					use_reference_channel(shadows, midtones, highlights, totals, reference_channel);
 					indigo_stretch_16_gbrg((uint16_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights, totals);
 				} else {
 					indigo_debayer_16_gbrg((uint16_t *)(data_in), frame_width, frame_height, copy);
@@ -1039,6 +1057,7 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 			} else if (!strcmp(bayerpat, "GRBG")) {
 				if (B != 0 && C != 0) {
 					indigo_compute_stretch_params_16_grbg((uint16_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, B, C);
+					use_reference_channel(shadows, midtones, highlights, totals, reference_channel);
 					indigo_stretch_16_grbg((uint16_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights, totals);
 				} else {
 					indigo_debayer_16_grbg((uint16_t *)(data_in), frame_width, frame_height, copy);
@@ -1046,6 +1065,7 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 			} else if (!strcmp(bayerpat, "BGGR")) {
 				if (B != 0 && C != 0) {
 					indigo_compute_stretch_params_16_bggr((uint16_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, B, C);
+					use_reference_channel(shadows, midtones, highlights, totals, reference_channel);
 					indigo_stretch_16_bggr((uint16_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights, totals);
 				} else {
 					indigo_debayer_16_bggr((uint16_t *)(data_in), frame_width, frame_height, copy);
@@ -1067,6 +1087,7 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 	} else if (bpp == 24) {
 		if (B != 0 && C != 0) {
 			indigo_compute_stretch_params_24((uint8_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, B, C);
+			use_reference_channel(shadows, midtones, highlights, totals, reference_channel);
 			indigo_stretch_24((uint8_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights, totals);
 		} else {
 			memcpy(copy, data_in, 3 * frame_width * frame_height);
@@ -1074,6 +1095,7 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 	} else if (bpp == 48) {
 		if (B != 0 && C != 0) {
 			indigo_compute_stretch_params_48((uint16_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, B, C);
+			use_reference_channel(shadows, midtones, highlights, totals, reference_channel);
 			indigo_stretch_48((uint16_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights, totals);
 		} else {
 			for (size_t i = 0; i < 3 * size_in; i++) {
@@ -1628,7 +1650,8 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 	if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value || CCD_IMAGE_FORMAT_JPEG_AVI_ITEM->sw.value || CCD_PREVIEW_ENABLED_ITEM->sw.value || CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value) {
 		double B = CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.target;
 		double C = CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.target;
-		indigo_raw_to_jpeg(device, (char*)data + FITS_HEADER_SIZE, frame_width, frame_height, bpp, bayerpat, &jpeg_data, &jpeg_size,  CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value ? &histogram_data : NULL, CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value ? &histogram_size : NULL, B, C);
+		int reference_channel = CCD_JPEG_SETTINGS_REF_CHANNEL_ITEM->number.target;
+		indigo_raw_to_jpeg(device, (char*)data + FITS_HEADER_SIZE, frame_width, frame_height, bpp, bayerpat, &jpeg_data, &jpeg_size,  CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value ? &histogram_data : NULL, CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value ? &histogram_size : NULL, B, C, reference_channel);
 		if (CCD_PREVIEW_ENABLED_ITEM->sw.value || CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value) {
 			CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
