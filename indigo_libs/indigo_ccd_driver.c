@@ -127,7 +127,6 @@ indigo_result indigo_ccd_attach(indigo_device *device, const char* driver_name, 
 	} else {
 		snprintf(default_image_path, PATH_MAX, "%s%cindigo_image_cache%c", indigo_uni_home_folder(), INDIGO_PATH_SEPATATOR, INDIGO_PATH_SEPATATOR);
 	}
-
 	if (CCD_CONTEXT == NULL) {
 		device->device_context = indigo_safe_malloc(sizeof(indigo_ccd_context));
 	}
@@ -353,7 +352,7 @@ indigo_result indigo_ccd_attach(indigo_device *device, const char* driver_name, 
 			indigo_init_text_item(CCD_REMOVE_FITS_HEADER_NAME_ITEM, CCD_REMOVE_FITS_HEADER_KEYWORD_ITEM_NAME, "Keyword", "");
 			// -------------------------------------------------------------------------------- CCD_JPEG_SETTINGS
 			CCD_JPEG_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_JPEG_SETTINGS_PROPERTY_NAME, CCD_IMAGE_GROUP, "JPEG Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 4);
-			if (CCD_JPEG_SETTINGS_PROPERTY == NULL)
+			if (CCD_JPEG_SETTINGS_PROPERTY == NULL) {
 				return INDIGO_FAILED;
 			}
 			indigo_init_number_item(CCD_JPEG_SETTINGS_QUALITY_ITEM, CCD_JPEG_SETTINGS_QUALITY_ITEM_NAME, "Conversion quality", 10, 100, 1, 90);
