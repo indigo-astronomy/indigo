@@ -1,6 +1,16 @@
 # Changelog
 
 All notable changes to INDIGO framework will be documented in this file.
+# [2.0-344] - 21 Sep Sun 2025
+## Overall:
+- indigo_ccd_driver:
+	- fixed unstretched preview
+	- add linkd preview stretching
+
+## Driver Fixes:
+- indigo_ccd_playerone:
+	- SDK 3.9.0 is severely broken - reverted to 3.8.1
+
 # [2.0-342] - 14 Sep Sun 2025
 ## Overall:
 - indigo_align: implement nutation, some refactoring
