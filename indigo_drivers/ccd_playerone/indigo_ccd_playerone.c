@@ -1210,7 +1210,7 @@ static indigo_result init_camera_property(indigo_device *device, POAConfigAttrib
 				if (!strncmp(ctrl_caps.szConfName, "WB_", 3) && ctrl_caps.minValue.intValue == 1) {
 					/* workaround for white balance values being remapped in sdk 3.9.0 */
 					/* 0 is mapped to 50% in the sdk to maintain backwards compatibility */
-					INDIGO_DRIVER_LOG(DRIVER_NAME, "Workaround for white balance applied for %s", ctrl_caps.szConfName);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Workaround for white balance applied for %s", ctrl_caps.szConfName);
 					ctrl_caps.minValue.intValue = 0;
 				}
 				indigo_init_number_item(POA_ADVANCED_PROPERTY->items + offset, ctrl_caps.szConfName, ctrl_caps.szConfName, ctrl_caps.minValue.intValue, ctrl_caps.maxValue.intValue, 1, value.intValue);
