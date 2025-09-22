@@ -1,3 +1,7 @@
+2025.08.28(3.9.0)
+- 'HDR' sensor mode has been added to the Uranus series cameras.
+- Optimize the range of automatic white balance, which is now [1, 100](%).
+
 2025.03.25(3.8.1)
 - The maximum value of POA_EXP is changed to 7200.0, which means that the maximum exposure time that can be set is now 7200s.
 - The range of white balance is changed from [-1200, 1200](db) to [0, 100](%), this to suit the usage habits of most users.
