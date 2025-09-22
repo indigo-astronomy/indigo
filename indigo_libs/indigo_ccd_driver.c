@@ -127,7 +127,6 @@ indigo_result indigo_ccd_attach(indigo_device *device, const char* driver_name, 
 	} else {
 		snprintf(default_image_path, PATH_MAX, "%s%cindigo_image_cache%c", indigo_uni_home_folder(), INDIGO_PATH_SEPATATOR, INDIGO_PATH_SEPATATOR);
 	}
-
 	if (CCD_CONTEXT == NULL) {
 		device->device_context = indigo_safe_malloc(sizeof(indigo_ccd_context));
 	}
