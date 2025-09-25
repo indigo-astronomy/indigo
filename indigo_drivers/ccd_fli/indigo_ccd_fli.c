@@ -298,7 +298,7 @@ static bool fli_read_pixels(indigo_device *device) {
 		if (timeleft) {
 			indigo_usleep((useconds_t)timeleft);
 		}
-	} while (timeleft*1000);
+	} while ((timeleft*1000) != 0);
 
 	do {
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
