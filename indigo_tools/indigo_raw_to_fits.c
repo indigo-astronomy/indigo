@@ -207,7 +207,9 @@ int main(int argc, char *argv[]) {
 				fprintf(stderr, "Can not save '%s': %s\n", outfile_name, strerror(errno));
 				failed++;
 			} else {
-				not_quiet && printf("Converted '%s' -> '%s'\n", infile_name, outfile_name);
+				if (not_quiet) {
+					printf("Converted '%s' -> '%s'\n", infile_name, outfile_name);
+				}
 				succeeded++;
 			}
 			if (in_data) free(in_data);

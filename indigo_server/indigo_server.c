@@ -1898,7 +1898,6 @@ int main(int argc, const char * argv[]) {
 				char *server_string = strstr(server_argv[0], "indigo_server");
 				if (server_string) {
 					static char process_name[] = "indigo_worker";
-					int len = strlen(server_argv[0]);
 					strcpy(server_string, process_name);
 					prctl(PR_SET_PDEATHSIG, SIGINT, 0, 0, 0);
 					/* Linux requires additional step to change process name */
