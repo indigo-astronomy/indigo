@@ -366,6 +366,10 @@ extern int indigo_open_config_file(char *device_name, int profile, int mode, con
  */
 extern indigo_result indigo_load_properties(indigo_device *device, bool default_properties);
 
+/** Save single property to .default.
+ */
+extern indigo_result indigo_save_property_to_default(indigo_device*device, int *file_handle, indigo_property *property, bool is_default);
+
 /** Save single property.
  */
 extern indigo_result indigo_save_property(indigo_device*device, int *file_handle, indigo_property *property);
