@@ -229,7 +229,7 @@ int main() {
 			} else if (!strcmp(buffer, "AJ")) {
 				sim_printf(fd, "AJ:%d:%d:%d:%d\n", buck_voltage, buck, boost_voltage, boost);
 			} else if (!strcmp(buffer, "IS")) {
-				sim_printf(fd, "IS:0:0:0:1:0:0\n");
+				sim_printf(fd, "IS:0:0:0:1.2:0:0:000100\n");
 			} else if (!strcmp(buffer, "VR")) {
 				sim_printf(fd, "VR:12.3:2.2\n");
 			} else if (!strcmp(buffer, "PC")) {
