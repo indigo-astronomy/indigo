@@ -28,7 +28,6 @@
 #include <thread>
 #include <algorithm>
 #include <math.h>
-#include <unistd.h>
 
 #define INDIGO_DEFAULT_THREADS 4
 #define MIN_SIZE_TO_PARALLELIZE 0x3FFFF
@@ -498,11 +497,9 @@ void indigo_debayer(const uint16_t *input_buffer, int width, int height, int off
 			}
 		}
 	} else {
-		int local_max_threads = (int)sysconf(_SC_NPROCESSORS_ONLN);
-		local_max_threads = (local_max_threads > 0) ? local_max_threads : INDIGO_DEFAULT_THREADS;
-		std::thread threads[local_max_threads];
-		for (int rank = 0; rank < local_max_threads; rank++) {
-			const int chunk = ceil(height / (double)local_max_threads);
+		std::vector<std::thread> threads(max_threads);
+		for (int rank = 0; rank < max_threads; rank++) {
+			const int chunk = (int)ceil((double)height / max_threads);
 			threads[rank] = std::thread([=]() {
 				const int start = chunk * rank;
 				int end = start + chunk;
@@ -521,7 +518,7 @@ void indigo_debayer(const uint16_t *input_buffer, int width, int height, int off
 				}
 			});
 		}
-		for (int rank = 0; rank < local_max_threads; rank++) {
+		for (int rank = 0; rank < max_threads; rank++) {
 			threads[rank].join();
 		}
 	}
