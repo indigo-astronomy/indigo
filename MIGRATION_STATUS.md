@@ -61,7 +61,7 @@
 | ccd_simulator | 3️⃣ | ✅ Yes | ❌ No | ⛔ N/A | |
 | ccd_ssag | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
 | ccd_ssg | 3️⃣ | ✅ Yes | ❌ No | ❌ No | ➡️ Touptek |
-| ccd_svb | 2️⃣ | ✅ No | ❌ No | ❌ No | |
+| ccd_svb | 2️⃣ | ✅ No | ❌ No | ✅  HW | |
 | ccd_svb2 | 3️⃣ | ✅ Yes | ❌ No | ❌ No | ➡️ Touptek |
 | ccd_sx | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
 | ccd_touptek | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
