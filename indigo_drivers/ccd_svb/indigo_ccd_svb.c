@@ -30,11 +30,11 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
+//#include <unistd.h>
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
-#include <sys/time.h>
+//#include <sys/time.h>
 
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_usb_utils.h>
