@@ -1904,9 +1904,9 @@ static indigo_result agent_device_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(DEVICE_PRIVATE_DATA != NULL);
 	if (indigo_is_sandboxed) {
-		snprintf(default_log_path, PATH_MAX, "%s/", getenv("HOME"));
+		snprintf(default_log_path, PATH_MAX, "%s%c", indigo_uni_home_folder(), INDIGO_PATH_SEPATATOR);
 	} else {
-		snprintf(default_log_path, PATH_MAX, "%s/indigo_image_cache/", getenv("HOME"));
+		snprintf(default_log_path, PATH_MAX, "%s%cindigo_image_cache%c", indigo_uni_home_folder(), INDIGO_PATH_SEPATATOR, INDIGO_PATH_SEPATATOR);
 	}
 	if (indigo_filter_device_attach(device, DRIVER_NAME, DRIVER_VERSION, INDIGO_INTERFACE_CCD | INDIGO_INTERFACE_GUIDER) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- Device properties

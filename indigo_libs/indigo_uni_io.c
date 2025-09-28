@@ -370,7 +370,7 @@ indigo_uni_handle *indigo_uni_open_file(const char *path, int log_level) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	int fd = open(path, O_RDONLY);
 #elif defined(INDIGO_WINDOWS)
-	int fd = _open(path, _O_RDONLY);
+	int fd = _open(path, _O_RDONLY | _O_BINARY);
 #else
 #pragma message ("TODO: indigo_uni_open_file()")
 #endif
@@ -391,7 +391,7 @@ indigo_uni_handle *indigo_uni_create_file(const char *path, int log_level) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	int fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 #elif defined(INDIGO_WINDOWS)
-	int fd = _open(path, _O_WRONLY | _O_CREAT | _O_TRUNC, _S_IREAD | _S_IWRITE);
+	int fd = _open(path, _O_WRONLY | _O_BINARY | _O_CREAT | _O_TRUNC, _S_IREAD | _S_IWRITE);
 #else
 #pragma message ("TODO: indigo_uni_create_file()")
 #endif
@@ -1352,7 +1352,7 @@ long indigo_uni_vtprintf(indigo_uni_handle *handle, const char *format, va_list 
 	if (result >= 0) {
 		indigo_log_levels saved = handle->log_level;
 		handle->log_level = INDIGO_LOG_NONE;
-		result += indigo_uni_write(handle, terminator, strlen(terminator));
+		result += indigo_uni_write(handle, terminator, (long)strlen(terminator));
 		handle->log_level = saved;
 	}
 	return result;
