@@ -19,7 +19,7 @@
 | aux_cloudwatcher | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | aux_dragonfly | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | aux_dsusb | 3️⃣ | ❌ No | ✅ Yes | ✅ HW | ⏰ TODO - make libdsusb for Windows |
-| aux_fbc | 3️⃣ | ✅ Yes | ✅ Yes | ❌ No | ⏰ TODO - needs debugging with physical device |
+| aux_fbc | 3️⃣ | ✅ Yes | ✅ Yes | ✅ HW | |
 | aux_flatmaster | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
 | aux_flipflat | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
 | aux_geoptikflat | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
@@ -37,9 +37,9 @@
 | aux_wbplusv3 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
 | aux_wbprov3 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
 | aux_wcv4ec | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
-| ccd_altair | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
+| ccd_altair | 3️⃣ | ✅ Yes | ❌ No | ✅ HW | |
 | ccd_apogee | 2️⃣ | ❌ No | ❌ No | ❌ No | ⏰ TODO - make boost_regex and libapogee for Windows |
-| ccd_asi | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
+| ccd_asi | 3️⃣ | ✅ Yes | ❌ No | ✅ HW | |
 | ccd_atik | 3️⃣ | ✅ Yes | ❌ No | ❌ No | ⏰ TODO - find SDK for arm64 macOS |
 | ccd_atik2 | 3️⃣ | ❌ No | ❌ No | ❌ No | ⛔ macOS only, temporary workaround |
 | ccd_bresser | 3️⃣ | ✅ Yes | ❌ No | ❌ No | ➡️ Touptek |
@@ -56,15 +56,15 @@
 | ccd_qhy | 3️⃣ | ❌ No | ❌ No | ❌ No | ⏰ TODO - make libqhy for Windows |
 | ccd_qhy2 | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
 | ccd_qsi | 2️⃣ | ❌ No | ❌ No | ❌ No | ⏰ TODO - find SDK for windows |
-| ccd_rising | 3️⃣ | ✅ Yes | ❌ No | ❌ No | ➡️ Touptek |
+| ccd_rising | 3️⃣ | ✅ Yes | ❌ No | ✅ HW | ➡️ Touptek |
 | ccd_sbig | 2️⃣ | ❌ No | ❌ No | ❌ No | ⏰ TODO - find SDK for windows |
 | ccd_simulator | 3️⃣ | ✅ Yes | ❌ No | ⛔ N/A | |
 | ccd_ssag | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
 | ccd_ssg | 3️⃣ | ✅ Yes | ❌ No | ❌ No | ➡️ Touptek |
-| ccd_svb | 2️⃣ | ❌ No | ❌ No | ❌ No | ⏰ TODO - find SDK for windows |
+| ccd_svb | 2️⃣ | ✅ No | ❌ No | ✅  HW | |
 | ccd_svb2 | 3️⃣ | ✅ Yes | ❌ No | ❌ No | ➡️ Touptek |
 | ccd_sx | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
-| ccd_touptek | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
+| ccd_touptek | 3️⃣ | ✅ Yes | ❌ No | ✅ HW | |
 | ccd_uvc | 2️⃣ | ❌ No | ❌ No | ❌ No | ⛔ libuvc is Unix only |
 | dome_baader | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | dome_beaver | 2️⃣ | ❌ No | ❌ No | ❌ No | |
