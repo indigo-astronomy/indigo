@@ -1716,3 +1716,40 @@ time_t indigo_timegm(struct tm* tm) {
 #pragma message ("TODO: indigo_timegm()")
 #endif
 }
+
+bool indigo_resolve_host(char *buffer, int *family) {
+	struct addrinfo hints, *res;
+	void *addr;
+	char ipstr[INET6_ADDRSTRLEN];
+	memset(&hints, 0, sizeof hints);
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_STREAM;
+	if (getaddrinfo(buffer, NULL, &hints, &res) != 0 || res == NULL) {
+		indigo_error("Failed to resolve host name %s", buffer);
+		return false;
+	}
+	for (struct addrinfo *p = res; p != NULL; p = p->ai_next) {
+		if (p->ai_family == AF_INET) {
+			struct sockaddr_in *ipv4 = (struct sockaddr_in *)p->ai_addr;
+			addr = &(ipv4->sin_addr);
+			inet_ntop(p->ai_family, addr, ipstr, sizeof ipstr);	freeaddrinfo(p);
+			indigo_log("Host name %s resolved to IP4 address %s", buffer, ipstr);
+			strcpy(buffer, ipstr);
+			*family = AF_INET;
+			return true;
+		}
+	}
+	for (struct addrinfo *p = res; p != NULL; p = p->ai_next) {
+		if (p->ai_family == AF_INET6) {
+			struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)res->ai_addr;
+			addr = &(ipv6->sin6_addr);
+			inet_ntop(p->ai_family, addr, ipstr, sizeof ipstr);	freeaddrinfo(p);
+			indigo_log("Host name %s resolved to IP6 address %s", buffer, ipstr);
+			strcpy(buffer, ipstr);
+			*family = AF_INET6;
+			return true;
+		}
+	}
+	indigo_error("Failed to resolve host name %s", buffer);
+	return false;
+}

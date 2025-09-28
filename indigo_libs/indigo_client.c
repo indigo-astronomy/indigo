@@ -383,8 +383,14 @@ static void *server_thread(indigo_server_entry *server) {
 			if (*server->name == 0) {
 				indigo_service_name(server->host, server->port, server->name);
 			}
+			int family = AF_UNSPEC;
+			indigo_resolve_host(server->host, &family);
 			char  url[INDIGO_NAME_SIZE];
-			snprintf(url, sizeof(url), "http://%s:%d", server->host, server->port);
+			if (family == AF_INET) {
+				snprintf(url, sizeof(url), "http://%s:%d", server->host, server->port);
+			} else if (family == AF_INET6) {
+				snprintf(url, sizeof(url), "http://[%s]:%d", server->host, server->port);
+			}
 			INDIGO_LOG(indigo_log("Server %s:%d (%s, %s) connected", server->host, server->port, server->name, url));
 #if defined(INDIGO_WINDOWS)
 			indigo_send_message(server->protocol_adapter, "connected");

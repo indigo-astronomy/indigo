@@ -1654,7 +1654,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 	if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value || CCD_IMAGE_FORMAT_JPEG_AVI_ITEM->sw.value || CCD_PREVIEW_ENABLED_ITEM->sw.value || CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value) {
 		double B = CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.target;
 		double C = CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.target;
-		int reference_channel = CCD_JPEG_SETTINGS_REF_CHANNEL_ITEM->number.target;
+		int reference_channel = (int)CCD_JPEG_SETTINGS_REF_CHANNEL_ITEM->number.target;
 		indigo_raw_to_jpeg(device, (char*)data + FITS_HEADER_SIZE, frame_width, frame_height, bpp, bayerpat, &jpeg_data, &jpeg_size,  CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value ? &histogram_data : NULL, CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value ? &histogram_size : NULL, B, C, reference_channel);
 		if (CCD_PREVIEW_ENABLED_ITEM->sw.value || CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value) {
 			CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
