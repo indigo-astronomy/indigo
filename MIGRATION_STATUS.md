@@ -39,7 +39,7 @@
 | aux_wcv4ec | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
 | ccd_altair | 3️⃣ | ✅ Yes | ❌ No | ✅ HW | |
 | ccd_apogee | 2️⃣ | ❌ No | ❌ No | ❌ No | ⏰ TODO - make boost_regex and libapogee for Windows |
-| ccd_asi | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
+| ccd_asi | 3️⃣ | ✅ Yes | ❌ No | ✅ HW | |
 | ccd_atik | 3️⃣ | ✅ Yes | ❌ No | ❌ No | ⏰ TODO - find SDK for arm64 macOS |
 | ccd_atik2 | 3️⃣ | ❌ No | ❌ No | ❌ No | ⛔ macOS only, temporary workaround |
 | ccd_bresser | 3️⃣ | ✅ Yes | ❌ No | ❌ No | ➡️ Touptek |
