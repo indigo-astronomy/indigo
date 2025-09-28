@@ -19,7 +19,7 @@
 | aux_cloudwatcher | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | aux_dragonfly | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | aux_dsusb | 3️⃣ | ❌ No | ✅ Yes | ✅ HW | ⏰ TODO - make libdsusb for Windows |
-| aux_fbc | 3️⃣ | ✅ Yes | ✅ Yes | ❌ No | ⏰ TODO - needs debugging with physical device |
+| aux_fbc | 3️⃣ | ✅ Yes | ✅ Yes | ✅ HW | |
 | aux_flatmaster | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
 | aux_flipflat | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
 | aux_geoptikflat | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
