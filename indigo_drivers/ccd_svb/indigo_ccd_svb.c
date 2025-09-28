@@ -19,13 +19,13 @@
 
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu> (refactored from ASI driver by Rumen G. Bogdanovski)
-// 3.0 refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+// 3.0 refactoring by Rumen G. Bogdanovski
 
 /** INDIGO SVBONY CCD driver
  \file indigo_ccd_svb.c
  */
 
-#define DRIVER_VERSION 0x02000014
+#define DRIVER_VERSION 0x03000014
 #define DRIVER_NAME "indigo_ccd_svb"
 
 #include <stdlib.h>
