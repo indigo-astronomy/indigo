@@ -30,11 +30,9 @@
 
 #include <stdlib.h>
 #include <string.h>
-//#include <unistd.h>
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
-//#include <sys/time.h>
 
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_usb_utils.h>
@@ -515,7 +513,7 @@ static void exposure_handler(indigo_device *device) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBStopVideoCapture(%d)", id);
 	}
 
-	if (svb_setup_exposure(device, CCD_EXPOSURE_ITEM->number.target, CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value, CCD_BIN_HORIZONTAL_ITEM->number.value)) {
+	if (svb_setup_exposure(device, CCD_EXPOSURE_ITEM->number.target, (int)CCD_FRAME_LEFT_ITEM->number.value, (int)CCD_FRAME_TOP_ITEM->number.value, (int)CCD_FRAME_WIDTH_ITEM->number.value, (int)CCD_FRAME_HEIGHT_ITEM->number.value, (int)CCD_BIN_HORIZONTAL_ITEM->number.value)) {
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
 		res = SVBStartVideoCapture(id);
@@ -642,7 +640,7 @@ static void streaming_handler(indigo_device *device) {
 	} else {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBStopVideoCapture(%d)", id);
 	}
-	if (svb_setup_exposure(device, CCD_STREAMING_EXPOSURE_ITEM->number.target, CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value, CCD_BIN_HORIZONTAL_ITEM->number.value)) {
+	if (svb_setup_exposure(device, CCD_STREAMING_EXPOSURE_ITEM->number.target, (int)CCD_FRAME_LEFT_ITEM->number.value, (int)CCD_FRAME_TOP_ITEM->number.value, (int)CCD_FRAME_WIDTH_ITEM->number.value, (int)CCD_FRAME_HEIGHT_ITEM->number.value, (int)CCD_BIN_HORIZONTAL_ITEM->number.value)) {
 		res = SVBStartVideoCapture(id);
 		if (res) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBStartVideoCapture(%d) = %d", id, res);
@@ -1428,13 +1426,13 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		int vertical_bin = (int)CCD_BIN_VERTICAL_ITEM->number.value;
 		/* SvBony cameras work with binx = biny for we force it here */
 		if (prev_h_bin != horizontal_bin) {
-			vertical_bin =
+			vertical_bin = horizontal_bin;
 			CCD_BIN_HORIZONTAL_ITEM->number.target =
 			CCD_BIN_HORIZONTAL_ITEM->number.value =
 			CCD_BIN_VERTICAL_ITEM->number.target =
 			CCD_BIN_VERTICAL_ITEM->number.value = horizontal_bin;
 		} else if (prev_v_bin != vertical_bin) {
-			horizontal_bin =
+			horizontal_bin = vertical_bin;
 			CCD_BIN_HORIZONTAL_ITEM->number.target =
 			CCD_BIN_HORIZONTAL_ITEM->number.value =
 			CCD_BIN_VERTICAL_ITEM->number.target =
@@ -1547,7 +1545,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
 		indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer_dec);
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
-		int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
+		int duration = (int)GUIDER_GUIDE_NORTH_ITEM->number.value;
 		if (duration > 0) {
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 			res = SVBPulseGuide(id, SVB_GUIDE_NORTH, duration);
@@ -1558,7 +1556,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec, &PRIVATE_DATA->guider_timer_dec);
 			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
 		} else {
-			int duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
+			int duration = (int)GUIDER_GUIDE_SOUTH_ITEM->number.value;
 			if (duration > 0) {
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 				res = SVBPulseGuide(id, SVB_GUIDE_SOUTH, duration);
@@ -1577,7 +1575,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
 		indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer_ra);
 		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
-		int duration = GUIDER_GUIDE_EAST_ITEM->number.value;
+		int duration = (int)GUIDER_GUIDE_EAST_ITEM->number.value;
 		if (duration > 0) {
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 			res = SVBPulseGuide(id, SVB_GUIDE_EAST, duration);
@@ -1588,7 +1586,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra, &PRIVATE_DATA->guider_timer_ra);
 			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
 		} else {
-			int duration = GUIDER_GUIDE_WEST_ITEM->number.value;
+			int duration = (int)GUIDER_GUIDE_WEST_ITEM->number.value;
 			if (duration > 0) {
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 				res = SVBPulseGuide(id, SVB_GUIDE_WEST, duration);
