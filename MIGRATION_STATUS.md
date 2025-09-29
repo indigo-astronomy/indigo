@@ -75,7 +75,7 @@
 | dome_skyroof | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | dome_talon6ror | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | focuser_asi | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
-| focuser_astroasis | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
+| focuser_astroasis | 3️⃣ | ✅ Yes | ❌ No | ✅ HW | |
 | focuser_astromechanics | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
 | focuser_dmfc | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
 | focuser_dsd | 2️⃣ | ❌ No | ❌ No | ❌ No | |
@@ -129,7 +129,7 @@
 | rotator_wa | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | system_ascol | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | wheel_asi | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
-| wheel_astroasis | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
+| wheel_astroasis | 3️⃣ | ✅ Yes | ❌ No | ✅ HW | |
 | wheel_atik | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | wheel_fli | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
 | wheel_indigo | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
