@@ -85,7 +85,7 @@
 
 typedef struct {
 	indigo_uni_handle *handle;
-	uint32_t current_position, target_position, max_position;
+	int32_t current_position, target_position, max_position;
 	double prev_temp;
 	indigo_timer *focuser_timer, *temperature_timer;
 	pthread_mutex_t port_mutex;
@@ -399,10 +399,10 @@ static void focuser_timer_callback(indigo_device *device) {
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
-		PRIVATE_DATA->current_position = (double)position;
+		PRIVATE_DATA->current_position = position;
 	}
 
-	FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
+	FOCUSER_POSITION_ITEM->number.value = (double)PRIVATE_DATA->current_position;
 	if ((!moving) || (PRIVATE_DATA->current_position == PRIVATE_DATA->target_position)) {
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
@@ -693,7 +693,7 @@ static void focuser_connect_callback(indigo_device *device) {
 				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 				char *name = DEVICE_PORT_ITEM->text.value;
 				if (!indigo_uni_is_url(name, "mfp")) {
-					PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, atoi(DEVICE_BAUDRATE_ITEM->text.value), INDIGO_LOG_DEBUG);
+					PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, atoi(DEVICE_BAUDRATE_ITEM->text.value), INDIGO_LOG_ERROR);
 					/* MFP resets on RTS, which is manipulated on connect! Wait for 2 seconds to recover! */
 					indigo_usleep(2*ONE_SECOND_DELAY);
 				} else {
