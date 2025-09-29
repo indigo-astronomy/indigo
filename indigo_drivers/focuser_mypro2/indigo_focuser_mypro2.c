@@ -28,13 +28,11 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
 #include <errno.h>
 #include <pthread.h>
 #include <stdbool.h>
-//#include <sys/time.h>
 
 #include <indigo/indigo_driver_xml.h>
 
