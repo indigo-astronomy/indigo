@@ -51,7 +51,7 @@
 | ccd_ogma | 3️⃣ | ✅ Yes | ❌ No | ❌ No | ➡️ Touptek |
 | ccd_omegonpro | 3️⃣ | ✅ Yes | ❌ No | ❌ No | ➡️ Touptek |
 | ccd_pentax | 2️⃣ | ❌ No | ❌ No | ❌ No | 🚧 Unfinished & stalled |
-| ccd_playerone | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
+| ccd_playerone | 3️⃣ | ✅ Yes | ❌ No | ✅ HW | |
 | ccd_ptp | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | ccd_qhy | 3️⃣ | ❌ No | ❌ No | ❌ No | ⏰ TODO - make libqhy for Windows |
 | ccd_qhy2 | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
@@ -136,7 +136,7 @@
 | wheel_manual | 3️⃣ | ✅ Yes | ✅ Yes | ❌ No | |
 | wheel_mi | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | wheel_optec | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
-| wheel_playerone | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
+| wheel_playerone | 3️⃣ | ✅ Yes | ❌ No | ✅ HW | |
 | wheel_qhy | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
 | wheel_quantum | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
 | wheel_sx | 2️⃣ | ❌ No | ❌ No | ❌ No | ⏰ TODO - make hidapi for Windows |
