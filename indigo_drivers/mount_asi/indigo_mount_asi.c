@@ -124,7 +124,7 @@ static int asi_error_code(char *response) {
 	return 0;
 }
 
-static bool asi_command(indigo_device *device, char *command, char *response, int max, int sleep);
+static bool asi_command(indigo_device *device, const char *command, char *response, int max, int sleep);
 
 static bool asi_open(indigo_device *device) {
 	char *name = DEVICE_PORT_ITEM->text.value;
@@ -148,7 +148,7 @@ static bool asi_open(indigo_device *device) {
 
 static void network_disconnection(indigo_device *device);
 
-static bool asi_command(indigo_device *device, char *command, char *response, int max, int sleep) {
+static bool asi_command(indigo_device *device, const char *command, char *response, int max, int sleep) {
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
 		if (indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command)) > 0) {
@@ -156,7 +156,7 @@ static bool asi_command(indigo_device *device, char *command, char *response, in
 				indigo_usleep(sleep);
 			}
 			if (response != NULL) {
-				if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "#", "", INDIGO_DELAY(3) > 0)) {
+				if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "#", "", INDIGO_DELAY(3)) > 0) {
 					indigo_usleep(50000);
 					pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 					return true;
