@@ -130,15 +130,13 @@ static void network_disconnection(indigo_device* device) {
 	// Otherwise not previously connected, nothing to do
 }
 
-static bool mfp_command(indigo_device *device, const char *command, char *response, int max, int sleep) {
+static bool mfp_command(indigo_device *device, const char *command, char *response, int max, int timeout) {
+	int tmout = timeout > 0 ? timeout * 1000 : INDIGO_DELAY(3);
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
 		if (indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command)) > 0) {
-			if (sleep > 0) {
-				indigo_usleep(sleep);
-			}
 			if (response != NULL) {
-				if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "#", "", INDIGO_DELAY(3)) > 0) {
+				if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "#", "", tmout) > 0) {
 					indigo_usleep(50000);
 					pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 					return true;
@@ -503,13 +501,13 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 	if (!mfp_get_position(device, &current_position)) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_get_position(%p) failed", PRIVATE_DATA->handle);
 	}
-	PRIVATE_DATA->current_position = (double)current_position;
+	PRIVATE_DATA->current_position = current_position;
 
 	/* Make sure we do not attempt to go beyond the limits */
 	if (FOCUSER_POSITION_ITEM->number.max < PRIVATE_DATA->target_position) {
-		PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.max;
+		PRIVATE_DATA->target_position = (int32_t)FOCUSER_POSITION_ITEM->number.max;
 	} else if (FOCUSER_POSITION_ITEM->number.min > PRIVATE_DATA->target_position) {
-		PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.min;
+		PRIVATE_DATA->target_position = (int32_t)FOCUSER_POSITION_ITEM->number.min;
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensating: Corrected PRIVATE_DATA->target_position = %d", PRIVATE_DATA->target_position);
 
@@ -756,7 +754,7 @@ static void focuser_connect_callback(indigo_device *device) {
 					}
 					FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = (double)PRIVATE_DATA->max_position;
 
-					if (!mfp_set_speed(device, FOCUSER_SPEED_ITEM->number.value)) {
+					if (!mfp_set_speed(device, (uint32_t)FOCUSER_SPEED_ITEM->number.value)) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_set_speed(%p) failed", PRIVATE_DATA->handle);
 					}
 					FOCUSER_SPEED_ITEM->number.target = FOCUSER_SPEED_ITEM->number.value;
@@ -851,7 +849,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		} else { /* GOTO position */
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-			PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.target;
+			PRIVATE_DATA->target_position = (uint32_t)FOCUSER_POSITION_ITEM->number.target;
 			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
 			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
@@ -874,7 +872,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 					FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
-					FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position = (double)position;
+					FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position = position;
 				}
 				indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
@@ -923,20 +921,20 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			if (!mfp_get_position(device, &position)) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_get_position(%p) failed", PRIVATE_DATA->handle);
 			} else {
-				PRIVATE_DATA->current_position = (double)position;
+				PRIVATE_DATA->current_position = position;
 			}
 
 			if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
-				PRIVATE_DATA->target_position = PRIVATE_DATA->current_position - FOCUSER_STEPS_ITEM->number.value;
+				PRIVATE_DATA->target_position = PRIVATE_DATA->current_position - (uint32_t)FOCUSER_STEPS_ITEM->number.value;
 			} else {
-				PRIVATE_DATA->target_position = PRIVATE_DATA->current_position + FOCUSER_STEPS_ITEM->number.value;
+				PRIVATE_DATA->target_position = PRIVATE_DATA->current_position + (uint32_t)FOCUSER_STEPS_ITEM->number.value;
 			}
 
 			// Make sure we do not attempt to go beyond the limits
 			if (FOCUSER_POSITION_ITEM->number.max < PRIVATE_DATA->target_position) {
-				PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.max;
+				PRIVATE_DATA->target_position = (uint32_t)FOCUSER_POSITION_ITEM->number.max;
 			} else if (FOCUSER_POSITION_ITEM->number.min > PRIVATE_DATA->target_position) {
-				PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.min;
+				PRIVATE_DATA->target_position = (uint32_t)FOCUSER_POSITION_ITEM->number.min;
 			}
 
 			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
@@ -965,7 +963,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_get_position(%p) failed", PRIVATE_DATA->handle);
 			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
-			PRIVATE_DATA->current_position = (double)position;
+			PRIVATE_DATA->current_position = position;
 		}
 		FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
 		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
