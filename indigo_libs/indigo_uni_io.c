@@ -126,6 +126,7 @@ static int wait_for_data(indigo_uni_handle *handle, long timeout) {
 	} else if (handle->type == INDIGO_COM_HANDLE) {
 		unsigned long mask;
 		ResetEvent(handle->ov_read.hEvent);
+		SetCommMask(handle->com, EV_RXCHAR | EV_ERR | EV_BREAK);
 		if (!WaitCommEvent(handle->com, &mask, &handle->ov_read)){
 			if (GetLastError() != ERROR_IO_PENDING) {
 				handle->last_error = GetLastError();
@@ -585,7 +586,7 @@ static indigo_uni_handle *open_tty(const char *serial, DCB *dcb, int log_level) 
 		serial_buf += auto_prefix_len;
 	}
 	HANDLE com = CreateFileA(serial_buf, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
-	if (com == INVALID_HANDLE_VALUE || !SetCommMask(com, EV_RXCHAR)) {
+	if (com == INVALID_HANDLE_VALUE) {
 		indigo_error("Failed to open %s (%s)", serial, indigo_last_windows_error());
 		return NULL;
 	}
@@ -602,7 +603,7 @@ static indigo_uni_handle *open_tty(const char *serial, DCB *dcb, int log_level) 
 		CloseHandle(com);
 		return NULL;
 	}
-	if (!SetCommMask(com, EV_RXCHAR)) {
+	if (!SetCommMask(com, EV_RXCHAR | EV_ERR | EV_BREAK)) {
 		indigo_error("Failed to open %s (%s)", serial, indigo_last_windows_error());
 		CloseHandle(com);
 		return NULL;
