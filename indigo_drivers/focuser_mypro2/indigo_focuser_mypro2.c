@@ -116,6 +116,8 @@ typedef enum {
 
 #define NO_TEMP_READING                (-127)
 
+#define RESPONSE_TIMEOUT               300 // milliseconds
+
 static void focuser_connect_callback(indigo_device *device);
 
 static void network_disconnection(indigo_device* device) {
@@ -167,7 +169,7 @@ static bool mfp_get_info(indigo_device *device, char *board, char *firmware) {
 	if (!board || !firmware) return false;
 
 	char response[MFP_CMD_LEN]={0};
-	if (mfp_command(device, ":04#", response, sizeof(response), 100)) {
+	if (mfp_command(device, ":04#", response, sizeof(response), RESPONSE_TIMEOUT)) {
 		char *delim = NULL;
 		if ((delim = strchr(response, '\n'))) {
 			*delim = ' ';
@@ -199,7 +201,7 @@ static bool mfp_command_get_int_value(indigo_device *device, const char *command
 	if (!value) return false;
 
 	char response[MFP_CMD_LEN]={0};
-	if (mfp_command(device, command, response, sizeof(response), 100)) {
+	if (mfp_command(device, command, response, sizeof(response), RESPONSE_TIMEOUT)) {
 		char format[100];
 		sprintf(format, "%c%%d#", expect);
 		int parsed = sscanf(response, format, value);
@@ -213,21 +215,21 @@ static bool mfp_command_get_int_value(indigo_device *device, const char *command
 
 
 static bool mfp_stop(indigo_device *device) {
-	return mfp_command(device, ":27#", NULL, 0, 100);
+	return mfp_command(device, ":27#", NULL, 0, RESPONSE_TIMEOUT);
 }
 
 
 static bool mfp_sync_position(indigo_device *device, uint32_t pos) {
 	char command[MFP_CMD_LEN];
 	snprintf(command, MFP_CMD_LEN, ":31%06d#", pos);
-	return mfp_command(device, command, NULL, 0, 100);
+	return mfp_command(device, command, NULL, 0, RESPONSE_TIMEOUT);
 }
 
 
 static bool mfp_set_reverse(indigo_device *device, bool enabled) {
 	char command[MFP_CMD_LEN];
 	snprintf(command, MFP_CMD_LEN, ":14%d#", enabled ? 1 : 0);
-	return mfp_command(device, command, NULL, 0, 100);
+	return mfp_command(device, command, NULL, 0, RESPONSE_TIMEOUT);
 }
 
 
@@ -258,10 +260,10 @@ static bool mfp_set_backlashes(indigo_device *device, int backlash_in, int backl
 	snprintf(command_ebable_out, MFP_CMD_LEN, ":75%1d#", backlash_out > 0 ? 1 : 0);
 
 	return (
-		mfp_command(device, command_bl_in, NULL, 0, 100) &&
-		mfp_command(device, command_bl_out, NULL, 0, 100) &&
-		mfp_command(device, command_ebable_in, NULL, 0, 100) &&
-		mfp_command(device, command_ebable_out, NULL, 0, 100)
+		mfp_command(device, command_bl_in, NULL, 0, RESPONSE_TIMEOUT) &&
+		mfp_command(device, command_bl_out, NULL, 0, RESPONSE_TIMEOUT) &&
+		mfp_command(device, command_ebable_in, NULL, 0, RESPONSE_TIMEOUT) &&
+		mfp_command(device, command_ebable_out, NULL, 0, RESPONSE_TIMEOUT)
 	);
 }
 
@@ -295,7 +297,7 @@ static bool mfp_get_position(indigo_device *device, uint32_t *pos) {
 static bool mfp_goto_position(indigo_device *device, uint32_t position) {
 	char command[MFP_CMD_LEN];
 	snprintf(command, MFP_CMD_LEN, ":05%06d#", position);
-	return mfp_command(device, command, NULL, 0, 100);
+	return mfp_command(device, command, NULL, 0, RESPONSE_TIMEOUT);
 }
 
 
@@ -310,7 +312,7 @@ static bool mfp_get_step_mode(indigo_device *device, stepmode_t *mode) {
 static bool mfp_set_step_mode(indigo_device *device, stepmode_t mode) {
 	char command[MFP_CMD_LEN];
 	snprintf(command, MFP_CMD_LEN, ":30%d#", mode);
-	return mfp_command(device, command, NULL, 0, 100);
+	return mfp_command(device, command, NULL, 0, RESPONSE_TIMEOUT);
 }
 
 
@@ -322,7 +324,7 @@ static bool mfp_get_max_position(indigo_device *device, uint32_t *position) {
 static bool mfp_set_max_position(indigo_device *device, uint32_t position) {
 	char command[MFP_CMD_LEN];
 	snprintf(command, MFP_CMD_LEN, ":07%d#", position);
-	return mfp_command(device, command, NULL, 0, 100);
+	return mfp_command(device, command, NULL, 0, RESPONSE_TIMEOUT);
 }
 
 
@@ -334,7 +336,7 @@ static bool mfp_get_settle_buffer(indigo_device *device, uint32_t *delay) {
 static bool mfp_set_settle_buffer(indigo_device *device, uint32_t delay) {
 	char command[MFP_CMD_LEN];
 	snprintf(command, MFP_CMD_LEN, ":71%d#", delay);
-	return mfp_command(device, command, NULL, 0, 100);
+	return mfp_command(device, command, NULL, 0, RESPONSE_TIMEOUT);
 }
 
 
@@ -350,14 +352,14 @@ static bool mfp_set_coils_mode(indigo_device *device, coilsmode_t mode) {
 	if (mode > 1) return false;
 	char command[MFP_CMD_LEN];
 	snprintf(command, MFP_CMD_LEN, ":12%d#", mode);
-	return mfp_command(device, command, NULL, 0, 100);
+	return mfp_command(device, command, NULL, 0, RESPONSE_TIMEOUT);
 }
 
 static bool mfp_set_speed(indigo_device *device, uint32_t speed) {
 	if (speed > 2) return false;
 	char command[MFP_CMD_LEN];
 	snprintf(command, MFP_CMD_LEN, ":15%d#", speed);
-	return mfp_command(device, command, NULL, 0, 100);
+	return mfp_command(device, command, NULL, 0, RESPONSE_TIMEOUT);
 }
 
 
@@ -372,13 +374,13 @@ static bool mfp_is_moving(indigo_device *device, bool *is_moving) {
 
 
 static bool mfp_save_settings(indigo_device *device) {
-	return mfp_command(device, ":48#", NULL, 0, 100);
+	return mfp_command(device, ":48#", NULL, 0, RESPONSE_TIMEOUT);
 }
 
 
 static bool mfp_get_temperature(indigo_device *device, double *temperature) {
 	char response[MFP_CMD_LEN]={0};
-	if (mfp_command(device, ":06#", response, sizeof(response), 100)) {
+	if (mfp_command(device, ":06#", response, sizeof(response), RESPONSE_TIMEOUT)) {
 		int parsed = sscanf(response, "Z%lf#", temperature);
 		if (parsed != 1) return false;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, ":06# -> %s = %lf", response, *temperature);
@@ -700,11 +702,12 @@ static void focuser_connect_callback(indigo_device *device) {
 				char *name = DEVICE_PORT_ITEM->text.value;
 				if (!indigo_uni_is_url(name, "mfp")) {
 					PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, atoi(DEVICE_BAUDRATE_ITEM->text.value), INDIGO_LOG_ERROR);
-					/* MFP resets on RTS, which is manipulated on connect! Wait for 2 seconds to recover! */
-					indigo_usleep(2*ONE_SECOND_DELAY);
 				} else {
 					PRIVATE_DATA->handle = indigo_uni_open_url(name, 8080, INDIGO_TCP_HANDLE, INDIGO_LOG_DEBUG);
 				}
+				/* MFP resets on RTS, which is manipulated on connect! Wait for 2 seconds to recover! */
+				indigo_usleep(2*ONE_SECOND_DELAY);
+
 				if (PRIVATE_DATA->handle == NULL) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Opening device %s: failed", DEVICE_PORT_ITEM->text.value);
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
