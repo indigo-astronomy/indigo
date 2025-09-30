@@ -133,11 +133,11 @@ static int wait_for_data(indigo_uni_handle *handle, long timeout) {
 				return -1;
 			}
 		}
-		switch (WaitForSingleObject(handle->ov_read.hEvent, timeout / 1000)) {
+		switch (WaitForSingleObject(handle->ov_read.hEvent, (timeout + 999) / 1000)) {
 			case WAIT_OBJECT_0:
 				return 1;
 			case WAIT_TIMEOUT:
-				CancelIo(handle->com);
+				CancelIoEx(handle->com, &handle->ov_read);
 				indigo_log_on_level(handle->log_level, "%d -> // timeout", handle->index);
 				return 0;
 			default:
