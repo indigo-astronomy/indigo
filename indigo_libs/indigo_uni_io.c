@@ -199,7 +199,7 @@ static long read_data(indigo_uni_handle *handle, void *buffer, long length) {
 			indigo_error("%d -> // Failed to read (%s)", handle->index, indigo_uni_strerror(handle));
 			return -1;
 		}
-		DWORD waitResult = WaitForSingleObject(handle->ov_read.hEvent, INFINITE);
+		DWORD waitResult = WaitForSingleObject(handle->ov_read.hEvent, 5000);
 		if (waitResult == WAIT_OBJECT_0) {
 			if (GetOverlappedResult(handle->com, &handle->ov_read, &bytes_read, FALSE)) {
 				handle->last_error = 0;
@@ -207,8 +207,12 @@ static long read_data(indigo_uni_handle *handle, void *buffer, long length) {
 			}
 		}
 		handle->last_error = GetLastError();
-		indigo_error("%d -> // Failed to read (%s)", handle->index, indigo_uni_strerror(handle));
-		CancelIo(handle->com);
+		if (handle->last_error == ERROR_IO_PENDING) {
+			indigo_error("%d -> // timeout", handle->index, indigo_uni_strerror(handle));
+		} else {
+			indigo_error("%d -> // Failed to read (%s)", handle->index, indigo_uni_strerror(handle));
+		}
+		CancelIoEx(handle->com, &handle->ov_read);
 		return -1;
 	} else if (handle->type == INDIGO_TCP_HANDLE || handle->type == INDIGO_UDP_HANDLE) {
 		long bytes_read = recv(handle->sock, buffer, length, 0);
@@ -262,7 +266,11 @@ static long write_data(indigo_uni_handle *handle, const char *buffer, long lengt
 			}
 		}
 		handle->last_error = GetLastError();
-		indigo_error("%d <- // Failed to write (%s)", handle->index, indigo_uni_strerror(handle));
+		if (handle->last_error == ERROR_IO_PENDING) {
+			indigo_error("%d -> // timeout", handle->index, indigo_uni_strerror(handle));
+		} else {
+			indigo_error("%d <- // Failed to write (%s)", handle->index, indigo_uni_strerror(handle));
+		}
 		return -1;
 	} else if (handle->type == INDIGO_TCP_HANDLE || handle->type == INDIGO_UDP_HANDLE) {
 		long bytes_written = send(handle->sock, buffer, length, 0);
@@ -608,13 +616,6 @@ static indigo_uni_handle *open_tty(const char *serial, DCB *dcb, int log_level) 
 		CloseHandle(com);
 		return NULL;
 	}
-	COMMTIMEOUTS timeouts = { 0 };
-	timeouts.ReadIntervalTimeout = INFINITE;
-	timeouts.ReadTotalTimeoutConstant = INFINITE;
-	timeouts.ReadTotalTimeoutMultiplier = 0;
-	timeouts.WriteTotalTimeoutConstant = INFINITE;
-	timeouts.WriteTotalTimeoutMultiplier = 0;
-	SetCommTimeouts(com, &timeouts);
 	indigo_uni_handle *handle = (indigo_uni_handle *)indigo_safe_malloc(sizeof(indigo_uni_handle));
 	handle->index = handle_index++;
 	handle->type = INDIGO_COM_HANDLE;
@@ -1207,7 +1208,6 @@ long indigo_uni_read_section(indigo_uni_handle *handle, char *buffer, long lengt
 		}
 		switch (read_data(handle, &c, 1)) {
 			case -1:
-				indigo_error("%d -> // Failed to read (%s)", handle->index, indigo_uni_strerror(handle));
 				return -1;
 			case 0:
 				if (handle->log_level < 0) {
