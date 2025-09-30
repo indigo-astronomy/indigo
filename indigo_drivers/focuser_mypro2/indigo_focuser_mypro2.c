@@ -364,7 +364,12 @@ static bool mfp_set_speed(indigo_device *device, uint32_t speed) {
 
 
 static bool mfp_is_moving(indigo_device *device, bool *is_moving) {
-	return mfp_command_get_int_value(device, ":01#", 'I', (uint32_t *)is_moving);
+	uint32_t temp_value;
+	bool result = mfp_command_get_int_value(device, ":01#", 'I', &temp_value);
+	if (result) {
+		*is_moving = (temp_value != 0);
+	}
+	return result;
 }
 
 
