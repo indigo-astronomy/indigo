@@ -545,6 +545,7 @@ static int configure_tty_options(DCB *dcb, const char *baudrate) {
 	if (baudr == -1 || strlen(mode) != 3) {
 		return false;
 	}
+	dcb->fBinary = true;
 	dcb->BaudRate = baudr;
 	dcb->ByteSize = 8;
 	dcb->Parity = NOPARITY;
