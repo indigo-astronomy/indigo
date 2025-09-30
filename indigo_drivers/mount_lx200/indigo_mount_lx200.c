@@ -394,7 +394,7 @@ static bool meade_command(indigo_device *device, char *command, char *response, 
 				indigo_usleep(sleep);
 			}
 			if (response != NULL) {
-				if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "#", "", INDIGO_DELAY(1) > 0)) {
+				if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "#", "", INDIGO_DELAY(1)) > 0) {
 					indigo_usleep(50000);
 					pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 					return true;
@@ -421,9 +421,9 @@ static bool meade_command_progress(indigo_device *device, char *command, char *r
 				indigo_usleep(sleep);
 			}
 			if (response != NULL) {
-				if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "#", "", INDIGO_DELAY(1) > 0)) {
+				if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "#", "", INDIGO_DELAY(1)) > 0) {
 					char progress[128];
-					if (indigo_uni_read_section(PRIVATE_DATA->handle, progress, sizeof(progress), "#", "", INDIGO_DELAY(0.1) > 0)) {
+					if (indigo_uni_read_section(PRIVATE_DATA->handle, progress, sizeof(progress), "#", "", INDIGO_DELAY(0.1)) > 0) {
 						indigo_usleep(50000);
 						pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 						return true;
