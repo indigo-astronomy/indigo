@@ -42,6 +42,8 @@
 
 #define SERIAL_BAUDRATE            "9600"
 
+#define RESPONSE_TIMEOUT            300 // milliseconds
+
 #define PRIVATE_DATA                    ((mfp_private_data *)device->private_data)
 
 
@@ -701,7 +703,7 @@ static void focuser_connect_callback(indigo_device *device) {
 				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 				char *name = DEVICE_PORT_ITEM->text.value;
 				if (!indigo_uni_is_url(name, "mfp")) {
-					PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, atoi(DEVICE_BAUDRATE_ITEM->text.value), INDIGO_LOG_ERROR);
+					PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, atoi(DEVICE_BAUDRATE_ITEM->text.value), INDIGO_LOG_DEBUG);
 				} else {
 					PRIVATE_DATA->handle = indigo_uni_open_url(name, 8080, INDIGO_TCP_HANDLE, INDIGO_LOG_DEBUG);
 				}
