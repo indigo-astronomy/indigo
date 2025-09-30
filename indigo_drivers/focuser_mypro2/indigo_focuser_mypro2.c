@@ -143,6 +143,9 @@ static bool mfp_command(indigo_device *device, const char *command, char *respon
 					pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 					return true;
 				}
+			} else {
+				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+				return true;
 			}
 		}
 	}
