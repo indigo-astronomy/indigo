@@ -91,7 +91,7 @@
 | focuser_mjkzz | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | focuser_mjkzz_bt | 2️⃣ | ❌ No | ❌ No | ❌ No | ⛔ macOS only |
 | focuser_moonlite | 2️⃣ | ❌ No | ❌ No | ❌ No | |
-| focuser_mypro2 | 2️⃣ | ❌ No | ❌ No | ❌ No | |
+| focuser_mypro2 | 3️⃣ | ✅ Yes | ❌ No | ✅ NW | |
 | focuser_nfocus | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | focuser_nstep | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | focuser_optec | 2️⃣ | ❌ No | ❌ No | ❌ No | |
