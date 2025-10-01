@@ -384,7 +384,7 @@ static bool meade_open(indigo_device *device) {
 static void network_disconnection(indigo_device *device);
 
 static bool meade_command(indigo_device *device, char *command, char *response, int max, int timeout) {
-	if (PRIVATE_DATA->handle == 0 || PRIVATE_DATA->wifi_reset) {
+	if (PRIVATE_DATA->handle == NULL || PRIVATE_DATA->wifi_reset) {
 		return false;
 	}
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
@@ -410,7 +410,7 @@ static bool meade_command(indigo_device *device, char *command, char *response, 
 }
 
 static bool meade_command_progress(indigo_device *device, char *command, char *response, int max, int sleep) {
-	if (PRIVATE_DATA->handle == 0 || PRIVATE_DATA->wifi_reset) {
+	if (PRIVATE_DATA->handle == NULL || PRIVATE_DATA->wifi_reset) {
 		return false;
 	}
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
