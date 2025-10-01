@@ -343,16 +343,16 @@ static bool meade_open(indigo_device *device) {
 			if (PRIVATE_DATA->handle != NULL) {
 				// sometimes the first command after power on in OnStep fails and just returns '0'
 				// so we try two times for the default baudrate of 9600
-				if ((!meade_command(device, ":GR#", response, sizeof(response), 0) || strlen(response) < 6) && (!meade_command(device, ":GR#", response, sizeof(response), 0) || strlen(response) < 6)) {
+				if ((!meade_command(device, ":GR#", response, sizeof(response), 0.5) || strlen(response) < 6) && (!meade_command(device, ":GR#", response, sizeof(response), 0) || strlen(response) < 6)) {
 					indigo_uni_close(&PRIVATE_DATA->handle);
 					PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, 19200, INDIGO_LOG_DEBUG);
-					if (!meade_command(device, ":GR#", response, sizeof(response), 0) || strlen(response) < 6) {
+					if (!meade_command(device, ":GR#", response, sizeof(response), 0.5) || strlen(response) < 6) {
 						indigo_uni_close(&PRIVATE_DATA->handle);
 						PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, 115200, INDIGO_LOG_DEBUG);
-						if (!meade_command(device, ":GR#", response, sizeof(response), 0) || strlen(response) < 6) {
+						if (!meade_command(device, ":GR#", response, sizeof(response), 0.5) || strlen(response) < 6) {
 							indigo_uni_close(&PRIVATE_DATA->handle);
 							PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, 230400, INDIGO_LOG_DEBUG);
-							if (!meade_command(device, ":GR#", response, sizeof(response), 0) || strlen(response) < 6) {
+							if (!meade_command(device, ":GR#", response, sizeof(response), 0.5) || strlen(response) < 6) {
 								indigo_uni_close(&PRIVATE_DATA->handle);
 							}
 						}
@@ -383,20 +383,18 @@ static bool meade_open(indigo_device *device) {
 
 static void network_disconnection(indigo_device *device);
 
-static bool meade_command(indigo_device *device, char *command, char *response, int max, int sleep) {
+static bool meade_command(indigo_device *device, char *command, char *response, int max, int timeout) {
 	if (PRIVATE_DATA->handle == 0 || PRIVATE_DATA->wifi_reset) {
 		return false;
 	}
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
 		if (indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command)) > 0) {
-			if (sleep > 0) {
-				indigo_usleep(sleep);
-			}
+			timeout = timeout > 0 ? timeout : 3;
 			if (response == NULL) {
 				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 				return true;
-			} else if (indigo_uni_read_section2(PRIVATE_DATA->handle, response, max, "#", "#", INDIGO_DELAY(3), INDIGO_DELAY(0.1)) >= 0) {
+			} else if (indigo_uni_read_section2(PRIVATE_DATA->handle, response, max, "#", "#", INDIGO_DELAY(timeout), INDIGO_DELAY(0.1)) >= 0) {
 				indigo_usleep(50000);
 				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 				return true;
@@ -677,7 +675,7 @@ static bool meade_slew(indigo_device *device, double ra, double dec) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed with response: %s", command, response);
 		return false;
 	}
-	if (!meade_command(device, ":MS#", response, 1, 100000) || *response != '0') {
+	if (!meade_command(device, ":MS#", response, 1, 0) || *response != '0') {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, ":MS# failed with response: %s", response);
 		if (MOUNT_TYPE_ZWO_ITEM->sw.value && *response == 'e') {
 			int error_code = 0;
@@ -721,7 +719,7 @@ static bool meade_sync(indigo_device *device, double ra, double dec) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed with response: %s", command, response);
 		return false;
 	}
-	if (!meade_command(device, ":CM#", response, sizeof(response), 100000) || *response == 0) {
+	if (!meade_command(device, ":CM#", response, sizeof(response), 0) || *response == 0) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, ":CM# failed with response: %s", response);
 		return false;
 	}
