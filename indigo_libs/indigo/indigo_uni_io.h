@@ -213,6 +213,10 @@ INDIGO_EXTERN long indigo_uni_read_section(indigo_uni_handle *handle, char *buff
 
 #define indigo_uni_read_line(handle, buffer, length) indigo_uni_read_section(handle, buffer, length, "\n", "\r\n", INDIGO_DELAY(5))
 
+/** Read up to one of terminator characters optionally ignoring some characters (or NULL) into buffer with separate usecs timeouts for the first and next bytes (or -1).
+ */
+INDIGO_EXTERN long indigo_uni_read_section2(indigo_uni_handle *handle, char *buffer, long length, const char *terminators, const char *ignore, long first_byte_timeout, long next_bytes_timeout);
+
 /** Read formatted.
  */
 

@@ -1181,13 +1181,21 @@ long indigo_uni_discard(indigo_uni_handle *handle) {
 }
 
 long indigo_uni_read_section(indigo_uni_handle *handle, char *buffer, long length, const char *terminators, const char *ignore, long timeout) {
+	return indigo_uni_read_section2(handle, buffer, length, terminators, ignore, timeout, timeout);
+}
+
+long indigo_uni_read_section2(indigo_uni_handle *handle, char *buffer, long length, const char *terminators, const char *ignore, long first_byte_timeout, long next_bytes_timeout) {
 	if (handle == NULL) {
 		// indigo_error("%s used with NULL handle", __FUNCTION__);
 		return -1;
 	}
 	long bytes_read = 0;
 	bool terminated = false;
+	long timeout = first_byte_timeout;
 	while (bytes_read < length) {
+		if (bytes_read > 0) {
+			timeout = next_bytes_timeout;
+		}
 		char c = 0;
 		if (timeout >= 0) {
 			switch (wait_for_data(handle, timeout)) {
