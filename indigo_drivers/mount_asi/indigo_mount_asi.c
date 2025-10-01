@@ -148,19 +148,18 @@ static bool asi_open(indigo_device *device) {
 
 static void network_disconnection(indigo_device *device);
 
-static bool asi_command(indigo_device *device, const char *command, char *response, int max, int sleep) {
+static bool asi_command(indigo_device *device, const char *command, char *response, int max, int timeout) {
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
 		if (indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command)) > 0) {
-			if (sleep > 0) {
-				indigo_usleep(sleep);
-			}
-			if (response != NULL) {
-				if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "#", "", INDIGO_DELAY(3)) > 0) {
-					indigo_usleep(50000);
-					pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-					return true;
-				}
+			timeout = timeout > 0 ? timeout : 3;
+			if (response == NULL) {
+				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+				return true;
+			} else if (indigo_uni_read_section2(PRIVATE_DATA->handle, response, max, "#", "#", INDIGO_DELAY(timeout), INDIGO_DELAY(0.1)) >= 0) {
+				indigo_usleep(50000);
+				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+				return true;
 			}
 		}
 	}
@@ -359,7 +358,7 @@ static bool asi_slew(indigo_device *device, double ra, double dec, int *error_co
 		*error_code = asi_error_code(response);
 		return false;
 	}
-	if (!asi_command(device, ":MS#", response, sizeof(response), 100000) || *response != '0') {
+	if (!asi_command(device, ":MS#", response, sizeof(response), 0) || *response != '0') {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, ":MS# failed with response: %s", response);
 		*error_code = asi_error_code(response);
 		return false;
@@ -382,7 +381,7 @@ static bool asi_sync(indigo_device *device, double ra, double dec, int *error_co
 		*error_code = asi_error_code(response);
 		return false;
 	}
-	if (!asi_command(device, ":CM#", response, sizeof(response), 100000) || *response == 'e') {
+	if (!asi_command(device, ":CM#", response, sizeof(response), 0) || *response == 'e') {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, ":CM# failed with response: %s", response);
 		*error_code = asi_error_code(response);
 		return false;
