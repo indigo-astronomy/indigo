@@ -393,12 +393,13 @@ static bool meade_command(indigo_device *device, char *command, char *response, 
 			if (sleep > 0) {
 				indigo_usleep(sleep);
 			}
-			if (response != NULL) {
-				if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "#", "", INDIGO_DELAY(1)) > 0) {
-					indigo_usleep(50000);
-					pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-					return true;
-				}
+			if (response == NULL) {
+				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+				return true;
+			} else if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "#", "", INDIGO_DELAY(1)) > 0) {
+				indigo_usleep(50000);
+				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+				return true;
 			}
 		}
 	}
