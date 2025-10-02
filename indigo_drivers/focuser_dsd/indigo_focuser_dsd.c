@@ -109,7 +109,7 @@
 typedef struct {
 	indigo_uni_handle *handle;
 	int focuser_version;
-	uint32_t current_position, target_position, max_position;
+	int32_t current_position, target_position, max_position;
 	bool positive_last_move;
 	double prev_temp;
 	indigo_timer *focuser_timer, *temperature_timer;
@@ -461,7 +461,7 @@ static void focuser_timer_callback(indigo_device *device) {
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
-		PRIVATE_DATA->current_position = (double)position;
+		PRIVATE_DATA->current_position = position;
 	}
 
 	FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
@@ -557,13 +557,13 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 	if (!dsd_get_position(device, &current_position)) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_position(%d) failed", PRIVATE_DATA->handle->index);
 	}
-	PRIVATE_DATA->current_position = (double)current_position;
+	PRIVATE_DATA->current_position = current_position;
 
 	/* Make sure we do not attempt to go beyond the limits */
 	if (FOCUSER_POSITION_ITEM->number.max < PRIVATE_DATA->target_position) {
-		PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.max;
+		PRIVATE_DATA->target_position = (int32_t)FOCUSER_POSITION_ITEM->number.max;
 	} else if (FOCUSER_POSITION_ITEM->number.min > PRIVATE_DATA->target_position) {
-		PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.min;
+		PRIVATE_DATA->target_position = (int32_t)FOCUSER_POSITION_ITEM->number.min;
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensating: Corrected PRIVATE_DATA->target_position = %d", PRIVATE_DATA->target_position);
 
@@ -991,7 +991,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		} else { /* GOTO position */
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-			PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.target;
+			PRIVATE_DATA->target_position = (int32_t)FOCUSER_POSITION_ITEM->number.target;
 			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
 			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
@@ -1016,7 +1016,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 					FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
-					FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position = (double)position;
+					FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position = position;
 				}
 				indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
@@ -1070,20 +1070,20 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			if (!dsd_get_position(device, &position)) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_position(%d) failed", PRIVATE_DATA->handle->index);
 			} else {
-				PRIVATE_DATA->current_position = (double)position;
+				PRIVATE_DATA->current_position = position;
 			}
 
 			if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
-				PRIVATE_DATA->target_position = PRIVATE_DATA->current_position - FOCUSER_STEPS_ITEM->number.value;
+				PRIVATE_DATA->target_position = PRIVATE_DATA->current_position - (int32_t)FOCUSER_STEPS_ITEM->number.value;
 			} else {
-				PRIVATE_DATA->target_position = PRIVATE_DATA->current_position + FOCUSER_STEPS_ITEM->number.value;
+				PRIVATE_DATA->target_position = PRIVATE_DATA->current_position + (int32_t)FOCUSER_STEPS_ITEM->number.value;
 			}
 
 			// Make sure we do not attempt to go beyond the limits
 			if (FOCUSER_POSITION_ITEM->number.max < PRIVATE_DATA->target_position) {
-				PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.max;
+				PRIVATE_DATA->target_position = (int32_t)FOCUSER_POSITION_ITEM->number.max;
 			} else if (FOCUSER_POSITION_ITEM->number.min > PRIVATE_DATA->target_position) {
-				PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.min;
+				PRIVATE_DATA->target_position = (int32_t)FOCUSER_POSITION_ITEM->number.min;
 			}
 
 			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
@@ -1110,7 +1110,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_position(%d) failed", PRIVATE_DATA->handle->index);
 			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
-			PRIVATE_DATA->current_position = (double)position;
+			PRIVATE_DATA->current_position = position;
 		}
 		FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
 		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
