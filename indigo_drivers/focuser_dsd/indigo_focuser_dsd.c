@@ -168,7 +168,7 @@ static bool dsd_command(indigo_device *device, const char *command, char *respon
 			if (response == NULL) {
 				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 				return true;
-			} else if (indigo_uni_read_section2(PRIVATE_DATA->handle, response, max, ")", "", INDIGO_DELAY(timeout), INDIGO_DELAY(0.1)) >= 0) {
+			} else if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, ")", "", INDIGO_DELAY(timeout)) >= 0) {
 				indigo_usleep(50000);
 				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 				return true;
@@ -423,7 +423,10 @@ static bool dsd_set_speed(indigo_device *device, uint32_t speed) {
 
 
 static bool dsd_is_moving(indigo_device *device, bool *is_moving) {
-	return dsd_command_get_value(device, "[GMOV]", (uint32_t *)is_moving);
+	uint32_t moving;
+	int res = dsd_command_get_value(device, "[GMOV]", &moving);
+	*is_moving = (moving != 0);
+	return res;
 }
 
 
