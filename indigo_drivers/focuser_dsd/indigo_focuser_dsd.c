@@ -23,22 +23,20 @@
  \file indigo_focuser_dsd.c
  */
 
-#define DRIVER_VERSION 0x0200000F
+#define DRIVER_VERSION 0x0300000F
 #define DRIVER_NAME "indigo_focuser_dsd"
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
 #include <errno.h>
 #include <pthread.h>
 #include <stdbool.h>
-#include <sys/time.h>
 
 #include <indigo/indigo_driver_xml.h>
 
-#include <indigo/indigo_io.h>
+#include <indigo/indigo_uni_io.h>
 
 #include "indigo_focuser_dsd.h"
 
@@ -109,7 +107,7 @@
 #define is_connected                    gp_bits
 
 typedef struct {
-	int handle;
+	indigo_uni_handle *handle;
 	int focuser_version;
 	uint32_t current_position, target_position, max_position;
 	bool positive_last_move;
@@ -120,6 +118,7 @@ typedef struct {
 } dsd_private_data;
 
 static void compensate_focus(indigo_device *device, double new_temp);
+static void focuser_connect_callback(indigo_device *device);
 
 /* Deepsky Dad Commands ======================================================================== */
 
@@ -145,70 +144,51 @@ typedef enum {
 
 #define NO_TEMP_READING                (-127)
 
-static bool dsd_command(indigo_device *device, const char *command, char *response, int max, int sleep) {
-	char c;
-	struct timeval tv;
-	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
-	// flush
-	while (true) {
-		fd_set readout;
-		FD_ZERO(&readout);
-		FD_SET(PRIVATE_DATA->handle, &readout);
-		tv.tv_sec = 0;
-		tv.tv_usec = 100000;
-		long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-		if (result == 0) {
-			break;
-		}
-		if (result < 0) {
-			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-			return false;
-		}
-		result = read(PRIVATE_DATA->handle, &c, 1);
-		if (result < 1) {
-			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-			return false;
-		}
+static void device_network_disconnection(indigo_device* device, indigo_timer_callback callback) {
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		callback(device);
+		CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;  // The alert state signals the unexpected disconnection
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+		// Sending message as this update will not pass through the agent
+		indigo_send_message(device, "Error: Device disconnected unexpectedly", device->name);
 	}
-	// write command
-	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
-	if (sleep > 0) {
-		usleep(sleep);
-	}
-
-	// read responce
-	if (response != NULL) {
-		int index = 0;
-		int timeout = 3;
-		while (index < max) {
-			fd_set readout;
-			FD_ZERO(&readout);
-			FD_SET(PRIVATE_DATA->handle, &readout);
-			tv.tv_sec = timeout;
-			tv.tv_usec = 100000;
-			timeout = 0;
-			long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-			if (result <= 0) {
-				break;
-			}
-			result = read(PRIVATE_DATA->handle, &c, 1);
-			if (result < 1) {
-				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
-				return false;
-			}
-			response[index++] = c;
-
-			if (c == ')')
-				break;
-		}
-		response[index] = 0;
-	}
-	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s -> %s", command, response != NULL ? response : "NULL");
-	return true;
+	// Otherwise not previously connected, nothing to do
 }
 
+static void network_disconnection(indigo_device* device) {
+	device_network_disconnection(device, focuser_connect_callback);
+}
+
+static bool dsd_command(indigo_device *device, const char *command, char *response, int max, int timeout) {
+	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
+	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
+		if (indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command)) > 0) {
+			timeout = timeout > 0 ? timeout : 3;
+			if (response == NULL) {
+				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+				return true;
+			} else if (indigo_uni_read_section2(PRIVATE_DATA->handle, response, max, ")", "", INDIGO_DELAY(timeout), INDIGO_DELAY(0.1)) >= 0) {
+				indigo_usleep(50000);
+				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+				return true;
+			}
+		}
+	}
+	if (PRIVATE_DATA->handle->type == INDIGO_TCP_HANDLE) {
+		indigo_set_timer(device, 0, network_disconnection, NULL);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unexpected disconnection from %s", DEVICE_PORT_ITEM->text.value);
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+	return false;
+}
+
+static void dsd_close(indigo_device *device) {
+	if (PRIVATE_DATA->handle != NULL) {
+		indigo_uni_close(&PRIVATE_DATA->handle);
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
+	}
+}
 
 static bool dsd_get_info(indigo_device *device, char *board, char *firmware) {
 	if (!board || !firmware) return false;
@@ -468,13 +448,13 @@ static void focuser_timer_callback(indigo_device *device) {
 	uint32_t position;
 
 	if (!dsd_is_moving(device, &moving)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_is_moving(%d) failed", PRIVATE_DATA->handle);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_is_moving(%d) failed", PRIVATE_DATA->handle->index);
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 
 	if (!dsd_get_position(device, &position)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_position(%d) failed", PRIVATE_DATA->handle);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_position(%d) failed", PRIVATE_DATA->handle->index);
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
@@ -500,11 +480,11 @@ static void temperature_timer_callback(indigo_device *device) {
 
 	FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
 	if (!dsd_get_temperature(device, &temp)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_temperature(%d, -> %f) failed", PRIVATE_DATA->handle, temp);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_temperature(%d, -> %f) failed", PRIVATE_DATA->handle->index, temp);
 		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
 		FOCUSER_TEMPERATURE_ITEM->number.value = temp;
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dsd_get_temperature(%d, -> %f) succeeded", PRIVATE_DATA->handle, FOCUSER_TEMPERATURE_ITEM->number.value);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dsd_get_temperature(%d, -> %f) succeeded", PRIVATE_DATA->handle->index, FOCUSER_TEMPERATURE_ITEM->number.value);
 	}
 
 	if (FOCUSER_TEMPERATURE_ITEM->number.value <= NO_TEMP_READING) { /* -127 is returned when the sensor is not connected */
@@ -572,7 +552,7 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 
 	uint32_t current_position;
 	if (!dsd_get_position(device, &current_position)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_position(%d) failed", PRIVATE_DATA->handle);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_position(%d) failed", PRIVATE_DATA->handle->index);
 	}
 	PRIVATE_DATA->current_position = (double)current_position;
 
@@ -585,7 +565,7 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensating: Corrected PRIVATE_DATA->target_position = %d", PRIVATE_DATA->target_position);
 
 	if (!dsd_goto_position_bl(device, (uint32_t)PRIVATE_DATA->target_position)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_goto_position_bl(%d, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_goto_position_bl(%d, %d) failed", PRIVATE_DATA->handle->index, PRIVATE_DATA->target_position);
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 
@@ -614,7 +594,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
-		PRIVATE_DATA->handle = -1;
+		PRIVATE_DATA->handle = NULL;
 		// -------------------------------------------------------------------------------- DEVICE_PORT
 		DEVICE_PORT_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
@@ -712,7 +692,7 @@ static void update_step_mode_switches(indigo_device * device) {
 	stepmode_t value;
 
 	if (!dsd_get_step_mode(device, &value)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_step_mode(%d) failed", PRIVATE_DATA->handle);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_step_mode(%d) failed", PRIVATE_DATA->handle->index);
 		return;
 	}
 
@@ -745,7 +725,7 @@ static void update_step_mode_switches(indigo_device * device) {
 		indigo_set_switch(DSD_STEP_MODE_PROPERTY, DSD_STEP_MODE_256TH_ITEM, true);
 		break;
 	default:
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_step_mode(%d) wrong value %d", PRIVATE_DATA->handle, value);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_step_mode(%d) wrong value %d", PRIVATE_DATA->handle->index, value);
 	}
 }
 
@@ -754,7 +734,7 @@ static void update_coils_mode_switches(indigo_device * device) {
 	coilsmode_t value;
 
 	if (!dsd_get_coils_mode(device, &value)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_coils_mode(%d) failed", PRIVATE_DATA->handle);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_coils_mode(%d) failed", PRIVATE_DATA->handle->index);
 		return;
 	}
 
@@ -769,7 +749,7 @@ static void update_coils_mode_switches(indigo_device * device) {
 		indigo_set_switch(DSD_COILS_MODE_PROPERTY, DSD_COILS_MODE_TIMEOUT_ITEM, true);
 		break;
 	default:
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_coils_mode(%d) wrong value %d", PRIVATE_DATA->handle, value);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_coils_mode(%d) wrong value %d", PRIVATE_DATA->handle->index, value);
 	}
 }
 
@@ -787,15 +767,14 @@ static void focuser_connect_callback(indigo_device *device) {
 			} else {
 				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 				char *name = DEVICE_PORT_ITEM->text.value;
-				if (!indigo_is_device_url(name, "dsd")) {
-					PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, atoi(DEVICE_BAUDRATE_ITEM->text.value));
-					/* DSD resets on RTS, which is manipulated on connect! Wait for 2 seconds to recover! */
-					sleep(2);
+				if (!indigo_uni_is_url(name, "asi")) {
+					PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, atoi(DEVICE_BAUDRATE_ITEM->text.value), INDIGO_LOG_DEBUG);
 				} else {
-					indigo_network_protocol proto = INDIGO_PROTOCOL_TCP;
-					PRIVATE_DATA->handle = indigo_open_network_device(name, 8080, &proto);
+					PRIVATE_DATA->handle = indigo_uni_open_url(name, 8080, INDIGO_TCP_HANDLE, INDIGO_LOG_DEBUG);
 				}
-				if (PRIVATE_DATA->handle < 0) {
+				/* DSD resets on RTS, which is manipulated on connect! Wait for 2 seconds to recover! */
+				indigo_usleep(INDIGO_DELAY(2));
+				if (PRIVATE_DATA->handle == NULL) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Opening device %s: failed", DEVICE_PORT_ITEM->text.value);
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -803,12 +782,7 @@ static void focuser_connect_callback(indigo_device *device) {
 					indigo_global_unlock(device);
 					return;
 				} else if (!dsd_get_position(device, &position)) {  // check if it is DSD Focuser first
-					int res = close(PRIVATE_DATA->handle);
-					if (res < 0) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "close(%d) = %d", PRIVATE_DATA->handle, res);
-					} else {
-						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "close(%d) = %d", PRIVATE_DATA->handle, res);
-					}
+					dsd_close(device);
 					indigo_global_unlock(device);
 					device->is_connected = false;
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "connect failed: Deep Sky Dad AF did not respond");
@@ -857,12 +831,12 @@ static void focuser_connect_callback(indigo_device *device) {
 					FOCUSER_POSITION_ITEM->number.value = (double)position;
 
 					if (!dsd_get_max_position(device, &PRIVATE_DATA->max_position)) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_max_position(%d) failed", PRIVATE_DATA->handle);
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_max_position(%d) failed", PRIVATE_DATA->handle->index);
 					}
 					FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = (double)PRIVATE_DATA->max_position;
 
 					if (!dsd_get_speed(device, &value)) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_speed(%d) failed", PRIVATE_DATA->handle);
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_speed(%d) failed", PRIVATE_DATA->handle->index);
 					}
 					FOCUSER_SPEED_ITEM->number.value = (double)value;
 
@@ -880,23 +854,23 @@ static void focuser_connect_callback(indigo_device *device) {
 						indigo_define_property(device, DSD_COILS_MODE_PROPERTY, NULL);
 
 						if (!dsd_get_move_current(device, &value)) {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_move_current(%d) failed", PRIVATE_DATA->handle);
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_move_current(%d) failed", PRIVATE_DATA->handle->index);
 						}
 						DSD_CURRENT_CONTROL_MOVE_ITEM->number.value = (double)value;
 						DSD_CURRENT_CONTROL_MOVE_ITEM->number.target = (double)value;
 						if (!dsd_get_hold_current(device, &value)) {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_hold_current(%d) failed", PRIVATE_DATA->handle);
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_hold_current(%d) failed", PRIVATE_DATA->handle->index);
 						}
 						DSD_CURRENT_CONTROL_HOLD_ITEM->number.value = (double)value;
 						DSD_CURRENT_CONTROL_HOLD_ITEM->number.target = (double)value;
 					} else {
 						if (!dsd_get_move_current_multiplier(device, &value)) {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_move_current_multiplier(%d) failed", PRIVATE_DATA->handle);
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_move_current_multiplier(%d) failed", PRIVATE_DATA->handle->index);
 						}
 						DSD_CURRENT_CONTROL_MOVE_ITEM->number.value = (double)value;
 						DSD_CURRENT_CONTROL_MOVE_ITEM->number.target = (double)value;
 						if (!dsd_get_hold_current_multiplier(device, &value)) {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_hold_current_multiplier(%d) failed", PRIVATE_DATA->handle);
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_hold_current_multiplier(%d) failed", PRIVATE_DATA->handle->index);
 						}
 						DSD_CURRENT_CONTROL_HOLD_ITEM->number.value = (double)value;
 						DSD_CURRENT_CONTROL_HOLD_ITEM->number.target = (double)value;
@@ -904,14 +878,14 @@ static void focuser_connect_callback(indigo_device *device) {
 					indigo_define_property(device, DSD_CURRENT_CONTROL_PROPERTY, NULL);
 
 					if (!dsd_get_settle_buffer(device, &value)) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_settle_buffer(%d) failed", PRIVATE_DATA->handle);
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_settle_buffer(%d) failed", PRIVATE_DATA->handle->index);
 					}
 					DSD_TIMINGS_SETTLE_ITEM->number.value = (double)value;
 					DSD_TIMINGS_SETTLE_ITEM->number.target = (double)value;
 					/* DSD AF3 does not have coils timeout */
 					if (PRIVATE_DATA->focuser_version < 3) {
 						if (!dsd_get_coils_timeout(device, &value)) {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_coils_timeout(%d) failed", PRIVATE_DATA->handle);
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_coils_timeout(%d) failed", PRIVATE_DATA->handle->index);
 						}
 						DSD_TIMINGS_COILS_TOUT_ITEM->number.value = (double)value;
 						DSD_TIMINGS_COILS_TOUT_ITEM->number.target = (double)value;
@@ -952,12 +926,7 @@ static void focuser_connect_callback(indigo_device *device) {
 			indigo_delete_property(device, DSD_TIMINGS_PROPERTY, NULL);
 
 			pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
-			int res = close(PRIVATE_DATA->handle);
-			if (res < 0) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "close(%d) = %d", PRIVATE_DATA->handle, res);
-			} else {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "close(%d) = %d", PRIVATE_DATA->handle, res);
-			}
+			dsd_close(device);
 			indigo_global_unlock(device);
 			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 			device->is_connected = false;
@@ -998,7 +967,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_property_copy_values(FOCUSER_REVERSE_MOTION_PROPERTY, property, false);
 		FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 		if (!dsd_set_reverse(device, FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_set_reverse(%d, %d) failed", PRIVATE_DATA->handle, FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_set_reverse(%d, %d) failed", PRIVATE_DATA->handle->index, FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value);
 			FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
@@ -1027,7 +996,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 				FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 				if (!dsd_goto_position_bl(device, (uint32_t)PRIVATE_DATA->target_position)) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_goto_position_bl(%d, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_goto_position_bl(%d, %d) failed", PRIVATE_DATA->handle->index, PRIVATE_DATA->target_position);
 				}
 				indigo_set_timer(device, 0.5, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
 			} else { /* RESET CURRENT POSITION */
@@ -1057,11 +1026,11 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		FOCUSER_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
 		PRIVATE_DATA->max_position = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target;
 		if (!dsd_set_max_position(device, PRIVATE_DATA->max_position)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_set_max_position(%d) failed", PRIVATE_DATA->handle);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_set_max_position(%d) failed", PRIVATE_DATA->handle->index);
 			FOCUSER_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		if (!dsd_get_max_position(device, &PRIVATE_DATA->max_position)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_max_position(%d) failed", PRIVATE_DATA->handle);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_max_position(%d) failed", PRIVATE_DATA->handle->index);
 		}
 		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = (double)PRIVATE_DATA->max_position;
 		indigo_update_property(device, FOCUSER_LIMITS_PROPERTY, NULL);
@@ -1071,12 +1040,12 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_property_copy_values(FOCUSER_SPEED_PROPERTY, property, false);
 		FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
 		if (!dsd_set_speed(device, (uint32_t)FOCUSER_SPEED_ITEM->number.target)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_set_speed(%d) failed", PRIVATE_DATA->handle);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_set_speed(%d) failed", PRIVATE_DATA->handle->index);
 			FOCUSER_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		uint32_t speed;
 		if (!dsd_get_speed(device, &speed)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_speed(%d) failed", PRIVATE_DATA->handle);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_speed(%d) failed", PRIVATE_DATA->handle->index);
 		}
 		FOCUSER_SPEED_ITEM->number.value = (double)speed;
 		indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
@@ -1096,7 +1065,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			uint32_t position;
 			if (!dsd_get_position(device, &position)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_position(%d) failed", PRIVATE_DATA->handle);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_position(%d) failed", PRIVATE_DATA->handle->index);
 			} else {
 				PRIVATE_DATA->current_position = (double)position;
 			}
@@ -1116,7 +1085,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 
 			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
 			if (!dsd_goto_position_bl(device, (uint32_t)PRIVATE_DATA->target_position)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_goto_position_bl(%d, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_goto_position_bl(%d, %d) failed", PRIVATE_DATA->handle->index, PRIVATE_DATA->target_position);
 			}
 			indigo_set_timer(device, 0.5, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
 		}
@@ -1130,12 +1099,12 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_cancel_timer(device, &PRIVATE_DATA->focuser_timer);
 
 		if (!dsd_stop(device)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_stop(%d) failed", PRIVATE_DATA->handle);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_stop(%d) failed", PRIVATE_DATA->handle->index);
 			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		uint32_t position;
 		if (!dsd_get_position(device, &position)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_position(%d) failed", PRIVATE_DATA->handle);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_position(%d) failed", PRIVATE_DATA->handle->index);
 			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
 			PRIVATE_DATA->current_position = (double)position;
@@ -1183,7 +1152,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			mode = STEP_MODE_256TH;
 		}
 		if (!dsd_set_step_mode(device, mode)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_set_step_mode(%d, %d) failed", PRIVATE_DATA->handle, mode);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_set_step_mode(%d, %d) failed", PRIVATE_DATA->handle->index, mode);
 			DSD_STEP_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		update_step_mode_switches(device);
@@ -1197,46 +1166,46 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		uint32_t value;
 		if (PRIVATE_DATA->focuser_version < 3) {
 			if (!dsd_set_move_current(device, (uint32_t)DSD_CURRENT_CONTROL_MOVE_ITEM->number.target)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_set_move_current(%d, %d) failed", PRIVATE_DATA->handle, (uint32_t)DSD_CURRENT_CONTROL_MOVE_ITEM->number.target);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_set_move_current(%d, %d) failed", PRIVATE_DATA->handle->index, (uint32_t)DSD_CURRENT_CONTROL_MOVE_ITEM->number.target);
 				DSD_CURRENT_CONTROL_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 
 			if (!dsd_set_hold_current(device, (uint32_t)DSD_CURRENT_CONTROL_HOLD_ITEM->number.target)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_set_hold_current(%d, %d) failed", PRIVATE_DATA->handle, (uint32_t)DSD_CURRENT_CONTROL_HOLD_ITEM->number.target);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_set_hold_current(%d, %d) failed", PRIVATE_DATA->handle->index, (uint32_t)DSD_CURRENT_CONTROL_HOLD_ITEM->number.target);
 				DSD_CURRENT_CONTROL_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 
 			if (!dsd_get_move_current(device, &value)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_move_current(%d) failed", PRIVATE_DATA->handle);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_move_current(%d) failed", PRIVATE_DATA->handle->index);
 			} else {
 				DSD_CURRENT_CONTROL_MOVE_ITEM->number.target = (double)value;
 			}
 
 			if (!dsd_get_hold_current(device, &value)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_hold_current(%d) failed", PRIVATE_DATA->handle);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_hold_current(%d) failed", PRIVATE_DATA->handle->index);
 				DSD_CURRENT_CONTROL_PROPERTY->state = INDIGO_ALERT_STATE;
 			} else {
 				DSD_CURRENT_CONTROL_HOLD_ITEM->number.target = (double)value;
 			}
 		} else {
 			if (!dsd_set_move_current_multiplier(device, (uint32_t)DSD_CURRENT_CONTROL_MOVE_ITEM->number.target)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_set_move_current_multiplier(%d, %d) failed", PRIVATE_DATA->handle, (uint32_t)DSD_CURRENT_CONTROL_MOVE_ITEM->number.target);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_set_move_current_multiplier(%d, %d) failed", PRIVATE_DATA->handle->index, (uint32_t)DSD_CURRENT_CONTROL_MOVE_ITEM->number.target);
 				DSD_CURRENT_CONTROL_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 
 			if (!dsd_set_hold_current_multiplier(device, (uint32_t)DSD_CURRENT_CONTROL_HOLD_ITEM->number.target)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_set_hold_current_multiplier(%d, %d) failed", PRIVATE_DATA->handle, (uint32_t)DSD_CURRENT_CONTROL_HOLD_ITEM->number.target);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_set_hold_current_multiplier(%d, %d) failed", PRIVATE_DATA->handle->index, (uint32_t)DSD_CURRENT_CONTROL_HOLD_ITEM->number.target);
 				DSD_CURRENT_CONTROL_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 
 			if (!dsd_get_move_current_multiplier(device, &value)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_move_current_multiplier(%d) failed", PRIVATE_DATA->handle);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_move_current_multiplier(%d) failed", PRIVATE_DATA->handle->index);
 			} else {
 				DSD_CURRENT_CONTROL_MOVE_ITEM->number.target = (double)value;
 			}
 
 			if (!dsd_get_hold_current_multiplier(device, &value)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_hold_current_multiplier(%d) failed", PRIVATE_DATA->handle);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_hold_current_multiplier(%d) failed", PRIVATE_DATA->handle->index);
 				DSD_CURRENT_CONTROL_PROPERTY->state = INDIGO_ALERT_STATE;
 			} else {
 				DSD_CURRENT_CONTROL_HOLD_ITEM->number.target = (double)value;
@@ -1251,25 +1220,25 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		DSD_TIMINGS_PROPERTY->state = INDIGO_OK_STATE;
 
 		if (!dsd_set_settle_buffer(device, (uint32_t)DSD_TIMINGS_SETTLE_ITEM->number.target)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_set_settle_buffer(%d, %d) failed", PRIVATE_DATA->handle, (uint32_t)DSD_TIMINGS_SETTLE_ITEM->number.target);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_set_settle_buffer(%d, %d) failed", PRIVATE_DATA->handle->index, (uint32_t)DSD_TIMINGS_SETTLE_ITEM->number.target);
 			DSD_TIMINGS_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 
 		uint32_t value;
 		if (!dsd_get_settle_buffer(device, &value)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_settle_buffer(%d) failed", PRIVATE_DATA->handle);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_settle_buffer(%d) failed", PRIVATE_DATA->handle->index);
 		} else {
 			DSD_TIMINGS_SETTLE_ITEM->number.target = (double)value;
 		}
 
 		if (PRIVATE_DATA->focuser_version < 3) {
 			if (!dsd_set_coils_timeout(device, (uint32_t)DSD_TIMINGS_COILS_TOUT_ITEM->number.target)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_set_coils_timeout(%d, %d) failed", PRIVATE_DATA->handle, (uint32_t)DSD_TIMINGS_COILS_TOUT_ITEM->number.target);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_set_coils_timeout(%d, %d) failed", PRIVATE_DATA->handle->index, (uint32_t)DSD_TIMINGS_COILS_TOUT_ITEM->number.target);
 				DSD_TIMINGS_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 
 			if (!dsd_get_coils_timeout(device, &value)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_coils_timeout(%d) failed", PRIVATE_DATA->handle);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_get_coils_timeout(%d) failed", PRIVATE_DATA->handle->index);
 				DSD_TIMINGS_PROPERTY->state = INDIGO_ALERT_STATE;
 			} else {
 				DSD_TIMINGS_COILS_TOUT_ITEM->number.target = (double)value;
@@ -1291,7 +1260,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			mode = COILS_MODE_IDLE_TIMEOUT;
 		}
 		if (!dsd_set_coils_mode(device, mode)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_set_coils_mode(%d, %d) failed", PRIVATE_DATA->handle, mode);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_set_coils_mode(%d, %d) failed", PRIVATE_DATA->handle->index, mode);
 			DSD_COILS_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		update_coils_mode_switches(device);
