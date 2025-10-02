@@ -1289,7 +1289,7 @@ long indigo_uni_write(indigo_uni_handle *handle, const char *buffer, long length
 	long remaining = length;
 	char *pnt = (char *)buffer;
 	while (true) {
-		long bytes_written = write_data(handle, buffer, remaining);
+		long bytes_written = write_data(handle, pnt, remaining);
 		if (bytes_written < 0) {
 			indigo_error("%d -> // Failed to write (%s)", handle->index, indigo_uni_strerror(handle));
 			return -1;
