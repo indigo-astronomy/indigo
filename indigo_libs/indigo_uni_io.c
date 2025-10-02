@@ -1450,6 +1450,7 @@ void indigo_uni_close(indigo_uni_handle **handle) {
 		if ((copy)->type == INDIGO_FILE_HANDLE) {
 			_close((copy)->fd);
 		} else if ((copy)->type == INDIGO_COM_HANDLE) {
+			CancelIoEx((copy)->com, NULL);
 			CloseHandle((copy)->ov_read.hEvent);
 			CloseHandle((copy)->ov_write.hEvent);
 			CloseHandle((copy)->com);
