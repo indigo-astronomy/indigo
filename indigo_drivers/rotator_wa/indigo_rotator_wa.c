@@ -28,13 +28,13 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
+//#include <unistd.h>
 #include <math.h>
 #include <assert.h>
-#include <pthread.h>
-#include <sys/termios.h>
+//#include <sys/termios.h>
 
-#include <indigo/indigo_io.h>
+//#include <indigo/indigo_io.h>
+#include <indigo/indigo_uni_io.h>
 
 #include "indigo_rotator_wa.h"
 
@@ -46,7 +46,7 @@
 #define X_SET_ZERO_POSITION_ITEM_NAME      "SET_ZERO_POSITION"
 
 typedef struct {
-	int handle;
+	indigo_uni_handle *handle;
 	pthread_mutex_t mutex;
 	indigo_timer *position_timer;
 	int steps_degree;       /* steps per degree */
@@ -139,18 +139,25 @@ bool wr_parse_status(char *response, wr_status_t *status) {
 	return true;
 }
 
-static bool wa_command(indigo_device *device, char *command, char *response, int max) {
-	tcflush(PRIVATE_DATA->handle, TCIOFLUSH);
-	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
-	indigo_write(PRIVATE_DATA->handle, "\n", 1);
-	if (response != NULL) {
-		if (indigo_read_line(PRIVATE_DATA->handle, response, max) == 0) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s -> no response", command);
-			return false;
+static bool wa_command(indigo_device *device, const char *command, char *response, int max) {
+	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
+		if (indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command)) > 0) {
+			indigo_uni_write(PRIVATE_DATA->handle, "\n", 1);
+			if (response != NULL) {
+				if (indigo_uni_read_section2(PRIVATE_DATA->handle, response, max, "\n", "\n", INDIGO_DELAY(3), INDIGO_DELAY(0.1)) >= 0) {
+					return true;
+				}
+			}
 		}
 	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s -> %s", command, response != NULL ? response : "NULL");
-	return true;
+	return false;
+}
+
+static void wa_close(indigo_device *device) {
+	INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+	INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+	indigo_update_property(device, INFO_PROPERTY, NULL);
+	indigo_uni_close(&PRIVATE_DATA->handle);
 }
 
 static void update_pivot_position(indigo_device *device) {
@@ -195,7 +202,8 @@ static bool rotator_handle_position(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char response[64];
 	int result;
-	while ((result = indigo_select(PRIVATE_DATA->handle, 100000) <= 0)) {
+
+	while (result = indigo_uni_read_section2(PRIVATE_DATA->handle, response, sizeof(response), "\n", "\n", INDIGO_DELAY(0.1), INDIGO_DELAY(0.1)) == 0) {
 		if (ROTATOR_ABORT_MOTION_ITEM->sw.value) {
 			pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 			ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -205,7 +213,7 @@ static bool rotator_handle_position(indigo_device *device) {
 			return false;
 		}
 	}
-	result = indigo_read_line(PRIVATE_DATA->handle, response, sizeof(response));
+
 	if (result < 0)	{
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "READ -> no response");
 		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -215,6 +223,7 @@ static bool rotator_handle_position(indigo_device *device) {
 		indigo_update_property(device, ROTATOR_RELATIVE_MOVE_PROPERTY, NULL);
 		return false;
 	}
+
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "READ -> %s", response);
 
@@ -252,8 +261,8 @@ static void rotator_connection_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char response[64];
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200);
-		if (PRIVATE_DATA->handle > 0) {
+		PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200, INDIGO_LOG_DEBUG);
+		if (PRIVATE_DATA->handle != NULL) {
 			indigo_sleep(2); // wait for the rotator to initialize after opening the serial port
 			if (wa_command(device, "1500001", response, sizeof(response))) {
 				wr_status_t status;
@@ -264,8 +273,7 @@ static void rotator_connection_handler(indigo_device *device) {
 						PRIVATE_DATA->steps_degree = 1199;
 					} else {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "Rotator not detected");
-						close(PRIVATE_DATA->handle);
-						PRIVATE_DATA->handle = 0;
+						wa_close(device);
 					}
 					ROTATOR_POSITION_ITEM->number.value = ROTATOR_POSITION_ITEM->number.target = indigo_range360(status.position + ROTATOR_POSITION_OFFSET_ITEM->number.value);
 					PRIVATE_DATA->current_position = status.position;
@@ -283,16 +291,14 @@ static void rotator_connection_handler(indigo_device *device) {
 					indigo_define_property(device, X_SET_ZERO_POSITION_PROPERTY, NULL);
 				} else {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Rotator not detected");
-					close(PRIVATE_DATA->handle);
-					PRIVATE_DATA->handle = 0;
+					wa_close(device);
 				}
 			} else {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Rotator not detected");
-				close(PRIVATE_DATA->handle);
-				PRIVATE_DATA->handle = 0;
+				wa_close(device);
 			}
 		}
-		if (PRIVATE_DATA->handle > 0) {
+		if (PRIVATE_DATA->handle != NULL) {
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", DEVICE_PORT_ITEM->text.value);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
@@ -305,10 +311,9 @@ static void rotator_connection_handler(indigo_device *device) {
 		INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 		INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		indigo_update_property(device, INFO_PROPERTY, NULL);
-		if (PRIVATE_DATA->handle > 0) {
+		if (PRIVATE_DATA->handle != NULL) {
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
-			close(PRIVATE_DATA->handle);
-			PRIVATE_DATA->handle = 0;
+			wa_close(device);
 		}
 		PRIVATE_DATA->current_position = 0;
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
