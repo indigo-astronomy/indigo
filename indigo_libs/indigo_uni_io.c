@@ -124,9 +124,14 @@ static int wait_for_data(indigo_uni_handle *handle, long timeout) {
 	if (handle->type == INDIGO_FILE_HANDLE) {
 		return 1;
 	} else if (handle->type == INDIGO_COM_HANDLE) {
+		COMSTAT stat;
+		DWORD errors;
+		ClearCommError(handle->com, &errors, &stat);
+		if (stat.cbInQue > 0) {
+			return 1;
+		}
 		unsigned long mask;
 		ResetEvent(handle->ov_read.hEvent);
-		SetCommMask(handle->com, EV_RXCHAR | EV_ERR | EV_BREAK);
 		if (!WaitCommEvent(handle->com, &mask, &handle->ov_read)){
 			if (GetLastError() != ERROR_IO_PENDING) {
 				handle->last_error = GetLastError();
