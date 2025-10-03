@@ -66,11 +66,11 @@ static char __buffer__[32];
 #define DEC_PER_SEC 1440
 #define RA_PER_SEC 96
 
-bool is_meade = true;
+bool is_meade = false;
 bool is_10micron = false;
 bool is_gemini = false;
 bool is_avalon = false;
-bool is_onstep = false;
+bool is_onstep = true;
 bool is_zwo = false;
 bool is_nyx = false;
 
@@ -100,6 +100,7 @@ int dec_slew = 0;
 
 char tracking_rate = 'Q';
 char slew_rate = 'M';
+char pec = 'N';
 
 bool is_slewing = false;
 bool is_tracking = false;
@@ -180,7 +181,11 @@ void setup() {
   DISPLAY_BEGIN();
   DISPLAY_TEXT(0, "LX200 simulator");
   DISPLAY_END();
-	Serial.begin(9600);
+  if (is_nyx || is_onstep) {
+    Serial.begin(115200);
+  } else {
+    Serial.begin(9600);
+  }
   Serial.setTimeout(1000);
   if (is_onstep) {
     Serial.print(
@@ -518,6 +523,15 @@ void loop() {
         is_slewing = true;
         is_parked = false;
         Serial.print("pA#");
+      } else if (!strcmp(buffer, "Gm")) {
+        Serial.print("N#");
+      } else if (!strcmp(buffer, "$QZ?")) {
+        Serial.print(pec);
+        Serial.print("#");
+      } else if (!strcmp(buffer, "$QZ+")) {
+        pec = 'P';
+      } else if (!strcmp(buffer, "$QZ-")) {
+        pec = 'I';
       }
     }
   }

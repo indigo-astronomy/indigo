@@ -124,33 +124,27 @@ static int wait_for_data(indigo_uni_handle *handle, long timeout) {
 	if (handle->type == INDIGO_FILE_HANDLE) {
 		return 1;
 	} else if (handle->type == INDIGO_COM_HANDLE) {
+		ULONGLONG start = GetTickCount64();
 		COMSTAT stat;
 		DWORD errors;
-		ClearCommError(handle->com, &errors, &stat);
-		if (stat.cbInQue > 0) {
-			return 1;
-		}
-		unsigned long mask;
-		ResetEvent(handle->ov_read.hEvent);
-		if (!WaitCommEvent(handle->com, &mask, &handle->ov_read)){
-			if (GetLastError() != ERROR_IO_PENDING) {
-				handle->last_error = GetLastError();
-				indigo_error("%d -> // Failed to wait for (%s)", handle->index, indigo_uni_strerror(handle));
+		timeout = (timeout + 999) / 1000;
+		while (GetTickCount64() - start < timeout) {
+			ClearCommError(handle->com, &errors, &stat);
+			if (errors != 0) {
+				indigo_error("%d -> // Failed to wait for data", handle->index);
 				return -1;
 			}
-		}
-		switch (WaitForSingleObject(handle->ov_read.hEvent, (timeout + 999) / 1000)) {
-			case WAIT_OBJECT_0:
+			if (stat.cbInQue > 0) {
 				return 1;
-			case WAIT_TIMEOUT:
-				CancelIoEx(handle->com, &handle->ov_read);
-				indigo_log_on_level(handle->log_level, "%d -> // timeout", handle->index);
-				return 0;
-			default:
-				handle->last_error = GetLastError();
-				indigo_error("%d -> // Failed to wait for (%s)", handle->index, indigo_uni_strerror(handle));
-				return -1;
+			}
+			if (timeout > 1000) {
+				indigo_usleep(10000);
+			} else {
+				indigo_usleep(1000);
+			}
 		}
+		indigo_log_on_level(handle->log_level, "%d -> // wait timeout", handle->index);
+		return 0;
 	} else if (handle->type == INDIGO_TCP_HANDLE || handle->type == INDIGO_UDP_HANDLE) {
 		fd_set readout;
 		FD_ZERO(&readout);
@@ -196,29 +190,19 @@ static long read_data(indigo_uni_handle *handle, void *buffer, long length) {
 			return bytes_read;
 		}
 	} else if (handle->type == INDIGO_COM_HANDLE) {
-		ResetEvent(handle->ov_read.hEvent);
 		long bytes_read = 0;
-		bool read_result = ReadFile(handle->com, buffer, length, &bytes_read, &handle->ov_read);
+		bool read_result = ReadFile(handle->com, buffer, length, &bytes_read, NULL);
 		handle->last_error = GetLastError();
-		if (!read_result && handle->last_error != ERROR_IO_PENDING) {
+		if (!read_result) {
 			indigo_error("%d -> // Failed to read (%s)", handle->index, indigo_uni_strerror(handle));
 			return -1;
 		}
-		DWORD waitResult = WaitForSingleObject(handle->ov_read.hEvent, 5000);
-		if (waitResult == WAIT_OBJECT_0) {
-			if (GetOverlappedResult(handle->com, &handle->ov_read, &bytes_read, FALSE)) {
-				handle->last_error = 0;
-				return bytes_read;
-			}
+		if (bytes_read < length) {
+			indigo_error("%d -> // read timeout", handle->index);
+			return -1;
 		}
-		handle->last_error = GetLastError();
-		if (handle->last_error == ERROR_IO_PENDING) {
-			indigo_error("%d -> // timeout", handle->index, indigo_uni_strerror(handle));
-		} else {
-			indigo_error("%d -> // Failed to read (%s)", handle->index, indigo_uni_strerror(handle));
-		}
-		CancelIoEx(handle->com, &handle->ov_read);
-		return -1;
+		handle->last_error = 0;
+		return bytes_read;
 	} else if (handle->type == INDIGO_TCP_HANDLE || handle->type == INDIGO_UDP_HANDLE) {
 		long bytes_read = recv(handle->sock, buffer, length, 0);
 		if (bytes_read < 0) {
@@ -257,26 +241,18 @@ static long write_data(indigo_uni_handle *handle, const char *buffer, long lengt
 		return bytes_written;
 	} else if (handle->type == INDIGO_COM_HANDLE) {
 		long bytes_written = 0;
-		ResetEvent(handle->ov_write.hEvent);
-		bool write_result = WriteFile(handle->com, buffer, (DWORD)length, &bytes_written, &handle->ov_write);
+		bool write_result = WriteFile(handle->com, buffer, (DWORD)length, &bytes_written, NULL);
 		handle->last_error = GetLastError();
-		if (!write_result && handle->last_error != ERROR_IO_PENDING) {
+		if (!write_result && handle->last_error) {
 			indigo_error("%d <- // Failed to write (%s)", handle->index, indigo_uni_strerror(handle));
 			return -1;
 		}
-		if (WaitForSingleObject(handle->ov_write.hEvent, 15000) == WAIT_OBJECT_0) {
-			if (GetOverlappedResult(handle->com, &handle->ov_write, &bytes_written, FALSE)) {
-				handle->last_error = 0;
-				return bytes_written;
-			}
+		if (bytes_written < length) {
+			indigo_error("%d -> // write timeout", handle->index);
+			return -1;
 		}
-		handle->last_error = GetLastError();
-		if (handle->last_error == ERROR_IO_PENDING) {
-			indigo_error("%d -> // timeout", handle->index, indigo_uni_strerror(handle));
-		} else {
-			indigo_error("%d <- // Failed to write (%s)", handle->index, indigo_uni_strerror(handle));
-		}
-		return -1;
+		handle->last_error = 0;
+		return bytes_written;
 	} else if (handle->type == INDIGO_TCP_HANDLE || handle->type == INDIGO_UDP_HANDLE) {
 		long bytes_written = send(handle->sock, buffer, length, 0);
 		if (bytes_written < 0) {
@@ -599,7 +575,7 @@ static indigo_uni_handle *open_tty(const char *serial, DCB *dcb, int log_level) 
 	if (!strncmp(serial_buf, auto_prefix, auto_prefix_len)) {
 		serial_buf += auto_prefix_len;
 	}
-	HANDLE com = CreateFileA(serial_buf, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
+	HANDLE com = CreateFileA(serial_buf, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
 	if (com == INVALID_HANDLE_VALUE) {
 		indigo_error("Failed to open %s (%s)", serial, indigo_last_windows_error());
 		return NULL;
@@ -627,8 +603,6 @@ static indigo_uni_handle *open_tty(const char *serial, DCB *dcb, int log_level) 
 	handle->type = INDIGO_COM_HANDLE;
 	handle->com = com;
 	handle->log_level = log_level;
-	handle->ov_read.hEvent = CreateEvent(0, true, false, 0);
-	handle->ov_write.hEvent = CreateEvent(0, true, false, 0);
 	indigo_log_on_level(log_level, "%d <- // %s opened", handle->index, serial);
 	return handle;
 }
@@ -1452,9 +1426,6 @@ void indigo_uni_close(indigo_uni_handle **handle) {
 		if ((copy)->type == INDIGO_FILE_HANDLE) {
 			_close((copy)->fd);
 		} else if ((copy)->type == INDIGO_COM_HANDLE) {
-			CancelIoEx((copy)->com, NULL);
-			CloseHandle((copy)->ov_read.hEvent);
-			CloseHandle((copy)->ov_write.hEvent);
 			CloseHandle((copy)->com);
 		} else if ((copy)->type == INDIGO_TCP_HANDLE || (copy)->type == INDIGO_UDP_HANDLE) {
 			shutdown((copy)->sock, SD_BOTH);
