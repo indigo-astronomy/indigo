@@ -328,13 +328,13 @@ static void str_replace(char *string, char c0, char c1) {
 	}
 }
 
-static bool meade_command(indigo_device *device, char *command, char *response, int max, int sleep);
+static bool meade_command(indigo_device *device, char *command, char *response, int max, float sleep);
 
 static bool meade_open(indigo_device *device) {
 	char response[128] = "";
 	char *name = DEVICE_PORT_ITEM->text.value;
 	if (!indigo_uni_is_url(name, "lx200")) {
-		if (MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value) {
+		if (MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_ZWO_ITEM->sw.value) {
 			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, 115200, INDIGO_LOG_DEBUG);
 		} else if (MOUNT_TYPE_OAT_ITEM->sw.value) {
 			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, 19200, INDIGO_LOG_DEBUG);
@@ -343,7 +343,7 @@ static bool meade_open(indigo_device *device) {
 			if (PRIVATE_DATA->handle != NULL) {
 				// sometimes the first command after power on in OnStep fails and just returns '0'
 				// so we try two times for the default baudrate of 9600
-				if ((!meade_command(device, ":GR#", response, sizeof(response), 0.5) || strlen(response) < 6) && (!meade_command(device, ":GR#", response, sizeof(response), 0) || strlen(response) < 6)) {
+				if ((!meade_command(device, ":GR#", response, sizeof(response), 0.5) || strlen(response) < 6) && (!meade_command(device, ":GR#", response, sizeof(response), 0.5) || strlen(response) < 6)) {
 					indigo_uni_close(&PRIVATE_DATA->handle);
 					PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, 19200, INDIGO_LOG_DEBUG);
 					if (!meade_command(device, ":GR#", response, sizeof(response), 0.5) || strlen(response) < 6) {
@@ -383,7 +383,7 @@ static bool meade_open(indigo_device *device) {
 
 static void network_disconnection(indigo_device *device);
 
-static bool meade_command(indigo_device *device, char *command, char *response, int max, int timeout) {
+static bool meade_command(indigo_device *device, char *command, char *response, int max, float timeout) {
 	if (PRIVATE_DATA->handle == NULL || PRIVATE_DATA->wifi_reset) {
 		return false;
 	}
@@ -2851,10 +2851,10 @@ static void nyx_ap_callback(indigo_device *device) {
 	char command[64], response[64];
 	snprintf(command, sizeof(command), ":WA%s#", NYX_WIFI_AP_SSID_ITEM->text.value);
 	NYX_WIFI_AP_PROPERTY->state = INDIGO_ALERT_STATE;
-	if (meade_command(device, command, response, sizeof(response), 0) && *response == '1') {
+	if (meade_command(device, command, response, 1, 0) && *response == '1') {
 		snprintf(command, sizeof(command), ":WB%s#", NYX_WIFI_AP_PASSWORD_ITEM->text.value);
-		if (meade_command(device, command, response, sizeof(response), 0) && *response == '1') {
-			if (meade_command(device, ":WLC#", response, sizeof(response), 0) && *response == '1') {
+		if (meade_command(device, command, response, 1, 0) && *response == '1') {
+			if (meade_command(device, ":WLC#", response, 1, 0) && *response == '1') {
 				indigo_send_message(device, "Created access point with SSID %s", NYX_WIFI_AP_SSID_ITEM->text.value);
 				NYX_WIFI_AP_PROPERTY->state = INDIGO_OK_STATE;
 			}
@@ -2874,19 +2874,19 @@ static void nyx_cl_callback(indigo_device *device) {
 	}
 
 	if (encoded != NULL) {
-		base64_encode((unsigned char *)encoded, (unsigned char *)NYX_WIFI_CL_SSID_ITEM->text.value, ssid_len);
+		base64_encode((unsigned char *)encoded, (unsigned char *)NYX_WIFI_CL_SSID_ITEM->text.value, (long)ssid_len);
 		snprintf(command, sizeof(command), ":WS%s#", encoded);
 	} else {
 		snprintf(command, sizeof(command), ":WS%s#", NYX_WIFI_CL_SSID_ITEM->text.value);
 	}
-	if (meade_command(device, command, response, sizeof(response), 0) && *response == '1') {
+	if (meade_command(device, command, response, 1, 0) && *response == '1') {
 		if (encoded != NULL) {
-			base64_encode((unsigned char *)encoded, (unsigned char*)NYX_WIFI_CL_PASSWORD_ITEM->text.value, pass_len);
+			base64_encode((unsigned char *)encoded, (unsigned char*)NYX_WIFI_CL_PASSWORD_ITEM->text.value, (long)pass_len);
 			snprintf(command, sizeof(command), ":WP%s#", encoded);
 		} else {
 			snprintf(command, sizeof(command), ":WP%s#", NYX_WIFI_CL_PASSWORD_ITEM->text.value);
 		}
-		if (meade_command(device, command, response, sizeof(response), 0) && *response == '1') {
+		if (meade_command(device, command, response, 1, 0) && *response == '1') {
 			if (meade_command(device, ":WLC#", NULL, 0, 0)) {
 				indigo_send_message(device, "WiFi reset!");
 				NYX_WIFI_CL_PROPERTY->state = INDIGO_OK_STATE;
