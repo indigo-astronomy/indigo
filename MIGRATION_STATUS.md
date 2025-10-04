@@ -126,7 +126,7 @@
 | rotator_lunatico | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | rotator_optec | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | rotator_simulator | 3️⃣ | ✅ Yes | ✅ Yes | ⛔ N/A | |
-| rotator_wa | 3️⃣ || ❌ No | ❌ No | ❌ No | |
+| rotator_wa | 3️⃣ || ✅ Yes | ❌ No | ✅ HW | |
 | system_ascol | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | wheel_asi | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
 | wheel_astroasis | 3️⃣ | ✅ Yes | ❌ No | ✅ HW | |
