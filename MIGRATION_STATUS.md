@@ -112,7 +112,7 @@
 | guider_gpusb | 3️⃣ | ❌ No | ✅ Yes | ✅ HW | ⏰ TODO - make libgpusb for Windows |
 | mount_asi | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
 | mount_ioptron | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
-| mount_lx200 | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
+| mount_lx200 | 3️⃣ | ✅ Yes | ❌ No | ✅  HW | |
 | mount_nexstar | 2️⃣ | ❌ No | ❌ No | ❌ No | ⏰ TODO - make libnexstar for Windows |
 | mount_nexstaraux | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | mount_pmc8 | 2️⃣ | ❌ No | ❌ No | ❌ No | |
@@ -126,7 +126,7 @@
 | rotator_lunatico | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | rotator_optec | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | rotator_simulator | 3️⃣ | ✅ Yes | ✅ Yes | ⛔ N/A | |
-| rotator_wa | 2️⃣ | ❌ No | ❌ No | ❌ No | |
+| rotator_wa | 3️⃣ || ❌ No | ❌ No | ❌ No | |
 | system_ascol | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | wheel_asi | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
 | wheel_astroasis | 3️⃣ | ✅ Yes | ❌ No | ✅ HW | |
