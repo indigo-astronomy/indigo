@@ -14,7 +14,7 @@
 | agent_snoop | 2️⃣ | ❌ No | ⛔ N/A | ❌ No | 🚧 Obsolete |
 | ao_sx | 3️⃣ | ✅ Yes | ✅ Yes | ✅ HW | |
 | aux_arteskyflat | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
-| aux_asiair | 2️⃣ | ❌ No | ❌ No | ❌ No | ⛔ RPi only |
+| aux_asiair | 2️⃣ | ⛔ N/A | ❌ No | ❌ No | ⛔ RPi only |
 | aux_astromechanics | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
 | aux_cloudwatcher | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | aux_dragonfly | 2️⃣ | ❌ No | ❌ No | ❌ No | |
@@ -26,7 +26,7 @@
 | aux_joystick | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | aux_mgbox | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
 | aux_ppb | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
-| aux_rpio | 2️⃣ | ❌ No | ❌ No | ❌ No | ⛔ RPi only |
+| aux_rpio | 2️⃣ | ⛔ N/A | ❌ No | ❌ No | ⛔ RPi only |
 | aux_rts | 3️⃣ | ✅ Yes | ✅ Yes | ❌ No | |
 | aux_skyalert | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
 | aux_sqm | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
@@ -34,22 +34,22 @@
 | aux_upb | 3️⃣ | ✅ Yes | ✅ Yes | ✅ HW | |
 | aux_upb3 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
 | aux_usbdp | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
-| aux_wbplusv3 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
-| aux_wbprov3 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
-| aux_wcv4ec | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
+| aux_wbplusv3 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ HW | |
+| aux_wbprov3 | 3️⃣ | ✅ Yes | ✅ Yes | ✅ HW | |
+| aux_wcv4ec | 3️⃣ | ✅ Yes | ✅ Yes | ✅ HW | |
 | ccd_altair | 3️⃣ | ✅ Yes | ❌ No | ✅ HW | |
 | ccd_apogee | 2️⃣ | ❌ No | ❌ No | ❌ No | ⏰ TODO - make boost_regex and libapogee for Windows |
 | ccd_asi | 3️⃣ | ✅ Yes | ❌ No | ✅ HW | |
 | ccd_atik | 3️⃣ | ✅ Yes | ❌ No | ❌ No | ⏰ TODO - find SDK for arm64 macOS |
-| ccd_atik2 | 3️⃣ | ❌ No | ❌ No | ❌ No | ⛔ macOS only, temporary workaround |
-| ccd_bresser | 3️⃣ | ✅ Yes | ❌ No | ❌ No | ➡️ Touptek |
+| ccd_atik2 | 3️⃣ | ⛔ N/A | ❌ No | ❌ No | ⛔ macOS only, temporary workaround |
+| ccd_bresser | 3️⃣ | ✅ Yes | ❌ No | ✅  HW | ➡️ Touptek |
 | ccd_dsi | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
 | ccd_fli | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
 | ccd_iidc | 2️⃣ | ❌ No | ❌ No | ❌ No | ⏰ TODO - make libdc1394 for Windows |
-| ccd_mallin | 3️⃣ | ✅ Yes | ❌ No | ❌ No | ➡️ Touptek |
+| ccd_mallin | 3️⃣ | ✅ Yes | ❌ No | ✅ HW | ➡️ Touptek |
 | ccd_mi | 2️⃣ | ❌ No | ❌ No | ❌ No | ⛔ Unix and Windows SDKs are not compatible |
-| ccd_ogma | 3️⃣ | ✅ Yes | ❌ No | ❌ No | ➡️ Touptek |
-| ccd_omegonpro | 3️⃣ | ✅ Yes | ❌ No | ❌ No | ➡️ Touptek |
+| ccd_ogma | 3️⃣ | ✅ Yes | ❌ No | ✅ HW | ➡️ Touptek |
+| ccd_omegonpro | 3️⃣ | ✅ Yes | ❌ No | ✅ HW | ➡️ Touptek |
 | ccd_pentax | 2️⃣ | ❌ No | ❌ No | ❌ No | 🚧 Unfinished & stalled |
 | ccd_playerone | 3️⃣ | ✅ Yes | ❌ No | ✅ HW | |
 | ccd_ptp | 2️⃣ | ❌ No | ❌ No | ❌ No | |
@@ -60,9 +60,9 @@
 | ccd_sbig | 2️⃣ | ❌ No | ❌ No | ❌ No | ⏰ TODO - find SDK for windows |
 | ccd_simulator | 3️⃣ | ✅ Yes | ❌ No | ⛔ N/A | |
 | ccd_ssag | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
-| ccd_ssg | 3️⃣ | ✅ Yes | ❌ No | ❌ No | ➡️ Touptek |
+| ccd_ssg | 3️⃣ | ✅ Yes | ❌ No | ✅ HW | ➡️ Touptek |
 | ccd_svb | 3️⃣ | ✅ No | ❌ No | ✅  HW | |
-| ccd_svb2 | 3️⃣ | ✅ Yes | ❌ No | ❌ No | ➡️ Touptek |
+| ccd_svb2 | 3️⃣ | ✅ Yes | ❌ No | ✅ HW | ➡️ Touptek |
 | ccd_sx | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
 | ccd_touptek | 3️⃣ | ✅ Yes | ❌ No | ✅ HW | |
 | ccd_uvc | 2️⃣ | ❌ No | ❌ No | ❌ No | ⛔ libuvc is Unix only |
