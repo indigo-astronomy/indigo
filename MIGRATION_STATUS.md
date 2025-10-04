@@ -78,7 +78,7 @@
 | focuser_astroasis | 3️⃣ | ✅ Yes | ❌ No | ✅ HW | |
 | focuser_astromechanics | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
 | focuser_dmfc | 3️⃣ | ✅ Yes | ✅ Yes | ✅ Sim | |
-| focuser_dsd | 3️⃣ | ❌ No | ❌ No | ❌ No | |
+| focuser_dsd | 3️⃣ | ✅ Yes | ❌ No | ✅ HW | |
 | focuser_efa | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | focuser_fc3 | 3️⃣ | ✅ Yes | ✅ Yes | ❌ No | |
 | focuser_fcusb | 3️⃣ | ❌ No | ✅ Yes | ✅ HW | ⏰ TODO - make libfcusb for Windows |
