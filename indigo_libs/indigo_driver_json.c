@@ -91,7 +91,7 @@ static indigo_result json_define_property(indigo_client *client, indigo_device *
 	long buffer_size = JSON_BUFFER_SIZE;
 	char *output_buffer = indigo_safe_malloc(buffer_size);
 	char *pnt = output_buffer;
-	long size;
+	long size = 0l;
 	char b1[32], b2[32], b3[32], b4[32], b5[32];
 	switch (property->type) {
 		case INDIGO_TEXT_VECTOR:
@@ -224,7 +224,7 @@ static indigo_result json_update_property(indigo_client *client, indigo_device *
 	long buffer_size = JSON_BUFFER_SIZE;
 	char *output_buffer = indigo_safe_malloc(buffer_size);
 	char *pnt = output_buffer;
-	long size;
+	long size = 0l;
 	char b1[32], b2[32];
 	switch (property->type) {
 		case INDIGO_TEXT_VECTOR:
