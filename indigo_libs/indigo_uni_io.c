@@ -76,6 +76,7 @@ indigo_uni_handle *indigo_uni_create_file_handle(int fd, int log_level) {
 	handle->index = handle_index++;
 	pthread_mutex_unlock(&mutex);
 	handle->type = INDIGO_FILE_HANDLE;
+	handle->server = false;
 	handle->fd = fd;
 	handle->log_level = log_level;
 	indigo_log_on_level(log_level, "%d <- // Wrapped %d", handle->index, fd);
@@ -368,6 +369,7 @@ indigo_uni_handle *indigo_uni_open_file(const char *path, int log_level) {
 		indigo_uni_handle *handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
 		handle->index = handle_index++;
 		handle->type = INDIGO_FILE_HANDLE;
+		handle->server = false;
 		handle->fd = fd;
 		handle->log_level = log_level;
 		indigo_log_on_level(log_level, "%d <- // %s opened", handle->index, path);
@@ -389,6 +391,7 @@ indigo_uni_handle *indigo_uni_create_file(const char *path, int log_level) {
 		indigo_uni_handle *handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
 		handle->index = handle_index++;
 		handle->type = INDIGO_FILE_HANDLE;
+		handle->server = false;
 		handle->fd = fd;
 		handle->log_level = log_level;
 		indigo_log_on_level(log_level, "%d <- // %s created", handle->index, path);
@@ -507,6 +510,7 @@ static indigo_uni_handle *open_tty(const char *serial, const struct termios *opt
 	indigo_uni_handle *handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
 	handle->index = handle_index++;
 	handle->type = INDIGO_COM_HANDLE;
+	handle->server = false;
 	handle->fd = fd;
 	handle->log_level = log_level;
 	indigo_log_on_level(log_level, "%d <- // %s opened", handle->index, serial);
@@ -601,6 +605,7 @@ static indigo_uni_handle *open_tty(const char *serial, DCB *dcb, int log_level) 
 	indigo_uni_handle *handle = (indigo_uni_handle *)indigo_safe_malloc(sizeof(indigo_uni_handle));
 	handle->index = handle_index++;
 	handle->type = INDIGO_COM_HANDLE;
+	handle->server = false;
 	handle->com = com;
 	handle->log_level = log_level;
 	indigo_log_on_level(log_level, "%d <- // %s opened", handle->index, serial);
@@ -734,6 +739,7 @@ indigo_uni_handle *indigo_uni_open_client_socket(const char *host, int port, int
 				handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
 				handle->index = handle_index++;
 				handle->type = type == SOCK_STREAM ? INDIGO_TCP_HANDLE : INDIGO_UDP_HANDLE;
+				handle->server = false;
 				handle->fd = fd;
 				handle->log_level = log_level;
 				freeaddrinfo(address_list);
@@ -764,6 +770,7 @@ indigo_uni_handle *indigo_uni_open_client_socket(const char *host, int port, int
 		handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
 		handle->index = handle_index++;
 		handle->type = type == SOCK_STREAM ? INDIGO_TCP_HANDLE : INDIGO_UDP_HANDLE;
+		handle->server = false;
 		handle->sock = sock;
 		handle->log_level = log_level;
 		indigo_log_on_level(log_level, "%d <- // %s socket connected to '%s:%d'", handle->index, type == SOCK_STREAM ? "TCP" : "UDP", host, port);
@@ -938,6 +945,7 @@ void indigo_uni_open_tcp_server_socket(int *port, indigo_uni_handle **server_han
 	*server_handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
 	(*server_handle)->index = handle_index++;
 	(*server_handle)->type = INDIGO_TCP_HANDLE;
+	(*server_handle)->server = true;
 	(*server_handle)->sock = server_socket;
 	(*server_handle)->log_level = log_level;
 	INDIGO_LOG(indigo_log("Server started on TCP port %d", *port));
@@ -973,6 +981,7 @@ void indigo_uni_open_tcp_server_socket(int *port, indigo_uni_handle **server_han
 		worker_data->handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
 		worker_data->handle->index = handle_index++;
 		worker_data->handle->type = INDIGO_TCP_HANDLE;
+		worker_data->handle->server = true;
 		worker_data->handle->sock = client_socket;
 		worker_data->handle->log_level = log_level;
 		worker_data->data = data;
@@ -1417,7 +1426,7 @@ void indigo_uni_close(indigo_uni_handle **handle) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 		if ((copy)->type != INDIGO_FILE_HANDLE) {
 			if (!(copy)->server) {
-				/* Allow a graceful close without blocking for 1s */
+				// Allow a graceful close
 				struct linger ling;
 				ling.l_onoff = 1;
 				ling.l_linger = 1;
@@ -1425,6 +1434,7 @@ void indigo_uni_close(indigo_uni_handle **handle) {
 			}
 			shutdown((copy)->fd, SHUT_RDWR);
 			if ((copy)->server) {
+				// this is to avoid process zombification, but we don't know why :)
 				indigo_sleep(1);
 			}
 		}
