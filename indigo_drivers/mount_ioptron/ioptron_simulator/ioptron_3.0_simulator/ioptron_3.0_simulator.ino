@@ -166,8 +166,10 @@ void parseCommand() {
       ra_rate = -rates[moving_rate - '1'];
     } else if (strncmp(command, "qR", 2) == 0) {
       ra_rate = 0;
+			Serial.write('1');
     } else if (strncmp(command, "qD", 2) == 0) {
       dec_rate = 0;
+			Serial.write('1');
     } else if (strncmp(command, "CM", 2) == 0) {
       current_ra = target_ra;
       current_dec = target_dec;
