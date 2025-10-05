@@ -24,7 +24,7 @@
  \file indigo_focuser_ioptron.c
  */
 
-#define DRIVER_VERSION 0x03000002
+#define DRIVER_VERSION 0x03000003
 #define DRIVER_NAME "indigo_focuser_ioptron"
 
 #include <stdlib.h>
@@ -51,34 +51,34 @@ typedef struct {
 	indigo_property *zero_sync_property;
 	indigo_timer *timer;
 	pthread_mutex_t port_mutex;
+	char response[16];
 } ioptron_private_data;
 
 // -------------------------------------------------------------------------------- Low level communication routines
 
-static bool ioptron_command(indigo_device *device, char *command, char *response, int max) {
+static bool ioptron_command(indigo_device *device, char *command, ...) {
+	if (PRIVATE_DATA->handle == NULL) {
+		return false;
+	}
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
-	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
-		if (indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command)) > 0) {
-			if (response != NULL) {
-				if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "#", "", INDIGO_DELAY(1)) > 0) {
-					pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-					return true;
-				}
-			}
-		}
+	long result = indigo_uni_discard(PRIVATE_DATA->handle);
+	if (result >= 0) {
+		va_list args;
+		va_start(args, command);
+		result = indigo_uni_vprintf(PRIVATE_DATA->handle, command, args);
+		va_end(args);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-	return true;
+	return result >= 0;
 }
 
 static bool ioptron_open(indigo_device *device) {
-	char response[128] = "";
 	char *name = DEVICE_PORT_ITEM->text.value;
 	PRIVATE_DATA->handle = indigo_uni_open_serial(name, INDIGO_LOG_DEBUG);
 	if (PRIVATE_DATA->handle >= 0) {
 		int pos, model;
 		indigo_sleep(2);
-		if (ioptron_command(device, ":MountInfo#", response, sizeof(response)) && sscanf(response, "%6d%2d", &pos, &model) == 2 && model == 2) {
+		if (ioptron_command(device, ":MountInfo#") && indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "#", "#", INDIGO_DELAY(1)) > 0 && sscanf(PRIVATE_DATA->response, "%6d%2d", &pos, &model) == 2 && (model == 2 || model == 3)) {
 			FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = pos;
 		} else {
 			indigo_uni_close(&PRIVATE_DATA->handle);
@@ -162,11 +162,10 @@ static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_
 
 static void focuser_timer_callback(indigo_device *device) {
 	if (!IS_CONNECTED) {
-  return;
-}
-	char response[128] = "";
+		return;
+	}
 	int pos, state, temp;
-	if (ioptron_command(device, ":FI#", response, sizeof(response)) && sscanf(response, "%7d%1d%5d%1d", &pos, &state, &temp, &PRIVATE_DATA->reversed) == 4) {
+	if (ioptron_command(device, ":FI#") && indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "#", "#", INDIGO_DELAY(1)) > 0 && sscanf(PRIVATE_DATA->response, "%7d%1d%5d%1d", &pos, &state, &temp, &PRIVATE_DATA->reversed) == 4) {
 		if (FOCUSER_POSITION_ITEM->number.value != pos || FOCUSER_POSITION_PROPERTY->state != (state ? INDIGO_OK_STATE : INDIGO_BUSY_STATE)) {
 			FOCUSER_POSITION_ITEM->number.value = pos;
 			FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = state ? INDIGO_OK_STATE : INDIGO_BUSY_STATE;
@@ -230,9 +229,7 @@ static void focuser_connection_handler(indigo_device *device) {
 }
 
 static void focuser_position_handler(indigo_device *device) {
-	char command[16];
-	snprintf(command, sizeof(command), ":FM%7d#", (int)FOCUSER_POSITION_ITEM->number.target);
-	if (ioptron_command(device, command, NULL, 0)) {
+	if (ioptron_command(device, ":FM%7d#", (int)FOCUSER_POSITION_ITEM->number.target)) {
 		FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
@@ -256,15 +253,15 @@ static void focuser_steps_handler(indigo_device *device) {
 }
 
 static void focuser_reverse_handler(indigo_device *device) {
-	ioptron_command(device, ":FR#", NULL, 0);
+	ioptron_command(device, ":FR#");
 }
 
 static void focuser_zero_sync_handler(indigo_device *device) {
-	ioptron_command(device, ":FZ#", NULL, 0);
+	ioptron_command(device, ":FZ#");
 }
 
 static void focuser_abort_handler(indigo_device *device) {
-	ioptron_command(device, ":FQ#", NULL, 0);
+	ioptron_command(device, ":FQ#");
 }
 
 static indigo_result focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
