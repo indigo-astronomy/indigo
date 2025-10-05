@@ -1619,10 +1619,10 @@ static void meade_init_nyx_mount(indigo_device *device) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Model: %s", response);
 		INDIGO_COPY_VALUE(MOUNT_INFO_MODEL_ITEM->text.value, response);
 	}
-	if (!meade_command(device, ":SXEM,1#", response, sizeof(response), 0) || *response != '1') {
+	if (!meade_command(device, ":SXEM,1#", response, 1, 0) || *response != '1') {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can't set EQ mode");
 	}
-	if (!meade_command(device, ":SX91,U#", response, sizeof(response), 0) || *response != '1') {
+	if (!meade_command(device, ":SX91,U#", response, 1, 0) || *response != '1') {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can't unlock brake");
 	}
 	char *separator = NULL;
