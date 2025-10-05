@@ -59,13 +59,13 @@
 #define EQUATORIAL_ITEM_NAME						"EQUATORIAL"
 #define ALTAZ_MODE_ITEM_NAME						"ALTAZ"
 
-#define FORCE_FLIP_PROPERTY							(PRIVATE_DATA->force_flip_property)
-#define FORCE_FLIP_ENABLED_ITEM					(FORCE_FLIP_PROPERTY->items+0)
-#define FORCE_FLIP_DISABLED_ITEM				(FORCE_FLIP_PROPERTY->items+1)
+#define MERIDIAN_FLIP_PROPERTY							(PRIVATE_DATA->meridian_flip_property)
+#define MERIDIAN_FLIP_ENABLED_ITEM					(MERIDIAN_FLIP_PROPERTY->items+0)
+#define MERIDIAN_FLIP_DISABLED_ITEM				(MERIDIAN_FLIP_PROPERTY->items+1)
 
-#define FORCE_FLIP_PROPERTY_NAME				"X_FORCE_FLIP"
-#define FORCE_FLIP_ENABLED_ITEM_NAME		"ENABLED"
-#define FORCE_FLIP_DISABLED_ITEM_NAME		"DISABLED"
+#define MERIDIAN_FLIP_PROPERTY_NAME				"X_MERIDIAN_FLIP"
+#define MERIDIAN_FLIP_ENABLED_ITEM_NAME		"ENABLED"
+#define MERIDIAN_FLIP_DISABLED_ITEM_NAME		"DISABLED"
 
 #define MOUNT_TYPE_PROPERTY							(PRIVATE_DATA->mount_type_property)
 #define MOUNT_TYPE_DETECT_ITEM					(MOUNT_TYPE_PROPERTY->items+0)
@@ -185,7 +185,7 @@ typedef struct {
 	char lastUTC[INDIGO_VALUE_SIZE];
 	char product[64];
 	indigo_property *alignment_mode_property;
-	indigo_property *force_flip_property;
+	indigo_property *meridian_flip_property;
 	indigo_property *mount_type_property;
 	indigo_property *zwo_buzzer_property;
 	indigo_property *nyx_wifi_ap_property;
@@ -731,9 +731,9 @@ static bool meade_sync(indigo_device *device, double ra, double dec) {
 	return true;
 }
 
-static bool meade_force_flip(indigo_device *device, bool on) {
+static bool meade_meridian_flip(indigo_device *device, bool on) {
 	if (MOUNT_TYPE_STARGO_ITEM->sw.value) {
-		return meade_simple_reply_command(device, on ? ":TTSFd#" : ":TTSFs#");
+		return meade_simple_reply_command(device, on ? ":TTSFs#" : ":TTRFs#");
 	}
 	return false;
 }
@@ -1252,7 +1252,7 @@ static void meade_init_meade_mount(indigo_device *device) {
 	MOUNT_PARK_PARKED_ITEM->sw.value = false;
 	MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
 	MOUNT_MODE_PROPERTY->hidden = true;
-	FORCE_FLIP_PROPERTY->hidden = true;
+	MERIDIAN_FLIP_PROPERTY->hidden = true;
 	strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Meade");
 	if (meade_command(device, ":GVF#")) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Version: %s", PRIVATE_DATA->response);
@@ -1292,7 +1292,7 @@ static void meade_init_eqmac_mount(indigo_device *device) {
 	MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
 	MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->hidden = true;
 	MOUNT_MODE_PROPERTY->hidden = true;
-	FORCE_FLIP_PROPERTY->hidden = true;
+	MERIDIAN_FLIP_PROPERTY->hidden = true;
 	strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "N/A");
 	strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "EQMac");
 	strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, "N/A");
@@ -1306,7 +1306,7 @@ static void meade_init_10microns_mount(indigo_device *device) {
 	MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
 	MOUNT_HOME_PROPERTY->hidden = false;
 	MOUNT_MODE_PROPERTY->hidden = true;
-	FORCE_FLIP_PROPERTY->hidden = true;
+	MERIDIAN_FLIP_PROPERTY->hidden = true;
 	MOUNT_PARK_PROPERTY->count = 2;
 	strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "10Micron");
 	INDIGO_COPY_VALUE(MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product);
@@ -1325,7 +1325,7 @@ static void meade_init_gemini_mount(indigo_device *device) {
 	MOUNT_TRACKING_PROPERTY->hidden = false;
 	MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
 	MOUNT_MODE_PROPERTY->hidden = true;
-	FORCE_FLIP_PROPERTY->hidden = true;
+	MERIDIAN_FLIP_PROPERTY->hidden = true;
 	MOUNT_PARK_PROPERTY->count = 2;
 	strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Losmandy");
 	INDIGO_COPY_VALUE(MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product);
@@ -1344,7 +1344,7 @@ static void meade_init_stargo_mount(indigo_device *device) {
 	MOUNT_GUIDE_RATE_PROPERTY->hidden = false;
 	MOUNT_HOME_PROPERTY->hidden = false;
 	MOUNT_MODE_PROPERTY->hidden = true;
-	FORCE_FLIP_PROPERTY->hidden = false;
+	MERIDIAN_FLIP_PROPERTY->hidden = false;
 	MOUNT_PARK_PROPERTY->count = 2;
 	strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Avalon");
 	strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "Avalon StarGO");
@@ -1363,7 +1363,7 @@ static void meade_init_stargo_mount(indigo_device *device) {
 		}
 	}
 	meade_simple_reply_command(device, ":TTSFd#");
-	indigo_define_property(device, FORCE_FLIP_PROPERTY, NULL);
+	indigo_define_property(device, MERIDIAN_FLIP_PROPERTY, NULL);
 	meade_update_site_items(device);
 	meade_update_mount_state(device);
 }
@@ -1377,7 +1377,7 @@ static void meade_init_stargo2_mount(indigo_device *device) {
 	MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
 	MOUNT_UTC_TIME_PROPERTY->hidden = true;
 	MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
-	FORCE_FLIP_PROPERTY->hidden = true;
+	MERIDIAN_FLIP_PROPERTY->hidden = true;
 	strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Avalon");
 	strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "Avalon StarGO2");
 	strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, "N/A");
@@ -1390,7 +1390,7 @@ static void meade_init_ap_mount(indigo_device *device) {
 	MOUNT_TRACKING_PROPERTY->hidden = false;
 	MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
 	MOUNT_MODE_PROPERTY->hidden = true;
-	FORCE_FLIP_PROPERTY->hidden = true;
+	MERIDIAN_FLIP_PROPERTY->hidden = true;
 	MOUNT_PARK_PROPERTY->count = 2;
 	strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "AstroPhysics");
 	strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "N/A");
@@ -1419,7 +1419,7 @@ static void meade_init_onstep_mount(indigo_device *device) {
 	MOUNT_HOME_SET_PROPERTY->count = 1;
 	MOUNT_PARK_SET_CURRENT_ITEM->sw.value = false;
 	MOUNT_MODE_PROPERTY->hidden = true;
-	FORCE_FLIP_PROPERTY->hidden = true;
+	MERIDIAN_FLIP_PROPERTY->hidden = true;
 	MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
 	MOUNT_SIDE_OF_PIER_PROPERTY->perm = INDIGO_RO_PERM;
 	strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "On-Step");
@@ -1450,7 +1450,7 @@ static void meade_init_agotino_mount(indigo_device *device) {
 	MOUNT_TRACK_RATE_PROPERTY->hidden = true;
 	MOUNT_INFO_PROPERTY->count = 1;
 	MOUNT_MODE_PROPERTY->hidden = true;
-	FORCE_FLIP_PROPERTY->hidden = true;
+	MERIDIAN_FLIP_PROPERTY->hidden = true;
 	strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "aGotino");
 	meade_update_mount_state(device);
 }
@@ -1470,7 +1470,7 @@ static void meade_init_zwo_mount(indigo_device *device) {
 	MOUNT_MODE_PROPERTY->hidden = false;
 	MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
 	MOUNT_SIDE_OF_PIER_PROPERTY->perm = INDIGO_RO_PERM;
-	FORCE_FLIP_PROPERTY->hidden = true;
+	MERIDIAN_FLIP_PROPERTY->hidden = true;
 	ZWO_BUZZER_PROPERTY->hidden = false;
 	if (meade_command(device, ":GV#")) {
 		MOUNT_INFO_PROPERTY->count = 3;
@@ -1550,7 +1550,7 @@ static void meade_init_nyx_mount(indigo_device *device) {
 	MOUNT_HOME_SET_PROPERTY->hidden = false;
 	MOUNT_HOME_SET_PROPERTY->count = 1;
 	MOUNT_MODE_PROPERTY->hidden = true;
-	FORCE_FLIP_PROPERTY->hidden = true;
+	MERIDIAN_FLIP_PROPERTY->hidden = true;
 	MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
 	MOUNT_SIDE_OF_PIER_PROPERTY->perm = INDIGO_RO_PERM;
 	NYX_WIFI_AP_PROPERTY->hidden = false;
@@ -1615,7 +1615,7 @@ static void meade_init_oat_mount(indigo_device *device) {
 	MOUNT_PARK_PARKED_ITEM->sw.value = false;
 	MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
 	MOUNT_MODE_PROPERTY->hidden = true;
-	FORCE_FLIP_PROPERTY->hidden = true;
+	MERIDIAN_FLIP_PROPERTY->hidden = true;
 	strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "OpenAstroTech");
 	INDIGO_COPY_VALUE(MOUNT_INFO_MODEL_ITEM->text.value, "N/A");
 	if (meade_command(device, ":GVN#")) {
@@ -1643,7 +1643,7 @@ static void meade_init_teenastro_mount(indigo_device *device) {
 	MOUNT_HOME_SET_PROPERTY->count = 1;
 	MOUNT_PARK_SET_CURRENT_ITEM->sw.value = false;
 	MOUNT_MODE_PROPERTY->hidden = true;
-	FORCE_FLIP_PROPERTY->hidden = true;
+	MERIDIAN_FLIP_PROPERTY->hidden = true;
 	MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
 	MOUNT_SIDE_OF_PIER_PROPERTY->perm = INDIGO_RO_PERM;
 	strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "TeenAstro");
@@ -2503,7 +2503,7 @@ static void mount_connect_callback(indigo_device *device) {
 			meade_close(device);
 		}
 		indigo_delete_property(device, MOUNT_MODE_PROPERTY, NULL);
-		indigo_delete_property(device, FORCE_FLIP_PROPERTY, NULL);
+		indigo_delete_property(device, MERIDIAN_FLIP_PROPERTY, NULL);
 		indigo_delete_property(device, ZWO_BUZZER_PROPERTY, NULL);
 		indigo_delete_property(device, NYX_WIFI_AP_PROPERTY, NULL);
 		indigo_delete_property(device, NYX_WIFI_CL_PROPERTY, NULL);
@@ -2727,13 +2727,13 @@ static void mount_track_rate_callback(indigo_device *device) {
 	indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
 }
 
-static void mount_force_flip_callback(indigo_device *device) {
-	if (meade_force_flip(device, FORCE_FLIP_ENABLED_ITEM->sw.value)) {
-		FORCE_FLIP_PROPERTY->state = INDIGO_OK_STATE;
+static void mount_meridian_flip_callback(indigo_device *device) {
+	if (meade_meridian_flip(device, MERIDIAN_FLIP_ENABLED_ITEM->sw.value)) {
+		MERIDIAN_FLIP_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
-		FORCE_FLIP_PROPERTY->state = INDIGO_ALERT_STATE;
+		MERIDIAN_FLIP_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-	indigo_update_property(device, FORCE_FLIP_PROPERTY, NULL);
+	indigo_update_property(device, MERIDIAN_FLIP_PROPERTY, NULL);
 }
 
 static void mount_pec_callback(indigo_device *device) {
@@ -2847,14 +2847,14 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_init_switch_item(EQUATORIAL_ITEM, EQUATORIAL_ITEM_NAME, "Equatorial mode", false);
 		indigo_init_switch_item(ALTAZ_MODE_ITEM, ALTAZ_MODE_ITEM_NAME, "Alt/Az mode", false);
 		MOUNT_MODE_PROPERTY->hidden = true;
-		// -------------------------------------------------------------------------------- FORCE_FLIP
-		FORCE_FLIP_PROPERTY = indigo_init_switch_property(NULL, device->name, FORCE_FLIP_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Meridian flip mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (FORCE_FLIP_PROPERTY == NULL) {
+		// -------------------------------------------------------------------------------- MERIDIAN_FLIP
+		MERIDIAN_FLIP_PROPERTY = indigo_init_switch_property(NULL, device->name, MERIDIAN_FLIP_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Meridian flip", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (MERIDIAN_FLIP_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
-		indigo_init_switch_item(FORCE_FLIP_ENABLED_ITEM, FORCE_FLIP_ENABLED_ITEM_NAME, "Enabled", true);
-		indigo_init_switch_item(FORCE_FLIP_DISABLED_ITEM, FORCE_FLIP_DISABLED_ITEM_NAME, "Disabled", false);
-		FORCE_FLIP_PROPERTY->hidden = true;
+		indigo_init_switch_item(MERIDIAN_FLIP_ENABLED_ITEM, MERIDIAN_FLIP_ENABLED_ITEM_NAME, "Enabled", true);
+		indigo_init_switch_item(MERIDIAN_FLIP_DISABLED_ITEM, MERIDIAN_FLIP_DISABLED_ITEM_NAME, "Disabled", false);
+		MERIDIAN_FLIP_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- MOUNT_TYPE
 		MOUNT_TYPE_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_TYPE_PROPERTY_NAME, MAIN_GROUP, "Mount type", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 15);
 		if (MOUNT_TYPE_PROPERTY == NULL) {
@@ -2929,7 +2929,7 @@ static indigo_result mount_enumerate_properties(indigo_device *device, indigo_cl
 	INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_TYPE_PROPERTY);
 	if (IS_CONNECTED) {
 		INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_MODE_PROPERTY);
-		INDIGO_DEFINE_MATCHING_PROPERTY(FORCE_FLIP_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(MERIDIAN_FLIP_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(ZWO_BUZZER_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(NYX_WIFI_AP_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(NYX_WIFI_CL_PROPERTY);
@@ -3089,17 +3089,12 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
 		indigo_set_timer(device, 0, mount_track_rate_callback, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(FORCE_FLIP_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- FORCE_FLIP
-		if (IS_PARKED) {
-			FORCE_FLIP_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, FORCE_FLIP_PROPERTY, "Mount is parked!");
-		} else {
-			indigo_property_copy_values(FORCE_FLIP_PROPERTY, property, false);
-			FORCE_FLIP_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, FORCE_FLIP_PROPERTY, NULL);
-			indigo_set_timer(device, 0, mount_force_flip_callback, NULL);
-		}
+	} else if (indigo_property_match_changeable(MERIDIAN_FLIP_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MERIDIAN_FLIP
+		indigo_property_copy_values(MERIDIAN_FLIP_PROPERTY, property, false);
+		MERIDIAN_FLIP_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, MERIDIAN_FLIP_PROPERTY, NULL);
+		indigo_set_timer(device, 0, mount_meridian_flip_callback, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_PEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_PEC
@@ -3166,7 +3161,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
-			indigo_save_property(device, NULL, FORCE_FLIP_PROPERTY);
+			indigo_save_property(device, NULL, MERIDIAN_FLIP_PROPERTY);
 			indigo_save_property(device, NULL, MOUNT_TYPE_PROPERTY);
 		}
 		// --------------------------------------------------------------------------------
@@ -3181,7 +3176,7 @@ static indigo_result mount_detach(indigo_device *device) {
 		mount_connect_callback(device);
 	}
 	indigo_release_property(MOUNT_MODE_PROPERTY);
-	indigo_release_property(FORCE_FLIP_PROPERTY);
+	indigo_release_property(MERIDIAN_FLIP_PROPERTY);
 	indigo_release_property(ZWO_BUZZER_PROPERTY);
 	indigo_release_property(NYX_WIFI_AP_PROPERTY);
 	indigo_release_property(NYX_WIFI_CL_PROPERTY);
