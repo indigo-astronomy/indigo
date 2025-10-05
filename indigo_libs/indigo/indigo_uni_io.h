@@ -73,6 +73,7 @@ typedef enum {
 typedef struct {
 	int index;
 	indigo_uni_handle_type type;
+	bool server;
 	union {
 		int fd;
 #if defined(INDIGO_WINDOWS)

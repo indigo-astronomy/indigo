@@ -858,6 +858,7 @@ void indigo_uni_open_tcp_server_socket(int *port, indigo_uni_handle **server_han
 	*server_handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
 	(*server_handle)->index = handle_index++;
 	(*server_handle)->type = INDIGO_TCP_HANDLE;
+	(*server_handle)->server = true;
 	(*server_handle)->fd = server_socket;
 	(*server_handle)->log_level = log_level;
 	indigo_log_on_level(log_level, "Server started on TCP port %d", *port);
@@ -891,6 +892,7 @@ void indigo_uni_open_tcp_server_socket(int *port, indigo_uni_handle **server_han
 		worker_data->handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
 		worker_data->handle->index = handle_index++;
 		worker_data->handle->type = INDIGO_TCP_HANDLE;
+		worker_data->handle->server = true;
 		worker_data->handle->fd = client_socket;
 		worker_data->handle->log_level = log_level;
 		worker_data->data = data;
@@ -1414,12 +1416,17 @@ void indigo_uni_close(indigo_uni_handle **handle) {
 		*handle = NULL;
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 		if ((copy)->type != INDIGO_FILE_HANDLE) {
-			/* Allow a graceful close without blocking for 1s */
-			struct linger ling;
-			ling.l_onoff = 1;
-			ling.l_linger = 1;
-			setsockopt((copy)->fd, SOL_SOCKET, SO_LINGER, &ling, sizeof(ling));
+			if (!(copy)->server) {
+				/* Allow a graceful close without blocking for 1s */
+				struct linger ling;
+				ling.l_onoff = 1;
+				ling.l_linger = 1;
+				setsockopt((copy)->fd, SOL_SOCKET, SO_LINGER, &ling, sizeof(ling));
+			}
 			shutdown((copy)->fd, SHUT_RDWR);
+			if ((copy)->server) {
+				indigo_sleep(1);
+			}
 		}
 		close((copy)->fd);
 #elif defined(INDIGO_WINDOWS)
