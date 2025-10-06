@@ -566,13 +566,6 @@ driver upb3 {
 				min = 0;
 				max = 6;
 			}
-			item AUX_POWER_OUTLET_CURRENT_2 {
-				name = AUX_POWER_OUTLET_CURRENT_2_ITEM_NAME;
-				label = "Outlet #2 current [A]";
-				value = 0;
-				min = 0;
-				max = 6;
-			}
 			item AUX_POWER_OUTLET_CURRENT_3 {
 				name = AUX_POWER_OUTLET_CURRENT_3_ITEM_NAME;
 				label = "Outlet #3 current [A]";
