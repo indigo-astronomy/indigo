@@ -221,6 +221,9 @@ typedef struct {
 	int onstep_aux_power_outlet_count;
 } lx200_private_data;
 
+
+static void position_timer_callback(indigo_device *device);
+
 /**
  * Compare two version strings in the format "major.minor.patch"
  * Returns: -1 if version1 < version2, 0 if equal, 1 if version1 > version2
@@ -439,8 +442,7 @@ static bool meade_open(indigo_device *device) {
 				// sometimes the first command after power on in OnStep fails and just returns '0'
 				// so we try two times for the default baudrate of 9600
 				PRIVATE_DATA->timeout = 1;
-				if ((!meade_command(device, ":GR#") || strlen(PRIVATE_DATA->response) < 6) &&
-				    (!meade_command(device, ":GR#") || strlen(PRIVATE_DATA->response) < 6)) {
+				if ((!meade_command(device, ":GR#") || strlen(PRIVATE_DATA->response) < 6) && (!meade_command(device, ":GR#") || strlen(PRIVATE_DATA->response) < 6)) {
 					indigo_uni_close(&PRIVATE_DATA->handle);
 					PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, 19200, INDIGO_LOG_DEBUG);
 					if (!meade_command(device, ":GR#") || strlen(PRIVATE_DATA->response) < 6) {
@@ -497,20 +499,17 @@ static bool meade_set_utc(indigo_device *device, time_t *secs, int utc_offset) {
 	indigo_gmtime(&seconds, &tm);
 	if (!meade_simple_reply_command(device, ":SC%02d/%02d/%02d#", tm.tm_mon + 1, tm.tm_mday, tm.tm_year % 100) || *PRIVATE_DATA->response != '1') {
 		return false;
-	} else {
-		if (PRIVATE_DATA->use_dst_commands) {
-			meade_no_reply_command(device, ":SH%d#", indigo_get_dst_state());
-		}
-		if (!meade_simple_reply_command(device, ":SG%+03d#", -utc_offset) || *PRIVATE_DATA->response != '1') {
-			return false;
-		} else {
-			if (!meade_simple_reply_command(device, ":SL%02d:%02d:%02d#", tm.tm_hour, tm.tm_min, tm.tm_sec) || *PRIVATE_DATA->response != '1') {
-				return false;
-			} else {
-				return true;
-			}
-		}
 	}
+	if (PRIVATE_DATA->use_dst_commands) {
+		meade_no_reply_command(device, ":SH%d#", indigo_get_dst_state());
+	}
+	if (!meade_simple_reply_command(device, ":SG%+03d#", -utc_offset) || *PRIVATE_DATA->response != '1') {
+		return false;
+	}
+	if (!meade_simple_reply_command(device, ":SL%02d:%02d:%02d#", tm.tm_hour, tm.tm_min, tm.tm_sec) || *PRIVATE_DATA->response != '1') {
+		return false;
+	}
+	return true;
 }
 
 static bool meade_get_utc(indigo_device *device, time_t *secs, int *utc_offset) {
@@ -672,6 +671,12 @@ static bool meade_slew(indigo_device *device, double ra, double dec) {
 	if (!meade_simple_reply_command(device, ":Sd%s#", indigo_dtos(dec, "%+03d*%02d:%02.0f")) || *PRIVATE_DATA->response != '1') {
 		return false;
 	}
+
+	/* Reschedule the position_timer after 1.5 seconds to make sure the mount starts to move
+	   before the next property update to prevent property state updated back to OK prematurely */
+	indigo_cancel_timer_sync(device, &PRIVATE_DATA->position_timer);
+	indigo_set_timer(device, 1, position_timer_callback, &PRIVATE_DATA->position_timer);
+
 	if (!meade_simple_reply_command(device, ":MS#") || *PRIVATE_DATA->response != '0') {
 		if (MOUNT_TYPE_ZWO_ITEM->sw.value && *PRIVATE_DATA->response == 'e') {
 			int error_code = 0;
@@ -710,6 +715,12 @@ static bool meade_sync(indigo_device *device, double ra, double dec) {
 	if (!meade_simple_reply_command(device, ":Sd%s#", indigo_dtos(dec, "%+03d*%02d:%02.0f")) || *PRIVATE_DATA->response != '1') {
 		return false;
 	}
+
+	/* Reschedule the position_timer after 1.5 seconds to make sure the mount starts to move
+	   before the next property update to prevent property state updated back to OK prematurely */
+	indigo_cancel_timer_sync(device, &PRIVATE_DATA->position_timer);
+	indigo_set_timer(device, 1, position_timer_callback, &PRIVATE_DATA->position_timer);
+
 	if (!meade_command(device, ":CM#") || *PRIVATE_DATA->response == 0) {
 		return false;
 	}
