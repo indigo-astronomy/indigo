@@ -1758,23 +1758,38 @@ indigo_result indigo_device_disconnect(indigo_client *client, char *device) {
 	return indigo_change_switch_property(client, device, CONNECTION_PROPERTY_NAME, 2, items, values);
 }
 
+void indigo_disconnect_slave_devices(indigo_device *master) {
+	if (indigo_use_strict_locking) {
+		pthread_mutex_lock(&device_mutex);
+	}
+	for (int i = 0; i < MAX_DEVICES; i++) {
+		indigo_device *device = devices[i];
+		if (device && device->master_device == master) {
+			indigo_device_disconnect(NULL, device->name);
+		}
+	}
+	if (indigo_use_strict_locking) {
+		pthread_mutex_unlock(&device_mutex);
+	}
+}
+
 int indigo_query_slave_devices(indigo_device *master, indigo_device **slaves, int max) {
 	if (indigo_use_strict_locking) {
-  pthread_mutex_lock(&device_mutex);
-}
+		pthread_mutex_lock(&device_mutex);
+	}
 	int count = 0;
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
 		if (device && device != master && device->master_device == master) {
 			slaves[count] = device;
 			if (count++ >= max) {
-  break;
-}
+				break;
+			}
 		}
 	}
 	if (indigo_use_strict_locking) {
-  pthread_mutex_unlock(&device_mutex);
-}
+		pthread_mutex_unlock(&device_mutex);
+	}
 	return count;
 }
 

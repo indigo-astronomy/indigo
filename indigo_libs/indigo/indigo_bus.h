@@ -724,18 +724,18 @@ INDIGO_EXTERN indigo_result indigo_device_disconnect(indigo_client *client, char
  */
 INDIGO_EXTERN int indigo_query_slave_devices(indigo_device *master, indigo_device **slaves, int max);
 
+/** Disconnect slave devices of given master device.
+ */
+
+INDIGO_EXTERN void indigo_disconnect_slave_devices(indigo_device *master);
+
 /** Trim " @ local_service_name" from the string.
  */
 INDIGO_EXTERN void indigo_trim_local_service(char *device_name);
 
 /** Asynchronous handle property change in sepatate thread
 */
-INDIGO_EXTERN bool indigo_handle_property_async(
-	void (*handler)(indigo_device *device, indigo_client *client, indigo_property *property),
-	indigo_device *device,
-	indigo_client *client,
-	indigo_property *property
-);
+INDIGO_EXTERN bool indigo_handle_property_async(void (*handler)(indigo_device *device, indigo_client *client, indigo_property *property), indigo_device *device, indigo_client *client, indigo_property *property);
 
 /** Asynchronous execution in thread.
  */
