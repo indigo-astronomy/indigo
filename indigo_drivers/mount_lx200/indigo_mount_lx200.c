@@ -345,7 +345,7 @@ static bool meade_no_reply_command(indigo_device *device, char *command, ...) {
 	}
 	if (result >= 0) {
 		indigo_usleep(50000);
-	} else if (PRIVATE_DATA->handle->type == INDIGO_TCP_HANDLE) {
+	} else if (PRIVATE_DATA->handle && PRIVATE_DATA->handle->type == INDIGO_TCP_HANDLE) {
 		indigo_set_timer(device, 0, network_disconnection, NULL);
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unexpected disconnection from %s", DEVICE_PORT_ITEM->text.value);
 	}
@@ -380,7 +380,7 @@ static bool meade_simple_reply_command(indigo_device *device, char *command, ...
 	}
 	if (result >= 0) {
 		indigo_usleep(50000);
-	} else if (PRIVATE_DATA->handle->type == INDIGO_TCP_HANDLE) {
+	} else if (PRIVATE_DATA->handle && PRIVATE_DATA->handle->type == INDIGO_TCP_HANDLE) {
 		indigo_set_timer(device, 0, network_disconnection, NULL);
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unexpected disconnection from %s", DEVICE_PORT_ITEM->text.value);
 	}
@@ -405,7 +405,7 @@ static bool meade_command(indigo_device *device, char *command, ...) {
 	}
 	if (result >= 0) {
 		indigo_usleep(50000);
-	} else if (PRIVATE_DATA->handle->type == INDIGO_TCP_HANDLE) {
+	} else if (PRIVATE_DATA->handle && PRIVATE_DATA->handle->type == INDIGO_TCP_HANDLE) {
 		indigo_set_timer(device, 0, network_disconnection, NULL);
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unexpected disconnection from %s", DEVICE_PORT_ITEM->text.value);
 	}
@@ -481,10 +481,12 @@ static bool meade_open(indigo_device *device) {
 }
 
 static void meade_close(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	if (PRIVATE_DATA->handle != NULL) {
 		indigo_uni_close(&PRIVATE_DATA->handle);
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
 	}
+	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 }
 
 // ---------------------------------------------------------------------  mount commands
