@@ -221,9 +221,6 @@ typedef struct {
 	int onstep_aux_power_outlet_count;
 } lx200_private_data;
 
-
-static void position_timer_callback(indigo_device *device);
-
 /**
  * Compare two version strings in the format "major.minor.patch"
  * Returns: -1 if version1 < version2, 0 if equal, 1 if version1 > version2
@@ -671,12 +668,6 @@ static bool meade_slew(indigo_device *device, double ra, double dec) {
 	if (!meade_simple_reply_command(device, ":Sd%s#", indigo_dtos(dec, "%+03d*%02d:%02.0f")) || *PRIVATE_DATA->response != '1') {
 		return false;
 	}
-
-	/* Reschedule the position_timer after 1.5 seconds to make sure the mount starts to move
-	   before the next property update to prevent property state updated back to OK prematurely */
-	indigo_cancel_timer_sync(device, &PRIVATE_DATA->position_timer);
-	indigo_set_timer(device, 1, position_timer_callback, &PRIVATE_DATA->position_timer);
-
 	if (!meade_simple_reply_command(device, ":MS#") || *PRIVATE_DATA->response != '0') {
 		if (MOUNT_TYPE_ZWO_ITEM->sw.value && *PRIVATE_DATA->response == 'e') {
 			int error_code = 0;
@@ -715,12 +706,6 @@ static bool meade_sync(indigo_device *device, double ra, double dec) {
 	if (!meade_simple_reply_command(device, ":Sd%s#", indigo_dtos(dec, "%+03d*%02d:%02.0f")) || *PRIVATE_DATA->response != '1') {
 		return false;
 	}
-
-	/* Reschedule the position_timer after 1.5 seconds to make sure the mount starts to move
-	   before the next property update to prevent property state updated back to OK prematurely */
-	indigo_cancel_timer_sync(device, &PRIVATE_DATA->position_timer);
-	indigo_set_timer(device, 1, position_timer_callback, &PRIVATE_DATA->position_timer);
-
 	if (!meade_command(device, ":CM#") || *PRIVATE_DATA->response == 0) {
 		return false;
 	}
