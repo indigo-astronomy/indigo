@@ -87,7 +87,7 @@
 
 typedef struct {
 	indigo_uni_handle *handle;
-	int32_t current_position, target_position, max_position;
+	uint32_t current_position, target_position, max_position;
 	double prev_temp;
 	indigo_timer *focuser_timer, *temperature_timer;
 	pthread_mutex_t port_mutex;

@@ -109,7 +109,7 @@
 typedef struct {
 	indigo_uni_handle *handle;
 	int focuser_version;
-	int32_t current_position, target_position, max_position;
+	uint32_t current_position, target_position, max_position;
 	bool positive_last_move;
 	double prev_temp;
 	indigo_timer *focuser_timer, *temperature_timer;
