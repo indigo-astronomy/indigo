@@ -146,9 +146,17 @@ static bool asi_open(indigo_device *device) {
 	}
 }
 
-static void network_disconnection(indigo_device *device);
+static void asi_close(indigo_device *device);
 
 static bool asi_command(indigo_device *device, const char *command, char *response, int max, float timeout) {
+	if (PRIVATE_DATA->handle == NULL) {
+		return false;
+	}
+	if (!indigo_uni_is_valid(PRIVATE_DATA->handle)) {
+		asi_close(device);
+		indigo_set_timer(device->master_device, 0, indigo_disconnect_slave_devices, NULL);
+		return false;
+	}
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
 		if (indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command)) > 0) {
@@ -163,10 +171,6 @@ static bool asi_command(indigo_device *device, const char *command, char *respon
 			}
 		}
 	}
-	if (PRIVATE_DATA->handle && PRIVATE_DATA->handle->type == INDIGO_TCP_HANDLE) {
-		indigo_set_timer(device, 0, network_disconnection, NULL);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unexpected disconnection from %s", DEVICE_PORT_ITEM->text.value);
-	}
 	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 	return false;
 }
@@ -175,6 +179,7 @@ static void asi_close(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	if (PRIVATE_DATA->handle != NULL) {
 		indigo_uni_close(&PRIVATE_DATA->handle);
+		PRIVATE_DATA->device_count = 0;
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
@@ -1421,31 +1426,12 @@ static indigo_result guider_detach(indigo_device *device) {
 	return indigo_guider_detach(device);
 }
 
-static void device_network_disconnection(indigo_device* device, indigo_timer_callback callback) {
-	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-		callback(device);
-		CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;  // The alert state signals the unexpected disconnection
-		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		// Sending message as this update will not pass through the agent
-		indigo_send_message(device, "Error: Device disconnected unexpectedly", device->name);
-	}
-	// Otherwise not previously connected, nothing to do
-}
-
 // --------------------------------------------------------------------------------
 
 static asi_private_data *private_data = NULL;
 
 static indigo_device *mount = NULL;
 static indigo_device *mount_guider = NULL;
-
-static void network_disconnection(indigo_device* device) {
-	// Since the two devices share the same TCP connection,
-	// process the disconnection on all of them
-	device_network_disconnection(mount, mount_connect_callback);
-	device_network_disconnection(mount_guider, guider_connect_callback);
-}
 
 indigo_result indigo_mount_asi(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_device mount_template = INDIGO_DEVICE_INITIALIZER(

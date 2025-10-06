@@ -481,6 +481,7 @@ static void meade_close(indigo_device *device) {
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->keep_alive_timer);
 		}
 		indigo_uni_close(&PRIVATE_DATA->handle);
+		PRIVATE_DATA->device_count = 0;
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
