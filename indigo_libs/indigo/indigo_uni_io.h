@@ -247,6 +247,10 @@ INDIGO_EXTERN long indigo_uni_seek(indigo_uni_handle *handle, long position, int
  */
 INDIGO_EXTERN bool indigo_uni_lock_file(indigo_uni_handle *handle);
 
+/** Check if handle is valid.
+ */
+INDIGO_EXTERN bool indigo_uni_is_valid(indigo_uni_handle *handle);
+
 /** Close handle.
  */
 INDIGO_EXTERN void indigo_uni_close(indigo_uni_handle **handle);

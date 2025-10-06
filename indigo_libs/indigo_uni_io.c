@@ -1390,19 +1390,19 @@ bool indigo_uni_lock_file(indigo_uni_handle *handle) {
 		int ret = fcntl(handle->fd, F_SETLK, &lock);
 		if (ret == -1) {
 			handle->last_error = errno;
-			indigo_error("%d <- //Failed to lock %s", handle->index, indigo_uni_strerror(handle));
+			indigo_error("%d <- // Failed to lock %s", handle->index, indigo_uni_strerror(handle));
 			return false;
 		}
 #elif defined(INDIGO_WINDOWS)
 		HANDLE hFile = (HANDLE)_get_osfhandle(handle->fd);
 		if (hFile == INVALID_HANDLE_VALUE) {
 			handle->last_error = GetLastError();
-			indigo_error("%d <- //Failed to lock %s", handle->index, indigo_uni_strerror(handle));
+			indigo_error("%d <- // Failed to lock %s", handle->index, indigo_uni_strerror(handle));
 			return false;
 		}
 		if (!LockFile(hFile, 0, 0, MAXDWORD, MAXDWORD)) {
 			handle->last_error = GetLastError();
-			indigo_error("%d <- //Failed to lock %s", handle->index, indigo_uni_strerror(handle));
+			indigo_error("%d <- // Failed to lock %s", handle->index, indigo_uni_strerror(handle));
 			return false;
 		}
 #else
@@ -1411,6 +1411,41 @@ bool indigo_uni_lock_file(indigo_uni_handle *handle) {
 		indigo_log_on_level(handle->log_level, "%d <- // locked", handle->index);
 		return true;
 	}
+	return false;
+}
+
+bool indigo_uni_is_valid(indigo_uni_handle *handle) {
+	if (handle != NULL) {
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+		if (handle->type == INDIGO_COM_HANDLE) {
+			int status;
+			if (ioctl(handle->fd, TIOCMGET, &status) != -1) {
+				return true;
+			}
+		} else if (handle->type == INDIGO_TCP_HANDLE) {
+			char buf;
+			if (recv(handle->fd, &buf, 1, MSG_PEEK) != 0) {
+				return true;
+			}
+		}
+#elif defined(INDIGO_WINDOWS)
+		if (handle->type == INDIGO_COM_HANDLE) {
+			COMSTAT stat;
+			DWORD errors;
+			if (ClearCommError(handle->com, &errors, &stat)) {
+				return true;
+			}
+		} else if (handle->type == INDIGO_TCP_HANDLE) {
+			char buf;
+			if (recv(handle->sock, &buf, 1, MSG_PEEK) != 0) {
+				return true;
+			}
+		}
+#else
+#pragma message ("TODO: indigo_uni_close()")
+#endif
+	}
+	indigo_error("%d <- // Lost connection", handle->index);
 	return false;
 }
 
@@ -1451,7 +1486,7 @@ void indigo_uni_close(indigo_uni_handle **handle) {
 #else
 #pragma message ("TODO: indigo_uni_close()")
 #endif
-		indigo_log_on_level((copy)->log_level, "%d <- // closed", (copy)->index);
+		indigo_log_on_level((copy)->log_level, "%d <- // Closed", (copy)->index);
 		indigo_safe_free(copy);
 	}
 	pthread_mutex_unlock(&mutex);
