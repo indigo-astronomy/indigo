@@ -160,12 +160,10 @@ static bool mfp_command(indigo_device *device, const char *command, char *respon
 }
 
 static void mfp_close(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	if (PRIVATE_DATA->handle != NULL) {
 		indigo_uni_close(&PRIVATE_DATA->handle);
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
 	}
-	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 }
 
 
