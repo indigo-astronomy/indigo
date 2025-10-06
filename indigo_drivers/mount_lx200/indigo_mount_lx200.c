@@ -175,7 +175,6 @@ typedef enum {
 typedef struct {
 	indigo_uni_handle *handle;
 	int device_count;
-	bool wifi_reset;
 	indigo_timer *position_timer;
 	indigo_timer *keep_alive_timer;
 	pthread_mutex_t port_mutex;
@@ -211,54 +210,53 @@ typedef struct {
 	bool focus_aborted;
 	int prev_tracking_rate;
 	bool prev_home_state;
-	// maps power outlet property item index to onstep aux slot
-	int onstep_aux_power_outlet_slot_mapping[ONSTEP_AUX_DEVICE_COUNT];
-	// the number of heater outlets defined in onstep
-	int onstep_aux_heater_outlet_count;
-	// maps heater outlet property item index to onstep aux slot
-	int onstep_aux_heater_outlet_slot_mapping[ONSTEP_AUX_DEVICE_COUNT];
-	// the number of power outlets defined in onstep
-	int onstep_aux_power_outlet_count;
+	int onstep_aux_power_outlet_slot_mapping[ONSTEP_AUX_DEVICE_COUNT];	// maps power outlet property item index to onstep aux slot
+	int onstep_aux_heater_outlet_count; 																// the number of heater outlets defined in onstep
+	int onstep_aux_heater_outlet_slot_mapping[ONSTEP_AUX_DEVICE_COUNT];	// maps heater outlet property item index to onstep aux slot
+	int onstep_aux_power_outlet_count;																	// the number of power outlets defined in onstep
 } lx200_private_data;
 
-/**
- * Compare two version strings in the format "major.minor.patch"
- * Returns: -1 if version1 < version2, 0 if equal, 1 if version1 > version2
- */
+// Compare two version strings in the format "major.minor.patch"
+// Returns: -1 if version1 < version2, 0 if equal, 1 if version1 > version2
 static int compare_versions(const char *version1, const char *version2) {
 	if (!version1 || !version2) {
 		return 0;
 	}
-
 	char *v1_copy = strdup(version1);
 	char *v2_copy = strdup(version2);
-
 	if (!v1_copy || !v2_copy) {
 		indigo_safe_free(v1_copy);
 		indigo_safe_free(v2_copy);
 		return 0;
 	}
-
 	int v1_major = 0, v1_minor = 0, v1_patch = 0;
 	char *token = strtok(v1_copy, ".");
-	if (token) v1_major = atoi(token);
+	if (token) {
+		v1_major = atoi(token);
+	}
 	token = strtok(NULL, ".");
-	if (token) v1_minor = atoi(token);
+	if (token) {
+		v1_minor = atoi(token);
+	}
 	token = strtok(NULL, ".");
-	if (token) v1_patch = atoi(token);
-
+	if (token) {
+		v1_patch = atoi(token);
+	}
 	indigo_safe_free(v1_copy);
-
 	token = strtok(v2_copy, ".");
 	int v2_major = 0, v2_minor = 0, v2_patch = 0;
-	if (token) v2_major = atoi(token);
+	if (token) {
+		v2_major = atoi(token);
+	}
 	token = strtok(NULL, ".");
-	if (token) v2_minor = atoi(token);
+	if (token) {
+		v2_minor = atoi(token);
+	}
 	token = strtok(NULL, ".");
-	if (token) v2_patch = atoi(token);
-
+	if (token) {
+		v2_patch = atoi(token);
+	}
 	indigo_safe_free(v2_copy);
-
 	if (v1_major != v2_major) {
 		return (v1_major > v2_major) ? 1 : -1;
 	}
@@ -268,7 +266,6 @@ static int compare_versions(const char *version1, const char *version2) {
 	if (v1_patch != v2_patch) {
 		return (v1_patch > v2_patch) ? 1 : -1;
 	}
-
 	return 0;
 }
 
@@ -329,10 +326,10 @@ static void str_replace(char *string, char c0, char c1) {
 	}
 }
 
-static void network_disconnection(indigo_device *device);
+static bool meade_validate_handle(indigo_device *device);
 
 static bool meade_no_reply_command(indigo_device *device, char *command, ...) {
-	if (PRIVATE_DATA->handle == NULL || PRIVATE_DATA->wifi_reset) {
+	if (!meade_validate_handle(device)) {
 		return false;
 	}
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
@@ -345,16 +342,13 @@ static bool meade_no_reply_command(indigo_device *device, char *command, ...) {
 	}
 	if (result >= 0) {
 		indigo_usleep(50000);
-	} else if (PRIVATE_DATA->handle && PRIVATE_DATA->handle->type == INDIGO_TCP_HANDLE) {
-		indigo_set_timer(device, 0, network_disconnection, NULL);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unexpected disconnection from %s", DEVICE_PORT_ITEM->text.value);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 	return result >= 0;
 }
 
 static bool meade_simple_reply_command(indigo_device *device, char *command, ...) {
-	if (PRIVATE_DATA->handle == NULL || PRIVATE_DATA->wifi_reset) {
+	if (!meade_validate_handle(device)) {
 		return false;
 	}
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
@@ -380,16 +374,13 @@ static bool meade_simple_reply_command(indigo_device *device, char *command, ...
 	}
 	if (result >= 0) {
 		indigo_usleep(50000);
-	} else if (PRIVATE_DATA->handle && PRIVATE_DATA->handle->type == INDIGO_TCP_HANDLE) {
-		indigo_set_timer(device, 0, network_disconnection, NULL);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unexpected disconnection from %s", DEVICE_PORT_ITEM->text.value);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 	return result >= 0;
 }
 
 static bool meade_command(indigo_device *device, char *command, ...) {
-	if (PRIVATE_DATA->handle == NULL || PRIVATE_DATA->wifi_reset) {
+	if (!meade_validate_handle(device)) {
 		return false;
 	}
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
@@ -405,9 +396,6 @@ static bool meade_command(indigo_device *device, char *command, ...) {
 	}
 	if (result >= 0) {
 		indigo_usleep(50000);
-	} else if (PRIVATE_DATA->handle && PRIVATE_DATA->handle->type == INDIGO_TCP_HANDLE) {
-		indigo_set_timer(device, 0, network_disconnection, NULL);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unexpected disconnection from %s", DEVICE_PORT_ITEM->text.value);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 	return result >= 0;
@@ -478,7 +466,6 @@ static bool meade_open(indigo_device *device) {
 		}
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
 		indigo_uni_discard(PRIVATE_DATA->handle);
-		PRIVATE_DATA->wifi_reset = false;
 		PRIVATE_DATA->timeout = 3;
 		return true;
 	} else {
@@ -497,6 +484,18 @@ static void meade_close(indigo_device *device) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+}
+
+static bool meade_validate_handle(indigo_device *device) {
+	if (PRIVATE_DATA->handle == NULL) {
+		return false;
+	}
+	if (!indigo_uni_is_valid(PRIVATE_DATA->handle)) {
+		meade_close(device);
+		indigo_set_timer(device->master_device, 0, indigo_disconnect_slave_devices, NULL);
+		return false;
+	}
+	return true;
 }
 
 // ---------------------------------------------------------------------  mount commands
@@ -2453,7 +2452,7 @@ static void meade_update_mount_state(indigo_device *device) {
 // -------------------------------------------------------------------------------- INDIGO MOUNT device implementation
 
 static void position_timer_callback(indigo_device *device) {
-	if (PRIVATE_DATA->handle != NULL && !PRIVATE_DATA->wifi_reset) {
+	if (PRIVATE_DATA->handle != NULL) {
 		meade_update_site_if_changed(device);
 		meade_update_mount_state(device);
 		indigo_update_coordinates(device, NULL);
@@ -2806,12 +2805,9 @@ static void nyx_cl_callback(indigo_device *device) {
 				indigo_send_message(device, "WiFi reset!");
 				NYX_WIFI_CL_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, NYX_WIFI_CL_PROPERTY, NULL);
-				pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 				if (PRIVATE_DATA->handle && PRIVATE_DATA->handle->type == INDIGO_TCP_HANDLE) {
-					PRIVATE_DATA->wifi_reset = true;
-					indigo_set_timer(device, 0, network_disconnection, NULL);
+					indigo_set_timer(device->master_device, 0, indigo_disconnect_slave_devices, NULL);
 				}
-				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 				return;
 			}
 		}
@@ -2825,12 +2821,9 @@ static void nyx_reset_callback(indigo_device *device) {
 		indigo_send_message(device, "WiFi reset!");
 		NYX_WIFI_RESET_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, NYX_WIFI_RESET_PROPERTY, NULL);
-		pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 		if (PRIVATE_DATA->handle && PRIVATE_DATA->handle->type == INDIGO_TCP_HANDLE) {
-			PRIVATE_DATA->wifi_reset = true;
-			indigo_set_timer(device, 0, network_disconnection, NULL);
+			indigo_set_timer(device->master_device, 0, indigo_disconnect_slave_devices, NULL);
 		}
-		pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 		return;
 	}
 	NYX_WIFI_RESET_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -3730,20 +3723,6 @@ static indigo_result aux_detach(indigo_device *device) {
 	return indigo_aux_detach(device);
 }
 
-static void device_network_disconnection(indigo_device* device, indigo_timer_callback callback) {
-	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-		callback(device);
-		if (!PRIVATE_DATA->wifi_reset) {
-			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;  // The alert state signals the unexpected disconnection
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-			// Sending message as this update will not pass through the agent
-			indigo_send_message(device, "Error: Device disconnected unexpectedly", device->name);
-		}
-	}
-	// Otherwise not previously connected, nothing to do
-}
-
 // --------------------------------------------------------------------------------
 
 static lx200_private_data *private_data = NULL;
@@ -3752,15 +3731,6 @@ static indigo_device *mount = NULL;
 static indigo_device *mount_guider = NULL;
 static indigo_device *mount_focuser = NULL;
 static indigo_device *mount_aux = NULL;
-
-static void network_disconnection(indigo_device* device) {
-	// Since all three devices share the same TCP connection,
-	// process the disconnection on all three of them
-	device_network_disconnection(mount, mount_connect_callback);
-	device_network_disconnection(mount_guider, guider_connect_callback);
-	device_network_disconnection(mount_focuser, focuser_connect_callback);
-	device_network_disconnection(mount_aux, aux_connect_callback);
-}
 
 indigo_result indigo_mount_lx200(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_device mount_template = INDIGO_DEVICE_INITIALIZER(

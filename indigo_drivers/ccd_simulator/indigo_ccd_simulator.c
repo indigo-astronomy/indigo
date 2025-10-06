@@ -219,7 +219,7 @@ static void search_stars(indigo_device *device) {
 		}
 		PRIVATE_DATA->ra = GUIDER_IMAGE_RA_ITEM->number.target;
 		PRIVATE_DATA->dec = GUIDER_IMAGE_DEC_ITEM->number.target;
-		PRIVATE_DATA->side_of_pier = GUIDER_IMAGE_SIDE_OF_PIER_ITEM->number.target;
+		PRIVATE_DATA->side_of_pier = (int)GUIDER_IMAGE_SIDE_OF_PIER_ITEM->number.target;
 		PRIVATE_DATA->lat = GUIDER_IMAGE_LAT_ITEM->number.target;
 		PRIVATE_DATA->lon = GUIDER_IMAGE_LONG_ITEM->number.target;
 		PRIVATE_DATA->ew_error = GUIDER_IMAGE_ALT_ERROR_ITEM->number.target;
