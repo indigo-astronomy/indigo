@@ -496,20 +496,17 @@ static bool meade_set_utc(indigo_device *device, time_t *secs, int utc_offset) {
 	indigo_gmtime(&seconds, &tm);
 	if (!meade_simple_reply_command(device, ":SC%02d/%02d/%02d#", tm.tm_mon + 1, tm.tm_mday, tm.tm_year % 100) || *PRIVATE_DATA->response != '1') {
 		return false;
-	} else {
-		if (PRIVATE_DATA->use_dst_commands) {
-			meade_no_reply_command(device, ":SH%d#", indigo_get_dst_state());
-		}
-		if (!meade_simple_reply_command(device, ":SG%+03d#", -utc_offset) || *PRIVATE_DATA->response != '1') {
-			return false;
-		} else {
-			if (!meade_simple_reply_command(device, ":SL%02d:%02d:%02d#", tm.tm_hour, tm.tm_min, tm.tm_sec) || *PRIVATE_DATA->response != '1') {
-				return false;
-			} else {
-				return true;
-			}
-		}
 	}
+	if (PRIVATE_DATA->use_dst_commands) {
+		meade_no_reply_command(device, ":SH%d#", indigo_get_dst_state());
+	}
+	if (!meade_simple_reply_command(device, ":SG%+03d#", -utc_offset) || *PRIVATE_DATA->response != '1') {
+		return false;
+	}
+	if (!meade_simple_reply_command(device, ":SL%02d:%02d:%02d#", tm.tm_hour, tm.tm_min, tm.tm_sec) || *PRIVATE_DATA->response != '1') {
+		return false;
+	}
+	return true;
 }
 
 static bool meade_get_utc(indigo_device *device, time_t *secs, int *utc_offset) {
