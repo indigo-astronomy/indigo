@@ -723,6 +723,51 @@ int indigo_uni_set_cts(indigo_uni_handle *handle, bool state) {
 	return 0;
 }
 
+bool indigo_perform_passive_discovery(int port, int timeout, char *host, int max_host, char *message, int max_message) {
+	bool result = false;
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	int udp_socket = socket(AF_INET, SOCK_DGRAM, 0);
+	if (udp_socket < 0) {
+		indigo_error("Failed to create passive discovery socket");
+	} else {
+		struct timeval tv;
+		struct sockaddr_in local_addr;
+		tv.tv_sec  = 3;
+		tv.tv_usec = 0;
+		setsockopt(udp_socket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(struct timeval));
+		memset((char *)&local_addr, 0, sizeof(local_addr));
+		local_addr.sin_family = AF_INET;
+		local_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+		local_addr.sin_port = htons(55555);
+		if (bind(udp_socket, (struct sockaddr *)&local_addr, sizeof(local_addr)) < 0) {
+			indigo_error("Failed to bind passive discovery socket");
+		} else {
+			struct sockaddr_in remote_addr;
+			socklen_t addrlen = sizeof(remote_addr);
+			unsigned char payload[2048];
+			for (int n = 0; n < 5; n++) {
+				long recvlen = recvfrom(udp_socket, payload, sizeof(payload), 0, (struct sockaddr *)&remote_addr, &addrlen);
+				if (recvlen > 0) {
+					if (host) {
+						strncpy(host, inet_ntoa(remote_addr.sin_addr), max_host);
+					}
+					if (message) {
+						strncpy(message, (char *)payload, max_message);
+					}
+					result = true;
+					break;
+				}
+			}
+			close(udp_socket);
+		}
+	}
+#elif defined(INDIGO_WINDOWS)
+#else
+#pragma message ("TODO: indigo_perform_pasive_discovery()")
+#endif
+	return result;
+}
+
 indigo_uni_handle *indigo_uni_open_client_socket(const char *host, int port, int type, int log_level) {
 	indigo_uni_handle *handle = NULL;
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
@@ -996,8 +1041,8 @@ void indigo_uni_open_tcp_server_socket(int *port, indigo_uni_handle **server_han
 
 void indigo_uni_set_socket_read_timeout(indigo_uni_handle *handle, long timeout) {
 	if (handle->type == INDIGO_TCP_HANDLE || handle->type == INDIGO_UDP_HANDLE) {
-		struct timeval tv = { .tv_sec = timeout / 1000000L, .tv_usec = timeout % 1000000L };
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+		struct timeval tv = { .tv_sec = timeout / 1000000L, .tv_usec = timeout % 1000000L };
 		if (setsockopt(handle->fd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv)) {
 			handle->last_error = errno;
 			indigo_error("%d <- // Failed to set socket read timeout (%s)", handle->index, indigo_uni_strerror(handle));
@@ -1006,7 +1051,8 @@ void indigo_uni_set_socket_read_timeout(indigo_uni_handle *handle, long timeout)
 			indigo_log_on_level(handle->log_level, "%d <- // Set socket read timeout %ld", handle->index, timeout);
 		}
 #elif defined(INDIGO_WINDOWS)
-		if (setsockopt(handle->sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv) == SOCKET_ERROR) {
+		DWORD timeout_ms = timeout / 1000;
+		if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout_ms, sizeof(timeout_ms)) == SOCKET_ERROR) {
 			handle->last_error = WSAGetLastError();
 			indigo_error("%d <- // Failed to set socket read timeout (%s)", handle->index, indigo_uni_strerror(handle));
 		} else {
@@ -1021,8 +1067,8 @@ void indigo_uni_set_socket_read_timeout(indigo_uni_handle *handle, long timeout)
 
 void indigo_uni_set_socket_write_timeout(indigo_uni_handle *handle, long timeout) {
 	if (handle->type == INDIGO_TCP_HANDLE || handle->type == INDIGO_UDP_HANDLE) {
-		struct timeval tv = { .tv_sec = timeout / 1000000L, .tv_usec = timeout % 1000000L };
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+		struct timeval tv = { .tv_sec = timeout / 1000000L, .tv_usec = timeout % 1000000L };
 		if (setsockopt(handle->fd, SOL_SOCKET, SO_SNDTIMEO, (const char*)&tv, sizeof tv) != 0) {
 			handle->last_error = errno;
 			indigo_error("%d <- // Failed to set socket write timeout (%s)", handle->index, indigo_uni_strerror(handle));
@@ -1031,7 +1077,7 @@ void indigo_uni_set_socket_write_timeout(indigo_uni_handle *handle, long timeout
 			indigo_log_on_level(handle->log_level, "%d <- // Set socket write timeout %ld", handle->index, timeout);
 		}
 #elif defined(INDIGO_WINDOWS)
-		if (setsockopt(handle->sock, SOL_SOCKET, SO_SNDTIMEO, (const char*)&tv, sizeof tv) == SOCKET_ERROR) {
+		if (setsockopt(handle->sock, SOL_SOCKET, SO_SNDTIMEO, (const char*)&timeout_ms, sizeof(timeout_ms)) == SOCKET_ERROR) {
 			handle->last_error = WSAGetLastError();
 			indigo_error("%d <- // Failed to set socket write timeout (%s)", handle->index, indigo_uni_strerror(handle));
 		} else {
@@ -1423,8 +1469,8 @@ bool indigo_uni_is_valid(indigo_uni_handle *handle) {
 				return true;
 			}
 		} else if (handle->type == INDIGO_TCP_HANDLE) {
-			char buf;
-			if (recv(handle->fd, &buf, 1, MSG_PEEK) != 0) {
+			int result = (int)send(handle->fd, NULL, 0, MSG_NOSIGNAL);
+			if (!(result < 0 && (errno == EPIPE || errno == ECONNRESET))) {
 				return true;
 			}
 		}
@@ -1436,13 +1482,18 @@ bool indigo_uni_is_valid(indigo_uni_handle *handle) {
 				return true;
 			}
 		} else if (handle->type == INDIGO_TCP_HANDLE) {
-			char buf;
-			if (recv(handle->sock, &buf, 1, MSG_PEEK) != 0) {
+			int result = send(sock, NULL, 0, 0);
+			if (result == SOCKET_ERROR) {
+				int err = WSAGetLastError();
+				if (err == WSAEWOULDBLOCK) {
+					return true;
+				}
+			} else {
 				return true;
 			}
 		}
 #else
-#pragma message ("TODO: indigo_uni_close()")
+#pragma message ("TODO: indigo_uni_is_valid()")
 #endif
 	}
 	indigo_error("%d <- // Lost connection", handle->index);
