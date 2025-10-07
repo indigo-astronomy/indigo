@@ -1052,7 +1052,7 @@ void indigo_uni_set_socket_read_timeout(indigo_uni_handle *handle, long timeout)
 		}
 #elif defined(INDIGO_WINDOWS)
 		DWORD timeout_ms = timeout / 1000;
-		if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout_ms, sizeof(timeout_ms)) == SOCKET_ERROR) {
+		if (setsockopt(handle->sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout_ms, sizeof(timeout_ms)) == SOCKET_ERROR) {
 			handle->last_error = WSAGetLastError();
 			indigo_error("%d <- // Failed to set socket read timeout (%s)", handle->index, indigo_uni_strerror(handle));
 		} else {
@@ -1077,6 +1077,7 @@ void indigo_uni_set_socket_write_timeout(indigo_uni_handle *handle, long timeout
 			indigo_log_on_level(handle->log_level, "%d <- // Set socket write timeout %ld", handle->index, timeout);
 		}
 #elif defined(INDIGO_WINDOWS)
+		DWORD timeout_ms = timeout / 1000;
 		if (setsockopt(handle->sock, SOL_SOCKET, SO_SNDTIMEO, (const char*)&timeout_ms, sizeof(timeout_ms)) == SOCKET_ERROR) {
 			handle->last_error = WSAGetLastError();
 			indigo_error("%d <- // Failed to set socket write timeout (%s)", handle->index, indigo_uni_strerror(handle));
@@ -1482,7 +1483,7 @@ bool indigo_uni_is_valid(indigo_uni_handle *handle) {
 				return true;
 			}
 		} else if (handle->type == INDIGO_TCP_HANDLE) {
-			int result = send(sock, NULL, 0, 0);
+			int result = send(handle->sock, NULL, 0, 0);
 			if (result == SOCKET_ERROR) {
 				int err = WSAGetLastError();
 				if (err == WSAEWOULDBLOCK) {

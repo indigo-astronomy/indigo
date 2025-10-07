@@ -29,20 +29,12 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
+
 #include <time.h>
 #include <math.h>
 #include <assert.h>
 #include <errno.h>
 #include <pthread.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <sys/ioctl.h>
-#include <sys/time.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
 
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_uni_io.h>
@@ -592,9 +584,9 @@ static void mount_dec_motion_callback(indigo_device *device) {
 static void mount_guide_rate_callback(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	unsigned char reply[16] = { 0 };
-	unsigned char rate = MOUNT_GUIDE_RATE_RA_ITEM->number.target / 100.0 * 256;
+	unsigned char rate = (unsigned char)(MOUNT_GUIDE_RATE_RA_ITEM->number.target / 100.0 * 256);
 	if (nexstaraux_command(device, APP, AZM, MC_SET_AUTOGUIDE_RATE, &rate, 1, reply)) {
-		rate = MOUNT_GUIDE_RATE_DEC_ITEM->number.target / 100.0 * 256;
+		rate = (unsigned char)(MOUNT_GUIDE_RATE_DEC_ITEM->number.target / 100.0 * 256);
 		if (nexstaraux_command(device, APP, ALT, MC_SET_AUTOGUIDE_RATE, &rate, 1, reply)) {
 			MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
@@ -637,10 +629,10 @@ static void guider_timer_ra_callback(indigo_device *device) {
 	commands direction = 0;
 	if (GUIDER_GUIDE_EAST_ITEM->number.value > 0) {
 		direction = MC_MOVE_POS;
-		duration = GUIDER_GUIDE_EAST_ITEM->number.value;
+		duration = (unsigned)GUIDER_GUIDE_EAST_ITEM->number.value;
 	} else if (GUIDER_GUIDE_WEST_ITEM->number.value > 0) {
 		direction = MC_MOVE_NEG;
-		duration = GUIDER_GUIDE_WEST_ITEM->number.value;
+		duration = (unsigned)GUIDER_GUIDE_WEST_ITEM->number.value;
 	}
 	if (nexstaraux_command(device, APP, AZM, direction, &rate, 1, reply)) {
 		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -670,10 +662,10 @@ static void guider_timer_dec_callback(indigo_device *device) {
 	commands direction = 0;
 	if (GUIDER_GUIDE_NORTH_ITEM->number.value > 0) {
 		direction = MC_MOVE_POS;
-		duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
+		duration = (unsigned)GUIDER_GUIDE_NORTH_ITEM->number.value;
 	} else if (GUIDER_GUIDE_SOUTH_ITEM->number.value > 0) {
 		direction = MC_MOVE_NEG;
-		duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
+		duration = (unsigned)GUIDER_GUIDE_SOUTH_ITEM->number.value;
 	}
 	if (nexstaraux_command(device, APP, ALT, direction, &rate, 1, reply)) {
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
