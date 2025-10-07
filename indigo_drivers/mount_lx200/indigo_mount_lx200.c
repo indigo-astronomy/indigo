@@ -3691,7 +3691,9 @@ static void aux_connect_callback(indigo_device *device) {
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
+		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->aux_timer);
+		pthread_mutex_lock(&PRIVATE_DATA->mutex);
 		indigo_delete_property(device, AUX_WEATHER_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_INFO_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
