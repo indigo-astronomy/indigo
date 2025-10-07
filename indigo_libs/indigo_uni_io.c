@@ -732,13 +732,13 @@ bool indigo_perform_passive_discovery(int port, int timeout, char *host, int max
 	} else {
 		struct timeval tv;
 		struct sockaddr_in local_addr;
-		tv.tv_sec  = 3;
+		tv.tv_sec  = timeout;
 		tv.tv_usec = 0;
 		setsockopt(udp_socket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(struct timeval));
 		memset((char *)&local_addr, 0, sizeof(local_addr));
 		local_addr.sin_family = AF_INET;
 		local_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-		local_addr.sin_port = htons(55555);
+		local_addr.sin_port = htons(port);
 		if (bind(udp_socket, (struct sockaddr *)&local_addr, sizeof(local_addr)) < 0) {
 			indigo_error("Failed to bind passive discovery socket");
 		} else {
@@ -762,6 +762,43 @@ bool indigo_perform_passive_discovery(int port, int timeout, char *host, int max
 		}
 	}
 #elif defined(INDIGO_WINDOWS)
+	SOCKET udp_socket = socket(AF_INET, SOCK_DGRAM, 0);
+	if (udp_socket < 0) {
+		indigo_error("Failed to create passive discovery socket");
+	}
+	else {
+		DWORD timeout_ms = timeout * 1000;
+		struct sockaddr_in local_addr;
+		setsockopt(udp_socket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout_ms, sizeof(timeout_ms));
+		memset((char*)&local_addr, 0, sizeof(local_addr));
+		local_addr.sin_family = AF_INET;
+		local_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+		local_addr.sin_port = htons(port);
+		if (bind(udp_socket, (struct sockaddr*)&local_addr, sizeof(local_addr)) < 0) {
+			indigo_error("Failed to bind passive discovery socket");
+		}
+		else {
+			struct sockaddr_in remote_addr;
+			socklen_t addrlen = sizeof(remote_addr);
+			unsigned char payload[2048];
+			for (int n = 0; n < 5; n++) {
+				long recvlen = recvfrom(udp_socket, payload, sizeof(payload), 0, (struct sockaddr*)&remote_addr, &addrlen);
+				if (recvlen > 0) {
+					if (host) {
+						wchar_t ipstr[INET_ADDRSTRLEN];
+						InetNtop(AF_INET, &remote_addr.sin_addr, ipstr, sizeof(ipstr));
+						strncpy(host, indigo_wchar_to_char(ipstr), max_host);
+					}
+					if (message) {
+						strncpy(message, (char*)payload, max_message);
+					}
+					result = true;
+					break;
+				}
+			}
+			closesocket(udp_socket);
+		}
+	}
 #else
 #pragma message ("TODO: indigo_perform_pasive_discovery()")
 #endif
@@ -1009,8 +1046,7 @@ void indigo_uni_open_tcp_server_socket(int *port, indigo_uni_handle **server_han
 			continue;
 		}
 		DWORD recv_timeout = 0;
-		if (setsockopt(client_socket, SOL_SOCKET, SO_RCVTIMEO,
-			(const char*)&recv_timeout, sizeof(recv_timeout)) == SOCKET_ERROR) {
+		if (setsockopt(client_socket, SOL_SOCKET, SO_RCVTIMEO,(const char*)&recv_timeout, sizeof(recv_timeout)) == SOCKET_ERROR) {
 			indigo_error("Can't set recv() timeout (%d)",  indigo_last_wsa_error());
 			closesocket(client_socket);
 			break;
