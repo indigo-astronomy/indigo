@@ -646,6 +646,33 @@ static void position_timer_callback(indigo_device *device) {
 			}
 		}
 
+		if (MOUNT_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE) {
+			if (MOUNT_MOTION_DEC_PROPERTY->state != INDIGO_BUSY_STATE && MOUNT_MOTION_RA_PROPERTY->state != INDIGO_BUSY_STATE && MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) {
+				MOUNT_MOTION_NORTH_ITEM->sw.value = false;
+				MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
+				MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
+
+				MOUNT_MOTION_WEST_ITEM->sw.value = false;
+				MOUNT_MOTION_EAST_ITEM->sw.value = false;
+				MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
+
+				MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
+				MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
+				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_coordinates(device, NULL);
+
+				PRIVATE_DATA->prev_home_state = false;
+				MOUNT_HOME_ITEM->sw.value = false;
+				MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
+
+				MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Aborted");
+			}
+		}
+
 		if (success && (success = asi_command(device, ":Gm#", response, sizeof(response), 0))) {
 			if (strchr(response, 'W') && !MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value) {
 				indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
@@ -903,11 +930,16 @@ static void mount_geo_coords_callback(indigo_device *device) {
 static void mount_eq_coords_callback(indigo_device *device) {
 	char message[50] = {0};
 	int error_code = 0;
+
+	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
+
 	double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
 	double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
 	indigo_j2k_to_eq(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
 	if (MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
 		if (asi_set_tracking_rate(device) && asi_slew(device, ra, dec, &error_code)) {
+			indigo_usleep(500000); // wait for the mount to start slewing to get correct state in the position timer
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 		} else {
 			strcpy(message, asi_error_string(error_code));
@@ -934,28 +966,7 @@ static void mount_abort_callback(indigo_device *device) {
 	if (MOUNT_ABORT_MOTION_ITEM->sw.value) {
 		MOUNT_ABORT_MOTION_ITEM->sw.value = false;
 		if (asi_stop(device)) {
-			MOUNT_MOTION_NORTH_ITEM->sw.value = false;
-			MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
-			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
-
-			MOUNT_MOTION_WEST_ITEM->sw.value = false;
-			MOUNT_MOTION_EAST_ITEM->sw.value = false;
-			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
-
-			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
-			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
-			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_coordinates(device, NULL);
-
-			PRIVATE_DATA->prev_home_state = false;
-			MOUNT_HOME_ITEM->sw.value = false;
-			MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
-
-			MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Aborted");
+			// properties will be handled in position timer when the mount stops
 		} else {
 			MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Failed to abort");
@@ -1204,8 +1215,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		// -------------------------------------------------------------------------------- MOUNT_EQUATORIAL_COORDINATES
 		PRIVATE_DATA->motioned = false; // WTF?
 		indigo_property_copy_targets(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false);
-		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
+		// Update to busy moved to callback to avoid race condition with position timer
 		indigo_set_timer(device, 0, mount_eq_coords_callback, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_ABORT_MOTION_PROPERTY, property)) {
