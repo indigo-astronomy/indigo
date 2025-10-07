@@ -2627,11 +2627,16 @@ static void mount_geo_coords_callback(indigo_device *device) {
 static void mount_eq_coords_callback(indigo_device *device) {
 	char message[50] = "";
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+
+	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
+
 	double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
 	double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
 	indigo_j2k_to_eq(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
 	if (MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
 		if (meade_set_tracking_rate(device) && meade_slew(device, ra, dec)) {
+			indigo_usleep(500000); // wait for the mount to start slewing to get correct state in the position timer
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 		} else {
 			strcpy(message, "Slew failed");
@@ -3066,8 +3071,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		} else {
 			PRIVATE_DATA->motioned = false; // WTF?
 			indigo_property_copy_targets(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false);
-			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
+			// Update to busy moved to callback to avoid race condition with position timer
 			indigo_set_timer(device, 0, mount_eq_coords_callback, NULL);
 		}
 		return INDIGO_OK;
