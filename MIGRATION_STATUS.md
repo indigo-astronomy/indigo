@@ -112,9 +112,9 @@
 | guider_gpusb | 3️⃣ | ❌ No | ✅ Yes | ✅ HW | ⏰ TODO - make libgpusb for Windows |
 | mount_asi | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
 | mount_ioptron | 3️⃣ | ✅ Yes | ❌ No | ✅ Sim | |
-| mount_lx200 | 3️⃣ | ✅ Yes | ❌ No | ✅  HW | |
+| mount_lx200 | 3️⃣ | ✅ Yes | ❌ No | ✅ HW | |
 | mount_nexstar | 2️⃣ | ❌ No | ❌ No | ❌ No | ⏰ TODO - make libnexstar for Windows |
-| mount_nexstaraux | 2️⃣ | ❌ No | ❌ No | ❌ No | |
+| mount_nexstaraux | 3️⃣ | ✅ Yes | ❌ No | ✅ HW | |
 | mount_pmc8 | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | mount_rainbow | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
 | mount_simulator | 3️⃣ | ✅ Yes | ❌ No | ⛔ N/A | |
