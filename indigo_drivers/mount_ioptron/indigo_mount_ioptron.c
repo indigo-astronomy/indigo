@@ -87,7 +87,7 @@ typedef struct {
 	double currentRA;
 	double currentDec;
 	indigo_timer *position_timer;
-	pthread_mutex_t port_mutex, mutex;
+	pthread_mutex_t mutex;
 	char lastSlewRate, lastTrackRate, lastMotionRA, lastMotionDec;
 	double lastRA, lastDec, lastCustomTrackingRate;
 	char lastUTC[INDIGO_VALUE_SIZE];
@@ -103,11 +103,12 @@ typedef struct {
 	indigo_property *meridian_handling_property;
 } ioptron_private_data;
 
+static bool ieq_validate_handle(indigo_device *device);
+
 static bool ieq_no_reply_command(indigo_device *device, char *command, ...) {
-	if (PRIVATE_DATA->handle == NULL) {
+	if (!ieq_validate_handle(device)) {
 		return false;
 	}
-	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	long result = indigo_uni_discard(PRIVATE_DATA->handle);
 	if (result >= 0) {
 		va_list args;
@@ -118,15 +119,13 @@ static bool ieq_no_reply_command(indigo_device *device, char *command, ...) {
 	if (result >= 0) {
 		indigo_usleep(50000);
 	}
-	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 	return result >= 0;
 }
 
 static bool ieq_simple_reply_command(indigo_device *device, char *command, ...) {
-	if (PRIVATE_DATA->handle == NULL) {
+	if (!ieq_validate_handle(device)) {
 		return false;
 	}
-	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	long result = indigo_uni_discard(PRIVATE_DATA->handle);
 	if (result >= 0) {
 		va_list args;
@@ -144,15 +143,13 @@ static bool ieq_simple_reply_command(indigo_device *device, char *command, ...) 
 	if (result >= 0) {
 		indigo_usleep(50000);
 	}
-	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 	return result >= 0;
 }
 
 static bool ieq_command(indigo_device *device, char *command, ...) {
-	if (PRIVATE_DATA->handle == NULL) {
+	if (!ieq_validate_handle(device)) {
 		return false;
 	}
-	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	long result = indigo_uni_discard(PRIVATE_DATA->handle);
 	if (result >= 0) {
 		va_list args;
@@ -166,7 +163,6 @@ static bool ieq_command(indigo_device *device, char *command, ...) {
 	if (result >= 0) {
 		indigo_usleep(50000);
 	}
-	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 	return result >= 0;
 }
 
@@ -201,8 +197,6 @@ static bool ieq_open(indigo_device *device) {
 	}
 	if (PRIVATE_DATA->handle != NULL) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
-		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
-		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		return true;
 	} else {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", name);
@@ -213,11 +207,23 @@ static bool ieq_open(indigo_device *device) {
 static void ieq_close(indigo_device *device) {
 	if (PRIVATE_DATA->handle != NULL) {
 		indigo_uni_close(&PRIVATE_DATA->handle);
-		pthread_mutex_destroy(&PRIVATE_DATA->port_mutex);
-		pthread_mutex_destroy(&PRIVATE_DATA->mutex);
+		PRIVATE_DATA->device_count = 0;
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
 	}
 }
+
+static bool ieq_validate_handle(indigo_device *device) {
+	if (PRIVATE_DATA->handle == NULL) {
+		return false;
+	}
+	if (!indigo_uni_is_valid(PRIVATE_DATA->handle)) {
+		ieq_close(device);
+		indigo_set_timer(device->master_device, 0, indigo_disconnect_slave_devices, NULL);
+		return false;
+	}
+	return true;
+}
+
 
 static void ieq_get_coords(indigo_device *device) {
 	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -1856,11 +1862,13 @@ static void mount_meridian_callback(indigo_device *device) {
 }
 
 static void start_tracking(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (MOUNT_TRACKING_OFF_ITEM->sw.value) {
 		ieq_simple_reply_command(device, ":ST1#");
 		indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
 		indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 	}
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void guider_connect_callback(indigo_device *device) {
@@ -2002,6 +2010,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_MERIDIAN_LIMIT_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
+		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return mount_enumerate_properties(device, NULL, NULL);
 	}
@@ -2204,6 +2213,7 @@ static indigo_result mount_detach(indigo_device *device) {
 	indigo_release_property(MOUNT_PROTOCOL_PROPERTY);
 	indigo_release_property(MOUNT_MERIDIAN_HANDLING_PROPERTY);
 	indigo_release_property(MOUNT_MERIDIAN_LIMIT_PROPERTY);
+	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_mount_detach(device);
 }

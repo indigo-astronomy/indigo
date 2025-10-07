@@ -162,6 +162,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_focuser_dsd", "indig
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_rotator_wa", "indigo_drivers\rotator_wa\indigo_rotator_wa.vcxproj", "{86FA2F86-8BE0-46CC-984E-DB65D3EDDB7C}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_mount_nexstaraux", "indigo_drivers\mount_nexstaraux\indigo_mount_nexstaraux.vcxproj", "{001D573F-66D8-47F1-B991-7783A6F1362A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -810,6 +812,14 @@ Global
 		{86FA2F86-8BE0-46CC-984E-DB65D3EDDB7C}.Release|x64.Build.0 = Release|x64
 		{86FA2F86-8BE0-46CC-984E-DB65D3EDDB7C}.Release|x86.ActiveCfg = Release|Win32
 		{86FA2F86-8BE0-46CC-984E-DB65D3EDDB7C}.Release|x86.Build.0 = Release|Win32
+		{001D573F-66D8-47F1-B991-7783A6F1362A}.Debug|x64.ActiveCfg = Debug|x64
+		{001D573F-66D8-47F1-B991-7783A6F1362A}.Debug|x64.Build.0 = Debug|x64
+		{001D573F-66D8-47F1-B991-7783A6F1362A}.Debug|x86.ActiveCfg = Debug|Win32
+		{001D573F-66D8-47F1-B991-7783A6F1362A}.Debug|x86.Build.0 = Debug|Win32
+		{001D573F-66D8-47F1-B991-7783A6F1362A}.Release|x64.ActiveCfg = Release|x64
+		{001D573F-66D8-47F1-B991-7783A6F1362A}.Release|x64.Build.0 = Release|x64
+		{001D573F-66D8-47F1-B991-7783A6F1362A}.Release|x86.ActiveCfg = Release|Win32
+		{001D573F-66D8-47F1-B991-7783A6F1362A}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
