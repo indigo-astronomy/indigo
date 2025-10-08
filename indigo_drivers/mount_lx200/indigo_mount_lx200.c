@@ -2520,7 +2520,9 @@ static void mount_connect_callback(indigo_device *device) {
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
+		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->position_timer);
+		pthread_mutex_lock(&PRIVATE_DATA->mutex);
 		if (--PRIVATE_DATA->device_count == 0) {
 			meade_stop(device);
 			meade_close(device);
