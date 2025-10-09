@@ -104,10 +104,16 @@ static void *timer_func(indigo_timer *timer) {
 				pthread_mutex_lock(&timer->callback_mutex);
 				timer->callback_running = true;
 				// INDIGO_TRACE(indigo_trace("timer #%d - callback %p started (%p)", timer->timer_id, timer->callback, timer->reference));
-				if (timer->data) {
-					((indigo_timer_with_data_callback)timer->callback)(timer->device, timer->data);
+				if (timer->user_mutex) {
+					pthread_mutex_lock(timer->user_mutex);
+				}
+				if (timer->user_data) {
+					((indigo_timer_with_data_callback)timer->callback)(timer->device, timer->user_data);
 				} else {
 					((indigo_timer_callback)timer->callback)(timer->device);
+				}
+				if (timer->user_mutex) {
+					pthread_mutex_unlock(timer->user_mutex);
 				}
 				timer->callback_running = false;
 				if (!timer->scheduled && timer->reference) {
@@ -154,11 +160,7 @@ static void *timer_func(indigo_timer *timer) {
 	return NULL;
 }
 
-bool indigo_set_timer(indigo_device *device, double delay, indigo_timer_callback callback, indigo_timer **timer) {
-	return indigo_set_timer_with_data(device, delay, (indigo_timer_with_data_callback)callback, timer, NULL);
-}
-
-bool indigo_set_timer_with_data(indigo_device *device, double delay, indigo_timer_with_data_callback callback, indigo_timer **timer, void *data) {
+static bool set_timer(indigo_device *device, double delay, indigo_timer_with_data_callback callback, indigo_timer **timer, void *user_data, pthread_mutex_t *user_mutex) {
 	indigo_timer *t = NULL;
 	int retry = 0;
 	// This is to fix the race between end of process, e.g. exposure, and end of its timer handler
@@ -194,7 +196,8 @@ bool indigo_set_timer_with_data(indigo_device *device, double delay, indigo_time
 			t->next = NULL;
 		}
 		t->callback = callback;
-		t->data = data;
+		t->user_data = user_data;
+		t->user_mutex = user_mutex;
 		pthread_mutex_lock(&t->mutex);
 		pthread_cond_signal(&t->cond);
 		pthread_mutex_unlock(&t->mutex);
@@ -216,7 +219,8 @@ bool indigo_set_timer_with_data(indigo_device *device, double delay, indigo_time
 		}
 		t->delay = delay;
 		t->callback = callback;
-		t->data = data;
+		t->user_data = user_data;
+		t->user_mutex = user_mutex;
 		pthread_create(&t->thread, NULL, (void * (*)(void*))timer_func, t);
 	}
 	if (timer) {
@@ -227,6 +231,18 @@ bool indigo_set_timer_with_data(indigo_device *device, double delay, indigo_time
 	}
 	pthread_mutex_unlock(&free_timer_mutex);
 	return true;
+}
+
+bool indigo_set_timer(indigo_device *device, double delay, indigo_timer_callback callback, indigo_timer **timer) {
+	return set_timer(device, delay, (indigo_timer_with_data_callback)callback, timer, NULL, NULL);
+}
+
+bool indigo_set_timer_with_data(indigo_device *device, double delay, indigo_timer_with_data_callback callback, indigo_timer **timer, void *user_data) {
+	return set_timer(device, delay, (indigo_timer_with_data_callback)callback, timer, user_data, NULL);
+}
+
+bool indigo_set_timer_with_mutex(indigo_device *device, double delay, indigo_timer_callback callback, indigo_timer **timer, pthread_mutex_t *user_mutex) {
+	return set_timer(device, delay, (indigo_timer_with_data_callback)callback, timer, NULL, user_mutex);
 }
 
 bool indigo_reschedule_timer(indigo_device *device, double delay, indigo_timer **timer) {

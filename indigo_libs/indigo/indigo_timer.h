@@ -65,7 +65,8 @@ typedef struct indigo_timer {
 	pthread_t thread;
 	struct indigo_timer **reference;
 	struct indigo_timer *next;
-	void *data;
+	void *user_data;
+	pthread_mutex_t *user_mutex;
 } indigo_timer;
 
 /* fix timespec so that abs(tv_nsec) < 1s */
@@ -96,21 +97,13 @@ static inline void normalize_timespec(struct timespec *ts) {
  */
 INDIGO_EXTERN bool indigo_set_timer(indigo_device *device, double delay, indigo_timer_callback callback, indigo_timer **timer);
 
-/** difftime to specified UTC time as string (yyyy-mm-dd hh:mm:ss or yyyy-mm-dd hh:mm).
- */
-extern bool indigo_utc_diff(char *time_str, double *delay);
-
-/** Set timer at specific UTC time as string (yyyy-mm-dd hh:mm:ss or yyyy-mm-dd hh:mm).
- */
-extern bool indigo_set_timer_at_utc(indigo_device *device, char *time_str, indigo_timer_with_data_callback callback, indigo_timer **timer, void *data);
-
-/** Set timer at specific UTC time as unix timestamp.
- */
-extern bool indigo_set_timer_at(indigo_device *device, long start_at, indigo_timer_with_data_callback callback, indigo_timer **timer, void *data);
-
 /** Set timer with arbitrary data.
  */
-INDIGO_EXTERN bool indigo_set_timer_with_data(indigo_device *device, double delay, indigo_timer_with_data_callback callback, indigo_timer **timer, void *data);
+INDIGO_EXTERN bool indigo_set_timer_with_data(indigo_device *device, double delay, indigo_timer_with_data_callback callback, indigo_timer **timer, void *user_data);
+
+/** Set timer with arbitrary mutex.
+ */
+INDIGO_EXTERN bool indigo_set_timer_with_mutex(indigo_device *device, double delay, indigo_timer_callback callback, indigo_timer **timer, pthread_mutex_t *user_mutex);
 
 /** Rescheduled timer (if not null).
  */
