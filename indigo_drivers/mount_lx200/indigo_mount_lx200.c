@@ -3241,7 +3241,9 @@ static void guider_connect_callback(indigo_device *device) {
 static void guider_guide_dec_callback(indigo_device *device) {
 	int north = (int)GUIDER_GUIDE_NORTH_ITEM->number.value;
 	int south = (int)GUIDER_GUIDE_SOUTH_ITEM->number.value;
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	meade_guide_dec(device, north, south);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 	if (north > 0) {
 		indigo_usleep(1000 * north);
 	} else if (south > 0) {
@@ -3255,7 +3257,9 @@ static void guider_guide_dec_callback(indigo_device *device) {
 static void guider_guide_ra_callback(indigo_device *device) {
 	int west = (int)GUIDER_GUIDE_WEST_ITEM->number.value;
 	int east = (int)GUIDER_GUIDE_EAST_ITEM->number.value;
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	meade_guide_ra(device, west, east);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 	if (west > 0) {
 		indigo_usleep(1000 * west);
 	} else if (east > 0) {
@@ -3282,14 +3286,14 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
-		indigo_set_timer_with_mutex(device, 0, guider_guide_dec_callback, NULL, &PRIVATE_DATA->mutex);
+		indigo_set_timer(device, 0, guider_guide_dec_callback, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
 		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
 		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
-		indigo_set_timer_with_mutex(device, 0, guider_guide_ra_callback, NULL, &PRIVATE_DATA->mutex);
+		indigo_set_timer(device, 0, guider_guide_ra_callback, NULL);
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
