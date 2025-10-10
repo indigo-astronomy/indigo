@@ -101,26 +101,28 @@ static void *timer_func(indigo_timer *timer) {
 			}
 			timer->scheduled = false;
 			if (!timer->canceled) {
-				pthread_mutex_lock(&timer->callback_mutex);
-				timer->callback_running = true;
-				// INDIGO_TRACE(indigo_trace("timer #%d - callback %p started (%p)", timer->timer_id, timer->callback, timer->reference));
 				if (timer->user_mutex) {
 					pthread_mutex_lock(timer->user_mutex);
+				} else {
+					pthread_mutex_lock(&timer->callback_mutex);
 				}
+				timer->callback_running = true;
+				// INDIGO_TRACE(indigo_trace("timer #%d - callback %p started (%p)", timer->timer_id, timer->callback, timer->reference));
 				if (timer->user_data) {
 					((indigo_timer_with_data_callback)timer->callback)(timer->device, timer->user_data);
 				} else {
 					((indigo_timer_callback)timer->callback)(timer->device);
-				}
-				if (timer->user_mutex) {
-					pthread_mutex_unlock(timer->user_mutex);
 				}
 				timer->callback_running = false;
 				if (!timer->scheduled && timer->reference) {
 					*timer->reference = NULL;
 				}
 				// INDIGO_TRACE(indigo_trace("timer #%d - callback %p finished (%p)", timer->timer_id, timer->callback, timer->reference));
-				pthread_mutex_unlock(&timer->callback_mutex);
+				if (timer->user_mutex) {
+					pthread_mutex_unlock(timer->user_mutex);
+				} else {
+					pthread_mutex_unlock(&timer->callback_mutex);
+				}
 			} else {
 				if (timer->reference) {
 					*timer->reference = NULL;
@@ -321,8 +323,13 @@ bool indigo_cancel_timer_sync(indigo_device *device, indigo_timer **timer) {
 	if (must_wait) {
 		// INDIGO_TRACE(indigo_trace("timer #%d - waiting to finish", timer_buffer->timer_id));
 		/* just wait for the callback to finish */
-		pthread_mutex_lock(&(timer_buffer)->callback_mutex);
-		pthread_mutex_unlock(&(timer_buffer)->callback_mutex);
+		if (timer_buffer->user_mutex) {
+			pthread_mutex_lock(timer_buffer->user_mutex);
+			pthread_mutex_unlock(timer_buffer->user_mutex);
+		} else {
+			pthread_mutex_lock(&timer_buffer->callback_mutex);
+			pthread_mutex_unlock(&timer_buffer->callback_mutex);
+		}
 		*timer = NULL;
 	}
 	/* if must_wait == true timer is canceled else it was not running */

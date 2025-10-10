@@ -471,7 +471,7 @@ static bool meade_open(indigo_device *device) {
 static void meade_close(indigo_device *device) {
 	if (PRIVATE_DATA->handle != NULL) {
 		if (PRIVATE_DATA->handle->type == INDIGO_TCP_HANDLE) {
-			indigo_cancel_timer_sync(device, &PRIVATE_DATA->keep_alive_timer);
+			indigo_cancel_timer(device, &PRIVATE_DATA->keep_alive_timer);
 		}
 		indigo_uni_close(&PRIVATE_DATA->handle);
 		PRIVATE_DATA->device_count = 0;
@@ -2517,7 +2517,7 @@ static void mount_connect_callback(indigo_device *device) {
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->position_timer);
+		indigo_cancel_timer(device, &PRIVATE_DATA->position_timer);
 		if (--PRIVATE_DATA->device_count == 0) {
 			meade_close(device);
 		}
@@ -3633,7 +3633,7 @@ static void aux_connect_callback(indigo_device *device) {
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->aux_timer);
+		indigo_cancel_timer(device, &PRIVATE_DATA->aux_timer);
 		indigo_delete_property(device, AUX_WEATHER_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_INFO_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
