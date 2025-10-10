@@ -715,7 +715,7 @@ indigo_result indigo_device_attach(indigo_device *device, const char* driver_nam
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = true;
 		indigo_init_number_item(ADDITIONAL_INSTANCES_COUNT_ITEM, ADDITIONAL_INSTANCES_COUNT_ITEM_NAME, "Count", 0, MAX_ADDITIONAL_INSTANCES, 1, 0);
 		pthread_mutex_init(&DEVICE_CONTEXT->config_mutex, NULL);
-		pthread_mutex_init(&DEVICE_CONTEXT->multi_device_mutex, NULL);
+		pthread_mutex_init(&DEVICE_CONTEXT->device_mutex, NULL);
 		return INDIGO_OK;
 	}
 	return INDIGO_FAILED;
@@ -1052,7 +1052,7 @@ indigo_result indigo_device_detach(indigo_device *device) {
 	indigo_release_property(AUTHENTICATION_PROPERTY);
 	indigo_release_property(ADDITIONAL_INSTANCES_PROPERTY);
 	pthread_mutex_destroy(&DEVICE_CONTEXT->config_mutex);
-	pthread_mutex_destroy(&DEVICE_CONTEXT->multi_device_mutex);
+	pthread_mutex_destroy(&DEVICE_CONTEXT->device_mutex);
 	free(DEVICE_CONTEXT);
 	device->device_context = NULL;
 	return INDIGO_OK;
@@ -1222,14 +1222,48 @@ bool indigo_ignore_connection_change(indigo_device *device, indigo_property *req
 	return false;
 }
 
+void indigo_lock_device(indigo_device* device) {
+	pthread_mutex_lock(&DEVICE_CONTEXT->device_mutex);
+}
+
+void indigo_unlock_device(indigo_device* device) {
+	pthread_mutex_unlock(&DEVICE_CONTEXT->device_mutex);
+}
+
 void indigo_lock_master_device(indigo_device* device) {
-	if (device != NULL && device->master_device != NULL && device->master_device->device_context != NULL) {
-		pthread_mutex_lock(&MASTER_DEVICE_CONTEXT->multi_device_mutex);
+	if (device->master_device != NULL && device->master_device->device_context != NULL) {
+		pthread_mutex_lock(&MASTER_DEVICE_CONTEXT->device_mutex);
+	} else {
+		pthread_mutex_lock(&DEVICE_CONTEXT->device_mutex);
 	}
 }
 
 void indigo_unlock_master_device(indigo_device* device) {
-	if (device != NULL && device->master_device != NULL && device->master_device->device_context != NULL) {
-		pthread_mutex_unlock(&MASTER_DEVICE_CONTEXT->multi_device_mutex);
+	if (device->master_device != NULL && device->master_device->device_context != NULL) {
+		pthread_mutex_unlock(&MASTER_DEVICE_CONTEXT->device_mutex);
+	} else {
+		pthread_mutex_unlock(&DEVICE_CONTEXT->device_mutex);
 	}
+}
+
+void indigo_set_device_timer(indigo_device *device, double delay, indigo_timer_callback handler, indigo_timer **timer) {
+	if (device->master_device != NULL && device->master_device->device_context != NULL) {
+		indigo_set_timer_with_mutex(device, delay, handler, timer, &MASTER_DEVICE_CONTEXT->device_mutex);
+	} else {
+		indigo_set_timer_with_mutex(device, delay, handler, timer, &DEVICE_CONTEXT->device_mutex);
+	}
+}
+
+
+void indigo_execute_handler(indigo_device *device, indigo_timer_callback handler) {
+	if (device->master_device != NULL && device->master_device->device_context != NULL) {
+		indigo_set_timer_with_mutex(device, 0, handler, NULL, &MASTER_DEVICE_CONTEXT->device_mutex);
+	} else {
+		indigo_set_timer_with_mutex(device, 0, handler, NULL, &DEVICE_CONTEXT->device_mutex);
+	}
+}
+
+
+void indigo_execute_handler_async(indigo_device *device, indigo_timer_callback handler) {
+	indigo_set_timer(device, 0, handler, NULL);
 }

@@ -272,7 +272,7 @@ typedef indigo_result (*driver_entry_point)(indigo_driver_action, indigo_driver_
 typedef struct {
 	indigo_uni_handle *property_save_file_handle;            ///< handle for property save
 	pthread_mutex_t config_mutex;							///< mutex for configuration load/save synchronisation
-	pthread_mutex_t multi_device_mutex;				///< mutex for synchronising multi-device access over single low level connection
+	pthread_mutex_t device_mutex;							///< mutex for synchronising multi-device access over single low level connection
 	indigo_timer *timers;											///< active timer list
 	indigo_property *connection_property;     ///< CONNECTION property pointer
 	indigo_property *info_property;           ///< INFO property pointer
@@ -389,12 +389,6 @@ INDIGO_EXTERN indigo_result indigo_remove_properties(indigo_device *device);
  */
 INDIGO_EXTERN void indigo_start_usb_event_handler(void);
 
-/** get current utc. TO BE REMOVED!
- */
-/*
-time_t indigo_utc(time_t *ltime);
-*/
-
 /** Convert time_t to UTC ISO 8601 string.
  */
 INDIGO_EXTERN void indigo_timetoisogm(time_t tstamp, char *isotime, int isotime_len);
@@ -438,18 +432,34 @@ INDIGO_EXTERN bool indigo_ignore_connection_change(indigo_device *device, indigo
 */
 INDIGO_EXTERN int indigo_compensate_backlash(int requested_position, int current_position, int backlash, bool *is_last_move_poitive);
 
-/** Lock multidevice mutex on master device
+/** Lock mutex on master device
  */
 INDIGO_EXTERN void indigo_lock_master_device(indigo_device *device);
 
-/** Unlock multidevice mutex on master device
+/** Unlock mutex on master device
  */
 INDIGO_EXTERN void indigo_unlock_master_device(indigo_device *device);
 
-
-/** Global mutex for device enumeration. Should be locked for device enumeration in the drivers.
+/** Unlock mutex on device
  */
-//INDIGO_EXTERN pthread_mutex_t indigo_device_enumeration_mutex;
+INDIGO_EXTERN void indigo_lock_device(indigo_device *device);
+
+/** Unlock mutex on device
+ */
+INDIGO_EXTERN void indigo_unlock_device(indigo_device *device);
+
+/** Execute timer using master device lock
+ */
+
+INDIGO_EXTERN void indigo_set_device_timer(indigo_device *device, double delay, indigo_timer_callback handler, indigo_timer **timer);
+
+/** Execute property change handler ASAP using master device lock
+ */
+INDIGO_EXTERN void indigo_execute_handler(indigo_device *device, indigo_timer_callback handler);
+
+/** Execute property change handler ASAP
+ */
+INDIGO_EXTERN void indigo_execute_handler_async(indigo_device *device, indigo_timer_callback handler);
 
 #ifdef __cplusplus
 }
