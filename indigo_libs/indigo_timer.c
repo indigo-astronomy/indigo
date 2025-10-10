@@ -114,24 +114,19 @@ static void *timer_func(indigo_timer *timer) {
 					((indigo_timer_callback)timer->callback)(timer->device);
 				}
 				timer->callback_running = false;
-				if (!timer->scheduled && timer->reference) {
-					*timer->reference = NULL;
-				}
 				// INDIGO_TRACE(indigo_trace("timer #%d - callback %p finished (%p)", timer->timer_id, timer->callback, timer->reference));
 				if (timer->user_mutex) {
 					pthread_mutex_unlock(timer->user_mutex);
 				} else {
 					pthread_mutex_unlock(&timer->callback_mutex);
 				}
-			} else {
-				if (timer->reference) {
-					*timer->reference = NULL;
-				}
-				// INDIGO_TRACE(indigo_trace("timer #%d - canceled", timer->timer_id));
 			}
 		}
 		// INDIGO_TRACE(indigo_trace("timer #%d - done", timer->timer_id));
 		pthread_mutex_lock(&cancel_timer_mutex);
+		if (timer->reference) {
+			*timer->reference = NULL;
+		}
 		indigo_device *device = timer->device;
 		if (device != NULL) {
 			if (DEVICE_CONTEXT->timers == timer) {
