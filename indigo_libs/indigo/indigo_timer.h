@@ -46,7 +46,7 @@ extern "C" {
 /** Timer callback function prototype.
  */
 typedef void (*indigo_timer_callback)(indigo_device *device);
-typedef void (*indigo_timer_with_data_callback)(indigo_device *device, void *data);
+typedef void (*indigo_timer_with_data_callback)(indigo_device *device, void *timer_data);
 
 /** Timer structure.
  */
@@ -60,38 +60,40 @@ typedef struct indigo_timer {
 	bool wake;
 	int timer_id;
 	pthread_cond_t cond;
-	pthread_mutex_t mutex;
-	pthread_mutex_t callback_mutex;
+	pthread_mutex_t cond_mutex;
 	pthread_t thread;
 	struct indigo_timer **reference;
 	struct indigo_timer *next;
-	void *user_data;
-	pthread_mutex_t *user_mutex;
+	void *timer_data;
+	pthread_mutex_t thread_mutex;
+	pthread_mutex_t *timer_mutex;
 } indigo_timer;
 
-/* fix timespec so that abs(tv_nsec) < 1s */
-#define SEC_NS    1000000000LL       /* 1 sec in nanoseconds */
-static inline void normalize_timespec(struct timespec *ts) {
-	if ((1 <= ts->tv_sec ) || ((0 == ts->tv_sec) && (0 <= ts->tv_nsec))) {
-		/* timespec is non-negative, so ns >= 1s and ns < 0s are not ok */
-		if (SEC_NS <= ts->tv_nsec) {
-			ts->tv_nsec -= SEC_NS;
-			ts->tv_sec++;
-		} else if (0 > (ts)->tv_nsec) {
-			ts->tv_nsec += SEC_NS;
-			ts->tv_sec--;
-		}
-	} else {
-		/* timespec is negative, so ns <= -1s and ns > 0s are not ok */
-		if ((-1 * SEC_NS) >= ts->tv_nsec) {
-			ts->tv_nsec += SEC_NS;
-			ts->tv_sec--;
-		} else if (0 < ts->tv_nsec) {
-			ts->tv_nsec -= SEC_NS;
-			ts->tv_sec++;
-		}
-	}
-}
+/** Queue structure.
+ */
+
+typedef struct indigo_queue_element {
+	indigo_device *device;
+	struct timespec at;
+	indigo_timer_callback callback;
+	pthread_mutex_t *element_mutex;
+	struct indigo_queue_element *next;
+} indigo_queue_element;
+
+typedef struct indigo_queue {
+	indigo_device *device;
+	pthread_cond_t cond;
+	pthread_mutex_t cond_mutex;
+	pthread_t thread;
+	indigo_queue_element *element;
+	int queue_id;
+	bool abort;
+	pthread_mutex_t thread_mutex;
+} indigo_queue;
+
+/** Translate delay into absolute time.
+ */
+INDIGO_EXTERN struct timespec indigo_delay_to_time(double delay);
 
 /** Set timer.
  */
@@ -99,11 +101,11 @@ INDIGO_EXTERN bool indigo_set_timer(indigo_device *device, double delay, indigo_
 
 /** Set timer with arbitrary data.
  */
-INDIGO_EXTERN bool indigo_set_timer_with_data(indigo_device *device, double delay, indigo_timer_with_data_callback callback, indigo_timer **timer, void *user_data);
+INDIGO_EXTERN bool indigo_set_timer_with_data(indigo_device *device, double delay, indigo_timer_with_data_callback callback, indigo_timer **timer, void *timer_data);
 
 /** Set timer with arbitrary mutex.
  */
-INDIGO_EXTERN bool indigo_set_timer_with_mutex(indigo_device *device, double delay, indigo_timer_callback callback, indigo_timer **timer, pthread_mutex_t *user_mutex);
+INDIGO_EXTERN bool indigo_set_timer_with_mutex(indigo_device *device, double delay, indigo_timer_callback callback, indigo_timer **timer, pthread_mutex_t *timer_mutex);
 
 /** Rescheduled timer (if not null).
  */
@@ -124,6 +126,22 @@ INDIGO_EXTERN bool indigo_cancel_timer_sync(indigo_device *device, indigo_timer 
 /** Cancel all timers for given device.
  */
 INDIGO_EXTERN void indigo_cancel_all_timers(indigo_device *device);
+
+/** Create queue
+ */
+INDIGO_EXTERN indigo_queue *indigo_queue_create(indigo_device *device);
+
+/** Add task to queue
+ */
+INDIGO_EXTERN void indigo_queue_add(indigo_queue *queue, indigo_device *device, double delay, indigo_timer_callback callback, pthread_mutex_t *element_mutex);
+
+/** Remove elements from queue for given device
+ */
+INDIGO_EXTERN void indigo_queue_remove(indigo_queue *queue, indigo_device *device);
+
+/** Remove all elements, abort queue and free associated structure
+ */
+INDIGO_EXTERN void indigo_queue_delete(indigo_queue **queue);
 
 #ifdef __cplusplus
 }
