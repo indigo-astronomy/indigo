@@ -251,6 +251,7 @@ static void sync_process(indigo_device *device) {
 }
 
 static void lx200_server_worker_thread(indigo_uni_worker_data *data) {
+	indigo_rename_thread("LX200 worker");
 	indigo_device *device = data->data;
 	char buffer_in[128];
 	char buffer_out[128];
@@ -412,6 +413,7 @@ static void lx200_server_worker_thread(indigo_uni_worker_data *data) {
 }
 
 static void start_lx200_server(indigo_device *device) {
+	indigo_rename_thread("LX200 listener");
 	int port = (int)AGENT_LX200_CONFIGURATION_PORT_ITEM->number.value;
 	AGENT_LX200_SERVER_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, AGENT_LX200_SERVER_PROPERTY, "Starting server on %d", (int)AGENT_LX200_CONFIGURATION_PORT_ITEM->number.value);
