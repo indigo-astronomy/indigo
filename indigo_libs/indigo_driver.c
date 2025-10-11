@@ -1039,6 +1039,7 @@ indigo_result indigo_device_detach(indigo_device *device) {
 			}
 		}
 	}
+	indigo_queue_delete(&DEVICE_CONTEXT->queue);
 	indigo_cancel_all_timers(device);
 	indigo_release_property(CONNECTION_PROPERTY);
 	indigo_release_property(INFO_PROPERTY);
@@ -1254,16 +1255,25 @@ void indigo_set_device_timer(indigo_device *device, double delay, indigo_timer_c
 	}
 }
 
-
-void indigo_execute_handler(indigo_device *device, indigo_timer_callback handler) {
-	if (device->master_device != NULL && device->master_device->device_context != NULL) {
-		indigo_set_timer_with_mutex(device, 0, handler, NULL, &MASTER_DEVICE_CONTEXT->device_mutex);
-	} else {
-		indigo_set_timer_with_mutex(device, 0, handler, NULL, &DEVICE_CONTEXT->device_mutex);
+void indigo_execute_handler_in(indigo_device *device, double delay, indigo_timer_callback handler) {
+	indigo_device *element_device = device;
+	if (device->master_device != NULL) {
+		device = device->master_device;
 	}
+	if (DEVICE_CONTEXT->queue == NULL) {
+		DEVICE_CONTEXT->queue = indigo_queue_create(device);
+	}
+	indigo_queue_add(DEVICE_CONTEXT->queue, element_device, delay, handler, &DEVICE_CONTEXT->device_mutex);
 }
 
+void indigo_execute_handler(indigo_device *device, indigo_timer_callback handler) {
+	indigo_execute_handler_in(device, 0, handler);
+}
 
-void indigo_execute_handler_async(indigo_device *device, indigo_timer_callback handler) {
-	indigo_set_timer(device, 0, handler, NULL);
+void indigo_cancel_pending_handlers(indigo_device *device) {
+	indigo_device *element_device = device;
+	if (device->master_device != NULL) {
+		device = device->master_device;
+	}
+	indigo_queue_remove(DEVICE_CONTEXT->queue, element_device);
 }

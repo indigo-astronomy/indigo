@@ -269,11 +269,13 @@ typedef indigo_result (*driver_entry_point)(indigo_driver_action, indigo_driver_
 
 /** Device context structure.
  */
+
 typedef struct {
 	indigo_uni_handle *property_save_file_handle;            ///< handle for property save
 	pthread_mutex_t config_mutex;							///< mutex for configuration load/save synchronisation
 	pthread_mutex_t device_mutex;							///< mutex for synchronising multi-device access over single low level connection
 	indigo_timer *timers;											///< active timer list
+	indigo_queue *queue;											///< queue for handling property changes
 	indigo_property *connection_property;     ///< CONNECTION property pointer
 	indigo_property *info_property;           ///< INFO property pointer
 	indigo_property *simulation_property;     ///< SIMULATION property pointer
@@ -450,16 +452,23 @@ INDIGO_EXTERN void indigo_unlock_device(indigo_device *device);
 
 /** Execute timer using master device lock
  */
-
 INDIGO_EXTERN void indigo_set_device_timer(indigo_device *device, double delay, indigo_timer_callback handler, indigo_timer **timer);
 
-/** Execute property change handler ASAP using master device lock
+/** Execute property change handler ASAP on device queue
  */
 INDIGO_EXTERN void indigo_execute_handler(indigo_device *device, indigo_timer_callback handler);
 
-/** Execute property change handler ASAP
+/** Execute property change handler ASAP on device queue
  */
-INDIGO_EXTERN void indigo_execute_handler_async(indigo_device *device, indigo_timer_callback handler);
+INDIGO_EXTERN void indigo_execute_handler(indigo_device *device, indigo_timer_callback handler);
+
+/** Execute property change handler on device queue with specified delay
+ */
+INDIGO_EXTERN void indigo_execute_handler_in(indigo_device *device, double delay, indigo_timer_callback handler);
+
+/** Empty handler queue
+ */
+INDIGO_EXTERN void indigo_cancel_pending_handlers(indigo_device *device);
 
 #ifdef __cplusplus
 }
