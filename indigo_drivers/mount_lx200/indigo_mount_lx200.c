@@ -2509,6 +2509,7 @@ static void mount_connect_callback(indigo_device *device) {
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
+		meade_stop(device);
 		indigo_cancel_pending_handlers(device);
 		indigo_delete_property(device, MOUNT_MODE_PROPERTY, NULL);
 		indigo_delete_property(device, MERIDIAN_FLIP_PROPERTY, NULL);
