@@ -255,6 +255,7 @@ indigo_subprocess_entry indigo_available_subprocesses[INDIGO_MAX_SERVERS];
 static void *subprocess_thread(indigo_subprocess_entry *subprocess) {
 	INDIGO_LOG(indigo_log("Subprocess %s thread started", subprocess->executable));
 	pthread_detach(pthread_self());
+	indigo_rename_thread("Subprocess %s", subprocess->executable);
 	int sleep_interval = 5;
 	while (subprocess->pid >= 0) {
 		int input[2], output[2];
@@ -377,6 +378,7 @@ void indigo_service_name(const char *host, int port, char *name) {
 static void *server_thread(indigo_server_entry *server) {
 	INDIGO_LOG(indigo_log("Server %s:%d thread started", server->host, server->port));
 	pthread_detach(pthread_self());
+	indigo_rename_thread("Server %s:%d", server->host, server->port);
 	while (!server->shutdown) {
 		server->handle = indigo_uni_client_tcp_socket(server->host, server->port, INDIGO_LOG_TRACE);
 		if (server->handle != NULL) {

@@ -86,6 +86,7 @@ static struct resource {
 #define BUFFER_SIZE	1024
 
 static void start_worker_thread(indigo_uni_worker_data *data) {
+	indigo_rename_thread("Server worker");
 	indigo_uni_handle **handle = &data->handle;
 	INDIGO_TRACE(indigo_trace("%d <- // Worker thread started", (*handle)->index));
 	server_callback(++client_count);
@@ -524,6 +525,7 @@ void indigo_default_server_callback(int count) {
 }
 
 indigo_result indigo_server_start(void (*callback)(int)) {
+	indigo_rename_thread("Server listener");
 	indigo_use_blob_caching = true;
 	server_callback = callback ? callback : indigo_default_server_callback;
 	shutdown_initiated = false;

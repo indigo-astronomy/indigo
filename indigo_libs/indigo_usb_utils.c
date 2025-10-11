@@ -151,6 +151,7 @@ static void update_device_list() {
 }
 
 void *indigo_usb_hotplug_thread(void *arg) {
+	indigo_rename_thread("USB hotplug");
 	while (true) {
 		if (hotplug_callback_list != NULL) {
 			update_device_list();
