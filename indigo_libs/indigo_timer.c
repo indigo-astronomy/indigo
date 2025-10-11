@@ -367,60 +367,6 @@ void indigo_cancel_all_timers(indigo_device *device) {
 
 int queue_count = 0;
 
-static void *queue_func(indigo_queue *queue) {
-	indigo_rename_thread("Queue %s", queue->device->name);
-	pthread_mutex_lock(&queue->cond_mutex);
-	pthread_cond_signal(&queue->cond);
-	pthread_mutex_unlock(&queue->cond_mutex);
-	while (!queue->abort) {
-		pthread_mutex_lock(&queue->thread_mutex);
-		pthread_mutex_lock(&timers_mutex);
-		indigo_queue_element *element = queue->element;
-		pthread_mutex_unlock(&timers_mutex);
-		pthread_mutex_lock(&queue->cond_mutex);
-		if (element != NULL && (element->at.tv_sec != 0 || element->at.tv_nsec != 0)) {
-			pthread_cond_timedwait(&queue->cond, &queue->cond_mutex, &element->at);
-		} else {
-			pthread_cond_wait(&queue->cond, &queue->cond_mutex);
-		}
-		pthread_mutex_unlock(&queue->cond_mutex);
-		while (!queue->abort) {
-			pthread_mutex_lock(&timers_mutex);
-			indigo_queue_element *element = queue->element;
-			if (element) {
-				queue->element = element->next;
-			}
-			pthread_mutex_unlock(&timers_mutex);
-			if (element == NULL) {
-				break;
-			}
-			if (element->element_mutex) {
-				pthread_mutex_lock(element->element_mutex);
-			}
-			element->callback(element->device);
-			if (element->element_mutex) {
-				pthread_mutex_unlock(element->element_mutex);
-			}
-		}
-		pthread_mutex_unlock(&queue->thread_mutex);
-	}
-	return NULL;
-}
-
-indigo_queue *indigo_queue_create(indigo_device *device) {
-	indigo_queue *queue = indigo_safe_malloc(sizeof(indigo_queue));
-	queue->device = device;
-	queue->queue_id = queue_count++;
-	pthread_mutex_init(&queue->cond_mutex, NULL);
-	pthread_cond_init(&queue->cond, NULL);
-	pthread_mutex_init(&queue->thread_mutex, NULL);
-	pthread_create(&queue->thread, NULL, (void * (*)(void*))queue_func, queue);
-	pthread_mutex_lock(&queue->cond_mutex);
-	pthread_cond_wait(&queue->cond, &queue->cond_mutex);
-	pthread_mutex_unlock(&queue->cond_mutex);
-	return queue;
-}
-
 static inline int timespec_cmp(const struct timespec *a, const struct timespec *b) {
 	if (a->tv_sec < b->tv_sec) return -1;
 	if (a->tv_sec > b->tv_sec) return 1;
@@ -429,6 +375,74 @@ static inline int timespec_cmp(const struct timespec *a, const struct timespec *
 	return 0;
 }
 
+// wrapper for executing queue element = scheduled call of handler
+
+static void *queue_func(indigo_queue *queue) {
+	indigo_rename_thread("Queue %s", queue->device->name);
+	// wakeup indigo_queue_create
+	pthread_mutex_lock(&queue->cond_mutex);
+	pthread_cond_signal(&queue->cond);
+	pthread_mutex_unlock(&queue->cond_mutex);
+	// main loop waiting for wakeup signal or timeout
+	while (!queue->abort) {
+		pthread_mutex_lock(&queue->thread_mutex);
+		pthread_mutex_lock(&timers_mutex);
+		indigo_queue_element *element = queue->element;
+		pthread_mutex_unlock(&timers_mutex);
+		pthread_mutex_lock(&queue->cond_mutex);
+		if (element && (element->at.tv_sec != 0 || element->at.tv_nsec != 0)) { // wait for timeout for the next task
+			pthread_cond_timedwait(&queue->cond, &queue->cond_mutex, &element->at);
+		} else if (element == NULL) { // no task, wait for wakeup
+			pthread_cond_wait(&queue->cond, &queue->cond_mutex);
+		}
+		pthread_mutex_unlock(&queue->cond_mutex); // this is to make indigo_queue_remove wait for currently executed task
+		// inner loop executing all scheduled tasks
+		while (!queue->abort) {
+			pthread_mutex_lock(&timers_mutex);
+			indigo_queue_element *element = queue->element;
+			struct timespec now;
+			utc_time(&now);
+			if (element && timespec_cmp(&element->at, &now) <= 0) {
+				queue->element = element->next; // if next tasks exists and it is time to execute it, remove it from queue head
+			} else {
+				pthread_mutex_unlock(&timers_mutex);
+				break; // otherwise exit inner loop and go to sleep
+			}
+			pthread_mutex_unlock(&timers_mutex);
+			if (element->element_mutex) { // if there is specific mutex for task, lock it
+				pthread_mutex_lock(element->element_mutex);
+			}
+			element->callback(element->device);
+			if (element->element_mutex) { // if there is specific mutex for task, unlock it
+				pthread_mutex_unlock(element->element_mutex);
+			}
+		}
+		pthread_mutex_unlock(&queue->thread_mutex);
+	}
+	return NULL;
+}
+
+// create queue, device should be master device if we need serialize access to shared connection. otherwise it may be any device.
+
+indigo_queue *indigo_queue_create(indigo_device *device) {
+	// create queue structure
+	indigo_queue *queue = indigo_safe_malloc(sizeof(indigo_queue));
+	queue->device = device;
+	queue->queue_id = queue_count++;
+	pthread_mutex_init(&queue->cond_mutex, NULL);
+	pthread_cond_init(&queue->cond, NULL);
+	pthread_mutex_init(&queue->thread_mutex, NULL);
+	// start background thread
+	pthread_create(&queue->thread, NULL, (void * (*)(void*))queue_func, queue);
+	// wait for thread to signal it is ready to process tasks to make indigo_queue_create synchronous
+	pthread_mutex_lock(&queue->cond_mutex);
+	pthread_cond_wait(&queue->cond, &queue->cond_mutex);
+	pthread_mutex_unlock(&queue->cond_mutex);
+	return queue;
+}
+
+// add task to queue. note queue carries device which is usually master device while task may be related to some of slave devices
+
 void indigo_queue_add(indigo_queue *queue, indigo_device *device, double delay, indigo_timer_callback callback, pthread_mutex_t *element_mutex) {
 	indigo_queue_element *element = indigo_safe_malloc(sizeof(indigo_queue_element));
 	element->device = device;
@@ -436,12 +450,12 @@ void indigo_queue_add(indigo_queue *queue, indigo_device *device, double delay, 
 	element->callback = callback;
 	element->element_mutex = element_mutex;
 	pthread_mutex_lock(&timers_mutex);
-	if (queue->element == NULL) {
+	if (queue->element == NULL) { // if queue is empty, insert at the beginning
 		queue->element = element;
-	} else if (timespec_cmp(&element->at, &queue->element->at) < 0) {
+	} else if (timespec_cmp(&element->at, &queue->element->at) < 0) { // if queue is not empty, but element should be inserted before existing head
 		element->next = queue->element;
 		queue->element = element;
-	} else {
+	} else { // if queue is not empty, insert in the proper place
 		indigo_queue_element *next = queue->element;
 		while (next->next != NULL && timespec_cmp(&next->next->at, &element->at) <= 0) {
 			next = next->next;
@@ -450,17 +464,20 @@ void indigo_queue_add(indigo_queue *queue, indigo_device *device, double delay, 
 		next->next = element;
 	}
 	pthread_mutex_unlock(&timers_mutex);
+	// wakeup queue_func to rescan queue
 	pthread_mutex_lock(&queue->cond_mutex);
 	pthread_cond_signal(&queue->cond);
 	pthread_mutex_unlock(&queue->cond_mutex);
 }
 
+// remove scheduled tasks from queue, if device is NULL, remove all tasks otherwise remove tasks related to device
+
 void indigo_queue_remove(indigo_queue *queue, indigo_device *device) {
 	if (queue) {
 		pthread_mutex_lock(&timers_mutex);
 		indigo_queue_element *element = queue->element;
-		
-		if (device) {
+		if (device == NULL) {
+			// just remove all elements
 			while (element) {
 				indigo_queue_element *next = element->next;
 				indigo_safe_free(element);
@@ -468,12 +485,15 @@ void indigo_queue_remove(indigo_queue *queue, indigo_device *device) {
 			}
 			queue->element = NULL;
 		} else {
+			// remove only tasks related to particular device
+			// check head first
 			while (element && element->device == device) {
 				indigo_queue_element *next = element->next;
 				indigo_safe_free(element);
 				element = next;
 			}
 			queue->element = element;
+			// them rest of queue
 			while (element) {
 				indigo_queue_element *next = element->next;
 				while (next && next->device == device) {
@@ -485,18 +505,25 @@ void indigo_queue_remove(indigo_queue *queue, indigo_device *device) {
 			}
 		}
 		pthread_mutex_unlock(&timers_mutex);
+		// wakeup queue_func to rescan queue
 		pthread_mutex_lock(&queue->cond_mutex);
 		pthread_cond_signal(&queue->cond);
 		pthread_mutex_unlock(&queue->cond_mutex);
-		pthread_mutex_lock(&queue->thread_mutex);
-		pthread_mutex_unlock(&queue->thread_mutex);
+		// wait for currently running task to be synchronous, but not for indigo_queue_remove called from currently executed task
+		if (pthread_self() != queue->thread) {
+			pthread_mutex_lock(&queue->thread_mutex);
+			pthread_mutex_unlock(&queue->thread_mutex);
+		}
 	}
 }
 
 void indigo_queue_delete(indigo_queue **queue) {
 	if (*queue) {
+		// exit queue_func master loop to exit
 		(*queue)->abort = true;
+		// remove all tasks
 		indigo_queue_remove(*queue, NULL);
+		// release queue structure
 		indigo_safe_free(*queue);
 		*queue = NULL;
 	}
