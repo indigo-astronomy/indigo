@@ -320,6 +320,11 @@ INDIGO_EXTERN time_t indigo_timegm(struct tm* tm);
 
 INDIGO_EXTERN bool indigo_resolve_host(char *buffer, int *family);
 
+/** Rename current thread
+ */
+INDIGO_EXTERN void indigo_rename_thread(char *format, ...);
+
+
 #ifdef __cplusplus
 }
 #endif

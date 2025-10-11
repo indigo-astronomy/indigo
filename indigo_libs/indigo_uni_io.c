@@ -1877,3 +1877,16 @@ bool indigo_resolve_host(char *buffer, int *family) {
 	indigo_error("Failed to resolve host name %s", buffer);
 	return false;
 }
+
+void indigo_rename_thread(char *format, ...) {
+	char name[256];
+	va_list args;
+	va_start(args, format);
+	vsnprintf(name, sizeof(name), format, args);
+	va_end(args);
+#if defined(INDIGO_LINUX)
+	pthread_setname_np(pthread_self(), name);
+#elif defined(INDIGO_MACOS)
+	pthread_setname_np(name);
+#endif
+}
