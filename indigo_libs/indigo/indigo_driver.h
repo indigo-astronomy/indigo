@@ -462,9 +462,13 @@ INDIGO_EXTERN void indigo_execute_handler(indigo_device *device, indigo_timer_ca
  */
 INDIGO_EXTERN void indigo_execute_handler(indigo_device *device, indigo_timer_callback handler);
 
+INDIGO_EXTERN void indigo_execute_priority_handler(indigo_device *device, indigo_timer_callback handler);
+
 /** Execute property change handler on device queue with specified delay
  */
 INDIGO_EXTERN void indigo_execute_handler_in(indigo_device *device, double delay, indigo_timer_callback handler);
+
+INDIGO_EXTERN void indigo_execute_priority_handler_in(indigo_device *device, double delay, indigo_timer_callback handler);
 
 /** Empty handler queue
  */

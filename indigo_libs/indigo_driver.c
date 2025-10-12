@@ -1263,11 +1263,26 @@ void indigo_execute_handler_in(indigo_device *device, double delay, indigo_timer
 	if (DEVICE_CONTEXT->queue == NULL) {
 		DEVICE_CONTEXT->queue = indigo_queue_create(device);
 	}
-	indigo_queue_add(DEVICE_CONTEXT->queue, element_device, delay, handler, &DEVICE_CONTEXT->device_mutex);
+	indigo_queue_add(DEVICE_CONTEXT->queue, element_device, 0, delay, handler, &DEVICE_CONTEXT->device_mutex);
 }
 
 void indigo_execute_handler(indigo_device *device, indigo_timer_callback handler) {
 	indigo_execute_handler_in(device, 0, handler);
+}
+
+void indigo_execute_priority_handler_in(indigo_device *device, double delay, indigo_timer_callback handler) {
+	indigo_device *element_device = device;
+	if (device->master_device != NULL) {
+		device = device->master_device;
+	}
+	if (DEVICE_CONTEXT->queue == NULL) {
+		DEVICE_CONTEXT->queue = indigo_queue_create(device);
+	}
+	indigo_queue_add(DEVICE_CONTEXT->queue, element_device, 1000, delay, handler, &DEVICE_CONTEXT->device_mutex);
+}
+
+void indigo_execute_priority_handler(indigo_device *device, indigo_timer_callback handler) {
+	indigo_execute_priority_handler_in(device, 0, handler);
 }
 
 void indigo_cancel_pending_handlers(indigo_device *device) {

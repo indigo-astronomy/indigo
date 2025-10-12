@@ -443,21 +443,22 @@ indigo_queue *indigo_queue_create(indigo_device *device) {
 
 // add task to queue. note queue carries device which is usually master device while task may be related to some of slave devices
 
-void indigo_queue_add(indigo_queue *queue, indigo_device *device, double delay, indigo_timer_callback callback, pthread_mutex_t *element_mutex) {
+void indigo_queue_add(indigo_queue *queue, indigo_device *device, int priority, double delay, indigo_timer_callback callback, pthread_mutex_t *element_mutex) {
 	indigo_queue_element *element = indigo_safe_malloc(sizeof(indigo_queue_element));
 	element->device = device;
+	element->priority = priority;
 	element->at = indigo_delay_to_time(delay);
 	element->callback = callback;
 	element->element_mutex = element_mutex;
 	pthread_mutex_lock(&timers_mutex);
 	if (queue->element == NULL) { // if queue is empty, insert at the beginning
 		queue->element = element;
-	} else if (timespec_cmp(&element->at, &queue->element->at) < 0) { // if queue is not empty, but element should be inserted before existing head
+	} else if (priority > queue->element->priority || (priority == queue->element->priority && timespec_cmp(&element->at, &queue->element->at) < 0)) { // if queue is not empty, but element should be inserted before existing head
 		element->next = queue->element;
 		queue->element = element;
 	} else { // if queue is not empty, insert in the proper place
 		indigo_queue_element *next = queue->element;
-		while (next->next != NULL && timespec_cmp(&next->next->at, &element->at) <= 0) {
+		while (next->next != NULL && (next->next->priority > priority || (next->next->priority == priority && timespec_cmp(&next->next->at, &element->at) <= 0))) {
 			next = next->next;
 		}
 		element->next = next->next;
