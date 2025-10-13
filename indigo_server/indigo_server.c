@@ -74,6 +74,7 @@
 #include <indigo/indigocat/indigocat_ss.h>
 
 #ifdef STATIC_DRIVERS
+#include "agent_test/indigo_agent_test.h"
 #include "ccd_simulator/indigo_ccd_simulator.h"
 #include "mount_simulator/indigo_mount_simulator.h"
 #include "gps_simulator/indigo_gps_simulator.h"
@@ -234,6 +235,7 @@ driver_entry_point static_drivers[] = {
 	indigo_agent_scripting,
 	indigo_agent_mount,
 	indigo_agent_snoop,
+	indigo_agent_test,
 	indigo_ao_sx,
 	indigo_aux_arteskyflat,
 	indigo_aux_astromechanics,
