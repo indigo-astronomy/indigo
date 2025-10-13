@@ -80,7 +80,10 @@ static void test_3_handler(indigo_device *device) {
 
 static void test_4_handler(indigo_device *device) {
 	indigo_log("Test #4 started");
-	indigo_usleep(1000000);
+	indigo_execute_handler(device, test_1_handler);
+	indigo_execute_handler(device, test_1_handler);
+	indigo_execute_handler_in(device, 10, test_3_handler);
+	indigo_execute_priority_handler(device, 100, test_2_handler);
 	TEST_4_ITEM->sw.value = false;
 	TEST_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, TEST_PROPERTY, NULL);
