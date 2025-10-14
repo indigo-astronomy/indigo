@@ -3026,7 +3026,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(MOUNT_ABORT_MOTION_PROPERTY, property, false);
 		MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, NULL);
-		mount_abort_callback(device);
+		indigo_execute_priority_handler(device, 100, mount_abort_callback);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_MOTION_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_MOTION_DEC
