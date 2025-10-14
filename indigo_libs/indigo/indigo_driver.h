@@ -474,6 +474,10 @@ INDIGO_EXTERN void indigo_execute_priority_handler_in(indigo_device *device, int
  */
 INDIGO_EXTERN void indigo_cancel_pending_handlers(indigo_device *device);
 
+/** Remove scheduled handler from queue
+ */
+INDIGO_EXTERN void indigo_cancel_pending_handler(indigo_device *device, indigo_timer_callback callback);
+
 #ifdef __cplusplus
 }
 #endif

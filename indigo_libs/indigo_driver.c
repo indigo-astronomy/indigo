@@ -1290,5 +1290,13 @@ void indigo_cancel_pending_handlers(indigo_device *device) {
 	if (device->master_device != NULL) {
 		device = device->master_device;
 	}
-	indigo_queue_remove(DEVICE_CONTEXT->queue, element_device);
+	indigo_queue_remove(DEVICE_CONTEXT->queue, element_device, NULL);
+}
+
+void indigo_cancel_pending_handler(indigo_device *device, indigo_timer_callback callback) {
+	indigo_device *element_device = device;
+	if (device->master_device != NULL) {
+		device = device->master_device;
+	}
+	indigo_queue_remove(DEVICE_CONTEXT->queue, element_device, callback);
 }

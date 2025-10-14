@@ -158,7 +158,7 @@ static void aux_ccd_abort_exposure_handler(indigo_device *device) {
 	CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.CCD_ABORT_EXPOSURE.on_change
 	if (CCD_ABORT_EXPOSURE_ITEM->sw.value && CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-		indigo_cancel_pending_handlers(device); // TODO: cancel only timer!
+		indigo_cancel_pending_handler(device, aux_timer_callback);
 		libdsusb_stop(PRIVATE_DATA->device_context);
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);

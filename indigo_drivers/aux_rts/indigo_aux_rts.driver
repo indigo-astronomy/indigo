@@ -77,7 +77,7 @@ driver rts {
 			rule = INDIGO_ANY_OF_MANY_RULE;
 			on_change {
 				if (CCD_ABORT_EXPOSURE_ITEM->sw.value && CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-					indigo_cancel_pending_handlers(device); // TODO: cancel only timer!
+					indigo_cancel_pending_handler(device, aux_timer_callback);
 					rts_off(device);
 					CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);

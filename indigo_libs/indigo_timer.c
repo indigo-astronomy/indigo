@@ -473,11 +473,11 @@ void indigo_queue_add(indigo_queue *queue, indigo_device *device, int priority, 
 
 // remove scheduled tasks from queue, if device is NULL, remove all tasks otherwise remove tasks related to device
 
-void indigo_queue_remove(indigo_queue *queue, indigo_device *device) {
+void indigo_queue_remove(indigo_queue *queue, indigo_device *device, indigo_timer_callback callback) {
 	if (queue) {
 		pthread_mutex_lock(&timers_mutex);
 		indigo_queue_element *element = queue->element;
-		if (device == NULL) {
+		if (device == NULL && callback == NULL) {
 			// just remove all elements
 			while (element) {
 				indigo_queue_element *next = element->next;
@@ -488,7 +488,7 @@ void indigo_queue_remove(indigo_queue *queue, indigo_device *device) {
 		} else {
 			// remove only tasks related to particular device
 			// check head first
-			while (element && element->device == device) {
+			while (element && element->device == device && element->callback == callback) {
 				indigo_queue_element *next = element->next;
 				indigo_safe_free(element);
 				element = next;
@@ -497,7 +497,7 @@ void indigo_queue_remove(indigo_queue *queue, indigo_device *device) {
 			// them rest of queue
 			while (element) {
 				indigo_queue_element *next = element->next;
-				while (next && next->device == device) {
+				while (next && next->device == device && element->callback == callback) {
 					next = element->next;
 					indigo_safe_free(element->next);
 					element->next = next;
@@ -523,7 +523,7 @@ void indigo_queue_delete(indigo_queue **queue) {
 		// exit queue_func master loop to exit
 		(*queue)->abort = true;
 		// remove all tasks
-		indigo_queue_remove(*queue, NULL);
+		indigo_queue_remove(*queue, NULL, NULL);
 		// release queue structure
 		indigo_safe_free(*queue);
 		*queue = NULL;

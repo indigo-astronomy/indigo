@@ -204,10 +204,10 @@ static void focuser_mode_handler(indigo_device *device) {
 	FOCUSER_MODE_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_MODE.on_change
 	if (FOCUSER_MODE_AUTOMATIC_ITEM->sw.value) {
-		indigo_cancel_pending_handlers(device); // TODO: cancel only timer!
+		indigo_cancel_pending_handler(device, focuser_timer_callback);
 		usbv3_command(device, "FAUTOM", true);
 	} else {
-		usbv3_command(device, "FMANUA", true);
+		usbv3_command(device, "FMANUA", true);					
 		if (sscanf(PRIVATE_DATA->response, "P=%lf", &FOCUSER_POSITION_ITEM->number.value) == 1) {
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		}
