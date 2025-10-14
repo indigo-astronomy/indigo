@@ -291,7 +291,7 @@ driver nmea {
 					}
 				}
 				indigo_safe_free(tokens);
-				indigo_reschedule_timer(device, 0, &PRIVATE_DATA->gps_timer);
+				indigo_execute_handler_in(device, 0, gps_timer_callback);
 			} else {
 				indigo_send_message(device, "Failed to read from GPS unit");
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -318,7 +318,7 @@ driver nmea {
 			label = "Selected positioning system";
 			always_defined = true;
 			// handle_change = false;
-			// synchronized_change = false;
+			// asynchronous_change = false;
 			on_change {
 				nmea_reset(device);
 			}

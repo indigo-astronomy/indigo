@@ -58,9 +58,6 @@
 #pragma mark - Private data definition
 
 typedef struct {
-	pthread_mutex_t mutex;
-	indigo_timer *gps_timer;
-	indigo_timer *gps_connection_handler_timer;
 	//+ data
 	int timer_ticks;
 	//- data
@@ -72,7 +69,6 @@ static void gps_timer_callback(indigo_device *device) {
 	if (!IS_CONNECTED) {
 		return;
 	}
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	//+ gps.on_timer
 	if (PRIVATE_DATA->timer_ticks >= TICKS_TO_2D_FIX) {
 		GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = SIM_LONGITUDE + rand() / ((double)(RAND_MAX) * 1000);
@@ -135,15 +131,12 @@ static void gps_timer_callback(indigo_device *device) {
 		}
 	}
 	PRIVATE_DATA->timer_ticks++;
-	indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->gps_timer);
+	indigo_execute_handler_in(device, REFRESH_SECONDS, gps_timer_callback);
 	//- gps.on_timer
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void gps_connection_handler(indigo_device *device) {
-	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		pthread_mutex_lock(&PRIVATE_DATA->mutex);
 		//+ gps.on_connect
 		srand((unsigned)time(NULL));
 		PRIVATE_DATA->timer_ticks = 0;
@@ -152,17 +145,14 @@ static void gps_connection_handler(indigo_device *device) {
 		GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
 		GPS_STATUS_PROPERTY->state = INDIGO_BUSY_STATE;
 		//- gps.on_connect
-		indigo_set_timer(device, 0, gps_timer_callback, &PRIVATE_DATA->gps_timer);
+		indigo_execute_handler(device, gps_timer_callback);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_send_message(device, "Connected to %s", device->name);
-		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 	} else {
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->gps_timer);
 		indigo_send_message(device, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_gps_change_property(device, NULL, CONNECTION_PROPERTY);
-	indigo_unlock_master_device(device);
 }
 
 #pragma mark - Device API (gps)
@@ -182,7 +172,6 @@ static indigo_result gps_attach(indigo_device *device) {
 		GPS_UTC_TIME_PROPERTY->count = 1;
 		//- gps.on_attach
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		return gps_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -198,7 +187,7 @@ static indigo_result gps_change_property(indigo_device *device, indigo_client *c
 			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-			indigo_set_timer(device, 0, gps_connection_handler, &PRIVATE_DATA->gps_connection_handler_timer);
+			indigo_execute_handler(device, gps_connection_handler);
 		}
 		return INDIGO_OK;
 	}
@@ -211,7 +200,6 @@ static indigo_result gps_detach(indigo_device *device) {
 		gps_connection_handler(device);
 	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
-	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
 	return indigo_gps_detach(device);
 }
 

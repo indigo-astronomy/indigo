@@ -445,7 +445,7 @@ driver upb {
 				AUX_USB_PORT_STATE_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, AUX_USB_PORT_STATE_PROPERTY, NULL);
 			}
-			indigo_reschedule_timer(device, 2, &PRIVATE_DATA->aux_timer);
+			indigo_execute_handler_in(device, 2, aux_timer_callback);
 		}
 		on_connect {
 			if (PRIVATE_DATA->version == 1) {
@@ -633,7 +633,7 @@ driver upb {
 			persistent = true;
 			always_defined = true;
 			// handle_change = false;
-			// synchronized_change = false;
+			// asynchronous_change = false;
 			on_change {
 				snprintf(AUX_POWER_OUTLET_1_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_POWER_OUTLET_NAME_1_ITEM->text.value);
 				snprintf(AUX_POWER_OUTLET_2_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_POWER_OUTLET_NAME_2_ITEM->text.value);
@@ -1192,7 +1192,7 @@ driver upb {
 				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 				indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 			}
-			indigo_reschedule_timer(device, 0.5, &PRIVATE_DATA->focuser_timer);
+			indigo_execute_handler_in(device, 0.5, focuser_timer_callback);
 		}
 		on_connect {
 			if (upb_command(device, "SA")) {

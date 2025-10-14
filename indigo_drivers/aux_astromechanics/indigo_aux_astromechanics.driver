@@ -65,7 +65,7 @@ driver astromechanics {
 				AUX_WEATHER_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 			indigo_update_property(device, AUX_WEATHER_PROPERTY, NULL);
-			indigo_reschedule_timer(device, 10, &PRIVATE_DATA->aux_timer);
+			indigo_execute_handler_in(device, 10, aux_timer_callback);
 		}
 		number AUX_WEATHER {
 			name = AUX_WEATHER_PROPERTY_NAME;

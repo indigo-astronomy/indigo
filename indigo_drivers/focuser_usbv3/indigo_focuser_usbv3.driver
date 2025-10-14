@@ -79,7 +79,8 @@ driver usbv3 {
 					indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
 				}
 			}
-			indigo_reschedule_timer(device, 10, &PRIVATE_DATA->focuser_timer);
+			indigo_execute_handler_in(device, 10, focuser_timer_callback);
+			
 		}
 		on_connect {
 			int direction, stepmode, speed, stepsdeg = 0, threshold = 0, firmware, maxpos, sign;
@@ -165,14 +166,14 @@ driver usbv3 {
 			hidden = false;
 			on_change {
 				if (FOCUSER_MODE_AUTOMATIC_ITEM->sw.value) {
-					indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_timer);
+					indigo_cancel_pending_handlers(device); // TODO: cancel only timer!
 					usbv3_command(device, "FAUTOM", true);
 				} else {
 					usbv3_command(device, "FMANUA", true);
 					if (sscanf(PRIVATE_DATA->response, "P=%lf", &FOCUSER_POSITION_ITEM->number.value) == 1) {
 						indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 					}
-					indigo_set_timer(device, 0, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
+					indigo_execute_priority_handler(device, 100, focuser_timer_callback);
 				}
 			}
 		}
@@ -283,7 +284,7 @@ driver usbv3 {
 			}
 		}
 		inherited FOCUSER_ABORT_MOTION {
-			synchronized_change = false;
+			asynchronous_change = false;
 			on_change {
 				PRIVATE_DATA->abort = true;
 				FOCUSER_ABORT_MOTION_ITEM->sw.value = false;

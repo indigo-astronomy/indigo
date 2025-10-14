@@ -52,7 +52,7 @@ typedef struct item_type {
 typedef struct property_type {
 	struct property_type *next;
 	char type[12], id[128], handle[128], name[128], define_name[128], pointer[128], handler[64], label[256], group[32],  perm[32], rule[32], hidden[64];
-	bool always_defined, handle_change, synchronized_change, persistent, preserve_values;
+	bool always_defined, handle_change, asynchronous_change, persistent, preserve_values;
 	int max_name_length;
 	code_type *code, *on_attach, *on_change, *on_detach;
 	item_type *items;
@@ -620,7 +620,7 @@ bool parse_property_block(device_type *device, property_type **properties) {
 	strcpy(property->perm, "INDIGO_RW_PERM");
 	strcpy(property->rule, "INDIGO_ONE_OF_MANY_RULE");
 	property->handle_change = property->type[0] != 'l';
-	property->synchronized_change = true;
+	property->asynchronous_change = true;
 	if (match(TOKEN_LBRACE, NULL)) {
 		debug(-1, "%s %s {", property->type, property->handle);
 		while (!match(TOKEN_RBRACE, NULL)) {
@@ -644,7 +644,7 @@ bool parse_property_block(device_type *device, property_type **properties) {
 			if (parse_bool_attribute("handle_change", &property->handle_change)) {
 				continue;
 			}
-			if (parse_bool_attribute("synchronized_change", &property->synchronized_change)) {
+			if (parse_bool_attribute("asynchronous_change", &property->asynchronous_change)) {
 				continue;
 			}
 			if (parse_bool_attribute("persistent", &property->persistent)) {
@@ -1269,7 +1269,6 @@ void write_c_private_data_section(void) {
 	write_line("#pragma mark - Private data definition");
 	write_line("");
 	write_line("typedef struct {");
-	write_line("\tpthread_mutex_t mutex;");
 	if (is_multi_device) {
 		write_line("\tint count;");
 	}
@@ -1282,19 +1281,6 @@ void write_c_private_data_section(void) {
 		for (property_type *property = device->properties; property; property = property->next) {
 			if (property->type[0] != 'i') {
 				write_line("\tindigo_property *%s;", property->pointer);
-			}
-		}
-	}
-	for (device_type *device = driver.devices; device; device = device->next) {
-		if (device->on_timer != NULL) {
-			write_line("\tindigo_timer *%s_timer;", device->type);
-		}
-		write_line("\tindigo_timer *%s_connection_handler_timer;", device->type);
-	}
-	for (device_type *device = driver.devices; device; device = device->next) {
-		for (property_type *property = device->properties; property; property = property->next) {
-			if (property->handle_change) {
-				write_line("\tindigo_timer *%s_timer;", property->handler);
 			}
 		}
 	}
@@ -1326,9 +1312,7 @@ void write_c_timer_callback(device_type *device) {
 	write_line("\tif (!IS_CONNECTED) {");
 	write_line("\t\treturn;");
 	write_line("\t}");
-	write_line("\tpthread_mutex_lock(&PRIVATE_DATA->mutex);");
 	write_c_code_blocks(device->on_timer, 1, "%s.on_timer", device->type);
-	write_line("\tpthread_mutex_unlock(&PRIVATE_DATA->mutex);");
 	write_line("}");
 	write_line("");
 }
@@ -1340,9 +1324,7 @@ void write_c_connection_change_handler(device_type *device) {
 //	write_line("// CONNECTION change handler");
 	write_line("");
 	write_line("static void %s_connection_handler(indigo_device *device) {", device->type);
-	write_line("\tindigo_lock_master_device(device);");
 	write_line("\tif (CONNECTION_CONNECTED_ITEM->sw.value) {");
-	write_line("\t\tpthread_mutex_lock(&PRIVATE_DATA->mutex);");
 	if (driver.virtual) {
 		write_c_code_blocks(device->on_connect, 2, "%s.on_connect", device->type);
 		for (property_type *property2 = device->properties; property2; property2 = property2->next) {
@@ -1351,7 +1333,7 @@ void write_c_connection_change_handler(device_type *device) {
 			}
 		}
 		if (device->on_timer != NULL) {
-			write_line("\t\tindigo_set_timer(device, 0, %s_timer_callback, &PRIVATE_DATA->%s_timer);", device->type, device->type);
+			write_line("\t\tindigo_execute_handler(device, %s_timer_callback);", device->type);
 		}
 		write_line("\t\tCONNECTION_PROPERTY->state = INDIGO_OK_STATE;");
 		write_line("\t\tindigo_send_message(device, \"Connected to %%s\", device->name);");
@@ -1380,7 +1362,7 @@ void write_c_connection_change_handler(device_type *device) {
 			}
 		}
 		if (device->on_timer != NULL) {
-			write_line("\t\t\tindigo_set_timer(device, 0, %s_timer_callback, &PRIVATE_DATA->%s_timer);", device->type, device->type);
+			write_line("\t\t\tindigo_execute_handler(device, %s_timer_callback);", device->type);
 		}
 		write_line("\t\t\tCONNECTION_PROPERTY->state = INDIGO_OK_STATE;");
 		if (driver.serial) {
@@ -1401,18 +1383,7 @@ void write_c_connection_change_handler(device_type *device) {
 		write_line("\t\t\tindigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);");
 		write_line("\t\t}");
 	}
-	write_line("\t\tpthread_mutex_unlock(&PRIVATE_DATA->mutex);");
 	write_line("\t} else {");
-	if (device->on_timer != NULL) {
-		write_line("\t\tindigo_cancel_timer_sync(device, &PRIVATE_DATA->%s_timer);", device->type);
-	}
-	for (device_type *device = driver.devices; device; device = device->next) {
-		for (property_type *property = device->properties; property; property = property->next) {
-			if (property->handle_change) {
-				write_line("\t\tindigo_cancel_timer_sync(device, &PRIVATE_DATA->%s_timer);", property->handler);
-			}
-		}
-	}
 	for (property_type *property2 = device->properties; property2; property2 = property2->next) {
 		if (property2->type[0] != 'i' && !property2->always_defined) {
 			write_line("\t\tindigo_delete_property(device, %s, NULL);", property2->handle);
@@ -1432,7 +1403,6 @@ void write_c_connection_change_handler(device_type *device) {
 	write_line("\t\tCONNECTION_PROPERTY->state = INDIGO_OK_STATE;");
 	write_line("\t}");
 	write_line("\tindigo_%s_change_property(device, NULL, CONNECTION_PROPERTY);", device->type);
-	write_line("\tindigo_unlock_master_device(device);");
 	write_line("}");
 	write_line("");
 }
@@ -1442,17 +1412,11 @@ void write_c_property_change_handler(device_type *device, property_type *propert
 //	write_line("// %s change handler", property->id);
 	write_line("");
 	write_line("static void %s(indigo_device *device) {", property->handler);
-	if (property->synchronized_change) {
-		write_line("\tpthread_mutex_lock(&PRIVATE_DATA->mutex);");
-	}
 	if (!c_code_starts_with(property->on_change, "%s->state = ", property->handle)) {
 		write_line("\t%s->state = INDIGO_OK_STATE;", property->handle);
 	}
 	write_c_code_blocks(property->on_change, 1, "%s.%s.on_change", device->type, property->id);
 	write_line("\tindigo_update_property(device, %s, NULL);", property->handle);
-	if (property->synchronized_change) {
-		write_line("\tpthread_mutex_unlock(&PRIVATE_DATA->mutex);");
-	}
 	write_line("}");
 	write_line("");
 }
@@ -1557,9 +1521,6 @@ void write_c_attach(device_type *device) {
 		write_c_code_blocks(property->on_attach, 2, "%s.%s.on_attach", device->type, property->id);
 	}
 	write_line("\t\tINDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);");
-	if (is_master_device) {
-		write_line("\t\tpthread_mutex_init(&PRIVATE_DATA->mutex, NULL);");
-	}
 	write_line("\t\treturn %s_enumerate_properties(device, NULL, NULL);", device->type);
 	write_line("\t}");
 	write_line("\treturn INDIGO_FAILED;");
@@ -1609,17 +1570,25 @@ void write_c_change_property(device_type *device) {
 	write_line("\t\t\tindigo_property_copy_values(CONNECTION_PROPERTY, property, false);");
 	write_line("\t\t\tCONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;");
 	write_line("\t\t\tindigo_update_property(device, CONNECTION_PROPERTY, NULL);");
-	write_line("\t\t\tindigo_set_timer(device, 0, %s_connection_handler, &PRIVATE_DATA->%s_connection_handler_timer);", device->type, device->type);
+	write_line("\t\t\tindigo_execute_handler(device, %s_connection_handler);", device->type);
 	write_line("\t\t}");
 	write_line("\t\treturn INDIGO_OK;");
 	for (property_type *property = device->properties; property; property = property->next) {
 		if (property->handle_change) {
 			persistent |= property->persistent;
 			write_line("\t} else if (indigo_property_match_changeable(%s, property)) {", property->handle);
-			if (property->preserve_values) {
-				write_line("\t\tINDIGO_COPY_TARGETS_PROCESS_CHANGE(%s, %s, %s_timer);", property->handle, property->handler, property->handler);
+			if (property->asynchronous_change) {
+				if (property->preserve_values) {
+					write_line("\t\tINDIGO_COPY_TARGETS_PROCESS_CHANGE(%s, %s);", property->handle, property->handler);
+				} else {
+					write_line("\t\tINDIGO_COPY_VALUES_PROCESS_CHANGE(%s, %s);", property->handle, property->handler);
+				}
 			} else {
-				write_line("\t\tINDIGO_COPY_VALUES_PROCESS_CHANGE(%s, %s, %s_timer);", property->handle, property->handler, property->handler);
+				if (property->preserve_values) {
+					write_line("\t\tINDIGO_COPY_TARGETS_PROCESS_SYNC_CHANGE(%s, %s);", property->handle, property->handler);
+				} else {
+					write_line("\t\tINDIGO_COPY_VALUES_PROCESS_SYNC_CHANGE(%s, %s);", property->handle, property->handler);
+				}
 			}
 			write_line("\t\treturn INDIGO_OK;");
 		}
@@ -1642,7 +1611,6 @@ void write_c_change_property(device_type *device) {
 }
 
 void write_c_detach(device_type *device) {
-	bool is_master_device = device == driver.devices;
 //	write_line("");
 //	write_line("// %s detach API callback", device->type);
 	write_line("");
@@ -1659,9 +1627,6 @@ void write_c_detach(device_type *device) {
 		}
 	}
 	write_line("\tINDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);");
-	if (is_master_device) {
-		write_line("\tpthread_mutex_destroy(&PRIVATE_DATA->mutex);");
-	}
 	write_line("\treturn indigo_%s_detach(device);", device->type);
 	write_line("}");
 	write_line("");
@@ -2510,7 +2475,7 @@ void write_definition_source(void) {
 					write_line("\t\t\talways_defined = true;");
 				}
 				write_line("\t\t\t// handle_change = false;");
-				write_line("\t\t\t// synchronized_change = false;");
+				write_line("\t\t\t// asynchronous_change = false;");
 				for (item_type *item = property->items; item; item = item->next) {
 					write_line("\t\t\titem %s {", item->id);
 					write_line("\t\t\t\tname = %s;", item->name);

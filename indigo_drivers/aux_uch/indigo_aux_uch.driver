@@ -149,7 +149,7 @@ driver uch {
 				AUX_USB_PORT_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, AUX_USB_PORT_PROPERTY, NULL);
 			}
-			indigo_reschedule_timer(device, 2, &PRIVATE_DATA->aux_timer);
+			indigo_execute_handler_in(device, 2, aux_timer_callback);
 		}
 		on_connect {
 			if (uch_command(device, "PA") && !strncmp(PRIVATE_DATA->response, "UCH", 3)) {

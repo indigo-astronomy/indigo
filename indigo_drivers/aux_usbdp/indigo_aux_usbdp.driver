@@ -300,7 +300,7 @@ driver usbdp {
 				AUX_TEMPERATURE_SENSORS_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, AUX_TEMPERATURE_SENSORS_PROPERTY, NULL);
 			}
-			indigo_reschedule_timer(device, 2, &PRIVATE_DATA->aux_timer);
+			indigo_execute_handler_in(device, 2, aux_timer_callback);
 		}
 		on_disconnect {
 			if (PRIVATE_DATA->version == 2) {

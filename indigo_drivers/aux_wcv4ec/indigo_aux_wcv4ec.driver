@@ -204,7 +204,7 @@ driver wcv4ec {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME,"Open/close operation timeout");
 				indigo_update_property(device, AUX_COVER_PROPERTY, "Open/close operation timeout");
 			}
-			indigo_reschedule_timer(device, 1, &PRIVATE_DATA->aux_timer);
+			indigo_execute_handler_in(device, 1, aux_timer_callback);
 		}
 		on_disconnect {
 			wcv4ec_command(device, 9999); // turn light off
@@ -264,28 +264,30 @@ driver wcv4ec {
 			label = "Detect cover open/close position";
 			on_change {
 				if (PRIVATE_DATA->operation_running) {
-					pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+					AUX_SET_OPEN_CLOSE_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, AUX_SET_OPEN_CLOSE_PROPERTY, "Operation in progress");
 					return;
-				}
-				bool success = false;
-				if (AUX_DETECT_OPEN_CLOSE_OPEN_ITEM->sw.value) {
-					success = wcv4ec_command(device, 100001);
-				} else if (AUX_DETECT_OPEN_CLOSE_CLOSE_ITEM->sw.value) {
-					success = wcv4ec_command(device, 100000);
-				}
-				if (success) {
-					PRIVATE_DATA->operation_running = true; // let the status callback set correct open/close when we are done
-					char status_line[128] = {0};
-					indigo_uni_discard(PRIVATE_DATA->handle);
-					do {
-						indigo_uni_read_line(PRIVATE_DATA->handle, status_line, 128);
-					} while (strncmp(status_line, "OpenSet", strlen("OpenSet")) && strncmp(status_line, "CloseSet", strlen("CloseSet")));
 				} else {
-					AUX_DETECT_OPEN_CLOSE_PROPERTY->state = INDIGO_ALERT_STATE;
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Autodetect open/close failed");
+					bool success = false;
+					if (AUX_DETECT_OPEN_CLOSE_OPEN_ITEM->sw.value) {
+						success = wcv4ec_command(device, 100001);
+					} else if (AUX_DETECT_OPEN_CLOSE_CLOSE_ITEM->sw.value) {
+						success = wcv4ec_command(device, 100000);
+					}
+					if (success) {
+						PRIVATE_DATA->operation_running = true; // let the status callback set correct open/close when we are done
+						char status_line[128] = {0};
+						indigo_uni_discard(PRIVATE_DATA->handle);
+						do {
+							indigo_uni_read_line(PRIVATE_DATA->handle, status_line, 128);
+						} while (strncmp(status_line, "OpenSet", strlen("OpenSet")) && strncmp(status_line, "CloseSet", strlen("CloseSet")));
+					} else {
+						AUX_DETECT_OPEN_CLOSE_PROPERTY->state = INDIGO_ALERT_STATE;
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "Autodetect open/close failed");
+					}
+					AUX_DETECT_OPEN_CLOSE_OPEN_ITEM->sw.value = false;
+					AUX_DETECT_OPEN_CLOSE_CLOSE_ITEM->sw.value = false;
 				}
-				AUX_DETECT_OPEN_CLOSE_OPEN_ITEM->sw.value = false;
-				AUX_DETECT_OPEN_CLOSE_CLOSE_ITEM->sw.value = false;
 			}
 			item AUX_DETECT_OPEN_CLOSE_OPEN {
 				name = AUX_COVER_OPEN_ITEM_NAME;
@@ -306,13 +308,11 @@ driver wcv4ec {
 				if (PRIVATE_DATA->operation_running) {
 					AUX_SET_OPEN_CLOSE_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_update_property(device, AUX_SET_OPEN_CLOSE_PROPERTY, "Operation in progress");
-					pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 					return;
 				}
 				if (AUX_SET_OPEN_CLOSE_OPEN_ITEM->number.target <= AUX_SET_OPEN_CLOSE_CLOSE_ITEM->number.target + 45) {
 					AUX_SET_OPEN_CLOSE_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_update_property(device, AUX_SET_OPEN_CLOSE_PROPERTY, "Open position can not be smaller than Close + 45");
-					pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 					return;
 				}
 				bool success = wcv4ec_command(device, 40000 + (int)(AUX_SET_OPEN_CLOSE_OPEN_ITEM->number.target * 100));
@@ -389,7 +389,8 @@ driver wcv4ec {
 			group = AUX_MAIN_GROUP;
 			on_change {
 				if (PRIVATE_DATA->operation_running) {
-					pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+					AUX_COVER_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, AUX_COVER_PROPERTY, "Operation in progress");
 					return;
 				}
 				if (wcv4ec_command(device, AUX_COVER_OPEN_ITEM->sw.value ? 1001 : 1000)) {

@@ -245,7 +245,7 @@ driver upb3 {
 				AUX_INFO_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, AUX_INFO_PROPERTY, NULL);
 			}
-			indigo_reschedule_timer(device, 2, &PRIVATE_DATA->aux_timer);
+			indigo_execute_handler_in(device, 2, aux_timer_callback);
 		}
 		on_connect {
 			if (upb3_command(device, "PA")) {
@@ -333,7 +333,7 @@ driver upb3 {
 			persistent = true;
 			always_defined = true;
 			// handle_change = false;
-			// synchronized_change = false;
+			// asynchronous_change = false;
 			on_change {
 				snprintf(AUX_POWER_OUTLET_1_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_POWER_OUTLET_NAME_1_ITEM->text.value);
 				snprintf(AUX_POWER_OUTLET_2_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_POWER_OUTLET_NAME_2_ITEM->text.value);
@@ -488,7 +488,7 @@ driver upb3 {
 			label = "Power outlets";
 			rule = INDIGO_ANY_OF_MANY_RULE;
 			// handle_change = false;
-			// synchronized_change = false;
+			// asynchronous_change = false;
 			on_change {
 				upb3_command(device, "P1:%d", AUX_POWER_OUTLET_1_ITEM->sw.value ? 100 : 0);
 				upb3_command(device, "P2:%d", AUX_POWER_OUTLET_2_ITEM->sw.value ? 100 : 0);
@@ -600,7 +600,7 @@ driver upb3 {
 			group = POWERBOX_GROUP;
 			label = "Heater outlets";
 			// handle_change = false;
-			// synchronized_change = false;
+			// asynchronous_change = false;
 			on_change {
 				upb3_command(device, "D1:%d", (int)AUX_HEATER_OUTLET_1_ITEM->number.value);
 				upb3_command(device, "D2:%d", (int)AUX_HEATER_OUTLET_2_ITEM->number.value);
@@ -636,7 +636,7 @@ driver upb3 {
 			group = POWERBOX_GROUP;
 			label = "Dew control";
 			// handle_change = false;
-			// synchronized_change = false;
+			// asynchronous_change = false;
 			on_change {
 					if (AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value) {
 					upb3_command(device, "ADW1:1");
@@ -716,7 +716,7 @@ driver upb3 {
 			group = POWERBOX_GROUP;
 			label = "Save current outlet states as default";
 			// handle_change = false;
-			// synchronized_change = false;
+			// asynchronous_change = false;
 			on_change {
 					if (AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM->sw.value) {
 					upb3_command(device, "PS");
@@ -923,7 +923,7 @@ driver upb3 {
 				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 				indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 			}
-			indigo_reschedule_timer(device, 1, &PRIVATE_DATA->focuser_timer);
+			indigo_execute_handler_in(device, 1, focuser_timer_callback);
 		}
 		on_connect {
 			if (upb3_command(device, "SA")) {

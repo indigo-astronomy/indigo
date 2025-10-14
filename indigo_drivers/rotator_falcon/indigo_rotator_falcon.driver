@@ -35,6 +35,7 @@ driver falcon {
 	}
 	data {
 		char response[128];
+		bool abort;
 	}
 	code {
 		static bool falcon_command(indigo_device *device, char *command, ...) {
@@ -137,8 +138,14 @@ driver falcon {
 		}
 		code {
 			static void falcon_move(indigo_device *device) {
+				PRIVATE_DATA->abort = false;
 				if (falcon_command(device, "MD:%0.2f", ROTATOR_POSITION_ITEM->number.target) && !strncmp(PRIVATE_DATA->response, "MD:", 3)) {
 					while (true) {
+						if (PRIVATE_DATA->abort) {
+							falcon_command(device, "FH");
+							ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+							break;
+						}
 						if (falcon_command(device, "FD") && !strncmp(PRIVATE_DATA->response, "FD:", 3)) {
 							ROTATOR_POSITION_ITEM->number.value = indigo_atod(PRIVATE_DATA->response + 3);
 							indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
@@ -148,14 +155,14 @@ driver falcon {
 						}
 						if (falcon_command(device, "FR") && !strncmp(PRIVATE_DATA->response, "FR:", 3)) {
 							if (!strcmp(PRIVATE_DATA->response, "FR:1")) {
-								pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-								indigo_sleep(0.1);
-								pthread_mutex_lock(&PRIVATE_DATA->mutex);
-								continue;
+								ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+								break;
 							}
+						} else {
+							ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+							break;
 						}
-						ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-						break;
+						indigo_sleep(0.1);
 					}
 					if (falcon_command(device, "FD") && !strncmp(PRIVATE_DATA->response, "FD:", 3)) {
 						ROTATOR_POSITION_ITEM->number.value = indigo_atod(PRIVATE_DATA->response + 3);
@@ -203,11 +210,10 @@ driver falcon {
 			}
 		}
 		inherited ROTATOR_ABORT_MOTION {
+			asynchronous_change = false;
 			on_change {
+				PRIVATE_DATA->abort = true;
 				ROTATOR_ABORT_MOTION_ITEM->sw.value = false;
-				if (!falcon_command(device, "FH") && !strncmp(PRIVATE_DATA->response, "FH:", 3)) {
-					ROTATOR_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				}
 			}
 		}
 		inherited ROTATOR_RELATIVE_MOVE {

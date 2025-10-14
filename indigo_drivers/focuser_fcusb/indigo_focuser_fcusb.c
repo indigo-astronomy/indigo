@@ -65,13 +65,8 @@
 #pragma mark - Private data definition
 
 typedef struct {
-	pthread_mutex_t mutex;
 	libusb_device *usbdev;
 	indigo_property *x_focuser_frequency_property;
-	indigo_timer *focuser_connection_handler_timer;
-	indigo_timer *focuser_abort_motion_handler_timer;
-	indigo_timer *focuser_steps_handler_timer;
-	indigo_timer *focuser_x_focuser_frequency_handler_timer;
 	//+ data
 	libfcusb_device_context *device_context;
 	//- data
@@ -103,9 +98,7 @@ static void fcusb_debug(const char *message) {
 #pragma mark - High level code (focuser)
 
 static void focuser_connection_handler(indigo_device *device) {
-	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		pthread_mutex_lock(&PRIVATE_DATA->mutex);
 		bool connection_result = true;
 		connection_result = fcusb_open(device);
 		if (connection_result) {
@@ -117,22 +110,16 @@ static void focuser_connection_handler(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
-		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 	} else {
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_abort_motion_handler_timer);
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_steps_handler_timer);
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_x_focuser_frequency_handler_timer);
 		indigo_delete_property(device, X_FOCUSER_FREQUENCY_PROPERTY, NULL);
 		fcusb_close(device);
 		indigo_send_message(device, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
-	indigo_unlock_master_device(device);
 }
 
 static void focuser_abort_motion_handler(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_ABORT_MOTION.on_change
 	if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -141,11 +128,9 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 	FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
 	//- focuser.FOCUSER_ABORT_MOTION.on_change
 	indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void focuser_steps_handler(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_STEPS.on_change
 	if (FOCUSER_STEPS_ITEM->number.value > 0) {
@@ -163,7 +148,6 @@ static void focuser_steps_handler(indigo_device *device) {
 		}
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 		int delay = FOCUSER_STEPS_ITEM->number.target;
 		while (delay > 0) {
 			if (FOCUSER_STEPS_PROPERTY->state != INDIGO_BUSY_STATE) {
@@ -172,7 +156,6 @@ static void focuser_steps_handler(indigo_device *device) {
 			indigo_usleep(1000);
 			delay--;
 		}
-		pthread_mutex_lock(&PRIVATE_DATA->mutex);
 		libfcusb_stop(PRIVATE_DATA->device_context);
 		if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
@@ -182,14 +165,11 @@ static void focuser_steps_handler(indigo_device *device) {
 	}
 	//- focuser.FOCUSER_STEPS.on_change
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void focuser_x_focuser_frequency_handler(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	X_FOCUSER_FREQUENCY_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, X_FOCUSER_FREQUENCY_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 #pragma mark - Device API (focuser)
@@ -214,7 +194,6 @@ static indigo_result focuser_attach(indigo_device *device) {
 		indigo_init_switch_item(X_FOCUSER_FREQUENCY_4_ITEM, X_FOCUSER_FREQUENCY_4_ITEM_NAME, "6 kHz (4x)", false);
 		indigo_init_switch_item(X_FOCUSER_FREQUENCY_16_ITEM, X_FOCUSER_FREQUENCY_16_ITEM_NAME, "25 kHz (16x)", false);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		return focuser_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -233,17 +212,17 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-			indigo_set_timer(device, 0, focuser_connection_handler, &PRIVATE_DATA->focuser_connection_handler_timer);
+			indigo_execute_handler(device, focuser_connection_handler);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_ABORT_MOTION_PROPERTY, focuser_abort_motion_handler, focuser_abort_motion_handler_timer);
+		INDIGO_COPY_VALUES_PROCESS_SYNC_CHANGE(FOCUSER_ABORT_MOTION_PROPERTY, focuser_abort_motion_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_STEPS_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_STEPS_PROPERTY, focuser_steps_handler, focuser_steps_handler_timer);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_STEPS_PROPERTY, focuser_steps_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_FOCUSER_FREQUENCY_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_FOCUSER_FREQUENCY_PROPERTY, focuser_x_focuser_frequency_handler, focuser_x_focuser_frequency_handler_timer);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_FOCUSER_FREQUENCY_PROPERTY, focuser_x_focuser_frequency_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
@@ -260,7 +239,6 @@ static indigo_result focuser_detach(indigo_device *device) {
 	}
 	indigo_release_property(X_FOCUSER_FREQUENCY_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
-	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
 	return indigo_focuser_detach(device);
 }
 

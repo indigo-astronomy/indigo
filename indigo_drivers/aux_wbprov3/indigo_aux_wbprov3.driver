@@ -317,7 +317,7 @@ driver wbprov3 {
 				}
 				indigo_update_property(device, AUX_DEW_WARNING_PROPERTY, NULL);
 			}
-			indigo_reschedule_timer(device, 1, &PRIVATE_DATA->aux_timer);
+			indigo_execute_handler_in(device, 1, aux_timer_callback);
 		}
 		on_attach {
 			INFO_PROPERTY->count = 6;

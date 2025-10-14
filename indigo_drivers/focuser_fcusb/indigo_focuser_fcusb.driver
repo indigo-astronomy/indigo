@@ -69,6 +69,7 @@ driver fcusb {
 			INDIGO_COPY_VALUE(FOCUSER_SPEED_PROPERTY->label, "Power");
 		}
 		inherited FOCUSER_ABORT_MOTION {
+			asynchronous_change = false;
 			on_change {
 				if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
 					FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -93,7 +94,6 @@ driver fcusb {
 					}
 					FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-					pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 					int delay = FOCUSER_STEPS_ITEM->number.target;
 					while (delay > 0) {
 						if (FOCUSER_STEPS_PROPERTY->state != INDIGO_BUSY_STATE) {
@@ -102,7 +102,6 @@ driver fcusb {
 						indigo_usleep(1000);
 						delay--;
 					}
-					pthread_mutex_lock(&PRIVATE_DATA->mutex);
 					libfcusb_stop(PRIVATE_DATA->device_context);
 					if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
 						FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;

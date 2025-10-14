@@ -125,7 +125,7 @@ driver fc3 {
 				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 				indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 			}
-			indigo_reschedule_timer(device, 1, &PRIVATE_DATA->focuser_timer);
+			indigo_execute_handler_in(device, 1, focuser_timer_callback);
 		}
 		on_connect {
 			if (fc3_command(device, "FA") && !strncmp(PRIVATE_DATA->response, "FC3:", 4)) {

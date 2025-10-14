@@ -48,7 +48,7 @@ driver simulator {
 					else
 						ROTATOR_POSITION_ITEM->number.value = PRIVATE_DATA->current_position = PRIVATE_DATA->target_position;
 					indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
-					indigo_reschedule_timer(device, 0.1, &PRIVATE_DATA->rotator_timer);
+					indigo_execute_handler_in(device, 0.1, rotator_timer_callback);
 				} else if (PRIVATE_DATA->current_position > PRIVATE_DATA->target_position) {
 					ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 					if (PRIVATE_DATA->current_position - PRIVATE_DATA->target_position > ROTATOR_SPEED)
@@ -56,7 +56,7 @@ driver simulator {
 					else
 						ROTATOR_POSITION_ITEM->number.value = PRIVATE_DATA->current_position = PRIVATE_DATA->target_position;
 					indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
-					indigo_reschedule_timer(device, 0.1, &PRIVATE_DATA->rotator_timer);
+					indigo_execute_priority_handler_in(device, 100, 0.1, rotator_timer_callback);
 				} else {
 					ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 					ROTATOR_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
@@ -73,7 +73,7 @@ driver simulator {
 					ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 					ROTATOR_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
 					PRIVATE_DATA->target_position = ROTATOR_POSITION_ITEM->number.target;
-					indigo_set_timer(device, 0.1, rotator_timer_callback, &PRIVATE_DATA->rotator_timer);
+					indigo_execute_priority_handler_in(device, 100, 0.1, rotator_timer_callback);
 				}
 			}
 		}

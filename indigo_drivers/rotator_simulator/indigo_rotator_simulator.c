@@ -48,11 +48,6 @@
 #pragma mark - Private data definition
 
 typedef struct {
-	pthread_mutex_t mutex;
-	indigo_timer *rotator_timer;
-	indigo_timer *rotator_connection_handler_timer;
-	indigo_timer *rotator_position_handler_timer;
-	indigo_timer *rotator_abort_motion_handler_timer;
 	//+ data
 	double target_position, current_position;
 	//- data
@@ -64,7 +59,6 @@ static void rotator_timer_callback(indigo_device *device) {
 	if (!IS_CONNECTED) {
 		return;
 	}
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	//+ rotator.on_timer
 	if (ROTATOR_POSITION_PROPERTY->state == INDIGO_ALERT_STATE) {
 		ROTATOR_POSITION_ITEM->number.value = PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
@@ -77,7 +71,7 @@ static void rotator_timer_callback(indigo_device *device) {
 			else
 				ROTATOR_POSITION_ITEM->number.value = PRIVATE_DATA->current_position = PRIVATE_DATA->target_position;
 			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
-			indigo_reschedule_timer(device, 0.1, &PRIVATE_DATA->rotator_timer);
+			indigo_execute_handler_in(device, 0.1, rotator_timer_callback);
 		} else if (PRIVATE_DATA->current_position > PRIVATE_DATA->target_position) {
 			ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 			if (PRIVATE_DATA->current_position - PRIVATE_DATA->target_position > ROTATOR_SPEED)
@@ -85,7 +79,7 @@ static void rotator_timer_callback(indigo_device *device) {
 			else
 				ROTATOR_POSITION_ITEM->number.value = PRIVATE_DATA->current_position = PRIVATE_DATA->target_position;
 			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
-			indigo_reschedule_timer(device, 0.1, &PRIVATE_DATA->rotator_timer);
+			indigo_execute_priority_handler_in(device, 100, 0.1, rotator_timer_callback);
 		} else {
 			ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 			ROTATOR_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
@@ -93,30 +87,21 @@ static void rotator_timer_callback(indigo_device *device) {
 		}
 	}
 	//- rotator.on_timer
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void rotator_connection_handler(indigo_device *device) {
-	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		pthread_mutex_lock(&PRIVATE_DATA->mutex);
-		indigo_set_timer(device, 0, rotator_timer_callback, &PRIVATE_DATA->rotator_timer);
+		indigo_execute_handler(device, rotator_timer_callback);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_send_message(device, "Connected to %s", device->name);
-		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 	} else {
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->rotator_timer);
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->rotator_position_handler_timer);
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->rotator_abort_motion_handler_timer);
 		indigo_send_message(device, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_rotator_change_property(device, NULL, CONNECTION_PROPERTY);
-	indigo_unlock_master_device(device);
 }
 
 static void rotator_position_handler(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ rotator.ROTATOR_POSITION.on_change
 	if (ROTATOR_ON_POSITION_SET_SYNC_ITEM->sw.value) {
@@ -126,15 +111,13 @@ static void rotator_position_handler(indigo_device *device) {
 		ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 		ROTATOR_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
 		PRIVATE_DATA->target_position = ROTATOR_POSITION_ITEM->number.target;
-		indigo_set_timer(device, 0.1, rotator_timer_callback, &PRIVATE_DATA->rotator_timer);
+		indigo_execute_priority_handler_in(device, 100, 0.1, rotator_timer_callback);
 	}
 	//- rotator.ROTATOR_POSITION.on_change
 	indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void rotator_abort_motion_handler(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	ROTATOR_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ rotator.ROTATOR_ABORT_MOTION.on_change
 	if (ROTATOR_ABORT_MOTION_ITEM->sw.value && ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -145,7 +128,6 @@ static void rotator_abort_motion_handler(indigo_device *device) {
 	ROTATOR_ABORT_MOTION_ITEM->sw.value = false;
 	//- rotator.ROTATOR_ABORT_MOTION.on_change
 	indigo_update_property(device, ROTATOR_ABORT_MOTION_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 #pragma mark - Device API (rotator)
@@ -158,7 +140,6 @@ static indigo_result rotator_attach(indigo_device *device) {
 		ROTATOR_POSITION_PROPERTY->hidden = false;
 		ROTATOR_ABORT_MOTION_PROPERTY->hidden = false;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		return rotator_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -174,14 +155,14 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-			indigo_set_timer(device, 0, rotator_connection_handler, &PRIVATE_DATA->rotator_connection_handler_timer);
+			indigo_execute_handler(device, rotator_connection_handler);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ROTATOR_POSITION_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(ROTATOR_POSITION_PROPERTY, rotator_position_handler, rotator_position_handler_timer);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(ROTATOR_POSITION_PROPERTY, rotator_position_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ROTATOR_ABORT_MOTION_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(ROTATOR_ABORT_MOTION_PROPERTY, rotator_abort_motion_handler, rotator_abort_motion_handler_timer);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(ROTATOR_ABORT_MOTION_PROPERTY, rotator_abort_motion_handler);
 		return INDIGO_OK;
 	}
 	return indigo_rotator_change_property(device, client, property);
@@ -193,7 +174,6 @@ static indigo_result rotator_detach(indigo_device *device) {
 		rotator_connection_handler(device);
 	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
-	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
 	return indigo_rotator_detach(device);
 }
 

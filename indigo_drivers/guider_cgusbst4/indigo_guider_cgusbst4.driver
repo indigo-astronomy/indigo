@@ -71,6 +71,18 @@ driver cgusbst4 {
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
 			}
 		}
+		
+		static void guider_guide_dec_finish_handler(indigo_device *device) {
+			GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
+			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+		}
+
+		static void guider_guide_ra_finish_handler(indigo_device *device) {
+			GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.value = 0;
+			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+		}
 	}
 	guider {
 		name = "CG-USB-ST4 Adapter";
@@ -88,11 +100,7 @@ driver cgusbst4 {
 				if (duration > 0) {
 					GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
-					pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-					indigo_usleep(duration * 1000.0);
-					pthread_mutex_lock(&PRIVATE_DATA->mutex);
-					GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
-					GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_execute_priority_handler_in(device, 100, duration / 1000.0, guider_guide_dec_finish_handler);
 				}
 			}
 		}
@@ -110,11 +118,7 @@ driver cgusbst4 {
 				if (duration > 0) {
 					GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
-					pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-					indigo_usleep(duration * 1000.0);
-					pthread_mutex_lock(&PRIVATE_DATA->mutex);
-					GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.value = 0;
-					GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_execute_priority_handler_in(device, 100, duration / 1000.0, guider_guide_ra_finish_handler);
 				}
 			}
 		}

@@ -55,15 +55,10 @@
 #pragma mark - Private data definition
 
 typedef struct {
-	pthread_mutex_t mutex;
 	indigo_uni_handle *handle;
 	indigo_property *aux_cover_property;
 	indigo_property *aux_light_switch_property;
 	indigo_property *aux_light_intensity_property;
-	indigo_timer *aux_connection_handler_timer;
-	indigo_timer *aux_cover_handler_timer;
-	indigo_timer *aux_light_switch_handler_timer;
-	indigo_timer *aux_light_intensity_handler_timer;
 	//+ data
 	int type;
 	char response[16];
@@ -154,9 +149,7 @@ static void flipflat_close(indigo_device *device) {
 #pragma mark - High level code (aux)
 
 static void aux_connection_handler(indigo_device *device) {
-	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		pthread_mutex_lock(&PRIVATE_DATA->mutex);
 		bool connection_result = true;
 		connection_result = flipflat_open(device);
 		if (connection_result) {
@@ -197,11 +190,7 @@ static void aux_connection_handler(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
-		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 	} else {
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->aux_cover_handler_timer);
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->aux_light_switch_handler_timer);
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->aux_light_intensity_handler_timer);
 		indigo_delete_property(device, AUX_COVER_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
@@ -210,11 +199,9 @@ static void aux_connection_handler(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_aux_change_property(device, NULL, CONNECTION_PROPERTY);
-	indigo_unlock_master_device(device);
 }
 
 static void aux_cover_handler(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_COVER_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_COVER.on_change
 	if (flipflat_command(device, ">%cOOO", AUX_COVER_OPEN_ITEM->sw.value ? 'O' : 'C')) {
@@ -238,11 +225,9 @@ static void aux_cover_handler(indigo_device *device) {
 	}
 	//- aux.AUX_COVER.on_change
 	indigo_update_property(device, AUX_COVER_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void aux_light_switch_handler(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_LIGHT_SWITCH.on_change
 	if (!flipflat_command(device, ">%cOOO", AUX_LIGHT_SWITCH_ON_ITEM->sw.value ? 'L' : 'D')) {
@@ -250,11 +235,9 @@ static void aux_light_switch_handler(indigo_device *device) {
 	}
 	//- aux.AUX_LIGHT_SWITCH.on_change
 	indigo_update_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void aux_light_intensity_handler(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_LIGHT_INTENSITY.on_change
 	if (!flipflat_command(device, ">B%03d", (int)(255 * AUX_LIGHT_INTENSITY_ITEM->number.value / 100))) {
@@ -262,7 +245,6 @@ static void aux_light_intensity_handler(indigo_device *device) {
 	}
 	//- aux.AUX_LIGHT_INTENSITY.on_change
 	indigo_update_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 #pragma mark - Device API (aux)
@@ -299,7 +281,6 @@ static indigo_result aux_attach(indigo_device *device) {
 		indigo_init_number_item(AUX_LIGHT_INTENSITY_ITEM, AUX_LIGHT_INTENSITY_ITEM_NAME, "Intensity (%)", 0, 100, 1, 50);
 		strcpy(AUX_LIGHT_INTENSITY_ITEM->number.format, "%.0f");
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		return aux_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -320,17 +301,17 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-			indigo_set_timer(device, 0, aux_connection_handler, &PRIVATE_DATA->aux_connection_handler_timer);
+			indigo_execute_handler(device, aux_connection_handler);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_COVER_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_COVER_PROPERTY, aux_cover_handler, aux_cover_handler_timer);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_COVER_PROPERTY, aux_cover_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_LIGHT_SWITCH_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_LIGHT_SWITCH_PROPERTY, aux_light_switch_handler, aux_light_switch_handler_timer);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_LIGHT_SWITCH_PROPERTY, aux_light_switch_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_LIGHT_INTENSITY_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_LIGHT_INTENSITY_PROPERTY, aux_light_intensity_handler, aux_light_intensity_handler_timer);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_LIGHT_INTENSITY_PROPERTY, aux_light_intensity_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
@@ -350,7 +331,6 @@ static indigo_result aux_detach(indigo_device *device) {
 	indigo_release_property(AUX_LIGHT_SWITCH_PROPERTY);
 	indigo_release_property(AUX_LIGHT_INTENSITY_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
-	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
 	return indigo_aux_detach(device);
 }
 

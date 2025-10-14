@@ -113,7 +113,7 @@ driver simulator {
 				}
 			}
 			PRIVATE_DATA->timer_ticks++;
-			indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->gps_timer);
+			indigo_execute_handler_in(device, REFRESH_SECONDS, gps_timer_callback);
 		}
 		on_connect {
 			srand((unsigned)time(NULL));

@@ -44,16 +44,8 @@
 #pragma mark - Private data definition
 
 typedef struct {
-	pthread_mutex_t mutex;
 	int count;
 	indigo_uni_handle *handle;
-	indigo_timer *ao_connection_handler_timer;
-	indigo_timer *guider_connection_handler_timer;
-	indigo_timer *ao_guide_dec_handler_timer;
-	indigo_timer *ao_guide_ra_handler_timer;
-	indigo_timer *ao_reset_handler_timer;
-	indigo_timer *guider_guide_dec_handler_timer;
-	indigo_timer *guider_guide_ra_handler_timer;
 	//+ data
 	char response[6];
 	//- data
@@ -105,9 +97,7 @@ static void sx_close(indigo_device *device) {
 #pragma mark - High level code (ao)
 
 static void ao_connection_handler(indigo_device *device) {
-	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		pthread_mutex_lock(&PRIVATE_DATA->mutex);
 		bool connection_result = true;
 		if (PRIVATE_DATA->count++ == 0) {
 			connection_result = sx_open(device);
@@ -130,13 +120,7 @@ static void ao_connection_handler(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
-		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 	} else {
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->ao_guide_dec_handler_timer);
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->ao_guide_ra_handler_timer);
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->ao_reset_handler_timer);
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->guider_guide_dec_handler_timer);
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->guider_guide_ra_handler_timer);
 		if (--PRIVATE_DATA->count == 0) {
 			sx_close(device);
 		}
@@ -144,11 +128,9 @@ static void ao_connection_handler(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_ao_change_property(device, NULL, CONNECTION_PROPERTY);
-	indigo_unlock_master_device(device);
 }
 
 static void ao_guide_dec_handler(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AO_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 	//+ ao.AO_GUIDE_DEC.on_change
 	if (AO_GUIDE_NORTH_ITEM->number.value > 0) {
@@ -162,11 +144,9 @@ static void ao_guide_dec_handler(indigo_device *device) {
 	}
 	//- ao.AO_GUIDE_DEC.on_change
 	indigo_update_property(device, AO_GUIDE_DEC_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void ao_guide_ra_handler(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AO_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 	//+ ao.AO_GUIDE_RA.on_change
 	if (AO_GUIDE_WEST_ITEM->number.value > 0) {
@@ -180,11 +160,9 @@ static void ao_guide_ra_handler(indigo_device *device) {
 	}
 	//- ao.AO_GUIDE_RA.on_change
 	indigo_update_property(device, AO_GUIDE_RA_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void ao_reset_handler(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	AO_RESET_PROPERTY->state = INDIGO_OK_STATE;
 	//+ ao.AO_RESET.on_change
 	if (AO_CENTER_ITEM->sw.value) {
@@ -206,7 +184,6 @@ static void ao_reset_handler(indigo_device *device) {
 	}
 	//- ao.AO_RESET.on_change
 	indigo_update_property(device, AO_RESET_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 #pragma mark - Device API (ao)
@@ -229,7 +206,6 @@ static indigo_result ao_attach(indigo_device *device) {
 		AO_GUIDE_RA_PROPERTY->hidden = false;
 		AO_RESET_PROPERTY->hidden = false;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		return ao_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -245,17 +221,17 @@ static indigo_result ao_change_property(indigo_device *device, indigo_client *cl
 			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-			indigo_set_timer(device, 0, ao_connection_handler, &PRIVATE_DATA->ao_connection_handler_timer);
+			indigo_execute_handler(device, ao_connection_handler);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AO_GUIDE_DEC_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(AO_GUIDE_DEC_PROPERTY, ao_guide_dec_handler, ao_guide_dec_handler_timer);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(AO_GUIDE_DEC_PROPERTY, ao_guide_dec_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AO_GUIDE_RA_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(AO_GUIDE_RA_PROPERTY, ao_guide_ra_handler, ao_guide_ra_handler_timer);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(AO_GUIDE_RA_PROPERTY, ao_guide_ra_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AO_RESET_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(AO_RESET_PROPERTY, ao_reset_handler, ao_reset_handler_timer);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(AO_RESET_PROPERTY, ao_reset_handler);
 		return INDIGO_OK;
 	}
 	return indigo_ao_change_property(device, client, property);
@@ -267,16 +243,13 @@ static indigo_result ao_detach(indigo_device *device) {
 		ao_connection_handler(device);
 	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
-	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
 	return indigo_ao_detach(device);
 }
 
 #pragma mark - High level code (guider)
 
 static void guider_connection_handler(indigo_device *device) {
-	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		pthread_mutex_lock(&PRIVATE_DATA->mutex);
 		bool connection_result = true;
 		if (PRIVATE_DATA->count++ == 0) {
 			connection_result = sx_open(device->master_device);
@@ -290,13 +263,7 @@ static void guider_connection_handler(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
-		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 	} else {
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->ao_guide_dec_handler_timer);
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->ao_guide_ra_handler_timer);
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->ao_reset_handler_timer);
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->guider_guide_dec_handler_timer);
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->guider_guide_ra_handler_timer);
 		if (--PRIVATE_DATA->count == 0) {
 			sx_close(device);
 		}
@@ -304,11 +271,9 @@ static void guider_connection_handler(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
-	indigo_unlock_master_device(device);
 }
 
 static void guider_guide_dec_handler(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 	//+ guider.GUIDER_GUIDE_DEC.on_change
 	if (GUIDER_GUIDE_NORTH_ITEM->number.value > 0) {
@@ -322,11 +287,9 @@ static void guider_guide_dec_handler(indigo_device *device) {
 	}
 	//- guider.GUIDER_GUIDE_DEC.on_change
 	indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void guider_guide_ra_handler(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 	//+ guider.GUIDER_GUIDE_RA.on_change
 	if (AO_GUIDE_WEST_ITEM->number.value > 0) {
@@ -340,7 +303,6 @@ static void guider_guide_ra_handler(indigo_device *device) {
 	}
 	//- guider.GUIDER_GUIDE_RA.on_change
 	indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 #pragma mark - Device API (guider)
@@ -367,14 +329,14 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-			indigo_set_timer(device, 0, guider_connection_handler, &PRIVATE_DATA->guider_connection_handler_timer);
+			indigo_execute_handler(device, guider_connection_handler);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_DEC_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(GUIDER_GUIDE_DEC_PROPERTY, guider_guide_dec_handler, guider_guide_dec_handler_timer);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(GUIDER_GUIDE_DEC_PROPERTY, guider_guide_dec_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_RA_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(GUIDER_GUIDE_RA_PROPERTY, guider_guide_ra_handler, guider_guide_ra_handler_timer);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(GUIDER_GUIDE_RA_PROPERTY, guider_guide_ra_handler);
 		return INDIGO_OK;
 	}
 	return indigo_guider_change_property(device, client, property);

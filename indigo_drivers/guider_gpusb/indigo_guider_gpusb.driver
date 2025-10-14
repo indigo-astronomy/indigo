@@ -57,6 +57,22 @@ driver gpusb {
 		static void gpusb_debug(const char *message) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libgpusb: %s\n", message);
 		}
+		
+		static void guider_guide_dec_finish_handler(indigo_device *device) {
+			GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
+			PRIVATE_DATA->relay_mask &= ~(GPUSB_DEC_NORTH | GPUSB_DEC_SOUTH);
+			libgpusb_set(PRIVATE_DATA->device_context, PRIVATE_DATA->relay_mask);
+			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+		}
+
+		static void guider_guide_ra_finish_handler(indigo_device *device) {
+			GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.value = 0;
+			PRIVATE_DATA->relay_mask &= ~(GPUSB_RA_EAST | GPUSB_RA_WEST);
+			libgpusb_set(PRIVATE_DATA->device_context, PRIVATE_DATA->relay_mask);
+			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+		}
 	}
 	on_init {
 		libgpusb_debug = &gpusb_debug;
@@ -79,13 +95,7 @@ driver gpusb {
 				if (duration > 0) {
 					GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
-					pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-					indigo_usleep(duration * 1000.0);
-					pthread_mutex_lock(&PRIVATE_DATA->mutex);
-					PRIVATE_DATA->relay_mask &= ~(GPUSB_DEC_NORTH | GPUSB_DEC_SOUTH);
-					libgpusb_set(PRIVATE_DATA->device_context, PRIVATE_DATA->relay_mask);
-					GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
-					GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_execute_priority_handler_in(device, 100, duration / 1000.0, guider_guide_dec_finish_handler);
 				}
 			}
 		}
@@ -105,13 +115,7 @@ driver gpusb {
 				if (duration > 0) {
 					GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
-					pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-					indigo_usleep(duration * 1000.0);
-					pthread_mutex_lock(&PRIVATE_DATA->mutex);
-					PRIVATE_DATA->relay_mask &= ~(GPUSB_RA_EAST | GPUSB_RA_WEST);
-					libgpusb_set(PRIVATE_DATA->device_context, PRIVATE_DATA->relay_mask);
-					GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.value = 0;
-					GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_execute_priority_handler_in(device, 100, duration / 1000.0, guider_guide_ra_finish_handler);
 				}
 			}
 		}

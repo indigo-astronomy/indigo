@@ -70,12 +70,8 @@
 #pragma mark - Private data definition
 
 typedef struct {
-	pthread_mutex_t mutex;
 	indigo_uni_handle *handle;
 	indigo_property *gps_selected_system_property;
-	indigo_timer *gps_timer;
-	indigo_timer *gps_connection_handler_timer;
-	indigo_timer *gps_selected_system_handler_timer;
 	//+ data
 	int satellites_in_view[MAX_NB_OF_SYSTEMS];
 	char selected_system;
@@ -179,7 +175,6 @@ static void gps_timer_callback(indigo_device *device) {
 	if (!IS_CONNECTED) {
 		return;
 	}
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	//+ gps.on_timer
 	char buffer[128];
 	long length = indigo_uni_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer));
@@ -340,20 +335,17 @@ static void gps_timer_callback(indigo_device *device) {
 			}
 		}
 		indigo_safe_free(tokens);
-		indigo_reschedule_timer(device, 0, &PRIVATE_DATA->gps_timer);
+		indigo_execute_handler_in(device, 0, gps_timer_callback);
 	} else {
 		indigo_send_message(device, "Failed to read from GPS unit");
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		indigo_set_timer(device, 0, gps_connection_handler, NULL);
 	}
 	//- gps.on_timer
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void gps_connection_handler(indigo_device *device) {
-	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		pthread_mutex_lock(&PRIVATE_DATA->mutex);
 		bool connection_result = true;
 		connection_result = nmea_open(device);
 		if (connection_result) {
@@ -364,7 +356,7 @@ static void gps_connection_handler(indigo_device *device) {
 			sprintf(GPS_UTC_ITEM->text.value, "0000-00-00T00:00:00.00");
 			nmea_reset(device);
 			//- gps.on_connect
-			indigo_set_timer(device, 0, gps_timer_callback, &PRIVATE_DATA->gps_timer);
+			indigo_execute_handler(device, gps_timer_callback);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, "Connected to %s on %s", GPS_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
@@ -372,26 +364,20 @@ static void gps_connection_handler(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
-		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 	} else {
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->gps_timer);
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->gps_selected_system_handler_timer);
 		nmea_close(device);
 		indigo_send_message(device, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_gps_change_property(device, NULL, CONNECTION_PROPERTY);
-	indigo_unlock_master_device(device);
 }
 
 static void gps_selected_system_handler(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	GPS_SELECTED_SYSTEM_PROPERTY->state = INDIGO_OK_STATE;
 	//+ gps.GPS_SELECTED_SYSTEM.on_change
 	nmea_reset(device);
 	//- gps.GPS_SELECTED_SYSTEM.on_change
 	indigo_update_property(device, GPS_SELECTED_SYSTEM_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 #pragma mark - Device API (gps)
@@ -424,7 +410,6 @@ static indigo_result gps_attach(indigo_device *device) {
 		indigo_init_switch_item(NAVIC_SYSTEM_ITEM, NAVIC_SYSTEM_ITEM_NAME, "NavIC", false);
 		indigo_init_switch_item(QZSS_SYSTEM_ITEM, QZSS_SYSTEM_ITEM_NAME, "QZSS1", false);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		return gps_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -441,11 +426,11 @@ static indigo_result gps_change_property(indigo_device *device, indigo_client *c
 			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-			indigo_set_timer(device, 0, gps_connection_handler, &PRIVATE_DATA->gps_connection_handler_timer);
+			indigo_execute_handler(device, gps_connection_handler);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GPS_SELECTED_SYSTEM_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(GPS_SELECTED_SYSTEM_PROPERTY, gps_selected_system_handler, gps_selected_system_handler_timer);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(GPS_SELECTED_SYSTEM_PROPERTY, gps_selected_system_handler);
 		return INDIGO_OK;
 	}
 	return indigo_gps_change_property(device, client, property);
@@ -458,7 +443,6 @@ static indigo_result gps_detach(indigo_device *device) {
 	}
 	indigo_release_property(GPS_SELECTED_SYSTEM_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
-	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
 	return indigo_gps_detach(device);
 }
 

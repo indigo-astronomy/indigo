@@ -59,7 +59,7 @@ driver rts {
 				}
 				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 				if (CCD_EXPOSURE_ITEM->number.value > 0) {
-					indigo_reschedule_timer(device, CCD_EXPOSURE_ITEM->number.value < 1 ? CCD_EXPOSURE_ITEM->number.value : 1, &PRIVATE_DATA->aux_timer);
+					indigo_execute_priority_handler_in(device, 100, CCD_EXPOSURE_ITEM->number.value < 1 ? CCD_EXPOSURE_ITEM->number.value : 1, aux_timer_callback);
 				}
 			}
 		}
@@ -77,7 +77,7 @@ driver rts {
 			rule = INDIGO_ANY_OF_MANY_RULE;
 			on_change {
 				if (CCD_ABORT_EXPOSURE_ITEM->sw.value && CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-					indigo_cancel_timer(device, &PRIVATE_DATA->aux_timer);
+					indigo_cancel_pending_handlers(device); // TODO: cancel only timer!
 					rts_off(device);
 					CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
@@ -99,7 +99,7 @@ driver rts {
 				CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 				rts_on(device);
 				CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value < 1 ? CCD_EXPOSURE_ITEM->number.value : 1, aux_timer_callback, &PRIVATE_DATA->aux_timer);
+				indigo_execute_priority_handler_in(device, 100, CCD_EXPOSURE_ITEM->number.value < 1 ? CCD_EXPOSURE_ITEM->number.value : 1, aux_timer_callback);
 			}
 			item CCD_EXPOSURE {
 				name = CCD_EXPOSURE_ITEM_NAME;

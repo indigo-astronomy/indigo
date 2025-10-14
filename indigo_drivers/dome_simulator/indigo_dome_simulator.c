@@ -42,17 +42,6 @@
 #pragma mark - Private data definition
 
 typedef struct {
-	pthread_mutex_t mutex;
-	indigo_timer *dome_timer;
-	indigo_timer *dome_connection_handler_timer;
-	indigo_timer *dome_speed_handler_timer;
-	indigo_timer *dome_horizontal_coordinates_handler_timer;
-	indigo_timer *dome_slaving_parameters_handler_timer;
-	indigo_timer *dome_steps_handler_timer;
-	indigo_timer *dome_equatorial_coordinates_handler_timer;
-	indigo_timer *dome_abort_motion_handler_timer;
-	indigo_timer *dome_shutter_handler_timer;
-	indigo_timer *dome_park_handler_timer;
 	//+ data
 	int target_position, current_position;
 	//- data
@@ -64,7 +53,6 @@ static void dome_timer_callback(indigo_device *device) {
 	if (!IS_CONNECTED) {
 		return;
 	}
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	//+ dome.on_timer
 	if (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_ALERT_STATE) {
 		DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
@@ -109,43 +97,26 @@ static void dome_timer_callback(indigo_device *device) {
 		}
 	}
 	//- dome.on_timer
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void dome_connection_handler(indigo_device *device) {
-	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		pthread_mutex_lock(&PRIVATE_DATA->mutex);
-		indigo_set_timer(device, 0, dome_timer_callback, &PRIVATE_DATA->dome_timer);
+		indigo_execute_handler(device, dome_timer_callback);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_send_message(device, "Connected to %s", device->name);
-		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 	} else {
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->dome_timer);
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->dome_speed_handler_timer);
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->dome_horizontal_coordinates_handler_timer);
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->dome_slaving_parameters_handler_timer);
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->dome_steps_handler_timer);
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->dome_equatorial_coordinates_handler_timer);
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->dome_abort_motion_handler_timer);
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->dome_shutter_handler_timer);
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->dome_park_handler_timer);
 		indigo_send_message(device, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_dome_change_property(device, NULL, CONNECTION_PROPERTY);
-	indigo_unlock_master_device(device);
 }
 
 static void dome_speed_handler(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	DOME_SPEED_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, DOME_SPEED_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void dome_horizontal_coordinates_handler(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 	//+ dome.DOME_HORIZONTAL_COORDINATES.on_change
 	if (DOME_PARK_PARKED_ITEM->sw.value) {
@@ -173,18 +144,14 @@ static void dome_horizontal_coordinates_handler(indigo_device *device) {
 	}
 	//- dome.DOME_HORIZONTAL_COORDINATES.on_change
 	indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void dome_slaving_parameters_handler(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	DOME_SLAVING_PARAMETERS_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, DOME_SLAVING_PARAMETERS_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void dome_steps_handler(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	DOME_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 	//+ dome.DOME_STEPS.on_change
 	if (DOME_PARK_PARKED_ITEM->sw.value) {
@@ -205,11 +172,9 @@ static void dome_steps_handler(indigo_device *device) {
 	}
 	//- dome.DOME_STEPS.on_change
 	indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void dome_equatorial_coordinates_handler(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 	//+ dome.DOME_EQUATORIAL_COORDINATES.on_change
 	double az;
@@ -240,11 +205,9 @@ static void dome_equatorial_coordinates_handler(indigo_device *device) {
 	}
 	//- dome.DOME_EQUATORIAL_COORDINATES.on_change
 	indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void dome_abort_motion_handler(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	DOME_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ dome.DOME_ABORT_MOTION.on_change
 	if (DOME_ABORT_MOTION_ITEM->sw.value && DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -255,22 +218,18 @@ static void dome_abort_motion_handler(indigo_device *device) {
 	DOME_ABORT_MOTION_ITEM->sw.value = false;
 	//- dome.DOME_ABORT_MOTION.on_change
 	indigo_update_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void dome_shutter_handler(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	//+ dome.DOME_SHUTTER.on_change
 	DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_usleep(INDIGO_DELAY(6));
 	DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
 	//- dome.DOME_SHUTTER.on_change
 	indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void dome_park_handler(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
 	//+ dome.DOME_PARK.on_change
 	if (DOME_PARK_PARKED_ITEM->sw.value) {
@@ -295,7 +254,6 @@ static void dome_park_handler(indigo_device *device) {
 	}
 	//- dome.DOME_PARK.on_change
 	indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 #pragma mark - Device API (dome)
@@ -320,7 +278,6 @@ static indigo_result dome_attach(indigo_device *device) {
 		DOME_SHUTTER_PROPERTY->hidden = false;
 		DOME_PARK_PROPERTY->hidden = false;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		return dome_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -336,32 +293,32 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-			indigo_set_timer(device, 0, dome_connection_handler, &PRIVATE_DATA->dome_connection_handler_timer);
+			indigo_execute_handler(device, dome_connection_handler);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DOME_SPEED_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(DOME_SPEED_PROPERTY, dome_speed_handler, dome_speed_handler_timer);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(DOME_SPEED_PROPERTY, dome_speed_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DOME_HORIZONTAL_COORDINATES_PROPERTY, property)) {
-		INDIGO_COPY_TARGETS_PROCESS_CHANGE(DOME_HORIZONTAL_COORDINATES_PROPERTY, dome_horizontal_coordinates_handler, dome_horizontal_coordinates_handler_timer);
+		INDIGO_COPY_TARGETS_PROCESS_CHANGE(DOME_HORIZONTAL_COORDINATES_PROPERTY, dome_horizontal_coordinates_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DOME_SLAVING_PARAMETERS_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(DOME_SLAVING_PARAMETERS_PROPERTY, dome_slaving_parameters_handler, dome_slaving_parameters_handler_timer);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(DOME_SLAVING_PARAMETERS_PROPERTY, dome_slaving_parameters_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DOME_STEPS_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(DOME_STEPS_PROPERTY, dome_steps_handler, dome_steps_handler_timer);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(DOME_STEPS_PROPERTY, dome_steps_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DOME_EQUATORIAL_COORDINATES_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(DOME_EQUATORIAL_COORDINATES_PROPERTY, dome_equatorial_coordinates_handler, dome_equatorial_coordinates_handler_timer);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(DOME_EQUATORIAL_COORDINATES_PROPERTY, dome_equatorial_coordinates_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DOME_ABORT_MOTION_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(DOME_ABORT_MOTION_PROPERTY, dome_abort_motion_handler, dome_abort_motion_handler_timer);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(DOME_ABORT_MOTION_PROPERTY, dome_abort_motion_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DOME_SHUTTER_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(DOME_SHUTTER_PROPERTY, dome_shutter_handler, dome_shutter_handler_timer);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(DOME_SHUTTER_PROPERTY, dome_shutter_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DOME_PARK_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(DOME_PARK_PROPERTY, dome_park_handler, dome_park_handler_timer);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(DOME_PARK_PROPERTY, dome_park_handler);
 		return INDIGO_OK;
 	}
 	return indigo_dome_change_property(device, client, property);
@@ -373,7 +330,6 @@ static indigo_result dome_detach(indigo_device *device) {
 		dome_connection_handler(device);
 	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
-	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
 	return indigo_dome_detach(device);
 }
 

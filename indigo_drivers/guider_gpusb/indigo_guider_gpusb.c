@@ -53,11 +53,7 @@
 #pragma mark - Private data definition
 
 typedef struct {
-	pthread_mutex_t mutex;
 	libusb_device *usbdev;
-	indigo_timer *guider_connection_handler_timer;
-	indigo_timer *guider_guide_dec_handler_timer;
-	indigo_timer *guider_guide_ra_handler_timer;
 	//+ data
 	libgpusb_device_context *device_context;
 	unsigned short relay_mask;
@@ -85,14 +81,28 @@ static void gpusb_debug(const char *message) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libgpusb: %s\n", message);
 }
 
+static void guider_guide_dec_finish_handler(indigo_device *device) {
+	GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
+	PRIVATE_DATA->relay_mask &= ~(GPUSB_DEC_NORTH | GPUSB_DEC_SOUTH);
+	libgpusb_set(PRIVATE_DATA->device_context, PRIVATE_DATA->relay_mask);
+	GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+}
+
+static void guider_guide_ra_finish_handler(indigo_device *device) {
+	GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.value = 0;
+	PRIVATE_DATA->relay_mask &= ~(GPUSB_RA_EAST | GPUSB_RA_WEST);
+	libgpusb_set(PRIVATE_DATA->device_context, PRIVATE_DATA->relay_mask);
+	GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+}
+
 //- code
 
 #pragma mark - High level code (guider)
 
 static void guider_connection_handler(indigo_device *device) {
-	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		pthread_mutex_lock(&PRIVATE_DATA->mutex);
 		bool connection_result = true;
 		connection_result = gpusb_open(device);
 		if (connection_result) {
@@ -103,20 +113,15 @@ static void guider_connection_handler(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
-		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 	} else {
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->guider_guide_dec_handler_timer);
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->guider_guide_ra_handler_timer);
 		gpusb_close(device);
 		indigo_send_message(device, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
-	indigo_unlock_master_device(device);
 }
 
 static void guider_guide_dec_handler(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 	//+ guider.GUIDER_GUIDE_DEC.on_change
 	PRIVATE_DATA->relay_mask &= ~(GPUSB_DEC_NORTH | GPUSB_DEC_SOUTH);
@@ -133,21 +138,13 @@ static void guider_guide_dec_handler(indigo_device *device) {
 	if (duration > 0) {
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
-		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-		indigo_usleep(duration * 1000.0);
-		pthread_mutex_lock(&PRIVATE_DATA->mutex);
-		PRIVATE_DATA->relay_mask &= ~(GPUSB_DEC_NORTH | GPUSB_DEC_SOUTH);
-		libgpusb_set(PRIVATE_DATA->device_context, PRIVATE_DATA->relay_mask);
-		GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
-		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_execute_priority_handler_in(device, 100, duration / 1000.0, guider_guide_dec_finish_handler);
 	}
 	//- guider.GUIDER_GUIDE_DEC.on_change
 	indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void guider_guide_ra_handler(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 	//+ guider.GUIDER_GUIDE_RA.on_change
 	PRIVATE_DATA->relay_mask &= ~(GPUSB_RA_EAST | GPUSB_RA_WEST);
@@ -164,17 +161,10 @@ static void guider_guide_ra_handler(indigo_device *device) {
 	if (duration > 0) {
 		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
-		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-		indigo_usleep(duration * 1000.0);
-		pthread_mutex_lock(&PRIVATE_DATA->mutex);
-		PRIVATE_DATA->relay_mask &= ~(GPUSB_RA_EAST | GPUSB_RA_WEST);
-		libgpusb_set(PRIVATE_DATA->device_context, PRIVATE_DATA->relay_mask);
-		GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_WEST_ITEM->number.value = 0;
-		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_execute_priority_handler_in(device, 100, duration / 1000.0, guider_guide_ra_finish_handler);
 	}
 	//- guider.GUIDER_GUIDE_RA.on_change
 	indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 #pragma mark - Device API (guider)
@@ -186,7 +176,6 @@ static indigo_result guider_attach(indigo_device *device) {
 		GUIDER_GUIDE_DEC_PROPERTY->hidden = false;
 		GUIDER_GUIDE_RA_PROPERTY->hidden = false;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		return guider_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -202,14 +191,14 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-			indigo_set_timer(device, 0, guider_connection_handler, &PRIVATE_DATA->guider_connection_handler_timer);
+			indigo_execute_handler(device, guider_connection_handler);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_DEC_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(GUIDER_GUIDE_DEC_PROPERTY, guider_guide_dec_handler, guider_guide_dec_handler_timer);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(GUIDER_GUIDE_DEC_PROPERTY, guider_guide_dec_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_RA_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(GUIDER_GUIDE_RA_PROPERTY, guider_guide_ra_handler, guider_guide_ra_handler_timer);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(GUIDER_GUIDE_RA_PROPERTY, guider_guide_ra_handler);
 		return INDIGO_OK;
 	}
 	return indigo_guider_change_property(device, client, property);
@@ -221,7 +210,6 @@ static indigo_result guider_detach(indigo_device *device) {
 		guider_connection_handler(device);
 	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
-	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
 	return indigo_guider_detach(device);
 }
 
