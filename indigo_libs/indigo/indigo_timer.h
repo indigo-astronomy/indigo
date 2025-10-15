@@ -72,21 +72,21 @@ typedef struct indigo_timer {
 /** Queue structure.
  */
 
-typedef struct indigo_queue_element {
+typedef struct indigo_queue_task {
 	indigo_device *device;
 	int priority;
 	struct timespec at;
 	indigo_timer_callback callback;
-	pthread_mutex_t *element_mutex;
-	struct indigo_queue_element *next;
-} indigo_queue_element;
+	pthread_mutex_t *task_mutex;
+	struct indigo_queue_task *next;
+} indigo_queue_task;
 
 typedef struct indigo_queue {
 	indigo_device *device;
 	pthread_cond_t cond;
 	pthread_mutex_t cond_mutex;
 	pthread_t thread;
-	indigo_queue_element *element;
+	indigo_queue_task *task;
 	int queue_id;
 	bool abort;
 	pthread_mutex_t thread_mutex;
@@ -134,13 +134,13 @@ INDIGO_EXTERN indigo_queue *indigo_queue_create(indigo_device *device);
 
 /** Add task to queue
  */
-INDIGO_EXTERN void indigo_queue_add(indigo_queue *queue, indigo_device *device, int priority, double delay, indigo_timer_callback callback, pthread_mutex_t *element_mutex);
+INDIGO_EXTERN void indigo_queue_add(indigo_queue *queue, indigo_device *device, int priority, double delay, indigo_timer_callback callback, pthread_mutex_t *task_mutex);
 
-/** Remove elements from queue for given device and handler
+/** Remove tasks from queue for given device and handler
  */
 INDIGO_EXTERN void indigo_queue_remove(indigo_queue *queue, indigo_device *device, indigo_timer_callback callback);
 
-/** Remove all elements, abort queue and free associated structure
+/** Remove all tasks, abort queue and free associated structure
  */
 INDIGO_EXTERN void indigo_queue_delete(indigo_queue **queue);
 
