@@ -412,7 +412,6 @@ static indigo_queue_task *dequeue_runnable_task(indigo_queue *queue) {
 		if (timespec_cmp(&current->at, &now) > 0) {
 			break;
 		}
-		current->at.tv_sec = current->at.tv_nsec = 0;
 		if (current->priority > highest_priority) {
 			highest_priority = current->priority;
 			runnable_task = current;
@@ -480,6 +479,16 @@ static void enqueue_task(indigo_queue *queue, indigo_queue_task * task) {
 	pthread_mutex_unlock(&timers_mutex);
 }
 
+static double task_delay(indigo_queue_task *task) {
+	struct timespec now;
+	utc_time(&now);
+	double delay = 0.0;
+	if (task->at.tv_sec != 0 || task->at.tv_nsec != 0) {
+		delay = (now.tv_sec - task->at.tv_sec) + (now.tv_nsec - task->at.tv_nsec) / 1e9;
+	}
+	return delay;
+}
+
 // wrapper for executing queue task = scheduled call of handler
 static void *queue_func(indigo_queue *queue) {
 	indigo_rename_thread("Queue %s", queue->device->name);
@@ -503,6 +512,13 @@ static void *queue_func(indigo_queue *queue) {
 			if (!runnable_task) {
 				break; // no ready tasks, exit inner loop and go to sleep
 			}
+
+			// Calculate execution delay from scheduled time only if debug logging is enabled
+			if (indigo_get_log_level() >= INDIGO_LOG_DEBUG) {
+				double delay = task_delay(runnable_task);
+				INDIGO_DEBUG(indigo_debug("Executing task %p: priority %d, delay %.6fs", runnable_task->callback, runnable_task->priority, delay));
+			}
+
 			if (runnable_task->task_mutex) { // if there is specific mutex for task, lock it
 				pthread_mutex_lock(runnable_task->task_mutex);
 			}
