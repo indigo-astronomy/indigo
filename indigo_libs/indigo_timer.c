@@ -375,6 +375,43 @@ static inline int timespec_cmp(const struct timespec *a, const struct timespec *
 	return 0;
 }
 
+// Extract the highest priority runnable task from the queue
+static indigo_queue_element *dequeue_runnable_task(indigo_queue *queue) {
+	indigo_queue_element *element = queue->element;
+	indigo_queue_element *runnable_element = NULL;
+	indigo_queue_element *prev_element = NULL;
+	struct timespec now;
+	utc_time(&now);
+
+	// Find the highest priority runnable task
+	indigo_queue_element *current = element;
+	indigo_queue_element *prev = NULL;
+	int highest_priority = -1;
+
+	while (current) {
+		if (timespec_cmp(&current->at, &now) <= 0) {
+			if (current->priority > highest_priority) {
+				highest_priority = current->priority;
+				runnable_element = current;
+				prev_element = prev;
+			}
+		}
+		prev = current;
+		current = current->next;
+	}
+
+	// Remove runnable task from the queue
+	if (runnable_element) {
+		if (prev_element) {
+			prev_element->next = runnable_element->next;
+		} else {
+			queue->element = runnable_element->next;
+		}
+	}
+
+	return runnable_element;
+}
+
 // wrapper for executing queue element = scheduled call of handler
 
 static void *queue_func(indigo_queue *queue) {
@@ -399,49 +436,21 @@ static void *queue_func(indigo_queue *queue) {
 		// inner loop executing all scheduled tasks
 		while (!queue->abort) {
 			pthread_mutex_lock(&timers_mutex);
-			indigo_queue_element *element = queue->element;
-			indigo_queue_element *ready_element = NULL;
-			indigo_queue_element *prev_element = NULL;
-			struct timespec now;
-			utc_time(&now);
-
-			// Find the highest priority task that is ready to execute
-			indigo_queue_element *current = element;
-			indigo_queue_element *prev = NULL;
-			int highest_priority = -1;
-
-			while (current) {
-				if (timespec_cmp(&current->at, &now) <= 0) {
-					if (current->priority > highest_priority) {
-						highest_priority = current->priority;
-						ready_element = current;
-						prev_element = prev;
-					}
-				}
-				prev = current;
-				current = current->next;
-			}
-
-			if (ready_element) {
-				if (prev_element) {
-					prev_element->next = ready_element->next;
-				} else {
-					queue->element = ready_element->next;
-				}
-			} else {
-				pthread_mutex_unlock(&timers_mutex);
-				break; // no ready tasks, exit inner loop and go to sleep
-			}
+			indigo_queue_element *runnable_element = dequeue_runnable_task(queue);
 			pthread_mutex_unlock(&timers_mutex);
 
-			if (ready_element->element_mutex) { // if there is specific mutex for task, lock it
-				pthread_mutex_lock(ready_element->element_mutex);
+			if (!runnable_element) {
+				break; // no ready tasks, exit inner loop and go to sleep
 			}
-			ready_element->callback(ready_element->device);
-			if (ready_element->element_mutex) { // if there is specific mutex for task, unlock it
-				pthread_mutex_unlock(ready_element->element_mutex);
+
+			if (runnable_element->element_mutex) { // if there is specific mutex for task, lock it
+				pthread_mutex_lock(runnable_element->element_mutex);
 			}
-			indigo_safe_free(ready_element);
+			runnable_element->callback(runnable_element->device);
+			if (runnable_element->element_mutex) { // if there is specific mutex for task, unlock it
+				pthread_mutex_unlock(runnable_element->element_mutex);
+			}
+			indigo_safe_free(runnable_element);
 		}
 		pthread_mutex_unlock(&queue->thread_mutex);
 	}
