@@ -270,7 +270,7 @@ bool indigo_reschedule_timer(indigo_device *device, double delay, indigo_timer *
 		return false;
 	}
 }
-	
+
 bool indigo_reschedule_timer_with_callback(indigo_device *device, double delay, indigo_timer_callback callback, indigo_timer **timer) {
 	bool result = false;
 	pthread_mutex_lock(&timers_mutex);
@@ -400,22 +400,48 @@ static void *queue_func(indigo_queue *queue) {
 		while (!queue->abort) {
 			pthread_mutex_lock(&timers_mutex);
 			indigo_queue_element *element = queue->element;
+			indigo_queue_element *ready_element = NULL;
+			indigo_queue_element *prev_element = NULL;
 			struct timespec now;
 			utc_time(&now);
-			if (element && timespec_cmp(&element->at, &now) <= 0) {
-				queue->element = element->next; // if next tasks exists and it is time to execute it, remove it from queue head
+
+			// Find the highest priority task that is ready to execute
+			indigo_queue_element *current = element;
+			indigo_queue_element *prev = NULL;
+			int highest_priority = -1;
+
+			while (current) {
+				if (timespec_cmp(&current->at, &now) <= 0) {
+					if (current->priority > highest_priority) {
+						highest_priority = current->priority;
+						ready_element = current;
+						prev_element = prev;
+					}
+				}
+				prev = current;
+				current = current->next;
+			}
+
+			if (ready_element) {
+				if (prev_element) {
+					prev_element->next = ready_element->next;
+				} else {
+					queue->element = ready_element->next;
+				}
 			} else {
 				pthread_mutex_unlock(&timers_mutex);
-				break; // otherwise exit inner loop and go to sleep
+				break; // no ready tasks, exit inner loop and go to sleep
 			}
 			pthread_mutex_unlock(&timers_mutex);
-			if (element->element_mutex) { // if there is specific mutex for task, lock it
-				pthread_mutex_lock(element->element_mutex);
+
+			if (ready_element->element_mutex) { // if there is specific mutex for task, lock it
+				pthread_mutex_lock(ready_element->element_mutex);
 			}
-			element->callback(element->device);
-			if (element->element_mutex) { // if there is specific mutex for task, unlock it
-				pthread_mutex_unlock(element->element_mutex);
+			ready_element->callback(ready_element->device);
+			if (ready_element->element_mutex) { // if there is specific mutex for task, unlock it
+				pthread_mutex_unlock(ready_element->element_mutex);
 			}
+			indigo_safe_free(ready_element);
 		}
 		pthread_mutex_unlock(&queue->thread_mutex);
 	}
@@ -451,14 +477,16 @@ void indigo_queue_add(indigo_queue *queue, indigo_device *device, int priority, 
 	element->callback = callback;
 	element->element_mutex = element_mutex;
 	pthread_mutex_lock(&timers_mutex);
+
+	// Insert tasks ordered by execution time (earliest first), not by priority
 	if (queue->element == NULL) { // if queue is empty, insert at the beginning
 		queue->element = element;
-	} else if (priority > queue->element->priority || (priority == queue->element->priority && timespec_cmp(&element->at, &queue->element->at) < 0)) { // if queue is not empty, but element should be inserted before existing head
+	} else if (timespec_cmp(&element->at, &queue->element->at) < 0) { // if element should be executed before existing head
 		element->next = queue->element;
 		queue->element = element;
-	} else { // if queue is not empty, insert in the proper place
+	} else { // if queue is not empty, insert in the proper place ordered by time
 		indigo_queue_element *next = queue->element;
-		while (next->next != NULL && (next->next->priority > priority || (next->next->priority == priority && timespec_cmp(&next->next->at, &element->at) <= 0))) {
+		while (next->next != NULL && timespec_cmp(&next->next->at, &element->at) <= 0) {
 			next = next->next;
 		}
 		element->next = next->next;
