@@ -72,6 +72,11 @@ typedef struct indigo_timer {
 /** Queue structure.
  */
 
+#define INDIGO_TASK_PRIORITY_NORMAL   0
+#define INDIGO_TASK_PRIORITY_HIGH     5
+#define INDIGO_TASK_PRIORITY_TIME    10 // time critical tasks (e.g. guiding)
+#define INDIGO_TASK_PRIORITY_URGENT  20 // urgent tasks (more urgent than time critical)
+
 typedef struct indigo_queue_task {
 	indigo_device *device;
 	int priority;
