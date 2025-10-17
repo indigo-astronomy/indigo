@@ -1269,22 +1269,30 @@ void write_c_private_data_section(void) {
 	write_line("#pragma mark - Private data definition");
 	write_line("");
 	write_line("typedef struct {");
+	bool some_content = driver.data != NULL;
 	if (is_multi_device) {
 		write_line("\tint count;");
+		some_content = true;
 	}
 	if (driver.serial) {
 		write_line("\tindigo_uni_handle *handle;");
+		some_content = true;
 	} else if (driver.libusb) {
 		write_line("\tlibusb_device *usbdev;");
+		some_content = true;
 	}
 	for (device_type *device = driver.devices; device; device = device->next) {
 		for (property_type *property = device->properties; property; property = property->next) {
 			if (property->type[0] != 'i') {
 				write_line("\tindigo_property *%s;", property->pointer);
+				some_content = true;
 			}
 		}
 	}
 	write_c_code_blocks(driver.data, 1, "data");
+	if (!some_content) {
+		write_line("\tvoid *dummy;");
+	}
 	write_line("} %s_private_data;", driver.name);
 	write_line("");
 }

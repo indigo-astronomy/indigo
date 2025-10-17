@@ -48,6 +48,7 @@
 #pragma mark - Private data definition
 
 typedef struct {
+	void *dummy;
 } manual_private_data;
 
 #pragma mark - High level code (wheel)
