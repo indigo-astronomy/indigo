@@ -47,7 +47,7 @@
 #include <indigo/indigo_md5.h>
 #include <indigo/indigo_stretch.h>
 
-#define OBJECT_LENGTH 41
+#define OBJECT_LENGTH 43
 
 struct indigo_jpeg_compress_struct {
 	struct jpeg_compress_struct pub;
