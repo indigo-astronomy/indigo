@@ -570,7 +570,7 @@ void indigo_queue_remove(indigo_queue *queue, indigo_device *device, indigo_time
 		pthread_mutex_lock(&queue->cond_mutex);
 		pthread_cond_signal(&queue->cond);
 		pthread_mutex_unlock(&queue->cond_mutex);
-		if (pthread_self() != queue->thread) {
+		if (!pthread_equal(pthread_self(), queue->thread)) {
 			pthread_mutex_lock(&queue->thread_mutex);
 			pthread_mutex_unlock(&queue->thread_mutex);
 		}
