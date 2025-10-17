@@ -150,12 +150,12 @@ static void *timer_func(indigo_timer *timer) {
 			*timer->reference = NULL;
 		}
 		indigo_device *device = timer->device;
-		if (device != NULL) {
+		if (device != NULL && DEVICE_CONTEXT != NULL) {
 			if (DEVICE_CONTEXT->timers == timer) {
 				DEVICE_CONTEXT->timers = timer->next;
 			} else {
 				indigo_timer *previous = DEVICE_CONTEXT->timers;
-				while (previous->next != NULL) {
+				while (previous && previous->next != NULL) {
 					if (previous->next == timer) {
 						previous->next = timer->next;
 						break;
