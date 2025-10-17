@@ -73,6 +73,7 @@ static void wheel_timer_callback(indigo_device *device) {
 	if (res != PW_OK && res != PW_ERROR_IS_MOVING) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetCurrentPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_handle, PRIVATE_DATA->current_slot, res);
 		WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		indigo_update_property(device, WHEEL_SLOT_PROPERTY, "Set filter failed");
 		return;
 	}
