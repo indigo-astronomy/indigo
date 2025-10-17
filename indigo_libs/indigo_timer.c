@@ -100,12 +100,12 @@ static void *timer_func(indigo_timer *timer) {
 		INDIGO_TRACE(indigo_trace("timer #%d - done", timer->timer_id));
 		pthread_mutex_lock(&cancel_timer_mutex);
 		indigo_device *device = timer->device;
-		if (device != NULL) {
+		if (device != NULL && DEVICE_CONTEXT != NULL) {
 			if (DEVICE_CONTEXT->timers == timer) {
 				DEVICE_CONTEXT->timers = timer->next;
 			} else {
 				indigo_timer *previous = DEVICE_CONTEXT->timers;
-				while (previous->next != NULL) {
+				while (previous && previous->next != NULL) {
 					if (previous->next == timer) {
 						previous->next = timer->next;
 						break;
