@@ -941,12 +941,7 @@ void indigo_uni_open_tcp_server_socket(int *port, indigo_uni_handle **server_han
 		close(server_socket);
 		return;
 	}
-	int reuse_addr = 1;
-	if (setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, (char *)&reuse_addr, sizeof(reuse_addr)) < 0) {
-		indigo_error("Can't set SO_REUSEADDR to accept socket (%s)", strerror(errno));
-		close(server_socket);
-		return;
-	}
+
 	*server_handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
 	(*server_handle)->index = handle_index++;
 	(*server_handle)->type = INDIGO_TCP_HANDLE;
@@ -980,8 +975,8 @@ void indigo_uni_open_tcp_server_socket(int *port, indigo_uni_handle **server_han
 			close(client_socket);
 			break;
 		}
-		reuse_addr = 1;
-		if (setsockopt(client_socket, SOL_SOCKET, SO_REUSEADDR, (char *)&reuse_addr, sizeof(reuse_addr)) < 0) {
+		reuse = 1;
+		if (setsockopt(client_socket, SOL_SOCKET, SO_REUSEADDR, (char *)&reuse, sizeof(reuse)) < 0) {
 			indigo_error("Can't set SO_REUSEADDR (%s)", strerror(errno));
 			close(client_socket);
 			break;
