@@ -1557,7 +1557,7 @@ void indigo_uni_close(indigo_uni_handle **handle) {
 			// Set linger option to avoid TIME_WAIT state
 			struct linger ling;
 			ling.l_onoff = 1;
-			ling.l_linger = 0;
+			ling.l_linger = 1;
 			setsockopt((copy)->fd, SOL_SOCKET, SO_LINGER, &ling, sizeof(ling));
 			shutdown((copy)->fd, SHUT_RDWR);
 		}
@@ -1570,7 +1570,7 @@ void indigo_uni_close(indigo_uni_handle **handle) {
 		} else if ((copy)->type == INDIGO_TCP_HANDLE || (copy)->type == INDIGO_UDP_HANDLE) {
 			struct linger ling;
 			ling.l_onoff = 1;
-			ling.l_linger = 0;
+			ling.l_linger = 1;
 			setsockopt((copy)->sock, SOL_SOCKET, SO_LINGER, (const char*)&ling, sizeof(ling));
 			shutdown((copy)->sock, SD_BOTH);
 			closesocket((copy)->sock);
