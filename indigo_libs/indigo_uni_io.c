@@ -1059,6 +1059,12 @@ void indigo_uni_open_tcp_server_socket(int *port, indigo_uni_handle **server_han
 			closesocket(client_socket);
 			break;
 		}
+		reuse = 1;
+		if (setsockopt(client_socket, SOL_SOCKET, SO_REUSEADDR, (const char*)&reuse, sizeof(reuse)) == SOCKET_ERROR) {
+			indigo_error("Can't setsockopt for server socket (%d)", indigo_last_wsa_error());
+			closesocket(client_socket);
+			return;
+		}
 		indigo_uni_worker_data* worker_data = indigo_safe_malloc(sizeof(indigo_uni_worker_data));
 		worker_data->handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
 		worker_data->handle->index = handle_index++;
@@ -1562,6 +1568,10 @@ void indigo_uni_close(indigo_uni_handle **handle) {
 		} else if ((copy)->type == INDIGO_COM_HANDLE) {
 			CloseHandle((copy)->com);
 		} else if ((copy)->type == INDIGO_TCP_HANDLE || (copy)->type == INDIGO_UDP_HANDLE) {
+			struct linger ling;
+			ling.l_onoff = 1;
+			ling.l_linger = 0;
+			setsockopt((copy)->sock, SOL_SOCKET, SO_LINGER, (const char*)&ling, sizeof(ling));
 			shutdown((copy)->sock, SD_BOTH);
 			closesocket((copy)->sock);
 		}
