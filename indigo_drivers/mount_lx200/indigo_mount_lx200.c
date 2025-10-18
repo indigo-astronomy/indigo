@@ -358,7 +358,7 @@ static bool meade_simple_reply_command(indigo_device *device, char *command, ...
 			// :SCMM/DD/YY# returns two delimiters PRIVATE_DATA->response:
 			// "1Updating Planetary Data#                                #"
 			// readout progress part
-			if (result && !strncmp(command, ":SC", 3) && *PRIVATE_DATA->response == '1') {
+			if (result && !strncmp(command, ":SC", 3) && (MOUNT_TYPE_AP_ITEM->sw.value || *PRIVATE_DATA->response == '1')) {
 				char progress[128];
 				indigo_uni_read_section(PRIVATE_DATA->handle, progress, sizeof(progress), "#", "#", INDIGO_DELAY(0.1));
 				indigo_uni_read_section(PRIVATE_DATA->handle, progress, sizeof(progress), "#", "#", INDIGO_DELAY(0.1));
