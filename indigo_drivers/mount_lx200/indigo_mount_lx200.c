@@ -637,6 +637,9 @@ static bool meade_set_utc(indigo_device *device, time_t *secs, int utc_offset) {
 		result = meade_command(device, command, response, 1, 0);
 	} else {
 		result = meade_command_progress(device, command, response, sizeof(response), 0);
+		if (MOUNT_TYPE_AP_ITEM->sw.value && *response == ' ') {
+			*response = '1';
+		}
 	}
 	if (!result || *response != '1') {
 		return false;
