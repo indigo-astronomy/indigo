@@ -24,7 +24,7 @@
  \file indigo_ccd_playerone.c
  */
 
-#define DRIVER_VERSION 0x000F
+#define DRIVER_VERSION 0x0010
 #define DRIVER_NAME "indigo_ccd_playerone"
 
 /* POA_SAFE_READOUT enables workaround for a bug in POAGetImageData().
@@ -1207,6 +1207,12 @@ static indigo_result init_camera_property(indigo_device *device, POAConfigAttrib
 				indigo_init_number_item(POA_ADVANCED_PROPERTY->items + offset, ctrl_caps.szConfName, ctrl_caps.szConfName, 0, 1, 1, value.boolValue ? 1 : 0);
 			} else {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetConfig(%d, %s, > %d)", id, ctrl_caps.szConfName, value.intValue);
+				if (!strncmp(ctrl_caps.szConfName, "WB_", 3) && ctrl_caps.minValue.intValue == 1) {
+					/* workaround for white balance values being remapped in sdk 3.9.0 */
+					/* 0 is mapped to 50% in the sdk to maintain backwards compatibility */
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Workaround for white balance applied for %s", ctrl_caps.szConfName);
+					ctrl_caps.minValue.intValue = 0;
+				}
 				indigo_init_number_item(POA_ADVANCED_PROPERTY->items + offset, ctrl_caps.szConfName, ctrl_caps.szConfName, ctrl_caps.minValue.intValue, ctrl_caps.maxValue.intValue, 1, value.intValue);
 			}
 		}

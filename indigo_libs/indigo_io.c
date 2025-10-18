@@ -258,8 +258,9 @@ static int open_socket(const char *host, int port, int type) {
 	int handle = -1;
 	for (address = address_list; address != NULL; address = address->ai_next) {
 		handle = socket(AF_INET, type, 0);
-		if (handle == -1)
+		if (handle == -1) {
 			return handle;
+		}
 		*(uint16_t *)(address->ai_addr->sa_data) = htons(port);
 		if (connect(handle, address->ai_addr, address->ai_addrlen) == 0) {
 			struct timeval timeout;
@@ -267,6 +268,10 @@ static int open_socket(const char *host, int port, int type) {
 			timeout.tv_usec = 0;
 			setsockopt(handle, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
 			setsockopt(handle, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout, sizeof(timeout));
+			struct linger ling;
+			ling.l_onoff = 1;
+			ling.l_linger = 0;
+			setsockopt(handle, SOL_SOCKET, SO_LINGER, &ling, sizeof(ling));
 			break;
 		}
 		indigo_error("Can't connect socket (%s)", strerror(errno));
