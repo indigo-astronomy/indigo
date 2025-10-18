@@ -65,8 +65,8 @@ static int clock_gettime(int clk_id, struct timespec* tp) {
 	uli.HighPart = ft.dwHighDateTime;
 	const uint64_t EPOCH_DIFF_100NS = 116444736000000000ULL;
 	uint64_t time_100ns = uli.QuadPart - EPOCH_DIFF_100NS;
-	tp->tv_sec = (time_t)(time_100ns / SEC_NS);
-	tp->tv_nsec = (long)((time_100ns % SEC_NS) * 100);
+	tp->tv_sec = (time_t)(time_100ns / 10000000ULL);
+	tp->tv_nsec = (long)((time_100ns % 10000000ULL) * 100);
 	return 0;
 }
 #endif
