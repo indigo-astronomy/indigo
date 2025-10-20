@@ -1509,7 +1509,7 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 			strcpy(format, tmp);
 		} else if (fs[1] == 'B') { // %B - binning
 			char buffer[15];
-			if (CCD_BIN_HORIZONTAL_ITEM->number.value == CCD_BIN_HORIZONTAL_ITEM->number.value) {
+			if (CCD_BIN_HORIZONTAL_ITEM->number.value == CCD_BIN_VERTICAL_ITEM->number.value) {
 				sprintf(buffer, "BIN%.0f", CCD_BIN_HORIZONTAL_ITEM->number.value);
 			} else {
 				sprintf(buffer, "BIN%.0fx%.0f", CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_HORIZONTAL_ITEM->number.value);
