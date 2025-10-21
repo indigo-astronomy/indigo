@@ -268,6 +268,10 @@ static int open_socket(const char *host, int port, int type) {
 			timeout.tv_usec = 0;
 			setsockopt(handle, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
 			setsockopt(handle, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout, sizeof(timeout));
+			struct linger ling;
+			ling.l_onoff = 1;
+			ling.l_linger = 0;
+			setsockopt(handle, SOL_SOCKET, SO_LINGER, &ling, sizeof(ling));
 			break;
 		}
 		indigo_error("Can't connect socket (%s)", strerror(errno));
