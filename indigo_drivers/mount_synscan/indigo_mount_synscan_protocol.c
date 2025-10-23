@@ -98,7 +98,7 @@ static bool synscan_flush(indigo_device* device) {
 		FD_SET(PRIVATE_DATA->handle, &readout);
 		tv.tv_sec = 0;
 		tv.tv_usec = 10000;
-		long result = select(1, &readout, NULL, NULL, &tv);
+		long result = select(PRIVATE_DATA->handle + 1, &readout, NULL, NULL, &tv);
 		if (result == 0) {
 			break;
 		}
