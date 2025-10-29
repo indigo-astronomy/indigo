@@ -3242,9 +3242,9 @@ static void guider_guide_dec_callback(indigo_device *device) {
 	meade_guide_dec(device, north, south);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 	if (north > 0) {
-		indigo_execute_priority_handler_in(device, 1000, ((double)north) / 1000.0, guider_guide_dec_finish_callback);
+		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT, ((double)north) / 1000.0, guider_guide_dec_finish_callback);
 	} else if (south > 0) {
-		indigo_execute_priority_handler_in(device, 1000, ((double)south) / 1000.0, guider_guide_dec_finish_callback);
+		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT, ((double)south) / 1000.0, guider_guide_dec_finish_callback);
 	} else {
 		guider_guide_dec_finish_callback(device);
 	}
@@ -3263,9 +3263,9 @@ static void guider_guide_ra_callback(indigo_device *device) {
 	meade_guide_ra(device, west, east);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 	if (west > 0) {
-		indigo_execute_priority_handler_in(device, 1000, ((double)west) / 1000.0, guider_guide_ra_finish_callback);
+		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT, ((double)west) / 1000.0, guider_guide_ra_finish_callback);
 	} else if (east > 0) {
-		indigo_execute_priority_handler_in(device, 1000, ((double)east) / 1000.0, guider_guide_ra_finish_callback);
+		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT, ((double)east) / 1000.0, guider_guide_ra_finish_callback);
 	} else {
 		guider_guide_ra_finish_callback(device);
 	}
