@@ -175,7 +175,6 @@ typedef enum {
 typedef struct {
 	indigo_uni_handle *handle;
 	int device_count;
-	pthread_mutex_t mutex;
 	char lastMotionNS, lastMotionWE, lastSlewRate, lastTrackRate;
 	double lastRA, lastDec;
 	bool motioned;
@@ -2915,7 +2914,6 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_init_number_item(NYX_LEVELER_COMPASS_ITEM, NYX_LEVELER_COMPASS_ITEM_NAME, "Compas [°]", 0, 360, 0, 0);
 		// --------------------------------------------------------------------------------
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
-		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return mount_enumerate_properties(device, NULL, NULL);
 	}
@@ -3026,7 +3024,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(MOUNT_ABORT_MOTION_PROPERTY, property, false);
 		MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, NULL);
-		indigo_execute_priority_handler(device, 100, mount_abort_callback);
+		indigo_execute_priority_handler(device, INDIGO_TASK_PRIORITY_URGENT, mount_abort_callback);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_MOTION_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_MOTION_DEC
@@ -3179,7 +3177,6 @@ static indigo_result mount_detach(indigo_device *device) {
 	indigo_release_property(NYX_WIFI_RESET_PROPERTY);
 	indigo_release_property(NYX_LEVELER_PROPERTY);
 	indigo_release_property(MOUNT_TYPE_PROPERTY);
-	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_mount_detach(device);
 }
@@ -3238,9 +3235,7 @@ static void guider_guide_dec_finish_callback(indigo_device *device) {
 static void guider_guide_dec_callback(indigo_device *device) {
 	int north = (int)GUIDER_GUIDE_NORTH_ITEM->number.value;
 	int south = (int)GUIDER_GUIDE_SOUTH_ITEM->number.value;
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	meade_guide_dec(device, north, south);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 	if (north > 0) {
 		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT, ((double)north) / 1000.0, guider_guide_dec_finish_callback);
 	} else if (south > 0) {
@@ -3259,9 +3254,7 @@ static void guider_guide_ra_finish_callback(indigo_device *device) {
 static void guider_guide_ra_callback(indigo_device *device) {
 	int west = (int)GUIDER_GUIDE_WEST_ITEM->number.value;
 	int east = (int)GUIDER_GUIDE_EAST_ITEM->number.value;
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	meade_guide_ra(device, west, east);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 	if (west > 0) {
 		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT, ((double)west) / 1000.0, guider_guide_ra_finish_callback);
 	} else if (east > 0) {
