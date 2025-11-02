@@ -89,8 +89,7 @@ typedef struct {
 	indigo_uni_handle *handle;
 	uint32_t current_position, target_position, max_position;
 	double prev_temp;
-	indigo_timer *focuser_timer, *temperature_timer;
-	pthread_mutex_t port_mutex;
+	pthread_mutex_t port_mutex; // to be removed when all proeprties are handled in the queue
 	indigo_property *step_mode_property, *coils_mode_property, *current_control_property, *timings_property, *model_hint_property;
 } mfp_private_data;
 
@@ -152,7 +151,7 @@ static bool mfp_command(indigo_device *device, const char *command, char *respon
 		}
 	}
 	if (PRIVATE_DATA->handle && PRIVATE_DATA->handle->type == INDIGO_TCP_HANDLE) {
-		indigo_set_timer(device, 0, network_disconnection, NULL);
+		indigo_execute_handler(device, network_disconnection);
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unexpected disconnection from %s", DEVICE_PORT_ITEM->text.value);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
@@ -417,7 +416,7 @@ static void focuser_timer_callback(indigo_device *device) {
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
-		indigo_reschedule_timer(device, 0.5, &(PRIVATE_DATA->focuser_timer));
+		indigo_execute_handler_in(device, 0.5, focuser_timer_callback);
 	}
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
@@ -456,7 +455,7 @@ static void temperature_timer_callback(indigo_device *device) {
 		PRIVATE_DATA->prev_temp = NO_TEMP_READING;
 	}
 
-	indigo_reschedule_timer(device, 2, &(PRIVATE_DATA->temperature_timer));
+	indigo_execute_handler_in(device, 2, temperature_timer_callback);
 }
 
 
@@ -524,7 +523,7 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 	FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
 	FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-	indigo_set_timer(device, 0.5, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
+	indigo_execute_handler_in(device, 0.5, focuser_timer_callback);
 }
 
 
@@ -783,18 +782,17 @@ static void focuser_connect_callback(indigo_device *device) {
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					device->is_connected = true;
 
-					indigo_set_timer(device, 0.5, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
+					indigo_execute_handler_in(device, 0.5, focuser_timer_callback);
 
 					mfp_get_temperature(device, &FOCUSER_TEMPERATURE_ITEM->number.value);
 					PRIVATE_DATA->prev_temp = FOCUSER_TEMPERATURE_ITEM->number.value;
-					indigo_set_timer(device, 1, temperature_timer_callback, &PRIVATE_DATA->temperature_timer);
+					indigo_execute_handler_in(device, 1, temperature_timer_callback);
 				}
 			}
 		}
 	} else {
 		if (device->is_connected) {
-			indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_timer);
-			indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperature_timer);
+			indigo_cancel_pending_handlers(device);
 
 			mfp_stop(device);
 			mfp_save_settings(device);
@@ -826,7 +824,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, focuser_connect_callback, NULL);
+		indigo_execute_handler(device, focuser_connect_callback);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_REVERSE_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_REVERSE_MOTION
@@ -862,7 +860,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				if (!mfp_goto_position(device, (uint32_t)PRIVATE_DATA->target_position)) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_goto_position(%p, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
 				}
-				indigo_set_timer(device, 0.5, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
+				indigo_execute_handler_in(device, 0.5, focuser_timer_callback);
 			} else { /* RESET CURRENT POSITION */
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 				FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
@@ -948,7 +946,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
-			indigo_set_timer(device, 0.5, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
+			indigo_execute_handler_in(device, 0.5, focuser_timer_callback);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
@@ -957,7 +955,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_cancel_timer(device, &PRIVATE_DATA->focuser_timer);
+		indigo_cancel_pending_handler(device, focuser_timer_callback);
 
 		if (!mfp_stop(device)) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_stop(%p) failed", PRIVATE_DATA->handle);
