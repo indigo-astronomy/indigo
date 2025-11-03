@@ -36,3 +36,4 @@ indigo.xcodeproj/xcshareddata/
 /indigo_drivers/gps_gpsd/externals/libgps/libgps.a
 /tools/fxload/fxload
 indigo_libs/indigo_build.c
+indigo_libs/externals/libusb/test-driver
