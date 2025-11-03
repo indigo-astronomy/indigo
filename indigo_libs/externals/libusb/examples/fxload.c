@@ -38,7 +38,9 @@
 #include <syslog.h>
 static bool dosyslog = false;
 #include <strings.h>
-#define _stricmp strcasecmp
+#define libusb_strcasecmp strcasecmp
+#else
+#define libusb_strcasecmp _stricmp
 #endif
 
 #ifndef FXLOAD_VERSION
@@ -172,9 +174,9 @@ int main(int argc, char*argv[])
 	}
 
 	/* open the device using libusb */
-	status = libusb_init(NULL);
+	status = libusb_init_context(/*ctx=*/NULL, /*options=*/NULL, /*num_options=*/0);
 	if (status < 0) {
-		logerror("libusb_init() failed: %s\n", libusb_error_name(status));
+		logerror("libusb_init_context() failed: %s\n", libusb_error_name(status));
 		return -1;
 	}
 	libusb_set_option(NULL, LIBUSB_OPTION_LOG_LEVEL, verbose);
@@ -263,13 +265,13 @@ int main(int argc, char*argv[])
 	for (i=0; i<ARRAYSIZE(path); i++) {
 		if (path[i] != NULL) {
 			ext = path[i] + strlen(path[i]) - 4;
-			if ((_stricmp(ext, ".hex") == 0) || (strcmp(ext, ".ihx") == 0))
+			if ((libusb_strcasecmp(ext, ".hex") == 0) || (libusb_strcasecmp(ext, ".ihx") == 0))
 				img_type[i] = IMG_TYPE_HEX;
-			else if (_stricmp(ext, ".iic") == 0)
+			else if (libusb_strcasecmp(ext, ".iic") == 0)
 				img_type[i] = IMG_TYPE_IIC;
-			else if (_stricmp(ext, ".bix") == 0)
+			else if (libusb_strcasecmp(ext, ".bix") == 0)
 				img_type[i] = IMG_TYPE_BIX;
-			else if (_stricmp(ext, ".img") == 0)
+			else if (libusb_strcasecmp(ext, ".img") == 0)
 				img_type[i] = IMG_TYPE_IMG;
 			else {
 				logerror("%s is not a recognized image type\n", path[i]);

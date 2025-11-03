@@ -24,7 +24,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x03000035
+#define DRIVER_VERSION 0x03000036
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>
@@ -3325,16 +3325,18 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_ABORT_PROCESS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AGENT_ABORT_PROCESS
+		indigo_property_copy_values(AGENT_ABORT_PROCESS_PROPERTY, property, false);
 		if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE || AGENT_IMAGER_STARS_PROPERTY->state == INDIGO_BUSY_STATE) {
-			indigo_property_copy_values(AGENT_ABORT_PROCESS_PROPERTY, property, false);
 			if (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
-				AGENT_PAUSE_PROCESS_ITEM->sw.value = AGENT_PAUSE_PROCESS_WAIT_ITEM->sw.value =  false;
+				AGENT_PAUSE_PROCESS_ITEM->sw.value = AGENT_PAUSE_PROCESS_WAIT_ITEM->sw.value = false;
 				AGENT_PAUSE_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_update_property(device, AGENT_PAUSE_PROCESS_PROPERTY, NULL);
 			}
 			AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
-			abort_process(device);
+		} else {
+			AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 		}
+		abort_process(device);
 		AGENT_ABORT_PROCESS_ITEM->sw.value = false;
 		indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
 		return INDIGO_OK;

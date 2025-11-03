@@ -10,8 +10,8 @@
 #error "Visual Studio 2013 or later is required."
 #endif
 
-/* Visual Studio 2013 does not support __func__ */
-#if (_MSC_VER < 1900)
+/* Visual Studio 2013 and 2015 do not support __func__ */
+#if (_MSC_VER <= 1900)
 #define __func__ __FUNCTION__
 #endif
 
@@ -30,6 +30,10 @@
 #pragma warning(disable:4324)
 /* Disable: warning C4996: 'GetVersionExA': was declared deprecated */
 #pragma warning(disable:4996)
+#if (_MSC_VER > 1800)
+/* Disable: warning C5287: operands are different enum types, supported after Visual Studio 2013 */
+#pragma warning(disable:5287)
+#endif
 
 #if defined(_PREFAST_)
 /* Disable "Banned API" errors when using the MS's WDK OACR/Prefast */

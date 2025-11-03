@@ -23,10 +23,52 @@
 
 #include "libusb.h"
 
-int done = 0;
+int done_attach = 0;
+int done_detach = 0;
 libusb_device_handle *handle = NULL;
 
 static int LIBUSB_CALL hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data)
+{
+	struct libusb_device_descriptor desc;
+	libusb_device_handle *new_handle;
+	int rc;
+
+	(void)ctx;
+	(void)dev;
+	(void)event;
+	(void)user_data;
+
+	rc = libusb_get_device_descriptor(dev, &desc);
+	if (LIBUSB_SUCCESS == rc) {
+		printf ("Device attached: %04x:%04x\n", desc.idVendor, desc.idProduct);
+	} else {
+		printf ("Device attached\n");
+		fprintf (stderr, "Error getting device descriptor: %s\n",
+			 libusb_strerror((enum libusb_error)rc));
+	}
+
+	rc = libusb_open (dev, &new_handle);
+	if (LIBUSB_SUCCESS == rc) {
+		if (handle) {
+			libusb_close (handle);
+		}
+		handle = new_handle;
+	} else if (LIBUSB_ERROR_ACCESS != rc
+#if defined(PLATFORM_WINDOWS)
+		&& LIBUSB_ERROR_NOT_SUPPORTED != rc
+		&& LIBUSB_ERROR_NOT_FOUND != rc
+#endif
+		) {
+		fprintf (stderr, "No access to device: %s\n",
+			 libusb_strerror((enum libusb_error)rc));
+	}
+
+	done_attach++;
+
+	return 0;
+}
+
+static int LIBUSB_CALL hotplug_callback_detach(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data)
 {
 	struct libusb_device_descriptor desc;
 	int rc;
@@ -37,42 +79,20 @@ static int LIBUSB_CALL hotplug_callback(libusb_context *ctx, libusb_device *dev,
 	(void)user_data;
 
 	rc = libusb_get_device_descriptor(dev, &desc);
-	if (LIBUSB_SUCCESS != rc) {
-		fprintf (stderr, "Error getting device descriptor\n");
+	if (LIBUSB_SUCCESS == rc) {
+		printf ("Device detached: %04x:%04x\n", desc.idVendor, desc.idProduct);
+	} else {
+		printf ("Device detached\n");
+		fprintf (stderr, "Error getting device descriptor: %s\n",
+			 libusb_strerror((enum libusb_error)rc));
 	}
-
-	printf ("Device attached: %04x:%04x\n", desc.idVendor, desc.idProduct);
 
 	if (handle) {
 		libusb_close (handle);
 		handle = NULL;
 	}
 
-	rc = libusb_open (dev, &handle);
-	if (LIBUSB_SUCCESS != rc) {
-		fprintf (stderr, "Error opening device\n");
-	}
-
-	done++;
-
-	return 0;
-}
-
-static int LIBUSB_CALL hotplug_callback_detach(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data)
-{
-	(void)ctx;
-	(void)dev;
-	(void)event;
-	(void)user_data;
-
-	printf ("Device detached\n");
-
-	if (handle) {
-		libusb_close (handle);
-		handle = NULL;
-	}
-
-	done++;
+	done_detach++;
 
 	return 0;
 }
@@ -83,14 +103,15 @@ int main(int argc, char *argv[])
 	int product_id, vendor_id, class_id;
 	int rc;
 
-	vendor_id  = (argc > 1) ? (int)strtol (argv[1], NULL, 0) : 0x045a;
-	product_id = (argc > 2) ? (int)strtol (argv[2], NULL, 0) : 0x5005;
+	vendor_id  = (argc > 1) ? (int)strtol (argv[1], NULL, 0) : LIBUSB_HOTPLUG_MATCH_ANY;
+	product_id = (argc > 2) ? (int)strtol (argv[2], NULL, 0) : LIBUSB_HOTPLUG_MATCH_ANY;
 	class_id   = (argc > 3) ? (int)strtol (argv[3], NULL, 0) : LIBUSB_HOTPLUG_MATCH_ANY;
 
-	rc = libusb_init (NULL);
-	if (rc < 0)
+	rc = libusb_init_context(/*ctx=*/NULL, /*options=*/NULL, /*num_options=*/0);
+	if (LIBUSB_SUCCESS != rc)
 	{
-		printf("failed to initialise libusb: %s\n", libusb_error_name(rc));
+		printf ("failed to initialise libusb: %s\n",
+			libusb_strerror((enum libusb_error)rc));
 		return EXIT_FAILURE;
 	}
 
@@ -116,13 +137,15 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	while (done < 2) {
+	while (done_detach < done_attach || done_attach == 0) {
 		rc = libusb_handle_events (NULL);
-		if (rc < 0)
-			printf("libusb_handle_events() failed: %s\n", libusb_error_name(rc));
+		if (LIBUSB_SUCCESS != rc)
+			printf ("libusb_handle_events() failed: %s\n",
+				libusb_strerror((enum libusb_error)rc));
 	}
 
 	if (handle) {
+		printf ("Warning: Closing left-over open handle\n");
 		libusb_close (handle);
 	}
 
