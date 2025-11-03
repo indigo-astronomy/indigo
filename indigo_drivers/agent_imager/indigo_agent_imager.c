@@ -3327,16 +3327,14 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_ABORT_PROCESS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AGENT_ABORT_PROCESS
-		if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE || AGENT_IMAGER_STARS_PROPERTY->state == INDIGO_BUSY_STATE) {
-			indigo_property_copy_values(AGENT_ABORT_PROCESS_PROPERTY, property, false);
-			if (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
-				AGENT_PAUSE_PROCESS_ITEM->sw.value = AGENT_PAUSE_PROCESS_WAIT_ITEM->sw.value =  false;
-				AGENT_PAUSE_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, AGENT_PAUSE_PROCESS_PROPERTY, NULL);
-			}
-			AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
-			abort_process(device);
+		indigo_property_copy_values(AGENT_ABORT_PROCESS_PROPERTY, property, false);
+		if (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+			AGENT_PAUSE_PROCESS_ITEM->sw.value = AGENT_PAUSE_PROCESS_WAIT_ITEM->sw.value =  false;
+			AGENT_PAUSE_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, AGENT_PAUSE_PROCESS_PROPERTY, NULL);
 		}
+		AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
+		abort_process(device);
 		AGENT_ABORT_PROCESS_ITEM->sw.value = false;
 		indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
 		return INDIGO_OK;
