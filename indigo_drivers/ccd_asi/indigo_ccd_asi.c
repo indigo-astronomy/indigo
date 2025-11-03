@@ -957,7 +957,7 @@ static indigo_result init_camera_property(indigo_device *device, ASI_CONTROL_CAP
 		if (res) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetControlValue(%d, ASI_OFFSET) = %d", id, res);
 		} else {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetControlValue(%d, ASI_OFFSET) = %d -> %d", id, res, value);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ASIGetControlValue(%d, ASI_OFFSET) = %d -> %d", id, res, value);
 		}
 		CCD_OFFSET_ITEM->number.value = CCD_OFFSET_ITEM->number.target = value;
 		CCD_OFFSET_ITEM->number.step = 1;
