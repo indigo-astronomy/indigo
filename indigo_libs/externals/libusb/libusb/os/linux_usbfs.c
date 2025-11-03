@@ -95,12 +95,11 @@ static int sysfs_available = -1;
 /* how many times have we initted (and not exited) ? */
 static int init_count = 0;
 
-/* have no authority to operate usb device directly */
-static int no_enumeration = 0;
-
 /* Serialize scan-devices, event-thread, and poll */
 usbi_mutex_static_t linux_hotplug_lock = USBI_MUTEX_INITIALIZER;
 
+static int open_sysfs_attr(struct libusb_context *ctx,
+	const char *sysfs_dir, const char *attr);
 static int linux_scan_devices(struct libusb_context *ctx);
 static int detach_kernel_driver_and_claim(struct libusb_device_handle *, uint8_t);
 
@@ -117,6 +116,11 @@ struct kernel_version {
 struct config_descriptor {
 	struct usbi_configuration_descriptor *desc;
 	size_t actual_len;
+};
+
+struct linux_context_priv {
+	/* no enumeration or hot-plug detection */
+	int no_device_discovery;
 };
 
 struct linux_device_priv {
@@ -180,41 +184,47 @@ static int dev_has_config0(struct libusb_device *dev)
 	return 0;
 }
 
-static int get_usbfs_fd(struct libusb_device *dev, mode_t mode, int silent)
+static int get_usbfs_fd(struct libusb_device *dev, int access_mode, int silent)
 {
 	struct libusb_context *ctx = DEVICE_CTX(dev);
 	char path[24];
 	int fd;
 
 	if (usbdev_names)
-		sprintf(path, USBDEV_PATH "/usbdev%u.%u",
+		snprintf(path, sizeof(path), USBDEV_PATH "/usbdev%u.%u",
 			dev->bus_number, dev->device_address);
 	else
-		sprintf(path, USB_DEVTMPFS_PATH "/%03u/%03u",
+		snprintf(path, sizeof(path), USB_DEVTMPFS_PATH "/%03u/%03u",
 			dev->bus_number, dev->device_address);
 
-	fd = open(path, mode | O_CLOEXEC);
+	fd = open(path, access_mode | O_CLOEXEC);
 	if (fd != -1)
 		return fd; /* Success */
 
+	/* TODO: fix race between netlink and usbfs https://github.com/libusb/libusb/issues/1691 */
 	if (errno == ENOENT) {
 		const long delay_ms = 10L;
 		const struct timespec delay_ts = { 0L, delay_ms * 1000L * 1000L };
+		uint8_t retry = 3;
 
-		if (!silent)
-			usbi_err(ctx, "File doesn't exist, wait %ld ms and try again", delay_ms);
+		while (retry-- > 0) {
+			if (!silent)
+				usbi_err(ctx, "File doesn't exist, wait %ld ms and try again", delay_ms);
 
-		/* Wait 10ms for USB device path creation.*/
-		nanosleep(&delay_ts, NULL);
+			/* Wait 10ms for USB device path creation.*/
+			nanosleep(&delay_ts, NULL);
 
-		fd = open(path, mode | O_CLOEXEC);
-		if (fd != -1)
-			return fd; /* Success */
+			fd = open(path, access_mode | O_CLOEXEC);
+			if (fd != -1)
+				return fd; /* Success */
+			if (errno != ENOENT)
+				break;
+		}
 	}
 
 	if (!silent) {
 		usbi_err(ctx, "libusb couldn't open USB device %s, errno=%d", path, errno);
-		if (errno == EACCES && mode == O_RDWR)
+		if (errno == EACCES && access_mode == O_RDWR)
 			usbi_err(ctx, "libusb requires write access to USB device nodes");
 	}
 
@@ -354,6 +364,7 @@ static int op_init(struct libusb_context *ctx)
 	struct kernel_version kversion;
 	const char *usbfs_path;
 	int r;
+	struct linux_context_priv *cpriv = usbi_get_context_priv(ctx);
 
 	if (get_kernel_version(ctx, &kversion) < 0)
 		return LIBUSB_ERROR_OTHER;
@@ -397,7 +408,7 @@ static int op_init(struct libusb_context *ctx)
 		}
 	}
 
-	if (no_enumeration) {
+	if (cpriv->no_device_discovery) {
 		return LIBUSB_SUCCESS;
 	}
 
@@ -421,9 +432,9 @@ static int op_init(struct libusb_context *ctx)
 
 static void op_exit(struct libusb_context *ctx)
 {
-	UNUSED(ctx);
+	struct linux_context_priv *cpriv = usbi_get_context_priv(ctx);
 
-	if (no_enumeration) {
+	if (cpriv->no_device_discovery) {
 		return;
 	}
 
@@ -436,16 +447,55 @@ static void op_exit(struct libusb_context *ctx)
 
 static int op_set_option(struct libusb_context *ctx, enum libusb_option option, va_list ap)
 {
-	UNUSED(ctx);
 	UNUSED(ap);
 
 	if (option == LIBUSB_OPTION_NO_DEVICE_DISCOVERY) {
-		usbi_dbg(ctx, "no enumeration will be performed");
-		no_enumeration = 1;
+		struct linux_context_priv *cpriv = usbi_get_context_priv(ctx);
+
+		usbi_dbg(ctx, "no device discovery will be performed");
+		cpriv->no_device_discovery = 1;
 		return LIBUSB_SUCCESS;
 	}
 
 	return LIBUSB_ERROR_NOT_SUPPORTED;
+}
+
+static int op_get_device_string(struct libusb_device *dev, 
+		enum libusb_device_string_type string_type, char *buffer, int length)
+{
+	ssize_t r;
+	int fd;
+	struct linux_device_priv *priv = usbi_get_device_priv(dev);
+	struct libusb_context* ctx = DEVICE_CTX(dev);
+	const char * attr;
+
+	switch (string_type) {
+		case LIBUSB_DEVICE_STRING_MANUFACTURER: attr = "manufacturer"; break;
+		case LIBUSB_DEVICE_STRING_PRODUCT: attr = "product"; break;
+		case LIBUSB_DEVICE_STRING_SERIAL_NUMBER: attr = "serial"; break;
+		default:
+			return LIBUSB_ERROR_INVALID_PARAM;
+	}
+	fd = open_sysfs_attr(ctx, priv->sysfs_dir, attr);
+	if (fd < 0)
+		return LIBUSB_ERROR_IO;
+
+	r = read(fd, buffer, length - 1);  // leave space for null terminator
+	if (r < 0) {
+		r = errno;
+		close(fd);
+		if (r == ENODEV)
+			return LIBUSB_ERROR_NO_DEVICE;
+		usbi_err(ctx, "attribute %s read failed, errno=%zd", attr, r);
+		return LIBUSB_ERROR_IO;
+	}
+	close(fd);
+	buffer[r] = 0;  // add null terminator
+	while (r && ((buffer[r] == 0) || (buffer[r] == '\n'))) {
+		buffer[r--] = 0;
+	}
+	++r;
+	return r;
 }
 
 static int linux_scan_devices(struct libusb_context *ctx)
@@ -537,7 +587,7 @@ static int read_sysfs_attr(struct libusb_context *ctx,
 
 	errno = 0;
 	value = strtol(buf, &endptr, 10);
-	if (value < 0 || value > (long)max_value || errno) {
+	if (buf == endptr || value < 0 || value > (long)max_value || errno) {
 		usbi_err(ctx, "attribute %s contains an invalid value: '%s'", attr, buf);
 		return LIBUSB_ERROR_INVALID_PARAM;
 	} else if (*endptr != '\0') {
@@ -597,7 +647,7 @@ int linux_get_device_address(struct libusb_context *ctx, int detached,
 			char proc_path[32];
 
 			/* try to retrieve the device node from fd */
-			sprintf(proc_path, "/proc/self/fd/%d", fd);
+			snprintf(proc_path, sizeof(proc_path), "/proc/self/fd/%d", fd);
 			r = readlink(proc_path, fd_path, PATH_MAX - 1);
 			if (r > 0) {
 				fd_path[r] = '\0';
@@ -648,13 +698,18 @@ static int seek_to_next_config(struct libusb_context *ctx,
 
 	while (len > 0) {
 		if (len < 2) {
-			usbi_err(ctx, "short descriptor read %zu/2", len);
+			usbi_err(ctx, "remaining descriptor length too small %zu/2", len);
 			return LIBUSB_ERROR_IO;
 		}
 
 		header = (struct usbi_descriptor_header *)buffer;
 		if (header->bDescriptorType == LIBUSB_DT_CONFIG)
 			return offset;
+
+		if (header->bLength < 2) {
+			usbi_err(ctx, "invalid descriptor bLength %hhu", header->bLength);
+			return LIBUSB_ERROR_IO;
+		}
 
 		if (len < header->bLength) {
 			usbi_err(ctx, "bLength overflow by %zu bytes",
@@ -924,6 +979,7 @@ static int initialize_device(struct libusb_device *dev, uint8_t busnum,
 			case   480: dev->speed = LIBUSB_SPEED_HIGH; break;
 			case  5000: dev->speed = LIBUSB_SPEED_SUPER; break;
 			case 10000: dev->speed = LIBUSB_SPEED_SUPER_PLUS; break;
+			case 20000: dev->speed = LIBUSB_SPEED_SUPER_PLUS_X2; break;
 			default:
 				usbi_warn(ctx, "unknown device speed: %d Mbps", speed);
 			}
@@ -1023,7 +1079,7 @@ static int linux_get_parent_info(struct libusb_device *dev, const char *sysfs_di
 {
 	struct libusb_context *ctx = DEVICE_CTX(dev);
 	struct libusb_device *it;
-	char *parent_sysfs_dir, *tmp;
+	char *parent_sysfs_dir, *tmp, *end;
 	int ret, add_parent = 1;
 
 	/* XXX -- can we figure out the topology when using usbfs? */
@@ -1038,7 +1094,16 @@ static int linux_get_parent_info(struct libusb_device *dev, const char *sysfs_di
 
 	if ((tmp = strrchr(parent_sysfs_dir, '.')) ||
 	    (tmp = strrchr(parent_sysfs_dir, '-'))) {
-	        dev->port_number = atoi(tmp + 1);
+		const char *start = tmp + 1;
+		long port_number = strtol(start, &end, 10);
+		if (port_number < 0 || port_number > INT_MAX || start == end || '\0' != *end) {
+			usbi_warn(ctx, "Can not parse sysfs_dir: %s, unexpected parent info",
+				parent_sysfs_dir);
+			free(parent_sysfs_dir);
+			return LIBUSB_ERROR_OTHER;
+		} else {
+			dev->port_number = (int)port_number;
+		}
 		*tmp = '\0';
 	} else {
 		usbi_warn(ctx, "Can not parse sysfs_dir: %s, no parent info",
@@ -1079,8 +1144,9 @@ retry:
 		goto retry;
 	}
 
-	usbi_dbg(ctx, "dev %p (%s) has parent %p (%s) port %u", dev, sysfs_dir,
-		 dev->parent_dev, parent_sysfs_dir, dev->port_number);
+	usbi_dbg(ctx, "dev %p (%s) has parent %p (%s) port %u",
+		 (void *) dev, sysfs_dir, (void *) dev->parent_dev,
+		 parent_sysfs_dir, dev->port_number);
 
 	free(parent_sysfs_dir);
 
@@ -1188,7 +1254,7 @@ static int usbfs_scan_busdir(struct libusb_context *ctx, uint8_t busnum)
 	struct dirent *entry;
 	int r = LIBUSB_ERROR_IO;
 
-	sprintf(dirpath, USB_DEVTMPFS_PATH "/%03u", busnum);
+	snprintf(dirpath, sizeof(dirpath), USB_DEVTMPFS_PATH "/%03u", busnum);
 	usbi_dbg(ctx, "%s", dirpath);
 	dir = opendir(dirpath);
 	if (!dir) {
@@ -1617,8 +1683,9 @@ out:
 	return ret;
 }
 
-static int do_streams_ioctl(struct libusb_device_handle *handle, long req,
-	uint32_t num_streams, unsigned char *endpoints, int num_endpoints)
+static int do_streams_ioctl(struct libusb_device_handle *handle,
+	unsigned long req, uint32_t num_streams, unsigned char *endpoints,
+	int num_endpoints)
 {
 	struct linux_device_handle_priv *hpriv = usbi_get_device_handle_priv(handle);
 	int r, fd = hpriv->fd;
@@ -2739,7 +2806,7 @@ static int op_handle_events(struct libusb_context *ctx,
 				} while (r == 0);
 			}
 
-			usbi_handle_disconnect(handle);
+			usbi_handle_disconnect(ctx, handle);
 			continue;
 		}
 
@@ -2766,6 +2833,7 @@ const struct usbi_os_backend usbi_backend = {
 	.init = op_init,
 	.exit = op_exit,
 	.set_option = op_set_option,
+	.get_device_string = op_get_device_string,
 	.hotplug_poll = op_hotplug_poll,
 	.get_active_config_descriptor = op_get_active_config_descriptor,
 	.get_config_descriptor = op_get_config_descriptor,
@@ -2801,6 +2869,7 @@ const struct usbi_os_backend usbi_backend = {
 
 	.handle_events = op_handle_events,
 
+	.context_priv_size = sizeof(struct linux_context_priv),
 	.device_priv_size = sizeof(struct linux_device_priv),
 	.device_handle_priv_size = sizeof(struct linux_device_handle_priv),
 	.transfer_priv_size = sizeof(struct linux_transfer_priv),

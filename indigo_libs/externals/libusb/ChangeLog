@@ -1,5 +1,49 @@
-For detailed information about the changes below, please see the git log or
-visit: http://log.libusb.info
+For detailed information about the changes below, please see the git log
+or visit: http://log.libusb.info
+
+2025-06-01: v1.0.29
+* Fix regression on macOS leading to timeouts in enumeration
+* LIBUSB_API_VERSION bump for the new functions in 1.0.28
+* Fix xusb regression displaying wrong error on claim failure
+
+2025-03-18: v1.0.28
+* New libusb_get_ssplus_usb_device_capability_descriptor API
+  for query of SuperSpeed+ Capability Descriptors
+* API support for reporting USB 3.2 Gen2x2 speeds
+* macOS: Fix Zero-Length Packet for multiple packets per frame
+* Windows: Base HID device descriptor on OS-cached values
+* Build fixes for Haiku and SunOS
+* Many code correctness fixes
+
+2024-01-31: v1.0.27
+* New libusb_init_context API to replace libusb_init
+* New libusb_get_max_alt_packet_size API
+* New libusb_get_platform_descriptor API (BOS)
+* Allow setting log callback with libusb_set_option/libusb_init_context
+* New WebAssembly + WebUSB backend using Emscripten
+* Fix regression in libusb_set_interface_alt_setting
+* Fix sync transfer completion race and use-after-free
+* Fix hotplug exit ordering
+* Linux: NO_DEVICE_DISCOVERY option set per context
+* macOS: Fix missing device list cleanup locking
+* macOS: Do not clear device data toggle for newer OS versions
+* macOS: Fix running binaries on older OS than build host
+* Windows: Allow claiming multiple associated interfaces
+* Windows: Ignore non-configured devices instead of waiting
+* Windows: Improved root hub detection
+
+2022-04-10: v1.0.26
+* Fix regression with transfer free's after closing device
+* Fix regression with destroyed context if API is misused
+* Workaround for applications using missing default context
+* Fix hotplog enumeration regression
+* Fix Windows isochronous transfer regression since 1.0.24
+* Fix macOS exit crash in some multi-context cases
+* Build fixes for various platforms and configurations
+* Fix Windows HID multi-interface product string retrieval
+* Update isochronous OUT packet actual lengths on Windows
+* Add interface bound checking for broken devices
+* Add umockdev tests on Linux
 
 2022-01-31: v1.0.25
 * Linux: Fix regression with some particular devices
