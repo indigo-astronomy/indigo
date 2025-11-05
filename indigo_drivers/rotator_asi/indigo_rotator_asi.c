@@ -28,23 +28,15 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
 #include <stdbool.h>
-#include <sys/time.h>
 
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_usb_utils.h>
 
 #include "indigo_rotator_asi.h"
-
-#if defined(INDIGO_FREEBSD)
-#include <libusb.h>
-#else
-#include <libusb-1.0/libusb.h>
-#endif
 
 #include <CAA_API.h>
 
@@ -326,7 +318,7 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 		} else {
 			ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 			ROTATOR_RELATIVE_MOVE_PROPERTY->state = INDIGO_BUSY_STATE;
-			PRIVATE_DATA->target_position = ROTATOR_POSITION_ITEM->number.target;
+			PRIVATE_DATA->target_position = (float)ROTATOR_POSITION_ITEM->number.target;
 			ROTATOR_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
 			indigo_update_property(device, ROTATOR_RELATIVE_MOVE_PROPERTY, NULL);
 			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
@@ -401,7 +393,7 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CAAGetDegree(%d) = %d", PRIVATE_DATA->dev_id, res);
 			}
 
-			PRIVATE_DATA->target_position = PRIVATE_DATA->current_position + ROTATOR_RELATIVE_MOVE_ITEM->number.target;
+			PRIVATE_DATA->target_position = PRIVATE_DATA->current_position + (float)ROTATOR_RELATIVE_MOVE_ITEM->number.target;
 
 			ROTATOR_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
 			res = CAAMoveTo(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position);
