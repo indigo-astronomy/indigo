@@ -121,12 +121,12 @@
 | mount_starbook | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | mount_synscan | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | mount_temma | 2️⃣ | ❌ No | ❌ No | ❌ No | |
-| rotator_asi | 2️⃣ | ❌ No | ❌ No | ❌ No | |
+| rotator_asi | 3️⃣ | ✅ Yes | ❌ No | ✅ HW | |
 | rotator_falcon | 3️⃣ | ✅ Yes | ✅ Yes | ✅ HW | |
 | rotator_lunatico | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | rotator_optec | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | rotator_simulator | 3️⃣ | ✅ Yes | ✅ Yes | ⛔ N/A | |
-| rotator_wa | 3️⃣ || ✅ Yes | ❌ No | ✅ HW | |
+| rotator_wa | 3️⃣ | ✅ Yes | ❌ No | ✅ HW | |
 | system_ascol | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | wheel_asi | 3️⃣ | ✅ Yes | ❌ No | ❌ No | |
 | wheel_astroasis | 3️⃣ | ✅ Yes | ❌ No | ✅ HW | |
