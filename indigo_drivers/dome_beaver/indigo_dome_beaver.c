@@ -28,13 +28,10 @@
 
 #include <stdlib.h>
 #include <string.h>
-//#include <unistd.h>
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
 #include <errno.h>
-#include <sys/select.h>
-#include <sys/time.h>
 
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_dome_driver.h>
@@ -144,9 +141,6 @@ typedef struct {
 	//bool rain, wind, timeout, powercut;
 	bool park_requested;
 	bool aborted;
-	pthread_mutex_t port_mutex;
-	pthread_mutex_t move_mutex;
-	indigo_timer *dome_timer;
 	indigo_property *shutter_cal_property;
 	indigo_property *rotator_cal_property;
 	indigo_property *failure_msg_property;
@@ -294,11 +288,9 @@ static bool beaver_open(indigo_device *device) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "OPEN REQUESTED: %p -> %d, count_open = %d", PRIVATE_DATA->handle, DEVICE_CONNECTED, PRIVATE_DATA->count_open);
 	if (DEVICE_CONNECTED) return false;
 
-	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	if (PRIVATE_DATA->count_open++ == 0) {
 		if (indigo_try_global_lock(device) != INDIGO_OK) {
 			PRIVATE_DATA->count_open--;
-			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -321,18 +313,15 @@ static bool beaver_open(indigo_device *device) {
 			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 			PRIVATE_DATA->count_open--;
 			indigo_global_unlock(device);
-			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 			return false;
 		}
 	}
-	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 
 	bool beaver = false;
 	char message[INDIGO_VALUE_SIZE] = "";
 	char board[LUNATICO_CMD_LEN] = "N/A";
 	char firmware[LUNATICO_CMD_LEN] = "N/A";
 	bool success = beaver_get_info(device, board, firmware);
-	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	if (success) {
 		if (!strncmp(board, "Beaver (rotator)", 16)) {
 			beaver = true;
@@ -363,11 +352,9 @@ static bool beaver_open(indigo_device *device) {
 			indigo_global_unlock(device);
 			PRIVATE_DATA->handle = NULL;
 		}
-		pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 		return false;
 	}
 	device->is_connected = true;
-	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 	return true;
 }
 
@@ -378,7 +365,6 @@ static void beaver_close(indigo_device *device) {
 		return;
 	}
 
-	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	if (--PRIVATE_DATA->count_open == 0) {
 		beaver_uni_close(device);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "beaver_uni_close(%p)", PRIVATE_DATA->handle);
@@ -389,7 +375,6 @@ static void beaver_close(indigo_device *device) {
 	INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "N/A");
 	indigo_update_property(device, INFO_PROPERTY, NULL);
 	device->is_connected = false;
-	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 }
 
 
@@ -591,8 +576,6 @@ static beaver_rc_t beaver_close_shutter(indigo_device *device) {
 static void dome_timer_callback(indigo_device *device) {
 	beaver_rc_t rc;
 
-	pthread_mutex_lock(&PRIVATE_DATA->move_mutex);
-
 	if ((rc = beaver_get_dome_status(device, &PRIVATE_DATA->dome_status)) != BD_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_get_dome_status(): returned error %d", rc);
 	}
@@ -755,8 +738,6 @@ static void dome_timer_callback(indigo_device *device) {
 		PRIVATE_DATA->aborted = false;
 	}
 
-	pthread_mutex_unlock(&PRIVATE_DATA->move_mutex);
-
 	/* Handle failures */
 	if (X_CLEAR_FAILURE_ITEM->sw.value) {
 		X_CLEAR_FAILURE_ITEM->sw.value = false;
@@ -805,7 +786,7 @@ static void dome_timer_callback(indigo_device *device) {
 		}
 	}
 
-	indigo_reschedule_timer(device, 1, &(PRIVATE_DATA->dome_timer));
+	indigo_execute_handler_in(device, 1, dome_timer_callback);
 }
 
 
@@ -825,8 +806,6 @@ static indigo_result dome_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_dome_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
-		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
-		pthread_mutex_init(&PRIVATE_DATA->move_mutex, NULL);
 		// -------------------------------------------------------------------------------- DOME_SPEED
 		DOME_SPEED_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- DOME_STEPS_PROPERTY
@@ -953,12 +932,12 @@ static void dome_connect_callback(indigo_device *device) {
 				device->is_connected = true;
 
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Connected = %p", PRIVATE_DATA->handle);
-				indigo_set_timer(device, 0.5, dome_timer_callback, &PRIVATE_DATA->dome_timer);
+				indigo_execute_handler_in(device, 0.5, dome_timer_callback);
 			}
 		}
 	} else {
 		if (device->is_connected) {
-			indigo_cancel_timer_sync(device, &PRIVATE_DATA->dome_timer);
+			indigo_cancel_pending_handlers(device);
 
 			indigo_delete_property(device, X_SHUTTER_CALIBRATE_PROPERTY, NULL);
 			indigo_delete_property(device, X_ROTATOR_CALIBRATE_PROPERTY, NULL);
@@ -984,7 +963,6 @@ static void dome_steps_callback(indigo_device *device) {
 		return;
 	}
 
-	pthread_mutex_lock(&PRIVATE_DATA->move_mutex);
 	if ((rc = beaver_get_azimuth(device, &PRIVATE_DATA->current_position)) != BD_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_get_azimuth(%p): returned error %d", PRIVATE_DATA->handle, rc);
 	}
@@ -1010,19 +988,16 @@ static void dome_steps_callback(indigo_device *device) {
 		indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 		DOME_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, DOME_STEPS_PROPERTY, "Goto azimuth failed");
-		pthread_mutex_unlock(&PRIVATE_DATA->move_mutex);
 		return;
 	}
 
 	indigo_sleep(0.5);
-	pthread_mutex_unlock(&PRIVATE_DATA->move_mutex);
 }
 
 
 static void dome_horizontal_coordinates_callback(indigo_device *device) {
 	beaver_rc_t rc;
 
-	pthread_mutex_lock(&PRIVATE_DATA->move_mutex);
 	if (DOME_PARK_PARKED_ITEM->sw.value) {
 		if ((rc = beaver_get_azimuth(device, &PRIVATE_DATA->current_position)) != BD_SUCCESS) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_get_azimuth(%p): returned error %d", PRIVATE_DATA->handle, rc);
@@ -1032,7 +1007,6 @@ static void dome_horizontal_coordinates_callback(indigo_device *device) {
 		DOME_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 		indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, "Dome is parked, please unpark");
-		pthread_mutex_unlock(&PRIVATE_DATA->move_mutex);
 		return;
 	}
 
@@ -1052,7 +1026,6 @@ static void dome_horizontal_coordinates_callback(indigo_device *device) {
 			DOME_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, "Set azimuth failed");
-			pthread_mutex_unlock(&PRIVATE_DATA->move_mutex);
 			return;
 		}
 	} else {
@@ -1062,20 +1035,17 @@ static void dome_horizontal_coordinates_callback(indigo_device *device) {
 			DOME_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, "Goto azimuth failed");
-			pthread_mutex_unlock(&PRIVATE_DATA->move_mutex);
 			return;
 		}
 	}
 
 	indigo_sleep(0.5);
-	pthread_mutex_unlock(&PRIVATE_DATA->move_mutex);
 }
 
 
 static void dome_shutter_callback(indigo_device *device) {
 	beaver_rc_t rc;
 
-	pthread_mutex_lock(&PRIVATE_DATA->move_mutex);
 	DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 	if (DOME_SHUTTER_OPENED_ITEM->sw.value) {
@@ -1088,19 +1058,16 @@ static void dome_shutter_callback(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Shutter open/close failed: returned error %d", rc);
 		indigo_update_property(device, DOME_STEPS_PROPERTY, "Shutter open/close failed");
 		indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
-		pthread_mutex_unlock(&PRIVATE_DATA->move_mutex);
 		return;
 	}
 
 	indigo_sleep(0.5);
-	pthread_mutex_unlock(&PRIVATE_DATA->move_mutex);
 }
 
 
 static void dome_park_callback(indigo_device *device) {
 	beaver_rc_t rc;
 
-	pthread_mutex_lock(&PRIVATE_DATA->move_mutex);
 	if (DOME_PARK_UNPARKED_ITEM->sw.value) {
 		DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
 		PRIVATE_DATA->park_requested = false;
@@ -1122,7 +1089,6 @@ static void dome_park_callback(indigo_device *device) {
 	}
 
 	indigo_sleep(0.5);
-	pthread_mutex_unlock(&PRIVATE_DATA->move_mutex);
 }
 
 
@@ -1136,7 +1102,6 @@ static void dome_gohome_callback(indigo_device *device) {
 		return;
 	}
 
-	pthread_mutex_lock(&PRIVATE_DATA->move_mutex);
 	if (DOME_HOME_ITEM->sw.value) {
 		indigo_set_switch(DOME_PARK_PROPERTY, DOME_HOME_ITEM, false);
 
@@ -1156,7 +1121,6 @@ static void dome_gohome_callback(indigo_device *device) {
 	}
 
 	indigo_sleep(0.5);
-	pthread_mutex_unlock(&PRIVATE_DATA->move_mutex);
 }
 
 
@@ -1170,7 +1134,6 @@ static void dome_calibrate_rotator_callback(indigo_device *device) {
 		return;
 	}
 
-	pthread_mutex_lock(&PRIVATE_DATA->move_mutex);
 	if (X_ROTATOR_CALIBRATE_ITEM->sw.value) {
 		X_ROTATOR_CALIBRATE_PROPERTY->state = INDIGO_BUSY_STATE;
 		if ((rc = beaver_calibrate_rotator(device)) != BD_SUCCESS) {
@@ -1185,14 +1148,12 @@ static void dome_calibrate_rotator_callback(indigo_device *device) {
 	}
 
 	indigo_sleep(0.5);
-	pthread_mutex_unlock(&PRIVATE_DATA->move_mutex);
 }
 
 
 static void dome_calibrate_shutter_callback(indigo_device *device) {
 	beaver_rc_t rc;
 
-	pthread_mutex_lock(&PRIVATE_DATA->move_mutex);
 	if (X_SHUTTER_CALIBRATE_ITEM->sw.value) {
 		X_SHUTTER_CALIBRATE_PROPERTY->state = INDIGO_BUSY_STATE;
 		if ((rc = beaver_calibrate_shutter(device)) != BD_SUCCESS) {
@@ -1207,9 +1168,53 @@ static void dome_calibrate_shutter_callback(indigo_device *device) {
 	}
 
 	indigo_sleep(0.5);
-	pthread_mutex_unlock(&PRIVATE_DATA->move_mutex);
 }
 
+static void dome_abort_callback(indigo_device *device) {
+	beaver_rc_t rc;
+	if ((rc = beaver_abort(device)) != BD_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_abort(%p): returned error %d", PRIVATE_DATA->handle, rc);
+		DOME_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+		DOME_ABORT_MOTION_ITEM->sw.value = false;
+		indigo_update_property(device, DOME_ABORT_MOTION_PROPERTY, "Abort failed");
+		return INDIGO_OK;
+	} else {
+		PRIVATE_DATA->aborted = true;
+	}
+
+	if (DOME_ABORT_MOTION_ITEM->sw.value && DOME_PARK_PROPERTY->state == INDIGO_BUSY_STATE) {
+		DOME_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
+	}
+
+	PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
+	DOME_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+	DOME_ABORT_MOTION_ITEM->sw.value = false;
+	indigo_update_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
+	DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
+}
+
+static void dome_set_park_callback(indigo_device *device) {
+	beaver_rc_t rc;
+	if ((rc = beaver_set_park(device)) != BD_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_set_park(%p): returned error %d", PRIVATE_DATA->handle, rc);
+		DOME_PARK_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, DOME_PARK_POSITION_PROPERTY, "Failed to set current position to park position");
+		return INDIGO_OK;
+	}
+
+	float park_pos;
+	if ((rc = beaver_get_park(device, &park_pos)) != BD_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_get_park(%p): returned error %d", PRIVATE_DATA->handle, rc);
+		DOME_PARK_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, DOME_PARK_POSITION_PROPERTY, "Failed to set current position to park position");
+		return INDIGO_OK;
+	}
+	DOME_PARK_POSITION_AZ_ITEM->number.target = DOME_PARK_POSITION_AZ_ITEM->number.value = park_pos;
+	DOME_PARK_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, DOME_PARK_POSITION_PROPERTY, NULL);
+}
 
 static indigo_result dome_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
@@ -1223,7 +1228,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, dome_connect_callback, NULL);
+		indigo_execute_handler(device, dome_connect_callback);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DOME_STEPS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_STEPS
@@ -1234,7 +1239,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 
 		indigo_property_copy_values(DOME_STEPS_PROPERTY, property, false);
 
-		indigo_set_timer(device, 0, dome_steps_callback, NULL);
+		indigo_execute_handler(device, dome_steps_callback);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DOME_HORIZONTAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_HORIZONTAL_COORDINATES
@@ -1244,7 +1249,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		}
 		indigo_property_copy_values(DOME_HORIZONTAL_COORDINATES_PROPERTY, property, false);
 
-		indigo_set_timer(device, 0, dome_horizontal_coordinates_callback, NULL);
+		indigo_execute_handler(device, dome_horizontal_coordinates_callback);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DOME_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_EQUATORIAL_COORDINATES
@@ -1262,27 +1267,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		// -------------------------------------------------------------------------------- DOME_ABORT_MOTION
 		indigo_property_copy_values(DOME_ABORT_MOTION_PROPERTY, property, false);
 
-		if ((rc = beaver_abort(device)) != BD_SUCCESS) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_abort(%p): returned error %d", PRIVATE_DATA->handle, rc);
-			DOME_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
-			DOME_ABORT_MOTION_ITEM->sw.value = false;
-			indigo_update_property(device, DOME_ABORT_MOTION_PROPERTY, "Abort failed");
-			return INDIGO_OK;
-		} else {
-			PRIVATE_DATA->aborted = true;
-		}
-
-		if (DOME_ABORT_MOTION_ITEM->sw.value && DOME_PARK_PROPERTY->state == INDIGO_BUSY_STATE) {
-			DOME_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
-		}
-
-		PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
-		DOME_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-		DOME_ABORT_MOTION_ITEM->sw.value = false;
-		indigo_update_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
-		DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
+		indigo_execute_priority_handler(device, INDIGO_TASK_PRIORITY_URGENT, dome_abort_callback);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DOME_SHUTTER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_SHUTTER
@@ -1292,42 +1277,25 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		 }
 		indigo_property_copy_values(DOME_SHUTTER_PROPERTY, property, false);
 
-		indigo_set_timer(device, 0, dome_shutter_callback, NULL);
+		indigo_execute_handler(device, dome_shutter_callback);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DOME_PARK_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_PARK
 		indigo_property_copy_values(DOME_PARK_PROPERTY, property, false);
 
-		indigo_set_timer(device, 0, dome_park_callback, NULL);
+		indigo_execute_handler(device, dome_park_callback);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DOME_PARK_POSITION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_PARK_POSITION
 		indigo_property_copy_values(DOME_SHUTTER_PROPERTY, property, false);
 
-		beaver_rc_t rc;
-		if ((rc = beaver_set_park(device)) != BD_SUCCESS) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_set_park(%p): returned error %d", PRIVATE_DATA->handle, rc);
-			DOME_PARK_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, DOME_PARK_POSITION_PROPERTY, "Failed to set current position to park position");
-			return INDIGO_OK;
-		}
-
-		float park_pos;
-		if ((rc = beaver_get_park(device, &park_pos)) != BD_SUCCESS) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_get_park(%p): returned error %d", PRIVATE_DATA->handle, rc);
-			DOME_PARK_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, DOME_PARK_POSITION_PROPERTY, "Failed to set current position to park position");
-			return INDIGO_OK;
-		}
-		DOME_PARK_POSITION_AZ_ITEM->number.target = DOME_PARK_POSITION_AZ_ITEM->number.value = park_pos;
-		DOME_PARK_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, DOME_PARK_POSITION_PROPERTY, NULL);
+		indigo_execute_handler(device, dome_set_park_callback);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DOME_HOME_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_HOME
 		indigo_property_copy_values(DOME_HOME_PROPERTY, property, false);
 
-		indigo_set_timer(device, 0, dome_gohome_callback, NULL);
+		indigo_execute_handler(device, dome_gohome_callback);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_CLEAR_FAILURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_CLEAR_FAILURE
@@ -1345,13 +1313,13 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		// -------------------------------------------------------------------------------- X_ROTATOR_CALIBRATE
 		indigo_property_copy_values(X_ROTATOR_CALIBRATE_PROPERTY, property, false);
 
-		indigo_set_timer(device, 0, dome_calibrate_rotator_callback, NULL);
+		indigo_execute_handler(device, dome_calibrate_rotator_callback);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_SHUTTER_CALIBRATE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_SHUTTER_CALIBRATE
 		indigo_property_copy_values(X_SHUTTER_CALIBRATE_PROPERTY, property, false);
 
-		indigo_set_timer(device, 0, dome_calibrate_shutter_callback, NULL);
+		indigo_execute_handler(device, dome_calibrate_shutter_callback);
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
