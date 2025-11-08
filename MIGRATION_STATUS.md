@@ -67,7 +67,7 @@
 | ccd_touptek | 3️⃣ | ✅ Yes | ❌ No | ✅ HW | |
 | ccd_uvc | 2️⃣ | ❌ No | ❌ No | ❌ No | ⛔ libuvc is Unix only |
 | dome_baader | 2️⃣ | ❌ No | ❌ No | ❌ No | |
-| dome_beaver | 2️⃣ | ❌ No | ❌ No | ❌ No | |
+| dome_beaver | 3️⃣ | ✅ Yes | ❌ No | ✅ HW | |
 | dome_dragonfly | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | dome_nexdome | 2️⃣ | ❌ No | ❌ No | ❌ No | |
 | dome_nexdome3 | 2️⃣ | ❌ No | ❌ No | ❌ No | |
