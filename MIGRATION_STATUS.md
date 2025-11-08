@@ -2,16 +2,16 @@
 
 | Driver                   | API | Windows  | Generator | Queue    | Retested | Comment                                                  |
 | ------------------------ | --- | -------- | --------- | -------- | -------- | -------------------------------------------------------- |
-| agent_alpaca             | 3️⃣  | ✅ Yes   | ⛔ N/A    | ⛔ N/A   | ❌ No    |                                                          |
-| agent_auxiliary          | 3️⃣  | ✅ Yes   | ⛔ N/A    | ⛔ N/A   | ❌ No    |                                                          |
-| agent_config             | 3️⃣  | ✅ Yes   | ⛔ N/A    | ⛔ N/A   | ❌ No    |                                                          |
-| agent_guider             | 3️⃣  | ✅ Yes   | ⛔ N/A    | ⛔ N/A   | ❌ No    |                                                          |
-| agent_imager             | 3️⃣  | ✅ Yes   | ⛔ N/A    | ⛔ N/A   | ❌ No    |                                                          |
-| agent_mount              | 3️⃣  | ✅ Yes   | ⛔ N/A    | ⛔ N/A   | ❌ No    |                                                          |
-| agent_scripting          | 3️⃣  | ✅ Yes   | ⛔ N/A    | ⛔ N/A   | ❌ No    |                                                          |
-| agent_astrometry         | ➋  | ❌ No    | ⛔ N/A    | ⛔ N/A   | ❌ No    | ⛔ Needs fork() & pipes                                  |
-| agent_astap              | ➋  | ❌ No    | ⛔ N/A    | ⛔ N/A   | ❌ No    | ⛔ Needs fork() & pipes                                  |
-| agent_snoop              | ➋  | ❌ No    | ⛔ N/A    | ⛔ N/A   | ❌ No    | 🚧 Obsolete                                              |
+| agent_alpaca             | 3️⃣  | ✅ Yes   | ⛔ N/A    | ❌ No    | ❌ No    |                                                          |
+| agent_auxiliary          | 3️⃣  | ✅ Yes   | ⛔ N/A    | ❌ No    | ❌ No    |                                                          |
+| agent_config             | 3️⃣  | ✅ Yes   | ⛔ N/A    | ❌ No    | ❌ No    |                                                          |
+| agent_guider             | 3️⃣  | ✅ Yes   | ⛔ N/A    | ❌ No    | ❌ No    |                                                          |
+| agent_imager             | 3️⃣  | ✅ Yes   | ⛔ N/A    | ❌ No    | ❌ No    |                                                          |
+| agent_mount              | 3️⃣  | ✅ Yes   | ⛔ N/A    | ❌ No    | ❌ No    |                                                          |
+| agent_scripting          | 3️⃣  | ✅ Yes   | ⛔ N/A    | ❌ No    | ❌ No    |                                                          |
+| agent_astrometry         | ➋  | ❌ No    | ⛔ N/A    | ❌ No    | ❌ No    | ⛔ Needs fork() & pipes                                  |
+| agent_astap              | ➋  | ❌ No    | ⛔ N/A    | ❌ No    | ❌ No    | ⛔ Needs fork() & pipes                                  |
+| agent_snoop              | ➋  | ❌ No    | ⛔ N/A    | ❌ No    | ❌ No    | 🚧 Obsolete                                              |
 | ao_sx                    | 3️⃣  | ✅ Yes   | ✅ Yes    | ✅ Yes   | ✅ HW    |                                                          |
 | aux_arteskyflat          | 3️⃣  | ✅ Yes   | ✅ Yes    | ✅ Yes   | ✅ Sim   |                                                          |
 | aux_asiair               | ➋  | ⛔ N/A   | ❌ No     | ❌ No    | ❌ No    | ⛔ RPi only                                              |
