@@ -771,8 +771,9 @@ static void dome_timer_callback(indigo_device *device) {
 	if (DOME_SLAVING_ENABLE_ITEM->sw.value) {
 		double az;
 		if (indigo_fix_dome_azimuth(device, DOME_EQUATORIAL_COORDINATES_RA_ITEM->number.value, DOME_EQUATORIAL_COORDINATES_DEC_ITEM->number.value, DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value, &az) &&
-		   (DOME_HORIZONTAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE)) {
-			PRIVATE_DATA->target_position = DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target = az;
+			(DOME_HORIZONTAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE)) {
+			DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target = az;
+			PRIVATE_DATA->target_position = (float)az;
 			if ((rc = beaver_goto_azimuth(device, PRIVATE_DATA->target_position)) != BD_SUCCESS) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_goto_azimuth(%p): returned error %d", PRIVATE_DATA->handle, rc);
 				DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -974,10 +975,10 @@ static void dome_steps_callback(indigo_device *device) {
 	indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 
 	if (DOME_DIRECTION_MOVE_COUNTERCLOCKWISE_ITEM->sw.value) {
-		PRIVATE_DATA->target_position = ((int)(10 * (PRIVATE_DATA->current_position - DOME_STEPS_ITEM->number.value) + 3600) % 3600) / 10.0;
+		PRIVATE_DATA->target_position = (float)(((int)(10 * (PRIVATE_DATA->current_position - DOME_STEPS_ITEM->number.value) + 3600) % 3600) / 10.0);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "PRIVATE_DATA->target_position = %f\n", PRIVATE_DATA->target_position);
 	} else if (DOME_DIRECTION_MOVE_CLOCKWISE_ITEM->sw.value) {
-		PRIVATE_DATA->target_position = ((int)(10 * (PRIVATE_DATA->current_position + DOME_STEPS_ITEM->number.value) + 3600) % 3600) / 10.0;
+		PRIVATE_DATA->target_position = (float)(((int)(10 * (PRIVATE_DATA->current_position + DOME_STEPS_ITEM->number.value) + 3600) % 3600) / 10.0);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "PRIVATE_DATA->target_position = %f\n", PRIVATE_DATA->target_position);
 	}
 
@@ -1018,7 +1019,7 @@ static void dome_horizontal_coordinates_callback(indigo_device *device) {
 	DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 
-	PRIVATE_DATA->target_position = DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target;
+	PRIVATE_DATA->target_position = (float)DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target;
 	if (DOME_ON_HORIZONTAL_COORDINATES_SET_SYNC_ITEM->sw.value) {
 		if ((rc = beaver_set_azimuth(device, PRIVATE_DATA->target_position)) != BD_SUCCESS) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_set_azimuth(%p): returned error %d", PRIVATE_DATA->handle, rc);
@@ -1177,7 +1178,7 @@ static void dome_abort_callback(indigo_device *device) {
 		DOME_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		DOME_ABORT_MOTION_ITEM->sw.value = false;
 		indigo_update_property(device, DOME_ABORT_MOTION_PROPERTY, "Abort failed");
-		return INDIGO_OK;
+		return;
 	} else {
 		PRIVATE_DATA->aborted = true;
 	}
@@ -1201,7 +1202,7 @@ static void dome_set_park_callback(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_set_park(%p): returned error %d", PRIVATE_DATA->handle, rc);
 		DOME_PARK_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, DOME_PARK_POSITION_PROPERTY, "Failed to set current position to park position");
-		return INDIGO_OK;
+		return;
 	}
 
 	float park_pos;
@@ -1209,7 +1210,7 @@ static void dome_set_park_callback(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_get_park(%p): returned error %d", PRIVATE_DATA->handle, rc);
 		DOME_PARK_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, DOME_PARK_POSITION_PROPERTY, "Failed to set current position to park position");
-		return INDIGO_OK;
+		return;
 	}
 	DOME_PARK_POSITION_AZ_ITEM->number.target = DOME_PARK_POSITION_AZ_ITEM->number.value = park_pos;
 	DOME_PARK_POSITION_PROPERTY->state = INDIGO_OK_STATE;
@@ -1220,7 +1221,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	beaver_rc_t rc;
+
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (indigo_ignore_connection_change(device, property))

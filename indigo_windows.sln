@@ -166,6 +166,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_mount_nexstaraux", "
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_rotator_asi", "indigo_drivers\rotator_asi\indigo_rotator_asi.vcxproj", "{8C909960-749F-4381-940A-369A736DE53C}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_dome_beaver", "indigo_drivers\dome_beaver\indigo_dome_beaver.vcxproj", "{09E26C5A-2919-46E3-94B5-5E2D32C85912}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -830,6 +832,14 @@ Global
 		{8C909960-749F-4381-940A-369A736DE53C}.Release|x64.Build.0 = Release|x64
 		{8C909960-749F-4381-940A-369A736DE53C}.Release|x86.ActiveCfg = Release|Win32
 		{8C909960-749F-4381-940A-369A736DE53C}.Release|x86.Build.0 = Release|Win32
+		{09E26C5A-2919-46E3-94B5-5E2D32C85912}.Debug|x64.ActiveCfg = Debug|x64
+		{09E26C5A-2919-46E3-94B5-5E2D32C85912}.Debug|x64.Build.0 = Debug|x64
+		{09E26C5A-2919-46E3-94B5-5E2D32C85912}.Debug|x86.ActiveCfg = Debug|Win32
+		{09E26C5A-2919-46E3-94B5-5E2D32C85912}.Debug|x86.Build.0 = Debug|Win32
+		{09E26C5A-2919-46E3-94B5-5E2D32C85912}.Release|x64.ActiveCfg = Release|x64
+		{09E26C5A-2919-46E3-94B5-5E2D32C85912}.Release|x64.Build.0 = Release|x64
+		{09E26C5A-2919-46E3-94B5-5E2D32C85912}.Release|x86.ActiveCfg = Release|Win32
+		{09E26C5A-2919-46E3-94B5-5E2D32C85912}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

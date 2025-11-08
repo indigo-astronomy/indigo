@@ -29,7 +29,7 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{DBC1D1EC-7791-4D1F-B6F0-1C933931C1A3}</ProjectGuid>
+    <ProjectGuid>{09E26C5A-2919-46E3-94B5-5E2D32C85912}</ProjectGuid>
     <RootNamespace>indigomountsimulator</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
     <ProjectName>indigo_dome_beaver</ProjectName>
