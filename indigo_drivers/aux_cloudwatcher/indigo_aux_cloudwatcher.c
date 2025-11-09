@@ -282,14 +282,13 @@ typedef struct {
 	bool udp;
 	bool anemometer_black;
 	bool cancel_reading;
-	pthread_mutex_t port_mutex;
+	pthread_mutex_t port_mutex; // keep mutex as we use threads and queues
 
 	heating_algorithm_state heating_state;
 	time_t pulse_start_time;
 	time_t wet_start_time;
 	float desired_sensor_temperature;
 	float sensor_heater_power;
-	indigo_timer *sensors_timer;
 	indigo_property *outlet_names_property,
 	                *gpio_outlet_property,
 	                *heater_control_state,
@@ -1667,7 +1666,7 @@ static void sensors_timer_callback(indigo_device *device) {
 	float reschedule_time = REFRESH_INTERVAL - cwd.read_duration;
 	if (reschedule_time < 1) reschedule_time = 1;
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "REFRESH_INTERVAL = %.2f, reschedule_time = %.2f,  cwd.read_duration = %.2f\n", REFRESH_INTERVAL, reschedule_time, cwd.read_duration);
-	indigo_reschedule_timer(device, reschedule_time, &PRIVATE_DATA->sensors_timer);
+	indigo_execute_handler_in(device, reschedule_time, sensors_timer_callback);
 }
 
 
@@ -1763,7 +1762,7 @@ static void handle_aux_connect_property(indigo_device *device) {
 					indigo_define_property(device, AUX_SKY_PROPERTY, NULL);
 					aag_populate_constants(device);
 					indigo_send_message(device, "[Warning] %s connected, it may take up to 30s to get the first readings", device->name);
-					indigo_set_timer(device, 0, sensors_timer_callback, &PRIVATE_DATA->sensors_timer);
+					indigo_execute_handler(device, sensors_timer_callback);
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				} else {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -1779,7 +1778,7 @@ static void handle_aux_connect_property(indigo_device *device) {
 		if (DEVICE_CONNECTED) {
 			// Stop timer faster - do not wait to finish readout cycle
 			PRIVATE_DATA->cancel_reading = true;
-			indigo_cancel_timer_sync(device, &PRIVATE_DATA->sensors_timer);
+			indigo_cancel_pending_handlers(device);
 			// To be on the safe side - set mim heating power
 			set_pwm_duty_cycle(device, (int)(PRIVATE_DATA->sensor_heater_power * 1023.0 / 100.0));
 			indigo_delete_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
@@ -1802,6 +1801,26 @@ static void handle_aux_connect_property(indigo_device *device) {
 	indigo_aux_change_property(device, NULL, CONNECTION_PROPERTY);
 }
 
+static void aux_gpio_outlet_callback(indigo_device *device) {
+	if (!DEVICE_CONNECTED) return INDIGO_OK;
+
+	AUX_GPIO_OUTLET_PROPERTY->state = INDIGO_BUSY_STATE;
+	indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
+
+	bool success = false;
+	if (AUX_GPIO_OUTLET_1_ITEM->sw.value) {
+		success = aag_close_swith(device);
+	} else {
+		success = aag_open_swith(device);
+	}
+	if (success) {
+		AUX_GPIO_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
+	} else {
+		AUX_GPIO_OUTLET_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, "Open/Close switch failed");
+	}
+}
 
 static indigo_result aux_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
@@ -1814,7 +1833,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, handle_aux_connect_property, NULL);
+		indigo_execute_handler(device, handle_aux_connect_property);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_OUTLET_NAMES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_AUX_OUTLET_NAMES
@@ -1832,21 +1851,8 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match_changeable(AUX_GPIO_OUTLET_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_GPIO_OUTLET
 		indigo_property_copy_values(AUX_GPIO_OUTLET_PROPERTY, property, false);
-		if (!DEVICE_CONNECTED) return INDIGO_OK;
-
-		bool success = false;
-		if (AUX_GPIO_OUTLET_1_ITEM->sw.value) {
-			success = aag_close_swith(device);
-		} else {
-			success = aag_open_swith(device);
-		}
-		if (success) {
-			AUX_GPIO_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
-		} else {
-			AUX_GPIO_OUTLET_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, "Open/Close switch failed");
-		}
+		// Should be async timer as sensors_timer_callback() is running long time (up to 15s)
+		indigo_set_timer(device, 0, aux_gpio_outlet_callback, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_SKY_CORRECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_SKY_CORRECTION
