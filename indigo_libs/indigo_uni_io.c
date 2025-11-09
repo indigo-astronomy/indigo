@@ -100,7 +100,7 @@ static int discard_data(indigo_uni_handle *handle) {
 #endif
 }
 
-static int wait_for_data(indigo_uni_handle *handle, long timeout) {
+int indigo_uni_wait_for_data(indigo_uni_handle *handle, long timeout) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	if (handle->type == INDIGO_FILE_HANDLE) {
 		handle->last_error = 0;
@@ -1246,7 +1246,7 @@ long indigo_uni_discard(indigo_uni_handle *handle) {
 	char c;
 	long bytes_read = 0;
 	while (true) {
-		if (wait_for_data(handle, 10000) <= 0) {
+		if (indigo_uni_wait_for_data(handle, 10000) <= 0) {
 			break;
 		}
 		if (read_data(handle, &c, 1) <= 0) {
@@ -1274,7 +1274,7 @@ long indigo_uni_read_section2(indigo_uni_handle *handle, char *buffer, long leng
 	while (bytes_read < length) {
 		char c = 0;
 		if (timeout >= 0) {
-			switch (wait_for_data(handle, timeout)) {
+			switch (indigo_uni_wait_for_data(handle, timeout)) {
 				case -1:
 					return -1;
 				case 0:

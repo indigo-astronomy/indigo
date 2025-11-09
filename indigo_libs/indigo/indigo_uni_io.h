@@ -207,6 +207,11 @@ INDIGO_EXTERN long indigo_uni_read(indigo_uni_handle *handle, void *buffer, long
 
 INDIGO_EXTERN long indigo_uni_discard(indigo_uni_handle *handle);
 
+/**
+ * wait for data to be available for reading with timeout in microseconds
+ */
+INDIGO_EXTERN int indigo_uni_wait_for_data(indigo_uni_handle *handle, long timeout);
+
 /** Read up to one of terminator characters optionally ignoring some characters (or NULL) into buffer with optional usecs timeout (or -1).
  */
 INDIGO_EXTERN long indigo_uni_read_section(indigo_uni_handle *handle, char *buffer, long length, const char *terminators, const char *ignore, long timeout);
