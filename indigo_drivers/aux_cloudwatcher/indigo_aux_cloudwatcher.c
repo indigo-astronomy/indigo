@@ -1430,7 +1430,7 @@ static int aag_init_properties(indigo_device *device) {
 	INDIGO_COPY_VALUE(AUX_WEATHER_HUMIDITY_ITEM->number.format, "%.0f");
 	indigo_init_number_item(AUX_WEATHER_WIND_SPEED_ITEM, AUX_WEATHER_WIND_SPEED_ITEM_NAME, "Wind speed (m/s)", 0, 200, 0, 0);
 	INDIGO_COPY_VALUE(AUX_WEATHER_WIND_SPEED_ITEM->number.format, "%.1f");
-	indigo_init_number_item(AUX_WEATHER_SKY_BRIGHTNESS_ITEM, AUX_WEATHER_SKY_BRIGHTNESS_ITEM_NAME, "Sky brightness [m/arcsec\u00B2]", -20, 30, 0, 0);
+	indigo_init_number_item(AUX_WEATHER_SKY_BRIGHTNESS_ITEM, AUX_WEATHER_SKY_BRIGHTNESS_ITEM_NAME, "Sky brightness [m/arcsec²]", -20, 30, 0, 0);
 	INDIGO_COPY_VALUE(AUX_WEATHER_SKY_BRIGHTNESS_ITEM->number.format, "%.2f");
 	indigo_init_number_item(AUX_WEATHER_SKY_BORTLE_CLASS_ITEM, AUX_WEATHER_SKY_BORTLE_CLASS_ITEM_NAME, "Sky Bortle class", 1, 9, 0, 0);
 	// -------------------------------------------------------------------------------- X_RAIN_SENSOR_HEATER_SETUP
