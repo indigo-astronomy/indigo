@@ -25,7 +25,7 @@
 
 #include "indigo_aux_cloudwatcher.h"
 
-#define DRIVER_VERSION 0x02000008
+#define DRIVER_VERSION 0x02000009
 #define AUX_CLOUDWATCHER_NAME  "AAG CloudWatcher"
 
 #define DRIVER_NAME              "indigo_aux_skywatcher"
@@ -277,7 +277,7 @@ typedef struct {
 } cloudwatcher_data;
 
 typedef struct {
-	int handle;
+	indigo_uni_handle *handle;
 	float firmware;
 	bool udp;
 	bool anemometer_black;
@@ -334,59 +334,40 @@ typedef struct {
 #define REFRESH_INTERVAL 15.0
 
 /* Linatico AAG CloudWatcher device Commands ======================================================================== */
-static bool aag_command(indigo_device *device, const char *command, char *response, int block_count, int sleep) {
+static bool aag_command(indigo_device *device, const char *command, char *response, int block_count) {
 	int max = block_count * BLOCK_SIZE;
 	char c;
 	struct timeval tv;
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
-	
+
 	// flush input and output
-	tcflush(PRIVATE_DATA->handle, TCIOFLUSH);
-	
+	indigo_uni_discard(PRIVATE_DATA->handle);
+
 	// write command
-	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
-	if (sleep > 0) {
-		usleep(sleep);
-	}
-	
+	indigo_uni_write(PRIVATE_DATA->handle, command, strlen(command));
+
 	// read responce
 	if (response != NULL) {
 		int index = 0;
-		int timeout = 3;
+
 		while (index < max) {
-			fd_set readout;
-			FD_ZERO(&readout);
-			FD_SET(PRIVATE_DATA->handle, &readout);
-			tv.tv_sec = timeout;
-			tv.tv_usec = 0;
-			timeout = 15; /* new sky darkness sensor may take up to 15 secods to read in complete darkness */
-			long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
+			/* new sky darkness sensor may take up to 15 secods to read in complete darkness */
+			int result = indigo_uni_wait_for_data(PRIVATE_DATA->handle, 15 * 1000000L);
 			if (result <= 0) {
 				break;
 			}
-			if (PRIVATE_DATA->udp) {
-				result = read(PRIVATE_DATA->handle, response, MAX_LEN);
-				if (result < 1) {
-					pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
-					return false;
-				}
-				index = (int)result;
+			result = indigo_uni_read(PRIVATE_DATA->handle, &c, 1);
+			if (result < 1) {
+				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
+				return false;
+			}
+			response[index++] = c;
+
+			/* If the last block is a handshake block, aka end of message (!XON), stop reading */
+			if (index >= BLOCK_SIZE && index % BLOCK_SIZE == 0 && response[index - BLOCK_SIZE + 1] == 0x11) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Handshake block received");
 				break;
-			} else {
-				result = read(PRIVATE_DATA->handle, &c, 1);
-				if (result < 1) {
-					pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
-					return false;
-				}
-				response[index++] = c;
-				
-				/* If the last block is a handshake block, aka end of message (!XON), stop reading */
-				if (index >= BLOCK_SIZE && index % BLOCK_SIZE == 0 && response[index - BLOCK_SIZE + 1] == 0x11) {
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Handshake block received");
-					break;
-				}
 			}
 		}
 		/* We do not need the handshake block - terminate the string at its beginning */
@@ -407,7 +388,7 @@ static bool aag_command(indigo_device *device, const char *command, char *respon
 
 static bool aag_is_cloudwatcher(indigo_device *device, char *name) {
 	char buffer[BLOCK_SIZE * 2];
-	bool r = aag_command(device, "A!", buffer, 2, 0);
+	bool r = aag_command(device, "A!", buffer, 2);
 
 	if (!r) return false;
 
@@ -436,7 +417,7 @@ static bool aag_is_cloudwatcher(indigo_device *device, char *name) {
 }
 
 //static bool aag_reset_buffers(indigo_device *device) {
-//	bool r = aag_command(device, "z!", NULL, 0, 0);
+//	bool r = aag_command(device, "z!", NULL, 0);
 //	if (!r) return false;
 //	return true;
 //}
@@ -445,7 +426,7 @@ static bool aag_get_firmware_version(indigo_device *device, char *version) {
 	if (version == NULL) return false;
 
 	char buffer[BLOCK_SIZE * 2];
-	bool r = aag_command(device, "B!", buffer, 2, 0);
+	bool r = aag_command(device, "B!", buffer, 2);
 	if (!r) return false;
 
 	int res = sscanf(buffer, "!V %4s", version);
@@ -460,7 +441,7 @@ static bool aag_get_serial_number(indigo_device *device, char *serial_number) {
 	if (serial_number == NULL) return false;
 
 	char buffer[BLOCK_SIZE * 2];
-	bool r = aag_command(device, "K!", buffer, 2, 0);
+	bool r = aag_command(device, "K!", buffer, 2);
 	if (!r) return false;
 
 	int res = sscanf(buffer, "!K %4s", serial_number);
@@ -489,7 +470,7 @@ static bool aag_get_values(indigo_device *device, int *power_voltage, int *ambie
 	int raw_sq = NO_READING;
 
 	char buffer[BLOCK_SIZE * 6] = "";
-	bool r = aag_command(device, "C!", buffer, 6, 0);
+	bool r = aag_command(device, "C!", buffer, 6);
 	if (!r) return false;
 
 	int record_type, value;
@@ -545,7 +526,7 @@ static bool aag_get_values(indigo_device *device, int *power_voltage, int *ambie
 static bool aag_get_ir_sky_temperature(indigo_device *device, int *temp) {
 	char buffer[BLOCK_SIZE * 2];
 
-	bool r = aag_command(device, "S!", buffer, 2, 0);
+	bool r = aag_command(device, "S!", buffer, 2);
 	if (!r) return false;
 
 	int res = sscanf(buffer, "!1 %d", temp);
@@ -558,7 +539,7 @@ static bool aag_get_ir_sky_temperature(indigo_device *device, int *temp) {
 static bool aag_get_sensor_temperature(indigo_device *device, int *temp) {
 	char buffer[BLOCK_SIZE * 2];
 
-	bool r = aag_command(device, "T!", buffer, 2, 0);
+	bool r = aag_command(device, "T!", buffer, 2);
 	if (!r) return false;
 
 	int res = sscanf(buffer, "!2 %d", temp);
@@ -571,7 +552,7 @@ static bool aag_get_sensor_temperature(indigo_device *device, int *temp) {
 static bool aag_get_rain_frequency(indigo_device *device, int *rain_freqency) {
 	char buffer[BLOCK_SIZE * 2];
 
-	bool r = aag_command(device, "E!", buffer, 2, 0);
+	bool r = aag_command(device, "E!", buffer, 2);
 	if (!r) return false;
 
 	int res = sscanf(buffer, "!R %d", rain_freqency);
@@ -603,7 +584,7 @@ static bool set_pwm_duty_cycle(indigo_device *device, int pwm_duty_cycle) {
 	command[4] = new_pwm + '0';
 
 	char buffer[BLOCK_SIZE * 2];
-	bool r = aag_command(device, command, buffer, 2, 0);
+	bool r = aag_command(device, command, buffer, 2);
 	if (!r) return false;
 
 	int res = sscanf(buffer, "!Q %d", &new_pwm);
@@ -619,7 +600,7 @@ static bool set_pwm_duty_cycle(indigo_device *device, int pwm_duty_cycle) {
 static bool aag_get_pwm_duty_cycle(indigo_device *device, int *pwm_duty_cycle) {
 	char buffer[BLOCK_SIZE * 2];
 
-	bool r = aag_command(device, "Q!", buffer, 2, 0);
+	bool r = aag_command(device, "Q!", buffer, 2);
 	if (!r) return false;
 
 	int res = sscanf(buffer, "!Q %d", pwm_duty_cycle);
@@ -632,7 +613,7 @@ static bool aag_get_atm_pressure_temperature(indigo_device *device, float *atm_p
 	int pressure, temperature;
 	char buffer[BLOCK_SIZE * 2];
 
-	bool r = aag_command(device, "p!", buffer, 2, 0);
+	bool r = aag_command(device, "p!", buffer, 2);
 	if (!r) return false;
 
 	int res = sscanf(buffer, "!p %d", &pressure);
@@ -642,7 +623,7 @@ static bool aag_get_atm_pressure_temperature(indigo_device *device, float *atm_p
 
 	*atm_pressure = pressure / 16.0;
 
-	r = aag_command(device, "q!", buffer, 2, 0);
+	r = aag_command(device, "q!", buffer, 2);
 	if (!r) return false;
 
 	res = sscanf(buffer, "!q %d", &temperature);
@@ -657,7 +638,7 @@ static bool aag_get_atm_pressure_temperature(indigo_device *device, float *atm_p
 static bool aag_open_swith(indigo_device *device) {
 	char buffer[BLOCK_SIZE * 2];
 
-	bool r = aag_command(device, "G!", buffer, 2, 0);
+	bool r = aag_command(device, "G!", buffer, 2);
 	if (!r) return false;
 
 	if (buffer[1] != 'X') return false;
@@ -668,7 +649,7 @@ static bool aag_open_swith(indigo_device *device) {
 static bool aag_close_swith(indigo_device *device) {
 	char buffer[BLOCK_SIZE * 2];
 
-	bool r = aag_command(device, "H!", buffer, 2, 0);
+	bool r = aag_command(device, "H!", buffer, 2);
 	if (!r) return false;
 
 	if (buffer[1] != 'Y') return false;
@@ -679,7 +660,7 @@ static bool aag_close_swith(indigo_device *device) {
 static bool aag_get_swith(indigo_device *device, bool *closed) {
 	char buffer[BLOCK_SIZE * 2];
 
-	bool r = aag_command(device, "F!", buffer, 2, 0);
+	bool r = aag_command(device, "F!", buffer, 2);
 	if (!r) return false;
 
 	if (buffer[1] == 'Y') {
@@ -703,7 +684,7 @@ static bool aag_get_rh_temperature(indigo_device *device, float *rh, float *temp
 	char buffer[BLOCK_SIZE * 2];
 
 	bool precise = true;
-	bool r = aag_command(device, "t!", buffer, 2, 0);
+	bool r = aag_command(device, "t!", buffer, 2);
 	if (!r) return false;
 	int res = sscanf(buffer, "!th%d", &tempi);
 	if (res != 1) {
@@ -725,7 +706,7 @@ static bool aag_get_rh_temperature(indigo_device *device, float *rh, float *temp
 	if (*temperature < -50 || *temperature > 80) return false;
 
 	precise = true;
-	r = aag_command(device, "h!", buffer, 2, 0);
+	r = aag_command(device, "h!", buffer, 2);
 	if (!r) return false;
 	res = sscanf(buffer, "!hh%d", &rhi);
 	if (res != 1) {
@@ -760,7 +741,7 @@ static bool aag_get_electrical_constants(
 	if (PRIVATE_DATA->firmware < 3.0) return false;
 
 	char buffer[BLOCK_SIZE * 2];
-	bool r = aag_command(device, "M!", buffer, 2, 0);
+	bool r = aag_command(device, "M!", buffer, 2);
 	if (!r) return false;
 
 	if (buffer[1] != 'M') return false;
@@ -796,7 +777,7 @@ static bool aag_is_anemometer_present(indigo_device *device, bool *present) {
 	}
 
 	char buffer[BLOCK_SIZE * 2];
-	bool r = aag_command(device, "v!", buffer, 2, 0);
+	bool r = aag_command(device, "v!", buffer, 2);
 	if (!r) return false;
 
 	int ipresent;
@@ -818,7 +799,7 @@ static bool aag_get_wind_speed(indigo_device *device, float *wind_speed) {
 	}
 
 	char buffer[BLOCK_SIZE * 2];
-	bool r = aag_command(device, "V!", buffer, 2, 0);
+	bool r = aag_command(device, "V!", buffer, 2);
 	if (!r) return false;
 
 	int res = sscanf(buffer, "!w %f", wind_speed);
@@ -1186,7 +1167,7 @@ bool process_data_and_update(indigo_device *device, cloudwatcher_data data) {
 
 // --------------------------------------------------------------------------------- Common stuff
 static bool aag_open(indigo_device *device) {
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "OPEN REQUESTED: %d -> %d", PRIVATE_DATA->handle, DEVICE_CONNECTED);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "OPEN REQUESTED: %p -> %d", PRIVATE_DATA->handle, DEVICE_CONNECTED);
 	if (DEVICE_CONNECTED) return false;
 
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
@@ -1197,17 +1178,14 @@ static bool aag_open(indigo_device *device) {
 	}
 
 	char *name = DEVICE_PORT_ITEM->text.value;
-	if (!indigo_is_device_url(name, "aag")) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Opening local device on port: '%s', baudrate = %d", DEVICE_PORT_ITEM->text.value, atoi(DEVICE_BAUDRATE_ITEM->text.value));
-		PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, atoi(DEVICE_BAUDRATE_ITEM->text.value));
-		PRIVATE_DATA->udp = false;
+	if (!indigo_uni_is_url(name, "nexdome")) {
+		PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, atoi(DEVICE_BAUDRATE_ITEM->text.value), INDIGO_LOG_DEBUG);
 	} else {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Opening network device on host: %s", DEVICE_PORT_ITEM->text.value);
-		indigo_network_protocol proto = INDIGO_PROTOCOL_UDP;
-		PRIVATE_DATA->handle = indigo_open_network_device(name, 10000, &proto);
-		PRIVATE_DATA->udp = true;
+		PRIVATE_DATA->handle = indigo_uni_open_url(name, 8080, INDIGO_TCP_HANDLE, INDIGO_LOG_DEBUG);
 	}
-	if (PRIVATE_DATA->handle < 0) {
+	//indigo_usleep(2*ONE_SECOND_DELAY);
+
+	if (PRIVATE_DATA->handle == NULL) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Opening device %s: failed", DEVICE_PORT_ITEM->text.value);
 		CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -1223,15 +1201,15 @@ static bool aag_open(indigo_device *device) {
 
 
 static void aag_close(indigo_device *device) {
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CLOSE REQUESTED: %d -> %d", PRIVATE_DATA->handle, DEVICE_CONNECTED);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CLOSE REQUESTED: %p -> %d", PRIVATE_DATA->handle, DEVICE_CONNECTED);
 	if (!DEVICE_CONNECTED) {
 		return;
 	}
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
-	close(PRIVATE_DATA->handle);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "close(%d)", PRIVATE_DATA->handle);
+	indigo_uni_close(&PRIVATE_DATA->handle);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "indigo_uni_close(%d)", PRIVATE_DATA->handle);
 	indigo_global_unlock(device);
-	PRIVATE_DATA->handle = 0;
+	PRIVATE_DATA->handle = NULL;
 	clear_connected_flag(device);
 	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 }
