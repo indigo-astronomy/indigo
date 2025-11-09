@@ -23,7 +23,7 @@
  \file indigo_dome_beaver.c
  */
 
-#define DRIVER_VERSION 0x020000003
+#define DRIVER_VERSION 0x02000003
 #define DRIVER_NAME	"indigo_dome_beaver"
 
 #include <stdlib.h>
