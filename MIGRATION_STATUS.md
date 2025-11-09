@@ -16,7 +16,7 @@
 | aux_arteskyflat          | 3️⃣  | ✅ Yes   | ✅ Yes    | ✅ Yes   | ✅ Sim   |                                                          |
 | aux_asiair               | ➋  | ⛔ N/A   | ❌ No     | ❌ No    | ❌ No    | ⛔ RPi only                                              |
 | aux_astromechanics       | 3️⃣  | ✅ Yes   | ✅ Yes    | ✅ Yes   | ✅ Sim   |                                                          |
-| aux_cloudwatcher         | ➋  | ❌ No    | ❌ No     | ❌ No    | ❌ No    |                                                          |
+| aux_cloudwatcher         | 3️⃣  | ✅ Yes   | ❌ No     | ✅ Yes  | ✅ HW    |                                                          |
 | aux_dragonfly            | ➋  | ❌ No    | ❌ No     | ❌ No    | ❌ No    |                                                          |
 | aux_dsusb                | 3️⃣  | ❌ No    | ✅ Yes    | ✅ Yes   | ✅ HW    | ⏰ TODO - make libdsusb for Windows                      |
 | aux_fbc                  | 3️⃣  | ✅ Yes   | ✅ Yes    | ✅ Yes   | ✅ HW    |                                                          |
