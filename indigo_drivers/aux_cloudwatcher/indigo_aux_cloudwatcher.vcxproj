@@ -29,7 +29,7 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{DBC1D1EC-7791-4D1F-B6F0-1C933931C1A3}</ProjectGuid>
+    <ProjectGuid>{85FDBC93-90AE-48E2-92EE-C758C9689E54}</ProjectGuid>
     <RootNamespace>indigomountsimulator</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
     <ProjectName>indigo_aux_cloudwatcher</ProjectName>
