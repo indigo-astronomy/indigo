@@ -107,6 +107,7 @@ static void focuser_connection_handler(indigo_device *device) {
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
+		indigo_cancel_pending_handlers(device);
 		indigo_delete_property(device, X_FOCUSER_APERTURE_PROPERTY, NULL);
 		astromechanics_close(device);
 		indigo_send_message(device, "Disconnected from %s", device->name);

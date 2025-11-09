@@ -186,6 +186,7 @@ static void focuser_connection_handler(indigo_device *device) {
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
+		indigo_cancel_pending_handlers(device);
 		//+ focuser.on_disconnect
 		fc3_command(device, "FH");
 		//- focuser.on_disconnect

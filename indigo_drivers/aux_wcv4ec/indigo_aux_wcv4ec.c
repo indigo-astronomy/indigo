@@ -298,16 +298,17 @@ static void aux_connection_handler(indigo_device *device) {
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
+		indigo_cancel_pending_handlers(device);
+		//+ aux.on_disconnect
+		wcv4ec_command(device, 9999); // turn light off
+		wcv4ec_command(device, 2000); // turn the heater off
+		//- aux.on_disconnect
 		indigo_delete_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_DETECT_OPEN_CLOSE_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_SET_OPEN_CLOSE_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_HEATER_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_COVER_PROPERTY, NULL);
-		//+ aux.on_disconnect
-		wcv4ec_command(device, 9999); // turn light off
-		wcv4ec_command(device, 2000); // turn the heater off
-		//- aux.on_disconnect
 		wcv4ec_close(device);
 		indigo_send_message(device, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;

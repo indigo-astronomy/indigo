@@ -803,6 +803,13 @@ static void aux_connection_handler(indigo_device *device) {
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
+		indigo_cancel_pending_handlers(device);
+		//+ aux.on_disconnect
+		if (PRIVATE_DATA->smart_hub) {
+			libusb_close(PRIVATE_DATA->smart_hub);
+			PRIVATE_DATA->smart_hub = 0;
+		}
+		//- aux.on_disconnect
 		indigo_delete_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_POWER_OUTLET_STATE_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_POWER_OUTLET_CURRENT_PROPERTY, NULL);
@@ -818,12 +825,6 @@ static void aux_connection_handler(indigo_device *device) {
 		indigo_delete_property(device, X_AUX_REBOOT_PROPERTY, NULL);
 		indigo_delete_property(device, X_AUX_VARIABLE_POWER_OUTLET_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROPERTY, NULL);
-		//+ aux.on_disconnect
-		if (PRIVATE_DATA->smart_hub) {
-			libusb_close(PRIVATE_DATA->smart_hub);
-			PRIVATE_DATA->smart_hub = 0;
-		}
-		//- aux.on_disconnect
 		if (--PRIVATE_DATA->count == 0) {
 			upb_close(device);
 		}
@@ -1333,6 +1334,7 @@ static void focuser_connection_handler(indigo_device *device) {
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
+		indigo_cancel_pending_handlers(device);
 		if (--PRIVATE_DATA->count == 0) {
 			upb_close(device);
 		}

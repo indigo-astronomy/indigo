@@ -121,6 +121,7 @@ static void ao_connection_handler(indigo_device *device) {
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
+		indigo_cancel_pending_handlers(device);
 		if (--PRIVATE_DATA->count == 0) {
 			sx_close(device);
 		}
@@ -264,6 +265,7 @@ static void guider_connection_handler(indigo_device *device) {
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
+		indigo_cancel_pending_handlers(device);
 		if (--PRIVATE_DATA->count == 0) {
 			sx_close(device);
 		}

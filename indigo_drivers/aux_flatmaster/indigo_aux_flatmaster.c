@@ -140,12 +140,13 @@ static void aux_connection_handler(indigo_device *device) {
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
-		indigo_delete_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
-		indigo_delete_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
+		indigo_cancel_pending_handlers(device);
 		//+ aux.on_disconnect
 		flatmaster_command(device, "L:%d", INTENSITY(0));
 		flatmaster_command(device, "E:0");
 		//- aux.on_disconnect
+		indigo_delete_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
+		indigo_delete_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
 		flatmaster_close(device);
 		indigo_send_message(device, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;

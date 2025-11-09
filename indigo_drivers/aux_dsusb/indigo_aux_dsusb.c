@@ -141,12 +141,13 @@ static void aux_connection_handler(indigo_device *device) {
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
-		indigo_delete_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
-		indigo_delete_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-		indigo_delete_property(device, X_CONFIG_PROPERTY, NULL);
+		indigo_cancel_pending_handlers(device);
 		//+ aux.on_disconnect
 		libdsusb_stop(PRIVATE_DATA->device_context);
 		//- aux.on_disconnect
+		indigo_delete_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
+		indigo_delete_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+		indigo_delete_property(device, X_CONFIG_PROPERTY, NULL);
 		dsusb_close(device);
 		indigo_send_message(device, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;

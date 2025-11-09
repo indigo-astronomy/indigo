@@ -157,10 +157,11 @@ static void focuser_connection_handler(indigo_device *device) {
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
-		indigo_delete_property(device, X_FOCUSER_STEP_SIZE_PROPERTY, NULL);
+		indigo_cancel_pending_handlers(device);
 		//+ focuser.on_disconnect
 		usbv3_command(device, "FQUITx", false);
 		//- focuser.on_disconnect
+		indigo_delete_property(device, X_FOCUSER_STEP_SIZE_PROPERTY, NULL);
 		usbv3_close(device);
 		indigo_send_message(device, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;

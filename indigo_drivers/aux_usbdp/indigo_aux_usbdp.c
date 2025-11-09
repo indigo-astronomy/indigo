@@ -434,6 +434,15 @@ static void aux_connection_handler(indigo_device *device) {
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
+		indigo_cancel_pending_handlers(device);
+		//+ aux.on_disconnect
+		if (PRIVATE_DATA->version == 2) {
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "Stopping heaters...");
+			usbdp_command(device, UDP2_OUTPUT_CMD, 1, 0);
+			usbdp_command(device, UDP2_OUTPUT_CMD, 2, 0);
+			usbdp_command(device, UDP2_OUTPUT_CMD, 3, 0);
+		}
+		//- aux.on_disconnect
 		indigo_delete_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_HEATER_OUTLET_STATE_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
@@ -444,14 +453,6 @@ static void aux_connection_handler(indigo_device *device) {
 		indigo_delete_property(device, AUX_LINK_CH_2AND3_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_HEATER_AGGRESSIVITY_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_DEW_WARNING_PROPERTY, NULL);
-		//+ aux.on_disconnect
-		if (PRIVATE_DATA->version == 2) {
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "Stopping heaters...");
-			usbdp_command(device, UDP2_OUTPUT_CMD, 1, 0);
-			usbdp_command(device, UDP2_OUTPUT_CMD, 2, 0);
-			usbdp_command(device, UDP2_OUTPUT_CMD, 3, 0);
-		}
-		//- aux.on_disconnect
 		usbdp_close(device);
 		indigo_send_message(device, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;

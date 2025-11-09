@@ -1392,12 +1392,13 @@ void write_c_connection_change_handler(device_type *device) {
 		write_line("\t\t}");
 	}
 	write_line("\t} else {");
+	write_line("\t\tindigo_cancel_pending_handlers(device);");
+	write_c_code_blocks(device->on_disconnect, 2, "%s.on_disconnect", device->type);
 	for (property_type *property2 = device->properties; property2; property2 = property2->next) {
 		if (property2->type[0] != 'i' && !property2->always_defined) {
 			write_line("\t\tindigo_delete_property(device, %s, NULL);", property2->handle);
 		}
 	}
-	write_c_code_blocks(device->on_disconnect, 2, "%s.on_disconnect", device->type);
 	if (!driver.virtual) {
 		if (is_multi_device) {
 			write_line("\t\tif (--PRIVATE_DATA->count == 0) {");
@@ -1669,7 +1670,7 @@ void write_c_hotplug_section(void) {
 	write_line("");
 	write_line("static indigo_device *devices[MAX_DEVICES];");
 	write_line("static pthread_mutex_t hotplug_mutex = PTHREAD_MUTEX_INITIALIZER;");
-	write_line("");	
+	write_line("");
 	write_line("static void process_plug_event(libusb_device *dev) {");
 	write_line("\tconst char *name;");
 	write_line("\tpthread_mutex_lock(&hotplug_mutex);");
