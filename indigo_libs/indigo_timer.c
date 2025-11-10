@@ -47,7 +47,7 @@
 //}
 //#endif
 
-#define utc_time(ts) clock_gettime(CLOCK_MONOTONIC, ts)
+#define monotonic_time(ts) clock_gettime(CLOCK_MONOTONIC, ts)
 
 #define NANO	1000000000L
 
@@ -64,7 +64,7 @@ static void *timer_func(indigo_timer *timer) {
 			INDIGO_TRACE(indigo_trace("timer #%d - sleep for %gs (%p)", timer->timer_id, timer->delay, timer->reference));
 			if (timer->delay > 0) {
 				struct timespec end;
-				utc_time(&end);
+				monotonic_time(&end);
 				end.tv_sec += (int)timer->delay;
 				end.tv_nsec += NANO * (timer->delay - (int)timer->delay);
 				normalize_timespec(&end);
@@ -120,7 +120,7 @@ static void *timer_func(indigo_timer *timer) {
 		free_timer = timer;
 		timer->wake = false;
 		pthread_mutex_unlock(&free_timer_mutex);
-		INDIGO_TRACE(indigo_trace("timer #%d - released", timer->timer_id));	
+		INDIGO_TRACE(indigo_trace("timer #%d - released", timer->timer_id));
 		pthread_mutex_lock(&timer->mutex);
 		while (!timer->wake)
 			pthread_cond_wait(&timer->cond, &timer->mutex);
@@ -218,7 +218,7 @@ bool indigo_reschedule_timer(indigo_device *device, double delay, indigo_timer *
 		return false;
 	}
 }
-	
+
 bool indigo_reschedule_timer_with_callback(indigo_device *device, double delay, indigo_timer_callback callback, indigo_timer **timer) {
 	bool result = false;
 	pthread_mutex_lock(&cancel_timer_mutex);
