@@ -39,6 +39,9 @@
 #include <pthread.h>
 #include <stdbool.h>
 #include <ctype.h>
+#if defined(INDIGO_MACOS)
+#include <sys/time.h>
+#endif
 
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_uni_io.h>
