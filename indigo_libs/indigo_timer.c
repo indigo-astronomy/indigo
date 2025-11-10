@@ -210,11 +210,15 @@ static bool set_timer(indigo_device *device, double delay, indigo_timer_with_dat
 		// INDIGO_TRACE(indigo_trace("timer #%d - allocating (%p)", t->timer_id, t));
 		pthread_mutex_init(&t->cond_mutex, NULL);
 		pthread_mutex_init(&t->thread_mutex, NULL);
+#if defined(INDIGO_WINDOWS)
+		pthread_cond_init(&t->cond, NULL);
+#else
 		pthread_condattr_t condattr;
 		pthread_condattr_init(&condattr);
 		pthread_condattr_setclock(&condattr, CLOCK_MONOTONIC);
 		pthread_cond_init(&t->cond, &condattr);
 		pthread_condattr_destroy(&condattr);
+#endif
 		t->canceled = false;
 		t->callback_running = false;
 		t->scheduled = true;
@@ -529,11 +533,15 @@ indigo_queue *indigo_queue_create(indigo_device *device) {
 	queue->device = device;
 	queue->queue_id = queue_count++;
 	pthread_mutex_init(&queue->cond_mutex, NULL);
+#if defined(INDIGO_WINDOWS)
+	pthread_cond_init(&queue->cond, NULL);
+#else
 	pthread_condattr_t condattr;
 	pthread_condattr_init(&condattr);
 	pthread_condattr_setclock(&condattr, CLOCK_MONOTONIC);
 	pthread_cond_init(&queue->cond, &condattr);
 	pthread_condattr_destroy(&condattr);
+#endif
 	pthread_mutex_init(&queue->thread_mutex, NULL);
 	pthread_create(&queue->thread, NULL, (void * (*)(void*))queue_func, queue);
 	pthread_mutex_lock(&queue->cond_mutex);
