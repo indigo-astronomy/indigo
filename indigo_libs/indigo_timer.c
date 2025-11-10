@@ -33,27 +33,13 @@
 #include <indigo/indigo_timer.h>
 #include <indigo/indigo_driver.h>
 
-//#ifdef __MACH__ /* Mac OSX prior Sierra is missing clock_gettime() */
-//#include <mach/clock.h>
-//#include <mach/mach.h>
-//void utc_time(struct timespec *ts) {
-//	clock_serv_t cclock;
-//	mach_timespec_t mts;
-//	host_get_clock_service(mach_host_self(), CALENDAR_CLOCK, &cclock);
-//	clock_get_time(cclock, &mts);
-//	mach_port_deallocate(mach_task_self(), cclock);
-//	ts->tv_sec = mts.tv_sec;
-//	ts->tv_nsec = mts.tv_nsec;
-//}
-//#endif
-
 #define SEC_NS    1000000000LL       /* 1 sec in nanoseconds */
 
 #if defined(INDIGO_WINDOWS)
 #include <windows.h>
 
-#ifndef CLOCK_REALTIME
-#define CLOCK_REALTIME 0
+#ifndef CLOCK_MONOTONIC
+#define CLOCK_MONOTONIC 0
 #endif
 
 static int clock_gettime(int clk_id, struct timespec* tp) {
@@ -71,7 +57,7 @@ static int clock_gettime(int clk_id, struct timespec* tp) {
 }
 #endif
 
-#define utc_time(ts) clock_gettime(CLOCK_REALTIME, ts)
+#define monotonic_time(ts) clock_gettime(CLOCK_MONOTONIC, ts)
 
 static int timer_count = 0;
 static indigo_timer *free_timer = NULL;
@@ -83,7 +69,7 @@ struct timespec indigo_delay_to_time(double delay) {
 	if (delay == 0) {
 		return time;
 	}
-	utc_time(&time);
+	monotonic_time(&time);
 	time.tv_sec += (int)delay;
 	time.tv_nsec += (long)(SEC_NS * (delay - (int)delay));
 	if ((1 <= time.tv_sec ) || ((0 == time.tv_sec) && (0 <= time.tv_nsec))) {
@@ -224,7 +210,11 @@ static bool set_timer(indigo_device *device, double delay, indigo_timer_with_dat
 		// INDIGO_TRACE(indigo_trace("timer #%d - allocating (%p)", t->timer_id, t));
 		pthread_mutex_init(&t->cond_mutex, NULL);
 		pthread_mutex_init(&t->thread_mutex, NULL);
-		pthread_cond_init(&t->cond, NULL);
+		pthread_condattr_t condattr;
+		pthread_condattr_init(&condattr);
+		pthread_condattr_setclock(&condattr, CLOCK_MONOTONIC);
+		pthread_cond_init(&t->cond, &condattr);
+		pthread_condattr_destroy(&condattr);
 		t->canceled = false;
 		t->callback_running = false;
 		t->scheduled = true;
@@ -378,7 +368,7 @@ static inline int timespec_cmp(const struct timespec *a, const struct timespec *
 // Peek either the highest priority runnable task or the first task from the queue
 static indigo_queue_task *peek_task(indigo_queue *queue) {
 	struct timespec now;
-	utc_time(&now);
+	monotonic_time(&now);
 	pthread_mutex_lock(&timers_mutex);
 	indigo_queue_task *runnable_task = queue->task;
 	indigo_queue_task *current = queue->task;
@@ -401,7 +391,7 @@ static indigo_queue_task *peek_task(indigo_queue *queue) {
 // Dequeue the highest priority runnable task from the queue
 static indigo_queue_task *dequeue_runnable_task(indigo_queue *queue) {
 	struct timespec now;
-	utc_time(&now);
+	monotonic_time(&now);
 	pthread_mutex_lock(&timers_mutex);
 	indigo_queue_task *runnable_task = NULL;
 	indigo_queue_task *prev_to_runnable_task = NULL;
@@ -481,7 +471,7 @@ static void enqueue_task(indigo_queue *queue, indigo_queue_task * task) {
 
 static double task_delay(indigo_queue_task *task) {
 	struct timespec now;
-	utc_time(&now);
+	monotonic_time(&now);
 	double delay = 0.0;
 	if (task->at.tv_sec != 0 || task->at.tv_nsec != 0) {
 		delay = (now.tv_sec - task->at.tv_sec) + (now.tv_nsec - task->at.tv_nsec) / 1e9;
@@ -539,7 +529,11 @@ indigo_queue *indigo_queue_create(indigo_device *device) {
 	queue->device = device;
 	queue->queue_id = queue_count++;
 	pthread_mutex_init(&queue->cond_mutex, NULL);
-	pthread_cond_init(&queue->cond, NULL);
+	pthread_condattr_t condattr;
+	pthread_condattr_init(&condattr);
+	pthread_condattr_setclock(&condattr, CLOCK_MONOTONIC);
+	pthread_cond_init(&queue->cond, &condattr);
+	pthread_condattr_destroy(&condattr);
 	pthread_mutex_init(&queue->thread_mutex, NULL);
 	pthread_create(&queue->thread, NULL, (void * (*)(void*))queue_func, queue);
 	pthread_mutex_lock(&queue->cond_mutex);
