@@ -180,10 +180,10 @@ bool indigo_set_timer_with_data(indigo_device *device, double delay, indigo_time
 		pthread_mutex_init(&t->mutex, NULL);
 		pthread_mutex_init(&t->callback_mutex, NULL);
 		pthread_condattr_t condattr;
-    pthread_condattr_init(&condattr);
-    pthread_condattr_setclock(&condattr, CLOCK_MONOTONIC);
-    pthread_cond_init(&t->cond, &condattr);
-    pthread_condattr_destroy(&condattr);
+		pthread_condattr_init(&condattr);
+		pthread_condattr_setclock(&condattr, CLOCK_MONOTONIC);
+		pthread_cond_init(&t->cond, &condattr);
+		pthread_condattr_destroy(&condattr);
 		t->canceled = false;
 		t->callback_running = false;
 		t->scheduled = true;
