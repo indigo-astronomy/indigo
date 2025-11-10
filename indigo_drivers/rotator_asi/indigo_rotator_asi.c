@@ -38,6 +38,8 @@
 
 #include "indigo_rotator_asi.h"
 
+#if !(defined(__APPLE__) && defined(__arm64__))
+
 #include <CAA_API.h>
 
 #define ASI_VENDOR_ID                   0x03c3
@@ -787,3 +789,22 @@ indigo_result indigo_rotator_asi(indigo_driver_action action, indigo_driver_info
 
 	return INDIGO_OK;
 }
+
+#else // apple arm64
+
+indigo_result indigo_rotator_asi(indigo_driver_action action, indigo_driver_info *info) {
+	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
+
+	SET_DRIVER_INFO(info, "ZWO CAA Rotator", __FUNCTION__, DRIVER_VERSION, true, last_action);
+
+	switch(action) {
+		case INDIGO_DRIVER_INIT:
+		case INDIGO_DRIVER_SHUTDOWN:
+			return INDIGO_UNSUPPORTED_ARCH;
+		case INDIGO_DRIVER_INFO:
+			break;
+	}
+	return INDIGO_OK;
+}
+
+#endif
