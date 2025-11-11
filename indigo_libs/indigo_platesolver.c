@@ -468,11 +468,15 @@ static void solve(indigo_platesolver_task *task) {
 		AGENT_PLATESOLVER_SYNC_SYNC_ITEM->sw.value ||
 		AGENT_PLATESOLVER_SYNC_CENTER_ITEM->sw.value
 	) {
-		AGENT_PLATESOLVER_WCS_STATE_ITEM->number.value = INDIGO_SOLVER_STATE_SYNCING;
-		indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
-		if (!mount_sync(device, AGENT_PLATESOLVER_WCS_RA_ITEM->number.value, AGENT_PLATESOLVER_WCS_DEC_ITEM->number.value, 2)) {
-			process_failed(device, "Sync failed");
-			return;
+		if (AGENT_PLATESOLVER_SYNC_SYNC_ITEM->sw.value && (90 - fabs(AGENT_PLATESOLVER_WCS_DEC_ITEM->number.value)) < 5.0) {
+			indigo_send_message(device, "Dec is close to 90, skip sync");
+		} else {
+			AGENT_PLATESOLVER_WCS_STATE_ITEM->number.value = INDIGO_SOLVER_STATE_SYNCING;
+			indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
+			if (!mount_sync(device, AGENT_PLATESOLVER_WCS_RA_ITEM->number.value, AGENT_PLATESOLVER_WCS_DEC_ITEM->number.value, 2)) {
+				process_failed(device, "Sync failed");
+				return;
+			}
 		}
 		indigo_send_message(device, "Synced");
 	}
