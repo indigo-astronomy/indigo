@@ -140,7 +140,7 @@ static bool nexstaraux_command(indigo_device *device, targets src, targets dst, 
 	}
 	unsigned char buffer[16] = { 0 };
 	buffer[0] = 0x3b;
-	buffer[1] = (length += 3);
+	buffer[1] = (length + 3);
 	buffer[2] = src;
 	buffer[3] = dst;
 	buffer[4] = cmd;
@@ -148,7 +148,8 @@ static bool nexstaraux_command(indigo_device *device, targets src, targets dst, 
 		memcpy(buffer + 5, data, length);
 	}
 	int checksum = 0;
-	for (int i = 1; i < length + 2; i++) {
+	length += 3;
+	for (int i = 1; i < length + 2; i++)
 		checksum += buffer[i];
 	}
 	buffer[length + 2] = (unsigned char)(((~checksum) + 1) & 0xFF);

@@ -1320,6 +1320,8 @@ static void meade_init_gemini_mount(indigo_device *device) {
 	MOUNT_MODE_PROPERTY->hidden = true;
 	MERIDIAN_FLIP_PROPERTY->hidden = true;
 	MOUNT_PARK_PROPERTY->count = 2;
+	MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
+	MOUNT_SIDE_OF_PIER_PROPERTY->perm = INDIGO_RO_PERM;
 	strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Losmandy");
 	INDIGO_COPY_VALUE(MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product);
 	strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, "N/A");
@@ -1904,6 +1906,23 @@ static void meade_update_gemini_state(indigo_device *device) {
 				PRIVATE_DATA->park_changed = true;
 			}
 		}
+	}
+	if (meade_command(device, ":Gm#", response, sizeof(response), 0)) {
+		if (strchr(response, 'W') && !MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value) {
+			indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
+			indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
+		} else if (strchr(response, 'E') && !MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value) {
+			indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_EAST_ITEM, true);
+			indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
+		} else {
+			MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value = false;
+			MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value = false;
+			indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
+		}
+	} else {
+		MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value = false;
+		MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value = false;
+		indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
 	}
 }
 
