@@ -2142,10 +2142,6 @@ static void meade_update_gemini_state(indigo_device *device) {
 		} else if (strchr(response, 'E') && !MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value) {
 			indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_EAST_ITEM, true);
 			indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
-		} else {
-			MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value = false;
-			MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value = false;
-			indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
 		}
 	} else {
 		MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value = false;
