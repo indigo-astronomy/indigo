@@ -1907,11 +1907,11 @@ static void meade_update_gemini_state(indigo_device *device) {
 			}
 		}
 	}
-	if (meade_command(device, ":Gm#", response, sizeof(response), 0)) {
-		if (strchr(response, 'W') && !MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value) {
+	if (meade_command(device, ":Gm#", PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), 0)) {
+		if (strchr(PRIVATE_DATA->response, 'W') && !MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value) {
 			indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
 			indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
-		} else if (strchr(response, 'E') && !MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value) {
+		} else if (strchr(PRIVATE_DATA->response, 'E') && !MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value) {
 			indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_EAST_ITEM, true);
 			indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
 		}
