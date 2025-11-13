@@ -149,7 +149,7 @@ static bool nexstaraux_command(indigo_device *device, targets src, targets dst, 
 	}
 	int checksum = 0;
 	length += 3;
-	for (int i = 1; i < length + 2; i++)
+	for (int i = 1; i < length + 2; i++) {
 		checksum += buffer[i];
 	}
 	buffer[length + 2] = (unsigned char)(((~checksum) + 1) & 0xFF);
