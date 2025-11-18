@@ -39,12 +39,6 @@
 
 #include "indigo_ccd_atik.h"
 
-#if defined(INDIGO_FREEBSD)
-#include <libusb.h>
-#else
-#include <libusb-1.0/libusb.h>
-#endif
-
 #include "AtikCameras.h"
 
 #define PRIVATE_DATA        ((atik_private_data *)device->private_data)
