@@ -1,4 +1,4 @@
-﻿/**************************************************
+/**************************************************
 this is the ZWO caa CAA SDK
 any question feel free contact us:yang.zhou@zwoptical.com
 
@@ -21,7 +21,6 @@ typedef struct _CAA_INFO
 	int MaxStep;//fixed maximum degree
 } CAA_INFO;
 
-
 typedef enum _CAA_ERROR_CODE{
 	CAA_SUCCESS = 0,
 	CAA_ERROR_INVALID_INDEX,
@@ -37,6 +36,7 @@ typedef enum _CAA_ERROR_CODE{
 	CAA_ERROR_OVER_LIMIT, // 超过限位
 	CAA_ERROR_STALL,	// 堵转
 	CAA_ERROR_TIMEOUT, // 超时
+	CAA_ERROR_INVALID_LENGTH,
 	CAA_ERROR_END = -1
 }CAA_ERROR_CODE;
 
@@ -178,7 +178,24 @@ CAA_ERROR_REMOVED: caa is removed
 ***************************************************************************/
 CAA_API	CAA_ERROR_CODE CAAMoveTo(int ID, float iAngle);
 
+/***************************************************************************
+Descriptions:
+CAA rotates to the mechanical angle.(移动到机械位置)
 
+Paras:
+int ID: the ID of caa
+
+float iAngle: step value is between 0 to CAA_INFO::MaxStep
+
+Return:
+CAA_ERROR_INVALID_ID: invalid ID value
+CAA_ERROR_CLOSED: not opened
+CAA_SUCCESS: operation succeeds
+CAA_ERROR_ERROR_STATE: caa is in error state
+CAA_ERROR_REMOVED: caa is removed
+
+***************************************************************************/
+CAA_API	CAA_ERROR_CODE CAAMoveToMechanical(int ID, float iAngle);
 
 /***************************************************************************
 Descriptions:
@@ -273,7 +290,7 @@ CAA_API	CAA_ERROR_CODE CAAMinDegree(int ID, float* piAngle);
 
 /***************************************************************************
 Descriptions:
-Get max degree
+Set max degree
 
 Paras:
 int ID: the ID of caa
@@ -442,7 +459,7 @@ CAA_SN* pSN: pointer to SN
 Return: 
 CAA_ERROR_INVALID_ID: invalid ID value
 CAA_ERROR_CLOSED: not opened
-EFW_ERROR_NOT_SUPPORTED: the firmware does not support serial number
+CAA_ERROR_NOT_SUPPORTED: the firmware does not support serial number
 CAA_SUCCESS: operation succeeds
 ***************************************************************************/
 CAA_API CAA_ERROR_CODE CAAGetSerialNumber(int ID, CAA_SN* pSN);
@@ -459,7 +476,7 @@ CAA_ID alias: the struct which contains the alias
 Return: 
 CAA_ERROR_INVALID_ID: invalid ID value
 CAA_ERROR_CLOSED: not opened
-EFW_ERROR_NOT_SUPPORTED: the firmware does not support setting alias
+CAA_ERROR_NOT_SUPPORTED: the firmware does not support setting alias
 CAA_SUCCESS: operation succeeds
 ***************************************************************************/
 CAA_API CAA_ERROR_CODE CAASetID(int ID, CAA_ID alias);
@@ -480,32 +497,6 @@ CAA_ERROR_CLOSED: not opened
 CAA_SUCCESS: operation succeeds
 ***************************************************************************/
 CAA_API CAA_ERROR_CODE CAAGetType(int ID, CAA_TYPE* pCAAType);
-
-//#define ASIPRODUCE //API for Produce. It needs to be commented out when it is released to the public
-#ifdef ASIPRODUCE
-
-CAA_API CAA_ERROR_CODE CAASendCMD(int ID, unsigned char* buf, int size, bool bRead = false, unsigned char* readBuf = 0);
-
-/***************************************************************************
-Descriptions:
-Set the serial number to a CAA
-
-Paras:
-int ID: the ID of caa
-
-CAA_SN* pSN: pointer to SN
-
-Return: 
-CAA_ERROR_INVALID_ID: invalid ID value
-CAA_ERROR_CLOSED: not opened
-EFW_ERROR_NOT_SUPPORTED: the firmware does not support setting serial number
-CAA_SUCCESS: operation succeeds
-
-Note: Now setting serial number dose not through SDK, so this api is not used.
-***************************************************************************/
-CAA_API CAA_ERROR_CODE CAASetSerialNumber(int ID, CAA_SN* pSN);
-
-#endif
 
 #ifdef __cplusplus
 }
