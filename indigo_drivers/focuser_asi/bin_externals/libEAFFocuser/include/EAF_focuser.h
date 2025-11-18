@@ -14,6 +14,8 @@ any question feel free contact us:yang.zhou@zwoptical.com
 
 #define EAF_ID_MAX 128
 
+#define BLE_DEVICE_MIN_ID 50
+
 typedef struct _EAF_INFO
 {
 	int ID;
@@ -22,7 +24,7 @@ typedef struct _EAF_INFO
 } EAF_INFO;
 
 
-typedef enum _EAF_ERROR_CODE{
+typedef enum _EAF_ERROR_CODE {
 	EAF_SUCCESS = 0,
 	EAF_ERROR_INVALID_INDEX,
 	EAF_ERROR_INVALID_ID,
@@ -33,6 +35,24 @@ typedef enum _EAF_ERROR_CODE{
 	EAF_ERROR_GENERAL_ERROR,//other error
 	EAF_ERROR_NOT_SUPPORTED,
 	EAF_ERROR_CLOSED,
+	EAF_ERROR_BATTER_INFO,
+	EAF_ERROR_INVALID_LENGTH,
+
+	// BLE
+	EAF_BLE_READ_DATA_FAILED = 50,
+	EAF_BLE_SEND_DATA_FAILED,
+	EAF_BLE_CONNECT_FAILED,
+	EAF_BLE_DISCONNECT, // ble is not connected, initialization failed.
+	EAF_BLE_PAIR_FAILED, // ble pair
+	EAF_BLE_CLEAR_PAIR_FAILED, // clear pair
+	EAF_BLE_PAIRING_TIMEOUT, // ble pairing timeout.
+	EAF_BLE_RECEIVE_TIMEOUT, // ble receive data timeout.
+	EAF_BLE_DEVICE_NOT_EXISTS, // The device is not supported
+	EAF_BLE_INVALID_CALLBACK,
+	EAF_BLE_NEW_PAIR_REQUEST,   // This is a new pair request
+	EAF_BLE_DATA_BUSY,
+	EAF_BLE_CHECK_SIZE_FAILED,  // The length of the firmware sent and the length received do not match.
+
 	EAF_ERROR_END = -1
 }EAF_ERROR_CODE;
 
@@ -40,11 +60,197 @@ typedef struct _EAF_ID{
 	unsigned char id[8];
 }EAF_ID;
 
+typedef struct _EAF_TYPE {
+	char type[16];
+}EAF_TYPE;
+
+typedef struct _EAF_BLE_NAME {
+	char name[16];
+}EAF_BLE_NAME;
+
+typedef struct _EAF_ERROR_MSG {
+	char motor_error_code[3];   // 2 characters + 1 terminator
+	char battery_error_code[3]; // 2 characters + 1 terminator
+}EAF_ERROR_MSG;
+
+typedef struct _EAF_BATTERY_INFO{
+	int battery_temp;
+    int battery_vol;
+    int battery_charge_curr;
+    int battery_percentage;
+	int battery_discharge_curr;
+	int battery_health;
+	int battery_charge_vol;
+	int battery_num_of_cycles;
+}EAF_BATTERY_INFO;
+
+typedef struct _EAF_ALL_INFO {
+	int is_run;						// Motor running state.
+	int backlash_steps;				// The backlash steps.
+	int current_steps;				// The currect steps.
+	float temperature;				// The temperature of eaf. 
+	int buzzer_state;				// Buzzer status.
+	int reverse_state;				// Reverse state.
+	int handle_pressed;				// The handle is pressed.
+	int handle_connect;             // Handle connection state.
+	int max_steps;					// Max steps.
+	int led_state;					// Led state.
+	char motor_error_code[2];		// Motor Error code
+	char battery_error_code[2];		// Battery Error code
+	EAF_BATTERY_INFO battery_info;	// Battery info.
+} EAF_ALL_INFO;
+
+typedef enum _EAF_CONTROL_TYPE {
+	CONTROL_BLE_NAME = 0,
+	CONTROL_LED,
+	CONTROL_BUZZER,
+	CONTROL_EAF_TYPE,
+	CONTROL_BAT_INFO,
+	CONTROL_ERR_CODE,
+	CONTROL_FW_UPDATE_BLE,       // BLE Upate EAF Firmware
+	CONTROL_FW_UPDATE_USB,
+	CONTROL_MAX_INDEX,       // Maximum index.
+} EAF_CONTROL_TYPE;
+
+typedef struct _EAF_CONTROL_CAPS {
+	char name[32];
+	char description[128];
+	bool isSupported;
+	bool isWritable;
+	int maxValue;
+	int minValue;
+	int defaultValue;
+	EAF_CONTROL_TYPE controlType;
+	char unused[32];
+} EAF_CONTROL_CAPS;
+
 typedef EAF_ID EAF_SN;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+typedef struct _BLE_DEVICE_INFO {
+	char name[64];
+	char address[64]; // format bluetooth address
+	int signalStrength;
+	long long int bluetoothAddress;
+} BLE_DEVICE_INFO_T;
+
+typedef void (*ConnStateCallback)(bool state);
+typedef void (*PairStateCallback)(EAF_ERROR_CODE state);
+
+/***************************************************************************
+Descriptions:
+This is the API for scanning surrounding Bluetooth.
+If you use Bluetooth to control EAF, you do not need to call EAFGetNum and EAFOpen API.
+Paras:
+int DurationMs: Scan time ms.
+BLE_DEVICE_INFO_T* devices: device info.
+int maxDeviceCount: max device count.
+int* actualDeviceCount: actual device count.
+
+Return: EAF_SUCCESS or EAF_BLE_DEVICE_NOT_EXISTS
+***************************************************************************/
+EAF_API EAF_ERROR_CODE EAFBLEScan(int DurationMs, BLE_DEVICE_INFO_T* devices, int maxDeviceCount, int* actualDeviceCount);
+
+/***************************************************************************
+Descriptions:
+This is the api for connecting to eaf device bluetooth.
+Paras:
+const char* pDeviceName: connect device name.
+int *ID: connect device id.
+
+Return: EAF_SUCCESS or EAF_ERROR_CLOSED
+***************************************************************************/
+EAF_API EAF_ERROR_CODE EAFBLEConnect(const char* pDeviceName, const char* pDeviceAddress, int *ID);
+
+/***************************************************************************
+Descriptions:
+Register a Bluetooth pair state callback for an EAF device.
+Paras:
+int ID: connect device id.
+PairStateCallback callback：
+Return one of the following `EAF_ERROR_CODE` values:
+ *EAF_SUCCESS              : Pairing successful.
+ *EAF_BLE_NEW_PAIR_REQUEST : New device pairing request
+ *EAF_BLE_PAIRING_TIMEOUT  : Pairing process timed out.
+ *EAF_BLE_PAIRING_FAILED   : Pairing failed due to errors.
+ If set to `NULL`, no callback will be registered.
+
+Return: EAF_SUCCESS or EAF_ERROR_CLOSED
+
+Note：
+ * 1. The callback function is optional; if no callback is provided, the pairing state
+ *    will not trigger any user-defined actions.
+ * 2. Ensure that the device ID is valid and the EAF device is powered on before
+ *    registering the callback.
+ * 3. If you wish to stop receiving pairing state updates, you can pass a `NULL` callback
+ *    or unregister the callback using the appropriate API.
+***************************************************************************/
+EAF_API EAF_ERROR_CODE EAFBLERegPairStateCallback(int ID, PairStateCallback callback);
+
+/***************************************************************************
+Descriptions:
+This interface is the ble pairing interface;
+Paras:
+int ID: connect device id.
+
+Return: EAF_SUCCESS or EAF_BLE_PAIR_FAILED
+***************************************************************************/
+EAF_API EAF_ERROR_CODE EAFBLEPair(int ID);
+
+/***************************************************************************
+Descriptions:
+This interface is the clear ble pairing interface;
+Paras:
+int ID: connect device id.
+
+Return: EAF_SUCCESS or EAF_BLE_CLEAR_PAIR_FAILED
+***************************************************************************/
+EAF_API EAF_ERROR_CODE EAFBLEClearPair(int ID);
+
+/***************************************************************************
+Descriptions:
+This is the API to disconnect the Bluetooth connection.
+Paras:
+int ID: connect device id.
+
+Return: EAF_SUCCESS or EAF_ERROR_CLOSED
+***************************************************************************/
+EAF_API EAF_ERROR_CODE EAFBLEDisconnect(int ID);
+
+/***************************************************************************
+Descriptions:
+Register a Bluetooth connection state callback for an EAF device.
+Paras:
+const char* pDeviceName: connect device name.
+int ID: connect device id.
+ConnStateCallback callback: 
+Return value: 
+true  :conncet; 
+false :not connect
+
+Return: EAF_SUCCESS or EAF_ERROR_CLOSED
+***************************************************************************/
+EAF_API EAF_ERROR_CODE EAFBLERegConnStateCallback(int ID, ConnStateCallback callback);
+
+/***************************************************************************
+Descriptions:
+This is the interface to get all the information of EAF through BLE.
+Paras:
+int ID: connect device id.
+EAF_ALL_INFO *pAllInfo:The data returned.
+
+Return: 
+EAF_SUCCESS
+EAF_BLE_DISCONNECT
+EAF_ERROR_INVALID_ID
+EAF_ERROR_INVALID_VALUE
+EAF_ERROR_NOT_SUPPORTED
+***************************************************************************/
+EAF_API EAF_ERROR_CODE EAFBLEgetAllInfo(int ID, EAF_ALL_INFO *pAllInfo);
+
 /***************************************************************************
 Descriptions:
 This should be the first API to be called
@@ -130,7 +336,40 @@ EAF_SUCCESS: operation succeeds
 
 EAF_API	EAF_ERROR_CODE EAFGetProperty(int ID, EAF_INFO *pInfo); 
 
+/***************************************************************************
+Descriptions:
+Get number of controls available for this eaf. the eaf need be opened at first.
 
+Paras:
+int ID: the ID of focuser
+int * piNumberOfControls: pointer to an int to save the number of controls
+
+return:
+EAF_SUCCESS : Operation is successful
+EAF_ERROR_CLOSED : eaf didn't open
+EAF_BLE_DISCONNECT: eaf ble disconnect
+EAF_ERROR_INVALID_ID  :no eaf of this ID is connected or ID value is out of boundary
+***************************************************************************/
+EAF_API	EAF_ERROR_CODE EAFGetNumOfControls(int ID, int* piNumberOfControls);
+
+/***************************************************************************
+Descriptions:
+Get controls property available for this eaf. the eaf need be opened at first.
+user need to malloc and maintain the buffer.
+
+Paras:
+int ID: the ID of focuser
+int iControlIndex: index of control, NOT control type
+EAF_CONTROL_CAPS * pControlCaps: Pointer to structure containing the property of the control
+user need to malloc the buffer
+
+return:
+EAF_SUCCESS : Operation is successful
+EAF_ERROR_CLOSED : eaf didn't open
+EAF_BLE_DISCONNECT: eaf ble disconnect 
+EAF_ERROR_INVALID_ID  :no eaf of this ID is connected or ID value is out of boundary
+***************************************************************************/
+EAF_API	EAF_ERROR_CODE EAFGetControlCaps(int ID, int iControlIndex, EAF_CONTROL_CAPS *pControlCaps);
 
 /***************************************************************************
 Descriptions:
@@ -452,6 +691,24 @@ EAF_API EAF_ERROR_CODE EAFGetSerialNumber(int ID, EAF_SN* pSN);
 
 /***************************************************************************
 Descriptions:
+Get the battery percentage and battery temperature of the EAF
+
+Paras:
+int ID: the ID of focuser
+
+EAF_BATTERY_INFO* pBatteryInfo: battery info
+
+Return: 
+EAF_ERROR_INVALID_ID: invalid ID value
+EAF_ERROR_CLOSED: not opened
+EFW_ERROR_NOT_SUPPORTED: the firmware does not support serial number
+EAF_ERROR_BATTER_INFO: The battery temperature is abnormal, and pBatteryInfo returns -1
+EAF_SUCCESS: operation succeeds
+***************************************************************************/
+EAF_API EAF_ERROR_CODE EAFGetBatteryInfo(int ID, EAF_BATTERY_INFO *pBatteryInfo);
+
+/***************************************************************************
+Descriptions:
 Set the alias to a EAF
 
 Paras:
@@ -466,6 +723,161 @@ EFW_ERROR_NOT_SUPPORTED: the firmware does not support setting alias
 EAF_SUCCESS: operation succeeds
 ***************************************************************************/
 EAF_API EAF_ERROR_CODE EAFSetID(int ID, EAF_ID alias);
+
+/***************************************************************************
+Descriptions:
+Get the type of a EAF.
+
+Paras:
+int ID: the ID of focuser
+
+EAF_TYPE *pEAFType:
+
+Return:
+EAF_ERROR_INVALID_ID: invalid ID value
+EAF_ERROR_CLOSED: not opened
+EAF_SUCCESS: operation succeeds
+
+***************************************************************************/
+EAF_API EAF_ERROR_CODE EAFGetType(int ID, EAF_TYPE* pEAFType);
+
+/***************************************************************************
+Descriptions:
+Get the ble name of a EAF.
+
+Paras:
+int ID: the ID of focuser
+
+EAF_BLE_NAME *pEAFBLEName:
+
+Return:
+EAF_ERROR_INVALID_ID: invalid ID value
+EAF_ERROR_CLOSED: not opened
+EAF_SUCCESS: operation succeeds
+
+Note: Limited to the HID connection to get the eaf Bluetooth name.
+***************************************************************************/
+EAF_API EAF_ERROR_CODE EAFGetBLEName(int ID, EAF_BLE_NAME* pEAFBLEName);
+
+/***************************************************************************
+Descriptions:
+set the ble name of a EAF.
+EAFBLEName length >0 and <= 6.
+
+Paras:
+int ID: the ID of focuser
+
+EAF_BLE_NAME EAFBLEName:
+
+Return:
+EAF_ERROR_INVALID_ID: invalid ID value
+EAF_ERROR_CLOSED: not opened
+EAF_SUCCESS: operation succeeds
+
+Note: Only the last six bits can be modified. 
+A successful update will disconnect the connection and require a scan to reconnect.
+Example: EAF Pro_57fb5d -> EAF Pro_123456
+***************************************************************************/
+EAF_API EAF_ERROR_CODE EAFSetBLEName(int ID, EAF_BLE_NAME EAFBLEName);
+
+/***************************************************************************
+Descriptions:
+get EAF LED switch state;
+
+Paras:
+int ID: the ID of focuser
+bool *bState: true/false; 
+true:	on
+false:  off
+
+Return:
+EAF_ERROR_INVALID_ID: invalid ID value
+EAF_ERROR_CLOSED: not opened
+EAF_BLE_DISCONNECT：BLE is disconnect
+EAF_SUCCESS: operation succeeds
+***************************************************************************/
+EAF_API EAF_ERROR_CODE EAFGetLedState(int ID, bool *bState);
+
+/***************************************************************************
+Descriptions:
+set EAF LED switch state
+
+Paras:
+int ID: the ID of focuser
+
+bool bState: 
+true： Restore the current state (on)；
+false: LED off；
+
+Return:
+EAF_ERROR_INVALID_ID: invalid ID value
+EAF_ERROR_CLOSED: not opened
+EAF_BLE_DISCONNECT：BLE is disconnect
+EAF_SUCCESS: operation succeeds
+***************************************************************************/
+EAF_API EAF_ERROR_CODE EAFSetLedState(int ID, bool bState);
+
+/***************************************************************************
+Descriptions:
+get EAF error code;
+
+Paras:
+int ID: the ID of focuser
+ERROR_CODE* pErrorCode: error code 
+error code:
+	E0 no error
+	E5 motor stall
+	E6 High temperature stop charge
+	E7 High temperature stop discharge
+	E8 Low temperature stop charge
+
+Return:
+EAF_ERROR_INVALID_ID: invalid ID value
+EAF_ERROR_CLOSED: not opened
+EAF_BLE_DISCONNECT：BLE is disconnect
+EAF_ERROR_NOT_SUPPORTED: not supported
+EAF_SUCCESS: operation succeeds
+***************************************************************************/
+EAF_API EAF_ERROR_CODE EAFGetErrorCode(int ID, EAF_ERROR_MSG* pErrorCode);
+
+/***************************************************************************
+Descriptions:
+Set shipping mode;
+
+Paras:
+int ID: the ID of focuser
+
+Return:
+EAF_ERROR_INVALID_ID: invalid ID value
+EAF_ERROR_CLOSED: not opened
+EFW_ERROR_NOT_SUPPORTED: the firmware does not support setting shipping mode
+EAF_BLE_DISCONNECT: ble not disconnect
+EAF_SUCCESS: operation succeeds
+
+Note: Now setting serial number dose not through SDK, so this api is not used.
+***************************************************************************/
+EAF_API EAF_ERROR_CODE EAFSetShippingMode(int ID);
+
+/***************************************************************************
+Descriptions:
+get EAF power off reason;
+
+Paras:
+int ID: the ID of focuser
+int* pErrorCode: reason
+Reason:
+	0 normal
+	1 shipping mode
+
+Return:
+EAF_ERROR_INVALID_ID: invalid ID value
+EAF_ERROR_CLOSED: not opened
+EAF_BLE_DISCONNECT：BLE is disconnect
+EAF_ERROR_NOT_SUPPORTED: not supported
+EAF_SUCCESS: operation succeeds
+***************************************************************************/
+EAF_API EAF_ERROR_CODE EAFGetReason(int ID, int* pReason);
+
 #ifdef __cplusplus
 }
 #endif
