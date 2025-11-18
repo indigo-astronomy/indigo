@@ -959,6 +959,9 @@
 		9D7FC61E2C4906B2004496F2 /* indigo_focuser_fc3.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D7FC6122C4906B2004496F2 /* indigo_focuser_fc3.c */; };
 		9D7FC61F2C4906B2004496F2 /* indigo_focuser_fc3.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D7FC6132C4906B2004496F2 /* indigo_focuser_fc3.h */; };
 		9D7FC6202C4906B2004496F2 /* indigo_focuser_fc3.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D7FC6132C4906B2004496F2 /* indigo_focuser_fc3.h */; };
+		9D84A67D2ECC5BA400E81FDB /* libatikcameras.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 591B017021A49F3B006A1CD8 /* libatikcameras.dylib */; };
+		9D84A67E2ECC5C0300E81FDB /* libatikcameras.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 591B017021A49F3B006A1CD8 /* libatikcameras.dylib */; };
+		9D84A67F2ECC5C0300E81FDB /* libatikcameras.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 591B017021A49F3B006A1CD8 /* libatikcameras.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		9D85FAE421E38E3900ECDF82 /* indigo_agent_alignment.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D85FAE121E38E3900ECDF82 /* indigo_agent_alignment.h */; };
 		9D8D9EA52D4B990E007A5BA3 /* indigo_uni_io.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D8D9EA42D4B990E007A5BA3 /* indigo_uni_io.h */; };
 		9D8D9EA62D4B990E007A5BA3 /* indigo_uni_io.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D8D9EA42D4B990E007A5BA3 /* indigo_uni_io.h */; };
@@ -1143,6 +1146,7 @@
 				59B348A829E85F8A0062C2EA /* libaltaircam.dylib in Embed Libraries */,
 				59B348B029E85F8B0062C2EA /* libmallincam.dylib in Embed Libraries */,
 				59B348B429E85FA80062C2EA /* libtoupcam.dylib in Embed Libraries */,
+				9D84A67F2ECC5C0300E81FDB /* libatikcameras.dylib in Embed Libraries */,
 				9D0829522C198698002166E1 /* libbressercam.dylib in Embed Libraries */,
 				9D0829532C198699002166E1 /* libdc1394.dylib in Embed Libraries */,
 				59B348AA29E85F8A0062C2EA /* libnncam.dylib in Embed Libraries */,
@@ -5110,6 +5114,7 @@
 				598A1C17259BA94A00C0B34C /* libcurl.tbd in Frameworks */,
 				598A1C18259BA94A00C0B34C /* libc++.tbd in Frameworks */,
 				596FCA922BD0320E00F5BACB /* libgxccd.a in Frameworks */,
+				9D84A67E2ECC5C0300E81FDB /* libatikcameras.dylib in Frameworks */,
 				598A1C19259BA94A00C0B34C /* libusb-1.0.0.dylib in Frameworks */,
 				59B348B329E85FA80062C2EA /* libtoupcam.dylib in Frameworks */,
 				9D74A5152D4B641600A31003 /* libCAA.a in Frameworks */,
@@ -5138,6 +5143,7 @@
 				598786462540C69E00CE8B48 /* libtiff.a in Frameworks */,
 				9DDEFBFF21EE358F00657C8F /* libUSB2ST4Conv.a in Frameworks */,
 				9D74A5132D4B641600A31003 /* libCAA.a in Frameworks */,
+				9D84A67D2ECC5BA400E81FDB /* libatikcameras.dylib in Frameworks */,
 				598CB7802D6092A200B7211A /* libsvbonycam.dylib in Frameworks */,
 				59A52F2C21A341B0000B6F27 /* libfcusb.a in Frameworks */,
 				598CB7842D61314F00B7211A /* libqhyccd.dylib in Frameworks */,
