@@ -1,6 +1,49 @@
 # Changelog
 
 All notable changes to INDIGO framework will be documented in this file.
+# [2.0-348] - 21 Nov Fri 2025
+## Overall:
+- indigo_timer:
+	- use CLOCK_MONOTONIC for Linux
+
+- agents:
+	- INFO is mapped to [device]_DEVICE_INFO instead of [device]_INFO to avoid conflict with CCD_INFO in agents
+
+## Driver Fixes:
+- indigo_agent_mount:
+	- fix mount abort park and home
+
+- indigo_agent_imager:
+	- fix focuser abort
+
+- indigo_mount_lx200:
+	- add side of pier for losmandy Grmini
+
+- indigo_nexstar_aux:
+	- fix buffer overflow
+
+- indigo_ccd_ptp:
+	- Add support for Sony Alpha A7RIV and ZV-E10
+
+- indigo_mount_synscan:
+	- select call uses correct file descriptor count
+
+- indigo_ccd_asi:
+	- typo fix
+	- SDK updated to v.1.40
+
+- indigo_rotator_asi:
+	- SDK updated to v.1.5.9
+
+- indigo_wheel_asi:
+	- SDK updated to v.1.8.4
+
+- indigo_focuser_asi:
+	- SDK updated to v.1.7.7
+
+- indigo_ccd_atik:
+	- SDK updated to 2025.06.30.2074, for macOS/Intel remains 2024.11.26.2038, driver is now multiarch on macOS
+
 # [2.0-346] - 21 Oct Tue 2025
 ## Overall:
 - indigo_ccd_driver:
