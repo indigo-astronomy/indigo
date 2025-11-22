@@ -38,9 +38,6 @@ All notable changes to INDIGO framework will be documented in this file.
 - indigo_wheel_asi:
 	- SDK updated to v.1.8.4
 
-- indigo_focuser_asi:
-	- SDK updated to v.1.7.7
-
 - indigo_ccd_atik:
 	- SDK updated to 2025.06.30.2074, for macOS/Intel remains 2024.11.26.2038, driver is now multiarch on macOS
 
