@@ -32,9 +32,6 @@ All notable changes to INDIGO framework will be documented in this file.
 	- typo fix
 	- SDK updated to v.1.40
 
-- indigo_rotator_asi:
-	- SDK updated to v.1.5.9
-
 - indigo_ccd_atik:
 	- SDK updated to 2025.06.30.2074, for macOS/Intel remains 2024.11.26.2038, driver is now multiarch on macOS
 
