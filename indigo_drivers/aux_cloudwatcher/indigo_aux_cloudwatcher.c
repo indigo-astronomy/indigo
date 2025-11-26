@@ -39,7 +39,7 @@
 #include <pthread.h>
 #include <stdbool.h>
 #include <ctype.h>
-#if defined(INDIGO_MACOS)
+#if defined(INDIGO_MACOS) || defined(INDIGO_LINUX)
 #include <sys/time.h>
 #endif
 
