@@ -1,7 +1,7 @@
 # Changelog
 
 All notable changes to INDIGO framework will be documented in this file.
-# [2.0-350] - 26 Nov Thu 2025
+# [2.0-350] - 27 Nov Thu 2025
 ## Driver Fixes:
 	- indigo_wheel_playerone:
 		- Updated to SDK v1.2.3
