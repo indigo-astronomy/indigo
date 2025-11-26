@@ -7,8 +7,8 @@ here is the suggested procedure.
 --> EFWGetNum
 --> EFWGetID for each filter wheel
 
---> EFWGetProperty
 --> EFWOpen
+--> EFWGetProperty
 --> EFWGetPosition
 --> EFWSetPosition
 	...
@@ -34,7 +34,6 @@ typedef struct _EFW_INFO
 	int slotNum;
 } EFW_INFO;
 
-
 typedef enum _EFW_ERROR_CODE{
 	EFW_SUCCESS = 0,
 	EFW_ERROR_INVALID_INDEX,
@@ -45,6 +44,7 @@ typedef enum _EFW_ERROR_CODE{
 	EFW_ERROR_ERROR_STATE,//filter wheel is in error state
 	EFW_ERROR_GENERAL_ERROR,//other error
 	EFW_ERROR_NOT_SUPPORTED,
+	EFW_ERROR_INVALID_LENGTH,
 	EFW_ERROR_CLOSED,
 	EFW_ERROR_END = -1
 }EFW_ERROR_CODE;
@@ -76,8 +76,22 @@ Paras:
 int* pPIDs: pointer to array of PIDs
 
 Return: length of the array.
+
+Note: This api will be deprecated. Please use EFWCheck instead
 ***************************************************************************/
 EFW_API int EFWGetProductIDs(int* pPIDs);
+
+/***************************************************************************
+Descriptions:
+Check if the device is EFW
+
+Paras:
+int iVID: VID is 0x03C3 for EFW
+int iPID: PID of the device
+
+Return: If the device is EFW, return 1, otherwise return 0
+***************************************************************************/
+EFW_API int EFWCheck(int iVID, int iPID);
 
 /***************************************************************************
 Descriptions:
@@ -238,7 +252,6 @@ Descriptions:
 get version string, like "0, 4, 0824"
 ***************************************************************************/
 EFW_API char* EFWGetSDKVersion();
-
 
 /***************************************************************************
 Descriptions:
