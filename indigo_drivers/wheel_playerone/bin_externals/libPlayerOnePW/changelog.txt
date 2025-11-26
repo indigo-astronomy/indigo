@@ -1,3 +1,6 @@
+2025.11.25(1.2.3)
+- Fixed a issue that on Windows, subsequent APP scanning the filter wheel may interfere with the filter wheel already running in the previous APP (resulting in a “goto” prompt failure, though the actual goto operation succeeded).
+
 2025.03.07(1.2.2)
 - Fixed a rare issue that caused other HID devices to crash when the caller exited
 - Add Python wrapper and C# example
