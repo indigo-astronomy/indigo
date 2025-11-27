@@ -363,6 +363,13 @@ static bool meade_open(indigo_device *device) {
 						}
 					}
 				}
+				// Confirm device response data is correct
+				if (PRIVATE_DATA->handle >= 0) {
+					if(!meade_command(device, ":GC#", response, sizeof(response), 0) || strlen(response) != 8 || response[2] != '/' || response[5] != '/') {
+						close(PRIVATE_DATA->handle);
+						PRIVATE_DATA->handle = -1;
+					}
+				}
 			}
 		}
 	} else {
