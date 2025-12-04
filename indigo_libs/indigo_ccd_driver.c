@@ -35,6 +35,7 @@
 #include <math.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <dirent.h>
 #include <jpeglib.h>
 #include <limits.h>
 
@@ -1552,6 +1553,62 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 				return true;
 			}
 			return false;
+		} else if (isdigit(fs[1]) && fs[2] == 's') { // %ns - extension-based sequence counter
+			char *next = strchr(fs + 1, '%');
+			if (next) { // make sure %ns is processed as the last one
+				fs = next;
+				continue;
+			}
+
+			char dir_path[PATH_MAX] = {0};
+			strncpy(dir_path, CCD_LOCAL_MODE_DIR_ITEM->text.value, sizeof(dir_path) - 1);
+
+			//char prefix_pattern[PATH_MAX] = {0};
+			//strncpy(prefix_pattern, format, fs - format);
+
+			char *extension = strrchr(format, '.');
+
+			// Count existing files with the same extension in the directory
+			int count = 1;
+			DIR *dir = opendir(dir_path);
+			if (dir) {
+				struct dirent *entry;
+				while ((entry = readdir(dir)) != NULL) {
+					if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+						continue;
+					}
+					char *file_ext = strrchr(entry->d_name, '.');
+
+					//indigo_error("Checking file: %s, ext: %s, target ext: %s (%s) (%s)", entry->d_name, file_ext, extension, format, prefix_pattern);
+					if (file_ext && strcmp(file_ext, extension) == 0) {
+						count++;
+					}
+				}
+				closedir(dir);
+			}
+
+			strncpy(tmp, format, fs - format + 1);
+			switch (fs[1]) {
+				case '1':
+					strcat(tmp, "01d");
+					break;
+				case '2':
+					strcat(tmp, "02d");
+					break;
+				case '4':
+					strcat(tmp, "04d");
+					break;
+				case '5':
+					strcat(tmp, "05d");
+					break;
+				default:
+					strcat(tmp, "03d");
+					break;
+			}
+			strcat(tmp, fs + 3);
+			snprintf(format, PATH_MAX, tmp, count);
+			strcpy(file_name, format);
+			return true;
 		} else {
 			*fs = '_';
 		}
