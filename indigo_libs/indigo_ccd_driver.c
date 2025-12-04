@@ -33,7 +33,6 @@
 #include <time.h>
 #include <math.h>
 #include <sys/stat.h>
-#include <dirent.h>
 #include <jpeglib.h>
 #include <limits.h>
 
@@ -1580,8 +1579,8 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 			}
 			return false;
 		} else if (isdigit(fs[1]) && fs[2] == 'I') { // %nI - prefix and extension-based sequence index counter (makes sure the bigger the number, the later the file)
-			char *next = strchr(fs + 1, '%');
-			if (next) { // make sure %ns is processed as the last one
+			char* next = strchr(fs + 1, '%');
+			if (next) { // make sure %nI is processed as the last one
 				fs = next;
 				continue;
 			}
@@ -1589,70 +1588,73 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 			char dir_path[PATH_MAX] = {0};
 			strncpy(dir_path, CCD_LOCAL_MODE_DIR_ITEM->text.value, sizeof(dir_path) - 1);
 
-			// Extract the prefix (everything before %ns)
 			char prefix[PATH_MAX] = {0};
 			strncpy(prefix, format, fs - format);
 
-			char *filename_start = strstr(prefix, CCD_LOCAL_MODE_DIR_ITEM->text.value);
-			char *actual_prefix;
+			char* filename_start = strstr(prefix, CCD_LOCAL_MODE_DIR_ITEM->text.value);
+			char* actual_prefix;
 			if (filename_start) {
 				actual_prefix = filename_start + strlen(CCD_LOCAL_MODE_DIR_ITEM->text.value);
 			} else {
 				actual_prefix = prefix;
 			}
 
-			char *extension = strrchr(format, '.');
-
+			char* extension = strrchr(format, '.');
 			int max_sequence = 0;
-			DIR *dir = opendir(dir_path);
-			if (dir) {
-				struct dirent *entry;
-				while ((entry = readdir(dir)) != NULL) {
-					if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
-						continue;
-					}
 
-					char *file_ext = strrchr(entry->d_name, '.');
-					if (file_ext && strcmp(file_ext, extension) == 0) {
-						if (strlen(actual_prefix) == 0 || strncmp(entry->d_name, actual_prefix, strlen(actual_prefix)) == 0) {
-							char *sequence_start = entry->d_name + strlen(actual_prefix);
-							char *sequence_end = strrchr(entry->d_name, '.');
+			// Use indigo_uni_scandir for cross-platform directory iteration
+			char** list;
+			int count = indigo_uni_scandir(dir_path, &list, NULL);
+			if (count >= 0) {
+				for (int i = 0; i < count; i++) {
+					char* file_ext = strrchr(list[i], '.');
+
+					// Check extension match
+					if (file_ext && extension && strcmp(file_ext, extension) == 0) {
+						// Check prefix match
+						if (strlen(actual_prefix) == 0 || strncmp(list[i], actual_prefix, strlen(actual_prefix)) == 0) {
+							// Extract sequence number
+							char* sequence_start = list[i] + strlen(actual_prefix);
+							char* sequence_end = file_ext;
 
 							if (sequence_end > sequence_start) {
 								int seq_len = sequence_end - sequence_start;
-								char sequence_str[10] = {0};
-								strncpy(sequence_str, sequence_start, seq_len < 10 ? seq_len : 10);
+								if (seq_len > 0 && seq_len < 10) {
+									char sequence_str[10] = {0};
+									strncpy(sequence_str, sequence_start, seq_len);
 
-								int current_sequence = atoi(sequence_str);
-								if (current_sequence > max_sequence) {
-									max_sequence = current_sequence;
+									int current_sequence = atoi(sequence_str);
+									if (current_sequence > max_sequence) {
+										max_sequence = current_sequence;
+									}
 								}
 							}
 						}
 					}
+					free(list[i]);
 				}
-				closedir(dir);
+				free(list);
 			}
 
 			int next_sequence = max_sequence + 1;
 
 			strncpy(tmp, format, fs - format + 1);
 			switch (fs[1]) {
-				case '1':
-					strcat(tmp, "01d");
-					break;
-				case '2':
-					strcat(tmp, "02d");
-					break;
-				case '4':
-					strcat(tmp, "04d");
-					break;
-				case '5':
-					strcat(tmp, "05d");
-					break;
-				default:
-					strcat(tmp, "03d");
-					break;
+			case '1':
+				strcat(tmp, "01d");
+				break;
+			case '2':
+				strcat(tmp, "02d");
+				break;
+			case '4':
+				strcat(tmp, "04d");
+				break;
+			case '5':
+				strcat(tmp, "05d");
+				break;
+			default:
+				strcat(tmp, "03d");
+				break;
 			}
 			strcat(tmp, fs + 3);
 			snprintf(format, PATH_MAX, tmp, next_sequence);
