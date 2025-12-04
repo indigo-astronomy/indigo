@@ -1553,7 +1553,7 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 				return true;
 			}
 			return false;
-		} else if (isdigit(fs[1]) && fs[2] == 's') { // %ns - extension-based sequence counter
+		} else if (isdigit(fs[1]) && fs[2] == 'I') { // %nI - prefix and extension-based sequence index counter (makes sure the bigger the number, the later the file)
 			char *next = strchr(fs + 1, '%');
 			if (next) { // make sure %ns is processed as the last one
 				fs = next;
