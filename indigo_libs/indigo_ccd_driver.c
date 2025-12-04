@@ -1600,33 +1600,26 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 			}
 
 			char* extension = strrchr(format, '.');
-			int max_sequence = 0;
+			int max_index = 0;
 
-			// Use indigo_uni_scandir for cross-platform directory iteration
 			char** list;
 			int count = indigo_uni_scandir(dir_path, &list, NULL);
 			if (count >= 0) {
 				for (int i = 0; i < count; i++) {
 					char* file_ext = strrchr(list[i], '.');
-
-					// Check extension match
 					if (file_ext && extension && strcmp(file_ext, extension) == 0) {
-						// Check prefix match
 						if (strlen(actual_prefix) == 0 || strncmp(list[i], actual_prefix, strlen(actual_prefix)) == 0) {
-							// Extract sequence number
-							char* sequence_start = list[i] + strlen(actual_prefix);
-							char* sequence_end = file_ext;
+							char* index_start = list[i] + strlen(actual_prefix);
+							char* index_end = file_ext;
 
-							if (sequence_end > sequence_start) {
-								int seq_len = sequence_end - sequence_start;
-								if (seq_len > 0 && seq_len < 10) {
-									char sequence_str[10] = {0};
-									strncpy(sequence_str, sequence_start, seq_len);
+							if (index_end > index_start) {
+								int len = index_end - index_start;
+								char index_str[10] = {0};
 
-									int current_sequence = atoi(sequence_str);
-									if (current_sequence > max_sequence) {
-										max_sequence = current_sequence;
-									}
+								strncpy(index_str, index_start, len < 9 ? len : 9);
+								int current_index = atoi(index_str);
+								if (current_index > max_index) {
+									max_index = current_index;
 								}
 							}
 						}
@@ -1636,28 +1629,26 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 				free(list);
 			}
 
-			int next_sequence = max_sequence + 1;
-
 			strncpy(tmp, format, fs - format + 1);
 			switch (fs[1]) {
-			case '1':
-				strcat(tmp, "01d");
-				break;
-			case '2':
-				strcat(tmp, "02d");
-				break;
-			case '4':
-				strcat(tmp, "04d");
-				break;
-			case '5':
-				strcat(tmp, "05d");
-				break;
-			default:
-				strcat(tmp, "03d");
+				case '1':
+					strcat(tmp, "01d");
+					break;
+				case '2':
+					strcat(tmp, "02d");
+					break;
+				case '4':
+					strcat(tmp, "04d");
+					break;
+				case '5':
+					strcat(tmp, "05d");
+					break;
+				default:
+					strcat(tmp, "03d");
 				break;
 			}
 			strcat(tmp, fs + 3);
-			snprintf(format, PATH_MAX, tmp, next_sequence);
+			snprintf(format, PATH_MAX, tmp, max_index + 1);
 			strcpy(file_name, format);
 			return true;
 		} else {
