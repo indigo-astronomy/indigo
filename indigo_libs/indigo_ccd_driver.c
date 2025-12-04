@@ -1563,13 +1563,21 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 			char dir_path[PATH_MAX] = {0};
 			strncpy(dir_path, CCD_LOCAL_MODE_DIR_ITEM->text.value, sizeof(dir_path) - 1);
 
-			//char prefix_pattern[PATH_MAX] = {0};
-			//strncpy(prefix_pattern, format, fs - format);
+			// Extract the prefix (everything before %ns)
+			char prefix[PATH_MAX] = {0};
+			strncpy(prefix, format, fs - format);
+
+			char *filename_start = strstr(prefix, CCD_LOCAL_MODE_DIR_ITEM->text.value);
+			char *actual_prefix;
+			if (filename_start) {
+				actual_prefix = filename_start + strlen(CCD_LOCAL_MODE_DIR_ITEM->text.value);
+			} else {
+				actual_prefix = prefix;
+			}
 
 			char *extension = strrchr(format, '.');
 
-			// Count existing files with the same extension in the directory
-			int count = 1;
+			int max_sequence = 0;
 			DIR *dir = opendir(dir_path);
 			if (dir) {
 				struct dirent *entry;
@@ -1577,15 +1585,30 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 					if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
 						continue;
 					}
-					char *file_ext = strrchr(entry->d_name, '.');
 
-					//indigo_error("Checking file: %s, ext: %s, target ext: %s (%s) (%s)", entry->d_name, file_ext, extension, format, prefix_pattern);
+					char *file_ext = strrchr(entry->d_name, '.');
 					if (file_ext && strcmp(file_ext, extension) == 0) {
-						count++;
+						if (strlen(actual_prefix) == 0 || strncmp(entry->d_name, actual_prefix, strlen(actual_prefix)) == 0) {
+							char *sequence_start = entry->d_name + strlen(actual_prefix);
+							char *sequence_end = strrchr(entry->d_name, '.');
+
+							if (sequence_end > sequence_start) {
+								int seq_len = sequence_end - sequence_start;
+								char sequence_str[10] = {0};
+								strncpy(sequence_str, sequence_start, seq_len < 10 ? seq_len : 10);
+
+								int current_sequence = atoi(sequence_str);
+								if (current_sequence > max_sequence) {
+									max_sequence = current_sequence;
+								}
+							}
+						}
 					}
 				}
 				closedir(dir);
 			}
+
+			int next_sequence = max_sequence + 1;
 
 			strncpy(tmp, format, fs - format + 1);
 			switch (fs[1]) {
@@ -1606,7 +1629,7 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 					break;
 			}
 			strcat(tmp, fs + 3);
-			snprintf(format, PATH_MAX, tmp, count);
+			snprintf(format, PATH_MAX, tmp, next_sequence);
 			strcpy(file_name, format);
 			return true;
 		} else {
