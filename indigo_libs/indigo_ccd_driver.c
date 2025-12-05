@@ -1555,7 +1555,7 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 			return false;
 		} else if (isdigit(fs[1]) && fs[2] == 'I') { // %nI - prefix and extension-based sequence index counter (makes sure the bigger the number, the later the file)
 			char *next = strchr(fs + 1, '%');
-			if (next) { // make sure %ns is processed as the last one
+			if (next) { // make sure %nI is processed as the last one
 				fs = next;
 				continue;
 			}
@@ -1563,7 +1563,7 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 			char dir_path[PATH_MAX] = {0};
 			strncpy(dir_path, CCD_LOCAL_MODE_DIR_ITEM->text.value, sizeof(dir_path) - 1);
 
-			// Extract the prefix (everything before %ns)
+			// Extract the prefix (everything before %nI)
 			char prefix[PATH_MAX] = {0};
 			strncpy(prefix, format, fs - format);
 
@@ -1577,7 +1577,7 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 
 			char *extension = strrchr(format, '.');
 
-			int max_sequence = 0;
+			int max_index = 0;
 			DIR *dir = opendir(dir_path);
 			if (dir) {
 				struct dirent *entry;
@@ -1589,17 +1589,17 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 					char *file_ext = strrchr(entry->d_name, '.');
 					if (file_ext && strcmp(file_ext, extension) == 0) {
 						if (strlen(actual_prefix) == 0 || strncmp(entry->d_name, actual_prefix, strlen(actual_prefix)) == 0) {
-							char *sequence_start = entry->d_name + strlen(actual_prefix);
-							char *sequence_end = strrchr(entry->d_name, '.');
+							char *index_start = entry->d_name + strlen(actual_prefix);
+							char *index_end = strrchr(entry->d_name, '.');
 
-							if (sequence_end > sequence_start) {
-								int seq_len = sequence_end - sequence_start;
-								char sequence_str[10] = {0};
-								strncpy(sequence_str, sequence_start, seq_len < 10 ? seq_len : 10);
+							if (index_end > index_start) {
+								int len = index_end - index_start;
+								char index_str[10] = {0};
+								strncpy(index_str, index_start, len < 9 ? len : 9);
 
-								int current_sequence = atoi(sequence_str);
-								if (current_sequence > max_sequence) {
-									max_sequence = current_sequence;
+								int current_index = atoi(index_str);
+								if (current_index > max_index) {
+									max_index = current_index;
 								}
 							}
 						}
@@ -1607,8 +1607,6 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 				}
 				closedir(dir);
 			}
-
-			int next_sequence = max_sequence + 1;
 
 			strncpy(tmp, format, fs - format + 1);
 			switch (fs[1]) {
@@ -1629,7 +1627,7 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 					break;
 			}
 			strcat(tmp, fs + 3);
-			snprintf(format, PATH_MAX, tmp, next_sequence);
+			snprintf(format, PATH_MAX, tmp, max_index + 1);
 			strcpy(file_name, format);
 			return true;
 		} else {
