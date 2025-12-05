@@ -1588,6 +1588,7 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 			char dir_path[PATH_MAX] = {0};
 			strncpy(dir_path, CCD_LOCAL_MODE_DIR_ITEM->text.value, sizeof(dir_path) - 1);
 
+			// Extract the prefix (everything before %nI)
 			char prefix[PATH_MAX] = {0};
 			strncpy(prefix, format, fs - format);
 
