@@ -57,7 +57,7 @@ INDIGO file name templates support a number of placeholders starting with "%" ch
 
 * **%nS** - expands to the sequential number of the file with the same name. Where 'n' is the number of digits used to represent the number and can be in the range [1, 5].
 
-**%nI** (after removing the directory path), and the **extension** is the file extension including the dot. For example, in template "M42_%3I_Light.fits", the prefix is "M42_", the extension is ".fits", and existing files "M42_001_Light.fits", "M42_005_Light.fits" would result in "M42_006_Light.fits". Unlike **%nS**, it handles gaps in sequences, guaranteeing higher numbers always mean newer files. Where 'n' is the number of digits with zero-padding [1-5].
+* **%nI** (after removing the directory path), and the **extension** is the file extension including the dot. For example, in template "M42_%3I_Light.fits", the prefix is "M42_", the extension is ".fits", and existing files "M42_001_Light.fits", "M42_005_Light.fits" would result in "M42_006_Light.fits". Unlike **%nS**, it handles gaps in sequences, guaranteeing higher numbers always mean newer files. Where 'n' is the number of digits with zero-padding [1-5].
 
 * **%G** - expands to gain
 
