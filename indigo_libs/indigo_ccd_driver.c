@@ -1341,11 +1341,16 @@ static void raw_to_tiff(indigo_device *device, void *data_in, int frame_width, i
 
 static void sanitize(char *buffer) {
 	for (char *p = buffer; *p; p++) {
-		if (isalnum(*p) || isdigit(*p))
+		if (isalnum(*p)) {
 			continue;
-		if (*p == '-' || *p == '.' || *p == '_' || *p == '$' || *p == '%' || *p == '#' || *p == ' ' || *p == '+' || *p == '@') {
-  continue;
-}
+		}
+		if (*p == '-' || *p == '_' || *p == '.' || *p == ' ' ||
+			*p == '(' || *p == ')' || *p == '[' || *p == ']' ||
+			*p == '{' || *p == '}' || *p == '+' || *p == '=' ||
+			*p == '@' || *p == '#' || *p == '$' || *p == '%' ||
+			*p == '&' || *p == '!' || *p == '~' || *p == '^') {
+			continue;
+		}
 		*p = '_';
 	}
 }
