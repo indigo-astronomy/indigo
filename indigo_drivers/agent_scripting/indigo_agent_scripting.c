@@ -291,7 +291,7 @@ static void send_message_handler(indigo_device *device, void *data) {
 static duk_ret_t send_message(duk_context *ctx) {
 	const char *message = duk_require_string(ctx, 0);
 	if (message) {
-		indigo_set_timer_with_data(agent_device, 0, send_message_handler, NULL, (void *)strdup(message));
+		indigo_execute_handler_with_data(agent_device, send_message_handler, (void *)strdup(message));
 	}
 	return 0;
 }
@@ -352,7 +352,7 @@ static duk_ret_t emumerate_properties(duk_context *ctx) {
 	const char *device = duk_is_null_or_undefined(ctx, 0) ? "" : duk_require_string(ctx, 0);
 	const char *property_name = duk_is_null_or_undefined(ctx, 1) ? "" : duk_require_string(ctx, 1);
 	indigo_property *property = indigo_init_text_property(NULL, device, property_name, "", "", INDIGO_OK_STATE, INDIGO_RW_PERM, 0);
-	indigo_set_timer_with_data(agent_device, 0, enumerate_properties_handler, NULL, property);
+	indigo_execute_handler_with_data(agent_device, enumerate_properties_handler, property);
 	return 0;
 }
 
@@ -393,7 +393,7 @@ static duk_ret_t change_text_property(duk_context *ctx) {
 		duk_pop_2(ctx);
 		i++;
 	}
-	indigo_set_timer_with_data(agent_device, 0, change_property_handler, NULL, property);
+	indigo_execute_handler_with_data(agent_device, change_property_handler, property);
 	return 0;
 }
 
@@ -415,7 +415,7 @@ static duk_ret_t change_number_property(duk_context *ctx) {
 		duk_pop_2(ctx);
 		i++;
 	}
-	indigo_set_timer_with_data(agent_device, 0, change_property_handler, NULL, property);
+	indigo_execute_handler_with_data(agent_device, change_property_handler, property);
 	return 0;
 }
 
@@ -437,7 +437,7 @@ static duk_ret_t change_switch_property(duk_context *ctx) {
 		duk_pop_2(ctx);
 		i++;
 	}
-	indigo_set_timer_with_data(agent_device, 0, change_property_handler, NULL, property);
+	indigo_execute_handler_with_data(agent_device, change_property_handler, property);
 	return 0;
 }
 
@@ -487,9 +487,9 @@ static duk_ret_t _define_text_property(duk_context *ctx, bool redefine) {
 				duk_pop_2(ctx); // item
 				tmp->count++;
 			}
-			indigo_set_timer_with_data(agent_device, 0, redefine ? redefine_property_handler : define_property_handler, NULL, tmp);
+			indigo_execute_handler_with_data(agent_device, redefine ? redefine_property_handler : define_property_handler, tmp);
 			if (message) {
-				indigo_set_timer_with_data(agent_device, 0, send_message_handler, NULL, (void *)strdup(message));
+				indigo_execute_handler_with_data(agent_device, send_message_handler, (void *)strdup(message));
 			}
 			return 0;
 		}
@@ -552,9 +552,9 @@ static duk_ret_t _define_number_property(duk_context *ctx, bool redefine) {
 				duk_pop_2(ctx); // item
 				tmp->count++;
 			}
-			indigo_set_timer_with_data(agent_device, 0, redefine ? redefine_property_handler : define_property_handler, NULL, tmp);
+			indigo_execute_handler_with_data(agent_device, redefine ? redefine_property_handler : define_property_handler, tmp);
 			if (message) {
-				indigo_set_timer_with_data(agent_device, 0, send_message_handler, NULL, (void *)strdup(message));
+				indigo_execute_handler_with_data(agent_device, send_message_handler, (void *)strdup(message));
 			}
 			return 0;
 		}
@@ -606,9 +606,9 @@ static duk_ret_t _define_switch_property(duk_context *ctx, bool redefine) {
 				duk_pop_2(ctx); // item
 				tmp->count++;
 			}
-			indigo_set_timer_with_data(agent_device, 0, redefine ? redefine_property_handler : define_property_handler, NULL, tmp);
+			indigo_execute_handler_with_data(agent_device, redefine ? redefine_property_handler : define_property_handler, tmp);
 			if (message) {
-				indigo_set_timer_with_data(agent_device, 0, send_message_handler, NULL, (void *)strdup(message));
+				indigo_execute_handler_with_data(agent_device, send_message_handler, (void *)strdup(message));
 			}
 			return 0;
 		}
@@ -658,9 +658,9 @@ static duk_ret_t _define_light_property(duk_context *ctx, bool redefine) {
 				duk_pop_2(ctx); // item
 				tmp->count++;
 			}
-			indigo_set_timer_with_data(agent_device, 0, redefine ? redefine_property_handler : define_property_handler, NULL, tmp);
+			indigo_execute_handler_with_data(agent_device, redefine ? redefine_property_handler : define_property_handler, tmp);
 			if (message) {
-				indigo_set_timer_with_data(agent_device, 0, send_message_handler, NULL, (void *)strdup(message));
+				indigo_execute_handler_with_data(agent_device, send_message_handler, (void *)strdup(message));
 			}
 			return 0;
 		}
@@ -705,9 +705,9 @@ static duk_ret_t update_text_property(duk_context *ctx) {
 				duk_pop_2(ctx); // item
 			}
 			tmp->state = state;
-			indigo_set_timer_with_data(agent_device, 0, update_property_handler, NULL, tmp);
+			indigo_execute_handler_with_data(agent_device, update_property_handler, tmp);
 			if (message) {
-				indigo_set_timer_with_data(agent_device, 0, send_message_handler, NULL, (void *)strdup(message));
+				indigo_execute_handler_with_data(agent_device, send_message_handler, (void *)strdup(message));
 			}
 		}
 	}
@@ -738,9 +738,9 @@ static duk_ret_t update_number_property(duk_context *ctx) {
 				duk_pop_2(ctx); // item
 			}
 			tmp->state = state;
-			indigo_set_timer_with_data(agent_device, 0, update_property_handler, NULL, tmp);
+			indigo_execute_handler_with_data(agent_device, update_property_handler, tmp);
 			if (message) {
-				indigo_set_timer_with_data(agent_device, 0, send_message_handler, NULL, (void *)strdup(message));
+				indigo_execute_handler_with_data(agent_device, send_message_handler, (void *)strdup(message));
 			}
 		}
 	}
@@ -771,9 +771,9 @@ static duk_ret_t update_switch_property(duk_context *ctx) {
 				duk_pop_2(ctx); // item
 			}
 			tmp->state = state;
-			indigo_set_timer_with_data(agent_device, 0, update_property_handler, NULL, tmp);
+			indigo_execute_handler_with_data(agent_device, update_property_handler, tmp);
 			if (message) {
-				indigo_set_timer_with_data(agent_device, 0, send_message_handler, NULL, (void *)strdup(message));
+				indigo_execute_handler_with_data(agent_device, send_message_handler, (void *)strdup(message));
 			}
 		}
 	}
@@ -804,9 +804,9 @@ static duk_ret_t update_light_property(duk_context *ctx) {
 				duk_pop_2(ctx); // item
 			}
 			tmp->state = state;
-			indigo_set_timer_with_data(agent_device, 0, update_property_handler, NULL, tmp);
+			indigo_execute_handler_with_data(agent_device, update_property_handler, tmp);
 			if (message) {
-				indigo_set_timer_with_data(agent_device, 0, send_message_handler, NULL, (void *)strdup(message));
+				indigo_execute_handler_with_data(agent_device, send_message_handler, (void *)strdup(message));
 			}
 		}
 	}
@@ -829,9 +829,9 @@ static duk_ret_t delete_property(duk_context *ctx) {
 		indigo_property *tmp = PRIVATE_DATA->agent_cached_property[i];
 		if (tmp && !strcmp(tmp->device, device) && !strcmp(tmp->name, property)) {
 			PRIVATE_DATA->agent_cached_property[i] = NULL;
-			indigo_set_timer_with_data(agent_device, 0, delete_property_handler, NULL, tmp);
+			indigo_execute_handler_with_data(agent_device, delete_property_handler, tmp);
 			if (message) {
-				indigo_set_timer_with_data(agent_device, 0, send_message_handler, NULL, (void *)strdup(message));
+				indigo_execute_handler_with_data(agent_device, send_message_handler, (void *)strdup(message));
 			}
 		}
 	}

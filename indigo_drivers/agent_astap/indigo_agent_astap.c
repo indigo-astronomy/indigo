@@ -665,10 +665,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	}
 	if (indigo_property_match(AGENT_ASTAP_INDEX_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- AGENT_ASTAP_INDEX
-		indigo_property_copy_values(AGENT_ASTAP_INDEX_PROPERTY, property, false);
-		AGENT_ASTAP_INDEX_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, AGENT_ASTAP_INDEX_PROPERTY, NULL);
-		indigo_set_timer(device, 0, index_handler, NULL);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(AGENT_ASTAP_INDEX_PROPERTY, index_handler);
 		return INDIGO_OK;
 	}
 	return indigo_platesolver_change_property(device, client, property);

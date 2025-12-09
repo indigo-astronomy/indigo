@@ -538,7 +538,7 @@ static indigo_result update_related_agent_list(indigo_device *device, indigo_pro
 				}
 				local_item->sw.value = remote_item->sw.value;
 				if (!is_imager_agent || strncmp(local_item->name, "Imager Agent", 12)) {
-					indigo_set_timer_with_data(device, 0, set_reverse_relation, NULL, local_item);
+					indigo_execute_handler_with_data_in(device, 0, set_reverse_relation, local_item);
 				}
 				break;
 			}
