@@ -1614,7 +1614,7 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 							char* index_end = file_ext;
 
 							if (index_end > index_start) {
-								int len = index_end - index_start;
+								int len = (int)(index_end - index_start);
 								char index_str[10] = {0};
 
 								strncpy(index_str, index_start, len < 9 ? len : 9);

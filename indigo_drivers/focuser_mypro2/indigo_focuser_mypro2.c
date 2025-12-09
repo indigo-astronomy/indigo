@@ -87,7 +87,7 @@
 
 typedef struct {
 	indigo_uni_handle *handle;
-	int32_t current_position, target_position, max_position;
+	uint32_t current_position, target_position, max_position;
 	double prev_temp;
 	indigo_property *step_mode_property, *coils_mode_property, *current_control_property, *timings_property, *model_hint_property;
 } mfp_private_data;

@@ -354,7 +354,7 @@ static bool aag_command(indigo_device *device, const char *command, char *respon
 			if (result <= 0) {
 				break;
 			}
-			result = indigo_uni_read(PRIVATE_DATA->handle, &c, 1);
+			result = (int)indigo_uni_read(PRIVATE_DATA->handle, &c, 1);
 			if (result < 1) {
 				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);

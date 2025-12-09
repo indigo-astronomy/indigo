@@ -796,7 +796,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_ASTROMETRY_INDEX_42XX_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- AGENT_ASTROMETRY_INDEX_42XX
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(AGENT_ASTROMETRY_INDEX_42XX_PROPERTY, index_41xx_handler);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(AGENT_ASTROMETRY_INDEX_42XX_PROPERTY, index_42xx_handler);
 		return INDIGO_OK;
 	}
 	return indigo_platesolver_change_property(device, client, property);
