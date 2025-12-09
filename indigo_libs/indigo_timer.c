@@ -520,7 +520,11 @@ static void *queue_func(indigo_queue *queue) {
 			if (runnable_task->task_mutex) { // if there is specific mutex for task, lock it
 				pthread_mutex_lock(runnable_task->task_mutex);
 			}
-			runnable_task->callback(runnable_task->device);
+			if (runnable_task->data == NULL) {
+				runnable_task->callback(runnable_task->device);
+			} else {
+				((indigo_timer_with_data_callback)runnable_task->callback)(runnable_task->device, runnable_task->data);
+			}
 			if (runnable_task->task_mutex) { // if there is specific mutex for task, unlock it
 				pthread_mutex_unlock(runnable_task->task_mutex);
 			}
@@ -562,6 +566,20 @@ void indigo_queue_add(indigo_queue *queue, indigo_device *device, int priority, 
 	task->priority = priority;
 	task->at = indigo_delay_to_time(delay);
 	task->callback = callback;
+	task->task_mutex = task_mutex;
+	enqueue_task(queue, task);
+	pthread_mutex_lock(&queue->cond_mutex);
+	pthread_cond_signal(&queue->cond);
+	pthread_mutex_unlock(&queue->cond_mutex);
+}
+
+void indigo_queue_add_with_data(indigo_queue *queue, indigo_device *device, int priority, double delay, indigo_timer_with_data_callback callback, void *data, pthread_mutex_t *task_mutex) {
+	indigo_queue_task *task = indigo_safe_malloc(sizeof(indigo_queue_task));
+	task->device = device;
+	task->priority = priority;
+	task->at = indigo_delay_to_time(delay);
+	task->callback = (indigo_timer_callback)callback;
+	task->data = data;
 	task->task_mutex = task_mutex;
 	enqueue_task(queue, task);
 	pthread_mutex_lock(&queue->cond_mutex);

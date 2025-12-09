@@ -1266,8 +1266,15 @@ void indigo_execute_handler_in(indigo_device *device, double delay, indigo_timer
 	indigo_queue_add(DEVICE_CONTEXT->queue, element_device, INDIGO_TASK_PRIORITY_TIME, delay, handler, &DEVICE_CONTEXT->device_mutex);
 }
 
-void indigo_execute_handler(indigo_device *device, indigo_timer_callback handler) {
-	indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_NORMAL, 0, handler);
+void indigo_execute_handler_with_data_in(indigo_device *device, double delay, indigo_timer_with_data_callback handler, void *data) {
+	indigo_device *element_device = device;
+	if (device->master_device != NULL) {
+		device = device->master_device;
+	}
+	if (DEVICE_CONTEXT->queue == NULL) {
+		DEVICE_CONTEXT->queue = indigo_queue_create(device);
+	}
+	indigo_queue_add_with_data(DEVICE_CONTEXT->queue, element_device, INDIGO_TASK_PRIORITY_TIME, delay, handler, data, &DEVICE_CONTEXT->device_mutex);
 }
 
 void indigo_execute_priority_handler_in(indigo_device *device, int priority, double delay, indigo_timer_callback handler) {
@@ -1281,8 +1288,31 @@ void indigo_execute_priority_handler_in(indigo_device *device, int priority, dou
 	indigo_queue_add(DEVICE_CONTEXT->queue, element_device, priority, delay, handler, &DEVICE_CONTEXT->device_mutex);
 }
 
+void indigo_execute_priority_handler_with_data_in(indigo_device *device, int priority, double delay, indigo_timer_with_data_callback handler, void *data) {
+	indigo_device *element_device = device;
+	if (device->master_device != NULL) {
+		device = device->master_device;
+	}
+	if (DEVICE_CONTEXT->queue == NULL) {
+		DEVICE_CONTEXT->queue = indigo_queue_create(device);
+	}
+	indigo_queue_add_with_data(DEVICE_CONTEXT->queue, element_device, priority, delay, handler, data, &DEVICE_CONTEXT->device_mutex);
+}
+
 void indigo_execute_priority_handler(indigo_device *device, int priority, indigo_timer_callback handler) {
 	indigo_execute_priority_handler_in(device, priority, 0, handler);
+}
+
+void indigo_execute_priority_handler_with_data(indigo_device *device, int priority, indigo_timer_with_data_callback handler, void *data) {
+	indigo_execute_priority_handler_with_data_in(device, priority, 0, handler, data);
+}
+
+void indigo_execute_handler(indigo_device *device, indigo_timer_callback handler) {
+	indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_NORMAL, 0, handler);
+}
+
+void indigo_execute_handler_with_data(indigo_device *device, indigo_timer_with_data_callback handler, void *data) {
+	indigo_execute_priority_handler_with_data_in(device, INDIGO_TASK_PRIORITY_NORMAL, 0, handler, data);
 }
 
 void indigo_cancel_pending_handlers(indigo_device *device) {

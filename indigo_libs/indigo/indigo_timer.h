@@ -82,6 +82,7 @@ typedef struct indigo_queue_task {
 	int priority;
 	struct timespec at;
 	indigo_timer_callback callback;
+	void *data;
 	pthread_mutex_t *task_mutex;
 	struct indigo_queue_task *next;
 } indigo_queue_task;
@@ -140,6 +141,10 @@ INDIGO_EXTERN indigo_queue *indigo_queue_create(indigo_device *device);
 /** Add task to queue
  */
 INDIGO_EXTERN void indigo_queue_add(indigo_queue *queue, indigo_device *device, int priority, double delay, indigo_timer_callback callback, pthread_mutex_t *task_mutex);
+
+/** Add task with data to queue
+ */
+INDIGO_EXTERN void indigo_queue_add_with_data(indigo_queue *queue, indigo_device *device, int priority, double delay, indigo_timer_with_data_callback callback, void *data, pthread_mutex_t *task_mutex);
 
 /** Remove tasks from queue for given device and handler
  */

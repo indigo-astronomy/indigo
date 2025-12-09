@@ -460,15 +460,31 @@ INDIGO_EXTERN void indigo_execute_handler(indigo_device *device, indigo_timer_ca
 
 /** Execute property change handler ASAP on device queue
  */
-INDIGO_EXTERN void indigo_execute_handler(indigo_device *device, indigo_timer_callback handler);
+INDIGO_EXTERN void indigo_execute_handler_with_data(indigo_device *device, indigo_timer_with_data_callback handler, void *data);
 
+/** Execute property change handler ASAP on device queue with priority
+ */
 INDIGO_EXTERN void indigo_execute_priority_handler(indigo_device *device, int priority, indigo_timer_callback handler);
+
+/** Execute property change handler on device queue ASAP with priority and data
+ */
+INDIGO_EXTERN void indigo_execute_priority_handler_with_data(indigo_device *device, int priority, indigo_timer_with_data_callback handler, void *data);
 
 /** Execute property change handler on device queue with specified delay
  */
 INDIGO_EXTERN void indigo_execute_handler_in(indigo_device *device, double delay, indigo_timer_callback handler);
 
+/** Execute property change handler on device queue with specified delay and data
+ */
+INDIGO_EXTERN void indigo_execute_handler_with_data_in(indigo_device *device, double delay, indigo_timer_with_data_callback handler, void *data);
+
+/** Execute property change handler on device queue with specified delay and priority
+ */
 INDIGO_EXTERN void indigo_execute_priority_handler_in(indigo_device *device, int priority, double delay, indigo_timer_callback handler);
+
+/** Execute property change handler on device queue with specified delay, priority and data
+ */
+INDIGO_EXTERN void indigo_execute_priority_handler_with_data_in(indigo_device *device, int priority, double delay, indigo_timer_with_data_callback handler, void *data);
 
 /** Empty handler queue
  */
