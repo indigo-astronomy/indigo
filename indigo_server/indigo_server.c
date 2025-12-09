@@ -216,9 +216,6 @@
 #endif
 #include "agent_snoop/indigo_agent_snoop.h"
 #include "agent_scripting/indigo_agent_scripting.h"
-#ifdef INDIGO_MACOS
-#include "ccd_atik2/indigo_ccd_atik2.h"
-#endif
 #endif
 
 #define SERVER_NAME         "INDIGO Server"
@@ -263,9 +260,6 @@ driver_entry_point static_drivers[] = {
 	indigo_ccd_apogee,
 	indigo_ccd_asi,
 	indigo_ccd_atik,
-#ifdef INDIGO_MACOS
-	indigo_ccd_atik2,
-#endif
 	indigo_ccd_bresser,
 	indigo_ccd_dsi,
 	indigo_ccd_fli,

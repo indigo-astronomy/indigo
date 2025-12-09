@@ -40,8 +40,7 @@
 | ccd_altair               | 3️⃣  | ✅ Yes   | ❌ No     | ❌ No    | ✅ HW    |                                                          |
 | ccd_apogee               | ➋  | ❌ No    | ❌ No     | ❌ No    | ❌ No    | ⏰ TODO - make boost_regex and libapogee for Windows     |
 | ccd_asi                  | 3️⃣  | ✅ Yes   | ❌ No     | ❌ No    | ✅ HW    |                                                          |
-| ccd_atik                 | 3️⃣  | ✅ Yes   | ❌ No     | ❌ No    | ❌ No    | ⏰ TODO - find SDK for arm64 macOS                       |
-| ccd_atik2                | 3️⃣  | ⛔ N/A   | ❌ No     | ❌ No    | ❌ No    | ⛔ macOS only, temporary workaround                      |
+| ccd_atik                 | 3️⃣  | ✅ Yes   | ❌ No     | ❌ No    | ❌ No    |                                                          |
 | ccd_bresser              | 3️⃣  | ✅ Yes   | ❌ No     | ❌ No    | ✅ HW    | ➡️ Touptek                                              |
 | ccd_dsi                  | 3️⃣  | ✅ Yes   | ❌ No     | ❌ No    | ❌ No    |                                                          |
 | ccd_fli                  | 3️⃣  | ✅ Yes   | ❌ No     | ❌ No    | ❌ No    |                                                          |

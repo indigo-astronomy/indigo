@@ -1002,11 +1002,6 @@ indigo_result indigo_ccd_atik(indigo_driver_action action, indigo_driver_info *i
 		case INDIGO_DRIVER_INIT:
 			ArtemisSetDebugCallback(debug_log);
 			last_action = action;
-			if (indigo_driver_initialized((char *)"indigo_ccd_atik2")) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Conflicting driver indigo_ccd_atik2 is already loaded");
-				last_action = INDIGO_DRIVER_SHUTDOWN;
-				return INDIGO_FAILED;
-			}
 			for (int i = 0; i < MAX_DEVICES; i++) {
 				devices[i] = NULL;
 			}
