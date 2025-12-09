@@ -1774,7 +1774,7 @@ int indigo_uni_scandir(const char* folder, char ***list, bool (*filter)(const ch
 	int list_size = 10;
 	*list = (char**)indigo_safe_malloc(sizeof(char*) * list_size);
 	do {
-		if (filter((const char *)findFileData.cFileName)) {
+		if (filter == NULL || filter((const char *)findFileData.cFileName)) {
 			if (result >= list_size) {
 				list_size *= 2;
 				*list = (char**)indigo_safe_realloc(*list, sizeof(char*) * list_size);
