@@ -1,19 +1,28 @@
 # Changelog
 
 All notable changes to INDIGO framework will be documented in this file.
+# [2.0-352] - 12 Dec Fri 2025
+## Overall:
+- indigo_ccd_driver:
+	- added new more robust placeholder for frame numbering %nI
+	- more permissive filename sanitization
+
+- indigo_docs:
+	- CCD_DRIVER_SAVED_IMAGES.md: document %nI placeholder
+
 # [2.0-350] - 27 Nov Thu 2025
 ## Driver Fixes:
-	- indigo_wheel_playerone:
-		- Updated to SDK v1.2.3
+- indigo_wheel_playerone:
+	- Updated to SDK v1.2.3
 
-	- indigo_wheel_asi:
-		- Updated to SDK v.1.8.4
+- indigo_wheel_asi:
+	- Updated to SDK v.1.8.4
 
-	- indigo_focuser_asi:
-		- Updated to SDK v.1.7.7
+- indigo_focuser_asi:
+	- Updated to SDK v.1.7.7
 
-	- indigo_rotator_asi:
-		- Updated to SDK v.1.5.9
+- indigo_rotator_asi:
+	- Updated to SDK v.1.5.9
 
 # [2.0-348] - 21 Nov Fri 2025
 ## Overall:
