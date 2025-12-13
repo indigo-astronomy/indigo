@@ -1362,13 +1362,18 @@ static void raw_to_tiff(indigo_device *device, void *data_in, int frame_width, i
 	free(memory_handle);
 }
 
-static void sanitise(char *buffer) {
+static void sanitize(char *buffer) {
 	for (char *p = buffer; *p; p++) {
-		if (isalnum(*p) || isdigit(*p))
+		if (isalnum(*p)) {
 			continue;
-		if (*p == '-' || *p == '.' || *p == '_' || *p == '$' || *p == '%' || *p == '#' || *p == ' ' || *p == '+' || *p == '@') {
-  continue;
-}
+		}
+		if (*p == '-' || *p == '_' || *p == '.' || *p == ' ' ||
+			*p == '(' || *p == ')' || *p == '[' || *p == ']' ||
+			*p == '{' || *p == '}' || *p == '+' || *p == '=' ||
+			*p == '@' || *p == '#' || *p == '$' || *p == '%' ||
+			*p == '&' || *p == '!' || *p == '~' || *p == '^') {
+			continue;
+		}
 		*p = '_';
 	}
 }
@@ -1376,7 +1381,7 @@ static void sanitise(char *buffer) {
 static bool create_file_name(indigo_device *device, void *blob_value, long blob_size, char *dir, char *prefix, char *suffix, char *file_name) {
 	char format[PATH_MAX], tmp[PATH_MAX];
 	strcpy(format, dir);
-	sanitise(prefix);
+	sanitize(prefix);
 	if (strchr(prefix, '%') == NULL) { // No %, INDI style
 		char *placeholder = strstr(prefix, "XXX");
 		if (placeholder == NULL) {
@@ -1413,6 +1418,7 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 			strncpy(tmp, format, fs - format);
 			if (CCD_LOCAL_MODE_OBJECT_ITEM->text.value[0] != '\0') {
 				strncpy(buffer, CCD_LOCAL_MODE_OBJECT_ITEM->text.value, sizeof(buffer));
+				sanitize(buffer);
 			}
 			strcat(tmp, buffer);
 			strcat(tmp, fs + 2);
@@ -1492,7 +1498,7 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 				if (!strcmp(item->name, "FILTER") && item->text.value[0] == '\'') {
 					strcpy(buffer, item->text.value + 1);
 					buffer[strlen(buffer) - 1] = 0;
-					sanitise(buffer);
+					sanitize(buffer);
 				}
 			}
 			strncpy(tmp, format, fs - format);
