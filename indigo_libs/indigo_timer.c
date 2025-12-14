@@ -47,7 +47,11 @@
 //}
 //#endif
 
-#define utc_time(ts) clock_gettime(CLOCK_REALTIME, ts)
+#if defined(INDIGO_LINUX)
+#define clock_time(ts) clock_gettime(CLOCK_MONOTONIC, ts)
+#else
+#define clock_time(ts) clock_gettime(CLOCK_REALTIME, ts)
+#endif
 
 #define NANO	1000000000L
 
@@ -64,7 +68,7 @@ static void *timer_func(indigo_timer *timer) {
 			INDIGO_TRACE(indigo_trace("timer #%d - sleep for %gs (%p)", timer->timer_id, timer->delay, timer->reference));
 			if (timer->delay > 0) {
 				struct timespec end;
-				utc_time(&end);
+				clock_time(&end);
 				end.tv_sec += (int)timer->delay;
 				end.tv_nsec += NANO * (timer->delay - (int)timer->delay);
 				normalize_timespec(&end);
@@ -100,12 +104,12 @@ static void *timer_func(indigo_timer *timer) {
 		INDIGO_TRACE(indigo_trace("timer #%d - done", timer->timer_id));
 		pthread_mutex_lock(&cancel_timer_mutex);
 		indigo_device *device = timer->device;
-		if (device != NULL) {
+		if (device != NULL && DEVICE_CONTEXT != NULL) {
 			if (DEVICE_CONTEXT->timers == timer) {
 				DEVICE_CONTEXT->timers = timer->next;
 			} else {
 				indigo_timer *previous = DEVICE_CONTEXT->timers;
-				while (previous->next != NULL) {
+				while (previous && previous->next != NULL) {
 					if (previous->next == timer) {
 						previous->next = timer->next;
 						break;
@@ -120,7 +124,7 @@ static void *timer_func(indigo_timer *timer) {
 		free_timer = timer;
 		timer->wake = false;
 		pthread_mutex_unlock(&free_timer_mutex);
-		INDIGO_TRACE(indigo_trace("timer #%d - released", timer->timer_id));	
+		INDIGO_TRACE(indigo_trace("timer #%d - released", timer->timer_id));
 		pthread_mutex_lock(&timer->mutex);
 		while (!timer->wake)
 			pthread_cond_wait(&timer->cond, &timer->mutex);
@@ -179,7 +183,15 @@ bool indigo_set_timer_with_data(indigo_device *device, double delay, indigo_time
 		INDIGO_TRACE(indigo_trace("timer #%d - allocating (%p)", t->timer_id, t));
 		pthread_mutex_init(&t->mutex, NULL);
 		pthread_mutex_init(&t->callback_mutex, NULL);
+#if defined(INDIGO_LINUX)
+		pthread_condattr_t condattr;
+		pthread_condattr_init(&condattr);
+		pthread_condattr_setclock(&condattr, CLOCK_MONOTONIC);
+		pthread_cond_init(&t->cond, &condattr);
+		pthread_condattr_destroy(&condattr);
+#else
 		pthread_cond_init(&t->cond, NULL);
+#endif
 		t->canceled = false;
 		t->callback_running = false;
 		t->scheduled = true;
@@ -214,7 +226,7 @@ bool indigo_reschedule_timer(indigo_device *device, double delay, indigo_timer *
 		return false;
 	}
 }
-	
+
 bool indigo_reschedule_timer_with_callback(indigo_device *device, double delay, indigo_timer_callback callback, indigo_timer **timer) {
 	bool result = false;
 	pthread_mutex_lock(&cancel_timer_mutex);

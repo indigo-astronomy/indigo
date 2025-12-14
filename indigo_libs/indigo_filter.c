@@ -811,14 +811,10 @@ indigo_result indigo_filter_define_property(indigo_client *client, indigo_device
 							translate = false;
 						if (translate) {
 							strcpy(agent_property->name, name_prefix);
+							if (!strcmp(property->name, INFO_PROPERTY_NAME)) {
+								strcpy(agent_property->name, "DEVICE_");
+							}
 							strcat(agent_property->name, property->name);
-//							if (!strcmp(property->group, MAIN_GROUP) || !strcmp(property->group, ADVANCED_GROUP) || !strcmp(property->group, SITE_GROUP)) {
-//								strcpy(agent_property->group, property_name_label[i]);
-//								strcat(agent_property->group, property->group);
-//							} else {
-//								strcpy(agent_property->label, property_name_label[i]);
-//								strcat(agent_property->label, property->label);
-//							}
 						}
 						if (strncmp(property_name_label[i], property->group, strlen(property->group))) {
 							strcpy(agent_property->group, property_name_label[i]);

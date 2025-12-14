@@ -1,6 +1,6 @@
 /*
- *
  * Copyright (c) 2016, Oracle and/or its affiliates.
+ * Copyright 2023 Oxide Computer Company
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -82,11 +82,11 @@ static int sunos_usb_ioctl(struct libusb_device *dev, int cmd);
 
 static int sunos_get_link(di_devlink_t devlink, void *arg)
 {
-	walk_link_t *larg = (walk_link_t *)arg;
+	walk_link_t *link_arg = (walk_link_t *)arg;
 	const char *p;
 	const char *q;
 
-	if (larg->path) {
+	if (link_arg->path) {
 		char *content = (char *)di_devlink_content(devlink);
 		char *start = strstr(content, "/devices/");
 		start += strlen("/devices");
@@ -94,8 +94,8 @@ static int sunos_get_link(di_devlink_t devlink, void *arg)
 
 		/* line content must have minor node */
 		if (start == NULL ||
-		    strncmp(start, larg->path, larg->len) != 0 ||
-		    start[larg->len] != ':')
+		    strncmp(start, link_arg->path, link_arg->len) != 0 ||
+		    start[link_arg->len] != ':')
 			return (DI_WALK_CONTINUE);
 	}
 
@@ -103,7 +103,7 @@ static int sunos_get_link(di_devlink_t devlink, void *arg)
 	q = strrchr(p, '/');
 	usbi_dbg(NULL, "%s", q);
 
-	*(larg->linkpp) = strndup(p, strlen(p) - strlen(q));
+	*(link_arg->linkpp) = strndup(p, strlen(p) - strlen(q));
 
 	return (DI_WALK_TERMINATE);
 }
@@ -112,21 +112,21 @@ static int sunos_get_link(di_devlink_t devlink, void *arg)
 static int sunos_physpath_to_devlink(
 	const char *node_path, const char *match, char **link_path)
 {
-	walk_link_t larg;
+	walk_link_t link_arg;
 	di_devlink_handle_t hdl;
 
 	*link_path = NULL;
-	larg.linkpp = link_path;
+	link_arg.linkpp = link_path;
 	if ((hdl = di_devlink_init(NULL, 0)) == NULL) {
 		usbi_dbg(NULL, "di_devlink_init failure");
 		return (-1);
 	}
 
-	larg.len = strlen(node_path);
-	larg.path = (char *)node_path;
+	link_arg.len = strlen(node_path);
+	link_arg.path = (char *)node_path;
 
 	(void) di_devlink_walk(hdl, match, NULL, DI_PRIMARY_LINK,
-	    (void *)&larg, sunos_get_link);
+	    (void *)&link_arg, sunos_get_link);
 
 	(void) di_devlink_fini(&hdl);
 
@@ -171,7 +171,7 @@ sunos_usb_ioctl(struct libusb_device *dev, int cmd)
 
 	nvlist_alloc(&nvlist, NV_UNIQUE_NAME_TYPE, KM_NOSLEEP);
 	nvlist_add_int32(nvlist, "port", dev->port_number);
-	//find the hub path
+	/* find the hub path */
 	snprintf(path_arg, sizeof(path_arg), "/devices%s:hubd", hubpath);
 	usbi_dbg(DEVICE_CTX(dev), "ioctl hub path: %s", path_arg);
 
@@ -624,7 +624,7 @@ sunos_add_devices(di_devlink_t link, void *arg)
 			}
 			if (usbi_sanitize_device(dev) < 0) {
 				libusb_unref_device(dev);
-				usbi_dbg(NULL, "sanatize failed: ");
+				usbi_dbg(NULL, "sanitize failed: ");
 				return (DI_WALK_TERMINATE);
 			}
 		} else {
@@ -831,7 +831,7 @@ sunos_check_device_and_status_open(struct libusb_device_handle *hdl,
 {
 	char	filename[PATH_MAX + 1], statfilename[PATH_MAX + 1];
 	char	cfg_num[16], alt_num[16];
-	int	fd, fdstat, mode;
+	int	fd, fdstat, mode, e;
 	uint8_t	ifc = 0;
 	uint8_t	ep_index;
 	sunos_dev_handle_priv_t *hpriv;
@@ -870,11 +870,22 @@ sunos_check_device_and_status_open(struct libusb_device_handle *hdl,
 		bzero(alt_num, sizeof(alt_num));
 	}
 
-	(void) snprintf(filename, PATH_MAX, "%s/%sif%d%s%s%d",
+	e = snprintf(filename, sizeof (filename), "%s/%sif%d%s%s%d",
 	    hpriv->dpriv->ugenpath, cfg_num, ifc, alt_num,
-	    (ep_addr & LIBUSB_ENDPOINT_DIR_MASK) ? "in" :
-	    "out", (ep_addr & LIBUSB_ENDPOINT_ADDRESS_MASK));
-	(void) snprintf(statfilename, PATH_MAX, "%sstat", filename);
+	    (ep_addr & LIBUSB_ENDPOINT_DIR_MASK) ? "in" : "out",
+	    ep_addr & LIBUSB_ENDPOINT_ADDRESS_MASK);
+	if (e < 0 || e >= (int)sizeof (filename)) {
+		usbi_dbg(HANDLE_CTX(hdl),
+		    "path buffer overflow for endpoint 0x%02x", ep_addr);
+		return (EINVAL);
+	}
+
+	e = snprintf(statfilename, sizeof (statfilename), "%sstat", filename);
+	if (e < 0 || e >= (int)sizeof (statfilename)) {
+		usbi_dbg(HANDLE_CTX(hdl),
+		    "path buffer overflow for endpoint 0x%02x stat", ep_addr);
+		return (EINVAL);
+	}
 
 	/*
 	 * In case configuration has been switched, the xfer endpoint needs
@@ -1379,8 +1390,7 @@ sunos_submit_transfer(struct usbi_transfer *itransfer)
 
 	err = sunos_check_device_and_status_open(hdl,
 	    transfer->endpoint, transfer->type);
-	if (err < 0) {
-
+	if (err != 0) {
 		return (_errno_to_libusb(err));
 	}
 

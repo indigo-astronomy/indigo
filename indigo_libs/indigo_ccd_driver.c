@@ -35,6 +35,7 @@
 #include <math.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <dirent.h>
 #include <jpeglib.h>
 #include <limits.h>
 
@@ -1338,13 +1339,18 @@ static void raw_to_tiff(indigo_device *device, void *data_in, int frame_width, i
 	free(memory_handle);
 }
 
-static void sanitise(char *buffer) {
+static void sanitize(char *buffer) {
 	for (char *p = buffer; *p; p++) {
-		if (isalnum(*p) || isdigit(*p))
+		if (isalnum(*p)) {
 			continue;
-		if (*p == '-' || *p == '.' || *p == '_' || *p == '$' || *p == '%' || *p == '#' || *p == ' ' || *p == '+' || *p == '@') {
-  continue;
-}
+		}
+		if (*p == '-' || *p == '_' || *p == '.' || *p == ' ' ||
+			*p == '(' || *p == ')' || *p == '[' || *p == ']' ||
+			*p == '{' || *p == '}' || *p == '+' || *p == '=' ||
+			*p == '@' || *p == '#' || *p == '$' || *p == '%' ||
+			*p == '&' || *p == '!' || *p == '~' || *p == '^') {
+			continue;
+		}
 		*p = '_';
 	}
 }
@@ -1352,7 +1358,7 @@ static void sanitise(char *buffer) {
 static bool create_file_name(indigo_device *device, void *blob_value, long blob_size, char *dir, char *prefix, char *suffix, char *file_name) {
 	char format[PATH_MAX], tmp[PATH_MAX];
 	strcpy(format, dir);
-	sanitise(prefix);
+	sanitize(prefix);
 	if (strchr(prefix, '%') == NULL) { // No %, INDI style
 		char *placeholder = strstr(prefix, "XXX");
 		if (placeholder == NULL) {
@@ -1389,6 +1395,7 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 			strncpy(tmp, format, fs - format);
 			if (CCD_LOCAL_MODE_OBJECT_ITEM->text.value[0] != '\0') {
 				strncpy(buffer, CCD_LOCAL_MODE_OBJECT_ITEM->text.value, sizeof(buffer));
+				sanitize(buffer);
 			}
 			strcat(tmp, buffer);
 			strcat(tmp, fs + 2);
@@ -1466,7 +1473,7 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 				if (!strcmp(item->name, "FILTER") && item->text.value[0] == '\'') {
 					strcpy(buffer, item->text.value + 1);
 					buffer[strlen(buffer) - 1] = 0;
-					sanitise(buffer);
+					sanitize(buffer);
 				}
 			}
 			strncpy(tmp, format, fs - format);
@@ -1509,7 +1516,7 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 			strcpy(format, tmp);
 		} else if (fs[1] == 'B') { // %B - binning
 			char buffer[15];
-			if (CCD_BIN_HORIZONTAL_ITEM->number.value == CCD_BIN_HORIZONTAL_ITEM->number.value) {
+			if (CCD_BIN_HORIZONTAL_ITEM->number.value == CCD_BIN_VERTICAL_ITEM->number.value) {
 				sprintf(buffer, "BIN%.0f", CCD_BIN_HORIZONTAL_ITEM->number.value);
 			} else {
 				sprintf(buffer, "BIN%.0fx%.0f", CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_HORIZONTAL_ITEM->number.value);
@@ -1552,6 +1559,83 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 				return true;
 			}
 			return false;
+		} else if (isdigit(fs[1]) && fs[2] == 'I') { // %nI - prefix and extension-based sequence index counter (makes sure the bigger the number, the later the file)
+			char *next = strchr(fs + 1, '%');
+			if (next) { // make sure %nI is processed as the last one
+				fs = next;
+				continue;
+			}
+
+			char dir_path[PATH_MAX] = {0};
+			strncpy(dir_path, CCD_LOCAL_MODE_DIR_ITEM->text.value, sizeof(dir_path) - 1);
+
+			// Extract the prefix (everything before %nI)
+			char prefix[PATH_MAX] = {0};
+			strncpy(prefix, format, fs - format);
+
+			char *filename_start = strstr(prefix, CCD_LOCAL_MODE_DIR_ITEM->text.value);
+			char *actual_prefix;
+			if (filename_start) {
+				actual_prefix = filename_start + strlen(CCD_LOCAL_MODE_DIR_ITEM->text.value);
+			} else {
+				actual_prefix = prefix;
+			}
+
+			char *extension = strrchr(format, '.');
+
+			int max_index = 0;
+			DIR *dir = opendir(dir_path);
+			if (dir) {
+				struct dirent *entry;
+				while ((entry = readdir(dir)) != NULL) {
+					if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+						continue;
+					}
+
+					char *file_ext = strrchr(entry->d_name, '.');
+					if (file_ext && strcmp(file_ext, extension) == 0) {
+						if (strlen(actual_prefix) == 0 || strncmp(entry->d_name, actual_prefix, strlen(actual_prefix)) == 0) {
+							char *index_start = entry->d_name + strlen(actual_prefix);
+							char *index_end = strrchr(entry->d_name, '.');
+
+							if (index_end > index_start) {
+								int len = index_end - index_start;
+								char index_str[10] = {0};
+								strncpy(index_str, index_start, len < 9 ? len : 9);
+
+								int current_index = atoi(index_str);
+								if (current_index > max_index) {
+									max_index = current_index;
+								}
+							}
+						}
+					}
+				}
+				closedir(dir);
+			}
+
+			strncpy(tmp, format, fs - format + 1);
+			switch (fs[1]) {
+				case '1':
+					strcat(tmp, "01d");
+					break;
+				case '2':
+					strcat(tmp, "02d");
+					break;
+				case '4':
+					strcat(tmp, "04d");
+					break;
+				case '5':
+					strcat(tmp, "05d");
+					break;
+				default:
+					strcat(tmp, "03d");
+					break;
+			}
+			strcat(tmp, fs + 3);
+			snprintf(format, PATH_MAX, tmp, max_index + 1);
+			strcpy(file_name, format);
+			return true;
 		} else {
 			*fs = '_';
 		}
