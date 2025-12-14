@@ -1,5 +1,5 @@
 ifeq ($(OS_DETECTED),Darwin)
 LDFLAGS += -lstdc++
 else
-LDFLAGS += -lstdc++ -ludev
+LDFLAGS += -lstdc++ -ludev -ldl
 endif
