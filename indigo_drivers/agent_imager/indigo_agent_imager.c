@@ -2987,6 +2987,9 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_IMAGER_DISK_USAGE_TOTAL_ITEM, AGENT_IMAGER_DISK_USAGE_TOTAL_ITEM_NAME, "Total (MB)", 0, 100000, 0, 0);
 		indigo_init_number_item(AGENT_IMAGER_DISK_USAGE_USED_ITEM, AGENT_IMAGER_DISK_USAGE_USED_ITEM_NAME, "Used (MB)", 0, 100000, 0, 0);
 		indigo_init_number_item(AGENT_IMAGER_DISK_USAGE_FREE_ITEM, AGENT_IMAGER_DISK_USAGE_FREE_ITEM_NAME, "Free (MB)", 0, 100000, 0, 0);
+		snprintf(AGENT_IMAGER_DISK_USAGE_FREE_ITEM->number.format, INDIGO_VALUE_SIZE, "%%.%df", 3);
+		snprintf(AGENT_IMAGER_DISK_USAGE_USED_ITEM->number.format, INDIGO_VALUE_SIZE, "%%.%df", 3);
+		snprintf(AGENT_IMAGER_DISK_USAGE_TOTAL_ITEM->number.format, INDIGO_VALUE_SIZE, "%%.%df", 3);
 		// -------------------------------------------------------------------------------- Wheel helpers
 		AGENT_WHEEL_FILTER_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_WHEEL_FILTER_PROPERTY_NAME, "Agent", "Selected filter", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, FILTER_SLOT_COUNT);
 		if (AGENT_WHEEL_FILTER_PROPERTY == NULL)
