@@ -23,7 +23,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x0036
+#define DRIVER_VERSION 0x0037
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>
@@ -103,9 +103,9 @@
 #define AGENT_IMAGER_DELETE_FILE_ITEM    			(AGENT_IMAGER_DELETE_FILE_PROPERTY->items+0)
 
 #define AGENT_IMAGER_DISK_USAGE_PROPERTY			(DEVICE_PRIVATE_DATA->agent_imager_disk_usage_property)
-#define AGENT_IMAGER_DISK_USAGE_TOTAL_ITEM    (AGENT_IMAGER_DISK_USAGE_PROPERTY->items+0)
-#define AGENT_IMAGER_DISK_USAGE_FREE_ITEM     (AGENT_IMAGER_DISK_USAGE_PROPERTY->items+1)
-#define AGENT_IMAGER_DISK_USAGE_USED_ITEM     (AGENT_IMAGER_DISK_USAGE_PROPERTY->items+2)
+#define AGENT_IMAGER_DISK_USAGE_TOTAL_ITEM			(AGENT_IMAGER_DISK_USAGE_PROPERTY->items+0)
+#define AGENT_IMAGER_DISK_USAGE_USED_ITEM			(AGENT_IMAGER_DISK_USAGE_PROPERTY->items+1)
+#define AGENT_IMAGER_DISK_USAGE_FREE_ITEM			(AGENT_IMAGER_DISK_USAGE_PROPERTY->items+2)
 
 #define AGENT_IMAGER_CAPTURE_PROPERTY					(DEVICE_PRIVATE_DATA->agent_imager_capture_property)
 #define AGENT_IMAGER_CAPTURE_ITEM  						(AGENT_IMAGER_CAPTURE_PROPERTY->items+0)
@@ -356,27 +356,35 @@ static void update_disk_usage(indigo_device *device) {
 	const char *path = DEVICE_PRIVATE_DATA->current_folder;
 	if (path == NULL || strlen(path) == 0) {
 		AGENT_IMAGER_DISK_USAGE_TOTAL_ITEM->number.value = 0;
-		AGENT_IMAGER_DISK_USAGE_FREE_ITEM->number.value = 0;
 		AGENT_IMAGER_DISK_USAGE_USED_ITEM->number.value = 0;
+		AGENT_IMAGER_DISK_USAGE_FREE_ITEM->number.value = 0;
+
 		AGENT_IMAGER_DISK_USAGE_PROPERTY->state = INDIGO_IDLE_STATE;
 	} else if (get_disk_usage(path, &total_mb, &free_mb, &used_mb)) {
 		AGENT_IMAGER_DISK_USAGE_TOTAL_ITEM->number.value = total_mb;
-		AGENT_IMAGER_DISK_USAGE_FREE_ITEM->number.value = free_mb;
 		AGENT_IMAGER_DISK_USAGE_USED_ITEM->number.value = used_mb;
-		AGENT_IMAGER_DISK_USAGE_PROPERTY->state = INDIGO_OK_STATE;
+		AGENT_IMAGER_DISK_USAGE_FREE_ITEM->number.value = free_mb;
+		double used_percentage = (total_mb > 0) ? (used_mb / total_mb) * 100.0 : 0.0;
+		if (used_percentage > 95.0) {
+			AGENT_IMAGER_DISK_USAGE_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else if (used_percentage > 85.0) {
+			AGENT_IMAGER_DISK_USAGE_PROPERTY->state = INDIGO_BUSY_STATE;
+		} else {
+			AGENT_IMAGER_DISK_USAGE_PROPERTY->state = INDIGO_OK_STATE;
+		}
 	} else {
 		AGENT_IMAGER_DISK_USAGE_TOTAL_ITEM->number.value = 0;
-		AGENT_IMAGER_DISK_USAGE_FREE_ITEM->number.value = 0;
 		AGENT_IMAGER_DISK_USAGE_USED_ITEM->number.value = 0;
+		AGENT_IMAGER_DISK_USAGE_FREE_ITEM->number.value = 0;
 		AGENT_IMAGER_DISK_USAGE_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	if (last_total_mb != AGENT_IMAGER_DISK_USAGE_TOTAL_ITEM->number.value ||
-	    last_free_mb != AGENT_IMAGER_DISK_USAGE_FREE_ITEM->number.value ||
-	    last_used_mb != AGENT_IMAGER_DISK_USAGE_USED_ITEM->number.value) {
+	    last_used_mb != AGENT_IMAGER_DISK_USAGE_USED_ITEM->number.value ||
+	    last_free_mb != AGENT_IMAGER_DISK_USAGE_FREE_ITEM->number.value) {
 		indigo_update_property(device, AGENT_IMAGER_DISK_USAGE_PROPERTY, NULL);
 		last_free_mb = AGENT_IMAGER_DISK_USAGE_FREE_ITEM->number.value;
-		last_total_mb = AGENT_IMAGER_DISK_USAGE_TOTAL_ITEM->number.value;
 		last_used_mb = AGENT_IMAGER_DISK_USAGE_USED_ITEM->number.value;
+		last_total_mb = AGENT_IMAGER_DISK_USAGE_TOTAL_ITEM->number.value;
 	}
 	pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->disk_usage_mutex);
 }
@@ -2977,8 +2985,8 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		if (AGENT_IMAGER_DISK_USAGE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AGENT_IMAGER_DISK_USAGE_TOTAL_ITEM, AGENT_IMAGER_DISK_USAGE_TOTAL_ITEM_NAME, "Total (MB)", 0, 100000, 0, 0);
-		indigo_init_number_item(AGENT_IMAGER_DISK_USAGE_FREE_ITEM, AGENT_IMAGER_DISK_USAGE_FREE_ITEM_NAME, "Free (MB)", 0, 100000, 0, 0);
 		indigo_init_number_item(AGENT_IMAGER_DISK_USAGE_USED_ITEM, AGENT_IMAGER_DISK_USAGE_USED_ITEM_NAME, "Used (MB)", 0, 100000, 0, 0);
+		indigo_init_number_item(AGENT_IMAGER_DISK_USAGE_FREE_ITEM, AGENT_IMAGER_DISK_USAGE_FREE_ITEM_NAME, "Free (MB)", 0, 100000, 0, 0);
 		// -------------------------------------------------------------------------------- Wheel helpers
 		AGENT_WHEEL_FILTER_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_WHEEL_FILTER_PROPERTY_NAME, "Agent", "Selected filter", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, FILTER_SLOT_COUNT);
 		if (AGENT_WHEEL_FILTER_PROPERTY == NULL)
