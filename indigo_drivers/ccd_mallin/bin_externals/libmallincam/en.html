@@ -7,21 +7,22 @@
 <body>
 <h1 align="center">Mallincam API Manual</h1>
 <hr/><h1><font color="#0000FF">1. Version &amp; Platform</font></h1>
-<hr/><ul><li>Version: 59.29465.20250907</li></ul>
+<hr/><ul><li>Version: 59.30281.20251214</li></ul>
 <ul><li>Platform<ul>
       <li>Win32:<ul>
           <li>x64: Win7 or above</li>
           <li>x86: XP SP3 or above; CPU supports SSE2 instruction set or above</li>
 		  <li>arm64: Win10 or above</li>
-		  <li>arm: Win10 or above</li>
         </ul></li>
-	  <li><a href="https://learn.microsoft.com/en-us/windows/uwp" target="_blank">WinRT/UWP</a>: x64, x86, arm64, arm; Windows10 or above</li>
+	  <li><a href="https://learn.microsoft.com/en-us/windows/uwp" target="_blank">WinRT/UWP</a>: x64, x86, arm64; Windows10 or above</li>
       <li>macOS: x64+arm64: macOS 11.0 or above, support x64 and <a href="https://en.wikipedia.org/wiki/Apple_silicon" target="_blank">Apple silicon</a> (such as M1, M2, etc)</li>
       <li>Linux: kernel 2.6.27 or above<ul><li>x64: GLIBC 2.14 or above</li>
 		  <li>x86: CPU supports SSE3 instruction set or above; GLIBC 2.8 or above</li>
-		  <li>arm64: GLIBC 2.17 or above</li>
+		  <li>arm64: GLIBC 2.17 or above</li>		  
+		  <li>arm64: musl libc</li>
 		  <li>armhf: GLIBC 2.8 or above</li>
 		  <li>armel: GLIBC 2.8 or above</li>
+		  <li>ostl: STMicroelectronics OpenSTLinux</li>
 		</ul></li>
       <li>Android: __ANDROID_API__ &gt;= 24 (Android 7.0); built by android-ndk-r18b; see <a href="https://developer.android.com/ndk/guides/abis" target="_blank">here</a>
         <ul><li>arm64: arm64-v8a</li>
@@ -60,7 +61,7 @@ The SDK zip file contains all of the necessary resources and information:</p>
 		 <li>It is recommended to use DPInst.exe to automatically install the driver. If you use NSIS to make the installation file, you can use a statement similar to the following:
 			<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>ExecWait '"$INSTDIR\drivers\x64\DPInst.exe" /SA /SW /PATH "$INSTDIR\drivers\x64"'</pre></td></tr></table></li>
 		</ol></blockquote></blockquote>
-		<blockquote>GigE: GigE Performance Driver (Win7 or above), is optional for gigabit cameras, must be installed and enabled for 10G cameras. Please use the command line (<b>Administrator mode</b>), cd to the directory where the .inf file is located, and execute the following statement to install (install.cmd). If there is an old version, need to uninstall the old version first, and then install the new version:<blockquote>
+		<blockquote>GigE: GigE Performance Driver (Win7 or above), is optional for gigabit cameras, recommended be installed and enabled for 10G cameras. Please use the command line (<b>Administrator mode</b>), cd to the directory where the .inf file is located, and execute the following statement to install (install.cmd). If there is an old version, need to uninstall the old version first, and then install the new version:<blockquote>
 			<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>Install:   netcfg.exe -v -l gigepdrv.inf -c s -i gigepdrv<br/>Uninstall: netcfg.exe -u gigepdrv</pre></td></tr></table>
 		</blockquote></blockquote>
 		</li></ul></li>
@@ -73,7 +74,8 @@ The SDK zip file contains all of the necessary resources and information:</p>
      <li>x64: libmallincam.so, so file for x64</li>
 	 <li>armel: libmallincam.so, so file for armel, use toolchain arm-linux-gnueabi</li>
 	 <li>armhf: libmallincam.so, so file for armhf, use toolchain arm-linux-gnueabihf</li>
-	 <li>arm64: libmallincam.so, so file for arm64, use toolchain aarch64-linux-gnu</li>
+	 <li>arm64/glibc: libmallincam.so, so file for arm64 + glibc, use toolchain aarch64-linux-gnu</li>
+	 <li>arm64/musl: libmallincam.so, so file for arm64 + musl libc, use toolchain aarch64-linux-musleabi</li>
 	</ul><blockquote>***An easy way to distinguish the target platform armel/armhf/arm64, Execute file /bin/ls on the target platform. The following is the result under a Raspberry Pi, it can be seen that it belongs to armhf:
     <table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>$ file /bin/ls
 /bin/ls: ELF 32-bit LSB executable, ARM, EABI5 version 1 (SYSV), dynamically linked, interpreter /lib/ld-linux-<strong>armhf</strong>.so.3, for GNU/Linux 3.2.0, BuildID[sha1]=67a394390830ea3ab4e83b5811c66fea9784ee69, stripped</pre></td></tr></table>
@@ -282,7 +284,7 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
 <blockquote>
 <p>a) The log file name is exactly the same as the library file, and the extension is changed to *.log (e.g. mallincam.dll corresponds to the log file mallincam.log; xyz.dll to xyz.log; libxyz.so to libxyz.log)</p>
 <p>b) The log file time uses relative time by default, and the SDK startup time is recorded as [00:00:00.000]. If you want to use local time (e.g. [0923 17:11:01.491]), add the letter "l" to *.log (i.e. *.llog)</p>
-<p>c) By default, the log file content is automatically cleared every time SDK is started, and the log is written from the beginning. Adding the letter "a" to *.log means that the append mode is used, and the log file content is not cleared when SDK is restarted</p>
+<p>c) By default, the log file content is automatically cleared every time SDK is started, and the log is written from the beginning. Adding the letter "a" to *.log means that the append mode is used, and the log file content is not cleared when SDK is restarted (i.e. *.alog)</p>
 <p>d) <strong>Please make sure that the program has write permission to the log file</strong>(For example, if the program is installed in the Program Files directory, it often happens that the log file cannot be written in non-administrator mode. It is recommended to run the program in administrator mode or modify the permission of the log file.)</p>
 </blockquote>
 <hr/><h1><font color="#0000FF">4. Functions</font></h1><hr/>
@@ -338,7 +340,7 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
 	  </tr><tr>
         <td>E_GEN_FAILURE</td>
         <td>Device not functioning</td>
-		<td>It is generally caused by hardware errors, such as cable problems, USB port problems, poor contact, camera hardware damage, etc</td>
+		<td>It is generally caused by hardware errors, such as cable problems, USB port problems, poor contact, insufficient power supply, camera hardware damage, etc</td>
 		<td>0x8007001f</td>
 	  </tr><tr>
         <td>E_BUSY</td>
@@ -355,6 +357,16 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
         <td>This operation returned because the timeout period expired</td>
 		<td></td>
 		<td>0x8001011f</td>
+	  </tr><tr>
+        <td>E_UNREACH</td>
+        <td>Network is unreachable</td>
+		<td>Please check the IP settings of the camera and the computer, or the firewall settings</td>
+		<td>0x80072743</td>
+	  </tr><tr>
+        <td>E_CANCELLED</td>
+        <td>The operation was canceled by the user</td>
+		<td></td>
+		<td>0x800704c7</td>
 	  </tr><tr>
         <td>E_FAIL</td>
         <td>Unspecified failure</td>
@@ -382,7 +394,7 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
 	(d) If try to acquire the same lock when performing the above operations and when callback functions, it will cause waiting forever for the callback to end, deadlock</strong></p>
 </li></ul><ul><li><h2><font color="#0000FF"><a id="cord">Coordinate</a></font></h2>
 <p>Functions with coordinate parameters, such as Mallincam_put_Roi, Mallincam_put_AEAuxRect, etc., the coordinate is <strong>always relative to the original resolution</strong>, even that the image has been flipped, rotated, digital binning, ROI, or combination of the previous operations.</p>
-<p>Exception: if the image is upside down (see <a href="#upsidedown">here</a>), the coordinate must be also upsize down.</p>
+<p>Exception:<blockquote>(a) if the image is upside down (see <a href="#upsidedown">here</a>), the coordinate must be also upsize down.</blockquote><blockquote>(b) Hardware Binning.</blockquote></p>
 </li></ul><ul><li><h2><font color="#0000FF">Mallincam_EnumV2<br/>Mallincam_EnumWithName</font></h2>
     <p><strong>Return value: </strong> non-negative integer, enumerated camera number</p>
     <p><strong>Parameters:</strong></p>
@@ -423,7 +435,7 @@ typedef struct {
     char     displayname[64];    /* display name: model name or user-defined name (if any and Mallincam_EnumWithName, Mallincam_EnumV2 always returns model name) */
     char     id[64];             /* camId */
 #endif
-    const MallincamModelV2* model;
+    const MallincamModelV2* model; /* Functionally equivalent to a global constant, remaining valid and unchanged throughout the lifetime of the process */
 } MallincamDeviceV2; /* device instance for enumerating */
 </pre></td></tr></table><br/>
 <div align="center"><table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0"><tr>
@@ -585,8 +597,8 @@ typedef struct {
     <td>MALLINCAM_FLAG_5GIGE</td>
     <td>5 Gigabit GigE</td>
   </tr><tr>
-    <td>MALLINCAM_FLAG_25GIGE</td>
-    <td>2.5 Gigabit GigE</td>
+    <td>MALLINCAM_FLAG_40GIGE</td>
+    <td>40 Gigabit GigE</td>
   </tr><tr>
     <td>MALLINCAM_FLAG_CAMERALINK</td>
     <td>camera link</td>
@@ -664,7 +676,7 @@ typedef struct {
   		<p><a href="#camidsn">camId</a>: Mallincam camera ID, enumerated by Mallincam_EnumV2. <strong>If camId is NULL, Mallincam_Open will open the first enumerated camera which connects to the computer. So, if we don't care about that multiple cameras connect to the computer simultaneously, Mallincam_EnumV2 is optional, we can simply use NULL as the parameter.</strong></p>
 	<p>For <strong>USB, GigE, CameraLink or CXP</strong> camera, the camId can also be specified as (case sensitive):<br/>
 		(a) "sn:xxxxxxxxxxxx" (Use SN, such as sn:ZP250212241204105), or<br/>
-		(b) "name:xxxxxxxxxxxx" (Use name, such as name:Camera1)</p>		
+		(b) "name:xxxxxxxxxxxx" (Use user-defined name, such as name:Camera1)</p>		
   	<p>Moreover, for <strong>GigE</strong> camera, the camId can also be specified as (case sensitive):<br/>
 		(a) "ip:xxx.xxx.xxx.xxx" (Use IP address, such as ip:192.168.1.100), or<br/>
 		(b) "mac:xxxxxxxxxxxx" (Use MAC address, such as mac:d05f64ffff23) or</p>
@@ -980,8 +992,8 @@ typedef struct {
       <p>HMallincam h: camera handle</p>
       <p>unsigned xOffset: x offset, must be even number</p>
       <p>unsigned yOffset: y offset, must be even number</p>
-      <p>unsigned xWidth: width, must be even number and must not be less than 16</p>
-      <p>unsigned yHeight: height, must be even number and must not be less than 16</p>
+      <p>unsigned xWidth: width, must be even number and must not be less than 8</p>
+      <p>unsigned yHeight: height, must be even number and must not be less than 8</p>
     </blockquote>
   <p><strong>Remarks:</strong> set/get the ROI. Mallincam_put_Roi(h, 0, 0, 0, 0) means to clear the ROI and restore the original size.</p>
   <blockquote>
@@ -1327,7 +1339,7 @@ MALLINCAM_PIXELFORMAT_RAW10PACK
       </tr><tr>
         <td>MALLINCAM_OPTION_CALLBACK_THREAD</td><td>RW</td>
         <td>dedicated thread for callback, only available in pull mode:<br/>0 =&gt; disable, 1 =&gt; enable</td>
-		<td>0</td>
+		<td>Enable(GigE)<br/>Disable(others)</td>
       	<td><b>No</b><br/>(The return value is E_UNEXPECTED when set this option while camera is running)</td>
       </tr><tr>
         <td><a id="frontend">MALLINCAM_OPTION_FRONTEND_DEQUE_LENGTH</a><br/>or<br/>MALLINCAM_OPTION_FRAME_DEQUE_LENGTH</td><td>RW</td>
@@ -1501,9 +1513,9 @@ MALLINCAM_PIXELFORMAT_RAW10PACK
 		<td>0</td><td>Yes</td>
       </tr><tr>
         <td>MALLINCAM_OPTION_OVEREXP_POLICY</td><td>RW</td>
-        <td>Auto exposure over exposure policy: when overexposed,<br/>
+        <td>Auto exposure overexposure policy: when overexposed,<br/>
 			<blockquote>0 =&gt; directly reduce the exposure time/gain to the minimum value; or<br/>
-			1 =&gt; reduce exposure time/gain in proportion to current and target brightness; or<br/>
+			1 =&gt; reduce exposure time/gain according to the ratio between current and target brightness; or<br/>
 			n(n>1) =&gt; first adjust the exposure time to (maximum automatic exposure time * maximum automatic exposure gain) * n / 1000, and then adjust according to the strategy of 1</blockquote><br/>
 		The advantage of policy 0 is that the convergence speed is faster, but there is black screen.<br/>
 		Policy 1 avoids the black screen, but the convergence speed is slower.</td>
@@ -1520,7 +1532,7 @@ MALLINCAM_PIXELFORMAT_RAW10PACK
 			n&lt;0: every -n frame</blockquote>
 		</td><td>0 (Disable)</td><td>Yes</td>
       </tr><tr>
-		<td>TOUPCAP_OPTION_TIMED_TRIGGER_NUM</td><td>RW</td>
+		<td>MALLINCAM_OPTION_TIMED_TRIGGER_NUM</td><td>RW</td>
 		<td>Timed trigger number</td><td>0 (Disable)</td><td>Yes</td>
       </tr><tr>
 		<td>MALLINCAM_OPTION_TIMED_TRIGGER_LOW</td><td>RW</td>
@@ -1677,16 +1689,16 @@ MALLINCAM_PIXELFORMAT_RAW10PACK
       	<td>NA</td><td>NA</td>
       </tr><tr>
       	<td>MALLINCAM_OPTION_GVCP_TIMEOUT</td><td>RW</td>
-      	<td>GVCP Timeout, millisecond, range: [3, 75]<br/>Unless in very special circumstances, generally no modification is required, just use the default value</td>
-      	<td>15</td><td>Yes</td>
+      	<td>GVCP Timeout, millisecond, range: [5, 150]<br/>Unless in very special circumstances, generally no modification is required, just use the default value</td>
+      	<td>15(wire)<br/>30(wireless)</td><td>Yes</td>
       </tr><tr>
       	<td>MALLINCAM_OPTION_GVCP_RETRY</td><td>RW</td>
-      	<td>GVCP Retry, range: [2, 8]<br/>Unless in very special circumstances, generally no modification is required, just use the default value</td>
-      	<td>4</td><td>Yes</td>
+      	<td>GVCP Retry, range: [2, 16]<br/>Unless in very special circumstances, generally no modification is required, just use the default value</td>
+      	<td>4(wire)<br/>8(wireless)</td><td>Yes</td>
       </tr><tr>
       	<td>MALLINCAM_OPTION_GVSP_WAIT_PERCENT</td><td>RW</td>
       	<td>GVSP wait percent: range = [0, 100]</td>
-      	<td>trigger mode: 100, realtime: 0, other: 1</td><td>Yes</td>
+      	<td>trigger mode: 100<br/>realtime: 0<br/>other: 1</td><td>Yes</td>
       </tr><tr>
       	<td>MALLINCAM_OPTION_GIGETIMEOUT</td><td>RW</td>
       	<td>For GigE cameras, the application periodically sends heartbeat signals to the camera to keep the connection to the camera alive. If the camera doesn't receive heartbeat signals within the time period specified by the heartbeat timeout counter, the camera resets the connection. When the application is stopped by the debugger, the application cannot create the heartbeat signals.<br/>
@@ -1721,6 +1733,15 @@ MALLINCAM_PIXELFORMAT_RAW10PACK
 		1: reverse<br/>
 		2: alternate</td>
       	<td>0</td><td>Yes</td></tr><tr>
+      	<td>MALLINCAM_OPTION_LANE</td><td>RW</td>
+      	<td>Lane</td>
+      	<td>Model Specific</td><td>Yes</td></tr><tr>
+      	<td>MALLINCAM_OPTION_ANTI_BLOOMING</td><td>RW</td>
+      	<td>anti-blooming</td>
+      	<td>Model Specific</td><td>Yes</td></tr><tr>
+      	<td>MALLINCAM_OPTION_ANTI_BLOOMING_MAX</td><td>RW</td>
+      	<td>anti-blooming</td>
+      	<td>NA</td><td>NA</td></tr><tr>
       	<td>MALLINCAM_OPTION_BLACKLEVEL_AUTOADJUST</td><td>RW</td>
       	<td>Black level automatic adjustment function:<br/> 0: off<br/>1: on<br/>
 		This setting turn on/off black level auto adjust function by OB(Optical Black) level.
@@ -1921,7 +1942,7 @@ Mallincam_put_Brightness<br/>Mallincam_get_Brightness<br/>Mallincam_get_Contrast
 </li></ul><ul><li><h2><font color="#0000FF">Mallincam_put_AWBAuxRect<br/>Mallincam_get_AWBAuxRect<br/>Mallincam_put_AEAuxRect<br/>Mallincam_get_AEAuxRect<br/>Mallincam_put_ABBAuxRect<br/>Mallincam_get_ABBAuxRect</font></h2>
       <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
       <p><strong>Parameters:</strong></p>
-      <blockquote><p>HMallincam h: camera handle</p></blockquote>
+      <blockquote><p>HMallincam h: camera handle</p><p>RECT: rectangle, minimum width &amp; height: 4</p></blockquote>
       <p><strong>Remarks:</strong> set/get the rectangle of automatic white balance and auto-exposure and automatic black balance. The default Rectangle is in the center of the image, its width is 20% image with, its height is 20% image height.</p>
 	  <p><strong>Pay attention to that the coordinate is always relative to the original resolution</strong>, see <a href="#cord">here</a>.</p>
 	  <p>For mono camera, white balance and black balance always return E_NOTIMPL.</p>
