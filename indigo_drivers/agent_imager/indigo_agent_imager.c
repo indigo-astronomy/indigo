@@ -313,18 +313,51 @@ typedef struct {
 
 // -------------------------------------------------------------------------------- INDIGO agent common code
 
-static bool get_disk_usage(const char *path, double *total_mb, double *free_mb, double *used_mb) {
+static bool get_disk_usage(const char* path, double* total_mb, double* free_mb, double* used_mb) {
 	if (!path || !total_mb || !free_mb || !used_mb) {
 		return false;
 	}
 
 #ifdef INDIGO_WINDOWS
 	ULARGE_INTEGER total, free;
-	if (GetDiskFreeSpaceEx(path, &free, &total, NULL)) {
+
+	char normalized_path[MAX_PATH];
+	strncpy(normalized_path, path, MAX_PATH - 1);
+	normalized_path[MAX_PATH - 1] = '\0';
+
+	// Ensure path ends with backslash
+	size_t len = strlen(normalized_path);
+	if (len > 0 && normalized_path[len - 1] != '\\' && normalized_path[len - 1] != '/') {
+		if (len < MAX_PATH - 1) {
+			normalized_path[len] = '\\';
+			normalized_path[len + 1] = '\0';
+		}
+	}
+
+	if (GetDiskFreeSpaceExA(normalized_path, &free, &total, NULL)) {
 		*total_mb = TO_MB(total.QuadPart);
 		*free_mb = TO_MB(free.QuadPart);
 		*used_mb = TO_MB(total.QuadPart - free.QuadPart);
 		return true;
+	}
+
+	DWORD error = GetLastError();
+	switch (error) {
+	case ERROR_PATH_NOT_FOUND:
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetDiskFreeSpaceExA() failed for '%s': Path not found (error %d)", path, error);
+		break;
+	case ERROR_INVALID_NAME:
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetDiskFreeSpaceExA() failed for '%s': Invalid name (error %d)", path, error);
+		break;
+	case ERROR_NOT_READY:
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetDiskFreeSpaceExA() failed for '%s': Device not ready (error %d)", path, error);
+		break;
+	case ERROR_ACCESS_DENIED:
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetDiskFreeSpaceExA() failed for '%s': Access denied (error %d)", path, error);
+		break;
+	default:
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetDiskFreeSpaceExA() failed for '%s': Error %d", path, error);
+		break;
 	}
 	return false;
 #else
@@ -340,6 +373,8 @@ static bool get_disk_usage(const char *path, double *total_mb, double *free_mb, 
 		*used_mb = TO_MB(used_bytes);
 		return true;
 	}
+
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "statvfs() failed for '%s': %s", path, strerror(errno));
 	return false;
 #endif
 }
