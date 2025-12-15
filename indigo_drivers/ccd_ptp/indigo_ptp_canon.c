@@ -1143,29 +1143,33 @@ static void ptp_canon_get_event(indigo_device *device) {
 				}
 				case ptp_event_canon_ObjectAddedEx:
 				case ptp_event_canon_ObjectAddedEx2:
-				case ptp_event_canon_ObjectAddedEx3: {
+				case ptp_event_canon_ObjectAddedEx3:
+				case ptp_event_canon_RequestObjectTransfer: {
 					uint32_t handle = 0, length = 0;
 					char filename[PTP_MAX_CHARS];
 					filename[0] = '\0';
 					ptp_decode_uint32(source, &handle);
 					if (event == ptp_event_canon_ObjectAddedEx || event == ptp_event_canon_ObjectAddedEx2) {
 						ptp_decode_uint32(source + 0x14, &length);
-					} else if (event == ptp_event_canon_ObjectAddedEx3) {
+					} else if (event == ptp_event_canon_ObjectAddedEx3 || event == ptp_event_canon_RequestObjectTransfer) {
 						ptp_decode_uint32(source + 0x0C, &length);
 					}
 					if (event == ptp_event_canon_ObjectAddedEx) {
 						strncpy(filename, (char *)source + 0x20, PTP_MAX_CHARS);
 					} else if (event == ptp_event_canon_ObjectAddedEx2) {
 						strncpy(filename, (char *)source + 0x24, PTP_MAX_CHARS);
-					} else if (event == ptp_event_canon_ObjectAddedEx3) {
+					} else if (event == ptp_event_canon_ObjectAddedEx3 || event == ptp_event_canon_RequestObjectTransfer) {
 						ptp_decode_string((char *)source + 0x1c, filename);
-						if (source[0x1c] == 0) {
-							// no filename
+						if (source[0x1c] == 0 || source[0x1c] == 1) {
+							// empty or "\0" string
+							//   => no filename
 							uint32_t content_type = 0;
 							ptp_decode_uint32(source + 0x04, &content_type);
 							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Type: 0x%x", content_type);
 							if (content_type == 0x3801) {
 								strncpy(filename, "RAM.JPG", PTP_MAX_CHARS);
+							} else if (content_type == 0xB103) {
+								strncpy(filename, "RAM.CR2", PTP_MAX_CHARS);
 							} else if (content_type == 0xB108) {
 								strncpy(filename, "RAM.CR3", PTP_MAX_CHARS);
 							} else {
@@ -1199,7 +1203,14 @@ static void ptp_canon_get_event(indigo_device *device) {
 							if (buffer) {
 								free(buffer);
 							}
-						} else if (event == ptp_event_canon_ObjectAddedEx3) {
+						} else if (event == ptp_event_canon_ObjectAddedEx3 || event == ptp_event_canon_RequestObjectTransfer) {
+							if (event == ptp_event_canon_RequestObjectTransfer) {
+								// Old camera (EOS 70D etc.)
+								if (!CANON_PRIVATE_DATA->use_ram) {
+									// If storage is available, ObjectAddedEx will be notified.
+									break;
+								}
+							}
 							// R1, R5m2 later?
 							void *image_buffer = indigo_safe_malloc(length);
 							void *buffer = NULL;
