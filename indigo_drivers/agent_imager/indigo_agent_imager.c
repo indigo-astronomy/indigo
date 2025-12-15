@@ -257,8 +257,6 @@ typedef struct {
 	indigo_property *agent_breakpoint_property;
 	indigo_property *agent_resume_condition_property;
 	indigo_property *agent_barrier_property;
-	pthread_mutex_t disk_usage_mutex;
-	indigo_timer *disk_usage_timer;
 	double filter_offsets[FILTER_SLOT_COUNT];
 	int current_filter_index;
 	int requested_filter_index;
@@ -350,7 +348,6 @@ static void update_disk_usage(indigo_device *device) {
 	double total_mb, free_mb, used_mb;
 	static double last_total_mb = -1, last_free_mb = -1, last_used_mb = -1;
 
-	pthread_mutex_lock(&DEVICE_PRIVATE_DATA->disk_usage_mutex);
 	const char *path = DEVICE_PRIVATE_DATA->current_folder;
 	if (path == NULL || strlen(path) == 0) {
 		AGENT_IMAGER_DISK_USAGE_TOTAL_ITEM->number.value = 0;
@@ -384,7 +381,6 @@ static void update_disk_usage(indigo_device *device) {
 		last_used_mb = AGENT_IMAGER_DISK_USAGE_USED_ITEM->number.value;
 		last_total_mb = AGENT_IMAGER_DISK_USAGE_TOTAL_ITEM->number.value;
 	}
-	pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->disk_usage_mutex);
 }
 
 static void disk_usage_timer_callback(indigo_device *device) {
@@ -392,7 +388,7 @@ static void disk_usage_timer_callback(indigo_device *device) {
 		return;
 	}
 	update_disk_usage(device);
-	indigo_reschedule_timer(device, 30, &DEVICE_PRIVATE_DATA->disk_usage_timer);
+	indigo_execute_handler_in(device, 30, disk_usage_timer_callback);
 }
 
 static void save_config(indigo_device *device) {
@@ -2973,6 +2969,9 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_IMAGER_DISK_USAGE_TOTAL_ITEM, AGENT_IMAGER_DISK_USAGE_TOTAL_ITEM_NAME, "Total (MB)", 0, 100000, 0, 0);
 		indigo_init_number_item(AGENT_IMAGER_DISK_USAGE_USED_ITEM, AGENT_IMAGER_DISK_USAGE_USED_ITEM_NAME, "Used (MB)", 0, 100000, 0, 0);
 		indigo_init_number_item(AGENT_IMAGER_DISK_USAGE_FREE_ITEM, AGENT_IMAGER_DISK_USAGE_FREE_ITEM_NAME, "Free (MB)", 0, 100000, 0, 0);
+		snprintf(AGENT_IMAGER_DISK_USAGE_FREE_ITEM->number.format, INDIGO_VALUE_SIZE, "%%.%df", 3);
+		snprintf(AGENT_IMAGER_DISK_USAGE_USED_ITEM->number.format, INDIGO_VALUE_SIZE, "%%.%df", 3);
+		snprintf(AGENT_IMAGER_DISK_USAGE_TOTAL_ITEM->number.format, INDIGO_VALUE_SIZE, "%%.%df", 3);
 		// -------------------------------------------------------------------------------- Wheel helpers
 		AGENT_WHEEL_FILTER_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_WHEEL_FILTER_PROPERTY_NAME, "Agent", "Selected filter", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, FILTER_SLOT_COUNT);
 		if (AGENT_WHEEL_FILTER_PROPERTY == NULL) {
@@ -3121,9 +3120,8 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 		pthread_mutex_init(&DEVICE_PRIVATE_DATA->mutex, NULL);
 		pthread_mutex_init(&DEVICE_PRIVATE_DATA->last_image_mutex, NULL);
-		pthread_mutex_init(&DEVICE_PRIVATE_DATA->disk_usage_mutex, NULL);
 		indigo_load_properties(device, false);
-		indigo_set_timer(device, 0, disk_usage_timer_callback, &DEVICE_PRIVATE_DATA->disk_usage_timer);
+		indigo_execute_handler(device, disk_usage_timer_callback);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return agent_enumerate_properties(device, NULL, NULL);
 	}
@@ -3688,7 +3686,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 
 static indigo_result agent_device_detach(indigo_device *device) {
 	assert(device != NULL);
-	indigo_cancel_timer_sync(device, &DEVICE_PRIVATE_DATA->disk_usage_timer);
+	indigo_cancel_pending_handlers(device);
 	save_config(device);
 	indigo_release_property(AGENT_IMAGER_BATCH_PROPERTY);
 	indigo_release_property(AGENT_IMAGER_FOCUS_PROPERTY);
@@ -3717,7 +3715,6 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_release_property(AGENT_FOCUSER_CONTROL_PROPERTY);
 	pthread_mutex_destroy(&DEVICE_PRIVATE_DATA->mutex);
 	pthread_mutex_destroy(&DEVICE_PRIVATE_DATA->last_image_mutex);
-	pthread_mutex_destroy(&DEVICE_PRIVATE_DATA->disk_usage_mutex);
 	indigo_safe_free(DEVICE_PRIVATE_DATA->image_buffer);
 	DEVICE_PRIVATE_DATA->image_buffer_size = 0;
 	indigo_safe_free(DEVICE_PRIVATE_DATA->last_image);
@@ -3810,7 +3807,7 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 				break;
 			}
 		}
-		update_disk_usage(FILTER_CLIENT_CONTEXT->device);
+		indigo_execute_handler(FILTER_CLIENT_CONTEXT->device, disk_usage_timer_callback);
 		setup_download(FILTER_CLIENT_CONTEXT->device);
 	} else if (!strcmp(property->name, CCD_IMAGE_FILE_PROPERTY_NAME)) {
 		 setup_download(FILTER_CLIENT_CONTEXT->device);
@@ -4100,7 +4097,7 @@ static indigo_result agent_delete_property(indigo_client *client, indigo_device 
 			DEVICE_PRIVATE_DATA->has_camera = false;
 		} else if (!strcmp(property->name, CCD_LOCAL_MODE_PROPERTY_NAME) || *property->name == 0) {
 			*CLIENT_PRIVATE_DATA->current_folder = 0;
-			update_disk_usage(FILTER_CLIENT_CONTEXT->device);
+			indigo_execute_handler(FILTER_CLIENT_CONTEXT->device, disk_usage_timer_callback);
 		}
 	}
 	return indigo_filter_delete_property(client, device, property, message);
