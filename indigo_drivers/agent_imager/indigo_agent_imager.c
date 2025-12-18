@@ -23,7 +23,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x0036
+#define DRIVER_VERSION 0x0037
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>
@@ -37,6 +37,12 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+
+#ifdef INDIGO_WINDOWS
+#include <windows.h>
+#else
+#include <sys/statvfs.h>
+#endif
 
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_filter.h>
@@ -95,6 +101,11 @@
 
 #define AGENT_IMAGER_DELETE_FILE_PROPERTY			(DEVICE_PRIVATE_DATA->agent_imager_delete_file_property)
 #define AGENT_IMAGER_DELETE_FILE_ITEM    			(AGENT_IMAGER_DELETE_FILE_PROPERTY->items+0)
+
+#define AGENT_IMAGER_DISK_USAGE_PROPERTY			(DEVICE_PRIVATE_DATA->agent_imager_disk_usage_property)
+#define AGENT_IMAGER_DISK_USAGE_TOTAL_ITEM			(AGENT_IMAGER_DISK_USAGE_PROPERTY->items+0)
+#define AGENT_IMAGER_DISK_USAGE_USED_ITEM			(AGENT_IMAGER_DISK_USAGE_PROPERTY->items+1)
+#define AGENT_IMAGER_DISK_USAGE_FREE_ITEM			(AGENT_IMAGER_DISK_USAGE_PROPERTY->items+2)
 
 #define AGENT_IMAGER_CAPTURE_PROPERTY					(DEVICE_PRIVATE_DATA->agent_imager_capture_property)
 #define AGENT_IMAGER_CAPTURE_ITEM  						(AGENT_IMAGER_CAPTURE_PROPERTY->items+0)
@@ -217,6 +228,8 @@
 
 #define MAX_BAHTINOV_FRAME_SIZE 500
 
+#define TO_MB(x) ((x) / (1024.0 * 1024.0))
+
 #define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
 
 typedef struct {
@@ -228,6 +241,7 @@ typedef struct {
 	indigo_property *agent_imager_download_files_property;
 	indigo_property *agent_imager_download_image_property;
 	indigo_property *agent_imager_delete_file_property;
+	indigo_property *agent_imager_disk_usage_property;
 	indigo_property *agent_imager_capture_property;
 	indigo_property *agent_start_process_property;
 	indigo_property *agent_pause_process_property;
@@ -245,6 +259,8 @@ typedef struct {
 	indigo_property *agent_breakpoint_property;
 	indigo_property *agent_resume_condition_property;
 	indigo_property *agent_barrier_property;
+	pthread_mutex_t disk_usage_mutex;
+	indigo_timer *disk_usage_timer;
 	double filter_offsets[FILTER_SLOT_COUNT];
 	int current_filter_index;
 	int requested_filter_index;
@@ -300,6 +316,121 @@ typedef struct {
 } imager_agent_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO agent common code
+
+static bool get_disk_usage(const char* path, double* total_mb, double* free_mb, double* used_mb) {
+	if (!path || !total_mb || !free_mb || !used_mb) {
+		return false;
+	}
+
+#ifdef INDIGO_WINDOWS
+	ULARGE_INTEGER total, free;
+
+	char normalized_path[MAX_PATH];
+	strncpy(normalized_path, path, MAX_PATH - 1);
+	normalized_path[MAX_PATH - 1] = '\0';
+
+	// Ensure path ends with backslash
+	size_t len = strlen(normalized_path);
+	if (len > 0 && normalized_path[len - 1] != '\\' && normalized_path[len - 1] != '/') {
+		if (len < MAX_PATH - 1) {
+			normalized_path[len] = '\\';
+			normalized_path[len + 1] = '\0';
+		}
+	}
+
+	if (GetDiskFreeSpaceExA(normalized_path, &free, &total, NULL)) {
+		*total_mb = TO_MB(total.QuadPart);
+		*free_mb = TO_MB(free.QuadPart);
+		*used_mb = TO_MB(total.QuadPart - free.QuadPart);
+		return true;
+	}
+
+	DWORD error = GetLastError();
+	switch (error) {
+	case ERROR_PATH_NOT_FOUND:
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetDiskFreeSpaceExA() failed for '%s': Path not found (error %d)", path, error);
+		break;
+	case ERROR_INVALID_NAME:
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetDiskFreeSpaceExA() failed for '%s': Invalid name (error %d)", path, error);
+		break;
+	case ERROR_NOT_READY:
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetDiskFreeSpaceExA() failed for '%s': Device not ready (error %d)", path, error);
+		break;
+	case ERROR_ACCESS_DENIED:
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetDiskFreeSpaceExA() failed for '%s': Access denied (error %d)", path, error);
+		break;
+	default:
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GetDiskFreeSpaceExA() failed for '%s': Error %d", path, error);
+		break;
+	}
+	return false;
+#else
+	struct statvfs vfs;
+	if (statvfs(path, &vfs) == 0) {
+		unsigned long long block_size = vfs.f_frsize ? vfs.f_frsize : vfs.f_bsize;
+		unsigned long long total_bytes = (unsigned long long)vfs.f_blocks * block_size;
+		unsigned long long free_bytes = (unsigned long long)vfs.f_bavail * block_size;
+		unsigned long long used_bytes = total_bytes - ((unsigned long long)vfs.f_bfree * block_size);
+
+		*total_mb = TO_MB(total_bytes);
+		*free_mb = TO_MB(free_bytes);
+		*used_mb = TO_MB(used_bytes);
+		return true;
+	}
+
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "statvfs() failed for '%s': %s", path, strerror(errno));
+	return false;
+#endif
+}
+
+static void update_disk_usage(indigo_device *device) {
+	double total_mb, free_mb, used_mb;
+	static double last_total_mb = -1, last_free_mb = -1, last_used_mb = -1;
+
+	pthread_mutex_lock(&DEVICE_PRIVATE_DATA->disk_usage_mutex);
+	const char *path = DEVICE_PRIVATE_DATA->current_folder;
+	if (path == NULL || strlen(path) == 0) {
+		AGENT_IMAGER_DISK_USAGE_TOTAL_ITEM->number.value = 0;
+		AGENT_IMAGER_DISK_USAGE_USED_ITEM->number.value = 0;
+		AGENT_IMAGER_DISK_USAGE_FREE_ITEM->number.value = 0;
+
+		AGENT_IMAGER_DISK_USAGE_PROPERTY->state = INDIGO_IDLE_STATE;
+	} else if (get_disk_usage(path, &total_mb, &free_mb, &used_mb)) {
+		AGENT_IMAGER_DISK_USAGE_TOTAL_ITEM->number.value = total_mb;
+		AGENT_IMAGER_DISK_USAGE_USED_ITEM->number.value = used_mb;
+		AGENT_IMAGER_DISK_USAGE_FREE_ITEM->number.value = free_mb;
+		double used_percentage = (total_mb > 0) ? (used_mb / total_mb) * 100.0 : 0.0;
+		if (used_percentage > 95.0) {
+			AGENT_IMAGER_DISK_USAGE_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else if (used_percentage > 85.0) {
+			AGENT_IMAGER_DISK_USAGE_PROPERTY->state = INDIGO_BUSY_STATE;
+		} else {
+			AGENT_IMAGER_DISK_USAGE_PROPERTY->state = INDIGO_OK_STATE;
+		}
+	} else {
+		AGENT_IMAGER_DISK_USAGE_TOTAL_ITEM->number.value = 0;
+		AGENT_IMAGER_DISK_USAGE_USED_ITEM->number.value = 0;
+		AGENT_IMAGER_DISK_USAGE_FREE_ITEM->number.value = 0;
+		AGENT_IMAGER_DISK_USAGE_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	if (last_total_mb != AGENT_IMAGER_DISK_USAGE_TOTAL_ITEM->number.value ||
+	    last_used_mb != AGENT_IMAGER_DISK_USAGE_USED_ITEM->number.value ||
+	    last_free_mb != AGENT_IMAGER_DISK_USAGE_FREE_ITEM->number.value) {
+		indigo_update_property(device, AGENT_IMAGER_DISK_USAGE_PROPERTY, NULL);
+		last_free_mb = AGENT_IMAGER_DISK_USAGE_FREE_ITEM->number.value;
+		last_used_mb = AGENT_IMAGER_DISK_USAGE_USED_ITEM->number.value;
+		last_total_mb = AGENT_IMAGER_DISK_USAGE_TOTAL_ITEM->number.value;
+	}
+	pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->disk_usage_mutex);
+}
+
+static void disk_usage_timer_callback(indigo_device *device) {
+	if (!device || !DEVICE_PRIVATE_DATA) {
+		return;
+	}
+	update_disk_usage(device);
+	indigo_reschedule_timer(device, 30, &DEVICE_PRIVATE_DATA->disk_usage_timer);
+}
 
 static void save_config(indigo_device *device) {
 	if (pthread_mutex_trylock(&DEVICE_CONTEXT->config_mutex) == 0) {
@@ -2884,6 +3015,16 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		if (AGENT_IMAGER_DELETE_FILE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_text_item(AGENT_IMAGER_DELETE_FILE_ITEM, AGENT_IMAGER_DELETE_FILE_ITEM_NAME, "File name", "");
+		// -------------------------------------------------------------------------------- Disk usage
+		AGENT_IMAGER_DISK_USAGE_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_IMAGER_DISK_USAGE_PROPERTY_NAME, "Agent", "Disk usage", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 3);
+		if (AGENT_IMAGER_DISK_USAGE_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_number_item(AGENT_IMAGER_DISK_USAGE_TOTAL_ITEM, AGENT_IMAGER_DISK_USAGE_TOTAL_ITEM_NAME, "Total (MB)", 0, 100000, 0, 0);
+		indigo_init_number_item(AGENT_IMAGER_DISK_USAGE_USED_ITEM, AGENT_IMAGER_DISK_USAGE_USED_ITEM_NAME, "Used (MB)", 0, 100000, 0, 0);
+		indigo_init_number_item(AGENT_IMAGER_DISK_USAGE_FREE_ITEM, AGENT_IMAGER_DISK_USAGE_FREE_ITEM_NAME, "Free (MB)", 0, 100000, 0, 0);
+		snprintf(AGENT_IMAGER_DISK_USAGE_FREE_ITEM->number.format, INDIGO_VALUE_SIZE, "%%.%df", 3);
+		snprintf(AGENT_IMAGER_DISK_USAGE_USED_ITEM->number.format, INDIGO_VALUE_SIZE, "%%.%df", 3);
+		snprintf(AGENT_IMAGER_DISK_USAGE_TOTAL_ITEM->number.format, INDIGO_VALUE_SIZE, "%%.%df", 3);
 		// -------------------------------------------------------------------------------- Wheel helpers
 		AGENT_WHEEL_FILTER_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_WHEEL_FILTER_PROPERTY_NAME, "Agent", "Selected filter", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, FILTER_SLOT_COUNT);
 		if (AGENT_WHEEL_FILTER_PROPERTY == NULL)
@@ -3021,7 +3162,9 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 		pthread_mutex_init(&DEVICE_PRIVATE_DATA->mutex, NULL);
 		pthread_mutex_init(&DEVICE_PRIVATE_DATA->last_image_mutex, NULL);
+		pthread_mutex_init(&DEVICE_PRIVATE_DATA->disk_usage_mutex, NULL);
 		indigo_load_properties(device, false);
+		indigo_set_timer(device, 0, disk_usage_timer_callback, &DEVICE_PRIVATE_DATA->disk_usage_timer);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return agent_enumerate_properties(device, NULL, NULL);
 	}
@@ -3039,6 +3182,7 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 	indigo_define_matching_property(AGENT_IMAGER_DOWNLOAD_FILE_PROPERTY);
 	indigo_define_matching_property(AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY);
 	indigo_define_matching_property(AGENT_IMAGER_DELETE_FILE_PROPERTY);
+	indigo_define_matching_property(AGENT_IMAGER_DISK_USAGE_PROPERTY);
 	indigo_define_matching_property(AGENT_IMAGER_CAPTURE_PROPERTY);
 	indigo_define_matching_property(AGENT_START_PROCESS_PROPERTY);
 	indigo_define_matching_property(AGENT_PAUSE_PROCESS_PROPERTY);
@@ -3584,6 +3728,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 
 static indigo_result agent_device_detach(indigo_device *device) {
 	assert(device != NULL);
+	indigo_cancel_timer_sync(device, &DEVICE_PRIVATE_DATA->disk_usage_timer);
 	save_config(device);
 	indigo_release_property(AGENT_IMAGER_BATCH_PROPERTY);
 	indigo_release_property(AGENT_IMAGER_FOCUS_PROPERTY);
@@ -3593,6 +3738,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_release_property(AGENT_IMAGER_DOWNLOAD_FILE_PROPERTY);
 	indigo_release_property(AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY);
 	indigo_release_property(AGENT_IMAGER_DELETE_FILE_PROPERTY);
+	indigo_release_property(AGENT_IMAGER_DISK_USAGE_PROPERTY);
 	indigo_release_property(AGENT_IMAGER_STARS_PROPERTY);
 	indigo_release_property(AGENT_IMAGER_SELECTION_PROPERTY);
 	indigo_release_property(AGENT_IMAGER_STATS_PROPERTY);
@@ -3611,6 +3757,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_release_property(AGENT_FOCUSER_CONTROL_PROPERTY);
 	pthread_mutex_destroy(&DEVICE_PRIVATE_DATA->mutex);
 	pthread_mutex_destroy(&DEVICE_PRIVATE_DATA->last_image_mutex);
+	pthread_mutex_destroy(&DEVICE_PRIVATE_DATA->disk_usage_mutex);
 	indigo_safe_free(DEVICE_PRIVATE_DATA->image_buffer);
 	DEVICE_PRIVATE_DATA->image_buffer_size = 0;
 	indigo_safe_free(DEVICE_PRIVATE_DATA->last_image);
@@ -3703,6 +3850,7 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 				break;
 			}
 		}
+		update_disk_usage(FILTER_CLIENT_CONTEXT->device);
 		setup_download(FILTER_CLIENT_CONTEXT->device);
 	} else if (!strcmp(property->name, CCD_IMAGE_FILE_PROPERTY_NAME)) {
 		 setup_download(FILTER_CLIENT_CONTEXT->device);
@@ -3988,6 +4136,9 @@ static indigo_result agent_delete_property(indigo_client *client, indigo_device 
 	if (device == FILTER_CLIENT_CONTEXT->device) {
 		if (!strcmp(property->name, CCD_EXPOSURE_PROPERTY_NAME) || *property->name == 0) {
 			DEVICE_PRIVATE_DATA->has_camera = false;
+		} else if (!strcmp(property->name, CCD_LOCAL_MODE_PROPERTY_NAME) || *property->name == 0) {
+			*CLIENT_PRIVATE_DATA->current_folder = 0;
+			update_disk_usage(FILTER_CLIENT_CONTEXT->device);
 		}
 	}
 	return indigo_filter_delete_property(client, device, property, message);
