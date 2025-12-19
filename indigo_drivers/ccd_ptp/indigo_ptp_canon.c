@@ -1727,6 +1727,12 @@ bool ptp_canon_zoom(indigo_device *device) {
 		ptp_canon_get_event(device);
 		return true;
 	}
+	// retry
+	else if (DSLR_ZOOM_PREVIEW_ON_ITEM->sw.value && ptp_transaction_1_0(device, ptp_operation_canon_Zoom, 6)) {
+		// newer model allows: x6, x15
+		ptp_canon_get_event(device);
+		return true;
+	}
 	return false;
 }
 
