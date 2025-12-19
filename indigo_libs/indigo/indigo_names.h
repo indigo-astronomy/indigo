@@ -25,7 +25,7 @@
 //----------------------------------------------------------------------
 /** INFO property name.
  */
-#define INFO_PROPERTY_NAME										"INFO"
+#define INFO_PROPERTY_NAME										"DEVICE_INFO"
 
 /** INFO.DEVICE_NAME property item name.
  */
