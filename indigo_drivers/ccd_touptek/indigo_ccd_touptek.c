@@ -54,6 +54,21 @@
 #include <altaircam.h>
 #include "../ccd_altair/indigo_ccd_altair.h"
 
+#elif defined(BACCAM)
+#define ENTRY_POINT						indigo_ccd_baccam
+#define CAMERA_NAME_PREFIX		"BacCam"
+#define DRIVER_LABEL					"BacCam Camera"
+#define DRIVER_NAME						"indigo_ccd_baccam"
+#define DRIVER_PRIVATE_DATA		baccam_private_data
+
+#define SDK_CALL(x)						Baccam_##x
+#define SDK_DEF(x)						BACCAM_##x
+#define SDK_TYPE(x)						Baccam##x
+#define SDK_HANDLE						HBaccam
+
+#include <baccam.h>
+#include "../ccd_baccam/indigo_ccd_baccam.h"
+
 #elif defined(BRESSER)
 
 #define ENTRY_POINT						indigo_ccd_bresser
@@ -1905,7 +1920,7 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 	int compensation;
 	double temp_difference = new_temp - PRIVATE_DATA->prev_temp;
 
-	// we do not have previous temperature reading 
+	// we do not have previous temperature reading
 	if (PRIVATE_DATA->prev_temp < -270) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Not compensating: PRIVATE_DATA->prev_temp = %f", PRIVATE_DATA->prev_temp);
 		PRIVATE_DATA->prev_temp = new_temp;
@@ -2166,7 +2181,7 @@ indigo_lock_master_device(device);
 
 			indigo_define_property(device, X_BEEP_PROPERTY, NULL);
 
-			PRIVATE_DATA->prev_temp = -273;  /* we do not have previous temperature reading */ 
+			PRIVATE_DATA->prev_temp = -273;  /* we do not have previous temperature reading */
 			indigo_set_timer(device, 0.5, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
 			indigo_set_timer(device, 0.1, temperature_timer_callback, &PRIVATE_DATA->temperature_timer);
 		} else {
@@ -2513,12 +2528,12 @@ struct oem_2_toupcam {
 	{ 0x547, 0xe075, 0x1075, "Meade DSI IV Color" }, // USB2.0
 	{ 0x547, 0xe06d, 0x106d, "Meade DSI IV Mono" }, // USB3.0
 	{ 0x547, 0xe076, 0x1076, "Meade DSI IV Mono" },  // USB2.0
-	
+
 	{ 0x547, 0xe00b, 0x11ca, "Meade LPI-GC Adv" }, // USB3.0
 	{ 0x547, 0xe00c, 0x11cb, "Meade LPI-GC Adv" }, // USB2.0
 	{ 0x547, 0xe00d, 0x11cc, "Meade LPI-GM Adv" }, // USB3.0
 	{ 0x547, 0xe00e, 0x11cd, "Meade LPI-GM Adv" }, // USB2.0
-	
+
 	{ 0x547, 0xe007, 0x115a, "Meade LPI-GC Adv" }, // USB3.0 + temperature sensor
 	{ 0x547, 0xe008, 0x115b, "Meade LPI-GC Adv" }, // USB2.0 + temperature sensor
 	{ 0x547, 0xe009, 0x115c, "Meade LPI-GM Adv" }, // USB3.0 + temperature sensor
