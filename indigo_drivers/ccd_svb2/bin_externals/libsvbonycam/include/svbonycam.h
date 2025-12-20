@@ -1,22 +1,23 @@
 ﻿#ifndef __svbonycam_h__
 #define __svbonycam_h__
 
-/* Version: 59.28981.20250715 */
+/* Version: 59.30239.20251209 */
 /*
    Platform & Architecture:
        (1) Win32:
               (a) x64: Win7 or above
               (b) x86: XP SP3 or above; CPU supports SSE2 instruction set or above
               (c) arm64: Win10 or above
-              (d) arm: Win10 or above
-       (2) WinRT: x64, x86, arm64, arm; Win10 or above
+       (2) WinRT: x64, x86, arm64; Win10 or above
        (3) macOS: x64+arm64: macOS 11.0 or above, support x64 and Apple silicon (such as M1, M2, etc)
        (4) Linux: kernel 2.6.27 or above
               (a) x64: GLIBC 2.14 or above
               (b) x86: CPU supports SSE3 instruction set or above; GLIBC 2.8 or above
-              (c) arm64: GLIBC 2.17 or above; built by toolchain aarch64-linux-gnu (version 5.4.0)
-              (d) armhf: GLIBC 2.8 or above; built by toolchain arm-linux-gnueabihf (version 5.4.0)
-              (e) armel: GLIBC 2.8 or above; built by toolchain arm-linux-gnueabi (version 5.4.0)
+              (c) arm64: GLIBC 2.17 or above
+              (d) arm64: musl libc
+              (e) armhf: GLIBC 2.8 or above
+              (f) armel: GLIBC 2.8 or above
+              (g) ostl: STMicroelectronics OpenSTLinux
        (5) Android: __ANDROID_API__ >= 24 (Android 7.0); built by android-ndk-r18b; see https://developer.android.com/ndk/guides/abis
               (a) arm64: arm64-v8a
               (b) arm: armeabi-v7a
@@ -33,6 +34,14 @@
     Please distinguish between camera ID (camId) and camera SN:
         (a) SN is unique and persistent, fixed inside the camera and remains unchanged, and does not change with connection or system restart.
         (b) Camera ID (camId) may change due to connection or system restart. Enumerate the cameras to get the camera ID, and then call the Open function to pass in the camId parameter to open the camera.
+*/
+
+/*
+    Coordinate:
+        (a) Functions with coordinate parameters, such as Svbonycam_put_Roi, Svbonycam_put_AEAuxRect, etc., the coordinate is always relative to the original resolution,
+            even that the image has been flipped, rotated, digital binning, ROI, or combination of the previous operations.
+        (b) Exception: if the image is upside down (see here), the coordinate must be also upsize down.
+        (c) Exception: hardware binning.
 */
 
 #if defined(_WIN32)
@@ -111,11 +120,12 @@ extern "C" {
 #define E_POINTER           (HRESULT)(0x80004003) /* Pointer that is not valid */ /* Remark: Pointer is NULL */
 #define E_FAIL              (HRESULT)(0x80004005) /* Generic failure */
 #define E_WRONG_THREAD      (HRESULT)(0x8001010e) /* Call function in the wrong thread */
-#define E_GEN_FAILURE       (HRESULT)(0x8007001f) /* Device not functioning */ /* Remark: It is generally caused by hardware errors, such as cable problems, USB port problems, poor contact, camera hardware damage, etc */
+#define E_GEN_FAILURE       (HRESULT)(0x8007001f) /* Device not functioning */ /* Remark: It is generally caused by hardware errors, such as cable problems, USB port problems, poor contact, insufficient power supply, camera hardware damage, etc */
 #define E_BUSY              (HRESULT)(0x800700aa) /* The requested resource is in use */ /* Remark: The camera is already in use, such as duplicated opening/starting the camera, or being used by other application, etc */
 #define E_PENDING           (HRESULT)(0x8000000a) /* The data necessary to complete this operation is not yet available */ /* Remark: No data is available at this time */
 #define E_TIMEOUT           (HRESULT)(0x8001011f) /* This operation returned because the timeout period expired */
-#define E_UNREACH           (HRESULT)(0x80072743) /* Network is unreachable */
+#define E_UNREACH           (HRESULT)(0x80072743) /* Network is unreachable */ /* Remark: Please check the IP settings of the camera and the computer, or the firewall settings */
+#define E_CANCELLED         (HRESULT)(0x800704C7) /* The operation was canceled by the user */
 #endif
 
 /* handle */
@@ -171,7 +181,7 @@ typedef struct Svbonycam_t { int unused; } *HSvbonycam;
 #define SVBONYCAM_FLAG_GIGE                 0x0000200000000000  /* 1 Gigabit GigE */
 #define SVBONYCAM_FLAG_10GIGE               0x0000400000000000  /* 10 Gigabit GigE */
 #define SVBONYCAM_FLAG_5GIGE                0x0000800000000000  /* 5 Gigabit GigE */
-#define SVBONYCAM_FLAG_25GIGE               0x0001000000000000  /* 2.5 Gigabit GigE */
+#define SVBONYCAM_FLAG_40GIGE               0x0001000000000000  /* 40 Gigabit GigE */
 #define SVBONYCAM_FLAG_AUTOFOCUSER          0x0002000000000000  /* astro auto focuser */
 #define SVBONYCAM_FLAG_LIGHT_SOURCE         0x0004000000000000  /* stand alone light source */
 #define SVBONYCAM_FLAG_CAMERALINK           0x0008000000000000  /* camera link */
@@ -181,8 +191,9 @@ typedef struct Svbonycam_t { int unused; } *HSvbonycam;
 #define SVBONYCAM_FLAG_RAW11                0x0080000000000000  /* pixel format, RAW 11bits */
 #define SVBONYCAM_FLAG_GHOPTO               0x0100000000000000  /* ghopto sensor */
 #define SVBONYCAM_FLAG_RAW10PACK            0x0200000000000000  /* pixel format, RAW 10bits packed */
-#define SVBONYCAM_FLAG_USB32                0x0400000000000000  /* usb3.2 */
-#define SVBONYCAM_FLAG_USB32_OVER_USB30     0x0800000000000000  /* usb3.2 camera connected to usb3.0 port */
+#define SVBONYCAM_FLAG_USB32                0x0400000000000000  /* USB 3.2 Gen 2 */
+#define SVBONYCAM_FLAG_USB32_OVER_USB30     0x0800000000000000  /* USB 3.2 Gen 2 camera connected to usb3.0 port */
+#define SVBONYCAM_FLAG_LINESCAN             0x1000000000000000  /* line scan camera */
 
 #define SVBONYCAM_EXPOGAIN_DEF              100     /* exposure gain, default value */
 #define SVBONYCAM_EXPOGAIN_MIN              100     /* exposure gain, minimum value */
@@ -264,7 +275,6 @@ typedef struct Svbonycam_t { int unused; } *HSvbonycam;
 #define SVBONYCAM_HDR_THRESHOLD_MIN         0
 #define SVBONYCAM_HDR_THRESHOLD_MAX         4094
 #define SVBONYCAM_CDS_MIN                   0       /* Correlated Double Sampling */
-#define SVBONYCAM_CDS_MAX                   100
 
 typedef struct {
     unsigned    width;
@@ -303,7 +313,7 @@ typedef struct {
 } SvbonycamDeviceV2; /* device instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 59.28981.20250715
+    get the version of this dll/so/dylib, which is: 59.30239.20251209
 */
 #if defined(_WIN32)
 SVBONYCAM_API(const wchar_t*)   Svbonycam_Version();
@@ -326,12 +336,12 @@ SVBONYCAM_API(unsigned) Svbonycam_EnumV2(SvbonycamDeviceV2 arr[SVBONYCAM_MAX]);
 
 /* use the camId of SvbonycamDeviceV2, which is enumerated by Svbonycam_EnumV2.
     if camId is NULL, Svbonycam_Open will open the first enumerated camera.
-    For USB, GigE or PCIe camera, the camId can the camId can also be specified as (case sensitive):
-        (a) "sn:xxxxxxxxxxxx" (such as sn:ZP250212241204105)
-        (b) "name:xxxxxx" (such as name: Camera1)
+    For USB, GigE, CameraLink or CXP camera, the camId can also be specified as (case sensitive):
+        (a) "sn:xxxxxxxxxxxx" (Use SN, such as sn:ZP250212241204105), or
+        (b) "name:xxxxxx" (Use user-defined name, such as name:Camera1)
     Moreover, for GigE camera, the camId can also be specified as (case sensitive):
-        (a) "ip:xxx.xxx.xxx.xxx" (such as ip:192.168.1.100) or
-        (b) "mac:xxxxxxxxxxxx" (such as mac:d05f64ffff23)
+        (a) "ip:xxx.xxx.xxx.xxx" (Use IP address, such as ip:192.168.1.100), or
+        (b) "mac:xxxxxxxxxxxx" (Use MAC address, such as mac:d05f64ffff23)
     For the issue of opening the camera on Android, please refer to the documentation
 */
 #if defined(_WIN32)
@@ -624,13 +634,13 @@ typedef void (__stdcall* PISVBONYCAM_PROGRESS)(int percent, void* ctxProgress);
 typedef void (__stdcall* PISVBONYCAM_HISTOGRAM_CALLBACKV2)(const unsigned* aHist, unsigned nFlag, void* ctxHistogramV2);
 
 /*
-* bAutoExposure:
+* mode:
 *   0: disable auto exposure
 *   1: auto exposure continue mode
 *   2: auto exposure once mode
 */
-SVBONYCAM_API(HRESULT)  Svbonycam_get_AutoExpoEnable(HSvbonycam h, int* bAutoExposure);
-SVBONYCAM_API(HRESULT)  Svbonycam_put_AutoExpoEnable(HSvbonycam h, int bAutoExposure);
+SVBONYCAM_API(HRESULT)  Svbonycam_get_AutoExpoEnable(HSvbonycam h, int* mode);
+SVBONYCAM_API(HRESULT)  Svbonycam_put_AutoExpoEnable(HSvbonycam h, int mode);
 
 SVBONYCAM_API(HRESULT)  Svbonycam_get_AutoExpoTarget(HSvbonycam h, unsigned short* Target);
 SVBONYCAM_API(HRESULT)  Svbonycam_put_AutoExpoTarget(HSvbonycam h, unsigned short Target);
@@ -734,7 +744,7 @@ SVBONYCAM_API(HRESULT)  Svbonycam_get_FanMaxSpeed(HSvbonycam h); /* get the maxi
 
 SVBONYCAM_API(HRESULT)  Svbonycam_get_MaxBitDepth(HSvbonycam h); /* get the max bitdepth of this camera, such as 8, 10, 12, 14, 16 */
 
-/* power supply of lighting:
+/* Light Frequency:
         0 => 60HZ AC
         1 => 50Hz AC
         2 => DC
@@ -757,6 +767,7 @@ typedef struct {
 #endif
 #endif
 
+/* Minimum width & height: 4 */
 SVBONYCAM_API(HRESULT)  Svbonycam_put_AWBAuxRect(HSvbonycam h, const RECT* pAuxRect); /* auto white balance ROI */
 SVBONYCAM_API(HRESULT)  Svbonycam_get_AWBAuxRect(HSvbonycam h, RECT* pAuxRect);
 SVBONYCAM_API(HRESULT)  Svbonycam_put_AEAuxRect(HSvbonycam h, const RECT* pAuxRect);  /* auto exposure ROI */
@@ -879,7 +890,7 @@ SVBONYCAM_API(HRESULT)  Svbonycam_get_Option(HSvbonycam h, unsigned iOption, int
 #define SVBONYCAM_OPTION_NOFRAME_TIMEOUT        0x01       /* [RW] no frame timeout: 0 => disable, positive value (>= SVBONYCAM_NOFRAME_TIMEOUT_MIN) => timeout milliseconds. default: disable */
 #define SVBONYCAM_OPTION_THREAD_PRIORITY        0x02       /* [RW] set the priority of the internal thread which grab data from the usb device.
                                                              Win: iValue: 0 => THREAD_PRIORITY_NORMAL; 1 => THREAD_PRIORITY_ABOVE_NORMAL; 2 => THREAD_PRIORITY_HIGHEST; 3 => THREAD_PRIORITY_TIME_CRITICAL; default: 1; see: https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setthreadpriority
-                                                             Linux & macOS: The high 16 bits for the scheduling policy, and the low 16 bits for the priority; see: https://linux.die.net/man/3/pthread_setschedparam
+                                                             Linux & macOS: similar to Win
                                                          */
 #define SVBONYCAM_OPTION_PROCESSMODE            0x03       /* [RW] obsolete & useless, noop. 0 = better image quality, more cpu usage. this is the default value; 1 = lower image quality, less cpu usage */
 #define SVBONYCAM_OPTION_RAW                    0x04       /* [RW]
@@ -915,7 +926,7 @@ SVBONYCAM_API(HRESULT)  Svbonycam_get_Option(HSvbonycam h, unsigned iOption, int
 #define SVBONYCAM_OPTION_DEMOSAIC_STILL         0x14       /* [RW] demosaic method for still image */
 #define SVBONYCAM_OPTION_BLACKLEVEL             0x15       /* [RW] black level */
 #define SVBONYCAM_OPTION_MULTITHREAD            0x16       /* [RW] multithread image processing */
-#define SVBONYCAM_OPTION_BINNING                0x17       /* [RW] binning
+#define SVBONYCAM_OPTION_BINNING                0x17       /* [RW] digital binning
                                                                 0x01: (no binning)
                                                                 n: (saturating add, n*n), 0x02(2*2), 0x03(3*3), 0x04(4*4), 0x05(5*5), 0x06(6*6), 0x07(7*7), 0x08(8*8). The Bitdepth of the data remains unchanged.
                                                                 0x40 | n: (unsaturated add, n*n, works only in RAW mode), 0x42(2*2), 0x43(3*3), 0x44(4*4), 0x45(5*5), 0x46(6*6), 0x47(7*7), 0x48(8*8). The Bitdepth of the data is increased. For example, the original data with bitdepth of 12 will increase the bitdepth by 2 bits and become 14 after 2*2 binning.
@@ -990,7 +1001,9 @@ SVBONYCAM_API(HRESULT)  Svbonycam_get_Option(HSvbonycam h, unsigned iOption, int
 #define SVBONYCAM_OPTION_PRECISE_FRAMERATE      0x2d       /* [RW] precise frame rate current value in 0.1 fps. use SVBONYCAM_OPTION_MAX_PRECISE_FRAMERATE, SVBONYCAM_OPTION_MIN_PRECISE_FRAMERATE to get the range. if the set value is out of range, E_INVALIDARG will be returned */
 #define SVBONYCAM_OPTION_BANDWIDTH              0x2e       /* [RW] bandwidth, [1-100]% */
 #define SVBONYCAM_OPTION_RELOAD                 0x2f       /* [RW] reload the last frame in trigger mode */
-#define SVBONYCAM_OPTION_CALLBACK_THREAD        0x30       /* [RW] dedicated thread for callback: 0 => disable, 1 => enable, default: 0 */
+#define SVBONYCAM_OPTION_CALLBACK_THREAD        0x30       /* [RW] dedicated thread for callback: 0 => disable, 1 => enable
+                                                                 default: 1(GigE), 0(others)
+                                                         */
 #define SVBONYCAM_OPTION_FRONTEND_DEQUE_LENGTH  0x31       /* [RW] frontend (raw) frame buffer deque length, range: [2, 1024], default: 4
                                                             All the memory will be pre-allocated when the camera starts, so, please attention to memory usage
                                                          */
@@ -1142,10 +1155,10 @@ SVBONYCAM_API(HRESULT)  Svbonycam_get_Option(HSvbonycam h, unsigned iOption, int
                                                                  ((val & 0xff00) >> 8): sequence
                                                                  ((val & 0xff0000) >> 16): average number
                                                          */
-#define SVBONYCAM_OPTION_OVEREXP_POLICY         0x68       /* [RW] Auto exposure over exposure policy: when overexposed,
+#define SVBONYCAM_OPTION_OVEREXP_POLICY         0x68       /* [RW] Auto exposure overexposure policy: when overexposed,
                                                                 0 => directly reduce the exposure time/gain to the minimum value; or
-                                                                1 => reduce exposure time/gain in proportion to current and target brightness.
-                                                                n(n>1) => first adjust the exposure time to (maximum automatic exposure time * maximum automatic exposure gain) * n / 1000, and then adjust according to the strategy of 1
+                                                                1 => reduce exposure time/gain according to the ratio between current and target brightness; or
+                                                                n(n>1) => first, adjust the exposure time to (maximum automatic exposure time * maximum automatic exposure gain) * n / 1000, and then adjust according to the strategy of 1
                                                             The advantage of policy 0 is that the convergence speed is faster, but there is black screen.
                                                             Policy 1 avoids the black screen, but the convergence speed is slower.
                                                             Default: 0
@@ -1161,7 +1174,7 @@ SVBONYCAM_API(HRESULT)  Svbonycam_get_Option(HSvbonycam h, unsigned iOption, int
                                                                 n<0: every -n frame
                                                          */
 #define SVBONYCAM_OPTION_TECTARGET_RANGE        0x6d       /* [RO] TEC target range: min(low 16 bits) = (short)(val & 0xffff), max(high 16 bits) = (short)((val >> 16) & 0xffff) */
-#define SVBONYCAM_OPTION_CDS                    0x6e       /* [RW] Correlated Double Sampling: 0~100 */
+#define SVBONYCAM_OPTION_CDS                    0x6e       /* [RW] Correlated Double Sampling: 0~max (SVBONYCAM_OPTION_CDS_MAX) */
 #define SVBONYCAM_OPTION_LOW_POWER_EXPOTIME     0x6f       /* [RW] Low Power Consumption: Enable if exposure time is greater than the set value */
 #define SVBONYCAM_OPTION_ZERO_OFFSET            0x70       /* [RW] Sensor output offset to zero: 0 => disable, 1 => eanble; default: 0 */
 #define SVBONYCAM_OPTION_GVCP_TIMEOUT           0x71       /* [RW] GVCP Timeout: millisecond, range = [3, 75], default: 15
@@ -1179,11 +1192,11 @@ SVBONYCAM_API(HRESULT)  Svbonycam_get_Option(HSvbonycam h, unsigned iOption, int
 #define SVBONYCAM_OPTION_UPTIME                 0x79       /* [RO] device uptime in millisecond */
 #define SVBONYCAM_OPTION_BITRANGE               0x7a       /* [RW] Bit range: [0, 8] */
 #define SVBONYCAM_OPTION_MODE_SEQ_TIMESTAMP     0x7b       /* [RW] Mode of seq & timestamp: 0 => reset to 0 automatically; 1 => never reset automatically; default: 0 */
-#define TOUPCAP_OPTION_TIMED_TRIGGER_NUM      0x7c       /* [RW] Timed trigger number */
+#define SVBONYCAM_OPTION_TIMED_TRIGGER_NUM      0x7c       /* [RW] Timed trigger number */
 #define SVBONYCAM_OPTION_TIMED_TRIGGER_LOW      0x20000000 /* [RW] Timed trigger: lower 32 bits of 64-bit integer, nanosecond since epoch (00:00:00 UTC on Thursday, 1 January 1970, see https://en.wikipedia.org/wiki/Unix_time) */
 #define SVBONYCAM_OPTION_TIMED_TRIGGER_HIGH     0x40000000 /* [RW] Timed trigger: high 32 bits. The lower 32 bits must be set first, followed by the higher 32 bits */
 #define SVBONYCAM_OPTION_AUTOEXP_THLD_TRIGGER   0x7d       /* [RW] trigger threshold of auto exposure */
-#define SVBONYCAM_OPTION_LANE                   0x7e       /* [RW] */
+#define SVBONYCAM_OPTION_LANE                   0x7e       /* [RW] Lane */
 #define SVBONYCAM_OPTION_VOLTAGEBIAS            0x7f       /* [RW] Voltage bias */
 #define SVBONYCAM_OPTION_VOLTAGEBIAS_RANGE      0x80       /* [RO] Voltage bias range: min (low 16bits), max (high 16bits) */
 #define SVBONYCAM_OPTION_READ_TIME              0x81       /* [RO] */
@@ -1193,7 +1206,17 @@ SVBONYCAM_API(HRESULT)  Svbonycam_get_Option(HSvbonycam h, unsigned iOption, int
 #define SVBONYCAM_OPTION_BACKEND_FULL           0x85       /* [RO] get the number of backend deque full */
 #define SVBONYCAM_OPTION_GPS                    0x86       /* [RO] gps status: 0 => not supported; -1 => gps device offline; 1 => gps device online */
 #define SVBONYCAM_OPTION_LINE_LENGTH            0x87       /* [RW] Line length in pixel clock */
-#define SVBONYCAM_OPTION_SCAN_DIRECTION         0x88       /* [RW] Scan direction: 0 (forward), 1(reverse), 2(alternate) */
+#define SVBONYCAM_OPTION_SCAN_DIRECTION         0x88       /* [RW] Scan direction: 0(forward), 1(reverse), 2(alternate) */
+#define SVBONYCAM_OPTION_BLACKLEVEL_AUTOADJUST  0x89       /* [RW] Black level automatic adjustment function: 0: off, 1: on
+                                                                This setting turn on/off black level auto adjust function by OB(Optical Black) level.
+                                                                In case of long exposure and so on, OB level is offset by leak or any other reason.
+                                                                Because of it, if the adjustment becomes a problem, this setting is introduced for one of the solution.
+                                                         */
+#define SVBONYCAM_OPTION_USER_SET               0x8a       /* [RW] user set */
+#define SVBONYCAM_OPTION_DIGITAL_GAIN           0x1001     /* [RW] digital gain */
+#define SVBONYCAM_OPTION_ANTI_BLOOMING          0x8b       /* [RW] Anti Blooming */
+#define SVBONYCAM_OPTION_ANTI_BLOOMING_MAX      0x8c       /* [RO} Anti Blooming */
+#define SVBONYCAM_OPTION_CDS_MAX                0x8d       /* [RO} Correlated Double Sampling */
 
 /* pixel format */
 #define SVBONYCAM_PIXELFORMAT_RAW8              0x00
@@ -1232,6 +1255,7 @@ SVBONYCAM_API(const char*) Svbonycam_get_PixelFormatName(int pixelFormat);
 
 /*
     xOffset, yOffset, xWidth, yHeight: must be even numbers
+    Minimum width & height: 8
 */
 SVBONYCAM_API(HRESULT)  Svbonycam_put_Roi(HSvbonycam h, unsigned xOffset, unsigned yOffset, unsigned xWidth, unsigned yHeight);
 SVBONYCAM_API(HRESULT)  Svbonycam_get_Roi(HSvbonycam h, unsigned* pxOffset, unsigned* pyOffset, unsigned* pxWidth, unsigned* pyHeight);
@@ -1247,9 +1271,17 @@ SVBONYCAM_API(HRESULT)  Svbonycam_put_Binning(HSvbonycam h, const char* pValue, 
 SVBONYCAM_API(HRESULT)  Svbonycam_get_Binning(HSvbonycam h, const char** ppValue, const char** ppMethod);
 SVBONYCAM_API(HRESULT)  Svbonycam_get_BinningNumber(HSvbonycam h);
 SVBONYCAM_API(HRESULT)  Svbonycam_get_BinningValue(HSvbonycam h, unsigned index, const char** ppValue);
-SVBONYCAM_API(HRESULT)  Svbonycam_get_BinningMethod(HSvbonycam h, unsigned index, const char** ppMethod);
 
-SVBONYCAM_API(HRESULT)  Svbonycam_put_XY(HSvbonycam h, int x, int y);
+/*
+ const char* pStrMethod;
+ unsigned index = 0;
+ do {
+     if (FAILED(Svbonycam_get_BinningMethod(h, index, &pStrMethod)))
+         break;
+     ++index;
+ } while (1);
+*/
+SVBONYCAM_API(HRESULT)  Svbonycam_get_BinningMethod(HSvbonycam h, unsigned index, const char** ppMethod);
 
 #define SVBONYCAM_IOCONTROLTYPE_GET_SUPPORTEDMODE            0x01 /* 0x01 => Input, 0x02 => Output, (0x01 | 0x02) => support both Input and Output */
 #define SVBONYCAM_IOCONTROLTYPE_GET_GPIODIR                  0x03 /* 0x00 => Input, 0x01 => Output */
@@ -1369,6 +1401,7 @@ typedef struct {
 SVBONYCAM_API(HRESULT)  Svbonycam_put_SelfTrigger(HSvbonycam h, const SvbonycamSelfTrigger* pSt);
 SVBONYCAM_API(HRESULT)  Svbonycam_get_SelfTrigger(HSvbonycam h, SvbonycamSelfTrigger* pSt);
 
+/* flash action */
 #define SVBONYCAM_FLASH_SIZE      0x00    /* query total size */
 #define SVBONYCAM_FLASH_EBLOCK    0x01    /* query erase block size */
 #define SVBONYCAM_FLASH_RWBLOCK   0x02    /* query read/write block size */
@@ -1376,19 +1409,24 @@ SVBONYCAM_API(HRESULT)  Svbonycam_get_SelfTrigger(HSvbonycam h, SvbonycamSelfTri
 #define SVBONYCAM_FLASH_READ      0x04    /* read */
 #define SVBONYCAM_FLASH_WRITE     0x05    /* write */
 #define SVBONYCAM_FLASH_ERASE     0x06    /* erase */
-/* Flash:
- action = SVBONYCAM_FLASH_XXXX: read, write, erase, query total size, query read/write block size, query erase block size
+/* flash zone */
+#define SVBONYCAM_FLASH_SENSOR    0x00    /* sensor */
+#define SVBONYCAM_FLASH_USER      0x02    /* user */
+/*
+ action = (zone << 24) | SVBONYCAM_FLASH_XXXX: read, write, erase, query total size, query read/write block size, query erase block size
  addr = address
  see democpp
 */
 SVBONYCAM_API(HRESULT)  Svbonycam_rwc_Flash(HSvbonycam h, unsigned action, unsigned addr, unsigned len, void* pData);
 
-SVBONYCAM_API(HRESULT)  Svbonycam_write_UART(HSvbonycam h, const unsigned char* pData, unsigned nDataLen);
-SVBONYCAM_API(HRESULT)  Svbonycam_read_UART(HSvbonycam h, unsigned char* pBuffer, unsigned nBufferLen);
-
 /* Initialize support for GigE cameras. If online/offline notifications are not required, the callback function can be set to NULL */
 typedef void (__stdcall* PSVBONYCAM_HOTPLUG)(void* ctxHotPlug);
 SVBONYCAM_API(HRESULT)  Svbonycam_GigeEnable(PSVBONYCAM_HOTPLUG funHotPlug, void* ctxHotPlug);
+
+/* opt: semicolon separated options:
+*        "wifi": Enable WiFi adapter support
+*/
+SVBONYCAM_API(HRESULT)  Svbonycam_GigeEnableV2(PSVBONYCAM_HOTPLUG funHotPlug, void* ctxHotPlug, const char* opt);
 
 /* Initialize support for PCIe cameras. If online/offline notifications are not required, the callback function can be set to NULL */
 SVBONYCAM_API(HRESULT)  Svbonycam_PciEnable(PSVBONYCAM_HOTPLUG funHotPlug, void* ctxHotPlug);
@@ -1397,9 +1435,9 @@ SVBONYCAM_API(HRESULT)  Svbonycam_PciEnable(PSVBONYCAM_HOTPLUG funHotPlug, void*
 * (1) ctiPath = NULL means all *.cti in GENICAM_GENTL64_PATH/GENICAM_GENTL32_PATH
 * or
 * (2) ctiPath[] = {
-            "/full/path/to/file.cti"
-            ...
-            NULLL
+            "/full/path/to/file.cti",
+            ...,
+            NULLL      // Use NULL pointer to indicate the end of the array
         }
 */
 #if defined(_WIN32)
@@ -1431,21 +1469,10 @@ Recommendation: for better rubustness, when notify of device insertion arrives, 
 SVBONYCAM_API(void)   Svbonycam_HotPlug(PSVBONYCAM_HOTPLUG funHotPlug, void* ctxHotPlug);
 #endif
 
-SVBONYCAM_API(unsigned) Svbonycam_EnumWithName(SvbonycamDeviceV2 pti[SVBONYCAM_MAX]);
-SVBONYCAM_API(HRESULT)  Svbonycam_set_Name(HSvbonycam h, const char* name);
-SVBONYCAM_API(HRESULT)  Svbonycam_query_Name(HSvbonycam h, char name[64]);
-#if defined(_WIN32)
-SVBONYCAM_API(HRESULT)  Svbonycam_put_Name(const wchar_t* camId, const char* name);
-SVBONYCAM_API(HRESULT)  Svbonycam_get_Name(const wchar_t* camId, char name[64]);
-#else
-SVBONYCAM_API(HRESULT)  Svbonycam_put_Name(const char* camId, const char* name);
-SVBONYCAM_API(HRESULT)  Svbonycam_get_Name(const char* camId, char name[64]);
-#endif
-
 typedef struct {
     unsigned short lensID;
     unsigned char  lensType;
-    unsigned char  statusAfmf;      /* LENS_AF = 0x00,  LENS_MF = 0x80 */
+    unsigned char  statusAfmf;      /* LENS_AF = 0x00, LENS_MF = 0x80 */
 
     unsigned short maxFocalLength;
     unsigned short curFocalLength;
@@ -1528,6 +1555,24 @@ SVBONYCAM_API(HRESULT) Svbonycam_Enable(const char* camId, int enable); /* 1 => 
 SVBONYCAM_API(const SvbonycamModelV2**) Svbonycam_all_Model(); /* return all supported USB model array */
 SVBONYCAM_API(const SvbonycamModelV2*) Svbonycam_query_Model(HSvbonycam h);
 SVBONYCAM_API(const SvbonycamModelV2*) Svbonycam_get_Model(unsigned short idVendor, unsigned short idProduct);
+
+SVBONYCAM_API(HRESULT)  Svbonycam_put_XY(HSvbonycam h, int x, int y);
+
+SVBONYCAM_API(HRESULT)  Svbonycam_write_UART(HSvbonycam h, const unsigned char* pData, unsigned nDataLen);
+SVBONYCAM_API(HRESULT)  Svbonycam_read_UART(HSvbonycam h, unsigned char* pBuffer, unsigned nBufferLen);
+
+SVBONYCAM_API(unsigned) Svbonycam_EnumWithName(SvbonycamDeviceV2 pti[SVBONYCAM_MAX]);
+SVBONYCAM_API(HRESULT)  Svbonycam_set_Name(HSvbonycam h, const char* name);
+SVBONYCAM_API(HRESULT)  Svbonycam_query_Name(HSvbonycam h, char name[64]);
+#if defined(_WIN32)
+SVBONYCAM_API(HRESULT)  Svbonycam_put_Name(const wchar_t* camId, const char* name);
+SVBONYCAM_API(HRESULT)  Svbonycam_get_Name(const wchar_t* camId, char name[64]);
+SVBONYCAM_API(HRESULT)  Svbonycam_query_SerialNumber(const wchar_t* camId, char sn[32]);
+#else
+SVBONYCAM_API(HRESULT)  Svbonycam_put_Name(const char* camId, const char* name);
+SVBONYCAM_API(HRESULT)  Svbonycam_get_Name(const char* camId, char name[64]);
+SVBONYCAM_API(HRESULT)  Svbonycam_query_SerialNumber(const char* camId, char sn[32]);
+#endif
 
 /* firmware update:
     camId: camera ID
@@ -1617,7 +1662,6 @@ SVBONYCAM_API(double)   Svbonycam_calc_ClarityFactorV2(const void* pImageData, i
 */
 SVBONYCAM_API(void)     Svbonycam_deBayerV2(unsigned nFourCC, int nW, int nH, const void* pRaw, void* pRGB, unsigned char nBitDepth, unsigned char nBitCount);
 
-
 #ifndef __SVBONYCAMFOCUSMOTOR_DEFINED__
 #define __SVBONYCAMFOCUSMOTOR_DEFINED__
 typedef struct {
@@ -1694,8 +1738,7 @@ typedef PSVBONYCAM_DATA_CALLBACK_V3 PSVBONYCAM_DATA_CALLBACK_V2;
 SVBONYCAM_DEPRECATED
 SVBONYCAM_API(HRESULT)  Svbonycam_StartPushModeV2(HSvbonycam h, PSVBONYCAM_DATA_CALLBACK_V2 funData, void* ctxData);
 
-#if !defined(_WIN32)
-#ifndef __BITMAPINFOHEADER_DEFINED__
+#if !(defined(_WIN32) || defined(__BITMAPINFOHEADER_DEFINED__))
 #define __BITMAPINFOHEADER_DEFINED__
 typedef struct {
     unsigned        biSize;
@@ -1710,7 +1753,6 @@ typedef struct {
     unsigned        biClrUsed;
     unsigned        biClrImportant;
 } BITMAPINFOHEADER;
-#endif
 #endif
 
 typedef void (__stdcall* PSVBONYCAM_DATA_CALLBACK)(const void* pData, const BITMAPINFOHEADER* pHeader, int bSnap, void* ctxData);
@@ -1794,9 +1836,9 @@ SVBONYCAM_API(void)     Svbonycam_log_str(unsigned level, const char* str);
 SVBONYCAM_APIV(void)    Svbonycam_log(unsigned level, const char* format, ...);
 
 #if defined(SVBONYCAM_LOG)
-#define SVBONYCAM_LOG_NONE(format, ...)	  Svbonycam_log(0, format, ##__VA_ARGS__)
-#define SVBONYCAM_LOG_ERROR(format, ...)	  Svbonycam_log(1, format, ##__VA_ARGS__)
-#define SVBONYCAM_LOG_DEBUG(format, ...)	  Svbonycam_log(2, format, ##__VA_ARGS__)
+#define SVBONYCAM_LOG_NONE(format, ...)     Svbonycam_log(0, format, ##__VA_ARGS__)
+#define SVBONYCAM_LOG_ERROR(format, ...)    Svbonycam_log(1, format, ##__VA_ARGS__)
+#define SVBONYCAM_LOG_DEBUG(format, ...)    Svbonycam_log(2, format, ##__VA_ARGS__)
 #define SVBONYCAM_LOG_VERBOSE(format, ...)  Svbonycam_log(3, format, ##__VA_ARGS__)
 /* for example: SVBONYCAM_LOG_DEBUG("%s: blahblah, x = %d, y = %f", __func__ x, y); */
 #endif
