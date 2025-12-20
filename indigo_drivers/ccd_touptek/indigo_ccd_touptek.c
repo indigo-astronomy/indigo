@@ -149,6 +149,22 @@
 #include <mallincam.h>
 #include "../ccd_mallin/indigo_ccd_mallin.h"
 
+#elif defined(MEADE)
+
+#define ENTRY_POINT						indigo_ccd_meade
+#define CAMERA_NAME_PREFIX		"Meade"
+#define DRIVER_LABEL					"Meade Camera"
+#define DRIVER_NAME						"indigo_ccd_meade"
+#define DRIVER_PRIVATE_DATA		meade_private_data
+
+#define SDK_CALL(x)						Toupcam_##x     // Stange - Meade cameras use Toupcam prefix
+#define SDK_DEF(x)						TOUPCAM_##x
+#define SDK_TYPE(x)						Toupcam##x
+#define SDK_HANDLE						HToupCam
+
+#include <meadecam.h>
+#include "../ccd_meade/indigo_ccd_meade.h"
+
 #elif defined(OGMA)
 
 #define ENTRY_POINT						indigo_ccd_ogma
