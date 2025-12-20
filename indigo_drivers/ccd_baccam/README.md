@@ -4,7 +4,7 @@ http://????
 
 ## Supported devices
 
-Bresser USB 2.0 and USB 3.0 devices (cameras, filter wheels and focusers) supported by the vendor SDK. This driver supports only Baccamcameras and products produced by Touptek.
+Baccam USB 2.0 and USB 3.0 devices (cameras, filter wheels and focusers) supported by the vendor SDK. This driver supports only Baccam cameras and products produced by Touptek.
 
 This driver supports hot-plug (multiple devices).
 
