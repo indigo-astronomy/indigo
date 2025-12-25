@@ -421,7 +421,7 @@ static void solve(indigo_platesolver_task *task) {
 	AGENT_PLATESOLVER_IMAGE_OUTPUT_ITEM->blob.format[0] = 0;
 	AGENT_PLATESOLVER_IMAGE_OUTPUT_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, AGENT_PLATESOLVER_IMAGE_OUTPUT_PROPERTY, NULL);
-	bool success = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->solve(device, task->image, task->size);
+	bool success = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->solve(device, task);
 	if (success) {
 		AGENT_PLATESOLVER_IMAGE_OUTPUT_ITEM->blob.value = task->image;
 		AGENT_PLATESOLVER_IMAGE_OUTPUT_ITEM->blob.size = task->size;

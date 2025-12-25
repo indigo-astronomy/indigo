@@ -181,7 +181,7 @@ typedef struct {
 	indigo_property_state imager_capture_state;
 	indigo_property_state guider_process_state;
 	void (*save_config)(indigo_device *);
-	bool (*solve)(indigo_device *, void *image, unsigned long size);
+	bool (*solve)(indigo_device *, indigo_platesolver_task *task);
 	void (*abort)(indigo_device *);
 	pthread_mutex_t mutex;
 	double pixel_scale;

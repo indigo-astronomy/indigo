@@ -319,8 +319,10 @@ static void astrometry_abort(indigo_device *device) {
 	}
 }
 
-static bool astrometry_solve(indigo_device *device, void *image, unsigned long image_size) {
+static bool astrometry_solve(indigo_device *device, indigo_platesolver_task *task) {
 	if (pthread_mutex_trylock(&DEVICE_CONTEXT->config_mutex) == 0) {
+		void *image = task->image;
+		unsigned long image_size = task->size;
 		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed = true;
 		char *message = "";
 		AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_BUSY_STATE;
