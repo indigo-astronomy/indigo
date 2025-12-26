@@ -110,7 +110,7 @@ INDIGO_EXTERN indigo_result indigo_update_saturation_mask(indigo_raw_type raw_ty
 //INDIGO_EXTERN double indigo_stddev_rgba32(uint8_t set[], const int count, bool *saturated);
 //INDIGO_EXTERN double indigo_stddev_abgr32(uint8_t set[], const int count, bool *saturated);
 
-INDIGO_EXTERN indigo_result indigo_make_psf_map(indigo_raw_type image_raw_type, const void *image_data, const uint16_t radius, const int image_width, const int image_height, const int stars_max, indigo_raw_type map_raw_type, indigo_psf_param map_type, int map_width, int map_height, unsigned char *map_data, double *psf_min, double *psf_max);
+INDIGO_EXTERN indigo_result indigo_make_psf_map(indigo_raw_type image_raw_type, const void *image_data, const uint16_t radius, const int image_width, const int image_height, const int stars_max, indigo_raw_type map_raw_type, indigo_psf_param map_type, int map_width, int map_height, unsigned char *map_data, double *psf_min, double *psf_max, double *corners);
 
 // Bahtinov images analysis related
 INDIGO_EXTERN uint8_t* indigo_binarize(indigo_raw_type raw_type, const void *data, const int width, const int height, double sigma);

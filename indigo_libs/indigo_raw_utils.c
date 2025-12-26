@@ -2559,7 +2559,12 @@ static int nc_distance_comparator(const void *item_1, const void *item_2) {
 	return 0;
 }
 
-indigo_result indigo_make_psf_map(indigo_raw_type image_raw_type, const void *image_data, const uint16_t radius, const int image_width, const int image_height, const int stars_max, indigo_raw_type map_raw_type, indigo_psf_param map_type, int map_width, int map_height, unsigned char *map_data, double *psf_min, double *psf_max) {
+// corners[9] are ordered like this:
+// 1 2 3
+// 4 0 5
+// 6 7 8
+
+indigo_result indigo_make_psf_map(indigo_raw_type image_raw_type, const void *image_data, const uint16_t radius, const int image_width, const int image_height, const int stars_max, indigo_raw_type map_raw_type, indigo_psf_param map_type, int map_width, int map_height, unsigned char *map_data, double *psf_min, double *psf_max, double *corners) {
 	int pixel_size = 0;
 	switch (map_raw_type) {
 		case INDIGO_RAW_RGB24:
@@ -2574,6 +2579,21 @@ indigo_result indigo_make_psf_map(indigo_raw_type image_raw_type, const void *im
 	}
 	char *label = "";
 	double map_scale = (double)image_width / (double)map_width;
+	double corners_sum[9] = { 0 };
+	int corners_count[9] = { 0 };
+	double width_5 = map_width / 5.0;
+	double height_5 = map_height / 5.0;
+	double corner_indices[9][4] = { // x low, x hight, y low, y hight
+		{ 2 * width_5, 3 * width_5, 2 * height_5, 3 * height_5 },
+		{ 0 * width_5, 1 * width_5, 0 * height_5, 1 * height_5 },
+		{ 2 * width_5, 3 * width_5, 0 * height_5, 1 * height_5 },
+		{ 4 * width_5, 5 * width_5, 0 * height_5, 1 * height_5 },
+		{ 0 * width_5, 1 * width_5, 2 * height_5, 3 * height_5 },
+		{ 4 * width_5, 5 * width_5, 2 * height_5, 3 * height_5 },
+		{ 0 * width_5, 1 * width_5, 4 * height_5, 5 * height_5 },
+		{ 2 * width_5, 3 * width_5, 4 * height_5, 5 * height_5 },
+		{ 4 * width_5, 5 * width_5, 4 * height_5, 5 * height_5 }
+	};
 	// extract PSF to nc_distance
 	indigo_star_detection *stars = indigo_safe_malloc(stars_max * sizeof(indigo_star_detection));
 	int total_stars = 0, used_stars = 0;
@@ -2581,8 +2601,8 @@ indigo_result indigo_make_psf_map(indigo_raw_type image_raw_type, const void *im
 	for (int i = 0; i < total_stars; i++) {
 		indigo_star_detection *star = stars + i;
 		if (star->oversaturated || star->close_to_other) {
-  continue;
-}
+			continue;
+		}
 		double star_fwhm, star_hfd, star_peak;
 		indigo_selection_psf(image_raw_type, image_data, star->x, star->y, radius, image_width, image_height, &star_fwhm, &star_hfd, &star_peak);
 		star->x /= map_scale; // scale to map coordimates
@@ -2590,15 +2610,12 @@ indigo_result indigo_make_psf_map(indigo_raw_type image_raw_type, const void *im
 		switch (map_type) {
 			case fwhm:
 				star->nc_distance = star_fwhm;
-				label = "FWHM";
 				break;
 			case hfd:
 				star->nc_distance = star_hfd;
-				label = "HFD";
 				break;
 			case peak:
 				star->nc_distance = star_peak;
-				label = "peak";
 				break;
 		}
 		if (i > used_stars) {
@@ -2606,6 +2623,24 @@ indigo_result indigo_make_psf_map(indigo_raw_type image_raw_type, const void *im
 		}
 		used_stars++;
 		//INDIGO_DEBUG(indigo_debug("%g %g %g %g", star->x, star->y, fwhm, hfd, peak));
+	}
+	for (int i = 0; i < 9; i++) {
+		if (corners_count[i] > 0) {
+			corners[i] = corners_sum[i] / corners_count[i];
+		} else {
+			corners[i] = 0;
+		}
+	}
+	switch (map_type) {
+		case fwhm:
+			label = "FWHM";
+			break;
+		case hfd:
+			label = "HFD";
+			break;
+		case peak:
+			label = "peak";
+			break;
 	}
 	// clip top and bottom 10%
 	qsort(stars, used_stars, sizeof(indigo_star_detection), nc_distance_comparator);
@@ -2630,7 +2665,7 @@ indigo_result indigo_make_psf_map(indigo_raw_type image_raw_type, const void *im
 					count++;
 				}
 			}
-			int ii = jj +  i;
+			int ii = jj + i;
 			if (count > 0) {
 				avg = avg / count;
 				if (avg < min_psf) {
@@ -2642,9 +2677,6 @@ indigo_result indigo_make_psf_map(indigo_raw_type image_raw_type, const void *im
 				psfs[ii] = avg;
 			} else {
 				psfs[ii] = 0;
-			}
-			if (map_raw_type == INDIGO_RAW_RGBA32) {
-				map_data[ii + 3] = 255;
 			}
 		}
 	}
@@ -2668,6 +2700,13 @@ indigo_result indigo_make_psf_map(indigo_raw_type image_raw_type, const void *im
 				map_data[iii] = value;
 				map_data[iii + 1] = 255 - value;
 				map_data[iii + 2] =  0;
+				for (int k = 0; k < 9; k++) {
+					if (corner_indices[k][0] <= i && i <= corner_indices[k][1] && corner_indices[k][2] <= j && j <= corner_indices[k][3]) {
+						corners_sum[k] += avg;
+						corners_count[k]++;
+						break;
+					}
+				}
 			} else {
 				map_data[iii] = map_data[iii + 1] = 0;
 				map_data[iii + 2] = 255;
@@ -2677,17 +2716,13 @@ indigo_result indigo_make_psf_map(indigo_raw_type image_raw_type, const void *im
 			}
 		}
 	}
-// draw stars over PSF map
-//	for (int k = first_star; k <= last_star; k++) {
-//		indigo_star_detection *star = stars + k;
-//		int i = round(star->x + 0.5);
-//		int j = round(star->y + 0.5);
-//		int value = 31 * (star->nc_distance - min_psf) / psf_scale;
-//		int c = pixel_size * (j * map_width + i);
-//		map_data[c + 2] = 0;
-//		map_data[c + 1] = value;
-//		map_data[c] = 255 - value;
-//	}
+	for (int i = 0; i < 9; i++) {
+		if (corners_count[i] > 0) {
+			corners[i] = corners_sum[i] / corners_count[i];
+		} else {
+			corners[i] = 0;
+		}
+	}
 	indigo_safe_free(psfs);
 	indigo_safe_free(stars);
 	return INDIGO_OK;
