@@ -410,7 +410,7 @@ static bool alpaca_v1_api_handler(indigo_uni_handle *handle, char *method, char 
 		} else {
 			send_text_response(handle, path, 400, "Bad Request", "Unrecognised command");
 		}
-		
+
 	} else {
 		send_text_response(handle, path, 400, "Bad Request", "Invalid method");
 	}

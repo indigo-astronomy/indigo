@@ -631,7 +631,7 @@ long indigo_alpaca_switch_set_command(indigo_alpaca_device *alpaca_device, int v
 	if (!strcmp(command, "setswitch")) {
 		int id = 0;
 		indigo_alpaca_error result;
-		if (sscanf(param_1, "ID=%d", &id) == 1) {
+		if (sscanf(param_1, "Id=%d", &id) == 1) {
 			bool value = !strcasecmp(param_2, "State=true");
 			result = alpaca_set_setswitch(alpaca_device, version, id, value);
 		} else {
@@ -642,7 +642,7 @@ long indigo_alpaca_switch_set_command(indigo_alpaca_device *alpaca_device, int v
 	if (!strcmp(command, "setswitchvalue")) {
 		int id = 0;
 		indigo_alpaca_error result;
-		if (sscanf(param_1, "ID=%d", &id) == 1) {
+		if (sscanf(param_1, "Id=%d", &id) == 1) {
 			double value = 0;
 			sscanf(param_2, "Value=%lf", &value);
 			result = alpaca_set_setswitchvalue(alpaca_device, version, id, value);
@@ -654,7 +654,7 @@ long indigo_alpaca_switch_set_command(indigo_alpaca_device *alpaca_device, int v
 	if (!strcmp(command, "setswitchname")) {
 		int id = 0;
 		indigo_alpaca_error result;
-		if (sscanf(param_1, "ID=%d", &id) == 1) {
+		if (sscanf(param_1, "Id=%d", &id) == 1) {
 			char value[INDIGO_VALUE_SIZE];
 			sscanf(param_2, "Name=%s", value);
 			result = alpaca_set_setswitchname(alpaca_device, version, id, value);
