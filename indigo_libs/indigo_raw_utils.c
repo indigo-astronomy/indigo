@@ -2297,10 +2297,18 @@ static int luminance_comparator(const void *item_1, const void *item_2) {
 	return 0;
 }
 
+static int uint16_cmp(const void *a, const void *b) {
+	uint16_t va = *(const uint16_t *)a;
+	uint16_t vb = *(const uint16_t *)b;
+	if (va < vb) return -1;
+	if (va > vb) return 1;
+	return 0;
+}
+
 /* With radius < 3, no precise star positins will be determined */
 indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *data, const uint16_t radius, const int width, const int height, const int stars_max, indigo_star_detection star_list[], int *stars_found) {
 	if (data == NULL || star_list == NULL || stars_found == NULL) return INDIGO_FAILED;
-	
+
 	int  size = width * height;
 	uint16_t *buf = indigo_safe_malloc(size * sizeof(uint16_t));
 	int star_size = 100;
@@ -2308,12 +2316,12 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 	int clip_width  = width - clip_edge;
 	int clip_height = height - clip_edge;
 	uint16_t max_luminance = 0;
-	
+
 	uint8_t *data8 = (uint8_t *)data;
 	uint16_t *data16 = (uint16_t *)data;
 	double sum = 0;
 	double sum_sq = 0;
-	
+
 	switch (raw_type) {
 		case INDIGO_RAW_MONO8: {
 			max_luminance = 0xFF;
@@ -2374,28 +2382,69 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 			break;
 		}
 	}
-	
+
 	// Calculate mean
 	double mean = sum / size;
-	
+
+#define ROBUST_STAR_BACKGROUND
+
+#ifdef ROBUST_STAR_BACKGROUND
+	/* Robust background estimator using median + MAD (ignores saturated pixels).
+	   More resilient to gradients and saturated stars. But also more computationally expensive.
+	   Falls back to original mean/stddev if not enough unsaturated samples. */
+	uint32_t threshold = 0;
+	{
+		uint16_t *tmp = (uint16_t *)malloc(size * sizeof(uint16_t));
+		if (tmp) {
+			int m = 0;
+			for (int i = 0; i < size; i++) {
+				if (buf[i] < max_luminance) tmp[m++] = buf[i];
+			}
+			if (m >= size / 10) {
+				qsort(tmp, m, sizeof(uint16_t), uint16_cmp);
+				double median = tmp[m / 2];
+				for (int i = 0; i < m; i++) {
+					tmp[i] = (uint16_t)abs((int)tmp[i] - (int)median);
+				}
+				qsort(tmp, m, sizeof(uint16_t), uint16_cmp);
+				double mad = tmp[m / 2];
+				double robust_std = mad * 1.4826; /* approximate conversion MAD->sigma */
+				threshold = (uint32_t)(median + 4.5 * robust_std);
+				indigo_debug("%s(): robust median = %.2f, MAD = %.2f, robust_std = %.2f, star detection threshold = %u", __FUNCTION__, median, mad, robust_std, threshold);
+				free(tmp);
+			} else {
+				free(tmp);
+				double stddev = sqrt(fabs(sum_sq / size - mean * mean));
+				threshold = (uint32_t)(4.5 * stddev + mean);
+				indigo_debug("%s(): fallback mean = %.2f, simplified stddev = %.2f, star detection threshold = %u", __FUNCTION__, mean, stddev, threshold);
+			}
+		} else {
+			/* malloc failed, fallback to original method */
+			double stddev = sqrt(fabs(sum_sq / size - mean * mean));
+			threshold = (uint32_t)(4.5 * stddev + mean);
+			indigo_debug("%s(): malloc for robust estimator failed, fallback mean = %.2f, simplified stddev = %.2f, star detection threshold = %u", __FUNCTION__, mean, stddev, threshold);
+		}
+	}
+#else
 	/* Calculate standard deviation - simplified, approximate estimate,
-	 with a nice property that it is less affected by outliers. This proeprty
-	 fixes the issue with finding guide stars in the presence of saturated stars,
-	 as it effectively filters out the outliers.
+	   with a nice property that it is less affected by outliers. This property
+	   fixes the issue with finding guide stars in the presence of saturated stars,
+	   as it effectively filters out the outliers.
 	 */
 	double stddev = sqrt(fabs(sum_sq / size - mean * mean));
-	
+
 	/* Calculate threshold - add 4.5 stddev threshold for stars */
 	uint32_t threshold = 4.5 * stddev + mean;
 	indigo_debug("%s(): image mean = %.2f, simplified stddev = %.2f, star detection threshold = %d", __FUNCTION__, mean, stddev, threshold);
-	
+#endif
+
 	int threshold_hist = threshold * 0.9;
-	
+
 	int found = 0;
 	int width2 = width / 2;
 	int height2 = height / 2;
 	uint32_t lmax = threshold + 1;
-	
+
 	indigo_star_detection star = { 0 };
 	int divider = (width > height) ? height2 : width2;
 	while (lmax > threshold) {
@@ -2405,7 +2454,7 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 		star.nc_distance = 0;
 		star.luminance = 0;
 		star.oversaturated = 0;
-		
+
 		for (int j = clip_edge; j < clip_height; j++) {
 			for (int i = clip_edge; i < clip_width; i++) {
 				int off = j * width + i;
@@ -2491,7 +2540,7 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 					}
 				}
 			}
-			
+
 			indigo_result res = INDIGO_FAILED;
 			if (radius >= 3) {
 				indigo_frame_digest center = {0};
@@ -2503,7 +2552,7 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 					indigo_delete_frame_digest(&center);
 				}
 			}
-			
+
 			/* Check if the star is a duplicate (probably artifact) or is in close proximity to another one.
 			 In both cses these stars should not be used */
 			if (res == INDIGO_OK || radius < 3) {
@@ -2529,7 +2578,7 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 					}
 				}
 			}
-			
+
 			if (res == INDIGO_OK || radius < 3) {
 				star.oversaturated = lmax == max_luminance;
 				star.nc_distance = sqrt((star.x - width2) * (star.x - width2) + (star.y - height2) * (star.y - height2));
@@ -2543,9 +2592,9 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 		}
 	}
 	free(buf);
-	
+
 	qsort(star_list, found, sizeof(indigo_star_detection), luminance_comparator);
-	
+
 	INDIGO_DEBUG(
 							 for (size_t i = 0;i < found; i++) {
 								 indigo_debug(
@@ -2561,7 +2610,7 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 															);
 							 }
 							 )
-	
+
 	*stars_found = found;
 	return INDIGO_OK;
 }
