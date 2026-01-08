@@ -2297,14 +2297,6 @@ static int luminance_comparator(const void *item_1, const void *item_2) {
 	return 0;
 }
 
-static int uint16_cmp(const void *a, const void *b) {
-	uint16_t va = *(const uint16_t *)a;
-	uint16_t vb = *(const uint16_t *)b;
-	if (va < vb) return -1;
-	if (va > vb) return 1;
-	return 0;
-}
-
 /* With radius < 3, no precise star positins will be determined */
 indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *data, const uint16_t radius, const int width, const int height, const int stars_max, indigo_star_detection star_list[], int *stars_found) {
 	if (data == NULL || star_list == NULL || stars_found == NULL) return INDIGO_FAILED;
@@ -2389,41 +2381,72 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 #define ROBUST_STAR_BACKGROUND
 
 #ifdef ROBUST_STAR_BACKGROUND
-	/* Robust background estimator using median + MAD (ignores saturated pixels).
+	/* Histogram-based robust background estimator using median + MAD (ignores saturated pixels).
 	   More resilient to gradients and saturated stars. But also more computationally expensive.
-	   Falls back to original mean/stddev if not enough unsaturated samples. */
+	   Falls back to original mean/stddev if not enough unsaturated samples.
+	*/
 	uint32_t threshold = 0;
-	{
-		uint16_t *tmp = (uint16_t *)malloc(size * sizeof(uint16_t));
-		if (tmp) {
-			int m = 0;
-			for (int i = 0; i < size; i++) {
-				if (buf[i] < max_luminance) tmp[m++] = buf[i];
+
+	size_t bins = (size_t)max_luminance + 1;
+	uint32_t *hist = (uint32_t *)calloc(bins, sizeof(uint32_t));
+	if (hist) {
+		int m = 0;
+		for (int i = 0; i < size; i++) {
+			if (buf[i] < max_luminance) {
+				hist[buf[i]]++;
+				m++;
 			}
-			if (m >= size / 10) {
-				qsort(tmp, m, sizeof(uint16_t), uint16_cmp);
-				double median = tmp[m / 2];
-				for (int i = 0; i < m; i++) {
-					tmp[i] = (uint16_t)abs((int)tmp[i] - (int)median);
+		}
+		if (m >= size / 10) {
+			/* find median by cumulative sum */
+			int target = m / 2;
+			int cum = 0;
+			int median = 0;
+			for (size_t v = 0; v < bins; v++) {
+				cum += hist[v];
+				if (cum > target) { median = (int)v; break; }
+			}
+			/* build deviation histogram */
+			uint32_t *dev_hist = (uint32_t *)calloc(bins, sizeof(uint32_t));
+			if (dev_hist) {
+				for (size_t v = 0; v < bins; v++) {
+					uint32_t c = hist[v];
+					if (c == 0) continue;
+					size_t d = (v > (size_t)median) ? (v - (size_t)median) : ((size_t)median - v);
+					if (d < bins) dev_hist[d] += c;
 				}
-				qsort(tmp, m, sizeof(uint16_t), uint16_cmp);
-				double mad = tmp[m / 2];
-				double robust_std = mad * 1.4826; /* approximate conversion MAD->sigma */
+				/* find MAD by cumulative sum on dev_hist */
+				cum = 0;
+				int mad = 0;
+				for (size_t d = 0; d < bins; d++) {
+					cum += dev_hist[d];
+					if (cum > target) { mad = (int)d; break; }
+				}
+				double robust_std = mad * 1.4826;
 				threshold = (uint32_t)(median + 4.5 * robust_std);
-				indigo_debug("%s(): robust median = %.2f, MAD = %.2f, robust_std = %.2f, star detection threshold = %u", __FUNCTION__, median, mad, robust_std, threshold);
-				free(tmp);
+				indigo_error("%s(): robust median = %.2f, MAD = %d, robust_std = %.2f, star detection threshold = %u", __FUNCTION__, (double)median, mad, robust_std, threshold);
+				double stddev = sqrt(fabs(sum_sq / size - mean * mean));
+				uint32_t old_threshold = (uint32_t)(4.5 * stddev + mean);
+				indigo_error("%s(): old      mean = %.2f, simplified stddev = %.2f, star detection threshold = %u", __FUNCTION__, mean, stddev, old_threshold);
+				free(dev_hist);
 			} else {
-				free(tmp);
+				/* allocation failed - fallback to mean/stddev */
 				double stddev = sqrt(fabs(sum_sq / size - mean * mean));
 				threshold = (uint32_t)(4.5 * stddev + mean);
-				indigo_debug("%s(): fallback mean = %.2f, simplified stddev = %.2f, star detection threshold = %u", __FUNCTION__, mean, stddev, threshold);
+				indigo_debug("%s(): dev_hist alloc failed, fallback mean = %.2f, simplified stddev = %.2f, star detection threshold = %u", __FUNCTION__, mean, stddev, threshold);
 			}
 		} else {
-			/* malloc failed, fallback to original method */
+			/* not enough unsaturated samples - fallback */
 			double stddev = sqrt(fabs(sum_sq / size - mean * mean));
 			threshold = (uint32_t)(4.5 * stddev + mean);
-			indigo_debug("%s(): malloc for robust estimator failed, fallback mean = %.2f, simplified stddev = %.2f, star detection threshold = %u", __FUNCTION__, mean, stddev, threshold);
+			indigo_debug("%s(): not enough unsaturated samples, fallback mean = %.2f, simplified stddev = %.2f, star detection threshold = %u", __FUNCTION__, mean, stddev, threshold);
 		}
+		free(hist);
+	} else {
+		/* allocation failed - fallback */
+		double stddev = sqrt(fabs(sum_sq / size - mean * mean));
+		threshold = (uint32_t)(4.5 * stddev + mean);
+		indigo_debug("%s(): hist alloc failed, fallback mean = %.2f, simplified stddev = %.2f, star detection threshold = %u", __FUNCTION__, mean, stddev, threshold);
 	}
 #else
 	/* Calculate standard deviation - simplified, approximate estimate,
@@ -2434,7 +2457,7 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 	double stddev = sqrt(fabs(sum_sq / size - mean * mean));
 
 	/* Calculate threshold - add 4.5 stddev threshold for stars */
-	uint32_t threshold = 4.5 * stddev + mean;
+	uint32_t threshold = (uint32_t)(4.5 * stddev + mean);
 	indigo_debug("%s(): image mean = %.2f, simplified stddev = %.2f, star detection threshold = %d", __FUNCTION__, mean, stddev, threshold);
 #endif
 
@@ -2596,20 +2619,20 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 	qsort(star_list, found, sizeof(indigo_star_detection), luminance_comparator);
 
 	INDIGO_DEBUG(
-							 for (size_t i = 0;i < found; i++) {
-								 indigo_debug(
-															"%s: star #%u = (%lf, %lf), ncdist = %lf, lum = %lf, close_to_other = %d, oversaturated = %d",
-															__FUNCTION__,
-															i+1,
-															star_list[i].x,
-															star_list[i].y,
-															star_list[i].nc_distance,
-															star_list[i].luminance,
-															star_list[i].close_to_other,
-															star_list[i].oversaturated
-															);
-							 }
-							 )
+		for (size_t i = 0;i < found; i++) {
+			indigo_debug(
+				"%s: star #%u = (%lf, %lf), ncdist = %lf, lum = %lf, close_to_other = %d, oversaturated = %d",
+				__FUNCTION__,
+				i+1,
+				star_list[i].x,
+				star_list[i].y,
+				star_list[i].nc_distance,
+				star_list[i].luminance,
+				star_list[i].close_to_other,
+				star_list[i].oversaturated
+			);
+		}
+	);
 
 	*stars_found = found;
 	return INDIGO_OK;
