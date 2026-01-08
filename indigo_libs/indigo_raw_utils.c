@@ -18,6 +18,8 @@
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_raw_utils.h>
 
+// #define ROBUST_STAR_BACKGROUND
+
 // Above this value the pixel is considered saturated
 // Derived from different camera
 #define SATURATION_8 247
@@ -2377,8 +2379,6 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 
 	// Calculate mean
 	double mean = sum / size;
-
-#define ROBUST_STAR_BACKGROUND
 
 #ifdef ROBUST_STAR_BACKGROUND
 	/* Histogram-based robust background estimator using median + MAD (ignores saturated pixels).
