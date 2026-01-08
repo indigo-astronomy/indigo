@@ -114,6 +114,11 @@ extern indigo_spherical_point_t indigo_nutate(const indigo_spherical_point_t *co
 	*ra - Right Ascension (hours)
 	*dec - Declination (degrees)
  */
+
+INDIGO_EXTERN double indigo_eq_of_date(double jd);
+
+INDIGO_EXTERN double indigo_jnow(void);
+
 INDIGO_EXTERN void indigo_jnow_to_j2k(double *ra, double *dec);
 
 /** Convenience wrapper for indigo_precess(...)

@@ -37,17 +37,17 @@ const double RAD2DEG = 180.0 / M_PI;
 
 /* Convenience wrappers for indigo_precess(...) */
 
-static double eq_of_date(double jd) {
+double indigo_eq_of_date(double jd) {
 	return 2000.0 + (jd - 2451545.0) / 365.25;
 }
 
-static double jnow(void) {
-	return eq_of_date(UT2JD(time(NULL)));
+double indigo_jnow(void) {
+	return indigo_eq_of_date(UT2JD(time(NULL)));
 }
 
 void indigo_jnow_to_j2k(double *ra, double *dec) {
 	indigo_spherical_point_t coordinates = { *ra * 15 * DEG2RAD, *dec * DEG2RAD, 0 };
-	coordinates = indigo_precess(&coordinates, jnow(), 2000.0);
+	coordinates = indigo_precess(&coordinates, indigo_jnow(), 2000.0);
 	*ra = coordinates.a * RAD2DEG / 15;
 	*dec = coordinates.d * RAD2DEG;
 }
@@ -55,7 +55,7 @@ void indigo_jnow_to_j2k(double *ra, double *dec) {
 void indigo_eq_to_j2k(const double eq, double *ra, double *dec) {
 	if (eq != 2000.0) {
 		indigo_spherical_point_t coordinates = { *ra * 15 * DEG2RAD, *dec * DEG2RAD, 0 };
-		coordinates = indigo_precess(&coordinates, eq != 0 ? eq : jnow(), 2000.0);
+		coordinates = indigo_precess(&coordinates, eq != 0 ? eq : indigo_jnow(), 2000.0);
 		*ra = coordinates.a * RAD2DEG / 15;
 		*dec = coordinates.d * RAD2DEG;
 	}
@@ -63,7 +63,7 @@ void indigo_eq_to_j2k(const double eq, double *ra, double *dec) {
 
 void indigo_j2k_to_jnow(double *ra, double *dec) {
 	indigo_spherical_point_t coordinates = { *ra * 15 * DEG2RAD, *dec * DEG2RAD, 0 };
-	coordinates = indigo_precess(&coordinates, 2000.0, jnow());
+	coordinates = indigo_precess(&coordinates, 2000.0, indigo_jnow());
 	*ra = coordinates.a * RAD2DEG / 15;
 	*dec = coordinates.d * RAD2DEG;
 }
@@ -71,7 +71,7 @@ void indigo_j2k_to_jnow(double *ra, double *dec) {
 void indigo_j2k_to_eq(const double eq, double *ra, double *dec) {
 	if (eq != 2000.0) {
 		indigo_spherical_point_t coordinates = { *ra * 15 * DEG2RAD, *dec * DEG2RAD, 0 };
-		coordinates = indigo_precess(&coordinates, 2000.0, eq != 0 ? eq : jnow());
+		coordinates = indigo_precess(&coordinates, 2000.0, eq != 0 ? eq : indigo_jnow());
 		*ra = coordinates.a * RAD2DEG / 15;
 		*dec = coordinates.d * RAD2DEG;
 	}
@@ -105,7 +105,7 @@ void indigo_eq_to_apparent(const double eq, double *ra, double *dec, double jd) 
 	if (jd <= 0) {
 		jd = UT2JD(time(NULL));
 	}
-	p = indigo_precess(&p, eq, eq_of_date(jd));
+	p = indigo_precess(&p, eq, indigo_eq_of_date(jd));
 	p = indigo_nutate(&p, jd, NUT_MEAN_TO_APPARENT);
 	*ra = p.a * RAD2DEG / 15.0;
 	*dec = p.d * RAD2DEG;
@@ -118,7 +118,7 @@ void indigo_apparent_to_eq(const double eq, double *ra, double *dec, double jd) 
 		jd = UT2JD(time(NULL));
 	}
 	p = indigo_nutate(&p, jd, NUT_APPARENT_TO_MEAN);
-	p = indigo_precess(&p, eq_of_date(jd), eq);
+	p = indigo_precess(&p, indigo_eq_of_date(jd), eq);
 	*ra = p.a * RAD2DEG / 15.0;
 	*dec = p.d * RAD2DEG;
 }
