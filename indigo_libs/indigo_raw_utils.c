@@ -2246,7 +2246,7 @@ static int luminance_comparator(const void *item_1, const void *item_2) {
 }
 
 /* With radius < 3, no precise star positins will be determined */
-indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *data, const uint16_t radius, const int width, const int height, const int stars_max, indigo_star_detection star_list[], int *stars_found) {
+indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *data, const int radius, const int width, const int height, const int stars_max, indigo_star_detection star_list[], int *stars_found) {
 	if (data == NULL || star_list == NULL || stars_found == NULL) return INDIGO_FAILED;
 
 	int  size = width * height;
