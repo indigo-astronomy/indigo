@@ -2482,11 +2482,14 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 							int yy = j + dy;
 							int xx = i + dx;
 							if (yy < 0 || yy >= height || xx < 0 || xx >= width) continue;
-							if (buf[yy * width + xx] >= buf[off]) { strict_max = false; break; }
+							if (buf[yy * width + xx] >= buf[off]) {
+								strict_max = false;
+								break;
+							}
 						}
 					}
 					if (!strict_max) continue;
-					/* Accept strict local maximum immediately (skip extent tests for speed) */
+					/* Accept strict local maximum */
 					lmax = buf[off];
 					star.x = i;
 					star.y = j;
