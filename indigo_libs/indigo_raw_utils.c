@@ -420,18 +420,28 @@ static int next_power_2(const int n) {
 }
 
 indigo_result indigo_selection_psf(indigo_raw_type raw_type, const void *data, double x, double y, const int radius, const int width, const int height, double *fwhm, double *hfd, double *peak) {
-	if ((width <= 2 * radius) || (height <= 2 * radius))
+	if (data == NULL) {
 		return INDIGO_FAILED;
+	}
+
+	/* If none of the outputs requested, nothing to do */
+	if (fwhm == NULL && hfd == NULL && peak == NULL) {
+		return INDIGO_OK;
+	}
+
 	int xx = (int)round(x);
 	int yy = (int)round(y);
-	if (xx < radius || width - radius < xx) {
+
+	if (
+		(xx < radius) ||
+		(yy < radius) ||
+		(width - radius < xx) ||
+		(height - radius < yy) ||
+		(width <= 2 * radius + 1) ||
+		(height <= 2 * radius + 1)
+	) {
 		return INDIGO_FAILED;
 	}
-	if (yy < radius || height - radius < yy) {
-		return INDIGO_FAILED;
-	}
-	if ((data == NULL) || (hfd == NULL) || (peak == NULL))
-		return INDIGO_FAILED;
 
 	double background = 0, max = 0, value = 0;
 	int background_count = 0;
@@ -491,7 +501,10 @@ indigo_result indigo_selection_psf(indigo_raw_type raw_type, const void *data, d
 	}
 
 	background = background / background_count;
-	*peak = max - background;
+	double peak_value = max - background;
+	if (peak) {
+		*peak = peak_value;
+	}
 
 	/* calculate stddev */
 	int sum = 0;
@@ -501,123 +514,124 @@ indigo_result indigo_selection_psf(indigo_raw_type raw_type, const void *data, d
 	free(values);
 	double stddev = sqrt(sum / background_count);
 
-	/* HFD calculation */
-	double threshold = background + 2 * stddev; /* 2 * stddev is a good threshold for HFD */
-	indigo_debug("HFD : background = %2f, stddev = %.2f, threshold = %.2f, max = %.2f", background, stddev, threshold, max);
+	/* HFD calculation (only if requested) */
+	if (hfd) {
+		double threshold = background + 2 * stddev; /* 2 * stddev is a good threshold for HFD */
+		indigo_debug("HFD : background = %2f, stddev = %.2f, threshold = %.2f, max = %.2f", background, stddev, threshold, max);
 
-	if (max < threshold) {
-		*hfd = 2 * radius + 1;
-	} else {
-		double prod = 0, total = 0;
-		for (int j = yy - radius; j <= le; j++) {
-			int k = j * width;
-			for (int i = xx - radius; i <= ce; i++) {
-				int kk = k + i;
-				switch (raw_type) {
-					case INDIGO_RAW_MONO8: {
-						value = ((uint8_t *)data)[kk];
-						break;
+		if (max < threshold) {
+			*hfd = 2 * radius + 1;
+		} else {
+			double prod = 0, total = 0;
+			for (int j = yy - radius; j <= le; j++) {
+				int k = j * width;
+				for (int i = xx - radius; i <= ce; i++) {
+					int kk = k + i;
+					switch (raw_type) {
+						case INDIGO_RAW_MONO8: {
+							value = ((uint8_t *)data)[kk];
+							break;
+						}
+						case INDIGO_RAW_MONO16: {
+							value = ((uint16_t *)data)[kk];
+							break;
+						}
+						case INDIGO_RAW_RGB24: {
+							kk *= 3;
+							value = (((uint8_t *)data)[kk] + ((uint8_t *)data)[kk + 1] + ((uint8_t *)data)[kk + 2]) / 3;
+							break;
+						}
+						case INDIGO_RAW_RGBA32: {
+							kk *= 4;
+							value = (((uint8_t *)data)[kk] + ((uint8_t *)data)[kk + 1] + ((uint8_t *)data)[kk + 2]) / 3;
+							break;
+						}
+						case INDIGO_RAW_ABGR32: {
+							kk *= 4;
+							value = (((uint8_t *)data)[kk + 1] + ((uint8_t *)data)[kk + 2] + ((uint8_t *)data)[kk + 3]) / 3;
+							break;
+						}
+						case INDIGO_RAW_RGB48: {
+							kk *= 3;
+							value = (((uint16_t *)data)[kk] + ((uint16_t *)data)[kk + 1] + ((uint16_t *)data)[kk + 2]) / 3;
+							break;
+						}
 					}
-					case INDIGO_RAW_MONO16: {
-						value = ((uint16_t *)data)[kk];
-						break;
-					}
-					case INDIGO_RAW_RGB24: {
-						kk *= 3;
-						value = (((uint8_t *)data)[kk] + ((uint8_t *)data)[kk + 1] + ((uint8_t *)data)[kk + 2]) / 3;
-						break;
-					}
-					case INDIGO_RAW_RGBA32: {
-						kk *= 4;
-						value = (((uint8_t *)data)[kk] + ((uint8_t *)data)[kk + 1] + ((uint8_t *)data)[kk + 2]) / 3;
-						break;
-					}
-					case INDIGO_RAW_ABGR32: {
-						kk *= 4;
-						value = (((uint8_t *)data)[kk + 1] + ((uint8_t *)data)[kk + 2] + ((uint8_t *)data)[kk + 3]) / 3;
-						break;
-					}
-					case INDIGO_RAW_RGB48: {
-						kk *= 3;
-						value = (((uint16_t *)data)[kk] + ((uint16_t *)data)[kk + 1] + ((uint16_t *)data)[kk + 2]) / 3;
-						break;
-					}
-				}
-				value -= threshold;
+					value -= threshold;
 					if (value > 0) {
-					double dist = sqrt((x - i) * (x - i) + (y - j) * (y - j));
-					prod += dist * value;
-					total += value;
+						double dist = sqrt((x - i) * (x - i) + (y - j) * (y - j));
+						prod += dist * value;
+						total += value;
+					}
 				}
 			}
+			*hfd = (total > 0) ? (2 * prod / total) : (2 * radius + 1);
 		}
-		*hfd = 2 * prod / total;
 	}
 
 	/* FWHM calculation */
-	threshold = background + 6 * stddev; /* 6 * stddev is a good threshold for FWHM*/
-	indigo_debug("FWHM: background = %2f, stddev = %.2f, threshold = %.2f, max = %.2f", background, stddev, threshold, max);
+	double threshold_fwhm = background + 6 * stddev; /* 6 * stddev is a good threshold for FWHM*/
+	indigo_debug("FWHM: background = %2f, stddev = %.2f, threshold = %.2f, max = %.2f", background, stddev, threshold_fwhm, max);
 
-	if (max < threshold) {
-		*fwhm = 2 * radius + 1;
-	} else {
-		double half_max = *peak / 2 + background;
-		static int d2[][2] = { { -1, 0 }, { 0, -1 }, { 0, 1 }, { 1, 0 } };
-		double d3[] = { radius, radius, radius, radius };
-		for (int d = 0; d < 4; d++) {
-			double previous = max;
-			for (int k = 1; k < radius; k++) {
-				int i = k * d2[d][0];
-				int j = k * d2[d][1];
-				int kk = (yy + j) * width + i + xx;
-				switch (raw_type) {
-					case INDIGO_RAW_MONO8: {
-						value = ((uint8_t *)data)[kk];
+	if (fwhm) {
+		if (max < threshold_fwhm) {
+			*fwhm = 2 * radius + 1;
+		} else {
+			double half_max = peak_value / 2 + background;
+			static int d2[][2] = { { -1, 0 }, { 0, -1 }, { 0, 1 }, { 1, 0 } };
+			double d3[] = { radius, radius, radius, radius };
+			for (int d = 0; d < 4; d++) {
+				double previous = max;
+				for (int k = 1; k < radius; k++) {
+					int i = k * d2[d][0];
+					int j = k * d2[d][1];
+					int kk = (yy + j) * width + i + xx;
+					switch (raw_type) {
+						case INDIGO_RAW_MONO8: {
+							value = ((uint8_t *)data)[kk];
+							break;
+						}
+						case INDIGO_RAW_MONO16: {
+							value = ((uint16_t *)data)[kk];
+							break;
+						}
+						case INDIGO_RAW_RGB24: {
+							kk *= 3;
+							value = ((uint8_t *)data)[kk] + ((uint8_t *)data)[kk + 1] + ((uint8_t *)data)[kk + 2];
+							break;
+						}
+						case INDIGO_RAW_RGBA32: {
+							kk *= 4;
+							value = ((uint8_t *)data)[kk] + ((uint8_t *)data)[kk + 1] + ((uint8_t *)data)[kk + 2];
+							break;
+						}
+						case INDIGO_RAW_ABGR32: {
+							kk *= 4;
+							value = ((uint8_t *)data)[kk + 1] + ((uint8_t *)data)[kk + 2] + ((uint8_t *)data)[kk + 3];
+							break;
+						}
+						case INDIGO_RAW_RGB48: {
+							kk *= 3;
+							value = ((uint16_t *)data)[kk] + ((uint16_t *)data)[kk + 1] + ((uint16_t *)data)[kk + 2];
+							break;
+						}
+					}
+					if (value <= half_max) {
+						if (value == previous)
+							d3[d] = k;
+						else
+							d3[d] = k - 1 + (previous - half_max) / (previous - value);
 						break;
 					}
-					case INDIGO_RAW_MONO16: {
-						value = ((uint16_t *)data)[kk];
-						break;
-					}
-					case INDIGO_RAW_RGB24: {
-						kk *= 3;
-						value = ((uint8_t *)data)[kk] + ((uint8_t *)data)[kk + 1] + ((uint8_t *)data)[kk + 2];
-						break;
-					}
-					case INDIGO_RAW_RGBA32: {
-						kk *= 4;
-						value = ((uint8_t *)data)[kk] + ((uint8_t *)data)[kk + 1] + ((uint8_t *)data)[kk + 2];
-						break;
-					}
-					case INDIGO_RAW_ABGR32: {
-						kk *= 4;
-						value = ((uint8_t *)data)[kk + 1] + ((uint8_t *)data)[kk + 2] + ((uint8_t *)data)[kk + 3];
-						break;
-					}
-					case INDIGO_RAW_RGB48: {
-						kk *= 3;
-						value = ((uint16_t *)data)[kk] + ((uint16_t *)data)[kk + 1] + ((uint16_t *)data)[kk + 2];
-						break;
-					}
-				}
-				if (value <= half_max) {
-					if (value == previous) {
-						d3[d] = k;
-					} else {
-						d3[d] = k - 1 + (previous - half_max) / (previous - value);
-					}
-					break;
-				}
-				if (value < previous) {
-					previous = value;
+					if (value < previous)
+						previous = value;
 				}
 			}
+			double tmp = (d3[0] + d3[1] + d3[2] + d3[3]) / 2;
+			if (tmp < 1 || tmp > 2 * radius)
+				tmp = 2 * radius + 1;
+			*fwhm = tmp;
 		}
-		double tmp = (d3[0] + d3[1] + d3[2] + d3[3]) / 2;
-		if (tmp < 1 || tmp > 2 * radius) {
-			tmp = 2 * radius + 1;
-		}
-		*fwhm = tmp;
 	}
 	return INDIGO_OK;
 }
@@ -2561,9 +2575,9 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 			}
 
 			if (res == INDIGO_OK && radius >= 3) {
-				double fwhm, hfd, peak;
-				res = indigo_selection_psf(raw_type, data, star.x, star.y, radius, width, height, &fwhm, &hfd, &peak);
-				//indigo_error("indigo_find_stars(): res = %d hfd = %.1f radius = %d star precise position refined to (%lf, %lf)", res, hfd, radius, star.x, star.y);
+				double hfd = 1000;
+				res = indigo_selection_psf(raw_type, data, star.x, star.y, radius, width, height, NULL, &hfd, NULL);
+				indigo_error("indigo_find_stars(): res = %d hfd = %.1f radius = %d star precise position refined to (%lf, %lf)", res, hfd, radius, star.x, star.y);
 				if (hfd > radius) {
 					res = INDIGO_FAILED;
 				}
@@ -2628,7 +2642,7 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 	);
 
 	*stars_found = found;
-	indigo_debug("%s: found %d stars\n", __FUNCTION__, found);
+	indigo_error("%s: found %d stars\n", __FUNCTION__, found);
 	return INDIGO_OK;
 }
 
