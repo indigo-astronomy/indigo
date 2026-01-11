@@ -2474,7 +2474,8 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 					median3(buf[off - width + 1], buf[off], buf[off + width - 1]) > threshold
 				) {
 					/* Require strict local maximum in 3x3 or 5x5 */
-					int neigh = (radius >= 3) ? 2 : 1; /* 2 => 5x5, 1 => 3x3 */
+					/*
+					int neigh = (radius >= 3) ? 2 : 1; // 2 => 5x5, 1 => 3x3
 					bool strict_max = true;
 					for (int dy = -neigh; dy <= neigh && strict_max; dy++) {
 						for (int dx = -neigh; dx <= neigh; dx++) {
@@ -2489,6 +2490,7 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 						}
 					}
 					if (!strict_max) continue;
+					*/
 					/* Accept strict local maximum */
 					lmax = buf[off];
 					star.x = i;
