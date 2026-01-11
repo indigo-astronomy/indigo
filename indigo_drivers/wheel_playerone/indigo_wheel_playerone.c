@@ -23,7 +23,7 @@
  \file indigo_wheel_playerone.c
  */
 
-#define DRIVER_VERSION 0x0008
+#define DRIVER_VERSION 0x0009
 #define DRIVER_NAME "indigo_wheel_playerone"
 
 #define PONE_HANDLE_MAX 24
@@ -218,6 +218,22 @@ static void wheel_connect_callback(indigo_device *device) {
 	indigo_wheel_change_property(device, NULL, CONNECTION_PROPERTY);
 }
 
+static void wheel_setfilter_callback(indigo_device *device) {
+	PRIVATE_DATA->target_slot = (int)WHEEL_SLOT_ITEM->number.value;
+	WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	int res = POAGotoPosition(PRIVATE_DATA->dev_handle, PRIVATE_DATA->target_slot-1);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGotoPosition(%d, %d) = %d", PRIVATE_DATA->dev_handle, PRIVATE_DATA->target_slot-1, res);
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	if (res != PW_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGotoPosition(%d, %d) = %d", PRIVATE_DATA->dev_handle, PRIVATE_DATA->target_slot-1, res);
+		WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, WHEEL_SLOT_PROPERTY, "Set filter failed");
+		return;
+	}
+	indigo_set_timer(device, 0.5, wheel_timer_callback, &PRIVATE_DATA->wheel_timer);
+}
+
 static indigo_result wheel_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -240,13 +256,9 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
-			PRIVATE_DATA->target_slot = WHEEL_SLOT_ITEM->number.value;
-			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
-			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-			int res = POAGotoPosition(PRIVATE_DATA->dev_handle, PRIVATE_DATA->target_slot-1);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGotoPosition(%d, %d) = %d", PRIVATE_DATA->dev_handle, PRIVATE_DATA->target_slot-1, res);
-			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-			indigo_set_timer(device, 0.5, wheel_timer_callback, &PRIVATE_DATA->wheel_timer);
+			indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+			indigo_set_timer(device, 0, wheel_setfilter_callback, NULL);
+			return INDIGO_OK;
 		}
 		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 		return INDIGO_OK;
