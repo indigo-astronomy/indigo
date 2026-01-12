@@ -63,8 +63,15 @@
 #define EAF_CUSTOM_SUFFIX_PROPERTY_NAME   "EAF_CUSTOM_SUFFIX"
 #define EAF_CUSTOM_SUFFIX_NAME         "SUFFIX"
 
+#define EAF_SCAN_PROPERTY              (PRIVATE_DATA->scan_property)
+#define EAF_SCAN_RESCAN_ITEM            (EAF_SCAN_PROPERTY->items+0)
+#define EAF_SCAN_PROPERTY_NAME         "EAF_SCAN_BLUETOOTH"
+#define EAF_SCAN_RESCAN_ITEM_NAME        "RESCAN"
+
 // gp_bits is used as boolean
 #define is_connected                    gp_bits
+
+#define MAX_BLE_DEVICES 64
 
 typedef struct {
 	int dev_id;
@@ -77,6 +84,15 @@ typedef struct {
 	pthread_mutex_t usb_mutex;
 	indigo_property *beep_property;
 	indigo_property *custom_suffix_property;
+    /* Bluetooth support */
+    bool is_bluetooth;
+    pthread_mutex_t bt_mutex;
+    indigo_property *scan_property;
+    int device_count;
+    BLE_DEVICE_INFO_T devices[MAX_BLE_DEVICES];
+    int paired_ids[MAX_BLE_DEVICES];
+    bool is_connected_bt;
+	EAF_ALL_INFO all_info;
 } asi_private_data;
 
 static int find_index_by_device_id(int id);
@@ -118,7 +134,6 @@ static void focuser_timer_callback(indigo_device *device) {
 static void temperature_timer_callback(indigo_device *device) {
 	float temp;
 	static bool has_sensor = true;
-	//bool moving = false, moving_HC = false;
 	int res;
 
 	FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
@@ -132,10 +147,7 @@ static void temperature_timer_callback(indigo_device *device) {
 	} else {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFGetTemp(%d, -> %f) = %d", PRIVATE_DATA->dev_id, FOCUSER_TEMPERATURE_ITEM->number.value, res);
 	}
-	// static double ctemp = 0;
-	// FOCUSER_TEMPERATURE_ITEM->number.value = ctemp;
-	// temp = ctemp;
-	// ctemp += 0.12;
+
 	if (FOCUSER_TEMPERATURE_ITEM->number.value < -270.0) { /* -273 is returned when the sensor is not connected */
 		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_IDLE_STATE;
 		if (has_sensor) {
@@ -234,6 +246,9 @@ static indigo_result eaf_enumerate_properties(indigo_device *device, indigo_clie
 		indigo_define_matching_property(EAF_BEEP_PROPERTY);
 		indigo_define_matching_property(EAF_CUSTOM_SUFFIX_PROPERTY);
 	}
+	if (PRIVATE_DATA->is_bluetooth) {
+		indigo_define_matching_property(EAF_SCAN_PROPERTY);
+	}
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
 }
 
@@ -249,7 +264,6 @@ static indigo_result focuser_attach(indigo_device *device) {
 		char *sdk_version = EAFGetSDKVersion();
 		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, sdk_version);
 		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->label, "SDK version");
-
 
 		FOCUSER_LIMITS_PROPERTY->hidden = false;
 		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min = 0;
@@ -277,7 +291,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_ON_POSITION_SET_PROPERTY->hidden = false;
 		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
 		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
-
+	
 		// -------------------------------------------------------------------------- FOCUSER_COMPENSATION
 		FOCUSER_COMPENSATION_PROPERTY->hidden = false;
 		FOCUSER_COMPENSATION_ITEM->number.min = -10000;
@@ -297,7 +311,40 @@ static indigo_result focuser_attach(indigo_device *device) {
 		if (EAF_CUSTOM_SUFFIX_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_text_item(EAF_CUSTOM_SUFFIX_ITEM, EAF_CUSTOM_SUFFIX_NAME, "Suffix", PRIVATE_DATA->custom_suffix);
-		// --------------------------------------------------------------------------
+		// -------------------------------------------------------------------------- Bluetooth support
+		if (PRIVATE_DATA->is_bluetooth) {
+			pthread_mutex_init(&PRIVATE_DATA->bt_mutex, NULL);
+			PRIVATE_DATA->scan_property = NULL;
+			PRIVATE_DATA->device_count = 0;
+			PRIVATE_DATA->is_connected_bt = false;
+			{
+				BLE_DEVICE_INFO_T devs[MAX_BLE_DEVICES];
+				int found = 0;
+				int res = EAFBLEScan(1000, devs, MAX_BLE_DEVICES, &found);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFBLEScan(1000, devices, 64, &actual) = %d, actual = %d", res, found);
+
+				if (res == EAF_SUCCESS && found > 0) {
+					PRIVATE_DATA->device_count = found > MAX_BLE_DEVICES ? MAX_BLE_DEVICES : found;
+					for (int i = 0; i < PRIVATE_DATA->device_count; i++) PRIVATE_DATA->devices[i] = devs[i];
+				} else {
+					PRIVATE_DATA->device_count = 0;
+				}
+				/* build X_SCAN_BT property */
+				int count = 1 + PRIVATE_DATA->device_count;
+				EAF_SCAN_PROPERTY = indigo_init_switch_property(NULL, device->name, EAF_SCAN_PROPERTY_NAME, "Main", "Scan Bluetooth", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, count);
+				if (EAF_SCAN_PROPERTY) {
+					indigo_init_switch_item(EAF_SCAN_RESCAN_ITEM, EAF_SCAN_RESCAN_ITEM_NAME, "Rescan", false);
+					char item_name[64];
+					for (int i = 0; i < PRIVATE_DATA->device_count; i++) {
+						snprintf(item_name, sizeof(item_name), "DEV_%d", i);
+						indigo_init_switch_item(EAF_SCAN_PROPERTY->items + 1 + i, item_name, PRIVATE_DATA->devices[i].name, false);
+						//TODO: set paired devices as selected
+					}
+					indigo_define_property(device, EAF_SCAN_PROPERTY, NULL);
+				}
+			}
+		}
+		// ------------------------------------------------------------------------------
 		return eaf_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -305,10 +352,13 @@ static indigo_result focuser_attach(indigo_device *device) {
 
 static void focuser_connect_callback(indigo_device *device) {
 	int index = 0;
+	int res = EAF_SUCCESS;
 	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		index = find_index_by_device_id(PRIVATE_DATA->dev_id);
-		if (index >= 0) {
+		if (!PRIVATE_DATA->is_bluetooth) {
+			index = find_index_by_device_id(PRIVATE_DATA->dev_id);
+		}
+		if (index >= 0 || PRIVATE_DATA->is_bluetooth) {
 			if (!device->is_connected) {
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 				if (indigo_try_global_lock(device) != INDIGO_OK) {
@@ -318,42 +368,73 @@ static void focuser_connect_callback(indigo_device *device) {
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 					indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 				} else {
-					EAFGetID(index, &(PRIVATE_DATA->dev_id));
-					int res = EAFOpen(PRIVATE_DATA->dev_id);
+					if (PRIVATE_DATA->is_bluetooth) {
+						res = EAF_SUCCESS;
+					} else {
+						EAFGetID(index, &(PRIVATE_DATA->dev_id));
+						res = EAFOpen(PRIVATE_DATA->dev_id);
+					}
+
 					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-					if (!res) {
-						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFOpen(%d) = %d", PRIVATE_DATA->dev_id, res);
-						pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-						res = EAFGetMaxStep(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->max_position));
-						if (res != EAF_SUCCESS) {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetMaxStep(%d) = %d", PRIVATE_DATA->dev_id, res);
-						}
-						FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = (double)PRIVATE_DATA->max_position;
+					if (res == EAF_SUCCESS) {
+						if (PRIVATE_DATA->is_bluetooth) {
+							PRIVATE_DATA->is_connected_bt = true;
+						} else {
+							PRIVATE_DATA->is_connected_bt = true;
+						}							
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFOpen(%d) = %d", PRIVATE_DATA->dev_id, res);
 
-						res = EAFGetBacklash(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->backlash));
-						if (res != EAF_SUCCESS) {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetBacklash(%d) = %d", PRIVATE_DATA->dev_id, res);
-						}
-						FOCUSER_BACKLASH_ITEM->number.value = (double)PRIVATE_DATA->backlash;
+						/* Why? Why? Why BT is handleled differently? */
+						if (PRIVATE_DATA->is_bluetooth) {
+							res = EAFBLEgetAllInfo(PRIVATE_DATA->dev_id, &PRIVATE_DATA->all_info);
+							if (res != EAF_SUCCESS) {
+								INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFBLEgetAllInfo(%d) = %d", PRIVATE_DATA->dev_id, res);
+							}
+							FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.max = PRIVATE_DATA->max_position = PRIVATE_DATA->all_info.max_steps;
+							FOCUSER_BACKLASH_ITEM->number.value = PRIVATE_DATA->backlash = PRIVATE_DATA->all_info.backlash_steps;
+							FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->target_position = PRIVATE_DATA->current_position = PRIVATE_DATA->all_info.current_steps;
 
-						res = EAFGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->target_position));
-						if (res != EAF_SUCCESS) {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position, res);
-						}
-						FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->target_position;
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "max_position = %d", PRIVATE_DATA->max_position);
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "backlash = %d", PRIVATE_DATA->backlash);
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "current_position = %d", PRIVATE_DATA->current_position);
 
-						res = EAFGetReverse(PRIVATE_DATA->dev_id, &(FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value));
-						if (res != EAF_SUCCESS) {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetReverse(%d, -> %d) = %d", PRIVATE_DATA->dev_id, FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value, res);
-						}
-						FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value = !FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value;
+							FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value = PRIVATE_DATA->all_info.reverse_state;
+							//strncpy(PRIVATE_DATA->model, PRIVATE_DATA->all_info.Model, sizeof(PRIVATE_DATA->model));
+							//strncpy(PRIVATE_DATA->custom_suffix, PRIVATE_DATA->all_info.Suffix, sizeof(PRIVATE_DATA->custom_suffix));
+						} else {
+							pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+							res = EAFGetMaxStep(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->max_position));
+							if (res != EAF_SUCCESS) {
+								INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetMaxStep(%d) = %d", PRIVATE_DATA->dev_id, res);
+							}
+							FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = (double)PRIVATE_DATA->max_position;
+							
 
-						res = EAFGetBeep(PRIVATE_DATA->dev_id, &(EAF_BEEP_ON_ITEM->sw.value));
-						if (res != EAF_SUCCESS) {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetBeep(%d, -> %d) = %d", PRIVATE_DATA->dev_id, EAF_BEEP_ON_ITEM->sw.value, res);
-						}
-						EAF_BEEP_OFF_ITEM->sw.value = !EAF_BEEP_ON_ITEM->sw.value;
-						pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+							res = EAFGetBacklash(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->backlash));
+							if (res != EAF_SUCCESS) {
+								INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetBacklash(%d) = %d", PRIVATE_DATA->dev_id, res);
+							}
+							FOCUSER_BACKLASH_ITEM->number.value = (double)PRIVATE_DATA->backlash;
+
+							res = EAFGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->target_position));
+							if (res != EAF_SUCCESS) {
+								INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position, res);
+							}
+							FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->target_position;
+
+							res = EAFGetReverse(PRIVATE_DATA->dev_id, &(FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value));
+							if (res != EAF_SUCCESS) {
+								INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetReverse(%d, -> %d) = %d", PRIVATE_DATA->dev_id, FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value, res);
+							}
+							FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value = !FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value;
+
+							res = EAFGetBeep(PRIVATE_DATA->dev_id, &(EAF_BEEP_ON_ITEM->sw.value));
+							if (res != EAF_SUCCESS) {
+								INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetBeep(%d, -> %d) = %d", PRIVATE_DATA->dev_id, EAF_BEEP_ON_ITEM->sw.value, res);
+							}
+							EAF_BEEP_OFF_ITEM->sw.value = !EAF_BEEP_ON_ITEM->sw.value;
+							pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+						}	
 
 						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 
@@ -364,6 +445,7 @@ static void focuser_connect_callback(indigo_device *device) {
 						device->is_connected = true;
 						indigo_set_timer(device, 0.5, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
 						indigo_set_timer(device, 0.1, temperature_timer_callback, &PRIVATE_DATA->temperature_timer);
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s connected", device->name);
 					} else {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFOpen(%d) = %d", index, res);
 						CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -380,13 +462,18 @@ static void focuser_connect_callback(indigo_device *device) {
 			indigo_delete_property(device, EAF_BEEP_PROPERTY, NULL);
 			indigo_delete_property(device, EAF_CUSTOM_SUFFIX_PROPERTY, NULL);
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-			int res = EAFStop(PRIVATE_DATA->dev_id);
-			res = EAFClose(PRIVATE_DATA->dev_id);
-			if (res != EAF_SUCCESS) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFClose(%d) = %d", PRIVATE_DATA->dev_id, res);
-			} else {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFClose(%d) = %d", PRIVATE_DATA->dev_id, res);
+			res = EAFStop(PRIVATE_DATA->dev_id);
+			if (!PRIVATE_DATA->is_bluetooth) {
+				res = EAFClose(PRIVATE_DATA->dev_id);
+				if (res != EAF_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFClose(%d) = %d", PRIVATE_DATA->dev_id, res);
+				} else {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFClose(%d) = %d", PRIVATE_DATA->dev_id, res);
+				}
 			}
+			PRIVATE_DATA->dev_id = 0;
+			PRIVATE_DATA->is_connected_bt = false;
+
 			indigo_global_unlock(device);
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 			device->is_connected = false;
@@ -425,20 +512,25 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	} else if (indigo_property_match_changeable(FOCUSER_POSITION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_POSITION
 		indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FOCUSER_POSITION_PROPERTY->state = %d", FOCUSER_POSITION_PROPERTY->state);
 		if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
 			return INDIGO_OK;
 		}
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Requested position: %f", FOCUSER_POSITION_ITEM->number.target);
 		if (FOCUSER_POSITION_ITEM->number.target < 0 || FOCUSER_POSITION_ITEM->number.target > FOCUSER_POSITION_ITEM->number.max) {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Requested position %f is out of bounds.", FOCUSER_POSITION_ITEM->number.target);
 		} else if (FOCUSER_POSITION_ITEM->number.target == PRIVATE_DATA->current_position) {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Requested position %f is the same as current position.", FOCUSER_POSITION_ITEM->number.target);
 		} else {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Moving to position %f", FOCUSER_POSITION_ITEM->number.target);
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 			PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.target;
@@ -661,6 +753,105 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		FOCUSER_MODE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, FOCUSER_MODE_PROPERTY, NULL);
 		return INDIGO_OK;
+	} else if (PRIVATE_DATA->is_bluetooth && indigo_property_match_changeable(EAF_SCAN_PROPERTY, property)) {
+		int paired_index = -1;
+		for (int i = 0; i < EAF_SCAN_PROPERTY->count; i++) {
+			if (property->items[i].sw.value && strcmp(property->items[i].name, EAF_SCAN_RESCAN_ITEM_NAME) != 0) {
+				paired_index = i;
+				break;
+			}
+		}
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "focuser_change_property: EAF_SCAN_PROPERTY change, paired_index=%d", paired_index);
+		indigo_property_copy_values(EAF_SCAN_PROPERTY, property, false);
+		EAF_SCAN_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, EAF_SCAN_PROPERTY, NULL);
+
+		/* rescan */
+		if (EAF_SCAN_RESCAN_ITEM->sw.value) {
+			BLE_DEVICE_INFO_T devs[64];
+			int actual = 0;
+			int res;
+			pthread_mutex_lock(&PRIVATE_DATA->bt_mutex);
+			res = EAFBLEScan(3000, devs, 64, &actual);
+			if (res == EAF_SUCCESS && actual > 0) {
+				PRIVATE_DATA->device_count = actual > 64 ? 64 : actual;
+				for (int i = 0; i < PRIVATE_DATA->device_count; i++) PRIVATE_DATA->devices[i] = devs[i];
+			} else {
+				PRIVATE_DATA->device_count = 0;
+			}
+			pthread_mutex_unlock(&PRIVATE_DATA->bt_mutex);
+			/* rebuild property */
+			indigo_delete_property(device, PRIVATE_DATA->scan_property, NULL);
+			indigo_release_property(PRIVATE_DATA->scan_property);
+			PRIVATE_DATA->scan_property = NULL;
+			int count = 1 + PRIVATE_DATA->device_count;
+			indigo_property *p = indigo_init_switch_property(NULL, device->name, "X_SCAN_BT", "Main", "EAF Bluetooth scan", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, count);
+			if (p) {
+				indigo_init_switch_item(p->items + 0, "RESCAN", "Rescan", false);
+				char item_name[64];
+				for (int i = 0; i < PRIVATE_DATA->device_count; i++) {
+					snprintf(item_name, sizeof(item_name), "DEV_%d", i);
+					indigo_init_switch_item(p->items + 1 + i, item_name, PRIVATE_DATA->devices[i].name, false);
+					if (PRIVATE_DATA->paired_ids[i] != 0) p->items[1 + i].sw.value = true;
+				}
+				PRIVATE_DATA->scan_property = p;
+				indigo_define_property(device, p, NULL);
+			}
+			if (PRIVATE_DATA->scan_property) {
+				PRIVATE_DATA->scan_property->items[0].sw.value = false;
+				PRIVATE_DATA->scan_property->state = INDIGO_OK_STATE;
+				indigo_update_property(device, PRIVATE_DATA->scan_property, NULL);
+			}
+			return INDIGO_OK;
+		}
+		/* pair/unpair toggles */
+		for (int i = 0; i < PRIVATE_DATA->device_count; i++) {
+			int idx = 1 + i;
+			if (property->items[idx].sw.value) {
+				int id = -1;
+				int res;
+				pthread_mutex_lock(&PRIVATE_DATA->bt_mutex);
+				res = EAFBLEConnect(PRIVATE_DATA->devices[i].name, PRIVATE_DATA->devices[i].address, &id);
+				if (res == EAF_SUCCESS) {
+					if (PRIVATE_DATA->dev_id == id) {
+						/* already paired, skip */
+						INDIGO_DRIVER_LOG(DRIVER_NAME, "BLE device %s (%s) is already paired -> id=%d", PRIVATE_DATA->devices[i].name, PRIVATE_DATA->devices[i].address, id);
+						pthread_mutex_unlock(&PRIVATE_DATA->bt_mutex);
+						break;
+					}
+					res = EAFBLEPair(id);
+					if (res == EAF_SUCCESS) {
+						PRIVATE_DATA->dev_id = id;
+						INDIGO_DRIVER_LOG(DRIVER_NAME, "Paired BLE device %s (%s) -> id=%d", PRIVATE_DATA->devices[i].name, PRIVATE_DATA->devices[i].address, id);
+					} else {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFBLEPair(%d) = %d", id, res);
+					}
+				} else {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFBLEConnect(%s,%s) = %d", PRIVATE_DATA->devices[i].name, PRIVATE_DATA->devices[i].address, res);
+				}
+				pthread_mutex_unlock(&PRIVATE_DATA->bt_mutex);
+			} else if (!property->items[idx].sw.value && idx == paired_index) {
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "Unpairing BLE device %s (%s)", PRIVATE_DATA->devices[i].name, PRIVATE_DATA->devices[i].address);
+				int res;
+				pthread_mutex_lock(&PRIVATE_DATA->bt_mutex);
+				res = EAFBLEClearPair(PRIVATE_DATA->dev_id);
+				if (res != EAF_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFBLEClearPair(%d) = %d", PRIVATE_DATA->dev_id, res);
+				}
+				res = EAFBLEDisconnect(PRIVATE_DATA->dev_id);
+				if (res != EAF_SUCCESS) {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFBLEDisconnect(%d) = %d", PRIVATE_DATA->dev_id, res);
+				}
+				PRIVATE_DATA->dev_id = -1;
+				pthread_mutex_unlock(&PRIVATE_DATA->bt_mutex);
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "Unpaired BLE device %s (%s)", PRIVATE_DATA->devices[i].name, PRIVATE_DATA->devices[i].address);
+			}
+		}
+		if (PRIVATE_DATA->scan_property) {
+			PRIVATE_DATA->scan_property->state = INDIGO_OK_STATE;
+			indigo_update_property(device, PRIVATE_DATA->scan_property, NULL);
+		}
+		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
@@ -668,6 +859,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		}
 		// --------------------------------------------------------------------------------
 	}
+
 	return indigo_focuser_change_property(device, client, property);
 }
 
@@ -695,7 +887,9 @@ static int eaf_id_count = 0;
 
 
 static indigo_device *devices[MAX_DEVICES] = {NULL};
-static bool connected_ids[EAF_ID_MAX];
+static bool connected_ids[EAF_ID_MAX] = {false};
+
+static indigo_device *ble_device = NULL;
 
 static int find_index_by_device_id(int id) {
 	int count = EAFGetNum();
@@ -949,12 +1143,39 @@ indigo_result indigo_focuser_asi(indigo_driver_action action, indigo_driver_info
 		const char *sdk_version = EAFGetSDKVersion();
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "EAF SDK v. %s ", sdk_version);
 
-		for(int index = 0; index < EAF_ID_MAX; index++)
+		for(int index = 0; index < EAF_ID_MAX; index++) {
 			connected_ids[index] = false;
-//		eaf_id_count = EAFGetProductIDs(eaf_products);
-//		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFGetProductIDs(-> [ %d, %d, ... ]) = %d", eaf_products[0], eaf_products[1], eaf_id_count);
+		}
+		//eaf_id_count = EAFGetProductIDs(eaf_products);
+		//INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFGetProductIDs(-> [ %d, %d, ... ]) = %d", eaf_products[0], eaf_products[1], eaf_id_count);
 		eaf_products[0] = EAF_PRODUCT_ID;
 		eaf_id_count = 1;
+
+		/* create static Bluetooth pseudo device */
+		pthread_mutex_lock(&indigo_device_enumeration_mutex);
+		static indigo_device bt_template = INDIGO_DEVICE_INITIALIZER(
+			"",
+			focuser_attach,
+			eaf_enumerate_properties,
+			focuser_change_property,
+			NULL,
+			focuser_detach
+		);
+		indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &bt_template);
+		strncpy(device->name, "EAF Pro BT", sizeof(device->name));
+		indigo_make_name_unique(device->name, "%d", 0);
+		asi_private_data *private_data = indigo_safe_malloc(sizeof(asi_private_data));
+		memset(private_data, 0, sizeof(asi_private_data));
+		private_data->is_bluetooth = true;
+		private_data->dev_id = -1;
+		strncpy(private_data->model, "EAF Pro BT", sizeof(private_data->model));
+		device->private_data = private_data;
+		indigo_attach_device(device);
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "Attached static Bluetooth device %s", device->name);
+		ble_device = device;
+
+		pthread_mutex_unlock(&indigo_device_enumeration_mutex);
+
 		indigo_start_usb_event_handler();
 		int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, ASI_VENDOR_ID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
