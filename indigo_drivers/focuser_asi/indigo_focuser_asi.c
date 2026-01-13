@@ -237,8 +237,8 @@ static void temperature_timer_callback(indigo_device *device) {
 		PRIVATE_DATA->prev_temp = -273;
 	}
 
-	/* Update battery info for Bluetooth devices */
-	if (PRIVATE_DATA->is_bluetooth) {
+	/* Update battery info for devices with battery info support */
+	if (!EAF_BATTERY_INFO_PROPERTY->hidden) {
 		EAF_BATTERY_INFO battery_info;
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		res = EAFGetBatteryInfo(PRIVATE_DATA->dev_id, &battery_info);
@@ -341,9 +341,7 @@ static indigo_result eaf_enumerate_properties(indigo_device *device, indigo_clie
 	if (IS_CONNECTED) {
 		indigo_define_matching_property(EAF_BEEP_PROPERTY);
 		indigo_define_matching_property(EAF_CUSTOM_SUFFIX_PROPERTY);
-		if (PRIVATE_DATA->is_bluetooth) {
-			indigo_define_matching_property(EAF_BATTERY_INFO_PROPERTY);
-		}
+		indigo_define_matching_property(EAF_BATTERY_INFO_PROPERTY);
 	}
 	if (PRIVATE_DATA->is_bluetooth) {
 		indigo_define_matching_property(EAF_SCAN_PROPERTY);
@@ -410,6 +408,19 @@ static indigo_result focuser_attach(indigo_device *device) {
 		if (EAF_CUSTOM_SUFFIX_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_text_item(EAF_CUSTOM_SUFFIX_ITEM, EAF_CUSTOM_SUFFIX_NAME, "Suffix", PRIVATE_DATA->custom_suffix);
+		// -------------------------------------------------------------------------- EAF_BATTERY_INFO
+		EAF_BATTERY_INFO_PROPERTY = indigo_init_number_property(NULL, device->name, EAF_BATTERY_INFO_PROPERTY_NAME, "Battery", "Battery information", INDIGO_OK_STATE, INDIGO_RO_PERM, 8);
+		if (EAF_BATTERY_INFO_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		EAF_BATTERY_INFO_PROPERTY->hidden = true;  /* Hidden by default, unhide if device supports battery info */
+		indigo_init_number_item(EAF_BATTERY_CHARGE_ITEM, "CHARGE", "Charge (%)", 0, 100, 0, 0);
+		indigo_init_number_item(EAF_BATTERY_TEMP_ITEM, "TEMPERATURE", "Temperature (°C)", -100, 100, 0, 0);
+		indigo_init_number_item(EAF_BATTERY_VOLTAGE_ITEM, "VOLTAGE", "Voltage (V)", 0, 5, 0, 0);
+		indigo_init_number_item(EAF_BATTERY_CHARGE_CURR_ITEM, "CHARGE_CURRENT", "Charge current (mA)", 0, 10000, 0, 0);
+		indigo_init_number_item(EAF_BATTERY_DISCHARGE_CURR_ITEM, "DISCHARGE_CURRENT", "Discharge current (mA)", 0, 10000, 0, 0);
+		indigo_init_number_item(EAF_BATTERY_HEALTH_ITEM, "HEALTH", "Health", 0, 100, 0, 0);
+		indigo_init_number_item(EAF_BATTERY_CHARGE_VOL_ITEM, "CHARGE_VOLTAGE", "Charge voltage (V)", 0, 5, 0, 0);
+		indigo_init_number_item(EAF_BATTERY_CYCLES_ITEM, "CYCLES", "Number of cycles", 0, 10000, 0, 0);
 		// -------------------------------------------------------------------------- Bluetooth support
 		if (PRIVATE_DATA->is_bluetooth) {
 			pthread_mutex_init(&PRIVATE_DATA->bt_mutex, NULL);
@@ -429,19 +440,6 @@ static indigo_result focuser_attach(indigo_device *device) {
 			}
 
 			focuser_rebuild_scan_property(device);
-
-			// -------------------------------------------------------------------------- EAF_BATTERY_INFO
-			EAF_BATTERY_INFO_PROPERTY = indigo_init_number_property(NULL, device->name, EAF_BATTERY_INFO_PROPERTY_NAME, "Battery", "Battery information", INDIGO_OK_STATE, INDIGO_RO_PERM, 8);
-			if (EAF_BATTERY_INFO_PROPERTY == NULL)
-				return INDIGO_FAILED;
-			indigo_init_number_item(EAF_BATTERY_CHARGE_ITEM, "CHARGE", "Charge (%)", 0, 100, 0, 0);
-			indigo_init_number_item(EAF_BATTERY_TEMP_ITEM, "TEMPERATURE", "Temperature (°C)", -100, 100, 0, 0);
-			indigo_init_number_item(EAF_BATTERY_VOLTAGE_ITEM, "VOLTAGE", "Voltage (V)", 0, 5, 0, 0);
-			indigo_init_number_item(EAF_BATTERY_CHARGE_CURR_ITEM, "CHARGE_CURRENT", "Charge current (mA)", 0, 10000, 0, 0);
-			indigo_init_number_item(EAF_BATTERY_DISCHARGE_CURR_ITEM, "DISCHARGE_CURRENT", "Discharge current (mA)", 0, 10000, 0, 0);
-			indigo_init_number_item(EAF_BATTERY_HEALTH_ITEM, "HEALTH", "Health", 0, 100, 0, 0);
-			indigo_init_number_item(EAF_BATTERY_CHARGE_VOL_ITEM, "CHARGE_VOLTAGE", "Charge voltage (V)", 0, 5, 0, 0);
-			indigo_init_number_item(EAF_BATTERY_CYCLES_ITEM, "CYCLES", "Number of cycles", 0, 10000, 0, 0);
 		}
 		// ------------------------------------------------------------------------------
 		return eaf_enumerate_properties(device, NULL, NULL);
@@ -599,15 +597,39 @@ static void focuser_connect_callback(indigo_device *device) {
 							}
 							EAF_BEEP_OFF_ITEM->sw.value = !EAF_BEEP_ON_ITEM->sw.value;
 						}
+
+						/* Check for battery info control capability */
+						EAF_BATTERY_INFO_PROPERTY->hidden = true;
+						/*
+						int num_controls = 0;
+						res = EAFGetNumOfControls(PRIVATE_DATA->dev_id, &num_controls);
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetNumOfControls(%d, -> %d) = %d", PRIVATE_DATA->dev_id, num_controls, res);
+						if (res == EAF_SUCCESS) {
+							for (int i = 0; i < num_controls; i++) {
+								EAF_CONTROL_CAPS caps;
+								res = EAFGetControlCaps(PRIVATE_DATA->dev_id, i, &caps);
+								INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetControlCaps(%d, %d) = %d: type=%d, supported=%d", PRIVATE_DATA->dev_id, i, res, caps.controlType, caps.isSupported);
+								if (res == EAF_SUCCESS && caps.controlType == CONTROL_BAT_INFO && caps.isSupported) {
+									EAF_BATTERY_INFO_PROPERTY->hidden = false;
+									INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Battery info control is supported for device %d", PRIVATE_DATA->dev_id);
+									break;
+								}
+							}
+						}
+						*/
+						/* A simpler check for battery info support - the above should be the right way, but it does not work */
+						EAF_BATTERY_INFO battery_info;
+						res = EAFGetBatteryInfo(PRIVATE_DATA->dev_id, &battery_info);
+						if (res == EAF_SUCCESS) {
+							EAF_BATTERY_INFO_PROPERTY->hidden = false;
+							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Battery info is supported for device %d", PRIVATE_DATA->dev_id);
+						}
 						pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 
 						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-
 						indigo_define_property(device, EAF_BEEP_PROPERTY, NULL);
 						indigo_define_property(device, EAF_CUSTOM_SUFFIX_PROPERTY, NULL);
-						if (PRIVATE_DATA->is_bluetooth) {
-							indigo_define_property(device, EAF_BATTERY_INFO_PROPERTY, NULL);
-						}
+						indigo_define_property(device, EAF_BATTERY_INFO_PROPERTY, NULL);
 
 						PRIVATE_DATA->prev_temp = -273;  /* we do not have previous temperature reading */
 						device->is_connected = true;
@@ -633,9 +655,7 @@ static void focuser_connect_callback(indigo_device *device) {
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperature_timer);
 			indigo_delete_property(device, EAF_BEEP_PROPERTY, NULL);
 			indigo_delete_property(device, EAF_CUSTOM_SUFFIX_PROPERTY, NULL);
-			if (PRIVATE_DATA->is_bluetooth) {
-				indigo_delete_property(device, EAF_BATTERY_INFO_PROPERTY, NULL);
-			}
+			indigo_delete_property(device, EAF_BATTERY_INFO_PROPERTY, NULL);
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 			res = EAFStop(PRIVATE_DATA->dev_id);
 			if (PRIVATE_DATA->is_bluetooth) {
@@ -996,9 +1016,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 		indigo_delete_property(device, EAF_SCAN_PROPERTY, NULL);
 		indigo_release_property(EAF_SCAN_PROPERTY);
 	}
-	if (EAF_BATTERY_INFO_PROPERTY) {
-		indigo_release_property(EAF_BATTERY_INFO_PROPERTY);
-	}
+	indigo_release_property(EAF_BATTERY_INFO_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_focuser_detach(device);
 }
