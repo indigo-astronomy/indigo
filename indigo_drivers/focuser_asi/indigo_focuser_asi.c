@@ -51,31 +51,6 @@
 
 #define BT_CONFIG_KEY "selected_bt_device"
 
-static void save_selected_bt_device_config(indigo_device *device, const char *name_address) {
-	int handle = indigo_open_config_file(device->name, 0, O_WRONLY | O_CREAT | O_TRUNC, ".bt");
-	if (handle > 0) {
-		indigo_printf(handle, "%s=%s\n", BT_CONFIG_KEY, name_address);
-		close(handle);
-	}
-}
-
-static bool read_selected_bt_device_config(indigo_device *device, char *name_address, size_t len) {
-	int handle = indigo_open_config_file(device->name, 0, O_RDONLY, ".bt");
-	if (handle <= 0) return false;
-	char key[64];
-	char value[256];
-	while (indigo_scanf(handle, "%63[^=]=%255[^\n]", key, value) == 2) {
-		if (strcmp(key, BT_CONFIG_KEY) == 0) {
-			strncpy(name_address, value, len);
-			name_address[len-1] = '\0';
-			close(handle);
-			return true;
-		}
-	}
-	close(handle);
-	return false;
-}
-
 #define ASI_VENDOR_ID                   0x03c3
 #define EAF_PRODUCT_ID                  0x1f10
 
@@ -105,6 +80,7 @@ static bool read_selected_bt_device_config(indigo_device *device, char *name_add
 
 typedef struct {
 	int dev_id;
+	char selected_bt_name_address[128];
 	EAF_INFO info;
 	char model[64];
 	char custom_suffix[9];
@@ -124,6 +100,34 @@ typedef struct {
     bool is_connected_bt;
 	EAF_ALL_INFO all_info;
 } asi_private_data;
+
+static int find_index_by_device_id(int id);
+static void compensate_focus(indigo_device *device, double new_temp);
+
+static void save_selected_bt_device_config(indigo_device *device, const char *name_address) {
+	int handle = indigo_open_config_file(device->name, 0, O_WRONLY | O_CREAT | O_TRUNC, ".bt");
+	if (handle > 0) {
+		indigo_printf(handle, "%s=%s\n", BT_CONFIG_KEY, name_address);
+		close(handle);
+	}
+}
+
+static bool read_selected_bt_device_config(indigo_device *device, char *name_address, size_t len) {
+	int handle = indigo_open_config_file(device->name, 0, O_RDONLY, ".bt");
+	if (handle <= 0) return false;
+	char key[64];
+	char value[256];
+	while (indigo_scanf(handle, "%63[^=]=%255[^\n]", key, value) == 2) {
+		if (strcmp(key, BT_CONFIG_KEY) == 0) {
+			strncpy(name_address, value, len);
+			name_address[len-1] = '\0';
+			close(handle);
+			return true;
+		}
+	}
+	close(handle);
+	return false;
+}
 
 /* Helper to build or rebuild the Bluetooth scan property.
  * This helper always uses INDIGO_AT_MOST_ONE_RULE so at most one device
@@ -146,10 +150,12 @@ static void rebuild_scan_property(indigo_device *device) {
 		char selected_name_address[128] = "";
 		read_selected_bt_device_config(device, selected_name_address, sizeof(selected_name_address));
 		for (int i = 0; i < PRIVATE_DATA->device_count; i++) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Device found: %s (%s)", PRIVATE_DATA->devices[i].name, PRIVATE_DATA->devices[i].address);
 			snprintf(item_name, sizeof(item_name), "%s-%s", PRIVATE_DATA->devices[i].name, PRIVATE_DATA->devices[i].address);
-			indigo_init_switch_item(EAF_SCAN_PROPERTY->items + 1 + i, item_name, item_name, false);
+			indigo_init_switch_item(EAF_SCAN_PROPERTY->items + 1 + i, item_name, PRIVATE_DATA->devices[i].name, false);
 			if (PRIVATE_DATA->paired_ids[i] != 0) EAF_SCAN_PROPERTY->items[1 + i].sw.value = true;
 			if (selected_name_address[0] != '\0' && strcmp(item_name, selected_name_address) == 0) {
+				strncpy(PRIVATE_DATA->selected_bt_name_address, selected_name_address, sizeof(PRIVATE_DATA->selected_bt_name_address));
 				EAF_SCAN_PROPERTY->items[1 + i].sw.value = true;
 			}
 		}
@@ -157,9 +163,6 @@ static void rebuild_scan_property(indigo_device *device) {
 		indigo_define_property(device, EAF_SCAN_PROPERTY, NULL);
 	}
 }
-
-static int find_index_by_device_id(int id);
-static void compensate_focus(indigo_device *device, double new_temp);
 
 // -------------------------------------------------------------------------------- INDIGO focuser device implementation
 static void focuser_timer_callback(indigo_device *device) {
@@ -402,6 +405,73 @@ static indigo_result focuser_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
+static int focuser_bt_open(indigo_device *device) {
+	/* selected -> parse "name-address" from the item name */
+	char dev_name[128] = {0};
+	char dev_addr[64] = {0};
+
+	char *dash = strrchr(PRIVATE_DATA->selected_bt_name_address, '-');
+	if (dash) {
+		size_t name_len = dash - PRIVATE_DATA->selected_bt_name_address;
+		if (name_len >= sizeof(dev_name)) name_len = sizeof(dev_name) - 1;
+		strncpy(dev_name, PRIVATE_DATA->selected_bt_name_address, name_len);
+		dev_name[name_len] = '\0';
+		strncpy(dev_addr, dash + 1, sizeof(dev_addr));
+		dev_addr[sizeof(dev_addr)-1] = '\0';
+	} else {
+		/* fallback: use whole string as device name */
+		strncpy(dev_name, PRIVATE_DATA->selected_bt_name_address, sizeof(dev_name));
+		dev_name[sizeof(dev_name)-1] = '\0';
+	}
+
+	int id = -1;
+	int res;
+	pthread_mutex_lock(&PRIVATE_DATA->bt_mutex);
+	res = EAFBLEConnect(dev_name, dev_addr, &id);
+	if (res == EAF_SUCCESS) {
+		if (PRIVATE_DATA->dev_id == id) {
+			/* already paired, skip */
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "BLE device %s (%s) is already paired -> id=%d", dev_name, dev_addr, id);
+			pthread_mutex_unlock(&PRIVATE_DATA->bt_mutex);
+			return INDIGO_OK;
+		}
+
+		indigo_send_message(device, "Pairing to %s... (if it beeps press IN or OUT)", dev_name);
+		res = EAFBLEPair(id);
+		if (res == EAF_SUCCESS) {
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "Paired BLE device %s (%s) -> id=%d", dev_name, dev_addr, id);
+			PRIVATE_DATA->dev_id = id;
+			pthread_mutex_unlock(&PRIVATE_DATA->bt_mutex);
+			indigo_send_message(device, "Paired.");
+			return INDIGO_OK;
+		} else {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFBLEPair(%d) = %d", id, res);
+			PRIVATE_DATA->dev_id = -1;
+			pthread_mutex_unlock(&PRIVATE_DATA->bt_mutex);
+			indigo_send_message(device, "Pairing failed.");
+			return INDIGO_FAILED;
+		}
+	} 
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFBLEConnect(%s,%s) = %d", dev_name, dev_addr, res);
+	PRIVATE_DATA->dev_id = -1;
+	pthread_mutex_unlock(&PRIVATE_DATA->bt_mutex);
+	return INDIGO_FAILED;
+}
+
+static int focuser_bt_close(indigo_device *device) {
+	int res;
+	pthread_mutex_lock(&PRIVATE_DATA->bt_mutex);
+	res = EAFBLEDisconnect(PRIVATE_DATA->dev_id);
+	if (res == EAF_SUCCESS) {
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected BLE device id=%d", PRIVATE_DATA->dev_id);
+	} else {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFBLEDisconnect(%d) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	PRIVATE_DATA->dev_id = -1;
+	pthread_mutex_unlock(&PRIVATE_DATA->bt_mutex);
+	return INDIGO_OK;
+}
+
 static void focuser_connect_callback(indigo_device *device) {
 	int index = 0;
 	int res = EAF_SUCCESS;
@@ -421,7 +491,7 @@ static void focuser_connect_callback(indigo_device *device) {
 					indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 				} else {
 					if (PRIVATE_DATA->is_bluetooth) {
-						res = EAF_SUCCESS;
+						res = focuser_bt_open(device);
 					} else {
 						EAFGetID(index, &(PRIVATE_DATA->dev_id));
 						res = EAFOpen(PRIVATE_DATA->dev_id);
@@ -500,6 +570,7 @@ static void focuser_connect_callback(indigo_device *device) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s connected", device->name);
 					} else {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFOpen(%d) = %d", index, res);
+						indigo_global_unlock(device);
 						CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 						indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 						indigo_update_property(device, CONNECTION_PROPERTY, NULL);
@@ -522,8 +593,10 @@ static void focuser_connect_callback(indigo_device *device) {
 				} else {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFClose(%d) = %d", PRIVATE_DATA->dev_id, res);
 				}
+			} else {
+				res = focuser_bt_close(device);
 			}
-			PRIVATE_DATA->dev_id = 0;
+			PRIVATE_DATA->dev_id = -1;
 			PRIVATE_DATA->is_connected_bt = false;
 
 			indigo_global_unlock(device);
@@ -806,18 +879,8 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_update_property(device, FOCUSER_MODE_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (PRIVATE_DATA->is_bluetooth && indigo_property_match_changeable(EAF_SCAN_PROPERTY, property)) {
-		int paired_index = -1;
-		char selected_name_address[128] = "";
-		for (int i = 0; i < EAF_SCAN_PROPERTY->count; i++) {
-			if (property->items[i].sw.value && strcmp(property->items[i].name, EAF_SCAN_RESCAN_ITEM_NAME) != 0) {
-				paired_index = i;
-				strncpy(selected_name_address, property->items[i].name, sizeof(selected_name_address));
-				selected_name_address[sizeof(selected_name_address)-1] = '\0';
-				save_selected_bt_device_config(device, selected_name_address);
-				break;
-			}
-		}
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "focuser_change_property: EAF_SCAN_PROPERTY change, paired_index=%d", paired_index);
+		// -------------------------------------------------------------------------------- EAF_SCAN_PROPERTY
+		// TO BE MADE ASYNC *********************************************************************************
 		indigo_property_copy_values(EAF_SCAN_PROPERTY, property, false);
 		EAF_SCAN_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, EAF_SCAN_PROPERTY, NULL);
@@ -839,76 +902,31 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			/* rebuild property */
 			rebuild_scan_property(device);
 			/* after an explicit rescan, mark the Rescan item selected */
-			EAF_SCAN_RESCAN_ITEM->sw.value = true;
+			EAF_SCAN_RESCAN_ITEM->sw.value = false;
 			return INDIGO_OK;
 		}
-		/* pair/unpair toggles - use the selected item's label ("name-address") to connect */
-		for (int i = 0; i < property->count; i++) {
-			if (strcmp(property->items[i].name, EAF_SCAN_RESCAN_ITEM_NAME) == 0) continue;
+		/* select device */
+		if(device->is_connected) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Device is connected, cannot change selection");
+			EAF_SCAN_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, EAF_SCAN_PROPERTY, "Device is connected, cannot change selection");
+			return INDIGO_OK;
+		}
+		pthread_mutex_lock(&PRIVATE_DATA->bt_mutex);
+		for (int i = 1; i < property->count; i++) { // skip the Rescan item
+			PRIVATE_DATA->selected_bt_name_address[0] = '\0';
 			if (property->items[i].sw.value) {
-				/* selected -> parse "name-address" from the item name */
-				char item_name[128];
-				char dev_name[128] = {0};
-				char dev_addr[64] = {0};
-				strncpy(item_name, property->items[i].name, sizeof(item_name));
-				item_name[sizeof(item_name)-1] = '\0';
-				char *dash = strrchr(item_name, '-');
-				if (dash) {
-					size_t name_len = dash - item_name;
-					if (name_len >= sizeof(dev_name)) name_len = sizeof(dev_name) - 1;
-					strncpy(dev_name, item_name, name_len);
-					dev_name[name_len] = '\0';
-					strncpy(dev_addr, dash + 1, sizeof(dev_addr));
-					dev_addr[sizeof(dev_addr)-1] = '\0';
-				} else {
-					/* fallback: use whole string as device name */
-					strncpy(dev_name, item_name, sizeof(dev_name));
-					dev_name[sizeof(dev_name)-1] = '\0';
-				}
-
-				int id = -1;
-				int res;
-				pthread_mutex_lock(&PRIVATE_DATA->bt_mutex);
-				res = EAFBLEConnect(dev_name, dev_addr, &id);
-				if (res == EAF_SUCCESS) {
-					if (PRIVATE_DATA->dev_id == id) {
-						/* already paired, skip */
-						INDIGO_DRIVER_LOG(DRIVER_NAME, "BLE device %s (%s) is already paired -> id=%d", dev_name, dev_addr, id);
-						pthread_mutex_unlock(&PRIVATE_DATA->bt_mutex);
-						break;
-					}
-					res = EAFBLEPair(id);
-					if (res == EAF_SUCCESS) {
-						PRIVATE_DATA->dev_id = id;
-						INDIGO_DRIVER_LOG(DRIVER_NAME, "Paired BLE device %s (%s) -> id=%d", dev_name, dev_addr, id);
-					} else {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFBLEPair(%d) = %d", id, res);
-					}
-				} else {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFBLEConnect(%s,%s) = %d", dev_name, dev_addr, res);
-				}
-				pthread_mutex_unlock(&PRIVATE_DATA->bt_mutex);
-			} else if (!property->items[i].sw.value && i == paired_index) {
-				/* unpair the previously selected device */
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "Unpairing BLE device selected index %d", i);
-				int res;
-				pthread_mutex_lock(&PRIVATE_DATA->bt_mutex);
-				res = EAFBLEClearPair(PRIVATE_DATA->dev_id);
-				if (res != EAF_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFBLEClearPair(%d) = %d", PRIVATE_DATA->dev_id, res);
-				}
-				res = EAFBLEDisconnect(PRIVATE_DATA->dev_id);
-				if (res != EAF_SUCCESS) {
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFBLEDisconnect(%d) = %d", PRIVATE_DATA->dev_id, res);
-				}
-				PRIVATE_DATA->dev_id = -1;
-				pthread_mutex_unlock(&PRIVATE_DATA->bt_mutex);
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "Unpaired BLE device at index %d", i);
+				strncpy(PRIVATE_DATA->selected_bt_name_address, property->items[i].name, sizeof(PRIVATE_DATA->selected_bt_name_address));
+				PRIVATE_DATA->selected_bt_name_address[sizeof(PRIVATE_DATA->selected_bt_name_address) - 1] = '\0';
+				break;
 			}
 		}
-		if (PRIVATE_DATA->scan_property) {
-			PRIVATE_DATA->scan_property->state = INDIGO_OK_STATE;
-			indigo_update_property(device, PRIVATE_DATA->scan_property, NULL);
+		save_selected_bt_device_config(device, PRIVATE_DATA->selected_bt_name_address);
+		pthread_mutex_unlock(&PRIVATE_DATA->bt_mutex);
+
+		if (EAF_SCAN_PROPERTY) {
+			EAF_SCAN_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, EAF_SCAN_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
