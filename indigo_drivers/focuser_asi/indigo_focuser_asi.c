@@ -578,7 +578,7 @@ static void focuser_connect_callback(indigo_device *device) {
 			indigo_delete_property(device, EAF_CUSTOM_SUFFIX_PROPERTY, NULL);
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 			res = EAFStop(PRIVATE_DATA->dev_id);
-			if (!PRIVATE_DATA->is_bluetooth) {
+			if (PRIVATE_DATA->is_bluetooth) {
 				res = focuser_bt_close(device);
 			} else {
 				res = EAFClose(PRIVATE_DATA->dev_id);
