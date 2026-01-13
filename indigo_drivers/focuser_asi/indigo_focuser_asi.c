@@ -439,13 +439,14 @@ static int focuser_bt_open(indigo_device *device) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Paired BLE device %s (%s) -> id=%d", dev_name, dev_addr, id);
 			PRIVATE_DATA->dev_id = id;
 			pthread_mutex_unlock(&PRIVATE_DATA->bt_mutex);
-			indigo_send_message(device, "Paired.");
+			indigo_send_message(device, "Paired");
 			return INDIGO_OK;
 		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFBLEPair(%d) = %d", id, res);
+			EAFBLEDisconnect(PRIVATE_DATA->dev_id);
 			PRIVATE_DATA->dev_id = -1;
 			pthread_mutex_unlock(&PRIVATE_DATA->bt_mutex);
-			indigo_send_message(device, "Pairing failed.");
+			indigo_send_message(device, "Pairing failed");
 			return INDIGO_FAILED;
 		}
 	}
