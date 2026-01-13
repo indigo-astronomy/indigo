@@ -486,15 +486,15 @@ static void focuser_connect_callback(indigo_device *device) {
 				} else {
 					if (PRIVATE_DATA->is_bluetooth) {
 						res = focuser_bt_open(device);
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "focuser_bt_open(%d) = %d", PRIVATE_DATA->dev_id, res);
 					} else {
 						EAFGetID(index, &(PRIVATE_DATA->dev_id));
 						res = EAFOpen(PRIVATE_DATA->dev_id);
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFOpen(%d) = %d", PRIVATE_DATA->dev_id, res);
 					}
 
 					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 					if (res == EAF_SUCCESS) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFOpen(%d) = %d", PRIVATE_DATA->dev_id, res);
-
 						pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 						/* Why? Why? Why BT is handleled differently? */
 						if (PRIVATE_DATA->is_bluetooth) {
@@ -559,7 +559,6 @@ static void focuser_connect_callback(indigo_device *device) {
 						} else {
 							INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFOpen(%d) = %d", PRIVATE_DATA->dev_id, res);
 						}
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFOpen(%d) = %d", index, res);
 						indigo_global_unlock(device);
 						CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 						indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -1214,7 +1213,7 @@ indigo_result indigo_focuser_asi(indigo_driver_action action, indigo_driver_info
 			eaf_products[0] = EAF_PRODUCT_ID;
 			eaf_id_count = 1;
 
-#if defined (INDIGO_MACOS) || defined(INDOIGO_WINDOWS)
+#if defined (INDIGO_MACOS) || defined(INDIGO_WINDOWS)
 			/* create static Bluetooth pseudo device */
 			pthread_mutex_lock(&indigo_device_enumeration_mutex);
 			static indigo_device bt_template = INDIGO_DEVICE_INITIALIZER(
@@ -1254,7 +1253,7 @@ indigo_result indigo_focuser_asi(indigo_driver_action action, indigo_driver_info
 			libusb_hotplug_deregister_callback(NULL, callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
 
-#if defined(INDIGO_MACOS) || defined(INDOIGO_WINDOWS)
+#if defined(INDIGO_MACOS) || defined(INDIGO_WINDOWS)
 			if (ble_device) {
 				indigo_detach_device(ble_device);
 				free(ble_device->private_data);
