@@ -26,7 +26,7 @@
 
 #define DRIVER_VERSION 0x0300001B
 #define DRIVER_NAME "indigo_focuser_asi"
-#define BT_DEVICE_NAME "EAF Pro Bluetooth"
+#define BT_DEVICE_NAME "EAF Pro (Bluetooth)"
 
 #include <stdlib.h>
 #include <string.h>
