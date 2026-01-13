@@ -1214,7 +1214,6 @@ indigo_result indigo_focuser_asi(indigo_driver_action action, indigo_driver_info
 			eaf_id_count = 1;
 
 #if defined (INDIGO_MACOS) || defined(INDIGO_WINDOWS)
-<<<<<<< HEAD
 			/* create static Bluetooth pseudo device */
 			pthread_mutex_lock(&indigo_device_enumeration_mutex);
 			static indigo_device bt_template = INDIGO_DEVICE_INITIALIZER(
@@ -1238,31 +1237,6 @@ indigo_result indigo_focuser_asi(indigo_driver_action action, indigo_driver_info
 			INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 			ble_device = device;
 			pthread_mutex_unlock(&indigo_device_enumeration_mutex);
-=======
-		/* create static Bluetooth pseudo device */
-		pthread_mutex_lock(&indigo_device_enumeration_mutex);
-		static indigo_device bt_template = INDIGO_DEVICE_INITIALIZER(
-			"",
-			focuser_attach,
-			eaf_enumerate_properties,
-			focuser_change_property,
-			NULL,
-			focuser_detach
-		);
-		indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &bt_template);
-		strncpy(device->name, BT_DEVICE_NAME, sizeof(device->name));
-		indigo_make_name_unique(device->name, "%d", 0);
-		asi_private_data *private_data = indigo_safe_malloc(sizeof(asi_private_data));
-		memset(private_data, 0, sizeof(asi_private_data));
-		private_data->is_bluetooth = true;
-		private_data->dev_id = -1;
-		strncpy(private_data->model, BT_DEVICE_NAME, sizeof(private_data->model));
-		device->private_data = private_data;
-		indigo_attach_device(device);
-		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		ble_device = device;
-		pthread_mutex_unlock(&indigo_device_enumeration_mutex);
->>>>>>> master
 #endif
 
 			indigo_start_usb_event_handler();
@@ -1280,21 +1254,12 @@ indigo_result indigo_focuser_asi(indigo_driver_action action, indigo_driver_info
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
 
 #if defined(INDIGO_MACOS) || defined(INDIGO_WINDOWS)
-<<<<<<< HEAD
-			if (ble_device) {
-				indigo_detach_device(ble_device);
-				free(ble_device->private_data);
-				free(ble_device);
-				ble_device = NULL;
-			}
-=======
 		if (ble_device) {
 			indigo_detach_device(ble_device);
 			free(ble_device->private_data);
 			free(ble_device);
 			ble_device = NULL;
 		}
->>>>>>> master
 #endif
 
 			remove_all_devices();
