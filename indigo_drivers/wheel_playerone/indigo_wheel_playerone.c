@@ -282,6 +282,9 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(WHEEL_SLOT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- WHEEL_SLOT
+		if (WHEEL_SLOT_PROPERTY->state == INDIGO_BUSY_STATE || POA_RESET_PROPERTY->state == INDIGO_BUSY_STATE) {
+			return INDIGO_OK;
+		}
 		indigo_property_copy_values(WHEEL_SLOT_PROPERTY, property, false);
 		if (WHEEL_SLOT_ITEM->number.value < 1 || WHEEL_SLOT_ITEM->number.value > WHEEL_SLOT_ITEM->number.max) {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;

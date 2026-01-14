@@ -428,7 +428,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 			BLE_DEVICE_INFO_T devs[MAX_BLE_DEVICES];
 			int found = 0;
 			int res = EAFBLEScan(1000, devs, MAX_BLE_DEVICES, &found);
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFBLEScan(1000, devices, 64, &actual) = %d, actual = %d", res, found);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFBLEScan(1000, devices, 64, &actual) = %d, actual = %d", res, found);
 
 			if (res == EAF_SUCCESS && found > 0) {
 				PRIVATE_DATA->bt_device_count = found > MAX_BLE_DEVICES ? MAX_BLE_DEVICES : found;
@@ -776,10 +776,10 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_POSITION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_POSITION
-		indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
 		if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
 			return INDIGO_OK;
 		}
+		indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
 		if (FOCUSER_POSITION_ITEM->number.target < 0 || FOCUSER_POSITION_ITEM->number.target > FOCUSER_POSITION_ITEM->number.max) {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -870,10 +870,10 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_STEPS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_STEPS
-		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
 		if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
 			return INDIGO_OK;
 		}
+		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
 		if (FOCUSER_STEPS_ITEM->number.value < 0 || FOCUSER_STEPS_ITEM->number.value > FOCUSER_STEPS_ITEM->number.max) {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
