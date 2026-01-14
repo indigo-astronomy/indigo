@@ -587,11 +587,10 @@ static void focuser_connect_callback(indigo_device *device) {
 							if (res != EAF_SUCCESS) {
 								INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFBLEgetAllInfo(%d) = %d", PRIVATE_DATA->dev_id, res);
 							}
-							FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value =
+							FOCUSER_STEPS_ITEM->number.max =
 							FOCUSER_POSITION_ITEM->number.max =
 							PRIVATE_DATA->max_position =
-							FOCUSER_STEPS_ITEM->number.max =
-							PRIVATE_DATA->all_info.max_steps;
+							FOCUSER_STEPS_ITEM->number.max = PRIVATE_DATA->all_info.max_steps;
 
 							FOCUSER_BACKLASH_ITEM->number.value = PRIVATE_DATA->backlash = PRIVATE_DATA->all_info.backlash_steps;
 							FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->target_position = PRIVATE_DATA->current_position = PRIVATE_DATA->all_info.current_steps;
@@ -602,12 +601,6 @@ static void focuser_connect_callback(indigo_device *device) {
 							EAF_BEEP_ON_ITEM->sw.value = PRIVATE_DATA->all_info.buzzer_state;
 							EAF_BEEP_OFF_ITEM->sw.value = !PRIVATE_DATA->all_info.buzzer_state;
 						} else {
-							res = EAFGetMaxStep(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->max_position));
-							if (res != EAF_SUCCESS) {
-								INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetMaxStep(%d) = %d", PRIVATE_DATA->dev_id, res);
-							}
-							FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = (double)PRIVATE_DATA->max_position;
-
 							res = EAFGetBacklash(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->backlash));
 							if (res != EAF_SUCCESS) {
 								INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetBacklash(%d) = %d", PRIVATE_DATA->dev_id, res);
@@ -632,6 +625,19 @@ static void focuser_connect_callback(indigo_device *device) {
 							}
 							EAF_BEEP_OFF_ITEM->sw.value = !EAF_BEEP_ON_ITEM->sw.value;
 						}
+
+						res = EAFGetMaxStep(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->max_position));
+						if (res != EAF_SUCCESS) {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetMaxStep(%d) = %d", PRIVATE_DATA->dev_id, res);
+						}
+						FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target = (double)PRIVATE_DATA->max_position;
+
+						int step_range = 0;
+						res = EAFStepRange(PRIVATE_DATA->dev_id, &step_range);
+						if (res != EAF_SUCCESS) {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFStepRange(%d) = %d", PRIVATE_DATA->dev_id, res);
+						}
+						FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max = (double)step_range;
 
 						/* Check for battery info control capability */
 						EAF_BATTERY_INFO_PROPERTY->hidden = true;
@@ -983,7 +989,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			EAF_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, EAF_CUSTOM_SUFFIX_PROPERTY, NULL);
 		} else {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFSetID(%d, \"%s\") = %d", PRIVATE_DATA->dev_id, EAF_CUSTOM_SUFFIX_ITEM->text.value, res);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFSetID(%d, \"%s\") = %d", PRIVATE_DATA->dev_id, EAF_CUSTOM_SUFFIX_ITEM->text.value, res);
 			EAF_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_OK_STATE;
 			if (strlen(EAF_CUSTOM_SUFFIX_ITEM->text.value) > 0) {
 				indigo_update_property(device, EAF_CUSTOM_SUFFIX_PROPERTY, "Focuser name suffix '#%s' will be used on replug", EAF_CUSTOM_SUFFIX_ITEM->text.value);
