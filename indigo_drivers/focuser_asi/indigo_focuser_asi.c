@@ -107,6 +107,7 @@ typedef struct {
 	EAF_ALL_INFO all_info;
 } asi_private_data;
 
+static indigo_device *ble_device = NULL;
 static int find_index_by_device_id(int id);
 static void compensate_focus(indigo_device *device, double new_temp);
 
@@ -444,6 +445,29 @@ static indigo_result focuser_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
+static void ble_connection_state_callback(bool state) {
+	if (state) {
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "Bluetooth connection established");
+	} else {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Bluetooth connection lost");
+		if (ble_device != NULL && ble_device->is_connected) {
+			indigo_device *device = ble_device;
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CONNECTION_PROPERTY, "Bluetooth connection lost");
+			indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_timer);
+			indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperature_timer);
+			indigo_delete_property(device, EAF_BEEP_PROPERTY, NULL);
+			indigo_delete_property(device, EAF_CUSTOM_SUFFIX_PROPERTY, NULL);
+			indigo_delete_property(device, EAF_BATTERY_INFO_PROPERTY, NULL);
+			indigo_global_unlock(device);
+			device->is_connected = false;
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
+		}
+	}
+}
+
 static int focuser_bt_open(indigo_device *device) {
 	/* selected -> parse "name-address" from the item name */
 	char dev_name[INDIGO_NAME_SIZE] = {0};
@@ -486,6 +510,12 @@ static int focuser_bt_open(indigo_device *device) {
 		if (res == EAF_SUCCESS) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Paired BLE device %s (%s) -> id=%d", dev_name, dev_addr, id);
 			PRIVATE_DATA->dev_id = id;
+
+			res = EAFBLERegConnStateCallback(id, ble_connection_state_callback);
+			if (res != EAF_SUCCESS) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFBLERegConnStateCallback(%d) = %d", id, res);
+			}
+
 			pthread_mutex_unlock(&PRIVATE_DATA->bt_mutex);
 			indigo_send_message(device, "Paired");
 			return INDIGO_OK;
@@ -1028,7 +1058,6 @@ static int eaf_id_count = 0;
 
 static indigo_device *devices[MAX_DEVICES] = {NULL};
 static bool connected_ids[EAF_ID_MAX] = {false};
-static indigo_device *ble_device = NULL;
 
 static int find_index_by_device_id(int id) {
 	int count = EAFGetNum();
