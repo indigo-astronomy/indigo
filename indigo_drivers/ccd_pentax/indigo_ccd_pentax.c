@@ -396,7 +396,7 @@ static const char *to_hex(uint8_t *bytes, uint32_t count) {
 }
 
 static uint8_t scsi_command(indigo_device *device, uint8_t *cdb, int cdb_len, uint8_t flags, uint8_t *data, uint32_t data_length) {
-	command_block_wrapper cbw = { { 'U', 'S', 'B', 'C' }, PRIVATE_DATA->tag++, data_length, flags, PRIVATE_DATA->lun, cdb_len, 0 };
+	command_block_wrapper cbw = { { 'U', 'S', 'B', 'C' }, PRIVATE_DATA->tag++, data_length, flags, PRIVATE_DATA->lun, cdb_len, {0} };
 	command_status_wrapper csw;
 	int size = 0;
 	memcpy(cbw.CBWCB, cdb, cdb_len);

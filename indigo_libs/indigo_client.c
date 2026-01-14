@@ -359,10 +359,10 @@ static void *server_thread(indigo_server_entry *server) {
 		hints.ai_family = AF_INET;
 		if ((result = getaddrinfo(server->host, NULL, &hints, &address))) {
 			INDIGO_LOG(indigo_log("Can't resolve host name %s (%s)", server->host, gai_strerror(result)));
-			strncpy(server->last_error, gai_strerror(result), sizeof(server->last_error));
+			strncpy(server->last_error, gai_strerror(result), INDIGO_LAST_ERROR_SIZE);
 		} else if ((server->socket = socket(address->ai_family, SOCK_STREAM, 0)) < 0) {
 			INDIGO_LOG(indigo_log("Can't create socket (%s)", strerror(errno)));
-			strncpy(server->last_error, strerror(errno), sizeof(server->last_error));
+			strncpy(server->last_error, strerror(errno), INDIGO_LAST_ERROR_SIZE);
 		} else {
 			((struct sockaddr_in *)address->ai_addr)->sin_port = htons(server->port);
 			result = connect(server->socket, address->ai_addr, address->ai_addrlen);
