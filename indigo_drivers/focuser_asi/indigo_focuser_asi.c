@@ -587,7 +587,12 @@ static void focuser_connect_callback(indigo_device *device) {
 							if (res != EAF_SUCCESS) {
 								INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFBLEgetAllInfo(%d) = %d", PRIVATE_DATA->dev_id, res);
 							}
-							FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.max = PRIVATE_DATA->max_position = PRIVATE_DATA->all_info.max_steps;
+							FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value =
+							FOCUSER_POSITION_ITEM->number.max =
+							PRIVATE_DATA->max_position =
+							FOCUSER_STEPS_ITEM->number.max =
+							PRIVATE_DATA->all_info.max_steps;
+
 							FOCUSER_BACKLASH_ITEM->number.value = PRIVATE_DATA->backlash = PRIVATE_DATA->all_info.backlash_steps;
 							FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->target_position = PRIVATE_DATA->current_position = PRIVATE_DATA->all_info.current_steps;
 
