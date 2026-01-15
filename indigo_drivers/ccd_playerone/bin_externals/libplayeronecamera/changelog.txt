@@ -1,3 +1,6 @@
+2025.12.26(3.10.0)
+- Add support for Xena 585M
+
 2025.10.16(3.9.1)
 - Change the white balance range back to [-1200, 1200].
   Sorry for the multiple changes to the white balance range and the conflict with some capture software's configuration file.
