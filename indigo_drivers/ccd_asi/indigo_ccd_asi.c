@@ -789,27 +789,33 @@ static indigo_result ccd_attach(indigo_device *device) {
 		char name[32], label[64];
 		for (int num = 0; (num < 16) && PRIVATE_DATA->info.SupportedBins[num]; num++) {
 			int bin = PRIVATE_DATA->info.SupportedBins[num];
+			int binned_width = CCD_FRAME_WIDTH_ITEM->number.value / bin;
+			int binned_height = CCD_FRAME_HEIGHT_ITEM->number.value / bin;
+			// ASISetROIFormat docs says:
+			// Note: In general make sure iWidth%8=0，iHeight%2=0.
+			binned_width -= binned_width % 8;
+			binned_height -= binned_height % 2;
 			if (pixel_format_supported(device, ASI_IMG_RAW8)) {
 				snprintf(name, 32, "%s %dx%d", RAW8_NAME, bin, bin);
-				snprintf(label, 64, "%s %dx%d", RAW8_NAME, (int)CCD_FRAME_WIDTH_ITEM->number.value / bin, (int)CCD_FRAME_HEIGHT_ITEM->number.value / bin);
+				snprintf(label, 64, "%s %dx%d", RAW8_NAME, binned_width, binned_height);
 				indigo_init_switch_item(CCD_MODE_PROPERTY->items + mode_count, name, label, bin == 1);
 				mode_count++;
 			}
 			if (pixel_format_supported(device, ASI_IMG_RGB24)) {
 				snprintf(name, 32, "%s %dx%d", RGB24_NAME, bin, bin);
-				snprintf(label, 64, "%s %dx%d", RGB24_NAME, (int)CCD_FRAME_WIDTH_ITEM->number.value / bin, (int)CCD_FRAME_HEIGHT_ITEM->number.value / bin);
+				snprintf(label, 64, "%s %dx%d", RGB24_NAME, binned_width, binned_height);
 				indigo_init_switch_item(CCD_MODE_PROPERTY->items + mode_count, name, label, false);
 				mode_count++;
 			}
 			if (pixel_format_supported(device, ASI_IMG_RAW16)) {
 				snprintf(name, 32, "%s %dx%d", RAW16_NAME, bin, bin);
-				snprintf(label, 64, "%s %dx%d", RAW16_NAME, (int)CCD_FRAME_WIDTH_ITEM->number.value / bin, (int)CCD_FRAME_HEIGHT_ITEM->number.value / bin);
+				snprintf(label, 64, "%s %dx%d", RAW16_NAME, binned_width, binned_height);
 				indigo_init_switch_item(CCD_MODE_PROPERTY->items + mode_count, name, label, false);
 				mode_count++;
 			}
 			if (pixel_format_supported(device, ASI_IMG_Y8)) {
 				snprintf(name, 32, "%s %dx%d", Y8_NAME, bin, bin);
-				snprintf(label, 64, "%s %dx%d", Y8_NAME, (int)CCD_FRAME_WIDTH_ITEM->number.value / bin, (int)CCD_FRAME_HEIGHT_ITEM->number.value / bin);
+				snprintf(label, 64, "%s %dx%d", Y8_NAME, binned_width, binned_height);
 				indigo_init_switch_item(CCD_MODE_PROPERTY->items + mode_count, name, label, false);
 				mode_count++;
 			}
