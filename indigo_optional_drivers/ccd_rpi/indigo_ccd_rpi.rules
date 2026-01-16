@@ -1,0 +1,9 @@
+KERNEL=="video[0-9]*",    GROUP="video",  MODE="0666"
+KERNEL=="media[0-9]*",    GROUP="video",  MODE="0666"
+KERNEL=="v4l-subdev*",    GROUP="video",  MODE="0666"
+
+# dma-buf providers
+SUBSYSTEM=="dma_heap",    GROUP="video",  MODE="0666"
+
+# DRM render node (sometimes used by libcamera pipelines)
+KERNEL=="renderD*",       GROUP="render", MODE="0666"
