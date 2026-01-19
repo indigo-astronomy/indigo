@@ -727,6 +727,7 @@ static void focuser_bt_scan_callback(indigo_device *device) {
 			PRIVATE_DATA->bt_device_count = actual > MAX_BLE_DEVICES ? MAX_BLE_DEVICES : actual;
 			for (int i = 0; i < PRIVATE_DATA->bt_device_count; i++) PRIVATE_DATA->bt_devices[i] = devs[i];
 		} else {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFBLEScan(3500, devs, %d, &actual) = %d, actual = %d", MAX_BLE_DEVICES, res, actual);
 			PRIVATE_DATA->bt_device_count = 0;
 		}
 
