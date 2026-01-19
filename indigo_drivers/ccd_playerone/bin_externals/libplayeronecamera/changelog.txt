@@ -1,3 +1,11 @@
+2025.12.26(3.10.0)
+- Add support for Xena 585M
+
+2025.10.16(3.9.1)
+- Change the white balance range back to [-1200, 1200].
+  Sorry for the multiple changes to the white balance range and the conflict with some capture software's configuration file.
+  The white balance of a camera is a hardware parameter, just like exposure and gain, not a coefficient of a software algorithm, remapping its range is not advisable. Also, thanks to some users and Rumen for their suggestions.
+
 2025.08.28(3.9.0)
 - 'HDR' sensor mode has been added to the Uranus series cameras.
 - Optimize the range of automatic white balance, which is now [1, 100](%).

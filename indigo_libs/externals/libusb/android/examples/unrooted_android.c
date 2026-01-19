@@ -24,12 +24,12 @@
 
 /*
  * This example creates a shared object which can be accessed over JNA or JNI from Java or Kotlin in Android.
- * Hint: If you are using Android Studio set the "Debug type" to "Java Only" to receive debug messages.
+ * Hint: If you are using Android Studio, set the "Debug type" to "Java Only" to receive debug messages.
  */
 
 /*
  * Usage:
- * First you have to connect your USB device from the Java side.
+ * First, you have to connect your USB device from the Java side.
  * Use the android.hardware.usb class to find the USB device, claim the interfaces, and open the usb_device_connection
  * Obtain the native File Descriptor --> usb_device_connection.getFileDescriptor()
  * Pass the received int value to the unrooted_usb_description method of this code (over JNA)
@@ -210,6 +210,7 @@ static void print_device(libusb_device *dev, libusb_device_handle *handle)
         case LIBUSB_SPEED_HIGH:		speed = "480M"; break;
         case LIBUSB_SPEED_SUPER:	speed = "5G"; break;
         case LIBUSB_SPEED_SUPER_PLUS:	speed = "10G"; break;
+        case LIBUSB_SPEED_SUPER_PLUS_X2:	speed = "20G"; break;
         default:			speed = "Unknown";
     }
 
@@ -270,7 +271,7 @@ static void print_device(libusb_device *dev, libusb_device_handle *handle)
 }
 
 
-// fileDescriptor = is the native File Descriptor obtained in Java and transfered to native over JNA for Example.
+/* fileDescriptor = the native file descriptor obtained in Java and transferred to native over JNA, for example */
 int unrooted_usb_description(int fileDescriptor)
 {
     libusb_context *ctx = NULL;
@@ -298,4 +299,3 @@ int unrooted_usb_description(int fileDescriptor)
     print_device(libusb_get_device(devh), devh);
     return r;
 }
-

@@ -152,6 +152,7 @@ typedef enum {
 	ptp_event_canon_CTGInfoCheckComplete = 0xC1A4,
 	ptp_event_canon_OLCInfoChanged = 0xC1A5,
 	ptp_event_canon_ObjectAddedEx2 = 0xC1A7,
+	ptp_event_canon_ObjectAddedEx3 = 0xC1B8,
 	ptp_event_canon_RequestObjectTransferFTP = 0xC1F1
 } ptp_event_canon_code;
 
@@ -340,6 +341,10 @@ typedef struct {
 	int steps;
 	uint32_t ex_func_group[16][1024];
 	uint64_t image_format;
+	uint32_t storage_ids[2];
+	uint64_t storage_sizes[2];
+	uint64_t storage_availables[2];
+	bool use_ram;
 } canon_private_data;
 
 extern char *ptp_operation_canon_code_label(uint16_t code);

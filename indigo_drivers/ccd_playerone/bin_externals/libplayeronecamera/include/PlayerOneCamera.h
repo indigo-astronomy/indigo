@@ -92,13 +92,13 @@ typedef enum _POAValueType              ///< Config Value Type Definition
 
 typedef enum _POAConfig                 ///< Camera Config Definition
 {
-    POA_EXPOSURE = 0,                   ///< exposure time(unit: us),range:[10 - 2000000000], read-write, valueType == VAL_INT
+    POA_EXPOSURE = 0,                   ///< exposure time(unit: us),range:[10 - 2000000000], read-write, recommended to use POA_EXP, valueType == VAL_INT
     POA_GAIN,                           ///< gain, read-write, valueType == VAL_INT
     POA_HARDWARE_BIN,                   ///< hardware bin, read-write, valueType == VAL_BOOL
     POA_TEMPERATURE,                    ///< camera temperature(uint: C), read-only, valueType == VAL_FLOAT
-    POA_WB_R,                           ///< red channel of white balance, percentage: [1, 100]%, read-write, valueType == VAL_INT
-    POA_WB_G,                           ///< green channel of white balance, percentage: [1, 100]%, read-write, valueType == VAL_INT
-    POA_WB_B,                           ///< blue channel of white balance, percentage: [1, 100]%, read-write, valueType == VAL_INT
+    POA_WB_R,                           ///< red channel of white balance, range:[-1200, 1200], read-write, valueType == VAL_INT
+    POA_WB_G,                           ///< green channel of white balance, range:[-1200, 1200], read-write, valueType == VAL_INT
+    POA_WB_B,                           ///< blue channel of white balance,  range:[-1200, 1200], read-write, valueType == VAL_INT
     POA_OFFSET,                         ///< camera offset, read-write, valueType == VAL_INT
     POA_AUTOEXPO_MAX_GAIN,              ///< maximum gain when auto-adjust, read-write, valueType == VAL_INT
     POA_AUTOEXPO_MAX_EXPOSURE,          ///< maximum exposure when auto-adjust(uint: ms), read-write, valueType == VAL_INT

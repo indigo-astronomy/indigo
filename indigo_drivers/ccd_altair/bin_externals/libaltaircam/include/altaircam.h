@@ -1,22 +1,23 @@
 ﻿#ifndef __altaircam_h__
 #define __altaircam_h__
 
-/* Version: 59.29465.20250907 */
+/* Version: 59.30281.20251214 */
 /*
    Platform & Architecture:
        (1) Win32:
               (a) x64: Win7 or above
               (b) x86: XP SP3 or above; CPU supports SSE2 instruction set or above
               (c) arm64: Win10 or above
-              (d) arm: Win10 or above
-       (2) WinRT: x64, x86, arm64, arm; Win10 or above
+       (2) WinRT: x64, x86, arm64; Win10 or above
        (3) macOS: x64+arm64: macOS 11.0 or above, support x64 and Apple silicon (such as M1, M2, etc)
        (4) Linux: kernel 2.6.27 or above
               (a) x64: GLIBC 2.14 or above
               (b) x86: CPU supports SSE3 instruction set or above; GLIBC 2.8 or above
               (c) arm64: GLIBC 2.17 or above
-              (d) armhf: GLIBC 2.8 or above
-              (e) armel: GLIBC 2.8 or above
+              (d) arm64: musl libc
+              (e) armhf: GLIBC 2.8 or above
+              (f) armel: GLIBC 2.8 or above
+              (g) ostl: STMicroelectronics OpenSTLinux
        (5) Android: __ANDROID_API__ >= 24 (Android 7.0); built by android-ndk-r18b; see https://developer.android.com/ndk/guides/abis
               (a) arm64: arm64-v8a
               (b) arm: armeabi-v7a
@@ -40,6 +41,7 @@
         (a) Functions with coordinate parameters, such as Altaircam_put_Roi, Altaircam_put_AEAuxRect, etc., the coordinate is always relative to the original resolution,
             even that the image has been flipped, rotated, digital binning, ROI, or combination of the previous operations.
         (b) Exception: if the image is upside down (see here), the coordinate must be also upsize down.
+        (c) Exception: hardware binning.
 */
 
 #if defined(_WIN32)
@@ -118,11 +120,12 @@ extern "C" {
 #define E_POINTER           (HRESULT)(0x80004003) /* Pointer that is not valid */ /* Remark: Pointer is NULL */
 #define E_FAIL              (HRESULT)(0x80004005) /* Generic failure */
 #define E_WRONG_THREAD      (HRESULT)(0x8001010e) /* Call function in the wrong thread */
-#define E_GEN_FAILURE       (HRESULT)(0x8007001f) /* Device not functioning */ /* Remark: It is generally caused by hardware errors, such as cable problems, USB port problems, poor contact, camera hardware damage, etc */
+#define E_GEN_FAILURE       (HRESULT)(0x8007001f) /* Device not functioning */ /* Remark: It is generally caused by hardware errors, such as cable problems, USB port problems, poor contact, insufficient power supply, camera hardware damage, etc */
 #define E_BUSY              (HRESULT)(0x800700aa) /* The requested resource is in use */ /* Remark: The camera is already in use, such as duplicated opening/starting the camera, or being used by other application, etc */
 #define E_PENDING           (HRESULT)(0x8000000a) /* The data necessary to complete this operation is not yet available */ /* Remark: No data is available at this time */
 #define E_TIMEOUT           (HRESULT)(0x8001011f) /* This operation returned because the timeout period expired */
-#define E_UNREACH           (HRESULT)(0x80072743) /* Network is unreachable */
+#define E_UNREACH           (HRESULT)(0x80072743) /* Network is unreachable */ /* Remark: Please check the IP settings of the camera and the computer, or the firewall settings */
+#define E_CANCELLED         (HRESULT)(0x800704C7) /* The operation was canceled by the user */
 #endif
 
 /* handle */
@@ -178,7 +181,7 @@ typedef struct Altaircam_t { int unused; } *HAltaircam;
 #define ALTAIRCAM_FLAG_GIGE                 0x0000200000000000  /* 1 Gigabit GigE */
 #define ALTAIRCAM_FLAG_10GIGE               0x0000400000000000  /* 10 Gigabit GigE */
 #define ALTAIRCAM_FLAG_5GIGE                0x0000800000000000  /* 5 Gigabit GigE */
-#define ALTAIRCAM_FLAG_25GIGE               0x0001000000000000  /* 2.5 Gigabit GigE */
+#define ALTAIRCAM_FLAG_40GIGE               0x0001000000000000  /* 40 Gigabit GigE */
 #define ALTAIRCAM_FLAG_AUTOFOCUSER          0x0002000000000000  /* astro auto focuser */
 #define ALTAIRCAM_FLAG_LIGHT_SOURCE         0x0004000000000000  /* stand alone light source */
 #define ALTAIRCAM_FLAG_CAMERALINK           0x0008000000000000  /* camera link */
@@ -272,7 +275,22 @@ typedef struct Altaircam_t { int unused; } *HAltaircam;
 #define ALTAIRCAM_HDR_THRESHOLD_MIN         0
 #define ALTAIRCAM_HDR_THRESHOLD_MAX         4094
 #define ALTAIRCAM_CDS_MIN                   0       /* Correlated Double Sampling */
-#define ALTAIRCAM_CDS_MAX                   100
+#define ALTAIRCAM_ANTIBLOOMING_MIN          0       /* Anti Blooming */
+#define ALTAIRCAM_GVCP_RETRY_DEF            4       /* GVCP Retry */
+#define ALTAIRCAM_GVCP_RETRY_MIN            2
+#define ALTAIRCAM_GVCP_RETRY_MAX            16
+#define ALTAIRCAM_GVCP_TIMEOUT_DEF          15      /* GVCP Timeout */
+#define ALTAIRCAM_GVCP_TIMEOUT_MIN          5
+#define ALTAIRCAM_GVCP_TIMEOUT_MAX          150
+#define ALTAIRCAM_GVSP_WAIT_PERCENT_DEF     1       /* GVSP wait percent */
+#define ALTAIRCAM_GVSP_WAIT_PERCENT_MIN     0
+#define ALTAIRCAM_GVSP_WAIT_PERCENT_MAX     100
+#define ALTAIRCAM_FRONTEND_MAX              1024    /* frontend frame buffer deque length */
+#define ALTAIRCAM_FRONTEND_DEF              4
+#define ALTAIRCAM_FRONTEND_MIN              2
+#define ALTAIRCAM_BACKEND_MAX               1024    /* backend frame buffer deque length */
+#define ALTAIRCAM_BACKEND_DEF               3
+#define ALTAIRCAM_BACKEND_MIN               2
 
 typedef struct {
     unsigned    width;
@@ -307,11 +325,11 @@ typedef struct {
     char                  displayname[64];    /* display name: model name or user-defined name (if any and Altaircam_EnumWithName) */
     char                  id[64];             /* unique and opaque id of a connected camera, for Altaircam_Open */
 #endif
-    const AltaircamModelV2* model;
+    const AltaircamModelV2* model;              /* Functionally equivalent to a global constant, remaining valid and unchanged throughout the lifetime of the process */
 } AltaircamDeviceV2; /* device instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 59.29465.20250907
+    get the version of this dll/so/dylib, which is: 59.30281.20251214
 */
 #if defined(_WIN32)
 ALTAIRCAM_API(const wchar_t*)   Altaircam_Version();
@@ -336,7 +354,7 @@ ALTAIRCAM_API(unsigned) Altaircam_EnumV2(AltaircamDeviceV2 arr[ALTAIRCAM_MAX]);
     if camId is NULL, Altaircam_Open will open the first enumerated camera.
     For USB, GigE, CameraLink or CXP camera, the camId can also be specified as (case sensitive):
         (a) "sn:xxxxxxxxxxxx" (Use SN, such as sn:ZP250212241204105), or
-        (b) "name:xxxxxx" (Use name, such as name:Camera1)
+        (b) "name:xxxxxx" (Use user-defined name, such as name:Camera1)
     Moreover, for GigE camera, the camId can also be specified as (case sensitive):
         (a) "ip:xxx.xxx.xxx.xxx" (Use IP address, such as ip:192.168.1.100), or
         (b) "mac:xxxxxxxxxxxx" (Use MAC address, such as mac:d05f64ffff23)
@@ -742,7 +760,7 @@ ALTAIRCAM_API(HRESULT)  Altaircam_get_FanMaxSpeed(HAltaircam h); /* get the maxi
 
 ALTAIRCAM_API(HRESULT)  Altaircam_get_MaxBitDepth(HAltaircam h); /* get the max bitdepth of this camera, such as 8, 10, 12, 14, 16 */
 
-/* power supply of lighting:
+/* Light Frequency:
         0 => 60HZ AC
         1 => 50Hz AC
         2 => DC
@@ -765,6 +783,7 @@ typedef struct {
 #endif
 #endif
 
+/* Minimum width & height: 4 */
 ALTAIRCAM_API(HRESULT)  Altaircam_put_AWBAuxRect(HAltaircam h, const RECT* pAuxRect); /* auto white balance ROI */
 ALTAIRCAM_API(HRESULT)  Altaircam_get_AWBAuxRect(HAltaircam h, RECT* pAuxRect);
 ALTAIRCAM_API(HRESULT)  Altaircam_put_AEAuxRect(HAltaircam h, const RECT* pAuxRect);  /* auto exposure ROI */
@@ -998,7 +1017,9 @@ ALTAIRCAM_API(HRESULT)  Altaircam_get_Option(HAltaircam h, unsigned iOption, int
 #define ALTAIRCAM_OPTION_PRECISE_FRAMERATE      0x2d       /* [RW] precise frame rate current value in 0.1 fps. use ALTAIRCAM_OPTION_MAX_PRECISE_FRAMERATE, ALTAIRCAM_OPTION_MIN_PRECISE_FRAMERATE to get the range. if the set value is out of range, E_INVALIDARG will be returned */
 #define ALTAIRCAM_OPTION_BANDWIDTH              0x2e       /* [RW] bandwidth, [1-100]% */
 #define ALTAIRCAM_OPTION_RELOAD                 0x2f       /* [RW] reload the last frame in trigger mode */
-#define ALTAIRCAM_OPTION_CALLBACK_THREAD        0x30       /* [RW] dedicated thread for callback: 0 => disable, 1 => enable, default: 0 */
+#define ALTAIRCAM_OPTION_CALLBACK_THREAD        0x30       /* [RW] dedicated thread for callback: 0 => disable, 1 => enable
+                                                                 default: 1(GigE), 0(others)
+                                                         */
 #define ALTAIRCAM_OPTION_FRONTEND_DEQUE_LENGTH  0x31       /* [RW] frontend (raw) frame buffer deque length, range: [2, 1024], default: 4
                                                             All the memory will be pre-allocated when the camera starts, so, please attention to memory usage
                                                          */
@@ -1150,10 +1171,10 @@ ALTAIRCAM_API(HRESULT)  Altaircam_get_Option(HAltaircam h, unsigned iOption, int
                                                                  ((val & 0xff00) >> 8): sequence
                                                                  ((val & 0xff0000) >> 16): average number
                                                          */
-#define ALTAIRCAM_OPTION_OVEREXP_POLICY         0x68       /* [RW] Auto exposure over exposure policy: when overexposed,
+#define ALTAIRCAM_OPTION_OVEREXP_POLICY         0x68       /* [RW] Auto exposure overexposure policy: when overexposed,
                                                                 0 => directly reduce the exposure time/gain to the minimum value; or
-                                                                1 => reduce exposure time/gain in proportion to current and target brightness.
-                                                                n(n>1) => first adjust the exposure time to (maximum automatic exposure time * maximum automatic exposure gain) * n / 1000, and then adjust according to the strategy of 1
+                                                                1 => reduce exposure time/gain according to the ratio between current and target brightness; or
+                                                                n(n>1) => first, adjust the exposure time to (maximum automatic exposure time * maximum automatic exposure gain) * n / 1000, and then adjust according to the strategy of 1
                                                             The advantage of policy 0 is that the convergence speed is faster, but there is black screen.
                                                             Policy 1 avoids the black screen, but the convergence speed is slower.
                                                             Default: 0
@@ -1169,13 +1190,13 @@ ALTAIRCAM_API(HRESULT)  Altaircam_get_Option(HAltaircam h, unsigned iOption, int
                                                                 n<0: every -n frame
                                                          */
 #define ALTAIRCAM_OPTION_TECTARGET_RANGE        0x6d       /* [RO] TEC target range: min(low 16 bits) = (short)(val & 0xffff), max(high 16 bits) = (short)((val >> 16) & 0xffff) */
-#define ALTAIRCAM_OPTION_CDS                    0x6e       /* [RW] Correlated Double Sampling: 0~100 */
+#define ALTAIRCAM_OPTION_CDS                    0x6e       /* [RW] Correlated Double Sampling: 0~max (ALTAIRCAM_OPTION_CDS_MAX) */
 #define ALTAIRCAM_OPTION_LOW_POWER_EXPOTIME     0x6f       /* [RW] Low Power Consumption: Enable if exposure time is greater than the set value */
 #define ALTAIRCAM_OPTION_ZERO_OFFSET            0x70       /* [RW] Sensor output offset to zero: 0 => disable, 1 => eanble; default: 0 */
-#define ALTAIRCAM_OPTION_GVCP_TIMEOUT           0x71       /* [RW] GVCP Timeout: millisecond, range = [3, 75], default: 15
+#define ALTAIRCAM_OPTION_GVCP_TIMEOUT           0x71       /* [RW] GVCP Timeout: millisecond, range = [5, 150], default: 15(wire), 30(wireless)
                                                               Unless in very special circumstances, generally no modification is required, just use the default value
                                                          */
-#define ALTAIRCAM_OPTION_GVCP_RETRY             0x72       /* [RW] GVCP Retry: range = [2, 8], default: 4
+#define ALTAIRCAM_OPTION_GVCP_RETRY             0x72       /* [RW] GVCP Retry: range = [2, 16], default: 4(wire), 8(wireless)
                                                               Unless in very special circumstances, generally no modification is required, just use the default value
                                                          */
 #define ALTAIRCAM_OPTION_GVSP_WAIT_PERCENT      0x73       /* [RW] GVSP wait percent: range = [0, 100], default = (trigger mode: 100, realtime: 0, other: 1) */
@@ -1187,11 +1208,11 @@ ALTAIRCAM_API(HRESULT)  Altaircam_get_Option(HAltaircam h, unsigned iOption, int
 #define ALTAIRCAM_OPTION_UPTIME                 0x79       /* [RO] device uptime in millisecond */
 #define ALTAIRCAM_OPTION_BITRANGE               0x7a       /* [RW] Bit range: [0, 8] */
 #define ALTAIRCAM_OPTION_MODE_SEQ_TIMESTAMP     0x7b       /* [RW] Mode of seq & timestamp: 0 => reset to 0 automatically; 1 => never reset automatically; default: 0 */
-#define TOUPCAP_OPTION_TIMED_TRIGGER_NUM      0x7c       /* [RW] Timed trigger number */
+#define ALTAIRCAM_OPTION_TIMED_TRIGGER_NUM      0x7c       /* [RW] Timed trigger number */
 #define ALTAIRCAM_OPTION_TIMED_TRIGGER_LOW      0x20000000 /* [RW] Timed trigger: lower 32 bits of 64-bit integer, nanosecond since epoch (00:00:00 UTC on Thursday, 1 January 1970, see https://en.wikipedia.org/wiki/Unix_time) */
 #define ALTAIRCAM_OPTION_TIMED_TRIGGER_HIGH     0x40000000 /* [RW] Timed trigger: high 32 bits. The lower 32 bits must be set first, followed by the higher 32 bits */
 #define ALTAIRCAM_OPTION_AUTOEXP_THLD_TRIGGER   0x7d       /* [RW] trigger threshold of auto exposure */
-#define ALTAIRCAM_OPTION_LANE                   0x7e       /* [RW] */
+#define ALTAIRCAM_OPTION_LANE                   0x7e       /* [RW] Lane */
 #define ALTAIRCAM_OPTION_VOLTAGEBIAS            0x7f       /* [RW] Voltage bias */
 #define ALTAIRCAM_OPTION_VOLTAGEBIAS_RANGE      0x80       /* [RO] Voltage bias range: min (low 16bits), max (high 16bits) */
 #define ALTAIRCAM_OPTION_READ_TIME              0x81       /* [RO] */
@@ -1209,6 +1230,9 @@ ALTAIRCAM_API(HRESULT)  Altaircam_get_Option(HAltaircam h, unsigned iOption, int
                                                          */
 #define ALTAIRCAM_OPTION_USER_SET               0x8a       /* [RW] user set */
 #define ALTAIRCAM_OPTION_DIGITAL_GAIN           0x1001     /* [RW] digital gain */
+#define ALTAIRCAM_OPTION_ANTI_BLOOMING          0x8b       /* [RW] Anti Blooming */
+#define ALTAIRCAM_OPTION_ANTI_BLOOMING_MAX      0x8c       /* [RO} Anti Blooming */
+#define ALTAIRCAM_OPTION_CDS_MAX                0x8d       /* [RO} Correlated Double Sampling */
 
 /* pixel format */
 #define ALTAIRCAM_PIXELFORMAT_RAW8              0x00
@@ -1247,6 +1271,7 @@ ALTAIRCAM_API(const char*) Altaircam_get_PixelFormatName(int pixelFormat);
 
 /*
     xOffset, yOffset, xWidth, yHeight: must be even numbers
+    Minimum width & height: 8
 */
 ALTAIRCAM_API(HRESULT)  Altaircam_put_Roi(HAltaircam h, unsigned xOffset, unsigned yOffset, unsigned xWidth, unsigned yHeight);
 ALTAIRCAM_API(HRESULT)  Altaircam_get_Roi(HAltaircam h, unsigned* pxOffset, unsigned* pyOffset, unsigned* pxWidth, unsigned* pyHeight);
@@ -1262,9 +1287,17 @@ ALTAIRCAM_API(HRESULT)  Altaircam_put_Binning(HAltaircam h, const char* pValue, 
 ALTAIRCAM_API(HRESULT)  Altaircam_get_Binning(HAltaircam h, const char** ppValue, const char** ppMethod);
 ALTAIRCAM_API(HRESULT)  Altaircam_get_BinningNumber(HAltaircam h);
 ALTAIRCAM_API(HRESULT)  Altaircam_get_BinningValue(HAltaircam h, unsigned index, const char** ppValue);
-ALTAIRCAM_API(HRESULT)  Altaircam_get_BinningMethod(HAltaircam h, unsigned index, const char** ppMethod);
 
-ALTAIRCAM_API(HRESULT)  Altaircam_put_XY(HAltaircam h, int x, int y);
+/*
+ const char* pStrMethod;
+ unsigned index = 0;
+ do {
+     if (FAILED(Altaircam_get_BinningMethod(h, index, &pStrMethod)))
+         break;
+     ++index;
+ } while (1);
+*/
+ALTAIRCAM_API(HRESULT)  Altaircam_get_BinningMethod(HAltaircam h, unsigned index, const char** ppMethod);
 
 #define ALTAIRCAM_IOCONTROLTYPE_GET_SUPPORTEDMODE            0x01 /* 0x01 => Input, 0x02 => Output, (0x01 | 0x02) => support both Input and Output */
 #define ALTAIRCAM_IOCONTROLTYPE_GET_GPIODIR                  0x03 /* 0x00 => Input, 0x01 => Output */
@@ -1384,6 +1417,7 @@ typedef struct {
 ALTAIRCAM_API(HRESULT)  Altaircam_put_SelfTrigger(HAltaircam h, const AltaircamSelfTrigger* pSt);
 ALTAIRCAM_API(HRESULT)  Altaircam_get_SelfTrigger(HAltaircam h, AltaircamSelfTrigger* pSt);
 
+/* flash action */
 #define ALTAIRCAM_FLASH_SIZE      0x00    /* query total size */
 #define ALTAIRCAM_FLASH_EBLOCK    0x01    /* query erase block size */
 #define ALTAIRCAM_FLASH_RWBLOCK   0x02    /* query read/write block size */
@@ -1391,15 +1425,15 @@ ALTAIRCAM_API(HRESULT)  Altaircam_get_SelfTrigger(HAltaircam h, AltaircamSelfTri
 #define ALTAIRCAM_FLASH_READ      0x04    /* read */
 #define ALTAIRCAM_FLASH_WRITE     0x05    /* write */
 #define ALTAIRCAM_FLASH_ERASE     0x06    /* erase */
-/* Flash:
- action = ALTAIRCAM_FLASH_XXXX: read, write, erase, query total size, query read/write block size, query erase block size
+/* flash zone */
+#define ALTAIRCAM_FLASH_SENSOR    0x00    /* sensor */
+#define ALTAIRCAM_FLASH_USER      0x02    /* user */
+/*
+ action = (zone << 24) | ALTAIRCAM_FLASH_XXXX: read, write, erase, query total size, query read/write block size, query erase block size
  addr = address
  see democpp
 */
 ALTAIRCAM_API(HRESULT)  Altaircam_rwc_Flash(HAltaircam h, unsigned action, unsigned addr, unsigned len, void* pData);
-
-ALTAIRCAM_API(HRESULT)  Altaircam_write_UART(HAltaircam h, const unsigned char* pData, unsigned nDataLen);
-ALTAIRCAM_API(HRESULT)  Altaircam_read_UART(HAltaircam h, unsigned char* pBuffer, unsigned nBufferLen);
 
 /* Initialize support for GigE cameras. If online/offline notifications are not required, the callback function can be set to NULL */
 typedef void (__stdcall* PALTAIRCAM_HOTPLUG)(void* ctxHotPlug);
@@ -1449,17 +1483,6 @@ Recommendation: for better rubustness, when notify of device insertion arrives, 
 */
 #if !defined(_WIN32) && !defined(__ANDROID__)
 ALTAIRCAM_API(void)   Altaircam_HotPlug(PALTAIRCAM_HOTPLUG funHotPlug, void* ctxHotPlug);
-#endif
-
-ALTAIRCAM_API(unsigned) Altaircam_EnumWithName(AltaircamDeviceV2 pti[ALTAIRCAM_MAX]);
-ALTAIRCAM_API(HRESULT)  Altaircam_set_Name(HAltaircam h, const char* name);
-ALTAIRCAM_API(HRESULT)  Altaircam_query_Name(HAltaircam h, char name[64]);
-#if defined(_WIN32)
-ALTAIRCAM_API(HRESULT)  Altaircam_put_Name(const wchar_t* camId, const char* name);
-ALTAIRCAM_API(HRESULT)  Altaircam_get_Name(const wchar_t* camId, char name[64]);
-#else
-ALTAIRCAM_API(HRESULT)  Altaircam_put_Name(const char* camId, const char* name);
-ALTAIRCAM_API(HRESULT)  Altaircam_get_Name(const char* camId, char name[64]);
 #endif
 
 typedef struct {
@@ -1549,6 +1572,24 @@ ALTAIRCAM_API(const AltaircamModelV2**) Altaircam_all_Model(); /* return all sup
 ALTAIRCAM_API(const AltaircamModelV2*) Altaircam_query_Model(HAltaircam h);
 ALTAIRCAM_API(const AltaircamModelV2*) Altaircam_get_Model(unsigned short idVendor, unsigned short idProduct);
 
+ALTAIRCAM_API(HRESULT)  Altaircam_put_XY(HAltaircam h, int x, int y);
+
+ALTAIRCAM_API(HRESULT)  Altaircam_write_UART(HAltaircam h, const unsigned char* pData, unsigned nDataLen);
+ALTAIRCAM_API(HRESULT)  Altaircam_read_UART(HAltaircam h, unsigned char* pBuffer, unsigned nBufferLen);
+
+ALTAIRCAM_API(unsigned) Altaircam_EnumWithName(AltaircamDeviceV2 pti[ALTAIRCAM_MAX]);
+ALTAIRCAM_API(HRESULT)  Altaircam_set_Name(HAltaircam h, const char* name);
+ALTAIRCAM_API(HRESULT)  Altaircam_query_Name(HAltaircam h, char name[64]);
+#if defined(_WIN32)
+ALTAIRCAM_API(HRESULT)  Altaircam_put_Name(const wchar_t* camId, const char* name);
+ALTAIRCAM_API(HRESULT)  Altaircam_get_Name(const wchar_t* camId, char name[64]);
+ALTAIRCAM_API(HRESULT)  Altaircam_query_SerialNumber(const wchar_t* camId, char sn[32]);
+#else
+ALTAIRCAM_API(HRESULT)  Altaircam_put_Name(const char* camId, const char* name);
+ALTAIRCAM_API(HRESULT)  Altaircam_get_Name(const char* camId, char name[64]);
+ALTAIRCAM_API(HRESULT)  Altaircam_query_SerialNumber(const char* camId, char sn[32]);
+#endif
+
 /* firmware update:
     camId: camera ID
     filePath: ufw file full path
@@ -1637,7 +1678,6 @@ ALTAIRCAM_API(double)   Altaircam_calc_ClarityFactorV2(const void* pImageData, i
 */
 ALTAIRCAM_API(void)     Altaircam_deBayerV2(unsigned nFourCC, int nW, int nH, const void* pRaw, void* pRGB, unsigned char nBitDepth, unsigned char nBitCount);
 
-
 #ifndef __ALTAIRCAMFOCUSMOTOR_DEFINED__
 #define __ALTAIRCAMFOCUSMOTOR_DEFINED__
 typedef struct {
@@ -1714,8 +1754,7 @@ typedef PALTAIRCAM_DATA_CALLBACK_V3 PALTAIRCAM_DATA_CALLBACK_V2;
 ALTAIRCAM_DEPRECATED
 ALTAIRCAM_API(HRESULT)  Altaircam_StartPushModeV2(HAltaircam h, PALTAIRCAM_DATA_CALLBACK_V2 funData, void* ctxData);
 
-#if !defined(_WIN32)
-#ifndef __BITMAPINFOHEADER_DEFINED__
+#if !(defined(_WIN32) || defined(__BITMAPINFOHEADER_DEFINED__))
 #define __BITMAPINFOHEADER_DEFINED__
 typedef struct {
     unsigned        biSize;
@@ -1730,7 +1769,6 @@ typedef struct {
     unsigned        biClrUsed;
     unsigned        biClrImportant;
 } BITMAPINFOHEADER;
-#endif
 #endif
 
 typedef void (__stdcall* PALTAIRCAM_DATA_CALLBACK)(const void* pData, const BITMAPINFOHEADER* pHeader, int bSnap, void* ctxData);

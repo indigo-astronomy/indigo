@@ -103,7 +103,7 @@ static void start_worker_thread(int *client_socket) {
 	char c;
 	void *free_on_exit = NULL;
 	pthread_mutex_t *unlock_at_exit = NULL;
-	
+
 	if (recv(socket, &c, 1, MSG_PEEK) == 1) {
 		if (c == '<') {
 			INDIGO_TRACE(indigo_trace("%d <- // Protocol switched to XML", socket));
@@ -548,7 +548,7 @@ indigo_result indigo_server_start(indigo_server_tcp_callback callback) {
 		indigo_error("Can't bind server socket (%s)", strerror(errno));
 		return INDIGO_CANT_START_SERVER;
 	}
-	
+
 #ifdef INDIGO_LINUX
 	int val = 1;
 	if (setsockopt(server_socket, IPPROTO_TCP, TCP_NODELAY, &val, sizeof(val)) < 0) {
@@ -556,7 +556,7 @@ indigo_result indigo_server_start(indigo_server_tcp_callback callback) {
 		return INDIGO_CANT_START_SERVER;
 	}
 #endif
-	
+
 	unsigned int length = sizeof(server_address);
 	if (getsockname(server_socket, (struct sockaddr *)&server_address, &length) == -1) {
 		close(server_socket);
@@ -584,11 +584,17 @@ indigo_result indigo_server_start(indigo_server_tcp_callback callback) {
 			struct timeval timeout;
 			timeout.tv_sec = 0;
 			timeout.tv_usec = 0;
-			if (setsockopt(client_socket, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout)) < 0)
+			if (setsockopt(client_socket, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout)) < 0) {
 				indigo_error("Can't set recv() timeout (%s)", strerror(errno));
+			}
 			timeout.tv_sec = 5;
-			if (setsockopt(client_socket, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout, sizeof(timeout)) < 0)
+			if (setsockopt(client_socket, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout, sizeof(timeout)) < 0) {
 				indigo_error("Can't set send() timeout (%s)", strerror(errno));
+			}
+			reuse = 1;
+			if (setsockopt(client_socket, SOL_SOCKET,SO_REUSEADDR, (char *)&reuse, sizeof(reuse)) < 0) {
+				indigo_error("Can't setsockopt for client socket (%s)", strerror(errno));
+			}
 			int *pointer = indigo_safe_malloc(sizeof(int));
 			*pointer = client_socket;
 			if (!indigo_async((void *(*)(void *))&start_worker_thread, pointer))

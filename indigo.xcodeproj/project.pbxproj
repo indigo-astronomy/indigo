@@ -200,6 +200,8 @@
 		594EF31E2770FD5C002D0EC8 /* indigo_fits.c in Sources */ = {isa = PBXBuildFile; fileRef = 594EF3182770FD15002D0EC8 /* indigo_fits.c */; };
 		594F347E278E1739002F1B21 /* indigocat_star.c in Sources */ = {isa = PBXBuildFile; fileRef = 59A0772A21FE1C2F00244521 /* indigocat_star.c */; };
 		594F347F278E173A002F1B21 /* indigocat_star.c in Sources */ = {isa = PBXBuildFile; fileRef = 59A0772A21FE1C2F00244521 /* indigocat_star.c */; };
+		594FAB4A2EEEF32100F3AA7E /* libatikcameras.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 591B017021A49F3B006A1CD8 /* libatikcameras.dylib */; };
+		594FAB4B2EEEF32100F3AA7E /* libatikcameras.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 591B017021A49F3B006A1CD8 /* libatikcameras.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		5951E149235CDC0400D2DEF1 /* indigo_aux_usbdp.c in Sources */ = {isa = PBXBuildFile; fileRef = 5951E148235CDBD900D2DEF1 /* indigo_aux_usbdp.c */; };
 		59540AD526D00CCF000C2A1B /* indigo_aux_geoptikflat.h in Headers */ = {isa = PBXBuildFile; fileRef = 59540AD126D00CCF000C2A1B /* indigo_aux_geoptikflat.h */; };
 		59540AD626D00CCF000C2A1B /* indigo_aux_geoptikflat.c in Sources */ = {isa = PBXBuildFile; fileRef = 59540AD326D00CCF000C2A1B /* indigo_aux_geoptikflat.c */; };
@@ -1112,6 +1114,7 @@
 				59B348B229E85FA80062C2EA /* libSVBCameraSDK.dylib in Embed Libraries */,
 				59B348A829E85F8A0062C2EA /* libaltaircam.dylib in Embed Libraries */,
 				59B348B029E85F8B0062C2EA /* libmallincam.dylib in Embed Libraries */,
+				594FAB4B2EEEF32100F3AA7E /* libatikcameras.dylib in Embed Libraries */,
 				59B348B429E85FA80062C2EA /* libtoupcam.dylib in Embed Libraries */,
 				9D0829522C198698002166E1 /* libbressercam.dylib in Embed Libraries */,
 				9D0829532C198699002166E1 /* libdc1394.dylib in Embed Libraries */,
@@ -5137,6 +5140,7 @@
 				598A1C17259BA94A00C0B34C /* libcurl.tbd in Frameworks */,
 				598A1C18259BA94A00C0B34C /* libc++.tbd in Frameworks */,
 				596FCA922BD0320E00F5BACB /* libgxccd.a in Frameworks */,
+				594FAB4A2EEEF32100F3AA7E /* libatikcameras.dylib in Frameworks */,
 				598A1C19259BA94A00C0B34C /* libusb-1.0.0.dylib in Frameworks */,
 				59B348B329E85FA80062C2EA /* libtoupcam.dylib in Frameworks */,
 				9D74A5152D4B641600A31003 /* libCAA.a in Frameworks */,

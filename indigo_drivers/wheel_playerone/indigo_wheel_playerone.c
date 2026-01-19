@@ -23,7 +23,7 @@
  \file indigo_wheel_playerone.c
  */
 
-#define DRIVER_VERSION 0x0008
+#define DRIVER_VERSION 0x0009
 #define DRIVER_NAME "indigo_wheel_playerone"
 
 #define PONE_HANDLE_MAX 24
@@ -52,9 +52,15 @@
 
 #define PRIVATE_DATA        ((pone_private_data *)device->private_data)
 
-#define POA_CUSTOM_SUFFIX_PROPERTY     (PRIVATE_DATA->playerone_custom_suffix_property)
-#define POA_CUSTOM_SUFFIX_ITEM         (POA_CUSTOM_SUFFIX_PROPERTY->items+0)
-#define POA_CUSTOM_SUFFIX_NAME         "SUFFIX"
+#define POA_CUSTOM_SUFFIX_PROPERTY        (PRIVATE_DATA->playerone_custom_suffix_property)
+#define POA_CUSTOM_SUFFIX_ITEM            (POA_CUSTOM_SUFFIX_PROPERTY->items+0)
+#define POA_CUSTOM_SUFFIX_PROPERTY_NAME   "POA_CUSTOM_SUFFIX"
+#define POA_CUSTOM_SUFFIX_ITEM_NAME       "SUFFIX"
+
+#define POA_RESET_PROPERTY                (PRIVATE_DATA->playerone_reset_property)
+#define POA_RESET_ITEM                    (POA_RESET_PROPERTY->items+0)
+#define POA_RESET_PROPERTY_NAME           "POA_RESET"
+#define POA_RESET_ITEM_NAME               "RESET"
 
 // gp_bits is used as boolean
 #define is_connected                    gp_bits
@@ -67,6 +73,7 @@ typedef struct {
 	indigo_timer *wheel_timer;
 	pthread_mutex_t usb_mutex;
 	indigo_property *playerone_custom_suffix_property;
+	indigo_property *playerone_reset_property;
 } pone_private_data;
 
 
@@ -78,6 +85,7 @@ static void wheel_timer_callback(indigo_device *device) {
 	if (res != PW_OK && res != PW_ERROR_IS_MOVING) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetCurrentPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_handle, PRIVATE_DATA->current_slot, res);
 		WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		indigo_update_property(device, WHEEL_SLOT_PROPERTY, "Set filter failed");
 		return;
 	}
@@ -102,6 +110,7 @@ static void wheel_timer_callback(indigo_device *device) {
 static indigo_result wheel_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
 		indigo_define_matching_property(POA_CUSTOM_SUFFIX_PROPERTY);
+		indigo_define_matching_property(POA_RESET_PROPERTY);
 	}
 	return indigo_wheel_enumerate_properties(device, NULL, NULL);
 }
@@ -119,10 +128,17 @@ static indigo_result wheel_attach(indigo_device *device) {
 		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->model);
 
 		// --------------------------------------------------------------------------------- POA_CUSTOM_SUFFIX
-		POA_CUSTOM_SUFFIX_PROPERTY = indigo_init_text_property(NULL, device->name, "POA_CUSTOM_SUFFIX", WHEEL_MAIN_GROUP, "Device name custom suffix", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+		POA_CUSTOM_SUFFIX_PROPERTY = indigo_init_text_property(NULL, device->name, POA_CUSTOM_SUFFIX_PROPERTY_NAME, WHEEL_MAIN_GROUP, "Device name custom suffix", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (POA_CUSTOM_SUFFIX_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_text_item(POA_CUSTOM_SUFFIX_ITEM, POA_CUSTOM_SUFFIX_NAME, "Suffix", "");
+		indigo_init_text_item(POA_CUSTOM_SUFFIX_ITEM, POA_CUSTOM_SUFFIX_ITEM_NAME, "Suffix", "");
+
+		// --------------------------------------------------------------------------------- POA_RESET
+		POA_RESET_PROPERTY = indigo_init_switch_property(NULL, device->name, POA_RESET_PROPERTY_NAME, WHEEL_ADVANCED_GROUP, "Reset filter wheel", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
+		if (POA_RESET_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(POA_RESET_ITEM, POA_RESET_ITEM_NAME, "Reset", false);
+
 		// --------------------------------------------------------------------------------
 		return wheel_enumerate_properties(device, NULL, NULL);
 	}
@@ -181,6 +197,7 @@ static void wheel_connect_callback(indigo_device *device) {
 					res = POAGetPWCustomName(PRIVATE_DATA->dev_handle, POA_CUSTOM_SUFFIX_ITEM->text.value, INDIGO_NAME_SIZE);
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetPWCustomName(%d, -> '%s') = %d", PRIVATE_DATA->dev_handle, POA_CUSTOM_SUFFIX_ITEM->text.value, res);
 					indigo_define_property(device, POA_CUSTOM_SUFFIX_PROPERTY, NULL);
+					indigo_define_property(device, POA_RESET_PROPERTY, NULL);
 
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					device->is_connected = true;
@@ -197,6 +214,7 @@ static void wheel_connect_callback(indigo_device *device) {
 	} else {
 		if (device->is_connected) {
 			indigo_delete_property(device, POA_CUSTOM_SUFFIX_PROPERTY, NULL);
+			indigo_delete_property(device, POA_RESET_PROPERTY, NULL);
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 			int res = POAClosePW(PRIVATE_DATA->dev_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAClosePW(%d) = %d", PRIVATE_DATA->dev_handle, res);
@@ -217,6 +235,43 @@ static void wheel_connect_callback(indigo_device *device) {
 	indigo_wheel_change_property(device, NULL, CONNECTION_PROPERTY);
 }
 
+static void wheel_setfilter_callback(indigo_device *device) {
+	PRIVATE_DATA->target_slot = (int)WHEEL_SLOT_ITEM->number.value;
+	WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	int res = POAGotoPosition(PRIVATE_DATA->dev_handle, PRIVATE_DATA->target_slot-1);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGotoPosition(%d, %d) = %d", PRIVATE_DATA->dev_handle, PRIVATE_DATA->target_slot-1, res);
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	if (res != PW_OK) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGotoPosition(%d, %d) = %d", PRIVATE_DATA->dev_handle, PRIVATE_DATA->target_slot-1, res);
+		WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, WHEEL_SLOT_PROPERTY, "Set filter failed");
+		return;
+	}
+	indigo_set_timer(device, 0.5, wheel_timer_callback, &PRIVATE_DATA->wheel_timer);
+}
+
+static void wheel_reset_callback(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	int res = POAResetPW(PRIVATE_DATA->dev_handle);
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAResetPW(%d) = %d", PRIVATE_DATA->dev_handle, res);
+	POA_RESET_ITEM->sw.value = false;
+	if (res == PW_OK) {
+		POA_RESET_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, POA_RESET_PROPERTY, "Filter wheel reset successful, disconnecting...");
+		/* Disconnect the device after reset */
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+		wheel_connect_callback(device);
+	} else {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAResetPW(%d) = %d", PRIVATE_DATA->dev_handle, res);
+		POA_RESET_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, POA_RESET_PROPERTY, "Filter wheel reset failed");
+	}
+}
+
 static indigo_result wheel_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -232,6 +287,9 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(WHEEL_SLOT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- WHEEL_SLOT
+		if (WHEEL_SLOT_PROPERTY->state == INDIGO_BUSY_STATE || POA_RESET_PROPERTY->state == INDIGO_BUSY_STATE) {
+			return INDIGO_OK;
+		}
 		indigo_property_copy_values(WHEEL_SLOT_PROPERTY, property, false);
 		if (WHEEL_SLOT_ITEM->number.value < 1 || WHEEL_SLOT_ITEM->number.value > WHEEL_SLOT_ITEM->number.max) {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -239,17 +297,22 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
-			PRIVATE_DATA->target_slot = WHEEL_SLOT_ITEM->number.value;
-			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
-			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-			int res = POAGotoPosition(PRIVATE_DATA->dev_handle, PRIVATE_DATA->target_slot-1);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGotoPosition(%d, %d) = %d", PRIVATE_DATA->dev_handle, PRIVATE_DATA->target_slot-1, res);
-			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-			indigo_set_timer(device, 0.5, wheel_timer_callback, &PRIVATE_DATA->wheel_timer);
+			indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+			indigo_set_timer(device, 0, wheel_setfilter_callback, NULL);
+			return INDIGO_OK;
 		}
 		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 		return INDIGO_OK;
-			// ------------------------------------------------------------------------------- POA_CUSTOM_SUFFIX
+		// ------------------------------------------------------------------------------- POA_RESET
+	} else if (indigo_property_match_changeable(POA_RESET_PROPERTY, property)) {
+		indigo_property_copy_values(POA_RESET_PROPERTY, property, false);
+		if (POA_RESET_ITEM->sw.value) {
+			POA_RESET_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, POA_RESET_PROPERTY, NULL);
+			indigo_set_timer(device, 0, wheel_reset_callback, NULL);
+		}
+		return INDIGO_OK;
+		// ------------------------------------------------------------------------------- POA_CUSTOM_SUFFIX
 	} else if (indigo_property_match_changeable(POA_CUSTOM_SUFFIX_PROPERTY, property)) {
 		indigo_property_copy_values(POA_CUSTOM_SUFFIX_PROPERTY, property, false);
 		POA_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_OK_STATE;
@@ -290,6 +353,7 @@ static indigo_result wheel_detach(indigo_device *device) {
 	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	indigo_release_property(POA_CUSTOM_SUFFIX_PROPERTY);
+	indigo_release_property(POA_RESET_PROPERTY);
 	return indigo_wheel_detach(device);
 }
 

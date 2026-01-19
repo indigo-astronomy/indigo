@@ -23,7 +23,7 @@
  \file indigo_agent_alpaca.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME	"indigo_agent_alpaca"
 
 #include <stdlib.h>
@@ -376,7 +376,7 @@ static bool alpaca_v1_api_handler(int socket, char *method, char *path, char *pa
 		} else {
 			send_text_response(socket, path, 400, "Bad Request", "Unrecognised command");
 		}
-		
+
 	} else {
 		send_text_response(socket, path, 400, "Bad Request", "Invalid method");
 	}

@@ -1,6 +1,119 @@
 # Changelog
 
 All notable changes to INDIGO framework will be documented in this file.
+# [2.0-354] - 20 Dec Sat 2025
+## Overall:
+
+## New Drivers:
+- indigo_ccd_baccam:
+	- Baccam (Touptek OEM) camera driver added
+
+- indigo_ccd_meade:
+	- Meade (Touptek OEM) camera driver added
+
+
+## Driver Fixes:
+- indigo_agent_imager:
+	- add AGENT_IMAGER_DISK_USAGE
+
+- indigo_ccd_touptek & OEM:
+	- updated SDK v.59.30239.20251209
+
+- indigo_ccd_ptp:
+	- support Canon EOS R1 and R5 Mark II
+	- fixed an issue where shooting in RAM mode on older Canon cameras would not complete
+
+
+# [2.0-352] - 12 Dec Fri 2025
+## Overall:
+- indigo_ccd_driver:
+	- added new more robust placeholder for frame numbering %nI
+	- more permissive filename sanitization
+
+- indigo_docs:
+	- CCD_DRIVER_SAVED_IMAGES.md: document %nI placeholder
+
+# [2.0-350] - 27 Nov Thu 2025
+## Driver Fixes:
+- indigo_wheel_playerone:
+	- Updated to SDK v1.2.3
+
+- indigo_wheel_asi:
+	- Updated to SDK v.1.8.4
+
+- indigo_focuser_asi:
+	- Updated to SDK v.1.7.7
+
+- indigo_rotator_asi:
+	- Updated to SDK v.1.5.9
+
+# [2.0-348] - 21 Nov Fri 2025
+## Overall:
+- indigo_timer:
+	- use CLOCK_MONOTONIC for Linux
+
+- agents:
+	- INFO is mapped to [device]_DEVICE_INFO instead of [device]_INFO to avoid conflict with CCD_INFO in agents
+
+## Driver Fixes:
+- indigo_agent_mount:
+	- fix mount abort park and home
+
+- indigo_agent_imager:
+	- fix focuser abort
+
+- indigo_mount_lx200:
+	- add side of pier for losmandy Grmini
+
+- indigo_nexstar_aux:
+	- fix buffer overflow
+
+- indigo_ccd_ptp:
+	- Add support for Sony Alpha A7RIV and ZV-E10
+
+- indigo_mount_synscan:
+	- select call uses correct file descriptor count
+
+- indigo_ccd_asi:
+	- typo fix
+	- SDK updated to v.1.40
+
+- indigo_ccd_atik:
+	- SDK updated to 2025.06.30.2074, for macOS/Intel remains 2024.11.26.2038, driver is now multiarch on macOS
+
+# [2.0-346] - 21 Oct Tue 2025
+## Overall:
+- indigo_ccd_driver:
+	- fixed bad no stretching inmage
+	- add linked stretching
+	- fix binning (%B) placeholder in filenames
+
+- indigo_timer:
+	- add null check for DEVICE_CONTEXT in timer logic
+
+- indigo_io: better connection handling
+
+- indigo_stretch: fix indigo_debayer 8-bit scaling
+
+## Driver Fixes:
+- indigo_ccd_playerone:
+	- add workaround for WB remapming issue introdiced in sdk 3.9.0 (fixed in 3.9.1 but I: prefer to keepp it)
+	- update SDK to v. 3.9.1
+
+- indigo_aux_upb3:
+	- use correct outlet names for USB ports 7 and 8
+	- support new response for power outlet state
+
+- indigo_focuser_mypro2:
+	- fix focuser position overflow and remove sleep before reading the response
+
+- indigo_wheel_playerone:
+	- fix mutex unlock before updating wheel slot property
+
+- indigo_mount_lx200:
+	- AstroPhysics reply to :SC# handling fixed
+
+
 # [2.0-344] - 21 Sep Sun 2025
 ## Overall:
 - indigo_ccd_driver:

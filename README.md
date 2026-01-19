@@ -142,6 +142,8 @@ This is the list of requirements taken into the consideration:
 112. Optec FocusLynx focuser driver
 113. PegasusAstro FocusCube3 driver
 114. Lacerta LACERTA Motorfocus driver
+115. Baccam (Touptek OEM) camera driver
+116. Meade (Touptek OEM) camera driver
 
 ## This is under development
 1. a-Box Adaptive optics driver
