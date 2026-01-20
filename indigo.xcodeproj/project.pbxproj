@@ -5110,11 +5110,7 @@
 				598A1C17259BA94A00C0B34C /* libcurl.tbd in Frameworks */,
 				598A1C18259BA94A00C0B34C /* libc++.tbd in Frameworks */,
 				596FCA922BD0320E00F5BACB /* libgxccd.a in Frameworks */,
-<<<<<<< HEAD
-				9D84A67E2ECC5C0300E81FDB /* libatikcameras.dylib in Frameworks */,
-=======
 				594FAB4A2EEEF32100F3AA7E /* libatikcameras.dylib in Frameworks */,
->>>>>>> master
 				598A1C19259BA94A00C0B34C /* libusb-1.0.0.dylib in Frameworks */,
 				59B348B329E85FA80062C2EA /* libtoupcam.dylib in Frameworks */,
 				9D74A5152D4B641600A31003 /* libCAA.a in Frameworks */,

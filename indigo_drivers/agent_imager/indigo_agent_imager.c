@@ -3787,6 +3787,9 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 				break;
 			}
 		}
+		if (DEVICE_PRIVATE_DATA->streaming_state == INDIGO_BUSY_STATE && property->state != INDIGO_BUSY_STATE) {
+			setup_download(FILTER_CLIENT_CONTEXT->device);
+		}
 		DEVICE_PRIVATE_DATA->streaming_state = property->state;
 	} else if (!strcmp(property->name, CCD_FRAME_TYPE_PROPERTY_NAME)) {
 		DEVICE_PRIVATE_DATA->light_frame = true;
@@ -3845,7 +3848,9 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 		indigo_execute_handler(FILTER_CLIENT_CONTEXT->device, disk_usage_timer_callback);
 		setup_download(FILTER_CLIENT_CONTEXT->device);
 	} else if (!strcmp(property->name, CCD_IMAGE_FILE_PROPERTY_NAME)) {
-		 setup_download(FILTER_CLIENT_CONTEXT->device);
+		if (property->state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->streaming_state != INDIGO_BUSY_STATE) {
+			setup_download(FILTER_CLIENT_CONTEXT->device);
+		}
 	} else if (!strcmp(property->name, FILTER_AUX_1_LIST_PROPERTY_NAME)) { // Snoop AUX_1 ...
 		if (!INDIGO_FILTER_AUX_1_SELECTED) {
 			DEVICE_PRIVATE_DATA->use_aux_1 = false;
