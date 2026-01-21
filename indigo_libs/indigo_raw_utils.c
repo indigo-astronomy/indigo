@@ -874,7 +874,8 @@ indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void
 	*/
 	digest->centroid_x = *x = cs + m10 / m00 - 0.5;
 	digest->centroid_y = *y = ls + m01 / m00 - 0.5;
-	digest->snr = sqrt(m00);
+	digest->snr = (stddev > 0) ? (m00 / stddev) : sqrt(m00);
+	digest->lunminance = m00;
 	digest->algorithm = centroid;
 	INDIGO_DEBUG(indigo_debug("indigo_selection_frame_digest: centroid = [%5.2f, %5.2f], signal = %.3f, stddev_noise = %.3f, SNR = %3f", digest->centroid_x, digest->centroid_y, m00, stddev, digest->snr));
 	return INDIGO_OK;
@@ -1056,6 +1057,7 @@ indigo_result indigo_centroid_frame_digest(indigo_raw_type raw_type, const void 
 	digest->centroid_x = m10 / m00 - 0.5;
 	digest->centroid_y = m01 / m00 - 0.5;
 	digest->snr = sqrt(m00);
+	digest->lunminance = m00;
 	digest->algorithm = centroid;
 	//INDIGO_DEBUG(indigo_debug("indigo_centroid_frame_digest: centroid = [%5.2f, %5.2f]", digest->centroid_x, digest->centroid_y));
 	return INDIGO_OK;
@@ -1455,6 +1457,7 @@ indigo_result indigo_donuts_frame_digest_clipped(indigo_raw_type raw_type, const
 	digest->snr = (calculate_donuts_snr(digest->fft_x, digest->width) + calculate_donuts_snr(digest->fft_y, digest->height)) / 2.0;
 	INDIGO_DEBUG(indigo_debug("Donuts: FFT SNR = %g", digest->snr));
 
+	digest->lunminance = 0;
 	digest->algorithm = donuts;
 	free(col_x);
 	free(col_y);
@@ -2151,6 +2154,7 @@ indigo_result indigo_reduce_multistar_digest(const indigo_frame_digest *avg_ref,
 	digest->width = new_digest[0].width;
 	digest->height = new_digest[0].height;
 	digest->snr = new_digest[0].snr;
+	digest->lunminance = 0;
 	digest->centroid_x = avg_ref->centroid_x;
 	digest->centroid_y = avg_ref->centroid_y;
 
@@ -2213,6 +2217,7 @@ indigo_result indigo_reduce_weighted_multistar_digest(const indigo_frame_digest 
 	digest->width = new_digest[0].width;
 	digest->height = new_digest[0].height;
 	digest->snr = new_digest[0].snr;
+	digest->lunminance = 0;
 	digest->centroid_x = avg_ref->centroid_x;
 	digest->centroid_y = avg_ref->centroid_y;
 
@@ -2491,7 +2496,7 @@ indigo_result indigo_find_stars_precise_threshold(indigo_raw_type raw_type, cons
 					}
 					double robust_std = mad * 1.4826;
 					threshold = (uint32_t)(median_value + stddev_threshold_factor * robust_std);
-					indigo_debug("%s(): robust median = %.2f, MAD = %d, robust_std = %.2f, star detection threshold = %u", __FUNCTION__, (double)median_value, mad, robust_std, threshold);
+					indigo_error("%s(): robust median = %.2f, MAD = %d, robust_std = %.2f, star detection threshold = %u", __FUNCTION__, (double)median_value, mad, robust_std, threshold);
 					free(dev_hist);
 					free(hist);
 				}
@@ -2513,57 +2518,78 @@ indigo_result indigo_find_stars_precise_threshold(indigo_raw_type raw_type, cons
 
 	int threshold_hist = threshold * 0.9;
 
-	int found = 0;
 	int width2 = width / 2;
 	int height2 = height / 2;
-	uint32_t lmax = threshold + 1;
-
-	indigo_star_detection star = { 0 };
 	int divider = (width > height) ? height2 : width2;
-	while (lmax > threshold) {
-		lmax = threshold;
-		star.x = 0;
-		star.y = 0;
+
+	/* First pass: Find all local maxima above threshold in one scan
+	   This replaces the inefficient repeated global maximum search */
+	typedef struct {
+		int x;
+		int y;
+		uint32_t value;
+	} local_maximum;
+
+	// Allocate space for potential maxima (worst case: every clipped pixel)
+	int max_candidates = (clip_width - clip_edge) * (clip_height - clip_edge);
+	local_maximum *candidates = indigo_safe_malloc(max_candidates * sizeof(local_maximum));
+	int num_candidates = 0;
+
+	// Single pass to find all local maxima
+	for (int j = clip_edge; j < clip_height; j++) {
+		for (int i = clip_edge; i < clip_width; i++) {
+			int off = j * width + i;
+			if (
+				buf[off] > threshold &&
+				/* also check median of the neighbouring pixels to avoid hot pixels and lines */
+				median3(buf[off - 1], buf[off], buf[off + 1]) > threshold &&
+				median3(buf[off - width], buf[off], buf[off + width]) > threshold &&
+				median3(buf[off - width - 1], buf[off], buf[off + width + 1]) > threshold &&
+				median3(buf[off - width + 1], buf[off], buf[off + width - 1]) > threshold
+			) {
+				/* Store this local maximum candidate */
+				candidates[num_candidates].x = i;
+				candidates[num_candidates].y = j;
+				candidates[num_candidates].value = buf[off];
+				num_candidates++;
+			}
+		}
+	}
+
+	indigo_debug("%s(): found %d local maxima candidates", __FUNCTION__, num_candidates);
+
+	/* Sort candidates by brightness (descending) */
+	for (int i = 0; i < num_candidates - 1; i++) {
+		for (int j = i + 1; j < num_candidates; j++) {
+			if (candidates[j].value > candidates[i].value) {
+				local_maximum temp = candidates[i];
+				candidates[i] = candidates[j];
+				candidates[j] = temp;
+			}
+		}
+	}
+
+	/* Now iterate through sorted candidates and process each star */
+	int found = 0;
+	indigo_star_detection star = { 0 };
+
+	for (int c = 0; c < num_candidates && found < stars_max; c++) {
+		int star_x = candidates[c].x;
+		int star_y = candidates[c].y;
+		int off = star_y * width + star_x;
+
+		/* Skip if this pixel was already cleared (part of previously processed star) */
+		if (buf[off] == 0 || buf[off] <= threshold) {
+			continue;
+		}
+
+		uint32_t lmax = buf[off];
+		star.x = star_x;
+		star.y = star_y;
 		star.nc_distance = 0;
 		star.luminance = 0;
 		star.oversaturated = 0;
 
-		for (int j = clip_edge; j < clip_height; j++) {
-			for (int i = clip_edge; i < clip_width; i++) {
-				int off = j * width + i;
-				if (
-					buf[off] > lmax &&
-					/* also check median of the neighbouring pixels to avoid hot pixels and lines */
-					median3(buf[off - 1], buf[off], buf[off + 1]) > threshold &&
-					median3(buf[off - width], buf[off], buf[off + width]) > threshold &&
-					median3(buf[off - width - 1], buf[off], buf[off + width + 1]) > threshold &&
-					median3(buf[off - width + 1], buf[off], buf[off + width - 1]) > threshold
-				) {
-					/* Require strict local maximum in 3x3 or 5x5 */
-					/*
-					int neigh = (radius >= 3) ? 2 : 1; // 2 => 5x5, 1 => 3x3
-					bool strict_max = true;
-					for (int dy = -neigh; dy <= neigh && strict_max; dy++) {
-						for (int dx = -neigh; dx <= neigh; dx++) {
-							if (dx == 0 && dy == 0) continue;
-							int yy = j + dy;
-							int xx = i + dx;
-							if (yy < 0 || yy >= height || xx < 0 || xx >= width) continue;
-							if (buf[yy * width + xx] >= buf[off]) {
-								strict_max = false;
-								break;
-							}
-						}
-					}
-					if (!strict_max) continue;
-					*/
-					/* Accept strict local maximum */
-					lmax = buf[off];
-					star.x = i;
-					star.y = j;
-				}
-			}
-		}
 		if (lmax > threshold) {
 			double luminance = 0;
 			int min_i = MAX(0, star.x - star_size);
@@ -2690,10 +2716,9 @@ indigo_result indigo_find_stars_precise_threshold(indigo_raw_type raw_type, cons
 				star_list[found++] = star;
 			}
 		}
-		if (found >= stars_max) {
-			break;
-		}
 	}
+
+	free(candidates);
 	free(buf);
 
 	qsort(star_list, found, sizeof(indigo_star_detection), luminance_comparator);
@@ -2715,7 +2740,7 @@ indigo_result indigo_find_stars_precise_threshold(indigo_raw_type raw_type, cons
 	);
 
 	*stars_found = found;
-	indigo_error("%s: found %d stars\n", __FUNCTION__, found);
+	indigo_error("%s: found %d stars with thresshold %.1f\n", __FUNCTION__, found, stddev_threshold_factor);
 	return INDIGO_OK;
 }
 
