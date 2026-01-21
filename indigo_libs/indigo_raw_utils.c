@@ -2351,6 +2351,7 @@ static int local_maximum_comparator(const void *a, const void *b) {
 	return 0;
 }
 
+
 indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *data, const uint16_t radius, const int width, const int height, const int stars_max, indigo_star_detection star_list[], int *stars_found) {
 	return indigo_find_stars_precise_threshold(raw_type, data, radius, FIND_STAR_MEDIAN_THRESHOLD_FACTOR, width, height, stars_max, star_list, stars_found);
 }
@@ -2538,10 +2539,12 @@ indigo_result indigo_find_stars_precise_threshold(indigo_raw_type raw_type, cons
 	/* First pass: Find all local maxima above threshold in one scan
 	   This replaces the inefficient repeated global maximum search */
 
-	// Allocate space for potential maxima (worst case: every clipped pixel)
-	int max_candidates = (clip_width - clip_edge) * (clip_height - clip_edge);
-	local_maximum *candidates = indigo_safe_malloc(max_candidates * sizeof(local_maximum));
-	int num_candidates = 0;
+	 /* Use a dynamically resizing buffer for candidates.
+		 Start with capacity = 2 * stars_max (fallback to 16 when stars_max==0)
+		 and double the capacity when full. */
+	 int cap = stars_max > 0 ? (2 * stars_max) : 16;
+	 local_maximum *candidates = indigo_safe_malloc(cap * sizeof(local_maximum));
+	 int num_candidates = 0;
 
 	// Single pass to find all local maxima
 	for (int j = clip_edge; j < clip_height; j++) {
@@ -2597,19 +2600,32 @@ indigo_result indigo_find_stars_precise_threshold(indigo_raw_type raw_type, cons
 					neighbors_above += (buf[off + width + 1] > local_threshold) ? 1 : 0;
 
 					/* Require at least 4 out of 8 neighbors above threshold to avoid hot pixels */
-					if (neighbors_above >= 4) {
-						/* Store this local maximum candidate */
-						candidates[num_candidates].x = i;
-						candidates[num_candidates].y = j;
-						candidates[num_candidates].value = center - local_background;
-						num_candidates++;
+					if (neighbors_above >= 6) {
+						/* Append candidate; grow buffer if necessary. Value is background-subtracted. */
+						local_maximum item;
+						item.x = i;
+						item.y = j;
+						item.value = center - local_background;
+						if (num_candidates >= cap) {
+							int new_cap = cap * 2;
+							local_maximum *tmp = (local_maximum *)realloc(candidates, (size_t)new_cap * sizeof(local_maximum));
+							if (tmp) {
+								candidates = tmp;
+								cap = new_cap;
+							} else {
+								indigo_error("%s(): candidates realloc to %d failed", __FUNCTION__, new_cap);
+								/* if realloc fails, keep current buffer and skip adding this item */
+								continue;
+							}
+						}
+						candidates[num_candidates++] = item;
 					}
 				}
 			}
 		}
 	}
 
-	indigo_error("%s(): found %d local maxima candidates", __FUNCTION__, num_candidates);
+	indigo_error("%s(): found %d local maxima candidates (cap = %d, size = %d)", __FUNCTION__, num_candidates, cap, cap * sizeof(local_maximum));
 
 	/* Sort candidates by brightness (descending) using qsort */
 	if (num_candidates > 1) {
@@ -2668,7 +2684,7 @@ indigo_result indigo_find_stars_precise_threshold(indigo_raw_type raw_type, cons
 				for (int i = 0; i < found; i++) {
 					double dx = fabs(star_list[i].x - star.x);
 					double dy = fabs(star_list[i].y - star.y);
-					if (dx < 1 && dy < 1) {
+					if (dx < 3 && dy < 3) {
 						/* The star (probably artifact) is a duplicate of another star.
 						 We mark the other star as being close to another one, so it
 						 won't be used automatically, and we skip the duplicate. */
