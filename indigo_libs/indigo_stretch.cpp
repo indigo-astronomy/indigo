@@ -225,6 +225,12 @@ template <typename T> void indigo_compute_stretch_params(const T *buffer, int wi
 	} else {
 		*midtones = ((M - 1) * X) / ((2 * M - 1) * X - M);
 	}
+	// Limit the range of the midtones to prevent complete blackout when overexposure causes k1 to equal 0
+	if (*midtones > 0.99f) {
+		*midtones = 0.99f;
+	} else if (*midtones < 0.01f) {
+		*midtones = 0.01f;
+	}
 }
 
 
