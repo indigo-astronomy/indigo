@@ -2677,12 +2677,12 @@ indigo_result indigo_find_stars_precise_threshold(indigo_raw_type raw_type, cons
 		/* Check if the star is a duplicate (probably artifact) or is in close proximity to another one.
 		   In both cses these stars should not be used */
 		if (res == INDIGO_OK || radius < 3) {
-			double min_distance_sqr = (radius > 3) ? (radius * radius) : 9; /* minimum distance between stars */
+			double min_distance_sqr = 4 * radius * radius; /* minimum distance between stars */
 			for (int i = 0; i < found; i++) {
 				double dx = fabs(star_list[i].x - star.x);
 				double dy = fabs(star_list[i].y - star.y);
 				double distance_sqr = dx * dx + dy * dy;
-				if (distance_sqr < 2) {
+				if (distance_sqr < 4) {
 					/* The star (probably artifact) is a duplicate of another star.
 						We mark the other star as being close to another one, so it
 						won't be used automatically, and we skip the duplicate. */
