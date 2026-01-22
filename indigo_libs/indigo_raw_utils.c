@@ -2317,6 +2317,7 @@ indigo_result indigo_delete_frame_digest(indigo_frame_digest *fdigest) {
 static const double FIND_STAR_EDGE_CLIPPING = 20;
 static const double FIND_STAR_MEAN_THRESHOLD_FACTOR = 4.5;
 static const double FIND_STAR_MEDIAN_THRESHOLD_FACTOR = 5.0;
+static const int    STAR_CANDIDATE_BUFFER_CAP = 512;
 
 static int luminance_comparator(const void *item_1, const void *item_2) {
 	if (((indigo_star_detection *)item_1)->luminance < ((indigo_star_detection *)item_2)->luminance)
@@ -2529,8 +2530,8 @@ indigo_result indigo_find_stars_precise_threshold(indigo_raw_type raw_type, cons
 		}
 	}
 
-	int cap = stars_max > 0 ? (2 * stars_max) : 16;
-	local_maximum *candidates = indigo_safe_malloc(cap * sizeof(local_maximum));
+	int candidates_cap = stars_max > STAR_CANDIDATE_BUFFER_CAP ? (stars_max) : STAR_CANDIDATE_BUFFER_CAP;
+	local_maximum *candidates = indigo_safe_malloc(candidates_cap * sizeof(local_maximum));
 	int num_candidates = 0;
 
 	// Find all local maxima
@@ -2606,14 +2607,14 @@ indigo_result indigo_find_stars_precise_threshold(indigo_raw_type raw_type, cons
 							indigo_delete_frame_digest(&digest);
 						}
 
-						if (num_candidates >= cap) {
-							int new_cap = cap * 2;
-							local_maximum *tmp = (local_maximum *)realloc(candidates, (size_t)new_cap * sizeof(local_maximum));
+						if (num_candidates >= candidates_cap) {
+							int new_candidates_cap = candidates_cap * 2;
+							local_maximum *tmp = (local_maximum *)realloc(candidates, (size_t)new_candidates_cap * sizeof(local_maximum));
 							if (tmp) {
 								candidates = tmp;
-								cap = new_cap;
+								candidates_cap = new_candidates_cap;
 							} else {
-								indigo_error("%s(): candidates realloc to %d failed", __FUNCTION__, new_cap);
+								indigo_error("%s(): candidates realloc to %d failed", __FUNCTION__, new_candidates_cap);
 								/* if realloc fails, keep current buffer and skip adding this item */
 								break;
 							}
@@ -2625,7 +2626,7 @@ indigo_result indigo_find_stars_precise_threshold(indigo_raw_type raw_type, cons
 		}
 	}
 
-	indigo_debug("%s(): found %d star candidates (cap = %d, size = %d)", __FUNCTION__, num_candidates, cap, cap * sizeof(local_maximum));
+	indigo_error("%s(): found %d star candidates (capacity = %d, size = %d)", __FUNCTION__, num_candidates, candidates_cap, candidates_cap * sizeof(local_maximum));
 
 	/* Sort candidates by brightness (descending) */
 	if (num_candidates > 1) {
