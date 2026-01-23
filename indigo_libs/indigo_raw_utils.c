@@ -2817,8 +2817,8 @@ indigo_result indigo_make_psf_map(indigo_raw_type image_raw_type, const void *im
 	for (int i = 0; i < total_stars; i++) {
 		indigo_star_detection *star = stars + i;
 		if (star->oversaturated || star->close_to_other) {
-  continue;
-}
+			continue;
+		}
 		double star_fwhm, star_hfd, star_peak;
 		indigo_selection_psf(image_raw_type, image_data, star->x, star->y, radius, image_width, image_height, &star_fwhm, &star_hfd, &star_peak);
 		star->x /= map_scale; // scale to map coordimates
