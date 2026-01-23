@@ -2626,7 +2626,7 @@ indigo_result indigo_find_stars_precise_threshold(indigo_raw_type raw_type, cons
 		}
 	}
 
-	indigo_error("%s(): found %d star candidates (capacity = %d, size = %d)", __FUNCTION__, num_candidates, candidates_cap, candidates_cap * sizeof(local_maximum));
+	indigo_debug("%s(): found %d star candidates (capacity = %d)", __FUNCTION__, num_candidates, candidates_cap);
 
 	/* Sort candidates by brightness (descending) */
 	if (num_candidates > 1) {
