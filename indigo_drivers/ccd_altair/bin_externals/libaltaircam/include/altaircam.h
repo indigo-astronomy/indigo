@@ -1,7 +1,7 @@
 ﻿#ifndef __altaircam_h__
 #define __altaircam_h__
 
-/* Version: 59.30281.20251214 */
+/* Version: 59.30594.20260120 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -44,10 +44,8 @@
         (c) Exception: hardware binning.
 */
 
-#if defined(_WIN32)
-#ifndef _INC_WINDOWS
+#if defined(_WIN32) && (!defined(_INC_WINDOWS))
 #include <windows.h>
-#endif
 #endif
 
 #ifdef __cplusplus
@@ -194,6 +192,8 @@ typedef struct Altaircam_t { int unused; } *HAltaircam;
 #define ALTAIRCAM_FLAG_USB32                0x0400000000000000  /* USB 3.2 Gen 2 */
 #define ALTAIRCAM_FLAG_USB32_OVER_USB30     0x0800000000000000  /* USB 3.2 Gen 2 camera connected to usb3.0 port */
 #define ALTAIRCAM_FLAG_LINESCAN             0x1000000000000000  /* line scan camera */
+#define ALTAIRCAM_FLAG_25GIGE               0x2000000000000000  /* 2.5 Gigabit GigE */
+#define ALTAIRCAM_FLAG_RAW14PACK            0x4000000000000000  /* pixel format, RAW 14bits packed */
 
 #define ALTAIRCAM_EXPOGAIN_DEF              100     /* exposure gain, default value */
 #define ALTAIRCAM_EXPOGAIN_MIN              100     /* exposure gain, minimum value */
@@ -329,7 +329,7 @@ typedef struct {
 } AltaircamDeviceV2; /* device instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 59.30281.20251214
+    get the version of this dll/so/dylib, which is: 59.30594.20260120
 */
 #if defined(_WIN32)
 ALTAIRCAM_API(const wchar_t*)   Altaircam_Version();
@@ -1255,6 +1255,7 @@ ALTAIRCAM_API(HRESULT)  Altaircam_get_Option(HAltaircam h, unsigned iOption, int
 #define ALTAIRCAM_PIXELFORMAT_HDR12HL           0x11   /* HDR, Bitdepth: 12, Conversion Gain: High + Low */
 #define ALTAIRCAM_PIXELFORMAT_HDR14HL           0x12   /* HDR, Bitdepth: 14, Conversion Gain: High + Low */
 #define ALTAIRCAM_PIXELFORMAT_RAW10PACK         0x13
+#define ALTAIRCAM_PIXELFORMAT_RAW14PACK         0x14
 
 /*
 * cmd: input
@@ -1834,7 +1835,7 @@ ALTAIRCAM_API(HRESULT)  Altaircam_get_VignetAmountInt(HAltaircam h, int* nAmount
 ALTAIRCAM_API(HRESULT)  Altaircam_put_VignetMidPointInt(HAltaircam h, int nMidPoint);
 ALTAIRCAM_API(HRESULT)  Altaircam_get_VignetMidPointInt(HAltaircam h, int* nMidPoint);
 
-/* obsolete flags */
+/* obsolete pixel format alias */
 #define ALTAIRCAM_FLAG_BITDEPTH10    ALTAIRCAM_FLAG_RAW10  /* pixel format, RAW 10bits */
 #define ALTAIRCAM_FLAG_BITDEPTH12    ALTAIRCAM_FLAG_RAW12  /* pixel format, RAW 12bits */
 #define ALTAIRCAM_FLAG_BITDEPTH14    ALTAIRCAM_FLAG_RAW14  /* pixel format, RAW 14bits */

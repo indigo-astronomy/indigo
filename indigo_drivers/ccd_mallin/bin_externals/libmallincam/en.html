@@ -7,7 +7,7 @@
 <body>
 <h1 align="center">Mallincam API Manual</h1>
 <hr/><h1><font color="#0000FF">1. Version &amp; Platform</font></h1>
-<hr/><ul><li>Version: 59.30281.20251214</li></ul>
+<hr/><ul><li>Version: 59.30594.20260120</li></ul>
 <ul><li>Platform<ul>
       <li>Win32:<ul>
           <li>x64: Win7 or above</li>
@@ -272,7 +272,7 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
 	The timeout is recommended for not less than (Exposure Time * 102% + 4 Seconds).
 	</blockquote>
 <h2><font color="#0000FF">g. Thread safe</font></h2>
-<p>We use a "neutral" policy (similar to C++ standard library), which means:</p>
+<p>We use a "thread-safety neutral" policy (similar to C++ standard library), which means:</p>
 <blockquote>
 <p>a) A camera object is thread-safe for reading from multiple threads. For example, given a camera object A, it is safe to read A from thread 1 and from thread 2 simultaneously.</p>
 <p>b) If a camera object is being written to by one thread, then all reads and writes to that object on the same or other threads must be protected. For example, given a camera object A, if thread 1 is writing to A, then thread 2 must be prevented from reading from or writing to A.</p>
@@ -442,7 +442,7 @@ typedef struct {
    <td width="8%">name</td>
    <td colspan="2">The name of this model</td>
    </tr><tr>
-   <td width="8%" rowspan="60">flag</td>
+   <td width="8%" rowspan="62">flag</td>
    <td colspan="2">Bitwise flag</td>
    </tr><tr>
    <td width="29%">MALLINCAM_FLAG_CMOS</td>
@@ -504,6 +504,9 @@ typedef struct {
  </tr><tr>
    <td>MALLINCAM_FLAG_RAW14</td>
    <td>MALLINCAM_PIXELFORMAT_RAW14 Pixel format, RAW 14 bits</td>
+ </tr>tr>
+   <td>MALLINCAM_FLAG_RAW14PACK</td>
+   <td>MALLINCAM_PIXELFORMAT_RAW14PACK Pixel format, RAW 14 bits, packed</td>
  </tr><tr>
    <td>MALLINCAM_FLAG_RAW16</td>
    <td>MALLINCAM_PIXELFORMAT_RAW16 Pixel format, RAW 16 bits</td>
@@ -591,11 +594,14 @@ typedef struct {
     <td>MALLINCAM_FLAG_GIGE</td>
     <td>1 Gigabit GigE</td>
   </tr><tr>
-    <td>MALLINCAM_FLAG_10GIGE</td>
-    <td>10 Gigabit GigE</td>
+    <td>MALLINCAM_FLAG_25GIGE</td>
+    <td>2.5 Gigabit GigE</td>
   </tr><tr>
     <td>MALLINCAM_FLAG_5GIGE</td>
     <td>5 Gigabit GigE</td>
+  </tr><tr>
+    <td>MALLINCAM_FLAG_10GIGE</td>
+    <td>10 Gigabit GigE</td>
   </tr><tr>
     <td>MALLINCAM_FLAG_40GIGE</td>
     <td>40 Gigabit GigE</td>
@@ -2392,7 +2398,7 @@ public bool Snap(uint nResolutionIndex)
       </tr><tr>
 		<td colspan="2">demosimplest</td>
 		<td rowspan="12">Win32<br/>Linux<br/>macOS<br/>Android</td>
-		<td rowspan="23">C++</td><td rowspan="12">&nbsp;</td>
+		<td rowspan="24">C++</td><td rowspan="12">&nbsp;</td>
 		<td rowspan="12">console</td>
 		<td>simplest sample, about 70 lines of code. <a href="./images/demosimplest.png">snapshot</a>.</td>
 	  </tr><tr>
@@ -2430,12 +2436,15 @@ public bool Snap(uint nResolutionIndex)
 		<td>snap still raw image and save to *.raw files, about 140 lines of code</td>
 	  </tr><tr>
 		<td colspan="2">demoqt</td>
-		<td rowspan="2">Win32<br/>Linux<br/>macOS</td>
-		<td rowspan="2">Qt</td><td rowspan="18">GUI</td>
+		<td rowspan="3">Win32<br/>Linux<br/>macOS</td>
+		<td rowspan="3">Qt</td><td rowspan="19">GUI</td>
 		<td>Qt sample, <a href="./images/demoqt.png">snapshot</a>.<br/>Enumerate device, open device, video preview, (still) image capture, preview resolution, image save to file, etc. This sample use Pull Mode, StartPullModeWithCallback.</td>
 	  </tr><tr>
 		<td colspan="2">demotwoqt</td>
 		<td>Qt sample, <a href="./images/demotwoqt.png">snapshot</a>.<br/>Use two cameras simultaneously</td>
+	  </tr><tr>
+		<td colspan="2">demolinecam</td>
+		<td>Qt sample.<br/>line scan camera</td>
 	  </tr><tr>
 		<td colspan="2">democpp</td><td rowspan="9">Win32</td>
 		<td rowspan="6">ATL/<a href="http://sourceforge.net/projects/wtl" target="_blank">WTL</a></td>

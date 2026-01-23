@@ -64,6 +64,7 @@ typedef struct {
 	int width;
 	int height;
 	double snr;
+	double lunminance;
 	union {
 		double (*fft_x)[2];
 		double centroid_x;
