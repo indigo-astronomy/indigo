@@ -2675,29 +2675,35 @@ indigo_result indigo_find_stars_precise_threshold(indigo_raw_type raw_type, cons
 		}
 
 		/* Check if the star is a duplicate (probably artifact) or is in close proximity to another one.
-		   In both cses these stars should not be used */
+		   Duplicates are removed, close stars are kept but marked. */
 		if (res == INDIGO_OK || radius < 3) {
 			double min_distance_sqr = 4 * radius * radius; /* minimum distance between stars */
+			/* First, check for duplicates */
 			for (int i = 0; i < found; i++) {
 				double dx = fabs(star_list[i].x - star.x);
 				double dy = fabs(star_list[i].y - star.y);
 				double distance_sqr = dx * dx + dy * dy;
 				if (distance_sqr < 4) {
-					/* The star (probably artifact) is a duplicate of another star.
-						We mark the other star as being close to another one, so it
-						won't be used automatically, and we skip the duplicate. */
+					/* The star is a duplicate of another star. We skip the duplicate and keep the first star. */
 					indigo_debug("indigo_find_stars(): star (%lf, %lf) skipped, duplicate of #%u = (%lf, %lf)", star.x, star.y, i + 1, star_list[i].x, star_list[i].y);
-					star_list[i].close_to_other = false;
 					res = INDIGO_FAILED;
 					break;
-				} else if (distance_sqr < min_distance_sqr) {
-					/* The star is too close to another star.
-						We mark both star as being close to another one, so they
-						won't be used automatically but we keep both stars in the list. */
-					indigo_debug("indigo_find_stars(): star (%lf, %lf), too close to #%u = (%lf, %lf)", star.x, star.y, i + 1, star_list[i].x, star_list[i].y);
-					star.close_to_other = true;
-					star_list[i].close_to_other = true;
-					break;
+				}
+			}
+			/* If not a duplicate, check for close proximity */
+			if (res != INDIGO_FAILED) {
+				for (int i = 0; i < found; i++) {
+					double dx = fabs(star_list[i].x - star.x);
+					double dy = fabs(star_list[i].y - star.y);
+					double distance_sqr = dx * dx + dy * dy;
+					if (distance_sqr < min_distance_sqr) {
+						/* The star is too close to another star.
+						   We mark both stars as being close to another one, so they
+						   won't be used automatically but we keep both stars in the list. */
+						indigo_debug("indigo_find_stars(): star (%lf, %lf), too close to #%u = (%lf, %lf)", star.x, star.y, i + 1, star_list[i].x, star_list[i].y);
+						star.close_to_other = true;
+						star_list[i].close_to_other = true;
+					}
 				}
 			}
 		}
