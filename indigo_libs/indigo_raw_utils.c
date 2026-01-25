@@ -2663,10 +2663,10 @@ indigo_result indigo_find_stars_precise_threshold(indigo_raw_type raw_type, cons
 		}
 
 		/* Reject stars that have unmeasurable HFD */
-		if (res == INDIGO_OK && radius >= 3) {
+		if (res == INDIGO_OK && radius >= 2) {
 			double hfd = 1000;
 			res = indigo_selection_psf(raw_type, data, star.x, star.y, radius, width, height, NULL, &hfd, NULL);
-			if (hfd > radius || hfd <= 1.5) {
+			if (hfd > radius * 1.8 || hfd <= 1.5) {
 				indigo_debug("indigo_find_stars(): rejected star (%lf, %lf), hfd = %.1f > radius = %d", star.x, star.y, hfd, radius);
 				res = INDIGO_FAILED;
 			} else {
@@ -2676,7 +2676,7 @@ indigo_result indigo_find_stars_precise_threshold(indigo_raw_type raw_type, cons
 
 		/* Check if the star is a duplicate (probably artifact) or is in close proximity to another one.
 		   Duplicates are removed, close stars are kept but marked. */
-		if (res == INDIGO_OK || radius < 3) {
+		if (res == INDIGO_OK || radius < 2) {
 			double min_distance_sqr = 4 * radius * radius; /* minimum distance between stars */
 			/* First, check for duplicates */
 			for (int i = 0; i < found; i++) {
@@ -2708,7 +2708,7 @@ indigo_result indigo_find_stars_precise_threshold(indigo_raw_type raw_type, cons
 			}
 		}
 
-		if (res == INDIGO_OK || radius < 3) {
+		if (res == INDIGO_OK || radius < 2) {
 			int width2 = width / 2;
 			int height2 = height / 2;
 			int divider = (width > height) ? height2 : width2;
