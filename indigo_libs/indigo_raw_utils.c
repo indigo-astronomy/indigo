@@ -2389,88 +2389,6 @@ indigo_result indigo_find_stars_precise_threshold(indigo_raw_type raw_type, cons
 		}
 	}
 
-	/* Calculate mean */
-	double mean = sum / size;
-
-	/* Histogram-based robust background estimator using median + MAD.
-	   Use observed image min/max to reduce bins. Exclude saturated pixels
-	   (== max_luminance). Fall back to mean/stddev on allocation or sample
-	   count failures.
-	 */
-	uint32_t threshold = 0;
-	double image_stddev = 0;
-
-	if (img_max < img_min) img_max = img_min;
-	size_t bins = (size_t)img_max - (size_t)img_min + 1;
-	if (bins == 0 || bins > 65536) {
-		double stddev = sqrt(fabs(sum_sq / size - mean * mean));
-		threshold = (uint32_t)(FIND_STAR_MEAN_THRESHOLD_FACTOR * stddev + mean);
-		indigo_debug("%s(): bin size %zu invalid, fallback mean = %.2f, simplified stddev = %.2f, star detection threshold = %u", __FUNCTION__, bins, mean, stddev, threshold);
-	} else {
-		uint32_t *hist = (uint32_t *)calloc(bins, sizeof(uint32_t));
-		if (!hist) {
-			image_stddev = sqrt(fabs(sum_sq / size - mean * mean));
-			threshold = (uint32_t)(FIND_STAR_MEAN_THRESHOLD_FACTOR * image_stddev + mean);
-			indigo_debug("%s(): hist alloc failed, fallback mean = %.2f, simplified stddev = %.2f, star detection threshold = %u", __FUNCTION__, mean, image_stddev, threshold);
-		} else {
-			int m = 0;
-			for (int i = 0; i < size; i++) {
-				if (buf[i] < max_luminance) {
-					size_t idx = (size_t)buf[i] - (size_t)img_min;
-					hist[idx]++;
-					m++;
-				}
-			}
-			if (m < size / 10) {
-				image_stddev = sqrt(fabs(sum_sq / size - mean * mean));
-				threshold = (uint32_t)(FIND_STAR_MEAN_THRESHOLD_FACTOR * image_stddev + mean);
-				indigo_debug("%s(): not enough unsaturated samples, fallback mean = %.2f, simplified stddev = %.2f, star detection threshold = %u", __FUNCTION__, mean, image_stddev, threshold);
-				free(hist);
-			} else {
-				int target = m / 2;
-				int cum = 0;
-				int median_idx = 0;
-				for (size_t v = 0; v < bins; v++) {
-					cum += hist[v];
-					if (cum > target) {
-						median_idx = (int)v;
-						break;
-					}
-				}
-				int median_value = (int)img_min + median_idx;
-
-				uint32_t *dev_hist = (uint32_t *)calloc(bins, sizeof(uint32_t));
-				if (!dev_hist) {
-					image_stddev = sqrt(fabs(sum_sq / size - mean * mean));
-					threshold = (uint32_t)(FIND_STAR_MEAN_THRESHOLD_FACTOR * image_stddev + mean);
-					indigo_debug("%s(): dev_hist alloc failed, fallback mean = %.2f, simplified stddev = %.2f, star detection threshold = %u", __FUNCTION__, mean, image_stddev, threshold);
-					free(hist);
-				} else {
-					for (size_t v = 0; v < bins; v++) {
-						uint32_t c = hist[v];
-						if (c == 0) continue;
-						size_t d = (v > (size_t)median_idx) ? (v - (size_t)median_idx) : ((size_t)median_idx - v);
-						if (d < bins) dev_hist[d] += c;
-					}
-					cum = 0;
-					int mad = 0;
-					for (size_t d = 0; d < bins; d++) {
-						cum += dev_hist[d];
-						if (cum > target) {
-							mad = (int)d;
-							break;
-						}
-					}
-					image_stddev = mad * 1.4826;
-					threshold = (uint32_t)(median_value + stddev_threshold_factor * image_stddev);
-					indigo_debug("%s(): robust median = %.2f, MAD = %d, robust_std = %.2f, star detection threshold = %u", __FUNCTION__, (double)median_value, mad, image_stddev, threshold);
-					free(dev_hist);
-					free(hist);
-				}
-			}
-		}
-	}
-
 	int candidates_cap = stars_max > STAR_CANDIDATE_BUFFER_CAP ? (stars_max) : STAR_CANDIDATE_BUFFER_CAP;
 	local_maximum *candidates = indigo_safe_malloc(candidates_cap * sizeof(local_maximum));
 	int num_candidates = 0;
@@ -2534,6 +2452,96 @@ indigo_result indigo_find_stars_precise_threshold(indigo_raw_type raw_type, cons
 		return INDIGO_FAILED;
 	}
 
+	// Calculate statistics on CORRELATED image for threshold and filtering
+	double corr_sum = 0;
+	double corr_sum_sq = 0;
+	uint16_t corr_min = UINT16_MAX;
+	uint16_t corr_max = 0;
+
+	for (int i = 0; i < size; i++) {
+		if (correlated[i] < corr_min) corr_min = correlated[i];
+		if (correlated[i] > corr_max) corr_max = correlated[i];
+		corr_sum += correlated[i];
+		corr_sum_sq += correlated[i] * correlated[i];
+	}
+
+	double corr_mean = corr_sum / size;
+	uint32_t threshold = 0;
+	double image_stddev = 0;
+
+	// Histogram-based robust background estimator on CORRELATED image
+	if (corr_max < corr_min) corr_max = corr_min;
+	size_t bins = (size_t)corr_max - (size_t)corr_min + 1;
+	if (bins == 0 || bins > 65536) {
+		double stddev = sqrt(fabs(corr_sum_sq / size - corr_mean * corr_mean));
+		threshold = (uint32_t)(FIND_STAR_MEAN_THRESHOLD_FACTOR * stddev + corr_mean);
+		image_stddev = stddev;
+		indigo_debug("%s(): [correlated] bin size %zu invalid, fallback mean = %.2f, simplified stddev = %.2f, threshold = %u", __FUNCTION__, bins, corr_mean, stddev, threshold);
+	} else {
+		uint32_t *hist = (uint32_t *)calloc(bins, sizeof(uint32_t));
+		if (!hist) {
+			image_stddev = sqrt(fabs(corr_sum_sq / size - corr_mean * corr_mean));
+			threshold = (uint32_t)(FIND_STAR_MEAN_THRESHOLD_FACTOR * image_stddev + corr_mean);
+			indigo_debug("%s(): [correlated] hist alloc failed, fallback mean = %.2f, simplified stddev = %.2f, threshold = %u", __FUNCTION__, corr_mean, image_stddev, threshold);
+		} else {
+			int m = 0;
+			for (int i = 0; i < size; i++) {
+				if (correlated[i] < max_luminance) {
+					size_t idx = (size_t)correlated[i] - (size_t)corr_min;
+					hist[idx]++;
+					m++;
+				}
+			}
+			if (m < size / 10) {
+				image_stddev = sqrt(fabs(corr_sum_sq / size - corr_mean * corr_mean));
+				threshold = (uint32_t)(FIND_STAR_MEAN_THRESHOLD_FACTOR * image_stddev + corr_mean);
+				indigo_debug("%s(): [correlated] not enough unsaturated samples, fallback mean = %.2f, simplified stddev = %.2f, threshold = %u", __FUNCTION__, corr_mean, image_stddev, threshold);
+				free(hist);
+			} else {
+				int target = m / 2;
+				int cum = 0;
+				int median_idx = 0;
+				for (size_t v = 0; v < bins; v++) {
+					cum += hist[v];
+					if (cum > target) {
+						median_idx = (int)v;
+						break;
+					}
+				}
+				int median_value = (int)corr_min + median_idx;
+
+				uint32_t *dev_hist = (uint32_t *)calloc(bins, sizeof(uint32_t));
+				if (!dev_hist) {
+					image_stddev = sqrt(fabs(corr_sum_sq / size - corr_mean * corr_mean));
+					threshold = (uint32_t)(FIND_STAR_MEAN_THRESHOLD_FACTOR * image_stddev + corr_mean);
+					indigo_debug("%s(): [correlated] dev_hist alloc failed, fallback mean = %.2f, simplified stddev = %.2f, threshold = %u", __FUNCTION__, corr_mean, image_stddev, threshold);
+					free(hist);
+				} else {
+					for (size_t v = 0; v < bins; v++) {
+						uint32_t c = hist[v];
+						if (c == 0) continue;
+						size_t d = (v > (size_t)median_idx) ? (v - (size_t)median_idx) : ((size_t)median_idx - v);
+						if (d < bins) dev_hist[d] += c;
+					}
+					cum = 0;
+					int mad = 0;
+					for (size_t d = 0; d < bins; d++) {
+						cum += dev_hist[d];
+						if (cum > target) {
+							mad = (int)d;
+							break;
+						}
+					}
+					image_stddev = mad * 1.4826;
+					threshold = (uint32_t)(median_value + stddev_threshold_factor * image_stddev);
+					indigo_debug("%s(): [correlated] robust median = %.2f, MAD = %d, robust_std = %.2f, threshold = %u", __FUNCTION__, (double)median_value, mad, image_stddev, threshold);
+					free(dev_hist);
+					free(hist);
+				}
+			}
+		}
+	}
+
 	// Find all local maxima
 	for (int j = clip_edge; j < clip_height; j++) {
 		for (int i = clip_edge; i < clip_width; i++) {
@@ -2553,7 +2561,7 @@ indigo_result indigo_find_stars_precise_threshold(indigo_raw_type raw_type, cons
 				is_local_max = is_local_max && (center >= correlated[off + width + 1]);            // bottom-right
 
 				if (is_local_max) {
-					/* Calculate local background as median of pixels in a square with side 2*radius+1 */
+					/* Calculate local background from CORRELATED image */
 					int side = 2 * radius + 1;
 					int local_pixel_count = 0;
 					uint16_t *local_pixels = indigo_safe_malloc(side * side * sizeof(uint16_t));
@@ -2563,7 +2571,7 @@ indigo_result indigo_find_stars_precise_threshold(indigo_raw_type raw_type, cons
 							int px = i + dx;
 							int py = j + dy;
 							if (px >= 0 && px < width && py >= 0 && py < height) {
-								local_pixels[local_pixel_count++] = buf[py * width + px];
+								local_pixels[local_pixel_count++] = correlated[py * width + px];
 							}
 						}
 					}
@@ -2573,10 +2581,10 @@ indigo_result indigo_find_stars_precise_threshold(indigo_raw_type raw_type, cons
 					uint16_t local_background = local_pixels[local_pixel_count / 2];
 					free(local_pixels);
 
-					/* Use image_stddev * threshold + local_background as threshold */
+					/* Use correlated image_stddev * threshold + local_background as threshold */
 					uint32_t local_threshold = (uint32_t)(image_stddev * stddev_threshold_factor + local_background);
 
-					/* Count how many neighbors are above local threshold to reject hot pixels */
+					/* Count how many neighbors in CORRELATED image are above threshold to reject hot pixels */
 					int neighbors_above = 0;
 					neighbors_above += (correlated[off - 1] > local_threshold) ? 1 : 0;
 					neighbors_above += (correlated[off + 1] > local_threshold) ? 1 : 0;
@@ -2587,7 +2595,7 @@ indigo_result indigo_find_stars_precise_threshold(indigo_raw_type raw_type, cons
 					neighbors_above += (correlated[off + width - 1] > local_threshold) ? 1 : 0;
 					neighbors_above += (correlated[off + width + 1] > local_threshold) ? 1 : 0;
 
-					/* Require at least 6 out of 8 neighbors above threshold to avoid hot pixels */
+					/* Require at least 6 out of 8 neighbors above threshold in CORRELATED to confirm real star */
 					if (neighbors_above >= 6) {
 						/* Append candidate; grow buffer if necessary. Value is background-subtracted. */
 						local_maximum item;
@@ -2666,7 +2674,7 @@ indigo_result indigo_find_stars_precise_threshold(indigo_raw_type raw_type, cons
 		if (res == INDIGO_OK && radius >= 3) {
 			double hfd = 1000;
 			res = indigo_selection_psf(raw_type, data, star.x, star.y, radius, width, height, NULL, &hfd, NULL);
-			if (hfd > radius || hfd <= 1.5) {
+			if (hfd > radius*1.5 || hfd <= 1.5) {
 				indigo_debug("indigo_find_stars(): rejected star (%lf, %lf), hfd = %.1f > radius = %d", star.x, star.y, hfd, radius);
 				res = INDIGO_FAILED;
 			} else {
