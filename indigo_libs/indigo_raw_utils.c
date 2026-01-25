@@ -2475,23 +2475,82 @@ indigo_result indigo_find_stars_precise_threshold(indigo_raw_type raw_type, cons
 	local_maximum *candidates = indigo_safe_malloc(candidates_cap * sizeof(local_maximum));
 	int num_candidates = 0;
 
+	// Apply Gaussian correlation to boost stars and reduce noise
+	// This correlates the image with a Gaussian template to enhance star-like features
+	uint16_t *correlated = indigo_safe_malloc((size_t)width * height * sizeof(uint16_t));
+	if (correlated) {
+		// Normalized Gaussian kernel (sum = 1.0)
+		double kernel[5][5] = {
+			{1/273.0, 4/273.0, 7/273.0, 4/273.0, 1/273.0},
+			{4/273.0, 16/273.0, 26/273.0, 16/273.0, 4/273.0},
+			{7/273.0, 26/273.0, 41/273.0, 26/273.0, 7/273.0},
+			{4/273.0, 16/273.0, 26/273.0, 16/273.0, 4/273.0},
+			{1/273.0, 4/273.0, 7/273.0, 4/273.0, 1/273.0}
+		};
+
+		for (int y = 0; y < height; y++) {
+			for (int x = 0; x < width; x++) {
+				double correlation = 0;
+				double local_sum = 0;
+				int local_count = 0;
+
+				// First pass: calculate local mean
+				for (int dy = -2; dy <= 2; dy++) {
+					for (int dx = -2; dx <= 2; dx++) {
+						int nx = x + dx;
+						int ny = y + dy;
+						if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+							local_sum += buf[ny * width + nx];
+							local_count++;
+						}
+					}
+				}
+				double local_mean = local_count > 0 ? local_sum / local_count : 0;
+
+				// Second pass: correlate with Gaussian template (background-subtracted)
+				for (int dy = -2; dy <= 2; dy++) {
+					for (int dx = -2; dx <= 2; dx++) {
+						int nx = x + dx;
+						int ny = y + dy;
+						double val = local_mean; // default to local mean for edges
+						if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+							val = buf[ny * width + nx];
+						}
+						// Correlate background-subtracted signal with Gaussian template
+						correlation += kernel[dy + 2][dx + 2] * (val - local_mean);
+					}
+				}
+
+				// Store correlation result (clamp to uint16_t range)
+				// Add offset to ensure positive values and scale appropriately
+				double result = correlation + local_mean;
+				if (result < 0) result = 0;
+				if (result > 65535) result = 65535;
+				correlated[y * width + x] = (uint16_t)round(result);
+			}
+		}
+	} else {
+		indigo_error("%s(): correlated buffer alloc failed", __FUNCTION__);
+		return INDIGO_FAILED;
+	}
+
 	// Find all local maxima
 	for (int j = clip_edge; j < clip_height; j++) {
 		for (int i = clip_edge; i < clip_width; i++) {
 			int off = j * width + i;
-			uint16_t center = buf[off];
+			uint16_t center = correlated[off];
 
 			if (center > threshold) {
 				/* Check if this is a local maximum (brighter than all 8 neighbors) */
 				bool is_local_max = true;
-				is_local_max = is_local_max && (center >= buf[off - 1]);                    // left
-				is_local_max = is_local_max && (center >= buf[off + 1]);                    // right
-				is_local_max = is_local_max && (center >= buf[off - width]);                // top
-				is_local_max = is_local_max && (center >= buf[off + width]);                // bottom
-				is_local_max = is_local_max && (center >= buf[off - width - 1]);            // top-left
-				is_local_max = is_local_max && (center >= buf[off - width + 1]);            // top-right
-				is_local_max = is_local_max && (center >= buf[off + width - 1]);            // bottom-left
-				is_local_max = is_local_max && (center >= buf[off + width + 1]);            // bottom-right
+				is_local_max = is_local_max && (center >= correlated[off - 1]);                    // left
+				is_local_max = is_local_max && (center >= correlated[off + 1]);                    // right
+				is_local_max = is_local_max && (center >= correlated[off - width]);                // top
+				is_local_max = is_local_max && (center >= correlated[off + width]);                // bottom
+				is_local_max = is_local_max && (center >= correlated[off - width - 1]);            // top-left
+				is_local_max = is_local_max && (center >= correlated[off - width + 1]);            // top-right
+				is_local_max = is_local_max && (center >= correlated[off + width - 1]);            // bottom-left
+				is_local_max = is_local_max && (center >= correlated[off + width + 1]);            // bottom-right
 
 				if (is_local_max) {
 					/* Calculate local background as median of pixels in a square with side 2*radius+1 */
@@ -2519,14 +2578,14 @@ indigo_result indigo_find_stars_precise_threshold(indigo_raw_type raw_type, cons
 
 					/* Count how many neighbors are above local threshold to reject hot pixels */
 					int neighbors_above = 0;
-					neighbors_above += (buf[off - 1] > local_threshold) ? 1 : 0;
-					neighbors_above += (buf[off + 1] > local_threshold) ? 1 : 0;
-					neighbors_above += (buf[off - width] > local_threshold) ? 1 : 0;
-					neighbors_above += (buf[off + width] > local_threshold) ? 1 : 0;
-					neighbors_above += (buf[off - width - 1] > local_threshold) ? 1 : 0;
-					neighbors_above += (buf[off - width + 1] > local_threshold) ? 1 : 0;
-					neighbors_above += (buf[off + width - 1] > local_threshold) ? 1 : 0;
-					neighbors_above += (buf[off + width + 1] > local_threshold) ? 1 : 0;
+					neighbors_above += (correlated[off - 1] > local_threshold) ? 1 : 0;
+					neighbors_above += (correlated[off + 1] > local_threshold) ? 1 : 0;
+					neighbors_above += (correlated[off - width] > local_threshold) ? 1 : 0;
+					neighbors_above += (correlated[off + width] > local_threshold) ? 1 : 0;
+					neighbors_above += (correlated[off - width - 1] > local_threshold) ? 1 : 0;
+					neighbors_above += (correlated[off + width + 1] > local_threshold) ? 1 : 0;
+					neighbors_above += (correlated[off + width - 1] > local_threshold) ? 1 : 0;
+					neighbors_above += (correlated[off + width + 1] > local_threshold) ? 1 : 0;
 
 					/* Require at least 6 out of 8 neighbors above threshold to avoid hot pixels */
 					if (neighbors_above >= 6) {
@@ -2663,6 +2722,7 @@ indigo_result indigo_find_stars_precise_threshold(indigo_raw_type raw_type, cons
 
 	free(candidates);
 	free(buf);
+	free(correlated);
 
 	qsort(star_list, found, sizeof(indigo_star_detection), luminance_comparator);
 
