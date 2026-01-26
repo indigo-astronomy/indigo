@@ -461,22 +461,22 @@ indigo_result indigo_selection_psf(indigo_raw_type raw_type, const void *data, d
 				}
 				case INDIGO_RAW_RGB24: {
 					kk *= 3;
-					value = (((uint8_t *)data)[kk] + ((uint8_t *)data)[kk + 1] + ((uint8_t *)data)[kk + 2]) / 3;
+					value = median3(((uint8_t *)data)[kk], ((uint8_t *)data)[kk + 1], ((uint8_t *)data)[kk + 2]);
 					break;
 				}
 				case INDIGO_RAW_RGBA32: {
 					kk *= 4;
-					value = (((uint8_t *)data)[kk] + ((uint8_t *)data)[kk + 1] + ((uint8_t *)data)[kk + 2]) / 3;
+					value = median3(((uint8_t *)data)[kk], ((uint8_t *)data)[kk + 1], ((uint8_t *)data)[kk + 2]);
 					break;
 				}
 				case INDIGO_RAW_ABGR32: {
 					kk *= 4;
-					value = (((uint8_t *)data)[kk + 1] + ((uint8_t *)data)[kk + 2] + ((uint8_t *)data)[kk + 3]) / 3;
+					value = median3(((uint8_t *)data)[kk + 1], ((uint8_t *)data)[kk + 2], ((uint8_t *)data)[kk + 3]);
 					break;
 				}
 				case INDIGO_RAW_RGB48: {
 					kk *= 3;
-					value = (((uint16_t *)data)[kk] + ((uint16_t *)data)[kk + 1] + ((uint16_t *)data)[kk + 2]) / 3;
+					value = median3(((uint16_t *)data)[kk], ((uint16_t *)data)[kk + 1], ((uint16_t *)data)[kk + 2]);
 					break;
 				}
 			}
@@ -530,22 +530,22 @@ indigo_result indigo_selection_psf(indigo_raw_type raw_type, const void *data, d
 						}
 						case INDIGO_RAW_RGB24: {
 							kk *= 3;
-							value = (((uint8_t *)data)[kk] + ((uint8_t *)data)[kk + 1] + ((uint8_t *)data)[kk + 2]) / 3;
+							value = median3(((uint8_t *)data)[kk], ((uint8_t *)data)[kk + 1], ((uint8_t *)data)[kk + 2]);
 							break;
 						}
 						case INDIGO_RAW_RGBA32: {
 							kk *= 4;
-							value = (((uint8_t *)data)[kk] + ((uint8_t *)data)[kk + 1] + ((uint8_t *)data)[kk + 2]) / 3;
+							value = median3(((uint8_t *)data)[kk], ((uint8_t *)data)[kk + 1], ((uint8_t *)data)[kk + 2]);
 							break;
 						}
 						case INDIGO_RAW_ABGR32: {
 							kk *= 4;
-							value = (((uint8_t *)data)[kk + 1] + ((uint8_t *)data)[kk + 2] + ((uint8_t *)data)[kk + 3]) / 3;
+							value = median3(((uint8_t *)data)[kk + 1], ((uint8_t *)data)[kk + 2], ((uint8_t *)data)[kk + 3]);
 							break;
 						}
 						case INDIGO_RAW_RGB48: {
 							kk *= 3;
-							value = (((uint16_t *)data)[kk] + ((uint16_t *)data)[kk + 1] + ((uint16_t *)data)[kk + 2]) / 3;
+							value = median3(((uint16_t *)data)[kk], ((uint16_t *)data)[kk + 1], ((uint16_t *)data)[kk + 2]);
 							break;
 						}
 					}
@@ -589,22 +589,22 @@ indigo_result indigo_selection_psf(indigo_raw_type raw_type, const void *data, d
 						}
 						case INDIGO_RAW_RGB24: {
 							kk *= 3;
-							value = ((uint8_t *)data)[kk] + ((uint8_t *)data)[kk + 1] + ((uint8_t *)data)[kk + 2];
+							value = median3(((uint8_t *)data)[kk], ((uint8_t *)data)[kk + 1], ((uint8_t *)data)[kk + 2]);
 							break;
 						}
 						case INDIGO_RAW_RGBA32: {
 							kk *= 4;
-							value = ((uint8_t *)data)[kk] + ((uint8_t *)data)[kk + 1] + ((uint8_t *)data)[kk + 2];
+							value = median3(((uint8_t *)data)[kk], ((uint8_t *)data)[kk + 1], ((uint8_t *)data)[kk + 2]);
 							break;
 						}
 						case INDIGO_RAW_ABGR32: {
 							kk *= 4;
-							value = ((uint8_t *)data)[kk + 1] + ((uint8_t *)data)[kk + 2] + ((uint8_t *)data)[kk + 3];
+							value = median3(((uint8_t *)data)[kk + 1], ((uint8_t *)data)[kk + 2], ((uint8_t *)data)[kk + 3]);
 							break;
 						}
 						case INDIGO_RAW_RGB48: {
 							kk *= 3;
-							value = ((uint16_t *)data)[kk] + ((uint16_t *)data)[kk + 1] + ((uint16_t *)data)[kk + 2];
+							value = median3(((uint16_t *)data)[kk], ((uint16_t *)data)[kk + 1], ((uint16_t *)data)[kk + 2]);
 							break;
 						}
 					}
@@ -706,7 +706,7 @@ indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void
 				int k = j * width;
 				for (int i = cs; i <= ce; i++) {
 					int kk = 3 * (k + i);
-					value = data8[kk] + data8[kk + 1] + data8[kk + 2];
+					value = median3(data8[kk], data8[kk + 1], data8[kk + 2]);
 					/* use border for background noise estimation */
 					if (j == ls || j == le || i == cs || i == ce) {
 						background[background_count++] = value;
@@ -722,7 +722,7 @@ indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void
 				int k = j * width;
 				for (int i = cs; i <= ce; i++) {
 					int kk = 4 * (k + i);
-					value = data8[kk] + data8[kk + 1] + data8[kk + 2];
+					value = median3(data8[kk], data8[kk + 1], data8[kk + 2]);
 					/* use border for background noise estimation */
 					if (j == ls || j == le || i == cs || i == ce) {
 						background[background_count++] = value;
@@ -738,7 +738,7 @@ indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void
 				int k = j * width;
 				for (int i = cs; i <= ce; i++) {
 					int kk = 4 * (k + i);
-					value = data8[kk + 1] + data8[kk + 2] + data8[kk + 3];
+					value = median3(data8[kk + 1], data8[kk + 2], data8[kk + 3]);
 					/* use border for background noise estimation */
 					if (j == ls || j == le || i == cs || i == ce) {
 						background[background_count++] = value;
@@ -754,7 +754,7 @@ indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void
 				int k = j * width;
 				for (int i = cs; i <= ce; i++) {
 					int kk = 3 * (k + i);
-					value = data16[kk] + data16[kk + 1] + data16[kk + 2];
+					value = median3(data16[kk], data16[kk + 1], data16[kk + 2]);
 					/* use border for background noise estimation */
 					if (j == ls || j == le || i == cs || i == ce) {
 						background[background_count++] = value;
@@ -810,7 +810,7 @@ indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void
 				int k = j * width;
 				for (int i = cs; i <= ce; i++) {
 					int kk = 3 * (k + i);
-					value = data8[kk] + data8[kk + 1] + data8[kk + 2] - threshold;
+					value = median3(data8[kk], data8[kk + 1], data8[kk + 2]) - threshold;
 					/* Set all values below the threshold to 0 */
 					if (value < 0) value = 0;
 					m10 += (i + 1 - cs) * value;
@@ -825,7 +825,7 @@ indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void
 				int k = j * width;
 				for (int i = cs; i <= ce; i++) {
 					int kk = 4 * (k + i);
-					value = data8[kk] + data8[kk + 1] + data8[kk + 2] - threshold;
+					value = median3(data8[kk], data8[kk + 1], data8[kk + 2]) - threshold;
 					/* Set all values below the threshold to 0 */
 					if (value < 0) value = 0;
 					m10 += (i + 1 - cs) * value;
@@ -840,7 +840,7 @@ indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void
 				int k = j * width;
 				for (int i = cs; i <= ce; i++) {
 					int kk = 4 * (k + i);
-					value = data8[kk + 1] + data8[kk + 2] + data8[kk + 3] - threshold;
+					value = median3(data8[kk + 1], data8[kk + 2], data8[kk + 3]) - threshold;
 					/* Set all values below the threshold to 0 */
 					if (value < 0) value = 0;
 					m10 += (i + 1 - cs) * value;
@@ -855,7 +855,7 @@ indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void
 				int k = j * width;
 				for (int i = cs; i <= ce; i++) {
 					int kk = 3 * (k + i);
-					value = data16[kk] + data16[kk + 1] + data16[kk + 2] - threshold;
+					value = median3(data16[kk], data16[kk + 1], data16[kk + 2]) - threshold;
 					/* Set all values below the threshold to 0 */
 					if (value < 0) value = 0;
 					m10 += (i + 1 - cs) * value;
@@ -1268,7 +1268,7 @@ indigo_result indigo_donuts_frame_digest_clipped(indigo_raw_type raw_type, const
 				int k = j * width;
 				for (int i = cs; i < ce; i++) {
 					int kk = 3 * (k + i);
-					value = data8[kk] + data8[kk + 1] + data8[kk + 2];
+					value = median3(data8[kk], data8[kk + 1], data8[kk + 2]);
 					sum += value;
 					if (value > max) max = value;
 				}
@@ -1280,7 +1280,7 @@ indigo_result indigo_donuts_frame_digest_clipped(indigo_raw_type raw_type, const
 				int k = j * width;
 				for (int i = cs; i < ce; i++) {
 					int kk = 4 * (k + i);
-					value = data8[kk] + data8[kk + 1] + data8[kk + 2];
+					value = median3(data8[kk], data8[kk + 1], data8[kk + 2]);
 					sum += value;
 					if (value > max) max = value;
 				}
@@ -1292,7 +1292,7 @@ indigo_result indigo_donuts_frame_digest_clipped(indigo_raw_type raw_type, const
 				int k = j * width;
 				for (int i = cs; i < ce; i++) {
 					int kk = 4 * (k + i);
-					value = data8[kk + 1] + data8[kk + 2] + data8[kk + 3];
+					value = median3(data8[kk + 1], data8[kk + 2], data8[kk + 3]);
 					sum += value;
 					if (value > max) max = value;
 				}
@@ -1304,7 +1304,7 @@ indigo_result indigo_donuts_frame_digest_clipped(indigo_raw_type raw_type, const
 				int k = j * width;
 				for (int i = cs; i < ce; i++) {
 					int kk = 3 * (k + i);
-					value = data16[kk] + data16[kk + 1] + data16[kk + 2];
+					value = median3(data16[kk], data16[kk + 1], data16[kk + 2]);
 					sum += value;
 					if (value > max) max = value;
 				}
@@ -1364,7 +1364,7 @@ indigo_result indigo_donuts_frame_digest_clipped(indigo_raw_type raw_type, const
 				int y = j - ls;
 				for (int i = cs; i < ce; i++) {
 					int offset = (i + (j * width)) * 3;
-					value = data8[offset] + data8[offset + 1] + data8[offset + 2] - threshold;
+					value = median3(data8[offset], data8[offset + 1], data8[offset + 2]) - threshold;
 					/* Set all values below the threshold to 0 */
 					if (value < 0) value = 0;
 
@@ -1379,7 +1379,7 @@ indigo_result indigo_donuts_frame_digest_clipped(indigo_raw_type raw_type, const
 				int y = j - ls;
 				for (int i = cs; i < ce; i++) {
 					int offset = (i + (j * width)) * 4;
-					value = data8[offset] + data8[offset + 1] + data8[offset + 2] - threshold;
+					value = median3(data8[offset], data8[offset + 1], data8[offset + 2]) - threshold;
 					/* Set all values below the threshold to 0 */
 					if (value < 0) value = 0;
 
@@ -1394,7 +1394,7 @@ indigo_result indigo_donuts_frame_digest_clipped(indigo_raw_type raw_type, const
 				int y = j - ls;
 				for (int i = cs; i < ce; i++) {
 					int offset = (i + (j * width)) * 4;
-					value = data8[offset + 1] + data8[offset + 2] + data8[offset + 3] - threshold;
+					value = median3(data8[offset + 1], data8[offset + 2], data8[offset + 3]) - threshold;
 					/* Set all values below the threshold to 0 */
 					if (value < 0) value = 0;
 
@@ -1410,7 +1410,7 @@ indigo_result indigo_donuts_frame_digest_clipped(indigo_raw_type raw_type, const
 				int y = j - ls;
 				for (int i = cs; i < ce; i++) {
 					int offset = (i + (j * width)) * 3;
-					value = data16[offset] + data16[offset + 1] + data16[offset + 2] - threshold;
+					value = median3(data16[offset], data16[offset + 1], data16[offset + 2]) - threshold;
 					/* Set all values below the threshold to 0 */
 					if (value < 0) value = 0;
 
@@ -2357,7 +2357,7 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 	return indigo_find_stars_precise_threshold(raw_type, data, radius, FIND_STAR_MEDIAN_THRESHOLD_FACTOR, width, height, stars_max, star_list, stars_found);
 }
 
-/* With radius < 3, no precise star positins will be determined */
+/* With radius < 2, no precise star positins will be determined */
 indigo_result indigo_find_stars_precise_threshold(indigo_raw_type raw_type, const void *data, const uint16_t radius, const double stddev_threshold_factor, const int width, const int height, const int stars_max, indigo_star_detection star_list[], int *stars_found) {
 	if (data == NULL || star_list == NULL || stars_found == NULL) return INDIGO_FAILED;
 
