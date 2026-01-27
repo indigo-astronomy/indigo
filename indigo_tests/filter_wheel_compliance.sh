@@ -49,12 +49,7 @@ REMOTE="${2:-localhost:7624}"
 # Set remote server
 set_remote_server "$REMOTE"
 
-echo "========================================"
-echo "INDIGO Filter Wheel Compliance Test"
-echo "Device: $DEVICE"
-echo "Server: $REMOTE"
-echo "========================================"
-echo ""
+print_test_header "INDIGO Filter Wheel Compliance Test" "$DEVICE" "$REMOTE"
 
 # Test 1: Run standard connection test battery
 test_connection_battery "$DEVICE" 10

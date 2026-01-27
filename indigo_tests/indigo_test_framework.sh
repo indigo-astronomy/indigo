@@ -461,6 +461,45 @@ is_device_connected() {
     fi
 }
 
+# Helper: Get driver information from INFO property
+# Usage: get_driver_info "device_name"
+# Returns: Prints "driver_name driver_version" to stdout, or empty if not available
+get_driver_info() {
+    local device="$1"
+    local driver_name
+    local driver_version
+    
+    driver_name=$($INDIGO_PROP_TOOL get -w OK $REMOTE_SERVER "$device.INFO.DEVICE_DRIVER" 2>&1 | tr -d '"')
+    driver_version=$($INDIGO_PROP_TOOL get -w OK $REMOTE_SERVER "$device.INFO.DEVICE_VERSION" 2>&1 | tr -d '"')
+    
+    if [ -n "$driver_name" ] && [ -n "$driver_version" ]; then
+        echo "$driver_name v.$driver_version"
+    fi
+}
+
+# Print test header with device, server, and driver information
+# Usage: print_test_header "Test Title" "Device Name" "host:port"
+print_test_header() {
+    local test_title="$1"
+    local device="$2"
+    local remote="$3"
+    
+    echo "========================================"
+    echo "$test_title"
+    echo "Device: $device"
+    echo "Server: $remote"
+    
+    # Get driver info if device is connected
+    local driver_info
+    driver_info=$(get_driver_info "$device")
+    if [ -n "$driver_info" ]; then
+        echo "Driver: $driver_info"
+    fi
+    
+    echo "========================================"
+    echo ""
+}
+
 # Helper: Check if a property exists, optionally check for specific items
 # Usage: property_exists "device.property" ["item1,item2,..."]
 # Returns: 0 if exists (and all items if specified), 1 otherwise
