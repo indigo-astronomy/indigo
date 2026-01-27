@@ -23,7 +23,7 @@
  \file indigo_focuser_primaluce.c
  */
 
-#define DRIVER_VERSION 0x0007
+#define DRIVER_VERSION 0x0008
 #define DRIVER_NAME "indigo_focuser_primaluce"
 
 #include <stdlib.h>
@@ -161,6 +161,7 @@ typedef struct {
 	pthread_mutex_t mutex;
 	jsmn_parser parser;
 	bool has_abs_pos;
+	bool is_sestosenso_3;
 	indigo_property *state_property;
 	indigo_property *dim_leds_property;
 	indigo_property *wifi_property;
@@ -195,6 +196,7 @@ static char *GET_MOT1_SPEED[] = { "res", "get", "MOT1", "SPEED", NULL };
 static char *SET_MOT1_SPEED[] = { "res", "set", "MOT1", "SPEED", NULL };
 static char *GET_MOT1_MST[] = { "res", "get", "MOT1", "STATUS", "MST", NULL };
 static char *CMD_MOT1_STEP[] = { "res", "cmd", "MOT1", "STEP", NULL };
+static char *CMD_MOT1_GOTO[] = { "res", "cmd", "MOT1", "GOTO", NULL };
 //static char *CMD_MOT1_MOVE_REL[] = { "res", "cmd", "MOT1", "MOVE_REL", NULL };
 static char *CMD_MOT1_MOT_STOP[] = { "res", "cmd", "MOT1", "MOT_STOP", NULL };
 static char *CMD_MOT2_STEP[] = { "res", "cmd", "MOT2", "STEP", NULL };
@@ -380,9 +382,11 @@ static bool primaluce_open(indigo_device *device) {
 		char *text;
 		if (primaluce_command(device, "{\"req\":{\"get\":{\"MODNAME\":\"\"}}}", response, sizeof(response), tokens, 128) && (text = get_string(response, tokens, GET_MODNAME))) {
 			if (!strncmp(text, "SESTOSENSO", 10) || !strncmp(text, "ESATTO", 6)) {
+				indigo_send_message(device, "model: %s ", text);
+				PRIVATE_DATA->is_sestosenso_3 = strncmp(text, "SESTOSENSO3", 11)==0;
 				if (primaluce_command(device, "{\"req\":{\"get\":{\"SWVERS\":{\"SWAPP\":\"\"}}}}", response, sizeof(response), tokens, 128) && (text = get_string(response, tokens, GET_SWAPP))) {
 					double version = atof(text);
-					if (version < 3.05) {
+					if (!PRIVATE_DATA->is_sestosenso_3 && version < 3.05) {
 						indigo_send_message(device, "WARNING: %s has firmware version %.2f and at least 3.05 is needed", INFO_DEVICE_MODEL_ITEM->text.value, version);
 					}
 					//primaluce_command(device, "{\"req\":{\"cmd\":{\"LOGLEVEL\":\"no output\"}}}", response, sizeof(response), tokens, 128);
@@ -849,14 +853,23 @@ static void focuser_position_handler(indigo_device *device) {
 	char command[1024];
 	char response[1024];
 	jsmntok_t tokens[128];
-	snprintf(command, sizeof(command), "{\"req\":{\"cmd\":{\"MOT1\":{\"MOVE_ABS\":{\"STEP\":%d}}}}}", (int)FOCUSER_POSITION_ITEM->number.target);
+	if (PRIVATE_DATA->is_sestosenso_3) {
+		snprintf(command, sizeof(command), "{\"req\":{\"cmd\":{\"MOT1\":{\"GOTO\":%d}}}}", (int)FOCUSER_POSITION_ITEM->number.target);
+	} else {
+		snprintf(command, sizeof(command), "{\"req\":{\"cmd\":{\"MOT1\":{\"MOVE_ABS\":{\"STEP\":%d}}}}}", (int)FOCUSER_POSITION_ITEM->number.target);
+	}
 	if (!primaluce_command(device, command, response, sizeof(response), tokens, 128)) {
 		FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		return;
 	}
-	char *state = get_string(response, tokens, CMD_MOT1_STEP);
+	char *state;
+	if (PRIVATE_DATA->is_sestosenso_3) {
+		state = get_string(response, tokens, CMD_MOT1_GOTO);
+	} else {
+		state = get_string(response, tokens, CMD_MOT1_STEP);
+	}
 	if (state == NULL || strcmp(state, "done")) {
 		FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
@@ -864,11 +877,14 @@ static void focuser_position_handler(indigo_device *device) {
 		return;
 	}
 	char *get_pos_command = PRIVATE_DATA->has_abs_pos ? "{\"req\":{\"get\":{\"MOT1\":{\"ABS_POS\":\"STEP\",\"STATUS\":\"\"}}}}" : "{\"req\":{\"get\":{\"MOT1\":{\"ABS_POS_STEP\":\"\",\"STATUS\":\"\"}}}}";
+	char *get_mot1_status_command = "{\"req\":{\"get\":{\"MOT1\":{\"STATUS\":{\"MST\":\"\"}}}}}";
 	while (true) {
 		if (primaluce_command(device, get_pos_command, response, sizeof(response), tokens, 128)) {
 			FOCUSER_POSITION_ITEM->number.value = get_number(response, tokens, PRIVATE_DATA->has_abs_pos ? GET_MOT1_ABS_POS : GET_MOT1_ABS_POS_STEP);
-			if (!strcmp(get_string(response, tokens, GET_MOT1_MST), "stop")) {
-				break;
+			if (!PRIVATE_DATA->is_sestosenso_3 || primaluce_command(device, get_mot1_status_command, response, sizeof(response), tokens, 128)) {
+				if (!strcmp(get_string(response, tokens, GET_MOT1_MST), "stop")) {
+					break;
+				}
 			}
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		}
