@@ -24,7 +24,7 @@
  \file indigo_focuser_primaluce.c
  */
 
-#define DRIVER_VERSION 0x03000007
+#define DRIVER_VERSION 0x03000008
 #define DRIVER_NAME "indigo_focuser_primaluce"
 
 #include <stdlib.h>

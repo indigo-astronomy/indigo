@@ -30,7 +30,7 @@ print_test_result() {
     local test_name="$1"
     local result="$2"
     local description="$3"
-    
+
     if [ "$result" = "PASS" ]; then
         echo -e "${GREEN}[PASS]${NC} $test_name"
         ((TESTS_PASSED++))
@@ -64,11 +64,11 @@ test_set_wait_state() {
     local property_set="$2"
     local expected_state="$3"
     local timeout="${4:-10}"
-    
+
     local output
     output=$($INDIGO_PROP_TOOL set -w "$expected_state" -s -t "$timeout" $REMOTE_SERVER "$property_set" 2>&1)
     local exit_code=$?
-    
+
     if [ $exit_code -eq 0 ]; then
         # Check if final state matches expected
         if echo "$output" | tail -1 | grep -q "\[$expected_state\]"; then
@@ -95,12 +95,12 @@ test_set_transition_smart() {
     local target_value="$4"
     local timeout="${5:-10}"
     local value_type="${6:-number}"
-    
+
     # Get current value
     local current_value
     current_value=$($INDIGO_PROP_TOOL get $REMOTE_SERVER "$property_get" 2>&1 | tr -d '[:space:]')
     local target_normalized=$(echo "$target_value" | tr -d '[:space:]')
-    
+
     # Determine if values match
     local values_match=0
     if [ "$value_type" = "number" ]; then
@@ -118,28 +118,28 @@ test_set_transition_smart() {
             values_match=1
         fi
     fi
-    
+
     # Execute the set command
     local output
     output=$($INDIGO_PROP_TOOL set -w OK -s -t "$timeout" $REMOTE_SERVER "$property_set" 2>&1)
     local exit_code=$?
-    
+
     if [ $exit_code -ne 0 ]; then
         print_test_result "$test_name" "FAIL" "Command failed or timeout"
         return 1
     fi
-    
+
     # Check state transitions
     local has_busy=0
     local has_ok=0
-    
+
     if echo "$output" | grep -q "\[BUSY\]"; then
         has_busy=1
     fi
     if echo "$output" | tail -1 | grep -q "\[OK\]"; then
         has_ok=1
     fi
-    
+
     # If target differs from current, BUSY state is MANDATORY
     if [ $values_match -eq 0 ]; then
         if [ $has_busy -eq 1 ] && [ $has_ok -eq 1 ]; then
@@ -177,23 +177,23 @@ test_state_transition() {
     local final_state="$4"
     local timeout="${5:-10}"
     local require_initial="${6:-required}"
-    
+
     local output
     output=$($INDIGO_PROP_TOOL set -w "$final_state" -s -t "$timeout" $REMOTE_SERVER "$property_set" 2>&1)
     local exit_code=$?
-    
+
     if [ $exit_code -eq 0 ]; then
         # Check for state transition
         local has_initial=0
         local has_final=0
-        
+
         if echo "$output" | grep -q "\[$initial_state\]"; then
             has_initial=1
         fi
         if echo "$output" | tail -1 | grep -q "\[$final_state\]"; then
             has_final=1
         fi
-        
+
         # If initial state is optional (e.g., already at target), just check final state
         if [ "$require_initial" = "optional" ]; then
             if [ $has_final -eq 1 ]; then
@@ -233,11 +233,11 @@ test_get_value() {
     local property_item="$2"
     local expected_value="$3"
     local value_type="${4:-string}"
-    
+
     local actual_value
     actual_value=$($INDIGO_PROP_TOOL get -w OK $REMOTE_SERVER "$property_item" 2>&1 | tr -d '[:space:]')
     expected_value=$(echo "$expected_value" | tr -d '[:space:]')
-    
+
     local match=0
     if [ "$value_type" = "number" ]; then
         # Compare as numbers using bc if available, otherwise awk
@@ -257,7 +257,7 @@ test_get_value() {
             match=1
         fi
     fi
-    
+
     if [ $match -eq 1 ]; then
         print_test_result "$test_name" "PASS"
         return 0
@@ -276,21 +276,21 @@ test_set_and_verify() {
     local expected_value="$4"
     local timeout="${5:-10}"
     local value_type="${6:-string}"
-    
+
     # Set the value
     $INDIGO_PROP_TOOL set -w OK -t "$timeout" $REMOTE_SERVER "$property_set" >/dev/null 2>&1
     local set_result=$?
-    
+
     if [ $set_result -ne 0 ]; then
         print_test_result "$test_name" "FAIL" "Failed to set property"
         return 1
     fi
-    
+
     # Verify the value
     local actual_value
     actual_value=$($INDIGO_PROP_TOOL get -w OK $REMOTE_SERVER "$property_get" 2>&1 | tr -d '[:space:]')
     expected_value=$(echo "$expected_value" | tr -d '[:space:]')
-    
+
     local match=0
     if [ "$value_type" = "number" ]; then
         if command -v bc >/dev/null 2>&1; then
@@ -307,7 +307,7 @@ test_set_and_verify() {
             match=1
         fi
     fi
-    
+
     if [ $match -eq 1 ]; then
         print_test_result "$test_name" "PASS"
         return 0
@@ -322,11 +322,11 @@ test_set_and_verify() {
 test_connect() {
     local device="$1"
     local timeout="${2:-10}"
-    
+
     test_state_transition "Connect device" \
         "$device.CONNECTION.CONNECTED=ON" \
         "BUSY" "OK" "$timeout"
-    
+
     # Verify connection
     test_get_value "Verify CONNECTED=ON" \
         "$device.CONNECTION.CONNECTED" \
@@ -338,16 +338,16 @@ test_connect() {
 test_disconnect() {
     local device="$1"
     local timeout="${2:-10}"
-    
+
     test_state_transition "Disconnect device" \
         "$device.CONNECTION.DISCONNECTED=ON" \
         "BUSY" "OK" "$timeout"
-    
+
     # Verify disconnection
     test_get_value "Verify DISCONNECTED=ON" \
         "$device.CONNECTION.DISCONNECTED" \
         "ON"
-    
+
     test_get_value "Verify CONNECTED=OFF" \
         "$device.CONNECTION.CONNECTED" \
         "OFF"
@@ -358,23 +358,23 @@ test_disconnect() {
 test_connect_when_connected() {
     local device="$1"
     local timeout="${2:-10}"
-    
+
     # Request connect again and capture output
     local output
     output=$($INDIGO_PROP_TOOL set -w OK -s -t "$timeout" $REMOTE_SERVER "$device.CONNECTION.CONNECTED=ON" 2>&1)
-    
+
     # Check if any property updates were received (should be none)
     local has_updates=0
     if echo "$output" | grep -q "$device.CONNECTION"; then
         has_updates=1
     fi
-    
+
     if [ $has_updates -eq 1 ]; then
         print_test_result "Connect when already connected (no updates expected)" "FAIL" "Received property updates when none expected"
     else
         print_test_result "Connect when already connected (no updates expected)" "PASS"
     fi
-    
+
     # Should still be connected
     test_get_value "Verify still CONNECTED=ON" \
         "$device.CONNECTION.CONNECTED" \
@@ -386,23 +386,23 @@ test_connect_when_connected() {
 test_disconnect_when_disconnected() {
     local device="$1"
     local timeout="${2:-10}"
-    
+
     # Request disconnect again and capture output
     local output
     output=$($INDIGO_PROP_TOOL set -w OK -s -t "$timeout" $REMOTE_SERVER "$device.CONNECTION.DISCONNECTED=ON" 2>&1)
-    
+
     # Check if any property updates were received (should be none)
     local has_updates=0
     if echo "$output" | grep -q "$device.CONNECTION"; then
         has_updates=1
     fi
-    
+
     if [ $has_updates -eq 1 ]; then
         print_test_result "Disconnect when already disconnected (no updates expected)" "FAIL" "Received property updates when none expected"
     else
         print_test_result "Disconnect when already disconnected (no updates expected)" "PASS"
     fi
-    
+
     # Should still be disconnected
     test_get_value "Verify still DISCONNECTED=ON" \
         "$device.CONNECTION.DISCONNECTED" \
@@ -416,35 +416,35 @@ test_disconnect_when_disconnected() {
 test_connection_battery() {
     local device="$1"
     local timeout="${2:-10}"
-    
+
     echo "--- Connection Test Battery ---"
-    
+
     local was_connected=0
     if is_device_connected "$device"; then
         echo "Device is already connected"
         was_connected=1
-        
+
         # Test connect when already connected
         test_connect_when_connected "$device" "$timeout"
-        
+
         # Disconnect
         test_disconnect "$device" "$timeout"
-        
+
         # Test disconnect when already disconnected
         test_disconnect_when_disconnected "$device" "$timeout"
-        
+
         sleep 1
     else
         echo "Device is already disconnected"
-        
+
         # Test disconnect when already disconnected
         test_disconnect_when_disconnected "$device" "$timeout"
     fi
-    
+
     # Connect with full state transition check
     test_connect "$device" "$timeout"
     test_connect_when_connected "$device" "$timeout"
-    
+
     return $was_connected
 }
 
@@ -453,7 +453,7 @@ is_device_connected() {
     local device="$1"
     local connected
     connected=$($INDIGO_PROP_TOOL get $REMOTE_SERVER "$device.CONNECTION.CONNECTED" 2>&1)
-    
+
     if [ "$connected" = "ON" ]; then
         return 0
     else
@@ -468,10 +468,10 @@ get_driver_info() {
     local device="$1"
     local driver_name
     local driver_version
-    
+
     driver_name=$($INDIGO_PROP_TOOL get -w OK $REMOTE_SERVER "$device.INFO.DEVICE_DRIVER" 2>&1 | tr -d '"')
     driver_version=$($INDIGO_PROP_TOOL get -w OK $REMOTE_SERVER "$device.INFO.DEVICE_VERSION" 2>&1 | tr -d '"')
-    
+
     if [ -n "$driver_name" ] && [ -n "$driver_version" ]; then
         echo "$driver_name v.$driver_version"
     fi
@@ -483,19 +483,19 @@ print_test_header() {
     local test_title="$1"
     local device="$2"
     local remote="$3"
-    
+
     echo "========================================"
     echo "$test_title"
     echo "Device: $device"
     echo "Server: $remote"
-    
+
     # Get driver info if device is connected
     local driver_info
     driver_info=$(get_driver_info "$device")
     if [ -n "$driver_info" ]; then
         echo "Driver: $driver_info"
     fi
-    
+
     echo "========================================"
     echo ""
 }
@@ -506,15 +506,15 @@ print_test_header() {
 property_exists() {
     local property="$1"
     local items="$2"
-    
+
     # Check if property exists
     local output
     output=$($INDIGO_PROP_TOOL list -w OK $REMOTE_SERVER "$property" 2>&1)
-    
+
     if [ -z "$output" ] || echo "$output" | grep -qiE "error|not found|no property"; then
         return 1
     fi
-    
+
     # If items specified, check each one
     if [ -n "$items" ]; then
         IFS=',' read -ra ITEM_ARRAY <<< "$items"
@@ -525,17 +525,87 @@ property_exists() {
             fi
         done
     fi
-    
+
     return 0
 }
+# Helper: Get minimum value from property item range
+# Usage: get_item_min "device.property.item"
+# Returns: Echoes min value for numeric properties with range, empty string otherwise
+# Example: For output "32227.000000 [0.000000,65535.000000]" returns "0.000000"
+get_item_min() {
+    local property_item="$1"
 
+    # Get extended property info with -e flag
+    local output
+    output=$($INDIGO_PROP_TOOL get -e -w OK $REMOTE_SERVER "$property_item" 2>&1)
+
+    if [ -z "$output" ]; then
+        return 1
+    fi
+
+    # Try to extract range from format: value [min,max]
+    # Example: 32227.000000 [0.000000,65535.000000]
+    if echo "$output" | grep -q '\[.*,.*\]'; then
+        # Extract the bracketed range
+        local range
+        range=$(echo "$output" | grep -oE '\[[^]]+\]' | tr -d '[]')
+
+        # Extract min value (before comma)
+        local min
+        min=$(echo "$range" | cut -d',' -f1 | tr -d ' ')
+
+        if [ -n "$min" ]; then
+            echo "$min"
+            return 0
+        fi
+    fi
+
+    # No range found
+    return 1
+}
+
+# Helper: Get maximum value from property item range
+# Usage: get_item_max "device.property.item"
+# Returns: Echoes max value for numeric properties with range, empty string otherwise
+# Example: For output "32227.000000 [0.000000,65535.000000]" returns "65535.000000"
+get_item_max() {
+    local property_item="$1"
+
+    # Get extended property info with -e flag
+    local output
+    output=$($INDIGO_PROP_TOOL get -e -w OK $REMOTE_SERVER "$property_item" 2>&1)
+
+    if [ -z "$output" ]; then
+        return 1
+    fi
+
+    # Try to extract range from format: value [min,max]
+    # Example: 32227.000000 [0.000000,65535.000000]
+    if echo "$output" | grep -q '\[.*,.*\]'; then
+        # Extract the bracketed range
+        local range
+        range=$(echo "$output" | grep -oE '\[[^]]+\]' | tr -d '[]')
+
+        # Extract max value (after comma)
+        local max
+        max=$(echo "$range" | cut -d',' -f2 | tr -d ' ')
+
+        if [ -n "$max" ]; then
+            echo "$max"
+            return 0
+        fi
+    fi
+
+    # No range found
+    return 1
+}
 # Test: Check if a property exists with optional item checking
 # Usage: test_property_exists "test_name" "device.property" ["item1,item2,..."]
 test_property_exists() {
     local test_name="$1"
     local property="$2"
     local items="$3"
-    
+
     if property_exists "$property" "$items"; then
         if [ -n "$items" ]; then
             print_test_result "$test_name" "PASS"

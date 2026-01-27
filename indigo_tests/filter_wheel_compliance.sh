@@ -15,12 +15,16 @@ source "$SCRIPT_DIR/indigo_test_framework.sh"
 get_wheel_slot_count() {
     local device="$1"
     local max_slot
-    # List all SLOT_NAME items and find the highest slot number
-    max_slot=$($INDIGO_PROP_TOOL list -w OK $REMOTE_SERVER "$device.WHEEL_SLOT_NAME" 2>&1 | \
-               grep -oE 'SLOT_NAME_[0-9]+' | \
-               sed 's/SLOT_NAME_//' | \
-               sort -n | \
-               tail -1)
+
+    # Get the max value from WHEEL_SLOT.SLOT range (indicates number of slots)
+    local max_value
+    max_value=$(get_item_max "$device.WHEEL_SLOT.SLOT")
+
+    if [ -n "$max_value" ]; then
+        # Convert to integer (max slot = number of slots)
+        max_slot=$(printf "%.0f" "$max_value")
+    fi
+
     echo "$max_slot"
 }
 
@@ -103,12 +107,12 @@ for slot in $(seq 1 $SLOT_COUNT); do
         "$DEVICE.WHEEL_SLOT_OFFSET.SLOT_OFFSET_$slot=1" \
         "$DEVICE.WHEEL_SLOT_OFFSET.SLOT_OFFSET_$slot" \
         "1" 5 "number"
-    
+
     test_set_and_verify "Set slot $slot offset to -1" \
         "$DEVICE.WHEEL_SLOT_OFFSET.SLOT_OFFSET_$slot=-1" \
         "$DEVICE.WHEEL_SLOT_OFFSET.SLOT_OFFSET_$slot" \
         "-1" 5 "number"
-    
+
     test_set_and_verify "Set slot $slot offset to 0" \
         "$DEVICE.WHEEL_SLOT_OFFSET.SLOT_OFFSET_$slot=0" \
         "$DEVICE.WHEEL_SLOT_OFFSET.SLOT_OFFSET_$slot" \
@@ -125,7 +129,7 @@ for slot in $(seq 1 $SLOT_COUNT); do
         "$DEVICE.WHEEL_SLOT.SLOT=$slot" \
         "$DEVICE.WHEEL_SLOT.SLOT" \
         "$slot" 30 "number"
-    
+
     # Verify we're at the correct slot (numeric comparison)
     test_get_value "Verify at slot $slot" \
         "$DEVICE.WHEEL_SLOT.SLOT" \
