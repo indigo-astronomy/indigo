@@ -1,7 +1,7 @@
 ﻿#ifndef __omegonprocam_h__
 #define __omegonprocam_h__
 
-/* Version: 59.30281.20251214 */
+/* Version: 59.30594.20260120 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -44,10 +44,8 @@
         (c) Exception: hardware binning.
 */
 
-#if defined(_WIN32)
-#ifndef _INC_WINDOWS
+#if defined(_WIN32) && (!defined(_INC_WINDOWS))
 #include <windows.h>
-#endif
 #endif
 
 #ifdef __cplusplus
@@ -194,6 +192,8 @@ typedef struct Omegonprocam_t { int unused; } *HOmegonprocam;
 #define OMEGONPROCAM_FLAG_USB32                0x0400000000000000  /* USB 3.2 Gen 2 */
 #define OMEGONPROCAM_FLAG_USB32_OVER_USB30     0x0800000000000000  /* USB 3.2 Gen 2 camera connected to usb3.0 port */
 #define OMEGONPROCAM_FLAG_LINESCAN             0x1000000000000000  /* line scan camera */
+#define OMEGONPROCAM_FLAG_25GIGE               0x2000000000000000  /* 2.5 Gigabit GigE */
+#define OMEGONPROCAM_FLAG_RAW14PACK            0x4000000000000000  /* pixel format, RAW 14bits packed */
 
 #define OMEGONPROCAM_EXPOGAIN_DEF              100     /* exposure gain, default value */
 #define OMEGONPROCAM_EXPOGAIN_MIN              100     /* exposure gain, minimum value */
@@ -329,7 +329,7 @@ typedef struct {
 } OmegonprocamDeviceV2; /* device instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 59.30281.20251214
+    get the version of this dll/so/dylib, which is: 59.30594.20260120
 */
 #if defined(_WIN32)
 OMEGONPROCAM_API(const wchar_t*)   Omegonprocam_Version();
@@ -1255,6 +1255,7 @@ OMEGONPROCAM_API(HRESULT)  Omegonprocam_get_Option(HOmegonprocam h, unsigned iOp
 #define OMEGONPROCAM_PIXELFORMAT_HDR12HL           0x11   /* HDR, Bitdepth: 12, Conversion Gain: High + Low */
 #define OMEGONPROCAM_PIXELFORMAT_HDR14HL           0x12   /* HDR, Bitdepth: 14, Conversion Gain: High + Low */
 #define OMEGONPROCAM_PIXELFORMAT_RAW10PACK         0x13
+#define OMEGONPROCAM_PIXELFORMAT_RAW14PACK         0x14
 
 /*
 * cmd: input
@@ -1834,7 +1835,7 @@ OMEGONPROCAM_API(HRESULT)  Omegonprocam_get_VignetAmountInt(HOmegonprocam h, int
 OMEGONPROCAM_API(HRESULT)  Omegonprocam_put_VignetMidPointInt(HOmegonprocam h, int nMidPoint);
 OMEGONPROCAM_API(HRESULT)  Omegonprocam_get_VignetMidPointInt(HOmegonprocam h, int* nMidPoint);
 
-/* obsolete flags */
+/* obsolete pixel format alias */
 #define OMEGONPROCAM_FLAG_BITDEPTH10    OMEGONPROCAM_FLAG_RAW10  /* pixel format, RAW 10bits */
 #define OMEGONPROCAM_FLAG_BITDEPTH12    OMEGONPROCAM_FLAG_RAW12  /* pixel format, RAW 12bits */
 #define OMEGONPROCAM_FLAG_BITDEPTH14    OMEGONPROCAM_FLAG_RAW14  /* pixel format, RAW 14bits */

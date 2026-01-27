@@ -1345,7 +1345,7 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 					for (int col = 0; col < width; col++)
 						for (int row = height - 1; row >= 0; row--)
 							*pnt++ = data[row * width + col];
-					indigo_printf(socket, "HTTP/1.1 200 OK\r\nContent-Type: application/imagebytes\r\nContent-Length: %d\r\n\r\n", size * 4); // ASCOM BUG, should be + sizeof(metadata)
+					indigo_printf(socket, "HTTP/1.1 200 OK\r\nContent-Type: application/imagebytes\r\nContent-Length: %d\r\n\r\n", size * 4 + sizeof(metadata));
 					indigo_write(socket, (const char *)&metadata, sizeof(metadata));
 					indigo_write(socket, (const char *)buffer, size * 4);
 					break;
@@ -1358,7 +1358,7 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 					for (int col = 0; col < width; col++)
 						for (int row = height - 1; row >= 0; row--)
 							*pnt++ = data[row * width + col];
-					indigo_printf(socket, "HTTP/1.1 200 OK\r\nContent-Type: application/imagebytes\r\nContent-Length: %d\r\n\r\n", size * 4); // ASCOM BUG, should be + sizeof(metadata)
+					indigo_printf(socket, "HTTP/1.1 200 OK\r\nContent-Type: application/imagebytes\r\nContent-Length: %d\r\n\r\n", size * 4 + sizeof(metadata));
 					indigo_write(socket, (const char *)&metadata, sizeof(metadata));
 					indigo_write(socket, (const char *)buffer, size * 4);
 					free(buffer);
@@ -1376,7 +1376,7 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 							*pnt++ = data[base + 0];
 							*pnt++ = data[base + 1];
 						}
-					indigo_printf(socket, "HTTP/1.1 200 OK\r\nContent-Type: application/imagebytes\r\nContent-Length: %d\r\n\r\n", size * 12); // ASCOM BUG, should be + sizeof(metadata)
+					indigo_printf(socket, "HTTP/1.1 200 OK\r\nContent-Type: application/imagebytes\r\nContent-Length: %d\r\n\r\n", size * 12 + sizeof(metadata));
 					indigo_write(socket, (const char *)&metadata, sizeof(metadata));
 					indigo_write(socket, (const char *)buffer, size * 12);
 					break;
@@ -1394,7 +1394,7 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 							*pnt++ = data[base + 1];
 							*pnt++ = data[base + 2];
 						}
-					indigo_printf(socket, "HTTP/1.1 200 OK\r\nContent-Type: application/imagebytes\r\nContent-Length: %d\r\n\r\n", size * 12); // ASCOM BUG, should be + sizeof(metadata)
+					indigo_printf(socket, "HTTP/1.1 200 OK\r\nContent-Type: application/imagebytes\r\nContent-Length: %d\r\n\r\n", size * 12 + sizeof(metadata));
 					indigo_write(socket, (const char *)&metadata, sizeof(metadata));
 					indigo_write(socket, (const char *)buffer, size * 12);
 					break;
