@@ -16,7 +16,7 @@ get_wheel_slot_count() {
     local device="$1"
     local max_slot
     # List all SLOT_NAME items and find the highest slot number
-    max_slot=$($INDIGO_PROP_TOOL list $REMOTE_SERVER "$device.WHEEL_SLOT_NAME" 2>&1 | \
+    max_slot=$($INDIGO_PROP_TOOL list -w OK $REMOTE_SERVER "$device.WHEEL_SLOT_NAME" 2>&1 | \
                grep -oE 'SLOT_NAME_[0-9]+' | \
                sed 's/SLOT_NAME_//' | \
                sort -n | \
@@ -81,8 +81,8 @@ echo "--- Storing Original Values ---"
 declare -A ORIGINAL_SLOT_NAMES
 declare -A ORIGINAL_SLOT_OFFSETS
 for slot in $(seq 1 $SLOT_COUNT); do
-    ORIGINAL_SLOT_NAMES[$slot]=$($INDIGO_PROP_TOOL get $REMOTE_SERVER "$DEVICE.WHEEL_SLOT_NAME.SLOT_NAME_$slot" 2>&1)
-    ORIGINAL_SLOT_OFFSETS[$slot]=$($INDIGO_PROP_TOOL get $REMOTE_SERVER "$DEVICE.WHEEL_SLOT_OFFSET.SLOT_OFFSET_$slot" 2>&1)
+    ORIGINAL_SLOT_NAMES[$slot]=$($INDIGO_PROP_TOOL get -w OK $REMOTE_SERVER "$DEVICE.WHEEL_SLOT_NAME.SLOT_NAME_$slot" 2>&1)
+    ORIGINAL_SLOT_OFFSETS[$slot]=$($INDIGO_PROP_TOOL get -w OK $REMOTE_SERVER "$DEVICE.WHEEL_SLOT_OFFSET.SLOT_OFFSET_$slot" 2>&1)
 done
 
 echo ""

@@ -235,7 +235,7 @@ test_get_value() {
     local value_type="${4:-string}"
     
     local actual_value
-    actual_value=$($INDIGO_PROP_TOOL get $REMOTE_SERVER "$property_item" 2>&1 | tr -d '[:space:]')
+    actual_value=$($INDIGO_PROP_TOOL get -w OK $REMOTE_SERVER "$property_item" 2>&1 | tr -d '[:space:]')
     expected_value=$(echo "$expected_value" | tr -d '[:space:]')
     
     local match=0
@@ -288,7 +288,7 @@ test_set_and_verify() {
     
     # Verify the value
     local actual_value
-    actual_value=$($INDIGO_PROP_TOOL get $REMOTE_SERVER "$property_get" 2>&1 | tr -d '[:space:]')
+    actual_value=$($INDIGO_PROP_TOOL get -w OK $REMOTE_SERVER "$property_get" 2>&1 | tr -d '[:space:]')
     expected_value=$(echo "$expected_value" | tr -d '[:space:]')
     
     local match=0
@@ -509,7 +509,7 @@ property_exists() {
     
     # Check if property exists
     local output
-    output=$($INDIGO_PROP_TOOL list $REMOTE_SERVER "$property" 2>&1)
+    output=$($INDIGO_PROP_TOOL list -w OK $REMOTE_SERVER "$property" 2>&1)
     
     if [ -z "$output" ] || echo "$output" | grep -qiE "error|not found|no property"; then
         return 1
