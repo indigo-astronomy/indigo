@@ -84,6 +84,11 @@ static property_change_request change_request;
 static property_list_request list_request;
 static property_get_request get_request;
 
+void stop_waiting_if_requested(indigo_property_state property_state) {
+	if (property_state == wait_for_state && wait_state_requested) {
+		poll_wait_flag = false;
+	}
+}
 
 int read_file(const char *file_name, char **file_data) {
 	int size = 0;
@@ -419,6 +424,7 @@ static void print_property_list_filtered(indigo_property *property, const char *
 		if ((!strncmp(filter->device_name, property->device, INDIGO_NAME_SIZE)) &&
 		   (!strncmp(filter->property_name, property->name, INDIGO_NAME_SIZE))) {
 			print_property_list(property, message);
+			stop_waiting_if_requested(property->state);
 		}
 	}
 }
@@ -495,6 +501,7 @@ static void print_property_get_filtered(indigo_property *property, const char *m
 	for (i = 0; i < items_found; i++) {
 		printf("%s\n", value_string[i]);
 	}
+	stop_waiting_if_requested(property->state);
 }
 
 
@@ -574,6 +581,7 @@ static void print_property_list_state_filtered(indigo_property *property, const 
 		if ((!strncmp(filter->device_name, property->device, INDIGO_NAME_SIZE)) &&
 		   (!strncmp(filter->property_name, property->name, INDIGO_NAME_SIZE))) {
 			print_property_list_state(property, message);
+			stop_waiting_if_requested(property->state);
 		}
 	}
 }
@@ -607,6 +615,7 @@ static void print_property_get_state_filtered(indigo_property *property, const c
 		   (!strncmp(filter->property_name, property->name, INDIGO_NAME_SIZE))) {
 			print_property_get_state(property, message);
 		}
+		stop_waiting_if_requested(property->state);
 	}
 }
 
