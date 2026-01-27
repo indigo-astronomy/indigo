@@ -335,6 +335,68 @@ if property_exists "CCD Imager.CCD_INFO" "WIDTH,HEIGHT"; then
 fi
 ```
 
+#### `get_item_min(property_item)`
+
+Get the minimum value from a numeric property item's range.
+
+**Parameters:**
+
+- `property_item` - Full property item path (e.g., `"device.PROPERTY.ITEM"`)
+
+**Returns:**
+
+- Echoes the minimum value for numeric properties with a defined range
+- Returns empty string (exit code 1) if property is non-numeric or has no range
+
+**Example:**
+
+```bash
+# Get minimum value for a numeric property
+min_value=$(get_item_min "Filter Wheel.WHEEL_SLOT.SLOT")
+if [ -n "$min_value" ]; then
+    echo "Minimum slot number: $min_value"
+fi
+
+# Check if property has a min value
+if get_item_min "CCD Imager.CCD_EXPOSURE.EXPOSURE" >/dev/null; then
+    echo "Property has a defined minimum"
+fi
+```
+
+**Note:** This function uses the `-e` (extended) flag of `indigo_prop_tool` to retrieve property metadata. It parses output like `32227.000000 [0.000000,65535.000000]` to extract the minimum value.
+
+#### `get_item_max(property_item)`
+
+Get the maximum value from a numeric property item's range.
+
+**Parameters:**
+
+- `property_item` - Full property item path (e.g., `"device.PROPERTY.ITEM"`)
+
+**Returns:**
+
+- Echoes the maximum value for numeric properties with a defined range
+- Returns empty string (exit code 1) if property is non-numeric or has no range
+
+**Example:**
+
+```bash
+# Get maximum value for a numeric property
+max_value=$(get_item_max "Filter Wheel.WHEEL_SLOT.SLOT")
+if [ -n "$max_value" ]; then
+    echo "Maximum slot number: $max_value"
+    # For WHEEL_SLOT, max value indicates number of slots
+    slot_count=$(printf "%.0f" "$max_value")
+fi
+
+# Use in conditional
+if max_exp=$(get_item_max "CCD Imager.CCD_EXPOSURE.EXPOSURE"); then
+    echo "Maximum exposure: $max_exp seconds"
+fi
+```
+
+**Note:** This function uses the `-e` (extended) flag of `indigo_prop_tool` to retrieve property metadata. It parses output like `32227.000000 [0.000000,65535.000000]` to extract the maximum value.
+
 ---
 
 ## Global Variables
