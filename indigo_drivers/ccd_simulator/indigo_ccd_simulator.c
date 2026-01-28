@@ -1466,9 +1466,11 @@ static indigo_result ao_change_property(indigo_device *device, indigo_client *cl
 	} else if (indigo_property_match_changeable(AO_GUIDE_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AO_GUIDE_DEC
 		indigo_property_copy_values(AO_GUIDE_DEC_PROPERTY, property, false);
+		AO_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, AO_GUIDE_DEC_PROPERTY, NULL);
 		AO_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 		if (AO_GUIDE_NORTH_ITEM->number.value || AO_GUIDE_SOUTH_ITEM->number.value) {
-			PRIVATE_DATA->ao_dec_offset += (AO_GUIDE_NORTH_ITEM->number.value - AO_GUIDE_SOUTH_ITEM->number.value) / 30.0;
+			PRIVATE_DATA->ao_dec_offset += AO_GUIDE_NORTH_ITEM->number.value - AO_GUIDE_SOUTH_ITEM->number.value;
 			AO_GUIDE_NORTH_ITEM->number.value = 0;
 			AO_GUIDE_SOUTH_ITEM->number.value = 0;
 			if (PRIVATE_DATA->ao_dec_offset > 100) {
@@ -1484,10 +1486,13 @@ static indigo_result ao_change_property(indigo_device *device, indigo_client *cl
 	} else if (indigo_property_match_changeable(AO_GUIDE_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AO_GUIDE_RA
 		indigo_property_copy_values(AO_GUIDE_RA_PROPERTY, property, false);
+		AO_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, AO_GUIDE_RA_PROPERTY, NULL);
 		AO_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 		if (AO_GUIDE_EAST_ITEM->number.value || AO_GUIDE_WEST_ITEM->number.value) {
-			PRIVATE_DATA->ao_ra_offset += (AO_GUIDE_EAST_ITEM->number.value - AO_GUIDE_WEST_ITEM->number.value) / 30.0;
+			PRIVATE_DATA->ao_ra_offset += AO_GUIDE_EAST_ITEM->number.value - AO_GUIDE_WEST_ITEM->number.value;
 			AO_GUIDE_EAST_ITEM->number.value = 0;
+			AO_GUIDE_WEST_ITEM->number.value = 0;
 			if (PRIVATE_DATA->ao_ra_offset > 100) {
 				PRIVATE_DATA->ao_ra_offset = 100;
 				AO_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
