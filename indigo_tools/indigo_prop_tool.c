@@ -775,6 +775,9 @@ static indigo_result client_define_property(indigo_client *client, indigo_device
 
 static indigo_result client_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	/* If waiting for specific state after a set, exit as soon as the target state is observed */
+	if (poll_wait_flag == false) {
+		return INDIGO_OK;
+	}
 	if (wait_state_requested) {
 		if (!strcmp(property->device, change_request.device_name) && !strcmp(property->name, change_request.property_name)) {
 			if (wait_for_state == -2 || property->state == wait_for_state) {
