@@ -44,6 +44,8 @@
 #define TEXT_LEN_TO_PRINT 80
 #define MAX_ITEMS 128
 
+#define ANY_STATE -2
+
 //#define DEBUG
 
 static bool set_requested = false;
@@ -85,7 +87,7 @@ static property_list_request list_request;
 static property_get_request get_request;
 
 void stop_waiting_if_requested(indigo_property_state property_state) {
-	if (wait_state_requested && (wait_for_state == -2 || property_state == wait_for_state)) {
+	if (wait_state_requested && (wait_for_state == ANY_STATE || property_state == wait_for_state)) {
 		poll_wait_flag = false;
 	}
 }
@@ -780,7 +782,7 @@ static indigo_result client_update_property(indigo_client *client, indigo_device
 	}
 	if (wait_state_requested) {
 		if (!strcmp(property->device, change_request.device_name) && !strcmp(property->name, change_request.property_name)) {
-			if (wait_for_state == -2 || property->state == wait_for_state) {
+			if (wait_for_state == ANY_STATE || property->state == wait_for_state) {
 				print_property_list(property, message);
 				poll_wait_flag = false;
 				return INDIGO_OK;
@@ -868,7 +870,7 @@ static void print_help(const char *name) {
 	       "       -p  | --port port                   (default: 7624)\n"
 	       "       -T  | --token token\n"
 	       "       -t  | --time-to-wait seconds        (default: 2)\n"
-	       "       -w  | --wait OK|BUSY|ALERT|IDLE|ALL wait for property state (ALL=any update)\n"
+	       "       -w  | --wait OK|BUSY|ALERT|IDLE|ANY wait for property state (ANY=any update)\n"
 	       "       -s  | --track-states                print property state as string\n"
 	);
 }
@@ -977,8 +979,8 @@ int main(int argc, const char * argv[]) {
 					wait_for_state = INDIGO_ALERT_STATE;
 				} else if (!strcmp(argv[i], "IDLE")) {
 					wait_for_state = INDIGO_IDLE_STATE;
-				} else if (!strcasecmp(argv[i], "ALL")) {
-					wait_for_state = -2; /* Special value for ANY state */
+				} else if (!strcasecmp(argv[i], "ANY")) {
+					wait_for_state = ANY_STATE;
 				} else {
 					fprintf(stderr, "Invalid wait state specified: %s\n", argv[i]);
 					return 1;
