@@ -115,7 +115,7 @@ if awk -v pos="$TARGET_POS" -v min="$POSITION_MIN" -v max="$POSITION_MAX" 'BEGIN
 		"$DEVICE.FOCUSER_POSITION.POSITION=$TARGET_POS" \
 		"$DEVICE.FOCUSER_POSITION.POSITION" \
 		"$TARGET_POS" 30 "number"
-	
+
 	test_get_value "Verify at position $TARGET_POS" \
 		"$DEVICE.FOCUSER_POSITION.POSITION" \
 		"$TARGET_POS" "number"
@@ -137,34 +137,34 @@ if awk -v steps="$MOVE_STEPS" -v max="$STEPS_MAX" 'BEGIN { exit !(steps <= max) 
 		"$DEVICE.FOCUSER_DIRECTION.MOVE_INWARD=ON" \
 		"$DEVICE.FOCUSER_DIRECTION.MOVE_INWARD" \
 		"ON" 5
-	
+
 	test_set_transition_smart "Move $MOVE_STEPS steps" \
 		"$DEVICE.FOCUSER_STEPS.STEPS=$MOVE_STEPS" \
 		"$DEVICE.FOCUSER_STEPS.STEPS" \
 		"$MOVE_STEPS" 30 "number"
-	
+
 	sleep 2
-	
+
 	POS_AFTER_IN=$($INDIGO_PROP_TOOL get -w OK $REMOTE_SERVER "$DEVICE.FOCUSER_POSITION.POSITION" 2>&1)
 	echo "Position after inward move: $POS_AFTER_IN"
-	
+
 	# Move outward
 	echo "Moving $MOVE_STEPS steps outward..."
 	test_set_and_verify "Set direction to MOVE_OUTWARD" \
 		"$DEVICE.FOCUSER_DIRECTION.MOVE_OUTWARD=ON" \
 		"$DEVICE.FOCUSER_DIRECTION.MOVE_OUTWARD" \
 		"ON" 5
-	
+
 	test_set_transition_smart "Move $MOVE_STEPS steps" \
 		"$DEVICE.FOCUSER_STEPS.STEPS=$MOVE_STEPS" \
 		"$DEVICE.FOCUSER_STEPS.STEPS" \
 		"$MOVE_STEPS" 30 "number"
-	
+
 	sleep 2
-	
+
 	POS_AFTER_OUT=$($INDIGO_PROP_TOOL get -w OK $REMOTE_SERVER "$DEVICE.FOCUSER_POSITION.POSITION" 2>&1)
 	echo "Position after outward move: $POS_AFTER_OUT"
-	
+
 	# Verify we're back near original position (within tolerance)
 	if awk -v p1="$POS_AFTER_OUT" -v p2="$TARGET_POS" 'BEGIN { diff = p1 - p2; if (diff < 0) diff = -diff; exit !(diff <= 10) }'; then
 		print_test_result "In/Out moves returned near original" "PASS"
@@ -246,52 +246,52 @@ echo "--- Test 5: Optional Properties ---"
 # Test FOCUSER_REVERSE_MOTION if exists
 if property_exists "$DEVICE.FOCUSER_REVERSE_MOTION"; then
 	echo "Testing FOCUSER_REVERSE_MOTION..."
-	
+
 	test_set_and_verify "Set reverse motion ENABLED" \
 		"$DEVICE.FOCUSER_REVERSE_MOTION.ENABLED=ON" \
 		"$DEVICE.FOCUSER_REVERSE_MOTION.ENABLED" \
 		"ON" 5
-	
+
 	test_set_and_verify "Set reverse motion DISABLED" \
 		"$DEVICE.FOCUSER_REVERSE_MOTION.DISABLED=ON" \
 		"$DEVICE.FOCUSER_REVERSE_MOTION.DISABLED" \
 		"ON" 5
-	
+
 	echo ""
 fi
 
 # Test FOCUSER_BACKLASH if exists
 if property_exists "$DEVICE.FOCUSER_BACKLASH"; then
 	echo "Testing FOCUSER_BACKLASH..."
-	
+
 	# Get backlash range
 	BACKLASH_MAX=$(get_item_max "$DEVICE.FOCUSER_BACKLASH.BACKLASH")
 	TEST_BACKLASH=50
-	
+
 	# Use smaller value if 50 exceeds max
 	if [ -n "$BACKLASH_MAX" ]; then
 		if awk -v test="$TEST_BACKLASH" -v max="$BACKLASH_MAX" 'BEGIN { exit !(test > max) }'; then
 			TEST_BACKLASH=$(awk -v max="$BACKLASH_MAX" 'BEGIN { printf "%.0f", max / 2 }')
 		fi
 	fi
-	
+
 	test_set_and_verify "Set backlash to $TEST_BACKLASH" \
 		"$DEVICE.FOCUSER_BACKLASH.BACKLASH=$TEST_BACKLASH" \
 		"$DEVICE.FOCUSER_BACKLASH.BACKLASH" \
 		"$TEST_BACKLASH" 5 "number"
-	
+
 	echo ""
 fi
 
 # Test FOCUSER_TEMPERATURE if exists
 if property_exists "$DEVICE.FOCUSER_TEMPERATURE"; then
 	echo "Testing FOCUSER_TEMPERATURE..."
-	
+
 	TEMPERATURE=$($INDIGO_PROP_TOOL get -w OK $REMOTE_SERVER "$DEVICE.FOCUSER_TEMPERATURE.TEMPERATURE" 2>&1)
-	
+
 	if [ -n "$TEMPERATURE" ]; then
 		echo "Temperature reading: $TEMPERATURE °C"
-		
+
 		# Check if temperature is reasonable (> -100 means sensor present)
 		if awk -v temp="$TEMPERATURE" 'BEGIN { exit !(temp > -100) }'; then
 			print_test_result "Temperature sensor present (>-100°C)" "PASS"
@@ -299,7 +299,7 @@ if property_exists "$DEVICE.FOCUSER_TEMPERATURE"; then
 			print_test_result "Temperature sensor present (>-100°C)" "FAIL" "Reading $TEMPERATURE suggests no sensor"
 		fi
 	fi
-	
+
 	echo ""
 fi
 
@@ -354,7 +354,7 @@ if [ "$ORIGINAL_GOTO" = "ON" ] || [ "$ORIGINAL_SYNC" != "ON" ]; then
 		"$DEVICE.FOCUSER_ON_POSITION_SET.GOTO=ON" \
 		"$DEVICE.FOCUSER_ON_POSITION_SET.GOTO" \
 		"ON" 5
-	
+
 	test_set_transition_smart "Restore position $ORIGINAL_POSITION" \
 		"$DEVICE.FOCUSER_POSITION.POSITION=$ORIGINAL_POSITION" \
 		"$DEVICE.FOCUSER_POSITION.POSITION" \
