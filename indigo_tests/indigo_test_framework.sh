@@ -269,6 +269,44 @@ test_state_transition() {
 	fi
 }
 
+# Test: Check if property state matches one of expected states
+# Usage: test_property_state "test_name" "device.property" "STATE1,STATE2,..."
+# Expected states can be: OK, BUSY, ALERT, IDLE (comma-separated list)
+test_property_state() {
+	local test_name="$1"
+	local property="$2"
+	local expected_states="$3"
+
+	# Check if property exists
+	if ! property_exists "$property"; then
+		print_test_result "$test_name" "SKIP" "Property $property does not exist"
+		return 2
+	fi
+
+	# Get the current state
+	local actual_state
+	actual_state=$($INDIGO_PROP_TOOL get_state -w ALL $REMOTE_SERVER "$property" 2>&1)
+
+	if [ -z "$actual_state" ]; then
+		print_test_result "$test_name" "FAIL" "Could not determine property state"
+		return 1
+	fi
+
+	# Check if actual state is in the list of expected states
+	IFS=',' read -ra STATE_ARRAY <<< "$expected_states"
+	for expected in "${STATE_ARRAY[@]}"; do
+		expected=$(echo "$expected" | xargs)  # trim whitespace
+		if [ "$actual_state" = "$expected" ]; then
+			print_test_result "$test_name" "PASS"
+			return 0
+		fi
+	done
+
+	# State not in expected list
+	print_test_result "$test_name" "FAIL" "Expected state in [$expected_states], got [$actual_state]"
+	return 1
+}
+
 # Test: Get property item value and compare
 # Usage: test_get_value "test_name" "device.property.item" "expected_value" [type]
 # type can be "string" (default) or "number" for numeric comparison

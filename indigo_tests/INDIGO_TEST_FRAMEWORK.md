@@ -174,6 +174,43 @@ test_set_transition_smart "Move to slot 3" \
 
 ---
 
+## Property State Tests
+
+#### `test_property_state(test_name, property, expected_states)`
+Test if a property's current state matches one of the expected states.
+
+**Parameters:**
+- `test_name` - Name of the test
+- `property` - Full property path (format: `"device.property"`)
+- `expected_states` - Comma-separated list of acceptable states (e.g., `"OK,ALERT"`)
+
+**Valid states:** `OK`, `BUSY`, `ALERT`, `IDLE`
+
+**Example:**
+```bash
+# Check that focuser is not busy (OK, ALERT, or IDLE acceptable)
+test_property_state "Focuser not busy" \
+    "Focuser.FOCUSER_POSITION" \
+    "OK,ALERT,IDLE"
+
+# Check that property is in OK state only
+test_property_state "Camera ready" \
+    "Camera.CCD_EXPOSURE" \
+    "OK"
+
+# Check for BUSY or OK (operation in progress or completed)
+test_property_state "Mount moving or stopped" \
+    "Mount.EQUATORIAL_COORDINATES" \
+    "BUSY,OK"
+```
+
+**Behavior:**
+- Returns PASS if current state matches any state in the list
+- Returns FAIL if current state doesn't match any expected state
+- Returns SKIP if property doesn't exist
+
+---
+
 ## Connection Test Functions
 
 #### `test_connect(device_name, timeout)`
