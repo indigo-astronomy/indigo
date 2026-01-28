@@ -44,6 +44,8 @@
 #define TEXT_LEN_TO_PRINT 80
 #define MAX_ITEMS 128
 
+#define ANY_STATE -2
+
 //#define DEBUG
 
 static bool set_requested = false;
@@ -85,7 +87,7 @@ static property_list_request list_request;
 static property_get_request get_request;
 
 void stop_waiting_if_requested(indigo_property_state property_state) {
-	if (property_state == wait_for_state && wait_state_requested) {
+	if (wait_state_requested && (wait_for_state == ANY_STATE || property_state == wait_for_state)) {
 		poll_wait_flag = false;
 	}
 }
@@ -370,7 +372,11 @@ void print_property_list(indigo_property *property, const char *message) {
 			}
 			break;
 		case INDIGO_NUMBER_VECTOR:
-			printf("%s.%s.%s = %f\n", property->device, property->name, item->name, item->number.value);
+			if (print_verbose) {
+				printf("%s.%s.%s = %f [%f, %f]\n", property->device, property->name, item->name, item->number.value, item->number.min, item->number.max);
+			} else {
+				printf("%s.%s.%s = %g\n", property->device, property->name, item->name, item->number.value);
+			}
 			break;
 		case INDIGO_SWITCH_VECTOR:
 			printf("%s.%s.%s = %s\n", property->device, property->name, item->name, item->sw.value ? "ON" : "OFF");
@@ -456,7 +462,11 @@ static void print_property_get_filtered(indigo_property *property, const char *m
 				}
 				break;
 			case INDIGO_NUMBER_VECTOR:
-				sprintf(value_string[items_found], "%f", item->number.value);
+				if (print_verbose) {
+					sprintf(value_string[items_found], "%f [%f, %f]", item->number.value, item->number.min, item->number.max);
+				} else {
+					sprintf(value_string[items_found], "%g", item->number.value);
+				}
 				break;
 			case INDIGO_SWITCH_VECTOR:
 				sprintf(value_string[items_found], item->sw.value ? "ON" : "OFF");
@@ -613,8 +623,8 @@ static void print_property_get_state_filtered(indigo_property *property, const c
 		if ((!strncmp(filter->device_name, property->device, INDIGO_NAME_SIZE)) &&
 		   (!strncmp(filter->property_name, property->name, INDIGO_NAME_SIZE))) {
 			print_property_get_state(property, message);
+			stop_waiting_if_requested(property->state);
 		}
-		stop_waiting_if_requested(property->state);
 	}
 }
 
@@ -631,7 +641,7 @@ static indigo_result client_define_property(indigo_client *client, indigo_device
 	int r;
 	static bool called = false;
 
-	if (!called && print_verbose) {
+	if (!called && print_verbose && !(get_requested || get_state_requested)) {
 		printf("Protocol version = %x.%x\n\n", property->version >> 8, property->version & 0xff);
 		called = true;
 	}
@@ -767,9 +777,12 @@ static indigo_result client_define_property(indigo_client *client, indigo_device
 
 static indigo_result client_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	/* If waiting for specific state after a set, exit as soon as the target state is observed */
+	if (poll_wait_flag == false) {
+		return INDIGO_OK;
+	}
 	if (wait_state_requested) {
 		if (!strcmp(property->device, change_request.device_name) && !strcmp(property->name, change_request.property_name)) {
-			if (property->state == wait_for_state) {
+			if (wait_for_state == ANY_STATE || property->state == wait_for_state) {
 				print_property_list(property, message);
 				poll_wait_flag = false;
 				return INDIGO_OK;
@@ -857,7 +870,7 @@ static void print_help(const char *name) {
 	       "       -p  | --port port                   (default: 7624)\n"
 	       "       -T  | --token token\n"
 	       "       -t  | --time-to-wait seconds        (default: 2)\n"
-	       "       -w  | --wait OK|BUSY|ALERT|IDLE     wait for property state\n"
+	       "       -w  | --wait OK|BUSY|ALERT|IDLE|ANY wait for property state (ANY=any update)\n"
 	       "       -s  | --track-states                print property state as string\n"
 	);
 }
@@ -966,6 +979,8 @@ int main(int argc, const char * argv[]) {
 					wait_for_state = INDIGO_ALERT_STATE;
 				} else if (!strcmp(argv[i], "IDLE")) {
 					wait_for_state = INDIGO_IDLE_STATE;
+				} else if (!strcasecmp(argv[i], "ANY")) {
+					wait_for_state = ANY_STATE;
 				} else {
 					fprintf(stderr, "Invalid wait state specified: %s\n", argv[i]);
 					return 1;
