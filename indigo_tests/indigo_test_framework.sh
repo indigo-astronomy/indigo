@@ -2,6 +2,9 @@
 # INDIGO Test Framework for bash
 # Copyright (c) 2026 Rumen G. Bogdanovski
 
+# Set locale for consistent numeric formatting (avoid locale-specific decimal separators)
+export LC_NUMERIC=C
+
 # INDIGO tool executable - can be overridden by setting before sourcing this script
 : ${INDIGO_PROP_TOOL:="indigo_prop_tool"}
 
