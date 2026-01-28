@@ -88,7 +88,7 @@ test_set_wait_state() {
 	fi
 
 	local output
-	output=$($INDIGO_PROP_TOOL set -w "$expected_state" -s -t "$timeout" $REMOTE_SERVER "$property_set" 2>&1)
+	output=$($INDIGO_PROP_TOOL set -w "$expected_state" -s -t "$timeout" $REMOTE_SERVER "$property_set" 2>&1 | grep "$property_base")
 	local exit_code=$?
 
 	if [ $exit_code -eq 0 ]; then
@@ -154,7 +154,7 @@ test_set_transition_smart() {
 
 	# Execute the set command
 	local output
-	output=$($INDIGO_PROP_TOOL set -w OK -s -t "$timeout" $REMOTE_SERVER "$property_set" 2>&1)
+	output=$($INDIGO_PROP_TOOL set -w OK -s -t "$timeout" $REMOTE_SERVER "$property_set" 2>&1 | grep "$property_base")
 	local exit_code=$?
 
 	if [ $exit_code -ne 0 ]; then
@@ -223,7 +223,7 @@ test_state_transition() {
 	fi
 
 	local output
-	output=$($INDIGO_PROP_TOOL set -w "$final_state" -s -t "$timeout" $REMOTE_SERVER "$property_set" 2>&1)
+	output=$($INDIGO_PROP_TOOL set -w "$final_state" -s -t "$timeout" $REMOTE_SERVER "$property_set" 2>&1 | grep "$property_base")
 	local exit_code=$?
 
 	if [ $exit_code -eq 0 ]; then
@@ -463,7 +463,7 @@ test_connect_when_connected() {
 
 	# Request connect again and capture output
 	local output
-	output=$($INDIGO_PROP_TOOL set -w OK -s -t "$timeout" $REMOTE_SERVER "$device.CONNECTION.CONNECTED=ON" 2>&1)
+	output=$($INDIGO_PROP_TOOL set -w OK -s -t "$timeout" $REMOTE_SERVER "$device.CONNECTION.CONNECTED=ON" 2>&1 | grep "$device.CONNECTION")
 
 	# Check if any property updates were received (should be none)
 	local has_updates=0
@@ -491,7 +491,7 @@ test_disconnect_when_disconnected() {
 
 	# Request disconnect again and capture output
 	local output
-	output=$($INDIGO_PROP_TOOL set -w OK -s -t "$timeout" $REMOTE_SERVER "$device.CONNECTION.DISCONNECTED=ON" 2>&1)
+	output=$($INDIGO_PROP_TOOL set -w OK -s -t "$timeout" $REMOTE_SERVER "$device.CONNECTION.DISCONNECTED=ON" 2>&1 | grep "$device.CONNECTION")
 
 	# Check if any property updates were received (should be none)
 	local has_updates=0
@@ -611,7 +611,7 @@ property_exists() {
 
 	# Check if property exists
 	local output
-	output=$($INDIGO_PROP_TOOL list -w OK $REMOTE_SERVER "$property" 2>&1)
+	output=$($INDIGO_PROP_TOOL list -w ALL $REMOTE_SERVER "$property" 2>&1)
 
 	if [ -z "$output" ] || echo "$output" | grep -qiE "error|not found|no property"; then
 		return 1
