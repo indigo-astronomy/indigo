@@ -13,38 +13,38 @@ source "$SCRIPT_DIR/indigo_test_framework.sh"
 
 # Helper: Get number of filter slots (wheel-specific)
 get_wheel_slot_count() {
-    local device="$1"
-    local max_slot
+	local device="$1"
+	local max_slot
 
-    # Get the max value from WHEEL_SLOT.SLOT range (indicates number of slots)
-    local max_value
-    max_value=$(get_item_max "$device.WHEEL_SLOT.SLOT")
+	# Get the max value from WHEEL_SLOT.SLOT range (indicates number of slots)
+	local max_value
+	max_value=$(get_item_max "$device.WHEEL_SLOT.SLOT")
 
-    if [ -n "$max_value" ]; then
-        # Convert to integer (max slot = number of slots)
-        max_slot=$(printf "%.0f" "$max_value")
-    fi
+	if [ -n "$max_value" ]; then
+		# Convert to integer (max slot = number of slots)
+		max_slot=$(printf "%.0f" "$max_value")
+	fi
 
-    echo "$max_slot"
+	echo "$max_slot"
 }
 
 # Print usage
 print_usage() {
-    echo "Usage: $0 \"Device Name\" [host:port]"
-    echo ""
-    echo "Examples:"
-    echo "  $0 \"CCD Imager Simulator (wheel)\""
-    echo "  $0 \"CCD Imager Simulator (wheel)\" localhost:7624"
-    echo "  $0 \"CCD Imager Simulator (wheel)\" 192.168.1.100:7624"
-    echo ""
-    exit 1
+	echo "Usage: $0 \"Device Name\" [host:port]"
+	echo ""
+	echo "Examples:"
+	echo "  $0 \"CCD Imager Simulator (wheel)\""
+	echo "  $0 \"CCD Imager Simulator (wheel)\" localhost:7624"
+	echo "  $0 \"CCD Imager Simulator (wheel)\" 192.168.1.100:7624"
+	echo ""
+	exit 1
 }
 
 # Check parameters
 if [ -z "$1" ]; then
-    echo "Error: Device name is required"
-    echo ""
-    print_usage
+	echo "Error: Device name is required"
+	echo ""
+	print_usage
 fi
 
 DEVICE="$1"
@@ -72,9 +72,9 @@ echo "--- Filter Wheel Properties Tests ---"
 # Get number of filter slots
 SLOT_COUNT=$(get_wheel_slot_count "$DEVICE")
 if [ -z "$SLOT_COUNT" ] || [ "$SLOT_COUNT" -eq 0 ]; then
-    echo "Error: Could not determine number of filter slots"
-    print_test_summary
-    exit 1
+	echo "Error: Could not determine number of filter slots"
+	print_test_summary
+	exit 1
 fi
 
 echo "Detected $SLOT_COUNT filter slots"
@@ -85,38 +85,38 @@ echo "--- Storing Original Values ---"
 declare -A ORIGINAL_SLOT_NAMES
 declare -A ORIGINAL_SLOT_OFFSETS
 for slot in $(seq 1 $SLOT_COUNT); do
-    ORIGINAL_SLOT_NAMES[$slot]=$($INDIGO_PROP_TOOL get -w OK $REMOTE_SERVER "$DEVICE.WHEEL_SLOT_NAME.SLOT_NAME_$slot" 2>&1)
-    ORIGINAL_SLOT_OFFSETS[$slot]=$($INDIGO_PROP_TOOL get -w OK $REMOTE_SERVER "$DEVICE.WHEEL_SLOT_OFFSET.SLOT_OFFSET_$slot" 2>&1)
+	ORIGINAL_SLOT_NAMES[$slot]=$($INDIGO_PROP_TOOL get -w OK $REMOTE_SERVER "$DEVICE.WHEEL_SLOT_NAME.SLOT_NAME_$slot" 2>&1)
+	ORIGINAL_SLOT_OFFSETS[$slot]=$($INDIGO_PROP_TOOL get -w OK $REMOTE_SERVER "$DEVICE.WHEEL_SLOT_OFFSET.SLOT_OFFSET_$slot" 2>&1)
 done
 
 echo ""
 echo "--- Filter Slot Name Tests ---"
 # Test setting filter slot names
 for slot in $(seq 1 $SLOT_COUNT); do
-    test_set_and_verify "Set slot $slot name to 'Filter_$slot'" \
-        "$DEVICE.WHEEL_SLOT_NAME.SLOT_NAME_$slot=\"Filter_$slot\"" \
-        "$DEVICE.WHEEL_SLOT_NAME.SLOT_NAME_$slot" \
-        "Filter_$slot" 5
+	test_set_and_verify "Set slot $slot name to 'Filter_$slot'" \
+		"$DEVICE.WHEEL_SLOT_NAME.SLOT_NAME_$slot=\"Filter_$slot\"" \
+		"$DEVICE.WHEEL_SLOT_NAME.SLOT_NAME_$slot" \
+		"Filter_$slot" 5
 done
 
 echo ""
 echo "--- Filter Slot Offset Tests ---"
 # Test SLOT_OFFSET for each slot (numeric property)
 for slot in $(seq 1 $SLOT_COUNT); do
-    test_set_and_verify "Set slot $slot offset to 1" \
-        "$DEVICE.WHEEL_SLOT_OFFSET.SLOT_OFFSET_$slot=1" \
-        "$DEVICE.WHEEL_SLOT_OFFSET.SLOT_OFFSET_$slot" \
-        "1" 5 "number"
+	test_set_and_verify "Set slot $slot offset to 1" \
+		"$DEVICE.WHEEL_SLOT_OFFSET.SLOT_OFFSET_$slot=1" \
+		"$DEVICE.WHEEL_SLOT_OFFSET.SLOT_OFFSET_$slot" \
+		"1" 5 "number"
 
-    test_set_and_verify "Set slot $slot offset to -1" \
-        "$DEVICE.WHEEL_SLOT_OFFSET.SLOT_OFFSET_$slot=-1" \
-        "$DEVICE.WHEEL_SLOT_OFFSET.SLOT_OFFSET_$slot" \
-        "-1" 5 "number"
+	test_set_and_verify "Set slot $slot offset to -1" \
+		"$DEVICE.WHEEL_SLOT_OFFSET.SLOT_OFFSET_$slot=-1" \
+		"$DEVICE.WHEEL_SLOT_OFFSET.SLOT_OFFSET_$slot" \
+		"-1" 5 "number"
 
-    test_set_and_verify "Set slot $slot offset to 0" \
-        "$DEVICE.WHEEL_SLOT_OFFSET.SLOT_OFFSET_$slot=0" \
-        "$DEVICE.WHEEL_SLOT_OFFSET.SLOT_OFFSET_$slot" \
-        "0" 5 "number"
+	test_set_and_verify "Set slot $slot offset to 0" \
+		"$DEVICE.WHEEL_SLOT_OFFSET.SLOT_OFFSET_$slot=0" \
+		"$DEVICE.WHEEL_SLOT_OFFSET.SLOT_OFFSET_$slot" \
+		"0" 5 "number"
 done
 
 echo ""
@@ -125,15 +125,15 @@ echo "--- Filter Movement Tests ---"
 # Test 4: Move to each filter slot with smart state transition
 # BUSY is mandatory when moving to different slot, optional when already there
 for slot in $(seq 1 $SLOT_COUNT); do
-    test_set_transition_smart "Move to slot $slot" \
-        "$DEVICE.WHEEL_SLOT.SLOT=$slot" \
-        "$DEVICE.WHEEL_SLOT.SLOT" \
-        "$slot" 30 "number"
+	test_set_transition_smart "Move to slot $slot" \
+		"$DEVICE.WHEEL_SLOT.SLOT=$slot" \
+		"$DEVICE.WHEEL_SLOT.SLOT" \
+		"$slot" 30 "number"
 
-    # Verify we're at the correct slot (numeric comparison)
-    test_get_value "Verify at slot $slot" \
-        "$DEVICE.WHEEL_SLOT.SLOT" \
-        "$slot" "number"
+	# Verify we're at the correct slot (numeric comparison)
+	test_get_value "Verify at slot $slot" \
+		"$DEVICE.WHEEL_SLOT.SLOT" \
+		"$slot" "number"
 done
 
 echo ""
@@ -146,8 +146,8 @@ $INDIGO_PROP_TOOL set -w OK -t 10 $REMOTE_SERVER "$DEVICE.WHEEL_SLOT.SLOT=$BEYON
 
 # Should be at last slot (numeric comparison)
 test_get_value "Beyond last slot -> should be at slot $SLOT_COUNT" \
-    "$DEVICE.WHEEL_SLOT.SLOT" \
-    "$SLOT_COUNT" "number"
+	"$DEVICE.WHEEL_SLOT.SLOT" \
+	"$SLOT_COUNT" "number"
 
 # Test 6: Try to move below first slot (should wrap to first slot)
 echo "Testing move below first slot (0)..."
@@ -155,8 +155,8 @@ $INDIGO_PROP_TOOL set -w OK -t 10 $REMOTE_SERVER "$DEVICE.WHEEL_SLOT.SLOT=0" >/d
 
 # Should be at first slot (numeric comparison)
 test_get_value "Below first slot -> should be at slot 1" \
-    "$DEVICE.WHEEL_SLOT.SLOT" \
-    "1" "number"
+	"$DEVICE.WHEEL_SLOT.SLOT" \
+	"1" "number"
 
 echo ""
 echo "--- Restore Initial State ---"
@@ -194,7 +194,7 @@ print_test_summary
 
 # Exit with appropriate code
 if [ $TESTS_FAILED -eq 0 ]; then
-    exit 0
+	exit 0
 else
-    exit 1
+	exit 1
 fi
