@@ -11,6 +11,7 @@ export LC_NUMERIC=C
 # Global counters
 TESTS_PASSED=0
 TESTS_FAILED=0
+TESTS_SKIPPED=0
 
 # Remote server option for indigo_prop_tool
 REMOTE_SERVER=""
@@ -19,6 +20,7 @@ REMOTE_SERVER=""
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+GRAY='\033[0;90m'
 NC='\033[0m' # No Color
 
 # Set remote server if provided
@@ -37,6 +39,12 @@ print_test_result() {
 	if [ "$result" = "PASS" ]; then
 		echo -e "${GREEN}[PASS]${NC} $test_name"
 		((TESTS_PASSED++))
+	elif [ "$result" = "SKIP" ]; then
+		echo -e "${GRAY}[SKIP]${NC} $test_name"
+		if [ -n "$description" ]; then
+			echo -e "       ${GRAY}Reason:${NC} $description"
+		fi
+		((TESTS_SKIPPED++))
 	else
 		echo -e "${RED}[FAIL]${NC} $test_name"
 		if [ -n "$description" ]; then
@@ -48,10 +56,10 @@ print_test_result() {
 
 # Print test summary
 print_test_summary() {
-	local total=$((TESTS_PASSED + TESTS_FAILED))
+	local total=$((TESTS_PASSED + TESTS_FAILED + TESTS_SKIPPED))
 	echo ""
 	echo "========================================"
-	echo "Test Summary: $TESTS_PASSED passed, $TESTS_FAILED failed out of $total tests"
+	echo "Test Summary: $TESTS_PASSED passed, $TESTS_FAILED failed, $TESTS_SKIPPED skipped out of $total tests"
 	if [ $TESTS_FAILED -eq 0 ]; then
 		echo -e "${GREEN}All tests passed!${NC}"
 	else
@@ -67,6 +75,17 @@ test_set_wait_state() {
 	local property_set="$2"
 	local expected_state="$3"
 	local timeout="${4:-10}"
+
+	# Extract property path (before =)
+	local property_path="${property_set%%=*}"
+	# Extract just device.property (without item)
+	local property_base="${property_path%.*}"
+
+	# Check if property exists
+	if ! property_exists "$property_base"; then
+		print_test_result "$test_name" "SKIP" "Property $property_base does not exist"
+		return 2
+	fi
 
 	local output
 	output=$($INDIGO_PROP_TOOL set -w "$expected_state" -s -t "$timeout" $REMOTE_SERVER "$property_set" 2>&1)
@@ -98,6 +117,17 @@ test_set_transition_smart() {
 	local target_value="$4"
 	local timeout="${5:-10}"
 	local value_type="${6:-number}"
+
+	# Extract property path (before =)
+	local property_path="${property_set%%=*}"
+	# Extract just device.property (without item)
+	local property_base="${property_path%.*}"
+
+	# Check if property exists
+	if ! property_exists "$property_base"; then
+		print_test_result "$test_name" "SKIP" "Property $property_base does not exist"
+		return 2
+	fi
 
 	# Get current value
 	local current_value
@@ -181,6 +211,17 @@ test_state_transition() {
 	local timeout="${5:-10}"
 	local require_initial="${6:-required}"
 
+	# Extract property path (before =)
+	local property_path="${property_set%%=*}"
+	# Extract just device.property (without item)
+	local property_base="${property_path%.*}"
+
+	# Check if property exists
+	if ! property_exists "$property_base"; then
+		print_test_result "$test_name" "SKIP" "Property $property_base does not exist"
+		return 2
+	fi
+
 	local output
 	output=$($INDIGO_PROP_TOOL set -w "$final_state" -s -t "$timeout" $REMOTE_SERVER "$property_set" 2>&1)
 	local exit_code=$?
@@ -237,6 +278,15 @@ test_get_value() {
 	local expected_value="$3"
 	local value_type="${4:-string}"
 
+	# Extract just device.property (without item)
+	local property_base="${property_item%.*}"
+
+	# Check if property exists
+	if ! property_exists "$property_base"; then
+		print_test_result "$test_name" "SKIP" "Property $property_base does not exist"
+		return 2
+	fi
+
 	local actual_value
 	actual_value=$($INDIGO_PROP_TOOL get -w OK $REMOTE_SERVER "$property_item" 2>&1 | tr -d '[:space:]')
 	expected_value=$(echo "$expected_value" | tr -d '[:space:]')
@@ -279,6 +329,17 @@ test_set_and_verify() {
 	local expected_value="$4"
 	local timeout="${5:-10}"
 	local value_type="${6:-string}"
+
+	# Extract property path (before =)
+	local property_path="${property_set%%=*}"
+	# Extract just device.property (without item)
+	local property_base="${property_path%.*}"
+
+	# Check if property exists
+	if ! property_exists "$property_base"; then
+		print_test_result "$test_name" "SKIP" "Property $property_base does not exist"
+		return 2
+	fi
 
 	# Set the value
 	$INDIGO_PROP_TOOL set -w OK -t "$timeout" $REMOTE_SERVER "$property_set" >/dev/null 2>&1
