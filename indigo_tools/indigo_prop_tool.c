@@ -621,8 +621,8 @@ static void print_property_get_state_filtered(indigo_property *property, const c
 		if ((!strncmp(filter->device_name, property->device, INDIGO_NAME_SIZE)) &&
 		   (!strncmp(filter->property_name, property->name, INDIGO_NAME_SIZE))) {
 			print_property_get_state(property, message);
+			stop_waiting_if_requested(property->state);
 		}
-		stop_waiting_if_requested(property->state);
 	}
 }
 
