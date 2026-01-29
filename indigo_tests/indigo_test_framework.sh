@@ -736,7 +736,7 @@ get_item_min() {
 
 	# Get extended property info with -e flag
 	local output
-	output=$($INDIGO_PROP_TOOL get -e -w OK $REMOTE_SERVER "$property_item" 2>&1)
+	output=$($INDIGO_PROP_TOOL get -e -w ANY $REMOTE_SERVER "$property_item" 2>&1)
 
 	if [ -z "$output" ]; then
 		return 1
@@ -772,7 +772,7 @@ get_item_max() {
 
 	# Get extended property info with -e flag
 	local output
-	output=$($INDIGO_PROP_TOOL get -e -w OK $REMOTE_SERVER "$property_item" 2>&1)
+	output=$($INDIGO_PROP_TOOL get -e -w ANY $REMOTE_SERVER "$property_item" 2>&1)
 
 	if [ -z "$output" ]; then
 		return 1
