@@ -574,6 +574,92 @@ is_device_connected() {
 	fi
 }
 
+# Helper: Get device interface bitmask
+# Usage: get_device_interface "device_name"
+# Returns: Prints interface value as integer, or empty if not available
+get_device_interface() {
+	local device="$1"
+	local interface
+
+	interface=$($INDIGO_PROP_TOOL get -w ANY $REMOTE_SERVER "$device.INFO.DEVICE_INTERFACE" 2>&1)
+
+	if [ -n "$interface" ]; then
+		echo "$interface"
+	fi
+}
+
+# Helper: Check if device has specific interface (bitmask check)
+# Usage: has_interface "device_name" bitmask
+# Returns: 0 if device has the interface, 1 otherwise
+has_interface() {
+	local device="$1"
+	local required_mask="$2"
+	local device_interface
+
+	device_interface=$(get_device_interface "$device")
+
+	if [ -z "$device_interface" ]; then
+		return 1
+	fi
+
+	# Perform bitwise AND to check if interface bit is set
+	local result
+	result=$(( device_interface & required_mask ))
+
+	if [ "$result" -ne 0 ]; then
+		return 0
+	else
+		return 1
+	fi
+}
+
+# Device interface test functions
+# These check if device implements specific interface
+
+is_mount() {
+	has_interface "$1" 1  # 1 << 0
+}
+
+is_ccd() {
+	has_interface "$1" 2  # 1 << 1
+}
+
+is_guider() {
+	has_interface "$1" 4  # 1 << 2
+}
+
+is_focuser() {
+	has_interface "$1" 8  # 1 << 3
+}
+
+is_wheel() {
+	has_interface "$1" 16  # 1 << 4
+}
+
+is_dome() {
+	has_interface "$1" 32  # 1 << 5
+}
+
+is_gps() {
+	has_interface "$1" 64  # 1 << 6
+}
+
+is_ao() {
+	has_interface "$1" 256  # 1 << 8
+}
+
+is_rotator() {
+	has_interface "$1" 4096  # 1 << 12
+}
+
+is_agent() {
+	has_interface "$1" 16384  # 1 << 14
+}
+
+is_aux() {
+	has_interface "$1" 32768  # 1 << 15
+}
+
 # Helper: Get driver information from INFO property
 # Usage: get_driver_info "device_name"
 # Returns: Prints "driver_name driver_version" to stdout, or empty if not available

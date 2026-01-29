@@ -38,6 +38,16 @@ set_remote_server "$REMOTE"
 
 print_test_header "INDIGO Focuser Compliance Test" "$DEVICE" "$REMOTE"
 
+# Verify device has focuser interface
+echo "--- Verifying Device Interface ---"
+if is_focuser "$DEVICE"; then
+	print_test_result "Device implements FOCUSER interface" "PASS"
+else
+	print_test_result "Device implements FOCUSER interface" "FAIL" "This compliance test is only for focuser devices"
+	exit 1
+fi
+echo ""
+
 # Test 0: Run standard connection test battery
 test_connection_battery "$DEVICE" 10
 WAS_CONNECTED=$?

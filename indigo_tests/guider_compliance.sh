@@ -38,6 +38,16 @@ set_remote_server "$REMOTE"
 
 print_test_header "INDIGO Guider Compliance Test" "$DEVICE" "$REMOTE"
 
+# Verify device has guider interface
+echo "--- Verifying Device Interface ---"
+if is_guider "$DEVICE"; then
+	print_test_result "Device implements GUIDER interface" "PASS"
+else
+	print_test_result "Device implements GUIDER interface" "FAIL" "This compliance test is only for guider devices"
+	exit 1
+fi
+echo ""
+
 # Test 0: Run standard connection test battery
 test_connection_battery "$DEVICE" 10
 WAS_CONNECTED=$?

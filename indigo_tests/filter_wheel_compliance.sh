@@ -55,6 +55,16 @@ set_remote_server "$REMOTE"
 
 print_test_header "INDIGO Filter Wheel Compliance Test" "$DEVICE" "$REMOTE"
 
+# Verify device has wheel interface
+echo "--- Verifying Device Interface ---"
+if is_wheel "$DEVICE"; then
+	print_test_result "Device implements WHEEL interface" "PASS"
+else
+	print_test_result "Device implements WHEEL interface" "FAIL" "This compliance test is only for filter wheel devices"
+	exit 1
+fi
+echo ""
+
 # Test 1: Run standard connection test battery
 test_connection_battery "$DEVICE" 10
 WAS_CONNECTED=$?

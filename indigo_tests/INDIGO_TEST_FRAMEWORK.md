@@ -436,14 +436,128 @@ fi
 
 ---
 
+## Device Interface Verification Functions
+
+These functions check whether a device implements specific INDIGO interface types by examining the `INFO.DEVICE_INTERFACE` bitmask property. This ensures compliance scripts only test features the device actually supports.
+
+### get_device_interface(device_name)
+
+Retrieves the device interface bitmask value from the `INFO.DEVICE_INTERFACE` property.
+
+**Parameters:**
+- `device_name` - Full device name (e.g., "Filter Wheel", "CCD Guider Simulator (guider)")
+
+**Returns:**
+- Integer bitmask value representing all interfaces the device implements
+- Returns 0 if device not found or property unavailable
+
+**Example:**
+```bash
+interface=$(get_device_interface "Filter Wheel")
+echo "Interface bitmask: $interface"  # e.g., "16" for wheel-only device
+```
+
+### has_interface(device_name, bitmask)
+
+Checks if a device implements a specific interface by performing bitwise AND with the required bitmask.
+
+**Parameters:**
+- `device_name` - Full device name
+- `bitmask` - Interface bitmask value to check (see table below)
+
+**Returns:**
+- Exit code 0 (true) if device has the interface
+- Exit code 1 (false) if device does not have the interface
+
+**Example:**
+```bash
+if has_interface "Filter Wheel" 16; then
+    echo "Device implements WHEEL interface"
+fi
+```
+
+### Interface Type Functions
+
+Convenience functions for checking common device interfaces. Each function checks if the device implements the corresponding interface type.
+
+| Function | Bitmask | Enum Value | Description |
+|----------|---------|------------|-------------|
+| `is_mount(device)` | 1 | `INDIGO_INTERFACE_MOUNT` | Mount controller |
+| `is_ccd(device)` | 2 | `INDIGO_INTERFACE_CCD` | CCD or camera |
+| `is_guider(device)` | 4 | `INDIGO_INTERFACE_GUIDER` | Guider interface |
+| `is_focuser(device)` | 8 | `INDIGO_INTERFACE_FOCUSER` | Focuser controller |
+| `is_wheel(device)` | 16 | `INDIGO_INTERFACE_WHEEL` | Filter wheel |
+| `is_dome(device)` | 32 | `INDIGO_INTERFACE_DOME` | Dome controller |
+| `is_gps(device)` | 64 | `INDIGO_INTERFACE_GPS` | GPS receiver |
+| `is_ao(device)` | 256 | `INDIGO_INTERFACE_AO` | Adaptive optics |
+| `is_rotator(device)` | 4096 | `INDIGO_INTERFACE_ROTATOR` | Field rotator |
+| `is_agent(device)` | 16384 | `INDIGO_INTERFACE_AGENT` | Agent device |
+| `is_aux(device)` | 32768 | `INDIGO_INTERFACE_AUX` | Auxiliary device |
+
+**Note:** A device may implement multiple interfaces. For example, a camera with built-in guider port would have both CCD (2) and GUIDER (4) interfaces, resulting in bitmask value 6.
+
+**Examples:**
+```bash
+# Check single interface
+if is_wheel "Filter Wheel"; then
+    echo "Device has wheel interface"
+fi
+
+# Use in compliance script header
+if ! is_focuser "$DEVICE"; then
+    echo -e "${RED}ERROR: Device does not implement FOCUSER interface${NC}"
+    exit 1
+fi
+echo -e "${GREEN}✓ Device implements FOCUSER interface${NC}"
+
+# Check for multi-interface device
+if is_ccd "CCD Imager" && is_guider "CCD Imager"; then
+    echo "Camera has built-in guider port"
+fi
+```
+
+### Usage in Compliance Scripts
+
+All device-specific compliance scripts should verify the device implements the required interface before running tests:
+
+```bash
+#!/bin/bash
+
+source "indigo_test_framework.sh"
+
+DEVICE="$1"
+if [ -z "$DEVICE" ]; then
+    echo "Usage: $0 <device_name>"
+    exit 1
+fi
+
+# Verify device implements WHEEL interface
+if ! is_wheel "$DEVICE"; then
+    echo -e "${RED}ERROR: Device '$DEVICE' does not implement WHEEL interface${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}✓ Device '$DEVICE' implements WHEEL interface${NC}"
+echo ""
+
+# Continue with wheel-specific tests...
+test_connection_battery "$DEVICE" 10
+```
+
+This pattern prevents tests from attempting operations on devices that don't support them (e.g., trying to run focuser tests on a filter wheel).
+
+---
+
 ## Global Variables
 
 ### Test Counters
 - `TESTS_PASSED` - Number of tests passed
 - `TESTS_FAILED` - Number of tests failed
+- `TESTS_SKIPPED` - Number of tests skipped (property/item not present)
 
 ### Configuration
 - `REMOTE_SERVER` - Remote server argument for indigo_prop_tool (set via `set_remote_server()`)
+- `INDIGO_PROP_TOOL` - Path to indigo_prop_tool executable
 
 ---
 
