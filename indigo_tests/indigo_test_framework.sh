@@ -144,7 +144,7 @@ test_set_transition_smart() {
 
 	# Get current value
 	local current_value
-	current_value=$($INDIGO_PROP_TOOL get $REMOTE_SERVER "$property_get" 2>&1 | tr -d '[:space:]')
+	current_value=$(get_item_value "$property_get" "ANY" | tr -d '[:space:]')
 	local target_normalized=$(echo "$target_value" | tr -d '[:space:]')
 
 	# Determine if values match
@@ -339,7 +339,7 @@ test_get_value() {
 	fi
 
 	local actual_value
-	actual_value=$($INDIGO_PROP_TOOL get -w OK $REMOTE_SERVER "$property_item" 2>&1 | tr -d '[:space:]')
+	actual_value=$(get_item_value "$property_item" "OK" | tr -d '[:space:]')
 	expected_value=$(echo "$expected_value" | tr -d '[:space:]')
 
 	local match=0
@@ -403,7 +403,7 @@ test_set_and_verify() {
 
 	# Verify the value
 	local actual_value
-	actual_value=$($INDIGO_PROP_TOOL get -w OK $REMOTE_SERVER "$property_get" 2>&1 | tr -d '[:space:]')
+	actual_value=$(get_item_value "$property_get" "OK" | tr -d '[:space:]')
 	expected_value=$(echo "$expected_value" | tr -d '[:space:]')
 
 	local match=0
@@ -561,11 +561,26 @@ test_connection_battery() {
 	return $was_connected
 }
 
+# Helper: Get property item value with optional state filter
+# Usage: get_item_value "device.property.item" [state]
+# Parameters:
+#   property_item - Full path to property item (e.g., "Device.PROPERTY.ITEM")
+#   state        - Optional property state to wait for (default: "ANY")
+#                  Valid states: OK, BUSY, ALERT, IDLE, ANY
+# Returns: Prints the item value to stdout
+# Example: value=$(get_item_value "CCD Imager.CCD_INFO.WIDTH" "OK")
+get_item_value() {
+	local property_item="$1"
+	local state="${2:-ANY}"
+
+	$INDIGO_PROP_TOOL get -w "$state" $REMOTE_SERVER "$property_item" 2>&1
+}
+
 # Helper: Check if device is connected
 is_device_connected() {
 	local device="$1"
 	local connected
-	connected=$($INDIGO_PROP_TOOL get $REMOTE_SERVER "$device.CONNECTION.CONNECTED" 2>&1)
+	connected=$(get_item_value "$device.CONNECTION.CONNECTED" "ANY")
 
 	if [ "$connected" = "ON" ]; then
 		return 0
@@ -581,7 +596,7 @@ get_device_interface() {
 	local device="$1"
 	local interface
 
-	interface=$($INDIGO_PROP_TOOL get -w ANY $REMOTE_SERVER "$device.INFO.DEVICE_INTERFACE" 2>&1)
+	interface=$(get_item_value "$device.INFO.DEVICE_INTERFACE" "ANY")
 
 	if [ -n "$interface" ]; then
 		echo "$interface"
@@ -668,8 +683,8 @@ get_driver_info() {
 	local driver_name
 	local driver_version
 
-	driver_name=$($INDIGO_PROP_TOOL get -w OK $REMOTE_SERVER "$device.INFO.DEVICE_DRIVER" 2>&1 | tr -d '"')
-	driver_version=$($INDIGO_PROP_TOOL get -w OK $REMOTE_SERVER "$device.INFO.DEVICE_VERSION" 2>&1 | tr -d '"')
+	driver_name=$(get_item_value "$device.INFO.DEVICE_DRIVER" "OK" | tr -d '"')
+	driver_version=$(get_item_value "$device.INFO.DEVICE_VERSION" "OK" | tr -d '"')
 
 	if [ -n "$driver_name" ] && [ -n "$driver_version" ]; then
 		echo "$driver_name v.$driver_version"

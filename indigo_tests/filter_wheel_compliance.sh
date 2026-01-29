@@ -95,8 +95,8 @@ echo "--- Storing Original Values ---"
 declare -A ORIGINAL_SLOT_NAMES
 declare -A ORIGINAL_SLOT_OFFSETS
 for slot in $(seq 1 $SLOT_COUNT); do
-	ORIGINAL_SLOT_NAMES[$slot]=$($INDIGO_PROP_TOOL get -w OK $REMOTE_SERVER "$DEVICE.WHEEL_SLOT_NAME.SLOT_NAME_$slot" 2>&1)
-	ORIGINAL_SLOT_OFFSETS[$slot]=$($INDIGO_PROP_TOOL get -w OK $REMOTE_SERVER "$DEVICE.WHEEL_SLOT_OFFSET.SLOT_OFFSET_$slot" 2>&1)
+	ORIGINAL_SLOT_NAMES[$slot]=$(get_item_value "$DEVICE.WHEEL_SLOT_NAME.SLOT_NAME_$slot" "OK")
+	ORIGINAL_SLOT_OFFSETS[$slot]=$(get_item_value "$DEVICE.WHEEL_SLOT_OFFSET.SLOT_OFFSET_$slot" "OK")
 done
 
 echo ""

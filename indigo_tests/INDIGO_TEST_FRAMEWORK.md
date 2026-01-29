@@ -372,6 +372,42 @@ if property_exists "CCD Imager.CCD_INFO" "WIDTH,HEIGHT"; then
 fi
 ```
 
+#### `get_item_value(property_item, [state])`
+
+Get the value of a property item with optional wait for property state. If timeout occurs it will return the value regradless of the state.
+
+**Parameters:**
+- `property_item` - Full property item path (e.g., `"device.PROPERTY.ITEM"`)
+- `state` - Optional property state to wait for (default: `"ANY"`)
+  - Valid states: `OK`, `BUSY`, `ALERT`, `IDLE`, `ANY`
+
+**Returns:**
+- Prints the item value to stdout
+- Returns the exit code from `indigo_prop_tool get`
+
+**Example:**
+```bash
+# Get value with default state (ANY)
+width=$(get_item_value "CCD Imager.CCD_INFO.WIDTH")
+echo "CCD width: $width pixels"
+
+# Get the value when the property becomes OK or when the timeout occurs.
+position=$(get_item_value "Focuser.FOCUSER_POSITION.POSITION" "OK")
+
+# Get connection state
+connected=$(get_item_value "CCD Imager.CONNECTION.CONNECTED" "ANY")
+if [ "$connected" = "ON" ]; then
+    echo "Device is connected"
+fi
+
+# Store multiple values
+latitude=$(get_item_value "GPS.GEOGRAPHIC_COORDINATES.LATITUDE" "ANY")
+longitude=$(get_item_value "GPS.GEOGRAPHIC_COORDINATES.LONGITUDE" "ANY")
+echo "Location: $latitude, $longitude"
+```
+
+**Note:** This is the preferred way to retrieve property values in tests. It provides a cleaner interface than calling `$INDIGO_PROP_TOOL get` directly and ensures consistent usage across all test scripts.
+
 #### `get_item_min(property_item)`
 
 Get the minimum value from a numeric property item's range.

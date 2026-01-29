@@ -135,7 +135,7 @@ if property_exists "$DEVICE.GUIDER_RATE" "RATE"; then
 	echo "Testing GUIDER_RATE.RATE..."
 
 	# Get original rate
-	ORIGINAL_RATE=$($INDIGO_PROP_TOOL get -w OK $REMOTE_SERVER "$DEVICE.GUIDER_RATE.RATE" 2>&1)
+	ORIGINAL_RATE=$(get_item_value "$DEVICE.GUIDER_RATE.RATE" "OK")
 	echo "Original rate: $ORIGINAL_RATE"
 
 	# Get rate max
@@ -170,7 +170,7 @@ if property_exists "$DEVICE.GUIDER_RATE" "DEC_RATE"; then
 	echo "Testing GUIDER_RATE.DEC_RATE..."
 
 	# Get original DEC rate
-	ORIGINAL_DEC_RATE=$($INDIGO_PROP_TOOL get -w OK $REMOTE_SERVER "$DEVICE.GUIDER_RATE.DEC_RATE" 2>&1)
+	ORIGINAL_DEC_RATE=$(get_item_value "$DEVICE.GUIDER_RATE.DEC_RATE" "OK")
 	echo "Original DEC rate: $ORIGINAL_DEC_RATE"
 
 	# Get DEC rate max

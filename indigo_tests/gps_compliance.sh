@@ -92,20 +92,20 @@ echo "--- Testing GEOGRAPHIC_COORDINATES Values ---"
 # Test reading GEOGRAPHIC_COORDINATES values (read-only for GPS)
 if property_exists "$DEVICE.GEOGRAPHIC_COORDINATES"; then
 	# Get current values
-	LATITUDE=$($INDIGO_PROP_TOOL get -w ANY $REMOTE_SERVER "$DEVICE.GEOGRAPHIC_COORDINATES.LATITUDE" 2>&1)
-	LONGITUDE=$($INDIGO_PROP_TOOL get -w ANY $REMOTE_SERVER "$DEVICE.GEOGRAPHIC_COORDINATES.LONGITUDE" 2>&1)
-	ELEVATION=$($INDIGO_PROP_TOOL get -w ANY $REMOTE_SERVER "$DEVICE.GEOGRAPHIC_COORDINATES.ELEVATION" 2>&1)
-	
+	LATITUDE=$(get_item_value "$DEVICE.GEOGRAPHIC_COORDINATES.LATITUDE" "ANY")
+	LONGITUDE=$(get_item_value "$DEVICE.GEOGRAPHIC_COORDINATES.LONGITUDE" "ANY")
+	ELEVATION=$(get_item_value "$DEVICE.GEOGRAPHIC_COORDINATES.ELEVATION" "ANY")
+
 	if [ -n "$LATITUDE" ] && [ -n "$LONGITUDE" ] && [ -n "$ELEVATION" ]; then
 		echo "Current coordinates: LAT=$LATITUDE, LON=$LONGITUDE, ELEV=$ELEVATION"
 		print_test_result "Read GEOGRAPHIC_COORDINATES values" "PASS"
 	else
 		print_test_result "Read GEOGRAPHIC_COORDINATES values" "FAIL" "Could not read coordinate values"
 	fi
-	
+
 	# Test ACCURACY if present (GPS-specific optional item)
 	if property_exists "$DEVICE.GEOGRAPHIC_COORDINATES" "ACCURACY"; then
-		ACCURACY=$($INDIGO_PROP_TOOL get -w ANY $REMOTE_SERVER "$DEVICE.GEOGRAPHIC_COORDINATES.ACCURACY" 2>&1)
+		ACCURACY=$(get_item_value "$DEVICE.GEOGRAPHIC_COORDINATES.ACCURACY" "ANY")
 		if [ -n "$ACCURACY" ]; then
 			echo "GPS accuracy: $ACCURACY"
 			print_test_result "Read GEOGRAPHIC_COORDINATES.ACCURACY value" "PASS"
@@ -120,12 +120,12 @@ echo "--- Testing UTC_TIME Values ---"
 
 # Test reading UTC_TIME if available
 if property_exists "$DEVICE.UTC_TIME"; then
-	UTC=$($INDIGO_PROP_TOOL get -w ANY $REMOTE_SERVER "$DEVICE.UTC_TIME.TIME" 2>&1)
-	
+	UTC=$(get_item_value "$DEVICE.UTC_TIME.TIME" "ANY")
+
 	if [ -n "$UTC" ]; then
 		echo "Current UTC time: TIME=$UTC"
 		# OFFSET is optional
-		OFFSET=$($INDIGO_PROP_TOOL get -w ANY $REMOTE_SERVER "$DEVICE.UTC_TIME.OFFSET" 2>&1)
+		OFFSET=$(get_item_value "$DEVICE.UTC_TIME.OFFSET" "ANY")
 		if [ -n "$OFFSET" ]; then
 			echo "UTC OFFSET: $OFFSET"
 		fi
@@ -141,14 +141,14 @@ echo "--- Testing GPS_ADVANCED Property ---"
 # Test GPS_ADVANCED if available
 if property_exists "$DEVICE.GPS_ADVANCED"; then
 	# Get current state
-	ADVANCED_ENABLED=$($INDIGO_PROP_TOOL get -w OK $REMOTE_SERVER "$DEVICE.GPS_ADVANCED.ENABLED" 2>&1)
+	ADVANCED_ENABLED=$(get_item_value "$DEVICE.GPS_ADVANCED.ENABLED" "OK")
 	echo "GPS_ADVANCED current state: ENABLED=$ADVANCED_ENABLED"
-	
+
 	# Try to enable advanced status
 	test_set_wait_state "Enable GPS advanced status" \
 		"$DEVICE.GPS_ADVANCED.ENABLED=ON" \
 		"OK" 5
-	
+
 	# Try to disable advanced status
 	test_set_wait_state "Disable GPS advanced status" \
 		"$DEVICE.GPS_ADVANCED.DISABLED=ON" \
@@ -160,12 +160,12 @@ echo "--- Testing GPS_STATUS State ---"
 
 # Test GPS_STATUS if available (read-only light property)
 if property_exists "$DEVICE.GPS_STATUS"; then
-	NO_FIX=$($INDIGO_PROP_TOOL get -w ANY $REMOTE_SERVER "$DEVICE.GPS_STATUS.NO_FIX" 2>&1)
-	FIX_2D=$($INDIGO_PROP_TOOL get -w ANY $REMOTE_SERVER "$DEVICE.GPS_STATUS.2D_FIX" 2>&1)
-	FIX_3D=$($INDIGO_PROP_TOOL get -w ANY $REMOTE_SERVER "$DEVICE.GPS_STATUS.3D_FIX" 2>&1)
-	
+	NO_FIX=$(get_item_value "$DEVICE.GPS_STATUS.NO_FIX" "ANY")
+	FIX_2D=$(get_item_value "$DEVICE.GPS_STATUS.2D_FIX" "ANY")
+	FIX_3D=$(get_item_value "$DEVICE.GPS_STATUS.3D_FIX" "ANY")
+
 	echo "GPS fix status: NO_FIX=$NO_FIX, 2D_FIX=$FIX_2D, 3D_FIX=$FIX_3D"
-	
+
 	# At least one should be ON
 	if [ "$NO_FIX" = "ON" ] || [ "$FIX_2D" = "ON" ] || [ "$FIX_3D" = "ON" ]; then
 		print_test_result "GPS_STATUS has valid state" "PASS"
