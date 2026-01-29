@@ -413,6 +413,7 @@ static void update_disk_usage(indigo_device *device) {
 		AGENT_IMAGER_DISK_USAGE_FREE_ITEM->number.value = 0;
 		AGENT_IMAGER_DISK_USAGE_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
+	pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->disk_usage_mutex);
 	if (last_total_mb != AGENT_IMAGER_DISK_USAGE_TOTAL_ITEM->number.value ||
 	    last_used_mb != AGENT_IMAGER_DISK_USAGE_USED_ITEM->number.value ||
 	    last_free_mb != AGENT_IMAGER_DISK_USAGE_FREE_ITEM->number.value) {
@@ -421,7 +422,6 @@ static void update_disk_usage(indigo_device *device) {
 		last_used_mb = AGENT_IMAGER_DISK_USAGE_USED_ITEM->number.value;
 		last_total_mb = AGENT_IMAGER_DISK_USAGE_TOTAL_ITEM->number.value;
 	}
-	pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->disk_usage_mutex);
 }
 
 static void disk_usage_timer_callback(indigo_device *device) {
