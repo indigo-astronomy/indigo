@@ -58,7 +58,6 @@ RA_WEST_MAX=$(get_item_max "$DEVICE.GUIDER_GUIDE_RA.WEST")
 if [ -z "$RA_EAST_MAX" ] || [ -z "$RA_WEST_MAX" ]; then
 	echo "Error: Could not determine GUIDE RA limits"
 else
-	sleep 1
 	echo "GUIDE RA limits: EAST max=$RA_EAST_MAX, WEST max=$RA_WEST_MAX"
 
 	# Use 500ms or max, whichever is smaller
@@ -73,8 +72,6 @@ else
 	test_get_value "Verify GUIDER_GUIDE_RA.EAST = 0" \
 		"$DEVICE.GUIDER_GUIDE_RA.EAST" \
 		0 "number"
-
-	sleep 1
 
 	echo "Testing WEST pulse: ${WEST_PULSE}ms"
 	test_state_transition "Guide WEST ${WEST_PULSE}ms" \
@@ -110,8 +107,6 @@ else
 	test_get_value "Verify GUIDER_GUIDE_DEC.NORTH = 0" \
 		"$DEVICE.GUIDER_GUIDE_DEC.NORTH" \
 		0 "number"
-
-	sleep 1
 
 	echo "Testing SOUTH pulse: ${SOUTH_PULSE}ms"
 	test_state_transition "Guide SOUTH ${SOUTH_PULSE}ms" \

@@ -143,8 +143,6 @@ if awk -v steps="$MOVE_STEPS" -v max="$STEPS_MAX" 'BEGIN { exit !(steps <= max) 
 		"$DEVICE.FOCUSER_STEPS.STEPS" \
 		"$MOVE_STEPS" 30 "number"
 
-	sleep 2
-
 	POS_AFTER_IN=$($INDIGO_PROP_TOOL get -w OK $REMOTE_SERVER "$DEVICE.FOCUSER_POSITION.POSITION" 2>&1)
 	echo "Position after inward move: $POS_AFTER_IN"
 
@@ -159,8 +157,6 @@ if awk -v steps="$MOVE_STEPS" -v max="$STEPS_MAX" 'BEGIN { exit !(steps <= max) 
 		"$DEVICE.FOCUSER_STEPS.STEPS=$MOVE_STEPS" \
 		"$DEVICE.FOCUSER_STEPS.STEPS" \
 		"$MOVE_STEPS" 30 "number"
-
-	sleep 2
 
 	POS_AFTER_OUT=$($INDIGO_PROP_TOOL get -w OK $REMOTE_SERVER "$DEVICE.FOCUSER_POSITION.POSITION" 2>&1)
 	echo "Position after outward move: $POS_AFTER_OUT"
@@ -192,7 +188,7 @@ test_set_and_verify "Set GOTO mode for abort test" \
 # Start move to max (don't wait for completion)
 $INDIGO_PROP_TOOL set -w BUSY $REMOTE_SERVER "$DEVICE.FOCUSER_POSITION.POSITION=$POSITION_MAX" >/dev/null 2>&1
 
-# Wait 1 second
+# Wait 2 seconds before aborting
 sleep 2
 
 # Abort motion

@@ -8,6 +8,19 @@ export LC_NUMERIC=C
 # INDIGO tool executable - can be overridden by setting before sourcing this script
 : ${INDIGO_PROP_TOOL:="indigo_prop_tool"}
 
+# Optional delay (seconds) before each `indigo_prop_tool` call.
+# Set `INDIGO_PROP_TOOL_DELAY` in the environment before sourcing to override.
+: ${INDIGO_PROP_TOOL_DELAY:="0.5"}
+
+if [ -n "$INDIGO_PROP_TOOL_DELAY" ] && [ "$INDIGO_PROP_TOOL_DELAY" != "0" ]; then
+	INDIGO_PROP_TOOL_REAL="$INDIGO_PROP_TOOL"
+	indigo_prop_tool_wrapper() {
+		sleep "$INDIGO_PROP_TOOL_DELAY"
+		command "$INDIGO_PROP_TOOL_REAL" "$@"
+	}
+	INDIGO_PROP_TOOL=indigo_prop_tool_wrapper
+fi
+
 # Global counters
 TESTS_PASSED=0
 TESTS_FAILED=0
@@ -534,8 +547,6 @@ test_connection_battery() {
 
 		# Test disconnect when already disconnected
 		test_disconnect_when_disconnected "$device" "$timeout"
-
-		sleep 1
 	else
 		echo "Device is disconnected"
 

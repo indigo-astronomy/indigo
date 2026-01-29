@@ -1092,5 +1092,6 @@ int main(int argc, const char * argv[]) {
 	}
 	indigo_stop();
 	indigo_disconnect_server(server);
+	indigo_detach_client(&client);
 	return 0;
 }
