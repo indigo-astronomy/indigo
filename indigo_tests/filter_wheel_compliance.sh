@@ -92,11 +92,10 @@ echo ""
 
 # Store original slot names for restoration
 echo "--- Storing Original Values ---"
-declare -A ORIGINAL_SLOT_NAMES
-declare -A ORIGINAL_SLOT_OFFSETS
+# Store values using dynamic variable names (macOS compatible)
 for slot in $(seq 1 $SLOT_COUNT); do
-	ORIGINAL_SLOT_NAMES[$slot]=$(get_item_value "$DEVICE.WHEEL_SLOT_NAME.SLOT_NAME_$slot" "OK")
-	ORIGINAL_SLOT_OFFSETS[$slot]=$(get_item_value "$DEVICE.WHEEL_SLOT_OFFSET.SLOT_OFFSET_$slot" "OK")
+	eval "ORIGINAL_SLOT_NAME_$slot=\$(get_item_value \"$DEVICE.WHEEL_SLOT_NAME.SLOT_NAME_$slot\" \"OK\")"
+	eval "ORIGINAL_SLOT_OFFSET_$slot=\$(get_item_value \"$DEVICE.WHEEL_SLOT_OFFSET.SLOT_OFFSET_$slot\" \"OK\")"
 done
 
 echo ""
@@ -174,18 +173,20 @@ echo "--- Restore Initial State ---"
 # Restore original slot names
 echo "Restoring original slot names..."
 for slot in $(seq 1 $SLOT_COUNT); do
-	if [ -n "${ORIGINAL_SLOT_NAMES[$slot]}" ]; then
+	eval "orig_name=\$ORIGINAL_SLOT_NAME_$slot"
+	if [ -n "$orig_name" ]; then
 		$INDIGO_PROP_TOOL set -w OK -t 5 $REMOTE_SERVER \
-			"$DEVICE.WHEEL_SLOT_NAME.SLOT_NAME_$slot=\"${ORIGINAL_SLOT_NAMES[$slot]}\"" >/dev/null 2>&1
+			"$DEVICE.WHEEL_SLOT_NAME.SLOT_NAME_$slot=\"$orig_name\"" >/dev/null 2>&1
 	fi
 done
 
 # Restore original slot offsets
 echo "Restoring original slot offsets..."
 for slot in $(seq 1 $SLOT_COUNT); do
-	if [ -n "${ORIGINAL_SLOT_OFFSETS[$slot]}" ]; then
+	eval "orig_offset=\$ORIGINAL_SLOT_OFFSET_$slot"
+	if [ -n "$orig_offset" ]; then
 		$INDIGO_PROP_TOOL set -w OK -t 5 $REMOTE_SERVER \
-			"$DEVICE.WHEEL_SLOT_OFFSET.SLOT_OFFSET_$slot=${ORIGINAL_SLOT_OFFSETS[$slot]}" >/dev/null 2>&1
+			"$DEVICE.WHEEL_SLOT_OFFSET.SLOT_OFFSET_$slot=$orig_offset" >/dev/null 2>&1
 	fi
 done
 
