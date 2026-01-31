@@ -55,6 +55,16 @@ set_remote_server "$REMOTE"
 
 print_test_header "INDIGO Filter Wheel Compliance Test" "$DEVICE" "$REMOTE"
 
+# Verify device has wheel interface
+echo "--- Verifying Device Interface ---"
+if is_wheel "$DEVICE"; then
+	print_test_result "Device implements WHEEL interface" "PASS"
+else
+	print_test_result "Device implements WHEEL interface" "FAIL" "This compliance test is only for filter wheel devices"
+	exit 1
+fi
+echo ""
+
 # Test 1: Run standard connection test battery
 test_connection_battery "$DEVICE" 10
 WAS_CONNECTED=$?
@@ -85,8 +95,8 @@ echo "--- Storing Original Values ---"
 declare -A ORIGINAL_SLOT_NAMES
 declare -A ORIGINAL_SLOT_OFFSETS
 for slot in $(seq 1 $SLOT_COUNT); do
-	ORIGINAL_SLOT_NAMES[$slot]=$($INDIGO_PROP_TOOL get -w OK $REMOTE_SERVER "$DEVICE.WHEEL_SLOT_NAME.SLOT_NAME_$slot" 2>&1)
-	ORIGINAL_SLOT_OFFSETS[$slot]=$($INDIGO_PROP_TOOL get -w OK $REMOTE_SERVER "$DEVICE.WHEEL_SLOT_OFFSET.SLOT_OFFSET_$slot" 2>&1)
+	ORIGINAL_SLOT_NAMES[$slot]=$(get_item_value "$DEVICE.WHEEL_SLOT_NAME.SLOT_NAME_$slot" "OK")
+	ORIGINAL_SLOT_OFFSETS[$slot]=$(get_item_value "$DEVICE.WHEEL_SLOT_OFFSET.SLOT_OFFSET_$slot" "OK")
 done
 
 echo ""

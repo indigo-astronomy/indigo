@@ -23,7 +23,7 @@
  \file indigo_rotator_asi.c
  */
 
-#define DRIVER_VERSION 0x02000003
+#define DRIVER_VERSION 0x03000004
 #define DRIVER_NAME "indigo_rotator_asi"
 
 #include <stdlib.h>
@@ -407,6 +407,8 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 	} else if (indigo_property_match_changeable(ROTATOR_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- ROTATOR_ABORT_MOTION
 		indigo_property_copy_values(ROTATOR_ABORT_MOTION_PROPERTY, property, false);
+		ROTATOR_ABORT_MOTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, ROTATOR_ABORT_MOTION_PROPERTY, NULL);
 		ROTATOR_RELATIVE_MOVE_PROPERTY->state = INDIGO_OK_STATE;
 		ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 		ROTATOR_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;

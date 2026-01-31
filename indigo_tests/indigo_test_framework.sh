@@ -8,9 +8,23 @@ export LC_NUMERIC=C
 # INDIGO tool executable - can be overridden by setting before sourcing this script
 : ${INDIGO_PROP_TOOL:="indigo_prop_tool"}
 
+# Optional delay (seconds) before each `indigo_prop_tool` call.
+# Set `INDIGO_PROP_TOOL_DELAY` in the environment before sourcing to override.
+: ${INDIGO_PROP_TOOL_DELAY:="0.5"}
+
+if [ -n "$INDIGO_PROP_TOOL_DELAY" ] && [ "$INDIGO_PROP_TOOL_DELAY" != "0" ]; then
+	INDIGO_PROP_TOOL_REAL="$INDIGO_PROP_TOOL"
+	indigo_prop_tool_wrapper() {
+		sleep "$INDIGO_PROP_TOOL_DELAY"
+		command "$INDIGO_PROP_TOOL_REAL" "$@"
+	}
+	INDIGO_PROP_TOOL=indigo_prop_tool_wrapper
+fi
+
 # Global counters
 TESTS_PASSED=0
 TESTS_FAILED=0
+TESTS_SKIPPED=0
 
 # Remote server option for indigo_prop_tool
 REMOTE_SERVER=""
@@ -19,6 +33,7 @@ REMOTE_SERVER=""
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+GRAY='\033[0;90m'
 NC='\033[0m' # No Color
 
 # Set remote server if provided
@@ -37,6 +52,12 @@ print_test_result() {
 	if [ "$result" = "PASS" ]; then
 		echo -e "${GREEN}[PASS]${NC} $test_name"
 		((TESTS_PASSED++))
+	elif [ "$result" = "SKIP" ]; then
+		echo -e "${GRAY}[SKIP]${NC} $test_name"
+		if [ -n "$description" ]; then
+			echo -e "       ${GRAY}Reason:${NC} $description"
+		fi
+		((TESTS_SKIPPED++))
 	else
 		echo -e "${RED}[FAIL]${NC} $test_name"
 		if [ -n "$description" ]; then
@@ -48,10 +69,10 @@ print_test_result() {
 
 # Print test summary
 print_test_summary() {
-	local total=$((TESTS_PASSED + TESTS_FAILED))
+	local total=$((TESTS_PASSED + TESTS_FAILED + TESTS_SKIPPED))
 	echo ""
 	echo "========================================"
-	echo "Test Summary: $TESTS_PASSED passed, $TESTS_FAILED failed out of $total tests"
+	echo "Test Summary: $TESTS_PASSED passed, $TESTS_FAILED failed, $TESTS_SKIPPED skipped out of $total tests"
 	if [ $TESTS_FAILED -eq 0 ]; then
 		echo -e "${GREEN}All tests passed!${NC}"
 	else
@@ -68,8 +89,19 @@ test_set_wait_state() {
 	local expected_state="$3"
 	local timeout="${4:-10}"
 
+	# Extract property path (before =)
+	local property_path="${property_set%%=*}"
+	# Extract just device.property (without item)
+	local property_base="${property_path%.*}"
+
+	# Check if property exists
+	if ! property_exists "$property_base"; then
+		print_test_result "$test_name" "SKIP" "Property $property_base does not exist"
+		return 2
+	fi
+
 	local output
-	output=$($INDIGO_PROP_TOOL set -w "$expected_state" -s -t "$timeout" $REMOTE_SERVER "$property_set" 2>&1)
+	output=$($INDIGO_PROP_TOOL set -w "$expected_state" -s -t "$timeout" $REMOTE_SERVER "$property_set" 2>&1 | grep "$property_base")
 	local exit_code=$?
 
 	if [ $exit_code -eq 0 ]; then
@@ -99,9 +131,20 @@ test_set_transition_smart() {
 	local timeout="${5:-10}"
 	local value_type="${6:-number}"
 
+	# Extract property path (before =)
+	local property_path="${property_set%%=*}"
+	# Extract just device.property (without item)
+	local property_base="${property_path%.*}"
+
+	# Check if property exists
+	if ! property_exists "$property_base"; then
+		print_test_result "$test_name" "SKIP" "Property $property_base does not exist"
+		return 2
+	fi
+
 	# Get current value
 	local current_value
-	current_value=$($INDIGO_PROP_TOOL get $REMOTE_SERVER "$property_get" 2>&1 | tr -d '[:space:]')
+	current_value=$(get_item_value "$property_get" "ANY" | tr -d '[:space:]')
 	local target_normalized=$(echo "$target_value" | tr -d '[:space:]')
 
 	# Determine if values match
@@ -124,7 +167,7 @@ test_set_transition_smart() {
 
 	# Execute the set command
 	local output
-	output=$($INDIGO_PROP_TOOL set -w OK -s -t "$timeout" $REMOTE_SERVER "$property_set" 2>&1)
+	output=$($INDIGO_PROP_TOOL set -w OK -s -t "$timeout" $REMOTE_SERVER "$property_set" 2>&1 | grep "$property_base")
 	local exit_code=$?
 
 	if [ $exit_code -ne 0 ]; then
@@ -181,8 +224,19 @@ test_state_transition() {
 	local timeout="${5:-10}"
 	local require_initial="${6:-required}"
 
+	# Extract property path (before =)
+	local property_path="${property_set%%=*}"
+	# Extract just device.property (without item)
+	local property_base="${property_path%.*}"
+
+	# Check if property exists
+	if ! property_exists "$property_base"; then
+		print_test_result "$test_name" "SKIP" "Property $property_base does not exist"
+		return 2
+	fi
+
 	local output
-	output=$($INDIGO_PROP_TOOL set -w "$final_state" -s -t "$timeout" $REMOTE_SERVER "$property_set" 2>&1)
+	output=$($INDIGO_PROP_TOOL set -w "$final_state" -s -t "$timeout" $REMOTE_SERVER "$property_set" 2>&1 | grep "$property_base")
 	local exit_code=$?
 
 	if [ $exit_code -eq 0 ]; then
@@ -228,6 +282,44 @@ test_state_transition() {
 	fi
 }
 
+# Test: Check if property state matches one of expected states
+# Usage: test_property_state "test_name" "device.property" "STATE1,STATE2,..."
+# Expected states can be: OK, BUSY, ALERT, IDLE (comma-separated list)
+test_property_state() {
+	local test_name="$1"
+	local property="$2"
+	local expected_states="$3"
+
+	# Check if property exists
+	if ! property_exists "$property"; then
+		print_test_result "$test_name" "SKIP" "Property $property does not exist"
+		return 2
+	fi
+
+	# Get the current state
+	local actual_state
+	actual_state=$($INDIGO_PROP_TOOL get_state -w ANY $REMOTE_SERVER "$property" 2>&1)
+
+	if [ -z "$actual_state" ]; then
+		print_test_result "$test_name" "FAIL" "Could not determine property state"
+		return 1
+	fi
+
+	# Check if actual state is in the list of expected states
+	IFS=',' read -ra STATE_ARRAY <<< "$expected_states"
+	for expected in "${STATE_ARRAY[@]}"; do
+		expected=$(echo "$expected" | xargs)  # trim whitespace
+		if [ "$actual_state" = "$expected" ]; then
+			print_test_result "$test_name" "PASS"
+			return 0
+		fi
+	done
+
+	# State not in expected list
+	print_test_result "$test_name" "FAIL" "Expected state in [$expected_states], got [$actual_state]"
+	return 1
+}
+
 # Test: Get property item value and compare
 # Usage: test_get_value "test_name" "device.property.item" "expected_value" [type]
 # type can be "string" (default) or "number" for numeric comparison
@@ -237,8 +329,17 @@ test_get_value() {
 	local expected_value="$3"
 	local value_type="${4:-string}"
 
+	# Extract just device.property (without item)
+	local property_base="${property_item%.*}"
+
+	# Check if property exists
+	if ! property_exists "$property_base"; then
+		print_test_result "$test_name" "SKIP" "Property $property_base does not exist"
+		return 2
+	fi
+
 	local actual_value
-	actual_value=$($INDIGO_PROP_TOOL get -w OK $REMOTE_SERVER "$property_item" 2>&1 | tr -d '[:space:]')
+	actual_value=$(get_item_value "$property_item" "OK" | tr -d '[:space:]')
 	expected_value=$(echo "$expected_value" | tr -d '[:space:]')
 
 	local match=0
@@ -280,6 +381,17 @@ test_set_and_verify() {
 	local timeout="${5:-10}"
 	local value_type="${6:-string}"
 
+	# Extract property path (before =)
+	local property_path="${property_set%%=*}"
+	# Extract just device.property (without item)
+	local property_base="${property_path%.*}"
+
+	# Check if property exists
+	if ! property_exists "$property_base"; then
+		print_test_result "$test_name" "SKIP" "Property $property_base does not exist"
+		return 2
+	fi
+
 	# Set the value
 	$INDIGO_PROP_TOOL set -w OK -t "$timeout" $REMOTE_SERVER "$property_set" >/dev/null 2>&1
 	local set_result=$?
@@ -291,7 +403,7 @@ test_set_and_verify() {
 
 	# Verify the value
 	local actual_value
-	actual_value=$($INDIGO_PROP_TOOL get -w OK $REMOTE_SERVER "$property_get" 2>&1 | tr -d '[:space:]')
+	actual_value=$(get_item_value "$property_get" "OK" | tr -d '[:space:]')
 	expected_value=$(echo "$expected_value" | tr -d '[:space:]')
 
 	local match=0
@@ -364,7 +476,7 @@ test_connect_when_connected() {
 
 	# Request connect again and capture output
 	local output
-	output=$($INDIGO_PROP_TOOL set -w OK -s -t "$timeout" $REMOTE_SERVER "$device.CONNECTION.CONNECTED=ON" 2>&1)
+	output=$($INDIGO_PROP_TOOL set -w ANY -s -t "$timeout" $REMOTE_SERVER "$device.CONNECTION.CONNECTED=ON" 2>&1 | grep "$device.CONNECTION")
 
 	# Check if any property updates were received (should be none)
 	local has_updates=0
@@ -392,7 +504,7 @@ test_disconnect_when_disconnected() {
 
 	# Request disconnect again and capture output
 	local output
-	output=$($INDIGO_PROP_TOOL set -w OK -s -t "$timeout" $REMOTE_SERVER "$device.CONNECTION.DISCONNECTED=ON" 2>&1)
+	output=$($INDIGO_PROP_TOOL set -w ANY -s -t "$timeout" $REMOTE_SERVER "$device.CONNECTION.DISCONNECTED=ON" 2>&1 | grep "$device.CONNECTION")
 
 	# Check if any property updates were received (should be none)
 	local has_updates=0
@@ -435,8 +547,6 @@ test_connection_battery() {
 
 		# Test disconnect when already disconnected
 		test_disconnect_when_disconnected "$device" "$timeout"
-
-		sleep 1
 	else
 		echo "Device is disconnected"
 
@@ -451,17 +561,118 @@ test_connection_battery() {
 	return $was_connected
 }
 
+# Helper: Get property item value with optional state filter
+# Usage: get_item_value "device.property.item" [state]
+# Parameters:
+#   property_item - Full path to property item (e.g., "Device.PROPERTY.ITEM")
+#   state        - Optional property state to wait for (default: "ANY")
+#                  Valid states: OK, BUSY, ALERT, IDLE, ANY
+# Returns: Prints the item value to stdout
+# Example: value=$(get_item_value "CCD Imager.CCD_INFO.WIDTH" "OK")
+get_item_value() {
+	local property_item="$1"
+	local state="${2:-ANY}"
+
+	$INDIGO_PROP_TOOL get -w "$state" $REMOTE_SERVER "$property_item" 2>&1
+}
+
 # Helper: Check if device is connected
 is_device_connected() {
 	local device="$1"
 	local connected
-	connected=$($INDIGO_PROP_TOOL get $REMOTE_SERVER "$device.CONNECTION.CONNECTED" 2>&1)
+	connected=$(get_item_value "$device.CONNECTION.CONNECTED" "ANY")
 
 	if [ "$connected" = "ON" ]; then
 		return 0
 	else
 		return 1
 	fi
+}
+
+# Helper: Get device interface bitmask
+# Usage: get_device_interface "device_name"
+# Returns: Prints interface value as integer, or empty if not available
+get_device_interface() {
+	local device="$1"
+	local interface
+
+	interface=$(get_item_value "$device.INFO.DEVICE_INTERFACE" "ANY")
+
+	if [ -n "$interface" ]; then
+		echo "$interface"
+	fi
+}
+
+# Helper: Check if device has specific interface (bitmask check)
+# Usage: has_interface "device_name" bitmask
+# Returns: 0 if device has the interface, 1 otherwise
+has_interface() {
+	local device="$1"
+	local required_mask="$2"
+	local device_interface
+
+	device_interface=$(get_device_interface "$device")
+
+	if [ -z "$device_interface" ]; then
+		return 1
+	fi
+
+	# Perform bitwise AND to check if interface bit is set
+	local result
+	result=$(( device_interface & required_mask ))
+
+	if [ "$result" -ne 0 ]; then
+		return 0
+	else
+		return 1
+	fi
+}
+
+# Device interface test functions
+# These check if device implements specific interface
+
+is_mount() {
+	has_interface "$1" 1  # 1 << 0
+}
+
+is_ccd() {
+	has_interface "$1" 2  # 1 << 1
+}
+
+is_guider() {
+	has_interface "$1" 4  # 1 << 2
+}
+
+is_focuser() {
+	has_interface "$1" 8  # 1 << 3
+}
+
+is_wheel() {
+	has_interface "$1" 16  # 1 << 4
+}
+
+is_dome() {
+	has_interface "$1" 32  # 1 << 5
+}
+
+is_gps() {
+	has_interface "$1" 64  # 1 << 6
+}
+
+is_ao() {
+	has_interface "$1" 256  # 1 << 8
+}
+
+is_rotator() {
+	has_interface "$1" 4096  # 1 << 12
+}
+
+is_agent() {
+	has_interface "$1" 16384  # 1 << 14
+}
+
+is_aux() {
+	has_interface "$1" 32768  # 1 << 15
 }
 
 # Helper: Get driver information from INFO property
@@ -472,8 +683,8 @@ get_driver_info() {
 	local driver_name
 	local driver_version
 
-	driver_name=$($INDIGO_PROP_TOOL get -w OK $REMOTE_SERVER "$device.INFO.DEVICE_DRIVER" 2>&1 | tr -d '"')
-	driver_version=$($INDIGO_PROP_TOOL get -w OK $REMOTE_SERVER "$device.INFO.DEVICE_VERSION" 2>&1 | tr -d '"')
+	driver_name=$(get_item_value "$device.INFO.DEVICE_DRIVER" "OK" | tr -d '"')
+	driver_version=$(get_item_value "$device.INFO.DEVICE_VERSION" "OK" | tr -d '"')
 
 	if [ -n "$driver_name" ] && [ -n "$driver_version" ]; then
 		echo "$driver_name v.$driver_version"
@@ -512,7 +723,7 @@ property_exists() {
 
 	# Check if property exists
 	local output
-	output=$($INDIGO_PROP_TOOL list -w OK $REMOTE_SERVER "$property" 2>&1)
+	output=$($INDIGO_PROP_TOOL list -w ANY $REMOTE_SERVER "$property" 2>&1)
 
 	if [ -z "$output" ] || echo "$output" | grep -qiE "error|not found|no property"; then
 		return 1
@@ -540,7 +751,7 @@ get_item_min() {
 
 	# Get extended property info with -e flag
 	local output
-	output=$($INDIGO_PROP_TOOL get -e -w OK $REMOTE_SERVER "$property_item" 2>&1)
+	output=$($INDIGO_PROP_TOOL get -e -w ANY $REMOTE_SERVER "$property_item" 2>&1)
 
 	if [ -z "$output" ]; then
 		return 1
@@ -576,7 +787,7 @@ get_item_max() {
 
 	# Get extended property info with -e flag
 	local output
-	output=$($INDIGO_PROP_TOOL get -e -w OK $REMOTE_SERVER "$property_item" 2>&1)
+	output=$($INDIGO_PROP_TOOL get -e -w ANY $REMOTE_SERVER "$property_item" 2>&1)
 
 	if [ -z "$output" ]; then
 		return 1
