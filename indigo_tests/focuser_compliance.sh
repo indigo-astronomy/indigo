@@ -137,7 +137,7 @@ echo ""
 echo "--- Test 2: Relative Move Tests ---"
 
 # Test small moves in and out
-MOVE_STEPS=50
+MOVE_STEPS=150
 
 # Calculate safe move steps (not to exceed range)
 if awk -v steps="$MOVE_STEPS" -v max="$STEPS_MAX" 'BEGIN { exit !(steps <= max) }'; then
@@ -221,6 +221,10 @@ echo "--- Test 4: SYNC Mode Test ---"
 
 # Check if FOCUSER_ON_POSITION_SET exists before running SYNC tests
 if property_exists "$DEVICE.FOCUSER_ON_POSITION_SET"; then
+	# Store position before sync test
+	POS_BEFORE_SYNC=$(get_item_value "$DEVICE.FOCUSER_POSITION.POSITION" "OK")
+	echo "Position before sync test: $POS_BEFORE_SYNC"
+
 	# Set SYNC mode
 	test_set_and_verify "Set SYNC mode" \
 		"$DEVICE.FOCUSER_ON_POSITION_SET.SYNC=ON" \
@@ -236,12 +240,12 @@ if property_exists "$DEVICE.FOCUSER_ON_POSITION_SET"; then
 		"$DEVICE.FOCUSER_POSITION.POSITION" \
 		"$SYNC_POS" 10 "number"
 
-	# Sync back to original position
-	echo "Syncing back to original position $ORIGINAL_POSITION..."
-	test_set_and_verify "Sync back to original position" \
-		"$DEVICE.FOCUSER_POSITION.POSITION=$ORIGINAL_POSITION" \
+	# Sync back to position before sync test
+	echo "Syncing back to position before sync ($POS_BEFORE_SYNC)..."
+	test_set_and_verify "Sync back to position before sync" \
+		"$DEVICE.FOCUSER_POSITION.POSITION=$POS_BEFORE_SYNC" \
 		"$DEVICE.FOCUSER_POSITION.POSITION" \
-		"$ORIGINAL_POSITION" 10 "number"
+		"$POS_BEFORE_SYNC" 10 "number"
 else
 	print_test_result "SYNC Mode Test" "SKIP" "Property FOCUSER_ON_POSITION_SET does not exist"
 fi
