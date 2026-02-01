@@ -269,7 +269,6 @@
 		595F2936211E22CC00380EF4 /* indigo_aux_joystick.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F2935211E22CC00380EF4 /* indigo_aux_joystick.m */; };
 		5967BB1929B3D83B0003BF22 /* indigo_service_discovery.c in Sources */ = {isa = PBXBuildFile; fileRef = 59790B2F29B2798A00F73B1D /* indigo_service_discovery.c */; };
 		59689AA3245DE40D00F950CE /* indigo_wheel_manual.c in Sources */ = {isa = PBXBuildFile; fileRef = 59689AA2245DE3E100F950CE /* indigo_wheel_manual.c */; };
-		596E15452DAC1A150004569F /* CAA_API.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D74A4F72D4B63F700A31003 /* CAA_API.h */; };
 		596E15462DAC1A150004569F /* CAA_API.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D74A4F72D4B63F700A31003 /* CAA_API.h */; };
 		596FCA8F2BD0320E00F5BACB /* gxccd.h in Headers */ = {isa = PBXBuildFile; fileRef = 596FCA772BD0320E00F5BACB /* gxccd.h */; };
 		596FCA902BD0320E00F5BACB /* gxccd.h in Headers */ = {isa = PBXBuildFile; fileRef = 596FCA772BD0320E00F5BACB /* gxccd.h */; };
@@ -889,10 +888,8 @@
 		9D08295F2C1986BA002166E1 /* libtoupcam.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 591B017221A49F4A006A1CD8 /* libtoupcam.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		9D0829602C1986BA002166E1 /* libusb-1.0.0.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 5942229C22E34AA4009DAD5C /* libusb-1.0.0.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		9D1541EC2F2A0ACD00B7045F /* indigo_agent_solver.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D1541E82F2A0ACD00B7045F /* indigo_agent_solver.c */; };
-		9D1541ED2F2A0ACD00B7045F /* Makefile.inc in Sources */ = {isa = PBXBuildFile; fileRef = 9D1541E92F2A0ACD00B7045F /* Makefile.inc */; };
 		9D1541EE2F2A0ACD00B7045F /* indigo_agent_solver.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D1541E72F2A0ACD00B7045F /* indigo_agent_solver.h */; };
 		9D1541EF2F2A0ACD00B7045F /* indigo_agent_solver.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D1541E82F2A0ACD00B7045F /* indigo_agent_solver.c */; };
-		9D1541F02F2A0ACD00B7045F /* Makefile.inc in Sources */ = {isa = PBXBuildFile; fileRef = 9D1541E92F2A0ACD00B7045F /* Makefile.inc */; };
 		9D1541F12F2A0ACD00B7045F /* indigo_agent_solver.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D1541E72F2A0ACD00B7045F /* indigo_agent_solver.h */; };
 		9D1880C11E534BBC002F75D7 /* indigo_prop_tool.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D1880C01E534BB5002F75D7 /* indigo_prop_tool.c */; };
 		9D35EA0223CDB27D00B6A41F /* indigo_gps_gpsd.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D35E9D323CDB27D00B6A41F /* indigo_gps_gpsd.h */; };
@@ -962,7 +959,6 @@
 		9D7FC61F2C4906B2004496F2 /* indigo_focuser_fc3.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D7FC6132C4906B2004496F2 /* indigo_focuser_fc3.h */; };
 		9D7FC6202C4906B2004496F2 /* indigo_focuser_fc3.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D7FC6132C4906B2004496F2 /* indigo_focuser_fc3.h */; };
 		9D84A67D2ECC5BA400E81FDB /* libatikcameras.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 591B017021A49F3B006A1CD8 /* libatikcameras.dylib */; };
-		9D84A67F2ECC5C0300E81FDB /* libatikcameras.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 591B017021A49F3B006A1CD8 /* libatikcameras.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		9D85FAE421E38E3900ECDF82 /* indigo_agent_alignment.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D85FAE121E38E3900ECDF82 /* indigo_agent_alignment.h */; };
 		9D8D9EA52D4B990E007A5BA3 /* indigo_uni_io.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D8D9EA42D4B990E007A5BA3 /* indigo_uni_io.h */; };
 		9D8D9EA62D4B990E007A5BA3 /* indigo_uni_io.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D8D9EA42D4B990E007A5BA3 /* indigo_uni_io.h */; };
@@ -971,7 +967,6 @@
 		9D8D9EAA2D4B9FBD007A5BA3 /* indigo_uni_io.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D8D9EA72D4B9FBD007A5BA3 /* indigo_uni_io.c */; };
 		9D8D9EAB2D4B9FBD007A5BA3 /* indigo_uni_io.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D8D9EA72D4B9FBD007A5BA3 /* indigo_uni_io.c */; };
 		9D91E6042D9EB8200003A99C /* CAA_API.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D74A4F72D4B63F700A31003 /* CAA_API.h */; };
-		9D91E6052D9EB8200003A99C /* CAA_API.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D74A4F72D4B63F700A31003 /* CAA_API.h */; };
 		9D94A8A02E70400A005C5C56 /* config.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D94A89F2E70400A005C5C56 /* config.h */; };
 		9D94A8A12E70400A005C5C56 /* config.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D94A89F2E70400A005C5C56 /* config.h */; };
 		9D94A8A32E70401B005C5C56 /* hidapi.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D94A8A22E70401B005C5C56 /* hidapi.h */; };
@@ -1043,7 +1038,6 @@
 		9DDBAE1A1E2D2099004FE70F /* indigo_timer.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DDBAE181E2D2099004FE70F /* indigo_timer.h */; };
 		9DDEFBF121EE346700657C8F /* libindigo.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 599C9A481DA022C0008BBCC1 /* libindigo.dylib */; };
 		9DDEFBFB21EE351C00657C8F /* libaltaircam.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 591B017421A49F55006A1CD8 /* libaltaircam.dylib */; };
-		9DDEFBFC21EE352600657C8F /* libatikcameras.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 591B017021A49F3B006A1CD8 /* libatikcameras.dylib */; };
 		9DDEFBFE21EE352F00657C8F /* libtoupcam.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 591B017221A49F4A006A1CD8 /* libtoupcam.dylib */; };
 		9DDEFBFF21EE358F00657C8F /* libUSB2ST4Conv.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59D9681321A2FE380069A64C /* libUSB2ST4Conv.a */; };
 		9DDEFC0021EE359C00657C8F /* libftd2xx.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 595355EC1F6B140300478BEC /* libftd2xx.a */; };
@@ -1148,7 +1142,6 @@
 				59B348B029E85F8B0062C2EA /* libmallincam.dylib in Embed Libraries */,
 				594FAB4B2EEEF32100F3AA7E /* libatikcameras.dylib in Embed Libraries */,
 				59B348B429E85FA80062C2EA /* libtoupcam.dylib in Embed Libraries */,
-				9D84A67F2ECC5C0300E81FDB /* libatikcameras.dylib in Embed Libraries */,
 				9D0829522C198698002166E1 /* libbressercam.dylib in Embed Libraries */,
 				9D0829532C198699002166E1 /* libdc1394.dylib in Embed Libraries */,
 				59B348AA29E85F8A0062C2EA /* libnncam.dylib in Embed Libraries */,
@@ -5171,7 +5164,6 @@
 				5903560E25A8CA37001DC5DB /* libfli.a in Frameworks */,
 				9D74A54B2D4B64A700A31003 /* liboasisfocuser.a in Frameworks */,
 				596FCA972BD0320E00F5BACB /* libgxccd.a in Frameworks */,
-				9DDEFBFC21EE352600657C8F /* libatikcameras.dylib in Frameworks */,
 				9DDEFBFB21EE351C00657C8F /* libaltaircam.dylib in Frameworks */,
 				591CD0F229805E31003243AE /* libstarshootg.dylib in Frameworks */,
 				9DDEFC0321EE35B300657C8F /* libcurl.tbd in Frameworks */,
@@ -14874,7 +14866,6 @@
 				598A1C5C259BA94A00C0B34C /* DDHidLib.h in Headers */,
 				591CD11529806D47003243AE /* mallincam.h in Headers */,
 				598A1C5D259BA94A00C0B34C /* config.h in Headers */,
-				9D91E6052D9EB8200003A99C /* CAA_API.h in Headers */,
 				59B51360297077920075C8A1 /* indigo_rotator_falcon.h in Headers */,
 				598A1C5E259BA94A00C0B34C /* indigo_token.h in Headers */,
 				598A1C5F259BA94A00C0B34C /* indigo_wheel_driver.h in Headers */,
@@ -15088,7 +15079,6 @@
 				595567C724B882DD00DF303D /* qhyccdstruct.h in Headers */,
 				593CFE451DFC8A12003B63D4 /* indigo_wheel_atik.h in Headers */,
 				59D9681921A2FE3F0069A64C /* USB2ST4_Conv.h in Headers */,
-				596E15452DAC1A150004569F /* CAA_API.h in Headers */,
 				59D6718F22FDBB7500D08A2A /* indigo_ptp_nikon.h in Headers */,
 				593894B42C4C22B100CEF4A5 /* indigo_aux_upb3.h in Headers */,
 				59A68E32277DE626000439CC /* indigo_ccd_asi.h in Headers */,
@@ -15336,7 +15326,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastSwiftUpdateCheck = 0800;
-				LastUpgradeCheck = 1620;
+				LastUpgradeCheck = 2600;
 				ORGANIZATIONNAME = "CloudMakers, s. r. o.";
 				TargetAttributes = {
 					598A1B51259BA94A00C0B34C = {
@@ -15710,7 +15700,6 @@
 				598A1BEE259BA94A00C0B34C /* indigo_focuser_driver.c in Sources */,
 				598A1BEF259BA94A00C0B34C /* indigo_io.c in Sources */,
 				9D1541EC2F2A0ACD00B7045F /* indigo_agent_solver.c in Sources */,
-				9D1541ED2F2A0ACD00B7045F /* Makefile.inc in Sources */,
 				598A1BF0259BA94A00C0B34C /* indigo_mount_synscan_driver.c in Sources */,
 				598A1BF1259BA94A00C0B34C /* DDHidAppleRemote.m in Sources */,
 				598A1BF2259BA94A00C0B34C /* indigo_aux_flipflat.c in Sources */,
@@ -15763,7 +15752,6 @@
 				59986D761F9BA11600D68DC1 /* indigo_ccd_qsi.cpp in Sources */,
 				59C8E7C11DBBB05500AA3F0A /* indigo_ccd_simulator.c in Sources */,
 				9D1541EF2F2A0ACD00B7045F /* indigo_agent_solver.c in Sources */,
-				9D1541F02F2A0ACD00B7045F /* Makefile.inc in Sources */,
 				59EF8BC924683B2A009D75C5 /* indigo_dome_baader.c in Sources */,
 				591F329324211F3C00D1D64B /* indigo_dome_dragonfly.c in Sources */,
 				9D7FC61D2C4906B2004496F2 /* indigo_focuser_fc3.c in Sources */,
