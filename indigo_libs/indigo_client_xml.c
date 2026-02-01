@@ -69,7 +69,7 @@ static indigo_result xml_client_parser_enumerate_properties(indigo_device *devic
 	char device_name[INDIGO_NAME_SIZE];
 	const char *property_name = NULL;
 	if (property != NULL) {
-		property_name = indigo_property_name(device->version, property);
+		property_name = indigo_property_name(device->version == 0 ? INDIGO_VERSION_CURRENT : device->version == 0, property);
 		if (*property->device) {
 			indigo_copy_name(device_name, property->device);
 			if (indigo_use_host_suffix) {
