@@ -48,6 +48,11 @@ extern "C" {
 
 INDIGO_EXTERN bool indigo_use_blob_urls;
 
+/** Autoenumerate properties for remote INDIGO servers;
+ */
+
+extern bool indigo_autoenumerate;
+
 /** XML wire protocol parser.
  */
 INDIGO_EXTERN void indigo_xml_parse(indigo_device *device, indigo_client *client);

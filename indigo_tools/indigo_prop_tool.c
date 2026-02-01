@@ -37,6 +37,8 @@
 
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_client.h>
+#include <indigo/indigo_driver_xml.h>
+
 #include <indigo/indigo_service_discovery.h>
 
 #define INDIGO_DEFAULT_PORT 7624
@@ -100,7 +102,7 @@ int read_file(const char *file_name, char **file_data) {
 		return -1;
 	}
 	fseek(f, 0, SEEK_END);
-	size = ftell(f);
+	size = (int)ftell(f);
 	fseek(f, 0, SEEK_SET);
 	*file_data = (char *)malloc(size+1);
 	if (size != fread(*file_data, sizeof(char), size, f)) {
@@ -115,7 +117,7 @@ int read_file(const char *file_name, char **file_data) {
 
 
 void trim_ending_spaces(char * str) {
-	int len = strlen(str);
+	int len = (int)strlen(str);
 	while(isspace(str[len - 1])) str[--len] = '\0';
 }
 
@@ -133,7 +135,7 @@ char* str_upper_case(char *str) {
 
 void trim_spaces(char * str) {
 	/* trim ending */
-	int len = strlen(str);
+	int len = (int)strlen(str);
 	while(isspace(str[len - 1])) str[--len] = '\0';
 
 	/* trim begining */
@@ -290,7 +292,7 @@ static void save_blob(char *filename, char *data, size_t length) {
 		INDIGO_ERROR(indigo_error("Open file %s failed: %s", filename, strerror(errno)));
 		return;
 	}
-	int len = write(fd, data, length);
+	int len = (int)write(fd, data, length);
 	if (len <= 0) {
 		INDIGO_ERROR(indigo_error("Write blob to file %s failed: %s", filename, strerror(errno)));
 	}
@@ -631,7 +633,6 @@ static void print_property_get_state_filtered(indigo_property *property, const c
 
 
 static indigo_result client_attach(indigo_client *client) {
-	indigo_enumerate_properties(client, &INDIGO_ALL_PROPERTIES);
 	return INDIGO_OK;
 }
 
@@ -722,7 +723,10 @@ static indigo_result client_define_property(indigo_client *client, indigo_device
 				indigo_change_switch_property(client, property->device, property->name, change_request.item_count, (const char **)items, (const bool *)bool_values);
 				break;
 			case INDIGO_LIGHT_VECTOR:
-				printf("%s.%s.%s = %d\n", property->device, property->name, item->name, item->light.value);
+				for (i = 0; i < property->count; i++) {
+					item = &(property->items[i]);
+					printf("%s.%s.%s = %d\n", property->device, property->name, item->name, item->light.value);
+				}
 				break;
 			case INDIGO_BLOB_VECTOR:
 				if (property->perm == INDIGO_WO_PERM) {
@@ -748,7 +752,10 @@ static indigo_result client_define_property(indigo_client *client, indigo_device
 						}
 					}
 				} else {
-					printf("%s.%s.%s = <BLOB NOT SHOWN>\n", property->device, property->name, item->name);
+					for (i = 0; i < property->count; i++) {
+						item = &(property->items[i]);
+						printf("%s.%s.%s = <BLOB NOT SHOWN>\n", property->device, property->name, item->name);
+					}
 				}
 				break;
 			}
@@ -882,6 +889,7 @@ int main(int argc, const char * argv[]) {
 	indigo_main_argv = argv;
 	indigo_use_host_suffix = false;
 	indigo_use_blob_urls = true;
+	indigo_autoenumerate = false;
 
 	if (argc < 2) {
 		print_help(argv[0]);
@@ -892,6 +900,7 @@ int main(int argc, const char * argv[]) {
 	int port = INDIGO_DEFAULT_PORT;
 	char hostname[255] = "localhost";
 	char const *prop_string = NULL;
+	indigo_property enumeration_request = { 0 };
 
 	set_requested = true;
 	int arg_base = 1;
@@ -1024,6 +1033,8 @@ int main(int argc, const char * argv[]) {
 			printf("PARSED: %s.%s.%s = %s\n", change_request.device_name, change_request.property_name, change_request.item_name[i],  change_request.value_string[i]);
 		}
 		#endif
+		strcpy(enumeration_request.device, change_request.device_name);
+		strcpy(enumeration_request.name, change_request.property_name);
 	} else if (get_requested) {
 		if (parse_get_property_string(prop_string, &get_request) < 0) {
 			fprintf(stderr, "Invalid property string format\n");
@@ -1034,6 +1045,8 @@ int main(int argc, const char * argv[]) {
 			printf("PARSED: %s.%s.%s\n", get_request.device_name, get_request.property_name, get_request.item_name[i]);
 		}
 		#endif
+		strcpy(enumeration_request.device, get_request.device_name);
+		strcpy(enumeration_request.name, get_request.property_name);
 	} else if (list_state_requested) {
 		if (parse_list_property_string(prop_string, &list_request) < 0) {
 			fprintf(stderr, "Invalid property string format\n");
@@ -1042,6 +1055,8 @@ int main(int argc, const char * argv[]) {
 		#ifdef DEBUG
 		printf("PARSED: %s * %s\n", list_request.device_name, list_request.property_name);
 		#endif
+		strcpy(enumeration_request.device, list_request.device_name);
+		strcpy(enumeration_request.name, list_request.property_name);
 	} else if (get_state_requested) {
 		/* Device and property is needed so != 2 */
 		if (parse_list_property_string(prop_string, &list_request) != 2) {
@@ -1051,6 +1066,8 @@ int main(int argc, const char * argv[]) {
 		#ifdef DEBUG
 		printf("PARSED: %s * %s\n", list_request.device_name, list_request.property_name);
 		#endif
+		strcpy(enumeration_request.device, list_request.device_name);
+		strcpy(enumeration_request.name, list_request.property_name);
 	} else if (discover_requested) {
 		indigo_start();
 		indigo_start_service_browser(discover_callback);
@@ -1066,6 +1083,8 @@ int main(int argc, const char * argv[]) {
 		#ifdef DEBUG
 		printf("PARSED: %s * %s\n", list_request.device_name, list_request.property_name);
 		#endif
+		strcpy(enumeration_request.device, list_request.device_name);
+		strcpy(enumeration_request.name, list_request.property_name);
 	}
 
 	indigo_start();
@@ -1083,6 +1102,7 @@ int main(int argc, const char * argv[]) {
 		}
 	}
 	if (connected) {
+		indigo_enumerate_properties(&client, &enumeration_request);
 		while (time_to_wait > 0.0) {
 			indigo_sleep(0.05); /* 50 ms */
 			if (!poll_wait_flag) break;
