@@ -104,7 +104,7 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 		indigo_define_matching_property(X_CCD_EXPOSURE_PROPERTY);
 		indigo_define_matching_property(X_CCD_ABORT_EXPOSURE_PROPERTY);
 	}
-	return indigo_aux_enumerate_properties(device, NULL, NULL);
+	return indigo_aux_enumerate_properties(device, client, property);
 }
 
 static void aux_timer_callback(indigo_device *device) {

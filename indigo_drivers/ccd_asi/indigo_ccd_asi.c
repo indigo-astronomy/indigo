@@ -237,7 +237,7 @@ static indigo_result asi_enumerate_properties(indigo_device *device, indigo_clie
 		indigo_define_matching_property(ASI_CUSTOM_SUFFIX_PROPERTY);
 		indigo_define_matching_property(ASI_ADVANCED_PROPERTY);
 	}
-	return indigo_ccd_enumerate_properties(device, NULL, NULL);
+	return indigo_ccd_enumerate_properties(device, client, property);
 }
 
 

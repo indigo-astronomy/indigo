@@ -168,7 +168,6 @@ static indigo_result gps_attach(indigo_device *device) {
 		GPS_UTC_TIME_PROPERTY->hidden = false;
 		GPS_UTC_TIME_PROPERTY->count = 1;
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
-
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_gps_enumerate_properties(device, NULL, NULL);
 	}

@@ -190,7 +190,7 @@ static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_
 		indigo_define_matching_property(X_FOCUSER_POWER_CHANNELS_PROPERTY);
 		indigo_define_matching_property(X_FOCUSER_CONFIG_PROPERTY);
 	}
-	return indigo_focuser_enumerate_properties(device, NULL, NULL);
+	return indigo_focuser_enumerate_properties(device, client, property);
 }
 
 static void focuser_timer_callback(indigo_device *device) {

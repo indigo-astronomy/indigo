@@ -136,7 +136,7 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 	if (IS_CONNECTED) {
 		indigo_define_matching_property(AUX_WEATHER_PROPERTY);
 	}
-	return indigo_aux_enumerate_properties(device, NULL, NULL);
+	return indigo_aux_enumerate_properties(device, client, property);
 }
 
 static void aux_timer_callback(indigo_device *device) {

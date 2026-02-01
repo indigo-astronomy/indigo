@@ -505,7 +505,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_switch_item(MOUNT_PARK_UNPARKED_ITEM, MOUNT_PARK_UNPARKED_ITEM_NAME, NULL, false);
 
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		return agent_enumerate_properties(device, NULL, NULL);
+		return agent_enumerate_properties(device, client, property);
 	}
 	return INDIGO_FAILED;
 }

@@ -2052,7 +2052,7 @@ static indigo_result mount_enumerate_properties(indigo_device *device, indigo_cl
 		indigo_define_property(device, MOUNT_MERIDIAN_HANDLING_PROPERTY, NULL);
 		indigo_define_property(device, MOUNT_MERIDIAN_LIMIT_PROPERTY, NULL);
 	}
-	return indigo_mount_enumerate_properties(device, NULL, NULL);
+	return indigo_mount_enumerate_properties(device, client, property);
 }
 
 static indigo_result mount_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {

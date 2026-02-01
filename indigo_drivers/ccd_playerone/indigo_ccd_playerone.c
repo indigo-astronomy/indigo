@@ -197,7 +197,7 @@ static indigo_result playerone_enumerate_properties(indigo_device *device, indig
 		indigo_define_matching_property(POA_ADVANCED_PROPERTY);
 		indigo_define_matching_property(POA_SENSOR_MODE_PROPERTY);
 	}
-	return indigo_ccd_enumerate_properties(device, NULL, NULL);
+	return indigo_ccd_enumerate_properties(device, client, property);
 }
 
 static bool playerone_open(indigo_device *device) {

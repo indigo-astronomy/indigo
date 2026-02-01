@@ -155,7 +155,7 @@ static indigo_result rotator_enumerate_properties(indigo_device *device, indigo_
 		indigo_define_matching_property(X_RATE_PROPERTY);
 		indigo_define_matching_property(X_ROTATE_PROPERTY);
 	}
-	return indigo_rotator_enumerate_properties(device, NULL, NULL);
+	return indigo_rotator_enumerate_properties(device, client, property);
 }
 
 

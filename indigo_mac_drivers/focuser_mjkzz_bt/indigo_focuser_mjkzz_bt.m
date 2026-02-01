@@ -326,7 +326,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 }
 
 static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	return indigo_focuser_enumerate_properties(device, NULL, NULL);
+	return indigo_focuser_enumerate_properties(device, client, property);
 }
 
 static indigo_result focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {

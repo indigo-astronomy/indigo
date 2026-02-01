@@ -1217,7 +1217,7 @@ static indigo_result mount_enumerate_properties(indigo_device *device, indigo_cl
 		indigo_define_matching_property(ZWO_MERIDIAN_PROPERTY);
 		indigo_define_matching_property(ZWO_MERIDIAN_LIMIT_PROPERTY);
 	}
-	return indigo_mount_enumerate_properties(device, NULL, NULL);
+	return indigo_mount_enumerate_properties(device, client, property);
 }
 
 static indigo_result mount_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {

@@ -251,7 +251,7 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 		indigo_define_matching_property(AUX_INFO_PROPERTY);
 		indigo_define_matching_property(AUX_WEATHER_PROPERTY);
 	}
-	return indigo_aux_enumerate_properties(device, NULL, NULL);
+	return indigo_aux_enumerate_properties(device, client, property);
 }
 
 static indigo_result aux_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {

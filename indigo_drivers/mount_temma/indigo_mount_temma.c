@@ -396,7 +396,7 @@ static indigo_result mount_enumerate_properties(indigo_device *device, indigo_cl
 		indigo_define_matching_property(HIGH_SPEED_PROPERTY);
 		indigo_define_matching_property(ZENITH_PROPERTY);
 	}
-	return indigo_mount_enumerate_properties(device, NULL, NULL);
+	return indigo_mount_enumerate_properties(device, client, property);
 }
 
 static void mount_connect_callback(indigo_device *device) {

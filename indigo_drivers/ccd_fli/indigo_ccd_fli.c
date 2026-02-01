@@ -136,7 +136,7 @@ static indigo_result fli_enumerate_properties(indigo_device *device, indigo_clie
 		indigo_define_matching_property(FLI_NFLUSHES_PROPERTY);
 		indigo_define_matching_property(FLI_CAMERA_MODE_PROPERTY);
 	}
-	return indigo_ccd_enumerate_properties(device, NULL, NULL);
+	return indigo_ccd_enumerate_properties(device, client, property);
 }
 
 

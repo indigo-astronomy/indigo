@@ -605,7 +605,7 @@ static indigo_result dsd_enumerate_properties(indigo_device *device, indigo_clie
 		indigo_define_matching_property(DSD_TIMINGS_PROPERTY);
 	}
 	indigo_define_property(device, DSD_MODEL_HINT_PROPERTY, NULL);
-	return indigo_focuser_enumerate_properties(device, NULL, NULL);
+	return indigo_focuser_enumerate_properties(device, client, property);
 }
 
 

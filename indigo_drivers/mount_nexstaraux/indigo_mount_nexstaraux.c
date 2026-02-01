@@ -310,7 +310,7 @@ static indigo_result mount_attach(indigo_device *device) {
 }
 
 static indigo_result mount_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	return indigo_mount_enumerate_properties(device, NULL, NULL);
+	return indigo_mount_enumerate_properties(device, client, property);
 }
 
 static void position_timer_callback(indigo_device *device) {

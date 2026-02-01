@@ -99,7 +99,7 @@ static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_
 	if (IS_CONNECTED) {
 		indigo_define_matching_property(X_FOCUSER_FREQUENCY_PROPERTY);
 	}
-	return indigo_focuser_enumerate_properties(device, NULL, NULL);
+	return indigo_focuser_enumerate_properties(device, client, property);
 }
 
 static void focuser_connect_callback(indigo_device *device) {

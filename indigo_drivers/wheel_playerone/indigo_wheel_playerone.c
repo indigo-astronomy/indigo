@@ -112,7 +112,7 @@ static indigo_result wheel_enumerate_properties(indigo_device *device, indigo_cl
 		indigo_define_matching_property(POA_CUSTOM_SUFFIX_PROPERTY);
 		indigo_define_matching_property(POA_RESET_PROPERTY);
 	}
-	return indigo_wheel_enumerate_properties(device, NULL, NULL);
+	return indigo_wheel_enumerate_properties(device, client, property);
 }
 
 static indigo_result wheel_attach(indigo_device *device) {

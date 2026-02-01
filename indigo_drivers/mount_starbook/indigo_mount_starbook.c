@@ -1255,7 +1255,7 @@ static indigo_result mount_enumerate_properties(indigo_device *device, indigo_cl
 		indigo_define_matching_property(TIMEZONE_PROPERTY);
 		indigo_define_matching_property(RESET_PROPERTY);
 	}
-	return indigo_mount_enumerate_properties(device, NULL, NULL);
+	return indigo_mount_enumerate_properties(device, client, property);
 }
 
 static void mount_connect_callback(indigo_device *device) {

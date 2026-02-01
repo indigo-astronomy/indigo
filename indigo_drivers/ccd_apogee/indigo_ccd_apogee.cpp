@@ -273,7 +273,7 @@ static indigo_result apg_enumerate_properties(indigo_device *device, indigo_clie
 		indigo_define_matching_property(APG_GAIN_PROPERTY);
 		indigo_define_matching_property(APG_OFFSET_PROPERTY);
 	}
-	return indigo_ccd_enumerate_properties(device, NULL, NULL);
+	return indigo_ccd_enumerate_properties(device, client, property);
 }
 
 

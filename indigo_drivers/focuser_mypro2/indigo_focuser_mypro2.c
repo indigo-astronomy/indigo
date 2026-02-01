@@ -546,7 +546,7 @@ static indigo_result mfp_enumerate_properties(indigo_device *device, indigo_clie
 		indigo_define_matching_property(X_COILS_MODE_PROPERTY);
 		indigo_define_matching_property(X_SETTLE_TIME_PROPERTY);
 	}
-	return indigo_focuser_enumerate_properties(device, NULL, NULL);
+	return indigo_focuser_enumerate_properties(device, client, property);
 }
 
 

@@ -347,7 +347,7 @@ static indigo_result eaf_enumerate_properties(indigo_device *device, indigo_clie
 	if (PRIVATE_DATA->is_bluetooth) {
 		indigo_define_matching_property(EAF_SCAN_PROPERTY);
 	}
-	return indigo_focuser_enumerate_properties(device, NULL, NULL);
+	return indigo_focuser_enumerate_properties(device, client, property);
 }
 
 
