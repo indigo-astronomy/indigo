@@ -188,10 +188,8 @@
 		5949DCB7265B993500F83B7E /* indigo_base64.c in Sources */ = {isa = PBXBuildFile; fileRef = 5999FBC71DB01F950084BBF8 /* indigo_base64.c */; };
 		5949DCB8265B993500F83B7E /* indigo_driver_json.c in Sources */ = {isa = PBXBuildFile; fileRef = 599A63AE1DEA2F4700ABC827 /* indigo_driver_json.c */; };
 		5949DCB9265B993500F83B7E /* indigo_avi.c in Sources */ = {isa = PBXBuildFile; fileRef = 5979C87025473AE0005395BE /* indigo_avi.c */; };
-		5949DCBA265B993500F83B7E /* indigo_usb_utils.c in Sources */ = {isa = PBXBuildFile; fileRef = 59B636AE20A74CD400EF2D52 /* indigo_usb_utils.c */; };
 		5949DCBB265B993500F83B7E /* indigo_client_xml.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D382061D97314C00E87393 /* indigo_client_xml.c */; };
 		5949DCBC265B993500F83B7E /* indigo_raw_utils.c in Sources */ = {isa = PBXBuildFile; fileRef = 5911B6C922630FE900D6B9EC /* indigo_raw_utils.c */; };
-		5949DCBF265B9AE000F83B7E /* libusb-1.0.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5949DCBE265B9AC400F83B7E /* libusb-1.0.a */; };
 		5949DCC1265BA65200F83B7E /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DBC34701DCB26E500588DB9 /* Cocoa.framework */; };
 		5949DCC2265BA65900F83B7E /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DBC34721DCB26F200588DB9 /* IOKit.framework */; };
 		594EF3192770FD15002D0EC8 /* indigo_align.c in Sources */ = {isa = PBXBuildFile; fileRef = 594EF3172770FD15002D0EC8 /* indigo_align.c */; };
@@ -5212,7 +5210,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				5949DCC1265BA65200F83B7E /* Cocoa.framework in Frameworks */,
-				5949DCBF265B9AE000F83B7E /* libusb-1.0.a in Frameworks */,
 				5949DCC2265BA65900F83B7E /* IOKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -16002,7 +15999,6 @@
 				5949DCB2265B993500F83B7E /* indigo_json.c in Sources */,
 				5949DCAE265B990D00F83B7E /* indigo_bus.c in Sources */,
 				5949DCB0265B991400F83B7E /* indigo_io.c in Sources */,
-				5949DCBA265B993500F83B7E /* indigo_usb_utils.c in Sources */,
 				5949DCB9265B993500F83B7E /* indigo_avi.c in Sources */,
 				5949DCB3265B993500F83B7E /* indigo_xml.c in Sources */,
 				5949DCBC265B993500F83B7E /* indigo_raw_utils.c in Sources */,
