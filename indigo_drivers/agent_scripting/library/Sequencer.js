@@ -66,12 +66,16 @@ Sequence.prototype.wait = function(delay) {
 };
 
 Sequence.prototype.wait_until = function(time) {
-	var delay = (typeof time === 'string') ? indigo_utc_to_delay(time) : indigo_time_to_delay(time);
-	if (this.warn_wait_until_12 && delay > 12 * 60 * 60) {
+	var estimated_delay = (typeof time === 'string') ? indigo_utc_to_delay(time) : indigo_time_to_delay(time);
+	if (this.warn_wait_until_12 && estimated_delay > 12 * 60 * 60) {
 		indigo_send_message("Possible error - 'wait_until' will block for more than 12 hours!");
 		this.warn_wait_until_12 = false;
 	}
-	this.sequence.push({ execute: 'wait(' + delay + ',' + true + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	if (typeof time === 'string') {
+		this.sequence.push({ execute: 'wait_until_utc("' + time + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	} else {
+		this.sequence.push({ execute: 'wait_until_time(' + time + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	}
 };
 
 Sequence.prototype.continue_on_failure = function() {
@@ -1132,6 +1136,27 @@ var indigo_sequencer = {
 		}
 	},
 
+	wait_until_utc: function(utc_time) {
+		var delay = indigo_utc_to_delay(utc_time);
+		if (delay <= 0) {
+			indigo_send_message("Target time has passed");
+			indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
+			return;
+		}
+		this.wait(delay, true);
+	},
+
+	wait_until_time: function(target_time) {
+		var delay = indigo_time_to_delay(target_time);
+		if (delay <= 0) {
+			var utc = indigo_delay_to_utc(0);
+			indigo_send_message("Target time has passed");
+			indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
+			return;
+		}
+		this.wait(delay, true);
+	},
+	
 	set_failure_handling: function(failure_handling) {
 		this.failure_handling = failure_handling;
 		indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
