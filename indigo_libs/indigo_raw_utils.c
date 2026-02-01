@@ -2303,7 +2303,6 @@ indigo_result indigo_find_stars_precise_threshold(indigo_raw_type raw_type, cons
 
 	int  size = width * height;
 	uint16_t *buf = indigo_safe_malloc(size * sizeof(uint16_t));
-	int star_size = 100;
 	const int clip_edge = height >= FIND_STAR_EDGE_CLIPPING * 4 ? (int)FIND_STAR_EDGE_CLIPPING : (height / 4);
 	int clip_width  = width - clip_edge;
 	int clip_height = height - clip_edge;

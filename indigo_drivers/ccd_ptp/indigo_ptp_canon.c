@@ -1163,7 +1163,7 @@ static void ptp_canon_get_event(indigo_device *device) {
 					} else if (event == ptp_event_canon_ObjectAddedEx2) {
 						strncpy(filename, (char *)source + 0x24, PTP_MAX_CHARS);
 					} else if (event == ptp_event_canon_ObjectAddedEx3 || event == ptp_event_canon_RequestObjectTransfer) {
-						ptp_decode_string((char *)source + 0x1c, filename);
+						ptp_decode_string((uint8_t *)source + 0x1c, filename);
 						if (source[0x1c] == 0 || source[0x1c] == 1) {
 							// empty or "\0" string
 							//   => no filename
