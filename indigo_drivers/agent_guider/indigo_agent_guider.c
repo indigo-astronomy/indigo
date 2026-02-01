@@ -2083,7 +2083,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		pthread_mutex_init(&DEVICE_PRIVATE_DATA->last_image_mutex, NULL);
 		indigo_load_properties(device, false);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		return agent_enumerate_properties(device, client, property);
+		return agent_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }

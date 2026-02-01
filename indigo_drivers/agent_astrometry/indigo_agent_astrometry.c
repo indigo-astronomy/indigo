@@ -761,7 +761,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		ASTROMETRY_DEVICE_PRIVATE_DATA->platesolver.abort = astrometry_abort;
 		indigo_load_properties(device, false);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		return agent_enumerate_properties(device, client, property);
+		return agent_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }
