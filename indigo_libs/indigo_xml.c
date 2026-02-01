@@ -137,6 +137,7 @@ typedef struct {
 } parser_context;
 
 bool indigo_use_blob_urls = true;
+bool indigo_autoenumerate = true;
 
 typedef void *(* parser_handler)(parser_state state, parser_context *context, char *name, char *value, char *message);
 
@@ -1322,7 +1323,9 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 	int handle = 0;
 	if (device != NULL) {
 		handle = ((indigo_adapter_context *)device->device_context)->input;
-		device->enumerate_properties(device, client, NULL);
+		if (indigo_autoenumerate) {
+			device->enumerate_properties(device, client, NULL);
+		}
 	} else {
 		handle = ((indigo_adapter_context *)client->client_context)->input;
 	}

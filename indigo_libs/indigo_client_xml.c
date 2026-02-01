@@ -67,24 +67,28 @@ static indigo_result xml_client_parser_enumerate_properties(indigo_device *devic
 	assert(device_context != NULL);
 	int handle = device_context->output;
 	char device_name[INDIGO_NAME_SIZE];
-	if (property != NULL && *property->device) {
-		indigo_copy_name(device_name, property->device);
-		if (indigo_use_host_suffix) {
-			char *at = strrchr(device_name, '@');
-			if (at != NULL) {
-				while (at > device_name && at[-1] == ' ')
-					at--;
-				*at = 0;
+	const char *property_name = NULL;
+	if (property != NULL) {
+		property_name = indigo_property_name(device->version, property);
+		if (*property->device) {
+			indigo_copy_name(device_name, property->device);
+			if (indigo_use_host_suffix) {
+				char *at = strrchr(device_name, '@');
+				if (at != NULL) {
+					while (at > device_name && at[-1] == ' ')
+						at--;
+					*at = 0;
+				}
 			}
 		}
 	}
 	if (property != NULL) {
-		if (*property->device && *indigo_property_name(device->version, property)) {
-			INDIGO_PRINTF(handle, "<getProperties version='1.7' switch='%d.%d' device='%s' name='%s'/>\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, indigo_xml_escape(device_name), indigo_property_name(device->version, property));
+		if (*property->device && property_name) {
+			INDIGO_PRINTF(handle, "<getProperties version='1.7' switch='%d.%d' device='%s' name='%s'/>\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, indigo_xml_escape(device_name), property_name);
 		} else if (*property->device) {
 			INDIGO_PRINTF(handle, "<getProperties version='1.7' switch='%d.%d' device='%s'/>\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, indigo_xml_escape(device_name));
-		} else if (*indigo_property_name(device->version, property)) {
-			INDIGO_PRINTF(handle, "<getProperties version='1.7' switch='%d.%d' name='%s'/>\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, indigo_property_name(device->version, property));
+		} else if (property_name) {
+			INDIGO_PRINTF(handle, "<getProperties version='1.7' switch='%d.%d' name='%s'/>\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, property_name);
 		} else {
 			INDIGO_PRINTF(handle, "<getProperties version='1.7' switch='%d.%d'/>\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF);
 		}
