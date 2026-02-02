@@ -505,7 +505,7 @@ static indigo_result rotator_enumerate_properties(indigo_device *device, indigo_
 	if (IS_CONNECTED) {
 		INDIGO_DEFINE_MATCHING_PROPERTY(X_SET_ZERO_POSITION_PROPERTY);
 	}
-	return indigo_rotator_enumerate_properties(device, NULL, NULL);
+	return indigo_rotator_enumerate_properties(device, client, property);
 }
 
 static indigo_result rotator_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {

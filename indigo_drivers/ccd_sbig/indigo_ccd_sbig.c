@@ -462,7 +462,7 @@ static indigo_result sbig_enumerate_properties(indigo_device *device, indigo_cli
 		INDIGO_DEFINE_MATCHING_PROPERTY(SBIG_ADD_WHEEL_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(SBIG_ADD_AO_PROPERTY);
 	}
-	return indigo_ccd_enumerate_properties(device, NULL, NULL);
+	return indigo_ccd_enumerate_properties(device, client, property);
 }
 
 

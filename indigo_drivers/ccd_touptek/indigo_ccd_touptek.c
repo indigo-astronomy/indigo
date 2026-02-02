@@ -867,7 +867,7 @@ static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_clie
 		if (X_CCD_LED_PROPERTY && indigo_property_match(X_CCD_LED_PROPERTY, property))
 			indigo_define_property(device, X_CCD_LED_PROPERTY, NULL);
 	}
-	return indigo_ccd_enumerate_properties(device, NULL, NULL);
+	return indigo_ccd_enumerate_properties(device, client, property);
 }
 
 static void ccd_connect_callback(indigo_device *device) {
@@ -2078,7 +2078,7 @@ static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_
 	if (IS_CONNECTED) {
 		INDIGO_DEFINE_MATCHING_PROPERTY(X_BEEP_PROPERTY);
 	}
-	return indigo_focuser_enumerate_properties(device, NULL, NULL);
+	return indigo_focuser_enumerate_properties(device, client, property);
 }
 
 

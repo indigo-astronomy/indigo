@@ -2380,10 +2380,10 @@ void indigo_process_dslr_image(indigo_device *device, void *data, unsigned long 
 		indigo_fits_keyword keywords[] = {
 			{ INDIGO_FITS_STRING, "BAYERPAT", .string = output_image.bayer_pattern, "Bayer color pattern" },
 			{ INDIGO_FITS_NUMBER, "ISOSPEED", .number = image_info.iso_speed, "ISO camera setting" },
-			{ 0 }, //Placeholder for trmerature
+			{ 0 }, //Placeholder for temperature
 			{ 0 }
 		};
-		int index = 1;
+		int index = 2;
 		if (image_info.temperature > -273.15f) {
 			keywords[index++] = (indigo_fits_keyword) { INDIGO_FITS_NUMBER, "CCD-TEMP", .number = image_info.temperature, "CCD temperature [celcius]"};
 		}

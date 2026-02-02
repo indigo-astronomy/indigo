@@ -1179,7 +1179,7 @@ static bool set_power_outlets(indigo_device *device) {
 
 static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	lunatico_enumerate_properties(device, client, property);
-	return indigo_aux_enumerate_properties(device, NULL, NULL);
+	return indigo_aux_enumerate_properties(device, client, property);
 }
 
 
@@ -1375,7 +1375,7 @@ static void rotator_timer_callback(indigo_device *device) {
 
 static indigo_result rotator_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	lunatico_enumerate_properties(device, client, property);
-	return indigo_rotator_enumerate_properties(device, NULL, NULL);
+	return indigo_rotator_enumerate_properties(device, client, property);
 }
 
 
@@ -1843,7 +1843,7 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 
 static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	lunatico_enumerate_properties(device, client, property);
-	return indigo_focuser_enumerate_properties(device, NULL, NULL);
+	return indigo_focuser_enumerate_properties(device, client, property);
 }
 
 

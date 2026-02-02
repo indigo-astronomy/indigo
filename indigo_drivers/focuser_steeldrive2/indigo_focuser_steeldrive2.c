@@ -358,7 +358,7 @@ static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_
 		INDIGO_DEFINE_MATCHING_PROPERTY(X_USE_ENDSTOP_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(X_START_ZEROING_PROPERTY);
 	}
-	return indigo_focuser_enumerate_properties(device, NULL, NULL);
+	return indigo_focuser_enumerate_properties(device, client, property);
 }
 
 static void focuser_timer_callback(indigo_device *device) {
@@ -969,7 +969,7 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 		INDIGO_DEFINE_MATCHING_PROPERTY(X_SELECT_PID_SENSOR_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(X_SELECT_AMB_SENSOR_PROPERTY);
 	}
-	return indigo_aux_enumerate_properties(device, NULL, NULL);
+	return indigo_aux_enumerate_properties(device, client, property);
 }
 
 static void aux_connection_handler(indigo_device *device) {

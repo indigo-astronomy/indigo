@@ -443,7 +443,7 @@ static indigo_result focuser_attach(indigo_device *device) {
     FOCUSER_SPEED_PROPERTY->hidden = true;
     // --------------------------------------------------------------------------------
     indigo_log("%s attached", device->name);
-    return indigo_focuser_enumerate_properties(device, NULL, NULL);
+    return indigo_focuser_enumerate_properties(device, client, property);
   }
   return INDIGO_FAILED;
 }

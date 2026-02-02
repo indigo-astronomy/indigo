@@ -158,7 +158,7 @@ static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_
 		INDIGO_DEFINE_MATCHING_PROPERTY(X_FOCUSER_STEPPING_MODE_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(X_FOCUSER_PHASE_WIRING_PROPERTY);
 	}
-	return indigo_focuser_enumerate_properties(device, NULL, NULL);
+	return indigo_focuser_enumerate_properties(device, client, property);
 }
 
 static void focuser_timer_callback(indigo_device *device) {

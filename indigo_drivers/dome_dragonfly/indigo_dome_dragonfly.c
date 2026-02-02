@@ -458,7 +458,7 @@ static bool set_gpio_outlets(indigo_device *device) {
 
 static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	lunatico_enumerate_properties(device, client, property);
-	return indigo_aux_enumerate_properties(device, NULL, NULL);
+	return indigo_aux_enumerate_properties(device, client, property);
 }
 
 
@@ -928,7 +928,7 @@ static void dome_handle_shutter(indigo_device *device) {
 
 static indigo_result dome_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	lunatico_enumerate_properties(device, client, property);
-	return indigo_dome_enumerate_properties(device, NULL, NULL);
+	return indigo_dome_enumerate_properties(device, client, property);
 }
 
 

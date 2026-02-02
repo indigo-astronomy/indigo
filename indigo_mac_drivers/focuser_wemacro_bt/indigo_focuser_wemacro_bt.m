@@ -341,7 +341,7 @@ static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_
 		INDIGO_DEFINE_MATCHING_PROPERTY(X_RAIL_SHUTTER_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(X_RAIL_EXECUTE_PROPERTY);
 	}
-	return indigo_focuser_enumerate_properties(device, NULL, NULL);
+	return indigo_focuser_enumerate_properties(device, client, property);
 }
 
 static indigo_result focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {

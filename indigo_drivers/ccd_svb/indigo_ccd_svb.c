@@ -154,7 +154,7 @@ static indigo_result svb_enumerate_properties(indigo_device *device, indigo_clie
 		INDIGO_DEFINE_MATCHING_PROPERTY(PIXEL_FORMAT_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(SVB_ADVANCED_PROPERTY);
 	}
-	return indigo_ccd_enumerate_properties(device, NULL, NULL);
+	return indigo_ccd_enumerate_properties(device, client, property);
 }
 
 static void svb_clear_video_buffer(indigo_device *device, bool aggressive) {

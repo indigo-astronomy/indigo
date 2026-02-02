@@ -121,7 +121,7 @@ static indigo_result caa_enumerate_properties(indigo_device *device, indigo_clie
 		INDIGO_DEFINE_MATCHING_PROPERTY(CAA_BEEP_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(CAA_CUSTOM_SUFFIX_PROPERTY);
 	}
-	return indigo_rotator_enumerate_properties(device, NULL, NULL);
+	return indigo_rotator_enumerate_properties(device, client, property);
 }
 
 

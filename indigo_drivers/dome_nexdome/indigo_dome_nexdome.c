@@ -680,7 +680,7 @@ static indigo_result nexdome_enumerate_properties(indigo_device *device, indigo_
 		INDIGO_DEFINE_MATCHING_PROPERTY(NEXDOME_CALLIBRATE_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(NEXDOME_POWER_PROPERTY);
 	}
-	return indigo_dome_enumerate_properties(device, NULL, NULL);
+	return indigo_dome_enumerate_properties(device, client, property);
 }
 
 

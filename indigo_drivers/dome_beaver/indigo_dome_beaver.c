@@ -799,7 +799,7 @@ static indigo_result beaver_enumerate_properties(indigo_device *device, indigo_c
 		INDIGO_DEFINE_MATCHING_PROPERTY(X_CLEAR_FAILURE_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(X_CONDITIONS_SAFETY_PROPERTY);
 	}
-	return indigo_dome_enumerate_properties(device, NULL, NULL);
+	return indigo_dome_enumerate_properties(device, client, property);
 }
 
 

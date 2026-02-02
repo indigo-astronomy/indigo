@@ -308,7 +308,7 @@ static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_clie
 		INDIGO_DEFINE_MATCHING_PROPERTY(QSI_PRE_EXPOSURE_FLUSH_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(QSI_FAN_MODE_PROPERTY);
 	}
-	return indigo_ccd_enumerate_properties(device, NULL, NULL);
+	return indigo_ccd_enumerate_properties(device, client, property);
 }
 
 static indigo_result ccd_attach(indigo_device *device) {

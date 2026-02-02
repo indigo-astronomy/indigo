@@ -362,7 +362,7 @@ static indigo_result ascol_mount_enumerate_properties(indigo_device *device, ind
 		INDIGO_DEFINE_MATCHING_PROPERTY(T2_SPEED_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(T3_SPEED_PROPERTY);
 	}
-	return indigo_mount_enumerate_properties(device, NULL, NULL);
+	return indigo_mount_enumerate_properties(device, client, property);
 }
 
 
@@ -1973,7 +1973,7 @@ static indigo_result ascol_guider_enumerate_properties(indigo_device *device, in
 	if (IS_CONNECTED) {
 		INDIGO_DEFINE_MATCHING_PROPERTY(GUIDE_CORRECTION_PROPERTY);
 	}
-	return indigo_guider_enumerate_properties(device, NULL, NULL);
+	return indigo_guider_enumerate_properties(device, client, property);
 }
 
 
@@ -2497,7 +2497,7 @@ static indigo_result ascol_dome_enumerate_properties(indigo_device *device, indi
 		INDIGO_DEFINE_MATCHING_PROPERTY(DOME_STATE_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(DOME_SHUTTER_STATE_PROPERTY);
 	}
-	return indigo_dome_enumerate_properties(device, NULL, NULL);
+	return indigo_dome_enumerate_properties(device, client, property);
 }
 
 
@@ -2806,7 +2806,7 @@ static indigo_result ascol_focuser_enumerate_properties(indigo_device *device, i
 	if (IS_CONNECTED) {
 		INDIGO_DEFINE_MATCHING_PROPERTY(FOCUSER_STATE_PROPERTY);
 	}
-	return indigo_focuser_enumerate_properties(device, NULL, NULL);
+	return indigo_focuser_enumerate_properties(device, client, property);
 }
 
 
@@ -3139,7 +3139,7 @@ static indigo_result panel_enumerate_properties(indigo_device *device, indigo_cl
 		INDIGO_DEFINE_MATCHING_PROPERTY(ALARM_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(GLME_PROPERTY);
 	}
-	return indigo_aux_enumerate_properties(device, NULL, NULL);
+	return indigo_aux_enumerate_properties(device, client, property);
 }
 
 static indigo_result panel_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {

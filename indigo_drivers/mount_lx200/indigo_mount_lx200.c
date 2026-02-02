@@ -2947,7 +2947,7 @@ static indigo_result mount_enumerate_properties(indigo_device *device, indigo_cl
 		if (indigo_property_match(NYX_LEVELER_PROPERTY, property))
 			indigo_define_property(device, NYX_WIFI_RESET_PROPERTY, NULL);
 	}
-	return indigo_mount_enumerate_properties(device, NULL, NULL);
+	return indigo_mount_enumerate_properties(device, client, property);
 }
 
 static indigo_result mount_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
@@ -3479,7 +3479,7 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_WEATHER_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_INFO_PROPERTY);
 	}
-	return indigo_aux_enumerate_properties(device, NULL, NULL);
+	return indigo_aux_enumerate_properties(device, client, property);
 }
 
 static void nyx_aux_timer_callback(indigo_device *device) {

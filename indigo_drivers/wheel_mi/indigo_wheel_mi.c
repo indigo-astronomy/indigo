@@ -133,7 +133,7 @@ static indigo_result wheel_enumerate_properties(indigo_device *device, indigo_cl
 	if (IS_CONNECTED) {
 		INDIGO_DEFINE_MATCHING_PROPERTY(SFW_REINIT_SWITCH_PROPERTY);
 	}
-	return indigo_wheel_enumerate_properties(device, NULL, NULL);
+	return indigo_wheel_enumerate_properties(device, client, property);
 }
 
 static void wheel_connect_callback(indigo_device *device) {

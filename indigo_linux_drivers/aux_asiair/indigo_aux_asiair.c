@@ -683,7 +683,7 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 	}
 	INDIGO_DEFINE_MATCHING_PROPERTY(AUX_OUTLET_NAMES_PROPERTY);
 
-	return indigo_aux_enumerate_properties(device, NULL, NULL);
+	return indigo_aux_enumerate_properties(device, client, property);
 }
 
 

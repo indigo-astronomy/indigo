@@ -528,7 +528,7 @@ static indigo_result baader_enumerate_properties(indigo_device *device, indigo_c
 	if (IS_CONNECTED) {
 		INDIGO_DEFINE_MATCHING_PROPERTY(X_EMERGENCY_CLOSE_PROPERTY);
 	}
-	return indigo_dome_enumerate_properties(device, NULL, NULL);
+	return indigo_dome_enumerate_properties(device, client, property);
 }
 
 

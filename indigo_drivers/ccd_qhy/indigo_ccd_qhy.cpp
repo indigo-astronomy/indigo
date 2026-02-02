@@ -180,7 +180,7 @@ static indigo_result qhy_enumerate_properties(indigo_device *device, indigo_clie
 #endif
 		INDIGO_DEFINE_MATCHING_PROPERTY(QHY_ADVANCED_PROPERTY);
 	}
-	return indigo_ccd_enumerate_properties(device, NULL, NULL);
+	return indigo_ccd_enumerate_properties(device, client, property);
 }
 
 static bool qhy_open(indigo_device *device) {

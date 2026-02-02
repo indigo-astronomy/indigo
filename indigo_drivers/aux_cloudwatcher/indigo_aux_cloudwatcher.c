@@ -1704,7 +1704,7 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 	INDIGO_DEFINE_MATCHING_PROPERTY(X_ANEMOMETER_TYPE_PROPERTY);
 	INDIGO_DEFINE_MATCHING_PROPERTY(X_RAIN_SENSOR_HEATER_SETUP_PROPERTY);
 
-	return indigo_aux_enumerate_properties(device, NULL, NULL);
+	return indigo_aux_enumerate_properties(device, client, property);
 }
 
 
