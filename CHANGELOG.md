@@ -1,6 +1,72 @@
 # Changelog
 
 All notable changes to INDIGO framework will be documented in this file.
+# [2.0-356] - 03 Feb Tue 2026
+## Overall:
+- indigo_raw_utils:
+	- indigo_find_stars_precise(): better, faster, more sensitive and more resilient star detection
+	- indigo_selection_psf(): make output params optional - will not calculate the ones we do not need
+	- add indigo_find_stars_precise_threshold() and fine-tune threshold for guiding and focusing
+
+- indigo_prop_tool:
+	- add '-w' to avoid waiting where not needed
+	- 'get -e' shows range for number properties
+	- enumerate requested property only ehere possible
+
+- indigo_client:
+	- global variable indigo_autoenumerate added to control enumerate all properties on client connect
+	- protocol version used as default if it is not negotiated yet
+
+- indigo_ccd_driver:
+	- Fix placeholder for temperature and update index
+
+## Driver Fixes:
+- Many drivers:
+	- fix single property enumeration
+
+- indigo_agent_mount:
+	- TIME_TO_TRANSIT limits fixed
+
+- indigo_agent_scripting:
+	- Sequencer.js: wait_until() fixed
+
+- indigo_agent_imager:
+	- avoid AGENT_IMAGER_DOWNLOAD_FILES updates while streaming
+
+- indigo_agent_alpaca:
+	- fix ISwitch Id parsing
+	- fix content length (ASCOM seem to have fixed their bug)
+
+- indigo_wheel_playerone:
+	- add reset
+	- make goto async
+	- ignore set filter if another one is in prgress
+
+- indigo_focuser_asi:
+	- blutooth support (MacOS only)
+	- beter goto handling if another one is in prgress
+	- fix limits
+	- fix abort property state trasition
+
+- indigo_ccd_asi:
+	- updated to SDK v.1.41
+
+- infigo_ccd_playerone:
+	- updated to SDK v.3.10.0
+
+- indigo_ccd_touptek & oem:
+	- updateed to SDK v.59.30594.20260120
+
+- indigo_focuser_primaluce:
+	- SestoSenso 3 support added
+
+- indigo_rotator_asi:
+	- fix abort proeprty state transition
+
+- indigo_mount_asi:
+	- fix reset alignment model
+
+
 # [2.0-354] - 20 Dec Sat 2025
 ## Overall:
 
