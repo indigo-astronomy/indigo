@@ -1336,7 +1336,7 @@ indigo_result indigo_focuser_asi(indigo_driver_action action, indigo_driver_info
 		eaf_products[0] = EAF_PRODUCT_ID;
 		eaf_id_count = 1;
 
-// #if defined (INDIGO_MACOS) || defined(INDIGO_WINDOWS)
+#if defined (INDIGO_MACOS) || defined(INDIGO_WINDOWS)
 		/* create static Bluetooth pseudo device */
 		pthread_mutex_lock(&indigo_device_enumeration_mutex);
 		static indigo_device bt_template = INDIGO_DEVICE_INITIALIZER(
@@ -1360,7 +1360,7 @@ indigo_result indigo_focuser_asi(indigo_driver_action action, indigo_driver_info
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		ble_device = device;
 		pthread_mutex_unlock(&indigo_device_enumeration_mutex);
-// #endif
+#endif
 
 		indigo_start_usb_event_handler();
 		int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, ASI_VENDOR_ID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
@@ -1376,14 +1376,14 @@ indigo_result indigo_focuser_asi(indigo_driver_action action, indigo_driver_info
 		libusb_hotplug_deregister_callback(NULL, callback_handle);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
 
-// #if defined(INDIGO_MACOS) || defined(INDIGO_WINDOWS)
+#if defined(INDIGO_MACOS) || defined(INDIGO_WINDOWS)
 		if (ble_device) {
 			indigo_detach_device(ble_device);
 			free(ble_device->private_data);
 			free(ble_device);
 			ble_device = NULL;
 		}
-// #endif
+#endif
 
 		remove_all_devices();
 		break;
