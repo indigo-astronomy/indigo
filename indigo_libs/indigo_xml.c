@@ -1878,7 +1878,7 @@ indigo_result indigo_xml_client_parser_enumerate_properties(indigo_device *devic
 	char device_name[INDIGO_NAME_SIZE];
 	const char *property_name = NULL;
 	if (property != NULL) {
-		property_name = indigo_property_name(device->version, property);
+		property_name = indigo_property_name(device->version == 0 , property);
 		if (*property->device) {
 			INDIGO_COPY_NAME(device_name, property->device);
 			if (indigo_use_host_suffix) {
@@ -1890,16 +1890,17 @@ indigo_result indigo_xml_client_parser_enumerate_properties(indigo_device *devic
 				}
 			}
 		}
-	}	if (property != NULL) {
+	}
+	if (property != NULL) {
 		if (device->version == INDIGO_VERSION_LEGACY) {
 			if (*property->device && property_name) {
-				INDIGO_PRINTF(*handle, "<getProperties version='1.7' device='%s' name='%s'/>\n", indigo_xml_escape(device_name), property_name);
+				INDIGO_PRINTF(*handle, "<getProperties version='1.7' device='%s' name='%s' switch='%d.%d'/>\n", indigo_xml_escape(device_name), property_name, (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF);
 			} else if (*property->device) {
-				INDIGO_PRINTF(*handle, "<getProperties version='1.7' device='%s'/>\n", indigo_xml_escape(device_name));
+				INDIGO_PRINTF(*handle, "<getProperties version='1.7' device='%s' switch='%d.%d'/>\n", indigo_xml_escape(device_name), (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF);
 			} else if (*indigo_property_name(device->version, property)) {
-				INDIGO_PRINTF(*handle, "<getProperties version='1.7' name='%s'/>\n", indigo_property_name(device->version, property));
+				INDIGO_PRINTF(*handle, "<getProperties version='1.7' name='%s'/ switch='%d.%d'>\n", property_name, (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF);
 			} else {
-				INDIGO_PRINTF(*handle, "<getProperties version='1.7'/>\n");
+				INDIGO_PRINTF(*handle, "<getProperties version='1.7' switch='%d.%d'/>\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF);
 			}
 		} else {
 			if (*property->device && property_name) {
