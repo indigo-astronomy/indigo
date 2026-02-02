@@ -202,12 +202,13 @@ indigo_result indigo_ccd_attach(indigo_device *device, const char* driver_name, 
 			indigo_init_number_item(CCD_EXPOSURE_ITEM, CCD_EXPOSURE_ITEM_NAME, "Start exposure", 0, 10000, 1, 0);
 			strcpy(CCD_EXPOSURE_ITEM->number.format, "%g");
 			// -------------------------------------------------------------------------------- CCD_STREAMING
-			CCD_STREAMING_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_STREAMING_PROPERTY_NAME, CCD_MAIN_GROUP, "Start streaming", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+			CCD_STREAMING_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_STREAMING_PROPERTY_NAME, CCD_MAIN_GROUP, "Start streaming", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
 			if (CCD_STREAMING_PROPERTY == NULL) {
 				return INDIGO_FAILED;
 			}
 			indigo_init_number_item(CCD_STREAMING_EXPOSURE_ITEM, CCD_STREAMING_EXPOSURE_ITEM_NAME, "Shutter time", 0, 10000, 1, 0);
 			indigo_init_number_item(CCD_STREAMING_COUNT_ITEM, CCD_STREAMING_COUNT_ITEM_NAME, "Frame count", -1, 100000, 1, -1);
+			indigo_init_number_item(CCD_STREAMING_UPDATE_LIMIT_ITEM, CCD_STREAMING_UPDATE_LIMIT_ITEM_NAME, "Update limit (fps)", 0, 1000, 1, 0);
 			strcpy(CCD_EXPOSURE_ITEM->number.format, "%g");
 			CCD_STREAMING_PROPERTY->hidden = true;
 			// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
@@ -436,6 +437,7 @@ indigo_result indigo_ccd_enumerate_properties(indigo_device *device, indigo_clie
 }
 
 indigo_result indigo_ccd_failure_cleanup(indigo_device *device) {
+	device->dont_update = false;
 	if (CCD_IMAGE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
@@ -471,6 +473,7 @@ indigo_result indigo_ccd_abort_exposure_cleanup(indigo_device *device) {
 		}
 		CCD_STREAMING_COUNT_ITEM->number.value = 0;
 		CCD_STREAMING_EXPOSURE_ITEM->number.value = 0;
+		device->dont_update = false;
 		indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 		CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
@@ -1671,7 +1674,18 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 	assert(device != NULL);
 	assert(data != NULL);
 
-	INDIGO_DEBUG(clock_t start = clock());
+	clock_t start = clock();
+	if (CCD_STREAMING_UPDATE_LIMIT_ITEM->number.value > 0) {
+		double limit = 1 / CCD_STREAMING_UPDATE_LIMIT_ITEM->number.value;
+		double diff = (start - CCD_CONTEXT->last_report) / (double)CLOCKS_PER_SEC;
+		printf("diff = %.3f limit = %g\n", diff, limit);
+		if (diff < limit) {
+			device->dont_update = true;
+		} else {
+			device->dont_update = false;
+			CCD_CONTEXT->last_report = start;
+		}
+	}
 	int horizontal_bin = (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
 	int vertical_bin = (int)CCD_BIN_VERTICAL_ITEM->number.value;
 	int byte_per_pixel = bpp / 8;
@@ -2490,6 +2504,7 @@ void indigo_process_dslr_preview_image(indigo_device* device, void* data, unsign
 }
 
 void indigo_finalize_video_stream(indigo_device *device) {
+	device->dont_update = false;
 	if (CCD_CONTEXT->video_stream) {
 		if (CCD_IMAGE_FORMAT_JPEG_AVI_ITEM->sw.value) {
 			gwavi_close((struct gwavi_t *)(CCD_CONTEXT->video_stream));
@@ -2506,6 +2521,7 @@ void indigo_finalize_video_stream(indigo_device *device) {
 }
 
 void indigo_finalize_dslr_video_stream(indigo_device *device) {
+	device->dont_update = false;
 	if (CCD_CONTEXT->video_stream) {
 		if (CCD_IMAGE_FORMAT_NATIVE_AVI_ITEM->sw.value) {
 			gwavi_close((struct gwavi_t *)(CCD_CONTEXT->video_stream));

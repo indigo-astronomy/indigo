@@ -641,10 +641,10 @@ indigo_result indigo_enable_blob(indigo_client *client, indigo_property *propert
 indigo_result indigo_define_property(indigo_device *device, indigo_property *property, const char *format, ...) {
 	if ((!is_started) || (property == NULL))
 		return INDIGO_FAILED;
-	if (indigo_use_strict_locking) {
-		pthread_mutex_lock(&client_mutex);
-	}
 	if (!property->hidden) {
+		if (indigo_use_strict_locking) {
+			pthread_mutex_lock(&client_mutex);
+		}
 		INDIGO_TRACE(indigo_trace_property("Define", NULL, property, true, true));
 		property->defined = true;
 		char message[INDIGO_VALUE_SIZE];
@@ -695,9 +695,9 @@ indigo_result indigo_define_property(indigo_device *device, indigo_property *pro
 				client->last_result = client->define_property(client, device, property, format != NULL ? message : NULL);
 			}
 		}
-	}
-	if (indigo_use_strict_locking) {
-		pthread_mutex_unlock(&client_mutex);
+		if (indigo_use_strict_locking) {
+			pthread_mutex_unlock(&client_mutex);
+		}
 	}
 	return INDIGO_OK;
 }
@@ -705,10 +705,10 @@ indigo_result indigo_define_property(indigo_device *device, indigo_property *pro
 indigo_result indigo_update_property(indigo_device *device, indigo_property *property, const char *format, ...) {
 	if ((!is_started) || (property == NULL))
 		return INDIGO_FAILED;
-	if (indigo_use_strict_locking) {
-		pthread_mutex_lock(&client_mutex);
-	}
-	if (!property->hidden) {
+	if (!property->hidden && !device->dont_update) {
+		if (indigo_use_strict_locking) {
+			pthread_mutex_lock(&client_mutex);
+		}
 		char message[INDIGO_VALUE_SIZE];
 		int count = property->count;
 		if (property->perm == INDIGO_WO_PERM) {
@@ -775,9 +775,9 @@ indigo_result indigo_update_property(indigo_device *device, indigo_property *pro
 			}
 		}
 		property->count = count;
-	}
-	if (indigo_use_strict_locking) {
-		pthread_mutex_unlock(&client_mutex);
+		if (indigo_use_strict_locking) {
+			pthread_mutex_unlock(&client_mutex);
+		}
 	}
 	return INDIGO_OK;
 }
@@ -785,10 +785,10 @@ indigo_result indigo_update_property(indigo_device *device, indigo_property *pro
 indigo_result indigo_delete_property(indigo_device *device, indigo_property *property, const char *format, ...) {
 	if ((!is_started) || (property == NULL))
 		return INDIGO_FAILED;
-	if (indigo_use_strict_locking) {
-		pthread_mutex_lock(&client_mutex);
-	}
 	if (!property->hidden) {
+		if (indigo_use_strict_locking) {
+			pthread_mutex_lock(&client_mutex);
+		}
 		INDIGO_TRACE(indigo_trace_property("Remove", NULL, property, false, false));
 		property->defined = false;
 		char message[INDIGO_VALUE_SIZE];
@@ -804,9 +804,9 @@ indigo_result indigo_delete_property(indigo_device *device, indigo_property *pro
 				client->last_result = client->delete_property(client, device, property, format != NULL ? message : NULL);
 			}
 		}
-	}
-	if (indigo_use_strict_locking) {
-		pthread_mutex_unlock(&client_mutex);
+		if (indigo_use_strict_locking) {
+			pthread_mutex_unlock(&client_mutex);
+		}
 	}
 	return INDIGO_OK;
 }

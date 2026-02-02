@@ -205,6 +205,10 @@ extern "C" {
  */
 #define CCD_STREAMING_COUNT_ITEM          (CCD_STREAMING_PROPERTY->items+1)
 
+/** CCD_STREAMING.UPDATE_LIMIT property item pointer.
+ */
+#define CCD_STREAMING_UPDATE_LIMIT_ITEM   (CCD_STREAMING_PROPERTY->items+2)
+
 /** CCD_ABORT property pointer, property is mandatory, property change request handler should set property items and state and call indigo_ccd_change_property().
  */
 #define CCD_ABORT_EXPOSURE_PROPERTY       (CCD_CONTEXT->ccd_abort_exposure_property)
@@ -540,6 +544,7 @@ typedef struct {
 	void *preview_histogram;											///< preview histogram buffer
 	unsigned long preview_histogram_size;					///< preview histogram buffer size
 	void *video_stream;														///< video stream control structure
+	clock_t last_report;													///< timestamp of last reported frame
 	indigo_property *ccd_info_property;           ///< CCD_INFO property pointer
 	indigo_property *ccd_lens_property;						///< CCD_LENS property pointer
 	indigo_property *ccd_upload_mode_property;    ///< CCD_UPLOAD_MODE property pointer

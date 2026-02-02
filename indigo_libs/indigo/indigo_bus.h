@@ -302,9 +302,10 @@ typedef struct indigo_device {
 	indigo_device *master_device;       ///< if the device provides many logical devices, this must point to one of the locical devices, otherwise is safe to be NULL
 	indigo_result last_result;          ///< result of last bus operation
 	indigo_version version;             ///< device version
-	indigo_token access_token;			///< allow change request with correct access token only
+	indigo_token access_token;					///< allow change request with correct access token only
 	void *match_patterns;               ///< device matching patterns
 	int match_patterns_count;           ///< device matching patterns count
+	bool dont_update;										///< updates are not processed for this device
 
 	/** callback called when device is attached to bus
 	 */
@@ -336,6 +337,7 @@ typedef struct indigo_device {
 	0L, \
 	NULL, \
 	0, \
+	false, \
 	attach_cb, \
 	enumerate_properties_cb, \
 	change_property_cb, \
