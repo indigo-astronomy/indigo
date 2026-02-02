@@ -2365,6 +2365,14 @@
 		5995A8CE25A9ABEC003987F1 /* indigo_platesolver.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_platesolver.h; sourceTree = "<group>"; };
 		5995A8D725A9AC69003987F1 /* indigo_platesolver.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_platesolver.c; sourceTree = "<group>"; wrapsLines = 0; };
 		5995A91D25AB358A003987F1 /* libc.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libc.tbd; path = usr/lib/libc.tbd; sourceTree = SDKROOT; };
+		5995B7F22F312D8900A229E1 /* ao_compliance.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = ao_compliance.sh; sourceTree = "<group>"; };
+		5995B7F32F312D8900A229E1 /* filter_wheel_compliance.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = filter_wheel_compliance.sh; sourceTree = "<group>"; };
+		5995B7F42F312D8900A229E1 /* focuser_compliance.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = focuser_compliance.sh; sourceTree = "<group>"; };
+		5995B7F52F312D8900A229E1 /* gps_compliance.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = gps_compliance.sh; sourceTree = "<group>"; };
+		5995B7F62F312D8900A229E1 /* guider_compliance.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = guider_compliance.sh; sourceTree = "<group>"; };
+		5995B7F72F312D8900A229E1 /* indigo_test_framework.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = indigo_test_framework.sh; sourceTree = "<group>"; };
+		5995B7F82F312D8900A229E1 /* INDIGO_TEST_FRAMEWORK.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = INDIGO_TEST_FRAMEWORK.md; sourceTree = "<group>"; };
+		5995B7F92F312D8900A229E1 /* rotator_compliance.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = rotator_compliance.sh; sourceTree = "<group>"; };
 		5996614522CE69F500330652 /* Handbook.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Handbook.pdf; sourceTree = "<group>"; };
 		5996614F22CE6A5F00330652 /* ao_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = ao_simulator.ino; sourceTree = "<group>"; };
 		5996615122CF3E0F00330652 /* indigo_aux_ppb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_ppb.c; sourceTree = "<group>"; };
@@ -6136,6 +6144,7 @@
 				9D1880BF1E534B89002F75D7 /* indigo_tools */,
 				599A63D61DF5D93500ABC827 /* indigo_server */,
 				592662AF1D9590630021746A /* indigo_test */,
+				5995B7FA2F312D8900A229E1 /* indigo_tests */,
 				5931B71F2535F726008F74A1 /* indigo_examples */,
 				9DD11FE92CB56D8F00FC9855 /* obsoleted_drivers */,
 				599A240C1DBEC5820020BF8F /* tools */,
@@ -7950,6 +7959,21 @@
 				59958E2D25CC833B00BEFA1B /* skyalert_simulator.ino */,
 			);
 			path = skyalert_simulator;
+			sourceTree = "<group>";
+		};
+		5995B7FA2F312D8900A229E1 /* indigo_tests */ = {
+			isa = PBXGroup;
+			children = (
+				5995B7F22F312D8900A229E1 /* ao_compliance.sh */,
+				5995B7F32F312D8900A229E1 /* filter_wheel_compliance.sh */,
+				5995B7F42F312D8900A229E1 /* focuser_compliance.sh */,
+				5995B7F52F312D8900A229E1 /* gps_compliance.sh */,
+				5995B7F62F312D8900A229E1 /* guider_compliance.sh */,
+				5995B7F72F312D8900A229E1 /* indigo_test_framework.sh */,
+				5995B7F82F312D8900A229E1 /* INDIGO_TEST_FRAMEWORK.md */,
+				5995B7F92F312D8900A229E1 /* rotator_compliance.sh */,
+			);
+			path = indigo_tests;
 			sourceTree = "<group>";
 		};
 		5996216B21A7567B0067ED4C /* externals */ = {
