@@ -23,7 +23,7 @@
  \file indigo_mount_asi.c
  */
 
-#define DRIVER_VERSION 0x001A
+#define DRIVER_VERSION 0x001B
 #define DRIVER_NAME	"indigo_mount_asi"
 
 #include <stdlib.h>
@@ -1233,7 +1233,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, mount_connect_callback, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(MOUNT_ALIGNMENT_RESET_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_ALIGNMENT_RESET
 		indigo_property_copy_values(MOUNT_ALIGNMENT_RESET_PROPERTY, property, false);
 		if (MOUNT_ALIGNMENT_RESET_ITEM->sw.value) {
