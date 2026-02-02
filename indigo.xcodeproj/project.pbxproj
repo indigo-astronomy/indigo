@@ -182,18 +182,11 @@
 		59487D6E221B3C19007027AE /* indigocat_star.h in Headers */ = {isa = PBXBuildFile; fileRef = 59C6F75321FE214D0043DC52 /* indigocat_star.h */; };
 		5949DCAE265B990D00F83B7E /* indigo_bus.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D381A81D9592A400E87393 /* indigo_bus.c */; };
 		5949DCAF265B991000F83B7E /* indigo_token.c in Sources */ = {isa = PBXBuildFile; fileRef = 595B88EB242CFEA2008CA4E2 /* indigo_token.c */; };
-		5949DCB0265B991400F83B7E /* indigo_io.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DB918061DFEA42E00678721 /* indigo_io.c */; };
 		5949DCB1265B991900F83B7E /* indigo_version.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D97F81E1D9E9E4F00582EAF /* indigo_version.c */; };
-		5949DCB2265B993500F83B7E /* indigo_json.c in Sources */ = {isa = PBXBuildFile; fileRef = 599A63A51DE8BD1700ABC827 /* indigo_json.c */; };
 		5949DCB3265B993500F83B7E /* indigo_xml.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D381CD1D96AB9500E87393 /* indigo_xml.c */; };
 		5949DCB4265B993500F83B7E /* indigo_client.c in Sources */ = {isa = PBXBuildFile; fileRef = 59019E091DE0AC7400CCB3ED /* indigo_client.c */; };
-		5949DCB5265B993500F83B7E /* indigo_tiff.c in Sources */ = {isa = PBXBuildFile; fileRef = 5979C860254710B0005395BE /* indigo_tiff.c */; };
-		5949DCB6265B993500F83B7E /* indigo_ser.c in Sources */ = {isa = PBXBuildFile; fileRef = 59C3BAFB254DE8AD000720B4 /* indigo_ser.c */; };
 		5949DCB7265B993500F83B7E /* indigo_base64.c in Sources */ = {isa = PBXBuildFile; fileRef = 5999FBC71DB01F950084BBF8 /* indigo_base64.c */; };
-		5949DCB8265B993500F83B7E /* indigo_driver_json.c in Sources */ = {isa = PBXBuildFile; fileRef = 599A63AE1DEA2F4700ABC827 /* indigo_driver_json.c */; };
-		5949DCB9265B993500F83B7E /* indigo_avi.c in Sources */ = {isa = PBXBuildFile; fileRef = 5979C87025473AE0005395BE /* indigo_avi.c */; };
 		5949DCBB265B993500F83B7E /* indigo_client_xml.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D382061D97314C00E87393 /* indigo_client_xml.c */; };
-		5949DCBC265B993500F83B7E /* indigo_raw_utils.c in Sources */ = {isa = PBXBuildFile; fileRef = 5911B6C922630FE900D6B9EC /* indigo_raw_utils.c */; };
 		5949DCC1265BA65200F83B7E /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DBC34701DCB26E500588DB9 /* Cocoa.framework */; };
 		5949DCC2265BA65900F83B7E /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DBC34721DCB26F200588DB9 /* IOKit.framework */; };
 		594EF3192770FD15002D0EC8 /* indigo_align.c in Sources */ = {isa = PBXBuildFile; fileRef = 594EF3172770FD15002D0EC8 /* indigo_align.c */; };
@@ -16012,22 +16005,15 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				5949DCB5265B993500F83B7E /* indigo_tiff.c in Sources */,
 				9D1880C11E534BBC002F75D7 /* indigo_prop_tool.c in Sources */,
 				5949DCAF265B991000F83B7E /* indigo_token.c in Sources */,
 				5967BB1929B3D83B0003BF22 /* indigo_service_discovery.c in Sources */,
 				5949DCB1265B991900F83B7E /* indigo_version.c in Sources */,
-				5949DCB6265B993500F83B7E /* indigo_ser.c in Sources */,
-				5949DCB2265B993500F83B7E /* indigo_json.c in Sources */,
 				5949DCAE265B990D00F83B7E /* indigo_bus.c in Sources */,
-				5949DCB0265B991400F83B7E /* indigo_io.c in Sources */,
-				5949DCB9265B993500F83B7E /* indigo_avi.c in Sources */,
 				9D8D9EA92D4B9FBD007A5BA3 /* indigo_uni_io.c in Sources */,
 				5949DCB3265B993500F83B7E /* indigo_xml.c in Sources */,
-				5949DCBC265B993500F83B7E /* indigo_raw_utils.c in Sources */,
 				5949DCBB265B993500F83B7E /* indigo_client_xml.c in Sources */,
 				5949DCB7265B993500F83B7E /* indigo_base64.c in Sources */,
-				5949DCB8265B993500F83B7E /* indigo_driver_json.c in Sources */,
 				5949DCB4265B993500F83B7E /* indigo_client.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
