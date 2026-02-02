@@ -1563,7 +1563,7 @@ void write_c_enumerate(device_type *device) {
 			}
 		}
 	}
-	write_line("\treturn indigo_%s_enumerate_properties(device, NULL, NULL);", device->type);
+	write_line("\treturn indigo_%s_enumerate_properties(device, client, property);", device->type);
 	write_line("}");
 	write_line("");
 }
