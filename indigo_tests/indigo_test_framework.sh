@@ -10,7 +10,7 @@ export LC_NUMERIC=C
 
 # Optional delay (seconds) before each `indigo_prop_tool` call.
 # Set `INDIGO_PROP_TOOL_DELAY` in the environment before sourcing to override.
-: ${INDIGO_PROP_TOOL_DELAY:="0.5"}
+: ${INDIGO_PROP_TOOL_DELAY:="0.0"}
 
 if [ -n "$INDIGO_PROP_TOOL_DELAY" ] && [ "$INDIGO_PROP_TOOL_DELAY" != "0" ]; then
 	INDIGO_PROP_TOOL_REAL="$INDIGO_PROP_TOOL"
