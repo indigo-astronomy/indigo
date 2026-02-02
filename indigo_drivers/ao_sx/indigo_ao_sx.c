@@ -213,7 +213,7 @@ static indigo_result ao_attach(indigo_device *device) {
 }
 
 static indigo_result ao_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	return indigo_ao_enumerate_properties(device, NULL, NULL);
+	return indigo_ao_enumerate_properties(device, client, property);
 }
 
 static indigo_result ao_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
@@ -322,7 +322,7 @@ static indigo_result guider_attach(indigo_device *device) {
 }
 
 static indigo_result guider_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	return indigo_guider_enumerate_properties(device, NULL, NULL);
+	return indigo_guider_enumerate_properties(device, client, property);
 }
 
 static indigo_result guider_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {

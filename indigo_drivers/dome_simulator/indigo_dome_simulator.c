@@ -285,7 +285,7 @@ static indigo_result dome_attach(indigo_device *device) {
 }
 
 static indigo_result dome_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	return indigo_dome_enumerate_properties(device, NULL, NULL);
+	return indigo_dome_enumerate_properties(device, client, property);
 }
 
 static indigo_result dome_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {

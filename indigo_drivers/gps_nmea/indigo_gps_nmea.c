@@ -418,7 +418,7 @@ static indigo_result gps_attach(indigo_device *device) {
 
 static indigo_result gps_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	INDIGO_DEFINE_MATCHING_PROPERTY(GPS_SELECTED_SYSTEM_PROPERTY);
-	return indigo_gps_enumerate_properties(device, NULL, NULL);
+	return indigo_gps_enumerate_properties(device, client, property);
 }
 
 static indigo_result gps_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
