@@ -58,7 +58,6 @@
 #endif
 
 #include <indigo/indigo_bus.h>
-#include <indigo/indigo_driver.h>
 #include <indigo/indigo_uni_io.h>
 
 static int handle_index = 0;
