@@ -61,6 +61,7 @@ Properties are implemented by driver base class in [indigo_driver.c](https://git
 | CCD_EXPOSURE | number | no | yes | EXPOSURE | yes |  |
 | CCD_STREAMING | number | no | no | EXPOSURE | yes | The same as CCD_EXPOSURE, but will upload COUNT images. Use COUNT -1 for endless loop. |
 |  |  |  |  | COUNT | yes |  |
+| CCD_STREAMING_SETTINGS | number | no | no | UPDATE_LIMIT | yes | Reduce trafic during hight speed streaming. |
 | CCD_ABORT_EXPOSURE | switch | no | yes | ABORT_EXPOSURE | yes |  |
 | CCD_FRAME | number | no | no | LEFT | yes | If BITS_PER_PIXEL can't be changed, set min and max to the same value. |
 |  |  |  |  | TOP | yes |  |

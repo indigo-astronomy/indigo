@@ -328,6 +328,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = 5.2;
 		CCD_FRAME_PROPERTY->perm = INDIGO_RO_PERM;
 //		CCD_STREAMING_PROPERTY->hidden = false;
+//		CCD_STREAMING_SETTINGS_PROPERTY->hidden = false;
 //		CCD_IMAGE_FORMAT_PROPERTY->count = 7;
 		CCD_GAIN_PROPERTY->hidden = false;
 		CCD_GAIN_ITEM->number.min = CCD_GAIN_ITEM->number.value = CCD_GAIN_ITEM->number.target = 1;

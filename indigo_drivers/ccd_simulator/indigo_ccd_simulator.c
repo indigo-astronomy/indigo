@@ -949,6 +949,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_STREAMING_PROPERTY->hidden = false;
 		CCD_STREAMING_EXPOSURE_ITEM->number.min = 0.001;
 		CCD_STREAMING_EXPOSURE_ITEM->number.max = 0.5;
+		CCD_STREAMING_SETTINGS_PROPERTY->hidden = false;
 		// --------------------------------------------------------------------------------
 		if (device == PRIVATE_DATA->imager) {
 			ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
