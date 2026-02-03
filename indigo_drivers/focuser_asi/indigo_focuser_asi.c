@@ -1337,7 +1337,7 @@ indigo_result indigo_focuser_asi(indigo_driver_action action, indigo_driver_info
 			eaf_products[0] = EAF_PRODUCT_ID;
 			eaf_id_count = 1;
 
-#if defined (INDIGO_MACOS) || defined(INDIGO_WINDOWS)
+#if !defined(INDIGO_LINUX) || (!defined(__arm__) && !defined(__aarch64__))
 			/* create static Bluetooth pseudo device */
 			pthread_mutex_lock(&indigo_device_enumeration_mutex);
 			static indigo_device bt_template = INDIGO_DEVICE_INITIALIZER(
@@ -1377,7 +1377,7 @@ indigo_result indigo_focuser_asi(indigo_driver_action action, indigo_driver_info
 			libusb_hotplug_deregister_callback(NULL, callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
 
-#if defined(INDIGO_MACOS) || defined(INDIGO_WINDOWS)
+#if !defined(INDIGO_LINUX) || (!defined(__arm__) && !defined(__aarch64__))
 		if (ble_device) {
 			indigo_detach_device(ble_device);
 			free(ble_device->private_data);
