@@ -211,7 +211,7 @@ extern "C" {
 
 /** CCD_STREAMING_SETTINGS.UPDATE_LIMIT property item pointer.
  */
-#define CCD_STREAMING_SETTINGS_UPDATE_LIMIT_ITEM   (CCD_STREAMING_SETTINGS_PROPERTY->items+2)
+#define CCD_STREAMING_SETTINGS_UPDATE_LIMIT_ITEM   (CCD_STREAMING_SETTINGS_PROPERTY->items+0)
 
 /** CCD_ABORT property pointer, property is mandatory, property change request handler should set property items and state and call indigo_ccd_change_property().
  */
