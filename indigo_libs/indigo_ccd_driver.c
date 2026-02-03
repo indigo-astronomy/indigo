@@ -1694,7 +1694,6 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 	if (CCD_STREAMING_SETTINGS_UPDATE_LIMIT_ITEM->number.value > 0) {
 		double limit = 1 / CCD_STREAMING_SETTINGS_UPDATE_LIMIT_ITEM->number.value;
 		double diff = (start - CCD_CONTEXT->last_report) / (double)CLOCKS_PER_SEC;
-		printf("diff = %.3f limit = %g\n", diff, limit);
 		if (diff < limit) {
 			device->dont_update = true;
 		} else {
