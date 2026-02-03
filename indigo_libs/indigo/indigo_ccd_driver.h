@@ -205,9 +205,13 @@ extern "C" {
  */
 #define CCD_STREAMING_COUNT_ITEM          (CCD_STREAMING_PROPERTY->items+1)
 
-/** CCD_STREAMING.UPDATE_LIMIT property item pointer.
+/** CCD_STREAMING_SETTINGS property pointer, property is optional.
  */
-#define CCD_STREAMING_UPDATE_LIMIT_ITEM   (CCD_STREAMING_PROPERTY->items+2)
+#define CCD_STREAMING_SETTINGS_PROPERTY   (CCD_CONTEXT->ccd_streaming_settings_property)
+
+/** CCD_STREAMING_SETTINGS.UPDATE_LIMIT property item pointer.
+ */
+#define CCD_STREAMING_SETTINGS_UPDATE_LIMIT_ITEM   (CCD_STREAMING_SETTINGS_PROPERTY->items+2)
 
 /** CCD_ABORT property pointer, property is mandatory, property change request handler should set property items and state and call indigo_ccd_change_property().
  */
@@ -554,6 +558,7 @@ typedef struct {
 	indigo_property *ccd_read_mode_property;	  	///< CCD_READ_MODE property pointer
 	indigo_property *ccd_exposure_property;       ///< CCD_EXPOSURE property pointer
 	indigo_property *ccd_streaming_property;      ///< CCD_STREAMING property pointer
+	indigo_property *ccd_streaming_settings_property; ///< CCD_STREAMING_SETTINGS property pointer
 	indigo_property *ccd_abort_exposure_property; ///< CCD_ABORT_EXPOSURE property pointer
 	indigo_property *ccd_frame_property;          ///< CCD_FRAME property pointer
 	indigo_property *ccd_bin_property;            ///< CCD_BIN property pointer

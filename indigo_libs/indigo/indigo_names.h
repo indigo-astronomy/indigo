@@ -398,9 +398,14 @@
  */
 #define CCD_STREAMING_COUNT_ITEM_NAME         "COUNT"
 
-/** CCD_STREAMING.UPDATE_LIMIT property item name.
+//----------------------------------------------------------------------
+/** CCD_STREAMING_SETTINGS property name.
  */
-#define CCD_STREAMING_UPDATE_LIMIT_ITEM_NAME  "UPDATE_LIMIT"
+#define CCD_STREAMING_SETTINGS_PROPERTY_NAME           "CCD_STREAMING_SETTINGS"
+
+/** CCD_STREAMING_SETTINGS.UPDATE_LIMIT property item name.
+ */
+#define CCD_STREAMING_SETTINGS_UPDATE_LIMIT_ITEM_NAME  "UPDATE_LIMIT"
 
 //----------------------------------------------------------------------
 /** CCD_ABORT_EXPOSURE property name.

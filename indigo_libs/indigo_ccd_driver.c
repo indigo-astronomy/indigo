@@ -202,15 +202,21 @@ indigo_result indigo_ccd_attach(indigo_device *device, const char* driver_name, 
 			indigo_init_number_item(CCD_EXPOSURE_ITEM, CCD_EXPOSURE_ITEM_NAME, "Start exposure", 0, 10000, 1, 0);
 			strcpy(CCD_EXPOSURE_ITEM->number.format, "%g");
 			// -------------------------------------------------------------------------------- CCD_STREAMING
-			CCD_STREAMING_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_STREAMING_PROPERTY_NAME, CCD_MAIN_GROUP, "Start streaming", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
+			CCD_STREAMING_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_STREAMING_PROPERTY_NAME, CCD_MAIN_GROUP, "Start streaming", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 			if (CCD_STREAMING_PROPERTY == NULL) {
 				return INDIGO_FAILED;
 			}
 			indigo_init_number_item(CCD_STREAMING_EXPOSURE_ITEM, CCD_STREAMING_EXPOSURE_ITEM_NAME, "Shutter time", 0, 10000, 1, 0);
 			indigo_init_number_item(CCD_STREAMING_COUNT_ITEM, CCD_STREAMING_COUNT_ITEM_NAME, "Frame count", -1, 100000, 1, -1);
-			indigo_init_number_item(CCD_STREAMING_UPDATE_LIMIT_ITEM, CCD_STREAMING_UPDATE_LIMIT_ITEM_NAME, "Update limit (fps)", 0, 1000, 1, 0);
 			strcpy(CCD_EXPOSURE_ITEM->number.format, "%g");
 			CCD_STREAMING_PROPERTY->hidden = true;
+			// -------------------------------------------------------------------------------- CCD_STREAMING
+			CCD_STREAMING_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_STREAMING_SETTINGS_PROPERTY_NAME, CCD_MAIN_GROUP, "Streaming settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+			if (CCD_STREAMING_SETTINGS_PROPERTY == NULL) {
+				return INDIGO_FAILED;
+			}
+			indigo_init_number_item(CCD_STREAMING_SETTINGS_UPDATE_LIMIT_ITEM, CCD_STREAMING_SETTINGS_UPDATE_LIMIT_ITEM_NAME, "Update limit (fps)", 0, 1000, 1, 0);
+			CCD_STREAMING_SETTINGS_PROPERTY->hidden = true;
 			// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 			CCD_ABORT_EXPOSURE_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_ABORT_EXPOSURE_PROPERTY_NAME, CCD_MAIN_GROUP, "Abort exposure", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
 			if (CCD_ABORT_EXPOSURE_PROPERTY == NULL) {
@@ -408,6 +414,7 @@ indigo_result indigo_ccd_enumerate_properties(indigo_device *device, indigo_clie
 		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_READ_MODE_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_EXPOSURE_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_STREAMING_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_STREAMING_SETTINGS_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_ABORT_EXPOSURE_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_FRAME_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_BIN_PROPERTY);
@@ -502,6 +509,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_define_property(device, CCD_READ_MODE_PROPERTY, NULL);
 			indigo_define_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 			indigo_define_property(device, CCD_STREAMING_PROPERTY, NULL);
+			indigo_define_property(device, CCD_STREAMING_SETTINGS_PROPERTY, NULL);
 			indigo_define_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 			indigo_define_property(device, CCD_FRAME_PROPERTY, NULL);
 			indigo_define_property(device, CCD_BIN_PROPERTY, NULL);
@@ -546,6 +554,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_delete_property(device, CCD_READ_MODE_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_STREAMING_PROPERTY, NULL);
+			indigo_delete_property(device, CCD_STREAMING_SETTINGS_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_FRAME_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_BIN_PROPERTY, NULL);
@@ -727,6 +736,12 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CCD_UPLOAD_MODE_PROPERTY, property, false);
 		CCD_UPLOAD_MODE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, CCD_UPLOAD_MODE_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(CCD_STREAMING_SETTINGS_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CCD_STREAMING_SETTINGS
+		indigo_property_copy_values(CCD_STREAMING_SETTINGS_PROPERTY, property, false);
+		CCD_STREAMING_SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, CCD_STREAMING_SETTINGS_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_PREVIEW_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_PREVIEW
@@ -927,6 +942,7 @@ indigo_result indigo_ccd_detach(indigo_device *device) {
 	indigo_release_property(CCD_READ_MODE_PROPERTY);
 	indigo_release_property(CCD_EXPOSURE_PROPERTY);
 	indigo_release_property(CCD_STREAMING_PROPERTY);
+	indigo_release_property(CCD_STREAMING_SETTINGS_PROPERTY);
 	indigo_release_property(CCD_ABORT_EXPOSURE_PROPERTY);
 	indigo_release_property(CCD_FRAME_PROPERTY);
 	indigo_release_property(CCD_BIN_PROPERTY);
@@ -1675,8 +1691,8 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 	assert(data != NULL);
 
 	clock_t start = clock();
-	if (CCD_STREAMING_UPDATE_LIMIT_ITEM->number.value > 0) {
-		double limit = 1 / CCD_STREAMING_UPDATE_LIMIT_ITEM->number.value;
+	if (CCD_STREAMING_SETTINGS_UPDATE_LIMIT_ITEM->number.value > 0) {
+		double limit = 1 / CCD_STREAMING_SETTINGS_UPDATE_LIMIT_ITEM->number.value;
 		double diff = (start - CCD_CONTEXT->last_report) / (double)CLOCKS_PER_SEC;
 		printf("diff = %.3f limit = %g\n", diff, limit);
 		if (diff < limit) {
