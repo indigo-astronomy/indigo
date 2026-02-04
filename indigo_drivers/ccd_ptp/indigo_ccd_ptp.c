@@ -411,15 +411,32 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match_changeable(CCD_PREVIEW_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_PREVIEW
 		indigo_property_copy_values(CCD_PREVIEW_PROPERTY, property, false);
-		if (CCD_PREVIEW_ENABLED_ITEM->sw.value) {
+		if (CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value) {
 			if (CCD_PREVIEW_IMAGE_PROPERTY->hidden) {
 				CCD_PREVIEW_IMAGE_PROPERTY->hidden = false;
 				indigo_define_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
+			}
+			if (CCD_PREVIEW_HISTOGRAM_PROPERTY->hidden) {
+				CCD_PREVIEW_HISTOGRAM_PROPERTY->hidden = false;
+				indigo_define_property(device, CCD_PREVIEW_HISTOGRAM_PROPERTY, NULL);
+			}
+		} else if (CCD_PREVIEW_ENABLED_ITEM->sw.value) {
+			if (CCD_PREVIEW_IMAGE_PROPERTY->hidden) {
+				CCD_PREVIEW_IMAGE_PROPERTY->hidden = false;
+				indigo_define_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
+			}
+			if (!CCD_PREVIEW_HISTOGRAM_PROPERTY->hidden) {
+				indigo_delete_property(device, CCD_PREVIEW_HISTOGRAM_PROPERTY, NULL);
+				CCD_PREVIEW_HISTOGRAM_PROPERTY->hidden = true;
 			}
 		} else {
 			if (!CCD_PREVIEW_IMAGE_PROPERTY->hidden) {
 				indigo_delete_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
 				CCD_PREVIEW_IMAGE_PROPERTY->hidden = true;
+			}
+			if (!CCD_PREVIEW_HISTOGRAM_PROPERTY->hidden) {
+				indigo_delete_property(device, CCD_PREVIEW_HISTOGRAM_PROPERTY, NULL);
+				CCD_PREVIEW_HISTOGRAM_PROPERTY->hidden = true;
 			}
 		}
 		CCD_PREVIEW_PROPERTY->state = INDIGO_OK_STATE;

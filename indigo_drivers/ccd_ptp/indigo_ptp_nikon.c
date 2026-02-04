@@ -1187,7 +1187,7 @@ bool ptp_nikon_exposure(indigo_device *device) {
 		}
 	}
 	if (result) {
-		if (CCD_IMAGE_PROPERTY->state == INDIGO_BUSY_STATE && CCD_PREVIEW_ENABLED_ITEM->sw.value && ptp_nikon_check_dual_compression(device)) {
+		if (CCD_IMAGE_PROPERTY->state == INDIGO_BUSY_STATE && (CCD_PREVIEW_ENABLED_ITEM->sw.value || CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value) && ptp_nikon_check_dual_compression(device)) {
 			CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
 		}

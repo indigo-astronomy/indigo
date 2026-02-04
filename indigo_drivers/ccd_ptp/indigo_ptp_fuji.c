@@ -382,7 +382,7 @@ static void ptp_fuji_get_event(indigo_device *device) {
 						if (size && ptp_transaction_1_0_i(device, ptp_operation_GetObject, handle, &image_buffer, NULL)) {
 							const char *ext = strchr(filename, '.');
 							if (PRIVATE_DATA->check_dual_compression(device) && ptp_check_jpeg_ext(ext)) {
-								if (CCD_PREVIEW_ENABLED_ITEM->sw.value) {
+								if (CCD_PREVIEW_ENABLED_ITEM->sw.value || CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value) {
 									indigo_process_dslr_preview_image(device, image_buffer, image_size);
 								}
 							} else {
@@ -623,7 +623,7 @@ bool ptp_fuji_exposure(indigo_device *device) {
 			result = result && ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, ptp_property_fuji_AutoFocus, &value, sizeof(uint16_t));
 			result = result && ptp_transaction_2_0(device, ptp_operation_InitiateCapture, 0, 0);
 			if (result) {
-				if (CCD_IMAGE_PROPERTY->state == INDIGO_BUSY_STATE && CCD_PREVIEW_ENABLED_ITEM->sw.value && ptp_fuji_check_dual_compression(device)) {
+				if (CCD_IMAGE_PROPERTY->state == INDIGO_BUSY_STATE && (CCD_PREVIEW_ENABLED_ITEM->sw.value || CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value) && ptp_fuji_check_dual_compression(device)) {
 					CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
 				}
@@ -639,7 +639,7 @@ bool ptp_fuji_exposure(indigo_device *device) {
 			result = result && ptp_transaction_2_0(device, ptp_operation_InitiateCapture, 0, 0);
 		}
 		if (result) {
-			if (CCD_IMAGE_PROPERTY->state == INDIGO_BUSY_STATE && CCD_PREVIEW_ENABLED_ITEM->sw.value && ptp_fuji_check_dual_compression(device)) {
+			if (CCD_IMAGE_PROPERTY->state == INDIGO_BUSY_STATE && (CCD_PREVIEW_ENABLED_ITEM->sw.value || CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value) && ptp_fuji_check_dual_compression(device)) {
 				CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 				indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
 			}
