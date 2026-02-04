@@ -84,13 +84,13 @@
 #define ZWO_MERIDIAN_LIMIT_PROPERTY_NAME   "X_MERIDIAN_LIMIT"
 #define ZWO_MERIDIAN_LIMIT_ITEM_NAME       "LIMIT"
 
-#define ZWO_SLEW_SPEED_PROPERTY           (PRIVATE_DATA->x_slew_speed_property)
-#define ZWO_SLEW_SPEED_LOW_ITEM           (ZWO_SLEW_SPEED_PROPERTY->items+0)
-#define ZWO_SLEW_SPEED_HIGH_ITEM          (ZWO_SLEW_SPEED_PROPERTY->items+1)
+#define ZWO_MAX_SLEW_SPEED_PROPERTY           (PRIVATE_DATA->x_max_slew_speed_property)
+#define ZWO_MAX_SLEW_SPEED_LOW_ITEM           (ZWO_MAX_SLEW_SPEED_PROPERTY->items+0)
+#define ZWO_MAX_SLEW_SPEED_HIGH_ITEM          (ZWO_MAX_SLEW_SPEED_PROPERTY->items+1)
 
-#define ZWO_SLEW_SPEED_PROPERTY_NAME      "X_SLEW_SPEED"
-#define ZWO_SLEW_SPEED_LOW_ITEM_NAME      "LOW"
-#define ZWO_SLEW_SPEED_HIGH_ITEM_NAME     "HIGH"
+#define ZWO_MAX_SLEW_SPEED_PROPERTY_NAME      "X_MAX_SLEW_SPEED"
+#define ZWO_MAX_SLEW_SPEED_LOW_ITEM_NAME      "LOW"
+#define ZWO_MAX_SLEW_SPEED_HIGH_ITEM_NAME     "HIGH"
 
 typedef struct {
 	int handle;
@@ -106,7 +106,7 @@ typedef struct {
 	uint32_t firmware;
 	indigo_property *x_mode_property;
 	indigo_property *x_buzzer_property;
-	indigo_property *x_slew_speed_property;
+	indigo_property *x_max_slew_speed_property;
 	indigo_property *x_meridian_property;
 	indigo_property *x_meridian_limit_property;
 	indigo_timer *focuser_timer;
@@ -511,7 +511,7 @@ static bool asi_get_guide_rate(indigo_device *device, int *ra, int *dec) {
 	return true;
 }
 
-static bool asi_set_slew_speed(indigo_device *device, int speed) {
+static bool asi_set_max_slew_speed(indigo_device *device, int speed) {
 	char command[128], response[128] = {0};
 	if (speed == 720) {
 		sprintf(command, ":SRl720#");
@@ -522,7 +522,7 @@ static bool asi_set_slew_speed(indigo_device *device, int speed) {
 	return *response == '1';
 }
 
-static bool asi_get_slew_speed(indigo_device *device, int *speed) {
+static bool asi_get_max_slew_speed(indigo_device *device, int *speed) {
 	char response[128] = {0};
 	if (!asi_command(device, ":GRl#", response, sizeof(response), 0)) return false;
 	int v = atoi(response);
@@ -819,6 +819,7 @@ static void asi_init_mount(indigo_device *device) {
 	MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
 	MOUNT_SIDE_OF_PIER_PROPERTY->perm = INDIGO_RO_PERM;
 	ZWO_BUZZER_PROPERTY->hidden = false;
+	ZWO_MAX_SLEW_SPEED_PROPERTY->hidden = false;
 	PRIVATE_DATA->firmware = 0;
 	if (asi_command(device, ":GV#", response, sizeof(response), 0)) {
 		char fv[3] = {0};
@@ -911,16 +912,16 @@ static void asi_init_mount(indigo_device *device) {
 	}
 	indigo_define_property(device, ZWO_BUZZER_PROPERTY, NULL);
 
-	/* Slew speed (undocumented SRl/GRl commands) */
+	/* Max slew speed (undocumented SRl/GRl commands) */
 	if (asi_command(device, ":GRl#", response, sizeof(response), 0)) {
 		int speed = atoi(response);
 		if (speed == 720) {
-			indigo_set_switch(ZWO_SLEW_SPEED_PROPERTY, ZWO_SLEW_SPEED_LOW_ITEM, true);
+			indigo_set_switch(ZWO_MAX_SLEW_SPEED_PROPERTY, ZWO_MAX_SLEW_SPEED_LOW_ITEM, true);
 		} else if (speed == 1440) {
-			indigo_set_switch(ZWO_SLEW_SPEED_PROPERTY, ZWO_SLEW_SPEED_HIGH_ITEM, true);
+			indigo_set_switch(ZWO_MAX_SLEW_SPEED_PROPERTY, ZWO_MAX_SLEW_SPEED_HIGH_ITEM, true);
 		}
 	}
-	indigo_define_property(device, ZWO_SLEW_SPEED_PROPERTY, NULL);
+	indigo_define_property(device, ZWO_MAX_SLEW_SPEED_PROPERTY, NULL);
 }
 
 static void mount_connect_callback(indigo_device *device) {
@@ -955,7 +956,7 @@ static void mount_connect_callback(indigo_device *device) {
 		}
 		indigo_delete_property(device, MOUNT_MODE_PROPERTY, NULL);
 		indigo_delete_property(device, ZWO_BUZZER_PROPERTY, NULL);
-		indigo_delete_property(device, ZWO_SLEW_SPEED_PROPERTY, NULL);
+		indigo_delete_property(device, ZWO_MAX_SLEW_SPEED_PROPERTY, NULL);
 		indigo_delete_property(device, ZWO_MERIDIAN_PROPERTY, NULL);
 		indigo_delete_property(device, ZWO_MERIDIAN_LIMIT_PROPERTY, NULL);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -1177,21 +1178,23 @@ static void zwo_buzzer_callback(indigo_device *device) {
 	indigo_update_property(device, ZWO_BUZZER_PROPERTY, NULL);
 }
 
-static void zwo_slew_speed_callback(indigo_device *device) {
-	if (ZWO_SLEW_SPEED_LOW_ITEM->sw.value) {
-		if (asi_set_slew_speed(device, 720))
-			ZWO_SLEW_SPEED_PROPERTY->state = INDIGO_OK_STATE;
-		else
-			ZWO_SLEW_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
-	} else if (ZWO_SLEW_SPEED_HIGH_ITEM->sw.value) {
-		if (asi_set_slew_speed(device, 1440))
-			ZWO_SLEW_SPEED_PROPERTY->state = INDIGO_OK_STATE;
-		else
-			ZWO_SLEW_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
+static void zwo_max_slew_speed_callback(indigo_device *device) {
+	if (ZWO_MAX_SLEW_SPEED_LOW_ITEM->sw.value) {
+		if (asi_set_max_slew_speed(device, 720)) {
+			ZWO_MAX_SLEW_SPEED_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			ZWO_MAX_SLEW_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+	} else if (ZWO_MAX_SLEW_SPEED_HIGH_ITEM->sw.value) {
+		if (asi_set_max_slew_speed(device, 1440)) {
+			ZWO_MAX_SLEW_SPEED_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			ZWO_MAX_SLEW_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 	} else {
-		ZWO_SLEW_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
+		ZWO_MAX_SLEW_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-	indigo_update_property(device, ZWO_SLEW_SPEED_PROPERTY, NULL);
+	indigo_update_property(device, ZWO_MAX_SLEW_SPEED_PROPERTY, NULL);
 }
 
 static void zwo_meridian_action_callback(indigo_device *device) {
@@ -1246,13 +1249,13 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_init_switch_item(ZWO_BUZZER_LOW_ITEM, ZWO_BUZZER_LOW_ITEM_NAME, "Low", false);
 		indigo_init_switch_item(ZWO_BUZZER_HIGH_ITEM, ZWO_BUZZER_HIGH_ITEM_NAME, "High", false);
 		ZWO_BUZZER_PROPERTY->hidden = true;
-		// ---------------------------------------------------------------------------- ZWO_SLEW_SPEED
-		ZWO_SLEW_SPEED_PROPERTY = indigo_init_switch_property(NULL, device->name, ZWO_SLEW_SPEED_PROPERTY_NAME, MOUNT_ADVANCED_GROUP, "Slew speed", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (ZWO_SLEW_SPEED_PROPERTY == NULL)
+		// ---------------------------------------------------------------------------- ZWO_MAX_SLEW_SPEED
+		ZWO_MAX_SLEW_SPEED_PROPERTY = indigo_init_switch_property(NULL, device->name, ZWO_MAX_SLEW_SPEED_PROPERTY_NAME, MOUNT_ADVANCED_GROUP, "Max slew speed", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (ZWO_MAX_SLEW_SPEED_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_switch_item(ZWO_SLEW_SPEED_LOW_ITEM, ZWO_SLEW_SPEED_LOW_ITEM_NAME, "Low (720)", false);
-		indigo_init_switch_item(ZWO_SLEW_SPEED_HIGH_ITEM, ZWO_SLEW_SPEED_HIGH_ITEM_NAME, "High (1440)", false);
-		ZWO_SLEW_SPEED_PROPERTY->hidden = true;
+		indigo_init_switch_item(ZWO_MAX_SLEW_SPEED_LOW_ITEM, ZWO_MAX_SLEW_SPEED_LOW_ITEM_NAME, "Low (720)", false);
+		indigo_init_switch_item(ZWO_MAX_SLEW_SPEED_HIGH_ITEM, ZWO_MAX_SLEW_SPEED_HIGH_ITEM_NAME, "High (1440)", false);
+		ZWO_MAX_SLEW_SPEED_PROPERTY->hidden = true;
 		// ---------------------------------------------------------------------------- ZWO_MERIDIAN
 		ZWO_MERIDIAN_PROPERTY = indigo_init_switch_property(NULL, device->name, ZWO_MERIDIAN_PROPERTY_NAME, MOUNT_ADVANCED_GROUP, "Action at meridian", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 2);
 		if (ZWO_MERIDIAN_PROPERTY == NULL)
@@ -1279,7 +1282,7 @@ static indigo_result mount_enumerate_properties(indigo_device *device, indigo_cl
 	if (IS_CONNECTED) {
 		indigo_define_matching_property(MOUNT_MODE_PROPERTY);
 		indigo_define_matching_property(ZWO_BUZZER_PROPERTY);
-		indigo_define_matching_property(ZWO_SLEW_SPEED_PROPERTY);
+		indigo_define_matching_property(ZWO_MAX_SLEW_SPEED_PROPERTY);
 		indigo_define_matching_property(ZWO_MERIDIAN_PROPERTY);
 		indigo_define_matching_property(ZWO_MERIDIAN_LIMIT_PROPERTY);
 	}
@@ -1405,12 +1408,12 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, ZWO_BUZZER_PROPERTY, NULL);
 		indigo_set_timer(device, 0, zwo_buzzer_callback, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(ZWO_SLEW_SPEED_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- ZWO_SLEW_SPEED
-		indigo_property_copy_values(ZWO_SLEW_SPEED_PROPERTY, property, false);
-		ZWO_SLEW_SPEED_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, ZWO_SLEW_SPEED_PROPERTY, NULL);
-		indigo_set_timer(device, 0, zwo_slew_speed_callback, NULL);
+	} else if (indigo_property_match_changeable(ZWO_MAX_SLEW_SPEED_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- ZWO_MAX_SLEW_SPEED
+		indigo_property_copy_values(ZWO_MAX_SLEW_SPEED_PROPERTY, property, false);
+		ZWO_MAX_SLEW_SPEED_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, ZWO_MAX_SLEW_SPEED_PROPERTY, NULL);
+		indigo_set_timer(device, 0, zwo_max_slew_speed_callback, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ZWO_MERIDIAN_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- ZWO_MERIDIAN
@@ -1444,7 +1447,7 @@ static indigo_result mount_detach(indigo_device *device) {
 	}
 	indigo_release_property(MOUNT_MODE_PROPERTY);
 	indigo_release_property(ZWO_BUZZER_PROPERTY);
-	indigo_release_property(ZWO_SLEW_SPEED_PROPERTY);
+	indigo_release_property(ZWO_MAX_SLEW_SPEED_PROPERTY);
 	indigo_release_property(ZWO_MERIDIAN_PROPERTY);
 	indigo_release_property(ZWO_MERIDIAN_LIMIT_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
