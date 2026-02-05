@@ -1212,6 +1212,7 @@ static void ptp_canon_get_event(indigo_device *device) {
 								// Old camera (EOS 70D etc.)
 								if (!CANON_PRIVATE_DATA->use_ram) {
 									// If storage is available, ObjectAddedEx will be notified.
+									ptp_transaction_1_0(device, ptp_operation_canon_TransferComplete, handle);
 									break;
 								}
 							}
