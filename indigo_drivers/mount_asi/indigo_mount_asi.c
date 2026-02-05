@@ -515,8 +515,10 @@ static bool asi_set_max_slew_speed(indigo_device *device, int speed) {
 	char command[128], response[128] = {0};
 	if (speed == 720) {
 		sprintf(command, ":SRl720#");
-	} else {
+	} else if (speed == 1440) {
 		sprintf(command, ":SRl1440#");
+	} else {
+		return false;
 	}
 	if (!asi_command(device, command, response, sizeof(response), 0)) return false;
 	return *response == '1';
@@ -912,9 +914,9 @@ static void asi_init_mount(indigo_device *device) {
 	}
 	indigo_define_property(device, ZWO_BUZZER_PROPERTY, NULL);
 
+	int speed = 0;
 	/* Max slew speed (undocumented SRl/GRl commands) */
-	if (asi_command(device, ":GRl#", response, sizeof(response), 0)) {
-		int speed = atoi(response);
+	if (asi_get_max_slew_speed(device, &speed)) {
 		if (speed == 720) {
 			indigo_set_switch(ZWO_MAX_SLEW_SPEED_PROPERTY, ZWO_MAX_SLEW_SPEED_LOW_ITEM, true);
 		} else if (speed == 1440) {
