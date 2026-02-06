@@ -1050,6 +1050,8 @@ static void preview_1_process(indigo_device *device) {
 	int upload_mode = indigo_save_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME);
 	int image_format = indigo_save_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_RAW_ITEM_NAME);
 	capture_and_process_frame(device, &saturation_mask);
+	for (int i = 0; i < 5000 && DEVICE_PRIVATE_DATA->exposure_state == INDIGO_BUSY_STATE; i++)
+    indigo_usleep(1000);
 	indigo_restore_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, upload_mode);
 	indigo_restore_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, image_format);
 	indigo_safe_free(saturation_mask);
@@ -1074,6 +1076,8 @@ static void preview_process(indigo_device *device) {
 	int image_format = indigo_save_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_RAW_ITEM_NAME);
 	while (capture_and_process_frame(device, &saturation_mask))
 		;
+	for (int i = 0; i < 5000 && DEVICE_PRIVATE_DATA->exposure_state == INDIGO_BUSY_STATE; i++)
+    indigo_usleep(1000);
 	indigo_restore_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, upload_mode);
 	indigo_restore_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, image_format);
 	indigo_safe_free(saturation_mask);
