@@ -216,6 +216,14 @@ template <typename T> void indigo_compute_stretch_params(const T *buffer, int wi
 		X = normalized_median - *shadows;
 		M = B;
 	}
+
+	// Ensure M has a minimum value to prevent midtones from becoming extreme
+	// When M approaches 0, the midtones formula produces values close to 1
+	// This causes k1 = (midtones - 1) ≈ 0, resulting in all-black output
+	const float M_MIN = 0.001f;
+	if (M < M_MIN) {
+		M = M_MIN;
+	}
 	if (X == 0) {
 		*midtones = 0.0f;
 	} else if (X == M) {
