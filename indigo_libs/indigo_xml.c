@@ -1768,7 +1768,6 @@ exit_loop:
 	indigo_safe_free(context->properties);
 	pthread_mutex_unlock(&context->mutex);
 	pthread_mutex_destroy(&context->mutex);
-	indigo_uni_close(handle);
 	indigo_safe_free(context);
 	indigo_safe_free(buffer);
 	indigo_safe_free(value_buffer);
