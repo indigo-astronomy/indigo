@@ -514,7 +514,7 @@ static void *queue_func(indigo_queue *queue) {
 			// Calculate execution delay from scheduled time only if debug logging is enabled
 			if (indigo_get_log_level() >= INDIGO_LOG_DEBUG) {
 				double delay = task_delay(runnable_task);
-				INDIGO_DEBUG(indigo_debug("Executing task %p: priority %d, delay %.6fs", runnable_task->callback, runnable_task->priority, delay));
+				INDIGO_TRACE(indigo_trace("Executing task %p: priority %d, delay %.6fs", runnable_task->callback, runnable_task->priority, delay));
 			}
 
 			if (runnable_task->task_mutex) { // if there is specific mutex for task, lock it
