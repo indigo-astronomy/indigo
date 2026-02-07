@@ -302,8 +302,13 @@ indigo_result indigo_filter_enumerate_properties(indigo_device *device, indigo_c
 		device_list = FILTER_DEVICE_CONTEXT->filter_related_device_list_properties[i];
 		INDIGO_DEFINE_MATCHING_PROPERTY(device_list);
 	}
-	if (indigo_property_match(FILTER_DEVICE_CONTEXT->filter_related_agent_list_property, property))
-		indigo_define_property(device, FILTER_DEVICE_CONTEXT->filter_related_agent_list_property, NULL);
+	if (indigo_property_match(FILTER_DEVICE_CONTEXT->filter_related_agent_list_property, property)) {
+		if (client != NULL) {
+			indigo_define_property_to_client(device, client, FILTER_DEVICE_CONTEXT->filter_related_agent_list_property, NULL);
+		} else {
+			indigo_define_property(device, FILTER_DEVICE_CONTEXT->filter_related_agent_list_property, NULL);
+		}
+	}
 	for (int i = 0; i < INDIGO_FILTER_MAX_CACHED_PROPERTIES; i++) {
 		indigo_property *cached_property = FILTER_DEVICE_CONTEXT->agent_property_cache[i];
 		if (cached_property && indigo_property_match(cached_property, property))
@@ -311,7 +316,11 @@ indigo_result indigo_filter_enumerate_properties(indigo_device *device, indigo_c
 	}
 	if (indigo_property_match(FILTER_FORCE_SYMMETRIC_RELATIONS_PROPERTY, property)) {
 		FILTER_FORCE_SYMMETRIC_RELATIONS_PROPERTY->hidden = FILTER_RELATED_AGENT_LIST_PROPERTY->hidden;
-		indigo_define_property(device, FILTER_FORCE_SYMMETRIC_RELATIONS_PROPERTY, NULL);
+		if (client != NULL) {
+			indigo_define_property_to_client(device, client, FILTER_FORCE_SYMMETRIC_RELATIONS_PROPERTY, NULL);
+		} else {
+			indigo_define_property(device, FILTER_FORCE_SYMMETRIC_RELATIONS_PROPERTY, NULL);
+		}
 	}
 	INDIGO_DEFINE_MATCHING_PROPERTY(CCD_LENS_FOV_PROPERTY);
 	return indigo_device_enumerate_properties(device, client, property);

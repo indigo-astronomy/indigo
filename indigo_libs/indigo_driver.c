@@ -724,28 +724,17 @@ indigo_result indigo_device_attach(indigo_device *device, const char* driver_nam
 indigo_result indigo_device_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
-	if (indigo_property_match(INFO_PROPERTY, property) && !INFO_PROPERTY->hidden)
-		indigo_define_property(device, INFO_PROPERTY, NULL);
-	if (indigo_property_match(SIMULATION_PROPERTY, property) && !SIMULATION_PROPERTY->hidden)
-		indigo_define_property(device, SIMULATION_PROPERTY, NULL);
-	if (indigo_property_match(CONFIG_PROPERTY, property) && !CONFIG_PROPERTY->hidden)
-		indigo_define_property(device, CONFIG_PROPERTY, NULL);
-	if (indigo_property_match(PROFILE_NAME_PROPERTY, property) && !PROFILE_PROPERTY->hidden)
-		indigo_define_property(device, PROFILE_NAME_PROPERTY, NULL);
-	if (indigo_property_match(PROFILE_PROPERTY, property) && !PROFILE_PROPERTY->hidden)
-		indigo_define_property(device, PROFILE_PROPERTY, NULL);
-	if (indigo_property_match(DEVICE_PORT_PROPERTY, property) && !DEVICE_PORT_PROPERTY->hidden)
-		indigo_define_property(device, DEVICE_PORT_PROPERTY, NULL);
-	if (indigo_property_match(DEVICE_BAUDRATE_PROPERTY, property) && !DEVICE_BAUDRATE_PROPERTY->hidden)
-		indigo_define_property(device, DEVICE_BAUDRATE_PROPERTY, NULL);
-	if (indigo_property_match(DEVICE_PORTS_PROPERTY, property) && !DEVICE_PORTS_PROPERTY->hidden)
-		indigo_define_property(device, DEVICE_PORTS_PROPERTY, NULL);
-	if (indigo_property_match(AUTHENTICATION_PROPERTY, property) && !AUTHENTICATION_PROPERTY->hidden)
-		indigo_define_property(device, AUTHENTICATION_PROPERTY, NULL);
-	if (indigo_property_match(ADDITIONAL_INSTANCES_PROPERTY, property) && !ADDITIONAL_INSTANCES_PROPERTY->hidden)
-		indigo_define_property(device, ADDITIONAL_INSTANCES_PROPERTY, NULL);
-	if (indigo_property_match(CONNECTION_PROPERTY, property) && !CONNECTION_PROPERTY->hidden)
-		indigo_define_property(device, CONNECTION_PROPERTY, NULL);
+	INDIGO_DEFINE_MATCHING_PROPERTY(INFO_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(SIMULATION_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(CONFIG_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(PROFILE_NAME_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(PROFILE_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(DEVICE_PORT_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(DEVICE_BAUDRATE_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(DEVICE_PORTS_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(AUTHENTICATION_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(ADDITIONAL_INSTANCES_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(CONNECTION_PROPERTY);
 	return INDIGO_OK;
 }
 

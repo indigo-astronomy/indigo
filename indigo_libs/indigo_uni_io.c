@@ -1547,7 +1547,6 @@ void indigo_uni_close(indigo_uni_handle **handle) {
 		// indigo_error("%s used with NULL handle", __FUNCTION__);
 		return;
 	}
-	pthread_mutex_lock(&mutex);
 	if (*handle) {
 		indigo_uni_handle *copy = *handle;
 		*handle = NULL;
@@ -1580,7 +1579,6 @@ void indigo_uni_close(indigo_uni_handle **handle) {
 		indigo_log_on_level((copy)->log_level, "%d <- // Closed", (copy)->index);
 		indigo_safe_free(copy);
 	}
-	pthread_mutex_unlock(&mutex);
 }
 
 const char* indigo_uni_home_folder(void) {

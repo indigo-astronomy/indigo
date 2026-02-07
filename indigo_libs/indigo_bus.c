@@ -638,6 +638,69 @@ indigo_result indigo_enable_blob(indigo_client *client, indigo_property *propert
 	return INDIGO_OK;
 }
 
+indigo_result indigo_define_property_to_client(indigo_device *device, indigo_client *client, indigo_property *property, const char *format, ...) {
+	if ((!is_started) || (property == NULL) || (client == NULL))
+		return INDIGO_FAILED;
+	if (!property->hidden) {
+		if (indigo_use_strict_locking) {
+			pthread_mutex_lock(&client_mutex);
+		}
+		INDIGO_TRACE(indigo_trace_property("Define to client", client, property, true, true));
+		property->defined = true;
+		char message[INDIGO_VALUE_SIZE];
+		if (format != NULL) {
+			va_list args;
+			va_start(args, format);
+			vsnprintf(message, INDIGO_VALUE_SIZE, format, args);
+			va_end(args);
+		}
+		if (indigo_use_blob_caching && property->type == INDIGO_BLOB_VECTOR && property->perm == INDIGO_WO_PERM) {
+			pthread_mutex_lock(&blob_mutex);
+			for (int i = 0; i < property->count; i++) {
+				indigo_item *item = property->items + i;
+				indigo_blob_entry *entry = NULL;
+				int free_index = -1;
+				for (int j = 0; j < MAX_BLOBS; j++) {
+					entry = blobs[j];
+					if (entry && entry->item == item) {
+						break;
+					}
+					if (entry == NULL && free_index == -1) {
+						free_index = j;
+					}
+					entry = NULL;
+				}
+				if (entry == NULL && free_index >= 0) {
+					entry = indigo_safe_malloc(sizeof(indigo_blob_entry));
+					blobs[free_index] = entry;
+					memset(entry, 0, sizeof(indigo_blob_entry));
+					entry->item = item;
+					entry->property = property;
+					pthread_mutex_init(&entry->mutext, NULL);
+				}
+				if (entry == NULL) {
+					pthread_mutex_unlock(&blob_mutex);
+					if (indigo_use_strict_locking) {
+						pthread_mutex_unlock(&client_mutex);
+					}
+					indigo_error("[%s:%d] Max BLOB count reached", __FUNCTION__, __LINE__);
+					return INDIGO_TOO_MANY_ELEMENTS;
+				}
+			}
+			pthread_mutex_unlock(&blob_mutex);
+		}
+		if (client->define_property != NULL) {
+			client->last_result = client->define_property(client, device, property, format != NULL ? message : NULL);
+		}
+		if (indigo_use_strict_locking) {
+			pthread_mutex_unlock(&client_mutex);
+		}
+	}
+	return INDIGO_OK;
+}
+
+
+
 indigo_result indigo_define_property(indigo_device *device, indigo_property *property, const char *format, ...) {
 	if ((!is_started) || (property == NULL))
 		return INDIGO_FAILED;

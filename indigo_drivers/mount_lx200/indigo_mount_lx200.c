@@ -2944,8 +2944,7 @@ static indigo_result mount_enumerate_properties(indigo_device *device, indigo_cl
 		INDIGO_DEFINE_MATCHING_PROPERTY(NYX_WIFI_AP_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(NYX_WIFI_CL_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(NYX_WIFI_RESET_PROPERTY);
-		if (indigo_property_match(NYX_LEVELER_PROPERTY, property))
-			indigo_define_property(device, NYX_WIFI_RESET_PROPERTY, NULL);
+		INDIGO_DEFINE_MATCHING_PROPERTY(NYX_WIFI_RESET_PROPERTY);
 	}
 	return indigo_mount_enumerate_properties(device, client, property);
 }

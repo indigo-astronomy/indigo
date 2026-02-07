@@ -103,8 +103,8 @@ indigo_result indigo_gps_enumerate_properties(indigo_device *device, indigo_clie
 		INDIGO_DEFINE_MATCHING_PROPERTY(GPS_UTC_TIME_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(GPS_STATUS_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(GPS_ADVANCED_PROPERTY);
-		if (indigo_property_match(GPS_ADVANCED_STATUS_PROPERTY, property) && (GPS_ADVANCED_ENABLED_ITEM->sw.value))
-			indigo_define_property(device, GPS_ADVANCED_STATUS_PROPERTY, NULL);
+		if (GPS_ADVANCED_ENABLED_ITEM->sw.value)
+			INDIGO_DEFINE_MATCHING_PROPERTY(GPS_ADVANCED_STATUS_PROPERTY);
 	}
 	return indigo_device_enumerate_properties(device, client, property);
 }
