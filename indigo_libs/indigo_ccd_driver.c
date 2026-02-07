@@ -1308,7 +1308,7 @@ static void raw_to_tiff(indigo_device *device, void *data_in, int frame_width, i
 		add_key(&next_key, false, "OBJECT  = '%s' / object name", CCD_LOCAL_MODE_OBJECT_ITEM->text.value);
 	}
 	add_key(&next_key, false, "ROWORDER= 'TOP-DOWN'           / Image row order");
-	add_key(&next_key, false, "SWCREATE= 'INDIGO 2.0-%s'     / Capture software", INDIGO_BUILD);
+	add_key(&next_key, false, "SWCREATE= 'INDIGO %d.%d-%s'     / Capture software", INDIGO_VERSION_MAJOR(INDIGO_VERSION_CURRENT), INDIGO_VERSION_MINOR(INDIGO_VERSION_CURRENT), INDIGO_BUILD);
 	if (keywords) {
 		while (keywords->type && (next_key - fits_header) < (FITS_HEADER_SIZE - 80)) {
 			switch (keywords->type) {
@@ -1914,7 +1914,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			add_key(&header, true,  "OBJECT  = '%s' / object name", CCD_LOCAL_MODE_OBJECT_ITEM->text.value);
 		}
 		add_key(&header, true,  "ROWORDER= 'TOP-DOWN'           / Image row order");
-		add_key(&header, true,  "SWCREATE= 'INDIGO 2.0-%s'     / Capture software", INDIGO_BUILD);
+		add_key(&header, true,  "SWCREATE= 'INDIGO %d.%d-%s'     / Capture software", INDIGO_VERSION_MAJOR(INDIGO_VERSION_CURRENT), INDIGO_VERSION_MINOR(INDIGO_VERSION_CURRENT), INDIGO_BUILD);
 		if (!CCD_LENS_PROPERTY->hidden) {
 			// https://indico.esa.int/event/124/attachments/711/771/06_ESA-SSA-NEO-RS-0003_1_6_FITS_keyword_requirements_2014-08-01.pdf
 			// 5.4 Telescope information
@@ -2115,7 +2115,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 				keywords++;
 			}
 		}
-		header += sprintf(header, "</Image><Metadata><Property id='XISF:CreationTime' type='String'>%s</Property><Property id='XISF:CreatorApplication' type='String'>INDIGO 2.0-%s</Property>", date_time_end, INDIGO_BUILD);
+		header += sprintf(header, "</Image><Metadata><Property id='XISF:CreationTime' type='String'>%s</Property><Property id='XISF:CreatorApplication' type='String'>INDIGO %d.%d-%s</Property>", date_time_end, INDIGO_VERSION_MAJOR(INDIGO_VERSION_CURRENT), INDIGO_VERSION_MINOR(INDIGO_VERSION_CURRENT), INDIGO_BUILD);
 #ifdef INDIGO_LINUX
 		header += sprintf(header, "<Property id='XISF:CreatorOS' type='String'>Linux</Property>");
 #endif
