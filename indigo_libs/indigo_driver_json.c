@@ -404,8 +404,22 @@ static indigo_result json_message_property(indigo_client *client, indigo_device 
 static indigo_result json_detach(indigo_client *client) {
 	assert(client != NULL);
 	indigo_adapter_context *client_context = (indigo_adapter_context *)client->client_context;
-	close(client_context->input);
-	close(client_context->output);
+	assert(client_context != NULL);
+	pthread_mutex_lock(&json_mutex);
+	if (client_context->input >= 0) {
+		if (client_context->output == client_context->input) {
+			close(client_context->input);
+		} else {
+			if (client_context->input >= 0) {
+				close(client_context->input);
+			}
+			if (client_context->output >= 0) {
+				close(client_context->output);
+			}
+		}
+		client_context->input = client_context->output = -1;
+	}
+	pthread_mutex_unlock(&json_mutex);
 	return INDIGO_OK;
 }
 

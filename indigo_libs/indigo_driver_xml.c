@@ -352,6 +352,28 @@ failure:
 	return INDIGO_OK;
 }
 
+static indigo_result xml_detach(indigo_client *client) {
+	assert(client != NULL);
+	indigo_adapter_context *client_context = (indigo_adapter_context *)client->client_context;
+	assert(client_context != NULL);
+	pthread_mutex_lock(&write_mutex);
+	if (client_context->input >= 0) {
+		if (client_context->output == client_context->input) {
+			close(client_context->input);
+		} else {
+			if (client_context->input >= 0) {
+				close(client_context->input);
+			}
+			if (client_context->output >= 0) {
+				close(client_context->output);
+			}
+		}
+		client_context->input = client_context->output = -1;
+	}
+	pthread_mutex_unlock(&write_mutex);
+	return INDIGO_OK;
+}
+
 indigo_client *indigo_xml_device_adapter(int input, int ouput) {
 	static indigo_client client_template = {
 		"XML Driver Adapter", false, NULL, INDIGO_OK, INDIGO_VERSION_NONE, NULL,
@@ -360,7 +382,7 @@ indigo_client *indigo_xml_device_adapter(int input, int ouput) {
 		xml_device_adapter_update_property,
 		xml_device_adapter_delete_property,
 		xml_device_adapter_send_message,
-		NULL
+		xml_detach
 	};
 	indigo_client *client = indigo_safe_malloc_copy(sizeof(indigo_client), &client_template);
 	indigo_adapter_context *client_context = indigo_safe_malloc(sizeof(indigo_adapter_context));
