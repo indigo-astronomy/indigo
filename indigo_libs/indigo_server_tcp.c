@@ -494,11 +494,11 @@ void indigo_server_remove_resources(void) {
 }
 
 void indigo_default_server_callback(int count) {
-	static DNSServiceRef sd_http;
-	static DNSServiceRef sd_indigo;
+	static DNSServiceRef sd_http = NULL;
+	static DNSServiceRef sd_indigo = NULL;
 	if (startup_initiated) {
 		startup_initiated = false;
-		if (indigo_use_bonjour) {
+		if (indigo_use_bonjour && sd_http == NULL && sd_indigo == NULL) {
 #if defined(INDIGO_LINUX)
 			/* UGLY but the only way to suppress compat mode warning messages on Linux */
 			setenv("AVAHI_COMPAT_NOWARN", "1", 1);
@@ -514,9 +514,11 @@ void indigo_default_server_callback(int count) {
 			INDIGO_LOG(indigo_log("Service registered as %s", indigo_local_service_name));
 		}
 	} else if (shutdown_initiated) {
-		if (indigo_use_bonjour) {
+		if (indigo_use_bonjour && sd_http != NULL && sd_indigo != NULL) {
 			DNSServiceRefDeallocate(sd_indigo);
+			sd_indigo = NULL;
 			DNSServiceRefDeallocate(sd_http);
+			sd_http = NULL;
 		}
 		INDIGO_LOG(indigo_log("Service unregistered"));
 	} else {
