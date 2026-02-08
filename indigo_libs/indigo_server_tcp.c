@@ -499,19 +499,24 @@ void indigo_default_server_callback(int count) {
 	static pthread_mutex_t dns_mutex = PTHREAD_MUTEX_INITIALIZER;
 	if (startup_initiated) {
 		startup_initiated = false;
-		if (indigo_use_bonjour && sd_http == NULL && sd_indigo == NULL) {
-			pthread_mutex_lock(&dns_mutex);
+		if (indigo_use_bonjour) {
 #if defined(INDIGO_LINUX)
 			/* UGLY but the only way to suppress compat mode warning messages on Linux */
 			setenv("AVAHI_COMPAT_NOWARN", "1", 1);
 #endif
-			int result = DNSServiceRegister(&sd_http, 0, 0, indigo_local_service_name, MDNS_HTTP_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
-			if (result != kDNSServiceErr_NoError) {
-				indigo_error("DNSServiceRegister -> %d", result);
+			pthread_mutex_lock(&dns_mutex);
+			int result = 0;
+			if (!sd_http) {
+				result = DNSServiceRegister(&sd_http, 0, 0, indigo_local_service_name, MDNS_HTTP_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
+				if (result != kDNSServiceErr_NoError) {
+					indigo_error("DNSServiceRegister -> %d", result);
+				}
 			}
-			result = DNSServiceRegister(&sd_indigo, 0, 0, indigo_local_service_name, MDNS_INDIGO_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
-			if (result != kDNSServiceErr_NoError) {
-				indigo_error("DNSServiceRegister -> %d", result);
+			if (!sd_indigo) {
+				result = DNSServiceRegister(&sd_indigo, 0, 0, indigo_local_service_name, MDNS_INDIGO_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
+				if (result != kDNSServiceErr_NoError) {
+					indigo_error("DNSServiceRegister -> %d", result);
+				}
 			}
 			INDIGO_LOG(indigo_log("Service registered as %s", indigo_local_service_name));
 			pthread_mutex_unlock(&dns_mutex);
@@ -529,9 +534,10 @@ void indigo_default_server_callback(int count) {
 			}
 			INDIGO_LOG(indigo_log("Service unregistered"));
 		}
-		pthread_mutex_unlock(&dns_mutex);	} else {
-			INDIGO_TRACE(indigo_trace("%d clients", count));
-		}
+		pthread_mutex_unlock(&dns_mutex);
+	} else {
+		INDIGO_TRACE(indigo_trace("%d clients", count));
+	}
 }
 
 indigo_result indigo_server_start(void (*callback)(int)) {
