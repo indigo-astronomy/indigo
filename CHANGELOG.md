@@ -1,6 +1,26 @@
 # Changelog
 
 All notable changes to INDIGO framework will be documented in this file.
+
+# [2.0-358] - 10 Feb Tue 2026
+
+## Driver Fixes:
+- indigo_agent_imager:
+	- fix deadlock, in some rare cases
+
+- indigo_agent_scripting:
+	- indigo_log() mapping fixed
+
+- infigo_ccd_ptp:
+	- fix Canon RAM leaking
+
+- indigo_ccd_asi:
+	- fix abort streaming
+
+- indigo_mount_asi:
+	- add max slew speed support
+
+
 # [2.0-356] - 03 Feb Tue 2026
 ## Overall:
 - indigo_raw_utils:
