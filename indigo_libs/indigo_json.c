@@ -643,7 +643,7 @@ indigo_result indigo_json_device_adapter_define_property(indigo_client *client, 
 	assert(client_context != NULL);
 	pthread_mutex_lock(&json_mutex);
 	indigo_uni_handle **handle = client_context->output;
-	assert(handle == NULL || *handle == NULL);
+	assert(handle != NULL && *handle != NULL);
 	long buffer_size = JSON_BUFFER_SIZE;
 	char *output_buffer = indigo_safe_malloc(buffer_size);
 	char *pnt = output_buffer;
@@ -770,7 +770,7 @@ indigo_result indigo_json_device_adapter_update_property(indigo_client *client, 
 	assert(client_context != NULL);
 	pthread_mutex_lock(&json_mutex);
 	indigo_uni_handle **handle = client_context->output;
-	assert(handle == NULL || *handle == NULL);
+	assert(handle != NULL && *handle != NULL);
 	long buffer_size = JSON_BUFFER_SIZE;
 	char *output_buffer = indigo_safe_malloc(buffer_size);
 	char *pnt = output_buffer;
@@ -882,7 +882,7 @@ indigo_result indigo_json_device_adapter_delete_property(indigo_client *client, 
 	assert(client_context != NULL);
 	pthread_mutex_lock(&json_mutex);
 	indigo_uni_handle **handle = client_context->output;
-	assert(handle == NULL || *handle == NULL);
+	assert(handle != NULL && *handle != NULL);
 	char *output_buffer = indigo_safe_malloc(JSON_BUFFER_SIZE);
 	char *pnt = output_buffer;
 	long size;
@@ -918,7 +918,7 @@ indigo_result indigo_json_device_adapter_message_property(indigo_client *client,
 	assert(client_context != NULL);
 	pthread_mutex_lock(&json_mutex);
 	indigo_uni_handle **handle = client_context->output;
-	assert(handle == NULL || *handle == NULL);
+	assert(handle != NULL && *handle != NULL);
 	char *output_buffer = indigo_safe_malloc(JSON_BUFFER_SIZE);
 	char *pnt = output_buffer;
 	long size = sprintf(pnt, "{ \"message\": \"%s\" }", message);
