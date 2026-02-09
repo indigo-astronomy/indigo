@@ -408,6 +408,15 @@
 #define CCD_STREAMING_SETTINGS_UPDATE_LIMIT_ITEM_NAME  "UPDATE_LIMIT"
 
 //----------------------------------------------------------------------
+/** CCD_FPS property name.
+ */
+#define CCD_FPS_PROPERTY_NAME           			"CCD_FPS"
+
+/** CCD_FPS.FPS property item name.
+ */
+#define CCD_FPS_ITEM_NAME  										"FPS"
+
+//----------------------------------------------------------------------
 /** CCD_ABORT_EXPOSURE property name.
  */
 #define CCD_ABORT_EXPOSURE_PROPERTY_NAME      "CCD_ABORT_EXPOSURE"

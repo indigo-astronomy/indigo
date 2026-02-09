@@ -213,6 +213,14 @@ extern "C" {
  */
 #define CCD_STREAMING_SETTINGS_UPDATE_LIMIT_ITEM   (CCD_STREAMING_SETTINGS_PROPERTY->items+0)
 
+/** CCD_FPS property pointer, property is optional.
+ */
+#define CCD_FPS_PROPERTY   (CCD_CONTEXT->ccd_fps_property)
+
+/** CCD_FPS.FPS property item pointer.
+ */
+#define CCD_FPS_ITEM   (CCD_FPS_PROPERTY->items+0)
+
 /** CCD_ABORT property pointer, property is mandatory, property change request handler should set property items and state and call indigo_ccd_change_property().
  */
 #define CCD_ABORT_EXPOSURE_PROPERTY       (CCD_CONTEXT->ccd_abort_exposure_property)
@@ -548,6 +556,7 @@ typedef struct {
 	void *preview_histogram;											///< preview histogram buffer
 	unsigned long preview_histogram_size;					///< preview histogram buffer size
 	void *video_stream;														///< video stream control structure
+	clock_t last_frame;														///< timestamp of last captured frame
 	clock_t last_report;													///< timestamp of last reported frame
 	indigo_property *ccd_info_property;           ///< CCD_INFO property pointer
 	indigo_property *ccd_lens_property;						///< CCD_LENS property pointer
@@ -559,6 +568,7 @@ typedef struct {
 	indigo_property *ccd_exposure_property;       ///< CCD_EXPOSURE property pointer
 	indigo_property *ccd_streaming_property;      ///< CCD_STREAMING property pointer
 	indigo_property *ccd_streaming_settings_property; ///< CCD_STREAMING_SETTINGS property pointer
+	indigo_property *ccd_fps_property;						///< CCD_FPS property pointer
 	indigo_property *ccd_abort_exposure_property; ///< CCD_ABORT_EXPOSURE property pointer
 	indigo_property *ccd_frame_property;          ///< CCD_FRAME property pointer
 	indigo_property *ccd_bin_property;            ///< CCD_BIN property pointer

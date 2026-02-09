@@ -210,13 +210,19 @@ indigo_result indigo_ccd_attach(indigo_device *device, const char* driver_name, 
 			indigo_init_number_item(CCD_STREAMING_COUNT_ITEM, CCD_STREAMING_COUNT_ITEM_NAME, "Frame count", -1, 100000, 1, -1);
 			strcpy(CCD_EXPOSURE_ITEM->number.format, "%g");
 			CCD_STREAMING_PROPERTY->hidden = true;
-			// -------------------------------------------------------------------------------- CCD_STREAMING
+			// -------------------------------------------------------------------------------- CCD_STREAMING_SETTINGS
 			CCD_STREAMING_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_STREAMING_SETTINGS_PROPERTY_NAME, CCD_MAIN_GROUP, "Streaming settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 			if (CCD_STREAMING_SETTINGS_PROPERTY == NULL) {
 				return INDIGO_FAILED;
 			}
 			indigo_init_number_item(CCD_STREAMING_SETTINGS_UPDATE_LIMIT_ITEM, CCD_STREAMING_SETTINGS_UPDATE_LIMIT_ITEM_NAME, "Update limit (fps)", 0, 1000, 1, 0);
 			CCD_STREAMING_SETTINGS_PROPERTY->hidden = true;
+			// -------------------------------------------------------------------------------- CCD_FPS
+			CCD_FPS_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_FPS_PROPERTY_NAME, CCD_IMAGE_GROUP, "Framerate", INDIGO_OK_STATE, INDIGO_RO_PERM, 1);
+			if (CCD_FPS_PROPERTY == NULL) {
+				return INDIGO_FAILED;
+			}
+			indigo_init_number_item(CCD_FPS_ITEM, CCD_FPS_ITEM_NAME, "Framerate", 0, 10000, 0, 0);
 			// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 			CCD_ABORT_EXPOSURE_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_ABORT_EXPOSURE_PROPERTY_NAME, CCD_MAIN_GROUP, "Abort exposure", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
 			if (CCD_ABORT_EXPOSURE_PROPERTY == NULL) {
@@ -415,6 +421,7 @@ indigo_result indigo_ccd_enumerate_properties(indigo_device *device, indigo_clie
 		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_EXPOSURE_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_STREAMING_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_STREAMING_SETTINGS_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_FPS_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_ABORT_EXPOSURE_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_FRAME_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(CCD_BIN_PROPERTY);
@@ -510,6 +517,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_define_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 			indigo_define_property(device, CCD_STREAMING_PROPERTY, NULL);
 			indigo_define_property(device, CCD_STREAMING_SETTINGS_PROPERTY, NULL);
+			indigo_define_property(device, CCD_FPS_PROPERTY, NULL);
 			indigo_define_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 			indigo_define_property(device, CCD_FRAME_PROPERTY, NULL);
 			indigo_define_property(device, CCD_BIN_PROPERTY, NULL);
@@ -555,6 +563,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_delete_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_STREAMING_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_STREAMING_SETTINGS_PROPERTY, NULL);
+			indigo_delete_property(device, CCD_FPS_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_FRAME_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_BIN_PROPERTY, NULL);
@@ -1689,8 +1698,14 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 void indigo_process_image(indigo_device *device, void *data, int frame_width, int frame_height, int bpp, bool little_endian, bool byte_order_rgb, indigo_fits_keyword *keywords, bool streaming) {
 	assert(device != NULL);
 	assert(data != NULL);
-
 	clock_t start = clock();
+	double diff = (start - CCD_CONTEXT->last_frame) / (double)CLOCKS_PER_SEC;
+	if (diff > 100 || diff < 0.0001) {
+		CCD_FPS_ITEM->number.value = 0;
+	} else {
+		CCD_FPS_ITEM->number.value = 1 / diff;
+	}
+	CCD_CONTEXT->last_frame = start;
 	if (CCD_STREAMING_SETTINGS_UPDATE_LIMIT_ITEM->number.value > 0) {
 		double limit = 1 / CCD_STREAMING_SETTINGS_UPDATE_LIMIT_ITEM->number.value;
 		double diff = (start - CCD_CONTEXT->last_report) / (double)CLOCKS_PER_SEC;
@@ -2284,6 +2299,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		INDIGO_DEBUG(indigo_debug("Client upload in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
 	}
+	indigo_update_property(device, CCD_FPS_PROPERTY, NULL);
 	if (jpeg_data) {
 		free(jpeg_data);
 	}
@@ -2295,7 +2311,24 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 void indigo_process_dslr_image(indigo_device *device, void *data, unsigned long data_size, const char *suffix, bool streaming) {
 	assert(device != NULL);
 	assert(data != NULL);
-	INDIGO_DEBUG(clock_t start = clock());
+	clock_t start = clock();
+	double diff = (start - CCD_CONTEXT->last_frame) / (double)CLOCKS_PER_SEC;
+	if (diff > 100 || diff < 0.0001) {
+		CCD_FPS_ITEM->number.value = 0;
+	} else {
+		CCD_FPS_ITEM->number.value = 1 / diff;
+	}
+	CCD_CONTEXT->last_frame = start;
+	if (CCD_STREAMING_SETTINGS_UPDATE_LIMIT_ITEM->number.value > 0) {
+		double limit = 1 / CCD_STREAMING_SETTINGS_UPDATE_LIMIT_ITEM->number.value;
+		double diff = (start - CCD_CONTEXT->last_report) / (double)CLOCKS_PER_SEC;
+		if (diff < limit) {
+			device->dont_update = true;
+		} else {
+			device->dont_update = false;
+			CCD_CONTEXT->last_report = start;
+		}
+	}
 	char standard_suffix[16];
 	strncpy(standard_suffix, suffix, sizeof(standard_suffix));
 	for (char *pnt = standard_suffix; *pnt; pnt++) {
@@ -2500,6 +2533,7 @@ void indigo_process_dslr_image(indigo_device *device, void *data, unsigned long 
 		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		INDIGO_DEBUG(indigo_debug("Client upload in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
 	}
+	indigo_update_property(device, CCD_FPS_PROPERTY, NULL);
 }
 
 void indigo_process_dslr_preview_image(indigo_device* device, void* data, unsigned long blobsize) {
