@@ -173,6 +173,9 @@ int indigo_uni_wait_for_data(indigo_uni_handle *handle, long timeout) {
 }
 
 static long read_data(indigo_uni_handle *handle, void *buffer, long length) {
+	if (handle->last_error != 0) {
+		return -1;
+	}
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	long bytes_read = read(handle->fd, buffer, length);
 	if (bytes_read < 0) {
@@ -223,6 +226,9 @@ static long read_data(indigo_uni_handle *handle, void *buffer, long length) {
 }
 
 static long write_data(indigo_uni_handle *handle, const char *buffer, long length) {
+	if (handle->last_error != 0) {
+		return -1;
+	}
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	long bytes_written = write(handle->fd, buffer, length);
 	if (bytes_written < 0) {
@@ -1209,14 +1215,22 @@ long indigo_uni_read(indigo_uni_handle *handle, void *buffer, long length) {
 		return -1;
 	}
 	if (handle->type == INDIGO_UDP_HANDLE) {
-		return indigo_uni_read_available(handle, buffer, length);
+		long bytes_read = indigo_uni_read_available(handle, buffer, length);
+		if (bytes_read < 0) {
+			return -1;
+		}
+		if (handle->log_level < 0) {
+			indigo_log_on_level(-handle->log_level, "%d <- // %ld bytes read", handle->index, bytes_read);
+		} else {
+			indigo_log_on_level(handle->log_level, "%d <- %.*s", handle->index, bytes_read, buffer);
+		}
+		return bytes_read;
 	}
 	long remaining = length;
 	char *pnt = (char *)buffer;
 	while (true) {
 		long bytes_read = read_data(handle, pnt, remaining);
 		if (bytes_read < 0) {
-			indigo_error("%d -> // Failed to read (%s)", handle->index, indigo_uni_strerror(handle));
 			return -1;
 		}
 		remaining -= bytes_read;
@@ -1357,10 +1371,13 @@ long indigo_uni_write(indigo_uni_handle *handle, const char *buffer, long length
 	}
 	if (handle->type == INDIGO_UDP_HANDLE) {
 		long bytes_written = write_data(handle, buffer, length);
+		if (bytes_written < 0) {
+			return -1;
+		}
 		if (handle->log_level < 0) {
-			indigo_log_on_level(-handle->log_level, "%d <- // %ld bytes written", handle->index, length);
+			indigo_log_on_level(-handle->log_level, "%d <- // %ld bytes written", handle->index, bytes_written);
 		} else {
-			indigo_log_on_level(handle->log_level, "%d <- %.*s", handle->index, length, buffer);
+			indigo_log_on_level(handle->log_level, "%d <- %.*s", handle->index, bytes_written, buffer);
 		}
 		return bytes_written;
 	}
@@ -1369,7 +1386,6 @@ long indigo_uni_write(indigo_uni_handle *handle, const char *buffer, long length
 	while (true) {
 		long bytes_written = write_data(handle, pnt, remaining);
 		if (bytes_written < 0) {
-			indigo_error("%d -> // Failed to write (%s)", handle->index, indigo_uni_strerror(handle));
 			return -1;
 		}
 		remaining -= bytes_written;

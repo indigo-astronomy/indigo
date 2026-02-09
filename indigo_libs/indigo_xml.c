@@ -1874,6 +1874,7 @@ indigo_result indigo_xml_client_parser_enumerate_properties(indigo_device *devic
 	pthread_mutex_lock(&xml_mutex);
 	assert(device_context != NULL);
 	indigo_uni_handle **handle = device_context->output;
+	assert(handle == NULL || *handle == NULL);
 	char device_name[INDIGO_NAME_SIZE];
 	const char *property_name = NULL;
 	if (property != NULL) {
@@ -1921,11 +1922,7 @@ indigo_result indigo_xml_client_parser_enumerate_properties(indigo_device *devic
 	} else {
 		INDIGO_PRINTF(*handle, "<getProperties version='1.7' switch='%d.%d'/>\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF);
 	}
-	pthread_mutex_unlock(&xml_mutex);
-	return INDIGO_OK;
 failure:
-	indigo_uni_close(device_context->input);
-	indigo_uni_close(device_context->output);
 	pthread_mutex_unlock(&xml_mutex);
 	return INDIGO_OK;
 }
@@ -1943,6 +1940,7 @@ indigo_result indigo_xml_client_parser_change_property(indigo_device *device, in
 	pthread_mutex_lock(&xml_mutex);
 	assert(device_context != NULL);
 	indigo_uni_handle **handle = device_context->output;
+	assert(handle == NULL || *handle == NULL);
 	char device_name[INDIGO_NAME_SIZE];
 	char token[64] = "";
 	char b1[32];
@@ -1998,11 +1996,7 @@ indigo_result indigo_xml_client_parser_change_property(indigo_device *device, in
 		default:
 			break;
 	}
-	pthread_mutex_unlock(&xml_mutex);
-	return INDIGO_OK;
 failure:
-	indigo_uni_close(device_context->input);
-	indigo_uni_close(device_context->output);
 	pthread_mutex_unlock(&xml_mutex);
 	return INDIGO_OK;
 }
@@ -2020,6 +2014,7 @@ indigo_result indigo_xml_client_parser_enable_blob(indigo_device *device, indigo
 	pthread_mutex_lock(&xml_mutex);
 	assert(device_context != NULL);
 	indigo_uni_handle **handle = device_context->output;
+	assert(handle == NULL || *handle == NULL);
 	char device_name[INDIGO_NAME_SIZE];
 	INDIGO_COPY_NAME(device_name, property->device);
 	if (indigo_use_host_suffix) {
@@ -2040,11 +2035,7 @@ indigo_result indigo_xml_client_parser_enable_blob(indigo_device *device, indigo
 	} else {
 		INDIGO_PRINTF(*handle, "<enableBLOB device='%s'>%s</enableBLOB>\n", indigo_xml_escape(device_name), mode_text);
 	}
-	pthread_mutex_unlock(&xml_mutex);
-	return INDIGO_OK;
 failure:
-	indigo_uni_close(device_context->input);
-	indigo_uni_close(device_context->output);
 	pthread_mutex_unlock(&xml_mutex);
 	return INDIGO_OK;
 }
@@ -2086,6 +2077,7 @@ indigo_result indigo_xml_device_adapter_define_property(indigo_client *client, i
 	pthread_mutex_lock(&write_mutex);
 	assert(client_context != NULL);
 	indigo_uni_handle **handle = client_context->output;
+	assert(handle == NULL || *handle == NULL);
 	char b1[32], b2[32], b3[32], b4[32], b5[32];
 	switch (property->type) {
 		case INDIGO_TEXT_VECTOR:
@@ -2141,11 +2133,7 @@ indigo_result indigo_xml_device_adapter_define_property(indigo_client *client, i
 			INDIGO_PRINTF(*handle, "</defBLOBVector>\n");
 			break;
 	}
-	pthread_mutex_unlock(&write_mutex);
-	return INDIGO_OK;
 failure:
-	indigo_uni_close(client_context->input);
-	indigo_uni_close(client_context->output);
 	pthread_mutex_unlock(&write_mutex);
 	return INDIGO_OK;
 }
@@ -2167,6 +2155,7 @@ indigo_result indigo_xml_device_adapter_update_property(indigo_client *client, i
 	pthread_mutex_lock(&write_mutex);
 	assert(client_context != NULL);
 	indigo_uni_handle **handle = client_context->output;
+	assert(handle == NULL || *handle == NULL);
 	char b1[32], b2[32];
 	switch (property->type) {
 		case INDIGO_TEXT_VECTOR:
@@ -2259,11 +2248,7 @@ indigo_result indigo_xml_device_adapter_update_property(indigo_client *client, i
 			break;
 		}
 	}
-	pthread_mutex_unlock(&write_mutex);
-	return INDIGO_OK;
 failure:
-	indigo_uni_close(client_context->input);
-	indigo_uni_close(client_context->output);
 	pthread_mutex_unlock(&write_mutex);
 	return INDIGO_OK;
 }
@@ -2285,16 +2270,13 @@ indigo_result indigo_xml_device_adapter_delete_property(indigo_client *client, i
 	pthread_mutex_lock(&write_mutex);
 	assert(client_context != NULL);
 	indigo_uni_handle **handle = client_context->output;
+	assert(handle == NULL || *handle == NULL);
 	if (*property->name) {
 		INDIGO_PRINTF(*handle, "<delProperty device='%s' name='%s'%s/>\n", indigo_xml_escape(property->device), indigo_property_name(client->version, property), message_attribute(message));
 	} else {
 		INDIGO_PRINTF(*handle, "<delProperty device='%s'%s/>\n", device->name, message_attribute(message));
 	}
-	pthread_mutex_unlock(&write_mutex);
-	return INDIGO_OK;
 failure:
-	indigo_uni_close(client_context->input);
-	indigo_uni_close(client_context->output);
 	pthread_mutex_unlock(&write_mutex);
 	return INDIGO_OK;
 }
@@ -2315,6 +2297,7 @@ indigo_result indigo_xml_device_adapter_send_message(indigo_client *client, indi
 	pthread_mutex_lock(&write_mutex);
 	assert(client_context != NULL);
 	indigo_uni_handle **handle = client_context->output;
+	assert(handle == NULL || *handle == NULL);
 	if (message) {
 		if (device) {
 			INDIGO_PRINTF(*handle, "<message device='%s'%s/>\n", device->name, message_attribute(message));
@@ -2322,11 +2305,7 @@ indigo_result indigo_xml_device_adapter_send_message(indigo_client *client, indi
 			INDIGO_PRINTF(*handle, "<message%s/>\n", message_attribute(message));
 		}
 	}
-	pthread_mutex_unlock(&write_mutex);
-	return INDIGO_OK;
 failure:
-	indigo_uni_close(client_context->input);
-	indigo_uni_close(client_context->output);
 	pthread_mutex_unlock(&write_mutex);
 	return INDIGO_OK;
 }
