@@ -252,7 +252,7 @@ static indigo_rule require_rule(duk_context *ctx, duk_idx_t idx) {
 
 static duk_ret_t error_message(duk_context *ctx) {
 	const char *message = duk_require_string(ctx, 0);
-	indigo_error(message);
+	indigo_error("%s", message);
 	return 0;
 }
 
@@ -260,7 +260,7 @@ static duk_ret_t error_message(duk_context *ctx) {
 
 static duk_ret_t log_message(duk_context *ctx) {
 	const char *message = duk_require_string(ctx, 0);
-	indigo_log(message);
+	indigo_log("%s", message);
 	return 0;
 }
 
@@ -268,7 +268,7 @@ static duk_ret_t log_message(duk_context *ctx) {
 
 static duk_ret_t debug_message(duk_context *ctx) {
 	const char *message = duk_require_string(ctx, 0);
-	indigo_debug(message);
+	indigo_debug("%s", message);
 	return 0;
 }
 
@@ -276,7 +276,7 @@ static duk_ret_t debug_message(duk_context *ctx) {
 
 static duk_ret_t trace_message(duk_context *ctx) {
 	const char *message = duk_require_string(ctx, 0);
-	indigo_trace(message);
+	indigo_trace("%s", message);
 	return 0;
 }
 
