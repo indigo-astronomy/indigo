@@ -1712,7 +1712,6 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		CCD_FPS_ITEM->number.value = 1 / diff;
 	}
 	CCD_CONTEXT->last_frame = start;
-	printf("%.1f %.1f %g %g\n", start, CCD_CONTEXT->last_frame, diff, CCD_FPS_ITEM->number.value);
 	if (CCD_STREAMING_SETTINGS_UPDATE_LIMIT_ITEM->number.value > 0) {
 		double limit = 1 / CCD_STREAMING_SETTINGS_UPDATE_LIMIT_ITEM->number.value;
 		double diff = start - CCD_CONTEXT->last_report;
