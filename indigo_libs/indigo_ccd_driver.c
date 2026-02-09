@@ -1712,7 +1712,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		CCD_FPS_ITEM->number.value = 1 / diff;
 	}
 	CCD_CONTEXT->last_frame = start;
-	if (CCD_STREAMING_SETTINGS_UPDATE_LIMIT_ITEM->number.value > 0) {
+	if (streaming && CCD_STREAMING_SETTINGS_UPDATE_LIMIT_ITEM->number.value > 0) {
 		double limit = 1 / CCD_STREAMING_SETTINGS_UPDATE_LIMIT_ITEM->number.value;
 		double diff = start - CCD_CONTEXT->last_report;
 		if (diff < limit) {
@@ -2325,7 +2325,7 @@ void indigo_process_dslr_image(indigo_device *device, void *data, unsigned long 
 		CCD_FPS_ITEM->number.value = 1 / diff;
 	}
 	CCD_CONTEXT->last_frame = start;
-	if (CCD_STREAMING_SETTINGS_UPDATE_LIMIT_ITEM->number.value > 0) {
+	if (streaming && CCD_STREAMING_SETTINGS_UPDATE_LIMIT_ITEM->number.value > 0) {
 		double limit = 1 / CCD_STREAMING_SETTINGS_UPDATE_LIMIT_ITEM->number.value;
 		double diff = start - CCD_CONTEXT->last_report;
 		if (diff < limit) {
