@@ -43,6 +43,19 @@
 #include <indigo/indigo_version.h>
 #include <indigo/indigo_driver_xml.h>
 
+static indigo_result xml_detach(indigo_client *client) {
+	assert(client != NULL);
+	indigo_adapter_context *client_context = (indigo_adapter_context *)client->client_context;
+	assert(client_context != NULL);
+	if (client_context->input && *client_context->input) {
+		indigo_uni_close(client_context->input);
+		if (client_context->output != client_context->input && client_context->output && *client_context->output) {
+			indigo_uni_close(client_context->output);
+		}
+	}
+	return INDIGO_OK;
+}
+
 indigo_client *indigo_xml_device_adapter(indigo_uni_handle **input, indigo_uni_handle **output) {
 	static indigo_client client_template = {
 		"XML Driver Adapter", false, NULL, INDIGO_OK, INDIGO_VERSION_NONE, NULL,
@@ -51,7 +64,7 @@ indigo_client *indigo_xml_device_adapter(indigo_uni_handle **input, indigo_uni_h
 		indigo_xml_device_adapter_update_property,
 		indigo_xml_device_adapter_delete_property,
 		indigo_xml_device_adapter_send_message,
-		NULL
+		xml_detach
 	};
 	indigo_client *client = indigo_safe_malloc_copy(sizeof(indigo_client), &client_template);
 	indigo_adapter_context *client_context = indigo_safe_malloc(sizeof(indigo_adapter_context));

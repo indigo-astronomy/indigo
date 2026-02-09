@@ -103,6 +103,7 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 			indigo_xml_parse(NULL, protocol_adapter);
 			indigo_detach_client(protocol_adapter);
 			indigo_release_xml_device_adapter(protocol_adapter);
+			*handle = NULL;
 		} else if (c == '{') {
 			INDIGO_TRACE(indigo_trace("%d <- // Protocol switched to JSON", (*handle)->index));
 			indigo_client *protocol_adapter = indigo_json_device_adapter(&data->handle, &data->handle, false);
@@ -111,6 +112,7 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 			indigo_json_parse(NULL, protocol_adapter);
 			indigo_detach_client(protocol_adapter);
 			indigo_release_json_device_adapter(protocol_adapter);
+			*handle = NULL;
 		} else if (c == 'G' || c == 'P') {
 			char request[BUFFER_SIZE];
 			char header[BUFFER_SIZE];

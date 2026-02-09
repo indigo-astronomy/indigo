@@ -1373,11 +1373,11 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 	char *entity_pointer = NULL;
 	bool is_escaped = false;
 	/* (void)parser_state_name; */
-	
+
 	parser_handler handler = top_level_handler;
-	
+
 	parser_state state = IDLE_STATE;
-	
+
 	parser_context *context = indigo_safe_malloc(sizeof(parser_context));
 	context->client = client;
 	context->device = device;
@@ -1389,10 +1389,10 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 		context->count = 0;
 		context->properties = NULL;
 	}
-	
+
 	context->property = indigo_safe_malloc(sizeof(indigo_property) + INDIGO_PREALLOCATED_COUNT * sizeof(indigo_item));
 	context->property->allocated_count = INDIGO_PREALLOCATED_COUNT;
-	
+
 	indigo_uni_handle **handle = NULL;
 	if (device != NULL) {
 		handle = ((indigo_adapter_context *)device->device_context)->input;
@@ -1626,7 +1626,7 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 						blob_pointer += base64_decode_fast((unsigned char*)blob_pointer, (unsigned char*)buffer, len);
 						blob_len -= len;
 					}
-					
+
 					handler = handler(BLOB_STATE, context, NULL, (char *)blob_buffer, message);
 					pointer = buffer;
 					*pointer = 0;
@@ -2144,8 +2144,6 @@ indigo_result indigo_xml_device_adapter_define_property(indigo_client *client, i
 	pthread_mutex_unlock(&write_mutex);
 	return INDIGO_OK;
 failure:
-	indigo_uni_close(client_context->input);
-	indigo_uni_close(client_context->output);
 	pthread_mutex_unlock(&write_mutex);
 	return INDIGO_OK;
 }
@@ -2262,8 +2260,6 @@ indigo_result indigo_xml_device_adapter_update_property(indigo_client *client, i
 	pthread_mutex_unlock(&write_mutex);
 	return INDIGO_OK;
 failure:
-	indigo_uni_close(client_context->input);
-	indigo_uni_close(client_context->output);
 	pthread_mutex_unlock(&write_mutex);
 	return INDIGO_OK;
 }
@@ -2293,8 +2289,6 @@ indigo_result indigo_xml_device_adapter_delete_property(indigo_client *client, i
 	pthread_mutex_unlock(&write_mutex);
 	return INDIGO_OK;
 failure:
-	indigo_uni_close(client_context->input);
-	indigo_uni_close(client_context->output);
 	pthread_mutex_unlock(&write_mutex);
 	return INDIGO_OK;
 }
@@ -2325,8 +2319,6 @@ indigo_result indigo_xml_device_adapter_send_message(indigo_client *client, indi
 	pthread_mutex_unlock(&write_mutex);
 	return INDIGO_OK;
 failure:
-	indigo_uni_close(client_context->input);
-	indigo_uni_close(client_context->output);
 	pthread_mutex_unlock(&write_mutex);
 	return INDIGO_OK;
 }

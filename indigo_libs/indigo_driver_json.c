@@ -35,6 +35,19 @@
 #include <indigo/indigo_json.h>
 #include <indigo/indigo_io.h>
 
+static indigo_result json_detach(indigo_client *client) {
+	assert(client != NULL);
+	indigo_adapter_context *client_context = (indigo_adapter_context *)client->client_context;
+	assert(client_context != NULL);
+	if (client_context->input && *client_context->input) {
+		indigo_uni_close(client_context->input);
+		if (client_context->output != client_context->input && client_context->output && *client_context->output) {
+			indigo_uni_close(client_context->output);
+		}
+	}
+	return INDIGO_OK;
+}
+
 indigo_client *indigo_json_device_adapter(indigo_uni_handle **input, indigo_uni_handle **output, bool web_socket) {
 	static indigo_client client_template = {
 		"JSON Driver Adapter", false, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT, NULL,
@@ -43,7 +56,7 @@ indigo_client *indigo_json_device_adapter(indigo_uni_handle **input, indigo_uni_
 		indigo_json_device_adapter_update_property,
 		indigo_json_device_adapter_delete_property,
 		indigo_json_device_adapter_message_property,
-		NULL,
+		json_detach,
 
 	};
 	indigo_client *client = indigo_safe_malloc_copy(sizeof(indigo_client), &client_template);
