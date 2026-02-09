@@ -54,6 +54,12 @@ struct indigo_jpeg_compress_struct {
 
 static char default_image_path[PATH_MAX]={0};
 
+static double now_sec(void) {
+	struct timespec ts;
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+	return (double)ts.tv_sec + (double)ts.tv_nsec * 1e-9;
+}
+
 static void file_remove(char *file_name) {
 	struct stat file_stat;
 	if (file_name && file_name[0] != '\0' && stat(file_name, &file_stat) >= 0) {
@@ -994,7 +1000,7 @@ static inline void use_reference_channel(double *shadows, double *midtones, doub
 }
 
 void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, int frame_height, int bpp, const char *bayerpat, void **data_out, unsigned long *size_out, void **histogram_data, unsigned long *histogram_size, double B, double C, int reference_channel) {
-	INDIGO_DEBUG(clock_t start = clock());
+	INDIGO_DEBUG(double start = now_sec());
 	size_t size_in = frame_width * frame_height;
 	int sample_by = frame_width < STRECH_SAMPLE_SIZE ? 1 : frame_width / STRECH_SAMPLE_SIZE;
 	void *copy = indigo_safe_malloc(3 * size_in * bpp / 8);
@@ -1223,7 +1229,7 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 	indigo_safe_free(histo[0]);
 	indigo_safe_free(histo[1]);
 	indigo_safe_free(histo[2]);
-	INDIGO_DEBUG(indigo_debug("RAW to preview conversion in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
+	INDIGO_DEBUG(indigo_debug("RAW to preview conversion in %gs", now_sec() - start));
 }
 
 static void add_key(char **header, bool fits, char *format, ...) {
@@ -1698,17 +1704,18 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 void indigo_process_image(indigo_device *device, void *data, int frame_width, int frame_height, int bpp, bool little_endian, bool byte_order_rgb, indigo_fits_keyword *keywords, bool streaming) {
 	assert(device != NULL);
 	assert(data != NULL);
-	clock_t start = clock();
-	double diff = (start - CCD_CONTEXT->last_frame) / (double)CLOCKS_PER_SEC;
+	double start = now_sec();
+	double diff = start - CCD_CONTEXT->last_frame;
 	if (diff > 100 || diff < 0.0001) {
 		CCD_FPS_ITEM->number.value = 0;
 	} else {
 		CCD_FPS_ITEM->number.value = 1 / diff;
 	}
 	CCD_CONTEXT->last_frame = start;
+	printf("%.1f %.1f %g %g\n", start, CCD_CONTEXT->last_frame, diff, CCD_FPS_ITEM->number.value);
 	if (CCD_STREAMING_SETTINGS_UPDATE_LIMIT_ITEM->number.value > 0) {
 		double limit = 1 / CCD_STREAMING_SETTINGS_UPDATE_LIMIT_ITEM->number.value;
-		double diff = (start - CCD_CONTEXT->last_report) / (double)CLOCKS_PER_SEC;
+		double diff = start - CCD_CONTEXT->last_report;
 		if (diff < limit) {
 			device->dont_update = true;
 		} else {
@@ -1824,7 +1831,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		}
 	}
 	if (CCD_IMAGE_FORMAT_FITS_ITEM->sw.value) {
-		INDIGO_DEBUG(clock_t start = clock());
+		INDIGO_DEBUG(double start = now_sec());
 		struct timeval tv;
 		char date_time[32], date_time_end[32];
 		gettimeofday(&tv, NULL);
@@ -2032,9 +2039,9 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 				blobsize += padding;
 			}
 		}
-		INDIGO_DEBUG(indigo_debug("RAW to FITS conversion in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
+		INDIGO_DEBUG(indigo_debug("RAW to FITS conversion in %gs", now_sec() - start));
 	} else if (CCD_IMAGE_FORMAT_XISF_ITEM->sw.value) {
-		INDIGO_DEBUG(clock_t start = clock());
+		INDIGO_DEBUG(double start = now_sec());
 		time_t timer;
 		struct tm* tm_info;
 		char date_time_end[21], date_time_start[21], fits_date_obs[21];
@@ -2142,7 +2149,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 #endif
 		header += sprintf(header, "<Property id='XISF:BlockAlignmentSize' type='UInt16' value='2880'/></Metadata></xisf>");
 		*(uint32_t *)((char*)data + 8) = (uint32_t)(header - (char *)data) - 16;
-		INDIGO_DEBUG(indigo_debug("RAW to XISF conversion in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
+		INDIGO_DEBUG(indigo_debug("RAW to XISF conversion in %gs", now_sec() - start));
 	} else if (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value || CCD_IMAGE_FORMAT_RAW_SER_ITEM->sw.value) {
 		indigo_raw_header *header = (indigo_raw_header *)((char*)data + FITS_HEADER_SIZE - sizeof(indigo_raw_header));
 		if (naxis == 2 && byte_per_pixel == 1) {
@@ -2279,7 +2286,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			message = strerror(errno);
 		}
 		indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, message);
-		INDIGO_DEBUG(indigo_debug("Local save in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
+		INDIGO_DEBUG(indigo_debug("Local save in %gs", now_sec() - start));
 	}
 	if (CCD_UPLOAD_MODE_CLIENT_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
 		*CCD_IMAGE_ITEM->blob.url = 0;
@@ -2297,7 +2304,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			strcpy(CCD_IMAGE_ITEM->blob.format, ".tiff");
 		CCD_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-		INDIGO_DEBUG(indigo_debug("Client upload in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
+		INDIGO_DEBUG(indigo_debug("Client upload in %gs", now_sec() - start));
 	}
 	indigo_update_property(device, CCD_FPS_PROPERTY, NULL);
 	if (jpeg_data) {
@@ -2311,8 +2318,8 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 void indigo_process_dslr_image(indigo_device *device, void *data, unsigned long data_size, const char *suffix, bool streaming) {
 	assert(device != NULL);
 	assert(data != NULL);
-	clock_t start = clock();
-	double diff = (start - CCD_CONTEXT->last_frame) / (double)CLOCKS_PER_SEC;
+	double start = now_sec();
+	double diff = start - CCD_CONTEXT->last_frame;
 	if (diff > 100 || diff < 0.0001) {
 		CCD_FPS_ITEM->number.value = 0;
 	} else {
@@ -2321,7 +2328,7 @@ void indigo_process_dslr_image(indigo_device *device, void *data, unsigned long 
 	CCD_CONTEXT->last_frame = start;
 	if (CCD_STREAMING_SETTINGS_UPDATE_LIMIT_ITEM->number.value > 0) {
 		double limit = 1 / CCD_STREAMING_SETTINGS_UPDATE_LIMIT_ITEM->number.value;
-		double diff = (start - CCD_CONTEXT->last_report) / (double)CLOCKS_PER_SEC;
+		double diff = start - CCD_CONTEXT->last_report;
 		if (diff < limit) {
 			device->dont_update = true;
 		} else {
@@ -2407,7 +2414,7 @@ void indigo_process_dslr_image(indigo_device *device, void *data, unsigned long 
 					message = "Failed to create storage directory, image can not be saved on server";
 				}
 				indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, message);
-				INDIGO_DEBUG(indigo_debug("Local save in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
+				INDIGO_DEBUG(indigo_debug("Local save in %gs", now_sec() - start));
 			}
 			if (CCD_UPLOAD_MODE_CLIENT_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
 				*CCD_IMAGE_ITEM->blob.url = 0;
@@ -2416,7 +2423,7 @@ void indigo_process_dslr_image(indigo_device *device, void *data, unsigned long 
 				INDIGO_COPY_NAME(CCD_IMAGE_ITEM->blob.format, ".raw");
 				CCD_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-				INDIGO_DEBUG(indigo_debug("Client upload in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
+				INDIGO_DEBUG(indigo_debug("Client upload in %gs", now_sec() - start));
 			}
 			free(image);
 			return;
@@ -2522,7 +2529,7 @@ void indigo_process_dslr_image(indigo_device *device, void *data, unsigned long 
 			message = strerror(errno);
 		}
 		indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, message);
-		INDIGO_DEBUG(indigo_debug("Local save in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
+		INDIGO_DEBUG(indigo_debug("Local save in %gs", now_sec() - start));
 	}
 	if (CCD_UPLOAD_MODE_CLIENT_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
 		*CCD_IMAGE_ITEM->blob.url = 0;
@@ -2531,7 +2538,7 @@ void indigo_process_dslr_image(indigo_device *device, void *data, unsigned long 
 		INDIGO_COPY_NAME(CCD_IMAGE_ITEM->blob.format, standard_suffix);
 		CCD_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-		INDIGO_DEBUG(indigo_debug("Client upload in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
+		INDIGO_DEBUG(indigo_debug("Client upload in %gs", now_sec() - start));
 	}
 	indigo_update_property(device, CCD_FPS_PROPERTY, NULL);
 }

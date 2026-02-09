@@ -556,8 +556,8 @@ typedef struct {
 	void *preview_histogram;											///< preview histogram buffer
 	unsigned long preview_histogram_size;					///< preview histogram buffer size
 	void *video_stream;														///< video stream control structure
-	clock_t last_frame;														///< timestamp of last captured frame
-	clock_t last_report;													///< timestamp of last reported frame
+	double last_frame;														///< timestamp of last captured frame
+	double last_report;													///< timestamp of last reported frame
 	indigo_property *ccd_info_property;           ///< CCD_INFO property pointer
 	indigo_property *ccd_lens_property;						///< CCD_LENS property pointer
 	indigo_property *ccd_upload_mode_property;    ///< CCD_UPLOAD_MODE property pointer
