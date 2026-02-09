@@ -750,7 +750,11 @@ indigo_result indigo_json_device_adapter_define_property(indigo_client *client, 
 			break;
 	}
 	if ((client_context->web_socket ? ws_write(*handle, output_buffer, size) : indigo_uni_write(*handle, output_buffer, size)) < 0) {
-		/* Write failed - detach will clean up */
+		/* Write failed - close handles to prevent further errors */
+		indigo_uni_close(client_context->input);
+		if (client_context->output != client_context->input) {
+			indigo_uni_close(client_context->output);
+		}
 	}
 	free(output_buffer);
 	pthread_mutex_unlock(&json_mutex);
@@ -863,7 +867,11 @@ indigo_result indigo_json_device_adapter_update_property(indigo_client *client, 
 			break;
 	}
 	if ((client_context->web_socket ? ws_write(*handle, output_buffer, size) : indigo_uni_write(*handle, output_buffer, size)) < 0) {
-		/* Write failed - detach will clean up */
+		/* Write failed - close handles to prevent further errors */
+		indigo_uni_close(client_context->input);
+		if (client_context->output != client_context->input) {
+			indigo_uni_close(client_context->output);
+		}
 	}
 	free(output_buffer);
 	pthread_mutex_unlock(&json_mutex);
@@ -904,7 +912,11 @@ indigo_result indigo_json_device_adapter_delete_property(indigo_client *client, 
 	}
 	size += (long)(pnt - output_buffer);
 	if ((client_context->web_socket ? ws_write(*handle, output_buffer, size) : indigo_uni_write(*handle, output_buffer, size)) < 0) {
-		/* Write failed - detach will clean up */
+		/* Write failed - close handles to prevent further errors */
+		indigo_uni_close(client_context->input);
+		if (client_context->output != client_context->input) {
+			indigo_uni_close(client_context->output);
+		}
 	}
 	free(output_buffer);
 	pthread_mutex_unlock(&json_mutex);
@@ -929,7 +941,11 @@ indigo_result indigo_json_device_adapter_message_property(indigo_client *client,
 	char *pnt = output_buffer;
 	long size = sprintf(pnt, "{ \"message\": \"%s\" }", message);
 	if ((client_context->web_socket ? ws_write(*handle, output_buffer, size) : indigo_uni_write(*handle, output_buffer, size)) < 0) {
-		/* Write failed - detach will clean up */
+		/* Write failed - close handles to prevent further errors */
+		indigo_uni_close(client_context->input);
+		if (client_context->output != client_context->input) {
+			indigo_uni_close(client_context->output);
+		}
 	}
 	free(output_buffer);
 	pthread_mutex_unlock(&json_mutex);
