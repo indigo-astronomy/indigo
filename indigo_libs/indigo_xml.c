@@ -520,15 +520,17 @@ static void set_property(parser_context *context, indigo_property *other, char *
 									property_item->number.max = other_item->number.max;
 								if (!isnan(other_item->number.step))
 									property_item->number.step = other_item->number.step;
-								if (property_item->number.value < property_item->number.min) {
-									//property_item->number.value = property_item->number.min;
-									if (strcmp(property->name, CCD_EXPOSURE_PROPERTY_NAME))
-										indigo_debug("%s.%s value out of range", property->name, property_item->name);
-								}
-								if (property_item->number.value > property_item->number.max) {
-									//property_item->number.value = property_item->number.max;
-									if (strcmp(property->name, CCD_EXPOSURE_PROPERTY_NAME))
-										indigo_debug("%s.%s value out of range", property->name, property_item->name);
+								if (property->perm != INDIGO_RO_PERM) {
+									if (property_item->number.value < property_item->number.min) {
+										//property_item->number.value = property_item->number.min;
+										if (strcmp(property->name, CCD_EXPOSURE_PROPERTY_NAME))
+											indigo_debug("%s.%s value out of range", property->name, property_item->name);
+									}
+									if (property_item->number.value > property_item->number.max) {
+										//property_item->number.value = property_item->number.max;
+										if (strcmp(property->name, CCD_EXPOSURE_PROPERTY_NAME))
+											indigo_debug("%s.%s value out of range", property->name, property_item->name);
+									}
 								}
 								property_item->number.target = other_item->number.target;
 								break;
