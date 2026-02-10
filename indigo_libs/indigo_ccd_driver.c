@@ -1491,28 +1491,42 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 			strncpy(tmp, format, fs - format);
 			strcat(tmp, fs + 2);
 			strcpy(format, tmp);
-		} else if ((fs[1] == 'D' || fs[1] == 'H') || ((fs[1] == '.' || fs[1] == '-') && (fs[2] == 'D' || fs[2] == 'H'))) { // %D, %.D, %-D - date, %H, %.H, %-H - time
-			struct tm * time_info;
+		} else if ((fs[1] == 'D' || fs[1] == 'H' || fs[1] == 'd' || fs[1] == 'h') || ((fs[1] == '.' || fs[1] == '-') && (fs[2] == 'D' || fs[2] == 'H' || fs[2] == 'd' || fs[2] == 'h'))) { // %D, %.D, %-D - local date, %H, %.H, %-H - local time, %d, %.d, %-d - GM date, %h, %.h, %-h - GM time
 			char buffer[15];
-			time_info = localtime(&current_time);
+			struct tm *gm_time_info = gmtime(&current_time);
+			struct tm *local_time_info = localtime(&current_time);
 			if (fs[1] == 'H') {
-				strftime(buffer, 15, "%H%M%S", time_info);
+				strftime(buffer, 15, "%H%M%S", local_time_info);
+			} else if (fs[1] == 'h') {
+				strftime(buffer, 15, "%H%M%S", gm_time_info);
 			} else if (fs[1] == 'D') {
-				strftime(buffer, 15, "%Y%m%d", time_info);
+				strftime(buffer, 15, "%Y%m%d", local_time_info);
+			} else if (fs[1] == 'd') {
+				strftime(buffer, 15, "%Y%m%d", gm_time_info);
 			} else if (fs[2] == 'H') {
 				if (fs[1] == '.') {
-					strftime(buffer, 15, "%H.%M.%S", time_info);
+					strftime(buffer, 15, "%H.%M.%S", local_time_info);
 				} else if (fs[1] == '-')
-					strftime(buffer, 15, "%H-%M-%S", time_info);
+					strftime(buffer, 15, "%H-%M-%S", local_time_info);
+			} else if (fs[2] == 'h') {
+				if (fs[1] == '.') {
+					strftime(buffer, 15, "%H.%M.%S", gm_time_info);
+				} else if (fs[1] == '-')
+					strftime(buffer, 15, "%H-%M-%S", gm_time_info);
 			} else if (fs[2] == 'D') {
 				if (fs[1] == '.') {
-					strftime(buffer, 15, "%Y.%m.%d", time_info);
+					strftime(buffer, 15, "%Y.%m.%d", local_time_info);
 				} else if (fs[1] == '-')
-					strftime(buffer, 15, "%Y-%m-%d", time_info);
+					strftime(buffer, 15, "%Y-%m-%d", local_time_info);
+			} else if (fs[2] == 'd') {
+				if (fs[1] == '.') {
+					strftime(buffer, 15, "%Y.%m.%d", gm_time_info);
+				} else if (fs[1] == '-')
+					strftime(buffer, 15, "%Y-%m-%d", gm_time_info);
 			}
 			strncpy(tmp, format, fs - format);
 			strcat(tmp, buffer);
-			if (fs[1] == 'D' || fs[1] == 'H') {
+			if (fs[1] == 'D' || fs[1] == 'H' || fs[1] == 'd' || fs[1] == 'h') {
 				strcat(tmp, fs + 2);
 			} else {
 				strcat(tmp, fs + 3);
