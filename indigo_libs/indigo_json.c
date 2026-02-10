@@ -623,7 +623,6 @@ pnt += size; \
 size = (long)(pnt - output_buffer); \
 if (size + 1024 > buffer_size) { \
 buffer_size *= 2; \
-printf("realloc to %ld\n", buffer_size); \
 output_buffer = indigo_safe_realloc(output_buffer, buffer_size); \
 pnt = output_buffer + size; \
 } \
