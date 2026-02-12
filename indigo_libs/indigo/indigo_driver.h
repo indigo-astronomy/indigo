@@ -352,7 +352,7 @@ INDIGO_EXTERN indigo_result indigo_global_unlock(indigo_device *device);
 
 /** Attach callback function.
  */
-INDIGO_EXTERN indigo_result indigo_device_attach(indigo_device *device, const char* driver_name, indigo_version version, int interface);
+INDIGO_EXTERN indigo_result indigo_device_attach(indigo_device *device, const char* driver_name, indigo_version version, int interface_mask);
 
 /** Enumerate properties callback function.
  */

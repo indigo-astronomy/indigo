@@ -600,7 +600,7 @@ int indigo_compensate_backlash(int requested_position, int current_position, int
 	return target_position;
 }
 
-indigo_result indigo_device_attach(indigo_device *device, const char* driver_name, indigo_version version, int interface) {
+indigo_result indigo_device_attach(indigo_device *device, const char* driver_name, indigo_version version, int interface_mask) {
 	assert(device != NULL);
 	assert(device != NULL);
 	if (DEVICE_CONTEXT == NULL) {
@@ -626,7 +626,7 @@ indigo_result indigo_device_attach(indigo_device *device, const char* driver_nam
 			indigo_version = 0x0200;
 		}
 		indigo_init_text_item(INFO_DEVICE_VERSION_ITEM, INFO_DEVICE_VERSION_ITEM_NAME, "Driver version", "%d.%d.%d.%d", INDIGO_VERSION_MAJOR(indigo_version), INDIGO_VERSION_MINOR(indigo_version), INDIGO_VERSION_MAJOR(version), INDIGO_VERSION_MINOR(version));
-		indigo_init_text_item(INFO_DEVICE_INTERFACE_ITEM, INFO_DEVICE_INTERFACE_ITEM_NAME, "Interface", "%u", interface);
+		indigo_init_text_item(INFO_DEVICE_INTERFACE_ITEM, INFO_DEVICE_INTERFACE_ITEM_NAME, "Interface", "%u", interface_mask);
 		indigo_init_text_item(INFO_DEVICE_MODEL_ITEM, INFO_DEVICE_MODEL_ITEM_NAME, "Model", device->name);
 		indigo_init_text_item(INFO_DEVICE_FW_REVISION_ITEM, INFO_DEVICE_FW_REVISION_ITEM_NAME, "Firmware Rev.", "N/A");
 		indigo_init_text_item(INFO_DEVICE_HW_REVISION_ITEM, INFO_DEVICE_HW_REVISION_ITEM_NAME, "Hardware Rev.", "N/A");

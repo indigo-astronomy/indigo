@@ -824,6 +824,10 @@ INDIGO_EXTERN bool indigo_reshare_remote_devices;
  */
 INDIGO_EXTERN bool indigo_use_host_suffix;
 
+/** Automatically enumerate properties on attach. default is true, can be set to false to speed up attach if client will enumerate properties itself.
+ */
+INDIGO_EXTERN bool indigo_autoenumerate;
+
 /** Is sandboxed environment (macOS only).
  */
 INDIGO_EXTERN bool indigo_is_sandboxed;
