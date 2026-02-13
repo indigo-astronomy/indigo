@@ -113,6 +113,10 @@ INDIGO_EXTERN const wchar_t *indigo_char_to_wchar(const char *string);
 #define INDIGO_STRCPYW(dest, src) strcpy(dest, src)
 #endif
 
+/** Initialize uni I/O
+ */
+
+INDIGO_EXTERN void indigo_init_uni_io();
 
 /** Decode last error to string.
  */
@@ -296,6 +300,10 @@ INDIGO_EXTERN char* indigo_uni_realpath(const char* path, char* resolved_path);
 /** Make base name.
  */
 INDIGO_EXTERN char* indigo_uni_basename(const char* path);
+
+/** Get working directory.
+ */
+INDIGO_EXTERN char *indigo_uni_getcwd();
 
 /** Scan folder for files matching filter.
  */

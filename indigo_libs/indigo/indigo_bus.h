@@ -395,6 +395,29 @@ typedef struct {
 	pthread_mutex_t mutext;							///< BLOB mutex
 } indigo_blob_entry;
 
+/** Device driver entrypoint actions
+ */
+typedef enum {
+	INDIGO_DRIVER_INIT,
+	INDIGO_DRIVER_INFO,
+	INDIGO_DRIVER_SHUTDOWN
+} indigo_driver_action;
+
+/** Device driver info structure
+ */
+typedef struct {
+	char description[INDIGO_NAME_SIZE];
+	char name[INDIGO_NAME_SIZE];
+	uint32_t version;  /* version - MSB, revision - LSB */
+	bool multi_device_support;
+	indigo_driver_action status;
+} indigo_driver_info;
+
+/** Device driver entry point prototype
+ */
+
+typedef indigo_result (*driver_entry_point)(indigo_driver_action, indigo_driver_info*);
+
 /** Last diagnostic messages.
  */
 INDIGO_EXTERN char *indigo_last_message;

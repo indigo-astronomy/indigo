@@ -1984,10 +1984,6 @@ int main(int argc, const char * argv[]) {
 	}
 #elif defined(INDIGO_WINDOWS)
 	WSADATA wsaData;
-	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
-		indigo_error("WSAStartup failed: %d", WSAGetLastError());
-		exit(0);
-	}
 	server_main();
 #endif
 }

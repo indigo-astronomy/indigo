@@ -239,33 +239,10 @@ extern "C" {
 #define CONFIG_READER								"CONFIG_READER"
 #define MAX_ADDITIONAL_INSTANCES		4
 
-/** Device driver entrypoint actions
- */
-typedef enum {
-	INDIGO_DRIVER_INIT,
-	INDIGO_DRIVER_INFO,
-	INDIGO_DRIVER_SHUTDOWN
-} indigo_driver_action;
-
 /** Version major and minor
  */
 #define INDIGO_VERSION_MAJOR(ver) ((ver >> 8) & 0xff)
 #define INDIGO_VERSION_MINOR(ver) (ver & 0xff)
-
-/** Device driver info structure
- */
-typedef struct {
-	char description[INDIGO_NAME_SIZE];
-	char name[INDIGO_NAME_SIZE];
-	uint32_t version;  /* version - MSB, revision - LSB */
-	bool multi_device_support;
-	indigo_driver_action status;
-} indigo_driver_info;
-
-/** Device driver entry point prototype
- */
-
-typedef indigo_result (*driver_entry_point)(indigo_driver_action, indigo_driver_info*);
 
 /** Device context structure.
  */

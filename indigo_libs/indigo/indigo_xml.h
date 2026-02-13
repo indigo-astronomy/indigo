@@ -51,7 +51,7 @@ INDIGO_EXTERN bool indigo_use_blob_urls;
 /** Autoenumerate properties for remote INDIGO servers;
  */
 
-extern bool indigo_autoenumerate;
+INDIGO_EXTERN bool indigo_autoenumerate;
 
 /** XML wire protocol parser.
  */

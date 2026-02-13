@@ -72,6 +72,16 @@ indigo_uni_handle *indigo_stdin_handle = &_indigo_stdin_handle;
 indigo_uni_handle *indigo_stdout_handle = &_indigo_stdout_handle;
 indigo_uni_handle *indigo_stderr_handle = &_indigo_stderr_handle;
 
+void indigo_init_uni_io() {
+#if defined(INDIGO_WINDOWS)
+	WSADATA wsaData;
+	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
+		indigo_error("WSAStartup failed: %d", WSAGetLastError());
+		exit(0);
+	}
+#endif
+}
+
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 indigo_uni_handle *indigo_uni_create_file_handle(int fd, int log_level) {
 	indigo_uni_handle *handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
@@ -1732,6 +1742,16 @@ char *indigo_uni_basename(const char *path) {
 #endif
 }
 
+char *indigo_uni_getcwd() {
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	return getcwd(NULL, 0);
+#elif defined(INDIGO_WINDOWS)
+	return _getcwd(NULL, 0);
+#else
+#pragma message ("TODO: indigo_uni_getcwd()")
+#endif
+}
+
 int indigo_uni_scandir(const char* folder, char ***list, bool (*filter)(const char *)) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	int result = -1;
@@ -1883,3 +1903,4 @@ void indigo_rename_thread(char *format, ...) {
 	pthread_setname_np(name);
 #endif
 }
+
