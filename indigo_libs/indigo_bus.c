@@ -149,7 +149,7 @@ static void free_log_buffers(void) {
 //	indigo_safe_free(indigo_temp_log_buffer);
 }
 
-#if defined(INDIGO_WINDOWS)
+#if defined(INDIGO_WINDOWS) && !defined(__GNUC__)
 
 // https://stackoverflow.com/questions/10905892/equivalent-of-gettimeday-for-windows
 
@@ -443,6 +443,7 @@ indigo_result indigo_start() {
 			indigo_log_level = INDIGO_LOG_TRACE;
 		}
 	}
+	indigo_init_uni_io();
 	pthread_mutex_lock(&device_mutex);
 	pthread_mutex_lock(&client_mutex);
 	if (!is_started) {
