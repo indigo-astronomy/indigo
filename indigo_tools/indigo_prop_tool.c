@@ -19,13 +19,8 @@
 // version history
 // 2.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <unistd.h>
 #include <string.h>
 #include <signal.h>
-#include <fcntl.h>
 #include <ctype.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -38,6 +33,7 @@
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_client.h>
 #include <indigo/indigo_driver_xml.h>
+#include <indigo/indigo_uni_io.h>
 
 #include <indigo/indigo_service_discovery.h>
 
@@ -95,24 +91,20 @@ void stop_waiting_if_requested(indigo_property_state property_state) {
 }
 
 int read_file(const char *file_name, char **file_data) {
-	int size = 0;
-	FILE *f = fopen(file_name, "rb");
-	if (f == NULL)  {
-		*file_data = NULL;
-		return -1;
+	indigo_uni_handle *handle = indigo_uni_open_file(file_name, INDIGO_LOG_ERROR);
+	if (handle) {
+		long size = indigo_uni_seek(handle, 0, SEEK_END);
+		*file_data = indigo_safe_malloc(size + 1);
+		if (indigo_uni_read(handle, *file_data, size) != size) {
+			indigo_safe_free(*file_data);
+			*file_data = NULL;
+			return -2;
+		}
+		indigo_uni_close(&handle);
+		return (int)size;
 	}
-	fseek(f, 0, SEEK_END);
-	size = (int)ftell(f);
-	fseek(f, 0, SEEK_SET);
-	*file_data = (char *)malloc(size+1);
-	if (size != fread(*file_data, sizeof(char), size, f)) {
-		free(*file_data);
-		file_data = NULL;
-		return -2;
-	}
-	fclose(f);
-	(*file_data)[size] = 0;
-	return size;
+	
+	return -1;
 }
 
 
@@ -157,7 +149,7 @@ int process_quotes(char *value) {
 	char *ptr;
 
 	if (!value) {
-		errno = EINVAL;
+		// errno = EINVAL;
 		return -1;
 	}
 
@@ -190,7 +182,7 @@ int parse_list_property_string(const char *prop_string, property_list_request *p
 	sprintf(format, "%%%d[^.].%%%ds", INDIGO_NAME_SIZE, INDIGO_NAME_SIZE);
 	res = sscanf(prop_string, format, plr->device_name, plr->property_name);
 	if (res > 2) {
-		errno = EINVAL;
+		// errno = EINVAL;
 		return -1;
 	}
 	trim_ending_spaces(plr->property_name);
@@ -204,14 +196,14 @@ int parse_set_property_string(const char *prop_string, property_change_request *
 	char remainder[REMINDER_MAX_SIZE];
 
 	if ((prop_string == NULL) || ( *prop_string == '\0')) {
-		errno = EINVAL;
+		// errno = EINVAL;
 		return -1;
 	}
 
 	sprintf(format, "%%%d[^.].%%%d[^.].%%%d[^=]=%%%d[^\r]s", INDIGO_NAME_SIZE, INDIGO_NAME_SIZE, INDIGO_NAME_SIZE, REMINDER_MAX_SIZE);
 	res = sscanf(prop_string, format, scr->device_name, scr->property_name, scr->item_name[0], remainder);
 	if (res != 4) {
-		errno = EINVAL;
+		// errno = EINVAL;
 		return -1;
 	}
 	trim_ending_spaces(scr->item_name[0]);
@@ -233,13 +225,13 @@ int parse_set_property_string(const char *prop_string, property_change_request *
 			sprintf(format, "%%%d[^=]=%%%d[^\r]s", INDIGO_NAME_SIZE, REMINDER_MAX_SIZE);
 			res = sscanf(remainder, format, scr->item_name[scr->item_count-1], remainder);
 			if (res != 2) {
-				errno = EINVAL;
+				// errno = EINVAL;
 				return -1;
 			}
 			trim_spaces(scr->item_name[scr->item_count-1]);
 			trim_spaces(remainder);
 		} else {
-			errno = EINVAL;
+			// errno = EINVAL;
 			return -1;
 		}
 	}
@@ -253,14 +245,14 @@ int parse_get_property_string(const char *prop_string, property_get_request *sgr
 	char remainder[REMINDER_MAX_SIZE];
 
 	if ((prop_string == NULL) || ( *prop_string == '\0')) {
-		errno = EINVAL;
+		// errno = EINVAL;
 		return -1;
 	}
 
 	sprintf(format, "%%%d[^.].%%%d[^.].%%%d[^\r]s", INDIGO_NAME_SIZE, INDIGO_NAME_SIZE, REMINDER_MAX_SIZE);
 	res = sscanf(prop_string, format, sgr->device_name, sgr->property_name, remainder);
 	if (res != 3) {
-		errno = EINVAL;
+		// errno = EINVAL;
 		return -1;
 	}
 	trim_spaces(remainder);
@@ -278,7 +270,7 @@ int parse_get_property_string(const char *prop_string, property_get_request *sgr
 		} else if (res == 2) {
 			sgr->item_count++;
 		} else {
-			errno = EINVAL;
+			// errno = EINVAL;
 			return -1;
 		}
 	}
@@ -287,16 +279,11 @@ int parse_get_property_string(const char *prop_string, property_get_request *sgr
 
 
 static void save_blob(char *filename, char *data, size_t length) {
-	int fd = open(filename, O_WRONLY | O_CREAT,  S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH );
-	if (fd == -1) {
-		INDIGO_ERROR(indigo_error("Open file %s failed: %s", filename, strerror(errno)));
-		return;
+	indigo_uni_handle *handle = indigo_uni_create_file(filename, INDIGO_LOG_ERROR);
+	if (handle != NULL) {
+		indigo_uni_write(handle, data, length);
+		indigo_uni_close(&handle);
 	}
-	int len = (int)write(fd, data, length);
-	if (len <= 0) {
-		INDIGO_ERROR(indigo_error("Write blob to file %s failed: %s", filename, strerror(errno)));
-	}
-	close(fd);
 }
 
 
@@ -483,12 +470,12 @@ static void print_property_get_filtered(indigo_property *property, const char *m
 			case INDIGO_BLOB_VECTOR:
 				if ((save_blobs) && (!indigo_use_blob_urls) && (item->blob.size > 0) && (property->state == INDIGO_OK_STATE)) {
 					snprintf(filename, PATH_MAX, "%s.%s.%s%s", property->device, property->name, item->name, item->blob.format);
-					sprintf(value_string[items_found], "file://%s/%s", getcwd(NULL, 0), filename);
+					sprintf(value_string[items_found], "file://%s/%s", indigo_uni_getcwd(), filename);
 					save_blob(filename, item->blob.value, item->blob.size);
 				} else if ((save_blobs) && (indigo_use_blob_urls) && (item->blob.url[0] != '\0') && (property->state == INDIGO_OK_STATE)) {
 					if (indigo_populate_http_blob_item(item)) {
 						snprintf(filename, PATH_MAX, "%s.%s.%s%s", property->device, property->name, item->name, item->blob.format);
-						sprintf(value_string[items_found], "file://%s/%s", getcwd(NULL, 0), filename);
+						sprintf(value_string[items_found], "file://%s/%s", indigo_uni_getcwd(), filename);
 						save_blob(filename, item->blob.value, item->blob.size);
 						free(item->blob.value);
 						item->blob.value = NULL;
@@ -673,7 +660,7 @@ static indigo_result client_define_property(indigo_client *client, indigo_device
 						if (!strcmp(AGENT_SCRIPTING_SCRIPT_ITEM_NAME, change_request.item_name[i])) {
 							int res = read_file(change_request.value_string[i], &txt_values[i]);
 							if (res < 0) {
-								fprintf(stderr, "Can't read '%s' file: %s\n", change_request.value_string[i], strerror(errno));
+								fprintf(stderr, "Can't read '%s' file\n", change_request.value_string[i]);
 								exit(1);
 							}
 							file_provided = true;
@@ -736,7 +723,7 @@ static indigo_result client_define_property(indigo_client *client, indigo_device
 							if (strcmp(item->name, change_request.item_name[r])) continue;
 							int size = read_file(change_request.value_string[r], (char**)&item->blob.value);
 							if (size < 0) {
-								fprintf(stderr, "Can't read '%s' file: %s\n", change_request.value_string[r], strerror(errno));
+								fprintf(stderr, "Can't read '%s' file\n", change_request.value_string[r]);
 								exit(1);
 							} else {
 								item->blob.size = size;
@@ -890,7 +877,7 @@ int main(int argc, const char * argv[]) {
 	indigo_use_host_suffix = false;
 	indigo_use_blob_urls = true;
 	indigo_autoenumerate = false;
-
+	
 	if (argc < 2) {
 		print_help(argv[0]);
 		return 0;
