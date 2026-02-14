@@ -350,7 +350,11 @@ void indigo_driver_log(indigo_log_levels log_level, const char *driver, const ch
 		va_start(args, format);
 		vsnprintf(indigo_temp_log_buffer, LOG_MESSAGE_SIZE, format, args);
 		va_end(args);
-		indigo_log_on_level(log_level, "%s[%s:%d]: %s", driver, function, line, indigo_temp_log_buffer);
+		if (log_level == INDIGO_LOG_INFO) {
+			indigo_log_on_level(log_level, "%s: %s", driver, indigo_temp_log_buffer);
+		} else {
+			indigo_log_on_level(log_level, "%s[%s:%d]: %s", driver, function, line, indigo_temp_log_buffer);
+		}
 		pthread_mutex_unlock(&log_mutex);
 	}
 }
