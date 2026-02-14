@@ -948,7 +948,7 @@ INDIGO_EXTERN bool indigo_device_name_exists(const char *name);
  */
 INDIGO_EXTERN bool indigo_make_name_unique(char *name, const char *format, ...);
 
-#if defined(INDIGO_WINDOWS)
+#if defined(INDIGO_WINDOWS) && _MSC_VER
 
 INDIGO_EXTERN int gettimeofday(struct timeval * tp, struct timezone * tzp);
 

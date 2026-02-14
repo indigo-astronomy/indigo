@@ -239,11 +239,6 @@ extern "C" {
 #define CONFIG_READER								"CONFIG_READER"
 #define MAX_ADDITIONAL_INSTANCES		4
 
-/** Version major and minor
- */
-#define INDIGO_VERSION_MAJOR(ver) ((ver >> 8) & 0xff)
-#define INDIGO_VERSION_MINOR(ver) (ver & 0xff)
-
 /** Device context structure.
  */
 

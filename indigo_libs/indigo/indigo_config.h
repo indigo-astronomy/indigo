@@ -61,6 +61,12 @@ INDIGO_EXTERN char *indigo_build_commit;
 #define INDIGO_BUILD_TIME indigo_build_time
 INDIGO_EXTERN char *indigo_build_time;
 #endif
+
+/** Vesrtion major and minor
+ */
+#define INDIGO_VERSION_MAJOR(ver) (((ver) >> 8) & 0xFF)
+#define INDIGO_VERSION_MINOR(ver) ((ver) & 0xFF)
+
 /** Conditional compilation wrapper for TRACE log level
  */
 #define INDIGO_TRACE(c) c

@@ -32,9 +32,8 @@
 
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_client.h>
-#include <indigo/indigo_driver_xml.h>
+#include <indigo/indigo_names.h>
 #include <indigo/indigo_uni_io.h>
-
 #include <indigo/indigo_service_discovery.h>
 
 #define INDIGO_DEFAULT_PORT 7624

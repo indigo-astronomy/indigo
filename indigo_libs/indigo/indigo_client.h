@@ -28,7 +28,7 @@
 #include <pthread.h>
 #include <stdbool.h>
 #include <indigo/indigo_bus.h>
-#include <indigo/indigo_driver.h>
+//#include <indigo/indigo_driver.h>
 
 #if defined(INDIGO_WINDOWS)
 #if defined(INDIGO_WINDOWS_DLL)

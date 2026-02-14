@@ -1983,7 +1983,6 @@ int main(int argc, const char * argv[]) {
 		server_main();
 	}
 #elif defined(INDIGO_WINDOWS)
-	WSADATA wsaData;
 	server_main();
 #endif
 }

@@ -149,7 +149,7 @@ static void free_log_buffers(void) {
 //	indigo_safe_free(indigo_temp_log_buffer);
 }
 
-#if defined(INDIGO_WINDOWS) && !defined(__GNUC__)
+#if defined(INDIGO_WINDOWS) && _MSC_VER
 
 // https://stackoverflow.com/questions/10905892/equivalent-of-gettimeday-for-windows
 

@@ -37,14 +37,16 @@
 #define indigo_timezone timezone
 #elif defined(INDIGO_WINDOWS)
 #include <winsock2.h>
-#define INDIGO_PATH_SEPATATOR	'\\'
+#if _MSC_VER
+#define stat _stat
 #define PATH_MAX (_MAX_DRIVE + _MAX_DIR + _MAX_FNAME + _MAX_EXT + 1)
+#endif
+#define INDIGO_PATH_SEPATATOR	'\\'
 #define NAME_MAX (_MAX_FNAME + _MAX_EXT + 1)
 #define strcasecmp _stricmp
 #define strncasecmp _strnicmp
 #define strtok_r strtok_s
 #define strdup _strdup
-#define stat _stat
 #define tzset _tzset
 #define indigo_timezone _timezone
 #endif
