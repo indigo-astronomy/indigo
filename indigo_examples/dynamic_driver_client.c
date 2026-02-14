@@ -23,8 +23,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
+
 #include <indigo/indigo_bus.h>
+#include <indigo/indigo_names.h>
 #include <indigo/indigo_client.h>
 
 #define CCD_SIMULATOR "CCD Imager Simulator"
@@ -38,14 +39,12 @@ static int count = 5;
 */
 
 static void start_exposure(indigo_device *device, indigo_client *client, indigo_property *property) {
-	(void*)(property);
 	static const char * items[] = { CCD_EXPOSURE_ITEM_NAME };
 	static const double values[] = { 3.0 };
 	indigo_change_number_property(client, CCD_SIMULATOR, CCD_EXPOSURE_PROPERTY_NAME, 1, items, values);
 }
 
 static void set_image_format(indigo_device *device, indigo_client *client, indigo_property *property) {
-	(void*)(property);
 	static const char * items[] = { CCD_IMAGE_FORMAT_FITS_ITEM_NAME };
 	static const bool values[] = { true };
 	indigo_change_switch_property(client, CCD_SIMULATOR, CCD_IMAGE_FORMAT_PROPERTY_NAME, 1, items, values);

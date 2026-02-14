@@ -26,7 +26,9 @@
 #include <unistd.h>
 #include <errno.h>
 #include <signal.h>
+
 #include <indigo/indigo_bus.h>
+#include <indigo/indigo_names.h>
 #include <indigo/indigo_client.h>
 #include <indigo/indigo_client_xml.h>
 
@@ -165,10 +167,16 @@ int main(int argc, const char * argv[]) {
 		close(output[0]);
 		indigo_set_log_level(INDIGO_LOG_INFO);
 		indigo_start();
-		indigo_device *protocol_adapter = indigo_xml_client_adapter("indigo_ccd_simulator", "", input[0], output[1]);
+		indigo_uni_handle *in = indigo_uni_create_file_handle(input[0], INDIGO_LOG_TRACE);
+		indigo_uni_handle *out = indigo_uni_create_file_handle(output[1], INDIGO_LOG_TRACE);
+		indigo_device *protocol_adapter = indigo_xml_client_adapter("indigo_ccd_simulator", "", in, out);
 		indigo_attach_device(protocol_adapter);
 		indigo_attach_client(&client);
 		indigo_xml_parse(protocol_adapter, &client);
+		indigo_detach_device(protocol_adapter);
+		indigo_release_xml_client_adapter(protocol_adapter);
+		indigo_uni_close(&in);
+		indigo_uni_close(&out);
 		indigo_stop();
 	}
 	return 0;
