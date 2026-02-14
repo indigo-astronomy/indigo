@@ -259,8 +259,6 @@ static void *subprocess_thread(indigo_subprocess_entry *subprocess) {
 	int sleep_interval = 5;
 	while (subprocess->pid >= 0) {
 		int input[2], output[2];
-		indigo_uni_handle *in = indigo_uni_create_file_handle(input[0], INDIGO_LOG_TRACE);
-		indigo_uni_handle *out = indigo_uni_create_file_handle(output[0], INDIGO_LOG_TRACE);
 		if (pipe(input) < 0 || pipe(output) < 0) {
 			INDIGO_ERROR(indigo_error("Can't create local pipe for subprocess %s (%s)", subprocess->executable, strerror(errno)));
 			strncpy(subprocess->last_error, strerror(errno), sizeof(subprocess->last_error));
@@ -282,11 +280,15 @@ static void *subprocess_thread(indigo_subprocess_entry *subprocess) {
 			close(input[1]);
 			close(output[0]);
 			char *slash = strrchr(subprocess->executable, '/');
+			indigo_uni_handle *in = indigo_uni_create_file_handle(input[0], INDIGO_LOG_TRACE);
+			indigo_uni_handle *out = indigo_uni_create_file_handle(output[1], INDIGO_LOG_TRACE);
 			subprocess->protocol_adapter = indigo_xml_client_adapter(slash ? slash + 1 : subprocess->executable, "", &in, &out);
 			indigo_attach_device(subprocess->protocol_adapter);
 			indigo_xml_parse(subprocess->protocol_adapter, NULL);
 			indigo_detach_device(subprocess->protocol_adapter);
 			indigo_release_xml_client_adapter(subprocess->protocol_adapter);
+			indigo_uni_close(&in);
+			indigo_uni_close(&out);
 		}
 		if (subprocess->pid >= 0) {
 			 indigo_usleep(sleep_interval * 1000000);
