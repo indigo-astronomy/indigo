@@ -43,7 +43,7 @@
 #include <indigo/indigo_version.h>
 #include <indigo/indigo_driver_xml.h>
 
-indigo_client *indigo_xml_device_adapter(indigo_uni_handle **input, indigo_uni_handle **output) {
+indigo_client *indigo_xml_device_adapter(indigo_uni_handle *input, indigo_uni_handle *output) {
 	static indigo_client client_template = {
 		"XML Driver Adapter", false, NULL, INDIGO_OK, INDIGO_VERSION_NONE, NULL,
 		NULL,
@@ -55,11 +55,11 @@ indigo_client *indigo_xml_device_adapter(indigo_uni_handle **input, indigo_uni_h
 	};
 	indigo_client *client = indigo_safe_malloc_copy(sizeof(indigo_client), &client_template);
 	indigo_adapter_context *client_context = indigo_safe_malloc(sizeof(indigo_adapter_context));
-	snprintf(client->name, sizeof(client->name), "XML Driver Adapter #%d", (*input)->fd);
+	snprintf(client->name, sizeof(client->name), "XML Driver Adapter #%d", input->index);
 	client_context->input = input;
 	client_context->output = output;
 	client->client_context = client_context;
-	client->is_remote = (*input)->type == INDIGO_TCP_HANDLE;
+	client->is_remote = input->type == INDIGO_TCP_HANDLE;
 	return client;
 }
 

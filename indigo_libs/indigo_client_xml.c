@@ -37,12 +37,10 @@ static indigo_result xml_client_detach(indigo_device *device) {
 	if (device_context->output == NULL) {
 		return INDIGO_OK;
 	}
-	indigo_uni_close(device_context->input);
-	indigo_uni_close(device_context->output);
 	return INDIGO_OK;
 }
 
-indigo_device *indigo_xml_client_adapter(char *name, char *url_prefix, indigo_uni_handle **input, indigo_uni_handle **output) {
+indigo_device *indigo_xml_client_adapter(char *name, char *url_prefix, indigo_uni_handle *input, indigo_uni_handle *output) {
 	static indigo_device device_template = INDIGO_DEVICE_INITIALIZER(
 		"XML Client Adapter", NULL,
 		indigo_xml_client_parser_enumerate_properties,
@@ -52,7 +50,7 @@ indigo_device *indigo_xml_client_adapter(char *name, char *url_prefix, indigo_un
 	);
 	indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &device_template);
 	sprintf(device->name, "@ %s", name);
-	device->is_remote = (*input)->type == INDIGO_TCP_HANDLE;
+	device->is_remote = input->type == INDIGO_TCP_HANDLE;
 	indigo_adapter_context *device_context = indigo_safe_malloc(sizeof(indigo_adapter_context));
 	device_context->input = input;
 	device_context->output = output;

@@ -267,7 +267,7 @@ indigo_result indigo_load_properties(indigo_device *device, bool default_propert
 		indigo_client *client = indigo_safe_malloc(sizeof(indigo_client));
 		strcpy(client->name, CONFIG_READER);
 		indigo_adapter_context *context = indigo_safe_malloc(sizeof(indigo_adapter_context));
-		context->input = &handle;
+		context->input = handle;
 		client->client_context = context;
 		client->version = INDIGO_VERSION_CURRENT;
 		indigo_xml_parse(NULL, client);
@@ -282,7 +282,7 @@ indigo_result indigo_load_properties(indigo_device *device, bool default_propert
 		indigo_client *client = indigo_safe_malloc(sizeof(indigo_client));
 		strcpy(client->name, CONFIG_READER);
 		indigo_adapter_context *context = indigo_safe_malloc(sizeof(indigo_adapter_context));
-		context->input = &handle;
+		context->input = handle;
 		client->client_context = context;
 		client->version = INDIGO_VERSION_CURRENT;
 		indigo_xml_parse(NULL, client);

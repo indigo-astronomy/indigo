@@ -1173,7 +1173,7 @@ void write_c_main_source(void) {
 	write_line("int main(int argc, const char * argv[]) {");
 	write_line("\tindigo_main_argc = argc;");
 	write_line("\tindigo_main_argv = argv;");
-	write_line("\tindigo_client *protocol_adapter = indigo_xml_device_adapter(&indigo_stdin_handle, &indigo_stdout_handle);");
+	write_line("\tindigo_client *protocol_adapter = indigo_xml_device_adapter(indigo_stdin_handle, indigo_stdout_handle);");
 	write_line("\tindigo_start();");
 	write_line("\tindigo_%s_%s(INDIGO_DRIVER_INIT, NULL);", driver.devices->type, driver.name);
 	write_line("\tindigo_attach_client(protocol_adapter);");

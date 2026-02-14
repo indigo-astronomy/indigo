@@ -35,7 +35,7 @@
 #include <indigo/indigo_json.h>
 #include <indigo/indigo_io.h>
 
-indigo_client *indigo_json_device_adapter(indigo_uni_handle **input, indigo_uni_handle **output, bool web_socket) {
+indigo_client *indigo_json_device_adapter(indigo_uni_handle *input, indigo_uni_handle *output, bool web_socket) {
 	static indigo_client client_template = {
 		"JSON Driver Adapter", false, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT, NULL,
 		NULL,
@@ -48,12 +48,12 @@ indigo_client *indigo_json_device_adapter(indigo_uni_handle **input, indigo_uni_
 	};
 	indigo_client *client = indigo_safe_malloc_copy(sizeof(indigo_client), &client_template);
 	indigo_adapter_context *client_context = indigo_safe_malloc(sizeof(indigo_adapter_context));
-	snprintf(client->name, sizeof(client->name), "JSON Driver Adapter #%d", (*input)->fd);
+	snprintf(client->name, sizeof(client->name), "JSON Driver Adapter #%d", input->index);
 	client_context->input = input;
 	client_context->output = output;
 	client_context->web_socket = web_socket;
 	client->client_context = client_context;
-	client->is_remote = (*input)->type == INDIGO_TCP_HANDLE;
+	client->is_remote = input->type == INDIGO_TCP_HANDLE;
 	return client;
 }
 
