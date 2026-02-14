@@ -23,7 +23,7 @@
  \file indigo_ccd_mi.c
  */
 
-#define DRIVER_VERSION 0x0200001C
+#define DRIVER_VERSION 0x0200001D
 #define DRIVER_NAME "indigo_ccd_mi"
 
 #include <ctype.h>
@@ -869,13 +869,13 @@ static libusb_hotplug_callback_handle callback_handle;
 
 indigo_result indigo_ccd_mi(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
-	
+
 	SET_DRIVER_INFO(info, "Moravian Instruments Camera", __FUNCTION__, DRIVER_VERSION, true, last_action);
-	
+
 	if (action == last_action) {
 		return INDIGO_OK;
 	}
-	
+
 	switch(action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
@@ -886,7 +886,7 @@ indigo_result indigo_ccd_mi(indigo_driver_action action, indigo_driver_info *inf
 			int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, MI_VID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
 			return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
-			
+
 		case INDIGO_DRIVER_SHUTDOWN:
 			for (int i = 0; i < MAX_DEVICES; i++) {
 				VERIFY_NOT_CONNECTED(devices[i]);
@@ -894,7 +894,7 @@ indigo_result indigo_ccd_mi(indigo_driver_action action, indigo_driver_info *inf
 			last_action = action;
 			libusb_hotplug_deregister_callback(NULL, callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
-			
+
 			for (int i = MAX_DEVICES - 1; i >=0; i--) {
 				indigo_device *device = devices[i];
 				if (device) {
@@ -910,12 +910,12 @@ indigo_result indigo_ccd_mi(indigo_driver_action action, indigo_driver_info *inf
 					devices[i] = NULL;
 				}
 			}
-			
+
 			break;
-			
+
 		case INDIGO_DRIVER_INFO:
 			break;
 	}
-	
+
 	return INDIGO_OK;
 }
