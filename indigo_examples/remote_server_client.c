@@ -28,7 +28,7 @@
 #include <indigo/indigo_names.h>
 #include <indigo/indigo_client.h>
 
-#define SERVICE	"localhost"
+#define SERVICE	"indigosky"
 #define CCD_SIMULATOR "CCD Imager Simulator @ " SERVICE
 
 static bool connected = false;
@@ -155,7 +155,7 @@ int main(int argc, const char * argv[]) {
 //	freopen("indigo.log", "w", stderr);
 //#endif
 
-	indigo_set_log_level(INDIGO_LOG_TRACE);
+	indigo_set_log_level(INDIGO_LOG_DEBUG);
 	indigo_start();
 
 	indigo_server_entry *server;
