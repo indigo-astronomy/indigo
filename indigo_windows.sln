@@ -172,6 +172,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_aux_cloudwatcher", "
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_prop_tool", "indigo_tools\indigo_prop_tool.vcxproj", "{56E115D1-037B-4D7E-9766-4ECDC23B12D5}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "remote_server_client", "indigo_examples\remote_server_client.vcxproj", "{1D3AD4DF-C813-4B44-BAB4-08A25429E4BD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|ARM64 = Debug|ARM64
@@ -1202,6 +1204,18 @@ Global
 		{56E115D1-037B-4D7E-9766-4ECDC23B12D5}.Release|x64.Build.0 = Release|x64
 		{56E115D1-037B-4D7E-9766-4ECDC23B12D5}.Release|x86.ActiveCfg = Release|Win32
 		{56E115D1-037B-4D7E-9766-4ECDC23B12D5}.Release|x86.Build.0 = Release|Win32
+		{1D3AD4DF-C813-4B44-BAB4-08A25429E4BD}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{1D3AD4DF-C813-4B44-BAB4-08A25429E4BD}.Debug|ARM64.Build.0 = Debug|ARM64
+		{1D3AD4DF-C813-4B44-BAB4-08A25429E4BD}.Debug|x64.ActiveCfg = Debug|x64
+		{1D3AD4DF-C813-4B44-BAB4-08A25429E4BD}.Debug|x64.Build.0 = Debug|x64
+		{1D3AD4DF-C813-4B44-BAB4-08A25429E4BD}.Debug|x86.ActiveCfg = Debug|Win32
+		{1D3AD4DF-C813-4B44-BAB4-08A25429E4BD}.Debug|x86.Build.0 = Debug|Win32
+		{1D3AD4DF-C813-4B44-BAB4-08A25429E4BD}.Release|ARM64.ActiveCfg = Release|ARM64
+		{1D3AD4DF-C813-4B44-BAB4-08A25429E4BD}.Release|ARM64.Build.0 = Release|ARM64
+		{1D3AD4DF-C813-4B44-BAB4-08A25429E4BD}.Release|x64.ActiveCfg = Release|x64
+		{1D3AD4DF-C813-4B44-BAB4-08A25429E4BD}.Release|x64.Build.0 = Release|x64
+		{1D3AD4DF-C813-4B44-BAB4-08A25429E4BD}.Release|x86.ActiveCfg = Release|Win32
+		{1D3AD4DF-C813-4B44-BAB4-08A25429E4BD}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

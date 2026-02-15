@@ -682,7 +682,6 @@
 		599F61942BB494EA009065BC /* indigo_polynomial_fit.h in Headers */ = {isa = PBXBuildFile; fileRef = 599F61902BB494EA009065BC /* indigo_polynomial_fit.h */; };
 		599FC6862A0437F60030ED16 /* indigo_ptp.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FA0B1C22FB400900A15D19 /* indigo_ptp.h */; };
 		599FC68D2A0437F80030ED16 /* indigo_ptp.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FA0B1C22FB400900A15D19 /* indigo_ptp.h */; };
-		59A21E7D25BD849F00005965 /* libnovas.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DDEFC1D21EE39B300657C8F /* libnovas.a */; };
 		59A242DA22A2C6AE001C38F8 /* indigo_system_ascol.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DC782F621A6FCC7009859FD /* indigo_system_ascol.c */; };
 		59A242E322A2C6CE001C38F8 /* libascol.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DC782F921A6FCC7009859FD /* libascol.c */; };
 		59A242F422A5B45F001C38F8 /* indigo_focuser_steeldrive2.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A242E922A5B45E001C38F8 /* indigo_focuser_steeldrive2.h */; };
@@ -5007,7 +5006,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				59A21E7D25BD849F00005965 /* libnovas.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

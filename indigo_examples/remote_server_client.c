@@ -28,7 +28,7 @@
 #include <indigo/indigo_names.h>
 #include <indigo/indigo_client.h>
 
-#define SERVICE	"indigosky"
+#define SERVICE	"W11"
 #define CCD_SIMULATOR "CCD Imager Simulator @ " SERVICE
 
 static bool connected = false;
