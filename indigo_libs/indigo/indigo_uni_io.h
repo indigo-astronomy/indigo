@@ -265,6 +265,10 @@ INDIGO_EXTERN bool indigo_uni_lock_file(indigo_uni_handle *handle);
  */
 INDIGO_EXTERN bool indigo_uni_is_valid(indigo_uni_handle *handle);
 
+/** Kill socket connetion without closing handle.
+ */
+INDIGO_EXTERN void indigo_uni_kill_socket(indigo_uni_handle *handle);
+
 /** Close handle.
  */
 INDIGO_EXTERN void indigo_uni_close(indigo_uni_handle **handle);

@@ -493,7 +493,7 @@ indigo_result indigo_disconnect_server(indigo_server_entry *server) {
 	assert(server != NULL);
 	pthread_mutex_lock(&mutex);
 	if (server->handle != NULL) {
-		indigo_uni_close(&server->handle);
+		indigo_uni_kill_socket(server->handle);
 	}
 	server->shutdown = true;
 	bool thread_runing = server->thread_started;

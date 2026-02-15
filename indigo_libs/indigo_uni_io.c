@@ -1544,6 +1544,29 @@ bool indigo_uni_is_valid(indigo_uni_handle *handle) {
 	return false;
 }
 
+void indigo_uni_kill_socket(indigo_uni_handle *handle) {
+	if (handle == NULL) {
+		// indigo_error("%s used with NULL handle", __FUNCTION__);
+		return;
+	}
+	if (handle->type == INDIGO_TCP_HANDLE || handle->type == INDIGO_UDP_HANDLE) {
+		struct linger ling;
+		ling.l_onoff = 1;
+		ling.l_linger = 1;
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+		// Set linger option to avoid TIME_WAIT state
+		setsockopt(handle->fd, SOL_SOCKET, SO_LINGER, &ling, sizeof(ling));
+		shutdown(handle->fd, SHUT_RDWR);
+#elif defined(INDIGO_WINDOWS)
+		setsockopt(handle->sock, SOL_SOCKET, SO_LINGER, (const char*)&ling, sizeof(ling));
+		shutdown(handle->sock, SD_BOTH);
+#else
+#pragma message ("TODO: indigo_uni_kill_socket()")
+#endif
+		indigo_log_on_level(handle->log_level, "%d <- // Connection killed", handle->index);
+	}
+}
+
 void indigo_uni_close(indigo_uni_handle **handle) {
 	if (handle == NULL) {
 		// indigo_error("%s used with NULL handle", __FUNCTION__);
