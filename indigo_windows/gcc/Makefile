@@ -30,8 +30,10 @@ INDIGO_DIR      = $(INDIGO_BASE)/indigo_libs/
 CC              = gcc
 MDNS_DEFINES    = -DUNICODE -D_UNICODE -DWIN32 -DMINGW_HAS_SECURE_API=1 -DWIN32 -DNDEBUG -D_WINDOWS -D_USRDLL -DMDNS_DEBUGMSGS=0 -DWIN32_LEAN_AND_MEAN -DUSE_TCP_LOOPBACK -D_CRT_SECURE_NO_DEPRECATE -D_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1 -DNOT_HAVE_SA_LEN -DQT_BUILD_ZEROCONF_LIB -DQT_NETWORK_LIB -DQT_CORE_LIB
 MDNS_CFLAGS     = -fno-keep-inline-dllexport -g -Wall -Wextra $(MDNS_DEFINES)
-INDIGO_DEFINES  = -DINDIGO_WINDOWS -DINDIGO_WINDOWS_DLL -D_WIN32_WINNT=0x0600 -DWINVER=0x0600
-INDIGO_CFLAGS   = -O3 -fno-keep-inline-dllexport -g -Wall -Wextra $(INDIGO_DEFINES)
+INDIGO_DEFINES_DLL  = -DINDIGO_WINDOWS -DINDIGO_WINDOWS_DLL -D_WIN32_WINNT=0x0600 -DWINVER=0x0600
+INDIGO_DEFINES_EXE  = -DINDIGO_WINDOWS -D_WIN32_WINNT=0x0600 -DWINVER=0x0600
+INDIGO_CFLAGS   = -O3 -fno-keep-inline-dllexport -g -Wall -Wextra $(INDIGO_DEFINES_DLL)
+INDIGO_CFLAGS_EXE   = -O3 -fno-keep-inline-dllexport -g -Wall -Wextra $(INDIGO_DEFINES_EXE)
 INCPATH         = -I$(INDIGO_DIR) -I$(MDNS_DIR)
 LINKER          = gcc
 LFLAGS          = -shared -Wl,-subsystem,windows -mthreads -Wl,--out-implib,$(OUTPUT_DIR)/$(LIB_NAME).lib -Wl,--output-def,$(OUTPUT_DIR)/$(LIB_NAME).def -static-libgcc -static-libstdc++
@@ -105,7 +107,7 @@ $(OBJ_DIR)/indigo_version.o: $(INDIGO_DIR)/indigo_version.c directories
 	$(CC) -c $(INDIGO_CFLAGS) $(INCPATH) -o $@ $<
 
 $(OUTPUT_DIR)/indigo_prop_tool.exe: $(INDIGO_BASE)/indigo_tools/indigo_prop_tool.c
-	$(CC) $(INDIGO_CFLAGS) $(INCPATH) -o $@ $< $(OUTPUT_DIR)/$(LIB_NAME).lib
+	$(CC) $(INDIGO_CFLAGS_EXE) $(INCPATH) -o $@ $< $(OUTPUT_DIR)/$(LIB_NAME).lib
 
 BUNDLE_DIR = indigo_client_sdk_${VERSION}_${ARCH}
 PTHREAD_PATH = $(shell dirname `which $(CC)`)
