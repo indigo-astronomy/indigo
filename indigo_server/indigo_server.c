@@ -1584,14 +1584,14 @@ static void server_main() {
 				port = atoi(colon);
 			}
 			indigo_reshare_remote_devices = true;
-			indigo_connect_server(NULL, host, port, NULL);
+			indigo_connect_server(NULL, host, port, NULL, NULL);
 			i++;
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 		} else if ((!strcmp(server_argv[i], "-i") || !strcmp(server_argv[i], "--indi-driver")) && i < server_argc - 1) {
 			char executable[INDIGO_NAME_SIZE];
 			INDIGO_COPY_NAME(executable, server_argv[i + 1]);
 			indigo_reshare_remote_devices = true;
-			indigo_start_subprocess(executable, NULL);
+			indigo_start_subprocess(executable, NULL, NULL);
 			i++;
 #endif
 		} else if ((!strcmp(server_argv[i], "-T") || !strcmp(server_argv[i], "--master-token")) && i < server_argc - 1) {

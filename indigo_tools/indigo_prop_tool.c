@@ -869,6 +869,11 @@ static void print_help(const char *name) {
 	);
 }
 
+bool connected = false;
+
+void server_callback(indigo_server_entry *server, bool state) {
+	connected = state;
+}
 
 int main(int argc, const char * argv[]) {
 	indigo_main_argc = argc;
@@ -1076,12 +1081,11 @@ int main(int argc, const char * argv[]) {
 	indigo_start();
 	indigo_attach_client(&client);
 	indigo_server_entry *server;
-	indigo_connect_server(hostname, hostname, port, &server);
+	indigo_connect_server(hostname, hostname, port, &server, server_callback);
 	int wait_connection = 1000;
-	bool connected = false;
 	char error_message[INDIGO_VALUE_SIZE] = {0};
 	while (wait_connection--) {
-		if (true == (connected = indigo_connection_status(server, error_message))) {
+		if (connected) {
 			break;
 		} else {
 			indigo_usleep(10000);
@@ -1097,8 +1101,8 @@ int main(int argc, const char * argv[]) {
 	} else {
 		fprintf(stderr, "Connection failed: %s\n", error_message);
 	}
-	indigo_stop();
 	indigo_disconnect_server(server);
 	indigo_detach_client(&client);
+	indigo_stop();
 	return 0;
 }

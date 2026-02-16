@@ -95,15 +95,23 @@ INDIGO_EXTERN indigo_result indigo_load_driver(const char* name, bool init, indi
 
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 
+typedef struct indigo_subprocess_entry indigo_subprocess_entry;
+
+
+/** Subprocess state callback.
+ */
+typedef void (*subprocess_state_callback)(indigo_subprocess_entry *subprocess, bool active);
+
 /** Remote executable entry type.
  */
-typedef struct {
+typedef struct indigo_subprocess_entry {
   char executable[INDIGO_NAME_SIZE];      ///< executable path name
   pthread_t thread;                       ///< client thread ID
   bool thread_started;                    ///< client thread started/stopped
   int pid;																///< process pid
   indigo_device *protocol_adapter;        ///< server protocol adapter
 	char last_error[256];										///< last error reported within client thread
+	subprocess_state_callback callback;		///< callback
 } indigo_subprocess_entry;
 
 /** Array of all available subprocesses.
@@ -112,7 +120,7 @@ INDIGO_EXTERN indigo_subprocess_entry indigo_available_subprocesses[INDIGO_MAX_S
 
 /** Start thread for subprocess.
  */
-INDIGO_EXTERN indigo_result indigo_start_subprocess(const char *executable, indigo_subprocess_entry **subprocess);
+INDIGO_EXTERN indigo_result indigo_start_subprocess(const char *executable, indigo_subprocess_entry **subprocess, subprocess_state_callback callback);
 
 /** Stop thread for subprocess.
  */
@@ -120,9 +128,15 @@ INDIGO_EXTERN indigo_result indigo_kill_subprocess(indigo_subprocess_entry *subp
 
 #endif
 
+typedef struct indigo_server_entry indigo_server_entry;
+
+/** Server state callback.
+ */
+typedef void (*server_state_callback)(indigo_server_entry *server, bool active);
+
 /** Remote server entry type.
  */
-typedef struct {
+typedef struct indigo_server_entry {
 	char name[INDIGO_NAME_SIZE];            ///< service name
 	char host[INDIGO_NAME_SIZE];            ///< server host name
 	int port;                               ///< server port
@@ -132,8 +146,8 @@ typedef struct {
 	indigo_uni_handle *handle;              ///< stream socket
 	indigo_device *protocol_adapter;        ///< server protocol adapter
 	bool shutdown;													///< request shutdown
+	server_state_callback callback;					///< state callback
 } indigo_server_entry;
-
 
 /** Array of all available servers.
  */
@@ -145,13 +159,8 @@ INDIGO_EXTERN void indigo_service_name(const char *host, int port, char *name);
 
 /** Connect and start thread for remote server.
  */
-INDIGO_EXTERN indigo_result indigo_connect_server(const char *name, const char *host, int port, indigo_server_entry **server);
-INDIGO_EXTERN indigo_result indigo_connect_server_id(const char *name, const char *host, int port, uint32_t connection_id, indigo_server_entry **server);
-
-/** If connected to the server returns true else returns false and last_error (if not NULL) will contain the last error
-    reported within client thread. Last_error should have length of 256.
- */
-INDIGO_EXTERN bool indigo_connection_status(indigo_server_entry *server, char *last_error);
+INDIGO_EXTERN indigo_result indigo_connect_server(const char *name, const char *host, int port, indigo_server_entry **server, server_state_callback callback);
+INDIGO_EXTERN indigo_result indigo_connect_server_id(const char *name, const char *host, int port, uint32_t connection_id, indigo_server_entry **server, server_state_callback callback);
 
 /** Disconnect and stop thread for remote server.
  */
