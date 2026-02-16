@@ -869,11 +869,7 @@ static void print_help(const char *name) {
 	);
 }
 
-bool connected = false;
-
-void server_callback(indigo_server_entry *server, bool state) {
-	connected = state;
-}
+bool is_connected = false;
 
 int main(int argc, const char * argv[]) {
 	indigo_main_argc = argc;
@@ -1081,17 +1077,17 @@ int main(int argc, const char * argv[]) {
 	indigo_start();
 	indigo_attach_client(&client);
 	indigo_server_entry *server;
-	indigo_connect_server(hostname, hostname, port, &server, server_callback);
+	indigo_connect_server(hostname, hostname, port, &server, &is_connected);
 	int wait_connection = 1000;
 	char error_message[INDIGO_VALUE_SIZE] = {0};
 	while (wait_connection--) {
-		if (connected) {
+		if (is_connected) {
 			break;
 		} else {
 			indigo_usleep(10000);
 		}
 	}
-	if (connected) {
+	if (is_connected) {
 		indigo_enumerate_properties(&client, &enumeration_request);
 		while (time_to_wait > 0.0) {
 			indigo_sleep(0.05); /* 50 ms */
