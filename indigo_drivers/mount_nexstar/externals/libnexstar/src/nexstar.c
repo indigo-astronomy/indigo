@@ -323,8 +323,7 @@ int _tc_sync_rade(int dev, double ra, double de, char precise) {
 	char reply;
 
 	if (VENDOR(VNDR_SKYWATCHER)) {
-		REQUIRE_RELEASE(3);
-		REQUIRE_REVISION(37);
+		REQUIRE_VER(VER_3_37);
 	} else {
 		REQUIRE_VER(VER_4_10);
 	}
@@ -363,8 +362,7 @@ int tc_get_side_of_pier(int dev) {
 	char reply[2];
 
 	if (VENDOR(VNDR_SKYWATCHER)) {
-		REQUIRE_RELEASE(3);
-		REQUIRE_REVISION(37);
+		REQUIRE_VER(VER_3_37);
 	} else {
 		REQUIRE_VER(VER_4_15);
 	}
@@ -576,8 +574,7 @@ int tc_slew_fixed(int dev, char axis, char direction, char rate) {
 	char axis_id, cmd_id, res;
 
 	if (VENDOR(VNDR_SKYWATCHER)) {
-		REQUIRE_RELEASE(3);
-		REQUIRE_REVISION(1);
+		REQUIRE_VER(VER_3_1);
 	} else {
 		REQUIRE_VER(VER_1_6);
 	}
@@ -597,8 +594,7 @@ int tc_slew_variable(int dev, char axis, char direction, float rate) {
 	char axis_id, cmd_id, res;
 
 	if (VENDOR(VNDR_SKYWATCHER)) {
-		REQUIRE_RELEASE(3);
-		REQUIRE_REVISION(1);
+		REQUIRE_VER(VER_3_1);
 	} else {
 		REQUIRE_VER(VER_1_6);
 	}
