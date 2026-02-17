@@ -160,7 +160,7 @@ int main(int argc, const char * argv[]) {
 
 	indigo_server_entry *server;
 	indigo_attach_client(&client);
-	indigo_connect_server(SERVICE, SERVICE ".local", 7624, &server); // Check correct host name in 2nd arg!!!
+	indigo_connect_server(SERVICE, SERVICE ".local", 7624, &server, NULL); // Check correct host name in 2nd arg!!!
 	while (count > 0) {
 		  indigo_sleep(1);
 	}
