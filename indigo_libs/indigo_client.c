@@ -455,7 +455,12 @@ indigo_result indigo_connect_server_id(const char *name, const char *host, int p
 	pthread_mutex_lock(&mutex);
 	int empty_slot = used_server_slots;
 	for (int dc = 0; dc < used_server_slots; dc++) {
-		if (indigo_available_servers[dc].thread_started && !strcmp(indigo_available_servers[dc].host, host) && indigo_available_servers[dc].port == port && indigo_available_servers[dc].connection_id == connection_id) {
+		//indigo_error("Comparing %s:%d (thread_started=%d id=%d) with %s:%d (thread_started=%d id=%d)", host, port, indigo_available_servers[dc].thread_started, connection_id, indigo_available_servers[dc].host, indigo_available_servers[dc].port, indigo_available_servers[dc].thread_started, indigo_available_servers[dc].connection_id);
+		if (
+			indigo_available_servers[dc].thread_started &&
+			(connection_id == 0 || indigo_available_servers[dc].connection_id != connection_id) &&  // if connection_id is specified and equal to the existing one, allow duplicate
+			((indigo_available_servers[dc].port == port && !strcmp(indigo_available_servers[dc].host, host)) || (name != NULL && name[0] && !strcmp(indigo_available_servers[dc].name, name)))
+		) {
 			INDIGO_LOG(indigo_log("Server %s:%d already connected (id=%d)", indigo_available_servers[dc].host, indigo_available_servers[dc].port, indigo_available_servers[dc].connection_id));
 			if (server != NULL)
 				*server = &indigo_available_servers[dc];
