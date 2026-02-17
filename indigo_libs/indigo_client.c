@@ -442,7 +442,7 @@ indigo_result indigo_connect_server_id(const char *name, const char *host, int p
 	int empty_slot = used_server_slots;
 	for (int dc = 0; dc < used_server_slots; dc++) {
 		//indigo_error("Comparing %s:%d (thread_started=%d id=%d) with %s:%d (thread_started=%d id=%d)", host, port, indigo_available_servers[dc].thread_started, connection_id, indigo_available_servers[dc].host, indigo_available_servers[dc].port, indigo_available_servers[dc].thread_started, indigo_available_servers[dc].connection_id);
-		if ((indigo_available_servers[dc].thread_started && (!strcmp(indigo_available_servers[dc].host, host) && indigo_available_servers[dc].port == port && indigo_available_servers[dc].connection_id == connection_id)) || ((name != NULL && !strcmp(indigo_available_servers[dc].name, name)))) {
+		if (indigo_available_servers[dc].thread_started && ((!strcmp(indigo_available_servers[dc].host, host) && indigo_available_servers[dc].port == port && indigo_available_servers[dc].connection_id == connection_id) || (name != NULL && !strcmp(indigo_available_servers[dc].name, name)))) {
 			INDIGO_LOG(indigo_log("Server %s:%d already connected (id=%d)", indigo_available_servers[dc].host, indigo_available_servers[dc].port, indigo_available_servers[dc].connection_id));
 			if (server != NULL) {
 				*server = &indigo_available_servers[dc];
