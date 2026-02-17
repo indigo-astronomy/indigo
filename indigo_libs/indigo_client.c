@@ -329,13 +329,13 @@ indigo_result indigo_start_subprocess(const char *executable, indigo_subprocess_
 			break;
 		}
 	}
-	
+
 	if (empty_slot > INDIGO_MAX_SERVERS) {
 		pthread_mutex_unlock(&mutex);
 		indigo_error("[%s:%d] Max subprocess count reached", __FUNCTION__, __LINE__);
 		return INDIGO_TOO_MANY_ELEMENTS;
 	}
-	
+
 	INDIGO_COPY_NAME(indigo_available_subprocesses[empty_slot].executable, executable);
 	indigo_available_subprocesses[empty_slot].pid = 0;
 	*indigo_available_subprocesses[empty_slot].last_error = 0;
@@ -494,6 +494,7 @@ indigo_result indigo_disconnect_server(indigo_server_entry *server) {
 		indigo_uni_kill_socket(server->handle);
 	}
 	server->shutdown = true;
+	pthread_mutex_unlock(&mutex);
 	return INDIGO_OK;
 }
 
