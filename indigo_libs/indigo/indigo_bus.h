@@ -230,11 +230,13 @@ typedef struct {/* there is no .name =  because of g++ C99 bug affecting string 
 	char name[INDIGO_NAME_SIZE];        ///< property wide unique item name
 	char label[INDIGO_VALUE_SIZE];      ///< item description in human readable form
 	char hints[INDIGO_VALUE_SIZE];			///< item GUI hints
+	bool is_dirty;											///< send update over protocol adapter
 	union {
 		/** Text property item specific fields.
 		 */
 		struct {
 			char value[INDIGO_VALUE_SIZE];  ///< item value (for text properties)
+			char previous_value[INDIGO_VALUE_SIZE];  ///< item previous value (for text properties)
 			char *long_value;								///< item value, set if text is longer than NDIGO_VALUE_SIZE
 			long length;										///< text length (including terminating 0)
 		} text;
@@ -247,16 +249,20 @@ typedef struct {/* there is no .name =  because of g++ C99 bug affecting string 
 			double step;                    ///< item increment value (for number properties)
 			double value;                   ///< item value (for number properties)
 			double target;                  ///< item target value (for number properties)
+			double previous_value;          ///< item previous value (for number properties)
+			double previous_target;         ///< item previous target value (for number properties)
 		} number;
 		/** Switch property item specific fields.
 		 */
 		struct {
 			bool value;                     ///< item value (for switch properties)
+			bool previous_value;            ///< item previous value (for switch properties)
 		} sw;
 		/** Light property item specific fields.
 		 */
 		struct {
 			indigo_property_state value;    ///< item value (for light properties)
+			indigo_property_state previous_value;    ///< item value (for light properties)
 		} light;
 		/** BLOB property item specific fields.
 		 */
@@ -278,6 +284,7 @@ typedef struct {
 	char label[INDIGO_VALUE_SIZE];      ///< property description in human readable form
 	char hints[INDIGO_VALUE_SIZE];			///< property GUI hints
 	indigo_property_state state;        ///< property state
+	indigo_property_state previous_state;        ///< property previous state
 	indigo_property_type type;          ///< property type
 	indigo_property_perm perm;          ///< property access permission
 	indigo_rule rule;                   ///< switch behaviour rule (for switch properties)
