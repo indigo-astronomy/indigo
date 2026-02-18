@@ -1179,7 +1179,6 @@ static bool exposure_batch(indigo_device *device) {
 	AGENT_IMAGER_STATS_FRAMES_TO_DITHERING_ITEM->number.value = AGENT_IMAGER_BATCH_FRAMES_TO_SKIP_BEFORE_DITHER_ITEM->number.target;
 	indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 	check_breakpoint(device, AGENT_IMAGER_BREAKPOINT_PRE_BATCH_ITEM);
-	set_headers(device);
 #ifdef __GNUC__
 #pragma GCC diagnostic ignored "-Wunreachable-code"
 #endif
@@ -1219,6 +1218,7 @@ static bool exposure_batch(indigo_device *device) {
 			if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 				return false;
 			}
+			set_headers(device);
 			if (DEVICE_PRIVATE_DATA->use_aux_1) {
 				indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0);
 				indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device->name, "AUX_1_" CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, exposure_time);
@@ -1394,7 +1394,6 @@ static bool bracketing_batch(indigo_device *device) {
 	AGENT_IMAGER_STATS_FRAME_ITEM->number.value = 0;
 	AGENT_IMAGER_STATS_FRAMES_ITEM->number.value = AGENT_IMAGER_BATCH_COUNT_ITEM->number.target;
 	indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
-	set_headers(device);
 	double current_offset = 0;
 	double step = fabs(AGENT_IMAGER_FOCUS_BRACKETING_STEP_ITEM->number.value);
 	bool moving_out = AGENT_IMAGER_FOCUS_BRACKETING_STEP_ITEM->number.value > 0;
@@ -1416,7 +1415,13 @@ static bool bracketing_batch(indigo_device *device) {
 				move_focuser(device, !moving_out, current_offset);
 				return false;
 			}
-			indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, exposure_time);
+			set_headers(device);
+			if (DEVICE_PRIVATE_DATA->use_aux_1) {
+				indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0);
+				indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device->name, "AUX_1_" CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, exposure_time);
+			} else {
+				indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, exposure_time);
+			}
 			for (int i = 0; i < BUSY_TIMEOUT * 1000 && DEVICE_PRIVATE_DATA->exposure_state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->exposure_state != INDIGO_ALERT_STATE; i++) {
 				indigo_usleep(1000);
 			}
