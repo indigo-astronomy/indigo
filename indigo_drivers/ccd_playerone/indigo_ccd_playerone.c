@@ -25,7 +25,7 @@
  \file indigo_ccd_playerone.c
  */
 
-#define DRIVER_VERSION 0x03000010
+#define DRIVER_VERSION 0x03000011
 #define DRIVER_NAME "indigo_ccd_playerone"
 
 /* POA_SAFE_READOUT enables workaround for a bug in POAGetImageData().
@@ -446,7 +446,7 @@ static void exposure_timer_callback(indigo_device *device) {
 	bool exposure_failed = false;
 	POACameraState state;
 	PRIVATE_DATA->can_check_temperature = false;
-	if (playerone_setup_exposure(device, (int)CCD_EXPOSURE_ITEM->number.target, (int)CCD_FRAME_LEFT_ITEM->number.value, (int)CCD_FRAME_TOP_ITEM->number.value, (int)CCD_FRAME_WIDTH_ITEM->number.value, (int)CCD_FRAME_HEIGHT_ITEM->number.value, (int)CCD_BIN_HORIZONTAL_ITEM->number.value)) {
+	if (playerone_setup_exposure(device, CCD_EXPOSURE_ITEM->number.target, (int)CCD_FRAME_LEFT_ITEM->number.value, (int)CCD_FRAME_TOP_ITEM->number.value, (int)CCD_FRAME_WIDTH_ITEM->number.value, (int)CCD_FRAME_HEIGHT_ITEM->number.value, (int)CCD_BIN_HORIZONTAL_ITEM->number.value)) {
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		res = POAStartExposure(id, false); // Single exposure mode.
 		/* Single exposure mode Does not work for Saturn-C, due to a bug in the POAImageReady() function. Have to set video mode here as a workaround */
