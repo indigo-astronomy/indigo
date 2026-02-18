@@ -1251,6 +1251,7 @@ void indigo_init_text_item(indigo_item *item, const char *name, const char *labe
 	va_start(args, format);
 	vsnprintf(item->text.value, INDIGO_VALUE_SIZE, format, args);
 	va_end(args);
+	INDIGO_COPY_VALUE(item->text.previous_value, item->text.value);
 }
 
 void indigo_init_text_item_raw(indigo_item *item, const char *name, const char *label, const char *value) {
@@ -1260,6 +1261,8 @@ void indigo_init_text_item_raw(indigo_item *item, const char *name, const char *
 	INDIGO_COPY_NAME(item->name, name);
 	INDIGO_COPY_VALUE(item->label, label ? label : "");
 	indigo_set_text_item_value(item, value);
+	INDIGO_COPY_VALUE(item->text.previous_value, item->text.value);
+	item->is_dirty = false;
 }
 
 void indigo_init_number_item(indigo_item *item, const char *name, const char *label, double min, double max, double step, double value) {
@@ -1272,7 +1275,7 @@ void indigo_init_number_item(indigo_item *item, const char *name, const char *la
 	item->number.min = min;
 	item->number.max = max;
 	item->number.step = step;
-	item->number.target = item->number.value = value;
+	item->number.target = item->number.value = item->number.previous_target = item->number.previous_value = value;
 }
 
 void indigo_init_switch_item(indigo_item *item, const char *name, const char *label, bool value) {
@@ -1281,7 +1284,7 @@ void indigo_init_switch_item(indigo_item *item, const char *name, const char *la
 	memset(item, 0, sizeof(indigo_item));
 	INDIGO_COPY_NAME(item->name, name);
 	INDIGO_COPY_VALUE(item->label, label ? label : "");
-	item->sw.value = value;
+	item->sw.value = item->sw.previous_value = value;
 }
 
 void indigo_init_light_item(indigo_item *item, const char *name, const char *label, indigo_property_state value) {
@@ -1290,7 +1293,7 @@ void indigo_init_light_item(indigo_item *item, const char *name, const char *lab
 	memset(item, 0, sizeof(indigo_item));
 	INDIGO_COPY_NAME(item->name, name);
 	INDIGO_COPY_VALUE(item->label, label ? label : "");
-	item->light.value = value;
+	item->light.value = item->light.previous_value = value;
 }
 
 void indigo_init_blob_item(indigo_item *item, const char *name, const char *label) {
