@@ -27,7 +27,7 @@
  \file indigo_ccd_asi.c
  */
 
-#define DRIVER_VERSION 0x0300002C
+#define DRIVER_VERSION 0x0300002D
 #define DRIVER_NAME "indigo_ccd_asi"
 
 #include <stdlib.h>
@@ -564,7 +564,7 @@ static void streaming_timer_callback(indigo_device *device) {
 	int timeout = (int)(1000 * (CCD_STREAMING_EXPOSURE_ITEM->number.value * 2 + 500));
 	ASI_ERROR_CODE res;
 	PRIVATE_DATA->can_check_temperature = false;
-	if (asi_setup_exposure(device, (int)CCD_STREAMING_EXPOSURE_ITEM->number.value, (int)CCD_FRAME_LEFT_ITEM->number.value, (int)CCD_FRAME_TOP_ITEM->number.value, (int)CCD_FRAME_WIDTH_ITEM->number.value, (int)CCD_FRAME_HEIGHT_ITEM->number.value, (int)CCD_BIN_HORIZONTAL_ITEM->number.value, (int)CCD_BIN_VERTICAL_ITEM->number.value)) {
+	if (asi_setup_exposure(device, CCD_STREAMING_EXPOSURE_ITEM->number.value, (int)CCD_FRAME_LEFT_ITEM->number.value, (int)CCD_FRAME_TOP_ITEM->number.value, (int)CCD_FRAME_WIDTH_ITEM->number.value, (int)CCD_FRAME_HEIGHT_ITEM->number.value, (int)CCD_BIN_HORIZONTAL_ITEM->number.value, (int)CCD_BIN_VERTICAL_ITEM->number.value)) {
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		res = ASIStartVideoCapture(id);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
@@ -1159,7 +1159,7 @@ static void handle_ccd_connect_property(indigo_device *device) {
 
 
 static void handle_ccd_exposure(indigo_device *device) {
-	asi_start_exposure(device, (int)CCD_EXPOSURE_ITEM->number.target, CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_DARKFLAT_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value, (int)CCD_FRAME_LEFT_ITEM->number.value, (int)CCD_FRAME_TOP_ITEM->number.value, (int)CCD_FRAME_WIDTH_ITEM->number.value, (int)CCD_FRAME_HEIGHT_ITEM->number.value, (int)CCD_BIN_HORIZONTAL_ITEM->number.value, (int)CCD_BIN_VERTICAL_ITEM->number.value);
+	asi_start_exposure(device, CCD_EXPOSURE_ITEM->number.target, CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_DARKFLAT_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value, (int)CCD_FRAME_LEFT_ITEM->number.value, (int)CCD_FRAME_TOP_ITEM->number.value, (int)CCD_FRAME_WIDTH_ITEM->number.value, (int)CCD_FRAME_HEIGHT_ITEM->number.value, (int)CCD_BIN_HORIZONTAL_ITEM->number.value, (int)CCD_BIN_VERTICAL_ITEM->number.value);
 	if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
 		CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
