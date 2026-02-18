@@ -383,7 +383,6 @@ static bool get_disk_usage(const char* path, double* total_mb, double* free_mb, 
 
 static void update_disk_usage(indigo_device *device) {
 	double total_mb, free_mb, used_mb;
-	static double last_total_mb = -1, last_free_mb = -1, last_used_mb = -1;
 
 	pthread_mutex_lock(&DEVICE_PRIVATE_DATA->disk_usage_mutex);
 	const char *path = DEVICE_PRIVATE_DATA->current_folder;
@@ -394,9 +393,9 @@ static void update_disk_usage(indigo_device *device) {
 
 		AGENT_IMAGER_DISK_USAGE_PROPERTY->state = INDIGO_IDLE_STATE;
 	} else if (get_disk_usage(path, &total_mb, &free_mb, &used_mb)) {
-		AGENT_IMAGER_DISK_USAGE_TOTAL_ITEM->number.value = total_mb;
-		AGENT_IMAGER_DISK_USAGE_USED_ITEM->number.value = used_mb;
-		AGENT_IMAGER_DISK_USAGE_FREE_ITEM->number.value = free_mb;
+		AGENT_IMAGER_DISK_USAGE_TOTAL_ITEM->number.value = (int)total_mb;
+		AGENT_IMAGER_DISK_USAGE_USED_ITEM->number.value = (int)used_mb;
+		AGENT_IMAGER_DISK_USAGE_FREE_ITEM->number.value = (int)free_mb;
 		double used_percentage = (total_mb > 0) ? (used_mb / total_mb) * 100.0 : 0.0;
 		if (used_percentage > 95.0) {
 			AGENT_IMAGER_DISK_USAGE_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -412,14 +411,7 @@ static void update_disk_usage(indigo_device *device) {
 		AGENT_IMAGER_DISK_USAGE_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->disk_usage_mutex);
-	if (last_total_mb != AGENT_IMAGER_DISK_USAGE_TOTAL_ITEM->number.value ||
-	    last_used_mb != AGENT_IMAGER_DISK_USAGE_USED_ITEM->number.value ||
-	    last_free_mb != AGENT_IMAGER_DISK_USAGE_FREE_ITEM->number.value) {
-		indigo_update_property(device, AGENT_IMAGER_DISK_USAGE_PROPERTY, NULL);
-		last_free_mb = AGENT_IMAGER_DISK_USAGE_FREE_ITEM->number.value;
-		last_used_mb = AGENT_IMAGER_DISK_USAGE_USED_ITEM->number.value;
-		last_total_mb = AGENT_IMAGER_DISK_USAGE_TOTAL_ITEM->number.value;
-	}
+	indigo_update_property(device, AGENT_IMAGER_DISK_USAGE_PROPERTY, NULL);
 }
 
 static void disk_usage_timer_callback(indigo_device *device) {
