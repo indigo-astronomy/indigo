@@ -10,6 +10,20 @@
 #define indigo_names_h
 
 //----------------------------------------------------------------------
+/** SESSION_FEATURES pseudo-property name.
+ */
+#define SESSION_FEATURES_PROPERTY_NAME				"SESSION_FEATURES"
+
+/** SESSION_FEATURES.FORCE_PROPERTY_UPDATES property item name.
+ */
+#define SESSION_FORCE_PROPERTY_UPDATES_ITEM_NAME		"FORCE_PROPERTY_UPDATES"
+
+/** SESSION_FEATURES.FORCE_ITEM_UPDATES property item name.
+ */
+#define SESSION_FORCE_ITEM_UPDATES_ITEM_NAME				"FORCE_ITEM_UPDATES"
+
+
+//----------------------------------------------------------------------
 /** CONNECTION property name.
  */
 #define CONNECTION_PROPERTY_NAME							"CONNECTION"

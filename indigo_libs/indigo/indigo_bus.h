@@ -292,6 +292,7 @@ typedef struct {
 	short version;                      ///< property version INDIGO_VERSION_NONE, INDIGO_VERSION_LEGACY or INDIGO_VERSION_2_0
 	bool hidden;                        ///< property is hidden/unused by  driver (for optional properties)
 	bool defined;												///< property is defined
+	bool is_dirty;											///< send update over protocol adapter
 	int allocated_count;                ///< number of allocated property items
 	int count;                          ///< number of used property items
 	indigo_item items[];                ///< property items
@@ -380,6 +381,11 @@ typedef struct indigo_client {
 	/** callback called when client is detached from the bus
 	 */
 	indigo_result (*detach)(indigo_client *client);
+	/**
+	 session features
+	 */
+	bool force_property_updates;															///< force redundant property updates
+	bool force_item_updates;																	///< force redundant item updates
 } indigo_client;
 
 /** Wire protocol adapter private data structure.
@@ -521,6 +527,10 @@ INDIGO_EXTERN indigo_result indigo_define_property_to_client(indigo_device *devi
 /** Broadcast property definition.
  */
 INDIGO_EXTERN indigo_result indigo_define_property(indigo_device *device, indigo_property *property, const char *format, ...);
+
+/** Send property value change to single client.
+ */
+INDIGO_EXTERN indigo_result indigo_update_property_to_client(indigo_device *device, indigo_client *client, indigo_property *property, const char *format, ...);
 
 /** Broadcast property value change.
  */

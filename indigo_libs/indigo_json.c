@@ -785,7 +785,7 @@ indigo_result indigo_json_device_adapter_update_property(indigo_client *client, 
 			}
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
-				if (item->is_dirty) {
+				if (client->force_item_updates || item->is_dirty) {
 					SPRINTF(pnt, "%s { \"name\": \"%s\", \"value\": \"%s\" }",  i > 0 ? "," : "", item->name, indigo_json_escape(indigo_get_text_item_value(item)));
 				}
 			}
@@ -801,7 +801,7 @@ indigo_result indigo_json_device_adapter_update_property(indigo_client *client, 
 			}
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
-				if (item->is_dirty) {
+				if (client->force_item_updates || item->is_dirty) {
 					if (property->perm != INDIGO_RO_PERM) {
 						SPRINTF(pnt, "%s { \"name\": \"%s\", \"target\": %s, \"value\": %s }",  i > 0 ? "," : "", item->name, indigo_dtoa(item->number.target, b1), indigo_dtoa(item->number.value, b2));
 					} else {
@@ -821,7 +821,7 @@ indigo_result indigo_json_device_adapter_update_property(indigo_client *client, 
 			}
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
-				if (item->is_dirty) {
+				if (client->force_item_updates || item->is_dirty) {
 					SPRINTF(pnt, "%s { \"name\": \"%s\", \"value\": %s }",  i > 0 ? "," : "", item->name, item->sw.value ? "true" : "false");
 				}
 			}
@@ -837,7 +837,7 @@ indigo_result indigo_json_device_adapter_update_property(indigo_client *client, 
 			}
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
-				if (item->is_dirty) {
+				if (client->force_item_updates || item->is_dirty) {
 					SPRINTF(pnt, "%s { \"name\": \"%s\", \"value\": \"%s\" }",  i > 0 ? "," : "", item->name, indigo_property_state_text[item->light.value]);
 				}
 			}

@@ -47,6 +47,7 @@
 #include <indigo/indigo_names.h>
 #include <indigo/indigo_uni_io.h>
 #include <indigo/indigo_token.h>
+#include <indigo/indigo_session.h>
 
 #define MAX_DEVICES 256
 #define MAX_CLIENTS 256
@@ -383,9 +384,6 @@ void indigo_trace_property(const char *message, indigo_client *client, indigo_pr
 		if (items) {
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
-				if (!defs && !item->is_dirty) {
-					continue;
-				}
 				switch (property->type) {
 				case INDIGO_TEXT_VECTOR:
 					if (defs) {
@@ -396,9 +394,9 @@ void indigo_trace_property(const char *message, indigo_client *client, indigo_pr
 						}
 					} else {
 						if (item->text.long_value) {
-							indigo_trace_bus("B <+   '%s' = '%s' + %d extra characters",item->name, item->text.value, item->text.length - 1);
+							indigo_trace_bus("B <+%c  '%s' = '%s' + %d extra characters", item->is_dirty ? '*' : ' ', item->name, item->text.value, item->text.length - 1);
 						} else {
-							indigo_trace_bus("B <+   '%s' = '%s'",item->name, item->text.value);
+							indigo_trace_bus("B <+%c  '%s' = '%s'", item->is_dirty ? '*' : ' ', item->name, item->text.value);
 						}
 					}
 					break;
@@ -406,21 +404,21 @@ void indigo_trace_property(const char *message, indigo_client *client, indigo_pr
 					if (defs) {
 						indigo_trace_bus("B <+   '%s' = %g, target = %g (%g, %g, %g, '%s') // %s", item->name, item->number.value, item->number.target, item->number.min, item->number.max, item->number.step, item->number.format, item->label);
 					} else {
-						indigo_trace_bus("B <+   '%s' = %g, target = %g ",item->name, item->number.value, item->number.target);
+						indigo_trace_bus("B <+%c  '%s' = %g, target = %g ",item->is_dirty ? '*' : ' ', item->name, item->number.value, item->number.target);
 					}
 					break;
 				case INDIGO_SWITCH_VECTOR:
 					if (defs) {
 						indigo_trace_bus("B <+   '%s' = %s // %s", item->name, (item->sw.value ? "On" : "Off"), item->label);
 					} else {
-						indigo_trace_bus("B <+   '%s' = %s ",item->name, (item->sw.value ? "On" : "Off"));
+						indigo_trace_bus("B <+%c  '%s' = %s ", item->is_dirty ? '*' : ' ', item->name, (item->sw.value ? "On" : "Off"));
 					}
 					break;
 				case INDIGO_LIGHT_VECTOR:
 					if (defs) {
 						indigo_trace_bus("B <+   '%s' = %s // %s", item->name, indigo_property_state_text[item->light.value], item->label);
 					} else {
-						indigo_trace_bus("B <+   '%s' = %s ",item->name, indigo_property_state_text[item->light.value]);
+						indigo_trace_bus("B <+%c  '%s' = %s ", item->is_dirty ? '*' : ' ', item->name, indigo_property_state_text[item->light.value]);
 					}
 					break;
 				case INDIGO_BLOB_VECTOR:
@@ -462,12 +460,13 @@ indigo_result indigo_start() {
 	}
 	pthread_mutex_unlock(&client_mutex);
 	pthread_mutex_unlock(&device_mutex);
+	indigo_attach_device(&indigo_session_device);
 	return INDIGO_OK;
 }
 
 indigo_result indigo_attach_device(indigo_device *device) {
 	static int max_index = -1;
-	if ((!is_started) || (device == NULL))
+	if (!is_started || device == NULL)
 		return INDIGO_FAILED;
 	pthread_mutex_lock(&device_mutex);
 	INDIGO_DEBUG(indigo_trace_bus("B <- Attach device '%s'", device->name));
@@ -502,7 +501,7 @@ indigo_result indigo_attach_device(indigo_device *device) {
 
 indigo_result indigo_attach_client(indigo_client *client) {
 	static int max_index = -1;
-	if ((!is_started) || (client == NULL))
+	if (!is_started || client == NULL)
 		return INDIGO_FAILED;
 	pthread_mutex_lock(&client_mutex);
 	for (int i = 0; i < MAX_CLIENTS; i++) {
@@ -526,7 +525,7 @@ indigo_result indigo_attach_client(indigo_client *client) {
 }
 
 indigo_result indigo_detach_device(indigo_device *device) {
-	if ((!is_started) || (device == NULL))
+	if (!is_started || device == NULL)
 		return INDIGO_FAILED;
 	pthread_mutex_lock(&device_mutex);
 	INDIGO_DEBUG(indigo_trace_bus("B <- Detach device '%s'", device->name));
@@ -548,7 +547,7 @@ indigo_result indigo_detach_device(indigo_device *device) {
 }
 
 indigo_result indigo_detach_client(indigo_client *client) {
-	if ((!is_started) || (client == NULL))
+	if (!is_started || client == NULL)
 		return INDIGO_FAILED;
 	pthread_mutex_lock(&client_mutex);
 	INDIGO_DEBUG(indigo_trace_bus("B <- Detach client '%s'", client->name));
@@ -593,7 +592,7 @@ indigo_result indigo_enumerate_properties(indigo_client *client, indigo_property
 }
 
 indigo_result indigo_change_property(indigo_client *client, indigo_property *property) {
-	if ((!is_started) || (property == NULL))
+	if (!is_started || property == NULL)
 		return INDIGO_FAILED;
 	if (indigo_use_strict_locking) {
 		pthread_mutex_lock(&device_mutex);
@@ -625,7 +624,7 @@ indigo_result indigo_change_property(indigo_client *client, indigo_property *pro
 }
 
 indigo_result indigo_enable_blob(indigo_client *client, indigo_property *property, indigo_enable_blob_mode mode) {
-	if ((!is_started) || (property == NULL))
+	if (!is_started || property == NULL)
 		return INDIGO_FAILED;
 	if (indigo_use_strict_locking) {
 		pthread_mutex_lock(&device_mutex);
@@ -650,7 +649,7 @@ indigo_result indigo_enable_blob(indigo_client *client, indigo_property *propert
 }
 
 indigo_result indigo_define_property_to_client(indigo_device *device, indigo_client *client, indigo_property *property, const char *format, ...) {
-	if ((!is_started) || (property == NULL) || (client == NULL))
+	if (!is_started || property == NULL || client == NULL)
 		return INDIGO_FAILED;
 	if (!property->hidden) {
 		if (indigo_use_strict_locking) {
@@ -710,10 +709,8 @@ indigo_result indigo_define_property_to_client(indigo_device *device, indigo_cli
 	return INDIGO_OK;
 }
 
-
-
 indigo_result indigo_define_property(indigo_device *device, indigo_property *property, const char *format, ...) {
-	if ((!is_started) || (property == NULL))
+	if (!is_started || property == NULL)
 		return INDIGO_FAILED;
 	if (!property->hidden) {
 		if (indigo_use_strict_locking) {
@@ -776,8 +773,33 @@ indigo_result indigo_define_property(indigo_device *device, indigo_property *pro
 	return INDIGO_OK;
 }
 
+indigo_result indigo_update_property_to_client(indigo_device *device, indigo_client *client, indigo_property *property, const char *format, ...) {
+	if (!is_started || property == NULL || property->type == INDIGO_BLOB_VECTOR)
+		return INDIGO_FAILED;
+	if (!property->hidden && !device->dont_update) {
+		if (indigo_use_strict_locking) {
+			pthread_mutex_lock(&client_mutex);
+		}
+		char message[INDIGO_VALUE_SIZE];
+		INDIGO_TRACE(indigo_trace_property("Update", NULL, property, false, true));
+		if (format != NULL) {
+			va_list args;
+			va_start(args, format);
+			vsnprintf(message, INDIGO_VALUE_SIZE, format, args);
+			va_end(args);
+		}
+		if (client != NULL && client->update_property != NULL) {
+			client->last_result = client->update_property(client, device, property, format != NULL ? message : NULL);
+		}
+		if (indigo_use_strict_locking) {
+			pthread_mutex_unlock(&client_mutex);
+		}
+	}
+	return INDIGO_OK;
+}
+
 indigo_result indigo_update_property(indigo_device *device, indigo_property *property, const char *format, ...) {
-	if ((!is_started) || (property == NULL))
+	if (!is_started || property == NULL)
 		return INDIGO_FAILED;
 	if (!property->hidden && !device->dont_update) {
 		if (indigo_use_strict_locking) {
@@ -785,7 +807,7 @@ indigo_result indigo_update_property(indigo_device *device, indigo_property *pro
 		}
 		char message[INDIGO_VALUE_SIZE];
 		int count = property->count;
-		bool is_dirty = property->state != property->previous_state;
+		bool is_dirty = property->is_dirty || property->state != property->previous_state;
 		if (property->perm == INDIGO_WO_PERM) {
 			property->count = 0;
 		} else {
@@ -808,6 +830,8 @@ indigo_result indigo_update_property(indigo_device *device, indigo_property *pro
 						if (item->sw.value != item->sw.previous_value) {
 							item->is_dirty = true;
 							is_dirty = true;
+						} else if (item->sw.value) {
+							item->is_dirty = true;
 						}
 						break;
 					case INDIGO_LIGHT_VECTOR:
@@ -823,93 +847,91 @@ indigo_result indigo_update_property(indigo_device *device, indigo_property *pro
 				}
 			}
 		}
-		if (is_dirty) {
-			INDIGO_TRACE(indigo_trace_property("Update", NULL, property, false, true));
-			if (format != NULL) {
-				va_list args;
-				va_start(args, format);
-				vsnprintf(message, INDIGO_VALUE_SIZE, format, args);
-				va_end(args);
-			}
-			if (indigo_use_blob_caching && property->type == INDIGO_BLOB_VECTOR && property->perm == INDIGO_RO_PERM && property->state == INDIGO_OK_STATE) {
-				pthread_mutex_lock(&blob_mutex);
-				for (int i = 0; i < property->count; i++) {
-					indigo_item *item = property->items + i;
-					indigo_blob_entry *entry = NULL;
-					int free_index = -1;
-					for (int j = 0; j < MAX_BLOBS; j++) {
-						entry = blobs[j];
-						if (entry && entry->item == item) {
-							break;
-						}
-						if (entry == NULL && free_index == -1) {
-							free_index = j;
-						}
-						entry = NULL;
-					}
-					if (entry == NULL && free_index >= 0) {
-						entry = indigo_safe_malloc(sizeof(indigo_blob_entry));
-						blobs[free_index] = entry;
-						memset(entry, 0, sizeof(indigo_blob_entry));
-						entry->item = item;
-						entry->property = property;
-						pthread_mutex_init(&entry->mutext, NULL);
-					}
-					if (entry) {
-						pthread_mutex_lock(&entry->mutext);
-						if (item->blob.size) {
-							entry->content = indigo_safe_realloc(entry->content, entry->size = item->blob.size);
-							memcpy(entry->content, item->blob.value, entry->size);
-							strcpy(entry->format, item->blob.format);
-						} else if (entry->content) {
-							free(entry->content);
-							entry->size = 0;
-							entry->content = NULL;
-						}
-						pthread_mutex_unlock(&entry->mutext);
-					} else {
-						pthread_mutex_unlock(&blob_mutex);
-						if (indigo_use_strict_locking) {
-							pthread_mutex_unlock(&client_mutex);
-						}
-						indigo_error("[%s:%d] Max BLOB count reached", __FUNCTION__, __LINE__);
-						return INDIGO_TOO_MANY_ELEMENTS;
-					}
-				}
-				pthread_mutex_unlock(&blob_mutex);
-			}
-			for (int i = 0; i < MAX_CLIENTS; i++) {
-				indigo_client *client = clients[i];
-				if (client != NULL && client->update_property != NULL) {
-					client->last_result = client->update_property(client, device, property, format != NULL ? message : NULL);
-				}
-			}
-			for (int i = 0; i < count; i++) {
-				indigo_item *item = property->items + i;
-				if (item->is_dirty) {
-					switch (property->type) {
-						case INDIGO_TEXT_VECTOR:
-							strcpy(item->text.previous_value, item->text.value);
-							break;
-						case INDIGO_NUMBER_VECTOR:
-							item->number.previous_value = item->number.value;
-							item->number.target = item->number.target;
-							item->is_dirty = true;
-							break;
-						case INDIGO_SWITCH_VECTOR:
-							item->sw.previous_value = item->sw.value;
-							break;
-						case INDIGO_LIGHT_VECTOR:
-							item->light.previous_value = item->light.value;
-							break;
-						default:
-							break;
-					}
-					item->is_dirty = false;
-				}
-			}
-			property->previous_state = property->state;
+		INDIGO_TRACE(indigo_trace_property("Update", NULL, property, false, true));
+		if (format != NULL) {
+			va_list args;
+			va_start(args, format);
+			vsnprintf(message, INDIGO_VALUE_SIZE, format, args);
+			va_end(args);
 		}
+		if (indigo_use_blob_caching && property->type == INDIGO_BLOB_VECTOR && property->perm == INDIGO_RO_PERM && property->state == INDIGO_OK_STATE) {
+			pthread_mutex_lock(&blob_mutex);
+			for (int i = 0; i < property->count; i++) {
+				indigo_item *item = property->items + i;
+				indigo_blob_entry *entry = NULL;
+				int free_index = -1;
+				for (int j = 0; j < MAX_BLOBS; j++) {
+					entry = blobs[j];
+					if (entry && entry->item == item) {
+						break;
+					}
+					if (entry == NULL && free_index == -1) {
+						free_index = j;
+					}
+					entry = NULL;
+				}
+				if (entry == NULL && free_index >= 0) {
+					entry = indigo_safe_malloc(sizeof(indigo_blob_entry));
+					blobs[free_index] = entry;
+					memset(entry, 0, sizeof(indigo_blob_entry));
+					entry->item = item;
+					entry->property = property;
+					pthread_mutex_init(&entry->mutext, NULL);
+				}
+				if (entry) {
+					pthread_mutex_lock(&entry->mutext);
+					if (item->blob.size) {
+						entry->content = indigo_safe_realloc(entry->content, entry->size = item->blob.size);
+						memcpy(entry->content, item->blob.value, entry->size);
+						strcpy(entry->format, item->blob.format);
+					} else if (entry->content) {
+						free(entry->content);
+						entry->size = 0;
+						entry->content = NULL;
+					}
+					pthread_mutex_unlock(&entry->mutext);
+				} else {
+					pthread_mutex_unlock(&blob_mutex);
+					if (indigo_use_strict_locking) {
+						pthread_mutex_unlock(&client_mutex);
+					}
+					indigo_error("[%s:%d] Max BLOB count reached", __FUNCTION__, __LINE__);
+					return INDIGO_TOO_MANY_ELEMENTS;
+				}
+			}
+			pthread_mutex_unlock(&blob_mutex);
+		}
+		for (int i = 0; i < MAX_CLIENTS; i++) {
+			indigo_client *client = clients[i];
+			if (client != NULL && client->update_property != NULL && (is_dirty || client->force_property_updates)) {
+				client->last_result = client->update_property(client, device, property, format != NULL ? message : NULL);
+			}
+		}
+		for (int i = 0; i < count; i++) {
+			indigo_item *item = property->items + i;
+			if (item->is_dirty) {
+				switch (property->type) {
+					case INDIGO_TEXT_VECTOR:
+						strcpy(item->text.previous_value, item->text.value);
+						break;
+					case INDIGO_NUMBER_VECTOR:
+						item->number.previous_value = item->number.value;
+						item->number.target = item->number.target;
+						item->is_dirty = true;
+						break;
+					case INDIGO_SWITCH_VECTOR:
+						item->sw.previous_value = item->sw.value;
+						break;
+					case INDIGO_LIGHT_VECTOR:
+						item->light.previous_value = item->light.value;
+						break;
+					default:
+						break;
+				}
+				item->is_dirty = false;
+			}
+		}
+		property->previous_state = property->state;
 		property->count = count;
 		if (indigo_use_strict_locking) {
 			pthread_mutex_unlock(&client_mutex);
@@ -919,7 +941,7 @@ indigo_result indigo_update_property(indigo_device *device, indigo_property *pro
 }
 
 indigo_result indigo_delete_property(indigo_device *device, indigo_property *property, const char *format, ...) {
-	if ((!is_started) || (property == NULL))
+	if (!is_started || property == NULL)
 		return INDIGO_FAILED;
 	if (!property->hidden) {
 		if (indigo_use_strict_locking) {
@@ -977,6 +999,7 @@ indigo_result indigo_send_message(indigo_device *device, const char *format, ...
 indigo_result indigo_stop() {
 	INDIGO_DEBUG(indigo_trace_bus("B <- Stop bus"));
 	if (is_started) {
+		indigo_detach_device(&indigo_session_device);
 		pthread_mutex_lock(&client_mutex);
 		for (int i = 0; i < MAX_CLIENTS; i++) {
 			indigo_client *client = clients[i];
@@ -1667,9 +1690,9 @@ void indigo_property_copy_values(indigo_property *property, indigo_property *oth
 						}
 						break;
 					}
-					property_item->is_dirty = true;
 				}
 			}
+			property->is_dirty = true;
 		}
 	}
 }
@@ -1698,6 +1721,7 @@ void indigo_property_copy_targets(indigo_property *property, indigo_property *ot
 					}
 				}
 			}
+			property->is_dirty = true;
 		}
 	}
 }

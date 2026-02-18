@@ -558,7 +558,6 @@ static indigo_result update_related_agent_list(indigo_device *device, indigo_pro
 	return INDIGO_OK;
 }
 
-
 indigo_result indigo_filter_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);

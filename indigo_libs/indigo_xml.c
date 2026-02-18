@@ -2132,7 +2132,7 @@ indigo_result indigo_xml_device_adapter_update_property(indigo_client *client, i
 			INDIGO_PRINTF(handle, "<setTextVector device='%s' name='%s' state='%s'%s>\n", indigo_xml_escape(property->device), indigo_property_name(client->version, property), indigo_property_state_text[property->state], message_attribute(message));
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
-				if (item->is_dirty) {
+				if (client->force_item_updates || item->is_dirty) {
 					INDIGO_PRINTF(handle, "<oneText name='%s'>%s</oneText>\n", indigo_item_name(client->version, property, item), indigo_xml_escape(indigo_get_text_item_value(item)));
 				}
 			}
@@ -2142,7 +2142,7 @@ indigo_result indigo_xml_device_adapter_update_property(indigo_client *client, i
 			INDIGO_PRINTF(handle, "<setNumberVector device='%s' name='%s' state='%s'%s>\n", indigo_xml_escape(property->device), indigo_property_name(client->version, property), indigo_property_state_text[property->state], message_attribute(message));
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
-				if (item->is_dirty) {
+				if (client->force_item_updates || item->is_dirty) {
 					if (client->version >= INDIGO_VERSION_2_0 && property->perm != INDIGO_RO_PERM) {
 						INDIGO_PRINTF(handle, "<oneNumber name='%s' target='%s'>%s</oneNumber>\n", indigo_item_name(client->version, property, item), indigo_dtoa(item->number.target, b1), indigo_dtoa(item->number.value, b2));
 					} else {
@@ -2156,7 +2156,7 @@ indigo_result indigo_xml_device_adapter_update_property(indigo_client *client, i
 			INDIGO_PRINTF(handle, "<setSwitchVector device='%s' name='%s' state='%s'%s>\n", indigo_xml_escape(property->device), indigo_property_name(client->version, property), indigo_property_state_text[property->state], message_attribute(message));
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
-				if (item->is_dirty) {
+				if (client->force_item_updates || item->is_dirty) {
 					INDIGO_PRINTF(handle, "<oneSwitch name='%s'>%s</oneSwitch>\n", indigo_item_name(client->version, property, item), item->sw.value ? "On" : "Off");
 				}
 			}
@@ -2166,7 +2166,7 @@ indigo_result indigo_xml_device_adapter_update_property(indigo_client *client, i
 			INDIGO_PRINTF(handle, "<setLightVector device='%s' name='%s' state='%s'%s>\n", indigo_xml_escape(property->device), indigo_property_name(client->version, property), indigo_property_state_text[property->state], message_attribute(message));
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
-				if (item->is_dirty) {
+				if (client->force_item_updates || item->is_dirty) {
 					INDIGO_PRINTF(handle, "<oneLight name='%s'>%s</oneLight>\n", indigo_item_name(client->version, property, item), indigo_property_state_text[item->light.value]);
 				}
 			}
