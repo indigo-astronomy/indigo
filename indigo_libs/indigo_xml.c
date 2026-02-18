@@ -831,7 +831,9 @@ static void def_property(parser_context *context, indigo_property *other, char *
 				for (int i = 0; i < property->count; i++) {
 					indigo_item *property_item = property->items + i;
 					indigo_item *other_item = other->items + i;
-					indigo_set_text_item_value(property_item, indigo_get_text_item_value(other_item));
+					if (other_item->text.long_value) {
+						property_item->text.long_value = indigo_safe_malloc_copy(property_item->text.length = other_item->text.length, other_item->text.long_value);
+					}
 				}
 				break;
 			case INDIGO_NUMBER_VECTOR:

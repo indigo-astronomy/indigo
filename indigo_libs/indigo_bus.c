@@ -1721,7 +1721,7 @@ char *indigo_get_text_item_value(indigo_item *item) {
 
 void indigo_set_text_item_value(indigo_item *item, const char *value) {
 	if (item->text.long_value) {
-		free(item->text.long_value);
+		indigo_safe_free(item->text.long_value);
 		item->text.long_value = NULL;
 	}
 	long length = (long)strlen(value);
