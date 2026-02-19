@@ -466,7 +466,7 @@ static void set_property(parser_context *context, indigo_property *other, char *
 		indigo_property *property = context->properties[index];
 		if (property != NULL && !strncmp(property->device, other->device, INDIGO_NAME_SIZE) && !strncmp(property->name, other->name, INDIGO_NAME_SIZE)) {
 			property->state = other->state;
-			if (property->type == INDIGO_SWITCH_VECTOR && property->count > 0 && property->rule != INDIGO_ANY_OF_MANY_RULE) {
+			if (property->type == INDIGO_SWITCH_VECTOR && other->count > 0 && property->rule != INDIGO_ANY_OF_MANY_RULE) {
 				for (int j = 0; j < property->count; j++) {
 					property->items[j].sw.value = false;
 				}
