@@ -49,7 +49,7 @@ static indigo_result session_attach(indigo_device *device) {
 }
 
 static indigo_result session_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	if (indigo_property_match(SESSION_FEATURES_PROPERTY, property)) {
+	if (client != NULL && indigo_property_match(SESSION_FEATURES_PROPERTY, property)) {
 		SESSION_FORCE_PROPERTY_UPDATES_ITEM->sw.value = client->force_property_updates;
 		SESSION_FORCE_ITEM_UPDATES_ITEM->sw.value = client->force_item_updates;
 		indigo_define_property_to_client(&indigo_session_device, client, SESSION_FEATURES_PROPERTY, NULL);
@@ -58,7 +58,7 @@ static indigo_result session_enumerate_properties(indigo_device *device, indigo_
 }
 
 static indigo_result session_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
-	if (indigo_property_match_changeable(SESSION_FEATURES_PROPERTY, property)) {
+	if (client != NULL && indigo_property_match_changeable(SESSION_FEATURES_PROPERTY, property)) {
 		indigo_property_copy_values(SESSION_FEATURES_PROPERTY, property, false);
 		client->force_property_updates = SESSION_FORCE_PROPERTY_UPDATES_ITEM->sw.value;
 		client->force_item_updates = SESSION_FORCE_ITEM_UPDATES_ITEM->sw.value;
