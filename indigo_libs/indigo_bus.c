@@ -376,9 +376,9 @@ void indigo_trace_property(const char *message, indigo_client *client, indigo_pr
 			indigo_trace_bus("B <+ %s '%s'.'%s' %s %s %s %d.%d %x %s { // %s", message, property->device, property->name, indigo_property_type_text[property->type], indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], (property->version >> 8) & 0xFF, property->version & 0xFF, property->access_token, (property->type == INDIGO_SWITCH_VECTOR ? indigo_switch_rule_text[property->rule]: ""), property->label);
 		} else {
 			if (client) {
-				indigo_trace_bus("B <+ %s '%s'.'%s' %s %s %s %d.%d %x '%s' {", message, property->device, property->name, indigo_property_type_text[property->type], indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], (property->version >> 8) & 0xFF, property->version & 0xFF, property->access_token, client->name);
+				indigo_trace_bus("B <+ %s%s '%s'.'%s' %s %s %s %d.%d %x '%s' {", message, property->do_update? "*" :"", property->device, property->name, indigo_property_type_text[property->type], indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], (property->version >> 8) & 0xFF, property->version & 0xFF, property->access_token, client->name);
 			} else {
-				indigo_trace_bus("B <+ %s '%s'.'%s' %s %s %s %d.%d %x {", message, property->device, property->name, indigo_property_type_text[property->type], indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], (property->version >> 8) & 0xFF, property->version & 0xFF, property->access_token);
+				indigo_trace_bus("B <+ %s%s '%s'.'%s' %s %s %s %d.%d %x {", message, property->do_update? "*" :"", property->device, property->name, indigo_property_type_text[property->type], indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], (property->version >> 8) & 0xFF, property->version & 0xFF, property->access_token);
 			}
 		}
 		if (items) {
@@ -394,9 +394,9 @@ void indigo_trace_property(const char *message, indigo_client *client, indigo_pr
 						}
 					} else {
 						if (item->text.long_value) {
-							indigo_trace_bus("B <+%c  '%s' = '%s' + %d extra characters", item->is_dirty ? '*' : ' ', item->name, item->text.value, item->text.length - 1);
+							indigo_trace_bus("B <+%c  '%s' = '%s' + %d extra characters", item->do_update ? '*' : ' ', item->name, item->text.value, item->text.length - 1);
 						} else {
-							indigo_trace_bus("B <+%c  '%s' = '%s'", item->is_dirty ? '*' : ' ', item->name, item->text.value);
+							indigo_trace_bus("B <+%c  '%s' = '%s'", item->do_update ? '*' : ' ', item->name, item->text.value);
 						}
 					}
 					break;
@@ -404,21 +404,21 @@ void indigo_trace_property(const char *message, indigo_client *client, indigo_pr
 					if (defs) {
 						indigo_trace_bus("B <+   '%s' = %g, target = %g (%g, %g, %g, '%s') // %s", item->name, item->number.value, item->number.target, item->number.min, item->number.max, item->number.step, item->number.format, item->label);
 					} else {
-						indigo_trace_bus("B <+%c  '%s' = %g, target = %g ",item->is_dirty ? '*' : ' ', item->name, item->number.value, item->number.target);
+						indigo_trace_bus("B <+%c  '%s' = %g, target = %g ",item->do_update ? '*' : ' ', item->name, item->number.value, item->number.target);
 					}
 					break;
 				case INDIGO_SWITCH_VECTOR:
 					if (defs) {
 						indigo_trace_bus("B <+   '%s' = %s // %s", item->name, (item->sw.value ? "On" : "Off"), item->label);
 					} else {
-						indigo_trace_bus("B <+%c  '%s' = %s ", item->is_dirty ? '*' : ' ', item->name, (item->sw.value ? "On" : "Off"));
+						indigo_trace_bus("B <+%c  '%s' = %s ", item->do_update ? '*' : ' ', item->name, (item->sw.value ? "On" : "Off"));
 					}
 					break;
 				case INDIGO_LIGHT_VECTOR:
 					if (defs) {
 						indigo_trace_bus("B <+   '%s' = %s // %s", item->name, indigo_property_state_text[item->light.value], item->label);
 					} else {
-						indigo_trace_bus("B <+%c  '%s' = %s ", item->is_dirty ? '*' : ' ', item->name, indigo_property_state_text[item->light.value]);
+						indigo_trace_bus("B <+%c  '%s' = %s ", item->do_update ? '*' : ' ', item->name, indigo_property_state_text[item->light.value]);
 					}
 					break;
 				case INDIGO_BLOB_VECTOR:
@@ -599,7 +599,7 @@ indigo_result indigo_change_property(indigo_client *client, indigo_property *pro
 	}
 	INDIGO_TRACE(indigo_trace_property("Change", client, property, false, true));
 	for (int i = 0; i < property->count; i++) {
-		property->items[i].is_dirty = true;
+		property->items[i].do_update = true;
 	}
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
@@ -807,7 +807,7 @@ indigo_result indigo_update_property(indigo_device *device, indigo_property *pro
 		}
 		char message[INDIGO_VALUE_SIZE];
 		int count = property->count;
-		bool is_dirty = property->is_dirty || property->state != property->previous_state;
+		bool do_update = property->do_update || property->state != property->previous_state;
 		if (property->perm == INDIGO_WO_PERM) {
 			property->count = 0;
 		} else {
@@ -816,33 +816,33 @@ indigo_result indigo_update_property(indigo_device *device, indigo_property *pro
 				switch (property->type) {
 					case INDIGO_TEXT_VECTOR:
 						if (strcmp(item->text.value, item->text.previous_value)) {
-							item->is_dirty = true;
-							is_dirty = true;
+							item->do_update = true;
+							do_update = true;
 						}
 						break;
 					case INDIGO_NUMBER_VECTOR:
 						if (item->number.value != item->number.previous_value || item->number.target != item->number.target) {
-							item->is_dirty = true;
-							is_dirty = true;
+							item->do_update = true;
+							do_update = true;
 						}
 						break;
 					case INDIGO_SWITCH_VECTOR:
 						if (item->sw.value != item->sw.previous_value) {
-							item->is_dirty = true;
-							is_dirty = true;
-						} else if (item->sw.value) {
-							item->is_dirty = true;
+							item->do_update = true;
+							do_update = true;
+						} else if (property->rule != INDIGO_ANY_OF_MANY_RULE && item->sw.value) {
+							item->do_update = true;
 						}
 						break;
 					case INDIGO_LIGHT_VECTOR:
 						if (item->light.value != item->light.previous_value) {
-							item->is_dirty = true;
-							is_dirty = true;
+							item->do_update = true;
+							do_update = true;
 						}
 						break;
 					default:
-						item->is_dirty = true;
-						is_dirty = true;
+						item->do_update = true;
+						do_update = true;
 						break;
 				}
 			}
@@ -903,13 +903,13 @@ indigo_result indigo_update_property(indigo_device *device, indigo_property *pro
 		}
 		for (int i = 0; i < MAX_CLIENTS; i++) {
 			indigo_client *client = clients[i];
-			if (client != NULL && client->update_property != NULL && (is_dirty || client->force_property_updates)) {
+			if (client != NULL && client->update_property != NULL && (do_update || client->force_property_updates)) {
 				client->last_result = client->update_property(client, device, property, format != NULL ? message : NULL);
 			}
 		}
 		for (int i = 0; i < count; i++) {
 			indigo_item *item = property->items + i;
-			if (item->is_dirty) {
+			if (item->do_update) {
 				switch (property->type) {
 					case INDIGO_TEXT_VECTOR:
 						strcpy(item->text.previous_value, item->text.value);
@@ -917,7 +917,7 @@ indigo_result indigo_update_property(indigo_device *device, indigo_property *pro
 					case INDIGO_NUMBER_VECTOR:
 						item->number.previous_value = item->number.value;
 						item->number.target = item->number.target;
-						item->is_dirty = true;
+						item->do_update = true;
 						break;
 					case INDIGO_SWITCH_VECTOR:
 						item->sw.previous_value = item->sw.value;
@@ -928,7 +928,7 @@ indigo_result indigo_update_property(indigo_device *device, indigo_property *pro
 					default:
 						break;
 				}
-				item->is_dirty = false;
+				item->do_update = false;
 			}
 		}
 		property->previous_state = property->state;
@@ -1285,7 +1285,7 @@ void indigo_init_text_item_raw(indigo_item *item, const char *name, const char *
 	INDIGO_COPY_VALUE(item->label, label ? label : "");
 	indigo_set_text_item_value(item, value);
 	INDIGO_COPY_VALUE(item->text.previous_value, item->text.value);
-	item->is_dirty = false;
+	item->do_update = false;
 }
 
 void indigo_init_number_item(indigo_item *item, const char *name, const char *label, double min, double max, double step, double value) {
@@ -1692,7 +1692,7 @@ void indigo_property_copy_values(indigo_property *property, indigo_property *oth
 					}
 				}
 			}
-			property->is_dirty = true;
+			property->do_update = true;
 		}
 	}
 }
@@ -1721,7 +1721,7 @@ void indigo_property_copy_targets(indigo_property *property, indigo_property *ot
 					}
 				}
 			}
-			property->is_dirty = true;
+			property->do_update = true;
 		}
 	}
 }
@@ -1756,7 +1756,7 @@ void indigo_set_text_item_value(indigo_item *item, const char *value) {
 		strncpy(item->text.long_value, value, length);
 		item->text.long_value[length] = 0;
 	}
-	item->is_dirty = true;
+	item->do_update = true;
 }
 
 indigo_result indigo_change_text_property_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, int count, const char **items, const char **values) {

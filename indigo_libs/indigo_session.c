@@ -62,7 +62,7 @@ static indigo_result session_change_property(indigo_device *device, indigo_clien
 		indigo_property_copy_values(SESSION_FEATURES_PROPERTY, property, false);
 		client->force_property_updates = SESSION_FORCE_PROPERTY_UPDATES_ITEM->sw.value;
 		client->force_item_updates = SESSION_FORCE_ITEM_UPDATES_ITEM->sw.value;
-		SESSION_FORCE_PROPERTY_UPDATES_ITEM->is_dirty = SESSION_FORCE_ITEM_UPDATES_ITEM->is_dirty = true;
+		SESSION_FORCE_PROPERTY_UPDATES_ITEM->do_update = SESSION_FORCE_ITEM_UPDATES_ITEM->do_update = true;
 		indigo_update_property_to_client(&indigo_session_device, client, SESSION_FEATURES_PROPERTY, NULL);
 		indigo_debug("Session features updated for %s", client->name);
 		return INDIGO_OK;

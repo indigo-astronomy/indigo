@@ -230,7 +230,7 @@ typedef struct {/* there is no .name =  because of g++ C99 bug affecting string 
 	char name[INDIGO_NAME_SIZE];        ///< property wide unique item name
 	char label[INDIGO_VALUE_SIZE];      ///< item description in human readable form
 	char hints[INDIGO_VALUE_SIZE];			///< item GUI hints
-	bool is_dirty;											///< send update over protocol adapter
+	bool do_update;											///< send update over protocol adapter
 	union {
 		/** Text property item specific fields.
 		 */
@@ -292,7 +292,7 @@ typedef struct {
 	short version;                      ///< property version INDIGO_VERSION_NONE, INDIGO_VERSION_LEGACY or INDIGO_VERSION_2_0
 	bool hidden;                        ///< property is hidden/unused by  driver (for optional properties)
 	bool defined;												///< property is defined
-	bool is_dirty;											///< send update over protocol adapter
+	bool do_update;											///< send update over protocol adapter
 	int allocated_count;                ///< number of allocated property items
 	int count;                          ///< number of used property items
 	indigo_item items[];                ///< property items
