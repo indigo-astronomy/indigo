@@ -604,11 +604,12 @@ static void handle_mount_change(indigo_device *device) {
 				// Bboth are on same side of meridian.
 				// Larger value is ahead of the smaller one.
 				park = ha > target;
-				indigo_send_message(device, "Hour angle tracking limit reached");
 			} else {
 				// One is east of meridian, one is west.
 				// Smaller value is ahead of the larger one.
 				park = ha < target;
+			}
+			if (park) {
 				indigo_send_message(device, "Hour angle tracking limit reached");
 			}
 		}
@@ -616,10 +617,11 @@ static void handle_mount_change(indigo_device *device) {
 			double target = AGENT_LOCAL_TIME_LIMIT_ITEM->number.target;
 			if (now < 12 && target < 12 && now > target) {
 				park = true;
-				indigo_send_message(device, "Time limit reached");
 			}
 			if (now > 12 && target > 12 && now > target) {
 				park = true;
+			}
+			if (park) {
 				indigo_send_message(device, "Time limit reached");
 			}
 		}
