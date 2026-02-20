@@ -66,11 +66,11 @@ static char __buffer__[32];
 #define DEC_PER_SEC 1440
 #define RA_PER_SEC 96
 
-bool is_meade = true;
+bool is_meade = false;
 bool is_10micron = false;
 bool is_gemini = false;
 bool is_avalon = false;
-bool is_onstep = false;
+bool is_onstep = true;
 bool is_zwo = false;
 bool is_nyx = false;
 
@@ -105,6 +105,7 @@ char pec = 'N';
 bool is_slewing = false;
 bool is_tracking = false;
 bool is_parked = false;
+bool is_at_home = true;
 
 char ra_guiding_speed[3] = "50";
 char dec_guiding_speed[3] = "50";
@@ -253,6 +254,8 @@ void loop() {
         Serial.print("G");
         Serial.print(is_tracking ? "" : "n");
         Serial.print(is_slewing ? "" : "N");        
+				Serial.print(is_parked ? "P" : "p");
+				Serial.print(is_at_home ? "H" : "");
         Serial.print("#");
       } else if (!strcmp(buffer, "GVF")) {
 				Serial.print("ETX Autostar|A|43Eg|Apr 03 2007@11:25:53#");
@@ -532,6 +535,9 @@ void loop() {
         pec = 'P';
       } else if (!strcmp(buffer, "$QZ-")) {
         pec = 'I';
+      } else if (!strcmp(buffer, "hR")) {
+        is_parked = false;
+				Serial.print("1");
       }
     }
   }
