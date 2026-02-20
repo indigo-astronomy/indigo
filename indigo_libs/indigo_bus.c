@@ -821,7 +821,7 @@ indigo_result indigo_update_property(indigo_device *device, indigo_property *pro
 						}
 						break;
 					case INDIGO_NUMBER_VECTOR:
-						if (item->number.value != item->number.previous_value || item->number.target != item->number.target) {
+						if (item->number.value != item->number.previous_value || item->number.target != item->number.previous_target) {
 							item->do_update = true;
 							property->do_update = true;
 						}
