@@ -916,7 +916,7 @@ indigo_result indigo_update_property(indigo_device *device, indigo_property *pro
 						break;
 					case INDIGO_NUMBER_VECTOR:
 						item->number.previous_value = item->number.value;
-						item->number.target = item->number.target;
+						item->number.previous_target = item->number.target;
 						item->do_update = true;
 						break;
 					case INDIGO_SWITCH_VECTOR:
