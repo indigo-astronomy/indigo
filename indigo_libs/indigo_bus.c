@@ -436,6 +436,35 @@ void indigo_trace_property(const char *message, indigo_client *client, indigo_pr
 	}
 }
 
+static void clear_previous_state(indigo_property *property) {
+	for (int i = 0; i < property->count; i++) {
+		indigo_item *item = property->items + i;
+		if (item->do_update) {
+			switch (property->type) {
+				case INDIGO_TEXT_VECTOR:
+					strcpy(item->text.previous_value, item->text.value);
+					break;
+				case INDIGO_NUMBER_VECTOR:
+					item->number.previous_value = item->number.value;
+					item->number.previous_target = item->number.target;
+					item->do_update = true;
+					break;
+				case INDIGO_SWITCH_VECTOR:
+					item->sw.previous_value = item->sw.value;
+					break;
+				case INDIGO_LIGHT_VECTOR:
+					item->light.previous_value = item->light.value;
+					break;
+				default:
+					break;
+			}
+			item->do_update = false;
+		}
+	}
+	property->previous_state = property->state;
+
+}
+
 indigo_result indigo_start() {
 	for (int i = 1; i < indigo_main_argc; i++) {
 		if (!strcmp(indigo_main_argv[i], "-v") || !strcmp(indigo_main_argv[i], "--enable-info")) {
@@ -766,6 +795,7 @@ indigo_result indigo_define_property(indigo_device *device, indigo_property *pro
 				client->last_result = client->define_property(client, device, property, format != NULL ? message : NULL);
 			}
 		}
+		clear_previous_state(property);
 		if (indigo_use_strict_locking) {
 			pthread_mutex_unlock(&client_mutex);
 		}
@@ -907,31 +937,7 @@ indigo_result indigo_update_property(indigo_device *device, indigo_property *pro
 				client->last_result = client->update_property(client, device, property, format != NULL ? message : NULL);
 			}
 		}
-		for (int i = 0; i < count; i++) {
-			indigo_item *item = property->items + i;
-			if (item->do_update) {
-				switch (property->type) {
-					case INDIGO_TEXT_VECTOR:
-						strcpy(item->text.previous_value, item->text.value);
-						break;
-					case INDIGO_NUMBER_VECTOR:
-						item->number.previous_value = item->number.value;
-						item->number.previous_target = item->number.target;
-						item->do_update = true;
-						break;
-					case INDIGO_SWITCH_VECTOR:
-						item->sw.previous_value = item->sw.value;
-						break;
-					case INDIGO_LIGHT_VECTOR:
-						item->light.previous_value = item->light.value;
-						break;
-					default:
-						break;
-				}
-				item->do_update = false;
-			}
-		}
-		property->previous_state = property->state;
+		clear_previous_state(property);
 		property->count = count;
 		if (indigo_use_strict_locking) {
 			pthread_mutex_unlock(&client_mutex);
