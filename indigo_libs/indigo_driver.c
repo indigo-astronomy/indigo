@@ -763,9 +763,10 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 		indigo_property_copy_values(SIMULATION_PROPERTY, property, false);
 		SIMULATION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, SIMULATION_PROPERTY, NULL);
-	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
-		if (indigo_switch_match(CONFIG_LOAD_ITEM, property)) {
+		indigo_property_copy_values(CONFIG_PROPERTY, property, false);
+		if (CONFIG_LOAD_ITEM->sw.value) {
 			if (CONFIG_PROPERTY->count == 1 || indigo_load_properties(device, false) == INDIGO_OK) {
 				CONFIG_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
@@ -773,7 +774,7 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 			}
 			CONFIG_LOAD_ITEM->sw.value = false;
 			indigo_update_property(device, CONFIG_PROPERTY, NULL);
-		} else if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
+		} else if (CONFIG_SAVE_ITEM->sw.value) {
 			indigo_save_property(device, NULL, SIMULATION_PROPERTY);
 			indigo_save_property(device, NULL, DEVICE_PORT_PROPERTY);
 			indigo_save_property(device, NULL, DEVICE_BAUDRATE_PROPERTY);
@@ -794,7 +795,7 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 			} else {
 				indigo_update_property(device, CONFIG_PROPERTY, NULL);
 			}
-		} else if (indigo_switch_match(CONFIG_REMOVE_ITEM, property)) {
+		} else if (CONFIG_REMOVE_ITEM->sw.value) {
 			if (indigo_remove_properties(device) == INDIGO_OK) {
 				CONFIG_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
