@@ -1634,6 +1634,7 @@ void indigo_set_switch(indigo_property *property, indigo_item *item, bool value)
 	item->sw.value = value;
 	if (item->sw.previous_value != value) {
 		item->do_update = true;
+		property->do_update = true;
 	}
 }
 
