@@ -187,7 +187,8 @@ typedef struct {
 	double timeout;
 	char response[128];
 	bool use_dst_commands;
-	struct tm mount_time;
+	long time_difference;
+	int utc_offset;
 	bool focus_aborted;
 	int onstep_aux_power_outlet_slot_mapping[ONSTEP_AUX_DEVICE_COUNT];	// maps power outlet property item index to onstep aux slot
 	int onstep_aux_heater_outlet_slot_mapping[ONSTEP_AUX_DEVICE_COUNT];	// maps heater outlet property item index to onstep aux slot
@@ -468,8 +469,9 @@ static bool meade_validate_handle(indigo_device *device) {
 
 // ---------------------------------------------------------------------  mount commands
 
-static bool meade_set_utc(indigo_device *device, time_t *secs, int utc_offset) {
-	time_t seconds = *secs + utc_offset * 3600;
+static bool meade_set_utc(indigo_device *device, time_t secs, int utc_offset) {
+	PRIVATE_DATA->time_difference = time(NULL) - secs;
+	time_t seconds = secs + utc_offset * 3600;
 	struct tm tm;
 	indigo_gmtime(&seconds, &tm);
 	if (!meade_simple_reply_command(device, ":SC%02d/%02d/%02d#", tm.tm_mon + 1, tm.tm_mday, tm.tm_year % 100) || *PRIVATE_DATA->response != '1') {
@@ -489,16 +491,13 @@ static bool meade_set_utc(indigo_device *device, time_t *secs, int utc_offset) {
 
 static bool meade_get_utc(indigo_device *device, time_t *secs, int *utc_offset) {
 	if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_GEMINI_ITEM->sw.value || MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_AP_ITEM->sw.value || MOUNT_TYPE_ZWO_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value || MOUNT_TYPE_GENERIC_ITEM->sw.value) {
+		struct tm tm;
+		memset(&tm, 0, sizeof(tm));
 		char separator[2];
-		int prev_hour = PRIVATE_DATA->mount_time.tm_hour;
-		if (meade_command(device, ":GL#") && sscanf(PRIVATE_DATA->response, "%d%c%d%c%d", &PRIVATE_DATA->mount_time.tm_hour, separator, &PRIVATE_DATA->mount_time.tm_min, separator, &PRIVATE_DATA->mount_time.tm_sec) == 5) {
-			if (prev_hour > PRIVATE_DATA->mount_time.tm_hour || PRIVATE_DATA->mount_time.tm_year == 0) {
-				if (meade_command(device, ":GC#") && sscanf(PRIVATE_DATA->response, "%d%c%d%c%d", &PRIVATE_DATA->mount_time.tm_mon, separator, &PRIVATE_DATA->mount_time.tm_mday, separator, &PRIVATE_DATA->mount_time.tm_year) == 5) {
-					PRIVATE_DATA->mount_time.tm_year += 100; // TODO: To be fixed in year 2100 :)
-					PRIVATE_DATA->mount_time.tm_mon -= 1;
-				} else {
-					return false;
-				}
+		if (meade_command(device, ":GC#") && sscanf(PRIVATE_DATA->response, "%d%c%d%c%d", &tm.tm_mon, separator, &tm.tm_mday, separator, &tm.tm_year) == 5) {
+			if (meade_command(device, ":GL#") && sscanf(PRIVATE_DATA->response, "%d%c%d%c%d", &tm.tm_hour, separator, &tm.tm_min, separator, &tm.tm_sec) == 5) {
+				tm.tm_year += 100; // TODO: To be fixed in year 2100 :)
+				tm.tm_mon -= 1;
 				if (meade_command(device, ":GG#")) {
 					if (MOUNT_TYPE_AP_ITEM->sw.value && PRIVATE_DATA->response[0] == ':') {
 						if (PRIVATE_DATA->response[1] == 'A') {
@@ -545,16 +544,15 @@ static bool meade_get_utc(indigo_device *device, time_t *secs, int *utc_offset) 
 						}
 					}
 					*utc_offset = -atoi(PRIVATE_DATA->response);
-				} else {
-					return false;
+					*secs = indigo_timegm(&tm) - *utc_offset * 3600;
+					PRIVATE_DATA->time_difference = time(NULL) - *secs;
+					return true;
 				}
 			}
-			*secs = indigo_timegm(&PRIVATE_DATA->mount_time) - *utc_offset * 3600;
-		} else {
-			return false;
 		}
 	} else {
 		*secs = time(NULL);
+		PRIVATE_DATA->time_difference = 0;
 	}
 	return true;
 }
@@ -839,6 +837,36 @@ static bool meade_set_tracking_rate(indigo_device *device) {
 		}
 	}
 	return true;
+}
+
+static bool meade_get_tracking_rate(indigo_device *device) {
+	if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value) {
+		if (meade_command(device, ":GT#")) {
+			double rate = atof(PRIVATE_DATA->response);
+			if (rate <= 57.9) {
+				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACK_RATE_LUNAR_ITEM, true);
+			} else if (rate <= 60.0) {
+				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACK_RATE_SOLAR_ITEM, true);
+			} else if (rate <= 60.14) {
+				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACK_RATE_KING_ITEM, true);
+			} else {
+				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACK_RATE_SIDEREAL_ITEM, true);
+			}
+			return true;
+		}
+	} else if (MOUNT_TYPE_ZWO_ITEM->sw.value) {
+		if (meade_command(device, ":GT#")) {
+			if (strchr(PRIVATE_DATA->response, '0')) {
+				indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SIDEREAL_ITEM, true);
+			} else if (strchr(PRIVATE_DATA->response, '1')) {
+				indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_LUNAR_ITEM, true);
+			} else if (strchr(PRIVATE_DATA->response, '2')) {
+				indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SOLAR_ITEM, true);
+			}
+			return true;
+		}
+	}
+	return false;
 }
 
 static bool meade_set_slew_rate(indigo_device *device) {
@@ -1472,15 +1500,6 @@ static void meade_init_zwo_mount(indigo_device *device) {
 			indigo_set_switch(MOUNT_MODE_PROPERTY, ALTAZ_MODE_ITEM, true);
 		}
 	}
-	if (meade_command(device, ":GT#")) {
-		if (strchr(PRIVATE_DATA->response, '0')) {
-			indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SIDEREAL_ITEM, true);
-		} else if (strchr(PRIVATE_DATA->response, '1')) {
-			indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_LUNAR_ITEM, true);
-		} else if (strchr(PRIVATE_DATA->response, '2')) {
-			indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SOLAR_ITEM, true);
-		}
-	}
 	if (meade_command(device, ":GBu#")) {
 		if (strchr(PRIVATE_DATA->response, '0')) {
 			indigo_set_switch(ZWO_BUZZER_PROPERTY, ZWO_BUZZER_OFF_ITEM, true);
@@ -1569,17 +1588,6 @@ static void meade_init_nyx_mount(indigo_device *device) {
 		NYX_LEVELER_COMPASS_ITEM->number.value = atof(PRIVATE_DATA->response);
 	}
 	meade_no_reply_command(device, ":RE00.03#:RA00.03#");
-	if (meade_command(device, ":GU#")) {
-		if (strchr(PRIVATE_DATA->response, '(')) {
-			indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_LUNAR_ITEM, true);
-		} else if (strchr(PRIVATE_DATA->response, 'O')) {
-			indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SOLAR_ITEM, true);
-		} else if (strchr(PRIVATE_DATA->response, 'k')) {
-			indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_KING_ITEM, true);
-		} else {
-			indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SIDEREAL_ITEM, true);
-		}
-	}
 }
 
 static void meade_update_nyx_state(indigo_device *device) {
@@ -1664,15 +1672,6 @@ static void meade_init_teenastro_mount(indigo_device *device) {
 	if (meade_command(device, ":GVN#")) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Firmware: %s", PRIVATE_DATA->response);
 		INDIGO_COPY_VALUE(MOUNT_INFO_FIRMWARE_ITEM->text.value, PRIVATE_DATA->response);
-	}
-	if (meade_command(device, ":GXI#")) {
-		if (PRIVATE_DATA->response[1] == '0') {
-			indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SIDEREAL_ITEM, true);
-		} else if (PRIVATE_DATA->response[1] == '1') {
-			indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SOLAR_ITEM, true);
-		} else if (PRIVATE_DATA->response[1] == '2') {
-			indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_LUNAR_ITEM, true);
-		}
 	}
 }
 
@@ -1788,6 +1787,7 @@ static void meade_init_mount(indigo_device *device) {
 		meade_init_generic_mount(device);
 		meade_update_generic_state(device);
 	}
+	meade_get_tracking_rate(device);
 	if (PRIVATE_DATA->parking) {
 		indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_PARKED_ITEM, true);
 		MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -1817,13 +1817,11 @@ static void meade_init_mount(indigo_device *device) {
 		indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
 	}
 	time_t secs = 0;
-	int utc_offset;
-	meade_get_utc(device, &secs, &utc_offset);
+	meade_get_utc(device, &secs, &PRIVATE_DATA->utc_offset);
 	time_t now = time(NULL);
 	if (labs(secs - now) > 24 * 60 * 60) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Mount is not initialized, initializing...");
-		int utc_offset = indigo_get_utc_offset();
-		meade_set_utc(device, &now, utc_offset);
+		meade_set_utc(device, now, indigo_get_utc_offset());
 		meade_set_site(device, MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value, MOUNT_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value);
 	} else {
 		double latitude = 0, longitude = 0;
@@ -1892,13 +1890,9 @@ static void meade_update_mount_state(indigo_device *device) {
 	//				indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Aborted");
 	//			}
 	//		}
-	int utc_offset;
-	time_t secs;
-	if (meade_get_utc(device, &secs, &utc_offset)) {
-		sprintf(MOUNT_UTC_OFFSET_ITEM->text.value, "%d", utc_offset);
-		indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
-		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
-	}
+	sprintf(MOUNT_UTC_OFFSET_ITEM->text.value, "%d", PRIVATE_DATA->utc_offset);
+	indigo_timetoisogm(time(NULL) - PRIVATE_DATA->time_difference, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
+	MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 }
 
 // -------------------------------------------------------------------------------- INDIGO MOUNT device implementation
@@ -2199,7 +2193,7 @@ static void mount_set_host_time_callback(indigo_device *device) {
 	if (MOUNT_SET_HOST_TIME_ITEM->sw.value) {
 		MOUNT_SET_HOST_TIME_ITEM->sw.value = false;
 		time_t secs = time(NULL);
-		if (meade_set_utc(device, &secs, indigo_get_utc_offset())) {
+		if (meade_set_utc(device, secs, indigo_get_utc_offset())) {
 			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 			MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
@@ -2219,7 +2213,7 @@ static void mount_set_utc_time_callback(indigo_device *device) {
 		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, "Wrong date/time format!");
 	} else {
-		if (meade_set_utc(device, &secs, offset)) {
+		if (meade_set_utc(device, secs, offset)) {
 			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
