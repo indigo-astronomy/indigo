@@ -2461,8 +2461,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 			indigo_execute_handler(device, mount_park_callback);
 		} else {
-			MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Mount is busy with another park/unpark/home operation");
+			MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_PARK_SET_PROPERTY, property)) {
@@ -2480,8 +2479,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
 			indigo_execute_handler(device, mount_home_callback);
 		} else {
-			MOUNT_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, MOUNT_HOME_PROPERTY, "Mount is busy with another park/unpark/home operation");
+			MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_HOME_SET_PROPERTY, property)) {
