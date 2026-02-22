@@ -432,29 +432,14 @@ static indigo_queue_task *dequeue_runnable_task(indigo_queue *queue) {
 // Remove tasks matching device or device and callback
 static void remove_tasks(indigo_queue *queue, indigo_device *device, indigo_timer_callback callback) {
 	pthread_mutex_lock(&timers_mutex);
-	indigo_queue_task *task = queue->task;
-	if (device == NULL && callback == NULL) {
-		while (task) {
-			indigo_queue_task *next = task->next;
+	indigo_queue_task **link = &queue->task;
+	while (*link) {
+		indigo_queue_task *task = *link;
+		if ((task->device == device) && (callback == NULL || task->callback == callback)) {
+			*link = task->next;
 			indigo_safe_free(task);
-			task = next;
-		}
-		queue->task = NULL;
-	} else {
-		while (task && task->device == device && (callback == NULL || task->callback == callback)) {
-			indigo_queue_task *next = task->next;
-			indigo_safe_free(task);
-			task = next;
-		}
-		queue->task = task;
-		while (task) {
-			indigo_queue_task *next = task->next;
-			while (next && next->device == device && (callback == NULL || task->callback == callback)) {
-				next = task->next;
-				indigo_safe_free(task->next);
-				task->next = next;
-			}
-			task = task->next;
+		} else {
+			link = &task->next;
 		}
 	}
 	pthread_mutex_unlock(&timers_mutex);
