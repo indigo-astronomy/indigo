@@ -1902,6 +1902,7 @@ static void meade_update_mount_state(indigo_device *device) {
 static void position_timer_callback(indigo_device *device) {
 	if (PRIVATE_DATA->handle != NULL) {
 		meade_update_mount_state(device);
+		indigo_debug("slewing=%d, tracking=%d, parked=%d, parking=%d, unparking=%d, homed=%d, homing=%d", PRIVATE_DATA->slewing, PRIVATE_DATA->tracking, PRIVATE_DATA->parked, PRIVATE_DATA->parking, PRIVATE_DATA->unparking, PRIVATE_DATA->homed, PRIVATE_DATA->homing);
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = PRIVATE_DATA->slewing ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
 		indigo_update_coordinates(device, NULL);
 		if (MOUNT_TRACKING_PROPERTY->state != INDIGO_BUSY_STATE) {
