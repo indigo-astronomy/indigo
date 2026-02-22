@@ -1593,9 +1593,13 @@
  */
 #define MOUNT_HOME_PROPERTY_NAME								"MOUNT_HOME"
 
-/** MOUNT_HOME.HOMEED property item name.
+/** MOUNT_HOME.HOME property item name.
  */
 #define MOUNT_HOME_ITEM_NAME							      "HOME"
+
+/** MOUNT_HOME.AWAY property item name.
+ */
+#define MOUNT_AWAY_ITEM_NAME										"AWAY"
 
 //----------------------------------------------------------------------
 /** MOUNT_HOME_SET property name.

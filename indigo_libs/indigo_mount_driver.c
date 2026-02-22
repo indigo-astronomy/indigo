@@ -112,12 +112,14 @@ indigo_result indigo_mount_attach(indigo_device *device, const char* driver_name
 			indigo_init_sexagesimal_number_item(MOUNT_PARK_POSITION_HA_ITEM, MOUNT_PARK_POSITION_HA_ITEM_NAME, "Hour Angle (-12 to 12 hrs)", -12, 12, 0, 6);
 			indigo_init_sexagesimal_number_item(MOUNT_PARK_POSITION_DEC_ITEM, MOUNT_PARK_POSITION_DEC_ITEM_NAME, "Declination (-90 to 90°)", -90, 90, 0, 90);
 			// -------------------------------------------------------------------------------- MOUNT_HOME
-			MOUNT_HOME_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_HOME_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Home", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
+			MOUNT_HOME_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_HOME_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Home", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 2);
 			if (MOUNT_HOME_PROPERTY == NULL) {
 				return INDIGO_FAILED;
 			}
 			MOUNT_HOME_PROPERTY->hidden = true;
 			indigo_init_switch_item(MOUNT_HOME_ITEM, MOUNT_HOME_ITEM_NAME, "Slew to home position and stop", false);
+			indigo_init_switch_item(MOUNT_AWAY_ITEM, MOUNT_AWAY_ITEM_NAME, "Mount not at home", false);
+			MOUNT_HOME_PROPERTY->count = 1; // default behaviour is, that HOME is command, not state
 			// -------------------------------------------------------------------------------- MOUNT_HOME_SET
 			MOUNT_HOME_SET_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_HOME_SET_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Set home position", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 2);
 			if (MOUNT_HOME_SET_PROPERTY == NULL) {
@@ -275,7 +277,7 @@ indigo_result indigo_mount_attach(indigo_device *device, const char* driver_name
 			}
 			indigo_init_number_item(MOUNT_EPOCH_ITEM, MOUNT_EPOCH_ITEM_NAME, "Epoch (0, 1900-2050)", 0, 2050, 0, 2000);
 			// -------------------------------------------------------------------------------- MOUNT_ALIGNMENT_MODE
-			MOUNT_SIDE_OF_PIER_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Side of pier", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+			MOUNT_SIDE_OF_PIER_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Side of pier", INDIGO_OK_STATE, INDIGO_RO_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 			if (MOUNT_SIDE_OF_PIER_PROPERTY == NULL) {
 				return INDIGO_FAILED;
 			}
