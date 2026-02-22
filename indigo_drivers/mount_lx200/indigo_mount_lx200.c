@@ -1614,14 +1614,16 @@ static void meade_update_nyx_state(indigo_device *device) {
 			indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_EAST_ITEM, true);
 		}
 	}
-	char *colon;
-	if (meade_command(device, ":GX9D#") && (colon = strchr(PRIVATE_DATA->response, ':'))) {
-		*colon++ = 0;
-		NYX_LEVELER_PICH_ITEM->number.value = atof(PRIVATE_DATA->response);
-		NYX_LEVELER_ROLL_ITEM->number.value = atof(colon);
-	}
-	if (meade_command(device, ":GX9E#")) {
-		NYX_LEVELER_COMPASS_ITEM->number.value = atof(PRIVATE_DATA->response);
+	if (PRIVATE_DATA->parked) {
+		char *colon;
+		if (meade_command(device, ":GX9D#") && (colon = strchr(PRIVATE_DATA->response, ':'))) {
+			*colon++ = 0;
+			NYX_LEVELER_PICH_ITEM->number.value = atof(PRIVATE_DATA->response);
+			NYX_LEVELER_ROLL_ITEM->number.value = atof(colon);
+		}
+		if (meade_command(device, ":GX9E#")) {
+			NYX_LEVELER_COMPASS_ITEM->number.value = atof(PRIVATE_DATA->response);
+		}
 	}
 }
 
