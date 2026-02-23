@@ -1863,10 +1863,8 @@ static void meade_update_mount_state(indigo_device *device) {
 	} else {
 		meade_update_generic_state(device);
 	}
-	if (MOUNT_SIDE_OF_PIER_PROPERTY->do_update) {
-		indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
-	}
-	if (!NYX_LEVELER_PROPERTY->hidden && NYX_LEVELER_PROPERTY->do_update) {
+	indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
+	if (!NYX_LEVELER_PROPERTY->hidden && PRIVATE_DATA->parked) {
 		indigo_update_property(device, NYX_LEVELER_PROPERTY, NULL);
 	}
 	
@@ -1972,7 +1970,7 @@ static void position_timer_callback(indigo_device *device) {
 				MOUNT_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
 			} else if (!MOUNT_HOME_ITEM->sw.value && (PRIVATE_DATA->homed || PRIVATE_DATA->homing)) {
 				indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_HOME_ITEM, true);
-				MOUNT_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
+				//MOUNT_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 		} else if (MOUNT_HOME_PROPERTY->state == INDIGO_ALERT_STATE) {
 			if (PRIVATE_DATA->homed || PRIVATE_DATA->homing) {
@@ -1985,12 +1983,8 @@ static void position_timer_callback(indigo_device *device) {
 				}
 			}
 		}
-		if (MOUNT_PARK_PROPERTY->do_update) {
-			indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
-		}
-		if (MOUNT_HOME_PROPERTY->do_update) {
-			indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
-		}
+		indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
+		indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
 		indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
 		indigo_execute_handler_in(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE ? 0.5 : 1, position_timer_callback);
 	}
