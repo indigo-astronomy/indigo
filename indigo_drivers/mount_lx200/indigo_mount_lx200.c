@@ -1985,6 +1985,7 @@ static void position_timer_callback(indigo_device *device) {
 				}
 			}
 		}
+		indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 		indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 		indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
 		indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
