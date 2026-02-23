@@ -1946,19 +1946,10 @@ static void position_timer_callback(indigo_device *device) {
 			}
 		}
 		if (MOUNT_HOME_PROPERTY->state == INDIGO_BUSY_STATE) {
-			if (MOUNT_HOME_ITEM->sw.value && PRIVATE_DATA->homed) {
+			if (MOUNT_HOME_ITEM->sw.value && PRIVATE_DATA->homing) {
+				//wait
+			} else if (PRIVATE_DATA->homed) {
 				MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
-			} else if (MOUNT_HOME_PROPERTY->count == 2 && MOUNT_AWAY_ITEM->sw.value && !PRIVATE_DATA->homed) {
-				MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
-			} else if (MOUNT_HOME_ITEM->sw.value && !PRIVATE_DATA->homing) {
-				if (MOUNT_HOME_PROPERTY->count == 2) {
-					indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_AWAY_ITEM, true);
-				} else {
-					MOUNT_HOME_ITEM->sw.value = false;
-				}
-				MOUNT_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
-			} else {
-				MOUNT_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 		} else if (MOUNT_HOME_PROPERTY->state == INDIGO_OK_STATE) {
 			if (MOUNT_HOME_ITEM->sw.value && !PRIVATE_DATA->homed) {
@@ -1969,10 +1960,8 @@ static void position_timer_callback(indigo_device *device) {
 						MOUNT_HOME_ITEM->sw.value = false;
 					}
 				}
-				//MOUNT_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
 			} else if (!MOUNT_HOME_ITEM->sw.value && (PRIVATE_DATA->homed || PRIVATE_DATA->homing)) {
 				indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_HOME_ITEM, true);
-				//MOUNT_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 		} else if (MOUNT_HOME_PROPERTY->state == INDIGO_ALERT_STATE) {
 			if (PRIVATE_DATA->homed || PRIVATE_DATA->homing) {
@@ -2087,7 +2076,9 @@ static void mount_park_set_callback(indigo_device *device) {
 
 static void mount_home_callback(indigo_device *device) {
 	if (MOUNT_HOME_ITEM->sw.value) {
-		MOUNT_HOME_ITEM->sw.value = false;
+		if (MOUNT_HOME_PROPERTY->count == 1) {
+			MOUNT_HOME_ITEM->sw.value = false;
+		}
 		if (!meade_home(device)) {
 			MOUNT_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
