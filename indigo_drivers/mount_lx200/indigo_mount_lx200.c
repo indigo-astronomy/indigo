@@ -1900,7 +1900,7 @@ static void meade_update_mount_state(indigo_device *device) {
 static void position_timer_callback(indigo_device *device) {
 	if (PRIVATE_DATA->handle != NULL) {
 		meade_update_mount_state(device);
-		indigo_debug("slewing=%d, tracking=%d, parked=%d, parking=%d, unparking=%d, homed=%d, homing=%d", PRIVATE_DATA->slewing, PRIVATE_DATA->tracking, PRIVATE_DATA->parked, PRIVATE_DATA->parking, PRIVATE_DATA->unparking, PRIVATE_DATA->homed, PRIVATE_DATA->homing);
+		indigo_debug("*** slewing=%d, tracking=%d, parked=%d, parking=%d, unparking=%d, homed=%d, homing=%d", PRIVATE_DATA->slewing, PRIVATE_DATA->tracking, PRIVATE_DATA->parked, PRIVATE_DATA->parking, PRIVATE_DATA->unparking, PRIVATE_DATA->homed, PRIVATE_DATA->homing);
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = PRIVATE_DATA->slewing ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
 		indigo_update_coordinates(device, NULL);
 		if (MOUNT_TRACKING_PROPERTY->state != INDIGO_BUSY_STATE) {
@@ -1913,7 +1913,9 @@ static void position_timer_callback(indigo_device *device) {
 			}
 		}
 		if (MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE) {
-			if (MOUNT_PARK_PARKED_ITEM->sw.value && PRIVATE_DATA->parked) {
+			if ((MOUNT_PARK_PARKED_ITEM->sw.value && PRIVATE_DATA->parking) || (MOUNT_PARK_UNPARKED_ITEM->sw.value && PRIVATE_DATA->unparking)) {
+				// wait
+			} else if (MOUNT_PARK_PARKED_ITEM->sw.value && PRIVATE_DATA->parked) {
 				MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 			} else if (MOUNT_PARK_UNPARKED_ITEM->sw.value && !PRIVATE_DATA->parked) {
 				MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
@@ -1967,7 +1969,7 @@ static void position_timer_callback(indigo_device *device) {
 						MOUNT_HOME_ITEM->sw.value = false;
 					}
 				}
-				MOUNT_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
+				//MOUNT_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
 			} else if (!MOUNT_HOME_ITEM->sw.value && (PRIVATE_DATA->homed || PRIVATE_DATA->homing)) {
 				indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_HOME_ITEM, true);
 				//MOUNT_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
