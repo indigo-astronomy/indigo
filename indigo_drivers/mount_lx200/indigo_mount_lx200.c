@@ -1917,16 +1917,8 @@ static void position_timer_callback(indigo_device *device) {
 				// wait
 			} else if (MOUNT_PARK_PARKED_ITEM->sw.value && PRIVATE_DATA->parked) {
 				MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
-			} else if (MOUNT_PARK_UNPARKED_ITEM->sw.value && !PRIVATE_DATA->parked) {
+			} else if (MOUNT_PARK_PROPERTY->count == 2 && MOUNT_PARK_UNPARKED_ITEM->sw.value && !PRIVATE_DATA->parked) {
 				MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
-			} else if (MOUNT_PARK_PARKED_ITEM->sw.value && !PRIVATE_DATA->parking) {
-				indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
-				MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
-			} else if (MOUNT_PARK_UNPARKED_ITEM->sw.value && !PRIVATE_DATA->unparking) {
-				indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_PARKED_ITEM, true);
-				MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
-			} else {
-				MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 		} else if (MOUNT_PARK_PROPERTY->state == INDIGO_OK_STATE) {
 			if (MOUNT_PARK_PARKED_ITEM->sw.value && !PRIVATE_DATA->parked) {
