@@ -1156,7 +1156,7 @@ var indigo_sequencer = {
 		}
 		this.wait(delay, true);
 	},
-	
+
 	set_failure_handling: function(failure_handling) {
 		this.failure_handling = failure_handling;
 		indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
@@ -1205,7 +1205,6 @@ var indigo_sequencer = {
 
 	evaluate: function(code) {
 		eval(code);
-		indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
 	},
 
 	send_message: function(message) {
