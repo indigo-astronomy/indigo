@@ -1539,6 +1539,7 @@ static void meade_init_nyx_mount(indigo_device *device) {
 	MOUNT_PARK_SET_PROPERTY->count = 1;
 	MOUNT_HOME_PROPERTY->hidden = false;
 	MOUNT_HOME_PROPERTY->count = 2;
+	MOUNT_HOME_PROPERTY->rule = INDIGO_ONE_OF_MANY_RULE;
 	MOUNT_HOME_SET_PROPERTY->hidden = false;
 	MOUNT_HOME_SET_PROPERTY->count = 1;
 	MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
@@ -2036,7 +2037,7 @@ static void mount_park_callback(indigo_device *device) {
 			MOUNT_PARK_PARKED_ITEM->sw.value = false;
 		}
 		if (meade_park(device)) {
-			if (!(MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_GEMINI_ITEM->sw.value || MOUNT_TYPE_STARGO_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value))
+			if (!(MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_GEMINI_ITEM->sw.value || MOUNT_TYPE_STARGO_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value))
 				MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
