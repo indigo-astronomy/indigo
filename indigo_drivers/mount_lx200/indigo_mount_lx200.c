@@ -1524,10 +1524,15 @@ static void meade_update_zwo_state(indigo_device *device) {
 		}
 	}
 	if (meade_command(device, ":Gm#")) {
-		if (PRIVATE_DATA->response[0] == 'W' && !MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value) {
+		if (strchr(PRIVATE_DATA->response, 'N')) {
+			MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value = MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value = false;
+			MOUNT_SIDE_OF_PIER_PROPERTY->state = INDIGO_IDLE_STATE;
+		} else 		if (PRIVATE_DATA->response[0] == 'W' && !MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value) {
 			indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
+			MOUNT_SIDE_OF_PIER_PROPERTY->state = INDIGO_OK_STATE;
 		} else if (PRIVATE_DATA->response[0] == 'E' && !MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value) {
 			indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_EAST_ITEM, true);
+			MOUNT_SIDE_OF_PIER_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	}
 }
@@ -1609,10 +1614,15 @@ static void meade_update_nyx_state(indigo_device *device) {
 		} else if (strchr(PRIVATE_DATA->response, 'H')) {
 			PRIVATE_DATA->homed = true;
 		}
-		if (strchr(PRIVATE_DATA->response, 'W') && !MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value) {
+		if (strchr(PRIVATE_DATA->response, 'o')) {
+			MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value = MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value = false;
+			MOUNT_SIDE_OF_PIER_PROPERTY->state = INDIGO_IDLE_STATE;
+		} else if (strchr(PRIVATE_DATA->response, 'W') && !MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value) {
 			indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
+			MOUNT_SIDE_OF_PIER_PROPERTY->state = INDIGO_OK_STATE;
 		} else if (strchr(PRIVATE_DATA->response, 'T') && !MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value) {
 			indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_EAST_ITEM, true);
+			MOUNT_SIDE_OF_PIER_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	}
 	if (PRIVATE_DATA->parked) {
