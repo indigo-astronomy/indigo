@@ -1180,6 +1180,9 @@
 		590A863F1DB80A04002F12FB /* indigo_ccd_asi_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_asi_main.c; sourceTree = "<group>"; };
 		590A86401DB80A04002F12FB /* indigo_ccd_asi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_ccd_asi.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		590A86411DB80A04002F12FB /* indigo_ccd_asi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_asi.h; sourceTree = "<group>"; };
+		590B0EFF2F50DD0A007B66B1 /* OAT Command Index.webloc */ = {isa = PBXFileReference; lastKnownFileType = file.bplist; path = "OAT Command Index.webloc"; sourceTree = "<group>"; };
+		590B0F002F50DEAA007B66B1 /* TeenAstro Command Index.webloc */ = {isa = PBXFileReference; lastKnownFileType = file.bplist; path = "TeenAstro Command Index.webloc"; sourceTree = "<group>"; };
+		590B0F012F50E3C9007B66B1 /* aGotino Command Index.webloc */ = {isa = PBXFileReference; lastKnownFileType = file.bplist; path = "aGotino Command Index.webloc"; sourceTree = "<group>"; };
 		590B59CF1F78543F00086FD2 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		590B59D01F78544000086FD2 /* indigo_mount_temma_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_temma_main.c; sourceTree = "<group>"; };
 		590B59D11F78544000086FD2 /* indigo_mount_temma.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_temma.c; sourceTree = "<group>"; };
@@ -14168,6 +14171,9 @@
 				5964D75721F78FE70059AEA8 /* Gemini-5-2.1.pdf */,
 				598B919E2847D95B0094EB74 /* OnStep.pdf */,
 				9D035EBE299E695E00226FC7 /* NYX101.pdf */,
+				590B0EFF2F50DD0A007B66B1 /* OAT Command Index.webloc */,
+				590B0F002F50DEAA007B66B1 /* TeenAstro Command Index.webloc */,
+				590B0F012F50E3C9007B66B1 /* aGotino Command Index.webloc */,
 				591E1142215AEC3900ABADA6 /* lx200_simulator */,
 			);
 			path = mount_lx200;
