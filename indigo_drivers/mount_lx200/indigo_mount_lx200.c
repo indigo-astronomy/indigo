@@ -467,7 +467,7 @@ static bool meade_validate_handle(indigo_device *device) {
 	return true;
 }
 
-// ---------------------------------------------------------------------  mount commands
+// ---------------------------------------------------------------------  low level mount commands
 
 static bool meade_set_utc(indigo_device *device, time_t secs, int utc_offset) {
 	PRIVATE_DATA->time_difference = time(NULL) - secs;
@@ -1219,6 +1219,8 @@ static bool meade_detect_mount(indigo_device *device) {
 	return result;
 }
 
+// ---------------------------------------------------------------------  mount specific init & state update
+
 static void meade_init_meade_mount(indigo_device *device) {
 	MOUNT_MODE_PROPERTY->hidden = false;
 	MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
@@ -1756,6 +1758,8 @@ static void meade_update_generic_state(indigo_device *device) {
 	}
 }
 
+// ---------------------------------------------------------------------  generic init & state update
+
 static void meade_init_mount(indigo_device *device) {
 	MOUNT_MODE_PROPERTY->hidden = true;
 	MOUNT_SET_HOST_TIME_PROPERTY->hidden = true;
@@ -1971,7 +1975,158 @@ static void meade_update_mount_state(indigo_device *device) {
 	indigo_update_coordinates(device, NULL);
 }
 
-// -------------------------------------------------------------------------------- INDIGO MOUNT device implementation
+// ---------------------------------------------------------------------- mount specific properties
+
+static void zwo_buzzer_callback(indigo_device *device) {
+	if (ZWO_BUZZER_OFF_ITEM->sw.value) {
+		meade_no_reply_command(device, ":SBu0#");
+	} else if (ZWO_BUZZER_LOW_ITEM->sw.value) {
+		meade_no_reply_command(device, ":SBu1#");
+	} else if (ZWO_BUZZER_HIGH_ITEM->sw.value) {
+		meade_no_reply_command(device, ":SBu2#");
+	}
+	ZWO_BUZZER_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, ZWO_BUZZER_PROPERTY, NULL);
+}
+
+static void nyx_ap_callback(indigo_device *device) {
+	NYX_WIFI_AP_PROPERTY->state = INDIGO_ALERT_STATE;
+	if (meade_simple_reply_command(device, ":WA%s#", NYX_WIFI_AP_SSID_ITEM->text.value) && *PRIVATE_DATA->response == '1') {
+		if (meade_simple_reply_command(device, ":WB%s#", NYX_WIFI_AP_PASSWORD_ITEM->text.value) && *PRIVATE_DATA->response == '1') {
+			if (meade_simple_reply_command(device, ":WLC#") && *PRIVATE_DATA->response == '1') {
+				indigo_send_message(device, "Created access point with SSID %s", NYX_WIFI_AP_SSID_ITEM->text.value);
+				NYX_WIFI_AP_PROPERTY->state = INDIGO_OK_STATE;
+			}
+		}
+	}
+	indigo_update_property(device, NYX_WIFI_AP_PROPERTY, NULL);
+}
+
+static void nyx_cl_callback(indigo_device *device) {
+	char ssid[128] = "";
+	char password[128] = "";
+	bool encode = false;
+	if (compare_versions(MOUNT_INFO_FIRMWARE_ITEM->text.value, NYX_BASE64_THRESHOLD_VERSION) >= 0) {
+		base64_encode((unsigned char *)ssid, (unsigned char *)NYX_WIFI_CL_SSID_ITEM->text.value, (long)strlen(NYX_WIFI_CL_SSID_ITEM->text.value));
+		base64_encode((unsigned char *)password, (unsigned char*)NYX_WIFI_CL_PASSWORD_ITEM->text.value, (long)strlen(NYX_WIFI_CL_PASSWORD_ITEM->text.value));
+		encode = true;
+	}
+	if (meade_simple_reply_command(device, ":WS%s#", encode ? ssid : NYX_WIFI_CL_SSID_ITEM->text.value) && *PRIVATE_DATA->response == '1') {
+		if (meade_simple_reply_command(device, ":WP%s#", encode ? password : NYX_WIFI_CL_PASSWORD_ITEM->text.value) && *PRIVATE_DATA->response == '1') {
+			if (meade_no_reply_command(device, ":WLC#")) {
+				indigo_send_message(device, "WiFi reset!");
+				NYX_WIFI_CL_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, NYX_WIFI_CL_PROPERTY, NULL);
+				if (PRIVATE_DATA->handle && PRIVATE_DATA->handle->type == INDIGO_TCP_HANDLE) {
+					indigo_execute_handler(device->master_device, indigo_disconnect_slave_devices);
+				}
+				return;
+			}
+		}
+	}
+	NYX_WIFI_CL_PROPERTY->state = INDIGO_ALERT_STATE;
+	indigo_update_property(device, NYX_WIFI_CL_PROPERTY, NULL);
+}
+
+static void nyx_reset_callback(indigo_device *device) {
+	if (meade_no_reply_command(device, ":WLZ#")) {
+		indigo_send_message(device, "WiFi reset!");
+		NYX_WIFI_RESET_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, NYX_WIFI_RESET_PROPERTY, NULL);
+		if (PRIVATE_DATA->handle && PRIVATE_DATA->handle->type == INDIGO_TCP_HANDLE) {
+			indigo_execute_handler(device->master_device, indigo_disconnect_slave_devices);
+		}
+		return;
+	}
+	NYX_WIFI_RESET_PROPERTY->state = INDIGO_ALERT_STATE;
+	indigo_update_property(device, NYX_WIFI_RESET_PROPERTY, NULL);
+}
+
+static void nyx_aux_timer_callback(indigo_device *device) {
+	if (!IS_CONNECTED) {
+		return;
+	}
+	bool updateWeather = false;
+	bool updateInfo = false;
+	if (meade_command(device, ":GX9A#")) {
+		double temperature = atof(PRIVATE_DATA->response);
+		if (AUX_WEATHER_TEMPERATURE_ITEM->number.value != temperature) {
+			AUX_WEATHER_TEMPERATURE_ITEM->number.value = temperature;
+			updateWeather = true;
+		}
+	}
+	if (meade_command(device, ":GX9B#")) {
+		double pressure = atof(PRIVATE_DATA->response);
+		if (AUX_WEATHER_PRESSURE_ITEM->number.value != pressure) {
+			AUX_WEATHER_PRESSURE_ITEM->number.value = pressure;
+			updateWeather = true;
+		}
+	}
+	if (meade_command(device, ":GX9V#")) {
+		double voltage = atof(PRIVATE_DATA->response);
+		if (AUX_INFO_VOLTAGE_ITEM->number.value != voltage) {
+			AUX_INFO_VOLTAGE_ITEM->number.value = voltage;
+			updateInfo = true;
+		}
+	}
+	if (updateWeather) {
+		AUX_WEATHER_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, AUX_WEATHER_PROPERTY, NULL);
+	}
+	if (updateInfo) {
+		AUX_INFO_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, AUX_INFO_PROPERTY, NULL);
+	}
+	indigo_execute_handler_in(device, 10, nyx_aux_timer_callback);
+}
+
+static void onstep_aux_timer_callback(indigo_device *device) {
+	if (!IS_CONNECTED) {
+		return;
+	}
+	if (AUX_HEATER_OUTLET_PROPERTY->state != INDIGO_BUSY_STATE) {
+		bool do_update = false;
+		for (int i = 0; i < AUX_HEATER_OUTLET_PROPERTY->count; i++) {
+			int onstep_slot = ONSTEP_AUX_HEATER_OUTLET_MAPPING[i];
+			// responds with a number between 0 for fully off and 255 for fully on
+			meade_command(device, ":GXX%d#", onstep_slot);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "received PRIVATE_DATA->response %s for slot %d", PRIVATE_DATA->response, onstep_slot);
+			indigo_item *item = AUX_HEATER_OUTLET_PROPERTY->items + i;
+			// convert to percent
+			int new_value = (int)(atoi(PRIVATE_DATA->response) / 2.56 + 0.5);
+			if (new_value != (int) item->number.value) {
+				item->number.value = new_value;
+				do_update = true;
+			}
+		}
+		if (do_update) {
+			indigo_update_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
+		}
+	}
+	if (AUX_POWER_OUTLET_PROPERTY->state != INDIGO_BUSY_STATE) {
+		bool do_update = false;
+		for (int i = 0; i < AUX_POWER_OUTLET_PROPERTY->count; i++) {
+			int onstep_slot = ONSTEP_AUX_POWER_OUTLET_MAPPING[i];
+			// the PRIVATE_DATA->response is 0 when disabled and 1 when the switch is enabled
+			meade_command(device, ":GXX%d#", onstep_slot);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "received PRIVATE_DATA->response %s for slot %d", PRIVATE_DATA->response, onstep_slot);
+			indigo_item *item = AUX_POWER_OUTLET_PROPERTY->items + i;
+			bool active = PRIVATE_DATA->response[0] - '0';
+			if (active != item->sw.value) {
+				item->sw.value = active;
+				AUX_POWER_OUTLET_PROPERTY->state = INDIGO_ALERT_STATE;
+				do_update = true;
+			}
+		}
+		if (do_update) {
+			indigo_update_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
+		}
+	}
+	indigo_execute_handler_in(device, 2, onstep_aux_timer_callback);
+}
+
+
+// ---------------------------------------------------------------------- generic mount device implementation
 
 static void position_timer_callback(indigo_device *device) {
 	if (PRIVATE_DATA->handle != NULL) {
@@ -2257,9 +2412,7 @@ static void mount_pec_callback(indigo_device *device) {
 
 static void mount_guide_rate_callback(indigo_device *device) {
 	if (MOUNT_TYPE_ZWO_ITEM->sw.value) {
-		MOUNT_GUIDE_RATE_DEC_ITEM->number.value =
-		MOUNT_GUIDE_RATE_DEC_ITEM->number.target =
-		MOUNT_GUIDE_RATE_RA_ITEM->number.value = MOUNT_GUIDE_RATE_RA_ITEM->number.target;
+		MOUNT_GUIDE_RATE_DEC_ITEM->number.value = MOUNT_GUIDE_RATE_DEC_ITEM->number.target = MOUNT_GUIDE_RATE_RA_ITEM->number.value = MOUNT_GUIDE_RATE_RA_ITEM->number.target;
 	}
 	if (meade_set_guide_rate(device, (int)MOUNT_GUIDE_RATE_RA_ITEM->number.target, (int)MOUNT_GUIDE_RATE_DEC_ITEM->number.target)) {
 		MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_OK_STATE;
@@ -2267,71 +2420,6 @@ static void mount_guide_rate_callback(indigo_device *device) {
 		MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	indigo_update_property(device, MOUNT_GUIDE_RATE_PROPERTY, NULL);
-}
-
-static void zwo_buzzer_callback(indigo_device *device) {
-	if (ZWO_BUZZER_OFF_ITEM->sw.value) {
-		meade_no_reply_command(device, ":SBu0#");
-	} else if (ZWO_BUZZER_LOW_ITEM->sw.value) {
-		meade_no_reply_command(device, ":SBu1#");
-	} else if (ZWO_BUZZER_HIGH_ITEM->sw.value) {
-		meade_no_reply_command(device, ":SBu2#");
-	}
-	ZWO_BUZZER_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, ZWO_BUZZER_PROPERTY, NULL);
-}
-
-static void nyx_ap_callback(indigo_device *device) {
-	NYX_WIFI_AP_PROPERTY->state = INDIGO_ALERT_STATE;
-	if (meade_simple_reply_command(device, ":WA%s#", NYX_WIFI_AP_SSID_ITEM->text.value) && *PRIVATE_DATA->response == '1') {
-		if (meade_simple_reply_command(device, ":WB%s#", NYX_WIFI_AP_PASSWORD_ITEM->text.value) && *PRIVATE_DATA->response == '1') {
-			if (meade_simple_reply_command(device, ":WLC#") && *PRIVATE_DATA->response == '1') {
-				indigo_send_message(device, "Created access point with SSID %s", NYX_WIFI_AP_SSID_ITEM->text.value);
-				NYX_WIFI_AP_PROPERTY->state = INDIGO_OK_STATE;
-			}
-		}
-	}
-	indigo_update_property(device, NYX_WIFI_AP_PROPERTY, NULL);
-}
-
-static void nyx_cl_callback(indigo_device *device) {
-	char ssid[128] = "";
-	char password[128] = "";
-	bool encode = false;
-	if (compare_versions(MOUNT_INFO_FIRMWARE_ITEM->text.value, NYX_BASE64_THRESHOLD_VERSION) >= 0) {
-		base64_encode((unsigned char *)ssid, (unsigned char *)NYX_WIFI_CL_SSID_ITEM->text.value, (long)strlen(NYX_WIFI_CL_SSID_ITEM->text.value));
-		base64_encode((unsigned char *)password, (unsigned char*)NYX_WIFI_CL_PASSWORD_ITEM->text.value, (long)strlen(NYX_WIFI_CL_PASSWORD_ITEM->text.value));
-		encode = true;
-	}
-	if (meade_simple_reply_command(device, ":WS%s#", encode ? ssid : NYX_WIFI_CL_SSID_ITEM->text.value) && *PRIVATE_DATA->response == '1') {
-		if (meade_simple_reply_command(device, ":WP%s#", encode ? password : NYX_WIFI_CL_PASSWORD_ITEM->text.value) && *PRIVATE_DATA->response == '1') {
-			if (meade_no_reply_command(device, ":WLC#")) {
-				indigo_send_message(device, "WiFi reset!");
-				NYX_WIFI_CL_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, NYX_WIFI_CL_PROPERTY, NULL);
-				if (PRIVATE_DATA->handle && PRIVATE_DATA->handle->type == INDIGO_TCP_HANDLE) {
-					indigo_execute_handler(device->master_device, indigo_disconnect_slave_devices);
-				}
-				return;
-			}
-		}
-	}
-	NYX_WIFI_CL_PROPERTY->state = INDIGO_ALERT_STATE;
-	indigo_update_property(device, NYX_WIFI_CL_PROPERTY, NULL);
-}
-
-static void nyx_reset_callback(indigo_device *device) {
-	if (meade_no_reply_command(device, ":WLZ#")) {
-		indigo_send_message(device, "WiFi reset!");
-		NYX_WIFI_RESET_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, NYX_WIFI_RESET_PROPERTY, NULL);
-		if (PRIVATE_DATA->handle && PRIVATE_DATA->handle->type == INDIGO_TCP_HANDLE) {
-			indigo_execute_handler(device->master_device, indigo_disconnect_slave_devices);
-		}
-		return;
-	}
-	NYX_WIFI_RESET_PROPERTY->state = INDIGO_ALERT_STATE;
-	indigo_update_property(device, NYX_WIFI_RESET_PROPERTY, NULL);
 }
 
 static indigo_result mount_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
@@ -2654,7 +2742,7 @@ static indigo_result mount_detach(indigo_device *device) {
 	return indigo_mount_detach(device);
 }
 
-// -------------------------------------------------------------------------------- INDIGO guider device implementation
+// ---------------------------------------------------------------------- guider device implementation
 
 static indigo_result guider_attach(indigo_device *device) {
 	assert(device != NULL);
@@ -2781,7 +2869,7 @@ static indigo_result guider_detach(indigo_device *device) {
 	return indigo_guider_detach(device);
 }
 
-// -------------------------------------------------------------------------------- INDIGO focuser device implementation
+// ---------------------------------------------------------------------- focuser device implementation
 
 static indigo_result focuser_attach(indigo_device *device) {
 	assert(device != NULL);
@@ -2966,89 +3054,6 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_POWER_OUTLET_PROPERTY);
 	}
 	return indigo_aux_enumerate_properties(device, client, property);
-}
-
-static void nyx_aux_timer_callback(indigo_device *device) {
-	if (!IS_CONNECTED) {
-		return;
-	}
-	bool updateWeather = false;
-	bool updateInfo = false;
-	if (meade_command(device, ":GX9A#")) {
-		double temperature = atof(PRIVATE_DATA->response);
-		if (AUX_WEATHER_TEMPERATURE_ITEM->number.value != temperature) {
-			AUX_WEATHER_TEMPERATURE_ITEM->number.value = temperature;
-			updateWeather = true;
-		}
-	}
-	if (meade_command(device, ":GX9B#")) {
-		double pressure = atof(PRIVATE_DATA->response);
-		if (AUX_WEATHER_PRESSURE_ITEM->number.value != pressure) {
-			AUX_WEATHER_PRESSURE_ITEM->number.value = pressure;
-			updateWeather = true;
-		}
-	}
-	if (meade_command(device, ":GX9V#")) {
-		double voltage = atof(PRIVATE_DATA->response);
-		if (AUX_INFO_VOLTAGE_ITEM->number.value != voltage) {
-			AUX_INFO_VOLTAGE_ITEM->number.value = voltage;
-			updateInfo = true;
-		}
-	}
-	if (updateWeather) {
-		AUX_WEATHER_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, AUX_WEATHER_PROPERTY, NULL);
-	}
-	if (updateInfo) {
-		AUX_INFO_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, AUX_INFO_PROPERTY, NULL);
-	}
-	indigo_execute_handler_in(device, 10, nyx_aux_timer_callback);
-}
-
-static void onstep_aux_timer_callback(indigo_device *device) {
-	if (!IS_CONNECTED) {
-		return;
-	}
-	if (AUX_HEATER_OUTLET_PROPERTY->state != INDIGO_BUSY_STATE) {
-		bool do_update = false;
-		for (int i = 0; i < AUX_HEATER_OUTLET_PROPERTY->count; i++) {
-			int onstep_slot = ONSTEP_AUX_HEATER_OUTLET_MAPPING[i];
-			// responds with a number between 0 for fully off and 255 for fully on
-			meade_command(device, ":GXX%d#", onstep_slot);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "received PRIVATE_DATA->response %s for slot %d", PRIVATE_DATA->response, onstep_slot);
-			indigo_item *item = AUX_HEATER_OUTLET_PROPERTY->items + i;
-			// convert to percent
-			int new_value = (int)(atoi(PRIVATE_DATA->response) / 2.56 + 0.5);
-			if (new_value != (int) item->number.value) {
-				item->number.value = new_value;
-				do_update = true;
-			}
-		}
-		if (do_update) {
-			indigo_update_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
-		}
-	}
-	if (AUX_POWER_OUTLET_PROPERTY->state != INDIGO_BUSY_STATE) {
-		bool do_update = false;
-		for (int i = 0; i < AUX_POWER_OUTLET_PROPERTY->count; i++) {
-			int onstep_slot = ONSTEP_AUX_POWER_OUTLET_MAPPING[i];
-			// the PRIVATE_DATA->response is 0 when disabled and 1 when the switch is enabled
-			meade_command(device, ":GXX%d#", onstep_slot);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "received PRIVATE_DATA->response %s for slot %d", PRIVATE_DATA->response, onstep_slot);
-			indigo_item *item = AUX_POWER_OUTLET_PROPERTY->items + i;
-			bool active = PRIVATE_DATA->response[0] - '0';
-			if (active != item->sw.value) {
-				item->sw.value = active;
-				AUX_POWER_OUTLET_PROPERTY->state = INDIGO_ALERT_STATE;
-				do_update = true;
-			}
-		}
-		if (do_update) {
-			indigo_update_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
-		}
-	}
-	indigo_execute_handler_in(device, 2, onstep_aux_timer_callback);
 }
 
 static void aux_connect_handler(indigo_device *device) {
