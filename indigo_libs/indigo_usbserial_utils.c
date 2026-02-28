@@ -251,8 +251,22 @@ indigo_serial_info *indigo_usbserial_match(
 	indigo_device_match_pattern *patterns,
 	const int num_patterns
 ) {
+	return indigo_usbserial_match_index(serial_info, num_serial_info, patterns, num_patterns, NULL);
+}
+
+indigo_serial_info *indigo_usbserial_match_index(
+	indigo_serial_info *serial_info,
+	const int num_serial_info,
+	indigo_device_match_pattern *patterns,
+	const int num_patterns,
+	int *matched_pattern_index
+) {
 	if (num_serial_info == 0 || num_patterns == 0 || serial_info == NULL || patterns == NULL) {
 		return NULL;
+	}
+
+	if (matched_pattern_index) {
+		*matched_pattern_index = -1;
 	}
 
 	for (int i = 0; i < num_patterns; i++) {
@@ -302,6 +316,9 @@ indigo_serial_info *indigo_usbserial_match(
 			}
 
 			if (match) {
+				if (matched_pattern_index) {
+					*matched_pattern_index = i;
+				}
 				return info;
 			}
 		}

@@ -395,6 +395,10 @@ static void keep_alive_callback(indigo_device *device) {
 }
 
 static bool meade_open(indigo_device *device) {
+	// ### We should preselect defined mount types based on the matched pattern index. If -1, we will try to
+	// Detect the mount type based on the response to :GVP# command. correct
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "device.matched_pattern_index = %d", device->matched_pattern_index);
+
 	char *name = DEVICE_PORT_ITEM->text.value;
 	if (!indigo_uni_is_url(name, "lx200")) {
 		if (MOUNT_TYPE_NYX_ITEM->sw.value) {
@@ -3265,12 +3269,19 @@ indigo_result indigo_mount_lx200(indigo_driver_action action, indigo_driver_info
 
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
-	static indigo_device_match_pattern patterns[2] = { 0 };
+	static indigo_device_match_pattern patterns[3] = { 0 };
+	// Pegasus Astro NYX mount
 	strcpy(patterns[0].vendor_string, "Pegasus Astro");
 	strcpy(patterns[0].product_string, "NYX");
+	// ZWO AM mount
 	patterns[1].vendor_id = 0x03C3;
 	patterns[1].product_id = 0x4001;
-	INDIGO_REGISER_MATCH_PATTERNS(mount_template, patterns, 2);
+	// ##### For tests only TO BE REMOVED #####
+	// SAL-33 mount
+	patterns[2].vendor_id = 0x10C4;
+	patterns[2].product_id = 0xEA60;
+
+	INDIGO_REGISER_MATCH_PATTERNS(mount_template, patterns, 3);
 
 	SET_DRIVER_INFO(info, "LX200 Mount", __FUNCTION__, DRIVER_VERSION, false, last_action);
 

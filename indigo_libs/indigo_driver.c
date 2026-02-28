@@ -166,8 +166,10 @@ static bool indigo_select_matching_usbserial_device(indigo_device *device, indig
 			for (int i = 0; i < num_serial_info; i++) {
 				if (!strcmp(serial_info[i].path, target)) {
 					port_exists = true;
-					if (indigo_usbserial_match(serial_info + i, 1, patterns, patterns_count)) {
+					int matched_pattern_index = -1;
+					if (indigo_usbserial_match_index(serial_info + i, 1, patterns, patterns_count, &matched_pattern_index)) {
 						INDIGO_DEBUG(indigo_debug( "%s(): Selected port for '%s' matches the pattern, keeping selected: %s", __FUNCTION__, device->name, DEVICE_PORT_ITEM->text.value));
+						device->matched_pattern_index = matched_pattern_index;
 						return true;
 					}
 				}
@@ -175,7 +177,7 @@ static bool indigo_select_matching_usbserial_device(indigo_device *device, indig
 		}
 	}
 
-	indigo_serial_info *matching = indigo_usbserial_match(serial_info, num_serial_info, patterns, patterns_count);
+	indigo_serial_info *matching = indigo_usbserial_match_index(serial_info, num_serial_info, patterns, patterns_count, &device->matched_pattern_index);
 
 	/* if nothing is matched select first USB-Serial port */
 	if (matching == NULL) {
@@ -194,6 +196,37 @@ static bool indigo_select_matching_usbserial_device(indigo_device *device, indig
 		return true;
 	}
 	return false;
+}
+
+static int indigo_find_matching_pattern_index(indigo_device *device, const char *path) {
+	indigo_device_match_pattern *patterns = (indigo_device_match_pattern*)device->match_patterns;
+	int patterns_count = device->match_patterns_count;
+	int matched_pattern_index = -1;
+
+	if (path == NULL || patterns == NULL || patterns_count == 0) {
+		return -1;
+	}
+
+	const char *real_path = path;
+	if (!strncmp(path, USBSERIAL_AUTO_PREFIX, strlen(USBSERIAL_AUTO_PREFIX))) {
+		real_path = path + strlen(USBSERIAL_AUTO_PREFIX);
+	}
+
+	char target[PATH_MAX] = {0};
+	bool has_realpath = indigo_uni_realpath(real_path, target);
+
+	indigo_serial_info serial_info[MAX_DEVICE_PORTS] = {0};
+	int serial_count = indigo_enumerate_usbserial_devices(serial_info, MAX_DEVICE_PORTS);
+
+	for (int i = 0; i < serial_count; i++) {
+		if (!strcmp(serial_info[i].path, real_path) || (has_realpath && !strcmp(serial_info[i].path, target))) {
+			indigo_usbserial_match_index(serial_info + i, 1, patterns, patterns_count, &matched_pattern_index);
+			INDIGO_DEBUG(indigo_debug("%s(): path = %s matches pattern index %d for '%s'", __FUNCTION__, path, matched_pattern_index, device->name));
+			return matched_pattern_index;
+		}
+	}
+	INDIGO_DEBUG(indigo_debug("%s(): path = %s not found in enumerated USB-Serial devices for '%s'", __FUNCTION__, path, device->name));
+	return -1;
 }
 
 static bool cu_filter(const char *name) {
@@ -871,6 +904,7 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 			//indigo_save_property(device, NULL, DEVICE_PORT_PROPERTY);
 			indigo_update_property(device, DEVICE_PORT_PROPERTY, NULL);
 		}
+		device->matched_pattern_index = indigo_find_matching_pattern_index(device, DEVICE_PORT_ITEM->text.value);
 	} else if (indigo_property_match_changeable(DEVICE_BAUDRATE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DEVICE_BAUDRATE
 		indigo_property_copy_values(DEVICE_BAUDRATE_PROPERTY, property, false);
@@ -902,6 +936,7 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 			DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;
 			//indigo_save_property(device, NULL, DEVICE_PORT_PROPERTY);
 		}
+		device->matched_pattern_index = indigo_find_matching_pattern_index(device, DEVICE_PORT_ITEM->text.value);
 		indigo_update_property(device, DEVICE_PORT_PROPERTY, NULL);
 		DEVICE_PORTS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, DEVICE_PORTS_PROPERTY, NULL);
