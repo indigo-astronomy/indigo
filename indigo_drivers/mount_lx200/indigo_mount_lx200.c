@@ -419,7 +419,6 @@ static bool meade_open(indigo_device *device) {
 			if (PRIVATE_DATA->handle != NULL) {
 				if ((meade_command(device, ":GR#") && strlen(PRIVATE_DATA->response) >= 6) || (meade_command(device, ":GR#") && strlen(PRIVATE_DATA->response) >= 6)) {
 					PRIVATE_DATA->timeout = 3;
-					indigo_update_property(device, DEVICE_BAUDRATE_PROPERTY, NULL);
 					break;
 				} else {
 					indigo_uni_close(&PRIVATE_DATA->handle);
@@ -433,6 +432,7 @@ static bool meade_open(indigo_device *device) {
 				}
 			}
 		}
+		indigo_update_property(device, DEVICE_BAUDRATE_PROPERTY, NULL);
 	} else {
 		if (MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value) {
 			PRIVATE_DATA->handle = indigo_uni_open_url(name, 9999, INDIGO_TCP_HANDLE, INDIGO_LOG_DEBUG);
