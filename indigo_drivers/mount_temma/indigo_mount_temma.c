@@ -128,8 +128,6 @@ static bool temma_open(indigo_device *device) {
 			close(PRIVATE_DATA->handle);
 			return false;
 		}
-		cfsetispeed(&options,B9600);
-		cfsetospeed(&options,B9600);
 		options.c_cflag |= (CS8 | PARENB | CRTSCTS);
 		options.c_cflag &= (~PARODD & ~CSTOPB);
 		cfsetispeed(&options, B19200);

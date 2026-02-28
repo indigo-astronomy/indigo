@@ -1183,6 +1183,7 @@
 		590B0EFF2F50DD0A007B66B1 /* OAT Command Index.webloc */ = {isa = PBXFileReference; lastKnownFileType = file.bplist; path = "OAT Command Index.webloc"; sourceTree = "<group>"; };
 		590B0F002F50DEAA007B66B1 /* TeenAstro Command Index.webloc */ = {isa = PBXFileReference; lastKnownFileType = file.bplist; path = "TeenAstro Command Index.webloc"; sourceTree = "<group>"; };
 		590B0F012F50E3C9007B66B1 /* aGotino Command Index.webloc */ = {isa = PBXFileReference; lastKnownFileType = file.bplist; path = "aGotino Command Index.webloc"; sourceTree = "<group>"; };
+		590B0F032F521DAF007B66B1 /* temma_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = temma_simulator.ino; sourceTree = "<group>"; };
 		590B59CF1F78543F00086FD2 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		590B59D01F78544000086FD2 /* indigo_mount_temma_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_temma_main.c; sourceTree = "<group>"; };
 		590B59D11F78544000086FD2 /* indigo_mount_temma.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_temma.c; sourceTree = "<group>"; };
@@ -5194,6 +5195,14 @@
 			path = ccd_asi;
 			sourceTree = "<group>";
 		};
+		590B0F022F521D9A007B66B1 /* temma_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				590B0F032F521DAF007B66B1 /* temma_simulator.ino */,
+			);
+			path = temma_simulator;
+			sourceTree = "<group>";
+		};
 		590B59CE1F7853F400086FD2 /* mount_temma */ = {
 			isa = PBXGroup;
 			children = (
@@ -5202,6 +5211,7 @@
 				590B59D11F78544000086FD2 /* indigo_mount_temma.c */,
 				590B59D21F78544000086FD2 /* indigo_mount_temma.h */,
 				590B59D31F78544000086FD2 /* Temma.pdf */,
+				590B0F022F521D9A007B66B1 /* temma_simulator */,
 			);
 			path = mount_temma;
 			sourceTree = "<group>";
