@@ -767,6 +767,8 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 		}
 		CLIENT_PRIVATE_DATA->mount_eq_coordinates_state = property->state;
 		handle_mount_change(device);
+	} else if (!strcmp(property->name, MOUNT_LST_TIME_PROPERTY_NAME)) {
+		handle_mount_change(device);
 	} else if (!strcmp(property->name, FILTER_DOME_LIST_PROPERTY_NAME)) { // Snoop dome
 		if (INDIGO_FILTER_DOME_SELECTED) {
 			handle_site_change(device);
