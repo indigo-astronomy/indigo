@@ -893,7 +893,6 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 		if (*DEVICE_PORT_ITEM->text.value == '/') {
 			if (indigo_uni_is_readable(DEVICE_PORT_ITEM->text.value)) {
 				DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;
-				//indigo_save_property(device, NULL, DEVICE_PORT_PROPERTY);
 				indigo_update_property(device, DEVICE_PORT_PROPERTY, NULL);
 			} else {
 				DEVICE_PORT_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -901,7 +900,6 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 			}
 		} else {
 			DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;
-			//indigo_save_property(device, NULL, DEVICE_PORT_PROPERTY);
 			indigo_update_property(device, DEVICE_PORT_PROPERTY, NULL);
 		}
 		device->matched_pattern_index = indigo_find_matching_pattern_index(device, DEVICE_PORT_ITEM->text.value);
@@ -912,7 +910,6 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 			strcat(DEVICE_BAUDRATE_ITEM->text.value, "-8N1");
 		}
 		DEVICE_BAUDRATE_PROPERTY->state = INDIGO_OK_STATE;
-		//indigo_save_property(device, NULL, DEVICE_BAUDRATE_PROPERTY);
 		indigo_update_property(device, DEVICE_BAUDRATE_PROPERTY, NULL);
 	} else if (indigo_property_match_changeable(DEVICE_PORTS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
@@ -934,7 +931,6 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 			DEVICE_PORT_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
 			DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;
-			//indigo_save_property(device, NULL, DEVICE_PORT_PROPERTY);
 		}
 		device->matched_pattern_index = indigo_find_matching_pattern_index(device, DEVICE_PORT_ITEM->text.value);
 		indigo_update_property(device, DEVICE_PORT_PROPERTY, NULL);

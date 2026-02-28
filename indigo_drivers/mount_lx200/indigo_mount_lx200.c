@@ -398,42 +398,39 @@ static void keep_alive_callback(indigo_device *device) {
 }
 
 static bool meade_open(indigo_device *device) {
-	// ### We should preselect defined mount types based on the matched pattern index. If -1, we will try to
-	// Detect the mount type based on the response to :GVP# command. correct
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "device.matched_pattern_index = %d", device->matched_pattern_index);
-	if (device->matched_pattern_index == NYX_TEMPLATE_INDEX) {
-		indigo_set_switch(MOUNT_TYPE_PROPERTY, MOUNT_TYPE_NYX_ITEM, true);
-	} else if (device->matched_pattern_index == ZWO_TEMPLATE_INDEX) {
-		indigo_set_switch(MOUNT_TYPE_PROPERTY, MOUNT_TYPE_ZWO_ITEM, true);
-	}
 	char *name = DEVICE_PORT_ITEM->text.value;
 	if (!indigo_uni_is_url(name, "lx200")) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "device.matched_pattern_index = %d", device->matched_pattern_index);
+		if (device->matched_pattern_index == NYX_TEMPLATE_INDEX) {
+			indigo_set_switch(MOUNT_TYPE_PROPERTY, MOUNT_TYPE_NYX_ITEM, true);
+		} else if (device->matched_pattern_index == ZWO_TEMPLATE_INDEX) {
+			indigo_set_switch(MOUNT_TYPE_PROPERTY, MOUNT_TYPE_ZWO_ITEM, true);
+		} else if (device->matched_pattern_index == 2) { // TODO: ##### For tests only TO BE REMOVED #####
+			indigo_set_switch(MOUNT_TYPE_PROPERTY, MOUNT_TYPE_ON_STEP_ITEM, true); // TODO: ##### For tests only TO BE REMOVED #####
+		}
 		if (MOUNT_TYPE_NYX_ITEM->sw.value) {
-			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, 115200, INDIGO_LOG_DEBUG);
+			indigo_set_text_item_value(DEVICE_BAUDRATE_ITEM, "115200-8N1");
 		} else if (MOUNT_TYPE_OAT_ITEM->sw.value) {
-			PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, 19200, INDIGO_LOG_DEBUG);
-		} else {
-			PRIVATE_DATA->handle = indigo_uni_open_serial(name, INDIGO_LOG_DEBUG);
+			indigo_set_text_item_value(DEVICE_BAUDRATE_ITEM, "19200-8N1");
+		}
+		PRIVATE_DATA->timeout = 1;
+		for (int i = 0; i < 3; i++) {
+			PRIVATE_DATA->handle = indigo_uni_open_serial_with_config(name, indigo_get_text_item_value(DEVICE_BAUDRATE_ITEM), INDIGO_LOG_DEBUG);
 			if (PRIVATE_DATA->handle != NULL) {
-				// sometimes the first command after power on in OnStep fails and just returns '0'
-				// so we try two times for the default baudrate of 9600
-				PRIVATE_DATA->timeout = 1;
-				if ((!meade_command(device, ":GR#") || strlen(PRIVATE_DATA->response) < 6) && (!meade_command(device, ":GR#") || strlen(PRIVATE_DATA->response) < 6)) {
+				if ((meade_command(device, ":GR#") && strlen(PRIVATE_DATA->response) >= 6) || (meade_command(device, ":GR#") && strlen(PRIVATE_DATA->response) >= 6)) {
+					PRIVATE_DATA->timeout = 3;
+					indigo_update_property(device, DEVICE_BAUDRATE_PROPERTY, NULL);
+					break;
+				} else {
 					indigo_uni_close(&PRIVATE_DATA->handle);
-					PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, 19200, INDIGO_LOG_DEBUG);
-					if ((!meade_command(device, ":GR#") || strlen(PRIVATE_DATA->response) < 6) && (!meade_command(device, ":GR#") || strlen(PRIVATE_DATA->response) < 6)) {
-						indigo_uni_close(&PRIVATE_DATA->handle);
-						PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, 115200, INDIGO_LOG_DEBUG);
-						if ((!meade_command(device, ":GR#") || strlen(PRIVATE_DATA->response) < 6) && (!meade_command(device, ":GR#") || strlen(PRIVATE_DATA->response) < 6)) {
-							indigo_uni_close(&PRIVATE_DATA->handle);
-							PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, 230400, INDIGO_LOG_DEBUG);
-							if ((!meade_command(device, ":GR#") || strlen(PRIVATE_DATA->response) < 6) && (!meade_command(device, ":GR#") || strlen(PRIVATE_DATA->response) < 6)) {
-								indigo_uni_close(&PRIVATE_DATA->handle);
-							}
-						}
+					if (!strcmp(indigo_get_text_item_value(DEVICE_BAUDRATE_ITEM), "9600-8N1")) {
+						indigo_set_text_item_value(DEVICE_BAUDRATE_ITEM, "19200-8N1");
+					} else if (!strcmp(indigo_get_text_item_value(DEVICE_BAUDRATE_ITEM), "19200-8N1")) {
+						indigo_set_text_item_value(DEVICE_BAUDRATE_ITEM, "115200-8N1");
+					} else {
+						indigo_set_text_item_value(DEVICE_BAUDRATE_ITEM, "9600-8N1");
 					}
 				}
-				PRIVATE_DATA->timeout = 3;
 			}
 		}
 	} else {
@@ -2446,6 +2443,8 @@ static indigo_result mount_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
+		// -------------------------------------------------------------------------------- DEVICE_BAUDRATE
+		DEVICE_BAUDRATE_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- ALIGNMENT_MODE
 		MOUNT_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_MODE_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Mount mode", INDIGO_OK_STATE, INDIGO_RO_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (MOUNT_MODE_PROPERTY == NULL) {
@@ -3283,7 +3282,7 @@ indigo_result indigo_mount_lx200(indigo_driver_action action, indigo_driver_info
 	// ZWO AM mount
 	patterns[ZWO_TEMPLATE_INDEX].vendor_id = 0x03C3;
 	patterns[ZWO_TEMPLATE_INDEX].product_id = 0x4001;
-	// ##### For tests only TO BE REMOVED #####
+	// TODO: ##### For tests only TO BE REMOVED #####
 	// SAL-33 mount
 	patterns[2].vendor_id = 0x10C4;
 	patterns[2].product_id = 0xEA60;
