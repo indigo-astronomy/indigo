@@ -1921,7 +1921,7 @@ static void meade_update_mount_state(indigo_device *device) {
 	} else {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 	}
-	if (MOUNT_TRACKING_PROPERTY->state != INDIGO_BUSY_STATE) {
+	if (MOUNT_TRACKING_PROPERTY->state != INDIGO_BUSY_STATE) { // to avoid race never change tracking state if BUSY
 		if (PRIVATE_DATA->tracking && !MOUNT_TRACKING_ON_ITEM->sw.value) {
 			indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
 			MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
@@ -1930,38 +1930,24 @@ static void meade_update_mount_state(indigo_device *device) {
 			MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	}
-	if (MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE) {
-		if (MOUNT_PARK_PARKED_ITEM->sw.value && PRIVATE_DATA->parking) {
-			// wait
-		} else if (MOUNT_PARK_PARKED_ITEM->sw.value && !PRIVATE_DATA->parking) {
-			indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
-			MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
-		} else if (MOUNT_PARK_PARKED_ITEM->sw.value && PRIVATE_DATA->parked) {
+	if (MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE) { // to avoid race never change parking state if BUSY with these exceptions
+		if (MOUNT_PARK_PARKED_ITEM->sw.value && PRIVATE_DATA->parked) {
 			MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 		} else if (MOUNT_PARK_PROPERTY->count == 2 && MOUNT_PARK_UNPARKED_ITEM->sw.value && !PRIVATE_DATA->parked) {
 			MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 		}
-	} else {
+	} else { // otherwise mirror state reported by mount
 		if (PRIVATE_DATA->parked || PRIVATE_DATA->parking) {
 			indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_PARKED_ITEM, true);
 		} else {
 			indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
 		}
 	}
-	if (MOUNT_HOME_PROPERTY->state == INDIGO_BUSY_STATE) {
-		if (MOUNT_HOME_ITEM->sw.value && PRIVATE_DATA->homing) {
-			//wait
-		} else if (PRIVATE_DATA->homed) {
-			MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
-		} else if (MOUNT_HOME_ITEM->sw.value && !PRIVATE_DATA->homing) {
-			if (MOUNT_HOME_PROPERTY->count == 2) {
-				indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_AWAY_ITEM, true);
-			} else {
-				indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_HOME_ITEM, false);
-			}
+	if (MOUNT_HOME_PROPERTY->state == INDIGO_BUSY_STATE) { // to avoid race never change parking state if BUSY with this exception
+		if (MOUNT_HOME_ITEM->sw.value && PRIVATE_DATA->homed) {
 			MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
 		}
-	} else {
+	} else { // otherwise mirror state reported by mount
 		if (MOUNT_HOME_ITEM->sw.value && !PRIVATE_DATA->homed) {
 			if (MOUNT_HOME_PROPERTY->count == 2) {
 				indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_AWAY_ITEM, true);
@@ -1972,13 +1958,13 @@ static void meade_update_mount_state(indigo_device *device) {
 			indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_HOME_ITEM, true);
 		}
 	}
+	sprintf(MOUNT_UTC_OFFSET_ITEM->text.value, "%d", PRIVATE_DATA->utc_offset);
+	indigo_timetoisogm(time(NULL) - PRIVATE_DATA->time_difference, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
+	MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 	indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 	indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
 	indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
-	sprintf(MOUNT_UTC_OFFSET_ITEM->text.value, "%d", PRIVATE_DATA->utc_offset);
-	indigo_timetoisogm(time(NULL) - PRIVATE_DATA->time_difference, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
-	MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
 	indigo_update_coordinates(device, NULL);
 }
