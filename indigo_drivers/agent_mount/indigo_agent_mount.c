@@ -197,6 +197,7 @@ static void mount_control(indigo_device *device, char *operation) {
 	FILTER_DEVICE_CONTEXT->running_process = true;
 	if (!DEVICE_PRIVATE_DATA->mount_unparked) {
 		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
+		indigo_send_message(device, "Unparked");
 	}
 	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, operation, true);
 	static const char *names[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
@@ -250,11 +251,20 @@ static void mount_control(indigo_device *device, char *operation) {
 }
 
 static void slew_process(indigo_device *device) {
+	indigo_send_message(device, "Slew started");
 	mount_control(device, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME);
+	indigo_send_message(device, AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE ? "Slew finished" : "Slew failed");
+	if (AGENT_HA_TRACKING_LIMIT_ITEM->sw.value) {
+		indigo_send_message(device, "HA limit is active");
+	}
+	if (AGENT_LOCAL_TIME_LIMIT_ITEM->sw.value) {
+		indigo_send_message(device, "Time limit is active");
+	}
 }
 
 static void sync_process(indigo_device *device) {
 	mount_control(device, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME);
+	indigo_send_message(device, AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE ? "Synced" : "Sync failed");
 }
 
 static void lx200_server_worker_thread(indigo_uni_worker_data *data) {
@@ -1089,7 +1099,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 				INDIGO_DRIVER_DEBUG(MOUNT_AGENT_NAME, "Derotation stopped");
 			}
 			AGENT_FIELD_DEROTATION_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, AGENT_FIELD_DEROTATION_PROPERTY, NULL);
+			indigo_update_property(device, AGENT_FIELD_DEROTATION_PROPERTY, AGENT_FIELD_DEROTATION_ENABLED_ITEM->sw.value ? "Derotation started" : "Derotation stopped");
 		} else {
 			indigo_set_switch(AGENT_FIELD_DEROTATION_PROPERTY, AGENT_FIELD_DEROTATION_DISABLED_ITEM, true);
 			AGENT_FIELD_DEROTATION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -1153,6 +1163,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(AGENT_PROCESS_FEATURES_PROPERTY, property, false);
 		AGENT_PROCESS_FEATURES_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_PROCESS_FEATURES_PROPERTY, NULL);
+		save_config(device);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- ADDITIONAL_INSTANCES
 	} else if (indigo_property_match(ADDITIONAL_INSTANCES_PROPERTY, property)) {
