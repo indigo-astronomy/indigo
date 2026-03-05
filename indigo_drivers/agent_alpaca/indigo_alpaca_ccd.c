@@ -1371,6 +1371,7 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 					handle->log_level = -abs(handle->log_level);
 					indigo_uni_write(handle, (const char *)&metadata, sizeof(metadata));
 					indigo_uni_write(handle, (const char *)buffer, size * 4);
+					indigo_safe_free(buffer);
 					handle->log_level = abs(handle->log_level);
 					break;
 				}
@@ -1388,8 +1389,8 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 					handle->log_level = -abs(handle->log_level);
 					indigo_uni_write(handle, (const char *)&metadata, sizeof(metadata));
 					indigo_uni_write(handle, (const char *)buffer, size * 4);
-					handle->log_level = abs(handle->log_level);
 					indigo_safe_free(buffer);
+					handle->log_level = abs(handle->log_level);
 					break;
 				}
 				case INDIGO_RAW_RGB24: {
@@ -1409,6 +1410,7 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 					handle->log_level = -abs(handle->log_level);
 					indigo_uni_write(handle, (const char *)&metadata, sizeof(metadata));
 					indigo_uni_write(handle, (const char *)buffer, size * 12);
+					indigo_safe_free(buffer);
 					handle->log_level = abs(handle->log_level);
 					break;
 				}
@@ -1429,6 +1431,7 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 					handle->log_level = -abs(handle->log_level);
 					indigo_uni_write(handle, (const char *)&metadata, sizeof(metadata));
 					indigo_uni_write(handle, (const char *)buffer, size * 12);
+					indigo_safe_free(buffer);
 					handle->log_level = abs(handle->log_level);
 					break;
 				}

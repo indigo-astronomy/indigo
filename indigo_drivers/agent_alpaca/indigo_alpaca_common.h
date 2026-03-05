@@ -247,9 +247,9 @@ INDIGO_EXTERN long indigo_alpaca_append_value_bool(char *buffer, long buffer_len
 INDIGO_EXTERN long indigo_alpaca_append_value_int(char *buffer, long buffer_length, int value, indigo_alpaca_error result);
 INDIGO_EXTERN long indigo_alpaca_append_value_double(char *buffer, long buffer_length, double value, indigo_alpaca_error result);
 INDIGO_EXTERN long indigo_alpaca_append_value_string(char *buffer, long buffer_length, char *value, indigo_alpaca_error result);
-INDIGO_EXTERN bool indigo_alpaca_wait_for_bool(bool *reference, bool value, int timeout);
-INDIGO_EXTERN bool indigo_alpaca_wait_for_int32(int *reference, int value, int timeout);
-INDIGO_EXTERN bool indigo_alpaca_wait_for_double(double *reference, double value, int timeout);
+INDIGO_EXTERN indigo_alpaca_error indigo_alpaca_wait_for_bool(bool *reference, bool value, int timeout);
+INDIGO_EXTERN indigo_alpaca_error indigo_alpaca_wait_for_int32(int *reference, int value, int timeout);
+INDIGO_EXTERN indigo_alpaca_error indigo_alpaca_wait_for_double(double *reference, double value, int timeout);
 
 INDIGO_EXTERN void indigo_alpaca_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property);
 INDIGO_EXTERN long indigo_alpaca_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, int id, char *buffer, long buffer_length);
