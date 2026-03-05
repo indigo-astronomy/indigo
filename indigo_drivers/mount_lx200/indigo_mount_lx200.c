@@ -1133,13 +1133,6 @@ static bool meade_focus_rel(indigo_device *device, bool slow, int steps) {
 	return false;
 }
 
-static void meade_update_site_items(indigo_device *device) {
-	double latitude = 0, longitude = 0;
-	meade_get_site(device, &latitude, &longitude);
-	MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = latitude;
-	MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = longitude;
-}
-
 static bool meade_detect_generic_mount(indigo_device *device) {
 	// These commands are found in the classic LX200 Instruction Manual, and the compatible mounts refer to that manual.
 	if (!meade_command(device, ":GR#") || strlen(PRIVATE_DATA->response) == 0) {
