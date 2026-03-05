@@ -302,7 +302,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_CALIBRATE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_CALIBRATE
-		if (X_CALIBRATE_PROPERTY->state == INDIGO_BUSY_STATE) {
+		if (X_CALIBRATE_PROPERTY->state == INDIGO_BUSY_STATE || WHEEL_SLOT_PROPERTY->state == INDIGO_BUSY_STATE) {
 			return INDIGO_OK;
 		}
 		indigo_property_copy_values(X_CALIBRATE_PROPERTY, property, false);
