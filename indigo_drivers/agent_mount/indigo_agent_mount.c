@@ -77,7 +77,7 @@
 #define AGENT_LIMITS_PROPERTY													(DEVICE_PRIVATE_DATA->agent_limits_property)
 #define AGENT_HA_TRACKING_LIMIT_ITEM									(AGENT_LIMITS_PROPERTY->items+0)
 #define AGENT_LOCAL_TIME_LIMIT_ITEM										(AGENT_LIMITS_PROPERTY->items+1)
-#define AGENT_COORDINATES_PROPAGATE_THESHOLD_ITEM			(AGENT_LIMITS_PROPERTY->items+2)
+#define AGENT_COORDINATES_PROPAGATE_THRESHOLD_ITEM			(AGENT_LIMITS_PROPERTY->items+2)
 
 #define AGENT_MOUNT_FOV_PROPERTY											(DEVICE_PRIVATE_DATA->agent_fov_property)
 #define AGENT_MOUNT_FOV_ANGLE_ITEM										(AGENT_MOUNT_FOV_PROPERTY->items+0)
@@ -114,7 +114,7 @@
 #define AGENT_MOUNT_ENABLE_HA_LIMIT_FEATURE_ITEM			(AGENT_PROCESS_FEATURES_PROPERTY->items+0)
 #define AGENT_MOUNT_ENABLE_TIME_LIMIT_FEATURE_ITEM		(AGENT_PROCESS_FEATURES_PROPERTY->items+1)
 
-#define AGENT_FIELD_DEROTATION_PROPERTY				(DEVICE_PRIVATE_DATA->agent_field_derotation_proeprety)
+#define AGENT_FIELD_DEROTATION_PROPERTY				(DEVICE_PRIVATE_DATA->agent_field_derotation_property)
 #define AGENT_FIELD_DEROTATION_ENABLED_ITEM			(AGENT_FIELD_DEROTATION_PROPERTY->items+0)
 #define AGENT_FIELD_DEROTATION_DISABLED_ITEM		(AGENT_FIELD_DEROTATION_PROPERTY->items+1)
 
@@ -132,7 +132,7 @@ typedef struct {
 	indigo_property *agent_abort_process_property;
 	indigo_property *agent_start_process_property;
 	indigo_property *agent_process_features_property;
-	indigo_property *agent_field_derotation_proeprety;
+	indigo_property *agent_field_derotation_property;
 	double mount_latitude, mount_longitude, mount_elevation;
 	double dome_latitude, dome_longitude, dome_elevation;
 	double gps_latitude, gps_longitude, gps_elevation;
@@ -140,7 +140,7 @@ typedef struct {
 	double mount_ra, mount_dec;
 	double mount_target_ra, mount_target_dec;
 	int mount_side_of_pier;
-	bool show_show_negative_time_past_transit;
+	bool show_negative_time_past_transit;
 	bool equatorial_coordinates_defined;
 	int selected_mount_index;
 	double mount_requested_ra, mount_requested_dec;
@@ -254,10 +254,10 @@ static void slew_process(indigo_device *device) {
 	indigo_send_message(device, "Slew started");
 	mount_control(device, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME);
 	indigo_send_message(device, AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE ? "Slew finished" : "Slew failed");
-	if (AGENT_HA_TRACKING_LIMIT_ITEM->sw.value) {
+	if (AGENT_MOUNT_ENABLE_HA_LIMIT_FEATURE_ITEM->sw.value) {
 		indigo_send_message(device, "HA limit is active");
 	}
-	if (AGENT_LOCAL_TIME_LIMIT_ITEM->sw.value) {
+	if (AGENT_MOUNT_ENABLE_TIME_LIMIT_FEATURE_ITEM->sw.value) {
 		indigo_send_message(device, "Time limit is active");
 	}
 }
@@ -270,8 +270,8 @@ static void sync_process(indigo_device *device) {
 static void lx200_server_worker_thread(indigo_uni_worker_data *data) {
 	indigo_rename_thread("LX200 worker");
 	indigo_device *device = data->data;
-	char buffer_in[128];
-	char buffer_out[128];
+	char buffer_in[129] = { 0 };
+	char buffer_out[129] = { 0 };
 	long result = 1;
 	indigo_uni_set_socket_read_timeout(data->handle, INDIGO_DELAY(5));
 	INDIGO_DRIVER_TRACE(MOUNT_AGENT_NAME, "%d: CONNECTED", data->handle->index);
@@ -516,13 +516,13 @@ static void handle_mount_change(indigo_device *device) {
 	*/
 	double time_to_transit = indigo_time_to_transit(ra, lst, true);
 	if (time_to_transit > 0) {
-		DEVICE_PRIVATE_DATA->show_show_negative_time_past_transit = true;
+		DEVICE_PRIVATE_DATA->show_negative_time_past_transit = true;
 	}
 	if (DEVICE_PRIVATE_DATA->mount_eq_coordinates_state == INDIGO_BUSY_STATE && time_to_transit <= 0) {
-		DEVICE_PRIVATE_DATA->show_show_negative_time_past_transit = false;
+		DEVICE_PRIVATE_DATA->show_negative_time_past_transit = false;
 		AGENT_MOUNT_DISPLAY_COORDINATES_FLIP_REQUIRED_ITEM->number.value = 0.0;
 	} else {
-		AGENT_MOUNT_DISPLAY_COORDINATES_TIME_TO_TRANSIT_ITEM->number.value = indigo_time_to_transit(ra, lst, DEVICE_PRIVATE_DATA->show_show_negative_time_past_transit);
+		AGENT_MOUNT_DISPLAY_COORDINATES_TIME_TO_TRANSIT_ITEM->number.value = indigo_time_to_transit(ra, lst, DEVICE_PRIVATE_DATA->show_negative_time_past_transit);
 		AGENT_MOUNT_DISPLAY_COORDINATES_FLIP_REQUIRED_ITEM->number.value = (AGENT_MOUNT_DISPLAY_COORDINATES_TIME_TO_TRANSIT_ITEM->number.value <= 0 ? 1.0 : 0.0);
 	}
 	AGENT_MOUNT_DISPLAY_COORDINATES_DEROTATION_RATE_ITEM->number.value = indigo_derotation_rate(AGENT_MOUNT_DISPLAY_COORDINATES_ALT_ITEM->number.value, AGENT_MOUNT_DISPLAY_COORDINATES_AZ_ITEM->number.value, latitude);
@@ -547,7 +547,7 @@ static void handle_mount_change(indigo_device *device) {
 		if (AGENT_MOUNT_ENABLE_HA_LIMIT_FEATURE_ITEM->sw.value) {
 			double target = AGENT_HA_TRACKING_LIMIT_ITEM->number.target;
 			if (fabs(ha - target) < 12) {
-				// Bboth are on same side of meridian.
+				// Both are on same side of meridian.
 				// Larger value is ahead of the smaller one.
 				park = ha > target;
 			} else {
@@ -618,7 +618,11 @@ static void handle_mount_change(indigo_device *device) {
 			indigo_remove_fits_header(FILTER_DEVICE_CONTEXT->client, related_agent_name, "AIRMASS");
 		}
 		indigo_set_fits_header(FILTER_DEVICE_CONTEXT->client, related_agent_name, "OBJCTRA", "'%d %02d %02d'", (int)(DEVICE_PRIVATE_DATA->mount_ra), ((int)(fabs(DEVICE_PRIVATE_DATA->mount_ra) * 60)) % 60, ((int)(fabs(DEVICE_PRIVATE_DATA->mount_ra) * 3600)) % 60);
-		indigo_set_fits_header(FILTER_DEVICE_CONTEXT->client, related_agent_name, "OBJCTDEC", "'%d %02d %02d'", (int)(DEVICE_PRIVATE_DATA->mount_dec), ((int)(fabs(DEVICE_PRIVATE_DATA->mount_dec) * 60)) % 60, ((int)(fabs(DEVICE_PRIVATE_DATA->mount_dec) * 3600)) % 60);
+		if (DEVICE_PRIVATE_DATA->mount_dec < 0) {
+			indigo_set_fits_header(FILTER_DEVICE_CONTEXT->client, related_agent_name, "OBJCTDEC", "'-%d %02d %02d'", (int)(-DEVICE_PRIVATE_DATA->mount_dec), ((int)(-DEVICE_PRIVATE_DATA->mount_dec) * 60) % 60, ((int)(-DEVICE_PRIVATE_DATA->mount_dec * 3600)) % 60);
+		} else {
+			indigo_set_fits_header(FILTER_DEVICE_CONTEXT->client, related_agent_name, "OBJCTDEC", "'%d %02d %02d'", (int)(DEVICE_PRIVATE_DATA->mount_dec), ((int)(DEVICE_PRIVATE_DATA->mount_dec * 60)) % 60, ((int)(DEVICE_PRIVATE_DATA->mount_dec * 3600)) % 60);
+		}
 	}
 	// set eq coordinates to related guider agent
 	related_agent_name = indigo_filter_first_related_agent(device, "Guider Agent");
@@ -692,7 +696,7 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 					if (DEVICE_PRIVATE_DATA->selected_mount_index != i) {
 						DEVICE_PRIVATE_DATA->selected_mount_index = i;
 						DEVICE_PRIVATE_DATA->equatorial_coordinates_defined = false;
-						DEVICE_PRIVATE_DATA->show_show_negative_time_past_transit = false;
+						DEVICE_PRIVATE_DATA->show_negative_time_past_transit = false;
 						DEVICE_PRIVATE_DATA->mount_tracking = false;
 						DEVICE_PRIVATE_DATA->mount_eq_coordinates_state = INDIGO_IDLE_STATE;
 					}
@@ -707,7 +711,7 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 				AGENT_FIELD_DEROTATION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_update_property(device, AGENT_FIELD_DEROTATION_PROPERTY, "Mount disconnected - derotation disabled");
 			}
-			DEVICE_PRIVATE_DATA->show_show_negative_time_past_transit = false;
+			DEVICE_PRIVATE_DATA->show_negative_time_past_transit = false;
 			DEVICE_PRIVATE_DATA->equatorial_coordinates_defined = false;
 			for (int i = 0; i < AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY->count; i++) {
 				AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY->items[i].number.value = 0.0;
@@ -720,16 +724,16 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = property->items + i;
 			if (!strcmp(item->name, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME)) {
-				changed = changed || fabs(CLIENT_PRIVATE_DATA->mount_latitude - item->number.value) > AGENT_COORDINATES_PROPAGATE_THESHOLD_ITEM->number.value;
+				changed = changed || fabs(CLIENT_PRIVATE_DATA->mount_latitude - item->number.value) > AGENT_COORDINATES_PROPAGATE_THRESHOLD_ITEM->number.value;
 				if (changed) {
 					CLIENT_PRIVATE_DATA->mount_latitude = item->number.value;
 				}
-			} else if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME)) {
-				changed = changed || fabs(CLIENT_PRIVATE_DATA->mount_longitude - item->number.value) > AGENT_COORDINATES_PROPAGATE_THESHOLD_ITEM->number.value;
+			} else if (!strcmp(item->name, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME)) {
+				changed = changed || fabs(CLIENT_PRIVATE_DATA->mount_longitude - item->number.value) > AGENT_COORDINATES_PROPAGATE_THRESHOLD_ITEM->number.value;
 				if (changed) {
 					CLIENT_PRIVATE_DATA->mount_longitude = item->number.value;
 				}
-			} else if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME)) {
+			} else if (!strcmp(item->name, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME)) {
 				changed = changed || CLIENT_PRIVATE_DATA->mount_elevation != item->number.value;
 				CLIENT_PRIVATE_DATA->mount_elevation = item->number.value;
 			}
@@ -788,12 +792,12 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = property->items + i;
 			if (!strcmp(item->name, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME)) {
-				changed = changed || fabs(CLIENT_PRIVATE_DATA->dome_latitude - item->number.value) > AGENT_COORDINATES_PROPAGATE_THESHOLD_ITEM->number.value;
+				changed = changed || fabs(CLIENT_PRIVATE_DATA->dome_latitude - item->number.value) > AGENT_COORDINATES_PROPAGATE_THRESHOLD_ITEM->number.value;
 				if (changed) {
 					CLIENT_PRIVATE_DATA->dome_latitude = item->number.value;
 				}
 			} else if (!strcmp(item->name, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME)) {
-				changed = changed || fabs(CLIENT_PRIVATE_DATA->dome_longitude - item->number.value) > AGENT_COORDINATES_PROPAGATE_THESHOLD_ITEM->number.value;
+				changed = changed || fabs(CLIENT_PRIVATE_DATA->dome_longitude - item->number.value) > AGENT_COORDINATES_PROPAGATE_THRESHOLD_ITEM->number.value;
 				if (changed) {
 					CLIENT_PRIVATE_DATA->dome_longitude = item->number.value;
 				}
@@ -821,12 +825,12 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = property->items + i;
 			if (!strcmp(item->name, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME)) {
-				changed = changed || fabs(CLIENT_PRIVATE_DATA->gps_latitude - item->number.value) > AGENT_COORDINATES_PROPAGATE_THESHOLD_ITEM->number.value;
+				changed = changed || fabs(CLIENT_PRIVATE_DATA->gps_latitude - item->number.value) > AGENT_COORDINATES_PROPAGATE_THRESHOLD_ITEM->number.value;
 				if (changed) {
 					CLIENT_PRIVATE_DATA->gps_latitude = property->items[i].number.value;
 				}
 			} else if (!strcmp(item->name, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME)) {
-				changed = changed || fabs(CLIENT_PRIVATE_DATA->gps_longitude - item->number.value) > AGENT_COORDINATES_PROPAGATE_THESHOLD_ITEM->number.value;
+				changed = changed || fabs(CLIENT_PRIVATE_DATA->gps_longitude - item->number.value) > AGENT_COORDINATES_PROPAGATE_THRESHOLD_ITEM->number.value;
 				if (changed) {
 					CLIENT_PRIVATE_DATA->gps_longitude = item->number.value;
 				}
@@ -927,7 +931,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		}
 		indigo_init_sexagesimal_number_item(AGENT_HA_TRACKING_LIMIT_ITEM, AGENT_HA_TRACKING_LIMIT_ITEM_NAME, "HA tracking limit (0 to 24 hrs)", 0, 24, 0, 24);
 		indigo_init_sexagesimal_number_item(AGENT_LOCAL_TIME_LIMIT_ITEM, AGENT_LOCAL_TIME_LIMIT_ITEM_NAME, "Time limit (0 to 24 hrs)", 0, 24, 0, 12);
-		indigo_init_sexagesimal_number_item(AGENT_COORDINATES_PROPAGATE_THESHOLD_ITEM, AGENT_COORDINATES_PROPAGATE_THESHOLD_ITEM_NAME, "Coordinate propagation threshold (°)", 0, 360, 0, 5.0/3600.0);
+		indigo_init_sexagesimal_number_item(AGENT_COORDINATES_PROPAGATE_THRESHOLD_ITEM, AGENT_COORDINATES_PROPAGATE_THRESHOLD_ITEM_NAME, "Coordinate propagation threshold (°)", 0, 360, 0, 5.0/3600.0);
 		// -------------------------------------------------------------------------------- AGENT_MOUNT_FOV
 		AGENT_MOUNT_FOV_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_MOUNT_FOV_PROPERTY_NAME, "Agent", "FOV", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
 		if (AGENT_MOUNT_FOV_PROPERTY == NULL) {
