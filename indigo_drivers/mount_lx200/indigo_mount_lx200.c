@@ -129,12 +129,12 @@
 #define NYX_WIFI_RESET_ITEM_NAME				"RESET"
 
 #define NYX_LEVELER_PROPERTY						(PRIVATE_DATA->nyx_leveler_property)
-#define NYX_LEVELER_PICH_ITEM						(NYX_LEVELER_PROPERTY->items+0)
+#define NYX_LEVELER_PITCH_ITEM						(NYX_LEVELER_PROPERTY->items+0)
 #define NYX_LEVELER_ROLL_ITEM						(NYX_LEVELER_PROPERTY->items+1)
 #define NYX_LEVELER_COMPASS_ITEM				(NYX_LEVELER_PROPERTY->items+2)
 
 #define NYX_LEVELER_PROPERTY_NAME				"X_NYX_LEVELER"
-#define NYX_LEVELER_PICH_ITEM_NAME			"PICH"
+#define NYX_LEVELER_PITCH_ITEM_NAME			"PICH"
 #define NYX_LEVELER_ROLL_ITEM_NAME			"ROLL"
 #define NYX_LEVELER_COMPASS_ITEM_NAME		"COMPASS"
 
@@ -150,8 +150,8 @@
 #define AUX_GROUP												"Powerbox"
 #define AUX_POWER_OUTLET_PROPERTY				(PRIVATE_DATA->power_outlet_property)
 #define AUX_HEATER_OUTLET_PROPERTY			(PRIVATE_DATA->heater_outlet_property)
-#define ONSTEP_AUX_HEATER_OUTLET_MAPPING (PRIVATE_DATA->onstep_aux_power_outlet_slot_mapping)
-#define ONSTEP_AUX_POWER_OUTLET_MAPPING	(PRIVATE_DATA->onstep_aux_heater_outlet_slot_mapping)
+#define ONSTEP_AUX_HEATER_OUTLET_MAPPING (PRIVATE_DATA->onstep_aux_heater_outlet_slot_mapping)
+#define ONSTEP_AUX_POWER_OUTLET_MAPPING	(PRIVATE_DATA->onstep_aux_power_outlet_slot_mapping)
 
 #define IS_PARKED (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PROPERTY->count == 2 && MOUNT_PARK_PARKED_ITEM->sw.value)
 
@@ -255,14 +255,14 @@ static char *meade_error_string(indigo_device *device, unsigned int code) {
 	if (MOUNT_TYPE_ZWO_ITEM->sw.value) {
 		const char *error_string[] = {
 			NULL,
-			"Prameters out of range",
+			"Parmeters out of range",
 			"Format error",
 			"Mount not initialized",
 			"Mount is Moving",
 			"Target is below horizon",
-			"Target is beow the altitude limit",
+			"Target is below the altitude limit",
 			"Time and location is not set",
-			"Unkonwn error"
+			"Unknown error"
 		};
 		if (code > 8) return NULL;
 		return (char *)error_string[code];
@@ -292,7 +292,7 @@ static char *meade_error_string(indigo_device *device, unsigned int code) {
 			"Outside limits",
 			"Guide in progress",
 			"Above overhead limit",
-			"Hardware fault"
+			"Hardware fault",
 			"Unspecified error"
 		};
 		if (code > 9) return NULL;
@@ -726,7 +726,7 @@ static bool meade_set_guide_rate(indigo_device *device, int ra, int dec) {
 			return meade_no_reply_command(device, ":X21%02d#", dec);
 		}
 	} else if (MOUNT_TYPE_ZWO_ITEM->sw.value) {
-		// asi miunt has one guide rate for ra and dec
+		// asi mount has one guide rate for ra and dec
 		if (ra < 10) {
 			ra = 10;
 		}
@@ -1016,7 +1016,7 @@ static bool meade_unpark(indigo_device *device) {
 
 static bool meade_park_set(indigo_device *device) {
 	if (MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value) {
-		return meade_simple_reply_command(device, ":hQ#") || *PRIVATE_DATA->response != '1';
+		return meade_simple_reply_command(device, ":hQ#") && *PRIVATE_DATA->response == '1';
 	}
 	return false;
 }
@@ -1208,7 +1208,7 @@ static bool meade_detect_mount(indigo_device *device) {
 			indigo_set_switch(MOUNT_TYPE_PROPERTY, MOUNT_TYPE_NYX_ITEM, true);
 		} else if (!strncmp(PRIVATE_DATA->product, "OpenAstroTracker", 16)) {
 			indigo_set_switch(MOUNT_TYPE_PROPERTY, MOUNT_TYPE_OAT_ITEM, true);
-		} else if (!strncmp(PRIVATE_DATA->product, "aGotino", 16)) {
+		} else if (!strncmp(PRIVATE_DATA->product, "aGotino", 7)) {
 			indigo_set_switch(MOUNT_TYPE_PROPERTY, MOUNT_TYPE_AGOTINO_ITEM, true);
 		} else {
 			// The classic LX200 and some of the LX200-compatible mounts doesn't implement ":GVP#"
@@ -1621,7 +1621,7 @@ static void meade_init_nyx_mount(indigo_device *device) {
 	}
 	if (meade_command(device, ":GX9D#") && (separator = strchr(PRIVATE_DATA->response, ':'))) {
 		*separator++ = 0;
-		NYX_LEVELER_PICH_ITEM->number.value = atof(PRIVATE_DATA->response);
+		NYX_LEVELER_PITCH_ITEM->number.value = atof(PRIVATE_DATA->response);
 		NYX_LEVELER_ROLL_ITEM->number.value = atof(separator);
 	}
 	if (meade_command(device, ":GX9E#")) {
@@ -1662,7 +1662,7 @@ static void meade_update_nyx_state(indigo_device *device) {
 		char *colon;
 		if (meade_command(device, ":GX9D#") && (colon = strchr(PRIVATE_DATA->response, ':'))) {
 			*colon++ = 0;
-			NYX_LEVELER_PICH_ITEM->number.value = atof(PRIVATE_DATA->response);
+			NYX_LEVELER_PITCH_ITEM->number.value = atof(PRIVATE_DATA->response);
 			NYX_LEVELER_ROLL_ITEM->number.value = atof(colon);
 		}
 		if (meade_command(device, ":GX9E#")) {
@@ -2496,7 +2496,7 @@ static indigo_result mount_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		}
 		NYX_LEVELER_PROPERTY->hidden = true;
-		indigo_init_number_item(NYX_LEVELER_PICH_ITEM, NYX_LEVELER_PICH_ITEM_NAME, "Pitch [°]", 0, 360, 0, 0);
+		indigo_init_number_item(NYX_LEVELER_PITCH_ITEM, NYX_LEVELER_PITCH_ITEM_NAME, "Pitch [°]", 0, 360, 0, 0);
 		indigo_init_number_item(NYX_LEVELER_ROLL_ITEM, NYX_LEVELER_ROLL_ITEM_NAME, "Roll [°]", 0, 360, 0, 0);
 		indigo_init_number_item(NYX_LEVELER_COMPASS_ITEM, NYX_LEVELER_COMPASS_ITEM_NAME, "Compas [°]", 0, 360, 0, 0);
 		// --------------------------------------------------------------------------------
