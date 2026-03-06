@@ -23,7 +23,7 @@
  \file indigo_wheel_asi.c
  */
 
-#define DRIVER_VERSION 0x0300000D
+#define DRIVER_VERSION 0x0300000E
 #define DRIVER_NAME "indigo_wheel_asi"
 
 #include <stdlib.h>
@@ -228,6 +228,41 @@ static void wheel_connect_callback(indigo_device *device) {
 	indigo_wheel_change_property(device, NULL, CONNECTION_PROPERTY);
 }
 
+static void wheel_slot_callback(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	int res = EFWSetPosition(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_slot-1);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWSetPosition(%d, %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_slot-1, res);
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	indigo_set_timer(device, 0.5, wheel_timer_callback, &PRIVATE_DATA->wheel_timer);
+}
+
+static void wheel_custom_suffix_callback(indigo_device *device) {
+	if (strlen(X_CUSTOM_SUFFIX_ITEM->text.value) > 8) {
+		X_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, X_CUSTOM_SUFFIX_PROPERTY, "Custom suffix too long");
+		return;
+	}
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	EFW_ID efw_id = {0};
+	memcpy(efw_id.id, X_CUSTOM_SUFFIX_ITEM->text.value, 8);
+	memcpy(PRIVATE_DATA->custom_suffix, X_CUSTOM_SUFFIX_ITEM->text.value, sizeof(PRIVATE_DATA->custom_suffix));
+	int res = EFWSetID(PRIVATE_DATA->dev_id, efw_id);
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	if (res) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EFWSetID(%d, \"%s\") = %d", PRIVATE_DATA->dev_id, X_CUSTOM_SUFFIX_ITEM->text.value, res);
+		X_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, X_CUSTOM_SUFFIX_PROPERTY, NULL);
+	} else {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EFWSetID(%d, \"%s\") = %d", PRIVATE_DATA->dev_id, X_CUSTOM_SUFFIX_ITEM->text.value, res);
+		X_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_OK_STATE;
+		if (strlen(X_CUSTOM_SUFFIX_ITEM->text.value) > 0) {
+			indigo_update_property(device, X_CUSTOM_SUFFIX_PROPERTY, "Filter wheel name suffix '#%s' will be used on replug", X_CUSTOM_SUFFIX_ITEM->text.value);
+		} else {
+			indigo_update_property(device, X_CUSTOM_SUFFIX_PROPERTY, "Filter wheel name suffix cleared, will be used on replug");
+		}
+	}
+}
+
 static indigo_result wheel_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -243,25 +278,29 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(WHEEL_SLOT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- WHEEL_SLOT
+		if(WHEEL_SLOT_PROPERTY->state == INDIGO_BUSY_STATE) {
+			return INDIGO_OK;
+		}
 		indigo_property_copy_values(WHEEL_SLOT_PROPERTY, property, false);
 		if (WHEEL_SLOT_ITEM->number.value < 1 || WHEEL_SLOT_ITEM->number.value > WHEEL_SLOT_ITEM->number.max) {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 		} else if (WHEEL_SLOT_ITEM->number.value == PRIVATE_DATA->current_slot) {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 		} else {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
 			PRIVATE_DATA->target_slot = (int)WHEEL_SLOT_ITEM->number.value;
 			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
-			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-			int res = EFWSetPosition(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_slot-1);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWSetPosition(%d, %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_slot-1, res);
-			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-			indigo_set_timer(device, 0.5, wheel_timer_callback, &PRIVATE_DATA->wheel_timer);
+			indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+			indigo_set_timer(device, 0.0, wheel_slot_callback, NULL);
 		}
-		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_CALIBRATE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_CALIBRATE
+		if (X_CALIBRATE_PROPERTY->state == INDIGO_BUSY_STATE) {
+			return INDIGO_OK;
+		}
 		indigo_property_copy_values(X_CALIBRATE_PROPERTY, property, false);
 		if (X_CALIBRATE_START_ITEM->sw.value) {
 			X_CALIBRATE_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -273,32 +312,10 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 		// ------------------------------------------------------------------------------- X_CUSTOM_SUFFIX
 	} else if (indigo_property_match_changeable(X_CUSTOM_SUFFIX_PROPERTY, property)) {
-		X_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_property_copy_values(X_CUSTOM_SUFFIX_PROPERTY, property, false);
-		if (strlen(X_CUSTOM_SUFFIX_ITEM->text.value) > 8) {
-			X_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, X_CUSTOM_SUFFIX_PROPERTY, "Custom suffix too long");
-			return INDIGO_OK;
-		}
-		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-		EFW_ID efw_id = {0};
-		memcpy(efw_id.id, X_CUSTOM_SUFFIX_ITEM->text.value, 8);
-		memcpy(PRIVATE_DATA->custom_suffix, X_CUSTOM_SUFFIX_ITEM->text.value, sizeof(PRIVATE_DATA->custom_suffix));
-		int res = EFWSetID(PRIVATE_DATA->dev_id, efw_id);
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		if (res) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EFWSetID(%d, \"%s\") = %d", PRIVATE_DATA->dev_id, X_CUSTOM_SUFFIX_ITEM->text.value, res);
-			X_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, X_CUSTOM_SUFFIX_PROPERTY, NULL);
-		} else {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EFWSetID(%d, \"%s\") = %d", PRIVATE_DATA->dev_id, X_CUSTOM_SUFFIX_ITEM->text.value, res);
-			X_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_OK_STATE;
-			if (strlen(X_CUSTOM_SUFFIX_ITEM->text.value) > 0) {
-				indigo_update_property(device, X_CUSTOM_SUFFIX_PROPERTY, "Filter wheel name suffix '#%s' will be used on replug", X_CUSTOM_SUFFIX_ITEM->text.value);
-			} else {
-				indigo_update_property(device, X_CUSTOM_SUFFIX_PROPERTY, "Filter wheel name suffix cleared, will be used on replug");
-			}
-		}
+		X_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, X_CUSTOM_SUFFIX_PROPERTY, NULL);
+		indigo_set_timer(device, 0.0, wheel_custom_suffix_callback, NULL);
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
