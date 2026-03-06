@@ -661,7 +661,7 @@ static void focuser_connection_handler(indigo_device *device) {
 		}
 		if (result) {
 			//+ focuser.on_connect
-			if (primaluce_command(device, "{\"req\":{\"get\": \"\"}}}")) {
+			if (primaluce_command(device, "{\"req\":{\"get\": \"\"}}")) {
 				if ((text = get_string(device, GET_MODNAME))) {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Model: %s", text);
 					INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, text);
@@ -1023,7 +1023,7 @@ static void focuser_preset_handler(indigo_device *device) {
 
 static void focuser_hold_curr_handler(indigo_device *device) {
 	X_HOLD_CURR_PROPERTY->state = INDIGO_OK_STATE;
-	//+ focuser.X_RUNPRESET.on_change
+	//+ focuser.X_HOLD_CURR.on_change
 	bool result = false;
 	if (X_HOLD_CURR_OFF_ITEM->sw.value) {
 		result = primaluce_command(device, "{\"req\":{\"set\":{\"MOT1\":{\"HOLDCURR_STATUS\":0}}}}");
