@@ -154,8 +154,10 @@
 #define X_CALIBRATE_R_PROPERTY								(PRIVATE_DATA->calibrate_r_property)
 #define X_CALIBRATE_R_START_ITEM							(X_CALIBRATE_R_PROPERTY->items+0)
 
+//+ define
 #define MAX_RESPONSE_SIZE	4096
 #define MAX_TOKEN_COUT		1024
+//-
 
 typedef struct {
 	indigo_uni_handle *handle;
@@ -653,7 +655,6 @@ static void focuser_timer_callback(indigo_device *device) {
 }
 
 static void focuser_connection_handler(indigo_device *device) {
-	char *text;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool result = true;
 		if (PRIVATE_DATA->device_count++ == 0) {
@@ -661,6 +662,7 @@ static void focuser_connection_handler(indigo_device *device) {
 		}
 		if (result) {
 			//+ focuser.on_connect
+			char *text;
 			if (primaluce_command(device, "{\"req\":{\"get\": \"\"}}")) {
 				if ((text = get_string(device, GET_MODNAME))) {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Model: %s", text);
@@ -957,7 +959,7 @@ static void focuser_preset_1_handler(indigo_device *device) {
 }
 
 static void focuser_preset_2_handler(indigo_device *device) {
-	//+ focuser.X_RUNPRESET_1.on_change
+	//+ focuser.X_RUNPRESET_2.on_change
 	if (!primaluce_command(device, "{\"req\":{\"set\":{\"RUNPRESET_2\":{\"M1ACC\":%d,\"M1DEC\":%d,\"M1SPD\":%d,\"M1CACC\":%d,\"M1CDEC\":%d,\"M1CSPD\":%d,\"M1HOLD\":%d}}}}", (int)X_RUNPRESET_2_M1ACC_ITEM->number.target, (int)X_RUNPRESET_2_M1DEC_ITEM->number.target, (int)X_RUNPRESET_2_M1SPD_ITEM->number.target, (int)X_RUNPRESET_2_M1CACC_ITEM->number.target, (int)X_RUNPRESET_2_M1CDEC_ITEM->number.target, (int)X_RUNPRESET_2_M1CSPD_ITEM->number.target, (int)X_RUNPRESET_2_M1HOLD_ITEM->number.target)) {
 		X_RUNPRESET_2_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, X_RUNPRESET_2_PROPERTY, NULL);
@@ -1080,7 +1082,7 @@ static void focuser_abort_handler(indigo_device *device) {
 
 static void focuser_leds_handler(indigo_device *device) {
 	X_LEDS_PROPERTY->state = INDIGO_OK_STATE;
-	//+ focuser.FOCUSER_ABORT_MOTION.on_change
+	//+ focuser.X_LEDS.on_change
 	bool result = false;
 	if (X_LEDS_OFF_ITEM->sw.value) {
 		result = primaluce_command(device, "{\"req\":{\"cmd\":{\"DIMLEDS\":\"off\"}}}");
@@ -1098,7 +1100,7 @@ static void focuser_leds_handler(indigo_device *device) {
 
 static void focuser_wifi_handler(indigo_device *device) {
 	X_WIFI_PROPERTY->state = INDIGO_OK_STATE;
-	//+ focuser.FOCUSER_ABORT_MOTION.on_change
+	//+ focuser.X_WIFI.on_change
 	bool result = false;
 	if (X_WIFI_OFF_ITEM->sw.value) {
 		result = primaluce_command(device, "{\"req\":{\"cmd\":{\"AP_SET_STATUS\":\"off\"}}}");
@@ -1126,7 +1128,7 @@ static void focuser_wifi_ap_handler(indigo_device *device) {
 
 static void focuser_wifi_sta_handler(indigo_device *device) {
 	X_WIFI_STA_PROPERTY->state = INDIGO_OK_STATE;
-	//+ focuser.X_WIFI_AP.on_change
+	//+ focuser.X_WIFI_STA.on_change
 	if (!primaluce_command(device, "{\"req\":{\"set\":{\"WIFISTA\":{\"SSID\":\"%s\", \"PWD\":\"%s\"}}}}", X_WIFI_STA_SSID_ITEM->text.value, X_WIFI_STA_PASSWORD_ITEM->text.value)) {
 		X_WIFI_STA_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
@@ -1353,7 +1355,6 @@ static indigo_result rotator_attach(indigo_device *device) {
 }
 
 static void rotator_connection_handler(indigo_device *device) {
-	char *text;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool connection_result = true;
 		if (PRIVATE_DATA->device_count++ == 0) {
@@ -1361,6 +1362,7 @@ static void rotator_connection_handler(indigo_device *device) {
 		}
 		if (connection_result) {
 			//+ rotator.on_connect
+			char *text;
 			if (primaluce_command(device, "{\"req\":{\"set\": {\"ARCO\":1}}}")) {
 				if (primaluce_command(device, "{\"req\":{\"get\": \"\"}}")) {
 					if ((text = get_string(device, GET_MOT2_ERROR)) && *text) {
