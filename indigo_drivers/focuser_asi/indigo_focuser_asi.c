@@ -921,7 +921,7 @@ static void focuser_custom_suffix_callback(indigo_device *device) {
 	if (strlen(EAF_CUSTOM_SUFFIX_ITEM->text.value) > 8) {
 		EAF_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, EAF_CUSTOM_SUFFIX_PROPERTY, "Custom suffix too long");
-		return INDIGO_OK;
+		return;
 	}
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	EAF_ID eaf_id = {0};
