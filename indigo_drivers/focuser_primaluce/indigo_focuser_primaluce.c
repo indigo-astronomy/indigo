@@ -1391,7 +1391,7 @@ static void rotator_connection_handler(indigo_device *device) {
 		}
 	} else {
 		//+ rotator.on_disconnect
-		primaluce_command(device, "{\"req\":{\"set\": {\"ARCO\":0}}}}");
+		primaluce_command(device, "{\"req\":{\"set\": {\"ARCO\":0}}}");
 		//-
 		indigo_delete_property(device, X_CALIBRATE_R_PROPERTY, NULL);
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
