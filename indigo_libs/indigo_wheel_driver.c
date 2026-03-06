@@ -125,7 +125,7 @@ indigo_result indigo_wheel_change_property(indigo_device *device, indigo_client 
 		WHEEL_SLOT_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, WHEEL_SLOT_OFFSET_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
+	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, WHEEL_SLOT_NAME_PROPERTY);

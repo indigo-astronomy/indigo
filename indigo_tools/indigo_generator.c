@@ -1618,7 +1618,7 @@ void write_c_change_property(device_type *device) {
 		}
 	}
 	if (persistent) {
-		write_line("\t} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {");
+		write_line("\t} else if (indigo_property_match(CONFIG_PROPERTY, property)) {");
 		write_line("\t\tif (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {");
 		for (property_type *property = device->properties; property; property = property->next) {
 			if (property->persistent) {

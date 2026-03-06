@@ -350,7 +350,7 @@ static indigo_result lunatico_common_update_property(indigo_device *device, indi
 		} else {
 			lunatico_authenticate2(device, AUTHENTICATION_PASSWORD_ITEM->text.value);
 		}
-	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
+	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			lunatico_save_properties(device);

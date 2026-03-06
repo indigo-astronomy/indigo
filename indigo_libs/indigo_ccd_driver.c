@@ -587,7 +587,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_delete_property(device, CCD_RBI_FLUSH_ENABLE_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_RBI_FLUSH_PROPERTY, NULL);
 		}
-	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
+	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, CCD_LENS_PROPERTY);

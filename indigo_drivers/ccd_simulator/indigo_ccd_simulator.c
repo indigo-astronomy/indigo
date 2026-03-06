@@ -1296,7 +1296,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		BAHTINOV_SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, BAHTINOV_SETTINGS_PROPERTY, NULL);
 		// -------------------------------------------------------------------------------- CONFIG
-	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
+	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			if (device == PRIVATE_DATA->guider) {
 				indigo_save_property(device, NULL, GUIDER_SETTINGS_PROPERTY);
@@ -1855,7 +1855,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_update_property(device, FOCUSER_SETTINGS_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- CONFIG
-	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
+	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, FOCUSER_SETTINGS_PROPERTY);
 		}

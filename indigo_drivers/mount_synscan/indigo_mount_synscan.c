@@ -346,7 +346,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		MOUNT_OPERATING_MODE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_OPERATING_MODE_PROPERTY, "Switched mount operating mode");
 		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
+	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, MOUNT_POLARSCOPE_PROPERTY);
@@ -486,7 +486,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		indigo_property_copy_values(GUIDER_RATE_PROPERTY, property, false);
 		indigo_update_property(device, GUIDER_RATE_PROPERTY, "Guide rate updated.");
 		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
+	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property))
 			indigo_save_property(device, NULL, GUIDER_RATE_PROPERTY);

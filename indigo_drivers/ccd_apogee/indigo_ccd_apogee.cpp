@@ -1041,7 +1041,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		indigo_update_property(device, APG_FAN_SPEED_PROPERTY, NULL);
 	// -------------------------------------------------------------------------------- CONFIG
-	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
+	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, APG_ADC_SPEED_PROPERTY);
 			indigo_save_property(device, NULL, APG_FAN_SPEED_PROPERTY);

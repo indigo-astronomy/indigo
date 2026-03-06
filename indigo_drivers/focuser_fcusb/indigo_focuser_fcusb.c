@@ -225,7 +225,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	} else if (indigo_property_match_changeable(X_FOCUSER_FREQUENCY_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_FOCUSER_FREQUENCY_PROPERTY, focuser_x_focuser_frequency_handler);
 		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
+	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, X_FOCUSER_FREQUENCY_PROPERTY);
 		}

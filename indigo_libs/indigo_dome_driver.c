@@ -353,7 +353,7 @@ indigo_result indigo_dome_change_property(indigo_device *device, indigo_client *
 		indigo_update_property(device, DOME_DIMENSION_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- CONFIG
-	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
+	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, DOME_SPEED_PROPERTY);
 			indigo_save_property(device, NULL, DOME_DIRECTION_PROPERTY);
