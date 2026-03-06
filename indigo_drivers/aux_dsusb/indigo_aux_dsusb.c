@@ -129,6 +129,8 @@ static void aux_connection_handler(indigo_device *device) {
 			CCD_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.target = 0;
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 			//- aux.on_connect
+		}
+		if (connection_result) {
 			indigo_define_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 			indigo_define_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 			indigo_define_property(device, X_CONFIG_PROPERTY, NULL);

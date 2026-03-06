@@ -1591,6 +1591,7 @@
 		5964F6F82B77FDE800E28F4C /* libqhyccd.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libqhyccd.so; sourceTree = "<group>"; };
 		5964F6F92B77FDF000E28F4C /* libqhyccd.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libqhyccd.so; sourceTree = "<group>"; };
 		5964F6FA2B77FE1000E28F4C /* libqhyccd.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libqhyccd.so; sourceTree = "<group>"; };
+		59666B1F2F5B0B0A00E0DD90 /* indigo_focuser_primaluce.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_focuser_primaluce.driver; sourceTree = "<group>"; };
 		59689A9F245DE3E100F950CE /* indigo_wheel_manual.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_wheel_manual.h; sourceTree = "<group>"; };
 		59689AA0245DE3E100F950CE /* indigo_wheel_manual_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_wheel_manual_main.c; sourceTree = "<group>"; };
 		59689AA1245DE3E100F950CE /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -9351,6 +9352,7 @@
 				59B3489D29E854070062C2EA /* indigo_focuser_primaluce.h */,
 				59B3489F29E854080062C2EA /* indigo_focuser_primaluce.c */,
 				59B3489E29E854070062C2EA /* indigo_focuser_primaluce_main.c */,
+				59666B1F2F5B0B0A00E0DD90 /* indigo_focuser_primaluce.driver */,
 				59B348A329E85E2F0062C2EA /* jsmn.h */,
 				59B3489329E729380062C2EA /* primaluce_simulator */,
 			);

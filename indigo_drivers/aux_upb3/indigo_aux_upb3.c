@@ -469,6 +469,8 @@ static void aux_connection_handler(indigo_device *device) {
 				}
 			}
 			//- aux.on_connect
+		}
+		if (connection_result) {
 			indigo_define_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
 			indigo_define_property(device, AUX_POWER_OUTLET_CURRENT_PROPERTY, NULL);
 			indigo_define_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
@@ -939,6 +941,8 @@ static void focuser_connection_handler(indigo_device *device) {
 				}
 			}
 			//- focuser.on_connect
+		}
+		if (connection_result) {
 			indigo_execute_handler(device, focuser_timer_callback);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, "Connected to %s on %s", FOCUSER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);

@@ -140,6 +140,8 @@ static void aux_connection_handler(indigo_device *device) {
 			fbc_command(device, ": F 0 #", false);
 			fbc_command(device, ": B %d #", false, (int)AUX_LIGHT_INTENSITY_ITEM->number.value);
 			//- aux.on_connect
+		}
+		if (connection_result) {
 			indigo_define_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
 			indigo_define_property(device, AUX_LIGHT_IMPULSE_PROPERTY, NULL);
 			indigo_define_property(device, CCD_EXPOSURE_PROPERTY, NULL);

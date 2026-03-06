@@ -180,6 +180,8 @@ static void aux_connection_handler(indigo_device *device) {
 				}
 			}
 			//- aux.on_connect
+		}
+		if (connection_result) {
 			indigo_define_property(device, AUX_COVER_PROPERTY, NULL);
 			indigo_define_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
 			indigo_define_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);

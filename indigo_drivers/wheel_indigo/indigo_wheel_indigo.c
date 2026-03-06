@@ -104,6 +104,8 @@ static void wheel_connection_handler(indigo_device *device) {
 				WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = 1;
 			}
 			//- wheel.on_connect
+		}
+		if (connection_result) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, "Connected to %s on %s", WHEEL_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {

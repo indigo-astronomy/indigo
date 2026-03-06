@@ -214,6 +214,8 @@ static void focuser_connection_handler(indigo_device *device) {
 				}
 			}
 			//- focuser.on_connect
+		}
+		if (connection_result) {
 			indigo_define_property(device, X_FOCUSER_MOTOR_TYPE_PROPERTY, NULL);
 			indigo_define_property(device, X_FOCUSER_ENCODER_PROPERTY, NULL);
 			indigo_define_property(device, X_FOCUSER_LED_PROPERTY, NULL);

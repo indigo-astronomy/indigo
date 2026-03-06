@@ -234,6 +234,8 @@ static void aux_connection_handler(indigo_device *device) {
 				}
 			}
 			//- aux.on_connect
+		}
+		if (connection_result) {
 			indigo_define_property(device, AUX_USB_PORT_PROPERTY, NULL);
 			indigo_define_property(device, AUX_INFO_PROPERTY, NULL);
 			indigo_define_property(device, X_AUX_REBOOT_PROPERTY, NULL);

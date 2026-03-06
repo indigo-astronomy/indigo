@@ -147,6 +147,8 @@ static void focuser_connection_handler(indigo_device *device) {
 				FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.value = FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.target = threshold;
 			}
 			//- focuser.on_connect
+		}
+		if (connection_result) {
 			indigo_define_property(device, X_FOCUSER_STEP_SIZE_PROPERTY, NULL);
 			indigo_execute_handler(device, focuser_timer_callback);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
