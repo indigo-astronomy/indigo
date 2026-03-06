@@ -761,7 +761,6 @@ static void asi_init_mount(indigo_device *device) {
 	MOUNT_TRACK_RATE_PROPERTY->hidden = false;
 	MOUNT_MODE_PROPERTY->hidden = false;
 	MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
-	MOUNT_SIDE_OF_PIER_PROPERTY->perm = INDIGO_RO_PERM;
 	ZWO_BUZZER_PROPERTY->hidden = false;
 	ZWO_MAX_SLEW_SPEED_PROPERTY->hidden = false;
 	PRIVATE_DATA->firmware = 0;

@@ -316,7 +316,7 @@ static duk_ret_t save_blob(duk_context *ctx) {
 		indigo_uni_write(handle, item->blob.value, item->blob.size);
 		indigo_uni_close(&handle);
 	} else {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_save_blob() failed -> %d (%s)", stderr, strerror(errno));
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_save_blob() failed");
 		return 0;
 	}
 	return 1;
@@ -348,7 +348,7 @@ static void enumerate_properties_handler(indigo_device *device, void *data) {
 }
 
 
-static duk_ret_t emumerate_properties(duk_context *ctx) {
+static duk_ret_t enumerate_properties(duk_context *ctx) {
 	const char *device = duk_is_null_or_undefined(ctx, 0) ? "" : duk_require_string(ctx, 0);
 	const char *property_name = duk_is_null_or_undefined(ctx, 1) ? "" : duk_require_string(ctx, 1);
 	indigo_property *property = indigo_init_text_property(NULL, device, property_name, "", "", INDIGO_OK_STATE, INDIGO_RW_PERM, 0);
@@ -531,7 +531,7 @@ static duk_ret_t _define_number_property(duk_context *ctx, bool redefine) {
 				indigo_item *item = tmp->items + tmp->count;
 				const char *key = duk_require_string(ctx, -2);
 				INDIGO_COPY_NAME(item->name, key);
-				item->number.value = duk_to_number(ctx, -1);;
+				item->number.value = duk_to_number(ctx, -1);
 				duk_get_prop_string(ctx, 5, key);
 				duk_get_prop_string(ctx, -1, "label");
 				INDIGO_COPY_VALUE(item->label, duk_to_string(ctx, -1));
@@ -597,7 +597,7 @@ static duk_ret_t _define_switch_property(duk_context *ctx, bool redefine) {
 				indigo_item *item = tmp->items + tmp->count;
 				const char *key = duk_require_string(ctx, -2);
 				INDIGO_COPY_NAME(item->name, key);
-				item->number.value = duk_to_boolean(ctx, -1);;
+				item->sw.value = duk_to_boolean(ctx, -1);
 				duk_get_prop_string(ctx, 5, key);
 				duk_get_prop_string(ctx, -1, "label");
 				INDIGO_COPY_VALUE(item->label, duk_to_string(ctx, -1));
@@ -649,7 +649,7 @@ static duk_ret_t _define_light_property(duk_context *ctx, bool redefine) {
 				indigo_item *item = tmp->items + tmp->count;
 				const char *key = duk_require_string(ctx, -2);
 				INDIGO_COPY_NAME(item->name, key);
-				item->light.value = require_state(ctx, -1);;
+				item->light.value = require_state(ctx, -1);
 				duk_get_prop_string(ctx, 5, key);
 				duk_get_prop_string(ctx, -1, "label");
 				INDIGO_COPY_VALUE(item->label, duk_to_string(ctx, -1));
@@ -680,6 +680,7 @@ static duk_ret_t redefine_light_property(duk_context *ctx) {
 
 static void update_property_handler(indigo_device *device, void *data) {
 	indigo_property *property = (indigo_property *)data;
+	property->do_update = true;
 	indigo_update_property(device, property, NULL);
 }
 
@@ -1044,9 +1045,11 @@ static duk_ret_t set_timer_at_utc(duk_context *ctx) {
 
 static duk_ret_t cancel_timer(duk_context *ctx) {
 	int i = duk_require_int(ctx, 0);
-	if (PRIVATE_DATA->timers[i]) {
-		if (indigo_cancel_timer(agent_device, PRIVATE_DATA->timers + i)) {
-			return 0;
+	if (i < MAX_TIMER_COUNT) {
+		if (PRIVATE_DATA->timers[i]) {
+			if (indigo_cancel_timer(agent_device, PRIVATE_DATA->timers + i)) {
+				return 0;
+			}
 		}
 	}
 	return DUK_RET_ERROR;
@@ -1096,7 +1099,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		}
 		indigo_init_text_item(AGENT_SCRIPTING_DELETE_SCRIPT_NAME_ITEM, AGENT_SCRIPTING_DELETE_SCRIPT_NAME_ITEM_NAME, "Name", "");
-		AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY_NAME, AGENT_MAIN_GROUP, "Exececute on agent load", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, MAX_ITEMS);
+		AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY_NAME, AGENT_MAIN_GROUP, "Execute on agent load", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, MAX_ITEMS);
 		if (AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
@@ -1132,7 +1135,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_save_blob");
 			duk_push_c_function(PRIVATE_DATA->ctx, populate_blob, 1);
 			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_populate_blob");
-			duk_push_c_function(PRIVATE_DATA->ctx, emumerate_properties, 2);
+			duk_push_c_function(PRIVATE_DATA->ctx, enumerate_properties, 2);
 			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_enumerate_properties");
 			duk_push_c_function(PRIVATE_DATA->ctx, enable_blob, 3);
 			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_enable_blob");
@@ -1231,8 +1234,8 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	duk_push_global_object(PRIVATE_DATA->ctx);
 	if (duk_get_prop_string(PRIVATE_DATA->ctx, -1, "indigo_on_enumerate_properties")) {
-		duk_push_string(PRIVATE_DATA->ctx, property && *property->device ? property->device : NULL);
-		duk_push_string(PRIVATE_DATA->ctx, property && *property->name ? property->name : NULL);
+		duk_push_string(PRIVATE_DATA->ctx, property && *property->device ? property->device : "");
+		duk_push_string(PRIVATE_DATA->ctx, property && *property->name ? property->name : "");
 		if (duk_pcall(PRIVATE_DATA->ctx, 2)) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_on_enumerate_properties() call failed (%s)", duk_safe_to_string(PRIVATE_DATA->ctx, -1));
 		}
@@ -1246,7 +1249,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match(CONFIG_PROPERTY, property)) {
+	if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_LOAD_ITEM, property)) {
 			indigo_device_change_property(device, client, property);
@@ -1464,6 +1467,11 @@ static indigo_result agent_enable_blob(indigo_device *device, indigo_client *cli
 
 static indigo_result agent_device_detach(indigo_device *device) {
 	assert(device != NULL);
+	for (int i = 0; i < MAX_TIMER_COUNT; i++) {
+		if (PRIVATE_DATA->timers[i]) {
+			indigo_cancel_timer_sync(agent_device, PRIVATE_DATA->timers + i);
+		}
+	}
 	if (PRIVATE_DATA->ctx) {
 		AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY, "Executing on-unload scripts");
@@ -1480,11 +1488,6 @@ static indigo_result agent_device_detach(indigo_device *device) {
 		AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY, NULL);
 		duk_destroy_heap(PRIVATE_DATA->ctx);
-	}
-	for (int i = 0; i < MAX_TIMER_COUNT; i++) {
-		if (PRIVATE_DATA->timers[i]) {
-			indigo_cancel_timer_sync(agent_device, PRIVATE_DATA->timers + i);
-		}
 	}
 	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
 	indigo_release_property(AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY);

@@ -166,8 +166,10 @@ static bool indigo_select_matching_usbserial_device(indigo_device *device, indig
 			for (int i = 0; i < num_serial_info; i++) {
 				if (!strcmp(serial_info[i].path, target)) {
 					port_exists = true;
-					if (indigo_usbserial_match(serial_info + i, 1, patterns, patterns_count)) {
+					int matched_pattern_index = -1;
+					if (indigo_usbserial_match_index(serial_info + i, 1, patterns, patterns_count, &matched_pattern_index)) {
 						INDIGO_DEBUG(indigo_debug( "%s(): Selected port for '%s' matches the pattern, keeping selected: %s", __FUNCTION__, device->name, DEVICE_PORT_ITEM->text.value));
+						device->matched_pattern_index = matched_pattern_index;
 						return true;
 					}
 				}
@@ -175,7 +177,7 @@ static bool indigo_select_matching_usbserial_device(indigo_device *device, indig
 		}
 	}
 
-	indigo_serial_info *matching = indigo_usbserial_match(serial_info, num_serial_info, patterns, patterns_count);
+	indigo_serial_info *matching = indigo_usbserial_match_index(serial_info, num_serial_info, patterns, patterns_count, &device->matched_pattern_index);
 
 	/* if nothing is matched select first USB-Serial port */
 	if (matching == NULL) {
@@ -194,6 +196,37 @@ static bool indigo_select_matching_usbserial_device(indigo_device *device, indig
 		return true;
 	}
 	return false;
+}
+
+static int indigo_find_matching_pattern_index(indigo_device *device, const char *path) {
+	indigo_device_match_pattern *patterns = (indigo_device_match_pattern*)device->match_patterns;
+	int patterns_count = device->match_patterns_count;
+	int matched_pattern_index = -1;
+
+	if (path == NULL || patterns == NULL || patterns_count == 0) {
+		return -1;
+	}
+
+	const char *real_path = path;
+	if (!strncmp(path, USBSERIAL_AUTO_PREFIX, strlen(USBSERIAL_AUTO_PREFIX))) {
+		real_path = path + strlen(USBSERIAL_AUTO_PREFIX);
+	}
+
+	char target[PATH_MAX] = {0};
+	bool has_realpath = indigo_uni_realpath(real_path, target);
+
+	indigo_serial_info serial_info[MAX_DEVICE_PORTS] = {0};
+	int serial_count = indigo_enumerate_usbserial_devices(serial_info, MAX_DEVICE_PORTS);
+
+	for (int i = 0; i < serial_count; i++) {
+		if (!strcmp(serial_info[i].path, real_path) || (has_realpath && !strcmp(serial_info[i].path, target))) {
+			indigo_usbserial_match_index(serial_info + i, 1, patterns, patterns_count, &matched_pattern_index);
+			INDIGO_DEBUG(indigo_debug("%s(): path = %s matches pattern index %d for '%s'", __FUNCTION__, path, matched_pattern_index, device->name));
+			return matched_pattern_index;
+		}
+	}
+	INDIGO_DEBUG(indigo_debug("%s(): path = %s not found in enumerated USB-Serial devices for '%s'", __FUNCTION__, path, device->name));
+	return -1;
 }
 
 static bool cu_filter(const char *name) {
@@ -763,9 +796,10 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 		indigo_property_copy_values(SIMULATION_PROPERTY, property, false);
 		SIMULATION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, SIMULATION_PROPERTY, NULL);
-	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
-		if (indigo_switch_match(CONFIG_LOAD_ITEM, property)) {
+		indigo_property_copy_values(CONFIG_PROPERTY, property, false);
+		if (CONFIG_LOAD_ITEM->sw.value) {
 			if (CONFIG_PROPERTY->count == 1 || indigo_load_properties(device, false) == INDIGO_OK) {
 				CONFIG_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
@@ -773,7 +807,7 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 			}
 			CONFIG_LOAD_ITEM->sw.value = false;
 			indigo_update_property(device, CONFIG_PROPERTY, NULL);
-		} else if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
+		} else if (CONFIG_SAVE_ITEM->sw.value) {
 			indigo_save_property(device, NULL, SIMULATION_PROPERTY);
 			indigo_save_property(device, NULL, DEVICE_PORT_PROPERTY);
 			indigo_save_property(device, NULL, DEVICE_BAUDRATE_PROPERTY);
@@ -794,7 +828,7 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 			} else {
 				indigo_update_property(device, CONFIG_PROPERTY, NULL);
 			}
-		} else if (indigo_switch_match(CONFIG_REMOVE_ITEM, property)) {
+		} else if (CONFIG_REMOVE_ITEM->sw.value) {
 			if (indigo_remove_properties(device) == INDIGO_OK) {
 				CONFIG_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
@@ -859,7 +893,6 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 		if (*DEVICE_PORT_ITEM->text.value == '/') {
 			if (indigo_uni_is_readable(DEVICE_PORT_ITEM->text.value)) {
 				DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;
-				//indigo_save_property(device, NULL, DEVICE_PORT_PROPERTY);
 				indigo_update_property(device, DEVICE_PORT_PROPERTY, NULL);
 			} else {
 				DEVICE_PORT_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -867,9 +900,9 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 			}
 		} else {
 			DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;
-			//indigo_save_property(device, NULL, DEVICE_PORT_PROPERTY);
 			indigo_update_property(device, DEVICE_PORT_PROPERTY, NULL);
 		}
+		device->matched_pattern_index = indigo_find_matching_pattern_index(device, DEVICE_PORT_ITEM->text.value);
 	} else if (indigo_property_match_changeable(DEVICE_BAUDRATE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DEVICE_BAUDRATE
 		indigo_property_copy_values(DEVICE_BAUDRATE_PROPERTY, property, false);
@@ -877,7 +910,6 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 			strcat(DEVICE_BAUDRATE_ITEM->text.value, "-8N1");
 		}
 		DEVICE_BAUDRATE_PROPERTY->state = INDIGO_OK_STATE;
-		//indigo_save_property(device, NULL, DEVICE_BAUDRATE_PROPERTY);
 		indigo_update_property(device, DEVICE_BAUDRATE_PROPERTY, NULL);
 	} else if (indigo_property_match_changeable(DEVICE_PORTS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
@@ -899,8 +931,8 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 			DEVICE_PORT_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
 			DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;
-			//indigo_save_property(device, NULL, DEVICE_PORT_PROPERTY);
 		}
+		device->matched_pattern_index = indigo_find_matching_pattern_index(device, DEVICE_PORT_ITEM->text.value);
 		indigo_update_property(device, DEVICE_PORT_PROPERTY, NULL);
 		DEVICE_PORTS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, DEVICE_PORTS_PROPERTY, NULL);

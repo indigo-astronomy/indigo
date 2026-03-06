@@ -1283,7 +1283,6 @@ static void mount_connect_callback(indigo_device *device) {
 			int side = STARBOOK_PIERSIDE_UNKNOWN;
 			if (starbook_get_pierside(device, &side) && side != STARBOOK_PIERSIDE_UNKNOWN) {
 				MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
-				MOUNT_SIDE_OF_PIER_PROPERTY->perm = INDIGO_RO_PERM;
 			}
 			// TIMEZONE
 			indigo_define_property(device, TIMEZONE_PROPERTY, NULL);

@@ -440,10 +440,6 @@ To be used by auxiliary devices like powerboxes, weather stations, etc.
 | AGENT_IMAGER_DOWNLOADFILES | switch | no | yes | REFRESH | yes | Refresh the list of available files |
 |  |  |  |  | file name | yes | Set the file to AGENT_IMAGER_DOWNLOADFILE |
 | AGENT_IMAGER_DOWNLOAD_IMAGE | blob | no | yes | IMAGE | yes |  |
-| AGENT_IMAGER_SEQUENCE | text | no | yes | SEQUENCE | yes | Sequence control string |
-|  |  |  |  | 01...16 | yes | Batch control string |
-| AGENT_IMAGER_SEQUENCE_STATE | light | no | yes | SEQUENCE | yes | Sequence state |
-|  |  |  |  | 01...16 | yes | Batch state |
 
 ### Guider agent
 
@@ -518,4 +514,4 @@ To be used by auxiliary devices like powerboxes, weather stations, etc.
 |  |  |  |  | DOME | yes | |
 | AGENT_LIMITS | number | no | yes | HA_TRACKING | yes | HA limit for tracking; park when reached; use 24:00:00 to turn it off |
 |  |  |  |  | LOCAL_TIME | yes | Time limit for tracking; park when reached; use 12:00:00 to turn it off  |
-|  |  |  |  | COORDINATES_PROPAGATE_THESHOLD | yes | The minimal difference in geographic coordinates that trigger change propagation  |
+|  |  |  |  | COORDINATES_PROPAGATE_THRESHOLD | yes | The minimal difference in geographic coordinates that trigger change propagation  |
