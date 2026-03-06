@@ -1361,8 +1361,8 @@ static void rotator_connection_handler(indigo_device *device) {
 		}
 		if (connection_result) {
 			//+ rotator.on_connect
-			if (primaluce_command(device, "{\"req\":{\"set\": {\"ARCO\":1}}}}")) {
-				if (primaluce_command(device, "{\"req\":{\"get\": \"\"}}}")) {
+			if (primaluce_command(device, "{\"req\":{\"set\": {\"ARCO\":1}}}")) {
+				if (primaluce_command(device, "{\"req\":{\"get\": \"\"}}")) {
 					if ((text = get_string(device, GET_MOT2_ERROR)) && *text) {
 						indigo_send_message(device, "ERROR: %s", text);
 					}
