@@ -680,6 +680,7 @@ static duk_ret_t redefine_light_property(duk_context *ctx) {
 
 static void update_property_handler(indigo_device *device, void *data) {
 	indigo_property *property = (indigo_property *)data;
+	property->do_update = true;
 	indigo_update_property(device, property, NULL);
 }
 
