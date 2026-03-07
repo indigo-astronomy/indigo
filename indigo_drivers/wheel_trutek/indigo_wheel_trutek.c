@@ -42,21 +42,24 @@
 
 typedef struct {
 	indigo_uni_handle *handle;
+	//+ data
 	int slot;
+	//-
 } trutek_private_data;
+
+//+ code
 
 static bool trutek_open(indigo_device *device) {
 	char *name = DEVICE_PORT_ITEM->text.value;
-	PRIVATE_DATA->handle = indigo_uni_open_serial(name, -INDIGO_LOG_DEBUG);
+	PRIVATE_DATA->handle = indigo_uni_open_serial(name, INDIGO_LOG_DEBUG | BINARY_LOG);
 	if (PRIVATE_DATA->handle != NULL) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
 		unsigned char buffer[4] = { 0xA5, 0x03, 0x20, 0xA5 + 0x03 + 0x20 };
-		INDIGO_DRIVER_TRACE(DRIVER_NAME, "%d <- %02x %02x %02x %02x", PRIVATE_DATA->handle, buffer[0], buffer[1], buffer[2], buffer[3]);
 		if (indigo_uni_write(PRIVATE_DATA->handle, (char *)buffer, 4) > 0) {
 			if (indigo_uni_read(PRIVATE_DATA->handle, (char *)buffer, 4) > 0) {
-				INDIGO_DRIVER_TRACE(DRIVER_NAME, "%d -> %02x %02x %02x %02x", PRIVATE_DATA->handle, buffer[0], buffer[1], buffer[2], buffer[3]);
 				if (buffer[0] == 0xA5 && buffer[1] == 0x83) {
-					WHEEL_SLOT_ITEM->number.max =  buffer[2] - 0x30;
+					WHEEL_SLOT_ITEM->number.min = 1;
+					WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = buffer[2] - 0x30;
 					return true;
 				}
 			}
@@ -71,31 +74,10 @@ static bool trutek_open(indigo_device *device) {
 static void trutek_query(indigo_device *device) {
 	unsigned char buffer[4] = { 0xA5, 0x02, 0x20, 0xA5 + 0x02 + 0x20 };
 	WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
-	INDIGO_DRIVER_TRACE(DRIVER_NAME, "%d <- %02x %02x %02x %02x", PRIVATE_DATA->handle, buffer[0], buffer[1], buffer[2], buffer[3]);
 	if (indigo_uni_write(PRIVATE_DATA->handle, (char *)buffer, 4) > 0) {
 		if (indigo_uni_read(PRIVATE_DATA->handle, (char *)buffer, 4) > 0) {
-			INDIGO_DRIVER_TRACE(DRIVER_NAME, "%d -> %02x %02x %02x %02x", PRIVATE_DATA->handle, buffer[0], buffer[1], buffer[2], buffer[3]);
 			if (buffer[0] == 0xA5 && buffer[1] == 0x82) {
 				WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->slot = buffer[2] - 0x30;
-				WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
-			}
-		}
-	}
-	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
-}
-
-static void trutek_goto(indigo_device *device) {
-	int slot = (int)WHEEL_SLOT_ITEM->number.target;
-	unsigned char buffer[4] = { 0xA5, 0x01, slot, 0xA5 + 0x01 + slot };
-	WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
-	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
-	WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
-	INDIGO_DRIVER_TRACE(DRIVER_NAME, "%d <- %02x %02x %02x %02x", PRIVATE_DATA->handle, buffer[0], buffer[1], buffer[2], buffer[3]);
-	if (indigo_uni_write(PRIVATE_DATA->handle, (char *)buffer, 4) > 0) {
-		if (indigo_uni_read(PRIVATE_DATA->handle, (char *)buffer, 4) > 0) {
-			INDIGO_DRIVER_TRACE(DRIVER_NAME, "%d -> %02x %02x %02x %02x", PRIVATE_DATA->handle, buffer[0], buffer[1], buffer[2], buffer[3]);
-			if (buffer[0] == 0xA5 && buffer[1] == 0x81) {
-				WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->slot = buffer[2];
 				WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 			}
 		}
@@ -109,6 +91,8 @@ static void trutek_close(indigo_device *device) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
 	}
 }
+
+//-
 
 // -------------------------------------------------------------------------------- INDIGO wheel device implementation
 
@@ -126,11 +110,14 @@ static indigo_result wheel_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
-static void wheel_connect_callback(indigo_device *device) {
+static void wheel_connect_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (trutek_open(device)) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_set_timer(device, 0, trutek_query, NULL);
+			//+ wheel.on_connect
+			trutek_query(device);
+			WHEEL_SLOT_ITEM->number.target = WHEEL_SLOT_ITEM->number.value;
+			//-
 		} else {
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -142,6 +129,45 @@ static void wheel_connect_callback(indigo_device *device) {
 	indigo_wheel_change_property(device, NULL, CONNECTION_PROPERTY);
 }
 
+//+ wheel.code
+
+static void wheel_move_finalizer(indigo_device *device) {
+	unsigned char buffer[4] = { 0xA5, 0x02, 0x20, 0xA5 + 0x02 + 0x20 };
+	if (indigo_uni_write(PRIVATE_DATA->handle, (char *)buffer, 4) == 4 && indigo_uni_read(PRIVATE_DATA->handle, (char *)buffer, 4) == 4 && buffer[0] == 0xA5 && buffer[1] == 0x82) {
+		WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->slot = buffer[2] - 0x30;
+		if (PRIVATE_DATA->slot == 0) {
+			indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
+		} else {
+			WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+		}
+	} else {
+		WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+}
+
+//- wheel.code
+
+static void wheel_slot_handler(indigo_device *device) {
+	//+ wheel.WHEEL_SLOT.on_change
+	WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
+	int slot = (int)WHEEL_SLOT_ITEM->number.target;
+	if (slot == PRIVATE_DATA->slot) {
+		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+	} else {
+		unsigned char buffer[4] = { 0xA5, 0x01, slot, 0xA5 + 0x01 + slot };
+		if (indigo_uni_write(PRIVATE_DATA->handle, (char *)buffer, 4) == 4 && indigo_uni_read(PRIVATE_DATA->handle, (char *)buffer, 4) == 4 && buffer[0] == 0xA5 && buffer[1] == 0x81) {
+			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->slot = buffer[2];
+			if (PRIVATE_DATA->slot == 0) {
+				indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
+			}
+		} else {
+			WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+	}
+	//-
+	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+}
 
 static indigo_result wheel_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
@@ -154,7 +180,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, wheel_connect_callback, NULL);
+		indigo_execute_handler(device, wheel_connect_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(WHEEL_SLOT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- WHEEL_SLOT
@@ -166,7 +192,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		} else {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
 			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->slot;
-			indigo_set_timer(device, 0, trutek_goto, NULL);
+			indigo_execute_handler(device, wheel_slot_handler);
 		}
 		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 		return INDIGO_OK;
@@ -179,7 +205,7 @@ static indigo_result wheel_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (IS_CONNECTED) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-		wheel_connect_callback(device);
+		wheel_connect_handler(device);
 	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_wheel_detach(device);

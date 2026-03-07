@@ -23,6 +23,7 @@
 #endif
 
 int current_filter = 1;
+int target_filter = 1;
 
 void setup() {
   Serial.begin(9600);
@@ -37,23 +38,30 @@ void loop() {
     Serial.readBytes(buffer, 4);
     switch (buffer[1]) {
       case 1:
-        current_filter = buffer[2];
+        target_filter = buffer[2];
         buffer[0] = 0xA5;
         buffer[1] = 0x81;
-        buffer[2] = current_filter;
+				if (current_filter == target_filter) {
+					buffer[2] = target_filter;
+				} else {
+					buffer[2] = 0;
+				}
         buffer[3] = buffer[0] + buffer[1] + buffer[2];
-        delay(3000);
         Serial.write(buffer, 4);
         break;
       case 2:
         buffer[0] = 0xA5;
         buffer[1] = 0x82;
-        buffer[2] = 0x30 + current_filter;
+				if (current_filter == target_filter) {
+					buffer[2] = 0x30 + current_filter;
+				} else {
+					buffer[2] = 0x30;
+				}
         buffer[3] = buffer[0] + buffer[1] + buffer[2];
         Serial.write(buffer, 4);
         break;
       case 3:
-        current_filter = 1;
+        current_filter = target_filter = 1;
         buffer[0] = 0xA5;
         buffer[1] = 0x83;
         buffer[2] = 0x35;
@@ -61,5 +69,10 @@ void loop() {
         Serial.write(buffer, 4);
         break;
     }
+		if (current_filter < target_filter) {
+			current_filter++;
+		} else if (current_filter > target_filter) {
+			current_filter--;
+		}
   }
 }
