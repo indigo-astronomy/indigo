@@ -112,6 +112,8 @@ static void ao_connection_handler(indigo_device *device) {
 					AO_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 			//- ao.on_connect
+		}
+		if (connection_result) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, "Connected to %s on %s", AO_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {

@@ -529,7 +529,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		} else {
 			lunatico_authenticate2(device, AUTHENTICATION_PASSWORD_ITEM->text.value);
 		}
-	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
+	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, AUX_OUTLET_NAMES_PROPERTY);

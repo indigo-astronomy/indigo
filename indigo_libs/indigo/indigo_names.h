@@ -10,6 +10,20 @@
 #define indigo_names_h
 
 //----------------------------------------------------------------------
+/** SESSION_FEATURES pseudo-property name.
+ */
+#define SESSION_FEATURES_PROPERTY_NAME				"SESSION_FEATURES"
+
+/** SESSION_FEATURES.FORCE_PROPERTY_UPDATES property item name.
+ */
+#define SESSION_FORCE_PROPERTY_UPDATES_ITEM_NAME		"FORCE_PROPERTY_UPDATES"
+
+/** SESSION_FEATURES.FORCE_ITEM_UPDATES property item name.
+ */
+#define SESSION_FORCE_ITEM_UPDATES_ITEM_NAME				"FORCE_ITEM_UPDATES"
+
+
+//----------------------------------------------------------------------
 /** CONNECTION property name.
  */
 #define CONNECTION_PROPERTY_NAME							"CONNECTION"
@@ -1579,9 +1593,13 @@
  */
 #define MOUNT_HOME_PROPERTY_NAME								"MOUNT_HOME"
 
-/** MOUNT_HOME.HOMEED property item name.
+/** MOUNT_HOME.HOME property item name.
  */
 #define MOUNT_HOME_ITEM_NAME							      "HOME"
+
+/** MOUNT_HOME.AWAY property item name.
+ */
+#define MOUNT_AWAY_ITEM_NAME										"AWAY"
 
 //----------------------------------------------------------------------
 /** MOUNT_HOME_SET property name.
@@ -1791,27 +1809,6 @@
 /** MOUNT_RAW_COORDINATES.DEC property item name.
  */
 #define MOUNT_RAW_COORDINATES_DEC_ITEM_NAME			"DEC"
-
-//----------------------------------------------------------------------
-/** MOUNT_TARGET_INFO property name.
- */
-#define MOUNT_TARGET_INFO_PROPERTY_NAME	"MOUNT_TARGET_INFO"
-
-/** MOUNT_TARGET_INFO.RISE_TIME property item name.
- */
-#define MOUNT_TARGET_INFO_RISE_TIME_ITEM_NAME	"RISE_TIME"
-
-/** MOUNT_TARGET_INFO.TRANSIT_TIME property item name.
- */
-#define MOUNT_TARGET_INFO_TRANSIT_TIME_ITEM_NAME	"TRANSIT_TIME"
-
-/** MOUNT_TARGET_INFO.SET_TIME property item name.
- */
-#define MOUNT_TARGET_INFO_SET_TIME_ITEM_NAME	"SET_TIME"
-
-/** MOUNT_TARGET_INFO.TIME_TO_TRANSIT property item name.
- */
-#define MOUNT_TARGET_INFO_TIME_TO_TRANSIT_ITEM_NAME	"TIME_TO_TRANSIT"
 
 //----------------------------------------------------------------------
 /** MOUNT_ABORT_MOTION property name.
@@ -2770,12 +2767,6 @@ enum {
 #define AGENT_GUIDER_DITHER_TRIGGER_ITEM_NAME		"TRIGGER"
 #define AGENT_GUIDER_DITHER_RESET_ITEM_NAME			"RESET"
 
-#define AGENT_IMAGER_SEQUENCE_SIZE_PROPERTY_NAME 					"AGENT_IMAGER_SEQUENCE_SIZE"
-#define AGENT_IMAGER_SEQUENCE_SIZE_ITEM_NAME 							"SIZE"
-
-#define AGENT_IMAGER_SEQUENCE_PROPERTY_NAME 					"AGENT_IMAGER_SEQUENCE"
-#define AGENT_IMAGER_SEQUENCE_ITEM_NAME 							"SEQUENCE"
-
 #define AGENT_WHEEL_FILTER_PROPERTY_NAME							"AGENT_WHEEL_FILTER"
 
 #define AGENT_FOCUSER_CONTROL_PROPERTY_NAME						"AGENT_FOCUSER_CONTROL"
@@ -2918,7 +2909,7 @@ enum {
 #define AGENT_LIMITS_PROPERTY_NAME										"AGENT_LIMITS"
 #define AGENT_HA_TRACKING_LIMIT_ITEM_NAME							"HA_TRACKING"
 #define AGENT_LOCAL_TIME_LIMIT_ITEM_NAME							"LOCAL_TIME"
-#define AGENT_COORDINATES_PROPAGATE_THESHOLD_ITEM_NAME	"COORDINATES_PROPAGATE_THESHOLD"
+#define AGENT_COORDINATES_PROPAGATE_THRESHOLD_ITEM_NAME	"COORDINATES_PROPAGATE_THRESHOLD"
 
 #define AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY_NAME	"AGENT_SCRIPTING_EXECUTE_SCRIPT"
 

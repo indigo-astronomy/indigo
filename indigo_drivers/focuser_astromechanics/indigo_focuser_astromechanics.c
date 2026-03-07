@@ -98,6 +98,8 @@ static void focuser_connection_handler(indigo_device *device) {
 				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = atoi(PRIVATE_DATA->response);
 			}
 			//- focuser.on_connect
+		}
+		if (connection_result) {
 			indigo_define_property(device, X_FOCUSER_APERTURE_PROPERTY, NULL);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_send_message(device, "Connected to %s on %s", FOCUSER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);

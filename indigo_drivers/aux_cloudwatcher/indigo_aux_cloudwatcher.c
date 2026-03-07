@@ -1935,7 +1935,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		X_RAIN_SENSOR_HEATER_SETUP_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, X_RAIN_SENSOR_HEATER_SETUP_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
+	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, AUX_OUTLET_NAMES_PROPERTY);

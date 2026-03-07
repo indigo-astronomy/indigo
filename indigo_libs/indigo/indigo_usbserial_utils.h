@@ -55,7 +55,8 @@ typedef struct {
 
 #define INDIGO_REGISER_MATCH_PATTERNS(device, patterns, count) \
 	device.match_patterns = patterns; \
-	device.match_patterns_count = count;
+	device.match_patterns_count = count; \
+	device.matched_pattern_index = -1;
 
 #if defined(INDIGO_WINDOWS)
 #if defined(INDIGO_WINDOWS_DLL)
@@ -73,7 +74,8 @@ extern "C" {
 
 INDIGO_EXTERN int indigo_enumerate_usbserial_devices(indigo_serial_info *serial_info, int num_serial_info);
 INDIGO_EXTERN void indigo_usbserial_label(indigo_serial_info *serial_info, char *label);
-INDIGO_EXTERN indigo_serial_info *indigo_usbserial_match (indigo_serial_info *serial_info, const int num_serial_info, indigo_device_match_pattern *patterns, const int num_patterns);
+INDIGO_EXTERN indigo_serial_info *indigo_usbserial_match_index(indigo_serial_info *serial_info, const int num_serial_info, indigo_device_match_pattern *patterns, const int num_patterns, int *matched_pattern_index);
+INDIGO_EXTERN indigo_serial_info *indigo_usbserial_match(indigo_serial_info *serial_info, const int num_serial_info, indigo_device_match_pattern *patterns, const int num_patterns);
 
 #ifdef __cplusplus
 }

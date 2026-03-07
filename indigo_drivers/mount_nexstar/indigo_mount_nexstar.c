@@ -375,7 +375,6 @@ static void mount_handle_connect(indigo_device *device) {
 				indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
 				/* check for side of pier support & GPS */
 				MOUNT_SIDE_OF_PIER_PROPERTY->hidden = true;
-				MOUNT_SIDE_OF_PIER_PROPERTY->perm = INDIGO_RO_PERM;
 				if (PRIVATE_DATA->capabilities & CAN_GET_SIDE_OF_PIER) {
 					int side_of_pier = tc_get_side_of_pier(dev_id);
 					if (side_of_pier < 0) {
@@ -384,11 +383,9 @@ static void mount_handle_connect(indigo_device *device) {
 					} else {
 						if (side_of_pier == 'W') {
 							MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
-							MOUNT_SIDE_OF_PIER_PROPERTY->perm = INDIGO_RO_PERM;
 							indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
 						} else if (side_of_pier == 'E') {
 							MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
-							MOUNT_SIDE_OF_PIER_PROPERTY->perm = INDIGO_RO_PERM;
 							indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_EAST_ITEM, true);
 						}
 					}
@@ -971,7 +968,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, mount_cancel_slew, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
+	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, TRACKING_MODE_PROPERTY);

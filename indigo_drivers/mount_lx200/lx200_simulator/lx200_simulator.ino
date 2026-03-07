@@ -105,6 +105,7 @@ char pec = 'N';
 bool is_slewing = false;
 bool is_tracking = false;
 bool is_parked = false;
+bool is_at_home = true;
 
 char ra_guiding_speed[3] = "50";
 char dec_guiding_speed[3] = "50";
@@ -253,6 +254,8 @@ void loop() {
         Serial.print("G");
         Serial.print(is_tracking ? "" : "n");
         Serial.print(is_slewing ? "" : "N");        
+				Serial.print(is_parked ? "P" : "p");
+				Serial.print(is_at_home ? "H" : "");
         Serial.print("#");
       } else if (!strcmp(buffer, "GVF")) {
 				Serial.print("ETX Autostar|A|43Eg|Apr 03 2007@11:25:53#");
@@ -532,6 +535,9 @@ void loop() {
         pec = 'P';
       } else if (!strcmp(buffer, "$QZ-")) {
         pec = 'I';
+      } else if (!strcmp(buffer, "hR")) {
+        is_parked = false;
+				Serial.print("1");
       }
     }
   }

@@ -180,6 +180,8 @@ static void aux_connection_handler(indigo_device *device) {
 				}
 			}
 			//- aux.on_connect
+		}
+		if (connection_result) {
 			indigo_define_property(device, AUX_COVER_PROPERTY, NULL);
 			indigo_define_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
 			indigo_define_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
@@ -314,7 +316,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match_changeable(AUX_LIGHT_INTENSITY_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(AUX_LIGHT_INTENSITY_PROPERTY, aux_light_intensity_handler);
 		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
+	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, AUX_LIGHT_SWITCH_PROPERTY);
 			indigo_save_property(device, NULL, AUX_LIGHT_INTENSITY_PROPERTY);

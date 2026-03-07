@@ -443,7 +443,6 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- MOUNT_SIDE_OF_PIER
 		MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
-		MOUNT_SIDE_OF_PIER_PROPERTY->perm = INDIGO_RO_PERM;
 		// -------------------------------------------------------------------------------- CONNECTION_MODE
 		CONNECTION_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, CONNECTION_MODE_PROPERTY_NAME, MAIN_GROUP, "Connnection mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
 		if (CONNECTION_MODE_PROPERTY == NULL) {
@@ -895,7 +894,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		MOUNT_TYPE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_TYPE_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
+	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, CONNECTION_MODE_PROPERTY);

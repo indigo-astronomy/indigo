@@ -1283,7 +1283,6 @@ static void mount_connect_callback(indigo_device *device) {
 			int side = STARBOOK_PIERSIDE_UNKNOWN;
 			if (starbook_get_pierside(device, &side) && side != STARBOOK_PIERSIDE_UNKNOWN) {
 				MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
-				MOUNT_SIDE_OF_PIER_PROPERTY->perm = INDIGO_RO_PERM;
 			}
 			// TIMEZONE
 			indigo_define_property(device, TIMEZONE_PROPERTY, NULL);
@@ -1590,7 +1589,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, MOUNT_SLEW_RATE_PROPERTY, NULL);
 		indigo_set_timer(device, 0, mount_slew_rate_callback, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
+	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, DEVICE_PORT_PROPERTY);
 		}

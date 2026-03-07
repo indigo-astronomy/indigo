@@ -141,7 +141,7 @@ void indigo_alpaca_update_property(indigo_alpaca_device *alpaca_device, indigo_p
 	} // TBD other device types
 }
 
-bool indigo_alpaca_wait_for_bool(bool *reference, bool value, int timeout) {
+indigo_alpaca_error indigo_alpaca_wait_for_bool(bool *reference, bool value, int timeout) {
 	for (int i = 0; i < timeout; i++) {
 		if (*reference == value) {
 			return indigo_alpaca_error_OK;
@@ -151,7 +151,7 @@ bool indigo_alpaca_wait_for_bool(bool *reference, bool value, int timeout) {
 	return indigo_alpaca_error_ValueNotSet;
 }
 
-bool indigo_alpaca_wait_for_int32(int *reference, int value, int timeout) {
+indigo_alpaca_error indigo_alpaca_wait_for_int32(int *reference, int value, int timeout) {
 	for (int i = 0; i < timeout; i++) {
 		if (*reference == value) {
 			return indigo_alpaca_error_OK;
@@ -161,7 +161,7 @@ bool indigo_alpaca_wait_for_int32(int *reference, int value, int timeout) {
 	return indigo_alpaca_error_ValueNotSet;
 }
 
-bool indigo_alpaca_wait_for_double(double *reference, double value, int timeout) {
+indigo_alpaca_error indigo_alpaca_wait_for_double(double *reference, double value, int timeout) {
 	for (int i = 0; i < timeout; i++) {
 		if (*reference == value) {
 			return indigo_alpaca_error_OK;

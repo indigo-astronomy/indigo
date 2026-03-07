@@ -300,7 +300,7 @@ static void open_log(indigo_device *device) {
 	}
 	DEVICE_PRIVATE_DATA->log_file = indigo_uni_create_file(DEVICE_PRIVATE_DATA->log_file_name, INDIGO_LOG_TRACE);
 	if (DEVICE_PRIVATE_DATA->log_file == NULL) {
-		indigo_send_message(device, "Failed to create guiding log file (%s)", indigo_uni_strerror(DEVICE_PRIVATE_DATA->log_file));
+		indigo_send_message(device, "Failed to create guiding log file");
 	}
 	indigo_server_remove_resource("/guiding");
 	indigo_server_add_file_resource("/guiding", DEVICE_PRIVATE_DATA->log_file_name, "text/csv; charset=UTF-8");
@@ -309,7 +309,7 @@ static void open_log(indigo_device *device) {
 static void write_log_header(indigo_device *device, const char *log_type) {
 	if (DEVICE_PRIVATE_DATA->log_file != NULL) {
 		indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "\"Type:\",\"%s\"\r\n", log_type);
-		indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "\r\n", log_type);
+		indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "\r\n");
 		indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "\"Camera:\",\"%s\"\r\n", FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX]);
 		indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "\"Guider:\",\"%s\"\r\n", FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_GUIDER_INDEX]);
 		indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "\r\n", log_type);
@@ -373,7 +373,7 @@ static inline double get_rotation_angle(indigo_device *device) {
 			angle -= 360;
 		}
 	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Calibration Rotation Angle = %.3f (SOP = %d), Current SOP = %d => Effecive angle = %.3f", AGENT_GUIDER_SETTINGS_ANGLE_ITEM->number.value, (int)AGENT_GUIDER_SETTINGS_SOP_ITEM->number.value, (int)AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM->number.value, angle);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Calibration Rotation Angle = %.3f (SOP = %d), Current SOP = %d => Effective angle = %.3f", AGENT_GUIDER_SETTINGS_ANGLE_ITEM->number.value, (int)AGENT_GUIDER_SETTINGS_SOP_ITEM->number.value, (int)AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM->number.value, angle);
 	return angle;
 }
 
@@ -551,12 +551,12 @@ static bool capture_frame(indigo_device *device) {
 		}
 		pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->last_image_mutex);
 		indigo_raw_header *header = (indigo_raw_header *)(DEVICE_PRIVATE_DATA->last_image);
-		DEVICE_PRIVATE_DATA->last_width = header->width;
-		DEVICE_PRIVATE_DATA->last_height = header->height;
 		if (header == NULL || (header->signature != INDIGO_RAW_MONO8 && header->signature != INDIGO_RAW_MONO16 && header->signature != INDIGO_RAW_RGB24 && header->signature != INDIGO_RAW_RGB48)) {
 			indigo_send_message(device, "RAW image not received");
 			return false;
 		}
+		DEVICE_PRIVATE_DATA->last_width = header->width;
+		DEVICE_PRIVATE_DATA->last_height = header->height;
 		/* This is potentially bayered image, if so we need to equalize the channels */
 		if (indigo_is_bayered_image(header, DEVICE_PRIVATE_DATA->last_image_size)) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Bayered image detected, equalizing channels");
@@ -687,7 +687,7 @@ static int select_stars(indigo_device *device) {
 		star_count++;
 	}
 	/* In case the number of the stars found is less than AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM
-	 set ramaining selections to 0. Otherwise we will have leftover "ghost" stars from the
+	 set remaining selections to 0. Otherwise we will have leftover "ghost" stars from the
 	 previous search.
 	 */
 	for (int i = star_count; i < AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value; i++) {
@@ -704,7 +704,7 @@ static int select_stars(indigo_device *device) {
 static bool check_selection(indigo_device *device) {
 	if (AGENT_GUIDER_DETECTION_SELECTION_ITEM->sw.value || AGENT_GUIDER_DETECTION_WEIGHTED_SELECTION_ITEM->sw.value) {
 		for (int i = 0; i < AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value; i++) {
-			if ((AGENT_GUIDER_SELECTION_X_ITEM + i)->number.value != 0 && (AGENT_GUIDER_SELECTION_Y_ITEM + i)->number.value != 0) {
+			if ((AGENT_GUIDER_SELECTION_X_ITEM + 2 * i)->number.value != 0 && (AGENT_GUIDER_SELECTION_Y_ITEM + 2 * i)->number.value != 0) {
 				return true;
 			}
 		}
@@ -843,7 +843,7 @@ static bool capture_and_process_frame(indigo_device *device) {
 				return false;
 			}
 		} else if (AGENT_GUIDER_DETECTION_CENTROID_ITEM->sw.value) {
-			indigo_result result = indigo_centroid_frame_digest(header->signature, (char *)header + sizeof(indigo_raw_header), header->width, header->height, &digest) == INDIGO_OK;
+			indigo_result result = indigo_centroid_frame_digest(header->signature, (char *)header + sizeof(indigo_raw_header), header->width, header->height, &digest);
 			if (result != INDIGO_OK) {
 				if (!DEVICE_PRIVATE_DATA->silence_warnings) {
 					indigo_send_message(device, "Warning: Failed to compute centroid digest");
@@ -1045,7 +1045,7 @@ static indigo_property_state pulse_guide(indigo_device *device, double ra, doubl
 	}
 	if (ra_duration || dec_duration) {
 		indigo_usleep(ra_duration > dec_duration ? (unsigned)ra_duration : (unsigned)dec_duration);
-		for (int i = 0; i < 200 && (DEVICE_PRIVATE_DATA->guide_ra_state == INDIGO_BUSY_STATE || DEVICE_PRIVATE_DATA->guide_ra_state == INDIGO_BUSY_STATE); i++) {
+		for (int i = 0; i < 200 && (DEVICE_PRIVATE_DATA->guide_ra_state == INDIGO_BUSY_STATE || DEVICE_PRIVATE_DATA->guide_dec_state == INDIGO_BUSY_STATE); i++) {
 			indigo_usleep(50000);
 		}
 	}
@@ -1065,15 +1065,15 @@ static void preview_1_process(indigo_device *device) {
 	capture_frame(device);
 	indigo_restore_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, upload_mode);
 	indigo_restore_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, image_format);
-	if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
-		AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
-	}
 	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE ? INDIGO_GUIDER_PHASE_DONE : INDIGO_GUIDER_PHASE_FAILED;
 	AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value = AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value = AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = 0;
 	indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 	AGENT_GUIDER_START_PREVIEW_1_ITEM->sw.value = false;
 	AGENT_START_PROCESS_PROPERTY->state = AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_ALERT_STATE;
+	if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+		AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
+	}
 	indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 	FILTER_DEVICE_CONTEXT->running_process = false;
 }
@@ -1116,7 +1116,7 @@ static void change_step(indigo_device *device, double q) {
 		}
 	} else {
 		indigo_send_message(device, "Drift is too fast");
-		if (AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value < AGENT_GUIDER_SETTINGS_STEP_ITEM->number.max) {
+		if (AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value > AGENT_GUIDER_SETTINGS_STEP_ITEM->number.max) {
 			AGENT_GUIDER_SETTINGS_STEP_ITEM->number.target = (AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value *= q);
 			indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, "Decreasing calibration step to %.3g", AGENT_GUIDER_SETTINGS_STEP_ITEM->number.target);
 			DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_INITIALIZING;
@@ -1605,7 +1605,7 @@ static bool guide(indigo_device *device) {
 			double max_safe_correction = AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value * SAFE_RADIUS_FACTOR;
 			if (fabs(drift_ra) > min_error) {
 				correction_ra = indigo_guider_reponse(AGENT_GUIDER_SETTINGS_AGG_RA_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_I_GAIN_RA_ITEM->number.value, AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value + AGENT_GUIDER_SETTINGS_DELAY_ITEM->number.value, drift_ra, avg_drift_ra);
-				/* Limit correction_ra, so that we will not lose the stars in the slection if we apply it and let the next cycle complete complete it */
+				/* Limit correction_ra, so that we will not lose the stars in the selection if we apply it and let the next cycle complete complete it */
 				if ((AGENT_GUIDER_DETECTION_SELECTION_ITEM->sw.value || AGENT_GUIDER_DETECTION_WEIGHTED_SELECTION_ITEM->sw.value) && (fabs(correction_ra) > max_safe_correction)) {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RA correction = %.4fpx will lose stars with radius = %.2fpx, reduced RA correction = %.4fpx", correction_ra, AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value, copysign(1.0, correction_ra) * max_safe_correction);
 					correction_ra = copysign(1.0, correction_ra) * max_safe_correction;
@@ -1648,7 +1648,7 @@ static bool guide(indigo_device *device) {
 			/* Apply DEC backlash. It is after AGENT_GUIDER_STATS_CORR_DEC_ITEM asignment, so that it will not show on the correction graph. */
 			if (AGENT_GUIDER_APPLY_DEC_BACKLASH_ENABLED_ITEM->sw.value) {
 				if ((prev_correction_dec <= 0 && correction_dec <= 0) || (prev_correction_dec >= 0 && correction_dec >= 0)) {
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "(-) No Dec backlash appled: prev_correction_dec = %.3fs, correction_dec = %.3fs", prev_correction_dec, correction_dec);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "(-) No Dec backlash applied: prev_correction_dec = %.3fs, correction_dec = %.3fs", prev_correction_dec, correction_dec);
 				} else {
 					double backlash = fabs(AGENT_GUIDER_SETTINGS_BACKLASH_ITEM->number.value / AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.value);
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "(+) Dec backlash appled: prev_correction_dec = %.3fs, correction_dec = %.3fs, backlash = %.3fs", prev_correction_dec, correction_dec, backlash);
@@ -1661,7 +1661,7 @@ static bool guide(indigo_device *device) {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "(+) correction_dec + backlash = %.3fs", correction_dec);
 				}
 			}
-			/* save current dec corrction as previous dec correction only if it will be aplied */
+			/* save current dec correction as previous dec correction only if it will be applied */
 			/* It is saved regardless if BL is apllied or not because we need to be able to turn BL on and off any time */
 			if (fabs(correction_dec) > 0) {
 				prev_correction_dec = correction_dec;

@@ -174,7 +174,7 @@ static void start_discovery_server(indigo_device *device) {
 }
 
 static void shutdown_discovery_server() {
-	if (discovery_server_socket) {
+	if (discovery_server_socket > 0) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 		shutdown(discovery_server_socket, SHUT_RDWR);
 		close(discovery_server_socket);
@@ -225,7 +225,7 @@ static void send_json_response(indigo_uni_handle *handle, char *path, int status
 		}
 		INDIGO_DRIVER_TRACE(DRIVER_NAME, "%s", body);
 	} else {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "% -> Failed", path);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s -> Failed", path);
 	}
 }
 

@@ -57,7 +57,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		CONNECTION_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		return indigo_agent_enumerate_properties(device, NULL, NULL);
+		return indigo_filter_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }

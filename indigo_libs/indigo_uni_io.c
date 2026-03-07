@@ -431,57 +431,64 @@ static int map_baudrate(const char *baudrate) {
 static bool configure_tty_options(struct termios *options, const char *baudrate) {
 	int cbits = CS8, cpar = 0, ipar = IGNPAR, bstop = 0;
 	int baudr = map_baudrate(baudrate);
+	if (baudr == -1) {
+		errno = EINVAL;
+		return false;
+	}
 	char *mode = strchr(baudrate, '-');
-	if (mode == NULL) {
-		errno = EINVAL;
-		return false;
-	}
-	mode++;
-	if (baudr == -1 || strlen(mode) != 3) {
-		errno = EINVAL;
-		return false;
-	}
-	switch (mode[0]) {
-		case '8':
-			cbits = CS8;
-			break;
-		case '7':
-			cbits = CS7;
-			break;
-		default :
+	if (mode == NULL) { // defaults to -8N1
+		cbits = CS8;
+		cpar = 0;
+		ipar = IGNPAR;
+		bstop = 0;
+	} else {
+		mode++;
+		if (strlen(mode) != 3) {
 			errno = EINVAL;
 			return false;
-			break;
-	}
-	switch (mode[1]) {
-		case 'N': case 'n':
-			cpar = 0;
-			ipar = IGNPAR;
-			break;
-		case 'E': case 'e':
-			cpar = PARENB;
-			ipar = INPCK;
-			break;
-		case 'O': case 'o':
-			cpar = (PARENB | PARODD);
-			ipar = INPCK;
-			break;
-		default :
-			errno = EINVAL;
-			return false;
-			break;
-	}
-	switch (mode[2]) {
-		case '1':
-			bstop = 0;
-			break;
-		case '2':
-			bstop = CSTOPB;
-			break;
-		default :
-			errno = EINVAL;
-			return false;
-			break;
+		}
+		switch (mode[0]) {
+			case '8':
+				cbits = CS8;
+				break;
+			case '7':
+				cbits = CS7;
+				break;
+			default :
+				errno = EINVAL;
+				return false;
+				break;
+		}
+		switch (mode[1]) {
+			case 'N': case 'n':
+				cpar = 0;
+				ipar = IGNPAR;
+				break;
+			case 'E': case 'e':
+				cpar = PARENB;
+				ipar = INPCK;
+				break;
+			case 'O': case 'o':
+				cpar = (PARENB | PARODD);
+				ipar = INPCK;
+				break;
+			default :
+				errno = EINVAL;
+				return false;
+				break;
+		}
+		switch (mode[2]) {
+			case '1':
+				bstop = 0;
+				break;
+			case '2':
+				bstop = CSTOPB;
+				break;
+			default :
+				errno = EINVAL;
+				return false;
+				break;
+		}
 	}
 	memset(options, 0, sizeof(*options));
 	options->c_cflag = cbits | cpar | bstop | CLOCAL | CREAD;

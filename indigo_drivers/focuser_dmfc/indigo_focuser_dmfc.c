@@ -214,6 +214,8 @@ static void focuser_connection_handler(indigo_device *device) {
 				}
 			}
 			//- focuser.on_connect
+		}
+		if (connection_result) {
 			indigo_define_property(device, X_FOCUSER_MOTOR_TYPE_PROPERTY, NULL);
 			indigo_define_property(device, X_FOCUSER_ENCODER_PROPERTY, NULL);
 			indigo_define_property(device, X_FOCUSER_LED_PROPERTY, NULL);
@@ -500,7 +502,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	} else if (indigo_property_match_changeable(FOCUSER_LIMITS_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_LIMITS_PROPERTY, focuser_limits_handler);
 		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
+	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, FOCUSER_LIMITS_PROPERTY);
 		}

@@ -203,6 +203,9 @@ extern "C" {
 */
 #define MOUNT_HOME_ITEM												        (MOUNT_HOME_PROPERTY->items+0)
 
+/** MOUNT_HOME.AWAY property item pointer.
+*/
+#define MOUNT_AWAY_ITEM												        (MOUNT_HOME_PROPERTY->items+1)
 
 //----------------------------------------------
 /** MOUNT_ON_COORDINATES_SET property pointer, property is mandatory, property change request is handled by indigo_mount_change_property.
@@ -353,28 +356,6 @@ extern "C" {
 /** MOUNT_HORIZONTAL_COORDINATES.ALT property item pointer.
  */
 #define MOUNT_HORIZONTAL_COORDINATES_ALT_ITEM					(MOUNT_HORIZONTAL_COORDINATES_PROPERTY->items+1)
-
-
-//-----------------------------------------------
-/** MOUNT_TARGET_INFO property pointer, property is optional, read-only and should be fully controlled by device driver.
- */
-#define MOUNT_TARGET_INFO_PROPERTY								(MOUNT_CONTEXT->mount_target_info_property)
-
-/**  MOUNT_TARGET_INFO.RISE_TIME property item pointer.
- */
-#define MOUNT_TARGET_INFO_RISE_TIME_ITEM							(MOUNT_TARGET_INFO_PROPERTY->items+0)
-
-/**  MOUNT_TARGET_INFO.TRANSIT_TIME property item pointer.
- */
-#define MOUNT_TARGET_INFO_TRANSIT_TIME_ITEM							(MOUNT_TARGET_INFO_PROPERTY->items+1)
-
-/**  MOUNT_TARGET_INFO.SET_TIME property item pointer.
- */
-#define MOUNT_TARGET_INFO_SET_TIME_ITEM							(MOUNT_TARGET_INFO_PROPERTY->items+2)
-
-/**  MOUNT_TARGET_INFO.TIME_TO_TRANSIT property item pointer.
- */
-#define MOUNT_TARGET_INFO_TIME_TO_TRANSIT_ITEM							(MOUNT_TARGET_INFO_PROPERTY->items+3)
 
 //------------------------------------------------
 /** MOUNT_ABORT_MOTION property pointer, property is mandatory, property change request should be fully handled by focuser driver
@@ -539,7 +520,6 @@ typedef struct {
 	indigo_property *mount_guide_rate_property;							///< MOUNT_GUIDE_RATE property pointer
 	indigo_property *mount_equatorial_coordinates_property;	///< MOUNT_EQUATORIAL_COORDINATES property pointer
 	indigo_property *mount_horizontal_coordinates_property;	///< MOUNT_HORIZONTAL_COORDINATES property pointer
-	indigo_property *mount_target_info_property;	        ///< MOUNT_TARGET_INFO property pointer
 	indigo_property *mount_abort_motion_property;						///< MOUNT_ABORT_MOTION property pointer
 	indigo_property *mount_motion_dec_property;							///< MOUNT_MOTION_NS property pointer
 	indigo_property *mount_motion_ra_property;							///< MOUNT_MOTION_WE property pointer

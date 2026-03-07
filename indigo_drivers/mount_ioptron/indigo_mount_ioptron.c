@@ -1021,7 +1021,6 @@ static void mount_connect_callback(indigo_device *device) {
 						indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
 					}
 					MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
-					MOUNT_SIDE_OF_PIER_PROPERTY->perm = INDIGO_RO_PERM;
 				}
 			} else if (PRIVATE_DATA->hc8407) {
 				MOUNT_GUIDE_RATE_PROPERTY->hidden = false;
@@ -1083,7 +1082,6 @@ static void mount_connect_callback(indigo_device *device) {
 						indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
 					}
 					MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
-					MOUNT_SIDE_OF_PIER_PROPERTY->perm = INDIGO_RO_PERM;
 				}
 			} else if (PRIVATE_DATA->protocol == 0x0000) {
 				MOUNT_PARK_PROPERTY->hidden = true;
@@ -1306,7 +1304,6 @@ static void mount_connect_callback(indigo_device *device) {
 				MOUNT_PARK_SET_PROPERTY->hidden = false;
 				MOUNT_PARK_SET_PROPERTY->count = 1;
 				MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
-				MOUNT_SIDE_OF_PIER_PROPERTY->perm = INDIGO_RO_PERM;
 				MOUNT_TRACK_RATE_PROPERTY->hidden = false;
 				MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->hidden = false;
 				MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.min = 0.1;
@@ -2194,7 +2191,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		MOUNT_PROTOCOL_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_PROTOCOL_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
+	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, MOUNT_PROTOCOL_PROPERTY);

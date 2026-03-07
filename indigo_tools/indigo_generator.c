@@ -218,11 +218,16 @@ bool get_token(void) {
 		}
 		int depth = 0;
 		begin = current;
+		bool in_string = false;
 		while (true) {
 			if (*current == 0) {
 				return false;
 			}
-			if (*current == '{') {
+			if (*current == '\\') {
+				FORWARD(1);
+			} else if (*current == '"') {
+				in_string = !in_string;
+			} else if (*current == '{') {
 				depth++;
 			} else if (*current == '}') {
 				depth--;
@@ -1051,7 +1056,7 @@ void write_code_block(code_type *code, int indentation) {
 				if (c == '#' && !(strncmp(pnt, "define ", 7))) {
 					char *name = pnt + 7;
 					pnt = pnt + 7;
-					while (*pnt && *pnt != ' ' && *pnt != '\t') {
+					while (*pnt && *pnt != ' ' && *pnt != '\t' && *pnt != '\n') {
 						pnt++;
 					}
 					printf("#define %-20.*s ", (int)(pnt - name), name);
@@ -1059,14 +1064,20 @@ void write_code_block(code_type *code, int indentation) {
 						pnt++;
 					}
 					c = *pnt;
-					pnt++;
+					if (c == '\n') {
+						c = 0;
+					} else {
+						pnt++;
+					}
 				}
 			} else {
 				for (int i = 0; i < indentation; i++) {
 					putchar('\t');
 				}
 			}
-			putchar(c);
+			if (c) {
+				putchar(c);
+			}
 			while (pnt - text < size) {
 				putchar(c = *pnt++);
 				if (c == '\n') {
@@ -1362,8 +1373,12 @@ void write_c_connection_change_handler(device_type *device) {
 				write_line("\t\tconnection_result = %s_open(device->master_device);", driver.name);
 			}
 		}
+		if (device->on_connect != NULL) {
+			write_line("\t\tif (connection_result) {");
+			write_c_code_blocks(device->on_connect, 3, "%s.on_connect", device->type);
+			write_line("\t\t}");
+		}
 		write_line("\t\tif (connection_result) {");
-		write_c_code_blocks(device->on_connect, 3, "%s.on_connect", device->type);
 		for (property_type *property2 = device->properties; property2; property2 = property2->next) {
 			if (property2->type[0] != 'i' && !property2->always_defined) {
 				write_line("\t\t\tindigo_define_property(device, %s, NULL);", property2->handle);
@@ -1603,7 +1618,7 @@ void write_c_change_property(device_type *device) {
 		}
 	}
 	if (persistent) {
-		write_line("\t} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {");
+		write_line("\t} else if (indigo_property_match(CONFIG_PROPERTY, property)) {");
 		write_line("\t\tif (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {");
 		for (property_type *property = device->properties; property; property = property->next) {
 			if (property->persistent) {
@@ -2013,7 +2028,7 @@ void read_c_source(void) {
 				}
 			} else if (sscanf(s1, "%127[^.].%127s", s2, s3) == 2) {
 				device_type *device = get_device(s2);
-				if (strcmp(s1, "code") == 0) {
+				if (strcmp(s3, "code") == 0) {
 					append((void **)&device->code, code);
 				} else if (strcmp(s3, "on_timer") == 0) {
 					append((void **)&device->on_timer, code);

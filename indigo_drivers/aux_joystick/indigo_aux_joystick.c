@@ -361,7 +361,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(JOYSTICK_OPTIONS_PROPERTY, property, false);
 		JOYSTICK_OPTIONS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, JOYSTICK_OPTIONS_PROPERTY, NULL);
-	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
+	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, JOYSTICK_MAPPING_PROPERTY);
