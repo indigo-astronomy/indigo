@@ -35,6 +35,7 @@
 #include <sys/socket.h>
 #define INDIGO_PATH_SEPATATOR	'/'
 #define indigo_timezone timezone
+#include <hidapi/hidapi.h>
 #elif defined(INDIGO_WINDOWS)
 #include <winsock2.h>
 #if _MSC_VER
@@ -65,11 +66,16 @@
 extern "C" {
 #endif
 
+#define BINARY_LOG	0x1000
+
 typedef enum {
 	INDIGO_FILE_HANDLE = 0,
 	INDIGO_COM_HANDLE = 1,
 	INDIGO_TCP_HANDLE = 2,
-	INDIGO_UDP_HANDLE = 3
+	INDIGO_UDP_HANDLE = 3,
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	INDIGO_HID_HANDLE = 4
+#endif
 } indigo_uni_handle_type;
 
 typedef struct {
@@ -80,6 +86,9 @@ typedef struct {
 #if defined(INDIGO_WINDOWS)
 		SOCKET sock;
 		HANDLE com;
+#endif
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+		hid_device *handle;
 #endif
 	};
 	int log_level;
@@ -195,6 +204,10 @@ INDIGO_EXTERN void indigo_uni_open_tcp_server_socket(int *port, indigo_uni_handl
     If no port is provided in the URL default port is used. protocol_hint will be set to actual protocol used for the connection.
  */
 INDIGO_EXTERN indigo_uni_handle *indigo_uni_open_url(const char *url, int default_port, indigo_uni_handle_type protocol_hint, int log_level);
+
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+INDIGO_EXTERN indigo_uni_handle *indigo_uni_open_hid(const int vid, const int pid, int log_level);
+#endif
 
 /** Read available data into buffer.
  */
