@@ -73,6 +73,11 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_type_ prefi
 		pid = XXXXX; // optional attribute; replace XXXXX with product ID (number C expression)
 		vid = XXXXX; // optional attribute; replace XXXXX with vendor ID (number C expression)
 	}
+	hid { // this block is mandatory for HID devices
+		hotplug = false; //optional attribute, default is true; use to disable hotplug (bool literal)
+		pid = XXXXX; // optional attribute; replace XXXXX with product ID (number C expression)
+		vid = XXXXX; // optional attribute; replace XXXXX with vendor ID (number C expression)
+	}
 	XXXXX { // at least one device block is mandatory; replace XXXXX with aux, ccd, wheel, focuser, mount, guider, rotator, gps, ao or aux, additional device definitions may follow, but the first one is the master device)
 		name = "XXXXX";  // mandatory attribute; replace XXXXX with device name  (string literal)
 		additional_instances = true; // optional attribute, default is false; use this if the driver can create additional device instances  (bool literal)
