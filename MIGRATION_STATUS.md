@@ -140,7 +140,7 @@
 | wheel_quantum            | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ❌ No    |                                                          |
 | wheel_sx                 | 3️⃣  | ❌ No    | ✅ Yes   | ✅ Yes   | ✅ Yes   | ⏰ TODO - make hidapi for Windows                        |
 | wheel_trutek             | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ Yes   |                                                          |
-| wheel_xagyl              | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ❌ No    |                                                          |
+| wheel_xagyl              | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ Yes   |                                                          |
 
 # COOKBOOK for migration to API 3.0 and Windows
 

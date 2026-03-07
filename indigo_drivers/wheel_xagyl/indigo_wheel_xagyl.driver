@@ -1,0 +1,120 @@
+// Copyright (c) 2018-2025 CloudMakers, s. r. o.
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// Xagyl Filter Wheel driver definition
+
+driver xagyl {
+	label = "Xagyl Filter Wheel";
+	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
+	copyright = "Copyright (c) 2018-2025 CloudMakers, s. r. o.";
+	version = 6;
+	serial;
+	// include { }
+	// define { }
+	data {
+		int slot;
+	}
+	code {
+		static bool xagyl_query(indigo_device *device) {
+			if (indigo_uni_printf(PRIVATE_DATA->handle, "I2") > 0 && indigo_uni_scanf_line(PRIVATE_DATA->handle, "P%d", &PRIVATE_DATA->slot) == 1) {
+				return true;
+			}
+			return false;
+		}
+
+		static bool xagyl_goto(indigo_device *device, int slot) {
+			return indigo_uni_printf(PRIVATE_DATA->handle, "G%d", slot) > 0;
+		}
+
+		static bool xagyl_open(indigo_device *device) {
+			char *name = DEVICE_PORT_ITEM->text.value;
+			PRIVATE_DATA->handle = indigo_uni_open_serial(name, INDIGO_LOG_DEBUG);
+			if (PRIVATE_DATA->handle != NULL) {
+				char buffer[128];
+				if (indigo_uni_printf(PRIVATE_DATA->handle, "I0") > 0 && indigo_uni_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer)) > 0) {
+					INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, buffer);
+					if (indigo_uni_printf(PRIVATE_DATA->handle, "I1") > 0 && indigo_uni_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer)) > 0) {
+						INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, buffer);
+						if (indigo_uni_printf(PRIVATE_DATA->handle, "I3") > 0 && indigo_uni_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer)) > 0) {
+							INDIGO_COPY_VALUE(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, buffer);
+							if (indigo_uni_printf(PRIVATE_DATA->handle, "I8") > 0 && indigo_uni_scanf_line(PRIVATE_DATA->handle, "FilterSlots %d", &PRIVATE_DATA->slot) == 1) {
+								WHEEL_SLOT_ITEM->number.min = 1;
+								WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->slot;
+								if (xagyl_query(device)) {
+									WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->slot;
+									return true;
+								}
+							}
+						}
+					}
+				}
+				indigo_uni_close(&PRIVATE_DATA->handle);
+			}
+			return false;
+		}
+
+		static void xagyl_close(indigo_device *device) {
+			if (PRIVATE_DATA->handle != NULL) {
+				indigo_uni_close(&PRIVATE_DATA->handle);
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
+			}
+		}
+	}
+	// on_init { }
+	// on_shutdown { }
+	wheel {
+		name = "Xagyl Filter Wheel";
+		additional_instances = true;
+		code {
+			static void wheel_move_finalizer(indigo_device *device) {
+				if (xagyl_query(device)) {
+					if (PRIVATE_DATA->slot != WHEEL_SLOT_ITEM->number.target) {
+						indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
+					} else {
+						WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->slot;
+						WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+					}
+				} else {
+					WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+			}
+		}
+		// on_timer { }
+		// on_connect { }
+		// on_disconnect { }
+		// on_attach { }
+		// on_detach { }
+		inherited WHEEL_SLOT {
+			on_change {
+				WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
+				int slot = (int)WHEEL_SLOT_ITEM->number.target;
+				if (slot == PRIVATE_DATA->slot) {
+					WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+				} else  if (xagyl_goto(device, slot)) {
+					WHEEL_SLOT_ITEM->number.value = 0;
+					indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
+				} else {
+					WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+	}
+}
