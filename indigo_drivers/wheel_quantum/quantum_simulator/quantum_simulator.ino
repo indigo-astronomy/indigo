@@ -22,7 +22,8 @@
 #define Serial SerialUSB
 #endif
 
-char current_filter = '1';
+char current_filter = '0';
+char target_filter = '0';
 
 void setup() {
   Serial.begin(9600);
@@ -33,9 +34,21 @@ void setup() {
 
 void loop() {
   String command = Serial.readStringUntil('\n');
-  if (command.startsWith("G")) {
-    current_filter = command.charAt(1);
-    delay(3000);
+	if (command.startsWith("SN")) {
+		Serial.println("SN123456");
+	} else if (command.startsWith("G")) {
+		target_filter = command.charAt(1);
+		while (current_filter != target_filter) {
+			delay(1000);
+			Serial.print("P");
+			Serial.println(current_filter);
+			if (current_filter < target_filter) {
+				current_filter++;
+			} else if (current_filter > target_filter) {
+				current_filter--;
+			}
+		}
+		delay(1000);
     Serial.print("P");
     Serial.println(current_filter);
   }

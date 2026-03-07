@@ -3,6 +3,7 @@
 ## Supported devices
 
 * Brightstar Quantum USB filter wheel
+* Orion Nautilus filter wheel
 
 Single device is present on the first startup (no hot-plug support). Additional devices can be configured on runtime.
 

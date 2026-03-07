@@ -2269,6 +2269,7 @@
 		598878042F5C494F00837F9C /* indigo_wheel_sx.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_wheel_sx.driver; sourceTree = "<group>"; };
 		598878052F5C945F00837F9C /* indigo_wheel_trutek.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_wheel_trutek.driver; sourceTree = "<group>"; };
 		598878082F5CA26200837F9C /* indigo_wheel_xagyl.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_wheel_xagyl.driver; sourceTree = "<group>"; };
+		598878092F5CB89700837F9C /* indigo_wheel_quantum.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_wheel_quantum.driver; sourceTree = "<group>"; };
 		5989C385246C47F80005282C /* CMOS Camera Specific Options.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "CMOS Camera Specific Options.pdf"; sourceTree = "<group>"; };
 		5989C386246C48110005282C /* RELEASE */ = {isa = PBXFileReference; lastKnownFileType = text; path = RELEASE; sourceTree = "<group>"; };
 		5989C387246C48A90005282C /* make_source_tarball.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = make_source_tarball.sh; sourceTree = "<group>"; };
@@ -14077,6 +14078,7 @@
 				9DAD52432126BD98002FCC79 /* indigo_wheel_quantum.h */,
 				9DAD52452126BD98002FCC79 /* indigo_wheel_quantum.c */,
 				9DAD52422126BD98002FCC79 /* indigo_wheel_quantum_main.c */,
+				598878092F5CB89700837F9C /* indigo_wheel_quantum.driver */,
 				59D46EF0214B14DC0018978D /* quantum_simulator */,
 			);
 			path = wheel_quantum;
