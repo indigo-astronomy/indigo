@@ -23,6 +23,7 @@
 #endif
 
 char current_filter = '1';
+char target_filter = '1';
 
 void setup() {
   Serial.begin(9600);
@@ -57,8 +58,13 @@ void loop() {
         }
         break;
       case 'G':
-        current_filter = command[1];  
+				target_filter = command[1];  
         break;
     }
+		if (current_filter < target_filter) {
+			current_filter++;
+		} else if (current_filter > target_filter) {
+			current_filter--;
+		}
   }
 }

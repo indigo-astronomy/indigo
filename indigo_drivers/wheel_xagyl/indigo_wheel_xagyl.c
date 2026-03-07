@@ -42,85 +42,49 @@
 
 typedef struct {
 	indigo_uni_handle *handle;
+	//+ data
 	int slot;
+	//-
 } xagyl_private_data;
+
+//+ code
+
+static bool xagyl_query(indigo_device *device) {
+	if (indigo_uni_printf(PRIVATE_DATA->handle, "I2") > 0 && indigo_uni_scanf_line(PRIVATE_DATA->handle, "P%d", &PRIVATE_DATA->slot) == 1) {
+		return true;
+	}
+	return false;
+}
+
+static bool xagyl_goto(indigo_device *device, int slot) {
+	return indigo_uni_printf(PRIVATE_DATA->handle, "G%d", slot) > 0;
+}
 
 static bool xagyl_open(indigo_device *device) {
 	char *name = DEVICE_PORT_ITEM->text.value;
 	PRIVATE_DATA->handle = indigo_uni_open_serial(name, INDIGO_LOG_DEBUG);
 	if (PRIVATE_DATA->handle != NULL) {
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
 		char buffer[128];
 		if (indigo_uni_printf(PRIVATE_DATA->handle, "I0") > 0 && indigo_uni_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer)) > 0) {
 			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, buffer);
-		} else {
-			indigo_uni_close(&PRIVATE_DATA->handle);
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read model name");
-			return false;
+			if (indigo_uni_printf(PRIVATE_DATA->handle, "I1") > 0 && indigo_uni_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer)) > 0) {
+				INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, buffer);
+				if (indigo_uni_printf(PRIVATE_DATA->handle, "I3") > 0 && indigo_uni_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer)) > 0) {
+					INDIGO_COPY_VALUE(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, buffer);
+					if (indigo_uni_printf(PRIVATE_DATA->handle, "I8") > 0 && indigo_uni_scanf_line(PRIVATE_DATA->handle, "FilterSlots %d", &PRIVATE_DATA->slot) == 1) {
+						WHEEL_SLOT_ITEM->number.min = 1;
+						WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->slot;
+						if (xagyl_query(device)) {
+							WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->slot;
+							return true;
+						}
+					}
+				}
+			}
 		}
-		if (indigo_uni_printf(PRIVATE_DATA->handle, "I1") > 0 && indigo_uni_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer)) > 0) {
-			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, buffer);
-		} else {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read firmware version");
-			indigo_uni_close(&PRIVATE_DATA->handle);
-			return false;
-		}
-		if (indigo_uni_printf(PRIVATE_DATA->handle, "I3") > 0 && indigo_uni_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer)) > 0) {
-			INDIGO_COPY_VALUE(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, buffer);
-		} else {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read S/N");
-			indigo_uni_close(&PRIVATE_DATA->handle);
-			return false;
-		}
-		if (indigo_uni_printf(PRIVATE_DATA->handle, "I8") > 0 && indigo_uni_scanf_line(PRIVATE_DATA->handle, "FilterSlots %d", &PRIVATE_DATA->slot) == 1) {
-			WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->slot;
-			
-		} else {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read slot count");
-			indigo_uni_close(&PRIVATE_DATA->handle);
-			return false;
-		}
-		if (indigo_uni_printf(PRIVATE_DATA->handle, "I2") > 0 && indigo_uni_scanf_line(PRIVATE_DATA->handle, "P%d", &PRIVATE_DATA->slot) == 1) {
-			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->slot;
-		} else {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read position");
-			indigo_uni_close(&PRIVATE_DATA->handle);
-			return false;
-		}
-		return true;
-	} else {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", name);
+		indigo_uni_close(&PRIVATE_DATA->handle);
 	}
 	return false;
-}
-
-static void xagyl_query(indigo_device *device) {
-	for (int repeat = 0; repeat < 60; repeat++) {
-		if (indigo_uni_printf(PRIVATE_DATA->handle, "I2") > 0 && indigo_uni_scanf_line(PRIVATE_DATA->handle, "P%d", &PRIVATE_DATA->slot) == 1) {
-			if (PRIVATE_DATA->slot == WHEEL_SLOT_ITEM->number.target) {
-				WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->slot;
-				WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
-				return;
-			}
-			if (PRIVATE_DATA->slot != WHEEL_SLOT_ITEM->number.value) {
-				WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->slot;
-				WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
-			}
-			indigo_usleep(500000);
-		} else {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read position");
-			break;
-		}
-	}
-	WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
-	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
-}
-
-static void xagyl_goto(indigo_device *device, int slot) {
-	indigo_uni_printf(PRIVATE_DATA->handle, "G%d", slot);
-	indigo_set_timer(device, 1, xagyl_query, NULL);
 }
 
 static void xagyl_close(indigo_device *device) {
@@ -130,7 +94,27 @@ static void xagyl_close(indigo_device *device) {
 	}
 }
 
+//-
+
 // -------------------------------------------------------------------------------- INDIGO wheel device implementation
+
+//+ wheel.code
+
+static void wheel_move_finalizer(indigo_device *device) {
+	if (xagyl_query(device)) {
+		if (PRIVATE_DATA->slot != WHEEL_SLOT_ITEM->number.target) {
+			indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
+		} else {
+			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->slot;
+			WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+		}
+	} else {
+		WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+}
+
+//-
 
 static indigo_result wheel_attach(indigo_device *device) {
 	assert(device != NULL);
@@ -139,7 +123,9 @@ static indigo_result wheel_attach(indigo_device *device) {
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
+		//+ wheel.attach
 		INFO_PROPERTY->count = 8;
+		//-
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_wheel_enumerate_properties(device, NULL, NULL);
@@ -147,7 +133,7 @@ static indigo_result wheel_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
-static void wheel_connect_callback(indigo_device *device) {
+static void wheel_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (xagyl_open(device)) {
 			indigo_update_property(device, INFO_PROPERTY, NULL);
@@ -163,34 +149,34 @@ static void wheel_connect_callback(indigo_device *device) {
 	indigo_wheel_change_property(device, NULL, CONNECTION_PROPERTY);
 }
 
+static void wheel_slot_handler(indigo_device *device) {
+	//+ wheel.WHEEL_SLOT.on_change
+	WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
+	int slot = (int)WHEEL_SLOT_ITEM->number.target;
+	if (slot == PRIVATE_DATA->slot) {
+		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+	} else  if (xagyl_goto(device, slot)) {
+		WHEEL_SLOT_ITEM->number.value = 0;
+		indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
+	} else {
+		WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	//- wheel.WHEEL_SLOT.on_change
+	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+}
+
 static indigo_result wheel_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
-	assert(device != NULL);
-	assert(DEVICE_CONTEXT != NULL);
-	assert(property != NULL);
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- CONNECTION
-		if (indigo_ignore_connection_change(device, property))
-			return INDIGO_OK;
-		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, wheel_connect_callback, NULL);
+		if (!indigo_ignore_connection_change(device, property)) {
+			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			indigo_execute_handler(device, wheel_connection_handler);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(WHEEL_SLOT_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- WHEEL_SLOT
-		indigo_property_copy_values(WHEEL_SLOT_PROPERTY, property, false);
-		if (WHEEL_SLOT_ITEM->number.value < 1 || WHEEL_SLOT_ITEM->number.value > WHEEL_SLOT_ITEM->number.max) {
-			WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
-		} else if (WHEEL_SLOT_ITEM->number.value == PRIVATE_DATA->slot) {
-			WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
-		} else {
-			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
-			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->slot;
-			xagyl_goto(device, (int)WHEEL_SLOT_ITEM->number.target);
-		}
-		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(WHEEL_SLOT_PROPERTY, wheel_slot_handler);
 		return INDIGO_OK;
-		// --------------------------------------------------------------------------------
 	}
 	return indigo_wheel_change_property(device, client, property);
 }
@@ -199,7 +185,7 @@ static indigo_result wheel_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (IS_CONNECTED) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-		wheel_connect_callback(device);
+		wheel_connection_handler(device);
 	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_wheel_detach(device);
