@@ -1,0 +1,107 @@
+// Copyright (c) 2016-2025 CloudMakers, s. r. o.
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// Starlight Xpress Filter Wheel driver definition
+
+driver sx {
+	label = "Starlight Xpress Filter Wheel";
+	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
+	copyright = "Copyright (c) 2016-2025 CloudMakers, s. r. o.";
+	version = 4;
+	hid {
+		hotplug = true;
+		vid = SX_VENDOR_ID;
+		pid = SX_PRODUCT_ID;
+	}
+	// include { }
+	define {
+		#define SX_VENDOR_ID	0x1278
+		#define SX_PRODUCT_ID	0x0920
+	}
+	data {
+		int current_slot, target_slot;
+		int count;
+	}
+	code {
+		static bool sx_message(indigo_device *device, int a, int b) {
+			char buf[2] = { a, b };
+			if (indigo_uni_write(PRIVATE_DATA->handle, buf, 2) != 2) {
+				return false;
+			}
+			indigo_usleep(100);
+			if (indigo_uni_read(PRIVATE_DATA->handle, buf, 2) != 2) {
+				return false;
+			}
+			PRIVATE_DATA->current_slot = buf[0];
+			PRIVATE_DATA->count = buf[1];
+			return true;
+		}
+
+		static bool sx_open(indigo_device *device) {
+			PRIVATE_DATA->handle = indigo_uni_open_hid(SX_VENDOR_ID, SX_PRODUCT_ID, INDIGO_LOG_DEBUG | BINARY_LOG);
+			if (PRIVATE_DATA->handle != NULL) {
+				sx_message(device, 0, 0);
+				return true;
+			}
+			return false;
+		}
+
+		static void sx_close(indigo_device *device) {
+			indigo_uni_close(&PRIVATE_DATA->handle);
+		}
+	}
+	// on_init { }
+	// on_shutdown { }
+	wheel {
+		name = "SX Filter Wheel";
+		code {
+			static void wheel_move_finalizer(indigo_device *device) {
+				sx_message(device, 0, 0);
+				WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
+				if (PRIVATE_DATA->current_slot == PRIVATE_DATA->target_slot) {
+					WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+				} else {
+					indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
+				}
+				indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+			}
+		}
+		// on_timer { }
+		on_connect {
+			WHEEL_SLOT_ITEM->number.min = 1;
+			WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->count;
+			WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->target_slot = PRIVATE_DATA->current_slot;
+		}
+		// on_disconnect { }
+		// on_attach { }
+		// on_detach { }
+		inherited WHEEL_SLOT {
+			on_change {
+				if (WHEEL_SLOT_ITEM->number.value != PRIVATE_DATA->current_slot) {
+					PRIVATE_DATA->target_slot = WHEEL_SLOT_ITEM->number.value;
+					sx_message(device, 0x80 + PRIVATE_DATA->target_slot, 0);
+					WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
+					WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+	}
+}

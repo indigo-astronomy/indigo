@@ -1,9 +1,9 @@
 // Copyright (c) 2016-2025 CloudMakers, s. r. o.
 // All rights reserved.
-//
-// You can use this software under the terms of 'INDIGO Astronomy
+
+// You may use this software under the terms of 'INDIGO Astronomy
 // open-source license' (see LICENSE.md).
-//
+
 // THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
 // OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 // WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -16,15 +16,7 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// version history
-// 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
-
-/** INDIGO StarlighXpress filter wheel driver main
- \file indigo_wheel_sx_main.c
- */
-
-#include <stdio.h>
-#include <string.h>
+// This file generated from indigo_wheel_sx.driver
 
 #include <indigo/indigo_driver_xml.h>
 
@@ -42,4 +34,3 @@ int main(int argc, const char * argv[]) {
 	indigo_stop();
 	return 0;
 }
-

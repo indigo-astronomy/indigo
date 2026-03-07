@@ -2266,6 +2266,7 @@
 		5984C90A27C2E22A0090204B /* GUIDING_PI_CONTROLLER_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = GUIDING_PI_CONTROLLER_TUNING.md; sourceTree = "<group>"; };
 		598786452540C62D00CE8B48 /* libtiff.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libtiff.a; path = build/lib/libtiff.a; sourceTree = "<group>"; };
 		598786472540C69E00CE8B48 /* libtiffxx.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libtiffxx.a; path = build/lib/libtiffxx.a; sourceTree = "<group>"; };
+		598878042F5C494F00837F9C /* indigo_wheel_sx.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_wheel_sx.driver; sourceTree = "<group>"; };
 		5989C385246C47F80005282C /* CMOS Camera Specific Options.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "CMOS Camera Specific Options.pdf"; sourceTree = "<group>"; };
 		5989C386246C48110005282C /* RELEASE */ = {isa = PBXFileReference; lastKnownFileType = text; path = RELEASE; sourceTree = "<group>"; };
 		5989C387246C48A90005282C /* make_source_tarball.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = make_source_tarball.sh; sourceTree = "<group>"; };
@@ -9662,6 +9663,7 @@
 				59C8E7FA1DBBDF7400AA3F0A /* indigo_wheel_sx.h */,
 				59C8E7F91DBBDF7400AA3F0A /* indigo_wheel_sx.c */,
 				59C8E7F81DBBDF7400AA3F0A /* indigo_wheel_sx_main.c */,
+				598878042F5C494F00837F9C /* indigo_wheel_sx.driver */,
 			);
 			path = wheel_sx;
 			sourceTree = "<group>";
