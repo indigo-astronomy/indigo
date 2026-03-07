@@ -133,13 +133,13 @@
 | wheel_fli                | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ❌ No    |                                                          |
 | wheel_indigo             | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ Sim   |                                                          |
 | wheel_manual             | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ❌ No    |                                                          |
-| wheel_mi                 | 2️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    |                                                          |
+| wheel_mi                 | 2️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    | ⛔ Unix and Windows SDKs are not compatible              |
 | wheel_optec              | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ❌ No    |                                                          |
 | wheel_playerone          | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ✅ HW    |                                                          |
 | wheel_qhy                | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ❌ No    |                                                          |
 | wheel_quantum            | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ❌ No    |                                                          |
 | wheel_sx                 | 3️⃣  | ❌ No    | ✅ Yes   | ✅ Yes   | ✅ Yes   | ⏰ TODO - make hidapi for Windows                        |
-| wheel_trutek             | 3️⃣  | ✅ Yes   | ❌ No    | ✅ Yes   | ❌ No    |                                                          |
+| wheel_trutek             | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ Yes   |                                                          |
 | wheel_xagyl              | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ❌ No    |                                                          |
 
 # COOKBOOK for migration to API 3.0 and Windows

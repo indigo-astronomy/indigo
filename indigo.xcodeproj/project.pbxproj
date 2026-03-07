@@ -2267,6 +2267,7 @@
 		598786452540C62D00CE8B48 /* libtiff.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libtiff.a; path = build/lib/libtiff.a; sourceTree = "<group>"; };
 		598786472540C69E00CE8B48 /* libtiffxx.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libtiffxx.a; path = build/lib/libtiffxx.a; sourceTree = "<group>"; };
 		598878042F5C494F00837F9C /* indigo_wheel_sx.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_wheel_sx.driver; sourceTree = "<group>"; };
+		598878052F5C945F00837F9C /* indigo_wheel_trutek.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_wheel_trutek.driver; sourceTree = "<group>"; };
 		5989C385246C47F80005282C /* CMOS Camera Specific Options.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "CMOS Camera Specific Options.pdf"; sourceTree = "<group>"; };
 		5989C386246C48110005282C /* RELEASE */ = {isa = PBXFileReference; lastKnownFileType = text; path = RELEASE; sourceTree = "<group>"; };
 		5989C387246C48A90005282C /* make_source_tarball.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = make_source_tarball.sh; sourceTree = "<group>"; };
@@ -14087,6 +14088,7 @@
 				9DAD524D2126E88B002FCC79 /* indigo_wheel_trutek.h */,
 				9DAD524A2126E88B002FCC79 /* indigo_wheel_trutek.c */,
 				9DAD524C2126E88B002FCC79 /* indigo_wheel_trutek_main.c */,
+				598878052F5C945F00837F9C /* indigo_wheel_trutek.driver */,
 				59D46EEE214B08FF0018978D /* trutek_simulator */,
 			);
 			path = wheel_trutek;
