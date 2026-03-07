@@ -84,6 +84,12 @@ static void sx_close(indigo_device *device) {
 	indigo_uni_close(&PRIVATE_DATA->handle);
 }
 
+//-
+
+// -------------------------------------------------------------------------------- INDIGO CCD device implementation
+
+//+ wheel.code
+
 static void wheel_move_finalizer(indigo_device *device) {
 	sx_message(device, 0, 0);
 	WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
@@ -96,8 +102,6 @@ static void wheel_move_finalizer(indigo_device *device) {
 }
 
 //-
-
-// -------------------------------------------------------------------------------- INDIGO CCD device implementation
 
 static indigo_result wheel_attach(indigo_device *device) {
 	assert(device != NULL);
