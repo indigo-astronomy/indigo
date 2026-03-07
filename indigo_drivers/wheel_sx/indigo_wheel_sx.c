@@ -23,7 +23,7 @@
  \file indigo_ccd_sx.c
  */
 
-#define DRIVER_VERSION 0x02000003
+#define DRIVER_VERSION 0x32000004
 #define DRIVER_NAME "indigo_wheel_sx"
 
 #include <stdlib.h>
@@ -34,8 +34,7 @@
 #include <pthread.h>
 #include <sys/time.h>
 
-#include <hidapi/hidapi.h>
-
+#include <indigo/indigo_uni_io.h>
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_usb_utils.h>
 
@@ -49,39 +48,43 @@
 #define PRIVATE_DATA        ((sx_private_data *)device->private_data)
 
 typedef struct {
-	hid_device *handle;
+	indigo_uni_handle *handle;
+	//+ data
 	int current_slot, target_slot;
 	int count;
+	//-
 } sx_private_data;
 
+//+ code
+
 static bool sx_message(indigo_device *device, int a, int b) {
-	unsigned char buf[2] = { a, b };
-	int rc = hid_write(PRIVATE_DATA->handle, buf, 2);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "hid_write({ %02x, %02x }) ->  %d", buf[0], buf[1], rc);
-	if (rc != 2) {
+	char buf[2] = { a, b };
+	if (indigo_uni_write(PRIVATE_DATA->handle, buf, 2) != 2) {
 		return false;
 	}
 	indigo_usleep(100);
-	rc = hid_read(PRIVATE_DATA->handle, buf, 2);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "hid_read() ->  %d, { %02x, %02x }", rc, buf[0], buf[1]);
+	if (indigo_uni_read(PRIVATE_DATA->handle, buf, 2) != 2) {
+		return false;
+	}
 	PRIVATE_DATA->current_slot = buf[0];
 	PRIVATE_DATA->count = buf[1];
-	return rc == 2;
+	return true;
 }
 
 static bool sx_open(indigo_device *device) {
-	if ((PRIVATE_DATA->handle = hid_open(SX_VENDOR_ID, SX_PRODUC_ID, NULL)) != NULL) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "hid_open ->  ok");
+	PRIVATE_DATA->handle = indigo_uni_open_hid(SX_VENDOR_ID, SX_PRODUC_ID, INDIGO_LOG_DEBUG | BINARY_LOG);
+	if (PRIVATE_DATA->handle != NULL) {
 		sx_message(device, 0x81, 0);
 		return true;
 	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "hid_open ->  failed");
 	return false;
 }
 
 static void sx_close(indigo_device *device) {
-	hid_close(PRIVATE_DATA->handle);
+	indigo_uni_close(&PRIVATE_DATA->handle);
 }
+
+//-
 
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
 
@@ -112,7 +115,7 @@ static void wheel_connect_callback(indigo_device *device) {
 			WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->count;
 			PRIVATE_DATA->target_slot = 1;
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_set_timer(device, 0.5, wheel_timer_callback, NULL);
+			indigo_execute_handler_in(device, 0.5, wheel_timer_callback);
 		} else {
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -135,7 +138,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, wheel_connect_callback, NULL);
+		indigo_execute_handler(device, wheel_connect_callback);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(WHEEL_SLOT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- WHEEL_SLOT
@@ -149,7 +152,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			PRIVATE_DATA->target_slot = WHEEL_SLOT_ITEM->number.value;
 			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
 			sx_message(device, 0x80 + PRIVATE_DATA->target_slot, 0);
-			indigo_set_timer(device, 0.5, wheel_timer_callback, NULL);
+			indigo_execute_handler_in(device, 0.5, wheel_timer_callback);
 		}
 		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 		return INDIGO_OK;
@@ -224,7 +227,6 @@ indigo_result indigo_wheel_sx(indigo_driver_action action, indigo_driver_info *i
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
 			wheel = NULL;
-			hid_init();
 			indigo_start_usb_event_handler();
 			int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, SX_VENDOR_ID, SX_PRODUC_ID, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
