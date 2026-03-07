@@ -114,7 +114,7 @@ static void update_device_list() {
 			hotplug_callback_info *callback_info = hotplug_callback_list;
 			while (callback_info != NULL) {
 				if ((callback_info->events & LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED) != 0) {
-					if (!found && device_matches(new_list[i], callback_info, "Reporting LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED to %d for %d:%d", callback_info->handle)) {
+					if (!found && device_matches(new_list[i], callback_info, "Reporting LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED to %d for %04x:%04x", callback_info->handle)) {
 						callback_info->cb_fn(NULL, new_list[i], LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED, callback_info->user_data);
 					}
 				}
@@ -132,7 +132,7 @@ static void update_device_list() {
 			hotplug_callback_info *callback_info = hotplug_callback_list;
 			while (callback_info != NULL) {
 				if ((callback_info->events & LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT) != 0) {
-					if (!found && device_matches(hotplug_device_list[i], callback_info, "Reporting LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT to %d for %d:%d", callback_info->handle)) {
+					if (!found && device_matches(hotplug_device_list[i], callback_info, "Reporting LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT to %d for %04x:%04x", callback_info->handle)) {
 						callback_info->cb_fn(NULL, hotplug_device_list[i], LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, callback_info->user_data);
 					}
 				}
@@ -174,12 +174,12 @@ int libusb_hotplug_register_callback_sim(libusb_context *ctx, libusb_hotplug_eve
 	callback_info->user_data = user_data;
 	callback_info->next = hotplug_callback_list;
 	*handle = last_handle;
-	INDIGO_DEBUG(indigo_debug("Registered USB hotplug callback %d for %d:%d", last_handle, vendor_id, product_id));
+	INDIGO_DEBUG(indigo_debug("Registered USB hotplug callback %d for %04x:%04x", last_handle, vendor_id, product_id));
 	pthread_mutex_lock(&hotplug_callback_list_mutex);
 	hotplug_callback_list = callback_info;
 	if ((callback_info->flags & LIBUSB_HOTPLUG_ENUMERATE) != 0) {
 		for (int i = 0; i < hotplug_device_count; i++) {
-			if (device_matches(hotplug_device_list[i], callback_info, "Reporting LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED to %d for %d:%d", callback_info->handle)) {
+			if (device_matches(hotplug_device_list[i], callback_info, "Reporting LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED to %d for %04x:%04x", callback_info->handle)) {
 				callback_info->cb_fn(NULL, hotplug_device_list[i], LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED, callback_info->user_data);
 			}
 		}
