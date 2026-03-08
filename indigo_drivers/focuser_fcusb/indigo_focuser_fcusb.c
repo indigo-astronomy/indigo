@@ -249,12 +249,12 @@ static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(FOCUSER_DEVICE
 
 #pragma mark - Hot-plug code
 
-static indigo_device *devices[MAX_DEVICES];
 static pthread_mutex_t hotplug_mutex = PTHREAD_MUTEX_INITIALIZER;
+static indigo_device *devices[MAX_DEVICES];
 
 static void process_plug_event(libusb_device *dev) {
-	const char *name;
 	pthread_mutex_lock(&hotplug_mutex);
+	const char *name;
 	if (fcusb_match(dev, &name)) {
 		fcusb_private_data *private_data = indigo_safe_malloc(sizeof(fcusb_private_data));
 		private_data->usbdev = dev;
@@ -327,7 +327,7 @@ indigo_result indigo_focuser_fcusb(indigo_driver_action action, indigo_driver_in
 			libfcusb_debug = &fcusb_debug;
 			//- on_init
 			for (int i = 0; i < MAX_DEVICES; i++) {
-				devices[i] = 0;
+				devices[i] = NULL;
 			}
 			indigo_start_usb_event_handler();
 			int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, FCUSB_VID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
