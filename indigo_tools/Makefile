@@ -25,7 +25,7 @@ include ../Makefile.inc
 ifeq ($(OS_DETECTED),Linux)
 	INDIGO_LIBS = -lindigo -ludev
 else
-	INDIGO_LIBS = $(BUILD_LIB)/libindigo.a -lz -ldl -lm
+	INDIGO_LIBS = $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libhidapi.a -lz -ldl -lm
 endif
 
 all: $(BUILD_BIN)/indigo_prop_tool $(BUILD_BIN)/indigo_list_usbserial $(BUILD_BIN)/indigo_raw_to_fits $(BUILD_BIN)/indigo_raw_crop $(BUILD_BIN)/indigo_drivers $(BUILD_BIN)/indigo_driver_metadata $(BUILD_BIN)/indigo_generator $(BUILD_BIN)/indigo_scan_drivers
