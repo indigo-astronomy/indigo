@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Rumen G. Bogdanovski
+// Copyright (c) 2026 Rumen G. Bogdanovski
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -25,7 +25,7 @@
 driver simulator {
 	label = "Field Rotator Simulator";
 	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
-	copyright = "Copyright (c) 2025 Rumen G. Bogdanovski";
+	copyright = "Copyright (c) 2026 Rumen G. Bogdanovski";
 	version = 3;
 	define {
 		#define ROTATOR_SPEED 1

@@ -1,4 +1,4 @@
-// Copyright (c) 2025 XXXXX
+// Copyright (c) 2026 XXXXX
 // All rights reserved.
 //
 // You may use this software under the terms of 'INDIGO Astronomy
@@ -24,7 +24,7 @@
 
 driver XXXXX { // replace XXXXX with driver base name without indigo_type_ prefix (mandatory identifier literal)
 	author = "XXXXX"; // mandatory attribute; replace XXXXX with author name and surname with optional email enclosed in '<' and '>' (string literal)
-	copyright = "Copyright (c) 2025 XXXXXX"; // mandatory attribute; replace XXXXX with copyright holder (string literal)
+	copyright = "Copyright (c) 2026 XXXXXX"; // mandatory attribute; replace XXXXX with copyright holder (string literal)
 	label = "XXXXX"; // mandatory attribute; replace XXXXX with descriptive driver label (string literal)
 	version = XXXXX; // mandatory attribute; replace XXXXX with driver minor version, major version is always set to 3.0 (int literal)
 	XXXXX = YYYYY; // optional attribute(s); replace XXXXX with name and YYYYY with value of any constant (identifier and C expression literal)

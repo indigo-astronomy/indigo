@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2025 CloudMakers, s. r. o.
+// Copyright (c) 2016-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -21,7 +21,7 @@
 driver sx {
 	label = "Starlight Xpress Filter Wheel";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
-	copyright = "Copyright (c) 2016-2025 CloudMakers, s. r. o.";
+	copyright = "Copyright (c) 2016-2026 CloudMakers, s. r. o.";
 	version = 4;
 	hid {
 		hotplug = true;
