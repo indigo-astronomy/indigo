@@ -2080,12 +2080,12 @@ void read_c_source(void) {
 				append((void **)&todos, todo);
 			}
 			if (sscanf(line, "// Copyright (c) %d - %d %127[^\0]", &i1, &i2, s1) == 3) {
-				snprintf(driver.copyright, sizeof(driver.copyright), "Copyright (c) %d-2025 %s", i1, s1);
+				snprintf(driver.copyright, sizeof(driver.copyright), "Copyright (c) %d-2026 %s", i1, s1);
 			} else if (sscanf(line, "// Copyright (c) %d %127[^\0]", &i1, s1) == 2) {
 				if (i1 < 2025) {
-					snprintf(driver.copyright, sizeof(driver.copyright), "Copyright (c) %d-2025 %s", i1, s1);
+					snprintf(driver.copyright, sizeof(driver.copyright), "Copyright (c) %d-2026 %s", i1, s1);
 				} else {
-					snprintf(driver.copyright, sizeof(driver.copyright), "Copyright (c) 2025 %s", s1);
+					snprintf(driver.copyright, sizeof(driver.copyright), "Copyright (c) 2026 %s", s1);
 				}
 			} else if (sscanf(line, "// %lf by %127[^\0]", &d1, s1) == 2) {
 				strncpy(driver.author, s1, sizeof(driver.author));
