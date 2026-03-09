@@ -1,0 +1,101 @@
+// Copyright (c) 2016-2025 CloudMakers, s. r. o.
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// Atik Filter Wheel driver definition
+
+driver atik {
+	label = "Atik Filter Wheel";
+	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
+	copyright = "Copyright (c) 2016-2025 CloudMakers, s. r. o.";
+	version = 4;
+	hid {
+		hotplug = true;
+		vid = ATIK_VENDOR_ID;
+		pid = ATIK_PRODUC_ID;
+	}
+	include {
+		#include <libatik.h>
+	}
+	define {
+		#define ATIK_VENDOR_ID                  0x04D8
+		#define ATIK_PRODUC_ID                  0x003F
+	}
+	data {
+		int slot_count, current_slot, target_slot;
+	}
+	code {
+		static bool atik_open(indigo_device *device) {
+			PRIVATE_DATA->handle = indigo_uni_open_hid(ATIK_VENDOR_ID, ATIK_PRODUC_ID, INDIGO_LOG_DEBUG | BINARY_LOG);
+			return PRIVATE_DATA->handle != NULL;
+		}
+
+		static void atik_close(indigo_device *device) {
+			indigo_uni_close(&PRIVATE_DATA->handle);
+		}
+	}
+	// on_init { }
+	// on_shutdown { }
+	wheel {
+		name = "Atik Filter Wheel";
+		code {
+			static void wheel_move_finalizer(indigo_device *device) {
+				libatik_wheel_query(PRIVATE_DATA->handle->handle, &PRIVATE_DATA->slot_count, &PRIVATE_DATA->current_slot);
+				WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
+				if (PRIVATE_DATA->current_slot == PRIVATE_DATA->target_slot) {
+					WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+				} else {
+					indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
+				}
+				indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+			}
+		}
+		// on_timer { }
+		on_connect {
+			connection_result = false;
+			for (int i = 0; i < 10; i++) {
+				libatik_wheel_query(PRIVATE_DATA->handle->handle, &PRIVATE_DATA->slot_count, &PRIVATE_DATA->current_slot);
+				if (PRIVATE_DATA->slot_count > 0 && PRIVATE_DATA->slot_count <= 9) {
+					connection_result = true;
+					break;
+				}
+				indigo_sleep(1);
+			}
+			if (connection_result) {
+				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->slot_count;
+				WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->current_slot;
+			}
+		}
+		// on_disconnect { }
+		// on_attach { }
+		// on_detach { }
+		inherited WHEEL_SLOT {
+			on_change {
+				if (WHEEL_SLOT_ITEM->number.value != PRIVATE_DATA->current_slot) {
+					PRIVATE_DATA->target_slot = WHEEL_SLOT_ITEM->number.value;
+					libatik_wheel_set(PRIVATE_DATA->handle->handle, PRIVATE_DATA->target_slot);
+					libatik_wheel_query(PRIVATE_DATA->handle->handle, &PRIVATE_DATA->slot_count, &PRIVATE_DATA->current_slot);
+					WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
+					WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+	}
+}

@@ -129,7 +129,7 @@
 | system_ascol             | 2️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    |                                                          |
 | wheel_asi                | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ❌ No    |                                                          |
 | wheel_astroasis          | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ✅ HW    |                                                          |
-| wheel_atik               | 2️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    |                                                          |
+| wheel_atik               | 3️⃣  | ❌ No    | ✅ Yes   | ✅ Yes   | ❌ No    | ⏰ TODO - make libatik for Windows                                                         |
 | wheel_fli                | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ❌ No    |                                                          |
 | wheel_indigo             | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ Sim   |                                                          |
 | wheel_manual             | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ❌ No    |                                                          |
