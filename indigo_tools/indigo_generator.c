@@ -1763,7 +1763,7 @@ void write_c_hotplug_section(void) {
 			write_line("\t\tindigo_get_usb_path(dev, usb_path);");
 			write_line("\t\t%s_private_data *private_data = indigo_safe_malloc(sizeof(%s_private_data));", driver.name, driver.name);
 			write_line("\t\t%s = indigo_safe_malloc_copy(sizeof(indigo_device), &%s_template);", device->type, device->type);
-			write_line("\t\tsnprintf(wheel->name, INDIGO_NAME_SIZE, \"%%s #%%s\", %s, usb_path);", device->name);
+			write_line("\t\tsnprintf(%s->name, INDIGO_NAME_SIZE, \"%%s #%%s\", %s, usb_path);", device->type, device->name);
 			write_line("\t\t%s->private_data = private_data;", device->type);
 			if (device != driver.devices) {
 				write_line("\t\t%s->master_device = %s;", device->type, driver.devices->type);
