@@ -44,6 +44,10 @@ void loop() {
   } else if (is_ready && !strcmp(command, "WEXITS")) {
     is_ready = false;
     Serial.println("END");
+  } else if (is_ready && !strcmp(command, "WHOME")) {
+    current_filter = '1';
+    delay(7000);
+    Serial.println("A");
   } else if (is_ready && !strcmp(command, "WFILTR")) {
     Serial.println(current_filter);
   } else if (is_ready && !strncmp(command, "WGOTO", 5)) {
