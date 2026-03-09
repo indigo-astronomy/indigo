@@ -1021,7 +1021,7 @@ indigo_result indigo_filter_delete_property(indigo_client *client, indigo_device
 				indigo_release_property(device_cache[i]);
 				device_cache[i] = NULL;
 				if (agent_cache[i]) {
-					indigo_delete_property(device, agent_cache[i], NULL);
+					indigo_delete_property(device, agent_cache[i], message);
 					indigo_release_property(agent_cache[i]);
 					agent_cache[i] = NULL;
 				}
