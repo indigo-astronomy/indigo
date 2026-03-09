@@ -834,7 +834,7 @@ indigo_result indigo_update_property(indigo_device *device, indigo_property *pro
 		}
 		char message[INDIGO_VALUE_SIZE];
 		int count = property->count;
-		property->do_update = property->do_update || property->state != property->previous_state;
+		property->do_update = property->do_update || property->state != property->previous_state || format != NULL;
 		if (property->perm == INDIGO_WO_PERM) {
 			property->count = 0;
 		} else {
