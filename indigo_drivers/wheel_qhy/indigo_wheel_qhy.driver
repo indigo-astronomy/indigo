@@ -1,0 +1,160 @@
+// Copyright (c) 2020-2026 CloudMakers, s. r. o.
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// QHY CFW Filter Wheel driver definition
+
+driver qhy {
+	label = "QHY CFW Filter Wheel";
+	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
+	copyright = "Copyright (c) 2020-2026 CloudMakers, s. r. o.";
+	version = 10;
+	serial;
+	// include { }
+	// define { }
+	data {
+		int current_slot;
+		indigo_property *model;
+	}
+	code {
+		static bool qhy_open(indigo_device *device) {
+			PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
+			return PRIVATE_DATA->handle != NULL;
+		}
+
+		static bool qhy_command(indigo_device *device, char *command, char *reply, int reply_length, int read_timeout) {
+			if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
+				if (indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command)) > 0) {
+					for (int i = 0; i < read_timeout; i++) {
+						if (indigo_uni_read(PRIVATE_DATA->handle, reply, reply_length) > 0) {
+							return true;
+						}
+						indigo_usleep(INDIGO_DELAY(1));
+					}
+				}
+			}
+			return false;
+		}
+
+		static void qhy_close(indigo_device *device) {
+			indigo_uni_close(&PRIVATE_DATA->handle);
+		}
+	}
+	// on_init { }
+	// on_shutdown { }
+	wheel {
+		name = "CFW Filter Wheel";
+		additional_instances = true;
+		// code { }
+		// on_timer { }
+		on_connect {
+			if (X_MODEL_3_ITEM->sw.value) {
+				char reply[8];
+				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "QHY CFW3");
+				INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "N/A");
+				bool result = qhy_command(device, "VRS", INFO_DEVICE_FW_REVISION_ITEM->text.value, 8, 1);
+				if (!result) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed, retrying...");
+					result = qhy_command(device, "VRS", INFO_DEVICE_FW_REVISION_ITEM->text.value, 8, 1);
+				}
+				if (result) {
+					if (qhy_command(device, "MXP", reply, 1, 1)) {
+						WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = isdigit(reply[0]) ? reply[0] - '0' : reply[0] - 'A' + 10;
+					}
+					if (qhy_command(device, "NOW", reply, 1, 1)) {
+						WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = 	isdigit(reply[0]) ? reply[0] - '0' + 1 : reply[0] - 'A' + 11;
+					}
+				} else {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed, fallback to CFW1");
+					indigo_set_switch(X_MODEL_PROPERTY, X_MODEL_1_ITEM, true);
+					indigo_update_property(device, X_MODEL_PROPERTY, "Failed to connect to CFW3, trying to fallback to CFW1");
+				}
+			} else if (X_MODEL_2_ITEM->sw.value) {
+				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "QHY CFW2");
+				INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "N/A");
+				if (!qhy_command(device, "0", NULL, 0, 0)) {
+					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = 7;
+				WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->current_slot = 1;
+			} else if (X_MODEL_1_ITEM->sw.value) {
+				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, "QHY CFW1");
+				INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "N/A");
+				if (!qhy_command(device, "0", NULL, 0, 0)) {
+					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = 7;
+				WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->current_slot = 1;
+			}
+			indigo_update_property(device, INFO_PROPERTY, NULL);
+		}
+		// on_disconnect { }
+		on_attach {
+			INFO_PROPERTY->count = 6;
+			WHEEL_SLOT_ITEM->number.value = 1;
+		}
+		// on_detach { }
+		inherited WHEEL_SLOT {
+			on_change {
+				int slot = (int)WHEEL_SLOT_ITEM->number.target;
+				if (PRIVATE_DATA->current_slot != slot) {
+					char command[2] = { '0' + slot - 1, 0 };
+					char reply[3] = { 0 };
+					if (qhy_command(device, command, reply, 1, 15)) {
+						if (X_MODEL_1_ITEM->sw.value) {
+							WHEEL_SLOT_PROPERTY->state = (reply[0] == '-' ? INDIGO_OK_STATE : INDIGO_ALERT_STATE);
+						} else if (X_MODEL_2_ITEM->sw.value || X_MODEL_3_ITEM->sw.value) {
+							WHEEL_SLOT_PROPERTY->state = (reply[0] == command[0] ? INDIGO_OK_STATE : INDIGO_ALERT_STATE);
+						}
+						PRIVATE_DATA->current_slot = slot;
+					} else {
+						WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+					}
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+		switch X_MODEL {
+			persistent = true;
+			// on_change { }
+			// on_attach { }
+			// on_detach { }
+			name = "X_MODEL";
+			group = MAIN_GROUP;
+			label = "Device type";
+			always_defined = true;
+			// handle_change = false;
+			// asynchronous_change = false;
+			item X_MODEL_1 {
+				name = "1";
+				label = "CFW 1";
+				value = false;
+			}
+			item X_MODEL_2 {
+				name = "2";
+				label = "CFW 2";
+				value = false;
+			}
+			item X_MODEL_3 {
+				name = "3";
+				label = "CFW 3";
+				value = true;
+			}
+		}
+	}
+}

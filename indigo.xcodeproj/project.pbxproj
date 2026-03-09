@@ -4365,6 +4365,7 @@
 		59DEC8D321AF5DAA00BF7958 /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
 		59E14E712F5F51EC0083B6FD /* indigo_wheel_atik.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_wheel_atik.driver; sourceTree = "<group>"; };
 		59E14E722F5F5CE20083B6FD /* indigo_wheel_optec.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_wheel_optec.driver; sourceTree = "<group>"; };
+		59E14E732F5F675D0083B6FD /* indigo_wheel_qhy.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_wheel_qhy.driver; sourceTree = "<group>"; };
 		59E1B2292AE5B3FD00AC9889 /* AstroPhysics-GTOCP4.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "AstroPhysics-GTOCP4.pdf"; sourceTree = "<group>"; };
 		59E21BE12651940F00C1E912 /* indigo_raw_to_fits.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_raw_to_fits.c; sourceTree = "<group>"; };
 		59E2DA0E263837D600D3D4B5 /* jinclude.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = jinclude.h; path = externals/libjpeg/jinclude.h; sourceTree = "<group>"; };
@@ -6751,6 +6752,7 @@
 				5979C882254A9EED005395BE /* indigo_wheel_qhy.h */,
 				5979C886254A9EED005395BE /* indigo_wheel_qhy.c */,
 				5979C880254A9EED005395BE /* indigo_wheel_qhy_main.c */,
+				59E14E732F5F675D0083B6FD /* indigo_wheel_qhy.driver */,
 				5979C884254A9EED005395BE /* qhy_simulator */,
 			);
 			path = wheel_qhy;
