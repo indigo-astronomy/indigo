@@ -964,7 +964,7 @@ indigo_result indigo_filter_update_property(indigo_client *client, indigo_device
 							memcpy(agent_property->items, property->items, property->count * sizeof(indigo_item));
 						}
 						agent_property->state = property->state;
-						indigo_update_property(device, agent_property, NULL);
+						indigo_update_property(device, agent_property, message);
 					}
 					return INDIGO_OK;
 				}
