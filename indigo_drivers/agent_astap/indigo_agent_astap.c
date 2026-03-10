@@ -301,10 +301,10 @@ static void parse_line(indigo_device *device, char *line) {
 		AGENT_PLATESOLVER_WCS_HEIGHT_ITEM->number.value = ASTAP_DEVICE_PRIVATE_DATA->frame_height * AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value;
 		AGENT_PLATESOLVER_WCS_PARITY_ITEM->number.value = AGENT_PLATESOLVER_WCS_PARITY_ITEM->number.value * (d >= 0 ? 1 : -1);
 	} else if ((s = strstr(line, "ERROR="))) {
-		indigo_send_message(device, AGENT_START_PROCESS_PROPERTY, s + 6);
+		indigo_send_message(device, AGENT_START_PROCESS_PROPERTY, "Error: %s", s + 6);
 		indigo_error("ASTAP Error: %s", s + 8);
 	} else if ((s = strstr(line, "WARNING="))) {
-		indigo_send_message(device, AGENT_START_PROCESS_PROPERTY, s + 8);
+		indigo_send_message(device, AGENT_START_PROCESS_PROPERTY, "Warning: %s", s + 8);
 		indigo_error("ASTAP Warning: %s", s + 8);
 	} else if ((s = strstr(line, "COMMENT="))) {
 		indigo_log("ASTAP Comment: %s", s + 8);

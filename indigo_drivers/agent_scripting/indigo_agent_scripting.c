@@ -284,7 +284,7 @@ static duk_ret_t trace_message(duk_context *ctx) {
 
 static void send_message_handler(indigo_device *device, void *data) {
 	char *message = (char *)data;
-	indigo_send_message(device, NULL, message);
+	indigo_send_message(device, AGENT_SCRIPTING_RUN_SCRIPT_PROPERTY, message);
 	free(message);
 }
 
