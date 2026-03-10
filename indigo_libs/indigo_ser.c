@@ -132,10 +132,8 @@ bool indigo_ser_add_frame(indigo_ser *ser, void *buffer) {
 
 bool indigo_ser_close(indigo_ser *ser) {
 	int handle = ser->handle;
-	if (lseek(handle, 38, SEEK_SET) && write_int(handle, ser->count)) {
-		close(handle);
-		free(ser);
-		return true;
-	}
-	return false;
+	bool result = lseek(handle, 38, SEEK_SET) != -1 && write_int(handle, ser->count);
+	close(handle);
+	free(ser);
+	return result;
 }
