@@ -894,7 +894,7 @@ indigo_result indigo_json_device_adapter_delete_property(indigo_client *client, 
 	char *pnt = output_buffer;
 	long size;
 	if (*property->name == 0) {
-		size = sprintf(pnt, "{ \"deleteProperty\": { \"device\": \"%s\"", device->name);
+		size = sprintf(pnt, "{ \"deleteProperty\": { \"device\": \"%s\"", property->device);
 	} else {
 		size = sprintf(pnt, "{ \"deleteProperty\": { \"device\": \"%s\", \"name\": \"%s\"", property->device, property->name);
 	}
@@ -915,7 +915,7 @@ indigo_result indigo_json_device_adapter_delete_property(indigo_client *client, 
 	return INDIGO_OK;
 }
 
-indigo_result indigo_json_device_adapter_message_property(indigo_client *client, indigo_device *device, const char *message) {
+indigo_result indigo_json_device_adapter_message_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	assert(device != NULL);
 	assert(client != NULL);
 	if (!indigo_reshare_remote_devices && device->is_remote) {
@@ -928,7 +928,14 @@ indigo_result indigo_json_device_adapter_message_property(indigo_client *client,
 	assert(handle != NULL);
 	char *output_buffer = indigo_safe_malloc(JSON_BUFFER_SIZE);
 	char *pnt = output_buffer;
-	long size = sprintf(pnt, "{ \"message\": \"%s\" }", message);
+	long size;
+	if (property) {
+		size = sprintf(pnt, "{ \"message\": \"%s\", \"device\": \"%s\", \"name\": \"%s\" }", message, property->device, property->name);
+	} else if (device) {
+		size = sprintf(pnt, "{ \"message\": \"%s\", \"device\": \"%s\" }", message, device->name);
+	} else {
+		size = sprintf(pnt, "{ \"message\": \"%s\" }", message);
+	}
 	if (client_context->web_socket) {
 		ws_write(handle, output_buffer, size);
 	} else {

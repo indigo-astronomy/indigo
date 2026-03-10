@@ -1766,7 +1766,7 @@ static void handle_aux_connect_property(indigo_device *device) {
 					indigo_define_property(device, AUX_CLOUD_PROPERTY, NULL);
 					indigo_define_property(device, AUX_SKY_PROPERTY, NULL);
 					aag_populate_constants(device);
-					indigo_send_message(device, "[Warning] %s connected, it may take up to 30s to get the first readings", device->name);
+					indigo_send_message(device, CONNECTION_PROPERTY, "[Warning] %s connected, it may take up to 30s to get the first readings", device->name);
 					indigo_execute_handler(device, sensors_timer_callback);
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				} else {

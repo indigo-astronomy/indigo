@@ -604,8 +604,7 @@ static void mount_tracking_timer_callback(indigo_device* device) {
 		synscan_stop_axis(device, kAxisRA);
 		synscan_wait_for_axis_stopped(device, kAxisRA, NULL);
 		PRIVATE_DATA->raAxisMode = kAxisModeIdle;
-		indigo_send_message(device, "Tracking stopped");
-		indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+		indigo_update_property(device, MOUNT_TRACKING_PROPERTY, "Tracking stopped");
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->driver_mutex);
 }

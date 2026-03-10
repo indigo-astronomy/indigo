@@ -379,7 +379,7 @@ typedef struct indigo_client {
 	indigo_result (*delete_property)(indigo_client *client, indigo_device *device, indigo_property *property, const char *message);
 	/** callback called when device broadcast a message
 	 */
-	indigo_result (*send_message)(indigo_client *client, indigo_device *device, const char *message);
+	indigo_result (*send_message)(indigo_client *client, indigo_device *device, indigo_property *property, const char *message);
 	/** callback called when client is detached from the bus
 	 */
 	indigo_result (*detach)(indigo_client *client);
@@ -544,7 +544,7 @@ INDIGO_EXTERN indigo_result indigo_delete_property(indigo_device *device, indigo
 
 /** Broadcast message.
  */
-INDIGO_EXTERN indigo_result indigo_send_message(indigo_device *device, const char *format, ...);
+INDIGO_EXTERN indigo_result indigo_send_message(indigo_device *device, indigo_property *property, const char *format, ...);
 
 /** Broadcast property enumeration request.
  */

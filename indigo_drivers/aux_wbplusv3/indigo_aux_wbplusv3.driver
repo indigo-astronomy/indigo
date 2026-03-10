@@ -156,7 +156,7 @@ driver wbplusv3 {
 					}
 				}
 				indigo_uni_close(&PRIVATE_DATA->handle);
-				indigo_send_message(device, "Handshake failed");
+				indigo_send_message(device, CONNECTION_PROPERTY, "Handshake failed");
 			}
 			return false;
 		}
@@ -216,11 +216,11 @@ driver wbplusv3 {
 				if (AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value && AUX_WEATHER_PROPERTY->state == INDIGO_OK_STATE) {
 					if (((AUX_WEATHER_DEWPOINT_ITEM->number.value + 1) > PRIVATE_DATA->dht22_temperature) && PRIVATE_DATA->dc3_pwm != 255) {
 						wbplusv3_command(device, 3255);
-						indigo_send_message(device, "Heating started: Aproaching dewpoint");
+						indigo_send_message(device, AUX_WEATHER_PROPERTY, "Heating started: Aproaching dewpoint");
 					}
 					if (((AUX_WEATHER_DEWPOINT_ITEM->number.value + 2) < PRIVATE_DATA->dht22_temperature) && PRIVATE_DATA->dc3_pwm != 0) {
 						wbplusv3_command(device, 3000);
-						indigo_send_message(device, "Heating stopped: Conditions are dry");
+						indigo_send_message(device, AUX_WEATHER_PROPERTY, "Heating stopped: Conditions are dry");
 					}
 				}
 				// Dew point warning
@@ -443,7 +443,7 @@ driver wbplusv3 {
 					wbplusv3_command(device, 66300744);
 					indigo_sleep(1);
 					X_AUX_CALIBRATE_ITEM->sw.value = false;
-					indigo_send_message(device, "Seensors recallibrated");
+					indigo_send_message(device, X_AUX_CALIBRATE_PROPERTY, "Seensors recallibrated");
 				}
 			}
 			item X_AUX_CALIBRATE {

@@ -737,9 +737,9 @@ static void position_timer_callback(indigo_device *device) {
 		int error_code;
 		if (asi_get_tracking_status(device, &is_tracking, &error_code)) {
 			if (PRIVATE_DATA->prev_tracking_error != error_code && error_code > 0) {
-				indigo_send_message(device, asi_error_string(error_code));
+				indigo_send_message(device, MOUNT_TRACKING_PROPERTY, asi_error_string(error_code));
 			} else if (PRIVATE_DATA->prev_tracking_error == 8 && error_code == 0) {
-				indigo_send_message(device, "Tracking can be started");
+				indigo_send_message(device, MOUNT_TRACKING_PROPERTY, "Tracking can be started");
 			}
 			PRIVATE_DATA->prev_tracking_error = error_code;
 		}
@@ -875,7 +875,7 @@ static void mount_connect_callback(indigo_device *device) {
 		}
 		if (result && !asi_detect_mount(device)) {
 			result = false;
-			indigo_send_message(device, "Handshake failed, not a ZWO AM mount");
+			indigo_send_message(device, CONNECTION_PROPERTY, "Handshake failed, not a ZWO AM mount");
 			asi_close(device);
 		}
 		if (result) {

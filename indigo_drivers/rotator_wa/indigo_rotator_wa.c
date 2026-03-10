@@ -229,12 +229,11 @@ static bool rotator_handle_position(indigo_device *device) {
 	if (wr_parse_status(response, &status)) {
 		if (!status.has_power) {
 			ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, "The rotator is not powered on");
 			ROTATOR_RELATIVE_MOVE_ITEM->number.value = 0;
 			ROTATOR_RELATIVE_MOVE_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, ROTATOR_RELATIVE_MOVE_PROPERTY, NULL);
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "The rotator is not powered on");
-			indigo_send_message(device, "Error: The rotator is not powered on");
 			return false;
 		}
 		ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;

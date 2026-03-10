@@ -93,10 +93,10 @@ static void rotator_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		indigo_execute_handler(device, rotator_timer_callback);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_send_message(device, "Connected to %s", device->name);
+		indigo_send_message(device, CONNECTION_PROPERTY, "Connected to %s", device->name);
 	} else {
 		indigo_cancel_pending_handlers(device);
-		indigo_send_message(device, "Disconnected from %s", device->name);
+		indigo_send_message(device, CONNECTION_PROPERTY, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_rotator_change_property(device, NULL, CONNECTION_PROPERTY);

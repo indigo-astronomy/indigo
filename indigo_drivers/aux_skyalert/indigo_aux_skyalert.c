@@ -111,7 +111,7 @@ static bool skyalert_open(indigo_device *device) {
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 			return true;
 		}
-		indigo_send_message(device, "Handshake failed");
+		indigo_send_message(device, CONNECTION_PROPERTY, "Handshake failed");
 		indigo_uni_close(&PRIVATE_DATA->handle);
 	}
 	return false;
@@ -136,9 +136,9 @@ static void aux_connection_handler(indigo_device *device) {
 			indigo_define_property(device, AUX_INFO_PROPERTY, NULL);
 			indigo_define_property(device, AUX_WEATHER_PROPERTY, NULL);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_send_message(device, "Connected to %s on %s", AUX_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+			indigo_send_message(device, CONNECTION_PROPERTY, "Connected to %s on %s", AUX_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
-			indigo_send_message(device, "Failed to connect to %s on %s", AUX_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+			indigo_send_message(device, CONNECTION_PROPERTY, "Failed to connect to %s on %s", AUX_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
@@ -147,7 +147,7 @@ static void aux_connection_handler(indigo_device *device) {
 		indigo_delete_property(device, AUX_INFO_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_WEATHER_PROPERTY, NULL);
 		skyalert_close(device);
-		indigo_send_message(device, "Disconnected from %s", device->name);
+		indigo_send_message(device, CONNECTION_PROPERTY, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_aux_change_property(device, NULL, CONNECTION_PROPERTY);

@@ -67,7 +67,7 @@ INDIGO_EXTERN indigo_result indigo_json_device_adapter_delete_property(indigo_cl
 
 /** Generate send message.
  */
-INDIGO_EXTERN indigo_result indigo_json_device_adapter_message_property(indigo_client *client, indigo_device *device, const char *message);
+INDIGO_EXTERN indigo_result indigo_json_device_adapter_message_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message);
 
 #ifdef __cplusplus
 }

@@ -1992,7 +1992,7 @@ static void process_plug_event(indigo_device *unused) {
 	device->private_data = private_data;
 	indigo_attach_device(device);
 	if (name_collision) {
-		indigo_send_message(device,"Warning: Camera model '%s' is already attached, please condsider changing the camera identifier", info.Name);
+		indigo_send_message(device, NULL, "Warning: Camera model '%s' is already attached, please condsider changing the camera identifier", info.Name);
 	}
 	devices[slot]=device;
 	if (info.ST4Port) {

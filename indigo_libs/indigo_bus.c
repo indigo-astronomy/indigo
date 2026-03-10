@@ -636,7 +636,7 @@ indigo_result indigo_change_property(indigo_client *client, indigo_property *pro
 			route = route || (!indigo_use_host_suffix && *device->name == '@');
 			if (route) {
 				if (device->access_token != 0 && device->access_token != property->access_token && property->access_token != indigo_get_master_token()) {
-					indigo_send_message(device, "Device '%s' is protected or locked for exclusive access", device->name);
+					indigo_send_message(device, property, "Device '%s' is protected or locked for exclusive access", device->name);
 					continue;
 				}
 				device->last_result = device->change_property(device, client, property);
@@ -726,7 +726,10 @@ indigo_result indigo_define_property_to_client(indigo_device *device, indigo_cli
 			pthread_mutex_unlock(&blob_mutex);
 		}
 		if (client->define_property != NULL) {
-			client->last_result = client->define_property(client, device, property, format != NULL ? message : NULL);
+			client->last_result = client->define_property(client, device, property, NULL);
+			if (format && client->last_result == INDIGO_OK && client->send_message) {
+				client->last_result = client->send_message(client, device, property, message);
+			}
 		}
 		if (indigo_use_strict_locking) {
 			pthread_mutex_unlock(&client_mutex);
@@ -789,7 +792,10 @@ indigo_result indigo_define_property(indigo_device *device, indigo_property *pro
 		for (int i = 0; i < MAX_CLIENTS; i++) {
 			indigo_client *client = clients[i];
 			if (client != NULL && client->define_property != NULL) {
-				client->last_result = client->define_property(client, device, property, format != NULL ? message : NULL);
+				client->last_result = client->define_property(client, device, property, NULL);
+				if (format && client->last_result == INDIGO_OK && client->send_message) {
+					client->last_result = client->send_message(client, device, property, message);
+				}
 			}
 		}
 		clear_previous_state(property);
@@ -816,7 +822,10 @@ indigo_result indigo_update_property_to_client(indigo_device *device, indigo_cli
 			va_end(args);
 		}
 		if (client != NULL && client->update_property != NULL) {
-			client->last_result = client->update_property(client, device, property, format != NULL ? message : NULL);
+			client->last_result = client->update_property(client, device, property, NULL);
+			if (format && client->last_result == INDIGO_OK && client->send_message) {
+				client->last_result = client->send_message(client, device, property, message);
+			}
 		}
 		if (indigo_use_strict_locking) {
 			pthread_mutex_unlock(&client_mutex);
@@ -935,7 +944,10 @@ indigo_result indigo_update_property(indigo_device *device, indigo_property *pro
 		for (int i = 0; i < MAX_CLIENTS; i++) {
 			indigo_client *client = clients[i];
 			if (client != NULL && client->update_property != NULL && (property->do_update || client->force_property_updates)) {
-				client->last_result = client->update_property(client, device, property, format != NULL ? message : NULL);
+				client->last_result = client->update_property(client, device, property, NULL);
+				if (format && client->last_result == INDIGO_OK && client->send_message) {
+					client->last_result = client->send_message(client, device, property, message);
+				}
 			}
 		}
 		clear_previous_state(property);
@@ -966,7 +978,10 @@ indigo_result indigo_delete_property(indigo_device *device, indigo_property *pro
 		for (int i = 0; i < MAX_CLIENTS; i++) {
 			indigo_client *client = clients[i];
 			if (client != NULL && client->delete_property != NULL) {
-				client->last_result = client->delete_property(client, device, property, format != NULL ? message : NULL);
+				client->last_result = client->delete_property(client, device, property, NULL);
+				if (format && client->last_result == INDIGO_OK && client->send_message) {
+					client->last_result = client->send_message(client, device, property, message);
+				}
 			}
 		}
 		if (indigo_use_strict_locking) {
@@ -976,14 +991,14 @@ indigo_result indigo_delete_property(indigo_device *device, indigo_property *pro
 	return INDIGO_OK;
 }
 
-indigo_result indigo_send_message(indigo_device *device, const char *format, ...) {
+indigo_result indigo_send_message(indigo_device *device, indigo_property *property, const char *format, ...) {
 	if (!is_started) {
 		return INDIGO_FAILED;
 	}
 	if (indigo_use_strict_locking) {
 		pthread_mutex_lock(&client_mutex);
 	}
-	char message[INDIGO_VALUE_SIZE];
+	char message[INDIGO_VALUE_SIZE] = { 0 };
 	if (format != NULL) {
 		va_list args;
 		va_start(args, format);
@@ -994,7 +1009,7 @@ indigo_result indigo_send_message(indigo_device *device, const char *format, ...
 	for (int i = 0; i < MAX_CLIENTS; i++) {
 		indigo_client *client = clients[i];
 		if (client != NULL && client->send_message != NULL) {
-			client->last_result = client->send_message(client, device, format != NULL ? message : NULL);
+			client->last_result = client->send_message(client, device, property, message);
 		}
 	}
 	if (indigo_use_strict_locking) {

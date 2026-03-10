@@ -1209,7 +1209,7 @@ static double calculate_donuts_snr(double (*array)[2], int size) {
 
 static void calibrate_re(double (*vector)[2], int size) {
 	int first = BG_RADIUS + 1, last = size - BG_RADIUS - 1;
-	double *mins = indigo_safe_malloc(size);
+	double *mins = indigo_safe_malloc(size * sizeof(double));
 //	remove_gradient(vector, size);
 	for (int i = first; i <= last; i++) {
 		double min = vector[i - BG_RADIUS][RE];

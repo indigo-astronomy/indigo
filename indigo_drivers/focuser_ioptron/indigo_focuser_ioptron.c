@@ -195,14 +195,13 @@ static void focuser_timer_callback(indigo_device *device) {
 			indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
 		}
 	} else {
-		indigo_send_message(device, "Can't read focuser state");
 		FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
 		FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
+		indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, "Can't read focuser state");
 	}
 	indigo_reschedule_timer(device, 1, &PRIVATE_DATA->timer);
 }

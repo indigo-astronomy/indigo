@@ -103,10 +103,10 @@ static void dome_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		indigo_execute_handler(device, dome_timer_callback);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_send_message(device, "Connected to %s", device->name);
+		indigo_send_message(device, CONNECTION_PROPERTY, "Connected to %s", device->name);
 	} else {
 		indigo_cancel_pending_handlers(device);
-		indigo_send_message(device, "Disconnected from %s", device->name);
+		indigo_send_message(device, CONNECTION_PROPERTY, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_dome_change_property(device, NULL, CONNECTION_PROPERTY);
@@ -122,7 +122,7 @@ static void dome_horizontal_coordinates_handler(indigo_device *device) {
 	//+ dome.DOME_HORIZONTAL_COORDINATES.on_change
 	if (DOME_PARK_PARKED_ITEM->sw.value) {
 		DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_send_message(device, "Dome is parked");
+		indigo_send_message(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, "Dome is parked");
 	} else {
 		PRIVATE_DATA->target_position = (int)DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target;
 		int dif = (int)(PRIVATE_DATA->target_position - PRIVATE_DATA->current_position + 360) % 360;
@@ -157,7 +157,7 @@ static void dome_steps_handler(indigo_device *device) {
 	//+ dome.DOME_STEPS.on_change
 	if (DOME_PARK_PARKED_ITEM->sw.value) {
 		DOME_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_send_message(device, "Dome is parked");
+		indigo_send_message(device, DOME_STEPS_PROPERTY, "Dome is parked");
 	} else {
 		DOME_STEPS_ITEM->number.value = (int)DOME_STEPS_ITEM->number.value;
 		if (DOME_DIRECTION_MOVE_COUNTERCLOCKWISE_ITEM->sw.value) {
@@ -183,7 +183,7 @@ static void dome_equatorial_coordinates_handler(indigo_device *device) {
 		if (DOME_PARK_PARKED_ITEM->sw.value) {
 			if (DOME_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_ALERT_STATE) {
 				DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_send_message(device, "Can not Synchronize. Dome is parked.");
+				indigo_send_message(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, "Can not Synchronize. Dome is parked.");
 			}
 		} else {
 			PRIVATE_DATA->target_position = (int)(DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target = az);

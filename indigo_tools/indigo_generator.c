@@ -1396,7 +1396,7 @@ void write_c_connection_change_handler(device_type *device) {
 			write_line("\t\tindigo_execute_handler(device, %s_timer_callback);", device->type);
 		}
 		write_line("\t\tCONNECTION_PROPERTY->state = INDIGO_OK_STATE;");
-		write_line("\t\tindigo_send_message(device, \"Connected to %%s\", device->name);");
+		write_line("\t\tindigo_send_message(device, CONNECTION_PROPERTY, \"Connected to %%s\", device->name);");
 	} else {
 		write_line("\t\tbool connection_result = true;");
 		if (is_multi_device) {
@@ -1430,15 +1430,15 @@ void write_c_connection_change_handler(device_type *device) {
 		}
 		write_line("\t\t\tCONNECTION_PROPERTY->state = INDIGO_OK_STATE;");
 		if (driver.serial) {
-			write_line("\t\t\tindigo_send_message(device, \"Connected to %%s on %%s\", %s, DEVICE_PORT_ITEM->text.value);", device->handle);
+			write_line("\t\t\tindigo_send_message(device, CONNECTION_PROPERTY, \"Connected to %%s on %%s\", %s, DEVICE_PORT_ITEM->text.value);", device->handle);
 		} else {
-			write_line("\t\t\tindigo_send_message(device, \"Connected to %%s\", device->name);");
+			write_line("\t\t\tindigo_send_message(device, CONNECTION_PROPERTY, \"Connected to %%s\", device->name);");
 		}
 		write_line("\t\t} else {");
 		if (driver.serial) {
-			write_line("\t\t\tindigo_send_message(device, \"Failed to connect to %%s on %%s\", %s, DEVICE_PORT_ITEM->text.value);", device->handle);
+			write_line("\t\t\tindigo_send_message(device, CONNECTION_PROPERTY, \"Failed to connect to %%s on %%s\", %s, DEVICE_PORT_ITEM->text.value);", device->handle);
 		} else {
-			write_line("\t\t\tindigo_send_message(device, \"Failed to connect to %%s\", device->name);");
+			write_line("\t\t\tindigo_send_message(device, CONNECTION_PROPERTY, \"Failed to connect to %%s\", device->name);");
 		}
 		if (is_multi_device) {
 			write_line("\t\t\tPRIVATE_DATA->count--;");
@@ -1464,7 +1464,7 @@ void write_c_connection_change_handler(device_type *device) {
 			write_line("\t\t%s_close(device);", driver.name);
 		}
 	}
-	write_line("\t\tindigo_send_message(device, \"Disconnected from %%s\", device->name);");
+	write_line("\t\tindigo_send_message(device, CONNECTION_PROPERTY, \"Disconnected from %%s\", device->name);");
 	write_line("\t\tCONNECTION_PROPERTY->state = INDIGO_OK_STATE;");
 	write_line("\t}");
 	write_line("\tindigo_%s_change_property(device, NULL, CONNECTION_PROPERTY);", device->type);

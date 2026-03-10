@@ -69,7 +69,7 @@ driver dmfc {
 					return true;
 				}
 				indigo_uni_close(&PRIVATE_DATA->handle);
-				indigo_send_message(device, "Handshake failed");
+				indigo_send_message(device, CONNECTION_PROPERTY, "Handshake failed");
 			}
 			return false;
 		}

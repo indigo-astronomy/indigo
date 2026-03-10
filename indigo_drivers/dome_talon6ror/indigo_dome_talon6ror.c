@@ -323,7 +323,7 @@ static void talon6ror_get_status(indigo_device *device) {
 			}
 			char *last_action = last_action_string[response[1] & 0x0F];
 			if (PRIVATE_DATA->last_action != last_action) {
-				indigo_send_message(device, last_action);
+				indigo_send_message(device, NULL, last_action);
 				PRIVATE_DATA->last_action = last_action;
 			}
 			PRIVATE_DATA->position = talon6ror_unpack(response + 2);
@@ -385,7 +385,7 @@ static void dome_connect_handler(indigo_device *device) {
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 			} else {
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_send_message(device, "Handshake failed");
+				indigo_send_message(device, CONNECTION_PROPERTY, "Handshake failed");
 			}
 		}
 		if (CONNECTION_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -422,11 +422,11 @@ static void dome_connect_handler(indigo_device *device) {
 				} else {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Checksum error, handshake failed");
-					indigo_send_message(device, "Checksum error, handshake failed");
+					indigo_send_message(device, CONNECTION_PROPERTY, "Checksum error, handshake failed");
 				}
 			} else {
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_send_message(device, "Handshake failed");
+				indigo_send_message(device, CONNECTION_PROPERTY, "Handshake failed");
 			}
 		}
 		if (CONNECTION_PROPERTY->state == INDIGO_BUSY_STATE) {

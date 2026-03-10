@@ -127,7 +127,7 @@ static void network_disconnection(indigo_device* device) {
 		CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;  // The alert state signals the unexpected disconnection
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		// Sending message as this update will not pass through the agent
-		indigo_send_message(device, "Error: Device disconnected unexpectedly", device->name);
+		indigo_send_message(device, CONNECTION_PROPERTY, "Error: Device disconnected unexpectedly", device->name);
 	}
 	// Otherwise not previously connected, nothing to do
 }

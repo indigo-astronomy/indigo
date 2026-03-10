@@ -499,12 +499,12 @@ static bool primaluce_open(indigo_device *device) {
 		char *text;
 		if (primaluce_command(device, "{\"req\":{\"get\":{\"MODNAME\":\"\"}}}") && (text = get_string(device, GET_MODNAME))) {
 			if (!strncmp(text, "SESTOSENSO", 10) || !strncmp(text, "ESATTO", 6)) {
-				indigo_send_message(device, "model: %s ", text);
+				indigo_send_message(device, CONNECTION_PROPERTY, "model: %s ", text);
 				PRIVATE_DATA->is_sestosenso_3 = strncmp(text, "SESTOSENSO3", 11)==0;
 				if (primaluce_command(device, "{\"req\":{\"get\":{\"SWVERS\":{\"SWAPP\":\"\"}}}}") && (text = get_string(device, GET_SWAPP))) {
 					double version = atof(text);
 					if (!PRIVATE_DATA->is_sestosenso_3 && version < 3.05) {
-						indigo_send_message(device, "WARNING: %s has firmware version %.2f and at least 3.05 is needed", INFO_DEVICE_MODEL_ITEM->text.value, version);
+						indigo_send_message(device, CONNECTION_PROPERTY, "WARNING: %s has firmware version %.2f and at least 3.05 is needed", INFO_DEVICE_MODEL_ITEM->text.value, version);
 					}
 					//primaluce_command(device, "{\"req\":{\"cmd\":{\"LOGLEVEL\":\"no output\"}}}");
 					return true;
@@ -515,7 +515,7 @@ static bool primaluce_open(indigo_device *device) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unsupported device");
 			}
 		} else {
-			indigo_send_message(device, "Handshake failed");
+			indigo_send_message(device, CONNECTION_PROPERTY, "Handshake failed");
 		}
 		indigo_uni_close(&PRIVATE_DATA->handle);
 	}
@@ -683,10 +683,10 @@ static void focuser_connection_handler(indigo_device *device) {
 				}
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 				if ((text = get_string(device, GET_MOT1_ERROR)) && *text) {
-					indigo_send_message(device, "ERROR: %s", text);
+					indigo_send_message(device, CONNECTION_PROPERTY, "ERROR: %s", text);
 				}
 				if (get_number(device, GET_CALRESTART_MOT1)) {
-					indigo_send_message(device, "ERROR: %s needs calibration", INFO_DEVICE_MODEL_ITEM->text.value);
+					indigo_send_message(device, CONNECTION_PROPERTY, "ERROR: %s needs calibration", INFO_DEVICE_MODEL_ITEM->text.value);
 				}
 				PRIVATE_DATA->has_abs_pos = getToken(device, 0, GET_MOT1_ABS_POS) != -1;
 				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = get_number(device, PRIVATE_DATA->has_abs_pos ? GET_MOT1_ABS_POS : GET_MOT1_ABS_POS_STEP);
@@ -804,9 +804,9 @@ static void focuser_connection_handler(indigo_device *device) {
 			indigo_define_property(device, X_CALIBRATE_F_PROPERTY, NULL);
 			indigo_execute_handler(device, focuser_timer_callback);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_send_message(device, "Connected to %s on %s", FOCUSER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+			indigo_send_message(device, CONNECTION_PROPERTY, "Connected to %s on %s", FOCUSER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
-			indigo_send_message(device, "Failed to connect to %s on %s", FOCUSER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+			indigo_send_message(device, CONNECTION_PROPERTY, "Failed to connect to %s on %s", FOCUSER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 			PRIVATE_DATA->count--;
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -831,7 +831,7 @@ static void focuser_connection_handler(indigo_device *device) {
 		if (--PRIVATE_DATA->count == 0) {
 			primaluce_close(device);
 		}
-		indigo_send_message(device, "Disconnected from %s", device->name);
+		indigo_send_message(device, CONNECTION_PROPERTY, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
@@ -1424,10 +1424,10 @@ static void rotator_connection_handler(indigo_device *device) {
 			if (primaluce_command(device, "{\"req\":{\"set\": {\"ARCO\":1}}}")) {
 				if (primaluce_command(device, "{\"req\":{\"get\": \"\"}}")) {
 					if ((text = get_string(device, GET_MOT2_ERROR)) && *text) {
-						indigo_send_message(device, "ERROR: %s", text);
+						indigo_send_message(device, CONNECTION_PROPERTY, "ERROR: %s", text);
 					}
 					if (get_number(device, GET_CALRESTART_MOT2)) {
-						indigo_send_message(device, "ERROR: ARCO needs calibration");
+						indigo_send_message(device, CONNECTION_PROPERTY, "ERROR: ARCO needs calibration");
 					}
 				}
 				PRIVATE_DATA->has_abs_pos = getToken(device, 0, GET_MOT2_ABS_POS) != -1;
@@ -1440,9 +1440,9 @@ static void rotator_connection_handler(indigo_device *device) {
 		if (connection_result) {
 			indigo_define_property(device, X_CALIBRATE_R_PROPERTY, NULL);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_send_message(device, "Connected to %s on %s", ROTATOR_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+			indigo_send_message(device, CONNECTION_PROPERTY, "Connected to %s on %s", ROTATOR_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
-			indigo_send_message(device, "Failed to connect to %s on %s", ROTATOR_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+			indigo_send_message(device, CONNECTION_PROPERTY, "Failed to connect to %s on %s", ROTATOR_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 			PRIVATE_DATA->count--;
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -1456,7 +1456,7 @@ static void rotator_connection_handler(indigo_device *device) {
 		if (--PRIVATE_DATA->count == 0) {
 			primaluce_close(device);
 		}
-		indigo_send_message(device, "Disconnected from %s", device->name);
+		indigo_send_message(device, CONNECTION_PROPERTY, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_rotator_change_property(device, NULL, CONNECTION_PROPERTY);

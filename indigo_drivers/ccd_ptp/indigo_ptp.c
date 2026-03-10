@@ -1050,7 +1050,7 @@ bool ptp_open(indigo_device *device) {
 	}
 	delegate.openSemafor = nil;
 	if (delegate.error) {
-		indigo_send_message(device, [delegate.error cStringUsingEncoding:NSUTF8StringEncoding]);
+		indigo_send_message(device, CONNECTION_PROPERTY, [delegate.error cStringUsingEncoding:NSUTF8StringEncoding]);
 		PRIVATE_DATA->delegate = nil;
 		camera.delegate = nil;
 		return false;
@@ -1093,7 +1093,7 @@ bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t o
 		return false;
 	}
 	if (delegate.error) {
-		indigo_send_message(device, [delegate.error cStringUsingEncoding:NSUTF8StringEncoding]);
+		indigo_send_message(device, NULL, [delegate.error cStringUsingEncoding:NSUTF8StringEncoding]);
 		return false;
 	}
  	[delegate.ptpResponse getBytes:&container length:sizeof(container)];
@@ -1225,7 +1225,7 @@ bool ptp_open(indigo_device *device) {
 			rc = libusb_claim_interface(handle, interface_number);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_claim_interface(%d) -> %s", interface_number, rc < 0 ? libusb_error_name(rc) : "OK");
 			if (rc == LIBUSB_ERROR_ACCESS) {
-				indigo_send_message(device, "Failed to connect, the camera is probably used by another program!");
+				indigo_send_message(device, CONNECTION_PROPERTY, "Failed to connect, the camera is probably used by another program!");
 				indigo_sleep(i + 1);
 			} else {
 				break;
@@ -1806,7 +1806,7 @@ bool ptp_set_property(indigo_device *device, ptp_property *property) {
 }
 
 bool ptp_exposure(indigo_device *device) {
-	indigo_send_message(device, "Exposure is not supported");
+	indigo_send_message(device, CCD_EXPOSURE_PROPERTY, "Exposure is not supported");
 	return false;
 }
 

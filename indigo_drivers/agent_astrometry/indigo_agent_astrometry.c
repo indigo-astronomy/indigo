@@ -239,7 +239,7 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 		double d1, d2;
 		char s[16];
 		if (strstr(line, "message:")) {
-			indigo_send_message(device, line + 9);
+			indigo_send_message(device, AGENT_START_PROCESS_PROPERTY, line + 9);
 		} else if (sscanf(line, "simplexy: nx=%d, ny=%d", &ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width, &ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height) == 2) {
 			ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width *= AGENT_PLATESOLVER_HINTS_DOWNSAMPLE_ITEM->number.value;
 			ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height *= AGENT_PLATESOLVER_HINTS_DOWNSAMPLE_ITEM->number.value;
@@ -271,16 +271,16 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 		} else if (sscanf(line, "Field rotation angle: up is %lg", &d1) == 1) {
 			AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value = d1;
 		} else if (sscanf(line, "Field 1: solved with index index-%lg", &d1) == 1) {
-			indigo_send_message(device, "Solved");
+			indigo_send_message(device, AGENT_START_PROCESS_PROPERTY, "Solved");
 			AGENT_PLATESOLVER_WCS_INDEX_ITEM->number.value = d1;
 		} else if (sscanf(line, "Field parity: %3s", s) == 1) {
 			AGENT_PLATESOLVER_WCS_PARITY_ITEM->number.value = !strcmp(s, "pos") ? 1 : -1;
 		} else if (strstr(line, "Total CPU time limit reached")) {
-			indigo_send_message(device, "CPU time limit reached");
+			indigo_send_message(device, AGENT_START_PROCESS_PROPERTY, "CPU time limit reached");
 		} else if (strstr(line, "Did not solve")) {
-			indigo_send_message(device, "No solution found");
+			indigo_send_message(device, AGENT_START_PROCESS_PROPERTY, "No solution found");
 		} else if (strstr(line, "You must list at least one index")) {
-			indigo_send_message(device, "You must select at least one index");
+			indigo_send_message(device, AGENT_START_PROCESS_PROPERTY, "You must select at least one index");
 		} else if (strstr(line, ": not found")) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s", line);
 			res = false;
@@ -295,7 +295,7 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 	if (ASTROMETRY_DEVICE_PRIVATE_DATA->abort_requested) {
 		res = false;
 		ASTROMETRY_DEVICE_PRIVATE_DATA->abort_requested = false;
-		indigo_send_message(device, "Aborted");
+		indigo_send_message(device, AGENT_START_PROCESS_PROPERTY, "Aborted");
 	}
 	return res;
 }
@@ -321,7 +321,7 @@ static void astrometry_abort(indigo_device *device) {
 
 static bool astrometry_solve(indigo_device *device, indigo_platesolver_task *task) {
 	if (pthread_mutex_trylock(&DEVICE_CONTEXT->config_mutex) == 0) {
-		indigo_send_message(device, "Solving started");
+		indigo_send_message(device, AGENT_START_PROCESS_PROPERTY, "Solving started");
 		void *image = task->image;
 		unsigned long image_size = task->size;
 		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed = true;
@@ -595,7 +595,7 @@ static void sync_installed_indexes(indigo_device *device, char *dir, indigo_prop
 					if (access(path, F_OK) == 0) {
 						continue;
 					}
-					indigo_send_message(device, "Downloading %s...", file_name);
+					indigo_send_message(device, property, "Downloading %s...", file_name);
 					if (!execute_command(device, "curl -L -s -o \"%s\" http://data.astrometry.net/%s/index-%s.fits", path, dir, file_name)) {
 						item->sw.value = false;
 						property->state = INDIGO_ALERT_STATE;
@@ -628,7 +628,7 @@ static void sync_installed_indexes(indigo_device *device, char *dir, indigo_prop
 						return;
 					}
 
-					indigo_send_message(device, "Done", file_name);
+					indigo_send_message(device, property, "Done", file_name);
 					add = true;
 					continue;
 				} else {

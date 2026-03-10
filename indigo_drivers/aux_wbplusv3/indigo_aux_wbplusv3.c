@@ -236,7 +236,7 @@ static bool wbplusv3_open(indigo_device *device) {
 			}
 		}
 		indigo_uni_close(&PRIVATE_DATA->handle);
-		indigo_send_message(device, "Handshake failed");
+		indigo_send_message(device, CONNECTION_PROPERTY, "Handshake failed");
 	}
 	return false;
 }
@@ -300,11 +300,11 @@ static void aux_timer_callback(indigo_device *device) {
 		if (AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value && AUX_WEATHER_PROPERTY->state == INDIGO_OK_STATE) {
 			if (((AUX_WEATHER_DEWPOINT_ITEM->number.value + 1) > PRIVATE_DATA->dht22_temperature) && PRIVATE_DATA->dc3_pwm != 255) {
 				wbplusv3_command(device, 3255);
-				indigo_send_message(device, "Heating started: Aproaching dewpoint");
+				indigo_send_message(device, AUX_WEATHER_PROPERTY, "Heating started: Aproaching dewpoint");
 			}
 			if (((AUX_WEATHER_DEWPOINT_ITEM->number.value + 2) < PRIVATE_DATA->dht22_temperature) && PRIVATE_DATA->dc3_pwm != 0) {
 				wbplusv3_command(device, 3000);
-				indigo_send_message(device, "Heating stopped: Conditions are dry");
+				indigo_send_message(device, AUX_WEATHER_PROPERTY, "Heating stopped: Conditions are dry");
 			}
 		}
 		// Dew point warning
@@ -341,9 +341,9 @@ static void aux_connection_handler(indigo_device *device) {
 			indigo_define_property(device, X_AUX_CALIBRATE_PROPERTY, NULL);
 			indigo_execute_handler(device, aux_timer_callback);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_send_message(device, "Connected to %s on %s", AUX_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+			indigo_send_message(device, CONNECTION_PROPERTY, "Connected to %s on %s", AUX_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
-			indigo_send_message(device, "Failed to connect to %s on %s", AUX_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+			indigo_send_message(device, CONNECTION_PROPERTY, "Failed to connect to %s on %s", AUX_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
@@ -360,7 +360,7 @@ static void aux_connection_handler(indigo_device *device) {
 		indigo_delete_property(device, AUX_INFO_PROPERTY, NULL);
 		indigo_delete_property(device, X_AUX_CALIBRATE_PROPERTY, NULL);
 		wbplusv3_close(device);
-		indigo_send_message(device, "Disconnected from %s", device->name);
+		indigo_send_message(device, CONNECTION_PROPERTY, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_aux_change_property(device, NULL, CONNECTION_PROPERTY);
@@ -439,7 +439,7 @@ static void aux_x_aux_calibrate_handler(indigo_device *device) {
 		wbplusv3_command(device, 66300744);
 		indigo_sleep(1);
 		X_AUX_CALIBRATE_ITEM->sw.value = false;
-		indigo_send_message(device, "Seensors recallibrated");
+		indigo_send_message(device, X_AUX_CALIBRATE_PROPERTY, "Seensors recallibrated");
 	}
 	//- aux.X_AUX_CALIBRATE.on_change
 	indigo_update_property(device, X_AUX_CALIBRATE_PROPERTY, NULL);

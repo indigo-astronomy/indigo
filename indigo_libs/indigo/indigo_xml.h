@@ -82,7 +82,7 @@ INDIGO_EXTERN indigo_result indigo_xml_device_adapter_delete_property(indigo_cli
 
 /** Generate send message.
  */
-INDIGO_EXTERN indigo_result indigo_xml_device_adapter_send_message(indigo_client *client, indigo_device *device, const char *message);
+INDIGO_EXTERN indigo_result indigo_xml_device_adapter_send_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message);
 
 #ifdef __cplusplus
 }

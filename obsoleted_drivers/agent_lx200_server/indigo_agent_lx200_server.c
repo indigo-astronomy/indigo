@@ -562,7 +562,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(LX200_CONFIGURATION_PROPERTY, property, false);
 		if (LX200_CONFIGURATION_EPOCH_ITEM->number.target != 0 && LX200_CONFIGURATION_EPOCH_ITEM->number.target != 2000) {
 			LX200_CONFIGURATION_EPOCH_ITEM->number.value = LX200_CONFIGURATION_EPOCH_ITEM->number.target = 0;
-			indigo_send_message(device, "Warning! Valid values are 0 or 2000 only, value adjusted to 0");
+			indigo_send_message(device, NULL, "Warning! Valid values are 0 or 2000 only, value adjusted to 0");
 		}
 		LX200_CONFIGURATION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, LX200_CONFIGURATION_PROPERTY, NULL);

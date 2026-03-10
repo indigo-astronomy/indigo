@@ -544,13 +544,13 @@ static void dome_timer_callback(indigo_device *device) {
 		/* Threshold taken from INDI driver */
 		if ((v_rotator < VOLT_THRESHOLD) || (v_shutter < VOLT_THRESHOLD)) {
 			if (!low_voltage) {
-				indigo_send_message(device, "Dome power is low! (U_rotator = %.2fV, U_shutter = %.2fV)", v_rotator, v_shutter);
+				indigo_send_message(device, NEXDOME_POWER_PROPERTY, "Dome power is low! (U_rotator = %.2fV, U_shutter = %.2fV)", v_rotator, v_shutter);
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Dome power is low! (U_rotator = %.2fV, U_shutter = %.2fV)", v_rotator, v_shutter);
 			}
 			low_voltage = true;
 		} else {
 			if (low_voltage) {
-				indigo_send_message(device, "Dome power is normal! (U_rotator = %.2fV, U_shutter = %.2fV)", v_rotator, v_shutter);
+				indigo_send_message(device, NEXDOME_POWER_PROPERTY, "Dome power is normal! (U_rotator = %.2fV, U_shutter = %.2fV)", v_rotator, v_shutter);
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Dome power is normal! (U_rotator = %.2fV, U_shutter = %.2fV)", v_rotator, v_shutter);
 			}
 			low_voltage = false;

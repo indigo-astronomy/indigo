@@ -1229,15 +1229,30 @@ static void *message_handler(parser_state state, parser_context *context, char *
 	if (state == ATTRIBUTE_VALUE_STATE) {
 		if (!strncmp(name, "device", INDIGO_NAME_SIZE)) {
 			if (indigo_use_host_suffix) {
-				snprintf(message, INDIGO_NAME_SIZE, "%s %s: ", value, context->device->name);
+				snprintf(property->device, INDIGO_NAME_SIZE, "%s %s", value, context->device->name);
 			} else {
-				snprintf(message, INDIGO_NAME_SIZE, "%s: ", value);
+				INDIGO_COPY_NAME(property->device, value);
 			}
+		} else if (!strncmp(name, "name",INDIGO_NAME_SIZE)) {
+			indigo_copy_property_name(device->version, property, value);;
 		} else if (!strcmp(name, "message")) {
 			strcat(message, value);
 		}
 	} else if (state == END_TAG_STATE) {
-		indigo_send_message(device, *message ? message : NULL);
+		pthread_mutex_lock(&context->mutex);
+		indigo_property *cachedProperty = NULL;
+		for (int index = 0; index < context->count; index++) {
+			cachedProperty = context->properties[index];
+			if (property != NULL && !strncmp(property->device, cachedProperty->device, INDIGO_NAME_SIZE) && !strncmp(property->name, cachedProperty->name, INDIGO_NAME_SIZE)) {
+				break;
+			}
+			cachedProperty = NULL;
+		}
+		if (cachedProperty) {
+			indigo_send_message(device, cachedProperty, *message ? message : NULL);
+		} else {
+			indigo_send_message(device, property, NULL, *message ? message : NULL);
+		}
 		indigo_clear_property(property);
 		return top_level_handler;
 	}
@@ -2259,7 +2274,7 @@ failure:
 	return INDIGO_OK;
 }
 
-indigo_result indigo_xml_device_adapter_send_message(indigo_client *client, indigo_device *device, const char *message) {
+indigo_result indigo_xml_device_adapter_send_message(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	assert(device != NULL);
 	assert(client != NULL);
 	if (!indigo_reshare_remote_devices && device->is_remote) {
@@ -2277,7 +2292,9 @@ indigo_result indigo_xml_device_adapter_send_message(indigo_client *client, indi
 	indigo_uni_handle *handle = client_context->output;
 	assert(handle != NULL);
 	if (message) {
-		if (device) {
+		if (property) {
+			INDIGO_PRINTF(handle, "<message device='%s' name='%s'%s/>\n", property->device, property->name, message_attribute(message));
+		} else if (device) {
 			INDIGO_PRINTF(handle, "<message device='%s'%s/>\n", device->name, message_attribute(message));
 		} else {
 			INDIGO_PRINTF(handle, "<message%s/>\n", message_attribute(message));

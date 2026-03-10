@@ -301,16 +301,16 @@ static void parse_line(indigo_device *device, char *line) {
 		AGENT_PLATESOLVER_WCS_HEIGHT_ITEM->number.value = ASTAP_DEVICE_PRIVATE_DATA->frame_height * AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value;
 		AGENT_PLATESOLVER_WCS_PARITY_ITEM->number.value = AGENT_PLATESOLVER_WCS_PARITY_ITEM->number.value * (d >= 0 ? 1 : -1);
 	} else if ((s = strstr(line, "ERROR="))) {
-		indigo_send_message(device, s + 6);
+		indigo_send_message(device, AGENT_START_PROCESS_PROPERTY, s + 6);
 		indigo_error("ASTAP Error: %s", s + 8);
 	} else if ((s = strstr(line, "WARNING="))) {
-		indigo_send_message(device, s + 8);
+		indigo_send_message(device, AGENT_START_PROCESS_PROPERTY, s + 8);
 		indigo_error("ASTAP Warning: %s", s + 8);
 	} else if ((s = strstr(line, "COMMENT="))) {
 		indigo_log("ASTAP Comment: %s", s + 8);
 	}
 	if ((s = strstr(line, "Solved in "))) {
-		indigo_send_message(device, "Solved in %gs", atof(s + 10));
+		indigo_send_message(device, AGENT_START_PROCESS_PROPERTY, "Solved in %gs", atof(s + 10));
 	}
 }
 
@@ -318,7 +318,7 @@ static void time_limit_timer(indigo_device *device) {
 	kill(-ASTAP_DEVICE_PRIVATE_DATA->pid, SIGTERM);
 	ASTAP_DEVICE_PRIVATE_DATA->pid = 0;
 	INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed = true;
-	indigo_send_message(device, "Time limit reached!");
+	indigo_send_message(device, AGENT_START_PROCESS_PROPERTY, "Time limit reached!");
 }
 
 static bool execute_command(indigo_device *device, char *command, ...) {
@@ -340,7 +340,7 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 		case -1: {
 			close(pipe_stdout[0]);
 			close(pipe_stdout[1]);
-			indigo_send_message(device, "Failed to execute %s (%s)", command_buf, strerror(errno));
+			indigo_send_message(device, AGENT_START_PROCESS_PROPERTY, "Failed to execute %s (%s)", command_buf, strerror(errno));
 			return false;
 		}
 		case 0: {
@@ -374,7 +374,7 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 	if (ASTAP_DEVICE_PRIVATE_DATA->abort_requested) {
 		res = false;
 		ASTAP_DEVICE_PRIVATE_DATA->abort_requested = false;
-		indigo_send_message(device, "Aborted");
+		indigo_send_message(device, AGENT_START_PROCESS_PROPERTY, "Aborted");
 	}
 	return res;
 }
@@ -538,7 +538,7 @@ static void sync_installed_indexes(indigo_device *device, char *dir, indigo_prop
 							continue;
 						if (first_one) {
 							first_one = false;
-							indigo_send_message(device, "Downloading %s...", astap_index[j].name);
+							indigo_send_message(device, property, "Downloading %s...", astap_index[j].name);
 						}
 						snprintf(url, sizeof((path)), astap_index[j].path, INDEX_BASE_URL, files[k]);
 						if (!execute_command(device, "curl -L -s --compressed -o \"%s\" \"%s\"", path, url)) {
@@ -556,16 +556,16 @@ static void sync_installed_indexes(indigo_device *device, char *dir, indigo_prop
 							return;
 						}
 					}
-					indigo_send_message(device, "Done");
+					indigo_send_message(device, property, "Done");
 					add = true;
 					continue;
 				} else {
 					sprintf(path, "%s/%s", base_dir, astap_index[j].name);
 					if (access(path, F_OK) == 0) {
-						indigo_send_message(device, "Removing %s...", astap_index[j].name);
+						indigo_send_message(device, AGENT_START_PROCESS_PROPERTY, "Removing %s...", astap_index[j].name);
 						execute_command(device, "rm -rf \"%s\"", path);
 						remove = true;
-						indigo_send_message(device, "Done");
+						indigo_send_message(device, property, "Done");
 					}
 				}
 			}

@@ -467,11 +467,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			CCD_ABORT_EXPOSURE_ITEM->sw.value = false;
 			if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 				CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_send_message(device, "Streaming will be finished within %gs", CCD_STREAMING_EXPOSURE_ITEM->number.target);
+				indigo_send_message(device, CCD_ABORT_EXPOSURE_PROPERTY, "Streaming will be finished within %gs", CCD_STREAMING_EXPOSURE_ITEM->number.target);
 				indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 			} else {
 				if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-					indigo_send_message(device, "Exposure can't be aborted");
+					indigo_send_message(device, CCD_ABORT_EXPOSURE_PROPERTY, "Exposure can't be aborted");
 				}
 				CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
