@@ -183,7 +183,7 @@ static bool pmc8_open(indigo_device *device) {
 				PRIVATE_DATA->rate[2] = round(15.041 / sec_per_count * 25);
 				return true;
 			} else {
-				indigo_send_message(device, CONNECTION_PROPERTY, "Retrying connection in 10 seconds...");
+				indigo_send_message(device, BUSY_PROPERTY, "Retrying connection in 10 seconds...");
 				indigo_sleep(10);
 			}
 		}
@@ -724,7 +724,7 @@ static void mount_switch_connection_handler(indigo_device *device) {
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			mount_connect_handler(device);
     } else if (PRIVATE_DATA->is_udp && (CONNECTION_SERIAL_ITEM->sw.value || CONNECTION_SERIAL_DTR_ITEM->sw.value)) {
-			indigo_send_message(device, CONNECTION_MODE_PROPERTY, "Can't switch from UDP to SERIAL directly, switch to TCP first!");
+			indigo_send_message(device, ALERT_PROPERTY, "Can't switch from UDP to SERIAL directly, switch to TCP first!");
 			indigo_set_switch(CONNECTION_MODE_PROPERTY, CONNECTION_UDP_ITEM, true);
 			CONNECTION_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
     } else if (PRIVATE_DATA->is_tcp && CONNECTION_UDP_ITEM->sw.value) {
@@ -740,7 +740,7 @@ static void mount_switch_connection_handler(indigo_device *device) {
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			mount_connect_handler(device);
     } else if (PRIVATE_DATA->is_serial && CONNECTION_UDP_ITEM->sw.value) {
-			indigo_send_message(device, CONNECTION_MODE_PROPERTY, "Can't switch from SERIAL to UDP directly, switch to TCP first!");
+			indigo_send_message(device, ALERT_PROPERTY, "Can't switch from SERIAL to UDP directly, switch to TCP first!");
 			indigo_set_switch(CONNECTION_MODE_PROPERTY, CONNECTION_SERIAL_ITEM, true);
 			CONNECTION_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
     } else if (PRIVATE_DATA->is_serial && CONNECTION_TCP_ITEM->sw.value) {

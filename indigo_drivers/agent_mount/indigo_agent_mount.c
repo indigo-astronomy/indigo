@@ -197,7 +197,7 @@ static void mount_control(indigo_device *device, char *operation) {
 	FILTER_DEVICE_CONTEXT->running_process = true;
 	if (!DEVICE_PRIVATE_DATA->mount_unparked) {
 		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
-		indigo_send_message(device, MOUNT_PARK_PROPERTY, "Unparked");
+		indigo_send_message(device, IDLE_PROPERTY, "Unparked");
 	}
 	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, operation, true);
 	static const char *names[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
@@ -251,20 +251,28 @@ static void mount_control(indigo_device *device, char *operation) {
 }
 
 static void slew_process(indigo_device *device) {
-	indigo_send_message(device, AGENT_START_PROCESS_PROPERTY, "Slew started");
+	indigo_send_message(device, IDLE_PROPERTY, "Slew started");
 	mount_control(device, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME);
-	indigo_send_message(device, AGENT_START_PROCESS_PROPERTY, AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE ? "Slew finished" : "Slew failed");
+	if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE) {
+		indigo_send_message(device, IDLE_PROPERTY, "Slew finished");
+	} else {
+		indigo_send_message(device, ALERT_PROPERTY,"Slew failed");
+	}
 	if (AGENT_MOUNT_ENABLE_HA_LIMIT_FEATURE_ITEM->sw.value) {
-		indigo_send_message(device, AGENT_START_PROCESS_PROPERTY, "HA limit is active");
+		indigo_send_message(device, IDLE_PROPERTY, "HA limit is active");
 	}
 	if (AGENT_MOUNT_ENABLE_TIME_LIMIT_FEATURE_ITEM->sw.value) {
-		indigo_send_message(device, AGENT_START_PROCESS_PROPERTY, "Time limit is active");
+		indigo_send_message(device, IDLE_PROPERTY, "Time limit is active");
 	}
 }
 
 static void sync_process(indigo_device *device) {
 	mount_control(device, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME);
-	indigo_send_message(device, AGENT_START_PROCESS_PROPERTY, AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE ? "Synced" : "Sync failed");
+	if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE) {
+		indigo_send_message(device, IDLE_PROPERTY, "Synced");
+	} else {
+		indigo_send_message(device, ALERT_PROPERTY, "Sync failed");
+	}
 }
 
 static void lx200_server_worker_thread(indigo_uni_worker_data *data) {
@@ -452,7 +460,7 @@ static void abort_imager_process(indigo_device *device, char *reason) {
 	if (!AGENT_ABORT_IMAGER_ITEM->sw.value) {
 		return;
 	}
-	indigo_send_message(device, AGENT_START_PROCESS_PROPERTY, "Aborting Imager agent process due to %s", reason);
+	indigo_send_message(device, ALERT_PROPERTY, "Aborting Imager agent process due to %s", reason);
 	char *related_agent_name = indigo_filter_first_related_agent(device, "Imager Agent");
 	if (related_agent_name) {
 		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_ABORT_PROCESS_PROPERTY_NAME, AGENT_ABORT_PROCESS_ITEM_NAME, true);
@@ -463,7 +471,7 @@ static void abort_guider_process(indigo_device *device, char *reason) {
 	if (!AGENT_ABORT_GUIDER_ITEM->sw.value) {
 		return;
 	}
-	indigo_send_message(device, AGENT_START_PROCESS_PROPERTY, "Aborting Guider agent process due to %s", reason);
+	indigo_send_message(device, ALERT_PROPERTY, "Aborting Guider agent process due to %s", reason);
 	char *related_agent_name = indigo_filter_first_related_agent(device, "Guider Agent");
 	if (related_agent_name) {
 		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_ABORT_PROCESS_PROPERTY_NAME, AGENT_ABORT_PROCESS_ITEM_NAME, true);
@@ -471,7 +479,7 @@ static void abort_guider_process(indigo_device *device, char *reason) {
 }
 
 static void reset_star_selection(indigo_device *device, char *reason) {
-	// indigo_send_message(device, AGENT_START_PROCESS_PROPERTY, "Clearing star selection due to %s", reason);
+	// indigo_send_message(device, ALERT_PROPERTY, "Clearing star selection due to %s", reason);
 	char *related_agent_name = indigo_filter_first_related_agent(device, "Imager Agent");
 	if (related_agent_name) {
 		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_START_PROCESS_PROPERTY_NAME, AGENT_IMAGER_CLEAR_SELECTION_ITEM_NAME, true);
@@ -556,7 +564,7 @@ static void handle_mount_change(indigo_device *device) {
 				park = ha < target;
 			}
 			if (park) {
-				indigo_send_message(device, MOUNT_PARK_PROPERTY, "Hour angle tracking limit reached");
+				indigo_send_message(device, ALERT_PROPERTY, "Hour angle tracking limit reached");
 			}
 		}
 		if (AGENT_MOUNT_ENABLE_TIME_LIMIT_FEATURE_ITEM->sw.value) {
@@ -568,7 +576,7 @@ static void handle_mount_change(indigo_device *device) {
 				park = true;
 			}
 			if (park) {
-				indigo_send_message(device, MOUNT_PARK_PROPERTY, "Time limit reached");
+				indigo_send_message(device, ALERT_PROPERTY, "Time limit reached");
 			}
 		}
 		if (park) {
@@ -1076,7 +1084,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(AGENT_LX200_CONFIGURATION_PROPERTY, property, false);
 		if (AGENT_LX200_CONFIGURATION_EPOCH_ITEM->number.target != 0 && AGENT_LX200_CONFIGURATION_EPOCH_ITEM->number.target != 2000) {
 			AGENT_LX200_CONFIGURATION_EPOCH_ITEM->number.value = AGENT_LX200_CONFIGURATION_EPOCH_ITEM->number.target = 0;
-			indigo_send_message(device, AGENT_LX200_CONFIGURATION_PROPERTY, "Warning! Valid values are 0 or 2000 only, value adjusted to 0");
+			indigo_send_message(device, BUSY_PROPERTY, "Warning! Valid values are 0 or 2000 only, value adjusted to 0");
 		}
 		AGENT_LX200_CONFIGURATION_PROPERTY->state = INDIGO_OK_STATE;
 		save_config(device);
@@ -1207,7 +1215,7 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 	if (device == FILTER_CLIENT_CONTEXT->device) {
 		if (!strcmp(property->name, MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY_NAME)) {
 			if (property->count > 0) {
-				indigo_send_message(FILTER_CLIENT_CONTEXT->device, property, "There are active saved alignment points. Make sure you want to use them.");
+				indigo_send_message(FILTER_CLIENT_CONTEXT->device, BUSY_PROPERTY, "There are active saved alignment points. Make sure you want to use them.");
 			}
 		} else {
 			snoop_changes(client, device, property);

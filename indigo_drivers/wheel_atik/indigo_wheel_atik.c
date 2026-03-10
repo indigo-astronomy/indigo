@@ -118,16 +118,16 @@ static void wheel_connection_handler(indigo_device *device) {
 		}
 		if (connection_result) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_send_message(device, CONNECTION_PROPERTY, "Connected to %s", device->name);
+			indigo_send_message(device, OK_PROPERTY, "Connected to %s", device->name);
 		} else {
-			indigo_send_message(device, CONNECTION_PROPERTY, "Failed to connect to %s", device->name);
+			indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s", device->name);
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
 		atik_close(device);
-		indigo_send_message(device, CONNECTION_PROPERTY, "Disconnected from %s", device->name);
+		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_wheel_change_property(device, NULL, CONNECTION_PROPERTY);

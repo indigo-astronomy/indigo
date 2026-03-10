@@ -159,7 +159,7 @@ static void network_disconnection(indigo_device* device) {
 		CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;  // The alert state signals the unexpected disconnection
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		// Sending message as this update will not pass through the agent
-		indigo_send_message(device, CONNECTION_PROPERTY, "Error: Device disconnected unexpectedly", device->name);
+		indigo_send_message(device, ALERT_PROPERTY, "Error: Device disconnected unexpectedly", device->name);
 	}
 	// Otherwise not previously connected, nothing to do
 }
@@ -884,7 +884,7 @@ static void dome_connect_callback(indigo_device *device) {
 				PRIVATE_DATA->shutter_is_up = (bool)shutter_is_up;
 
 				if (!shutter_is_up) {
-					indigo_send_message(device, DOME_SHUTTER_PROPERTY, "Shutter not detected");
+					indigo_send_message(device, ALERT_PROPERTY, "Shutter not detected");
 					DOME_SHUTTER_PROPERTY->hidden = true;
 					X_SHUTTER_CALIBRATE_PROPERTY->hidden = true;
 				} else {

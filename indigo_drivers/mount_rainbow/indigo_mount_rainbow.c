@@ -231,7 +231,7 @@ static void rainbow_reader(indigo_device *device) {
 			strncpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, response + 3, 6);
 			PRIVATE_DATA->version = atol(response + 3);
 			if (PRIVATE_DATA->version < 200625) {
-				indigo_send_message(device, MOUNT_INFO_PROPERTY, "Please update firmware of your mount to the version 200625 or later!");
+				indigo_send_message(device, ALERT_PROPERTY, "Please update firmware of your mount to the version 200625 or later!");
 			}
 			MOUNT_INFO_PROPERTY->state = INDIGO_OK_STATE;
 			continue;

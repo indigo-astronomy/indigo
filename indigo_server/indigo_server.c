@@ -1135,11 +1135,11 @@ static indigo_result enumerate_properties(indigo_device *device, indigo_client *
 
 static void send_driver_load_error_message(indigo_result result, char *driver_name) {
 	if (result == INDIGO_UNSUPPORTED_ARCH) {
-		indigo_send_message(&server_device, NULL, "Driver '%s' failed to load: not supported on this architecture", driver_name);
+		indigo_send_message(&server_device, ALERT_PROPERTY, "Driver '%s' failed to load: not supported on this architecture", driver_name);
 	} else if (result == INDIGO_UNRESOLVED_DEPS) {
-		indigo_send_message(&server_device, NULL, "Driver '%s' failed to load: unresolved dependencies", driver_name);
+		indigo_send_message(&server_device, ALERT_PROPERTY, "Driver '%s' failed to load: unresolved dependencies", driver_name);
 	} else if (result != INDIGO_OK){
-		indigo_send_message(&server_device, NULL, "Driver '%s' failed to load", driver_name);
+		indigo_send_message(&server_device, ALERT_PROPERTY, "Driver '%s' failed to load", driver_name);
 	}
 }
 
@@ -1214,9 +1214,9 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 				}
 				if (result != INDIGO_OK) {
 					if (result == INDIGO_BUSY) {
-						indigo_send_message(device, SERVER_DRIVERS_PROPERTY, "Driver %s is in use, can't be unloaded", name);
+						indigo_send_message(device, ALERT_PROPERTY, "Driver %s is in use, can't be unloaded", name);
 					} else {
-						indigo_send_message(device, SERVER_DRIVERS_PROPERTY, "Driver %s failed to unload", name);
+						indigo_send_message(device, ALERT_PROPERTY, "Driver %s failed to unload", name);
 					}
 				}
 			}
@@ -1385,7 +1385,7 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 		// -------------------------------------------------------------------------------- INTERNET_SHARING
 		indigo_property_copy_values(SERVER_INTERNET_SHARING_PROPERTY, property, false);
 		if (SERVER_INTERNET_SHARING_ENABLED_ITEM->sw.value) { /* item[1] is enable forwarding, aka network sharing */
-			indigo_send_message(device, SERVER_INTERNET_SHARING_PROPERTY, "Internet sharing is potentially dangerous, everyone connected to your INDIGO Sky can access your network!");
+			indigo_send_message(device, BUSY_PROPERTY, "Internet sharing is potentially dangerous, everyone connected to your INDIGO Sky can access your network!");
 			return execute_command(device, SERVER_INTERNET_SHARING_PROPERTY, "s_rpi_ctrl.sh --enable-forwarding");
 		} else {
 			return execute_command(device, SERVER_INTERNET_SHARING_PROPERTY, "s_rpi_ctrl.sh --disable-forwarding");

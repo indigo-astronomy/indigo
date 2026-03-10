@@ -173,7 +173,7 @@ static bool mount_control(indigo_device *device, char *operation, double ra, dou
 		indigo_sleep(settle_time);
 		return true;
 	}
-	indigo_send_message(device, AGENT_START_PROCESS_PROPERTY, "No mount agent selected");
+	indigo_send_message(device, ALERT_PROPERTY, "No mount agent selected");
 	return false;
 }
 
@@ -227,7 +227,7 @@ static bool start_exposure(indigo_device *device, double exposure) {
 		}
 		return true;
 	}
-	indigo_send_message(device, AGENT_START_PROCESS_PROPERTY, "Failed to start exposure - no image source agent selected");
+	indigo_send_message(device, ALERT_PROPERTY, "Failed to start exposure - no image source agent selected");
 	return false;
 }
 
@@ -283,9 +283,9 @@ static void populate_pa_state(indigo_device * device) {
 		AGENT_PLATESOLVER_PA_STATE_ACCURACY_WARNING_ITEM->number.value = 0;
 		snprintf(message, sizeof(message), "Polar error: %.2f'", AGENT_PLATESOLVER_PA_STATE_POLAR_ERROR_ITEM->number.value * 60);
 	}
-	indigo_send_message(device, AGENT_START_PROCESS_PROPERTY, message);
-	indigo_send_message(device, AGENT_START_PROCESS_PROPERTY, "Azimuth error: %+.2f', move %s (use azimuth adjustment knob)", AGENT_PLATESOLVER_PA_STATE_AZ_ERROR_ITEM->number.value * 60, (AGENT_PLATESOLVER_PA_STATE_AZ_CORRECTION_CW_ITEM->number.value > 0) ? "C.W." : "C.C.W.");
-	indigo_send_message(device, AGENT_START_PROCESS_PROPERTY, "Altitude error: %+.2f', move %s (use altitude adjustment knob)", AGENT_PLATESOLVER_PA_STATE_ALT_ERROR_ITEM->number.value * 60, (AGENT_PLATESOLVER_PA_STATE_ALT_CORRECTION_UP_ITEM->number.value > 0) ? "Up" : "Down");
+	indigo_send_message(device, ALERT_PROPERTY, message);
+	indigo_send_message(device, ALERT_PROPERTY, "Azimuth error: %+.2f', move %s (use azimuth adjustment knob)", AGENT_PLATESOLVER_PA_STATE_AZ_ERROR_ITEM->number.value * 60, (AGENT_PLATESOLVER_PA_STATE_AZ_CORRECTION_CW_ITEM->number.value > 0) ? "C.W." : "C.C.W.");
+	indigo_send_message(device, ALERT_PROPERTY, "Altitude error: %+.2f', move %s (use altitude adjustment knob)", AGENT_PLATESOLVER_PA_STATE_ALT_ERROR_ITEM->number.value * 60, (AGENT_PLATESOLVER_PA_STATE_ALT_CORRECTION_UP_ITEM->number.value > 0) ? "Up" : "Down");
 }
 
 static void to_jnow_if_not(indigo_device *device, double *ra, double *dec) {
@@ -313,7 +313,7 @@ static void process_failed(indigo_device *device, char *message) {
 		AGENT_PLATESOLVER_START_RECALCULATE_PA_ERROR_ITEM->sw.value = false;
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 	}
-	indigo_send_message(device, AGENT_START_PROCESS_PROPERTY, message);
+	indigo_send_message(device, IDLE_PROPERTY, message);
 }
 
 static void abort_process(indigo_device *device) {
@@ -374,7 +374,7 @@ static void solve(indigo_platesolver_task *task) {
 	}
 	// Solve with a particular plate solver
 	if (task->image == NULL) {
-		indigo_send_message(device, AGENT_START_PROCESS_PROPERTY, "Downloading image");
+		indigo_send_message(device, IDLE_PROPERTY, "Downloading image");
 		if (!indigo_download_blob(task->image_url, &task->image, &task->size, NULL)) {
 			process_failed(device, "Image download failed");
 			return;
@@ -420,7 +420,7 @@ static void solve(indigo_platesolver_task *task) {
 			process_failed(device, "Sync failed");
 			return;
 		}
-		indigo_send_message(device, AGENT_START_PROCESS_PROPERTY, "Synced");
+		indigo_send_message(device, IDLE_PROPERTY, "Synced");
 	}
 	if (AGENT_PLATESOLVER_SYNC_CENTER_ITEM->sw.value) {
 		AGENT_PLATESOLVER_WCS_STATE_ITEM->number.value = INDIGO_SOLVER_STATE_CENTERING;
@@ -429,7 +429,7 @@ static void solve(indigo_platesolver_task *task) {
 			process_failed(device, "Slew failed");
 			return;
 		}
-		indigo_send_message(device, AGENT_START_PROCESS_PROPERTY, "Centered");
+		indigo_send_message(device, IDLE_PROPERTY, "Centered");
 	}
 	if (AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM->sw.value) {
 		if (AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == INDIGO_POLAR_ALIGN_REFERENCE_1) {
@@ -791,7 +791,7 @@ indigo_result indigo_platesolver_change_property(indigo_device *device, indigo_c
 		indigo_property_copy_values(AGENT_PLATESOLVER_HINTS_PROPERTY, property, false);
 		if (AGENT_PLATESOLVER_HINTS_EPOCH_ITEM->number.target != 0 && AGENT_PLATESOLVER_HINTS_EPOCH_ITEM->number.target != 2000) {
 			AGENT_PLATESOLVER_HINTS_EPOCH_ITEM->number.value = AGENT_PLATESOLVER_HINTS_EPOCH_ITEM->number.target = 2000;
-			indigo_send_message(device, AGENT_PLATESOLVER_HINTS_PROPERTY, "Warning! Valid values are 0 or 2000 only, value adjusted to 2000");
+			indigo_send_message(device, BUSY_PROPERTY, "Warning: Valid values are 0 or 2000 only, value adjusted to 2000");
 		}
 		AGENT_PLATESOLVER_HINTS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_PLATESOLVER_HINTS_PROPERTY, NULL);

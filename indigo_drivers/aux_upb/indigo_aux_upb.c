@@ -796,9 +796,9 @@ static void aux_connection_handler(indigo_device *device) {
 			indigo_define_property(device, AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROPERTY, NULL);
 			indigo_execute_handler(device, aux_timer_callback);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_send_message(device, CONNECTION_PROPERTY, "Connected to %s on %s", AUX_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", AUX_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
-			indigo_send_message(device, CONNECTION_PROPERTY, "Failed to connect to %s on %s", AUX_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+			indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", AUX_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 			PRIVATE_DATA->count--;
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -829,7 +829,7 @@ static void aux_connection_handler(indigo_device *device) {
 		if (--PRIVATE_DATA->count == 0) {
 			upb_close(device);
 		}
-		indigo_send_message(device, CONNECTION_PROPERTY, "Disconnected from %s", device->name);
+		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_aux_change_property(device, NULL, CONNECTION_PROPERTY);
@@ -1329,9 +1329,9 @@ static void focuser_connection_handler(indigo_device *device) {
 		if (connection_result) {
 			indigo_execute_handler(device, focuser_timer_callback);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_send_message(device, CONNECTION_PROPERTY, "Connected to %s on %s", FOCUSER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", FOCUSER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
-			indigo_send_message(device, CONNECTION_PROPERTY, "Failed to connect to %s on %s", FOCUSER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+			indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", FOCUSER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 			PRIVATE_DATA->count--;
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -1341,7 +1341,7 @@ static void focuser_connection_handler(indigo_device *device) {
 		if (--PRIVATE_DATA->count == 0) {
 			upb_close(device);
 		}
-		indigo_send_message(device, CONNECTION_PROPERTY, "Disconnected from %s", device->name);
+		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);

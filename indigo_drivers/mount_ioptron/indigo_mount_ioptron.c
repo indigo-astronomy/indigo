@@ -1392,9 +1392,9 @@ static void mount_connect_callback(indigo_device *device) {
 				if (!PRIVATE_DATA->has_encoders) {
 					if (ieq_simple_reply_command(device, ":GPE#")) {
 						if (PRIVATE_DATA->response[0] == '0') {
-							indigo_send_message(device, CONNECTION_PROPERTY, "PEC data incomplete");
+							indigo_send_message(device, ALERT_PROPERTY, "PEC data incomplete");
 						} else if (PRIVATE_DATA->response[0] == '1') {
-							indigo_send_message(device, CONNECTION_PROPERTY, "PEC data complete");
+							indigo_send_message(device, IDLE_PROPERTY, "PEC data complete");
 						}
 					}
 					if (ieq_simple_reply_command(device, ":GPR#")) {

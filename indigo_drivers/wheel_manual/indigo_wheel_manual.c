@@ -56,10 +56,10 @@ typedef struct {
 static void wheel_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_send_message(device, CONNECTION_PROPERTY, "Connected to %s", device->name);
+		indigo_send_message(device, OK_PROPERTY, "Connected to %s", device->name);
 	} else {
 		indigo_cancel_pending_handlers(device);
-		indigo_send_message(device, CONNECTION_PROPERTY, "Disconnected from %s", device->name);
+		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_wheel_change_property(device, NULL, CONNECTION_PROPERTY);
@@ -71,7 +71,7 @@ static void wheel_slot_handler(indigo_device *device) {
 	if (WHEEL_SLOT_ITEM->number.value < 1 || WHEEL_SLOT_ITEM->number.value > WHEEL_SLOT_ITEM->number.max) {
 		WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
-		indigo_send_message(device, WHEEL_SLOT_PROPERTY, "Select filter '%s'", WHEEL_SLOT_NAME_PROPERTY->items[(int)WHEEL_SLOT_ITEM->number.value - 1].text.value);
+		indigo_send_message(device, IDLE_PROPERTY, "Select filter '%s'", WHEEL_SLOT_NAME_PROPERTY->items[(int)WHEEL_SLOT_ITEM->number.value - 1].text.value);
 	}
 	//- wheel.WHEEL_SLOT.on_change
 	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);

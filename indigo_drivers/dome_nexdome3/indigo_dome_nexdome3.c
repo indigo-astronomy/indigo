@@ -417,13 +417,13 @@ static void handle_battery_status(indigo_device *device, char *message) {
 	double volts = 0.01465 * adc_value;
 	if (volts < VOLT_THRESHOLD) {
 		if (!low_voltage) {
-			indigo_send_message(device, NEXDOME_POWER_PROPERTY, "Dome power is low! (U = %.2fV)", volts);
+			indigo_send_message(device, ALERT_PROPERTY, "Dome power is low! (U = %.2fV)", volts);
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Dome power is low! (U = %.2fV", volts);
 		}
 		low_voltage = true;
 	} else {
 		if (low_voltage) {
-			indigo_send_message(device, NEXDOME_POWER_PROPERTY, "Dome power is normal! (U = %.2fV)", volts);
+			indigo_send_message(device, IDLE_PROPERTY, "Dome power is normal! (U = %.2fV)", volts);
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Dome power is normal! (U = %.2fV)", volts);
 		}
 		low_voltage = false;

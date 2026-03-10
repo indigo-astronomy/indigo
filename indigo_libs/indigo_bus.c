@@ -133,6 +133,12 @@ char *indigo_last_message = NULL;
 char *indigo_temp_log_buffer = NULL;
 char indigo_log_name[255] = { 0 };
 
+indigo_property *IDLE_PROPERTY;
+indigo_property *OK_PROPERTY;
+indigo_property *BUSY_PROPERTY;
+indigo_property *ALERT_PROPERTY;
+
+
 void indigo_get_version(int *major, int *minor, int *build) {
 	if (major) {
 		*major = INDIGO_VERSION_CURRENT >> 8;
@@ -487,6 +493,11 @@ indigo_result indigo_start() {
 		memset(&INDIGO_ALL_PROPERTIES, 0, sizeof(INDIGO_ALL_PROPERTIES));
 		is_started = true;
 	}
+	IDLE_PROPERTY = indigo_init_light_property(NULL, "", "IDLE", NULL, NULL, INDIGO_IDLE_STATE, 0);
+	OK_PROPERTY = indigo_init_light_property(NULL, "", "OK", NULL, NULL, INDIGO_OK_STATE, 0);
+	BUSY_PROPERTY = indigo_init_light_property(NULL, "", "BUSY", NULL, NULL, INDIGO_BUSY_STATE, 0);
+	ALERT_PROPERTY = indigo_init_light_property(NULL, "", "ALERT", NULL, NULL, INDIGO_ALERT_STATE, 0);
+
 	pthread_mutex_unlock(&client_mutex);
 	pthread_mutex_unlock(&device_mutex);
 	indigo_attach_device(&indigo_session_device);
@@ -636,7 +647,7 @@ indigo_result indigo_change_property(indigo_client *client, indigo_property *pro
 			route = route || (!indigo_use_host_suffix && *device->name == '@');
 			if (route) {
 				if (device->access_token != 0 && device->access_token != property->access_token && property->access_token != indigo_get_master_token()) {
-					indigo_send_message(device, property, "Device '%s' is protected or locked for exclusive access", device->name);
+					indigo_send_message(device, NULL, "Device '%s' is protected or locked for exclusive access", device->name);
 					continue;
 				}
 				device->last_result = device->change_property(device, client, property);
@@ -1004,6 +1015,9 @@ indigo_result indigo_send_message(indigo_device *device, indigo_property *proper
 		va_start(args, format);
 		vsnprintf(message, INDIGO_VALUE_SIZE, format, args);
 		va_end(args);
+	}
+	if (property == IDLE_PROPERTY || property == OK_PROPERTY || property == BUSY_PROPERTY || property == ALERT_PROPERTY) {
+		INDIGO_COPY_NAME(property->device, device->name);
 	}
 	INDIGO_DEBUG(indigo_trace_bus("B <- Sent message '%s'", message));
 	for (int i = 0; i < MAX_CLIENTS; i++) {

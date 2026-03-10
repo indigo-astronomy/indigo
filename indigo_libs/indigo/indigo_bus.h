@@ -298,6 +298,11 @@ typedef struct {
 	indigo_item items[];                ///< property items
 } indigo_property;
 
+INDIGO_EXTERN indigo_property *IDLE_PROPERTY;
+INDIGO_EXTERN indigo_property *OK_PROPERTY;
+INDIGO_EXTERN indigo_property *BUSY_PROPERTY;
+INDIGO_EXTERN indigo_property *ALERT_PROPERTY;
+
 /** Device structure definition
  */
 typedef struct indigo_device {

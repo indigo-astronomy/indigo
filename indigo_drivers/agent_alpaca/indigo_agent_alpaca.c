@@ -638,7 +638,7 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 							indigo_define_property(indigo_agent_alpaca_device, AGENT_DEVICES_PROPERTY, NULL);
 							save_config(indigo_agent_alpaca_device);
 						} else {
-							indigo_send_message(indigo_agent_alpaca_device, INFO_PROPERTY, "Too many Alpaca devices configured");
+							indigo_send_message(indigo_agent_alpaca_device, ALERT_PROPERTY, "Too many Alpaca devices configured");
 						}
 					}
 					if (IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_CCD)) {

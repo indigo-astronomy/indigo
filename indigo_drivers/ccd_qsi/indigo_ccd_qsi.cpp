@@ -569,7 +569,7 @@ static void ccd_connect_callback(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} catch (std::runtime_error err) {
 			std::string text = err.what();
-			indigo_send_message(device, CONNECTION_PROPERTY, text.c_str());
+			indigo_send_message(device, ALERT_PROPERTY, text.c_str());
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 	} else {
@@ -588,7 +588,7 @@ static void ccd_connect_callback(indigo_device *device) {
 				}
 			} catch (std::runtime_error err) {
 				std::string text = err.what();
-				indigo_send_message(device, CONNECTION_PROPERTY, text.c_str());
+				indigo_send_message(device, ALERT_PROPERTY, text.c_str());
 			}
 		}
 		try {
@@ -604,7 +604,7 @@ static void ccd_connect_callback(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} catch (std::runtime_error err) {
 			std::string text = err.what();
-			indigo_send_message(device, CONNECTION_PROPERTY, "Disconnect failed: %s", text.c_str());
+			indigo_send_message(device, ALERT_PROPERTY, "Disconnect failed: %s", text.c_str());
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 	}

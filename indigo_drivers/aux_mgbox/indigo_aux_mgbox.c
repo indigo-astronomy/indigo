@@ -406,7 +406,7 @@ static void data_refresh_callback(indigo_device *gdevice) {
 					}
 				} else { // Show the log messages drom the device without the LOG: prefix
 					char *message = tokens[0] + 4;
-					indigo_send_message(device, INFO_PROPERTY, message);
+					indigo_send_message(device, IDLE_PROPERTY, message);
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s", message);
 				}
 			}

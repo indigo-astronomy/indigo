@@ -475,7 +475,7 @@ static int focuser_bt_open(indigo_device *device) {
 
 	if (PRIVATE_DATA->selected_bt_name_address[0] == '\0') {
 		char *message = "No Bluetooth device selected.";
-		indigo_send_message(device, CONNECTION_PROPERTY, message);
+		indigo_send_message(device, ALERT_PROPERTY, message);
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s", message);
 		return INDIGO_FAILED;
 	}
@@ -505,7 +505,7 @@ static int focuser_bt_open(indigo_device *device) {
 			return INDIGO_OK;
 		}
 
-		indigo_send_message(device, CONNECTION_PROPERTY, "Pairing to %s, (if it beeps press IN or OUT)...", dev_name);
+		indigo_send_message(device, ALERT_PROPERTY, "Pairing to %s, (if it beeps press IN or OUT)...", dev_name);
 		res = EAFBLEPair(id);
 		if (res == EAF_SUCCESS) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Paired BLE device %s (%s) -> id=%d", dev_name, dev_addr, id);
@@ -517,14 +517,14 @@ static int focuser_bt_open(indigo_device *device) {
 			}
 
 			pthread_mutex_unlock(&PRIVATE_DATA->bt_mutex);
-			indigo_send_message(device, CONNECTION_PROPERTY, "Paired");
+			indigo_send_message(device, OK_PROPERTY, "Paired");
 			return INDIGO_OK;
 		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFBLEPair(%d) = %d", id, res);
 			EAFBLEDisconnect(PRIVATE_DATA->dev_id);
 			PRIVATE_DATA->dev_id = -1;
 			pthread_mutex_unlock(&PRIVATE_DATA->bt_mutex);
-			indigo_send_message(device, CONNECTION_PROPERTY, "Pairing failed");
+			indigo_send_message(device, ALERT_PROPERTY, "Pairing failed");
 			return INDIGO_FAILED;
 		}
 	}

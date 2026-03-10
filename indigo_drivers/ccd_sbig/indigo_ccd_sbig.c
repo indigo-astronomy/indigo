@@ -2758,7 +2758,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "%s", broken_message);
 				indigo_device device;
 				strncpy(device.name, DRIVER_NAME, INDIGO_NAME_SIZE);
-				indigo_send_message(&device, "%s", broken_message);
+				indigo_send_message(&device, ALERT_PROPERTY, "%s", broken_message);
 				//pthread_mutex_unlock(&hotplug_mutex);
 				return 0;
 			}

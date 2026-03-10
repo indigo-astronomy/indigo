@@ -284,7 +284,7 @@ static duk_ret_t trace_message(duk_context *ctx) {
 
 static void send_message_handler(indigo_device *device, void *data) {
 	char *message = (char *)data;
-	indigo_send_message(device, AGENT_SCRIPTING_RUN_SCRIPT_PROPERTY, message);
+	indigo_send_message(device, IDLE_PROPERTY, message);
 	free(message);
 }
 
@@ -1061,7 +1061,7 @@ static bool execute_script(indigo_property *property) {
 	if (script && *script) {
 		pthread_mutex_lock(&PRIVATE_DATA->mutex);
 		if (duk_peval_string(PRIVATE_DATA->ctx, script)) {
-			indigo_send_message(agent_device, NULL, "Failed to execute script '%s' (%s)", property->label, duk_safe_to_string(PRIVATE_DATA->ctx, -1));
+			indigo_send_message(agent_device, ALERT_PROPERTY, "Failed to execute script '%s' (%s)", property->label, duk_safe_to_string(PRIVATE_DATA->ctx, -1));
 			result = false;
 		}
 		pthread_mutex_unlock(&PRIVATE_DATA->mutex);

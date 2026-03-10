@@ -179,7 +179,7 @@ static void position_timer_callback(indigo_device *device) {
 						indigo_set_switch(TRACKING_MODE_PROPERTY, TRACKING_EQ_ITEM, true);
 					}
 					TRACKING_MODE_PROPERTY->state = INDIGO_OK_STATE;
-					indigo_send_message(device, MOUNT_TRACKING_PROPERTY, "Tracking mode detected");
+					indigo_send_message(device, IDLE_PROPERTY, "Tracking mode detected");
 				}
 				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
 				MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
@@ -355,7 +355,7 @@ static void mount_handle_connect(indigo_device *device) {
 					indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
 					if (TRACKING_AUTO_ITEM->sw.value) {
 						TRACKING_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
-						indigo_send_message(device, MOUNT_TRACKING_PROPERTY, "Tracking mode can't be detected");
+						indigo_send_message(device, ALERT_PROPERTY, "Tracking mode can't be detected");
 					}
 					MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
 				} else {
@@ -365,7 +365,7 @@ static void mount_handle_connect(indigo_device *device) {
 						} else {
 							indigo_set_switch(TRACKING_MODE_PROPERTY, TRACKING_EQ_ITEM, true);
 						}
-						indigo_send_message(device, MOUNT_TRACKING_PROPERTY, "Tracking mode detected");
+						indigo_send_message(device, IDLE_PROPERTY, "Tracking mode detected");
 					}
 					indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
 					MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
@@ -482,7 +482,7 @@ static void mount_handle_geo_coordinates(indigo_device *device) {
 	if (res == RC_FORBIDDEN) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_location(%d) = RC_FORBIDDEN", PRIVATE_DATA->dev_id);
 		if (nexstar_hc_type == HC_STARSENSE) {
-			indigo_send_message(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, "Can't set location to StarSense controller.");
+			indigo_send_message(device, ALERT_PROPERTY, "Can't set location to StarSense controller.");
 		}
 		MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else if (res != RC_OK) {
@@ -519,7 +519,7 @@ static void mount_handle_set_utc_from_host(indigo_device *device) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_time(%d) = RC_FORBIDDEN", PRIVATE_DATA->dev_id);
 				MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 				if (nexstar_hc_type == HC_STARSENSE) {
-					indigo_send_message(device, MOUNT_SET_HOST_TIME_PROPERTY, "Can't set time to StarSense controller.");
+					indigo_send_message(device, IDLE_PROPERTY, "Can't set time to StarSense controller.");
 				}
 			} else if (res != RC_OK) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_time(%d) = %d (%s)", PRIVATE_DATA->dev_id, res, strerror(errno));
@@ -592,7 +592,7 @@ static void mount_handle_tracking(indigo_device *device) {
 		} else {
 			MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
 			TRACKING_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_send_message(device, MOUNT_TRACKING_PROPERTY, "Tracking mode is not set");
+			indigo_send_message(device, ALERT_PROPERTY, "Tracking mode is not set");
 		}
 	} else if (MOUNT_TRACKING_OFF_ITEM->sw.value) {
 		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
@@ -750,12 +750,12 @@ static void mount_handle_utc(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_time(%d) = RC_FORBIDDEN", PRIVATE_DATA->dev_id);
 		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 		if (nexstar_hc_type == HC_STARSENSE) {
-			indigo_send_message(device, MOUNT_UTC_TIME_PROPERTY, "Can't set time to StarSense controller.");
+			indigo_send_message(device, ALERT_PROPERTY, "Can't set time to StarSense controller.");
 		}
 	} else if (res != RC_OK) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_set_time(%d) = %d (%s)", PRIVATE_DATA->dev_id, res, strerror(errno));
 		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_send_message(device, MOUNT_UTC_TIME_PROPERTY, "Failed to set date/time.");
+		indigo_send_message(device, ALERT_PROPERTY, "Failed to set date/time.");
 	} else {
 		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 	}
@@ -1256,7 +1256,7 @@ static void gps_handle_connect(indigo_device *device) {
 			device->gp_bits = 0;
 			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, "N/A");
 			indigo_update_property(device, INFO_PROPERTY, NULL);
-			indigo_send_message(device, CONNECTION_PROPERTY, "No GPS unit detected");
+			indigo_send_message(device, ALERT_PROPERTY, "No GPS unit detected");
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 		}

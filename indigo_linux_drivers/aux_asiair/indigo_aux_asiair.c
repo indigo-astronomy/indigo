@@ -707,11 +707,11 @@ static void handle_aux_connect_property(indigo_device *device) {
 		if(PRIVATE_DATA->pwm_present) {
 			AUX_GPIO_OUTLET_DUTY_PROPERTY->hidden = false;
 			AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->hidden = false;
-			indigo_send_message(device, AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY, "PWM on Outputs #1 and #4 is present");
+			indigo_send_message(device, IDLE_PROPERTY, "PWM on Outputs #1 and #4 is present");
 		} else {
 			AUX_GPIO_OUTLET_DUTY_PROPERTY->hidden = true;
 			AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->hidden = true;
-			indigo_send_message(device, AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY, "No PWM channels found");
+			indigo_send_message(device, ALERT_PROPERTY, "No PWM channels found");
 		}
 		if (asiair_export_all(PRIVATE_DATA->pwm_present)) {
 			char board[INDIGO_VALUE_SIZE] = "N/A";

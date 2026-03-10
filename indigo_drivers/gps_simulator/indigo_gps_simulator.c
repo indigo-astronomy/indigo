@@ -147,10 +147,10 @@ static void gps_connection_handler(indigo_device *device) {
 		//- gps.on_connect
 		indigo_execute_handler(device, gps_timer_callback);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_send_message(device, CONNECTION_PROPERTY, "Connected to %s", device->name);
+		indigo_send_message(device, OK_PROPERTY, "Connected to %s", device->name);
 	} else {
 		indigo_cancel_pending_handlers(device);
-		indigo_send_message(device, CONNECTION_PROPERTY, "Disconnected from %s", device->name);
+		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_gps_change_property(device, NULL, CONNECTION_PROPERTY);

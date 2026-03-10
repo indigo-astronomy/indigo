@@ -857,7 +857,7 @@ static bool pentax_open(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "libusb_claim_interface: %s (%d)", libusb_strerror((enum libusb_error)rc), rc);
 		libusb_close(handle);
 		PRIVATE_DATA->handle = 0;
-		indigo_send_message(device, CONNECTION_PROPERTY, "Failed to claim device - this driver requires to run the application with root permission!");
+		indigo_send_message(device, ALERT_PROPERTY, "Failed to claim device - this driver requires to run the application with root permission!");
 		return false;
 	}
 	rc = libusb_control_transfer(handle, LIBUSB_ENDPOINT_IN | LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE, BOMS_GET_MAX_LUN, 0, 0, &PRIVATE_DATA->lun, 1, TIMEOUT);

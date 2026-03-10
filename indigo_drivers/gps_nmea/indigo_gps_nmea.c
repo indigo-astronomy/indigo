@@ -359,16 +359,16 @@ static void gps_connection_handler(indigo_device *device) {
 		if (connection_result) {
 			indigo_execute_handler(device, gps_timer_callback);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_send_message(device, CONNECTION_PROPERTY, "Connected to %s on %s", GPS_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", GPS_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
-			indigo_send_message(device, CONNECTION_PROPERTY, "Failed to connect to %s on %s", GPS_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
+			indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", GPS_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
 		nmea_close(device);
-		indigo_send_message(device, CONNECTION_PROPERTY, "Disconnected from %s", device->name);
+		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_gps_change_property(device, NULL, CONNECTION_PROPERTY);

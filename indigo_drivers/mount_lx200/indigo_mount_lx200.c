@@ -667,14 +667,14 @@ static bool meade_slew(indigo_device *device, double ra, double dec) {
 			sscanf(PRIVATE_DATA->response, "e%d", &error_code);
 			char *message = meade_error_string(device, error_code);
 			if (message) {
-				indigo_send_message(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Error: %s", message);
+				indigo_send_message(device, ALERT_PROPERTY, "Error: %s", message);
 			}
 		}
 		if (MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value) {
 			int error_code = atoi(PRIVATE_DATA->response);
 			char *message = meade_error_string(device, error_code);
 			if (message) {
-				indigo_send_message(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Error: %s", message);
+				indigo_send_message(device, ALERT_PROPERTY, "Error: %s", message);
 			}
 		}
 		return false;
@@ -697,7 +697,7 @@ static bool meade_sync(indigo_device *device, double ra, double dec) {
 		sscanf(PRIVATE_DATA->response, "e%d", &error_code);
 		char *message = meade_error_string(device, error_code);
 		if (message) {
-			indigo_send_message(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Error: %s", message);
+			indigo_send_message(device, ALERT_PROPERTY, "Error: %s", message);
 		}
 		return false;
 	}
@@ -706,7 +706,7 @@ static bool meade_sync(indigo_device *device, double ra, double dec) {
 		sscanf(PRIVATE_DATA->response, "E%d", &error_code);
 		char *message = meade_error_string(device, error_code);
 		if (message) {
-			indigo_send_message(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, "Error: %s", message);
+			indigo_send_message(device, ALERT_PROPERTY, "Error: %s", message);
 		}
 		return false;
 	}
@@ -1610,7 +1610,7 @@ static void meade_init_nyx_mount(indigo_device *device) {
 	if (meade_command(device, ":WLD#") && *PRIVATE_DATA->response != ':' && (separator = strchr(PRIVATE_DATA->response, ':'))) {
 		*separator++ = 0;
 		strncpy(NYX_WIFI_CL_SSID_ITEM->text.value, PRIVATE_DATA->response, INDIGO_VALUE_SIZE);
-		indigo_send_message(device, NYX_WIFI_CL_PROPERTY, "Mount is connected to network '%s' with IP address %s", PRIVATE_DATA->response, separator);
+		indigo_send_message(device, OK_PROPERTY, "Mount is connected to network '%s' with IP address %s", PRIVATE_DATA->response, separator);
 	}
 	if (meade_command(device, ":GX9D#") && (separator = strchr(PRIVATE_DATA->response, ':'))) {
 		*separator++ = 0;
@@ -1981,7 +1981,7 @@ static void nyx_ap_callback(indigo_device *device) {
 	if (meade_simple_reply_command(device, ":WA%s#", NYX_WIFI_AP_SSID_ITEM->text.value) && *PRIVATE_DATA->response == '1') {
 		if (meade_simple_reply_command(device, ":WB%s#", NYX_WIFI_AP_PASSWORD_ITEM->text.value) && *PRIVATE_DATA->response == '1') {
 			if (meade_simple_reply_command(device, ":WLC#") && *PRIVATE_DATA->response == '1') {
-				indigo_send_message(device, NYX_WIFI_AP_PROPERTY, "Created access point with SSID %s", NYX_WIFI_AP_SSID_ITEM->text.value);
+				indigo_send_message(device, OK_PROPERTY, "Created access point with SSID %s", NYX_WIFI_AP_SSID_ITEM->text.value);
 				NYX_WIFI_AP_PROPERTY->state = INDIGO_OK_STATE;
 			}
 		}
@@ -2001,7 +2001,7 @@ static void nyx_cl_callback(indigo_device *device) {
 	if (meade_simple_reply_command(device, ":WS%s#", encode ? ssid : NYX_WIFI_CL_SSID_ITEM->text.value) && *PRIVATE_DATA->response == '1') {
 		if (meade_simple_reply_command(device, ":WP%s#", encode ? password : NYX_WIFI_CL_PASSWORD_ITEM->text.value) && *PRIVATE_DATA->response == '1') {
 			if (meade_no_reply_command(device, ":WLC#")) {
-				indigo_send_message(device, NYX_WIFI_CL_PROPERTY, "WiFi reset!");
+				indigo_send_message(device, IDLE_PROPERTY, "WiFi reset!");
 				NYX_WIFI_CL_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, NYX_WIFI_CL_PROPERTY, NULL);
 				if (PRIVATE_DATA->handle && PRIVATE_DATA->handle->type == INDIGO_TCP_HANDLE) {
@@ -2017,7 +2017,7 @@ static void nyx_cl_callback(indigo_device *device) {
 
 static void nyx_reset_callback(indigo_device *device) {
 	if (meade_no_reply_command(device, ":WLZ#")) {
-		indigo_send_message(device, NYX_WIFI_RESET_PROPERTY, "WiFi reset!");
+		indigo_send_message(device, IDLE_PROPERTY, "WiFi reset!");
 		NYX_WIFI_RESET_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, NYX_WIFI_RESET_PROPERTY, NULL);
 		if (PRIVATE_DATA->handle && PRIVATE_DATA->handle->type == INDIGO_TCP_HANDLE) {
@@ -2132,7 +2132,7 @@ static void mount_connect_callback(indigo_device *device) {
 			if (MOUNT_TYPE_DETECT_ITEM->sw.value) {
 				if (!meade_detect_mount(device)) {
 					result = false;
-					indigo_send_message(device, CONNECTION_PROPERTY, "Autodetection failed!");
+					indigo_send_message(device, ALERT_PROPERTY, "Autodetection failed!");
 					meade_close(device);
 				}
 			}
@@ -2754,7 +2754,7 @@ static void guider_connect_callback(indigo_device *device) {
 			if (MOUNT_TYPE_DETECT_ITEM->sw.value) {
 				if (!meade_detect_mount(device->master_device)) {
 					result = false;
-					indigo_send_message(device, CONNECTION_PROPERTY, "Autodetection failed!");
+					indigo_send_message(device, ALERT_PROPERTY, "Autodetection failed!");
 					meade_close(device);
 				}
 			}
@@ -2882,7 +2882,7 @@ static void focuser_connect_callback(indigo_device *device) {
 			if (MOUNT_TYPE_DETECT_ITEM->sw.value) {
 				if (!meade_detect_mount(device->master_device)) {
 					result = false;
-					indigo_send_message(device, CONNECTION_PROPERTY, "Autodetection failed!");
+					indigo_send_message(device, ALERT_PROPERTY, "Autodetection failed!");
 					meade_close(device);
 				}
 			}
@@ -3055,7 +3055,7 @@ static void aux_connect_handler(indigo_device *device) {
 			if (MOUNT_TYPE_DETECT_ITEM->sw.value) {
 				if (!meade_detect_mount(device->master_device)) {
 					result = false;
-					indigo_send_message(device, CONNECTION_PROPERTY, "Autodetection failed!");
+					indigo_send_message(device, ALERT_PROPERTY, "Autodetection failed!");
 					meade_close(device);
 				}
 			}

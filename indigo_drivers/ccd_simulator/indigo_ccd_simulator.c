@@ -1235,7 +1235,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(GUIDER_SETTINGS_PROPERTY, property, false);
 		if (GUIDER_IMAGE_EPOCH_ITEM->number.target != 0 && GUIDER_IMAGE_EPOCH_ITEM->number.target != 2000) {
 			GUIDER_IMAGE_EPOCH_ITEM->number.target = GUIDER_IMAGE_EPOCH_ITEM->number.value = 2000;
-			indigo_send_message(device, GUIDER_SETTINGS_PROPERTY, "Warning! Valid values are 0 or 2000 only, value adjusted to 2000");
+			indigo_send_message(device, BUSY_PROPERTY, "Warning: Valid values are 0 or 2000 only, value adjusted to 2000");
 		}
 		PRIVATE_DATA->ra = PRIVATE_DATA->dec = 0;
 		GUIDER_IMAGE_HOTCOL_ITEM->number.max = GUIDER_IMAGE_HEIGHT_ITEM->number.target;
