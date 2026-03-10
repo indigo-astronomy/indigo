@@ -125,7 +125,6 @@ static bool uch_open(indigo_device *device) {
 			}
 		}
 		indigo_uni_close(&PRIVATE_DATA->handle);
-		indigo_send_message(device, CONNECTION_PROPERTY, "Handshake failed");
 	}
 	return false;
 }

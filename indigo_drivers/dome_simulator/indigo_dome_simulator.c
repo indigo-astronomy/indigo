@@ -183,7 +183,7 @@ static void dome_equatorial_coordinates_handler(indigo_device *device) {
 		if (DOME_PARK_PARKED_ITEM->sw.value) {
 			if (DOME_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_ALERT_STATE) {
 				DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_send_message(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, "Can not Synchronize. Dome is parked.");
+				indigo_send_message(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, "Dome is parked.");
 			}
 		} else {
 			PRIVATE_DATA->target_position = (int)(DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target = az);

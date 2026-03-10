@@ -132,7 +132,6 @@ static bool flipflat_open(indigo_device *device) {
 				return true;
 			}
 		}
-		indigo_send_message(device, CONNECTION_PROPERTY, "Handshake failed");
 		indigo_uni_close(&PRIVATE_DATA->handle);
 	}
 	return false;

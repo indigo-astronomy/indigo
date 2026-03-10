@@ -74,7 +74,6 @@ static bool cgusbst4_open(indigo_device *device) {
 		if (cgusbst4_command(device, "\006", 1) && PRIVATE_DATA->response[0] == 'A') {
 			return true;
 		}
-		indigo_send_message(device, CONNECTION_PROPERTY, "Handshake failed");
 		indigo_uni_close(&PRIVATE_DATA->handle);
 	}
 	return false;

@@ -111,7 +111,6 @@ static bool fbc_open(indigo_device *device) {
 				indigo_send_message(device, CONNECTION_PROPERTY, "FBC is not in SerialMode. Turn all knobs to 0 and powercycle the device.");
 			}
 		}
-		indigo_send_message(device, CONNECTION_PROPERTY, "Handshake failed");
 		indigo_uni_close(&PRIVATE_DATA->handle);
 	}
 	return false;

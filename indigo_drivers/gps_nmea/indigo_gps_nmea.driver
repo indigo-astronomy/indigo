@@ -294,7 +294,6 @@ driver nmea {
 				indigo_execute_handler_in(device, 0, gps_timer_callback);
 			} else {
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-				indigo_send_message(device, CONNECTION_PROPERTY, "Failed to read from GPS unit");
 				indigo_set_timer(device, 0, gps_connection_handler, NULL);
 			}
 		}

@@ -111,7 +111,6 @@ static bool skyalert_open(indigo_device *device) {
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 			return true;
 		}
-		indigo_send_message(device, CONNECTION_PROPERTY, "Handshake failed");
 		indigo_uni_close(&PRIVATE_DATA->handle);
 	}
 	return false;

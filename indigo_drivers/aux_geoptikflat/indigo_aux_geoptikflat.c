@@ -88,7 +88,6 @@ static bool geoptikflat_open(indigo_device *device) {
 				return true;
 			}
 		} else {
-			indigo_send_message(device, CONNECTION_PROPERTY, "Handshake failed");
 			indigo_uni_close(&PRIVATE_DATA->handle);
 		}
 	}

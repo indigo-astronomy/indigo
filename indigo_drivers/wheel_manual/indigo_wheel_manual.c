@@ -71,7 +71,7 @@ static void wheel_slot_handler(indigo_device *device) {
 	if (WHEEL_SLOT_ITEM->number.value < 1 || WHEEL_SLOT_ITEM->number.value > WHEEL_SLOT_ITEM->number.max) {
 		WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
-		indigo_send_message(device, WHEEL_SLOT_PROPERTY, "Make sure filter '%s' is selected on the device", WHEEL_SLOT_NAME_PROPERTY->items[(int)WHEEL_SLOT_ITEM->number.value - 1].text.value);
+		indigo_send_message(device, WHEEL_SLOT_PROPERTY, "Select filter '%s'", WHEEL_SLOT_NAME_PROPERTY->items[(int)WHEEL_SLOT_ITEM->number.value - 1].text.value);
 	}
 	//- wheel.WHEEL_SLOT.on_change
 	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
