@@ -1241,7 +1241,7 @@ static void *message_handler(parser_state state, parser_context *context, char *
 	} else if (state == END_TAG_STATE) {
 		pthread_mutex_lock(&context->mutex);
 		indigo_property *cachedProperty = NULL;
-		if (!strcmp(property->name, IDLE_PROPERTY->name)) {
+		if (!strcmp(property->name, IDLE_PROPERTY->name) || property->name[0] == 0) {
 			property->state = INDIGO_IDLE_STATE;
 			property->type = INDIGO_LIGHT_VECTOR;
 			cachedProperty = property;
