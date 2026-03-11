@@ -58,6 +58,7 @@ endif
 	install -d $(INSTALL_INCLUDE)/indigo
 	cp indigo/*.h $(INSTALL_INCLUDE)/indigo
 	@$(MAKE)	-C indigocat install
+	@$(MAKE)	-C indigo_client install
 
 uninstall: status
 	rm -f $(INSTALL_LIB)/libindigo.$(SOEXT)
@@ -67,9 +68,11 @@ ifeq ($(OS_DETECTED),Darwin)
 endif
 	rm -rf $(INSTALL_INCLUDE)/indigo
 	@$(MAKE)	-C indigocat uninstall
+	@$(MAKE)	-C indigo_client uninstall
 
 clean: status
 	@$(MAKE)	-C indigocat clean
+	@$(MAKE)	-C indigo_client clean
 	rm -f *.o *.orig $(BUILD_LIB)/libindigo.* $(BUILD_LIB)/libraw.* $(BUILD_LIB)/libjpeg.* $(BUILD_LIB)/libtiff.* $(BUILD_LIB)/libtiffxx.* $(BUILD_LIB)/libusb-1.0.* $(LIBHIDAPI).* $(BUILD_LIB)/libftd2xx.*
 
 clean-all: status
@@ -95,7 +98,7 @@ indigo/indigo_config.h:	../Makefile.inc
 #
 #---------------------------------------------------------------------
 
-libindigo: indigo_build_c indigo/indigo_config.h libusb libhidapi libjpeg libtiff libftd2xx libraw libindigocat $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigo.$(SOEXT)
+libindigo: indigo_build_c indigo/indigo_config.h libusb libhidapi libjpeg libtiff libftd2xx libraw libindigocat $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigo.$(SOEXT) libindigo_client
 
 $(BUILD_LIB)/libindigo.a: $(LIBINDIGO_FILES)
 	$(AR) $(ARFLAGS) $@ $^
@@ -222,3 +225,17 @@ ifeq ($(ARCH_DETECTED),x64)
 endif
 endif
 	ar -d $(BUILD_LIB)/libftd2xx.a core.o descriptor.o io.o hotplug.o sync.o darwin_usb.o poll_posix.o threads_posix.o
+
+#---------------------------------------------------------------------
+#
+#	Build libindigo_client
+#
+#---------------------------------------------------------------------
+
+libindigo_client: $(BUILD_LIB)/libindigo_client.a $(BUILD_LIB)/libindigo_client.$(SOEXT)
+
+$(BUILD_LIB)/libindigo_client.a:
+	@$(MAKE)	-C indigo_client $(BUILD_LIB)/libindigo_client.a
+
+$(BUILD_LIB)/libindigo_client.$(SOEXT):
+	@$(MAKE)	-C indigo_client $(BUILD_LIB)/libindigo_client.$(SOEXT)
