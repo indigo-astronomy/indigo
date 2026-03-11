@@ -2,6 +2,42 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-360] - 12 Mar Wed 2026
+## Overall:
+- indigo_client:
+	- fix duplicate connetsion handling
+
+- indigo_bus:
+	- incomplete switch update handling fixed
+
+- indigo_ser_close():
+	- fix resource leak on failure
+
+# Driver Fixes:
+- indigo_agent_mount:
+	- HA/time limit handling fixed
+
+- indigo_agent_imager:
+	- set FITS headers before exposure, not before batch
+
+- indigo_agent_scripting:
+	- Sequencer.js: HA limit check is disabled during meridian flip
+
+- indigo_wheel_asi:
+	- made property handling async
+	- change filter and callibrate made non-reentrant
+	- calibration is depricated when filter is changing
+
+- indigo_focuser_asi:
+	- made property handling async
+
+- indigo_mount_nexstar:
+	- fix version comparison
+
+- indigo_ccd_mi:
+	- Updated MI SDK to 0.12.1/0.11.1
+
+
 # [2.0-358] - 10 Feb Tue 2026
 
 ## Driver Fixes:
