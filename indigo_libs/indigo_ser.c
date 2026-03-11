@@ -58,7 +58,7 @@ indigo_ser *indigo_ser_open(const char *filename, void *buffer) {
 		INDIGO_ERROR(indigo_error("indigo_ser: failed to open file for writing"));
 		goto failure;
 	}
-	if ((ser = (indigo_ser *)malloc(sizeof(indigo_ser))) == NULL) {
+	if ((ser = (indigo_ser *)indigo_safe_malloc(sizeof(indigo_ser))) == NULL) {
 		INDIGO_ERROR(indigo_error("indigo_ser: could not allocate memory for indigo_ser structure"));
 		goto failure;
 	}
@@ -129,10 +129,8 @@ bool indigo_ser_add_frame(indigo_ser *ser, void *buffer) {
 
 bool indigo_ser_close(indigo_ser *ser) {
 	indigo_uni_handle *handle = ser->handle;
-	if (indigo_uni_seek(handle, 38, SEEK_SET) && write_int(handle, ser->count)) {
-		indigo_uni_close(&handle);
-		free(ser);
-		return true;
-	}
-	return false;
+	bool result = indigo_uni_seek(handle, 38, SEEK_SET) && write_int(handle, ser->count);
+	indigo_uni_close(&handle);
+	indigo_safe_free(ser);
+	return result;
 }
