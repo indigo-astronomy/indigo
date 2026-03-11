@@ -69,6 +69,8 @@ LIBINDIGO_CLIENT_SRCS := \
 	indigo_xml.c \
 	indigo_client_xml.c \
 	indigo_base64.c \
+	indigo_md5.c \
+	indigo_fits.c \
 	indigo_client.c \
 	indigo_service_discovery.c \
 	indigo_token.c
@@ -85,7 +87,7 @@ $(BUILD_LIB)/libindigo_client.a: $(LIBINDIGO_CLIENT_FILES)
 
 $(BUILD_LIB)/libindigo_client.$(SOEXT): $(LIBINDIGO_CLIENT_FILES)
 ifeq ($(OS_DETECTED),Darwin)
-	$(CC) -shared -o $@ $^ $(LDFLAGS) -lz -lstdc++
-else
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -ldns_sd -lz -lstdc++
+else
+	$(CC) -shared -o $@ $^ $(LDFLAGS) $(FORCE_ALL_OFF) -lavahi-client -lavahi-common -lz -lstdc++
 endif
