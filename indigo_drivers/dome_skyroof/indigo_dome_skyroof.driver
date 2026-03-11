@@ -1,0 +1,203 @@
+// Copyright (c) 2021-2026 CloudMakers, s. r. o.
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// Interactive Astronomy SkyRoof driver definition
+
+driver skyroof {
+	label = "Interactive Astronomy SkyRoof";
+	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
+	copyright = "Copyright (c) 2021-2026 CloudMakers, s. r. o.";
+	version = 8;
+	serial;
+	// include { }
+	// define { }
+	data {
+		char response[128];
+	}
+	code {
+		static bool skyroof_write(indigo_device *device, char *command)	{
+			return indigo_uni_printf(PRIVATE_DATA->handle, "%s\r", command) > 0;
+		}
+
+		static bool	skyroof_read(indigo_device *device) {
+			return indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\r", "\r", INDIGO_DELAY(1)) > 0;
+		}
+
+		static bool skyroof_open(indigo_device *device) {
+			PRIVATE_DATA->handle = indigo_uni_open_serial(DEVICE_PORT_ITEM->text.value, INDIGO_LOG_DEBUG);
+			if (PRIVATE_DATA->handle != NULL) {
+				if (skyroof_write(device, "Status#") && skyroof_read(device)) {
+					if (!strcmp(PRIVATE_DATA->response, "RoofOpen#")) {
+						indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM, true);
+						DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
+					} else if (!strcmp(PRIVATE_DATA->response, "RoofClosed#")) {
+						indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_CLOSED_ITEM, true);
+						DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
+					} else {
+						DOME_SHUTTER_CLOSED_ITEM->sw.value = DOME_SHUTTER_OPENED_ITEM->sw.value = false;
+						DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
+					}
+					return true;
+				} else {
+					indigo_uni_close(&PRIVATE_DATA->handle);
+				}
+			}
+			return false;
+		}
+
+		static void skyroof_close(indigo_device *device) {
+			indigo_uni_close(&PRIVATE_DATA->handle);
+		}
+	}
+	// on_init { }
+	// on_shutdown { }
+	dome {
+		name = "SkyRoof";
+		additional_instances = true;
+		code {
+			static void dome_shutter_finalizer(indigo_device *device) {
+				if (DOME_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE) {
+					DOME_SHUTTER_CLOSED_ITEM->sw.value = DOME_SHUTTER_OPENED_ITEM->sw.value = false;
+					DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
+					DOME_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_update_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
+				} else {
+					if (skyroof_write(device, "Status#") && skyroof_read(device)) {
+						if (DOME_SHUTTER_OPENED_ITEM->sw.value && !strcmp(PRIVATE_DATA->response, "RoofOpen#")) {
+							DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
+						} else if (DOME_SHUTTER_CLOSED_ITEM->sw.value && !strcmp(PRIVATE_DATA->response, "RoofClosed#")) {
+							DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
+						} else {
+							indigo_execute_handler_in(device, 500000, dome_shutter_finalizer);
+						}
+					}
+				}
+			}
+		}
+		// on_timer { }
+		// on_connect { }
+		// on_disconnect { }
+		// on_attach { }
+		// on_detach { }
+		inherited DOME_SHUTTER {
+			on_change {
+				DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
+				if (skyroof_write(device, DOME_SHUTTER_OPENED_ITEM->sw.value ? "Open#" : "Close#") && skyroof_read(device) && !strcmp(PRIVATE_DATA->response, "0#")) {
+					indigo_execute_handler_in(device, 500000, dome_shutter_finalizer);
+				} else {
+					DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited DOME_ABORT_MOTION {
+			on_change {
+				DOME_ABORT_MOTION_ITEM->sw.value = false;
+				if (DOME_SHUTTER_PROPERTY->state == INDIGO_BUSY_STATE) {
+					if (skyroof_write(device, "Stop#") && skyroof_read(device) && !strcmp(PRIVATE_DATA->response, "0#")) {
+						DOME_ABORT_MOTION_PROPERTY->state = INDIGO_BUSY_STATE;
+					} else {
+						DOME_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+					}
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+		switch HEATER_CONTROL {
+			on_change {
+				if (!skyroof_write(device, HEATER_CONTROL_ON_ITEM->sw.value ? "HeaterOn#" : "HeaterOff#")) {
+					HEATER_CONTROL_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+			name = "HEATER_CONTROL";
+			group = DOME_MAIN_GROUP;
+			label = "Heater control";
+			// handle_change = false;
+			// asynchronous_change = false;
+			item HEATER_CONTROL_OFF {
+				name = "OFF";
+				label = "Off";
+				value = true;
+			}
+			item HEATER_CONTROL_ON {
+				name = "ON";
+				label = "On";
+				value = false;
+			}
+		}
+		inherited DOME_SPEED {
+			hidden = true;
+			// on_change { }
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited DOME_DIRECTION {
+			hidden = true;
+			// on_change { }
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited DOME_HORIZONTAL_COORDINATES {
+			hidden = true;
+			// on_change { }
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited DOME_EQUATORIAL_COORDINATES {
+			hidden = true;
+			// on_change { }
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited DOME_STEPS {
+			hidden = true;
+			// on_change { }
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited DOME_PARK {
+			hidden = true;
+			// on_change { }
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited DOME_DIMENSION {
+			hidden = true;
+			// on_change { }
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited DOME_SLAVING {
+			hidden = true;
+			// on_change { }
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited DOME_SLAVING_PARAMETERS {
+			hidden = true;
+			// on_change { }
+			// on_attach { }
+			// on_detach { }
+		}
+	}
+}
