@@ -500,7 +500,9 @@ indigo_result indigo_start() {
 
 	pthread_mutex_unlock(&client_mutex);
 	pthread_mutex_unlock(&device_mutex);
+#if !defined(INDIGO_CLIENT)
 	indigo_attach_device(&indigo_session_device);
+#endif
 	return INDIGO_OK;
 }
 
@@ -1035,7 +1037,9 @@ indigo_result indigo_send_message(indigo_device *device, indigo_property *proper
 indigo_result indigo_stop() {
 	INDIGO_DEBUG(indigo_trace_bus("B <- Stop bus"));
 	if (is_started) {
+#if !defined(INDIGO_CLIENT)
 		indigo_detach_device(&indigo_session_device);
+#endif
 		pthread_mutex_lock(&client_mutex);
 		for (int i = 0; i < MAX_CLIENTS; i++) {
 			indigo_client *client = clients[i];
@@ -2319,6 +2323,8 @@ bool indigo_device_name_exists(const char *name) {
 	return false;
 }
 
+#if !defined(INDIGO_CLIENT)
+
 bool indigo_make_name_unique(char *name, const char *format, ...) {
 	bool used_suffix[MAX_DEVICES - 1] = { false };
 	bool is_duplicate = false;
@@ -2370,3 +2376,5 @@ bool indigo_make_name_unique(char *name, const char *format, ...) {
 	strcat(name, tmp);
 	return true;
 }
+
+#endif

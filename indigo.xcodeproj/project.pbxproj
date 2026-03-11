@@ -4662,6 +4662,7 @@
 		9D3E907028995B140093C9EB /* ProdigyMF-Serial-Command-Table.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "ProdigyMF-Serial-Command-Table.pdf"; sourceTree = "<group>"; };
 		9D3E907128995B140093C9EB /* indigo_focuser_prodigy.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_prodigy.h; sourceTree = "<group>"; };
 		9D3E907328995B140093C9EB /* prodigy_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = prodigy_simulator.ino; sourceTree = "<group>"; };
+		9D42F0452F615CFA000D1ED5 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		9D44F3802DA55CCD00AB7377 /* indigo_generator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_generator.c; sourceTree = "<group>"; };
 		9D44F3852DA55E3500AB7377 /* indigo_generator */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = indigo_generator; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D44F38D2DA55EAE00AB7377 /* indigo_aux_upb3.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_aux_upb3.driver; sourceTree = "<group>"; };
@@ -9676,6 +9677,7 @@
 		59D381A61D9590EA00E87393 /* indigo_libs */ = {
 			isa = PBXGroup;
 			children = (
+				9D42F0442F615C7E000D1ED5 /* indigo_client */,
 				9D94A89E2E703FD7005C5C56 /* hidapi */,
 				59111CCD285F4DCE00E57194 /* indigocat */,
 				9DCB034622E9B9DE00A7A2E5 /* indigo */,
@@ -12968,6 +12970,14 @@
 				9D3E907328995B140093C9EB /* prodigy_simulator.ino */,
 			);
 			path = prodigy_simulator;
+			sourceTree = "<group>";
+		};
+		9D42F0442F615C7E000D1ED5 /* indigo_client */ = {
+			isa = PBXGroup;
+			children = (
+				9D42F0452F615CFA000D1ED5 /* Makefile */,
+			);
+			path = indigo_client;
 			sourceTree = "<group>";
 		};
 		9D45253F20E0F9A1004D1137 /* indigo_linux_drivers */ = {
@@ -16450,6 +16460,10 @@
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = AG8BXW65A2;
 				ENABLE_HARDENED_RUNTIME = YES;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					INDIGO_CLIENT,
+				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_atik/bin_externals/libatik",
@@ -16474,6 +16488,10 @@
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = AG8BXW65A2;
 				ENABLE_HARDENED_RUNTIME = YES;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					INDIGO_CLIENT,
+				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_atik/bin_externals/libatik",

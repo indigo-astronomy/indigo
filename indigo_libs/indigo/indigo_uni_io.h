@@ -35,7 +35,9 @@
 #include <sys/socket.h>
 #define INDIGO_PATH_SEPATATOR	'/'
 #define indigo_timezone timezone
+#if !defined(INDIGO_CLIENT)
 #include <hidapi/hidapi.h>
+#endif
 #elif defined(INDIGO_WINDOWS)
 #include <winsock2.h>
 #if _MSC_VER
@@ -73,8 +75,10 @@ typedef enum {
 	INDIGO_COM_HANDLE = 1,
 	INDIGO_TCP_HANDLE = 2,
 	INDIGO_UDP_HANDLE = 3,
+#if !defined(INDIGO_CLIENT)
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	INDIGO_HID_HANDLE = 4
+#endif
 #endif
 } indigo_uni_handle_type;
 
@@ -85,10 +89,14 @@ typedef struct {
 		int fd;
 #if defined(INDIGO_WINDOWS)
 		SOCKET sock;
+#if !defined(INDIGO_CLIENT)
 		HANDLE com;
 #endif
+#endif
+#if !defined(INDIGO_CLIENT)
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 		hid_device *handle;
+#endif
 #endif
 	};
 	int log_level;
@@ -145,6 +153,8 @@ INDIGO_EXTERN indigo_uni_handle *indigo_uni_open_file(const char *path, int log_
  */
 INDIGO_EXTERN indigo_uni_handle *indigo_uni_create_file(const char *path, int log_level);
 
+#if !defined(INDIGO_CLIENT)
+
 /** Open serial connection with configuration string of the form "9600-8N1".
  */
 INDIGO_EXTERN indigo_uni_handle *indigo_uni_open_serial_with_config(const char *serial, const char *baudconfig, int log_level);
@@ -173,6 +183,8 @@ INDIGO_EXTERN int indigo_uni_set_rts(indigo_uni_handle *handle, bool state);
 
 INDIGO_EXTERN int indigo_uni_set_cts(indigo_uni_handle *handle, bool state);
 
+#endif
+
 /** Perform passive UDP discovery
  */
 INDIGO_EXTERN bool indigo_perform_passive_discovery(int port, int timeout, char *host, int max_host, char *message, int max_message);
@@ -196,17 +208,25 @@ INDIGO_EXTERN void indigo_uni_set_socket_write_timeout(indigo_uni_handle *handle
  */
 INDIGO_EXTERN void indigo_uni_set_socket_nodelay_option(indigo_uni_handle *handle);
 
+#if !defined(INDIGO_CLIENT)
+
 /** Open server socket.
  */
 INDIGO_EXTERN void indigo_uni_open_tcp_server_socket(int *port, indigo_uni_handle **server_handle, void (*worker)(indigo_uni_worker_data *), void *data, void (*callback)(int), int log_level);
+
+#endif
 
 /** Open TCP or UDP connection depending on the URL prefix tcp:// or udp:// for any other prefix protocol_hint is used.
     If no port is provided in the URL default port is used. protocol_hint will be set to actual protocol used for the connection.
  */
 INDIGO_EXTERN indigo_uni_handle *indigo_uni_open_url(const char *url, int default_port, indigo_uni_handle_type protocol_hint, int log_level);
 
+#if !defined(INDIGO_CLIENT)
+
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 INDIGO_EXTERN indigo_uni_handle *indigo_uni_open_hid(const int vid, const int pid, int log_level);
+#endif
+
 #endif
 
 /** Read available data into buffer.

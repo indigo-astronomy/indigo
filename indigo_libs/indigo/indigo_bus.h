@@ -968,9 +968,13 @@ INDIGO_EXTERN double indigo_pixel_scale(double focal_length_cm, double pixel_siz
  */
 INDIGO_EXTERN bool indigo_device_name_exists(const char *name);
 
+#if !defined(INDIGO_CLIENT)
+
 /** Fix device name to be unique with #number suffix
  */
 INDIGO_EXTERN bool indigo_make_name_unique(char *name, const char *format, ...);
+
+#endif
 
 #if defined(INDIGO_WINDOWS) && _MSC_VER
 
