@@ -25,6 +25,13 @@
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
+
+//+ include
+
+#include <ctype.h>
+
+//- include
+
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_wheel_driver.h>
 #include <indigo/indigo_uni_io.h>

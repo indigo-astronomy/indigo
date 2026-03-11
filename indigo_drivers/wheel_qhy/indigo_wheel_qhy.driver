@@ -24,7 +24,9 @@ driver qhy {
 	copyright = "Copyright (c) 2020-2026 CloudMakers, s. r. o.";
 	version = 10;
 	serial;
-	// include { }
+	include {
+		#include <ctype.h>
+	}
 	// define { }
 	data {
 		int current_slot;
