@@ -24,8 +24,10 @@ include ../Makefile.inc
 
 ifeq ($(OS_DETECTED),Linux)
 	INDIGO_LIBS = -lindigo -ludev
+	INDIGO_CLIENT_LIBS = -lindigo_client
 else
 	INDIGO_LIBS = $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libhidapi.a -lz -ldl -lm
+	INDIGO_CLIENT_LIBS = $(BUILD_LIB)/libindigo_client.a -lz -ldl -lm
 endif
 
 all: $(BUILD_BIN)/indigo_prop_tool $(BUILD_BIN)/indigo_list_usbserial $(BUILD_BIN)/indigo_raw_to_fits $(BUILD_BIN)/indigo_raw_crop $(BUILD_BIN)/indigo_drivers $(BUILD_BIN)/indigo_driver_metadata $(BUILD_BIN)/indigo_generator $(BUILD_BIN)/indigo_scan_drivers
@@ -50,7 +52,7 @@ clean-all: status
 	git clean -dfx
 
 $(BUILD_BIN)/indigo_prop_tool: indigo_prop_tool.o
-	$(CC) $(CFLAGS)  -o $@ indigo_prop_tool.o $(LDFLAGS) $(INDIGO_LIBS)
+	$(CC) $(CFLAGS)  -o $@ indigo_prop_tool.o $(LDFLAGS) $(INDIGO_CLIENT_LIBS)
 
 $(BUILD_BIN)/indigo_list_usbserial: indigo_list_usbserial.o
 	$(CC) $(CFLAGS)  -o $@ indigo_list_usbserial.o $(LDFLAGS) $(INDIGO_LIBS)
@@ -59,7 +61,7 @@ $(BUILD_BIN)/indigo_raw_to_fits: indigo_raw_to_fits.o
 	$(CC) $(CFLAGS)  -o $@ indigo_raw_to_fits.o $(LDFLAGS) $(INDIGO_LIBS)
 
 $(BUILD_BIN)/indigo_raw_crop: indigo_raw_crop.o
-	$(CC) $(CFLAGS)  -o $@ indigo_raw_crop.o $(LDFLAGS) $(INDIGO_LIBS)
+	$(CC) $(CFLAGS)  -o $@ indigo_raw_crop.o $(LDFLAGS) $(INDIGO_CLIENT_LIBS)
 
 $(BUILD_BIN)/indigo_drivers: indigo_drivers.o
 	$(CC) $(CFLAGS)  -o $@ indigo_drivers.o $(LDFLAGS) -lindigo
