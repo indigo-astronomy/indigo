@@ -84,7 +84,7 @@ driver skyroof {
 						} else if (DOME_SHUTTER_CLOSED_ITEM->sw.value && !strcmp(PRIVATE_DATA->response, "RoofClosed#")) {
 							DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
 						} else {
-							indigo_execute_handler_in(device, 500000, dome_shutter_finalizer);
+							indigo_execute_handler_in(device, 0.5, dome_shutter_finalizer);
 						}
 					}
 				}
@@ -99,7 +99,7 @@ driver skyroof {
 			on_change {
 				DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
 				if (skyroof_write(device, DOME_SHUTTER_OPENED_ITEM->sw.value ? "Open#" : "Close#") && skyroof_read(device) && !strcmp(PRIVATE_DATA->response, "0#")) {
-					indigo_execute_handler_in(device, 500000, dome_shutter_finalizer);
+					indigo_execute_handler_in(device, 0.5, dome_shutter_finalizer);
 				} else {
 					DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
