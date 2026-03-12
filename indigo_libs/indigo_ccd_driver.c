@@ -2116,18 +2116,18 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		} else {
 			indigo_error("JPEG Size > BLOB Size");
 		}
-	} else if (CCD_IMAGE_FORMAT_TIFF_ITEM->sw.value) {
-		void *tiff_data = NULL;
+	}
+	void *tiff_blob = NULL;
+	if (CCD_IMAGE_FORMAT_TIFF_ITEM->sw.value) {
 		unsigned long tiff_size = 0;
-		raw_to_tiff(device, data, frame_width, frame_height, bpp, &tiff_data, &tiff_size, keywords);
-		if (tiff_data) {
-			if (tiff_size < blobsize + FITS_HEADER_SIZE) {
-				memcpy(data, tiff_data, tiff_size);
-				blobsize = tiff_size;
-			} else {
-				indigo_error("TIFF Size > BLOB Size");
+		raw_to_tiff(device, data, frame_width, frame_height, bpp, &tiff_blob, &tiff_size, keywords);
+		if (tiff_blob) {
+			if (tiff_size <= blobsize + FITS_HEADER_SIZE) {
+				memcpy(data, tiff_blob, tiff_size);
+				free(tiff_blob);
+				tiff_blob = NULL;
 			}
-			free(tiff_data);
+			blobsize = tiff_size;
 		}
 	}
 	void *blob_value = NULL;
@@ -2145,7 +2145,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		blob_value = data;
 		blob_size = blobsize;
 	} else if (CCD_IMAGE_FORMAT_TIFF_ITEM->sw.value) {
-		blob_value = data;
+		blob_value = tiff_blob ? tiff_blob : data;
 		blob_size = blobsize;
 	}
 	if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
@@ -2246,6 +2246,9 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		CCD_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		INDIGO_DEBUG(indigo_debug("Client upload in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
+	}
+	if (tiff_blob) {
+		free(tiff_blob);
 	}
 	if (jpeg_data) {
 		free(jpeg_data);
