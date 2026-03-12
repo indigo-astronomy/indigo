@@ -31,22 +31,14 @@
 #include <indigo/indigo_client_xml.h>
 
 
-static indigo_result xml_client_detach(indigo_device *device) {
-	assert(device != NULL);
-	indigo_adapter_context *device_context = (indigo_adapter_context *)(device->device_context);
-	if (device_context->output == NULL) {
-		return INDIGO_OK;
-	}
-	return INDIGO_OK;
-}
-
 indigo_device *indigo_xml_client_adapter(char *name, char *url_prefix, indigo_uni_handle *input, indigo_uni_handle *output) {
 	static indigo_device device_template = INDIGO_DEVICE_INITIALIZER(
-		"XML Client Adapter", NULL,
+		"XML Client Adapter",
+		NULL,
 		indigo_xml_client_parser_enumerate_properties,
 		indigo_xml_client_parser_change_property,
 		indigo_xml_client_parser_enable_blob,
-		xml_client_detach
+		NULL
 	);
 	indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &device_template);
 	sprintf(device->name, "@ %s", name);
