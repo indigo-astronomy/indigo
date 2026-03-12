@@ -680,6 +680,9 @@ static duk_ret_t redefine_light_property(duk_context *ctx) {
 
 static void update_property_handler(indigo_device *device, void *data) {
 	indigo_property *property = (indigo_property *)data;
+	for (int i = 0; i < property->count; i++) {
+		property->items[i].do_update = true;
+	}
 	property->do_update = true;
 	indigo_update_property(device, property, NULL);
 }
@@ -698,8 +701,7 @@ static duk_ret_t update_text_property(duk_context *ctx) {
 				for (int j = 0; j < tmp->count; j++) {
 					indigo_item *item = tmp->items + j;
 					if (!strcmp(item->name, name)) {
-						INDIGO_COPY_NAME(tmp->items[j].name, name);
-						INDIGO_COPY_VALUE(tmp->items[j].text.value, duk_to_string(ctx, -1));
+						indigo_set_text_item_value(item, duk_to_string(ctx, -1));
 						break;
 					}
 				}
@@ -731,8 +733,8 @@ static duk_ret_t update_number_property(duk_context *ctx) {
 				for (int j = 0; j < tmp->count; j++) {
 					indigo_item *item = tmp->items + j;
 					if (!strcmp(item->name, name)) {
-						INDIGO_COPY_NAME(tmp->items[j].name, name);
-						tmp->items[j].number.value = duk_to_number(ctx, -1);
+						INDIGO_COPY_NAME(item->name, name);
+						item->number.value = duk_to_number(ctx, -1);
 						break;
 					}
 				}
@@ -764,8 +766,8 @@ static duk_ret_t update_switch_property(duk_context *ctx) {
 				for (int j = 0; j < tmp->count; j++) {
 					indigo_item *item = tmp->items + j;
 					if (!strcmp(item->name, name)) {
-						INDIGO_COPY_NAME(tmp->items[j].name, name);
-						tmp->items[j].sw.value = duk_to_boolean(ctx, -1);
+						INDIGO_COPY_NAME(item->name, name);
+						item->sw.value = duk_to_boolean(ctx, -1);
 						break;
 					}
 				}
@@ -797,8 +799,8 @@ static duk_ret_t update_light_property(duk_context *ctx) {
 				for (int j = 0; j < tmp->count; j++) {
 					indigo_item *item = tmp->items + j;
 					if (!strcmp(item->name, name)) {
-						INDIGO_COPY_NAME(tmp->items[j].name, name);
-						tmp->items[j].light.value = require_state(ctx, -1);
+						INDIGO_COPY_NAME(item->name, name);
+						item->light.value = require_state(ctx, -1);
 						break;
 					}
 				}
