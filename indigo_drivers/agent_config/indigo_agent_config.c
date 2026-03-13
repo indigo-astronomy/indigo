@@ -130,7 +130,7 @@ static void populate_list(indigo_device *device) {
 			if (ext) {
 				*ext = 0;
 			}
-			indigo_init_switch_item(AGENT_CONFIG_LOAD_PROPERTY->items + count, list[i], list[i], false);
+			indigo_init_switch_item(AGENT_CONFIG_LOAD_PROPERTY->items + i, list[i], list[i], false);
 			free(list[i]);
 		}
 		free(list);
