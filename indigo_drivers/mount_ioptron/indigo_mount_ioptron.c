@@ -1910,19 +1910,27 @@ static void guider_connect_callback(indigo_device *device) {
 }
 
 static void guider_guide_dec_callback(indigo_device *device) {
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "#### Eneter callback: %d %d", (int)GUIDER_GUIDE_NORTH_ITEM->number.value, (int)GUIDER_GUIDE_SOUTH_ITEM->number.value);
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	INDIGO_DRIVER_ERROR(DRIVER_NAME,"#### Mutex locked");
 	start_tracking(device->master_device);
+	INDIGO_DRIVER_ERROR(DRIVER_NAME,"#### Tracking started");
 	if (GUIDER_GUIDE_NORTH_ITEM->number.value > 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME,"#### Guiding north: %d ms", (int)GUIDER_GUIDE_NORTH_ITEM->number.value);
 		ieq_no_reply_command(device, ":Mn%05d#", (int)GUIDER_GUIDE_NORTH_ITEM->number.value);
 		indigo_usleep(1000 * (int)GUIDER_GUIDE_NORTH_ITEM->number.value);
 	} else if (GUIDER_GUIDE_SOUTH_ITEM->number.value > 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME,"#### Guiding south: %d ms", (int)GUIDER_GUIDE_SOUTH_ITEM->number.value);
 		ieq_no_reply_command(device, ":Ms%05d#", (int)GUIDER_GUIDE_SOUTH_ITEM->number.value);
 		indigo_usleep(1000 * (int)GUIDER_GUIDE_SOUTH_ITEM->number.value);
 	}
+	INDIGO_DRIVER_ERROR(DRIVER_NAME,"#### Guiding done");
 	GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
 	GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+	INDIGO_DRIVER_ERROR(DRIVER_NAME,"#### Property updated");
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+	INDIGO_DRIVER_ERROR(DRIVER_NAME,"#### Mutex unlocked and callback done");
 }
 
 static void guider_guide_ra_callback(indigo_device *device) {
@@ -2244,6 +2252,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "#### Guide DEC changed, north: %d, south: %d", (int)GUIDER_GUIDE_NORTH_ITEM->number.value, (int)GUIDER_GUIDE_SOUTH_ITEM->number.value);
 		indigo_set_timer(device, 0, guider_guide_dec_callback, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_RA_PROPERTY, property)) {
