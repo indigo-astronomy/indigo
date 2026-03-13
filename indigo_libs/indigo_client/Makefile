@@ -87,7 +87,7 @@ $(BUILD_LIB)/libindigo_client.a: $(LIBINDIGO_CLIENT_FILES)
 
 $(BUILD_LIB)/libindigo_client.$(SOEXT): $(LIBINDIGO_CLIENT_FILES)
 ifeq ($(OS_DETECTED),Darwin)
-	$(CC) -shared -o $@ $^ $(LDFLAGS) -ldns_sd -lz -lstdc++
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -lz -lstdc++
 else
 	$(CC) -shared -o $@ $^ $(LDFLAGS) $(FORCE_ALL_OFF) -lavahi-client -lavahi-common -lz -lstdc++
 endif
