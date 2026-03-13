@@ -41,7 +41,9 @@ Sequence.prototype.repeat = function(count, block) {
 		this.recovery_point_index = recovery_point_index_backup;
 		block();
 		i++;
-		this.sequence.push({ execute: 'increment_loop(' + i + ')', step: loop, progress: this.progress, exposure: this.exposure });
+		if (i < count) {
+			this.sequence.push({ execute: 'increment_loop(' + i + ')', step: loop, progress: this.progress, exposure: this.exposure });
+		}
 	}
 	this.sequence.push({ execute: 'exit_loop()', step: this.step, progress: this.progress, exposure: this.exposure });
 	if (count <= 0) {
@@ -1178,7 +1180,7 @@ var indigo_sequencer = {
 		}
 		this.wait(delay, true);
 	},
-	
+
 	set_failure_handling: function(failure_handling) {
 		this.failure_handling = failure_handling;
 		indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
