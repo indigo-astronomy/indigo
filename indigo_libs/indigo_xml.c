@@ -259,12 +259,6 @@ static void *get_properties_handler(parser_state state, parser_context *context,
 	return get_properties_handler;
 }
 
-struct call_back_data {
-	indigo_uni_handle *handle;
-	char call_back_name[INDIGO_NAME_SIZE];
-	char call_back_url[INDIGO_NAME_SIZE];
-};
-
 static void *new_one_text_vector_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
 	indigo_property *property = (indigo_property *)context->property;
 	indigo_client *client = context->client;
@@ -449,8 +443,6 @@ static void *switch_protocol_handler(parser_state state, parser_context *context
 			device->version = major << 8 | minor;
 		}
 	} else if (state == END_TAG_STATE) {
-		indigo_uni_handle *output = ((indigo_adapter_context *)(context->device->device_context))->output;
-		indigo_uni_handle *input = ((indigo_adapter_context *)(context->device->device_context))->input;
 		return top_level_handler;
 	}
 	return switch_protocol_handler;
@@ -1857,9 +1849,6 @@ static pthread_mutex_t xml_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 indigo_result indigo_xml_client_parser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
-	if (!indigo_reshare_remote_devices && client && client->is_remote) {
-		return INDIGO_OK;
-	}
 	indigo_adapter_context *device_context = (indigo_adapter_context *)device->device_context;
 	if (device_context->output == NULL) {
 		return INDIGO_OK;
@@ -1885,26 +1874,14 @@ indigo_result indigo_xml_client_parser_enumerate_properties(indigo_device *devic
 		}
 	}
 	if (property != NULL) {
-		if (device->version == INDIGO_VERSION_LEGACY) {
-			if (*property->device && property_name) {
-				INDIGO_PRINTF(handle, "<getProperties version='1.7' device='%s' name='%s' switch='%d.%d'/>\n", indigo_xml_escape(device_name), property_name, (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF);
-			} else if (*property->device) {
-				INDIGO_PRINTF(handle, "<getProperties version='1.7' device='%s' switch='%d.%d'/>\n", indigo_xml_escape(device_name), (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF);
-			} else if (*indigo_property_name(device->version, property)) {
-				INDIGO_PRINTF(handle, "<getProperties version='1.7' name='%s'/ switch='%d.%d'>\n", property_name, (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF);
-			} else {
-				INDIGO_PRINTF(handle, "<getProperties version='1.7' switch='%d.%d'/>\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF);
-			}
+		if (*property->device && property_name) {
+			INDIGO_PRINTF(handle, "<getProperties device='%s' name='%s'/>\n", indigo_xml_escape(device_name), property_name);
+		} else if (*property->device) {
+			INDIGO_PRINTF(handle, "<getProperties device='%s'/>\n", indigo_xml_escape(device_name));
+		} else if (*indigo_property_name(device->version, property)) {
+			INDIGO_PRINTF(handle, "<getProperties name='%s'/>\n", property_name);
 		} else {
-			if (*property->device && property_name) {
-				INDIGO_PRINTF(handle, "<getProperties device='%s' name='%s'/>\n", indigo_xml_escape(device_name), property_name);
-			} else if (*property->device) {
-				INDIGO_PRINTF(handle, "<getProperties device='%s'/>\n", indigo_xml_escape(device_name));
-			} else if (*indigo_property_name(device->version, property)) {
-				INDIGO_PRINTF(handle, "<getProperties name='%s'/>\n", property_name);
-			} else {
-				INDIGO_PRINTF(handle, "<getProperties/>\n");
-			}
+			INDIGO_PRINTF(handle, "<getProperties/>\n");
 		}
 	} else if (indigo_client_name) {
 		INDIGO_PRINTF(handle, "<getProperties version='1.7' client='%s' switch='%d.%d'/>\n", indigo_client_name, (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF);
@@ -1923,9 +1900,6 @@ failure:
 indigo_result indigo_xml_client_parser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(property != NULL);
-	if (!indigo_reshare_remote_devices && client && client->is_remote) {
-		return INDIGO_OK;
-	}
 	indigo_adapter_context *device_context = (indigo_adapter_context *)device->device_context;
 	if (device_context->output == NULL) {
 		return INDIGO_OK;
@@ -1997,9 +1971,6 @@ failure:
 indigo_result indigo_xml_client_parser_enable_blob(indigo_device *device, indigo_client *client, indigo_property *property, indigo_enable_blob_mode mode) {
 	assert(device != NULL);
 	assert(property != NULL);
-	if (!indigo_reshare_remote_devices && client && client->is_remote) {
-		return INDIGO_OK;
-	}
 	indigo_adapter_context *device_context = (indigo_adapter_context *)device->device_context;
 	if (device_context->output == NULL) {
 		return INDIGO_OK;
