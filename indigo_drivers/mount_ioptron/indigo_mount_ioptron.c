@@ -1859,13 +1859,11 @@ static void mount_meridian_callback(indigo_device *device) {
 }
 
 static void start_tracking(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (MOUNT_TRACKING_OFF_ITEM->sw.value) {
 		ieq_simple_reply_command(device, ":ST1#");
 		indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
 		indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 	}
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void guider_connect_callback(indigo_device *device) {
