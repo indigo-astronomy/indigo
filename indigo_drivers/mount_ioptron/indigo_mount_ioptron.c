@@ -1913,7 +1913,7 @@ static void guider_guide_dec_callback(indigo_device *device) {
 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "#### Eneter callback: %d %d", (int)GUIDER_GUIDE_NORTH_ITEM->number.value, (int)GUIDER_GUIDE_SOUTH_ITEM->number.value);
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	INDIGO_DRIVER_ERROR(DRIVER_NAME,"#### Mutex locked");
-	start_tracking(device->master_device);
+	//start_tracking(device->master_device);
 	INDIGO_DRIVER_ERROR(DRIVER_NAME,"#### Tracking started");
 	if (GUIDER_GUIDE_NORTH_ITEM->number.value > 0) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME,"#### Guiding north: %d ms", (int)GUIDER_GUIDE_NORTH_ITEM->number.value);
@@ -1935,7 +1935,7 @@ static void guider_guide_dec_callback(indigo_device *device) {
 
 static void guider_guide_ra_callback(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	start_tracking(device->master_device);
+	//start_tracking(device->master_device);
 	if (GUIDER_GUIDE_WEST_ITEM->number.value > 0) {
 		ieq_no_reply_command(device, ":Mw%05d#", (int)GUIDER_GUIDE_WEST_ITEM->number.value);
 		indigo_usleep(1000 * (int)GUIDER_GUIDE_WEST_ITEM->number.value);
