@@ -156,7 +156,7 @@
 #define DRIVER_NAME						"indigo_ccd_meade"
 #define DRIVER_PRIVATE_DATA		meade_private_data
 
-#define SDK_CALL(x)						Toupcam_##x     // Stange - Meade cameras use Toupcam prefix
+#define SDK_CALL(x)						Toupcam_##x     // Strange - Meade cameras use Toupcam prefix
 #define SDK_DEF(x)						TOUPCAM_##x
 #define SDK_TYPE(x)						Toupcam##x
 #define SDK_HANDLE						HToupCam
@@ -316,7 +316,7 @@ typedef struct {
 #define MAKEFOURCC(a, b, c, d) ((unsigned)(unsigned char)(a) | ((unsigned)(unsigned char)(b) << 8) | ((unsigned)(unsigned char)(c) << 16) | ((unsigned)(unsigned char)(d) << 24))
 #endif
 
-#define ROUND_BIN(dimention, bin) (2 * ((unsigned)(dimention) / (unsigned)(bin) / 2));
+#define ROUND_BIN(dimention, bin) (2 * ((unsigned)(dimention) / (unsigned)(bin) / 2))
 
 static bool get_blacklevel(indigo_device *device, int *blacklevel, double *scale) {
 	int pixel_format;
@@ -407,7 +407,7 @@ static void get_bayer_pattern(indigo_device *device, char *bayer_pattern) {
 	}
 }
 
-static void fnish_exposure_async(indigo_device *device) {
+static void finish_exposure_async(indigo_device *device) {
 	CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 }
@@ -471,7 +471,7 @@ static void pull_callback(unsigned event, void* callbackCtx) {
 					if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 						indigo_process_image(device, PRIVATE_DATA->buffer, frameInfo.width, frameInfo.height, PRIVATE_DATA->bits > 8 && PRIVATE_DATA->bits <= 16 ? 16 : PRIVATE_DATA->bits, true, true, fits_keywords, false);
 						CCD_EXPOSURE_ITEM->number.value = 0;
-						indigo_set_timer(device, 0, fnish_exposure_async, NULL);
+						indigo_set_timer(device, 0, finish_exposure_async, NULL);
 					} else if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 						indigo_process_image(device, PRIVATE_DATA->buffer, frameInfo.width, frameInfo.height, PRIVATE_DATA->bits > 8 && PRIVATE_DATA->bits <= 16 ? 16 : PRIVATE_DATA->bits, true, true, fits_keywords, true);
 						if (--CCD_STREAMING_COUNT_ITEM->number.value == 0) {
@@ -501,8 +501,14 @@ static void pull_callback(unsigned event, void* callbackCtx) {
 		case SDK_DEF(EVENT_NOPACKETTIMEOUT):
 		case SDK_DEF(EVENT_ERROR): {
 			indigo_ccd_failure_cleanup(device);
-			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+			if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+				CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+			} else if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+				indigo_finalize_video_stream(device);
+				CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
+			}
 			break;
 		}
 	}
@@ -967,7 +973,7 @@ static void ccd_connect_callback(indigo_device *device) {
 				double scale = 8;
 				get_blacklevel(device, &blacklevel, &scale);
 				CCD_OFFSET_ITEM->number.value = CCD_OFFSET_ITEM->number.target = blacklevel * scale;
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Offset supported: balcklevel=%d, scale=%f", blacklevel, scale);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Offset supported: blacklevel=%d, scale=%f", blacklevel, scale);
 			}
 
 			if (X_CCD_ADVANCED_PROPERTY) {
@@ -1807,7 +1813,7 @@ static void wheel_connect_callback(indigo_device *device) {
 	} else {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->wheel_timer);
 		indigo_delete_property(device, X_CALIBRATE_PROPERTY, NULL);
-		if (PRIVATE_DATA->camera && PRIVATE_DATA->camera->gp_bits != 0) {
+		if (PRIVATE_DATA->camera && PRIVATE_DATA->camera->gp_bits == 0) {
 			if (PRIVATE_DATA->handle != NULL) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Closing wheel");
 				pthread_mutex_lock(&PRIVATE_DATA->mutex);
@@ -2140,7 +2146,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 }
 
 static void focuser_connect_callback(indigo_device *device) {
-indigo_lock_master_device(device);
+	indigo_lock_master_device(device);
 	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (PRIVATE_DATA->handle == NULL) {
@@ -2161,10 +2167,15 @@ indigo_lock_master_device(device);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "get_FwVersion() -> %08x", result);
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 			indigo_define_property(device, X_CALIBRATE_PROPERTY, NULL);
-
+			
 			pthread_mutex_lock(&PRIVATE_DATA->mutex);
 			int value = 0;
 			HRESULT res = (SDK_CALL(AAF)(PRIVATE_DATA->handle, SDK_DEF(AAF_RANGEMAX), 0, &value));
+			if (FAILED(res)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "AAF(AAF_RANGEMAX) -> %08x (value = %d) (failed)", res, value);
+			} else {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "AAF(AAF_RANGEMAX) -> %08x (value = %d)", res, value);
+			}
 
 			res = (SDK_CALL(AAF)(PRIVATE_DATA->handle, SDK_DEF(AAF_GETBACKLASH), 0, &value));
 			if (FAILED(res)) {
@@ -2174,7 +2185,7 @@ indigo_lock_master_device(device);
 				FOCUSER_BACKLASH_ITEM->number.value = (double)value;
 				PRIVATE_DATA->backlash = value;
 			}
-
+			
 			res = (SDK_CALL(AAF)(PRIVATE_DATA->handle, SDK_DEF(AAF_GETPOSITION), 0, &value));
 			if (FAILED(res)) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "AAF(AAF_GETPOSITION) -> %08x (value = %d) (failed)", res, value);
@@ -2183,7 +2194,7 @@ indigo_lock_master_device(device);
 				FOCUSER_POSITION_ITEM->number.value = (double)value;
 				PRIVATE_DATA->current_position = PRIVATE_DATA->target_position = value;
 			}
-
+			
 			res = (SDK_CALL(AAF)(PRIVATE_DATA->handle, SDK_DEF(AAF_GETDIRECTION), 0, &value));
 			if (FAILED(res)) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "AAF(AAF_GETDIRECTION) -> %08x (value = %d) (failed)", res, value);
@@ -2192,7 +2203,7 @@ indigo_lock_master_device(device);
 				FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value = (value > 0);
 				FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value = !FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value;
 			}
-
+			
 			res = (SDK_CALL(AAF)(PRIVATE_DATA->handle, SDK_DEF(AAF_GETMAXSTEP), 0, &PRIVATE_DATA->max_position));
 			if (FAILED(res)) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "AAF(AAF_GETMAXSTEP) -> %08x (value = %d) (failed)", res, PRIVATE_DATA->max_position);
@@ -2200,7 +2211,7 @@ indigo_lock_master_device(device);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "AAF(AAF_GETMAXSTEP) -> %08x (value = %d)", res, PRIVATE_DATA->max_position);
 				FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target = (double)PRIVATE_DATA->max_position;
 			}
-
+			
 			res = (SDK_CALL(AAF)(PRIVATE_DATA->handle, SDK_DEF(AAF_GETBUZZER), 0, &value));
 			if (FAILED(res)) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "AAF(AAF_GETBUZZER) -> %08x (value = %d) (failed)", res, value);
@@ -2209,13 +2220,13 @@ indigo_lock_master_device(device);
 				X_BEEP_ON_ITEM->sw.value = (value > 0);
 			}
 			X_BEEP_OFF_ITEM->sw.value = !X_BEEP_ON_ITEM->sw.value;
-
+			
 			pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-
+			
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-
+			
 			indigo_define_property(device, X_BEEP_PROPERTY, NULL);
-
+			
 			PRIVATE_DATA->prev_temp = -273;  /* we do not have previous temperature reading */
 			indigo_set_timer(device, 0.5, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
 			indigo_set_timer(device, 0.1, temperature_timer_callback, &PRIVATE_DATA->temperature_timer);
