@@ -134,7 +134,7 @@
 #define NYX_LEVELER_COMPASS_ITEM				(NYX_LEVELER_PROPERTY->items+2)
 
 #define NYX_LEVELER_PROPERTY_NAME				"X_NYX_LEVELER"
-#define NYX_LEVELER_PITCH_ITEM_NAME			"PICH"
+#define NYX_LEVELER_PITCH_ITEM_NAME			"PITCH"
 #define NYX_LEVELER_ROLL_ITEM_NAME			"ROLL"
 #define NYX_LEVELER_COMPASS_ITEM_NAME		"COMPASS"
 
@@ -595,15 +595,15 @@ static bool meade_set_site(indigo_device *device, double latitude, double longit
 	}
 	if (MOUNT_TYPE_STARGO_ITEM->sw.value) {
 		meade_simple_reply_command(device, indigo_dtos(latitude, "%+03d*%02d:%02d"));
-		result = MOUNT_TYPE_STARGO_ITEM->sw.value; // ignore result for Avalon StarGO
+		result = true; // ignore result for Avalon StarGO
 	} else {
 		result = meade_simple_reply_command(device, ":St%s#", indigo_dtos(latitude, "%+03d*%02d")) && *PRIVATE_DATA->response == '1';
 	}
 	// LX200 protocol expects negative longitude for the east
 	longitude = 360 - fmod(longitude + 360, 360);
 	if (MOUNT_TYPE_STARGO_ITEM->sw.value) {
-		result = meade_simple_reply_command(device, ":Sg%s#", indigo_dtos(longitude, "%+04d*%02d:%02d"));
-		result = MOUNT_TYPE_STARGO_ITEM->sw.value; // ignore result for Avalon StarGO
+		meade_simple_reply_command(device, ":Sg%s#", indigo_dtos(longitude, "%+04d*%02d:%02d"));
+		result = true; // ignore result for Avalon StarGO
 	} else {
 		result = meade_simple_reply_command(device, ":Sg%s#", indigo_dtos(longitude, "%03d*%02d")) && *PRIVATE_DATA->response == '1';
 	}
@@ -1129,6 +1129,7 @@ static bool meade_focus_rel(indigo_device *device, bool slow, int steps) {
 				break;
 			}
 		}
+		return true;
 	}
 	return false;
 }
@@ -1181,7 +1182,8 @@ static bool meade_detect_mount(indigo_device *device) {
 	bool result = true;
 	if (meade_command(device, ":GVP#")) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Product: %s", PRIVATE_DATA->response);
-		strncpy(PRIVATE_DATA->product, PRIVATE_DATA->response, 64);
+		strncpy(PRIVATE_DATA->product, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->product) - 1);
+		PRIVATE_DATA->product[sizeof(PRIVATE_DATA->product) - 1] = 0;
 		MOUNT_TYPE_PROPERTY->state = INDIGO_OK_STATE;
 		if (!strncmp(PRIVATE_DATA->product, "LX", 2) || !strncmp(PRIVATE_DATA->product, "Autostar", 8)) {
 			indigo_set_switch(MOUNT_TYPE_PROPERTY, MOUNT_TYPE_MEADE_ITEM, true);
@@ -1688,7 +1690,7 @@ static void meade_update_oat_state(indigo_device *device) {
 			PRIVATE_DATA->parking = true;
 		} else if (!strncmp(PRIVATE_DATA->response, "Parked", 6)) {
 			PRIVATE_DATA->parked = true;
-		} else if (!strncmp(PRIVATE_DATA->response, "Homing", 7)) {
+		} else if (!strncmp(PRIVATE_DATA->response, "Homing", 6)) {
 			PRIVATE_DATA->homing = true;
 		}
 	}
@@ -1990,8 +1992,8 @@ static void nyx_ap_callback(indigo_device *device) {
 }
 
 static void nyx_cl_callback(indigo_device *device) {
-	char ssid[128] = "";
-	char password[128] = "";
+	char ssid[345] = "";
+	char password[345] = "";
 	bool encode = false;
 	if (compare_versions(MOUNT_INFO_FIRMWARE_ITEM->text.value, NYX_BASE64_THRESHOLD_VERSION) >= 0) {
 		base64_encode((unsigned char *)ssid, (unsigned char *)NYX_WIFI_CL_SSID_ITEM->text.value, (long)strlen(NYX_WIFI_CL_SSID_ITEM->text.value));
@@ -2491,7 +2493,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		NYX_LEVELER_PROPERTY->hidden = true;
 		indigo_init_number_item(NYX_LEVELER_PITCH_ITEM, NYX_LEVELER_PITCH_ITEM_NAME, "Pitch [°]", 0, 360, 0, 0);
 		indigo_init_number_item(NYX_LEVELER_ROLL_ITEM, NYX_LEVELER_ROLL_ITEM_NAME, "Roll [°]", 0, 360, 0, 0);
-		indigo_init_number_item(NYX_LEVELER_COMPASS_ITEM, NYX_LEVELER_COMPASS_ITEM_NAME, "Compas [°]", 0, 360, 0, 0);
+		indigo_init_number_item(NYX_LEVELER_COMPASS_ITEM, NYX_LEVELER_COMPASS_ITEM_NAME, "Compass [°]", 0, 360, 0, 0);
 		// --------------------------------------------------------------------------------
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -2508,7 +2510,7 @@ static indigo_result mount_enumerate_properties(indigo_device *device, indigo_cl
 		INDIGO_DEFINE_MATCHING_PROPERTY(NYX_WIFI_AP_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(NYX_WIFI_CL_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(NYX_WIFI_RESET_PROPERTY);
-		INDIGO_DEFINE_MATCHING_PROPERTY(NYX_WIFI_RESET_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(NYX_LEVELER_PROPERTY);
 	}
 	return indigo_mount_enumerate_properties(device, client, property);
 }
