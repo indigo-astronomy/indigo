@@ -173,6 +173,15 @@ typedef struct {
 	bool motioned;
 	char lastUTC[INDIGO_VALUE_SIZE];
 	char product[64];
+	bool slewing, tracking, parked, parking, homed, homing;
+	double timeout;
+	char response[128];
+	bool use_dst_commands;
+	long time_difference;
+	int utc_offset;
+	bool focus_aborted;
+	int onstep_aux_power_outlet_slot_mapping[ONSTEP_AUX_DEVICE_COUNT];	// maps power outlet property item index to onstep aux slot
+	int onstep_aux_heater_outlet_slot_mapping[ONSTEP_AUX_DEVICE_COUNT];	// maps heater outlet property item index to onstep aux slot
 	indigo_property *alignment_mode_property;
 	indigo_property *mount_type_property;
 	indigo_property *zwo_buzzer_property;
@@ -184,17 +193,6 @@ typedef struct {
 	indigo_property *aux_info_property;
 	indigo_property *power_outlet_property;
 	indigo_property *heater_outlet_property;
-	bool slewing, tracking;
-	bool parked, parking;
-	bool homed, homing;
-	double timeout;
-	char response[128];
-	bool use_dst_commands;
-	long time_difference;
-	int utc_offset;
-	bool focus_aborted;
-	int onstep_aux_power_outlet_slot_mapping[ONSTEP_AUX_DEVICE_COUNT];	// maps power outlet property item index to onstep aux slot
-	int onstep_aux_heater_outlet_slot_mapping[ONSTEP_AUX_DEVICE_COUNT];	// maps heater outlet property item index to onstep aux slot
 } lx200_private_data;
 
 // Compare two version strings in the format "major.minor.patch"
@@ -2126,24 +2124,22 @@ static void position_timer_callback(indigo_device *device) {
 
 static void mount_connect_callback(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		bool result = true;
+		bool connection_result = true;
 		if (PRIVATE_DATA->device_count++ == 0) {
-			result = meade_open(device);
+			connection_result = meade_open(device);
 		}
-		if (result) {
+		if (connection_result) {
 			if (MOUNT_TYPE_DETECT_ITEM->sw.value) {
 				if (!meade_detect_mount(device)) {
-					result = false;
+					connection_result = false;
 					indigo_send_message(device, ALERT_PROPERTY, "Autodetection failed!");
 					meade_close(device);
 				}
 			}
 		}
-		if (result) {
+		if (connection_result) {
 			meade_init_mount(device);
 			// initialize target
-			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
-			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
 			indigo_define_property(device, MOUNT_MODE_PROPERTY, NULL);
 			indigo_define_property(device, ZWO_BUZZER_PROPERTY, NULL);
 			indigo_define_property(device, NYX_WIFI_AP_PROPERTY, NULL);
