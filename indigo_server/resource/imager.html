@@ -103,7 +103,7 @@
 								<div class="card p-1 m-1 mt-2 bg-light">
 									<div class="card-block d-flex flex-wrap">
 										<indigo-select-item :property="findProperty('Imager Agent', 'FILTER_WHEEL_LIST')"></indigo-select-item>
-										<indigo-select-item :property="findProperty('Imager Agent', 'AGENT_WHEEL_FILTER')" :no_value="'Moving...'"></indigo-select-item>
+										<indigo-select-item v-if="findProperty('Imager Agent', 'WHEEL_SLOT')" :property="findProperty('Imager Agent', 'AGENT_WHEEL_FILTER')" :no_value="'Moving...'"></indigo-select-item>
 									</div>
 								</div>
 							</template>

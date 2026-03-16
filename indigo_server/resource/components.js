@@ -16,7 +16,7 @@ Vue.component('indigo-select-item', {
 			changeProperty(this.property.device, this.property.name, values);
 		},
 		state: function() {
-			return this.property.state.toLowerCase() + "-state";
+			return this.property == null ? null : this.property.state.toLowerCase() + "-state";
 		},
 		none_selected: function() {
 			for (var i in this.property.items) {
@@ -94,7 +94,7 @@ Vue.component('indigo-edit-number', {
 			this.change(e.target.value);
 		},
 		state: function() {
-			return this.property.state.toLowerCase() + "-state";
+			return this.property == null ? null : this.property.state.toLowerCase() + "-state";
 		},
 		value: function() {
 			if (this.property == null) return null;
@@ -169,7 +169,7 @@ Vue.component('indigo-edit-number-60', {
 			this.change(e.target.value);
 		},
 		state: function() {
-			return this.property.state.toLowerCase() + "-state";
+			return this.property == null ? null : this.property.state.toLowerCase() + "-state";
 		},
 		value: function() {
 			if (this.property == null)
@@ -213,7 +213,7 @@ Vue.component('indigo-show-number', {
 	},
 	methods: {
 		state: function() {
-			return this.property.state.toLowerCase() + "-state";
+			return this.property == null ? null : this.property.state.toLowerCase() + "-state";
 		},
 		value: function() {
 			if (this.property == null) return null;
@@ -250,7 +250,7 @@ Vue.component('indigo-show-number-60', {
 	},
 	methods: {
 		state: function() {
-			return this.property.state.toLowerCase() + "-state";
+			return this.property == null ? null : this.property.state.toLowerCase() + "-state";
 		},
 		value: function() {
 			if (this.property == null)
@@ -283,7 +283,7 @@ Vue.component('indigo-show-text', {
 	},
 	methods: {
 		state: function() {
-			return this.property.state.toLowerCase() + "-state";
+			return this.property == null ? null : this.property.state.toLowerCase() + "-state";
 		},
 		value: function() {
 			if (this.property == null)
@@ -322,7 +322,7 @@ Vue.component('indigo-edit-text', {
 			changeProperty(this.property.device, this.property.name, values);
 		},
 		state: function() {
-			return this.property.state.toLowerCase() + "-state";
+			return this.property == null ? null : this.property.state.toLowerCase() + "-state";
 		},
 		item: function() {
 			if (this.property == null) return null;
@@ -373,7 +373,7 @@ Vue.component('indigo-stepper', {
 			changeProperty(this.property.device, this.property.name, values);
 		},
 		state: function() {
-			return this.property.state.toLowerCase() + "-state";
+			return this.property == null ? null : this.property.state.toLowerCase() + "-state";
 		},
 		value: function() {
 			if (this.property == null) return null;
@@ -622,22 +622,26 @@ Vue.component('indigo-select-multi-item', {
 	methods: {
 		items: function() {
 			var result = [];
-			for (i in this.property.itemsByLabel) {
-				var item = this.property.items[i];
-				if (item.name.startsWith(this.prefix)) result.push(item);
+			if (this.property != null) {
+				for (i in this.property.itemsByLabel) {
+					var item = this.property.items[i];
+					if (item.name.startsWith(this.prefix)) result.push(item);
+				}
 			}
 			return result;
 		},
 		value: function() {
 			var result = null;
-			for (i in this.property.itemsByLabel) {
-				var item = this.property.items[i];
-				if (item.value && item.name.startsWith(this.prefix)) result = result == null ? item.label : result + "; " + item.label;
+			if (this.property != null) {
+				for (i in this.property.itemsByLabel) {
+					var item = this.property.items[i];
+					if (item.value && item.name.startsWith(this.prefix)) result = result == null ? item.label : result + "; " + item.label;
+				}
 			}
 			return result;
 		},
 		state: function() {
-			return this.property.state.toLowerCase() + "-state";
+			return this.property == null ? null : this.property.state.toLowerCase() + "-state";
 		},
 		change: function(item) {
 			var values = {};

@@ -120,7 +120,15 @@ function enumerateProperties() {
 }
 
 function changeProperty(deviceName, propertyName, values) {
-	var hints = INDIGO.devices[deviceName][propertyName].hints;
+	var dev = INDIGO.devices[deviceName];
+	if (dev == null) {
+		return;
+	}
+	var prop = dev[propertyName];
+	if (prop == null) {
+		return;
+	}
+	var hints = prop.hints;
 	if (hints != null) {
 		hints = hints.split(";")
 		for (var i in hints) {

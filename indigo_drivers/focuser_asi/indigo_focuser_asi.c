@@ -24,7 +24,7 @@
  \file indigo_focuser_asi.c
  */
 
-#define DRIVER_VERSION 0x0300001D
+#define DRIVER_VERSION 0x0300001E
 #define DRIVER_NAME "indigo_focuser_asi"
 #define BT_DEVICE_NAME "EAF Pro (Bluetooth)"
 
@@ -92,6 +92,7 @@ typedef struct {
 	char custom_suffix[9];
 	int current_position, target_position, max_position, backlash;
 	double prev_temp;
+	bool has_temperature_sensor;
 	indigo_timer *focuser_timer, *temperature_timer;
 	pthread_mutex_t usb_mutex;
 	indigo_property *beep_property;
@@ -200,7 +201,6 @@ static void focuser_timer_callback(indigo_device *device) {
 
 static void temperature_timer_callback(indigo_device *device) {
 	float temp;
-	static bool has_sensor = true;
 	int res;
 
 	FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
@@ -217,13 +217,13 @@ static void temperature_timer_callback(indigo_device *device) {
 
 	if (FOCUSER_TEMPERATURE_ITEM->number.value < -270.0) { /* -273 is returned when the sensor is not connected */
 		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_IDLE_STATE;
-		if (has_sensor) {
+		if (PRIVATE_DATA->has_temperature_sensor) {
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "The temperature sensor is not connected.");
 			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, "The temperature sensor is not connected.");
-			has_sensor = false;
+			PRIVATE_DATA->has_temperature_sensor = false;
 		}
 	} else {
-		has_sensor = true;
+		PRIVATE_DATA->has_temperature_sensor = true;
 		indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
 	}
 	if (FOCUSER_MODE_AUTOMATIC_ITEM->sw.value) {
@@ -1285,6 +1285,7 @@ static void process_plug_event(indigo_device *unused) {
 	asi_private_data *private_data = indigo_safe_malloc(sizeof(asi_private_data));
 	private_data->dev_id = id;
 	private_data->info = info;
+	private_data->has_temperature_sensor = true;
 	strncpy(private_data->custom_suffix, suffix, 9);
 	strncpy(private_data->model, name, 64);
 	device->private_data = private_data;
