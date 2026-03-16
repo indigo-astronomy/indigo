@@ -24,7 +24,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x03000037
+#define DRIVER_VERSION 0x03000038
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>
@@ -369,7 +369,11 @@ static bool get_disk_usage(const char* path, double* total_mb, double* free_mb, 
 		return true;
 	}
 
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "statvfs() failed for '%s': %s", path, strerror(errno));
+	if (errno != ENOENT) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "statvfs() failed for '%s': %s", path, strerror(errno));
+	} else {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "statvfs() failed for '%s': Path not found", path);
+	}
 	return false;
 #endif
 }
