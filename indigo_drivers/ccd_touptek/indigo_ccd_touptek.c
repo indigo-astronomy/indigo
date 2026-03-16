@@ -24,7 +24,7 @@
  \file indigo_ccd_touptek.c
  */
 
-#define DRIVER_VERSION 0x0027
+#define DRIVER_VERSION 0x0028
 
 #include <stdlib.h>
 #include <string.h>
@@ -287,6 +287,7 @@ typedef struct {
 	indigo_property *calibrate_property;
 	indigo_property *wheel_model_property;
 	/* focuser related */
+	bool has_temperature_sensor;
 	int current_position, target_position;
 	int max_position;
 	int backlash;
@@ -2006,7 +2007,6 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 
 static void temperature_timer_callback(indigo_device *device) {
 	int temp10 = -2732;
-	static bool has_sensor = true;
 	HRESULT res;
 
 	FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
@@ -2014,21 +2014,21 @@ static void temperature_timer_callback(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	res = (SDK_CALL(AAF)(PRIVATE_DATA->handle, SDK_DEF(AAF_GETAMBIENTTEMP), 0, &temp10));
 	if (FAILED(res)) {
-		if (has_sensor) {
+		if (PRIVATE_DATA->has_temperature_sensor) {
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "The temperature sensor is not connected (using internal sensor).");
 			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, "The temperature sensor is not connected (using internal sensor).");
 		}
-		has_sensor = false;
+		PRIVATE_DATA->has_temperature_sensor = false;
 	} else {
-		if (!has_sensor) {
+		if (!PRIVATE_DATA->has_temperature_sensor) {
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "The temperature sensor connected.");
 			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, "The temperature sensor connected.");
 		}
-		has_sensor = true;
+		PRIVATE_DATA->has_temperature_sensor = true;
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "AAF(AAF_GETAMBIENTTEMP) -> %08x (value = %d)", res, temp10);
 
-	if (!has_sensor) {
+	if (!PRIVATE_DATA->has_temperature_sensor) {
 		res = (SDK_CALL(AAF)(PRIVATE_DATA->handle, SDK_DEF(AAF_GETTEMP), 0, &temp10));
 		if (FAILED(res)) {
 			temp10 = -2732;
@@ -2716,6 +2716,7 @@ static void process_plug_event(indigo_device *unusued) {
 				DRIVER_PRIVATE_DATA *private_data = indigo_safe_malloc(sizeof(DRIVER_PRIVATE_DATA));
 				private_data->cam = cam;
 				private_data->present = true;
+				private_data->has_temperature_sensor = true;
 				indigo_device *camera = indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
 				snprintf(camera->name, INDIGO_NAME_SIZE, "%s %s", CAMERA_NAME_PREFIX, cam.displayname);
 				indigo_make_name_unique(camera->name, NULL);
