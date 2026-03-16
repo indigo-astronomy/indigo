@@ -300,8 +300,8 @@ static indigo_result aux_attach(indigo_device *device) {
 		AUX_SET_OPEN_CLOSE_PROPERTY = indigo_init_number_property(NULL, device->name, "X_COVER_SET_OPEN_CLOSE", AUX_ADVANCED_GROUP, "Set cover open/close position", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		if (AUX_SET_OPEN_CLOSE_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_number_item(AUX_SET_OPEN_CLOSE_OPEN_ITEM, AUX_COVER_OPEN_ITEM_NAME, "Set Open [°]", 0, 290, 1, 110);
-		indigo_init_number_item(AUX_SET_OPEN_CLOSE_CLOSE_ITEM, AUX_COVER_CLOSE_ITEM_NAME, "Set Close [°]", 0, 290, 1, 22);
+		indigo_init_number_item(AUX_SET_OPEN_CLOSE_OPEN_ITEM, AUX_COVER_OPEN_ITEM_NAME, "Set Open [°]", 0, 295, 1, 110);
+		indigo_init_number_item(AUX_SET_OPEN_CLOSE_CLOSE_ITEM, AUX_COVER_CLOSE_ITEM_NAME, "Set Close [°]", 0, 295, 1, 22);
 		// -------------------------------------------------------------------------------- X_HEATER
 		AUX_HEATER_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_HEATER", AUX_MAIN_GROUP, "Heater", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
 		if (AUX_HEATER_PROPERTY == NULL)
