@@ -23,7 +23,7 @@
  \file indigo_focuser_moonlite.c
  */
 
-#define DRIVER_VERSION 0x000A
+#define DRIVER_VERSION 0x000B
 #define DRIVER_NAME "indigo_focuser_moonlite"
 
 #include <stdlib.h>
@@ -50,6 +50,7 @@
 
 typedef struct {
 	int handle;
+	bool has_temperature_sensor;
 	indigo_timer *timer;
 	indigo_property *stepping_mode_property;
 	pthread_mutex_t mutex;
@@ -169,9 +170,8 @@ static void focuser_timer_callback(indigo_device *device) {
 		return;
 	}
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	static bool read_temperature = false;
 	char response[16];
-	if (read_temperature) {
+	if (PRIVATE_DATA->has_temperature_sensor) {
 		if (moonlite_command(device, ":GT#", response, sizeof(response))) {
 			double temp = ((int8_t)strtol(response, NULL, 16)) / 2.0;
 			if (FOCUSER_TEMPERATURE_ITEM->number.value != temp) {
@@ -180,10 +180,10 @@ static void focuser_timer_callback(indigo_device *device) {
 				indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
 			}
 		}
-		read_temperature = false;
+		PRIVATE_DATA->has_temperature_sensor = false;
 	} else {
 		moonlite_command(device, ":C#", NULL, 0);
-		read_temperature = true;
+		PRIVATE_DATA->has_temperature_sensor = true;
 	}
 	bool update = false;
 	if (moonlite_command(device, ":GP#", response, sizeof(response))) {
@@ -257,6 +257,7 @@ static void focuser_connection_handler(indigo_device *device) {
 		if (PRIVATE_DATA->handle > 0) {
 			indigo_define_property(device, X_FOCUSER_STEPPING_MODE_PROPERTY, NULL);
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", DEVICE_PORT_ITEM->text.value);
+			PRIVATE_DATA->has_temperature_sensor = true;
 			indigo_set_timer(device, 0, focuser_timer_callback, &PRIVATE_DATA->timer);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
