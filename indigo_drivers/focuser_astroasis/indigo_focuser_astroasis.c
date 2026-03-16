@@ -23,7 +23,7 @@
  \file indigo_focuser_astroasis.c
  */
 
-#define DRIVER_VERSION 0x0005
+#define DRIVER_VERSION 0x0006
 #define DRIVER_NAME "indigo_focuser_astroasis"
 
 #include <stdlib.h>
@@ -63,6 +63,7 @@ typedef struct {
 	char custom_suffix[AO_FOCUSER_NAME_LEN + 1];
 	char bluetooth_name[AO_FOCUSER_NAME_LEN + 1];
 	double compensation_last_temp;
+	bool has_temperature_sensor;
 	indigo_timer *focuser_timer, *temperature_timer;
 	indigo_property *beep_on_power_up_property;
 	indigo_property *beep_on_move_property;
@@ -231,7 +232,6 @@ static void focuser_compensation(indigo_device *device, double curr_temp) {
 }
 
 static void temperature_timer_callback(indigo_device *device) {
-	static bool has_sensor = true;
 	char *property_message = NULL;
 	AOReturn ret = AOFocuserGetStatus(PRIVATE_DATA->dev_id, &PRIVATE_DATA->status);
 
@@ -241,17 +241,17 @@ static void temperature_timer_callback(indigo_device *device) {
 
 		if (PRIVATE_DATA->status.temperatureDetection && (PRIVATE_DATA->status.temperatureExt != TEMPERATURE_INVALID)) {
 			FOCUSER_TEMPERATURE_ITEM->number.value = (double)PRIVATE_DATA->status.temperatureExt / 100;
-			if (!has_sensor) {
+			if (!PRIVATE_DATA->has_temperature_sensor) {
 				property_message = "Temperature sensor connected.";
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "%s", property_message);
-				has_sensor = true;
+				PRIVATE_DATA->has_temperature_sensor = true;
 			}
 		} else {
 			FOCUSER_TEMPERATURE_ITEM->number.value = FOCUSER_TEMPERATURE_BOARD_ITEM->number.value;
-			if (has_sensor) {
+			if (PRIVATE_DATA->has_temperature_sensor) {
 				property_message = "No temperature sensor connected. Using board temperature as ambient.";
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "%s", property_message);
-				has_sensor = false;
+				PRIVATE_DATA->has_temperature_sensor = false;
 			}
 		}
 		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
@@ -934,6 +934,7 @@ static indigo_device *focuser_create(int id) {
 		sprintf(device->name, "%s", "Oasis Focuser");
 
 	memcpy(&private_data->config, &config, sizeof(AOFocuserConfig));
+	private_data->has_temperature_sensor = true;
 
 	device->private_data = private_data;
 
