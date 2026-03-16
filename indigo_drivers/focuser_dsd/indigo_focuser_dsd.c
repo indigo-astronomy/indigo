@@ -23,7 +23,7 @@
  \file indigo_focuser_dsd.c
  */
 
-#define DRIVER_VERSION 0x000F
+#define DRIVER_VERSION 0x0010
 #define DRIVER_NAME "indigo_focuser_dsd"
 
 #include <stdlib.h>
@@ -114,6 +114,7 @@ typedef struct {
 	uint32_t current_position, target_position, max_position;
 	bool positive_last_move;
 	double prev_temp;
+	bool has_temperature_sensor;
 	indigo_timer *focuser_timer, *temperature_timer;
 	pthread_mutex_t port_mutex;
 	indigo_property *step_mode_property, *coils_mode_property, *current_control_property, *timings_property, *model_hint_property;
@@ -495,7 +496,6 @@ static void focuser_timer_callback(indigo_device *device) {
 
 static void temperature_timer_callback(indigo_device *device) {
 	double temp;
-	static bool has_sensor = true;
 	//bool moving = false;
 
 	FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
@@ -509,13 +509,13 @@ static void temperature_timer_callback(indigo_device *device) {
 
 	if (FOCUSER_TEMPERATURE_ITEM->number.value <= NO_TEMP_READING) { /* -127 is returned when the sensor is not connected */
 		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_IDLE_STATE;
-		if (has_sensor) {
+		if (PRIVATE_DATA->has_temperature_sensor) {
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "The temperature sensor is not connected.");
 			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, "The temperature sensor is not connected.");
-			has_sensor = false;
+			PRIVATE_DATA->has_temperature_sensor = false;
 		}
 	} else {
-		has_sensor = true;
+		PRIVATE_DATA->has_temperature_sensor = true;
 		indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
 	}
 	if (FOCUSER_MODE_AUTOMATIC_ITEM->sw.value) {
@@ -926,6 +926,7 @@ static void focuser_connect_callback(indigo_device *device) {
 						FOCUSER_COMPENSATION_ITEM->number.min = -10000;
 						FOCUSER_COMPENSATION_ITEM->number.max = 10000;
 						FOCUSER_COMPENSATION_PROPERTY->count = 2;
+						PRIVATE_DATA->has_temperature_sensor = true;
 						indigo_set_timer(device, 1, temperature_timer_callback, &PRIVATE_DATA->temperature_timer);
 					} else {
 						FOCUSER_MODE_PROPERTY->hidden = true;
