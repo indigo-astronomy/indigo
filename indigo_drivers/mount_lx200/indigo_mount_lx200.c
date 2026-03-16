@@ -2182,21 +2182,22 @@ static void mount_park_callback(indigo_device *device) {
 			MOUNT_PARK_PARKED_ITEM->sw.value = false;
 		}
 		if (meade_park(device)) {
-			if (!(MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_GEMINI_ITEM->sw.value || MOUNT_TYPE_STARGO_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value))
+			if (!(MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_GEMINI_ITEM->sw.value || MOUNT_TYPE_STARGO_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value)) {
 				MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
+			}
 		} else {
 			MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
-		indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parking");
 	} else if (MOUNT_PARK_UNPARKED_ITEM->sw.value) {
 		if (meade_unpark(device)) {
-			if (!(MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_STARGO_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value))
+			if (!(MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_STARGO_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value)) {
 				MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
+			}
 		} else {
 			MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
-		indigo_update_property(device, MOUNT_PARK_PROPERTY, "Unparking");
 	}
+	indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 }
 
 static void mount_park_set_callback(indigo_device *device) {
