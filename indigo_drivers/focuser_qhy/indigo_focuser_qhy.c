@@ -23,7 +23,7 @@
 	\file indigo_focuser_qhy.c
 */
 
-#define DRIVER_VERSION 0x02000004
+#define DRIVER_VERSION 0x02000005
 
 #define DRIVER_NAME "indigo_focuser_qhy"
 
@@ -64,6 +64,7 @@ typedef struct {
 	int handle;
 	int32_t current_position, target_position;
 	double prev_temp;
+	bool has_valid_temperature;
 	circular_buffer temperature_buffer;
 	indigo_timer *focuser_timer, *temperature_timer;
 	pthread_mutex_t port_mutex;
@@ -547,7 +548,6 @@ static void focuser_timer_callback(indigo_device *device) {
 
 static void temperature_timer_callback(indigo_device *device) {
 	double temp = 0, temp_sample, chip_temp, voltage;
-	static bool has_valid_temperature = true;
 
 	FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
 
@@ -585,13 +585,13 @@ static void temperature_timer_callback(indigo_device *device) {
 
 	if (FOCUSER_TEMPERATURE_ITEM->number.value <= NO_TEMP_READING) { /* < -50 is returned when the sensor is not connected */
 		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_IDLE_STATE;
-		if (has_valid_temperature) {
+		if (PRIVATE_DATA->has_valid_temperature) {
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "No valid temperature reading.");
 			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, "No valid temperature reading.");
-			has_valid_temperature = false;
+			PRIVATE_DATA->has_valid_temperature = false;
 		}
 	} else {
-		has_valid_temperature = true;
+		PRIVATE_DATA->	has_valid_temperature = true;
 		indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
 	}
 	if (FOCUSER_MODE_AUTOMATIC_ITEM->sw.value) {
@@ -823,6 +823,7 @@ static void focuser_connect_callback(indigo_device *device) {
 					}
 
 					cb_clear(&PRIVATE_DATA->temperature_buffer);
+					PRIVATE_DATA->has_valid_temperature = true;;
 					indigo_set_timer(device, 0, temperature_timer_callback, &PRIVATE_DATA->temperature_timer);
 				}
 			}
