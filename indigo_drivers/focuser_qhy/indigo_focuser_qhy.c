@@ -543,7 +543,7 @@ static void focuser_timer_callback(indigo_device *device) {
 
 
 static void temperature_timer_callback(indigo_device *device) {
-	double temp, temp_sample, chip_temp, voltage;
+	double temp=0, temp_sample, chip_temp, voltage;
 
 	FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
 
