@@ -1,4 +1,4 @@
-// 
+//
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -328,7 +328,7 @@ driver wcv4ec {
 				label = "Set Open [°]";
 				value = 110;
 				min = 0;
-				max = 290;
+				max = 295;
 				step = 1;
 			}
 			item AUX_SET_OPEN_CLOSE_CLOSE {
@@ -336,7 +336,7 @@ driver wcv4ec {
 				label = "Set Close [°]";
 				value = 22;
 				min = 0;
-				max = 290;
+				max = 295;
 				step = 1;
 			}
 		}
