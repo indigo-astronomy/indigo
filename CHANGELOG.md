@@ -2,6 +2,51 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-362] - 17 Mar Tue 2026
+
+## Overall:
+- webgui:
+	- focuser related fixes
+
+## Driver Fixes:
+- indigo_agent_scripting:
+	- Sequencer.js - fix loop counter
+
+- indigo_agent_imager:
+	- prevent disk usage from flooding the log if storage path does not exist
+
+- indigo_aux_wcv4ec:
+	- Increase maximum cover position
+
+- indigo_focuser_astroasis:
+	- fix external temperature sensor detection
+
+- indigo_ccd_touptek:
+	- fix external temperature sensor detection
+
+- indigo_focuser_asi:
+	- fix external temperature sensor detection
+
+- indigo_focuser_dsd:
+	- fix external temperature sensor detection
+
+- indigo_focuser_lunatico:
+	- fix external temperature sensor detection
+
+- indigo_focuser_moonlite:
+	- fix external temperature sensor detection
+
+- indigo_focuser_mypro2:
+	- fix external temperature sensor detection
+
+- indigo_focuser_qhy:
+	- fix external temperature sensor detection
+	- fix uninitialized varible
+
+- indigo_ccd_rpi:
+	- added udev rules
+
+
 # [2.0-360] - 12 Mar Wed 2026
 ## Overall:
 - indigo_client:
@@ -13,7 +58,7 @@ All notable changes to INDIGO framework will be documented in this file.
 - indigo_ser_close():
 	- fix resource leak on failure
 
-# Driver Fixes:
+## Driver Fixes:
 - indigo_agent_mount:
 	- HA/time limit handling fixed
 
