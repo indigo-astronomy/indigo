@@ -2333,36 +2333,34 @@ static void mount_motion_ra_callback(indigo_device *device) {
 }
 
 static void mount_set_host_time_callback(indigo_device *device) {
+	MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_OK_STATE;
 	if (MOUNT_SET_HOST_TIME_ITEM->sw.value) {
 		MOUNT_SET_HOST_TIME_ITEM->sw.value = false;
 		time_t secs = time(NULL);
 		if (meade_set_utc(device, secs, indigo_get_utc_offset())) {
-			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
-			MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
+			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
 		} else {
-			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
+			MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 	}
 	indigo_update_property(device, MOUNT_SET_HOST_TIME_PROPERTY, NULL);
 }
 
 static void mount_set_utc_time_callback(indigo_device *device) {
+	MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 	time_t secs = indigo_isogmtotime(MOUNT_UTC_ITEM->text.value);
-	int offset = atoi(MOUNT_UTC_OFFSET_ITEM->text.value);
 	if (secs == -1) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Wrong date/time format!");
 		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, "Wrong date/time format!");
 	} else {
-		if (meade_set_utc(device, secs, offset)) {
-			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
-		} else {
+		int offset = atoi(MOUNT_UTC_OFFSET_ITEM->text.value);
+		if (!meade_set_utc(device, secs, offset)) {
 			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
-		indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
 	}
+	indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
 }
 
 static void mount_tracking_callback(indigo_device *device) {
