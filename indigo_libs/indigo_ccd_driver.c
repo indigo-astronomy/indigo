@@ -2073,7 +2073,8 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		if (keywords) {
 			while (keywords->type) {
 				if (!strcmp(keywords->name, "BAYERPAT")) {
-					header += sprintf(header, "<ColorFilterArray pattern='%s' width='2' height='2'/>", keywords->string);
+					header += sprintf(header, "<FITSKeyword name='BAYERPAT' value='%s' comment='Bayer color filter array pattern'/>", keywords->string);
+					header += sprintf(header, "<ColorFilterArray pattern='%s' width='2' height='2' name='%s Bayer Filter'/>", keywords->string, keywords->string);
 				}
 				keywords++;
 			}
