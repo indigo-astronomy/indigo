@@ -425,7 +425,7 @@ static indigo_result update_device_list(indigo_device *device, indigo_client *cl
 					}
 				}
 			}
-			if (!CCD_LENS_FOV_PROPERTY->hidden) {
+			if (!CCD_LENS_FOV_PROPERTY->hidden && device_list == FILTER_DEVICE_CONTEXT->filter_device_list_properties[INDIGO_FILTER_CCD_INDEX]) {
 				indigo_delete_property(device, CCD_LENS_FOV_PROPERTY, NULL);
 				CCD_LENS_FOV_PROPERTY->hidden = true;
 			}
