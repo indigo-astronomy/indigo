@@ -2264,9 +2264,29 @@ indigo_result indigo_reduce_weighted_multistar_digest(const indigo_frame_digest 
 	return INDIGO_OK;
 }
 
-double indigo_guider_reponse(double p_gain, double i_gain, double guide_cycle_time, double drift, double avg_drift) {
+double indigo_guider_pi_response(double p_gain, double i_gain, double guide_cycle_time, double drift, double avg_drift) {
 	double response = -1 * (p_gain * drift + i_gain * avg_drift * guide_cycle_time);
 	INDIGO_DEBUG(indigo_debug("%s(): P = %.4f, I = %.4f, response = %.4f, drift = %.4f, avg_drift = %.4f", __FUNCTION__, p_gain, i_gain, response, drift, avg_drift));
+	return response;
+}
+
+/*
+ * Hysteresis guiding algorithm.
+ *
+ * On each call the smoothed drift state is updated:
+ *   *prev_drift = (1 - hysteresis) * drift + hysteresis * (*prev_drift)
+ * and the correction is:
+ *   response = -aggression * (*prev_drift)
+ *
+ * aggression  - overall gain factor (0..1)
+ * hysteresis  - blend factor for previous smoothed drift (0 = no memory, 1 = full memory)
+ * drift       - current measured drift (pixels)
+ * prev_drift  - in/out: smoothed drift state maintained by the caller (initialise to 0)
+ */
+double indigo_guider_hysteresis_response(double aggression, double hysteresis, double drift, double *prev_drift) {
+	*prev_drift = (1.0 - hysteresis) * drift + hysteresis * (*prev_drift);
+	double response = -1 * aggression * (*prev_drift);
+	INDIGO_DEBUG(indigo_debug("%s(): aggression = %.4f, hysteresis = %.4f, response = %.4f, drift = %.4f, smoothed_drift = %.4f", __FUNCTION__, aggression, hysteresis, response, drift, *prev_drift));
 	return response;
 }
 

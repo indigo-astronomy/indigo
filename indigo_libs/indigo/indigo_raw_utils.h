@@ -87,7 +87,8 @@ extern indigo_result indigo_centroid_frame_digest(indigo_raw_type raw_type, cons
 extern indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *data, const int width, const int height, const int border, indigo_frame_digest *digest);
 extern indigo_result indigo_donuts_frame_digest_clipped(indigo_raw_type raw_type, const void *data, const int width, const int height, const int include_left, const int include_top, const int include_width, const int include_height, indigo_frame_digest *digest);
 extern indigo_result indigo_calculate_drift(const indigo_frame_digest *ref, const indigo_frame_digest *new_digest, double *drift_x, double *drift_y);
-extern double indigo_guider_reponse(double p_gain, double i_gain, double guide_cycle_time, double drift, double avg_drift);
+extern double indigo_guider_pi_response(double p_gain, double i_gain, double guide_cycle_time, double drift, double avg_drift);
+extern double indigo_guider_hysteresis_response(double aggression, double hysteresis, double drift, double *prev_drift);
 extern indigo_result indigo_delete_frame_digest(indigo_frame_digest *fdigest);
 
 //RMSE focus related
