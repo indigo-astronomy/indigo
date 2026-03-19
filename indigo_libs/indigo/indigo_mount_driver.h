@@ -207,6 +207,10 @@ extern "C" {
 */
 #define MOUNT_AWAY_ITEM												        (MOUNT_HOME_PROPERTY->items+1)
 
+/** MOUNT_HOME.SEARCH property item pointer.
+*/
+#define MOUNT_HOME_SEARCH_ITEM												(MOUNT_HOME_PROPERTY->items+2)
+
 //----------------------------------------------
 /** MOUNT_ON_COORDINATES_SET property pointer, property is mandatory, property change request is handled by indigo_mount_change_property.
  */
