@@ -1601,6 +1601,10 @@
  */
 #define MOUNT_AWAY_ITEM_NAME										"AWAY"
 
+/** MOUNT_HOME.SEARCH property item name.
+ */
+#define MOUNT_HOME_SEARCH_ITEM_NAME							"SEARCH"
+
 //----------------------------------------------------------------------
 /** MOUNT_HOME_SET property name.
  */

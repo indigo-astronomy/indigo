@@ -1412,7 +1412,6 @@ long indigo_uni_read_section2(indigo_uni_handle *handle, char *buffer, long leng
 			}
 		}
 		if (terminated) {
-			buffer[bytes_read] = 0;
 			break;
 		}
 		timeout = next_bytes_timeout;
@@ -1422,6 +1421,7 @@ long indigo_uni_read_section2(indigo_uni_handle *handle, char *buffer, long leng
 	} else {
 		indigo_log_on_level(handle->log_level, "%d -> %.*s", handle->index, bytes_read, buffer);
 	}
+	buffer[bytes_read] = 0;
 	return bytes_read;
 }
 
