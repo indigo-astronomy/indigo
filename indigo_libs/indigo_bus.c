@@ -1661,7 +1661,12 @@ void indigo_set_switch(indigo_property *property, indigo_item *item, bool value)
 	assert(property->type == INDIGO_SWITCH_VECTOR);
 	if (value && property->rule != INDIGO_ANY_OF_MANY_RULE) {
 		for (int i = 0; i < property->count; i++) {
-			property->items[i].sw.value = false;
+			indigo_item *item = property->items + i;
+			item->sw.value = false;
+			if (item->sw.previous_value != value) {
+				item->do_update = true;
+				property->do_update = true;
+			}
 		}
 	}
 	item->sw.value = value;
