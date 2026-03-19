@@ -54,6 +54,8 @@ void parseCommand() {
       Serial.write('0');
       if (parked)
         Serial.write('6');
+      else if (homed)
+        Serial.write('7');
       else if (slewing)
         Serial.write('2');
       else if (tracking)
@@ -61,8 +63,6 @@ void parseCommand() {
           Serial.write('5');
         else
           Serial.write('1');
-      else if (target_ra == park_ra && target_dec == park_dec)
-        Serial.write('7');
       else 
         Serial.write('0');
       Serial.write(tracking_mode);
@@ -131,6 +131,9 @@ void parseCommand() {
       Serial.write('1');
     } else if (strncmp(command, "ST", 2) == 0) {
       tracking = command[2] == '1';
+      if (tracking) {
+        homing = homed = false;
+      }
       Serial.write('1');
     } else if (strncmp(command, "MP0", 3) == 0) {
       parked = false;
@@ -138,16 +141,19 @@ void parseCommand() {
     } else if (strncmp(command, "MP1", 3) == 0) {
       parking = true;
       slewing = true;
+			tracking = false;
 			target_ra = park_ra;
 			target_dec = park_dec;
       Serial.write('1');
     } else if (strncmp(command, "MH", 2) == 0) {
+      homing = true;
       slewing = true;
       tracking = false;
       target_ra = park_ra;
       target_dec = park_dec;
       Serial.write('1');
-    } else if (strncmp(command, "MSH", 2) == 0) {
+    } else if (strncmp(command, "MSH", 3) == 0) {
+      homing = true;
       slewing = true;
       tracking = false;
       target_ra = park_ra;

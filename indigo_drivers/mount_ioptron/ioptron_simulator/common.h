@@ -27,7 +27,6 @@
 #include <LiquidCrystal.h>
 LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
 
-
 #endif
 
 int rates[] = { 1, 2, 8, 16, 64, 128, 256, 512, 1024 };
@@ -41,6 +40,8 @@ int ra_rate = 0;
 
 bool parked = false;
 bool parking = false;
+bool homed = false;
+bool homing = false;
 bool tracking = false;
 bool slewing = false;
 
@@ -127,7 +128,7 @@ void loop() {
   long lapse = current_millis - last_millis;
   long ra_diff = target_ra - current_ra;
   long dec_diff = target_dec - current_dec;
-  if (parked) {
+  if (parked || homed) {
   } else if (slewing) {
     slewing = false;
     if (abs(ra_diff) <= slew_rate * lapse) {
@@ -143,8 +144,14 @@ void loop() {
       slewing = true;
     }
     if (!slewing && parking) {
+      tracking = false;
       parking = false;
       parked = true;
+    }
+    if (!slewing && homing) {
+      tracking = false;
+      homing = false;
+      homed = true;
     }
   } else {
     if (!tracking)
@@ -174,7 +181,7 @@ void loop() {
   lcd.setCursor(0, 1);
   lcd.print(format60(target_ra / 15 / 1000, "%02d%02d%02d"));
   lcd.print(format60(target_dec / 1000, "%+03d%02d%02d"));
-  lcd.print(" ");
+  lcd.print(homed ? "H" : (homing ? "h" : " "));
   lcd.print(ra_diff > 0 ? "+" : ra_diff < 0 ? "-" : " ");
   lcd.print(dec_diff > 0 ? "+" : dec_diff < 0 ? "-" : " ");
 #endif
