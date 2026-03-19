@@ -581,7 +581,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		// FOCUSER_LIMITS
 		indigo_property_copy_values(FOCUSER_LIMITS_PROPERTY, property, false);
 
-		int max_position = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target;
+		int max_position = FOCUSER_POSITION_ITEM->number.max = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target;
 
 		if (focuser_config(device, MASK_MAX_STEP, max_position))
 			FOCUSER_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
