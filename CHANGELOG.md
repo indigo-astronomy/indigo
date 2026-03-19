@@ -8,6 +8,9 @@ All notable changes to INDIGO framework will be documented in this file.
 - webgui:
 	- focuser related fixes
 
+- indigo_ccd_driver:
+	- fix CFA embeding in PixInsight XISF images
+
 ## Driver Fixes:
 - indigo_agent_scripting:
 	- Sequencer.js - fix loop counter
