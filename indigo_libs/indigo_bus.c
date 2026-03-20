@@ -2023,6 +2023,11 @@ double indigo_atod(const char *str) {
 }
 
 char *indigo_dtoa(double value, char *str) {
+	if (!isfinite(value)) {
+		indigo_error("indigo_dtoa: non-finite value (%f) replaced with 0", value);
+		strcpy(str, "0");
+		return str;
+	}
 	sprintf(str, "%.10g", value);
 	indigo_fix_locale(str);
 	return str;
