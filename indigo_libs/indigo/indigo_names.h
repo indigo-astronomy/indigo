@@ -1482,6 +1482,30 @@
 #define ROTATOR_POSITION_OFFSET_ITEM_NAME						"POSITION_OFFSET"
 
 //----------------------------------------------------------------------
+// Polar aligner interface
+
+/** POLARALIGN_OFFSET property name.
+ */
+#define POLARALIGN_OFFSET_PROPERTY_NAME					"POLARALIGN_OFFSET"
+
+/** POLARALIGN_OFFSET.ALTITUDE_OFFSET property item name.
+ */
+#define POLARALIGN_OFFSET_ALTITUDE_ITEM_NAME				"ALTITUDE_OFFSET"
+
+/** POLARALIGN_OFFSET.AZIMUTH_OFFSET property item name.
+ */
+#define POLARALIGN_OFFSET_AZIMUTH_ITEM_NAME				"AZIMUTH_OFFSET"
+
+//----------------------------------------------------------------------
+/** POLARALIGN_ABORT_MOTION property name.
+ */
+#define POLARALIGN_ABORT_MOTION_PROPERTY_NAME				"POLARALIGN_ABORT_MOTION"
+
+/** POLARALIGN_ABORT_MOTION.ABORT_MOTION property item name.
+ */
+#define POLARALIGN_ABORT_MOTION_ITEM_NAME					"ABORT_MOTION"
+
+//----------------------------------------------------------------------
 
 /** MOUNT_INFO property name.
  */

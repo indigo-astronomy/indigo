@@ -71,6 +71,7 @@ typedef enum {
 	INDIGO_INTERFACE_DOME      = (1 << 5),    							///< Dome interface
 	INDIGO_INTERFACE_GPS       = (1 << 6),    							///< GPS interface
 	INDIGO_INTERFACE_AO        = (1 << 8),    							///< Adaptive Optics Interface
+	INDIGO_INTERFACE_POLARALIGN   = (1 << 9),    							///< Automatic Polar Alignment Interface
 	INDIGO_INTERFACE_ROTATOR   = (1 << 12),   							///< Rotator interface
 	INDIGO_INTERFACE_AGENT     = (1 << 14),  								///< Agent interface
 	INDIGO_INTERFACE_AUX       = (1 << 15),    							///< Auxiliary interface
