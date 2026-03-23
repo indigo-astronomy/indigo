@@ -1490,11 +1490,11 @@
 
 /** POLARALIGN_OFFSET.ALTITUDE_OFFSET property item name.
  */
-#define POLARALIGN_OFFSET_ALTITUDE_ITEM_NAME				"ALTITUDE_OFFSET"
+#define POLARALIGN_OFFSET_ALT_ITEM_NAME				"ALT"
 
 /** POLARALIGN_OFFSET.AZIMUTH_OFFSET property item name.
  */
-#define POLARALIGN_OFFSET_AZIMUTH_ITEM_NAME				"AZIMUTH_OFFSET"
+#define POLARALIGN_OFFSET_AZ_ITEM_NAME				"AZ"
 
 //----------------------------------------------------------------------
 /** POLARALIGN_ABORT_MOTION property name.

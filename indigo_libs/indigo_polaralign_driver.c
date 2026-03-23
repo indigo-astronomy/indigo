@@ -48,8 +48,8 @@ indigo_result indigo_polaralign_attach(indigo_device *device, const char *driver
 			POLARALIGN_OFFSET_PROPERTY = indigo_init_number_property(NULL, device->name, POLARALIGN_OFFSET_PROPERTY_NAME, POLARALIGN_MAIN_GROUP, "Polar alignment offsets", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 			if (POLARALIGN_OFFSET_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			indigo_init_number_item(POLARALIGN_OFFSET_ALTITUDE_ITEM, POLARALIGN_OFFSET_ALTITUDE_ITEM_NAME, "Altitude offset [arcmin]", -900, 900, 0.1, 0);
-			indigo_init_number_item(POLARALIGN_OFFSET_AZIMUTH_ITEM, POLARALIGN_OFFSET_AZIMUTH_ITEM_NAME, "Azimuth offset [arcmin]", -900, 900, 0.1, 0);
+			indigo_init_number_item(POLARALIGN_OFFSET_ALT_ITEM, POLARALIGN_OFFSET_ALT_ITEM_NAME, "Altitude offset [arcmin]", -900, 900, 0.1, 0);
+			indigo_init_number_item(POLARALIGN_OFFSET_AZ_ITEM, POLARALIGN_OFFSET_AZ_ITEM_NAME, "Azimuth offset [arcmin]", -900, 900, 0.1, 0);
 			// -------------------------------------------------------------------------------- POLARALIGN_ABORT_MOTION
 			POLARALIGN_ABORT_MOTION_PROPERTY = indigo_init_switch_property(NULL, device->name, POLARALIGN_ABORT_MOTION_PROPERTY_NAME, POLARALIGN_MAIN_GROUP, "Abort motion", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
 			if (POLARALIGN_ABORT_MOTION_PROPERTY == NULL)

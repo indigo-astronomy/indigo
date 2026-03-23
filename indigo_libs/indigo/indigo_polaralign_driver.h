@@ -54,11 +54,11 @@ extern "C" {
 
 /** POLARALIGN_OFFSET.ALTITUDE_OFFSET item pointer.
  */
-#define POLARALIGN_OFFSET_ALTITUDE_ITEM			(POLARALIGN_OFFSET_PROPERTY->items+0)
+#define POLARALIGN_OFFSET_ALT_ITEM			(POLARALIGN_OFFSET_PROPERTY->items+0)
 
 /** POLARALIGN_OFFSET.AZIMUTH_OFFSET item pointer.
  */
-#define POLARALIGN_OFFSET_AZIMUTH_ITEM				(POLARALIGN_OFFSET_PROPERTY->items+1)
+#define POLARALIGN_OFFSET_AZ_ITEM				(POLARALIGN_OFFSET_PROPERTY->items+1)
 
 //----------------------------------------------------------------------
 

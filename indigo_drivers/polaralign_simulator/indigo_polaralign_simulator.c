@@ -56,8 +56,8 @@ static void polaralign_timer_callback(indigo_device *device) {
 
 	if (POLARALIGN_OFFSET_PROPERTY->state == INDIGO_ALERT_STATE) {
 		/* Aborted – snap to current hardware position */
-		POLARALIGN_OFFSET_ALTITUDE_ITEM->number.value = PRIVATE_DATA->target_altitude = PRIVATE_DATA->current_altitude;
-		POLARALIGN_OFFSET_AZIMUTH_ITEM->number.value  = PRIVATE_DATA->target_azimuth  = PRIVATE_DATA->current_azimuth;
+		POLARALIGN_OFFSET_ALT_ITEM->number.value = PRIVATE_DATA->target_altitude = PRIVATE_DATA->current_altitude;
+		POLARALIGN_OFFSET_AZ_ITEM->number.value  = PRIVATE_DATA->target_azimuth  = PRIVATE_DATA->current_azimuth;
 		indigo_update_property(device, POLARALIGN_OFFSET_PROPERTY, NULL);
 		return;
 	}
@@ -70,7 +70,7 @@ static void polaralign_timer_callback(indigo_device *device) {
 		PRIVATE_DATA->current_altitude = PRIVATE_DATA->target_altitude;
 		altitude_done = true;
 	}
-	POLARALIGN_OFFSET_ALTITUDE_ITEM->number.value = PRIVATE_DATA->current_altitude;
+	POLARALIGN_OFFSET_ALT_ITEM->number.value = PRIVATE_DATA->current_altitude;
 
 	/* Azimuth axis */
 	double az_diff = PRIVATE_DATA->target_azimuth - PRIVATE_DATA->current_azimuth;
@@ -80,7 +80,7 @@ static void polaralign_timer_callback(indigo_device *device) {
 		PRIVATE_DATA->current_azimuth = PRIVATE_DATA->target_azimuth;
 		azimuth_done = true;
 	}
-	POLARALIGN_OFFSET_AZIMUTH_ITEM->number.value = PRIVATE_DATA->current_azimuth;
+	POLARALIGN_OFFSET_AZ_ITEM->number.value = PRIVATE_DATA->current_azimuth;
 
 	if (altitude_done && azimuth_done) {
 		POLARALIGN_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
@@ -99,10 +99,6 @@ static indigo_result polaralign_attach(indigo_device *device) {
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 		POLARALIGN_STEPS_PER_DEGREE_ALT_ITEM->number.value = POLARALIGN_STEPS_PER_DEGREE_ALT_ITEM->number.target = 360;
 		POLARALIGN_STEPS_PER_DEGREE_AZ_ITEM->number.value  = POLARALIGN_STEPS_PER_DEGREE_AZ_ITEM->number.target  = 360;
-		POLARALIGN_LIMITS_MIN_POSITION_ALT_ITEM->number.value = POLARALIGN_LIMITS_MIN_POSITION_ALT_ITEM->number.target = -900;
-		POLARALIGN_LIMITS_MAX_POSITION_ALT_ITEM->number.value = POLARALIGN_LIMITS_MAX_POSITION_ALT_ITEM->number.target =  900;
-		POLARALIGN_LIMITS_MIN_POSITION_AZ_ITEM->number.value  = POLARALIGN_LIMITS_MIN_POSITION_AZ_ITEM->number.target  = -900;
-		POLARALIGN_LIMITS_MAX_POSITION_AZ_ITEM->number.value  = POLARALIGN_LIMITS_MAX_POSITION_AZ_ITEM->number.target  =  900;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_polaralign_enumerate_properties(device, NULL, NULL);
 	}
@@ -133,16 +129,16 @@ static indigo_result polaralign_change_property(indigo_device *device, indigo_cl
 	} else if (indigo_property_match_changeable(POLARALIGN_OFFSET_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- POLARALIGN_OFFSET
 		indigo_property_copy_values(POLARALIGN_OFFSET_PROPERTY, property, false);
-		double target_alt = POLARALIGN_OFFSET_ALTITUDE_ITEM->number.target;
-		double target_az  = POLARALIGN_OFFSET_AZIMUTH_ITEM->number.target;
+		double target_alt = POLARALIGN_OFFSET_ALT_ITEM->number.target;
+		double target_az  = POLARALIGN_OFFSET_AZ_ITEM->number.target;
 		/* Check limits */
 		bool alt_beyond = (target_alt < POLARALIGN_LIMITS_MIN_POSITION_ALT_ITEM->number.value || target_alt > POLARALIGN_LIMITS_MAX_POSITION_ALT_ITEM->number.value);
 		bool az_beyond  = (target_az  < POLARALIGN_LIMITS_MIN_POSITION_AZ_ITEM->number.value  || target_az  > POLARALIGN_LIMITS_MAX_POSITION_AZ_ITEM->number.value);
 		if (alt_beyond || az_beyond) {
 			POLARALIGN_OFFSET_PROPERTY->state = INDIGO_ALERT_STATE;
 			/* Restore current readout unchanged */
-			POLARALIGN_OFFSET_ALTITUDE_ITEM->number.value = PRIVATE_DATA->current_altitude;
-			POLARALIGN_OFFSET_AZIMUTH_ITEM->number.value  = PRIVATE_DATA->current_azimuth;
+			POLARALIGN_OFFSET_ALT_ITEM->number.value = PRIVATE_DATA->current_altitude;
+			POLARALIGN_OFFSET_AZ_ITEM->number.value  = PRIVATE_DATA->current_azimuth;
 			if (alt_beyond && az_beyond)
 				indigo_update_property(device, POLARALIGN_OFFSET_PROPERTY, "Both altitude (%.2f) and azimuth (%.2f) targets are beyond limits", target_alt, target_az);
 			else if (alt_beyond)
@@ -152,8 +148,8 @@ static indigo_result polaralign_change_property(indigo_device *device, indigo_cl
 			return INDIGO_OK;
 		}
 		/* Restore current readout so movement starts from the actual position. */
-		POLARALIGN_OFFSET_ALTITUDE_ITEM->number.value = PRIVATE_DATA->current_altitude;
-		POLARALIGN_OFFSET_AZIMUTH_ITEM->number.value  = PRIVATE_DATA->current_azimuth;
+		POLARALIGN_OFFSET_ALT_ITEM->number.value = PRIVATE_DATA->current_altitude;
+		POLARALIGN_OFFSET_AZ_ITEM->number.value  = PRIVATE_DATA->current_azimuth;
 		if (PRIVATE_DATA->target_altitude == PRIVATE_DATA->current_altitude &&
 		    PRIVATE_DATA->target_azimuth  == PRIVATE_DATA->current_azimuth) {
 			POLARALIGN_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
@@ -170,8 +166,8 @@ static indigo_result polaralign_change_property(indigo_device *device, indigo_cl
 		if (POLARALIGN_RESET_POSITION_ALT_ITEM->sw.value) {
 			PRIVATE_DATA->current_altitude = 0;
 			PRIVATE_DATA->target_altitude  = 0;
-			POLARALIGN_OFFSET_ALTITUDE_ITEM->number.value  = 0;
-			POLARALIGN_OFFSET_ALTITUDE_ITEM->number.target = 0;
+			POLARALIGN_OFFSET_ALT_ITEM->number.value  = 0;
+			POLARALIGN_OFFSET_ALT_ITEM->number.target = 0;
 			indigo_update_property(device, POLARALIGN_OFFSET_PROPERTY, NULL);
 		}
 		POLARALIGN_RESET_POSITION_ALT_ITEM->sw.value = false;
@@ -184,8 +180,8 @@ static indigo_result polaralign_change_property(indigo_device *device, indigo_cl
 		if (POLARALIGN_RESET_POSITION_AZ_ITEM->sw.value) {
 			PRIVATE_DATA->current_azimuth = 0;
 			PRIVATE_DATA->target_azimuth  = 0;
-			POLARALIGN_OFFSET_AZIMUTH_ITEM->number.value  = 0;
-			POLARALIGN_OFFSET_AZIMUTH_ITEM->number.target = 0;
+			POLARALIGN_OFFSET_AZ_ITEM->number.value  = 0;
+			POLARALIGN_OFFSET_AZ_ITEM->number.target = 0;
 			indigo_update_property(device, POLARALIGN_OFFSET_PROPERTY, NULL);
 		}
 		POLARALIGN_RESET_POSITION_AZ_ITEM->sw.value = false;
