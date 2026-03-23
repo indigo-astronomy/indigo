@@ -7,7 +7,7 @@
 <body>
 <h1 align="center">Nncam API Manual</h1>
 <hr/><h1><font color="#0000FF">1. Version &amp; Platform</font></h1>
-<hr/><ul><li>Version: 59.30594.20260120</li></ul>
+<hr/><ul><li>Version: 59.31026.20260322</li></ul>
 <ul><li>Platform<ul>
       <li>Win32:<ul>
           <li>x64: Win7 or above</li>
@@ -61,9 +61,7 @@ The SDK zip file contains all of the necessary resources and information:</p>
 		 <li>It is recommended to use DPInst.exe to automatically install the driver. If you use NSIS to make the installation file, you can use a statement similar to the following:
 			<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>ExecWait '"$INSTDIR\drivers\x64\DPInst.exe" /SA /SW /PATH "$INSTDIR\drivers\x64"'</pre></td></tr></table></li>
 		</ol></blockquote></blockquote>
-		<blockquote>GigE: GigE Performance Driver (Win7 or above), is optional for gigabit cameras, recommended be installed and enabled for 10G cameras. Please use the command line (<b>Administrator mode</b>), cd to the directory where the .inf file is located, and execute the following statement to install (install.cmd). If there is an old version, need to uninstall the old version first, and then install the new version:<blockquote>
-			<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>Install:   netcfg.exe -v -l gigepdrv.inf -c s -i gigepdrv<br/>Uninstall: netcfg.exe -u gigepdrv</pre></td></tr></table>
-		</blockquote></blockquote>
+		<blockquote>GigE: GigE Performance Driver (Win7 or above)</blockquote>
 		</li></ul></li>
 </ul><ul><li>linux: For Linux
  	<ul><li>udev: 99-nncam.rules, udev rule file. Please see: <a href="http://reactivated.net/writing_udev_rules.html" target="_blank">http://reactivated.net/writing_udev_rules.html</a>
@@ -310,7 +308,7 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
 	  </tr><tr>
         <td>E_ACCESSDENIED</td>
         <td>Permission denied</td>
-		<td>The program on Linux does not have permission to open the USB device, please enable udev rules file or run as root</td>
+		<td>Insufficient permissions. This may be blocked by system security policies; on Linux, USB devices often require additional permission configuration, which can be resolved by setting up udev rules or running with root privileges</td>
 		<td>0x80070005</td>
 	  </tr><tr>
         <td>E_INVALIDARG</td>
@@ -504,7 +502,7 @@ typedef struct {
  </tr><tr>
    <td>NNCAM_FLAG_RAW14</td>
    <td>NNCAM_PIXELFORMAT_RAW14 Pixel format, RAW 14 bits</td>
- </tr>tr>
+ </tr><tr>
    <td>NNCAM_FLAG_RAW14PACK</td>
    <td>NNCAM_PIXELFORMAT_RAW14PACK Pixel format, RAW 14 bits, packed</td>
  </tr><tr>
@@ -680,10 +678,10 @@ typedef struct {
   <p><strong>Parameters:</strong></p>
   	<blockquote>
   		<p><a href="#camidsn">camId</a>: Nncam camera ID, enumerated by Nncam_EnumV2. <strong>If camId is NULL, Nncam_Open will open the first enumerated camera which connects to the computer. So, if we don't care about that multiple cameras connect to the computer simultaneously, Nncam_EnumV2 is optional, we can simply use NULL as the parameter.</strong></p>
-	<p>For <strong>USB, GigE, CameraLink or CXP</strong> camera, the camId can also be specified as (case sensitive):<br/>
+	<p>For <strong>USB, GigE, CameraLink or CXP</strong> camera, the camId can also be specified as (case sensitive, no spaces):<br/>
 		(a) "sn:xxxxxxxxxxxx" (Use SN, such as sn:ZP250212241204105), or<br/>
 		(b) "name:xxxxxxxxxxxx" (Use user-defined name, such as name:Camera1)</p>		
-  	<p>Moreover, for <strong>GigE</strong> camera, the camId can also be specified as (case sensitive):<br/>
+  	<p>Moreover, for <strong>GigE</strong> camera, the camId can also be specified as (case sensitive, no spaces):<br/>
 		(a) "ip:xxx.xxx.xxx.xxx" (Use IP address, such as ip:192.168.1.100), or<br/>
 		(b) "mac:xxxxxxxxxxxx" (Use MAC address, such as mac:d05f64ffff23) or</p>
 	</blockquote>
@@ -2389,7 +2387,23 @@ public bool Snap(uint nResolutionIndex)
 <p>Most methods of the nncam class use <a href="https://github.com/java-native-access/jna" target="_blank">JNA</a> to call into the corresponding Nncam_xxxx functions of nncam.dll/so/dylib. So, the descriptions of the Nncam_xxxx function are also applicable for the corresponding java methods.</p>
 <p>Please reference errcheck in nncam.java, the original HRESULT return code is mapped to HRESULTException exception.</p>
 <p>Remark: (1) Download jna-*.jar from github; (2) Make sure nncam.dll/so/dylib is placed in the correct directory.</p>
-<hr/><h1><font color="#0000ff">8. Samples</font></h1><hr/>
+<hr/><h1><font color="#0000FF">8. GigE Camera</font></h1><hr/>
+<h2><font color="#0000FF">a. Enable <a href="https://en.wikipedia.org/wiki/Jumbo_frame">Jumbo Frames</a> on the network interface card (NIC). Using smaller packet sizes will result in lower performance.</font></h2>
+Enable Jumbo Frameson Windows:<br/>
+(1) start "Device Manager", then expand Network adapters. <a href="./images/devmgr.png">snapshot</a><br/>
+(2) Right click the network interface card and select "Properties"<br/>
+(3) Select the Advanced tab. Next, select "Jumbo Packet" in the Property box, and then select "9014 Bytes" (Different network card models may have slightly different value) for Value to the right. Click OK to save the change. <a href="./images/mtu.png">snapshot</a><br/>
+(4) Run the following command to view the network card MTU: <a href="./images/mtushow.png">snapshot</a><br/><table width="100%" border="0" bgcolor="#B0D0B0"><tr><td align="center"><pre>netsh interface ipv4 show subinterface</pre></td></tr></table>
+<h2><font color="#0000FF">b. GigE Performance Driver</font></h2>
+This driver is <strong>optional</strong>: not recommended for 1.0G cameras; recommended for 10G cameras.<br/>If you decide to install, please use the command line (<b>Administrator mode</b>), cd to the directory where the .inf file is located, and execute the following statement to install (install.cmd). If there is an old version, need to uninstall the old version first, and then install the new version:
+<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>Install:   netcfg.exe -v -l gigepdrv.inf -c s -i gigepdrv<br/>Uninstall: netcfg.exe -u gigepdrv</pre></td></tr></table>			
+<h2><font color="#0000FF">c. Firewall and NIC protocols</font></h2>
+(1) Recommend to disable the firewall for the NIC used by the network camera. Run in PowerShell (Administrator mode):<br/>
+<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>Disable firewall (NIC name "xx"):  Set-NetFirewallProfile -Name Private,Public,Domain -DisabledInterfaceAliases "xx"
+Restore all NIC: Set-NetFirewallProfile -Name Private,Public,Domain -DisabledInterfaceAliases @()</pre></td></tr></table>
+(2) Recommend to remove or disable irrelevant NIC protocols and drivers (such as the Npcap Packet Driver, QoS, LLDP, etc). In the most streamlined configuration, only the "Gige Performance Driver" and "TCP/IPv4" should remain enabled.
+<h2><font color="#0000FF">d. The automatic camera discovery process uses broadcast packets with the address 255.255.255.255. Please ensure that your system's security policies do not block network broadcasts.</font></h2>
+<hr/><h1><font color="#0000ff">9. Samples</font></h1><hr/>
 <div align="center"><table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0"><tr>
         <td width="14%" colspan="2">Name</td>
         <td width="8%">Platform</td>
@@ -2569,12 +2583,6 @@ public bool Snap(uint nResolutionIndex)
 		<td>Qt sample</td>
 	  </tr>
 </table></div>
-<hr/><h1><font color="#0000FF">10. Misc</font></h1><hr/>
-<h2><font color="#0000FF">a. <a id="mtu">Enable "Jumbo Frame" on Windows</a></font></h2>
-(1) start "Device Manager", then expand Network adapters. <a href="./images/devmgr.png">snapshot</a><br/>
-(2) Right click the network interface card and select "Properties"<br/>
-(3) Select the Advanced tab. Next, select "Jumbo Packet" in the Property box, and then select "9014 Bytes" (Different network card models may have slightly different value) for Value to the right. Click OK to save the change. <a href="./images/mtu.png">snapshot</a><br/>
-(4) Run the following command to view the network card MTU: <a href="./images/mtushow.png">snapshot</a><br/><table width="100%" border="0" bgcolor="#B0D0B0"><tr><td align="center"><pre>netsh interface ipv4 show subinterface</pre></td></tr></table>
 <hr/><h1><font color="#0000FF">10. Changelog</font></h1><hr/>
 <p>v59: Add RAW=-1 mode. Please see <a href="#rawo">here</a></p>
 <p>v58: Open the camera by sn, name (GigE: ip, mac)</p>
