@@ -1506,6 +1506,70 @@
 #define POLARALIGN_ABORT_MOTION_ITEM_NAME					"ABORT_MOTION"
 
 //----------------------------------------------------------------------
+/** POLARALIGN_STEPS_PER_DEGREE property name.
+ */
+#define POLARALIGN_STEPS_PER_DEGREE_PROPERTY_NAME			"POLARALIGN_STEPS_PER_DEGREE"
+
+/** POLARALIGN_STEPS_PER_DEGREE.ALT property item name.
+ */
+#define POLARALIGN_STEPS_PER_DEGREE_ALT_ITEM_NAME			"ALT"
+
+/** POLARALIGN_STEPS_PER_DEGREE.AZ property item name.
+ */
+#define POLARALIGN_STEPS_PER_DEGREE_AZ_ITEM_NAME			"AZ"
+
+//----------------------------------------------------------------------
+/** POLARALIGN_DIRECTION_ALT property name.
+ */
+#define POLARALIGN_DIRECTION_ALT_PROPERTY_NAME				"POLARALIGN_DIRECTION_ALT"
+
+/** POLARALIGN_DIRECTION_AZ property name.
+ */
+#define POLARALIGN_DIRECTION_AZ_PROPERTY_NAME				"POLARALIGN_DIRECTION_AZ"
+
+/** POLARALIGN_DIRECTION_ALT/AZ.NORMAL property item name.
+ */
+#define POLARALIGN_DIRECTION_NORMAL_ITEM_NAME				"NORMAL"
+
+/** POLARALIGN_DIRECTION_ALT/AZ.REVERSED property item name.
+ */
+#define POLARALIGN_DIRECTION_REVERSED_ITEM_NAME				"REVERSED"
+
+//----------------------------------------------------------------------
+/** POLARALIGN_RESET_POSITION_ALT property name.
+ */
+#define POLARALIGN_RESET_POSITION_ALT_PROPERTY_NAME			"POLARALIGN_RESET_POSITION_ALT"
+
+/** POLARALIGN_RESET_POSITION_AZ property name.
+ */
+#define POLARALIGN_RESET_POSITION_AZ_PROPERTY_NAME			"POLARALIGN_RESET_POSITION_AZ"
+
+/** POLARALIGN_RESET_POSITION_ALT/AZ.RESET property item name.
+ */
+#define POLARALIGN_RESET_POSITION_ITEM_NAME				"RESET"
+
+//----------------------------------------------------------------------
+/** POLARALIGN_LIMITS property name.
+ */
+#define POLARALIGN_LIMITS_PROPERTY_NAME					"POLARALIGN_LIMITS"
+
+/** POLARALIGN_LIMITS.MIN_POSITION_ALT property item name.
+ */
+#define POLARALIGN_LIMITS_MIN_POSITION_ALT_ITEM_NAME			"MIN_POSITION_ALT"
+
+/** POLARALIGN_LIMITS.MAX_POSITION_ALT property item name.
+ */
+#define POLARALIGN_LIMITS_MAX_POSITION_ALT_ITEM_NAME			"MAX_POSITION_ALT"
+
+/** POLARALIGN_LIMITS.MIN_POSITION_AZ property item name.
+ */
+#define POLARALIGN_LIMITS_MIN_POSITION_AZ_ITEM_NAME			"MIN_POSITION_AZ"
+
+/** POLARALIGN_LIMITS.MAX_POSITION_AZ property item name.
+ */
+#define POLARALIGN_LIMITS_MAX_POSITION_AZ_ITEM_NAME			"MAX_POSITION_AZ"
+
+//----------------------------------------------------------------------
 
 /** MOUNT_INFO property name.
  */

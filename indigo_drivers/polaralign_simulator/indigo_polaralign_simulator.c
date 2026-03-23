@@ -97,6 +97,12 @@ static indigo_result polaralign_attach(indigo_device *device) {
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_polaralign_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
+		POLARALIGN_STEPS_PER_DEGREE_ALT_ITEM->number.value = POLARALIGN_STEPS_PER_DEGREE_ALT_ITEM->number.target = 360;
+		POLARALIGN_STEPS_PER_DEGREE_AZ_ITEM->number.value  = POLARALIGN_STEPS_PER_DEGREE_AZ_ITEM->number.target  = 360;
+		POLARALIGN_LIMITS_MIN_POSITION_ALT_ITEM->number.value = POLARALIGN_LIMITS_MIN_POSITION_ALT_ITEM->number.target = -900;
+		POLARALIGN_LIMITS_MAX_POSITION_ALT_ITEM->number.value = POLARALIGN_LIMITS_MAX_POSITION_ALT_ITEM->number.target =  900;
+		POLARALIGN_LIMITS_MIN_POSITION_AZ_ITEM->number.value  = POLARALIGN_LIMITS_MIN_POSITION_AZ_ITEM->number.target  = -900;
+		POLARALIGN_LIMITS_MAX_POSITION_AZ_ITEM->number.value  = POLARALIGN_LIMITS_MAX_POSITION_AZ_ITEM->number.target  =  900;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_polaralign_enumerate_properties(device, NULL, NULL);
 	}
@@ -127,8 +133,24 @@ static indigo_result polaralign_change_property(indigo_device *device, indigo_cl
 	} else if (indigo_property_match_changeable(POLARALIGN_OFFSET_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- POLARALIGN_OFFSET
 		indigo_property_copy_values(POLARALIGN_OFFSET_PROPERTY, property, false);
-		PRIVATE_DATA->target_altitude = POLARALIGN_OFFSET_ALTITUDE_ITEM->number.target;
-		PRIVATE_DATA->target_azimuth  = POLARALIGN_OFFSET_AZIMUTH_ITEM->number.target;
+		double target_alt = POLARALIGN_OFFSET_ALTITUDE_ITEM->number.target;
+		double target_az  = POLARALIGN_OFFSET_AZIMUTH_ITEM->number.target;
+		/* Check limits */
+		bool alt_beyond = (target_alt < POLARALIGN_LIMITS_MIN_POSITION_ALT_ITEM->number.value || target_alt > POLARALIGN_LIMITS_MAX_POSITION_ALT_ITEM->number.value);
+		bool az_beyond  = (target_az  < POLARALIGN_LIMITS_MIN_POSITION_AZ_ITEM->number.value  || target_az  > POLARALIGN_LIMITS_MAX_POSITION_AZ_ITEM->number.value);
+		if (alt_beyond || az_beyond) {
+			POLARALIGN_OFFSET_PROPERTY->state = INDIGO_ALERT_STATE;
+			/* Restore current readout unchanged */
+			POLARALIGN_OFFSET_ALTITUDE_ITEM->number.value = PRIVATE_DATA->current_altitude;
+			POLARALIGN_OFFSET_AZIMUTH_ITEM->number.value  = PRIVATE_DATA->current_azimuth;
+			if (alt_beyond && az_beyond)
+				indigo_update_property(device, POLARALIGN_OFFSET_PROPERTY, "Both altitude (%.2f) and azimuth (%.2f) targets are beyond limits", target_alt, target_az);
+			else if (alt_beyond)
+				indigo_update_property(device, POLARALIGN_OFFSET_PROPERTY, "Altitude target (%.2f) is beyond limits [%.2f, %.2f]", target_alt, POLARALIGN_LIMITS_MIN_POSITION_ALT_ITEM->number.value, POLARALIGN_LIMITS_MAX_POSITION_ALT_ITEM->number.value);
+			else
+				indigo_update_property(device, POLARALIGN_OFFSET_PROPERTY, "Azimuth target (%.2f) is beyond limits [%.2f, %.2f]", target_az, POLARALIGN_LIMITS_MIN_POSITION_AZ_ITEM->number.value, POLARALIGN_LIMITS_MAX_POSITION_AZ_ITEM->number.value);
+			return INDIGO_OK;
+		}
 		/* Restore current readout so movement starts from the actual position. */
 		POLARALIGN_OFFSET_ALTITUDE_ITEM->number.value = PRIVATE_DATA->current_altitude;
 		POLARALIGN_OFFSET_AZIMUTH_ITEM->number.value  = PRIVATE_DATA->current_azimuth;
@@ -141,6 +163,34 @@ static indigo_result polaralign_change_property(indigo_device *device, indigo_cl
 			indigo_update_property(device, POLARALIGN_OFFSET_PROPERTY, NULL);
 			indigo_set_timer(device, 0.2, polaralign_timer_callback, &PRIVATE_DATA->motion_timer);
 		}
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(POLARALIGN_RESET_POSITION_ALT_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- POLARALIGN_RESET_POSITION_ALT
+		indigo_property_copy_values(POLARALIGN_RESET_POSITION_ALT_PROPERTY, property, false);
+		if (POLARALIGN_RESET_POSITION_ALT_ITEM->sw.value) {
+			PRIVATE_DATA->current_altitude = 0;
+			PRIVATE_DATA->target_altitude  = 0;
+			POLARALIGN_OFFSET_ALTITUDE_ITEM->number.value  = 0;
+			POLARALIGN_OFFSET_ALTITUDE_ITEM->number.target = 0;
+			indigo_update_property(device, POLARALIGN_OFFSET_PROPERTY, NULL);
+		}
+		POLARALIGN_RESET_POSITION_ALT_ITEM->sw.value = false;
+		POLARALIGN_RESET_POSITION_ALT_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, POLARALIGN_RESET_POSITION_ALT_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(POLARALIGN_RESET_POSITION_AZ_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- POLARALIGN_RESET_POSITION_AZ
+		indigo_property_copy_values(POLARALIGN_RESET_POSITION_AZ_PROPERTY, property, false);
+		if (POLARALIGN_RESET_POSITION_AZ_ITEM->sw.value) {
+			PRIVATE_DATA->current_azimuth = 0;
+			PRIVATE_DATA->target_azimuth  = 0;
+			POLARALIGN_OFFSET_AZIMUTH_ITEM->number.value  = 0;
+			POLARALIGN_OFFSET_AZIMUTH_ITEM->number.target = 0;
+			indigo_update_property(device, POLARALIGN_OFFSET_PROPERTY, NULL);
+		}
+		POLARALIGN_RESET_POSITION_AZ_ITEM->sw.value = false;
+		POLARALIGN_RESET_POSITION_AZ_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, POLARALIGN_RESET_POSITION_AZ_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(POLARALIGN_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- POLARALIGN_ABORT_MOTION

@@ -73,12 +73,102 @@ extern "C" {
 
 //----------------------------------------------------------------------
 
+/** POLARALIGN_STEPS_PER_DEGREE property pointer.
+ */
+#define POLARALIGN_STEPS_PER_DEGREE_PROPERTY			(POLARALIGN_CONTEXT->polaralign_steps_per_degree_property)
+
+/** POLARALIGN_STEPS_PER_DEGREE.ALT item pointer.
+ */
+#define POLARALIGN_STEPS_PER_DEGREE_ALT_ITEM			(POLARALIGN_STEPS_PER_DEGREE_PROPERTY->items+0)
+
+/** POLARALIGN_STEPS_PER_DEGREE.AZ item pointer.
+ */
+#define POLARALIGN_STEPS_PER_DEGREE_AZ_ITEM			(POLARALIGN_STEPS_PER_DEGREE_PROPERTY->items+1)
+
+//----------------------------------------------------------------------
+
+/** POLARALIGN_DIRECTION_ALT property pointer.
+ */
+#define POLARALIGN_DIRECTION_ALT_PROPERTY			(POLARALIGN_CONTEXT->polaralign_direction_alt_property)
+
+/** POLARALIGN_DIRECTION_ALT.NORMAL item pointer.
+ */
+#define POLARALIGN_DIRECTION_ALT_NORMAL_ITEM			(POLARALIGN_DIRECTION_ALT_PROPERTY->items+0)
+
+/** POLARALIGN_DIRECTION_ALT.REVERSED item pointer.
+ */
+#define POLARALIGN_DIRECTION_ALT_REVERSED_ITEM			(POLARALIGN_DIRECTION_ALT_PROPERTY->items+1)
+
+//----------------------------------------------------------------------
+
+/** POLARALIGN_DIRECTION_AZ property pointer.
+ */
+#define POLARALIGN_DIRECTION_AZ_PROPERTY			(POLARALIGN_CONTEXT->polaralign_direction_az_property)
+
+/** POLARALIGN_DIRECTION_AZ.NORMAL item pointer.
+ */
+#define POLARALIGN_DIRECTION_AZ_NORMAL_ITEM			(POLARALIGN_DIRECTION_AZ_PROPERTY->items+0)
+
+/** POLARALIGN_DIRECTION_AZ.REVERSED item pointer.
+ */
+#define POLARALIGN_DIRECTION_AZ_REVERSED_ITEM			(POLARALIGN_DIRECTION_AZ_PROPERTY->items+1)
+
+//----------------------------------------------------------------------
+
+/** POLARALIGN_RESET_POSITION_ALT property pointer.
+ */
+#define POLARALIGN_RESET_POSITION_ALT_PROPERTY			(POLARALIGN_CONTEXT->polaralign_reset_position_alt_property)
+
+/** POLARALIGN_RESET_POSITION_ALT.RESET item pointer.
+ */
+#define POLARALIGN_RESET_POSITION_ALT_ITEM			(POLARALIGN_RESET_POSITION_ALT_PROPERTY->items+0)
+
+//----------------------------------------------------------------------
+
+/** POLARALIGN_RESET_POSITION_AZ property pointer.
+ */
+#define POLARALIGN_RESET_POSITION_AZ_PROPERTY			(POLARALIGN_CONTEXT->polaralign_reset_position_az_property)
+
+/** POLARALIGN_RESET_POSITION_AZ.RESET item pointer.
+ */
+#define POLARALIGN_RESET_POSITION_AZ_ITEM			(POLARALIGN_RESET_POSITION_AZ_PROPERTY->items+0)
+
+//----------------------------------------------------------------------
+
+/** POLARALIGN_LIMITS property pointer.
+ */
+#define POLARALIGN_LIMITS_PROPERTY				(POLARALIGN_CONTEXT->polaralign_limits_property)
+
+/** POLARALIGN_LIMITS.MIN_POSITION_ALT item pointer.
+ */
+#define POLARALIGN_LIMITS_MIN_POSITION_ALT_ITEM			(POLARALIGN_LIMITS_PROPERTY->items+0)
+
+/** POLARALIGN_LIMITS.MAX_POSITION_ALT item pointer.
+ */
+#define POLARALIGN_LIMITS_MAX_POSITION_ALT_ITEM			(POLARALIGN_LIMITS_PROPERTY->items+1)
+
+/** POLARALIGN_LIMITS.MIN_POSITION_AZ item pointer.
+ */
+#define POLARALIGN_LIMITS_MIN_POSITION_AZ_ITEM			(POLARALIGN_LIMITS_PROPERTY->items+2)
+
+/** POLARALIGN_LIMITS.MAX_POSITION_AZ item pointer.
+ */
+#define POLARALIGN_LIMITS_MAX_POSITION_AZ_ITEM			(POLARALIGN_LIMITS_PROPERTY->items+3)
+
+//----------------------------------------------------------------------
+
 /** Polar aligner device context structure.
  */
 typedef struct {
-	indigo_device_context device_context;				///< device context base
-	indigo_property *polaralign_offset_property;		///< POLARALIGN_OFFSET property pointer
-	indigo_property *polaralign_abort_motion_property;	///< POLARALIGN_ABORT_MOTION property pointer
+	indigo_device_context device_context;					///< device context base
+	indigo_property *polaralign_offset_property;			///< POLARALIGN_OFFSET property pointer
+	indigo_property *polaralign_abort_motion_property;		///< POLARALIGN_ABORT_MOTION property pointer
+	indigo_property *polaralign_steps_per_degree_property;	///< POLARALIGN_STEPS_PER_DEGREE property pointer
+	indigo_property *polaralign_direction_alt_property;		///< POLARALIGN_DIRECTION_ALT property pointer
+	indigo_property *polaralign_direction_az_property;		///< POLARALIGN_DIRECTION_AZ property pointer
+	indigo_property *polaralign_reset_position_alt_property;	///< POLARALIGN_RESET_POSITION_ALT property pointer
+	indigo_property *polaralign_reset_position_az_property;		///< POLARALIGN_RESET_POSITION_AZ property pointer
+	indigo_property *polaralign_limits_property;				///< POLARALIGN_LIMITS property pointer
 } indigo_polaralign_context;
 
 /** Attach callback function.
