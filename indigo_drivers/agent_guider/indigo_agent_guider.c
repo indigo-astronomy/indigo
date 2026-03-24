@@ -62,10 +62,12 @@
 #define AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY	(DEVICE_PRIVATE_DATA->agent_guider_correction_mode_ra_property)
 #define AGENT_GUIDER_CORRECTION_MODE_RA_PI_ITEM		(AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY->items+0)
 #define AGENT_GUIDER_CORRECTION_MODE_RA_HYSTERESIS_ITEM	(AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY->items+1)
+#define AGENT_GUIDER_CORRECTION_MODE_RA_LINEAR_TREND_ITEM	(AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY->items+2)
 
 #define AGENT_GUIDER_CORRECTION_MODE_DEC_PROPERTY	(DEVICE_PRIVATE_DATA->agent_guider_correction_mode_dec_property)
 #define AGENT_GUIDER_CORRECTION_MODE_DEC_PI_ITEM		(AGENT_GUIDER_CORRECTION_MODE_DEC_PROPERTY->items+0)
 #define AGENT_GUIDER_CORRECTION_MODE_DEC_HYSTERESIS_ITEM	(AGENT_GUIDER_CORRECTION_MODE_DEC_PROPERTY->items+1)
+#define AGENT_GUIDER_CORRECTION_MODE_DEC_LINEAR_TREND_ITEM	(AGENT_GUIDER_CORRECTION_MODE_DEC_PROPERTY->items+2)
 
 #define AGENT_GUIDER_DETECTION_MODE_PROPERTY	(DEVICE_PRIVATE_DATA->agent_guider_detection_mode_property)
 #define AGENT_GUIDER_DETECTION_SELECTION_ITEM 	(AGENT_GUIDER_DETECTION_MODE_PROPERTY->items+0)
@@ -124,9 +126,11 @@
 #define AGENT_GUIDER_SETTINGS_HYSTERESIS_AGG_DEC_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+21)
 #define AGENT_GUIDER_SETTINGS_HYSTERESIS_HIST_RA_ITEM		(AGENT_GUIDER_SETTINGS_PROPERTY->items+22)
 #define AGENT_GUIDER_SETTINGS_HYSTERESIS_HIST_DEC_ITEM		(AGENT_GUIDER_SETTINGS_PROPERTY->items+23)
-#define AGENT_GUIDER_SETTINGS_DITHERING_AMOUNT_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+24)
-#define AGENT_GUIDER_SETTINGS_DITHERING_TIME_LIMIT_ITEM 		(AGENT_GUIDER_SETTINGS_PROPERTY->items+25)
-#define AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+26)
+#define AGENT_GUIDER_SETTINGS_LINEAR_TREND_AGG_RA_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+24)
+#define AGENT_GUIDER_SETTINGS_LINEAR_TREND_AGG_DEC_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+25)
+#define AGENT_GUIDER_SETTINGS_DITHERING_AMOUNT_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+26)
+#define AGENT_GUIDER_SETTINGS_DITHERING_TIME_LIMIT_ITEM 		(AGENT_GUIDER_SETTINGS_PROPERTY->items+27)
+#define AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+28)
 
 #define AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY	(DEVICE_PRIVATE_DATA->agent_flip_reverses_dec_property)
 #define AGENT_GUIDER_FLIP_REVERSES_DEC_ENABLED_ITEM		(AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY->items+0)
@@ -244,6 +248,7 @@ typedef struct {
 	double drift_x, drift_y, drift;
 	double avg_drift_x, avg_drift_y;
 	double hysteresis_prev_drift_ra, hysteresis_prev_drift_dec;
+	indigo_linear_trend_history trend_ra, trend_dec;
 	double rmse_ra_sum, rmse_dec_sum;
 	double rmse_ra_s_sum, rmse_dec_s_sum;
 	double rmse_ra_threshold, rmse_dec_threshold;
@@ -1509,6 +1514,8 @@ static bool guide(indigo_device *device) {
 	indigo_update_property(device, AGENT_GUIDER_DITHERING_OFFSETS_PROPERTY, NULL);
 	DEVICE_PRIVATE_DATA->rmse_ra_sum = DEVICE_PRIVATE_DATA->rmse_dec_sum = DEVICE_PRIVATE_DATA->rmse_ra_s_sum = DEVICE_PRIVATE_DATA->rmse_dec_s_sum = DEVICE_PRIVATE_DATA->rmse_count = 0;
 	DEVICE_PRIVATE_DATA->hysteresis_prev_drift_ra = DEVICE_PRIVATE_DATA->hysteresis_prev_drift_dec = 0;
+	memset(&DEVICE_PRIVATE_DATA->trend_ra, 0, sizeof(DEVICE_PRIVATE_DATA->trend_ra));
+	memset(&DEVICE_PRIVATE_DATA->trend_dec, 0, sizeof(DEVICE_PRIVATE_DATA->trend_dec));
 	if (AGENT_GUIDER_ENABLE_LOGGING_FEATURE_ITEM->sw.value) {
 		open_log(device);
 		write_log_header(device, "guiding");
@@ -1610,13 +1617,21 @@ static bool guide(indigo_device *device) {
 			AGENT_GUIDER_STATS_DRIFT_DEC_ITEM->number.value = round(1000 * drift_dec) / 1000;
 			AGENT_GUIDER_STATS_DRIFT_RA_S_ITEM->number.value = round(1000 * drift_ra_s) / 1000;
 			AGENT_GUIDER_STATS_DRIFT_DEC_S_ITEM->number.value = round(1000 * drift_dec_s) / 1000;
+			/* Always feed linear-trend history so the trend is built from every frame,
+			   regardless of whether the drift is above the correction threshold. */
+			if (AGENT_GUIDER_CORRECTION_MODE_RA_LINEAR_TREND_ITEM->sw.value)
+				indigo_guider_linear_trend_push(drift_ra, &DEVICE_PRIVATE_DATA->trend_ra);
+			if (AGENT_GUIDER_CORRECTION_MODE_DEC_LINEAR_TREND_ITEM->sw.value)
+				indigo_guider_linear_trend_push(drift_dec, &DEVICE_PRIVATE_DATA->trend_dec);
 			double correction_ra = 0, correction_dec = 0;
 			double max_safe_correction = AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value * SAFE_RADIUS_FACTOR;
 			if (fabs(drift_ra) > min_error) {
 				if (AGENT_GUIDER_CORRECTION_MODE_RA_PI_ITEM->sw.value) {
 					correction_ra = indigo_guider_pi_response(AGENT_GUIDER_SETTINGS_AGG_RA_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_I_GAIN_RA_ITEM->number.value, AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value + AGENT_GUIDER_SETTINGS_DELAY_ITEM->number.value, drift_ra, avg_drift_ra);
-				} else {
+				} else if (AGENT_GUIDER_CORRECTION_MODE_RA_HYSTERESIS_ITEM->sw.value) {
 					correction_ra = indigo_guider_hysteresis_response(AGENT_GUIDER_SETTINGS_HYSTERESIS_AGG_RA_ITEM->number.value, AGENT_GUIDER_SETTINGS_HYSTERESIS_HIST_RA_ITEM->number.value, drift_ra, &DEVICE_PRIVATE_DATA->hysteresis_prev_drift_ra);
+				} else {
+					correction_ra = indigo_guider_linear_trend_response(AGENT_GUIDER_SETTINGS_LINEAR_TREND_AGG_RA_ITEM->number.value, min_error, drift_ra, &DEVICE_PRIVATE_DATA->trend_ra);
 				}
 				/* Limit correction_ra, so that we will not lose the stars in the slection if we apply it and let the next cycle complete complete it */
 				if ((AGENT_GUIDER_DETECTION_SELECTION_ITEM->sw.value || AGENT_GUIDER_DETECTION_WEIGHTED_SELECTION_ITEM->sw.value) && (fabs(correction_ra) > max_safe_correction)) {
@@ -1636,8 +1651,10 @@ static bool guide(indigo_device *device) {
 			if (fabs(drift_dec) > min_error) {
 				if (AGENT_GUIDER_CORRECTION_MODE_DEC_PI_ITEM->sw.value) {
 					correction_dec = indigo_guider_pi_response(AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_I_GAIN_DEC_ITEM->number.value, AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value + AGENT_GUIDER_SETTINGS_DELAY_ITEM->number.value, drift_dec, avg_drift_dec);
-				} else {
+				} else if (AGENT_GUIDER_CORRECTION_MODE_DEC_HYSTERESIS_ITEM->sw.value) {
 					correction_dec = indigo_guider_hysteresis_response(AGENT_GUIDER_SETTINGS_HYSTERESIS_AGG_DEC_ITEM->number.value, AGENT_GUIDER_SETTINGS_HYSTERESIS_HIST_DEC_ITEM->number.value, drift_dec, &DEVICE_PRIVATE_DATA->hysteresis_prev_drift_dec);
+				} else {
+					correction_dec = indigo_guider_linear_trend_response(AGENT_GUIDER_SETTINGS_LINEAR_TREND_AGG_DEC_ITEM->number.value, min_error, drift_dec, &DEVICE_PRIVATE_DATA->trend_dec);
 				}
 				/* Limit correction_dec, so that we will not lose the stars in the slection if we apply it and let the next cycle complete complete it */
 				if ((AGENT_GUIDER_DETECTION_SELECTION_ITEM->sw.value || AGENT_GUIDER_DETECTION_WEIGHTED_SELECTION_ITEM->sw.value) && (fabs(correction_dec) > max_safe_correction)) {
@@ -1931,16 +1948,19 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		FILTER_GUIDER_LIST_PROPERTY->hidden = false;
 		FILTER_RELATED_AGENT_LIST_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- Process properties
-		AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY_NAME, "Agent", "RA drift correction mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY_NAME, "Agent", "RA drift correction mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 		if (AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(AGENT_GUIDER_CORRECTION_MODE_RA_PI_ITEM, AGENT_GUIDER_CORRECTION_MODE_PI_ITEM_NAME, "Proportional-Integral", true);
 		indigo_init_switch_item(AGENT_GUIDER_CORRECTION_MODE_RA_HYSTERESIS_ITEM, AGENT_GUIDER_CORRECTION_MODE_HYSTERESIS_ITEM_NAME, "Hysteresis", false);
-		AGENT_GUIDER_CORRECTION_MODE_DEC_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_GUIDER_CORRECTION_MODE_DEC_PROPERTY_NAME, "Agent", "Dec drift correction mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		indigo_init_switch_item(AGENT_GUIDER_CORRECTION_MODE_RA_LINEAR_TREND_ITEM, AGENT_GUIDER_CORRECTION_MODE_LINEAR_TREND_ITEM_NAME, "Linear Trend", false);
+
+		AGENT_GUIDER_CORRECTION_MODE_DEC_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_GUIDER_CORRECTION_MODE_DEC_PROPERTY_NAME, "Agent", "Dec drift correction mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 		if (AGENT_GUIDER_CORRECTION_MODE_DEC_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(AGENT_GUIDER_CORRECTION_MODE_DEC_PI_ITEM, AGENT_GUIDER_CORRECTION_MODE_PI_ITEM_NAME, "Proportional-Integral", true);
 		indigo_init_switch_item(AGENT_GUIDER_CORRECTION_MODE_DEC_HYSTERESIS_ITEM, AGENT_GUIDER_CORRECTION_MODE_HYSTERESIS_ITEM_NAME, "Hysteresis", false);
+		indigo_init_switch_item(AGENT_GUIDER_CORRECTION_MODE_DEC_LINEAR_TREND_ITEM, AGENT_GUIDER_CORRECTION_MODE_LINEAR_TREND_ITEM_NAME, "Linear Trend", false);
 		// -------------------------------------------------------------------------------- Drift detection mode
 		AGENT_GUIDER_DETECTION_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_GUIDER_DETECTION_MODE_PROPERTY_NAME, "Agent", "Drift detection mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
 		if (AGENT_GUIDER_DETECTION_MODE_PROPERTY == NULL)
@@ -1998,7 +2018,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM, AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM_NAME, "Side of Pier (-1=E, 1=W, 0=undef)", -1, 1, 1, 0);
 		DEVICE_PRIVATE_DATA->cos_dec = 1; /* default dec is 0 until set */
 		// -------------------------------------------------------------------------------- Guiding settings
-		AGENT_GUIDER_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_SETTINGS_PROPERTY_NAME, "Agent", "Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 27);
+		AGENT_GUIDER_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_SETTINGS_PROPERTY_NAME, "Agent", "Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 29);
 		if (AGENT_GUIDER_SETTINGS_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM, AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM_NAME, "Exposure time (s)", 0, 120, 0.1, 1);
@@ -2025,6 +2045,8 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_HYSTERESIS_AGG_DEC_ITEM, AGENT_GUIDER_SETTINGS_HYSTERESIS_AGG_DEC_ITEM_NAME, "Dec Hysteresis aggressiveness (0-1)", 0, 1, 0.01, 0.7);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_HYSTERESIS_HIST_RA_ITEM, AGENT_GUIDER_SETTINGS_HYSTERESIS_HIST_RA_ITEM_NAME, "RA Hysteresis (0-1)", 0, 1, 0.01, 0.1);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_HYSTERESIS_HIST_DEC_ITEM, AGENT_GUIDER_SETTINGS_HYSTERESIS_HIST_DEC_ITEM_NAME, "Dec Hysteresis (0-1)", 0, 1, 0.01, 0.1);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_LINEAR_TREND_AGG_RA_ITEM, AGENT_GUIDER_SETTINGS_LINEAR_TREND_AGG_RA_ITEM_NAME, "RA Linear Trend aggressiveness (%)", 0, 100, 5, 80.0);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_LINEAR_TREND_AGG_DEC_ITEM, AGENT_GUIDER_SETTINGS_LINEAR_TREND_AGG_DEC_ITEM_NAME, "Dec Linear Trend aggressiveness (%)", 0, 100, 5, 80.0);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_DITHERING_AMOUNT_ITEM, AGENT_GUIDER_SETTINGS_DITHERING_AMOUNT_ITEM_NAME, "Dithering max amount (px)", 0, 15, 1, 1);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_DITHERING_TIME_LIMIT_ITEM, AGENT_GUIDER_SETTINGS_DITHERING_TIME_LIMIT_ITEM_NAME, "Dithering Settle time limit (s)", 0, 300, 1, 60);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM, AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM_NAME, "Dithering settling limit (frames)", 1, 50, 1, 5);
