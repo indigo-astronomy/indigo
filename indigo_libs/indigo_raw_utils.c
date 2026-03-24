@@ -2264,6 +2264,7 @@ indigo_result indigo_reduce_weighted_multistar_digest(const indigo_frame_digest 
 	return INDIGO_OK;
 }
 
+
 double indigo_guider_pi_response(double p_gain, double i_gain, double guide_cycle_time, double drift, double avg_drift) {
 	double response = -1 * (p_gain * drift + i_gain * avg_drift * guide_cycle_time);
 	INDIGO_DEBUG(indigo_debug("%s(): P = %.4f, I = %.4f, response = %.4f, drift = %.4f, avg_drift = %.4f", __FUNCTION__, p_gain, i_gain, response, drift, avg_drift));
@@ -2287,6 +2288,84 @@ double indigo_guider_hysteresis_response(double aggression, double hysteresis, d
 	*prev_drift = (1.0 - hysteresis) * drift + hysteresis * (*prev_drift);
 	double response = -1 * aggression * (*prev_drift);
 	INDIGO_DEBUG(indigo_debug("%s(): aggression = %.4f, hysteresis = %.4f, response = %.4f, drift = %.4f, smoothed_drift = %.4f", __FUNCTION__, aggression, hysteresis, response, drift, *prev_drift));
+	return response;
+}
+
+/*
+ * Lowpass guiding algorithm.
+ *
+ * indigo_guider_lowpass_push() feeds one drift sample into the circular
+ * history. Call it unconditionally on every guiding frame so that the
+ * history always reflects the real drift trend, regardless of whether a
+ * correction pulse will be issued.
+ *
+ * indigo_guider_lowpass_response() reads the current history and returns:
+ *   correction = -(median(history) + slope_weight * slope)
+ * where slope is the OLS slope over the chronological history.
+ * The result is capped to the magnitude of `drift`.
+ *
+ * Typical usage per guiding frame:
+ *   indigo_guider_lowpass_push(drift_ra, &history_ra);        // always
+ *   if (fabs(drift_ra) > min_error)                           // conditional
+ *       corr = indigo_guider_lowpass_response(w, drift_ra, &history_ra);
+ */
+void indigo_guider_lowpass_push(double drift, indigo_lowpass_history *history) {
+	int idx = (history->head + history->count) % INDIGO_LOWPASS_BUFFER_SIZE;
+	history->buf[idx] = drift;
+	if (history->count < INDIGO_LOWPASS_BUFFER_SIZE) {
+		history->count++;
+	} else {
+		history->head = (history->head + 1) % INDIGO_LOWPASS_BUFFER_SIZE;
+	}
+}
+
+double indigo_guider_lowpass_response(double slope_weight, double drift, indigo_lowpass_history *history) {
+	int n = history->count;
+	if (n == 0) return 0;
+
+	double samples[INDIGO_LOWPASS_BUFFER_SIZE];
+	for (int i = 0; i < n; i++) {
+		samples[i] = history->buf[(history->head + i) % INDIGO_LOWPASS_BUFFER_SIZE];
+	}
+
+	double sorted[INDIGO_LOWPASS_BUFFER_SIZE];
+	memcpy(sorted, samples, (size_t)n * sizeof(double));
+	for (int i = 1; i < n; i++) {
+		double v = sorted[i];
+		int j = i - 1;
+		while (j >= 0 && sorted[j] > v) { sorted[j + 1] = sorted[j]; j--; }
+		sorted[j + 1] = v;
+	}
+	double median = (n % 2 == 1) ? sorted[n / 2] : (sorted[n / 2 - 1] + sorted[n / 2]) / 2.0;
+	/* median is computed on the full history after adding the newest sample,
+	   then the oldest sample is dropped before the linear-fit slope is computed.
+	*/
+
+	double slope = 0;
+	int slope_start = (n > 1) ? 1 : 0;
+	int slope_n = n - slope_start;
+	if (slope_n > 1) {
+		double sum_x = 0, sum_y = 0, sum_xy = 0, sum_x2 = 0;
+		for (int i = 0; i < slope_n; i++) {
+			double y = samples[slope_start + i];
+			sum_x  += i;
+			sum_y  += y;
+			sum_xy += (double)i * y;
+			sum_x2 += (double)i * i;
+		}
+		double denom = (double)slope_n * sum_x2 - sum_x * sum_x;
+		if (denom != 0)
+			slope = ((double)slope_n * sum_xy - sum_x * sum_y) / denom;
+	}
+
+	double response = median + slope_weight * slope;
+	/* never produce a correction larger than the observed drift */
+	if (fabs(response) > fabs(drift)) {
+		response = drift;
+	}
+	response = -response;
+
+	INDIGO_DEBUG(indigo_debug("%s(): slope_weight=%.4f response=%.4f drift=%.4f median=%.4f slope=%.4f", __FUNCTION__, slope_weight, response, drift, median, slope));
 	return response;
 }
 

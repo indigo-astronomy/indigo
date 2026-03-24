@@ -28,6 +28,9 @@ extern "C" {
 
 #define INDIGO_MAX_MULTISTAR_COUNT 24
 
+#define INDIGO_LOWPASS_HISTORY_SIZE 10
+#define INDIGO_LOWPASS_BUFFER_SIZE (INDIGO_LOWPASS_HISTORY_SIZE + 1)
+
 typedef struct {
 	double x;             /* Star X */
 	double y;             /* Star Y */
@@ -65,6 +68,18 @@ typedef struct {
 	};
 } indigo_frame_digest;
 
+/* State maintained across calls for the lowpass correction algorithm.
+ * Reset by zero-initialising the structure and then setting `count` to
+ * `INDIGO_LOWPASS_HISTORY_SIZE`.
+ * This makes the initial history a full 10-sample zero-filled window.
+ * The buffer stores one extra sample so the response code can compute the
+ * median on samples 0..10 and the slope on samples 1..10.
+ */
+typedef struct {
+	double buf[INDIGO_LOWPASS_BUFFER_SIZE];  /* circular drift history  */
+	int    head;                             /* index of oldest entry   */
+	int    count;                            /* number of valid entries */
+} indigo_lowpass_history;
 
 extern double indigo_stddev(double set[], const int count);
 extern double indigo_rmse(double set[], const int count);
@@ -79,6 +94,7 @@ extern indigo_result indigo_find_stars_precise_filtered(indigo_raw_type raw_type
 extern indigo_result indigo_find_stars_precise_clipped(indigo_raw_type raw_type, const void *data, const uint16_t radius, const int width, const int height, const int stars_max, const int include_left, const int include_top, const int include_width, const int include_height, const int exclude_left, const int exclude_top, const int exclude_width, const int exclude_height, indigo_star_detection star_list[], int *stars_found);
 extern indigo_result indigo_selection_psf(indigo_raw_type raw_type, const void *data, double x, double y, const int radius, const int width, const int height, double *fwhm, double *hfd, double *peak);
 
+// Guiding related functions
 extern indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void *data, double *x, double *y, const int radius, const int width, const int height, indigo_frame_digest *digest);
 extern indigo_result indigo_selection_frame_digest_iterative(indigo_raw_type raw_type, const void *data, double *x, double *y, const int radius, const int width, const int height, indigo_frame_digest *digest, int converge_iterations);
 extern indigo_result indigo_reduce_multistar_digest(const indigo_frame_digest *avg_ref, const indigo_frame_digest ref[], const indigo_frame_digest new_digest[], const int count, indigo_frame_digest *digest);
@@ -87,9 +103,17 @@ extern indigo_result indigo_centroid_frame_digest(indigo_raw_type raw_type, cons
 extern indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *data, const int width, const int height, const int border, indigo_frame_digest *digest);
 extern indigo_result indigo_donuts_frame_digest_clipped(indigo_raw_type raw_type, const void *data, const int width, const int height, const int include_left, const int include_top, const int include_width, const int include_height, indigo_frame_digest *digest);
 extern indigo_result indigo_calculate_drift(const indigo_frame_digest *ref, const indigo_frame_digest *new_digest, double *drift_x, double *drift_y);
-extern double indigo_guider_pi_response(double p_gain, double i_gain, double guide_cycle_time, double drift, double avg_drift);
-extern double indigo_guider_hysteresis_response(double aggression, double hysteresis, double drift, double *prev_drift);
 extern indigo_result indigo_delete_frame_digest(indigo_frame_digest *fdigest);
+
+// Proportional-Integral guiding algorithm.
+extern double indigo_guider_pi_response(double p_gain, double i_gain, double guide_cycle_time, double drift, double avg_drift);
+
+// Hysteresis guiding algorithm.
+extern double indigo_guider_hysteresis_response(double aggression, double hysteresis, double drift, double *prev_drift);
+
+// Lowpass guiding algorithm.
+extern void   indigo_guider_lowpass_push(double drift, indigo_lowpass_history *history);
+extern double indigo_guider_lowpass_response(double slope_weight, double drift, indigo_lowpass_history *history);
 
 //RMSE focus related
 extern double indigo_contrast(indigo_raw_type raw_type, const void *data, const uint8_t *saturation_mask, const int width, const int height, bool *saturated);
