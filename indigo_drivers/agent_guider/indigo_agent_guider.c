@@ -1638,9 +1638,9 @@ static bool guide(indigo_device *device) {
 				if (AGENT_GUIDER_CORRECTION_MODE_RA_PI_ITEM->sw.value) {
 					correction_ra = indigo_guider_pi_response(AGENT_GUIDER_SETTINGS_AGG_RA_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_I_GAIN_RA_ITEM->number.value, AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value + AGENT_GUIDER_SETTINGS_DELAY_ITEM->number.value, drift_ra, avg_drift_ra);
 				} else if (AGENT_GUIDER_CORRECTION_MODE_RA_HYSTERESIS_ITEM->sw.value) {
-					correction_ra = indigo_guider_hysteresis_response(AGENT_GUIDER_SETTINGS_HYSTERESIS_AGG_RA_ITEM->number.value, AGENT_GUIDER_SETTINGS_HYSTERESIS_HIST_RA_ITEM->number.value, drift_ra, &DEVICE_PRIVATE_DATA->hysteresis_prev_drift_ra);
+					correction_ra = indigo_guider_hysteresis_response(AGENT_GUIDER_SETTINGS_HYSTERESIS_AGG_RA_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_HYSTERESIS_HIST_RA_ITEM->number.value / 100, drift_ra, &DEVICE_PRIVATE_DATA->hysteresis_prev_drift_ra);
 				} else {
-					correction_ra = indigo_guider_linear_trend_response(AGENT_GUIDER_SETTINGS_LINEAR_TREND_AGG_RA_ITEM->number.value, min_error, drift_ra, &DEVICE_PRIVATE_DATA->trend_ra);
+					correction_ra = indigo_guider_linear_trend_response(AGENT_GUIDER_SETTINGS_LINEAR_TREND_AGG_RA_ITEM->number.value / 100, min_error, drift_ra, &DEVICE_PRIVATE_DATA->trend_ra);
 				}
 				/* Limit correction_ra, so that we will not lose the stars in the slection if we apply it and let the next cycle complete complete it */
 				if ((AGENT_GUIDER_DETECTION_SELECTION_ITEM->sw.value || AGENT_GUIDER_DETECTION_WEIGHTED_SELECTION_ITEM->sw.value) && (fabs(correction_ra) > max_safe_correction)) {
@@ -1661,9 +1661,9 @@ static bool guide(indigo_device *device) {
 				if (AGENT_GUIDER_CORRECTION_MODE_DEC_PI_ITEM->sw.value) {
 					correction_dec = indigo_guider_pi_response(AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_I_GAIN_DEC_ITEM->number.value, AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value + AGENT_GUIDER_SETTINGS_DELAY_ITEM->number.value, drift_dec, avg_drift_dec);
 				} else if (AGENT_GUIDER_CORRECTION_MODE_DEC_HYSTERESIS_ITEM->sw.value) {
-					correction_dec = indigo_guider_hysteresis_response(AGENT_GUIDER_SETTINGS_HYSTERESIS_AGG_DEC_ITEM->number.value, AGENT_GUIDER_SETTINGS_HYSTERESIS_HIST_DEC_ITEM->number.value, drift_dec, &DEVICE_PRIVATE_DATA->hysteresis_prev_drift_dec);
+					correction_dec = indigo_guider_hysteresis_response(AGENT_GUIDER_SETTINGS_HYSTERESIS_AGG_DEC_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_HYSTERESIS_HIST_DEC_ITEM->number.value / 100, drift_dec, &DEVICE_PRIVATE_DATA->hysteresis_prev_drift_dec);
 				} else {
-					correction_dec = indigo_guider_linear_trend_response(AGENT_GUIDER_SETTINGS_LINEAR_TREND_AGG_DEC_ITEM->number.value, min_error, drift_dec, &DEVICE_PRIVATE_DATA->trend_dec);
+					correction_dec = indigo_guider_linear_trend_response(AGENT_GUIDER_SETTINGS_LINEAR_TREND_AGG_DEC_ITEM->number.value / 100, min_error, drift_dec, &DEVICE_PRIVATE_DATA->trend_dec);
 				}
 				/* Limit correction_dec, so that we will not lose the stars in the slection if we apply it and let the next cycle complete complete it */
 				if ((AGENT_GUIDER_DETECTION_SELECTION_ITEM->sw.value || AGENT_GUIDER_DETECTION_WEIGHTED_SELECTION_ITEM->sw.value) && (fabs(correction_dec) > max_safe_correction)) {
@@ -2053,17 +2053,17 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_MIN_ERR_ITEM, AGENT_GUIDER_SETTINGS_MIN_ERR_ITEM_NAME, "Min error (px)", 0, 5, 0.1, 0);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_MIN_PULSE_ITEM, AGENT_GUIDER_SETTINGS_MIN_PULSE_ITEM_NAME, "Min pulse (s)", 0, 1, 0.001, 0.01);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_MAX_PULSE_ITEM, AGENT_GUIDER_SETTINGS_MAX_PULSE_ITEM_NAME, "Max pulse (s)", 0, 5, 0.1, 1);
-		indigo_init_number_item(AGENT_GUIDER_SETTINGS_AGG_RA_ITEM, AGENT_GUIDER_SETTINGS_AGG_RA_ITEM_NAME, "RA Proportional aggressiveness (%)", 0, 500, 5, 100);
-		indigo_init_number_item(AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM, AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM_NAME, "Dec Proportional aggressiveness (%)", 0, 500, 5, 100);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_AGG_RA_ITEM, AGENT_GUIDER_SETTINGS_AGG_RA_ITEM_NAME, "RA Proportional aggressiveness (%)", 0, 500, 5, 90);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM, AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM_NAME, "Dec Proportional aggressiveness (%)", 0, 500, 5, 90);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_I_GAIN_RA_ITEM, AGENT_GUIDER_SETTINGS_I_GAIN_RA_ITEM_NAME, "RA Integral gain", 0, 10, 0.05, 0.5);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_I_GAIN_DEC_ITEM, AGENT_GUIDER_SETTINGS_I_GAIN_DEC_ITEM_NAME, "Dec Integral gain", 0, 10, 0.05, 0.5);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_STACK_ITEM, AGENT_GUIDER_SETTINGS_STACK_ITEM_NAME, "Integral stack size (frames)", 1, MAX_STACK, 1, 1);
-		indigo_init_number_item(AGENT_GUIDER_SETTINGS_HYSTERESIS_AGG_RA_ITEM, AGENT_GUIDER_SETTINGS_HYSTERESIS_AGG_RA_ITEM_NAME, "RA Hysteresis aggressiveness (0-1)", 0, 1, 0.01, 0.7);
-		indigo_init_number_item(AGENT_GUIDER_SETTINGS_HYSTERESIS_AGG_DEC_ITEM, AGENT_GUIDER_SETTINGS_HYSTERESIS_AGG_DEC_ITEM_NAME, "Dec Hysteresis aggressiveness (0-1)", 0, 1, 0.01, 0.7);
-		indigo_init_number_item(AGENT_GUIDER_SETTINGS_HYSTERESIS_HIST_RA_ITEM, AGENT_GUIDER_SETTINGS_HYSTERESIS_HIST_RA_ITEM_NAME, "RA Hysteresis (0-1)", 0, 1, 0.01, 0.1);
-		indigo_init_number_item(AGENT_GUIDER_SETTINGS_HYSTERESIS_HIST_DEC_ITEM, AGENT_GUIDER_SETTINGS_HYSTERESIS_HIST_DEC_ITEM_NAME, "Dec Hysteresis (0-1)", 0, 1, 0.01, 0.1);
-		indigo_init_number_item(AGENT_GUIDER_SETTINGS_LINEAR_TREND_AGG_RA_ITEM, AGENT_GUIDER_SETTINGS_LINEAR_TREND_AGG_RA_ITEM_NAME, "RA Linear Trend aggressiveness (%)", 0, 100, 5, 80.0);
-		indigo_init_number_item(AGENT_GUIDER_SETTINGS_LINEAR_TREND_AGG_DEC_ITEM, AGENT_GUIDER_SETTINGS_LINEAR_TREND_AGG_DEC_ITEM_NAME, "Dec Linear Trend aggressiveness (%)", 0, 100, 5, 80.0);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_HYSTERESIS_AGG_RA_ITEM, AGENT_GUIDER_SETTINGS_HYSTERESIS_AGG_RA_ITEM_NAME, "RA Hysteresis aggressiveness (%)", 0, 200, 1, 70);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_HYSTERESIS_AGG_DEC_ITEM, AGENT_GUIDER_SETTINGS_HYSTERESIS_AGG_DEC_ITEM_NAME, "Dec Hysteresis aggressiveness (%)", 0, 200, 1, 70);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_HYSTERESIS_HIST_RA_ITEM, AGENT_GUIDER_SETTINGS_HYSTERESIS_HIST_RA_ITEM_NAME, "RA Hysteresis (%)", 0, 100, 1, 10);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_HYSTERESIS_HIST_DEC_ITEM, AGENT_GUIDER_SETTINGS_HYSTERESIS_HIST_DEC_ITEM_NAME, "Dec Hysteresis (%)", 0, 100, 1, 10);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_LINEAR_TREND_AGG_RA_ITEM, AGENT_GUIDER_SETTINGS_LINEAR_TREND_AGG_RA_ITEM_NAME, "RA Linear Trend aggressiveness (%)", 0, 200, 5, 80.0);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_LINEAR_TREND_AGG_DEC_ITEM, AGENT_GUIDER_SETTINGS_LINEAR_TREND_AGG_DEC_ITEM_NAME, "Dec Linear Trend aggressiveness (%)", 0, 200, 5, 80.0);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_DITHERING_AMOUNT_ITEM, AGENT_GUIDER_SETTINGS_DITHERING_AMOUNT_ITEM_NAME, "Dithering max amount (px)", 0, 15, 1, 1);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_DITHERING_TIME_LIMIT_ITEM, AGENT_GUIDER_SETTINGS_DITHERING_TIME_LIMIT_ITEM_NAME, "Dithering Settle time limit (s)", 0, 300, 1, 60);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM, AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM_NAME, "Dithering settling limit (frames)", 1, 50, 1, 5);

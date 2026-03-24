@@ -2224,17 +2224,17 @@ double indigo_guider_pi_response(double p_gain, double i_gain, double guide_cycl
  * On each call the smoothed drift state is updated:
  *   *prev_drift = (1 - hysteresis) * drift + hysteresis * (*prev_drift)
  * and the correction is:
- *   response = -aggression * (*prev_drift)
+ *   response = -aggressiveness * (*prev_drift)
  *
- * aggression  - overall gain factor (0..1)
- * hysteresis  - blend factor for previous smoothed drift (0 = no memory, 1 = full memory)
- * drift       - current measured drift (pixels)
- * prev_drift  - in/out: smoothed drift state maintained by the caller (initialise to 0)
+ * aggressiveness - overall gain factor (0..1)
+ * hysteresis     - blend factor for previous smoothed drift (0 = no memory, 1 = full memory)
+ * drift          - current measured drift (pixels)
+ * prev_drift     - in/out: smoothed drift state maintained by the caller (initialise to 0)
  */
-double indigo_guider_hysteresis_response(double aggression, double hysteresis, double drift, double *prev_drift) {
+double indigo_guider_hysteresis_response(double aggressiveness, double hysteresis, double drift, double *prev_drift) {
 	*prev_drift = (1.0 - hysteresis) * drift + hysteresis * (*prev_drift);
-	double response = -1 * aggression * (*prev_drift);
-	INDIGO_DEBUG(indigo_debug("%s(): aggression = %.4f, hysteresis = %.4f, response = %.4f, drift = %.4f, smoothed_drift = %.4f", __FUNCTION__, aggression, hysteresis, response, drift, *prev_drift));
+	double response = -1 * aggressiveness * (*prev_drift);
+	INDIGO_DEBUG(indigo_debug("%s(): aggressiveness = %.4f, hysteresis = %.4f, response = %.4f, drift = %.4f, smoothed_drift = %.4f", __FUNCTION__, aggressiveness, hysteresis, response, drift, *prev_drift));
 	return response;
 }
 
@@ -2272,15 +2272,14 @@ double indigo_guider_linear_trend_response(double aggressiveness, double min_mov
 		samples[i] = history->buf[(history->head + i) % INDIGO_LINEAR_TREND_HISTORY_SIZE];
 	}
 
-	double attenuation = aggressiveness / 100.0;
 	double effective_min_move = min_move > 0 ? min_move : INDIGO_LINEAR_TREND_DEFAULT_MIN_MOVE;
 	double slope = 0;
 	double correction;
 
 	if (n < 4) {
-		correction = drift * attenuation;
+		correction = drift * aggressiveness;
 	} else if (fabs(drift) > 4.0 * effective_min_move) {
-		correction = drift * attenuation;
+		correction = drift * aggressiveness;
 		memset(history, 0, sizeof(*history));
 		INDIGO_DEBUG(indigo_debug("%s(): Linear Trend history cleared, outlier deflection drift=%.4f min_move=%.4f", __FUNCTION__, drift, effective_min_move));
 	} else {
@@ -2296,14 +2295,14 @@ double indigo_guider_linear_trend_response(double aggressiveness, double min_mov
 		if (denom != 0)
 			slope = ((double)n * sum_xy - sum_x * sum_y) / denom;
 
-		correction = slope * (double)n * attenuation;
+		correction = slope * (double)n * aggressiveness;
 		if (drift * correction < 0)
 			correction = 0;
 	}
 
 	/* never produce a correction larger than the observed drift */
 	if (fabs(correction) > fabs(drift)) {
-		correction = drift * attenuation;
+		correction = drift * aggressiveness;
 		history->rejects++;
 		if (history->rejects > 3) {
 			memset(history, 0, sizeof(*history));
