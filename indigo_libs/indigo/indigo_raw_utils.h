@@ -38,6 +38,9 @@ extern "C" {
 
 #define INDIGO_MAX_MULTISTAR_COUNT 24
 
+#define INDIGO_LINEAR_TREND_HISTORY_SIZE 10
+#define INDIGO_LINEAR_TREND_DEFAULT_MIN_MOVE 0.2
+
 typedef struct {
 	double x;             /* Star X */
 	double y;             /* Star Y */
@@ -75,6 +78,17 @@ typedef struct {
 	};
 } indigo_frame_digest;
 
+/* History maintained across calls for the Linear Trend guiding algorithm.
+ * Reset by zero-initialising the structure at the start of every guiding
+ * session or when the algorithm decides its slope history is no longer
+ * useful.
+ */
+typedef struct {
+	double buf[INDIGO_LINEAR_TREND_HISTORY_SIZE]; /* circular drift history  */
+	int    head;                             /* index of oldest entry   */
+	int    count;                            /* number of valid entries */
+	int    rejects;                          /* successive rejections   */
+} indigo_linear_trend_history;
 
 INDIGO_EXTERN double indigo_stddev(double set[], const int count);
 INDIGO_EXTERN double indigo_rmse(double set[], const int count);
@@ -97,9 +111,17 @@ INDIGO_EXTERN indigo_result indigo_centroid_frame_digest(indigo_raw_type raw_typ
 INDIGO_EXTERN indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *data, const int width, const int height, const int border, indigo_frame_digest *digest);
 INDIGO_EXTERN indigo_result indigo_donuts_frame_digest_clipped(indigo_raw_type raw_type, const void *data, const int width, const int height, const int include_left, const int include_top, const int include_width, const int include_height, indigo_frame_digest *digest);
 INDIGO_EXTERN indigo_result indigo_calculate_drift(const indigo_frame_digest *ref, const indigo_frame_digest *new_digest, double *drift_x, double *drift_y);
-INDIGO_EXTERN double indigo_guider_pi_response(double p_gain, double i_gain, double guide_cycle_time, double drift, double avg_drift);
-INDIGO_EXTERN double indigo_guider_hysteresis_response(double aggression, double hysteresis, double drift, double *prev_drift);
 INDIGO_EXTERN indigo_result indigo_delete_frame_digest(indigo_frame_digest *fdigest);
+
+// Proportional-Integral guiding algorithm.
+INDIGO_EXTERN double indigo_guider_pi_response(double p_gain, double i_gain, double guide_cycle_time, double drift, double avg_drift);
+
+// Hysteresis guiding algorithm.
+INDIGO_EXTERN double indigo_guider_hysteresis_response(double aggression, double hysteresis, double drift, double *prev_drift);
+
+// Linear Trend guiding algorithm.
+INDIGO_EXTERN void   indigo_guider_linear_trend_push(double drift, indigo_linear_trend_history *history);
+INDIGO_EXTERN double indigo_guider_linear_trend_response(double aggressiveness, double min_move, double drift, indigo_linear_trend_history *history);
 
 //RMSE focus related
 INDIGO_EXTERN double indigo_contrast(indigo_raw_type raw_type, const void *data, const uint8_t *saturation_mask, const int width, const int height, bool *saturated);

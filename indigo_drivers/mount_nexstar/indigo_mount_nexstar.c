@@ -813,6 +813,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_init_switch_item(TRACKING_AUTO_ITEM, TRACKING_AUTO_ITEM_NAME, "Automatic mode", true);
 		// --------------------------------------------------------------------------------
 		MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->hidden = false;
+		//MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->count = 2; // we can not set elevation from the protocol
 		MOUNT_UTC_TIME_PROPERTY->hidden = false;
 		MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
 		strncpy(MOUNT_GUIDE_RATE_PROPERTY->label,"ST4 guide rate", INDIGO_VALUE_SIZE);
