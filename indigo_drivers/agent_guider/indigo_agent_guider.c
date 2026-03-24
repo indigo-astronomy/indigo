@@ -59,9 +59,13 @@
 #define DEVICE_PRIVATE_DATA										((guider_agent_private_data *)device->private_data)
 #define CLIENT_PRIVATE_DATA										((guider_agent_private_data *)FILTER_CLIENT_CONTEXT->device->private_data)
 
-#define AGENT_GUIDER_CORRECTION_MODE_PROPERTY	(DEVICE_PRIVATE_DATA->agent_guider_correction_mode_property)
-#define AGENT_GUIDER_CORRECTION_MODE_PI_ITEM		(AGENT_GUIDER_CORRECTION_MODE_PROPERTY->items+0)
-#define AGENT_GUIDER_CORRECTION_MODE_HYSTERESIS_ITEM	(AGENT_GUIDER_CORRECTION_MODE_PROPERTY->items+1)
+#define AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY	(DEVICE_PRIVATE_DATA->agent_guider_correction_mode_ra_property)
+#define AGENT_GUIDER_CORRECTION_MODE_RA_PI_ITEM		(AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY->items+0)
+#define AGENT_GUIDER_CORRECTION_MODE_RA_HYSTERESIS_ITEM	(AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY->items+1)
+
+#define AGENT_GUIDER_CORRECTION_MODE_DEC_PROPERTY	(DEVICE_PRIVATE_DATA->agent_guider_correction_mode_dec_property)
+#define AGENT_GUIDER_CORRECTION_MODE_DEC_PI_ITEM		(AGENT_GUIDER_CORRECTION_MODE_DEC_PROPERTY->items+0)
+#define AGENT_GUIDER_CORRECTION_MODE_DEC_HYSTERESIS_ITEM	(AGENT_GUIDER_CORRECTION_MODE_DEC_PROPERTY->items+1)
 
 #define AGENT_GUIDER_DETECTION_MODE_PROPERTY	(DEVICE_PRIVATE_DATA->agent_guider_detection_mode_property)
 #define AGENT_GUIDER_DETECTION_SELECTION_ITEM 	(AGENT_GUIDER_DETECTION_MODE_PROPERTY->items+0)
@@ -208,7 +212,8 @@
 
 
 typedef struct {
-	indigo_property *agent_guider_correction_mode_property;
+	indigo_property *agent_guider_correction_mode_ra_property;
+	indigo_property *agent_guider_correction_mode_dec_property;
 	indigo_property *agent_guider_detection_mode_property;
 	indigo_property *agent_guider_dec_mode_property;
 	indigo_property *agent_guider_apply_dec_backlash_property;
@@ -274,7 +279,8 @@ static void save_config(indigo_device *device) {
 		pthread_mutex_lock(&DEVICE_PRIVATE_DATA->mutex);
 		indigo_save_property(device, NULL, AGENT_GUIDER_SETTINGS_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY);
-		indigo_save_property(device, NULL, AGENT_GUIDER_CORRECTION_MODE_PROPERTY);
+		indigo_save_property(device, NULL, AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY);
+		indigo_save_property(device, NULL, AGENT_GUIDER_CORRECTION_MODE_DEC_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_GUIDER_DETECTION_MODE_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_GUIDER_DEC_MODE_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_GUIDER_APPLY_DEC_BACKLASH_PROPERTY);
@@ -1607,7 +1613,7 @@ static bool guide(indigo_device *device) {
 			double correction_ra = 0, correction_dec = 0;
 			double max_safe_correction = AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value * SAFE_RADIUS_FACTOR;
 			if (fabs(drift_ra) > min_error) {
-				if (AGENT_GUIDER_CORRECTION_MODE_PI_ITEM->sw.value) {
+				if (AGENT_GUIDER_CORRECTION_MODE_RA_PI_ITEM->sw.value) {
 					correction_ra = indigo_guider_pi_response(AGENT_GUIDER_SETTINGS_AGG_RA_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_I_GAIN_RA_ITEM->number.value, AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value + AGENT_GUIDER_SETTINGS_DELAY_ITEM->number.value, drift_ra, avg_drift_ra);
 				} else {
 					correction_ra = indigo_guider_hysteresis_response(AGENT_GUIDER_SETTINGS_HYSTERESIS_AGG_RA_ITEM->number.value, AGENT_GUIDER_SETTINGS_HYSTERESIS_HIST_RA_ITEM->number.value, drift_ra, &DEVICE_PRIVATE_DATA->hysteresis_prev_drift_ra);
@@ -1628,7 +1634,7 @@ static bool guide(indigo_device *device) {
 				}
 			}
 			if (fabs(drift_dec) > min_error) {
-				if (AGENT_GUIDER_CORRECTION_MODE_PI_ITEM->sw.value) {
+				if (AGENT_GUIDER_CORRECTION_MODE_DEC_PI_ITEM->sw.value) {
 					correction_dec = indigo_guider_pi_response(AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_I_GAIN_DEC_ITEM->number.value, AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value + AGENT_GUIDER_SETTINGS_DELAY_ITEM->number.value, drift_dec, avg_drift_dec);
 				} else {
 					correction_dec = indigo_guider_hysteresis_response(AGENT_GUIDER_SETTINGS_HYSTERESIS_AGG_DEC_ITEM->number.value, AGENT_GUIDER_SETTINGS_HYSTERESIS_HIST_DEC_ITEM->number.value, drift_dec, &DEVICE_PRIVATE_DATA->hysteresis_prev_drift_dec);
@@ -1925,11 +1931,16 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		FILTER_GUIDER_LIST_PROPERTY->hidden = false;
 		FILTER_RELATED_AGENT_LIST_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- Process properties
-		AGENT_GUIDER_CORRECTION_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_GUIDER_CORRECTION_MODE_PROPERTY_NAME, "Agent", "Drift correction mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (AGENT_GUIDER_CORRECTION_MODE_PROPERTY == NULL)
+		AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY_NAME, "Agent", "RA drift correction mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_switch_item(AGENT_GUIDER_CORRECTION_MODE_PI_ITEM, AGENT_GUIDER_CORRECTION_MODE_PI_ITEM_NAME, "Proportional-Integral", true);
-		indigo_init_switch_item(AGENT_GUIDER_CORRECTION_MODE_HYSTERESIS_ITEM, AGENT_GUIDER_CORRECTION_MODE_HYSTERESIS_ITEM_NAME, "Hysteresis", false);
+		indigo_init_switch_item(AGENT_GUIDER_CORRECTION_MODE_RA_PI_ITEM, AGENT_GUIDER_CORRECTION_MODE_PI_ITEM_NAME, "Proportional-Integral", true);
+		indigo_init_switch_item(AGENT_GUIDER_CORRECTION_MODE_RA_HYSTERESIS_ITEM, AGENT_GUIDER_CORRECTION_MODE_HYSTERESIS_ITEM_NAME, "Hysteresis", false);
+		AGENT_GUIDER_CORRECTION_MODE_DEC_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_GUIDER_CORRECTION_MODE_DEC_PROPERTY_NAME, "Agent", "Dec drift correction mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (AGENT_GUIDER_CORRECTION_MODE_DEC_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(AGENT_GUIDER_CORRECTION_MODE_DEC_PI_ITEM, AGENT_GUIDER_CORRECTION_MODE_PI_ITEM_NAME, "Proportional-Integral", true);
+		indigo_init_switch_item(AGENT_GUIDER_CORRECTION_MODE_DEC_HYSTERESIS_ITEM, AGENT_GUIDER_CORRECTION_MODE_HYSTERESIS_ITEM_NAME, "Hysteresis", false);
 		// -------------------------------------------------------------------------------- Drift detection mode
 		AGENT_GUIDER_DETECTION_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_GUIDER_DETECTION_MODE_PROPERTY_NAME, "Agent", "Drift detection mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
 		if (AGENT_GUIDER_DETECTION_MODE_PROPERTY == NULL)
@@ -2121,7 +2132,8 @@ static indigo_result agent_device_attach(indigo_device *device) {
 static indigo_result agent_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (client != NULL && client == FILTER_DEVICE_CONTEXT->client)
 		return INDIGO_OK;
-	indigo_define_matching_property(AGENT_GUIDER_CORRECTION_MODE_PROPERTY);
+	indigo_define_matching_property(AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY);
+	indigo_define_matching_property(AGENT_GUIDER_CORRECTION_MODE_DEC_PROPERTY);
 	indigo_define_matching_property(AGENT_GUIDER_DETECTION_MODE_PROPERTY);
 	indigo_define_matching_property(AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY);
 	indigo_define_matching_property(AGENT_GUIDER_SETTINGS_PROPERTY);
@@ -2170,16 +2182,27 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 				indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 			}
 		}
-	} else if (indigo_property_match(AGENT_GUIDER_CORRECTION_MODE_PROPERTY, property)) {
-// -------------------------------------------------------------------------------- AGENT_GUIDER_CORRECTION_MODE
+	} else if (indigo_property_match(AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY, property)) {
+// -------------------------------------------------------------------------------- AGENT_GUIDER_CORRECTION_MODE_RA
 		if (FILTER_DEVICE_CONTEXT->running_process) {
-			indigo_update_property(device, AGENT_GUIDER_CORRECTION_MODE_PROPERTY, "Warning: Correction mode can not be changed while process is running!");
+			indigo_update_property(device, AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY, "Warning: RA correction mode can not be changed while process is running!");
 			return INDIGO_OK;
 		}
-		indigo_property_copy_values(AGENT_GUIDER_CORRECTION_MODE_PROPERTY, property, false);
-		AGENT_GUIDER_CORRECTION_MODE_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_property_copy_values(AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY, property, false);
+		AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY->state = INDIGO_OK_STATE;
 		save_config(device);
-		indigo_update_property(device, AGENT_GUIDER_CORRECTION_MODE_PROPERTY, NULL);
+		indigo_update_property(device, AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(AGENT_GUIDER_CORRECTION_MODE_DEC_PROPERTY, property)) {
+// -------------------------------------------------------------------------------- AGENT_GUIDER_CORRECTION_MODE_DEC
+		if (FILTER_DEVICE_CONTEXT->running_process) {
+			indigo_update_property(device, AGENT_GUIDER_CORRECTION_MODE_DEC_PROPERTY, "Warning: Dec correction mode can not be changed while process is running!");
+			return INDIGO_OK;
+		}
+		indigo_property_copy_values(AGENT_GUIDER_CORRECTION_MODE_DEC_PROPERTY, property, false);
+		AGENT_GUIDER_CORRECTION_MODE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+		save_config(device);
+		indigo_update_property(device, AGENT_GUIDER_CORRECTION_MODE_DEC_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_GUIDER_DETECTION_MODE_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_GUIDER_DETECTION_MODE
@@ -2538,7 +2561,8 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 static indigo_result agent_device_detach(indigo_device *device) {
 	assert(device != NULL);
 	save_config(device);
-	indigo_release_property(AGENT_GUIDER_CORRECTION_MODE_PROPERTY);
+	indigo_release_property(AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY);
+	indigo_release_property(AGENT_GUIDER_CORRECTION_MODE_DEC_PROPERTY);
 	indigo_release_property(AGENT_GUIDER_DETECTION_MODE_PROPERTY);
 	indigo_release_property(AGENT_START_PROCESS_PROPERTY);
 	indigo_release_property(AGENT_ABORT_PROCESS_PROPERTY);
