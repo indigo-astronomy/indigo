@@ -32,6 +32,8 @@
 #include <errno.h>
 #include <math.h>
 #include <curses.h>
+#include <getopt.h>
+#include <time.h>
 
 // ----------------------------------------------------------------- state
 
@@ -56,6 +58,11 @@ double power_mw  = 0.0;    // mW  (computed from voltage × current)
 double ds18b20   = 19.7;   // °C
 double sht40_t   = 22.3;   // °C
 double sht40_h   = 48.5;   // %RH
+// Simulator flags (can be set from command line)
+bool sim_no_ds18b20 = false; // -T : simulate missing DS18B20 (return -127 C)
+bool sim_no_sht40   = false; // -H : simulate missing SHT40 (temp -2 C, random RH)
+// Persistent simulated SHT40 humidity when -H is used (generated once)
+double sim_sht40_h_random = -1.0;
 
 WINDOW *top, *bottom;
 pthread_mutex_t curses_mutex;
@@ -97,17 +104,29 @@ void *background(void *arg) {
 
 		power_mw = voltage * current; // mW
 
-		ds18b20 += (((double)random() / RAND_MAX) - 0.5) * 0.1;
-		if (ds18b20 < 10.0) ds18b20 = 10.0;
-		if (ds18b20 > 35.0) ds18b20 = 35.0;
+		if (!sim_no_ds18b20) {
+			ds18b20 += (((double)random() / RAND_MAX) - 0.5) * 0.1;
+			if (ds18b20 < 10.0) ds18b20 = 10.0;
+			if (ds18b20 > 35.0) ds18b20 = 35.0;
+		} else {
+			ds18b20 = -127.0;
+		}
 
-		sht40_t += (((double)random() / RAND_MAX) - 0.5) * 0.1;
-		if (sht40_t < 10.0) sht40_t = 10.0;
-		if (sht40_t > 35.0) sht40_t = 35.0;
+		if (!sim_no_sht40) {
+			sht40_t += (((double)random() / RAND_MAX) - 0.5) * 0.1;
+			if (sht40_t < 10.0) sht40_t = 10.0;
+			if (sht40_t > 35.0) sht40_t = 35.0;
 
-		sht40_h += (((double)random() / RAND_MAX) - 0.5) * 0.2;
-		if (sht40_h < 20.0) sht40_h = 20.0;
-		if (sht40_h > 90.0) sht40_h = 90.0;
+			sht40_h += (((double)random() / RAND_MAX) - 0.5) * 0.2;
+			if (sht40_h < 20.0) sht40_h = 20.0;
+			if (sht40_h > 90.0) sht40_h = 90.0;
+		} else {
+			sht40_t = -2.0;
+			/* when simulating missing SHT40, use the persistent random humidity */
+			if (sim_sht40_h_random < 0.0)
+				sim_sht40_h_random = (double)(random() % 10000000);
+			sht40_h = sim_sht40_h_random;
+		}
 
 		pthread_mutex_lock(&curses_mutex);
 		mvwprintw(top, 1, 2,
@@ -291,7 +310,8 @@ static void handle_read_voltage(int fd) {
 //   raw/100 - 255.5 = temp_C  =>  raw = (temp_C + 255.5) * 100
 static void handle_read_ds18b20(int fd) {
 	unsigned char res[4];
-	encode_u32(res, ds18b20 + 255.5, 100.0);
+	double temp = sim_no_ds18b20 ? -127.0 : ds18b20;
+	encode_u32(res, temp + 255.5, 100.0);
 	sim_send_response(fd, 0x04, res, 4);
 }
 
@@ -299,7 +319,8 @@ static void handle_read_ds18b20(int fd) {
 //   raw/100 - 254 = temp_C  =>  raw = (temp_C + 254) * 100
 static void handle_read_sht40_temp(int fd) {
 	unsigned char res[4];
-	encode_u32(res, sht40_t + 254.0, 100.0);
+	double temp = sim_no_sht40 ? -2.0 : sht40_t;
+	encode_u32(res, temp + 254.0, 100.0);
 	sim_send_response(fd, 0x05, res, 4);
 }
 
@@ -307,7 +328,8 @@ static void handle_read_sht40_temp(int fd) {
 //   same encoding as temperature: raw = (humi + 254) * 100
 static void handle_read_sht40_humi(int fd) {
 	unsigned char res[4];
-	encode_u32(res, sht40_h + 254.0, 100.0);
+	double hum = sim_no_sht40 ? sim_sht40_h_random : sht40_h;
+	encode_u32(res, hum + 254.0, 100.0);
 	sim_send_response(fd, 0x06, res, 4);
 }
 
@@ -337,9 +359,39 @@ static void handle_read_state(int fd) {
 
 // ----------------------------------------------------------------- main
 
-int main(void) {
+int main(int argc, char *argv[]) {
 	pthread_t thread;
 	unsigned char cmd[10];
+
+	// parse command-line options: -T (no DS18B20), -H (no SHT40), -h help
+	int opt;
+	while ((opt = getopt(argc, argv, "hHT")) != -1) {
+		switch (opt) {
+			case 'h':
+				printf("SVB PowerBox simulator\n");
+				printf("Usage: svbpowerbox_simulator [OPTIONS]\n");
+				printf("  -h            Show this help and exit\n");
+				printf("  -T            Simulate missing DS18B20 (returns -127 C)\n");
+				printf("  -H            Simulate missing SHT40 (temp -2 C, random RH)\n");
+				return 0;
+			case 'T':
+				sim_no_ds18b20 = true;
+				break;
+			case 'H':
+				sim_no_sht40 = true;
+				break;
+			default:
+				break;
+		}
+	}
+
+	// seed random generator
+	srandom((unsigned int)time(NULL));
+
+	// if simulating missing SHT40, generate one persistent random RH value
+	if (sim_no_sht40) {
+		sim_sht40_h_random = (double)(random() % 10000000);
+	}
 
 	int fd = open("/dev/ptmx", O_RDWR | O_NOCTTY | O_NONBLOCK);
 	if (fd < 0) {
