@@ -237,9 +237,9 @@ static bool svbpb_command(indigo_device *device, const unsigned char *cmd, int c
 static double svbpb_4bytes_to_double(const unsigned char *data, double scale) {
 	if (data == NULL || scale == 0.0) return 0.0;
 	uint32_t raw = ((uint32_t)data[0] << 24) |
-	               ((uint32_t)data[1] << 16) |
-	               ((uint32_t)data[2] <<  8) |
-	                (uint32_t)data[3];
+				   ((uint32_t)data[1] << 16) |
+				   ((uint32_t)data[2] <<  8) |
+					(uint32_t)data[3];
 	return (double)raw / scale;
 }
 
@@ -313,14 +313,14 @@ static indigo_result aux_attach(indigo_device *device) {
 		indigo_init_switch_item(AUX_DEW_CONTROL_MANUAL_ITEM, AUX_DEW_CONTROL_MANUAL_ITEM_NAME, "Manual", true);
 		indigo_init_switch_item(AUX_DEW_CONTROL_AUTOMATIC_ITEM, AUX_DEW_CONTROL_AUTOMATIC_ITEM_NAME, "Automatic", false);
 		// -------------------------------------------------------------------------------- WEATHER
-		AUX_WEATHER_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_WEATHER_PROPERTY_NAME, WEATHER_GROUP, "Weather info (SHT40)", INDIGO_OK_STATE, INDIGO_RO_PERM, 3);
+		AUX_WEATHER_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_WEATHER_PROPERTY_NAME, WEATHER_GROUP, "Weather info (SHT40)", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 3);
 		if (AUX_WEATHER_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AUX_WEATHER_TEMPERATURE_ITEM, AUX_WEATHER_TEMPERATURE_ITEM_NAME, "Temperature [°C]", -50, 100, 0, 0);
 		indigo_init_number_item(AUX_WEATHER_HUMIDITY_ITEM, AUX_WEATHER_HUMIDITY_ITEM_NAME, "Humidity [%]", 0, 100, 0, 0);
 		indigo_init_number_item(AUX_WEATHER_DEWPOINT_ITEM, AUX_WEATHER_DEWPOINT_ITEM_NAME, "Dewpoint [°C]", -50, 100, 0, 0);
 		// -------------------------------------------------------------------------------- AUX_TEMPERATURE_SENSORS
-		AUX_TEMPERATURE_SENSORS_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_TEMPERATURE_SENSORS_PROPERTY_NAME, WEATHER_GROUP, "Temperature sensors", INDIGO_OK_STATE, INDIGO_RO_PERM, 2);
+		AUX_TEMPERATURE_SENSORS_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_TEMPERATURE_SENSORS_PROPERTY_NAME, WEATHER_GROUP, "Temperature sensors", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 2);
 		if (AUX_TEMPERATURE_SENSORS_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AUX_TEMPERATURE_SENSORS_SENSOR_1_ITEM, AUX_TEMPERATURE_SENSORS_SENSOR_1_ITEM_NAME, "Temperature (SHT40) [°C]", -50, 120, 0, 0);
@@ -393,7 +393,7 @@ static void aux_update_states(indigo_device *device) {
 	// --- INA219 current ---
 	cmd = SVB_CMD_READ_CURRENT;
 	if (svbpb_command(device, &cmd, 1, res, 4)) {
-		value = svbpb_4bytes_to_double(res, 100.0) / 1000.0; // mA → A
+		value = svbpb_4bytes_to_double(res, 100.0) / 1000.0; // mA -> A
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "INA219 Current: %.3f A", value);
 		AUX_INFO_CURRENT_ITEM->number.value = value;
 		AUX_POWER_OUTLET_CURRENT_1_ITEM->number.value = value;
@@ -402,7 +402,7 @@ static void aux_update_states(indigo_device *device) {
 	// --- INA219 power ---
 	cmd = SVB_CMD_READ_POWER;
 	if (svbpb_command(device, &cmd, 1, res, 4)) {
-		value = svbpb_4bytes_to_double(res, 100.0) / 1000.0; // mW → W
+		value = svbpb_4bytes_to_double(res, 100.0) / 1000.0; // mW -> W
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "INA219 Power: %.3f W", value);
 		AUX_INFO_POWER_ITEM->number.value = value;
 		AUX_POWER_OUTLET_CURRENT_2_ITEM->number.value = value;
@@ -435,24 +435,34 @@ static void aux_update_states(indigo_device *device) {
 	if (svbpb_command(device, &cmd, 1, res, 4)) {
 		sht40_humi = round((svbpb_4bytes_to_double(res, 100.0) - 254.0) * 10.0) / 10.0;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SHT40 Humidity: %.1f %%", sht40_humi);
-		has_sht40_humi = true;
+		if (sht40_humi < 0.0 || sht40_humi > 110.0) { // leave some margin for sensor errors
+			// looks like we do not have a SHT40 sensor
+			// when we do not have it we have random reading so we hope they are out of range.
+			has_sht40_humi = false;
+			has_sht40_temp = false;
+			sht40_humi = -1.0;
+			sht40_temp = -273.15;
+		} else {
+			has_sht40_humi = true;
+		}
 	}
 
 	// Update temperature sensors property
-	AUX_TEMPERATURE_SENSORS_SENSOR_1_ITEM->number.value = sht40_temp > -200 ? sht40_temp : -273.15;
-	AUX_TEMPERATURE_SENSORS_SENSOR_2_ITEM->number.value = ds18b20_temp > -200 ? ds18b20_temp : -273.15;
-	if (!has_sht40_temp && ds18b20_temp <= -200) {
+	AUX_TEMPERATURE_SENSORS_SENSOR_1_ITEM->number.value = sht40_temp > -100.0 ? sht40_temp : -273.15;
+	AUX_TEMPERATURE_SENSORS_SENSOR_2_ITEM->number.value = ds18b20_temp > -100.0 ? ds18b20_temp : -273.15;
+	if (!has_sht40_temp && ds18b20_temp <= -100.0) {
 		AUX_TEMPERATURE_SENSORS_PROPERTY->state = INDIGO_IDLE_STATE;
 	} else {
 		AUX_TEMPERATURE_SENSORS_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_update_property(device, AUX_TEMPERATURE_SENSORS_PROPERTY, NULL);
 
+	AUX_WEATHER_TEMPERATURE_ITEM->number.value = sht40_temp > -100.0 ? sht40_temp : -273.15;
+	AUX_WEATHER_HUMIDITY_ITEM->number.value = sht40_humi;
+
 	// Update weather property (SHT40)
 	if (has_sht40_temp && has_sht40_humi) {
-		AUX_WEATHER_TEMPERATURE_ITEM->number.value = sht40_temp;
-		AUX_WEATHER_HUMIDITY_ITEM->number.value    = sht40_humi;
-		AUX_WEATHER_DEWPOINT_ITEM->number.value    = indigo_aux_dewpoint(sht40_temp, sht40_humi);
+		AUX_WEATHER_DEWPOINT_ITEM->number.value = indigo_aux_dewpoint(sht40_temp, sht40_humi);
 		AUX_WEATHER_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
 		AUX_WEATHER_PROPERTY->state = INDIGO_IDLE_STATE;
