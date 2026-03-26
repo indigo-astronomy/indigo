@@ -19,6 +19,7 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_aux_svbpowerbox
 
-## Status: Untested
+## Status: Under Development
 
-Driver developed based on the SVBONY PowerBox serial protocol documentation.
+Developped & tested with a physical device:
+* SVBONY PowerBox SV241 Pro
