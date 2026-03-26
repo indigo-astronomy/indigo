@@ -32,14 +32,9 @@
 #include <math.h>
 #include <assert.h>
 #include <errno.h>
-#include <pthread.h>
 #include <stdarg.h>
-#include <sys/time.h>
-#include <sys/termios.h>
-#include <sys/ioctl.h>
 
 #include <indigo/indigo_driver_xml.h>
-#include <indigo/indigo_io.h>
 
 #include "indigo_aux_svbpowerbox.h"
 
@@ -128,8 +123,7 @@
 #define SVB_MAX_VOLTAGE		15.3
 
 typedef struct {
-	int handle;
-	indigo_timer *aux_timer;
+	indigo_uni_handle *handle;
 	indigo_property *outlet_names_property;
 	indigo_property *power_outlet_property;
 	indigo_property *heater_outlet_property;
@@ -141,32 +135,9 @@ typedef struct {
 	indigo_property *power_outlet_current_property;
 	indigo_property *temperature_sensors_property;
 	indigo_property *dew_warning_property;
-	pthread_mutex_t mutex;
 } svbpb_private_data;
 
 // ------------------------------------------------------------ Low level I/O
-
-static int svbpb_read_bytes(int fd, unsigned char *buf, int n, int timeout_ms) {
-	int total = 0;
-	while (total < n) {
-		fd_set rfds;
-		struct timeval tv;
-		FD_ZERO(&rfds);
-		FD_SET(fd, &rfds);
-		tv.tv_sec  = timeout_ms / 1000;
-		tv.tv_usec = (timeout_ms % 1000) * 1000;
-		int ret = select(fd + 1, &rfds, NULL, NULL, &tv);
-		if (ret <= 0) {
-			return -1; // timeout or error
-		}
-		int nr = (int)read(fd, buf + total, n - total);
-		if (nr <= 0) {
-			return -1;
-		}
-		total += nr;
-	}
-	return total;
-}
 
 static bool svbpb_command(indigo_device *device, const unsigned char *cmd, int cmd_len, unsigned char *res, int res_len) {
 	unsigned char frame[8] = {0};
@@ -194,21 +165,20 @@ static bool svbpb_command(indigo_device *device, const unsigned char *cmd, int c
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "TX frame (%d bytes)", full_cmd_len);
 
 	// Send
-	tcflush(PRIVATE_DATA->handle, TCIOFLUSH);
-	if ((int)write(PRIVATE_DATA->handle, frame, full_cmd_len) != full_cmd_len) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Write failed: %s", strerror(errno));
+	indigo_uni_discard(PRIVATE_DATA->handle);
+	if (indigo_uni_write(PRIVATE_DATA->handle, (char *)frame, full_cmd_len) != full_cmd_len) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Write failed");
 		return false;
 	}
-	tcdrain(PRIVATE_DATA->handle);
 	indigo_usleep(10000); // 10 ms
 
 	// Receive
 	unsigned char response[20] = {0};
-	if (svbpb_read_bytes(PRIVATE_DATA->handle, response, full_res_len, 500) != full_res_len) {
+	if (indigo_uni_read(PRIVATE_DATA->handle, response, full_res_len) != full_res_len) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Read timeout or error (expected %d bytes)", full_res_len);
 		return false;
 	}
-	tcflush(PRIVATE_DATA->handle, TCIOFLUSH);
+	indigo_uni_discard(PRIVATE_DATA->handle);
 
 	// Validate checksum
 	checksum = 0;
@@ -353,7 +323,6 @@ static indigo_result aux_attach(indigo_device *device) {
 		strcpy(DEVICE_PORT_ITEM->text.value, "/dev/ttyUSB0");
 #endif
 		// --------------------------------------------------------------------------------
-		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return aux_enumerate_properties(device, NULL, NULL);
 	}
@@ -362,18 +331,18 @@ static indigo_result aux_attach(indigo_device *device) {
 
 static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		indigo_define_matching_property(AUX_POWER_OUTLET_PROPERTY);
-		indigo_define_matching_property(AUX_POWER_OUTLET_VOLTAGE_PROPERTY);
-		indigo_define_matching_property(AUX_POWER_OUTLET_CURRENT_PROPERTY);
-		indigo_define_matching_property(AUX_USB_PORT_PROPERTY);
-		indigo_define_matching_property(AUX_HEATER_OUTLET_PROPERTY);
-		indigo_define_matching_property(AUX_DEW_CONTROL_PROPERTY);
-		indigo_define_matching_property(AUX_WEATHER_PROPERTY);
-		indigo_define_matching_property(AUX_TEMPERATURE_SENSORS_PROPERTY);
-		indigo_define_matching_property(AUX_DEW_WARNING_PROPERTY);
-		indigo_define_matching_property(AUX_INFO_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_POWER_OUTLET_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_POWER_OUTLET_VOLTAGE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_POWER_OUTLET_CURRENT_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_USB_PORT_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_HEATER_OUTLET_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_DEW_CONTROL_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_WEATHER_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_TEMPERATURE_SENSORS_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_DEW_WARNING_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(AUX_INFO_PROPERTY);
 	}
-	indigo_define_matching_property(AUX_OUTLET_NAMES_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(AUX_OUTLET_NAMES_PROPERTY);
 	return indigo_aux_enumerate_properties(device, client, property);
 }
 
@@ -517,7 +486,7 @@ static void aux_update_states(indigo_device *device) {
 			) {
 				svbpb_set_port(device, SVB_PORT_PWM_A, 255);
 				svbpb_set_port(device, SVB_PORT_PWM_B, 255);
-				indigo_send_message(device, "Heating started: Approaching dewpoint");
+				indigo_send_message(device, ALERT_PROPERTY, "Heating started: Approaching dewpoint");
 			}
 			if (
 				((dewpoint + 2) < sht40_temp) &&
@@ -525,7 +494,7 @@ static void aux_update_states(indigo_device *device) {
 			) {
 				svbpb_set_port(device, SVB_PORT_PWM_A, 0);
 				svbpb_set_port(device, SVB_PORT_PWM_B, 0);
-				indigo_send_message(device, "Heating stopped: Conditions are dry");
+				indigo_send_message(device, ALERT_PROPERTY, "Heating stopped: Conditions are dry");
 			}
 		}
 	}
@@ -547,54 +516,36 @@ static void aux_update_states(indigo_device *device) {
 static void aux_timer_callback(indigo_device *device) {
 	if (!IS_CONNECTED)
 		return;
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	aux_update_states(device);
-	indigo_reschedule_timer(device, 1, &PRIVATE_DATA->aux_timer);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+	indigo_execute_handler_in(device, 1, aux_timer_callback);
 }
 
 static void aux_connection_handler(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 115200);
-		if (PRIVATE_DATA->handle > 0) {
+		PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 115200, INDIGO_LOG_DEBUG);
+		if (PRIVATE_DATA->handle != NULL) {
 			// Reset the ESP32 by clearing DTR/RTS
-			int flags = 0;
-			ioctl(PRIVATE_DATA->handle, TIOCMGET, &flags);
-			flags &= ~(TIOCM_RTS | TIOCM_DTR);
-			ioctl(PRIVATE_DATA->handle, TIOCMSET, &flags);
+			indigo_uni_set_dtr(PRIVATE_DATA->handle, false);
+			indigo_uni_set_rts(PRIVATE_DATA->handle, false);
 
-			// Wait for boot messages to clear (up to 3 seconds)
+			// Wait for boot messages to clear (up to 3 seconds, 300 ms silence)
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Waiting for device boot...");
 			char boot_buf[512];
-			bool booting = true;
-			int retry = 0;
-			while (booting && retry < 10) {
-				fd_set rfds;
-				struct timeval tv = { 0, 300000 }; // 300 ms
-				FD_ZERO(&rfds);
-				FD_SET(PRIVATE_DATA->handle, &rfds);
-				if (select(PRIVATE_DATA->handle + 1, &rfds, NULL, NULL, &tv) > 0) {
-					int n = (int)read(PRIVATE_DATA->handle, boot_buf, sizeof(boot_buf) - 1);
-					if (n > 0) {
-						boot_buf[n] = '\0';
-						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Boot data: %s", boot_buf);
-						// Keep reading while ESP32 sends boot messages
-						retry = 0;
-						continue;
-					}
+			long n;
+			while (indigo_uni_wait_for_data(PRIVATE_DATA->handle, 300000) > 0) {
+				n = indigo_uni_read_available(PRIVATE_DATA->handle, boot_buf, sizeof(boot_buf));
+				if (n > 0) {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Boot data (%ld bytes)", n);
 				}
-				retry++;
 			}
-			tcflush(PRIVATE_DATA->handle, TCIOFLUSH);
+			indigo_uni_discard(PRIVATE_DATA->handle);
 
 			// Handshake: request device state and check it responds
 			unsigned char cmd = SVB_CMD_READ_STATE;
 			unsigned char state[10] = {0};
 			if (!svbpb_command(device, &cmd, 1, state, 10)) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Device handshake failed for %s", DEVICE_PORT_ITEM->text.value);
-				close(PRIVATE_DATA->handle);
-				PRIVATE_DATA->handle = 0;
+				indigo_uni_close(&PRIVATE_DATA->handle);
 			} else {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Device handshake successful");
 				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "SVBONY PowerBox");
@@ -603,7 +554,7 @@ static void aux_connection_handler(indigo_device *device) {
 			}
 		}
 
-		if (PRIVATE_DATA->handle > 0) {
+		if (PRIVATE_DATA->handle != NULL) {
 			indigo_define_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
 			indigo_define_property(device, AUX_POWER_OUTLET_VOLTAGE_PROPERTY, NULL);
 			indigo_define_property(device, AUX_POWER_OUTLET_CURRENT_PROPERTY, NULL);
@@ -614,7 +565,7 @@ static void aux_connection_handler(indigo_device *device) {
 			indigo_define_property(device, AUX_TEMPERATURE_SENSORS_PROPERTY, NULL);
 			indigo_define_property(device, AUX_DEW_WARNING_PROPERTY, NULL);
 			indigo_define_property(device, AUX_INFO_PROPERTY, NULL);
-			indigo_set_timer(device, 0, aux_timer_callback, &PRIVATE_DATA->aux_timer);
+			indigo_execute_handler_in(device, 0, aux_timer_callback);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", DEVICE_PORT_ITEM->text.value);
@@ -622,7 +573,7 @@ static void aux_connection_handler(indigo_device *device) {
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->aux_timer);
+		indigo_cancel_pending_handlers(device);
 		indigo_delete_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_POWER_OUTLET_VOLTAGE_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_POWER_OUTLET_CURRENT_PROPERTY, NULL);
@@ -637,19 +588,16 @@ static void aux_connection_handler(indigo_device *device) {
 		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		indigo_update_property(device, INFO_PROPERTY, NULL);
 
-		if (PRIVATE_DATA->handle > 0) {
+		if (PRIVATE_DATA->handle != NULL) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Disconnected");
-			close(PRIVATE_DATA->handle);
-			PRIVATE_DATA->handle = 0;
+			indigo_uni_close(&PRIVATE_DATA->handle);
 		}
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_aux_change_property(device, NULL, CONNECTION_PROPERTY);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void aux_power_outlet_handler(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	svbpb_set_port(device, SVB_PORT_DC1, AUX_POWER_OUTLET_1_ITEM->sw.value ? 0xFF : 0x00);
 	svbpb_set_port(device, SVB_PORT_DC2, AUX_POWER_OUTLET_2_ITEM->sw.value ? 0xFF : 0x00);
 	svbpb_set_port(device, SVB_PORT_DC3, AUX_POWER_OUTLET_3_ITEM->sw.value ? 0xFF : 0x00);
@@ -665,32 +613,26 @@ static void aux_power_outlet_handler(indigo_device *device) {
 	indigo_usleep(ONE_SECOND_DELAY / 2);
 	AUX_POWER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void aux_usb_port_handler(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	svbpb_set_port(device, SVB_PORT_USB_A, AUX_USB_PORT_1_ITEM->sw.value ? 0xFF : 0x00);
 	svbpb_set_port(device, SVB_PORT_USB_B, AUX_USB_PORT_2_ITEM->sw.value ? 0xFF : 0x00);
 	indigo_usleep(ONE_SECOND_DELAY / 2);
 	AUX_USB_PORT_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, AUX_USB_PORT_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void aux_power_outlet_voltage_handler(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	uint8_t pwm = (uint8_t)round((AUX_POWER_OUTLET_VOLTAGE_1_ITEM->number.target / SVB_MAX_VOLTAGE) * 255.0);
 	if (pwm > 255) pwm = 255;
 	svbpb_set_port(device, SVB_PORT_REGULATED, pwm);
 	indigo_usleep(ONE_SECOND_DELAY / 2);
 	AUX_POWER_OUTLET_VOLTAGE_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, AUX_POWER_OUTLET_VOLTAGE_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void aux_heater_outlet_handler(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	uint8_t pwm1 = (uint8_t)round(AUX_HEATER_OUTLET_1_ITEM->number.target * 255.0 / 100.0);
 	uint8_t pwm2 = (uint8_t)round(AUX_HEATER_OUTLET_2_ITEM->number.target * 255.0 / 100.0);
 	svbpb_set_port(device, SVB_PORT_PWM_A, pwm1);
@@ -698,7 +640,6 @@ static void aux_heater_outlet_handler(indigo_device *device) {
 	indigo_usleep(ONE_SECOND_DELAY / 2);
 	AUX_HEATER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static indigo_result aux_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
@@ -712,7 +653,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, aux_connection_handler, NULL);
+		indigo_execute_handler(device, aux_connection_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_OUTLET_NAMES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_OUTLET_NAMES
@@ -742,28 +683,28 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		AUX_POWER_OUTLET_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_property_copy_values(AUX_POWER_OUTLET_PROPERTY, property, false);
 		indigo_update_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
-		indigo_set_timer(device, 0, aux_power_outlet_handler, NULL);
+		indigo_execute_handler(device, aux_power_outlet_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_POWER_OUTLET_VOLTAGE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_POWER_OUTLET_VOLTAGE
 		AUX_POWER_OUTLET_VOLTAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_property_copy_values(AUX_POWER_OUTLET_VOLTAGE_PROPERTY, property, false);
 		indigo_update_property(device, AUX_POWER_OUTLET_VOLTAGE_PROPERTY, NULL);
-		indigo_set_timer(device, 0, aux_power_outlet_voltage_handler, NULL);
+		indigo_execute_handler(device, aux_power_outlet_voltage_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_USB_PORT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_USB_PORT
 		AUX_USB_PORT_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_property_copy_values(AUX_USB_PORT_PROPERTY, property, false);
 		indigo_update_property(device, AUX_USB_PORT_PROPERTY, NULL);
-		indigo_set_timer(device, 0, aux_usb_port_handler, NULL);
+		indigo_execute_handler(device, aux_usb_port_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_HEATER_OUTLET_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_HEATER_OUTLET
 		AUX_HEATER_OUTLET_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_property_copy_values(AUX_HEATER_OUTLET_PROPERTY, property, false);
 		indigo_update_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
-		indigo_set_timer(device, 0, aux_heater_outlet_handler, NULL);
+		indigo_execute_handler(device, aux_heater_outlet_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_DEW_CONTROL_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_DEW_CONTROL
@@ -797,7 +738,7 @@ static indigo_result aux_detach(indigo_device *device) {
 	indigo_release_property(AUX_DEW_WARNING_PROPERTY);
 	indigo_release_property(AUX_INFO_PROPERTY);
 	indigo_release_property(AUX_OUTLET_NAMES_PROPERTY);
-	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
+	indigo_global_unlock(device);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_aux_detach(device);
 }
