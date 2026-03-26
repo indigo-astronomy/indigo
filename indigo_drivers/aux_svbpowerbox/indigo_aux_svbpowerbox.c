@@ -200,7 +200,7 @@ static bool svbpb_command(indigo_device *device, const unsigned char *cmd, int c
 		return false;
 	}
 	tcdrain(PRIVATE_DATA->handle);
-	indigo_usleep(100000); // 100 ms
+	indigo_usleep(10000); // 10 ms
 
 	// Receive
 	unsigned char response[20] = {0};
