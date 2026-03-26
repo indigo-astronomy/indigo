@@ -23,7 +23,7 @@
  \file indigo_aux_svbpowerbox.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x03000001
 #define DRIVER_NAME "indigo_aux_svbpowerbox"
 
 #include <stdlib.h>
