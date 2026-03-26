@@ -23,7 +23,7 @@
  \file indigo_polaralign_simulator.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x03000001
 #define DRIVER_NAME    "indigo_polaralign_simulator"
 
 #include <stdlib.h>
