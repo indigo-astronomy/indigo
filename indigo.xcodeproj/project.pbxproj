@@ -263,6 +263,8 @@
 		595F2933211E211200380EF4 /* DDHidKeyboardBarcodeScanner.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F2916211E211100380EF4 /* DDHidKeyboardBarcodeScanner.m */; };
 		595F2934211E211200380EF4 /* DDHidQueue.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F2917211E211100380EF4 /* DDHidQueue.m */; };
 		595F2936211E22CC00380EF4 /* indigo_aux_joystick.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F2935211E22CC00380EF4 /* indigo_aux_joystick.m */; };
+		59647F022F769C5F005F72E3 /* indigo_aux_svbpowerbox.c in Sources */ = {isa = PBXBuildFile; fileRef = 59647EFD2F769C45005F72E3 /* indigo_aux_svbpowerbox.c */; };
+		59647F032F769C5F005F72E3 /* indigo_aux_svbpowerbox.c in Sources */ = {isa = PBXBuildFile; fileRef = 59647EFD2F769C45005F72E3 /* indigo_aux_svbpowerbox.c */; };
 		5967BB1929B3D83B0003BF22 /* indigo_service_discovery.c in Sources */ = {isa = PBXBuildFile; fileRef = 59790B2F29B2798A00F73B1D /* indigo_service_discovery.c */; };
 		59689AA3245DE40D00F950CE /* indigo_wheel_manual.c in Sources */ = {isa = PBXBuildFile; fileRef = 59689AA2245DE3E100F950CE /* indigo_wheel_manual.c */; };
 		596E15462DAC1A150004569F /* CAA_API.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D74A4F72D4B63F700A31003 /* CAA_API.h */; };
@@ -1579,6 +1581,13 @@
 		595F2917211E211100380EF4 /* DDHidQueue.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DDHidQueue.m; sourceTree = "<group>"; };
 		595F2935211E22CC00380EF4 /* indigo_aux_joystick.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = indigo_aux_joystick.m; sourceTree = "<group>"; };
 		595F747D228224800091B366 /* test */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = test; sourceTree = BUILT_PRODUCTS_DIR; };
+		59647EF92F769C45005F72E3 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		59647EFA2F769C45005F72E3 /* svbpowerbox_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = svbpowerbox_simulator.c; sourceTree = "<group>"; };
+		59647EFC2F769C45005F72E3 /* indigo_aux_svbpowerbox.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_aux_svbpowerbox.h; sourceTree = "<group>"; };
+		59647EFD2F769C45005F72E3 /* indigo_aux_svbpowerbox.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_svbpowerbox.c; sourceTree = "<group>"; };
+		59647EFE2F769C45005F72E3 /* indigo_aux_svbpowerbox_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_svbpowerbox_main.c; sourceTree = "<group>"; };
+		59647EFF2F769C45005F72E3 /* PROTOCOL.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PROTOCOL.md; sourceTree = "<group>"; };
+		59647F002F769C45005F72E3 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		5964D75421F788170059AEA8 /* AstroPhysics-G.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "AstroPhysics-G.pdf"; sourceTree = "<group>"; };
 		5964D75521F7888C0059AEA8 /* AstroPhysics-D.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "AstroPhysics-D.pdf"; sourceTree = "<group>"; };
 		5964D75621F789720059AEA8 /* 10micron-2.13.2.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "10micron-2.13.2.pdf"; sourceTree = "<group>"; };
@@ -6575,6 +6584,28 @@
 			path = DDHidLib;
 			sourceTree = "<group>";
 		};
+		59647EFB2F769C45005F72E3 /* svbpowerbox_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				59647EF92F769C45005F72E3 /* Makefile */,
+				59647EFA2F769C45005F72E3 /* svbpowerbox_simulator.c */,
+			);
+			path = svbpowerbox_simulator;
+			sourceTree = "<group>";
+		};
+		59647F012F769C45005F72E3 /* aux_svbpowerbox */ = {
+			isa = PBXGroup;
+			children = (
+				59647F002F769C45005F72E3 /* README.md */,
+				59647EFF2F769C45005F72E3 /* PROTOCOL.md */,
+				59647EFC2F769C45005F72E3 /* indigo_aux_svbpowerbox.h */,
+				59647EFD2F769C45005F72E3 /* indigo_aux_svbpowerbox.c */,
+				59647EFE2F769C45005F72E3 /* indigo_aux_svbpowerbox_main.c */,
+				59647EFB2F769C45005F72E3 /* svbpowerbox_simulator */,
+			);
+			path = aux_svbpowerbox;
+			sourceTree = "<group>";
+		};
 		59689A9E245DE3E100F950CE /* wheel_manual */ = {
 			isa = PBXGroup;
 			children = (
@@ -9778,6 +9809,7 @@
 				59BBD189218246C8008199D6 /* aux_rts */,
 				59958E2825CC833B00BEFA1B /* aux_skyalert */,
 				9DC4969622C39A170052AB3E /* aux_sqm */,
+				59647F012F769C45005F72E3 /* aux_svbpowerbox */,
 				5920077E2A5B2D050063C472 /* aux_uch */,
 				9D6940822180B9F600AB112C /* aux_upb */,
 				593894AF2C4C22B100CEF4A5 /* aux_upb3 */,
@@ -15188,6 +15220,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				59647F032F769C5F005F72E3 /* indigo_aux_svbpowerbox.c in Sources */,
 				593894B32C4C22B100CEF4A5 /* indigo_aux_upb3.c in Sources */,
 				59111CF2285F504200E57194 /* indigocat_earth.c in Sources */,
 				598A1B54259BA94A00C0B34C /* libuvc_misc.c in Sources */,
@@ -15651,6 +15684,7 @@
 				9DC4968922BA7B810052AB3E /* indigo_agent_auxiliary.c in Sources */,
 				595AA1D21FC5EEFE00350E7B /* indigo_agent.c in Sources */,
 				59A68E1E277DC3D0000439CC /* indigo_ccd_svb.c in Sources */,
+				59647F022F769C5F005F72E3 /* indigo_aux_svbpowerbox.c in Sources */,
 				9DB9180A1DFEA71C00678721 /* indigo_mount_nexstar.c in Sources */,
 				5992F7B41E1EC8AF0035242E /* indigo_ccd_fli.c in Sources */,
 				9D59D66F20D3F82A009EA8FF /* indigo_ccd_apogee.cpp in Sources */,

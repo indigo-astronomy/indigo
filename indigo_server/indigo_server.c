@@ -201,6 +201,7 @@
 #include "focuser_astroasis/indigo_focuser_astroasis.h"
 #include "wheel_astroasis/indigo_wheel_astroasis.h"
 #include "focuser_qhy/indigo_focuser_qhy.h"
+#include "aux_svbpowerbox/indigo_aux_svbpowerbox.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -249,6 +250,7 @@ driver_entry_point static_drivers[] = {
 	indigo_aux_rts,
 	indigo_aux_skyalert,
 	indigo_aux_sqm,
+	indigo_aux_svbpowerbox,
 	indigo_aux_uch,
 	indigo_aux_upb,
 	indigo_aux_upb3,
