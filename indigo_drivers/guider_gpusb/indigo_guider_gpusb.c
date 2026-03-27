@@ -126,11 +126,11 @@ static void guider_guide_dec_handler(indigo_device *device) {
 	GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 	//+ guider.GUIDER_GUIDE_DEC.on_change
 	PRIVATE_DATA->relay_mask &= ~(GPUSB_DEC_NORTH | GPUSB_DEC_SOUTH);
-	int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
+	int duration = (int)GUIDER_GUIDE_NORTH_ITEM->number.value;
 	if (duration > 0) {
 		PRIVATE_DATA->relay_mask |= GPUSB_DEC_NORTH;
 	} else {
-		duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
+		duration = (int)GUIDER_GUIDE_SOUTH_ITEM->number.value;
 		if (duration > 0) {
 			PRIVATE_DATA->relay_mask |= GPUSB_DEC_SOUTH;
 		}
@@ -149,11 +149,11 @@ static void guider_guide_ra_handler(indigo_device *device) {
 	GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 	//+ guider.GUIDER_GUIDE_RA.on_change
 	PRIVATE_DATA->relay_mask &= ~(GPUSB_RA_EAST | GPUSB_RA_WEST);
-	int duration = GUIDER_GUIDE_EAST_ITEM->number.value;
+	int duration = (int)GUIDER_GUIDE_EAST_ITEM->number.value;
 	if (duration > 0) {
 		PRIVATE_DATA->relay_mask |= GPUSB_RA_EAST;
 	} else {
-		duration = GUIDER_GUIDE_WEST_ITEM->number.value;
+		duration = (int)GUIDER_GUIDE_WEST_ITEM->number.value;
 		if (duration > 0) {
 			PRIVATE_DATA->relay_mask |= GPUSB_RA_WEST;
 		}

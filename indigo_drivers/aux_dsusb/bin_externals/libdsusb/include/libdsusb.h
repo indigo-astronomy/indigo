@@ -20,7 +20,11 @@
 
 #include <stdbool.h>
 #include <pthread.h>
+#if defined(INDIGO_WINDOWS)
+#include <libusb.h>
+#else
 #include <libusb-1.0/libusb.h>
+#endif
 #include <hidapi/hidapi.h>
 
 #define DSUSB_VID	  0x134A

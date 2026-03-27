@@ -186,6 +186,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_focuser_primaluce", "Y:\indigo_drivers\focuser_primaluce\indigo_focuser_primaluce.vcxproj", "{828E48DD-EC6C-4EF4-B717-B6D2D4AB98DD}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_focuser_fcusb", "Y:\indigo_drivers\focuser_fcusb\indigo_focuser_fcusb.vcxproj", "{DFD666A0-9036-4E8B-9442-B558332CA0DD}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_aux_dsusb", "Y:\indigo_drivers\aux_dsusb\indigo_aux_dsusb.vcxproj", "{2E9F6091-3D81-4896-B036-ACC9D418B607}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_guider_gpusb", "Y:\indigo_drivers\guider_gpusb\indigo_guider_gpusb.vcxproj", "{CA2EC72A-0A8B-4614-9022-CF7B81E18FD6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|ARM64 = Debug|ARM64
@@ -1264,6 +1270,42 @@ Global
 		{828E48DD-EC6C-4EF4-B717-B6D2D4AB98DD}.Release|x64.Build.0 = Release|x64
 		{828E48DD-EC6C-4EF4-B717-B6D2D4AB98DD}.Release|x86.ActiveCfg = Release|Win32
 		{828E48DD-EC6C-4EF4-B717-B6D2D4AB98DD}.Release|x86.Build.0 = Release|Win32
+		{DFD666A0-9036-4E8B-9442-B558332CA0DD}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{DFD666A0-9036-4E8B-9442-B558332CA0DD}.Debug|ARM64.Build.0 = Debug|ARM64
+		{DFD666A0-9036-4E8B-9442-B558332CA0DD}.Debug|x64.ActiveCfg = Debug|x64
+		{DFD666A0-9036-4E8B-9442-B558332CA0DD}.Debug|x64.Build.0 = Debug|x64
+		{DFD666A0-9036-4E8B-9442-B558332CA0DD}.Debug|x86.ActiveCfg = Debug|Win32
+		{DFD666A0-9036-4E8B-9442-B558332CA0DD}.Debug|x86.Build.0 = Debug|Win32
+		{DFD666A0-9036-4E8B-9442-B558332CA0DD}.Release|ARM64.ActiveCfg = Release|ARM64
+		{DFD666A0-9036-4E8B-9442-B558332CA0DD}.Release|ARM64.Build.0 = Release|ARM64
+		{DFD666A0-9036-4E8B-9442-B558332CA0DD}.Release|x64.ActiveCfg = Release|x64
+		{DFD666A0-9036-4E8B-9442-B558332CA0DD}.Release|x64.Build.0 = Release|x64
+		{DFD666A0-9036-4E8B-9442-B558332CA0DD}.Release|x86.ActiveCfg = Release|Win32
+		{DFD666A0-9036-4E8B-9442-B558332CA0DD}.Release|x86.Build.0 = Release|Win32
+		{2E9F6091-3D81-4896-B036-ACC9D418B607}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{2E9F6091-3D81-4896-B036-ACC9D418B607}.Debug|ARM64.Build.0 = Debug|ARM64
+		{2E9F6091-3D81-4896-B036-ACC9D418B607}.Debug|x64.ActiveCfg = Debug|x64
+		{2E9F6091-3D81-4896-B036-ACC9D418B607}.Debug|x64.Build.0 = Debug|x64
+		{2E9F6091-3D81-4896-B036-ACC9D418B607}.Debug|x86.ActiveCfg = Debug|Win32
+		{2E9F6091-3D81-4896-B036-ACC9D418B607}.Debug|x86.Build.0 = Debug|Win32
+		{2E9F6091-3D81-4896-B036-ACC9D418B607}.Release|ARM64.ActiveCfg = Release|ARM64
+		{2E9F6091-3D81-4896-B036-ACC9D418B607}.Release|ARM64.Build.0 = Release|ARM64
+		{2E9F6091-3D81-4896-B036-ACC9D418B607}.Release|x64.ActiveCfg = Release|x64
+		{2E9F6091-3D81-4896-B036-ACC9D418B607}.Release|x64.Build.0 = Release|x64
+		{2E9F6091-3D81-4896-B036-ACC9D418B607}.Release|x86.ActiveCfg = Release|Win32
+		{2E9F6091-3D81-4896-B036-ACC9D418B607}.Release|x86.Build.0 = Release|Win32
+		{CA2EC72A-0A8B-4614-9022-CF7B81E18FD6}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{CA2EC72A-0A8B-4614-9022-CF7B81E18FD6}.Debug|ARM64.Build.0 = Debug|ARM64
+		{CA2EC72A-0A8B-4614-9022-CF7B81E18FD6}.Debug|x64.ActiveCfg = Debug|x64
+		{CA2EC72A-0A8B-4614-9022-CF7B81E18FD6}.Debug|x64.Build.0 = Debug|x64
+		{CA2EC72A-0A8B-4614-9022-CF7B81E18FD6}.Debug|x86.ActiveCfg = Debug|Win32
+		{CA2EC72A-0A8B-4614-9022-CF7B81E18FD6}.Debug|x86.Build.0 = Debug|Win32
+		{CA2EC72A-0A8B-4614-9022-CF7B81E18FD6}.Release|ARM64.ActiveCfg = Release|ARM64
+		{CA2EC72A-0A8B-4614-9022-CF7B81E18FD6}.Release|ARM64.Build.0 = Release|ARM64
+		{CA2EC72A-0A8B-4614-9022-CF7B81E18FD6}.Release|x64.ActiveCfg = Release|x64
+		{CA2EC72A-0A8B-4614-9022-CF7B81E18FD6}.Release|x64.Build.0 = Release|x64
+		{CA2EC72A-0A8B-4614-9022-CF7B81E18FD6}.Release|x86.ActiveCfg = Release|Win32
+		{CA2EC72A-0A8B-4614-9022-CF7B81E18FD6}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

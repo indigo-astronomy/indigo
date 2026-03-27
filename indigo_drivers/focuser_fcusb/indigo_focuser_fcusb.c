@@ -135,7 +135,7 @@ static void focuser_steps_handler(indigo_device *device) {
 	FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_STEPS.on_change
 	if (FOCUSER_STEPS_ITEM->number.value > 0) {
-		libfcusb_set_power(PRIVATE_DATA->device_context, FOCUSER_SPEED_ITEM->number.value);
+		libfcusb_set_power(PRIVATE_DATA->device_context, (unsigned int)FOCUSER_SPEED_ITEM->number.value);
 		if (X_FOCUSER_FREQUENCY_1_ITEM->sw.value)
 			libfcusb_set_frequency(PRIVATE_DATA->device_context, 1);
 		else if (X_FOCUSER_FREQUENCY_4_ITEM->sw.value)
@@ -149,7 +149,7 @@ static void focuser_steps_handler(indigo_device *device) {
 		}
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-		int delay = FOCUSER_STEPS_ITEM->number.target;
+		int delay = (int)FOCUSER_STEPS_ITEM->number.target;
 		while (delay > 0) {
 			if (FOCUSER_STEPS_PROPERTY->state != INDIGO_BUSY_STATE) {
 				break;

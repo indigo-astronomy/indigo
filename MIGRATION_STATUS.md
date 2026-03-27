@@ -18,7 +18,7 @@
 | aux_astromechanics       | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ Sim   |                                                          |
 | aux_cloudwatcher         | 3️⃣  | ✅ Yes   | ❌ No    | ✅ Yes   | ✅ HW    |                                                          |
 | aux_dragonfly            | 2️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    |                                                          |
-| aux_dsusb                | 3️⃣  | ❌ No    | ✅ Yes   | ✅ Yes   | ✅ HW    | ⏰ TODO - make libdsusb for Windows                      |
+| aux_dsusb                | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ HW    |                                                          |
 | aux_fbc                  | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ HW    |                                                          |
 | aux_flatmaster           | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ Sim   |                                                          |
 | aux_flipflat             | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ Sim   |                                                          |
@@ -81,7 +81,7 @@
 | focuser_dsd              | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ✅ HW    |                                                          |
 | focuser_efa              | 2️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    |                                                          |
 | focuser_fc3              | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ❌ No    |                                                          |
-| focuser_fcusb            | 3️⃣  | ❌ No    | ✅ Yes   | ✅ Yes   | ✅ HW    | ⏰ TODO - make libfcusb for Windows                      |
+| focuser_fcusb            | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ HW    |                                                          |
 | focuser_fli              | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ❌ No    |                                                          |
 | focuser_focusdreampro    | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ❌ No    |                                                          |
 | focuser_ioptron          | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ❌ No    |                                                          |
@@ -109,7 +109,7 @@
 | gps_simulator            | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ⛔ N/A   |                                                          |
 | guider_asi               | 2️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    | ⏰ TODO - find SDK for windows                           |
 | guider_cgusbst4          | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ❌ No    |                                                          |
-| guider_gpusb             | 3️⃣  | ❌ No    | ✅ Yes   | ✅ Yes   | ✅ HW    | ⏰ TODO - make libgpusb for Windows                      |
+| guider_gpusb             | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ HW    |                                                          |
 | mount_asi                | 3️⃣  | ✅ Yes   | ❌ No    | ✅ Yes   | ❌ No    |                                                          |
 | mount_ioptron            | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ✅ Sim   |                                                          |
 | mount_lx200              | 3️⃣  | ✅ Yes   | ❌ No    | ✅ Yes   | ✅ HW    |                                                          |
