@@ -181,7 +181,7 @@ typedef struct {
 	char last_motion_ra, last_motion_dec;
 	double last_custom_tracking_rate;
 	char lastUTC[INDIGO_VALUE_SIZE];
-	uint product;
+	unsigned product;
 	protocol_type protocol;
 	mount_type *type;
 	bool has_encoders;

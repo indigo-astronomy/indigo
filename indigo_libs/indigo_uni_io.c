@@ -1448,8 +1448,10 @@ long indigo_uni_write(indigo_uni_handle *handle, const char *buffer, long length
 		return -1;
 	}
 	if (handle->type == INDIGO_UDP_HANDLE
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 #if !defined(INDIGO_CLIENT)
 			|| handle->type == INDIGO_HID_HANDLE
+#endif
 #endif
 			) {
 		long bytes_written = write_data(handle, buffer, length);
