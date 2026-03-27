@@ -158,16 +158,16 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_WINDOWS;_USRDLL;INDIGO_WINDOWS;INDIGO_WINDOWS_DLL;MDNS_DEBUGMSGS=0;WIN32_LEAN_AND_MEAN;USE_TCP_LOOPBACK;_CRT_SECURE_NO_DEPRECATE;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;NOT_HAVE_SA_LEN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_WINDOWS;_USRDLL;INDIGO_WINDOWS;INDIGO_WINDOWS_DLL;MDNS_DEBUGMSGS=0;WIN32_LEAN_AND_MEAN;USE_TCP_LOOPBACK;_CRT_SECURE_NO_DEPRECATE;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;NOT_HAVE_SA_LEN;HIDAPI_EXPORTS;HIDAPI_USE_DDK;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>bin_externals\pthreads4w\include\;externals\bonjour-sdk;bin_externals\zlib\include;bin_externals\libusb\include;externals\libjpeg;externals\libraw\libraw;externals\libtiff\libtiff;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>bin_externals\pthreads4w\include\;externals\bonjour-sdk;bin_externals\zlib\include;bin_externals\libusb\include;externals\libjpeg;externals\hidapi;externals\libraw\libraw;externals\libtiff\libtiff;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>bin_externals\libusb\lib\windows\$(Platform)\;bin_externals\zlib\lib\windows\$(Platform)\;bin_externals\pthreads4w\lib\windows\$(Platform)\;bin_externals\libraw\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>ws2_32.lib;setupAPI.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;libraw.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>bin_externals\libusb\lib\windows\$(Platform)\;bin_externals\zlib\lib\windows\$(Platform)\;bin_externals\pthreads4w\lib\windows\$(Platform)\;bin_externals\libraw\lib\windows\$(Platform)\;externals\hidapi\windows\$(Platform);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>ws2_32.lib;setupAPI.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;libraw.lib;hidapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>.\indigo.def</ModuleDefinitionFile>
     </Link>
     <PostBuildEvent>
@@ -535,6 +535,11 @@
     <ClCompile Include="externals\bonjour-sdk\dnssd_clientlib.c" />
     <ClCompile Include="externals\bonjour-sdk\dnssd_clientstub.c" />
     <ClCompile Include="externals\bonjour-sdk\dnssd_ipc.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="Y:\indigo_libs\externals\hidapi\windows\hidapi.vcxproj">
+      <Project>{a107c21c-418a-4697-bb10-20c3aa60e2e4}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

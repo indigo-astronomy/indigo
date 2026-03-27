@@ -57,6 +57,10 @@
 #pragma message ("TODO: Unified I/O")
 #endif
 
+#if !defined(INDIGO_CLIENT)
+#include <hidapi/hidapi.h>
+#endif
+
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_uni_io.h>
 
@@ -74,9 +78,7 @@ indigo_uni_handle *indigo_stderr_handle = &_indigo_stderr_handle;
 
 void indigo_init_uni_io() {
 #if !defined(INDIGO_CLIENT)
-#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	hid_init();
-#endif
 #endif
 #if defined(INDIGO_WINDOWS)
 	WSADATA wsaData;
@@ -209,7 +211,7 @@ static long read_data(indigo_uni_handle *handle, void *buffer, long length) {
 	long bytes_read;
 #if !defined(INDIGO_CLIENT)
 	if (handle->type == INDIGO_HID_HANDLE) {
-		bytes_read = hid_read(handle->handle, (unsigned char *)buffer, length);
+		bytes_read = hid_read((hid_device *)handle->hid_device, (unsigned char *)buffer, length);
 		if (bytes_read < 0) {
 			handle->last_error = EIO;
 			indigo_error("%d -> // Failed to read (%s)", handle->index, indigo_uni_strerror(handle));
@@ -235,6 +237,13 @@ static long read_data(indigo_uni_handle *handle, void *buffer, long length) {
 			indigo_error("%d -> // Failed to read (%s)", handle->index, indigo_uni_strerror(handle));
 		} else {
 			return bytes_read;
+		}
+	} else if (handle->type == INDIGO_HID_HANDLE) {
+		long bytes_read = hid_read((hid_device *)handle->hid_device, (unsigned char *)buffer, length);
+		if (bytes_read < 0) {
+			handle->last_error = EIO;
+			indigo_error("%d -> // Failed to read (%s)", handle->index, indigo_uni_strerror(handle));
+			return -1;
 		}
 	} else if (handle->type == INDIGO_COM_HANDLE) {
 		long bytes_read = 0;
@@ -272,7 +281,7 @@ static long write_data(indigo_uni_handle *handle, const char *buffer, long lengt
 	long bytes_written;
 #if !defined(INDIGO_CLIENT)
 	if (handle->type == INDIGO_HID_HANDLE) {
-		bytes_written = hid_write(handle->handle, (const unsigned char *)buffer, length);
+		bytes_written = hid_write((hid_device *)handle->hid_device, (const unsigned char *)buffer, length);
 		if (bytes_written < 0) {
 			handle->last_error = EIO;
 			indigo_error("%d <- // Failed to write (%s)", handle->index, indigo_uni_strerror(handle));
@@ -933,7 +942,7 @@ indigo_uni_handle *indigo_uni_open_hid(const int vid, const int pid, int log_lev
 		handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
 		handle->index = handle_index++;
 		handle->type = INDIGO_HID_HANDLE;
-		handle->handle = device;
+		handle->hid_device = device;
 		handle->log_level = log_level;
 		indigo_log_on_level(log_level, "%d <- // HID %d:%d connected", handle->index, vid, pid);
 	} else {
@@ -1680,7 +1689,7 @@ void indigo_uni_close(indigo_uni_handle **handle) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 #if !defined(INDIGO_CLIENT)
 		if (copy->type == INDIGO_HID_HANDLE ) {
-			hid_close(copy->handle);
+			hid_close((hid_device *)copy->hid_device);
 		} else {
 #endif
 			if (copy->type != INDIGO_FILE_HANDLE) {

@@ -35,9 +35,6 @@
 #include <sys/socket.h>
 #define INDIGO_PATH_SEPATATOR	'/'
 #define indigo_timezone timezone
-#if !defined(INDIGO_CLIENT)
-#include <hidapi/hidapi.h>
-#endif
 #elif defined(INDIGO_WINDOWS)
 #include <winsock2.h>
 #if _MSC_VER
@@ -76,9 +73,7 @@ typedef enum {
 	INDIGO_TCP_HANDLE = 2,
 	INDIGO_UDP_HANDLE = 3,
 #if !defined(INDIGO_CLIENT)
-#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	INDIGO_HID_HANDLE = 4
-#endif
 #endif
 } indigo_uni_handle_type;
 
@@ -94,9 +89,7 @@ typedef struct {
 #endif
 #endif
 #if !defined(INDIGO_CLIENT)
-#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-		hid_device *handle;
-#endif
+		void *hid_device;
 #endif
 	};
 	int log_level;
@@ -223,9 +216,7 @@ INDIGO_EXTERN indigo_uni_handle *indigo_uni_open_url(const char *url, int defaul
 
 #if !defined(INDIGO_CLIENT)
 
-#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 INDIGO_EXTERN indigo_uni_handle *indigo_uni_open_hid(const int vid, const int pid, int log_level);
-#endif
 
 #endif
 

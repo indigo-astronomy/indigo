@@ -81,7 +81,7 @@ static void atik_close(indigo_device *device) {
 //+ wheel.code
 
 static void wheel_move_finalizer(indigo_device *device) {
-	libatik_wheel_query(PRIVATE_DATA->handle->handle, &PRIVATE_DATA->slot_count, &PRIVATE_DATA->current_slot);
+	libatik_wheel_query((hid_device *)PRIVATE_DATA->handle->hid_device, &PRIVATE_DATA->slot_count, &PRIVATE_DATA->current_slot);
 	WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
 	if (PRIVATE_DATA->current_slot == PRIVATE_DATA->target_slot) {
 		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
@@ -103,7 +103,7 @@ static void wheel_connection_handler(indigo_device *device) {
 			//+ wheel.on_connect
 			connection_result = false;
 			for (int i = 0; i < 10; i++) {
-				libatik_wheel_query(PRIVATE_DATA->handle->handle, &PRIVATE_DATA->slot_count, &PRIVATE_DATA->current_slot);
+				libatik_wheel_query((hid_device *)PRIVATE_DATA->handle->hid_device, &PRIVATE_DATA->slot_count, &PRIVATE_DATA->current_slot);
 				if (PRIVATE_DATA->slot_count > 0 && PRIVATE_DATA->slot_count <= 9) {
 					connection_result = true;
 					break;
@@ -138,8 +138,8 @@ static void wheel_slot_handler(indigo_device *device) {
 	//+ wheel.WHEEL_SLOT.on_change
 	if (WHEEL_SLOT_ITEM->number.value != PRIVATE_DATA->current_slot) {
 		PRIVATE_DATA->target_slot = WHEEL_SLOT_ITEM->number.value;
-		libatik_wheel_set(PRIVATE_DATA->handle->handle, PRIVATE_DATA->target_slot);
-		libatik_wheel_query(PRIVATE_DATA->handle->handle, &PRIVATE_DATA->slot_count, &PRIVATE_DATA->current_slot);
+		libatik_wheel_set((hid_device *)PRIVATE_DATA->handle->hid_device, PRIVATE_DATA->target_slot);
+		libatik_wheel_query((hid_device *)PRIVATE_DATA->handle->hid_device, &PRIVATE_DATA->slot_count, &PRIVATE_DATA->current_slot);
 		WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
 		WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
