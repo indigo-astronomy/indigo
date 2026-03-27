@@ -178,6 +178,14 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_wheel_sx", "indigo_d
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "hidapi", "Y:\indigo_libs\externals\hidapi\windows\hidapi.vcxproj", "{A107C21C-418A-4697-BB10-20C3AA60E2E4}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{1FF5E962-0642-4B9D-A30D-C597E4317822}"
+	ProjectSection(SolutionItems) = preProject
+		CHANGELOG.md = CHANGELOG.md
+		MIGRATION_STATUS.md = MIGRATION_STATUS.md
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_focuser_primaluce", "Y:\indigo_drivers\focuser_primaluce\indigo_focuser_primaluce.vcxproj", "{828E48DD-EC6C-4EF4-B717-B6D2D4AB98DD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|ARM64 = Debug|ARM64
@@ -1244,6 +1252,18 @@ Global
 		{A107C21C-418A-4697-BB10-20C3AA60E2E4}.Release|x64.Build.0 = Release|x64
 		{A107C21C-418A-4697-BB10-20C3AA60E2E4}.Release|x86.ActiveCfg = Release|Win32
 		{A107C21C-418A-4697-BB10-20C3AA60E2E4}.Release|x86.Build.0 = Release|Win32
+		{828E48DD-EC6C-4EF4-B717-B6D2D4AB98DD}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{828E48DD-EC6C-4EF4-B717-B6D2D4AB98DD}.Debug|ARM64.Build.0 = Debug|ARM64
+		{828E48DD-EC6C-4EF4-B717-B6D2D4AB98DD}.Debug|x64.ActiveCfg = Debug|x64
+		{828E48DD-EC6C-4EF4-B717-B6D2D4AB98DD}.Debug|x64.Build.0 = Debug|x64
+		{828E48DD-EC6C-4EF4-B717-B6D2D4AB98DD}.Debug|x86.ActiveCfg = Debug|Win32
+		{828E48DD-EC6C-4EF4-B717-B6D2D4AB98DD}.Debug|x86.Build.0 = Debug|Win32
+		{828E48DD-EC6C-4EF4-B717-B6D2D4AB98DD}.Release|ARM64.ActiveCfg = Release|ARM64
+		{828E48DD-EC6C-4EF4-B717-B6D2D4AB98DD}.Release|ARM64.Build.0 = Release|ARM64
+		{828E48DD-EC6C-4EF4-B717-B6D2D4AB98DD}.Release|x64.ActiveCfg = Release|x64
+		{828E48DD-EC6C-4EF4-B717-B6D2D4AB98DD}.Release|x64.Build.0 = Release|x64
+		{828E48DD-EC6C-4EF4-B717-B6D2D4AB98DD}.Release|x86.ActiveCfg = Release|Win32
+		{828E48DD-EC6C-4EF4-B717-B6D2D4AB98DD}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
