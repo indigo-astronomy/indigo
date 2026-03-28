@@ -2282,20 +2282,22 @@ double indigo_guider_pi_response(double p_gain, double i_gain, double guide_cycl
 /*
  * Hysteresis guiding algorithm.
  *
- * On each call the smoothed drift state is updated:
- *   *prev_drift = (1 - hysteresis) * drift + hysteresis * (*prev_drift)
- * and the correction is:
- *   response = -aggressiveness * (*prev_drift)
+ * On each call the previous output correction is blended with the current
+ * drift input, mirroring PHD2's m_lastMove state variable:
+ *   blended  = (1 - hysteresis) * drift + hysteresis * (*prev_output)
+ *   response = -aggressiveness * blended
+ *   *prev_output = -response  (= aggressiveness * blended, stored for next call)
  *
  * aggressiveness - overall gain factor (0..1)
- * hysteresis     - blend factor for previous smoothed drift (0 = no memory, 1 = full memory)
+ * hysteresis     - blend factor for previous output  (0 = no memory, 1 = full memory)
  * drift          - current measured drift (pixels)
- * prev_drift     - in/out: smoothed drift state maintained by the caller (initialise to 0)
+ * prev_output    - in/out: last output magnitude maintained by caller (initialise to 0)
  */
-double indigo_guider_hysteresis_response(double aggressiveness, double hysteresis, double drift, double *prev_drift) {
-	*prev_drift = (1.0 - hysteresis) * drift + hysteresis * (*prev_drift);
-	double response = -1 * aggressiveness * (*prev_drift);
-	INDIGO_DEBUG(indigo_debug("%s(): aggressiveness = %.4f, hysteresis = %.4f, response = %.4f, drift = %.4f, smoothed_drift = %.4f", __FUNCTION__, aggressiveness, hysteresis, response, drift, *prev_drift));
+double indigo_guider_hysteresis_response(double aggressiveness, double hysteresis, double drift, double *prev_output) {
+	double blended = (1.0 - hysteresis) * drift + hysteresis * (*prev_output);
+	double response = -aggressiveness * blended;
+	*prev_output = -response;
+	INDIGO_DEBUG(indigo_debug("%s(): aggressiveness = %.4f, hysteresis = %.4f, response = %.4f, drift = %.4f, blended = %.4f", __FUNCTION__, aggressiveness, hysteresis, response, drift, blended));
 	return response;
 }
 

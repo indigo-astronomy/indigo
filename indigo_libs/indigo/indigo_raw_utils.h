@@ -120,7 +120,7 @@ extern indigo_result indigo_delete_frame_digest(indigo_frame_digest *fdigest);
 extern double indigo_guider_pi_response(double p_gain, double i_gain, double guide_cycle_time, double drift, double avg_drift);
 
 // Hysteresis guiding algorithm.
-extern double indigo_guider_hysteresis_response(double aggressiveness, double hysteresis, double drift, double *prev_drift);
+extern double indigo_guider_hysteresis_response(double aggressiveness, double hysteresis, double drift, double *prev_output);
 
 // Linear Trend guiding algorithm.
 extern void indigo_guider_linear_trend_push(double drift, indigo_linear_trend_history *history);
