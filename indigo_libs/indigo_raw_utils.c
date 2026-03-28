@@ -2379,6 +2379,108 @@ double indigo_guider_linear_trend_response(double aggressiveness, double min_mov
 	return response;
 }
 
+/*
+ * Resist Switch guiding algorithm (inspired by PHD2).
+ *
+ * Maintains a sliding window of the last INDIGO_RESIST_SWITCH_HISTORY_SIZE drift
+ * samples.  The algorithm resists switching the correction direction until there
+ * is compelling, worsening evidence that the star has genuinely moved to the
+ * other side - primarily designed for declination guiding where spurious
+ * reversals would cause backlash.
+ *
+ * Call indigo_guider_resist_switch_push() unconditionally on every guiding frame
+ * to keep the history current, then call indigo_guider_resist_switch_response()
+ * inside the correction block when a correction should be computed.
+ */
+void indigo_guider_resist_switch_push(double drift, indigo_resist_switch_history *history) {
+	if (history->count < INDIGO_RESIST_SWITCH_HISTORY_SIZE) {
+		history->buf[history->count++] = drift;
+	} else {
+		memmove(history->buf, history->buf + 1, (INDIGO_RESIST_SWITCH_HISTORY_SIZE - 1) * sizeof(double));
+		history->buf[INDIGO_RESIST_SWITCH_HISTORY_SIZE - 1] = drift;
+	}
+}
+
+/* Parameters for indigo_guider_resist_switch_response():
+ *   aggressiveness        - overall gain factor (0..1)
+ *   min_move              - minimum drift magnitude to trigger any correction (pixels)
+ *   fast_switch_threshold - if |drift| exceeds this AND the sign disagrees with the
+ *                           currently established side, force an immediate side switch
+ *                           by clearing history.  Set to 0 to disable.
+ *   history               - state maintained by the caller (zero-init at start of
+ *                           every guiding session)
+ */
+double indigo_guider_resist_switch_response(double aggressiveness, double min_move, double fast_switch_threshold, indigo_resist_switch_history *history) {
+	int n = history->count;
+	if (n == 0) return 0.0;
+
+	double drift = history->buf[n - 1];
+	int drift_sign = (drift > 0) ? 1 : (drift < 0) ? -1 : 0;
+	double result = drift;
+	int direction_votes = 0;
+
+	if (fabs(drift) < min_move) {
+		result = 0.0;
+		goto done;
+	}
+
+	if (fast_switch_threshold > 0.0 && history->current_side != 0 && drift_sign != history->current_side && fabs(drift) > fast_switch_threshold) {
+		history->current_side = 0;
+		int keep = (n >= 3) ? 3 : n;
+		int clear = n - keep;
+		for (int i = 0; i < clear; i++) {
+			history->buf[i] = 0.0;
+		}
+		for (int i = clear; i < n; i++) {
+			history->buf[i] = drift;
+		}
+	}
+
+	for (int i = 0; i < n; i++) {
+		if (fabs(history->buf[i]) > min_move) {
+			direction_votes += (history->buf[i] > 0) ? 1 : -1;
+		}
+	}
+
+	/* Direction-change resistance: only reconsider the established side if
+	   it disagrees with the accumulated history (or no side is established).
+	*/
+	if (history->current_side == 0 || (direction_votes != 0 && ((history->current_side > 0) != (direction_votes > 0)))) {
+		if (abs(direction_votes) < 3) {
+			result = 0.0;
+			goto done;
+		}
+
+		/* The trend must be worsening to consider a side change */
+		double oldest = 0.0, newest = 0.0;
+		int check = (n >= 3) ? 3 : n;
+		for (int i = 0; i < check; i++) {
+			oldest += history->buf[i];
+			newest += history->buf[n - 1 - i];
+		}
+
+		if (fabs(newest) <= fabs(oldest)) {
+			result = 0.0;
+			goto done;
+		}
+
+		history->current_side = (direction_votes > 0) ? 1 : -1;
+	}
+
+	/*  Skip if the established side disagrees with current drift */
+	if (history->current_side != 0 && drift_sign != 0 && drift_sign != history->current_side) {
+		result = 0.0;
+	}
+
+done:
+	double response = (result == 0.0) ? 0.0 : -aggressiveness * result;
+	INDIGO_ERROR(indigo_error("%s(): aggressiveness=%.4f min_move=%.4f fast_thresh=%.4f drift=%.4f current_side=%d direction_votes=%d response=%.4f",
+	             __FUNCTION__, aggressiveness, min_move, fast_switch_threshold, drift,
+	             history->current_side, direction_votes, response));
+	return response;
+}
+
+
 indigo_result indigo_calculate_drift(const indigo_frame_digest *ref, const indigo_frame_digest *new_digest, double *drift_x, double *drift_y) {
 	if (ref == NULL || new_digest == NULL || drift_x == NULL || drift_y == NULL)
 		return INDIGO_FAILED;

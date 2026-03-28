@@ -31,13 +31,15 @@ extern "C" {
 #define INDIGO_LINEAR_TREND_HISTORY_SIZE 10
 #define INDIGO_LINEAR_TREND_DEFAULT_MIN_MOVE 0.2
 
+#define INDIGO_RESIST_SWITCH_HISTORY_SIZE 10
+
 typedef struct {
-	double x;             /* Star X */
-	double y;             /* Star Y */
-	double nc_distance;   /* Normalized distance from center of the frame */
-	double luminance;     /* Star Brightness */
-	bool oversaturated;		/* The star is oversaturated */
-	bool close_to_other;	/* The star is in close proximity to ather star or has a duplicate artefact */
+	double x;               /* Star X */
+	double y;               /* Star Y */
+	double nc_distance;     /* Normalized distance from center of the frame */
+	double luminance;       /* Star Brightness */
+	bool oversaturated;     /* The star is oversaturated */
+	bool close_to_other;    /* The star is in close proximity to ather star or has a duplicate artefact */
 } indigo_star_detection;
 
 typedef enum {
@@ -74,11 +76,21 @@ typedef struct {
  * useful.
  */
 typedef struct {
-	double buf[INDIGO_LINEAR_TREND_HISTORY_SIZE]; /* circular drift history  */
-	int    head;                             /* index of oldest entry   */
-	int    count;                            /* number of valid entries */
-	int    rejects;                          /* successive rejections   */
+	double buf[INDIGO_LINEAR_TREND_HISTORY_SIZE]; /* circular drift history */
+	int head;                                     /* index of oldest entry */
+	int count;                                    /* number of valid entries */
+	int rejects;                                  /* successive rejections */
 } indigo_linear_trend_history;
+
+/* History maintained across calls for the Resist Switch guiding algorithm.
+ * Reset by zero-initialising the structure at the start of every guiding
+ * session.
+ */
+typedef struct {
+	double buf[INDIGO_RESIST_SWITCH_HISTORY_SIZE]; /* sliding drift history */
+	int count;                                     /* number of valid entries */
+	int current_side;                              /* established direction: -1,0,+1*/
+} indigo_resist_switch_history;
 
 extern double indigo_stddev(double set[], const int count);
 extern double indigo_rmse(double set[], const int count);
@@ -111,8 +123,12 @@ extern double indigo_guider_pi_response(double p_gain, double i_gain, double gui
 extern double indigo_guider_hysteresis_response(double aggressiveness, double hysteresis, double drift, double *prev_drift);
 
 // Linear Trend guiding algorithm.
-extern void   indigo_guider_linear_trend_push(double drift, indigo_linear_trend_history *history);
+extern void indigo_guider_linear_trend_push(double drift, indigo_linear_trend_history *history);
 extern double indigo_guider_linear_trend_response(double aggressiveness, double min_move, double drift, indigo_linear_trend_history *history);
+
+// Resist Switch guiding algorithm.
+extern void indigo_guider_resist_switch_push(double drift, indigo_resist_switch_history *history);
+extern double indigo_guider_resist_switch_response(double aggressiveness, double min_move, double fast_switch_threshold, indigo_resist_switch_history *history);
 
 //RMSE focus related
 extern double indigo_contrast(indigo_raw_type raw_type, const void *data, const uint8_t *saturation_mask, const int width, const int height, bool *saturated);
