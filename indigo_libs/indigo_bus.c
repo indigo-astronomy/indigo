@@ -1338,7 +1338,7 @@ void indigo_init_number_item(indigo_item *item, const char *name, const char *la
 	item->number.min = min;
 	item->number.max = max;
 	item->number.step = step;
-	item->number.target = item->number.value = item->number.previous_target = item->number.previous_value = value;
+	item->number.target = item->number.value = item->number.default_value = item->number.previous_target = item->number.previous_value = value;
 }
 
 void indigo_init_switch_item(indigo_item *item, const char *name, const char *label, bool value) {
@@ -1347,7 +1347,7 @@ void indigo_init_switch_item(indigo_item *item, const char *name, const char *la
 	memset(item, 0, sizeof(indigo_item));
 	INDIGO_COPY_NAME(item->name, name);
 	INDIGO_COPY_VALUE(item->label, label ? label : "");
-	item->sw.value = item->sw.previous_value = value;
+	item->sw.value = item->sw.default_value = item->sw.previous_value = value;
 }
 
 void indigo_init_light_item(indigo_item *item, const char *name, const char *label, indigo_property_state value) {
@@ -1774,6 +1774,30 @@ void indigo_property_copy_targets(indigo_property *property, indigo_property *ot
 				}
 			}
 			property->do_update = true;
+		}
+	}
+}
+
+void indigo_reset_property(indigo_device *device, indigo_property *property) {
+	assert(device != NULL);
+	assert(property != NULL);
+	assert(device != NULL);
+	if (property->perm != INDIGO_RO_PERM) {
+		if (property->type == INDIGO_NUMBER_VECTOR) {
+			for (int i = 0; i < property->count; i++) {
+				indigo_item *item = property->items + i;
+				item->number.value = item->number.target = item->number.default_value;
+			}
+		} else if (property->type == INDIGO_SWITCH_VECTOR) {
+			for (int i = 0; i < property->count; i++) {
+				indigo_item *item = property->items + i;
+				item->sw.value = item->sw.default_value;
+			}
+		}
+		property->state = INDIGO_OK_STATE;
+		property->do_update = true;
+		if (property->defined) {
+			indigo_update_property(device, property, NULL);
 		}
 	}
 }

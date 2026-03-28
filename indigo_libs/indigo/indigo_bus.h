@@ -250,6 +250,7 @@ typedef struct {/* there is no .name =  because of g++ C99 bug affecting string 
 			double step;                    ///< item increment value (for number properties)
 			double value;                   ///< item value (for number properties)
 			double target;                  ///< item target value (for number properties)
+			double default_value;          	///< item default value (for number properties)
 			double previous_value;          ///< item previous value (for number properties)
 			double previous_target;         ///< item previous target value (for number properties)
 		} number;
@@ -257,6 +258,7 @@ typedef struct {/* there is no .name =  because of g++ C99 bug affecting string 
 		 */
 		struct {
 			bool value;                     ///< item value (for switch properties)
+			bool default_value;            	///< item default value (for switch properties)
 			bool previous_value;            ///< item previous value (for switch properties)
 		} sw;
 		/** Light property item specific fields.
@@ -688,6 +690,10 @@ INDIGO_EXTERN void indigo_property_copy_values(indigo_property *property, indigo
 /** Copy item values into target from other number property into property (optionally including property state).
  */
 INDIGO_EXTERN void indigo_property_copy_targets(indigo_property *property, indigo_property *other, bool with_state);
+
+/** Reset number or switch vectors to initial state
+ */
+INDIGO_EXTERN void indigo_reset_property(indigo_device *device, indigo_property *property);
 
 /** Sort item values on description
  */
