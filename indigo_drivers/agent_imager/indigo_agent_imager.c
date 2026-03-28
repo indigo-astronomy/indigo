@@ -115,6 +115,7 @@
 #define AGENT_IMAGER_START_STREAMING_ITEM 		(AGENT_START_PROCESS_PROPERTY->items+3)
 #define AGENT_IMAGER_START_FOCUSING_ITEM 			(AGENT_START_PROCESS_PROPERTY->items+4)
 #define AGENT_IMAGER_CLEAR_SELECTION_ITEM			(AGENT_START_PROCESS_PROPERTY->items+5)
+#define AGENT_IMAGER_RESET_ITEM 							(AGENT_START_PROCESS_PROPERTY->items+6)
 
 #define AGENT_PAUSE_PROCESS_PROPERTY					(DEVICE_PRIVATE_DATA->agent_pause_process_property)
 #define AGENT_PAUSE_PROCESS_ITEM      				(AGENT_PAUSE_PROCESS_PROPERTY->items+0)
@@ -2330,6 +2331,23 @@ static void find_stars_process(indigo_device *device) {
 	FILTER_DEVICE_CONTEXT->running_process = false;
 }
 
+static void factory_reset(indigo_device *device) {
+	indigo_reset_property(device, AGENT_IMAGER_FOCUS_FAILURE_PROPERTY);
+	indigo_reset_property(device, AGENT_IMAGER_FOCUS_ESTIMATOR_PROPERTY);
+	indigo_reset_property(device, AGENT_PROCESS_FEATURES_PROPERTY);
+	indigo_reset_property(device, AGENT_IMAGER_BATCH_PROPERTY);
+	indigo_reset_property(device, AGENT_IMAGER_FOCUS_PROPERTY);
+	indigo_delete_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
+	AGENT_IMAGER_STARS_PROPERTY->count = 1;
+	indigo_reset_property(device, AGENT_IMAGER_STARS_PROPERTY);
+	indigo_define_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
+	indigo_delete_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
+	AGENT_IMAGER_SELECTION_PROPERTY->count = 13;
+	indigo_reset_property(device, AGENT_IMAGER_SELECTION_PROPERTY);
+	indigo_define_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
+	save_config(device);
+}
+
 static void abort_process(indigo_device *device) {
 	if (AGENT_IMAGER_RESUME_CONDITION_BARRIER_ITEM->sw.value) {
 		// Stop process on related imager agents
@@ -2488,7 +2506,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		}
 		indigo_init_number_item(AGENT_IMAGER_CAPTURE_ITEM, AGENT_IMAGER_CAPTURE_ITEM_NAME, "Capture single frame", 0, 100000, 1, 0);
 		// -------------------------------------------------------------------------------- Process properties
-		AGENT_START_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_START_PROCESS_PROPERTY_NAME, "Agent", "Start process", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 6);
+		AGENT_START_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_START_PROCESS_PROPERTY_NAME, "Agent", "Start process", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 7);
 		if (AGENT_START_PROCESS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
@@ -2498,6 +2516,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_switch_item(AGENT_IMAGER_START_STREAMING_ITEM, AGENT_IMAGER_START_STREAMING_ITEM_NAME, "Start streaming batch", false);
 		indigo_init_switch_item(AGENT_IMAGER_START_FOCUSING_ITEM, AGENT_IMAGER_START_FOCUSING_ITEM_NAME, "Start focusing", false);
 		indigo_init_switch_item(AGENT_IMAGER_CLEAR_SELECTION_ITEM, AGENT_IMAGER_CLEAR_SELECTION_ITEM_NAME, "Clear star selection", false);
+		indigo_init_switch_item(AGENT_IMAGER_RESET_ITEM, AGENT_IMAGER_RESET_ITEM_NAME, "Reset to defaults", false);
 		AGENT_PAUSE_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_PAUSE_PROCESS_PROPERTY_NAME, "Agent", "Pause/Resume process", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 3);
 		if (AGENT_PAUSE_PROCESS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
@@ -2905,6 +2924,14 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 				AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 				indigo_set_timer(device, 0, clear_selection_process, NULL);
 				indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
+			} else if (AGENT_IMAGER_RESET_ITEM->sw.value) {
+				AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
+				factory_reset(device);
+				AGENT_IMAGER_RESET_ITEM->sw.value = false;
+				AGENT_START_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, "Reset to defaults");
+				return INDIGO_OK;
 			} else if (INDIGO_FILTER_CCD_SELECTED) {
 				if (AGENT_IMAGER_START_PREVIEW_1_ITEM->sw.value) {
 					AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;

@@ -92,6 +92,7 @@
 #define AGENT_GUIDER_START_CALIBRATION_AND_GUIDING_ITEM 	(AGENT_START_PROCESS_PROPERTY->items+3)
 #define AGENT_GUIDER_START_GUIDING_ITEM 			(AGENT_START_PROCESS_PROPERTY->items+4)
 #define AGENT_GUIDER_CLEAR_SELECTION_ITEM 		(AGENT_START_PROCESS_PROPERTY->items+5)
+#define AGENT_GUIDER_RESET_ITEM 							(AGENT_START_PROCESS_PROPERTY->items+6)
 
 #define AGENT_ABORT_PROCESS_PROPERTY					(DEVICE_PRIVATE_DATA->agent_abort_process_property)
 #define AGENT_ABORT_PROCESS_ITEM      				(AGENT_ABORT_PROCESS_PROPERTY->items+0)
@@ -1883,6 +1884,27 @@ static void clear_selection_process(indigo_device *device) {
 	FILTER_DEVICE_CONTEXT->running_process = false;
 }
 
+static void factory_reset(indigo_device *device) {
+	indigo_reset_property(device, AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY);
+	indigo_reset_property(device, AGENT_GUIDER_CORRECTION_MODE_DEC_PROPERTY);
+	indigo_reset_property(device, AGENT_GUIDER_DETECTION_MODE_PROPERTY);
+	indigo_reset_property(device, AGENT_GUIDER_DEC_MODE_PROPERTY);
+	indigo_reset_property(device, AGENT_GUIDER_APPLY_DEC_BACKLASH_PROPERTY);
+	indigo_reset_property(device, AGENT_GUIDER_APPLY_DEC_BACKLASH_PROPERTY);
+	indigo_reset_property(device, AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY);
+	indigo_reset_property(device, AGENT_PROCESS_FEATURES_PROPERTY);
+	indigo_reset_property(device, AGENT_GUIDER_SETTINGS_PROPERTY);
+	indigo_delete_property(device, AGENT_GUIDER_STARS_PROPERTY, NULL);
+	AGENT_GUIDER_STARS_PROPERTY->count = 1;
+	indigo_reset_property(device, AGENT_GUIDER_STARS_PROPERTY);
+	indigo_define_property(device, AGENT_GUIDER_STARS_PROPERTY, NULL);
+	indigo_delete_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
+	AGENT_GUIDER_SELECTION_PROPERTY->count = 14;
+	indigo_reset_property(device, AGENT_GUIDER_SELECTION_PROPERTY);
+	indigo_define_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
+	save_config(device);
+}
+
 static void abort_process(indigo_device *device) {
 	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, CCD_ABORT_EXPOSURE_PROPERTY_NAME, CCD_ABORT_EXPOSURE_ITEM_NAME, true);
 }
@@ -1969,7 +1991,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		FILTER_CCD_LIST_PROPERTY->hidden = false;
 		FILTER_GUIDER_LIST_PROPERTY->hidden = false;
 		FILTER_RELATED_AGENT_LIST_PROPERTY->hidden = false;
-		// -------------------------------------------------------------------------------- Process properties
+		// -------------------------------------------------------------------------------- Drift correction mode
 		AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY_NAME, "Agent", "RA drift correction mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 		if (AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY == NULL)
 			return INDIGO_FAILED;
@@ -2010,7 +2032,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_switch_item(AGENT_GUIDER_APPLY_DEC_BACKLASH_DISABLED_ITEM, AGENT_GUIDER_APPLY_DEC_BACKLASH_DISABLED_ITEM_NAME, "Disabled", true);
 		indigo_init_switch_item(AGENT_GUIDER_APPLY_DEC_BACKLASH_ENABLED_ITEM, AGENT_GUIDER_APPLY_DEC_BACKLASH_ENABLED_ITEM_NAME, "Enabled", false);
 
-		AGENT_START_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_START_PROCESS_PROPERTY_NAME, "Agent", "Start process", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 6);
+		AGENT_START_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_START_PROCESS_PROPERTY_NAME, "Agent", "Start process", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 7);
 		if (AGENT_START_PROCESS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
@@ -2020,6 +2042,8 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_switch_item(AGENT_GUIDER_START_CALIBRATION_AND_GUIDING_ITEM, AGENT_GUIDER_START_CALIBRATION_AND_GUIDING_ITEM_NAME, "Start calibration and guiding", false);
 		indigo_init_switch_item(AGENT_GUIDER_START_GUIDING_ITEM, AGENT_GUIDER_START_GUIDING_ITEM_NAME, "Start guiding", false);
 		indigo_init_switch_item(AGENT_GUIDER_CLEAR_SELECTION_ITEM, AGENT_GUIDER_CLEAR_SELECTION_ITEM_NAME, "Clear star selection", false);
+		indigo_init_switch_item(AGENT_GUIDER_RESET_ITEM, AGENT_GUIDER_RESET_ITEM_NAME, "Reset to defaults", false);
+
 		AGENT_ABORT_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_ABORT_PROCESS_PROPERTY_NAME, "Agent", "Abort process", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
 		if (AGENT_ABORT_PROCESS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
@@ -2058,7 +2082,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_BL_STEPS_ITEM, AGENT_GUIDER_SETTINGS_BL_STEPS_ITEM_NAME, "Max clear backlash steps", 0, 50, 1, 10);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_BL_DRIFT_ITEM, AGENT_GUIDER_SETTINGS_BL_DRIFT_ITEM_NAME, "Min clear backlash drift (px)", 0, 25, 1, 3);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_CAL_STEPS_ITEM, AGENT_GUIDER_SETTINGS_CAL_STEPS_ITEM_NAME, "Max calibration steps", 0, 50, 1, 20);
-		indigo_init_number_item(AGENT_GUIDER_SETTINGS_CAL_DRIFT_ITEM, AGENT_GUIDER_SETTINGS_CAL_DRIFT_ITEM_NAME, "Min calibration drift (px)", 0, 100, 5, 20);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_CAL_DRIFT_ITEM, AGENT_GUIDER_SETTINGS_CAL_DRIFT_ITEM_NAME, "Min calibration drift (px)", 0, 100, 1, 5);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_ANGLE_ITEM, AGENT_GUIDER_SETTINGS_ANGLE_ITEM_NAME, "Angle (°)", -180, 180, 1, 0);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_SOP_ITEM, AGENT_GUIDER_SETTINGS_SOP_ITEM_NAME, "Side of Pier (-1=E, 1=W, 0=undef)", -1, 1, 1, 0);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_BACKLASH_ITEM, AGENT_GUIDER_SETTINGS_BACKLASH_ITEM_NAME, "Dec backlash (px)", 0, 100, 0, 0);
@@ -2481,6 +2505,14 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			if (AGENT_GUIDER_CLEAR_SELECTION_ITEM->sw.value) {
 				AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 				indigo_set_timer(device, 0, clear_selection_process, NULL);
+			} else if (AGENT_GUIDER_RESET_ITEM->sw.value) {
+				AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
+				factory_reset(device);
+				AGENT_GUIDER_RESET_ITEM->sw.value = false;
+				AGENT_START_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, "Reset to defaults");
+				return INDIGO_OK;
 			} else if (INDIGO_FILTER_CCD_SELECTED) {
 				if (AGENT_GUIDER_START_PREVIEW_1_ITEM->sw.value) {
 					AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;

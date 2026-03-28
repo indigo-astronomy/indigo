@@ -316,6 +316,16 @@ static void process_failed(indigo_device *device, char *message) {
 	indigo_send_message(device, IDLE_PROPERTY, message);
 }
 
+static void factory_reset(indigo_device *device) {
+	indigo_reset_property(device, AGENT_PLATESOLVER_SOLVE_IMAGES_PROPERTY);
+	indigo_reset_property(device, AGENT_PLATESOLVER_HINTS_PROPERTY);
+	indigo_reset_property(device, AGENT_PLATESOLVER_SYNC_PROPERTY);
+	indigo_reset_property(device, AGENT_PLATESOLVER_EXPOSURE_SETTINGS_PROPERTY);
+	indigo_reset_property(device, AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY);
+	indigo_reset_property(device, AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_PROPERTY);
+	INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->save_config(device);
+}
+
 static void abort_process(indigo_device *device) {
 	INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->abort_process_requested = true;
 	abort_exposure(device);
@@ -638,7 +648,7 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		indigo_init_switch_item(AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM, AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM_NAME, "Calclulate polar alignment error", false);
 		indigo_init_switch_item(AGENT_PLATESOLVER_SYNC_RECALCULATE_PA_ERROR_ITEM, AGENT_PLATESOLVER_SYNC_RECALCULATE_PA_ERROR_ITEM_NAME, "Recalclulate polar alignment error", false);
 		// -------------------------------------------------------------------------------- AGENT_START_PROCESS property /* replaces AGENT_PLATESOLVER_SYNC */
-		AGENT_START_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_START_PROCESS_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Start process", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 6);
+		AGENT_START_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_START_PROCESS_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Start process", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 7);
 		if (AGENT_PLATESOLVER_SYNC_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
@@ -648,6 +658,7 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		indigo_init_switch_item(AGENT_PLATESOLVER_START_PRECISE_GOTO_ITEM, AGENT_PLATESOLVER_START_PRECISE_GOTO_ITEM_NAME, "Precise GOTO", false);
 		indigo_init_switch_item(AGENT_PLATESOLVER_START_CALCULATE_PA_ERROR_ITEM, AGENT_PLATESOLVER_START_CALCULATE_PA_ERROR_ITEM_NAME, "Calclulate polar alignment error", false);
 		indigo_init_switch_item(AGENT_PLATESOLVER_START_RECALCULATE_PA_ERROR_ITEM, AGENT_PLATESOLVER_START_RECALCULATE_PA_ERROR_ITEM_NAME, "Recalclulate polar alignment error", false);
+		indigo_init_switch_item(AGENT_PLATESOLVER_RESET_ITEM, AGENT_PLATESOLVER_RESET_ITEM_NAME, "Reset to defaults", false);
 		// -------------------------------------------------------------------------------- AGENT_ABORT_PROCESS property /* replaces AGENT_PLATESOLVER_ABORT */
 		AGENT_ABORT_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_ABORT_PROCESS_PROPERTY_NAME, "Agent", "Abort process", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
 		if (AGENT_ABORT_PROCESS_PROPERTY == NULL) {
@@ -855,7 +866,14 @@ indigo_result indigo_platesolver_change_property(indigo_device *device, indigo_c
 			indigo_property_copy_values(AGENT_START_PROCESS_PROPERTY, property, false);
 			AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
-			indigo_set_timer(device, 0, start_process, NULL);
+			if (AGENT_PLATESOLVER_RESET_ITEM->sw.value) {
+				factory_reset(device);
+				AGENT_PLATESOLVER_RESET_ITEM->sw.value = false;
+				AGENT_START_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, "Reset to defaults");
+			} else {
+				indigo_set_timer(device, 0, start_process, NULL);
+			}
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_ABORT_PROCESS_PROPERTY, property)) {

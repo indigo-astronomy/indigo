@@ -77,7 +77,7 @@
 #define AGENT_LIMITS_PROPERTY													(DEVICE_PRIVATE_DATA->agent_limits_property)
 #define AGENT_HA_TRACKING_LIMIT_ITEM									(AGENT_LIMITS_PROPERTY->items+0)
 #define AGENT_LOCAL_TIME_LIMIT_ITEM										(AGENT_LIMITS_PROPERTY->items+1)
-#define AGENT_COORDINATES_PROPAGATE_THRESHOLD_ITEM			(AGENT_LIMITS_PROPERTY->items+2)
+#define AGENT_COORDINATES_PROPAGATE_THRESHOLD_ITEM		(AGENT_LIMITS_PROPERTY->items+2)
 
 #define AGENT_MOUNT_FOV_PROPERTY											(DEVICE_PRIVATE_DATA->agent_fov_property)
 #define AGENT_MOUNT_FOV_ANGLE_ITEM										(AGENT_MOUNT_FOV_PROPERTY->items+0)
@@ -109,14 +109,15 @@
 #define AGENT_START_PROCESS_PROPERTY									(DEVICE_PRIVATE_DATA->agent_start_process_property)
 #define AGENT_MOUNT_START_SLEW_ITEM  									(AGENT_START_PROCESS_PROPERTY->items+0)
 #define AGENT_MOUNT_START_SYNC_ITEM  									(AGENT_START_PROCESS_PROPERTY->items+1)
+#define AGENT_MOUNT_RESET_ITEM 												(AGENT_START_PROCESS_PROPERTY->items+2)
 
 #define AGENT_PROCESS_FEATURES_PROPERTY								(DEVICE_PRIVATE_DATA->agent_process_features_property)
 #define AGENT_MOUNT_ENABLE_HA_LIMIT_FEATURE_ITEM			(AGENT_PROCESS_FEATURES_PROPERTY->items+0)
 #define AGENT_MOUNT_ENABLE_TIME_LIMIT_FEATURE_ITEM		(AGENT_PROCESS_FEATURES_PROPERTY->items+1)
 
-#define AGENT_FIELD_DEROTATION_PROPERTY				(DEVICE_PRIVATE_DATA->agent_field_derotation_property)
-#define AGENT_FIELD_DEROTATION_ENABLED_ITEM			(AGENT_FIELD_DEROTATION_PROPERTY->items+0)
-#define AGENT_FIELD_DEROTATION_DISABLED_ITEM		(AGENT_FIELD_DEROTATION_PROPERTY->items+1)
+#define AGENT_FIELD_DEROTATION_PROPERTY								(DEVICE_PRIVATE_DATA->agent_field_derotation_property)
+#define AGENT_FIELD_DEROTATION_ENABLED_ITEM						(AGENT_FIELD_DEROTATION_PROPERTY->items+0)
+#define AGENT_FIELD_DEROTATION_DISABLED_ITEM					(AGENT_FIELD_DEROTATION_PROPERTY->items+1)
 
 typedef struct {
 	indigo_property *agent_geographic_property;
@@ -488,6 +489,18 @@ static void reset_star_selection(indigo_device *device, char *reason) {
 	if (related_agent_name) {
 		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_START_PROCESS_PROPERTY_NAME, AGENT_GUIDER_CLEAR_SELECTION_ITEM_NAME, true);
 	}
+}
+
+static void factory_reset(indigo_device *device) {
+	indigo_reset_property(device, AGENT_SITE_DATA_SOURCE_PROPERTY);
+	indigo_reset_property(device, AGENT_SET_HOST_TIME_PROPERTY);
+	indigo_reset_property(device, AGENT_FIELD_DEROTATION_PROPERTY);
+	indigo_reset_property(device, AGENT_PROCESS_FEATURES_PROPERTY);
+	indigo_reset_property(device, AGENT_LIMITS_PROPERTY);
+	if (DEVICE_PRIVATE_DATA->server_handle == NULL) {
+		indigo_reset_property(device, AGENT_LX200_CONFIGURATION_PROPERTY);
+	}
+	save_config(device);
 }
 
 static void handle_mount_change(indigo_device *device) {
@@ -981,12 +994,14 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_switch_item(AGENT_FIELD_DEROTATION_ENABLED_ITEM, AGENT_FIELD_DEROTATION_ENABLED_ITEM_NAME, "Enabled", false);
 		indigo_init_switch_item(AGENT_FIELD_DEROTATION_DISABLED_ITEM, AGENT_FIELD_DEROTATION_DISABLED_ITEM_NAME, "Disabled", true);
 		// -------------------------------------------------------------------------------- AGENT_START_PROCESS
-		AGENT_START_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_START_PROCESS_PROPERTY_NAME, "Agent", "Start process", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 2);
+		AGENT_START_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_START_PROCESS_PROPERTY_NAME, "Agent", "Start process", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 3);
 		if (AGENT_START_PROCESS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
 		indigo_init_switch_item(AGENT_MOUNT_START_SLEW_ITEM, AGENT_MOUNT_START_SLEW_ITEM_NAME, "Slew", false);
 		indigo_init_switch_item(AGENT_MOUNT_START_SYNC_ITEM, AGENT_MOUNT_START_SYNC_ITEM_NAME, "Sync", false);
+		indigo_init_switch_item(AGENT_MOUNT_RESET_ITEM, AGENT_MOUNT_RESET_ITEM_NAME, "Reset to defaults", false);
+
 		AGENT_ABORT_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_ABORT_PROCESS_PROPERTY_NAME, "Agent", "Abort", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
 		if (AGENT_ABORT_PROCESS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
@@ -1141,7 +1156,15 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 // -------------------------------------------------------------------------------- AGENT_START_PROCESS
 		if (AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_BUSY_STATE) {
 			indigo_property_copy_values(AGENT_START_PROCESS_PROPERTY, property, false);
-			if (INDIGO_FILTER_MOUNT_SELECTED) {
+			if (AGENT_MOUNT_RESET_ITEM->sw.value) {
+				AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
+				factory_reset(device);
+				AGENT_MOUNT_RESET_ITEM->sw.value = false;
+				AGENT_START_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, "Reset to defaults");
+				return INDIGO_OK;
+			} else if (INDIGO_FILTER_MOUNT_SELECTED) {
 				if (AGENT_MOUNT_START_SLEW_ITEM->sw.value) {
 					AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_set_timer(device, 0, slew_process, NULL);
