@@ -317,7 +317,7 @@ static bool ieq_detect_mount(indigo_device *device) {
 	PRIVATE_DATA->protocol = UNKNOWN;
 	PRIVATE_DATA->product = 0;
 	PRIVATE_DATA->has_encoders = false;
-	PRIVATE_DATA->can_park = false;
+	PRIVATE_DATA->can_park = true;
 	indigo_set_text_item_value(INFO_DEVICE_MODEL_ITEM, "N/A");
 	indigo_set_text_item_value(INFO_DEVICE_FW_REVISION_ITEM, "N/A");
 	if (PROTOCOL_8406_ITEM->sw.value) {
