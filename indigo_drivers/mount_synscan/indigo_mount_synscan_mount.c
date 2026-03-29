@@ -350,7 +350,7 @@ static void mount_slew_timer_callback(indigo_device* device) {
 				//  Update the tracking property to be ON if not already so it is reflected in UI
 				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
 				MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, MOUNT_TRACKING_PROPERTY, "Tracking started.");
+				indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 			}
 			break;
 		}
@@ -489,7 +489,7 @@ static void mount_slew_aa_timer_callback(indigo_device* device) {
 //				//  Update the tracking property to be ON if not already so it is reflected in UI
 //				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
 //				MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
-//				indigo_update_property(device, MOUNT_TRACKING_PROPERTY, "Tracking started.");
+//				indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 //			}
 //			break;
 //		}
@@ -599,12 +599,12 @@ static void mount_tracking_timer_callback(indigo_device* device) {
 		double axisRate = synscan_tracking_rate(device);
 		synscan_slew_axis_at_rate(device, kAxisRA, axisRate);
 		PRIVATE_DATA->raAxisMode = kAxisModeTracking;
-		indigo_update_property(device, MOUNT_TRACKING_PROPERTY, "Tracking started");
+		indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 	} else if (MOUNT_TRACKING_OFF_ITEM->sw.value) {
 		synscan_stop_axis(device, kAxisRA);
 		synscan_wait_for_axis_stopped(device, kAxisRA, NULL);
 		PRIVATE_DATA->raAxisMode = kAxisModeIdle;
-		indigo_update_property(device, MOUNT_TRACKING_PROPERTY, "Tracking stopped");
+		indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->driver_mutex);
 }
@@ -732,7 +732,7 @@ static void mount_park_timer_callback(indigo_device* device) {
 	//  Stop tracking if enabled
 	indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
 	MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, MOUNT_TRACKING_PROPERTY, "Tracking stopped.");
+	indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 
 	//  Compute the axis positions for parking
 	double ha = (PRIVATE_DATA->globalMode == kGlobalModeGoingHome ? MOUNT_HOME_POSITION_HA_ITEM->number.value : MOUNT_PARK_POSITION_HA_ITEM->number.value) * M_PI / 12.0;
@@ -772,14 +772,14 @@ static void mount_park_timer_callback(indigo_device* device) {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 		MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, MOUNT_HOME_PROPERTY, "Mount at home.");
+		indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
 	} else {
 		synscan_save_position(device);
 		MOUNT_PARK_PARKED_ITEM->sw.value = true;
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 		MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, MOUNT_PARK_PROPERTY, "Mount parked.");
+		indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 	}
 	PRIVATE_DATA->globalMode = kGlobalModeIdle;
 	pthread_mutex_unlock(&PRIVATE_DATA->driver_mutex);
@@ -789,7 +789,7 @@ void mount_handle_park(indigo_device* device) {
 	if (MOUNT_PARK_PARKED_ITEM->sw.value) {
 		if (PRIVATE_DATA->globalMode == kGlobalModeIdle) {
 			MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parking...");
+			indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 			PRIVATE_DATA->globalMode = kGlobalModeParking;
@@ -797,11 +797,11 @@ void mount_handle_park(indigo_device* device) {
 		} else {
 			//  Can't park while mount is doing something else
 			MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parking not started - mount is busy.");
+			indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 		}
 	} else {
 		MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, MOUNT_PARK_PROPERTY, "Mount unparked.");
+		indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 	}
 }
 
@@ -810,7 +810,7 @@ void mount_handle_home(indigo_device* device) {
 		MOUNT_HOME_ITEM->sw.value = false;
 		if (PRIVATE_DATA->globalMode == kGlobalModeIdle) {
 			MOUNT_HOME_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, MOUNT_HOME_PROPERTY, "Going home...");
+			indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 			PRIVATE_DATA->globalMode = kGlobalModeGoingHome;
@@ -818,7 +818,7 @@ void mount_handle_home(indigo_device* device) {
 		} else {
 			//  Can't go home while mount is doing something else
 			MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Going home not started - mount is busy.");
+			indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 		}
 	}
 }

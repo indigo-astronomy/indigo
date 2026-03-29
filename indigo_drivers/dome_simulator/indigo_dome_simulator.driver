@@ -78,7 +78,7 @@ driver simulator {
 					indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 					if (DOME_PARK_PROPERTY->state == INDIGO_BUSY_STATE) {
 						DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
-						indigo_update_property(device, DOME_PARK_PROPERTY, "Parked");
+						indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
 					}
 				}
 			}

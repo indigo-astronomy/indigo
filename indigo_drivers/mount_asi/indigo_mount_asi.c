@@ -644,7 +644,7 @@ static void position_timer_callback(indigo_device *device) {
 				if (PRIVATE_DATA->prev_home_state == false) {
 					MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
 					indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_HOME_ITEM, true);
-					indigo_update_property(device, MOUNT_HOME_PROPERTY, "At home");
+					indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
 				}
 				PRIVATE_DATA->prev_home_state = true;
 			} else {
@@ -662,7 +662,7 @@ static void position_timer_callback(indigo_device *device) {
 					   when the goto park is finished
 					*/
 					indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
-					indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parked (perked item not set due to a firmware bug)");
+					indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 				}
 				PRIVATE_DATA->park_requested = false;
 			}
@@ -914,7 +914,7 @@ static void mount_home_callback(indigo_device *device) {
 			indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
 		} else {
 			PRIVATE_DATA->prev_home_state = false;
-			indigo_update_property(device, MOUNT_HOME_PROPERTY, "Going home");
+			indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
 		}
 	}
 }
@@ -924,7 +924,7 @@ static void mount_park_callback(indigo_device *device) {
 		MOUNT_PARK_PARKED_ITEM->sw.value = false;
 		MOUNT_PARK_UNPARKED_ITEM->sw.value = false;
 		if (asi_set_tracking(device, false) && asi_park(device)) {
-			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Going to park position");
+			indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 			/* Wait 1s to make sure the mount reports moving. We use moving flag to detect
 			   when finished because fs a firmware bug mount never reports parked.
 			*/

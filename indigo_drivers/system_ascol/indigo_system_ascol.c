@@ -996,7 +996,7 @@ static void mount_handle_park(indigo_device *device) {
 	if ((PRIVATE_DATA->glst.telescope_state != TE_STATE_TRACK) &&
 	    (PRIVATE_DATA->glst.telescope_state != TE_STATE_STOP)) {
 		MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, MOUNT_PARK_PROPERTY, "Can not park - Telescope is either moving or off.");
+		indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 		return;
 	}
 
@@ -1053,7 +1053,7 @@ static bool mount_handle_abort_motion(indigo_device *device) {
 	MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Aborted.");
 	MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, MOUNT_PARK_PROPERTY, "Aborted.");
+	indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 	return true;
 }
 

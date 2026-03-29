@@ -403,7 +403,7 @@ static void dome_timer_callback(indigo_device *device) {
 			DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
 			PRIVATE_DATA->park_requested = false;
 			indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_PARKED_ITEM, true);
-			indigo_update_property(device, DOME_PARK_PROPERTY, "Dome parked");
+			indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
 		}
 	}
 
@@ -887,7 +887,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		if (DOME_PARK_UNPARKED_ITEM->sw.value) {
 			DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
 			PRIVATE_DATA->park_requested = false;
-			indigo_update_property(device, DOME_PARK_PROPERTY, "Dome unparked");
+			indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
 		} else if (DOME_PARK_PARKED_ITEM->sw.value) {
 			indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_UNPARKED_ITEM, true);
 
@@ -902,7 +902,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-			indigo_update_property(device, DOME_PARK_PROPERTY, "Dome parking...");
+			indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
 		} else {
 			indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
 		}

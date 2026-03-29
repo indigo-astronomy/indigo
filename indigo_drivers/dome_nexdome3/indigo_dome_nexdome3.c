@@ -338,7 +338,7 @@ static void handle_rotator_status(indigo_device *device, char *message) {
 		DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_PARKED_ITEM, true);
 		PROPERTY_UNLOCK();
-		indigo_update_property(device, DOME_PARK_PROPERTY, "Dome is parked.");
+		indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
 		PRIVATE_DATA->park_requested = false;
 	}
 
@@ -1057,13 +1057,13 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
 			PRIVATE_DATA->park_requested = false;
 			PROPERTY_UNLOCK();
-			indigo_update_property(device, DOME_PARK_PROPERTY, "Dome is unparked.");
+			indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
 			return INDIGO_OK;
 		} else if (DOME_PARK_PARKED_ITEM->sw.value) {
 			if (IN_PARK_POSITION) {
 				DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
 				PROPERTY_UNLOCK();
-				indigo_update_property(device, DOME_PARK_PROPERTY, "Dome is parked.");
+				indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
 				return INDIGO_OK;
 			} else {
 				indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_UNPARKED_ITEM, true);

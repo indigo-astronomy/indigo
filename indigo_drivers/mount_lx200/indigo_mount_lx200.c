@@ -2222,7 +2222,7 @@ static void mount_home_callback(indigo_device *device) {
 			MOUNT_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
 		} else {
-			indigo_update_property(device, MOUNT_HOME_PROPERTY, "Going home");
+			indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
 		}
 	}
 }

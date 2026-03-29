@@ -483,7 +483,7 @@ static void position_timer_callback(indigo_device *device) {
 			if (abs(raw_ha) < 0xFFF && abs(raw_dec) < 0xFFF && MOUNT_TRACKING_OFF_ITEM->sw.value && PRIVATE_DATA->park) {
 				PRIVATE_DATA->park = false;
 				MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parked");
+				indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 			}
 			indigo_item *side_of_pier;
 			uint32_t ra_count = MODELS[PRIVATE_DATA->type].count[0];
@@ -791,7 +791,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			indigo_set_timer(device, 0, mount_park_handler, NULL);
 		}
 		if (parked && MOUNT_PARK_UNPARKED_ITEM->sw.value) {
-			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Unparked");
+			indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
