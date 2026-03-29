@@ -2273,8 +2273,11 @@ indigo_result indigo_reduce_weighted_multistar_digest(const indigo_frame_digest 
  * I-term: integrates past drift over time to remove steady-state bias;
  *   tune carefully — too large I causes oscillation.
  */
-double indigo_guider_pi_response(double p_gain, double i_gain, double guide_cycle_time, double drift, double avg_drift) {
-	double response = -1 * (p_gain * drift + i_gain * avg_drift * guide_cycle_time);
+double indigo_guider_pi_response(double p_gain, double i_gain, double guide_cycle_time, double min_move, double drift, double avg_drift) {
+	double response = 0.0;
+	if (fabs(drift) >= min_move) {
+		response = -1 * (p_gain * drift + i_gain * avg_drift * guide_cycle_time);
+	}
 	INDIGO_DEBUG(indigo_debug("%s(): P = %.4f, I = %.4f, response = %.4f, drift = %.4f, avg_drift = %.4f", __FUNCTION__, p_gain, i_gain, response, drift, avg_drift));
 	return response;
 }
@@ -2290,14 +2293,19 @@ double indigo_guider_pi_response(double p_gain, double i_gain, double guide_cycl
  *
  * aggressiveness - overall gain factor (0..1)
  * hysteresis     - blend factor for previous output  (0 = no memory, 1 = full memory)
+ * min_move       - minimum drift magnitude to trigger correction; below this the
+ *                  output is zero and hysteresis memory is cleared like PHD2
  * drift          - current measured drift (pixels)
  * prev_output    - in/out: last output magnitude maintained by caller (initialise to 0)
  */
-double indigo_guider_hysteresis_response(double aggressiveness, double hysteresis, double drift, double *prev_output) {
+double indigo_guider_hysteresis_response(double aggressiveness, double hysteresis, double min_move, double drift, double *prev_output) {
 	double blended = (1.0 - hysteresis) * drift + hysteresis * (*prev_output);
 	double response = -aggressiveness * blended;
+	if (fabs(drift) < min_move) {
+		response = 0.0;
+	}
 	*prev_output = -response;
-	INDIGO_DEBUG(indigo_debug("%s(): aggressiveness = %.4f, hysteresis = %.4f, response = %.4f, drift = %.4f, blended = %.4f", __FUNCTION__, aggressiveness, hysteresis, response, drift, blended));
+	INDIGO_DEBUG(indigo_debug("%s(): aggressiveness = %.4f, hysteresis = %.4f, min_move = %.4f, response = %.4f, drift = %.4f, blended = %.4f", __FUNCTION__, aggressiveness, hysteresis, min_move, response, drift, blended));
 	return response;
 }
 
@@ -2328,7 +2336,14 @@ void indigo_guider_linear_trend_push(double drift, indigo_linear_trend_history *
 
 double indigo_guider_linear_trend_response(double aggressiveness, double min_move, double drift, indigo_linear_trend_history *history) {
 	int n = history->count;
-	if (n == 0) return 0;
+
+	if (n == 0) return 0.0;
+
+	double correction = 0.0;
+	if (fabs(drift) < min_move) {
+		history->rejects = 0;
+		goto done;
+	}
 
 	double samples[INDIGO_LINEAR_TREND_HISTORY_SIZE];
 	for (int i = 0; i < n; i++) {
@@ -2337,7 +2352,6 @@ double indigo_guider_linear_trend_response(double aggressiveness, double min_mov
 
 	double effective_min_move = min_move > 0 ? min_move : INDIGO_LINEAR_TREND_DEFAULT_MIN_MOVE;
 	double slope = 0;
-	double correction;
 
 	if (n < 4) {
 		correction = drift * aggressiveness;
@@ -2375,6 +2389,7 @@ double indigo_guider_linear_trend_response(double aggressiveness, double min_mov
 		history->rejects = 0;
 	}
 
+done:
 	double response = -correction;
 
 	INDIGO_DEBUG(indigo_debug("%s(): aggressiveness=%.4f response=%.4f drift=%.4f slope=%.4f samples=%d rejects=%d", __FUNCTION__, aggressiveness, response, drift, slope, n, history->rejects));
@@ -2476,7 +2491,7 @@ double indigo_guider_resist_switch_response(double aggressiveness, double min_mo
 
 done:
 	double response = (result == 0.0) ? 0.0 : -aggressiveness * result;
-	INDIGO_ERROR(indigo_error("%s(): aggressiveness=%.4f min_move=%.4f fast_thresh=%.4f drift=%.4f current_side=%d direction_votes=%d response=%.4f",
+	INDIGO_DEBUG(indigo_debug("%s(): aggressiveness=%.4f min_move=%.4f fast_thresh=%.4f drift=%.4f current_side=%d direction_votes=%d response=%.4f",
 	             __FUNCTION__, aggressiveness, min_move, fast_switch_threshold, drift,
 	             history->current_side, direction_votes, response));
 	return response;
