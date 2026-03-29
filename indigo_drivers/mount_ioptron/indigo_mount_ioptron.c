@@ -317,7 +317,7 @@ static bool ieq_detect_mount(indigo_device *device) {
 	PRIVATE_DATA->protocol = UNKNOWN;
 	PRIVATE_DATA->product = 0;
 	PRIVATE_DATA->has_encoders = false;
-	PRIVATE_DATA->can_park = false;
+	PRIVATE_DATA->can_park = true;
 	indigo_set_text_item_value(INFO_DEVICE_MODEL_ITEM, "N/A");
 	indigo_set_text_item_value(INFO_DEVICE_FW_REVISION_ITEM, "N/A");
 	if (PROTOCOL_8406_ITEM->sw.value) {
@@ -387,7 +387,7 @@ static bool ieq_detect_mount(indigo_device *device) {
 			}
 		}
 	} else {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Mount %s (%04d, %s, %s)", PRIVATE_DATA->type->model, PRIVATE_DATA->type->product, PRIVATE_DATA->can_park ? "can park" : "can't park", PRIVATE_DATA->has_encoders ? "has encoders" : "no encoders");
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Mount %s (%04d, %s, %s)", INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->product, PRIVATE_DATA->can_park ? "can park" : "can't park", PRIVATE_DATA->has_encoders ? "has encoders" : "no encoders");
 	}
 	if (PRIVATE_DATA->protocol != UNKNOWN) {
 		indigo_update_property(device, INFO_PROPERTY, NULL);
@@ -831,7 +831,7 @@ static bool ieq_sync(indigo_device *device, double ra, double dec) {
 		if (PRIVATE_DATA->protocol == HC_8406) {
 			result = ieq_command(device, ":CMR#");
 		} else {
-			result = ieq_simple_reply_command(device, ":CM#") && *PRIVATE_DATA->response == '0';
+			result = ieq_simple_reply_command(device, ":CM#") && *PRIVATE_DATA->response == '1';
 		}
 	}
 

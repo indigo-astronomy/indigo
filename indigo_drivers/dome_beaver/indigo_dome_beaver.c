@@ -626,7 +626,7 @@ static void dome_timer_callback(indigo_device *device) {
 			DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
 			PRIVATE_DATA->park_requested = false;
 			indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_PARKED_ITEM, true);
-			indigo_update_property(device, DOME_PARK_PROPERTY, "Dome parked");
+			indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
 
 			float park_pos;
 			if ((rc = beaver_get_park(device, &park_pos)) != BD_SUCCESS) {
@@ -646,7 +646,7 @@ static void dome_timer_callback(indigo_device *device) {
 			if (athome) {
 				DOME_HOME_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_set_switch(DOME_HOME_PROPERTY, DOME_HOME_ITEM, true);
-				indigo_update_property(device, DOME_HOME_PROPERTY, "Dome is at home");
+				indigo_update_property(device, DOME_HOME_PROPERTY, "Dome is at home position");
 			} else if (!CHECK_BIT(PRIVATE_DATA->dome_status, BDB_ROTATOR_MOVING)) {
 				DOME_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(DOME_HOME_PROPERTY, DOME_HOME_ITEM, false);
@@ -1072,7 +1072,7 @@ static void dome_park_callback(indigo_device *device) {
 	if (DOME_PARK_UNPARKED_ITEM->sw.value) {
 		DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
 		PRIVATE_DATA->park_requested = false;
-		indigo_update_property(device, DOME_PARK_PROPERTY, "Dome unparked");
+		indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
 	} else if (DOME_PARK_PARKED_ITEM->sw.value) {
 		indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_UNPARKED_ITEM, true);
 		DOME_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -1080,7 +1080,7 @@ static void dome_park_callback(indigo_device *device) {
 		DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 		indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-		indigo_update_property(device, DOME_PARK_PROPERTY, "Dome parking...");
+		indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
 		if ((rc = beaver_goto_park(device)) != BD_SUCCESS) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_goto_park(%p): returned error %d", PRIVATE_DATA->handle, rc);
 		}
@@ -1107,7 +1107,7 @@ static void dome_gohome_callback(indigo_device *device) {
 		indigo_set_switch(DOME_PARK_PROPERTY, DOME_HOME_ITEM, false);
 
 		DOME_HOME_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, DOME_HOME_PROPERTY, "Dome going home...");
+		indigo_update_property(device, DOME_HOME_PROPERTY, "Dome going to home position...");
 		DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 		DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;

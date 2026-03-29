@@ -278,7 +278,7 @@ static void park_timer_callback(indigo_device *device) {
 	if (PRIVATE_DATA->park_in_progress) {
 		indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->park_timer);
 	} else {
-		indigo_update_property(device, MOUNT_PARK_PROPERTY, "Mount Parked.");
+		indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 	}
 }
 
@@ -456,16 +456,16 @@ static void mount_handle_park(indigo_device *device) {
 			PRIVATE_DATA->parked = false;
 			PRIVATE_DATA->park_in_progress = false;
 			MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Failed to park");
+			indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 		} else {
 			MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parking...");
+			indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 			indigo_set_timer(device, 2, park_timer_callback, &PRIVATE_DATA->park_timer);
 		}
 	} else {
 		PRIVATE_DATA->parked = false;
 		MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, MOUNT_PARK_PROPERTY, "Mount unparked");
+		indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 	}
 }
 

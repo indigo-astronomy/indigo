@@ -75,7 +75,7 @@ static void position_timer_callback(indigo_device *device) {
 				MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 				MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parked");
+				indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 			} else if (PRIVATE_DATA->going_home) {
 				PRIVATE_DATA->going_home = false;
 				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
@@ -252,7 +252,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(MOUNT_PARK_PROPERTY, property, false);
 		if (MOUNT_PARK_PARKED_ITEM->sw.value && !(PRIVATE_DATA->parking || PRIVATE_DATA->parked)) {
 			MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parking...");
+			indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = fmod(indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) - (PRIVATE_DATA->ha = MOUNT_PARK_POSITION_HA_ITEM->number.value) + 24, 24);
 			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = MOUNT_PARK_POSITION_DEC_ITEM->number.value;
 			indigo_translated_to_raw(device, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target, &MOUNT_RAW_COORDINATES_RA_ITEM->number.target, &MOUNT_RAW_COORDINATES_DEC_ITEM->number.target);
@@ -269,7 +269,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 			MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Unparked");
+			indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 			PRIVATE_DATA->parking = false;
 			PRIVATE_DATA->parked = false;
 		}
@@ -280,7 +280,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		if (MOUNT_HOME_ITEM->sw.value) {
 			MOUNT_HOME_ITEM->sw.value = false;
 			MOUNT_HOME_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, MOUNT_HOME_PROPERTY, "Going home...");
+			indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
 			time_t utc = indigo_get_mount_utc(device);
 			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = fmod(indigo_lst(&utc, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) - (PRIVATE_DATA->ha = MOUNT_HOME_POSITION_HA_ITEM->number.value) + 24, 24);
 			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = MOUNT_HOME_POSITION_DEC_ITEM->number.value;

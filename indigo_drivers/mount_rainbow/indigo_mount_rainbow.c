@@ -168,14 +168,14 @@ static void rainbow_reader(indigo_device *device) {
 		}
 		if (!strcmp(response, ":CHO#")) {
 			MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parked");
+			indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_coordinates(device, NULL);
 			continue;
 		}
 		if (!strncmp(response, ":CH", 3)) {
 			MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Park failed");
+			indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_coordinates(device, NULL);
 			continue;
@@ -391,7 +391,7 @@ static void mount_connect_callback(indigo_device *device) {
 static void mount_park_callback(indigo_device *device) {
 	MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
 	rainbow_command(device, ":Ch#", NULL);
-	indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parking");
+	indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 }
 
 static void mount_geographic_coordinates_callback(indigo_device *device) {

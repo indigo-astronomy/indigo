@@ -494,7 +494,7 @@ static void mount_park_callback(indigo_device *device) {
 		}
 		break;
 	}
-	indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parked");
+	indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
@@ -745,7 +745,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			indigo_set_timer(device, 0, mount_park_callback, NULL);
 		}
 		if (parked && MOUNT_PARK_UNPARKED_ITEM->sw.value) {
-			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Unparked");
+			indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
