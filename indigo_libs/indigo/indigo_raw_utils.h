@@ -126,10 +126,10 @@ INDIGO_EXTERN indigo_result indigo_calculate_drift(const indigo_frame_digest *re
 INDIGO_EXTERN indigo_result indigo_delete_frame_digest(indigo_frame_digest *fdigest);
 
 // Proportional-Integral guiding algorithm.
-INDIGO_EXTERN double indigo_guider_pi_response(double p_gain, double i_gain, double guide_cycle_time, double drift, double avg_drift);
+INDIGO_EXTERN double indigo_guider_pi_response(double p_gain, double i_gain, double guide_cycle_time, double min_move, double drift, double avg_drift);
 
 // Hysteresis guiding algorithm.
-INDIGO_EXTERN double indigo_guider_hysteresis_response(double aggressiveness, double hysteresis, double drift, double *prev_output);
+INDIGO_EXTERN double indigo_guider_hysteresis_response(double aggressiveness, double hysteresis, double min_move, double drift, double *prev_output);
 
 // Linear Trend guiding algorithm.
 INDIGO_EXTERN void indigo_guider_linear_trend_push(double drift, indigo_linear_trend_history *history);

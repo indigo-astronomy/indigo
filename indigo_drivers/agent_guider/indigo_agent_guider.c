@@ -1646,14 +1646,14 @@ static bool guide(indigo_device *device) {
 			}
 			double correction_ra = 0, correction_dec = 0;
 			double max_safe_correction = AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value * SAFE_RADIUS_FACTOR;
-			if (fabs(drift_ra) > min_error) {
-				if (AGENT_GUIDER_CORRECTION_MODE_RA_PI_ITEM->sw.value) {
-					correction_ra = indigo_guider_pi_response(AGENT_GUIDER_SETTINGS_AGG_RA_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_I_GAIN_RA_ITEM->number.value, AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value + AGENT_GUIDER_SETTINGS_DELAY_ITEM->number.value, drift_ra, avg_drift_ra);
-				} else if (AGENT_GUIDER_CORRECTION_MODE_RA_HYSTERESIS_ITEM->sw.value) {
-					correction_ra = indigo_guider_hysteresis_response(AGENT_GUIDER_SETTINGS_HYSTERESIS_AGG_RA_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_HYSTERESIS_HIST_RA_ITEM->number.value / 100, drift_ra, &DEVICE_PRIVATE_DATA->hysteresis_prev_drift_ra);
-				} else {
-					correction_ra = indigo_guider_linear_trend_response(AGENT_GUIDER_SETTINGS_LINEAR_TREND_AGG_RA_ITEM->number.value / 100, min_error, drift_ra, &DEVICE_PRIVATE_DATA->trend_ra);
-				}
+			if (AGENT_GUIDER_CORRECTION_MODE_RA_PI_ITEM->sw.value) {
+				correction_ra = indigo_guider_pi_response(AGENT_GUIDER_SETTINGS_AGG_RA_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_I_GAIN_RA_ITEM->number.value, AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value + AGENT_GUIDER_SETTINGS_DELAY_ITEM->number.value, min_error, drift_ra, avg_drift_ra);
+			} else if (AGENT_GUIDER_CORRECTION_MODE_RA_HYSTERESIS_ITEM->sw.value) {
+				correction_ra = indigo_guider_hysteresis_response(AGENT_GUIDER_SETTINGS_HYSTERESIS_AGG_RA_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_HYSTERESIS_HIST_RA_ITEM->number.value / 100, min_error, drift_ra, &DEVICE_PRIVATE_DATA->hysteresis_prev_drift_ra);
+			} else {
+				correction_ra = indigo_guider_linear_trend_response(AGENT_GUIDER_SETTINGS_LINEAR_TREND_AGG_RA_ITEM->number.value / 100, min_error, drift_ra, &DEVICE_PRIVATE_DATA->trend_ra);
+			}
+			if (correction_ra != 0) {
 				/* Limit correction_ra, so that we will not lose the stars in the slection if we apply it and let the next cycle complete complete it */
 				if ((AGENT_GUIDER_DETECTION_SELECTION_ITEM->sw.value || AGENT_GUIDER_DETECTION_WEIGHTED_SELECTION_ITEM->sw.value) && (fabs(correction_ra) > max_safe_correction)) {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RA correction = %.4fpx will lose stars with radius = %.2fpx, reduced RA correction = %.4fpx", correction_ra, AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value, copysign(1.0, correction_ra) * max_safe_correction);
@@ -1669,16 +1669,16 @@ static bool guide(indigo_device *device) {
 					correction_ra = 0;
 				}
 			}
-			if (fabs(drift_dec) > min_error) {
-				if (AGENT_GUIDER_CORRECTION_MODE_DEC_PI_ITEM->sw.value) {
-					correction_dec = indigo_guider_pi_response(AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_I_GAIN_DEC_ITEM->number.value, AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value + AGENT_GUIDER_SETTINGS_DELAY_ITEM->number.value, drift_dec, avg_drift_dec);
-				} else if (AGENT_GUIDER_CORRECTION_MODE_DEC_HYSTERESIS_ITEM->sw.value) {
-					correction_dec = indigo_guider_hysteresis_response(AGENT_GUIDER_SETTINGS_HYSTERESIS_AGG_DEC_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_HYSTERESIS_HIST_DEC_ITEM->number.value / 100, drift_dec, &DEVICE_PRIVATE_DATA->hysteresis_prev_drift_dec);
-				} else if (AGENT_GUIDER_CORRECTION_MODE_DEC_RESIST_SWITCH_ITEM->sw.value) {
-					correction_dec = indigo_guider_resist_switch_response(AGENT_GUIDER_SETTINGS_RESIST_SWITCH_AGG_DEC_ITEM->number.value / 100, min_error, AGENT_GUIDER_SETTINGS_RESIST_SWITCH_FAST_THRSH_DEC_ITEM->number.value, &DEVICE_PRIVATE_DATA->resist_switch_dec);
-				} else {
-					correction_dec = indigo_guider_linear_trend_response(AGENT_GUIDER_SETTINGS_LINEAR_TREND_AGG_DEC_ITEM->number.value / 100, min_error, drift_dec, &DEVICE_PRIVATE_DATA->trend_dec);
-				}
+			if (AGENT_GUIDER_CORRECTION_MODE_DEC_PI_ITEM->sw.value) {
+				correction_dec = indigo_guider_pi_response(AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_I_GAIN_DEC_ITEM->number.value, AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value + AGENT_GUIDER_SETTINGS_DELAY_ITEM->number.value, min_error, drift_dec, avg_drift_dec);
+			} else if (AGENT_GUIDER_CORRECTION_MODE_DEC_HYSTERESIS_ITEM->sw.value) {
+				correction_dec = indigo_guider_hysteresis_response(AGENT_GUIDER_SETTINGS_HYSTERESIS_AGG_DEC_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_HYSTERESIS_HIST_DEC_ITEM->number.value / 100, min_error, drift_dec, &DEVICE_PRIVATE_DATA->hysteresis_prev_drift_dec);
+			} else if (AGENT_GUIDER_CORRECTION_MODE_DEC_RESIST_SWITCH_ITEM->sw.value) {
+				correction_dec = indigo_guider_resist_switch_response(AGENT_GUIDER_SETTINGS_RESIST_SWITCH_AGG_DEC_ITEM->number.value / 100, min_error, AGENT_GUIDER_SETTINGS_RESIST_SWITCH_FAST_THRSH_DEC_ITEM->number.value, &DEVICE_PRIVATE_DATA->resist_switch_dec);
+			} else {
+				correction_dec = indigo_guider_linear_trend_response(AGENT_GUIDER_SETTINGS_LINEAR_TREND_AGG_DEC_ITEM->number.value / 100, min_error, drift_dec, &DEVICE_PRIVATE_DATA->trend_dec);
+			}
+			if (correction_dec != 0) {
 				/* Limit correction_dec, so that we will not lose the stars in the slection if we apply it and let the next cycle complete complete it */
 				if ((AGENT_GUIDER_DETECTION_SELECTION_ITEM->sw.value || AGENT_GUIDER_DETECTION_WEIGHTED_SELECTION_ITEM->sw.value) && (fabs(correction_dec) > max_safe_correction)) {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dec correction = %.4fpx will lose stars with radius = %.2fpx, reduced Dec correction = %.4fpx", correction_dec, AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value, copysign(1.0, correction_dec) * max_safe_correction);
