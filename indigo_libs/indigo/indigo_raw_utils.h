@@ -128,7 +128,7 @@ extern double indigo_guider_linear_trend_response(double aggressiveness, double 
 
 // Resist Switch guiding algorithm.
 extern void indigo_guider_resist_switch_push(double drift, indigo_resist_switch_history *history);
-extern double indigo_guider_resist_switch_response(double aggressiveness, double min_move, double fast_switch_threshold, indigo_resist_switch_history *history);
+extern double indigo_guider_resist_switch_response(double aggressiveness, double fast_switch_threshold, double min_move, indigo_resist_switch_history *history);
 
 //RMSE focus related
 extern double indigo_contrast(indigo_raw_type raw_type, const void *data, const uint8_t *saturation_mask, const int width, const int height, bool *saturated);
