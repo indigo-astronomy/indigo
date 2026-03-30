@@ -2359,14 +2359,14 @@ void indigo_guider_resist_switch_push(double drift, indigo_resist_switch_history
 
 /* Parameters for indigo_guider_resist_switch_response():
  *   aggressiveness        - overall gain factor (0..1)
- *   min_move              - minimum drift magnitude to trigger any correction (pixels)
  *   fast_switch_threshold - if |drift| exceeds this AND the sign disagrees with the
  *                           currently established side, force an immediate side switch
  *                           by clearing history.  Set to 0 to disable.
+ *   min_move              - minimum drift magnitude to trigger any correction (pixels)
  *   history               - state maintained by the caller (zero-init at start of
  *                           every guiding session)
  */
-double indigo_guider_resist_switch_response(double aggressiveness, double min_move, double fast_switch_threshold, indigo_resist_switch_history *history) {
+double indigo_guider_resist_switch_response(double aggressiveness, double fast_switch_threshold, double min_move, indigo_resist_switch_history *history) {
 	int n = history->count;
 	if (n == 0) return 0.0;
 
