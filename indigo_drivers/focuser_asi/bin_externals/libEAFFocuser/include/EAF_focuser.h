@@ -406,8 +406,26 @@ EAF_ERROR_ERROR_STATE: focuser is in error state
 EAF_ERROR_REMOVED: focuser is removed
 
 ***************************************************************************/
-EAF_API	EAF_ERROR_CODE EAFStop(int ID); 
+EAF_API	EAF_ERROR_CODE EAFStop(int ID);
 
+/***************************************************************************
+Descriptions:
+Stop moving and wait for the focuser to stop.
+
+Paras:
+int ID: the ID of focuser
+int timeoutMs: timeout in milliseconds
+
+Return:
+EAF_ERROR_INVALID_ID: invalid ID value
+EAF_ERROR_CLOSED: not opened
+EAF_SUCCESS: operation succeeds
+EAF_ERROR_ERROR_STATE: focuser is in error state
+EAF_ERROR_REMOVED: focuser is removed
+EAF_ERROR_MOVING: focuser did not stop within timeoutMs
+
+***************************************************************************/
+EAF_API	EAF_ERROR_CODE EAFStopAndWait(int ID, int timeoutMs);
 
 /***************************************************************************
 Descriptions:
@@ -654,7 +672,7 @@ EAF_API	EAF_ERROR_CODE EAFClose(int ID);
 Descriptions:
 get version string, like "1, 4, 0"
 ***************************************************************************/
-EAF_API char* EAFGetSDKVersion();
+EAF_API const char* EAFGetSDKVersion();
 
 /***************************************************************************
 Descriptions:
