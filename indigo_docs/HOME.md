@@ -43,7 +43,7 @@
 - [Imager Autofocus](IMAGING_AF_TUNING.md)
 - [Polar Alignment](POLAR_ALIGNMENT.md)
 - [Plate Solving](PLATE_SOLVING.md)
-- [Guiding Modes](INDIGO_GUIDING_MODES.md)
+- [Guider Correction Modes](INDIGO_GUIDER_CORECTION_MODES.md)
 - [Guider Detection Modes](INDIGO_GUIDER_DETECTION_MODES.md)
 - [Guiding PI Controller Tuning](GUIDING_PI_CONTROLLER_TUNING.md)
 

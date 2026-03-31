@@ -15,7 +15,7 @@ INDIGO Guider Agent provides four drift-detection modes. The selected mode decid
 * **DONUTS**
 * **Centroid**
 
-This is separate from the drift-correction mode described in [INDIGO_GUIDING_MODES.md](INDIGO_GUIDING_MODES.md):
+This is separate from the drift-correction mode described in [INDIGO_GUIDER_CORECTION_MODES.md](INDIGO_GUIDER_CORECTION_MODES.md):
 
 * the **detection mode** measures the drift,
 * the **guiding mode** converts that measured drift into RA/Dec correction pulses.
@@ -69,7 +69,7 @@ This is the most general-purpose mode for ordinary guide stars.
 * **Slightly defocused stars** — Usually still works well as long as the star profile remains compact enough for stable centroiding.
 * **Single-star guiding** — Simple and predictable.
 * **Multi-star guiding with reasonably uniform star quality** — Works well when the chosen stars have similar SNR and stability.
-* **Typical PI guiding workflows** — A very natural pairing with **Proportional-Integral** in [INDIGO_GUIDING_MODES.md](INDIGO_GUIDING_MODES.md).
+* **Typical PI guiding workflows** — A very natural pairing with **Proportional-Integral** in [INDIGO_GUIDER_CORECTION_MODES.md](INDIGO_GUIDER_CORECTION_MODES.md).
 
 ### When Not to Use
 
@@ -121,7 +121,7 @@ Weighted Selection uses the same parameters as **Selection**:
 * **Slightly defocused stars** — Often still works well, especially when the selected stars remain distinct and reasonably compact.
 * **Noisy guide frames** — The weighting reduces the influence of marginal stars.
 * **Dense star fields** — Useful when a few strong stars are mixed with many weaker ones.
-* **Pairing with PI or Hysteresis** — Often a good combination when the mount is fine but the measurement itself is noisy. See [INDIGO_GUIDING_MODES.md](INDIGO_GUIDING_MODES.md).
+* **Pairing with PI or Hysteresis** — Often a good combination when the mount is fine but the measurement itself is noisy. See [INDIGO_GUIDER_CORECTION_MODES.md](INDIGO_GUIDER_CORECTION_MODES.md).
 
 ### When Not to Use
 
@@ -165,7 +165,7 @@ Because it is a global image-shift method, it needs the field pattern to remain 
 * **Frames with cosmetic defects** — Hot pixels, hot columns, and similar issues are less problematic.
 * **Wide star fields with many stars** — The global pattern can be very stable.
 * **Cases where manual star selection is inconvenient** — DONUTS can avoid babysitting a single star.
-* **Pairing with PI or Hysteresis** — Usually a sensible starting point from [INDIGO_GUIDING_MODES.md](INDIGO_GUIDING_MODES.md).
+* **Pairing with PI or Hysteresis** — Usually a sensible starting point from [INDIGO_GUIDER_CORECTION_MODES.md](INDIGO_GUIDER_CORECTION_MODES.md).
 
 ### When Not to Use
 
@@ -201,7 +201,7 @@ Centroid does not require star-selection parameters. It uses the whole frame.
 * **Lunar guiding**
 * **Planetary guiding**
 * **Other bright extended targets**
-* **Simple PI or Hysteresis correction workflows** — Usually the most natural pairing from [INDIGO_GUIDING_MODES.md](INDIGO_GUIDING_MODES.md).
+* **Simple PI or Hysteresis correction workflows** — Usually the most natural pairing from [INDIGO_GUIDER_CORECTION_MODES.md](INDIGO_GUIDER_CORECTION_MODES.md).
 
 ### When Not to Use
 
@@ -236,7 +236,7 @@ Detection modes and guiding modes solve different problems, so there is no singl
 Practical rule:
 
 * If the drift estimate itself looks unstable, first reconsider the **detection mode**.
-* If the drift estimate looks believable but the corrections overshoot or lag, reconsider the **guiding mode** in [INDIGO_GUIDING_MODES.md](INDIGO_GUIDING_MODES.md).
+* If the drift estimate looks believable but the corrections overshoot or lag, reconsider the **guiding mode** in [INDIGO_GUIDER_CORECTION_MODES.md](INDIGO_GUIDER_CORECTION_MODES.md).
 
 ---
 

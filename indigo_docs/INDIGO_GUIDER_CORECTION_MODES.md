@@ -42,7 +42,7 @@ The PI controller is described in detail in [GUIDING_PI_CONTROLLER_TUNING.md](GU
 In simplified form:
 
 ```math
-correction = -\left(P \cdot \text{drift} + I \cdot \text{avg\_drift} \cdot \text{guide\_cycle}\right)
+correction = -\\left(P \\cdot \\text{drift} + I \\cdot \\text{avg\\_drift} \\cdot \\text{guide\\_cycle}\\right)
 ```
 
 The P term is fast. The I term is slower, but it helps with steady trends such as residual periodic error or slow Dec drift.
@@ -77,11 +77,11 @@ The P term is fast. The I term is slower, but it helps with steady trends such a
 The Hysteresis controller blends the current drift with the previous controller output before computing the new correction:
 
 ```math
-blended = (1 - h) \cdot \text{drift} + h \cdot \text{prev\_output}
+blended = (1 - h) \\cdot \\text{drift} + h \\cdot \\text{prev\\_output}
 ```
 
 ```math
-correction = -\text{aggressiveness} \cdot \text{blended}
+correction = -\\text{aggressiveness} \\cdot \\text{blended}
 ```
 
 where $h$ is the **Hysteresis (%)** value expressed as a fraction from 0 to 1.
@@ -118,7 +118,7 @@ The Linear Trend controller keeps a short history of recent drift measurements a
 For a populated history, the internal correction is approximately:
 
 ```math
-correction = -\text{slope} \cdot N \cdot \text{aggressiveness}
+correction = -\\text{slope} \\cdot N \\cdot \\text{aggressiveness}
 ```
 
 where $N$ is the number of samples currently stored in the trend history.
