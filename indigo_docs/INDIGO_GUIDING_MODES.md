@@ -1,4 +1,4 @@
-# INDIGO Guider Agent - Guiding Modes
+# INDIGO Guider Agent - Drift Correction Modes
 
 Revision: 31.03.2026 (draft)
 
@@ -15,11 +15,18 @@ INDIGO Guider Agent provides four drift-correction modes. They can be selected i
 
 Each mode converts the measured guide-star drift into a correction pulse in a different way. No single mode is always best. The best choice depends on the mount mechanics, guide exposure, seeing, backlash, and the shape of the tracking error.
 
+These correction modes operate on drift measured by one of the guider detection modes described in [INDIGO_GUIDER_DETECTION_MODES.md](INDIGO_GUIDER_DETECTION_MODES.md). In short:
+
+* the **detection mode** decides how drift is measured from the image,
+* the **guiding mode** decides how that measured drift is converted into correction pulses.
+
 As a rule:
 
 * Start with **PI**.
 * Switch only when you have a clear reason.
 * Choose by **measured mount behavior**, not only by the mount's advertised drive type.
+
+If the guide graph looks poor, first decide whether the problem is a bad **measurement** of drift or a bad **response** to a good measurement. See [INDIGO_GUIDER_DETECTION_MODES.md](INDIGO_GUIDER_DETECTION_MODES.md) for the measurement side of that choice.
 
 ## Mode 1: Proportional-Integral (PI)
 
@@ -216,6 +223,8 @@ The table below gives **typical** recommendations. It is intentionally conservat
 
 ## Typical Starting Configurations
 
+The examples below assume an appropriate detection mode is already chosen. For that part of the setup, see [INDIGO_GUIDER_DETECTION_MODES.md](INDIGO_GUIDER_DETECTION_MODES.md).
+
 ### General use (well-polar-aligned mount, no obvious special issues)
 
 * **RA:** Proportional-Integral, aggressiveness 90%, Integral gain 0, Integral stack size 1
@@ -249,6 +258,13 @@ Refer to [GUIDING_PI_CONTROLLER_TUNING.md](GUIDING_PI_CONTROLLER_TUNING.md) for 
 * **Dec:** Proportional-Integral or Hysteresis
 
 Avoid **Resist Switch** on these mounts unless you have measured real Dec reversal deadband.
+
+---
+
+## See Also
+
+* [INDIGO_GUIDER_DETECTION_MODES.md](INDIGO_GUIDER_DETECTION_MODES.md) — how the guider measures drift from the image.
+* [GUIDING_PI_CONTROLLER_TUNING.md](GUIDING_PI_CONTROLLER_TUNING.md) — how to tune the PI controller in detail.
 
 ---
 

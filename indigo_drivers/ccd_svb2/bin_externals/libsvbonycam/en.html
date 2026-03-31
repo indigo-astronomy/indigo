@@ -7,7 +7,7 @@
 <body>
 <h1 align="center">Svbonycam API Manual</h1>
 <hr/><h1><font color="#0000FF">1. Version &amp; Platform</font></h1>
-<hr/><ul><li>Version: 59.30239.20251209</li></ul>
+<hr/><ul><li>Version: 59.31026.20260322</li></ul>
 <ul><li>Platform<ul>
       <li>Win32:<ul>
           <li>x64: Win7 or above</li>
@@ -61,9 +61,7 @@ The SDK zip file contains all of the necessary resources and information:</p>
 		 <li>It is recommended to use DPInst.exe to automatically install the driver. If you use NSIS to make the installation file, you can use a statement similar to the following:
 			<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>ExecWait '"$INSTDIR\drivers\x64\DPInst.exe" /SA /SW /PATH "$INSTDIR\drivers\x64"'</pre></td></tr></table></li>
 		</ol></blockquote></blockquote>
-		<blockquote>GigE: GigE Performance Driver (Win7 or above), is optional for gigabit cameras, recommended be installed and enabled for 10G cameras. Please use the command line (<b>Administrator mode</b>), cd to the directory where the .inf file is located, and execute the following statement to install (install.cmd). If there is an old version, need to uninstall the old version first, and then install the new version:<blockquote>
-			<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>Install:   netcfg.exe -v -l gigepdrv.inf -c s -i gigepdrv<br/>Uninstall: netcfg.exe -u gigepdrv</pre></td></tr></table>
-		</blockquote></blockquote>
+		<blockquote>GigE: GigE Performance Driver (Win7 or above)</blockquote>
 		</li></ul></li>
 </ul><ul><li>linux: For Linux
  	<ul><li>udev: 99-svbonycam.rules, udev rule file. Please see: <a href="http://reactivated.net/writing_udev_rules.html" target="_blank">http://reactivated.net/writing_udev_rules.html</a>
@@ -272,7 +270,7 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
 	The timeout is recommended for not less than (Exposure Time * 102% + 4 Seconds).
 	</blockquote>
 <h2><font color="#0000FF">g. Thread safe</font></h2>
-<p>We use a "neutral" policy (similar to C++ standard library), which means:</p>
+<p>We use a "thread-safety neutral" policy (similar to C++ standard library), which means:</p>
 <blockquote>
 <p>a) A camera object is thread-safe for reading from multiple threads. For example, given a camera object A, it is safe to read A from thread 1 and from thread 2 simultaneously.</p>
 <p>b) If a camera object is being written to by one thread, then all reads and writes to that object on the same or other threads must be protected. For example, given a camera object A, if thread 1 is writing to A, then thread 2 must be prevented from reading from or writing to A.</p>
@@ -310,7 +308,7 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
 	  </tr><tr>
         <td>E_ACCESSDENIED</td>
         <td>Permission denied</td>
-		<td>The program on Linux does not have permission to open the USB device, please enable udev rules file or run as root</td>
+		<td>Insufficient permissions. This may be blocked by system security policies; on Linux, USB devices often require additional permission configuration, which can be resolved by setting up udev rules or running with root privileges</td>
 		<td>0x80070005</td>
 	  </tr><tr>
         <td>E_INVALIDARG</td>
@@ -435,14 +433,14 @@ typedef struct {
     char     displayname[64];    /* display name: model name or user-defined name (if any and Svbonycam_EnumWithName, Svbonycam_EnumV2 always returns model name) */
     char     id[64];             /* camId */
 #endif
-    const SvbonycamModelV2* model;
+    const SvbonycamModelV2* model; /* Functionally equivalent to a global constant, remaining valid and unchanged throughout the lifetime of the process */
 } SvbonycamDeviceV2; /* device instance for enumerating */
 </pre></td></tr></table><br/>
 <div align="center"><table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0"><tr>
    <td width="8%">name</td>
    <td colspan="2">The name of this model</td>
    </tr><tr>
-   <td width="8%" rowspan="60">flag</td>
+   <td width="8%" rowspan="62">flag</td>
    <td colspan="2">Bitwise flag</td>
    </tr><tr>
    <td width="29%">SVBONYCAM_FLAG_CMOS</td>
@@ -504,6 +502,9 @@ typedef struct {
  </tr><tr>
    <td>SVBONYCAM_FLAG_RAW14</td>
    <td>SVBONYCAM_PIXELFORMAT_RAW14 Pixel format, RAW 14 bits</td>
+ </tr><tr>
+   <td>SVBONYCAM_FLAG_RAW14PACK</td>
+   <td>SVBONYCAM_PIXELFORMAT_RAW14PACK Pixel format, RAW 14 bits, packed</td>
  </tr><tr>
    <td>SVBONYCAM_FLAG_RAW16</td>
    <td>SVBONYCAM_PIXELFORMAT_RAW16 Pixel format, RAW 16 bits</td>
@@ -591,11 +592,14 @@ typedef struct {
     <td>SVBONYCAM_FLAG_GIGE</td>
     <td>1 Gigabit GigE</td>
   </tr><tr>
-    <td>SVBONYCAM_FLAG_10GIGE</td>
-    <td>10 Gigabit GigE</td>
+    <td>SVBONYCAM_FLAG_25GIGE</td>
+    <td>2.5 Gigabit GigE</td>
   </tr><tr>
     <td>SVBONYCAM_FLAG_5GIGE</td>
     <td>5 Gigabit GigE</td>
+  </tr><tr>
+    <td>SVBONYCAM_FLAG_10GIGE</td>
+    <td>10 Gigabit GigE</td>
   </tr><tr>
     <td>SVBONYCAM_FLAG_40GIGE</td>
     <td>40 Gigabit GigE</td>
@@ -674,10 +678,10 @@ typedef struct {
   <p><strong>Parameters:</strong></p>
   	<blockquote>
   		<p><a href="#camidsn">camId</a>: Svbonycam camera ID, enumerated by Svbonycam_EnumV2. <strong>If camId is NULL, Svbonycam_Open will open the first enumerated camera which connects to the computer. So, if we don't care about that multiple cameras connect to the computer simultaneously, Svbonycam_EnumV2 is optional, we can simply use NULL as the parameter.</strong></p>
-	<p>For <strong>USB, GigE, CameraLink or CXP</strong> camera, the camId can also be specified as (case sensitive):<br/>
+	<p>For <strong>USB, GigE, CameraLink or CXP</strong> camera, the camId can also be specified as (case sensitive, no spaces):<br/>
 		(a) "sn:xxxxxxxxxxxx" (Use SN, such as sn:ZP250212241204105), or<br/>
 		(b) "name:xxxxxxxxxxxx" (Use user-defined name, such as name:Camera1)</p>		
-  	<p>Moreover, for <strong>GigE</strong> camera, the camId can also be specified as (case sensitive):<br/>
+  	<p>Moreover, for <strong>GigE</strong> camera, the camId can also be specified as (case sensitive, no spaces):<br/>
 		(a) "ip:xxx.xxx.xxx.xxx" (Use IP address, such as ip:192.168.1.100), or<br/>
 		(b) "mac:xxxxxxxxxxxx" (Use MAC address, such as mac:d05f64ffff23) or</p>
 	</blockquote>
@@ -1689,16 +1693,16 @@ SVBONYCAM_PIXELFORMAT_RAW10PACK
       	<td>NA</td><td>NA</td>
       </tr><tr>
       	<td>SVBONYCAM_OPTION_GVCP_TIMEOUT</td><td>RW</td>
-      	<td>GVCP Timeout, millisecond, range: [3, 75]<br/>Unless in very special circumstances, generally no modification is required, just use the default value</td>
-      	<td>15</td><td>Yes</td>
+      	<td>GVCP Timeout, millisecond, range: [5, 150]<br/>Unless in very special circumstances, generally no modification is required, just use the default value</td>
+      	<td>15(wire)<br/>30(wireless)</td><td>Yes</td>
       </tr><tr>
       	<td>SVBONYCAM_OPTION_GVCP_RETRY</td><td>RW</td>
-      	<td>GVCP Retry, range: [2, 8]<br/>Unless in very special circumstances, generally no modification is required, just use the default value</td>
-      	<td>4</td><td>Yes</td>
+      	<td>GVCP Retry, range: [2, 16]<br/>Unless in very special circumstances, generally no modification is required, just use the default value</td>
+      	<td>4(wire)<br/>8(wireless)</td><td>Yes</td>
       </tr><tr>
       	<td>SVBONYCAM_OPTION_GVSP_WAIT_PERCENT</td><td>RW</td>
       	<td>GVSP wait percent: range = [0, 100]</td>
-      	<td>trigger mode: 100, realtime: 0, other: 1</td><td>Yes</td>
+      	<td>trigger mode: 100<br/>realtime: 0<br/>other: 1</td><td>Yes</td>
       </tr><tr>
       	<td>SVBONYCAM_OPTION_GIGETIMEOUT</td><td>RW</td>
       	<td>For GigE cameras, the application periodically sends heartbeat signals to the camera to keep the connection to the camera alive. If the camera doesn't receive heartbeat signals within the time period specified by the heartbeat timeout counter, the camera resets the connection. When the application is stopped by the debugger, the application cannot create the heartbeat signals.<br/>
@@ -2383,7 +2387,23 @@ public bool Snap(uint nResolutionIndex)
 <p>Most methods of the svbonycam class use <a href="https://github.com/java-native-access/jna" target="_blank">JNA</a> to call into the corresponding Svbonycam_xxxx functions of svbonycam.dll/so/dylib. So, the descriptions of the Svbonycam_xxxx function are also applicable for the corresponding java methods.</p>
 <p>Please reference errcheck in svbonycam.java, the original HRESULT return code is mapped to HRESULTException exception.</p>
 <p>Remark: (1) Download jna-*.jar from github; (2) Make sure svbonycam.dll/so/dylib is placed in the correct directory.</p>
-<hr/><h1><font color="#0000ff">8. Samples</font></h1><hr/>
+<hr/><h1><font color="#0000FF">8. GigE Camera</font></h1><hr/>
+<h2><font color="#0000FF">a. Enable <a href="https://en.wikipedia.org/wiki/Jumbo_frame">Jumbo Frames</a> on the network interface card (NIC). Using smaller packet sizes will result in lower performance.</font></h2>
+Enable Jumbo Frameson Windows:<br/>
+(1) start "Device Manager", then expand Network adapters. <a href="./images/devmgr.png">snapshot</a><br/>
+(2) Right click the network interface card and select "Properties"<br/>
+(3) Select the Advanced tab. Next, select "Jumbo Packet" in the Property box, and then select "9014 Bytes" (Different network card models may have slightly different value) for Value to the right. Click OK to save the change. <a href="./images/mtu.png">snapshot</a><br/>
+(4) Run the following command to view the network card MTU: <a href="./images/mtushow.png">snapshot</a><br/><table width="100%" border="0" bgcolor="#B0D0B0"><tr><td align="center"><pre>netsh interface ipv4 show subinterface</pre></td></tr></table>
+<h2><font color="#0000FF">b. GigE Performance Driver</font></h2>
+This driver is <strong>optional</strong>: not recommended for 1.0G cameras; recommended for 10G cameras.<br/>If you decide to install, please use the command line (<b>Administrator mode</b>), cd to the directory where the .inf file is located, and execute the following statement to install (install.cmd). If there is an old version, need to uninstall the old version first, and then install the new version:
+<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>Install:   netcfg.exe -v -l gigepdrv.inf -c s -i gigepdrv<br/>Uninstall: netcfg.exe -u gigepdrv</pre></td></tr></table>			
+<h2><font color="#0000FF">c. Firewall and NIC protocols</font></h2>
+(1) Recommend to disable the firewall for the NIC used by the network camera. Run in PowerShell (Administrator mode):<br/>
+<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>Disable firewall (NIC name "xx"):  Set-NetFirewallProfile -Name Private,Public,Domain -DisabledInterfaceAliases "xx"
+Restore all NIC: Set-NetFirewallProfile -Name Private,Public,Domain -DisabledInterfaceAliases @()</pre></td></tr></table>
+(2) Recommend to remove or disable irrelevant NIC protocols and drivers (such as the Npcap Packet Driver, QoS, LLDP, etc). In the most streamlined configuration, only the "Gige Performance Driver" and "TCP/IPv4" should remain enabled.
+<h2><font color="#0000FF">d. The automatic camera discovery process uses broadcast packets with the address 255.255.255.255. Please ensure that your system's security policies do not block network broadcasts.</font></h2>
+<hr/><h1><font color="#0000ff">9. Samples</font></h1><hr/>
 <div align="center"><table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0"><tr>
         <td width="14%" colspan="2">Name</td>
         <td width="8%">Platform</td>
@@ -2392,7 +2412,7 @@ public bool Snap(uint nResolutionIndex)
       </tr><tr>
 		<td colspan="2">demosimplest</td>
 		<td rowspan="12">Win32<br/>Linux<br/>macOS<br/>Android</td>
-		<td rowspan="23">C++</td><td rowspan="12">&nbsp;</td>
+		<td rowspan="24">C++</td><td rowspan="12">&nbsp;</td>
 		<td rowspan="12">console</td>
 		<td>simplest sample, about 70 lines of code. <a href="./images/demosimplest.png">snapshot</a>.</td>
 	  </tr><tr>
@@ -2430,12 +2450,15 @@ public bool Snap(uint nResolutionIndex)
 		<td>snap still raw image and save to *.raw files, about 140 lines of code</td>
 	  </tr><tr>
 		<td colspan="2">demoqt</td>
-		<td rowspan="2">Win32<br/>Linux<br/>macOS</td>
-		<td rowspan="2">Qt</td><td rowspan="18">GUI</td>
+		<td rowspan="3">Win32<br/>Linux<br/>macOS</td>
+		<td rowspan="3">Qt</td><td rowspan="19">GUI</td>
 		<td>Qt sample, <a href="./images/demoqt.png">snapshot</a>.<br/>Enumerate device, open device, video preview, (still) image capture, preview resolution, image save to file, etc. This sample use Pull Mode, StartPullModeWithCallback.</td>
 	  </tr><tr>
 		<td colspan="2">demotwoqt</td>
 		<td>Qt sample, <a href="./images/demotwoqt.png">snapshot</a>.<br/>Use two cameras simultaneously</td>
+	  </tr><tr>
+		<td colspan="2">demolinecam</td>
+		<td>Qt sample.<br/>line scan camera</td>
 	  </tr><tr>
 		<td colspan="2">democpp</td><td rowspan="9">Win32</td>
 		<td rowspan="6">ATL/<a href="http://sourceforge.net/projects/wtl" target="_blank">WTL</a></td>
@@ -2560,12 +2583,6 @@ public bool Snap(uint nResolutionIndex)
 		<td>Qt sample</td>
 	  </tr>
 </table></div>
-<hr/><h1><font color="#0000FF">10. Misc</font></h1><hr/>
-<h2><font color="#0000FF">a. <a id="mtu">Enable "Jumbo Frame" on Windows</a></font></h2>
-(1) start "Device Manager", then expand Network adapters. <a href="./images/devmgr.png">snapshot</a><br/>
-(2) Right click the network interface card and select "Properties"<br/>
-(3) Select the Advanced tab. Next, select "Jumbo Packet" in the Property box, and then select "9014 Bytes" (Different network card models may have slightly different value) for Value to the right. Click OK to save the change. <a href="./images/mtu.png">snapshot</a><br/>
-(4) Run the following command to view the network card MTU: <a href="./images/mtushow.png">snapshot</a><br/><table width="100%" border="0" bgcolor="#B0D0B0"><tr><td align="center"><pre>netsh interface ipv4 show subinterface</pre></td></tr></table>
 <hr/><h1><font color="#0000FF">10. Changelog</font></h1><hr/>
 <p>v59: Add RAW=-1 mode. Please see <a href="#rawo">here</a></p>
 <p>v58: Open the camera by sn, name (GigE: ip, mac)</p>

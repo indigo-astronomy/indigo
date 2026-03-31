@@ -1,7 +1,7 @@
 ﻿#ifndef __svbonycam_h__
 #define __svbonycam_h__
 
-/* Version: 59.30239.20251209 */
+/* Version: 59.31026.20260322 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -44,10 +44,8 @@
         (c) Exception: hardware binning.
 */
 
-#if defined(_WIN32)
-#ifndef _INC_WINDOWS
+#if defined(_WIN32) && (!defined(_INC_WINDOWS))
 #include <windows.h>
-#endif
 #endif
 
 #ifdef __cplusplus
@@ -114,7 +112,7 @@ extern "C" {
 #define E_UNEXPECTED        (HRESULT)(0x8000ffff) /* Catastrophic failure */ /* Remark: Generally indicates that the conditions are not met, such as calling put_Option setting some options that do not support modification when the camera is running, and so on */
 #define E_NOTIMPL           (HRESULT)(0x80004001) /* Not supported or not implemented */ /* Remark: This feature is not supported on this model of camera */
 #define E_NOINTERFACE       (HRESULT)(0x80004002)
-#define E_ACCESSDENIED      (HRESULT)(0x80070005) /* Permission denied */ /* Remark: The program on Linux does not have permission to open the USB device, please enable udev rules file or run as root */
+#define E_ACCESSDENIED      (HRESULT)(0x80070005) /* Permission denied */ /* Remark: Insufficient permissions. This may be blocked by system security policies; on Linux, USB devices often require additional permission configuration, which can be resolved by setting up udev rules or running with root privileges */
 #define E_OUTOFMEMORY       (HRESULT)(0x8007000e) /* Out of memory */
 #define E_INVALIDARG        (HRESULT)(0x80070057) /* One or more arguments are not valid */
 #define E_POINTER           (HRESULT)(0x80004003) /* Pointer that is not valid */ /* Remark: Pointer is NULL */
@@ -194,6 +192,8 @@ typedef struct Svbonycam_t { int unused; } *HSvbonycam;
 #define SVBONYCAM_FLAG_USB32                0x0400000000000000  /* USB 3.2 Gen 2 */
 #define SVBONYCAM_FLAG_USB32_OVER_USB30     0x0800000000000000  /* USB 3.2 Gen 2 camera connected to usb3.0 port */
 #define SVBONYCAM_FLAG_LINESCAN             0x1000000000000000  /* line scan camera */
+#define SVBONYCAM_FLAG_25GIGE               0x2000000000000000  /* 2.5 Gigabit GigE */
+#define SVBONYCAM_FLAG_RAW14PACK            0x4000000000000000  /* pixel format, RAW 14bits packed */
 
 #define SVBONYCAM_EXPOGAIN_DEF              100     /* exposure gain, default value */
 #define SVBONYCAM_EXPOGAIN_MIN              100     /* exposure gain, minimum value */
@@ -275,6 +275,22 @@ typedef struct Svbonycam_t { int unused; } *HSvbonycam;
 #define SVBONYCAM_HDR_THRESHOLD_MIN         0
 #define SVBONYCAM_HDR_THRESHOLD_MAX         4094
 #define SVBONYCAM_CDS_MIN                   0       /* Correlated Double Sampling */
+#define SVBONYCAM_ANTIBLOOMING_MIN          0       /* Anti Blooming */
+#define SVBONYCAM_GVCP_RETRY_DEF            4       /* GVCP Retry */
+#define SVBONYCAM_GVCP_RETRY_MIN            2
+#define SVBONYCAM_GVCP_RETRY_MAX            20
+#define SVBONYCAM_GVCP_TIMEOUT_DEF          40      /* GVCP Timeout */
+#define SVBONYCAM_GVCP_TIMEOUT_MIN          20
+#define SVBONYCAM_GVCP_TIMEOUT_MAX          200
+#define SVBONYCAM_GVSP_WAIT_PERCENT_DEF     1       /* GVSP wait percent */
+#define SVBONYCAM_GVSP_WAIT_PERCENT_MIN     0
+#define SVBONYCAM_GVSP_WAIT_PERCENT_MAX     100
+#define SVBONYCAM_FRONTEND_MAX              1024    /* frontend frame buffer deque length */
+#define SVBONYCAM_FRONTEND_DEF              4
+#define SVBONYCAM_FRONTEND_MIN              2
+#define SVBONYCAM_BACKEND_MAX               1024    /* backend frame buffer deque length */
+#define SVBONYCAM_BACKEND_DEF               3
+#define SVBONYCAM_BACKEND_MIN               2
 
 typedef struct {
     unsigned    width;
@@ -309,11 +325,11 @@ typedef struct {
     char                  displayname[64];    /* display name: model name or user-defined name (if any and Svbonycam_EnumWithName) */
     char                  id[64];             /* unique and opaque id of a connected camera, for Svbonycam_Open */
 #endif
-    const SvbonycamModelV2* model;
+    const SvbonycamModelV2* model;              /* Functionally equivalent to a global constant, remaining valid and unchanged throughout the lifetime of the process */
 } SvbonycamDeviceV2; /* device instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 59.30239.20251209
+    get the version of this dll/so/dylib, which is: 59.31026.20260322
 */
 #if defined(_WIN32)
 SVBONYCAM_API(const wchar_t*)   Svbonycam_Version();
@@ -336,10 +352,10 @@ SVBONYCAM_API(unsigned) Svbonycam_EnumV2(SvbonycamDeviceV2 arr[SVBONYCAM_MAX]);
 
 /* use the camId of SvbonycamDeviceV2, which is enumerated by Svbonycam_EnumV2.
     if camId is NULL, Svbonycam_Open will open the first enumerated camera.
-    For USB, GigE, CameraLink or CXP camera, the camId can also be specified as (case sensitive):
+    For USB, GigE, CameraLink or CXP camera, the camId can also be specified as (case sensitive, no spaces):
         (a) "sn:xxxxxxxxxxxx" (Use SN, such as sn:ZP250212241204105), or
         (b) "name:xxxxxx" (Use user-defined name, such as name:Camera1)
-    Moreover, for GigE camera, the camId can also be specified as (case sensitive):
+    Moreover, for GigE camera, the camId can also be specified as (case sensitive, no spaces):
         (a) "ip:xxx.xxx.xxx.xxx" (Use IP address, such as ip:192.168.1.100), or
         (b) "mac:xxxxxxxxxxxx" (Use MAC address, such as mac:d05f64ffff23)
     For the issue of opening the camera on Android, please refer to the documentation
@@ -1177,10 +1193,10 @@ SVBONYCAM_API(HRESULT)  Svbonycam_get_Option(HSvbonycam h, unsigned iOption, int
 #define SVBONYCAM_OPTION_CDS                    0x6e       /* [RW] Correlated Double Sampling: 0~max (SVBONYCAM_OPTION_CDS_MAX) */
 #define SVBONYCAM_OPTION_LOW_POWER_EXPOTIME     0x6f       /* [RW] Low Power Consumption: Enable if exposure time is greater than the set value */
 #define SVBONYCAM_OPTION_ZERO_OFFSET            0x70       /* [RW] Sensor output offset to zero: 0 => disable, 1 => eanble; default: 0 */
-#define SVBONYCAM_OPTION_GVCP_TIMEOUT           0x71       /* [RW] GVCP Timeout: millisecond, range = [3, 75], default: 15
+#define SVBONYCAM_OPTION_GVCP_TIMEOUT           0x71       /* [RW] GVCP Timeout: millisecond, range = [5, 150], default: 15(wire), 30(wireless)
                                                               Unless in very special circumstances, generally no modification is required, just use the default value
                                                          */
-#define SVBONYCAM_OPTION_GVCP_RETRY             0x72       /* [RW] GVCP Retry: range = [2, 8], default: 4
+#define SVBONYCAM_OPTION_GVCP_RETRY             0x72       /* [RW] GVCP Retry: range = [2, 16], default: 4(wire), 8(wireless)
                                                               Unless in very special circumstances, generally no modification is required, just use the default value
                                                          */
 #define SVBONYCAM_OPTION_GVSP_WAIT_PERCENT      0x73       /* [RW] GVSP wait percent: range = [0, 100], default = (trigger mode: 100, realtime: 0, other: 1) */
@@ -1239,6 +1255,7 @@ SVBONYCAM_API(HRESULT)  Svbonycam_get_Option(HSvbonycam h, unsigned iOption, int
 #define SVBONYCAM_PIXELFORMAT_HDR12HL           0x11   /* HDR, Bitdepth: 12, Conversion Gain: High + Low */
 #define SVBONYCAM_PIXELFORMAT_HDR14HL           0x12   /* HDR, Bitdepth: 14, Conversion Gain: High + Low */
 #define SVBONYCAM_PIXELFORMAT_RAW10PACK         0x13
+#define SVBONYCAM_PIXELFORMAT_RAW14PACK         0x14
 
 /*
 * cmd: input
@@ -1445,6 +1462,9 @@ SVBONYCAM_API(HRESULT)  Svbonycam_CtiEnable(PSVBONYCAM_HOTPLUG funHotPlug, void*
 #else
 SVBONYCAM_API(HRESULT)  Svbonycam_CtiEnable(PSVBONYCAM_HOTPLUG funHotPlug, void* ctxHotPlug, const char* ctiPath[]);
 #endif
+
+SVBONYCAM_API(HRESULT) Svbonycam_readPtr(HSvbonycam h, const char* key, int len, void* pData);
+SVBONYCAM_API(HRESULT) Svbonycam_writePtr(HSvbonycam h, const char* key, int len, const void* pData);
 
 /*
  filePath:
@@ -1818,7 +1838,7 @@ SVBONYCAM_API(HRESULT)  Svbonycam_get_VignetAmountInt(HSvbonycam h, int* nAmount
 SVBONYCAM_API(HRESULT)  Svbonycam_put_VignetMidPointInt(HSvbonycam h, int nMidPoint);
 SVBONYCAM_API(HRESULT)  Svbonycam_get_VignetMidPointInt(HSvbonycam h, int* nMidPoint);
 
-/* obsolete flags */
+/* obsolete pixel format alias */
 #define SVBONYCAM_FLAG_BITDEPTH10    SVBONYCAM_FLAG_RAW10  /* pixel format, RAW 10bits */
 #define SVBONYCAM_FLAG_BITDEPTH12    SVBONYCAM_FLAG_RAW12  /* pixel format, RAW 12bits */
 #define SVBONYCAM_FLAG_BITDEPTH14    SVBONYCAM_FLAG_RAW14  /* pixel format, RAW 14bits */
