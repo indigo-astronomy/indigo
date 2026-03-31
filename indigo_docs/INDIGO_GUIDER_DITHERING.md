@@ -79,7 +79,7 @@ x_k = x_{\text{spiral},k} - d_x \cdot U_x, \qquad
 y_k = y_{\text{spiral},k} - d_y \cdot U_y
 ```
 
-where $(x_{\text{spiral},k},\, y_{\text{spiral},k})$ is the deterministic spiral position for the $k$-th dither, $(d_x, d_y)$ are the direction signs for the current quadrant, and $U_x, U_y \sim \mathrm{Uniform}(0,\, 1/1.1)$.
+where $(x_{\text{spiral},k}, y_{\text{spiral},k})$ is the deterministic spiral position for the $k$-th dither, $(d_x, d_y)$ are the direction signs for the current quadrant, and $U_x, U_y \sim \mathrm{Uniform}(0, 1/1.1)$.
 
 This gives:
 
@@ -109,8 +109,8 @@ Over a long imaging session the positions are well spread across the full dither
 Each dither offset is drawn independently and uniformly:
 
 ```math
-x_k \sim \mathrm{Uniform}\!\left(-A,\, +A\right), \qquad
-y_k \sim \mathrm{Uniform}\!\left(-A,\, +A\right)
+x_k \sim \mathrm{Uniform}\!\left(-A, +A\right), \qquad
+y_k \sim \mathrm{Uniform}\!\left(-A, +A\right)
 ```
 
 where $A$ is the **Dithering max amount (px)**. There is no memory of previous positions — each dither is independent of the last.
