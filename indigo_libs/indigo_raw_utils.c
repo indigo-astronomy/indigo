@@ -2340,6 +2340,9 @@ double indigo_guider_linear_trend_response(double aggressiveness, double min_mov
 	if (n == 0) return 0.0;
 
 	double correction = 0.0;
+	double slope = 0.0;
+	double response = 0.0;
+
 	if (fabs(drift) < min_move) {
 		history->rejects = 0;
 		goto done;
@@ -2351,7 +2354,6 @@ double indigo_guider_linear_trend_response(double aggressiveness, double min_mov
 	}
 
 	double effective_min_move = min_move > 0 ? min_move : INDIGO_LINEAR_TREND_DEFAULT_MIN_MOVE;
-	double slope = 0;
 
 	if (n < 4) {
 		correction = drift * aggressiveness;
@@ -2390,7 +2392,7 @@ double indigo_guider_linear_trend_response(double aggressiveness, double min_mov
 	}
 
 done:
-	double response = -correction;
+	response = -correction;
 
 	INDIGO_DEBUG(indigo_debug("%s(): aggressiveness=%.4f response=%.4f drift=%.4f slope=%.4f samples=%d rejects=%d", __FUNCTION__, aggressiveness, response, drift, slope, n, history->rejects));
 	return response;
@@ -2434,6 +2436,7 @@ double indigo_guider_resist_switch_response(double aggressiveness, double fast_s
 	double drift = history->buf[n - 1];
 	int drift_sign = (drift > 0) ? 1 : (drift < 0) ? -1 : 0;
 	double result = drift;
+	double response = 0.0;
 	int direction_votes = 0;
 
 	if (fabs(drift) < min_move) {
@@ -2490,7 +2493,7 @@ double indigo_guider_resist_switch_response(double aggressiveness, double fast_s
 	}
 
 done:
-	double response = (result == 0.0) ? 0.0 : -aggressiveness * result;
+	response = (result == 0.0) ? 0.0 : -aggressiveness * result;
 	INDIGO_DEBUG(indigo_debug("%s(): aggressiveness=%.4f min_move=%.4f fast_thresh=%.4f drift=%.4f current_side=%d direction_votes=%d response=%.4f",
 	             __FUNCTION__, aggressiveness, min_move, fast_switch_threshold, drift,
 	             history->current_side, direction_votes, response));
