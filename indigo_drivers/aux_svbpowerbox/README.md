@@ -19,7 +19,7 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_aux_svbpowerbox
 
-## Status: Under Development
+## Status: Stable
 
 Developped & tested with a physical device:
 * SVBONY PowerBox SV241 Pro
