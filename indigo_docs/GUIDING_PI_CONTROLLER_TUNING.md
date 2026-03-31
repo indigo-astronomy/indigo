@@ -18,7 +18,7 @@ to get the best performance one may need to tweak them.
 Here we will look only in *Proportional Integral* controller settings. Which are described in the Guider Angent readme (link here).
 
 * **RA Proportional aggressivity** and **Dec Proportional aggressivity** - They are the only parameters that are related to *P controller*. In most of the cases those two parameters will be enough to set. They represent how many percent of the last measured drift will be corrected.
-The **Proportional aggressivity** is your primary term for controlling the error. this directly scales your error, so with a small **Proportional aggressivity** the controller will make small attempts to minimize the error, and with a large **Proportional aggressivity** the controller will make a larger attempt. If the **Proportional aggressivity** is too small you might never minimize the error and not be able to respond to changes affecting your system, and if it is too large you can have an unstable behavior and severely overshoot the desired value. A good initial value is ~90% for both RA and Dec.
+The **Proportional aggressivity** is your primary term for controlling the error. this directly scales your error, so with a small **Proportional aggressivity** the controller will make small attempts to minimize the error, and with a large **Proportional aggressivity** the controller will make a larger attempt. If the **Proportional aggressivity** is too small you might never minimize the error and not be able to respond to changes affecting your system, and if it is too large you can have an unstable behavior and severely overshoot the desired value. A good initial value is ~80% for both RA and Dec.
 
 * **RA Integral gain** and **Dec Integral gain** - These are the gains of the integral error. Or how strong should be the correction for the residuals  of the systematic (Integral) errors like Periodic error or bad polar alignment. Setting **RA Integral gain** or **Dec Integral gain** to 0 means P-only controller for Right Ascension or Declination respectively. If *PI controller* is needed a good value to start with would be ~0.5 for both RA and Dec. Please note that 1 does not correspond to 100% of the systematic error, there are many reasons for that. For example **Proportional aggressivity** have already corrected most of the systematic error. So think of it as how strong the Integral component should react to the residual errors (after Proportional correction) accumulated over time. Also note that this term is often the cause of instability in your controller, so be conservative with it.
 
@@ -30,7 +30,7 @@ Default value is 1 which means that pure *P controller* is used, but if a *PI co
 ## Tuning the Drift Controller (P-only controller)
 
 1. Set **RA Integral gain** and **Dec Integral gain** to 0 and **Integral stack size** to 1.
-(P-only Controller). And set **RA Proportional aggressivity** and **Dec Proportional aggressivity** to ~90%.
+(P-only Controller). And set **RA Proportional aggressivity** and **Dec Proportional aggressivity** to ~80%.
 
 2. Start the guiding and after it settles set dithering offset to X (or Y) of several pixels (5 or 6 px is OK) to simulate a bump in the guiding as shown on the screenshot:
 

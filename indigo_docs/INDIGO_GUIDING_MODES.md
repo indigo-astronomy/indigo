@@ -42,7 +42,7 @@ The P term is fast. The I term is slower, but it helps with steady trends such a
 
 ### Parameters
 
-* **RA Proportional aggressiveness (%)** and **Dec Proportional aggressiveness (%)** — Fraction of the measured drift corrected immediately. Default: 90%.
+* **RA Proportional aggressiveness (%)** and **Dec Proportional aggressiveness (%)** — Fraction of the measured drift corrected immediately. Default: 80%.
 * **RA Integral gain** and **Dec Integral gain** — Strength of the integral term. Setting either one to 0 disables the I term for that axis. Default: 0.5.
 * **Integral stack size (frames)** — Number of frames used to build the drift average for the I term. If this is set to 1, the controller behaves as pure P regardless of the gain values. Default: 1.
 
