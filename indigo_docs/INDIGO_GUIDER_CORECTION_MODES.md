@@ -8,7 +8,7 @@ e-mail: *rumenastro@gmail.com*
 
 ## Overview
 
-INDIGO Guider Agent provides four drift-correction modes. They can be selected independently for the Right Ascension and Declination axes.
+INDIGO Guider Agent provides four drift correction modes. They can be selected independently for the Right Ascension and Declination axes.
 
 * **RA** supports: **Proportional-Integral**, **Hysteresis**, and **Linear Trend**.
 * **Dec** supports: **Proportional-Integral**, **Hysteresis**, **Linear Trend**, and **Resist Switch**.

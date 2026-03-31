@@ -8,7 +8,7 @@ e-mail: *rumenastro@gmail.com*
 
 ## Overview
 
-INDIGO Guider Agent provides four drift-detection modes. The selected mode decides **how the drift is measured** from the guide frames.
+INDIGO Guider Agent provides four drift detection modes. The selected mode decides **how the drift is measured** from the guide frames.
 
 * **Selection**
 * **Weighted Selection**
@@ -17,13 +17,13 @@ INDIGO Guider Agent provides four drift-detection modes. The selected mode decid
 
 This is separate from the drift-correction mode described in [INDIGO_GUIDER_CORECTION_MODES.md](INDIGO_GUIDER_CORECTION_MODES.md):
 
-* the **detection mode** measures the drift,
-* the **guiding mode** converts that measured drift into RA/Dec correction pulses.
+* the **drift detection mode** measures the drift,
+* the **drift correction mode** converts that measured drift into RA/Dec correction pulses.
 
 In practice:
 
-* Choose the **detection mode** by the **shape of the target and the image content**.
-* Choose the **guiding mode** by the **mount behavior**.
+* Choose the **drift detection mode** by the **shape of the target and the image content**.
+* Choose the **drift correction mode** by the **mount behavior**.
 * If the guide graph is poor, decide first whether the problem is **bad drift measurement** or **bad correction behavior**.
 
 As a rule:
