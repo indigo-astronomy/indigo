@@ -43,14 +43,11 @@ Selection measures the centroid of one or more explicitly selected stars. For ea
 
 If multiple stars are selected, the guider forms a combined drift estimate from their measured motion. During guiding it rejects outliers before averaging the remaining drifts.
 
-In simplified form for multi-star guiding:
+In simplified form for multi-star guiding, where $N$ is the number of accepted (non-outlier) stars:
 
 ```math
-\Delta x \approx \text{average of valid star drifts in } x
-```
-
-```math
-\Delta y \approx \text{average of valid star drifts in } y
+\Delta x \approx \frac{1}{N} \sum_{i=1}^{N} \Delta x_i, \qquad
+\Delta y \approx \frac{1}{N} \sum_{i=1}^{N} \Delta y_i
 ```
 
 This is the most general-purpose mode for ordinary guide stars.
