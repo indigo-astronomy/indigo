@@ -39,12 +39,16 @@
 - [Multi-instance Support](MULTI_INSTANCE_SUPPORT.md)
 - [Device Access Control and Locking](INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md)
 
-## Misconceptions
+## Indigo Configuration
 - [Imager Autofocus](IMAGING_AF_TUNING.md)
 - [Polar Alignment](POLAR_ALIGNMENT.md)
 - [Plate Solving](PLATE_SOLVING.md)
-- [Guiding Misconceptions](GUIDING_MISCONCEPTIONS.md)
+- [Guiding Modes](INDIGO_GUIDING_MODES.md)
+- [Guider Detection Modes](INDIGO_GUIDER_DETECTION_MODES.md)
 - [Guiding PI Controller Tuning](GUIDING_PI_CONTROLLER_TUNING.md)
+
+## Misconceptions
+- [Guiding Misconceptions](GUIDING_MISCONCEPTIONS.md)
 
 ## Others
 - [Change Log](../CHANGELOG.md)

@@ -23,32 +23,23 @@ indigo_server indigo_agent_guider indigo_ccd_... indigo_guider_...
 # Notes
 ## Guiding Setup
 ### Drift Detection Algorithms
-There are 3 algorithms to detect the tracking drift:
-1. **Donuts** - This mode uses the entire image and all the stars on the image to detect the drift.
-Because of that it has a "built in" scintillation resilience. It can operate nicely with highly
-de-focused stars hence the name Donuts. It will also work nicely with frames with hot pixels,
-hot lines and hot columns. However the limitation is that it may not work well if there are
-bright stars on the border of the frame. In this case **Selection** mode
-should be used. **Donuts** has one configuration parameter *Edge Clipping* (in pixels) and should
-be used if the edge of the frame contains artifacts or dark areas.
-**Donts** drift detection may be susceptible to bad polar alignment, it may lead to small drifts due to the field rotation.
+INDIGO Guider Agent currently provides 4 drift-detection modes:
 
-2. **Selection** - It uses the centroid of a small area around the star with
-a specified radius to detect the drift. In multi-star mode an average drift from a given number of stars is used.
-This is universal method that should work in most of the cases. It is resilient to hot pixels, hot lines and hot columns.
-**Selection** has several configuration parameters, selection center given by *Selection X*, *Selection Y* and *Radius* all in pixels. If single star is used, it has one additional parameter - *Subframe* used for better performance and lower network load. This is an integer number meaning how many radii
-around the selection should be downloaded from the camera. It has two main benefits - with a remote setup
-it decreases the network load and it also speeds up the image download time from the camera.
-In Multi-star mode **Selection** algorithm may be susceptible to bad polar alignment, it may lead to small drifts due to the field rotation.
+1. **Selection** - local centroid tracking of one or more selected guide stars. This is the default and the best starting point for most ordinary star-guiding setups.
+2. **Weighted Selection** - similar to **Selection**, but multi-star drift is combined with SNR-based weights so stronger stars influence the result more than weaker stars.
+3. **Donuts** - full-frame pattern tracking, very useful with defocused stars and generally tolerant of hot pixels and similar cosmetic defects.
+4. **Centroid** - full-frame centroid tracking for bright extended targets like the Moon or planets. It is **not** intended for ordinary star guiding.
 
-4. **Centroid** - This is a full frame centroid, useful for bright objects that occupy
-large portion of the frame like Moon and planets. It will **not work** with stars.
+For the full description, parameters, strengths, limitations, and recommended pairings with guiding modes, see:
 
-For better performance sub-frames can be used with all three drift detection modes.
-However with **Selection** algorithm, a sub-frame around the current selection can
-be automatically used by the agent.
+* [INDIGO Guider Agent - Detection Modes](../../indigo_docs/INDIGO_GUIDER_DETECTION_MODES.md)
+* [INDIGO Guider Agent - Guiding Modes](../../indigo_docs/INDIGO_GUIDING_MODES.md)
+
+For better performance sub-frames can be used with the star-selection based modes, and with **Selection** / **Weighted Selection** the agent can automatically maintain a sub-frame around the current selection.
 
 ### Drift Controller Settings
+
+The guider also provides several correction modes. See [INDIGO Guider Agent - Guiding Modes](../../indigo_docs/INDIGO_GUIDING_MODES.md) for the current overview and recommendations.
 
 Indigo_agent_guider uses *Proportional-Integral* (*PI*) controller to correct for the telescope tracking errors. *Proportional* or *P*
 means that it will attempt to correct for any random errors like gusts of wind, random bumps etc. *Integral* or *I* means
