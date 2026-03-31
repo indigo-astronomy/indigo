@@ -33,13 +33,14 @@ INDIGO Guider Agent currently provides 4 drift-detection modes:
 For the full description, parameters, strengths, limitations, and recommended pairings with guiding modes, see:
 
 * [INDIGO Guider Agent - Detection Modes](../../indigo_docs/INDIGO_GUIDER_DETECTION_MODES.md)
-* [INDIGO Guider Agent - Guiding Modes](../../indigo_docs/INDIGO_GUIDING_MODES.md)
+* [INDIGO Guider Agent - Correction Modes](../../indigo_docs/INDIGO_GUIDER_CORRECTION_MODES.md)
+* [INDIGO Guider Agent - Dithering](../../indigo_docs/INDIGO_GUIDER_DITHERING.md)
 
 For better performance sub-frames can be used with the star-selection based modes, and with **Selection** / **Weighted Selection** the agent can automatically maintain a sub-frame around the current selection.
 
 ### Drift Controller Settings
 
-The guider also provides several correction modes. See [INDIGO Guider Agent - Guiding Modes](../../indigo_docs/INDIGO_GUIDING_MODES.md) for the current overview and recommendations.
+The guider also provides several correction modes. See [INDIGO Guider Agent - Guiding Modes](../../indigo_docs/INDIGO_GUIDER_CORRECTION_MODES.md) for the current overview and recommendations.
 
 Indigo_agent_guider uses *Proportional-Integral* (*PI*) controller to correct for the telescope tracking errors. *Proportional* or *P*
 means that it will attempt to correct for any random errors like gusts of wind, random bumps etc. *Integral* or *I* means

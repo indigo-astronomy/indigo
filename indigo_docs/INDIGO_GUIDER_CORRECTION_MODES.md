@@ -8,17 +8,17 @@ e-mail: *rumenastro@gmail.com*
 
 ## Overview
 
-INDIGO Guider Agent provides four drift-correction modes. They can be selected independently for the Right Ascension and Declination axes.
+INDIGO Guider Agent provides four drift correction modes. They can be selected independently for the Right Ascension and Declination axes.
 
 * **RA** supports: **Proportional-Integral**, **Hysteresis**, and **Linear Trend**.
 * **Dec** supports: **Proportional-Integral**, **Hysteresis**, **Linear Trend**, and **Resist Switch**.
 
 Each mode converts the measured guide-star drift into a correction pulse in a different way. No single mode is always best. The best choice depends on the mount mechanics, guide exposure, seeing, backlash, and the shape of the tracking error.
 
-These correction modes operate on drift measured by one of the guider detection modes described in [INDIGO_GUIDER_DETECTION_MODES.md](INDIGO_GUIDER_DETECTION_MODES.md). In short:
+These correction modes operate on drift measured by one of the drift detection modes described in [INDIGO_GUIDER_DETECTION_MODES.md](INDIGO_GUIDER_DETECTION_MODES.md). In short:
 
-* the **detection mode** decides how drift is measured from the image,
-* the **guiding mode** decides how that measured drift is converted into correction pulses.
+* the **drift detection mode** decides how drift is measured from the image,
+* the **drift correction mode** decides how that measured drift is converted into correction pulses.
 
 As a rule:
 
