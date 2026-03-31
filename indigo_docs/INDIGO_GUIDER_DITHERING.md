@@ -12,7 +12,7 @@ Dithering is the deliberate shifting of the guide star's reference position betw
 
 INDIGO Guider Agent provides three dithering strategies:
 
-* **Random Spiral** *(default)*
+* **Randomized Spiral** *(default)*
 * **Random**
 * **Spiral**
 
@@ -66,13 +66,13 @@ A higher skip count reduces the fraction of total imaging time spent waiting for
 
 ---
 
-## Strategy 1: Random Spiral
+## Strategy 1: Randomized Spiral
 
 *This is the default strategy.*
 
 ### How It Works
 
-Random Spiral visits positions on an outward-growing spiral, but adds a small random perturbation to each computed spiral point:
+Randomized Spiral visits positions on an outward-growing spiral, but adds a small random perturbation to each computed spiral point:
 
 ```math
 x_k = x_{\text{spiral},k} - d_x \cdot U_x, \qquad
@@ -117,7 +117,7 @@ where $A$ is the **Dithering max amount (px)**. There is no memory of previous p
 
 ### When to Use
 
-* **Short sessions where spiral coverage is unnecessary** — A few frames dithered randomly performs about as well as Random Spiral.
+* **Short sessions where spiral coverage is unnecessary** — A few frames dithered randomly performs about as well as Randomized Spiral.
 * **Hot pixel and bad column rejection** — A shift of even 1–2 px is sufficient; pure random is ideal.
 * **Read noise pattern rejection** — Random shifts break detector banding patterns reliably.
 * **When you want no structured spatial bias** — Pure random has no preferred direction or quadrant.
@@ -125,7 +125,7 @@ where $A$ is the **Dithering max amount (px)**. There is no memory of previous p
 ### When Not to Use
 
 * **Very long sessions** — Pure random has no coverage guarantee. A few percent of frames may cluster near already-visited positions, slightly wasting dither moves.
-* **Drizzle with many frames** — Spiral or Random Spiral provide better sub-pixel sampling coverage guarantee.
+* **Drizzle with many frames** — Spiral or Randomized Spiral provide better sub-pixel sampling coverage guarantee.
 
 ---
 
@@ -150,7 +150,7 @@ where $d_x, d_y \in \{-1, +1\}$ cycle through the four quadrant sign combination
 
 ### When Not to Use
 
-* **Sessions where exact reproducibility is not needed** — Random Spiral is usually a better default.
+* **Sessions where exact reproducibility is not needed** — Randomized Spiral is usually a better default.
 * **Very long sessions beyond one full spiral revolution** — The pattern repeats exactly, which reintroduces positional correlation.
 
 ---
@@ -159,7 +159,7 @@ where $d_x, d_y \in \{-1, +1\}$ cycle through the four quadrant sign combination
 
 | Strategy | Coverage guarantee | Randomness | Main use case |
 |----------|--------------------|------------|---------------|
-| **Random Spiral** | Good — grows outward systematically | Moderate — jittered positions | General purpose; drizzle; long sessions |
+| **Randomized Spiral** | Good — grows outward systematically | Moderate — jittered positions | General purpose; drizzle; long sessions |
 | **Random** | Statistical only | Full | Short sessions; hot pixel / banding rejection |
 | **Spiral** | Deterministic, uniform per revolution | None | Reproducible sequences; fixed-count drizzle |
 
@@ -222,7 +222,7 @@ Larger amounts increase the dither hop and require more settle time. If guiding 
 
 Drizzle combines undersampled frames by placing each input pixel's flux at its specific sky coordinate on a finer output grid. Without dithering, all input frames contribute from identical sub-pixel offsets and drizzle cannot recover any additional resolution. With dithering, each frame comes from a different sub-pixel position. The more varied the positions, the better the reconstructed resolution.
 
-* **Random Spiral** or **Random** with amount 2–5 px typically provides good sub-pixel coverage over 10–20 frames.
+* **Randomized Spiral** or **Random** with amount 2–5 px typically provides good sub-pixel coverage over 10–20 frames.
 * Very small amounts (0.5 px or less in the main camera equivalent) barely help drizzle.
 * Very large amounts increase effective PSF motion and require more frames to fill the output grid.
 
@@ -244,14 +244,14 @@ Walking noise (also called correlated noise or low-frequency noise) refers to no
 
 ### General multi-frame imaging session
 
-* **Strategy:** Random Spiral
+* **Strategy:** Randomized Spiral
 * **Amount:** 2–3 px
 * **Settling limit:** 5 frames
 * **Settle time limit:** 60 s
 
 ### Drizzle session with 20+ frames
 
-* **Strategy:** Random Spiral or Random
+* **Strategy:** Randomized Spiral or Random
 * **Amount:** 3–5 px
 * **Settling limit:** 5–8 frames
 * **Settle time limit:** 60–90 s
@@ -265,7 +265,7 @@ Walking noise (also called correlated noise or low-frequency noise) refers to no
 
 ### Sensor with strong banding noise
 
-* **Strategy:** Random or Random Spiral
+* **Strategy:** Random or Randomized Spiral
 * **Amount:** 5–10 px
 * **Settling limit:** 5–8 frames
 * **Settle time limit:** 60–120 s
