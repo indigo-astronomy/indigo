@@ -2,6 +2,41 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-364] - 31 Mar Tue 2026
+
+## Overall:
+- indigo_docs:
+	- INDIGO_GUIDING_MODES.md added
+
+- indigo_polaralign:
+	- polar alignment device class added
+
+## New drivers:
+- indigo_aux_svbpowerbox:
+	- add support for SV241 Pro
+	- create SV241 Pro simulator
+
+- indigo_polaralign_simulator:
+	- add automatic polar align simulator
+
+## Driver Fixes:
+- indigo_agent_guider:
+	- implement Hysteresis guiding
+	- implement Linear trend guiding
+	- implement Resist switch algorithm for Dec
+	- split RA and Dec correction modes
+	- better algorithm handling and refactor
+	- adjust limits, steps and default settings
+
+- indigo_focuser_asi:
+	- updated to SDK v.1.8.1
+
+- indigo_ccd_touptek & OEM:
+	- updated to SDK v.59.31026.20260322
+
+- indigo_mount_nexstar:
+	- missing ELEVATION item added
+
 # [2.0-362] - 17 Mar Tue 2026
 
 ## Overall:
