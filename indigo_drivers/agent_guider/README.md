@@ -33,7 +33,8 @@ INDIGO Guider Agent currently provides 4 drift-detection modes:
 For the full description, parameters, strengths, limitations, and recommended pairings with guiding modes, see:
 
 * [INDIGO Guider Agent - Detection Modes](../../indigo_docs/INDIGO_GUIDER_DETECTION_MODES.md)
-* [INDIGO Guider Agent - Guiding Modes](../../indigo_docs/INDIGO_GUIDER_CORRECTION_MODES.md)
+* [INDIGO Guider Agent - Correction Modes](../../indigo_docs/INDIGO_GUIDER_CORRECTION_MODES.md)
+* [INDIGO Guider Agent - Dithering](../../indigo_docs/INDIGO_GUIDER_DITHERING.md)
 
 For better performance sub-frames can be used with the star-selection based modes, and with **Selection** / **Weighted Selection** the agent can automatically maintain a sub-frame around the current selection.
 
