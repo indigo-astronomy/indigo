@@ -202,6 +202,8 @@ If the pre-dither RMSE was zero (e.g., first dither of the session), no RMSE thr
 
 ## Choosing the Dither Amount
 
+> **Note:** All pixel amounts in this section refer to **imaging camera pixels**. The dither amount parameter is expressed in **guider camera pixels**. See [Converting imager pixels to guider pixels](#converting-imager-pixels-to-guider-pixels) below for how to translate between the two.
+
 The right amount depends on what you are trying to achieve:
 
 | Goal | Minimum amount | Typical amount | Notes |
@@ -213,6 +215,32 @@ The right amount depends on what you are trying to achieve:
 | Bad column / row rejection | equal to column width | 5–10 px | Shift must exceed the defect width |
 
 Larger amounts increase the dither hop and require more settle time. If guiding is marginally stable, prefer smaller amounts (1–3 px) with a larger settling limit.
+
+### Converting imager pixels to guider pixels
+
+The **Dithering max amount (px)** parameter is in **guider camera pixels**. To convert from **imaging camera pixels** we define the **guide ratio** as:
+
+$$
+R = \frac{s_{\text{imager}} \cdot f_{\text{guider}}}{s_{\text{guider}} \cdot f_{\text{imager}}}
+$$
+
+where:
+- $s_{\text{imager}}, s_{\text{guider}}$ — pixel size of the imaging / guider camera (µm)
+- $f_{\text{imager}}, f_{\text{guider}}$ — focal length of the imaging / guider optical system (mm)
+
+The guide ratio is a constant for a given optical setup. Once calculated, converting any desired imager shift to guider pixels is simply:
+
+$$
+N_{\text{guider}} = N_{\text{imager}} \cdot R
+$$
+
+**Example:** imager 3.76 µm / 560 mm; guider 2.9 µm / 130 mm:
+
+$$
+R = \frac{3.76 \cdot 130}{2.9 \cdot 560} \approx 0.30
+$$
+
+To achieve a 3 px shift on the imager: $N_{\text{guider}} = 3 \cdot 0.30 \approx 0.9$ px — set **Dithering max amount** to **1 px**.
 
 ---
 
