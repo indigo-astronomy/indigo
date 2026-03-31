@@ -111,10 +111,10 @@ The Linear Trend controller keeps a short history of recent drift measurements a
 For a populated history, the internal correction is approximately:
 
 ```math
-correction = \text{slope} \cdot N \cdot \text{aggressiveness}
+correction = -\text{slope} \cdot N \cdot \text{aggressiveness}
 ```
 
-and the output pulse is sent in the opposite direction of that correction.
+where $N$ is the number of samples currently stored in the trend history.
 
 In other words, the controller tries to follow the **trend**, not only the current error. It can therefore anticipate smooth drift better than a purely reactive controller.
 
@@ -189,7 +189,7 @@ An optional **fast-switch threshold** can override the normal conservatism. If t
 | **Proportional-Integral** | RA, Dec | General-purpose guiding; moderate PE; slow systematic drift | Dec backlash with a strong I term; very noisy guide data |
 | **Hysteresis** | RA, Dec | Noisy centroids; smoother response; good general-purpose alternative when guiding is noisy; moderate backlash sensitivity | Fast real drift; rapid disturbances; high-PE slopes |
 | **Linear Trend** | RA, Dec | Smooth monotonic drift; long, gentle trends | Rough PE; turbulent seeing; backlash-dominated Dec |
-| **Resist Switch** | Dec only | Significant Dec backlash; conservative one-side Dec guiding | Low-backlash systems; continuous Dec drift; RA |
+| **Resist Switch** | Dec | Significant Dec backlash; conservative one-side Dec guiding | Low-backlash systems; continuous Dec drift; RA |
 
 ---
 
@@ -199,11 +199,11 @@ The table below gives **typical** recommendations. It is intentionally conservat
 
 | Mount / drive type | Typical behavior | Usually suitable modes | Usually not the first choice | Notes |
 |--------------------|------------------|------------------------|------------------------------|-------|
-| **Worm gear** | Often smooth RA periodic error; Dec backlash is common; behavior is usually predictable | **RA:** PI, sometimes Linear Trend if PE is smooth and guide cadence is short enough. **Dec:** PI, Hysteresis, or Resist Switch if backlash is significant | **Dec Linear Trend** on backlash-heavy mounts; **high Hysteresis** when clear systematic drift is present | This is the most common case. If the mount is mechanically sound, PI is usually the best starting point on both axes |
-| **Strain wave / harmonic drive** | Usually little classical backlash, but RA error can be rough, asymmetric, and steep; some mounts show elasticity or high-frequency components | **RA:** PI, often P-only or with a small I term; **Hysteresis** can also help if the RA trace is dominated by high-frequency jitter or centroid noise. **Dec:** PI or Hysteresis. | **Linear Trend** is often a poor fit for rough or jagged RA error. **Resist Switch** is usually unnecessary unless Dec backlash is actually observed | Use short enough guide exposures to sample the steeper RA error. If the high-frequency oscillation is real mount motion rather than guide noise, PI is usually safer than Hysteresis. Choose by measured behavior, not by the harmonic label alone |
-| **Friction drive / roller drive** | Very low backlash and little classical gear PE, but slip, stiction, or wind sensitivity may appear | **RA/Dec:** PI or Hysteresis | **Resist Switch** unless there is real Dec reversal deadband; **Linear Trend** unless the drift is genuinely smooth and monotonic | These mounts often do not need backlash-specific strategies, but may benefit from a calmer controller if the centroid is noisy |
-| **Direct drive** | Very low backlash; no worm PE, but servo jitter, encoder noise, or external disturbances may dominate | **RA/Dec:** PI or Hysteresis | **Resist Switch** in most cases; **Linear Trend** as a default | If the mount already tracks very smoothly, Hysteresis can reduce chasing tiny noise. Use PI if there is real low-frequency drift |
-| **Belt-reduced / hybrid gear trains** | Behavior depends strongly on what the belt drives; backlash can be low, but compliance and irregular error may appear | Usually **PI** first, then **Hysteresis** if the guide data is noisy | **Linear Trend** if the error is irregular; **Resist Switch** unless Dec backlash is confirmed | Treat these mounts by their measured guide behavior, not by the presence of a belt alone |
+| **Worm gear** | Often smooth RA periodic error; Dec backlash is common; behavior is usually predictable | **RA:** PI, sometimes Linear Trend if PE is smooth and guide cadence is short enough. **Dec:** PI, Hysteresis, or Resist Switch if backlash is significant | **Dec:** Linear Trend on backlash-heavy mounts; **high Hysteresis** when clear systematic drift is present | This is the most common case. If the mount is mechanically sound, PI is usually the best starting point on both axes |
+| **Strain wave / harmonic drive** | Usually little classical backlash, but RA error can be rough, asymmetric, and steep; some mounts show elasticity or high-frequency components | **RA:** PI, often P-only or with a small I term; **Hysteresis** can also help if the RA trace is dominated by high-frequency jitter or centroid noise. **Dec:** PI or Hysteresis. | Linear Trend is often a poor fit for rough or jagged RA error. **Resist Switch** is usually unnecessary unless Dec backlash is actually observed | Use short enough guide exposures to sample the steeper RA error. If the high-frequency oscillation is real mount motion rather than guide noise, PI is usually safer than Hysteresis. Choose by measured behavior, not by the harmonic label alone |
+| **Friction drive / roller drive** | Very low backlash and little classical gear PE, but slip, stiction, or wind sensitivity may appear | **RA/Dec:** PI or Hysteresis | Resist Switch unless there is real Dec reversal deadband; Linear Trend unless the drift is genuinely smooth and monotonic | These mounts often do not need backlash-specific strategies, but may benefit from a calmer controller if the centroid is noisy |
+| **Direct drive** | Very low backlash; no worm PE, but servo jitter, encoder noise, or external disturbances may dominate | **RA/Dec:** PI or Hysteresis | Resist Switch in most cases; Linear Trend as a default | If the mount already tracks very smoothly, Hysteresis can reduce chasing tiny noise. Use PI if there is real low-frequency drift |
+| **Belt-reduced / hybrid gear trains** | Behavior depends strongly on what the belt drives; backlash can be low, but compliance and irregular error may appear | Usually PI first, then Hysteresis if the guide data is noisy | Linear Trend if the error is irregular; Resist Switch unless Dec backlash is confirmed | Treat these mounts by their measured guide behavior, not by the presence of a belt alone |
 
 ### Practical interpretation
 
