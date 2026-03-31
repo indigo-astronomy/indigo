@@ -6,7 +6,7 @@ All notable changes to INDIGO framework will be documented in this file.
 
 ## Overall:
 - indigo_docs:
-	- INDIGO_GUIDER_CORECTION_MODES.md added
+	- INDIGO_GUIDER_CORRECTION_MODES.md added
 
 - indigo_polaralign:
 	- polar alignment device class added

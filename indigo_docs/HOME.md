@@ -44,7 +44,7 @@
 - [Polar Alignment](POLAR_ALIGNMENT.md)
 - [Plate Solving](PLATE_SOLVING.md)
 - [Guider Detection Modes](INDIGO_GUIDER_DETECTION_MODES.md)
-- [Guider Correction Modes](INDIGO_GUIDER_CORECTION_MODES.md)
+- [Guider Correction Modes](INDIGO_GUIDER_CORRECTION_MODES.md)
 - [Guiding PI Controller Tuning](GUIDING_PI_CONTROLLER_TUNING.md)
 
 ## Misconceptions
