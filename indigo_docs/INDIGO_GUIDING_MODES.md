@@ -88,14 +88,14 @@ This acts as a low-pass filter on the correction signal. Short-lived spikes are 
 
 ### When to Use
 
-* **Noisy centroid measurements** — Good when seeing, short exposures, or camera noise make the drift signal jump around.
-* **Mounts that guide well but look graphically noisy** — Hysteresis often calms the guide graph without over-complicating tuning.
+* **Noisy centroid measurements** — Good when seeing, short exposures, or camera noise make the drift jump around.
+* **Mounts that guide well but the graph looks noisy** — Hysteresis often calms the guide graph without over-complicating tuning.
 * **Dec guiding with modest backlash** — It adds memory without the windup risk of an integral term.
 
 ### When Not to Use
 
 * **Strong systematic drift** — The smoothing delays the response. PI usually handles real drift better.
-* **Fast disturbances** — Wind gusts, cable drag, or rapid PE need a quicker controller.
+* **Fast disturbances** — Wind gusts or rapid PE need a quicker controller.
 * **Excessive hysteresis values** — High values can make the response sluggish and can leave the controller lagging behind the real error.
 
 ---
