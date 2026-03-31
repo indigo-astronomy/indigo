@@ -418,10 +418,17 @@ static void solve(indigo_platesolver_task *task) {
 			}
 			indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, NULL);
 		}
+		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->copy_solution_to_target = false;
 		process_failed(device, "Solving failed");
 		return;
 	}
 	// Continue with a generic process
+	if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->copy_solution_to_target) {
+		AGENT_PLATESOLVER_GOTO_SETTINGS_RA_ITEM->number.value = AGENT_PLATESOLVER_GOTO_SETTINGS_RA_ITEM->number.target = AGENT_PLATESOLVER_WCS_RA_ITEM->number.value;
+		AGENT_PLATESOLVER_GOTO_SETTINGS_DEC_ITEM->number.value = AGENT_PLATESOLVER_GOTO_SETTINGS_DEC_ITEM->number.target = AGENT_PLATESOLVER_WCS_DEC_ITEM->number.value;
+		indigo_update_property(device, AGENT_PLATESOLVER_GOTO_SETTINGS_PROPERTY, NULL);
+		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->copy_solution_to_target = false;
+	}
 	set_fov(device, AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value, AGENT_PLATESOLVER_WCS_WIDTH_ITEM->number.value, AGENT_PLATESOLVER_WCS_HEIGHT_ITEM->number.value);
 	if (AGENT_PLATESOLVER_SYNC_SYNC_ITEM->sw.value || AGENT_PLATESOLVER_SYNC_CENTER_ITEM->sw.value) {
 		AGENT_PLATESOLVER_WCS_STATE_ITEM->number.value = INDIGO_SOLVER_STATE_SYNCING;
@@ -900,6 +907,7 @@ indigo_result indigo_platesolver_change_property(indigo_device *device, indigo_c
 			}
 			// uploaded files should not use camera pixel scale
 			INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pixel_scale = 0;
+			INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->copy_solution_to_target = true;
 			indigo_async((void *(*)(void *))solve, task);
 			AGENT_PLATESOLVER_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
