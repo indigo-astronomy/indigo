@@ -171,6 +171,10 @@ Because it is a global image-shift method, it needs the field pattern to remain 
 * **Very low SNR** — During guiding, poor DONUTS SNR is explicitly rejected.
 * **Extended bright targets** — Use **Centroid** for the Moon or planets.
 
+### References
+
+Original paper [arXiv:1304.2405](https://arxiv.org/abs/1304.2405)
+
 ---
 
 ## Mode 4: Centroid

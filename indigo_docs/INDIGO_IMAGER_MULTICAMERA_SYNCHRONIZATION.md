@@ -24,6 +24,7 @@ Internally, synchronization is implemented by pausing the batch on selected brea
 
 In practice:
 
+* Set **Additional instances** on Imager Agent to create multiple Imager Agent instances.
 * Use **Barrier** on exactly one Imager Agent.
 * Use **Trigger/manual** on all follower Imager Agents.
 * Select the follower Imager Agents as **related agents** on the coordinator.
@@ -106,7 +107,7 @@ When a synchronized batch is started from the coordinator, it also starts exposu
 
 ### When Not to Use
 
-* **On more than one Imager Agent in the same group** — this can deadlock.
+* **On more than one coordinator Imager Agent in the same group** — this can deadlock.
 * **In circular related-agent chains** — recursion and deadlock are possible.
 * **If each camera should run fully independently** — leave synchronization disabled.
 
@@ -230,12 +231,14 @@ The same mechanism can also be used for:
 
 ### Two cameras, simultaneous shutters
 
+* **Additional instances:** 1
 * **Coordinator:** Barrier
 * **Followers:** Trigger/manual
 * **Breakpoint:** Pre-capture
 
 ### Two or more cameras with common dithering
 
+* **Additional instances:** 1 or more
 * **Coordinator:** Barrier
 * **Followers:** Trigger/manual
 * **Breakpoints:** Pre-capture + Post-capture
@@ -243,6 +246,7 @@ The same mechanism can also be used for:
 
 ### Script-driven acquisition gate
 
+* **Additional instances:** 1 or more
 * **All participants:** Trigger/manual
 * **Breakpoint:** whichever stage should wait
 * **Release:** external script or operator
