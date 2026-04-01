@@ -259,7 +259,6 @@ Drizzle combines undersampled frames by placing each input pixel's flux at its s
 Dithering is particularly effective on CMOS sensors that exhibit:
 
 * **Horizontal or vertical banding** — Periodic read noise at fixed rows or columns. After dithering, a given sky position falls on a different row/column in each frame. Sigma-clipping or simple averaging then rejects or attenuates the band.
-* **Amp glow / gradient** — A fixed illumination gradient from the readout amplifier. Dithering shifts the gradient relative to the sky and median-combining the registered frames attenuates it.
 * **Salt-and-pepper hot pixels** — Any shift ≥ 1 px moves these to a different sky position in each frame and they are trivially rejected by sigma-clipping or minimum-rejection combining.
 
 ### Walking Noise
