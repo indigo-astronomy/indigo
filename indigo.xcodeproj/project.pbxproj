@@ -2269,6 +2269,11 @@
 		5984C90827C2E2290090204B /* IMAGING_AF_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = IMAGING_AF_TUNING.md; sourceTree = "<group>"; };
 		5984C90927C2E22A0090204B /* POLAR_ALIGNMENT.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = POLAR_ALIGNMENT.md; sourceTree = "<group>"; };
 		5984C90A27C2E22A0090204B /* GUIDING_PI_CONTROLLER_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = GUIDING_PI_CONTROLLER_TUNING.md; sourceTree = "<group>"; };
+		598679702F7D80AA008F60F3 /* HOME.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = HOME.md; sourceTree = "<group>"; };
+		598679712F7D80AA008F60F3 /* INDIGO_GUIDER_CORRECTION_MODES.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = INDIGO_GUIDER_CORRECTION_MODES.md; sourceTree = "<group>"; };
+		598679722F7D80AA008F60F3 /* INDIGO_GUIDER_DETECTION_MODES.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = INDIGO_GUIDER_DETECTION_MODES.md; sourceTree = "<group>"; };
+		598679732F7D80AA008F60F3 /* INDIGO_GUIDER_DITHERING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = INDIGO_GUIDER_DITHERING.md; sourceTree = "<group>"; };
+		598679742F7D80AA008F60F3 /* INDIGO_IMAGER_MULTICAMERA_SYNCHRONIZATION.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = INDIGO_IMAGER_MULTICAMERA_SYNCHRONIZATION.md; sourceTree = "<group>"; };
 		598786452540C62D00CE8B48 /* libtiff.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libtiff.a; path = build/lib/libtiff.a; sourceTree = "<group>"; };
 		598786472540C69E00CE8B48 /* libtiffxx.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libtiffxx.a; path = build/lib/libtiffxx.a; sourceTree = "<group>"; };
 		598878042F5C494F00837F9C /* indigo_wheel_sx.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_wheel_sx.driver; sourceTree = "<group>"; };
@@ -5405,6 +5410,11 @@
 		5912C80723D2447400A48B75 /* indigo_docs */ = {
 			isa = PBXGroup;
 			children = (
+				598679702F7D80AA008F60F3 /* HOME.md */,
+				598679712F7D80AA008F60F3 /* INDIGO_GUIDER_CORRECTION_MODES.md */,
+				598679722F7D80AA008F60F3 /* INDIGO_GUIDER_DETECTION_MODES.md */,
+				598679732F7D80AA008F60F3 /* INDIGO_GUIDER_DITHERING.md */,
+				598679742F7D80AA008F60F3 /* INDIGO_IMAGER_MULTICAMERA_SYNCHRONIZATION.md */,
 				599EB1562B52EC3900B333E4 /* CCD_DRIVER_SAVED_IMAGES.md */,
 				599EB1542B52EC3900B333E4 /* GUIDING_MISCONCEPTIONS.md */,
 				599EB1552B52EC3900B333E4 /* INDIGO_RAW_IMAGE_FORMAT.md */,
