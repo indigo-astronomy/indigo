@@ -472,7 +472,17 @@ extern "C" {
 #define MOUNT_PEC_TRAINING_PROPERTY										(MOUNT_CONTEXT->mount_pec_training_property)
 #define MOUNT_PEC_TRAINIG_STARTED_ITEM           			(MOUNT_PEC_TRAINING_PROPERTY->items+0)
 #define MOUNT_PEC_TRAINIG_STOPPED_ITEM           			(MOUNT_PEC_TRAINING_PROPERTY->items+1)
-	
+
+
+//------------------------------------------------
+/** MOUNT_STATE property pointer, property is optional.
+ */
+#define MOUNT_STATE_PROPERTY													(MOUNT_CONTEXT->mount_state_property)
+#define MOUNT_STATE_SLEW_ITEM													(MOUNT_STATE_PROPERTY->items+0)
+#define MOUNT_STATE_PARK_ITEM													(MOUNT_STATE_PROPERTY->items+1)
+#define MOUNT_STATE_HOME_ITEM													(MOUNT_STATE_PROPERTY->items+2)
+#define MOUNT_STATE_TRACKING_ITEM											(MOUNT_STATE_PROPERTY->items+3)
+
 
 //------------------------------------------------
 /** Max number of alignment points.
@@ -536,7 +546,8 @@ typedef struct {
 	indigo_property *mount_snoop_devices_property;					///< MOUNT_SNOOP_DEVICES property pointer
 	indigo_property *mount_pec_property;										///< MOUNT_PEC property pointer
 	indigo_property *mount_pec_training_property;						///< MOUNT_PEC_TRAINING property pointer
-	indigo_property *mount_alignment_reset_property;					///< MOUNT_ALIGNMENT_RESET property pointer
+	indigo_property *mount_alignment_reset_property;				///< MOUNT_ALIGNMENT_RESET property pointer
+	indigo_property *mount_state_property;									///< MOUNT_STATE property pointer
 } indigo_mount_context;
 
 /** Attach callback function.
