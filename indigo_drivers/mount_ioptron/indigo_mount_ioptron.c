@@ -838,6 +838,18 @@ static bool ieq_sync(indigo_device *device, double ra, double dec) {
 	return result;
 }
 
+static bool ieq_move(indigo_device *device, int slew_rate, char direction) {
+	bool result = true;
+	if (PRIVATE_DATA->last_slew_rate != slew_rate) {
+		result = ieq_simple_reply_command(device, ":SR%d#", slew_rate) && *PRIVATE_DATA->response == '1';
+		PRIVATE_DATA->last_slew_rate = slew_rate;
+	}
+	if (result) {
+		result = ieq_no_reply_command(device, ":m%c#", direction);
+	}
+	return result;
+}
+
 static bool ieq_stop(indigo_device *device) {
 	if (PRIVATE_DATA->protocol == HC_8406) {
 		return ieq_no_reply_command(device, ":Q#");
@@ -1325,49 +1337,60 @@ static void ieq_update_mount_state(indigo_device *device) {
 		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
 	}
 	if (ieq_get_state(device)) {
-		indigo_debug("*** slewing=%d, tracking=%d, parked=%d, homed=%d", PRIVATE_DATA->slewing, PRIVATE_DATA->tracking, PRIVATE_DATA->parked, PRIVATE_DATA->homed);
 		if (PRIVATE_DATA->slewing) {
-			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_BUSY_STATE;
 		} else {
-			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+			if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_ALERT_STATE) {
+				MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_IDLE_STATE;
+				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+			} else {
+				 MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_ALERT_STATE;
+			}
 		}
 		if (MOUNT_TRACKING_PROPERTY->state != INDIGO_BUSY_STATE) { // to avoid race never change tracking state if BUSY
 			if (PRIVATE_DATA->tracking && !MOUNT_TRACKING_ON_ITEM->sw.value) {
 				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
-				MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
+				MOUNT_TRACKING_PROPERTY->state = MOUNT_STATE_TRACKING_ITEM->light.value = INDIGO_OK_STATE;
 			} else if (!PRIVATE_DATA->tracking && !MOUNT_TRACKING_OFF_ITEM->sw.value) {
 				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
+				MOUNT_STATE_TRACKING_ITEM->light.value = INDIGO_IDLE_STATE;
 				MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
 			}
 		}
 		if (MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE) { // to avoid race never change parking state if BUSY with these exceptions
 			if (MOUNT_PARK_PARKED_ITEM->sw.value && PRIVATE_DATA->parked) {
-				MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
+				MOUNT_PARK_PROPERTY->state = MOUNT_STATE_PARK_ITEM->light.value = INDIGO_OK_STATE;
 			} else if (MOUNT_PARK_PROPERTY->count == 2 && MOUNT_PARK_UNPARKED_ITEM->sw.value && !PRIVATE_DATA->parked) {
+				MOUNT_STATE_PARK_ITEM->light.value = INDIGO_IDLE_STATE;
 				MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 			}
 		} else { // otherwise mirror state reported by mount
 			if (PRIVATE_DATA->parked) {
 				indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_PARKED_ITEM, true);
+				MOUNT_STATE_PARK_ITEM->light.value = INDIGO_OK_STATE;
 			} else {
 				indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
+				MOUNT_STATE_PARK_ITEM->light.value = INDIGO_IDLE_STATE;
 			}
 		}
 		if (MOUNT_HOME_PROPERTY->state == INDIGO_BUSY_STATE) { // to avoid race never change parking state if BUSY with this exception
 			if (PRIVATE_DATA->homed) {
-				MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
+				MOUNT_HOME_PROPERTY->state = MOUNT_STATE_HOME_ITEM->light.value = INDIGO_OK_STATE;
 			}
 		} else { // otherwise mirror state reported by mount
 			if (!PRIVATE_DATA->homed) {
 				indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_AWAY_ITEM, true);
+				MOUNT_STATE_HOME_ITEM->light.value = INDIGO_IDLE_STATE;
 			} else if (PRIVATE_DATA->homed) {
 				indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_HOME_ITEM, true);
+				MOUNT_STATE_HOME_ITEM->light.value = INDIGO_OK_STATE;
 			}
 		}
 	}
 	sprintf(MOUNT_UTC_OFFSET_ITEM->text.value, "%d", PRIVATE_DATA->utc_offset);
 	indigo_timetoisogm(time(NULL) - PRIVATE_DATA->time_difference, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
 	MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
 	indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 	indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 	indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
@@ -1441,11 +1464,15 @@ static void mount_park_handler(indigo_device *device) {
 		} else if (MOUNT_PARK_PROPERTY->count == 1) {
 			MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 		}
+		MOUNT_STATE_PARK_ITEM->light.value = MOUNT_PARK_PROPERTY->state;
 	} else {
-		if (!ieq_unpark(device)) {
-			MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
+		if (ieq_unpark(device)) {
+			MOUNT_STATE_PARK_ITEM->light.value = INDIGO_IDLE_STATE;
+		} else {
+			MOUNT_PARK_PROPERTY->state = MOUNT_STATE_PARK_ITEM->light.value = INDIGO_ALERT_STATE;
 		}
 	}
+	indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
 	indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 }
 
@@ -1453,14 +1480,20 @@ static void mount_home_handler(indigo_device *device) {
 	MOUNT_HOME_PROPERTY->state = INDIGO_BUSY_STATE;
 	if (MOUNT_HOME_ITEM->sw.value) {
 		MOUNT_HOME_ITEM->sw.value = false;
-		ieq_home(device);
+		if (!ieq_home(device)) {
+			MOUNT_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 	} else if (MOUNT_AWAY_ITEM->sw.value) {
 		MOUNT_AWAY_ITEM->sw.value = false;
 		MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
 	} else if (MOUNT_HOME_SEARCH_ITEM->sw.value) {
 		MOUNT_HOME_SEARCH_ITEM->sw.value = false;
-		ieq_search_home(device);
+		if (!ieq_search_home(device)) {
+			MOUNT_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 	}
+	MOUNT_STATE_HOME_ITEM->light.value = MOUNT_HOME_PROPERTY->state;
+	indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
 	indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
 
 }
@@ -1535,18 +1568,6 @@ static void mount_abort_handler(indigo_device *device) {
 		MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Aborted");
-}
-
-static bool ieq_move(indigo_device *device, int slew_rate, char direction) {
-	bool result = true;
-	if (PRIVATE_DATA->last_slew_rate != slew_rate) {
-		result = ieq_simple_reply_command(device, ":SR%d#", slew_rate) && *PRIVATE_DATA->response == '1';
-		PRIVATE_DATA->last_slew_rate = slew_rate;
-	}
-	if (result) {
-		result = ieq_no_reply_command(device, ":m%c#", direction);
-	}
-	return result;
 }
 
 static void mount_motion_dec_handler(indigo_device *device) {
@@ -1642,9 +1663,12 @@ static void mount_set_utc_handler(indigo_device *device) {
 
 static void mount_tracking_handler(indigo_device *device) {
 	MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
-	if (!ieq_set_tracking(device, MOUNT_TRACKING_ON_ITEM->sw.value)) {
-		MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
+	if (ieq_set_tracking(device, MOUNT_TRACKING_ON_ITEM->sw.value)) {
+		MOUNT_STATE_TRACKING_ITEM->light.value = MOUNT_TRACKING_ON_ITEM->sw.value ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
+	} else {
+		MOUNT_TRACKING_PROPERTY->state = MOUNT_STATE_TRACKING_ITEM->light.value = INDIGO_ALERT_STATE;
 	}
+	indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
 	indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 }
 
@@ -1727,6 +1751,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		// --------------------------------------------------------------------------------
 		INFO_PROPERTY->count = 6;
 		MOUNT_ON_COORDINATES_SET_PROPERTY->count = 2;
+		MOUNT_STATE_PROPERTY->hidden = false;
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
