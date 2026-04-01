@@ -1910,30 +1910,39 @@ static void meade_update_mount_state(indigo_device *device) {
 	}
 	indigo_debug("*** slewing=%d, tracking=%d, parked=%d, parking=%d, homed=%d, homing=%d", PRIVATE_DATA->slewing, PRIVATE_DATA->tracking, PRIVATE_DATA->parked, PRIVATE_DATA->parking, PRIVATE_DATA->homed, PRIVATE_DATA->homing);
 	if (PRIVATE_DATA->slewing) {
-		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_BUSY_STATE;
 	} else {
-		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+		if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_ALERT_STATE) {
+			MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_IDLE_STATE;
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_OK_STATE;
+		}
 	}
 	if (MOUNT_TRACKING_PROPERTY->state != INDIGO_BUSY_STATE) { // to avoid race never change tracking state if BUSY
 		if (PRIVATE_DATA->tracking && !MOUNT_TRACKING_ON_ITEM->sw.value) {
 			indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
-			MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
+			MOUNT_TRACKING_PROPERTY->state = MOUNT_STATE_TRACKING_ITEM->light.value = INDIGO_OK_STATE;
 		} else if (!PRIVATE_DATA->tracking && !MOUNT_TRACKING_OFF_ITEM->sw.value) {
 			indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
+			MOUNT_STATE_TRACKING_ITEM->light.value = INDIGO_IDLE_STATE;
 			MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	}
 	if (MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE) { // to avoid race never change parking state if BUSY with these exceptions
 		if (MOUNT_PARK_PARKED_ITEM->sw.value && PRIVATE_DATA->parked) {
-			MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
+			MOUNT_PARK_PROPERTY->state = MOUNT_STATE_PARK_ITEM->light.value = INDIGO_OK_STATE;
 		} else if (MOUNT_PARK_PROPERTY->count == 2 && MOUNT_PARK_UNPARKED_ITEM->sw.value && !PRIVATE_DATA->parked) {
+			MOUNT_STATE_PARK_ITEM->light.value = INDIGO_IDLE_STATE;
 			MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	} else { // otherwise mirror state reported by mount
 		if (PRIVATE_DATA->parked || PRIVATE_DATA->parking) {
 			indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_PARKED_ITEM, true);
+			MOUNT_STATE_PARK_ITEM->light.value = INDIGO_OK_STATE;
 		} else {
 			indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
+			MOUNT_STATE_PARK_ITEM->light.value = INDIGO_IDLE_STATE;
 		}
 	}
 	if (MOUNT_HOME_PROPERTY->state == INDIGO_BUSY_STATE) { // to avoid race never change parking state if BUSY with this exception
@@ -2185,18 +2194,22 @@ static void mount_park_callback(indigo_device *device) {
 			if (!(MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_GEMINI_ITEM->sw.value || MOUNT_TYPE_STARGO_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value)) {
 				MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 			}
+			MOUNT_STATE_PARK_ITEM->light.value = MOUNT_PARK_PROPERTY->count == 1 ? INDIGO_IDLE_STATE : MOUNT_PARK_PROPERTY->state;
 		} else {
-			MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
+			MOUNT_PARK_PROPERTY->state = MOUNT_STATE_PARK_ITEM->light.value = INDIGO_ALERT_STATE;
 		}
 	} else if (MOUNT_PARK_UNPARKED_ITEM->sw.value) {
 		if (meade_unpark(device)) {
 			if (!(MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_STARGO_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value)) {
 				MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
+				MOUNT_STATE_PARK_ITEM->light.value = INDIGO_IDLE_STATE;
 			}
 		} else {
-			MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
+			MOUNT_STATE_PARK_ITEM->light.value = MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 	}
+	MOUNT_STATE_PARK_ITEM->light.value = MOUNT_PARK_PROPERTY->state;
+	indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
 	indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 }
 
@@ -2218,13 +2231,14 @@ static void mount_home_callback(indigo_device *device) {
 		if (MOUNT_HOME_PROPERTY->count == 1) {
 			indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_HOME_ITEM, false);
 		}
-		if (!meade_home(device)) {
-			MOUNT_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
+		if (meade_home(device)) {
+			MOUNT_STATE_HOME_ITEM->light.value = MOUNT_HOME_PROPERTY->count == 1 ? INDIGO_IDLE_STATE : INDIGO_BUSY_STATE;
 		} else {
-			indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
+			MOUNT_HOME_PROPERTY->state = MOUNT_STATE_HOME_ITEM->light.value = INDIGO_ALERT_STATE;
 		}
 	}
+	indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
+	indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
 }
 
 static void mount_home_set_callback(indigo_device *device) {
@@ -2251,10 +2265,8 @@ static void mount_geo_coords_callback(indigo_device *device) {
 
 static void mount_eq_coords_callback(indigo_device *device) {
 	char message[50] = "";
-
 	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
-
 	double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
 	double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
 	indigo_j2k_to_eq(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
@@ -2365,9 +2377,10 @@ static void mount_set_utc_time_callback(indigo_device *device) {
 
 static void mount_tracking_callback(indigo_device *device) {
 	if (meade_set_tracking(device, MOUNT_TRACKING_ON_ITEM->sw.value)) {
+		MOUNT_STATE_TRACKING_ITEM->light.value = MOUNT_TRACKING_ON_ITEM->sw.value ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
 		MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
-		MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
+		MOUNT_TRACKING_PROPERTY->state = MOUNT_STATE_TRACKING_ITEM->light.value = INDIGO_ALERT_STATE;
 	}
 	indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 }
@@ -2414,6 +2427,8 @@ static indigo_result mount_attach(indigo_device *device) {
 	if (indigo_mount_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- MOUNT_ON_COORDINATES_SET
 		MOUNT_ON_COORDINATES_SET_PROPERTY->count = 2;
+		// -------------------------------------------------------------------------------- MOUNT_STATE
+		MOUNT_STATE_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- DEVICE_PORT
 		DEVICE_PORT_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
