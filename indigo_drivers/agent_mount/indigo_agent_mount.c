@@ -121,11 +121,10 @@
 #define AGENT_MOUNT_ENABLE_TIME_LIMIT_FEATURE_ITEM		(AGENT_PROCESS_FEATURES_PROPERTY->items+1)
 
 #define AGENT_MOUNT_STATE_PROPERTY										(DEVICE_PRIVATE_DATA->agent_mount_state_property)
-#define AGENT_MOUNT_STATE_SLEW_STATE_ITEM							(AGENT_MOUNT_STATE_PROPERTY->items+0)
-#define AGENT_MOUNT_STATE_SYNC_STATE_ITEM							(AGENT_MOUNT_STATE_PROPERTY->items+1)
-#define AGENT_MOUNT_STATE_PARK_STATE_ITEM							(AGENT_MOUNT_STATE_PROPERTY->items+2)
-#define AGENT_MOUNT_STATE_HOME_STATE_ITEM							(AGENT_MOUNT_STATE_PROPERTY->items+3)
-#define AGENT_MOUNT_STATE_TRACKING_STATE_ITEM					(AGENT_MOUNT_STATE_PROPERTY->items+4)
+#define AGENT_MOUNT_STATE_SLEW_ITEM										(AGENT_MOUNT_STATE_PROPERTY->items+0)
+#define AGENT_MOUNT_STATE_PARK_ITEM										(AGENT_MOUNT_STATE_PROPERTY->items+1)
+#define AGENT_MOUNT_STATE_HOME_ITEM										(AGENT_MOUNT_STATE_PROPERTY->items+2)
+#define AGENT_MOUNT_STATE_TRACKING_ITEM								(AGENT_MOUNT_STATE_PROPERTY->items+3)
 
 #define AGENT_MOUNT_FEATURES_PROPERTY									(DEVICE_PRIVATE_DATA->agent_mount_features_property)
 #define AGENT_MOUNT_FEATURES_CAN_SLEW_ITEM						(AGENT_MOUNT_FEATURES_PROPERTY->items+0)
@@ -162,6 +161,7 @@ typedef struct {
 	double mount_ra, mount_dec;
 	double mount_requested_ra, mount_requested_dec;
 	double mount_latitude, mount_longitude, mount_elevation;
+	bool mount_state_defined;
 	bool mount_parking, mount_parked, mount_unparked;
 	bool mount_tracking, mount_stopped;
 	bool mount_homing, mount_homed;
@@ -220,7 +220,6 @@ static void abort_process(indigo_device *device) {
 }
 
 static void mount_control(indigo_device *device, char *operation) {
-	FILTER_DEVICE_CONTEXT->running_process = true;
 	if (!DEVICE_PRIVATE_DATA->mount_unparked) {
 		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
 	}
@@ -272,49 +271,36 @@ static void mount_control(indigo_device *device, char *operation) {
 		AGENT_START_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 	}
-	FILTER_DEVICE_CONTEXT->running_process = false;
 }
 
 static void slew_process(indigo_device *device) {
-	AGENT_MOUNT_STATE_SLEW_STATE_ITEM->light.value = INDIGO_BUSY_STATE;
-	indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
-	indigo_send_message(device, IDLE_PROPERTY, "Slew started");
+	FILTER_DEVICE_CONTEXT->running_process = true;
 	mount_control(device, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME);
-	if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE) {
-		AGENT_MOUNT_STATE_SLEW_STATE_ITEM->light.value = INDIGO_IDLE_STATE;
-		indigo_send_message(device, IDLE_PROPERTY, "Slew finished");
-	} else {
-		AGENT_MOUNT_STATE_SLEW_STATE_ITEM->light.value = INDIGO_ALERT_STATE;
-		indigo_send_message(device, ALERT_PROPERTY,"Slew failed");
-	}
-	indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
 	if (AGENT_MOUNT_ENABLE_HA_LIMIT_FEATURE_ITEM->sw.value) {
 		indigo_send_message(device, IDLE_PROPERTY, "HA limit is active");
 	}
 	if (AGENT_MOUNT_ENABLE_TIME_LIMIT_FEATURE_ITEM->sw.value) {
 		indigo_send_message(device, IDLE_PROPERTY, "Time limit is active");
 	}
+	FILTER_DEVICE_CONTEXT->running_process = false;
 }
 
 static void sync_process(indigo_device *device) {
-	AGENT_MOUNT_STATE_SYNC_STATE_ITEM->light.value = INDIGO_BUSY_STATE;
-	indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
+	FILTER_DEVICE_CONTEXT->running_process = true;
 	mount_control(device, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME);
 	if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_IDLE_STATE) {
-		AGENT_MOUNT_STATE_SYNC_STATE_ITEM->light.value = INDIGO_OK_STATE;
 		indigo_send_message(device, IDLE_PROPERTY, "Synced");
 	} else {
-		AGENT_MOUNT_STATE_SYNC_STATE_ITEM->light.value = INDIGO_ALERT_STATE;
 		indigo_send_message(device, ALERT_PROPERTY, "Sync failed");
 	}
-	indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
+	FILTER_DEVICE_CONTEXT->running_process = false;
 }
 
 static void park_process(indigo_device *device) {
 	FILTER_DEVICE_CONTEXT->running_process = true;
 	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true);
 	for (int i = 0; i < 180000; i++) {
-		if (AGENT_MOUNT_STATE_PARK_STATE_ITEM->light.value == INDIGO_OK_STATE || AGENT_MOUNT_STATE_PARK_STATE_ITEM->light.value == INDIGO_ALERT_STATE) {
+		if (AGENT_MOUNT_STATE_PARK_ITEM->light.value == INDIGO_OK_STATE || AGENT_MOUNT_STATE_PARK_ITEM->light.value == INDIGO_ALERT_STATE) {
 			break;
 		}
 		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -329,7 +315,7 @@ static void park_process(indigo_device *device) {
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 		indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
 	} else {
-		AGENT_START_PROCESS_PROPERTY->state = AGENT_MOUNT_STATE_PARK_STATE_ITEM->light.value == INDIGO_OK_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+		AGENT_START_PROCESS_PROPERTY->state = AGENT_MOUNT_STATE_PARK_ITEM->light.value == INDIGO_OK_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 	}
 	FILTER_DEVICE_CONTEXT->running_process = false;
@@ -339,7 +325,7 @@ static void unpark_process(indigo_device *device) {
 	FILTER_DEVICE_CONTEXT->running_process = true;
 	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
 	for (int i = 0; i < 180000; i++) {
-		if (AGENT_MOUNT_STATE_PARK_STATE_ITEM->light.value == INDIGO_IDLE_STATE || AGENT_MOUNT_STATE_PARK_STATE_ITEM->light.value == INDIGO_ALERT_STATE) {
+		if (AGENT_MOUNT_STATE_PARK_ITEM->light.value == INDIGO_IDLE_STATE || AGENT_MOUNT_STATE_PARK_ITEM->light.value == INDIGO_ALERT_STATE) {
 			break;
 		}
 		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -354,7 +340,7 @@ static void unpark_process(indigo_device *device) {
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 		indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
 	} else {
-		AGENT_START_PROCESS_PROPERTY->state = AGENT_MOUNT_STATE_PARK_STATE_ITEM->light.value == INDIGO_IDLE_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+		AGENT_START_PROCESS_PROPERTY->state = AGENT_MOUNT_STATE_PARK_ITEM->light.value == INDIGO_IDLE_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 	}
 	FILTER_DEVICE_CONTEXT->running_process = false;
@@ -364,7 +350,7 @@ static void home_process(indigo_device *device) {
 	FILTER_DEVICE_CONTEXT->running_process = true;
 	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, MOUNT_HOME_PROPERTY_NAME, MOUNT_HOME_ITEM_NAME, true);
 	for (int i = 0; i < 180000; i++) {
-		if (AGENT_MOUNT_STATE_HOME_STATE_ITEM->light.value == INDIGO_OK_STATE || AGENT_MOUNT_STATE_HOME_STATE_ITEM->light.value == INDIGO_ALERT_STATE) {
+		if (AGENT_MOUNT_STATE_HOME_ITEM->light.value == INDIGO_OK_STATE || AGENT_MOUNT_STATE_HOME_ITEM->light.value == INDIGO_ALERT_STATE) {
 			break;
 		}
 		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -379,7 +365,7 @@ static void home_process(indigo_device *device) {
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 		indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
 	} else {
-		AGENT_START_PROCESS_PROPERTY->state = AGENT_MOUNT_STATE_HOME_STATE_ITEM->light.value == INDIGO_OK_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+		AGENT_START_PROCESS_PROPERTY->state = AGENT_MOUNT_STATE_HOME_ITEM->light.value == INDIGO_OK_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 	}
 	FILTER_DEVICE_CONTEXT->running_process = false;
@@ -389,7 +375,7 @@ static void tracking_on_process(indigo_device *device) {
 	FILTER_DEVICE_CONTEXT->running_process = true;
 	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_ON_ITEM_NAME, true);
 	for (int i = 0; i < 180000; i++) {
-		if (AGENT_MOUNT_STATE_TRACKING_STATE_ITEM->light.value == INDIGO_OK_STATE || AGENT_MOUNT_STATE_TRACKING_STATE_ITEM->light.value == INDIGO_ALERT_STATE) {
+		if (AGENT_MOUNT_STATE_TRACKING_ITEM->light.value == INDIGO_OK_STATE || AGENT_MOUNT_STATE_TRACKING_ITEM->light.value == INDIGO_ALERT_STATE) {
 			break;
 		}
 		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -404,7 +390,7 @@ static void tracking_on_process(indigo_device *device) {
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 		indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
 	} else {
-		AGENT_START_PROCESS_PROPERTY->state = AGENT_MOUNT_STATE_TRACKING_STATE_ITEM->light.value == INDIGO_OK_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+		AGENT_START_PROCESS_PROPERTY->state = AGENT_MOUNT_STATE_TRACKING_ITEM->light.value == INDIGO_OK_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 	}
 	FILTER_DEVICE_CONTEXT->running_process = false;
@@ -414,7 +400,7 @@ static void tracking_off_process(indigo_device *device) {
 	FILTER_DEVICE_CONTEXT->running_process = true;
 	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, MOUNT_TRACKING_PROPERTY_NAME, MOUNT_TRACKING_OFF_ITEM_NAME, true);
 	for (int i = 0; i < 180000; i++) {
-		if (AGENT_MOUNT_STATE_TRACKING_STATE_ITEM->light.value == INDIGO_IDLE_STATE || AGENT_MOUNT_STATE_TRACKING_STATE_ITEM->light.value == INDIGO_ALERT_STATE) {
+		if (AGENT_MOUNT_STATE_TRACKING_ITEM->light.value == INDIGO_IDLE_STATE || AGENT_MOUNT_STATE_TRACKING_ITEM->light.value == INDIGO_ALERT_STATE) {
 			break;
 		}
 		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -429,7 +415,7 @@ static void tracking_off_process(indigo_device *device) {
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 		indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
 	} else {
-		AGENT_START_PROCESS_PROPERTY->state = AGENT_MOUNT_STATE_TRACKING_STATE_ITEM->light.value == INDIGO_IDLE_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+		AGENT_START_PROCESS_PROPERTY->state = AGENT_MOUNT_STATE_TRACKING_ITEM->light.value == INDIGO_IDLE_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 	}
 	FILTER_DEVICE_CONTEXT->running_process = false;
@@ -894,8 +880,9 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 			CLIENT_PRIVATE_DATA->show_negative_time_past_transit = false;
 			CLIENT_PRIVATE_DATA->mount_parking = CLIENT_PRIVATE_DATA->mount_parked = CLIENT_PRIVATE_DATA->mount_unparked = CLIENT_PRIVATE_DATA->mount_tracking = CLIENT_PRIVATE_DATA->mount_stopped = false;
 			CLIENT_PRIVATE_DATA->mount_homing = CLIENT_PRIVATE_DATA->mount_homed = false;
+			CLIENT_PRIVATE_DATA->mount_state_defined = false;
 			CLIENT_PRIVATE_DATA->mount_eq_coordinates_state = INDIGO_IDLE_STATE;
-			AGENT_MOUNT_STATE_SLEW_STATE_ITEM->light.value = AGENT_MOUNT_STATE_SYNC_STATE_ITEM->light.value = AGENT_MOUNT_STATE_PARK_STATE_ITEM->light.value = AGENT_MOUNT_STATE_HOME_STATE_ITEM->light.value = AGENT_MOUNT_STATE_TRACKING_STATE_ITEM->light.value = INDIGO_IDLE_STATE;
+			AGENT_MOUNT_STATE_SLEW_ITEM->light.value = AGENT_MOUNT_STATE_PARK_ITEM->light.value = AGENT_MOUNT_STATE_HOME_ITEM->light.value = AGENT_MOUNT_STATE_TRACKING_ITEM->light.value = INDIGO_IDLE_STATE;
 			indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
 			AGENT_MOUNT_FEATURES_CAN_SLEW_ITEM->sw.value = AGENT_MOUNT_FEATURES_CAN_SYNC_ITEM->sw.value = AGENT_MOUNT_FEATURES_CAN_PARK_ITEM->sw.value = AGENT_MOUNT_FEATURES_CAN_HOME_ITEM->sw.value = AGENT_MOUNT_FEATURES_CAN_TRACK_ITEM->sw.value = false;
 			indigo_update_property(device, AGENT_MOUNT_FEATURES_PROPERTY, NULL);
@@ -942,122 +929,179 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 				break;
 			}
 		}
+	} else if (!strcmp(property->name, MOUNT_STATE_PROPERTY_NAME)) {
+		CLIENT_PRIVATE_DATA->mount_state_defined = true;
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = property->items + i;
+			if (!strcmp(item->name, MOUNT_STATE_SLEW_ITEM_NAME)) {
+				if (AGENT_MOUNT_STATE_SLEW_ITEM->light.value != item->light.value) {
+					AGENT_MOUNT_STATE_SLEW_ITEM->light.value = item->light.value;
+					if (item->light.value == INDIGO_IDLE_STATE) {
+						indigo_send_message(device, IDLE_PROPERTY, "Slew finished");
+					} else if (item->light.value == INDIGO_OK_STATE) {
+						indigo_send_message(device, IDLE_PROPERTY, "Slew started");
+					} else if (item->light.value == INDIGO_ALERT_STATE) {
+						indigo_send_message(device, ALERT_PROPERTY, "Slew failed");
+					}
+				}
+			} else if (!strcmp(item->name, MOUNT_STATE_TRACKING_ITEM_NAME)) {
+				if (AGENT_MOUNT_STATE_TRACKING_ITEM->light.value != item->light.value) {
+					AGENT_MOUNT_STATE_TRACKING_ITEM->light.value = item->light.value;
+					if (item->light.value == INDIGO_IDLE_STATE) {
+						indigo_send_message(device, IDLE_PROPERTY, "Mount is not tracking");
+					} else if (item->light.value == INDIGO_OK_STATE) {
+						indigo_send_message(device, IDLE_PROPERTY, "Mount is tracking");
+					}
+				}
+			} else if (!strcmp(item->name, MOUNT_STATE_PARK_ITEM_NAME)) {
+				if (AGENT_MOUNT_STATE_PARK_ITEM->light.value != item->light.value) {
+					AGENT_MOUNT_STATE_PARK_ITEM->light.value = item->light.value;
+					if (item->light.value == INDIGO_IDLE_STATE) {
+						indigo_send_message(device, IDLE_PROPERTY, "Mount is unparked");
+					} else if (item->light.value == INDIGO_BUSY_STATE) {
+						indigo_send_message(device, IDLE_PROPERTY, "Parking mount...");
+					} else if (item->light.value == INDIGO_OK_STATE) {
+						indigo_send_message(device, IDLE_PROPERTY, "Mount is parked");
+					} else if (item->light.value == INDIGO_ALERT_STATE) {
+						indigo_send_message(device, ALERT_PROPERTY, "Mount failed to park");
+					}
+				}
+			} else if (!strcmp(item->name, MOUNT_STATE_HOME_ITEM_NAME)) {
+				if (AGENT_MOUNT_STATE_HOME_ITEM->light.value != item->light.value) {
+					AGENT_MOUNT_STATE_HOME_ITEM->light.value = item->light.value;
+					if (item->light.value == INDIGO_BUSY_STATE) {
+						indigo_send_message(device, IDLE_PROPERTY, "Mount is going to home position...");
+					} else if (item->light.value == INDIGO_OK_STATE) {
+						indigo_send_message(device, IDLE_PROPERTY, "Mount is at home position");
+					} else if (item->light.value == INDIGO_ALERT_STATE) {
+						indigo_send_message(device, ALERT_PROPERTY, "Mount failed to go home");
+					}
+				}
+			}
+		}
+		indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
 	} else if (!strcmp(property->name, MOUNT_TRACKING_PROPERTY_NAME)) {
 		AGENT_MOUNT_FEATURES_CAN_TRACK_ITEM->sw.value = true;
-		if (property->state == INDIGO_OK_STATE) {
-			for (int i = 0; i < property->count; i++) {
-				indigo_item *item = property->items + i;
-				if (item->sw.value && !strcmp(item->name, MOUNT_TRACKING_ON_ITEM_NAME) && !CLIENT_PRIVATE_DATA->mount_tracking) {
-					CLIENT_PRIVATE_DATA->mount_tracking = true;
-					CLIENT_PRIVATE_DATA->mount_stopped = false;
-					AGENT_MOUNT_STATE_TRACKING_STATE_ITEM->light.value = INDIGO_OK_STATE;
-					indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
-					indigo_send_message(device, IDLE_PROPERTY, "Mount is tracking");
-					handle_mount_change(device);
-					break;
-				} else if (item->sw.value && !strcmp(item->name, MOUNT_TRACKING_OFF_ITEM_NAME) && !CLIENT_PRIVATE_DATA->mount_stopped) {
-					CLIENT_PRIVATE_DATA->mount_tracking = false;
-					CLIENT_PRIVATE_DATA->mount_stopped = true;
-					AGENT_MOUNT_STATE_TRACKING_STATE_ITEM->light.value = INDIGO_IDLE_STATE;
-					indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
-					indigo_send_message(device, IDLE_PROPERTY, "Mount is not tracking");
-					handle_mount_change(device);
-					break;
+		if (!CLIENT_PRIVATE_DATA->mount_state_defined) {
+			if (property->state == INDIGO_OK_STATE) {
+				for (int i = 0; i < property->count; i++) {
+					indigo_item *item = property->items + i;
+					if (item->sw.value && !strcmp(item->name, MOUNT_TRACKING_ON_ITEM_NAME) && !CLIENT_PRIVATE_DATA->mount_tracking) {
+						CLIENT_PRIVATE_DATA->mount_tracking = true;
+						CLIENT_PRIVATE_DATA->mount_stopped = false;
+						AGENT_MOUNT_STATE_TRACKING_ITEM->light.value = INDIGO_OK_STATE;
+						indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
+						indigo_send_message(device, IDLE_PROPERTY, "Mount is tracking");
+						handle_mount_change(device);
+						break;
+					} else if (item->sw.value && !strcmp(item->name, MOUNT_TRACKING_OFF_ITEM_NAME) && !CLIENT_PRIVATE_DATA->mount_stopped) {
+						CLIENT_PRIVATE_DATA->mount_tracking = false;
+						CLIENT_PRIVATE_DATA->mount_stopped = true;
+						AGENT_MOUNT_STATE_TRACKING_ITEM->light.value = INDIGO_IDLE_STATE;
+						indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
+						indigo_send_message(device, IDLE_PROPERTY, "Mount is not tracking");
+						handle_mount_change(device);
+						break;
+					}
+					
 				}
-
+			} else {
+				CLIENT_PRIVATE_DATA->mount_tracking = false;
+				CLIENT_PRIVATE_DATA->mount_stopped = false;
+				AGENT_MOUNT_STATE_TRACKING_ITEM->light.value = property->state;
+				indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
 			}
-		} else {
-			CLIENT_PRIVATE_DATA->mount_tracking = false;
-			CLIENT_PRIVATE_DATA->mount_stopped = false;
-			AGENT_MOUNT_STATE_TRACKING_STATE_ITEM->light.value = property->state;
-			indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
 		}
 	} else if (!strcmp(property->name, MOUNT_PARK_PROPERTY_NAME)) {
 		AGENT_MOUNT_FEATURES_CAN_PARK_ITEM->sw.value = true;
-		if (property->state == INDIGO_ALERT_STATE) {
-			if (CLIENT_PRIVATE_DATA->mount_parking || CLIENT_PRIVATE_DATA->mount_parked || CLIENT_PRIVATE_DATA->mount_unparked) {
-				CLIENT_PRIVATE_DATA->mount_parking = false;
-				CLIENT_PRIVATE_DATA->mount_parked = false;
-				CLIENT_PRIVATE_DATA->mount_unparked = false;
-				AGENT_MOUNT_STATE_PARK_STATE_ITEM->light.value = INDIGO_ALERT_STATE;
-				indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
-				indigo_send_message(device, ALERT_PROPERTY, "Uncertain mount park state");
-			}
-		} else {
-			for (int i = 0; i < property->count; i++) {
-				indigo_item *item = property->items + i;
-				if (!strcmp(item->name, MOUNT_PARK_PARKED_ITEM_NAME)) {
-					if (property->state == INDIGO_BUSY_STATE && item->sw.value && !CLIENT_PRIVATE_DATA->mount_parking) {
-						CLIENT_PRIVATE_DATA->mount_parking = true;
-						CLIENT_PRIVATE_DATA->mount_parked = false;
-						CLIENT_PRIVATE_DATA->mount_unparked = false;
-						AGENT_MOUNT_STATE_PARK_STATE_ITEM->light.value = INDIGO_BUSY_STATE;
-						indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
-						indigo_send_message(device, IDLE_PROPERTY, "Parking mount...");
-						abort_imager_process(device, "parking");
-						abort_guider_process(device, "parking");
-					} else if (property->state == INDIGO_OK_STATE) {
-						if (item->sw.value && !CLIENT_PRIVATE_DATA->mount_parked) {
-							CLIENT_PRIVATE_DATA->mount_parking = false;
-							CLIENT_PRIVATE_DATA->mount_parked = true;
-							CLIENT_PRIVATE_DATA->mount_unparked = false;
-							AGENT_MOUNT_STATE_PARK_STATE_ITEM->light.value = INDIGO_OK_STATE;
-							indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
-							indigo_send_message(device, IDLE_PROPERTY, "Mount is parked");
-							indigo_change_switch_property_1(FILTER_CLIENT_CONTEXT->client, device->name, DOME_PARK_PROPERTY_NAME, DOME_PARK_PARKED_ITEM_NAME, true);
-							indigo_change_switch_property_1(FILTER_CLIENT_CONTEXT->client, device->name, DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_CLOSED_ITEM_NAME, true);
-						} else if (!item->sw.value && !CLIENT_PRIVATE_DATA->mount_unparked) {
-							CLIENT_PRIVATE_DATA->mount_parking = false;
+		if (!CLIENT_PRIVATE_DATA->mount_state_defined) {
+			if (property->state == INDIGO_ALERT_STATE) {
+				if (CLIENT_PRIVATE_DATA->mount_parking || CLIENT_PRIVATE_DATA->mount_parked || CLIENT_PRIVATE_DATA->mount_unparked) {
+					CLIENT_PRIVATE_DATA->mount_parking = false;
+					CLIENT_PRIVATE_DATA->mount_parked = false;
+					CLIENT_PRIVATE_DATA->mount_unparked = false;
+					AGENT_MOUNT_STATE_PARK_ITEM->light.value = INDIGO_ALERT_STATE;
+					indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
+					indigo_send_message(device, ALERT_PROPERTY, "Uncertain mount park state");
+				}
+			} else {
+				for (int i = 0; i < property->count; i++) {
+					indigo_item *item = property->items + i;
+					if (!strcmp(item->name, MOUNT_PARK_PARKED_ITEM_NAME)) {
+						if (property->state == INDIGO_BUSY_STATE && item->sw.value && !CLIENT_PRIVATE_DATA->mount_parking) {
+							CLIENT_PRIVATE_DATA->mount_parking = true;
 							CLIENT_PRIVATE_DATA->mount_parked = false;
-							CLIENT_PRIVATE_DATA->mount_unparked = true;
-							AGENT_MOUNT_STATE_PARK_STATE_ITEM->light.value = INDIGO_IDLE_STATE;
+							CLIENT_PRIVATE_DATA->mount_unparked = false;
+							AGENT_MOUNT_STATE_PARK_ITEM->light.value = INDIGO_BUSY_STATE;
 							indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
-							indigo_send_message(device, IDLE_PROPERTY, "Mount is unparked");
-							indigo_change_switch_property_1(FILTER_CLIENT_CONTEXT->client, device->name, DOME_PARK_PROPERTY_NAME, DOME_PARK_UNPARKED_ITEM_NAME, true);
-							indigo_change_switch_property_1(FILTER_CLIENT_CONTEXT->client, device->name, DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME, true);
+							indigo_send_message(device, IDLE_PROPERTY, "Parking mount...");
+							abort_imager_process(device, "parking");
+							abort_guider_process(device, "parking");
+						} else if (property->state == INDIGO_OK_STATE) {
+							if (item->sw.value && !CLIENT_PRIVATE_DATA->mount_parked) {
+								CLIENT_PRIVATE_DATA->mount_parking = false;
+								CLIENT_PRIVATE_DATA->mount_parked = true;
+								CLIENT_PRIVATE_DATA->mount_unparked = false;
+								AGENT_MOUNT_STATE_PARK_ITEM->light.value = INDIGO_OK_STATE;
+								indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
+								indigo_send_message(device, IDLE_PROPERTY, "Mount is parked");
+								indigo_change_switch_property_1(FILTER_CLIENT_CONTEXT->client, device->name, DOME_PARK_PROPERTY_NAME, DOME_PARK_PARKED_ITEM_NAME, true);
+								indigo_change_switch_property_1(FILTER_CLIENT_CONTEXT->client, device->name, DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_CLOSED_ITEM_NAME, true);
+							} else if (!item->sw.value && !CLIENT_PRIVATE_DATA->mount_unparked) {
+								CLIENT_PRIVATE_DATA->mount_parking = false;
+								CLIENT_PRIVATE_DATA->mount_parked = false;
+								CLIENT_PRIVATE_DATA->mount_unparked = true;
+								AGENT_MOUNT_STATE_PARK_ITEM->light.value = INDIGO_IDLE_STATE;
+								indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
+								indigo_send_message(device, IDLE_PROPERTY, "Mount is unparked");
+								indigo_change_switch_property_1(FILTER_CLIENT_CONTEXT->client, device->name, DOME_PARK_PROPERTY_NAME, DOME_PARK_UNPARKED_ITEM_NAME, true);
+								indigo_change_switch_property_1(FILTER_CLIENT_CONTEXT->client, device->name, DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_OPENED_ITEM_NAME, true);
+							}
 						}
+						break;
 					}
-					break;
 				}
 			}
 		}
 	} else if (!strcmp(property->name, MOUNT_HOME_PROPERTY_NAME)) {
 		AGENT_MOUNT_FEATURES_CAN_HOME_ITEM->sw.value = true;
-		if (property->state == INDIGO_ALERT_STATE) {
-			if (CLIENT_PRIVATE_DATA->mount_homing || CLIENT_PRIVATE_DATA->mount_homed) {
-				CLIENT_PRIVATE_DATA->mount_homing = false;
-				CLIENT_PRIVATE_DATA->mount_homed = false;
-				AGENT_MOUNT_STATE_HOME_STATE_ITEM->light.value = INDIGO_ALERT_STATE;
-				indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
-				indigo_send_message(device, ALERT_PROPERTY, "Uncertain mount home state");
-			}
-		} else {
-			for (int i = 0; i < property->count; i++) {
-				indigo_item *item = property->items + i;
-				if (!strcmp(item->name, MOUNT_HOME_ITEM_NAME)) {
-					if (property->state == INDIGO_BUSY_STATE && !CLIENT_PRIVATE_DATA->mount_homing) {
-						CLIENT_PRIVATE_DATA->mount_homing = true;
-						CLIENT_PRIVATE_DATA->mount_homed = false;
-						AGENT_MOUNT_STATE_HOME_STATE_ITEM->light.value = INDIGO_BUSY_STATE;
-						indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
-						indigo_send_message(device, IDLE_PROPERTY, "Mount is going to home position...");
-						abort_imager_process(device, "going home");
-						abort_guider_process(device, "going home");
-					} else if (property->state == INDIGO_OK_STATE) {
-						if (item->sw.value && !CLIENT_PRIVATE_DATA->mount_homed) {
-							CLIENT_PRIVATE_DATA->mount_homing = false;
-							CLIENT_PRIVATE_DATA->mount_homed = true;
-							AGENT_MOUNT_STATE_HOME_STATE_ITEM->light.value = INDIGO_OK_STATE;
+		if (!CLIENT_PRIVATE_DATA->mount_state_defined) {
+			if (property->state == INDIGO_ALERT_STATE) {
+				if (CLIENT_PRIVATE_DATA->mount_homing || CLIENT_PRIVATE_DATA->mount_homed) {
+					CLIENT_PRIVATE_DATA->mount_homing = false;
+					CLIENT_PRIVATE_DATA->mount_homed = false;
+					AGENT_MOUNT_STATE_HOME_ITEM->light.value = INDIGO_ALERT_STATE;
+					indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
+					indigo_send_message(device, ALERT_PROPERTY, "Uncertain mount home state");
+				}
+			} else {
+				for (int i = 0; i < property->count; i++) {
+					indigo_item *item = property->items + i;
+					if (!strcmp(item->name, MOUNT_HOME_ITEM_NAME)) {
+						if (property->state == INDIGO_BUSY_STATE && !CLIENT_PRIVATE_DATA->mount_homing) {
+							CLIENT_PRIVATE_DATA->mount_homing = true;
+							CLIENT_PRIVATE_DATA->mount_homed = false;
+							AGENT_MOUNT_STATE_HOME_ITEM->light.value = INDIGO_BUSY_STATE;
 							indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
-							indigo_send_message(device, IDLE_PROPERTY, "Mount is at home position");
-						} else if (CLIENT_PRIVATE_DATA->mount_homing) {
-							CLIENT_PRIVATE_DATA->mount_homing = false;
-							CLIENT_PRIVATE_DATA->mount_homed = true;
-							AGENT_MOUNT_STATE_HOME_STATE_ITEM->light.value = INDIGO_OK_STATE;
-							indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
+							indigo_send_message(device, IDLE_PROPERTY, "Mount is going to home position...");
+							abort_imager_process(device, "going home");
+							abort_guider_process(device, "going home");
+						} else if (property->state == INDIGO_OK_STATE) {
+							if (item->sw.value && !CLIENT_PRIVATE_DATA->mount_homed) {
+								CLIENT_PRIVATE_DATA->mount_homing = false;
+								CLIENT_PRIVATE_DATA->mount_homed = true;
+								AGENT_MOUNT_STATE_HOME_ITEM->light.value = INDIGO_OK_STATE;
+								indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
+								indigo_send_message(device, IDLE_PROPERTY, "Mount is at home position");
+							} else if (CLIENT_PRIVATE_DATA->mount_homing) {
+								CLIENT_PRIVATE_DATA->mount_homing = false;
+								CLIENT_PRIVATE_DATA->mount_homed = true;
+								AGENT_MOUNT_STATE_HOME_ITEM->light.value = INDIGO_OK_STATE;
+								indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
+							}
 						}
+						break;
 					}
-					break;
 				}
 			}
 		}
@@ -1077,7 +1121,7 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 			if (CLIENT_PRIVATE_DATA->mount_homed) {
 				CLIENT_PRIVATE_DATA->mount_homing = false;
 				CLIENT_PRIVATE_DATA->mount_homed = false;
-				AGENT_MOUNT_STATE_HOME_STATE_ITEM->light.value = INDIGO_IDLE_STATE;
+				AGENT_MOUNT_STATE_HOME_ITEM->light.value = INDIGO_IDLE_STATE;
 				indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
 			}
 			abort_imager_process(device, "slewing");
@@ -1371,15 +1415,14 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_switch_item(AGENT_MOUNT_ENABLE_HA_LIMIT_FEATURE_ITEM, AGENT_MOUNT_ENABLE_HA_LIMIT_FEATURE_ITEM_NAME, "Enable HA limit", false);
 		indigo_init_switch_item(AGENT_MOUNT_ENABLE_TIME_LIMIT_FEATURE_ITEM, AGENT_MOUNT_ENABLE_TIME_LIMIT_FEATURE_ITEM_NAME, "Enable time limit", false);
 		// -------------------------------------------------------------------------------- AGENT_MOUNT_STATE
-		AGENT_MOUNT_STATE_PROPERTY = indigo_init_light_property(NULL, device->name, AGENT_MOUNT_STATE_PROPERTY_NAME, "Agent", "Mount state", INDIGO_OK_STATE, 5);
+		AGENT_MOUNT_STATE_PROPERTY = indigo_init_light_property(NULL, device->name, AGENT_MOUNT_STATE_PROPERTY_NAME, "Agent", "Mount state", INDIGO_OK_STATE, 4);
 		if (AGENT_MOUNT_STATE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
-		indigo_init_light_item(AGENT_MOUNT_STATE_SLEW_STATE_ITEM, AGENT_MOUNT_STATE_SLEW_STATE_ITEM_NAME, "Slew state", INDIGO_IDLE_STATE);
-		indigo_init_light_item(AGENT_MOUNT_STATE_SYNC_STATE_ITEM, AGENT_MOUNT_STATE_SYNC_STATE_ITEM_NAME, "Sync state", INDIGO_IDLE_STATE);
-		indigo_init_light_item(AGENT_MOUNT_STATE_PARK_STATE_ITEM, AGENT_MOUNT_STATE_PARK_STATE_ITEM_NAME, "Park state", INDIGO_IDLE_STATE);
-		indigo_init_light_item(AGENT_MOUNT_STATE_HOME_STATE_ITEM, AGENT_MOUNT_STATE_HOME_STATE_ITEM_NAME, "Home state", INDIGO_IDLE_STATE);
-		indigo_init_light_item(AGENT_MOUNT_STATE_TRACKING_STATE_ITEM, AGENT_MOUNT_STATE_TRACKING_STATE_ITEM_NAME, "Tracking state", INDIGO_IDLE_STATE);
+		indigo_init_light_item(AGENT_MOUNT_STATE_SLEW_ITEM, AGENT_MOUNT_STATE_SLEW_ITEM_NAME, "Slew state", INDIGO_IDLE_STATE);
+		indigo_init_light_item(AGENT_MOUNT_STATE_PARK_ITEM, AGENT_MOUNT_STATE_PARK_ITEM_NAME, "Park state", INDIGO_IDLE_STATE);
+		indigo_init_light_item(AGENT_MOUNT_STATE_HOME_ITEM, AGENT_MOUNT_STATE_HOME_ITEM_NAME, "Home state", INDIGO_IDLE_STATE);
+		indigo_init_light_item(AGENT_MOUNT_STATE_TRACKING_ITEM, AGENT_MOUNT_STATE_TRACKING_ITEM_NAME, "Tracking state", INDIGO_IDLE_STATE);
 		AGENT_MOUNT_FEATURES_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_MOUNT_FEATURES_PROPERTY_NAME, "Agent", "Mount features", INDIGO_OK_STATE, INDIGO_RO_PERM, INDIGO_ANY_OF_MANY_RULE, 5);
 		if (AGENT_MOUNT_FEATURES_PROPERTY == NULL) {
 			return INDIGO_FAILED;
