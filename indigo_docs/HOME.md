@@ -41,6 +41,7 @@
 
 ## Indigo Configuration
 - [Imager Autofocus](IMAGING_AF_TUNING.md)
+- [Imager Multi-camera Synchronization](INDIGO_IMAGER_MULTICAMERA_SYNCHRONIZATION.md)
 - [Polar Alignment](POLAR_ALIGNMENT.md)
 - [Plate Solving](PLATE_SOLVING.md)
 - [Guider Detection Modes](INDIGO_GUIDER_DETECTION_MODES.md)
