@@ -23,7 +23,7 @@
  \file indigo_agent_guider.c
  */
 
-#define DRIVER_VERSION 0x0029
+#define DRIVER_VERSION 0x002A
 #define DRIVER_NAME	"indigo_agent_guider"
 
 #include <stdlib.h>
@@ -1645,7 +1645,9 @@ static bool guide(indigo_device *device) {
 			} else if (AGENT_GUIDER_CORRECTION_MODE_RA_LINEAR_TREND_ITEM->sw.value) {
 				correction_ra = indigo_guider_linear_trend_response(AGENT_GUIDER_SETTINGS_LINEAR_TREND_AGG_RA_ITEM->number.value / 100, min_error, drift_ra, &DEVICE_PRIVATE_DATA->trend_ra);
 			} else {
-				correction_ra = 0;
+				// should not happen, but just a safety measure fallback to PI if no RA correction mode is selected
+				correction_ra = indigo_guider_pi_response(AGENT_GUIDER_SETTINGS_AGG_RA_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_I_GAIN_RA_ITEM->number.value, AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value + AGENT_GUIDER_SETTINGS_DELAY_ITEM->number.value, min_error, drift_ra, avg_drift_ra);
+
 			}
 			if (correction_ra != 0) {
 				/* Limit correction_ra, so that we will not lose the stars in the slection if we apply it and let the next cycle complete complete it */
@@ -1674,7 +1676,8 @@ static bool guide(indigo_device *device) {
 			} else if (AGENT_GUIDER_CORRECTION_MODE_DEC_LINEAR_TREND_ITEM->sw.value) {
 				correction_dec = indigo_guider_linear_trend_response(AGENT_GUIDER_SETTINGS_LINEAR_TREND_AGG_DEC_ITEM->number.value / 100, min_error, drift_dec, &DEVICE_PRIVATE_DATA->trend_dec);
 			} else {
-				correction_dec = 0;
+				// should not happen, but just a safety measure fallback to PI if no Dec correction mode is selected
+				correction_dec = indigo_guider_pi_response(AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_I_GAIN_DEC_ITEM->number.value, AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value + AGENT_GUIDER_SETTINGS_DELAY_ITEM->number.value, min_error, drift_dec, avg_drift_dec);
 			}
 			if (correction_dec != 0) {
 				/* Limit correction_dec, so that we will not lose the stars in the slection if we apply it and let the next cycle complete complete it */
