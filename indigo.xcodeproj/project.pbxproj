@@ -2274,6 +2274,7 @@
 		598679722F7D80AA008F60F3 /* INDIGO_GUIDER_DETECTION_MODES.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = INDIGO_GUIDER_DETECTION_MODES.md; sourceTree = "<group>"; };
 		598679732F7D80AA008F60F3 /* INDIGO_GUIDER_DITHERING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = INDIGO_GUIDER_DITHERING.md; sourceTree = "<group>"; };
 		598679742F7D80AA008F60F3 /* INDIGO_IMAGER_MULTICAMERA_SYNCHRONIZATION.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = INDIGO_IMAGER_MULTICAMERA_SYNCHRONIZATION.md; sourceTree = "<group>"; };
+		598679752F7E81E3008F60F3 /* indigo_mount_ioptron.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_mount_ioptron.driver; sourceTree = "<group>"; };
 		598786452540C62D00CE8B48 /* libtiff.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libtiff.a; path = build/lib/libtiff.a; sourceTree = "<group>"; };
 		598786472540C69E00CE8B48 /* libtiffxx.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libtiffxx.a; path = build/lib/libtiffxx.a; sourceTree = "<group>"; };
 		598878042F5C494F00837F9C /* indigo_wheel_sx.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_wheel_sx.driver; sourceTree = "<group>"; };
@@ -14015,6 +14016,7 @@
 				9DAD522B21246EB5002FCC79 /* indigo_mount_ioptron.h */,
 				9DAD522E21246EB5002FCC79 /* indigo_mount_ioptron.c */,
 				9DAD522C21246EB5002FCC79 /* indigo_mount_ioptron_main.c */,
+				598679752F7E81E3008F60F3 /* indigo_mount_ioptron.driver */,
 				5956F663230BCE170016C7C2 /* Protocol_V1.0.pdf */,
 				9DBF2E732164BA7100A48C02 /* Protocol_V1.01 (8406).pdf */,
 				9DAD523221246FA9002FCC79 /* Protocol_V1.4 (8407).pdf */,
