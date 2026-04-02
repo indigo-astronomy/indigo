@@ -1228,33 +1228,33 @@ static void *message_handler(parser_state state, parser_context *context, char *
 		}
 	} else if (state == END_TAG_STATE) {
 		pthread_mutex_lock(&context->mutex);
-		indigo_property *cachedProperty = NULL;
+		indigo_property *cached_property = NULL;
 		if (!strcmp(property->name, IDLE_PROPERTY->name) || property->name[0] == 0) {
 			property->state = INDIGO_IDLE_STATE;
 			property->type = INDIGO_LIGHT_VECTOR;
-			cachedProperty = property;
+			cached_property = property;
 		} else if (!strcmp(property->name, OK_PROPERTY->name)) {
 			property->state = INDIGO_OK_STATE;
 			property->type = INDIGO_LIGHT_VECTOR;
-			cachedProperty = property;
+			cached_property = property;
 		} else if (!strcmp(property->name, BUSY_PROPERTY->name)) {
 			property->state = INDIGO_BUSY_STATE;
 			property->type = INDIGO_LIGHT_VECTOR;
-			cachedProperty = property;
+			cached_property = property;
 		} else if (!strcmp(property->name, ALERT_PROPERTY->name)) {
 			property->state = INDIGO_ALERT_STATE;
 			property->type = INDIGO_LIGHT_VECTOR;
-			cachedProperty = property;
+			cached_property = property;
 		} else {
 			for (int index = 0; index < context->count; index++) {
-				cachedProperty = context->properties[index];
-				if (property != NULL && cachedProperty != NULL && !strncmp(property->device, cachedProperty->device, INDIGO_NAME_SIZE) && !strncmp(property->name, cachedProperty->name, INDIGO_NAME_SIZE)) {
+				cached_property = context->properties[index];
+				if (property != NULL && cached_property != NULL && !strncmp(property->device, cached_property->device, INDIGO_NAME_SIZE) && !strncmp(property->name, cached_property->name, INDIGO_NAME_SIZE)) {
 					break;
 				}
-				cachedProperty = NULL;
+				cached_property = NULL;
 			}
 		}
-		indigo_send_message(device, cachedProperty, *message ? message : NULL);
+		indigo_send_message(device, cached_property, *message ? message : NULL);
 		pthread_mutex_unlock(&context->mutex);
 		indigo_clear_property(property);
 		return top_level_handler;
