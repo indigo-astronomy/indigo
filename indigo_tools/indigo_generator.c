@@ -1249,6 +1249,9 @@ void write_c_include_section(void) {
 	write_line("#include <indigo/indigo_driver_xml.h>");
 	for (device_type *device = driver.devices; device; device = device->next) {
 		write_line("#include <indigo/indigo_%s_driver.h>", device->type);
+		if (!strcmp(device->type, "mount")) {
+			write_line("#include <indigo/indigo_align.h>");
+		}
 	}
 	write_line("#include <indigo/indigo_uni_io.h>");
 	if (driver.libusb || driver.hid) {
@@ -1477,11 +1480,23 @@ void write_c_property_change_handler(device_type *device, property_type *propert
 //	write_line("// %s change handler", property->id);
 	write_line("");
 	write_line("static void %s(indigo_device *device) {", property->handler);
-	if (!c_code_starts_with(property->on_change, "%s->state = ", property->handle)) {
+	if (!strcmp(property->id, "MOUNT_EQUATORIAL_COORDINATES") || !strcmp(property->id, "MOUNT_MOTION_DEC") || !strcmp(property->id, "MOUNT_MOTION_RA") || !strcmp(property->id, "MOUNT_TRACKING")) {
+		write_line("\tif (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value) {");
+		write_line("\t\t%s->state = INDIGO_ALERT_STATE;", property->handle);
+		write_line("\t\tindigo_send_message(device, %s, \"Mount is parked!\");", property->handle);
+		write_line("\t}");
+	}
+	if (!strcmp(property->id, "GUIDER_GUIDE_DEC") || !strcmp(property->id, "GUIDER_GUIDE_RA")) {
+	} else if (!c_code_starts_with(property->on_change, "%s->state = ", property->handle)) {
 		write_line("\t%s->state = INDIGO_OK_STATE;", property->handle);
 	}
 	write_c_code_blocks(property->on_change, 1, "%s.%s.on_change", device->type, property->id);
-	write_line("\tindigo_update_property(device, %s, NULL);", property->handle);
+	if (!strcmp(property->id, "MOUNT_EQUATORIAL_COORDINATES")) {
+		write_line("\tindigo_update_coordinates(device, NULL);");
+	} else if (!strcmp(property->id, "GUIDER_GUIDE_DEC") || !strcmp(property->id, "GUIDER_GUIDE_RA")) {
+	} else {
+		write_line("\tindigo_update_property(device, %s, NULL);", property->handle);
+	}
 	write_line("}");
 	write_line("");
 }
@@ -2201,6 +2216,11 @@ void read_c_source(void) {
 				property_type *property = get_property(device, s1);
 				strncpy(property->hidden, s2, sizeof(property->hidden));
 			}
+		} else if (sscanf(line, " indigo_property_copy_targets(%127[^,], property, false);", s1) == 1) {
+			if (device) {
+				property_type *property = get_property(device, s1);
+				property->preserve_values = true;
+			}
 		} else if (sscanf(line, " strcpy(patterns[%d].%127[^,], %127[^)]);", &i1, s1, s2) == 3) {
 			if (driver.serial == NULL) {
 				driver.serial = allocate(sizeof(serial_type));
@@ -2559,6 +2579,9 @@ void write_definition_source(void) {
 			}
 			if (*property->hidden) {
 				write_line("\t\t\thidden = %s;", property->hidden);
+			}
+			if (property->preserve_values) {
+				write_line("\t\t\tpreserve_values = true;");
 			}
 			if (property->on_change) {
 				write_line("\t\t\ton_change {");

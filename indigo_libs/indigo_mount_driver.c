@@ -1260,7 +1260,6 @@ time_t indigo_get_mount_utc(indigo_device *device) {
 void indigo_update_coordinates(indigo_device *device, const char *message) {
 	time_t utc = indigo_get_mount_utc(device);
 	MOUNT_LST_TIME_ITEM->number.value = indigo_lst(&utc, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
-
 	if (!MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->hidden && !MOUNT_HORIZONTAL_COORDINATES_PROPERTY->hidden) {
 		double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
 		double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
