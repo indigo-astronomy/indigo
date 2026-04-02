@@ -2920,54 +2920,45 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		// -------------------------------------------------------------------------------- AGENT_START_PROCESS
 		if (AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && AGENT_IMAGER_STARS_PROPERTY->state != INDIGO_BUSY_STATE && AGENT_IMAGER_CAPTURE_PROPERTY->state != INDIGO_BUSY_STATE) {
 			indigo_property_copy_values(AGENT_START_PROCESS_PROPERTY, property, false);
-			if (AGENT_IMAGER_CLEAR_SELECTION_ITEM->sw.value) {
-				AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_set_timer(device, 0, clear_selection_process, NULL);
-				indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
-			} else if (AGENT_IMAGER_RESET_ITEM->sw.value) {
-				AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
+			AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
+			AGENT_PAUSE_PROCESS_ITEM->sw.value = AGENT_PAUSE_PROCESS_WAIT_ITEM->sw.value = AGENT_PAUSE_PROCESS_AFTER_TRANSIT_ITEM->sw.value = false;
+			AGENT_PAUSE_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, AGENT_PAUSE_PROCESS_PROPERTY, NULL);
+			AGENT_ABORT_PROCESS_ITEM->sw.value = false;
+			AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
+			if (AGENT_IMAGER_RESET_ITEM->sw.value) {
 				factory_reset(device);
 				AGENT_IMAGER_RESET_ITEM->sw.value = false;
 				AGENT_START_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, "Reset to defaults");
 				return INDIGO_OK;
+			} else if (AGENT_IMAGER_CLEAR_SELECTION_ITEM->sw.value) {
+				indigo_set_timer(device, 0, clear_selection_process, NULL);
 			} else if (INDIGO_FILTER_CCD_SELECTED) {
 				if (AGENT_IMAGER_START_PREVIEW_1_ITEM->sw.value) {
-					AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 					if (DEVICE_PRIVATE_DATA->use_bahtinov_estimator && (DEVICE_PRIVATE_DATA->frame[2] > MAX_BAHTINOV_FRAME_SIZE || DEVICE_PRIVATE_DATA->frame[3] > MAX_BAHTINOV_FRAME_SIZE)) {
 						indigo_send_message(device, BUSY_PROPERTY, "Warning: Bahtinov focus estimator can't process frames larger than %d x %d pixels", MAX_BAHTINOV_FRAME_SIZE, MAX_BAHTINOV_FRAME_SIZE);
 					}
 					indigo_set_timer(device, 0, preview_1_process, NULL);
-					indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 				} else if (AGENT_IMAGER_START_PREVIEW_ITEM->sw.value) {
-					AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 					if (DEVICE_PRIVATE_DATA->use_bahtinov_estimator && (DEVICE_PRIVATE_DATA->frame[2] > MAX_BAHTINOV_FRAME_SIZE || DEVICE_PRIVATE_DATA->frame[3] > MAX_BAHTINOV_FRAME_SIZE)) {
 						indigo_send_message(device, BUSY_PROPERTY, "Warning: Bahtinov focus estimator can't process frames larger than %d x %d pixels", MAX_BAHTINOV_FRAME_SIZE, MAX_BAHTINOV_FRAME_SIZE);
 					}
 					indigo_set_timer(device, 0, preview_process, NULL);
-					indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 				} else if (AGENT_IMAGER_START_EXPOSURE_ITEM->sw.value && !AGENT_IMAGER_MACRO_MODE_FEATURE_ITEM->sw.value) {
-					AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_set_timer(device, 0, exposure_batch_process, NULL);
-					indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 				} else if (AGENT_IMAGER_START_STREAMING_ITEM->sw.value) {
-					AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_set_timer(device, 0, streaming_batch_process, NULL);
-					indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 				} else if (INDIGO_FILTER_FOCUSER_SELECTED) {
 					if (AGENT_IMAGER_START_FOCUSING_ITEM->sw.value) {
-						AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 						if (DEVICE_PRIVATE_DATA->use_bahtinov_estimator && (DEVICE_PRIVATE_DATA->frame[2] > MAX_BAHTINOV_FRAME_SIZE || DEVICE_PRIVATE_DATA->frame[3] > MAX_BAHTINOV_FRAME_SIZE)) {
 							indigo_send_message(device, BUSY_PROPERTY, "Warning: Bahtinov focus estimator can't process frames larger than %d x %d pixels", MAX_BAHTINOV_FRAME_SIZE, MAX_BAHTINOV_FRAME_SIZE);
 						}
-						indigo_set_timer(device, 0, autofocus_process, NULL);
 					} else if (AGENT_IMAGER_START_EXPOSURE_ITEM->sw.value && AGENT_IMAGER_MACRO_MODE_FEATURE_ITEM->sw.value) {
-						AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 						indigo_set_timer(device, 0, bracketing_batch_process, NULL);
-						indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 					}
-					indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 				} else {
 					AGENT_IMAGER_START_PREVIEW_1_ITEM->sw.value = AGENT_IMAGER_START_PREVIEW_ITEM->sw.value = AGENT_IMAGER_START_EXPOSURE_ITEM->sw.value = AGENT_IMAGER_START_STREAMING_ITEM->sw.value = AGENT_IMAGER_START_FOCUSING_ITEM->sw.value = AGENT_IMAGER_CLEAR_SELECTION_ITEM->sw.value = false;
 					AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -2978,13 +2969,6 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 				AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, "No imager camera is selected");
 			}
-			AGENT_PAUSE_PROCESS_ITEM->sw.value = AGENT_PAUSE_PROCESS_WAIT_ITEM->sw.value = AGENT_PAUSE_PROCESS_AFTER_TRANSIT_ITEM->sw.value = false;
-			AGENT_PAUSE_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, AGENT_PAUSE_PROCESS_PROPERTY, NULL);
-			AGENT_ABORT_PROCESS_ITEM->sw.value = false;
-			AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
-			indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_PAUSE_PROCESS_PROPERTY, property)) {
