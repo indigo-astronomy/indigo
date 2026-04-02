@@ -1509,7 +1509,6 @@ static bool guide(indigo_device *device) {
 		return false;
 	}
 	indigo_send_message(device, IDLE_PROPERTY, "Guiding started");
-	FILTER_DEVICE_CONTEXT->running_process = true;
 	DEVICE_PRIVATE_DATA->silence_warnings = false;
 	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = INDIGO_GUIDER_PHASE_GUIDING;
 	AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value = AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_RA_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_DEC_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_RA_S_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_DEC_S_ITEM->number.value = AGENT_GUIDER_STATS_CORR_RA_ITEM->number.value = AGENT_GUIDER_STATS_CORR_DEC_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_RA_S_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_DEC_S_ITEM->number.value = AGENT_GUIDER_STATS_SNR_ITEM->number.value = AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = 0;
@@ -2511,53 +2510,35 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 // -------------------------------------------------------------------------------- AGENT_START_PROCESS
 		if (AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && AGENT_GUIDER_STARS_PROPERTY->state != INDIGO_BUSY_STATE) {
 			indigo_property_copy_values(AGENT_START_PROCESS_PROPERTY, property, false);
-			if (AGENT_GUIDER_CLEAR_SELECTION_ITEM->sw.value) {
-				AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_set_timer(device, 0, clear_selection_process, NULL);
-			} else if (AGENT_GUIDER_RESET_ITEM->sw.value) {
-				AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
+			AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
+			if (AGENT_GUIDER_RESET_ITEM->sw.value) {
 				factory_reset(device);
 				AGENT_GUIDER_RESET_ITEM->sw.value = false;
 				AGENT_START_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, "Reset to defaults");
-				return INDIGO_OK;
+			} else if (AGENT_GUIDER_CLEAR_SELECTION_ITEM->sw.value) {
+				indigo_set_timer(device, 0, clear_selection_process, NULL);
 			} else if (INDIGO_FILTER_CCD_SELECTED) {
 				if (AGENT_GUIDER_START_PREVIEW_1_ITEM->sw.value) {
-					AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_set_timer(device, 0, preview_1_process, NULL);
-					indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 				} else if (AGENT_GUIDER_START_PREVIEW_ITEM->sw.value) {
-					AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_set_timer(device, 0, preview_process, NULL);
-					indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 				} else if (INDIGO_FILTER_GUIDER_SELECTED) {
 					if (AGENT_GUIDER_START_CALIBRATION_ITEM->sw.value) {
-						AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 						indigo_set_timer(device, 0, calibrate_process, NULL);
 					} else if (AGENT_GUIDER_START_CALIBRATION_AND_GUIDING_ITEM->sw.value) {
-						AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 						indigo_set_timer(device, 0, calibrate_and_guide_process, NULL);
 					} else if (AGENT_GUIDER_START_GUIDING_ITEM->sw.value) {
-						AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 						indigo_set_timer(device, 0, guide_process, NULL);
 					}
-					indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 				} else {
-					AGENT_GUIDER_START_PREVIEW_1_ITEM->sw.value =
-					AGENT_GUIDER_START_PREVIEW_ITEM->sw.value =
-					AGENT_GUIDER_START_CALIBRATION_ITEM->sw.value =
-					AGENT_GUIDER_START_CALIBRATION_AND_GUIDING_ITEM->sw.value =
-					AGENT_GUIDER_START_GUIDING_ITEM->sw.value = false;
+					AGENT_GUIDER_START_PREVIEW_1_ITEM->sw.value = AGENT_GUIDER_START_PREVIEW_ITEM->sw.value = AGENT_GUIDER_START_CALIBRATION_ITEM->sw.value = AGENT_GUIDER_START_CALIBRATION_AND_GUIDING_ITEM->sw.value = AGENT_GUIDER_START_GUIDING_ITEM->sw.value = false;
 					AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, "No guider is selected");
 				}
 			} else {
-				AGENT_GUIDER_START_PREVIEW_1_ITEM->sw.value =
-				AGENT_GUIDER_START_PREVIEW_ITEM->sw.value =
-				AGENT_GUIDER_START_CALIBRATION_ITEM->sw.value =
-				AGENT_GUIDER_START_CALIBRATION_AND_GUIDING_ITEM->sw.value =
-				AGENT_GUIDER_START_GUIDING_ITEM->sw.value = false;
+				AGENT_GUIDER_START_PREVIEW_1_ITEM->sw.value = AGENT_GUIDER_START_PREVIEW_ITEM->sw.value = AGENT_GUIDER_START_CALIBRATION_ITEM->sw.value = AGENT_GUIDER_START_CALIBRATION_AND_GUIDING_ITEM->sw.value = AGENT_GUIDER_START_GUIDING_ITEM->sw.value = false;
 				AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, "No guider camera is selected");
 			}
