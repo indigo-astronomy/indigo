@@ -1248,7 +1248,7 @@ static void *message_handler(parser_state state, parser_context *context, char *
 		} else {
 			for (int index = 0; index < context->count; index++) {
 				cachedProperty = context->properties[index];
-				if (property != NULL && !strncmp(property->device, cachedProperty->device, INDIGO_NAME_SIZE) && !strncmp(property->name, cachedProperty->name, INDIGO_NAME_SIZE)) {
+				if (property != NULL && cachedProperty != NULL && !strncmp(property->device, cachedProperty->device, INDIGO_NAME_SIZE) && !strncmp(property->name, cachedProperty->name, INDIGO_NAME_SIZE)) {
 					break;
 				}
 				cachedProperty = NULL;
@@ -1358,11 +1358,11 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 	char *entity_pointer = NULL;
 	bool is_escaped = false;
 	/* (void)parser_state_name; */
-	
+
 	parser_handler handler = top_level_handler;
-	
+
 	parser_state state = IDLE_STATE;
-	
+
 	parser_context *context = indigo_safe_malloc(sizeof(parser_context));
 	context->client = client;
 	context->device = device;
@@ -1374,10 +1374,10 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 		context->count = 0;
 		context->properties = NULL;
 	}
-	
+
 	context->property = indigo_safe_malloc(sizeof(indigo_property) + INDIGO_PREALLOCATED_COUNT * sizeof(indigo_item));
 	context->property->allocated_count = INDIGO_PREALLOCATED_COUNT;
-	
+
 	indigo_uni_handle *handle = NULL;
 	if (device != NULL) {
 		handle = ((indigo_adapter_context *)device->device_context)->input;
@@ -1611,7 +1611,7 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 						blob_pointer += base64_decode_fast((unsigned char*)blob_pointer, (unsigned char*)buffer, len);
 						blob_len -= len;
 					}
-					
+
 					handler = handler(BLOB_STATE, context, NULL, (char *)blob_buffer, message);
 					pointer = buffer;
 					*pointer = 0;
