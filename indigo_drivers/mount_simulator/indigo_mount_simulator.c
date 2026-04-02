@@ -273,6 +273,14 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = fmod(indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) - (PRIVATE_DATA->ha = MOUNT_PARK_POSITION_HA_ITEM->number.value) + 24, 24);
 			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = MOUNT_PARK_POSITION_DEC_ITEM->number.value;
 			indigo_translated_to_raw(device, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target, &MOUNT_RAW_COORDINATES_RA_ITEM->number.target, &MOUNT_RAW_COORDINATES_DEC_ITEM->number.target);
+			indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
+			MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+			indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_EAST_ITEM, true);
+			MOUNT_SIDE_OF_PIER_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = MOUNT_RAW_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_coordinates(device, NULL);
 			PRIVATE_DATA->parking = true;
 			PRIVATE_DATA->parked = false;
 			PRIVATE_DATA->slew_in_progress = true;
@@ -280,15 +288,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			MOUNT_STATE_PARK_ITEM->light.value = INDIGO_BUSY_STATE;
 			MOUNT_STATE_TRACKING_ITEM->light.value = INDIGO_IDLE_STATE;
 			indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
-			indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_EAST_ITEM, true);
-			MOUNT_SIDE_OF_PIER_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
-			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = MOUNT_RAW_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_coordinates(device, NULL);
 		} else if (MOUNT_PARK_UNPARKED_ITEM->sw.value && (PRIVATE_DATA->parking || PRIVATE_DATA->parked)) {
-			MOUNT_STATE_SLEW_ITEM->light.value = MOUNT_STATE_PARK_ITEM->light.value = INDIGO_IDLE_STATE;
-			MOUNT_STATE_TRACKING_ITEM->light.value = INDIGO_OK_STATE;
-			indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
 			indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
 			MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
@@ -312,17 +312,20 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = fmod(indigo_lst(&utc, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) - (PRIVATE_DATA->ha = MOUNT_HOME_POSITION_HA_ITEM->number.value) + 24, 24);
 			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = MOUNT_HOME_POSITION_DEC_ITEM->number.value;
 			indigo_translated_to_raw(device, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target, &MOUNT_RAW_COORDINATES_RA_ITEM->number.target, &MOUNT_RAW_COORDINATES_DEC_ITEM->number.target);
+			indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
+			MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+			indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_EAST_ITEM, true);
+			MOUNT_SIDE_OF_PIER_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = MOUNT_RAW_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_coordinates(device, NULL);
 			PRIVATE_DATA->going_home = true;
 			PRIVATE_DATA->slew_in_progress = true;
 			MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_OK_STATE;
 			MOUNT_STATE_HOME_ITEM->light.value = INDIGO_BUSY_STATE;
 			MOUNT_STATE_TRACKING_ITEM->light.value = INDIGO_IDLE_STATE;
 			indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
-			indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_EAST_ITEM, true);
-			MOUNT_SIDE_OF_PIER_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
-			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = MOUNT_RAW_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_coordinates(device, NULL);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
