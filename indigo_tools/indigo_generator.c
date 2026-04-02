@@ -1482,8 +1482,10 @@ void write_c_property_change_handler(device_type *device, property_type *propert
 	write_line("static void %s(indigo_device *device) {", property->handler);
 	if (!strcmp(property->id, "MOUNT_EQUATORIAL_COORDINATES") || !strcmp(property->id, "MOUNT_MOTION_DEC") || !strcmp(property->id, "MOUNT_MOTION_RA") || !strcmp(property->id, "MOUNT_TRACKING")) {
 		write_line("\tif (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value) {");
-		write_line("\t\t%s->state = INDIGO_ALERT_STATE;", property->handle);
 		write_line("\t\tindigo_send_message(device, %s, \"Mount is parked!\");", property->handle);
+		write_line("\t\t%s->state = INDIGO_ALERT_STATE;", property->handle);
+		write_line("\t\tindigo_update_property(device, %s, NULL);", property->handle);
+		write_line("\t\treturn;");
 		write_line("\t}");
 	}
 	if (!strcmp(property->id, "GUIDER_GUIDE_DEC") || !strcmp(property->id, "GUIDER_GUIDE_RA")) {
@@ -1660,6 +1662,8 @@ void write_c_change_property(device_type *device) {
 			if (property->asynchronous_change) {
 				if (property->preserve_values) {
 					write_line("\t\tINDIGO_COPY_TARGETS_PROCESS_CHANGE(%s, %s);", property->handle, property->handler);
+				} else if (!strncmp(property->id, "MOUNT_MOTION", 12)) {
+					write_line("\t\tINDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME(%s, %s);", property->handle, property->handler);
 				} else {
 					write_line("\t\tINDIGO_COPY_VALUES_PROCESS_CHANGE(%s, %s);", property->handle, property->handler);
 				}
