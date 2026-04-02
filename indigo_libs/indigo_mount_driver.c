@@ -305,10 +305,10 @@ indigo_result indigo_mount_attach(indigo_device *device, const char* driver_name
 			if (MOUNT_STATE_PROPERTY == NULL) {
 				return INDIGO_FAILED;
 			}
-			indigo_init_light_item(MOUNT_STATE_SLEW_ITEM, MOUNT_STATE_SLEW_ITEM_NAME, "Slew state", INDIGO_IDLE_STATE);
-			indigo_init_light_item(MOUNT_STATE_PARK_ITEM, MOUNT_STATE_PARK_ITEM_NAME, "Park state", INDIGO_IDLE_STATE);
-			indigo_init_light_item(MOUNT_STATE_HOME_ITEM, MOUNT_STATE_HOME_ITEM_NAME, "Home state", INDIGO_IDLE_STATE);
-			indigo_init_light_item(MOUNT_STATE_TRACKING_ITEM, MOUNT_STATE_TRACKING_ITEM_NAME, "Tracking state", INDIGO_IDLE_STATE);
+			indigo_init_light_item(MOUNT_STATE_SLEW_ITEM, MOUNT_STATE_SLEW_ITEM_NAME, "Slew", INDIGO_IDLE_STATE);
+			indigo_init_light_item(MOUNT_STATE_PARK_ITEM, MOUNT_STATE_PARK_ITEM_NAME, "Park", INDIGO_IDLE_STATE);
+			indigo_init_light_item(MOUNT_STATE_HOME_ITEM, MOUNT_STATE_HOME_ITEM_NAME, "Home", INDIGO_IDLE_STATE);
+			indigo_init_light_item(MOUNT_STATE_TRACKING_ITEM, MOUNT_STATE_TRACKING_ITEM_NAME, "Tracking", INDIGO_IDLE_STATE);
 			MOUNT_STATE_PROPERTY->hidden = true;
 			// --------------------------------------------------------------------------------
 			return INDIGO_OK;
