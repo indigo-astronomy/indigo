@@ -192,6 +192,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_aux_dsusb", "Y:\indi
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_guider_gpusb", "Y:\indigo_drivers\guider_gpusb\indigo_guider_gpusb.vcxproj", "{CA2EC72A-0A8B-4614-9022-CF7B81E18FD6}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_aux_svbpowerbox", "indigo_drivers\aux_svbpowerbox\indigo_aux_svbpowerbox.vcxproj", "{30F645A4-8DED-45DB-A66D-27F5D55FB640}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|ARM64 = Debug|ARM64
@@ -1306,6 +1308,18 @@ Global
 		{CA2EC72A-0A8B-4614-9022-CF7B81E18FD6}.Release|x64.Build.0 = Release|x64
 		{CA2EC72A-0A8B-4614-9022-CF7B81E18FD6}.Release|x86.ActiveCfg = Release|Win32
 		{CA2EC72A-0A8B-4614-9022-CF7B81E18FD6}.Release|x86.Build.0 = Release|Win32
+		{30F645A4-8DED-45DB-A66D-27F5D55FB640}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{30F645A4-8DED-45DB-A66D-27F5D55FB640}.Debug|ARM64.Build.0 = Debug|ARM64
+		{30F645A4-8DED-45DB-A66D-27F5D55FB640}.Debug|x64.ActiveCfg = Debug|x64
+		{30F645A4-8DED-45DB-A66D-27F5D55FB640}.Debug|x64.Build.0 = Debug|x64
+		{30F645A4-8DED-45DB-A66D-27F5D55FB640}.Debug|x86.ActiveCfg = Debug|Win32
+		{30F645A4-8DED-45DB-A66D-27F5D55FB640}.Debug|x86.Build.0 = Debug|Win32
+		{30F645A4-8DED-45DB-A66D-27F5D55FB640}.Release|ARM64.ActiveCfg = Release|ARM64
+		{30F645A4-8DED-45DB-A66D-27F5D55FB640}.Release|ARM64.Build.0 = Release|ARM64
+		{30F645A4-8DED-45DB-A66D-27F5D55FB640}.Release|x64.ActiveCfg = Release|x64
+		{30F645A4-8DED-45DB-A66D-27F5D55FB640}.Release|x64.Build.0 = Release|x64
+		{30F645A4-8DED-45DB-A66D-27F5D55FB640}.Release|x86.ActiveCfg = Release|Win32
+		{30F645A4-8DED-45DB-A66D-27F5D55FB640}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

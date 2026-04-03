@@ -30,7 +30,7 @@
 | aux_rts                  | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ❌ No    |                                                          |
 | aux_skyalert             | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ Sim   |                                                          |
 | aux_sqm                  | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ Sim   |                                                          |
-| aux_svbpowerbox          | 3️⃣  | ❌ No    | ❌ No    | ✅ Yes   | ✅ HW    |
+| aux_svbpowerbox          | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ HW    |
 | aux_uch                  | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ Sim   |                                                          |
 | aux_upb                  | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ HW    |                                                          |
 | aux_upb3                 | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ Sim   |                                                          |
