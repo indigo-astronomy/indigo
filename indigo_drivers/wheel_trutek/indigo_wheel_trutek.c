@@ -96,11 +96,12 @@ static void wheel_move_finalizer(indigo_device *device) {
 			indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
 		} else {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 		}
 	} else {
 		WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 	}
-	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 }
 
 //- wheel.code
@@ -134,6 +135,7 @@ static void wheel_slot_handler(indigo_device *device) {
 	int slot = (int)WHEEL_SLOT_ITEM->number.target;
 	if (slot == PRIVATE_DATA->slot) {
 		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 	} else {
 		unsigned char buffer[4] = { 0xA5, 0x01, slot, 0xA5 + 0x01 + slot };
 		if (indigo_uni_write(PRIVATE_DATA->handle, (char *)buffer, 4) == 4 && indigo_uni_read(PRIVATE_DATA->handle, (char *)buffer, 4) == 4 && buffer[0] == 0xA5 && buffer[1] == 0x81) {
@@ -143,10 +145,10 @@ static void wheel_slot_handler(indigo_device *device) {
 			}
 		} else {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 		}
 	}
 	//- wheel.WHEEL_SLOT.on_change
-	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 }
 
 #pragma mark - Device API (wheel)

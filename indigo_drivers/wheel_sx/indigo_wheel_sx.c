@@ -97,10 +97,10 @@ static void wheel_move_finalizer(indigo_device *device) {
 	WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
 	if (PRIVATE_DATA->current_slot == PRIVATE_DATA->target_slot) {
 		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 	} else {
 		indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
 	}
-	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 }
 
 //- wheel.code
@@ -136,9 +136,11 @@ static void wheel_connection_handler(indigo_device *device) {
 }
 
 static void wheel_slot_handler(indigo_device *device) {
-	WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 	//+ wheel.WHEEL_SLOT.on_change
-	if (WHEEL_SLOT_ITEM->number.value != PRIVATE_DATA->current_slot) {
+	if (WHEEL_SLOT_ITEM->number.value == PRIVATE_DATA->current_slot) {
+		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+	} else {
 		PRIVATE_DATA->target_slot = WHEEL_SLOT_ITEM->number.value;
 		sx_message(device, 0x80 + PRIVATE_DATA->target_slot, 0);
 		WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
@@ -146,7 +148,6 @@ static void wheel_slot_handler(indigo_device *device) {
 		indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
 	}
 	//- wheel.WHEEL_SLOT.on_change
-	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 }
 
 #pragma mark - Device API (wheel)

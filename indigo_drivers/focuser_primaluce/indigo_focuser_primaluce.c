@@ -1063,19 +1063,19 @@ static void focuser_backlash_handler(indigo_device *device) {
 
 static void focuser_position_handler(indigo_device *device) {
 	//+ focuser.FOCUSER_POSITION.on_change
-	FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 	if (!primaluce_command(device, PRIVATE_DATA->is_sestosenso_3 ? "{\"req\":{\"cmd\":{\"MOT1\":{\"GOTO\":%d}}}}" : "{\"req\":{\"cmd\":{\"MOT1\":{\"MOVE_ABS\":{\"STEP\":%d}}}}}", (int)FOCUSER_POSITION_ITEM->number.target)) {
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 	} else {
 		char *state = get_string(device, PRIVATE_DATA->is_sestosenso_3 ? CMD_MOT1_GOTO : CMD_MOT1_STEP);
 		if (state == NULL || strcmp(state, "done")) {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		} else {
 			indigo_execute_handler(device, focuser_movement_finalizer);
 		}
 	}
 	//- focuser.FOCUSER_POSITION.on_change
-	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 }
 
 static void focuser_steps_handler(indigo_device *device) {
@@ -1460,23 +1460,23 @@ static void rotator_connection_handler(indigo_device *device) {
 }
 
 static void rotator_x_calibrate_r_handler(indigo_device *device) {
-	X_CALIBRATE_R_PROPERTY->state = INDIGO_OK_STATE;
 	//+ rotator.X_CALIBRATE_R.on_change
 	if (X_CALIBRATE_R_START_ITEM->sw.value) {
 		X_CALIBRATE_R_START_ITEM->sw.value = false;
 		if (!primaluce_command(device, "{\"req\":{\"cmd\": {\"MOT2\": {\"CAL_STATUS\":\"exec\"}}}}")) {
 			X_CALIBRATE_R_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, X_CALIBRATE_R_PROPERTY, NULL);
 		} else {
 			char *state = get_string(device, CMD_MOT2_CAL_STATUS);
 			if (state == NULL || strcmp(state, "done")) {
 				X_CALIBRATE_R_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, X_CALIBRATE_R_PROPERTY, NULL);
 			} else {
 				indigo_execute_handler(device, rotator_movement_finalizer);
 			}
 		}
 	}
 	//- rotator.X_CALIBRATE_R.on_change
-	indigo_update_property(device, X_CALIBRATE_R_PROPERTY, NULL);
 }
 
 static void rotator_on_position_set_handler(indigo_device *device) {
@@ -1486,19 +1486,19 @@ static void rotator_on_position_set_handler(indigo_device *device) {
 
 static void rotator_position_handler(indigo_device *device) {
 	//+ rotator.ROTATOR_POSITION.on_change
-	ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 	if (!primaluce_command(device, "{\"req\":{\"cmd\":{\"MOT2\":{\"MOVE_ABS\":{\"DEG\":%g}}}}}", FOCUSER_POSITION_ITEM->number.target)) {
 		ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, X_CALIBRATE_R_PROPERTY, NULL);
 	} else {
 		char *state = get_string(device, CMD_MOT2_STEP);
 		if (state == NULL || strcmp(state, "done")) {
 			ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		} else {
 			indigo_execute_handler(device, rotator_movement_finalizer);
 		}
 	}
 	//- rotator.ROTATOR_POSITION.on_change
-	indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 }
 
 static void rotator_abort_motion_handler(indigo_device *device) {

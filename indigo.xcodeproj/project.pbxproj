@@ -14076,8 +14076,8 @@
 				9DAD52532126FFC2002FCC79 /* indigo_wheel_xagyl.h */,
 				9DAD52562126FFC2002FCC79 /* indigo_wheel_xagyl.c */,
 				9DAD52522126FFC1002FCC79 /* indigo_wheel_xagyl_main.c */,
-				9DAD52552126FFC2002FCC79 /* FW5125_User_Manual-3.1.5.pdf */,
 				598878082F5CA26200837F9C /* indigo_wheel_xagyl.driver */,
+				9DAD52552126FFC2002FCC79 /* FW5125_User_Manual-3.1.5.pdf */,
 				59D46EEC214AFB370018978D /* xagyl_simulator */,
 			);
 			path = wheel_xagyl;

@@ -150,14 +150,13 @@ static void dome_connection_handler(indigo_device *device) {
 
 static void dome_shutter_handler(indigo_device *device) {
 	//+ dome.DOME_SHUTTER.on_change
-	DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
 	if (skyroof_write(device, DOME_SHUTTER_OPENED_ITEM->sw.value ? "Open#" : "Close#") && skyroof_read(device) && !strcmp(PRIVATE_DATA->response, "0#")) {
 		indigo_execute_handler_in(device, 0.5, dome_shutter_finalizer);
 	} else {
 		DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 	}
 	//- dome.DOME_SHUTTER.on_change
-	indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 }
 
 static void dome_abort_motion_handler(indigo_device *device) {

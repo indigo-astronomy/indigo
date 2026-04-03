@@ -1488,15 +1488,14 @@ void write_c_property_change_handler(device_type *device, property_type *propert
 		write_line("\t\treturn;");
 		write_line("\t}");
 	}
-	if (!strcmp(property->id, "GUIDER_GUIDE_DEC") || !strcmp(property->id, "GUIDER_GUIDE_RA")) {
-	} else if (!c_code_starts_with(property->on_change, "%s->state = ", property->handle)) {
+	bool has_finalizer = property->on_change != NULL && strnstr(property->on_change->text, "_finalizer", property->on_change->size);
+	if (!has_finalizer && !c_code_starts_with(property->on_change, "%s->state = ", property->handle)) {
 		write_line("\t%s->state = INDIGO_OK_STATE;", property->handle);
 	}
 	write_c_code_blocks(property->on_change, 1, "%s.%s.on_change", device->type, property->id);
 	if (!strcmp(property->id, "MOUNT_EQUATORIAL_COORDINATES")) {
 		write_line("\tindigo_update_coordinates(device, NULL);");
-	} else if (!strcmp(property->id, "GUIDER_GUIDE_DEC") || !strcmp(property->id, "GUIDER_GUIDE_RA")) {
-	} else {
+	} else if (!has_finalizer) {
 		write_line("\tindigo_update_property(device, %s, NULL);", property->handle);
 	}
 	write_line("}");
