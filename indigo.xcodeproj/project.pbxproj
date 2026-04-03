@@ -2275,6 +2275,7 @@
 		598679732F7D80AA008F60F3 /* INDIGO_GUIDER_DITHERING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = INDIGO_GUIDER_DITHERING.md; sourceTree = "<group>"; };
 		598679742F7D80AA008F60F3 /* INDIGO_IMAGER_MULTICAMERA_SYNCHRONIZATION.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = INDIGO_IMAGER_MULTICAMERA_SYNCHRONIZATION.md; sourceTree = "<group>"; };
 		598679752F7E81E3008F60F3 /* indigo_mount_ioptron.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_mount_ioptron.driver; sourceTree = "<group>"; };
+		598679762F80380A008F60F3 /* indigo_aux_svbpowerbox.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_aux_svbpowerbox.driver; sourceTree = "<group>"; };
 		598786452540C62D00CE8B48 /* libtiff.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libtiff.a; path = build/lib/libtiff.a; sourceTree = "<group>"; };
 		598786472540C69E00CE8B48 /* libtiffxx.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libtiffxx.a; path = build/lib/libtiffxx.a; sourceTree = "<group>"; };
 		598878042F5C494F00837F9C /* indigo_wheel_sx.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_wheel_sx.driver; sourceTree = "<group>"; };
@@ -6612,6 +6613,7 @@
 				59647EFC2F769C45005F72E3 /* indigo_aux_svbpowerbox.h */,
 				59647EFD2F769C45005F72E3 /* indigo_aux_svbpowerbox.c */,
 				59647EFE2F769C45005F72E3 /* indigo_aux_svbpowerbox_main.c */,
+				598679762F80380A008F60F3 /* indigo_aux_svbpowerbox.driver */,
 				59647EFB2F769C45005F72E3 /* svbpowerbox_simulator */,
 			);
 			path = aux_svbpowerbox;

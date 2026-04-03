@@ -173,8 +173,6 @@ static bool svbpb_command(indigo_device *device, const unsigned char *cmd, int c
 	}
 	frame[full_cmd_len - 1] = (unsigned char)(checksum % 0xFF);
 
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "TX frame (%d bytes)", full_cmd_len);
-
 	// Send
 	indigo_uni_discard(PRIVATE_DATA->handle);
 	if (indigo_uni_write(PRIVATE_DATA->handle, (char *)frame, full_cmd_len) != full_cmd_len) {
@@ -230,12 +228,12 @@ static bool svbpb_set_port(indigo_device *device, uint8_t port, uint8_t value) {
 }
 
 static bool svbpowerbox_open(indigo_device *device) {
-	PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 115200, INDIGO_LOG_DEBUG);
+	PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 115200, INDIGO_LOG_DEBUG | BINARY_LOG);
 	if (PRIVATE_DATA->handle != NULL) {
 		// Reset the ESP32 by clearing DTR/RTS
 		indigo_uni_set_dtr(PRIVATE_DATA->handle, false);
 		indigo_uni_set_rts(PRIVATE_DATA->handle, false);
-
+		PRIVATE_DATA->handle->last_error = 0;
 		// Wait for boot messages to clear (up to 3 seconds, 300 ms silence)
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Waiting for device boot...");
 		char boot_buf[512];
@@ -705,8 +703,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		if (!indigo_ignore_connection_change(device, property)) {
 			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
 			indigo_execute_handler(device, aux_connection_handler);
 		}
 		return INDIGO_OK;
