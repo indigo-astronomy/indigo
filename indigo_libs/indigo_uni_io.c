@@ -151,7 +151,7 @@ int indigo_uni_wait_for_data(indigo_uni_handle *handle, long timeout) {
 				indigo_error("%d -> // Failed to wait for (%s)", handle->index, indigo_uni_strerror(handle));
 				return -1;
 			case 0:
-				indigo_log_on_level(handle->log_level, "%d -> // timeout", handle->index);
+				indigo_log_on_level(handle->log_level & 0xFFF, "%d -> // timeout", handle->index);
 				return 0;
 			default:
 				return 1;
@@ -180,7 +180,7 @@ int indigo_uni_wait_for_data(indigo_uni_handle *handle, long timeout) {
 				indigo_usleep(1000);
 			}
 		}
-		indigo_log_on_level(handle->log_level, "%d -> // wait timeout", handle->index);
+		indigo_log_on_level(handle->log_level & 0xFFF, "%d -> // wait timeout", handle->index);
 		return 0;
 	} else if (handle->type == INDIGO_TCP_HANDLE || handle->type == INDIGO_UDP_HANDLE) {
 		fd_set readout;
@@ -596,7 +596,7 @@ static indigo_uni_handle *open_tty(const char *serial, const struct termios *opt
 	handle->type = INDIGO_COM_HANDLE;
 	handle->fd = fd;
 	handle->log_level = log_level;
-	indigo_log_on_level(log_level, "%d <- // %s opened", handle->index, serial);
+	indigo_log_on_level(handle->log_level & 0xFFF, "%d <- // %s opened", handle->index, serial);
 	return handle;
 }
 
@@ -1194,7 +1194,7 @@ void indigo_uni_set_socket_read_timeout(indigo_uni_handle *handle, long timeout)
 			handle->last_error = errno;
 			indigo_error("%d <- // Failed to set socket read timeout (%s)", handle->index, indigo_uni_strerror(handle));
 		} else {
-			indigo_log_on_level(handle->log_level, "%d <- // Set socket read timeout %ld", handle->index, timeout);
+			indigo_log_on_level(handle->log_level & 0xFFF, "%d <- // Set socket read timeout %ld", handle->index, timeout);
 		}
 #elif defined(INDIGO_WINDOWS)
 		DWORD timeout_ms = timeout / 1000;
@@ -1202,7 +1202,7 @@ void indigo_uni_set_socket_read_timeout(indigo_uni_handle *handle, long timeout)
 			handle->last_error = WSAGetLastError();
 			indigo_error("%d <- // Failed to set socket read timeout (%s)", handle->index, indigo_uni_strerror(handle));
 		} else {
-			indigo_log_on_level(handle->log_level, "%d <- // Set socket read timeout %ld", handle->index, timeout);
+			indigo_log_on_level(handle->log_level & 0xFFF, "%d <- // Set socket read timeout %ld", handle->index, timeout);
 		}
 #else
 #pragma message ("TODO: indigo_uni_set_socket_read_timeout()")
@@ -1218,7 +1218,7 @@ void indigo_uni_set_socket_write_timeout(indigo_uni_handle *handle, long timeout
 			handle->last_error = errno;
 			indigo_error("%d <- // Failed to set socket write timeout (%s)", handle->index, indigo_uni_strerror(handle));
 		} else {
-			indigo_log_on_level(handle->log_level, "%d <- // Set socket write timeout %ld", handle->index, timeout);
+			indigo_log_on_level(handle->log_level & 0xFFF, "%d <- // Set socket write timeout %ld", handle->index, timeout);
 		}
 #elif defined(INDIGO_WINDOWS)
 		DWORD timeout_ms = timeout / 1000;
@@ -1226,7 +1226,7 @@ void indigo_uni_set_socket_write_timeout(indigo_uni_handle *handle, long timeout
 			handle->last_error = WSAGetLastError();
 			indigo_error("%d <- // Failed to set socket write timeout (%s)", handle->index, indigo_uni_strerror(handle));
 		} else {
-			indigo_log_on_level(handle->log_level, "%d <- // Set socket write timeout %ld", handle->index, timeout);
+			indigo_log_on_level(handle->log_level & 0xFFF, "%d <- // Set socket write timeout %ld", handle->index, timeout);
 		}
 #else
 #pragma message ("TODO: indigo_uni_set_socket_write_timeout()")
@@ -1242,14 +1242,14 @@ void indigo_uni_set_socket_nodelay_option(indigo_uni_handle *handle) {
 			handle->last_error = errno;
 			indigo_error("%d <- // Failed to set socket no delay option (%s)", handle->index, indigo_uni_strerror(handle));
 		} else {
-			indigo_log_on_level(handle->log_level, "%d <- // Set socket no delay %d", handle->index, value);
+			indigo_log_on_level(handle->log_level & 0xFFF, "%d <- // Set socket no delay %d", handle->index, value);
 		}
 #elif defined(INDIGO_WINDOWS)
 		if (setsockopt(handle->sock, IPPROTO_TCP, TCP_NODELAY, (const char *) & value, sizeof(int)) == SOCKET_ERROR) {
 			handle->last_error = WSAGetLastError();
 			indigo_error("%d <- // Failed to set socket no delay option (%s)", handle->index, indigo_uni_strerror(handle));
 		} else {
-			indigo_log_on_level(handle->log_level, "%d <- // Set socket no delay %d", handle->index, value);
+			indigo_log_on_level(handle->log_level & 0xFFF, "%d <- // Set socket no delay %d", handle->index, value);
 		}
 #else
 #pragma message ("TODO: indigo_uni_set_socket_nodelay_option()")
@@ -1267,9 +1267,9 @@ long indigo_uni_read_available(indigo_uni_handle *handle, void *buffer, long len
 		if (handle->log_level < 0) {
 			indigo_log_on_level(-handle->log_level, "%d -> // %ld bytes read", handle->index, bytes_read);
 		} else if (handle->log_level & BINARY_LOG) {
-			indigo_log_on_level(handle->log_level & ~BINARY_LOG, "%d -> %s", handle->index, dump_data(buffer, bytes_read));
+			indigo_log_on_level(handle->log_level & 0xFFF & ~BINARY_LOG, "%d -> %s", handle->index, dump_data(buffer, bytes_read));
 		} else {
-			indigo_log_on_level(handle->log_level, "%d -> %.*s", handle->index, bytes_read, buffer);
+			indigo_log_on_level(handle->log_level & 0xFFF, "%d -> %.*s", handle->index, bytes_read, buffer);
 		}
 	}
 	return bytes_read;
@@ -1314,9 +1314,9 @@ long indigo_uni_read(indigo_uni_handle *handle, void *buffer, long length) {
 		if (handle->log_level < 0) {
 			indigo_log_on_level(-handle->log_level, "%d <- // %ld bytes read", handle->index, bytes_read);
 		} else if (handle->log_level & BINARY_LOG) {
-			indigo_log_on_level(handle->log_level & ~BINARY_LOG, "%d -> %s", handle->index, dump_data(buffer, bytes_read));
+			indigo_log_on_level(handle->log_level & 0xFFF & ~BINARY_LOG, "%d -> %s", handle->index, dump_data(buffer, bytes_read));
 		} else {
-			indigo_log_on_level(handle->log_level, "%d <- %.*s", handle->index, bytes_read, buffer);
+			indigo_log_on_level(handle->log_level & 0xFFF, "%d <- %.*s", handle->index, bytes_read, buffer);
 		}
 		return bytes_read;
 	}
@@ -1333,9 +1333,9 @@ long indigo_uni_read(indigo_uni_handle *handle, void *buffer, long length) {
 			if (handle->log_level < 0) {
 				indigo_log_on_level(-handle->log_level, "%d -> // %ld bytes read", handle->index, length);
 			} else if (handle->log_level & BINARY_LOG) {
-				indigo_log_on_level(handle->log_level & ~BINARY_LOG, "%d -> %s", handle->index, dump_data(buffer, bytes_read));
+				indigo_log_on_level(handle->log_level & 0xFFF & ~BINARY_LOG, "%d -> %s", handle->index, dump_data(buffer, bytes_read));
 			} else {
-				indigo_log_on_level(handle->log_level, "%d -> %.*s", handle->index, length, buffer);
+				indigo_log_on_level(handle->log_level & 0xFFF, "%d -> %.*s", handle->index, length, buffer);
 			}
 			return length;
 		}
@@ -1364,7 +1364,7 @@ long indigo_uni_discard(indigo_uni_handle *handle) {
 		}
 		bytes_read++;
 	}
-	indigo_log_on_level(handle->log_level, "%d <- // %ld bytes discarded", handle->index, bytes_read);
+	indigo_log_on_level(handle->log_level & 0xFFF, "%d <- // %ld bytes discarded", handle->index, bytes_read);
 	return bytes_read;
 }
 
@@ -1391,7 +1391,7 @@ long indigo_uni_read_section2(indigo_uni_handle *handle, char *buffer, long leng
 						if (handle->log_level < 0) {
 							indigo_log_on_level(-handle->log_level, "%d -> // %ld bytes read", handle->index, bytes_read - 1);
 						} else {
-							indigo_log_on_level(handle->log_level, "%d -> %.*s", handle->index, bytes_read, buffer);
+							indigo_log_on_level(handle->log_level & 0xFFF, "%d -> %.*s", handle->index, bytes_read, buffer);
 						}
 					}
 					buffer[bytes_read] = 0;
@@ -1407,7 +1407,7 @@ long indigo_uni_read_section2(indigo_uni_handle *handle, char *buffer, long leng
 				if (handle->log_level < 0) {
 					indigo_log_on_level(-handle->log_level, "%d -> // %ld bytes read", handle->index, bytes_read - 1);
 				} else {
-					indigo_log_on_level(handle->log_level, "%d -> %.*s", handle->index, bytes_read, buffer);
+					indigo_log_on_level(handle->log_level & 0xFFF, "%d -> %.*s", handle->index, bytes_read, buffer);
 				}
 				return 0;
 			default:
@@ -1437,7 +1437,7 @@ long indigo_uni_read_section2(indigo_uni_handle *handle, char *buffer, long leng
 	if (handle->log_level < 0) {
 		indigo_log_on_level(-handle->log_level, "%d -> // %ld bytes read", handle->index, bytes_read);
 	} else {
-		indigo_log_on_level(handle->log_level, "%d -> %.*s", handle->index, bytes_read, buffer);
+		indigo_log_on_level(handle->log_level & 0xFFF, "%d -> %.*s", handle->index, bytes_read, buffer);
 	}
 	buffer[bytes_read] = 0;
 	return bytes_read;
@@ -1479,9 +1479,9 @@ long indigo_uni_write(indigo_uni_handle *handle, const char *buffer, long length
 		if (handle->log_level < 0) {
 			indigo_log_on_level(-handle->log_level, "%d <- // %ld bytes written", handle->index, bytes_written);
 		} else if (handle->log_level & BINARY_LOG) {
-			indigo_log_on_level(handle->log_level & ~BINARY_LOG, "%d <- %s", handle->index, dump_data(buffer, bytes_written));
+			indigo_log_on_level(handle->log_level & 0xFFF & ~BINARY_LOG, "%d <- %s", handle->index, dump_data(buffer, bytes_written));
 		} else {
-			indigo_log_on_level(handle->log_level, "%d <- %.*s", handle->index, bytes_written, buffer);
+			indigo_log_on_level(handle->log_level & 0xFFF, "%d <- %.*s", handle->index, bytes_written, buffer);
 		}
 		return bytes_written;
 	}
@@ -1498,9 +1498,9 @@ long indigo_uni_write(indigo_uni_handle *handle, const char *buffer, long length
 			if (handle->log_level < 0) {
 				indigo_log_on_level(-handle->log_level, "%d <- // %ld bytes written", handle->index, length);
 			} else if (handle->log_level & BINARY_LOG) {
-				indigo_log_on_level(handle->log_level & ~BINARY_LOG, "%d <- %s", handle->index, dump_data(buffer, bytes_written));
+				indigo_log_on_level(handle->log_level & 0xFFF & ~BINARY_LOG, "%d <- %s", handle->index, dump_data(buffer, bytes_written));
 			} else {
-				indigo_log_on_level(handle->log_level, "%d <- %.*s", handle->index, length, buffer);
+				indigo_log_on_level(handle->log_level & 0xFFF, "%d <- %.*s", handle->index, length, buffer);
 			}
 			return length;
 		}
@@ -1618,7 +1618,7 @@ bool indigo_uni_lock_file(indigo_uni_handle *handle) {
 #else
 #pragma message ("TODO: indigo_uni_lock_file()")
 #endif
-		indigo_log_on_level(handle->log_level, "%d <- // locked", handle->index);
+		indigo_log_on_level(handle->log_level & 0xFFF, "%d <- // locked", handle->index);
 		return true;
 	}
 	return false;
@@ -1683,7 +1683,7 @@ void indigo_uni_kill_socket(indigo_uni_handle *handle) {
 #else
 #pragma message ("TODO: indigo_uni_kill_socket()")
 #endif
-		indigo_log_on_level(handle->log_level, "%d <- // Connection killed", handle->index);
+		indigo_log_on_level(handle->log_level & 0xFFF, "%d <- // Connection killed", handle->index);
 	}
 }
 
