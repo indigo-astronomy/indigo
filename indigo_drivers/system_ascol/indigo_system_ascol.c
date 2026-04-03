@@ -75,11 +75,12 @@
 #define OIMV_PROPERTY_NAME                 "ASCOL_OIMV"
 #define OIMV_ITEM_NAME_BASE                "VALUE"
 
-#define MOUNT_STATE_PROPERTY               (PRIVATE_DATA->mount_state_property)
-#define MOUNT_STATE_ITEM                   (MOUNT_STATE_PROPERTY->items+0)
-#define RA_STATE_ITEM                      (MOUNT_STATE_PROPERTY->items+1)
-#define DEC_STATE_ITEM                     (MOUNT_STATE_PROPERTY->items+2)
-#define MOUNT_STATE_PROPERTY_NAME          "ASCOL_MOUNT_STATE"
+#define X_MOUNT_STATE_PROPERTY               (PRIVATE_DATA->mount_state_property)
+#define MOUNT_STATE_ITEM                   (X_MOUNT_STATE_PROPERTY->items+0)
+#define RA_STATE_ITEM                      (X_MOUNT_STATE_PROPERTY->items+1)
+#define DEC_STATE_ITEM                     (X_MOUNT_STATE_PROPERTY->items+2)
+
+#define X_MOUNT_STATE_PROPERTY_NAME          "ASCOL_MOUNT_STATE"
 #define MOUNT_STATE_ITEM_NAME              "MOUNT"
 #define RA_STATE_ITEM_NAME                 "RA_AXIS"
 #define DEC_STATE_ITEM_NAME                "DEC_AXIS"
@@ -340,7 +341,7 @@ static indigo_result ascol_mount_enumerate_properties(indigo_device *device, ind
 		INDIGO_DEFINE_MATCHING_PROPERTY(OIL_POWER_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(OIL_STATE_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(OIMV_PROPERTY);
-		INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_STATE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_MOUNT_STATE_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(FLAP_STATE_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(FLAP_TUBE_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(FLAP_COUDE_PROPERTY);
@@ -1133,17 +1134,17 @@ static void mount_update_state() {
 	   (MOUNT_TRACKING_PROPERTY->state == INDIGO_BUSY_STATE) ||
 	   (RA_CALIBRATION_PROPERTY->state == INDIGO_BUSY_STATE) ||
 	   (DEC_CALIBRATION_PROPERTY->state == INDIGO_BUSY_STATE)) {
-		MOUNT_STATE_PROPERTY->state = INDIGO_OK_STATE;
+		X_MOUNT_STATE_PROPERTY->state = INDIGO_OK_STATE;
 		pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 		ascol_get_telescope_state(PRIVATE_DATA->glst, &descr, &descrs);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating MOUNT_STATE_PROPERTY (dev = %d) %d %s %s", PRIVATE_DATA->dev_id,PRIVATE_DATA->glst.telescope_state, descrs, descr);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating X_MOUNT_STATE_PROPERTY (dev = %d) %d %s %s", PRIVATE_DATA->dev_id,PRIVATE_DATA->glst.telescope_state, descrs, descr);
 		snprintf(MOUNT_STATE_ITEM->text.value, INDIGO_VALUE_SIZE, "%s - %s", descrs, descr);
 		ascol_get_ra_axis_state(PRIVATE_DATA->glst, &descr, &descrs);
 		snprintf(RA_STATE_ITEM->text.value, INDIGO_VALUE_SIZE, "%s - %s", descrs, descr);
 		ascol_get_de_axis_state(PRIVATE_DATA->glst, &descr, &descrs);
 		snprintf(DEC_STATE_ITEM->text.value, INDIGO_VALUE_SIZE, "%s - %s", descrs, descr);
 		pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
-		indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
+		indigo_update_property(device, X_MOUNT_STATE_PROPERTY, NULL);
 
 		TELESCOPE_POWER_PROPERTY->state = INDIGO_OK_STATE;
 		if ((PRIVATE_DATA->glst.telescope_state == TE_STATE_OFF) ||
@@ -1619,8 +1620,8 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_init_switch_item(GUIDE_MODE_ON_ITEM, GUIDE_MODE_ON_ITEM_NAME, "On", false);
 		indigo_init_switch_item(GUIDE_MODE_OFF_ITEM, GUIDE_MODE_OFF_ITEM_NAME, "Off", true);
 		// --------------------------------------------------------------------------- MOUNT STATE
-		MOUNT_STATE_PROPERTY = indigo_init_text_property(NULL, device->name, MOUNT_STATE_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Mount State", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 3);
-		if (MOUNT_STATE_PROPERTY == NULL) {
+		X_MOUNT_STATE_PROPERTY = indigo_init_text_property(NULL, device->name, X_MOUNT_STATE_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Mount State", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 3);
+		if (X_MOUNT_STATE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
 		indigo_init_text_item(MOUNT_STATE_ITEM, MOUNT_STATE_ITEM_NAME, "Mount", "");
@@ -1705,7 +1706,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					indigo_define_property(device, OIL_POWER_PROPERTY, NULL);
 					indigo_define_property(device, OIL_STATE_PROPERTY, NULL);
 					indigo_define_property(device, OIMV_PROPERTY, NULL);
-					indigo_define_property(device, MOUNT_STATE_PROPERTY, NULL);
+					indigo_define_property(device, X_MOUNT_STATE_PROPERTY, NULL);
 					indigo_define_property(device, FLAP_STATE_PROPERTY, NULL);
 					indigo_define_property(device, FLAP_TUBE_PROPERTY, NULL);
 					indigo_define_property(device, FLAP_COUDE_PROPERTY, NULL);
@@ -1738,7 +1739,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				ascol_device_close(device);
 				indigo_delete_property(device, OIL_STATE_PROPERTY, NULL);
 				indigo_delete_property(device, OIMV_PROPERTY, NULL);
-				indigo_delete_property(device, MOUNT_STATE_PROPERTY, NULL);
+				indigo_delete_property(device, X_MOUNT_STATE_PROPERTY, NULL);
 				indigo_delete_property(device, FLAP_STATE_PROPERTY, NULL);
 				indigo_delete_property(device, FLAP_TUBE_PROPERTY, NULL);
 				indigo_delete_property(device, FLAP_COUDE_PROPERTY, NULL);
@@ -1937,7 +1938,7 @@ static indigo_result mount_detach(indigo_device *device) {
 
 	indigo_release_property(OIL_STATE_PROPERTY);
 	indigo_release_property(OIMV_PROPERTY);
-	indigo_release_property(MOUNT_STATE_PROPERTY);
+	indigo_release_property(X_MOUNT_STATE_PROPERTY);
 	indigo_release_property(FLAP_STATE_PROPERTY);
 	indigo_release_property(FLAP_TUBE_PROPERTY);
 	indigo_release_property(FLAP_COUDE_PROPERTY);
