@@ -233,7 +233,6 @@ static bool svbpowerbox_open(indigo_device *device) {
 		// Reset the ESP32 by clearing DTR/RTS
 		indigo_uni_set_dtr(PRIVATE_DATA->handle, false);
 		indigo_uni_set_rts(PRIVATE_DATA->handle, false);
-		PRIVATE_DATA->handle->last_error = 0;
 		// Wait for boot messages to clear (up to 3 seconds, 300 ms silence)
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Waiting for device boot...");
 		char boot_buf[512];

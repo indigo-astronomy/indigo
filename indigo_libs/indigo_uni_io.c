@@ -741,12 +741,14 @@ int indigo_uni_set_dtr(indigo_uni_handle *handle, bool state) {
 	if (ioctl(handle->fd, state ? TIOCMBIS : TIOCMBIC, &fc_flag) < 0) {
 		handle->last_error = errno;
 		indigo_error("Failed to %s DTR (%s)", state ? "set" : "clear", indigo_uni_strerror(handle));
+		handle->last_error = 0;
 		return -1;
 	}
 #elif defined(INDIGO_WINDOWS)
 	if (!EscapeCommFunction(handle->com, state ? SETDTR : CLRDTR)) {
 		handle->last_error = GetLastError();
 		indigo_error("Failed to %s DTR (%s)", state ? "set" : "clear", indigo_uni_strerror(handle));
+		handle->last_error = 0;
 		return -1;
 	}
 #else
@@ -768,12 +770,14 @@ int indigo_uni_set_rts(indigo_uni_handle *handle, bool state) {
 	if (ioctl(handle->fd, state ? TIOCMBIS : TIOCMBIC, &fc_flag) < 0) {
 		handle->last_error = errno;
 		indigo_error("Failed to %s RTS (%s)", state ? "set" : "clear", indigo_uni_strerror(handle));
+		handle->last_error = 0;
 		return -1;
 	}
 #elif defined(INDIGO_WINDOWS)
 	if (!EscapeCommFunction(handle->com, state ? SETRTS : CLRRTS)) {
 		handle->last_error = GetLastError();
 		indigo_error("Failed to %s RTS (%s)", state ? "set" : "clear", indigo_uni_strerror(handle));
+		handle->last_error = 0;
 		return -1;
 	}
 #else
