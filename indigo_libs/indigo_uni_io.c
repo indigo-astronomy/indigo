@@ -740,17 +740,17 @@ int indigo_uni_set_dtr(indigo_uni_handle *handle, bool state) {
 	int fc_flag = TIOCM_DTR;
 	if (ioctl(handle->fd, state ? TIOCMBIS : TIOCMBIC, &fc_flag) < 0) {
 		handle->last_error = errno;
-		indigo_error("Failed to %s RTS (%s)", state ? "set" : "clear", indigo_uni_strerror(handle));
+		indigo_error("Failed to %s DTR (%s)", state ? "set" : "clear", indigo_uni_strerror(handle));
 		return -1;
 	}
 #elif defined(INDIGO_WINDOWS)
 	if (!EscapeCommFunction(handle->com, state ? SETDTR : CLRDTR)) {
 		handle->last_error = GetLastError();
-		indigo_error("Failed to %s RTS (%s)", state ? "set" : "clear", indigo_uni_strerror(handle));
+		indigo_error("Failed to %s DTR (%s)", state ? "set" : "clear", indigo_uni_strerror(handle));
 		return -1;
 	}
 #else
-#pragma message ("TODO: indigo_uni_set_rts()")
+#pragma message ("TODO: indigo_uni_set_dtr()")
 #endif
 	return 0;
 }
