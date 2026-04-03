@@ -155,8 +155,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		if (!indigo_ignore_connection_change(device, property)) {
 			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
 			indigo_execute_handler(device, wheel_connection_handler);
 		}
 		return INDIGO_OK;

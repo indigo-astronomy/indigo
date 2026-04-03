@@ -149,8 +149,7 @@ driver flipflat {
 			label = "Cover";
 			on_change {
 				if (flipflat_command(device, ">%cOOO", AUX_COVER_OPEN_ITEM->sw.value ? 'O' : 'C')) {
-					AUX_COVER_PROPERTY->state = INDIGO_BUSY_STATE;
-					indigo_update_property(device, AUX_COVER_PROPERTY, NULL);
+					INDIGO_UPDATE_PROPERTY_STATE(AUX_COVER_PROPERTY, INDIGO_BUSY_STATE, NULL);
 					AUX_COVER_PROPERTY->state = INDIGO_ALERT_STATE;
 					for (int i = 0; i < 10; i++) {
 						indigo_sleep(1);

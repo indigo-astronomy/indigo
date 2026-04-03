@@ -147,8 +147,7 @@ static void focuser_steps_handler(indigo_device *device) {
 		} else if (FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value) {
 			libfcusb_move_out(PRIVATE_DATA->device_context);
 		}
-		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_STEPS_PROPERTY, INDIGO_BUSY_STATE, NULL);
 		int delay = FOCUSER_STEPS_ITEM->number.target;
 		while (delay > 0) {
 			if (FOCUSER_STEPS_PROPERTY->state != INDIGO_BUSY_STATE) {
@@ -211,8 +210,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		if (!indigo_ignore_connection_change(device, property)) {
 			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
 			indigo_execute_handler(device, focuser_connection_handler);
 		}
 		return INDIGO_OK;

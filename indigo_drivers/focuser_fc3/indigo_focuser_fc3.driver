@@ -115,8 +115,7 @@ driver fc3 {
 					double temp = indigo_atod(token);
 					if (FOCUSER_TEMPERATURE_ITEM->number.value != temp) {
 						FOCUSER_TEMPERATURE_ITEM->number.value = temp;
-						FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
-						indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
+							INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_TEMPERATURE_PROPERTY, INDIGO_OK_STATE, NULL);
 					}
 				}
 			}

@@ -255,9 +255,9 @@ static void rotator_abort_motion_handler(indigo_device *device) {
 }
 
 static void rotator_relative_move_handler(indigo_device *device) {
+	ROTATOR_RELATIVE_MOVE_PROPERTY->state = INDIGO_OK_STATE;
 	//+ rotator.ROTATOR_RELATIVE_MOVE.on_change
-	ROTATOR_RELATIVE_MOVE_PROPERTY->state = INDIGO_BUSY_STATE;
-	indigo_update_property(device, ROTATOR_RELATIVE_MOVE_PROPERTY, NULL);
+	INDIGO_UPDATE_PROPERTY_STATE(ROTATOR_RELATIVE_MOVE_PROPERTY, INDIGO_BUSY_STATE, NULL);
 	ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 	double position = ROTATOR_POSITION_ITEM->number.value + ROTATOR_RELATIVE_MOVE_ITEM->number.value;
 	if (position < 0) {
@@ -311,8 +311,7 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		if (!indigo_ignore_connection_change(device, property)) {
 			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
 			indigo_execute_handler(device, rotator_connection_handler);
 		}
 		return INDIGO_OK;

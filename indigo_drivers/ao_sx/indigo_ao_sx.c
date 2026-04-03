@@ -170,16 +170,12 @@ static void ao_reset_handler(indigo_device *device) {
 	//+ ao.AO_RESET.on_change
 	if (AO_CENTER_ITEM->sw.value) {
 		sx_command(device, "K", 1);
-		AO_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, AO_GUIDE_DEC_PROPERTY, NULL);
-		AO_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, AO_GUIDE_RA_PROPERTY, NULL);
+		INDIGO_UPDATE_PROPERTY_STATE(AO_GUIDE_DEC_PROPERTY, INDIGO_OK_STATE, NULL);
+		INDIGO_UPDATE_PROPERTY_STATE(AO_GUIDE_RA_PROPERTY, INDIGO_OK_STATE, NULL);
 	} else if (AO_UNJAM_ITEM->sw.value) {
 		sx_command(device, "R", 1);
-		AO_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, AO_GUIDE_DEC_PROPERTY, NULL);
-		AO_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, AO_GUIDE_RA_PROPERTY, NULL);
+		INDIGO_UPDATE_PROPERTY_STATE(AO_GUIDE_DEC_PROPERTY, INDIGO_OK_STATE, NULL);
+		INDIGO_UPDATE_PROPERTY_STATE(AO_GUIDE_RA_PROPERTY, INDIGO_OK_STATE, NULL);
 	}
 	AO_CENTER_ITEM->sw.value = AO_UNJAM_ITEM->sw.value = false;
 	if (PRIVATE_DATA->response[0] != 'K') {
@@ -222,8 +218,7 @@ static indigo_result ao_change_property(indigo_device *device, indigo_client *cl
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		if (!indigo_ignore_connection_change(device, property)) {
 			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
 			indigo_execute_handler(device, ao_connection_handler);
 		}
 		return INDIGO_OK;
@@ -331,8 +326,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		if (!indigo_ignore_connection_change(device, property)) {
 			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
 			indigo_execute_handler(device, guider_connection_handler);
 		}
 		return INDIGO_OK;

@@ -217,8 +217,7 @@ driver falcon {
 		}
 		inherited ROTATOR_RELATIVE_MOVE {
 			on_change {
-				ROTATOR_RELATIVE_MOVE_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_update_property(device, ROTATOR_RELATIVE_MOVE_PROPERTY, NULL);
+				INDIGO_UPDATE_PROPERTY_STATE(ROTATOR_RELATIVE_MOVE_PROPERTY, INDIGO_BUSY_STATE, NULL);
 				ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 				double position = ROTATOR_POSITION_ITEM->number.value + ROTATOR_RELATIVE_MOVE_ITEM->number.value;
 				if (position < 0) {

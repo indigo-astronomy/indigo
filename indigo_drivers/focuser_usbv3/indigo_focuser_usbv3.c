@@ -252,8 +252,7 @@ static void focuser_steps_handler(indigo_device *device) {
 	}
 	if (steps > 0) {
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_STEPS_PROPERTY, INDIGO_BUSY_STATE, NULL);
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		PRIVATE_DATA->moving = true;
 		int value;
@@ -269,8 +268,7 @@ static void focuser_steps_handler(indigo_device *device) {
 				}
 			}
 		}
-		FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_POSITION_PROPERTY, INDIGO_OK_STATE, NULL);
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	//- focuser.FOCUSER_STEPS.on_change
@@ -299,8 +297,7 @@ static void focuser_position_handler(indigo_device *device) {
 	}
 	if (steps != 0) {
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_STEPS_PROPERTY, INDIGO_BUSY_STATE, NULL);
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		PRIVATE_DATA->moving = true;
 		int value;
@@ -316,8 +313,7 @@ static void focuser_position_handler(indigo_device *device) {
 				}
 			}
 		}
-		FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_STEPS_PROPERTY, INDIGO_OK_STATE, NULL);
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	//- focuser.FOCUSER_POSITION.on_change
@@ -408,8 +404,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		if (!indigo_ignore_connection_change(device, property)) {
 			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
 			indigo_execute_handler(device, focuser_connection_handler);
 		}
 		return INDIGO_OK;

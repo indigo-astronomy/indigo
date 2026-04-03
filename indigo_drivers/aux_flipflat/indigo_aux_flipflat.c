@@ -207,8 +207,7 @@ static void aux_cover_handler(indigo_device *device) {
 	AUX_COVER_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_COVER.on_change
 	if (flipflat_command(device, ">%cOOO", AUX_COVER_OPEN_ITEM->sw.value ? 'O' : 'C')) {
-		AUX_COVER_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, AUX_COVER_PROPERTY, NULL);
+		INDIGO_UPDATE_PROPERTY_STATE(AUX_COVER_PROPERTY, INDIGO_BUSY_STATE, NULL);
 		AUX_COVER_PROPERTY->state = INDIGO_ALERT_STATE;
 		for (int i = 0; i < 10; i++) {
 			indigo_sleep(1);
@@ -301,8 +300,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		if (!indigo_ignore_connection_change(device, property)) {
 			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
 			indigo_execute_handler(device, aux_connection_handler);
 		}
 		return INDIGO_OK;

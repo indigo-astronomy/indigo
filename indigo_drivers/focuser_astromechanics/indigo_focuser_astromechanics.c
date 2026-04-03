@@ -132,8 +132,7 @@ static void focuser_steps_handler(indigo_device *device) {
 	FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_STEPS.on_change
 	int position;
-	FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_POSITION_PROPERTY, INDIGO_BUSY_STATE, NULL);
 	if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
 		position = (int)FOCUSER_POSITION_ITEM->number.value - (int)FOCUSER_STEPS_ITEM->number.value;
 		if (position < 0) {
@@ -144,7 +143,7 @@ static void focuser_steps_handler(indigo_device *device) {
 		if (position > 9999) {
 			position = 9999;
 		}
-		}
+	}
 	if (astromechanics_command(device, "M%04d#", 0, position)) {
 		for (int i = 0; i < 50; i++) {
 			if (astromechanics_command(device, "P#", 16)) {
@@ -250,8 +249,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		if (!indigo_ignore_connection_change(device, property)) {
 			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
 			indigo_execute_handler(device, focuser_connection_handler);
 		}
 		return INDIGO_OK;

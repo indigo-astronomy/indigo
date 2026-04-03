@@ -141,8 +141,7 @@ static void aux_ccd_abort_exposure_handler(indigo_device *device) {
 	if (CCD_ABORT_EXPOSURE_ITEM->sw.value && CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		indigo_cancel_pending_handler(device, aux_timer_callback);
 		rts_off(device);
-		CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+		INDIGO_UPDATE_PROPERTY_STATE(CCD_EXPOSURE_PROPERTY, INDIGO_ALERT_STATE, NULL);
 	}
 	CCD_ABORT_EXPOSURE_ITEM->sw.value = false;
 	CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
@@ -198,8 +197,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		if (!indigo_ignore_connection_change(device, property)) {
 			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
 			indigo_execute_handler(device, aux_connection_handler);
 		}
 		return INDIGO_OK;

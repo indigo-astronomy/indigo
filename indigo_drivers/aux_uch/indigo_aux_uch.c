@@ -201,12 +201,10 @@ static void aux_timer_callback(indigo_device *device) {
 		}
 	}
 	if (updateInfo) {
-		AUX_INFO_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, AUX_INFO_PROPERTY, NULL);
+		INDIGO_UPDATE_PROPERTY_STATE(AUX_INFO_PROPERTY, INDIGO_OK_STATE, NULL);
 	}
 	if (updateUSBPorts) {
-		AUX_USB_PORT_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, AUX_USB_PORT_PROPERTY, NULL);
+		INDIGO_UPDATE_PROPERTY_STATE(AUX_USB_PORT_PROPERTY, INDIGO_OK_STATE, NULL);
 	}
 	indigo_execute_handler_in(device, 2, aux_timer_callback);
 	//- aux.on_timer
@@ -388,8 +386,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		if (!indigo_ignore_connection_change(device, property)) {
 			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
 			indigo_execute_handler(device, aux_connection_handler);
 		}
 		return INDIGO_OK;

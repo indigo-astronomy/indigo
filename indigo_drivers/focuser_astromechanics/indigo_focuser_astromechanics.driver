@@ -96,8 +96,7 @@ driver astromechanics {
 		inherited FOCUSER_STEPS {
 			on_change {
 				int position;
-				FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+				INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_POSITION_PROPERTY, INDIGO_BUSY_STATE, NULL);
 				if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
 					position = (int)FOCUSER_POSITION_ITEM->number.value - (int)FOCUSER_STEPS_ITEM->number.value;
 					if (position < 0) {
@@ -108,7 +107,7 @@ driver astromechanics {
 					if (position > 9999) {
 						position = 9999;
 					}
-					}
+				}
 				if (astromechanics_command(device, "M%04d#", 0, position)) {
 					for (int i = 0; i < 50; i++) {
 						if (astromechanics_command(device, "P#", 16)) {

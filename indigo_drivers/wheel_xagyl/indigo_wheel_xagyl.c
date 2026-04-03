@@ -107,12 +107,10 @@ static void wheel_move_finalizer(indigo_device *device) {
 			indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
 		} else {
 			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->slot;
-			WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+			INDIGO_UPDATE_PROPERTY_STATE(WHEEL_SLOT_PROPERTY, INDIGO_OK_STATE, NULL);
 		}
 	} else {
-		WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+		INDIGO_UPDATE_PROPERTY_STATE(WHEEL_SLOT_PROPERTY, INDIGO_ALERT_STATE, NULL);
 	}
 }
 
@@ -145,14 +143,12 @@ static void wheel_slot_handler(indigo_device *device) {
 	//+ wheel.WHEEL_SLOT.on_change
 	int slot = (int)WHEEL_SLOT_ITEM->number.target;
 	if (slot == PRIVATE_DATA->slot) {
-		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+		INDIGO_UPDATE_PROPERTY_STATE(WHEEL_SLOT_PROPERTY, INDIGO_OK_STATE, NULL);
 	} else  if (xagyl_goto(device, slot)) {
 		WHEEL_SLOT_ITEM->number.value = 0;
 		indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
 	} else {
-		WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+		INDIGO_UPDATE_PROPERTY_STATE(WHEEL_SLOT_PROPERTY, INDIGO_ALERT_STATE, NULL);
 	}
 	//- wheel.WHEEL_SLOT.on_change
 }
@@ -182,8 +178,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		if (!indigo_ignore_connection_change(device, property)) {
 			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
 			indigo_execute_handler(device, wheel_connection_handler);
 		}
 		return INDIGO_OK;

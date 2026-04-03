@@ -214,8 +214,7 @@ driver usbv3 {
 				}
 				if (steps > 0) {
 					FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-					FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+					INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_STEPS_PROPERTY, INDIGO_BUSY_STATE, NULL);
 					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 					PRIVATE_DATA->moving = true;
 					int value;
@@ -231,8 +230,7 @@ driver usbv3 {
 							}
 						}
 					}
-					FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+					INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_POSITION_PROPERTY, INDIGO_OK_STATE, NULL);
 					FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 				}
 			}
@@ -259,8 +257,7 @@ driver usbv3 {
 				}
 				if (steps != 0) {
 					FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-					FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+					INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_STEPS_PROPERTY, INDIGO_BUSY_STATE, NULL);
 					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 					PRIVATE_DATA->moving = true;
 					int value;
@@ -276,8 +273,7 @@ driver usbv3 {
 							}
 						}
 					}
-					FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+					INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_STEPS_PROPERTY, INDIGO_OK_STATE, NULL);
 					FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 				}
 			}

@@ -1483,8 +1483,7 @@ void write_c_property_change_handler(device_type *device, property_type *propert
 	if (!strcmp(property->id, "MOUNT_EQUATORIAL_COORDINATES") || !strcmp(property->id, "MOUNT_MOTION_DEC") || !strcmp(property->id, "MOUNT_MOTION_RA") || !strcmp(property->id, "MOUNT_TRACKING")) {
 		write_line("\tif (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value) {");
 		write_line("\t\tindigo_send_message(device, %s, \"Mount is parked!\");", property->handle);
-		write_line("\t\t%s->state = INDIGO_ALERT_STATE;", property->handle);
-		write_line("\t\tindigo_update_property(device, %s, NULL);", property->handle);
+		write_line("\t\tINDIGO_UPDATE_PROPERTY_STATE(%s, INDIGO_ALERT_STATE, NULL);", property->handle);
 		write_line("\t\treturn;");
 		write_line("\t}");
 	}
@@ -1649,8 +1648,7 @@ void write_c_change_property(device_type *device) {
 	write_line("\tif (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {");
 	write_line("\t\tif (!indigo_ignore_connection_change(device, property)) {");
 	write_line("\t\t\tindigo_property_copy_values(CONNECTION_PROPERTY, property, false);");
-	write_line("\t\t\tCONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;");
-	write_line("\t\t\tindigo_update_property(device, CONNECTION_PROPERTY, NULL);");
+	write_line("\t\t\tINDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);");
 	write_line("\t\t\tindigo_execute_handler(device, %s_connection_handler);", device->type);
 	write_line("\t\t}");
 	write_line("\t\treturn INDIGO_OK;");

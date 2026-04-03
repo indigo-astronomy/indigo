@@ -369,20 +369,16 @@ static void aux_timer_callback(indigo_device *device) {
 		}
 	}
 	if (updatePowerOutletState) {
-		AUX_POWER_OUTLET_STATE_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, AUX_POWER_OUTLET_STATE_PROPERTY, NULL);
+		INDIGO_UPDATE_PROPERTY_STATE(AUX_POWER_OUTLET_STATE_PROPERTY, INDIGO_OK_STATE, NULL);
 	}
 	if (updatePowerOutletCurrent) {
-		AUX_POWER_OUTLET_CURRENT_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, AUX_POWER_OUTLET_CURRENT_PROPERTY, NULL);
+		INDIGO_UPDATE_PROPERTY_STATE(AUX_POWER_OUTLET_CURRENT_PROPERTY, INDIGO_OK_STATE, NULL);
 	}
 	if (updateWeather) {
-		AUX_WEATHER_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, AUX_WEATHER_PROPERTY, NULL);
+		INDIGO_UPDATE_PROPERTY_STATE(AUX_WEATHER_PROPERTY, INDIGO_OK_STATE, NULL);
 	}
 	if (updateInfo) {
-		AUX_INFO_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, AUX_INFO_PROPERTY, NULL);
+		INDIGO_UPDATE_PROPERTY_STATE(AUX_INFO_PROPERTY, INDIGO_OK_STATE, NULL);
 	}
 	indigo_execute_handler_in(device, 2, aux_timer_callback);
 	//- aux.on_timer
@@ -808,8 +804,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		if (!indigo_ignore_connection_change(device, property)) {
 			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
 			indigo_execute_handler(device, aux_connection_handler);
 		}
 		return INDIGO_OK;
@@ -877,8 +872,7 @@ static void focuser_timer_callback(indigo_device *device) {
 		double temp = indigo_atod(PRIVATE_DATA->response + 3);
 		if (FOCUSER_TEMPERATURE_ITEM->number.value != temp) {
 			FOCUSER_TEMPERATURE_ITEM->number.value = temp;
-			FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
+			INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_TEMPERATURE_PROPERTY, INDIGO_OK_STATE, NULL);
 		}
 	}
 	bool update = false;
@@ -1014,10 +1008,8 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 	if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
 	FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
 	if (upb3_command(device, "SH")) {
-		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_POSITION_PROPERTY, INDIGO_ALERT_STATE, NULL);
+		INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_STEPS_PROPERTY, INDIGO_ALERT_STATE, NULL);
 	} else {
 		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
@@ -1092,8 +1084,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		if (!indigo_ignore_connection_change(device, property)) {
 			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
 			indigo_execute_handler(device, focuser_connection_handler);
 		}
 		return INDIGO_OK;

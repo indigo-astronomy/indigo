@@ -117,16 +117,12 @@ driver sx {
 			on_change {
 				if (AO_CENTER_ITEM->sw.value) {
 					sx_command(device, "K", 1);
-					AO_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
-					indigo_update_property(device, AO_GUIDE_DEC_PROPERTY, NULL);
-					AO_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
-					indigo_update_property(device, AO_GUIDE_RA_PROPERTY, NULL);
+					INDIGO_UPDATE_PROPERTY_STATE(AO_GUIDE_DEC_PROPERTY, INDIGO_OK_STATE, NULL);
+					INDIGO_UPDATE_PROPERTY_STATE(AO_GUIDE_RA_PROPERTY, INDIGO_OK_STATE, NULL);
 				} else if (AO_UNJAM_ITEM->sw.value) {
 					sx_command(device, "R", 1);
-					AO_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
-					indigo_update_property(device, AO_GUIDE_DEC_PROPERTY, NULL);
-					AO_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
-					indigo_update_property(device, AO_GUIDE_RA_PROPERTY, NULL);
+					INDIGO_UPDATE_PROPERTY_STATE(AO_GUIDE_DEC_PROPERTY, INDIGO_OK_STATE, NULL);
+					INDIGO_UPDATE_PROPERTY_STATE(AO_GUIDE_RA_PROPERTY, INDIGO_OK_STATE, NULL);
 				}
 				AO_CENTER_ITEM->sw.value = AO_UNJAM_ITEM->sw.value = false;
 				if (PRIVATE_DATA->response[0] != 'K') {

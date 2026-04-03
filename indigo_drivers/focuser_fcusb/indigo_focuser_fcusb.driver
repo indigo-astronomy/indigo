@@ -92,8 +92,7 @@ driver fcusb {
 					} else if (FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value) {
 						libfcusb_move_out(PRIVATE_DATA->device_context);
 					}
-					FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+					INDIGO_UPDATE_PROPERTY_STATE(FOCUSER_STEPS_PROPERTY, INDIGO_BUSY_STATE, NULL);
 					int delay = FOCUSER_STEPS_ITEM->number.target;
 					while (delay > 0) {
 						if (FOCUSER_STEPS_PROPERTY->state != INDIGO_BUSY_STATE) {

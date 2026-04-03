@@ -342,8 +342,7 @@ static void aux_detect_open_close_handler(indigo_device *device) {
 	AUX_DETECT_OPEN_CLOSE_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_DETECT_OPEN_CLOSE.on_change
 	if (PRIVATE_DATA->operation_running) {
-		AUX_SET_OPEN_CLOSE_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, AUX_SET_OPEN_CLOSE_PROPERTY, "Operation in progress");
+			INDIGO_UPDATE_PROPERTY_STATE(AUX_SET_OPEN_CLOSE_PROPERTY, INDIGO_ALERT_STATE, "Operation in progress");
 		return;
 	} else {
 		bool success = false;
@@ -374,13 +373,11 @@ static void aux_set_open_close_handler(indigo_device *device) {
 	AUX_SET_OPEN_CLOSE_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_SET_OPEN_CLOSE.on_change
 	if (PRIVATE_DATA->operation_running) {
-		AUX_SET_OPEN_CLOSE_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, AUX_SET_OPEN_CLOSE_PROPERTY, "Operation in progress");
+		INDIGO_UPDATE_PROPERTY_STATE(AUX_SET_OPEN_CLOSE_PROPERTY, INDIGO_ALERT_STATE, "Operation in progress");
 		return;
 	}
 	if (AUX_SET_OPEN_CLOSE_OPEN_ITEM->number.target <= AUX_SET_OPEN_CLOSE_CLOSE_ITEM->number.target + 45) {
-		AUX_SET_OPEN_CLOSE_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, AUX_SET_OPEN_CLOSE_PROPERTY, "Open position can not be smaller than Close + 45");
+		INDIGO_UPDATE_PROPERTY_STATE(AUX_SET_OPEN_CLOSE_PROPERTY, INDIGO_ALERT_STATE, "Open position can not be smaller than Close + 45");
 		return;
 	}
 	bool success = wcv4ec_command(device, 40000 + (int)(AUX_SET_OPEN_CLOSE_OPEN_ITEM->number.target * 100));
@@ -421,8 +418,7 @@ static void aux_cover_handler(indigo_device *device) {
 	AUX_COVER_PROPERTY->state = INDIGO_OK_STATE;
 	//+ aux.AUX_COVER.on_change
 	if (PRIVATE_DATA->operation_running) {
-		AUX_COVER_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, AUX_COVER_PROPERTY, "Operation in progress");
+		INDIGO_UPDATE_PROPERTY_STATE(AUX_COVER_PROPERTY, INDIGO_ALERT_STATE, "Operation in progress");
 		return;
 	}
 	if (wcv4ec_command(device, AUX_COVER_OPEN_ITEM->sw.value ? 1001 : 1000)) {
@@ -512,8 +508,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		if (!indigo_ignore_connection_change(device, property)) {
 			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
 			indigo_execute_handler(device, aux_connection_handler);
 		}
 		return INDIGO_OK;

@@ -843,11 +843,12 @@ INDIGO_EXTERN void indigo_set_text_item_value(indigo_item *item, const char *val
 
 #define INDIGO_DEFINE_MATCHING_PROPERTY(template) if (indigo_property_match(template, property)) { if (client != NULL) indigo_define_property_to_client(device, client, template, NULL); else indigo_define_property(device, template, NULL); }
 #define INDIGO_COPY_VALUES_PROCESS_CHANGE(p, h) if (p->state != INDIGO_BUSY_STATE) { indigo_property_copy_values(p, property, false); p->state = INDIGO_BUSY_STATE; indigo_update_property(device, p, NULL); indigo_execute_handler(device, h); }
-#define INDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME(p, h) indigo_property_copy_values(p, property, false); p->state = INDIGO_BUSY_STATE; indigo_update_property(device, p, NULL); indigo_execute_handler(device, h);
+#define INDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME(p, h) { indigo_property_copy_values(p, property, false); p->state = INDIGO_BUSY_STATE; indigo_update_property(device, p, NULL); indigo_execute_handler(device, h); }
 #define INDIGO_COPY_TARGETS_PROCESS_CHANGE(p, h) if (p->state != INDIGO_BUSY_STATE) { indigo_property_copy_targets(p, property, false); p->state = INDIGO_BUSY_STATE; indigo_update_property(device, p, NULL); indigo_execute_handler(device, h); }
 #define INDIGO_COPY_VALUES_PROCESS_SYNC_CHANGE(p, h) if (p->state != INDIGO_BUSY_STATE) { indigo_property_copy_values(p, property, false); p->state = INDIGO_BUSY_STATE; indigo_update_property(device, p, NULL); h(device); }
 #define INDIGO_COPY_TARGETS_PROCESS_SYNC_CHANGE(p, h) if (p->state != INDIGO_BUSY_STATE) { indigo_property_copy_targets(p, property, false); p->state = INDIGO_BUSY_STATE; indigo_update_property(device, p, NULL); h(device); }
 
+#define INDIGO_UPDATE_PROPERTY_STATE(p, s, f, ...) { p->state = s; indigo_update_property(device, p, f, ##__VA_ARGS__); }
 
 /** Property representing all properties of all devices (used for enumeration broadcast).
  */

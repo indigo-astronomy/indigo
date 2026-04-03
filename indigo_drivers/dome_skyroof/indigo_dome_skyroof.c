@@ -104,10 +104,8 @@ static void skyroof_close(indigo_device *device) {
 static void dome_shutter_finalizer(indigo_device *device) {
 	if (DOME_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE) {
 		DOME_SHUTTER_CLOSED_ITEM->sw.value = DOME_SHUTTER_OPENED_ITEM->sw.value = false;
-		DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
-		DOME_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
+		INDIGO_UPDATE_PROPERTY_STATE(DOME_SHUTTER_PROPERTY, INDIGO_ALERT_STATE, NULL);
+		INDIGO_UPDATE_PROPERTY_STATE(DOME_ABORT_MOTION_PROPERTY, INDIGO_OK_STATE, NULL);
 	} else {
 		if (skyroof_write(device, "Status#") && skyroof_read(device)) {
 			if (DOME_SHUTTER_OPENED_ITEM->sw.value && !strcmp(PRIVATE_DATA->response, "RoofOpen#")) {
@@ -153,8 +151,7 @@ static void dome_shutter_handler(indigo_device *device) {
 	if (skyroof_write(device, DOME_SHUTTER_OPENED_ITEM->sw.value ? "Open#" : "Close#") && skyroof_read(device) && !strcmp(PRIVATE_DATA->response, "0#")) {
 		indigo_execute_handler_in(device, 0.5, dome_shutter_finalizer);
 	} else {
-		DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
+		INDIGO_UPDATE_PROPERTY_STATE(DOME_SHUTTER_PROPERTY, INDIGO_ALERT_STATE, NULL);
 	}
 	//- dome.DOME_SHUTTER.on_change
 }
@@ -273,8 +270,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		if (!indigo_ignore_connection_change(device, property)) {
 			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
 			indigo_execute_handler(device, dome_connection_handler);
 		}
 		return INDIGO_OK;

@@ -57,8 +57,7 @@ static void dome_timer_callback(indigo_device *device) {
 	if (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_ALERT_STATE) {
 		DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
 		indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-		DOME_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
+		INDIGO_UPDATE_PROPERTY_STATE(DOME_STEPS_PROPERTY, INDIGO_ALERT_STATE, NULL);
 	} else {
 		if (DOME_DIRECTION_MOVE_CLOCKWISE_ITEM->sw.value && PRIVATE_DATA->current_position != PRIVATE_DATA->target_position) {
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -69,8 +68,7 @@ static void dome_timer_callback(indigo_device *device) {
 				DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position = PRIVATE_DATA->target_position;
 			}
 			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-			DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
+			INDIGO_UPDATE_PROPERTY_STATE(DOME_STEPS_PROPERTY, INDIGO_BUSY_STATE, NULL);
 			indigo_set_timer(device, 0.1, dome_timer_callback, NULL);
 		} else if (DOME_DIRECTION_MOVE_COUNTERCLOCKWISE_ITEM->sw.value && PRIVATE_DATA->current_position != PRIVATE_DATA->target_position) {
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -81,18 +79,15 @@ static void dome_timer_callback(indigo_device *device) {
 				DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position = PRIVATE_DATA->target_position;
 			}
 			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-			DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
+			INDIGO_UPDATE_PROPERTY_STATE(DOME_STEPS_PROPERTY, INDIGO_BUSY_STATE, NULL);
 			indigo_set_timer(device, 0.1, dome_timer_callback, NULL);
 		} else {
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 			DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position;
 			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-			DOME_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
+			INDIGO_UPDATE_PROPERTY_STATE(DOME_STEPS_PROPERTY, INDIGO_OK_STATE, NULL);
 			if (DOME_PARK_PROPERTY->state == INDIGO_BUSY_STATE) {
-				DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
+				INDIGO_UPDATE_PROPERTY_STATE(DOME_PARK_PROPERTY, INDIGO_OK_STATE, NULL);
 			}
 		}
 	}
@@ -133,14 +128,10 @@ static void dome_horizontal_coordinates_handler(indigo_device *device) {
 			indigo_set_switch(DOME_DIRECTION_PROPERTY, DOME_DIRECTION_MOVE_COUNTERCLOCKWISE_ITEM, true);
 			DOME_STEPS_ITEM->number.value = 360 - dif;
 		}
-		DOME_DIRECTION_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, DOME_DIRECTION_PROPERTY, NULL);
-		DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
-		DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-		DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
+		INDIGO_UPDATE_PROPERTY_STATE(DOME_DIRECTION_PROPERTY, INDIGO_OK_STATE, NULL);
+		INDIGO_UPDATE_PROPERTY_STATE(DOME_STEPS_PROPERTY, INDIGO_BUSY_STATE, NULL);
+		INDIGO_UPDATE_PROPERTY_STATE(DOME_HORIZONTAL_COORDINATES_PROPERTY, INDIGO_BUSY_STATE, NULL);
+		INDIGO_UPDATE_PROPERTY_STATE(DOME_EQUATORIAL_COORDINATES_PROPERTY, INDIGO_OK_STATE, NULL);
 		indigo_set_timer(device, 0.5, dome_timer_callback, NULL);
 	}
 	//- dome.DOME_HORIZONTAL_COORDINATES.on_change
@@ -195,12 +186,9 @@ static void dome_equatorial_coordinates_handler(indigo_device *device) {
 				indigo_set_switch(DOME_DIRECTION_PROPERTY, DOME_DIRECTION_MOVE_COUNTERCLOCKWISE_ITEM, true);
 				DOME_STEPS_ITEM->number.value = 360 - dif;
 			}
-			DOME_DIRECTION_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, DOME_DIRECTION_PROPERTY, NULL);
-			DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
-			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+			INDIGO_UPDATE_PROPERTY_STATE(DOME_DIRECTION_PROPERTY, INDIGO_OK_STATE, NULL);
+			INDIGO_UPDATE_PROPERTY_STATE(DOME_STEPS_PROPERTY, INDIGO_BUSY_STATE, NULL);
+			INDIGO_UPDATE_PROPERTY_STATE(DOME_HORIZONTAL_COORDINATES_PROPERTY, INDIGO_BUSY_STATE, NULL);
 			indigo_set_timer(device, 0.5, dome_timer_callback, NULL);
 		}
 	}
@@ -245,12 +233,9 @@ static void dome_park_handler(indigo_device *device) {
 			DOME_STEPS_ITEM->number.value = PRIVATE_DATA->current_position;
 		}
 		PRIVATE_DATA->target_position = 0;
-		DOME_DIRECTION_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, DOME_DIRECTION_PROPERTY, NULL);
-		DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
-		DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+		INDIGO_UPDATE_PROPERTY_STATE(DOME_DIRECTION_PROPERTY, INDIGO_OK_STATE, NULL);
+		INDIGO_UPDATE_PROPERTY_STATE(DOME_STEPS_PROPERTY, INDIGO_BUSY_STATE, NULL);
+		INDIGO_UPDATE_PROPERTY_STATE(DOME_HORIZONTAL_COORDINATES_PROPERTY, INDIGO_BUSY_STATE, NULL);
 		indigo_set_timer(device, 0.5, dome_timer_callback, NULL);
 	}
 	//- dome.DOME_PARK.on_change
@@ -292,8 +277,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		if (!indigo_ignore_connection_change(device, property)) {
 			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
 			indigo_execute_handler(device, dome_connection_handler);
 		}
 		return INDIGO_OK;
