@@ -96,7 +96,7 @@ static indigo_result polaralign_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_polaralign_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
-		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
+		ADDITIONAL_INSTANCES_PROPERTY->hidden = device->base_device != NULL;
 		POLARALIGN_STEPS_PER_DEGREE_ALT_ITEM->number.value = POLARALIGN_STEPS_PER_DEGREE_ALT_ITEM->number.target = 360;
 		POLARALIGN_STEPS_PER_DEGREE_AZ_ITEM->number.value  = POLARALIGN_STEPS_PER_DEGREE_AZ_ITEM->number.target  = 360;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);

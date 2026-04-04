@@ -2217,7 +2217,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 
 		// --------------------------------------------------------------------------------
 		CONNECTION_PROPERTY->hidden = true;
-		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
+		ADDITIONAL_INSTANCES_PROPERTY->hidden = device->base_device != NULL;
 		pthread_mutex_init(&DEVICE_PRIVATE_DATA->mutex, NULL);
 		pthread_mutex_init(&DEVICE_PRIVATE_DATA->last_image_mutex, NULL);
 		indigo_load_properties(device, false);

@@ -635,7 +635,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
 		FOCUSER_BACKLASH_PROPERTY->hidden = false;
 
-		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
+		ADDITIONAL_INSTANCES_PROPERTY->hidden = device->base_device != NULL;
 
 		// -------------------------------------------------------------------------- DSD_MODEL_HINT_PROPERTY
 		DSD_MODEL_HINT_PROPERTY = indigo_init_switch_property(NULL, device->name, DSD_MODEL_HINT_PROPERTY_NAME, MAIN_GROUP, "Focuser model hint", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);

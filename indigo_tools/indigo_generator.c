@@ -1528,7 +1528,7 @@ void write_c_attach(device_type *device) {
 		write_line("\tif (indigo_%s_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {", device->type);
 	}
 	if (device->additional_instances) {
-		write_line("\t\tADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;");
+		write_line("\t\tADDITIONAL_INSTANCES_PROPERTY->hidden = device->base_device != NULL;");
 	}
 	if (driver.serial && is_master_device) {
 		write_line("\t\tDEVICE_PORT_PROPERTY->hidden = false;");
@@ -2198,7 +2198,7 @@ void read_c_source(void) {
 			}
 		} else if (sscanf(line, "	SET_DRIVER_INFO(%*[^,], \"%127[^\"]\")", s1) == 1) {
 			strncpy(driver.label, s1, sizeof(driver.label));
-		} else if (strstr(line, "ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;")) {
+		} else if (strstr(line, "ADDITIONAL_INSTANCES_PROPERTY->hidden = device->base_device != NULL;")) {
 			if (device) {
 				device->additional_instances = true;
 			}

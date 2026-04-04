@@ -811,7 +811,7 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 			indigo_save_property(device, NULL, SIMULATION_PROPERTY);
 			indigo_save_property(device, NULL, DEVICE_PORT_PROPERTY);
 			indigo_save_property(device, NULL, DEVICE_BAUDRATE_PROPERTY);
-			if (DEVICE_CONTEXT->base_device == NULL) {
+			if (device->base_device == NULL) {
 				indigo_save_property(device, NULL, ADDITIONAL_INSTANCES_PROPERTY);
 			}
 			CONFIG_PROPERTY->state = INDIGO_OK_STATE;
@@ -943,7 +943,7 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 		indigo_update_property(device, AUTHENTICATION_PROPERTY, NULL);
 	} else if (indigo_property_match_changeable(ADDITIONAL_INSTANCES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- ADDITIONAL_INSTANCES
-		assert(DEVICE_CONTEXT->base_device == NULL && (device->master_device == NULL || device->master_device == device));
+		assert(device->base_device == NULL && (device->master_device == NULL || device->master_device == device));
 		indigo_device *slave_devices[MAX_SLAVE_DEVICES];
 		int slave_count = indigo_query_slave_devices(device, slave_devices, MAX_SLAVE_DEVICES);
 		int saved_count = (int)ADDITIONAL_INSTANCES_COUNT_ITEM->number.value;
@@ -1015,8 +1015,8 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 				} else if (device->master_device == device) {
 					additional_device->master_device = additional_device;
 				}
+				additional_device->base_device = device;
 				indigo_attach_device(additional_device);
-				((indigo_device_context *)additional_device->device_context)->base_device = device;
 				DEVICE_CONTEXT->additional_device_instances[i] = additional_device;
 				// add slaved devices
 				for (int j = 0; j < slave_count; j++) {
@@ -1031,8 +1031,8 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 					additional_slave_device->device_context = NULL;
 					additional_slave_device->private_data = private_data;
 					additional_slave_device->master_device = additional_device;
+					additional_device->base_device = slave_device;
 					indigo_attach_device(additional_slave_device);
-					((indigo_device_context *)additional_device->device_context)->base_device = slave_device;
 					((indigo_device_context *)slave_device->device_context)->additional_device_instances[i] = additional_slave_device;
 				}
 			}
@@ -1046,7 +1046,7 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 
 indigo_result indigo_device_detach(indigo_device *device) {
 	assert(device != NULL);
-	if (DEVICE_CONTEXT->base_device == NULL) {
+	if (device->base_device == NULL) {
 		for (int i = 0; i < MAX_ADDITIONAL_INSTANCES; i++) {
 			indigo_device *additional_device = DEVICE_CONTEXT->additional_device_instances[i];
 			if (additional_device != NULL) {

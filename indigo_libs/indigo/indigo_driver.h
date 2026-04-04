@@ -259,7 +259,6 @@ typedef struct {
 	indigo_property *device_ports_property;		///< DEVICE_PORTS property pointer
 	indigo_property *device_auth_property;		///< SECURITY property pointer
 	indigo_property *device_inst_property;		///< ADDITIONAL_INSTANCES  property pointer
-	indigo_device *base_device;								///< base instance for additional devices
 	indigo_device *additional_device_instances[MAX_ADDITIONAL_INSTANCES]; ///< additional device instances
 } indigo_device_context;
 

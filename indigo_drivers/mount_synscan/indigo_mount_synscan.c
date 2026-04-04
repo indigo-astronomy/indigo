@@ -146,7 +146,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
 		pthread_mutex_init(&PRIVATE_DATA->driver_mutex, NULL);
 		PRIVATE_DATA->mountConfigured = false;
-		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
+		ADDITIONAL_INSTANCES_PROPERTY->hidden = device->base_device != NULL;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		
 		return mount_enumerate_properties(device, NULL, NULL);

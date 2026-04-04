@@ -49,6 +49,7 @@ driver rts {
 	aux {
 		name = "RTS-on-COM shutter";
 		interface = INDIGO_INTERFACE_AUX_SHUTTER;
+		additional_instances = true;
 		on_timer {
 			if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 				CCD_EXPOSURE_ITEM->number.value--;

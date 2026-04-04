@@ -746,7 +746,7 @@ static indigo_result dome_attach(indigo_device *device) {
 		indigo_init_number_item(NEXDOME_POWER_SHUTTER_ITEM, NEXDOME_POWER_SHUTTER_ITEM_NAME, "Shutter (Volts)", 0, 500, 1, 0);
 		strcpy(NEXDOME_POWER_SHUTTER_ITEM->number.format, "%.2f");
 		// --------------------------------------------------------------------------------
-		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
+		ADDITIONAL_INSTANCES_PROPERTY->hidden = device->base_device != NULL;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return nexdome_enumerate_properties(device, NULL, NULL);
 	}

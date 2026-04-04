@@ -584,7 +584,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_COMPENSATION_ITEM->number.max = 10000;
 		FOCUSER_COMPENSATION_PROPERTY->count = 2;
 
-		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
+		ADDITIONAL_INSTANCES_PROPERTY->hidden = device->base_device != NULL;
 
 		// -------------------------------------------------------------------------- STEP_MODE_PROPERTY
 		X_STEP_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, X_STEP_MODE_PROPERTY_NAME, FOCUSER_ADVANCED_GROUP, "Step mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 8);

@@ -222,7 +222,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		AUTHENTICATION_PROPERTY->hidden = false;
 		AUTHENTICATION_PROPERTY->count = 1;
 		// --------------------------------------------------------------------------------
-		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
+		ADDITIONAL_INSTANCES_PROPERTY->hidden = device->base_device != NULL;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_mount_enumerate_properties(device, NULL, NULL);
 	}

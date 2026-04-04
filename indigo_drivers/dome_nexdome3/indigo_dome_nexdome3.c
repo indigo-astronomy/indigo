@@ -774,7 +774,7 @@ static indigo_result dome_attach(indigo_device *device) {
 		indigo_init_text_item(NEXDOME_COMMAND_ITEM, NEXDOME_COMMAND_ITEM_NAME, "Command", INDIGO_IDLE_STATE);
 #endif
 		// --------------------------------------------------------------------------------
-		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
+		ADDITIONAL_INSTANCES_PROPERTY->hidden = device->base_device != NULL;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return nexdome_enumerate_properties(device, NULL, NULL);
 	}

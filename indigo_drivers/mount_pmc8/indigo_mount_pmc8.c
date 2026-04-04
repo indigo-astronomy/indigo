@@ -462,7 +462,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_init_switch_item(MOUNT_TYPE_EXOS2, MOUNT_TYPE_EXOS2_NAME, MODELS[2].name, false);
 		indigo_init_switch_item(MOUNT_TYPE_IEXOS100, MOUNT_TYPE_IEXOS100_NAME, MODELS[3].name, false);
 		// --------------------------------------------------------------------------------
-		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
+		ADDITIONAL_INSTANCES_PROPERTY->hidden = device->base_device != NULL;
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return mount_enumerate_properties(device, NULL, NULL);

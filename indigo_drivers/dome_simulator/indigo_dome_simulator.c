@@ -248,7 +248,7 @@ static indigo_result dome_enumerate_properties(indigo_device *device, indigo_cli
 
 static indigo_result dome_attach(indigo_device *device) {
 	if (indigo_dome_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
-		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
+		ADDITIONAL_INSTANCES_PROPERTY->hidden = device->base_device != NULL;
 		DOME_SPEED_PROPERTY->hidden = false;
 		//+ dome.DOME_SPEED.on_attach
 		DOME_SPEED_ITEM->number.value = 1;

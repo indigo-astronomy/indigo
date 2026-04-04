@@ -354,7 +354,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 
 		INFO_PROPERTY->count = 6;
 		INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->model);
-		char *sdk_version = EAFGetSDKVersion();
+		const char *sdk_version = EAFGetSDKVersion();
 		INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, sdk_version);
 		INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->label, "SDK version");
 

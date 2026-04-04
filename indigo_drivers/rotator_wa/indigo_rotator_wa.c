@@ -493,7 +493,7 @@ static indigo_result rotator_attach(indigo_device *device) {
 		indigo_init_switch_item(X_SET_ZERO_POSITION_ITEM, X_SET_ZERO_POSITION_ITEM_NAME, "Set mechanical zero", false);
 		// --------------------------------------------------------------------------------
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
-		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
+		ADDITIONAL_INSTANCES_PROPERTY->hidden = device->base_device != NULL;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return rotator_enumerate_properties(device, NULL, NULL);
 	}

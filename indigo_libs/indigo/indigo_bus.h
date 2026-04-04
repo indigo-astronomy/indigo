@@ -323,6 +323,7 @@ typedef struct indigo_device {
 	int match_patterns_count;           ///< device matching patterns count
 	int matched_pattern_index;          ///< index of matched pattern in match_patterns array
 	bool dont_update;										///< updates are not processed for this device
+	indigo_device *base_device;					///< base instance for additional devices
 
 	/** callback called when device is attached to bus
 	 */
@@ -356,6 +357,7 @@ typedef struct indigo_device {
 	0, \
 	-1, \
 	false, \
+	NULL, \
 	attach_cb, \
 	enumerate_properties_cb, \
 	change_property_cb, \

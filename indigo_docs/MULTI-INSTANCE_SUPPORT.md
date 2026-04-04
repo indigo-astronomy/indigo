@@ -23,7 +23,7 @@ ADDITIONAL_INSTANCES is persistent and can be saved together with an active conf
 To enable multi-instance support the following line should be added to ..._attach(indigo_device *device) function for the master device:
 
 ```C
-ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
+ADDITIONAL_INSTANCES_PROPERTY->hidden = device->base_device != NULL;
 ```
 
 The base devices without slave devices should be created by the code based on this template:

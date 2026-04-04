@@ -952,7 +952,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_STREAMING_SETTINGS_PROPERTY->hidden = false;
 		// --------------------------------------------------------------------------------
 		if (device == PRIVATE_DATA->imager) {
-			ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
+			ADDITIONAL_INSTANCES_PROPERTY->hidden = device->base_device != NULL;
 		}
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return ccd_enumerate_properties(device, NULL, NULL);
