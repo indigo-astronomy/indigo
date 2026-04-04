@@ -364,6 +364,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				west = !west;
 			}
 			MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_OK_STATE;
+			MOUNT_STATE_HOME_ITEM->light.value = INDIGO_IDLE_STATE;
 			indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
 			indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, west ? MOUNT_SIDE_OF_PIER_WEST_ITEM : MOUNT_SIDE_OF_PIER_EAST_ITEM, true);
 			MOUNT_SIDE_OF_PIER_PROPERTY->state = INDIGO_OK_STATE;
