@@ -1449,10 +1449,8 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 			} else if (fs[1] == 'D') {
 				strftime(buffer, 15, "%Y%m%d", time_info);
 			} else if (fs[1] == 'N') {
-				if (time_info->tm_hour < 12) {
-					time_info->tm_hour -= 12;
-					mktime(time_info);
-				}
+				time_info->tm_hour -= 12;
+				mktime(time_info);
 				strftime(buffer, 15, "%Y%m%d", time_info);
 			} else if (fs[2] == 'H') {
 				if (fs[1] == '.')
@@ -1465,10 +1463,8 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 				else if (fs[1] == '-')
 					strftime(buffer, 15, "%Y-%m-%d", time_info);
 			} else if (fs[2] == 'N') {
-				if (time_info->tm_hour < 12) {
-					time_info->tm_hour -= 12;
-					mktime(time_info);
-				}
+				time_info->tm_hour -= 12;
+				mktime(time_info);
 				if (fs[1] == '.')
 					strftime(buffer, 15, "%Y.%m.%d", time_info);
 				else if (fs[1] == '-')
