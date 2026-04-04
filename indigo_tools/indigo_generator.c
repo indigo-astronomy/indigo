@@ -1487,7 +1487,7 @@ void write_c_property_change_handler(device_type *device, property_type *propert
 		write_line("\t\treturn;");
 		write_line("\t}");
 	}
-	bool has_finalizer = property->on_change != NULL && strnstr(property->on_change->text, "_finalizer", property->on_change->size);
+	bool has_finalizer = property->on_change != NULL && memmem(property->on_change->text, property->on_change->size, "_finalizer", sizeof "_finalizer" - 1);
 	if (!has_finalizer && !c_code_starts_with(property->on_change, "%s->state = ", property->handle)) {
 		write_line("\t%s->state = INDIGO_OK_STATE;", property->handle);
 	}
