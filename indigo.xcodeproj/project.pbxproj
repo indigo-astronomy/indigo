@@ -792,6 +792,8 @@
 		59CBD4801FAF6C99000DAFDB /* indigo_gps_driver.c in Sources */ = {isa = PBXBuildFile; fileRef = 59CBD4781FAF6C19000DAFDB /* indigo_gps_driver.c */; };
 		59CC444D2CD64E3C00F21E17 /* libqhyccd.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 59CC444C2CD64E3C00F21E17 /* libqhyccd.dylib */; };
 		59CC444E2CD64E3C00F21E17 /* libqhyccd.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 59CC444C2CD64E3C00F21E17 /* libqhyccd.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		59D07D4F2F813F8B0011F92A /* indigo_polaralign_simulator.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D07D4B2F813F780011F92A /* indigo_polaralign_simulator.c */; };
+		59D07D502F813F8B0011F92A /* indigo_polaralign_simulator.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D07D4B2F813F780011F92A /* indigo_polaralign_simulator.c */; };
 		59D138A2283E5A8700FCC514 /* libraw.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59D138A1283E5A6C00FCC514 /* libraw.a */; };
 		59D138A3283E5A9C00FCC514 /* libraw.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59D138A1283E5A6C00FCC514 /* libraw.a */; };
 		59D138A5283E6BAA00FCC514 /* indigo_dslr_raw.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D138A4283E6BAA00FCC514 /* indigo_dslr_raw.c */; };
@@ -2959,6 +2961,10 @@
 		59CE50FD2F409E3A00DB6489 /* remote_server_client_mount.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = remote_server_client_mount.c; sourceTree = "<group>"; };
 		59CE50FE2F409E3A00DB6489 /* service_discovery.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = service_discovery.c; sourceTree = "<group>"; };
 		59CEDA6127D514B700D9277A /* MULTI-INSTANCE_SUPPORT.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "MULTI-INSTANCE_SUPPORT.md"; sourceTree = "<group>"; };
+		59D07D4A2F813F780011F92A /* indigo_polaralign_simulator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_polaralign_simulator.h; sourceTree = "<group>"; };
+		59D07D4B2F813F780011F92A /* indigo_polaralign_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_polaralign_simulator.c; sourceTree = "<group>"; };
+		59D07D4C2F813F780011F92A /* indigo_polaralign_simulator_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_polaralign_simulator_main.c; sourceTree = "<group>"; };
+		59D07D4D2F813F780011F92A /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		59D138A1283E5A6C00FCC514 /* libraw.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libraw.a; path = build/lib/libraw.a; sourceTree = "<group>"; };
 		59D138A4283E6BAA00FCC514 /* indigo_dslr_raw.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_dslr_raw.c; sourceTree = "<group>"; };
 		59D1EA032190B907001901BE /* indigo_dome_azimuth.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_dome_azimuth.h; sourceTree = "<group>"; };
@@ -9688,6 +9694,17 @@
 			path = gps_simulator;
 			sourceTree = "<group>";
 		};
+		59D07D4E2F813F780011F92A /* polaralign_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				59D07D4D2F813F780011F92A /* README.md */,
+				59D07D4A2F813F780011F92A /* indigo_polaralign_simulator.h */,
+				59D07D4B2F813F780011F92A /* indigo_polaralign_simulator.c */,
+				59D07D4C2F813F780011F92A /* indigo_polaralign_simulator_main.c */,
+			);
+			path = polaralign_simulator;
+			sourceTree = "<group>";
+		};
 		59D29A122841469D00D5E7F7 /* mount_starbook */ = {
 			isa = PBXGroup;
 			children = (
@@ -9911,6 +9928,7 @@
 				59D29A122841469D00D5E7F7 /* mount_starbook */,
 				9DAD521721246C17002FCC79 /* mount_synscan */,
 				590B59CE1F7853F400086FD2 /* mount_temma */,
+				59D07D4E2F813F780011F92A /* polaralign_simulator */,
 				9D74A5102D4B63F700A31003 /* rotator_asi */,
 				593287A12409ACC700ED61C0 /* rotator_lunatico */,
 				59B51354297077920075C8A1 /* rotator_falcon */,
@@ -15413,6 +15431,7 @@
 				598A1BD1259BA94A00C0B34C /* indigo_json.c in Sources */,
 				598A1BD2259BA94A00C0B34C /* indigo_server_tcp.c in Sources */,
 				598A1BD3259BA94A00C0B34C /* indigo_mount_synscan_protocol.c in Sources */,
+				59D07D502F813F8B0011F92A /* indigo_polaralign_simulator.c in Sources */,
 				598A1BD4259BA94A00C0B34C /* indigo_agent_auxiliary.c in Sources */,
 				598A1BD5259BA94A00C0B34C /* indigo_agent.c in Sources */,
 				59946C872AE9AFB400AA558D /* indigo_stretch.cpp in Sources */,
@@ -15752,6 +15771,7 @@
 				59CBD47F1FAF6C93000DAFDB /* indigo_gps_simulator.c in Sources */,
 				5979C87225473AE0005395BE /* indigo_avi.c in Sources */,
 				591CD0C6298041EB003243AE /* indigo_ccd_ssg.c in Sources */,
+				59D07D4F2F813F8B0011F92A /* indigo_polaralign_simulator.c in Sources */,
 				9D74A54A2D4B64A700A31003 /* indigo_focuser_astroasis.c in Sources */,
 				9D73E61821FF37F9003CEC15 /* libuvc_frame.c in Sources */,
 				9D73E61A21FF37F9003CEC15 /* libuvc_ctrl_gen.c in Sources */,
