@@ -2811,16 +2811,36 @@ static void mount_connect_callback(indigo_device *device) {
 			meade_stop(device);
 			meade_close(device);
 		}
-		indigo_delete_property(device, MOUNT_MODE_PROPERTY, NULL);
-		indigo_delete_property(device, FORCE_FLIP_PROPERTY, NULL);
-		indigo_delete_property(device, ZWO_BUZZER_PROPERTY, NULL);
-		indigo_delete_property(device, NYX_WIFI_AP_PROPERTY, NULL);
-		indigo_delete_property(device, NYX_WIFI_CL_PROPERTY, NULL);
-		indigo_delete_property(device, NYX_WIFI_RESET_PROPERTY, NULL);
-		indigo_delete_property(device, NYX_LEVELER_PROPERTY, NULL);
-		indigo_delete_property(device, ONSTEP_PREFERRED_PIER_SIDE_PROPERTY, NULL);
-		indigo_delete_property(device, ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY, NULL);
-		indigo_delete_property(device, ONSTEP_MERIDIAN_LIMITS_PROPERTY, NULL);
+		if (!MOUNT_MODE_PROPERTY->hidden) {
+			indigo_delete_property(device, MOUNT_MODE_PROPERTY, NULL);
+		}
+		if (!FORCE_FLIP_PROPERTY->hidden) {
+			indigo_delete_property(device, FORCE_FLIP_PROPERTY, NULL);
+		}
+		if (!ZWO_BUZZER_PROPERTY->hidden) {
+			indigo_delete_property(device, ZWO_BUZZER_PROPERTY, NULL);
+		}
+		if (!NYX_WIFI_AP_PROPERTY->hidden) {
+			indigo_delete_property(device, NYX_WIFI_AP_PROPERTY, NULL);
+		}
+		if (!NYX_WIFI_CL_PROPERTY->hidden) {
+			indigo_delete_property(device, NYX_WIFI_CL_PROPERTY, NULL);
+		}
+		if (!NYX_WIFI_RESET_PROPERTY->hidden) {
+			indigo_delete_property(device, NYX_WIFI_RESET_PROPERTY, NULL);
+		}
+		if (!NYX_LEVELER_PROPERTY->hidden) {
+			indigo_delete_property(device, NYX_LEVELER_PROPERTY, NULL);
+		}
+		if (!ONSTEP_PREFERRED_PIER_SIDE_PROPERTY->hidden) {
+			indigo_delete_property(device, ONSTEP_PREFERRED_PIER_SIDE_PROPERTY, NULL);
+		}
+		if (!ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY->hidden) {
+			indigo_delete_property(device, ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY, NULL);
+		}
+		if (!ONSTEP_MERIDIAN_LIMITS_PROPERTY->hidden) {
+			indigo_delete_property(device, ONSTEP_MERIDIAN_LIMITS_PROPERTY, NULL);
+		}
 		MOUNT_TYPE_PROPERTY->perm = INDIGO_RW_PERM;
 		indigo_delete_property(device, MOUNT_TYPE_PROPERTY, NULL);
 		indigo_define_property(device, MOUNT_TYPE_PROPERTY, NULL);
