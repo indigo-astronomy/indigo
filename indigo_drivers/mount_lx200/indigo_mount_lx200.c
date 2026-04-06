@@ -175,8 +175,16 @@
 #define ONSTEP_MERIDIAN_LIMITS_WEST_ITEM			(ONSTEP_MERIDIAN_LIMITS_PROPERTY->items+1)
 
 #define ONSTEP_MERIDIAN_LIMITS_PROPERTY_NAME		"X_ONSTEP_MERIDIAN_LIMITS"
-#define ONSTEP_MERIDIAN_LIMITS_EAST_ITEM_NAME		"EAST_LIMIT"
-#define ONSTEP_MERIDIAN_LIMITS_WEST_ITEM_NAME		"WEST_LIMIT"
+#define ONSTEP_MERIDIAN_LIMITS_EAST_ITEM_NAME		"EAST"
+#define ONSTEP_MERIDIAN_LIMITS_WEST_ITEM_NAME		"WEST"
+
+#define ONSTEP_ALTITUDE_LIMITS_PROPERTY				(PRIVATE_DATA->onstep_altitude_limits_property)
+#define ONSTEP_ALTITUDE_LIMITS_HORIZON_ITEM			(ONSTEP_ALTITUDE_LIMITS_PROPERTY->items+0)
+#define ONSTEP_ALTITUDE_LIMITS_OVERHEAD_ITEM		(ONSTEP_ALTITUDE_LIMITS_PROPERTY->items+1)
+
+#define ONSTEP_ALTITUDE_LIMITS_PROPERTY_NAME		"X_ALTITUDE_LIMITS"
+#define ONSTEP_ALTITUDE_LIMITS_HORIZON_ITEM_NAME	"HORIZON"
+#define ONSTEP_ALTITUDE_LIMITS_OVERHEAD_ITEM_NAME	"OVERHEAD"
 
 
 #define AUX_WEATHER_PROPERTY            (PRIVATE_DATA->weather_property)
@@ -229,6 +237,7 @@ typedef struct {
 	indigo_property *onstep_preferred_pier_side_property;
 	indigo_property *onstep_auto_meridian_flip_property;
 	indigo_property *onstep_meridian_limits_property;
+	indigo_property *onstep_altitude_limits_property;
 	indigo_property *weather_property;
 	indigo_property *info_property;
 	indigo_property *power_outlet_property;
@@ -1684,9 +1693,17 @@ static void meade_init_onstep_mount(indigo_device *device) {
 			ONSTEP_MERIDIAN_LIMITS_PROPERTY->hidden = false;
 		}
 	}
+	if (meade_command(device, ":Gh#", response, sizeof(response), 0)) {
+		ONSTEP_ALTITUDE_LIMITS_HORIZON_ITEM->number.value = ONSTEP_ALTITUDE_LIMITS_HORIZON_ITEM->number.target = atof(response);
+		if (meade_command(device, ":Go#", response, sizeof(response), 0)) {
+			ONSTEP_ALTITUDE_LIMITS_OVERHEAD_ITEM->number.value = ONSTEP_ALTITUDE_LIMITS_OVERHEAD_ITEM->number.target = atof(response);
+			ONSTEP_ALTITUDE_LIMITS_PROPERTY->hidden = false;
+		}
+	}
 	indigo_define_property(device, ONSTEP_PREFERRED_PIER_SIDE_PROPERTY, NULL);
 	indigo_define_property(device, ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY, NULL);
 	indigo_define_property(device, ONSTEP_MERIDIAN_LIMITS_PROPERTY, NULL);
+	indigo_define_property(device, ONSTEP_ALTITUDE_LIMITS_PROPERTY, NULL);
 
 	time_t secs = time(NULL);
 	int utc_offset = indigo_get_utc_offset();
@@ -1957,6 +1974,7 @@ static void meade_init_mount(indigo_device *device) {
 	ONSTEP_PREFERRED_PIER_SIDE_PROPERTY->hidden = true;
 	ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY->hidden = true;
 	ONSTEP_MERIDIAN_LIMITS_PROPERTY->hidden = true;
+	ONSTEP_ALTITUDE_LIMITS_PROPERTY->hidden = true;
 	memset(PRIVATE_DATA->prev_state, 0, sizeof(PRIVATE_DATA->prev_state));
 	if (MOUNT_TYPE_MEADE_ITEM->sw.value) {
 		meade_init_meade_mount(device);
@@ -2841,6 +2859,9 @@ static void mount_connect_callback(indigo_device *device) {
 		if (!ONSTEP_MERIDIAN_LIMITS_PROPERTY->hidden) {
 			indigo_delete_property(device, ONSTEP_MERIDIAN_LIMITS_PROPERTY, NULL);
 		}
+		if (!ONSTEP_ALTITUDE_LIMITS_PROPERTY->hidden) {
+			indigo_delete_property(device, ONSTEP_ALTITUDE_LIMITS_PROPERTY, NULL);
+		}
 		MOUNT_TYPE_PROPERTY->perm = INDIGO_RW_PERM;
 		indigo_delete_property(device, MOUNT_TYPE_PROPERTY, NULL);
 		indigo_define_property(device, MOUNT_TYPE_PROPERTY, NULL);
@@ -3103,6 +3124,24 @@ static void onstep_meridian_limits_callback(indigo_device *device) {
 	indigo_update_property(device, ONSTEP_MERIDIAN_LIMITS_PROPERTY, NULL);
 }
 
+static void onstep_altitude_limits_callback(indigo_device *device) {
+	char command[64], response[128];
+	snprintf(command, sizeof(command), ":Sh%+d#", (int)round(ONSTEP_ALTITUDE_LIMITS_HORIZON_ITEM->number.target));
+	bool ok = meade_command(device, command, response, 1, 0) && *response == '1';
+	if (ok) {
+		snprintf(command, sizeof(command), ":So%d#", (int)round(ONSTEP_ALTITUDE_LIMITS_OVERHEAD_ITEM->number.target));
+		ok = meade_command(device, command, response, 1, 0) && *response == '1';
+	}
+	if (ok) {
+		ONSTEP_ALTITUDE_LIMITS_HORIZON_ITEM->number.value = ONSTEP_ALTITUDE_LIMITS_HORIZON_ITEM->number.target;
+		ONSTEP_ALTITUDE_LIMITS_OVERHEAD_ITEM->number.value = ONSTEP_ALTITUDE_LIMITS_OVERHEAD_ITEM->number.target;
+		ONSTEP_ALTITUDE_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
+	} else {
+		ONSTEP_ALTITUDE_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	indigo_update_property(device, ONSTEP_ALTITUDE_LIMITS_PROPERTY, NULL);
+}
+
 static void mount_pec_callback(indigo_device *device) {
 	if (meade_pec(device, MOUNT_PEC_ENABLED_ITEM->sw.value))
 		MOUNT_PEC_PROPERTY->state = INDIGO_OK_STATE;
@@ -3312,6 +3351,13 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_init_number_item(ONSTEP_MERIDIAN_LIMITS_EAST_ITEM, ONSTEP_MERIDIAN_LIMITS_EAST_ITEM_NAME, "Limit past meridian, East of pier [°]", -270, 270, 0.25, 0);
 		indigo_init_number_item(ONSTEP_MERIDIAN_LIMITS_WEST_ITEM, ONSTEP_MERIDIAN_LIMITS_WEST_ITEM_NAME, "Limit past meridian, West of pier [°]", -270, 270, 0.25, 0);
 		ONSTEP_MERIDIAN_LIMITS_PROPERTY->hidden = true;
+		// ---------------------------------------------------------------------------- ONSTEP_ALTITUDE_LIMITS
+		ONSTEP_ALTITUDE_LIMITS_PROPERTY = indigo_init_number_property(NULL, device->name, ONSTEP_ALTITUDE_LIMITS_PROPERTY_NAME, MOUNT_ADVANCED_GROUP, "Altitude limits", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+		if (ONSTEP_ALTITUDE_LIMITS_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_number_item(ONSTEP_ALTITUDE_LIMITS_HORIZON_ITEM, ONSTEP_ALTITUDE_LIMITS_HORIZON_ITEM_NAME, "Horizon limit, min altitude [°]", -30, 30, 1, 0);
+		indigo_init_number_item(ONSTEP_ALTITUDE_LIMITS_OVERHEAD_ITEM, ONSTEP_ALTITUDE_LIMITS_OVERHEAD_ITEM_NAME, "Overhead limit, max altitude [°]", 60, 90, 1, 90);
+		ONSTEP_ALTITUDE_LIMITS_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
@@ -3335,6 +3381,7 @@ static indigo_result mount_enumerate_properties(indigo_device *device, indigo_cl
 		indigo_define_matching_property(ONSTEP_PREFERRED_PIER_SIDE_PROPERTY);
 		indigo_define_matching_property(ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY);
 		indigo_define_matching_property(ONSTEP_MERIDIAN_LIMITS_PROPERTY);
+		indigo_define_matching_property(ONSTEP_ALTITUDE_LIMITS_PROPERTY);
 	}
 	return indigo_mount_enumerate_properties(device, client, property);
 }
@@ -3583,6 +3630,13 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, ONSTEP_MERIDIAN_LIMITS_PROPERTY, NULL);
 		indigo_set_timer(device, 0, onstep_meridian_limits_callback, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(ONSTEP_ALTITUDE_LIMITS_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- ONSTEP_ALTITUDE_LIMITS
+		indigo_property_copy_targets(ONSTEP_ALTITUDE_LIMITS_PROPERTY, property, false);
+		ONSTEP_ALTITUDE_LIMITS_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, ONSTEP_ALTITUDE_LIMITS_PROPERTY, NULL);
+		indigo_set_timer(device, 0, onstep_altitude_limits_callback, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
@@ -3610,6 +3664,7 @@ static indigo_result mount_detach(indigo_device *device) {
 	indigo_release_property(ONSTEP_PREFERRED_PIER_SIDE_PROPERTY);
 	indigo_release_property(ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY);
 	indigo_release_property(ONSTEP_MERIDIAN_LIMITS_PROPERTY);
+	indigo_release_property(ONSTEP_ALTITUDE_LIMITS_PROPERTY);
 	indigo_release_property(MOUNT_TYPE_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_mount_detach(device);
