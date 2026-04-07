@@ -1094,8 +1094,11 @@ static bool meade_set_tracking_rate(indigo_device *device) {
 			return meade_command(device, ":TL#", NULL, 0, 0);
 	} else if (MOUNT_TRACK_RATE_KING_ITEM->sw.value && PRIVATE_DATA->lastTrackRate != 'k') {
 		PRIVATE_DATA->lastTrackRate = 'k';
-		if (MOUNT_TYPE_NYX_ITEM->sw.value)
+		if (MOUNT_TYPE_GEMINI_ITEM->sw.value) {
+			return gemini_set(device, 132, "");
+		} else if (MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value) {
 			return meade_command(device, ":TK#", NULL, 0, 0);
+		}
 	}
 	return true;
 }
@@ -1564,6 +1567,8 @@ static void meade_init_gemini_mount(indigo_device *device) {
 	MOUNT_PARK_PROPERTY->count = 2;
 	MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
 	MOUNT_SIDE_OF_PIER_PROPERTY->perm = INDIGO_RO_PERM;
+	MOUNT_INFO_PROPERTY->count = 1;
+	MOUNT_TRACK_RATE_PROPERTY->count = 4;
 	strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Losmandy");
 	indigo_copy_value(MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product);
 	strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, "N/A");
@@ -3075,14 +3080,10 @@ static void mount_tracking_callback(indigo_device *device) {
 }
 
 static void mount_track_rate_callback(indigo_device *device) {
-	if (MOUNT_TYPE_ZWO_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value) {
-		if (meade_set_tracking_rate(device)) {
-			MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_OK_STATE;
-		} else {
-			MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-	} else {
+	if (meade_set_tracking_rate(device)) {
 		MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_OK_STATE;
+	} else {
+		MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
 }
