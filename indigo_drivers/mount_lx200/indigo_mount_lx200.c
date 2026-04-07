@@ -2070,6 +2070,7 @@ static void meade_update_mount_state(indigo_device *device) {
 	indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
 	indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
 	indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
+	indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
 	indigo_update_coordinates(device, NULL);
 }
 
