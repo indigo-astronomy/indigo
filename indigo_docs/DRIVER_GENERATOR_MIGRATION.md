@@ -334,6 +334,11 @@ For every other property the generator appends a call to indigo_update_property(
 For MOUNT_EQUATORIAL_COORDINATES this call is replaced by indigo_update_coordinates(), which performs the standard INDIGO coordinate update and notification sequence appropriate for equatorial position reporting.
 This means a driver author does not need to call indigo_update_coordinates() explicitly inside on_change — the generator guarantees it is always the final step of the coordinates handler.
 
+If a device block contains an on_timer block, the generator produces a *_timer_callback() function whose body is the user-supplied code, guarded by an IS_CONNECTED check at the top — the callback silently returns if the device is no longer connected.
+The first invocation of this callback is triggered automatically at the end of a successful connection sequence via indigo_execute_handler(), which runs it once as an immediate asynchronous one-shot call.
+There is no implicit periodic rescheduling: if the callback is meant to repeat on a timer, the on_timer code must reschedule it explicitly (typically with indigo_reschedule_timer() or equivalent).
+On disconnection the generated handler calls indigo_cancel_pending_handlers() before tearing down properties, which cancels any timer the user code may have armed, so no special cleanup is needed in on_disconnect for this purpose.
+
 ---
 
 ## Tips and Caveats
