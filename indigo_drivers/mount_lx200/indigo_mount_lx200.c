@@ -138,6 +138,43 @@
 #define NYX_LEVELER_ROLL_ITEM_NAME			"ROLL"
 #define NYX_LEVELER_COMPASS_ITEM_NAME		"COMPASS"
 
+// OnStep-only properties
+#define ONSTEP_PREFERRED_PIER_SIDE_PROPERTY			(PRIVATE_DATA->onstep_preferred_pier_side_property)
+#define ONSTEP_PREFERRED_PIER_SIDE_EAST_ITEM		(ONSTEP_PREFERRED_PIER_SIDE_PROPERTY->items+0)
+#define ONSTEP_PREFERRED_PIER_SIDE_WEST_ITEM		(ONSTEP_PREFERRED_PIER_SIDE_PROPERTY->items+1)
+#define ONSTEP_PREFERRED_PIER_SIDE_BEST_ITEM		(ONSTEP_PREFERRED_PIER_SIDE_PROPERTY->items+2)
+#define ONSTEP_PREFERRED_PIER_SIDE_AUTO_ITEM		(ONSTEP_PREFERRED_PIER_SIDE_PROPERTY->items+3)
+
+#define ONSTEP_PREFERRED_PIER_SIDE_PROPERTY_NAME	"X_ONSTEP_PREFERRED_PIER_SIDE"
+#define ONSTEP_PREFERRED_PIER_SIDE_EAST_ITEM_NAME	"EAST"
+#define ONSTEP_PREFERRED_PIER_SIDE_WEST_ITEM_NAME	"WEST"
+#define ONSTEP_PREFERRED_PIER_SIDE_BEST_ITEM_NAME	"BEST"
+#define ONSTEP_PREFERRED_PIER_SIDE_AUTO_ITEM_NAME	"AUTO"
+
+#define ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY			(PRIVATE_DATA->onstep_auto_meridian_flip_property)
+#define ONSTEP_AUTO_MERIDIAN_FLIP_ENABLED_ITEM		(ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY->items+0)
+#define ONSTEP_AUTO_MERIDIAN_FLIP_DISABLED_ITEM		(ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY->items+1)
+
+#define ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY_NAME		"X_ONSTEP_AUTOMATIC_MERIDIAN_FLIP"
+#define ONSTEP_AUTO_MERIDIAN_FLIP_ENABLED_ITEM_NAME	"ENABLED"
+#define ONSTEP_AUTO_MERIDIAN_FLIP_DISABLED_ITEM_NAME	"DISABLED"
+
+#define ONSTEP_MERIDIAN_LIMITS_PROPERTY				(PRIVATE_DATA->onstep_meridian_limits_property)
+#define ONSTEP_MERIDIAN_LIMITS_EAST_ITEM			(ONSTEP_MERIDIAN_LIMITS_PROPERTY->items+0)
+#define ONSTEP_MERIDIAN_LIMITS_WEST_ITEM			(ONSTEP_MERIDIAN_LIMITS_PROPERTY->items+1)
+
+#define ONSTEP_MERIDIAN_LIMITS_PROPERTY_NAME		"X_ONSTEP_MERIDIAN_LIMITS"
+#define ONSTEP_MERIDIAN_LIMITS_EAST_ITEM_NAME		"EAST"
+#define ONSTEP_MERIDIAN_LIMITS_WEST_ITEM_NAME		"WEST"
+
+#define ONSTEP_ALTITUDE_LIMITS_PROPERTY				(PRIVATE_DATA->onstep_altitude_limits_property)
+#define ONSTEP_ALTITUDE_LIMITS_HORIZON_ITEM			(ONSTEP_ALTITUDE_LIMITS_PROPERTY->items+0)
+#define ONSTEP_ALTITUDE_LIMITS_OVERHEAD_ITEM		(ONSTEP_ALTITUDE_LIMITS_PROPERTY->items+1)
+
+#define ONSTEP_ALTITUDE_LIMITS_PROPERTY_NAME		"X_ALTITUDE_LIMITS"
+#define ONSTEP_ALTITUDE_LIMITS_HORIZON_ITEM_NAME	"HORIZON"
+#define ONSTEP_ALTITUDE_LIMITS_OVERHEAD_ITEM_NAME	"OVERHEAD"
+
 #define AUX_WEATHER_PROPERTY            (PRIVATE_DATA->weather_property)
 #define AUX_WEATHER_TEMPERATURE_ITEM    (AUX_WEATHER_PROPERTY->items + 0)
 #define AUX_WEATHER_PRESSURE_ITEM				(AUX_WEATHER_PROPERTY->items + 1)
@@ -189,6 +226,10 @@ typedef struct {
 	indigo_property *nyx_wifi_cl_property;
 	indigo_property *nyx_wifi_reset_property;
 	indigo_property *nyx_leveler_property;
+	indigo_property *onstep_preferred_pier_side_property;
+	indigo_property *onstep_auto_meridian_flip_property;
+	indigo_property *onstep_meridian_limits_property;
+	indigo_property *onstep_altitude_limits_property;
 	indigo_property *weather_property;
 	indigo_property *aux_info_property;
 	indigo_property *power_outlet_property;
@@ -1436,6 +1477,36 @@ static void meade_init_onstep_mount(indigo_device *device) {
 	if (meade_command(device, ":$QZ?#")) {
 		indigo_set_switch(MOUNT_PEC_PROPERTY, PRIVATE_DATA->response[0] == 'P' ? MOUNT_PEC_ENABLED_ITEM : MOUNT_PEC_DISABLED_ITEM, true);
 	}
+	if (meade_command(device, ":GX96#")) {
+		if (PRIVATE_DATA->response[0] == 'E') {
+			indigo_set_switch(ONSTEP_PREFERRED_PIER_SIDE_PROPERTY, ONSTEP_PREFERRED_PIER_SIDE_EAST_ITEM, true);
+		} else if (PRIVATE_DATA->response[0] == 'W') {
+			indigo_set_switch(ONSTEP_PREFERRED_PIER_SIDE_PROPERTY, ONSTEP_PREFERRED_PIER_SIDE_WEST_ITEM, true);
+		} else if (PRIVATE_DATA->response[0] == 'B') {
+			indigo_set_switch(ONSTEP_PREFERRED_PIER_SIDE_PROPERTY, ONSTEP_PREFERRED_PIER_SIDE_BEST_ITEM, true);
+		} else {
+			indigo_set_switch(ONSTEP_PREFERRED_PIER_SIDE_PROPERTY, ONSTEP_PREFERRED_PIER_SIDE_AUTO_ITEM, true);
+		}
+		ONSTEP_PREFERRED_PIER_SIDE_PROPERTY->hidden = false;
+	}
+	if (meade_command(device, ":GX95#")) {
+		indigo_set_switch(ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY, PRIVATE_DATA->response[0] == '1' ? ONSTEP_AUTO_MERIDIAN_FLIP_ENABLED_ITEM : ONSTEP_AUTO_MERIDIAN_FLIP_DISABLED_ITEM, true);
+		ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY->hidden = false;
+	}
+	if (meade_command(device, ":GXE9#")) {
+		ONSTEP_MERIDIAN_LIMITS_EAST_ITEM->number.value = ONSTEP_MERIDIAN_LIMITS_EAST_ITEM->number.target = atof(PRIVATE_DATA->response) / 4.0;
+		if (meade_command(device, ":GXEA#")) {
+			ONSTEP_MERIDIAN_LIMITS_WEST_ITEM->number.value = ONSTEP_MERIDIAN_LIMITS_WEST_ITEM->number.target = atof(PRIVATE_DATA->response) / 4.0;
+			ONSTEP_MERIDIAN_LIMITS_PROPERTY->hidden = false;
+		}
+	}
+	if (meade_command(device, ":Gh#")) {
+		ONSTEP_ALTITUDE_LIMITS_HORIZON_ITEM->number.value = ONSTEP_ALTITUDE_LIMITS_HORIZON_ITEM->number.target = atof(PRIVATE_DATA->response);
+		if (meade_command(device, ":Go#")) {
+			ONSTEP_ALTITUDE_LIMITS_OVERHEAD_ITEM->number.value = ONSTEP_ALTITUDE_LIMITS_OVERHEAD_ITEM->number.target = atof(PRIVATE_DATA->response);
+			ONSTEP_ALTITUDE_LIMITS_PROPERTY->hidden = false;
+		}
+	}
 }
 
 static void meade_update_onstep_state(indigo_device *device) {
@@ -1794,6 +1865,10 @@ static void meade_init_mount(indigo_device *device) {
 	NYX_WIFI_CL_PROPERTY->hidden = true;
 	NYX_WIFI_RESET_PROPERTY->hidden = true;
 	NYX_LEVELER_PROPERTY->hidden = true;
+	ONSTEP_PREFERRED_PIER_SIDE_PROPERTY->hidden = true;
+	ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY->hidden = true;
+	ONSTEP_MERIDIAN_LIMITS_PROPERTY->hidden = true;
+	ONSTEP_ALTITUDE_LIMITS_PROPERTY->hidden = true;
 	PRIVATE_DATA->use_dst_commands = false;
 	PRIVATE_DATA->slewing = PRIVATE_DATA->tracking = PRIVATE_DATA->parking = PRIVATE_DATA->parked = PRIVATE_DATA->homing = PRIVATE_DATA->homed = false;
 	if (MOUNT_TYPE_MEADE_ITEM->sw.value) {
@@ -2038,6 +2113,63 @@ static void nyx_reset_callback(indigo_device *device) {
 	indigo_update_property(device, NYX_WIFI_RESET_PROPERTY, NULL);
 }
 
+static void onstep_preferred_pier_side_callback(indigo_device *device) {
+	char cmd[16];
+	if (ONSTEP_PREFERRED_PIER_SIDE_EAST_ITEM->sw.value)
+		strncpy(cmd, ":SX96,E#", sizeof(cmd));
+	else if (ONSTEP_PREFERRED_PIER_SIDE_WEST_ITEM->sw.value)
+		strncpy(cmd, ":SX96,W#", sizeof(cmd));
+	else if (ONSTEP_PREFERRED_PIER_SIDE_BEST_ITEM->sw.value)
+		strncpy(cmd, ":SX96,B#", sizeof(cmd));
+	else
+		strncpy(cmd, ":SX96,A#", sizeof(cmd));
+	ONSTEP_PREFERRED_PIER_SIDE_PROPERTY->state = (meade_simple_reply_command(device, cmd) && *PRIVATE_DATA->response == '1') ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+	indigo_update_property(device, ONSTEP_PREFERRED_PIER_SIDE_PROPERTY, NULL);
+}
+
+static void onstep_auto_meridian_flip_callback(indigo_device *device) {
+	char cmd[16];
+	strncpy(cmd, ONSTEP_AUTO_MERIDIAN_FLIP_ENABLED_ITEM->sw.value ? ":SX95,1#" : ":SX95,0#", sizeof(cmd));
+	ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY->state = (meade_simple_reply_command(device, cmd) && *PRIVATE_DATA->response == '1') ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+	indigo_update_property(device, ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY, NULL);
+}
+
+static void onstep_meridian_limits_callback(indigo_device *device) {
+	char command[64];
+	snprintf(command, sizeof(command), ":SXE9,%d#", (int)round(ONSTEP_MERIDIAN_LIMITS_EAST_ITEM->number.target * 4.0));
+	bool ok = meade_simple_reply_command(device, command) && *PRIVATE_DATA->response == '1';
+	if (ok) {
+		snprintf(command, sizeof(command), ":SXEA,%d#", (int)round(ONSTEP_MERIDIAN_LIMITS_WEST_ITEM->number.target * 4.0));
+		ok = meade_simple_reply_command(device, command) && *PRIVATE_DATA->response == '1';
+	}
+	if (ok) {
+		ONSTEP_MERIDIAN_LIMITS_EAST_ITEM->number.value = ONSTEP_MERIDIAN_LIMITS_EAST_ITEM->number.target;
+		ONSTEP_MERIDIAN_LIMITS_WEST_ITEM->number.value = ONSTEP_MERIDIAN_LIMITS_WEST_ITEM->number.target;
+		ONSTEP_MERIDIAN_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
+	} else {
+		ONSTEP_MERIDIAN_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	indigo_update_property(device, ONSTEP_MERIDIAN_LIMITS_PROPERTY, NULL);
+}
+
+static void onstep_altitude_limits_callback(indigo_device *device) {
+	char command[64];
+	snprintf(command, sizeof(command), ":Sh%+d#", (int)round(ONSTEP_ALTITUDE_LIMITS_HORIZON_ITEM->number.target));
+	bool ok = meade_simple_reply_command(device, command) && *PRIVATE_DATA->response == '1';
+	if (ok) {
+		snprintf(command, sizeof(command), ":So%d#", (int)round(ONSTEP_ALTITUDE_LIMITS_OVERHEAD_ITEM->number.target));
+		ok = meade_simple_reply_command(device, command) && *PRIVATE_DATA->response == '1';
+	}
+	if (ok) {
+		ONSTEP_ALTITUDE_LIMITS_HORIZON_ITEM->number.value = ONSTEP_ALTITUDE_LIMITS_HORIZON_ITEM->number.target;
+		ONSTEP_ALTITUDE_LIMITS_OVERHEAD_ITEM->number.value = ONSTEP_ALTITUDE_LIMITS_OVERHEAD_ITEM->number.target;
+		ONSTEP_ALTITUDE_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
+	} else {
+		ONSTEP_ALTITUDE_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	indigo_update_property(device, ONSTEP_ALTITUDE_LIMITS_PROPERTY, NULL);
+}
+
 static void nyx_aux_timer_callback(indigo_device *device) {
 	if (!IS_CONNECTED) {
 		return;
@@ -2155,6 +2287,10 @@ static void mount_connect_callback(indigo_device *device) {
 			indigo_define_property(device, NYX_WIFI_CL_PROPERTY, NULL);
 			indigo_define_property(device, NYX_WIFI_RESET_PROPERTY, NULL);
 			indigo_define_property(device, NYX_LEVELER_PROPERTY, NULL);
+			indigo_define_property(device, ONSTEP_PREFERRED_PIER_SIDE_PROPERTY, NULL);
+			indigo_define_property(device, ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY, NULL);
+			indigo_define_property(device, ONSTEP_MERIDIAN_LIMITS_PROPERTY, NULL);
+			indigo_define_property(device, ONSTEP_ALTITUDE_LIMITS_PROPERTY, NULL);
 			MOUNT_TYPE_PROPERTY->perm = INDIGO_RO_PERM;
 			indigo_delete_property(device, MOUNT_TYPE_PROPERTY, NULL);
 			indigo_define_property(device, MOUNT_TYPE_PROPERTY, NULL);
@@ -2174,6 +2310,10 @@ static void mount_connect_callback(indigo_device *device) {
 		indigo_delete_property(device, NYX_WIFI_CL_PROPERTY, NULL);
 		indigo_delete_property(device, NYX_WIFI_RESET_PROPERTY, NULL);
 		indigo_delete_property(device, NYX_LEVELER_PROPERTY, NULL);
+		indigo_delete_property(device, ONSTEP_PREFERRED_PIER_SIDE_PROPERTY, NULL);
+		indigo_delete_property(device, ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY, NULL);
+		indigo_delete_property(device, ONSTEP_MERIDIAN_LIMITS_PROPERTY, NULL);
+		indigo_delete_property(device, ONSTEP_ALTITUDE_LIMITS_PROPERTY, NULL);
 		MOUNT_TYPE_PROPERTY->perm = INDIGO_RW_PERM;
 		indigo_delete_property(device, MOUNT_TYPE_PROPERTY, NULL);
 		indigo_define_property(device, MOUNT_TYPE_PROPERTY, NULL);
@@ -2504,6 +2644,40 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_init_number_item(NYX_LEVELER_PITCH_ITEM, NYX_LEVELER_PITCH_ITEM_NAME, "Pitch [°]", 0, 360, 0, 0);
 		indigo_init_number_item(NYX_LEVELER_ROLL_ITEM, NYX_LEVELER_ROLL_ITEM_NAME, "Roll [°]", 0, 360, 0, 0);
 		indigo_init_number_item(NYX_LEVELER_COMPASS_ITEM, NYX_LEVELER_COMPASS_ITEM_NAME, "Compass [°]", 0, 360, 0, 0);
+		// ---------------------------------------------------------------------------- ONSTEP_PREFERRED_PIER_SIDE
+		ONSTEP_PREFERRED_PIER_SIDE_PROPERTY = indigo_init_switch_property(NULL, device->name, ONSTEP_PREFERRED_PIER_SIDE_PROPERTY_NAME, MOUNT_ADVANCED_GROUP, "Meridian flip preferred pier side", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
+		if (ONSTEP_PREFERRED_PIER_SIDE_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_switch_item(ONSTEP_PREFERRED_PIER_SIDE_EAST_ITEM, ONSTEP_PREFERRED_PIER_SIDE_EAST_ITEM_NAME, "East", false);
+		indigo_init_switch_item(ONSTEP_PREFERRED_PIER_SIDE_WEST_ITEM, ONSTEP_PREFERRED_PIER_SIDE_WEST_ITEM_NAME, "West", false);
+		indigo_init_switch_item(ONSTEP_PREFERRED_PIER_SIDE_BEST_ITEM, ONSTEP_PREFERRED_PIER_SIDE_BEST_ITEM_NAME, "Best", false);
+		indigo_init_switch_item(ONSTEP_PREFERRED_PIER_SIDE_AUTO_ITEM, ONSTEP_PREFERRED_PIER_SIDE_AUTO_ITEM_NAME, "Auto", true);
+		ONSTEP_PREFERRED_PIER_SIDE_PROPERTY->hidden = true;
+		// ---------------------------------------------------------------------------- ONSTEP_AUTO_MERIDIAN_FLIP
+		ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY = indigo_init_switch_property(NULL, device->name, ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY_NAME, MOUNT_ADVANCED_GROUP, "Automatic meridian flip at limit", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_switch_item(ONSTEP_AUTO_MERIDIAN_FLIP_ENABLED_ITEM, ONSTEP_AUTO_MERIDIAN_FLIP_ENABLED_ITEM_NAME, "Enabled", false);
+		indigo_init_switch_item(ONSTEP_AUTO_MERIDIAN_FLIP_DISABLED_ITEM, ONSTEP_AUTO_MERIDIAN_FLIP_DISABLED_ITEM_NAME, "Disabled", true);
+		ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY->hidden = true;
+		// ---------------------------------------------------------------------------- ONSTEP_MERIDIAN_LIMITS
+		ONSTEP_MERIDIAN_LIMITS_PROPERTY = indigo_init_number_property(NULL, device->name, ONSTEP_MERIDIAN_LIMITS_PROPERTY_NAME, MOUNT_ADVANCED_GROUP, "Meridian limits", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+		if (ONSTEP_MERIDIAN_LIMITS_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_number_item(ONSTEP_MERIDIAN_LIMITS_EAST_ITEM, ONSTEP_MERIDIAN_LIMITS_EAST_ITEM_NAME, "Limit past meridian, East of pier [°]", -270, 270, 0.25, 0);
+		indigo_init_number_item(ONSTEP_MERIDIAN_LIMITS_WEST_ITEM, ONSTEP_MERIDIAN_LIMITS_WEST_ITEM_NAME, "Limit past meridian, West of pier [°]", -270, 270, 0.25, 0);
+		ONSTEP_MERIDIAN_LIMITS_PROPERTY->hidden = true;
+		// ---------------------------------------------------------------------------- ONSTEP_ALTITUDE_LIMITS
+		ONSTEP_ALTITUDE_LIMITS_PROPERTY = indigo_init_number_property(NULL, device->name, ONSTEP_ALTITUDE_LIMITS_PROPERTY_NAME, MOUNT_ADVANCED_GROUP, "Altitude limits", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+		if (ONSTEP_ALTITUDE_LIMITS_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_number_item(ONSTEP_ALTITUDE_LIMITS_HORIZON_ITEM, ONSTEP_ALTITUDE_LIMITS_HORIZON_ITEM_NAME, "Horizon limit, min altitude [°]", -30, 30, 1, 0);
+		indigo_init_number_item(ONSTEP_ALTITUDE_LIMITS_OVERHEAD_ITEM, ONSTEP_ALTITUDE_LIMITS_OVERHEAD_ITEM_NAME, "Overhead limit, max altitude [°]", 60, 90, 1, 90);
+		ONSTEP_ALTITUDE_LIMITS_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = device->base_device != NULL;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -2521,6 +2695,10 @@ static indigo_result mount_enumerate_properties(indigo_device *device, indigo_cl
 		INDIGO_DEFINE_MATCHING_PROPERTY(NYX_WIFI_CL_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(NYX_WIFI_RESET_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(NYX_LEVELER_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(ONSTEP_PREFERRED_PIER_SIDE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(ONSTEP_MERIDIAN_LIMITS_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(ONSTEP_ALTITUDE_LIMITS_PROPERTY);
 	}
 	return indigo_mount_enumerate_properties(device, client, property);
 }
@@ -2716,6 +2894,34 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, NYX_WIFI_RESET_PROPERTY, NULL);
 		indigo_execute_handler(device, nyx_reset_callback);
 		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(ONSTEP_PREFERRED_PIER_SIDE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- ONSTEP_PREFERRED_PIER_SIDE
+		indigo_property_copy_values(ONSTEP_PREFERRED_PIER_SIDE_PROPERTY, property, false);
+		ONSTEP_PREFERRED_PIER_SIDE_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, ONSTEP_PREFERRED_PIER_SIDE_PROPERTY, NULL);
+		indigo_execute_handler(device, onstep_preferred_pier_side_callback);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- ONSTEP_AUTO_MERIDIAN_FLIP
+		indigo_property_copy_values(ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY, property, false);
+		ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY, NULL);
+		indigo_execute_handler(device, onstep_auto_meridian_flip_callback);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(ONSTEP_MERIDIAN_LIMITS_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- ONSTEP_MERIDIAN_LIMITS
+		indigo_property_copy_targets(ONSTEP_MERIDIAN_LIMITS_PROPERTY, property, false);
+		ONSTEP_MERIDIAN_LIMITS_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, ONSTEP_MERIDIAN_LIMITS_PROPERTY, NULL);
+		indigo_execute_handler(device, onstep_meridian_limits_callback);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(ONSTEP_ALTITUDE_LIMITS_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- ONSTEP_ALTITUDE_LIMITS
+		indigo_property_copy_targets(ONSTEP_ALTITUDE_LIMITS_PROPERTY, property, false);
+		ONSTEP_ALTITUDE_LIMITS_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, ONSTEP_ALTITUDE_LIMITS_PROPERTY, NULL);
+		indigo_execute_handler(device, onstep_altitude_limits_callback);
+		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
@@ -2738,6 +2944,10 @@ static indigo_result mount_detach(indigo_device *device) {
 	indigo_release_property(NYX_WIFI_CL_PROPERTY);
 	indigo_release_property(NYX_WIFI_RESET_PROPERTY);
 	indigo_release_property(NYX_LEVELER_PROPERTY);
+	indigo_release_property(ONSTEP_PREFERRED_PIER_SIDE_PROPERTY);
+	indigo_release_property(ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY);
+	indigo_release_property(ONSTEP_MERIDIAN_LIMITS_PROPERTY);
+	indigo_release_property(ONSTEP_ALTITUDE_LIMITS_PROPERTY);
 	indigo_release_property(MOUNT_TYPE_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_mount_detach(device);
