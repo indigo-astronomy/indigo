@@ -1556,6 +1556,15 @@ static void meade_update_onstep_state(indigo_device *device) {
 				indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
 			}
 		}
+		// Update auto meridian flip from :GU# status character: a = enabled
+		if (!ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY->hidden && ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY->state != INDIGO_BUSY_STATE) {
+			bool enabled = strchr(PRIVATE_DATA->response, 'a') != NULL;
+			indigo_item *flip_item = enabled ? ONSTEP_AUTO_MERIDIAN_FLIP_ENABLED_ITEM : ONSTEP_AUTO_MERIDIAN_FLIP_DISABLED_ITEM;
+			if (!flip_item->sw.value) {
+				indigo_set_switch(ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY, flip_item, true);
+				indigo_update_property(device, ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY, NULL);
+			}
+		}
 	}
 }
 
