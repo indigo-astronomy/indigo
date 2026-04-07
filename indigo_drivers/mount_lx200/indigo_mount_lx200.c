@@ -2050,6 +2050,15 @@ static void meade_update_mount_state(indigo_device *device) {
 			MOUNT_STATE_PARK_ITEM->light.value = INDIGO_IDLE_STATE;
 		}
 	}
+
+	if (PRIVATE_DATA->homing) {
+		MOUNT_STATE_HOME_ITEM->light.value = INDIGO_BUSY_STATE;
+	} else if (PRIVATE_DATA->homed) {
+		MOUNT_STATE_HOME_ITEM->light.value = INDIGO_OK_STATE;
+	} else {
+		MOUNT_STATE_HOME_ITEM->light.value = INDIGO_IDLE_STATE;
+	}
+
 	if (MOUNT_HOME_PROPERTY->state == INDIGO_BUSY_STATE) { // to avoid race never change parking state if BUSY with this exception
 		if (MOUNT_HOME_ITEM->sw.value && PRIVATE_DATA->homed) {
 			MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
