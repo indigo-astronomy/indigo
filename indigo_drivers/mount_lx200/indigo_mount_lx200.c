@@ -2319,28 +2319,30 @@ static void meade_update_onstep_state(indigo_device *device) {
 				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
 				PRIVATE_DATA->tracking_changed = true;
 			}
-			if (strchr(response, '(')) {
-				if (!MOUNT_TRACK_RATE_LUNAR_ITEM->sw.value) {
-					indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_LUNAR_ITEM, true);
-					PRIVATE_DATA->tracking_rate_changed = true;
-				}
-			} else if (strchr(response, 'O')) {
-				if (!MOUNT_TRACK_RATE_SOLAR_ITEM->sw.value) {
-					indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SOLAR_ITEM, true);
-					PRIVATE_DATA->tracking_rate_changed = true;
-				}
-			} else if (strchr(response, 'k')) {
-				if (!MOUNT_TRACK_RATE_KING_ITEM->sw.value) {
-					indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_KING_ITEM, true);
-					PRIVATE_DATA->tracking_rate_changed = true;
-				}
-			} else {
-				if (!MOUNT_TRACK_RATE_SIDEREAL_ITEM->sw.value) {
-					indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SIDEREAL_ITEM, true);
-					PRIVATE_DATA->tracking_rate_changed = true;
-				}
+		}
+
+		if (strchr(response, '(')) {
+			if (!MOUNT_TRACK_RATE_LUNAR_ITEM->sw.value) {
+				indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_LUNAR_ITEM, true);
+				PRIVATE_DATA->tracking_rate_changed = true;
+			}
+		} else if (strchr(response, 'O')) {
+			if (!MOUNT_TRACK_RATE_SOLAR_ITEM->sw.value) {
+				indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SOLAR_ITEM, true);
+				PRIVATE_DATA->tracking_rate_changed = true;
+			}
+		} else if (strchr(response, 'k')) {
+			if (!MOUNT_TRACK_RATE_KING_ITEM->sw.value) {
+				indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_KING_ITEM, true);
+				PRIVATE_DATA->tracking_rate_changed = true;
+			}
+		} else {
+			if (!MOUNT_TRACK_RATE_SIDEREAL_ITEM->sw.value) {
+				indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SIDEREAL_ITEM, true);
+				PRIVATE_DATA->tracking_rate_changed = true;
 			}
 		}
+
 		if (strchr(response, 'P')) {
 			if (!MOUNT_PARK_PARKED_ITEM->sw.value || MOUNT_PARK_PROPERTY->state != INDIGO_OK_STATE) {
 				indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_PARKED_ITEM, true);
@@ -2394,24 +2396,24 @@ static void meade_update_onstep_state(indigo_device *device) {
 				indigo_update_property(device, ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY, NULL);
 			}
 		}
+		// Home state from :GU# status character: H = at home position
+		if (strchr(response, 'H')) {
+			if (PRIVATE_DATA->prev_home_state == false) {
+				MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_HOME_ITEM, true);
+				PRIVATE_DATA->home_changed = true;
+				indigo_send_message(device, "At home");
+			}
+			PRIVATE_DATA->prev_home_state = true;
+		} else {
+			if (PRIVATE_DATA->prev_home_state == true) {
+				indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_HOME_ITEM, false);
+				PRIVATE_DATA->home_changed = true;
+			}
+			PRIVATE_DATA->prev_home_state = false;
+		}
 	} else {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-	}
-
-	if (strchr(response, 'H')) {
-		if (PRIVATE_DATA->prev_home_state == false) {
-			MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_HOME_ITEM, true);
-			PRIVATE_DATA->home_changed = true;
-			indigo_send_message(device, "At home");
-		}
-		PRIVATE_DATA->prev_home_state = true;
-	} else {
-		if (PRIVATE_DATA->prev_home_state == true) {
-			indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_HOME_ITEM, false);
-			PRIVATE_DATA->home_changed = true;
-		}
-		PRIVATE_DATA->prev_home_state = false;
 	}
 }
 
