@@ -890,7 +890,8 @@ static bool meade_set_tracking_rate(indigo_device *device) {
 }
 
 static bool meade_get_tracking_rate(indigo_device *device) {
-	if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value) {
+	// Onstep has it in :GU# response
+	if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value) {
 		if (meade_command(device, ":GT#")) {
 			double rate = atof(PRIVATE_DATA->response);
 			if (rate <= 57.9) {
@@ -1537,6 +1538,23 @@ static void meade_update_onstep_state(indigo_device *device) {
 		} else if (strchr(PRIVATE_DATA->response, 'T')) {
 			indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_EAST_ITEM, true);
 			MOUNT_SIDE_OF_PIER_PROPERTY->state = INDIGO_OK_STATE;
+		}
+		// Update tracking rate from :GU# status characters: ( = Lunar, O = Solar, k = King, else = Sidereal
+		if (MOUNT_TRACK_RATE_PROPERTY->state != INDIGO_BUSY_STATE) {
+			indigo_item *rate_item;
+			if (strchr(PRIVATE_DATA->response, '(')) {
+				rate_item = MOUNT_TRACK_RATE_LUNAR_ITEM;
+			} else if (strchr(PRIVATE_DATA->response, 'O')) {
+				rate_item = MOUNT_TRACK_RATE_SOLAR_ITEM;
+			} else if (strchr(PRIVATE_DATA->response, 'k')) {
+				rate_item = MOUNT_TRACK_RATE_KING_ITEM;
+			} else {
+				rate_item = MOUNT_TRACK_RATE_SIDEREAL_ITEM;
+			}
+			if (!rate_item->sw.value) {
+				indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, rate_item, true);
+				indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
+			}
 		}
 	}
 }
