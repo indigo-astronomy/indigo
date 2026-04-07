@@ -1376,6 +1376,7 @@
 		592007822A5B2D050063C472 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		592007832A5B2D050063C472 /* indigo_aux_uch_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_aux_uch_main.c; sourceTree = "<group>"; };
 		592007842A5B2D050063C472 /* indigo_aux_uch.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_aux_uch.h; sourceTree = "<group>"; };
+		592089392F857B5800E4A595 /* DRIVER_GENERATOR_MIGRATION.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = DRIVER_GENERATOR_MIGRATION.md; sourceTree = "<group>"; };
 		5920EDAF2B8E57AA00BF85F7 /* wifi_channel_selector.pl */ = {isa = PBXFileReference; lastKnownFileType = text.script.perl; path = wifi_channel_selector.pl; sourceTree = "<group>"; };
 		5920EDB02B8E57AA00BF85F7 /* rpi_ctrl_v2.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = rpi_ctrl_v2.sh; sourceTree = "<group>"; };
 		5920EDB12B8E57DC00BF85F7 /* rpi_ctrl_fake.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = rpi_ctrl_fake.sh; sourceTree = "<group>"; };
@@ -5449,6 +5450,7 @@
 				5912C80C23D2447400A48B75 /* INDI-COMPARISON.md */,
 				5912C80823D2447400A48B75 /* CLIENT_DEVELOPMENT_BASICS.md */,
 				5912C80B23D2447400A48B75 /* DRIVER_DEVELOPMENT_BASICS.md */,
+				592089392F857B5800E4A595 /* DRIVER_GENERATOR_MIGRATION.md */,
 				5912C80923D2447400A48B75 /* Introduction to INDIGO.pdf */,
 			);
 			path = indigo_docs;
