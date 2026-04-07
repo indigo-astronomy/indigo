@@ -2301,7 +2301,7 @@ static void meade_update_avalon_state(indigo_device *device) {
 }
 
 static void meade_update_onstep_state(indigo_device *device) {
-	char response[128];
+	char response[128] = {0};
 	if (meade_command(device, ":GU#", response, sizeof(response), 0)) {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = strchr(response, 'N') ? INDIGO_OK_STATE : INDIGO_BUSY_STATE;
 		if (strchr(response, 'n')) {
@@ -2335,10 +2335,6 @@ static void meade_update_onstep_state(indigo_device *device) {
 					PRIVATE_DATA->tracking_rate_changed = true;
 				}
 			}
-			if (PRIVATE_DATA->tracking_rate_changed == true) {
-				PRIVATE_DATA->tracking_rate_changed = false;
-				indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
-			}
 		}
 		if (strchr(response, 'P')) {
 			if (!MOUNT_PARK_PARKED_ITEM->sw.value || MOUNT_PARK_PROPERTY->state != INDIGO_OK_STATE) {
@@ -2366,6 +2362,33 @@ static void meade_update_onstep_state(indigo_device *device) {
 				PRIVATE_DATA->park_changed = true;
 			}
 		}
+		// Pier side from :GU# status characters: o = none, T = east, W = west
+		if (strchr(response, 'o')) {
+			if (MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value || MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value) {
+				MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value = false;
+				MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value = false;
+				indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
+			}
+		} else if (strchr(response, 'W')) {
+			if (!MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value) {
+				indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
+				indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
+			}
+		} else if (strchr(response, 'T')) {
+			if (!MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value) {
+				indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_EAST_ITEM, true);
+				indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
+			}
+		}
+		// Auto meridian flip from :GU# status character: a = enabled
+		if (!ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY->hidden && ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY->state != INDIGO_BUSY_STATE) {
+			bool enabled = strchr(response, 'a') != NULL;
+			indigo_item *flip_item = enabled ? ONSTEP_AUTO_MERIDIAN_FLIP_ENABLED_ITEM : ONSTEP_AUTO_MERIDIAN_FLIP_DISABLED_ITEM;
+			if (!flip_item->sw.value) {
+				indigo_set_switch(ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY, flip_item, true);
+				indigo_update_property(device, ONSTEP_AUTO_MERIDIAN_FLIP_PROPERTY, NULL);
+			}
+		}
 	} else {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
@@ -2384,20 +2407,6 @@ static void meade_update_onstep_state(indigo_device *device) {
 			PRIVATE_DATA->home_changed = true;
 		}
 		PRIVATE_DATA->prev_home_state = false;
-	}
-
-	if (meade_command(device, ":Gm#", response, sizeof(response), 0)) {
-		if (strchr(response, 'W') && !MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value) {
-			indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
-			indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
-		} else if (strchr(response, 'E') && !MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value) {
-			indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_EAST_ITEM, true);
-			indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
-		} else if (strchr(response, 'N') && (MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value || MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value)){
-			MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value = false;
-			MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value = false;
-			indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
-		}
 	}
 }
 
@@ -2483,10 +2492,6 @@ static void meade_update_nyx_state(indigo_device *device) {
 					indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SIDEREAL_ITEM, true);
 					PRIVATE_DATA->tracking_rate_changed = true;
 				}
-			}
-			if (PRIVATE_DATA->tracking_rate_changed == true) {
-				PRIVATE_DATA->tracking_rate_changed = false;
-				indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
 			}
 		}
 		if (strchr(response, 'P')) {
@@ -2723,6 +2728,7 @@ static void meade_update_mount_state(indigo_device *device) {
 	PRIVATE_DATA->park_changed = false;
 	PRIVATE_DATA->home_changed = false;
 	PRIVATE_DATA->tracking_changed = false;
+	PRIVATE_DATA->tracking_rate_changed = false;
 	// read coordinates
 	double ra = 0, dec = 0;
 	if (meade_get_coordinates(device, &ra, &dec)) {
@@ -2777,12 +2783,18 @@ static void position_timer_callback(indigo_device *device) {
 		meade_update_site_if_changed(device);
 		meade_update_mount_state(device);
 		indigo_update_coordinates(device, NULL);
-		if (PRIVATE_DATA->tracking_changed)
+		if (PRIVATE_DATA->tracking_changed) {
 			indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
-		if (PRIVATE_DATA->park_changed)
+		}
+		if (PRIVATE_DATA->tracking_rate_changed) {
+			indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
+		}
+		if (PRIVATE_DATA->park_changed) {
 			indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
-		if (PRIVATE_DATA->home_changed)
+		}
+		if (PRIVATE_DATA->home_changed) {
 			indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
+		}
 		indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
 		indigo_reschedule_timer(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE ? 0.5 : 1, &PRIVATE_DATA->position_timer);
 	}
@@ -3085,15 +3097,16 @@ static void mount_force_flip_callback(indigo_device *device) {
 
 static void onstep_preferred_pier_side_callback(indigo_device *device) {
 	char response[128];
-	const char *cmd;
-	if (ONSTEP_PREFERRED_PIER_SIDE_EAST_ITEM->sw.value)
-		cmd = ":SX96,E#";
-	else if (ONSTEP_PREFERRED_PIER_SIDE_WEST_ITEM->sw.value)
-		cmd = ":SX96,W#";
-	else if (ONSTEP_PREFERRED_PIER_SIDE_BEST_ITEM->sw.value)
-		cmd = ":SX96,B#";
-	else
-		cmd = ":SX96,A#";
+	char cmd[16];
+	if (ONSTEP_PREFERRED_PIER_SIDE_EAST_ITEM->sw.value) {
+		strncpy(cmd, ":SX96,E#", sizeof(cmd));
+	} else if (ONSTEP_PREFERRED_PIER_SIDE_WEST_ITEM->sw.value) {
+		strncpy(cmd, ":SX96,W#", sizeof(cmd));
+	} else if (ONSTEP_PREFERRED_PIER_SIDE_BEST_ITEM->sw.value) {
+		strncpy(cmd, ":SX96,B#", sizeof(cmd));
+	} else {
+		strncpy(cmd, ":SX96,A#", sizeof(cmd));
+	}
 	bool ok = meade_command(device, cmd, response, 1, 0);
 	ONSTEP_PREFERRED_PIER_SIDE_PROPERTY->state = (ok && *response == '1') ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 	indigo_update_property(device, ONSTEP_PREFERRED_PIER_SIDE_PROPERTY, NULL);
