@@ -1960,8 +1960,12 @@ static void meade_init_mount(indigo_device *device) {
 	} else if (PRIVATE_DATA->homed) {
 		indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_HOME_ITEM, true);
 		MOUNT_HOME_PROPERTY->state = MOUNT_STATE_HOME_ITEM->light.value = INDIGO_OK_STATE;
-	} else if (MOUNT_HOME_PROPERTY->count == 2) {
-		indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_AWAY_ITEM, true);
+	} else {
+		if (MOUNT_HOME_PROPERTY->count == 2) {
+			indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_AWAY_ITEM, true);
+		} else {
+			indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_HOME_ITEM, false);
+		}
 		MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
 		MOUNT_STATE_HOME_ITEM->light.value = INDIGO_IDLE_STATE;
 	}
