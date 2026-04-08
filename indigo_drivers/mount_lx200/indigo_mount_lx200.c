@@ -1945,28 +1945,32 @@ static void meade_init_mount(indigo_device *device) {
 	meade_get_tracking_rate(device);
 	if (PRIVATE_DATA->parking) {
 		indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_PARKED_ITEM, true);
-		MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
+		MOUNT_PARK_PROPERTY->state = MOUNT_STATE_PARK_ITEM->light.value = INDIGO_BUSY_STATE;
 	} else if (PRIVATE_DATA->parked) {
 		indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_PARKED_ITEM, true);
-		MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
+		MOUNT_PARK_PROPERTY->state = MOUNT_STATE_PARK_ITEM->light.value = INDIGO_OK_STATE;
 	} else {
 		indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
 		MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
+		MOUNT_STATE_PARK_ITEM->light.value = INDIGO_IDLE_STATE;
 	}
 	if (PRIVATE_DATA->homing) {
 		indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_HOME_ITEM, true);
-		MOUNT_HOME_PROPERTY->state = INDIGO_BUSY_STATE;
+		MOUNT_HOME_PROPERTY->state = MOUNT_STATE_HOME_ITEM->light.value = INDIGO_BUSY_STATE;
 	} else if (PRIVATE_DATA->homed) {
 		indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_HOME_ITEM, true);
-		MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
+		MOUNT_HOME_PROPERTY->state = MOUNT_STATE_HOME_ITEM->light.value = INDIGO_OK_STATE;
 	} else if (MOUNT_HOME_PROPERTY->count == 2) {
 		indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_AWAY_ITEM, true);
 		MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
+		MOUNT_STATE_HOME_ITEM->light.value = INDIGO_IDLE_STATE;
 	}
 	if (PRIVATE_DATA->tracking) {
 		indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
+		MOUNT_STATE_TRACKING_ITEM->light.value = INDIGO_OK_STATE;
 	} else {
 		indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
+		MOUNT_STATE_TRACKING_ITEM->light.value = INDIGO_IDLE_STATE;
 	}
 	time_t secs = 0;
 	meade_get_utc(device, &secs, &PRIVATE_DATA->utc_offset);
