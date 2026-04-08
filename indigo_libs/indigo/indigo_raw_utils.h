@@ -117,10 +117,10 @@ extern indigo_result indigo_calculate_drift(const indigo_frame_digest *ref, cons
 extern indigo_result indigo_delete_frame_digest(indigo_frame_digest *fdigest);
 
 // Proportional-Integral guiding algorithm.
-extern double indigo_guider_pi_response(double p_gain, double i_gain, double guide_cycle_time, double drift, double avg_drift);
+extern double indigo_guider_pi_response(double p_gain, double i_gain, double guide_cycle_time, double min_move, double drift, double avg_drift);
 
 // Hysteresis guiding algorithm.
-extern double indigo_guider_hysteresis_response(double aggressiveness, double hysteresis, double drift, double *prev_output);
+extern double indigo_guider_hysteresis_response(double aggressiveness, double hysteresis, double min_move, double drift, double *prev_output);
 
 // Linear Trend guiding algorithm.
 extern void indigo_guider_linear_trend_push(double drift, indigo_linear_trend_history *history);
@@ -128,7 +128,7 @@ extern double indigo_guider_linear_trend_response(double aggressiveness, double 
 
 // Resist Switch guiding algorithm.
 extern void indigo_guider_resist_switch_push(double drift, indigo_resist_switch_history *history);
-extern double indigo_guider_resist_switch_response(double aggressiveness, double min_move, double fast_switch_threshold, indigo_resist_switch_history *history);
+extern double indigo_guider_resist_switch_response(double aggressiveness, double fast_switch_threshold, double min_move, indigo_resist_switch_history *history);
 
 //RMSE focus related
 extern double indigo_contrast(indigo_raw_type raw_type, const void *data, const uint8_t *saturation_mask, const int width, const int height, bool *saturated);
