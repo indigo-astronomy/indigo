@@ -1529,7 +1529,9 @@ static void meade_update_onstep_state(indigo_device *device) {
 		} else if (strchr(PRIVATE_DATA->response, 'I')) {
 			PRIVATE_DATA->parking = true;
 		}
-		if (strchr(PRIVATE_DATA->response, 'H')) {
+		if (strchr(PRIVATE_DATA->response, 'h')) {
+			PRIVATE_DATA->homing = true;
+		} else if (strchr(PRIVATE_DATA->response, 'H')) {
 			PRIVATE_DATA->homed = true;
 		}
 		if (strchr(PRIVATE_DATA->response, 'o')) {
@@ -1647,7 +1649,9 @@ static void meade_update_zwo_state(indigo_device *device) {
 		if (strchr(PRIVATE_DATA->response, 'n') == NULL) {
 			PRIVATE_DATA->tracking = true;
 		}
-		if (strchr(PRIVATE_DATA->response, 'H')) {
+		if (strchr(PRIVATE_DATA->response, 'h')) {
+			PRIVATE_DATA->homing = true;
+		} else if (strchr(PRIVATE_DATA->response, 'H')) {
 			PRIVATE_DATA->homed = true;
 		}
 	}
