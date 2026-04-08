@@ -106,7 +106,7 @@ indigo_result indigo_mount_attach(indigo_device *device, const char* driver_name
 			indigo_init_sexagesimal_number_item(MOUNT_PARK_POSITION_HA_ITEM, MOUNT_PARK_POSITION_HA_ITEM_NAME, "Hour Angle (-12 to 12 hrs)", -12, 12, 0, 6);
 			indigo_init_sexagesimal_number_item(MOUNT_PARK_POSITION_DEC_ITEM, MOUNT_PARK_POSITION_DEC_ITEM_NAME, "Declination (-90 to 90°)", -90, 90, 0, 90);
 			// -------------------------------------------------------------------------------- MOUNT_HOME
-			MOUNT_HOME_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_HOME_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Home", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
+			MOUNT_HOME_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_HOME_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Home", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
 			if (MOUNT_HOME_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			MOUNT_HOME_PROPERTY->hidden = true;
