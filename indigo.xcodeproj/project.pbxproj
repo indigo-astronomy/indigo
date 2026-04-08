@@ -2441,6 +2441,7 @@
 		599F61902BB494EA009065BC /* indigo_polynomial_fit.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_polynomial_fit.h; sourceTree = "<group>"; };
 		59A0772A21FE1C2F00244521 /* indigocat_star.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigocat_star.c; sourceTree = "<group>"; wrapsLines = 0; };
 		59A1CA822DB5515C00554D6E /* indigo_rotator_simulator.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_rotator_simulator.driver; sourceTree = "<group>"; };
+		59A202512F86BF7D00D8EBA1 /* OnStepX.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = OnStepX.pdf; sourceTree = "<group>"; };
 		59A242E922A5B45E001C38F8 /* indigo_focuser_steeldrive2.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_steeldrive2.h; sourceTree = "<group>"; };
 		59A242F222A5B45E001C38F8 /* indigo_focuser_steeldrive2_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_steeldrive2_main.c; sourceTree = "<group>"; };
 		59A242F322A5B45E001C38F8 /* indigo_focuser_steeldrive2.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_steeldrive2.c; sourceTree = "<group>"; };
@@ -14191,6 +14192,7 @@
 				5964D75621F789720059AEA8 /* 10micron-2.13.2.pdf */,
 				5964D75721F78FE70059AEA8 /* Gemini-5-2.1.pdf */,
 				598B919E2847D95B0094EB74 /* OnStep.pdf */,
+				59A202512F86BF7D00D8EBA1 /* OnStepX.pdf */,
 				9D035EBE299E695E00226FC7 /* NYX101.pdf */,
 				590B0EFF2F50DD0A007B66B1 /* OAT Command Index.webloc */,
 				590B0F002F50DEAA007B66B1 /* TeenAstro Command Index.webloc */,
