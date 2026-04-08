@@ -2042,7 +2042,9 @@ static void meade_update_mount_state(indigo_device *device) {
 			MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	} else { // otherwise mirror state reported by mount
-		if (PRIVATE_DATA->parked || PRIVATE_DATA->parking) {
+		if (PRIVATE_DATA->parking) {
+			MOUNT_STATE_PARK_ITEM->light.value = INDIGO_BUSY_STATE;
+		} else if (PRIVATE_DATA->parked) {
 			indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_PARKED_ITEM, true);
 			MOUNT_STATE_PARK_ITEM->light.value = INDIGO_OK_STATE;
 		} else {
@@ -2050,18 +2052,9 @@ static void meade_update_mount_state(indigo_device *device) {
 			MOUNT_STATE_PARK_ITEM->light.value = INDIGO_IDLE_STATE;
 		}
 	}
-
-	if (PRIVATE_DATA->homing) {
-		MOUNT_STATE_HOME_ITEM->light.value = INDIGO_BUSY_STATE;
-	} else if (PRIVATE_DATA->homed) {
-		MOUNT_STATE_HOME_ITEM->light.value = INDIGO_OK_STATE;
-	} else {
-		MOUNT_STATE_HOME_ITEM->light.value = INDIGO_IDLE_STATE;
-	}
-
-	if (MOUNT_HOME_PROPERTY->state == INDIGO_BUSY_STATE) { // to avoid race never change parking state if BUSY with this exception
+	if (MOUNT_HOME_PROPERTY->state == INDIGO_BUSY_STATE) { // to avoid race never change home state if BUSY with this exception
 		if (MOUNT_HOME_ITEM->sw.value && PRIVATE_DATA->homed) {
-			MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
+			MOUNT_HOME_PROPERTY->state = MOUNT_STATE_HOME_ITEM->light.value = INDIGO_OK_STATE;
 		}
 	} else { // otherwise mirror state reported by mount
 		if (MOUNT_HOME_ITEM->sw.value && !PRIVATE_DATA->homed) {
@@ -2070,8 +2063,12 @@ static void meade_update_mount_state(indigo_device *device) {
 			} else {
 				indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_HOME_ITEM, false);
 			}
+			MOUNT_STATE_HOME_ITEM->light.value = INDIGO_IDLE_STATE;
 		} else if (!MOUNT_HOME_ITEM->sw.value && PRIVATE_DATA->homed) {
 			indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_HOME_ITEM, true);
+			MOUNT_STATE_HOME_ITEM->light.value = INDIGO_OK_STATE;
+		} else if (PRIVATE_DATA->homing) {
+			MOUNT_STATE_HOME_ITEM->light.value = INDIGO_BUSY_STATE;
 		}
 	}
 	sprintf(MOUNT_UTC_OFFSET_ITEM->text.value, "%d", PRIVATE_DATA->utc_offset);
@@ -2374,10 +2371,10 @@ static void mount_park_callback(indigo_device *device) {
 			if (!(MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_GEMINI_ITEM->sw.value || MOUNT_TYPE_STARGO_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value)) {
 				MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 			}
-			MOUNT_STATE_PARK_ITEM->light.value = MOUNT_PARK_PROPERTY->count == 1 ? INDIGO_IDLE_STATE : MOUNT_PARK_PROPERTY->state;
 		} else {
-			MOUNT_PARK_PROPERTY->state = MOUNT_STATE_PARK_ITEM->light.value = INDIGO_ALERT_STATE;
+			MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
+		MOUNT_STATE_PARK_ITEM->light.value = MOUNT_PARK_PROPERTY->state;
 	} else if (MOUNT_PARK_UNPARKED_ITEM->sw.value) {
 		if (meade_unpark(device)) {
 			if (!(MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_STARGO_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value)) {
@@ -2411,12 +2408,11 @@ static void mount_home_callback(indigo_device *device) {
 		if (MOUNT_HOME_PROPERTY->count == 1) {
 			indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_HOME_ITEM, false);
 		}
-		if (meade_home(device)) {
-			MOUNT_STATE_HOME_ITEM->light.value = MOUNT_HOME_PROPERTY->count == 1 ? INDIGO_IDLE_STATE : INDIGO_BUSY_STATE;
-		} else {
-			MOUNT_HOME_PROPERTY->state = MOUNT_STATE_HOME_ITEM->light.value = INDIGO_ALERT_STATE;
+		if (!meade_home(device)) {
+			MOUNT_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 	}
+	MOUNT_STATE_HOME_ITEM->light.value = MOUNT_HOME_PROPERTY->state;
 	indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
 	indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
 }
