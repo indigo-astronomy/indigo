@@ -2956,6 +2956,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 						if (DEVICE_PRIVATE_DATA->use_bahtinov_estimator && (DEVICE_PRIVATE_DATA->frame[2] > MAX_BAHTINOV_FRAME_SIZE || DEVICE_PRIVATE_DATA->frame[3] > MAX_BAHTINOV_FRAME_SIZE)) {
 							indigo_send_message(device, BUSY_PROPERTY, "Warning: Bahtinov focus estimator can't process frames larger than %d x %d pixels", MAX_BAHTINOV_FRAME_SIZE, MAX_BAHTINOV_FRAME_SIZE);
 						}
+						indigo_set_timer(device, 0, autofocus_process, NULL);
 					} else if (AGENT_IMAGER_START_EXPOSURE_ITEM->sw.value && AGENT_IMAGER_MACRO_MODE_FEATURE_ITEM->sw.value) {
 						indigo_set_timer(device, 0, bracketing_batch_process, NULL);
 					}
