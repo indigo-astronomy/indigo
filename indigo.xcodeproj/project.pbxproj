@@ -4930,6 +4930,7 @@
 		9DB1179E2383F6FC002C1AB1 /* email_communication.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = email_communication.txt; sourceTree = "<group>"; };
 		9DB1179F2383F6FC002C1AB1 /* Firmware-Protocol.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "Firmware-Protocol.md"; sourceTree = "<group>"; };
 		9DB117A02383F6FC002C1AB1 /* nexdome_v3_additional_commands.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = nexdome_v3_additional_commands.txt; sourceTree = "<group>"; };
+		9DB3A4E92F8782E7004BB2FF /* ZWO.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = ZWO.pdf; sourceTree = "<group>"; };
 		9DB4FF1A20D00000004A8B5A /* indigo_focuser_wemacro.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_wemacro.rules; sourceTree = "<group>"; };
 		9DB88E9E214BEDD900CECBCE /* dmfc_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; path = dmfc_simulator.ino; sourceTree = "<group>"; };
 		9DB917FF1DF8546800678721 /* indigo_mount_lx200_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_lx200_main.c; sourceTree = "<group>"; };
@@ -14194,6 +14195,7 @@
 				598B919E2847D95B0094EB74 /* OnStep.pdf */,
 				59A202512F86BF7D00D8EBA1 /* OnStepX.pdf */,
 				9D035EBE299E695E00226FC7 /* NYX101.pdf */,
+				9DB3A4E92F8782E7004BB2FF /* ZWO.pdf */,
 				590B0EFF2F50DD0A007B66B1 /* OAT Command Index.webloc */,
 				590B0F002F50DEAA007B66B1 /* TeenAstro Command Index.webloc */,
 				590B0F012F50E3C9007B66B1 /* aGotino Command Index.webloc */,
