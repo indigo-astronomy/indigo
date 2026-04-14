@@ -130,8 +130,10 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 					bool use_gzip = false;
 					bool use_imagebytes = false;
 					while (indigo_uni_read_line(handle, header, BUFFER_SIZE) > 0) {
-						if (!strncasecmp(header, "Sec-WebSocket-Key: ", 19))
-							strncpy(websocket_key, header + 19, sizeof(websocket_key));
+						if (!strncasecmp(header, "Sec-WebSocket-Key: ", 19)) {
+							strncpy(websocket_key, header + 19, sizeof(websocket_key) - 1);
+							websocket_key[sizeof(websocket_key) - 1] = '\0';
+						}
 						if (!strcasecmp(header, "Connection: close"))
 							keep_alive = false;
 						if (!strncasecmp(header, "Accept-Encoding:", 16)) {
@@ -283,30 +285,31 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 							}
 							handle->log_level = abs(handle->log_level);
 						} else if (resource->file_name) {
-							char file_name[256];
+							char file_name[1024];
 							if (*resource->file_name == '/') {
-								strcpy(file_name, resource->file_name);
+								strncpy(file_name, resource->file_name, sizeof(file_name) - 1);
+								file_name[sizeof(file_name) - 1] = '\0';
 							} else {
-								sprintf(file_name, "%s%c%s", indigo_uni_config_folder(), INDIGO_PATH_SEPATATOR, resource->file_name);
+								snprintf(file_name, sizeof(file_name), "%s%c%s", indigo_uni_config_folder(), INDIGO_PATH_SEPATATOR, resource->file_name);
 							}
-							indigo_uni_handle *file_handle = { 0 };
+							indigo_uni_handle *file_handle = NULL;
 							struct stat file_stat;
 							if (stat(file_name, &file_stat) < 0 || (file_handle = indigo_uni_open_file(file_name, INDIGO_LOG_DEBUG)) == NULL) {
-								INDIGO_PRINTF(file_handle, "HTTP/1.1 404 Not found\r\n");
-								INDIGO_PRINTF(file_handle, "Content-Type: text/plain\r\n");
-								INDIGO_PRINTF(file_handle, "\r\n");
-								INDIGO_PRINTF(file_handle, "%s not found\r\n", file_name);
+								INDIGO_PRINTF(handle, "HTTP/1.1 404 Not found\r\n");
+								INDIGO_PRINTF(handle, "Content-Type: text/plain\r\n");
+								INDIGO_PRINTF(handle, "\r\n");
+								INDIGO_PRINTF(handle, "%s not found\r\n", file_name);
 								INDIGO_TRACE(indigo_trace("%d <- // Failed to stat/open file %s", handle->index, file_name));
 								goto failure;
 							} else {
 								const char *base_name = strrchr(file_name, '/');
 								base_name = base_name ? base_name + 1 : file_name;
-								INDIGO_PRINTF(file_handle, "HTTP/1.1 200 OK\r\n");
-								INDIGO_PRINTF(file_handle, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
-								INDIGO_PRINTF(file_handle, "Content-Type: %s\r\n", resource->content_type);
-								INDIGO_PRINTF(file_handle, "Content-Disposition: attachment; filename=%s\r\n", base_name);
-								INDIGO_PRINTF(file_handle, "Content-Length: %d\r\n", file_stat.st_size);
-								INDIGO_PRINTF(file_handle, "\r\n");
+								INDIGO_PRINTF(handle, "HTTP/1.1 200 OK\r\n");
+								INDIGO_PRINTF(handle, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
+								INDIGO_PRINTF(handle, "Content-Type: %s\r\n", resource->content_type);
+								INDIGO_PRINTF(handle, "Content-Disposition: attachment; filename=%s\r\n", base_name);
+								INDIGO_PRINTF(handle, "Content-Length: %d\r\n", file_stat.st_size);
+								INDIGO_PRINTF(handle, "\r\n");
 								long remaining = file_stat.st_size;
 								char buffer[128 * 1024];
 								while (remaining > 0) {
