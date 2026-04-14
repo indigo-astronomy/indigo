@@ -67,6 +67,20 @@
 static int handle_index = 0;
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
+#if defined(INDIGO_WINDOWS)
+#define INDIGO_THREAD_LOCAL __declspec(thread)
+#else
+#define INDIGO_THREAD_LOCAL __thread
+#endif
+
+static int next_handle_index(void) {
+	int index;
+	pthread_mutex_lock(&mutex);
+	index = handle_index++;
+	pthread_mutex_unlock(&mutex);
+	return index;
+}
+
 
 indigo_uni_handle _indigo_stdin_handle = { INDIGO_FILE_HANDLE, 0, 0 };
 indigo_uni_handle _indigo_stdout_handle = { INDIGO_FILE_HANDLE, 1, 0 };
@@ -92,9 +106,7 @@ void indigo_init_uni_io() {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 indigo_uni_handle *indigo_uni_create_file_handle(int fd, int log_level) {
 	indigo_uni_handle *handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
-	pthread_mutex_lock(&mutex);
-	handle->index = handle_index++;
-	pthread_mutex_unlock(&mutex);
+	handle->index = next_handle_index();
 	handle->type = INDIGO_FILE_HANDLE;
 	handle->fd = fd;
 	handle->log_level = log_level;
@@ -119,7 +131,7 @@ static int discard_data(indigo_uni_handle *handle) {
 #define MAX_DUMP_SIZE	64
 
 char *dump_data(const char *data, long length) {
-	static char buffer[MAX_DUMP_SIZE * 3 + 4];
+	static INDIGO_THREAD_LOCAL char buffer[MAX_DUMP_SIZE * 3 + 4];
 	int count = (int)(length < MAX_DUMP_SIZE ? length : MAX_DUMP_SIZE);
 	const char *hex = "0123456789ABCDEF";
 	for (int i = 0; i < count; i++) {
@@ -446,7 +458,7 @@ indigo_uni_handle *indigo_uni_open_file(const char *path, int log_level) {
 #endif
 	if (fd >= 0) {
 		indigo_uni_handle *handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
-		handle->index = handle_index++;
+		handle->index = next_handle_index();
 		handle->type = INDIGO_FILE_HANDLE;
 		handle->fd = fd;
 		handle->log_level = log_level;
@@ -467,7 +479,7 @@ indigo_uni_handle *indigo_uni_create_file(const char *path, int log_level) {
 #endif
 	if (fd >= 0) {
 		indigo_uni_handle *handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
-		handle->index = handle_index++;
+		handle->index = next_handle_index();
 		handle->type = INDIGO_FILE_HANDLE;
 		handle->fd = fd;
 		handle->log_level = log_level;
@@ -592,7 +604,7 @@ static indigo_uni_handle *open_tty(const char *serial, const struct termios *opt
 		return NULL;
 	}
 	indigo_uni_handle *handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
-	handle->index = handle_index++;
+	handle->index = next_handle_index();
 	handle->type = INDIGO_COM_HANDLE;
 	handle->fd = fd;
 	handle->log_level = log_level;
@@ -686,7 +698,7 @@ static indigo_uni_handle *open_tty(const char *serial, DCB *dcb, int log_level) 
 		return NULL;
 	}
 	indigo_uni_handle *handle = (indigo_uni_handle *)indigo_safe_malloc(sizeof(indigo_uni_handle));
-	handle->index = handle_index++;
+	handle->index = next_handle_index();
 	handle->type = INDIGO_COM_HANDLE;
 	handle->com = com;
 	handle->log_level = log_level;
@@ -894,18 +906,21 @@ bool indigo_perform_passive_discovery(int port, int timeout, char *host, int max
 indigo_uni_handle *indigo_uni_open_client_socket(const char *host, int port, int type, int log_level) {
 	indigo_uni_handle *handle = NULL;
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-	struct addrinfo *address_list, *address;
-	if (getaddrinfo(host, NULL, NULL, &address_list) == 0) {
+	struct addrinfo hints = {0}, *address_list = NULL, *address;
+	char port_string[16];
+	snprintf(port_string, sizeof(port_string), "%d", port);
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = type;
+	if (getaddrinfo(host, port_string, &hints, &address_list) == 0) {
 		for (address = address_list; address != NULL; address = address->ai_next) {
-			int fd = socket(AF_INET, type, 0);
+			int fd = socket(address->ai_family, address->ai_socktype, address->ai_protocol);
 			if (fd == -1) {
 				indigo_error("Can't create %s socket for '%s:%d' (%s)", type == SOCK_STREAM ? "TCP" : "UDP", host, port, strerror(errno));
-				break;
+				continue;
 			}
-			*(uint16_t *)(address->ai_addr->sa_data) = htons(port);
 			if (connect(fd, address->ai_addr, address->ai_addrlen) == 0) {
 				handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
-				handle->index = handle_index++;
+				handle->index = next_handle_index();
 				handle->type = type == SOCK_STREAM ? INDIGO_TCP_HANDLE : INDIGO_UDP_HANDLE;
 				handle->fd = fd;
 				handle->log_level = log_level;
@@ -935,7 +950,7 @@ indigo_uni_handle *indigo_uni_open_client_socket(const char *host, int port, int
 	address.sin_addr = *((struct in_addr *)he->h_addr);
 	if (connect(sock, (struct sockaddr *)&address, sizeof(struct sockaddr)) == 0) {
 		handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
-		handle->index = handle_index++;
+		handle->index = next_handle_index();
 		handle->type = type == SOCK_STREAM ? INDIGO_TCP_HANDLE : INDIGO_UDP_HANDLE;
 		handle->sock = sock;
 		handle->log_level = log_level;
@@ -956,7 +971,7 @@ indigo_uni_handle *indigo_uni_open_hid(const int vid, const int pid, int log_lev
 	hid_device *device = hid_open(vid, pid, NULL);
 	if (device != NULL) {
 		handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
-		handle->index = handle_index++;
+		handle->index = next_handle_index();
 		handle->type = INDIGO_HID_HANDLE;
 		handle->hid_device = device;
 		handle->log_level = log_level;
@@ -1050,7 +1065,7 @@ void indigo_uni_open_tcp_server_socket(int *port, indigo_uni_handle **server_han
 	}
 
 	*server_handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
-	(*server_handle)->index = handle_index++;
+	(*server_handle)->index = next_handle_index();
 	(*server_handle)->type = INDIGO_TCP_HANDLE;
 	(*server_handle)->fd = server_socket;
 	(*server_handle)->log_level = log_level;
@@ -1091,7 +1106,7 @@ void indigo_uni_open_tcp_server_socket(int *port, indigo_uni_handle **server_han
 
 		indigo_uni_worker_data *worker_data = indigo_safe_malloc(sizeof(indigo_uni_worker_data));
 		worker_data->handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
-		worker_data->handle->index = handle_index++;
+		worker_data->handle->index = next_handle_index();
 		worker_data->handle->type = INDIGO_TCP_HANDLE;
 		worker_data->handle->fd = client_socket;
 		worker_data->handle->log_level = log_level;
@@ -1135,7 +1150,7 @@ void indigo_uni_open_tcp_server_socket(int *port, indigo_uni_handle **server_han
 		return;
 	}
 	*server_handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
-	(*server_handle)->index = handle_index++;
+	(*server_handle)->index = next_handle_index();
 	(*server_handle)->type = INDIGO_TCP_HANDLE;
 	(*server_handle)->sock = server_socket;
 	(*server_handle)->log_level = log_level;
@@ -1174,7 +1189,7 @@ void indigo_uni_open_tcp_server_socket(int *port, indigo_uni_handle **server_han
 		}
 		indigo_uni_worker_data* worker_data = indigo_safe_malloc(sizeof(indigo_uni_worker_data));
 		worker_data->handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
-		worker_data->handle->index = handle_index++;
+		worker_data->handle->index = next_handle_index();
 		worker_data->handle->type = INDIGO_TCP_HANDLE;
 		worker_data->handle->sock = client_socket;
 		worker_data->handle->log_level = log_level;
@@ -1330,6 +1345,8 @@ long indigo_uni_read(indigo_uni_handle *handle, void *buffer, long length) {
 		long bytes_read = read_data(handle, pnt, remaining);
 		if (bytes_read < 0) {
 			return -1;
+		} else if (bytes_read == 0) {
+			return length - remaining;
 		}
 		remaining -= bytes_read;
 		pnt += bytes_read;
@@ -1495,6 +1512,8 @@ long indigo_uni_write(indigo_uni_handle *handle, const char *buffer, long length
 		long bytes_written = write_data(handle, pnt, remaining);
 		if (bytes_written < 0) {
 			return -1;
+		} else if (bytes_written == 0) {
+			return length - remaining;
 		}
 		remaining -= bytes_written;
 		pnt += bytes_written;
@@ -2027,24 +2046,27 @@ bool indigo_resolve_host(char *buffer, int *family) {
 		if (p->ai_family == AF_INET) {
 			struct sockaddr_in *ipv4 = (struct sockaddr_in *)p->ai_addr;
 			addr = &(ipv4->sin_addr);
-			inet_ntop(p->ai_family, addr, ipstr, sizeof ipstr);	freeaddrinfo(p);
+			inet_ntop(p->ai_family, addr, ipstr, sizeof ipstr);
 			indigo_log("Host name %s resolved to IP4 address %s", buffer, ipstr);
 			strcpy(buffer, ipstr);
 			*family = AF_INET;
+			freeaddrinfo(res);
 			return true;
 		}
 	}
 	for (struct addrinfo *p = res; p != NULL; p = p->ai_next) {
 		if (p->ai_family == AF_INET6) {
-			struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)res->ai_addr;
+			struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)p->ai_addr;
 			addr = &(ipv6->sin6_addr);
-			inet_ntop(p->ai_family, addr, ipstr, sizeof ipstr);	freeaddrinfo(p);
+			inet_ntop(p->ai_family, addr, ipstr, sizeof ipstr);
 			indigo_log("Host name %s resolved to IP6 address %s", buffer, ipstr);
 			strcpy(buffer, ipstr);
 			*family = AF_INET6;
+			freeaddrinfo(res);
 			return true;
 		}
 	}
+	freeaddrinfo(res);
 	indigo_error("Failed to resolve host name %s", buffer);
 	return false;
 }
@@ -2061,4 +2083,3 @@ void indigo_rename_thread(char *format, ...) {
 	pthread_setname_np(name);
 #endif
 }
-

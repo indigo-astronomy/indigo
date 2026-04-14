@@ -244,7 +244,8 @@ void indigo_log_base(indigo_log_levels level, const char *format, va_list args) 
 			} else {
 				name = (char *)indigo_main_argv[0];
 			}
-			strncpy(indigo_log_name, name, sizeof(indigo_log_name));
+			strncpy(indigo_log_name, name, sizeof(indigo_log_name) - 1);
+			indigo_log_name[sizeof(indigo_log_name) - 1] = '\0';
 		}
 	}
 	bool first_line = true;
@@ -1439,6 +1440,7 @@ bool indigo_download_blob(char *url, void **value, long *size, char *format) {
 			handle->log_level = -abs(handle->log_level);
 			if (indigo_uni_read(handle, compressed_buffer, content_len) < 0) {
 				handle->log_level = abs(handle->log_level);
+				free(compressed_buffer);
 				goto error_return;
 			}
 			handle->log_level = -abs(handle->log_level);
@@ -1563,13 +1565,18 @@ static bool indigo_get_hint(char *hints, const char *key, char *value) {
 				i = 0;
 				break;
 			case '\\':
-				if (*(c++) == '\0') {
+				c++;
+				if (*c == '\0') {
 					continue;
 				} else {
 					if (is_key) {
-						ckey[i++] = *c;
+						if (i < INDIGO_NAME_SIZE - 1) {
+							ckey[i++] = *c;
+						}
 					} else {
-						cval[i++] = *c;
+						if (i < INDIGO_VALUE_SIZE - 1) {
+							cval[i++] = *c;
+						}
 					}
 				}
 				break;
@@ -1578,22 +1585,29 @@ static bool indigo_get_hint(char *hints, const char *key, char *value) {
 				break;
 			case ' ':
 				if (is_quoted && !is_key) {
-					cval[i++] = *c;
+					if (i < INDIGO_VALUE_SIZE - 1) {
+						cval[i++] = *c;
+					}
 				}
 				break;
 			default:
 				if (is_key) {
-					ckey[i++] = *c;
+					if (i < INDIGO_NAME_SIZE - 1) {
+						ckey[i++] = *c;
+					}
 				} else {
-					cval[i++] = *c;
+					if (i < INDIGO_VALUE_SIZE - 1) {
+						cval[i++] = *c;
+					}
 				}
-		}
+			}
 		c++;
 		//printf("kw_end = %d, is_key = %d, is_quoted = %d\n", kv_end, is_key, is_quoted);
 		if (kv_end) {
 			if (!strncmp(ckey, key, INDIGO_NAME_SIZE)) {
 				INDIGO_DEBUG(indigo_debug("%s(): hint found -> %s = %s\n", __FUNCTION__, ckey, cval));
-				strncpy(value, cval, INDIGO_VALUE_SIZE);
+				strncpy(value, cval, INDIGO_VALUE_SIZE - 1);
+				value[INDIGO_VALUE_SIZE - 1] = '\0';
 				return true;
 			}
 			i=0;
