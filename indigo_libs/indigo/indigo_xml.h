@@ -52,9 +52,11 @@ INDIGO_EXTERN bool indigo_use_blob_urls;
  */
 INDIGO_EXTERN void indigo_xml_parse(indigo_device *device, indigo_client *client);
 
-/** Escape XML string.
+/** Escape XML string into buffer identified by index (0-4).
  */
-INDIGO_EXTERN const char *indigo_xml_escape(const char *string);
+INDIGO_EXTERN const char *indigo_xml_escape_b(int index, const char *string);
+
+#define indigo_xml_escape(string) indigo_xml_escape_b(0, string)
 
 /** Generate enumerate request.
  */

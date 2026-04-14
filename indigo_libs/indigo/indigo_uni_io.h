@@ -52,6 +52,12 @@
 #endif
 
 #if defined(INDIGO_WINDOWS)
+#define INDIGO_THREAD_LOCAL __declspec(thread)
+#else
+#define INDIGO_THREAD_LOCAL __thread
+#endif
+
+#if defined(INDIGO_WINDOWS)
 #if defined(INDIGO_WINDOWS_DLL)
 #define INDIGO_EXTERN __declspec(dllexport)
 #else

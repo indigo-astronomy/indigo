@@ -67,12 +67,6 @@
 static int handle_index = 0;
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-#if defined(INDIGO_WINDOWS)
-#define INDIGO_THREAD_LOCAL __declspec(thread)
-#else
-#define INDIGO_THREAD_LOCAL __thread
-#endif
-
 static int next_handle_index(void) {
 	int index;
 	pthread_mutex_lock(&mutex);
