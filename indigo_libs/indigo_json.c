@@ -533,42 +533,26 @@ exit_loop:
 	indigo_log("JSON Parser: parser finished");
 }
 
-#define BUFFER_COUNT	10
-static char* escape_buffer[BUFFER_COUNT] = { NULL };
-static long escape_buffer_size[BUFFER_COUNT] = { 0 };
-static bool free_escape_buffers_registered = false;
+#define JSON_ESCAPE_BUFFER_COUNT	2
+#define JSON_ESCAPE_BUFFER_SIZE	(2 * INDIGO_VALUE_SIZE + 1)
 
-static void free_escape_buffers(void) {
-	for (int i = 0; i < BUFFER_COUNT; i++) {
-		indigo_safe_free(escape_buffer[i]);
-	}
-}
-
-const char* indigo_json_escape(const char* string) {
-	if (strpbrk(string, "\"\n\t\t")) {
-		if (!free_escape_buffers_registered) {
-			atexit(free_escape_buffers);
-			free_escape_buffers_registered = true;
-		}
-		long length = 5 * (long)strlen(string);
-		static int	buffer_index = 0;
-		int index = buffer_index = (buffer_index + 1) % BUFFER_COUNT;
-		char* buffer;
-		if (escape_buffer[index] == NULL) {
-			escape_buffer[index] = buffer = indigo_safe_malloc(escape_buffer_size[index] = length);
-		} else if (escape_buffer_size[index] < length) {
-			escape_buffer[index] = buffer = indigo_safe_realloc(escape_buffer[index], escape_buffer_size[index] = length);
-		} else {
-			buffer = escape_buffer[index];
-		}
+const char* indigo_json_escape_b(int index, const char* string) {
+	if (strpbrk(string, "\"\\\n\r\t")) {
+		static INDIGO_THREAD_LOCAL char escape_buffer[JSON_ESCAPE_BUFFER_COUNT][JSON_ESCAPE_BUFFER_SIZE];
+		char* buffer = escape_buffer[index];
 		const char* in = string;
 		char* out = buffer;
+		char* end = buffer + JSON_ESCAPE_BUFFER_SIZE - 2;
 		char c;
-		while ((c = *in++)) {
+		while ((c = *in++) && out < end) {
 			switch (c) {
 			case '"':
 				*out++ = '\\';
 				*out++ = '"';
+				break;
+			case '\\':
+				*out++ = '\\';
+				*out++ = '\\';
 				break;
 			case '\n':
 				*out++ = '\\';
@@ -613,7 +597,7 @@ static long ws_write(indigo_uni_handle *handle, const char *buffer, long length)
 		result = indigo_uni_write(handle, (char *)header, 10);
 	}
 	result = result + indigo_uni_write(handle, buffer, length);
-	handle->log_level = -abs(handle->log_level);
+	handle->log_level = abs(handle->log_level);
 	return result;
 }
 
@@ -661,7 +645,7 @@ indigo_result indigo_json_device_adapter_define_property(indigo_client *client, 
 			}
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
-				SPRINTF(pnt, "%s { \"name\": \"%s\", \"label\": \"%s\", \"value\": \"%s\" }",  i > 0 ? "," : "", item->name, indigo_json_escape(item->label), indigo_json_escape(indigo_get_text_item_value(item)));
+				SPRINTF(pnt, "%s { \"name\": \"%s\", \"label\": \"%s\", \"value\": \"%s\" }",  i > 0 ? "," : "", item->name, indigo_json_escape_b(0, item->label), indigo_json_escape_b(1, indigo_get_text_item_value(item)));
 			}
 			size = sprintf(pnt, " ] } }");
 			size += (long)(pnt - output_buffer);
@@ -780,7 +764,7 @@ indigo_result indigo_json_device_adapter_update_property(indigo_client *client, 
 		case INDIGO_TEXT_VECTOR:
 			SPRINTF(pnt, "{ \"setTextVector\": { \"device\": \"%s\", \"name\": \"%s\", \"state\": \"%s\"", property->device, property->name, indigo_property_state_text[property->state]);
 			if (message) {
-				SPRINTF(pnt, ", \"message\": \"%s\", \"items\": [ ", message);
+				SPRINTF(pnt, ", \"message\": \"%s\", \"items\": [ ", indigo_json_escape(message));
 			} else {
 				SPRINTF(pnt, ", \"items\": [ ");
 			}
@@ -796,7 +780,7 @@ indigo_result indigo_json_device_adapter_update_property(indigo_client *client, 
 		case INDIGO_NUMBER_VECTOR:
 			SPRINTF(pnt, "{ \"setNumberVector\": { \"device\": \"%s\", \"name\": \"%s\", \"state\": \"%s\"", property->device, property->name, indigo_property_state_text[property->state]);
 			if (message) {
-				SPRINTF(pnt, ", \"message\": \"%s\", \"items\": [ ", message);
+				SPRINTF(pnt, ", \"message\": \"%s\", \"items\": [ ", indigo_json_escape(message));
 			} else {
 				SPRINTF(pnt, ", \"items\": [ ");
 			}
@@ -804,7 +788,7 @@ indigo_result indigo_json_device_adapter_update_property(indigo_client *client, 
 				indigo_item *item = &property->items[i];
 				if (client->force_item_updates || item->do_update) {
 					if (property->perm != INDIGO_RO_PERM) {
-						SPRINTF(pnt, "%s { \"name\": \"%s\", \"target\": %s, \"value\": %s }",  i > 0 ? "," : "", item->name, indigo_dtoa(item->number.target, b1), indigo_dtoa(item->number.value, b2));
+						SPRINTF(pnt, "%s { \"name\": \"%s\", \"target\": %s, \"value\": %s }",  j++ > 0 ? "," : "", item->name, indigo_dtoa(item->number.target, b1), indigo_dtoa(item->number.value, b2));
 					} else {
 						SPRINTF(pnt, "%s { \"name\": \"%s\", \"value\": %s }",  j++ > 0 ? "," : "", item->name, indigo_dtoa(item->number.value, b1));
 					}
@@ -816,7 +800,7 @@ indigo_result indigo_json_device_adapter_update_property(indigo_client *client, 
 		case INDIGO_SWITCH_VECTOR:
 			SPRINTF(pnt, "{ \"setSwitchVector\": { \"device\": \"%s\", \"name\": \"%s\", \"state\": \"%s\"", property->device, property->name, indigo_property_state_text[property->state]);
 			if (message) {
-				SPRINTF(pnt, ", \"message\": \"%s\", \"items\": [ ", message);
+				SPRINTF(pnt, ", \"message\": \"%s\", \"items\": [ ", indigo_json_escape(message));
 			} else {
 				SPRINTF(pnt, ", \"items\": [ ");
 			}
@@ -832,7 +816,7 @@ indigo_result indigo_json_device_adapter_update_property(indigo_client *client, 
 		case INDIGO_LIGHT_VECTOR:
 			SPRINTF(pnt, "{ \"setLightVector\": { \"device\": \"%s\", \"name\": \"%s\", \"state\": \"%s\"", property->device, property->name, indigo_property_state_text[property->state]);
 			if (message) {
-				SPRINTF(pnt, ", \"message\": \"%s\", \"items\": [ ", message);
+				SPRINTF(pnt, ", \"message\": \"%s\", \"items\": [ ", indigo_json_escape(message));
 			} else {
 				SPRINTF(pnt, ", \"items\": [ ");
 			}
@@ -848,7 +832,7 @@ indigo_result indigo_json_device_adapter_update_property(indigo_client *client, 
 		case INDIGO_BLOB_VECTOR:
 			SPRINTF(pnt, "{ \"setBLOBVector\": { \"device\": \"%s\", \"name\": \"%s\", \"state\": \"%s\"", property->device, property->name, indigo_property_state_text[property->state]);
 			if (message) {
-				SPRINTF(pnt, ", \"message\": \"%s\", \"items\": [ ", message);
+				SPRINTF(pnt, ", \"message\": \"%s\", \"items\": [ ", indigo_json_escape(message));
 			} else {
 				SPRINTF(pnt, ", \"items\": [ ");
 			}
@@ -901,7 +885,7 @@ indigo_result indigo_json_device_adapter_delete_property(indigo_client *client, 
 	}
 	pnt += size;
 	if (message) {
-		size = sprintf(pnt, ", \"message\": \"%s\" } }", message);
+		size = sprintf(pnt, ", \"message\": \"%s\" } }", indigo_json_escape(message));
 	} else {
 		size = sprintf(pnt, " } }");
 	}
@@ -931,11 +915,11 @@ indigo_result indigo_json_device_adapter_message_property(indigo_client *client,
 	char *pnt = output_buffer;
 	long size;
 	if (property) {
-		size = sprintf(pnt, "{ \"message\": \"%s\", \"device\": \"%s\", \"name\": \"%s\" }", message, property->device, property->name);
+		size = sprintf(pnt, "{ \"message\": \"%s\", \"device\": \"%s\", \"name\": \"%s\" }", indigo_json_escape(message), property->device, property->name);
 	} else if (device) {
-		size = sprintf(pnt, "{ \"message\": \"%s\", \"device\": \"%s\" }", message, device->name);
+		size = sprintf(pnt, "{ \"message\": \"%s\", \"device\": \"%s\" }", indigo_json_escape(message), device->name);
 	} else {
-		size = sprintf(pnt, "{ \"message\": \"%s\" }", message);
+		size = sprintf(pnt, "{ \"message\": \"%s\" }", indigo_json_escape(message));
 	}
 	if (client_context->web_socket) {
 		ws_write(handle, output_buffer, size);
