@@ -3110,8 +3110,13 @@ indigo_result indigo_make_psf_map(indigo_raw_type image_raw_type, const void *im
 			double avg = psfs[ii];
 			if (avg > 0) {
 				int value = (int)(31 * round((avg - min_psf) / psf_scale));
-				map_data[iii] = value;
-				map_data[iii + 1] = 255 - value;
+				if (map_type == peak) {
+					map_data[iii] = 255 - value;
+					map_data[iii + 1] = value;
+				} else {
+					map_data[iii] = value;
+					map_data[iii + 1] = 255 - value;
+				}
 				map_data[iii + 2] =  0;
 				for (int k = 0; k < 9; k++) {
 					if (corner_indices[k][0] <= i && i <= corner_indices[k][1] && corner_indices[k][2] <= j && j <= corner_indices[k][3]) {
