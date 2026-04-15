@@ -280,6 +280,9 @@ bool indigo_reschedule_timer_with_callback(indigo_device *device, double delay, 
 			(*timer)->delay = delay;
 			(*timer)->scheduled = true;
 			(*timer)->callback = callback;
+			pthread_mutex_lock(&(*timer)->cond_mutex);
+			pthread_cond_signal(&(*timer)->cond);
+			pthread_mutex_unlock(&(*timer)->cond_mutex);
 			result = true;
 		}
 	} else {
