@@ -160,7 +160,7 @@ void indigo_polynomial_derivative(int coefficient_count, double *polynomial_coef
  NOTE: Works for polynomials of order 2 and 3 only
 */
 int indigo_polynomial_extremums(int coefficient_count, double *polynomial_coefficients, double *extremums) {
-	double *derivative = indigo_safe_malloc(coefficient_count - 1);
+	double *derivative = indigo_safe_malloc((coefficient_count - 1) * sizeof(double));
 	indigo_polynomial_derivative(coefficient_count, polynomial_coefficients, derivative);
 	if (coefficient_count == 3) {  // order = 2
 		extremums[0] = -derivative[0] / derivative[1];

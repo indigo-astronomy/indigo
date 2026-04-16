@@ -187,47 +187,52 @@ int indigo_enumerate_usbserial_devices(indigo_serial_info* serial_info, int num_
 	udev_unref(udev);
 	return count;
 #elif defined(INDIGO_WINDOWS)
-GUID guid = { 0x4d36e978, 0xe325, 0x11ce, {0xbf, 0xc1, 0x08, 0x00, 0x2b, 0xe1, 0x03, 0x18} };
-HDEVINFO deviceInfoSet = SetupDiGetClassDevs(&guid, NULL, NULL, DIGCF_PRESENT | DIGCF_PROFILE);
-if (deviceInfoSet == INVALID_HANDLE_VALUE) {
-	indigo_error("Failed to get device information set");
-	return 0;
-}
-SP_DEVINFO_DATA deviceInfoData;
-deviceInfoData.cbSize = sizeof(SP_DEVINFO_DATA);
-DWORD index = 0;
-for (index = 0; SetupDiEnumDeviceInfo(deviceInfoSet, index, &deviceInfoData); index++) {
-	char portName[256];
-	char friendlyName[256];
-	BOOL success = SetupDiGetDeviceRegistryPropertyA(deviceInfoSet, &deviceInfoData, SPDRP_PHYSICAL_DEVICE_OBJECT_NAME, NULL, (PBYTE)portName, sizeof(portName), NULL);
-	if (!success) {
-		indigo_error("Failed to get port name for device %d", index);
-		continue;
+	GUID guid = { 0x4d36e978, 0xe325, 0x11ce, {0xbf, 0xc1, 0x08, 0x00, 0x2b, 0xe1, 0x03, 0x18} };
+	HDEVINFO deviceInfoSet = SetupDiGetClassDevs(&guid, NULL, NULL, DIGCF_PRESENT | DIGCF_PROFILE);
+	if (deviceInfoSet == INVALID_HANDLE_VALUE) {
+		indigo_error("Failed to get device information set");
+		return 0;
 	}
-	HKEY hKey;
-	hKey = SetupDiOpenDevRegKey(deviceInfoSet, &deviceInfoData, DICS_FLAG_GLOBAL, 0, DIREG_DEV, KEY_READ);
-	if (hKey == INVALID_HANDLE_VALUE) {
-		indigo_error("Failed to open registry key for device");
-		continue;
-	}
-	DWORD portNameSize = sizeof(portName);
-	DWORD type;
-	if (RegQueryValueExA(hKey, "PortName", NULL, &type, (LPBYTE)portName, &portNameSize) == ERROR_SUCCESS) {
-		if (type == REG_SZ) {
-			DWORD portNameSize = sizeof(portName);
-			snprintf(serial_info[index].path, PATH_MAX, "%s:", portName);
+	SP_DEVINFO_DATA deviceInfoData;
+	deviceInfoData.cbSize = sizeof(SP_DEVINFO_DATA);
+	int count = 0;
+	for (DWORD index = 0; SetupDiEnumDeviceInfo(deviceInfoSet, index, &deviceInfoData) && count < num_serial_info; index++) {
+		char portName[256];
+		char friendlyName[256];
+		BOOL success = SetupDiGetDeviceRegistryPropertyA(deviceInfoSet, &deviceInfoData, SPDRP_PHYSICAL_DEVICE_OBJECT_NAME, NULL, (PBYTE)portName, sizeof(portName), NULL);
+		if (!success) {
+			indigo_error("Failed to get port name for device %d", index);
+			continue;
 		}
+		HKEY hKey;
+		hKey = SetupDiOpenDevRegKey(deviceInfoSet, &deviceInfoData, DICS_FLAG_GLOBAL, 0, DIREG_DEV, KEY_READ);
+		if (hKey == INVALID_HANDLE_VALUE) {
+			indigo_error("Failed to open registry key for device");
+			continue;
+		}
+		DWORD portNameSize = sizeof(portName);
+		DWORD type;
+		bool got_port = false;
+		if (RegQueryValueExA(hKey, "PortName", NULL, &type, (LPBYTE)portName, &portNameSize) == ERROR_SUCCESS) {
+			if (type == REG_SZ) {
+				snprintf(serial_info[count].path, PATH_MAX, "%s:", portName);
+				got_port = true;
+			}
+		}
+		RegCloseKey(hKey);
+		if (!got_port) {
+			continue;
+		}
+		success = SetupDiGetDeviceRegistryPropertyA(deviceInfoSet, &deviceInfoData, SPDRP_FRIENDLYNAME, NULL, (PBYTE)friendlyName, sizeof(friendlyName), NULL);
+		if (!success) {
+			indigo_error("Failed to get friendly name for device %d", index);
+			continue;
+		}
+		snprintf(serial_info[count].product_string, sizeof(serial_info[count].product_string), "%s", friendlyName);
+		count++;
 	}
-	RegCloseKey(hKey);
-	success = SetupDiGetDeviceRegistryPropertyA(deviceInfoSet, &deviceInfoData, SPDRP_FRIENDLYNAME, NULL, (PBYTE)friendlyName, sizeof(friendlyName), NULL);
-	if (!success) {
-		indigo_error("Failed to get friendly name for device %d", index);
-		continue;
-	}
-	snprintf(serial_info[index].product_string, sizeof(serial_info[index].product_string), "%s", friendlyName);
-}
-SetupDiDestroyDeviceInfoList(deviceInfoSet);
-return index;
+	SetupDiDestroyDeviceInfoList(deviceInfoSet);
+	return count;
 #else
 	return 0;
 #endif

@@ -120,8 +120,8 @@ static int image_bayered_data(libraw_data_t *raw_data, indigo_dslr_raw_image_s *
 				data[i++] = (
 					raw_data->rawdata.raw_image[offset + col + 0 + (raw_width * row)] +     /* R */
 					raw_data->rawdata.raw_image[offset + col + 1 + (raw_width * row)] +     /* G */
-					raw_data->rawdata.raw_image[offset + col + 2 + (raw_width * row)] +     /* G */
-					raw_data->rawdata.raw_image[offset + col + 3 + (raw_width * row)]       /* B */
+					raw_data->rawdata.raw_image[offset + col + 0 + (raw_width * (row + 1))] +   /* G */
+					raw_data->rawdata.raw_image[offset + col + 1 + (raw_width * (row + 1))]     /* B */
 				) / 4;
 			} else {
 				data[i++] = raw_data->rawdata.raw_image[offset + col + (raw_width * row)];
@@ -140,7 +140,7 @@ int indigo_dslr_raw_process_image(void *buffer, size_t buffer_size, indigo_dslr_
 	outout_image->height = 0;
 	outout_image->bits = 16;
 	outout_image->colors = 0;
-	outout_image->colors = false;
+	outout_image->debayered = false;
 	memset(outout_image->bayer_pattern, 0, sizeof(outout_image->bayer_pattern));
 	outout_image->size = 0;
 	outout_image->data = NULL;
@@ -227,12 +227,18 @@ int indigo_dslr_raw_image_info(void *buffer, size_t buffer_size, indigo_dslr_raw
 		indigo_error("[rc:%d] libraw_open_buffer failed: '%s'", rc, libraw_strerror(rc));
 		goto cleanup;
 	}
-	strncpy(image_info->camera_make, raw_data->idata.make, sizeof(image_info->camera_make));
-	strncpy(image_info->camera_model, raw_data->idata.model, sizeof(image_info->camera_model));
-	strncpy(image_info->normalized_camera_make, raw_data->idata.normalized_make, sizeof(image_info->normalized_camera_make));
-	strncpy(image_info->normalized_camera_model, raw_data->idata.normalized_model, sizeof(image_info->normalized_camera_model));
-	strncpy(image_info->lens, raw_data->lens.Lens, sizeof(image_info->lens));
-	strncpy(image_info->lens_make, raw_data->lens.LensMake, sizeof(image_info->lens_make));
+	strncpy(image_info->camera_make, raw_data->idata.make, sizeof(image_info->camera_make) - 1);
+	image_info->camera_make[sizeof(image_info->camera_make) - 1] = '\0';
+	strncpy(image_info->camera_model, raw_data->idata.model, sizeof(image_info->camera_model) - 1);
+	image_info->camera_model[sizeof(image_info->camera_model) - 1] = '\0';
+	strncpy(image_info->normalized_camera_make, raw_data->idata.normalized_make, sizeof(image_info->normalized_camera_make) - 1);
+	image_info->normalized_camera_make[sizeof(image_info->normalized_camera_make) - 1] = '\0';
+	strncpy(image_info->normalized_camera_model, raw_data->idata.normalized_model, sizeof(image_info->normalized_camera_model) - 1);
+	image_info->normalized_camera_model[sizeof(image_info->normalized_camera_model) - 1] = '\0';
+	strncpy(image_info->lens, raw_data->lens.Lens, sizeof(image_info->lens) - 1);
+	image_info->lens[sizeof(image_info->lens) - 1] = '\0';
+	strncpy(image_info->lens_make, raw_data->lens.LensMake, sizeof(image_info->lens_make) - 1);
+	image_info->lens_make[sizeof(image_info->lens_make) - 1] = '\0';
 	image_info->raw_height = raw_data->sizes.raw_height;
 	image_info->raw_width = raw_data->sizes.raw_width;
 	image_info->iheight = raw_data->sizes.iheight;
@@ -250,8 +256,10 @@ int indigo_dslr_raw_image_info(void *buffer, size_t buffer_size, indigo_dslr_raw
 	} else if (raw_data->makernotes.common.CameraTemperature > -273.15f) {
 		 image_info->temperature = raw_data->makernotes.common.CameraTemperature;
 	}
-	strncpy(image_info->desc, raw_data->other.desc, sizeof(image_info->desc));
-	strncpy(image_info->artist, raw_data->other.artist, sizeof(image_info->artist));
+	strncpy(image_info->desc, raw_data->other.desc, sizeof(image_info->desc) - 1);
+	image_info->desc[sizeof(image_info->desc) - 1] = '\0';
+	strncpy(image_info->artist, raw_data->other.artist, sizeof(image_info->artist) - 1);
+	image_info->artist[sizeof(image_info->artist) - 1] = '\0';
 	indigo_debug("libraw got image info in %g sec", (clock() - start) / (double)CLOCKS_PER_SEC);
 cleanup:
 	libraw_free_image(raw_data);
