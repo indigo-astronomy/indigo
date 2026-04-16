@@ -261,12 +261,17 @@ bool indigo_set_timer_with_mutex(indigo_device *device, double delay, indigo_tim
 }
 
 bool indigo_reschedule_timer(indigo_device *device, double delay, indigo_timer **timer) {
+	bool result = false;
+	pthread_mutex_lock(&timers_mutex);
 	if (*timer != NULL) {
-		return indigo_reschedule_timer_with_callback(device, delay, (*timer)->callback, timer);
+		indigo_timer_callback callback = (*timer)->callback;
+		pthread_mutex_unlock(&timers_mutex);
+		result = indigo_reschedule_timer_with_callback(device, delay, callback, timer);
 	} else {
+		pthread_mutex_unlock(&timers_mutex);
 		indigo_error("Attempt to reschedule timer without reference!");
-		return false;
 	}
+	return result;
 }
 
 bool indigo_reschedule_timer_with_callback(indigo_device *device, double delay, indigo_timer_callback callback, indigo_timer **timer) {
@@ -332,6 +337,7 @@ bool indigo_cancel_timer_sync(indigo_device *device, indigo_timer **timer) {
 				pthread_mutex_lock(&(timer_buffer)->cond_mutex);
 				pthread_cond_signal(&(timer_buffer)->cond);
 				pthread_mutex_unlock(&(timer_buffer)->cond_mutex);
+				*timer = NULL;
 			}
 			/* Save a local copy of the timer instance as *timer can be set
 			 to NULL by *timer_func() after cancel_thread_mutex is released */
@@ -377,18 +383,15 @@ static inline int timespec_cmp(const struct timespec *a, const struct timespec *
 }
 
 // Peek either the highest priority runnable task or the first task from the queue
-static indigo_queue_task *peek_task(indigo_queue *queue) {
-	struct timespec now;
-	clock_time(&now);
+static indigo_queue_task *peek_task(indigo_queue *queue, const struct timespec *now) {
 	pthread_mutex_lock(&timers_mutex);
 	indigo_queue_task *runnable_task = queue->task;
 	indigo_queue_task *current = queue->task;
 	int highest_priority = -1;
 	while (current) {
-		if (timespec_cmp(&current->at, &now) > 0) {
+		if (timespec_cmp(&current->at, now) > 0) {
 			break;
 		}
-		current->at.tv_sec = current->at.tv_nsec = 0;
 		if (current->priority > highest_priority) {
 			highest_priority = current->priority;
 			runnable_task = current;
@@ -438,7 +441,7 @@ static void remove_tasks(indigo_queue *queue, indigo_device *device, indigo_time
 	indigo_queue_task **link = &queue->task;
 	while (*link) {
 		indigo_queue_task *task = *link;
-		if ((task->device == device) && (callback == NULL || task->callback == callback)) {
+		if ((device == NULL || task->device == device) && (callback == NULL || task->callback == callback)) {
 			*link = task->next;
 			indigo_safe_free(task);
 		} else {
@@ -485,9 +488,11 @@ static void *queue_func(indigo_queue *queue) {
 	// main loop waiting for wakeup signal or timeout
 	while (!queue->abort) {
 		pthread_mutex_lock(&queue->thread_mutex);
-		indigo_queue_task *task = peek_task(queue);
+		struct timespec now;
+		clock_time(&now);
+		indigo_queue_task *task = peek_task(queue, &now);
 		pthread_mutex_lock(&queue->cond_mutex);
-		if (task && (task->at.tv_sec != 0 || task->at.tv_nsec != 0)) { // wait for timeout for the next task
+		if (task && timespec_cmp(&task->at, &now) > 0) { // wait for timeout for the next task
 			pthread_cond_timedwait(&queue->cond, &queue->cond_mutex, &task->at);
 		} else if (task == NULL) { // no task, wait for wakeup
 			pthread_cond_wait(&queue->cond, &queue->cond_mutex);
@@ -594,6 +599,7 @@ void indigo_queue_delete(indigo_queue **queue) {
 	if (*queue) {
 		(*queue)->abort = true;
 		indigo_queue_remove(*queue, NULL, NULL);
+		pthread_join((*queue)->thread, NULL);
 		indigo_safe_free(*queue);
 		*queue = NULL;
 	}
