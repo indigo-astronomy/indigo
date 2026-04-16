@@ -45,7 +45,6 @@ static double indigo_range24(double ha) {
 
 indigo_result indigo_mount_attach(indigo_device *device, const char* driver_name, unsigned version) {
 	assert(device != NULL);
-	assert(device != NULL);
 	if (MOUNT_CONTEXT == NULL) {
 		device->device_context = indigo_safe_malloc(sizeof(indigo_mount_context));
 	}
@@ -330,8 +329,9 @@ void indigo_mount_load_alignment_points(indigo_device *device) {
 		for (int i = 0; i < count; i++) {
 			indigo_alignment_point *point =  MOUNT_CONTEXT->alignment_points + i;
 			indigo_uni_read_line(handle, buffer, sizeof(buffer));
-			point->used = false;
-			sscanf(buffer, "%d %lg %lg %lg %lg %lg %d", (int *)&point->used, &point->ra, &point->dec, &point->raw_ra, &point->raw_dec, &point->lst, &point->side_of_pier);
+			int used;
+			sscanf(buffer, "%d %lg %lg %lg %lg %lg %d", &used, &point->ra, &point->dec, &point->raw_ra, &point->raw_dec, &point->lst, &point->side_of_pier);
+			point->used = used;
 			snprintf(name, INDIGO_NAME_SIZE, "%d", i);
 			snprintf(label, INDIGO_VALUE_SIZE, "%s %s %c", indigo_dtos(point->ra, "%2d:%02d:%02d"), indigo_dtos(point->dec, "%2d:%02d:%02d"), point->side_of_pier == MOUNT_SIDE_EAST ? 'E' : 'W');
 			indigo_init_switch_item(MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->items + i, name, label, point->used);
@@ -730,7 +730,7 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 			MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->rule = INDIGO_ONE_OF_MANY_RULE;
 			MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->hidden = false;
 			MOUNT_ALIGNMENT_RESET_PROPERTY->hidden = false;
-			if (strcmp(client->name, CONFIG_READER)) {
+			if (strcmp(client->name, CONFIG_READER) && MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->count > 0) {
 				indigo_set_switch(MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY, MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->items + MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->count - 1, true);
 			}
 		} else if (MOUNT_ALIGNMENT_MODE_NEAREST_POINT_ITEM->sw.value) {
