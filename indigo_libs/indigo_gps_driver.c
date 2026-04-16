@@ -37,7 +37,6 @@
 
 indigo_result indigo_gps_attach(indigo_device *device, const char* driver_name, unsigned version) {
 	assert(device != NULL);
-	assert(device != NULL);
 	if (GPS_CONTEXT == NULL) {
 		device->device_context = indigo_safe_malloc(sizeof(indigo_gps_context));
 	}
@@ -128,7 +127,6 @@ indigo_result indigo_gps_change_property(indigo_device *device, indigo_client *c
 			indigo_delete_property(device, GPS_UTC_TIME_PROPERTY, NULL);
 			indigo_delete_property(device, GPS_STATUS_PROPERTY, NULL);
 			indigo_delete_property(device, GPS_ADVANCED_PROPERTY, NULL);
-			indigo_delete_property(device, GPS_ADVANCED_STATUS_PROPERTY, NULL);
 			if (GPS_ADVANCED_ENABLED_ITEM->sw.value) {
 				indigo_delete_property(device, GPS_ADVANCED_STATUS_PROPERTY, NULL);
 			}

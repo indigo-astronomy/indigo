@@ -633,7 +633,7 @@ indigo_result indigo_filter_client_attach(indigo_client *client) {
 	assert (FILTER_CLIENT_CONTEXT != NULL);
 	FILTER_CLIENT_CONTEXT->client = client;
 	indigo_property **device_cache = FILTER_CLIENT_CONTEXT->device_property_cache;
-	indigo_property **agent_cache = FILTER_CLIENT_CONTEXT->device_property_cache;
+	indigo_property **agent_cache = FILTER_CLIENT_CONTEXT->agent_property_cache;
 	for (int i = 0; i < INDIGO_FILTER_MAX_CACHED_PROPERTIES; i++) {
 		device_cache[i] = NULL;
 		agent_cache[i] = NULL;

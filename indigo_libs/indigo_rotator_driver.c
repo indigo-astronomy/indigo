@@ -89,7 +89,6 @@ static double rotator_calculate_offset(indigo_device *device) {
 
 indigo_result indigo_rotator_attach(indigo_device *device, const char* driver_name, unsigned version) {
 	assert(device != NULL);
-	assert(device != NULL);
 	if (ROTATOR_CONTEXT == NULL) {
 		device->device_context = indigo_safe_malloc(sizeof(indigo_rotator_context));
 	}

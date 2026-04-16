@@ -36,7 +36,6 @@
 
 indigo_result indigo_guider_attach(indigo_device *device, const char* driver_name, unsigned version) {
 	assert(device != NULL);
-	assert(device != NULL);
 	if (GUIDER_CONTEXT == NULL) {
 		device->device_context = indigo_safe_malloc(sizeof(indigo_guider_context));
 	}
