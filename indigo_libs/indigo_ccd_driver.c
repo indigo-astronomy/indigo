@@ -147,8 +147,8 @@ indigo_result indigo_ccd_attach(indigo_device *device, const char* driver_name, 
 				return INDIGO_FAILED;
 			indigo_init_number_item(CCD_INFO_WIDTH_ITEM, CCD_INFO_WIDTH_ITEM_NAME, "Horizontal resolution", 0, 0, 0, 0);
 			indigo_init_number_item(CCD_INFO_HEIGHT_ITEM, CCD_INFO_HEIGHT_ITEM_NAME, "Vertical resolution", 0, 0, 0, 0);
-			indigo_init_number_item(CCD_INFO_MAX_HORIZONAL_BIN_ITEM, CCD_INFO_MAX_HORIZONTAL_BIN_ITEM_NAME, "Max vertical binning", 0, 0, 0, 1);
-			indigo_init_number_item(CCD_INFO_MAX_VERTICAL_BIN_ITEM, CCD_INFO_MAX_VERTICAL_BIN_ITEM_NAME, "Max horizontal binning", 0, 0, 0, 1);
+			indigo_init_number_item(CCD_INFO_MAX_HORIZONAL_BIN_ITEM, CCD_INFO_MAX_HORIZONTAL_BIN_ITEM_NAME, "Max horizontal binning", 0, 0, 0, 1);
+			indigo_init_number_item(CCD_INFO_MAX_VERTICAL_BIN_ITEM, CCD_INFO_MAX_VERTICAL_BIN_ITEM_NAME, "Max vertical binning", 0, 0, 0, 1);
 			indigo_init_number_item(CCD_INFO_PIXEL_SIZE_ITEM, CCD_INFO_PIXEL_SIZE_ITEM_NAME, "Pixel size (um)", 0, 0, 0, 0);
 			indigo_init_number_item(CCD_INFO_PIXEL_WIDTH_ITEM, CCD_INFO_PIXEL_WIDTH_ITEM_NAME, "Pixel width (um)", 0, 0, 0, 0);
 			indigo_init_number_item(CCD_INFO_PIXEL_HEIGHT_ITEM, CCD_INFO_PIXEL_HEIGHT_ITEM_NAME, "Pixel height (um)", 0, 0, 0, 0);
@@ -208,7 +208,7 @@ indigo_result indigo_ccd_attach(indigo_device *device, const char* driver_name, 
 				return INDIGO_FAILED;
 			indigo_init_number_item(CCD_STREAMING_EXPOSURE_ITEM, CCD_STREAMING_EXPOSURE_ITEM_NAME, "Shutter time", 0, 10000, 1, 0);
 			indigo_init_number_item(CCD_STREAMING_COUNT_ITEM, CCD_STREAMING_COUNT_ITEM_NAME, "Frame count", -1, 100000, 1, -1);
-			strcpy(CCD_EXPOSURE_ITEM->number.format, "%g");
+			strcpy(CCD_STREAMING_EXPOSURE_ITEM->number.format, "%g");
 			CCD_STREAMING_PROPERTY->hidden = true;
 			// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 			CCD_ABORT_EXPOSURE_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_ABORT_EXPOSURE_PROPERTY_NAME, CCD_MAIN_GROUP, "Abort exposure", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
@@ -1437,7 +1437,6 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 					strcat(tmp, CCD_FRAME_TYPE_PROPERTY->items[i].label);
 				}
 			}
-			strncpy(tmp, format, fs - format);
 			strcat(tmp, fs + 2);
 			strcpy(format, tmp);
 		} else if ((fs[1] == 'D' || fs[1] == 'H') || ((fs[1] == '.' || fs[1] == '-') && (fs[2] == 'D' || fs[2] == 'H'))) { // %D, %.D, %-D - date, %H, %.H, %-H - time
@@ -1519,7 +1518,7 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 			if (CCD_BIN_HORIZONTAL_ITEM->number.value == CCD_BIN_VERTICAL_ITEM->number.value) {
 				sprintf(buffer, "BIN%.0f", CCD_BIN_HORIZONTAL_ITEM->number.value);
 			} else {
-				sprintf(buffer, "BIN%.0fx%.0f", CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_HORIZONTAL_ITEM->number.value);
+				sprintf(buffer, "BIN%.0fx%.0f", CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value);
 			}
 			strncpy(tmp, format, fs - format);
 			strcat(tmp, buffer);
@@ -1711,10 +1710,10 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 				b8 += 3;
 			}
 		} else if (byte_per_pixel == 2) {
-			unsigned char *b16 = data + FITS_HEADER_SIZE;
-			for (int i = 0; i < size; i++) {
-				unsigned char b = *b16;
-				unsigned char r = *(b16 + 2);
+			uint16_t *b16 = (uint16_t *)((char*)data + FITS_HEADER_SIZE);
+			for (unsigned long i = 0; i < size; i++) {
+				uint16_t b = *b16;
+				uint16_t r = *(b16 + 2);
 				*b16 = r;
 				*(b16 + 2) = b;
 				b16 += 3;
