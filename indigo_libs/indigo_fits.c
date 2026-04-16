@@ -205,7 +205,7 @@ indigo_result indigo_raw_to_fits(char *image, int in_size, char **fits, int *fit
 			uint16_t *out_ch2 = (uint16_t *)p + 2 * pixel_count;
 			// 16 bit RGB - average and swap endianness
 			uint16_t *in = (uint16_t *)image;
-			for (int i = 0; i < pixel_count * 3; i++) {
+			for (int i = 0; i < pixel_count; i++) {
 				int value =  *in++ - 32768;
 				*out_ch0++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
 				value =  *in++ - 32768;
