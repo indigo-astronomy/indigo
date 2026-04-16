@@ -656,7 +656,7 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		indigo_init_switch_item(AGENT_PLATESOLVER_SYNC_RECALCULATE_PA_ERROR_ITEM, AGENT_PLATESOLVER_SYNC_RECALCULATE_PA_ERROR_ITEM_NAME, "Recalclulate polar alignment error", false);
 		// -------------------------------------------------------------------------------- AGENT_START_PROCESS property /* replaces AGENT_PLATESOLVER_SYNC */
 		AGENT_START_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_START_PROCESS_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Start process", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 7);
-		if (AGENT_PLATESOLVER_SYNC_PROPERTY == NULL) {
+		if (AGENT_START_PROCESS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
 		indigo_init_switch_item(AGENT_PLATESOLVER_START_SOLVE_ITEM, AGENT_PLATESOLVER_START_SOLVE_ITEM_NAME, "Solve only", false);
@@ -842,7 +842,7 @@ indigo_result indigo_platesolver_change_property(indigo_device *device, indigo_c
 	} else if (indigo_property_match(AGENT_PLATESOLVER_GOTO_SETTINGS_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- AGENT_PLATESOLVER_GOTO_SETTINGS
 		indigo_property_copy_values(AGENT_PLATESOLVER_GOTO_SETTINGS_PROPERTY, property, false);
-		AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
+		AGENT_PLATESOLVER_GOTO_SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_PLATESOLVER_GOTO_SETTINGS_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_PROPERTY, property)) {
@@ -1070,16 +1070,16 @@ indigo_result indigo_platesolver_update_property(indigo_client *client, indigo_d
 						}
 					}
 				} else if (property->state == INDIGO_BUSY_STATE) {
-					if ((AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM->sw.value || AGENT_PLATESOLVER_SYNC_RECALCULATE_PA_ERROR_ITEM->sw.value) && (AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == INDIGO_POLAR_ALIGN_IDLE || AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == INDIGO_POLAR_ALIGN_IN_PROGRESS)) {
+					if ((AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM->sw.value || AGENT_PLATESOLVER_SYNC_RECALCULATE_PA_ERROR_ITEM->sw.value) && ((int)AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == INDIGO_POLAR_ALIGN_IDLE || (int)AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == INDIGO_POLAR_ALIGN_IN_PROGRESS)) {
 						if (AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM->sw.value) {
-							if (AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == INDIGO_POLAR_ALIGN_IDLE || AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == INDIGO_POLAR_ALIGN_IN_PROGRESS) {
+							if ((int)AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == INDIGO_POLAR_ALIGN_IDLE || (int)AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == INDIGO_POLAR_ALIGN_IN_PROGRESS) {
 								INDIGO_DRIVER_DEBUG("SOLVER", "state INDIGO_POLAR_ALIGN_IDLE -> INDIGO_POLAR_ALIGN_REFERENCE_1");
 								AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_BUSY_STATE;
 								AGENT_PLATESOLVER_PA_STATE_ITEM->number.value = INDIGO_POLAR_ALIGN_REFERENCE_1;
 								indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, NULL);
 							}
 						} else if (AGENT_PLATESOLVER_SYNC_RECALCULATE_PA_ERROR_ITEM->sw.value) {
-							if (AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == INDIGO_POLAR_ALIGN_IN_PROGRESS) {
+							if ((int)AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == INDIGO_POLAR_ALIGN_IN_PROGRESS) {
 								INDIGO_DRIVER_DEBUG("SOLVER", "state INDIGO_POLAR_ALIGN_IN_PROGRESS -> INDIGO_POLAR_ALIGN_RECALCULATE");
 								AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_BUSY_STATE;
 								AGENT_PLATESOLVER_PA_STATE_ITEM->number.value = INDIGO_POLAR_ALIGN_RECALCULATE;

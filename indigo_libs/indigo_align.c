@@ -505,6 +505,18 @@ indigo_cartesian_point_t indigo_cartesian_rotate_z(const indigo_cartesian_point_
 	return rpoint;
 }
 
+
+// TODO: @rumen
+// The second rotation uses v (azimuth error) instead of the altitude error.
+// Looking at the naming convention — u is altitude, v is azimuth — the sequence should be: rotate around Z by v,
+// then X by u, then Y by u. But given the variable name position​_h​_zx and the final Y rotation using u, this
+// looks like a copy-paste where v was left instead of a different angle.
+// Comparing with indigo​_correct​_polar​_error which calls indigo​_apply​_polar​_error(position, -u, -v), and the 3-point
+// alignment function which outputs u (altitude) and v (azimuth), the X rotation should almost certainly use u (not v):
+// indigo_cartesian_point_t position_h_zx = indigo_cartesian_rotate_x(&position_h_z, u);  // altitude error
+// However — this function has been in use for polar alignment and presumably producing reasonable results, so
+// I'd recommend verifying the intended rotation sequence against the mathematical model before changing it.
+
 /* rotate coordinates using polar errors */
 indigo_spherical_point_t indigo_apply_polar_error(const indigo_spherical_point_t *position, double u, double v) {
 	indigo_cartesian_point_t position_h = indigo_spherical_to_cartesian(position);

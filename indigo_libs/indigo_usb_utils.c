@@ -172,10 +172,10 @@ int libusb_hotplug_register_callback_sim(libusb_context *ctx, libusb_hotplug_eve
 	callback_info->dev_class = dev_class;
 	callback_info->cb_fn = cb_fn;
 	callback_info->user_data = user_data;
-	callback_info->next = hotplug_callback_list;
 	*handle = last_handle;
 	INDIGO_DEBUG(indigo_debug("Registered USB hotplug callback %d for %04x:%04x", last_handle, vendor_id, product_id));
 	pthread_mutex_lock(&hotplug_callback_list_mutex);
+	callback_info->next = hotplug_callback_list;
 	hotplug_callback_list = callback_info;
 	if ((callback_info->flags & LIBUSB_HOTPLUG_ENUMERATE) != 0) {
 		for (int i = 0; i < hotplug_device_count; i++) {
