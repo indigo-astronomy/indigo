@@ -1116,13 +1116,12 @@ static void check_breakpoint(indigo_device *device, indigo_item *breakpoint) {
 static bool do_dither(indigo_device *device) {
 	char *related_agent_name = indigo_filter_first_related_agent(device, "Guider Agent");
 	if (!related_agent_name) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering failed, no guider agent selected");
-		indigo_send_message(device, ALERT_PROPERTY, "Error: Dithering failed, no guider agent selected");
+		indigo_send_message(device, ALERT_PROPERTY, "Dithering failed, no guider agent selected");
 		return true; // do not fail batch if dithering fails - let us keep it for a while
 	}
-	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_GUIDER_DITHER_PROPERTY_NAME, AGENT_GUIDER_DITHER_TRIGGER_ITEM_NAME, true);
 	DEVICE_PRIVATE_DATA->dithering_started = false;
 	DEVICE_PRIVATE_DATA->dithering_finished = false;
+	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_GUIDER_DITHER_PROPERTY_NAME, AGENT_GUIDER_DITHER_TRIGGER_ITEM_NAME, true);
 	for (int i = 0; i < 15; i++) { // wait up to 3s to start dithering
 		if (DEVICE_PRIVATE_DATA->dithering_started) {
 			break;
@@ -1135,11 +1134,11 @@ static bool do_dither(indigo_device *device) {
 	if (DEVICE_PRIVATE_DATA->dithering_started) {
 		AGENT_IMAGER_STATS_PHASE_ITEM->number.value = INDIGO_IMAGER_PHASE_DITHERING;
 		indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering started");
+		indigo_send_message(device, INFO_PROPERTY, "Dithering started");
 		double time_limit = 300 * 5; // 300 * 5 * 200ms = 300s
 		for (int i = 0; i < time_limit; i++) { // wait up to time limit to finish dithering
 			if (DEVICE_PRIVATE_DATA->dithering_finished) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering finished");
+				indigo_send_message(device, INFO_PROPERTY, "Dithering finished");
 				break;
 			}
 			if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -1148,8 +1147,7 @@ static bool do_dither(indigo_device *device) {
 			indigo_usleep(200000);
 		}
 		if (!DEVICE_PRIVATE_DATA->dithering_finished) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering failed to settle down");
-			indigo_send_message(device, ALERT_PROPERTY, "Error: Dithering failed to settle down");
+			indigo_send_message(device, ALERT_PROPERTY, "Dithering failed to settle down");
 			indigo_usleep(200000);
 		}
 	}
