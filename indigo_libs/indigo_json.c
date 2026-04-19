@@ -539,12 +539,19 @@ exit_loop:
 const char* indigo_json_escape_b(int index, const char* string) {
 	if (strpbrk(string, "\"\\\n\r\t")) {
 		static INDIGO_THREAD_LOCAL char escape_buffer[JSON_ESCAPE_BUFFER_COUNT][JSON_ESCAPE_BUFFER_SIZE];
-		char* buffer = escape_buffer[index];
+		static INDIGO_THREAD_LOCAL char long_escape_buffer[INDIGO_BUFFER_SIZE];
+		char *buffer, *buffer_end;
+		if (index < JSON_ESCAPE_BUFFER_COUNT) {
+			buffer = escape_buffer[index];
+			buffer_end = buffer + JSON_ESCAPE_BUFFER_SIZE - 2;
+		} else {
+			buffer = long_escape_buffer;
+			buffer_end = buffer + INDIGO_BUFFER_SIZE - 2;
+		}
 		const char* in = string;
 		char* out = buffer;
-		char* end = buffer + JSON_ESCAPE_BUFFER_SIZE - 2;
 		char c;
-		while ((c = *in++) && out < end) {
+		while ((c = *in++) && out < buffer_end) {
 			switch (c) {
 			case '"':
 				*out++ = '\\';
