@@ -1625,6 +1625,9 @@
 		596FCAAA2BD0328000F5BACB /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		596FCAAB2BD0328000F5BACB /* Serial protocol for WandererRotator Lite V2-20240226-1.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "Serial protocol for WandererRotator Lite V2-20240226-1.pdf"; sourceTree = "<group>"; };
 		596FCAAC2BD0328000F5BACB /* Serial protocol for WandererRotator Mini and Mini V2-20240226-1.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "Serial protocol for WandererRotator Mini and Mini V2-20240226-1.pdf"; sourceTree = "<group>"; };
+		597083852F96BBA700BB1F0C /* indigo_ccd_atik2.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_atik2.h; sourceTree = "<group>"; };
+		597083862F96BBA700BB1F0C /* indigo_ccd_atik2.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_atik2.c; sourceTree = "<group>"; };
+		597083872F96BBA700BB1F0C /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		5973456B256704CB001741D4 /* indigo_focuser_mypro2.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_mypro2.c; sourceTree = "<group>"; };
 		5973456C256704CB001741D4 /* indigo_focuser_mypro2_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_mypro2_main.c; sourceTree = "<group>"; };
 		5973456D256704CB001741D4 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -6758,6 +6761,16 @@
 			path = rotator_wa;
 			sourceTree = "<group>";
 		};
+		597083842F96BA9500BB1F0C /* ccd_atik2 */ = {
+			isa = PBXGroup;
+			children = (
+				597083872F96BBA700BB1F0C /* README.md */,
+				597083852F96BBA700BB1F0C /* indigo_ccd_atik2.h */,
+				597083862F96BBA700BB1F0C /* indigo_ccd_atik2.c */,
+			);
+			path = ccd_atik2;
+			sourceTree = "<group>";
+		};
 		5973456A256704CB001741D4 /* focuser_mypro2 */ = {
 			isa = PBXGroup;
 			children = (
@@ -9641,6 +9654,7 @@
 		59C499DF1EFADF7600E750AA /* indigo_mac_drivers */ = {
 			isa = PBXGroup;
 			children = (
+				597083842F96BA9500BB1F0C /* ccd_atik2 */,
 				9D61B9DA216DE62B000DE7E8 /* focuser_mjkzz_bt */,
 				59463C1420DE6781004950F2 /* focuser_wemacro_bt */,
 			);
