@@ -215,8 +215,12 @@ static int get_pixel_format(indigo_device *device) {
 
 static bool pixel_format_supported(indigo_device *device, ASI_IMG_TYPE type) {
 	for (int i = 0; i < ASI_MAX_FORMATS; i++) {
-		if (i == ASI_IMG_END) return false;
-		if (type == PRIVATE_DATA->info.SupportedVideoFormat[i]) return true;
+		if (PRIVATE_DATA->info.SupportedVideoFormat[i] == ASI_IMG_END) {
+			return false;
+		}
+		if (type == PRIVATE_DATA->info.SupportedVideoFormat[i]) {
+			return true;
+		}
 	}
 	return false;
 }
@@ -462,7 +466,7 @@ static bool asi_set_cooler(indigo_device *device, bool status, double target, do
 		} else {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ASIGetControlValue(%d, ASI_TARGET_TEMP) = %d", id, res);
 		}
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Temperature control: current_target = %d, new_target = %d", current_target, (long)target);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Temperature control: current_target = %ld, new_target = %ld", current_target, (long)target);
 		if ((long)target != current_target) {
 			res = ASISetControlValue(id, ASI_TARGET_TEMP, (long)target, false);
 			if (res) {
@@ -618,7 +622,6 @@ static void streaming_timer_callback(indigo_device *device) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ASIStopVideoCapture(%d) = %d", id, res);
 			}
 		}
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	} else {
 		res = ASI_ERROR_GENERAL_ERROR;
 	}
@@ -870,7 +873,7 @@ static indigo_result handle_advanced_property(indigo_device *device, indigo_prop
 				res = ASIGetControlValue(id, ctrl_caps.ControlType,&value, &unused);
 				property->items[item].number.value = value;
 				if (res) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetControlValue(%d, %s) = %d, value = %d", id, ctrl_caps.Name, res, property->items[item].number.value);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetControlValue(%d, %s) = %d, value = %g", id, ctrl_caps.Name, res, property->items[item].number.value);
 				}
 			}
 		}
@@ -1210,7 +1213,7 @@ static void handle_gain(indigo_device *device) {
 	ASI_CAMERA_INFO info;
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	ASI_ERROR_CODE res = ASISetControlValue(PRIVATE_DATA->dev_id, ASI_GAIN, (long)(CCD_GAIN_ITEM->number.target), ASI_FALSE);
-	ASIGetCameraProperty(&info, PRIVATE_DATA->dev_id);
+	ASIGetCameraPropertyByID(PRIVATE_DATA->dev_id, &info);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	if (res) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, ASI_GAIN) = %d", PRIVATE_DATA->dev_id, res);
@@ -1250,7 +1253,7 @@ static void handle_presets(indigo_device *device) {
 	ASI_CAMERA_INFO info;
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	ASI_ERROR_CODE res = ASISetControlValue(PRIVATE_DATA->dev_id, ASI_GAIN, (long)gain, ASI_FALSE);
-	ASIGetCameraProperty(&info, PRIVATE_DATA->dev_id);
+	ASIGetCameraPropertyByID(PRIVATE_DATA->dev_id, &info);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	if (res) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, ASI_GAIN) = %d", PRIVATE_DATA->dev_id, res);
