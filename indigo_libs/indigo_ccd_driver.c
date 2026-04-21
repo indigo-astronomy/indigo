@@ -1765,8 +1765,8 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		} else if (byte_per_pixel == 2) {
 			uint16_t *b16 = (uint16_t *)((char*)data + FITS_HEADER_SIZE);
 			for (unsigned long i = 0; i < size; i++) {
-				unsigned char b = *b16;
-				unsigned char r = *(b16 + 2);
+				uint16_t b = *b16;
+				uint16_t r = *(b16 + 2);
 				*b16 = r;
 				*(b16 + 2) = b;
 				b16 += 3;
