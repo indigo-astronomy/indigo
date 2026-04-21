@@ -320,6 +320,7 @@ static void open_log(indigo_device *device) {
 	time_t now = time(NULL);
 	struct tm *local = localtime(&now);
 	strncpy(DEVICE_PRIVATE_DATA->log_file_name, AGENT_GUIDER_LOG_DIR_ITEM->text.value, PATH_MAX);
+	DEVICE_PRIVATE_DATA->log_file_name[PATH_MAX - 1];
 	int len = (int)strlen(DEVICE_PRIVATE_DATA->log_file_name);
 	strftime(DEVICE_PRIVATE_DATA->log_file_name + len, PATH_MAX - len, AGENT_GUIDER_LOG_TEMPLATE_ITEM->text.value, local);
 	if (DEVICE_PRIVATE_DATA->log_file != NULL) {
