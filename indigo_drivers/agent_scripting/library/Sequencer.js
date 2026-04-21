@@ -842,11 +842,12 @@ var indigo_sequencer = {
 	},
 
 	execute_next: function() {
+		var nesting = 0;
 		if (this.paused) {
 			indigo_set_timer(indigo_sequencer_next_handler, 0.01);
 		} else if (this.sequence != null) {
 			var previous = this.sequence[this.index];
-			nesting = 0;
+			var current = null;
 			while (true) {
 				current = this.sequence[++this.index];
 				if (current == null) {
