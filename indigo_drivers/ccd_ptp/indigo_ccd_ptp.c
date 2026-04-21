@@ -293,12 +293,11 @@ static void handle_set_property(indigo_device *device) {
 	if (property) {
 		property->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, property, NULL);
-		if (PRIVATE_DATA->set_property(device, PRIVATE_DATA->properties + PRIVATE_DATA->message_property_index))
+		if (PRIVATE_DATA->set_property(device, PRIVATE_DATA->properties + PRIVATE_DATA->message_property_index)) {
 			property->state = INDIGO_OK_STATE;
-		else
+		} else {
 			property->state = INDIGO_ALERT_STATE;
-	} else {
-		property->state = INDIGO_ALERT_STATE;
+		}
 	}
 	indigo_update_property(device, property, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->message_mutex);
@@ -555,11 +554,11 @@ static indigo_device *attach_device(int vendor, int product, const char *usb_pat
 				private_data->fix_property = NULL;
 				private_data->set_property = ptp_canon_set_property;
 				private_data->exposure = ptp_canon_exposure;
-				private_data->liveview = (CAMERA[i].flags && ptp_flag_lv) ? ptp_canon_liveview : NULL;
+				private_data->liveview = (CAMERA[i].flags & ptp_flag_lv) ? ptp_canon_liveview : NULL;
 				private_data->lock = ptp_canon_lock;
 				private_data->af = ptp_canon_af;
-				private_data->zoom = (CAMERA[i].flags && ptp_flag_lv) ? ptp_canon_zoom : NULL;
-				private_data->focus = (CAMERA[i].flags && ptp_flag_lv) ? ptp_canon_focus : NULL;
+				private_data->zoom = (CAMERA[i].flags & ptp_flag_lv) ? ptp_canon_zoom : NULL;
+				private_data->focus = (CAMERA[i].flags & ptp_flag_lv) ? ptp_canon_focus : NULL;
 				private_data->set_host_time = ptp_canon_set_host_time;
 				private_data->check_dual_compression = ptp_canon_check_dual_compression;
 			} else if (vendor == NIKON_VID) {
@@ -575,11 +574,11 @@ static indigo_device *attach_device(int vendor, int product, const char *usb_pat
 				private_data->fix_property = ptp_nikon_fix_property;
 				private_data->set_property = ptp_nikon_set_property;
 				private_data->exposure = ptp_nikon_exposure;
-				private_data->liveview = (CAMERA[i].flags && ptp_flag_lv) ? ptp_nikon_liveview : NULL;
+				private_data->liveview = (CAMERA[i].flags & ptp_flag_lv) ? ptp_nikon_liveview : NULL;
 				private_data->lock = ptp_nikon_lock;
 				private_data->af = NULL;
-				private_data->zoom = (CAMERA[i].flags && ptp_flag_lv) ? ptp_nikon_zoom : NULL;
-				private_data->focus = (CAMERA[i].flags && ptp_flag_lv) ? ptp_nikon_focus : NULL;
+				private_data->zoom = (CAMERA[i].flags & ptp_flag_lv) ? ptp_nikon_zoom : NULL;
+				private_data->focus = (CAMERA[i].flags & ptp_flag_lv) ? ptp_nikon_focus : NULL;
 				private_data->set_host_time = ptp_set_host_time;
 				private_data->check_dual_compression = ptp_nikon_check_dual_compression;
 			} else if (vendor == SONY_VID) {
@@ -595,7 +594,7 @@ static indigo_device *attach_device(int vendor, int product, const char *usb_pat
 				private_data->fix_property = NULL;
 				private_data->set_property = ptp_sony_set_property;
 				private_data->exposure = ptp_sony_exposure;
-				private_data->liveview = (CAMERA[i].flags && ptp_flag_lv) ? ptp_sony_liveview : NULL;
+				private_data->liveview = (CAMERA[i].flags & ptp_flag_lv) ? ptp_sony_liveview : NULL;
 				private_data->lock = NULL;
 				private_data->af = ptp_sony_af;
 				private_data->zoom = NULL;
@@ -615,7 +614,7 @@ static indigo_device *attach_device(int vendor, int product, const char *usb_pat
 				private_data->fix_property = ptp_fuji_fix_property;
 				private_data->set_property = ptp_fuji_set_property;
 				private_data->exposure = ptp_fuji_exposure;
-				private_data->liveview = (CAMERA[i].flags && ptp_flag_lv) ? ptp_fuji_liveview : NULL;
+				private_data->liveview = (CAMERA[i].flags & ptp_flag_lv) ? ptp_fuji_liveview : NULL;
 				private_data->lock = NULL;
 				private_data->af = NULL;
 				private_data->zoom = NULL;
@@ -651,8 +650,7 @@ static indigo_device *attach_device(int vendor, int product, const char *usb_pat
 			if (private_data->focus) {
 				indigo_device *focuser = indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
 				focuser->master_device = device;
-				snprintf(focuser->name, INDIGO_NAME_SIZE, "%s (focuser)", CAMERA[i].name);
-				indigo_make_name_unique(device->name, "%s", usb_path);
+				snprintf(focuser->name, INDIGO_NAME_SIZE, "%s (focuser)", device->name);
 				focuser->private_data = private_data;
 				private_data->focuser = focuser;
 			}

@@ -771,7 +771,7 @@ bool ptp_nikon_initialise(indigo_device *device) {
 		}
 	}
 	if (ptp_operation_supported(device, ptp_operation_nikon_GetVendorPropCodes)) {
-		void *buffer;
+		void *buffer = NULL;
 		if (ptp_transaction_0_0_i(device, ptp_operation_nikon_GetVendorPropCodes, &buffer, NULL)) {
 			uint16_t properties[PTP_MAX_ELEMENTS];
 			ptp_decode_uint16_array(buffer, properties, NULL);
@@ -784,7 +784,6 @@ bool ptp_nikon_initialise(indigo_device *device) {
 			uint32_t size = 0;
 			for (int i = 0; properties[i]; i++) {
 				uint16_t code = properties[i];
-
 				char *name = PRIVATE_DATA->property_code_name(code);
 				bool skip = true;
 				if (!strncmp(name, "CCD_", 4)) {
@@ -876,7 +875,7 @@ bool ptp_nikon_fix_property(indigo_device *device, ptp_property *property) {
 				property->value.sw.values[0] = 3;
 				property->writable = false;
 			} else {
-				property->count = (int)property->value.number.max;
+				property->count = 4;
 				property->value.sw.values[0] = 0;
 				property->value.sw.values[1] = 1;
 				property->value.sw.values[2] = 2;
@@ -1228,7 +1227,7 @@ bool ptp_nikon_liveview(indigo_device *device) {
 		uint32_t size;
 		while (!PRIVATE_DATA->abort_capture && CCD_STREAMING_COUNT_ITEM->number.value != 0) {
 			if (ptp_transaction_0_0_i(device, ptp_operation_nikon_GetLiveViewImg, (void **)&buffer, &size)) {
-				if ((buffer[64] & 0xFF) == 0xFF && (buffer[65] & 0xFF) == 0xD8) {
+				if (size > 65 && (buffer[64] & 0xFF) == 0xFF && (buffer[65] & 0xFF) == 0xD8) {
 					if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
 						CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
 						indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
@@ -1249,7 +1248,7 @@ bool ptp_nikon_liveview(indigo_device *device) {
 					if (CCD_STREAMING_COUNT_ITEM->number.value < 0)
 						CCD_STREAMING_COUNT_ITEM->number.value = -1;
 					indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
-				} else if ((buffer[128] & 0xFF) == 0xFF && (buffer[129] & 0xFF) == 0xD8) {
+				} else if (size > 129 && (buffer[128] & 0xFF) == 0xFF && (buffer[129] & 0xFF) == 0xD8) {
 					if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
 						CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
 						indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
@@ -1270,7 +1269,7 @@ bool ptp_nikon_liveview(indigo_device *device) {
 					if (CCD_STREAMING_COUNT_ITEM->number.value < 0)
 						CCD_STREAMING_COUNT_ITEM->number.value = -1;
 					indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
-				} else if ((buffer[384] & 0xFF) == 0xFF && (buffer[385] & 0xFF) == 0xD8) {
+				} else if (size > 385 && (buffer[384] & 0xFF) == 0xFF && (buffer[385] & 0xFF) == 0xD8) {
 					if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
 						CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
 						indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
