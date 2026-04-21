@@ -635,7 +635,7 @@ static void add_device(indigo_device *device, indigo_property *property) {
 	pthread_mutex_lock(&DEVICE_PRIVATE_DATA->data_mutex);
 	indigo_property *agent = NULL;
 	char name[INDIGO_NAME_SIZE];
-	sprintf(name, AGENT_CONFIG_PROPERTY_NAME, property->device);
+	snprintf(name, INDIGO_NAME_SIZE, AGENT_CONFIG_PROPERTY_NAME, property->device);
 	for (int i = 0; i < MAX_AGENTS; i++) {
 		indigo_property *prop = AGENT_CONFIG_AGENTS_PROPERTIES[i];
 		if (prop && !strcmp(prop->name, name)) {
