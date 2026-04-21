@@ -288,7 +288,7 @@ static void slew_process(indigo_device *device) {
 static void sync_process(indigo_device *device) {
 	FILTER_DEVICE_CONTEXT->running_process = true;
 	mount_control(device, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME);
-	if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_IDLE_STATE) {
+	if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE) {
 		indigo_send_message(device, IDLE_PROPERTY, "Synced");
 	} else {
 		indigo_send_message(device, ALERT_PROPERTY, "Sync failed");
@@ -453,6 +453,7 @@ static void lx200_server_worker_thread(indigo_uni_worker_data *data) {
 				}
 				i++;
 			}
+			buffer_in[sizeof(buffer_in) - 1] = '\0';
 			if (result == -1) {
 				break;
 			}
@@ -516,7 +517,7 @@ static void lx200_server_worker_thread(indigo_uni_worker_data *data) {
 				AGENT_MOUNT_TARGET_COORDINATES_DEC_ITEM->number.target = AGENT_MOUNT_TARGET_COORDINATES_DEC_ITEM->number.value = dec;
 				indigo_update_property(device, AGENT_MOUNT_TARGET_COORDINATES_PROPERTY, NULL);
 				if (INDIGO_FILTER_MOUNT_SELECTED && AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_BUSY_STATE) {
-					AGENT_MOUNT_START_SLEW_ITEM->sw.value = true;
+					AGENT_MOUNT_START_SYNC_ITEM->sw.value = true;
 					AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 					indigo_set_timer(device, 0, sync_process, NULL);
