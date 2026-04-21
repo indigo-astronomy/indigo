@@ -1509,23 +1509,27 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 			} else if (fs[2] == 'H') {
 				if (fs[1] == '.') {
 					strftime(buffer, 15, "%H.%M.%S", local_time_info);
-				} else if (fs[1] == '-')
+				} else if (fs[1] == '-') {
 					strftime(buffer, 15, "%H-%M-%S", local_time_info);
+				}
 			} else if (fs[2] == 'h') {
 				if (fs[1] == '.') {
 					strftime(buffer, 15, "%H.%M.%S", gm_time_info);
-				} else if (fs[1] == '-')
+				} else if (fs[1] == '-') {
 					strftime(buffer, 15, "%H-%M-%S", gm_time_info);
+				}
 			} else if (fs[2] == 'D') {
 				if (fs[1] == '.') {
 					strftime(buffer, 15, "%Y.%m.%d", local_time_info);
-				} else if (fs[1] == '-')
+				} else if (fs[1] == '-') {
 					strftime(buffer, 15, "%Y-%m-%d", local_time_info);
+				}
 			} else if (fs[2] == 'd') {
 				if (fs[1] == '.') {
 					strftime(buffer, 15, "%Y.%m.%d", gm_time_info);
-				} else if (fs[1] == '-')
+				} else if (fs[1] == '-') {
 					strftime(buffer, 15, "%Y-%m-%d", gm_time_info);
+				}
 			}
 			strncpy(tmp, format, fs - format);
 			strcat(tmp, buffer);
