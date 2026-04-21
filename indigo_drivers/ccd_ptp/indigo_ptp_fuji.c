@@ -269,6 +269,7 @@ char *ptp_property_fuji_value_code_label(indigo_device *device, uint16_t propert
 				//case 9: return "";
 				//case 10: return "";
 			}
+			break;
 		case ptp_property_fuji_NoiseReduction:
 			switch (code) {
 				case 0x0000: return "+2";
@@ -281,12 +282,14 @@ char *ptp_property_fuji_value_code_label(indigo_device *device, uint16_t propert
 				case 0x7000: return "-3";
 				case 0x8000: return "-4";
 			}
+			break;
 		case ptp_property_fuji_LockSetting:
 			switch (code) {
 				case 1: return "Unlock";
 				case 2: return "All Function";
 				case 3: return "Selected Function";
 			}
+			break;
 		case ptp_property_fuji_ControlPriority:
 			switch (code) {
 				case 1: return "Camera";
@@ -387,12 +390,12 @@ static void ptp_fuji_get_event(indigo_device *device) {
 								}
 							} else {
 								indigo_process_dslr_image(device, image_buffer, image_size, ext, false);
-								if (PRIVATE_DATA->image_buffer) {
-									free(PRIVATE_DATA->image_buffer);
-								}
-								PRIVATE_DATA->image_buffer = image_buffer;
-								image_buffer = NULL;
 							}
+							if (PRIVATE_DATA->image_buffer) {
+								free(PRIVATE_DATA->image_buffer);
+							}
+							PRIVATE_DATA->image_buffer = image_buffer;
+							image_buffer = NULL;
 							if (ptp_transaction_1_0(device, ptp_operation_DeleteObject, handle)) {
 								INDIGO_DRIVER_LOG(DRIVER_NAME, "ptp_operation_DeleteObject succeed.");
 							}

@@ -408,7 +408,7 @@ char *ptp_property_canon_value_code_label(indigo_device *device, uint16_t proper
 		}
 		case ptp_property_canon_ShutterSpeed: {
 			switch (code) {
-				case 0x0C: return "Bulb"; case 0x10: return "30s"; case 0x13: return "25s"; case 0x14: return "20s"; case 0x15: return "20s"; case 0x18: return "15s"; case 0x1B: return "13s"; case 0x1C: return "10s"; case 0x1D: return "10s"; case 0x20: return "8s"; case 0x23: return "6s"; case 0x24: return "6s"; case 0x25: return "5s"; case 0x28: return "4s"; case 0x2B: return "3.2s"; case 0x2C: return "3s"; case 0x2D: return "2.5s"; case 0x30: return "2s"; case 0x33: return "1.6s"; case 0x34: return "15s"; case 0x35: return "1.3s"; case 0x38: return "1s"; case 0x3B: return "0.8s"; case 0x3C: return "0.7s"; case 0x3D: return "0.6s"; case 0x40: return "0.5s"; case 0x43: return "0.4s"; case 0x44: return "0.3s"; case 0x45: return "0.3s"; case 0x48: return "1/4s"; case 0x4B: return "1/5s"; case 0x4C: return "1/6s"; case 0x4D: return "1/6s"; case 0x50: return "1/8s"; case 0x53: return "1/10s"; case 0x54: return "1/10s"; case 0x55: return "1/13s"; case 0x58: return "1/15s"; case 0x5B: return "1/20s"; case 0x5C: return "1/20s"; case 0x5D: return "1/25s"; case 0x60: return "1/30s"; case 0x63: return "1/40s"; case 0x64: return "1/45s"; case 0x65: return "1/50s"; case 0x68: return "1/60s"; case 0x6B: return "1/80s"; case 0x6C: return "1/90s"; case 0x6D: return "1/100s"; case 0x70: return "1/125s"; case 0x73: return "1/160s"; case 0x74: return "1/180s"; case 0x75: return "1/200s"; case 0x78: return "1/250s"; case 0x7B: return "1/320s"; case 0x7C: return "1/350s"; case 0x7D: return "1/400s"; case 0x80: return "1/500s"; case 0x83: return "1/640s"; case 0x84: return "1/750s"; case 0x85: return "1/800s"; case 0x88: return "1/1000s"; case 0x8B: return "1/1250s"; case 0x8C: return "1/1500s"; case 0x8D: return "1/1600s"; case 0x90: return "1/2000s"; case 0x93: return "1/2500s"; case 0x94: return "1/3000s"; case 0x95: return "1/3200s"; case 0x98: return "1/4000s"; case 0x9B: return "1/5000s"; case 0x9C: return "1/6000s"; case 0x9D: return "1/6400s"; case 0xA0: return "1/8000s"; case 0xA3: return "1/10000s"; case 0xA5: return "1/12800s"; case 0xA8: return "1/16000s"; case 0xAB: return "1/20000s"; case 0xAD: return "1/25600s"; case 0xB0: return "1/32000s"; case 0xB3: return "1/40000s"; case 0xB5: return "1/51200s"; case 0xB8: return "1/64000s";
+				case 0x0C: return "Bulb"; case 0x10: return "30s"; case 0x13: return "25s"; case 0x14: return "20s"; case 0x15: return "20s"; case 0x18: return "15s"; case 0x1B: return "13s"; case 0x1C: return "10s"; case 0x1D: return "10s"; case 0x20: return "8s"; case 0x23: return "6s"; case 0x24: return "6s"; case 0x25: return "5s"; case 0x28: return "4s"; case 0x2B: return "3.2s"; case 0x2C: return "3s"; case 0x2D: return "2.5s"; case 0x30: return "2s"; case 0x33: return "1.6s"; case 0x34: return "1.5s"; case 0x35: return "1.3s"; case 0x38: return "1s"; case 0x3B: return "0.8s"; case 0x3C: return "0.7s"; case 0x3D: return "0.6s"; case 0x40: return "0.5s"; case 0x43: return "0.4s"; case 0x44: return "0.3s"; case 0x45: return "0.3s"; case 0x48: return "1/4s"; case 0x4B: return "1/5s"; case 0x4C: return "1/6s"; case 0x4D: return "1/6s"; case 0x50: return "1/8s"; case 0x53: return "1/10s"; case 0x54: return "1/10s"; case 0x55: return "1/13s"; case 0x58: return "1/15s"; case 0x5B: return "1/20s"; case 0x5C: return "1/20s"; case 0x5D: return "1/25s"; case 0x60: return "1/30s"; case 0x63: return "1/40s"; case 0x64: return "1/45s"; case 0x65: return "1/50s"; case 0x68: return "1/60s"; case 0x6B: return "1/80s"; case 0x6C: return "1/90s"; case 0x6D: return "1/100s"; case 0x70: return "1/125s"; case 0x73: return "1/160s"; case 0x74: return "1/180s"; case 0x75: return "1/200s"; case 0x78: return "1/250s"; case 0x7B: return "1/320s"; case 0x7C: return "1/350s"; case 0x7D: return "1/400s"; case 0x80: return "1/500s"; case 0x83: return "1/640s"; case 0x84: return "1/750s"; case 0x85: return "1/800s"; case 0x88: return "1/1000s"; case 0x8B: return "1/1250s"; case 0x8C: return "1/1500s"; case 0x8D: return "1/1600s"; case 0x90: return "1/2000s"; case 0x93: return "1/2500s"; case 0x94: return "1/3000s"; case 0x95: return "1/3200s"; case 0x98: return "1/4000s"; case 0x9B: return "1/5000s"; case 0x9C: return "1/6000s"; case 0x9D: return "1/6400s"; case 0xA0: return "1/8000s"; case 0xA3: return "1/10000s"; case 0xA5: return "1/12800s"; case 0xA8: return "1/16000s"; case 0xAB: return "1/20000s"; case 0xAD: return "1/25600s"; case 0xB0: return "1/32000s"; case 0xB3: return "1/40000s"; case 0xB5: return "1/51200s"; case 0xB8: return "1/64000s";
 			}
 			break;
 		}
@@ -440,6 +440,7 @@ char *ptp_property_canon_value_code_label(indigo_device *device, uint16_t proper
 			switch (code) {
 				case 0: return "Normal"; case 1: return "Easy Wireless"; case 2: return "Custom Wireless";
 			}
+			break;
 		}
 		case ptp_property_canon_AutoExposureMode: {
 			switch (code) {
@@ -657,7 +658,7 @@ char *ptp_property_canon_value_code_label(indigo_device *device, uint16_t proper
 					strcat(label, "CR2");
 					break;
 				default:
-					sprintf(label, "%sUnknown (0x%llx)", label, code & 0xFFFFFFFF);
+					sprintf(label, "Unknown (0x%llx)", code & 0xFFFFFFFF);
 					break;
 			}
 			return label;
@@ -929,6 +930,7 @@ static void ptp_canon_get_event(indigo_device *device) {
 						case ptp_property_canon_WhiteBalanceAdjustA:
 						case ptp_property_canon_WhiteBalanceAdjustB:
 							property->type = ptp_int32_type;
+							break;
 						default: {
 							if (size == 3 * sizeof(uint32_t) + sizeof(uint16_t)) {
 								property->type = ptp_uint16_type;
@@ -993,6 +995,7 @@ static void ptp_canon_get_event(indigo_device *device) {
 						}
 						case ptp_str_type: {
 							strncpy((char *)property->value.text.value, (char *)source, PTP_MAX_CHARS);
+							property->value.text.value[PTP_MAX_CHARS - 1] = '\0';
 							break;
 						}
 						case ptp_undef_type: {
@@ -1160,8 +1163,10 @@ static void ptp_canon_get_event(indigo_device *device) {
 					}
 					if (event == ptp_event_canon_ObjectAddedEx) {
 						strncpy(filename, (char *)source + 0x20, PTP_MAX_CHARS);
+						filename[PTP_MAX_CHARS - 1] = '\0';
 					} else if (event == ptp_event_canon_ObjectAddedEx2) {
 						strncpy(filename, (char *)source + 0x24, PTP_MAX_CHARS);
+						filename[PTP_MAX_CHARS - 1] = '\0';
 					} else if (event == ptp_event_canon_ObjectAddedEx3 || event == ptp_event_canon_RequestObjectTransfer) {
 						ptp_decode_string((uint8_t *)source + 0x1c, filename);
 						if (source[0x1c] == 0 || source[0x1c] == 1) {
@@ -1252,14 +1257,12 @@ static void ptp_canon_get_event(indigo_device *device) {
 									PRIVATE_DATA->image_buffer = image_buffer;
 									image_buffer = NULL;
 								}
-								if (DSLR_DELETE_IMAGE_ON_ITEM->sw.value && !CANON_PRIVATE_DATA->use_ram)
-									ptp_transaction_1_0(device, ptp_operation_canon_DeleteObject, handle);
 							}
 							if (image_buffer) {
 								free(image_buffer);
 								image_buffer = NULL;
 							}
-							if (DSLR_DELETE_IMAGE_ON_ITEM->sw.value) {
+							if (DSLR_DELETE_IMAGE_ON_ITEM->sw.value && !CANON_PRIVATE_DATA->use_ram) {
 								ptp_transaction_1_0(device, ptp_operation_canon_DeleteObject, handle);
 							}
 						}
