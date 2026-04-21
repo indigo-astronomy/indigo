@@ -1055,7 +1055,7 @@ bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t o
 	container.payload.params[3] = out_4;
 	container.payload.params[4] = out_5;
 	PTP_DUMP_CONTAINER(&container);
-	NSData *requestData = [NSData dataWithBytesNoCopy:&container length:container.length freeWhenDone:YES];
+	NSData *requestData = [NSData dataWithBytesNoCopy:&container length:container.length freeWhenDone:NO];
 	NSData *outData = data_out ? [NSData dataWithBytesNoCopy:data_out length:data_out_size freeWhenDone:YES] : nil;
 	if (delegate.ptpSemafor == nil) {
 		delegate.ptpSemafor = dispatch_semaphore_create(0);
@@ -1243,8 +1243,10 @@ bool ptp_open(indigo_device *device) {
 
 bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t out_1, uint32_t out_2, uint32_t out_3, uint32_t out_4, uint32_t out_5, void *data_out, uint32_t data_out_size, uint32_t *in_1, uint32_t *in_2, uint32_t *in_3, uint32_t *in_4, uint32_t *in_5, void **data_in, uint32_t *data_in_size) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	if (PRIVATE_DATA->handle == NULL)
+	if (PRIVATE_DATA->handle == NULL) {
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		return false;
+	}
 	ptp_container request, response;
 	int length = 0;
 	memset(&request, 0, sizeof(request));
@@ -1331,8 +1333,11 @@ bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t o
 			offset += length;
 			total -= length;
 		}
-		if (data_in)
+		if (data_in) {
 			*data_in = buffer;
+		} else {
+			free(buffer);
+		}
 		while (true) {
 			memset(&response, 0, sizeof(response));
 			length = 0;
@@ -1551,7 +1556,7 @@ bool ptp_update_property(indigo_device *device, ptp_property *property) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s (%04x), type = %s -> %s (%lld: [%lld, %lld, %lld, %lld, %lld])", PRIVATE_DATA->property_code_label(property->code), property->code, ptp_type_code_label(property->type), property->property ? property->property->name : "NONE", property->value.sw.value, property->value.sw.values[0], property->value.sw.values[1], property->value.sw.values[2], property->value.sw.values[3], property->value.sw.values[4]);
 				break;
 			case 6:
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s (%04x), type = %s -> %s (%lld: [%lld, %lld, %lld, %lld, %lld, %lld])", PRIVATE_DATA->property_code_label(property->code), property->code, ptp_type_code_label(property->type), property->property ? property->property->name : "NONE", property->value.sw.value, property->value.sw.values[0], property->value.sw.values[1], property->value.sw.values[2], property->value.sw.values[3], property->value.sw.values[4], property->value.sw.values[4]);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s (%04x), type = %s -> %s (%lld: [%lld, %lld, %lld, %lld, %lld, %lld])", PRIVATE_DATA->property_code_label(property->code), property->code, ptp_type_code_label(property->type), property->property ? property->property->name : "NONE", property->value.sw.value, property->value.sw.values[0], property->value.sw.values[1], property->value.sw.values[2], property->value.sw.values[3], property->value.sw.values[4], property->value.sw.values[5]);
 				break;
 			default:
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s (%04x), type = %s -> %s (%lld: [%lld, %lld, %lld, ..., %lld, %lld, %lld]<%d>)", PRIVATE_DATA->property_code_label(property->code), property->code, ptp_type_code_label(property->type), property->property ? property->property->name : "NONE", property->value.sw.value, property->value.sw.values[0], property->value.sw.values[1], property->value.sw.values[2], property->value.sw.values[property->count - 3], property->value.sw.values[property->count - 2], property->value.sw.values[property->count - 1], property->count);
@@ -1668,7 +1673,7 @@ bool ptp_handle_event(indigo_device *device, ptp_event_code code, uint32_t *para
 					INDIGO_DRIVER_LOG(DRIVER_NAME, "ptp_event_ObjectAdded: handle = %08x, size = %u, name = '%s' downloading", params[0], size, filename);
 					if (size && ptp_transaction_1_0_i(device, ptp_operation_GetObject, params[0], &buffer, NULL)) {
 						const char *ext = strchr(filename, '.');
-						if (PRIVATE_DATA->check_dual_compression != NULL && PRIVATE_DATA->check_dual_compression(device) && ptp_check_jpeg_ext(ext)) {
+						if (ext != NULL && PRIVATE_DATA->check_dual_compression != NULL && PRIVATE_DATA->check_dual_compression(device) && ptp_check_jpeg_ext(ext)) {
 							if (CCD_PREVIEW_ENABLED_ITEM->sw.value) {
 								indigo_process_dslr_preview_image(device, buffer, size);
 							}
@@ -1707,6 +1712,7 @@ bool ptp_handle_event(indigo_device *device, ptp_event_code code, uint32_t *para
 			if (buffer) {
 				free(buffer);
 			}
+			return true;
 		}
 		default:
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s (%04x)", PRIVATE_DATA->event_code_label(code), code);
@@ -1718,6 +1724,7 @@ bool ptp_set_property(indigo_device *device, ptp_property *property) {
 	switch (property->property->type) {
 		case INDIGO_TEXT_VECTOR: {
 			strncpy(property->value.text.value, property->property->items->text.value, PTP_MAX_CHARS);
+			property->value.text.value[PTP_MAX_CHARS - 1] = '\0';
 			uint8_t buffer[PTP_MAX_CHARS * 2 + 2];
 			uint32_t size = (uint32_t)(ptp_encode_string(property->value.text.value, buffer) - buffer);
 			return ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, property->code, buffer, size);
@@ -1727,6 +1734,7 @@ bool ptp_set_property(indigo_device *device, ptp_property *property) {
 				if (property->property->items[i].sw.value) {
 					if (property->type == ptp_str_type) {
 						strncpy(property->value.sw_str.value, property->value.sw_str.values[i], PTP_MAX_CHARS);
+						property->value.sw_str.value[PTP_MAX_CHARS - 1] = '\0';
 					} else {
 						property->value.sw.value = property->value.sw.values[i];
 					}

@@ -181,7 +181,7 @@ static int get_pixel_format(indigo_device *device) {
 
 static bool pixel_format_supported(indigo_device *device, POAImgFormat type) {
 	for (int i = 0; i < POA_MAX_FORMATS; i++) {
-		if (i == POA_END)
+		if (PRIVATE_DATA->property.imgFormats[i] == POA_END)
 			return false;
 		if (type == PRIVATE_DATA->property.imgFormats[i])
 			return true;
@@ -321,10 +321,10 @@ static bool playerone_setup_exposure(indigo_device *device, double exposure, int
 	res = POASetConfig(id, POA_EXPOSURE, exposure_value, POA_FALSE);
 	if (res) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "POASetConfig(%d, POA_EXPOSURE, %d) > %d", id, exposure_value.intValue, res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "POASetConfig(%d, POA_EXPOSURE, %ld) > %d", id, exposure_value.intValue, res);
 		return false;
 	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetConfig(%d, POA_EXPOSURE, %d)", id, exposure_value.intValue);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetConfig(%d, POA_EXPOSURE, %ld)", id, exposure_value.intValue);
 #endif /* POA_ENABLE_LONG_EXPOSURES */
 
 	PRIVATE_DATA->exp_bin = bin;
@@ -831,7 +831,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 
 		/* find max binning */
 		int max_bin = 1;
-		for (int num = 0; (num < 16) && PRIVATE_DATA->property.bins[num]; num++) {
+		for (int num = 0; (num < 8) && PRIVATE_DATA->property.bins[num]; num++) {
 			max_bin = PRIVATE_DATA->property.bins[num];
 		}
 
@@ -846,7 +846,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 
 		int mode_count = 0;
 		char name[32], label[64];
-		for (int num = 0; (num < 16) && PRIVATE_DATA->property.bins[num]; num++) {
+		for (int num = 0; (num < 8) && PRIVATE_DATA->property.bins[num]; num++) {
 			int bin = PRIVATE_DATA->property.bins[num];
 			if (pixel_format_supported(device, POA_RAW8)) {
 				snprintf(name, 32, "%s %dx%d", RAW8_NAME, bin, bin);
@@ -991,7 +991,7 @@ static void handle_advanced_property(indigo_device *device) {
 						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetConfig(%d, %s, > %g)", id, ctrl_caps.szConfName, value.floatValue);
 					} else {
 						item->number.value = value.intValue;
-						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetConfig(%d, %s, > %d)", id, ctrl_caps.szConfName, value.intValue);
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetConfig(%d, %s, > %ld)", id, ctrl_caps.szConfName, value.intValue);
 					}
 				}
 			}
@@ -1100,8 +1100,8 @@ static indigo_result init_camera_property(indigo_device *device, POAConfigAttrib
 			CCD_EGAIN_PROPERTY->perm = INDIGO_RO_PERM;
 		}
 
-		CCD_EGAIN_ITEM->number.min = ctrl_caps.minValue.intValue;
-		CCD_EGAIN_ITEM->number.max = ctrl_caps.maxValue.intValue;
+		CCD_EGAIN_ITEM->number.min = ctrl_caps.minValue.floatValue;
+		CCD_EGAIN_ITEM->number.max = ctrl_caps.maxValue.floatValue;
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		unused = false;
 		res = POAGetConfig(id, POA_EGAIN, &value, &unused);
@@ -1109,7 +1109,7 @@ static indigo_result init_camera_property(indigo_device *device, POAConfigAttrib
 		if (res) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetConfig(%d, POA_EGAIN) > %d", id, res);
 		} else {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetConfig(%d, POA_EGAIN,  > %d)", id, value.floatValue);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetConfig(%d, POA_EGAIN,  > %g)", id, value.floatValue);
 		}
 		CCD_EGAIN_ITEM->number.value = CCD_EGAIN_ITEM->number.target = value.floatValue;
 		return INDIGO_OK;
@@ -1125,8 +1125,8 @@ static indigo_result init_camera_property(indigo_device *device, POAConfigAttrib
 
 		CCD_TEMPERATURE_ITEM->number.min = ctrl_caps.minValue.intValue;
 		CCD_TEMPERATURE_ITEM->number.max = ctrl_caps.maxValue.intValue;
-		CCD_TEMPERATURE_ITEM->number.value = CCD_TEMPERATURE_ITEM->number.target = ctrl_caps.defaultValue.floatValue;
-		PRIVATE_DATA->target_temperature = ctrl_caps.defaultValue.floatValue;
+		CCD_TEMPERATURE_ITEM->number.value = CCD_TEMPERATURE_ITEM->number.target = ctrl_caps.defaultValue.intValue;
+		PRIVATE_DATA->target_temperature = ctrl_caps.defaultValue.intValue;
 		PRIVATE_DATA->can_check_temperature = true;
 		return INDIGO_OK;
 	}
@@ -1570,7 +1570,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetConfig(%d, POA_EGAIN) > %d", PRIVATE_DATA->dev_id, res);
 			CCD_EGAIN_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetConfig(%d, POA_EGAIN, > %d)", PRIVATE_DATA->dev_id, value.floatValue);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetConfig(%d, POA_EGAIN, > %g)", PRIVATE_DATA->dev_id, value.floatValue);
 			CCD_EGAIN_ITEM->number.value = value.floatValue;
 			CCD_EGAIN_ITEM->number.target = value.floatValue;
 			CCD_EGAIN_PROPERTY->state = INDIGO_OK_STATE;
@@ -1639,7 +1639,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetConfig(%d, POA_EGAIN) > %d", PRIVATE_DATA->dev_id, res);
 			CCD_EGAIN_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetConfig(%d, POA_EGAIN, > %d)", PRIVATE_DATA->dev_id, value.floatValue);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetConfig(%d, POA_EGAIN, > %g)", PRIVATE_DATA->dev_id, value.floatValue);
 			CCD_EGAIN_ITEM->number.value = value.floatValue;
 			CCD_EGAIN_ITEM->number.target = value.floatValue;
 			CCD_EGAIN_PROPERTY->state = INDIGO_OK_STATE;
@@ -2064,7 +2064,7 @@ static int find_plugged_device_id() {
 	for (i = 0; i < count; i++) {
 		POAGetCameraProperties(i, &properties);
 		id = properties.cameraID;
-		if (!connected_ids[id]) {
+		if (id >= 0 && id < MAX_DEVICES && !connected_ids[id]) {
 			new_id = id;
 			connected_ids[id] = true;
 			break;
@@ -2102,7 +2102,8 @@ static int find_unplugged_device_id() {
 	int count = POAGetCameraCount();
 	for (i = 0; i < count; i++) {
 		POAGetCameraProperties(i, &properties);
-		dev_tmp[properties.cameraID] = true;
+		if (properties.cameraID >= 0 && properties.cameraID < MAX_DEVICES)
+			dev_tmp[properties.cameraID] = true;
 	}
 
 	int id = -1;
@@ -2122,12 +2123,14 @@ static void split_device_name(const char *fill_device_name, char *device_name, c
 	}
 
 	char name_buf[256];
-	strncpy(name_buf, fill_device_name, sizeof(name_buf));
+	strncpy(name_buf, fill_device_name, sizeof(name_buf) - 1);
+	name_buf[sizeof(name_buf) - 1] = '\0';
 	char *suffix_start = strchr(name_buf, '[');
 	char *suffix_end = strrchr(name_buf, ']');
 
 	if (suffix_start == NULL || suffix_end == NULL) {
-		strncpy(device_name, name_buf, 256);
+		strncpy(device_name, name_buf, 255);
+		device_name[255] = '\0';
 		suffix[0] = '\0';
 		return;
 	}
@@ -2139,8 +2142,10 @@ static void split_device_name(const char *fill_device_name, char *device_name, c
 	suffix_end[0] = '\0';
 	suffix_start++;
 
-	strncpy(device_name, name_buf, 256);
-	strncpy(suffix, suffix_start, 16);
+	strncpy(device_name, name_buf, 255);
+	device_name[255] = '\0';
+	strncpy(suffix, suffix_start, 15);
+	suffix[15] = '\0';
 }
 
 static void process_plug_event(indigo_device *unused) {
@@ -2302,7 +2307,9 @@ static void remove_all_devices() {
 		if (device == NULL) {
 			continue;
 		}
-		if (PRIVATE_DATA) pds[PRIVATE_DATA->dev_id] = PRIVATE_DATA; /* preserve pointers to private data */
+		if (PRIVATE_DATA && PRIVATE_DATA->dev_id >= 0 && PRIVATE_DATA->dev_id < MAX_DEVICES) {
+			pds[PRIVATE_DATA->dev_id] = PRIVATE_DATA; /* preserve pointers to private data */
+		}
 		indigo_detach_device(device);
 		free(device);
 		devices[i] = NULL;

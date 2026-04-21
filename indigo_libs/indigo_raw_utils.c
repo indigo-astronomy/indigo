@@ -639,7 +639,7 @@ indigo_result indigo_selection_frame_digest_iterative(indigo_raw_type raw_type, 
 	}
 	if (result != INDIGO_OK) {
 		/* No star found in the selection -> search in wider vicinity then converge again */
-		indigo_debug("%s(): No star found around X = %.3f, Y= %3f. Searching in wider vicinity", __FUNCTION__, *x, *y, converge_iterations);
+		indigo_debug("%s(): No star found around X = %.3f, Y= %3f, iterations = %d. Searching in wider vicinity", __FUNCTION__, *x, *y, converge_iterations);
 		result = indigo_selection_frame_digest(raw_type, data, x, y, (int)(radius * 2.5), width, height, digest);
 		ci = converge_iterations;
 		while (ci--) {
@@ -2043,7 +2043,7 @@ static double indigo_stddev_rgb48(uint16_t set[], const int width, const int hei
 
 	for (int y = 1; y < end_y; y++) {
 		for (int x = 1; x < end_x; x++) {
-			i = y * width + x;
+			i = (y * width + x) * 3;
 			sum += set[i];
 			sum += set[i + 1];
 			sum += set[i + 2];
