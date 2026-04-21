@@ -1768,11 +1768,19 @@ exit_loop:
 const char *indigo_xml_escape_b(int index, const char *string) {
 	if (strpbrk(string, "&<>\"'")) {
 		static INDIGO_THREAD_LOCAL char escape_buffer[ESCAPE_BUFFER_COUNT][ESCAPE_BUFFER_SIZE];
-		char *buffer = escape_buffer[index];
+		static INDIGO_THREAD_LOCAL char long_escape_buffer[INDIGO_BUFFER_SIZE];
+		char *buffer, *buffer_end;
+		if (index < ESCAPE_BUFFER_COUNT) {
+			buffer = escape_buffer[index];
+			buffer_end = buffer + ESCAPE_BUFFER_SIZE - 6;
+		} else {
+			buffer = long_escape_buffer;
+			buffer_end = buffer + INDIGO_BUFFER_SIZE - 6;
+		}
 		const char *in = string;
 		char *out = buffer;
 		char c;
-		while ((c = *in++)) {
+		while ((c = *in++) && (out < buffer_end)) {
 			switch (c) {
 				case '&':
 					*out++ = '&';
@@ -1908,7 +1916,7 @@ indigo_result indigo_xml_client_parser_change_property(indigo_device *device, in
 			INDIGO_PRINTF(handle, "<newTextVector device='%s' name='%s'%s>\n", indigo_xml_escape(device_name), indigo_property_name(device->version, property), token);
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
-				INDIGO_PRINTF(handle, "<oneText name='%s'>%s</oneText>\n", indigo_item_name(device->version, property, item), indigo_xml_escape(indigo_get_text_item_value(item)));
+				INDIGO_PRINTF(handle, "<oneText name='%s'>%s</oneText>\n", indigo_item_name(device->version, property, item), indigo_xml_escape_b(5, indigo_get_text_item_value(item)));
 			}
 			INDIGO_PRINTF(handle, "</newTextVector>\n");
 			break;
@@ -2028,7 +2036,7 @@ indigo_result indigo_xml_device_adapter_define_property(indigo_client *client, i
 			INDIGO_PRINTF(handle, "<defTextVector device='%s' name='%s' group='%s' label='%s' perm='%s' state='%s'%s%s>\n", indigo_xml_escape_b(0, property->device), indigo_property_name(client->version, property), indigo_xml_escape_b(1, property->group), indigo_xml_escape_b(2, property->label), indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], hints_attribute(property->hints), message_attribute(message));
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
-				INDIGO_PRINTF(handle, "<defText name='%s' label='%s'%s>%s</defText>\n", indigo_item_name(client->version, property, item), indigo_xml_escape_b(0, item->label), hints_attribute(item->hints), indigo_xml_escape_b(1, indigo_get_text_item_value(item)));
+				INDIGO_PRINTF(handle, "<defText name='%s' label='%s'%s>%s</defText>\n", indigo_item_name(client->version, property, item), indigo_xml_escape_b(0, item->label), hints_attribute(item->hints), indigo_xml_escape_b(5, indigo_get_text_item_value(item)));
 			}
 			INDIGO_PRINTF(handle, "</defTextVector>\n");
 			break;
@@ -2107,7 +2115,7 @@ indigo_result indigo_xml_device_adapter_update_property(indigo_client *client, i
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
 				if (client->force_item_updates || item->do_update) {
-					INDIGO_PRINTF(handle, "<oneText name='%s'>%s</oneText>\n", indigo_item_name(client->version, property, item), indigo_xml_escape(indigo_get_text_item_value(item)));
+					INDIGO_PRINTF(handle, "<oneText name='%s'>%s</oneText>\n", indigo_item_name(client->version, property, item), indigo_xml_escape_b(5, indigo_get_text_item_value(item)));
 				}
 			}
 			INDIGO_PRINTF(handle, "</setTextVector>\n");

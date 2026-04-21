@@ -166,7 +166,7 @@ static void ccd_connect_callback(indigo_device *device) {
 				CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = properties.nPixelsX;
 				CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = properties.nPixelsY;
 				CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = round(properties.PixelMicronsX * 100)/100;
-				CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = round(properties.PixelMicronsX * 100) / 100;
+				CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = round(properties.PixelMicronsY * 100) / 100;
 				ArtemisGetMaxBin(PRIVATE_DATA->handle, &max_x_bin, &max_y_bin);
 				CCD_BIN_HORIZONTAL_ITEM->number.max = CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = max_x_bin;
 				CCD_BIN_VERTICAL_ITEM->number.max = CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = max_y_bin;
@@ -865,13 +865,13 @@ static void plug_handler(indigo_device *device) {
 		}
 	}
 	int count = ArtemisDeviceCount();
-	bool found = false;
 	for (int j = 0; j < count; j++) {
 		char serial[64] = "";
-		if (ArtemisDeviceSerial(j, serial) == ARTEMIS_OK) {
+		bool found = false;
+		if (ArtemisDeviceSerial(j, serial)) {
 			for (int i = 0; i < MAX_DEVICES; i++) {
 				indigo_device *device = devices[i];
-				if (device && !strcpy(PRIVATE_DATA->serial, serial)) {
+				if (device && !strcmp(PRIVATE_DATA->serial, serial)) {
 					PRIVATE_DATA->index = j;
 					found = true;
 					break;
@@ -938,7 +938,7 @@ static void unplug_handler(indigo_device *device) {
 	int count = ArtemisDeviceCount();
 	for (int j = 0; j < count; j++) {
 		char serial[64];
-		if (ArtemisDeviceSerial(j, serial) == ARTEMIS_OK) {
+		if (ArtemisDeviceSerial(j, serial)) {
 			for (int i = 0; i < MAX_DEVICES; i++) {
 				indigo_device *device = devices[i];
 				if (device && !strcmp(PRIVATE_DATA->serial, serial)) {

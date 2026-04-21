@@ -451,7 +451,7 @@ static void spiral_dither_values(unsigned int dither_number, double amount, bool
 
 static void do_dither(indigo_device *device) {
 	// if not guiding clear state and return
-	if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value != INDIGO_GUIDER_PHASE_GUIDING) {
+	if ((int)AGENT_GUIDER_STATS_PHASE_ITEM->number.value != INDIGO_GUIDER_PHASE_GUIDING) {
 		AGENT_GUIDER_DITHER_TRIGGER_ITEM->sw.value = false;
 		AGENT_GUIDER_DITHER_RESET_ITEM->sw.value = false;
 		AGENT_GUIDER_DITHER_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -780,7 +780,7 @@ static bool capture_and_process_frame(indigo_device *device) {
 				return false;
 			}
 			AGENT_GUIDER_STATS_SNR_ITEM->number.value = DEVICE_PRIVATE_DATA->reference->snr;
-			if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value >= INDIGO_GUIDER_PHASE_GUIDING && DEVICE_PRIVATE_DATA->reference->snr < DONUTS_MIN_SNR) {
+			if ((int)AGENT_GUIDER_STATS_PHASE_ITEM->number.value >= INDIGO_GUIDER_PHASE_GUIDING && DEVICE_PRIVATE_DATA->reference->snr < DONUTS_MIN_SNR) {
 				if (!DEVICE_PRIVATE_DATA->silence_warnings) {
 					indigo_send_message(device, BUSY_PROPERTY, "Warning: Signal to noise ratio is poor, increase exposure time or use different star detection mode");
 				}
@@ -862,7 +862,7 @@ static bool capture_and_process_frame(indigo_device *device) {
 				return false;
 			}
 			AGENT_GUIDER_STATS_SNR_ITEM->number.value = digest.snr;
-			if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value >= INDIGO_GUIDER_PHASE_GUIDING && digest.snr < DONUTS_MIN_SNR) {
+			if ((int)AGENT_GUIDER_STATS_PHASE_ITEM->number.value >= INDIGO_GUIDER_PHASE_GUIDING && digest.snr < DONUTS_MIN_SNR) {
 				if (!DEVICE_PRIVATE_DATA->silence_warnings) {
 					indigo_send_message(device, BUSY_PROPERTY, "Warning: Signal to noise ratio is poor, increase exposure time or use different star detection mode");
 				}
@@ -944,7 +944,7 @@ static bool capture_and_process_frame(indigo_device *device) {
 		if (DEVICE_PRIVATE_DATA->stack_size < MAX_STACK) {
 			DEVICE_PRIVATE_DATA->stack_size++;
 		}
-		if (AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value == 1 || AGENT_GUIDER_STATS_PHASE_ITEM->number.value != INDIGO_GUIDER_PHASE_GUIDING) {
+		if (AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value == 1 || (int)AGENT_GUIDER_STATS_PHASE_ITEM->number.value != INDIGO_GUIDER_PHASE_GUIDING) {
 			DEVICE_PRIVATE_DATA->avg_drift_x = 0;
 			DEVICE_PRIVATE_DATA->avg_drift_y = 0;
 		} else {
@@ -2402,7 +2402,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		   every guider settings item update (not only dithering related) will trigger dithering. Changing guider settings may happen in
 		   the middle of the exposure.
 		*/
-		if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value == INDIGO_GUIDER_PHASE_GUIDING && (dith_x != AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.target || dith_y != AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.target)) {
+		if ((int)AGENT_GUIDER_STATS_PHASE_ITEM->number.value == INDIGO_GUIDER_PHASE_GUIDING && (dith_x != AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.target || dith_y != AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.target)) {
 			double diff_x = fabs(AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.value - dith_x);
 			double diff_y = fabs(AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.value - dith_y);
 			DEVICE_PRIVATE_DATA->rmse_ra_sum =
