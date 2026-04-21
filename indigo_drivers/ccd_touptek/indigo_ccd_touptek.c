@@ -25,7 +25,10 @@
  \file indigo_ccd_touptek.c
  */
 
-#define DRIVER_VERSION 0x03000028
+#define DRIVER_VERSION 0x03000029
+
+/* seems to be fixed in recent SDK versions */
+// #define USB3_EXPOSURE_CLUDGE
 
 #include <stdlib.h>
 #include <string.h>
@@ -1032,6 +1035,7 @@ static void ccd_connect_callback(indigo_device *device) {
 			result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_TRIGGER), 1);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_TRIGGER, 1) -> %08x", result);
 
+#ifdef USB3_EXPOSURE_CLUDGE
 			/*
 			This is a workaround for a problem with some cameras that fail to get exposure if
 			after being plugged StartPullModeWithCallback() and Stop() are called without Trigger()
@@ -1047,6 +1051,8 @@ static void ccd_connect_callback(indigo_device *device) {
 				result = SDK_CALL(Stop)(PRIVATE_DATA->handle);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Stop() -> %08x", result);
 			}
+#endif
+
 			result = SDK_CALL(StartPullModeWithCallback)(PRIVATE_DATA->handle, pull_callback, device);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "StartPullModeWithCallback() -> %08x", result);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
