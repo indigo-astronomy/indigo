@@ -1364,7 +1364,7 @@ static void process_plug_event(indigo_device *unused) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ATTACH device[%d]: %s", i, discovery_string.c_str());
 		apogee_private_data *private_data = (apogee_private_data *)malloc(sizeof(apogee_private_data));
 		assert(private_data != NULL);
-		memset(private_data, 0, sizeof(apogee_private_data));
+		memset((void*)private_data, 0, sizeof(apogee_private_data));
 		indigo_device *device = (indigo_device *)indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
 		device->private_data = private_data;
 		PRIVATE_DATA->discovery_string = discovery_string;

@@ -529,7 +529,7 @@ static void aux_timer_callback(indigo_device *device) {
 			for (int i = 1; i < 7; i++) {
 				uint32_t port_state;
 				int rc;
-				if ((rc = libusb_control_transfer(PRIVATE_DATA->smart_hub, LIBUSB_ENDPOINT_IN | LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_OTHER, LIBUSB_REQUEST_GET_STATUS, 0, i, (unsigned char*)&port_state, sizeof(port_state), 3000)) == sizeof(port_state)) {
+				if ((rc = libusb_control_transfer(PRIVATE_DATA->smart_hub, (unsigned)LIBUSB_ENDPOINT_IN | (unsigned)LIBUSB_REQUEST_TYPE_CLASS | (unsigned)LIBUSB_RECIPIENT_OTHER, LIBUSB_REQUEST_GET_STATUS, 0, i, (unsigned char*)&port_state, sizeof(port_state), 3000)) == sizeof(port_state)) {
 					bool is_enabled = port_state & 0x00000100;
 					indigo_property_state state = INDIGO_IDLE_STATE;
 					if (port_state & 0x00000015) {
@@ -726,7 +726,7 @@ static void aux_connection_handler(indigo_device *device) {
 						if ((rc = libusb_open(dev, &PRIVATE_DATA->smart_hub)) == LIBUSB_SUCCESS) {
 							for (int i = 1; i < 7; i++) {
 								uint32_t port_state;
-								if ((rc = libusb_control_transfer(PRIVATE_DATA->smart_hub, LIBUSB_ENDPOINT_IN | LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_OTHER, LIBUSB_REQUEST_GET_STATUS, 0, i, (unsigned char*)&port_state, sizeof(port_state), 3000)) == sizeof(port_state)) {
+								if ((rc = libusb_control_transfer(PRIVATE_DATA->smart_hub, (unsigned)LIBUSB_ENDPOINT_IN | (unsigned)LIBUSB_REQUEST_TYPE_CLASS | (unsigned)LIBUSB_RECIPIENT_OTHER, LIBUSB_REQUEST_GET_STATUS, 0, i, (unsigned char*)&port_state, sizeof(port_state), 3000)) == sizeof(port_state)) {
 									indigo_property_state state = INDIGO_IDLE_STATE;
 									if (port_state & 0x00000015) {
 										state = INDIGO_BUSY_STATE;
@@ -921,15 +921,15 @@ static void aux_usb_port_handler(indigo_device *device) {
 			for (int i = 1; i < 7; i++) {
 				uint32_t port_state;
 				int rc;
-				if ((rc = libusb_control_transfer(PRIVATE_DATA->smart_hub, LIBUSB_ENDPOINT_IN | LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_OTHER, LIBUSB_REQUEST_GET_STATUS, 0, i, (unsigned char*)&port_state, sizeof(port_state), 3000)) == sizeof(port_state)) {
+				if ((rc = libusb_control_transfer(PRIVATE_DATA->smart_hub, (unsigned)LIBUSB_ENDPOINT_IN | (unsigned)LIBUSB_REQUEST_TYPE_CLASS | (unsigned)LIBUSB_RECIPIENT_OTHER, LIBUSB_REQUEST_GET_STATUS, 0, i, (unsigned char*)&port_state, sizeof(port_state), 3000)) == sizeof(port_state)) {
 					bool is_enabled = port_state & 0x00000100;
 					if (AUX_USB_PORT_PROPERTY->items[i - 1].sw.value != is_enabled) {
 						if (AUX_USB_PORT_PROPERTY->items[i - 1].sw.value) {
 							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Turning port #%d on", i);
-							rc = libusb_control_transfer(PRIVATE_DATA->smart_hub, LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_OTHER, LIBUSB_REQUEST_SET_FEATURE, 8, i, NULL, 0, 3000);
+							rc = libusb_control_transfer(PRIVATE_DATA->smart_hub, (unsigned)LIBUSB_REQUEST_TYPE_CLASS | (unsigned)LIBUSB_RECIPIENT_OTHER, LIBUSB_REQUEST_SET_FEATURE, 8, i, NULL, 0, 3000);
 						} else {
 							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Turning port #%d off", i);
-							rc = libusb_control_transfer(PRIVATE_DATA->smart_hub, LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_OTHER, LIBUSB_REQUEST_CLEAR_FEATURE, 8, i, NULL, 0, 3000);
+							rc = libusb_control_transfer(PRIVATE_DATA->smart_hub, (unsigned)LIBUSB_REQUEST_TYPE_CLASS | (unsigned)LIBUSB_RECIPIENT_OTHER, LIBUSB_REQUEST_CLEAR_FEATURE, 8, i, NULL, 0, 3000);
 						}
 						if (rc < 0) {
 							INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to set USB port status (%s)", libusb_strerror(rc));

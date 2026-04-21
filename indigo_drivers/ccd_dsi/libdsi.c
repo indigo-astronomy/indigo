@@ -1201,16 +1201,16 @@ static int dsicmd_write_firmware(libusb_device_handle *handle) {
 	int length;
 	unsigned char cpuStop = 0x01;
 	unsigned char cpuStart = 0x00;
-	int rc = libusb_control_transfer(handle, LIBUSB_ENDPOINT_OUT | LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_RECIPIENT_DEVICE, 0xA0, 0xE600, 0, &cpuStop, 1, 3000);
+	int rc = libusb_control_transfer(handle, (unsigned)LIBUSB_ENDPOINT_OUT | (unsigned)LIBUSB_REQUEST_TYPE_VENDOR | (unsigned)LIBUSB_RECIPIENT_DEVICE, 0xA0, 0xE600, 0, &cpuStop, 1, 3000);
 	while (rc >= 0 && *pnt) {
 		length = (*pnt++) & 0xFF;
 		address = (*pnt++) & 0xFF;
 		address = (address  << 8)| ((*pnt++) & 0xFF);
-		rc = libusb_control_transfer(handle, LIBUSB_ENDPOINT_OUT | LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_RECIPIENT_DEVICE, 0xA0, address, 0, pnt, length, 3000);
+		rc = libusb_control_transfer(handle, (unsigned)LIBUSB_ENDPOINT_OUT | (unsigned)LIBUSB_REQUEST_TYPE_VENDOR | (unsigned)LIBUSB_RECIPIENT_DEVICE, 0xA0, address, 0, pnt, length, 3000);
 		pnt += length;
 	}
 	if (rc >= 0) {
-		rc = (libusb_control_transfer(handle, LIBUSB_ENDPOINT_OUT | LIBUSB_REQUEST_TYPE_VENDOR | LIBUSB_RECIPIENT_DEVICE, 0xA0, 0xE600, 0, &cpuStart, 1, 3000));
+		rc = (libusb_control_transfer(handle, (unsigned)LIBUSB_ENDPOINT_OUT | (unsigned)LIBUSB_REQUEST_TYPE_VENDOR | (unsigned)LIBUSB_RECIPIENT_DEVICE, 0xA0, 0xE600, 0, &cpuStart, 1, 3000));
 	}
 	return rc;
 }

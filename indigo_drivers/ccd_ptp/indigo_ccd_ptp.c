@@ -692,7 +692,7 @@ static indigo_device *attach_device(int vendor, int product, const char *usb_pat
 	if (self) {
 		icBrowser = [[ICDeviceBrowser alloc] init];
 		icBrowser.delegate = self;
-		icBrowser.browsedDeviceTypeMask = ICDeviceTypeMaskCamera | ICDeviceLocationTypeMaskLocal;
+		icBrowser.browsedDeviceTypeMask = (unsigned)ICDeviceTypeMaskCamera | (unsigned)ICDeviceLocationTypeMaskLocal;
 	}
 	return self;
 }
