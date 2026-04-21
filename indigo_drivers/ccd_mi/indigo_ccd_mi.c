@@ -247,7 +247,7 @@ static void ccd_connect_callback(indigo_device *device) {
 				CCD_READ_MODE_PROPERTY = indigo_resize_property(CCD_READ_MODE_PROPERTY, int_value);
 				CCD_READ_MODE_PROPERTY->hidden = false;
 				gxccd_get_integer_parameter(PRIVATE_DATA->camera, GIP_DEFAULT_READ_MODE, &PRIVATE_DATA->read_mode);
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gxccd_get_integer_parameter(..., GIP_DEFAULT_READ_MODE, -> %d)", int_value);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gxccd_get_integer_parameter(..., GIP_DEFAULT_READ_MODE, -> %d)", PRIVATE_DATA->read_mode);
 				char name[32], description[32];
 				for (int i = 0; i < int_value; i++) {
 					gxccd_enumerate_read_modes(PRIVATE_DATA->camera, i, description, sizeof(description));
@@ -261,7 +261,6 @@ static void ccd_connect_callback(indigo_device *device) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gxccd_get_boolean_parameter(..., GBP_COOLER, -> %d)", bool_value);
 			if (bool_value) {
 				CCD_COOLER_PROPERTY->hidden = false;
-				float float_value;
 				int state = gxccd_get_value(PRIVATE_DATA->camera, GV_POWER_UTILIZATION, &float_value);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gxccd_get_value(..., GV_POWER_UTILIZATION, -> %g) -> %d", float_value, state);
 				if (float_value == 0) { // initial cooler state is guessed from the cooler power
@@ -269,7 +268,7 @@ static void ccd_connect_callback(indigo_device *device) {
 					CCD_TEMPERATURE_ITEM->number.value = TEMP_COOLER_OFF;
 					indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_OFF_ITEM, true);
 				} else {
-					int state = gxccd_get_value(PRIVATE_DATA->camera, GV_CHIP_TEMPERATURE, &float_value);
+					state = gxccd_get_value(PRIVATE_DATA->camera, GV_CHIP_TEMPERATURE, &float_value);
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gxccd_get_value(..., GV_CHIP_TEMPERATURE, -> %g) -> %d", float_value, state);
 					PRIVATE_DATA->target_temperature = float_value;  // initial target is set to the current temperature
 					indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_ON_ITEM, true);
