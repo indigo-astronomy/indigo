@@ -922,7 +922,9 @@ static duk_ret_t utc_to_time(duk_context *ctx) {
 	const char *utc = duk_require_string(ctx, 0);
 	struct tm tm_time;
 	memset(&tm_time, 0, sizeof(struct tm));
-	parse_utc(utc, time(NULL), &tm_time);
+	if (!parse_utc(utc, time(NULL), &tm_time)) {
+		return DUK_RET_ERROR;
+	}
 	time_t target_time = indigo_timegm(&tm_time);
 	if (target_time == -1) {
 		return DUK_RET_ERROR;
@@ -1047,7 +1049,7 @@ static duk_ret_t set_timer_at_utc(duk_context *ctx) {
 
 static duk_ret_t cancel_timer(duk_context *ctx) {
 	int i = duk_require_int(ctx, 0);
-	if (i < MAX_TIMER_COUNT) {
+	if (0 <= i && i < MAX_TIMER_COUNT) {
 		if (PRIVATE_DATA->timers[i]) {
 			if (indigo_cancel_timer(agent_device, PRIVATE_DATA->timers + i)) {
 				return 0;
