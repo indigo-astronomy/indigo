@@ -2098,14 +2098,15 @@ static void meade_update_mount_state(indigo_device *device) {
 // ---------------------------------------------------------------------- mount specific properties
 
 static void zwo_buzzer_callback(indigo_device *device) {
+	bool result = false;
 	if (ZWO_BUZZER_OFF_ITEM->sw.value) {
-		meade_no_reply_command(device, ":SBu0#");
+		result = meade_no_reply_command(device, ":SBu0#");
 	} else if (ZWO_BUZZER_LOW_ITEM->sw.value) {
-		meade_no_reply_command(device, ":SBu1#");
+		result = meade_no_reply_command(device, ":SBu1#");
 	} else if (ZWO_BUZZER_HIGH_ITEM->sw.value) {
-		meade_no_reply_command(device, ":SBu2#");
+		result = meade_no_reply_command(device, ":SBu2#");
 	}
-	ZWO_BUZZER_PROPERTY->state = INDIGO_OK_STATE;
+	ZWO_BUZZER_PROPERTY->state = result ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 	indigo_update_property(device, ZWO_BUZZER_PROPERTY, NULL);
 }
 
@@ -3284,14 +3285,14 @@ static indigo_result aux_attach(indigo_device *device) {
 		}
 		AUX_HEATER_OUTLET_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- AUX_POWER_OUTLET
-		AUX_POWER_OUTLET_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_HEATER_OUTLET_PROPERTY_NAME, AUX_GROUP, "Heater outlets", INDIGO_OK_STATE, INDIGO_RW_PERM, 8);
+		AUX_POWER_OUTLET_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_HEATER_OUTLET_PROPERTY_NAME, AUX_GROUP, "Power outlets", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 8);
 		if (AUX_POWER_OUTLET_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
 		for (int i = 0; i < 8; i++) {
 			snprintf(name, sizeof(name), AUX_POWER_OUTLET_ITEM_NAME, i + 1);
 			snprintf(label, sizeof(label), "Outlet #%d", i + 1);
-			indigo_init_switch_item(AUX_POWER_OUTLET_PROPERTY->items, name, label, true);
+			indigo_init_switch_item(AUX_POWER_OUTLET_PROPERTY->items + i, name, label, true);
 		}
 		AUX_POWER_OUTLET_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------
@@ -3421,8 +3422,7 @@ static void aux_power_outlet_handler(indigo_device *device) {
 		indigo_item *item = AUX_POWER_OUTLET_PROPERTY->items + i;
 		bool val = item->sw.value;
 		int slot = ONSTEP_AUX_POWER_OUTLET_MAPPING[i];
-		meade_simple_reply_command(device, ":SXX%d,V%d#", slot, val);
-		if (PRIVATE_DATA->response[0] != '1') {
+		if (!meade_simple_reply_command(device, ":SXX%d,V%d#", slot, val) || PRIVATE_DATA->response[0] != '1') {
 			AUX_POWER_OUTLET_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 	}
