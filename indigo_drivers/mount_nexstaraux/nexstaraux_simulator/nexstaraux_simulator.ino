@@ -39,8 +39,8 @@
 static const char *AP_SSID     = "NexStarSim";   // Network name to create
 static const char *AP_PASSWORD = "nexstar1234";  // Min 8 chars, or NULL for open
 #else
-static const char *WIFI_SSID     = "iPhone 15";
-static const char *WIFI_PASSWORD = "Zongora2";
+static const char *WIFI_SSID     = "SSID";
+static const char *WIFI_PASSWORD = "PASSWORD";
 #endif
 static const int   TCP_PORT    = 2000;
 // ESP32 AP default IP is always 192.168.4.1
