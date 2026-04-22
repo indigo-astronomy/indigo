@@ -713,7 +713,6 @@ var indigo_sequencer = {
 					}
 				} else {
 					indigo_update_switch_property(this.devices[SCRIPTING_AGENT], "AGENT_ABORT_PROCESS", { ABORT: false }, this.abort_state = "Alert");
-					this.abort_state = "Alert";
 				}
 			} else if (property.name == "AGENT_PAUSE_PROCESS") {
 				if (this.sequence != null) {
@@ -843,11 +842,12 @@ var indigo_sequencer = {
 	},
 
 	execute_next: function() {
+		var nesting = 0;
 		if (this.paused) {
 			indigo_set_timer(indigo_sequencer_next_handler, 0.01);
 		} else if (this.sequence != null) {
-			previous = this.sequence[this.index];
-			nesting = 0;
+			var previous = this.sequence[this.index];
+			var current = null;
 			while (true) {
 				current = this.sequence[++this.index];
 				if (current == null) {
@@ -1032,7 +1032,7 @@ var indigo_sequencer = {
 		this.set_switch(device, property, item, true, state);
 	},
 
-	deselect_switch: function(device, property, item) {
+	deselect_switch: function(device, property, item, state) {
 		this.set_switch(device, property, item, false, state);
 	},
 
@@ -1173,7 +1173,6 @@ var indigo_sequencer = {
 	wait_until_time: function(target_time) {
 		var delay = indigo_time_to_delay(target_time);
 		if (delay <= 0) {
-			var utc = indigo_delay_to_utc(0);
 			indigo_send_message("Target time has passed");
 			indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
 			return;
