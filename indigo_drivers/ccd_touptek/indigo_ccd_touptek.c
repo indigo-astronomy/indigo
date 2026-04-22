@@ -275,6 +275,7 @@ typedef struct {
 	int mode;
 	int left, top, width, height;
 	bool aborting;
+	bool video_mode;
 	pthread_mutex_t mutex;
 	indigo_property *advanced_property;
 	indigo_property *fan_property;
@@ -416,13 +417,31 @@ static void finish_exposure_async(indigo_device *device) {
 	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 }
 
-static void finish_streaming_async(indigo_device *device) {
-	/* Stop streaming by setting trigger mode */
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+static void stop_video_mode_async(indigo_device *device) {
+	/* put_Option(OPTION_TRIGGER) must only be called from a timer thread:
+	   it internally joins the SDK callback thread, so it MUST NOT be called
+	   while holding bus_mutex or PRIVATE_DATA->mutex (both cause deadlock).
+	   Guard with video_mode flag to ensure it is only called once even if
+	   both a natural end and an abort race to schedule this function.
+	*/
+	if (!PRIVATE_DATA->video_mode) return;
+	PRIVATE_DATA->video_mode = false;
+
+	if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+		/* Abort path: set aborting before stopping so that the final frame
+		   delivered by the SDK during put_Option is caught by the pull
+		   callback, which handles indigo_finalize_video_stream and cleanup.
+		*/
+		PRIVATE_DATA->aborting = true;
+	}
+
 	HRESULT result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_TRIGGER), 1);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_TRIGGER, 1) -> %08x", result);
-	indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
+
+	if (CCD_STREAMING_PROPERTY->state != INDIGO_BUSY_STATE) {
+		/* Natural end: state already set to OK before scheduling this timer. */
+		indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
+	}
 }
 
 static void abort_cleanup_async(indigo_device *device) {
@@ -472,12 +491,13 @@ static void pull_callback(unsigned event, void* callbackCtx) {
 
 	switch (event) {
 		case SDK_DEF(EVENT_IMAGE): {
-			pthread_mutex_lock(&PRIVATE_DATA->mutex);
 			result = SDK_CALL(PullImageV2)(PRIVATE_DATA->handle, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->bits, &frameInfo);
-			pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 			if (result >= 0) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "PullImageV2(%d, ->[%d x %d, %x, %d]) -> %08x", PRIVATE_DATA->bits, frameInfo.width, frameInfo.height, frameInfo.flag, frameInfo.seq, result);
 				if (PRIVATE_DATA->aborting) {
+					/* Abort path (single-exposure or streaming): discard this frame,
+					   finalize any open video file, and clean up.
+					*/
 					PRIVATE_DATA->aborting = false;
 					indigo_finalize_video_stream(device);
 					indigo_set_timer(device, 0, abort_cleanup_async, NULL);
@@ -494,11 +514,11 @@ static void pull_callback(unsigned event, void* callbackCtx) {
 						if (CCD_STREAMING_COUNT_ITEM->number.value == 0) {
 							indigo_finalize_video_stream(device);
 							CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
-							/* We need to set the trigger mode to stop streaming, but we can not do
-							   this in the pull callback, so we execute it asynchronously.
-							   Lerned this the hard way!
+							/* put_Option(OPTION_TRIGGER,1) must run from a timer thread (not the SDK
+							   callback thread). stop_video_mode_async is guarded by video_mode flag
+							   to prevent double-call if an abort races with count reaching 0.
 							*/
-							indigo_set_timer(device, 0, finish_streaming_async, NULL);
+							indigo_set_timer(device, 0, stop_video_mode_async, NULL);
 						} else {
 							indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 						}
@@ -513,7 +533,7 @@ static void pull_callback(unsigned event, void* callbackCtx) {
 				} else if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 					indigo_finalize_video_stream(device);
 					CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
-					indigo_set_timer(device, 0, finish_streaming_async, NULL);
+					indigo_set_timer(device, 0, stop_video_mode_async, NULL);
 				}
 			}
 			break;
@@ -528,7 +548,7 @@ static void pull_callback(unsigned event, void* callbackCtx) {
 			} else if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 				indigo_finalize_video_stream(device);
 				CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
+				indigo_set_timer(device, 0, stop_video_mode_async, NULL);
 			}
 			break;
 		}
@@ -1275,6 +1295,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		result = SDK_CALL(put_ExpoTime)(PRIVATE_DATA->handle, (unsigned)(CCD_STREAMING_EXPOSURE_ITEM->number.target * 1000000));
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_ExpoTime(%u) -> %08x", (unsigned)(CCD_STREAMING_EXPOSURE_ITEM->number.target * 1000000), result);
 		PRIVATE_DATA->aborting = false;
+		PRIVATE_DATA->video_mode = true;
 		result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_TRIGGER), 0);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_TRIGGER, 0) -> %08x", result);
 		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -1285,18 +1306,24 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->exposure_watchdog_timer);
-			pthread_mutex_lock(&PRIVATE_DATA->mutex);
-			PRIVATE_DATA->aborting = true;
 			if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
-				/* Streaming abort is done by setting trigger mode */
-				result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_TRIGGER), 1);
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_TRIGGER, 1) -> %08x (streaming abort)", result);
-				CCD_STREAMING_COUNT_ITEM->number.value = 0;
+				/* Streaming abort: must not call put_Option(OPTION_TRIGGER,1) here —
+				   it joins the SDK callback thread, which deadlocks because we hold
+				   bus_mutex and the callback thread may be waiting for bus_mutex.
+				   Defer to a timer thread. Streaming exposures can be very long so
+				   we cannot wait for the next frame via the aborting flag.
+				*/
+				indigo_set_timer(device, 0, stop_video_mode_async, NULL);
 			} else {
+				/* Single-exposure abort: cancel the pending trigger. The callback
+				   will fire with the discarded frame and clean up via aborting flag.
+				*/
+				PRIVATE_DATA->aborting = true;
+				pthread_mutex_lock(&PRIVATE_DATA->mutex);
 				result = SDK_CALL(Trigger)(PRIVATE_DATA->handle, 0);
+				pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Trigger(0) -> %08x", result);
 			}
-			pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 		}
 	} else if (indigo_property_match_changeable(CCD_COOLER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_COOLER
