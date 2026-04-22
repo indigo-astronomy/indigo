@@ -418,8 +418,16 @@ static void fnish_exposure_async(indigo_device *device) {
 }
 
 static void finish_streaming_async(indigo_device *device) {
-	CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
+	/* Stop streaming by setting trigger mode */
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	HRESULT result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_TRIGGER), 1);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_TRIGGER, 1) -> %08x", result);
 	indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
+}
+
+static void abort_cleanup_async(indigo_device *device) {
+	indigo_ccd_abort_exposure_cleanup(device);
 }
 
 static void exposure_watchdog_callback(indigo_device *device) {
@@ -471,7 +479,9 @@ static void pull_callback(unsigned event, void* callbackCtx) {
 			if (result >= 0) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "PullImageV2(%d, ->[%d x %d, %x, %d]) -> %08x", PRIVATE_DATA->bits, frameInfo.width, frameInfo.height, frameInfo.flag, frameInfo.seq, result);
 				if (PRIVATE_DATA->aborting) {
+					PRIVATE_DATA->aborting = false;
 					indigo_finalize_video_stream(device);
+					indigo_set_timer(device, 0, abort_cleanup_async, NULL);
 				} else {
 					if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 						indigo_process_image(device, PRIVATE_DATA->buffer, frameInfo.width, frameInfo.height, PRIVATE_DATA->bits > 8 && PRIVATE_DATA->bits <= 16 ? 16 : PRIVATE_DATA->bits, true, true, fits_keywords, false);
@@ -479,11 +489,18 @@ static void pull_callback(unsigned event, void* callbackCtx) {
 						indigo_set_timer(device, 0, fnish_exposure_async, NULL);
 					} else if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 						indigo_process_image(device, PRIVATE_DATA->buffer, frameInfo.width, frameInfo.height, PRIVATE_DATA->bits > 8 && PRIVATE_DATA->bits <= 16 ? 16 : PRIVATE_DATA->bits, true, true, fits_keywords, true);
-						if (--CCD_STREAMING_COUNT_ITEM->number.value == 0) {
+						if (CCD_STREAMING_COUNT_ITEM->number.value > 0) {
+							CCD_STREAMING_COUNT_ITEM->number.value--;
+						}
+						if (CCD_STREAMING_COUNT_ITEM->number.value == 0) {
 							indigo_finalize_video_stream(device);
+							CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
+							/* We need to set the trigger mode to stop streaming, but we can not do
+							   this in the pull callback, so we execute it asynchronously.
+							   Lerned this the hard way!
+							*/
 							indigo_set_timer(device, 0, finish_streaming_async, NULL);
-						} else if (CCD_STREAMING_COUNT_ITEM->number.value < -1) {
-							CCD_STREAMING_COUNT_ITEM->number.value = -1;
+						} else {
 							indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 						}
 					}
@@ -497,7 +514,7 @@ static void pull_callback(unsigned event, void* callbackCtx) {
 				} else if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 					indigo_finalize_video_stream(device);
 					CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
-					indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
+					indigo_set_timer(device, 0, finish_streaming_async, NULL);
 				}
 			}
 			break;
@@ -774,8 +791,8 @@ static indigo_result ccd_attach(indigo_device *device) {
 				CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
 			}
 		}
-		CCD_STREAMING_PROPERTY->hidden = ((flags & SDK_DEF(FLAG_TRIGGER_SINGLE)) != 0);
-		CCD_IMAGE_FORMAT_PROPERTY->count = CCD_STREAMING_PROPERTY->hidden ? 5 : 6;
+		CCD_STREAMING_PROPERTY->hidden = false;
+		CCD_IMAGE_FORMAT_PROPERTY->count = 6;
 		CCD_GAIN_PROPERTY->hidden = false;
 
 		X_CCD_ADVANCED_PROPERTY = indigo_init_number_property(NULL, device->name, "X_CCD_ADVANCED", CCD_ADVANCED_GROUP, "Advanced Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 9);
@@ -1238,8 +1255,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		result = SDK_CALL(put_ExpoTime)(PRIVATE_DATA->handle, (unsigned)(CCD_STREAMING_EXPOSURE_ITEM->number.target * 1000000));
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_ExpoTime(%u) -> %08x", (unsigned)(CCD_STREAMING_EXPOSURE_ITEM->number.target * 1000000), result);
 		PRIVATE_DATA->aborting = false;
-		result = SDK_CALL(Trigger)(PRIVATE_DATA->handle, (unsigned short)CCD_STREAMING_COUNT_ITEM->number.value);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Trigger(%d) -> %08x", (unsigned short)CCD_STREAMING_COUNT_ITEM->number.value, result);
+		result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_TRIGGER), 0);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_TRIGGER, 0) -> %08x", result);
 		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 	} else if (indigo_property_match_changeable(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
@@ -1248,11 +1265,18 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->exposure_watchdog_timer);
-			PRIVATE_DATA->aborting = true;
 			pthread_mutex_lock(&PRIVATE_DATA->mutex);
-			result = SDK_CALL(Trigger)(PRIVATE_DATA->handle, 0);
+			PRIVATE_DATA->aborting = true;
+			if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+				/* Streaming abort is done by setting trigger mode */
+				result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_TRIGGER), 1);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_TRIGGER, 1) -> %08x (streaming abort)", result);
+				CCD_STREAMING_COUNT_ITEM->number.value = 0;
+			} else {
+				result = SDK_CALL(Trigger)(PRIVATE_DATA->handle, 0);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Trigger(0) -> %08x", result);
+			}
 			pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Trigger(0) -> %08x", result);
 		}
 	} else if (indigo_property_match_changeable(CCD_COOLER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_COOLER
