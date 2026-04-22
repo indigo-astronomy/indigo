@@ -33,7 +33,7 @@
 
 // ---- Access point configuration ---- (edit these) --------------------------
 
-//#define AP
+#define AP
 
 #ifdef AP
 static const char *AP_SSID     = "NexStarSim";   // Network name to create
