@@ -165,6 +165,9 @@ static bool nexstaraux_command(indigo_device *device, targets src, targets dst, 
 					return false;
 				}
 			}
+			if (*reply != 0x3b) {
+				return false;
+			}
 			if (indigo_uni_read(PRIVATE_DATA->handle, reply + 1, 1) == 1) {
 				if (indigo_uni_read(PRIVATE_DATA->handle, (char *)(reply + 2), reply[1] + 1) > 0) {
 					if (buffer[4] != reply[4] || buffer[2] != reply[3] || buffer[3] != reply[2]) {
@@ -213,7 +216,7 @@ static bool nexstaraux_open(indigo_device *device) {
 			PRIVATE_DATA->handle = indigo_uni_open_url(name, 2000, INDIGO_TCP_HANDLE, -INDIGO_LOG_DEBUG);
 		}
 	}
-	if (PRIVATE_DATA->handle > 0) {
+	if (PRIVATE_DATA->handle != NULL) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
 		indigo_uni_set_socket_read_timeout(PRIVATE_DATA->handle, 1000000);
 		indigo_uni_set_socket_write_timeout(PRIVATE_DATA->handle, 1000000);
@@ -227,7 +230,7 @@ static bool nexstaraux_open(indigo_device *device) {
 			return true;
 		} else {
 			indigo_uni_close(&PRIVATE_DATA->handle);
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed", name);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed");
 			return false;
 		}
 	} else {
@@ -358,7 +361,6 @@ static void mount_equatorial_coordinates_callback(indigo_device *device) {
 	double ha = fmod(lst - ra + 24, 24);
 	int32_t raw_azm = (int32_t)((fmod(ha + 12, 24) / 24.0) * 0x1000000) % 0x1000000;
 	int32_t raw_alt = (int32_t)((dec / 360.0) * 0x1000000) % 0x1000000;
-	printf("0");
 	if (!nexstaraux_command_24(device, APP, AZM, MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value ? MC_SET_POSITION : MC_GOTO_FAST, raw_azm, reply) || !nexstaraux_command_24(device, APP, ALT, MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value ? MC_SET_POSITION : MC_GOTO_FAST, raw_alt, reply)) {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
@@ -470,11 +472,10 @@ static void mount_park_callback(indigo_device *device) {
 	unsigned char reply[16] = { 0 };
 	indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
 	nexstaraux_tracking(device);
-	MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 	if (!nexstaraux_command_24(device, APP, AZM, MC_GOTO_FAST, 0x800000, reply) || !nexstaraux_command_24(device, APP, ALT, MC_GOTO_FAST, 0x000000, reply)) {
 		MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-	while (MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE) {
+	while (true) {
 		indigo_usleep(1000000);
 		if (nexstaraux_command(device, APP, AZM, MC_SLEW_DONE, NULL, 0, reply)) {
 			if (reply[5] == 0x00) {
@@ -492,6 +493,7 @@ static void mount_park_callback(indigo_device *device) {
 			MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
 			break;
 		}
+		MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 		break;
 	}
 	indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
@@ -604,7 +606,10 @@ static void guider_connect_callback(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		bool result = nexstaraux_open(device->master_device);
+		bool result = true;
+		if (PRIVATE_DATA->count_open++ == 0) {
+			result = nexstaraux_open(device);
+		}
 		if (result) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
@@ -614,7 +619,9 @@ static void guider_connect_callback(indigo_device *device) {
 	} else {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->guider_timer_ra);
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->guider_timer_dec);
-		nexstaraux_close(device);
+		if (--PRIVATE_DATA->count_open == 0) {
+			nexstaraux_close(device);
+		}
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
@@ -650,7 +657,6 @@ static void guider_timer_ra_callback(indigo_device *device) {
 	}
 	GUIDER_GUIDE_EAST_ITEM->number.value = 0;
 	GUIDER_GUIDE_WEST_ITEM->number.value = 0;
-	GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }

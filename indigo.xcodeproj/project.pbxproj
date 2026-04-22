@@ -4990,6 +4990,7 @@
 		9DE0E7B422C6465500289234 /* indigo_focuser_dsd_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_dsd_main.c; sourceTree = "<group>"; };
 		9DE0E7B522C6465500289234 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9DE0E7B622C6465500289234 /* indigo_focuser_dsd.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_dsd.h; sourceTree = "<group>"; };
+		9DE55C982F98C3C700B2C143 /* nexstaraux_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = nexstaraux_simulator.ino; sourceTree = "<group>"; };
 		9DF148102D52384D00049345 /* build_windows_sdk.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = build_windows_sdk.sh; sourceTree = "<group>"; };
 		9DF148112D52384D00049345 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		9DF148122D52384D00049345 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -7995,6 +7996,7 @@
 				599AD8A02552F64A0008D481 /* indigo_mount_nexstaraux.c */,
 				599AD89E2552F64A0008D481 /* indigo_mount_nexstaraux_main.c */,
 				599AD89C2552F64A0008D481 /* nexstar_aux_commands_10.pdf */,
+				9DE55C992F98C3C700B2C143 /* nexstaraux_simulator */,
 			);
 			path = mount_nexstaraux;
 			sourceTree = "<group>";
@@ -14429,6 +14431,14 @@
 				9DE0E7B422C6465500289234 /* indigo_focuser_dsd_main.c */,
 			);
 			path = focuser_dsd;
+			sourceTree = "<group>";
+		};
+		9DE55C992F98C3C700B2C143 /* nexstaraux_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				9DE55C982F98C3C700B2C143 /* nexstaraux_simulator.ino */,
+			);
+			path = nexstaraux_simulator;
 			sourceTree = "<group>";
 		};
 		9DF148132D52384D00049345 /* gcc */ = {
