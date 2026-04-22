@@ -35,7 +35,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300002C
+#define DRIVER_VERSION       0x0300002D
 #define DRIVER_NAME          "indigo_mount_ioptron"
 #define DRIVER_LABEL         "iOptron Mount"
 #define MOUNT_DEVICE_NAME    "iOptron Mount"
@@ -122,7 +122,7 @@ static mount_type PRODUCTS[] = {
 	{  120, NULL, "CEM120", V3_0, false, true, true },
 	{  121, NULL, "CEM120EC", V3_0, true, true, true },
 	{  122, NULL, "CEM120EC2", V3_0, false, true, true },
-	{ 9035, NULL, "AZMountProSM", V3_0, false, false },
+	{ 9035, NULL, "AZMountProSM", V3_0, false, false, false },
 	{   28, NULL, "GEM28", V3_0, false, true, false },
 	{   29, NULL, "GEM28EC", V3_0, true, true, false },
 	{ 5045, NULL, "iEQ45ProAA", V3_0, false, true, false },
@@ -142,7 +142,7 @@ static mount_type PRODUCTS[] = {
 	{   51, NULL, "HAE43AA", V3_0, false, true, false },
 	{ 8050, NULL, "HAE43SM", V3_0, false, true, false },
 	{ 8051, NULL, "HAE43AASM", V3_0, false, true, false },
-	{    0, NULL, "", V3_0, false, false },
+	{    0, NULL, "", V3_0, false, false, false },
 };
 
 //- define
@@ -387,17 +387,17 @@ static bool ioptron_detect_mount(indigo_device *device) {
 	}
 	if (PRIVATE_DATA->protocol == UNKNOWN) {
 		if (strncmp("140807", INFO_DEVICE_FW_REVISION_ITEM->text.value, 6) >= 0) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Unknown mount model (%04 %s), protocol 1.0 assumed", PRIVATE_DATA->product, INFO_DEVICE_FW_REVISION_ITEM->text.value);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Unknown mount model (%04u %s), protocol 1.0 assumed", PRIVATE_DATA->product, INFO_DEVICE_FW_REVISION_ITEM->text.value);
 			PRIVATE_DATA->protocol = V1_0;
 		} else if (strncmp("161101", INFO_DEVICE_FW_REVISION_ITEM->text.value, 6) >= 0) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Unknown mount model (%04 %s), protocol 2.0 assumed", PRIVATE_DATA->product, INFO_DEVICE_FW_REVISION_ITEM->text.value);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Unknown mount model (%04u %s), protocol 2.0 assumed", PRIVATE_DATA->product, INFO_DEVICE_FW_REVISION_ITEM->text.value);
 			PRIVATE_DATA->protocol = V2_0;
 		} else if (ioptron_command(device, ":GLS#")) {
 			if (strlen(PRIVATE_DATA->response) == 19) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Unknown mount model (%04 %s), protocol 2.5 assumed", PRIVATE_DATA->product, INFO_DEVICE_FW_REVISION_ITEM->text.value);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Unknown mount model (%04u %s), protocol 2.5 assumed", PRIVATE_DATA->product, INFO_DEVICE_FW_REVISION_ITEM->text.value);
 				PRIVATE_DATA->protocol = V2_5;
 			} else if (strlen(PRIVATE_DATA->response) == 23) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Unknown mount model (%04 %s), protocol 3.0 assumed", PRIVATE_DATA->product, INFO_DEVICE_FW_REVISION_ITEM->text.value);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Unknown mount model (%04u %s), protocol 3.0 assumed", PRIVATE_DATA->product, INFO_DEVICE_FW_REVISION_ITEM->text.value);
 				PRIVATE_DATA->protocol = V3_0;
 			}
 		}
@@ -420,7 +420,7 @@ static bool ioptron_set_utc(indigo_device *device, time_t secs, int utc_offset) 
 	struct tm tm;
 	indigo_gmtime(&seconds, &tm);
 	if (PRIVATE_DATA->protocol == HC_8406) {
-		if (!ioptron_command(device, ":SL %02d:%02d:%02d#", tm.tm_hour, tm.tm_min, tm.tm_sec, PRIVATE_DATA->response, 1) || *PRIVATE_DATA->response != '1') {
+		if (!ioptron_command(device, ":SL %02d:%02d:%02d#", tm.tm_hour, tm.tm_min, tm.tm_sec) || *PRIVATE_DATA->response != '1') {
 			MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
 			if (!ioptron_simple_reply_command(device, ":SC %02d/%02d/%02d#", tm.tm_mon + 1, tm.tm_mday, tm.tm_year % 100)) {
@@ -560,14 +560,14 @@ static bool ioptron_get_site(indigo_device *device, double *latitude, double *lo
 			*latitude = atol(PRIVATE_DATA->response) / 60.0 / 60.0;
 			if (ioptron_command(device, ":Gg#")) {
 				*longitude = atol(PRIVATE_DATA->response) / 60.0 / 60.0;
-				if (longitude < 0) {
-					longitude += 360;
+				if (*longitude < 0) {
+					*longitude += 360;
 				}
 				return true;
 			}
 		}
 	} else if (PRIVATE_DATA->protocol == V2_5) {
-		if (ioptron_command(device, ":GLS#")) {
+		if (ioptron_command(device, ":GLS#") && strlen(PRIVATE_DATA->response) == 19) {
 			char val[16];
 			memcpy(val, PRIVATE_DATA->response, 7);
 			val[7] = 0;
@@ -581,7 +581,7 @@ static bool ioptron_get_site(indigo_device *device, double *latitude, double *lo
 			return true;
 		}
 	} else if (PRIVATE_DATA->protocol == V3_0) {
-		if (ioptron_command(device, ":GLS#")) {
+		if (ioptron_command(device, ":GLS#") && strlen(PRIVATE_DATA->response) == 23) {
 			char val[16];
 			memcpy(val, PRIVATE_DATA->response, 9);
 			val[9] = 0;
@@ -615,7 +615,7 @@ static bool ioptron_set_site(indigo_device *device, double latitude, double long
 			}
 		}
 	} else if (PRIVATE_DATA->protocol == V3_0) {
-		if (ioptron_simple_reply_command(device, ":SLA%+09.0f#", MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value * 60 * 60 * 100) && *PRIVATE_DATA->response == '1') {
+		if (ioptron_simple_reply_command(device, ":SLA%+09.0f#", latitude * 60 * 60 * 100) && *PRIVATE_DATA->response == '1') {
 			if (ioptron_simple_reply_command(device, ":SLO%+09.0f#", longitude * 60 * 60 * 100) && *PRIVATE_DATA->response == '1') {
 				return true;
 			}
@@ -857,7 +857,9 @@ static bool ioptron_move(indigo_device *device, int slew_rate, char direction) {
 	bool result = true;
 	if (PRIVATE_DATA->last_slew_rate != slew_rate) {
 		result = ioptron_simple_reply_command(device, ":SR%d#", slew_rate) && *PRIVATE_DATA->response == '1';
-		PRIVATE_DATA->last_slew_rate = slew_rate;
+		if (result) {
+			PRIVATE_DATA->last_slew_rate = slew_rate;
+		}
 	}
 	if (result) {
 		result = ioptron_no_reply_command(device, ":m%c#", direction);
@@ -1313,7 +1315,7 @@ static bool ioptron_init_guider(indigo_device *device) {
 	if (ioptron_detect_mount(device->master_device)) {
 		if (PRIVATE_DATA->protocol == HC_8406) {
 			GUIDER_RATE_PROPERTY->hidden = true;
-		} else if (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == V1_0 || PRIVATE_DATA->protocol == V2_0) {
+		} else if (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == V1_0) {
 			GUIDER_RATE_PROPERTY->hidden = false;
 			GUIDER_RATE_PROPERTY->count = 1;
 			if (ioptron_command(device, ":AG#")) {
@@ -1581,19 +1583,19 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 		} else if (MOUNT_TRACK_RATE_LUNAR_ITEM->sw.value) {
-			if (!ioptron_set_tracking_rate(device, 0, 0)) {
+			if (!ioptron_set_tracking_rate(device, 1, 0)) {
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 		} else if (MOUNT_TRACK_RATE_SOLAR_ITEM->sw.value) {
-			if (!ioptron_set_tracking_rate(device, 0, 0)) {
+			if (!ioptron_set_tracking_rate(device, 2, 0)) {
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 		} else if (MOUNT_TRACK_RATE_KING_ITEM->sw.value) {
-			if (!ioptron_set_tracking_rate(device, 0, 0)) {
+			if (!ioptron_set_tracking_rate(device, 3, 0)) {
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 		} else if (MOUNT_TRACK_RATE_CUSTOM_ITEM->sw.value) {
-			if (!ioptron_set_tracking_rate(device, 0, MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value)) {
+			if (!ioptron_set_tracking_rate(device, 4, MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value)) {
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 		}
