@@ -24,7 +24,7 @@
  \file indigo_mount_lx200.c
  */
 
-#define DRIVER_VERSION 0x03000031
+#define DRIVER_VERSION 0x03000032
 #define DRIVER_NAME	"indigo_mount_lx200"
 
 #define NYX_BASE64_THRESHOLD_VERSION "1.32.0"
@@ -633,7 +633,7 @@ static bool meade_set_site(indigo_device *device, double latitude, double longit
 		return false;
 	}
 	if (MOUNT_TYPE_STARGO_ITEM->sw.value) {
-		meade_simple_reply_command(device, indigo_dtos(latitude, "%+03d*%02d:%02d"));
+		meade_simple_reply_command(device, ":St%s#", indigo_dtos(latitude, "%+03d*%02d:%02d"));
 		result = true; // ignore result for Avalon StarGO
 	} else {
 		result = meade_simple_reply_command(device, ":St%s#", indigo_dtos(latitude, "%+03d*%02d")) && *PRIVATE_DATA->response == '1';
@@ -2033,7 +2033,7 @@ static void meade_update_mount_state(indigo_device *device) {
 			MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_IDLE_STATE;
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
-			MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_OK_STATE;
+			MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_ALERT_STATE;
 		}
 	}
 	if (MOUNT_TRACKING_PROPERTY->state != INDIGO_BUSY_STATE) { // to avoid race never change tracking state if BUSY
@@ -2112,6 +2112,8 @@ static void zwo_buzzer_callback(indigo_device *device) {
 
 static void nyx_ap_callback(indigo_device *device) {
 	NYX_WIFI_AP_PROPERTY->state = INDIGO_ALERT_STATE;
+	NYX_WIFI_AP_SSID_ITEM->text.value[25] = 0;
+	NYX_WIFI_AP_PASSWORD_ITEM->text.value[30] = 0;
 	if (meade_simple_reply_command(device, ":WA%s#", NYX_WIFI_AP_SSID_ITEM->text.value) && *PRIVATE_DATA->response == '1') {
 		if (meade_simple_reply_command(device, ":WB%s#", NYX_WIFI_AP_PASSWORD_ITEM->text.value) && *PRIVATE_DATA->response == '1') {
 			if (meade_simple_reply_command(device, ":WLC#") && *PRIVATE_DATA->response == '1') {
@@ -2127,6 +2129,8 @@ static void nyx_cl_callback(indigo_device *device) {
 	char ssid[345] = "";
 	char password[345] = "";
 	bool encode = false;
+	NYX_WIFI_CL_SSID_ITEM->text.value[25] = 0;
+	NYX_WIFI_CL_PASSWORD_ITEM->text.value[30] = 0;
 	if (compare_versions(MOUNT_INFO_FIRMWARE_ITEM->text.value, NYX_BASE64_THRESHOLD_VERSION) >= 0) {
 		base64_encode((unsigned char *)ssid, (unsigned char *)NYX_WIFI_CL_SSID_ITEM->text.value, (long)strlen(NYX_WIFI_CL_SSID_ITEM->text.value));
 		base64_encode((unsigned char *)password, (unsigned char*)NYX_WIFI_CL_PASSWORD_ITEM->text.value, (long)strlen(NYX_WIFI_CL_PASSWORD_ITEM->text.value));
@@ -2278,6 +2282,7 @@ static void onstep_aux_timer_callback(indigo_device *device) {
 			}
 		}
 		if (do_update) {
+			AUX_HEATER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
 		}
 	}
@@ -2292,11 +2297,11 @@ static void onstep_aux_timer_callback(indigo_device *device) {
 			bool active = PRIVATE_DATA->response[0] - '0';
 			if (active != item->sw.value) {
 				item->sw.value = active;
-				AUX_POWER_OUTLET_PROPERTY->state = INDIGO_ALERT_STATE;
 				do_update = true;
 			}
 		}
 		if (do_update) {
+			AUX_POWER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
 		}
 	}
@@ -3230,7 +3235,6 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		// -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION
 	} else if (indigo_property_match_changeable(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
 		indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
-		indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
 		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
 		focuser_abort_callback(device);
@@ -3281,11 +3285,11 @@ static indigo_result aux_attach(indigo_device *device) {
 		for (int i = 0; i < 8; i++) {
 			snprintf(name, sizeof(name), AUX_HEATER_OUTLET_ITEM_NAME, i + 1);
 			snprintf(label, sizeof(label), "Heater #%d [%%]", i + 1);
-			indigo_init_number_item(AUX_HEATER_OUTLET_PROPERTY->items, name, label, 0, 100, 1, 0);
+			indigo_init_number_item(AUX_HEATER_OUTLET_PROPERTY->items + i, name, label, 0, 100, 1, 0);
 		}
 		AUX_HEATER_OUTLET_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- AUX_POWER_OUTLET
-		AUX_POWER_OUTLET_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_HEATER_OUTLET_PROPERTY_NAME, AUX_GROUP, "Power outlets", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 8);
+		AUX_POWER_OUTLET_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_POWER_OUTLET_PROPERTY_NAME, AUX_GROUP, "Power outlets", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 8);
 		if (AUX_POWER_OUTLET_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
@@ -3366,7 +3370,7 @@ static void aux_connect_handler(indigo_device *device) {
 							strcpy(AUX_POWER_OUTLET_PROPERTY->items[AUX_POWER_OUTLET_PROPERTY->count].label, name);
 							ONSTEP_AUX_POWER_OUTLET_MAPPING[AUX_POWER_OUTLET_PROPERTY->count++] = i + 1;
 						} else {
-							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Onstep AUX Device at index %d not recognized", i + 1, name);
+							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Onstep AUX Device at index %d not recognized", i + 1);
 						}
 					}
 				}
