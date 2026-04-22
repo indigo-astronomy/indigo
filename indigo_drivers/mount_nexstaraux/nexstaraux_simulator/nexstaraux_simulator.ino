@@ -32,8 +32,16 @@
 #include <WiFi.h>
 
 // ---- Access point configuration ---- (edit these) --------------------------
+
+//#define AP
+
+#ifdef AP
 static const char *AP_SSID     = "NexStarSim";   // Network name to create
 static const char *AP_PASSWORD = "nexstar1234";  // Min 8 chars, or NULL for open
+#else
+static const char *WIFI_SSID     = "iPhone 15";
+static const char *WIFI_PASSWORD = "Zongora2";
+#endif
 static const int   TCP_PORT    = 2000;
 // ESP32 AP default IP is always 192.168.4.1
 
@@ -146,14 +154,14 @@ static void update_axis(Axis &ax, unsigned long dt_ms) {
 static void handle_command(Axis &ax, uint8_t cmd, const uint8_t *data, int dlen) {
 	uint8_t reply[4] = { 0 };
 	switch (cmd) {
-			// Return current 24-bit position (3 bytes, big-endian)
+		// Return current 24-bit position (3 bytes, big-endian)
 		case MC_GET_POSITION:
 			reply[0] = (ax.position >> 16) & 0xFF;
 			reply[1] = (ax.position >>  8) & 0xFF;
 			reply[2] =  ax.position        & 0xFF;
 			send_reply(ax.addr, ADDR_APP, cmd, reply, 3);
 			break;
-			// Begin a fast or slow slew to a 24-bit target position
+		// Begin a fast or slow slew to a 24-bit target position
 		case MC_GOTO_FAST:
 		case MC_GOTO_SLOW:
 			if (dlen >= 3) {
@@ -164,7 +172,7 @@ static void handle_command(Axis &ax, uint8_t cmd, const uint8_t *data, int dlen)
 			}
 			send_reply(ax.addr, ADDR_APP, cmd, NULL, 0);
 			break;
-			// Sync: set current position without slewing
+		// Sync: set current position without slewing
 		case MC_SET_POSITION:
 			if (dlen >= 3) {
 				ax.position = (((uint32_t)data[0] << 16) | ((uint32_t)data[1] <<  8) | (uint32_t)data[2]) & POS_MASK;
@@ -175,12 +183,12 @@ static void handle_command(Axis &ax, uint8_t cmd, const uint8_t *data, int dlen)
 			}
 			send_reply(ax.addr, ADDR_APP, cmd, NULL, 0);
 			break;
-			// Poll whether a goto has completed: 0x00 = still moving, 0xFF = done
+		// Poll whether a goto has completed: 0x00 = still moving, 0xFF = done
 		case MC_SLEW_DONE:
 			reply[0] = (ax.slewing_fast || ax.slewing_slow) ? 0x00 : 0xFF;
 			send_reply(ax.addr, ADDR_APP, cmd, reply, 1);
 			break;
-			// Set tracking rate (2-byte) or stop tracking (3 zero bytes)
+		// Set tracking rate (2-byte) or stop tracking (3 zero bytes)
 		case MC_SET_POS_GUIDERATE:
 		case MC_SET_NEG_GUIDERATE: {
 			bool stop = (dlen == 3 && data[0] == 0 && data[1] == 0 && data[2] == 0);
@@ -188,13 +196,13 @@ static void handle_command(Axis &ax, uint8_t cmd, const uint8_t *data, int dlen)
 				Serial.printf("[%s] Tracking OFF\n", ax.name);
 			} else if (dlen >= 2) {
 				uint16_t rate = ((uint16_t)data[0] << 8) | data[1];
-				const char *rname = (rate == 0xFFFF) ? "Sidereal" : (rate == 0xFFFE) ? "Solar" : (rate == 0xFFFD) ? "Lunar"    : "Custom";
+				const char *rname = (rate == 0xFFFF) ? "Sidereal" : (rate == 0xFFFE) ? "Solar" : (rate == 0xFFFD) ? "Lunar" : "Custom";
 				Serial.printf("[%s] Tracking ON: %s (0x%04X)\n", ax.name, rname, rate);
 			}
 			send_reply(ax.addr, ADDR_APP, cmd, NULL, 0);
 			break;
 		}
-			// Start or stop a variable-rate manual move (rate=0 stops)
+		// Start or stop a variable-rate manual move (rate=0 stops)
 		case MC_MOVE_POS:
 		case MC_MOVE_NEG:
 			if (dlen >= 1) {
@@ -208,7 +216,7 @@ static void handle_command(Axis &ax, uint8_t cmd, const uint8_t *data, int dlen)
 			}
 			send_reply(ax.addr, ADDR_APP, cmd, NULL, 0);
 			break;
-			// Store autoguide rate (0–255 = 0–100%)
+		// Store autoguide rate (0–255 = 0–100%)
 		case MC_SET_AUTOGUIDE_RATE:
 			if (dlen >= 1) {
 				ax.guide_rate = data[0];
@@ -216,12 +224,12 @@ static void handle_command(Axis &ax, uint8_t cmd, const uint8_t *data, int dlen)
 			}
 			send_reply(ax.addr, ADDR_APP, cmd, NULL, 0);
 			break;
-			// Return stored autoguide rate
+		// Return stored autoguide rate
 		case MC_GET_AUTOGUIDE_RATE:
 			reply[0] = ax.guide_rate;
 			send_reply(ax.addr, ADDR_APP, cmd, reply, 1);
 			break;
-			// Return simulated firmware version (major, minor)
+		// Return simulated firmware version (major, minor)
 		case MC_GET_VER:
 			reply[0] = FW_MAJOR;
 			reply[1] = FW_MINOR;
@@ -264,11 +272,23 @@ void setup() {
 	Serial.println("==============================");
 	Serial.println("  NexStar AUX Simulator");
 	Serial.println("==============================");
+#ifdef AP
 	WiFi.mode(WIFI_AP);
 	WiFi.softAP(AP_SSID, AP_PASSWORD);
 	Serial.printf("Access point \"%s\" started\n", AP_SSID);
 	Serial.printf("IP address: %s\n", WiFi.softAPIP().toString().c_str());
 	Serial.printf(">>> Connect to \"%s\", then set driver port to: nexstar://%s <<<\n\n", AP_SSID, WiFi.softAPIP().toString().c_str());
+#else
+	WiFi.mode(WIFI_STA);
+	WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+	Serial.print("Connecting to WiFi");
+	while (WiFi.status() != WL_CONNECTED) {
+		delay(500);
+		Serial.print(".");
+	}
+	Serial.printf("\nIP address: %s\n", WiFi.localIP().toString().c_str());
+	Serial.printf(">>> Set driver port to: nexstar://%s <<<\n\n", WiFi.localIP().toString().c_str());
+#endif
 	server.begin();
 	server.setNoDelay(true);
 	last_physics_ms = millis();
