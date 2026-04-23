@@ -656,15 +656,15 @@ static indigo_result mount_attach(indigo_device *device) {
 	if (indigo_mount_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		//+ mount.on_attach
 		INFO_PROPERTY->count = 6;
-		DEVICE_PORT_PROPERTY->hidden = false;
 		strcpy(DEVICE_PORT_ITEM->text.value, "nexstar://");
 		DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;
-		DEVICE_PORTS_PROPERTY->hidden = true;
 		MOUNT_ON_COORDINATES_SET_PROPERTY->count = 2;
 		MOUNT_GUIDE_RATE_PROPERTY->count = 2;
-		MOUNT_SIDE_OF_PIER_PROPERTY->hidden = true;
 		//-
+		DEVICE_PORTS_PROPERTY->hidden = true;
+		DEVICE_PORT_PROPERTY->hidden = false;
 		MOUNT_STATE_PROPERTY->hidden = false;
+		MOUNT_SIDE_OF_PIER_PROPERTY->hidden = true;
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = device->base_device != NULL;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return mount_enumerate_properties(device, NULL, NULL);
