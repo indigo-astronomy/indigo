@@ -1845,11 +1845,6 @@ static void mount_meridian_limit_handler(indigo_device *device) {
 	indigo_update_property(device, MOUNT_MERIDIAN_LIMIT_PROPERTY, NULL);
 }
 
-static void mount_state_handler(indigo_device *device) {
-	MOUNT_STATE_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
-}
-
 static void mount_track_rate_handler(indigo_device *device) {
 	MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
@@ -1988,9 +1983,6 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_MERIDIAN_LIMIT_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_MERIDIAN_LIMIT_PROPERTY, mount_meridian_limit_handler);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(MOUNT_STATE_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_STATE_PROPERTY, mount_state_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_TRACK_RATE_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_TRACK_RATE_PROPERTY, mount_track_rate_handler);

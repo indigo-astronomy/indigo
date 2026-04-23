@@ -1742,6 +1742,7 @@ driver ioptron {
 			// on_change { }
 			// on_attach { }
 			// on_detach { }
+			perm = INDIGO_RO_PERM;
 		}
 		inherited MOUNT_TRACK_RATE {
 			hidden = false;

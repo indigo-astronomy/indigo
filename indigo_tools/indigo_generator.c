@@ -83,6 +83,7 @@ typedef struct pattern_type {
 
 typedef struct serial_type {
 	bool configurable_speed;
+	bool no_ports;
 	pattern_type *patterns;
 } serial_type;
 
@@ -921,6 +922,9 @@ bool parse_serial_block(driver_type *driver) {
 			if (parse_bool_attribute("configurable_speed", &serial->configurable_speed)) {
 				continue;
 			}
+			if (parse_bool_attribute("no_ports", &serial->no_ports)) {
+				continue;
+			}
 			if (parse_pattern_block(serial)) {
 				continue;
 			}
@@ -1510,7 +1514,7 @@ void write_c_high_level_code_section(device_type *device) {
 	}
 	write_c_connection_change_handler(device);
 	for (property_type *property = device->properties; property; property = property->next) {
-		if (property->handle_change) {
+		if (property->handle_change && strcmp(property->perm, "INDIGO_PERM_RO")) {
 			write_c_property_change_handler(device, property);
 		}
 	}
@@ -1532,8 +1536,10 @@ void write_c_attach(device_type *device) {
 	}
 	if (driver.serial && is_master_device) {
 		write_line("\t\tDEVICE_PORT_PROPERTY->hidden = false;");
-		write_line("\t\tDEVICE_PORTS_PROPERTY->hidden = false;");
-		write_line("\t\tindigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);");
+		if (!driver.serial->no_ports) {
+			write_line("\t\tDEVICE_PORTS_PROPERTY->hidden = false;");
+			write_line("\t\tindigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);");
+		}
 		if (driver.serial->configurable_speed) {
 			write_line("\t\tDEVICE_BAUDRATE_PROPERTY->hidden = false;");
 		}
@@ -1653,7 +1659,7 @@ void write_c_change_property(device_type *device) {
 	write_line("\t\t}");
 	write_line("\t\treturn INDIGO_OK;");
 	for (property_type *property = device->properties; property; property = property->next) {
-		if (property->handle_change) {
+		if (property->handle_change && strcmp(property->perm, "INDIGO_PERM_RO")) {
 			persistent |= property->persistent;
 			write_line("\t} else if (indigo_property_match_changeable(%s, property)) {", property->handle);
 			if (property->asynchronous_change) {
@@ -2027,6 +2033,7 @@ device_type *get_device(char *type) {
 			return device;
 		}
 	}
+	debug(1, "ADDING: '%s'", type);
 	device_type *device = allocate(sizeof(device_type));
 	strncpy(device->type, type, sizeof(device->type));
 	append((void **)&driver.devices, device);
@@ -2039,6 +2046,7 @@ property_type *get_property(device_type *device, char *property_handle) {
 			return property;
 		}
 	}
+	debug(1, "ADDING: '%s.%s'", device->type, property_handle);
 	property_type*property = allocate(sizeof(property_type));
 	strncpy(property->handle, property_handle, sizeof(property->id));
 	int l = (int)strlen(property_handle);
@@ -2059,6 +2067,7 @@ item_type *get_item(property_type *property, char *item_handle) {
 			return item;
 		}
 	}
+	debug(1, "ADDING: '%s.%s'", property->name, item_handle);
 	item_type *item = allocate(sizeof(item_type));
 	int l = (int)strlen(item_handle);
 	strncpy(item->handle, item_handle, sizeof(item->handle));
@@ -2109,6 +2118,7 @@ void read_c_source(void) {
 				strncpy(driver.author, s1, sizeof(driver.author));
 			}
 		} else if (sscanf(line, " //+ %127[^\"]\"", s1) == 1) {
+			debug(0, "MARKUP: %s", s1);
 			code_type *code = allocate(sizeof(code_type));
 			int current_length = 0;
 			int current_size = 1024;
@@ -2172,6 +2182,8 @@ void read_c_source(void) {
 				append((void **)&driver.on_init, code);
 			} else if (strcmp(s1, "on_shutdown") == 0) {
 				append((void **)&driver.on_shutdown, code);
+			} else {
+				report_error("Unrecognised markup '%s'", s1);
 			}
 		} else if (sscanf(line, "#define DRIVER_VERSION 0x%x", &i1) == 1) {
 			driver.version = (i1 & 0xFF);
@@ -2203,6 +2215,10 @@ void read_c_source(void) {
 				device->additional_instances = true;
 			}
 		} else if (strstr(line, "DEVICE_PORTS_PROPERTY->hidden = false;")) {
+			if (driver.serial == NULL) {
+				driver.serial = allocate(sizeof(serial_type));
+				driver.serial->no_ports = false;
+			}
 		} else if (strstr(line, "DEVICE_PORT_PROPERTY->hidden = false;")) {
 			if (driver.serial == NULL) {
 				driver.serial = allocate(sizeof(serial_type));
@@ -2216,6 +2232,9 @@ void read_c_source(void) {
 			if (device) {
 				property_type *property = get_property(device, s1);
 				strncpy(property->hidden, s2, sizeof(property->hidden));
+				if (!strcmp(s1, "MOUNT_STATE")) {
+					strcpy(property->perm, "INDIGO_RO_PERM");
+				}
 			}
 		} else if (sscanf(line, " indigo_property_copy_targets(%127[^,], property, false);", s1) == 1) {
 			if (device) {
@@ -2414,8 +2433,8 @@ void write_definition_source(void) {
 	write_line("\tcopyright = \"%s\";", driver.copyright);
 	write_line("\tversion = %d;", driver.version);
 	if (driver.serial) {
+		write_line("\tserial {");
 		if (driver.serial->configurable_speed || driver.serial->patterns) {
-			write_line("\tserial {");
 			if (driver.serial->configurable_speed) {
 				write_line("\t\tconfigurable_speed = true;");
 			}
@@ -2441,10 +2460,8 @@ void write_definition_source(void) {
 				}
 				write_line("\t\t}");
 			}
-			write_line("\t}");
-		} else {
-			write_line("\tserial;");
 		}
+		write_line("\t}");
 	} else if (driver.libusb) {
 		write_line("\tlibusb {");
 		write_line("\t\thotplug = true;");
@@ -2612,6 +2629,9 @@ void write_definition_source(void) {
 				write_line("\t\t\t// on_detach { }");
 			}
 			if (property->type[0] == 'i') {
+				if (*property->perm && strcmp(property->perm, "INDIGO_RW_PERM")) {
+					write_line("\t\t\tperm = %s;", property->perm);
+				}
 			} else {
 				write_line("\t\t\tname = %s;", property->name);
 				write_line("\t\t\tgroup = %s;", property->group);
