@@ -369,6 +369,68 @@ static void nexstar_update_mount_state(indigo_device *device) {
 
 //-
 
+//+ mount.code
+
+static void mount_slew_finalizer(indigo_device *device) {
+	bool in_progress;
+	if (nexstaraux_get_slew_state(device, &in_progress)) {
+		if (in_progress) {
+			indigo_execute_handler_in(device, 0.1, mount_slew_finalizer);
+		} else {
+			if (PRIVATE_DATA->stopping) {
+				PRIVATE_DATA->centering = PRIVATE_DATA->slewing = PRIVATE_DATA->stopping = false;
+				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
+				MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_ALERT_STATE;
+				if (PRIVATE_DATA->parking) {
+					PRIVATE_DATA->parking = false;
+					PRIVATE_DATA->parked = false;
+					MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
+					MOUNT_STATE_PARK_ITEM->light.value = INDIGO_ALERT_STATE;
+				}
+				indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
+			} else if (PRIVATE_DATA->centering) {
+				if (!PRIVATE_DATA->parking) {
+					if (nexstaraux_set_tracking(device, true)) {
+						indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
+						MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
+						indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+						MOUNT_STATE_TRACKING_ITEM->light.value = INDIGO_OK_STATE;
+					} else {
+						indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
+						MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
+						indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+						MOUNT_STATE_TRACKING_ITEM->light.value = INDIGO_ALERT_STATE;
+					}
+				}
+				PRIVATE_DATA->centering = PRIVATE_DATA->slewing = false;
+				MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_IDLE_STATE;
+				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
+				if (PRIVATE_DATA->parking) {
+					PRIVATE_DATA->parking = false;
+					PRIVATE_DATA->parked = true;
+					MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
+					MOUNT_STATE_PARK_ITEM->light.value = INDIGO_OK_STATE;
+				}
+				indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
+			} else {
+				double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
+				double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
+				indigo_j2k_to_eq(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
+				if (nexstaraux_slew(device, ra, dec, false)) {
+					PRIVATE_DATA->centering = PRIVATE_DATA->slewing = true;
+					indigo_execute_handler_in(device, 0.1, mount_slew_finalizer);
+				}
+			}
+		}
+	}
+}
+
+//-
+
 static void mount_timer_callback(indigo_device *device) {
 	//+ mount.on_timer
 	nexstar_update_mount_state(device);
@@ -427,7 +489,7 @@ static void mount_tracking_handler(indigo_device *device) {
 
 static void mount_track_rate_handler(indigo_device *device) {
 	MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_OK_STATE;
-	//+ on.MOUNT_TRACK_RATE.on_change
+	//+ mount.MOUNT_TRACK_RATE.on_change
 	if (MOUNT_TRACKING_ON_ITEM->sw.value) {
 		if (!nexstaraux_set_tracking(device, true)) {
 			MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -435,64 +497,6 @@ static void mount_track_rate_handler(indigo_device *device) {
 	}
 	//-
 	indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
-}
-
-static void mount_slew_finalizer(indigo_device *device) {
-	bool in_progress;
-	if (nexstaraux_get_slew_state(device, &in_progress)) {
-		if (in_progress) {
-			indigo_execute_handler_in(device, 0.1, mount_slew_finalizer);
-		} else {
-			if (PRIVATE_DATA->stopping) {
-				PRIVATE_DATA->centering = PRIVATE_DATA->slewing = PRIVATE_DATA->stopping = false;
-				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
-				MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_ALERT_STATE;
-				if (PRIVATE_DATA->parking) {
-					PRIVATE_DATA->parking = false;
-					PRIVATE_DATA->parked = false;
-					MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
-					indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
-					MOUNT_STATE_PARK_ITEM->light.value = INDIGO_ALERT_STATE;
-				}
-				indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
-			} else if (PRIVATE_DATA->centering) {
-				if (!PRIVATE_DATA->parking) {
-					if (nexstaraux_set_tracking(device, true)) {
-						indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
-						MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
-						indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
-						MOUNT_STATE_TRACKING_ITEM->light.value = INDIGO_OK_STATE;
-					} else {
-						indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
-						MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
-						indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
-						MOUNT_STATE_TRACKING_ITEM->light.value = INDIGO_ALERT_STATE;
-					}
-				}
-				PRIVATE_DATA->centering = PRIVATE_DATA->slewing = false;
-				MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_IDLE_STATE;
-				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
-				if (PRIVATE_DATA->parking) {
-					PRIVATE_DATA->parking = false;
-					PRIVATE_DATA->parked = true;
-					MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
-					indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
-					MOUNT_STATE_PARK_ITEM->light.value = INDIGO_OK_STATE;
-				}
-				indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
-			} else {
-				double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
-				double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
-				indigo_j2k_to_eq(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
-				if (nexstaraux_slew(device, ra, dec, false)) {
-					PRIVATE_DATA->centering = PRIVATE_DATA->slewing = true;
-					indigo_execute_handler_in(device, 0.1, mount_slew_finalizer);
-				}
-			}
-		}
-	}
 }
 
 static void mount_equatorial_coordinates_handler(indigo_device *device) {
@@ -634,7 +638,7 @@ static void mount_motion_dec_handler(indigo_device *device) {
 
 static void mount_guide_rate_handler(indigo_device *device) {
 	MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_OK_STATE;
-	// mount.MOUNT_GUIDE_RATE.on_change
+	//+ mount.MOUNT_GUIDE_RATE.on_change
 	if (!nexstar_set_guide_rate_handler(device, MOUNT_GUIDE_RATE_RA_ITEM->number.target, MOUNT_GUIDE_RATE_DEC_ITEM->number.target)) {
 		MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
@@ -723,32 +727,7 @@ static indigo_result mount_detach(indigo_device *device) {
 
 // --------------------------------------------------------------------------------
 
-static void guider_connection_handler(indigo_device *device) {
-	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		bool result = true;
-		if (PRIVATE_DATA->count++ == 0) {
-			result = nexstaraux_open(device);
-		}
-		if (result) {
-			if (nexstar_get_guide_rate(device, &GUIDER_RATE_ITEM->number.value, &GUIDER_DEC_RATE_ITEM->number.value)) {
-				GUIDER_RATE_PROPERTY->state = INDIGO_OK_STATE;
-			} else {
-				GUIDER_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-		} else {
-			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-		}
-	} else {
-		indigo_cancel_pending_handlers(device);
-		if (--PRIVATE_DATA->count == 0) {
-			nexstaraux_close(device);
-		}
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-	}
-	indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
-}
+//+ guider.code
 
 static void guider_guide_dec_finalizer(indigo_device *device) {
 	if (nexstaraux_guide_ra(device, 0)) {
@@ -770,8 +749,39 @@ static void guider_guide_ra_finalizer(indigo_device *device) {
 	INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, INDIGO_OK_STATE, NULL);
 }
 
+//-
+
+static void guider_connection_handler(indigo_device *device) {
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		bool result = true;
+		if (PRIVATE_DATA->count++ == 0) {
+			result = nexstaraux_open(device);
+		}
+		if (result) {
+			//+ guider.on_connect
+			if (nexstar_get_guide_rate(device, &GUIDER_RATE_ITEM->number.value, &GUIDER_DEC_RATE_ITEM->number.value)) {
+				GUIDER_RATE_PROPERTY->state = INDIGO_OK_STATE;
+			} else {
+				GUIDER_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+			//-
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		}
+	} else {
+		indigo_cancel_pending_handlers(device);
+		if (--PRIVATE_DATA->count == 0) {
+			nexstaraux_close(device);
+		}
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	}
+	indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
+}
+
 static void guider_guide_ra_handler(indigo_device *device) {
-	// mount.GUIDER_GUIDE_RA.on_change
+	//+ guider.GUIDER_GUIDE_RA.on_change
 	GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
 	unsigned duration = 0;
 	int direction = 0;
@@ -794,7 +804,7 @@ static void guider_guide_ra_handler(indigo_device *device) {
 }
 
 static void guider_guide_dec_handler(indigo_device *device) {
-	// mount.GUIDER_GUIDE_RA.on_change
+	//+ guider.GUIDER_GUIDE_DEC.on_change
 	GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
 	unsigned duration = 0;
 	int direction = 0;
@@ -819,7 +829,7 @@ static void guider_guide_dec_handler(indigo_device *device) {
 
 static void guider_rate_handler(indigo_device *device) {
 	GUIDER_RATE_PROPERTY->state = INDIGO_OK_STATE;
-	// mount.GUIDER_RATE.on_change
+	//+ guider.GUIDER_RATE.on_change
 	if (!nexstar_set_guide_rate_handler(device, GUIDER_RATE_ITEM->number.target, GUIDER_DEC_RATE_ITEM->number.target)) {
 		GUIDER_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
@@ -887,7 +897,7 @@ static indigo_device *mount_guider = NULL;
 
 indigo_result indigo_mount_nexstaraux(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_device mount_template = INDIGO_DEVICE_INITIALIZER(
-		MOUNT_NEXSTARAUX_NAME,
+		"Mount Nexstar AUX",
 		mount_attach,
 		mount_enumerate_properties,
 		mount_change_property,
@@ -896,7 +906,7 @@ indigo_result indigo_mount_nexstaraux(indigo_driver_action action, indigo_driver
 	);
 
 	static indigo_device mount_guider_template = INDIGO_DEVICE_INITIALIZER(
-		MOUNT_NEXSTARAUX_GUIDER_NAME,
+		"Mount Nexstar AUX (guider)",
 		guider_attach,
 		indigo_guider_enumerate_properties,
 		guider_change_property,
