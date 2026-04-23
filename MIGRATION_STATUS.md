@@ -114,7 +114,7 @@
 | mount_ioptron            | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ✅ Sim   |                                                          |
 | mount_lx200              | 3️⃣  | ✅ Yes   | ❌ No    | ✅ Yes   | ✅ HW    |                                                          |
 | mount_nexstar            | 2️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    | ⏰ TODO - make libnexstar for Windows                    |
-| mount_nexstaraux         | 3️⃣  | ✅ Yes   | ❌ No    | ✅ Yes   | ✅ HW    |                                                          |
+| mount_nexstaraux         | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ HW    |                                                          |
 | mount_pmc8               | 2️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    |                                                          |
 | mount_rainbow            | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ❌ No    |                                                          |
 | mount_simulator          | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ⛔ N/A   |                                                          |

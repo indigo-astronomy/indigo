@@ -4594,6 +4594,7 @@
 		9D1541EA2F2A0ACD00B7045F /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9D1880BE1E534B5E002F75D7 /* indigo_prop_tool */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = indigo_prop_tool; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D1880C01E534BB5002F75D7 /* indigo_prop_tool.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_prop_tool.c; sourceTree = "<group>"; };
+		9D1C28662F99F281002996ED /* indigo_mount_nexstaraux.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_mount_nexstaraux.driver; sourceTree = "<group>"; };
 		9D20345F2DBA4BEE00AB28A3 /* indigo_wheel_manual.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_wheel_manual.driver; sourceTree = "<group>"; };
 		9D2034602DBA716300AB28A3 /* indigo_aux_flatmaster.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_aux_flatmaster.driver; sourceTree = "<group>"; };
 		9D2696E422A56BD8008BE82C /* steeldrive2_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = steeldrive2_simulator.ino; sourceTree = "<group>"; };
@@ -7995,6 +7996,7 @@
 				599AD89D2552F64A0008D481 /* indigo_mount_nexstaraux.h */,
 				599AD8A02552F64A0008D481 /* indigo_mount_nexstaraux.c */,
 				599AD89E2552F64A0008D481 /* indigo_mount_nexstaraux_main.c */,
+				9D1C28662F99F281002996ED /* indigo_mount_nexstaraux.driver */,
 				599AD89C2552F64A0008D481 /* nexstar_aux_commands_10.pdf */,
 				9DE55C992F98C3C700B2C143 /* nexstaraux_simulator */,
 			);
