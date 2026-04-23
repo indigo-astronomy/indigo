@@ -451,10 +451,22 @@ static void abort_cleanup_async(indigo_device *device) {
 
 static void exposure_watchdog_callback(indigo_device *device) {
 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "pull_callback() was not called in time");
+	/* Flush the frame buffer to unstick the SDK pipeline.  With multiple cameras
+	   and short exposures the SDK occasionally stops delivering EVENT_IMAGE, leaving
+	   the buffer full so that every subsequent Trigger() is also silently dropped.
+	   Flushing clears that condition.  We also reset PRIVATE_DATA->mode so that the
+	   next call to setup_exposure() unconditionally re-calls
+	   StartPullModeWithCallback(), recovering from any case where the SDK silently
+	   dropped the callback registration (observed race in the closed-source SDK when
+	   two cameras fire nearly simultaneously). */
+	HRESULT result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_FLUSH), 3);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_FLUSH, 3) -> %08x", result);
+	PRIVATE_DATA->mode = -1;
 	CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed, pull callback was not called");
 }
 
+#ifdef USB3_EXPOSURE_CLUDGE
 /* dummy exposure callback - needed for a workaround */
 static void pull_callback_dummy(unsigned event, void* callbackCtx) {
 	//SDK_TYPE(FrameInfoV2) frameInfo = { 0 };
@@ -471,6 +483,7 @@ static void pull_callback_dummy(unsigned event, void* callbackCtx) {
 		}
 	}
 }
+#endif /* USB3_EXPOSURE_CLUDGE */
 
 static void pull_callback(unsigned event, void* callbackCtx) {
 	SDK_TYPE(FrameInfoV2) frameInfo = { 0 };
@@ -542,10 +555,12 @@ static void pull_callback(unsigned event, void* callbackCtx) {
 		case SDK_DEF(EVENT_NOFRAMETIMEOUT):
 		case SDK_DEF(EVENT_NOPACKETTIMEOUT):
 		case SDK_DEF(EVENT_ERROR): {
+			result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_FLUSH), 3);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_FLUSH, 3) -> %08x", result);
 			indigo_ccd_failure_cleanup(device);
 			if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 				CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "SDK reported error");
 			} else if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 				indigo_finalize_video_stream(device);
 				CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -613,7 +628,6 @@ static void setup_exposure(indigo_device *device) {
 			if (PRIVATE_DATA->mode != i) {
 				result = SDK_CALL(Stop)(PRIVATE_DATA->handle);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Stop() -> %08x", result);
-				//indigo_usleep(200000);
 				if (strncmp(item->name, "RAW08", 5) == 0 || strncmp(item->name, "MON08", 5) == 0) {
 					result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_RAW), 1);
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_RAW, 1) -> %08x", result);
