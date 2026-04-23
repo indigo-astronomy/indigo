@@ -527,7 +527,7 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 }
 
 static void mount_park_handler(indigo_device *device) {
-	//+ mount.MOUNT_EQUATORIAL_COORDINATES.on_change
+	//+ mount.MOUNT_PARK.on_change
 	MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
 	double ra = fmod(indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) + 24, 24);
 	double dec = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value > 0 ? 90 : -90;
