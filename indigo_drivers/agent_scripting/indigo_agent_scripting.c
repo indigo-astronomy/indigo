@@ -1512,7 +1512,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 			indigo_release_property(cached_property);
 		}
 	}
-	
+
 	return indigo_device_detach(device);
 }
 
