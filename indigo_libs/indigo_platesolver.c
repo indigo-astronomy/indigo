@@ -181,7 +181,7 @@ static bool start_exposure(indigo_device *device, double exposure) {
 	char *related_agent_name = indigo_filter_first_related_agent(FILTER_DEVICE_CONTEXT->device, "Imager Agent");
 	if (related_agent_name != NULL) {
 		if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->imager_capture_state == INDIGO_BUSY_STATE) {
-			indigo_error("Imager Agent is busy");
+			indigo_send_message(device, ALERT_PROPERTY, "Imager Agent is busy");
 			return false;
 		}
 		indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_IMAGER_CAPTURE_PROPERTY_NAME, AGENT_IMAGER_CAPTURE_ITEM_NAME, exposure);
@@ -197,15 +197,16 @@ static bool start_exposure(indigo_device *device, double exposure) {
 			indigo_usleep(10000);
 		}
 		if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->imager_capture_state == INDIGO_ALERT_STATE) {
-			indigo_error("Frame capture on Imager Agent failed");
+			indigo_send_message(device, ALERT_PROPERTY, "Capture on Imager Agent failed");
 			return false;
 		}
+		indigo_send_message(device, INFO_PROPERTY, "Capture started");
 		return true;
 	}
 	related_agent_name = indigo_filter_first_related_agent(FILTER_DEVICE_CONTEXT->device, "Guider Agent");
 	if (related_agent_name != NULL) {
 		if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->guider_process_state == INDIGO_BUSY_STATE) {
-			indigo_error("Guider Agent is busy");
+			indigo_send_message(device, ALERT_PROPERTY, "Guider Agent is busy");
 			return false;
 		}
 		indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_GUIDER_SETTINGS_PROPERTY_NAME, AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM_NAME, exposure);
@@ -222,9 +223,10 @@ static bool start_exposure(indigo_device *device, double exposure) {
 			indigo_usleep(10000);
 		}
 		if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->guider_process_state == INDIGO_ALERT_STATE) {
-			indigo_error("Frame capture on Guider Agent failed");
+			indigo_send_message(device, ALERT_PROPERTY, "Capture on Guider Agent failed");
 			return false;
 		}
+		indigo_send_message(device, INFO_PROPERTY, "Capture started");
 		return true;
 	}
 	indigo_send_message(device, ALERT_PROPERTY, "Failed to start exposure - no image source agent selected");
@@ -313,7 +315,7 @@ static void process_failed(indigo_device *device, char *message) {
 		AGENT_PLATESOLVER_START_RECALCULATE_PA_ERROR_ITEM->sw.value = false;
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 	}
-	indigo_send_message(device, IDLE_PROPERTY, message);
+	indigo_send_message(device, ALERT_PROPERTY, message);
 }
 
 static void factory_reset(indigo_device *device) {
@@ -390,22 +392,12 @@ static void solve(indigo_platesolver_task *task) {
 			return;
 		}
 	}
-	AGENT_PLATESOLVER_IMAGE_OUTPUT_ITEM->blob.value = NULL;
-	AGENT_PLATESOLVER_IMAGE_OUTPUT_ITEM->blob.size = 0;
-	AGENT_PLATESOLVER_IMAGE_OUTPUT_ITEM->blob.format[0] = 0;
-	AGENT_PLATESOLVER_IMAGE_OUTPUT_PROPERTY->state = INDIGO_BUSY_STATE;
+	AGENT_PLATESOLVER_IMAGE_OUTPUT_ITEM->blob.value = task->image;
+	AGENT_PLATESOLVER_IMAGE_OUTPUT_ITEM->blob.size = task->size;
+	INDIGO_COPY_NAME(AGENT_PLATESOLVER_IMAGE_OUTPUT_ITEM->blob.format, task->format);
+	AGENT_PLATESOLVER_IMAGE_OUTPUT_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, AGENT_PLATESOLVER_IMAGE_OUTPUT_PROPERTY, NULL);
 	bool success = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->solve(device, task);
-	if (success) {
-		AGENT_PLATESOLVER_IMAGE_OUTPUT_ITEM->blob.value = task->image;
-		AGENT_PLATESOLVER_IMAGE_OUTPUT_ITEM->blob.size = task->size;
-		INDIGO_COPY_NAME(AGENT_PLATESOLVER_IMAGE_OUTPUT_ITEM->blob.format, task->format);
-		AGENT_PLATESOLVER_IMAGE_OUTPUT_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, AGENT_PLATESOLVER_IMAGE_OUTPUT_PROPERTY, NULL);
-	} else {
-		AGENT_PLATESOLVER_IMAGE_OUTPUT_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, AGENT_PLATESOLVER_IMAGE_OUTPUT_PROPERTY, NULL);
-	}
 	indigo_safe_free(task->image);
 	indigo_safe_free(task);
 	if (!success) {
