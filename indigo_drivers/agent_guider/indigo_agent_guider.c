@@ -1739,7 +1739,12 @@ static bool guide(indigo_device *device) {
 				AGENT_START_PROCESS_PROPERTY->state = AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 				break;
 			}
-			if (AGENT_GUIDER_STATS_DITHERING_ITEM->number.value == 0) {
+			/* Snapshot once so both the branch selection and the settle check below
+			   see the same value within a single frame iteration. Fixes race with the timer-thread
+			   property handler that sets DITHERING concurrently.
+			*/
+			int dithering_active = AGENT_GUIDER_STATS_DITHERING_ITEM->number.value != 0;
+			if (dithering_active == 0) {
 				DEVICE_PRIVATE_DATA->rmse_ra_sum += drift_ra * drift_ra;
 				DEVICE_PRIVATE_DATA->rmse_dec_sum += drift_dec * drift_dec;
 				DEVICE_PRIVATE_DATA->rmse_ra_s_sum += drift_ra_s * drift_ra_s;
@@ -1747,6 +1752,12 @@ static bool guide(indigo_device *device) {
 				DEVICE_PRIVATE_DATA->rmse_count++;
 			} else {
 				DEVICE_PRIVATE_DATA->rmse_ra_sum = DEVICE_PRIVATE_DATA->rmse_dec_sum = DEVICE_PRIVATE_DATA->rmse_ra_s_sum = DEVICE_PRIVATE_DATA->rmse_dec_s_sum = 0;
+				/* rmse_count is capped at DITH_LIMIT during dithering, so a larger value means
+				   it carries over from normal guiding — reset it before counting dither frames.
+				*/
+				if (DEVICE_PRIVATE_DATA->rmse_count > (unsigned long)AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM->number.value) {
+					DEVICE_PRIVATE_DATA->rmse_count = 0;
+				}
 				if (DEVICE_PRIVATE_DATA->rmse_count < AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM->number.value) {
 					DEVICE_PRIVATE_DATA->rmse_count++;
 				}
@@ -1769,7 +1780,7 @@ static bool guide(indigo_device *device) {
 			AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value = round(1000 * sqrt(DEVICE_PRIVATE_DATA->rmse_dec_sum / DEVICE_PRIVATE_DATA->rmse_count)) / 1000;
 			AGENT_GUIDER_STATS_RMSE_RA_S_ITEM->number.value = round(1000 * sqrt(DEVICE_PRIVATE_DATA->rmse_ra_s_sum / DEVICE_PRIVATE_DATA->rmse_count)) / 1000;
 			AGENT_GUIDER_STATS_RMSE_DEC_S_ITEM->number.value = round(1000 * sqrt(DEVICE_PRIVATE_DATA->rmse_dec_s_sum / DEVICE_PRIVATE_DATA->rmse_count)) / 1000;
-			if (AGENT_GUIDER_STATS_DITHERING_ITEM->number.value != 0) {
+			if (dithering_active != 0) {
 				bool dithering_finished = false;
 				if (AGENT_GUIDER_DEC_MODE_BOTH_ITEM->sw.value) {
 					if (DEVICE_PRIVATE_DATA->rmse_ra_threshold > 0 && DEVICE_PRIVATE_DATA->rmse_dec_threshold > 0) {
@@ -2409,8 +2420,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			DEVICE_PRIVATE_DATA->rmse_ra_sum =
 			DEVICE_PRIVATE_DATA->rmse_dec_sum =
 			DEVICE_PRIVATE_DATA->rmse_ra_s_sum =
-			DEVICE_PRIVATE_DATA->rmse_dec_s_sum =
-			DEVICE_PRIVATE_DATA->rmse_count = 0;
+			DEVICE_PRIVATE_DATA->rmse_dec_s_sum = 0;
 			DEVICE_PRIVATE_DATA->rmse_ra_threshold = 1.5 * AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value + AGENT_GUIDER_SETTINGS_MIN_ERR_ITEM->number.value/2.0;
 			DEVICE_PRIVATE_DATA->rmse_dec_threshold = 1.5 * AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value + AGENT_GUIDER_SETTINGS_MIN_ERR_ITEM->number.value/2.0;
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering RMSE RA threshold = %g, RMSE DEC threshold = %g ", DEVICE_PRIVATE_DATA->rmse_ra_threshold, DEVICE_PRIVATE_DATA->rmse_dec_threshold);
