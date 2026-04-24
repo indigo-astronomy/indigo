@@ -639,7 +639,6 @@ driver nexstaraux {
 		// on_disconnect { }
 		on_attach {
 			GUIDER_RATE_PROPERTY->count = 2;
-			GUIDER_RATE_PROPERTY->hidden = false;
 		}
 		// on_detach { }
 		inherited GUIDER_GUIDE_RA {

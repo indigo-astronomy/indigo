@@ -1035,11 +1035,6 @@ static void focuser_x_calibrate_f_handler(indigo_device *device) {
 	indigo_update_property(device, X_CALIBRATE_F_PROPERTY, NULL);
 }
 
-static void focuser_temperature_handler(indigo_device *device) {
-	FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
-}
-
 static void focuser_backlash_handler(indigo_device *device) {
 	FOCUSER_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_BACKLASH.on_change
@@ -1349,9 +1344,6 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	} else if (indigo_property_match_changeable(X_CALIBRATE_F_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_CALIBRATE_F_PROPERTY, focuser_x_calibrate_f_handler);
 		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(FOCUSER_TEMPERATURE_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_TEMPERATURE_PROPERTY, focuser_temperature_handler);
-		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_BACKLASH_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_BACKLASH_PROPERTY, focuser_backlash_handler);
 		return INDIGO_OK;
@@ -1465,11 +1457,6 @@ static void rotator_x_calibrate_r_handler(indigo_device *device) {
 	//- rotator.X_CALIBRATE_R.on_change
 }
 
-static void rotator_on_position_set_handler(indigo_device *device) {
-	ROTATOR_ON_POSITION_SET_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, ROTATOR_ON_POSITION_SET_PROPERTY, NULL);
-}
-
 static void rotator_position_handler(indigo_device *device) {
 	//+ rotator.ROTATOR_POSITION.on_change
 	if (!primaluce_command(device, "{\"req\":{\"cmd\":{\"MOT2\":{\"MOVE_ABS\":{\"DEG\":%g}}}}}", FOCUSER_POSITION_ITEM->number.target)) {
@@ -1540,9 +1527,6 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_CALIBRATE_R_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_CALIBRATE_R_PROPERTY, rotator_x_calibrate_r_handler);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(ROTATOR_ON_POSITION_SET_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(ROTATOR_ON_POSITION_SET_PROPERTY, rotator_on_position_set_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ROTATOR_POSITION_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(ROTATOR_POSITION_PROPERTY, rotator_position_handler);

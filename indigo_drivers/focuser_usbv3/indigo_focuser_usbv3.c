@@ -182,16 +182,6 @@ static void focuser_x_focuser_step_size_handler(indigo_device *device) {
 	indigo_update_property(device, X_FOCUSER_STEP_SIZE_PROPERTY, NULL);
 }
 
-static void focuser_reverse_motion_handler(indigo_device *device) {
-	FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
-}
-
-static void focuser_temperature_handler(indigo_device *device) {
-	FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
-}
-
 static void focuser_compensation_handler(indigo_device *device) {
 	FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_COMPENSATION.on_change
@@ -410,12 +400,6 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_FOCUSER_STEP_SIZE_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(X_FOCUSER_STEP_SIZE_PROPERTY, focuser_x_focuser_step_size_handler);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(FOCUSER_REVERSE_MOTION_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_REVERSE_MOTION_PROPERTY, focuser_reverse_motion_handler);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(FOCUSER_TEMPERATURE_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_TEMPERATURE_PROPERTY, focuser_temperature_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_COMPENSATION_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_COMPENSATION_PROPERTY, focuser_compensation_handler);

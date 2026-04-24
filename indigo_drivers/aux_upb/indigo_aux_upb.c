@@ -1353,11 +1353,6 @@ static void focuser_reverse_motion_handler(indigo_device *device) {
 	indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
 }
 
-static void focuser_temperature_handler(indigo_device *device) {
-	FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
-}
-
 static void focuser_speed_handler(indigo_device *device) {
 	FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
 	//+ focuser.FOCUSER_SPEED.on_change
@@ -1391,16 +1386,6 @@ static void focuser_steps_handler(indigo_device *device) {
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 	//- focuser.FOCUSER_STEPS.on_change
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-}
-
-static void focuser_on_position_set_handler(indigo_device *device) {
-	FOCUSER_ON_POSITION_SET_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, FOCUSER_ON_POSITION_SET_PROPERTY, NULL);
-}
-
-static void focuser_limits_handler(indigo_device *device) {
-	FOCUSER_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, FOCUSER_LIMITS_PROPERTY, NULL);
 }
 
 static void focuser_position_handler(indigo_device *device) {
@@ -1517,20 +1502,11 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	} else if (indigo_property_match_changeable(FOCUSER_REVERSE_MOTION_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_REVERSE_MOTION_PROPERTY, focuser_reverse_motion_handler);
 		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(FOCUSER_TEMPERATURE_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_TEMPERATURE_PROPERTY, focuser_temperature_handler);
-		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_SPEED_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_SPEED_PROPERTY, focuser_speed_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_STEPS_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_STEPS_PROPERTY, focuser_steps_handler);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(FOCUSER_ON_POSITION_SET_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_ON_POSITION_SET_PROPERTY, focuser_on_position_set_handler);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(FOCUSER_LIMITS_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(FOCUSER_LIMITS_PROPERTY, focuser_limits_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_POSITION_PROPERTY, property)) {
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(FOCUSER_POSITION_PROPERTY, focuser_position_handler);

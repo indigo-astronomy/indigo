@@ -2090,6 +2090,31 @@ char *translate_name(char *name) {
 	return name;
 }
 
+void parse_base_code(void) {
+	for (device_type *device = driver.devices; device; device = device->next) {
+		char path[PATH_MAX];
+		debug(0, "Searching for hidden properties %s", device->type);
+		snprintf(path, sizeof(path), "../../indigo_libs/indigo_%s_driver.c", device->type);
+		FILE *f = fopen(path, "r");
+		if (f) {
+			char line[1024];
+			char s1[128], s2[128];
+			while (fgets(line, sizeof(line), f)) {
+				line[strcspn(line, "\n")] = 0;
+				if (sscanf(line, " %127[^-]->hidden = %127[^;];", s1, s2) == 2 && !strcmp("true", s2)) {
+					for (property_type *property = device->properties; property; property = property->next) {
+						if (!strcmp(property->handle, s1) && property->hidden[0] == '\0') {
+							fprintf(stderr, "Warning: %s->hidden set to false\n", s1);
+							strcpy(property->hidden, "false");
+						}
+					}
+				}
+			}
+			fclose(f);
+		}
+	}
+}
+
 void read_c_source(void) {
 	char line[1024];
 	char *s0, s1[128], s2[128], s3[128], s4[128], s5[128], s6[128], s7[128];
@@ -2704,6 +2729,7 @@ int main(int argc, char **argv) {
 			fprintf(stderr, "\nFailed to parse definition file\n");
 			return 1;
 		}
+		parse_base_code();
 		if (driver.devices) {
 			char file_name[PATH_MAX];
 			snprintf(file_name, sizeof(file_name), "%s/indigo_%s_%s.h", definition_source_dirname, driver.devices->type, driver.name);

@@ -107,11 +107,6 @@ static void dome_connection_handler(indigo_device *device) {
 	indigo_dome_change_property(device, NULL, CONNECTION_PROPERTY);
 }
 
-static void dome_speed_handler(indigo_device *device) {
-	DOME_SPEED_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, DOME_SPEED_PROPERTY, NULL);
-}
-
 static void dome_horizontal_coordinates_handler(indigo_device *device) {
 	DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 	//+ dome.DOME_HORIZONTAL_COORDINATES.on_change
@@ -136,11 +131,6 @@ static void dome_horizontal_coordinates_handler(indigo_device *device) {
 	}
 	//- dome.DOME_HORIZONTAL_COORDINATES.on_change
 	indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-}
-
-static void dome_slaving_parameters_handler(indigo_device *device) {
-	DOME_SLAVING_PARAMETERS_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, DOME_SLAVING_PARAMETERS_PROPERTY, NULL);
 }
 
 static void dome_steps_handler(indigo_device *device) {
@@ -281,14 +271,8 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			indigo_execute_handler(device, dome_connection_handler);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(DOME_SPEED_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(DOME_SPEED_PROPERTY, dome_speed_handler);
-		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DOME_HORIZONTAL_COORDINATES_PROPERTY, property)) {
 		INDIGO_COPY_TARGETS_PROCESS_CHANGE(DOME_HORIZONTAL_COORDINATES_PROPERTY, dome_horizontal_coordinates_handler);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(DOME_SLAVING_PARAMETERS_PROPERTY, property)) {
-		INDIGO_COPY_VALUES_PROCESS_CHANGE(DOME_SLAVING_PARAMETERS_PROPERTY, dome_slaving_parameters_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DOME_STEPS_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(DOME_STEPS_PROPERTY, dome_steps_handler);

@@ -881,7 +881,6 @@ static indigo_result guider_attach(indigo_device *device) {
 	if (indigo_guider_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		//+ guider.on_attach
 		GUIDER_RATE_PROPERTY->count = 2;
-		GUIDER_RATE_PROPERTY->hidden = false;
 		//- guider.on_attach
 		GUIDER_GUIDE_RA_PROPERTY->hidden = false;
 		GUIDER_GUIDE_DEC_PROPERTY->hidden = false;
