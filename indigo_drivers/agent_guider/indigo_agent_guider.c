@@ -1743,7 +1743,7 @@ static bool guide(indigo_device *device) {
 			   see the same value within a single frame iteration. Fixes race with the timer-thread
 			   property handler that sets DITHERING concurrently.
 			*/
-			int dithering_active = AGENT_GUIDER_STATS_DITHERING_ITEM->number.value != 0;
+			int dithering_active = IS_DITHERING;
 			if (dithering_active == 0) {
 				DEVICE_PRIVATE_DATA->rmse_ra_sum += drift_ra * drift_ra;
 				DEVICE_PRIVATE_DATA->rmse_dec_sum += drift_dec * drift_dec;
