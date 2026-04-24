@@ -1231,6 +1231,7 @@ static bool ioptron_init_mount(indigo_device *device) {
 			MOUNT_PARK_PROPERTY->hidden = !PRIVATE_DATA->can_park;
 			MOUNT_HOME_PROPERTY->hidden = false;
 			MOUNT_HOME_PROPERTY->count = PRIVATE_DATA->can_search_home ? 3 : 2;
+			MOUNT_TRACK_RATE_PROPERTY->hidden = false;
 			MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
 			MOUNT_PEC_PROPERTY->hidden = PRIVATE_DATA->has_encoders;
 			MOUNT_PEC_TRAINING_PROPERTY->hidden = PRIVATE_DATA->has_encoders;
