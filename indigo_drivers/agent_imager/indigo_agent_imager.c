@@ -2365,6 +2365,9 @@ static void abort_process(indigo_device *device) {
 }
 
 static bool image_filter(const char *name) {
+	if (!strncmp(name, "._", 2)) {
+		return false;
+	}
 	return strstr(name, ".fits") || strstr(name, ".xisf") || strstr(name, ".raw") || strstr(name, ".jpeg") || strstr(name, ".tiff") || strstr(name, ".avi") || strstr(name, ".ser") || strstr(name, ".nef") || strstr(name, ".cr") || strstr(name, ".sr") || strstr(name, ".arw") || strstr(name, ".raf");
 }
 
