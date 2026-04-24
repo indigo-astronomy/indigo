@@ -1514,7 +1514,7 @@ void write_c_high_level_code_section(device_type *device) {
 	}
 	write_c_connection_change_handler(device);
 	for (property_type *property = device->properties; property; property = property->next) {
-		if (property->handle_change && strcmp(property->perm, "INDIGO_PERM_RO")) {
+		if (property->handle_change && strcmp(property->perm, "INDIGO_PERM_RO") && (property->type[0] != 'i' || property->on_change)) {
 			write_c_property_change_handler(device, property);
 		}
 	}
@@ -1661,23 +1661,25 @@ void write_c_change_property(device_type *device) {
 	for (property_type *property = device->properties; property; property = property->next) {
 		if (property->handle_change && strcmp(property->perm, "INDIGO_PERM_RO")) {
 			persistent |= property->persistent;
-			write_line("\t} else if (indigo_property_match_changeable(%s, property)) {", property->handle);
-			if (property->asynchronous_change) {
-				if (property->preserve_values) {
-					write_line("\t\tINDIGO_COPY_TARGETS_PROCESS_CHANGE(%s, %s);", property->handle, property->handler);
-				} else if (!strncmp(property->id, "MOUNT_MOTION", 12)) {
-					write_line("\t\tINDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME(%s, %s);", property->handle, property->handler);
+			if (property->type[0] != 'i' || property->on_change) {
+				write_line("\t} else if (indigo_property_match_changeable(%s, property)) {", property->handle);
+				if (property->asynchronous_change) {
+					if (property->preserve_values) {
+						write_line("\t\tINDIGO_COPY_TARGETS_PROCESS_CHANGE(%s, %s);", property->handle, property->handler);
+					} else if (!strncmp(property->id, "MOUNT_MOTION", 12)) {
+						write_line("\t\tINDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME(%s, %s);", property->handle, property->handler);
+					} else {
+						write_line("\t\tINDIGO_COPY_VALUES_PROCESS_CHANGE(%s, %s);", property->handle, property->handler);
+					}
 				} else {
-					write_line("\t\tINDIGO_COPY_VALUES_PROCESS_CHANGE(%s, %s);", property->handle, property->handler);
+					if (property->preserve_values) {
+						write_line("\t\tINDIGO_COPY_TARGETS_PROCESS_SYNC_CHANGE(%s, %s);", property->handle, property->handler);
+					} else {
+						write_line("\t\tINDIGO_COPY_VALUES_PROCESS_SYNC_CHANGE(%s, %s);", property->handle, property->handler);
+					}
 				}
-			} else {
-				if (property->preserve_values) {
-					write_line("\t\tINDIGO_COPY_TARGETS_PROCESS_SYNC_CHANGE(%s, %s);", property->handle, property->handler);
-				} else {
-					write_line("\t\tINDIGO_COPY_VALUES_PROCESS_SYNC_CHANGE(%s, %s);", property->handle, property->handler);
-				}
+				write_line("\t\treturn INDIGO_OK;");
 			}
-			write_line("\t\treturn INDIGO_OK;");
 		}
 	}
 	if (persistent) {
