@@ -24,7 +24,7 @@
  \file indigo_agent_guider.c
  */
 
-#define DRIVER_VERSION 0x0300002A
+#define DRIVER_VERSION 0x0300002B
 #define DRIVER_NAME	"indigo_agent_guider"
 
 #include <stdlib.h>
@@ -314,6 +314,16 @@ static void save_config(indigo_device *device) {
 		indigo_update_property(device, CONFIG_PROPERTY, NULL);
 		pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->mutex);
 	}
+}
+
+static bool validate_related_agent(indigo_device *device, indigo_property *info_property, int mask) {
+	if (!strncmp(info_property->device, "Imager Agent", 12)) {
+		return true;
+	}
+	if (!strncmp(info_property->device, "Mount Agent", 11)) {
+		return true;
+	}
+	return false;
 }
 
 static void open_log(indigo_device *device) {
@@ -706,7 +716,7 @@ static int select_stars(indigo_device *device) {
 		indigo_item *item_y = AGENT_GUIDER_SELECTION_Y_ITEM + 2 * i;
 		if (i == AGENT_GUIDER_STARS_PROPERTY->count - 1) {
 			if (!DEVICE_PRIVATE_DATA->silence_warnings) {
-				indigo_send_message(device, BUSY_PROPERTY, "Warning: Only %d suitable %s found (%d requested).", star_count, star_count == 1 ? "star" : "stars", (int)AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value);
+				indigo_send_message(device, BUSY_PROPERTY, "Only %d suitable %s found (%d requested).", star_count, star_count == 1 ? "star" : "stars", (int)AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value);
 			}
 			break;
 		}
@@ -775,7 +785,7 @@ static bool capture_and_process_frame(indigo_device *device) {
 			}
 			if (result != INDIGO_OK) {
 				if (!DEVICE_PRIVATE_DATA->silence_warnings) {
-					indigo_send_message(device, BUSY_PROPERTY, "Warning: Failed to compute DONUTS digest");
+					indigo_send_message(device, BUSY_PROPERTY, "Failed to compute DONUTS digest");
 				}
 				DEVICE_PRIVATE_DATA->no_guiding_star = true;
 				return false;
@@ -783,7 +793,7 @@ static bool capture_and_process_frame(indigo_device *device) {
 			AGENT_GUIDER_STATS_SNR_ITEM->number.value = DEVICE_PRIVATE_DATA->reference->snr;
 			if ((int)AGENT_GUIDER_STATS_PHASE_ITEM->number.value >= INDIGO_GUIDER_PHASE_GUIDING && DEVICE_PRIVATE_DATA->reference->snr < DONUTS_MIN_SNR) {
 				if (!DEVICE_PRIVATE_DATA->silence_warnings) {
-					indigo_send_message(device, BUSY_PROPERTY, "Warning: Signal to noise ratio is poor, increase exposure time or use different star detection mode");
+					indigo_send_message(device, BUSY_PROPERTY, "Signal to noise ratio is poor, increase exposure time or use different star detection mode");
 				}
 				DEVICE_PRIVATE_DATA->no_guiding_star = true;
 				return false;
@@ -792,7 +802,7 @@ static bool capture_and_process_frame(indigo_device *device) {
 			indigo_result result = indigo_centroid_frame_digest(header->signature, (char *)header + sizeof(indigo_raw_header), header->width, header->height, DEVICE_PRIVATE_DATA->reference);
 			if (result != INDIGO_OK) {
 				if (!DEVICE_PRIVATE_DATA->silence_warnings) {
-					indigo_send_message(device, BUSY_PROPERTY, "Warning: Failed to compute centroid digest");
+					indigo_send_message(device, BUSY_PROPERTY, "Failed to compute centroid digest");
 				}
 				DEVICE_PRIVATE_DATA->no_guiding_star = true;
 				return false;
@@ -830,7 +840,7 @@ static bool capture_and_process_frame(indigo_device *device) {
 				indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 			} else {
 				if (!DEVICE_PRIVATE_DATA->silence_warnings) {
-					indigo_send_message(device, BUSY_PROPERTY, "Warning: No stars detected");
+					indigo_send_message(device, BUSY_PROPERTY, "No stars detected");
 				}
 				DEVICE_PRIVATE_DATA->no_guiding_star = true;
 				return false;
@@ -857,7 +867,7 @@ static bool capture_and_process_frame(indigo_device *device) {
 			}
 			if (result != INDIGO_OK) {
 				if (!DEVICE_PRIVATE_DATA->silence_warnings) {
-					indigo_send_message(device, BUSY_PROPERTY, "Warning: Failed to compute DONUTS digest");
+					indigo_send_message(device, BUSY_PROPERTY, "Failed to compute DONUTS digest");
 				}
 				DEVICE_PRIVATE_DATA->no_guiding_star = true;
 				return false;
@@ -865,7 +875,7 @@ static bool capture_and_process_frame(indigo_device *device) {
 			AGENT_GUIDER_STATS_SNR_ITEM->number.value = digest.snr;
 			if ((int)AGENT_GUIDER_STATS_PHASE_ITEM->number.value >= INDIGO_GUIDER_PHASE_GUIDING && digest.snr < DONUTS_MIN_SNR) {
 				if (!DEVICE_PRIVATE_DATA->silence_warnings) {
-					indigo_send_message(device, BUSY_PROPERTY, "Warning: Signal to noise ratio is poor, increase exposure time or use different star detection mode");
+					indigo_send_message(device, BUSY_PROPERTY, "Signal to noise ratio is poor, increase exposure time or use different star detection mode");
 				}
 				DEVICE_PRIVATE_DATA->no_guiding_star = true;
 				return false;
@@ -874,7 +884,7 @@ static bool capture_and_process_frame(indigo_device *device) {
 			indigo_result result = indigo_centroid_frame_digest(header->signature, (char *)header + sizeof(indigo_raw_header), header->width, header->height, &digest);
 			if (result != INDIGO_OK) {
 				if (!DEVICE_PRIVATE_DATA->silence_warnings) {
-					indigo_send_message(device, BUSY_PROPERTY, "Warning: Failed to compute centroid digest");
+					indigo_send_message(device, BUSY_PROPERTY, "Failed to compute centroid digest");
 				}
 				DEVICE_PRIVATE_DATA->no_guiding_star = true;
 				return false;
@@ -909,7 +919,7 @@ static bool capture_and_process_frame(indigo_device *device) {
 				indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 			} else {
 				if (!DEVICE_PRIVATE_DATA->silence_warnings) {
-					indigo_send_message(device, BUSY_PROPERTY, "Warning: No stars detected");
+					indigo_send_message(device, BUSY_PROPERTY, "No stars detected");
 				}
 				DEVICE_PRIVATE_DATA->no_guiding_star = true;
 				return false;
@@ -921,7 +931,7 @@ static bool capture_and_process_frame(indigo_device *device) {
 		double drift_x, drift_y;
 		indigo_result result = indigo_calculate_drift(DEVICE_PRIVATE_DATA->reference, &digest, &drift_x, &drift_y);
 		if (result != INDIGO_OK) {
-			indigo_send_message(device, BUSY_PROPERTY, "Warning: Can't calculate drift");
+			indigo_send_message(device, BUSY_PROPERTY, "Can't calculate drift");
 			return false;
 		}
 		DEVICE_PRIVATE_DATA->drift_x = drift_x - AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.value;
@@ -977,7 +987,7 @@ static bool select_subframe(indigo_device *device) {
 	int selection_x = (int)AGENT_GUIDER_SELECTION_X_ITEM->number.value;
 	int selection_y = (int)AGENT_GUIDER_SELECTION_Y_ITEM->number.value;
 	if (selection_x == 0 || selection_y == 0) {
-		indigo_send_message(device, BUSY_PROPERTY, "Warning: Failed to select subframe.");
+		indigo_send_message(device, BUSY_PROPERTY, "Failed to select subframe.");
 		return false;
 	}
 	if (AGENT_GUIDER_SELECTION_SUBFRAME_ITEM->number.value && DEVICE_PRIVATE_DATA->saved_frame[2] == 0 && DEVICE_PRIVATE_DATA->saved_frame[3] == 0) {
@@ -1166,7 +1176,7 @@ static bool guide_and_capture_frame(indigo_device *device, double ra, double dec
 				if (!AGENT_GUIDER_DETECTION_DONUTS_ITEM->sw.value) {
 					clear_selection(device);
 					if (check_selection(device)) {
-						indigo_send_message(device, BUSY_PROPERTY, "Warning: Selection changed");
+						indigo_send_message(device, BUSY_PROPERTY, "Selection changed");
 					}
 				}
 				AGENT_GUIDER_STATS_FRAME_ITEM->number.value = 0;
@@ -1175,7 +1185,7 @@ static bool guide_and_capture_frame(indigo_device *device, double ra, double dec
 				DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_FAILED;
 			} else if (AGENT_GUIDER_RESET_ON_CALIBRATION_ERROR_ITEM->sw.value) {
 				DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_INITIALIZING;
-				indigo_send_message(device, BUSY_PROPERTY, "Warning: Resetting and waiting for stars to reappear");
+				indigo_send_message(device, BUSY_PROPERTY, "Resetting and waiting for stars to reappear");
 				DEVICE_PRIVATE_DATA->silence_warnings = true;
 				clear_selection(device);
 				if (AGENT_GUIDER_DETECTION_DONUTS_ITEM->sw.value) {
@@ -1365,7 +1375,7 @@ static bool calibrate(indigo_device *device) {
 						AGENT_GUIDER_SETTINGS_BACKLASH_ITEM->number.value = AGENT_GUIDER_SETTINGS_BACKLASH_ITEM->number.target = backlash;
 					} else {
 						AGENT_GUIDER_SETTINGS_BACKLASH_ITEM->number.value = AGENT_GUIDER_SETTINGS_BACKLASH_ITEM->number.target = 0;
-						indigo_send_message(device, BUSY_PROPERTY, "Warning: Inconsistent backlash");
+						indigo_send_message(device, BUSY_PROPERTY, "Inconsistent backlash");
 					}
 					indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
 					DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_MOVING_WEST;
@@ -1551,7 +1561,7 @@ static bool guide(indigo_device *device) {
 					if (!AGENT_GUIDER_DETECTION_DONUTS_ITEM->sw.value) {
 						clear_selection(device);
 						if (!find_stars(device) || !select_stars(device)) {
-							indigo_send_message(device, ALERT_PROPERTY, "Error: No guide stars found");
+							indigo_send_message(device, ALERT_PROPERTY, "No guide stars found");
 							break;
 						}
 						DEVICE_PRIVATE_DATA->stars_used_at_start = usable_star_count(device);
@@ -1563,7 +1573,7 @@ static bool guide(indigo_device *device) {
 					break;
 				} else if (AGENT_GUIDER_CONTINUE_ON_GUIDING_ERROR_ITEM->sw.value) {
 					if (!DEVICE_PRIVATE_DATA->silence_warnings) {
-						indigo_send_message(device, BUSY_PROPERTY, "Warning: Pausing and waiting for stars to reappear");
+						indigo_send_message(device, BUSY_PROPERTY, "Pausing and waiting for stars to reappear");
 					}
 					indigo_usleep(1000000);
 					DEVICE_PRIVATE_DATA->silence_warnings = true;
@@ -1571,7 +1581,7 @@ static bool guide(indigo_device *device) {
 					DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_INITIALIZING;
 					if (AGENT_GUIDER_DETECTION_DONUTS_ITEM->sw.value) {
 						if (!DEVICE_PRIVATE_DATA->silence_warnings) {
-							indigo_send_message(device, BUSY_PROPERTY, "Warning: Resetting and waiting for stars to reappear");
+							indigo_send_message(device, BUSY_PROPERTY, "Resetting and waiting for stars to reappear");
 						}
 						DEVICE_PRIVATE_DATA->silence_warnings = true;
 						while (AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && (!capture_and_process_frame(device) || DEVICE_PRIVATE_DATA->no_guiding_star)) {
@@ -1583,7 +1593,7 @@ static bool guide(indigo_device *device) {
 							min_usable_stars = DEVICE_PRIVATE_DATA->stars_used_at_start;
 						}
 						if (!DEVICE_PRIVATE_DATA->silence_warnings) {
-							indigo_send_message(device, BUSY_PROPERTY, "Warning: Resetting and waiting for %d %s to reappear", min_usable_stars, min_usable_stars == 1 ? "star" : "stars");
+							indigo_send_message(device, BUSY_PROPERTY, "Resetting and waiting for %d %s to reappear", min_usable_stars, min_usable_stars == 1 ? "star" : "stars");
 						}
 						restore_subframe(device);
 						clear_selection(device);
@@ -1611,7 +1621,7 @@ static bool guide(indigo_device *device) {
 		}
 		DEVICE_PRIVATE_DATA->first_frame = false;
 		if (DEVICE_PRIVATE_DATA->silence_warnings) {
-			indigo_send_message(device, BUSY_PROPERTY, "Warning: Guiding recovered");
+			indigo_send_message(device, BUSY_PROPERTY, "Guiding recovered");
 			DEVICE_PRIVATE_DATA->silence_warnings = false;
 		}
 		if (DEVICE_PRIVATE_DATA->drift_x || DEVICE_PRIVATE_DATA->drift_y) {
@@ -2013,6 +2023,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- Device properties
 		FILTER_CCD_LIST_PROPERTY->hidden = false;
 		FILTER_GUIDER_LIST_PROPERTY->hidden = false;
+		FILTER_DEVICE_CONTEXT->validate_related_agent = validate_related_agent;
 		FILTER_RELATED_AGENT_LIST_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- Drift correction mode
 		AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY_NAME, "Agent", "RA drift correction mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
@@ -2656,6 +2667,8 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 
 static indigo_result agent_device_detach(indigo_device *device) {
 	assert(device != NULL);
+	indigo_cancel_pending_handlers(device);
+	indigo_cancel_all_timers(device);
 	save_config(device);
 	indigo_release_property(AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY);
 	indigo_release_property(AGENT_GUIDER_CORRECTION_MODE_DEC_PROPERTY);
