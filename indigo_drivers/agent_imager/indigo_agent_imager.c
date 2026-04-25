@@ -24,7 +24,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x03000038
+#define DRIVER_VERSION 0x03000039
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>
@@ -252,7 +252,6 @@ typedef struct {
 	indigo_property *agent_resume_condition_property;
 	indigo_property *agent_barrier_property;
 	pthread_mutex_t disk_usage_mutex;
-	indigo_timer *disk_usage_timer;
 	double filter_offsets[FILTER_SLOT_COUNT];
 	int current_filter_index;
 	int requested_filter_index;
@@ -417,7 +416,7 @@ static void disk_usage_timer_callback(indigo_device *device) {
 		return;
 	}
 	update_disk_usage(device);
-	indigo_reschedule_timer(device, 30, &DEVICE_PRIVATE_DATA->disk_usage_timer);
+	indigo_execute_handler_in(device, 30, disk_usage_timer_callback);
 }
 
 static void save_config(indigo_device *device) {
@@ -442,6 +441,28 @@ static void save_config(indigo_device *device) {
 		indigo_update_property(device, CONFIG_PROPERTY, NULL);
 		pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->mutex);
 	}
+}
+
+static bool validate_related_agent(indigo_device *device, indigo_property *info_property, int mask) {
+	if (!strncmp(info_property->device, "Auxiliary Agent", 15)) {
+		return true;
+	}
+	if (!strncmp(info_property->device, "Mount Agent", 11)) {
+		return true;
+	}
+	if (!strncmp(info_property->device, "Guider Agent", 12)) {
+		return true;
+	}
+	if (!strncmp(info_property->device, "Astrometry Agent", 16)) {
+		return true;
+	}
+	if (!strncmp(info_property->device, "ASTAP Agent", 11)) {
+		return true;
+	}
+	if (!strncmp(info_property->device, "Solver Agent", 12)) {
+		return true;
+	}
+	return false;
 }
 
 static void clear_stats(indigo_device *device) {
@@ -577,7 +598,7 @@ static bool capture_frame(indigo_device *device) {
 		pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->last_image_mutex);
 		indigo_raw_header *header = (indigo_raw_header *)(DEVICE_PRIVATE_DATA->last_image);
 		if (header == NULL || (header->signature != INDIGO_RAW_MONO8 && header->signature != INDIGO_RAW_MONO16 && header->signature != INDIGO_RAW_RGB24 && header->signature != INDIGO_RAW_RGB48)) {
-			indigo_send_message(device, ALERT_PROPERTY, "Error: RAW image not received");
+			indigo_send_message(device, ALERT_PROPERTY, "RAW image not received");
 			return false;
 		}
 		DEVICE_PRIVATE_DATA->last_width = header->width;
@@ -658,7 +679,7 @@ static bool capture_plain_frame(indigo_device *device) {
 		DEVICE_PRIVATE_DATA->last_width = header->width;
 		DEVICE_PRIVATE_DATA->last_height = header->height;
 		if (header == NULL || (header->signature != INDIGO_RAW_MONO8 && header->signature != INDIGO_RAW_MONO16 && header->signature != INDIGO_RAW_RGB24 && header->signature != INDIGO_RAW_RGB48)) {
-			indigo_send_message(device, ALERT_PROPERTY, "Error: RAW image not received");
+			indigo_send_message(device, ALERT_PROPERTY, "RAW image not received");
 			return false;
 		}
 		/* This is potentially bayered image, if so we need to equalize the channels */
@@ -690,7 +711,7 @@ static bool find_stars(indigo_device *device) {
 	AGENT_IMAGER_STARS_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_define_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
 	if (star_count == 0) {
-		indigo_send_message(device, ALERT_PROPERTY, "Error: No stars detected");
+		indigo_send_message(device, ALERT_PROPERTY, "No stars detected");
 		return false;
 	}
 	return true;
@@ -703,7 +724,7 @@ static bool select_stars(indigo_device *device) {
 		indigo_item *item_y = AGENT_IMAGER_SELECTION_Y_ITEM + 2 * i;
 		if (i == AGENT_IMAGER_STARS_PROPERTY->count - 1) {
 			if (DEVICE_PRIVATE_DATA->use_ucurve_focusing) {
-				indigo_send_message(device, BUSY_PROPERTY, "Warning: Only %d suitable stars found (%d requested).", star_count, (int)AGENT_IMAGER_SELECTION_STAR_COUNT_ITEM->number.value);
+				indigo_send_message(device, BUSY_PROPERTY, "Only %d suitable stars found (%d requested).", star_count, (int)AGENT_IMAGER_SELECTION_STAR_COUNT_ITEM->number.value);
 			}
 			break;
 		}
@@ -760,7 +781,7 @@ static bool select_subframe(indigo_device *device) {
 	int selection_x = (int)AGENT_IMAGER_SELECTION_X_ITEM->number.value;
 	int selection_y = (int)AGENT_IMAGER_SELECTION_Y_ITEM->number.value;
 	if (selection_x == 0 || selection_y == 0) {
-		indigo_send_message(device, BUSY_PROPERTY, "Warning: Failed to select subframe.");
+		indigo_send_message(device, BUSY_PROPERTY, "Failed to select subframe.");
 		return false;
 	}
 	if (AGENT_IMAGER_SELECTION_SUBFRAME_ITEM->number.value && DEVICE_PRIVATE_DATA->saved_frame[2] == 0 && DEVICE_PRIVATE_DATA->saved_frame[3] == 0) {
@@ -858,7 +879,7 @@ static bool capture_and_process_frame(indigo_device *device, uint8_t **saturatio
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "frame contrast = %f %s", AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value, DEVICE_PRIVATE_DATA->frame_saturated ? "(saturated)" : "");
 				if (DEVICE_PRIVATE_DATA->frame_saturated) {
 					if (header->signature == INDIGO_RAW_MONO8 || header->signature == INDIGO_RAW_MONO16 || header->signature == INDIGO_RAW_RGB24 || header->signature == INDIGO_RAW_RGB48) {
-						indigo_send_message(device, BUSY_PROPERTY, "Warning: Frame saturation detected, masking out saturated areas and resetting statistics");
+						indigo_send_message(device, BUSY_PROPERTY, "Frame saturation detected, masking out saturated areas and resetting statistics");
 						if (*saturation_mask == NULL) {
 							indigo_init_saturation_mask(header->width, header->height, saturation_mask);
 						}
@@ -866,7 +887,7 @@ static bool capture_and_process_frame(indigo_device *device, uint8_t **saturatio
 						AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value = indigo_contrast(header->signature, (char *)header + sizeof(indigo_raw_header), *saturation_mask, header->width, header->height, NULL);
 						AGENT_IMAGER_STATS_FRAME_ITEM->number.value = 0;
 					} else {  // Colour image saturation masking is not supported yet.
-						indigo_send_message(device, BUSY_PROPERTY, "Warning: Colour image saturation masking is not supported");
+						indigo_send_message(device, BUSY_PROPERTY, "Colour image saturation masking is not supported");
 						DEVICE_PRIVATE_DATA->frame_saturated = false;
 					}
 				}
@@ -1924,7 +1945,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 		}
 		/* Check if there is at least one star with measured HFD (quality), if not fail */
 		if (quality_is_zero(quality, star_count)){
-			indigo_send_message(device, ALERT_PROPERTY, "Error: No stars detected, maybe focus is too far");
+			indigo_send_message(device, ALERT_PROPERTY, "No stars detected, maybe focus is too far");
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "UC: No stars detected, maybe focus is too far (frame_count = %d)", frame_count);
 			focus_failed = true;
 			goto ucurve_finish;
@@ -1983,8 +2004,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 			}
 
 			if (used_stars == 0) {  /* This should not happen, but just in case */
-				indigo_send_message(device, ALERT_PROPERTY, "Error: No usable stars, maybe focus is too far");
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "UC: No usable stars, maybe focus is too far (frame_count = %d)", frame_count);
+				indigo_send_message(device, ALERT_PROPERTY, "No usable stars, maybe focus is too far");
 				focus_failed = true;
 				goto ucurve_finish;
 			}
@@ -2123,10 +2143,10 @@ static bool autofocus_ucurve(indigo_device *device) {
 	indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 
 	if (AGENT_IMAGER_STATS_HFD_ITEM->number.value > 1.2 * AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value && DEVICE_PRIVATE_DATA->use_hfd_estimator) {
-		indigo_send_message(device, ALERT_PROPERTY, "Error: No focus reached, did not converge");
+		indigo_send_message(device, ALERT_PROPERTY, "No focus reached, did not converge");
 		focus_failed = true;
 	} else if (AGENT_IMAGER_STATS_FOCUS_DEVIATION_ITEM->number.value > 20) { /* for HFD 20% deviation is ok - tested on realsky */
-		indigo_send_message(device, ALERT_PROPERTY, "Error: Focus does not meet the quality criteria");
+		indigo_send_message(device, ALERT_PROPERTY, "Focus does not meet the quality criteria");
 		focus_failed = true;
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Focus deviation = %g %%", AGENT_IMAGER_STATS_FOCUS_DEVIATION_ITEM->number.value);
@@ -2166,13 +2186,13 @@ static bool autofocus(indigo_device *device) {
 		if (DEVICE_PRIVATE_DATA->use_hfd_estimator) {
 			result = autofocus_ucurve(device);
 		} else {
-			indigo_send_message(device, ALERT_PROPERTY, "Error: Unsupported estimator and focusing algorithm combination");
+			indigo_send_message(device, ALERT_PROPERTY, "Unsupported estimator and focusing algorithm combination");
 		}
 	} else if (DEVICE_PRIVATE_DATA->use_iterative_focusing) {
 		if (DEVICE_PRIVATE_DATA->use_hfd_estimator || DEVICE_PRIVATE_DATA->use_rms_estimator || DEVICE_PRIVATE_DATA->use_bahtinov_estimator) {
 			result = autofocus_iterative(device, &saturation_mask);
 		} else {
-			indigo_send_message(device, ALERT_PROPERTY, "Error: Unsupported estimator and focusing algorithm combination");
+			indigo_send_message(device, ALERT_PROPERTY, "Unsupported estimator and focusing algorithm combination");
 		}
 	}
 	indigo_safe_free(saturation_mask);
@@ -2225,7 +2245,7 @@ static void autofocus_process(indigo_device *device) {
 	FILTER_DEVICE_CONTEXT->running_process = true;
 	allow_abort_by_mount_agent(device, true);
 	disable_solver(device);
-	indigo_send_message(device, ALERT_PROPERTY, "Focusing started");
+	indigo_send_message(device, IDLE_PROPERTY, "Focusing started");
 	if (autofocus_repeat(device)) {
 		indigo_send_message(device, IDLE_PROPERTY, "Focusing finished");
 		AGENT_START_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
@@ -2450,6 +2470,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		FILTER_CCD_LIST_PROPERTY->hidden = false;
 		FILTER_WHEEL_LIST_PROPERTY->hidden = false;
 		FILTER_FOCUSER_LIST_PROPERTY->hidden = false;
+		FILTER_DEVICE_CONTEXT->validate_related_agent = validate_related_agent;
 		FILTER_RELATED_AGENT_LIST_PROPERTY->hidden = false;
 		FILTER_AUX_1_LIST_PROPERTY->hidden = false;
 		strcpy(FILTER_AUX_1_LIST_PROPERTY->label, "External shutter list");
@@ -2702,7 +2723,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		pthread_mutex_init(&DEVICE_PRIVATE_DATA->last_image_mutex, NULL);
 		pthread_mutex_init(&DEVICE_PRIVATE_DATA->disk_usage_mutex, NULL);
 		indigo_load_properties(device, false);
-		indigo_set_timer(device, 0, disk_usage_timer_callback, &DEVICE_PRIVATE_DATA->disk_usage_timer);
+		indigo_execute_handler(device, disk_usage_timer_callback);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return agent_enumerate_properties(device, NULL, NULL);
 	}
@@ -2940,12 +2961,12 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			} else if (INDIGO_FILTER_CCD_SELECTED) {
 				if (AGENT_IMAGER_START_PREVIEW_1_ITEM->sw.value) {
 					if (DEVICE_PRIVATE_DATA->use_bahtinov_estimator && (DEVICE_PRIVATE_DATA->frame[2] > MAX_BAHTINOV_FRAME_SIZE || DEVICE_PRIVATE_DATA->frame[3] > MAX_BAHTINOV_FRAME_SIZE)) {
-						indigo_send_message(device, BUSY_PROPERTY, "Warning: Bahtinov focus estimator can't process frames larger than %d x %d pixels", MAX_BAHTINOV_FRAME_SIZE, MAX_BAHTINOV_FRAME_SIZE);
+						indigo_send_message(device, BUSY_PROPERTY, "Bahtinov focus estimator can't process frames larger than %d x %d pixels", MAX_BAHTINOV_FRAME_SIZE, MAX_BAHTINOV_FRAME_SIZE);
 					}
 					indigo_set_timer(device, 0, preview_1_process, NULL);
 				} else if (AGENT_IMAGER_START_PREVIEW_ITEM->sw.value) {
 					if (DEVICE_PRIVATE_DATA->use_bahtinov_estimator && (DEVICE_PRIVATE_DATA->frame[2] > MAX_BAHTINOV_FRAME_SIZE || DEVICE_PRIVATE_DATA->frame[3] > MAX_BAHTINOV_FRAME_SIZE)) {
-						indigo_send_message(device, BUSY_PROPERTY, "Warning: Bahtinov focus estimator can't process frames larger than %d x %d pixels", MAX_BAHTINOV_FRAME_SIZE, MAX_BAHTINOV_FRAME_SIZE);
+						indigo_send_message(device, BUSY_PROPERTY, "Bahtinov focus estimator can't process frames larger than %d x %d pixels", MAX_BAHTINOV_FRAME_SIZE, MAX_BAHTINOV_FRAME_SIZE);
 					}
 					indigo_set_timer(device, 0, preview_process, NULL);
 				} else if (AGENT_IMAGER_START_EXPOSURE_ITEM->sw.value && !AGENT_IMAGER_MACRO_MODE_FEATURE_ITEM->sw.value) {
@@ -2955,7 +2976,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 				} else if (INDIGO_FILTER_FOCUSER_SELECTED) {
 					if (AGENT_IMAGER_START_FOCUSING_ITEM->sw.value) {
 						if (DEVICE_PRIVATE_DATA->use_bahtinov_estimator && (DEVICE_PRIVATE_DATA->frame[2] > MAX_BAHTINOV_FRAME_SIZE || DEVICE_PRIVATE_DATA->frame[3] > MAX_BAHTINOV_FRAME_SIZE)) {
-							indigo_send_message(device, BUSY_PROPERTY, "Warning: Bahtinov focus estimator can't process frames larger than %d x %d pixels", MAX_BAHTINOV_FRAME_SIZE, MAX_BAHTINOV_FRAME_SIZE);
+							indigo_send_message(device, BUSY_PROPERTY, "Bahtinov focus estimator can't process frames larger than %d x %d pixels", MAX_BAHTINOV_FRAME_SIZE, MAX_BAHTINOV_FRAME_SIZE);
 						}
 						indigo_set_timer(device, 0, autofocus_process, NULL);
 					} else if (AGENT_IMAGER_START_EXPOSURE_ITEM->sw.value && AGENT_IMAGER_MACRO_MODE_FEATURE_ITEM->sw.value) {
@@ -3228,7 +3249,8 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 
 static indigo_result agent_device_detach(indigo_device *device) {
 	assert(device != NULL);
-	indigo_cancel_timer_sync(device, &DEVICE_PRIVATE_DATA->disk_usage_timer);
+	indigo_cancel_pending_handlers(device);
+	indigo_cancel_all_timers(device);
 	save_config(device);
 	indigo_release_property(AGENT_IMAGER_BATCH_PROPERTY);
 	indigo_release_property(AGENT_IMAGER_FOCUS_PROPERTY);
