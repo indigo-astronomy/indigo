@@ -24,7 +24,7 @@
  \file indigo_agent_config.c
  */
 
-#define DRIVER_VERSION 0x03000006
+#define DRIVER_VERSION 0x03000007
 #define DRIVER_NAME	"indigo_agent_config"
 
 #include <stdlib.h>
@@ -527,7 +527,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			AGENT_CONFIG_LAST_CONFIG_PROPERTY->state = INDIGO_BUSY_STATE;
 			AGENT_CONFIG_LAST_CONFIG_NAME_ITEM->text.value[0] = '\0';
 			indigo_update_property(device, AGENT_CONFIG_LAST_CONFIG_PROPERTY, NULL);
-			indigo_set_timer(device, 0, load_configuration, NULL);
+			indigo_execute_handler(device, load_configuration);
 		} else {
 			indigo_update_property(device, AGENT_CONFIG_LOAD_PROPERTY, NULL);
 		}
@@ -564,7 +564,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			pthread_mutex_lock(&DEVICE_PRIVATE_DATA->data_mutex);
 			DEVICE_PRIVATE_DATA->restore_properties[DEVICE_PRIVATE_DATA->restore_count++] = indigo_copy_property(NULL, property);
 			pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->data_mutex);
-			indigo_set_timer(device, 0, process_configuration_property, NULL);
+			indigo_execute_handler(device, process_configuration_property);
 		}
 	}
 	return indigo_agent_change_property(device, client, property);
@@ -572,6 +572,8 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 
 static indigo_result agent_device_detach(indigo_device *device) {
 	assert(device != NULL);
+	indigo_cancel_pending_handlers(device);
+	indigo_cancel_all_timers(device);
 	indigo_release_property(AGENT_CONFIG_SETUP_PROPERTY);
 	indigo_release_property(AGENT_CONFIG_SAVE_PROPERTY);
 	indigo_release_property(AGENT_CONFIG_DELETE_PROPERTY);
