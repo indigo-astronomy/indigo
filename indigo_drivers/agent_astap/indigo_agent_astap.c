@@ -23,7 +23,7 @@
  \file indigo_agent_astap.c
  */
 
-#define DRIVER_VERSION 0x02000009
+#define DRIVER_VERSION 0x0200000A
 #define DRIVER_NAME	"indigo_agent_astap"
 
 #include <stdio.h>
@@ -301,13 +301,11 @@ static void parse_line(indigo_device *device, char *line) {
 		AGENT_PLATESOLVER_WCS_HEIGHT_ITEM->number.value = ASTAP_DEVICE_PRIVATE_DATA->frame_height * AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value;
 		AGENT_PLATESOLVER_WCS_PARITY_ITEM->number.value = AGENT_PLATESOLVER_WCS_PARITY_ITEM->number.value * (d >= 0 ? 1 : -1);
 	} else if ((s = strstr(line, "ERROR="))) {
-		indigo_send_message(device, ALERT_PROPERTY, "Error: %s", s + 6);
-		indigo_error("ASTAP Error: %s", s + 8);
+		indigo_send_message(device, ALERT_PROPERTY, "%s", s + 6);
 	} else if ((s = strstr(line, "WARNING="))) {
-		indigo_send_message(device, BUSY_PROPERTY, "Warning: %s", s + 8);
-		indigo_error("ASTAP Warning: %s", s + 8);
+		indigo_send_message(device, BUSY_PROPERTY, "%s", s + 8);
 	} else if ((s = strstr(line, "COMMENT="))) {
-		indigo_log("ASTAP Comment: %s", s + 8);
+		indigo_send_message(device, IDLE_PROPERTY, "%s", s + 8);
 	}
 	if ((s = strstr(line, "Solved in "))) {
 		indigo_send_message(device, OK_PROPERTY, "Solved in %gs", atof(s + 10));
@@ -675,6 +673,8 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 
 static indigo_result agent_device_detach(indigo_device *device) {
 	assert(device != NULL);
+	indigo_cancel_pending_handlers(device);
+	indigo_cancel_all_timers(device);
 	indigo_release_property(AGENT_ASTAP_INDEX_PROPERTY);
 	return indigo_platesolver_device_detach(device);
 }
