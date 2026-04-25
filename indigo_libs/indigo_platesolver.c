@@ -315,7 +315,9 @@ static void process_failed(indigo_device *device, char *message) {
 		AGENT_PLATESOLVER_START_RECALCULATE_PA_ERROR_ITEM->sw.value = false;
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 	}
-	indigo_send_message(device, ALERT_PROPERTY, message);
+	if (message) {
+		indigo_send_message(device, ALERT_PROPERTY, message);
+	}
 }
 
 static void factory_reset(indigo_device *device) {
@@ -801,7 +803,7 @@ indigo_result indigo_platesolver_change_property(indigo_device *device, indigo_c
 		indigo_property_copy_values(AGENT_PLATESOLVER_HINTS_PROPERTY, property, false);
 		if (AGENT_PLATESOLVER_HINTS_EPOCH_ITEM->number.target != 0 && AGENT_PLATESOLVER_HINTS_EPOCH_ITEM->number.target != 2000) {
 			AGENT_PLATESOLVER_HINTS_EPOCH_ITEM->number.value = AGENT_PLATESOLVER_HINTS_EPOCH_ITEM->number.target = 2000;
-			indigo_send_message(device, BUSY_PROPERTY, "Warning: Valid values are 0 or 2000 only, value adjusted to 2000");
+			indigo_send_message(device, BUSY_PROPERTY, "Valid values are 0 or 2000 only, value adjusted to 2000");
 		}
 		AGENT_PLATESOLVER_HINTS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_PLATESOLVER_HINTS_PROPERTY, NULL);
