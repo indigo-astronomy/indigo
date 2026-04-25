@@ -24,7 +24,7 @@
  \file indigo_agent_auxiliary.c
  */
 
-#define DRIVER_VERSION 0x03000003
+#define DRIVER_VERSION 0x03000004
 #define DRIVER_NAME	"indigo_agent_auxiliary"
 
 #include <stdlib.h>
@@ -42,6 +42,15 @@
 
 // -------------------------------------------------------------------------------- INDIGO agent device implementation
 
+static bool validate_related_agent(indigo_device *device, indigo_property *info_property, int mask) {
+	if (!strncmp(info_property->device, "Imager Agent", 12)) {
+		return true;
+	}
+	return false;
+}
+
+
+
 static indigo_result agent_device_attach(indigo_device *device) {
 	assert(device != NULL);
 	if (indigo_filter_device_attach(device, DRIVER_NAME, DRIVER_VERSION, INDIGO_INTERFACE_AUX) == INDIGO_OK) {
@@ -50,6 +59,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		FILTER_AUX_2_LIST_PROPERTY->hidden = false;
 		FILTER_AUX_3_LIST_PROPERTY->hidden = false;
 		FILTER_AUX_4_LIST_PROPERTY->hidden = false;
+		FILTER_DEVICE_CONTEXT->validate_related_agent = validate_related_agent;
 		FILTER_RELATED_AGENT_LIST_PROPERTY->hidden = false;
 		// --------------------------------------------------------------------------------
 		CONFIG_PROPERTY->hidden = true;
@@ -61,6 +71,14 @@ static indigo_result agent_device_attach(indigo_device *device) {
 	}
 	return INDIGO_FAILED;
 }
+
+static indigo_result agent_device_detach(indigo_device *device) {
+	assert(device != NULL);
+	indigo_cancel_pending_handlers(device);
+	indigo_cancel_all_timers(device);
+	return indigo_filter_device_detach(device);
+}
+
 
 // -------------------------------------------------------------------------------- Initialization
 
@@ -74,7 +92,7 @@ indigo_result indigo_agent_auxiliary(indigo_driver_action action, indigo_driver_
 		indigo_filter_enumerate_properties,
 		indigo_filter_change_property,
 		NULL,
-		indigo_filter_device_detach
+		agent_device_detach
 	);
 
 	static indigo_client agent_client_template = {
