@@ -23,7 +23,7 @@
  \file indigo_agent_astrometry.c
  */
 
-#define DRIVER_VERSION 0x02000014
+#define DRIVER_VERSION 0x02000015
 #define DRIVER_NAME	"indigo_agent_astrometry"
 
 #include <stdio.h>
@@ -807,6 +807,8 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 
 static indigo_result agent_device_detach(indigo_device *device) {
 	assert(device != NULL);
+	indigo_cancel_pending_handlers(device);
+	indigo_cancel_all_timers(device);
 	indigo_release_property(AGENT_ASTROMETRY_INDEX_41XX_PROPERTY);
 	indigo_release_property(AGENT_ASTROMETRY_INDEX_42XX_PROPERTY);
 	return indigo_platesolver_device_detach(device);
