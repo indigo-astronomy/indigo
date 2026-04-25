@@ -441,7 +441,7 @@ static void focuser_connection_handler(indigo_device *device) {
 			if (PRIVATE_DATA->is_efa) {
 				uint8_t get_calibration_status_packet[16] = { SOM, 0x03, APP, FOC, 0x30, 0 };
 				if (!efa_command(device, get_calibration_status_packet, response_packet) || response_packet[5] == 0) {
-					indigo_send_message(device, BUSY_PROPERTY, "Warning: Focuser is not calibrated!");
+					indigo_send_message(device, BUSY_PROPERTY, "Focuser is not calibrated!");
 				}
 				uint8_t set_stop_detect_packet[16] = { SOM, 0x04, APP, FOC, 0xEF, 0x01, 0 };
 				efa_command(device, set_stop_detect_packet, response_packet);
@@ -459,7 +459,7 @@ static void focuser_connection_handler(indigo_device *device) {
 			} else {
 				uint8_t get_calibration_status_packet[16] = { SOM, 0x03, APP, FOC, 0x2B, 0 };
 				if (!efa_command(device, get_calibration_status_packet, response_packet) || response_packet[5] == 0) {
-					indigo_send_message(device, BUSY_PROPERTY, "Warning: Focuser is not calibrated!");
+					indigo_send_message(device, BUSY_PROPERTY, "Focuser is not calibrated!");
 				}
 				uint8_t get_limits_packet[16] = { SOM, 0x03, APP, FOC, 0x2C, 0 };
 				if (efa_command(device, get_limits_packet, response_packet)) {

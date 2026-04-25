@@ -204,7 +204,7 @@ static bool svb_open(indigo_device *device) {
 		SVB_BOOL is_update_needed;
 		res = SVBIsCameraNeedToUpgrade(id, &is_update_needed, min_version);
 		if (res == SVB_SUCCESS && is_update_needed) {
-			indigo_send_message(device, BUSY_PROPERTY, "Warning: Camera firmware needs to be updated. Minimal required version: %s", min_version);
+			indigo_send_message(device, BUSY_PROPERTY, "Camera firmware needs to be updated. Minimal required version: %s", min_version);
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s firmware needs to be updated. Minimal required version: %s", device->name, min_version);
 		} else {
 			if (res == SVB_SUCCESS) {

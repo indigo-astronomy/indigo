@@ -503,7 +503,7 @@ static bool primaluce_open(indigo_device *device) {
 				if (primaluce_command(device, "{\"req\":{\"get\":{\"SWVERS\":{\"SWAPP\":\"\"}}}}") && (text = get_string(device, GET_SWAPP))) {
 					double version = atof(text);
 					if (!PRIVATE_DATA->is_sestosenso_3 && version < 3.05) {
-						indigo_send_message(device, BUSY_PROPERTY, "Warning: %s has firmware version %.2f and at least 3.05 is needed", INFO_DEVICE_MODEL_ITEM->text.value, version);
+						indigo_send_message(device, BUSY_PROPERTY, "%s has firmware version %.2f and at least 3.05 is needed", INFO_DEVICE_MODEL_ITEM->text.value, version);
 					}
 					//primaluce_command(device, "{\"req\":{\"cmd\":{\"LOGLEVEL\":\"no output\"}}}");
 					return true;
@@ -680,10 +680,10 @@ static void focuser_connection_handler(indigo_device *device) {
 				}
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 				if ((text = get_string(device, GET_MOT1_ERROR)) && *text) {
-					indigo_send_message(device, ALERT_PROPERTY, "Error: %s", text);
+					indigo_send_message(device, ALERT_PROPERTY, "%s", text);
 				}
 				if (get_number(device, GET_CALRESTART_MOT1)) {
-					indigo_send_message(device, BUSY_PROPERTY, "Warning: %s needs calibration", INFO_DEVICE_MODEL_ITEM->text.value);
+					indigo_send_message(device, BUSY_PROPERTY, "%s needs calibration", INFO_DEVICE_MODEL_ITEM->text.value);
 				}
 				PRIVATE_DATA->has_abs_pos = getToken(device, 0, GET_MOT1_ABS_POS) != -1;
 				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = get_number(device, PRIVATE_DATA->has_abs_pos ? GET_MOT1_ABS_POS : GET_MOT1_ABS_POS_STEP);
@@ -1401,10 +1401,10 @@ static void rotator_connection_handler(indigo_device *device) {
 			if (primaluce_command(device, "{\"req\":{\"set\": {\"ARCO\":1}}}")) {
 				if (primaluce_command(device, "{\"req\":{\"get\": \"\"}}")) {
 					if ((text = get_string(device, GET_MOT2_ERROR)) && *text) {
-						indigo_send_message(device, ALERT_PROPERTY, "Error: %s", text);
+						indigo_send_message(device, ALERT_PROPERTY, "%s", text);
 					}
 					if (get_number(device, GET_CALRESTART_MOT2)) {
-						indigo_send_message(device, BUSY_PROPERTY, "Warning: ARCO needs calibration");
+						indigo_send_message(device, BUSY_PROPERTY, "ARCO needs calibration");
 					}
 				}
 				PRIVATE_DATA->has_abs_pos = getToken(device, 0, GET_MOT2_ABS_POS) != -1;

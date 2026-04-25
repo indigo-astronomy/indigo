@@ -824,7 +824,7 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(MOUNT_EPOCH_PROPERTY, property, false);
 		if (MOUNT_EPOCH_ITEM->number.target != 0 && MOUNT_EPOCH_ITEM->number.target != 1900 && MOUNT_EPOCH_ITEM->number.target != 1950 && MOUNT_EPOCH_ITEM->number.target != 2000 && MOUNT_EPOCH_ITEM->number.target != 2050) {
 			MOUNT_EPOCH_ITEM->number.value = MOUNT_EPOCH_ITEM->number.target = 2000;
-			indigo_send_message(device, BUSY_PROPERTY, "Warning: Valid values are 0, 1900, 1950, 2000 or 2050 only, value adjusted to 2000");
+			indigo_send_message(device, BUSY_PROPERTY, "Valid values are 0, 1900, 1950, 2000 or 2050 only, value adjusted to 2000");
 		}
 		MOUNT_EPOCH_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_EPOCH_PROPERTY, NULL);

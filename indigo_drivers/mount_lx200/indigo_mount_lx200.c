@@ -706,14 +706,14 @@ static bool meade_slew(indigo_device *device, double ra, double dec) {
 			sscanf(PRIVATE_DATA->response, "e%d", &error_code);
 			char *message = meade_error_string(device, error_code);
 			if (message) {
-				indigo_send_message(device, ALERT_PROPERTY, "Error: %s", message);
+				indigo_send_message(device, ALERT_PROPERTY, "%s", message);
 			}
 		}
 		if (MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value) {
 			int error_code = atoi(PRIVATE_DATA->response);
 			char *message = meade_error_string(device, error_code);
 			if (message) {
-				indigo_send_message(device, ALERT_PROPERTY, "Error: %s", message);
+				indigo_send_message(device, ALERT_PROPERTY, "%s", message);
 			}
 		}
 		return false;
@@ -736,7 +736,7 @@ static bool meade_sync(indigo_device *device, double ra, double dec) {
 		sscanf(PRIVATE_DATA->response, "e%d", &error_code);
 		char *message = meade_error_string(device, error_code);
 		if (message) {
-			indigo_send_message(device, ALERT_PROPERTY, "Error: %s", message);
+			indigo_send_message(device, ALERT_PROPERTY, "%s", message);
 		}
 		return false;
 	}
@@ -745,7 +745,7 @@ static bool meade_sync(indigo_device *device, double ra, double dec) {
 		sscanf(PRIVATE_DATA->response, "E%d", &error_code);
 		char *message = meade_error_string(device, error_code);
 		if (message) {
-			indigo_send_message(device, ALERT_PROPERTY, "Error: %s", message);
+			indigo_send_message(device, ALERT_PROPERTY, "%s", message);
 		}
 		return false;
 	}
