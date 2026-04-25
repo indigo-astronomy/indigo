@@ -24,7 +24,7 @@
  \file indigo_agent_mount.c
  */
 
-#define DRIVER_VERSION 0x03000014
+#define DRIVER_VERSION 0x03000015
 #define DRIVER_NAME	"indigo_agent_mount"
 
 #include <stdlib.h>
@@ -213,6 +213,25 @@ static void save_config(indigo_device *device) {
 		indigo_update_property(device, CONFIG_PROPERTY, NULL);
 		pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->mutex);
 	}
+}
+
+static bool validate_related_agent(indigo_device *device, indigo_property *info_property, int mask) {
+	if (!strncmp(info_property->device, "Imager Agent", 12)) {
+		return true;
+	}
+	if (!strncmp(info_property->device, "Guider Agent", 12)) {
+		return true;
+	}
+	if (!strncmp(info_property->device, "Astrometry Agent", 16)) {
+		return true;
+	}
+	if (!strncmp(info_property->device, "ASTAP Agent", 11)) {
+		return true;
+	}
+	if (!strncmp(info_property->device, "Solver Agent", 12)) {
+		return true;
+	}
+	return false;
 }
 
 static void abort_process(indigo_device *device) {
@@ -506,7 +525,7 @@ static void lx200_server_worker_thread(indigo_uni_worker_data *data) {
 					AGENT_MOUNT_START_SLEW_ITEM->sw.value = true;
 					AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
-					indigo_set_timer(device, 0, slew_process, NULL);
+					indigo_execute_handler(device, slew_process);
 				}
 				strcpy(buffer_out, "0");
 			} else if (strncmp(buffer_in, "CM", 2) == 0) {
@@ -520,7 +539,7 @@ static void lx200_server_worker_thread(indigo_uni_worker_data *data) {
 					AGENT_MOUNT_START_SYNC_ITEM->sw.value = true;
 					AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
-					indigo_set_timer(device, 0, sync_process, NULL);
+					indigo_execute_handler(device, sync_process);
 				}
 				strcpy(buffer_out, "OK#");
 			} else if (strcmp(buffer_in, "RG") == 0) {
@@ -1298,6 +1317,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		FILTER_ROTATOR_LIST_PROPERTY->hidden = false;
 		FILTER_GPS_LIST_PROPERTY->hidden = false;
 		FILTER_JOYSTICK_LIST_PROPERTY->hidden = false;
+		FILTER_DEVICE_CONTEXT->validate_related_agent = validate_related_agent;
 		FILTER_RELATED_AGENT_LIST_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- GEOGRAPHIC_COORDINATES
 		AGENT_GEOGRAPHIC_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, "Agent", "Location", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
@@ -1512,7 +1532,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		if (AGENT_LX200_SERVER_STARTED_ITEM->sw.value) {
 			indigo_set_timer(device, 0, start_lx200_server, NULL);
 		} else {
-			indigo_set_timer(device, 0, stop_lx200_server, NULL);
+			indigo_execute_handler(device, stop_lx200_server);
 		}
 		indigo_update_property(device, AGENT_LX200_SERVER_PROPERTY, NULL);
 		return INDIGO_OK;
@@ -1640,6 +1660,8 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 
 static indigo_result agent_device_detach(indigo_device *device) {
 	assert(device != NULL);
+	indigo_cancel_pending_handlers(device);
+	indigo_cancel_all_timers(device);
 	save_config(device);
 	stop_lx200_server(device);
 	indigo_release_property(AGENT_GEOGRAPHIC_COORDINATES_PROPERTY);
