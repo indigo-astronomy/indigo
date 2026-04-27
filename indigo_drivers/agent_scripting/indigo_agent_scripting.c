@@ -1416,9 +1416,10 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			if (script_property && indigo_property_match_defined(script_property, property)) {
 				indigo_property_copy_values(script_property, property, false);
 				script_property->state = INDIGO_OK_STATE;
-				if (strcmp(script_property->label, script_property->items[0].text.value)) {
+				char *name = indigo_get_text_item_value(script_property->items + 0);
+				if (strcmp(script_property->label, name)) {
 					indigo_delete_property(device, script_property, NULL);
-					INDIGO_COPY_VALUE(script_property->label, script_property->items[0].text.value);
+					INDIGO_COPY_VALUE(script_property->label, name);
 					for (int j = 0; j < AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY->count; j++) {
 						indigo_item *item = AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY->items + j;
 						if (!strcmp(script_property->name, item->name)) {
