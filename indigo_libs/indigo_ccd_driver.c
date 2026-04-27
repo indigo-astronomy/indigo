@@ -1475,8 +1475,10 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 			}
 			strcpy(format, tmp);
 		} else if (fs[1] == 'T') { // %T - temperature
-			char t[16];
-			sprintf(t, "%.0fC", CCD_TEMPERATURE_ITEM->number.value);
+			char t[16] = "NA";
+			if (!CCD_TEMPERATURE_PROPERTY->hidden) {
+				sprintf(t, "%.1f", CCD_TEMPERATURE_ITEM->number.value);
+			}
 			strncpy(tmp, format, fs - format);
 			strcat(tmp, t);
 			strcat(tmp, fs + 2);
