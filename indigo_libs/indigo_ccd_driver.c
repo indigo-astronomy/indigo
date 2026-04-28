@@ -1718,9 +1718,6 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 			}
 			strcat(tmp, tail);
 			snprintf(format, PATH_MAX, tmp, max_index + 1);
-			// Don't return — let the outer loop continue to process any remaining placeholders (e.g. %M)
-			fs = strchr(format, '%');
-			continue;
 		} else {
 			*fs = '_';
 		}
