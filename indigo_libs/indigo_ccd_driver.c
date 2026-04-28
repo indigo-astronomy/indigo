@@ -1561,12 +1561,6 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 			}
 			return false;
 		} else if (isdigit(fs[1]) && fs[2] == 'I') { // %nI - prefix and extension-based sequence index counter (makes sure the bigger the number, the later the file)
-			char *next = strchr(fs + 1, '%');
-			if (next) { // make sure %nI is processed as the last one
-				fs = next;
-				continue;
-			}
-
 			char dir_path[PATH_MAX] = {0};
 			strncpy(dir_path, CCD_LOCAL_MODE_DIR_ITEM->text.value, sizeof(dir_path) - 1);
 
@@ -1633,10 +1627,29 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 					strcat(tmp, "03d");
 					break;
 			}
-			strcat(tmp, fs + 3);
+
+			// Append tail, replacing any remaining %nI with (n-1) zeros + "1" before snprintf sees them
+			// and escaping other % placeholders as %% so snprintf passes them through for the outer loop
+			char *tail = fs + 3;
+			char *q;
+			while ((q = strchr(tail, '%')) != NULL) {
+				strncat(tmp, tail, q - tail);
+				if (isdigit(q[1]) && q[2] == 'I') {
+					int n = q[1] - '0';
+					if (n < 1 || n > 5) n = 3;
+					for (int z = 0; z < n - 1; z++) strcat(tmp, "0");
+					strcat(tmp, "1");
+					tail = q + 3;
+				} else {
+					strcat(tmp, "%%"); // escape so snprintf doesn't misinterpret
+					tail = q + 1;
+				}
+			}
+			strcat(tmp, tail);
 			snprintf(format, PATH_MAX, tmp, max_index + 1);
-			strcpy(file_name, format);
-			return true;
+			// Don't return — let the outer loop continue to process any remaining placeholders (e.g. %M)
+			fs = strchr(format, '%');
+			continue;
 		} else {
 			*fs = '_';
 		}
