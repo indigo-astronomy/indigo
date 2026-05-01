@@ -1742,8 +1742,10 @@ static bool guide(indigo_device *device) {
 				DEVICE_PRIVATE_DATA->rmse_count++;
 			} else {
 				DEVICE_PRIVATE_DATA->rmse_ra_sum = DEVICE_PRIVATE_DATA->rmse_dec_sum = DEVICE_PRIVATE_DATA->rmse_ra_s_sum = DEVICE_PRIVATE_DATA->rmse_dec_s_sum = 0;
-				/* rmse_count is capped at DITH_LIMIT during dithering, so a larger value means
-				   it carries over from normal guiding — reset it before counting dither frames.
+				/* We use RMSE moving average during dithering over the last AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM frames to determine
+				   when it settles.
+				   NB: We need a moving average because the first frames after dithering starts have large deviations and it will take
+				   a lot of frames for RMSE to drop below the threshold. Way more than the timeout.
 				*/
 				if (DEVICE_PRIVATE_DATA->rmse_count > (unsigned long)AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM->number.value) {
 					DEVICE_PRIVATE_DATA->rmse_count = 0;
@@ -1765,22 +1767,22 @@ static bool guide(indigo_device *device) {
 					DEVICE_PRIVATE_DATA->rmse_ra_s_sum += drift_ra_s_i * drift_ra_s_i;
 					DEVICE_PRIVATE_DATA->rmse_dec_s_sum += drift_dec_s_i * drift_dec_s_i;
 				}
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering frames in stack = %lu, stack size = %d", DEVICE_PRIVATE_DATA->rmse_count, (int)AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM->number.value);
 			}
-			AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value = round(1000 * sqrt(DEVICE_PRIVATE_DATA->rmse_ra_sum / DEVICE_PRIVATE_DATA->rmse_count)) / 1000;
-			AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value = round(1000 * sqrt(DEVICE_PRIVATE_DATA->rmse_dec_sum / DEVICE_PRIVATE_DATA->rmse_count)) / 1000;
-			AGENT_GUIDER_STATS_RMSE_RA_S_ITEM->number.value = round(1000 * sqrt(DEVICE_PRIVATE_DATA->rmse_ra_s_sum / DEVICE_PRIVATE_DATA->rmse_count)) / 1000;
-			AGENT_GUIDER_STATS_RMSE_DEC_S_ITEM->number.value = round(1000 * sqrt(DEVICE_PRIVATE_DATA->rmse_dec_s_sum / DEVICE_PRIVATE_DATA->rmse_count)) / 1000;
-			if (dithering_active != 0) {
+
+			double rmse_ra = round(1000 * sqrt(DEVICE_PRIVATE_DATA->rmse_ra_sum / DEVICE_PRIVATE_DATA->rmse_count)) / 1000;
+			double rmse_dec = round(1000 * sqrt(DEVICE_PRIVATE_DATA->rmse_dec_sum / DEVICE_PRIVATE_DATA->rmse_count)) / 1000;
+			if (dithering_active != 0) { /* During dithering, RMSE values are used to determine when it settles. Do not show them to the user. */
 				bool dithering_finished = false;
 				if (AGENT_GUIDER_DEC_MODE_BOTH_ITEM->sw.value) {
 					if (DEVICE_PRIVATE_DATA->rmse_ra_threshold > 0 && DEVICE_PRIVATE_DATA->rmse_dec_threshold > 0) {
-						dithering_finished = DEVICE_PRIVATE_DATA->rmse_count >= AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM->number.value && AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value < DEVICE_PRIVATE_DATA->rmse_ra_threshold && AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value < DEVICE_PRIVATE_DATA->rmse_dec_threshold;
+						dithering_finished = DEVICE_PRIVATE_DATA->rmse_count >= AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM->number.value && rmse_ra < DEVICE_PRIVATE_DATA->rmse_ra_threshold && rmse_dec < DEVICE_PRIVATE_DATA->rmse_dec_threshold;
 					} else {
 						dithering_finished = DEVICE_PRIVATE_DATA->rmse_count >= AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM->number.value;
 					}
 				} else {
 					if (DEVICE_PRIVATE_DATA->rmse_ra_threshold > 0) {
-						dithering_finished = DEVICE_PRIVATE_DATA->rmse_count >= AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM->number.value && AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value < DEVICE_PRIVATE_DATA->rmse_ra_threshold;
+						dithering_finished = DEVICE_PRIVATE_DATA->rmse_count >= AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM->number.value && rmse_ra < DEVICE_PRIVATE_DATA->rmse_ra_threshold;
 					} else {
 						dithering_finished = DEVICE_PRIVATE_DATA->rmse_count >= AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM->number.value;
 					}
@@ -1788,10 +1790,16 @@ static bool guide(indigo_device *device) {
 				if (dithering_finished) {
 					AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = 0;
 				} else {
-					AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = fmax(AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value, AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value);
+					AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = fmax(rmse_ra, rmse_dec);
 				}
+			} else { /* Not dithering, just update RMSE values as usual. */
+				AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value = rmse_ra;
+				AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value = rmse_dec;
+				AGENT_GUIDER_STATS_RMSE_RA_S_ITEM->number.value = round(1000 * sqrt(DEVICE_PRIVATE_DATA->rmse_ra_s_sum / DEVICE_PRIVATE_DATA->rmse_count)) / 1000;
+				AGENT_GUIDER_STATS_RMSE_DEC_S_ITEM->number.value = round(1000 * sqrt(DEVICE_PRIVATE_DATA->rmse_dec_s_sum / DEVICE_PRIVATE_DATA->rmse_count)) / 1000;
 			}
 		}
+
 		double reported_delay_time = AGENT_GUIDER_SETTINGS_DELAY_ITEM->number.target;
 		if (reported_delay_time > 0) {
 			AGENT_GUIDER_STATS_DELAY_ITEM->number.value = reported_delay_time;
