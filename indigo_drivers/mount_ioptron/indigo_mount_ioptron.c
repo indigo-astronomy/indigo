@@ -244,6 +244,8 @@ static bool ioptron_simple_reply_command(indigo_device *device, char *command, .
 	if (result >= 0) {
 		if (!strcmp(command, ":MountInfo#")) {
 			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, 4, "", "", INDIGO_DELAY(1));
+		} else if (!strcmp(command, ":CM#")) {
+			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, 1, "", "", INDIGO_DELAY(5));
 		} else {
 			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, 1, "", "", INDIGO_DELAY(1));
 		}
