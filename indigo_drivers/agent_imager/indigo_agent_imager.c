@@ -1068,13 +1068,15 @@ static void preview_1_process(indigo_device *device) {
 	disable_solver(device);
 	int upload_mode = indigo_save_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME);
 	int image_format = indigo_save_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_RAW_ITEM_NAME);
-	capture_and_process_frame(device, &saturation_mask);
+	bool result = capture_and_process_frame(device, &saturation_mask);
 	indigo_restore_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, upload_mode);
 	indigo_restore_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, image_format);
 	indigo_safe_free(saturation_mask);
 	if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 		AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
+	} else if (!result) {
+		indigo_send_message(device, ALERT_PROPERTY, "Preview failed");
 	}
 	AGENT_IMAGER_START_PREVIEW_1_ITEM->sw.value = false;
 	AGENT_START_PROCESS_PROPERTY->state = AGENT_IMAGER_STATS_PROPERTY->state = INDIGO_OK_STATE;
@@ -1099,6 +1101,8 @@ static void preview_process(indigo_device *device) {
 	if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 		AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
+	} else {
+		indigo_send_message(device, ALERT_PROPERTY, "Preview failed");
 	}
 	AGENT_IMAGER_START_PREVIEW_ITEM->sw.value = false;
 	AGENT_START_PROCESS_PROPERTY->state = AGENT_IMAGER_STATS_PROPERTY->state = INDIGO_OK_STATE;
