@@ -1474,14 +1474,24 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 				strcat(tmp, fs + 3);
 			}
 			strcpy(format, tmp);
-		} else if (fs[1] == 'T') { // %T - temperature
+		} else if (fs[1] == 'T' || (isdigit(fs[1]) && fs[2] == 'T')) { // %T or %nT - temperature
 			char t[16] = "NA";
-			if (!CCD_TEMPERATURE_PROPERTY->hidden) {
-				sprintf(t, "%.1f", CCD_TEMPERATURE_ITEM->number.value);
+			int digits = 0;
+			if (isdigit(fs[1])) {
+				digits = fs[1] - '0';
+				if (digits < 0) digits = 0;
+				if (digits > 5) digits = 5;
+			}
+			if (!CCD_TEMPERATURE_PROPERTY->hidden && !CCD_COOLER_PROPERTY->hidden && CCD_COOLER_ON_ITEM->sw.value) {
+				sprintf(t, "%.*f", digits, CCD_TEMPERATURE_ITEM->number.target);
 			}
 			strncpy(tmp, format, fs - format);
 			strcat(tmp, t);
-			strcat(tmp, fs + 2);
+			if (fs[1] == 'T') {
+				strcat(tmp, fs + 2);
+			} else {
+				strcat(tmp, fs + 3);
+			}
 			strcpy(format, tmp);
 		} else if (fs[1] == 'F') { // %F - frame type
 			strncpy(tmp, format, fs - format);
