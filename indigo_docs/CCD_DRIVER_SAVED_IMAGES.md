@@ -1,6 +1,6 @@
 # Saving images from the camera driver
 
-Revision: 05.12.2025 (draft)
+Revision: 04.05.2026 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
@@ -45,7 +45,7 @@ INDIGO file name templates support a number of placeholders starting with "%" ch
 
 * **%E** or **%nE** - will be expanded to the exposure time. If "n" is provided it will be used as the number of digits after the decimal point.
 
-* **%T** - expands to the sensor temperature in &deg;C
+* **%T** or **%nT** - expands to the target sensor temperature in &deg;C as an integer. If "n" is provided it will be used as the number of digits after the decimal point (capped to 5). Expands to "NA" if the cooler is not available or not enabled.
 
 * **%F** - expands to the frame type: "Light", "Bias", "Dark" etc.
 
