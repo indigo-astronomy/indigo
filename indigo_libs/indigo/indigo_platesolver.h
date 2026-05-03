@@ -165,7 +165,6 @@ typedef struct {
 	indigo_property *precise_goto_settings_property;
 	indigo_property *mount_settle_time_property;
 	indigo_property *solve_images_property;
-	indigo_property_state mount_process_state;
 	indigo_spherical_point_t eq_coordinates;
 	indigo_spherical_point_t eq_start_coordinates;
 	indigo_spherical_point_t geo_coordinates;
@@ -180,6 +179,8 @@ typedef struct {
 	double pa_az_error;
 	double pa_initial_error;
 	bool copy_solution_to_target;
+	indigo_property_state mount_process_state;
+	indigo_property_state imager_process_state;
 	indigo_property_state imager_capture_state;
 	indigo_property_state guider_process_state;
 	void (*save_config)(indigo_device *);

@@ -180,7 +180,7 @@ static bool mount_control(indigo_device *device, char *operation, double ra, dou
 static bool start_exposure(indigo_device *device, double exposure) {
 	char *related_agent_name = indigo_filter_first_related_agent(FILTER_DEVICE_CONTEXT->device, "Imager Agent");
 	if (related_agent_name != NULL) {
-		if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->imager_capture_state == INDIGO_BUSY_STATE) {
+		if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->imager_process_state == INDIGO_BUSY_STATE || INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->imager_capture_state == INDIGO_BUSY_STATE) {
 			indigo_send_message(device, ALERT_PROPERTY, "Imager Agent is busy");
 			return false;
 		}
@@ -758,6 +758,7 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		// --------------------------------------------------------------------------------
 		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->mount_process_state = INDIGO_IDLE_STATE;
 		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->guider_process_state = INDIGO_IDLE_STATE;
+		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->imager_process_state = INDIGO_IDLE_STATE;
 		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->imager_capture_state = INDIGO_IDLE_STATE;
 		pthread_mutex_init(&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->mutex, NULL);
 		return INDIGO_OK;
@@ -1000,7 +1001,9 @@ static void indigo_platesolver_handle_property(indigo_client *client, indigo_dev
 	}
 	related_agent_name = indigo_filter_first_related_agent(FILTER_CLIENT_CONTEXT->device, "Imager Agent");
 	if (related_agent_name && !strcmp(related_agent_name, property->device)) {
-		if (!strcmp(property->name, AGENT_IMAGER_CAPTURE_PROPERTY_NAME)) {
+		if (!strcmp(property->name, AGENT_START_PROCESS_PROPERTY_NAME)) {
+			INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->imager_process_state = property->state;
+		} else if (!strcmp(property->name, AGENT_IMAGER_CAPTURE_PROPERTY_NAME)) {
 			INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->imager_capture_state = property->state;
 		}
 	}
