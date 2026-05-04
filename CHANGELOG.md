@@ -2,6 +2,83 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-366] - 02 May Sat 2026
+
+## Iverall:
+- indigo_docs:
+	- some corrections
+
+- indigo_mount_driver:
+	- MOUNT_HOME switch rule fixed
+	- many fixes
+
+- indigo_wheel_driver:
+	- use correct property count for offsets
+
+- indigo_fits:
+	- fix 48 bit per pixel RGB images
+
+- indigo_raw_utils:
+	- fix 48 bit per pixel RGB images
+	- indigo_find_stars_precise_threshold(): uses 12x12 grid to mitigate the gradient problem
+
+- indigo_platesolver:
+	- fix property state
+
+- indigo_dslr_raw:
+	- many fixes
+
+- indigo_ccd_driver:
+	- better handling of %T name placeholder
+	- fix %nI placeholder
+
+- many fixes
+
+## Driver Fixes:
+
+- indigo_agent_scripting:
+	- xmall fixes
+	- Sequencer.js - small fixes
+
+- indigo_agent_guider:
+	- fallback to PI guiding if no mode is selected
+	- fix race when guiding may start before dithering is settled
+	- change AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM description
+	- do not udate RMSE while dithering
+	- fix label of AGENT_GUIDER_STATS_DITHERING_ITEM
+
+- indigo_mount_lx200:
+	- add Onstep meridian limits
+	- add onstep altitude limits
+	- add auto flip update
+	- better side of pier handling
+	- fix traking rates
+	- fix proeprty deletions
+
+- indigo_ccd_touptek & oem:
+	- remove usb3 exposure cludge
+	- implement streaming mode
+	- clean buffer and initiate setup exposure on next exposure if exposure callback is not called
+
+- indigo_ccd_touptek:
+	- many type fixes
+
+- indigo_ccd_asi:
+	- many small fixes
+
+- indigo_ccd_playerone:
+	- many small fixes
+
+- indigo_ccd_ptp:
+	- many small fixes
+
+- indigo_ccd_atik:
+	- many small fixes
+
+- insigo_ccd_mi:
+	- many small fixes
+
+
 # [2.0-364] - 31 Mar Tue 2026
 
 ## Overall:

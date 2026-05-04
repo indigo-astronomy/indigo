@@ -1644,7 +1644,9 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 				return true;
 			}
 			return false;
-		} else if (isdigit(fs[1]) && fs[2] == 'I') { // %nI - prefix and extension-based sequence index counter (makes sure the bigger the number, the later the file)
+		} else if ((isdigit(fs[1]) && fs[2] == 'I') || fs[1] == 'I') { // %nI or %I - prefix and extension-based sequence index counter (makes sure the bigger the number, the later the file)
+			int I_width = (fs[1] == 'I') ? 3 : (fs[1] - '0');
+			int I_skip = (fs[1] == 'I') ? 2 : 3; // chars to skip past the placeholder
 			char dir_path[PATH_MAX] = {0};
 			strncpy(dir_path, CCD_LOCAL_MODE_DIR_ITEM->text.value, sizeof(dir_path) - 1);
 
@@ -1691,17 +1693,17 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 			}
 
 			strncpy(tmp, format, fs - format + 1);
-			switch (fs[1]) {
-				case '1':
+			switch (I_width) {
+				case 1:
 					strcat(tmp, "01d");
 					break;
-				case '2':
+				case 2:
 					strcat(tmp, "02d");
 					break;
-				case '4':
+				case 4:
 					strcat(tmp, "04d");
 					break;
-				case '5':
+				case 5:
 					strcat(tmp, "05d");
 					break;
 				default:
@@ -1709,9 +1711,9 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 					break;
 			}
 
-			// Append tail, replacing any remaining %nI with (n-1) zeros + "1" before snprintf sees them
+			// Append tail, replacing any remaining %nI/%I with (n-1) zeros + "1" before snprintf sees them
 			// and escaping other % placeholders as %% so snprintf passes them through for the outer loop
-			char *tail = fs + 3;
+			char *tail = fs + I_skip;
 			char *q;
 			while ((q = strchr(tail, '%')) != NULL) {
 				strncat(tmp, tail, q - tail);
@@ -1721,6 +1723,9 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 					for (int z = 0; z < n - 1; z++) strcat(tmp, "0");
 					strcat(tmp, "1");
 					tail = q + 3;
+				} else if (q[1] == 'I') {
+					strcat(tmp, "001"); // bare %I defaults to 3 places
+					tail = q + 2;
 				} else {
 					strcat(tmp, "%%"); // escape so snprintf doesn't misinterpret
 					tail = q + 1;
