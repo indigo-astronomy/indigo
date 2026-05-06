@@ -303,7 +303,7 @@ static duk_ret_t save_blob(duk_context *ctx) {
 	duk_get_prop_string(ctx, 1, "reference");
 	indigo_item *item = duk_get_pointer(ctx, -1);
 	duk_pop(ctx);
-	if (*item->blob.url != 0 && item->blob.size == 0) {
+	if (item && *item->blob.url != 0 && item->blob.size == 0) {
 		if (!indigo_populate_http_blob_item(item)) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_populate_http_blob_item() failed");
 			return 0;
@@ -733,7 +733,6 @@ static duk_ret_t update_number_property(duk_context *ctx) {
 				for (int j = 0; j < tmp->count; j++) {
 					indigo_item *item = tmp->items + j;
 					if (!strcmp(item->name, name)) {
-						INDIGO_COPY_NAME(item->name, name);
 						item->number.value = duk_to_number(ctx, -1);
 						break;
 					}
@@ -766,7 +765,6 @@ static duk_ret_t update_switch_property(duk_context *ctx) {
 				for (int j = 0; j < tmp->count; j++) {
 					indigo_item *item = tmp->items + j;
 					if (!strcmp(item->name, name)) {
-						INDIGO_COPY_NAME(item->name, name);
 						item->sw.value = duk_to_boolean(ctx, -1);
 						break;
 					}
@@ -799,7 +797,6 @@ static duk_ret_t update_light_property(duk_context *ctx) {
 				for (int j = 0; j < tmp->count; j++) {
 					indigo_item *item = tmp->items + j;
 					if (!strcmp(item->name, name)) {
-						INDIGO_COPY_NAME(item->name, name);
 						item->light.value = require_state(ctx, -1);
 						break;
 					}
@@ -828,13 +825,15 @@ static duk_ret_t delete_property(duk_context *ctx) {
 	const char *device = duk_require_string(ctx, 0);
 	const char *property = duk_get_string(ctx, 1);
 	const char *message = duk_get_string(ctx, 2);
-	for (int i = 0; i < MAX_CACHED_PROPERTY_COUNT; i++) {
-		indigo_property *tmp = PRIVATE_DATA->agent_cached_property[i];
-		if (tmp && !strcmp(tmp->device, device) && !strcmp(tmp->name, property)) {
-			PRIVATE_DATA->agent_cached_property[i] = NULL;
-			indigo_execute_handler_with_data(agent_device, delete_property_handler, tmp);
-			if (message) {
-				indigo_execute_handler_with_data(agent_device, send_message_handler, (void *)strdup(message));
+	if (device && property) {
+		for (int i = 0; i < MAX_CACHED_PROPERTY_COUNT; i++) {
+			indigo_property *tmp = PRIVATE_DATA->agent_cached_property[i];
+			if (tmp && !strcmp(tmp->device, device) && !strcmp(tmp->name, property)) {
+				PRIVATE_DATA->agent_cached_property[i] = NULL;
+				indigo_execute_handler_with_data(agent_device, delete_property_handler, tmp);
+				if (message) {
+					indigo_execute_handler_with_data(agent_device, send_message_handler, (void *)strdup(message));
+				}
 			}
 		}
 	}
@@ -1587,7 +1586,7 @@ static indigo_result agent_send_message(indigo_client *client, indigo_device *de
 	duk_push_global_object(PRIVATE_DATA->ctx);
 	if (duk_get_prop_string(PRIVATE_DATA->ctx, -1, "indigo_on_send_message")) {
 		duk_push_string(PRIVATE_DATA->ctx, device->name);
-		duk_push_string(PRIVATE_DATA->ctx, message);
+		duk_push_string(PRIVATE_DATA->ctx, message ? message : "");
 		if (duk_pcall(PRIVATE_DATA->ctx, 2)) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_on_send_message() call failed (%s)", duk_safe_to_string(PRIVATE_DATA->ctx, -1));
 		}
