@@ -694,7 +694,7 @@ var indigo_sequencer = {
 			}
 			for (var i = 0; i < this.loop_level; i++) {
 				if (property.name == null || property.name == "LOOP_" + i) {
-					indigo_define_number_property(this.devices[SCRIPTING_AGENT], "LOOP_" + i, "Sequencer", "Loop " + this.loop_step[i], { STEP: this.loop_step[i], COUNT: this.loop_count[i] }, { STEP: { label: "Loop at", format: "%g", min: 0, max: 10000, step: 1 }, COUNT: { label: "Iterations elapsed", format: "%g", min: 0, max: 10000, step: 1 }}, "Ok", "RO");
+					indigo_define_number_property(this.devices[SCRIPTING_AGENT], "LOOP_" + i, "Sequencer", "Loop " + i, { STEP: this.loop_step[i], COUNT: this.loop_count[i] }, { STEP: { label: "Loop at", format: "%g", min: 0, max: 10000, step: 1 }, COUNT: { label: "Iterations elapsed", format: "%g", min: 0, max: 10000, step: 1 }}, "Ok", "RO");
 				}
 			}
 			if (property.name == null || property.name == "FLIPPER_STATE") {
@@ -912,7 +912,7 @@ var indigo_sequencer = {
 		this.loop_level++;
 		this.loop_count.push(0);
 		this.loop_step.push(this.step);
-		indigo_define_number_property(this.devices[SCRIPTING_AGENT], "LOOP_" + this.loop_level, "Sequencer", "Loop " + this.loop_step[this.loop_level], { STEP: this.step, COUNT: this.loop_count[this.loop_level] }, { STEP: { label: "Loop at", format: "%g", min: 0, max: 10000, step: 1 }, COUNT: { label: "Iterations elapsed", format: "%g", min: 0, max: 10000, step: 1 }}, "Ok", "RO");
+		indigo_define_number_property(this.devices[SCRIPTING_AGENT], "LOOP_" + this.loop_level, "Sequencer", "Loop " + this.loop_level, { STEP: this.step, COUNT: this.loop_count[this.loop_level] }, { STEP: { label: "Loop at", format: "%g", min: 0, max: 10000, step: 1 }, COUNT: { label: "Iterations elapsed", format: "%g", min: 0, max: 10000, step: 1 }}, "Ok", "RO");
 		indigo_set_timer(indigo_sequencer_next_handler, 0.1);
 	},
 
