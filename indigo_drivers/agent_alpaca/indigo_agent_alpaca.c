@@ -217,7 +217,8 @@ static void send_json_response(indigo_uni_handle *handle, char *path, int status
 			"Content-Type: application/json\r\n"
 			"Content-Length: %d\r\n"
 			"\r\n"
-			"%s", status_code, status_text, strlen(body), body)) {
+			"%s", status_code, status_text, strlen(body), body
+	)) {
 		if (status_code == 200) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> 200 %s", path, status_text);
 		} else {
@@ -254,7 +255,7 @@ static bool alpaca_setup_handler(indigo_uni_handle *handle, char *method, char *
 			"Content-Type: text/plain\r\n"
 			"Content-Length: 0\r\n"
 			"\r\n"
-												)) {
+	)) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> OK", path);
 	} else {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "%s -> Failed", path);
