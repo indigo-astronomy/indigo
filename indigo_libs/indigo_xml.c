@@ -244,7 +244,7 @@ static void *get_properties_handler(parser_state state, parser_context *context,
 		} else if (!strcmp(name, "device")) {
 			INDIGO_COPY_NAME(property->device, value);
 		} else if (!strcmp(name, "name")) {
-			indigo_copy_property_name(client->version, property, value);;
+			indigo_copy_property_name(client->version, property, value);
 		} else if (!strcmp(name, "client")) {
 			INDIGO_COPY_NAME(client->name, value);
 		}
@@ -515,7 +515,7 @@ static void set_property(parser_context *context, indigo_property *other, char *
 										}
 										char *ext = strrchr(property_item->blob.url, '.');
 										if (ext) {
-											strcpy(property_item->blob.format, ext);
+											INDIGO_COPY_NAME(property_item->blob.format, ext);
 										}
 									}
 								}
@@ -1177,7 +1177,7 @@ static void *del_property_handler(parser_state state, parser_context *context, c
 				INDIGO_COPY_NAME(property->device, value);
 			}
 		} else if (!strncmp(name, "name",INDIGO_NAME_SIZE)) {
-			indigo_copy_property_name(device->version, property, value);;
+			indigo_copy_property_name(device->version, property, value);
 		} else if (!strcmp(name, "message")) {
 			INDIGO_COPY_VALUE(message, value);
 		}
@@ -1222,7 +1222,7 @@ static void *message_handler(parser_state state, parser_context *context, char *
 				INDIGO_COPY_NAME(property->device, value);
 			}
 		} else if (!strncmp(name, "name",INDIGO_NAME_SIZE)) {
-			indigo_copy_property_name(device->version, property, value);;
+			indigo_copy_property_name(device->version, property, value);
 		} else if (!strcmp(name, "message")) {
 			strncat(message, value, INDIGO_VALUE_SIZE - strlen(message) - 1);
 		}
@@ -1265,7 +1265,7 @@ static void *message_handler(parser_state state, parser_context *context, char *
 static void *top_level_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
 	indigo_property *property = (indigo_property *)context->property;
 	indigo_client *client = context->client;
-  property->version = client ? client->version : INDIGO_VERSION_CURRENT;
+	property->version = client ? client->version : INDIGO_VERSION_CURRENT;
 	INDIGO_TRACE_PARSER(indigo_trace("XML Parser: top_level_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == BEGIN_TAG_STATE) {
 		*message = 0;
@@ -1838,11 +1838,11 @@ static pthread_mutex_t xml_mutex = PTHREAD_MUTEX_INITIALIZER;
 indigo_result indigo_xml_client_parser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	indigo_adapter_context *device_context = (indigo_adapter_context *)device->device_context;
+	assert(device_context != NULL);
 	if (device_context->output == NULL) {
 		return INDIGO_OK;
 	}
 	pthread_mutex_lock(&xml_mutex);
-	assert(device_context != NULL);
 	indigo_uni_handle *handle = device_context->output;
 	assert(handle != NULL);
 	char device_name[INDIGO_NAME_SIZE];
@@ -1889,11 +1889,11 @@ indigo_result indigo_xml_client_parser_change_property(indigo_device *device, in
 	assert(device != NULL);
 	assert(property != NULL);
 	indigo_adapter_context *device_context = (indigo_adapter_context *)device->device_context;
+	assert(device_context != NULL);
 	if (device_context->output == NULL) {
 		return INDIGO_OK;
 	}
 	pthread_mutex_lock(&xml_mutex);
-	assert(device_context != NULL);
 	indigo_uni_handle *handle = device_context->output;
 	assert(handle != NULL);
 	char device_name[INDIGO_NAME_SIZE];
@@ -1960,11 +1960,11 @@ indigo_result indigo_xml_client_parser_enable_blob(indigo_device *device, indigo
 	assert(device != NULL);
 	assert(property != NULL);
 	indigo_adapter_context *device_context = (indigo_adapter_context *)device->device_context;
+	assert(device_context != NULL);
 	if (device_context->output == NULL) {
 		return INDIGO_OK;
 	}
 	pthread_mutex_lock(&xml_mutex);
-	assert(device_context != NULL);
 	indigo_uni_handle *handle = device_context->output;
 	assert(handle != NULL);
 	char device_name[INDIGO_NAME_SIZE];
@@ -2189,12 +2189,12 @@ indigo_result indigo_xml_device_adapter_update_property(indigo_client *client, i
 									data += len;
 								}
 							} else {
-								static char encoded_data[74];
+								char encoded_data[74];
 								while (input_length) {
 									long len = (54 < input_length) ?  54 : input_length;
 									long enclen = base64_encode((unsigned char*)encoded_data, (unsigned char*)data, len);
 									encoded_data[enclen] = '\n';
-									indigo_uni_write(handle, encoded_data, enclen);
+									indigo_uni_write(handle, encoded_data, enclen + 1);
 									input_length -= len;
 									data += len;
 								}
@@ -2234,7 +2234,7 @@ indigo_result indigo_xml_device_adapter_delete_property(indigo_client *client, i
 	if (*property->name) {
 		INDIGO_PRINTF(handle, "<delProperty device='%s' name='%s'%s/>\n", indigo_xml_escape(property->device), indigo_property_name(client->version, property), message_attribute(message));
 	} else {
-		INDIGO_PRINTF(handle, "<delProperty device='%s'%s/>\n", device->name, message_attribute(message));
+		INDIGO_PRINTF(handle, "<delProperty device='%s'%s/>\n", indigo_xml_escape(property->device), message_attribute(message));
 	}
 failure:
 	pthread_mutex_unlock(&write_mutex);
