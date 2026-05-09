@@ -2,9 +2,20 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-368] - 04 May Mon 2026
+
+## Overall:
+- indigo_docs:
+	- update %I and %T explanation
+
+- indigo_ccd_driver:
+	- add %nT name placeholder (%T rounds to full degree)
+	- %T and %nT use target not current temperatire to be stable and predictable
+	- add %I name placeholder ewwuivalent to %3I
+
 # [2.0-366] - 02 May Sat 2026
 
-## Iverall:
+## Overall:
 - indigo_docs:
 	- some corrections
 
