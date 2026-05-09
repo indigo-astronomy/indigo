@@ -93,9 +93,12 @@ static indigo_alpaca_error alpaca_get_position(indigo_alpaca_device *device, int
 }
 
 static indigo_alpaca_error alpaca_get_stepsize(indigo_alpaca_device *device, int version, double *value) {
+	pthread_mutex_lock(&device->mutex);
 	if (!device->connected) {
+		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotConnected;
 	}
+	pthread_mutex_unlock(&device->mutex);
 	return indigo_alpaca_error_NotImplemented;
 }
 

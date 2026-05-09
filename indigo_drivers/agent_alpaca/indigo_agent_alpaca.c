@@ -243,7 +243,7 @@ static void send_text_response(indigo_uni_handle *handle, char *path, int status
 		}
 		INDIGO_DRIVER_TRACE(DRIVER_NAME, "%s", body);
 	} else {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "% -> Failed", path);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s -> Failed", path);
 	}
 }
 
@@ -255,9 +255,9 @@ static bool alpaca_setup_handler(indigo_uni_handle *handle, char *method, char *
 			"Content-Length: 0\r\n"
 			"\r\n"
 												)) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "% -> OK", path);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> OK", path);
 	} else {
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "% -> Failed", path);
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "%s -> Failed", path);
 	}
 	return true;
 }

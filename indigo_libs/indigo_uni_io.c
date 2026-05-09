@@ -436,7 +436,7 @@ bool indigo_uni_is_url(const char *name, const char *prefix) {
 	}
 	if (prefix) {
 		char prefix_full[INDIGO_NAME_SIZE];
-		sprintf(prefix_full, "%s://", prefix);
+		snprintf(prefix_full, sizeof(prefix_full), "%s://", prefix);
 		return ((!strncmp(name, "tcp://", 6)) || (!strncmp(name, "udp://", 6)) || (!strncmp(name, prefix_full, strlen(prefix_full))));
 	}
 	return ((!strncmp(name, "tcp://", 6)) || (!strncmp(name, "udp://", 6)));
@@ -663,7 +663,7 @@ static int configure_tty_options(DCB *dcb, const char *baudrate) {
 
 static indigo_uni_handle *open_tty(const char *serial, DCB *dcb, int log_level) {
 	const char *auto_prefix = "auto://";
-	const int auto_prefix_len = sizeof(auto_prefix) - 1;
+	const int auto_prefix_len = strlen(auto_prefix);
 	const char *serial_buf = serial;
 	if (!strncmp(serial_buf, auto_prefix, auto_prefix_len)) {
 		serial_buf += auto_prefix_len;
@@ -842,9 +842,11 @@ bool indigo_perform_passive_discovery(int port, int timeout, char *host, int max
 				if (recvlen > 0) {
 					if (host) {
 						strncpy(host, inet_ntoa(remote_addr.sin_addr), max_host);
+						host[max_host - 1] = 0;
 					}
 					if (message) {
 						strncpy(message, (char *)payload, max_message);
+						message[max_message - 1] = 0;
 					}
 					result = true;
 					break;
@@ -1077,7 +1079,7 @@ void indigo_uni_open_tcp_server_socket(int *port, indigo_uni_handle **server_han
 				break;
 			}
 			indigo_error("Can't accept connection (%s)", strerror(errno));
-			continue;;
+			continue;
 		}
 		struct timeval timeout = { 0 };
 		if (setsockopt(client_socket, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout)) < 0) {
@@ -1604,7 +1606,7 @@ long indigo_uni_seek(indigo_uni_handle *handle, long position, int whence) {
 bool indigo_uni_lock_file(indigo_uni_handle *handle) {
 	if (handle == NULL) {
 		// indigo_error("%s used with NULL handle", __FUNCTION__);
-		return -1;
+		return false;
 	}
 	if (handle->type == INDIGO_FILE_HANDLE) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
@@ -1984,10 +1986,20 @@ void indigo_uni_compress(char *name, char *in_buffer, unsigned in_size, unsigned
 	header.comment = Z_NULL;
 	header.extra = Z_NULL;
 	int r = deflateInit2(&defstream, Z_DEFAULT_COMPRESSION, Z_DEFLATED, 15 + 16, 9, Z_DEFAULT_STRATEGY);
-	r = deflateSetHeader(&defstream, &header);
-	r = deflate(&defstream, Z_FINISH);
-	r = deflateEnd(&defstream);
-	*out_size = (unsigned)((unsigned char *)defstream.next_out - (unsigned char *)out_buffer);
+	if (r == Z_OK) {
+		r = deflateSetHeader(&defstream, &header);
+	}
+	if (r >= 0) {
+		r = deflate(&defstream, Z_FINISH);
+	}
+	if (r >= 0) {
+		r = deflateEnd(&defstream);
+	}
+	if (r >= 0) {
+		*out_size = (unsigned)((unsigned char *)defstream.next_out - (unsigned char *)out_buffer);
+	} else {
+		*out_size = 0;
+	}
 }
 
 void indigo_uni_decompress(char *in_buffer, unsigned in_size, unsigned char *out_buffer, unsigned *out_size) {
@@ -2000,9 +2012,17 @@ void indigo_uni_decompress(char *in_buffer, unsigned in_size, unsigned char *out
 	infstream.avail_out = *out_size;
 	infstream.next_out = (Bytef *)out_buffer;
 	int r = inflateInit2(&infstream, MAX_WBITS + 16);
-	r = inflate(&infstream, Z_NO_FLUSH);
-	r = inflateEnd(&infstream);
-	*out_size = (unsigned)((unsigned char *)infstream.next_out - (unsigned char *)out_buffer);
+	if (r == Z_OK) {
+		r = inflate(&infstream, Z_NO_FLUSH);
+	}
+	if (r >= 0) {
+		r = inflateEnd(&infstream);
+	}
+	if (r >= 0) {
+		*out_size = (unsigned)((unsigned char *)infstream.next_out - (unsigned char *)out_buffer);
+	} else {
+		*out_size = 0;
+	}
 }
 
 void indigo_gmtime(time_t* seconds, struct tm* tm) {

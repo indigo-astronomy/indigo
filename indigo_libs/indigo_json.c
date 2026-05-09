@@ -57,30 +57,41 @@
 #endif
 
 static long ws_read(indigo_uni_handle* handle, char* buffer, long length) {
-	uint8_t header[14];
-	long bytes_read = indigo_uni_read(handle, (char*)header, 6);
+	uint8_t header[2];
+	long bytes_read = indigo_uni_read(handle, (char*)header, 2);
 	if (bytes_read <= 0) {
 		return bytes_read;
 	}
 	INDIGO_TRACE_PARSER(indigo_trace("ws_read -> %2x", header[0]));
-	uint8_t* masking_key = header + 2;
+	int masked = (header[1] & 0x80) != 0;
 	uint64_t payload_length = header[1] & 0x7F;
 	if (payload_length == 0x7E) {
-		bytes_read = indigo_uni_read(handle, (char*)header + 6, 2);
+		uint8_t ext[2];
+		bytes_read = indigo_uni_read(handle, (char*)ext, 2);
 		if (bytes_read <= 0) {
 			return bytes_read;
 		}
-		masking_key = header + 4;
-		payload_length = ntohs(*((uint16_t*)(header + 2)));
+		uint16_t tmp16;
+		memcpy(&tmp16, ext, 2);
+		payload_length = ntohs(tmp16);
 	} else if (payload_length == 0x7F) {
-		bytes_read = indigo_uni_read(handle, (char*)header + 6, 8);
+		uint8_t ext[8];
+		bytes_read = indigo_uni_read(handle, (char*)ext, 8);
 		if (bytes_read <= 0) {
 			return bytes_read;
 		}
-		masking_key = header + 10;
-		payload_length = ntohll(*((uint64_t*)(header + 2)));
+		uint64_t tmp64;
+		memcpy(&tmp64, ext, 8);
+		payload_length = ntohll(tmp64);
 	}
-	if (length < payload_length) {
+	uint8_t masking_key[4] = { 0 };
+	if (masked) {
+		bytes_read = indigo_uni_read(handle, (char*)masking_key, 4);
+		if (bytes_read <= 0) {
+			return bytes_read;
+		}
+	}
+	if (length < (long)payload_length) {
 		errno = ENODATA;
 		return -1;
 	}
@@ -88,8 +99,10 @@ static long ws_read(indigo_uni_handle* handle, char* buffer, long length) {
 	if (bytes_read <= 0) {
 		return bytes_read;
 	}
-	for (uint64_t i = 0; i < payload_length; i++) {
-		buffer[i] ^= masking_key[i % 4];
+	if (masked) {
+		for (uint64_t i = 0; i < payload_length; i++) {
+			buffer[i] ^= masking_key[i % 4];
+		}
 	}
 	return (long)payload_length;
 }
@@ -370,6 +383,11 @@ void indigo_json_parse(indigo_device* device, indigo_client* client) {
 				state = NAME_STATE;
 				name_pointer = name_buffer;
 				INDIGO_TRACE_PARSER(indigo_trace("JSON Parser: '%c' BEGIN_STRUCT -> NAME", c));
+			} else if (c == '}') {
+				handler = handler(END_STRUCT_STATE, NULL, NULL, &property, device, client, NULL);
+				depth--;
+				state = depth == 0 ? IDLE_STATE : VALUE1_STATE;
+				INDIGO_TRACE_PARSER(indigo_trace("JSON Parser: '%c' BEGIN_STRUCT -> END_STRUCT", c));
 			} else {
 				state = ERROR_STATE;
 				INDIGO_TRACE_PARSER(indigo_trace("JSON Parser: '%c' BEGIN_STRUCT -> ERROR", c));
@@ -595,15 +613,18 @@ static long ws_write(indigo_uni_handle *handle, const char *buffer, long length)
 	} else if (length <= 0xFFFF) {
 		header[1] = 0x7E;
 		uint16_t payloadLength = htons((uint16_t)length);
-		memcpy(header+2, &payloadLength, 2);
+		memcpy(header + 2, &payloadLength, 2);
 		result = indigo_uni_write(handle, (char *)header, 4);
 	} else {
 		header[1] = 0x7F;
 		uint64_t payloadLength = htonll((uint64_t)length);
-		memcpy(header+2, &payloadLength, 8);
+		memcpy(header + 2, &payloadLength, 8);
 		result = indigo_uni_write(handle, (char *)header, 10);
 	}
-	result = result + indigo_uni_write(handle, buffer, length);
+	if (result >= 0) {
+		indigo_error("%s", buffer);
+		result = indigo_uni_write(handle, buffer, length);
+	}
 	handle->log_level = abs(handle->log_level);
 	return result;
 }
@@ -886,9 +907,9 @@ indigo_result indigo_json_device_adapter_delete_property(indigo_client *client, 
 	char *pnt = output_buffer;
 	long size;
 	if (*property->name == 0) {
-		size = sprintf(pnt, "{ \"deleteProperty\": { \"device\": \"%s\"", property->device);
+		size = sprintf(pnt, "{ \"deleteProperty\": { \"device\": \"%s\"", indigo_json_escape(property->device));
 	} else {
-		size = sprintf(pnt, "{ \"deleteProperty\": { \"device\": \"%s\", \"name\": \"%s\"", property->device, property->name);
+		size = sprintf(pnt, "{ \"deleteProperty\": { \"device\": \"%s\", \"name\": \"%s\"", indigo_json_escape_b(0, property->device), indigo_json_escape_b(1, property->name));
 	}
 	pnt += size;
 	if (message) {
@@ -922,9 +943,9 @@ indigo_result indigo_json_device_adapter_message_property(indigo_client *client,
 	char *pnt = output_buffer;
 	long size;
 	if (property) {
-		size = sprintf(pnt, "{ \"message\": \"%s\", \"device\": \"%s\", \"name\": \"%s\" }", indigo_json_escape(message), property->device, property->name);
+		size = sprintf(pnt, "{ \"message\": \"%s\", \"device\": \"%s\", \"name\": \"%s\" }", indigo_json_escape_b(0, message), indigo_json_escape_b(1, property->device), indigo_json_escape_b(2, property->name));
 	} else if (device) {
-		size = sprintf(pnt, "{ \"message\": \"%s\", \"device\": \"%s\" }", indigo_json_escape(message), device->name);
+		size = sprintf(pnt, "{ \"message\": \"%s\", \"device\": \"%s\" }", indigo_json_escape_b(0, message), indigo_json_escape_b(1, device->name));
 	} else {
 		size = sprintf(pnt, "{ \"message\": \"%s\" }", indigo_json_escape(message));
 	}

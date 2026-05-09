@@ -218,14 +218,14 @@ long indigo_alpaca_guider_get_command(indigo_alpaca_device *alpaca_device, int v
 		return indigo_alpaca_append_value_bool(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "guideratedeclination")) {
-		double value = false;
+		double value = 0;
 		indigo_alpaca_error result = alpaca_get_guideratedeclination(alpaca_device, version, &value);
-	return indigo_alpaca_append_value_double(buffer, buffer_length, value, result);
+		return indigo_alpaca_append_value_double(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "guideraterightascension")) {
-		double value = false;
+		double value = 0;
 		indigo_alpaca_error result = alpaca_get_guideraterightascension(alpaca_device, version, &value);
-	return indigo_alpaca_append_value_double(buffer, buffer_length, value, result);
+		return indigo_alpaca_append_value_double(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "atpark")) {
 		return snprintf(buffer, buffer_length, "\"Value\": false, \"ErrorNumber\": 0, \"ErrorMessage\": \"\"");
