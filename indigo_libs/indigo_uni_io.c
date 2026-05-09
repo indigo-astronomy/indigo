@@ -1989,13 +1989,13 @@ void indigo_uni_compress(char *name, char *in_buffer, unsigned in_size, unsigned
 	if (r == Z_OK) {
 		r = deflateSetHeader(&defstream, &header);
 	}
-	if (r == Z_OK) {
+	if (r >= 0) {
 		r = deflate(&defstream, Z_FINISH);
 	}
-	if (r == Z_OK) {
+	if (r >= 0) {
 		r = deflateEnd(&defstream);
 	}
-	if (r == Z_OK) {
+	if (r >= 0) {
 		*out_size = (unsigned)((unsigned char *)defstream.next_out - (unsigned char *)out_buffer);
 	} else {
 		*out_size = 0;
@@ -2015,10 +2015,10 @@ void indigo_uni_decompress(char *in_buffer, unsigned in_size, unsigned char *out
 	if (r == Z_OK) {
 		r = inflate(&infstream, Z_NO_FLUSH);
 	}
-	if (r == Z_OK) {
+	if (r >= 0) {
 		r = inflateEnd(&infstream);
 	}
-	if (r == Z_OK) {
+	if (r >= 0) {
 		*out_size = (unsigned)((unsigned char *)infstream.next_out - (unsigned char *)out_buffer);
 	} else {
 		*out_size = 0;
