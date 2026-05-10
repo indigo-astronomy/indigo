@@ -834,6 +834,8 @@ static int mount_guide_rate_percent(enum GuideRate rate) {
 		case kGuideRate_x1_00:
 			return 100;
 	}
+	return 0; //fallback should probably never be reached
+
 }
 
 void mount_handle_st4_guiding_rate(indigo_device *device) {

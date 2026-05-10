@@ -835,6 +835,7 @@ static void *poll(indigo_device *device) {
 		}
 	}
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "Joystick #%ld poll thread finished", index);
+	return NULL;
 }
 
 static void rescan() {
