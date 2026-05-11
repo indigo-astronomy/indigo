@@ -466,15 +466,15 @@ var indigo_flipper = {
 
 	on_update: function(property) {
 		if (this.waiting_for_transit) {
-			indigo_log("waiting_for_transit " + property.name + " → " + property.state);
+			indigo_log("waiting_for_transit " + property.name + " -> " + property.state);
 		} else if (this.waiting_for_slew) {
-			indigo_log("waiting_for_slew " + property.name + " → " + property.state);
+			indigo_log("waiting_for_slew " + property.name + " -> " + property.state);
 		} else if (this.waiting_for_sync_and_center) {
-			indigo_log("waiting_for_sync_and_center " + property.name + " → " + property.state);
+			indigo_log("waiting_for_sync_and_center " + property.name + " -> " + property.state);
 		} else if (this.waiting_for_guiding) {
-			indigo_log("waiting_for_guiding " + property.name + " → " + property.state);
+			indigo_log("waiting_for_guiding " + property.name + " -> " + property.state);
 		} else if (this.waiting_for_settle_down) {
-			indigo_log("waiting_for_settle_down " + property.name + " → " + property.state);
+			indigo_log("waiting_for_settle_down " + property.name + " -> " + property.state);
 		}
 		if (this.waiting_for_transit && property.device == this.devices[MOUNT_AGENT] && property.name == "AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY") {
 			if (property.items.FLIP_REQUIRED == 1) {
@@ -643,7 +643,7 @@ var indigo_sequencer = {
 			indigo_flipper.start(this.use_solver);
 		} else if (this.sequence != null) {
 			if (property.device == this.wait_for_device && property.name == this.wait_for_property) {
-				indigo_log("wait_for '" + property.device + " → " + property.name + "' → " + property.state);
+				indigo_log("wait_for '" + property.device + " -> " + property.name + "' -> " + property.state);
 				if (property.state == "Alert") {
 					this.wait_for_device = null;
 					this.wait_for_property = null;
@@ -1008,7 +1008,7 @@ var indigo_sequencer = {
 				}
 			}
 			if (!found) {
-				this.failure("Failed to set non-existent option '" +item + "' for '" + device + " → " + property.label + "'");
+				this.failure("Failed to set non-existent option '" +item + "' for '" + device + " -> " + property.label + "'");
 				return;
 			}
 		}
@@ -1016,7 +1016,7 @@ var indigo_sequencer = {
 			if (allow_same_value) {
 				indigo_set_timer(indigo_sequencer_next_ok_handler, 0.1);
 			} else {
-				this.warning("'" + device + " → " + property.label + " → " + property.item_defs[item].label + "' is already " + (value ? "selected" : "unselected"));
+				this.warning("'" + device + " -> " + property.label + " -> " + property.item_defs[item].label + "' is already " + (value ? "selected" : "unselected"));
 			}
 			return;
 		}
