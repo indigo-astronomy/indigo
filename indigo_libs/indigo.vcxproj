@@ -537,7 +537,7 @@
     <ClCompile Include="externals\bonjour-sdk\dnssd_ipc.c" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="Y:\indigo_libs\externals\hidapi\windows\hidapi.vcxproj">
+    <ProjectReference Include="externals\hidapi\windows\hidapi.vcxproj">
       <Project>{a107c21c-418a-4697-bb10-20c3aa60e2e4}</Project>
     </ProjectReference>
   </ItemGroup>

@@ -176,7 +176,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "remote_server_client", "ind
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_wheel_sx", "indigo_drivers\wheel_sx\indigo_wheel_sx.vcxproj", "{EB583D11-DDB6-4D62-927A-F855188A35C3}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "hidapi", "Y:\indigo_libs\externals\hidapi\windows\hidapi.vcxproj", "{A107C21C-418A-4697-BB10-20C3AA60E2E4}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "hidapi", "indigo_libs\externals\hidapi\windows\hidapi.vcxproj", "{A107C21C-418A-4697-BB10-20C3AA60E2E4}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{1FF5E962-0642-4B9D-A30D-C597E4317822}"
 	ProjectSection(SolutionItems) = preProject
@@ -184,15 +184,15 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		MIGRATION_STATUS.md = MIGRATION_STATUS.md
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_focuser_primaluce", "Y:\indigo_drivers\focuser_primaluce\indigo_focuser_primaluce.vcxproj", "{828E48DD-EC6C-4EF4-B717-B6D2D4AB98DD}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_focuser_primaluce", "indigo_drivers\focuser_primaluce\indigo_focuser_primaluce.vcxproj", "{828E48DD-EC6C-4EF4-B717-B6D2D4AB98DD}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_focuser_qhy", "Y:\indigo_drivers\focuser_qhy\indigo_focuser_qhy.vcxproj", "{83FFBE9A-59C9-422A-BCC8-9390B4300424}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_focuser_qhy", "indigo_drivers\focuser_qhy\indigo_focuser_qhy.vcxproj", "{83FFBE9A-59C9-422A-BCC8-9390B4300424}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_focuser_fcusb", "Y:\indigo_drivers\focuser_fcusb\indigo_focuser_fcusb.vcxproj", "{DFD666A0-9036-4E8B-9442-B558332CA0DD}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_focuser_fcusb", "indigo_drivers\focuser_fcusb\indigo_focuser_fcusb.vcxproj", "{DFD666A0-9036-4E8B-9442-B558332CA0DD}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_aux_dsusb", "Y:\indigo_drivers\aux_dsusb\indigo_aux_dsusb.vcxproj", "{2E9F6091-3D81-4896-B036-ACC9D418B607}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_aux_dsusb", "indigo_drivers\aux_dsusb\indigo_aux_dsusb.vcxproj", "{2E9F6091-3D81-4896-B036-ACC9D418B607}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_guider_gpusb", "Y:\indigo_drivers\guider_gpusb\indigo_guider_gpusb.vcxproj", "{CA2EC72A-0A8B-4614-9022-CF7B81E18FD6}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_guider_gpusb", "indigo_drivers\guider_gpusb\indigo_guider_gpusb.vcxproj", "{CA2EC72A-0A8B-4614-9022-CF7B81E18FD6}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_aux_svbpowerbox", "indigo_drivers\aux_svbpowerbox\indigo_aux_svbpowerbox.vcxproj", "{30F645A4-8DED-45DB-A66D-27F5D55FB640}"
 EndProject
