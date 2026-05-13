@@ -30,6 +30,31 @@ ifneq ($(INDIGO_BUILD_SUFFIX),)
   INDIGO_BUILD := $(INDIGO_BUILD)-$(INDIGO_BUILD_SUFFIX)
 endif
 
+# Pre-release marker. When set (e.g. "beta", "beta1", "rc1") the value is
+# appended to INDIGO_BUILD with a tilde, following Debian's pre-release
+# convention: dpkg sorts "3.0-368~beta" as older than "3.0-368", so the final
+# release of the same build automatically supersedes the beta. Keep empty
+# for official releases.
+INDIGO_PRERELEASE =
+
+ifneq ($(INDIGO_PRERELEASE),)
+  INDIGO_BUILD := $(INDIGO_BUILD)~$(INDIGO_PRERELEASE)
+endif
+
+# Debian package name. The 3.x line is shipped as a separate "indigo3" beta
+# package so it can be installed from the same apt repository alongside the
+# stable 2.x "indigo" package. Both packages declare Replaces+Conflicts on the
+# other so apt can switch in either direction, and the beta also Provides:
+# indigo so third-party packages depending on "indigo" resolve against either.
+INDIGO_MAJOR := $(firstword $(subst ., ,$(INDIGO_VERSION)))
+ifeq ($(INDIGO_MAJOR),3)
+  INDIGO_PACKAGE = indigo3
+  INDIGO_PACKAGE_OTHER = indigo
+else
+  INDIGO_PACKAGE = indigo
+  INDIGO_PACKAGE_OTHER = indigo3
+endif
+
 INDIGO_ROOT = $(shell pwd)
 BUILD_ROOT = $(INDIGO_ROOT)/build
 BUILD_BIN = $(BUILD_ROOT)/bin
@@ -220,7 +245,7 @@ ifeq ($(OS_DETECTED),Linux)
 endif
 
 ifeq ($(OS_DETECTED),Linux)
-package: INSTALL_ROOT = $(INDIGO_ROOT)/indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-$(DEBIAN_ARCH)
+package: INSTALL_ROOT = $(INDIGO_ROOT)/$(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_BUILD)-$(DEBIAN_ARCH)
 package: INSTALL_BIN = $(INSTALL_ROOT)/usr/bin
 package: INSTALL_LIB = $(INSTALL_ROOT)/usr/lib
 package: INSTALL_INCLUDE = $(INSTALL_ROOT)/usr/include
@@ -248,12 +273,14 @@ endif
 	install -m 0644 systemd/indigo-environment.service $(INSTALL_ROOT)/lib/systemd/system
 	install -m 0644 systemd/indigo-server.service $(INSTALL_ROOT)/lib/systemd/system
 	install -d $(INSTALL_ROOT)/DEBIAN
-	printf "Package: indigo\n" > $(INSTALL_ROOT)/DEBIAN/control
+	printf "Package: $(INDIGO_PACKAGE)\n" > $(INSTALL_ROOT)/DEBIAN/control
 	printf "Version: $(INDIGO_VERSION)-$(INDIGO_BUILD)\n" >> $(INSTALL_ROOT)/DEBIAN/control
 	printf "Installed-Size: $(shell echo `du -s $$(INSTALL_ROOT) | cut -f1`)\n" >> $(INSTALL_ROOT)/DEBIAN/control
 	printf "Priority: optional\n" >> $(INSTALL_ROOT)/DEBIAN/control
 	printf "Architecture: $(DEBIAN_ARCH)\n" >> $(INSTALL_ROOT)/DEBIAN/control
-	printf "Replaces: fxload,libsbigudrv2,libsbig,libqhy,indi-dsi,indigo-upb\n" >> $(INSTALL_ROOT)/DEBIAN/control
+	printf "Provides: indigo\n" >> $(INSTALL_ROOT)/DEBIAN/control
+	printf "Replaces: fxload,libsbigudrv2,libsbig,libqhy,indi-dsi,indigo-upb,$(INDIGO_PACKAGE_OTHER)\n" >> $(INSTALL_ROOT)/DEBIAN/control
+	printf "Conflicts: $(INDIGO_PACKAGE_OTHER)\n" >> $(INSTALL_ROOT)/DEBIAN/control
 	printf "Maintainer: CloudMakers, s. r. o. <indigo@cloudmakers.eu>\n" >> $(INSTALL_ROOT)/DEBIAN/control
 	printf "Homepage: http://www.indigo-astronomy.org\n" >> $(INSTALL_ROOT)/DEBIAN/control
 	printf "Depends: indigo-astrometry | astrometry.net, curl, libusb-1.0-0, libgudev-1.0-0, libavahi-compat-libdnssd1\n" >> $(INSTALL_ROOT)/DEBIAN/control
@@ -318,8 +345,8 @@ ifeq ($(OS_DETECTED),Darwin)
 endif
 ifeq ($(OS_DETECTED),Linux)
 	@$(MAKE)	-C indigo_linux_drivers -f ../Makefile.drvs clean-all
-	rm -f $(INDIGO_ROOT)/indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-$(DEBIAN_ARCH).deb
-	rm -rf $(INDIGO_ROOT)/indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-$(DEBIAN_ARCH)
+	rm -f $(INDIGO_ROOT)/$(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_BUILD)-$(DEBIAN_ARCH).deb
+	rm -rf $(INDIGO_ROOT)/$(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_BUILD)-$(DEBIAN_ARCH)
 endif
 	@$(MAKE)	-C indigo_server clean-all
 	rm -rf $(BUILD_ROOT)
@@ -374,22 +401,12 @@ Makefile.inc: Makefile
 	@cat Makefile.inc
 	@echo ---------------------------------------------------------------------
 
-debs-remote:
-	ssh ubuntu32.local "cd indigo; git reset --hard; git pull; make clean-all; make; sudo make package"
-	scp ubuntu32.local:indigo/indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-i386.deb .
-	ssh ubuntu64.local "cd indigo; git reset --hard; git pull; make clean-all; make; sudo make package"
-	scp ubuntu64.local:indigo/indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-amd64.deb .
-	ssh raspi32.local "cd indigo; git reset --hard; git pull; make clean-all; make; sudo make package"
-	scp raspi32.local:indigo/indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-armhf.deb .
-	ssh raspi64.local "cd indigo; git reset --hard; git pull; make clean-all; make; sudo make package"
-	scp raspi64.local:indigo/indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-arm64.deb .
-
 debs-docker:
 	sh tools/make_source_tarball.sh $(INDIGO_VERSION)-$(INDIGO_BUILD)
-	sh tools/build_debs.sh "--platform=linux/386 i386/debian:bullseye-slim" "indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-i386.deb" $(INDIGO_VERSION)-$(INDIGO_BUILD)
-	sh tools/build_debs.sh "--platform=linux/amd64 amd64/debian:bullseye-slim" "indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-amd64.deb" $(INDIGO_VERSION)-$(INDIGO_BUILD)
-	sh tools/build_debs.sh "--platform=linux/arm/v7 arm32v7/debian:bullseye-slim" "indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-armhf.deb" $(INDIGO_VERSION)-$(INDIGO_BUILD)
-	sh tools/build_debs.sh "--platform=linux/arm64 arm64v8/debian:bullseye-slim" "indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-arm64.deb" $(INDIGO_VERSION)-$(INDIGO_BUILD)
+	sh tools/build_debs.sh "--platform=linux/386 i386/debian:bullseye-slim" "$(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_BUILD)-i386.deb" $(INDIGO_VERSION)-$(INDIGO_BUILD)
+	sh tools/build_debs.sh "--platform=linux/amd64 amd64/debian:bullseye-slim" "$(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_BUILD)-amd64.deb" $(INDIGO_VERSION)-$(INDIGO_BUILD)
+	sh tools/build_debs.sh "--platform=linux/arm/v7 arm32v7/debian:bullseye-slim" "$(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_BUILD)-armhf.deb" $(INDIGO_VERSION)-$(INDIGO_BUILD)
+	sh tools/build_debs.sh "--platform=linux/arm64 arm64v8/debian:bullseye-slim" "$(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_BUILD)-arm64.deb" $(INDIGO_VERSION)-$(INDIGO_BUILD)
 	rm indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD).tar.gz
 
 init-repo:
