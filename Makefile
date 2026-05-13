@@ -335,6 +335,11 @@ ifeq ($(OS_DETECTED),Linux)
 	@$(MAKE)	-C indigo_linux_drivers -f ../Makefile.drvs clean
 endif
 	@$(MAKE)	-C indigo_server clean
+ifeq ($(INDIGO_MAJOR),2)
+	# The 2.x branch has no indigo_client so any libindigo_client.* left behind
+	# from a previous 3.x build must be removed explicitly.
+	rm -f $(BUILD_LIB)/libindigo_client.*
+endif
 
 clean-all: Makefile.inc
 	@$(MAKE)	-C indigo_libs clean-all
