@@ -20,33 +20,33 @@
 #
 #---------------------------------------------------------------------
 
-INDIGO_VERSION = 2.0
-INDIGO_BUILD = 368
-
-# Keep the suffix empty for official releases
-INDIGO_BUILD_SUFFIX =
-
-ifneq ($(INDIGO_BUILD_SUFFIX),)
-  INDIGO_BUILD := $(INDIGO_BUILD)-$(INDIGO_BUILD_SUFFIX)
-endif
+INDIGO_VERSION = 3.0
+INDIGO_BUILD = 369
 
 # Pre-release marker. When set (e.g. "beta", "beta1", "rc1") the value is
-# appended to INDIGO_BUILD with a tilde, following Debian's pre-release
-# convention: dpkg sorts "3.0-368~beta" as older than "3.0-368", so the final
-# release of the same build automatically supersedes the beta. Keep empty
-# for official releases.
+# appended to the .deb build number with a tilde, following Debian's
+# pre-release convention: dpkg sorts "3.0-369~beta" as older than "3.0-369",
+# so the final release of the same build automatically supersedes the beta.
+# The marker is NOT folded into INDIGO_BUILD itself, so the runtime value
+# baked into indigo_config.h stays clean (just the number). Keep empty for
+# official releases.
 INDIGO_PRERELEASE =
 
 ifneq ($(INDIGO_PRERELEASE),)
-  INDIGO_BUILD := $(INDIGO_BUILD)~$(INDIGO_PRERELEASE)
+  INDIGO_PACKAGE_BUILD = $(INDIGO_BUILD)~$(INDIGO_PRERELEASE)
+else
+  INDIGO_PACKAGE_BUILD = $(INDIGO_BUILD)
 endif
+
+INDIGO_MAJOR := $(firstword $(subst ., ,$(INDIGO_VERSION)))
+INDIGO_MINOR := $(lastword $(subst ., ,$(INDIGO_VERSION)))
+INDIGO_VERSION_HEX := $(shell printf '0x%02x%02x' $(INDIGO_MAJOR) $(INDIGO_MINOR))
 
 # Debian package name. The 3.x line is shipped as a separate "indigo3" beta
 # package so it can be installed from the same apt repository alongside the
 # stable 2.x "indigo" package. Both packages declare Replaces+Conflicts on the
 # other so apt can switch in either direction, and the beta also Provides:
 # indigo so third-party packages depending on "indigo" resolve against either.
-INDIGO_MAJOR := $(firstword $(subst ., ,$(INDIGO_VERSION)))
 ifeq ($(INDIGO_MAJOR),3)
   INDIGO_PACKAGE = indigo3
   INDIGO_PACKAGE_OTHER = indigo
@@ -174,7 +174,7 @@ endif
 	@echo
 	@grep --color=always -ro '// TODO.*' indigo_libs/*.c* indigo_libs/*/*.c*
 
-$(BUILD_LIB)/libindigo.$(SOEXT): $(filter-out $(INDIGO_ROOT)/indigo_libs/indigo/indigo_config.h, $(wildcard $(INDIGO_ROOT)/indigo_libs/indigo/*.h))
+$(BUILD_LIB)/libindigo.$(SOEXT): $(wildcard $(INDIGO_ROOT)/indigo_libs/indigo/*.h)
 	@echo --------------------------------------------------------------------- Forced clean - framework headers are changed
 	@$(MAKE) clean
 
@@ -245,7 +245,7 @@ ifeq ($(OS_DETECTED),Linux)
 endif
 
 ifeq ($(OS_DETECTED),Linux)
-package: INSTALL_ROOT = $(INDIGO_ROOT)/$(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_BUILD)-$(DEBIAN_ARCH)
+package: INSTALL_ROOT = $(INDIGO_ROOT)/$(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-$(DEBIAN_ARCH)
 package: INSTALL_BIN = $(INSTALL_ROOT)/usr/bin
 package: INSTALL_LIB = $(INSTALL_ROOT)/usr/lib
 package: INSTALL_INCLUDE = $(INSTALL_ROOT)/usr/include
@@ -274,7 +274,7 @@ endif
 	install -m 0644 systemd/indigo-server.service $(INSTALL_ROOT)/lib/systemd/system
 	install -d $(INSTALL_ROOT)/DEBIAN
 	printf "Package: $(INDIGO_PACKAGE)\n" > $(INSTALL_ROOT)/DEBIAN/control
-	printf "Version: $(INDIGO_VERSION)-$(INDIGO_BUILD)\n" >> $(INSTALL_ROOT)/DEBIAN/control
+	printf "Version: $(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)\n" >> $(INSTALL_ROOT)/DEBIAN/control
 	printf "Installed-Size: $(shell echo `du -s $$(INSTALL_ROOT) | cut -f1`)\n" >> $(INSTALL_ROOT)/DEBIAN/control
 	printf "Priority: optional\n" >> $(INSTALL_ROOT)/DEBIAN/control
 	printf "Architecture: $(DEBIAN_ARCH)\n" >> $(INSTALL_ROOT)/DEBIAN/control
@@ -345,20 +345,34 @@ ifeq ($(OS_DETECTED),Darwin)
 endif
 ifeq ($(OS_DETECTED),Linux)
 	@$(MAKE)	-C indigo_linux_drivers -f ../Makefile.drvs clean-all
-	rm -f $(INDIGO_ROOT)/$(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_BUILD)-$(DEBIAN_ARCH).deb
-	rm -rf $(INDIGO_ROOT)/$(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_BUILD)-$(DEBIAN_ARCH)
+	rm -f $(INDIGO_ROOT)/$(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-$(DEBIAN_ARCH).deb
+	rm -rf $(INDIGO_ROOT)/$(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-$(DEBIAN_ARCH)
 endif
 	@$(MAKE)	-C indigo_server clean-all
 	rm -rf $(BUILD_ROOT)
 	rm -rf Makefile.inc
 
-init: Makefile.inc
+init: Makefile.inc indigo_version_sync
 	install -d -m 0755 $(BUILD_ROOT)
 	install -d -m 0755 $(BUILD_BIN)
 	install -d -m 0755 $(BUILD_DRIVERS)
 	install -d -m 0755 $(BUILD_LIB)
 	install -d -m 0755 $(BUILD_INCLUDE)
 	install -d -m 0755 $(BUILD_SHARE)/indigo
+
+# Keep INDIGO_BUILD and INDIGO_VERSION_MAJOR_MINOR in indigo_config.h in sync with this Makefile.
+.PHONY: indigo_version_sync
+indigo_version_sync:
+	@tmp=$$(mktemp); \
+	sed -e 's|^#define INDIGO_BUILD .*|#define INDIGO_BUILD "$(INDIGO_BUILD)"|' \
+	    -e 's|^#define INDIGO_VERSION_MAJOR_MINOR .*|#define INDIGO_VERSION_MAJOR_MINOR $(INDIGO_VERSION_HEX)|' \
+	    indigo_libs/indigo/indigo_config.h > $$tmp; \
+	if cmp -s $$tmp indigo_libs/indigo/indigo_config.h; then \
+	    rm -f $$tmp; \
+	else \
+	    echo "syncing INDIGO_BUILD=\"$(INDIGO_BUILD)\" INDIGO_VERSION_MAJOR_MINOR=$(INDIGO_VERSION_HEX) into indigo_config.h"; \
+	    mv $$tmp indigo_libs/indigo/indigo_config.h; \
+	fi
 
 Makefile.inc: Makefile
 	rm -f Makefile.inc
@@ -402,20 +416,20 @@ Makefile.inc: Makefile
 	@echo ---------------------------------------------------------------------
 
 debs-docker:
-	sh tools/make_source_tarball.sh $(INDIGO_VERSION)-$(INDIGO_BUILD)
-	sh tools/build_debs.sh "--platform=linux/386 i386/debian:bullseye-slim" "$(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_BUILD)-i386.deb" $(INDIGO_VERSION)-$(INDIGO_BUILD)
-	sh tools/build_debs.sh "--platform=linux/amd64 amd64/debian:bullseye-slim" "$(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_BUILD)-amd64.deb" $(INDIGO_VERSION)-$(INDIGO_BUILD)
-	sh tools/build_debs.sh "--platform=linux/arm/v7 arm32v7/debian:bullseye-slim" "$(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_BUILD)-armhf.deb" $(INDIGO_VERSION)-$(INDIGO_BUILD)
-	sh tools/build_debs.sh "--platform=linux/arm64 arm64v8/debian:bullseye-slim" "$(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_BUILD)-arm64.deb" $(INDIGO_VERSION)-$(INDIGO_BUILD)
-	rm indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD).tar.gz
+	sh tools/make_source_tarball.sh $(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)
+	sh tools/build_debs.sh "--platform=linux/386 i386/debian:bullseye-slim" "$(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-i386.deb" $(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)
+	sh tools/build_debs.sh "--platform=linux/amd64 amd64/debian:bullseye-slim" "$(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-amd64.deb" $(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)
+	sh tools/build_debs.sh "--platform=linux/arm/v7 arm32v7/debian:bullseye-slim" "$(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-armhf.deb" $(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)
+	sh tools/build_debs.sh "--platform=linux/arm64 arm64v8/debian:bullseye-slim" "$(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-arm64.deb" $(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)
+	rm indigo-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD).tar.gz
 
 init-repo:
 	aptly repo create -distribution=indigo -component=main indigo-release
 
 publish:
 	rm -f ~/Desktop/public
-	aptly repo remove indigo-release indigo_$(INDIGO_VERSION)-$(INDIGO_BUILD)_i386 indigo_$(INDIGO_VERSION)-$(INDIGO_BUILD)_amd64 indigo_$(INDIGO_VERSION)-$(INDIGO_BUILD)_armhf indigo_$(INDIGO_VERSION)-$(INDIGO_BUILD)_arm64
-	aptly repo add indigo-release indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-i386.deb indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-amd64.deb indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-armhf.deb indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-arm64.deb
+	aptly repo remove indigo-release $(INDIGO_PACKAGE)_$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)_i386 $(INDIGO_PACKAGE)_$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)_amd64 $(INDIGO_PACKAGE)_$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)_armhf $(INDIGO_PACKAGE)_$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)_arm64
+	aptly repo add indigo-release $(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-i386.deb $(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-amd64.deb $(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-armhf.deb $(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-arm64.deb
 	aptly repo show -with-packages indigo-release
 	aptly publish -force-drop drop indigo
 	aptly publish repo indigo-release

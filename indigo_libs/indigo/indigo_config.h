@@ -40,9 +40,16 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-/** INDIGO Build number
+/** INDIGO version (major in high byte, minor in low byte).
+    Used to initialise INDIGO_VERSION_CURRENT in indigo_bus.h. The top-level
+    Makefile keeps this constant in sync with INDIGO_VERSION.
  */
-#define INDIGO_BUILD "368"
+#define INDIGO_VERSION_MAJOR_MINOR 0x0300
+
+/** INDIGO Build number. The top-level Makefile keeps this constant
+    in sync with INDIGO_BUILD.
+ */
+#define INDIGO_BUILD "369"
 
 /** INDIGO Build commit
  */

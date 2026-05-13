@@ -88,9 +88,8 @@ indigo_build_c:
 	sh ../tools/make_indigo_build.sh >indigo_build.c
 	$(CC) $(CFLAGS) -c indigo_build.c -o indigo_build.o
 
-indigo/indigo_config.h:	../Makefile.inc
-	cp indigo/indigo_config.h indigo/indigo_config.h.orig
-	sed 's/INDIGO_BUILD ".*"/INDIGO_BUILD "$(INDIGO_BUILD)"/' indigo/indigo_config.h.orig >indigo/indigo_config.h
+# indigo/indigo_config.h is kept in sync with INDIGO_BUILD / INDIGO_VERSION
+# by the top-level Makefile's indigo_version_sync target (idempotent).
 
 #---------------------------------------------------------------------
 #
@@ -98,7 +97,7 @@ indigo/indigo_config.h:	../Makefile.inc
 #
 #---------------------------------------------------------------------
 
-libindigo: indigo_build_c indigo/indigo_config.h libusb libhidapi libjpeg libtiff libftd2xx libraw libindigocat $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigo.$(SOEXT) libindigo_client
+libindigo: indigo_build_c libusb libhidapi libjpeg libtiff libftd2xx libraw libindigocat $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigo.$(SOEXT) libindigo_client
 
 $(BUILD_LIB)/libindigo.a: $(LIBINDIGO_FILES)
 	$(AR) $(ARFLAGS) $@ $^
