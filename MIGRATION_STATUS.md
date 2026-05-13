@@ -98,7 +98,7 @@
 | focuser_optecfl          | 2️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    |                                                          |
 | focuser_primaluce        | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ HW    |                                                          |
 | focuser_prodigy          | 2️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    |                                                          |
-| focuser_qhy              | 2️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    |                                                          |
+| focuser_qhy              | 3️⃣  | ✅ Yes   | ❌ No    | ✅ Yes   | ❌ No    |                                                          |
 | focuser_robofocus        | 2️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    |                                                          |
 | focuser_steeldrive2      | 2️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    |                                                          |
 | focuser_usbv3            | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ HW    |                                                          |
