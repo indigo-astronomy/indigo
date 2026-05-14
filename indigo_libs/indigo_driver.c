@@ -123,22 +123,27 @@ indigo_result indigo_global_unlock(indigo_device *device) {
 
 #if defined(INDIGO_LINUX)
 static int port_type(char *path) {
-	int fd, res;
+	int fd;
 	struct serial_struct serinfo = {0};
 
 	if ((fd = open(path, O_RDWR | O_NONBLOCK)) == -1) return -1;
 
-	int sp_type = 0;
-	res = ioctl(fd, TIOCGSERIAL, &serinfo);
-	if (res != 0) {
-		sp_type = -1;
-		INDIGO_TRACE(indigo_trace("%s(): path = %s, type = %d, res = %d error = '%s'", __FUNCTION__, path, serinfo.type, res, strerror(errno)));
-	} else {
-		sp_type = serinfo.type;
-		INDIGO_TRACE(indigo_trace("%s(): path = %s, type = %d, res = %d", __FUNCTION__, path, serinfo.type, res));
+	if (!isatty(fd)) {
+	        close(fd);
+	        return -1;
 	}
+
+	int res = ioctl(fd, TIOCGSERIAL, &serinfo);
 	close(fd);
-	return sp_type;
+
+	if (res != 0) {
+	        INDIGO_TRACE(indigo_trace("%s(): path = %s, res = %d error = '%s'", __FUNCTION__, path, res, strerror(errno)));
+	        return -1;
+	}
+
+	INDIGO_TRACE(indigo_trace("%s(): path = %s, type = %d", __FUNCTION__, path, serinfo.type));
+	return serinfo.type;
+
 }
 #endif
 
@@ -270,6 +275,9 @@ void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *prope
 				indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + index, path, label, false);
 				INDIGO_DEBUG(indigo_debug("%s(): Serial port #%d: %s link = %s", __FUNCTION__, index, path, target));
 			} else {
+        if (strncmp(entry->d_name, "tty", 3) != 0 && strncmp(entry->d_name, "serial", 6) != 0) {
+                continue;
+        }
 				int ser_type = port_type(path);
 				if (ser_type > PORT_UNKNOWN) {
 					int index = DEVICE_PORTS_PROPERTY->count++;
