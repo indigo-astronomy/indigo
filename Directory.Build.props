@@ -1,6 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project>
+  <!--
+    Global build defaults for all INDIGO projects.
+    Individual vcxproj files keep explicit settings only where they differ.
+
+    NOTE: WindowsTargetPlatformVersion uses a Condition guard because it lives in
+    the Label="Globals" PropertyGroup which is evaluated *before* this file is
+    imported (via Microsoft.Cpp.Default.props). The guard prevents us from
+    accidentally overriding third-party externals (e.g. libraw) that pin an older
+    SDK version in their own Globals group.
+  -->
   <PropertyGroup>
     <PlatformToolset>v143</PlatformToolset>
+    <WindowsTargetPlatformVersion Condition="'$(WindowsTargetPlatformVersion)'==''">10.0</WindowsTargetPlatformVersion>
+    <CharacterSet>Unicode</CharacterSet>
+    <!-- Absolute solution-root path: works for projects at any directory depth -->
+    <OutDir>$(MSBuildThisFileDirectory)build\$(Configuration)\$(Platform)\</OutDir>
+    <IntDir>$(Configuration)\$(Platform)\</IntDir>
   </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+    </ClCompile>
+  </ItemDefinitionGroup>
 </Project>
