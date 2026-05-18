@@ -428,14 +428,3 @@ debs-docker:
 	sh tools/build_debs.sh "--platform=linux/arm64 arm64v8/debian:bullseye-slim" "$(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-arm64.deb" $(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)
 	rm indigo-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD).tar.gz
 
-init-repo:
-	aptly repo create -distribution=indigo -component=main indigo-release
-
-publish:
-	rm -f ~/Desktop/public
-	aptly repo remove indigo-release $(INDIGO_PACKAGE)_$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)_i386 $(INDIGO_PACKAGE)_$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)_amd64 $(INDIGO_PACKAGE)_$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)_armhf $(INDIGO_PACKAGE)_$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)_arm64
-	aptly repo add indigo-release $(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-i386.deb $(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-amd64.deb $(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-armhf.deb $(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-arm64.deb
-	aptly repo show -with-packages indigo-release
-	aptly publish -force-drop drop indigo
-	aptly publish repo indigo-release
-	ln -s ~/.aptly/public ~/Desktop
