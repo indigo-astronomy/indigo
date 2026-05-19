@@ -1310,7 +1310,7 @@ static void raw_to_tiff(indigo_device *device, void *data_in, int frame_width, i
 		add_key(&next_key, false, "GAMMA   = %20.2f / Gamma", CCD_GAMMA_ITEM->number.value);
 	}
 	add_key(&next_key, false, "JD      = %20.8f / JD when exposure started", UT2JD(timer));
-	add_key(&next_key, false, "DATE-OBS= '%s' / UTC when exposure started", date_time_start);
+	add_key(&next_key, false, "DATE-OBS= '%s' / Observation start time, UT", date_time_start);
 	add_key(&next_key, false, "INSTRUME= '%s'%*c / instrument name", device->name, (int)(19 - strlen(device->name)), ' ');
 	if (CCD_LOCAL_MODE_OBJECT_ITEM->text.value[0] != '\0') {
 		add_key(&next_key, false, "OBJECT  = '%s' / object name", CCD_LOCAL_MODE_OBJECT_ITEM->text.value);
@@ -1873,7 +1873,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 	if (CCD_IMAGE_FORMAT_FITS_ITEM->sw.value) {
 		INDIGO_DEBUG(double start = get_time_hd());
 		struct timeval tv;
-		char date_time[32], date_time_end[32];
+		char date_time[32], date_time_start[32];
 		gettimeofday(&tv, NULL);
 		int millisec = (int)lrint(tv.tv_usec/1000.0);
 		if (millisec >= 1000) {
@@ -1904,7 +1904,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 #else
 #pragma message ("TODO: indigo_process_image()")
 #endif
-		snprintf(date_time_end, sizeof(date_time_end), "%s.%03d", date_time, millisec);
+		snprintf(date_time_start, sizeof(date_time_start), "%s.%03d", date_time, millisec);
 		char *header = data;
 		memset(header, ' ', FITS_HEADER_SIZE);
 		add_key(&header, true,  "SIMPLE  =                    T / file conforms to FITS standard");
@@ -1969,8 +1969,8 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		if (!CCD_GAMMA_PROPERTY->hidden) {
 			add_key(&header, true,  "GAMMA   = %20.2f / Gamma", CCD_GAMMA_ITEM->number.value);
 		}
-		add_key(&header, true,  "JD      = %20.8f / JD when the FITS file was created", UT2JD(tv.tv_sec + tv.tv_usec / 1e6));
-		add_key(&header, true,  "DATE-OBS= '%s' / UTC when the FITS file was created", date_time_end);
+		add_key(&header, true,  "JD      = %20.8f / JD when exposure started", UT2JD(tv.tv_sec + tv.tv_usec / 1e6));
+		add_key(&header, true,  "DATE-OBS= '%s' / Observation start time, UT", date_time_start);
 		add_key(&header, true,  "INSTRUME= '%s'%*c / instrument name", device->name, (int)(19 - strlen(device->name)), ' ');
 		if (CCD_LOCAL_MODE_OBJECT_ITEM->text.value[0] != '\0') {
 			add_key(&header, true,  "OBJECT  = '%s' / object name", CCD_LOCAL_MODE_OBJECT_ITEM->text.value);
