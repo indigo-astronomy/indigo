@@ -574,17 +574,17 @@ long indigo_alpaca_switch_get_command(indigo_alpaca_device *alpaca_device, int v
 		return snprintf(buffer, buffer_length, "\"Value\": [ ], \"ErrorNumber\": 0, \"ErrorMessage\": \"\"");
 	}
 	if (!strcmp(command, "interfaceversion")) {
-		uint32_t value;
+		uint32_t value = 0;
 		indigo_alpaca_error result = alpaca_get_interfaceversion(alpaca_device, version, &value);
 		return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "maxswitch")) {
-		uint32_t value;
+		uint32_t value = 0;
 		indigo_alpaca_error result = alpaca_get_maxswitch(alpaca_device, version, &value);
 		return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "canwrite")) {
-		bool value;
+		bool value = false;
 		indigo_alpaca_error result = alpaca_get_canwrite(alpaca_device, version, id, &value);
 		return indigo_alpaca_append_value_bool(buffer, buffer_length, value, result);
 	}
@@ -594,27 +594,27 @@ long indigo_alpaca_switch_get_command(indigo_alpaca_device *alpaca_device, int v
 		return indigo_alpaca_append_value_string(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "getswitch")) {
-		bool value;
+		bool value = false;
 		indigo_alpaca_error result = alpaca_get_switch(alpaca_device, version, id, &value);
 		return indigo_alpaca_append_value_bool(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "getswitchvalue")) {
-		double value;
+		double value = 0.0;
 		indigo_alpaca_error result = alpaca_get_switchvalue(alpaca_device, version, id, &value);
 		return indigo_alpaca_append_value_double(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "minswitchvalue")) {
-		double value;
+		double value = 0.0;
 		indigo_alpaca_error result = alpaca_get_minswitchvalue(alpaca_device, version, id, &value);
 		return indigo_alpaca_append_value_double(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "maxswitchvalue")) {
-		double value;
+		double value = 0.0;
 		indigo_alpaca_error result = alpaca_get_maxswitchvalue(alpaca_device, version, id, &value);
 		return indigo_alpaca_append_value_double(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "switchstep")) {
-		double value;
+		double value = 0.0;
 		indigo_alpaca_error result = alpaca_get_switchstep(alpaca_device, version, id, &value);
 		return indigo_alpaca_append_value_double(buffer, buffer_length, value, result);
 	}
