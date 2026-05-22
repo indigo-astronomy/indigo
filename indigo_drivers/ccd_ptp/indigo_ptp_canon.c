@@ -1168,7 +1168,7 @@ static void ptp_canon_get_event(indigo_device *device) {
 						strncpy(filename, (char *)source + 0x24, PTP_MAX_CHARS);
 						filename[PTP_MAX_CHARS - 1] = '\0';
 					} else if (event == ptp_event_canon_ObjectAddedEx3 || event == ptp_event_canon_RequestObjectTransfer) {
-						ptp_decode_string((uint8_t *)source + 0x1c, filename);
+						ptp_decode_string(source + 0x1c, filename);
 						if (source[0x1c] == 0 || source[0x1c] == 1) {
 							// empty or "\0" string
 							//   => no filename
@@ -1269,6 +1269,7 @@ static void ptp_canon_get_event(indigo_device *device) {
 						if (buffer) {
 							free(buffer);
 						}
+						buffer = NULL;
 					}
 					PRIVATE_DATA->image_added = true;
 					break;
