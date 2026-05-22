@@ -20,6 +20,9 @@ All notable changes to INDIGO framework will be documented in this file.
 - indigo_ccd_playerone:
 	- update SDK to 3.10.1
 
+-indigo_ccd_ptp:
+	- fix double free crash
+
 - indigo_focuser_qhy:
 	- add qhy_focuser_simulator
 
