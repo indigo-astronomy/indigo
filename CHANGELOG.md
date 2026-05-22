@@ -2,6 +2,30 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-370] - 22 Nay Fri 2026
+## Overall:
+- replace unicode arrows with "->" for compatibility
+
+- Build process:
+	- changed to handle upcomming indigo3 3.0 beta
+	- seveal small fixes
+
+- indigo_ccd_driver:
+	- fix comment of DATE-OBS
+
+# Driver fixes:
+- indigo_agent_alpaca:
+	- small fixes
+
+- indigo_ccd_playerone:
+	- update SDK to 3.10.1
+
+- indigo_focuser_qhy:
+	- add qhy_focuser_simulator
+
+- indigo_ccd_qhy2:
+	- Increase number of wheel slots to 8
+
 # [2.0-368] - 04 May Mon 2026
 
 ## Overall:
