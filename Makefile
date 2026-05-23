@@ -21,7 +21,7 @@
 #---------------------------------------------------------------------
 
 INDIGO_VERSION = 3.0
-INDIGO_BUILD = 369
+INDIGO_BUILD = 370
 
 # Pre-release marker. When set (e.g. "beta", "beta1", "rc1") the value is
 # appended to the .deb build number with a tilde, following Debian's
