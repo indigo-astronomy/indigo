@@ -101,7 +101,7 @@ function doSend(message) {
 function processDefineProperty(property) {
 	var device = property.device;
 	var name = property.name;
-	console.log("defineProperty("+device+" → "+name+")");
+	console.log("defineProperty("+device+" -> "+name+")");
 	var properties = devices[device];
 	var values = {};
 	for (var i in property.items) {
@@ -121,7 +121,7 @@ function processDefineProperty(property) {
 function processUpdateProperty(property) {
 	var device = property.device;
 	var name = property.name;
-	console.log("updateProperty("+device+" → "+name+")");
+	console.log("updateProperty("+device+" -> "+name+")");
 	var values = {};
 	for (var i in property.items) {
 		var item = property.items[i];
@@ -146,7 +146,7 @@ function processUpdateProperty(property) {
 function processDeleteProperty(property) {
 	var device = property.device;
 	var name = property.name;
-	console.log("deleteProperty("+device+" → "+name+")");
+	console.log("deleteProperty("+device+" -> "+name+")");
 	var properties = devices[device];
 	if (properties == null) {
 		console.log("undefined device "+device);

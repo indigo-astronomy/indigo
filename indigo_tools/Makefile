@@ -38,7 +38,7 @@ install: all
 	cp ./indigo_log_analyzer.pl $(INSTALL_BIN)/indigo_log_analyzer
 
 uninstall:
-	rm -f $(INSTALL_BIN)/indigo_prop_tool $(INSTALL_BIN)/indigo_raw_to_fits $(BUILD_BIN)/indigo_raw_crop $(INSTALL_BIN)/indigo_log_analyzer
+	rm -f $(INSTALL_BIN)/indigo_prop_tool $(INSTALL_BIN)/indigo_raw_to_fits $(INSTALL_BIN)/indigo_raw_crop $(INSTALL_BIN)/indigo_log_analyzer $(INSTALL_BIN)/indigo_list_usbserial
 
 status:
 	@printf "\nindigo_tools -------------------------\n\n"

@@ -660,7 +660,6 @@ void indigo_alpaca_mount_update_property(indigo_alpaca_device *alpaca_device, in
 						case 0:
 							alpaca_device->mount.equatorialsystem = 1;
 							break;
-							break;
 						case 2000:
 							alpaca_device->mount.equatorialsystem = 2;
 							break;
@@ -763,12 +762,12 @@ long indigo_alpaca_mount_get_command(indigo_alpaca_device *alpaca_device, int ve
 		return indigo_alpaca_append_value_bool(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "guideratedeclination")) {
-		double value = false;
+		double value = 0;
 		indigo_alpaca_error result = alpaca_get_guideratedeclination(alpaca_device, version, &value);
 	return indigo_alpaca_append_value_double(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "guideraterightascension")) {
-		double value = false;
+		double value = 0;
 		indigo_alpaca_error result = alpaca_get_guideraterightascension(alpaca_device, version, &value);
 	return indigo_alpaca_append_value_double(buffer, buffer_length, value, result);
 	}
