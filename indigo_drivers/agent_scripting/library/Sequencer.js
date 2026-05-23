@@ -327,7 +327,7 @@ Sequence.prototype.capture_stream = function(p1, p2, p3) {
 	if (arguments.length === 3 && typeof p1 === 'string') {
 		this.sequence.push({ execute: 'set_local_mode(null, "' + name_template + '", null)', step: this.step, progress: this.progress++, exposure: this.exposure });
 	}
-	this.sequence.push({ execute: 'set_stream(' + count + ',' + exposure + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'set_batch(' + count + ',' + exposure + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'set_upload_mode("BOTH")', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'capture_stream()', step: this.step++, progress: this.progress++, exposure: this.exposure });
 	this.exposure += exposure * count;
