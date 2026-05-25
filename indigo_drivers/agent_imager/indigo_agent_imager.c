@@ -2448,7 +2448,7 @@ static void adjust_stats_max_stars_to_use(indigo_device *device) {
 static void filter_handler(indigo_device *device) {
 	bool apply_offsets = AGENT_IMAGER_APPLY_FILTER_OFFSETS_FEATURE_ITEM->sw.value && INDIGO_FILTER_FOCUSER_SELECTED;
 	if (apply_offsets && DEVICE_PRIVATE_DATA->focuser_temperature_compensation) {
-		indigo_send_message(device, "Warning: Filter offset not applied, focuser in temperature compensation mode");
+		indigo_send_message(device, BUSY_PROPERTY, "Warning: Filter offset not applied, focuser in temperature compensation mode");
 		apply_offsets = false;
 	}
 	if (apply_offsets) {
