@@ -21,7 +21,7 @@
 #---------------------------------------------------------------------
 
 INDIGO_VERSION = 3.0
-INDIGO_BUILD = 370
+INDIGO_BUILD = 1
 
 # Pre-release marker. When set (e.g. "beta", "beta1", "rc1") the value is
 # appended to the .deb build number with a tilde, following Debian's
@@ -30,7 +30,7 @@ INDIGO_BUILD = 370
 # The marker is NOT folded into INDIGO_BUILD itself, so the runtime value
 # baked into indigo_config.h stays clean (just the number). Keep empty for
 # official releases.
-INDIGO_PRERELEASE =
+INDIGO_PRERELEASE = beta1
 
 ifneq ($(INDIGO_PRERELEASE),)
   INDIGO_PACKAGE_BUILD = $(INDIGO_BUILD)~$(INDIGO_PRERELEASE)
