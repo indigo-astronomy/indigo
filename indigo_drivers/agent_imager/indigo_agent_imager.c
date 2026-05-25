@@ -272,6 +272,7 @@ typedef struct {
 	size_t image_buffer_size;
 	double focuser_position;
 	double focuser_temperature;
+	bool focuser_temperature_compensation;
 	double saved_backlash;
 	int ucurve_samples_number;
 	indigo_star_detection stars[MAX_STAR_COUNT];
@@ -2445,7 +2446,12 @@ static void adjust_stats_max_stars_to_use(indigo_device *device) {
 }
 
 static void filter_handler(indigo_device *device) {
-	if (AGENT_IMAGER_APPLY_FILTER_OFFSETS_FEATURE_ITEM->sw.value && INDIGO_FILTER_FOCUSER_SELECTED) {
+	bool apply_offsets = AGENT_IMAGER_APPLY_FILTER_OFFSETS_FEATURE_ITEM->sw.value && INDIGO_FILTER_FOCUSER_SELECTED;
+	if (apply_offsets && DEVICE_PRIVATE_DATA->focuser_temperature_compensation) {
+		indigo_send_message(device, "Warning: Filter offset not applied, focuser in temperature compensation mode");
+		apply_offsets = false;
+	}
+	if (apply_offsets) {
 		double steps = DEVICE_PRIVATE_DATA->filter_offsets[DEVICE_PRIVATE_DATA->requested_filter_index] - DEVICE_PRIVATE_DATA->filter_offsets[DEVICE_PRIVATE_DATA->current_filter_index];
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Moving to filter '%s' with offset %.3f from filter '%s' with offset %.3f. Applying diff offset %.3f", AGENT_WHEEL_FILTER_PROPERTY->items[DEVICE_PRIVATE_DATA->requested_filter_index].label, DEVICE_PRIVATE_DATA->filter_offsets[DEVICE_PRIVATE_DATA->requested_filter_index], AGENT_WHEEL_FILTER_PROPERTY->items[DEVICE_PRIVATE_DATA->current_filter_index].label, DEVICE_PRIVATE_DATA->filter_offsets[DEVICE_PRIVATE_DATA->current_filter_index], steps);
 		if (_move_focuser(device, steps > 0, fabs(steps), false)) {
@@ -3402,6 +3408,7 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 			DEVICE_PRIVATE_DATA->focuser_position = NAN;
 			DEVICE_PRIVATE_DATA->focuser_temperature = NAN;
 			DEVICE_PRIVATE_DATA->focuser_has_backlash = false;
+			DEVICE_PRIVATE_DATA->focuser_temperature_compensation = false;
 		}
 	} else if (!strcmp(property->name, FOCUSER_STEPS_PROPERTY_NAME)) {
 		DEVICE_PRIVATE_DATA->steps_state = property->state;
@@ -3409,6 +3416,15 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 		DEVICE_PRIVATE_DATA->focuser_position = property->items[0].number.value;
 	} else if (!strcmp(property->name, FOCUSER_TEMPERATURE_PROPERTY_NAME)) {
 		DEVICE_PRIVATE_DATA->focuser_temperature = property->items[0].number.value;
+	} else if (!strcmp(property->name, FOCUSER_MODE_PROPERTY_NAME)) {
+		DEVICE_PRIVATE_DATA->focuser_temperature_compensation = false;
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = property->items + i;
+			if (!strcmp(item->name, FOCUSER_MODE_AUTOMATIC_ITEM_NAME)) {
+				DEVICE_PRIVATE_DATA->focuser_temperature_compensation = item->sw.value;
+				break;
+			}
+		}
 	} else if (!strcmp(property->name, FOCUSER_BACKLASH_PROPERTY_NAME)) {
 		indigo_device *device = FILTER_CLIENT_CONTEXT->device;
 		DEVICE_PRIVATE_DATA->focuser_has_backlash = true;
