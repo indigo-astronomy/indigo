@@ -34,10 +34,8 @@ INDIGO_PRERELEASE = beta1
 
 ifneq ($(INDIGO_PRERELEASE),)
   INDIGO_PACKAGE_BUILD = $(INDIGO_BUILD)~$(INDIGO_PRERELEASE)
-  INDIGO_GIT_TAG = $(INDIGO_VERSION)-$(INDIGO_BUILD)_$(INDIGO_PRERELEASE)
 else
   INDIGO_PACKAGE_BUILD = $(INDIGO_BUILD)
-  INDIGO_GIT_TAG = $(INDIGO_VERSION)-$(INDIGO_BUILD)
 endif
 
 INDIGO_MAJOR := $(firstword $(subst ., ,$(INDIGO_VERSION)))
@@ -423,7 +421,7 @@ Makefile.inc: Makefile
 	@echo ---------------------------------------------------------------------
 
 debs-docker:
-	sh tools/make_source_tarball.sh $(INDIGO_GIT_TAG) $(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)
+	sh tools/make_source_tarball.sh $(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)
 	sh tools/build_debs.sh "--platform=linux/386 i386/debian:bullseye-slim" "$(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-i386.deb" $(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)
 	sh tools/build_debs.sh "--platform=linux/amd64 amd64/debian:bullseye-slim" "$(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-amd64.deb" $(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)
 	sh tools/build_debs.sh "--platform=linux/arm/v7 arm32v7/debian:bullseye-slim" "$(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-armhf.deb" $(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)
