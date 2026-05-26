@@ -22,7 +22,7 @@ then
 fi
 
 TARBALL_VER="$1"
-GIT_TAG="${TARBALL_VER//\~/_}"
+GIT_TAG="$(echo "$TARBALL_VER" | tr '~' '_')"
 
 if [ -z "$(git tag | grep -w "$GIT_TAG")" ]
 then
