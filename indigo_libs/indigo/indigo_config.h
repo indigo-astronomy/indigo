@@ -49,7 +49,7 @@
 /** INDIGO Build number. The top-level Makefile keeps this constant
     in sync with INDIGO_BUILD.
  */
-#define INDIGO_BUILD "1+beta1"
+#define INDIGO_BUILD "1"
 
 /** INDIGO Build commit
  */
