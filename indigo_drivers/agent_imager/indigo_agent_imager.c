@@ -739,7 +739,7 @@ static bool select_stars(indigo_device *device) {
 
 static bool check_selection(indigo_device *device) {
 	for (int i = 0; i < AGENT_IMAGER_SELECTION_STAR_COUNT_ITEM->number.value; i++) {
-		if ((AGENT_IMAGER_SELECTION_X_ITEM + i)->number.value != 0 && (AGENT_IMAGER_SELECTION_Y_ITEM + i)->number.value != 0) {
+		if ((AGENT_IMAGER_SELECTION_X_ITEM + 2 * i)->number.value != 0 && (AGENT_IMAGER_SELECTION_Y_ITEM + 2 * i)->number.value != 0) {
 			return true;
 		}
 	}
