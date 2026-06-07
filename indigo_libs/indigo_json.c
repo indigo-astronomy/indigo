@@ -622,7 +622,6 @@ static long ws_write(indigo_uni_handle *handle, const char *buffer, long length)
 		result = indigo_uni_write(handle, (char *)header, 10);
 	}
 	if (result >= 0) {
-		indigo_error("%s", buffer);
 		result = indigo_uni_write(handle, buffer, length);
 	}
 	handle->log_level = abs(handle->log_level);
