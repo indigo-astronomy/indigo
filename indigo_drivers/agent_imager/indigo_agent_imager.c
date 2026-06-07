@@ -388,6 +388,49 @@ static bool get_disk_usage(const char* path, double* total_mb, double* free_mb, 
 #endif
 }
 
+// The output folder is created only on the first exposure, so it may not exist yet.
+// Walk the path up to the nearest existing ancestor and query that - it lives on the
+// same volume/drive where the folder will be created.
+static bool get_disk_usage_for_volume(const char* path, double* total_mb, double* free_mb, double* used_mb) {
+	if (!path) {
+		return false;
+	}
+
+	char probe[INDIGO_VALUE_SIZE];
+	indigo_copy_value(probe, path);
+
+	// Drop a trailing separator so the first truncation removes the folder name.
+	size_t len = strlen(probe);
+	while (len > 1 && (probe[len - 1] == '/' || probe[len - 1] == '\\')) {
+		probe[--len] = '\0';
+	}
+
+	while (true) {
+		if (get_disk_usage(probe, total_mb, free_mb, used_mb)) {
+			return true;
+		}
+
+		char *sep = strrchr(probe, '/');
+#ifdef INDIGO_WINDOWS
+		// On Windows '/' is also a valid separator, so take whichever is rightmost.
+		char *bsep = strrchr(probe, '\\');
+		if (sep == NULL || (bsep != NULL && bsep > sep)) {
+			sep = bsep;
+		}
+#endif
+		if (sep == NULL) {
+			// Relative path with no separators left - try the current directory once.
+			return get_disk_usage(".", total_mb, free_mb, used_mb);
+		}
+		if (sep == probe) {
+			// Reached the root ("/"); query it once and stop.
+			probe[1] = '\0';
+			return get_disk_usage(probe, total_mb, free_mb, used_mb);
+		}
+		*sep = '\0';
+	}
+}
+
 static void update_disk_usage(indigo_device *device) {
 	double total_mb, free_mb, used_mb;
 	static double last_total_mb = -1, last_free_mb = -1, last_used_mb = -1;
@@ -400,7 +443,7 @@ static void update_disk_usage(indigo_device *device) {
 		AGENT_IMAGER_DISK_USAGE_FREE_ITEM->number.value = 0;
 
 		AGENT_IMAGER_DISK_USAGE_PROPERTY->state = INDIGO_IDLE_STATE;
-	} else if (get_disk_usage(path, &total_mb, &free_mb, &used_mb)) {
+	} else if (get_disk_usage_for_volume(path, &total_mb, &free_mb, &used_mb)) {
 		AGENT_IMAGER_DISK_USAGE_TOTAL_ITEM->number.value = total_mb;
 		AGENT_IMAGER_DISK_USAGE_USED_ITEM->number.value = used_mb;
 		AGENT_IMAGER_DISK_USAGE_FREE_ITEM->number.value = free_mb;
