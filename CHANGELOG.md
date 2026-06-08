@@ -2,7 +2,23 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-372] - 09 Jun Tue 2026
+
+## Driver fixes:
+- indigo_agent_scripting:
+	- Sequencer.js: capture_stream() fixed
+
+- indigo_agent_imager:
+	- show message when changing filter and image temperature compensation is On
+	- fix AGENT_IMAGER_SELECTION* indexing in check_selection()
+	- more robust disk usage calculation
+
+- indigo_ccd_touptek & OEM:
+	- Update SDK 60.31631.20260606
+
+
 # [2.0-370] - 22 Nay Fri 2026
+
 ## Overall:
 - replace unicode arrows with "->" for compatibility
 
@@ -13,7 +29,7 @@ All notable changes to INDIGO framework will be documented in this file.
 - indigo_ccd_driver:
 	- fix comment of DATE-OBS
 
-# Driver fixes:
+## Driver fixes:
 - indigo_agent_alpaca:
 	- small fixes
 
