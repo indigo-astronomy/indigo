@@ -188,6 +188,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_focuser_primaluce", 
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_focuser_qhy", "indigo_drivers\focuser_qhy\indigo_focuser_qhy.vcxproj", "{83FFBE9A-59C9-422A-BCC8-9390B4300424}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_focuser_askar", "indigo_drivers\focuser_askar\indigo_focuser_askar.vcxproj", "{C171B991-511E-4396-A6F9-430495D66742}"
+EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_focuser_fcusb", "indigo_drivers\focuser_fcusb\indigo_focuser_fcusb.vcxproj", "{DFD666A0-9036-4E8B-9442-B558332CA0DD}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_aux_dsusb", "indigo_drivers\aux_dsusb\indigo_aux_dsusb.vcxproj", "{2E9F6091-3D81-4896-B036-ACC9D418B607}"
@@ -924,6 +926,14 @@ Global
 		{83FFBE9A-59C9-422A-BCC8-9390B4300424}.Release|ARM64.Build.0 = Release|ARM64
 		{83FFBE9A-59C9-422A-BCC8-9390B4300424}.Release|x64.ActiveCfg = Release|x64
 		{83FFBE9A-59C9-422A-BCC8-9390B4300424}.Release|x64.Build.0 = Release|x64
+		{C171B991-511E-4396-A6F9-430495D66742}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{C171B991-511E-4396-A6F9-430495D66742}.Debug|ARM64.Build.0 = Debug|ARM64
+		{C171B991-511E-4396-A6F9-430495D66742}.Debug|x64.ActiveCfg = Debug|x64
+		{C171B991-511E-4396-A6F9-430495D66742}.Debug|x64.Build.0 = Debug|x64
+		{C171B991-511E-4396-A6F9-430495D66742}.Release|ARM64.ActiveCfg = Release|ARM64
+		{C171B991-511E-4396-A6F9-430495D66742}.Release|ARM64.Build.0 = Release|ARM64
+		{C171B991-511E-4396-A6F9-430495D66742}.Release|x64.ActiveCfg = Release|x64
+		{C171B991-511E-4396-A6F9-430495D66742}.Release|x64.Build.0 = Release|x64
 		{DFD666A0-9036-4E8B-9442-B558332CA0DD}.Debug|ARM64.ActiveCfg = Debug|ARM64
 		{DFD666A0-9036-4E8B-9442-B558332CA0DD}.Debug|ARM64.Build.0 = Debug|ARM64
 		{DFD666A0-9036-4E8B-9442-B558332CA0DD}.Debug|x64.ActiveCfg = Debug|x64
