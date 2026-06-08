@@ -1,7 +1,7 @@
-﻿#ifndef __ogmacam_h__
+#ifndef __ogmacam_h__
 #define __ogmacam_h__
 
-/* Version: 59.31026.20260322 */
+/* Version: 60.31631.20260606 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -130,7 +130,7 @@ extern "C" {
 typedef struct Ogmacam_t { int unused; } *HOgmacam;
 
 #define OGMACAM_MAX                       128
-                                         
+
 #define OGMACAM_FLAG_CMOS                 0x00000001  /* cmos sensor */
 #define OGMACAM_FLAG_CCD_PROGRESSIVE      0x00000002  /* progressive ccd sensor */
 #define OGMACAM_FLAG_CCD_INTERLACED       0x00000004  /* interlaced ccd sensor */
@@ -329,7 +329,7 @@ typedef struct {
 } OgmacamDeviceV2; /* device instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 59.31026.20260322
+    get the version of this dll/so/dylib, which is: 60.31631.20260606
 */
 #if defined(_WIN32)
 OGMACAM_API(const wchar_t*)   Ogmacam_Version();
@@ -404,7 +404,7 @@ OGMACAM_API(void)     Ogmacam_Close(HOgmacam h);
 #define OGMACAM_EVENT_FACTORY           0x8001    /* restore factory settings */
 
 #if defined(_WIN32)
-OGMACAM_API(HRESULT)  Ogmacam_StartPullModeWithWndMsg(HOgmacam h, HWND hWnd, UINT nMsg);
+OGMACAM_API(HRESULT)  Ogmacam_StartPullModeWithWndMsg(HOgmacam h, HWND hWnd, unsigned msgWnd);
 #endif
 
 /* Do NOT call Ogmacam_Close, Ogmacam_Stop in this callback context, it deadlocks. */
@@ -457,9 +457,42 @@ typedef struct {
     OgmacamGps gps;
 } OgmacamFrameInfoV4;
 
+typedef struct {
+    unsigned id;                    /* 0 is reserved as an invalid id */
+    unsigned char pixelFormat;      /* OGMACAM_PIXELFORMAT_xxxx */
+    unsigned char ergb;             /* see OGMACAM_OPTION_RGB */
+    unsigned char snapR;            /* see Ogmacam_SnapR */
+    unsigned char infoVer;          /* OgmacamFrameInfo version >= 4 */
+    unsigned reserved;
+    unsigned strideRaw;             /* stride of RAW, 0 means = image width (no padding) */
+    OgmacamFrameInfoV4* ptrInfo;
+    void* snapCtx;
+    void* ptrRaw;                   /* RAW, see OGMACAM_OPTION_IMAGEPTRRAW */
+    unsigned char* ptr8;
+    unsigned short* ptr16;
+} OgmacamImagePtr;
+
+/* Obtains a pointer to the frame buffer directly from the SDK, eliminating the need to copy frame data and thus improving performance */
+/* bStill: to pull still image, set to 1, otherwise 0 */
+OGMACAM_API(HRESULT)  Ogmacam_PullImagePtr(HOgmacam h, int bStill, OgmacamImagePtr* ptrImage);
+
+/* After a frame buffer has been used, it must be returned to the SDK for reuse. Please note the following:
+    (a) The frame buffer must only be returned back after it is no longer in use. Any access after returning it is unsafe, as the SDK may have already reused the buffer and overwritten the memory with new data.
+    (b) If a frame buffer is not returned, the pool of available buffers will gradually decrease.
+    (c) Each frame buffer obtained via Pull (identified by its ID) may be returned only once; duplicate returns are not allowed.
+    (d) The return order does not need to match the Pull order; buffers may be returned out of order.
+    (e) Frame buffers that have not been returned remain valid after Ogmacam_Stop. Frame buffers that have not been returned become invalid immediately after Ogmacam_Close.
+*/
+OGMACAM_API(HRESULT)  Ogmacam_PushImagePtr(HOgmacam h, unsigned ptrId);
+
+/* waitMS: The timeout interval, in milliseconds. If a nonzero value is specified, the function waits until the image is ok or the interval elapses.
+            If waitMS is zero, the function does not enter a wait state if the image is not available; it always returns immediately; this is equal to Ogmacam_PullImagePtr.
+*/
+OGMACAM_API(HRESULT)  Ogmacam_WaitImagePtr(HOgmacam h, unsigned waitMS, int bStill, OgmacamImagePtr* ptrImage);
+
 /*
-    nWaitMS: The timeout interval, in milliseconds. If a nonzero value is specified, the function waits until the image is ok or the interval elapses.
-             If nWaitMS is zero, the function does not enter a wait state if the image is not available; it always returns immediately; this is equal to Ogmacam_PullImageV4.
+    waitMS: The timeout interval, in milliseconds. If a nonzero value is specified, the function waits until the image is ok or the interval elapses.
+             If waitMS is zero, the function does not enter a wait state if the image is not available; it always returns immediately; this is equal to Ogmacam_PullImageV4.
     bStill: to pull still image, set to 1, otherwise 0
     bits: 24 (RGB24), 32 (RGB32), 48 (RGB48), 8 (Grey), 16 (Grey), 64 (RGB64).
           In RAW mode, this parameter is ignored.
@@ -500,9 +533,9 @@ typedef struct {
             |-----------|------------------------|-------------------------------|-----------------------|
 */
 OGMACAM_API(HRESULT)  Ogmacam_PullImageV4(HOgmacam h, void* pImageData, int bStill, int bits, int rowPitch, OgmacamFrameInfoV4* pInfo);
-OGMACAM_API(HRESULT)  Ogmacam_WaitImageV4(HOgmacam h, unsigned nWaitMS, void* pImageData, int bStill, int bits, int rowPitch, OgmacamFrameInfoV4* pInfo);
+OGMACAM_API(HRESULT)  Ogmacam_WaitImageV4(HOgmacam h, unsigned waitMS, void* pImageData, int bStill, int bits, int rowPitch, OgmacamFrameInfoV4* pInfo);
 OGMACAM_API(HRESULT)  Ogmacam_PullImageV3(HOgmacam h, void* pImageData, int bStill, int bits, int rowPitch, OgmacamFrameInfoV3* pInfo);
-OGMACAM_API(HRESULT)  Ogmacam_WaitImageV3(HOgmacam h, unsigned nWaitMS, void* pImageData, int bStill, int bits, int rowPitch, OgmacamFrameInfoV3* pInfo);
+OGMACAM_API(HRESULT)  Ogmacam_WaitImageV3(HOgmacam h, unsigned waitMS, void* pImageData, int bStill, int bits, int rowPitch, OgmacamFrameInfoV3* pInfo);
 
 typedef struct {
     unsigned            width;
@@ -546,6 +579,8 @@ OGMACAM_API(HRESULT)  Ogmacam_Pause(HOgmacam h, int bPause); /* 1 => pause, 0 =>
 OGMACAM_API(HRESULT)  Ogmacam_Snap(HOgmacam h, unsigned nResolutionIndex);  /* still image snap */
 OGMACAM_API(HRESULT)  Ogmacam_SnapN(HOgmacam h, unsigned nResolutionIndex, unsigned nNumber);  /* multiple still image snap */
 OGMACAM_API(HRESULT)  Ogmacam_SnapR(HOgmacam h, unsigned nResolutionIndex, unsigned nNumber);  /* multiple RAW still image snap */
+OGMACAM_API(HRESULT)  Ogmacam_SnapV2(HOgmacam h, unsigned nResolutionIndex, unsigned nNumber, int eRGB, void* snapCtx);
+
 /*
     soft trigger:
     nNumber:    0xffff:     trigger continuously
@@ -556,12 +591,12 @@ OGMACAM_API(HRESULT)  Ogmacam_Trigger(HOgmacam h, unsigned short nNumber);
 
 /*
     trigger synchronously
-    nWaitMS:    0:              by default, exposure * 102% + 4000 milliseconds
+    waitMS:     0:              by default, exposure * 102% + 4000 milliseconds
                 0xffffffff:     wait infinite
                 other:          milliseconds to wait
 */
-OGMACAM_API(HRESULT)  Ogmacam_TriggerSyncV4(HOgmacam h, unsigned nWaitMS, void* pImageData, int bits, int rowPitch, OgmacamFrameInfoV4* pInfo);
-OGMACAM_API(HRESULT)  Ogmacam_TriggerSync(HOgmacam h, unsigned nWaitMS, void* pImageData, int bits, int rowPitch, OgmacamFrameInfoV3* pInfo);
+OGMACAM_API(HRESULT)  Ogmacam_TriggerSyncV4(HOgmacam h, unsigned waitMS, void* pImageData, int bits, int rowPitch, OgmacamFrameInfoV4* pInfo);
+OGMACAM_API(HRESULT)  Ogmacam_TriggerSync(HOgmacam h, unsigned waitMS, void* pImageData, int bits, int rowPitch, OgmacamFrameInfoV3* pInfo);
 
 /*
     put_Size, put_eSize, can be used to set the video output resolution BEFORE Ogmacam_StartXXXX.
@@ -807,7 +842,8 @@ OGMACAM_API(HRESULT)  Ogmacam_get_StillResolution(HOgmacam h, unsigned nResoluti
           use minimum frame buffer. When new frame arrive, drop all the pending frame regardless of whether the frame buffer is full.
           If DDR present, also limit the DDR frame buffer to only one frame.
     2: soft realtime
-          Drop the oldest frame when the queue is full and then enqueue the new frame
+          use minimum frame buffer. When new frame arrive, drop all the pending frame regardless of whether the frame buffer is full.
+          If DDR present, the DDR frame buffer unchanged.
     default: 0
 */
 OGMACAM_API(HRESULT)  Ogmacam_put_RealTime(HOgmacam h, int val);
@@ -940,7 +976,11 @@ OGMACAM_API(HRESULT)  Ogmacam_get_Option(HOgmacam h, unsigned iOption, int* piVa
                                                          */
 #define OGMACAM_OPTION_DEMOSAIC_VIDEO         0x13       /* [RW] demosaic method for video */
 #define OGMACAM_OPTION_DEMOSAIC_STILL         0x14       /* [RW] demosaic method for still image */
-#define OGMACAM_OPTION_BLACKLEVEL             0x15       /* [RW] black level */
+#define OGMACAM_OPTION_BLACKLEVEL             0x15       /* [RW] the black level refers to the baseline signal value output by an image sensor under no-light (completely dark) conditions.
+                                                              In digital imaging systems, a fixed voltage offset is intentionally added to the signal to ensure that dark-region signals remain above zero, thereby preventing the loss of faint shadow details during A/D conversion.
+                                                                  (a) Prevent clipping: The sensor circuit's intrinsic noise may occasionally produce negative values. Without an offset, these negative values would be forcibly clipped to zero, resulting in the loss of shadow details.
+                                                                  (b) Preserve linearity: Raising the black level helps ensure that the sensor maintains consistent linear output behavior across the entire dynamic range.
+                                                         */
 #define OGMACAM_OPTION_MULTITHREAD            0x16       /* [RW] multithread image processing */
 #define OGMACAM_OPTION_BINNING                0x17       /* [RW] digital binning
                                                                 0x01: (no binning)
@@ -974,6 +1014,7 @@ OGMACAM_API(HRESULT)  Ogmacam_get_Option(HOgmacam h, unsigned iOption, int* piVa
                                                                          => one for video mode when auto exposure is enabled
                                                                          => full capacity for others
                                                                 -1: DDR can cache frames to full capacity
+                                                            default: 0
                                                          */
 #define OGMACAM_OPTION_DFC                    0x1d       /* [RW] dark field correction
                                                              set:
@@ -1158,6 +1199,7 @@ OGMACAM_API(HRESULT)  Ogmacam_get_Option(HOgmacam h, unsigned iOption, int* piVa
                                                                     24 => red
                                                                     25 => green
                                                                     26 => blue
+                                                                    27 => spectrum
                                                          */
 #define OGMACAM_OPTION_LOW_POWERCONSUMPTION   0x66       /* [RW] Low Power Consumption: 0 => disable, 1 => enable */
 #define OGMACAM_OPTION_FPNC                   0x67       /* [RW] Fix Pattern Noise Correction
@@ -1230,9 +1272,18 @@ OGMACAM_API(HRESULT)  Ogmacam_get_Option(HOgmacam h, unsigned iOption, int* piVa
                                                          */
 #define OGMACAM_OPTION_USER_SET               0x8a       /* [RW] user set */
 #define OGMACAM_OPTION_DIGITAL_GAIN           0x1001     /* [RW] digital gain */
-#define OGMACAM_OPTION_ANTI_BLOOMING          0x8b       /* [RW] Anti Blooming */
-#define OGMACAM_OPTION_ANTI_BLOOMING_MAX      0x8c       /* [RO} Anti Blooming */
-#define OGMACAM_OPTION_CDS_MAX                0x8d       /* [RO} Correlated Double Sampling */
+#define OGMACAM_OPTION_ANTI_BLOOMING          0x8b       /* [RW] Anti Blooming, maximum */
+#define OGMACAM_OPTION_ANTI_BLOOMING_MAX      0x8c       /* [RO] Anti Blooming */
+#define OGMACAM_OPTION_CDS_MAX                0x8d       /* [RO] Correlated Double Sampling */
+#define OGMACAM_OPTION_SCANTYPE               0x8e       /* [RW] Scan Type: 0(linescan), 1(areascan) */
+#define OGMACAM_OPTION_OPERATIONMODE          0x8f       /* [RW] TDI Operation Mode: 1(area), 2(TDI) */
+#define OGMACAM_OPTION_TDITRIGGERMODE         0x90       /* [RW] TDI Trigger Mode: 1(normal), 2(both) */
+#define OGMACAM_OPTION_TDISTAGE               0x91       /* [RW] TDI Trigger Stage: sensor scan stage */
+#define OGMACAM_OPTION_FRAMEINTERVAL          0x92       /* [RW] Frame Interval in microseconds */
+#define OGMACAM_OPTION_FRAMEINTERVAL_MIN      0x93       /* [RO] Frame Interval, minimum */
+#define OGMACAM_OPTION_FRAMEINTERVAL_MAX      0x94       /* [RO] Frame Interval, maximum */
+#define OGMACAM_OPTION_IMAGEPTRRAW            0x95       /* [RW] default: 0 */
+#define OGMACAM_OPTION_IMAGEPTRBOTH           0x96       /* [RW] default: 0 */
 
 /* pixel format */
 #define OGMACAM_PIXELFORMAT_RAW8              0x00
@@ -1269,6 +1320,7 @@ OGMACAM_API(HRESULT)     Ogmacam_get_PixelFormatSupport(HOgmacam h, char cmd, in
 * pixelFormat: OGMACAM_PIXELFORMAT_XXXX
 */
 OGMACAM_API(const char*) Ogmacam_get_PixelFormatName(int pixelFormat);
+OGMACAM_API(int)         Ogmacam_get_PixelFormatBitdepth(int pixelFormat);
 
 /*
     xOffset, yOffset, xWidth, yHeight: must be even numbers
@@ -1566,9 +1618,11 @@ OGMACAM_API(HRESULT)  Ogmacam_put_AFFMPos(HOgmacam h, int iFMPos);
 */
 #if defined(_WIN32)
 OGMACAM_API(HRESULT) Ogmacam_Replug(const wchar_t* camId);
+OGMACAM_API(HRESULT) Ogmacam_Reset(const wchar_t* camId);
 OGMACAM_API(HRESULT) Ogmacam_Enable(const wchar_t* camId, int enable); /* 1 => enable, 0 => disable */
 #else
 OGMACAM_API(HRESULT) Ogmacam_Replug(const char* camId);
+OGMACAM_API(HRESULT) Ogmacam_Reset(const char* camId);
 OGMACAM_API(HRESULT) Ogmacam_Enable(const char* camId, int enable); /* 1 => enable, 0 => disable */
 #endif
 
