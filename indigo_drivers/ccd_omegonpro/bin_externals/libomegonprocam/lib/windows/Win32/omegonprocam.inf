@@ -3,7 +3,7 @@ Signature="$WINDOWS NT$"
 Class=Image
 ClassGuid={6bdd1fc6-810f-11d0-bec7-08002be2092f}
 provider=%MFG%
-DriverVer=12/09/2025,1.0.0.30239
+DriverVer=03/01/2026,1.0.0.30889
 CatalogFile=omegonprocam.cat
 
 [Manufacturer]

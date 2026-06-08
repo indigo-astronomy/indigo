@@ -3,7 +3,7 @@ Signature="$WINDOWS NT$"
 Class=Image
 ClassGuid={6bdd1fc6-810f-11d0-bec7-08002be2092f}
 provider=%MFG%
-DriverVer=12/09/2025,1.0.0.30239
+DriverVer=03/15/2026,1.0.0.30978
 CatalogFile=altaircam.cat
 
 [Manufacturer]
@@ -202,6 +202,7 @@ CatalogFile=altaircam.cat
 "ALTAIR662M"=ALTAIRCAM.Dev, USB\VID_16D0&PID_12C3
 "ALTAIR662M(USB2.0)"=ALTAIRCAM.Dev, USB\VID_16D0&PID_12C4
 "ALTAIR662M2"=ALTAIRCAM.Dev, USB\VID_16D0&PID_12C7
+"ALTAIR174M2"=ALTAIRCAM.Dev, USB\VID_16D0&PID_1425
 
 [DestinationDirs]
 ALTAIRCAM.Files.Ext = 10,System32\Drivers

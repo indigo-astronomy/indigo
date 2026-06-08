@@ -1,0 +1,71 @@
+[Version]
+Signature="$WINDOWS NT$"
+Class=Image
+ClassGuid={6bdd1fc6-810f-11d0-bec7-08002be2092f}
+provider=%MFG%
+DriverVer=01/09/2021,1.0.0.18292
+CatalogFile=meadecam.cat
+
+[Manufacturer]
+%MFG%=MFG, NTamd64
+
+[MFG.NTamd64]
+"Meade-LPI-GC"=MEADECAM.Dev, USB\VID_0549&PID_E003
+"Meade-LPI-GM"=MEADECAM.Dev, USB\VID_0549&PID_E004
+"Meade-LPI-G-Series-2C"=MEADECAM.Dev, USB\VID_0549&PID_E005
+"Meade-LPI-G-Series-2M"=MEADECAM.Dev, USB\VID_0549&PID_E006
+"Meade_LPI-GC_Advanced"=MEADECAM.Dev, USB\VID_0547&PID_E007
+"Meade_LPI-GC_Advanced(USB2.0)"=MEADECAM.Dev, USB\VID_0547&PID_E008
+"Meade_LPI-GM_Advanced"=MEADECAM.Dev, USB\VID_0547&PID_E009
+"Meade_LPI-GM_Advanced(USB2.0)"=MEADECAM.Dev, USB\VID_0547&PID_E00A
+"Meade_LPI-GC_Advanced"=MEADECAM.Dev, USB\VID_0547&PID_E00B
+"Meade_LPI-GC_Advanced(USB2.0)"=MEADECAM.Dev, USB\VID_0547&PID_E00C
+"Meade_LPI-GM_Advanced"=MEADECAM.Dev, USB\VID_0547&PID_E00D
+"Meade_LPI-GM_Advanced(USB2.0)"=MEADECAM.Dev, USB\VID_0547&PID_E00E
+"MEADE_DSI_IV_COLOR"=MEADECAM.Dev, USB\VID_0547&PID_E06B
+"MEADE_DSI_IV_COLOR(USB2.0)"=MEADECAM.Dev, USB\VID_0547&PID_E075
+"MEADE_DSI_IV_MONO"=MEADECAM.Dev, USB\VID_0547&PID_E06D
+"MEADE_DSI_IV_MONO(USB2.0)"=MEADECAM.Dev, USB\VID_0547&PID_E076
+"MEADE_DSI_IV_COLOR"=MEADECAM.Dev, USB\VID_0547&PID_E077
+"MEADE_DSI_IV_COLOR(USB2.0)"=MEADECAM.Dev, USB\VID_0547&PID_E078
+"MEADE_DSI_IV_MONO"=MEADECAM.Dev, USB\VID_0547&PID_E079
+"MEADE_DSI_IV_MONO(USB2.0)"=MEADECAM.Dev, USB\VID_0547&PID_E07A
+
+[DestinationDirs]
+MEADECAM.Files.Ext = 10,System32\Drivers
+
+[SourceDisksNames]
+1 = %MEADECAM.SvcDesc%
+
+[SourceDisksFiles]
+meadecam.sys = 1
+
+[MEADECAM.Dev]
+CopyFiles=MEADECAM.Files.Ext
+AddReg=MEADECAM.AddReg
+
+[MEADECAM.Dev.NT]
+CopyFiles=MEADECAM.Files.Ext
+AddReg=MEADECAM.AddReg
+
+[MEADECAM.Dev.NT.Services]
+Addservice = MEADECAM, 0x00000002, MEADECAM.AddService
+
+[MEADECAM.AddService]
+DisplayName    = %MEADECAM.SvcDesc%
+ServiceType    = 1                  ; SERVICE_KERNEL_DRIVER
+StartType      = 3                  ; SERVICE_DEMAND_START
+ErrorControl   = 1                  ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %10%\System32\Drivers\meadecam.sys
+LoadOrderGroup = Base
+
+[MEADECAM.AddReg]
+HKR,,DevLoader,,*ntkern
+HKR,,NTMPDriver,,meadecam.sys
+
+[MEADECAM.Files.Ext]
+meadecam.sys
+
+[Strings]
+MFG="Meade Instruments Corp.; http://www.meade.com"
+MEADECAM.SvcDesc="Meade Camera Driver"
