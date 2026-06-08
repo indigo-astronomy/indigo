@@ -23,22 +23,20 @@
  \file indigo_focuser_askar.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x03000001
 #define DRIVER_NAME "indigo_focuser_askar"
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
 #include <errno.h>
 #include <pthread.h>
 #include <stdbool.h>
-#include <sys/time.h>
 
 #include <indigo/indigo_driver_xml.h>
 
-#include <indigo/indigo_io.h>
+#include <indigo/indigo_uni_io.h>
 
 #include "indigo_focuser_askar.h"
 
@@ -61,103 +59,82 @@
 #define is_connected               gp_bits
 
 typedef struct {
-	int handle;
+	indigo_uni_handle *handle;
 	int32_t current_position, target_position, max_position;
-	indigo_timer *focuser_timer;
 	pthread_mutex_t port_mutex;
 } askar_private_data;
 
 // -------------------------------------------------------------------------------- Low level protocol
 
-// Send command, read reply (which ends with '#'). The reply is returned to the
-// caller without the trailing '#' / "\r\n". Trailing CR/LF before/after the '#'
-// is discarded so the caller can sscanf() the payload directly.
+static void focuser_connect_callback(indigo_device *device);
+
+static void network_disconnection(indigo_device *device) {
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		focuser_connect_callback(device);
+		CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;  // The alert state signals the unexpected disconnection
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+		// Sending message as this update will not pass through the agent
+		indigo_send_message(device, ALERT_PROPERTY, "Device disconnected unexpectedly", device->name);
+	}
+	// Otherwise not previously connected, nothing to do
+}
+
+// Send command, read reply (terminated by '#'). CR/LF in the stream are
+// ignored - the protocol replies end with "#\r\n" and the next request's
+// flush takes care of the trailing CR/LF. Returns the response with the
+// '#' included so callers can sscanf() the payload directly.
 static bool askar_command(indigo_device *device, const char *command, char *response, int max) {
-	long timeout_ms = RESPONSE_TIMEOUT_MS;
-	struct timeval tv;
-	char c;
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
-	// flush any stale bytes from a previous reply
-	while (true) {
-		fd_set readout;
-		FD_ZERO(&readout);
-		FD_SET(PRIVATE_DATA->handle, &readout);
-		tv.tv_sec = 0;
-		tv.tv_usec = 100000;
-		long result = select(PRIVATE_DATA->handle + 1, &readout, NULL, NULL, &tv);
-		if (result == 0) {
-			break;
-		}
-		if (result < 0) {
-			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-			return false;
-		}
-		result = read(PRIVATE_DATA->handle, &c, 1);
-		if (result < 1) {
-			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-			return false;
+	if (indigo_uni_discard(PRIVATE_DATA->handle) >= 0) {
+		if (indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command)) > 0) {
+			if (response != NULL) {
+				if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "#", "\r\n", INDIGO_DELAY(RESPONSE_TIMEOUT_MS / 1000.0)) > 0) {
+					pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+					return true;
+				}
+			} else {
+				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+				return true;
+			}
 		}
 	}
-	// write command
-	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
-
-	// read response (terminated by '#'; \r and \n are ignored)
-	if (response != NULL) {
-		int index = 0;
-		long t_sec = timeout_ms / 1000;
-		long t_usec = (timeout_ms % 1000) * 1000;
-		while (index < max - 1) {
-			fd_set readout;
-			FD_ZERO(&readout);
-			FD_SET(PRIVATE_DATA->handle, &readout);
-			tv.tv_sec = t_sec;
-			tv.tv_usec = t_usec;
-			// only the first byte gets the full timeout - subsequent bytes are quick
-			t_sec = 0;
-			t_usec = 100000;
-			long result = select(PRIVATE_DATA->handle + 1, &readout, NULL, NULL, &tv);
-			if (result <= 0) {
-				break;
-			}
-			result = read(PRIVATE_DATA->handle, &c, 1);
-			if (result < 1) {
-				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
-				return false;
-			}
-			if (c == '\r' || c == '\n') {
-				continue;
-			}
-			if (c == '#') {
-				break;
-			}
-			response[index++] = c;
-		}
-		response[index] = 0;
+	if (PRIVATE_DATA->handle && PRIVATE_DATA->handle->type == INDIGO_TCP_HANDLE) {
+		indigo_execute_handler(device, network_disconnection);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unexpected disconnection from %s", DEVICE_PORT_ITEM->text.value);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s -> %s", command, response != NULL ? response : "NULL");
-	return true;
+	return false;
+}
+
+static void askar_close(indigo_device *device) {
+	if (PRIVATE_DATA->handle != NULL) {
+		indigo_uni_close(&PRIVATE_DATA->handle);
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
+	}
 }
 
 // -------------------------------------------------------------------------------- Askar-WAF commands
 
-// FV# -> FVv# (firmware version), e.g. "FV1.1.0"
+// FV# -> FVv# (firmware version), e.g. "FV1.1.0#"
 static bool askar_get_firmware(indigo_device *device, char *firmware, int max) {
 	char response[ASKAR_CMD_LEN] = {0};
 	if (!askar_command(device, "FV#", response, sizeof(response))) {
 		return false;
 	}
-	// response starts with "FV"; everything after is the version
 	if (strncmp(response, "FV", 2) != 0) {
 		return false;
 	}
-	strncpy(firmware, response + 2, max - 1);
+	// strip leading "FV" and trailing '#'
+	char *src = response + 2;
+	char *hash = strchr(src, '#');
+	if (hash) *hash = 0;
+	strncpy(firmware, src, max - 1);
 	firmware[max - 1] = 0;
 	return true;
 }
 
-// FI# -> FImodel# (model name), e.g. "FIAskar-WAF"
+// FI# -> FImodel# (model name), e.g. "FIAskar-WAF#"
 static bool askar_get_model(indigo_device *device, char *model, int max) {
 	char response[ASKAR_CMD_LEN] = {0};
 	if (!askar_command(device, "FI#", response, sizeof(response))) {
@@ -166,7 +143,10 @@ static bool askar_get_model(indigo_device *device, char *model, int max) {
 	if (strncmp(response, "FI", 2) != 0) {
 		return false;
 	}
-	strncpy(model, response + 2, max - 1);
+	char *src = response + 2;
+	char *hash = strchr(src, '#');
+	if (hash) *hash = 0;
+	strncpy(model, src, max - 1);
 	model[max - 1] = 0;
 	return true;
 }
@@ -217,7 +197,6 @@ static bool askar_set_max_position(indigo_device *device, int32_t max_position) 
 	if (!askar_command(device, command, response, sizeof(response))) {
 		return false;
 	}
-	// "FE" reply means firmware rejected the value
 	return strncmp(response, "FX", 2) == 0;
 }
 
@@ -282,13 +261,13 @@ static void focuser_timer_callback(indigo_device *device) {
 	int32_t position;
 
 	if (!askar_is_moving(device, &moving)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "askar_is_moving(%d) failed", PRIVATE_DATA->handle);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "askar_is_moving(%p) failed", PRIVATE_DATA->handle);
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 
 	if (!askar_get_position(device, &position)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "askar_get_position(%d) failed", PRIVATE_DATA->handle);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "askar_get_position(%p) failed", PRIVATE_DATA->handle);
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
@@ -300,7 +279,7 @@ static void focuser_timer_callback(indigo_device *device) {
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
-		indigo_reschedule_timer(device, 0.5, &(PRIVATE_DATA->focuser_timer));
+		indigo_execute_handler_in(device, 0.5, focuser_timer_callback);
 	}
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
@@ -311,14 +290,15 @@ static indigo_result focuser_attach(indigo_device *device) {
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
-		PRIVATE_DATA->handle = -1;
+		PRIVATE_DATA->handle = NULL;
 		// -------------------------------------------------------------------------------- DEVICE_PORT
 		DEVICE_PORT_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
 		DEVICE_PORTS_PROPERTY->hidden = false;
+		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
 		// -------------------------------------------------------------------------------- DEVICE_BAUDRATE
 		DEVICE_BAUDRATE_PROPERTY->hidden = false;
-		indigo_copy_value(DEVICE_BAUDRATE_ITEM->text.value, SERIAL_BAUDRATE);
+		INDIGO_COPY_VALUE(DEVICE_BAUDRATE_ITEM->text.value, SERIAL_BAUDRATE);
 		// --------------------------------------------------------------------------------
 		INFO_PROPERTY->count = 6;
 
@@ -364,24 +344,20 @@ static void focuser_connect_callback(indigo_device *device) {
 	int32_t position;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!device->is_connected) {
-			pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 			if (indigo_try_global_lock(device) != INDIGO_OK) {
-				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 			} else {
-				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 				char *name = DEVICE_PORT_ITEM->text.value;
-				if (!indigo_is_device_url(name, "askar")) {
-					PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, atoi(DEVICE_BAUDRATE_ITEM->text.value));
+				if (!indigo_uni_is_url(name, "askar")) {
+					PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, atoi(DEVICE_BAUDRATE_ITEM->text.value), INDIGO_LOG_DEBUG);
 				} else {
-					indigo_network_protocol proto = INDIGO_PROTOCOL_TCP;
-					PRIVATE_DATA->handle = indigo_open_network_device(name, 8080, &proto);
+					PRIVATE_DATA->handle = indigo_uni_open_url(name, 8080, INDIGO_TCP_HANDLE, INDIGO_LOG_DEBUG);
 				}
 
-				if (PRIVATE_DATA->handle < 0) {
+				if (PRIVATE_DATA->handle == NULL) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Opening device %s: failed", DEVICE_PORT_ITEM->text.value);
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -389,12 +365,7 @@ static void focuser_connect_callback(indigo_device *device) {
 					indigo_global_unlock(device);
 					return;
 				} else if (!askar_get_position(device, &position)) {
-					int res = close(PRIVATE_DATA->handle);
-					if (res < 0) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "close(%d) = %d", PRIVATE_DATA->handle, res);
-					} else {
-						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "close(%d) = %d", PRIVATE_DATA->handle, res);
-					}
+					askar_close(device);
 					indigo_global_unlock(device);
 					device->is_connected = false;
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "connect failed: Askar-WAF did not respond");
@@ -407,8 +378,8 @@ static void focuser_connect_callback(indigo_device *device) {
 					char firmware[ASKAR_CMD_LEN] = "N/A";
 					askar_get_model(device, model, sizeof(model));
 					askar_get_firmware(device, firmware, sizeof(firmware));
-					indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, model);
-					indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware);
+					INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, model);
+					INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware);
 					indigo_update_property(device, INFO_PROPERTY, NULL);
 
 					PRIVATE_DATA->current_position = position;
@@ -420,7 +391,7 @@ static void focuser_connect_callback(indigo_device *device) {
 						FOCUSER_POSITION_ITEM->number.max = (double)PRIVATE_DATA->max_position;
 						FOCUSER_STEPS_ITEM->number.max = (double)PRIVATE_DATA->max_position;
 					} else {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "askar_get_max_position(%d) failed", PRIVATE_DATA->handle);
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "askar_get_max_position(%p) failed", PRIVATE_DATA->handle);
 					}
 
 					int backlash = 0;
@@ -431,32 +402,170 @@ static void focuser_connect_callback(indigo_device *device) {
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					device->is_connected = true;
 
-					indigo_set_timer(device, 0.5, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
+					indigo_execute_handler_in(device, 0.5, focuser_timer_callback);
 				}
 			}
 		}
 	} else {
 		if (device->is_connected) {
-			indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_timer);
+			indigo_cancel_pending_handlers(device);
 
 			askar_stop(device);
 
-			pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
-			int res = close(PRIVATE_DATA->handle);
-			if (res < 0) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "close(%d) = %d", PRIVATE_DATA->handle, res);
-			} else {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "close(%d) = %d", PRIVATE_DATA->handle, res);
-			}
-			PRIVATE_DATA->handle = -1;
+			askar_close(device);
 			indigo_global_unlock(device);
-			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 			device->is_connected = false;
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	}
 	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
 }
+
+// -------------------------------------------------------------------------------- per-property callbacks
+
+static void focuser_position_callback(indigo_device *device) {
+	if (FOCUSER_POSITION_ITEM->number.target < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value ||
+	    FOCUSER_POSITION_ITEM->number.target > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value) {
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		FOCUSER_POSITION_ITEM->number.value = (double)PRIVATE_DATA->current_position;
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	} else if ((int32_t)FOCUSER_POSITION_ITEM->number.target == PRIVATE_DATA->current_position) {
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	} else {
+		PRIVATE_DATA->target_position = (int32_t)FOCUSER_POSITION_ITEM->number.target;
+		FOCUSER_POSITION_ITEM->number.value = (double)PRIVATE_DATA->current_position;
+		if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) { /* GOTO */
+			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+			if (!askar_goto_position(device, PRIVATE_DATA->target_position)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "askar_goto_position(%p, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
+				FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+				FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+			indigo_execute_handler_in(device, 0.5, focuser_timer_callback);
+		} else { /* SYNC */
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+			FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+			if (!askar_sync_position(device, PRIVATE_DATA->target_position)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "askar_sync_position(%p, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
+				FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+				FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+			int32_t position;
+			if (askar_get_position(device, &position)) {
+				PRIVATE_DATA->current_position = position;
+				FOCUSER_POSITION_ITEM->number.value = (double)position;
+			}
+			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		}
+	}
+}
+
+static void focuser_steps_callback(indigo_device *device) {
+	if (FOCUSER_STEPS_ITEM->number.value < 0 || FOCUSER_STEPS_ITEM->number.value > FOCUSER_STEPS_ITEM->number.max) {
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	} else {
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+
+		int32_t position;
+		if (askar_get_position(device, &position)) {
+			PRIVATE_DATA->current_position = position;
+		}
+
+		int32_t steps = (int32_t)FOCUSER_STEPS_ITEM->number.value;
+		if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
+			PRIVATE_DATA->target_position = PRIVATE_DATA->current_position - steps;
+		} else {
+			PRIVATE_DATA->target_position = PRIVATE_DATA->current_position + steps;
+		}
+		if (PRIVATE_DATA->target_position > FOCUSER_POSITION_ITEM->number.max) {
+			PRIVATE_DATA->target_position = (int32_t)FOCUSER_POSITION_ITEM->number.max;
+		} else if (PRIVATE_DATA->target_position < FOCUSER_POSITION_ITEM->number.min) {
+			PRIVATE_DATA->target_position = (int32_t)FOCUSER_POSITION_ITEM->number.min;
+		}
+
+		FOCUSER_POSITION_ITEM->number.value = (double)PRIVATE_DATA->current_position;
+		if (!askar_goto_position(device, PRIVATE_DATA->target_position)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "askar_goto_position(%p, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
+			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		indigo_execute_handler_in(device, 0.5, focuser_timer_callback);
+	}
+}
+
+static void focuser_abort_callback(indigo_device *device) {
+	FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+	FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+	FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_cancel_pending_handler(device, focuser_timer_callback);
+
+	if (!askar_stop(device)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "askar_stop(%p) failed", PRIVATE_DATA->handle);
+		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	int32_t position;
+	if (askar_get_position(device, &position)) {
+		PRIVATE_DATA->current_position = position;
+	} else {
+		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
+	FOCUSER_POSITION_ITEM->number.value = (double)PRIVATE_DATA->current_position;
+	FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
+	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+	indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+}
+
+static void focuser_limits_callback(indigo_device *device) {
+	FOCUSER_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
+	int32_t requested = (int32_t)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target;
+	if (!askar_set_max_position(device, requested)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "askar_set_max_position(%p, %d) failed", PRIVATE_DATA->handle, requested);
+		FOCUSER_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	if (askar_get_max_position(device, &PRIVATE_DATA->max_position)) {
+		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = (double)PRIVATE_DATA->max_position;
+		FOCUSER_POSITION_ITEM->number.max = (double)PRIVATE_DATA->max_position;
+		FOCUSER_STEPS_ITEM->number.max = (double)PRIVATE_DATA->max_position;
+	}
+	// FXn# clamps the position, so re-read it as well.
+	int32_t position;
+	if (askar_get_position(device, &position)) {
+		PRIVATE_DATA->current_position = PRIVATE_DATA->target_position = position;
+		FOCUSER_POSITION_ITEM->number.value = (double)position;
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	}
+	indigo_update_property(device, FOCUSER_LIMITS_PROPERTY, NULL);
+}
+
+static void focuser_backlash_callback(indigo_device *device) {
+	int requested = (int)FOCUSER_BACKLASH_ITEM->number.target;
+	if (!askar_set_backlash(device, requested)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "askar_set_backlash(%p, %d) failed", PRIVATE_DATA->handle, requested);
+		FOCUSER_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else {
+		FOCUSER_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
+	}
+	int backlash = 0;
+	if (askar_get_backlash(device, &backlash)) {
+		FOCUSER_BACKLASH_ITEM->number.value = (double)backlash;
+	}
+	indigo_update_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
+}
+
+// -------------------------------------------------------------------------------- change_property dispatch
 
 static indigo_result focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
@@ -469,161 +578,42 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, focuser_connect_callback, NULL);
+		indigo_execute_handler(device, focuser_connect_callback);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_POSITION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_POSITION
 		indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
-		if (FOCUSER_POSITION_ITEM->number.target < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value ||
-		    FOCUSER_POSITION_ITEM->number.target > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value) {
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-			FOCUSER_POSITION_ITEM->number.value = (double)PRIVATE_DATA->current_position;
-			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		} else if ((int32_t)FOCUSER_POSITION_ITEM->number.target == PRIVATE_DATA->current_position) {
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-			FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		} else {
-			PRIVATE_DATA->target_position = (int32_t)FOCUSER_POSITION_ITEM->number.target;
-			FOCUSER_POSITION_ITEM->number.value = (double)PRIVATE_DATA->current_position;
-			if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) { /* GOTO */
-				FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-				FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-				if (!askar_goto_position(device, PRIVATE_DATA->target_position)) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "askar_goto_position(%d, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
-					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-					FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-				}
-				indigo_set_timer(device, 0.5, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
-			} else { /* SYNC */
-				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-				FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-				if (!askar_sync_position(device, PRIVATE_DATA->target_position)) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "askar_sync_position(%d, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
-					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-					FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-				}
-				int32_t position;
-				if (askar_get_position(device, &position)) {
-					PRIVATE_DATA->current_position = position;
-					FOCUSER_POSITION_ITEM->number.value = (double)position;
-				}
-				indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-			}
-		}
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		indigo_execute_handler(device, focuser_position_callback);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_STEPS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_STEPS
 		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
-		if (FOCUSER_STEPS_ITEM->number.value < 0 || FOCUSER_STEPS_ITEM->number.value > FOCUSER_STEPS_ITEM->number.max) {
-			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		} else {
-			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-
-			int32_t position;
-			if (askar_get_position(device, &position)) {
-				PRIVATE_DATA->current_position = position;
-			}
-
-			int32_t steps = (int32_t)FOCUSER_STEPS_ITEM->number.value;
-			if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
-				PRIVATE_DATA->target_position = PRIVATE_DATA->current_position - steps;
-			} else {
-				PRIVATE_DATA->target_position = PRIVATE_DATA->current_position + steps;
-			}
-			// firmware clamps but mirror the limits here so the property values stay in sync
-			if (PRIVATE_DATA->target_position > FOCUSER_POSITION_ITEM->number.max) {
-				PRIVATE_DATA->target_position = (int32_t)FOCUSER_POSITION_ITEM->number.max;
-			} else if (PRIVATE_DATA->target_position < FOCUSER_POSITION_ITEM->number.min) {
-				PRIVATE_DATA->target_position = (int32_t)FOCUSER_POSITION_ITEM->number.min;
-			}
-
-			FOCUSER_POSITION_ITEM->number.value = (double)PRIVATE_DATA->current_position;
-			if (!askar_goto_position(device, PRIVATE_DATA->target_position)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "askar_goto_position(%d, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
-				FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-				FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
-			indigo_set_timer(device, 0.5, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
-		}
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		indigo_execute_handler(device, focuser_steps_callback);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION
 		indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
-		FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-		FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_cancel_timer(device, &PRIVATE_DATA->focuser_timer);
-
-		if (!askar_stop(device)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "askar_stop(%d) failed", PRIVATE_DATA->handle);
-			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-		int32_t position;
-		if (askar_get_position(device, &position)) {
-			PRIVATE_DATA->current_position = position;
-		} else {
-			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-		PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
-		FOCUSER_POSITION_ITEM->number.value = (double)PRIVATE_DATA->current_position;
-		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
-		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+		indigo_execute_priority_handler(device, INDIGO_TASK_PRIORITY_URGENT, focuser_abort_callback);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_LIMITS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_LIMITS
 		indigo_property_copy_values(FOCUSER_LIMITS_PROPERTY, property, false);
-		FOCUSER_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
-		int32_t requested = (int32_t)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target;
-		if (!askar_set_max_position(device, requested)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "askar_set_max_position(%d, %d) failed", PRIVATE_DATA->handle, requested);
-			FOCUSER_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-		if (askar_get_max_position(device, &PRIVATE_DATA->max_position)) {
-			FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = (double)PRIVATE_DATA->max_position;
-			FOCUSER_POSITION_ITEM->number.max = (double)PRIVATE_DATA->max_position;
-			FOCUSER_STEPS_ITEM->number.max = (double)PRIVATE_DATA->max_position;
-		}
-		// FXn# clamps the position, so re-read it as well.
-		int32_t position;
-		if (askar_get_position(device, &position)) {
-			PRIVATE_DATA->current_position = PRIVATE_DATA->target_position = position;
-			FOCUSER_POSITION_ITEM->number.value = (double)position;
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		}
+		FOCUSER_LIMITS_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, FOCUSER_LIMITS_PROPERTY, NULL);
+		indigo_execute_handler(device, focuser_limits_callback);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_BACKLASH_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_BACKLASH
 		indigo_property_copy_values(FOCUSER_BACKLASH_PROPERTY, property, false);
 		FOCUSER_BACKLASH_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
-		int requested = (int)FOCUSER_BACKLASH_ITEM->number.target;
-		if (!askar_set_backlash(device, requested)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "askar_set_backlash(%d, %d) failed", PRIVATE_DATA->handle, requested);
-			FOCUSER_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
-		} else {
-			FOCUSER_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
-		}
-		int backlash = 0;
-		if (askar_get_backlash(device, &backlash)) {
-			FOCUSER_BACKLASH_ITEM->number.value = (double)backlash;
-		}
-		indigo_update_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
+		indigo_execute_handler(device, focuser_backlash_callback);
 		return INDIGO_OK;
 	}
 	return indigo_focuser_change_property(device, client, property);
