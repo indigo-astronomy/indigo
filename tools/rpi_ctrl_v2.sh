@@ -525,8 +525,16 @@ __list-available-versions() {
     ${APT_GET_EXE} update >/dev/null 2>&1
     sleep 1;
     # List current installed version and candidate version or older versions. In total 3 versions are listed.
-    echo $(${APT_CACHE_EXE} policy indigo | ${GREP_EXE} -oPm1 "(?<=Installed:\s).*") \
-	 $(${APT_CACHE_EXE} policy indigo | ${GREP_EXE} -E -oe '\s\s[0-9]+.[0-9]+\-[0-9]+(\-[0-9]+)?' | tr -d '[:blank:]' | head -n 2)
+		INSTALLED_2=$(${APT_CACHE_EXE} policy indigo | ${GREP_EXE} -oPm1 "(?<=Installed:\s)2.*")
+		if [ ${#INSTALLED_2} -gt 0 ]; then
+				echo ${INSTALLED_2} \
+				$(${APT_CACHE_EXE} policy indigo | ${GREP_EXE} -E -oe '\s\s[0-9]+.[0-9]+\-[0-9]+(\-[0-9]+)?(\~beta[0-9]*)?' | tr -d '[:blank:]' | head -n 2)
+		fi
+		INSTALLED_3=$(${APT_CACHE_EXE} policy indigo3 | ${GREP_EXE} -oPm1 "(?<=Installed:\s)3.*")
+		if [ ${#INSTALLED_3} -gt 0 ]; then
+				echo ${INSTALLED_3} \
+				$(${APT_CACHE_EXE} policy indigo3 | ${GREP_EXE} -E -oe '\s\s[0-9]+.[0-9]+\-[0-9]+(\-[0-9]+)?(\~beta[0-9]*)?' | tr -d '[:blank:]' | head -n 2)
+		fi
 }
 
 ###############################################
