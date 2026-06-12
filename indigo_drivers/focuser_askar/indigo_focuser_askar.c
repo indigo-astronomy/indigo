@@ -176,28 +176,34 @@ static bool askar_is_moving(indigo_device *device, bool *moving) {
 	return true;
 }
 
-// FM# -> FMn# (read max travel)
+// Fm# -> Fmn# (read max travel). FM# is accepted as an alias by the firmware;
+// accept either reply casing so the driver works against old and new firmware.
 static bool askar_get_max_position(indigo_device *device, int32_t *max_position) {
 	char response[ASKAR_CMD_LEN] = {0};
-	if (!askar_command(device, "FM#", response, sizeof(response))) {
+	if (!askar_command(device, "Fm#", response, sizeof(response))) {
 		return false;
 	}
-	int parsed = sscanf(response, "FM%d", max_position);
+	int parsed = sscanf(response, "Fm%d", max_position);
+	if (parsed != 1) {
+		parsed = sscanf(response, "FM%d", max_position);
+	}
 	return parsed == 1;
 }
 
-// FXn# -> FXn# (set max travel; firmware clamps to [100, 1000000])
+// FMn# -> FMn# (set max travel; firmware clamps to [100, 1000000]). FXn# is the
+// legacy alias; accept either reply casing.
 static bool askar_set_max_position(indigo_device *device, int32_t max_position) {
 	if (max_position < ASKAR_MAX_TRAVEL_MIN || max_position > ASKAR_MAX_TRAVEL_MAX) {
 		return false;
 	}
 	char command[ASKAR_CMD_LEN];
 	char response[ASKAR_CMD_LEN] = {0};
-	snprintf(command, sizeof(command), "FX%d#", max_position);
+	snprintf(command, sizeof(command), "FM%d#", max_position);
 	if (!askar_command(device, command, response, sizeof(response))) {
 		return false;
 	}
-	return strncmp(response, "FX", 2) == 0;
+	// "FE" reply means firmware rejected the value
+	return strncmp(response, "FM", 2) == 0 || strncmp(response, "Fm", 2) == 0;
 }
 
 // FPn# -> FPn# (absolute move; async, poll Fp#/FQ# for completion)
@@ -252,6 +258,32 @@ static bool askar_set_backlash(indigo_device *device, int backlash) {
 		return false;
 	}
 	return strncmp(response, "FB", 2) == 0;
+}
+
+// Fr# -> Fr0# (normal) / Fr1# (reversed) (read reverse motion direction)
+static bool askar_get_reverse(indigo_device *device, bool *reversed) {
+	char response[ASKAR_CMD_LEN] = {0};
+	if (!askar_command(device, "Fr#", response, sizeof(response))) {
+		return false;
+	}
+	int state = 0;
+	int parsed = sscanf(response, "Fr%d", &state);
+	if (parsed != 1) {
+		return false;
+	}
+	*reversed = (state != 0);
+	return true;
+}
+
+// FR0# / FR1# -> echo (set reverse motion; halts motion, persisted in NVS)
+static bool askar_set_reverse(indigo_device *device, bool reversed) {
+	char command[ASKAR_CMD_LEN];
+	char response[ASKAR_CMD_LEN] = {0};
+	snprintf(command, sizeof(command), "FR%d#", reversed ? 1 : 0);
+	if (!askar_command(device, command, response, sizeof(response))) {
+		return false;
+	}
+	return strncmp(response, "FR", 2) == 0;
 }
 
 // -------------------------------------------------------------------------------- INDIGO focuser device implementation
@@ -325,12 +357,13 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_BACKLASH_ITEM->number.min = 0;
 		FOCUSER_BACKLASH_ITEM->number.max = ASKAR_BACKLASH_MAX;
 
+		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
+
 		// Features the Askar-WAF CDC protocol does not expose.
 		FOCUSER_TEMPERATURE_PROPERTY->hidden = true;
 		FOCUSER_COMPENSATION_PROPERTY->hidden = true;
 		FOCUSER_MODE_PROPERTY->hidden = true;
 		FOCUSER_SPEED_PROPERTY->hidden = true;
-		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = true;
 
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = device->master_device != NULL;
 
@@ -397,6 +430,12 @@ static void focuser_connect_callback(indigo_device *device) {
 					int backlash = 0;
 					if (askar_get_backlash(device, &backlash)) {
 						FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = (double)backlash;
+					}
+
+					bool reversed = false;
+					if (askar_get_reverse(device, &reversed)) {
+						FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value = reversed;
+						FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value = !reversed;
 					}
 
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -614,6 +653,24 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		FOCUSER_BACKLASH_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
 		indigo_execute_handler(device, focuser_backlash_callback);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(FOCUSER_REVERSE_MOTION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- FOCUSER_REVERSE_MOTION
+		indigo_property_copy_values(FOCUSER_REVERSE_MOTION_PROPERTY, property, false);
+		FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+		bool reversed = FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value;
+		if (!askar_set_reverse(device, reversed)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "askar_set_reverse(%p, %d) failed", PRIVATE_DATA->handle, reversed);
+			FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		// Setting reverse halts motion in firmware; re-read the position to stay in sync.
+		int32_t position;
+		if (askar_get_position(device, &position)) {
+			PRIVATE_DATA->current_position = PRIVATE_DATA->target_position = position;
+			FOCUSER_POSITION_ITEM->number.value = (double)position;
+			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		}
+		indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
 		return INDIGO_OK;
 	}
 	return indigo_focuser_change_property(device, client, property);

@@ -53,6 +53,7 @@ static int32_t position        = 50000;
 static int32_t target_position = 50000;
 static int32_t max_step        = 100000;
 static int     backlash        = 0;
+static int     reverse         = 0;     // 0 = normal, 1 = reversed motor direction
 
 static WINDOW *top, *bottom;
 static pthread_mutex_t state_mutex;
@@ -98,6 +99,7 @@ static void *background(void *arg) {
 		int32_t tgt_pos    = target_position;
 		int32_t cur_max    = max_step;
 		int     cur_back   = backlash;
+		int     cur_rev    = reverse;
 		pthread_mutex_unlock(&state_mutex);
 
 		pthread_mutex_lock(&curses_mutex);
@@ -109,13 +111,13 @@ static void *background(void *arg) {
 			cur_pos, tgt_pos,
 			(cur_pos == tgt_pos) ? "IDLE" : "MOVING");
 		mvwprintw(top, 3, 2,
-			"Max step: %8d   Backlash offset: %5d",
-			cur_max, cur_back);
+			"Max step: %8d   Backlash offset: %5d   Reverse: %s",
+			cur_max, cur_back, cur_rev ? "ON " : "OFF");
 		mvwprintw(top, 4, 2,
 			"Range:    [0 .. %d]   Backlash range: [0 .. %d]",
 			cur_max, ASKAR_BACKLASH_MAX);
 		mvwprintw(top, 5, 2,
-			"Set-max range: [%d .. %d] (FXn#)",
+			"Set-max range: [%d .. %d] (FMn#)",
 			ASKAR_MAX_TRAVEL_MIN, ASKAR_MAX_TRAVEL_MAX);
 		wrefresh(top);
 		pthread_mutex_unlock(&curses_mutex);
@@ -305,18 +307,19 @@ static void handle_read_motion_state(int fd) {
 	sim_send_response(fd, moving ? "FQ1" : "FQ0");
 }
 
-// FM# -> read max travel
+// Fm# -> read max travel (lowercase m, canonical). FM# is accepted as an alias.
 static void handle_read_max(int fd) {
 	pthread_mutex_lock(&state_mutex);
 	int32_t m = max_step;
 	pthread_mutex_unlock(&state_mutex);
 	char resp[32];
-	snprintf(resp, sizeof(resp), "FM%d", m);
+	snprintf(resp, sizeof(resp), "Fm%d", m);
 	sim_send_response(fd, resp);
 }
 
-// FXn# -> set max travel (must be in [100, 1000000])
-static void handle_set_max(int fd, const char *body) {
+// FMn# (canonical) / FXn# (legacy alias) -> set max travel (must be in
+// [100, 1000000]). `echo` is the command letter to mirror in the reply.
+static void handle_set_max(int fd, const char *body, char echo) {
 	int32_t n;
 	if (!parse_int(body, &n)) {
 		sim_send_error(fd);
@@ -334,7 +337,7 @@ static void handle_set_max(int fd, const char *body) {
 	pthread_mutex_unlock(&state_mutex);
 
 	char resp[32];
-	snprintf(resp, sizeof(resp), "FX%d", n);
+	snprintf(resp, sizeof(resp), "F%c%d", echo, n);
 	sim_send_response(fd, resp);
 }
 
@@ -378,6 +381,39 @@ static void handle_set_backlash(int fd, const char *body) {
 	sim_send_response(fd, resp);
 }
 
+// Fr# -> read reverse motion direction (lowercase r)
+static void handle_read_reverse(int fd) {
+	pthread_mutex_lock(&state_mutex);
+	int r = reverse;
+	pthread_mutex_unlock(&state_mutex);
+	sim_send_response(fd, r ? "Fr1" : "Fr0");
+}
+
+// FR0# / FR1# -> set reverse motion direction; FR# is an alias for read.
+static void handle_set_reverse(int fd, const char *body) {
+	// FR# with no value is accepted as a read alias for Fr#.
+	if (!*body) {
+		pthread_mutex_lock(&state_mutex);
+		int r = reverse;
+		pthread_mutex_unlock(&state_mutex);
+		sim_send_response(fd, r ? "Fr1" : "Fr0");
+		return;
+	}
+	int32_t n;
+	if (!parse_int(body, &n) || (n != 0 && n != 1)) {
+		sim_send_error(fd);
+		return;
+	}
+	pthread_mutex_lock(&state_mutex);
+	reverse = (int)n;
+	// Firmware halts motion when the direction is changed.
+	target_position = position;
+	pthread_mutex_unlock(&state_mutex);
+	char resp[32];
+	snprintf(resp, sizeof(resp), "FR%d", (int)n);
+	sim_send_response(fd, resp);
+}
+
 // ----------------------------------------------------------------- dispatch
 
 static void dispatch(int fd, const char *frame, int len) {
@@ -397,12 +433,16 @@ static void dispatch(int fd, const char *frame, int len) {
 		case 'Y': handle_sync(fd, body); break;
 		case 'p': handle_read_position(fd); break;
 		case 'Q': handle_read_motion_state(fd); break;
-		case 'M': handle_read_max(fd); break;
-		case 'X': handle_set_max(fd, body); break;
+		case 'm': handle_read_max(fd); break;
+		// FMn# sets the max travel; bare FM# is a read alias for Fm#.
+		case 'M': if (*body) handle_set_max(fd, body, 'M'); else handle_read_max(fd); break;
+		case 'X': handle_set_max(fd, body, 'X'); break;
 		case 'V': handle_read_version(fd); break;
 		case 'I': handle_read_model(fd); break;
 		case 'b': handle_read_backlash(fd); break;
 		case 'B': handle_set_backlash(fd, body); break;
+		case 'r': handle_read_reverse(fd); break;
+		case 'R': handle_set_reverse(fd, body); break;
 		default: {
 			char msg[64];
 			snprintf(msg, sizeof(msg), "unknown command F%c (%s)", cmd, frame);
