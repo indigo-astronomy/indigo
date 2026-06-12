@@ -1,6 +1,6 @@
 # Askar-WAF USB CDC Focuser Serial Protocol
 
-Implemented in `usb_dongle_main.c` (`process_cdc_cmd()`), on the USB CDC virtual serial port.  
+Implemented in `Askar-WAF_v1.0.0.c` (`process_cdc_cmd()`), on the USB CDC virtual serial port.  
 This is **not** the FreeRTOS CLI protocol (`help`, `wifi`, etc.). Focuser commands start with `F` and end with `#`.
 
 ---
@@ -13,7 +13,8 @@ This is **not** the FreeRTOS CLI protocol (`help`, `wifi`, etc.). Focuser comman
 | Physical interface | USB CDC (e.g. Linux `/dev/ttyACM0`)                                                                                         |
 | Frame format       | `F` + payload + `#`; host may send `\n` or `\r\n`                                                                           |
 | Response format    | payload + `#` + `\r\n`                                                                                                      |
-| Coordinates        | **Logical position** `n` in `0 … max_step` (default `max_step = 100000`; read with `FM#`, write with `FXn#`, stored in NVS) |
+| Coordinates        | **Logical position** `n` in `0 … max_step` (default `max_step = 100000`; read with `Fm#`, write with `FMn#`, stored in NVS) |
+| Read/write naming  | Same letter, lowercase = read (`Fm#`, `Fb#`, `Fr#`), uppercase + value = write (`FMn#`, `FBn#`, `FR0#`/`FR1#`) |
 | Host vs firmware   | Host only uses logical coordinates; offset is internal (drivers need not implement it).                                     |
 | Out of range       | Move commands **clamp** target to `[0, max_step]`; usually no `FE#`                                                         |
 | Command length     | Single frame ≤ 31 characters (including leading `F` and trailing `#`); longer frames return `FE#`                           |
@@ -34,13 +35,16 @@ This is **not** the FreeRTOS CLI protocol (`help`, `wifi`, etc.). Focuser comman
 | 5   | Sync logical position | Write | `FYn#`     | `FYn#\r\n`               | Set logical position to `n` **without moving** (INDIGO SYNC) |
 | 6   | Read position         | Read  | `Fp#`      | `Fpn#\r\n`               | `n` in the reply is the current logical position             |
 | 7   | Read motion state     | Read  | `FQ#`      | `FQ0#\r\n` or `FQ1#\r\n` | `0` = idle, `1` = moving                                     |
-| 8   | Read max travel       | Read  | `FM#`      | `FMn#\r\n`               | `n` = `max_step`                                             |
-| 9   | Set max travel        | Write | `FXn#`     | `FXn#\r\n`               | `n` in 100–1000000; stops motion, writes NVS, re-homes motor |
-| 10  | Read firmware version | Read  | `FV#`      | `FVv#\r\n`               | e.g. `FV1.1.0#\r\n` (`ALPACA_VERSION`)                       |
+| 8   | Read max travel       | Read  | `Fm#`      | `Fmn#\r\n`               | `n` = `max_step`; `FM#` accepted as alias                    |
+| 9   | Set max travel        | Write | `FMn#`     | `FMn#\r\n`               | `n` in 100–1000000; stops motion, writes NVS, re-homes motor; `FXn#` legacy alias |
+| 10  | Read firmware version | Read  | `FV#`      | `FVv#\r\n`               | e.g. `FV1.0.0#\r\n` (`ALPACA_VERSION`)                       |
 | 11  | Read model name       | Read  | `FI#`      | `FImodel#\r\n`           | Currently `FIAskar-WAF#\r\n` (`ALPACA_ServerName`)           |
 | 12  | Read backlash offset  | Read  | `Fb#`      | `Fbn#\r\n`               | User offset `n` in `0 … 10000`; firmware adds 100 base steps |
 | 13  | Set backlash offset   | Write | `FBn#`     | `FBn#\r\n`               | Clamps `n`, writes NVS; does not move focuser                |
-| 14  | Command failure       | —     | (invalid)  | `FE#\r\n`                | See “Errors and edge cases”                                  |
+| 14  | Read reverse motion   | Read  | `Fr#`      | `Fr0#\r\n` or `Fr1#\r\n` | `0` = normal, `1` = reversed motor direction                 |
+| 15  | Set reverse motion    | Write | `FR0#`     | `FR0#\r\n`               | Normal direction; stops motion, writes NVS                   |
+| 16  | Set reverse motion    | Write | `FR1#`     | `FR1#\r\n`               | Reversed direction; stops motion, writes NVS                 |
+| 17  | Command failure       | —     | (invalid)  | `FE#\r\n`                | See “Errors and edge cases”                                  |
 
 
 ---
@@ -107,24 +111,25 @@ This is **not** the FreeRTOS CLI protocol (`help`, `wifi`, etc.). Focuser comman
 | Reply | `FQ0#\r\n` (idle) or `FQ1#\r\n` (moving) |
 
 
-### 7. Read max travel `FM#`
+### 7. Read max travel `Fm#`
 
 
 | Item  | Value                                                    |
 | ----- | -------------------------------------------------------- |
-| Host  | `FM#`                                                    |
-| Reply | `FM100000#\r\n` (example; actual value from NVS/runtime) |
+| Host  | `Fm#` (lowercase `m`; `FM#` accepted as alias)           |
+| Reply | `Fm100000#\r\n` (example; actual value from NVS/runtime) |
 
 
-### 8. Set max travel `FXn#`
+### 8. Set max travel `FMn#`
 
 
 | Item          | Value                                                                                                   |
 | ------------- | ------------------------------------------------------------------------------------------------------- |
-| Example host  | `FX80000#`                                                                                              |
-| Success reply | `FX80000#\r\n`                                                                                          |
+| Example host  | `FM80000#`                                                                                              |
+| Success reply | `FM80000#\r\n`                                                                                          |
+| Legacy alias  | `FX80000#` → `FX80000#\r\n` (deprecated; use `FMn#`)                                                    |
 | Valid range   | `100 ≤ n ≤ 1000000`, otherwise `FE#\r\n`                                                                |
-| Behavior      | Halt, NVS write, internal offset update, motor registers cleared; re-read `FM#` and `Fp#` after success |
+| Behavior      | Halt, NVS write, internal offset update, motor registers cleared; re-read `Fm#` and `Fp#` after success |
 
 
 ### 9. Read firmware version `FV#`
@@ -133,7 +138,7 @@ This is **not** the FreeRTOS CLI protocol (`help`, `wifi`, etc.). Focuser comman
 | Item  | Value          |
 | ----- | -------------- |
 | Host  | `FV#`          |
-| Reply | `FV1.1.0#\r\n` |
+| Reply | `FV1.0.0#\r\n` |
 
 
 ### 10. Read model name `FI#`
@@ -167,15 +172,37 @@ This is **not** the FreeRTOS CLI protocol (`help`, `wifi`, etc.). Focuser comman
 | Behavior      | Updates runtime offset and NVS key `"backlash"`; does not trigger motion                   |
 
 
-### 13. Command failure `FE#`
+### 13. Read reverse motion `Fr#`
+
+
+| Item     | Value                                                                 |
+| -------- | --------------------------------------------------------------------- |
+| Host     | `Fr#` (lowercase `r`; `FR#` accepted as alias)                        |
+| Reply    | `Fr0#\r\n` (normal) or `Fr1#\r\n` (reversed)                          |
+| Behavior | Read-only; does not change motor direction or stored setting          |
+
+
+### 14. Set reverse motion `FR0#` / `FR1#`
+
+
+| Item          | Value                                                                                                                       |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Example host  | `FR0#` (normal), `FR1#` (reversed)                                                                                          |
+| Success reply | `FR0#\r\n` or `FR1#\r\n`                                                                                                    |
+| Behavior      | Halts motion; toggles TMC5130 motor direction (shaft bit); writes NVS key `"cdc_dir_rev"`                                   |
+| Semantics     | Logical coordinates unchanged (`Fp#`, `FPn#`, `FYn#`); **all** moves (`FP`, `FT`) use inverted motor rotation when enabled |
+| Use case      | Helical focusers mounted in either orientation; e.g. at logical `0` (retracted), `FP100#` extends the tube when reversed    |
+
+
+### 15. Command failure `FE#`
 
 
 | Condition                                                  | Reply                                                 |
 | ---------------------------------------------------------- | ----------------------------------------------------- |
 | Unrecognized `F…#` command                                 | `FE#\r\n`                                             |
-| Invalid numeric field in `FP` / `FT` / `FY` / `FB`         | `FE#\r\n`                                             |
-| `FXn#` with `n` not in `100 … 1000000`                     | `FE#\r\n`                                             |
-| `FXn#` parse failure or `focuser_apply_max_step()` failure | `FE#\r\n`                                             |
+| Invalid numeric field in `FP` / `FT` / `FY` / `FB` / `FM`  | `FE#\r\n`                                             |
+| `FMn#` / `FXn#` with `n` not in `100 … 1000000`            | `FE#\r\n`                                             |
+| `FMn#` / `FXn#` parse failure or `focuser_apply_max_step()` failure | `FE#\r\n`                                    |
 | Frame length ≥ 32 bytes                                    | `FE#\r\n` (first character dropped, resync continues) |
 
 
@@ -187,16 +214,19 @@ This is **not** the FreeRTOS CLI protocol (`help`, `wifi`, etc.). Focuser comman
 
 ```
 Host → FV#
-Device ← FV1.1.0#
+Device ← FV1.0.0#
 
 Host → FI#
 Device ← FIAskar-WAF#
 
-Host → FM#
-Device ← FM100000#
+Host → Fm#
+Device ← Fm100000#
 
 Host → Fp#
 Device ← Fp50000#
+
+Host → Fr#
+Device ← Fr0#
 ```
 
 ### Absolute move and wait for completion
@@ -261,16 +291,18 @@ Device ← FQ0#            ; focuser did not move
 
 | INDIGO property                              | CDC usage                                                           |
 | -------------------------------------------- | ------------------------------------------------------------------- |
-| `CONNECTION` / `DEVICE_PORT`                 | Open CDC port; on connect send `FV#`, `FI#`, `FM#`                  |
+| `CONNECTION` / `DEVICE_PORT`                 | Open CDC port; on connect send `FV#`, `FI#`, `Fm#`                  |
 | `FOCUSER_POSITION`                           | GOTO: `FPn#` + poll `Fp#`, `FQ#`; SYNC: `FYn#` (no motion)          |
 | `FOCUSER_ON_POSITION_SET`                    | SYNC item → `FYn#`; GOTO item → `FPn#`                              |
 | `FOCUSER_STEPS` + `FOCUSER_DIRECTION`        | `FT+n#` / `FT-n#`                                                   |
 | `FOCUSER_ABORT_MOTION`                       | `FS#`                                                               |
-| `FOCUSER_LIMITS`                             | `FM#` read max; `FXn#` write max (100–1000000); min fixed at 0      |
+| `FOCUSER_LIMITS`                             | `Fm#` read max; `FMn#` write max (100–1000000); min fixed at 0    |
 | `INFO`                                       | `FI#`, `FV#`                                                        |
 | Failure                                      | Reply `FE#` → set property `ALERT`                                  |
-| `FOCUSER_BACKLASH`                           | `Fb#` read offset; `FBn#` write offset (0–10000); requires firmware ≥ 1.1.0 |
+| `FOCUSER_BACKLASH`                           | `Fb#` read offset; `FBn#` write offset (0–10000); requires firmware ≥ 1.0.0 |
+| `FOCUSER_REVERSE_MOTION`                     | `Fr#` read; `FR0#` / `FR1#` write (persistent); inverts motor for `FP` and `FT` |
 | `FOCUSER_SPEED` / `TEMPERATURE`              | Not implemented on CDC; hide in driver                            |
 
 
-All positions are **logical steps** in `[0, max_step]`. Poll `FQ#` and `Fp#` after moves. Use `FPn#` for absolute GOTO; use `FT+n#` / `FT-n#` only for relative moves.
+All positions are **logical steps** in `[0, max_step]`. On power-up the default logical position is **mid-travel** (`max_step/2`); use `FYn#` to align with mechanics (e.g. `FY0#` when fully retracted). Reverse motion does not remap coordinates — it only inverts physical motor rotation for moves. Poll `FQ#` and `Fp#` after moves.
+
