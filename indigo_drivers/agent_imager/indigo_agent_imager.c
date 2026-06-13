@@ -281,6 +281,7 @@ typedef struct {
 	size_t image_buffer_size;
 	double focuser_position;
 	double focuser_temperature;
+	bool focuser_temperature_compensation;
 	double saved_backlash;
 	int ucurve_samples_number;
 	indigo_star_detection stars[MAX_STAR_COUNT];
@@ -387,6 +388,49 @@ static bool get_disk_usage(const char* path, double* total_mb, double* free_mb, 
 #endif
 }
 
+// The output folder is created only on the first exposure, so it may not exist yet.
+// Walk the path up to the nearest existing ancestor and query that - it lives on the
+// same volume/drive where the folder will be created.
+static bool get_disk_usage_for_volume(const char* path, double* total_mb, double* free_mb, double* used_mb) {
+	if (!path) {
+		return false;
+	}
+
+	char probe[INDIGO_VALUE_SIZE];
+	indigo_copy_value(probe, path);
+
+	// Drop a trailing separator so the first truncation removes the folder name.
+	size_t len = strlen(probe);
+	while (len > 1 && (probe[len - 1] == '/' || probe[len - 1] == '\\')) {
+		probe[--len] = '\0';
+	}
+
+	while (true) {
+		if (get_disk_usage(probe, total_mb, free_mb, used_mb)) {
+			return true;
+		}
+
+		char *sep = strrchr(probe, '/');
+#ifdef INDIGO_WINDOWS
+		// On Windows '/' is also a valid separator, so take whichever is rightmost.
+		char *bsep = strrchr(probe, '\\');
+		if (sep == NULL || (bsep != NULL && bsep > sep)) {
+			sep = bsep;
+		}
+#endif
+		if (sep == NULL) {
+			// Relative path with no separators left - try the current directory once.
+			return get_disk_usage(".", total_mb, free_mb, used_mb);
+		}
+		if (sep == probe) {
+			// Reached the root ("/"); query it once and stop.
+			probe[1] = '\0';
+			return get_disk_usage(probe, total_mb, free_mb, used_mb);
+		}
+		*sep = '\0';
+	}
+}
+
 static void update_disk_usage(indigo_device *device) {
 	double total_mb, free_mb, used_mb;
 	static double last_total_mb = -1, last_free_mb = -1, last_used_mb = -1;
@@ -399,7 +443,7 @@ static void update_disk_usage(indigo_device *device) {
 		AGENT_IMAGER_DISK_USAGE_FREE_ITEM->number.value = 0;
 
 		AGENT_IMAGER_DISK_USAGE_PROPERTY->state = INDIGO_IDLE_STATE;
-	} else if (get_disk_usage(path, &total_mb, &free_mb, &used_mb)) {
+	} else if (get_disk_usage_for_volume(path, &total_mb, &free_mb, &used_mb)) {
 		AGENT_IMAGER_DISK_USAGE_TOTAL_ITEM->number.value = total_mb;
 		AGENT_IMAGER_DISK_USAGE_USED_ITEM->number.value = used_mb;
 		AGENT_IMAGER_DISK_USAGE_FREE_ITEM->number.value = free_mb;
@@ -738,7 +782,7 @@ static bool select_stars(indigo_device *device) {
 
 static bool check_selection(indigo_device *device) {
 	for (int i = 0; i < AGENT_IMAGER_SELECTION_STAR_COUNT_ITEM->number.value; i++) {
-		if ((AGENT_IMAGER_SELECTION_X_ITEM + i)->number.value != 0 && (AGENT_IMAGER_SELECTION_Y_ITEM + i)->number.value != 0) {
+		if ((AGENT_IMAGER_SELECTION_X_ITEM + 2 * i)->number.value != 0 && (AGENT_IMAGER_SELECTION_Y_ITEM + 2 * i)->number.value != 0) {
 			return true;
 		}
 	}
@@ -2881,7 +2925,12 @@ static void sequence_process(indigo_device *device) {
 }
 
 static void filter_handler(indigo_device *device) {
-	if (AGENT_IMAGER_APPLY_FILTER_OFFSETS_FEATURE_ITEM->sw.value && INDIGO_FILTER_FOCUSER_SELECTED) {
+	bool apply_offsets = AGENT_IMAGER_APPLY_FILTER_OFFSETS_FEATURE_ITEM->sw.value && INDIGO_FILTER_FOCUSER_SELECTED;
+	if (apply_offsets && DEVICE_PRIVATE_DATA->focuser_temperature_compensation) {
+		indigo_send_message(device, "Warning: Filter offset not applied, focuser in temperature compensation mode");
+		apply_offsets = false;
+	}
+	if (apply_offsets) {
 		double steps = DEVICE_PRIVATE_DATA->filter_offsets[DEVICE_PRIVATE_DATA->requested_filter_index] - DEVICE_PRIVATE_DATA->filter_offsets[DEVICE_PRIVATE_DATA->current_filter_index];
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME,
 			"Moving to filter '%s' with offset %.3f from filter '%s' with offset %.3f. Applying diff offset %.3f",
@@ -3887,6 +3936,7 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 			DEVICE_PRIVATE_DATA->focuser_position = NAN;
 			DEVICE_PRIVATE_DATA->focuser_temperature = NAN;
 			DEVICE_PRIVATE_DATA->focuser_has_backlash = false;
+			DEVICE_PRIVATE_DATA->focuser_temperature_compensation = false;
 		}
 	} else if (!strcmp(property->name, FOCUSER_STEPS_PROPERTY_NAME)) {
 		DEVICE_PRIVATE_DATA->steps_state = property->state;
@@ -3894,6 +3944,15 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 		DEVICE_PRIVATE_DATA->focuser_position = property->items[0].number.value;
 	} else if (!strcmp(property->name, FOCUSER_TEMPERATURE_PROPERTY_NAME)) {
 		DEVICE_PRIVATE_DATA->focuser_temperature = property->items[0].number.value;
+	} else if (!strcmp(property->name, FOCUSER_MODE_PROPERTY_NAME)) {
+		DEVICE_PRIVATE_DATA->focuser_temperature_compensation = false;
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = property->items + i;
+			if (!strcmp(item->name, FOCUSER_MODE_AUTOMATIC_ITEM_NAME)) {
+				DEVICE_PRIVATE_DATA->focuser_temperature_compensation = item->sw.value;
+				break;
+			}
+		}
 	} else if (!strcmp(property->name, FOCUSER_BACKLASH_PROPERTY_NAME)) {
 		indigo_device *device = FILTER_CLIENT_CONTEXT->device;
 		DEVICE_PRIVATE_DATA->focuser_has_backlash = true;

@@ -1,7 +1,7 @@
-﻿#ifndef __nncam_h__
+#ifndef __nncam_h__
 #define __nncam_h__
 
-/* Version: 59.31026.20260322 */
+/* Version: 60.31631.20260606 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -130,7 +130,7 @@ extern "C" {
 typedef struct Nncam_t { int unused; } *HNncam;
 
 #define NNCAM_MAX                       128
-                                         
+
 #define NNCAM_FLAG_CMOS                 0x00000001  /* cmos sensor */
 #define NNCAM_FLAG_CCD_PROGRESSIVE      0x00000002  /* progressive ccd sensor */
 #define NNCAM_FLAG_CCD_INTERLACED       0x00000004  /* interlaced ccd sensor */
@@ -329,7 +329,7 @@ typedef struct {
 } NncamDeviceV2; /* device instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 59.31026.20260322
+    get the version of this dll/so/dylib, which is: 60.31631.20260606
 */
 #if defined(_WIN32)
 NNCAM_API(const wchar_t*)   Nncam_Version();
@@ -404,7 +404,7 @@ NNCAM_API(void)     Nncam_Close(HNncam h);
 #define NNCAM_EVENT_FACTORY           0x8001    /* restore factory settings */
 
 #if defined(_WIN32)
-NNCAM_API(HRESULT)  Nncam_StartPullModeWithWndMsg(HNncam h, HWND hWnd, UINT nMsg);
+NNCAM_API(HRESULT)  Nncam_StartPullModeWithWndMsg(HNncam h, HWND hWnd, unsigned msgWnd);
 #endif
 
 /* Do NOT call Nncam_Close, Nncam_Stop in this callback context, it deadlocks. */
@@ -457,9 +457,42 @@ typedef struct {
     NncamGps gps;
 } NncamFrameInfoV4;
 
+typedef struct {
+    unsigned id;                    /* 0 is reserved as an invalid id */
+    unsigned char pixelFormat;      /* NNCAM_PIXELFORMAT_xxxx */
+    unsigned char ergb;             /* see NNCAM_OPTION_RGB */
+    unsigned char snapR;            /* see Nncam_SnapR */
+    unsigned char infoVer;          /* NncamFrameInfo version >= 4 */
+    unsigned reserved;
+    unsigned strideRaw;             /* stride of RAW, 0 means = image width (no padding) */
+    NncamFrameInfoV4* ptrInfo;
+    void* snapCtx;
+    void* ptrRaw;                   /* RAW, see NNCAM_OPTION_IMAGEPTRRAW */
+    unsigned char* ptr8;
+    unsigned short* ptr16;
+} NncamImagePtr;
+
+/* Obtains a pointer to the frame buffer directly from the SDK, eliminating the need to copy frame data and thus improving performance */
+/* bStill: to pull still image, set to 1, otherwise 0 */
+NNCAM_API(HRESULT)  Nncam_PullImagePtr(HNncam h, int bStill, NncamImagePtr* ptrImage);
+
+/* After a frame buffer has been used, it must be returned to the SDK for reuse. Please note the following:
+    (a) The frame buffer must only be returned back after it is no longer in use. Any access after returning it is unsafe, as the SDK may have already reused the buffer and overwritten the memory with new data.
+    (b) If a frame buffer is not returned, the pool of available buffers will gradually decrease.
+    (c) Each frame buffer obtained via Pull (identified by its ID) may be returned only once; duplicate returns are not allowed.
+    (d) The return order does not need to match the Pull order; buffers may be returned out of order.
+    (e) Frame buffers that have not been returned remain valid after Nncam_Stop. Frame buffers that have not been returned become invalid immediately after Nncam_Close.
+*/
+NNCAM_API(HRESULT)  Nncam_PushImagePtr(HNncam h, unsigned ptrId);
+
+/* waitMS: The timeout interval, in milliseconds. If a nonzero value is specified, the function waits until the image is ok or the interval elapses.
+            If waitMS is zero, the function does not enter a wait state if the image is not available; it always returns immediately; this is equal to Nncam_PullImagePtr.
+*/
+NNCAM_API(HRESULT)  Nncam_WaitImagePtr(HNncam h, unsigned waitMS, int bStill, NncamImagePtr* ptrImage);
+
 /*
-    nWaitMS: The timeout interval, in milliseconds. If a nonzero value is specified, the function waits until the image is ok or the interval elapses.
-             If nWaitMS is zero, the function does not enter a wait state if the image is not available; it always returns immediately; this is equal to Nncam_PullImageV4.
+    waitMS: The timeout interval, in milliseconds. If a nonzero value is specified, the function waits until the image is ok or the interval elapses.
+             If waitMS is zero, the function does not enter a wait state if the image is not available; it always returns immediately; this is equal to Nncam_PullImageV4.
     bStill: to pull still image, set to 1, otherwise 0
     bits: 24 (RGB24), 32 (RGB32), 48 (RGB48), 8 (Grey), 16 (Grey), 64 (RGB64).
           In RAW mode, this parameter is ignored.
@@ -500,9 +533,9 @@ typedef struct {
             |-----------|------------------------|-------------------------------|-----------------------|
 */
 NNCAM_API(HRESULT)  Nncam_PullImageV4(HNncam h, void* pImageData, int bStill, int bits, int rowPitch, NncamFrameInfoV4* pInfo);
-NNCAM_API(HRESULT)  Nncam_WaitImageV4(HNncam h, unsigned nWaitMS, void* pImageData, int bStill, int bits, int rowPitch, NncamFrameInfoV4* pInfo);
+NNCAM_API(HRESULT)  Nncam_WaitImageV4(HNncam h, unsigned waitMS, void* pImageData, int bStill, int bits, int rowPitch, NncamFrameInfoV4* pInfo);
 NNCAM_API(HRESULT)  Nncam_PullImageV3(HNncam h, void* pImageData, int bStill, int bits, int rowPitch, NncamFrameInfoV3* pInfo);
-NNCAM_API(HRESULT)  Nncam_WaitImageV3(HNncam h, unsigned nWaitMS, void* pImageData, int bStill, int bits, int rowPitch, NncamFrameInfoV3* pInfo);
+NNCAM_API(HRESULT)  Nncam_WaitImageV3(HNncam h, unsigned waitMS, void* pImageData, int bStill, int bits, int rowPitch, NncamFrameInfoV3* pInfo);
 
 typedef struct {
     unsigned            width;
@@ -546,6 +579,8 @@ NNCAM_API(HRESULT)  Nncam_Pause(HNncam h, int bPause); /* 1 => pause, 0 => conti
 NNCAM_API(HRESULT)  Nncam_Snap(HNncam h, unsigned nResolutionIndex);  /* still image snap */
 NNCAM_API(HRESULT)  Nncam_SnapN(HNncam h, unsigned nResolutionIndex, unsigned nNumber);  /* multiple still image snap */
 NNCAM_API(HRESULT)  Nncam_SnapR(HNncam h, unsigned nResolutionIndex, unsigned nNumber);  /* multiple RAW still image snap */
+NNCAM_API(HRESULT)  Nncam_SnapV2(HNncam h, unsigned nResolutionIndex, unsigned nNumber, int eRGB, void* snapCtx);
+
 /*
     soft trigger:
     nNumber:    0xffff:     trigger continuously
@@ -556,12 +591,12 @@ NNCAM_API(HRESULT)  Nncam_Trigger(HNncam h, unsigned short nNumber);
 
 /*
     trigger synchronously
-    nWaitMS:    0:              by default, exposure * 102% + 4000 milliseconds
+    waitMS:     0:              by default, exposure * 102% + 4000 milliseconds
                 0xffffffff:     wait infinite
                 other:          milliseconds to wait
 */
-NNCAM_API(HRESULT)  Nncam_TriggerSyncV4(HNncam h, unsigned nWaitMS, void* pImageData, int bits, int rowPitch, NncamFrameInfoV4* pInfo);
-NNCAM_API(HRESULT)  Nncam_TriggerSync(HNncam h, unsigned nWaitMS, void* pImageData, int bits, int rowPitch, NncamFrameInfoV3* pInfo);
+NNCAM_API(HRESULT)  Nncam_TriggerSyncV4(HNncam h, unsigned waitMS, void* pImageData, int bits, int rowPitch, NncamFrameInfoV4* pInfo);
+NNCAM_API(HRESULT)  Nncam_TriggerSync(HNncam h, unsigned waitMS, void* pImageData, int bits, int rowPitch, NncamFrameInfoV3* pInfo);
 
 /*
     put_Size, put_eSize, can be used to set the video output resolution BEFORE Nncam_StartXXXX.
@@ -807,7 +842,8 @@ NNCAM_API(HRESULT)  Nncam_get_StillResolution(HNncam h, unsigned nResolutionInde
           use minimum frame buffer. When new frame arrive, drop all the pending frame regardless of whether the frame buffer is full.
           If DDR present, also limit the DDR frame buffer to only one frame.
     2: soft realtime
-          Drop the oldest frame when the queue is full and then enqueue the new frame
+          use minimum frame buffer. When new frame arrive, drop all the pending frame regardless of whether the frame buffer is full.
+          If DDR present, the DDR frame buffer unchanged.
     default: 0
 */
 NNCAM_API(HRESULT)  Nncam_put_RealTime(HNncam h, int val);
@@ -940,7 +976,11 @@ NNCAM_API(HRESULT)  Nncam_get_Option(HNncam h, unsigned iOption, int* piValue);
                                                          */
 #define NNCAM_OPTION_DEMOSAIC_VIDEO         0x13       /* [RW] demosaic method for video */
 #define NNCAM_OPTION_DEMOSAIC_STILL         0x14       /* [RW] demosaic method for still image */
-#define NNCAM_OPTION_BLACKLEVEL             0x15       /* [RW] black level */
+#define NNCAM_OPTION_BLACKLEVEL             0x15       /* [RW] the black level refers to the baseline signal value output by an image sensor under no-light (completely dark) conditions.
+                                                              In digital imaging systems, a fixed voltage offset is intentionally added to the signal to ensure that dark-region signals remain above zero, thereby preventing the loss of faint shadow details during A/D conversion.
+                                                                  (a) Prevent clipping: The sensor circuit's intrinsic noise may occasionally produce negative values. Without an offset, these negative values would be forcibly clipped to zero, resulting in the loss of shadow details.
+                                                                  (b) Preserve linearity: Raising the black level helps ensure that the sensor maintains consistent linear output behavior across the entire dynamic range.
+                                                         */
 #define NNCAM_OPTION_MULTITHREAD            0x16       /* [RW] multithread image processing */
 #define NNCAM_OPTION_BINNING                0x17       /* [RW] digital binning
                                                                 0x01: (no binning)
@@ -974,6 +1014,7 @@ NNCAM_API(HRESULT)  Nncam_get_Option(HNncam h, unsigned iOption, int* piValue);
                                                                          => one for video mode when auto exposure is enabled
                                                                          => full capacity for others
                                                                 -1: DDR can cache frames to full capacity
+                                                            default: 0
                                                          */
 #define NNCAM_OPTION_DFC                    0x1d       /* [RW] dark field correction
                                                              set:
@@ -1158,6 +1199,7 @@ NNCAM_API(HRESULT)  Nncam_get_Option(HNncam h, unsigned iOption, int* piValue);
                                                                     24 => red
                                                                     25 => green
                                                                     26 => blue
+                                                                    27 => spectrum
                                                          */
 #define NNCAM_OPTION_LOW_POWERCONSUMPTION   0x66       /* [RW] Low Power Consumption: 0 => disable, 1 => enable */
 #define NNCAM_OPTION_FPNC                   0x67       /* [RW] Fix Pattern Noise Correction
@@ -1230,9 +1272,18 @@ NNCAM_API(HRESULT)  Nncam_get_Option(HNncam h, unsigned iOption, int* piValue);
                                                          */
 #define NNCAM_OPTION_USER_SET               0x8a       /* [RW] user set */
 #define NNCAM_OPTION_DIGITAL_GAIN           0x1001     /* [RW] digital gain */
-#define NNCAM_OPTION_ANTI_BLOOMING          0x8b       /* [RW] Anti Blooming */
-#define NNCAM_OPTION_ANTI_BLOOMING_MAX      0x8c       /* [RO} Anti Blooming */
-#define NNCAM_OPTION_CDS_MAX                0x8d       /* [RO} Correlated Double Sampling */
+#define NNCAM_OPTION_ANTI_BLOOMING          0x8b       /* [RW] Anti Blooming, maximum */
+#define NNCAM_OPTION_ANTI_BLOOMING_MAX      0x8c       /* [RO] Anti Blooming */
+#define NNCAM_OPTION_CDS_MAX                0x8d       /* [RO] Correlated Double Sampling */
+#define NNCAM_OPTION_SCANTYPE               0x8e       /* [RW] Scan Type: 0(linescan), 1(areascan) */
+#define NNCAM_OPTION_OPERATIONMODE          0x8f       /* [RW] TDI Operation Mode: 1(area), 2(TDI) */
+#define NNCAM_OPTION_TDITRIGGERMODE         0x90       /* [RW] TDI Trigger Mode: 1(normal), 2(both) */
+#define NNCAM_OPTION_TDISTAGE               0x91       /* [RW] TDI Trigger Stage: sensor scan stage */
+#define NNCAM_OPTION_FRAMEINTERVAL          0x92       /* [RW] Frame Interval in microseconds */
+#define NNCAM_OPTION_FRAMEINTERVAL_MIN      0x93       /* [RO] Frame Interval, minimum */
+#define NNCAM_OPTION_FRAMEINTERVAL_MAX      0x94       /* [RO] Frame Interval, maximum */
+#define NNCAM_OPTION_IMAGEPTRRAW            0x95       /* [RW] default: 0 */
+#define NNCAM_OPTION_IMAGEPTRBOTH           0x96       /* [RW] default: 0 */
 
 /* pixel format */
 #define NNCAM_PIXELFORMAT_RAW8              0x00
@@ -1269,6 +1320,7 @@ NNCAM_API(HRESULT)     Nncam_get_PixelFormatSupport(HNncam h, char cmd, int* pix
 * pixelFormat: NNCAM_PIXELFORMAT_XXXX
 */
 NNCAM_API(const char*) Nncam_get_PixelFormatName(int pixelFormat);
+NNCAM_API(int)         Nncam_get_PixelFormatBitdepth(int pixelFormat);
 
 /*
     xOffset, yOffset, xWidth, yHeight: must be even numbers
@@ -1566,9 +1618,11 @@ NNCAM_API(HRESULT)  Nncam_put_AFFMPos(HNncam h, int iFMPos);
 */
 #if defined(_WIN32)
 NNCAM_API(HRESULT) Nncam_Replug(const wchar_t* camId);
+NNCAM_API(HRESULT) Nncam_Reset(const wchar_t* camId);
 NNCAM_API(HRESULT) Nncam_Enable(const wchar_t* camId, int enable); /* 1 => enable, 0 => disable */
 #else
 NNCAM_API(HRESULT) Nncam_Replug(const char* camId);
+NNCAM_API(HRESULT) Nncam_Reset(const char* camId);
 NNCAM_API(HRESULT) Nncam_Enable(const char* camId, int enable); /* 1 => enable, 0 => disable */
 #endif
 

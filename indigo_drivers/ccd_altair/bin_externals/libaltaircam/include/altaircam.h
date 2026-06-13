@@ -1,7 +1,7 @@
-﻿#ifndef __altaircam_h__
+#ifndef __altaircam_h__
 #define __altaircam_h__
 
-/* Version: 59.31026.20260322 */
+/* Version: 60.31631.20260606 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -130,7 +130,7 @@ extern "C" {
 typedef struct Altaircam_t { int unused; } *HAltaircam;
 
 #define ALTAIRCAM_MAX                       128
-                                         
+
 #define ALTAIRCAM_FLAG_CMOS                 0x00000001  /* cmos sensor */
 #define ALTAIRCAM_FLAG_CCD_PROGRESSIVE      0x00000002  /* progressive ccd sensor */
 #define ALTAIRCAM_FLAG_CCD_INTERLACED       0x00000004  /* interlaced ccd sensor */
@@ -329,7 +329,7 @@ typedef struct {
 } AltaircamDeviceV2; /* device instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 59.31026.20260322
+    get the version of this dll/so/dylib, which is: 60.31631.20260606
 */
 #if defined(_WIN32)
 ALTAIRCAM_API(const wchar_t*)   Altaircam_Version();
@@ -404,7 +404,7 @@ ALTAIRCAM_API(void)     Altaircam_Close(HAltaircam h);
 #define ALTAIRCAM_EVENT_FACTORY           0x8001    /* restore factory settings */
 
 #if defined(_WIN32)
-ALTAIRCAM_API(HRESULT)  Altaircam_StartPullModeWithWndMsg(HAltaircam h, HWND hWnd, UINT nMsg);
+ALTAIRCAM_API(HRESULT)  Altaircam_StartPullModeWithWndMsg(HAltaircam h, HWND hWnd, unsigned msgWnd);
 #endif
 
 /* Do NOT call Altaircam_Close, Altaircam_Stop in this callback context, it deadlocks. */
@@ -457,9 +457,42 @@ typedef struct {
     AltaircamGps gps;
 } AltaircamFrameInfoV4;
 
+typedef struct {
+    unsigned id;                    /* 0 is reserved as an invalid id */
+    unsigned char pixelFormat;      /* ALTAIRCAM_PIXELFORMAT_xxxx */
+    unsigned char ergb;             /* see ALTAIRCAM_OPTION_RGB */
+    unsigned char snapR;            /* see Altaircam_SnapR */
+    unsigned char infoVer;          /* AltaircamFrameInfo version >= 4 */
+    unsigned reserved;
+    unsigned strideRaw;             /* stride of RAW, 0 means = image width (no padding) */
+    AltaircamFrameInfoV4* ptrInfo;
+    void* snapCtx;
+    void* ptrRaw;                   /* RAW, see ALTAIRCAM_OPTION_IMAGEPTRRAW */
+    unsigned char* ptr8;
+    unsigned short* ptr16;
+} AltaircamImagePtr;
+
+/* Obtains a pointer to the frame buffer directly from the SDK, eliminating the need to copy frame data and thus improving performance */
+/* bStill: to pull still image, set to 1, otherwise 0 */
+ALTAIRCAM_API(HRESULT)  Altaircam_PullImagePtr(HAltaircam h, int bStill, AltaircamImagePtr* ptrImage);
+
+/* After a frame buffer has been used, it must be returned to the SDK for reuse. Please note the following:
+    (a) The frame buffer must only be returned back after it is no longer in use. Any access after returning it is unsafe, as the SDK may have already reused the buffer and overwritten the memory with new data.
+    (b) If a frame buffer is not returned, the pool of available buffers will gradually decrease.
+    (c) Each frame buffer obtained via Pull (identified by its ID) may be returned only once; duplicate returns are not allowed.
+    (d) The return order does not need to match the Pull order; buffers may be returned out of order.
+    (e) Frame buffers that have not been returned remain valid after Altaircam_Stop. Frame buffers that have not been returned become invalid immediately after Altaircam_Close.
+*/
+ALTAIRCAM_API(HRESULT)  Altaircam_PushImagePtr(HAltaircam h, unsigned ptrId);
+
+/* waitMS: The timeout interval, in milliseconds. If a nonzero value is specified, the function waits until the image is ok or the interval elapses.
+            If waitMS is zero, the function does not enter a wait state if the image is not available; it always returns immediately; this is equal to Altaircam_PullImagePtr.
+*/
+ALTAIRCAM_API(HRESULT)  Altaircam_WaitImagePtr(HAltaircam h, unsigned waitMS, int bStill, AltaircamImagePtr* ptrImage);
+
 /*
-    nWaitMS: The timeout interval, in milliseconds. If a nonzero value is specified, the function waits until the image is ok or the interval elapses.
-             If nWaitMS is zero, the function does not enter a wait state if the image is not available; it always returns immediately; this is equal to Altaircam_PullImageV4.
+    waitMS: The timeout interval, in milliseconds. If a nonzero value is specified, the function waits until the image is ok or the interval elapses.
+             If waitMS is zero, the function does not enter a wait state if the image is not available; it always returns immediately; this is equal to Altaircam_PullImageV4.
     bStill: to pull still image, set to 1, otherwise 0
     bits: 24 (RGB24), 32 (RGB32), 48 (RGB48), 8 (Grey), 16 (Grey), 64 (RGB64).
           In RAW mode, this parameter is ignored.
@@ -500,9 +533,9 @@ typedef struct {
             |-----------|------------------------|-------------------------------|-----------------------|
 */
 ALTAIRCAM_API(HRESULT)  Altaircam_PullImageV4(HAltaircam h, void* pImageData, int bStill, int bits, int rowPitch, AltaircamFrameInfoV4* pInfo);
-ALTAIRCAM_API(HRESULT)  Altaircam_WaitImageV4(HAltaircam h, unsigned nWaitMS, void* pImageData, int bStill, int bits, int rowPitch, AltaircamFrameInfoV4* pInfo);
+ALTAIRCAM_API(HRESULT)  Altaircam_WaitImageV4(HAltaircam h, unsigned waitMS, void* pImageData, int bStill, int bits, int rowPitch, AltaircamFrameInfoV4* pInfo);
 ALTAIRCAM_API(HRESULT)  Altaircam_PullImageV3(HAltaircam h, void* pImageData, int bStill, int bits, int rowPitch, AltaircamFrameInfoV3* pInfo);
-ALTAIRCAM_API(HRESULT)  Altaircam_WaitImageV3(HAltaircam h, unsigned nWaitMS, void* pImageData, int bStill, int bits, int rowPitch, AltaircamFrameInfoV3* pInfo);
+ALTAIRCAM_API(HRESULT)  Altaircam_WaitImageV3(HAltaircam h, unsigned waitMS, void* pImageData, int bStill, int bits, int rowPitch, AltaircamFrameInfoV3* pInfo);
 
 typedef struct {
     unsigned            width;
@@ -546,6 +579,8 @@ ALTAIRCAM_API(HRESULT)  Altaircam_Pause(HAltaircam h, int bPause); /* 1 => pause
 ALTAIRCAM_API(HRESULT)  Altaircam_Snap(HAltaircam h, unsigned nResolutionIndex);  /* still image snap */
 ALTAIRCAM_API(HRESULT)  Altaircam_SnapN(HAltaircam h, unsigned nResolutionIndex, unsigned nNumber);  /* multiple still image snap */
 ALTAIRCAM_API(HRESULT)  Altaircam_SnapR(HAltaircam h, unsigned nResolutionIndex, unsigned nNumber);  /* multiple RAW still image snap */
+ALTAIRCAM_API(HRESULT)  Altaircam_SnapV2(HAltaircam h, unsigned nResolutionIndex, unsigned nNumber, int eRGB, void* snapCtx);
+
 /*
     soft trigger:
     nNumber:    0xffff:     trigger continuously
@@ -556,12 +591,12 @@ ALTAIRCAM_API(HRESULT)  Altaircam_Trigger(HAltaircam h, unsigned short nNumber);
 
 /*
     trigger synchronously
-    nWaitMS:    0:              by default, exposure * 102% + 4000 milliseconds
+    waitMS:     0:              by default, exposure * 102% + 4000 milliseconds
                 0xffffffff:     wait infinite
                 other:          milliseconds to wait
 */
-ALTAIRCAM_API(HRESULT)  Altaircam_TriggerSyncV4(HAltaircam h, unsigned nWaitMS, void* pImageData, int bits, int rowPitch, AltaircamFrameInfoV4* pInfo);
-ALTAIRCAM_API(HRESULT)  Altaircam_TriggerSync(HAltaircam h, unsigned nWaitMS, void* pImageData, int bits, int rowPitch, AltaircamFrameInfoV3* pInfo);
+ALTAIRCAM_API(HRESULT)  Altaircam_TriggerSyncV4(HAltaircam h, unsigned waitMS, void* pImageData, int bits, int rowPitch, AltaircamFrameInfoV4* pInfo);
+ALTAIRCAM_API(HRESULT)  Altaircam_TriggerSync(HAltaircam h, unsigned waitMS, void* pImageData, int bits, int rowPitch, AltaircamFrameInfoV3* pInfo);
 
 /*
     put_Size, put_eSize, can be used to set the video output resolution BEFORE Altaircam_StartXXXX.
@@ -807,7 +842,8 @@ ALTAIRCAM_API(HRESULT)  Altaircam_get_StillResolution(HAltaircam h, unsigned nRe
           use minimum frame buffer. When new frame arrive, drop all the pending frame regardless of whether the frame buffer is full.
           If DDR present, also limit the DDR frame buffer to only one frame.
     2: soft realtime
-          Drop the oldest frame when the queue is full and then enqueue the new frame
+          use minimum frame buffer. When new frame arrive, drop all the pending frame regardless of whether the frame buffer is full.
+          If DDR present, the DDR frame buffer unchanged.
     default: 0
 */
 ALTAIRCAM_API(HRESULT)  Altaircam_put_RealTime(HAltaircam h, int val);
@@ -940,7 +976,11 @@ ALTAIRCAM_API(HRESULT)  Altaircam_get_Option(HAltaircam h, unsigned iOption, int
                                                          */
 #define ALTAIRCAM_OPTION_DEMOSAIC_VIDEO         0x13       /* [RW] demosaic method for video */
 #define ALTAIRCAM_OPTION_DEMOSAIC_STILL         0x14       /* [RW] demosaic method for still image */
-#define ALTAIRCAM_OPTION_BLACKLEVEL             0x15       /* [RW] black level */
+#define ALTAIRCAM_OPTION_BLACKLEVEL             0x15       /* [RW] the black level refers to the baseline signal value output by an image sensor under no-light (completely dark) conditions.
+                                                              In digital imaging systems, a fixed voltage offset is intentionally added to the signal to ensure that dark-region signals remain above zero, thereby preventing the loss of faint shadow details during A/D conversion.
+                                                                  (a) Prevent clipping: The sensor circuit's intrinsic noise may occasionally produce negative values. Without an offset, these negative values would be forcibly clipped to zero, resulting in the loss of shadow details.
+                                                                  (b) Preserve linearity: Raising the black level helps ensure that the sensor maintains consistent linear output behavior across the entire dynamic range.
+                                                         */
 #define ALTAIRCAM_OPTION_MULTITHREAD            0x16       /* [RW] multithread image processing */
 #define ALTAIRCAM_OPTION_BINNING                0x17       /* [RW] digital binning
                                                                 0x01: (no binning)
@@ -974,6 +1014,7 @@ ALTAIRCAM_API(HRESULT)  Altaircam_get_Option(HAltaircam h, unsigned iOption, int
                                                                          => one for video mode when auto exposure is enabled
                                                                          => full capacity for others
                                                                 -1: DDR can cache frames to full capacity
+                                                            default: 0
                                                          */
 #define ALTAIRCAM_OPTION_DFC                    0x1d       /* [RW] dark field correction
                                                              set:
@@ -1158,6 +1199,7 @@ ALTAIRCAM_API(HRESULT)  Altaircam_get_Option(HAltaircam h, unsigned iOption, int
                                                                     24 => red
                                                                     25 => green
                                                                     26 => blue
+                                                                    27 => spectrum
                                                          */
 #define ALTAIRCAM_OPTION_LOW_POWERCONSUMPTION   0x66       /* [RW] Low Power Consumption: 0 => disable, 1 => enable */
 #define ALTAIRCAM_OPTION_FPNC                   0x67       /* [RW] Fix Pattern Noise Correction
@@ -1230,9 +1272,18 @@ ALTAIRCAM_API(HRESULT)  Altaircam_get_Option(HAltaircam h, unsigned iOption, int
                                                          */
 #define ALTAIRCAM_OPTION_USER_SET               0x8a       /* [RW] user set */
 #define ALTAIRCAM_OPTION_DIGITAL_GAIN           0x1001     /* [RW] digital gain */
-#define ALTAIRCAM_OPTION_ANTI_BLOOMING          0x8b       /* [RW] Anti Blooming */
-#define ALTAIRCAM_OPTION_ANTI_BLOOMING_MAX      0x8c       /* [RO} Anti Blooming */
-#define ALTAIRCAM_OPTION_CDS_MAX                0x8d       /* [RO} Correlated Double Sampling */
+#define ALTAIRCAM_OPTION_ANTI_BLOOMING          0x8b       /* [RW] Anti Blooming, maximum */
+#define ALTAIRCAM_OPTION_ANTI_BLOOMING_MAX      0x8c       /* [RO] Anti Blooming */
+#define ALTAIRCAM_OPTION_CDS_MAX                0x8d       /* [RO] Correlated Double Sampling */
+#define ALTAIRCAM_OPTION_SCANTYPE               0x8e       /* [RW] Scan Type: 0(linescan), 1(areascan) */
+#define ALTAIRCAM_OPTION_OPERATIONMODE          0x8f       /* [RW] TDI Operation Mode: 1(area), 2(TDI) */
+#define ALTAIRCAM_OPTION_TDITRIGGERMODE         0x90       /* [RW] TDI Trigger Mode: 1(normal), 2(both) */
+#define ALTAIRCAM_OPTION_TDISTAGE               0x91       /* [RW] TDI Trigger Stage: sensor scan stage */
+#define ALTAIRCAM_OPTION_FRAMEINTERVAL          0x92       /* [RW] Frame Interval in microseconds */
+#define ALTAIRCAM_OPTION_FRAMEINTERVAL_MIN      0x93       /* [RO] Frame Interval, minimum */
+#define ALTAIRCAM_OPTION_FRAMEINTERVAL_MAX      0x94       /* [RO] Frame Interval, maximum */
+#define ALTAIRCAM_OPTION_IMAGEPTRRAW            0x95       /* [RW] default: 0 */
+#define ALTAIRCAM_OPTION_IMAGEPTRBOTH           0x96       /* [RW] default: 0 */
 
 /* pixel format */
 #define ALTAIRCAM_PIXELFORMAT_RAW8              0x00
@@ -1269,6 +1320,7 @@ ALTAIRCAM_API(HRESULT)     Altaircam_get_PixelFormatSupport(HAltaircam h, char c
 * pixelFormat: ALTAIRCAM_PIXELFORMAT_XXXX
 */
 ALTAIRCAM_API(const char*) Altaircam_get_PixelFormatName(int pixelFormat);
+ALTAIRCAM_API(int)         Altaircam_get_PixelFormatBitdepth(int pixelFormat);
 
 /*
     xOffset, yOffset, xWidth, yHeight: must be even numbers
@@ -1566,9 +1618,11 @@ ALTAIRCAM_API(HRESULT)  Altaircam_put_AFFMPos(HAltaircam h, int iFMPos);
 */
 #if defined(_WIN32)
 ALTAIRCAM_API(HRESULT) Altaircam_Replug(const wchar_t* camId);
+ALTAIRCAM_API(HRESULT) Altaircam_Reset(const wchar_t* camId);
 ALTAIRCAM_API(HRESULT) Altaircam_Enable(const wchar_t* camId, int enable); /* 1 => enable, 0 => disable */
 #else
 ALTAIRCAM_API(HRESULT) Altaircam_Replug(const char* camId);
+ALTAIRCAM_API(HRESULT) Altaircam_Reset(const char* camId);
 ALTAIRCAM_API(HRESULT) Altaircam_Enable(const char* camId, int enable); /* 1 => enable, 0 => disable */
 #endif
 

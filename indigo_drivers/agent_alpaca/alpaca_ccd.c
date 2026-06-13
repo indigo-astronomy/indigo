@@ -706,7 +706,7 @@ static indigo_alpaca_error alpaca_set_gain(indigo_alpaca_device *device, int ver
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotConnected;
 	}
-	if (device->ccd.offsetmin == 0 && device->ccd.offsetmax == 0) {
+	if (device->ccd.gainmin == 0 && device->ccd.gainmax == 0) {
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotImplemented;
 	}

@@ -1,6 +1,6 @@
 # Saving images from the camera driver
 
-Revision: 05.12.2025 (draft)
+Revision: 04.05.2026 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
@@ -45,7 +45,7 @@ INDIGO file name templates support a number of placeholders starting with "%" ch
 
 * **%E** or **%nE** - will be expanded to the exposure time. If "n" is provided it will be used as the number of digits after the decimal point.
 
-* **%T** - expands to the sensor temperature in &deg;C
+* **%T** or **%nT** - expands to the target sensor temperature in &deg;C as an integer. If "n" is provided it will be used as the number of digits after the decimal point (capped to 5). Expands to "NA" if the cooler is not available or not enabled.
 
 * **%F** - expands to the frame type: "Light", "Bias", "Dark" etc.
 
@@ -57,7 +57,7 @@ INDIGO file name templates support a number of placeholders starting with "%" ch
 
 * **%nS** - expands to the sequential number of the file with the same name. Where 'n' is the number of digits used to represent the number and can be in the range [1, 5].
 
-* **%nI** - expands to the next sequential number by scanning existing files with matching prefix and extension, finding the highest number, and adding 1. The **prefix** is everything in the template before **%nI** (after removing the directory path), and the **extension** is the file extension including the dot. For example, in template "M42_%3I_Light.fits", the prefix is "M42_", the extension is ".fits", and existing files "M42_001_Light.fits", "M42_005_Light.fits" would result in "M42_006_Light.fits". Unlike **%nS**, it handles gaps in sequences, guaranteeing higher numbers always mean newer files. Where 'n' is the number of digits with zero-padding [1-5].
+* **%I** or **%nI** - expands to the next sequential number by scanning existing files with matching prefix and extension, finding the highest number, and adding 1. The **prefix** is everything in the template before **%I**/**%nI** (after removing the directory path), and the **extension** is the file extension including the dot. For example, in template "M42_%3I_Light.fits", the prefix is "M42_", the extension is ".fits", and existing files "M42_001_Light.fits", "M42_005_Light.fits" would result in "M42_006_Light.fits". Unlike **%nS**, it handles gaps in sequences, guaranteeing higher numbers always mean newer files. Only the **first** occurrence of **%I**/**%nI** in the template performs the directory scan; any subsequent occurrences are replaced by `1` zero-padded to n digits (e.g. `%3I` → `001`). 'n' specifies the number of digits with zero-padding in range [1-5], defaulting to 3 when omitted.
 
 * **%G** - expands to gain
 

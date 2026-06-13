@@ -147,8 +147,8 @@ indigo_result indigo_ccd_attach(indigo_device *device, const char* driver_name, 
 				return INDIGO_FAILED;
 			indigo_init_number_item(CCD_INFO_WIDTH_ITEM, CCD_INFO_WIDTH_ITEM_NAME, "Horizontal resolution", 0, 0, 0, 0);
 			indigo_init_number_item(CCD_INFO_HEIGHT_ITEM, CCD_INFO_HEIGHT_ITEM_NAME, "Vertical resolution", 0, 0, 0, 0);
-			indigo_init_number_item(CCD_INFO_MAX_HORIZONAL_BIN_ITEM, CCD_INFO_MAX_HORIZONTAL_BIN_ITEM_NAME, "Max vertical binning", 0, 0, 0, 1);
-			indigo_init_number_item(CCD_INFO_MAX_VERTICAL_BIN_ITEM, CCD_INFO_MAX_VERTICAL_BIN_ITEM_NAME, "Max horizontal binning", 0, 0, 0, 1);
+			indigo_init_number_item(CCD_INFO_MAX_HORIZONAL_BIN_ITEM, CCD_INFO_MAX_HORIZONTAL_BIN_ITEM_NAME, "Max horizontal binning", 0, 0, 0, 1);
+			indigo_init_number_item(CCD_INFO_MAX_VERTICAL_BIN_ITEM, CCD_INFO_MAX_VERTICAL_BIN_ITEM_NAME, "Max vertical binning", 0, 0, 0, 1);
 			indigo_init_number_item(CCD_INFO_PIXEL_SIZE_ITEM, CCD_INFO_PIXEL_SIZE_ITEM_NAME, "Pixel size (um)", 0, 0, 0, 0);
 			indigo_init_number_item(CCD_INFO_PIXEL_WIDTH_ITEM, CCD_INFO_PIXEL_WIDTH_ITEM_NAME, "Pixel width (um)", 0, 0, 0, 0);
 			indigo_init_number_item(CCD_INFO_PIXEL_HEIGHT_ITEM, CCD_INFO_PIXEL_HEIGHT_ITEM_NAME, "Pixel height (um)", 0, 0, 0, 0);
@@ -208,7 +208,7 @@ indigo_result indigo_ccd_attach(indigo_device *device, const char* driver_name, 
 				return INDIGO_FAILED;
 			indigo_init_number_item(CCD_STREAMING_EXPOSURE_ITEM, CCD_STREAMING_EXPOSURE_ITEM_NAME, "Shutter time", 0, 10000, 1, 0);
 			indigo_init_number_item(CCD_STREAMING_COUNT_ITEM, CCD_STREAMING_COUNT_ITEM_NAME, "Frame count", -1, 100000, 1, -1);
-			strcpy(CCD_EXPOSURE_ITEM->number.format, "%g");
+			strcpy(CCD_STREAMING_EXPOSURE_ITEM->number.format, "%g");
 			CCD_STREAMING_PROPERTY->hidden = true;
 			// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 			CCD_ABORT_EXPOSURE_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_ABORT_EXPOSURE_PROPERTY_NAME, CCD_MAIN_GROUP, "Abort exposure", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
@@ -1261,7 +1261,7 @@ static void raw_to_tiff(indigo_device *device, void *data_in, int frame_width, i
 	if (!CCD_GAMMA_PROPERTY->hidden)
 		add_key(&next_key, false, "GAMMA   = %20.2f / Gamma", CCD_GAMMA_ITEM->number.value);
 	add_key(&next_key, false, "JD      = %20.8f / JD when exposure started", UT2JD(timer));
-	add_key(&next_key, false, "DATE-OBS= '%s' / UTC when exposure started", date_time_start);
+	add_key(&next_key, false, "DATE-OBS= '%s' / Observation start time, UT", date_time_start);
 	add_key(&next_key, false, "INSTRUME= '%s'%*c / instrument name", device->name, (int)(19 - strlen(device->name)), ' ');
 	if (CCD_LOCAL_MODE_OBJECT_ITEM->text.value[0] != '\0')
 		add_key(&next_key, false, "OBJECT  = '%s' / object name", CCD_LOCAL_MODE_OBJECT_ITEM->text.value);
@@ -1423,12 +1423,24 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 			else
 				strcat(tmp, fs + 3);
 			strcpy(format, tmp);
-		} else if (fs[1] == 'T') { // %T - temperature
-			char t[16];
-			sprintf(t, "%.0fC", CCD_TEMPERATURE_ITEM->number.value);
+		} else if (fs[1] == 'T' || (isdigit(fs[1]) && fs[2] == 'T')) { // %T or %nT - temperature
+			char t[16] = "NA";
+			int digits = 0;
+			if (isdigit(fs[1])) {
+				digits = fs[1] - '0';
+				if (digits < 0) digits = 0;
+				if (digits > 5) digits = 5;
+			}
+			if (!CCD_TEMPERATURE_PROPERTY->hidden && !CCD_COOLER_PROPERTY->hidden && CCD_COOLER_ON_ITEM->sw.value) {
+				sprintf(t, "%.*f", digits, CCD_TEMPERATURE_ITEM->number.target);
+			}
 			strncpy(tmp, format, fs - format);
 			strcat(tmp, t);
-			strcat(tmp, fs + 2);
+			if (fs[1] == 'T') {
+				strcat(tmp, fs + 2);
+			} else {
+				strcat(tmp, fs + 3);
+			}
 			strcpy(format, tmp);
 		} else if (fs[1] == 'F') { // %F - frame type
 			strncpy(tmp, format, fs - format);
@@ -1437,7 +1449,6 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 					strcat(tmp, CCD_FRAME_TYPE_PROPERTY->items[i].label);
 				}
 			}
-			strncpy(tmp, format, fs - format);
 			strcat(tmp, fs + 2);
 			strcpy(format, tmp);
 		} else if ((fs[1] == 'D' || fs[1] == 'H') || ((fs[1] == '.' || fs[1] == '-') && (fs[2] == 'D' || fs[2] == 'H'))) { // %D, %.D, %-D - date, %H, %.H, %-H - time
@@ -1519,7 +1530,7 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 			if (CCD_BIN_HORIZONTAL_ITEM->number.value == CCD_BIN_VERTICAL_ITEM->number.value) {
 				sprintf(buffer, "BIN%.0f", CCD_BIN_HORIZONTAL_ITEM->number.value);
 			} else {
-				sprintf(buffer, "BIN%.0fx%.0f", CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_HORIZONTAL_ITEM->number.value);
+				sprintf(buffer, "BIN%.0fx%.0f", CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value);
 			}
 			strncpy(tmp, format, fs - format);
 			strcat(tmp, buffer);
@@ -1559,13 +1570,9 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 				return true;
 			}
 			return false;
-		} else if (isdigit(fs[1]) && fs[2] == 'I') { // %nI - prefix and extension-based sequence index counter (makes sure the bigger the number, the later the file)
-			char *next = strchr(fs + 1, '%');
-			if (next) { // make sure %nI is processed as the last one
-				fs = next;
-				continue;
-			}
-
+		} else if ((isdigit(fs[1]) && fs[2] == 'I') || fs[1] == 'I') { // %nI or %I - prefix and extension-based sequence index counter (makes sure the bigger the number, the later the file)
+			int I_width = (fs[1] == 'I') ? 3 : (fs[1] - '0');
+			int I_skip = (fs[1] == 'I') ? 2 : 3; // chars to skip past the placeholder
 			char dir_path[PATH_MAX] = {0};
 			strncpy(dir_path, CCD_LOCAL_MODE_DIR_ITEM->text.value, sizeof(dir_path) - 1);
 
@@ -1615,27 +1622,49 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 			}
 
 			strncpy(tmp, format, fs - format + 1);
-			switch (fs[1]) {
-				case '1':
+			switch (I_width) {
+				case 1:
 					strcat(tmp, "01d");
 					break;
-				case '2':
+				case 2:
 					strcat(tmp, "02d");
 					break;
-				case '4':
+				case 4:
 					strcat(tmp, "04d");
 					break;
-				case '5':
+				case 5:
 					strcat(tmp, "05d");
 					break;
 				default:
 					strcat(tmp, "03d");
 					break;
 			}
-			strcat(tmp, fs + 3);
+
+			// Append tail, replacing any remaining %nI/%I with (n-1) zeros + "1" before snprintf sees them
+			// and escaping other % placeholders as %% so snprintf passes them through for the outer loop
+			char *tail = fs + I_skip;
+			char *q;
+			while ((q = strchr(tail, '%')) != NULL) {
+				strncat(tmp, tail, q - tail);
+				if (isdigit(q[1]) && q[2] == 'I') {
+					int n = q[1] - '0';
+					if (n < 1 || n > 5) n = 3;
+					for (int z = 0; z < n - 1; z++) strcat(tmp, "0");
+					strcat(tmp, "1");
+					tail = q + 3;
+				} else if (q[1] == 'I') {
+					strcat(tmp, "001"); // bare %I defaults to 3 places
+					tail = q + 2;
+				} else {
+					strcat(tmp, "%%"); // escape so snprintf doesn't misinterpret
+					tail = q + 1;
+				}
+			}
+			strcat(tmp, tail);
 			snprintf(format, PATH_MAX, tmp, max_index + 1);
-			strcpy(file_name, format);
-			return true;
+			// Don't return — let the outer loop continue to process any remaining placeholders (e.g. %M)
+			fs = strchr(format, '%');
+			continue;
 		} else {
 			*fs = '_';
 		}
@@ -1711,10 +1740,10 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 				b8 += 3;
 			}
 		} else if (byte_per_pixel == 2) {
-			unsigned char *b16 = data + FITS_HEADER_SIZE;
-			for (int i = 0; i < size; i++) {
-				unsigned char b = *b16;
-				unsigned char r = *(b16 + 2);
+			uint16_t *b16 = (uint16_t *)((char*)data + FITS_HEADER_SIZE);
+			for (unsigned long i = 0; i < size; i++) {
+				uint16_t b = *b16;
+				uint16_t r = *(b16 + 2);
 				*b16 = r;
 				*(b16 + 2) = b;
 				b16 += 3;
@@ -1791,7 +1820,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		INDIGO_DEBUG(clock_t start = clock());
 		struct timeval tv;
 		struct tm tm_info;
-		char date_time[20], date_time_end[25];
+		char date_time[20], date_time_start[24];
 		gettimeofday(&tv, NULL);
 		long millisec = lrint(tv.tv_usec/1000.0);
 		if (millisec >= 1000) {
@@ -1817,7 +1846,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		}
 		gmtime_r(&tv.tv_sec, &tm_info);
 		strftime(date_time, sizeof(date_time), "%Y-%m-%dT%H:%M:%S", &tm_info);
-		snprintf(date_time_end, sizeof(date_time_end), "%s.%03ld", date_time, millisec);
+		snprintf(date_time_start, sizeof(date_time_start), "%s.%03ld", date_time, millisec);
 		char *header = data;
 		memset(header, ' ', FITS_HEADER_SIZE);
 		add_key(&header, true,  "SIMPLE  =                    T / file conforms to FITS standard");
@@ -1875,8 +1904,8 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			add_key(&header, true,  "OFFSET  = %20.2f / Offset", CCD_OFFSET_ITEM->number.value);
 		if (!CCD_GAMMA_PROPERTY->hidden)
 			add_key(&header, true,  "GAMMA   = %20.2f / Gamma", CCD_GAMMA_ITEM->number.value);
-		add_key(&header, true,  "JD      = %20.8f / JD when the FITS file was created", UT2JD(tv.tv_sec + tv.tv_usec / 1e6));
-		add_key(&header, true,  "DATE-OBS= '%s' / UTC when the FITS file was created", date_time_end);
+		add_key(&header, true,  "JD      = %20.8f / JD when exposure started", UT2JD(tv.tv_sec + tv.tv_usec / 1e6));
+		add_key(&header, true,  "DATE-OBS= '%s' / Observation start time, UT", date_time_start);
 		add_key(&header, true,  "INSTRUME= '%s'%*c / instrument name", device->name, (int)(19 - strlen(device->name)), ' ');
 		if (CCD_LOCAL_MODE_OBJECT_ITEM->text.value[0] != '\0')
 			add_key(&header, true,  "OBJECT  = '%s' / object name", CCD_LOCAL_MODE_OBJECT_ITEM->text.value);

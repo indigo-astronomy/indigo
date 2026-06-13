@@ -1,3 +1,6 @@
+2025.04.30(3.10.1)
+- Fix a issue of Uranus and Xena 585M cameras that when in HDR sensor mode, set hardware bin to 2, there are horizontal stripes on the image.
+
 2025.12.26(3.10.0)
 - Add support for Xena 585M
 

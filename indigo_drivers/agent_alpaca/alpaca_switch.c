@@ -650,7 +650,7 @@ long indigo_alpaca_switch_set_command(indigo_alpaca_device *alpaca_device, int v
 		indigo_alpaca_error result;
 		if (sscanf(param_1, "Id=%d", &id) == 1) {
 			char value[INDIGO_VALUE_SIZE];
-			sscanf(param_2, "Name=%s", value);
+			sscanf(param_2, "Name=%127s", value);
 			result = alpaca_set_setswitchname(alpaca_device, version, id, value);
 		} else {
 			result = indigo_alpaca_error_InvalidValue;

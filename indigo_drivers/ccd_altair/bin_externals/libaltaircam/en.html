@@ -7,7 +7,7 @@
 <body>
 <h1 align="center">Altaircam API Manual</h1>
 <hr/><h1><font color="#0000FF">1. Version &amp; Platform</font></h1>
-<hr/><ul><li>Version: 59.31026.20260322</li></ul>
+<hr/><ul><li>Version: 60.31631.20260606</li></ul>
 <ul><li>Platform<ul>
       <li>Win32:<ul>
           <li>x64: Win7 or above</li>
@@ -76,9 +76,9 @@ The SDK zip file contains all of the necessary resources and information:</p>
 	 <li>arm64/musl: libaltaircam.so, so file for arm64 + musl libc, use toolchain aarch64-linux-musleabi</li>
 	</ul><blockquote>***An easy way to distinguish the target platform armel/armhf/arm64, Execute file /bin/ls on the target platform. The following is the result under a Raspberry Pi, it can be seen that it belongs to armhf:
     <table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>$ file /bin/ls
-/bin/ls: ELF 32-bit LSB executable, ARM, EABI5 version 1 (SYSV), dynamically linked, interpreter /lib/ld-linux-<strong>armhf</strong>.so.3, for GNU/Linux 3.2.0, BuildID[sha1]=67a394390830ea3ab4e83b5811c66fea9784ee69, stripped</pre></td></tr></table>
+/bin/ls: ELF 32-bit LSB executable, ARM, EABI5 version 1 (SYSV), dynamically linked, interpreter /lib/ld-linux-<strong>armhf</strong>.so.3, ...</pre></td></tr></table>
 Another example, which can be seen to belong to x64:<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>$ file /bin/ls
-/bin/ls: ELF 64-bit LSB executable, <strong>x86-64</strong>, version 1 (SYSV), dynamically linked (uses shared libs), for GNU/Linux 2.6.32, BuildID[sha1]=c8ada1f7095f6b2bb7ddc848e088c2d615c3743e, stripped</pre></td></tr></table>
+/bin/ls: ELF 64-bit LSB executable, <strong>x86-64</strong>, version 1 (SYSV), dynamically linked (uses shared libs), ...</pre></td></tr></table>
     </blockquote></li></ul>
  <ul><li>android: libaltaircam.so for Android on arm, arm64, x86 and x64</li></ul>
  <ul><li>mac: For macOS, universal dylib: x64+x86, x64+arm64</li></ul>
@@ -100,8 +100,28 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
 <p>Please distinguish between camera ID (camId) and camera SN:<br/>
 (a) SN is unique and persistent, fixed inside the camera and remains unchanged, and does not change with connection or system restart.<br/>
 (b) Camera ID (camId) may change due to connection or system restart. Enumerate the cameras to get the camera ID, and then call the Open function to pass in the camId parameter to open the camera.</p>
-<h2><font color="#0000FF">b. Modes for accessing image data: "Pull" Mode vs "Push" Mode</font></h2>
-<p>Altaircam offers two modes to obtain image data: Pull Mode and Push Mode. The former is recommended since it's simpler and the application seldom gets stuck in multithreading conditions, especially when using windows message to notify the events.</p>
+<h2><font color="#0000FF">b. Modes for accessing image data: "ImagePtr" mode vs "Frame memory copy" Mode</font></h2>
+<p>1. <a id="imageptr">ImagePtr mode</a></p>
+<p>The application obtains a pointer to the frame buffer directly from the SDK, <strong>eliminating the need to copy frame data and thus improving performance</strong>. It calls <a href="#pullimageptr">Altaircam_PullImagePtr</a> to retrieve the frame buffer and <a href="#pushimageptr">Altaircam_PushImagePtr</a> to return it.</p>
+<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>
+<a id="simageptr">typedef struct {</a>
+    unsigned id;                    /* Each frame buffer is assigned a unique ID, 0 is reserved as an invalid id */
+    unsigned char pixelFormat;      /* ALTAIRCAM_PIXELFORMAT_xxxx */
+    unsigned char ergb;             /* see <a href="#rgb">ALTAIRCAM_OPTION_RGB</a> */
+    unsigned char snapR;            /* see Altaircam_SnapR */
+    unsigned char infoVer;          /* AltaircamFrameInfo version, >= 4 */
+    unsigned reserved;
+    unsigned strideRaw;             /* RAW data stride, 0 means no padding */
+    AltaircamFrameInfoV4* ptrInfo;
+    void* snapCtx;
+    void* ptrRaw;                   /* RAW, see ALTAIRCAM_OPTION_IMAGEPTRRAW */
+    unsigned char* ptr8;            /* 8bits, RGB24, RGB32, Grey8 */
+    unsigned short* ptr16;          /* 16bits RGB48, RGB64, Grey16 */
+} AltaircamImagePtr;
+</pre></td></tr></table>
+<p>2. Frame memory copy (memcpy) mode</p>
+<p>Frame data is memcpy from the SDK internal buffer to the user-provided buffer. Compared to the ImagePtr mode, this introduces an extra copy and results in a performance penalty.</p>
+<p>"Pull mode" and "Push Mode" are Functionally equivalent. The former is recommended since it's simpler and the application seldom gets stuck in multithreading conditions, especially when using windows message to notify the events.</p>
 <ul><li>In Pull Mode, altaircam plays a passive role and the application 'PULL' image data from altaircam. The internal thread of altaircam obtains image data from the camera hardware and saves them to the internal buffers, then notify the application (see below). The application then call functions Altaircam_PullImageV4(V3) or Altaircam_PullImage(WithRowPitch)(V2), Altaircam_PullStillImage(WithRowPitch)(V2) to access image data.</li>
 </ul><blockquote>
  <p>There are to ways to notify applications:</p>
@@ -109,9 +129,10 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
  <p>a) Use Windows message: Start pull mode by using the function Altaircam_StartPullModeWithWndMsg. When event occurs, altaircam will post message (PostMessage) to the specified window. Parameter WPARAM is the event type, refer to the definition of ALTAIRCAM_EVENT_xxxx. This model avoids the multithreading issues, so it's the most simple way. (Obviously, this is only supported in Windows systems, and not supported in Linux and macOS.)</p>
  <p>b) Use Callback function: Start pull mode by using the function Altaircam_StartPullModeWithCallback. When event occurs, altaircam will callback the function PALTAIRCAM_EVENT_CALLBACK.</p>
 </blockquote></blockquote>
-<blockquote>
- <p>In Pull Mode, the SDK could not only notify the application that the image data or still image are available for 'PULL', but also inform you of the other events, such as:</p>
-<div align="center"><table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0"><tr>
+<ul><li>In Push Mode, altaircam plays an active role. Once the video data is obtained from camera by internal thread, altaircam will 'PUSH' the image data to the application through PALTAIRCAM_DATA_CALLBACK. Call the function Altaircam_StartPushMode to start push mode. Push mode is more complex. There are some special precautions, such as multithread issues, being impossible to call Altaircam_Close and Altaircam_Stop in callback function PALTAIRCAM_DATA_CALLBACK_V4/V3, etc.</li>
+</ul>
+<h2><font color="#0000FF">c. Event Notify</font></h2>
+<table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0"><tr>
    <td width="25%">Event</td>
    <td width="7%">Source</td>
    <td width="68%">Description</td>
@@ -189,22 +210,20 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
  </tr><tr>
    <td>ALTAIRCAM_EVENT_HEARTBEAT</td>
    <td>heartbeat, can be used to monitor whether the camera is alive. see <a href="#heartbeat">ALTAIRCAM_OPTION_HEARTBEAT</a></td>
- </tr></table></div></blockquote>
-<ul>
-  <li>In Push Mode, altaircam plays an active role. Once the video data is obtained from camera by internal thread, altaircam will 'PUSH' the image data to the application through PALTAIRCAM_DATA_CALLBACK. Call the function Altaircam_StartPushMode to start push mode. Push mode is more complex. There are some special precautions, such as multithread issues, being impossible to call Altaircam_Close and Altaircam_Stop in callback function PALTAIRCAM_DATA_CALLBACK_V4/V3, etc.</li>
-</ul><h2><font color="#0000FF">c. <a id="stillcapture">Still Capture (Still Image)</a></font></h2>
+ </tr></table>
+<h2><font color="#0000FF">d. <a id="stillcapture">Still Capture (Still Image)</a></font></h2>
 <p>Most cameras support the so-called still capture capability. This function switches the camera to another resolution temporarily when the camera is in preview mode, after a "still" image in the new resolution is captured and then switch back to the original resolution and resume preview mode.</p>
 <p>For example, UCMOS05100KPA support 3 resolutions and the current one in preview mode is 1280 * 960. Call Altaircam_Snap(h, 0) to "still capture" an image in 2592 * 1944 resolution. To realize this function, the camera will temporarily switch to 2592 * 1944 firstly, get an image in 2592 * 1944 resolution and then switch back to 1280 * 960 and resume preview.</p>
 <blockquote>a) In pull mode operation, after the still capture, ALTAIRCAM_EVENT_STILLIMAGE will be sent out for external acknowledgement. The external application should call Altaircam_PullImageV4(V3) or Altaircam_PullStillImage(V2) to get the still captured image.</blockquote>
 <blockquote>b) In push mode operation, after the still capture, the callback function PALTAIRCAM_DATA_CALLBACK_V4/V3 will be called with bSnap parameter setting TRUE. The image information including the resolution information will be obtained via the parameter pHeader.</blockquote>
 <p>To check whether the camera have the still capture capability, call Altaircam_get_StillResolutionNumber function or check the still field of the struct AltaircamModelV2.</p>
-<h2><font color="#0000FF"><a id="raw">d. Data format: RGB vs RAW</a></font></h2>
+<h2><font color="#0000FF"><a id="raw">e. Data format: RGB vs RAW</a></font></h2>
 <p>Altaircam supports two data formats: RGB format (default) and RAW format. RAW format could be enabled by assigning ALTAIRCAM_OPTION_RAW parameter to 1 when calling Altaircam_put_Option function.</p>
 <ul><li>RGB format: The output of every pixel contains 3 componants which stand for R/G/B value respectively. This output is a processed output from the internal color processing engine.</li></ul>
 <ul><li>RAW format: In this format, the output is the raw data directly output from the sensor. The RAW format is for the users that want to skip the internal color processing and obtain the raw data for user-specific purpose (RAW = -1 slightly different, indicating partial processing). With the raw format output enabled, the functions that are related to the internal color processing will not work, such as Altaircam_put_Hue or Altaircam_AwbOnce function and so on.</li></ul>
 <p>Users could switch these two format by calling Altaircam_put_Option function with different value setting to <a href="#rawo">ALTAIRCAM_OPTION_RAW</a>. You change this option only when camera is NOT running.</p>
 <p>Users could change RGB bits by calling Altaircam_put_Option with different value setting to <a href="#rgb">ALTAIRCAM_OPTION_RGB</a>. You change this option only when camera is NOT running.</p>
-<h2><font color="#0000FF"><a id="wb">e. White Balance and Auto White Balance: Temp/Tint mode vs RGB Gain mode</a></font></h2>
+<h2><font color="#0000FF"><a id="wb">f. White Balance and Auto White Balance: Temp/Tint mode vs RGB Gain mode</a></font></h2>
 <p>1. Altaircam sdk supports two independent modes for white balance: a) Temp/Tint Mode; b) RGB Gain Mode</p>
 <blockquote>
 <p>a) Temp/Tint mode is the default white balance mode. In this mode, temp and tint are the parameters that could be used to control the white balance. Altaircam_get_TempTint function is used to acquire the temp and tint values and Altaircam_put_TempTint is used to set the temp and tint values. Function Altaircam_AwbOnce is used to execute the auto white balance. When the white balance parameters change, ALTAIRCAM_EVENT_TEMPTINT event will be notified for external use.</p>
@@ -218,7 +237,7 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
 </blockquote>
 <p>2. There are two auto white balance mechanisms available in this field: one is continuous auto white balance and the other is a "once" auto white balance. The white balance parameters will be always calculated and updated for the continuous auto white balance mechanism. For "once" auto white balance mechanism, the white balance parameters will be calculated and updated only when triggered. Altaircam cameras support "once" auto white balance mechanism since it is more accurate and propriate for the microscope application, especially when the background is in pure color. Continuous white balance mechanism will encounter some problem in some cases.</p>
 <p>3. Monochromatic camera does not support white balance. The functions metioned above always return E_NOTIMPL.</p>
-<h2><font color="#0000FF">f. <a id="trigger">Trigger Mode</a></font></h2>
+<h2><font color="#0000FF">g. <a id="trigger">Trigger Mode</a></font></h2>
 <p>1. What is Trigger Mode</p>
 	<blockquote>
 		Altaircam camera has two working modes: video mode and trigger mode. When in trigger mode, no images will be available until the trigger conditions are met. Cameras have 2 types for triggering according to the types of trigger source, including software trigger mode, external trigger mode and simulated trigger mode.
@@ -269,7 +288,7 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
 	<blockquote>
 	The timeout is recommended for not less than (Exposure Time * 102% + 4 Seconds).
 	</blockquote>
-<h2><font color="#0000FF">g. Thread safe</font></h2>
+<h2><font color="#0000FF">h. Thread safe</font></h2>
 <p>We use a "thread-safety neutral" policy (similar to C++ standard library), which means:</p>
 <blockquote>
 <p>a) A camera object is thread-safe for reading from multiple threads. For example, given a camera object A, it is safe to read A from thread 1 and from thread 2 simultaneously.</p>
@@ -277,13 +296,14 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
 <p>c) It's safe to read and write to one camera object even if another thread is reading or writing to a different camera object. For example, given camera objects A and B, it's safe when A is being written in thread 1 and B is being read or write in thread 2.</p>
 <p>d) It's safe to pull image from multi threads</p>
 </blockquote>
-<h2><font color="#0000FF">h. Log file</font></h2>
+<h2><font color="#0000FF">i. Log file</font></h2>
 <p>The SDK does not output logs by default. If there is a file with the same name and extension *.log in the directory where the SDK library file is located and it has <strong>write permission</strong>, the log will be enabled and recorded in this file:</p>
 <blockquote>
 <p>a) The log file name is exactly the same as the library file, and the extension is changed to *.log (e.g. altaircam.dll corresponds to the log file altaircam.log; xyz.dll to xyz.log; libxyz.so to libxyz.log)</p>
 <p>b) The log file time uses relative time by default, and the SDK startup time is recorded as [00:00:00.000]. If you want to use local time (e.g. [0923 17:11:01.491]), add the letter "l" to *.log (i.e. *.llog)</p>
 <p>c) By default, the log file content is automatically cleared every time SDK is started, and the log is written from the beginning. Adding the letter "a" to *.log means that the append mode is used, and the log file content is not cleared when SDK is restarted (i.e. *.alog)</p>
-<p>d) <strong>Please make sure that the program has write permission to the log file</strong>(For example, if the program is installed in the Program Files directory, it often happens that the log file cannot be written in non-administrator mode. It is recommended to run the program in administrator mode or modify the permission of the log file.)</p>
+<p>d) By default, logging is written to file synchronously. If logging is suspected to block normal operations, append the letter “s” to the *.log file name to enable asynchronous logging (i.e. *.slog)</p>
+<p>e) <strong>Please make sure that the program has write permission to the log file</strong>(For example, if the program is installed in the Program Files directory, it often happens that the log file cannot be written in non-administrator mode. It is recommended to run the program in administrator mode or modify the permission of the log file.)</p>
 </blockquote>
 <hr/><h1><font color="#0000FF">4. Functions</font></h1><hr/>
 <ul><li><h2><font color="#0000FF"><a id="hresult">HRESULT return value</a></font></h2>
@@ -763,7 +783,7 @@ for (UsbDevice usbDevice : deviceList.values()) {
     <blockquote>
       <p>HAltaircam h: camera handle</p>
       <p>HWND hWnd: event occurs, message will be posted in this window</p>
-      <p>UINT nMsg: Windows custom message type. Its WPARAM parameter means event type ALTAIRCAM_EVENT_xxxx, LPARAM is useless (always zero)</p>
+      <p>unsigned nMsg: Windows custom message type. Its WPARAM parameter means event type ALTAIRCAM_EVENT_xxxx, LPARAM is useless (always zero)</p>
       <p>PALTAIRCAM_EVENT_CALLBACK funEvent, void* ctxEvent: callback function specified by user's application and callback context parameter.</p>
         <table width="100%" border="0"><tr>
             <td bgcolor="#B0D0B0"><div align="center">typedef void (*PALTAIRCAM_EVENT_CALLBACK)(unsigned nEvent, void* ctxEvent);</div></td>
@@ -771,12 +791,38 @@ for (UsbDevice usbDevice : deviceList.values()) {
 		<p>see <a href="#callback">here</a>.</p>
       </blockquote>
     <p><strong>Remarks:</strong> Obviously, Altaircam_StartPullModeWithWndMsg is only supported in Windows OS.</p>
-</li></ul><ul><li><h2><font color="#0000FF"><a id="infov2">Altaircam_PullImageV4<br/>Altaircam_WaitImageV4<br/>Altaircam_PullImageV3<br/>Altaircam_WaitImageV3<br/>Altaircam_PullImageV2<br/>Altaircam_PullStillImageV2<br/>Altaircam_PullImageWithRowPitchV2<br/>Altaircam_PullStillImageWithRowPitchV2</a><br/>
+</li></ul>
+<ul><li><h2><font color="#0000FF"><a id="pullimageptr">Altaircam_PullImagePtr</a><br/>Altaircam_WaitImagePtr</font></h2>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+      <p>HAltaircam h: camera handle</p>
+      <p>int bStill: to pull still image, set to 1, otherwise 0</p>
+      <p>unsigned waitMS: The timeout interval, in milliseconds. If a non-zero value is specified, the function either successfully fetches the image or waits for a timeout. If waitMS is zero, the function does not wait when there are no images to fetch; It always returns immediately; this is equal to Altaircam_PullImagePtr.</p>
+	  <p><a href="#simageptr">AltaircamImagePtr</a>* ptrImage: Frame buffer</p></blockquote>
+    <p><strong>Remarks:</strong> Use the <a href="#imageptr">ImagePtr</a> mode to fetch frame buffer.</p>
+</li></ul>
+<ul><li><h2><font color="#0000FF"><a id="pushimageptr">Altaircam_PushImagePtr</a></font></h2>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+      <p>HAltaircam h: camera handle</p>
+      <p>unsigned ptrId: Frame buffer ID</p></blockquote>
+    <p><strong>Remarks:</strong> After a frame buffer has been used, it must be returned to the SDK for reuse. Please note the following:</p>
+		<blockquote>
+		<p>(a) The frame buffer must only be returned back after it is no longer in use. Any access after returning it is unsafe, as the SDK may have already reused the buffer and overwritten the memory with new data.</p>
+		<p>(b) If a frame buffer is not returned, the pool of available buffers will gradually decrease.</p>
+		<p>(c) Each frame buffer obtained via Pull (identified by its ID) may be returned only once; duplicate returns are not allowed.</p>
+		<p>(d) The return order <strong>does not need to match</strong> the Pull order; buffers may be <strong>returned out of order</strong>.</p>
+		<p>(e) Frame buffers that have not been returned remain valid after Altaircam_Stop. Frame buffers that have not been returned become invalid immediately after Altaircam_Close.</p>
+		</blockquote>
+</li></ul>
+<ul><li><h2><font color="#0000FF"><a id="infov2">Altaircam_PullImageV4<br/>Altaircam_WaitImageV4<br/>Altaircam_PullImageV3<br/>Altaircam_WaitImageV3<br/>Altaircam_PullImageV2<br/>Altaircam_PullStillImageV2<br/>Altaircam_PullImageWithRowPitchV2<br/>Altaircam_PullStillImageWithRowPitchV2</a><br/>
 			Altaircam_PullImage<br/>Altaircam_PullStillImage<br/><a id="rowpitch1">Altaircam_PullImageWithRowPitch</a><br/><a id="rowpitch2">Altaircam_PullStillImageWithRowPitch</a></font></h2>
       <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure. <strong>Return E_PENDING when there isn't image ready for pull</strong>.</p>
       <p><strong>Parameters:</strong></p>
       <blockquote><p>HAltaircam h: camera handle</p>
-	  <p>nWaitMS: The timeout interval, in milliseconds. If a non-zero value is specified, the function either successfully fetches the image or waits for a timeout. If nWaitMS is zero, the function does not wait when there are no images to fetch; It always returns immediately; this is equal to Altaircam_PullImageV4(V3).</p>
+	  <p>unsigned waitMS: The timeout interval, in milliseconds. If a non-zero value is specified, the function either successfully fetches the image or waits for a timeout. If waitMS is zero, the function does not wait when there are no images to fetch; It always returns immediately; this is equal to Altaircam_PullImageV4(V3).</p>
     <p>void* pImageData: Data buffer. Users have to make sure that the data buffer capacity is enough to save the image data, data buffer capacity must &gt;= rowPitch * nHeight.</p>
     <p>int bStill: to pull still image, set to 1, otherwise 0</p>
     <p>int bits: 24, 32, 48, 8, 16, 64, means RGB24, RGB32, RGB48, 8 bits grey, 16 bits grey or RGB64 images. bits = 0 means using default bits base on <a href="#rgb">ALTAIRCAM_OPTION_RGB</a>. This parameter is ignored in RAW mode.</p>
@@ -833,7 +879,7 @@ typedef struct {
 </blockquote><p><strong>Remarks:</strong> when pImageData is NULL, while pInfo or pnWidth, pnHeight are not NULL, you can "peek" the meta data of images such as width and height.</p>
   <blockquote><p>(a) When bits and ALTAIRCAM_OPTION_RGB are inconsistent, format conversion will have to be performed, resulting in loss of efficiency. See the following bits and ALTAIRCAM_OPTION_RGB correspondence table:</p>
   <div align="center"><table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
-    <tr><td width="34%">ALTAIRCAM_OPTION_RGB</td>
+    <tr><td width="34%"><a href="#rgb">ALTAIRCAM_OPTION_RGB</a></td>
     <td width="11%">0 (RGB24)</td>
     <td width="11%">1 (RGB48)</td>
     <td width="11%">2 (RGB32)</td>
@@ -964,7 +1010,7 @@ typedef struct {
   <p><strong>Parameters:</strong></p>
   <blockquote>
     <p>HAltaircam h: camera handle</p>
-	<p>unsigned nWaitMS: The timeout interval, in milliseconds. If nWaitMS is zero, it means using the default value (exposure time * 102% + 4000 milliseconds), 0xffffffff means waiting forever, and other values represent the specific number of milliseconds.</p>
+	<p>unsigned waitMS: The timeout interval, in milliseconds. If waitMS is zero, it means using the default value (exposure time * 102% + 4000 milliseconds), 0xffffffff means waiting forever, and other values represent the specific number of milliseconds.</p>
 <p>void* pImageData：Data buffer. Users have to make sure that the data buffer capacity is enough to save the image data, data buffer capacity must &gt;= rowPitch * nHeight.</p>
     <p>int bits: 24, 32, 48, 8, 16, 64, means RGB24, RGB32, RGB48, 8 bits grey, 16 bits grey or RGB64 images. bits = 0 means using default bits base on <a href="#rgb">ALTAIRCAM_OPTION_RGB</a>. This parameter is ignored in RAW mode.</p>
     <p>int rowPitch: the distance from one row to the next row, =0 means using the default row pitch, =-1 means minimum row pitch (zero padding)</p>
@@ -1146,8 +1192,11 @@ typedef struct {
       	<td><b>No</b><br/>(The return value is E_UNEXPECTED when set this option while camera is running)</td>
       </tr><tr>
       	<td><a id="blacklevel">ALTAIRCAM_OPTION_BLACKLEVEL</a></td><td>RW</td>
-      	<td>Black Level<br/>
-      			Always return E_NOTIMPL for camera that don't support black level.</td>
+      	<td>The black level refers to the baseline signal value output by an image sensor under no-light (completely dark) conditions.<br/>
+		In digital imaging systems, a fixed voltage offset is intentionally added to the signal to ensure that dark-region signals remain above zero, thereby preventing the loss of faint shadow details during A/D conversion.<br/>
+		(a) Prevent clipping: The sensor circuit's intrinsic noise may occasionally produce negative values. Without an offset, these negative values would be forcibly clipped to zero, resulting in the loss of shadow details.<br/>
+		(b) Preserve linearity: Raising the black level helps ensure that the sensor maintains consistent linear output behavior across the entire dynamic range.<br/>
+		Always return E_NOTIMPL for camera that don't support black level.</td>
       	<td>0</td><td>Yes</td>
       </tr><tr>
       	<td>ALTAIRCAM_OPTION_MULTITHREAD</td><td>RW</td>
@@ -1349,12 +1398,12 @@ ALTAIRCAM_PIXELFORMAT_RAW10PACK
         <td><a id="frontend">ALTAIRCAM_OPTION_FRONTEND_DEQUE_LENGTH</a><br/>or<br/>ALTAIRCAM_OPTION_FRAME_DEQUE_LENGTH</td><td>RW</td>
         <td>frontend (raw) frame deque length, range: [2, 1024]<br/>All the memory will be pre-allocated when the camera starts, so, please attention to memory usage</td>
 		<td>4</td>
-      	<td><b>No</b><br/>(The return value is E_UNEXPECTED when set this option while camera is running)</td>
+      	<td>USB: Yes<br/>GigE: Not supported with gigepdrv; supported with others<br/>CL&amp;CXP: depends on the frame grabber</td>
       </tr><tr>
         <td><a id="backend">ALTAIRCAM_OPTION_BACKEND_DEQUE_LENGTH</a></td><td>RW</td>
         <td>backend (pipelined) frame deque length (Only available in pull mode), range: [2, 1024]<br/>All the memory will be pre-allocated when the camera starts, so, please attention to memory usage</td>
 		<td>3</td>
-      	<td><b>No</b><br/>(The return value is E_UNEXPECTED when set this option while camera is running)</td>
+      	<td>Yes</td>
       </tr><tr>
         <td>ALTAIRCAM_OPTION_SEQUENCER_ONOFF</td><td>RW</td>
         <td>sequencer trigger: on/off</td>
@@ -1659,7 +1708,8 @@ ALTAIRCAM_PIXELFORMAT_RAW10PACK
                                                                     23 =&gt; turbo<br/>
 																	24 =&gt; red<br/>
 																	25 =&gt; green<br/>
-																	26 =&gt; blue</td>
+																	26 =&gt; blue<br/>
+																	27 =&gt; spectrum</td>
       	<td>0</td><td>Yes</td>
       </tr><tr>
       	<td>ALTAIRCAM_OPTION_NUMBER_DROP_FRAME</td><td>RO</td>
@@ -1774,7 +1824,19 @@ Because of it, if the adjustment becomes a problem, this setting is introduced f
       	<td>NA</td><td>NA</td></tr><tr>
       	<td>ALTAIRCAM_OPTION_BITRANGE</td><td>RW</td>
       	<td>Bit range: [0, 8], see: <a href="./images/bitrange.png">snapshot</a></td>
-      	<td>0</td><td>Yes</td></tr>
+      	<td>0</td><td>Yes</td></tr><tr>
+      	<td>ALTAIRCAM_OPTION_SCANTYPE</td><td>RW</td>
+      	<td>Scan Type:<br/>0=&gt;linescan<br/>1=&gt;areascan</td>
+      	<td>Model Specific</td><td>Yes</td></tr><tr>
+      	<td>ALTAIRCAM_OPTION_OPERATIONMODE</td><td>RW</td>
+      	<td>TDI Operation Mode:<br/>1=&gt;area<br/>2=&gt;TDI</td>
+      	<td>Model Specific</td><td>Yes</td></tr><tr>
+      	<td>ALTAIRCAM_OPTION_TDITRIGGERMODE</td><td>RW</td>
+      	<td>TDI Trigger Mode:<br/>1=&gt;normal<br/>2=&gt;both</td>
+      	<td>Model Specific</td><td>Yes</td></tr><tr>
+      	<td>ALTAIRCAM_OPTION_TDISTAGE</td><td>RW</td>
+      	<td>TDI Trigger Stage: sensor scan stage</td>
+      	<td>Model Specific</td><td>Yes</td></tr>
 </table></div></blockquote><blockquote>
 <p><strong>Important:</strong></p>
 <p>a. RW = <strong>R</strong>ead/<strong>W</strong>rite; RO = <strong>R</strong>ead <strong>O</strong>nly; WO = <strong>W</strong>rite <strong>O</strong>nly</p>
@@ -1791,7 +1853,8 @@ Because of it, if the adjustment becomes a problem, this setting is introduced f
           <blockquote>use minimum frame buffer. When new frame arrive, drop all the pending frame regardless of whether the frame buffer is full<br/>
           If DDR present, also limit the DDR frame buffer to only one frame.</blockquote>
     2: soft realtime
-          <blockquote>Drop the oldest frame when the queue is full and then enqueue the new frame</blockquote>
+          <blockquote>use minimum frame buffer. When new frame arrive, drop all the pending frame regardless of whether the frame buffer is full<br/>
+          If DDR present, DDR frame buffer unchanged.</blockquote>
     </blockquote></blockquote>
     <p><strong>Remarks:</strong> If you set RealTime mode as 1, then you get shorter frame delay but lower frame rate which damages fluency. The default value is 0.</p>
 </li></ul><ul><li><h2><font color="#0000FF">Altaircam_get_AutoExpoEnable<br/>Altaircam_put_AutoExpoEnable<br/>Altaircam_get_AutoExpoTarget<br/>
@@ -1949,7 +2012,7 @@ Altaircam_put_Brightness<br/>Altaircam_get_Brightness<br/>Altaircam_get_Contrast
       <blockquote><p>HAltaircam h: camera handle</p><p>RECT: rectangle, minimum width &amp; height: 4</p></blockquote>
       <p><strong>Remarks:</strong> set/get the rectangle of automatic white balance and auto-exposure and automatic black balance. The default Rectangle is in the center of the image, its width is 20% image with, its height is 20% image height.</p>
 	  <p><strong>Pay attention to that the coordinate is always relative to the original resolution</strong>, see <a href="#cord">here</a>.</p>
-	  <p>For mono camera, white balance and black balance always return E_NOTIMPL.</p>
+	  <p>For mono camera, white balance always return E_NOTIMPL.</p>
 </li></ul><ul><li><h2><font color="#0000FF">Altaircam_get_MonoMode</font></h2>
     <p><strong>Return value: </strong> S_OK means mono mode, S_FALSE means color mode</p>
     <p><strong>Parameters:</strong></p>
@@ -2405,16 +2468,21 @@ Restore all NIC: Set-NetFirewallProfile -Name Private,Public,Domain -DisabledInt
 <h2><font color="#0000FF">d. The automatic camera discovery process uses broadcast packets with the address 255.255.255.255. Please ensure that your system's security policies do not block network broadcasts.</font></h2>
 <hr/><h1><font color="#0000ff">9. Samples</font></h1><hr/>
 <div align="center"><table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0"><tr>
-        <td width="14%" colspan="2">Name</td>
+        <td width="16%" colspan="2">Name</td>
         <td width="8%">Platform</td>
-        <td width="6%">Language</td><td width="6%">Dependency</td><td width="6%">UI</td>
-        <td width="60%">Description</td>
+        <td width="6%">Language</td>
+		<td width="6%">Dependency</td>
+		<td width="6%">UI</td>
+        <td width="58%">Description</td>
       </tr><tr>
 		<td colspan="2">demosimplest</td>
-		<td rowspan="12">Win32<br/>Linux<br/>macOS<br/>Android</td>
-		<td rowspan="24">C++</td><td rowspan="12">&nbsp;</td>
-		<td rowspan="12">console</td>
+		<td rowspan="13">Win32<br/>Linux<br/>macOS<br/>Android</td>
+		<td rowspan="25">C++</td><td rowspan="13">&nbsp;</td>
+		<td rowspan="13">console</td>
 		<td>simplest sample, about 70 lines of code. <a href="./images/demosimplest.png">snapshot</a>.</td>
+	  </tr><tr>
+		<td colspan="2">imageptrsimplest</td>
+		<td>simplest sample for <a href="#imageptr">ImagePtr</a> mode, about 50 lines of code</td>
 	  </tr><tr>
 		<td colspan="2">gigesimplest</td>
 		<td>simplest sample for GigE camera, about 75 lines of code</td>
@@ -2449,10 +2517,10 @@ Restore all NIC: Set-NetFirewallProfile -Name Private,Public,Domain -DisabledInt
 		<td colspan="2">demostillraw</td>
 		<td>snap still raw image and save to *.raw files, about 140 lines of code</td>
 	  </tr><tr>
-		<td colspan="2">demoqt</td>
+		<td colspan="2">demoqt<br/>imageptrqt</td>
 		<td rowspan="3">Win32<br/>Linux<br/>macOS</td>
 		<td rowspan="3">Qt</td><td rowspan="19">GUI</td>
-		<td>Qt sample, <a href="./images/demoqt.png">snapshot</a>.<br/>Enumerate device, open device, video preview, (still) image capture, preview resolution, image save to file, etc. This sample use Pull Mode, StartPullModeWithCallback.</td>
+		<td>Qt sample, <a href="./images/demoqt.png">snapshot</a>.<br/>The use of <a href="#imageptr">ImagePtr</a> mode is what distinguishes the two examples.<br/>Enumerate device, open device, video preview, (still) image capture, preview resolution, image save to file, etc. This sample use Pull Mode, StartPullModeWithCallback.</td>
 	  </tr><tr>
 		<td colspan="2">demotwoqt</td>
 		<td>Qt sample, <a href="./images/demotwoqt.png">snapshot</a>.<br/>Use two cameras simultaneously</td>
@@ -2460,9 +2528,9 @@ Restore all NIC: Set-NetFirewallProfile -Name Private,Public,Domain -DisabledInt
 		<td colspan="2">demolinecam</td>
 		<td>Qt sample.<br/>line scan camera</td>
 	  </tr><tr>
-		<td colspan="2">democpp</td><td rowspan="9">Win32</td>
+		<td colspan="2">democpp<br/>imageptrcpp</td><td rowspan="9">Win32</td>
 		<td rowspan="6">ATL/<a href="http://sourceforge.net/projects/wtl" target="_blank">WTL</a></td>
-		<td><a href="./images/democpp.png">snapshot</a>. demonstrates to enumerate device (Respone to <a href="#hotplugnotify">device plugin/unplug notifications</a>), <a href="#apigige">initialize support GigE</a>, open device, video preview, image capture, preview resolution, trigger, image saving multi-format (.bmp, .jpg, .png, etc), wmv format video recording, trigger mode, IO control, read write EEPROM/FLASH, etc. This sample use Pull Mode. To keep the code clean, this sample uses the WTL library which can be downloaded from <a href="http://sourceforge.net/projects/wtl" target="_blank">http://sourceforge.net/projects/wtl</a></td>
+		<td><a href="./images/democpp.png">snapshot</a>.<br/>The use of <a href="#imageptr">ImagePtr</a> mode is what distinguishes the two examples.<br/>demonstrates to enumerate device (Respone to <a href="#hotplugnotify">device plugin/unplug notifications</a>), <a href="#apigige">initialize support GigE</a>, open device, video preview, image capture, preview resolution, trigger, image saving multi-format (.bmp, .jpg, .png, etc), wmv format video recording, trigger mode, IO control, read write EEPROM/FLASH, etc. This sample use Pull Mode. To keep the code clean, this sample uses the WTL library which can be downloaded from <a href="http://sourceforge.net/projects/wtl" target="_blank">http://sourceforge.net/projects/wtl</a></td>
 	  </tr><tr>
 		<td colspan="2">democallback</td>
 		<td><a href="./images/democallback.png">snapshot</a>. use Pull Mode, StartPullModeWithCallback</td>
@@ -2479,9 +2547,9 @@ Restore all NIC: Set-NetFirewallProfile -Name Private,Public,Domain -DisabledInt
 		<td colspan="2">triggertest</td>
 		<td><a href="./images/triggertest.png">snapshot</a>. Soft trigger test, use a background thread to save the image file to disk (SSD is recommended, otherwise, when the disk speed is insufficient, the storage speed will not be able to keep up, more and more images will be stored in the deque, and the memory consumption will also increase).</td>
 	  </tr><tr>
-		<td colspan="2">demomfc</td>
+		<td colspan="2">demomfc<br/>imageptrmfc</td>
 		<td rowspan="3">MFC</td>
-		<td><a href="./images/demomfc.png">snapshot</a>. use MFC as the GUI library. It demonstrates to open device, video preview, image capture, set the preview resolution, multi-format image saving (.bmp, .jpg, .png, etc). This sample use Pull Mode</td>
+		<td><a href="./images/demomfc.png">snapshot</a>.<br/>The use of <a href="#imageptr">ImagePtr</a> mode is what distinguishes the two examples.<br/>use MFC as the GUI library. It demonstrates to open device, video preview, image capture, set the preview resolution, multi-format image saving (.bmp, .jpg, .png, etc). This sample use Pull Mode</td>
 	  </tr><tr>
 		<td colspan="2">demod3d11</td>
 		<td>Similar to demomfc, but uses D3D11 to display video</td>
@@ -2493,9 +2561,9 @@ Restore all NIC: Set-NetFirewallProfile -Name Private,Public,Domain -DisabledInt
 		<td rowspan="5">.NET</td><td rowspan="4">C#</td><td>WPF</td>
 		<td>WPF sample, <a href="./images/demowpf.png">snapshot</a>.<br/>Enum camera, open camera, preview video, captuare (still) image, save image to file, auto exposure, white balance, calculate fps (frame per second), etc. This sample use Pull Mode, StartPullModeWithCallback</td>
 	  </tr><tr>
-		<td colspan="2">demowinformcs</td>
+		<td colspan="2">demowinformcs<br/>imageptrwinform</td>
 		<td rowspan="4">WinForm</td>
-		<td>winform sample, <a href="./images/demowinformcs.png">snapshot</a>.<br/>Enum camera, open camera, preview video, captuare (still) image, save image to file, auto exposure, white balance, calculate fps (frame per second), etc. This sample use Pull Mode, StartPullModeWithCallback</td>
+		<td>winform sample, <a href="./images/demowinformcs.png">snapshot</a>.<br/>The use of <a href="#imageptr">ImagePtr</a> mode is what distinguishes the two examples.<br/>Enum camera, open camera, preview video, captuare (still) image, save image to file, auto exposure, white balance, calculate fps (frame per second), etc. This sample use Pull Mode, StartPullModeWithCallback</td>
 	  </tr><tr>
 		<td colspan="2">demopushcs</td>
 		<td>winform sample, use Push Mode</td>
@@ -2515,12 +2583,12 @@ Restore all NIC: Set-NetFirewallProfile -Name Private,Public,Domain -DisabledInt
 		<td>Android</td><td>Java<br/>C++</td><td>Android sample</td>
 	  </tr><tr>
 		<td rowspan="3"><a id="demojava">demojava</a></td>
-		<td>simplest</td>
+		<td>simplest<br/>imageptrsimplest</td>
 		<td rowspan="6">Win32<br/>Linux<br/>macOS</td>
 		<td rowspan="3">Java</td>
 		<td rowspan="3"><a href="http://sourceforge.net/projects/wtl" target="_blank">jna</a></td>
 		<td>console</td>
-		<td>simplest java sample. IntelliJ project</td>
+		<td>simplest java sample. IntelliJ project<br/>The use of <a href="#imageptr">ImagePtr</a> mode is what distinguishes the two examples</td>
 	  </tr><tr>
 		<td>javafx</td><td rowspan="2">GUI</td>
 		<td>javafx sample. IntelliJ project</td>
@@ -2528,12 +2596,12 @@ Restore all NIC: Set-NetFirewallProfile -Name Private,Public,Domain -DisabledInt
 		<td>swing</td><td>swing sample. IntelliJ project</td>
 	  </tr><tr>
 		<td rowspan="3"><a id="demopython">demopython</a></td>
-		<td>simplest</td><td rowspan="3">Python</td><td rowspan="2"></td><td rowspan="2">console</td>
-		<td>simplest python sample</td>
+		<td>simplest<br/>imageptrsimplest</td><td rowspan="3">Python</td><td rowspan="2"></td><td rowspan="2">console</td>
+		<td>simplest python sample<br/>The use of <a href="#imageptr">ImagePtr</a> mode is what distinguishes the two examples</td>
 	  </tr><tr>
 		<td>gigesimplest</td><td>simplest python sample to support GigE camera</td>
 	  </tr><tr>
-		<td>qt5<br/>qt6</td><td>PyQt</td><td rowspan="12">GUI</td>
+		<td>qt5<br/>qt6</td><td>PyQt</td><td rowspan="13">GUI</td>
 		<td>PyQt sample, <a href="./images/pyqt.png">snapshot</a>.</td>
 	  </tr><tr>
 		<td colspan="2"><a id="demodshow">demodshow</a></td>
@@ -2562,14 +2630,14 @@ Restore all NIC: Set-NetFirewallProfile -Name Private,Public,Domain -DisabledInt
 		<td>OpenCV</td>
 		<td>opencv sample</td>
 	  </tr><tr>
-		<td rowspan="5">imagepro</td>
+		<td rowspan="6">imagepro</td>
 		<td rowspan="2">liveedf</td>
-		<td rowspan="5">Win32</td>
+		<td rowspan="6">&nbsp;</td>
 		<td>C++</td><td>Qt</td>
-		<td>Qt sample, <a href="./images/liveedfqt.png">snapshot</a>.</td>
+		<td>EDF (Extended Depth of Field), Qt sample, <a href="./images/liveedfqt.png">snapshot</a>.</td>
 	  </tr><tr>
 		<td>C#</td><td>WinForm</td>
-		<td>C# sample, <a href="./images/liveedfcs.png">snapshot</a>.</td>
+		<td>EDF (Extended Depth of Field), C# sample, <a href="./images/liveedfcs.png">snapshot</a>.</td>
 	  </tr><tr>
 		<td rowspan="2">livestack</td>
 		<td>C++</td><td>Qt</td>
@@ -2578,12 +2646,16 @@ Restore all NIC: Set-NetFirewallProfile -Name Private,Public,Domain -DisabledInt
 		<td>C#</td><td>WinForm</td>
 		<td>C# sample, <a href="./images/livestackcs.png">snapshot</a>.</td>
 	  </tr><tr>
-		<td>demostitch</td>
+		<td rowspan="2">livestitch</td>
 		<td>C++</td><td>Qt</td>
-		<td>Qt sample</td>
+		<td>Stitch, Qt sample</td>
+	  </tr><tr>
+	  <td>C#</td><td>WinForm</td>
+		<td>Stitch, C# sample</td>
 	  </tr>
 </table></div>
 <hr/><h1><font color="#0000FF">10. Changelog</font></h1><hr/>
+<p>v60: Add ImagePtr mode. Please see <a href="#imageptr">here</a></p>
 <p>v59: Add RAW=-1 mode. Please see <a href="#rawo">here</a></p>
 <p>v58: Open the camera by sn, name (GigE: ip, mac)</p>
 <p>v57: Add Altaircam_PullImageV4, AltaircamFrameInfoV4, GPS</p>

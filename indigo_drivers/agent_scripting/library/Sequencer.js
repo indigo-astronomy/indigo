@@ -327,7 +327,7 @@ Sequence.prototype.capture_stream = function(p1, p2, p3) {
 	if (arguments.length === 3 && typeof p1 === 'string') {
 		this.sequence.push({ execute: 'set_local_mode(null, "' + name_template + '", null)', step: this.step, progress: this.progress++, exposure: this.exposure });
 	}
-	this.sequence.push({ execute: 'set_stream(' + count + ',' + exposure + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'set_batch(' + count + ',' + exposure + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'set_upload_mode("BOTH")', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'capture_stream()', step: this.step++, progress: this.progress++, exposure: this.exposure });
 	this.exposure += exposure * count;
@@ -466,15 +466,15 @@ var indigo_flipper = {
 
 	on_update: function(property) {
 		if (this.waiting_for_transit) {
-			indigo_log("waiting_for_transit " + property.name + " → " + property.state);
+			indigo_log("waiting_for_transit " + property.name + " -> " + property.state);
 		} else if (this.waiting_for_slew) {
-			indigo_log("waiting_for_slew " + property.name + " → " + property.state);
+			indigo_log("waiting_for_slew " + property.name + " -> " + property.state);
 		} else if (this.waiting_for_sync_and_center) {
-			indigo_log("waiting_for_sync_and_center " + property.name + " → " + property.state);
+			indigo_log("waiting_for_sync_and_center " + property.name + " -> " + property.state);
 		} else if (this.waiting_for_guiding) {
-			indigo_log("waiting_for_guiding " + property.name + " → " + property.state);
+			indigo_log("waiting_for_guiding " + property.name + " -> " + property.state);
 		} else if (this.waiting_for_settle_down) {
-			indigo_log("waiting_for_settle_down " + property.name + " → " + property.state);
+			indigo_log("waiting_for_settle_down " + property.name + " -> " + property.state);
 		}
 		if (this.waiting_for_transit && property.device == this.devices[MOUNT_AGENT] && property.name == "AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY") {
 			if (property.items.FLIP_REQUIRED == 1) {
@@ -643,7 +643,7 @@ var indigo_sequencer = {
 			indigo_flipper.start(this.use_solver);
 		} else if (this.sequence != null) {
 			if (property.device == this.wait_for_device && property.name == this.wait_for_property) {
-				indigo_log("wait_for '" + property.device + " → " + property.name + "' → " + property.state);
+				indigo_log("wait_for '" + property.device + " -> " + property.name + "' -> " + property.state);
 				if (property.state == "Alert") {
 					this.wait_for_device = null;
 					this.wait_for_property = null;
@@ -713,7 +713,6 @@ var indigo_sequencer = {
 					}
 				} else {
 					indigo_update_switch_property(this.devices[SCRIPTING_AGENT], "AGENT_ABORT_PROCESS", { ABORT: false }, this.abort_state = "Alert");
-					this.abort_state = "Alert";
 				}
 			} else if (property.name == "AGENT_PAUSE_PROCESS") {
 				if (this.sequence != null) {
@@ -843,11 +842,12 @@ var indigo_sequencer = {
 	},
 
 	execute_next: function() {
+		var nesting = 0;
 		if (this.paused) {
 			indigo_set_timer(indigo_sequencer_next_handler, 0.01);
 		} else if (this.sequence != null) {
-			previous = this.sequence[this.index];
-			nesting = 0;
+			var previous = this.sequence[this.index];
+			var current = null;
 			while (true) {
 				current = this.sequence[++this.index];
 				if (current == null) {
@@ -1008,7 +1008,7 @@ var indigo_sequencer = {
 				}
 			}
 			if (!found) {
-				this.failure("Failed to set non-existent option '" +item + "' for '" + device + " → " + property.label + "'");
+				this.failure("Failed to set non-existent option '" +item + "' for '" + device + " -> " + property.label + "'");
 				return;
 			}
 		}
@@ -1016,7 +1016,7 @@ var indigo_sequencer = {
 			if (allow_same_value) {
 				indigo_set_timer(indigo_sequencer_next_ok_handler, 0.1);
 			} else {
-				this.warning("'" + device + " → " + property.label + " → " + property.item_defs[item].label + "' is already " + (value ? "selected" : "unselected"));
+				this.warning("'" + device + " -> " + property.label + " -> " + property.item_defs[item].label + "' is already " + (value ? "selected" : "unselected"));
 			}
 			return;
 		}
@@ -1032,7 +1032,7 @@ var indigo_sequencer = {
 		this.set_switch(device, property, item, true, state);
 	},
 
-	deselect_switch: function(device, property, item) {
+	deselect_switch: function(device, property, item, state) {
 		this.set_switch(device, property, item, false, state);
 	},
 
@@ -1173,7 +1173,6 @@ var indigo_sequencer = {
 	wait_until_time: function(target_time) {
 		var delay = indigo_time_to_delay(target_time);
 		if (delay <= 0) {
-			var utc = indigo_delay_to_utc(0);
 			indigo_send_message("Target time has passed");
 			indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
 			return;

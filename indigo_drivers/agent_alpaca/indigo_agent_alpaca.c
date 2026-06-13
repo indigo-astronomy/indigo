@@ -187,14 +187,16 @@ static void send_json_response(int socket, char *path, int status_code, const ch
 			"Content-Type: application/json\r\n"
 			"Content-Length: %d\r\n"
 			"\r\n"
-			"%s", status_code, status_text, strlen(body), body)) {
-		if (status_code == 200)
+			"%s", status_code, status_text, strlen(body), body
+	)) {
+		if (status_code == 200) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> 200 %s", path, status_text);
-		else
+		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s -> %3d %s", path, status_code, status_text);
+		}
 		INDIGO_DRIVER_TRACE(DRIVER_NAME, "%s", body);
 	} else {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "% -> Failed", path);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s -> Failed", path);
 	}
 }
 
@@ -222,10 +224,11 @@ static bool alpaca_setup_handler(int socket, char *method, char *path, char *par
 			"Content-Type: text/plain\r\n"
 			"Content-Length: 0\r\n"
 			"\r\n"
-		))
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "% -> OK", path);
-	else
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "% -> Failed", path);
+	)) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> OK", path);
+	} else {
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "%s -> Failed", path);
+	}
 	return true;
 }
 

@@ -60,10 +60,10 @@ indigo_result indigo_wheel_attach(indigo_device *device, const char* driver_name
 				indigo_init_text_item(WHEEL_SLOT_NAME_1_ITEM + i, name, label, "Filter #%d", i + 1);
 			}
 			// -------------------------------------------------------------------------------- WHEEL_SLOT_OFFSET
-			WHEEL_SLOT_OFFSET_PROPERTY = indigo_init_number_property(NULL, device->name, WHEEL_SLOT_OFFSET_PROPERTY_NAME, WHEEL_MAIN_GROUP, "Slot focus offsets", INDIGO_OK_STATE, INDIGO_RW_PERM, WHEEL_SLOT_ITEM->number.max);
-			if (WHEEL_SLOT_NAME_PROPERTY == NULL)
+			WHEEL_SLOT_OFFSET_PROPERTY = indigo_init_number_property(NULL, device->name, WHEEL_SLOT_OFFSET_PROPERTY_NAME, WHEEL_MAIN_GROUP, "Slot focus offsets", INDIGO_OK_STATE, INDIGO_RW_PERM, (int)WHEEL_SLOT_ITEM->number.max);
+			if (WHEEL_SLOT_OFFSET_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			for (int i = 0; i < WHEEL_SLOT_NAME_PROPERTY->count; i++) {
+			for (int i = 0; i < WHEEL_SLOT_OFFSET_PROPERTY->count; i++) {
 				char name[16];
 				char label[16];
 				snprintf(name, 16, WHEEL_SLOT_OFFSET_ITEM_NAME, i + 1);
