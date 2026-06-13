@@ -323,9 +323,16 @@ static void position_timer_callback(indigo_device *device) {
 		raw_azm = reply[5] << 16 | reply[6] << 8 | reply[7];
 	}
 	if (raw_alt != -1 && raw_azm != -1) {
+		if (MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value < 0) {
+			raw_alt = (0x1000000 - raw_alt) & 0x0FFFFFF;
+			raw_azm = (0x1000000 - raw_azm) & 0x0FFFFFF;
+		}
 		double ha = fmod(((double)raw_azm / 0x1000000) * 24 + 12, 24);
 		double ra = fmod(indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) - ha + 24, 24);
 		double dec = fmod(((double)raw_alt / 0x1000000) * 360, 360);
+		if (dec > 180.0) {
+			dec = dec - 360.0;
+		}
 		indigo_eq_to_j2k(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
 		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
 		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
@@ -406,6 +413,10 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 	double ha = fmod(lst - ra + 24, 24);
 	int32_t raw_azm = (int32_t)((fmod(ha + 12, 24) / 24.0) * 0x1000000) % 0x1000000;
 	int32_t raw_alt = (int32_t)((dec / 360.0) * 0x1000000) % 0x1000000;
+	if (MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value < 0) {
+			raw_alt = (0x1000000 - raw_alt) & 0x0FFFFFF;
+			raw_azm = (0x1000000 - raw_azm) & 0x0FFFFFF;
+	}
 	if (!nexstaraux_command_24(device, APP, AZM, MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value ? MC_SET_POSITION : MC_GOTO_FAST, raw_azm, reply) || !nexstaraux_command_24(device, APP, ALT, MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value ? MC_SET_POSITION : MC_GOTO_FAST, raw_alt, reply)) {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
