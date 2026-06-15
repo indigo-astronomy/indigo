@@ -200,7 +200,7 @@ static bool askar_is_moving(indigo_device *device, bool *moving) {
 // accept either reply casing so the driver works against old and new firmware.
 static bool askar_get_max_position(indigo_device *device, int32_t *max_position) {
 	char response[ASKAR_CMD_LEN] = {0};
-	if (!askar_command(device, "Fm#", response, sizeof(response))) {
+	if (!askar_command(device, "FM#", response, sizeof(response))) {
 		return false;
 	}
 	int parsed = sscanf(response, "Fm%d", max_position);
@@ -218,12 +218,12 @@ static bool askar_set_max_position(indigo_device *device, int32_t max_position) 
 	}
 	char command[ASKAR_CMD_LEN];
 	char response[ASKAR_CMD_LEN] = {0};
-	snprintf(command, sizeof(command), "FM%d#", max_position);
+	snprintf(command, sizeof(command), "FX%d#", max_position);
 	if (!askar_command(device, command, response, sizeof(response))) {
 		return false;
 	}
 	// "FE" reply means firmware rejected the value
-	return strncmp(response, "FM", 2) == 0 || strncmp(response, "Fm", 2) == 0;
+	return strncmp(response, "FM", 2) == 0 || strncmp(response, "FX", 2) == 0;
 }
 
 // FPn# -> FPn# (absolute move; async, poll Fp#/FQ# for completion)
