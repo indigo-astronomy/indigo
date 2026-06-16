@@ -23,7 +23,7 @@
  \file indigo_focuser_ioptron.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_focuser_ioptron"
 
 #include <stdlib.h>
@@ -120,11 +120,12 @@ static bool ioptron_command(indigo_device *device, char *command, char *response
 static bool ioptron_open(indigo_device *device) {
 	char response[128] = "";
 	char *name = DEVICE_PORT_ITEM->text.value;
-	PRIVATE_DATA->handle = indigo_open_serial(name);
+	PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, 115200);
 	if (PRIVATE_DATA->handle >= 0) {
-		int pos, model;
+		int pos, model, firmware;
 		indigo_usleep(2 * ONE_SECOND_DELAY);
-		if (ioptron_command(device, ":MountInfo#", response, sizeof(response)) && sscanf(response, "%6d%2d", &pos, &model) == 2 && model == 2) {
+		// :DeviceInfo# -> PPPPPPMMFFFF# (position, model, firmware); model 2 = iEAF, model 3 = iAFS
+		if (ioptron_command(device, ":DeviceInfo#", response, sizeof(response)) && sscanf(response, "%6d%2d%4d", &pos, &model, &firmware) == 3 && (model == 2 || model == 3)) {
 			FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = pos;
 		} else {
 			close(PRIVATE_DATA->handle);
@@ -211,11 +212,14 @@ static void focuser_timer_callback(indigo_device *device) {
   return;
 }
 	char response[128] = "";
-	int pos, state, temp;
-	if (ioptron_command(device, ":FI#", response, sizeof(response)) && sscanf(response, "%7d%1d%5d%1d", &pos, &state, &temp, &PRIVATE_DATA->reversed) == 4) {
-		if (FOCUSER_POSITION_ITEM->number.value != pos || FOCUSER_POSITION_PROPERTY->state != (state ? INDIGO_OK_STATE : INDIGO_BUSY_STATE)) {
+	int pos, moving, temp, dir;
+	// :FI# -> PPPPPPPMTTTTTD# (position, moving flag, temperature, direction); moving == 1 means the focuser is moving
+	if (ioptron_command(device, ":FI#", response, sizeof(response)) && sscanf(response, "%7d%1d%5d%1d", &pos, &moving, &temp, &dir) == 4) {
+		PRIVATE_DATA->reversed = (dir == 0);
+		indigo_property_state moving_state = moving ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
+		if (FOCUSER_POSITION_ITEM->number.value != pos || FOCUSER_POSITION_PROPERTY->state != moving_state) {
 			FOCUSER_POSITION_ITEM->number.value = pos;
-			FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = state ? INDIGO_OK_STATE : INDIGO_BUSY_STATE;
+			FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = moving_state;
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 		}
@@ -223,14 +227,14 @@ static void focuser_timer_callback(indigo_device *device) {
 			X_FOCUSER_ZERO_SYNC_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, X_FOCUSER_ZERO_SYNC_PROPERTY, NULL);
 		}
-		if (state == 0 && FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE) {
+		if (moving == 0 && FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE) {
 			FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
 		}
-		double temperature = temp / 100 - 273.15;
+		double temperature = temp / 100.0 - 273.15;
 		if (fabs(temperature - FOCUSER_TEMPERATURE_ITEM->number.value) > 0.1) {
 			FOCUSER_TEMPERATURE_ITEM->number.value = temperature;
 			FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
