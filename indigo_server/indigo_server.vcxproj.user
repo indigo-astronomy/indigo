@@ -23,6 +23,7 @@
     <LocalDebuggerCommandArguments>-vv</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
     <LocalDebuggerWorkingDirectory>..\build\Debug\x64</LocalDebuggerWorkingDirectory>
+    <LocalDebuggerCommandArgumentsHistory>-vv|</LocalDebuggerCommandArgumentsHistory>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LocalDebuggerCommandArguments>-vv</LocalDebuggerCommandArguments>
