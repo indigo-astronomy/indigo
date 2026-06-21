@@ -547,6 +547,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_release_property(AGENT_DEVICES_PROPERTY);
 	indigo_release_property(AGENT_CAMERA_BAYERPAT_PROPERTY);
 	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
+	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_device_detach(device);
 }
 
