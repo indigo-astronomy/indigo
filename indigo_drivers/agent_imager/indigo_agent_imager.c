@@ -1920,10 +1920,10 @@ static bool autofocus_ucurve(indigo_device *device) {
 	assert(DEVICE_PRIVATE_DATA->use_hfd_estimator);
 	double prev_quality[INDIGO_MAX_MULTISTAR_COUNT] = { 0 }, min_est = 1e10;
 	double steps = AGENT_IMAGER_FOCUS_UCURVE_STEP_ITEM->number.value;
-	int current_offset = 0;
+	double current_offset = 0;
 	DEVICE_PRIVATE_DATA->ucurve_samples_number = (int)rint(AGENT_IMAGER_FOCUS_UCURVE_SAMPLES_ITEM->number.value);
 	DEVICE_PRIVATE_DATA->saved_backlash = AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value;
-	int limit = (int)(AF_MOVE_LIMIT_UCURVE * AGENT_IMAGER_FOCUS_UCURVE_STEP_ITEM->number.value * DEVICE_PRIVATE_DATA->ucurve_samples_number);
+	double limit = AF_MOVE_LIMIT_UCURVE * AGENT_IMAGER_FOCUS_UCURVE_STEP_ITEM->number.value * DEVICE_PRIVATE_DATA->ucurve_samples_number;
 	bool moving_out = true;
 	int sample = 0;
 	int sample_index = 0;
@@ -2004,7 +2004,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Moving OUT to detect best focus direction");
 			moving_out = true;
 			if (!move_focuser_with_overshoot_if_needed(device, moving_out, steps, DEVICE_PRIVATE_DATA->saved_backlash, true)) break;
-			current_offset += (int)steps;
+			current_offset += steps;
 		} else if (sample == 1) {
 			double steps_to_move = 0;
 			if (quality_comparator(prev_quality, quality, star_count) >= 0) {
@@ -2012,13 +2012,13 @@ static bool autofocus_ucurve(indigo_device *device) {
 				moving_out = true;
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Moving OUT %g steps to defocus sufficiently", steps_to_move);
 				if (!move_focuser_with_overshoot_if_needed(device, moving_out, steps_to_move, DEVICE_PRIVATE_DATA->saved_backlash, true)) break;
-				current_offset += (int)steps_to_move;
+				current_offset += steps_to_move;
 			} else {
 				steps_to_move = steps * (mid_index + 2);
 				moving_out = false;
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Moving IN %g steps to defocus sufficiently", steps_to_move);
 				if (!move_focuser_with_overshoot_if_needed(device, moving_out, steps_to_move, DEVICE_PRIVATE_DATA->saved_backlash, true)) break;
-				current_offset -= (int)steps_to_move;
+				current_offset -= steps_to_move;
 			}
 			moving_out = !moving_out;
 		} else {
@@ -2080,9 +2080,9 @@ static bool autofocus_ucurve(indigo_device *device) {
 			}
 			if (!move_focuser_with_overshoot_if_needed(device, moving_out, steps, DEVICE_PRIVATE_DATA->saved_backlash, false)) break;
 			if (moving_out) {
-				current_offset += (int)steps;
+				current_offset += steps;
 			} else {
-				current_offset -= (int)steps;
+				current_offset -= steps;
 			}
 		}
 		sample++;
@@ -2090,7 +2090,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 		AGENT_IMAGER_STATS_FOCUS_OFFSET_ITEM->number.value = current_offset;
 		indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 		memcpy(prev_quality, quality, sizeof(double) * star_count);
-		if (abs(current_offset) >= limit) {
+		if (fabs(current_offset) >= limit) {
 			indigo_send_message(device, ALERT_PROPERTY, "No focus reached within maximum travel limit of %g steps per AF run", limit);
 			focus_failed = true;
 			goto ucurve_finish;
@@ -2167,9 +2167,9 @@ static bool autofocus_ucurve(indigo_device *device) {
 	}
 
 	if (!moving_out) {
-		current_offset += (int)steps_to_focus;
+		current_offset += steps_to_focus;
 	} else {
-		current_offset -= (int)steps_to_focus;
+		current_offset -= steps_to_focus;
 	}
 
 	if (!capture_and_process_frame(device, NULL)) {
@@ -2204,16 +2204,16 @@ static bool autofocus_ucurve(indigo_device *device) {
 		set_backlash_if_overshoot(device, DEVICE_PRIVATE_DATA->saved_backlash);
 		if (DEVICE_PRIVATE_DATA->restore_initial_position) {
 			indigo_send_message(device, ALERT_PROPERTY, "Focus failed, restoring initial position");
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to reach focus, moving to initial position %d steps", (int)current_offset);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to reach focus, moving to initial position %g steps", current_offset);
 			if (current_offset > 0) {
 				if (moving_out && !DEVICE_PRIVATE_DATA->focuser_has_backlash) {
-					current_offset += (int)AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value;
+					current_offset += AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value;
 				}
 				move_focuser(device, false, current_offset);
 			} else if (current_offset < 0) {
 				current_offset = -current_offset;
 				if (!moving_out && !DEVICE_PRIVATE_DATA->focuser_has_backlash) {
-					current_offset += (int)AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value;
+					current_offset += AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value;
 				}
 				move_focuser(device, true, current_offset);
 			}
