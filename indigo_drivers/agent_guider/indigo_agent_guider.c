@@ -2703,6 +2703,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	pthread_mutex_destroy(&DEVICE_PRIVATE_DATA->last_image_mutex);
 	indigo_safe_free(DEVICE_PRIVATE_DATA->last_image);
 	DEVICE_PRIVATE_DATA->last_image_size = 0;
+	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_filter_device_detach(device);
 }
 

@@ -587,7 +587,8 @@ static indigo_result agent_device_detach(indigo_device *device) {
 		}
 	pthread_mutex_destroy(&DEVICE_PRIVATE_DATA->restore_mutex);
 	pthread_mutex_destroy(&DEVICE_PRIVATE_DATA->data_mutex);
-	return indigo_agent_detach(device);;
+	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
+	return indigo_agent_detach(device);
 }
 
 // -------------------------------------------------------------------------------- INDIGO agent client implementation

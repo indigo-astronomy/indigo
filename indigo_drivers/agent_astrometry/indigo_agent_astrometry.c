@@ -811,6 +811,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_cancel_all_timers(device);
 	indigo_release_property(AGENT_ASTROMETRY_INDEX_41XX_PROPERTY);
 	indigo_release_property(AGENT_ASTROMETRY_INDEX_42XX_PROPERTY);
+	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_platesolver_device_detach(device);
 }
 

@@ -676,6 +676,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_cancel_pending_handlers(device);
 	indigo_cancel_all_timers(device);
 	indigo_release_property(AGENT_ASTAP_INDEX_PROPERTY);
+	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_platesolver_device_detach(device);
 }
 

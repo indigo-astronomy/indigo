@@ -1493,7 +1493,6 @@ static indigo_result agent_device_detach(indigo_device *device) {
 		indigo_update_property(device, AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY, NULL);
 		duk_destroy_heap(PRIVATE_DATA->ctx);
 	}
-	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
 	indigo_release_property(AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY);
 	indigo_release_property(AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY);
 	indigo_release_property(AGENT_SCRIPTING_RUN_SCRIPT_PROPERTY);
@@ -1512,7 +1511,8 @@ static indigo_result agent_device_detach(indigo_device *device) {
 			indigo_release_property(cached_property);
 		}
 	}
-
+	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
+	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_device_detach(device);
 }
 

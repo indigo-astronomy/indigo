@@ -487,17 +487,17 @@ static void *queue_func(indigo_queue *queue) {
 	pthread_mutex_unlock(&queue->cond_mutex);
 	// main loop waiting for wakeup signal or timeout
 	while (!queue->abort) {
-		pthread_mutex_lock(&queue->thread_mutex);
 		struct timespec now;
 		clock_time(&now);
-		indigo_queue_task *task = peek_task(queue, &now);
 		pthread_mutex_lock(&queue->cond_mutex);
+		indigo_queue_task *task = peek_task(queue, &now);
 		if (task && timespec_cmp(&task->at, &now) > 0) { // wait for timeout for the next task
 			pthread_cond_timedwait(&queue->cond, &queue->cond_mutex, &task->at);
 		} else if (task == NULL) { // no task, wait for wakeup
 			pthread_cond_wait(&queue->cond, &queue->cond_mutex);
 		} // task to execute now
-		pthread_mutex_unlock(&queue->cond_mutex); // this is to make indigo_queue_remove wait for currently executed task
+		pthread_mutex_unlock(&queue->cond_mutex);
+		pthread_mutex_lock(&queue->thread_mutex); // held only around task execution so indigo_queue_remove can proceed while the queue is idle
 		while (!queue->abort) {
 			indigo_queue_task *runnable_task = dequeue_runnable_task(queue);
 			if (!runnable_task) {
