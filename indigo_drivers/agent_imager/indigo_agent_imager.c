@@ -1894,10 +1894,10 @@ static bool autofocus_ucurve(indigo_device *device) {
 	assert(DEVICE_PRIVATE_DATA->use_hfd_estimator);
 	double prev_quality[INDIGO_MAX_MULTISTAR_COUNT] = { 0 }, min_est = 1e10;
 	double steps = AGENT_IMAGER_FOCUS_UCURVE_STEP_ITEM->number.value;
-	int current_offset = 0;
+	double current_offset = 0;
 	DEVICE_PRIVATE_DATA->ucurve_samples_number = (int)rint(AGENT_IMAGER_FOCUS_UCURVE_SAMPLES_ITEM->number.value);
 	DEVICE_PRIVATE_DATA->saved_backlash = AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value;
-	int limit = AF_MOVE_LIMIT_UCURVE * AGENT_IMAGER_FOCUS_UCURVE_STEP_ITEM->number.value * DEVICE_PRIVATE_DATA->ucurve_samples_number;
+	double limit = AF_MOVE_LIMIT_UCURVE * AGENT_IMAGER_FOCUS_UCURVE_STEP_ITEM->number.value * DEVICE_PRIVATE_DATA->ucurve_samples_number;
 	bool moving_out = true;
 	int sample = 0;
 	int sample_index = 0;
@@ -2065,7 +2065,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 		AGENT_IMAGER_STATS_FOCUS_OFFSET_ITEM->number.value = current_offset;
 		indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 		memcpy(prev_quality, quality, sizeof(double) * star_count);
-		if (abs(current_offset) >= limit) {
+		if (fabs(current_offset) >= limit) {
 			indigo_send_message(device, "No focus reached within maximum travel limit of %g steps per AF run", limit);
 			focus_failed = true;
 			goto ucurve_finish;
@@ -2179,7 +2179,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 		set_backlash_if_overshoot(device, DEVICE_PRIVATE_DATA->saved_backlash);
 		if (DEVICE_PRIVATE_DATA->restore_initial_position) {
 			indigo_send_message(device, "Focus failed, restoring initial position");
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to reach focus, moving to initial position %d steps", (int)current_offset);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to reach focus, moving to initial position %g steps", current_offset);
 			if (current_offset > 0) {
 				if (moving_out && !DEVICE_PRIVATE_DATA->focuser_has_backlash) {
 					current_offset += AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value;
