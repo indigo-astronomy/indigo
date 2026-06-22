@@ -330,10 +330,17 @@ static void handle_set_max(int fd, const char *body, char echo) {
 		return;
 	}
 	pthread_mutex_lock(&state_mutex);
+	// Firmware rejects the new max when the current logical position would fall
+	// outside it; max_step is left unchanged.
+	if (position > n) {
+		pthread_mutex_unlock(&state_mutex);
+		sim_send_error(fd);
+		return;
+	}
 	max_step = n;
-	// Firmware halts and clamps position.
-	if (position > max_step) position = max_step;
-	if (target_position > max_step) target_position = max_step;
+	// Stops motion; the logical position is unchanged (no offset or motor
+	// register reset).
+	target_position = position;
 	pthread_mutex_unlock(&state_mutex);
 
 	char resp[32];

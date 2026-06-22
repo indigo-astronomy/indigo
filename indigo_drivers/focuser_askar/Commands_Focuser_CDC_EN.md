@@ -31,15 +31,15 @@ This is **not** the FreeRTOS CLI protocol (`help`, `wifi`, etc.). Focuser comman
 | 1   | Absolute move         | Write | `FPn#`     | `FPn#\r\n`               | `n` = target logical position                                |
 | 2   | Relative move (+)     | Write | `FT+n#`    | `FT+n#\r\n`              | Target = current logical position + `n`                      |
 | 3   | Relative move (−)     | Write | `FT-n#`    | `FT-n#\r\n`              | Target = current logical position − `n`                      |
-| 4   | Halt                  | Write | `FS#`      | `FS#\r\n`                | Emergency stop; send `Fp#` afterward to read actual position |
-| 5   | Sync logical position | Write | `FYn#`     | `FYn#\r\n`               | Set logical position to `n` **without moving** (INDIGO SYNC) |
+| 4   | Halt                  | Write | `FS#`      | `FS#\r\n`                | Emergency stop; send `Fp#` afterward; saves position to NVS  |
+| 5   | Sync logical position | Write | `FYn#`     | `FYn#\r\n`               | Set logical position to `n` **without moving** (INDIGO SYNC); writes NVS |
 | 6   | Read position         | Read  | `Fp#`      | `Fpn#\r\n`               | `n` in the reply is the current logical position             |
 | 7   | Read motion state     | Read  | `FQ#`      | `FQ0#\r\n` or `FQ1#\r\n` | `0` = idle, `1` = moving                                     |
 | 8   | Read max travel       | Read  | `Fm#`      | `Fmn#\r\n`               | `n` = `max_step`; `FM#` accepted as alias                    |
-| 9   | Set max travel        | Write | `FMn#`     | `FMn#\r\n`               | `n` in 100–1000000; stops motion, writes NVS, re-homes motor; `FXn#` legacy alias |
+| 9   | Set max travel        | Write | `FMn#`     | `FMn#\r\n`               | `n` in 100–1000000; stops motion, writes NVS, position unchanged; `FE#` if current position > `n`; `FXn#` legacy alias |
 | 10  | Read firmware version | Read  | `FV#`      | `FVv#\r\n`               | e.g. `FV1.0.0#\r\n` (`ALPACA_VERSION`)                       |
 | 11  | Read model name       | Read  | `FI#`      | `FImodel#\r\n`           | Currently `FIAskar-WAF#\r\n` (`ALPACA_ServerName`)           |
-| 12  | Read backlash offset  | Read  | `Fb#`      | `Fbn#\r\n`               | User offset `n` in `0 … 10000`; firmware adds 100 base steps |
+| 12  | Read backlash offset  | Read  | `Fb#`      | `Fbn#\r\n`               | Backlash `n` in `0 … 10000`; `0` means no firmware compensation |
 | 13  | Set backlash offset   | Write | `FBn#`     | `FBn#\r\n`               | Clamps `n`, writes NVS; does not move focuser                |
 | 14  | Read reverse motion   | Read  | `Fr#`      | `Fr0#\r\n` or `Fr1#\r\n` | `0` = normal, `1` = reversed motor direction                 |
 | 15  | Set reverse motion    | Write | `FR0#`     | `FR0#\r\n`               | Normal direction; stops motion, writes NVS                   |
@@ -78,7 +78,7 @@ This is **not** the FreeRTOS CLI protocol (`help`, `wifi`, etc.). Focuser comman
 | -------- | --------------------------------------------------------------------------------------- |
 | Host     | `FS#`                                                                                   |
 | Reply    | `FS#\r\n`                                                                               |
-| Behavior | Clears motion request and requests motor-task halt; clears stall buzzer state if active |
+| Behavior | Clears motion request and requests motor-task halt; clears stall buzzer state if active; writes current logical position to NVS key `"position"` |
 
 
 ### 4. Sync logical position `FYn#`
@@ -88,7 +88,7 @@ This is **not** the FreeRTOS CLI protocol (`help`, `wifi`, etc.). Focuser comman
 | ------------- | ---------------------------------------------------------------------------------------------------------- |
 | Example host  | `FY80000#`                                                                                                 |
 | Success reply | `FY80000#\r\n` (`n` clamped to `[0, max_step]`)                                                            |
-| Behavior      | Halt motion; update internal offset so `Fp#` reports `n`; **no** TMC move; offset **not** stored in NVS    |
+| Behavior      | Halt motion; update internal offset so `Fp#` reports `n`; **no** TMC move; logical position written to NVS key `"position"` |
 | Use cases     | Calibration, power-up alignment when mechanical position is known, limit-switch endpoint labeling        |
 
 
@@ -129,7 +129,9 @@ This is **not** the FreeRTOS CLI protocol (`help`, `wifi`, etc.). Focuser comman
 | Success reply | `FM80000#\r\n`                                                                                          |
 | Legacy alias  | `FX80000#` → `FX80000#\r\n` (deprecated; use `FMn#`)                                                    |
 | Valid range   | `100 ≤ n ≤ 1000000`, otherwise `FE#\r\n`                                                                |
-| Behavior      | Halt, NVS write, internal offset update, motor registers cleared; re-read `Fm#` and `Fp#` after success |
+| Behavior      | Halt, write NVS `max_step`, **logical position unchanged** (no offset or motor register reset); re-read `Fm#` and `Fp#` after success |
+| Rejection     | Returns `FE#\r\n` when current logical position (`Fp#`) > `n`; `max_step` is not modified               |
+| Recommended setup | After full retraction send `FY0#` → extend to mechanical limit → `FMn#` (`n` is usually current position) |
 
 
 ### 9. Read firmware version `FV#`
@@ -156,9 +158,9 @@ This is **not** the FreeRTOS CLI protocol (`help`, `wifi`, etc.). Focuser comman
 | Item     | Value                                                                                      |
 | -------- | ------------------------------------------------------------------------------------------ |
 | Host     | `Fb#` (lowercase `b`)                                                                      |
-| Reply    | `Fbn#\r\n` where `n` is the user offset stored in NVS                                      |
+| Reply    | `Fbn#\r\n` where `n` is the backlash stored in NVS                                         |
 | Range    | `0 ≤ n ≤ 10000`                                                                            |
-| Note     | Actual compensation on direction reversal = `100` (fixed base) + `n`; base is not exposed  |
+| Note     | On direction reversal, firmware compensates by exactly `n` steps; `n = 0` disables compensation |
 
 
 ### 12. Set backlash offset `FBn#`
@@ -169,7 +171,7 @@ This is **not** the FreeRTOS CLI protocol (`help`, `wifi`, etc.). Focuser comman
 | Example host  | `FB50#`                                                                                    |
 | Success reply | `FB50#\r\n` (echoes clamped value)                                                         |
 | Valid range   | `0 ≤ n ≤ 10000` (values outside range are clamped)                                         |
-| Behavior      | Updates runtime offset and NVS key `"backlash"`; does not trigger motion                   |
+| Behavior      | Updates runtime backlash and NVS key `"backlash"`; does not trigger motion                 |
 
 
 ### 13. Read reverse motion `Fr#`
@@ -202,9 +204,27 @@ This is **not** the FreeRTOS CLI protocol (`help`, `wifi`, etc.). Focuser comman
 | Unrecognized `F…#` command                                 | `FE#\r\n`                                             |
 | Invalid numeric field in `FP` / `FT` / `FY` / `FB` / `FM`  | `FE#\r\n`                                             |
 | `FMn#` / `FXn#` with `n` not in `100 … 1000000`            | `FE#\r\n`                                             |
+| `FMn#` / `FXn#` when current logical position > `n`         | `FE#\r\n`                                             |
 | `FMn#` / `FXn#` parse failure or `focuser_apply_max_step()` failure | `FE#\r\n`                                    |
 | Frame length ≥ 32 bytes                                    | `FE#\r\n` (first character dropped, resync continues) |
 
+
+---
+
+## Logical position persistence (NVS)
+
+The firmware persists the **logical position** (`Fp#` reply) in NVS key `"position"`. After power-up the encoder reads zero; the firmware restores logical coordinates via an internal offset.
+
+| Event | Writes NVS? |
+| ----- | ----------- |
+| Absolute/relative move completes | Yes |
+| `FS#` halt | Yes |
+| `FYn#` SYNC | Yes |
+| `FMn#` set max travel | No (updates `max_step` only; does not change `position`) |
+| Stall detection stop | Yes |
+| During motion | **No** (power loss mid-move may restore last stationary position) |
+
+Boot restore order: read `max_step` first (`Fm#` / NVS `"max_step"`), then read `"position"`. If no saved value exists, default logical position is **`max_step/2`**; values outside the current travel range are clamped to `[0, max_step]`.
 
 ---
 
@@ -268,12 +288,13 @@ Host → Fp#
 Device ← Fp50123#        ; position after stop
 ```
 
-### Sync after power-up (no NVS position)
+### Position restore after power-up
 
 ```
 Host → Fp#
-Device ← Fp50000#        ; default mid-range after boot — may not match mechanics
+Device ← Fp52000#        ; restores last logical position from NVS, or max_step/2 if none
 
+; If logical position does not match mechanics, calibrate manually:
 Host → FY12000#          ; user knows true logical position
 Device ← FY12000#
 
@@ -299,10 +320,9 @@ Device ← FQ0#            ; focuser did not move
 | `FOCUSER_LIMITS`                             | `Fm#` read max; `FMn#` write max (100–1000000); min fixed at 0    |
 | `INFO`                                       | `FI#`, `FV#`                                                        |
 | Failure                                      | Reply `FE#` → set property `ALERT`                                  |
-| `FOCUSER_BACKLASH`                           | `Fb#` read offset; `FBn#` write offset (0–10000); requires firmware ≥ 1.0.0 |
+| `FOCUSER_BACKLASH`                           | `Fb#` read backlash; `FBn#` write backlash (0–10000); `0` disables compensation; requires firmware ≥ 1.0.3 |
 | `FOCUSER_REVERSE_MOTION`                     | `Fr#` read; `FR0#` / `FR1#` write (persistent); inverts motor for `FP` and `FT` |
 | `FOCUSER_SPEED` / `TEMPERATURE`              | Not implemented on CDC; hide in driver                            |
 
 
-All positions are **logical steps** in `[0, max_step]`. On power-up the default logical position is **mid-travel** (`max_step/2`); use `FYn#` to align with mechanics (e.g. `FY0#` when fully retracted). Reverse motion does not remap coordinates — it only inverts physical motor rotation for moves. Poll `FQ#` and `Fp#` after moves.
-
+All positions are **logical steps** in `[0, max_step]`. On power-up, the firmware restores the last saved logical position from NVS if present; otherwise the default is **mid-travel** (`max_step/2`). Use `FYn#` to align with mechanics when needed (e.g. `FY0#` when fully retracted). Setting max travel keeps the logical position unchanged; recommended setup is `FY0#` first, extend to the limit, then `FMn#`. Reverse motion does not remap coordinates — it only inverts physical motor rotation for moves. Poll `FQ#` and `Fp#` after moves.
