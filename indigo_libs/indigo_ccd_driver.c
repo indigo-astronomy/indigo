@@ -1402,7 +1402,7 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 			strcpy(format, tmp);
 		} else if (fs[1] == 'E' || (isdigit(fs[1]) && fs[2] == 'E')) { // %E or %nE - exposure time
 			char buffer[16];
-			double value = strcmp(suffix, ".avi") == 0 || strcmp(suffix, ".ser") == 0 ? CCD_STREAMING_EXPOSURE_ITEM->number.target : CCD_EXPOSURE_ITEM->number.target;
+			double value = CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE ? CCD_STREAMING_EXPOSURE_ITEM->number.target : CCD_EXPOSURE_ITEM->number.target;
 			int digits = 0;
 			if (fs[1] == 'E') {
 				if (value < 0.001)
