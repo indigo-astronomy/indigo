@@ -203,6 +203,7 @@
 #include "focuser_qhy/indigo_focuser_qhy.h"
 #include "aux_svbpowerbox/indigo_aux_svbpowerbox.h"
 #include "polaralign_simulator/indigo_polaralign_simulator.h"
+#include "focuser_askar/indigo_focuser_askar.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -298,6 +299,7 @@ driver_entry_point static_drivers[] = {
 	indigo_dome_simulator,
 	indigo_dome_skyroof,
 	indigo_dome_talon6ror,
+	indigo_focuser_askar,
 	indigo_focuser_asi,
 	indigo_focuser_astroasis,
 	indigo_focuser_astromechanics,

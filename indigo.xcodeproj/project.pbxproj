@@ -224,6 +224,10 @@
 		59588CAD211CC08D00E9FC27 /* indigo_aux_joystick.h in Headers */ = {isa = PBXBuildFile; fileRef = 59588CAA211CC08D00E9FC27 /* indigo_aux_joystick.h */; };
 		59588CB0211CC30C00E9FC27 /* indigo_aux_driver.c in Sources */ = {isa = PBXBuildFile; fileRef = 59588CAE211CC30B00E9FC27 /* indigo_aux_driver.c */; };
 		59588CB1211CC30C00E9FC27 /* indigo_aux_driver.h in Headers */ = {isa = PBXBuildFile; fileRef = 59588CAF211CC30C00E9FC27 /* indigo_aux_driver.h */; };
+		5958A14E2FE9B10500F0B407 /* indigo_focuser_askar.c in Sources */ = {isa = PBXBuildFile; fileRef = 5958A1452FE9B07F00F0B407 /* indigo_focuser_askar.c */; };
+		5958A14F2FE9B10500F0B407 /* indigo_focuser_askar.h in Headers */ = {isa = PBXBuildFile; fileRef = 5958A1442FE9B07F00F0B407 /* indigo_focuser_askar.h */; };
+		5958A1502FE9B10500F0B407 /* indigo_focuser_askar.h in Headers */ = {isa = PBXBuildFile; fileRef = 5958A1442FE9B07F00F0B407 /* indigo_focuser_askar.h */; };
+		5958A1512FE9B10500F0B407 /* indigo_focuser_askar.c in Sources */ = {isa = PBXBuildFile; fileRef = 5958A1452FE9B07F00F0B407 /* indigo_focuser_askar.c */; };
 		595A8E592C9479E600E7998C /* indigo_ccd_pentax.c in Sources */ = {isa = PBXBuildFile; fileRef = 595A8E4D2C9479E600E7998C /* indigo_ccd_pentax.c */; };
 		595A8E5A2C9479E600E7998C /* indigo_ccd_pentax.c in Sources */ = {isa = PBXBuildFile; fileRef = 595A8E4D2C9479E600E7998C /* indigo_ccd_pentax.c */; };
 		595A8E5B2C9479E600E7998C /* indigo_ccd_pentax.h in Headers */ = {isa = PBXBuildFile; fileRef = 595A8E4E2C9479E600E7998C /* indigo_ccd_pentax.h */; };
@@ -1544,6 +1548,13 @@
 		59588CAA211CC08D00E9FC27 /* indigo_aux_joystick.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_aux_joystick.h; sourceTree = "<group>"; };
 		59588CAE211CC30B00E9FC27 /* indigo_aux_driver.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_aux_driver.c; sourceTree = "<group>"; };
 		59588CAF211CC30C00E9FC27 /* indigo_aux_driver.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_aux_driver.h; sourceTree = "<group>"; };
+		5958A1402FE9B07F00F0B407 /* askar_focuser_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = askar_focuser_simulator.c; sourceTree = "<group>"; };
+		5958A1412FE9B07F00F0B407 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		5958A1432FE9B07F00F0B407 /* Commands_Focuser_CDC_EN.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = Commands_Focuser_CDC_EN.md; sourceTree = "<group>"; };
+		5958A1442FE9B07F00F0B407 /* indigo_focuser_askar.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_askar.h; sourceTree = "<group>"; };
+		5958A1452FE9B07F00F0B407 /* indigo_focuser_askar.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_askar.c; sourceTree = "<group>"; };
+		5958A1482FE9B07F00F0B407 /* indigo_focuser_askar_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_askar_main.c; sourceTree = "<group>"; };
+		5958A14C2FE9B07F00F0B407 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		595A8E4B2C9479E600E7998C /* indigo_ccd_pentax_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_pentax_main.c; sourceTree = "<group>"; };
 		595A8E4D2C9479E600E7998C /* indigo_ccd_pentax.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_pentax.c; sourceTree = "<group>"; wrapsLines = 0; };
 		595A8E4E2C9479E600E7998C /* indigo_ccd_pentax.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_pentax.h; sourceTree = "<group>"; };
@@ -6551,6 +6562,28 @@
 			path = aux_joystick;
 			sourceTree = "<group>";
 		};
+		5958A1422FE9B07F00F0B407 /* askar_focuser_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				5958A1402FE9B07F00F0B407 /* askar_focuser_simulator.c */,
+				5958A1412FE9B07F00F0B407 /* Makefile */,
+			);
+			path = askar_focuser_simulator;
+			sourceTree = "<group>";
+		};
+		5958A14D2FE9B07F00F0B407 /* focuser_askar */ = {
+			isa = PBXGroup;
+			children = (
+				5958A14C2FE9B07F00F0B407 /* README.md */,
+				5958A1432FE9B07F00F0B407 /* Commands_Focuser_CDC_EN.md */,
+				5958A1442FE9B07F00F0B407 /* indigo_focuser_askar.h */,
+				5958A1452FE9B07F00F0B407 /* indigo_focuser_askar.c */,
+				5958A1482FE9B07F00F0B407 /* indigo_focuser_askar_main.c */,
+				5958A1422FE9B07F00F0B407 /* askar_focuser_simulator */,
+			);
+			path = focuser_askar;
+			sourceTree = "<group>";
+		};
 		595A8E522C9479E600E7998C /* ccd_pentax */ = {
 			isa = PBXGroup;
 			children = (
@@ -9912,6 +9945,7 @@
 				59DD69D01FC1DBF700AEF0DF /* dome_simulator */,
 				59958DFA25CB0DEB00BEFA1B /* dome_skyroof */,
 				59D8BBED2613B4A200B904EE /* dome_talon6ror */,
+				5958A14D2FE9B07F00F0B407 /* focuser_askar */,
 				59A3216721D52C1900EC0F4A /* focuser_asi */,
 				9D74A5482D4B648F00A31003 /* focuser_astroasis */,
 				5955CB6D2684BEBF00685071 /* focuser_astromechanics */,
@@ -14588,6 +14622,7 @@
 				9D0829512C198614002166E1 /* indigo_ccd_bresser.h in Headers */,
 				598A1C1D259BA94A00C0B34C /* DDHidUsageTables.h in Headers */,
 				598A1C1E259BA94A00C0B34C /* indigo_driver_json.h in Headers */,
+				5958A1502FE9B10500F0B407 /* indigo_focuser_askar.h in Headers */,
 				598A1C1F259BA94A00C0B34C /* indigo_dome_driver.h in Headers */,
 				598A1C20259BA94A00C0B34C /* nexstar.h in Headers */,
 				5995A8D025A9ABEC003987F1 /* indigo_platesolver.h in Headers */,
@@ -14902,6 +14937,7 @@
 				59D6718F22FDBB7500D08A2A /* indigo_ptp_nikon.h in Headers */,
 				593894B42C4C22B100CEF4A5 /* indigo_aux_upb3.h in Headers */,
 				59A68E32277DE626000439CC /* indigo_ccd_asi.h in Headers */,
+				5958A14F2FE9B10500F0B407 /* indigo_focuser_askar.h in Headers */,
 				9DAD522721246C18002FCC79 /* indigo_mount_synscan.h in Headers */,
 				59A52FB721A34251000B6F27 /* dc1394.h in Headers */,
 				59FC2EBC210CA76200730343 /* indigo_ccd_mi.h in Headers */,
@@ -15312,6 +15348,7 @@
 				59B51351297066040075C8A1 /* indigo_wheel_indigo.c in Sources */,
 				9D74A54C2D4B64A700A31003 /* indigo_focuser_astroasis.c in Sources */,
 				9D74A5522D4B64C800A31003 /* indigo_wheel_astroasis.c in Sources */,
+				5958A1512FE9B10500F0B407 /* indigo_focuser_askar.c in Sources */,
 				598A1B60259BA94A00C0B34C /* indigo_wheel_trutek.c in Sources */,
 				598A1B61259BA94A00C0B34C /* indigo_driver_json.c in Sources */,
 				59958E3025CC833C00BEFA1B /* indigo_aux_skyalert.c in Sources */,
@@ -15718,6 +15755,7 @@
 				59F0FE2D2083EA4F001B34E9 /* indigo_ccd_simulator_data.c in Sources */,
 				9DAD523D21258801002FCC79 /* indigo_guider_cgusbst4.c in Sources */,
 				9DDBAE191E2D2099004FE70F /* indigo_timer.c in Sources */,
+				5958A14E2FE9B10500F0B407 /* indigo_focuser_askar.c in Sources */,
 				59D07D562F8176520011F92A /* indigo_polaralign_driver.c in Sources */,
 				59111CFC285F504300E57194 /* indigocat_vsop87.c in Sources */,
 				591CD11129806D41003243AE /* indigo_ccd_mallin.c in Sources */,
