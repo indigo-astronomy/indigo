@@ -42,6 +42,7 @@
 #include <indigo/indigo_filter.h>
 #include <indigo/indigo_ccd_driver.h>
 #include <indigo/indigo_raw_utils.h>
+#include <indigo/indigo_gp_guider.h>
 #include <indigo/indigo_server_tcp.h>
 
 #include "indigo_agent_guider.h"
@@ -55,6 +56,8 @@
 
 #define SAFE_RADIUS_FACTOR (0.9)   /* factor to multiply SELECTION_RADIUS in which the star will not be lost */
 
+#define PPEC_RETAIN_MODEL_PCT (40.0)   /* max worm rotation (% of period) to retain the Predictive PEC model on restart */
+
 #define DEVICE_PRIVATE_DATA										((guider_agent_private_data *)device->private_data)
 #define CLIENT_PRIVATE_DATA										((guider_agent_private_data *)FILTER_CLIENT_CONTEXT->device->private_data)
 
@@ -62,6 +65,7 @@
 #define AGENT_GUIDER_CORRECTION_MODE_RA_PI_ITEM		(AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY->items+0)
 #define AGENT_GUIDER_CORRECTION_MODE_RA_HYSTERESIS_ITEM	(AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY->items+1)
 #define AGENT_GUIDER_CORRECTION_MODE_RA_LINEAR_TREND_ITEM	(AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY->items+2)
+#define AGENT_GUIDER_CORRECTION_MODE_RA_PPEC_ITEM	(AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY->items+3)
 
 #define AGENT_GUIDER_CORRECTION_MODE_DEC_PROPERTY	(DEVICE_PRIVATE_DATA->agent_guider_correction_mode_dec_property)
 #define AGENT_GUIDER_CORRECTION_MODE_DEC_PI_ITEM		(AGENT_GUIDER_CORRECTION_MODE_DEC_PROPERTY->items+0)
@@ -134,6 +138,9 @@
 #define AGENT_GUIDER_SETTINGS_DITHERING_AMOUNT_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+28)
 #define AGENT_GUIDER_SETTINGS_DITHERING_TIME_LIMIT_ITEM 		(AGENT_GUIDER_SETTINGS_PROPERTY->items+29)
 #define AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+30)
+#define AGENT_GUIDER_SETTINGS_PPEC_PRED_GAIN_RA_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+31)
+#define AGENT_GUIDER_SETTINGS_PPEC_PERIOD_RA_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+32)
+#define AGENT_GUIDER_SETTINGS_PPEC_REACTIVE_GAIN_RA_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+33)
 
 #define AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY	(DEVICE_PRIVATE_DATA->agent_flip_reverses_dec_property)
 #define AGENT_GUIDER_FLIP_REVERSES_DEC_ENABLED_ITEM		(AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY->items+0)
@@ -258,6 +265,7 @@ typedef struct {
 	double hysteresis_prev_drift_ra, hysteresis_prev_drift_dec;
 	indigo_linear_trend_history trend_ra, trend_dec;
 	indigo_resist_switch_history resist_switch_dec;
+	indigo_gp_guider *ppec_ra;
 	double rmse_ra_sum, rmse_dec_sum;
 	double rmse_ra_s_sum, rmse_dec_s_sum;
 	double rmse_ra_threshold, rmse_dec_threshold;
@@ -488,6 +496,15 @@ static void do_dither(indigo_device *device) {
 	static const char *names[] = { AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM_NAME, AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM_NAME };
 	double item_values[] = { x_value, y_value };
 	indigo_change_number_property(NULL, device->name, AGENT_GUIDER_DITHERING_OFFSETS_PROPERTY_NAME, 2, names, item_values);
+	/* Tell the Predictive PEC model a dither was applied so it switches to
+	   prediction-only while the mount is moved, keeping its GP/FFT consistent. */
+	if (AGENT_GUIDER_CORRECTION_MODE_RA_PPEC_ITEM->sw.value && DEVICE_PRIVATE_DATA->ppec_ra != NULL) {
+		double angle = -PI * get_rotation_angle(device) / 180;
+		double dither_ra = x_value * cos(angle) + y_value * sin(angle);
+		double cos_dec = (DEVICE_PRIVATE_DATA->cos_dec > MIN_COS_DEC) ? DEVICE_PRIVATE_DATA->cos_dec : MIN_COS_DEC;
+		double ra_rate = AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value * cos_dec;
+		indigo_gp_guider_dithered(DEVICE_PRIVATE_DATA->ppec_ra, dither_ra, ra_rate);
+	}
 	for (int i = 0; i < 15; i++) { // wait up to 3s to start dithering
 		if (IS_DITHERING) {
 			break;
@@ -507,6 +524,9 @@ static void do_dither(indigo_device *device) {
 		for (int i = 0; i < time_limit; i++) { // wait up to time limit to finish dithering
 			if (NOT_DITHERING) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering finished");
+				if (AGENT_GUIDER_CORRECTION_MODE_RA_PPEC_ITEM->sw.value && DEVICE_PRIVATE_DATA->ppec_ra != NULL) {
+					indigo_gp_guider_dither_settle_done(DEVICE_PRIVATE_DATA->ppec_ra, true);
+				}
 				break;
 			}
 			if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -1542,6 +1562,19 @@ static bool guide(indigo_device *device) {
 	memset(&DEVICE_PRIVATE_DATA->trend_dec, 0, sizeof(DEVICE_PRIVATE_DATA->trend_dec));
 	memset(&DEVICE_PRIVATE_DATA->resist_switch_dec, 0, sizeof(DEVICE_PRIVATE_DATA->resist_switch_dec));
 	DEVICE_PRIVATE_DATA->resist_switch_dec.count = INDIGO_RESIST_SWITCH_HISTORY_SIZE;
+	if (DEVICE_PRIVATE_DATA->ppec_ra == NULL) {
+		DEVICE_PRIVATE_DATA->ppec_ra = indigo_gp_guider_create();
+	}
+	/* Decide whether to retain the learned Predictive PEC model across a
+	   stop/restart. Retain only with a known, unchanged side of pier; if the
+	   mount feeds no usable pointing info (SOP = 0) the RA is passed as unknown
+	   which forces a reset (the safe default). */
+	if (DEVICE_PRIVATE_DATA->ppec_ra != NULL) {
+		int sop = (int)AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM->number.value;
+		double ra = (sop != 0) ? AGENT_GUIDER_MOUNT_COORDINATES_RA_ITEM->number.value : NAN;
+		bool retained = indigo_gp_guider_session_start(DEVICE_PRIVATE_DATA->ppec_ra, ra, sop, PPEC_RETAIN_MODEL_PCT);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Predictive PEC model %s on guiding start (RA = %.4f h, SOP = %d)", retained ? "retained" : "reset", ra, sop);
+	}
 	if (AGENT_GUIDER_ENABLE_LOGGING_FEATURE_ITEM->sw.value) {
 		open_log(device);
 		write_log_header(device, "guiding");
@@ -1664,6 +1697,21 @@ static bool guide(indigo_device *device) {
 				correction_ra = indigo_guider_hysteresis_response(AGENT_GUIDER_SETTINGS_HYSTERESIS_AGG_RA_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_HYSTERESIS_HIST_RA_ITEM->number.value / 100, min_error, drift_ra, &DEVICE_PRIVATE_DATA->hysteresis_prev_drift_ra);
 			} else if (AGENT_GUIDER_CORRECTION_MODE_RA_LINEAR_TREND_ITEM->sw.value) {
 				correction_ra = indigo_guider_linear_trend_response(AGENT_GUIDER_SETTINGS_LINEAR_TREND_AGG_RA_ITEM->number.value / 100, min_error, drift_ra, &DEVICE_PRIVATE_DATA->trend_ra);
+			} else if (AGENT_GUIDER_CORRECTION_MODE_RA_PPEC_ITEM->sw.value && DEVICE_PRIVATE_DATA->ppec_ra != NULL) {
+				/* Predictive PEC (Gaussian Process). It has its own reactive gain;
+				   min error is the shared min move. A fixed worm period disables
+				   online period estimation, 0 enables it. */
+				double period = AGENT_GUIDER_SETTINGS_PPEC_PERIOD_RA_ITEM->number.value;
+				indigo_gp_guider_set_parameters(
+					DEVICE_PRIVATE_DATA->ppec_ra,
+					AGENT_GUIDER_SETTINGS_PPEC_REACTIVE_GAIN_RA_ITEM->number.value / 100,
+					AGENT_GUIDER_SETTINGS_PPEC_PRED_GAIN_RA_ITEM->number.value / 100,
+					min_error,
+					period <= 0,
+					period
+				);
+				double time_step = AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value + AGENT_GUIDER_SETTINGS_DELAY_ITEM->number.value;
+				correction_ra = indigo_gp_guider_response(DEVICE_PRIVATE_DATA->ppec_ra, drift_ra, AGENT_GUIDER_STATS_SNR_ITEM->number.value, time_step);
 			} else {
 				// should not happen, but just a safety measure fallback to PI if no RA correction mode is selected
 				correction_ra = indigo_guider_pi_response(AGENT_GUIDER_SETTINGS_AGG_RA_ITEM->number.value / 100, AGENT_GUIDER_SETTINGS_I_GAIN_RA_ITEM->number.value, AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value + AGENT_GUIDER_SETTINGS_DELAY_ITEM->number.value, min_error, drift_ra, avg_drift_ra);
@@ -1846,6 +1894,11 @@ static bool guide(indigo_device *device) {
 		write_log_record(device);
 	}
 	DEVICE_PRIVATE_DATA->silence_warnings = false;
+	/* record stop time so the Predictive PEC model can decide whether it may be
+	   retained on the next guiding start */
+	if (DEVICE_PRIVATE_DATA->ppec_ra != NULL) {
+		indigo_gp_guider_session_stop(DEVICE_PRIVATE_DATA->ppec_ra);
+	}
 	close_log(device);
 	allow_abort_by_mount_agent(device, false);
 	if (!AGENT_GUIDER_DETECTION_DONUTS_ITEM->sw.value) {
@@ -2034,12 +2087,13 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		FILTER_DEVICE_CONTEXT->validate_related_agent = validate_related_agent;
 		FILTER_RELATED_AGENT_LIST_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- Drift correction mode
-		AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY_NAME, "Agent", "RA drift correction mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+		AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY_NAME, "Agent", "RA drift correction mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
 		if (AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(AGENT_GUIDER_CORRECTION_MODE_RA_PI_ITEM, AGENT_GUIDER_CORRECTION_MODE_PI_ITEM_NAME, "Proportional-Integral", true);
 		indigo_init_switch_item(AGENT_GUIDER_CORRECTION_MODE_RA_HYSTERESIS_ITEM, AGENT_GUIDER_CORRECTION_MODE_HYSTERESIS_ITEM_NAME, "Hysteresis", false);
 		indigo_init_switch_item(AGENT_GUIDER_CORRECTION_MODE_RA_LINEAR_TREND_ITEM, AGENT_GUIDER_CORRECTION_MODE_LINEAR_TREND_ITEM_NAME, "Linear Trend", false);
+		indigo_init_switch_item(AGENT_GUIDER_CORRECTION_MODE_RA_PPEC_ITEM, AGENT_GUIDER_CORRECTION_MODE_PPEC_ITEM_NAME, "Predictive PEC", false);
 
 		AGENT_GUIDER_CORRECTION_MODE_DEC_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_GUIDER_CORRECTION_MODE_DEC_PROPERTY_NAME, "Agent", "Dec drift correction mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
 		if (AGENT_GUIDER_CORRECTION_MODE_DEC_PROPERTY == NULL)
@@ -2114,7 +2168,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM, AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM_NAME, "Side of Pier (-1=E, 1=W, 0=undef)", -1, 1, 1, 0);
 		DEVICE_PRIVATE_DATA->cos_dec = 1; /* default dec is 0 until set */
 		// -------------------------------------------------------------------------------- Guiding settings
-		AGENT_GUIDER_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_SETTINGS_PROPERTY_NAME, "Agent", "Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 31);
+		AGENT_GUIDER_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_SETTINGS_PROPERTY_NAME, "Agent", "Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 34);
 		if (AGENT_GUIDER_SETTINGS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
@@ -2149,6 +2203,9 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_DITHERING_AMOUNT_ITEM, AGENT_GUIDER_SETTINGS_DITHERING_AMOUNT_ITEM_NAME, "Dithering max amount (px)", 0, 15, 1, 1);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_DITHERING_TIME_LIMIT_ITEM, AGENT_GUIDER_SETTINGS_DITHERING_TIME_LIMIT_ITEM_NAME, "Dithering Settle time limit (s)", 0, 300, 1, 60);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM, AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM_NAME, "Dithering min settling limit (frames)", 1, 50, 1, 5);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_PPEC_REACTIVE_GAIN_RA_ITEM, AGENT_GUIDER_SETTINGS_PPEC_REACTIVE_GAIN_RA_ITEM_NAME, "RA Predictive PEC reactive gain (%)", 0, 100, 5, 60);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_PPEC_PRED_GAIN_RA_ITEM, AGENT_GUIDER_SETTINGS_PPEC_PRED_GAIN_RA_ITEM_NAME, "RA Predictive PEC prediction gain (%)", 0, 100, 5, 50);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_PPEC_PERIOD_RA_ITEM, AGENT_GUIDER_SETTINGS_PPEC_PERIOD_RA_ITEM_NAME, "RA Predictive PEC worm period (s, 0=auto)", 0, 2000, 10, 0);
 		// -------------------------------------------------------------------------------- FLIP_REVERSE_DEC
 		AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY_NAME, "Agent", "Reverse Dec speed after meridian flip", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY == NULL) {
@@ -2703,6 +2760,10 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	pthread_mutex_destroy(&DEVICE_PRIVATE_DATA->last_image_mutex);
 	indigo_safe_free(DEVICE_PRIVATE_DATA->last_image);
 	DEVICE_PRIVATE_DATA->last_image_size = 0;
+	if (DEVICE_PRIVATE_DATA->ppec_ra != NULL) {
+		indigo_gp_guider_destroy(DEVICE_PRIVATE_DATA->ppec_ra);
+		DEVICE_PRIVATE_DATA->ppec_ra = NULL;
+	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_filter_device_detach(device);
 }
