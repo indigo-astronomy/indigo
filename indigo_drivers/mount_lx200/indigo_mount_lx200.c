@@ -1039,7 +1039,11 @@ static bool meade_set_tracking(indigo_device *device, bool on) {
 		} else if (MOUNT_TYPE_OAT_ITEM->sw.value) {
 			return meade_command(device, ":MT1#", response, sizeof(response), 0) && *response == '1';
 		} else {
-			return meade_command(device, ":AP#", NULL, 0, 0);
+			char cmd[] = ":AP#";
+			if (meade_command(device, ":GW#", response, sizeof(response), 0) && response[0] == 'A') {
+				cmd[2] = 'A';
+			}
+			return meade_command(device, cmd, NULL, 0, 0);
 		}
 	} else {
 		if (MOUNT_TYPE_GEMINI_ITEM->sw.value) {
