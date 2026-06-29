@@ -81,7 +81,7 @@
 #define GUIDER_IMAGE_HEIGHT_ITEM		(GUIDER_SETTINGS_PROPERTY->items + 1)
 #define GUIDER_IMAGE_NOISE_FIX_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 2)
 #define GUIDER_IMAGE_NOISE_VAR_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 3)
-#define GUIDER_IMAGE_PERR_SPD_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 4)
+#define GUIDER_IMAGE_PERR_CYCLE_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 4)
 #define GUIDER_IMAGE_PERR_VAL_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 5)
 #define GUIDER_IMAGE_GRADIENT_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 6)
 #define GUIDER_IMAGE_ANGLE_ITEM			(GUIDER_SETTINGS_PROPERTY->items + 7)
@@ -506,7 +506,12 @@ static void create_frame(indigo_device *device) {
 			if (start_time == 0)
 				start_time = time(NULL);
 			search_stars(device);
-			double ra_offset = GUIDER_IMAGE_PERR_VAL_ITEM->number.target * sin(GUIDER_IMAGE_PERR_SPD_ITEM->number.target * 0.6 * M_PI * ((time(NULL) - start_time) % 360) / 180) + GUIDER_IMAGE_RA_OFFSET_ITEM->number.value;
+			/* Continuous periodic error (no snap-back): a smooth, bipolar sine.
+			   PER_ERR_VAL is the amplitude (px) and PER_ERR_CYCLE the worm period
+			   in seconds (a cycle of 0 disables the periodic error). */
+			double pe_seconds = (double)(time(NULL) - start_time);
+			double pe_cycle = GUIDER_IMAGE_PERR_CYCLE_ITEM->number.target;
+			double ra_offset = (pe_cycle > 0 ? GUIDER_IMAGE_PERR_VAL_ITEM->number.target * sin(2.0 * M_PI * pe_seconds / pe_cycle) : 0.0) + GUIDER_IMAGE_RA_OFFSET_ITEM->number.value;
 			double guider_sin = sin(M_PI * GUIDER_IMAGE_ANGLE_ITEM->number.target / 180.0);
 			double guider_cos = cos(M_PI * GUIDER_IMAGE_ANGLE_ITEM->number.target / 180.0);
 			double ao_sin = sin(M_PI * GUIDER_IMAGE_AO_ANGLE_ITEM->number.target / 180.0);
@@ -848,8 +853,8 @@ static indigo_result ccd_attach(indigo_device *device) {
 				indigo_init_number_item(GUIDER_IMAGE_HEIGHT_ITEM, "IMAGE_HEIGHT", "Image height (px)", 300, 12000, 0, 1200);
 				indigo_init_number_item(GUIDER_IMAGE_NOISE_FIX_ITEM, "IMAGE_NOISE_FIX", "Image noise offset", 0, 5000, 0, 500);
 				indigo_init_number_item(GUIDER_IMAGE_NOISE_VAR_ITEM, "IMAGE_NOISE_VAR", "Image noise range", 1, 1000, 0, 100);
-				indigo_init_number_item(GUIDER_IMAGE_PERR_SPD_ITEM, "PER_ERR_SPD", "Periodic error speed", 0, 1, 0, 0.5);
-				indigo_init_number_item(GUIDER_IMAGE_PERR_VAL_ITEM, "PER_ERR_VAL", "Periodic error value", 0, 10, 0, 5);
+				indigo_init_number_item(GUIDER_IMAGE_PERR_CYCLE_ITEM, "PER_ERR_CYCLE", "Periodic error cycle (s)", 0, 1800, 0, 360);
+				indigo_init_number_item(GUIDER_IMAGE_PERR_VAL_ITEM, "PER_ERR_VAL", "Periodic error value (px)", 0, 10, 0, 2.5);
 				indigo_init_number_item(GUIDER_IMAGE_GRADIENT_ITEM, "IMAGE_GRADIENT", "Image gradient intensity", 0, 0.5, 0, 0.2);
 				indigo_init_number_item(GUIDER_IMAGE_ANGLE_ITEM, "IMAGE_ROTATION_ANGLE", "Image rotation angle (°)", 0, 360, 0, 36);
 				indigo_init_number_item(GUIDER_IMAGE_AO_ANGLE_ITEM, "AO_ANGLE", "AO angle (°)", 0, 360, 0, 74);
