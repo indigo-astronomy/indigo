@@ -287,6 +287,15 @@ Sequence.prototype.set_object_name = function(name) {
 	this.sequence.push({ execute: 'set_local_mode(null, null, "' + name + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
+Sequence.prototype.start_preview = function(exposure) {
+	this.sequence.push({ execute: 'set_batch(0,' + exposure + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'start_preview()', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
+Sequence.prototype.stop_preview = function() {
+	this.sequence.push({ execute: 'stop_preview()', step: this.step++, progress: this.progress++, exposure: this.exposure });
+}
+
 Sequence.prototype.capture_batch = function(p1, p2, p3) {
 	// If p1 is not string, treat p1 as count and p2 as exposure
 	// Else treat p1 as name_template, p2 as count, and p3 as exposure
@@ -1436,6 +1445,25 @@ var indigo_sequencer = {
 		this.select_switch(this.devices[IMAGER_AGENT], "AGENT_START_PROCESS", "STREAMING");
 	},
 
+	start_preview: function() {
+		this.select_switch(this.devices[IMAGER_AGENT], "AGENT_START_PROCESS", "PREVIEW", "Busy");
+	},
+	
+	stop_preview: function() {
+		var agent = this.devices[IMAGER_AGENT];
+		var property = indigo_devices[agent].AGENT_START_PROCESS;
+		if (property != null) {
+			if (property.state == "Busy") {
+				this.wait_for_property = "AGENT_START_PROCESS";
+				this.select_switch(this.devices[IMAGER_AGENT], "AGENT_ABORT_PROCESS", "ABORT");
+			} else {
+				indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
+			}
+		} else {
+			this.failure("There is no AGENT_START_PROCESS on " + agent);
+		}
+	},
+	
 	set_focuser_mode: function(mode) {
 		this.select_switch(this.devices[IMAGER_AGENT], "FOCUSER_MODE", mode);
 	},
