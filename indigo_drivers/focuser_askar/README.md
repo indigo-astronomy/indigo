@@ -30,7 +30,7 @@ driver broadcasts `WAF:discover` on UDP port 7676, the focuser answers
 discovered address is written back into the port field, so a saved configuration
 reconnects directly without re-broadcasting.
 
-## Status: Under development
+## Status: Stable
 
 Driver is developed and tested with:
-* Askar-WAF focuser simulator (`askar_focuser_simulator`) shipping under this directory
+* Askar-WAF focuser
