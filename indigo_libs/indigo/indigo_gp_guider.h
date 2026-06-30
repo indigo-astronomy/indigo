@@ -65,8 +65,17 @@ INDIGO_EXTERN indigo_gp_guider *indigo_gp_guider_create(void);
 /* Destroy a guider created by indigo_gp_guider_create(). NULL is ignored. */
 INDIGO_EXTERN void indigo_gp_guider_destroy(indigo_gp_guider *guider);
 
-/* Clear all collected data and bring the model back to its prior. */
+/* Clear all collected data, keeping the learned worm period estimate (the
+   period is a mechanical constant, so it stays valid across a meridian flip or
+   re-slew). Used internally when a guiding session restarts. */
 INDIGO_EXTERN void indigo_gp_guider_reset(indigo_gp_guider *guider);
+
+/* Full reset to the prior, including the learned worm period and the
+   cross-session retain state. Use this for an explicit user-requested "forget
+   everything and relearn from scratch" (e.g. when the period locked onto a
+   wrong value). User tuning set via indigo_gp_guider_set_parameters() is not
+   affected in practice because callers re-apply it each frame. */
+INDIGO_EXTERN void indigo_gp_guider_reset_model(indigo_gp_guider *guider);
 
 /* Begin a guiding session, deciding whether to retain the learned model or
    reset it. The model is retained only if guiding resumes on the
@@ -95,6 +104,13 @@ INDIGO_EXTERN void indigo_gp_guider_set_parameters(indigo_gp_guider *guider, dou
 
 /* Current worm period length estimate in seconds. */
 INDIGO_EXTERN double indigo_gp_guider_get_period_length(const indigo_gp_guider *guider);
+
+/* Learning progress of the predictive model, 0.0 .. 1.0. This is a data
+   sufficiency measure (not a goodness-of-fit): it ramps from 0 to 1 as the
+   model collects up to min_periods_for_inference worm periods of guiding data,
+   which is the same ramp that blends the GP prediction into the correction. At
+   1.0 the correction is driven fully by the learned periodic-error curve. */
+INDIGO_EXTERN double indigo_gp_guider_get_learning_progress(const indigo_gp_guider *guider);
 
 /* Compute the RA correction for one guiding frame.
      drift     - measured RA star displacement in pixels for this frame

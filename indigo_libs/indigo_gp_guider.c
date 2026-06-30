@@ -70,6 +70,15 @@ enum {
 #define DEFAULT_POINTS_FOR_APPROXIMATION 100
 #define DEFAULT_COMPUTE_PERIOD true
 
+/* Learning-progress reporting: when auto period estimation is on, the model is
+ * only as good as its period estimate. period_disagreement (smoothed relative
+ * error between the slowly-tracked period and the per-frame FFT estimate) maps
+ * to a 0..1 convergence factor: fully converged at/below CONVERGED_REL, not
+ * converged at/above DIVERGED_REL, linear in between. */
+#define PERIOD_DISAGREEMENT_SMOOTHING 0.1
+#define PERIOD_CONVERGED_REL 0.03
+#define PERIOD_DIVERGED_REL 0.45
+
 #define DEFAULT_LS_SE0 700.0
 #define DEFAULT_SV_SE0 20.0
 #define DEFAULT_LS_PK 10.0
@@ -365,6 +374,8 @@ struct indigo_gp_guider {
 
 	double prediction;
 	double last_prediction_end;
+	double learning_progress;    /* 0..1 warm-up ramp, cached for the public getter */
+	double period_disagreement;  /* smoothed |smoothed period - FFT estimate| / FFT estimate */
 
 	int dither_steps;
 	bool dithering_active;
@@ -899,6 +910,11 @@ static bool update_gp(indigo_gp_guider *g, double prediction_point) {
 				detrend[i] = rg[i] - (w0 + w1 * rt[i]);
 			}
 			double pl = estimate_period_length(rt, detrend, T);
+			if (!is_nan(pl) && pl > 0.0) {
+				/* how far the tracked period still is from what the FFT sees */
+				double rel = fabs(get_period_length(g) - pl) / pl;
+				g->period_disagreement = (1.0 - PERIOD_DISAGREEMENT_SMOOTHING) * g->period_disagreement + PERIOD_DISAGREEMENT_SMOOTHING * rel;
+			}
 			update_period_length(g, pl);
 			free(detrend);
 		}
@@ -1038,6 +1054,46 @@ static double estimate_period_length(const double *time, const double *data, int
 	return 1.0 / max_frequency;
 }
 
+/* Learning progress 0..1, cached for the public getter. Must be called while
+ * cb_last() still holds the current frame (before cb_push()).
+ *
+ * Two factors, averaged with equal weight:
+ *   data_ramp  - fraction of the inference window observed; the same warm-up
+ *                ramp that gp_result() uses to blend in the GP prediction.
+ *   period_ok  - when auto period estimation is on, how well the tracked period
+ *                agrees with the FFT estimate.
+ * The data ramp alone reads "done" while the periodic kernel still fits the
+ * wrong period, so it is only half the score; the other half tracks the period
+ * actually converging. */
+static double compute_learning_progress(indigo_gp_guider *g) {
+	if (g->buf_size <= 10) {
+		return 0.0;
+	}
+	double period_length = get_period_length(g);
+	if (period_length <= 0.0) {
+		return 0.0;
+	}
+	double data_ramp = cb_last(g)->timestamp / (g->min_periods_for_inference * period_length);
+	if (data_ramp < 0.0) {
+		data_ramp = 0.0;
+	}
+	if (data_ramp > 1.0) {
+		data_ramp = 1.0;
+	}
+	if (!g->compute_period) {
+		return data_ramp; /* fixed period: convergence is not a factor */
+	}
+	double period_ok;
+	if (g->period_disagreement <= PERIOD_CONVERGED_REL) {
+		period_ok = 1.0;
+	} else if (g->period_disagreement >= PERIOD_DIVERGED_REL) {
+		period_ok = 0.0;
+	} else {
+		period_ok = (PERIOD_DIVERGED_REL - g->period_disagreement) / (PERIOD_DIVERGED_REL - PERIOD_CONVERGED_REL);
+	}
+	return 0.5 * data_ramp + 0.5 * period_ok;
+}
+
 /* returns the internal control_signal */
 static double gp_deduce_result(indigo_gp_guider *g, double time_step, double prediction_point) {
 	handle_dark_guiding(g);
@@ -1051,6 +1107,8 @@ static double gp_deduce_result(indigo_gp_guider *g, double time_step, double pre
 		g->prediction = predict_gear_error(g, prediction_point + time_step);
 		control_signal += g->prediction;
 	}
+
+	g->learning_progress = compute_learning_progress(g);
 
 	cb_push(g);
 	cb_last(g)->control = control_signal;
@@ -1123,6 +1181,8 @@ static double gp_result(indigo_gp_guider *g, double input, double snr, double ti
 	if (is_nan(control_signal)) {
 		control_signal = hysteresis_control;
 	}
+
+	g->learning_progress = compute_learning_progress(g);
 
 	cb_push(g);
 	cb_last(g)->control = control_signal;
@@ -1198,9 +1258,25 @@ void indigo_gp_guider_reset(indigo_gp_guider *g) {
 	g->start_time = now_seconds();
 	g->last_time = g->start_time;
 	g->prediction = 0.0;
+	g->learning_progress = 0.0;
+	g->period_disagreement = 1.0; /* fully diverged until the first FFT estimate */
 	g->dither_offset = 0.0;
 	g->dither_steps = 0;
 	g->dithering_active = false;
+}
+
+void indigo_gp_guider_reset_model(indigo_gp_guider *g) {
+	if (!g) {
+		return;
+	}
+	/* full reset to the prior, including the learned worm period (unlike
+	   indigo_gp_guider_reset(), which keeps it). User tuning set via
+	   indigo_gp_guider_set_parameters() is re-applied by the caller. */
+	apply_defaults(g);
+	indigo_gp_guider_reset(g);
+	/* drop the cross-session retain state so the next session starts clean */
+	g->prev_ra = NAN;
+	g->prev_sop = 0;
 }
 
 /* wrap an RA difference (hours) into [-12, 12) */
@@ -1292,6 +1368,17 @@ double indigo_gp_guider_get_period_length(const indigo_gp_guider *g) {
 		return 0.0;
 	}
 	return get_period_length(g);
+}
+
+double indigo_gp_guider_get_learning_progress(const indigo_gp_guider *g) {
+	if (!g) {
+		return 0.0;
+	}
+	/* Cached during the last gp_result()/gp_deduce_result() while the current
+	   frame was still the buffer's last point. Reading the buffer here would be
+	   wrong, because those functions push an empty (timestamp 0) point before
+	   returning. */
+	return g->learning_progress;
 }
 
 double indigo_gp_guider_response(indigo_gp_guider *g, double drift, double snr, double time_step) {
