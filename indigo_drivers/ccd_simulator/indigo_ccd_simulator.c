@@ -45,6 +45,7 @@
 #include "indigo_ccd_simulator.h"
 
 // can be changed
+#define GUIDER_GUIDE_SCALE			200		// pulse-to-pixel divisor: smaller = faster mount correction (px = guide_rate * duration_ms / GUIDER_GUIDE_SCALE)
 #define GUIDER_MAG_LIMIT					8
 #define GUIDER_MAX_STARS				400
 #define GUIDER_FOV							7
@@ -873,8 +874,8 @@ static indigo_result ccd_attach(indigo_device *device) {
 				indigo_init_number_item(GUIDER_IMAGE_HEIGHT_ITEM, "IMAGE_HEIGHT", "Image height (px)", 300, 12000, 0, 1200);
 				indigo_init_number_item(GUIDER_IMAGE_NOISE_FIX_ITEM, "IMAGE_NOISE_FIX", "Image noise offset", 0, 5000, 0, 500);
 				indigo_init_number_item(GUIDER_IMAGE_NOISE_VAR_ITEM, "IMAGE_NOISE_VAR", "Image noise range", 1, 1000, 0, 100);
-				indigo_init_number_item(GUIDER_IMAGE_PERR_CYCLE_ITEM, "PER_ERR_CYCLE", "Periodic error cycle (s)", 0, 1800, 0, 360);
-				indigo_init_number_item(GUIDER_IMAGE_PERR_VAL_ITEM, "PER_ERR_VAL", "Periodic error value (px)", 0, 10, 0, 2.5);
+				indigo_init_number_item(GUIDER_IMAGE_PERR_CYCLE_ITEM, "PER_ERR_CYCLE", "Periodic error cycle (s)", 0, 1800, 0, 432);
+				indigo_init_number_item(GUIDER_IMAGE_PERR_VAL_ITEM, "PER_ERR_VAL", "Periodic error value (px)", 0, 10, 0, 2);
 				indigo_init_number_item(GUIDER_IMAGE_GRADIENT_ITEM, "IMAGE_GRADIENT", "Image gradient intensity", 0, 0.5, 0, 0.2);
 				indigo_init_number_item(GUIDER_IMAGE_ANGLE_ITEM, "IMAGE_ROTATION_ANGLE", "Image rotation angle (°)", 0, 360, 0, 36);
 				indigo_init_number_item(GUIDER_IMAGE_AO_ANGLE_ITEM, "AO_ANGLE", "AO angle (°)", 0, 360, 0, 74);
@@ -1350,9 +1351,9 @@ static indigo_result ccd_detach(indigo_device *device) {
 static void guider_ra_timer_callback(indigo_device *device) {
 	if (GUIDER_GUIDE_EAST_ITEM->number.value != 0 || GUIDER_GUIDE_WEST_ITEM->number.value != 0) {
 		if (GUIDER_IMAGE_SIDE_OF_PIER_ITEM->number.value == 0) {
-			GUIDER_IMAGE_RA_OFFSET_ITEM->number.value += cos(M_PI * GUIDER_IMAGE_DEC_ITEM->number.value / 180.0) * PRIVATE_DATA->guide_rate * (GUIDER_GUIDE_WEST_ITEM->number.value - GUIDER_GUIDE_EAST_ITEM->number.value) / 200;
+			GUIDER_IMAGE_RA_OFFSET_ITEM->number.value += cos(M_PI * GUIDER_IMAGE_DEC_ITEM->number.value / 180.0) * PRIVATE_DATA->guide_rate * (GUIDER_GUIDE_WEST_ITEM->number.value - GUIDER_GUIDE_EAST_ITEM->number.value) / GUIDER_GUIDE_SCALE;
 		} else {
-			GUIDER_IMAGE_RA_OFFSET_ITEM->number.value -= cos(M_PI * GUIDER_IMAGE_DEC_ITEM->number.value / 180.0) * PRIVATE_DATA->guide_rate * (GUIDER_GUIDE_WEST_ITEM->number.value - GUIDER_GUIDE_EAST_ITEM->number.value) / 200;
+			GUIDER_IMAGE_RA_OFFSET_ITEM->number.value -= cos(M_PI * GUIDER_IMAGE_DEC_ITEM->number.value / 180.0) * PRIVATE_DATA->guide_rate * (GUIDER_GUIDE_WEST_ITEM->number.value - GUIDER_GUIDE_EAST_ITEM->number.value) / GUIDER_GUIDE_SCALE;
 		}
 		GUIDER_GUIDE_EAST_ITEM->number.value = 0;
 		GUIDER_GUIDE_WEST_ITEM->number.value = 0;
@@ -1364,7 +1365,7 @@ static void guider_ra_timer_callback(indigo_device *device) {
 
 static void guider_dec_timer_callback(indigo_device *device) {
 	if (GUIDER_GUIDE_NORTH_ITEM->number.value != 0 || GUIDER_GUIDE_SOUTH_ITEM->number.value != 0) {
-		GUIDER_IMAGE_DEC_OFFSET_ITEM->number.value += PRIVATE_DATA->guide_rate * (GUIDER_GUIDE_NORTH_ITEM->number.value - GUIDER_GUIDE_SOUTH_ITEM->number.value) / 200;
+		GUIDER_IMAGE_DEC_OFFSET_ITEM->number.value += PRIVATE_DATA->guide_rate * (GUIDER_GUIDE_NORTH_ITEM->number.value - GUIDER_GUIDE_SOUTH_ITEM->number.value) / GUIDER_GUIDE_SCALE;
 		GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
 		GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
