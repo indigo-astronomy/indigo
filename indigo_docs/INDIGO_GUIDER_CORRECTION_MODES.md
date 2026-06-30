@@ -1,6 +1,6 @@
 # INDIGO Guider Agent - Drift Correction Modes
 
-Revision: 31.03.2026 (draft)
+Revision: 30.06.2026 (draft)
 
 Author: **Rumen G. Bogdanovski**
 
@@ -8,9 +8,9 @@ e-mail: *rumenastro@gmail.com*
 
 ## Overview
 
-INDIGO Guider Agent provides four drift correction modes. They can be selected independently for the Right Ascension and Declination axes.
+INDIGO Guider Agent provides five drift correction modes. They can be selected independently for the Right Ascension and Declination axes.
 
-* **RA** supports: **Proportional-Integral**, **Hysteresis**, and **Linear Trend**.
+* **RA** supports: **Proportional-Integral**, **Hysteresis**, **Linear Trend**, and **Predictive PEC**.
 * **Dec** supports: **Proportional-Integral**, **Hysteresis**, **Linear Trend**, and **Resist Switch**.
 
 Each mode converts the measured guide-star drift into a correction pulse in a different way. No single mode is always best. The best choice depends on the mount mechanics, guide exposure, seeing, backlash, and the shape of the tracking error.
@@ -189,6 +189,58 @@ An optional **fast-switch threshold** can override the normal conservatism. If t
 
 ---
 
+## Mode 5: Predictive PEC (PPEC)
+
+*Available for: **RA only**.*
+
+### How It Works
+
+Predictive PEC is designed specifically for the smooth, repeating periodic error (PE) of a worm-driven RA axis. Unlike the other modes, which only react to the drift measured *now*, it learns the **shape** of the periodic error over time and corrects the error it expects on the *next* frame before that error actually appears.
+
+It is built on a Gaussian Process (GP) guiding algorithm originally developed at the Max Planck Institute for Intelligent Systems and also used by PHD2. As guiding proceeds, the controller keeps a history of the accumulated gear error, fits a GP model that combines a long smooth trend, a periodic component (the worm error), and a short-term component, and uses that model to predict the error one guide cycle ahead.
+
+The correction issued each frame is the sum of two parts:
+
+```math
+correction = -\left(\text{reactive\_gain} \cdot \text{drift} + \text{prediction\_gain} \cdot \text{predicted\_error}\right)
+```
+
+* The **reactive** part is an immediate proportional response to the current drift, much like a simple P controller. It is also lightly smoothed (a small fixed hysteresis) so the response is not jumpy.
+* The **predictive** part comes from the GP model and anticipates the periodic error of the coming cycle.
+
+The model needs to observe the mount before it can predict. While it is still **learning**, the predictive part is blended in gradually and the controller behaves mostly like a reactive proportional/hysteresis controller. Roughly two worm periods of data are needed before the prediction is fully trusted. A **Predictive PEC learning (%)** indicator reports this warm-up progress, combining how much of the inference window has been observed with how well the estimated worm period has converged.
+
+The worm period can be entered manually or estimated automatically. With automatic estimation, the controller analyses the recorded error with an FFT and slowly tracks the dominant period.
+
+The learned model is also retained across short interruptions. If guiding is stopped and restarted on the same side of the pier at a similar RA, and the worm has not rotated too far in the meantime (up to 40% of a period), the model is kept and gear time is shifted to match, instead of relearning from scratch. Larger moves, a meridian flip, or a long pause cause a clean reset. Dithering is handled the same way: the model is preserved and only the reactive part is applied for a few settling frames.
+
+A **Reset Predictive PEC** action is available to discard the learned model manually (including the learned worm period) and start learning again from the default prior.
+
+### Parameters
+
+* **RA Predictive PEC reactive gain (%)** — Gain of the immediate proportional response to the current drift. This is the part that carries guiding before and while the model learns. Default: 60%.
+* **RA Predictive PEC prediction gain (%)** — How much of the model's predicted periodic error is applied. Setting this to 0 disables the prediction and leaves a plain reactive controller. Default: 50%.
+* **RA Predictive PEC worm period (s, 0=auto)** — The RA worm period in seconds. Set to 0 to let the controller estimate and track it automatically; set a known value to fix it and disable online estimation. Default: 0 (auto).
+
+The shared **Min error** (min move) applies as in the other modes: drift below it issues no correction.
+
+### When to Use
+
+* **Worm-gear RA with significant periodic error** — This is the main use case. PPEC excels when the RA error is dominated by smooth, repeating worm PE.
+* **Mounts left guiding for long sessions** — The longer it runs, the better the model and the smoother the RA trace.
+* **Smooth PE that a reactive controller chases** — Because it anticipates the error, it can correct earlier and with less lag than PI or Hysteresis.
+* **Strain-wave / harmonic mounts with few strong harmonics** — Many harmonic drives have an RA error built from only a few dominant, regularly repeating harmonics. Those can benefit noticeably from Predictive PEC. This is not universal, though: not every strain-wave mount will benefit (see *When Not to Use*).
+
+### When Not to Use
+
+* **Dec guiding** — It is not available for Dec and would be inappropriate there.
+* **Mounts without real periodic error** — Friction or direct drives with little classical worm PE gain little from the predictive part; PI or Hysteresis is simpler.
+* **Harmonic drives with rough or many-harmonic error** — Strain-wave mounts whose RA error is rough, broadband, or composed of many harmonics rather than a few dominant ones leave the model little to predict, so the predictive part helps little.
+* **Very short or interrupted sessions** — There may not be enough data (about two worm periods) for the model to become useful before guiding ends.
+* **Rough, irregular, or non-repeating RA error** — If the error is not genuinely periodic, the prediction has little to model and a reactive controller is usually a better choice.
+
+---
+
 ## Comparison Summary
 
 | Mode | Axes | Usually best for | Usually not ideal for |
@@ -197,6 +249,7 @@ An optional **fast-switch threshold** can override the normal conservatism. If t
 | **Hysteresis** | RA, Dec | Noisy centroids; smoother response; good general-purpose alternative when guiding is noisy; moderate backlash sensitivity | Fast real drift; rapid disturbances; high-PE slopes |
 | **Linear Trend** | RA, Dec | Smooth monotonic drift; long, gentle trends | Rough PE; turbulent seeing; backlash-dominated Dec |
 | **Resist Switch** | Dec | Significant Dec backlash; conservative one-side Dec guiding | Low-backlash systems; continuous Dec drift; RA |
+| **Predictive PEC** | RA | Worm-gear RA with smooth, repeating periodic error; long sessions | Mounts without real worm PE; rough or non-periodic RA error; short sessions; Dec |
 
 ---
 
@@ -206,8 +259,8 @@ The table below gives **typical** recommendations. It is intentionally conservat
 
 | Mount / drive type | Typical behavior | Usually suitable modes | Usually not the first choice | Notes |
 |--------------------|------------------|------------------------|------------------------------|-------|
-| **Worm gear** | Often smooth RA periodic error; Dec backlash is common; behavior is usually predictable | **RA:** PI, sometimes Linear Trend if PE is smooth and guide cadence is short enough. **Dec:** PI, Hysteresis, or Resist Switch if backlash is significant | **Dec:** Linear Trend on backlash-heavy mounts; Hysteresis with high $h$ when clear systematic drift is present | This is the most common case. If the mount is mechanically sound, PI is usually the best starting point on both axes |
-| **Strain wave / harmonic drive** | Usually little classical backlash, but RA error can be rough, asymmetric, and steep; some mounts show elasticity or high-frequency components | **RA:** PI, often P-only or with a small I term; Hysteresis can also help if the RA trace is dominated by high-frequency jitter or centroid noise. **Dec:** PI or Hysteresis. | Linear Trend is often a poor fit for rough or jagged RA error. Resist Switch is usually unnecessary unless Dec backlash is actually observed | Use short enough guide exposures to sample the steeper RA error. If the high-frequency oscillation is real mount motion rather than guide noise, PI is usually safer than Hysteresis. Choose by measured behavior, not by the harmonic label alone |
+| **Worm gear** | Often smooth RA periodic error; Dec backlash is common; behavior is usually predictable | **RA:** PI, **Predictive PEC** when the worm PE is strong and the session is long enough to learn it, sometimes Linear Trend if PE is smooth and guide cadence is short enough. **Dec:** PI, Hysteresis, or Resist Switch if backlash is significant | **Dec:** Linear Trend on backlash-heavy mounts; Hysteresis with high $h$ when clear systematic drift is present | This is the most common case. If the mount is mechanically sound, PI is usually the best starting point on both axes; Predictive PEC is the natural next step for the RA axis when the dominant error is repeating worm PE |
+| **Strain wave / harmonic drive** | Usually little classical backlash, but RA error can be rough, asymmetric, and steep; some mounts show elasticity or high-frequency components | **RA:** PI, often P-only or with a small I term; Hysteresis can also help if the RA trace is dominated by high-frequency jitter or centroid noise. **Dec:** PI or Hysteresis. | Linear Trend is often a poor fit for rough or jagged RA error. Resist Switch is usually unnecessary unless Dec backlash is actually observed | Predictive PEC can help appreciably on strain-wave mounts whose RA error is dominated by a few strong harmonics (a fairly regular, repeating pattern), but it will not benefit every harmonic-drive mount: those whose error is rough, broadband, or rich in many harmonics give the model little to predict. Use short enough guide exposures to sample the steeper RA error. If the high-frequency oscillation is real mount motion rather than guide noise, PI is usually safer than Hysteresis. Choose by measured behavior, not by the harmonic label alone |
 | **Friction drive / roller drive** | Very low backlash and little classical gear PE, but slip, stiction, or wind sensitivity may appear | **RA/Dec:** PI or Hysteresis; Linear Trend if the drift is smooth and monotonic | Resist Switch unless there is real Dec reversal deadband | These mounts often do not need backlash-specific strategies, but may benefit from a calmer controller if the centroid is noisy |
 | **Direct drive** | Very low backlash; no worm PE, but servo jitter, encoder noise, or external disturbances may dominate | **RA/Dec:** PI or Hysteresis | Resist Switch in most cases; Linear Trend as a default | If the mount already tracks very smoothly, Hysteresis can reduce chasing tiny noise. Use PI if there is real low-frequency drift |
 | **Belt-reduced / hybrid gear trains** | Behavior depends strongly on what the belt drives; backlash can be low, but compliance and irregular error may appear | Usually PI first, then Hysteresis if the guide data is noisy | Linear Trend if the error is irregular; Resist Switch unless Dec backlash is confirmed | Treat these mounts by their measured guide behavior, not by the presence of a belt alone |
@@ -217,6 +270,7 @@ The table below gives **typical** recommendations. It is intentionally conservat
 * **If the mount has obvious Dec backlash**, prefer **Resist Switch** or sometimes **Hysteresis** for Dec.
 * **If the mount has smooth, slow error**, **PI** or **Linear Trend** can work well.
 * **If the mount has rough or jagged RA error**, **PI** is usually the safest first choice. **Hysteresis** can also work well when part of the roughness is guide-star noise or short-term jitter, but **Linear Trend** is usually a poor fit.
+* **If the RA error is dominated by smooth, repeating worm periodic error**, **Predictive PEC** can outperform the reactive modes once it has learned the mount, especially over long sessions.
 * **If the graph is mostly noisy rather than drifting**, **Hysteresis** is often the right mode to try.
 
 ---
@@ -246,6 +300,13 @@ Refer to [GUIDING_PI_CONTROLLER_TUNING.md](GUIDING_PI_CONTROLLER_TUNING.md) for 
 
 * **RA:** Proportional-Integral, P-only, aggressiveness about 70-80%
 * **Dec:** Linear Trend, aggressiveness 80%
+
+### Worm-gear mount with strong RA periodic error (long session)
+
+* **RA:** Predictive PEC, reactive gain 60%, prediction gain 50%, worm period 0 (auto)
+* **Dec:** Proportional-Integral, or Resist Switch if Dec backlash is significant
+
+Let the **Predictive PEC learning (%)** indicator climb before judging the RA trace; the prediction is only fully trusted after roughly two worm periods. If the worm period is known, entering it directly speeds up learning.
 
 ### Typical harmonic / strain-wave mount starting point
 
