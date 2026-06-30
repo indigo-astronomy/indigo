@@ -71,10 +71,10 @@ enum {
 #define DEFAULT_COMPUTE_PERIOD true
 
 /* Learning-progress reporting: when auto period estimation is on, the model is
- * only as good as its period estimate. period_disagreement (smoothed relative
- * error between the slowly-tracked period and the per-frame FFT estimate) maps
- * to a 0..1 convergence factor: fully converged at/below CONVERGED_REL, not
- * converged at/above DIVERGED_REL, linear in between. */
+   only as good as its period estimate. period_disagreement (smoothed relative
+   error between the slowly-tracked period and the per-frame FFT estimate) maps
+   to a 0..1 convergence factor: fully converged at/below CONVERGED_REL, not
+   converged at/above DIVERGED_REL, linear in between. */
 #define PERIOD_DISAGREEMENT_SMOOTHING 0.1
 #define PERIOD_CONVERGED_REL 0.03
 #define PERIOD_DIVERGED_REL 0.45
@@ -117,13 +117,11 @@ static void mat_mul_bt(const double *A, const double *B, double *C, int ar, int 
 	}
 }
 
-/*
- * LDLT (square-root free Cholesky) factorisation of a symmetric matrix:
- *   A = L * D * L^T,  L unit lower-triangular, D diagonal.
- * L is stored full (only the strict lower part is meaningful, unit diagonal
- * implied), D as a vector. Returns false if a pivot is non-positive (matrix
- * not positive definite even after the jitter that callers add).
- */
+/* LDLT (square-root free Cholesky) factorisation of a symmetric matrix:
+     A = L * D * L^T,  L unit lower-triangular, D diagonal.
+   L is stored full (only the strict lower part is meaningful, unit diagonal
+   implied), D as a vector. Returns false if a pivot is non-positive (matrix
+   not positive definite even after the jitter that callers add). */
 typedef struct {
 	int n;
 	double *L; /* n x n */
@@ -169,10 +167,8 @@ static void ldlt_free(ldlt_t *f) {
 	f->D = NULL;
 }
 
-/*
- * Solve A * X = B for X, where A = L D L^T was factorised by ldlt_factor.
- * B and X are n x m (m right-hand sides), X may alias B.
- */
+/* Solve A * X = B for X, where A = L D L^T was factorised by ldlt_factor.
+   B and X are n x m (m right-hand sides), X may alias B. */
 static void ldlt_solve(const ldlt_t *f, const double *B, double *X, int m) {
 	int n = f->n;
 	double *Y = (double *)malloc((size_t)n * m * sizeof(double));
@@ -255,11 +251,9 @@ static int next_pow2(int n) {
 	return p;
 }
 
-/*
- * Power spectrum of a real signal, mirroring math_tools::compute_spectrum.
- * Allocates and returns spectrum[] and frequencies[] (caller frees), sets
- * *out_len. Returns false on allocation failure.
- */
+/* Power spectrum of a real signal, mirroring math_tools::compute_spectrum.
+   Allocates and returns spectrum[] and frequencies[] (caller frees), sets
+   *out_len. Returns false on allocation failure. */
 static bool compute_spectrum(const double *data, int n_data, int N, double **spectrum, double **frequencies, int *out_len) {
 	if (N < n_data) {
 		N = n_data;
@@ -308,17 +302,15 @@ static bool compute_spectrum(const double *data, int n_data, int N, double **spe
 
 /*  Covariance kernels */
 
-/*
- * Evaluate the covariance K[i][j] = k(x_i, y_j) into out (nx x ny).
- * log_hyper is the GP log-space vector of length 8:
- *   [log_noise, log(ls0), log(sv0), log(lsP), log(svP), log(ls1), log(sv1), log(period)]
- * projection == true uses PeriodicSquareExponential (long SE + periodic),
- * projection == false uses PeriodicSquareExponential2 (long SE + periodic + short SE).
- *
- * Distances are computed directly as (x_i - y_j)^2; the original mean-centering
- * in math_tools::squareDistance is purely for numerical conditioning of the
- * binomial expansion and is unnecessary (and slightly less accurate) here.
- */
+/* Evaluate the covariance K[i][j] = k(x_i, y_j) into out (nx x ny).
+   log_hyper is the GP log-space vector of length 8:
+     [log_noise, log(ls0), log(sv0), log(lsP), log(svP), log(ls1), log(sv1), log(period)]
+   projection == true uses PeriodicSquareExponential (long SE + periodic),
+   projection == false uses PeriodicSquareExponential2 (long SE + periodic + short SE).
+
+   Distances are computed directly as (x_i - y_j)^2; the original mean-centering
+   in math_tools::squareDistance is purely for numerical conditioning of the
+   binomial expansion and is unnecessary (and slightly less accurate) here. */
 static void kernel_eval(double *out, const double *x, int nx, const double *y, int ny, const double *log_hyper, bool projection) {
 	double ls_se0 = exp(log_hyper[1]);
 	double sv_se0 = exp(2.0 * log_hyper[2]);
@@ -376,6 +368,7 @@ struct indigo_gp_guider {
 	double last_prediction_end;
 	double learning_progress;    /* 0..1 warm-up ramp, cached for the public getter */
 	double period_disagreement;  /* smoothed |smoothed period - FFT estimate| / FFT estimate */
+	double time_origin;          /* gear-time offset subtracted before GP inference; matches gp_data_loc */
 
 	int dither_steps;
 	bool dithering_active;
@@ -407,7 +400,7 @@ struct indigo_gp_guider {
 
 #ifdef INDIGO_GP_GUIDER_TEST_CLOCK
 /* Test hook: a virtual clock the test harness advances explicitly, because real
- * guide cycles are seconds apart while a test loop runs in microseconds. */
+   guide cycles are seconds apart while a test loop runs in microseconds. */
 double indigo_gp_guider_test_clock = 0.0;
 static double now_seconds(void) { return indigo_gp_guider_test_clock; }
 #else
@@ -515,12 +508,10 @@ static void gp_clear(indigo_gp_guider *g) {
 	g->gp_n = 0;
 }
 
-/*
- * GP inference on a subset of n most-relevant points (GP::inferSD + GP::infer).
- * data_loc/data_out/data_var hold N points; the n points with the highest
- * covariance to prediction_point are selected. Builds the Gram matrix, its LDLT
- * factorisation, alpha = K^-1 y, and the explicit linear-trend basis (beta).
- */
+/* GP inference on a subset of n most-relevant points (GP::inferSD + GP::infer).
+   data_loc/data_out/data_var hold N points; the n points with the highest
+   covariance to prediction_point are selected. Builds the Gram matrix, its LDLT
+   factorisation, alpha = K^-1 y, and the explicit linear-trend basis (beta). */
 static void gp_infer_sd(indigo_gp_guider *g, const double *data_loc, const double *data_out, const double *data_var, int N, int n, double prediction_point) {
 	gp_clear(g);
 	if (N <= 0) {
@@ -610,10 +601,9 @@ static void gp_infer_sd(indigo_gp_guider *g, const double *data_loc, const doubl
 	ldlt_solve(&g->gp_chol, out, alpha, 1);
 
 	/* explicit linear trend basis:
-	 *   feature_vectors (2 x nn): row0 = 1, row1 = loc
-	 *   feature_matrix  (2 x 2)  = FV * K^-1 * FV^T
-	 *   beta = feature_matrix^-1 * (FV * alpha)
-	 */
+	   feature_vectors (2 x nn): row0 = 1, row1 = loc
+	   feature_matrix  (2 x 2)  = FV * K^-1 * FV^T
+	   beta = feature_matrix^-1 * (FV * alpha) */
 	double *feature = (double *)malloc((size_t)2 * nn * sizeof(double));
 	if (!feature) {
 		free(alpha);
@@ -663,10 +653,8 @@ static void gp_infer_sd(indigo_gp_guider *g, const double *data_loc, const doubl
 	g->gp_has_data = true;
 }
 
-/*
- * Projected GP prediction of the mean at the given locations (GP::predict with
- * the projection kernel and explicit trend). Writes mean[] (length nloc).
- */
+/* Projected GP prediction of the mean at the given locations (GP::predict with
+   the projection kernel and explicit trend). Writes mean[] (length nloc). */
 static void gp_predict_projected(indigo_gp_guider *g, const double *locations, int nloc, double *mean) {
 	if (!g->gp_has_data) {
 		for (int i = 0; i < nloc; i++) {
@@ -704,9 +692,8 @@ static void gp_predict_projected(indigo_gp_guider *g, const double *locations, i
 	ldlt_solve(&g->gp_chol, mixed_t, gamma, nloc);
 
 	/* phi (2 x nloc): row0 = 1, row1 = locations
-	 * R = phi - feature_vectors * gamma  (2 x nloc)
-	 * m += R^T * beta
-	 */
+	   R = phi - feature_vectors * gamma  (2 x nloc)
+	   m += R^T * beta */
 	double *R = (double *)malloc((size_t)2 * nloc * sizeof(double));
 	if (!R) {
 		free(mixed); free(mixed_t); free(gamma);
@@ -765,15 +752,13 @@ static void handle_dark_guiding(indigo_gp_guider *g) {
 
 static double estimate_period_length(const double *time, const double *data, int n);
 
-/*
- * regularize_dataset: resample the irregular (timestamp, gear_error, variance)
- * samples onto a fixed GRID_INTERVAL grid by trapezoidal averaging, mirroring
- * GaussianProcessGuider::regularize_dataset.
- *
- * Outputs reg_time/reg_gear/reg_var (caller-allocated, capacity >= grid_size)
- * and returns the number of grid cells produced, or -1 on overrun while
- * dithering.
- */
+/* regularize_dataset: resample the irregular (timestamp, gear_error, variance)
+   samples onto a fixed GRID_INTERVAL grid by trapezoidal averaging, mirroring
+   GaussianProcessGuider::regularize_dataset.
+
+   Outputs reg_time/reg_gear/reg_var (caller-allocated, capacity >= grid_size)
+   and returns the number of grid cells produced, or -1 on overrun while
+   dithering. */
 static int regularize_dataset(indigo_gp_guider *g, const double *timestamps, const double *gear_error, const double *variances, int count, double *reg_time, double *reg_gear, double *reg_var, int grid_size) {
 	double grid_interval = GRID_INTERVAL;
 	double last_cell_end = -grid_interval;
@@ -823,11 +808,9 @@ static int regularize_dataset(indigo_gp_guider *g, const double *timestamps, con
 	return j;
 }
 
-/*
- * UpdateGP: assemble the data, regularize, detrend, optionally estimate the
- * period, and run the GP inference. Returns false on failure (e.g. dithering
- * over-run) so the caller can recover.
- */
+/* UpdateGP: assemble the data, regularize, detrend, optionally estimate the
+   period, and run the GP inference. Returns false on failure (e.g. dithering
+   over-run) so the caller can recover. */
 static bool update_gp(indigo_gp_guider *g, double prediction_point) {
 	int N = g->buf_size;
 	if (N < 2) {
@@ -852,8 +835,25 @@ static bool update_gp(indigo_gp_guider *g, double prediction_point) {
 		gear_error[i] = sum_control + p->measurement; /* accumulated gear error */
 	}
 
-	/* regularize onto the fixed grid */
-	int grid_size = (int)ceil(timestamps[count - 1] / GRID_INTERVAL) + 1;
+	/* Bound the inference to the most recent window and rebase its start to 0. */
+	double window = (double)(REGULAR_BUFFER_SIZE - 1) * GRID_INTERVAL;
+	double cutoff = timestamps[count - 1] - window;
+	int start = 0;
+	while (start < count - 1 && timestamps[start] < cutoff) {
+		start++;
+	}
+	double origin = timestamps[start];
+	double *ts = timestamps + start;
+	double *ge = gear_error + start;
+	double *vr = variances + start;
+	int n = count - start;
+	for (int i = 0; i < n; i++) {
+		ts[i] -= origin;
+	}
+	prediction_point -= origin;
+
+	/* regularize onto the fixed grid (now bounded to <= REGULAR_BUFFER_SIZE cells) */
+	int grid_size = (int)ceil(ts[n - 1] / GRID_INTERVAL) + 1;
 	if (grid_size < 1) {
 		grid_size = 1;
 	}
@@ -864,7 +864,7 @@ static bool update_gp(indigo_gp_guider *g, double prediction_point) {
 		free(timestamps); free(gear_error); free(variances); free(rt); free(rg); free(rv);
 		return false;
 	}
-	int T = regularize_dataset(g, timestamps, gear_error, variances, count, rt, rg, rv, grid_size);
+	int T = regularize_dataset(g, ts, ge, vr, n, rt, rg, rv, grid_size);
 	free(timestamps);
 	free(gear_error);
 	free(variances);
@@ -878,9 +878,8 @@ static bool update_gp(indigo_gp_guider *g, double prediction_point) {
 	}
 
 	/* linear least squares de-trend (offset + drift) for the period estimation:
-	 *   FM (2 x T): row0 = 1, row1 = time
-	 *   weights = (FM FM^T + 1e-3 I)^-1 (FM gear)
-	 */
+	   FM (2 x T): row0 = 1, row1 = time
+	   weights = (FM FM^T + 1e-3 I)^-1 (FM gear) */
 	double A[4] = {0, 0, 0, 0};
 	double b[2] = {0, 0};
 	for (int i = 0; i < T; i++) {
@@ -921,7 +920,9 @@ static bool update_gp(indigo_gp_guider *g, double prediction_point) {
 	}
 
 	/* GP inference uses the (non-detrended) gear error; the explicit trend
-	 * basis inside the GP handles the linear component. */
+	   basis inside the GP handles the linear component. The cached model now
+	   lives in rebased time, so commit the matching origin for predict. */
+	g->time_origin = origin;
 	gp_infer_sd(g, rt, rg, rv, T, g->points_for_approximation, prediction_point);
 
 	free(rt);
@@ -939,17 +940,22 @@ static double predict_gear_error(indigo_gp_guider *g, double prediction_location
 	next_location[0] = g->last_prediction_end;
 	next_location[1] = prediction_location + g->dither_offset;
 
+	/* The cached GP lives in rebased time (see update_gp); map the absolute
+	   prediction locations into the same frame. last_prediction_end stays
+	   absolute. */
+	double rebased[2];
+	rebased[0] = next_location[0] - g->time_origin;
+	rebased[1] = next_location[1] - g->time_origin;
+
 	double prediction[2];
-	gp_predict_projected(g, next_location, 2, prediction);
+	gp_predict_projected(g, rebased, 2, prediction);
 
 	g->last_prediction_end = next_location[1];
 	return prediction[1] - prediction[0];
 }
 
-/*
- * EstimatePeriodLength: Hamming window -> power spectrum -> peak with quadratic
- * interpolation, mirroring GaussianProcessGuider::EstimatePeriodLength.
- */
+/* EstimatePeriodLength: Hamming window -> power spectrum -> peak with quadratic
+   interpolation, mirroring GaussianProcessGuider::EstimatePeriodLength. */
 static double estimate_period_length(const double *time, const double *data, int n) {
 	if (n < 2) {
 		return NAN; /* not reachable: callers guard T >= 2 */
@@ -1026,8 +1032,8 @@ static double estimate_period_length(const double *time, const double *data, int
 			return 1.0 / max_frequency;
 		}
 
-		/* phi (3 x 3): row0 = loc^2, row1 = loc, row2 = 1
-		 * w = (phi phi^T)^-1 (phi dat) */
+				/* phi (3 x 3): row0 = loc^2, row1 = loc, row2 = 1
+		   w = (phi phi^T)^-1 (phi dat) */
 		double phi[9];
 		for (int c = 0; c < 3; c++) {
 			phi[0 * 3 + c] = interp_loc[c] * interp_loc[c];
@@ -1055,16 +1061,16 @@ static double estimate_period_length(const double *time, const double *data, int
 }
 
 /* Learning progress 0..1, cached for the public getter. Must be called while
- * cb_last() still holds the current frame (before cb_push()).
- *
- * Two factors, averaged with equal weight:
- *   data_ramp  - fraction of the inference window observed; the same warm-up
- *                ramp that gp_result() uses to blend in the GP prediction.
- *   period_ok  - when auto period estimation is on, how well the tracked period
- *                agrees with the FFT estimate.
- * The data ramp alone reads "done" while the periodic kernel still fits the
- * wrong period, so it is only half the score; the other half tracks the period
- * actually converging. */
+   cb_last() still holds the current frame (before cb_push()).
+
+   Two factors, averaged with equal weight:
+     data_ramp  - fraction of the inference window observed; the same warm-up
+                  ramp that gp_result() uses to blend in the GP prediction.
+     period_ok  - when auto period estimation is on, how well the tracked period
+                  agrees with the FFT estimate.
+   The data ramp alone reads "done" while the periodic kernel still fits the
+   wrong period, so it is only half the score; the other half tracks the period
+   actually converging. */
 static double compute_learning_progress(indigo_gp_guider *g) {
 	if (g->buf_size <= 10) {
 		return 0.0;
@@ -1131,9 +1137,9 @@ static double gp_result(indigo_gp_guider *g, double input, double snr, double ti
 			g->dithering_active = false;
 		}
 		/* while dithering we don't trust the measurement: pretend we do dark
-		 * guiding to keep the GP/FFT consistent, but apply plain proportional
-		 * control. update_gp() degrades gracefully on a regularize over-run
-		 * (keeps the previous GP), so no recovery is needed here. */
+		   guiding to keep the GP/FFT consistent, but apply plain proportional
+		   control. update_gp() degrades gracefully on a regularize over-run
+		   (keeps the previous GP), so no recovery is needed here. */
 		gp_deduce_result(g, time_step, -1.0);
 		INDIGO_DEBUG(indigo_debug("%s(): dithering, input = %.3f, control = %.3f, dither_steps = %d", __FUNCTION__, input, g->control_gain * input, g->dither_steps));
 		return g->control_gain * input;
@@ -1260,6 +1266,7 @@ void indigo_gp_guider_reset(indigo_gp_guider *g) {
 	g->prediction = 0.0;
 	g->learning_progress = 0.0;
 	g->period_disagreement = 1.0; /* fully diverged until the first FFT estimate */
+	g->time_origin = 0.0;
 	g->dither_offset = 0.0;
 	g->dither_steps = 0;
 	g->dithering_active = false;
@@ -1315,7 +1322,7 @@ bool indigo_gp_guider_session_start(indigo_gp_guider *g, double current_ra, int 
 		}
 
 		/* the GP expects gear time to advance monotonically; it cannot handle the
-		 * worm having moved backwards, so reset in that case */
+		   worm having moved backwards, so reset in that case */
 		if (!need_reset && worm_offset < 0.0) {
 			need_reset = true;
 		}
@@ -1329,7 +1336,7 @@ bool indigo_gp_guider_session_start(indigo_gp_guider *g, double current_ra, int 
 		indigo_gp_guider_reset(g);
 	} else {
 		/* resume: shift gear time by the RA slew and predict-only for a few
-		 * frames, exactly like settling after a dither */
+		   frames, exactly like settling after a dither */
 		g->dither_offset += ra_offset;
 		g->dithering_active = true;
 		g->dither_steps = MAX_DITHER_STEPS;
@@ -1389,8 +1396,7 @@ double indigo_gp_guider_response(indigo_gp_guider *g, double drift, double snr, 
 		snr = 10.0; /* reasonable default when SNR is unknown */
 	}
 	double control_signal = gp_result(g, drift, snr, time_step, -1.0);
-	/* INDIGO's response functions return a correction with the opposite sign (the
-	 * pulse direction that counteracts the drift), so negate at the boundary. */
+	/* This is a correction so negate the control signal */
 	return -control_signal;
 }
 
