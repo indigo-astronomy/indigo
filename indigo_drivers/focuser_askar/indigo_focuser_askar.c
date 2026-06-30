@@ -35,6 +35,10 @@
 #include <pthread.h>
 #include <stdbool.h>
 #include <sys/time.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include <indigo/indigo_driver_xml.h>
 
@@ -48,6 +52,14 @@
 #define RESPONSE_TIMEOUT_MS        500
 
 #define ASKAR_CMD_LEN              64
+
+// WAF WiFi autodiscovery: a broadcast "WAF:discover" datagram is sent to UDP
+// port ASKAR_DISCOVERY_PORT and the focuser answers "WAF:<ip>:<port>". The
+// resolved address is then used for a regular TCP connection.
+#define ASKAR_DISCOVERY_PORT       7676
+#define ASKAR_DISCOVERY_REQUEST    "WAF:discover"
+#define ASKAR_DISCOVERY_TIMEOUT_MS 1000
+#define ASKAR_DISCOVERY_RETRIES    3
 
 // Logical step range allowed by the protocol's set-max-travel command.
 #define ASKAR_MAX_TRAVEL_MIN       100
@@ -306,6 +318,69 @@ static bool askar_set_reverse(indigo_device *device, bool reversed) {
 	return strncmp(response, "FR", 2) == 0;
 }
 
+// -------------------------------------------------------------------------------- WAF WiFi autodiscovery
+
+// Broadcast "WAF:discover" on UDP ASKAR_DISCOVERY_PORT and wait for a focuser to
+// answer "WAF:<ip>:<port>". On success the discovered address is written to
+// `url` as "askar://<ip>:<port>" (ready for indigo_open_network_device) and true
+// is returned. This is called from the connect timer thread (not the main
+// thread); the select() timeout bounds each attempt so the thread is never
+// blocked for more than ASKAR_DISCOVERY_RETRIES * ASKAR_DISCOVERY_TIMEOUT_MS.
+static bool askar_discover(indigo_device *device, char *url, int max) {
+	int handle = socket(AF_INET, SOCK_DGRAM, 0);
+	if (handle < 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "WAF discovery: socket() failed (%s)", strerror(errno));
+		return false;
+	}
+	int broadcast = 1;
+	setsockopt(handle, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast));
+
+	struct sockaddr_in addr;
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_port = htons(ASKAR_DISCOVERY_PORT);
+	addr.sin_addr.s_addr = INADDR_BROADCAST;
+
+	bool found = false;
+	for (int i = 0; i < ASKAR_DISCOVERY_RETRIES && !found; i++) {
+		if (sendto(handle, ASKAR_DISCOVERY_REQUEST, strlen(ASKAR_DISCOVERY_REQUEST), 0, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "WAF discovery: sendto() failed (%s)", strerror(errno));
+			continue;
+		}
+		// Wait for a reply, but never block longer than the configured timeout.
+		// Unrelated datagrams are ignored until the timeout elapses.
+		while (!found) {
+			fd_set readout;
+			FD_ZERO(&readout);
+			FD_SET(handle, &readout);
+			struct timeval tv;
+			tv.tv_sec = ASKAR_DISCOVERY_TIMEOUT_MS / 1000;
+			tv.tv_usec = (ASKAR_DISCOVERY_TIMEOUT_MS % 1000) * 1000;
+			if (select(handle + 1, &readout, NULL, NULL, &tv) <= 0) {
+				break; // timeout or error -> rebroadcast
+			}
+			char buffer[64] = {0};
+			struct sockaddr_in from;
+			socklen_t from_len = sizeof(from);
+			long n = recvfrom(handle, buffer, sizeof(buffer) - 1, 0, (struct sockaddr *)&from, &from_len);
+			if (n <= 0) {
+				break;
+			}
+			buffer[n] = 0;
+			// Expected reply: "WAF:<ip>:<port>"
+			char ip[64];
+			int port;
+			if (sscanf(buffer, "WAF:%63[^:]:%d", ip, &port) == 2) {
+				snprintf(url, max, "askar://%s:%d", ip, port);
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "WAF discovery: focuser detected at %s:%d", ip, port);
+				found = true;
+			}
+		}
+	}
+	close(handle);
+	return found;
+}
+
 // -------------------------------------------------------------------------------- INDIGO focuser device implementation
 
 static void focuser_timer_callback(indigo_device *device) {
@@ -409,8 +484,28 @@ static void focuser_connect_callback(indigo_device *device) {
 				if (!indigo_is_device_url(name, "askar")) {
 					PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, atoi(DEVICE_BAUDRATE_ITEM->text.value));
 				} else {
-					indigo_network_protocol proto = INDIGO_PROTOCOL_TCP;
-					PRIVATE_DATA->handle = indigo_open_network_device(name, 8080, &proto);
+					// Network URL. A bare "askar://" (empty host) triggers UDP
+					// autodiscovery; "askar://host[:port]" connects directly.
+					char url[INDIGO_VALUE_SIZE];
+					char *host = strstr(name, "://");
+					host = host ? host + 3 : name;
+					bool resolved = (*host != 0);
+					if (!resolved) {
+						if (askar_discover(device, url, sizeof(url))) {
+							indigo_copy_value(DEVICE_PORT_ITEM->text.value, url);
+							name = DEVICE_PORT_ITEM->text.value;
+							indigo_update_property(device, DEVICE_PORT_PROPERTY, "Askar-WAF detected at %s", name);
+							resolved = true;
+						} else {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "WAF discovery: no focuser responded");
+						}
+					}
+					if (resolved) {
+						indigo_network_protocol proto = INDIGO_PROTOCOL_TCP;
+						PRIVATE_DATA->handle = indigo_open_network_device(name, 8080, &proto);
+					} else {
+						PRIVATE_DATA->handle = -1;
+					}
 				}
 
 				if (PRIVATE_DATA->handle < 0) {
