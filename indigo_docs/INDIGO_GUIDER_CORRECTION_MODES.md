@@ -1,6 +1,6 @@
 # INDIGO Guider Agent - Drift Correction Modes
 
-Revision: 30.06.2026 (draft)
+Revision: 02.07.2026 (draft)
 
 Author: **Rumen G. Bogdanovski**
 
@@ -212,7 +212,7 @@ The model needs to observe the mount before it can predict. While it is still **
 
 The worm period can be entered manually or estimated automatically. With automatic estimation, the controller analyses the recorded error with an FFT and slowly tracks the dominant period.
 
-The learned model is also retained across short interruptions. If guiding is stopped and restarted on the same side of the pier at a similar RA, and the worm has not rotated too far in the meantime (up to 40% of a period), the model is kept and gear time is shifted to match, instead of relearning from scratch. Larger moves, a meridian flip, or a long pause cause a clean reset. Dithering is handled the same way: the model is preserved and only the reactive part is applied for a few settling frames.
+The learned model is also retained across short interruptions. If guiding is stopped and restarted on the same side of the pier at a similar RA, and the worm has not rotated too far in the meantime (up to a configurable fraction of a period, 40% by default), the model is kept and gear time is shifted to match, instead of relearning from scratch. Larger moves, a meridian flip, or a long pause cause a clean reset. Dithering is handled the same way: the model is preserved and only the reactive part is applied for a few settling frames.
 
 A **Reset Predictive PEC** action is available to discard the learned model manually (including the learned worm period) and start learning again from the default prior.
 
@@ -221,6 +221,7 @@ A **Reset Predictive PEC** action is available to discard the learned model manu
 * **RA Predictive PEC reactive gain (%)** — Gain of the immediate proportional response to the current drift. This is the part that carries guiding before and while the model learns. Default: 60%.
 * **RA Predictive PEC prediction gain (%)** — How much of the model's predicted periodic error is applied. Setting this to 0 disables the prediction and leaves a plain reactive controller. Default: 50%.
 * **RA Predictive PEC worm period (s, 0=auto)** — The RA worm period in seconds. Set to 0 to let the controller estimate and track it automatically; set a known value to fix it and disable online estimation. Default: 0 (auto).
+* **RA Predictive PEC retain model (% of period)** — How far the worm may rotate during a guiding interruption while still keeping the learned model, expressed as a percentage of the worm period. If guiding restarts on the same side of the pier and the worm has rotated less than this amount, the model is retained and gear time is shifted to match; larger moves force a clean relearn. Set to 0 to always relearn from scratch on restart. Default: 40%.
 
 The shared **Min error** (min move) applies as in the other modes: drift below it issues no correction.
 
