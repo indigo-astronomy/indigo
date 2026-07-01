@@ -39,6 +39,8 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <ifaddrs.h>
+#include <net/if.h>
 
 #include <indigo/indigo_driver_xml.h>
 
@@ -60,6 +62,7 @@
 #define ASKAR_DISCOVERY_REQUEST    "WAF:discover"
 #define ASKAR_DISCOVERY_TIMEOUT_MS 1000
 #define ASKAR_DISCOVERY_RETRIES    3
+#define ASKAR_MAX_BROADCAST_ADDRS  16
 
 // Logical step range allowed by the protocol's set-max-travel command.
 #define ASKAR_MAX_TRAVEL_MIN       100
@@ -320,12 +323,58 @@ static bool askar_set_reverse(indigo_device *device, bool reversed) {
 
 // -------------------------------------------------------------------------------- WAF WiFi autodiscovery
 
+// Collect one broadcast destination per active, non-loopback IPv4 interface
+// (its directed subnet broadcast, e.g. 192.168.1.255) plus the global
+// 255.255.255.255 as a fallback. A single sendto() to INADDR_BROADCAST only
+// leaves via whichever interface the kernel's routing table picks for that
+// destination (typically the default route), so on a multi-NIC host (WiFi +
+// Ethernet + VPN, etc.) the focuser's actual subnet may never see the packet.
+// Sending to each interface's own directed broadcast address forces a
+// correct route-table match per interface.
+static int askar_collect_broadcast_addresses(in_addr_t *addrs, int max) {
+	int count = 0;
+	addrs[count++] = INADDR_BROADCAST;
+
+	struct ifaddrs *list;
+	if (getifaddrs(&list) != 0) {
+		return count;
+	}
+	for (struct ifaddrs *ifa = list; ifa != NULL && count < max; ifa = ifa->ifa_next) {
+		if (ifa->ifa_addr == NULL || ifa->ifa_addr->sa_family != AF_INET) {
+			continue;
+		}
+		if ((ifa->ifa_flags & IFF_UP) == 0 || (ifa->ifa_flags & IFF_BROADCAST) == 0 || (ifa->ifa_flags & IFF_LOOPBACK) != 0) {
+			continue;
+		}
+		if (ifa->ifa_broadaddr == NULL) {
+			continue;
+		}
+		in_addr_t candidate = ((struct sockaddr_in *)ifa->ifa_broadaddr)->sin_addr.s_addr;
+		bool duplicate = false;
+		for (int i = 0; i < count; i++) {
+			if (addrs[i] == candidate) {
+				duplicate = true;
+				break;
+			}
+		}
+		if (!duplicate) {
+			addrs[count++] = candidate;
+		}
+	}
+	freeifaddrs(list);
+	return count;
+}
+
 // Broadcast "WAF:discover" on UDP ASKAR_DISCOVERY_PORT and wait for a focuser to
-// answer "WAF:<ip>:<port>". On success the discovered address is written to
-// `url` as "askar://<ip>:<port>" (ready for indigo_open_network_device) and true
-// is returned. This is called from the connect timer thread (not the main
-// thread); the select() timeout bounds each attempt so the thread is never
-// blocked for more than ASKAR_DISCOVERY_RETRIES * ASKAR_DISCOVERY_TIMEOUT_MS.
+// answer "WAF:<ip>:<port>". Each attempt is broadcast on every active network
+// interface (see askar_collect_broadcast_addresses()) plus 255.255.255.255, so
+// discovery works even when the host has multiple interfaces (WiFi, Ethernet,
+// VPN, etc.) and the target subnet is not on the default route. On success the
+// discovered address is written to `url` as "askar://<ip>:<port>" (ready for
+// indigo_open_network_device) and true is returned. This is called from the
+// connect timer thread (not the main thread); the select() timeout bounds
+// each attempt so the thread is never blocked for more than
+// ASKAR_DISCOVERY_RETRIES * ASKAR_DISCOVERY_TIMEOUT_MS.
 static bool askar_discover(indigo_device *device, char *url, int max) {
 	int handle = socket(AF_INET, SOCK_DGRAM, 0);
 	if (handle < 0) {
@@ -339,12 +388,22 @@ static bool askar_discover(indigo_device *device, char *url, int max) {
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(ASKAR_DISCOVERY_PORT);
-	addr.sin_addr.s_addr = INADDR_BROADCAST;
+
+	in_addr_t broadcast_addrs[ASKAR_MAX_BROADCAST_ADDRS];
+	int broadcast_count = askar_collect_broadcast_addresses(broadcast_addrs, ASKAR_MAX_BROADCAST_ADDRS);
 
 	bool found = false;
 	for (int i = 0; i < ASKAR_DISCOVERY_RETRIES && !found; i++) {
-		if (sendto(handle, ASKAR_DISCOVERY_REQUEST, strlen(ASKAR_DISCOVERY_REQUEST), 0, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "WAF discovery: sendto() failed (%s)", strerror(errno));
+		bool sent = false;
+		for (int j = 0; j < broadcast_count; j++) {
+			addr.sin_addr.s_addr = broadcast_addrs[j];
+			if (sendto(handle, ASKAR_DISCOVERY_REQUEST, strlen(ASKAR_DISCOVERY_REQUEST), 0, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "WAF discovery: sendto() failed (%s)", strerror(errno));
+				continue;
+			}
+			sent = true;
+		}
+		if (!sent) {
 			continue;
 		}
 		// Wait for a reply, but never block longer than the configured timeout.
