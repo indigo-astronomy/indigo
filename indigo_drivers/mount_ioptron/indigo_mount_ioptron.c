@@ -39,6 +39,7 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/time.h>
+#include <inttypes.h>
 
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_io.h>
@@ -403,7 +404,7 @@ static bool ieq_set_utc(indigo_device *device, time_t *secs, int utc_offset) {
 			}
 		}
 	} else if (PRIVATE_DATA->protocol == 0x0300) {
-		sprintf(command, ":SUT%013llu#", (uint64_t)((JDNOW - JD2000) * 8.64e+7));
+		sprintf(command, ":SUT%013" PRIu64 "#", (uint64_t)((JDNOW - JD2000) * 8.64e+7));
 		if (!ieq_command(device, command, response, 1) || *response != '1') {
 			MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {

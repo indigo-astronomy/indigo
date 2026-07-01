@@ -220,8 +220,8 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 			close(pipe_stdout[0]);
 			dup2(pipe_stdout[1], STDOUT_FILENO);
 			close(pipe_stdout[1]);
-			execl("/bin/sh", "sh", "-c", buffer, NULL, environ);
-			perror("execl");
+			execle("/bin/sh", "sh", "-c", buffer, NULL, environ);
+			perror("execle");
 			_exit(127);
 		}
 	}
