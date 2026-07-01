@@ -138,9 +138,10 @@
 #define AGENT_GUIDER_SETTINGS_DITHERING_AMOUNT_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+28)
 #define AGENT_GUIDER_SETTINGS_DITHERING_TIME_LIMIT_ITEM 		(AGENT_GUIDER_SETTINGS_PROPERTY->items+29)
 #define AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+30)
-#define AGENT_GUIDER_SETTINGS_PPEC_PRED_GAIN_RA_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+31)
-#define AGENT_GUIDER_SETTINGS_PPEC_PERIOD_RA_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+32)
-#define AGENT_GUIDER_SETTINGS_PPEC_REACTIVE_GAIN_RA_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+33)
+#define AGENT_GUIDER_SETTINGS_PPEC_REACTIVE_GAIN_RA_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+31)
+#define AGENT_GUIDER_SETTINGS_PPEC_PRED_GAIN_RA_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+32)
+#define AGENT_GUIDER_SETTINGS_PPEC_PERIOD_RA_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+33)
+#define AGENT_GUIDER_SETTINGS_PPEC_RETAIN_MODEL_RA_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+34)
 
 #define AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY	(DEVICE_PRIVATE_DATA->agent_flip_reverses_dec_property)
 #define AGENT_GUIDER_FLIP_REVERSES_DEC_ENABLED_ITEM		(AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY->items+0)
@@ -1578,7 +1579,7 @@ static bool guide(indigo_device *device) {
 	if (DEVICE_PRIVATE_DATA->ppec_ra != NULL) {
 		int sop = (int)AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM->number.value;
 		double ra = (sop != 0) ? AGENT_GUIDER_MOUNT_COORDINATES_RA_ITEM->number.value : NAN;
-		bool retained = indigo_gp_guider_session_start(DEVICE_PRIVATE_DATA->ppec_ra, ra, sop, PPEC_RETAIN_MODEL_PCT);
+		bool retained = indigo_gp_guider_session_start(DEVICE_PRIVATE_DATA->ppec_ra, ra, sop, AGENT_GUIDER_SETTINGS_PPEC_RETAIN_MODEL_RA_ITEM->number.value);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Predictive PEC model %s on guiding start (RA = %.4f h, SOP = %d)", retained ? "retained" : "reset", ra, sop);
 	}
 	if (AGENT_GUIDER_ENABLE_LOGGING_FEATURE_ITEM->sw.value) {
@@ -2185,7 +2186,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM, AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM_NAME, "Side of Pier (-1=E, 1=W, 0=undef)", -1, 1, 1, 0);
 		DEVICE_PRIVATE_DATA->cos_dec = 1; /* default dec is 0 until set */
 		// -------------------------------------------------------------------------------- Guiding settings
-		AGENT_GUIDER_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_SETTINGS_PROPERTY_NAME, "Agent", "Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 34);
+		AGENT_GUIDER_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_SETTINGS_PROPERTY_NAME, "Agent", "Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 35);
 		if (AGENT_GUIDER_SETTINGS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
@@ -2220,9 +2221,10 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_DITHERING_AMOUNT_ITEM, AGENT_GUIDER_SETTINGS_DITHERING_AMOUNT_ITEM_NAME, "Dithering max amount (px)", 0, 15, 1, 1);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_DITHERING_TIME_LIMIT_ITEM, AGENT_GUIDER_SETTINGS_DITHERING_TIME_LIMIT_ITEM_NAME, "Dithering Settle time limit (s)", 0, 300, 1, 60);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM, AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM_NAME, "Dithering min settling limit (frames)", 1, 50, 1, 5);
-		indigo_init_number_item(AGENT_GUIDER_SETTINGS_PPEC_REACTIVE_GAIN_RA_ITEM, AGENT_GUIDER_SETTINGS_PPEC_REACTIVE_GAIN_RA_ITEM_NAME, "RA Predictive PEC reactive gain (%)", 0, 100, 5, 60);
-		indigo_init_number_item(AGENT_GUIDER_SETTINGS_PPEC_PRED_GAIN_RA_ITEM, AGENT_GUIDER_SETTINGS_PPEC_PRED_GAIN_RA_ITEM_NAME, "RA Predictive PEC prediction gain (%)", 0, 100, 5, 50);
-		indigo_init_number_item(AGENT_GUIDER_SETTINGS_PPEC_PERIOD_RA_ITEM, AGENT_GUIDER_SETTINGS_PPEC_PERIOD_RA_ITEM_NAME, "RA Predictive PEC worm period (s, 0=auto)", 0, 2000, 10, 0);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_PPEC_REACTIVE_GAIN_RA_ITEM, AGENT_GUIDER_SETTINGS_PPEC_REACTIVE_GAIN_RA_ITEM_NAME, "RA PPEC reactive gain (%)", 0, 100, 5, 60);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_PPEC_PRED_GAIN_RA_ITEM, AGENT_GUIDER_SETTINGS_PPEC_PRED_GAIN_RA_ITEM_NAME, "RA PPEC predictive gain (%)", 0, 100, 5, 50);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_PPEC_PERIOD_RA_ITEM, AGENT_GUIDER_SETTINGS_PPEC_PERIOD_RA_ITEM_NAME, "RA PPEC period (s, 0=auto)", 0, 2000, 10, 0);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_PPEC_RETAIN_MODEL_RA_ITEM, AGENT_GUIDER_SETTINGS_PPEC_RETAIN_MODEL_RA_ITEM_NAME, "RA PPEC retain model (% of period)", 0, 80, 5, PPEC_RETAIN_MODEL_PCT);
 		// -------------------------------------------------------------------------------- FLIP_REVERSE_DEC
 		AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY_NAME, "Agent", "Reverse Dec speed after meridian flip", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY == NULL) {
