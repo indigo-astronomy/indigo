@@ -2006,6 +2006,7 @@ static void factory_reset(indigo_device *device) {
 	indigo_reset_property(device, AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY);
 	indigo_reset_property(device, AGENT_PROCESS_FEATURES_PROPERTY);
 	indigo_reset_property(device, AGENT_GUIDER_SETTINGS_PROPERTY);
+	indigo_reset_property(device, AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY);
 	indigo_delete_property(device, AGENT_GUIDER_STARS_PROPERTY, NULL);
 	AGENT_GUIDER_STARS_PROPERTY->count = 1;
 	indigo_reset_property(device, AGENT_GUIDER_STARS_PROPERTY);
