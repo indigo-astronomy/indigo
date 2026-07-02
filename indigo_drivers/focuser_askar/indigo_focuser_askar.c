@@ -23,7 +23,7 @@
  \file indigo_focuser_askar.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_focuser_askar"
 
 #include <stdlib.h>
@@ -39,6 +39,8 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <net/if.h>
+#include <ifaddrs.h>
 
 #include <indigo/indigo_driver_xml.h>
 
@@ -60,6 +62,8 @@
 #define ASKAR_DISCOVERY_REQUEST    "WAF:discover"
 #define ASKAR_DISCOVERY_TIMEOUT_MS 1000
 #define ASKAR_DISCOVERY_RETRIES    3
+#define ASKAR_DISCOVERY_MAX_IFACES 32
+#define ASKAR_DISCOVERY_MAX_DEVICES 20
 
 // Logical step range allowed by the protocol's set-max-travel command.
 #define ASKAR_MAX_TRAVEL_MIN       100
@@ -320,36 +324,79 @@ static bool askar_set_reverse(indigo_device *device, bool reversed) {
 
 // -------------------------------------------------------------------------------- WAF WiFi autodiscovery
 
-// Broadcast "WAF:discover" on UDP ASKAR_DISCOVERY_PORT and wait for a focuser to
-// answer "WAF:<ip>:<port>". On success the discovered address is written to
-// `url` as "askar://<ip>:<port>" (ready for indigo_open_network_device) and true
-// is returned. This is called from the connect timer thread (not the main
-// thread); the select() timeout bounds each attempt so the thread is never
-// blocked for more than ASKAR_DISCOVERY_RETRIES * ASKAR_DISCOVERY_TIMEOUT_MS.
-static bool askar_discover(indigo_device *device, char *url, int max) {
+// A Wi-Fi focuser discovered on the network.
+typedef struct {
+	char url[64];    // "askar://<ip>:<port>", ready for indigo_open_network_device
+	char label[64];  // "<ip>:<port>", used to build the human-readable list label
+} askar_wifi_device;
+
+// Parse a "WAF:<ip>:<port>" reply into `dev` (url "askar://<ip>:<port>" and label
+// "<ip>:<port>"). Returns true on a well-formed reply.
+static bool askar_parse_reply(const char *reply, askar_wifi_device *dev) {
+	char ip[64];
+	int port;
+	if (sscanf(reply, "WAF:%63[^:]:%d", ip, &port) == 2) {
+		snprintf(dev->url, sizeof(dev->url), "askar://%s:%d", ip, port);
+		snprintf(dev->label, sizeof(dev->label), "%s:%d", ip, port);
+		return true;
+	}
+	return false;
+}
+
+static bool askar_wifi_list_contains(const askar_wifi_device *list, int count, const char *url) {
+	for (int i = 0; i < count; i++) {
+		if (strncmp(list[i].url, url, sizeof(list[i].url)) == 0) {
+			return true;
+		}
+	}
+	return false;
+}
+
+// Broadcast "WAF:discover" on UDP ASKAR_DISCOVERY_PORT and collect every focuser
+// that answers "WAF:<ip>:<port>" within the timeout. Fills `list` with up to `max`
+// unique devices and returns the count. Called from a timer thread (not the main
+// thread); the select() timeout bounds each attempt so the thread is never blocked
+// for more than ASKAR_DISCOVERY_RETRIES * ASKAR_DISCOVERY_TIMEOUT_MS.
+static int askar_discover_all(askar_wifi_device *list, int max) {
 	int handle = socket(AF_INET, SOCK_DGRAM, 0);
 	if (handle < 0) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "WAF discovery: socket() failed (%s)", strerror(errno));
-		return false;
+		return 0;
 	}
 	int broadcast = 1;
 	setsockopt(handle, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast));
+
+	struct in_addr targets[ASKAR_DISCOVERY_MAX_IFACES];
+	int target_count = 0;
+	struct ifaddrs *ifaddr = NULL;
+	if (getifaddrs(&ifaddr) == 0) {
+		for (struct ifaddrs *ifa = ifaddr; ifa != NULL && target_count < ASKAR_DISCOVERY_MAX_IFACES; ifa = ifa->ifa_next) {
+			if (ifa->ifa_addr == NULL || ifa->ifa_addr->sa_family != AF_INET) continue;
+			if (!(ifa->ifa_flags & IFF_UP) || !(ifa->ifa_flags & IFF_BROADCAST) || (ifa->ifa_flags & IFF_LOOPBACK)) continue;
+			if (ifa->ifa_broadaddr == NULL) continue;
+			targets[target_count++] = ((struct sockaddr_in *)ifa->ifa_broadaddr)->sin_addr;
+		}
+		freeifaddrs(ifaddr);
+	}
+	if (target_count == 0) {
+		targets[target_count++].s_addr = INADDR_BROADCAST;
+	}
 
 	struct sockaddr_in addr;
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(ASKAR_DISCOVERY_PORT);
-	addr.sin_addr.s_addr = INADDR_BROADCAST;
 
-	bool found = false;
-	for (int i = 0; i < ASKAR_DISCOVERY_RETRIES && !found; i++) {
-		if (sendto(handle, ASKAR_DISCOVERY_REQUEST, strlen(ASKAR_DISCOVERY_REQUEST), 0, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "WAF discovery: sendto() failed (%s)", strerror(errno));
-			continue;
+	int found = 0;
+	for (int i = 0; i < ASKAR_DISCOVERY_RETRIES && found < max; i++) {
+		for (int t = 0; t < target_count; t++) {
+			addr.sin_addr = targets[t];
+			if (sendto(handle, ASKAR_DISCOVERY_REQUEST, strlen(ASKAR_DISCOVERY_REQUEST), 0, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "WAF discovery: sendto(%s) failed (%s)", inet_ntoa(targets[t]), strerror(errno));
+			}
 		}
-		// Wait for a reply, but never block longer than the configured timeout.
-		// Unrelated datagrams are ignored until the timeout elapses.
-		while (!found) {
+
+		while (found < max) {
 			fd_set readout;
 			FD_ZERO(&readout);
 			FD_SET(handle, &readout);
@@ -367,18 +414,39 @@ static bool askar_discover(indigo_device *device, char *url, int max) {
 				break;
 			}
 			buffer[n] = 0;
-			// Expected reply: "WAF:<ip>:<port>"
-			char ip[64];
-			int port;
-			if (sscanf(buffer, "WAF:%63[^:]:%d", ip, &port) == 2) {
-				snprintf(url, max, "askar://%s:%d", ip, port);
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "WAF discovery: focuser detected at %s:%d", ip, port);
-				found = true;
+			askar_wifi_device dev;
+			if (askar_parse_reply(buffer, &dev) && !askar_wifi_list_contains(list, found, dev.url)) {
+				list[found++] = dev;
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "WAF discovery: focuser detected at %s", dev.label);
 			}
 		}
 	}
 	close(handle);
 	return found;
+}
+
+static void askar_append_wifi_ports(indigo_device *device) {
+	askar_wifi_device found[ASKAR_DISCOVERY_MAX_DEVICES];
+	int count = askar_discover_all(found, ASKAR_DISCOVERY_MAX_DEVICES);
+	if (count == 0) {
+		return;
+	}
+	int base = DEVICE_PORTS_PROPERTY->count;
+	DEVICE_PORTS_PROPERTY = indigo_resize_property(DEVICE_PORTS_PROPERTY, base + count);
+	for (int i = 0; i < count; i++) {
+		char label[INDIGO_NAME_SIZE];
+		snprintf(label, sizeof(label), "Askar-WAF (%s)", found[i].label);
+		indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + base + i, found[i].url, label, false);
+	}
+}
+
+static void focuser_scan_ports_callback(indigo_device *device) {
+	indigo_delete_property(device, DEVICE_PORTS_PROPERTY, NULL);
+	indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
+	askar_append_wifi_ports(device);
+	DEVICE_PORTS_PROPERTY->items[0].sw.value = false;
+	DEVICE_PORTS_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_define_property(device, DEVICE_PORTS_PROPERTY, NULL);
 }
 
 // -------------------------------------------------------------------------------- INDIGO focuser device implementation
@@ -462,6 +530,9 @@ static indigo_result focuser_attach(indigo_device *device) {
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = device->master_device != NULL;
 
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
+		// Fold discovered Wi-Fi focusers into the initial DEVICE_PORTS list without
+		// blocking attach on the UDP scan. A Refresh repeats it (see change_property).
+		indigo_set_timer(device, 0, focuser_scan_ports_callback, NULL);
 		return indigo_focuser_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -484,20 +555,21 @@ static void focuser_connect_callback(indigo_device *device) {
 				if (!indigo_is_device_url(name, "askar")) {
 					PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, atoi(DEVICE_BAUDRATE_ITEM->text.value));
 				} else {
-					// Network URL. A bare "askar://" (empty host) triggers UDP
-					// autodiscovery; "askar://host[:port]" connects directly.
-					char url[INDIGO_VALUE_SIZE];
 					char *host = strstr(name, "://");
 					host = host ? host + 3 : name;
 					bool resolved = (*host != 0);
 					if (!resolved) {
-						if (askar_discover(device, url, sizeof(url))) {
-							indigo_copy_value(DEVICE_PORT_ITEM->text.value, url);
-							name = DEVICE_PORT_ITEM->text.value;
-							indigo_update_property(device, DEVICE_PORT_PROPERTY, "Askar-WAF detected at %s", name);
-							resolved = true;
-						} else {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, "WAF discovery: no focuser responded");
+						for (int i = 0; i < DEVICE_PORTS_PROPERTY->count; i++) {
+							if (indigo_is_device_url(DEVICE_PORTS_PROPERTY->items[i].name, "askar")) {
+								indigo_copy_value(DEVICE_PORT_ITEM->text.value, DEVICE_PORTS_PROPERTY->items[i].name);
+								name = DEVICE_PORT_ITEM->text.value;
+								indigo_update_property(device, DEVICE_PORT_PROPERTY, "Askar-WAF selected %s", name);
+								resolved = true;
+								break;
+							}
+						}
+						if (!resolved) {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "No Wi-Fi focuser discovered (try Refresh)");
 						}
 					}
 					if (resolved) {
@@ -776,6 +848,17 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		}
 		indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(DEVICE_PORTS_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- DEVICE_PORTS
+		// Intercept Refresh so it also scans the network for Wi-Fi focusers.
+		for (int i = 0; i < property->count; i++) {
+			if (property->items[i].sw.value && !strncmp(property->items[i].name, DEVICE_PORTS_REFRESH_ITEM_NAME, sizeof(property->items[i].name))) {
+				DEVICE_PORTS_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, DEVICE_PORTS_PROPERTY, NULL);
+				indigo_set_timer(device, 0, focuser_scan_ports_callback, NULL);
+				return INDIGO_OK;
+			}
+		}
 	}
 	return indigo_focuser_change_property(device, client, property);
 }
