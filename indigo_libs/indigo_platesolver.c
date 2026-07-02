@@ -200,7 +200,7 @@ static bool start_exposure(indigo_device *device, double exposure) {
 			indigo_send_message(device, ALERT_PROPERTY, "Capture on Imager Agent failed");
 			return false;
 		}
-		indigo_send_message(device, INFO_PROPERTY, "Capture started");
+		indigo_send_message(device, OK_PROPERTY, "Capture started");
 		return true;
 	}
 	related_agent_name = indigo_filter_first_related_agent(FILTER_DEVICE_CONTEXT->device, "Guider Agent");
@@ -226,7 +226,7 @@ static bool start_exposure(indigo_device *device, double exposure) {
 			indigo_send_message(device, ALERT_PROPERTY, "Capture on Guider Agent failed");
 			return false;
 		}
-		indigo_send_message(device, INFO_PROPERTY, "Capture started");
+		indigo_send_message(device, OK_PROPERTY, "Capture started");
 		return true;
 	}
 	indigo_send_message(device, ALERT_PROPERTY, "Failed to start exposure - no image source agent selected");
