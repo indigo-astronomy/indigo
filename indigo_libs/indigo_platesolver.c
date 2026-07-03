@@ -200,7 +200,7 @@ static bool start_exposure(indigo_device *device, double exposure) {
 			indigo_send_message(device, ALERT_PROPERTY, "Capture on Imager Agent failed");
 			return false;
 		}
-		indigo_send_message(device, OK_PROPERTY, "Capture started");
+		indigo_send_message(device, IDLE_PROPERTY, "Capture started");
 		return true;
 	}
 	related_agent_name = indigo_filter_first_related_agent(FILTER_DEVICE_CONTEXT->device, "Guider Agent");
@@ -226,7 +226,7 @@ static bool start_exposure(indigo_device *device, double exposure) {
 			indigo_send_message(device, ALERT_PROPERTY, "Capture on Guider Agent failed");
 			return false;
 		}
-		indigo_send_message(device, OK_PROPERTY, "Capture started");
+		indigo_send_message(device, IDLE_PROPERTY, "Capture started");
 		return true;
 	}
 	indigo_send_message(device, ALERT_PROPERTY, "Failed to start exposure - no image source agent selected");
@@ -285,7 +285,7 @@ static void populate_pa_state(indigo_device * device) {
 		AGENT_PLATESOLVER_PA_STATE_ACCURACY_WARNING_ITEM->number.value = 0;
 		snprintf(message, sizeof(message), "Polar error: %.2f'", AGENT_PLATESOLVER_PA_STATE_POLAR_ERROR_ITEM->number.value * 60);
 	}
-	indigo_send_message(device, IDLE_PROPERTY, message);
+	indigo_send_message(device, AGENT_PLATESOLVER_PA_STATE_ACCURACY_WARNING_ITEM->number.value ? BUSY_PROPERTY : IDLE_PROPERTY, message);
 	indigo_send_message(device, IDLE_PROPERTY, "Azimuth error: %+.2f', move %s (use azimuth adjustment knob)", AGENT_PLATESOLVER_PA_STATE_AZ_ERROR_ITEM->number.value * 60, (AGENT_PLATESOLVER_PA_STATE_AZ_CORRECTION_CW_ITEM->number.value > 0) ? "C.W." : "C.C.W.");
 	indigo_send_message(device, IDLE_PROPERTY, "Altitude error: %+.2f', move %s (use altitude adjustment knob)", AGENT_PLATESOLVER_PA_STATE_ALT_ERROR_ITEM->number.value * 60, (AGENT_PLATESOLVER_PA_STATE_ALT_CORRECTION_UP_ITEM->number.value > 0) ? "Up" : "Down");
 }
