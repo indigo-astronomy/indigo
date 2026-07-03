@@ -1185,7 +1185,7 @@ static void check_breakpoint(indigo_device *device, indigo_item *breakpoint) {
 static bool do_dither(indigo_device *device) {
 	char *related_agent_name = indigo_filter_first_related_agent(device, "Guider Agent");
 	if (!related_agent_name) {
-		indigo_send_message(device, ALERT_PROPERTY, "Dithering failed, no guider agent selected");
+		indigo_send_message(device, BUSY_PROPERTY, "Dithering failed, no guider agent selected");
 		return true; // do not fail batch if dithering fails - let us keep it for a while
 	}
 	DEVICE_PRIVATE_DATA->dithering_started = false;
@@ -1203,11 +1203,11 @@ static bool do_dither(indigo_device *device) {
 	if (DEVICE_PRIVATE_DATA->dithering_started) {
 		AGENT_IMAGER_STATS_PHASE_ITEM->number.value = INDIGO_IMAGER_PHASE_DITHERING;
 		indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
-		indigo_send_message(device, OK_PROPERTY, "Dithering started");
+		indigo_send_message(device, IDLE_PROPERTY, "Dithering started");
 		double time_limit = 300 * 5; // 300 * 5 * 200ms = 300s
 		for (int i = 0; i < time_limit; i++) { // wait up to time limit to finish dithering
 			if (DEVICE_PRIVATE_DATA->dithering_finished) {
-				indigo_send_message(device, OK_PROPERTY, "Dithering finished");
+				indigo_send_message(device, IDLE_PROPERTY, "Dithering finished");
 				break;
 			}
 			if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -1216,7 +1216,7 @@ static bool do_dither(indigo_device *device) {
 			indigo_usleep(200000);
 		}
 		if (!DEVICE_PRIVATE_DATA->dithering_finished) {
-			indigo_send_message(device, ALERT_PROPERTY, "Dithering failed to settle down");
+			indigo_send_message(device, BUSY_PROPERTY, "Dithering failed to settle down");
 			indigo_usleep(200000);
 		}
 	}
