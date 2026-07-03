@@ -553,7 +553,7 @@ static void do_dither(indigo_device *device) {
 			indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 			indigo_update_property(device, AGENT_GUIDER_DITHER_PROPERTY, NULL);
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Dithering failed");
-			indigo_send_message(device, ALERT_PROPERTY, "Dithering failed to settle down, maybe the timeout is too short");
+			indigo_send_message(device, BUSY_PROPERTY, "Dithering failed to settle down, maybe the timeout is too short");
 			indigo_usleep(200000);
 			return;
 		}
@@ -1496,7 +1496,7 @@ static bool calibrate(indigo_device *device) {
 				double pole_distance = 90 - fabs(AGENT_GUIDER_MOUNT_COORDINATES_DEC_ITEM->number.value);
 				/* Declination is > 85deg or < -85deg */
 				if (pole_distance < 5) {
-					indigo_send_message(device, ALERT_PROPERTY, "Pole distance %.1f°. RA calibration may be off", pole_distance);
+					indigo_send_message(device, BUSY_PROPERTY, "Pole distance %.1f°. RA calibration may be off", pole_distance);
 				}
 				if (DEVICE_PRIVATE_DATA->cos_dec == 0) {
 					DEVICE_PRIVATE_DATA->cos_dec = MIN_COS_DEC;
@@ -1930,7 +1930,7 @@ static bool guide(indigo_device *device) {
 		indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
 		AGENT_GUIDER_STATS_PHASE_ITEM->number.value = INDIGO_GUIDER_PHASE_DONE;
 		AGENT_START_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_send_message(device, ALERT_PROPERTY, "Guiding aborted");
+		indigo_send_message(device, IDLE_PROPERTY, "Guiding aborted");
 		result = true;
 	} else {
 		AGENT_GUIDER_STATS_PHASE_ITEM->number.value = INDIGO_GUIDER_PHASE_FAILED;
