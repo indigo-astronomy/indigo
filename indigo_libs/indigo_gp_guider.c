@@ -1100,6 +1100,41 @@ static double compute_learning_progress(indigo_gp_guider *g) {
 	return 0.5 * data_ramp + 0.5 * period_ok;
 }
 
+/* Weight (0..1) for the predictive vs reactive/hysteresis term in gp_result().
+   Product of data ramp and period convergence, so prediction is trusted only with
+   BOTH enough data AND a converged period - unlike compute_learning_progress(),
+   which averages them for display. This keeps the first worm cycle from acting on
+   a prediction built on the not-yet-estimated seed period. For a fixed period the
+   period factor is 1, so the weight is just the data ramp.
+   Call while cb_last() still holds the current frame. */
+static double compute_blend_weight(indigo_gp_guider *g) {
+	if (g->buf_size <= 10) {
+		return 0.0;
+	}
+	double period_length = get_period_length(g);
+	if (period_length <= 0.0) {
+		return 0.0;
+	}
+	double data_ramp = cb_last(g)->timestamp / (g->min_periods_for_inference * period_length);
+	if (data_ramp < 0.0) {
+		data_ramp = 0.0;
+	}
+	if (data_ramp > 1.0) {
+		data_ramp = 1.0;
+	}
+	double period_ok = 1.0; /* fixed period is trusted as given */
+	if (g->compute_period) {
+		if (g->period_disagreement <= PERIOD_CONVERGED_REL) {
+			period_ok = 1.0;
+		} else if (g->period_disagreement >= PERIOD_DIVERGED_REL) {
+			period_ok = 0.0;
+		} else {
+			period_ok = (PERIOD_DIVERGED_REL - g->period_disagreement) / (PERIOD_DIVERGED_REL - PERIOD_CONVERGED_REL);
+		}
+	}
+	return data_ramp * period_ok;
+}
+
 /* returns the internal control_signal */
 static double gp_deduce_result(indigo_gp_guider *g, double time_step, double prediction_point) {
 	handle_dark_guiding(g);
@@ -1173,15 +1208,11 @@ static double gp_result(indigo_gp_guider *g, double input, double snr, double ti
 		g->prediction = predict_gear_error(g, prediction_point + time_step);
 		control_signal += g->prediction_gain * g->prediction;
 
-		double period_length = get_period_length(g);
-		if (cb_last(g)->timestamp < g->min_periods_for_inference * period_length) {
-			double percentage = cb_last(g)->timestamp / (g->min_periods_for_inference * period_length);
-			if (percentage > 1.0) {
-				percentage = 1.0;
-			}
-			hyst_percentage = 1.0 - percentage;
-			control_signal = percentage * control_signal + (1.0 - percentage) * hysteresis_control;
-		}
+		/* Blend prediction in only as far as the model is trustworthy; stays
+		   reactive through the first worm cycle until the period settles. */
+		double blend = compute_blend_weight(g);
+		hyst_percentage = 1.0 - blend;
+		control_signal = blend * control_signal + (1.0 - blend) * hysteresis_control;
 	}
 
 	if (is_nan(control_signal)) {
