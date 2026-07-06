@@ -23,7 +23,7 @@ Connect `MX-HD Mount` first. The `MX-HD Mount (guider)` device reuses the alread
 
 ## Status: Tested
 
-Tested with real MX-HD hardware:
+Tested on Raspberry Pi 5 with real MX-HD hardware:
 
 * serial connection
 * RA/Dec polling
