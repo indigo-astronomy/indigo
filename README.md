@@ -144,6 +144,7 @@ This is the list of requirements taken into the consideration:
 114. Lacerta LACERTA Motorfocus driver
 115. Baccam (Touptek OEM) camera driver
 116. Meade (Touptek OEM) camera driver
+117. MX-HD mount driver
 
 ## This is under development
 1. a-Box Adaptive optics driver
