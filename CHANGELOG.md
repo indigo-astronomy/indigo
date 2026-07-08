@@ -2,6 +2,59 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [3.0-1] - 08 Jul Tue 2026
+
+## Overall:
+- INDIGO API version changed to 3.0
+- Windows support added
+- Driver code generator added
+- New portable I/O abstraction layer replacing platform-specific socket/file I/O
+- New async queue support for better background tasks handling
+- Build process handles INDIGO 3.0 versioning and packaging
+- Code review by AI for better code quality 
+
+## Driver generator:
+- DRIVER_GENERATOR_MIGRATION.md documentation created
+- Drivers migrated to code generator:
+	- AO: ao_sx
+	- Aux: aux_arteskyflat, aux_astromechanics, aux_dsusb, aux_fbc, aux_flatmaster, aux_flipflat, aux_geoptikflat, aux_ppb, aux_rts, aux_skyalert, aux_sqm, aux_svbpowerbox, aux_uch, aux_upb, aux_upb3, aux_usbdp, aux_wbplusv3, aux_wbprov3, aux_wcv4ec
+	- Domes: dome_simulator, dome_skyroof
+	- Focusers: focuser_astromechanics, focuser_dmfc, focuser_fc3, focuser_fcusb, focuser_primaluce, focuser_usbv3
+	- GPS: gps_nmea, gps_simulator
+	- Guiders: guider_cgusbst4, guider_gpusb
+	- Mounts: mount_nexstaraux
+	- Rotators: rotator_falcon, rotator_simulator
+	- Wheels: wheel_atik, wheel_indigo, wheel_manual, wheel_optec, wheel_qhy, wheel_quantum, wheel_sx, wheel_trutek, wheel_xagyl
+
+## Async queue support:
+- Drivers migrated to async queues:
+	- Agents: agent_alpaca, agent_auxiliary, agent_config, agent_guider, agent_imager, agent_mount, agent_scripting, agent_astrometry
+	- AO: ao_sx
+	- Aux: aux_arteskyflat, aux_astromechanics, aux_cloudwatcher, aux_dsusb, aux_fbc, aux_flatmaster, aux_flipflat, aux_geoptikflat, aux_ppb, aux_rts, aux_skyalert, aux_sqm, aux_svbpowerbox, aux_uch, aux_upb, aux_upb3, aux_usbdp, aux_wbplusv3, aux_wbprov3, aux_wcv4ec
+	- Domes: dome_simulator, dome_skyroof
+	- Focusers: focuser_astromechanics, focuser_dmfc, focuser_fc3, focuser_fcusb, focuser_mypro2, focuser_primaluce, focuser_qhy, focuser_usbv3
+	- GPS: gps_nmea, gps_simulator
+	- Guiders: guider_cgusbst4, guider_gpusb
+	- Mounts: mount_asi, mount_lx200, mount_nexstaraux
+	- Rotators: rotator_falcon, rotator_simulator
+	- Wheels: wheel_atik, wheel_indigo, wheel_manual, wheel_optec, wheel_qhy, wheel_quantum, wheel_sx, wheel_trutek, wheel_xagyl
+
+## Windows support:
+- Framework and driver core migrated to uni_io
+- indigo_server and indigo_prop_tool migrated to Windows
+- Drivers migrated to Windows:
+	- Agents: agent_alpaca, agent_auxiliary, agent_config, agent_guider, agent_imager, agent_mount, agent_scripting
+	- AO: ao_sx
+	- CCD: ccd_altair, ccd_asi, ccd_atik, ccd_bresser, ccd_dsi, ccd_fli, ccd_mallin, ccd_ogma, ccd_omegonpro, ccd_playerone, ccd_qhy2, ccd_rising, ccd_simulator, ccd_ssag, ccd_ssg, ccd_svb2, ccd_sx, ccd_touptek
+	- Domes: dome_beaver, dome_simulator, dome_skyroof
+	- Focusers: focuser_asi, focuser_astroasis, focuser_askar, focuser_astromechanics, focuser_dmfc, focuser_dsd, focuser_fc3, focuser_fcusb, focuser_fli, focuser_focusdreampro, focuser_ioptron, focuser_mypro2, focuser_primaluce, focuser_qhy, focuser_usbv3
+	- GPS: gps_nmea, gps_simulator
+	- Guiders: guider_cgusbst4, guider_gpusb
+	- Mounts: mount_asi, mount_ioptron, mount_lx200, mount_nexstaraux, mount_rainbow, mount_simulator
+	- Rotators: rotator_asi, rotator_falcon, rotator_simulator, rotator_wa
+	- Aux: aux_arteskyflat, aux_astromechanics, aux_cloudwatcher, aux_dsusb, aux_fbc, aux_flatmaster, aux_flipflat, aux_geoptikflat, aux_mgbox, aux_ppb, aux_rts, aux_skyalert, aux_sqm, aux_svbpowerbox, aux_uch, aux_upb, aux_upb3, aux_usbdp, aux_wbplusv3, aux_wbprov3, aux_wcv4ec
+	- Wheels: wheel_asi, wheel_astroasis, wheel_fli, wheel_indigo, wheel_manual, wheel_optec, wheel_playerone, wheel_qhy, wheel_quantum, wheel_sx, wheel_trutek, wheel_xagyl
+
 # [2.0-372] - 09 Jun Tue 2026
 
 ## Driver fixes:
