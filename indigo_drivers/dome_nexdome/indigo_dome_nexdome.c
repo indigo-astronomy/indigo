@@ -799,7 +799,7 @@ static void dome_connect_callback(indigo_device *device) {
 					indigo_update_property(device, INFO_PROPERTY, NULL);
 					INDIGO_DRIVER_LOG(DRIVER_NAME, "%s with firmware V.%s connected.", name, firmware);
 
-					bool reversed;
+					bool reversed = false;
 					if (!nexdome_get_reversed_flag(device, &reversed)) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_get_reversed_flag(): returned error");
 					}
