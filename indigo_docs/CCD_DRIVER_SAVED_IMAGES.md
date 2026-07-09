@@ -51,6 +51,8 @@ INDIGO file name templates support a number of placeholders starting with "%" ch
 
 * **%D**, **%-D** or **%.D** - expands to the date in formats respectively: YYYYMMDD, YYYY-MM-DD or YYYY.MM.DD
 
+* **%N**, **%-N** or **%.N** - expands to the date of the imaging session night in formats respectively: YYYYMMDD, YYYY-MM-DD or YYYY.MM.DD
+
 * **%H**, **%-H** or **%.H** - expands to the local time in formats respectively: HHMMSS, HH-MM-SS or HH.MM.SS
 
 * **%C** - expands to the filter name: "R", "G", "B", "Ha", "OIII" etc. This placeholder reads *FILTER* keyword set in the **CCD_FITS_HEADERS** property, if not set it will expand to "nofilter". INDIGO Imager Agent sets this keyword if filer wheel is selected.
