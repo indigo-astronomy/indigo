@@ -7,7 +7,7 @@ All notable changes to INDIGO framework will be documented in this file.
 ## Overall:
 - INDIGO API version changed to 3.0
 - Driver code generator added
-- Windows support added
+- Windows support added (windows version will be released later) 
 - New portable I/O abstraction layer replacing platform-specific socket/file I/O
 - New async queue support for better background tasks handling
 - Build process handles INDIGO 3.0 versioning and packaging
