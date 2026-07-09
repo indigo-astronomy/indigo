@@ -2,15 +2,19 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
-# [3.0-1] - 08 Jul Tue 2026
+# [3.0-1] - 09 Jul Tue 2026
 
 ## Overall:
 - INDIGO API version changed to 3.0
-- Windows support added
 - Driver code generator added
+- Windows support added
 - New portable I/O abstraction layer replacing platform-specific socket/file I/O
 - New async queue support for better background tasks handling
 - Build process handles INDIGO 3.0 versioning and packaging
+- Property state added to messages
+- PPEC (Predictive Periodic Error Correction) support added to guider agent
+- Mount features and mount state properties added to mount agent
+- %nT, %J, %h and %d placeholders added to file name templates
 - Code review by AI for better code quality 
 
 ## Driver generator:
@@ -23,19 +27,6 @@ All notable changes to INDIGO framework will be documented in this file.
 	- GPS: gps_nmea, gps_simulator
 	- Guiders: guider_cgusbst4, guider_gpusb
 	- Mounts: mount_nexstaraux
-	- Rotators: rotator_falcon, rotator_simulator
-	- Wheels: wheel_atik, wheel_indigo, wheel_manual, wheel_optec, wheel_qhy, wheel_quantum, wheel_sx, wheel_trutek, wheel_xagyl
-
-## Async queue support:
-- Drivers migrated to async queues:
-	- Agents: agent_alpaca, agent_auxiliary, agent_config, agent_guider, agent_imager, agent_mount, agent_scripting, agent_astrometry
-	- AO: ao_sx
-	- Aux: aux_arteskyflat, aux_astromechanics, aux_cloudwatcher, aux_dsusb, aux_fbc, aux_flatmaster, aux_flipflat, aux_geoptikflat, aux_ppb, aux_rts, aux_skyalert, aux_sqm, aux_svbpowerbox, aux_uch, aux_upb, aux_upb3, aux_usbdp, aux_wbplusv3, aux_wbprov3, aux_wcv4ec
-	- Domes: dome_simulator, dome_skyroof
-	- Focusers: focuser_astromechanics, focuser_dmfc, focuser_fc3, focuser_fcusb, focuser_mypro2, focuser_primaluce, focuser_qhy, focuser_usbv3
-	- GPS: gps_nmea, gps_simulator
-	- Guiders: guider_cgusbst4, guider_gpusb
-	- Mounts: mount_asi, mount_lx200, mount_nexstaraux
 	- Rotators: rotator_falcon, rotator_simulator
 	- Wheels: wheel_atik, wheel_indigo, wheel_manual, wheel_optec, wheel_qhy, wheel_quantum, wheel_sx, wheel_trutek, wheel_xagyl
 
@@ -54,6 +45,19 @@ All notable changes to INDIGO framework will be documented in this file.
 	- Rotators: rotator_asi, rotator_falcon, rotator_simulator, rotator_wa
 	- Aux: aux_arteskyflat, aux_astromechanics, aux_cloudwatcher, aux_dsusb, aux_fbc, aux_flatmaster, aux_flipflat, aux_geoptikflat, aux_mgbox, aux_ppb, aux_rts, aux_skyalert, aux_sqm, aux_svbpowerbox, aux_uch, aux_upb, aux_upb3, aux_usbdp, aux_wbplusv3, aux_wbprov3, aux_wcv4ec
 	- Wheels: wheel_asi, wheel_astroasis, wheel_fli, wheel_indigo, wheel_manual, wheel_optec, wheel_playerone, wheel_qhy, wheel_quantum, wheel_sx, wheel_trutek, wheel_xagyl
+
+## Async queue support:
+- Drivers migrated to async queues:
+	- Agents: agent_alpaca, agent_auxiliary, agent_config, agent_guider, agent_imager, agent_mount, agent_scripting, agent_astrometry
+	- AO: ao_sx
+	- Aux: aux_arteskyflat, aux_astromechanics, aux_cloudwatcher, aux_dsusb, aux_fbc, aux_flatmaster, aux_flipflat, aux_geoptikflat, aux_ppb, aux_rts, aux_skyalert, aux_sqm, aux_svbpowerbox, aux_uch, aux_upb, aux_upb3, aux_usbdp, aux_wbplusv3, aux_wbprov3, aux_wcv4ec
+	- Domes: dome_simulator, dome_skyroof
+	- Focusers: focuser_astromechanics, focuser_dmfc, focuser_fc3, focuser_fcusb, focuser_mypro2, focuser_primaluce, focuser_qhy, focuser_usbv3
+	- GPS: gps_nmea, gps_simulator
+	- Guiders: guider_cgusbst4, guider_gpusb
+	- Mounts: mount_asi, mount_lx200, mount_nexstaraux
+	- Rotators: rotator_falcon, rotator_simulator
+	- Wheels: wheel_atik, wheel_indigo, wheel_manual, wheel_optec, wheel_qhy, wheel_quantum, wheel_sx, wheel_trutek, wheel_xagyl
 
 # [2.0-372] - 09 Jun Tue 2026
 
