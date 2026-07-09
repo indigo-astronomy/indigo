@@ -2,6 +2,28 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-374] - 09 Jul Thu 2026
+## Overall:
+- indigo_ccd_driver:
+	- %S name template fixed
+
+## Driver fixes:
+- indigo_agent_imager:
+	- fix small error in backlash overshoot that may slightly affect AF accuracy
+	- fix ucurve focus restoration in case the focuser uses double values (like 2m telescope at Rozhen)
+
+- indigo_focuser_askar:
+	- implement reverse motion
+	- added netowork discovery
+
+- indigo_focuser_ioptron:
+	- fix the driver to work with real device
+
+- indigo_ccd_simulator:
+	- fix PE simulation
+	- less agressive PE defaults so that the guider can keep up
+
+
 # [2.0-372] - 09 Jun Tue 2026
 
 ## Driver fixes:
