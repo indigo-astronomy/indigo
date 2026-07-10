@@ -34,6 +34,26 @@
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_gp_guider.h>
 
+#ifdef INDIGO_WINDOWS
+#include <windows.h>
+#ifndef CLOCK_MONOTONIC
+#define CLOCK_MONOTONIC 0
+#endif
+static int clock_gettime(int clk_id, struct timespec *tp) {
+	(void)clk_id;
+	FILETIME ft;
+	ULARGE_INTEGER uli;
+	GetSystemTimeAsFileTime(&ft);
+	uli.LowPart = ft.dwLowDateTime;
+	uli.HighPart = ft.dwHighDateTime;
+	const uint64_t EPOCH_DIFF_100NS = 116444736000000000ULL;
+	uint64_t time_100ns = uli.QuadPart - EPOCH_DIFF_100NS;
+	tp->tv_sec = (time_t)(time_100ns / 10000000ULL);
+	tp->tv_nsec = (long)((time_100ns % 10000000ULL) * 100);
+	return 0;
+}
+#endif
+
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif

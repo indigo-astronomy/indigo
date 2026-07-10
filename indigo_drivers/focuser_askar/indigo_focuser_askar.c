@@ -258,7 +258,9 @@ static int askar_discover_all(askar_wifi_device *list, int max) {
 		for (int t = 0; t < target_count; t++) {
 			addr.sin_addr = targets[t];
 			if (sendto(sock, ASKAR_DISCOVERY_REQUEST, (int)strlen(ASKAR_DISCOVERY_REQUEST), 0, (struct sockaddr *)&addr, sizeof(addr)) == SOCKET_ERROR) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "WAF discovery: sendto(%s) failed (%d)", inet_ntoa(targets[t]), WSAGetLastError());
+				char ip_str[INET_ADDRSTRLEN];
+				inet_ntop(AF_INET, &targets[t], ip_str, sizeof(ip_str));
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "WAF discovery: sendto(%s) failed (%d)", ip_str, WSAGetLastError());
 			}
 		}
 		// Collect every distinct reply that arrives within the receive timeout.
