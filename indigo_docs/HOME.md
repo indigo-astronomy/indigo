@@ -40,6 +40,7 @@
 
 ## Scripting
 - [Scripting Basics](SCRIPTING_BASICS.md)
+- [Script based Sequencer](../indigo_drivers/agent_scripting/library/Sequencer.md)
 
 ## User Guides
 Imaging, guiding and alignment guides for using INDIGO.
