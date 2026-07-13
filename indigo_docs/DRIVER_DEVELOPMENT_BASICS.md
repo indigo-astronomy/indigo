@@ -1,5 +1,5 @@
 # Basics of INDIGO Driver Development
-Revision: 01.05.2022 (draft)
+Revision: 13.07.2026 (draft)
 
 Author: **Rumen G. Bogdanovski**
 
@@ -55,6 +55,20 @@ and released with:
 - *indigo_release_property()*
 
 For structure definitions and function prototypes please refer to [indigo_bus.h](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo/indigo_bus.h) and [indigo_driver.h](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo/indigo_driver.h).
+
+## The INDIGO 3.0 (indigo3) API
+
+INDIGO 3.0 raised the API version to **3.0** and introduced several framework wide changes that a driver author should be aware of. The API stays backward source compatible with the vast majority of INDIGO 2.0 drivers - existing drivers keep building and working - but new drivers should be written against the 3.0 additions described below. The most important ones are:
+
+- **Unified (portable) I/O layer** - a single, platform independent I/O abstraction ([indigo_uni_io.h](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo/indigo_uni_io.h)) that replaces the direct use of platform specific socket, serial and file calls. It is what makes the same driver source build and run on Linux, macOS **and Windows**. See [Communication with the Hardware](#communication-with-the-hardware).
+- **Per device asynchronous handler queues with priorities** - instead of handling every property change on the bus thread (or spawning ad-hoc threads), each device owns a serialized task queue on which change handlers, finalizers and polling callbacks run in the background. Tasks can be scheduled with a priority so that time critical operations (guiding, abort) overtake ordinary ones. See [Timers, Handler Queues and Prolonged Operations](#timers-handler-queues-and-prolonged-operations).
+- **Property state in messages** - `indigo_define_property()` and `indigo_update_property()` now carry the property state to the client together with the optional human readable message, so a client learns about a state change and its reason in a single event.
+- **Driver code generator** - most base drivers are now produced by a code generator from a compact device description. The generator emits exactly the 3.0 style code shown in this document (uni I/O + handler queues). Migration is documented in [DRIVER_GENERATOR_MIGRATION.md](https://github.com/indigo-astronomy/indigo/blob/master/indigo_docs/DRIVER_GENERATOR_MIGRATION.md). Understanding the API in this chapter is a prerequisite for understanding the generated code.
+
+Two convenience macros used pervasively by 3.0 style drivers are worth introducing early, they are defined in [indigo_bus.h](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo/indigo_bus.h):
+
+- *INDIGO_UPDATE_PROPERTY_STATE(property, state, message, ...)* - set the property state and notify the clients in one step (optionally with a `printf` style message).
+- *INDIGO_COPY_VALUES_PROCESS_CHANGE(property, handler)* - the canonical body of a **change property** branch: it copies the requested values into the property, sets it to <span style="color:orange">**BUSY**</span>, notifies the clients and schedules *handler* on the device queue - but only if the property is not already <span style="color:orange">**BUSY**</span> (which protects against overlapping requests). A `..._ANYTIME` variant omits the busy guard and `..._SYNC_CHANGE`/`..._TARGETS_...` variants run the handler synchronously or copy targets instead of values.
 
 ## Properties
 
@@ -355,7 +369,7 @@ There is one important note, in order to use the property macros like *CONNECTIO
 
 In case your device needs custom properties there are many device drivers that use such. A good and simple example for this is [indigo_aux_rts](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/aux_rts) driver.
 
-### Timers and Prolonged Operations
+### Timers, Handler Queues and Prolonged Operations
 
 Timers in INDIGO are managed with several calls:
 
@@ -433,73 +447,181 @@ Blocking or prolonged operations executed in the driver main thread may block th
 - *indigo_async()* - execute a function asynchronously in a separate thread.
 - *indigo_handle_property_async()* - utility function that provides a convenient way to execute prolonged or blocking property change operations in a separate thread. The callback function accepts the same parameters as the driver's **change property** callback.
 
+#### Asynchronous Handler Queues (INDIGO 3.0)
+
+Spawning a fresh thread (with *indigo_async()*) for every property change works, but it has two drawbacks: threads for the same device may run concurrently and step on each other's hardware access, and there is no ordering or prioritization between requests. INDIGO 3.0 solves this with a **per device handler queue**. Every *indigo_device* owns a serialized queue (the *device->queue* field) served by a single worker thread. Handlers scheduled on that queue run **one at a time, in the background**, in the order they were submitted - so a driver no longer needs its own mutex to serialize hardware access between change handlers, and the bus thread is never blocked.
+
+Handlers are scheduled with the *indigo_execute_handler()* family declared in [indigo_driver.h](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo/indigo_driver.h). A handler is an ordinary *indigo_timer_callback* - a `void` function taking an *indigo_device \**:
+
+- *indigo_execute_handler()* - run the handler on the device queue as soon as the worker is free (ASAP).
+- *indigo_execute_handler_with_data()* - same, passing an arbitrary `void *` payload to the handler.
+- *indigo_execute_handler_in()* - run the handler after a delay (in seconds). This is the idiomatic way to poll: a handler reschedules itself with a small delay until the operation completes.
+- *indigo_execute_handler_with_data_in()* - delayed variant carrying a data payload.
+- *indigo_cancel_pending_handlers()* - drop all not yet started tasks queued for the device (typically called on disconnect).
+- *indigo_cancel_pending_handler()* - drop only the pending tasks bound to a specific handler function.
+
+A typical 3.0 style **change property** callback does no hardware work itself. It validates and copies the request, flips the property to <span style="color:orange">**BUSY**</span>, and defers the actual work to a handler running on the queue. The *INDIGO_COPY_VALUES_PROCESS_CHANGE()* macro introduced earlier encapsulates exactly this pattern:
+
+```C
+static void wheel_slot_handler(indigo_device *device) {
+	WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
+	int slot = (int)WHEEL_SLOT_ITEM->number.target;
+	if (slot == PRIVATE_DATA->slot) {
+		INDIGO_UPDATE_PROPERTY_STATE(WHEEL_SLOT_PROPERTY, INDIGO_OK_STATE, NULL);
+	} else {
+		/* talk to the hardware here - we are on the device queue,
+		   so this cannot race with any other handler for this device */
+		if (move_to_slot(device, slot)) {
+			/* poll for completion by rescheduling on the queue after 0.5 s */
+			indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
+		} else {
+			INDIGO_UPDATE_PROPERTY_STATE(WHEEL_SLOT_PROPERTY, INDIGO_ALERT_STATE, NULL);
+		}
+	}
+}
+
+static indigo_result wheel_change_property(indigo_device *device,
+	indigo_client *client, indigo_property *property) {
+	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
+		if (!indigo_ignore_connection_change(device, property)) {
+			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
+			indigo_execute_handler(device, wheel_connection_handler);
+		}
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(WHEEL_SLOT_PROPERTY, property)) {
+		/* copy values, set BUSY, notify clients and queue wheel_slot_handler */
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(WHEEL_SLOT_PROPERTY, wheel_slot_handler);
+		return INDIGO_OK;
+	}
+	return indigo_wheel_change_property(device, client, property);
+}
+```
+
+This is the recommended pattern for all new drivers and is exactly what the driver code generator emits. Because everything for one device runs on a single queue, the connection handler can safely call *indigo_cancel_pending_handlers()* on disconnect to discard any still queued polling before it closes the hardware.
+
+#### Handler Priorities
+
+Because the queue is serialized, an ordinary long running task would delay everything queued after it. That is unacceptable for operations that are time critical - a guiding pulse must fire on time, an **abort** must be honored immediately even while a slew handler is queued. INDIGO 3.0 therefore lets a task be submitted with a **priority**: higher priority tasks are pulled from the queue ahead of lower priority ones. The predefined levels are defined in [indigo_timer.h](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo/indigo_timer.h):
+
+| Constant | Value | Intended use |
+|---|---|---|
+| *INDIGO_TASK_PRIORITY_NORMAL* | 0 | ordinary property changes (the default used by *indigo_execute_handler()*) |
+| *INDIGO_TASK_PRIORITY_HIGH* | 5 | tasks that should overtake ordinary work |
+| *INDIGO_TASK_PRIORITY_TIME* | 10 | time critical tasks, e.g. guiding pulses |
+| *INDIGO_TASK_PRIORITY_URGENT* | 20 | urgent tasks, more urgent than time critical, e.g. abort/stop |
+
+The priority aware variants take the priority as their second argument:
+
+- *indigo_execute_priority_handler()* - run ASAP with the given priority.
+- *indigo_execute_priority_handler_with_data()* - same, with a data payload.
+- *indigo_execute_priority_handler_in()* - run after a delay with the given priority.
+- *indigo_execute_priority_handler_with_data_in()* - delayed variant with a data payload.
+
+Note that a numeric priority may be passed directly. For example the guider on a mount uses an urgent priority so that a pulse guide command and its "stop after N milliseconds" finalizer are never delayed by a queued slew or a property poll:
+
+```C
+/* abort must jump the queue ahead of any pending slew handler */
+indigo_execute_priority_handler(device, INDIGO_TASK_PRIORITY_URGENT, mount_abort_callback);
+...
+/* start the pulse now, and schedule its stop exactly after `north` ms,
+   both at urgent priority so guiding stays accurate */
+indigo_execute_priority_handler(device, INDIGO_TASK_PRIORITY_URGENT, guider_guide_dec_callback);
+indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT,
+	((double)north) / 1000.0, guider_guide_dec_finish_callback);
+```
+
+A driver that needs a queue outside of the standard device queue (for example an auxiliary control channel) can create and manage one directly with *indigo_queue_create()*, *indigo_queue_add()* / *indigo_queue_add_with_data()*, *indigo_queue_remove()* and *indigo_queue_delete()*, all declared in [indigo_timer.h](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo/indigo_timer.h). Most drivers never need this - the device queue reached through the *indigo_execute_handler()* family is sufficient.
+
 ### Communication with the Hardware
 
 Most of the devices use USB connection, for communicating with them the standard libusb library is used. Lubusb is well documented and will not be covered in this document.
 
-Other devices use serial communication over RS-232 port or over TCP or UDP network protocols. For those devices INDIGO provides communication utility functions defined in [indigo_io.h](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo/indigo_io.h).
+Other devices use serial communication over RS-232 port or over TCP or UDP network protocols. Since INDIGO 3.0 all of these are handled through the **Unified I/O** layer defined in [indigo_uni_io.h](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo/indigo_uni_io.h). This layer abstracts serial ports, TCP and UDP sockets, plain files and even HID devices behind a single opaque handle, so that the very same driver source compiles and runs unchanged on Linux, macOS and Windows. New drivers should always use the uni I/O functions rather than raw POSIX/Winsock calls.
+
+> The older *indigo_io.h* functions (*indigo_open_serial()*, *indigo_open_tcp()*, *indigo_read()*, *indigo_write()* ...) still exist for source compatibility, but they are not portable to Windows and should not be used in new code. The uni I/O functions are their portable replacements.
+
+#### The uni I/O handle
+
+Every open connection is represented by an *indigo_uni_handle \** (an opaque pointer), not a raw file descriptor. It internally knows whether it wraps a file, serial port, TCP socket, UDP socket or HID device, and it carries its own logging level and last error. Instead of the traditional integer handle, a driver typically stores this pointer in its private data:
+
+```C
+typedef struct {
+	indigo_uni_handle *handle;
+	...
+} device_private_data;
+```
+
+When opening a handle you pass a **log level** (one of *INDIGO_LOG_ERROR*, *INDIGO_LOG_INFO*, *INDIGO_LOG_DEBUG*, ...) which controls how the traffic on that handle is logged. For devices that exchange binary (non text) data, OR the level with the *BINARY_LOG* flag so that the log is rendered as a hex dump instead of text.
 
 Open functions:
 
-- *indigo_open_serial()* - open serial communication at 9600-8N1
-- *indigo_open_serial_with_config()* - open serial connection with configuration string of the form "9600-8N1"
-- *indigo_open_tcp()* - open TCP network communication channel
-- *indigo_open_udp()* - open UDP network communication channel
+- *indigo_uni_open_serial()* - open serial communication at 9600-8N1
+- *indigo_uni_open_serial_with_speed()* - open serial at a given speed (`XXXX`-8N1)
+- *indigo_uni_open_serial_with_config()* - open serial with a configuration string of the form "9600-8N1"
+- *indigo_uni_open_client_socket()* / *indigo_uni_client_tcp_socket()* / *indigo_uni_client_udp_socket()* - open a TCP or UDP client socket
+- *indigo_uni_open_url()* - open a TCP or UDP connection from a URL (see below)
+- *indigo_uni_open_file()* / *indigo_uni_create_file()* - open or create a file
+- *indigo_uni_open_hid()* - open a HID device by vendor/product id
 
 Input functions:
 
-- *indigo_read()* - read buffer from the device
-- *indigo_read_line()* - read line from the device
-- *indigo_scanf()* - read formatted input from the device
+- *indigo_uni_read()* - read a fixed number of bytes into a buffer
+- *indigo_uni_read_available()* / *indigo_uni_peek_available()* - read (or peek without consuming) whatever is currently available
+- *indigo_uni_read_section()* / *indigo_uni_read_section2()* - read up to a terminator character, optionally ignoring some characters, with a timeout
+- *indigo_uni_read_line()* - convenience macro reading a line (terminated by `\n`, ignoring `\r\n`)
+- *indigo_uni_scanf_line()* - read a formatted line
+- *indigo_uni_wait_for_data()* - wait (with a microsecond timeout) until data is available
+- *indigo_uni_discard()* - discard all pending input
 
 Output functions:
-- *indigo_write()* - write buffer to the device
-- *indigo_printf()* - print formatted string to the device
 
-Note that there is no close in INDIGO, as the standard *close()* and *shutdown()* calls can be used. Actually standard *read()* and *write()* calls can also be used, just INDIGO IO functions make the life a bit easier.
+- *indigo_uni_write()* - write a buffer
+- *indigo_uni_printf()* / *indigo_uni_vprintf()* - write a formatted string
 
-Some devices can be accessed over Serial port, TCP and UDP. In this case there is a convention that must be followed. Port names can be prefixed with **tcp://** for TCP connections or **udp://** for UDP connections, or any other string of the form **xxx://** for some specific protocol, anything else is considered a serial port", in case only TCP or UDP is supported the prefix can be omitted. For example drivers like lx200 and nexstar accept **lx200://** and **nexstar://** respectively to indicate the TCP connection. The TCP or UDP port can be specified by **:port** suffix, but if omitted the standard port for the device should be assumed. Here is an example code for that:
+Serial line control (*indigo_uni_set_dtr()*, *indigo_uni_set_rts()*, *indigo_uni_set_cts()*), socket options (*indigo_uni_set_socket_read_timeout()*, *indigo_uni_set_socket_write_timeout()*, *indigo_uni_set_socket_nodelay_option()*) and helpers for files, folders, host resolution and gzip (de)compression are also provided - see [indigo_uni_io.h](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo/indigo_uni_io.h) for the full list.
+
+Unlike the legacy layer, uni I/O handles **must be closed** with *indigo_uni_close()*, which takes the address of the handle pointer and sets it to `NULL` after closing - so the plain POSIX `close()`/`shutdown()` calls must **not** be used on them:
 
 ```C
-char *name = DEVICE_PORT_ITEM->text.value;
-if (strncmp(name, "tcp://", 6)) {
-	/* no tcp prefix -> it is serial */
-	PRIVATE_DATA->handle = indigo_open_serial(name);
-} else {
-	char *host = name + 6;
-	char *colon = strchr(host, ':');
-	if (colon == NULL) {
-		/* no port specified -> use default */
-		PRIVATE_DATA->handle = indigo_open_tcp(host, 8080);
-	} else {
-		/* split hostname and port */
-		char host_name[INDIGO_NAME_SIZE];
-		strncpy(host_name, host, colon - host);
-		host_name[colon - host] = 0;
-		int port = atoi(colon + 1);
-		PRIVATE_DATA->handle = indigo_open_tcp(host_name, port);
+indigo_uni_close(&PRIVATE_DATA->handle);   /* PRIVATE_DATA->handle becomes NULL */
+```
+
+Here is how a small serial driver reads and writes a binary packet using uni I/O (from *indigo_wheel_trutek*):
+
+```C
+PRIVATE_DATA->handle = indigo_uni_open_serial(name, INDIGO_LOG_DEBUG | BINARY_LOG);
+if (PRIVATE_DATA->handle != NULL) {
+	unsigned char buffer[4] = { 0xA5, 0x03, 0x20, 0xA5 + 0x03 + 0x20 };
+	if (indigo_uni_write(PRIVATE_DATA->handle, (char *)buffer, 4) == 4 &&
+	    indigo_uni_read(PRIVATE_DATA->handle, (char *)buffer, 4) == 4 &&
+	    buffer[0] == 0xA5 && buffer[1] == 0x83) {
+		/* handshake ok */
 	}
 }
 ```
 
-In INDIGO version 2.0-114 two utility functions are added to simplify the above example:
-- *indigo_is_device_url()* - returns true if prefix is **tcp://**, **udp://** or the given prefix
-- *indigo_open_network_device()* - opens device as a network device
+#### Opening serial, TCP and UDP transparently
 
-Using these functions the code will look like this:
+Some devices can be accessed over a serial port, TCP or UDP. INDIGO follows a URL convention: port names can be prefixed with **tcp://** for TCP connections or **udp://** for UDP connections, or with any other string of the form **xxx://** for a specific protocol; anything without a prefix is considered a serial port. For example drivers like lx200 and nexstar accept **lx200://** and **nexstar://** respectively to indicate a TCP connection. The TCP or UDP port can be specified by a **:port** suffix; if omitted the default port for the device is assumed.
+
+The uni I/O layer resolves all of this for you:
+- *indigo_uni_is_url()* - returns true if the name starts with **tcp://**, **udp://** or the given custom prefix
+- *indigo_uni_open_url()* - opens the URL as a TCP or UDP connection, applying a default port and a protocol hint
 
 ```C
 char *name = DEVICE_PORT_ITEM->text.value;
-if (!indigo_is_device_url(name, "nexdome")) {
-	PRIVATE_DATA->handle = indigo_open_serial(name);
+if (!indigo_uni_is_url(name, "nexdome")) {
+	/* no known prefix -> treat as a local serial port */
+	PRIVATE_DATA->handle = indigo_uni_open_serial(name, INDIGO_LOG_DEBUG);
 } else {
-	indigo_network_protocol proto = INDIGO_PROTOCOL_TCP;
-	PRIVATE_DATA->handle = indigo_open_network_device(name, 8080, &proto);
+	/* tcp://, udp:// or nexdome:// -> network device, default port 8080,
+	   TCP unless the URL explicitly uses udp:// */
+	PRIVATE_DATA->handle = indigo_uni_open_url(name, 8080, INDIGO_TCP_HANDLE, INDIGO_LOG_DEBUG);
 }
 ```
 
-The above example will consider **tcp://**, **udp://** and **nexdome://** prefixes as network hosts. If the given prefix is NULL only **tcp://** and **udp://** prefixes will be considered network devices. Anything else will be considered local device.
-If no port is specified in the *DEVICE_PORT_ITEM*, the default port will be used - *8080* in this example. According to the protocol hint, **nexdome://** prefix will use TCP protocol. However if the prefix is **udp://** - UDP protocol will be used and *proto* will be set to *INDIGO_PROTOCOL_UDP* after *indigo_open_network_device()* returns.
+The above considers **tcp://**, **udp://** and **nexdome://** prefixes as network hosts. If the custom prefix argument is `NULL`, only **tcp://** and **udp://** are treated as network devices and anything else is a local serial device. If no port is present in the URL the supplied default (*8080* here) is used. The *protocol_hint* argument (*INDIGO_TCP_HANDLE* or *INDIGO_UDP_HANDLE*) selects the protocol for custom prefixes, while an explicit **udp://** in the URL always forces UDP.
 
 Many hardware vendors provide their own Software Development Kit (SDK) for their products in this case the communication with the devices can be done using the SDK provided by the hardware vendor.
 
@@ -547,6 +669,8 @@ In order to use *indigo_driver_initialized()* the driver must include **indigo_c
 
 This example is a working device driver handling Atik Filer Wheels. They are hot-plug devices, therefore the driver attaches and detaches the device in the hot-plug callback function. This driver is chosen as the device is really simple yet supports hot-plug, this way the more complex hot-plug support is illustrated with a simpler code. Another simple driver without a hot-plug is the mentioned above [indigo_aux_rts](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/aux_rts) driver.
 
+The example below is written against the **INDIGO 3.0 API**: it opens the device through the [Unified I/O](#communication-with-the-hardware) layer (*indigo_uni_open_hid()* / *indigo_uni_close()*) and performs every connect, disconnect and filter move on the [device handler queue](#asynchronous-handler-queues-indigo-30) instead of blocking the bus thread. The **change property** callback only validates and copies the request and then defers the real work to a handler. Note that the actual [indigo_wheel_atik.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/wheel_atik/indigo_wheel_atik.c) in the driver base is produced by the driver code generator (see [DRIVER_GENERATOR_MIGRATION.md](https://github.com/indigo-astronomy/indigo/blob/master/indigo_docs/DRIVER_GENERATOR_MIGRATION.md)) and therefore contains extra generator markers; the hand written equivalent shown here is functionally identical but easier to read.
+
 ### The Atik Filter Wheel driver
 
 Driver header file **indigo_wheel_atik.h**:
@@ -586,20 +710,20 @@ Main driver source file **indigo_wheel_atik.c**:
  \file indigo_wheel_atik.c
  */
 
-#define DRIVER_VERSION 0x02000001
+#define DRIVER_VERSION 0x03000004
 #define DRIVER_NAME "indigo_wheel_atik"
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
-#include <sys/time.h>
 
 #include <libatik.h>
 
 #include <indigo/indigo_driver_xml.h>
+#include <indigo/indigo_wheel_driver.h>
+#include <indigo/indigo_uni_io.h>
 #include <indigo/indigo_usb_utils.h>
 
 #include "indigo_wheel_atik.h"
@@ -612,170 +736,200 @@ Main driver source file **indigo_wheel_atik.c**:
 #define PRIVATE_DATA        ((atik_private_data *)device->private_data)
 
 typedef struct {
-	hid_device *handle;
-	int slot_count, current_slot;
+	indigo_uni_handle *handle;             // unified I/O handle (wraps the HID device)
+	int slot_count, current_slot, target_slot;
 } atik_private_data;
+
+// ------------------------------------------ low level (unified I/O) helpers
+
+static bool atik_open(indigo_device *device) {
+	// open the HID device through the portable unified I/O layer;
+	// BINARY_LOG makes the traffic show up as a hex dump in the log
+	PRIVATE_DATA->handle = indigo_uni_open_hid(ATIK_VENDOR_ID, ATIK_PRODUC_ID, INDIGO_LOG_DEBUG | BINARY_LOG);
+	return PRIVATE_DATA->handle != NULL;
+}
+
+static void atik_close(indigo_device *device) {
+	indigo_uni_close(&PRIVATE_DATA->handle);   // closes and sets the handle to NULL
+}
 
 // ------------------------------------------ INDIGO Wheel device implementation
 
-static void wheel_timer_callback(indigo_device *device) {
-	libatik_wheel_query(
-		PRIVATE_DATA->handle,
-		&PRIVATE_DATA->slot_count,
-		&PRIVATE_DATA->current_slot
-	);
-
+// Polling handler: reschedules itself on the device queue until the wheel
+// reaches the requested slot, then flips the property to OK.
+static void wheel_move_finalizer(indigo_device *device) {
+	libatik_wheel_query((hid_device *)PRIVATE_DATA->handle->hid_device, &PRIVATE_DATA->slot_count, &PRIVATE_DATA->current_slot);
 	WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
-	if (WHEEL_SLOT_ITEM->number.value == WHEEL_SLOT_ITEM->number.target) {
-		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+	if (PRIVATE_DATA->current_slot == PRIVATE_DATA->target_slot) {
+		INDIGO_UPDATE_PROPERTY_STATE(WHEEL_SLOT_PROPERTY, INDIGO_OK_STATE, NULL);
 	} else {
-		indigo_set_timer(device, 0.5, wheel_timer_callback, NULL);
+		indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
 	}
-	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+}
+
+// Connection handler - runs on the device queue, so it may block on I/O.
+static void wheel_connection_handler(indigo_device *device) {
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		bool connection_result = atik_open(device);
+		if (connection_result) {
+			connection_result = false;
+			for (int i = 0; i < 10; i++) {
+				libatik_wheel_query((hid_device *)PRIVATE_DATA->handle->hid_device, &PRIVATE_DATA->slot_count, &PRIVATE_DATA->current_slot);
+				if (PRIVATE_DATA->slot_count > 0 && PRIVATE_DATA->slot_count <= 9) {
+					connection_result = true;
+					break;
+				}
+				indigo_sleep(1);
+			}
+			if (connection_result) {
+				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->slot_count;
+				WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->current_slot;
+			}
+		}
+		if (connection_result) {
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_send_message(device, OK_PROPERTY, "Connected to %s", device->name);
+		} else {
+			indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s", device->name);
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		}
+	} else {
+		indigo_cancel_pending_handlers(device);   // drop any queued move polling
+		atik_close(device);
+		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	}
+	// let the base class finish handling CONNECTION and notify the clients
+	indigo_wheel_change_property(device, NULL, CONNECTION_PROPERTY);
+}
+
+// Filter change handler - runs on the device queue.
+static void wheel_slot_handler(indigo_device *device) {
+	if (WHEEL_SLOT_ITEM->number.value == PRIVATE_DATA->current_slot) {
+		INDIGO_UPDATE_PROPERTY_STATE(WHEEL_SLOT_PROPERTY, INDIGO_OK_STATE, NULL);
+	} else {
+		PRIVATE_DATA->target_slot = WHEEL_SLOT_ITEM->number.value;
+		libatik_wheel_set((hid_device *)PRIVATE_DATA->handle->hid_device, PRIVATE_DATA->target_slot);
+		libatik_wheel_query((hid_device *)PRIVATE_DATA->handle->hid_device, &PRIVATE_DATA->slot_count, &PRIVATE_DATA->current_slot);
+		WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
+		indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);   // start polling
+	}
+}
+
+static indigo_result wheel_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	return indigo_wheel_enumerate_properties(device, client, property);
 }
 
 static indigo_result wheel_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_wheel_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
+		WHEEL_SLOT_PROPERTY->hidden = false;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		return indigo_wheel_enumerate_properties(device, client, property);
+		return wheel_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }
 
+// The change property callback only validates/copies the request and defers
+// the actual (blocking) work to a handler running on the device queue.
 static indigo_result wheel_change_property(indigo_device *device,
 	indigo_client *client, indigo_property *property) {
 
 	assert(device != NULL);
-	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// ---------------------------------------------------------- CONNECTION
-		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			PRIVATE_DATA->handle = hid_open(ATIK_VENDOR_ID, ATIK_PRODUC_ID, NULL);
-			if ((PRIVATE_DATA->handle != NULL) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "hid_open ->  ok");
-				while (true) {
-					libatik_wheel_query(
-						PRIVATE_DATA->handle,
-						&PRIVATE_DATA->slot_count,
-						&PRIVATE_DATA->current_slot
-					);
-					if (PRIVATE_DATA->slot_count > 0 &&
-						  PRIVATE_DATA->slot_count <= 9) {
-							break;
-						}
-					indigo_sleep(1);
-				}
-				WHEEL_SLOT_ITEM->number.max =
-				WHEEL_SLOT_NAME_PROPERTY->count =
-				WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->slot_count;
-				WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			} else {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "hid_open ->  failed");
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_set_switch(
-					CONNECTION_PROPERTY,
-					CONNECTION_DISCONNECTED_ITEM,
-					true
-				);
-			}
-		} else {
-			hid_close(PRIVATE_DATA->handle);
-			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+		if (!indigo_ignore_connection_change(device, property)) {
+			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
+			indigo_execute_handler(device, wheel_connection_handler);
 		}
+		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(WHEEL_SLOT_PROPERTY, property)) {
 		// ---------------------------------------------------------- WHEEL_SLOT
-		indigo_property_copy_values(WHEEL_SLOT_PROPERTY, property, false);
-		if (WHEEL_SLOT_ITEM->number.value < 1 ||
-			WHEEL_SLOT_ITEM->number.value > WHEEL_SLOT_ITEM->number.max) {
-			WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
-		} else if(WHEEL_SLOT_ITEM->number.value == PRIVATE_DATA->current_slot) {
-			WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
-		} else {
-			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
-			libatik_wheel_set(
-				PRIVATE_DATA->handle,
-				(int)WHEEL_SLOT_ITEM->number.value
-			);
-			indigo_set_timer(device, 0.5, wheel_timer_callback, NULL);
-		}
-		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+		// copy values, set BUSY, notify the clients and queue wheel_slot_handler
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(WHEEL_SLOT_PROPERTY, wheel_slot_handler);
 		return INDIGO_OK;
-		// ---------------------------------------------------------------------
 	}
 	return indigo_wheel_change_property(device, client, property);
 }
 
 static indigo_result wheel_detach(indigo_device *device) {
 	assert(device != NULL);
+	if (IS_CONNECTED) {
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		wheel_connection_handler(device);   // synchronous disconnect on detach
+	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_wheel_detach(device);
 }
 
 // --------------------------------------------------------- hot-plug support
 
-static indigo_device *device = NULL;
+static pthread_mutex_t hotplug_mutex = PTHREAD_MUTEX_INITIALIZER;
+static indigo_device *wheel = NULL;
+
+static indigo_device wheel_template = INDIGO_DEVICE_INITIALIZER(
+	"Atik Filter Wheel",
+	wheel_attach,
+	wheel_enumerate_properties,
+	wheel_change_property,
+	NULL,
+	wheel_detach
+);
+
+static void process_plug_event(libusb_device *dev) {
+	pthread_mutex_lock(&hotplug_mutex);
+	if (wheel == NULL) {
+		char usb_path[INDIGO_NAME_SIZE];
+		indigo_get_usb_path(dev, usb_path);
+		atik_private_data *private_data = indigo_safe_malloc(sizeof(atik_private_data));
+		wheel = indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
+		snprintf(wheel->name, INDIGO_NAME_SIZE, "%s #%s", "Atik Filter Wheel", usb_path);
+		wheel->private_data = private_data;
+		indigo_attach_device(wheel);
+	}
+	pthread_mutex_unlock(&hotplug_mutex);
+}
+
+static void process_unplug_event(libusb_device *dev) {
+	pthread_mutex_lock(&hotplug_mutex);
+	if (wheel != NULL) {
+		indigo_detach_device(wheel);
+		free(wheel->private_data);
+		free(wheel);
+		wheel = NULL;
+	}
+	pthread_mutex_unlock(&hotplug_mutex);
+}
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev,
 	libusb_hotplug_event event, void *user_data) {
 
-	static indigo_device wheel_template = INDIGO_DEVICE_INITIALIZER(
-		"ATIK Filter Wheel",
-		wheel_attach,
-		indigo_wheel_enumerate_properties,
-		wheel_change_property,
-		NULL,
-		wheel_detach
-	);
-
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
-			if (device != NULL) {
-				return 0;
-			}
-			device = malloc(sizeof(indigo_device));
-			assert(device != NULL);
-			memcpy(device, &wheel_template, sizeof(indigo_device));
-			atik_private_data *private_data = malloc(sizeof(atik_private_data));
-			assert(private_data != NULL);
-			memset(private_data, 0, sizeof(atik_private_data));
-			device->private_data = private_data;
-			indigo_attach_device(device);
+			// attach asynchronously so we do not block the USB event thread
+			INDIGO_ASYNC(process_plug_event, dev);
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
-			if (device == NULL) {
-				return 0;
-			}
-			indigo_detach_device(device);
-			free(device->private_data);
-			free(device);
-			device = NULL;
+			process_unplug_event(dev);
+			break;
 		}
 	}
 	return 0;
-};
+}
 
 static libusb_hotplug_callback_handle callback_handle;
 
 indigo_result indigo_wheel_atik(indigo_driver_action action,
 	indigo_driver_info *info) {
 
-	atik_log = indigo_debug;
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
-	SET_DRIVER_INFO(
-		info,
-		"Atik Filter Wheel",
-		__FUNCTION__,
-		DRIVER_VERSION,
-		false,
-		last_action
-	);
+	SET_DRIVER_INFO(info, "Atik Filter Wheel", __FUNCTION__, DRIVER_VERSION, false, last_action);
 
 	if (action == last_action)
 		return INDIGO_OK;
@@ -783,8 +937,7 @@ indigo_result indigo_wheel_atik(indigo_driver_action action,
 	switch (action) {
 	case INDIGO_DRIVER_INIT:
 		last_action = action;
-		device = NULL;
-		hid_init();
+		wheel = NULL;
 		indigo_start_usb_event_handler();
 		int rc = libusb_hotplug_register_callback(
 			NULL,
@@ -797,19 +950,15 @@ indigo_result indigo_wheel_atik(indigo_driver_action action,
 			NULL,
 			&callback_handle
 		);
-		INDIGO_DRIVER_DEBUG(
-			DRIVER_NAME,
-			"libusb_hotplug_register_callback ->  %s",
-			rc < 0 ? libusb_error_name(rc) : "OK"
-		);
-		return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
+		break;
 
 	case INDIGO_DRIVER_SHUTDOWN:
+		VERIFY_NOT_CONNECTED(wheel);   // refuse to unload while still connected
 		last_action = action;
 		libusb_hotplug_deregister_callback(NULL, callback_handle);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
-		if (device)
-			hotplug_callback(NULL, NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
+		process_unplug_event(NULL);
 		break;
 
 	case INDIGO_DRIVER_INFO:
