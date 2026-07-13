@@ -1,5 +1,5 @@
 # Basics of INDIGO Client Development
-Revision: 13.10.2024 (draft)
+Revision: 13.07.2026 (draft)
 
 Author: **Rumen G. Bogdanovski**
 
@@ -60,6 +60,15 @@ In order to communicate over TCP the client must use the following calls:
 Because of the asynchronous nature of INDIGO *indigo_connect_server()* is asynchronous too. When it returns success it means that the connection request has been successful, but not that the connection is established. *indigo_connect_server()* will try to keep the connection alive and reconnect until *indigo_disconnect_server()* is called.
 
 For structure definitions and function prototypes please refer to [indigo_bus.h](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo/indigo_bus.h) and [indigo_client.h](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo/indigo_client.h).
+
+## The INDIGO 3.0 (indigo3) API
+
+INDIGO 3.0 raised the API version to **3.0**. The client API stays backward source compatible with INDIGO 2.0 clients - existing clients keep building and working - but there are a few additions a client author should be aware of:
+
+- **New protocol/version constant** - `INDIGO_VERSION_3_0` (`0x0300`) is added alongside `INDIGO_VERSION_LEGACY` and `INDIGO_VERSION_2_0`, and `INDIGO_VERSION_CURRENT` now resolves to 3.0. A client still advertises its version by setting `INDIGO_VERSION_CURRENT` in its `indigo_client` structure, and version checks that test for the INDIGO protocol should keep using `device->version >= INDIGO_VERSION_2_0` (both 2.0 and 3.0 satisfy it).
+- **State in the message callback** - the `send_message` client callback now receives an additional `indigo_property *property` argument whose state conveys the state of a stand-alone message. See [The message callback](#the-message-callback).
+- **Windows support** - the framework now builds on Windows through a portable I/O abstraction layer. A client and locally loaded **dynamic** drivers can run on Linux, macOS and Windows; only the legacy **executable** (pipe based) drivers remain Linux/macOS only. See [Serverless Operation](#serverless-operation---applications-loading-indigo-drivers).
+- **Optional client session features** - the `indigo_client` structure gained two trailing boolean fields, `force_property_updates` and `force_item_updates`, which request that redundant property/item updates are still delivered. They default to `false` (zero-initialized) and can be ignored by clients that do not need them.
 
 ## Anatomy of the INDIGO client
 
@@ -126,6 +135,35 @@ static indigo_client my_client = {
 ```  
 
 Please note we do not care about **delete property** and **send message** events in our example so we set them to *NULL*.
+
+The two trailing fields after the *detach* callback (`force_property_updates` and `force_item_updates`, added in INDIGO 3.0) are not set in the initializer above; C zero-initializes them to *false*, which is the desired default for most clients.
+
+### The message callback
+
+The **send message** callback is invoked when a device broadcasts a stand-alone human readable message. In INDIGO 3.0 its prototype carries an `indigo_property` argument in addition to the message text:
+
+```C
+static indigo_result my_send_message(indigo_client *client,
+	indigo_device *device, indigo_property *property, const char *message) {
+
+	// property->state carries the state of the message (may be NULL)
+	if (property != NULL && property->state == INDIGO_ALERT_STATE)
+		indigo_error("%s: %s", device->name, message);
+	else
+		indigo_log("%s: %s", device->name, message);
+
+	return INDIGO_OK;
+}
+```
+
+The *property* passed to the callback tells the client the state associated with the message. When a driver emits a message with a state, the framework passes one of the predefined properties *IDLE_PROPERTY*, *OK_PROPERTY*, *BUSY_PROPERTY* or *ALERT_PROPERTY*, and its *state* field indicates the nature of the message. The *property* argument may also be *NULL* for a plain message with no associated state, so it must be checked before dereferencing.
+
+Note that in the context of a **send message** the four states may carry a different meaning than they do for a property state. Here they can describe the message itself, so a client can, for example, colour or prioritize it accordingly:
+
+- *INDIGO_IDLE_STATE* - a neutral, informational message.
+- *INDIGO_OK_STATE* - indicates success of some process (e.g. "focusing finished").
+- *INDIGO_BUSY_STATE* - indicates a warning.
+- *INDIGO_ALERT_STATE* - indicates an error.
 
 Now as we have everything set up and ready to go we need our *main()* function:
 
@@ -365,7 +403,7 @@ INDIGO framework can operate in an environment without a server. In this case th
 
 2. [indigo_examples/dynamic_driver_client.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_examples/dynamic_driver_client.c) - Example of serverless operation using dynamic INDIGO driver.
 
-The main difference, in terms of code, between the examples above and the *INDIGO Imaging Client - Example*, shown below, is the *main()* function. In terms of supported platforms, only the the remote server example shown below can work on all supported operating systems. The two examples above can work only on Linux and MacOSX. The reason for this is that INDIGO drivers can run only on Linux and MacOSX but not on Windows.
+The main difference, in terms of code, between the examples above and the *INDIGO Imaging Client - Example*, shown below, is the *main()* function. In terms of supported platforms, the remote server example shown below works on all supported operating systems. As of INDIGO 3.0 the framework builds on Windows too, so the **dynamic driver** example also works on Linux, macOS and Windows. The **executable driver** example remains Linux and macOS only, because legacy executable (pipe based) drivers are not available on Windows.
 
 It is important to note a key consideration regarding the dynamic or static driver linking by the client. Functions that send property change requests, such as *indigo_change_number_property()*, cannot be called directly from the property handler callbacks. These functions must be called asynchronously as described in [Handling Properties Asynchronously](#handling-properties-asynchronously) (see [indigo_examples/dynamic_driver_client.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_examples/dynamic_driver_client.c)).
 
