@@ -37,6 +37,9 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#if defined(INDIGO_MACOS) || defined(INDIGO_LINUX)
+#include <sys/time.h>
+#endif
 
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_filter.h>
@@ -360,47 +363,113 @@ static void open_log(indigo_device *device) {
 	indigo_server_add_file_resource("/guiding", DEVICE_PRIVATE_DATA->log_file_name, "text/csv; charset=UTF-8");
 }
 
+static void get_log_timestamp(char *timestamp_str) {
+	struct timeval tmnow;
+	gettimeofday(&tmnow, NULL);
+	strftime(timestamp_str, 32, "%Y-%m-%d %H:%M:%S", localtime((const time_t *)&tmnow.tv_sec));
+	snprintf(timestamp_str + strlen(timestamp_str), 32 - strlen(timestamp_str), ".%03ld", (long)tmnow.tv_usec / 1000);
+}
+
 static void write_log_header(indigo_device *device, const char *log_type) {
 	if (DEVICE_PRIVATE_DATA->log_file != NULL) {
-		indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "\"Type:\",\"%s\"\r\n", log_type);
-		indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "\r\n");
-		indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "\"Camera:\",\"%s\"\r\n", FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX]);
-		indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "\"Guider:\",\"%s\"\r\n", FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_GUIDER_INDEX]);
-		indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "\r\n", log_type);
-		for (int i = 0; i <AGENT_GUIDER_SETTINGS_PROPERTY->count; i++) {
-			indigo_item *item = AGENT_GUIDER_SETTINGS_PROPERTY->items + i;
-			indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "\"%s:\",%g\r\n", item->label, item->number.value);
-		}
-		for (int i = 0; i <AGENT_GUIDER_DETECTION_MODE_PROPERTY->count; i++) {
-			indigo_item *item = AGENT_GUIDER_DETECTION_MODE_PROPERTY->items + i;
-			if (item->sw.value) {
-				indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "\"%s:\",\"%s\"\r\n", AGENT_GUIDER_DETECTION_MODE_PROPERTY->label, item->label);
+		char timestamp[32];
+		get_log_timestamp(timestamp);
+		indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "\r\n%s started at %s\r\n", log_type, timestamp);
+		indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "Camera: '%s', Guider: '%s'\r\n", FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX], FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_GUIDER_INDEX]);
+
+		const char *method = "";
+		for (int i = 0; i < AGENT_GUIDER_DETECTION_MODE_PROPERTY->count; i++) {
+			if (AGENT_GUIDER_DETECTION_MODE_PROPERTY->items[i].sw.value) {
+				method = AGENT_GUIDER_DETECTION_MODE_PROPERTY->items[i].label;
+				break;
 			}
 		}
-		for (int i = 0; i <AGENT_GUIDER_DEC_MODE_PROPERTY->count; i++) {
-			indigo_item *item = AGENT_GUIDER_DEC_MODE_PROPERTY->items + i;
-			if (item->sw.value) {
-				indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "\"%s:\",\"%s\"\r\n", AGENT_GUIDER_DEC_MODE_PROPERTY->label, item->label);
+		indigo_uni_printf(
+			DEVICE_PRIVATE_DATA->log_file,
+			"Method: '%s', Parameters: Radius = %d px, Star count = %d, Edge clipping = %d px\r\n",
+			method,
+			(int)round(AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value),
+			(int)AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value,
+			(int)AGENT_GUIDER_SELECTION_EDGE_CLIPPING_ITEM->number.value
+		);
+
+		indigo_uni_printf(
+			DEVICE_PRIVATE_DATA->log_file,
+			"Guider Settings: Exp = %.3f s, Delay = %.3f s, Min Error = %.3f px, Min Pulse = %.3f s, Max Pulse = %.3f s\r\n",
+			AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value,
+			AGENT_GUIDER_SETTINGS_DELAY_ITEM->number.value,
+			AGENT_GUIDER_SETTINGS_MIN_ERR_ITEM->number.value,
+			AGENT_GUIDER_SETTINGS_MIN_PULSE_ITEM->number.value,
+			AGENT_GUIDER_SETTINGS_MAX_PULSE_ITEM->number.value
+		);
+
+		if (!strcasecmp(log_type, "Guiding")) {
+			if (AGENT_GUIDER_CORRECTION_MODE_RA_PI_ITEM->sw.value) {
+				indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "RA Settings [%s]: Aggr = %.3f %%, I Gain = %.3f, PI Stack = %.0f\r\n", AGENT_GUIDER_CORRECTION_MODE_RA_PI_ITEM->label, AGENT_GUIDER_SETTINGS_AGG_RA_ITEM->number.value, AGENT_GUIDER_SETTINGS_I_GAIN_RA_ITEM->number.value, AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value);
+			} else if (AGENT_GUIDER_CORRECTION_MODE_RA_HYSTERESIS_ITEM->sw.value) {
+				indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "RA Settings [%s]: Aggr = %.3f %%, Hysteresis = %.3f %%\r\n", AGENT_GUIDER_CORRECTION_MODE_RA_HYSTERESIS_ITEM->label, AGENT_GUIDER_SETTINGS_HYSTERESIS_AGG_RA_ITEM->number.value, AGENT_GUIDER_SETTINGS_HYSTERESIS_HIST_RA_ITEM->number.value);
+			} else if (AGENT_GUIDER_CORRECTION_MODE_RA_LINEAR_TREND_ITEM->sw.value) {
+				indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "RA Settings [%s]: Aggr = %.3f %%\r\n", AGENT_GUIDER_CORRECTION_MODE_RA_LINEAR_TREND_ITEM->label, AGENT_GUIDER_SETTINGS_LINEAR_TREND_AGG_RA_ITEM->number.value);
+			} else if (AGENT_GUIDER_CORRECTION_MODE_RA_PPEC_ITEM->sw.value) {
+				indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "RA Settings [%s]: Reactive Gain = %.3f %%, Predictive Gain = %.3f %%, Worm Period = %.3f s\r\n", AGENT_GUIDER_CORRECTION_MODE_RA_PPEC_ITEM->label, AGENT_GUIDER_SETTINGS_PPEC_REACTIVE_GAIN_RA_ITEM->number.value, AGENT_GUIDER_SETTINGS_PPEC_PRED_GAIN_RA_ITEM->number.value, AGENT_GUIDER_SETTINGS_PPEC_PERIOD_RA_ITEM->number.value);
+			} else {
+				const char *ra_mode = "Unknown";
+				for (int i = 0; i < AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY->count; i++) {
+					if (AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY->items[i].sw.value) {
+						ra_mode = AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY->items[i].label;
+						break;
+					}
+				}
+				indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "RA Settings [%s]: Correction algorithm not logged\r\n", ra_mode);
+			}
+
+			if (AGENT_GUIDER_CORRECTION_MODE_DEC_PI_ITEM->sw.value) {
+				indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "Dec Settings [%s]: Aggr = %.3f %%, I Gain = %.3f, PI Stack = %.0f\r\n", AGENT_GUIDER_CORRECTION_MODE_DEC_PI_ITEM->label, AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM->number.value, AGENT_GUIDER_SETTINGS_I_GAIN_DEC_ITEM->number.value, AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value);
+			} else if (AGENT_GUIDER_CORRECTION_MODE_DEC_HYSTERESIS_ITEM->sw.value) {
+				indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "Dec Settings [%s]: Aggr = %.3f %%, Hysteresis = %.3f %%\r\n", AGENT_GUIDER_CORRECTION_MODE_DEC_HYSTERESIS_ITEM->label, AGENT_GUIDER_SETTINGS_HYSTERESIS_AGG_DEC_ITEM->number.value, AGENT_GUIDER_SETTINGS_HYSTERESIS_HIST_DEC_ITEM->number.value);
+			} else if (AGENT_GUIDER_CORRECTION_MODE_DEC_LINEAR_TREND_ITEM->sw.value) {
+				indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "Dec Settings [%s]: Aggr = %.3f %%\r\n", AGENT_GUIDER_CORRECTION_MODE_DEC_LINEAR_TREND_ITEM->label, AGENT_GUIDER_SETTINGS_LINEAR_TREND_AGG_DEC_ITEM->number.value);
+			} else if (AGENT_GUIDER_CORRECTION_MODE_DEC_RESIST_SWITCH_ITEM->sw.value) {
+				indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "Dec Settings [%s]: Aggr = %.3f %%, Fast-switch Threshold = %.3f px\r\n", AGENT_GUIDER_CORRECTION_MODE_DEC_RESIST_SWITCH_ITEM->label, AGENT_GUIDER_SETTINGS_RESIST_SWITCH_AGG_DEC_ITEM->number.value, AGENT_GUIDER_SETTINGS_RESIST_SWITCH_FAST_THRSH_DEC_ITEM->number.value);
+			} else {
+				const char *dec_mode = "Unknown";
+				for (int i = 0; i < AGENT_GUIDER_CORRECTION_MODE_DEC_PROPERTY->count; i++) {
+					if (AGENT_GUIDER_CORRECTION_MODE_DEC_PROPERTY->items[i].sw.value) {
+						dec_mode = AGENT_GUIDER_CORRECTION_MODE_DEC_PROPERTY->items[i].label;
+						break;
+					}
+				}
+				indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "Dec Settings [%s]: Correction algorithm not logged\r\n", dec_mode);
 			}
 		}
-		for (int i = 0; i <AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY->count; i++) {
-			indigo_item *item = AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY->items + i;
-			if (item->sw.value) {
-				indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "\"%s:\",\"%s\"\r\n", AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY->label, item->label);
-			}
-		}
-		for (int i = 0; i <AGENT_GUIDER_SELECTION_PROPERTY->count; i++) {
-			indigo_item *item = AGENT_GUIDER_SELECTION_PROPERTY->items + i;
-			indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "\"%s:\",%g\r\n", item->label, item->number.value);
-		}
-		indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "\r\n", log_type);
-		indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "\"phase\",\"frame\",\"ref x\",\"ref y\",\"drift x\",\"drift y\",\"drift ra\",\"drift dec\",\"corr ra\",\"corr dec\",\"rmse ra\",\"rmse dec\",\"rmse dith\",\"snr\"\r\n");
+
+		indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "\"Timestamp\",\"X Dif\",\"Y Dif\",\"RA Dif\",\"Dec Dif\",\"RA Dif(\"\")\",\"Dec Dif(\"\")\",\"RMSE RA\",\"RMSE Dec\",\"RMSE RA(\"\")\",\"RMSE Dec(\"\")\",\"RA Corr\",\"Dec Corr\",\"Dither\"\r\n");
 	}
 }
 
 static void write_log_record(indigo_device *device) {
-	if (DEVICE_PRIVATE_DATA->log_file != NULL) {
-		indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "%d,%d,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g\r\n", (int)AGENT_GUIDER_STATS_PHASE_ITEM->number.value, (int)AGENT_GUIDER_STATS_FRAME_ITEM->number.value, AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value, AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value, AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value, AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value, AGENT_GUIDER_STATS_DRIFT_RA_S_ITEM->number.value, AGENT_GUIDER_STATS_DRIFT_DEC_S_ITEM->number.value, AGENT_GUIDER_STATS_CORR_RA_ITEM->number.value, AGENT_GUIDER_STATS_CORR_DEC_ITEM->number.value, AGENT_GUIDER_STATS_RMSE_RA_S_ITEM->number.value, AGENT_GUIDER_STATS_RMSE_DEC_S_ITEM->number.value, AGENT_GUIDER_STATS_DITHERING_ITEM->number.value, AGENT_GUIDER_STATS_SNR_ITEM->number.value);
+	/* frame <= 1 is the reference frame - all drift/correction values are still 0 */
+	if (DEVICE_PRIVATE_DATA->log_file != NULL && AGENT_GUIDER_STATS_FRAME_ITEM->number.value > 1) {
+		char timestamp[32];
+		get_log_timestamp(timestamp);
+		indigo_uni_printf(
+			DEVICE_PRIVATE_DATA->log_file,
+			"\"%s\",%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%d\r\n",
+			timestamp,
+			AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value,
+			AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value,
+			AGENT_GUIDER_STATS_DRIFT_RA_ITEM->number.value,
+			AGENT_GUIDER_STATS_DRIFT_DEC_ITEM->number.value,
+			AGENT_GUIDER_STATS_DRIFT_RA_S_ITEM->number.value,
+			AGENT_GUIDER_STATS_DRIFT_DEC_S_ITEM->number.value,
+			AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value,
+			AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value,
+			AGENT_GUIDER_STATS_RMSE_RA_S_ITEM->number.value,
+			AGENT_GUIDER_STATS_RMSE_DEC_S_ITEM->number.value,
+			AGENT_GUIDER_STATS_CORR_RA_ITEM->number.value,
+			AGENT_GUIDER_STATS_CORR_DEC_ITEM->number.value,
+			AGENT_GUIDER_STATS_DITHERING_ITEM->number.value != 0 ? 1 : 0
+		);
 	}
 }
 
@@ -1251,7 +1320,7 @@ static bool calibrate(indigo_device *device) {
 	allow_abort_by_mount_agent(device, true);
 	if (AGENT_GUIDER_ENABLE_LOGGING_FEATURE_ITEM->sw.value) {
 		open_log(device);
-		write_log_header(device, "calibration");
+		write_log_header(device, "Calibration");
 		write_log_record(device);
 	}
 	int upload_mode = indigo_save_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME);
@@ -1585,7 +1654,7 @@ static bool guide(indigo_device *device) {
 	}
 	if (AGENT_GUIDER_ENABLE_LOGGING_FEATURE_ITEM->sw.value) {
 		open_log(device);
-		write_log_header(device, "guiding");
+		write_log_header(device, "Guiding");
 		write_log_record(device);
 	}
 	DEVICE_PRIVATE_DATA->first_frame = true;
