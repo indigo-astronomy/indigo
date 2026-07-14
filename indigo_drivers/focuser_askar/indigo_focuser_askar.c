@@ -23,7 +23,7 @@
  \file indigo_focuser_askar.c
  */
 
-#define DRIVER_VERSION 0x03000002
+#define DRIVER_VERSION 0x03000003
 #define DRIVER_NAME "indigo_focuser_askar"
 
 #include <stdlib.h>
@@ -81,10 +81,20 @@
 // gp_bits is used as boolean
 #define is_connected               gp_bits
 
+// -------------------------------------------------------------------------------- X_FOCUSER_MOTOR_MODE (device specific)
+#define X_FOCUSER_MOTOR_MODE_PROPERTY                   (PRIVATE_DATA->x_focuser_motor_mode_property)
+#define X_FOCUSER_MOTOR_MODE_HIGH_PERFORMANCE_ITEM      (X_FOCUSER_MOTOR_MODE_PROPERTY->items + 0)
+#define X_FOCUSER_MOTOR_MODE_BALANCED_ITEM              (X_FOCUSER_MOTOR_MODE_PROPERTY->items + 1)
+
+#define X_FOCUSER_MOTOR_MODE_PROPERTY_NAME              "X_FOCUSER_MOTOR_MODE"
+#define X_FOCUSER_MOTOR_MODE_HIGH_PERFORMANCE_ITEM_NAME "HIGH_PERFORMANCE"
+#define X_FOCUSER_MOTOR_MODE_BALANCED_ITEM_NAME         "BALANCED"
+
 typedef struct {
 	indigo_uni_handle *handle;
 	int32_t current_position, target_position, max_position;
 	pthread_mutex_t port_mutex;
+	indigo_property *x_focuser_motor_mode_property;
 } askar_private_data;
 
 // -------------------------------------------------------------------------------- Low level protocol
@@ -475,7 +485,37 @@ static bool askar_set_reverse(indigo_device *device, bool reversed) {
 	return strncmp(response, "FR", 2) == 0;
 }
 
+// Fo# -> Fo0# (high performance) / Fo1# (balanced) (read motor mode)
+static bool askar_get_motor_mode(indigo_device *device, bool *balanced) {
+	char response[ASKAR_CMD_LEN] = {0};
+	if (!askar_command(device, "Fo#", response, sizeof(response))) {
+		return false;
+	}
+	int mode = 0;
+	int parsed = sscanf(response, "Fo%d", &mode);
+	if (parsed != 1) {
+		return false;
+	}
+	*balanced = (mode != 0);
+	return true;
+}
+
+// FO0# / FO1# -> echo (set motor mode; halts motion, persisted in NVS,
+// reconfigures the motor driver registers). "FE#" means the value was rejected.
+static bool askar_set_motor_mode(indigo_device *device, bool balanced) {
+	char command[ASKAR_CMD_LEN];
+	char response[ASKAR_CMD_LEN] = {0};
+	snprintf(command, sizeof(command), "FO%d#", balanced ? 1 : 0);
+	if (!askar_command(device, command, response, sizeof(response))) {
+		return false;
+	}
+	// accept either reply casing; "FE" is the firmware's rejection reply
+	return strncmp(response, "FO", 2) == 0 || strncmp(response, "Fo", 2) == 0;
+}
+
 // -------------------------------------------------------------------------------- INDIGO focuser device implementation
+
+static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
 
 static void focuser_scan_ports_callback(indigo_device *device) {
 	indigo_delete_property(device, DEVICE_PORTS_PROPERTY, NULL);
@@ -513,6 +553,13 @@ static void focuser_timer_callback(indigo_device *device) {
 	}
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+}
+
+static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	if (IS_CONNECTED) {
+		INDIGO_DEFINE_MATCHING_PROPERTY(X_FOCUSER_MOTOR_MODE_PROPERTY);
+	}
+	return indigo_focuser_enumerate_properties(device, client, property);
 }
 
 static indigo_result focuser_attach(indigo_device *device) {
@@ -559,6 +606,14 @@ static indigo_result focuser_attach(indigo_device *device) {
 
 		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
 
+		// -------------------------------------------------------------------------------- X_FOCUSER_MOTOR_MODE
+		X_FOCUSER_MOTOR_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, X_FOCUSER_MOTOR_MODE_PROPERTY_NAME, FOCUSER_ADVANCED_GROUP, "Motor mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (X_FOCUSER_MOTOR_MODE_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_switch_item(X_FOCUSER_MOTOR_MODE_HIGH_PERFORMANCE_ITEM, X_FOCUSER_MOTOR_MODE_HIGH_PERFORMANCE_ITEM_NAME, "High performance", true);
+		indigo_init_switch_item(X_FOCUSER_MOTOR_MODE_BALANCED_ITEM, X_FOCUSER_MOTOR_MODE_BALANCED_ITEM_NAME, "Balanced", false);
+
 		// Features the Askar-WAF CDC protocol does not expose.
 		FOCUSER_TEMPERATURE_PROPERTY->hidden = true;
 		FOCUSER_COMPENSATION_PROPERTY->hidden = true;
@@ -568,7 +623,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = device->master_device != NULL;
 
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		indigo_result result = indigo_focuser_enumerate_properties(device, NULL, NULL);
+		indigo_result result = focuser_enumerate_properties(device, NULL, NULL);
 		// Populate the initial DEVICE_PORTS list with discovered Wi-Fi focusers
 		// without blocking attach on the UDP scan.
 		indigo_execute_handler(device, focuser_scan_ports_callback);
@@ -659,6 +714,13 @@ static void focuser_connect_callback(indigo_device *device) {
 						FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value = !reversed;
 					}
 
+					bool balanced = false;
+					if (askar_get_motor_mode(device, &balanced)) {
+						indigo_set_switch(X_FOCUSER_MOTOR_MODE_PROPERTY, balanced ? X_FOCUSER_MOTOR_MODE_BALANCED_ITEM : X_FOCUSER_MOTOR_MODE_HIGH_PERFORMANCE_ITEM, true);
+					}
+					X_FOCUSER_MOTOR_MODE_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_define_property(device, X_FOCUSER_MOTOR_MODE_PROPERTY, NULL);
+
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					device->is_connected = true;
 
@@ -671,6 +733,8 @@ static void focuser_connect_callback(indigo_device *device) {
 			indigo_cancel_pending_handlers(device);
 
 			askar_stop(device);
+
+			indigo_delete_property(device, X_FOCUSER_MOTOR_MODE_PROPERTY, NULL);
 
 			askar_close(device);
 			indigo_global_unlock(device);
@@ -825,6 +889,27 @@ static void focuser_backlash_callback(indigo_device *device) {
 	indigo_update_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
 }
 
+static void focuser_motor_mode_callback(indigo_device *device) {
+	X_FOCUSER_MOTOR_MODE_PROPERTY->state = INDIGO_OK_STATE;
+	bool balanced = X_FOCUSER_MOTOR_MODE_BALANCED_ITEM->sw.value;
+	if (!askar_set_motor_mode(device, balanced)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "askar_set_motor_mode(%p, %d) failed", PRIVATE_DATA->handle, balanced);
+		X_FOCUSER_MOTOR_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	// Read back the mode as the firmware may reject an invalid value.
+	if (askar_get_motor_mode(device, &balanced)) {
+		indigo_set_switch(X_FOCUSER_MOTOR_MODE_PROPERTY, balanced ? X_FOCUSER_MOTOR_MODE_BALANCED_ITEM : X_FOCUSER_MOTOR_MODE_HIGH_PERFORMANCE_ITEM, true);
+	}
+	// Setting the mode halts motion in firmware; re-read the position to stay in sync.
+	int32_t position;
+	if (askar_get_position(device, &position)) {
+		PRIVATE_DATA->current_position = PRIVATE_DATA->target_position = position;
+		FOCUSER_POSITION_ITEM->number.value = (double)position;
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	}
+	indigo_update_property(device, X_FOCUSER_MOTOR_MODE_PROPERTY, NULL);
+}
+
 // -------------------------------------------------------------------------------- change_property dispatch
 
 static indigo_result focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
@@ -893,6 +978,13 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		}
 		indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(X_FOCUSER_MOTOR_MODE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- X_FOCUSER_MOTOR_MODE
+		indigo_property_copy_values(X_FOCUSER_MOTOR_MODE_PROPERTY, property, false);
+		X_FOCUSER_MOTOR_MODE_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, X_FOCUSER_MOTOR_MODE_PROPERTY, NULL);
+		indigo_execute_handler(device, focuser_motor_mode_callback);
+		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DEVICE_PORTS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
 		// Intercept Refresh so it also scans the network for Wi-Fi focusers.
@@ -914,6 +1006,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		focuser_connect_callback(device);
 	}
+	indigo_release_property(X_FOCUSER_MOTOR_MODE_PROPERTY);
 	indigo_global_unlock(device);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_focuser_detach(device);
@@ -926,7 +1019,7 @@ indigo_result indigo_focuser_askar(indigo_driver_action action, indigo_driver_in
 	static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(
 		FOCUSER_ASKAR_NAME,
 		focuser_attach,
-		indigo_focuser_enumerate_properties,
+		focuser_enumerate_properties,
 		focuser_change_property,
 		NULL,
 		focuser_detach

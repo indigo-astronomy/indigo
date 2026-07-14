@@ -44,7 +44,10 @@ This is **not** the FreeRTOS CLI protocol (`help`, `wifi`, etc.). Focuser comman
 | 14  | Read reverse motion   | Read  | `Fr#`      | `Fr0#\r\n` or `Fr1#\r\n` | `0` = normal, `1` = reversed motor direction                 |
 | 15  | Set reverse motion    | Write | `FR0#`     | `FR0#\r\n`               | Normal direction; stops motion, writes NVS                   |
 | 16  | Set reverse motion    | Write | `FR1#`     | `FR1#\r\n`               | Reversed direction; stops motion, writes NVS                 |
-| 17  | Command failure       | —     | (invalid)  | `FE#\r\n`                | See “Errors and edge cases”                                  |
+| 17  | Read motor mode       | Read  | `Fo#`      | `Fo0#\r\n` or `Fo1#\r\n` | `0` = high performance, `1` = balanced; `FO#` accepted as alias |
+| 18  | Set motor mode        | Write | `FO0#`     | `FO0#\r\n`               | High performance; stops motion, writes NVS, reconfigures motor driver registers |
+| 19  | Set motor mode        | Write | `FO1#`     | `FO1#\r\n`               | Balanced; stops motion, writes NVS, reconfigures motor driver registers |
+| 20  | Command failure       | —     | (invalid)  | `FE#\r\n`                | See “Errors and edge cases”; e.g. `FO2#` returns `FE#`       |
 
 
 ---

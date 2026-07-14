@@ -54,6 +54,7 @@ static int32_t target_position = 50000;
 static int32_t max_step        = 100000;
 static int     backlash        = 0;
 static int     reverse         = 0;     // 0 = normal, 1 = reversed motor direction
+static int     motor_mode      = 0;     // 0 = high performance, 1 = balanced
 
 static WINDOW *top, *bottom;
 static pthread_mutex_t state_mutex;
@@ -421,6 +422,40 @@ static void handle_set_reverse(int fd, const char *body) {
 	sim_send_response(fd, resp);
 }
 
+// Fo# -> read motor mode (lowercase o)
+static void handle_read_motor_mode(int fd) {
+	pthread_mutex_lock(&state_mutex);
+	int m = motor_mode;
+	pthread_mutex_unlock(&state_mutex);
+	sim_send_response(fd, m ? "Fo1" : "Fo0");
+}
+
+// FO0# / FO1# -> set motor mode (0 = high performance, 1 = balanced); FO# is an
+// alias for read.
+static void handle_set_motor_mode(int fd, const char *body) {
+	// FO# with no value is accepted as a read alias for Fo#.
+	if (!*body) {
+		pthread_mutex_lock(&state_mutex);
+		int m = motor_mode;
+		pthread_mutex_unlock(&state_mutex);
+		sim_send_response(fd, m ? "Fo1" : "Fo0");
+		return;
+	}
+	int32_t n;
+	if (!parse_int(body, &n) || (n != 0 && n != 1)) {
+		sim_send_error(fd);
+		return;
+	}
+	pthread_mutex_lock(&state_mutex);
+	motor_mode = (int)n;
+	// Firmware halts motion and reconfigures the motor driver when the mode changes.
+	target_position = position;
+	pthread_mutex_unlock(&state_mutex);
+	char resp[32];
+	snprintf(resp, sizeof(resp), "FO%d", (int)n);
+	sim_send_response(fd, resp);
+}
+
 // ----------------------------------------------------------------- dispatch
 
 static void dispatch(int fd, const char *frame, int len) {
@@ -450,6 +485,8 @@ static void dispatch(int fd, const char *frame, int len) {
 		case 'B': handle_set_backlash(fd, body); break;
 		case 'r': handle_read_reverse(fd); break;
 		case 'R': handle_set_reverse(fd, body); break;
+		case 'o': handle_read_motor_mode(fd); break;
+		case 'O': handle_set_motor_mode(fd, body); break;
 		default: {
 			char msg[64];
 			snprintf(msg, sizeof(msg), "unknown command F%c (%s)", cmd, frame);
