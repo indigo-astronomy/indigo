@@ -370,6 +370,18 @@ static void get_log_timestamp(char *timestamp_str) {
 	snprintf(timestamp_str + strlen(timestamp_str), 32 - strlen(timestamp_str), ".%03ld", (long)tmnow.tv_usec / 1000);
 }
 
+static void write_log_calibration(indigo_device *device) {
+	if (DEVICE_PRIVATE_DATA->log_file != NULL) {
+		indigo_uni_printf(
+			DEVICE_PRIVATE_DATA->log_file,
+			"Calibration: RA = %.4f px/s, Dec = %.4f px/s, Angle = %.3f deg\r\n",
+			AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value,
+			AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.value,
+			AGENT_GUIDER_SETTINGS_ANGLE_ITEM->number.value
+		);
+	}
+}
+
 static void write_log_header(indigo_device *device, const char *log_type) {
 	if (DEVICE_PRIVATE_DATA->log_file != NULL) {
 		char timestamp[32];
@@ -402,6 +414,12 @@ static void write_log_header(indigo_device *device, const char *log_type) {
 			AGENT_GUIDER_SETTINGS_MIN_PULSE_ITEM->number.value,
 			AGENT_GUIDER_SETTINGS_MAX_PULSE_ITEM->number.value
 		);
+
+		// For guiding the calibration is already known.
+		// For calibration data will be known at the end end of the process.
+		if (!strcasecmp(log_type, "Guiding")) {
+			write_log_calibration(device);
+		}
 
 		if (!strcasecmp(log_type, "Guiding")) {
 			if (AGENT_GUIDER_CORRECTION_MODE_RA_PI_ITEM->sw.value) {
@@ -1577,6 +1595,7 @@ static bool calibrate(indigo_device *device) {
 				AGENT_GUIDER_SETTINGS_SOP_ITEM->number.value =
 				AGENT_GUIDER_SETTINGS_SOP_ITEM->number.target = AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM->number.value;
 				indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
+				write_log_calibration(device);
 				indigo_send_message(device, IDLE_PROPERTY, "Calibration complete");
 				indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 				save_config(device);
