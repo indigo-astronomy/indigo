@@ -194,6 +194,8 @@
 #define AGENT_GUIDER_STATS_DITHERING_ITEM			(AGENT_GUIDER_STATS_PROPERTY->items+18)
 #define AGENT_GUIDER_STATS_PPEC_LEARNING_ITEM	(AGENT_GUIDER_STATS_PROPERTY->items+19)
 #define AGENT_GUIDER_STATS_PPEC_PERIOD_ITEM	(AGENT_GUIDER_STATS_PROPERTY->items+20)
+#define AGENT_GUIDER_STATS_CORR_RESPONSE_RA_ITEM	(AGENT_GUIDER_STATS_PROPERTY->items+21)
+#define AGENT_GUIDER_STATS_CORR_RESPONSE_DEC_ITEM	(AGENT_GUIDER_STATS_PROPERTY->items+22)
 
 #define AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY			(DEVICE_PRIVATE_DATA->agent_dithering_strategy_property)
 #define AGENT_GUIDER_DITHERING_STRATEGY_RANDOM_SPIRAL_ITEM	(AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY->items+0)
@@ -282,6 +284,10 @@ typedef struct {
 	double rmse_ra_threshold, rmse_dec_threshold;
 	double cos_dec;
 	unsigned long rmse_count;
+	double corr_resp_ra[INDIGO_CORR_RESPONSE_WINDOW];  /* ring buffer of RA residuals for the correction-response estimate */
+	double corr_resp_dec[INDIGO_CORR_RESPONSE_WINDOW]; /* ring buffer of Dec residuals */
+	int corr_resp_count;                               /* valid samples in the ring (<= INDIGO_CORR_RESPONSE_WINDOW) */
+	int corr_resp_head;                         /* index of the next write slot */
 	void *last_image;
 	long last_image_size;
 	char last_image_url[INDIGO_VALUE_SIZE];
@@ -1653,6 +1659,8 @@ static bool guide(indigo_device *device) {
 	AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.value = AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.target = AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.value = AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.target = 0;
 	indigo_update_property(device, AGENT_GUIDER_DITHERING_OFFSETS_PROPERTY, NULL);
 	DEVICE_PRIVATE_DATA->rmse_ra_sum = DEVICE_PRIVATE_DATA->rmse_dec_sum = DEVICE_PRIVATE_DATA->rmse_ra_s_sum = DEVICE_PRIVATE_DATA->rmse_dec_s_sum = DEVICE_PRIVATE_DATA->rmse_count = 0;
+	DEVICE_PRIVATE_DATA->corr_resp_count = DEVICE_PRIVATE_DATA->corr_resp_head = 0;
+	AGENT_GUIDER_STATS_CORR_RESPONSE_RA_ITEM->number.value = AGENT_GUIDER_STATS_CORR_RESPONSE_DEC_ITEM->number.value = 0;
 	DEVICE_PRIVATE_DATA->hysteresis_prev_drift_ra = DEVICE_PRIVATE_DATA->hysteresis_prev_drift_dec = 0;
 	memset(&DEVICE_PRIVATE_DATA->trend_ra, 0, sizeof(DEVICE_PRIVATE_DATA->trend_ra));
 	memset(&DEVICE_PRIVATE_DATA->trend_dec, 0, sizeof(DEVICE_PRIVATE_DATA->trend_dec));
@@ -1918,6 +1926,14 @@ static bool guide(indigo_device *device) {
 				DEVICE_PRIVATE_DATA->rmse_ra_s_sum += drift_ra_s * drift_ra_s;
 				DEVICE_PRIVATE_DATA->rmse_dec_s_sum += drift_dec_s * drift_dec_s;
 				DEVICE_PRIVATE_DATA->rmse_count++;
+				/* Feed the correction-response ring buffer with this frame's residual
+				   (dithering frames are intentional offsets, so they are excluded). */
+				DEVICE_PRIVATE_DATA->corr_resp_ra[DEVICE_PRIVATE_DATA->corr_resp_head] = drift_ra;
+				DEVICE_PRIVATE_DATA->corr_resp_dec[DEVICE_PRIVATE_DATA->corr_resp_head] = drift_dec;
+				DEVICE_PRIVATE_DATA->corr_resp_head = (DEVICE_PRIVATE_DATA->corr_resp_head + 1) % INDIGO_CORR_RESPONSE_WINDOW;
+				if (DEVICE_PRIVATE_DATA->corr_resp_count < INDIGO_CORR_RESPONSE_WINDOW) {
+					DEVICE_PRIVATE_DATA->corr_resp_count++;
+				}
 			} else {
 				DEVICE_PRIVATE_DATA->rmse_ra_sum = DEVICE_PRIVATE_DATA->rmse_dec_sum = DEVICE_PRIVATE_DATA->rmse_ra_s_sum = DEVICE_PRIVATE_DATA->rmse_dec_s_sum = 0;
 				/* We use RMSE moving average during dithering over the last AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM frames to determine
@@ -1975,6 +1991,13 @@ static bool guide(indigo_device *device) {
 				AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value = rmse_dec;
 				AGENT_GUIDER_STATS_RMSE_RA_S_ITEM->number.value = round(1000 * sqrt(DEVICE_PRIVATE_DATA->rmse_ra_s_sum / DEVICE_PRIVATE_DATA->rmse_count)) / 1000;
 				AGENT_GUIDER_STATS_RMSE_DEC_S_ITEM->number.value = round(1000 * sqrt(DEVICE_PRIVATE_DATA->rmse_dec_s_sum / DEVICE_PRIVATE_DATA->rmse_count)) / 1000;
+				/* Correction response: robust lag-1 autocorrelation of the residual. Published
+				   once at least INDIGO_CORR_RESPONSE_MIN samples are collected; 0 until then. */
+				bool corr_ra_ok = false, corr_dec_ok = false;
+				double corr_resp_ra = indigo_guider_correction_response(DEVICE_PRIVATE_DATA->corr_resp_ra, DEVICE_PRIVATE_DATA->corr_resp_count, DEVICE_PRIVATE_DATA->corr_resp_head, &corr_ra_ok);
+				double corr_resp_dec = indigo_guider_correction_response(DEVICE_PRIVATE_DATA->corr_resp_dec, DEVICE_PRIVATE_DATA->corr_resp_count, DEVICE_PRIVATE_DATA->corr_resp_head, &corr_dec_ok);
+				AGENT_GUIDER_STATS_CORR_RESPONSE_RA_ITEM->number.value = corr_ra_ok ? round(1000 * corr_resp_ra) / 1000 : 0;
+				AGENT_GUIDER_STATS_CORR_RESPONSE_DEC_ITEM->number.value = corr_dec_ok ? round(1000 * corr_resp_dec) / 1000 : 0;
 			}
 		}
 
@@ -2362,7 +2385,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		}
 		AGENT_GUIDER_SELECTION_PROPERTY->count = 14;
 		// -------------------------------------------------------------------------------- Guiding stats
-		AGENT_GUIDER_STATS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_STATS_PROPERTY_NAME, "Agent", "Statistics", INDIGO_OK_STATE, INDIGO_RO_PERM, 21);
+		AGENT_GUIDER_STATS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_STATS_PROPERTY_NAME, "Agent", "Statistics", INDIGO_OK_STATE, INDIGO_RO_PERM, 23);
 		if (AGENT_GUIDER_STATS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
@@ -2387,6 +2410,8 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_GUIDER_STATS_DITHERING_ITEM, AGENT_GUIDER_STATS_DITHERING_ITEM_NAME, "Dithering offset (px)", 0, 100, 0, 0);
 		indigo_init_number_item(AGENT_GUIDER_STATS_PPEC_LEARNING_ITEM, AGENT_GUIDER_STATS_PPEC_LEARNING_ITEM_NAME, "Predictive PEC learning (%)", 0, 100, 0, 0);
 		indigo_init_number_item(AGENT_GUIDER_STATS_PPEC_PERIOD_ITEM, AGENT_GUIDER_STATS_PPEC_PERIOD_ITEM_NAME, "Predictive PEC period (s)", 0, 2000, 0, 0);
+		indigo_init_number_item(AGENT_GUIDER_STATS_CORR_RESPONSE_RA_ITEM, AGENT_GUIDER_STATS_CORR_RESPONSE_RA_ITEM_NAME, "Correction response RA", -1, 1, 0, 0);
+		indigo_init_number_item(AGENT_GUIDER_STATS_CORR_RESPONSE_DEC_ITEM, AGENT_GUIDER_STATS_CORR_RESPONSE_DEC_ITEM_NAME, "Correction response Dec", -1, 1, 0, 0);
 		// -------------------------------------------------------------------------------- Logging
 		AGENT_GUIDER_LOG_PROPERTY = indigo_init_text_property(NULL, device->name, AGENT_GUIDER_LOG_PROPERTY_NAME, "Agent", "Logging", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		if (AGENT_GUIDER_LOG_PROPERTY == NULL) {

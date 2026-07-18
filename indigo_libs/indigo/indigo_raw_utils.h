@@ -43,6 +43,10 @@ extern "C" {
 
 #define INDIGO_RESIST_SWITCH_HISTORY_SIZE 10
 
+#define INDIGO_CORR_RESPONSE_WINDOW 200        /* ring buffer capacity for the correction-response (lag-1) estimate */
+#define INDIGO_CORR_RESPONSE_MIN 100           /* minimum samples before the estimate is published */
+#define INDIGO_CORR_RESPONSE_OUTLIER_SIGMA 4.0 /* winsorising threshold in robust (MAD) sigmas */
+
 typedef struct {
 	double x;               /* Star X */
 	double y;               /* Star Y */
@@ -138,6 +142,11 @@ INDIGO_EXTERN double indigo_guider_linear_trend_response(double aggressiveness, 
 // Resist Switch guiding algorithm.
 INDIGO_EXTERN void indigo_guider_resist_switch_push(double drift, indigo_resist_switch_history *history);
 INDIGO_EXTERN double indigo_guider_resist_switch_response(double aggressiveness, double fast_switch_threshold, double min_move, indigo_resist_switch_history *history);
+
+// Correction response (robust lag-1 autocorrelation of the guiding residual).
+// ring is a ring buffer of INDIGO_CORR_RESPONSE_WINDOW samples, head is the index of the oldest sample, count is the number of valid samples in the ring buffer.
+// returns value [-1.0, 1.0], < 0 means overcorrection, > 0 undercorrection
+INDIGO_EXTERN double indigo_guider_correction_response(const double *ring, int count, int head, bool *ok);
 
 //RMSE focus related
 INDIGO_EXTERN double indigo_contrast(indigo_raw_type raw_type, const void *data, const uint8_t *saturation_mask, const int width, const int height, bool *saturated);

@@ -2439,6 +2439,67 @@ done:
 	return response;
 }
 
+static int compare_double(const void *a, const void *b) {
+	const double da = *(const double *)a;
+	const double db = *(const double *)b;
+	return (da > db) - (da < db);
+}
+
+// Median of the first n entries of buf; reorders buf in place.
+static double correction_response_median_in_place(double *buf, int n) {
+	qsort(buf, n, sizeof(double), compare_double);
+	return (n & 1) ? buf[n / 2] : 0.5 * (buf[n / 2 - 1] + buf[n / 2]);
+}
+
+double indigo_guider_correction_response(const double *ring, int count, int head, bool *ok) {
+	if (count < INDIGO_CORR_RESPONSE_MIN) {
+		if (ok) {
+			*ok = false;
+		}
+		return 0.0;
+	}
+	double ordered[INDIGO_CORR_RESPONSE_WINDOW];
+	int oldest = (head - count + INDIGO_CORR_RESPONSE_WINDOW) % INDIGO_CORR_RESPONSE_WINDOW;
+	for (int i = 0; i < count; i++) {
+		ordered[i] = ring[(oldest + i) % INDIGO_CORR_RESPONSE_WINDOW];
+	}
+	double scratch[INDIGO_CORR_RESPONSE_WINDOW];
+	memcpy(scratch, ordered, count * sizeof(double));
+	const double centre = correction_response_median_in_place(scratch, count);
+	for (int i = 0; i < count; i++) {
+		scratch[i] = fabs(ordered[i] - centre);
+	}
+	const double scale = 1.4826 * correction_response_median_in_place(scratch, count); // ~std dev for normal data
+	// Winsorise deviations to +/- cap.
+	const bool cap_enabled = scale > 1e-12;
+	const double cap = INDIGO_CORR_RESPONSE_OUTLIER_SIGMA * scale;
+
+	double numerator = 0.0, denominator = 0.0;
+	double prev = ordered[0] - centre;
+	if (cap_enabled) {
+		prev = prev > cap ? cap : (prev < -cap ? -cap : prev);
+	}
+	denominator += prev * prev;
+	for (int i = 1; i < count; i++) {
+		double d = ordered[i] - centre;
+		if (cap_enabled) {
+			d = d > cap ? cap : (d < -cap ? -cap : d);
+		}
+		denominator += d * d;
+		numerator += d * prev;
+		prev = d;
+	}
+	if (denominator < 1e-12) {
+		if (ok) {
+			*ok = false; // no variation — the diagnostic is undefined
+		}
+		return 0.0;
+	}
+	if (ok) {
+		*ok = true;
+	}
+	return numerator / denominator;
+}
 
 indigo_result indigo_calculate_drift(const indigo_frame_digest *ref, const indigo_frame_digest *new_digest, double *drift_x, double *drift_y) {
 	if (ref == NULL || new_digest == NULL || drift_x == NULL || drift_y == NULL) {
