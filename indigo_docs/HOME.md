@@ -52,6 +52,7 @@ Imaging, guiding and alignment guides for using INDIGO.
 - [Guider Correction Modes](INDIGO_GUIDER_CORRECTION_MODES.md)
 - [Guider Dithering](INDIGO_GUIDER_DITHERING.md)
 - [Guiding PI Controller Tuning](GUIDING_PI_CONTROLLER_TUNING.md)
+- [Guiding Correction Response Tuning](GUIDING_CORRECTION_RESPONSE_TUNING.md)
 - [Guiding Misconceptions](GUIDING_MISCONCEPTIONS.md)
 
 ## Project
