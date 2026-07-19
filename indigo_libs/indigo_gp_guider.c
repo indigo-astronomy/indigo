@@ -64,7 +64,7 @@ static int clock_gettime(int clk_id, struct timespec *tp) {
 #define REGULAR_BUFFER_SIZE 2048  /* regularized data storage */
 #define FFT_SIZE 4096             /* zero-padding for the FFT (>= REGULAR_BUFFER_SIZE) */
 #define GRID_INTERVAL 5.0
-#define MAX_DITHER_STEPS 10
+#define MAX_DITHER_STEPS 60       /* maximum number of dither steps if dither settle down is not signalled */
 #define DEFAULT_LEARNING_RATE 0.01
 #define HYSTERESIS 0.1
 #define JITTER 1e-6
