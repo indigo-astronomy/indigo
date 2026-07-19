@@ -24,7 +24,7 @@
  \file indigo_agent_guider.c
  */
 
-#define DRIVER_VERSION 0x0300002B
+#define DRIVER_VERSION 0x0300002C
 #define DRIVER_NAME	"indigo_agent_guider"
 
 #include <stdlib.h>
