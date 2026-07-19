@@ -14,8 +14,8 @@ document). Both methods work well but they require an experienced eye and they t
 happening frame after frame during normal, quiet guiding.
 
 To make this easier the INDIGO Guider Agent publishes two additional numbers in the guiding statistics:
-**Correction response RA** and **Correction response Dec** (`CORR_RESPONSE_RA` and `CORR_RESPONSE_DEC` items of
-the `AGENT_GUIDER_STATS` property). They are a compact, quantitative health check of the guiding for each axis,
+**Correction response RA** and **Correction response Dec** (the `CORR_RESPONSE_RA` and `CORR_RESPONSE_DEC` items,
+added to the `AGENT_GUIDER_STATS` property in version 3.0.0.44). They are a compact, quantitative health check of the guiding for each axis,
 and they are **independent of the drift correction mode** in use - the same interpretation applies no matter which
 correction algorithm you have selected. The idea is simple: guiding that is doing its job should leave behind a
 residual error that looks like pure random noise. If the residual still carries a pattern from one frame to the
