@@ -395,6 +395,13 @@ static void write_log_header(indigo_device *device, const char *log_type) {
 		indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "\r\n%s started at %s\r\n", log_type, timestamp);
 		indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "Camera: '%s', Guider: '%s'\r\n", FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX], FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_GUIDER_INDEX]);
 
+		indigo_uni_printf(
+			DEVICE_PRIVATE_DATA->log_file,
+			"Mount Coordinates: RA = %s, Dec = %s\r\n",
+			indigo_dtos(AGENT_GUIDER_MOUNT_COORDINATES_RA_ITEM->number.value, "%02d:%02d:%04.1f"),
+			indigo_dtos(AGENT_GUIDER_MOUNT_COORDINATES_DEC_ITEM->number.value, "%03d:%02d:%04.1f")
+		);
+
 		const char *method = "";
 		for (int i = 0; i < AGENT_GUIDER_DETECTION_MODE_PROPERTY->count; i++) {
 			if (AGENT_GUIDER_DETECTION_MODE_PROPERTY->items[i].sw.value) {
