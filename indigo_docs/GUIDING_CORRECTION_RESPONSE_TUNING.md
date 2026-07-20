@@ -57,6 +57,7 @@ guiding should leave behind.
 | Correction response | What it means | What to do |
 | ------ | --- | --- |
 | **≈ 0**<br>(roughly -0.2 … +0.2) | The residual looks like random noise. The guiding is well balanced for this axis. | Nothing. This is the target. |
+| **Borderline**<br>(0.2 … 0.3 either sign) | A mild frame-to-frame trend is starting to show, but the axis is not clearly mistuned yet - this is often just seeing or a setup sitting on the edge of balance. | No urgent action. Watch the trend; if it keeps growing beyond ±0.3 treat it as the matching row below, and if it settles, keep it on the positive side rather than the negative one. |
 | **Clearly positive**<br>(≳ +0.3) | The error **persists in the same direction** frame after frame. The guiding is **under-correcting** or a systematic error (periodic error, polar misalignment, drift) is not being removed. | Make the guiding respond **more strongly / faster** on this axis. If the drift is systematic, address the source (better polar alignment, shorter guiding cycle) or use a correction mode able to remove it. |
 | **Clearly negative**<br>(≲ -0.3) | The error **alternates sign** frame after frame - the classic signature of **over-correction / oscillation**. | Make the guiding respond **more gently / slower** on this axis. |
 
