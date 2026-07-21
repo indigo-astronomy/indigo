@@ -288,10 +288,12 @@ typedef struct {
 	double rmse_ra_threshold, rmse_dec_threshold;
 	double cos_dec;
 	unsigned long rmse_count;
-	double corr_resp_ra[INDIGO_CORR_RESPONSE_WINDOW];  /* ring buffer of RA residuals for the correction-response estimate */
-	double corr_resp_dec[INDIGO_CORR_RESPONSE_WINDOW]; /* ring buffer of Dec residuals */
-	int corr_resp_count;                               /* valid samples in the ring (<= INDIGO_CORR_RESPONSE_WINDOW) */
-	int corr_resp_head;                         /* index of the next write slot */
+	double corr_resp_ra[INDIGO_CORR_RESPONSE_WINDOW];    /* ring buffer of RA residuals (px) for the correction-response and short-term RMSE estimates */
+	double corr_resp_dec[INDIGO_CORR_RESPONSE_WINDOW];   /* ring buffer of Dec residuals (px) */
+	double corr_resp_ra_s[INDIGO_CORR_RESPONSE_WINDOW];  /* ring buffer of RA residuals (arcsec) for the short-term RMSE estimate */
+	double corr_resp_dec_s[INDIGO_CORR_RESPONSE_WINDOW]; /* ring buffer of Dec residuals (arcsec) */
+	int corr_resp_count;                                 /* valid samples in the ring (<= INDIGO_CORR_RESPONSE_WINDOW) */
+	int corr_resp_head;                                  /* index of the next write slot */
 	void *last_image;
 	long last_image_size;
 	char last_image_url[INDIGO_VALUE_SIZE];
@@ -1937,10 +1939,12 @@ static bool guide(indigo_device *device) {
 				DEVICE_PRIVATE_DATA->rmse_ra_s_sum += drift_ra_s * drift_ra_s;
 				DEVICE_PRIVATE_DATA->rmse_dec_s_sum += drift_dec_s * drift_dec_s;
 				DEVICE_PRIVATE_DATA->rmse_count++;
-				/* Feed the correction-response ring buffer with this frame's residual
-				   (dithering frames are intentional offsets, so they are excluded). */
+				/* Feed the correction-response ring buffers with this frame's residual, in pixels and
+				   arcsec (dithering frames are intentional offsets, so they are excluded). */
 				DEVICE_PRIVATE_DATA->corr_resp_ra[DEVICE_PRIVATE_DATA->corr_resp_head] = drift_ra;
 				DEVICE_PRIVATE_DATA->corr_resp_dec[DEVICE_PRIVATE_DATA->corr_resp_head] = drift_dec;
+				DEVICE_PRIVATE_DATA->corr_resp_ra_s[DEVICE_PRIVATE_DATA->corr_resp_head] = drift_ra_s;
+				DEVICE_PRIVATE_DATA->corr_resp_dec_s[DEVICE_PRIVATE_DATA->corr_resp_head] = drift_dec_s;
 				DEVICE_PRIVATE_DATA->corr_resp_head = (DEVICE_PRIVATE_DATA->corr_resp_head + 1) % INDIGO_CORR_RESPONSE_WINDOW;
 				if (DEVICE_PRIVATE_DATA->corr_resp_count < INDIGO_CORR_RESPONSE_WINDOW) {
 					DEVICE_PRIVATE_DATA->corr_resp_count++;
@@ -1998,21 +2002,19 @@ static bool guide(indigo_device *device) {
 					AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = fmax(rmse_ra, rmse_dec);
 				}
 			} else { /* Not dithering, just update RMSE values as usual. */
+				/* Long-term (session-cumulative) RMSE in pixels and arcsec. */
 				AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value = rmse_ra;
 				AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value = rmse_dec;
 				AGENT_GUIDER_STATS_RMSE_RA_S_ITEM->number.value = round(1000 * sqrt(DEVICE_PRIVATE_DATA->rmse_ra_s_sum / DEVICE_PRIVATE_DATA->rmse_count)) / 1000;
 				AGENT_GUIDER_STATS_RMSE_DEC_S_ITEM->number.value = round(1000 * sqrt(DEVICE_PRIVATE_DATA->rmse_dec_s_sum / DEVICE_PRIVATE_DATA->rmse_count)) / 1000;
 				/* Short-term RMSE: sliding-window RMSE over the last (up to INDIGO_CORR_RESPONSE_WINDOW)
-				   non-dithering residuals held in the correction-response ring buffer (unfiltered). More
-				   sensitive to recent guiding changes than the session-cumulative RMSE above. The arcsec
-				   values are derived from the pixel RMSE using the mean pixel scale (exact for square pixels). */
-				double rmse_ra_st = indigo_rmse(DEVICE_PRIVATE_DATA->corr_resp_ra, DEVICE_PRIVATE_DATA->corr_resp_count);
-				double rmse_dec_st = indigo_rmse(DEVICE_PRIVATE_DATA->corr_resp_dec, DEVICE_PRIVATE_DATA->corr_resp_count);
-				double pix_scale = 0.5 * (pix_scale_x + pix_scale_y);
-				AGENT_GUIDER_STATS_RMSE_RA_ST_ITEM->number.value = round(1000 * rmse_ra_st) / 1000;
-				AGENT_GUIDER_STATS_RMSE_DEC_ST_ITEM->number.value = round(1000 * rmse_dec_st) / 1000;
-				AGENT_GUIDER_STATS_RMSE_RA_S_ST_ITEM->number.value = round(1000 * rmse_ra_st * pix_scale) / 1000;
-				AGENT_GUIDER_STATS_RMSE_DEC_S_ST_ITEM->number.value = round(1000 * rmse_dec_st * pix_scale) / 1000;
+				   non-dithering residuals held in the correction-response ring buffers (unfiltered), in
+				   pixels and arcsec. More sensitive to recent guiding changes than the session-cumulative
+				   RMSE above. */
+				AGENT_GUIDER_STATS_RMSE_RA_ST_ITEM->number.value = round(1000 * indigo_rmse(DEVICE_PRIVATE_DATA->corr_resp_ra, DEVICE_PRIVATE_DATA->corr_resp_count)) / 1000;
+				AGENT_GUIDER_STATS_RMSE_DEC_ST_ITEM->number.value = round(1000 * indigo_rmse(DEVICE_PRIVATE_DATA->corr_resp_dec, DEVICE_PRIVATE_DATA->corr_resp_count)) / 1000;
+				AGENT_GUIDER_STATS_RMSE_RA_S_ST_ITEM->number.value = round(1000 * indigo_rmse(DEVICE_PRIVATE_DATA->corr_resp_ra_s, DEVICE_PRIVATE_DATA->corr_resp_count)) / 1000;
+				AGENT_GUIDER_STATS_RMSE_DEC_S_ST_ITEM->number.value = round(1000 * indigo_rmse(DEVICE_PRIVATE_DATA->corr_resp_dec_s, DEVICE_PRIVATE_DATA->corr_resp_count)) / 1000;
 				/* Correction response: robust lag-1 autocorrelation of the residual. Published
 				   once at least INDIGO_CORR_RESPONSE_MIN samples are collected; 0 until then. */
 				bool corr_ra_ok = false, corr_dec_ok = false;
