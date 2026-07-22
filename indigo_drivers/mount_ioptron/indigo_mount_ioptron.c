@@ -35,7 +35,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300002D
+#define DRIVER_VERSION       0x0300002E
 #define DRIVER_NAME          "indigo_mount_ioptron"
 #define DRIVER_LABEL         "iOptron Mount"
 #define MOUNT_DEVICE_NAME    "iOptron Mount"
@@ -405,6 +405,23 @@ static bool ioptron_detect_mount(indigo_device *device) {
 		}
 	} else {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Mount %s (%04d, %s, %s)", INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->product, PRIVATE_DATA->can_park ? "can park" : "can't park", PRIVATE_DATA->has_encoders ? "has encoders" : "no encoders");
+	}
+	/* Some iOptron units report a legacy MountInfo code but actually speak the newer V2.5/V3
+	   command language (e.g. a SmartEQ/ZEQ25 with an 8408 hand controller and 2015+ firmware).
+	   The legacy HC_8407/1.0/2.0 command set (:RT#, :AP#, ...) is not answered by these
+	   controllers, which makes GOTO fail. In AUTO mode, if the mount replies to :GLS# with a
+	   valid V2.5 (19-char) or V3.0 (23-char) status, upgrade the protocol so the correct
+	   command set is used. Genuine legacy controllers do not answer :GLS#, so they are left as-is. */
+	if (PROTOCOL_AUTO_ITEM->sw.value && (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == V1_0 || PRIVATE_DATA->protocol == V2_0)) {
+		if (ioptron_command(device, ":GLS#")) {
+			if (strlen(PRIVATE_DATA->response) == 19) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Mount %04u answers :GLS# (19 bytes), using protocol 2.5 instead of the legacy command set", PRIVATE_DATA->product);
+				PRIVATE_DATA->protocol = V2_5;
+			} else if (strlen(PRIVATE_DATA->response) == 23) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Mount %04u answers :GLS# (23 bytes), using protocol 3.0 instead of the legacy command set", PRIVATE_DATA->product);
+				PRIVATE_DATA->protocol = V3_0;
+			}
+		}
 	}
 	if (PRIVATE_DATA->protocol != UNKNOWN) {
 		indigo_update_property(device, INFO_PROPERTY, NULL);
@@ -1581,31 +1598,28 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 	double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
 	indigo_j2k_to_eq(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
 	if (MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
+		/* Set the tracking rate for the "slew and track" mode. A failure here must NOT abort the
+		   GOTO: some controllers ignore/reject the rate command yet slew and track correctly (and
+		   INDI does not set a rate before slewing at all), so we only warn and proceed to the slew.
+		   Also tracking rate is not set when tracking rate is set. I added it.
+		   WHY IS THAT ?!?!*/
+		bool rate_set = true;
 		if (MOUNT_TRACK_RATE_SIDEREAL_ITEM->sw.value) {
-			if (!ioptron_set_tracking_rate(device, 0, 0)) {
-				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
+			rate_set = ioptron_set_tracking_rate(device, 0, 0);
 		} else if (MOUNT_TRACK_RATE_LUNAR_ITEM->sw.value) {
-			if (!ioptron_set_tracking_rate(device, 1, 0)) {
-				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
+			rate_set = ioptron_set_tracking_rate(device, 1, 0);
 		} else if (MOUNT_TRACK_RATE_SOLAR_ITEM->sw.value) {
-			if (!ioptron_set_tracking_rate(device, 2, 0)) {
-				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
+			rate_set = ioptron_set_tracking_rate(device, 2, 0);
 		} else if (MOUNT_TRACK_RATE_KING_ITEM->sw.value) {
-			if (!ioptron_set_tracking_rate(device, 3, 0)) {
-				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
+			rate_set = ioptron_set_tracking_rate(device, 3, 0);
 		} else if (MOUNT_TRACK_RATE_CUSTOM_ITEM->sw.value) {
-			if (!ioptron_set_tracking_rate(device, 4, MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value)) {
-				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
+			rate_set = ioptron_set_tracking_rate(device, 4, MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value);
 		}
-		if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
-			if (!ioptron_slew(device, ra, dec)) {
-				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-			}
+		if (!rate_set) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to set tracking rate before slew, continuing with slew anyway");
+		}
+		if (!ioptron_slew(device, ra, dec)) {
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 	} else if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
 		if (ioptron_sync(device, ra, dec)) {
@@ -1848,6 +1862,28 @@ static void mount_meridian_limit_handler(indigo_device *device) {
 	indigo_update_property(device, MOUNT_MERIDIAN_LIMIT_PROPERTY, NULL);
 }
 
+static void mount_track_rate_handler(indigo_device *device) {
+	MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_OK_STATE;
+	//+ mount.MOUNT_TRACK_RATE.on_change
+	bool rate_set = true;
+	if (MOUNT_TRACK_RATE_SIDEREAL_ITEM->sw.value) {
+		rate_set = ioptron_set_tracking_rate(device, 0, 0);
+	} else if (MOUNT_TRACK_RATE_LUNAR_ITEM->sw.value) {
+		rate_set = ioptron_set_tracking_rate(device, 1, 0);
+	} else if (MOUNT_TRACK_RATE_SOLAR_ITEM->sw.value) {
+		rate_set = ioptron_set_tracking_rate(device, 2, 0);
+	} else if (MOUNT_TRACK_RATE_KING_ITEM->sw.value) {
+		rate_set = ioptron_set_tracking_rate(device, 3, 0);
+	} else if (MOUNT_TRACK_RATE_CUSTOM_ITEM->sw.value) {
+		rate_set = ioptron_set_tracking_rate(device, 4, MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value);
+	}
+	if (!rate_set) {
+		MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	//- mount.MOUNT_TRACK_RATE.on_change
+	indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
+}
+
 static void mount_protocol_handler(indigo_device *device) {
 	MOUNT_PROTOCOL_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, MOUNT_PROTOCOL_PROPERTY, NULL);
@@ -1981,6 +2017,9 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_MERIDIAN_LIMIT_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_MERIDIAN_LIMIT_PROPERTY, mount_meridian_limit_handler);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(MOUNT_TRACK_RATE_PROPERTY, property)) {
+		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_TRACK_RATE_PROPERTY, mount_track_rate_handler);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_PROTOCOL_PROPERTY, property)) {
 		INDIGO_COPY_VALUES_PROCESS_CHANGE(MOUNT_PROTOCOL_PROPERTY, mount_protocol_handler);
