@@ -1607,7 +1607,7 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 			rate_set = ioptron_set_tracking_rate(device, 4, MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value);
 		}
 		if (!rate_set) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to set tracking rate before slew, continuing with slew anyway");
+			indigo_send_message(device, BUSY_PROPERTY, "Failed to set tracking rate before slew, continuing with slew anyway");
 		}
 		if (!ioptron_slew(device, ra, dec)) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
