@@ -30,7 +30,7 @@ INDIGO_BUILD = 2
 # The marker is NOT folded into INDIGO_BUILD itself, so the runtime value
 # baked into indigo_config.h stays clean (just the number). Keep empty for
 # official releases.
-INDIGO_PRERELEASE = a1
+INDIGO_PRERELEASE = a2
 
 ifneq ($(INDIGO_PRERELEASE),)
   INDIGO_PACKAGE_BUILD = $(INDIGO_BUILD)~$(INDIGO_PRERELEASE)

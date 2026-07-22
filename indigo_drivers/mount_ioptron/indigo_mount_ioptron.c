@@ -35,7 +35,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x0300002E
+#define DRIVER_VERSION       0x0300002F
 #define DRIVER_NAME          "indigo_mount_ioptron"
 #define DRIVER_LABEL         "iOptron Mount"
 #define MOUNT_DEVICE_NAME    "iOptron Mount"
@@ -116,6 +116,7 @@ static mount_type PRODUCTS[] = {
 	{ 8407, NULL, "iEQ45/iEQ30", HC_8407, false, true, false },
 	{ 8497, NULL, "iEQ45 AA", HC_8407, false, true, false },
 	{ 8408, NULL, "ZEQ25", HC_8407, false, true, false },
+	{ 8498, "150300", "SmartEQ", V2_5, false, true, false },
 	{ 8498, NULL, "SmartEQ", HC_8407, false, true, false },
 	{   70, NULL, "CEM70", V3_0, false, false, true  },
 	{   71, NULL, "CEM70EC", V3_0, true, false, true  },
@@ -361,8 +362,15 @@ static bool ioptron_detect_mount(indigo_device *device) {
 			PRIVATE_DATA->protocol = UNKNOWN;
 			PRIVATE_DATA->product = atoi(PRIVATE_DATA->response);
 			if (ioptron_command(device, ":FW1#") && *PRIVATE_DATA->response) {
-				PRIVATE_DATA->response[6] = 0;
-				indigo_set_text_item_value(INFO_DEVICE_FW_REVISION_ITEM, PRIVATE_DATA->response);
+				/* :FW1# returns the main-board firmware (6) followed by the hand-controller firmware (6).
+				   Some controllers (e.g. the SmartEQ) report an all-zero main-board field; fall back to the
+				   hand-controller firmware so the model/firmware rules below get a usable revision. */
+				char *firmware = PRIVATE_DATA->response;
+				if (strlen(firmware) >= 12 && !strncmp(firmware, "000000", 6)) {
+					firmware += 6;
+				}
+				firmware[6] = 0;
+				indigo_set_text_item_value(INFO_DEVICE_FW_REVISION_ITEM, firmware);
 				for (int i = 0; PRODUCTS[i].product; i++) {
 					mount_type *type = PRODUCTS + i;
 					if (type->product == PRIVATE_DATA->product && (type->min_firmware == NULL || strncmp(type->min_firmware, INFO_DEVICE_FW_REVISION_ITEM->text.value, 6) <= 0)) {
@@ -405,23 +413,6 @@ static bool ioptron_detect_mount(indigo_device *device) {
 		}
 	} else {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Mount %s (%04d, %s, %s)", INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->product, PRIVATE_DATA->can_park ? "can park" : "can't park", PRIVATE_DATA->has_encoders ? "has encoders" : "no encoders");
-	}
-	/* Some iOptron units report a legacy MountInfo code but actually speak the newer V2.5/V3
-	   command language (e.g. a SmartEQ/ZEQ25 with an 8408 hand controller and 2015+ firmware).
-	   The legacy HC_8407/1.0/2.0 command set (:RT#, :AP#, ...) is not answered by these
-	   controllers, which makes GOTO fail. In AUTO mode, if the mount replies to :GLS# with a
-	   valid V2.5 (19-char) or V3.0 (23-char) status, upgrade the protocol so the correct
-	   command set is used. Genuine legacy controllers do not answer :GLS#, so they are left as-is. */
-	if (PROTOCOL_AUTO_ITEM->sw.value && (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == V1_0 || PRIVATE_DATA->protocol == V2_0)) {
-		if (ioptron_command(device, ":GLS#")) {
-			if (strlen(PRIVATE_DATA->response) == 19) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Mount %04u answers :GLS# (19 bytes), using protocol 2.5 instead of the legacy command set", PRIVATE_DATA->product);
-				PRIVATE_DATA->protocol = V2_5;
-			} else if (strlen(PRIVATE_DATA->response) == 23) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Mount %04u answers :GLS# (23 bytes), using protocol 3.0 instead of the legacy command set", PRIVATE_DATA->product);
-				PRIVATE_DATA->protocol = V3_0;
-			}
-		}
 	}
 	if (PRIVATE_DATA->protocol != UNKNOWN) {
 		indigo_update_property(device, INFO_PROPERTY, NULL);
