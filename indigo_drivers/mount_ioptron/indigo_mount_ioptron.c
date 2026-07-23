@@ -116,7 +116,6 @@ static mount_type PRODUCTS[] = {
 	{ 8407, NULL, "iEQ45/iEQ30", HC_8407, false, true, false },
 	{ 8497, NULL, "iEQ45 AA", HC_8407, false, true, false },
 	{ 8408, NULL, "ZEQ25", HC_8407, false, true, false },
-	{ 8498, "150300", "SmartEQ", V2_5, false, true, false },
 	{ 8498, NULL, "SmartEQ", HC_8407, false, true, false },
 	{   70, NULL, "CEM70", V3_0, false, false, true  },
 	{   71, NULL, "CEM70EC", V3_0, true, false, true  },
@@ -734,6 +733,9 @@ static bool ioptron_get_coordinates(indigo_device *device, double *ra, double *d
 			*ra = indigo_stod(PRIVATE_DATA->response);
 			if (ioptron_command(device, ":GD#")) {
 				*dec = indigo_stod(PRIVATE_DATA->response);
+				if (PRIVATE_DATA->product == 8498) {
+					return true;
+				}
 				if (ioptron_command(device, ":pS#")) {
 					if (PRIVATE_DATA->response[0] == 'E' || PRIVATE_DATA->response[0] == '0') {
 						indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_EAST_ITEM, true);
@@ -956,8 +958,10 @@ static bool ioptron_get_state(indigo_device *device) {
 			return true;
 		}
 	} else if (PRIVATE_DATA->protocol == HC_8407) {
-		if (ioptron_simple_reply_command(device, ":AP#") && *PRIVATE_DATA->response == '1') {
-			PRIVATE_DATA->parked = true;
+		if (PRIVATE_DATA->product != 8498) {
+			if (ioptron_simple_reply_command(device, ":AP#") && *PRIVATE_DATA->response == '1') {
+				PRIVATE_DATA->parked = true;
+			}
 		}
 		if (ioptron_simple_reply_command(device, ":AH#") && *PRIVATE_DATA->response == '1') {
 			PRIVATE_DATA->homed = true;
@@ -1097,8 +1101,10 @@ static bool ioptron_init_mount(indigo_device *device) {
 			MOUNT_PARK_PROPERTY->count = 1;
 			MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
 		} else if (PRIVATE_DATA->protocol == HC_8407) {
-			MOUNT_PARK_PROPERTY->hidden = false;
-			MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
+			if (PRIVATE_DATA->product != 8498) {
+				MOUNT_PARK_PROPERTY->hidden = false;
+				MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
+			}
 			MOUNT_TRACKING_PROPERTY->hidden = false;
 			MOUNT_TRACK_RATE_PROPERTY->hidden = false;
 			MOUNT_TRACK_RATE_PROPERTY->count = 5;

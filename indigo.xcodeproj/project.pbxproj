@@ -2493,6 +2493,7 @@
 		59A4132B2971E54C00F0A80B /* license.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = license.txt; sourceTree = "<group>"; };
 		59A4132C2971E54C00F0A80B /* indigo_wheel_playerone.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_wheel_playerone.h; sourceTree = "<group>"; };
 		59A4132D2971E54C00F0A80B /* Makefile.inc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
+		59A4AE0E300E9AAE00225CE4 /* GUIDING_CORRECTION_RESPONSE_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = GUIDING_CORRECTION_RESPONSE_TUNING.md; sourceTree = "<group>"; };
 		59A4BABE2B397EBE002D3B13 /* Sequencer.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = Sequencer.js; sourceTree = "<group>"; };
 		59A4ED5B22DD888E00384056 /* LOGS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = LOGS.md; sourceTree = "<group>"; };
 		59A52D2D21A330FB000B6F27 /* 51-sbig-debian.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = "51-sbig-debian.rules"; sourceTree = "<group>"; };
@@ -5458,6 +5459,7 @@
 				599EB1582B52EC3900B333E4 /* SCRIPTING_BASICS.md */,
 				59CEDA6127D514B700D9277A /* MULTI-INSTANCE_SUPPORT.md */,
 				5984C90A27C2E22A0090204B /* GUIDING_PI_CONTROLLER_TUNING.md */,
+				59A4AE0E300E9AAE00225CE4 /* GUIDING_CORRECTION_RESPONSE_TUNING.md */,
 				5984C90827C2E2290090204B /* IMAGING_AF_TUNING.md */,
 				5984C90927C2E22A0090204B /* POLAR_ALIGNMENT.md */,
 				594C6FBD24DF2901000E4BF0 /* INDIGO_AGENTS.md */,
