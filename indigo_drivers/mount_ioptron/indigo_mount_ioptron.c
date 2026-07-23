@@ -35,7 +35,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000030
+#define DRIVER_VERSION       0x0300002F
 #define DRIVER_NAME          "indigo_mount_ioptron"
 #define DRIVER_LABEL         "iOptron Mount"
 #define MOUNT_DEVICE_NAME    "iOptron Mount"
@@ -51,7 +51,6 @@ typedef enum {
 	UNKNOWN = 0,
 	HC_8406,
 	HC_8407,
-	HC_8408,
 	V1_0,
 	V2_0,
 	V2_5,
@@ -116,8 +115,9 @@ static mount_type PRODUCTS[] = {
 	// firmware independent
 	{ 8407, NULL, "iEQ45/iEQ30", HC_8407, false, true, false },
 	{ 8497, NULL, "iEQ45 AA", HC_8407, false, true, false },
-	{ 8408, NULL, "ZEQ25", HC_8408, false, true, false },
-	{ 8498, NULL, "SmartEQ", HC_8408, false, true, false },
+	{ 8408, NULL, "ZEQ25", HC_8407, false, true, false },
+	{ 8498, "150300", "SmartEQ", V2_5, false, true, false },
+	{ 8498, NULL, "SmartEQ", HC_8407, false, true, false },
 	{   70, NULL, "CEM70", V3_0, false, false, true  },
 	{   71, NULL, "CEM70EC", V3_0, true, false, true  },
 	{  120, NULL, "CEM120", V3_0, false, true, true },
@@ -168,17 +168,15 @@ static mount_type PRODUCTS[] = {
 #define PROTOCOL_AUTO_ITEM             (MOUNT_PROTOCOL_PROPERTY->items + 0)
 #define PROTOCOL_8406_ITEM             (MOUNT_PROTOCOL_PROPERTY->items + 1)
 #define PROTOCOL_8407_ITEM             (MOUNT_PROTOCOL_PROPERTY->items + 2)
-#define PROTOCOL_8408_ITEM             (MOUNT_PROTOCOL_PROPERTY->items + 3)
-#define PROTOCOL_0100_ITEM             (MOUNT_PROTOCOL_PROPERTY->items + 4)
-#define PROTOCOL_0200_ITEM             (MOUNT_PROTOCOL_PROPERTY->items + 5)
-#define PROTOCOL_0205_ITEM             (MOUNT_PROTOCOL_PROPERTY->items + 6)
-#define PROTOCOL_0300_ITEM             (MOUNT_PROTOCOL_PROPERTY->items + 7)
+#define PROTOCOL_0100_ITEM             (MOUNT_PROTOCOL_PROPERTY->items + 3)
+#define PROTOCOL_0200_ITEM             (MOUNT_PROTOCOL_PROPERTY->items + 4)
+#define PROTOCOL_0205_ITEM             (MOUNT_PROTOCOL_PROPERTY->items + 5)
+#define PROTOCOL_0300_ITEM             (MOUNT_PROTOCOL_PROPERTY->items + 6)
 
 #define MOUNT_PROTOCOL_PROPERTY_NAME   "PROTOCOL_VERSION"
 #define PROTOCOL_AUTO_ITEM_NAME        "AUTO"
 #define PROTOCOL_8406_ITEM_NAME        "8406"
 #define PROTOCOL_8407_ITEM_NAME        "8407"
-#define PROTOCOL_8408_ITEM_NAME        "8408"
 #define PROTOCOL_0100_ITEM_NAME        "0100"
 #define PROTOCOL_0200_ITEM_NAME        "0200"
 #define PROTOCOL_0205_ITEM_NAME        "0205"
@@ -346,9 +344,6 @@ static bool ioptron_detect_mount(indigo_device *device) {
 	} else if (PROTOCOL_8407_ITEM->sw.value) {
 		PRIVATE_DATA->protocol = HC_8407;
 		indigo_set_text_item_value(INFO_DEVICE_MODEL_ITEM, "HC8407 mount");
-	} else if (PROTOCOL_8408_ITEM->sw.value) {
-		PRIVATE_DATA->protocol = HC_8408;
-		indigo_set_text_item_value(INFO_DEVICE_MODEL_ITEM, "HC8408 mount");
 	} else if (PROTOCOL_0100_ITEM->sw.value) {
 		PRIVATE_DATA->protocol = V1_0;
 		indigo_set_text_item_value(INFO_DEVICE_MODEL_ITEM, "Protocol 1.0 mount");
@@ -448,7 +443,7 @@ static bool ioptron_set_utc(indigo_device *device, time_t secs, int utc_offset) 
 				}
 			}
 		}
-	} else if ((PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == HC_8408) || PRIVATE_DATA->protocol == V1_0) {
+	} else if (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == V1_0) {
 		if (!ioptron_simple_reply_command(device, ":SL %02d:%02d:%02d#", tm.tm_hour, tm.tm_min, tm.tm_sec) || *PRIVATE_DATA->response != '1') {
 			MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
@@ -524,7 +519,7 @@ static bool ioptron_get_utc(indigo_device *device, time_t *secs, int *utc_offset
 				}
 			}
 		}
-	} else if ((PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == HC_8408) || PRIVATE_DATA->protocol == UNKNOWN) {
+	} else if (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == UNKNOWN) {
 		if (ioptron_command(device, ":GC#") && sscanf(PRIVATE_DATA->response, "%2d%c%2d%c%2d", &tm.tm_mon, &sep, &tm.tm_mday, &sep, &tm.tm_year) == 5) {
 			if (ioptron_command(device, ":GL#") && sscanf(PRIVATE_DATA->response, "%2d:%2d:%2d", &tm.tm_hour, &tm.tm_min, &tm.tm_sec) == 3) {
 				tm.tm_year += 100; // TODO: To be fixed in year 2100 :)
@@ -562,7 +557,7 @@ static bool ioptron_get_utc(indigo_device *device, time_t *secs, int *utc_offset
 }
 
 static bool ioptron_get_site(indigo_device *device, double *latitude, double *longitude) {
-	if (PRIVATE_DATA->protocol == HC_8406 || (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == HC_8408) || PRIVATE_DATA->protocol == V1_0) {
+	if (PRIVATE_DATA->protocol == HC_8406 || PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == V1_0) {
 		if (ioptron_command(device, ":Gt#")) {
 			*latitude = indigo_stod(PRIVATE_DATA->response);
 			if (ioptron_command(device, ":Gg#")) {
@@ -617,7 +612,7 @@ static bool ioptron_set_site(indigo_device *device, double latitude, double long
 	if (longitude < 0) {
 		longitude += 360;
 	}
-	if (PRIVATE_DATA->protocol == HC_8406 || (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == HC_8408) || PRIVATE_DATA->protocol == V1_0) {
+	if (PRIVATE_DATA->protocol == HC_8406 || PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == V1_0) {
 		if (ioptron_simple_reply_command(device, ":St %s#", indigo_dtos(latitude, "%+03d*%02d:%02.0f")) && *PRIVATE_DATA->response == '1') {
 			if (ioptron_simple_reply_command(device, ":Sg %s#", indigo_dtos(longitude, "%+04d*%02d:%02.0f")) && *PRIVATE_DATA->response == '1') {
 				return true;
@@ -644,7 +639,7 @@ static bool ioptron_park(indigo_device *device) {
 		if (ioptron_simple_reply_command(device, ":PK#") && *PRIVATE_DATA->response == '1') {
 			return true;
 		}
-	} else if ((PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == HC_8408)) {
+	} else if (PRIVATE_DATA->protocol == HC_8407) {
 		if (ioptron_simple_reply_command(device, ":MP1#") && *PRIVATE_DATA->response == '1') {
 			return true;
 		}
@@ -734,7 +729,7 @@ static bool ioptron_search_home(indigo_device *device) {
 }
 
 static bool ioptron_get_coordinates(indigo_device *device, double *ra, double *dec) {
-	if (PRIVATE_DATA->protocol == HC_8406 || (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == HC_8408)) {
+	if (PRIVATE_DATA->protocol == HC_8406 || PRIVATE_DATA->protocol == HC_8407) {
 		if (ioptron_command(device, ":GR#")) {
 			*ra = indigo_stod(PRIVATE_DATA->response);
 			if (ioptron_command(device, ":GD#")) {
@@ -792,7 +787,7 @@ static bool ioptron_set_tracking_rate(indigo_device *device, char tracking_rate,
 		if (result) {
 			PRIVATE_DATA->last_tracking_rate = tracking_rate;
 			if (tracking_rate == 4 && PRIVATE_DATA->last_custom_tracking_rate != custom_tracking_rate) {
-				if ((PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == HC_8408) || PRIVATE_DATA->protocol == V1_0) {
+				if (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == V1_0) {
 					result = ioptron_simple_reply_command(device, ":RR %+8.4f#", custom_tracking_rate) && *PRIVATE_DATA->response == '1';
 				} else if (PRIVATE_DATA->protocol == V2_0) {
 					result = ioptron_simple_reply_command(device, ":RR%+8.4f#", custom_tracking_rate) && *PRIVATE_DATA->response == '1';
@@ -813,7 +808,7 @@ static bool ioptron_slew(indigo_device *device, double ra, double dec) {
 	bool result = false;
 	if (PRIVATE_DATA->protocol == HC_8406) {
 		result = ioptron_simple_reply_command(device, ":Sr %s#", indigo_dtos(ra, "%02d:%02d:%04.1f")) && *PRIVATE_DATA->response == '1';
-	} else if ((PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == HC_8408) || PRIVATE_DATA->protocol == UNKNOWN || PRIVATE_DATA->protocol == V1_0) {
+	} else if (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == UNKNOWN || PRIVATE_DATA->protocol == V1_0) {
 		result = ioptron_simple_reply_command(device, ":Sr %s#", indigo_dtos(ra, "%02d:%02d:%02.0f")) && *PRIVATE_DATA->response == '1';
 	} else if (PRIVATE_DATA->protocol == V2_0 || PRIVATE_DATA->protocol == V2_5) {
 		result = ioptron_simple_reply_command(device, ":Sr%08.0f#", ra * 60 * 60 * 1000) && *PRIVATE_DATA->response == '1';
@@ -821,7 +816,7 @@ static bool ioptron_slew(indigo_device *device, double ra, double dec) {
 		result = ioptron_simple_reply_command(device, ":SRA%09.0f#", ra * 15 * 60 * 60 * 100) && *PRIVATE_DATA->response == '1';
 	}
 	if (result) {
-		if (PRIVATE_DATA->protocol == HC_8406 || (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == HC_8408) || PRIVATE_DATA->protocol == UNKNOWN || PRIVATE_DATA->protocol == V1_0) {
+		if (PRIVATE_DATA->protocol == HC_8406 || PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == UNKNOWN || PRIVATE_DATA->protocol == V1_0) {
 			result= ioptron_simple_reply_command(device, ":Sd %s#", indigo_dtos(dec, "%+03d*%02d:%02.0f")) && *PRIVATE_DATA->response == '1';
 		} else if (PRIVATE_DATA->protocol >= V2_0) {
 			result = ioptron_simple_reply_command(device, ":Sd%+09.0f#", dec * 60 * 60 * 100) && *PRIVATE_DATA->response == '1';
@@ -830,7 +825,7 @@ static bool ioptron_slew(indigo_device *device, double ra, double dec) {
 	if (result) {
 		if (PRIVATE_DATA->protocol == HC_8406) {
 			result = ioptron_simple_reply_command(device, ":MS#") && *PRIVATE_DATA->response == '0';
-		} else if ((PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == HC_8408) || PRIVATE_DATA->protocol == V1_0 || PRIVATE_DATA->protocol == V2_0 || PRIVATE_DATA->protocol == V2_5) {
+		} else if (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == V1_0 || PRIVATE_DATA->protocol == V2_0 || PRIVATE_DATA->protocol == V2_5) {
 			result = ioptron_simple_reply_command(device, ":MS#") && *PRIVATE_DATA->response == '1';
 		} else if (PRIVATE_DATA->protocol == V3_0) {
 			result = ioptron_simple_reply_command(device, ":MS1#") && *PRIVATE_DATA->response == '1';
@@ -843,7 +838,7 @@ static bool ioptron_sync(indigo_device *device, double ra, double dec) {
 	bool result = false;
 	if (PRIVATE_DATA->protocol == HC_8406) {
 		result = ioptron_simple_reply_command(device, ":Sr %s#", indigo_dtos(ra, "%02d:%02d:%04.1f")) && *PRIVATE_DATA->response == '1';
-	} else if ((PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == HC_8408) || PRIVATE_DATA->protocol == V1_0) {
+	} else if (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == V1_0) {
 		result = ioptron_simple_reply_command(device, ":Sr %s#", indigo_dtos(ra, "%02d:%02d:%02.0f")) && *PRIVATE_DATA->response == '1';
 	} else if (PRIVATE_DATA->protocol == V2_0 || PRIVATE_DATA->protocol == V2_5) {
 		result = ioptron_simple_reply_command(device, ":Sr%08.0f#", ra * 60 * 60 * 1000) && *PRIVATE_DATA->response == '1';
@@ -851,7 +846,7 @@ static bool ioptron_sync(indigo_device *device, double ra, double dec) {
 		result = ioptron_simple_reply_command(device, ":SRA%09.0f#", ra * 15 * 60 * 60 * 100) && *PRIVATE_DATA->response == '1';
 	}
 	if (result) {
-		if (PRIVATE_DATA->protocol == HC_8406 || (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == HC_8408) || PRIVATE_DATA->protocol == UNKNOWN || PRIVATE_DATA->protocol == V1_0) {
+		if (PRIVATE_DATA->protocol == HC_8406 || PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == UNKNOWN || PRIVATE_DATA->protocol == V1_0) {
 			result = ioptron_simple_reply_command(device, ":Sd %s#", indigo_dtos(dec, "%+03d*%02d:%02.0f")) && *PRIVATE_DATA->response == '1';
 		} else if (PRIVATE_DATA->protocol >= V2_0) {
 			result = ioptron_simple_reply_command(device, ":Sd%+08.0f#", dec * 60 * 60 * 100) && *PRIVATE_DATA->response == '1';
@@ -887,7 +882,7 @@ static bool ioptron_stop(indigo_device *device) {
 		return ioptron_no_reply_command(device, ":Q#");
 	} else {
 		if (ioptron_simple_reply_command(device, ":Q#")) {
-			if ((PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == HC_8408) || PRIVATE_DATA->protocol == V1_0 || PRIVATE_DATA->protocol == V2_0 || PRIVATE_DATA->protocol == V2_5) {
+			if (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == V1_0 || PRIVATE_DATA->protocol == V2_0 || PRIVATE_DATA->protocol == V2_5) {
 				return ioptron_no_reply_command(device, ":q#");
 			} else {
 				return true;
@@ -903,7 +898,7 @@ static bool ioptron_set_tracking(indigo_device *device, bool on) {
 
 static bool ioptron_set_guide_rate(indigo_device *device, int ra, int dec) {
 	bool result = false;
-	if ((PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == HC_8408) || PRIVATE_DATA->protocol == V1_0 || PRIVATE_DATA->protocol == V2_0) {
+	if (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == V1_0 || PRIVATE_DATA->protocol == V2_0) {
 		result = ioptron_simple_reply_command(device, ":RG%03d#", ra) && *PRIVATE_DATA->response == '1';
 	} else if (PRIVATE_DATA->protocol == V2_5 || PRIVATE_DATA->protocol == V3_0) {
 		result = ioptron_simple_reply_command(device, ":RG%02d%02d#", ra, dec) && *PRIVATE_DATA->response == '1';
@@ -963,27 +958,6 @@ static bool ioptron_get_state(indigo_device *device) {
 	} else if (PRIVATE_DATA->protocol == HC_8407) {
 		if (ioptron_simple_reply_command(device, ":AP#") && *PRIVATE_DATA->response == '1') {
 			PRIVATE_DATA->parked = true;
-		}
-		if (ioptron_simple_reply_command(device, ":AH#") && *PRIVATE_DATA->response == '1') {
-			PRIVATE_DATA->homed = true;
-		}
-		if (ioptron_simple_reply_command(device, ":AT#") && *PRIVATE_DATA->response == '1') {
-			PRIVATE_DATA->tracking = true;
-		}
-		if (ioptron_simple_reply_command(device, ":SE?#") && *PRIVATE_DATA->response == '1') {
-			PRIVATE_DATA->slewing = true;
-		}
-		return true;
-	} else if (PRIVATE_DATA->protocol == HC_8408) {
-		/* The ZEQ25/SmartEQ controller is unreliable answering :AP# (park status); polling it every
-		   status cycle stalls the driver. Query :AP# only while a park is in progress (MOUNT_PARK
-		   busy); otherwise mirror the last known park state. */
-		if (MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE) {
-			if (ioptron_simple_reply_command(device, ":AP#") && *PRIVATE_DATA->response == '1') {
-				PRIVATE_DATA->parked = true;
-			}
-		} else {
-			PRIVATE_DATA->parked = MOUNT_PARK_PARKED_ITEM->sw.value;
 		}
 		if (ioptron_simple_reply_command(device, ":AH#") && *PRIVATE_DATA->response == '1') {
 			PRIVATE_DATA->homed = true;
@@ -1122,14 +1096,8 @@ static bool ioptron_init_mount(indigo_device *device) {
 			MOUNT_PARK_PROPERTY->hidden = false;
 			MOUNT_PARK_PROPERTY->count = 1;
 			MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
-		} else if ((PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == HC_8408)) {
+		} else if (PRIVATE_DATA->protocol == HC_8407) {
 			MOUNT_PARK_PROPERTY->hidden = false;
-			/* The ZEQ25/SmartEQ (8408 HC) also expose a go-to-zero (home) function via :MH#, unlike the
-			   iEQ-family 8407 controllers. :MSH# (mechanical home search) is not available, so 2 items. */
-			if (PRIVATE_DATA->protocol == HC_8408) {
-				MOUNT_HOME_PROPERTY->hidden = false;
-				MOUNT_HOME_PROPERTY->count = 2;
-			}
 			MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
 			MOUNT_TRACKING_PROPERTY->hidden = false;
 			MOUNT_TRACK_RATE_PROPERTY->hidden = false;
@@ -1358,7 +1326,7 @@ static bool ioptron_init_guider(indigo_device *device) {
 	if (ioptron_detect_mount(device->master_device)) {
 		if (PRIVATE_DATA->protocol == HC_8406) {
 			GUIDER_RATE_PROPERTY->hidden = true;
-		} else if ((PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == HC_8408) || PRIVATE_DATA->protocol == V1_0) {
+		} else if (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == V1_0) {
 			GUIDER_RATE_PROPERTY->hidden = false;
 			GUIDER_RATE_PROPERTY->count = 1;
 			if (ioptron_command(device, ":AG#")) {
@@ -1959,14 +1927,13 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_MERIDIAN_LIMIT_PROPERTY->hidden = true;
 		MOUNT_STATE_PROPERTY->hidden = false;
 		MOUNT_TRACK_RATE_PROPERTY->hidden = false;
-		MOUNT_PROTOCOL_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_PROTOCOL_PROPERTY_NAME, MAIN_GROUP, "Mount protocol version", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 8);
+		MOUNT_PROTOCOL_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_PROTOCOL_PROPERTY_NAME, MAIN_GROUP, "Mount protocol version", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 7);
 		if (MOUNT_PROTOCOL_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
 		indigo_init_switch_item(PROTOCOL_AUTO_ITEM, PROTOCOL_AUTO_ITEM_NAME, "Autodetection", true);
 		indigo_init_switch_item(PROTOCOL_8406_ITEM, PROTOCOL_8406_ITEM_NAME, "HC 8406", false);
 		indigo_init_switch_item(PROTOCOL_8407_ITEM, PROTOCOL_8407_ITEM_NAME, "HC 8407", false);
-		indigo_init_switch_item(PROTOCOL_8408_ITEM, PROTOCOL_8408_ITEM_NAME, "HC 8408", false);
 		indigo_init_switch_item(PROTOCOL_0100_ITEM, PROTOCOL_0100_ITEM_NAME, "1.0", false);
 		indigo_init_switch_item(PROTOCOL_0200_ITEM, PROTOCOL_0200_ITEM_NAME, "2.0", false);
 		indigo_init_switch_item(PROTOCOL_0205_ITEM, PROTOCOL_0205_ITEM_NAME, "2.5", false);

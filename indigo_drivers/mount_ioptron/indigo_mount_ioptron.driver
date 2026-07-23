@@ -22,7 +22,7 @@ driver ioptron {
 	label = "iOptron Mount";
 	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
 	copyright = "Copyright (c) 2018-2026 CloudMakers, s. r. o.";
-	version = 48;
+	version = 47;
 	serial {
 		configurable_speed = true;
 	}
@@ -35,7 +35,6 @@ driver ioptron {
 			UNKNOWN = 0,
 			HC_8406,
 			HC_8407,
-			HC_8408,
 			V1_0,
 			V2_0,
 			V2_5,
@@ -100,8 +99,9 @@ driver ioptron {
 			// firmware independent
 			{ 8407, NULL, "iEQ45/iEQ30", HC_8407, false, true, false },
 			{ 8497, NULL, "iEQ45 AA", HC_8407, false, true, false },
-			{ 8408, NULL, "ZEQ25", HC_8408, false, true, false },
-			{ 8498, NULL, "SmartEQ", HC_8408, false, true, false },
+			{ 8408, NULL, "ZEQ25", HC_8407, false, true, false },
+			{ 8498, "150300", "SmartEQ", V2_5, false, true, false },
+			{ 8498, NULL, "SmartEQ", HC_8407, false, true, false },
 			{   70, NULL, "CEM70", V3_0, false, false, true  },
 			{   71, NULL, "CEM70EC", V3_0, true, false, true  },
 			{  120, NULL, "CEM120", V3_0, false, true, true },
@@ -279,9 +279,6 @@ driver ioptron {
 			} else if (PROTOCOL_8407_ITEM->sw.value) {
 				PRIVATE_DATA->protocol = HC_8407;
 				indigo_set_text_item_value(INFO_DEVICE_MODEL_ITEM, "HC8407 mount");
-			} else if (PROTOCOL_8408_ITEM->sw.value) {
-				PRIVATE_DATA->protocol = HC_8408;
-				indigo_set_text_item_value(INFO_DEVICE_MODEL_ITEM, "HC8408 mount");
 			} else if (PROTOCOL_0100_ITEM->sw.value) {
 				PRIVATE_DATA->protocol = V1_0;
 				indigo_set_text_item_value(INFO_DEVICE_MODEL_ITEM, "Protocol 1.0 mount");
@@ -381,7 +378,7 @@ driver ioptron {
 						}
 					}
 				}
-			} else if ((PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == HC_8408) || PRIVATE_DATA->protocol == V1_0) {
+			} else if (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == V1_0) {
 				if (!ioptron_simple_reply_command(device, ":SL %02d:%02d:%02d#", tm.tm_hour, tm.tm_min, tm.tm_sec) || *PRIVATE_DATA->response != '1') {
 					MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
@@ -457,7 +454,7 @@ driver ioptron {
 						}
 					}
 				}
-			} else if ((PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == HC_8408) || PRIVATE_DATA->protocol == UNKNOWN) {
+			} else if (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == UNKNOWN) {
 				if (ioptron_command(device, ":GC#") && sscanf(PRIVATE_DATA->response, "%2d%c%2d%c%2d", &tm.tm_mon, &sep, &tm.tm_mday, &sep, &tm.tm_year) == 5) {
 					if (ioptron_command(device, ":GL#") && sscanf(PRIVATE_DATA->response, "%2d:%2d:%2d", &tm.tm_hour, &tm.tm_min, &tm.tm_sec) == 3) {
 						tm.tm_year += 100; // TODO: To be fixed in year 2100 :)
@@ -495,7 +492,7 @@ driver ioptron {
 		}
 
 		static bool ioptron_get_site(indigo_device *device, double *latitude, double *longitude) {
-			if (PRIVATE_DATA->protocol == HC_8406 || (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == HC_8408) || PRIVATE_DATA->protocol == V1_0) {
+			if (PRIVATE_DATA->protocol == HC_8406 || PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == V1_0) {
 				if (ioptron_command(device, ":Gt#")) {
 					*latitude = indigo_stod(PRIVATE_DATA->response);
 					if (ioptron_command(device, ":Gg#")) {
@@ -550,7 +547,7 @@ driver ioptron {
 			if (longitude < 0) {
 				longitude += 360;
 			}
-			if (PRIVATE_DATA->protocol == HC_8406 || (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == HC_8408) || PRIVATE_DATA->protocol == V1_0) {
+			if (PRIVATE_DATA->protocol == HC_8406 || PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == V1_0) {
 				if (ioptron_simple_reply_command(device, ":St %s#", indigo_dtos(latitude, "%+03d*%02d:%02.0f")) && *PRIVATE_DATA->response == '1') {
 					if (ioptron_simple_reply_command(device, ":Sg %s#", indigo_dtos(longitude, "%+04d*%02d:%02.0f")) && *PRIVATE_DATA->response == '1') {
 						return true;
@@ -577,7 +574,7 @@ driver ioptron {
 				if (ioptron_simple_reply_command(device, ":PK#") && *PRIVATE_DATA->response == '1') {
 					return true;
 				}
-			} else if ((PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == HC_8408)) {
+			} else if (PRIVATE_DATA->protocol == HC_8407) {
 				if (ioptron_simple_reply_command(device, ":MP1#") && *PRIVATE_DATA->response == '1') {
 					return true;
 				}
@@ -667,7 +664,7 @@ driver ioptron {
 		}
 
 		static bool ioptron_get_coordinates(indigo_device *device, double *ra, double *dec) {
-			if (PRIVATE_DATA->protocol == HC_8406 || (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == HC_8408)) {
+			if (PRIVATE_DATA->protocol == HC_8406 || PRIVATE_DATA->protocol == HC_8407) {
 				if (ioptron_command(device, ":GR#")) {
 					*ra = indigo_stod(PRIVATE_DATA->response);
 					if (ioptron_command(device, ":GD#")) {
@@ -725,7 +722,7 @@ driver ioptron {
 				if (result) {
 					PRIVATE_DATA->last_tracking_rate = tracking_rate;
 					if (tracking_rate == 4 && PRIVATE_DATA->last_custom_tracking_rate != custom_tracking_rate) {
-						if ((PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == HC_8408) || PRIVATE_DATA->protocol == V1_0) {
+						if (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == V1_0) {
 							result = ioptron_simple_reply_command(device, ":RR %+8.4f#", custom_tracking_rate) && *PRIVATE_DATA->response == '1';
 						} else if (PRIVATE_DATA->protocol == V2_0) {
 							result = ioptron_simple_reply_command(device, ":RR%+8.4f#", custom_tracking_rate) && *PRIVATE_DATA->response == '1';
@@ -746,7 +743,7 @@ driver ioptron {
 			bool result = false;
 			if (PRIVATE_DATA->protocol == HC_8406) {
 				result = ioptron_simple_reply_command(device, ":Sr %s#", indigo_dtos(ra, "%02d:%02d:%04.1f")) && *PRIVATE_DATA->response == '1';
-			} else if ((PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == HC_8408) || PRIVATE_DATA->protocol == UNKNOWN || PRIVATE_DATA->protocol == V1_0) {
+			} else if (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == UNKNOWN || PRIVATE_DATA->protocol == V1_0) {
 				result = ioptron_simple_reply_command(device, ":Sr %s#", indigo_dtos(ra, "%02d:%02d:%02.0f")) && *PRIVATE_DATA->response == '1';
 			} else if (PRIVATE_DATA->protocol == V2_0 || PRIVATE_DATA->protocol == V2_5) {
 				result = ioptron_simple_reply_command(device, ":Sr%08.0f#", ra * 60 * 60 * 1000) && *PRIVATE_DATA->response == '1';
@@ -754,7 +751,7 @@ driver ioptron {
 				result = ioptron_simple_reply_command(device, ":SRA%09.0f#", ra * 15 * 60 * 60 * 100) && *PRIVATE_DATA->response == '1';
 			}
 			if (result) {
-				if (PRIVATE_DATA->protocol == HC_8406 || (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == HC_8408) || PRIVATE_DATA->protocol == UNKNOWN || PRIVATE_DATA->protocol == V1_0) {
+				if (PRIVATE_DATA->protocol == HC_8406 || PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == UNKNOWN || PRIVATE_DATA->protocol == V1_0) {
 					result= ioptron_simple_reply_command(device, ":Sd %s#", indigo_dtos(dec, "%+03d*%02d:%02.0f")) && *PRIVATE_DATA->response == '1';
 				} else if (PRIVATE_DATA->protocol >= V2_0) {
 					result = ioptron_simple_reply_command(device, ":Sd%+09.0f#", dec * 60 * 60 * 100) && *PRIVATE_DATA->response == '1';
@@ -763,7 +760,7 @@ driver ioptron {
 			if (result) {
 				if (PRIVATE_DATA->protocol == HC_8406) {
 					result = ioptron_simple_reply_command(device, ":MS#") && *PRIVATE_DATA->response == '0';
-				} else if ((PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == HC_8408) || PRIVATE_DATA->protocol == V1_0 || PRIVATE_DATA->protocol == V2_0 || PRIVATE_DATA->protocol == V2_5) {
+				} else if (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == V1_0 || PRIVATE_DATA->protocol == V2_0 || PRIVATE_DATA->protocol == V2_5) {
 					result = ioptron_simple_reply_command(device, ":MS#") && *PRIVATE_DATA->response == '1';
 				} else if (PRIVATE_DATA->protocol == V3_0) {
 					result = ioptron_simple_reply_command(device, ":MS1#") && *PRIVATE_DATA->response == '1';
@@ -776,7 +773,7 @@ driver ioptron {
 			bool result = false;
 			if (PRIVATE_DATA->protocol == HC_8406) {
 				result = ioptron_simple_reply_command(device, ":Sr %s#", indigo_dtos(ra, "%02d:%02d:%04.1f")) && *PRIVATE_DATA->response == '1';
-			} else if ((PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == HC_8408) || PRIVATE_DATA->protocol == V1_0) {
+			} else if (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == V1_0) {
 				result = ioptron_simple_reply_command(device, ":Sr %s#", indigo_dtos(ra, "%02d:%02d:%02.0f")) && *PRIVATE_DATA->response == '1';
 			} else if (PRIVATE_DATA->protocol == V2_0 || PRIVATE_DATA->protocol == V2_5) {
 				result = ioptron_simple_reply_command(device, ":Sr%08.0f#", ra * 60 * 60 * 1000) && *PRIVATE_DATA->response == '1';
@@ -784,7 +781,7 @@ driver ioptron {
 				result = ioptron_simple_reply_command(device, ":SRA%09.0f#", ra * 15 * 60 * 60 * 100) && *PRIVATE_DATA->response == '1';
 			}
 			if (result) {
-				if (PRIVATE_DATA->protocol == HC_8406 || (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == HC_8408) || PRIVATE_DATA->protocol == UNKNOWN || PRIVATE_DATA->protocol == V1_0) {
+				if (PRIVATE_DATA->protocol == HC_8406 || PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == UNKNOWN || PRIVATE_DATA->protocol == V1_0) {
 					result = ioptron_simple_reply_command(device, ":Sd %s#", indigo_dtos(dec, "%+03d*%02d:%02.0f")) && *PRIVATE_DATA->response == '1';
 				} else if (PRIVATE_DATA->protocol >= V2_0) {
 					result = ioptron_simple_reply_command(device, ":Sd%+08.0f#", dec * 60 * 60 * 100) && *PRIVATE_DATA->response == '1';
@@ -820,7 +817,7 @@ driver ioptron {
 				return ioptron_no_reply_command(device, ":Q#");
 			} else {
 				if (ioptron_simple_reply_command(device, ":Q#")) {
-					if ((PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == HC_8408) || PRIVATE_DATA->protocol == V1_0 || PRIVATE_DATA->protocol == V2_0 || PRIVATE_DATA->protocol == V2_5) {
+					if (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == V1_0 || PRIVATE_DATA->protocol == V2_0 || PRIVATE_DATA->protocol == V2_5) {
 						return ioptron_no_reply_command(device, ":q#");
 					} else {
 						return true;
@@ -836,7 +833,7 @@ driver ioptron {
 
 		static bool ioptron_set_guide_rate(indigo_device *device, int ra, int dec) {
 			bool result = false;
-			if ((PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == HC_8408) || PRIVATE_DATA->protocol == V1_0 || PRIVATE_DATA->protocol == V2_0) {
+			if (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == V1_0 || PRIVATE_DATA->protocol == V2_0) {
 				result = ioptron_simple_reply_command(device, ":RG%03d#", ra) && *PRIVATE_DATA->response == '1';
 			} else if (PRIVATE_DATA->protocol == V2_5 || PRIVATE_DATA->protocol == V3_0) {
 				result = ioptron_simple_reply_command(device, ":RG%02d%02d#", ra, dec) && *PRIVATE_DATA->response == '1';
@@ -896,27 +893,6 @@ driver ioptron {
 			} else if (PRIVATE_DATA->protocol == HC_8407) {
 				if (ioptron_simple_reply_command(device, ":AP#") && *PRIVATE_DATA->response == '1') {
 					PRIVATE_DATA->parked = true;
-				}
-				if (ioptron_simple_reply_command(device, ":AH#") && *PRIVATE_DATA->response == '1') {
-					PRIVATE_DATA->homed = true;
-				}
-				if (ioptron_simple_reply_command(device, ":AT#") && *PRIVATE_DATA->response == '1') {
-					PRIVATE_DATA->tracking = true;
-				}
-				if (ioptron_simple_reply_command(device, ":SE?#") && *PRIVATE_DATA->response == '1') {
-					PRIVATE_DATA->slewing = true;
-				}
-				return true;
-			} else if (PRIVATE_DATA->protocol == HC_8408) {
-				/* The ZEQ25/SmartEQ controller is unreliable answering :AP# (park status); polling it every
-				   status cycle stalls the driver. Query :AP# only while a park is in progress (MOUNT_PARK
-				   busy); otherwise mirror the last known park state. */
-				if (MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE) {
-					if (ioptron_simple_reply_command(device, ":AP#") && *PRIVATE_DATA->response == '1') {
-						PRIVATE_DATA->parked = true;
-					}
-				} else {
-					PRIVATE_DATA->parked = MOUNT_PARK_PARKED_ITEM->sw.value;
 				}
 				if (ioptron_simple_reply_command(device, ":AH#") && *PRIVATE_DATA->response == '1') {
 					PRIVATE_DATA->homed = true;
@@ -1055,14 +1031,8 @@ driver ioptron {
 					MOUNT_PARK_PROPERTY->hidden = false;
 					MOUNT_PARK_PROPERTY->count = 1;
 					MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
-				} else if ((PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == HC_8408)) {
+				} else if (PRIVATE_DATA->protocol == HC_8407) {
 					MOUNT_PARK_PROPERTY->hidden = false;
-					/* The ZEQ25/SmartEQ (8408 HC) also expose a go-to-zero (home) function via :MH#, unlike the
-					   iEQ-family 8407 controllers. :MSH# (mechanical home search) is not available, so 2 items. */
-					if (PRIVATE_DATA->protocol == HC_8408) {
-						MOUNT_HOME_PROPERTY->hidden = false;
-						MOUNT_HOME_PROPERTY->count = 2;
-					}
 					MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
 					MOUNT_TRACKING_PROPERTY->hidden = false;
 					MOUNT_TRACK_RATE_PROPERTY->hidden = false;
@@ -1291,7 +1261,7 @@ driver ioptron {
 			if (ioptron_detect_mount(device->master_device)) {
 				if (PRIVATE_DATA->protocol == HC_8406) {
 					GUIDER_RATE_PROPERTY->hidden = true;
-				} else if ((PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == HC_8408) || PRIVATE_DATA->protocol == V1_0) {
+				} else if (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == V1_0) {
 					GUIDER_RATE_PROPERTY->hidden = false;
 					GUIDER_RATE_PROPERTY->count = 1;
 					if (ioptron_command(device, ":AG#")) {
@@ -1827,11 +1797,6 @@ driver ioptron {
 			item PROTOCOL_8407 {
 				name = "8407";
 				label = "HC 8407";
-				value = false;
-			}
-			item PROTOCOL_8408 {
-				name = "8408";
-				label = "HC 8408";
 				value = false;
 			}
 			item PROTOCOL_0100 {
