@@ -30,7 +30,7 @@ INDIGO_BUILD = 2
 # The marker is NOT folded into INDIGO_BUILD itself, so the runtime value
 # baked into indigo_config.h stays clean (just the number). Keep empty for
 # official releases.
-INDIGO_PRERELEASE = a2
+INDIGO_PRERELEASE = a3
 
 ifneq ($(INDIGO_PRERELEASE),)
   INDIGO_PACKAGE_BUILD = $(INDIGO_BUILD)~$(INDIGO_PRERELEASE)
@@ -420,11 +420,23 @@ Makefile.inc: Makefile
 	@cat Makefile.inc
 	@echo ---------------------------------------------------------------------
 
-debs-docker:
+.PHONY: debs-docker deb-i386 deb-amd64 deb-armhf deb-arm64
+
+indigo-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD).tar.gz:
 	sh tools/make_source_tarball.sh $(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)
-	#sh tools/build_debs.sh "--platform=linux/386 i386/debian:bullseye-slim" "$(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-i386.deb" $(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)
-	#sh tools/build_debs.sh "--platform=linux/amd64 amd64/debian:bullseye-slim" "$(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-amd64.deb" $(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)
+
+deb-i386: indigo-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD).tar.gz
+	sh tools/build_debs.sh "--platform=linux/386 i386/debian:bullseye-slim" "$(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-i386.deb" $(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)
+
+deb-amd64: indigo-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD).tar.gz
+	sh tools/build_debs.sh "--platform=linux/amd64 amd64/debian:bullseye-slim" "$(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-amd64.deb" $(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)
+
+deb-armhf: indigo-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD).tar.gz
 	sh tools/build_debs.sh "--platform=linux/arm/v7 arm32v7/debian:bullseye-slim" "$(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-armhf.deb" $(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)
+
+deb-arm64: indigo-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD).tar.gz
 	sh tools/build_debs.sh "--platform=linux/arm64 arm64v8/debian:bullseye-slim" "$(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-arm64.deb" $(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)
+
+debs-docker: deb-i386 deb-amd64 deb-armhf deb-arm64
 	rm indigo-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD).tar.gz
 
