@@ -136,6 +136,7 @@ static mount_type PRODUCTS[] = {
 	{ 8052, NULL, "HAZ46SM", V3_0, false, true, false },
 	{   33, NULL, "HAE29", V3_0, false, true, false },
 	{   34, NULL, "HAE29AA", V3_0, false, true, false },
+	{   38, NULL, "HAE29C", V3_0, false, true, false },
 	{ 8033, NULL, "HAE29SM", V3_0, false, true, false },
 	{ 8034, NULL, "HAE29AASM", V3_0, false, true, false },
 	{   50, NULL, "HAE43", V3_0, false, true, false },
