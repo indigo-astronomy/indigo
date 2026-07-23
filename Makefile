@@ -420,23 +420,42 @@ Makefile.inc: Makefile
 	@cat Makefile.inc
 	@echo ---------------------------------------------------------------------
 
-.PHONY: debs-docker deb-i386 deb-amd64 deb-armhf deb-arm64
+INDIGO_SRC_TARBALL = indigo-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD).tar.gz
 
-indigo-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD).tar.gz:
+.PHONY: debs-docker deb-i386 deb-amd64 deb-armhf deb-arm64 deb-i386-pkg deb-amd64-pkg deb-armhf-pkg deb-arm64-pkg
+
+$(INDIGO_SRC_TARBALL):
 	sh tools/make_source_tarball.sh $(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)
 
-deb-i386: indigo-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD).tar.gz
+deb-i386-pkg:
 	sh tools/build_debs.sh "--platform=linux/386 i386/debian:bullseye-slim" "$(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-i386.deb" $(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)
 
-deb-amd64: indigo-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD).tar.gz
+deb-amd64-pkg:
 	sh tools/build_debs.sh "--platform=linux/amd64 amd64/debian:bullseye-slim" "$(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-amd64.deb" $(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)
 
-deb-armhf: indigo-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD).tar.gz
+deb-armhf-pkg:
 	sh tools/build_debs.sh "--platform=linux/arm/v7 arm32v7/debian:bullseye-slim" "$(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-armhf.deb" $(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)
 
-deb-arm64: indigo-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD).tar.gz
+deb-arm64-pkg:
 	sh tools/build_debs.sh "--platform=linux/arm64 arm64v8/debian:bullseye-slim" "$(INDIGO_PACKAGE)-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)-arm64.deb" $(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD)
 
-debs-docker: deb-i386 deb-amd64 deb-armhf deb-arm64
-	rm indigo-$(INDIGO_VERSION)-$(INDIGO_PACKAGE_BUILD).tar.gz
+deb-i386: $(INDIGO_SRC_TARBALL)
+	$(MAKE) deb-i386-pkg
+	rm -f $(INDIGO_SRC_TARBALL)
+
+deb-amd64: $(INDIGO_SRC_TARBALL)
+	$(MAKE) deb-amd64-pkg
+	rm -f $(INDIGO_SRC_TARBALL)
+
+deb-armhf: $(INDIGO_SRC_TARBALL)
+	$(MAKE) deb-armhf-pkg
+	rm -f $(INDIGO_SRC_TARBALL)
+
+deb-arm64: $(INDIGO_SRC_TARBALL)
+	$(MAKE) deb-arm64-pkg
+	rm -f $(INDIGO_SRC_TARBALL)
+
+debs-docker: $(INDIGO_SRC_TARBALL)
+	$(MAKE) deb-i386-pkg deb-amd64-pkg deb-armhf-pkg deb-arm64-pkg
+	rm -f $(INDIGO_SRC_TARBALL)
 
