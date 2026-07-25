@@ -1448,7 +1448,7 @@ var indigo_sequencer = {
 	start_preview: function() {
 		this.select_switch(this.devices[IMAGER_AGENT], "AGENT_START_PROCESS", "PREVIEW", "Busy");
 	},
-	
+
 	stop_preview: function() {
 		var agent = this.devices[IMAGER_AGENT];
 		var property = indigo_devices[agent].AGENT_START_PROCESS;
@@ -1463,7 +1463,7 @@ var indigo_sequencer = {
 			this.failure("There is no AGENT_START_PROCESS on " + agent);
 		}
 	},
-	
+
 	set_focuser_mode: function(mode) {
 		this.select_switch(this.devices[IMAGER_AGENT], "FOCUSER_MODE", mode);
 	},
