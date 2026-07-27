@@ -39,6 +39,7 @@
 - [Snoop Agent](../indigo_drivers/agent_snoop/README.md)
 
 ## Scripting
+- [INDIGO Scripting Guide](INDIGO_SCRIPT_GUIDE.md)
 - [Scripting Basics](SCRIPTING_BASICS.md)
 - [Script based Sequencer](../indigo_drivers/agent_scripting/library/Sequencer.md)
 
