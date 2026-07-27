@@ -1106,6 +1106,8 @@ static bool ioptron_init_mount(indigo_device *device) {
 				MOUNT_PARK_PROPERTY->hidden = false;
 				MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
 			}
+			MOUNT_HOME_PROPERTY->hidden = false;
+			MOUNT_HOME_PROPERTY->count = 2;
 			MOUNT_TRACKING_PROPERTY->hidden = false;
 			MOUNT_TRACK_RATE_PROPERTY->hidden = false;
 			MOUNT_TRACK_RATE_PROPERTY->count = 5;
