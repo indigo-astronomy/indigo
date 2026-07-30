@@ -967,11 +967,13 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 			} else if (!strcmp(item->name, MOUNT_STATE_TRACKING_ITEM_NAME)) {
 				if (AGENT_MOUNT_STATE_TRACKING_ITEM->light.value != item->light.value) {
 					AGENT_MOUNT_STATE_TRACKING_ITEM->light.value = item->light.value;
+					CLIENT_PRIVATE_DATA->mount_tracking = (item->light.value == INDIGO_OK_STATE);
 					if (item->light.value == INDIGO_IDLE_STATE) {
 						indigo_send_message(device, IDLE_PROPERTY, "Mount is not tracking");
 					} else if (item->light.value == INDIGO_OK_STATE) {
 						indigo_send_message(device, IDLE_PROPERTY, "Mount is tracking");
 					}
+					handle_mount_change(device);
 				}
 			} else if (!strcmp(item->name, MOUNT_STATE_PARK_ITEM_NAME)) {
 				if (AGENT_MOUNT_STATE_PARK_ITEM->light.value != item->light.value) {
