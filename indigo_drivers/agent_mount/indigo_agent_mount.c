@@ -976,6 +976,9 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 					handle_mount_change(device);
 				}
 			} else if (!strcmp(item->name, MOUNT_STATE_PARK_ITEM_NAME)) {
+				CLIENT_PRIVATE_DATA->mount_parking = (item->light.value == INDIGO_BUSY_STATE);
+				CLIENT_PRIVATE_DATA->mount_parked = (item->light.value == INDIGO_OK_STATE);
+				CLIENT_PRIVATE_DATA->mount_unparked = (item->light.value == INDIGO_IDLE_STATE);
 				if (AGENT_MOUNT_STATE_PARK_ITEM->light.value != item->light.value) {
 					AGENT_MOUNT_STATE_PARK_ITEM->light.value = item->light.value;
 					if (item->light.value == INDIGO_IDLE_STATE) {
@@ -989,6 +992,8 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 					}
 				}
 			} else if (!strcmp(item->name, MOUNT_STATE_HOME_ITEM_NAME)) {
+				CLIENT_PRIVATE_DATA->mount_homing = (item->light.value == INDIGO_BUSY_STATE);
+				CLIENT_PRIVATE_DATA->mount_homed = (item->light.value == INDIGO_OK_STATE);
 				if (AGENT_MOUNT_STATE_HOME_ITEM->light.value != item->light.value) {
 					AGENT_MOUNT_STATE_HOME_ITEM->light.value = item->light.value;
 					if (item->light.value == INDIGO_BUSY_STATE) {
