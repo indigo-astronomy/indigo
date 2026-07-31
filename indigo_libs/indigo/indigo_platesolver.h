@@ -181,6 +181,7 @@ typedef struct {
 	bool copy_solution_to_target;
 	indigo_property_state mount_process_state;
 	indigo_property_state imager_process_state;
+	indigo_property_state imager_pause_state;
 	indigo_property_state imager_capture_state;
 	indigo_property_state guider_process_state;
 	void (*save_config)(indigo_device *);
