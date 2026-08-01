@@ -18,6 +18,7 @@ Read the relevant documentation before changing behavior:
 - `indigo_docs/PROPERTIES.md` and `indigo_libs/indigo/indigo_names.h` define standard property names.
 - `indigo_drivers/*/README.md` files document driver-specific hardware, prerequisites, connection details, limitations, and operational notes.
 - `indigo_test/AGENTS.md` documents automated-test layout, harness conventions, simulator integration rules, and test cleanup.
+- `REVIEW.md` indexes incremental automatic code review state and links to folder-level review files.
 
 ## Formatting
 
@@ -60,3 +61,16 @@ Some drivers are generated from `.driver` files by `indigo_generator`.
 - Preserve license headers in existing files and use the same header style for new source/header files.
 - Avoid unrelated refactors, whitespace sweeps, and broad mechanical changes.
 - Avoid destructive commands such as `git clean`, `git reset`, and broad file removal unless explicitly requested.
+
+## Incremental Code Review Notes
+
+- Use `REVIEW.md` as the top-level index for automatic review status.
+- Only perform automatic incremental reviews for folders explicitly listed in top-level `REVIEW.md`; add an index row and folder-level `REVIEW.md` before reviewing any other folder.
+- Folder-level `REVIEW.md` files record the last reviewed commit, current findings, review focus, and reviewed ranges for that subtree.
+- When asked for a review, first identify the affected folder review file and read its recorded `Last reviewed commit`.
+- Review incrementally with `git diff <last-reviewed-commit>..<target-commit> -- <folder>` unless the user asks for a different range.
+- Record findings with stable IDs, severity, file reference, summary, and status in the folder-level review file.
+- Advance a folder's `Last reviewed commit` only after that folder has been reviewed through the target commit.
+- After advancing a folder-level file, update the matching row in top-level `REVIEW.md`.
+- Do not mark a commit reviewed if the review was partial, skipped changed generated files, or depends on unresolved assumptions.
+- Keep review notes separate from test plans: `REVIEW.md` files track risks/findings, while `indigo_test/CHANGES.md` tracks automated-test coverage and deferred test work.
