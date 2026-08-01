@@ -66,6 +66,23 @@ Implemented bus and simulator integration suites:
 - `test_mount_simulator.c`: mount simulator metadata, main mount and guider-device lifecycle, property enumeration, connection/disconnection, mount compliance checks, and guider compliance checks.
 - `test_polaralign_simulator.c`: polar aligner simulator metadata, lifecycle, property enumeration, connection/disconnection, property item/range checks, direction commands, offset no-op handling, reset commands, and abort command handling.
 - `test_rotator_simulator.c`: rotator simulator metadata, lifecycle, property enumeration, connection/disconnection, and rotator compliance checks.
+- `test_focuser_askar_simulator.c`: external pseudo-terminal simulator launch, ready-file discovery, hardware-free serial driver connection, class property enumeration completeness, and compliance checks for the Askar-WAF focuser driver.
+- `test_rotator_falcon2_simulator.c`: external pseudo-terminal simulator launch, ready-file discovery, hardware-free serial driver connection, class property enumeration completeness, and compliance checks for the Falcon2 rotator driver.
+- `test_wheel_xagyl_simulator.c`: external pseudo-terminal simulator launch, ready-file discovery, hardware-free serial driver connection, wheel property enumeration completeness, and compliance checks for the Xagyl filter wheel driver.
+- `test_wheel_quantum_simulator.c`: external pseudo-terminal simulator launch, ready-file discovery, hardware-free serial driver connection, wheel property enumeration completeness, and compliance checks for the Brightstar Quantum filter wheel driver.
+- `test_wheel_trutek_simulator.c`: external pseudo-terminal simulator launch, ready-file discovery, hardware-free serial driver connection, wheel property enumeration completeness, and compliance checks for the Trutek filter wheel driver.
+- `test_wheel_qhy_simulator.c`: external pseudo-terminal simulator launch, ready-file discovery, hardware-free serial driver connection, wheel property enumeration completeness, and compliance checks for the QHY CFW1, CFW2, and CFW3 filter wheel driver modes.
+- `test_wheel_optec_simulator.c`: external pseudo-terminal simulator launch, ready-file discovery, hardware-free serial driver connection, wheel property enumeration completeness, and compliance checks for the Optec filter wheel driver.
+- `test_focuser_fc3_simulator.c`: external pseudo-terminal simulator launch, ready-file discovery, hardware-free serial driver connection, class property enumeration completeness, and compliance checks for the FocusCube 3 focuser driver.
+- `test_focuser_qhy_simulator.c`: external pseudo-terminal simulator launch, ready-file discovery, hardware-free serial driver connection, class property enumeration completeness, and compliance checks for the QHY Q-Focuser driver.
+- `test_focuser_optecfl_simulator.c`: external pseudo-terminal simulator launch, ready-file discovery, hardware-free serial driver connection, class property enumeration completeness, and compliance checks for both Optec FocusLynx focuser channels.
+- `test_focuser_lacerta_simulator.c`: external pseudo-terminal simulator launch, ready-file discovery, hardware-free serial driver connection, class property enumeration completeness, and compliance checks for the LACERTA Motorfocus focuser driver.
+- `test_aux_svbpowerbox_simulator.c`: external pseudo-terminal simulator launch, ready-file discovery, hardware-free serial driver connection, class property enumeration completeness, and compliance checks for the SVBONY PowerBox AUX driver.
+- `test_aux_wbplusv3_simulator.c`: external pseudo-terminal simulator launch, ready-file discovery, hardware-free serial driver connection, class property enumeration completeness, and compliance checks for the WandererBox Plus V3 AUX driver.
+- `test_aux_wbprov3_simulator.c`: external pseudo-terminal simulator launch, ready-file discovery, hardware-free serial driver connection, class property enumeration completeness, and compliance checks for the WandererBox Pro V3 AUX driver.
+- `test_aux_wcv4ec_simulator.c`: external pseudo-terminal simulator launch, ready-file discovery, hardware-free serial driver connection, lightbox property enumeration completeness, and compliance checks for the WandererCover V4-EC AUX lightbox driver.
+- `test_mount_synscan_simulator.c`: external pseudo-terminal simulator launch, ready-file discovery, hardware-free serial driver connection, mount property enumeration completeness, and compliance checks for the SynScan EQ8 mount driver.
+- `test_aux_upb3_simulator.c`: external pseudo-terminal simulator launch, ready-file discovery, hardware-free serial driver connection, class property enumeration completeness, and compliance checks for the Ultimate Powerbox 3 AUX driver.
 
 `integration/simulator_test_common.h` provides the shared in-process client, property cache, lifecycle helpers, and compliance-style assertions used by simulator tests.
 
@@ -83,6 +100,7 @@ Coverage currently includes:
 - CCD camera compliance through the CCD simulator's imager, guider camera, Bahtinov camera, DSLR, and file-camera devices.
 - Dome compliance on the dome simulator.
 - Polar-aligner compliance on the polar-aligner simulator.
+- External serial simulator compliance on Askar-WAF focuser, Falcon2 rotator, Xagyl filter wheel, Brightstar Quantum filter wheel, Trutek filter wheel, QHY CFW1/CFW2/CFW3 filter wheel modes, Optec filter wheel, FocusCube 3 focuser, QHY Q-Focuser, Optec FocusLynx focuser, LACERTA Motorfocus focuser, SVBONY PowerBox AUX, WandererBox Plus V3 AUX, WandererBox Pro V3 AUX, WandererCover V4-EC AUX, SynScan EQ8 mount, and Ultimate Powerbox 3 AUX drivers through pseudo terminals exported with `INDIGO_SIMULATOR_PORT`.
 
 Standalone simulator archives are not present for every device class in this checkout, so some class coverage intentionally uses multi-device simulator drivers.
 

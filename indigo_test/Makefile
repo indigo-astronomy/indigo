@@ -33,7 +33,24 @@ INTEGRATION_TESTS = \
 	$(INTEGRATION_BUILD)/test_gps_simulator \
 	$(INTEGRATION_BUILD)/test_mount_simulator \
 	$(INTEGRATION_BUILD)/test_polaralign_simulator \
-	$(INTEGRATION_BUILD)/test_rotator_simulator
+	$(INTEGRATION_BUILD)/test_rotator_simulator \
+	$(INTEGRATION_BUILD)/test_focuser_askar_simulator \
+	$(INTEGRATION_BUILD)/test_rotator_falcon2_simulator \
+	$(INTEGRATION_BUILD)/test_wheel_xagyl_simulator \
+	$(INTEGRATION_BUILD)/test_wheel_quantum_simulator \
+	$(INTEGRATION_BUILD)/test_wheel_trutek_simulator \
+	$(INTEGRATION_BUILD)/test_wheel_qhy_simulator \
+	$(INTEGRATION_BUILD)/test_wheel_optec_simulator \
+	$(INTEGRATION_BUILD)/test_focuser_fc3_simulator \
+	$(INTEGRATION_BUILD)/test_focuser_qhy_simulator \
+	$(INTEGRATION_BUILD)/test_focuser_optecfl_simulator \
+	$(INTEGRATION_BUILD)/test_focuser_lacerta_simulator \
+	$(INTEGRATION_BUILD)/test_aux_svbpowerbox_simulator \
+	$(INTEGRATION_BUILD)/test_aux_wbplusv3_simulator \
+	$(INTEGRATION_BUILD)/test_aux_wbprov3_simulator \
+	$(INTEGRATION_BUILD)/test_aux_wcv4ec_simulator \
+	$(INTEGRATION_BUILD)/test_mount_synscan_simulator \
+	$(INTEGRATION_BUILD)/test_aux_upb3_simulator
 
 TEST_CFLAGS = $(CFLAGS) -I.. -I../indigo_libs -I../build/include
 TEST_LDFLAGS = $(LDFLAGS) -Wl,-rpath,$(BUILD_LIB) -lindigo -lm -lpthread
@@ -43,6 +60,23 @@ GPS_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_gps_simulator.a $(TEST_LDFL
 MOUNT_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_mount_simulator.a $(TEST_LDFLAGS) -lindigocat
 POLARALIGN_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_polaralign_simulator.a $(TEST_LDFLAGS) -lindigocat
 ROTATOR_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_rotator_simulator.a $(TEST_LDFLAGS) -lindigocat
+FOCUSER_ASKAR_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_askar.a $(TEST_LDFLAGS) -lindigocat
+ROTATOR_FALCON2_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_rotator_falcon.a $(TEST_LDFLAGS) -lindigocat
+WHEEL_XAGYL_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_wheel_xagyl.a $(TEST_LDFLAGS) -lindigocat
+WHEEL_QUANTUM_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_wheel_quantum.a $(TEST_LDFLAGS) -lindigocat
+WHEEL_TRUTEK_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_wheel_trutek.a $(TEST_LDFLAGS) -lindigocat
+WHEEL_QHY_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_wheel_qhy.a $(TEST_LDFLAGS) -lindigocat
+WHEEL_OPTEC_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_wheel_optec.a $(TEST_LDFLAGS) -lindigocat
+FOCUSER_FC3_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_fc3.a $(TEST_LDFLAGS) -lindigocat
+FOCUSER_QHY_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_qhy.a $(TEST_LDFLAGS) -lindigocat
+FOCUSER_OPTECFL_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_optecfl.a $(TEST_LDFLAGS) -lindigocat
+FOCUSER_LACERTA_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_lacerta.a $(TEST_LDFLAGS) -lindigocat
+AUX_SVBPOWERBOX_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_svbpowerbox.a $(TEST_LDFLAGS) -lindigocat
+AUX_WBPLUSV3_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_wbplusv3.a $(TEST_LDFLAGS) -lindigocat
+AUX_WBPROV3_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_wbprov3.a $(TEST_LDFLAGS) -lindigocat
+AUX_WCV4EC_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_wcv4ec.a $(TEST_LDFLAGS) -lindigocat
+MOUNT_SYNSCAN_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_mount_synscan.a $(TEST_LDFLAGS) -lindigocat
+AUX_UPB3_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_upb3.a $(TEST_LDFLAGS) -lindigocat
 
 .PHONY: test test-unit test-integration test-clean check-lib
 
@@ -128,6 +162,108 @@ $(INTEGRATION_BUILD)/test_polaralign_simulator: integration/test_polaralign_simu
 
 $(INTEGRATION_BUILD)/test_rotator_simulator: integration/test_rotator_simulator.c integration/simulator_test_common.h test_runner.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(ROTATOR_SIMULATOR_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/focuser_askar_simulator: ../indigo_drivers/focuser_askar/focuser_askar_simulator/focuser_askar_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -pthread -o $@ $<
+
+$(INTEGRATION_BUILD)/rotator_falcon2_simulator: ../indigo_drivers/rotator_falcon/rotator_falcon2_simulator/rotator_falcon2_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -pthread -o $@ $< -lm
+
+$(INTEGRATION_BUILD)/wheel_xagyl_simulator: ../indigo_drivers/wheel_xagyl/wheel_xagyl_simulator/wheel_xagyl_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -pthread -o $@ $<
+
+$(INTEGRATION_BUILD)/wheel_quantum_simulator: ../indigo_drivers/wheel_quantum/wheel_quantum_simulator/wheel_quantum_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -pthread -o $@ $<
+
+$(INTEGRATION_BUILD)/wheel_trutek_simulator: ../indigo_drivers/wheel_trutek/wheel_trutek_simulator/wheel_trutek_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -pthread -o $@ $<
+
+$(INTEGRATION_BUILD)/wheel_qhy_simulator: ../indigo_drivers/wheel_qhy/wheel_qhy_simulator/wheel_qhy_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -pthread -o $@ $<
+
+$(INTEGRATION_BUILD)/wheel_optec_simulator: ../indigo_drivers/wheel_optec/wheel_optec_simulator/wheel_optec_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -pthread -o $@ $<
+
+$(INTEGRATION_BUILD)/focuser_fc3_simulator: ../indigo_drivers/focuser_fc3/focuser_fc3_simulator/focuser_fc3_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -pthread -o $@ $<
+
+$(INTEGRATION_BUILD)/focuser_qhy_simulator: ../indigo_drivers/focuser_qhy/focuser_qhy_simulator/focuser_qhy_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -pthread -o $@ $<
+
+$(INTEGRATION_BUILD)/focuser_optecfl_simulator: ../indigo_drivers/focuser_optecfl/focuser_optecfl_simulator/focuser_optecfl_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -pthread -o $@ $<
+
+$(INTEGRATION_BUILD)/focuser_lacerta_simulator: ../indigo_drivers/focuser_lacerta/focuser_lacerta_simulator/focuser_lacerta_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -pthread -o $@ $<
+
+$(INTEGRATION_BUILD)/aux_svbpowerbox_simulator: ../indigo_drivers/aux_svbpowerbox/aux_svbpowerbox_simulator/aux_svbpowerbox_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -pthread -o $@ $<
+
+$(INTEGRATION_BUILD)/aux_wbplusv3_simulator: ../indigo_drivers/aux_wbplusv3/aux_wbplusv3_simulator/aux_wbplusv3_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -pthread -o $@ $<
+
+$(INTEGRATION_BUILD)/aux_wbprov3_simulator: ../indigo_drivers/aux_wbprov3/aux_wbprov3_simulator/aux_wbprov3_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -pthread -o $@ $<
+
+$(INTEGRATION_BUILD)/aux_wcv4ec_simulator: ../indigo_drivers/aux_wcv4ec/aux_wcv4ec_simulator/aux_wcv4ec_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -pthread -o $@ $<
+
+$(INTEGRATION_BUILD)/mount_synscan_simulator: ../indigo_drivers/mount_synscan/mount_synscan_simulator/mount_synscan_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -pthread -o $@ $<
+
+$(INTEGRATION_BUILD)/aux_upb3_simulator: ../indigo_drivers/aux_upb3/aux_upb3_simulator/aux_upb3_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -pthread -o $@ $<
+
+$(INTEGRATION_BUILD)/test_focuser_askar_simulator: integration/test_focuser_askar_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_askar_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_ASKAR_SIMULATOR_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_rotator_falcon2_simulator: integration/test_rotator_falcon2_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/rotator_falcon2_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(ROTATOR_FALCON2_SIMULATOR_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_wheel_xagyl_simulator: integration/test_wheel_xagyl_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/wheel_xagyl_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(WHEEL_XAGYL_SIMULATOR_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_wheel_quantum_simulator: integration/test_wheel_quantum_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/wheel_quantum_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(WHEEL_QUANTUM_SIMULATOR_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_wheel_trutek_simulator: integration/test_wheel_trutek_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/wheel_trutek_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(WHEEL_TRUTEK_SIMULATOR_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_wheel_qhy_simulator: integration/test_wheel_qhy_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/wheel_qhy_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(WHEEL_QHY_SIMULATOR_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_wheel_optec_simulator: integration/test_wheel_optec_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/wheel_optec_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(WHEEL_OPTEC_SIMULATOR_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_focuser_fc3_simulator: integration/test_focuser_fc3_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_fc3_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_FC3_SIMULATOR_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_focuser_qhy_simulator: integration/test_focuser_qhy_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_qhy_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_QHY_SIMULATOR_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_focuser_optecfl_simulator: integration/test_focuser_optecfl_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_optecfl_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_OPTECFL_SIMULATOR_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_focuser_lacerta_simulator: integration/test_focuser_lacerta_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_lacerta_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_LACERTA_SIMULATOR_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_aux_svbpowerbox_simulator: integration/test_aux_svbpowerbox_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_svbpowerbox_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(AUX_SVBPOWERBOX_SIMULATOR_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_aux_wbplusv3_simulator: integration/test_aux_wbplusv3_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_wbplusv3_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(AUX_WBPLUSV3_SIMULATOR_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_aux_wbprov3_simulator: integration/test_aux_wbprov3_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_wbprov3_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(AUX_WBPROV3_SIMULATOR_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_aux_wcv4ec_simulator: integration/test_aux_wcv4ec_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_wcv4ec_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(AUX_WCV4EC_SIMULATOR_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_mount_synscan_simulator: integration/test_mount_synscan_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_synscan_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(MOUNT_SYNSCAN_SIMULATOR_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_aux_upb3_simulator: integration/test_aux_upb3_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_upb3_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(AUX_UPB3_SIMULATOR_TEST_LDFLAGS)
 
 test-clean:
 	rm -rf $(TEST_BUILD)

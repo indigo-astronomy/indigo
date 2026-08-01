@@ -19,6 +19,7 @@
 - [Driver Development Basics](DRIVER_DEVELOPMENT_BASICS.md)
   > Every driver also has a README.md file in its own directory.
 - [Driver Code Generator Migration](DRIVER_GENERATOR_MIGRATION.md)
+- [Serial Device Simulators](SERIAL_DEVICE_SIMULATORS.md)
 - [Client Development Basics](CLIENT_DEVELOPMENT_BASICS.md)
 - [Multi-instance Support](MULTI-INSTANCE_SUPPORT.md)
 - [Device Access Control and Locking](INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md)

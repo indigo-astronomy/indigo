@@ -16,6 +16,7 @@ Read the relevant documentation before changing behavior:
 - `indigo_docs/DRIVER_GENERATOR_MIGRATION.md` documents generated-driver migration.
 - `indigo_docs/MAKEFILES.md` explains the makefile layers.
 - `indigo_docs/PROPERTIES.md` and `indigo_libs/indigo/indigo_names.h` define standard property names.
+- `indigo_docs/SERIAL_DEVICE_SIMULATORS.md` documents the host-side serial simulator contract, ready-file convention, and refactored simulator inventory.
 - `indigo_drivers/*/README.md` files document driver-specific hardware, prerequisites, connection details, limitations, and operational notes.
 - `indigo_test/AGENTS.md` documents automated-test layout, harness conventions, simulator integration rules, and test cleanup.
 - `REVIEW.md` indexes incremental automatic code review state and links to folder-level review files.
@@ -61,6 +62,7 @@ Some drivers are generated from `.driver` files by `indigo_generator`.
 - Preserve license headers in existing files and use the same header style for new source/header files.
 - Avoid unrelated refactors, whitespace sweeps, and broad mechanical changes.
 - Avoid destructive commands such as `git clean`, `git reset`, and broad file removal unless explicitly requested.
+- For automatically refactored code, preserve the existing license header, update its copyright year or year range to include the current year, and append a notice after the license header stating which agent refactored it.
 
 ## AI Usage Conduct
 
