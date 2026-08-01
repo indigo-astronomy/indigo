@@ -144,7 +144,8 @@
 #define AGENT_GUIDER_SETTINGS_PPEC_REACTIVE_GAIN_RA_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+31)
 #define AGENT_GUIDER_SETTINGS_PPEC_PRED_GAIN_RA_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+32)
 #define AGENT_GUIDER_SETTINGS_PPEC_PERIOD_RA_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+33)
-#define AGENT_GUIDER_SETTINGS_PPEC_RETAIN_MODEL_RA_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+34)
+#define AGENT_GUIDER_SETTINGS_PPEC_PERIOD_FIXED_RA_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+34)
+#define AGENT_GUIDER_SETTINGS_PPEC_RETAIN_MODEL_RA_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+35)
 
 #define AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY	(DEVICE_PRIVATE_DATA->agent_flip_reverses_dec_property)
 #define AGENT_GUIDER_FLIP_REVERSES_DEC_ENABLED_ITEM		(AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY->items+0)
@@ -1828,15 +1829,18 @@ static bool guide(indigo_device *device) {
 				correction_ra = indigo_guider_linear_trend_response(AGENT_GUIDER_SETTINGS_LINEAR_TREND_AGG_RA_ITEM->number.value / 100, min_error, drift_ra, &DEVICE_PRIVATE_DATA->trend_ra);
 			} else if (AGENT_GUIDER_CORRECTION_MODE_RA_PPEC_ITEM->sw.value && DEVICE_PRIVATE_DATA->ppec_ra != NULL) {
 				/* Predictive PEC (Gaussian Process). It has its own reactive gain;
-				   min error is the shared min move. A fixed worm period disables
-				   online period estimation, 0 enables it. */
+				   min error is the shared min move. With period 0 the worm period
+				   is always estimated online; with a fixed period > 0 the estimate
+				   is still refined (allowed to drift) unless the fixed-period item
+				   is set, in which case the period is held constant. */
 				double period = AGENT_GUIDER_SETTINGS_PPEC_PERIOD_RA_ITEM->number.value;
+				bool period_fixed = AGENT_GUIDER_SETTINGS_PPEC_PERIOD_FIXED_RA_ITEM->number.value > 0.5;
 				indigo_gp_guider_set_parameters(
 					DEVICE_PRIVATE_DATA->ppec_ra,
 					AGENT_GUIDER_SETTINGS_PPEC_REACTIVE_GAIN_RA_ITEM->number.value / 100,
 					AGENT_GUIDER_SETTINGS_PPEC_PRED_GAIN_RA_ITEM->number.value / 100,
 					min_error,
-					period <= 0,
+					period <= 0 || !period_fixed,
 					period
 				);
 				double time_step = AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value + AGENT_GUIDER_SETTINGS_DELAY_ITEM->number.value;
@@ -2326,7 +2330,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM, AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM_NAME, "Side of Pier (-1=E, 1=W, 0=undef)", -1, 1, 1, 0);
 		DEVICE_PRIVATE_DATA->cos_dec = 1; /* default dec is 0 until set */
 		// -------------------------------------------------------------------------------- Guiding settings
-		AGENT_GUIDER_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_SETTINGS_PROPERTY_NAME, "Agent", "Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 35);
+		AGENT_GUIDER_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_SETTINGS_PROPERTY_NAME, "Agent", "Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 36);
 		if (AGENT_GUIDER_SETTINGS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
@@ -2364,6 +2368,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_PPEC_REACTIVE_GAIN_RA_ITEM, AGENT_GUIDER_SETTINGS_PPEC_REACTIVE_GAIN_RA_ITEM_NAME, "RA PPEC reactive gain (%)", 0, 100, 5, 60);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_PPEC_PRED_GAIN_RA_ITEM, AGENT_GUIDER_SETTINGS_PPEC_PRED_GAIN_RA_ITEM_NAME, "RA PPEC predictive gain (%)", 0, 100, 5, 50);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_PPEC_PERIOD_RA_ITEM, AGENT_GUIDER_SETTINGS_PPEC_PERIOD_RA_ITEM_NAME, "RA PPEC period (s, 0=auto)", 0, 2000, 10, 0);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_PPEC_PERIOD_FIXED_RA_ITEM, AGENT_GUIDER_SETTINGS_PPEC_PERIOD_FIXED_RA_ITEM_NAME, "RA PPEC fixed period, no drift (0=no, 1=yes)", 0, 1, 1, 0);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_PPEC_RETAIN_MODEL_RA_ITEM, AGENT_GUIDER_SETTINGS_PPEC_RETAIN_MODEL_RA_ITEM_NAME, "RA PPEC retain model (% of period)", 0, 80, 5, PPEC_RETAIN_MODEL_PCT);
 		// -------------------------------------------------------------------------------- FLIP_REVERSE_DEC
 		AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY_NAME, "Agent", "Reverse Dec speed after meridian flip", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
