@@ -62,6 +62,17 @@ Some drivers are generated from `.driver` files by `indigo_generator`.
 - Avoid unrelated refactors, whitespace sweeps, and broad mechanical changes.
 - Avoid destructive commands such as `git clean`, `git reset`, and broad file removal unless explicitly requested.
 
+## AI Usage Conduct
+
+- Keep AI work scoped to the files, folders, and behavior explicitly requested.
+- Ground conclusions in repository sources. For reviews, cite exact files and lines; for implementation, follow nearby code and documented INDIGO APIs.
+- Treat AI-generated code, tests, and review notes as drafts until they are compiled, tested, or otherwise verified.
+- Separate concerns: use `REVIEW.md` files for risks and findings, `indigo_test/CHANGES.md` for automated-test plans and coverage notes, and patches for actual code changes.
+- Prefer simulator-backed or hardware-free validation before claiming driver behavior is covered; document hardware assumptions when real devices are required.
+- Do not edit generated output, vendored SDKs, build products, or local artifacts unless the task explicitly targets them.
+- Leave the workspace clean of avoidable temporary files, running servers, test processes, and generated artifacts.
+- Do not duplicate agent policy across tool-specific files. Keep `CLAUDE.md` and similar files as pointers to this file unless a tool needs a small compatibility note.
+
 ## Incremental Code Review Notes
 
 - Use `REVIEW.md` as the top-level index for automatic review status.
