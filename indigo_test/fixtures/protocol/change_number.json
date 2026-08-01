@@ -1,0 +1,1 @@
+{ "newNumberVector": { "device": "Protocol Test Device", "name": "PROTOCOL_NUMBER", "items": [ { "name": "VALUE", "value": 12.5 } ] } }

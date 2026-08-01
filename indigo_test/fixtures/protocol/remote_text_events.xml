@@ -1,0 +1,8 @@
+<defTextVector device='Protocol Test Device' name='PROTOCOL_TEXT' group='Protocol' label='Text' perm='rw' state='Ok' message='defined'>
+<defText name='VALUE' label='Value'>alpha</defText>
+</defTextVector>
+<setTextVector device='Protocol Test Device' name='PROTOCOL_TEXT' state='Busy' message='updated'>
+<oneText name='VALUE'>beta &amp; escaped</oneText>
+</setTextVector>
+<message device='Protocol Test Device' name='PROTOCOL_TEXT' message='message received'/>
+<delProperty device='Protocol Test Device' name='PROTOCOL_TEXT' message='deleted'/>

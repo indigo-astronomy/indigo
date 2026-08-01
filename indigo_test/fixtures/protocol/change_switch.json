@@ -1,0 +1,1 @@
+{ "newSwitchVector": { "device": "Protocol Test Device", "name": "PROTOCOL_SWITCH", "items": [ { "name": "ON", "value": true }, { "name": "OFF", "value": false } ] } }

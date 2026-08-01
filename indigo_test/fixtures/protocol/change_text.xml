@@ -1,0 +1,3 @@
+<newTextVector device='Protocol Test Device' name='PROTOCOL_TEXT' token='42'>
+<oneText name='VALUE'>changed &amp; escaped</oneText>
+</newTextVector>
