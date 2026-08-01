@@ -1201,6 +1201,18 @@
 		5907ACDC301E87340009AA99 /* test_wheel_qhy_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_wheel_qhy_simulator.c; sourceTree = "<group>"; };
 		5907ACDD301E88790009AA99 /* wheel_optec_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = wheel_optec_simulator.c; sourceTree = "<group>"; };
 		5907ACDE301E88910009AA99 /* test_wheel_optec_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_wheel_optec_simulator.c; sourceTree = "<group>"; };
+		5907ACDF301E8DA60009AA99 /* aux_arteskyflat_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = aux_arteskyflat_simulator.c; sourceTree = "<group>"; };
+		5907ACE0301E8E340009AA99 /* test_aux_arteskyflat_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_arteskyflat_simulator.c; sourceTree = "<group>"; };
+		5907ACE1301E90B00009AA99 /* aux_astromechanics_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = aux_astromechanics_simulator.c; sourceTree = "<group>"; };
+		5907ACE2301E92030009AA99 /* aux_fbc_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = aux_fbc_simulator.c; sourceTree = "<group>"; };
+		5907ACE3301E929F0009AA99 /* aux_flatmaster_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = aux_flatmaster_simulator.c; sourceTree = "<group>"; };
+		5907ACE4301E93BC0009AA99 /* ao_sx_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = ao_sx_simulator.c; sourceTree = "<group>"; };
+		5907ACE5301E93D30009AA99 /* test_ao_sx_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_ao_sx_simulator.c; sourceTree = "<group>"; };
+		5907ACE6301E93D30009AA99 /* test_aux_astromechanics_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_astromechanics_simulator.c; sourceTree = "<group>"; };
+		5907ACE7301E93D30009AA99 /* test_aux_fbc_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_fbc_simulator.c; sourceTree = "<group>"; };
+		5907ACE8301E93D30009AA99 /* test_aux_flatmaster_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_flatmaster_simulator.c; sourceTree = "<group>"; };
+		5907ACE9301E9E0D0009AA99 /* aux_flipflat_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = aux_flipflat_simulator.c; sourceTree = "<group>"; };
+		5907ACEA301E9F1B0009AA99 /* test_aux_flipflat_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_flipflat_simulator.c; sourceTree = "<group>"; };
 		590929A62AF667200040B8FC /* 99-sx_wheel.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = "99-sx_wheel.rules"; sourceTree = "<group>"; };
 		590A863F1DB80A04002F12FB /* indigo_ccd_asi_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_asi_main.c; sourceTree = "<group>"; };
 		590A86401DB80A04002F12FB /* indigo_ccd_asi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_ccd_asi.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
@@ -6905,6 +6917,7 @@
 		597846DC2DBAA8B500B8D5B1 /* aux_fbc_simulator */ = {
 			isa = PBXGroup;
 			children = (
+				5907ACE2301E92030009AA99 /* aux_fbc_simulator.c */,
 				597846DB2DBAA8B500B8D5B1 /* aux_fbc_simulator.ino */,
 			);
 			path = aux_fbc_simulator;
@@ -8015,6 +8028,7 @@
 		5996614E22CE6A5F00330652 /* ao_sx_simulator */ = {
 			isa = PBXGroup;
 			children = (
+				5907ACE4301E93BC0009AA99 /* ao_sx_simulator.c */,
 				5996614F22CE6A5F00330652 /* ao_sx_simulator.ino */,
 			);
 			path = ao_sx_simulator;
@@ -9602,6 +9616,7 @@
 		59B81EC6233774AD00DFA81B /* aux_arteskyflat_simulator */ = {
 			isa = PBXGroup;
 			children = (
+				5907ACDF301E8DA60009AA99 /* aux_arteskyflat_simulator.c */,
 				59B81EC7233774DC00DFA81B /* aux_arteskyflat_simulator.ino */,
 			);
 			path = aux_arteskyflat_simulator;
@@ -12781,6 +12796,12 @@
 		59FA7BF3301D3A5800A35CFB /* integration */ = {
 			isa = PBXGroup;
 			children = (
+				5907ACEA301E9F1B0009AA99 /* test_aux_flipflat_simulator.c */,
+				5907ACE5301E93D30009AA99 /* test_ao_sx_simulator.c */,
+				5907ACE6301E93D30009AA99 /* test_aux_astromechanics_simulator.c */,
+				5907ACE7301E93D30009AA99 /* test_aux_fbc_simulator.c */,
+				5907ACE8301E93D30009AA99 /* test_aux_flatmaster_simulator.c */,
+				5907ACE0301E8E340009AA99 /* test_aux_arteskyflat_simulator.c */,
 				5907ACD3301E7DC60009AA99 /* test_aux_wcv4ec_simulator.c */,
 				5907ACD0301E7C9C0009AA99 /* test_aux_wbprov3_simulator.c */,
 				5907ACD1301E7CDE0009AA99 /* test_aux_wbplusv3_simulator.c */,
@@ -14526,6 +14547,7 @@
 		9DC774FD2DB8DB4C00CE859C /* aux_astromechanics_simulator */ = {
 			isa = PBXGroup;
 			children = (
+				5907ACE1301E90B00009AA99 /* aux_astromechanics_simulator.c */,
 				9DC774FC2DB8DB4C00CE859C /* aux_astromechanics_simulator.ino */,
 			);
 			path = aux_astromechanics_simulator;
@@ -14744,6 +14766,7 @@
 		9DFA59892361D92600326A74 /* aux_flatmaster_simulator */ = {
 			isa = PBXGroup;
 			children = (
+				5907ACE3301E929F0009AA99 /* aux_flatmaster_simulator.c */,
 				9DFA598A2361D92600326A74 /* aux_flatmaster_simulator.ino */,
 			);
 			path = aux_flatmaster_simulator;
@@ -14766,6 +14789,7 @@
 		9DFC61A2238530FF003977C7 /* aux_flipflat_simulator */ = {
 			isa = PBXGroup;
 			children = (
+				5907ACE9301E9E0D0009AA99 /* aux_flipflat_simulator.c */,
 				9DFC61A3238530FF003977C7 /* aux_flipflat_simulator.ino */,
 			);
 			path = aux_flipflat_simulator;

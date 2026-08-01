@@ -344,6 +344,12 @@ int main(int argc, char *argv[]) {
 
 Device-specific simulators should replace `simulator_name`, extend `parse_device_option()` for options such as `--model`, `--device-id`, or fault injection, and implement `dispatch_command()` plus any state update threads or timers required by the hardware protocol.
 
+The nonblocking reader must never treat `EAGAIN`, `EWOULDBLOCK`, or `EIO` as fatal: INDIGO drivers probe by opening and closing the pseudo-terminal slave repeatedly during baud-rate and model detection, so the read loop has to keep running until the process is signalled. Copy the read loop from an existing simulator (`rotator_falcon2_simulator.c`, `aux_wcv4ec_simulator.c`) rather than reimplementing it.
+
+## Build and Test Integration
+
+A refactored simulator is not complete until it is wired into the automated test build. The simulator source lives beside the `.ino` under `indigo_drivers/`, but its build target, its integration test, and the `Makefile` targets that link them live in `indigo_test/`. See the "Wiring a Host-Side Serial Simulator Into the Test Build" and "Serial Simulator Integration Test Skeleton" sections of `indigo_test/AGENTS.md` for the exact four `Makefile` edits (including when `-pthread` is required) and the integration-test template. After adding the test, register it in the implemented-simulators table below, remove the matching row from the candidates table, and update `indigo_test/CHANGES.md`.
+
 ## Simulators Fulfilling This Contract
 
 The following simulators implement this contract. This list should grow as more host-side serial simulators are refactored.
@@ -361,6 +367,12 @@ The following simulators implement this contract. This list should grow as more 
 | `indigo_drivers/aux_wbplusv3/aux_wbplusv3_simulator/aux_wbplusv3_simulator.c` | AUX | Implements the split runtime/state/protocol structure for WandererBox Plus V3, `--headless`, `--ready-file`, `--trace`, `--model`, and `--firmware`. |
 | `indigo_drivers/aux_wbprov3/aux_wbprov3_simulator/aux_wbprov3_simulator.c` | AUX | Implements the split runtime/state/protocol structure for WandererBox Pro V3, `--headless`, `--ready-file`, `--trace`, `--model`, and `--firmware`. |
 | `indigo_drivers/aux_wcv4ec/aux_wcv4ec_simulator/aux_wcv4ec_simulator.c` | AUX | Implements the split runtime/state/protocol structure for WandererCover V4-EC, `--headless`, `--ready-file`, `--trace`, `--model`, and `--firmware`. |
+| `indigo_drivers/aux_arteskyflat/aux_arteskyflat_simulator/aux_arteskyflat_simulator.c` | AUX | Implements the split runtime/state/protocol structure for the Artesky Flat Box, `--headless`, `--ready-file`, `--trace`, and `--device-id`. |
+| `indigo_drivers/aux_astromechanics/aux_astromechanics_simulator/aux_astromechanics_simulator.c` | AUX | Implements the split runtime/state/protocol structure for the ASTROMECHANICS LPM sky quality meter, `--headless`, `--ready-file`, `--trace`, and `--sky-brightness`. |
+| `indigo_drivers/aux_fbc/aux_fbc_simulator/aux_fbc_simulator.c` | AUX | Implements the split runtime/state/protocol structure for the Lacerta FBC, including the `: I #`/`: P #`/`: V #` handshake with `D -` debug-line skipping, `--headless`, `--ready-file`, `--trace`, and `--firmware`. |
+| `indigo_drivers/aux_flatmaster/aux_flatmaster_simulator/aux_flatmaster_simulator.c` | AUX | Implements the split runtime/state/protocol structure for the Pegasus Astro FlatMaster, including the `#`/`V` handshake and clamped `L:`/`E:` state, `--headless`, `--ready-file`, `--trace`, and `--firmware`. |
+| `indigo_drivers/aux_flipflat/aux_flipflat_simulator/aux_flipflat_simulator.c` | AUX | Implements the split runtime/state/protocol structure for the Optec/Alnitak Flip-Flat, including the `>`/`*` command framing, monotonic-clock cover motion timing reported through `>SOOO` status, `--headless`, `--ready-file`, `--trace`, `--device-id`, and `--firmware`. |
+| `indigo_drivers/ao_sx/ao_sx_simulator/ao_sx_simulator.c` | AO | Implements the split runtime/state/protocol structure for the StarlightXpress AO. Character-framed binary protocol (single-letter commands, fixed-length byte replies) rather than line based; supports the `X`/`V` handshake, `G` tip/tilt pulses, `M` guider pulses, `K`/`R` reset, `L` limit status, `--headless`, `--ready-file`, `--trace`, `--firmware`, and `--limit`. |
 | `indigo_drivers/mount_synscan/mount_synscan_simulator/mount_synscan_simulator.c` | Mount | Implements the split runtime/state/protocol structure for SynScan/EQ8, `--headless`, `--ready-file`, `--trace`, and `--pcdirect`. |
 | `indigo_drivers/wheel_quantum/wheel_quantum_simulator/wheel_quantum_simulator.c` | Wheel | Implements the split runtime/state/protocol structure for Brightstar Quantum filter wheels, `--headless`, `--ready-file`, `--trace`, `--serial`, and `--slots`. |
 | `indigo_drivers/wheel_optec/wheel_optec_simulator/wheel_optec_simulator.c` | Wheel | Implements the split runtime/state/protocol structure for Optec filter wheels, `--headless`, `--ready-file`, `--trace`, `--goto-error`, and `--slots`. |
@@ -376,12 +388,6 @@ When a candidate is refactored into a host-side pseudo-terminal simulator, add t
 
 | Simulator | Device class | Notes |
 | --- | --- | --- |
-| `indigo_drivers/ao_sx/ao_sx_simulator/ao_sx_simulator.ino` | AO | Arduino sketch; candidate for future host-side serial simulator refactor. |
-| `indigo_drivers/aux_arteskyflat/aux_arteskyflat_simulator/aux_arteskyflat_simulator.ino` | AUX | Arduino sketch; candidate for future host-side serial simulator refactor. |
-| `indigo_drivers/aux_astromechanics/aux_astromechanics_simulator/aux_astromechanics_simulator.ino` | AUX | Arduino sketch; candidate for future host-side serial simulator refactor. |
-| `indigo_drivers/aux_fbc/aux_fbc_simulator/aux_fbc_simulator.ino` | AUX | Arduino sketch; candidate for future host-side serial simulator refactor. |
-| `indigo_drivers/aux_flatmaster/aux_flatmaster_simulator/aux_flatmaster_simulator.ino` | AUX | Arduino sketch; candidate for future host-side serial simulator refactor. |
-| `indigo_drivers/aux_flipflat/aux_flipflat_simulator/aux_flipflat_simulator.ino` | AUX | Arduino sketch; candidate for future host-side serial simulator refactor. |
 | `indigo_drivers/aux_ppb/aux_ppb_simulator/aux_ppb_simulator.ino` | AUX | Arduino sketch; candidate for future host-side serial simulator refactor. |
 | `indigo_drivers/aux_skyalert/aux_skyalert_simulator/aux_skyalert_simulator.ino` | AUX | Arduino sketch; candidate for future host-side serial simulator refactor. |
 | `indigo_drivers/aux_sqm/aux_sqm_simulator/aux_sqm_simulator.ino` | AUX | Arduino sketch; candidate for future host-side serial simulator refactor. |

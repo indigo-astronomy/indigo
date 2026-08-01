@@ -134,53 +134,112 @@ static void stop_external_serial_simulator(external_serial_simulator *simulator)
 	memset(simulator, 0, sizeof(*simulator));
 }
 
-static bool start_serial_driver(const simulator_driver_case *driver_case, const char *port) {
+// Bring the driver online (bus start, client attach, driver INIT) without
+// connecting any device. This is the first step for multi-device drivers, so
+// each exposed logical device can then be connected in turn over one
+// simulator. Single-device tests use the start_serial_driver() wrapper below.
+static bool bring_up_serial_driver(const simulator_driver_case *driver_case) {
 	reset_simulator_context(driver_case);
 
 	if (indigo_start() != INDIGO_OK) {
 		return false;
 	}
 	if (indigo_attach_client(&simulator_test_client) != INDIGO_OK) {
-		goto cleanup;
+		indigo_stop();
+		return false;
 	}
 	if (driver_case->entry(INDIGO_DRIVER_INIT, NULL) != INDIGO_OK) {
-		goto cleanup;
-	}
-	enumerate_simulator_device();
-	if (!has_defined_property(DEVICE_PORT_PROPERTY_NAME) || !has_defined_property(CONNECTION_PROPERTY_NAME)) {
-		goto cleanup;
-	}
-	if (indigo_change_text_property_1_raw(&simulator_test_client, driver_case->device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, port) != INDIGO_OK) {
-		goto cleanup;
-	}
-	if (!wait_for_property_state(DEVICE_PORT_PROPERTY_NAME, INDIGO_OK_STATE)) {
-		goto cleanup;
-	}
-	if (indigo_change_switch_property_1(&simulator_test_client, driver_case->device_name, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true) != INDIGO_OK) {
-		goto cleanup;
-	}
-	if (!wait_for_simulator_connection_state(true)) {
-		goto cleanup;
+		driver_case->entry(INDIGO_DRIVER_SHUTDOWN, NULL);
+		indigo_detach_client(&simulator_test_client);
+		indigo_stop();
+		release_cached_properties();
+		return false;
 	}
 	return true;
-
-cleanup:
-	if (driver_case->entry != NULL) {
-		driver_case->entry(INDIGO_DRIVER_SHUTDOWN, NULL);
-	}
-	indigo_detach_client(&simulator_test_client);
-	indigo_stop();
-	release_cached_properties();
-	return false;
 }
 
-static void stop_serial_driver(const simulator_driver_case *driver_case) {
-	indigo_change_switch_property_1(&simulator_test_client, driver_case->device_name, CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME, true);
+// Retarget the compliance context to one logical device of an already running
+// driver and connect it. For a secondary device that shares its master's
+// connection, connect the master/primary device first and pass port as NULL
+// when the device does not expose its own DEVICE_PORT.
+static bool connect_serial_device(const simulator_driver_case *device_case, const char *port) {
+	if (context.driver_case != device_case) {
+		reset_simulator_context(device_case);
+	}
+	enumerate_simulator_device();
+	if (!has_defined_property(CONNECTION_PROPERTY_NAME)) {
+		return false;
+	}
+	if (port != NULL && has_defined_property(DEVICE_PORT_PROPERTY_NAME)) {
+		if (indigo_change_text_property_1_raw(&simulator_test_client, device_case->device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, port) != INDIGO_OK) {
+			return false;
+		}
+		if (!wait_for_property_state(DEVICE_PORT_PROPERTY_NAME, INDIGO_OK_STATE)) {
+			return false;
+		}
+	}
+	if (indigo_change_switch_property_1(&simulator_test_client, device_case->device_name, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true) != INDIGO_OK) {
+		return false;
+	}
+	return wait_for_simulator_connection_state(true);
+}
+
+// Disconnect one logical device, leaving the driver running so other devices
+// can still be exercised or the driver can be torn down afterwards. A
+// redundant disconnect is ignored by the driver, so this is safe to call in
+// cleanup for devices that may never have connected.
+static void disconnect_serial_device(const simulator_driver_case *device_case) {
+	if (context.driver_case != device_case) {
+		reset_simulator_context(device_case);
+	}
+	indigo_change_switch_property_1(&simulator_test_client, device_case->device_name, CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME, true);
 	wait_for_simulator_connection_state(false);
+}
+
+// Tear the driver down (driver SHUTDOWN, client detach, bus stop). Every device
+// exposed by the driver must already be disconnected.
+static void tear_down_serial_driver(const simulator_driver_case *driver_case) {
 	driver_case->entry(INDIGO_DRIVER_SHUTDOWN, NULL);
 	indigo_detach_client(&simulator_test_client);
 	indigo_stop();
 	release_cached_properties();
+}
+
+// Single-device convenience wrappers, used by the majority of simulator tests.
+static bool start_serial_driver(const simulator_driver_case *driver_case, const char *port) {
+	if (!bring_up_serial_driver(driver_case)) {
+		return false;
+	}
+	if (!connect_serial_device(driver_case, port)) {
+		tear_down_serial_driver(driver_case);
+		return false;
+	}
+	return true;
+}
+
+static void stop_serial_driver(const simulator_driver_case *driver_case) {
+	disconnect_serial_device(driver_case);
+	tear_down_serial_driver(driver_case);
+}
+
+// Start the driver and connect a secondary device that shares its master's
+// connection (its own DEVICE_PORT is hidden, so the master device's DEVICE_PORT
+// is set to the simulator port before connecting). Each device of a
+// multi-device driver is exercised in its own driver lifecycle, so pair this
+// with stop_serial_driver(device_case) exactly like start_serial_driver.
+static bool start_shared_serial_device(const simulator_driver_case *device_case, const char *master_device_name, const char *port) {
+	if (!bring_up_serial_driver(device_case)) {
+		return false;
+	}
+	if (indigo_change_text_property_1_raw(&simulator_test_client, master_device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, port) != INDIGO_OK) {
+		tear_down_serial_driver(device_case);
+		return false;
+	}
+	if (!connect_serial_device(device_case, NULL)) {
+		tear_down_serial_driver(device_case);
+		return false;
+	}
+	return true;
 }
 
 static void assert_serial_focuser_class_property_completeness(void) {

@@ -22,20 +22,26 @@
 #define MOUNT_AUTOHOME_SETTINGS_PROPERTY_NAME      "MOUNT_AUTOHOME_SETTINGS"
 #define MOUNT_AUTOHOME_DEC_OFFSET_ITEM_NAME        "DEC_OFFSET"
 
+// The driver exposes a mount device and a guider device that share one
+// connection (the guider reuses the mount/master connection). Each logical
+// device is exercised in its own driver lifecycle; the guider is connected
+// with the master (mount) device's DEVICE_PORT pointed at the simulator.
 static const simulator_driver_case synscan_mount = {
 	"SynScan EQ8 Mount",
 	"indigo_mount_synscan",
 	MOUNT_SYNSCAN_NAME,
 	indigo_mount_synscan,
 	false,
-	NULL,
-	0,
-	NULL,
-	0,
-	NULL,
-	0,
-	NULL,
-	0
+	NULL, 0, NULL, 0, NULL, 0, NULL, 0
+};
+
+static const simulator_driver_case synscan_guider = {
+	"SynScan EQ8 Mount (guider)",
+	"indigo_mount_synscan",
+	MOUNT_SYNSCAN_GUIDER_NAME,
+	indigo_mount_synscan,
+	false,
+	NULL, 0, NULL, 0, NULL, 0, NULL, 0
 };
 
 static void assert_serial_mount_class_property_completeness(void) {
@@ -134,9 +140,40 @@ cleanup:
 	stop_external_serial_simulator(&simulator);
 }
 
+static void synscan_guider_passes_serial_compliance_checks(void) {
+	static const char *guide_pulse_dec_items[] = {
+		GUIDER_GUIDE_NORTH_ITEM_NAME,
+		GUIDER_GUIDE_SOUTH_ITEM_NAME
+	};
+	static const char *guide_pulse_ra_items[] = {
+		GUIDER_GUIDE_EAST_ITEM_NAME,
+		GUIDER_GUIDE_WEST_ITEM_NAME
+	};
+	external_serial_simulator simulator = { 0 };
+
+	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_SYNSCAN_SIMULATOR_EXECUTABLE));
+	SERIAL_CHECK_TRUE(start_shared_serial_device(&synscan_guider, synscan_mount.device_name, simulator.port));
+	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
+
+	assert_device_interface(INDIGO_INTERFACE_GUIDER);
+	assert_property_has_items(GUIDER_GUIDE_DEC_PROPERTY_NAME, guide_pulse_dec_items, ARRAY_SIZE(guide_pulse_dec_items));
+	assert_property_has_items(GUIDER_GUIDE_RA_PROPERTY_NAME, guide_pulse_ra_items, ARRAY_SIZE(guide_pulse_ra_items));
+	assert_property_has_item(GUIDER_RATE_PROPERTY_NAME, GUIDER_RATE_ITEM_NAME);
+
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, synscan_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 100));
+	SERIAL_CHECK_TRUE(wait_for_property_not_busy(GUIDER_GUIDE_DEC_PROPERTY_NAME));
+
+cleanup:
+	if (context.connected) {
+		stop_serial_driver(&synscan_guider);
+	}
+	stop_external_serial_simulator(&simulator);
+}
+
 int main(void) {
 	const indigo_test_case tests[] = {
-		{ "synscan_mount_passes_serial_compliance_checks", synscan_mount_passes_serial_compliance_checks }
+		{ "synscan_mount_passes_serial_compliance_checks", synscan_mount_passes_serial_compliance_checks },
+		{ "synscan_guider_passes_serial_compliance_checks", synscan_guider_passes_serial_compliance_checks }
 	};
 	return indigo_run_tests("SynScan EQ8 serial simulator integration tests", tests, ARRAY_SIZE(tests));
 }
