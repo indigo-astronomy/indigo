@@ -78,6 +78,7 @@ static bool parse_args(int argc, char *argv[]) {
 	for (int i = 1; i < argc; i++) {
 		if (!strcmp(argv[i], "--headless")) {
 			options.headless = true;
+			options.trace = false;
 		} else if (!strcmp(argv[i], "--trace")) {
 			options.trace = true;
 		} else if (!strcmp(argv[i], "--no-trace")) {
