@@ -1828,11 +1828,10 @@ static bool guide(indigo_device *device) {
 			} else if (AGENT_GUIDER_CORRECTION_MODE_RA_LINEAR_TREND_ITEM->sw.value) {
 				correction_ra = indigo_guider_linear_trend_response(AGENT_GUIDER_SETTINGS_LINEAR_TREND_AGG_RA_ITEM->number.value / 100, min_error, drift_ra, &DEVICE_PRIVATE_DATA->trend_ra);
 			} else if (AGENT_GUIDER_CORRECTION_MODE_RA_PPEC_ITEM->sw.value && DEVICE_PRIVATE_DATA->ppec_ra != NULL) {
-				/* Predictive PEC (Gaussian Process). It has its own reactive gain;
-				   min error is the shared min move. With period 0 the worm period
-				   is always estimated online; with a fixed period > 0 the estimate
-				   is still refined (allowed to drift) unless the fixed-period item
-				   is set, in which case the period is held constant. */
+				/* With period 0 the worm period is estimated online from the default;
+				   with a fixed period > 0 the estimate is still refined (allowed to drift)
+				   unless the fixed-period item is set, in which case it is held constant.
+				 */
 				double period = AGENT_GUIDER_SETTINGS_PPEC_PERIOD_RA_ITEM->number.value;
 				bool period_fixed = AGENT_GUIDER_SETTINGS_PPEC_PERIOD_FIXED_RA_ITEM->number.value > 0.5;
 				indigo_gp_guider_set_parameters(

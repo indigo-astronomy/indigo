@@ -376,6 +376,7 @@ struct indigo_gp_guider {
 	int points_for_approximation;
 	bool compute_period;
 	double learning_rate;
+	double commanded_period; /* last period commanded via set_parameters; NaN forces a re-pin */
 
 	/* GP log-space hyperparameters (length 8) */
 	double log_hyper[NUM_HYPERPARAMETERS + 1];
@@ -1261,6 +1262,10 @@ static void apply_defaults(indigo_gp_guider *g) {
 	g->points_for_approximation = DEFAULT_POINTS_FOR_APPROXIMATION;
 	g->compute_period = DEFAULT_COMPUTE_PERIOD;
 	g->learning_rate = DEFAULT_LEARNING_RATE;
+	/* NaN so the next set_parameters() re-pins the caller's commanded period.
+	   apply_defaults() runs on create and on reset_model(), which is exactly
+	   when the period must be re-applied after being returned to the default. */
+	g->commanded_period = NAN;
 
 	double natural[NUM_HYPERPARAMETERS];
 	natural[SE0K_LENGTH_SCALE] = DEFAULT_LS_SE0;
@@ -1413,10 +1418,16 @@ void indigo_gp_guider_set_parameters(indigo_gp_guider *g, double control_gain, d
 	g->prediction_gain = prediction_gain;
 	g->min_move = min_move;
 	g->compute_period = compute_period;
-	if (period_length > 0.0) {
+	/* Seed the worm period only when the commanded value changes. Calling again
+	   with the same value leaves the period free to drift (via the FFT estimator)
+	   instead of being re-pinned to the seed every frame. period_length <= 0
+	   commands the built-in default period. commanded_period is NaN after create
+	   or reset_model, so the first call always re-pins. */
+	if (period_length != g->commanded_period) {
+		g->commanded_period = period_length;
 		double natural[NUM_HYPERPARAMETERS];
 		get_gp_hyperparameters(g, natural);
-		natural[PK_PERIOD_LENGTH] = period_length;
+		natural[PK_PERIOD_LENGTH] = (period_length > 0.0) ? period_length : DEFAULT_PERIOD_PK;
 		set_gp_hyperparameters(g, natural);
 	}
 }

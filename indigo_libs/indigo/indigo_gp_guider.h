@@ -98,8 +98,13 @@ INDIGO_EXTERN void indigo_gp_guider_session_stop(indigo_gp_guider *guider);
      prediction_gain - amount of GP prediction blended in, 0..1 (default 0.5)
      min_move        - minimum drift magnitude (pixels) to act on (default 0.2)
      compute_period  - if true the worm period is estimated online via FFT
-     period_length   - worm period length in seconds; <= 0 keeps the current
-                       value (default 200). */
+     period_length   - commanded worm period in seconds. It is pinned only when
+                       it differs from the previously commanded value; calling
+                       again with the same value lets the period drift instead of
+                       re-pinning it (so a caller may safely re-send parameters
+                       every frame). <= 0 commands the built-in default period. A
+                       create or reset_model forces the next call to re-apply the
+                       commanded value. */
 INDIGO_EXTERN void indigo_gp_guider_set_parameters(indigo_gp_guider *guider, double control_gain, double prediction_gain, double min_move, bool compute_period, double period_length);
 
 /* Current worm period length estimate in seconds. */
