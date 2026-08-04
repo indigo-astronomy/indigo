@@ -2367,7 +2367,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_PPEC_REACTIVE_GAIN_RA_ITEM, AGENT_GUIDER_SETTINGS_PPEC_REACTIVE_GAIN_RA_ITEM_NAME, "RA PPEC reactive gain (%)", 0, 100, 5, 60);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_PPEC_PRED_GAIN_RA_ITEM, AGENT_GUIDER_SETTINGS_PPEC_PRED_GAIN_RA_ITEM_NAME, "RA PPEC predictive gain (%)", 0, 100, 5, 50);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_PPEC_PERIOD_RA_ITEM, AGENT_GUIDER_SETTINGS_PPEC_PERIOD_RA_ITEM_NAME, "RA PPEC period (s, 0=auto)", 0, 2000, 10, 0);
-		indigo_init_number_item(AGENT_GUIDER_SETTINGS_PPEC_PERIOD_FIXED_RA_ITEM, AGENT_GUIDER_SETTINGS_PPEC_PERIOD_FIXED_RA_ITEM_NAME, "RA PPEC fixed period, no drift (0=no, 1=yes)", 0, 1, 1, 0);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_PPEC_PERIOD_FIXED_RA_ITEM, AGENT_GUIDER_SETTINGS_PPEC_PERIOD_FIXED_RA_ITEM_NAME, "RA PPEC fixed period (0=auto-adjust, 1=fixed)", 0, 1, 1, 0);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_PPEC_RETAIN_MODEL_RA_ITEM, AGENT_GUIDER_SETTINGS_PPEC_RETAIN_MODEL_RA_ITEM_NAME, "RA PPEC retain model (% of period)", 0, 80, 5, PPEC_RETAIN_MODEL_PCT);
 		// -------------------------------------------------------------------------------- FLIP_REVERSE_DEC
 		AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY_NAME, "Agent", "Reverse Dec speed after meridian flip", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
