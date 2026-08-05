@@ -35,7 +35,7 @@ Generated build output, object files, generated `.data` resources, and bundled m
 | SERVER-005 | Medium | `indigo_server.c:1852`, `indigo_server.c:1855`, `indigo_server.c:1863`, `indigo_server.c:1865`, `indigo_server.c:1866`, `indigo_server.c:1874`, `indigo_server.c:1876` | The POSIX signal handler performed non-async-signal-safe work, including logging, signal reconfiguration, and `indigo_server_shutdown()`. If a signal arrived while library locks or allocator state were held, shutdown could deadlock or corrupt state. Resolved: the managed signals are now blocked process-wide and consumed synchronously by dedicated `sigwait()` threads that run in ordinary thread context. See finding summary below. | Closed |
 | SERVER-006 | Medium | `resource/ctrl.html:83`, `resource/mng.html:114`, `resource/guider.html:154`, `resource/imager.html:210`, `resource/mount.html:274`, `resource/script.html:112`, `resource/components.js:592`, `resource/components.js:597`, `resource/imager.html:254`, `resource/imager.html:257`, `resource/imager.html:272`, `resource/imager.html:275`, `resource/imager.html:283`, `resource/imager.html:286` | Web pages hard-coded `ws://` and `http://` when connecting to the server and rendering BLOB/image URLs, breaking under HTTPS or a TLS reverse proxy because browsers block mixed-content WebSockets and images. Resolved: WebSocket and image/BLOB URLs are now built from `window.location.protocol`/`host`, and absolute-URL detection accepts `https://`. See finding summary below. | Closed |
 | SERVER-007 | Medium | `resource/components.js:141`, `resource/components.js:147`, `resource/components.js:157`, `resource/mount.html:66`, `resource/mount.html:67`, `resource/mount.html:626`, `resource/mount.html:632` | The sexagesimal number editor checked `self.ident` instead of `this.ident`. For RA/DEC fields with `ident` set, edits should stage `item.newValue` until Slew/Sync calls `setCoordinates()`, but the code sent `MOUNT_EQUATORIAL_COORDINATES` immediately. Resolved: the `change()` handler now tests `this.ident`, so `ident`-bearing edits stage locally. See finding summary below. | Closed |
-| SERVER-008 | Low | `resource/components.js:745`, `resource/components.js:750`, `resource/components.js:776`, `resource/components.js:786`, `resource/components.js:811`, `resource/components.js:813` | The WiFi setup component stores mode in `self.mode`, which resolves to the global window object in browsers, instead of component state. It works only because reads and writes share the same accidental global; multiple instances or future strict-mode/module loading would break. Define `data()` as a function returning `{ mode: ... }` and use `this.mode` consistently. | Open |
+| SERVER-008 | Low | `resource/components.js:745`, `resource/components.js:750`, `resource/components.js:776`, `resource/components.js:786`, `resource/components.js:811`, `resource/components.js:813` | The WiFi setup component stored mode in `self.mode`, which resolves to the global window object in browsers, instead of component state. It worked only because reads and writes shared the same accidental global; multiple instances or future strict-mode/module loading would break. Resolved: `data()` is now a function returning `{ mode: "" }` and all accesses use `this.mode`. See finding summary below. | Closed |
 
 ## Finding Summaries
 
@@ -285,6 +285,33 @@ behavior is unchanged. No other code changed — the staging consumer (`setCoord
 Verification note: client-side JS not exercised by the build; should be confirmed in a browser
 (edit RA and DEC on the mount panel, verify no slew occurs until Slew/Sync is pressed, and that
 both axes are then sent together).
+
+### SERVER-008 (Closed)
+
+The `indigo-wifi-setup` Vue component tracked the selected mode (`"AP"` vs `"INFRA"`) in
+`self.mode` across `onChange()`, `isAP()`, `isInfra()`, and `set()`. In a browser `self` is the
+global `window`, so this read and wrote `window.mode` — a global, not component state. It
+happened to function only because every access shared that same accidental global; a second
+instance of the component, or loading the script under strict mode / as a module, would break
+it. The component also declared `data` as a plain object (`data: { mode: String }`), which is
+invalid for a Vue component (`data` must be a function so each instance gets its own state) and
+additionally set the initial value to the `String` constructor rather than a string.
+
+Fix (`components.js`):
+- Changed `data` to a function returning fresh per-instance state: `data: function() { return
+  { mode: "" }; }`.
+- Replaced every `self.mode` with `this.mode`, so the mode is read from and written to the
+  component instance's reactive state.
+
+Behavior is unchanged for the current single-instance usage, but the mode is now proper
+per-instance component state rather than a shared global. `mode` is used only in event-handler
+and comparison logic (not rendered in the template), so making it reactive introduces no
+render-dependency loop even though `isAP()`/`isInfra()` assign it while being called from the
+template.
+
+Verification note: client-side JS not exercised by the build; should be confirmed in a browser
+(open the RPI Wi-Fi setup, switch between AP and INFRA, and confirm the correct property is sent
+on save).
 
 ## Review Focus
 
