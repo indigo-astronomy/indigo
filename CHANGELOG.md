@@ -1,6 +1,13 @@
 # Changelog
 
 All notable changes to INDIGO framework will be documented in this file.
+
+# [3.0-3] - 05 Aug Thu 2026
+## Driver changes:
+- indigo_agent_mount:
+	- fix AGENT_MOUNT_DISPLAY_COORDINATES initial state
+
+
 # [3.0-2] - 04 Aug Tue 2026
 ## Overall:
 - indigo_docs:
@@ -56,7 +63,7 @@ All notable changes to INDIGO framework will be documented in this file.
 ## Overall:
 - INDIGO API version changed to 3.0
 - Driver code generator added
-- Windows support added (windows version will be released later) 
+- Windows support added (windows version will be released later)
 - New portable I/O abstraction layer replacing platform-specific socket/file I/O
 - New async queue support for better background tasks handling
 - Build process handles INDIGO 3.0 versioning and packaging
@@ -64,7 +71,7 @@ All notable changes to INDIGO framework will be documented in this file.
 - PPEC (Predictive Periodic Error Correction) support added to guider agent
 - Mount features and mount state properties added to mount agent
 - %nT, %J, %h and %d placeholders added to file name templates
-- Code review by AI for better code quality 
+- Code review by AI for better code quality
 
 ## Driver generator:
 - DRIVER_GENERATOR_MIGRATION.md documentation created
