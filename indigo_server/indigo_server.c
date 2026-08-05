@@ -502,7 +502,8 @@ static bool use_web_apps = false;
 static bool use_rpi_management = false;
 #endif /* RPI_MANAGEMENT */
 
-static char const *server_argv[128];
+#define SERVER_ARGV_SIZE 128
+static char const *server_argv[SERVER_ARGV_SIZE];
 static int server_argc = 1;
 
 static indigo_result attach(indigo_device *device);
@@ -760,6 +761,42 @@ static void *indigo_add_constellations_lines_json_resource() {
 #endif
 
 #ifdef RPI_MANAGEMENT
+// Quote arg as a single POSIX shell token so client-supplied property text (SSID, password,
+// country code, host time) cannot inject shell metacharacters into the popen() command string.
+// The token is wrapped in single quotes and every embedded single quote is rewritten as '\''.
+// A worst-case value expands by 4x, so callers must size output as INDIGO_VALUE_SIZE * 4 + 3.
+// On overflow the token is truncated but stays balanced, so the command fails rather than injects.
+static char *shell_escape(const char *input, char *output, size_t output_size) {
+	size_t j = 0;
+	if (output_size == 0) {
+		return output;
+	}
+	if (j < output_size - 1) {
+		output[j++] = '\'';
+	}
+	for (const char *p = input; *p; p++) {
+		if (*p == '\'') {
+			if (j + 4 > output_size - 1) {
+				break;
+			}
+			output[j++] = '\'';
+			output[j++] = '\\';
+			output[j++] = '\'';
+			output[j++] = '\'';
+		} else {
+			if (j >= output_size - 1) {
+				break;
+			}
+			output[j++] = *p;
+		}
+	}
+	if (j < output_size - 1) {
+		output[j++] = '\'';
+	}
+	output[j] = 0;
+	return output;
+}
+
 static indigo_result execute_command(indigo_device *device, indigo_property *property, char *command, ...) {
 	char buffer[1024];
 	va_list args;
@@ -1359,19 +1396,22 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 	} else if (indigo_property_match(SERVER_WIFI_COUNTRY_CODE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- WIFI_COUNTRY_CODE
 		indigo_property_copy_values(SERVER_WIFI_COUNTRY_CODE_PROPERTY, property, false);
-		execute_command(device, SERVER_WIFI_COUNTRY_CODE_PROPERTY, "s_rpi_ctrl.sh --set-wifi-country-code \"%s\"", SERVER_WIFI_COUNTRY_CODE_ITEM->text.value);
+		char country_code[INDIGO_VALUE_SIZE * 4 + 3];
+		execute_command(device, SERVER_WIFI_COUNTRY_CODE_PROPERTY, "s_rpi_ctrl.sh --set-wifi-country-code %s", shell_escape(SERVER_WIFI_COUNTRY_CODE_ITEM->text.value, country_code, sizeof(country_code)));
 		update_wifi_setings(device);
 		return INDIGO_OK;
 	} else if (indigo_property_match(SERVER_WIFI_AP_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- WIFI_AP
 		indigo_property_copy_values(SERVER_WIFI_AP_PROPERTY, property, false);
-		execute_command(device, SERVER_WIFI_AP_PROPERTY, "s_rpi_ctrl.sh --set-wifi-server \"%s\" \"%s\"", SERVER_WIFI_AP_SSID_ITEM->text.value, SERVER_WIFI_AP_PASSWORD_ITEM->text.value);
+		char ap_ssid[INDIGO_VALUE_SIZE * 4 + 3], ap_password[INDIGO_VALUE_SIZE * 4 + 3];
+		execute_command(device, SERVER_WIFI_AP_PROPERTY, "s_rpi_ctrl.sh --set-wifi-server %s %s", shell_escape(SERVER_WIFI_AP_SSID_ITEM->text.value, ap_ssid, sizeof(ap_ssid)), shell_escape(SERVER_WIFI_AP_PASSWORD_ITEM->text.value, ap_password, sizeof(ap_password)));
 		update_wifi_setings(device);
 		return INDIGO_OK;
 	} else if (indigo_property_match(SERVER_WIFI_INFRASTRUCTURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- WIFI_INFRASTRUCTURE
 		indigo_property_copy_values(SERVER_WIFI_INFRASTRUCTURE_PROPERTY, property, false);
-		execute_command(device, SERVER_WIFI_INFRASTRUCTURE_PROPERTY, "s_rpi_ctrl.sh --set-wifi-client \"%s\" \"%s\"", SERVER_WIFI_INFRASTRUCTURE_SSID_ITEM->text.value, SERVER_WIFI_INFRASTRUCTURE_PASSWORD_ITEM->text.value);
+		char infra_ssid[INDIGO_VALUE_SIZE * 4 + 3], infra_password[INDIGO_VALUE_SIZE * 4 + 3];
+		execute_command(device, SERVER_WIFI_INFRASTRUCTURE_PROPERTY, "s_rpi_ctrl.sh --set-wifi-client %s %s", shell_escape(SERVER_WIFI_INFRASTRUCTURE_SSID_ITEM->text.value, infra_ssid, sizeof(infra_ssid)), shell_escape(SERVER_WIFI_INFRASTRUCTURE_PASSWORD_ITEM->text.value, infra_password, sizeof(infra_password)));
 		update_wifi_setings(device);
 		return INDIGO_OK;
 	} else if (indigo_property_match(SERVER_WIFI_CHANNEL_PROPERTY, property)) {
@@ -1399,7 +1439,8 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 	} else if (indigo_property_match(SERVER_HOST_TIME_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- HOST_TIME
 		indigo_property_copy_values(SERVER_HOST_TIME_PROPERTY, property, false);
-		execute_command(device, SERVER_HOST_TIME_PROPERTY, "s_rpi_ctrl.sh --set-date \"%s\"", SERVER_HOST_TIME_ITEM->text.value);
+		char host_time[INDIGO_VALUE_SIZE * 4 + 3];
+		execute_command(device, SERVER_HOST_TIME_PROPERTY, "s_rpi_ctrl.sh --set-date %s", shell_escape(SERVER_HOST_TIME_ITEM->text.value, host_time, sizeof(host_time)));
 		if (SERVER_HOST_TIME_PROPERTY->state == INDIGO_OK_STATE) {
 			indigo_delete_property(device, SERVER_HOST_TIME_PROPERTY, NULL);
 			SERVER_HOST_TIME_PROPERTY->hidden = true;
@@ -1608,7 +1649,7 @@ static void server_main() {
 			i++;
 		} else if (!strcmp(server_argv[i], "-b-") || !strcmp(server_argv[i], "--disable-bonjour")) {
 			indigo_use_bonjour = false;
-		} else if (!strcmp(server_argv[i], "-b") || !strcmp(server_argv[i], "--bonjour")) {
+		} else if ((!strcmp(server_argv[i], "-b") || !strcmp(server_argv[i], "--bonjour")) && i < server_argc - 1) {
 			INDIGO_COPY_NAME(indigo_local_service_name, server_argv[i + 1]);
 			i++;
 		} else if (!strcmp(server_argv[i], "-c-") || !strcmp(server_argv[i], "--disable-control-panel")) {
@@ -1929,8 +1970,11 @@ int main(int argc, const char * argv[]) {
 #endif
 						 );
 			return 0;
-		} else {
+		} else if (server_argc < SERVER_ARGV_SIZE) {
 			server_argv[server_argc++] = argv[i];
+		} else {
+			fprintf(stderr, "Too many arguments, at most %d are supported\n", SERVER_ARGV_SIZE - 1);
+			return 1;
 		}
 	}
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
