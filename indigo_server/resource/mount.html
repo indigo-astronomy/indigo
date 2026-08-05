@@ -271,7 +271,7 @@
 	<script src="celestial.min.js"></script>
 	<script language="javascript" type="text/javascript">
 
-		indigoURL = new URL("ws://" + window.location.hostname+":"+window.location.port);
+		indigoURL = new URL((window.location.protocol == "https:" ? "wss://" : "ws://") + window.location.host);
 
 		//indigoURL = new URL("ws://localhost:7624");
 		var targetExposureTime = 0;
