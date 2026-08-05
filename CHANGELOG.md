@@ -2,12 +2,68 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [3.0-3] - 05 Aug Thu 2026
+## Driver changes:
+- indigo_agent_mount:
+	- fix AGENT_MOUNT_DISPLAY_COORDINATES initial state
+
+
+# [3.0-2] - 04 Aug Tue 2026
+## Overall:
+- indigo_docs:
+	- DRIVER_DEVELOPMENT_BASICS updated with INDIGO 3 API
+	- HOME.md - better structure
+	- CLIENT_DEVELOPMENT_BASICS.md update for 3.0 API
+	- add GUIDING_CORRECTION_RESPONSE_TUNING.md
+	- add INDIGO_SCRIPT_GUIDE.md
+	- add README.md that leads to HOME.md
+
+-  Makefile:
+	- can now build debs for individual platforms
+
+- scripts:
+	- rpi_ctrl_v2.sh: fix deb versioning
+
+- indigo_platesolver:
+	- fix regression related to meridian flip
+
+## Driver changes:
+- indigo_agent_scripting:
+	- Sequencer.js - whitespace fixes
+
+- indigo_agent_mount:
+	- fix display coordinates proprrty state, thus fixing regression in meridian flip
+	- more regressions fixed related to the mount state lights
+
+- indigo_ccd_askar:
+	- add motor mode support
+	- better handling of wifi devices
+
+- indigo_agent_guider:
+	- log more data to the guide log
+	- add lag-1 stats for guiding repsonse
+	- PPEC: indrease max dither frames to more resonable 60 frames
+	- PPEC: allow period to drift
+	- PPEC: more robust period detection when drift is allowd that prevents locking on harmonics
+	- add short term RMSE over the last 200 frames
+
+- indigo_mount_ioptron:
+	- set tracking rate on proeprrty change not only on goto
+	- send warning to the user if tacking can not be set, but do not fail the GOTO
+	- SmartEQ handled specifically within 8407 protocol
+	- new product codes added
+	- Mount compatibility fixes
+
+- indigo_mount_synscan:
+	- update README.md
+
+
 # [3.0-1] - 09 Jul Tue 2026
 
 ## Overall:
 - INDIGO API version changed to 3.0
 - Driver code generator added
-- Windows support added (windows version will be released later) 
+- Windows support added (windows version will be released later)
 - New portable I/O abstraction layer replacing platform-specific socket/file I/O
 - New async queue support for better background tasks handling
 - Build process handles INDIGO 3.0 versioning and packaging
@@ -15,7 +71,7 @@ All notable changes to INDIGO framework will be documented in this file.
 - PPEC (Predictive Periodic Error Correction) support added to guider agent
 - Mount features and mount state properties added to mount agent
 - %nT, %J, %h and %d placeholders added to file name templates
-- Code review by AI for better code quality 
+- Code review by AI for better code quality
 
 ## Driver generator:
 - DRIVER_GENERATOR_MIGRATION.md documentation created

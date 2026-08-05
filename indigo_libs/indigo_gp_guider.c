@@ -99,6 +99,16 @@ enum {
 #define PERIOD_CONVERGED_REL 0.03
 #define PERIOD_DIVERGED_REL 0.45
 
+/* Seed-anchored period estimation (estimate_period_length):
+   PERIOD_SEED_WINDOW      - half-width of the search band around the seed, as a
+                             fraction (0.30 -> +/-30%); a harmonic or sub-harmonic
+                             falls outside it and can never be locked onto.
+   PERIOD_MAIN_PEAK_FRACTION - the in-band peak is trusted directly once it reaches
+                             this fraction of the global peak; below it the
+                             fundamental is reconstructed as 2 x the harmonic period. */
+#define PERIOD_SEED_WINDOW 0.30
+#define PERIOD_MAIN_PEAK_FRACTION 0.90
+
 #define DEFAULT_LS_SE0 700.0
 #define DEFAULT_SV_SE0 20.0
 #define DEFAULT_LS_PK 10.0
@@ -376,6 +386,7 @@ struct indigo_gp_guider {
 	int points_for_approximation;
 	bool compute_period;
 	double learning_rate;
+	double commanded_period; /* last period commanded via set_parameters; NaN forces a re-pin */
 
 	/* GP log-space hyperparameters (length 8) */
 	double log_hyper[NUM_HYPERPARAMETERS + 1];
@@ -770,7 +781,7 @@ static void handle_dark_guiding(indigo_gp_guider *g) {
 	cb_last(g)->variance = 1e4;
 }
 
-static double estimate_period_length(const double *time, const double *data, int n);
+static double estimate_period_length(const double *time, const double *data, int n, double seed);
 
 /* regularize_dataset: resample the irregular (timestamp, gear_error, variance)
    samples onto a fixed GRID_INTERVAL grid by trapezoidal averaging, mirroring
@@ -928,7 +939,9 @@ static bool update_gp(indigo_gp_guider *g, double prediction_point) {
 			for (int i = 0; i < T; i++) {
 				detrend[i] = rg[i] - (w0 + w1 * rt[i]);
 			}
-			double pl = estimate_period_length(rt, detrend, T);
+			/* anchor the FFT peak search to the user's commanded period (NaN/0
+			   for auto -> no anchoring, global peak). */
+			double pl = estimate_period_length(rt, detrend, T, g->commanded_period);
 			if (!is_nan(pl) && pl > 0.0) {
 				/* how far the tracked period still is from what the FFT sees */
 				double rel = fabs(get_period_length(g) - pl) / pl;
@@ -974,9 +987,68 @@ static double predict_gear_error(indigo_gp_guider *g, double prediction_location
 	return prediction[1] - prediction[0];
 }
 
+/* Parabolic (quadratic) interpolation of the spectral peak at bin idx; returns the
+   refined frequency, falling back to the bin frequency at the edges or when the
+   three samples are degenerate. */
+static double interp_peak_frequency(const double *spectrum, const double *frequencies, int len, int idx) {
+	double max_frequency = frequencies[idx];
+	if (idx <= 0 || idx >= len - 1) {
+		return max_frequency;
+	}
+	double spread = fabs(frequencies[idx - 1] - frequencies[idx + 1]);
+	double interp_loc[3], interp_dat[3];
+	interp_loc[0] = (frequencies[idx - 1] - max_frequency) / spread;
+	interp_loc[1] = 0.0;
+	interp_loc[2] = (frequencies[idx + 1] - max_frequency) / spread;
+	double amax = spectrum[idx];
+	interp_dat[0] = spectrum[idx - 1] / amax;
+	interp_dat[1] = 1.0;
+	interp_dat[2] = spectrum[idx + 1] / amax;
+	double dmin = interp_dat[0], dmax = interp_dat[0];
+	for (int i = 1; i < 3; i++) {
+		if (interp_dat[i] < dmin) {
+			dmin = interp_dat[i];
+		}
+		if (interp_dat[i] > dmax) {
+			dmax = interp_dat[i];
+		}
+	}
+	if (dmax - dmin < 1e-10) {
+		return max_frequency;
+	}
+	double phi[9];
+	for (int c = 0; c < 3; c++) {
+		phi[0 * 3 + c] = interp_loc[c] * interp_loc[c];
+		phi[1 * 3 + c] = interp_loc[c];
+		phi[2 * 3 + c] = 1.0;
+	}
+	double M[9];
+	mat_mul_bt(phi, phi, M, 3, 3, 3);
+	double rhs[3];
+	mat_mul(phi, interp_dat, rhs, 3, 3, 1);
+	ldlt_t f;
+	if (ldlt_factor(&f, M, 3)) {
+		double w[3];
+		ldlt_solve(&f, rhs, w, 1);
+		ldlt_free(&f);
+		if (w[0] != 0.0) {
+			max_frequency = max_frequency - w[1] / (2.0 * w[0]) * spread;
+		}
+	}
+	return max_frequency;
+}
+
 /* EstimatePeriodLength: Hamming window -> power spectrum -> peak with quadratic
-   interpolation, mirroring GaussianProcessGuider::EstimatePeriodLength. */
-static double estimate_period_length(const double *time, const double *data, int n) {
+   interpolation, mirroring GaussianProcessGuider::EstimatePeriodLength.
+   When seed > 0 the peak search is confined to +/-30% of the seed so a harmonic
+   (near half the seed) or sub-harmonic (near twice it) can never win. In addition,
+   while the in-band line is still weak (< 90% of the global peak) but the global
+   peak is a harmonic whose fundamental - twice its period - lands in the band, the
+   estimate is driven to that reconstructed fundamental (2 x the harmonic period),
+   which is a sharper, more stable measurement than the weak in-band peak. Once the
+   in-band line strengthens (>= 90% of the global peak) the direct in-band peak is
+   used. With seed <= 0 (auto) the global peak is used. */
+static double estimate_period_length(const double *time, const double *data, int n, double seed) {
 	if (n < 2) {
 		return NAN; /* not reachable: callers guard T >= 2 */
 	}
@@ -1018,66 +1090,45 @@ static double estimate_period_length(const double *time, const double *data, int
 			max_index = i;
 		}
 	}
-	double max_frequency = frequencies[max_index];
 
-	if (max_index < len - 1 && max_index > 0) {
-		double spread = fabs(frequencies[max_index - 1] - frequencies[max_index + 1]);
-		double interp_loc[3], interp_dat[3];
-		interp_loc[0] = frequencies[max_index - 1];
-		interp_loc[1] = frequencies[max_index];
-		interp_loc[2] = frequencies[max_index + 1];
-		for (int i = 0; i < 3; i++) {
-			interp_loc[i] = (interp_loc[i] - max_frequency) / spread;
-		}
-		interp_dat[0] = spectrum[max_index - 1];
-		interp_dat[1] = spectrum[max_index];
-		interp_dat[2] = spectrum[max_index + 1];
-		double amax = spectrum[max_index];
-		for (int i = 0; i < 3; i++) {
-			interp_dat[i] /= amax;
-		}
-
-		double dmin = interp_dat[0], dmax = interp_dat[0];
-		for (int i = 1; i < 3; i++) {
-			if (interp_dat[i] < dmin) {
-				dmin = interp_dat[i];
+	double result;
+	if (seed > 0.0) {
+		/* strongest peak within +/-PERIOD_SEED_WINDOW of the seed */
+		double lo = (1.0 - PERIOD_SEED_WINDOW) * seed, hi = (1.0 + PERIOD_SEED_WINDOW) * seed;
+		int local_index = -1;
+		for (int i = 0; i < len; i++) {
+			if (frequencies[i] <= 0.0) {
+				continue;
 			}
-			if (interp_dat[i] > dmax) {
-				dmax = interp_dat[i];
+			double period = 1.0 / frequencies[i];
+			if (period >= lo && period <= hi && (local_index < 0 || spectrum[i] > spectrum[local_index])) {
+				local_index = i;
 			}
 		}
-		if (dmax - dmin < 1e-10) {
+		if (local_index < 0) {
+			/* nothing in the band: keep the current period */
 			free(spectrum);
 			free(frequencies);
-			return 1.0 / max_frequency;
+			return NAN;
 		}
-
-				/* phi (3 x 3): row0 = loc^2, row1 = loc, row2 = 1
-		   w = (phi phi^T)^-1 (phi dat) */
-		double phi[9];
-		for (int c = 0; c < 3; c++) {
-			phi[0 * 3 + c] = interp_loc[c] * interp_loc[c];
-			phi[1 * 3 + c] = interp_loc[c];
-			phi[2 * 3 + c] = 1.0;
+		double p_local = 1.0 / interp_peak_frequency(spectrum, frequencies, len, local_index);
+		if (spectrum[local_index] >= PERIOD_MAIN_PEAK_FRACTION * spectrum[max_index]) {
+			/* the in-band line is strong: trust the direct measurement */
+			result = p_local;
+		} else {
+			/* in-band line still weak; if the global peak is a harmonic whose
+			   fundamental (twice its period) lands in the band, drift to that
+			   reconstructed fundamental instead - it is sharper and steadier. */
+			double p_fund = 2.0 / interp_peak_frequency(spectrum, frequencies, len, max_index);
+			result = (p_fund >= lo && p_fund <= hi) ? p_fund : p_local;
 		}
-		double M[9];
-		mat_mul_bt(phi, phi, M, 3, 3, 3); /* phi phi^T */
-		double rhs[3];
-		mat_mul(phi, interp_dat, rhs, 3, 3, 1);
-		ldlt_t f;
-		if (ldlt_factor(&f, M, 3)) {
-			double w[3];
-			ldlt_solve(&f, rhs, w, 1);
-			ldlt_free(&f);
-			if (w[0] != 0.0) {
-				max_frequency = max_frequency - w[1] / (2.0 * w[0]) * spread;
-			}
-		}
+	} else {
+		result = 1.0 / interp_peak_frequency(spectrum, frequencies, len, max_index);
 	}
 
 	free(spectrum);
 	free(frequencies);
-	return 1.0 / max_frequency;
+	return result;
 }
 
 /* Learning progress 0..1, cached for the public getter. Must be called while
@@ -1261,6 +1312,10 @@ static void apply_defaults(indigo_gp_guider *g) {
 	g->points_for_approximation = DEFAULT_POINTS_FOR_APPROXIMATION;
 	g->compute_period = DEFAULT_COMPUTE_PERIOD;
 	g->learning_rate = DEFAULT_LEARNING_RATE;
+	/* NaN so the next set_parameters() re-pins the caller's commanded period.
+	   apply_defaults() runs on create and on reset_model(), which is exactly
+	   when the period must be re-applied after being returned to the default. */
+	g->commanded_period = NAN;
 
 	double natural[NUM_HYPERPARAMETERS];
 	natural[SE0K_LENGTH_SCALE] = DEFAULT_LS_SE0;
@@ -1413,10 +1468,16 @@ void indigo_gp_guider_set_parameters(indigo_gp_guider *g, double control_gain, d
 	g->prediction_gain = prediction_gain;
 	g->min_move = min_move;
 	g->compute_period = compute_period;
-	if (period_length > 0.0) {
+	/* Seed the worm period only when the commanded value changes. Calling again
+	   with the same value leaves the period free to drift (via the FFT estimator)
+	   instead of being re-pinned to the seed every frame. period_length <= 0
+	   commands the built-in default period. commanded_period is NaN after create
+	   or reset_model, so the first call always re-pins. */
+	if (period_length != g->commanded_period) {
+		g->commanded_period = period_length;
 		double natural[NUM_HYPERPARAMETERS];
 		get_gp_hyperparameters(g, natural);
-		natural[PK_PERIOD_LENGTH] = period_length;
+		natural[PK_PERIOD_LENGTH] = (period_length > 0.0) ? period_length : DEFAULT_PERIOD_PK;
 		set_gp_hyperparameters(g, natural);
 	}
 }
