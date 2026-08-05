@@ -30,7 +30,7 @@ Generated build output, object files, generated `.data` resources, and bundled m
 | --- | --- | --- | --- | --- |
 | SERVER-001 | High | `indigo_server.c:763`, `indigo_server.c:771`, `indigo_server.c:805`, `indigo_server.c:811`, `indigo_server.c:1362`, `indigo_server.c:1368`, `indigo_server.c:1374`, `indigo_server.c:1402` | RPI-management commands were assembled with client-controlled property text inside shell command strings and executed with `popen()`. SSID, password, country-code, and host-time values could contain quotes or shell metacharacters, so a remote client with access to these properties could run arbitrary shell fragments when RPI management is enabled. Resolved: added a `shell_escape()` helper and applied it to every client-controlled argument. See finding summary below. | Closed |
 | SERVER-002 | High | `indigo_server.c:505`, `indigo_server.c:1889`, `indigo_server.c:1933`, `indigo_server.c:1611`, `indigo_server.c:1612` | Command-line arguments were copied into fixed `server_argv[128]` without a bounds check, and `--bonjour`/`-b` read `server_argv[i + 1]` without confirming an argument exists. A long invocation could write past `server_argv`, while a trailing `-b` could read outside the saved argument list. Resolved: `main()` now rejects too many arguments and the `-b`/`--bonjour` branch requires a following value. See finding summary below. | Closed |
-| SERVER-003 | Medium | `indigo_server.c:1501`, `indigo_server.c:1534`, `indigo_server.c:1540`, `indigo_server.c:1551`, `indigo_server.c:1554` | Dynamic driver-list parsing stores the same driver name twice with two `strdup()` calls, leaking the first allocation, and increments `dynamic_drivers_count` even when the description field is missing. A malformed or truncated driver-list entry can leave `description == NULL` and later pass it into property item initialization. Store each parsed name once, require both fields before incrementing the count, and use `snprintf()` for `path`. | Open |
+| SERVER-003 | Medium | `indigo_server.c:1501`, `indigo_server.c:1534`, `indigo_server.c:1540`, `indigo_server.c:1551`, `indigo_server.c:1554` | Dynamic driver-list parsing stored the same driver name twice with two `strdup()` calls, leaking the first allocation, and incremented `dynamic_drivers_count` even when the description field was missing. A malformed or truncated driver-list entry could leave `description == NULL` and later pass it into property item initialization. Resolved: the parser now stores each name once, requires both fields before counting the entry, and uses `snprintf()` for `path`. See finding summary below. | Closed |
 | SERVER-004 | Medium | `indigo_server.c:528`, `indigo_server.c:530`, `indigo_server.c:542`, `indigo_server.c:551`, `indigo_server.c:580`, `indigo_server.c:582`, `indigo_server.c:592`, `indigo_server.c:629`, `indigo_server.c:631`, `indigo_server.c:752` | Generated JSON resources use unchecked `malloc()`, `strcpy()`, and `sprintf()` into manually grown buffers. The code resizes only after writing each record, star names are copied into `desig[256]` without a length check, and JSON string content is emitted without escaping. Catalog data changes can crash startup or produce invalid JSON. Use checked allocation, `snprintf()` with remaining capacity before appending, bounded name copies, and JSON string escaping. | Open |
 | SERVER-005 | Medium | `indigo_server.c:1852`, `indigo_server.c:1855`, `indigo_server.c:1863`, `indigo_server.c:1865`, `indigo_server.c:1866`, `indigo_server.c:1874`, `indigo_server.c:1876` | The POSIX signal handler performs non-async-signal-safe work, including logging, `waitpid()` loops, signal reconfiguration, and `indigo_server_shutdown()`. If a signal arrives while library locks or allocator state are held, shutdown can deadlock or corrupt state. Use a self-pipe/eventfd or atomic flag and perform shutdown/reap work from the main loop or a dedicated signal thread. | Open |
 | SERVER-006 | Medium | `resource/ctrl.html:83`, `resource/mng.html:114`, `resource/guider.html:154`, `resource/imager.html:210`, `resource/mount.html:274`, `resource/script.html:112`, `resource/components.js:592`, `resource/components.js:597`, `resource/imager.html:254`, `resource/imager.html:257`, `resource/imager.html:272`, `resource/imager.html:275`, `resource/imager.html:283`, `resource/imager.html:286` | Web pages hard-code `ws://` and `http://` when connecting to the server and rendering BLOB/image URLs. This breaks when the control panel is served through HTTPS or a TLS reverse proxy because browsers block mixed-content WebSockets and images. Build URLs from `window.location.protocol` (`ws` vs `wss`, `http` vs `https`) and normalize relative BLOB paths with the `URL` API. | Open |
@@ -103,6 +103,44 @@ accumulation `else` branch, and the `-b`/`--bonjour` branch in `main()`.
 Verification note: not build-verified on this macOS review host (Makefile-based project, no
 Xcode diagnostic service for this C file); the changed paths compile on all platforms and should
 be confirmed by a normal build.
+
+### SERVER-003 (Closed)
+
+`add_drivers()` reads `indigo_drivers`/`ADDITIONAL_DRIVERS` list files and appends parsed
+entries to the `dynamic_drivers` table. The parser had three defects:
+
+1. **Double `strdup()` / memory leak.** After extracting the name token, the code ran two
+   identical duplicate-check loops and two `if (token) { ... strdup(token) }` blocks in
+   sequence. When a name passed the checks, `dynamic_drivers[...].name` was assigned by the
+   first `strdup()` and then immediately overwritten by a second `strdup()` of the same token,
+   leaking the first allocation on every accepted driver.
+
+2. **Entry counted without a valid description (and without a valid name).** `dynamic_drivers_count++`
+   ran unconditionally at the end of each iteration. If the second field was missing or had no
+   closing quote, `.description` was never assigned and kept whatever the (zero-initialized)
+   slot held — `NULL`. A line with no quoted name field at all was likewise counted. That
+   `NULL` description/name later reached `indigo_init_switch_item()` when
+   `SERVER_DRIVERS_PROPERTY` was populated, risking a `NULL` dereference.
+
+3. **Unbounded `sprintf()` into `path[PATH_MAX]`.** The list-file path was built with `sprintf`,
+   which could overflow if `folder_path` plus the entry name exceeded `PATH_MAX`.
+
+Fix (`add_drivers()` in `indigo_server.c`):
+- Rewrote the parse loop to extract the name into a local `name` pointer, `continue` when no
+  name is present, run a single deduplication pass (against `indigo_available_drivers` and the
+  already-added `dynamic_drivers`), extract the description into a local `description` pointer,
+  and `continue` when no description is present. Only when both fields are valid does it
+  `strdup()` the name once, `strdup()` the description, and increment `dynamic_drivers_count`.
+  This removes the redundant second loop/`strdup`, so each name is duplicated exactly once and
+  no entry is counted without both fields.
+- Changed the path construction to `snprintf(path, sizeof(path), ...)`.
+
+Behavior is unchanged for well-formed list files; malformed lines are now skipped instead of
+producing leaked or partially-initialized entries. Line numbers in the finding predate the
+SERVER-001/002 edits and have shifted.
+
+Verification note: not build-verified on this macOS review host (Makefile project, no Xcode
+diagnostic service for this C file); should be confirmed by a normal build.
 
 ## Review Focus
 

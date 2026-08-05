@@ -1539,59 +1539,57 @@ static void add_drivers(const char *folder) {
 	if (count >= 0) {
 		for (int i = 0; i < count; i++) {
 			char path[PATH_MAX];
-			sprintf(path, "%s%c%s", folder_path, INDIGO_PATH_SEPATATOR, list[i]);
+			snprintf(path, sizeof(path), "%s%c%s", folder_path, INDIGO_PATH_SEPATATOR, list[i]);
 			indigo_log("Loading driver list from %s", path);
 			indigo_uni_handle *file = indigo_uni_open_file(path, INDIGO_LOG_TRACE);
 			if (file != NULL) {
 				while (indigo_uni_read_line(file, line, sizeof(line)) > 0 && dynamic_drivers_count < INDIGO_MAX_DRIVERS) {
+					// parse the driver name from the first quoted, comma-separated field
 					char *pnt, *token = strtok_r(line, ",", &pnt);
+					char *name = NULL;
 					if (token && (token = strchr(token, '"'))) {
 						char *end = strchr(++token, '"');
 						if (end) {
 							*end = 0;
-							for (int i = 0; i < INDIGO_MAX_DRIVERS; i++) {
-								if (!strcmp(indigo_available_drivers[i].name, token)) {
-									token = NULL;
-									break;
-								}
-							}
-							if (token) {
-								for (int i = 0; i < dynamic_drivers_count; i++) {
-									if (!strcmp(dynamic_drivers[i].name, token)) {
-										token = NULL;
-										break;
-									}
-								}
-								if (token) {
-									for (int i = 0; i < dynamic_drivers_count; i++) {
-										//indigo_error("dynamic_drivers[%d].name = %s", i, dynamic_drivers[i].name);
-										if (!strcmp(dynamic_drivers[i].name, token)) {
-											token = NULL;
-											break;
-										}
-									}
-								}
-								if (token) {
-									dynamic_drivers[dynamic_drivers_count].name = strdup(token);
-								} else {
-									continue;
-								}
-							}
-							if (token) {
-								dynamic_drivers[dynamic_drivers_count].name = strdup(token);
-							} else {
-								continue;
-							}
+							name = token;
 						}
 					}
+					if (name == NULL) {
+						continue; // malformed line without a driver name
+					}
+					// skip drivers already available statically or already added dynamically
+					bool duplicate = false;
+					for (int i = 0; i < INDIGO_MAX_DRIVERS; i++) {
+						if (!strcmp(indigo_available_drivers[i].name, name)) {
+							duplicate = true;
+							break;
+						}
+					}
+					for (int i = 0; !duplicate && i < dynamic_drivers_count; i++) {
+						if (!strcmp(dynamic_drivers[i].name, name)) {
+							duplicate = true;
+							break;
+						}
+					}
+					if (duplicate) {
+						continue;
+					}
+					// parse the driver description from the second quoted field
+					char *description = NULL;
 					token = strtok_r(NULL, ",", &pnt);
 					if (token && (token = strchr(token, '"'))) {
 						char *end = strchr(token + 1, '"');
 						if (end) {
 							*end = 0;
-							dynamic_drivers[dynamic_drivers_count].description = strdup(token + 1);
+							description = token + 1;
 						}
 					}
+					if (description == NULL) {
+						continue; // malformed line without a driver description
+					}
+					// store name once and only count the entry when both fields are valid
+					dynamic_drivers[dynamic_drivers_count].name = strdup(name);
+					dynamic_drivers[dynamic_drivers_count].description = strdup(description);
 					dynamic_drivers_count++;
 				}
 				indigo_uni_close(&file);
