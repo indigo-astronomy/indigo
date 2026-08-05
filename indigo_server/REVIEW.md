@@ -31,7 +31,7 @@ Generated build output, object files, generated `.data` resources, and bundled m
 | SERVER-001 | High | `indigo_server.c:763`, `indigo_server.c:771`, `indigo_server.c:805`, `indigo_server.c:811`, `indigo_server.c:1362`, `indigo_server.c:1368`, `indigo_server.c:1374`, `indigo_server.c:1402` | RPI-management commands were assembled with client-controlled property text inside shell command strings and executed with `popen()`. SSID, password, country-code, and host-time values could contain quotes or shell metacharacters, so a remote client with access to these properties could run arbitrary shell fragments when RPI management is enabled. Resolved: added a `shell_escape()` helper and applied it to every client-controlled argument. See finding summary below. | Closed |
 | SERVER-002 | High | `indigo_server.c:505`, `indigo_server.c:1889`, `indigo_server.c:1933`, `indigo_server.c:1611`, `indigo_server.c:1612` | Command-line arguments were copied into fixed `server_argv[128]` without a bounds check, and `--bonjour`/`-b` read `server_argv[i + 1]` without confirming an argument exists. A long invocation could write past `server_argv`, while a trailing `-b` could read outside the saved argument list. Resolved: `main()` now rejects too many arguments and the `-b`/`--bonjour` branch requires a following value. See finding summary below. | Closed |
 | SERVER-003 | Medium | `indigo_server.c:1501`, `indigo_server.c:1534`, `indigo_server.c:1540`, `indigo_server.c:1551`, `indigo_server.c:1554` | Dynamic driver-list parsing stored the same driver name twice with two `strdup()` calls, leaking the first allocation, and incremented `dynamic_drivers_count` even when the description field was missing. A malformed or truncated driver-list entry could leave `description == NULL` and later pass it into property item initialization. Resolved: the parser now stores each name once, requires both fields before counting the entry, and uses `snprintf()` for `path`. See finding summary below. | Closed |
-| SERVER-004 | Medium | `indigo_server.c:528`, `indigo_server.c:530`, `indigo_server.c:542`, `indigo_server.c:551`, `indigo_server.c:580`, `indigo_server.c:582`, `indigo_server.c:592`, `indigo_server.c:629`, `indigo_server.c:631`, `indigo_server.c:752` | Generated JSON resources use unchecked `malloc()`, `strcpy()`, and `sprintf()` into manually grown buffers. The code resizes only after writing each record, star names are copied into `desig[256]` without a length check, and JSON string content is emitted without escaping. Catalog data changes can crash startup or produce invalid JSON. Use checked allocation, `snprintf()` with remaining capacity before appending, bounded name copies, and JSON string escaping. | Open |
+| SERVER-004 | Medium | `indigo_server.c:528`, `indigo_server.c:530`, `indigo_server.c:542`, `indigo_server.c:551`, `indigo_server.c:580`, `indigo_server.c:582`, `indigo_server.c:592`, `indigo_server.c:629`, `indigo_server.c:631`, `indigo_server.c:752` | Generated JSON resources used unchecked `malloc()`, `strcpy()`, and `sprintf()` into manually grown buffers, resized only after each write, copied star names into `desig[256]` without a length check, and emitted JSON string content without escaping. Catalog data changes could crash startup or produce invalid JSON. Resolved: checked allocation, bounded name copies, `snprintf()` with remaining capacity, and a `json_escape()` helper applied to every catalog string field. See finding summary below. | Closed |
 | SERVER-005 | Medium | `indigo_server.c:1852`, `indigo_server.c:1855`, `indigo_server.c:1863`, `indigo_server.c:1865`, `indigo_server.c:1866`, `indigo_server.c:1874`, `indigo_server.c:1876` | The POSIX signal handler performs non-async-signal-safe work, including logging, `waitpid()` loops, signal reconfiguration, and `indigo_server_shutdown()`. If a signal arrives while library locks or allocator state are held, shutdown can deadlock or corrupt state. Use a self-pipe/eventfd or atomic flag and perform shutdown/reap work from the main loop or a dedicated signal thread. | Open |
 | SERVER-006 | Medium | `resource/ctrl.html:83`, `resource/mng.html:114`, `resource/guider.html:154`, `resource/imager.html:210`, `resource/mount.html:274`, `resource/script.html:112`, `resource/components.js:592`, `resource/components.js:597`, `resource/imager.html:254`, `resource/imager.html:257`, `resource/imager.html:272`, `resource/imager.html:275`, `resource/imager.html:283`, `resource/imager.html:286` | Web pages hard-code `ws://` and `http://` when connecting to the server and rendering BLOB/image URLs. This breaks when the control panel is served through HTTPS or a TLS reverse proxy because browsers block mixed-content WebSockets and images. Build URLs from `window.location.protocol` (`ws` vs `wss`, `http` vs `https`) and normalize relative BLOB paths with the `URL` API. | Open |
 | SERVER-007 | Medium | `resource/components.js:141`, `resource/components.js:147`, `resource/components.js:157`, `resource/mount.html:66`, `resource/mount.html:67`, `resource/mount.html:626`, `resource/mount.html:632` | The sexagesimal number editor checks `self.ident` instead of `this.ident`. For RA/DEC fields with `ident` set, edits should stage `item.newValue` until Slew/Sync calls `setCoordinates()`, but the current code usually sends `MOUNT_EQUATORIAL_COORDINATES` immediately. Use `this.ident` and keep staged coordinate edits local until the explicit action button is pressed. | Open |
@@ -138,6 +138,49 @@ Fix (`add_drivers()` in `indigo_server.c`):
 Behavior is unchanged for well-formed list files; malformed lines are now skipped instead of
 producing leaked or partially-initialized entries. Line numbers in the finding predate the
 SERVER-001/002 edits and have shifted.
+
+Verification note: not build-verified on this macOS review host (Makefile project, no Xcode
+diagnostic service for this C file); should be confirmed by a normal build.
+
+### SERVER-004 (Closed)
+
+Three functions build the `/data/stars.json`, `/data/dsos.json`, and
+`/data/constellations.lines.json` resources at startup from the compiled-in `indigocat`
+catalog: `indigo_add_star_json_resource()`, `indigo_add_dso_json_resource()`, and
+`indigo_add_constellations_lines_json_resource()` (the latter via `add_multiline()`). They had
+several buffer-safety and correctness defects:
+
+- **Unchecked `malloc()`.** Each function did `char *buffer = malloc(1024 * 1024)` and wrote
+  immediately, with no `NULL` check — a failed allocation crashed on the first write.
+- **Unbounded `strcpy()` into `desig[256]`.** Star names were copied with `strcpy(desig,
+  star_data[i].name)`; a catalog name of 256+ bytes overflowed the stack buffer.
+- **No JSON escaping.** Catalog name/designation/id fields were emitted directly inside JSON
+  string literals. A field containing `"`, `\`, or a control character produced malformed JSON
+  that the web client could not parse.
+- **`sprintf()` into buffers grown only after the write.** Every record was appended with
+  `sprintf(buffer + size, ...)` and the buffer was doubled only *after*, once free space
+  dropped below 1024 bytes — so a record larger than the remaining space (made more likely once
+  escaping expands strings) could overflow before the grow check ran.
+
+Fix (`indigo_server.c`):
+- Switched all three buffer allocations to `indigo_safe_malloc()` (asserts non-`NULL` and
+  zero-fills), and set the initial JSON header with `snprintf()` instead of `strcpy()`.
+- Bounded the star-name copy with `snprintf(desig, sizeof(desig), "%s", ...)`.
+- Added a `json_escape()` helper that renders a string safe for a JSON string literal (escapes
+  `"`, `\`, `\n`, `\r`, `\t`, and other control characters as `\uXXXX`) into a bounded scratch
+  buffer, truncating safely on overflow. Every catalog string field (star name and designation,
+  solar-system name, DSO id and name) is now escaped before being formatted in.
+- Replaced every `sprintf(buffer + size, ...)` with `snprintf(buffer + size, buffer_size - size,
+  ...)` so a write can never exceed the allocation, and raised the grow margin to
+  `JSON_GROW_MARGIN` (16 KB), which comfortably exceeds the largest possible single record (fixed
+  text plus two escaped fields), so no record is ever truncated.
+- Gave `add_multiline()` a `buffer_size` parameter and converted its writes to bounded
+  `snprintf()`; all call sites pass the remaining capacity. These writes are fixed compile-time
+  coordinate data that provably fits the 1 MB buffer, but they are now bounded for consistency.
+
+Behavior is unchanged for the shipped catalog; the JSON is byte-identical except that string
+fields are now correctly escaped. Line numbers in the finding predate the SERVER-001/002/003
+edits and have shifted.
 
 Verification note: not build-verified on this macOS review host (Makefile project, no Xcode
 diagnostic service for this C file); should be confirmed by a normal build.
