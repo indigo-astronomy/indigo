@@ -5,7 +5,7 @@
 | Field | Value |
 | --- | --- |
 | Last reviewed commit | `017ba602857378e4aed489c065c76eacae15924c` |
-| Review state | Focused baseline review recorded findings; full subtree review not complete. |
+| Review state | Focused baseline review recorded findings; full subtree review not complete. All recorded findings resolved (LIB-001 closed as a false positive). |
 
 ## Scope
 

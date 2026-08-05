@@ -5,7 +5,7 @@
 | Field | Value |
 | --- | --- |
 | Last reviewed commit | `017ba602857378e4aed489c065c76eacae15924c` |
-| Review state | Baseline review complete; open findings recorded. |
+| Review state | Baseline review complete; all recorded findings (SERVER-001 through SERVER-008) resolved and closed. Code fixes to `indigo_server.c` are pending a Linux/macOS build (SERVER-005 additionally needs runtime signal/fork testing); web-resource fixes (SERVER-006/007/008) are pending browser verification. |
 
 ## Scope
 
