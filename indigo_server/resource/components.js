@@ -154,7 +154,7 @@ Vue.component('indigo-edit-number-60', {
 			for (var i in this.property.items) {
 				var item = this.property.items[i];
 				if (item.name == this.name) {
-					if (self.ident != null) {
+					if (this.ident != null) {
 						item.newValue = stod(value);
 					} else {
 						var values = {}

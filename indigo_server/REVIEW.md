@@ -34,7 +34,7 @@ Generated build output, object files, generated `.data` resources, and bundled m
 | SERVER-004 | Medium | `indigo_server.c:528`, `indigo_server.c:530`, `indigo_server.c:542`, `indigo_server.c:551`, `indigo_server.c:580`, `indigo_server.c:582`, `indigo_server.c:592`, `indigo_server.c:629`, `indigo_server.c:631`, `indigo_server.c:752` | Generated JSON resources used unchecked `malloc()`, `strcpy()`, and `sprintf()` into manually grown buffers, resized only after each write, copied star names into `desig[256]` without a length check, and emitted JSON string content without escaping. Catalog data changes could crash startup or produce invalid JSON. Resolved: checked allocation, bounded name copies, `snprintf()` with remaining capacity, and a `json_escape()` helper applied to every catalog string field. See finding summary below. | Closed |
 | SERVER-005 | Medium | `indigo_server.c:1852`, `indigo_server.c:1855`, `indigo_server.c:1863`, `indigo_server.c:1865`, `indigo_server.c:1866`, `indigo_server.c:1874`, `indigo_server.c:1876` | The POSIX signal handler performed non-async-signal-safe work, including logging, signal reconfiguration, and `indigo_server_shutdown()`. If a signal arrived while library locks or allocator state were held, shutdown could deadlock or corrupt state. Resolved: the managed signals are now blocked process-wide and consumed synchronously by dedicated `sigwait()` threads that run in ordinary thread context. See finding summary below. | Closed |
 | SERVER-006 | Medium | `resource/ctrl.html:83`, `resource/mng.html:114`, `resource/guider.html:154`, `resource/imager.html:210`, `resource/mount.html:274`, `resource/script.html:112`, `resource/components.js:592`, `resource/components.js:597`, `resource/imager.html:254`, `resource/imager.html:257`, `resource/imager.html:272`, `resource/imager.html:275`, `resource/imager.html:283`, `resource/imager.html:286` | Web pages hard-coded `ws://` and `http://` when connecting to the server and rendering BLOB/image URLs, breaking under HTTPS or a TLS reverse proxy because browsers block mixed-content WebSockets and images. Resolved: WebSocket and image/BLOB URLs are now built from `window.location.protocol`/`host`, and absolute-URL detection accepts `https://`. See finding summary below. | Closed |
-| SERVER-007 | Medium | `resource/components.js:141`, `resource/components.js:147`, `resource/components.js:157`, `resource/mount.html:66`, `resource/mount.html:67`, `resource/mount.html:626`, `resource/mount.html:632` | The sexagesimal number editor checks `self.ident` instead of `this.ident`. For RA/DEC fields with `ident` set, edits should stage `item.newValue` until Slew/Sync calls `setCoordinates()`, but the current code usually sends `MOUNT_EQUATORIAL_COORDINATES` immediately. Use `this.ident` and keep staged coordinate edits local until the explicit action button is pressed. | Open |
+| SERVER-007 | Medium | `resource/components.js:141`, `resource/components.js:147`, `resource/components.js:157`, `resource/mount.html:66`, `resource/mount.html:67`, `resource/mount.html:626`, `resource/mount.html:632` | The sexagesimal number editor checked `self.ident` instead of `this.ident`. For RA/DEC fields with `ident` set, edits should stage `item.newValue` until Slew/Sync calls `setCoordinates()`, but the code sent `MOUNT_EQUATORIAL_COORDINATES` immediately. Resolved: the `change()` handler now tests `this.ident`, so `ident`-bearing edits stage locally. See finding summary below. | Closed |
 | SERVER-008 | Low | `resource/components.js:745`, `resource/components.js:750`, `resource/components.js:776`, `resource/components.js:786`, `resource/components.js:811`, `resource/components.js:813` | The WiFi setup component stores mode in `self.mode`, which resolves to the global window object in browsers, instead of component state. It works only because reads and writes share the same accidental global; multiple instances or future strict-mode/module loading would break. Define `data()` as a function returning `{ mode: ... }` and use `this.mode` consistently. | Open |
 
 ## Finding Summaries
@@ -260,6 +260,31 @@ the finding predate the earlier SERVER edits.
 Verification note: these are client-side HTML/JS changes not exercised by the build; they should
 be confirmed in a browser against both a plain-HTTP server and an HTTPS/TLS-proxied deployment
 (WebSocket connects, preview images and BLOB links load).
+
+### SERVER-007 (Closed)
+
+The `indigo-edit-number-60` Vue component (the sexagesimal RA/DEC editor in `components.js`)
+supports two modes via its `ident` prop. Without `ident` an edit is sent immediately; with
+`ident` set the edit is meant to be *staged* into `item.newValue` and only committed later when
+the user presses Slew/Sync, which calls `mount.html`'s `setCoordinates()` (that reads
+`item.newValue` and sends `MOUNT_EQUATORIAL_COORDINATES` with both RA and DEC together).
+
+The `change()` handler tested `self.ident` instead of `this.ident`. In a browser `self` is the
+global `window`, so `self.ident` is always `undefined`, the `!= null` test was always false, and
+the code took the immediate-send branch even for the RA/DEC editors (which do pass
+`:ident="'RA'"` / `:ident="'DEC'"` in `mount.html`). The effect: each keystroke-commit sent RA
+or DEC on its own, so the mount would slew/sync to half-entered, one-axis-at-a-time coordinates
+instead of waiting for the explicit action button.
+
+Fix: changed the test in `change()` from `self.ident` to `this.ident` (`components.js`). Now,
+when `ident` is set the value is staged in `item.newValue` (which the component's `value()`
+already renders) and is committed only by `setCoordinates()`; without `ident` the immediate-send
+behavior is unchanged. No other code changed — the staging consumer (`setCoordinates()`) and the
+`value()` renderer were already correct.
+
+Verification note: client-side JS not exercised by the build; should be confirmed in a browser
+(edit RA and DEC on the mount panel, verify no slew occurs until Slew/Sync is pressed, and that
+both axes are then sent together).
 
 ## Review Focus
 
