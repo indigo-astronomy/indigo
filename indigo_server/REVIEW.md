@@ -32,7 +32,7 @@ Generated build output, object files, generated `.data` resources, and bundled m
 | SERVER-002 | High | `indigo_server.c:505`, `indigo_server.c:1889`, `indigo_server.c:1933`, `indigo_server.c:1611`, `indigo_server.c:1612` | Command-line arguments were copied into fixed `server_argv[128]` without a bounds check, and `--bonjour`/`-b` read `server_argv[i + 1]` without confirming an argument exists. A long invocation could write past `server_argv`, while a trailing `-b` could read outside the saved argument list. Resolved: `main()` now rejects too many arguments and the `-b`/`--bonjour` branch requires a following value. See finding summary below. | Closed |
 | SERVER-003 | Medium | `indigo_server.c:1501`, `indigo_server.c:1534`, `indigo_server.c:1540`, `indigo_server.c:1551`, `indigo_server.c:1554` | Dynamic driver-list parsing stored the same driver name twice with two `strdup()` calls, leaking the first allocation, and incremented `dynamic_drivers_count` even when the description field was missing. A malformed or truncated driver-list entry could leave `description == NULL` and later pass it into property item initialization. Resolved: the parser now stores each name once, requires both fields before counting the entry, and uses `snprintf()` for `path`. See finding summary below. | Closed |
 | SERVER-004 | Medium | `indigo_server.c:528`, `indigo_server.c:530`, `indigo_server.c:542`, `indigo_server.c:551`, `indigo_server.c:580`, `indigo_server.c:582`, `indigo_server.c:592`, `indigo_server.c:629`, `indigo_server.c:631`, `indigo_server.c:752` | Generated JSON resources used unchecked `malloc()`, `strcpy()`, and `sprintf()` into manually grown buffers, resized only after each write, copied star names into `desig[256]` without a length check, and emitted JSON string content without escaping. Catalog data changes could crash startup or produce invalid JSON. Resolved: checked allocation, bounded name copies, `snprintf()` with remaining capacity, and a `json_escape()` helper applied to every catalog string field. See finding summary below. | Closed |
-| SERVER-005 | Medium | `indigo_server.c:1852`, `indigo_server.c:1855`, `indigo_server.c:1863`, `indigo_server.c:1865`, `indigo_server.c:1866`, `indigo_server.c:1874`, `indigo_server.c:1876` | The POSIX signal handler performs non-async-signal-safe work, including logging, `waitpid()` loops, signal reconfiguration, and `indigo_server_shutdown()`. If a signal arrives while library locks or allocator state are held, shutdown can deadlock or corrupt state. Use a self-pipe/eventfd or atomic flag and perform shutdown/reap work from the main loop or a dedicated signal thread. | Open |
+| SERVER-005 | Medium | `indigo_server.c:1852`, `indigo_server.c:1855`, `indigo_server.c:1863`, `indigo_server.c:1865`, `indigo_server.c:1866`, `indigo_server.c:1874`, `indigo_server.c:1876` | The POSIX signal handler performed non-async-signal-safe work, including logging, signal reconfiguration, and `indigo_server_shutdown()`. If a signal arrived while library locks or allocator state were held, shutdown could deadlock or corrupt state. Resolved: the managed signals are now blocked process-wide and consumed synchronously by dedicated `sigwait()` threads that run in ordinary thread context. See finding summary below. | Closed |
 | SERVER-006 | Medium | `resource/ctrl.html:83`, `resource/mng.html:114`, `resource/guider.html:154`, `resource/imager.html:210`, `resource/mount.html:274`, `resource/script.html:112`, `resource/components.js:592`, `resource/components.js:597`, `resource/imager.html:254`, `resource/imager.html:257`, `resource/imager.html:272`, `resource/imager.html:275`, `resource/imager.html:283`, `resource/imager.html:286` | Web pages hard-code `ws://` and `http://` when connecting to the server and rendering BLOB/image URLs. This breaks when the control panel is served through HTTPS or a TLS reverse proxy because browsers block mixed-content WebSockets and images. Build URLs from `window.location.protocol` (`ws` vs `wss`, `http` vs `https`) and normalize relative BLOB paths with the `URL` API. | Open |
 | SERVER-007 | Medium | `resource/components.js:141`, `resource/components.js:147`, `resource/components.js:157`, `resource/mount.html:66`, `resource/mount.html:67`, `resource/mount.html:626`, `resource/mount.html:632` | The sexagesimal number editor checks `self.ident` instead of `this.ident`. For RA/DEC fields with `ident` set, edits should stage `item.newValue` until Slew/Sync calls `setCoordinates()`, but the current code usually sends `MOUNT_EQUATORIAL_COORDINATES` immediately. Use `this.ident` and keep staged coordinate edits local until the explicit action button is pressed. | Open |
 | SERVER-008 | Low | `resource/components.js:745`, `resource/components.js:750`, `resource/components.js:776`, `resource/components.js:786`, `resource/components.js:811`, `resource/components.js:813` | The WiFi setup component stores mode in `self.mode`, which resolves to the global window object in browsers, instead of component state. It works only because reads and writes share the same accidental global; multiple instances or future strict-mode/module loading would break. Define `data()` as a function returning `{ mode: ... }` and use `this.mode` consistently. | Open |
@@ -184,6 +184,50 @@ edits and have shifted.
 
 Verification note: not build-verified on this macOS review host (Makefile project, no Xcode
 diagnostic service for this C file); should be confirmed by a normal build.
+
+### SERVER-005 (Closed)
+
+`signal_handler()` was installed for `SIGINT`, `SIGTERM`, `SIGHUP`, and `SIGCHLD` and ran in
+async signal context, where only async-signal-safe functions may be called. It violated that
+rule extensively: `indigo_log()` (buffered I/O / syslog / internal locks), `indigo_server_shutdown()`
+(locks, `free()`, thread joins), and `signal()` reconfiguration. A signal delivered while the
+interrupted thread held the allocator lock or a bus lock could deadlock or corrupt state during
+shutdown. It also carried a latent reap race: the `SIGCHLD` handler reaped with
+`waitpid(-1, WNOHANG)` in the parent, which could reap the worker out from under the parent's
+explicit `waitpid(server_pid)`.
+
+Fix (`indigo_server.c`): replaced the async handler with the finding's recommended
+dedicated-signal-thread model, so all signal handling runs in ordinary thread context where
+logging, reaping, and shutdown are legal.
+
+- `main()` now blocks `SIGINT`/`SIGTERM`/`SIGHUP`/`SIGCHLD` with `pthread_sigmask(SIG_BLOCK, ...)`
+  before forking. The mask is inherited across `fork()` and by later-created threads, so the
+  managed signals are delivered only to the sigwait thread of each process and never interrupt
+  arbitrary code.
+- `server_signal_thread()` runs in the worker (the forked child, or the whole process under
+  `--do-not-fork`). It loops on `sigwait()`, reaps exited driver/INDI subprocesses on `SIGCHLD`,
+  and on a shutdown signal logs and calls `indigo_server_shutdown()` (and clears `runLoop` on
+  macOS) before returning. Because further shutdown signals remain blocked and pending, the old
+  "ignore the second CTRL-C" `signal(SIGINT, SIG_IGN)` hack is no longer needed.
+- `supervisor_signal_thread()` runs in the supervising parent. It loops on `sigwait()`, logs,
+  sets `keep_server_running` (`SIGHUP` ⇒ restart, `SIGINT`/`SIGTERM` ⇒ exit), and forwards the
+  signal to the worker with `kill()` (escalating to `SIGKILL` via `use_sigkill`). It deliberately
+  does not handle `SIGCHLD`; the parent's existing blocking `waitpid(server_pid)` reaps the
+  worker, which removes the previous reap race.
+- The cross-thread flags `keep_server_running`, `use_sigkill`, and `runLoop` are now
+  `volatile sig_atomic_t`.
+
+The supervisor thread is created on the first parent iteration (after the initial fork, so that
+first fork stays single-threaded); on restart forks the child inherits only this thread, which
+is idle inside `sigwait()` and holds no locks, keeping the post-fork child safe. Externally
+observable behavior (Ctrl-C shutdown, `SIGHUP` restart, worker reaping, macOS run-loop teardown)
+is unchanged. Line numbers in the finding predate the SERVER-001–004 edits and have shifted.
+
+Verification note: this change to process/signal/thread orchestration was NOT build- or
+run-verified — the macOS review host has no Xcode diagnostic service for this Makefile-based C
+file, and the affected code is largely `INDIGO_LINUX`/`INDIGO_MACOS` fork/CFRunLoop logic. It
+must be built and exercised at runtime on both Linux and macOS (normal Ctrl-C shutdown, `SIGHUP`
+restart, and driver-subprocess reaping) before being relied upon.
 
 ## Review Focus
 

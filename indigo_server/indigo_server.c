@@ -417,7 +417,7 @@ static void *dso_data = NULL;
 static void *constellation_data = NULL;
 
 #ifdef INDIGO_MACOS
-static bool runLoop = true;
+static volatile sig_atomic_t runLoop = true;
 #endif
 
 #define SERVER_INFO_PROPERTY											info_property
@@ -489,8 +489,8 @@ static bool runLoop = true;
 
 
 static pid_t server_pid = 0;
-static bool keep_server_running = true;
-static bool use_sigkill = false;
+static volatile sig_atomic_t keep_server_running = true;
+static volatile sig_atomic_t use_sigkill = false;
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 static bool use_ctrl_panel = true;
 static bool use_web_apps = true;
@@ -1939,34 +1939,67 @@ static void server_main() {
 }
 
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-static void signal_handler(int signo) {
-	if (signo == SIGCHLD) {
-		int status;
-		while ((waitpid(-1, &status, WNOHANG)) > 0);
-		return;
-	}
-	if (server_pid == 0) {
-		/* SIGINT is delivered twise with CTRL-C
-		   this leads to freeze during shutdown so
-		   we ignore the second SIGINT */
-		if (signo == SIGINT) {
-			signal(SIGINT, SIG_IGN);
+// Signals are handled by dedicated threads that consume them synchronously with sigwait()
+// rather than by an async signal handler. sigwait() returns in ordinary thread context, so the
+// handling code below may safely log, reap children, and call indigo_server_shutdown() — none of
+// which are async-signal-safe and all of which the previous async handler performed illegally.
+// The managed signals are blocked process-wide (see main()) so they are delivered only here.
+
+// Runs in the worker process (the forked child, or the whole process when --do-not-fork is set):
+// reaps exited driver/INDI subprocesses on SIGCHLD and initiates shutdown on SIGINT/SIGTERM/SIGHUP.
+static void *server_signal_thread(void *arg) {
+	indigo_rename_thread("Signals");
+	sigset_t set;
+	sigemptyset(&set);
+	sigaddset(&set, SIGINT);
+	sigaddset(&set, SIGTERM);
+	sigaddset(&set, SIGHUP);
+	sigaddset(&set, SIGCHLD);
+	while (true) {
+		int signo;
+		if (sigwait(&set, &signo) != 0) {
+			continue;
+		}
+		if (signo == SIGCHLD) {
+			int status;
+			while (waitpid(-1, &status, WNOHANG) > 0);
+			continue;
 		}
 		INDIGO_LOG(indigo_log("Shutdown initiated (signal %d)...", signo));
 		indigo_server_shutdown();
 #ifdef INDIGO_MACOS
 		runLoop = false;
 #endif
-	} else {
+		// Further shutdown signals stay blocked and pending until the process exits, which
+		// reproduces the old handler's "ignore the second CTRL-C" behavior without racing.
+		return NULL;
+	}
+	return NULL;
+}
+
+// Runs in the supervising parent process: forwards shutdown signals to the worker and records
+// whether the worker should be restarted (SIGHUP) or the server should exit (SIGINT/SIGTERM).
+// SIGCHLD is left to the parent's explicit waitpid(server_pid) loop, avoiding a reap race.
+static void *supervisor_signal_thread(void *arg) {
+	indigo_rename_thread("Signals");
+	sigset_t set;
+	sigemptyset(&set);
+	sigaddset(&set, SIGINT);
+	sigaddset(&set, SIGTERM);
+	sigaddset(&set, SIGHUP);
+	while (true) {
+		int signo;
+		if (sigwait(&set, &signo) != 0) {
+			continue;
+		}
 		INDIGO_LOG(indigo_log("Signal %d received...", signo));
 		keep_server_running = (signo == SIGHUP);
-		if (use_sigkill) {
-			kill(server_pid, SIGKILL);
-		} else {
-			kill(server_pid, SIGINT);
+		if (server_pid > 0) {
+			kill(server_pid, use_sigkill ? SIGKILL : SIGINT);
+			use_sigkill = true;
 		}
-		use_sigkill = true;
 	}
+	return NULL;
 }
 #endif
 
@@ -2027,11 +2060,23 @@ int main(int argc, const char * argv[]) {
 		}
 	}
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-	signal(SIGINT, signal_handler);
-	signal(SIGTERM, signal_handler);
-	signal(SIGHUP, signal_handler);
-	signal(SIGCHLD, signal_handler);
+	// Block the signals we manage so they are delivered synchronously to a dedicated signal
+	// thread through sigwait(), instead of interrupting arbitrary code in an async handler. The
+	// mask is inherited across fork() and by every thread created afterwards, so the managed
+	// signals reach only the sigwait thread of each process.
+	sigset_t signal_set;
+	sigemptyset(&signal_set);
+	sigaddset(&signal_set, SIGINT);
+	sigaddset(&signal_set, SIGTERM);
+	sigaddset(&signal_set, SIGHUP);
+	sigaddset(&signal_set, SIGCHLD);
+	pthread_sigmask(SIG_BLOCK, &signal_set, NULL);
+	pthread_t signal_thread;
 	if (do_fork) {
+		// The supervisor signal thread is created on the first parent iteration below (after the
+		// initial single-threaded fork) so the first fork stays single-threaded; on restart forks
+		// the child inherits only this thread, which is idle inside sigwait() and holds no locks.
+		bool supervisor_started = false;
 		while(keep_server_running) {
 			server_pid = fork();
 			if (server_pid == -1) {
@@ -2047,7 +2092,7 @@ int main(int argc, const char * argv[]) {
 					name = (char *)server_argv[0];
 				}
 				strncpy(indigo_log_name, name, 255);
-				
+
 				/* Change process name for user convinience */
 				char *server_string = strstr(server_argv[0], "indigo_server");
 				if (server_string) {
@@ -2059,9 +2104,14 @@ int main(int argc, const char * argv[]) {
 					prctl(PR_SET_NAME, process_name, 0, 0, 0);
 				}
 #endif
+				pthread_create(&signal_thread, NULL, server_signal_thread, NULL);
 				server_main();
 				return EXIT_SUCCESS;
 			} else {
+				if (!supervisor_started) {
+					pthread_create(&signal_thread, NULL, supervisor_signal_thread, NULL);
+					supervisor_started = true;
+				}
 				while (waitpid(server_pid, NULL, 0) == -1 && keep_server_running) {
 					if (errno == EINTR) {
 						INDIGO_ERROR(indigo_error("waitpid(%d) interrupted: %s", server_pid, strerror(errno)));
@@ -2079,6 +2129,8 @@ int main(int argc, const char * argv[]) {
 		}
 		INDIGO_LOG(indigo_log("Shutdown complete! See you!"));
 	} else {
+		// No fork: this process is the worker.
+		pthread_create(&signal_thread, NULL, server_signal_thread, NULL);
 		server_main();
 	}
 #elif defined(INDIGO_WINDOWS)
