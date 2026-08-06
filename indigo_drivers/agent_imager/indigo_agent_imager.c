@@ -560,6 +560,15 @@ static void set_headers(indigo_device *device) {
 	}
 }
 
+// wait while the process is paused; abort must break the wait, otherwise a paused
+// process can not be canceled, e.g. by indigo_cancel_all_timers() on detach
+
+static void wait_for_resume(indigo_device *device) {
+	while (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
+		indigo_usleep(200000);
+	}
+}
+
 static bool capture_frame(indigo_device *device) {
 	indigo_property_state state = INDIGO_ALERT_STATE;
 	DEVICE_PRIVATE_DATA->frame_saturated = false;
@@ -569,8 +578,7 @@ static bool capture_frame(indigo_device *device) {
 		DEVICE_PRIVATE_DATA->last_image_size = 0;
 	}
 	for (int exposure_attempt = 0; exposure_attempt < 3; exposure_attempt++) {
-		while (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
-			indigo_usleep(200000);
+		wait_for_resume(device);
 		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 			return false;
 		}
@@ -583,8 +591,7 @@ static bool capture_frame(indigo_device *device) {
 		for (int i = 0; i < BUSY_TIMEOUT * 1000 && (state = DEVICE_PRIVATE_DATA->exposure_state) != INDIGO_BUSY_STATE && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && AGENT_PAUSE_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE; i++)
 			indigo_usleep(1000);
 		if (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
-			while (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
-				indigo_usleep(200000);
+			wait_for_resume(device);
 			if (AGENT_PAUSE_PROCESS_ITEM->sw.value) {
 				exposure_attempt--;
 				continue;
@@ -616,8 +623,7 @@ static bool capture_frame(indigo_device *device) {
 			}
 		}
 		if (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
-			while (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
-				indigo_usleep(200000);
+			wait_for_resume(device);
 			if (AGENT_PAUSE_PROCESS_ITEM->sw.value) {
 				exposure_attempt--;
 				continue;
@@ -1265,9 +1271,7 @@ static bool exposure_batch(indigo_device *device) {
 			}
 			if (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 				allow_abort_by_mount_agent(device, false);
-				while (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
-					indigo_usleep(200000);
-				}
+				wait_for_resume(device);
 				allow_abort_by_mount_agent(device, true);
 			}
 			if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -1284,8 +1288,7 @@ static bool exposure_batch(indigo_device *device) {
 				indigo_usleep(1000);
 			}
 			if (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
-				while (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
-					indigo_usleep(200000);
+				wait_for_resume(device);
 				if (AGENT_PAUSE_PROCESS_ITEM->sw.value) {
 					exposure_attempt--;
 					continue;
@@ -1314,8 +1317,7 @@ static bool exposure_batch(indigo_device *device) {
 				}
 			}
 			if (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
-				while (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
-					indigo_usleep(200000);
+				wait_for_resume(device);
 				if (AGENT_PAUSE_PROCESS_ITEM->sw.value) {
 					exposure_attempt--;
 					continue;
@@ -1362,9 +1364,7 @@ static bool exposure_batch(indigo_device *device) {
 					AGENT_IMAGER_STATS_PHASE_ITEM->number.value = INDIGO_IMAGER_PHASE_WAITING;
 					indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 					while (remaining_delay_time > 0) {
-						while (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
-							indigo_usleep(200000);
-						}
+						wait_for_resume(device);
 						if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 							return false;
 						}
@@ -1462,9 +1462,7 @@ static bool bracketing_batch(indigo_device *device) {
 		for (int exposure_attempt = 0; exposure_attempt < 3; exposure_attempt++) {
 			double exposure_time = AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.target;
 			if (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
-				while (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
-					indigo_usleep(200000);
-				}
+				wait_for_resume(device);
 			}
 			if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 				move_focuser(device, !moving_out, current_offset);
@@ -1481,8 +1479,7 @@ static bool bracketing_batch(indigo_device *device) {
 				indigo_usleep(1000);
 			}
 			if (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
-				while (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
-					indigo_usleep(200000);
+				wait_for_resume(device);
 				if (AGENT_PAUSE_PROCESS_ITEM->sw.value) {
 					exposure_attempt--;
 					continue;
@@ -1512,8 +1509,7 @@ static bool bracketing_batch(indigo_device *device) {
 				}
 			}
 			if (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
-				while (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
-					indigo_usleep(200000);
+				wait_for_resume(device);
 				if (AGENT_PAUSE_PROCESS_ITEM->sw.value) {
 					exposure_attempt--;
 					continue;
@@ -1687,9 +1683,10 @@ static bool autofocus_iterative(indigo_device *device, uint8_t **saturation_mask
 	set_backlash_if_overshoot(device, 0);
 	while (repeat) {
 		if (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
-			while (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
-				indigo_usleep(200000);
-			continue;
+			wait_for_resume(device);
+			if (AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
+				continue;
+			}
 		}
 		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 			set_backlash_if_overshoot(device, DEVICE_PRIVATE_DATA->saved_backlash);
@@ -1945,9 +1942,10 @@ static bool autofocus_ucurve(indigo_device *device) {
 	int ucurve_samples = (int)DEVICE_PRIVATE_DATA->ucurve_samples_number;
 	while (repeat) {
 		if (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
-			while (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
-				indigo_usleep(200000);
-			continue;
+			wait_for_resume(device);
+			if (AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
+				continue;
+			}
 		}
 		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 			set_backlash_if_overshoot(device, DEVICE_PRIVATE_DATA->saved_backlash);
@@ -3302,6 +3300,11 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 
 static indigo_result agent_device_detach(indigo_device *device) {
 	assert(device != NULL);
+	/* release a paused process before waiting for the timers to finish, otherwise
+	   indigo_cancel_all_timers() deadlocks on a process waiting to be resumed */
+	AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
+	AGENT_PAUSE_PROCESS_ITEM->sw.value = AGENT_PAUSE_PROCESS_WAIT_ITEM->sw.value = AGENT_PAUSE_PROCESS_AFTER_TRANSIT_ITEM->sw.value = false;
+	AGENT_PAUSE_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_cancel_pending_handlers(device);
 	indigo_cancel_all_timers(device);
 	save_config(device);
