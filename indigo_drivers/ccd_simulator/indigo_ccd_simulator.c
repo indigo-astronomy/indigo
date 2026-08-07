@@ -59,7 +59,7 @@
 // if not defined then gaussian blur is used
 // #define USE_DISK_BLUR
 
-#define DEFOCUS_SCALE						12		// default number of focuser steps per pixel of defocus blur
+#define DEFOCUS_BLUR_SCALE						12		// default number of focuser steps per pixel of defocus blur
 
 // gp_bits is used as boolean
 #define is_connected                gp_bits
@@ -117,7 +117,7 @@
 #define FOCUSER_SETTINGS_PROPERTY		PRIVATE_DATA->focuser_settings_property
 #define FOCUSER_SETTINGS_FOCUS_ITEM	(FOCUSER_SETTINGS_PROPERTY->items + 0)
 #define FOCUSER_SETTINGS_BL_ITEM		(FOCUSER_SETTINGS_PROPERTY->items + 1)
-#define FOCUSER_SETTINGS_SCALE_ITEM	(FOCUSER_SETTINGS_PROPERTY->items + 2)
+#define FOCUSER_SETTINGS_BLUR_SCALE_ITEM	(FOCUSER_SETTINGS_PROPERTY->items + 2)
 
 
 extern struct _cat { float ra, dec; unsigned char mag; } indigo_ccd_simulator_cat[];
@@ -234,12 +234,12 @@ static void search_stars(indigo_device *device) {
 }
 
 /* Defocus blur radius in pixels for the current focuser offset. The offset is
-   in focuser steps, FOCUSER_SETTINGS_SCALE_ITEM tells how many steps are worth
+   in focuser steps, FOCUSER_SETTINGS_BLUR_SCALE_ITEM tells how many steps are worth
    one pixel of blur, so a single step moves the star profile by a fraction of a
    pixel and a full defocus takes tens of steps, like a real focuser does. */
 
 static double defocus_radius(indigo_device *device) {
-	double scale = FOCUSER_SETTINGS_SCALE_ITEM->number.value;
+	double scale = FOCUSER_SETTINGS_BLUR_SCALE_ITEM->number.value;
 	if (scale < 1) {
 		scale = 1;
 	}
@@ -1738,9 +1738,9 @@ static indigo_result focuser_attach(indigo_device *device) {
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		FOCUSER_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, "FOCUSER_SETUP", MAIN_GROUP, "Focuser Setup", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
-		indigo_init_number_item(FOCUSER_SETTINGS_FOCUS_ITEM, "FOCUS", "Focus", FOCUSER_POSITION_ITEM->number.min, FOCUSER_POSITION_ITEM->number.max, 0, 0);
-		indigo_init_number_item(FOCUSER_SETTINGS_BL_ITEM, "BACKLASH", "Backlash", 0, 1000, 0, 0);
-		indigo_init_number_item(FOCUSER_SETTINGS_SCALE_ITEM, "SCALE", "Focuser steps per blur pixel", 1, 1000, 1, DEFOCUS_SCALE);
+		indigo_init_number_item(FOCUSER_SETTINGS_FOCUS_ITEM, "FOCUS", "Focus (steps)", FOCUSER_POSITION_ITEM->number.min, FOCUSER_POSITION_ITEM->number.max, 0, 0);
+		indigo_init_number_item(FOCUSER_SETTINGS_BL_ITEM, "BACKLASH", "Backlash (steps)", 0, 1000, 0, 0);
+		indigo_init_number_item(FOCUSER_SETTINGS_BLUR_SCALE_ITEM, "BLUR_SCALE", "Focuser blur (steps/px blur)", 1, 1000, 1, DEFOCUS_BLUR_SCALE);
 		// -------------------------------------------------------------------------------- FOCUSER_SPEED
 		FOCUSER_SPEED_ITEM->number.value = 1;
 		// -------------------------------------------------------------------------------- FOCUSER_POSITION
