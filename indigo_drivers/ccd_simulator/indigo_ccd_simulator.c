@@ -59,7 +59,7 @@
 // if not defined then gaussian blur is used
 // #define USE_DISK_BLUR
 
-#define DEFOCUS_BLUR_SCALE						12		// default number of focuser steps per pixel of defocus blur
+#define DEFOCUS_BLUR_SCALE						15		// default number of focuser steps per pixel of defocus blur
 
 // gp_bits is used as boolean
 #define is_connected                gp_bits
