@@ -111,7 +111,7 @@
 	<script src="components.js"></script>
 	<script language="javascript" type="text/javascript">
 		
-		indigoURL = new URL("ws://" + window.location.hostname+":"+window.location.port);
+		indigoURL = new URL((window.location.protocol == "https:" ? "wss://" : "ws://") + window.location.host);
 		guiSetup();
 		window.addEventListener("load", init, false);
 

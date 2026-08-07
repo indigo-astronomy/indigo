@@ -6,12 +6,12 @@ This file indexes folder-level automatic code review notes. Use it to find the r
 
 | Path | Review File | Last Reviewed Commit | Notes |
 | --- | --- | --- | --- |
-| `indigo_libs/` | `indigo_libs/REVIEW.md` | `017ba602857378e4aed489c065c76eacae15924c` | Core library, bus, protocol, timers, base drivers. Open findings in folder file. |
+| `indigo_libs/` | `indigo_libs/REVIEW.md` | `017ba602857378e4aed489c065c76eacae15924c` | Core library, bus, protocol, timers, base drivers. All recorded findings resolved (see folder file). |
 | `indigo_drivers/` | `indigo_drivers/REVIEW.md` | `017ba602857378e4aed489c065c76eacae15924c` | Portable drivers and agents. Open findings in folder file. |
 | `indigo_linux_drivers/` | `indigo_linux_drivers/REVIEW.md` | `017ba602857378e4aed489c065c76eacae15924c` | Linux-specific drivers. |
 | `indigo_mac_drivers/` | `indigo_mac_drivers/REVIEW.md` | `017ba602857378e4aed489c065c76eacae15924c` | macOS-specific drivers. |
 | `indigo_optional_drivers/` | `indigo_optional_drivers/REVIEW.md` | `017ba602857378e4aed489c065c76eacae15924c` | Optional drivers with extra dependencies. Open findings in folder file. |
-| `indigo_server/` | `indigo_server/REVIEW.md` | `017ba602857378e4aed489c065c76eacae15924c` | Server executables, runtime behavior, and web resources. Open findings recorded. |
+| `indigo_server/` | `indigo_server/REVIEW.md` | `017ba602857378e4aed489c065c76eacae15924c` | Server executables, runtime behavior, and web resources. All recorded findings resolved (see folder file). |
 | `indigo_tools/` | `indigo_tools/REVIEW.md` | `017ba602857378e4aed489c065c76eacae15924c` | Command-line tools. Open findings recorded. |
 | `indigo_tests/` | `indigo_tests/REVIEW.md` | `017ba602857378e4aed489c065c76eacae15924c` | Legacy/manual compliance scripts. Open findings recorded. |
 | `indigo_docs/` | `indigo_docs/REVIEW.md` | `017ba602857378e4aed489c065c76eacae15924c` | Developer and user documentation. Open findings recorded. |

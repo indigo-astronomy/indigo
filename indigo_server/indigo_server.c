@@ -417,7 +417,7 @@ static void *dso_data = NULL;
 static void *constellation_data = NULL;
 
 #ifdef INDIGO_MACOS
-static bool runLoop = true;
+static volatile sig_atomic_t runLoop = true;
 #endif
 
 #define SERVER_INFO_PROPERTY											info_property
@@ -489,8 +489,8 @@ static bool runLoop = true;
 
 
 static pid_t server_pid = 0;
-static bool keep_server_running = true;
-static bool use_sigkill = false;
+static volatile sig_atomic_t keep_server_running = true;
+static volatile sig_atomic_t use_sigkill = false;
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 static bool use_ctrl_panel = true;
 static bool use_web_apps = true;
@@ -502,7 +502,8 @@ static bool use_web_apps = false;
 static bool use_rpi_management = false;
 #endif /* RPI_MANAGEMENT */
 
-static char const *server_argv[128];
+#define SERVER_ARGV_SIZE 128
+static char const *server_argv[SERVER_ARGV_SIZE];
 static int server_argc = 1;
 
 static indigo_result attach(indigo_device *device);
@@ -525,11 +526,53 @@ static double h2deg(double ra) {
 	return ra > 12 ? (ra - 24) * 15 : ra * 15;
 }
 
+// Escaped-string scratch size and the free-space margin kept in the JSON accumulation buffers.
+// The margin comfortably exceeds the largest single record (fixed text plus two escaped fields).
+#define JSON_ESCAPE_BUFFER_SIZE 2048
+#define JSON_GROW_MARGIN (16 * 1024)
+
+// Escape a string for use inside a JSON string literal, writing at most output_size - 1
+// characters plus a terminating NUL. On overflow the output is truncated but stays a valid,
+// balanced escape sequence. Returns output so it can be used inline in a printf argument list.
+static char *json_escape(const char *input, char *output, size_t output_size) {
+	size_t j = 0;
+	if (output_size == 0) {
+		return output;
+	}
+	for (const char *p = input; *p; p++) {
+		unsigned char c = (unsigned char)*p;
+		if (c == '"' || c == '\\') {
+			if (j + 2 > output_size - 1) {
+				break;
+			}
+			output[j++] = '\\';
+			output[j++] = c;
+		} else if (c == '\n' || c == '\r' || c == '\t') {
+			if (j + 2 > output_size - 1) {
+				break;
+			}
+			output[j++] = '\\';
+			output[j++] = c == '\n' ? 'n' : c == '\r' ? 'r' : 't';
+		} else if (c < 0x20) {
+			if (j + 6 > output_size - 1) {
+				break;
+			}
+			j += sprintf(output + j, "\\u%04x", c);
+		} else {
+			if (j + 1 > output_size - 1) {
+				break;
+			}
+			output[j++] = c;
+		}
+	}
+	output[j] = 0;
+	return output;
+}
+
 static void *indigo_add_star_json_resource(int max_mag) {
 	int buffer_size = 1024 * 1024;
-	char *buffer =  malloc(buffer_size);
-	strcpy(buffer, "{\"type\":\"FeatureCollection\",\"features\": [");
-	unsigned size = (unsigned)strlen(buffer);
+	char *buffer = indigo_safe_malloc(buffer_size);
+	unsigned size = (unsigned)snprintf(buffer, buffer_size, "%s", "{\"type\":\"FeatureCollection\",\"features\": [");
 	char *sep = "";
 	indigocat_star_entry *star_data = indigocat_get_star_data();
 	for (int i = 0; star_data[i].hip; i++) {
@@ -539,7 +582,7 @@ static void *indigo_add_star_json_resource(int max_mag) {
 		char desig[256] = "";
 		char *name = "";
 		if (star_data[i].name) {
-			strcpy(desig, star_data[i].name);
+			snprintf(desig, sizeof(desig), "%s", star_data[i].name);
 			name = strrchr(desig, ',');
 			if (name) {
 				*name = 0;
@@ -548,8 +591,11 @@ static void *indigo_add_star_json_resource(int max_mag) {
 				name = "";
 			}
 		}
-		size += sprintf(buffer + size, "%s{\"type\":\"Feature\",\"id\":%d,\"properties\":{\"name\": \"%s\",\"desig\":\"%s\",\"mag\": %.2f},\"geometry\":{\"type\":\"Point\",\"coordinates\":[%.4f,%.4f]}}", sep, star_data[i].hip, name, desig, star_data[i].mag, h2deg(star_data[i].ra), star_data[i].dec);
-		if (buffer_size - size < 1024) {
+		char name_esc[JSON_ESCAPE_BUFFER_SIZE], desig_esc[JSON_ESCAPE_BUFFER_SIZE];
+		json_escape(name, name_esc, sizeof(name_esc));
+		json_escape(desig, desig_esc, sizeof(desig_esc));
+		size += snprintf(buffer + size, buffer_size - size, "%s{\"type\":\"Feature\",\"id\":%d,\"properties\":{\"name\": \"%s\",\"desig\":\"%s\",\"mag\": %.2f},\"geometry\":{\"type\":\"Point\",\"coordinates\":[%.4f,%.4f]}}", sep, star_data[i].hip, name_esc, desig_esc, star_data[i].mag, h2deg(star_data[i].ra), star_data[i].dec);
+		if (buffer_size - size < JSON_GROW_MARGIN) {
 			buffer = indigo_safe_realloc(buffer, buffer_size *= 2);
 		}
 		sep = ",";
@@ -561,14 +607,16 @@ static void *indigo_add_star_json_resource(int max_mag) {
 		if (mag < -4.5) {
 			mag = -4.5;
 		}
-		size += sprintf(buffer + size, "%s{\"type\":\"Feature\",\"id\":%d,\"properties\":{\"name\": \"%s\",\"desig\": \"\",\"mag\": %.2f,\"bv\":-5},\"geometry\":{\"type\":\"Point\",\"coordinates\":[%.4f,%.4f]}}", sep, -ss_data[i].id, ss_data[i].name, mag, h2deg(ss_data[i].ra), ss_data[i].dec);
-		if (buffer_size - size < 1024) {
+		char name_esc[JSON_ESCAPE_BUFFER_SIZE];
+		json_escape(ss_data[i].name, name_esc, sizeof(name_esc));
+		size += snprintf(buffer + size, buffer_size - size, "%s{\"type\":\"Feature\",\"id\":%d,\"properties\":{\"name\": \"%s\",\"desig\": \"\",\"mag\": %.2f,\"bv\":-5},\"geometry\":{\"type\":\"Point\",\"coordinates\":[%.4f,%.4f]}}", sep, -ss_data[i].id, name_esc, mag, h2deg(ss_data[i].ra), ss_data[i].dec);
+		if (buffer_size - size < JSON_GROW_MARGIN) {
 			buffer = indigo_safe_realloc(buffer, buffer_size *= 2);
 		}
 	}
 
 
-	size += sprintf(buffer + size, "]}");
+	size += snprintf(buffer + size, buffer_size - size, "]}");
 	unsigned char *data = indigo_safe_malloc(buffer_size);
 	unsigned data_size = buffer_size;
 	indigo_uni_compress("stars.json", buffer, size, data, &data_size);
@@ -579,9 +627,8 @@ static void *indigo_add_star_json_resource(int max_mag) {
 
 static void *indigo_add_dso_json_resource(int max_mag) {
 	int buffer_size = 1024 * 1024;
-	char *buffer =  malloc(buffer_size);
-	strcpy(buffer, "{\"type\":\"FeatureCollection\",\"features\": [");
-	unsigned size = (unsigned)strlen(buffer);
+	char *buffer = indigo_safe_malloc(buffer_size);
+	unsigned size = (unsigned)snprintf(buffer, buffer_size, "%s", "{\"type\":\"FeatureCollection\",\"features\": [");
 	char *sep = "";
 	indigocat_dso_entry *dso_data = indigocat_get_dso_data();
 	for (int i = 0; dso_data[i].id; i++) {
@@ -589,13 +636,16 @@ static void *indigo_add_dso_json_resource(int max_mag) {
 		if (dso_data[i].mag > max_mag || dso_data[i].name[0] == '\0' || (dso_data[i].name[0] == 'I' && dso_data[i].name[1] == 'C')) {
 			continue;
 		}
-		size += sprintf(buffer + size, "%s{\"type\":\"Feature\",\"id\":\"%s\",\"properties\":{\"name\": \"%s\",\"desig\": \"%s\",\"type\":\"oc\",\"mag\": %.2f},\"geometry\":{\"type\":\"Point\",\"coordinates\":[%.4f,%.4f]}}", sep, dso_data[i].id, dso_data[i].id, dso_data[i].name, dso_data[i].mag, h2deg(dso_data[i].ra), dso_data[i].dec);
-		if (buffer_size - size < 1024) {
+		char id_esc[JSON_ESCAPE_BUFFER_SIZE], name_esc[JSON_ESCAPE_BUFFER_SIZE];
+		json_escape(dso_data[i].id, id_esc, sizeof(id_esc));
+		json_escape(dso_data[i].name, name_esc, sizeof(name_esc));
+		size += snprintf(buffer + size, buffer_size - size, "%s{\"type\":\"Feature\",\"id\":\"%s\",\"properties\":{\"name\": \"%s\",\"desig\": \"%s\",\"type\":\"oc\",\"mag\": %.2f},\"geometry\":{\"type\":\"Point\",\"coordinates\":[%.4f,%.4f]}}", sep, id_esc, id_esc, name_esc, dso_data[i].mag, h2deg(dso_data[i].ra), dso_data[i].dec);
+		if (buffer_size - size < JSON_GROW_MARGIN) {
 			buffer = indigo_safe_realloc(buffer, buffer_size *= 2);
 		}
 		sep = ",";
 	}
-	size += sprintf(buffer + size, "]}");
+	size += snprintf(buffer + size, buffer_size - size, "]}");
 	unsigned char *data = indigo_safe_malloc(buffer_size);
 	unsigned data_size = buffer_size;
 	indigo_uni_compress("stars.json", buffer, size, data, &data_size);
@@ -604,152 +654,154 @@ static void *indigo_add_dso_json_resource(int max_mag) {
 	return data;
 }
 
-static int add_multiline(char *buffer, ...) {
+static int add_multiline(char *buffer, size_t buffer_size, ...) {
 	int size = 0;
 	va_list ap;
-	va_start(ap, buffer);
+	va_start(ap, buffer_size);
 	char *sep = "";
 	indigocat_star_entry *star_data = indigocat_get_star_data();
 	static char *sep2 = "";
-	size += sprintf(buffer, "%s[", sep2);
+	size += snprintf(buffer, buffer_size, "%s[", sep2);
 	sep2 = ",";
 	for (int hip = va_arg(ap, int); hip; hip = va_arg(ap, int)) {
 		for (int i = 0; star_data[i].hip; i++) {
 			if (star_data[i].hip == hip) {
-				size += sprintf(buffer + size, "%s[%.4f,%.4f]", sep, h2deg(star_data[i].ra), star_data[i].dec);
+				size_t remaining = (size_t)size < buffer_size ? buffer_size - size : 0;
+				size += snprintf(buffer + size, remaining, "%s[%.4f,%.4f]", sep, h2deg(star_data[i].ra), star_data[i].dec);
 				sep = ",";
 				break;
 			}
 		}
 	}
-	size += sprintf(buffer + size, "]");
+	size_t remaining = (size_t)size < buffer_size ? buffer_size - size : 0;
+	size += snprintf(buffer + size, remaining, "]");
+	va_end(ap);
 	return size;
 }
 
 static void *indigo_add_constellations_lines_json_resource() {
 	int buffer_size = 1024 * 1024;
-	char *buffer =  malloc(buffer_size);
-	strcpy(buffer, "{\"type\":\"FeatureCollection\",\"features\":[{\"type\":\"Feature\",\"id\":\"Const\",\"properties\":{},\"geometry\":{\"type\":\"MultiLineString\",\"coordinates\":[");
-	unsigned size = (unsigned)strlen(buffer);
-	size += add_multiline(buffer + size, 25428, 20889, 20455, 20205, 20894, 21421, 26451, 0);
-	size += add_multiline(buffer + size, 114341, 113136, 112716, 112961, 111497, 110960, 110395, 109074, 106278, 102618, 0);
-	size += add_multiline(buffer + size, 78384, 76297, 75264, 74376, 74395, 0);
-	size += add_multiline(buffer + size, 71860, 73273, 75141, 75177, 0);
-	size += add_multiline(buffer + size, 76297, 75141, 0);
-	size += add_multiline(buffer + size, 76127, 75695, 76267, 76952, 77512, 78159, 0);
-	size += add_multiline(buffer + size, 93747, 97649, 98036, 99473, 97804, 95501, 93747, 0);
-	size += add_multiline(buffer + size, 97278, 97649, 95501, 93805, 0);
-	size += add_multiline(buffer + size, 93174, 93825, 94114, 94160, 94005, 93542, 0);
-	size += add_multiline(buffer + size, 76333, 74785, 72622, 73714, 0);
-	size += add_multiline(buffer + size, 93506, 93864, 92855, 92041, 90496, 89931, 90185, 89642, 0);
-	size += add_multiline(buffer + size, 89931, 88635, 0);
-	size += add_multiline(buffer + size, 90496, 89341, 0);
-	size += add_multiline(buffer + size, 92855, 93683, 94141, 0);
-	size += add_multiline(buffer + size, 93683, 93085, 0);
-	size += add_multiline(buffer + size, 7083, 6867, 2081, 5165, 7083, 0);
-	size += add_multiline(buffer + size, 100751, 102395, 98495, 91792, 86929, 92609, 99240, 102395, 0);
-	size += add_multiline(buffer + size, 98337, 97365, 96837, 0);
-	size += add_multiline(buffer + size, 97365, 96757, 0);
-	size += add_multiline(buffer + size, 81852, 81065, 80047, 72370, 0);
-	size += add_multiline(buffer + size, 14879, 13147, 0);
-	size += add_multiline(buffer + size, 42515, 42828, 43409, 0);
-	size += add_multiline(buffer + size, 19893, 21281, 26069, 0);
-	size += add_multiline(buffer + size, 75323, 71908, 74824, 0);
-	size += add_multiline(buffer + size, 11767, 85822, 82080, 77055, 72607, 75097, 79822, 77055, 0);
-	size += add_multiline(buffer + size, 7097, 8198, 9487, 8833, 7884, 7007, 5737, 4906, 3786, 118268, 116771, 115830, 114971, 0);
-	size += add_multiline(buffer + size, 8796, 10064, 10670, 8796, 0);
-	size += add_multiline(buffer + size, 64241, 64394, 60742, 0);
-	size += add_multiline(buffer + size, 25859, 26634, 27628, 28199, 30277, 0);
-	size += add_multiline(buffer + size, 67301, 65378, 62956, 59774, 58001, 53910, 54061, 59774, 0);
-	size += add_multiline(buffer + size, 58001, 57399, 54539, 50801, 0);
-	size += add_multiline(buffer + size, 54061, 46733, 41704, 0);
-	size += add_multiline(buffer + size, 46733, 48319, 46853, 44127, 0);
-	size += add_multiline(buffer + size, 74666, 72105, 69673, 71053, 71075, 73555, 74666, 0);
-	size += add_multiline(buffer + size, 67927, 69673, 0);
-	size += add_multiline(buffer + size, 101772, 102333, 103227, 100751, 0);
-	size += add_multiline(buffer + size, 44816, 39953, 42913, 44816, 45941, 42913, 0);
-	size += add_multiline(buffer + size, 110538, 111169, 110609, 111022, 110351, 0);
-	size += add_multiline(buffer + size, 63121, 61317, 0);
-	size += add_multiline(buffer + size, 28360, 28380, 25428, 23015, 23179, 23416, 24608, 28360, 0);
-	size += add_multiline(buffer + size, 91262, 91971, 92420, 93194, 92791, 91971, 0);
-	size += add_multiline(buffer + size, 45860, 45688, 44248, 41075, 0);
-	size += add_multiline(buffer + size, 90422, 90568, 0);
-	size += add_multiline(buffer + size, 92946, 89962, 88404, 88048, 86263, 84012, 0);
-	size += add_multiline(buffer + size, 77450, 77233, 78072, 0);
-	size += add_multiline(buffer + size, 77233, 76276, 77070, 77622, 79593, 0);
-	size += add_multiline(buffer + size, 17440, 19780, 19921, 18772, 18597, 17440, 0);
-	size += add_multiline(buffer + size, 24436, 24674, 25930, 25336, 0);
-	size += add_multiline(buffer + size, 27366, 26727, 27989, 0);
-	size += add_multiline(buffer + size, 26727, 26311, 25930, 0);
-	size += add_multiline(buffer + size, 111954, 113368, 113246, 112948, 111188, 0);
-	size += add_multiline(buffer + size, 14328, 15863, 17358, 18532, 18246, 0);
-	size += add_multiline(buffer + size, 15863, 14576, 0);
-	size += add_multiline(buffer + size, 40702, 51839, 52633, 0);
-	size += add_multiline(buffer + size, 82273, 77952, 76440, 74946, 82273, 0);
-	size += add_multiline(buffer + size, 44066, 42911, 42806, 43100, 0);
-	size += add_multiline(buffer + size, 42911, 40526, 0);
-	size += add_multiline(buffer + size, 8886, 6686, 4427, 3179, 746, 0);
-	size += add_multiline(buffer + size, 9236, 17678, 2021, 0);
-	size += add_multiline(buffer + size, 113881, 677, 1067, 113963, 0);
-	size += add_multiline(buffer + size, 107315, 109427, 112029, 112447, 113963, 113881, 112158, 0);
-	size += add_multiline(buffer + size, 45556, 48002, 45238, 50099, 52419, 51576, 50371, 45556, 41037, 30438, 0);
-	size += add_multiline(buffer + size, 53229, 51233, 0);
-	size += add_multiline(buffer + size, 100027, 100345, 101027, 102485, 102978, 104234, 105881, 106723, 107556, 106985, 105515, 104139, 100345, 0);
-	size += add_multiline(buffer + size, 9640, 5447, 3092, 677, 0);
-	size += add_multiline(buffer + size, 23522, 22783, 0);
-	size += add_multiline(buffer + size, 68895, 64962, 57936, 56343, 54682, 53740, 52943, 51069, 49841, 48356, 46390, 47431, 45336, 43813, 43109, 42313, 42402, 42799, 43234, 43109, 0);
-	size += add_multiline(buffer + size, 24305, 25985, 27288, 28103, 0);
-	size += add_multiline(buffer + size, 25985, 25606, 0);
-	size += add_multiline(buffer + size, 27654, 27072, 25606, 23685, 0);
-	size += add_multiline(buffer + size, 47908, 48455, 50335, 50583, 49583, 49669, 54879, 57632, 54872, 50583, 0);
-	size += add_multiline(buffer + size, 108085, 109111, 109908, 110997, 111043, 112122, 112623, 0);
-	size += add_multiline(buffer + size, 109268, 111043, 0);
-	size += add_multiline(buffer + size, 57380, 57757, 60129, 61941, 63090, 63608, 0);
-	size += add_multiline(buffer + size, 61941, 64238, 66249, 0);
-	size += add_multiline(buffer + size, 65474, 64238, 0);
-	size += add_multiline(buffer + size, 44382, 41312, 35228, 34473, 37504, 0);
-	size += add_multiline(buffer + size, 92175, 91117, 0);
-	size += add_multiline(buffer + size, 94779, 95853, 97165, 100453, 102488, 104732, 0);
-	size += add_multiline(buffer + size, 102098, 100453, 98110, 95947, 0);
-	size += add_multiline(buffer + size, 78820, 80112, 78265, 0);
-	size += add_multiline(buffer + size, 78401, 80112, 80763, 81266, 82396, 82514, 82729, 84143, 86228, 87073, 86670, 85927, 0);
-	size += add_multiline(buffer + size, 87808, 85112, 84380, 81833, 81126, 79992, 0);
-	size += add_multiline(buffer + size, 81833, 81693, 0);
-	size += add_multiline(buffer + size, 84380, 83207, 0);
-	size += add_multiline(buffer + size, 80170, 80816, 81693, 83207, 84379, 85693, 86974, 87933, 88794, 0);
-	size += add_multiline(buffer + size, 59316, 59803, 60965, 61359, 59316, 0);
-	size += add_multiline(buffer + size, 60718, 61084, 0);
-	size += add_multiline(buffer + size, 62434, 59747, 0);
-	size += add_multiline(buffer + size, 23875, 22109, 21444, 19587, 18543, 17378, 16537, 13701, 12770, 12843, 14146, 15474, 16611, 17651, 21393, 20535, 20042, 17797, 13847, 12486, 11407, 10602, 9007, 7588, 0);
-	size += add_multiline(buffer + size, 55705, 54682, 53740, 55282, 55705, 0);
-	size += add_multiline(buffer + size, 88048, 87108, 86742, 86032, 84345, 83000, 80883, 79593, 79882, 81377, 84012, 84970, 0);
-	size += add_multiline(buffer + size, 31681, 34088, 35550, 37826, 36850, 32246, 30343, 29655, 0);
-	size += add_multiline(buffer + size, 107089, 112405, 70638, 0);
-	size += add_multiline(buffer + size, 37279, 36188, 0);
-	size += add_multiline(buffer + size, 110130, 114996, 2484, 0);
-	size += add_multiline(buffer + size, 87585, 85819, 85670, 87833, 87585, 94376, 97433, 89937, 83895, 80331, 78527, 75458, 68756, 61281, 56211, 0);
-	size += add_multiline(buffer + size, 104987, 104858, 104521, 0);
-	size += add_multiline(buffer + size, 30324, 32349, 33977, 34444, 33856, 33579, 30122, 0);
-	size += add_multiline(buffer + size, 34444, 35904, 0);
-	size += add_multiline(buffer + size, 12706, 14135, 0);
-	size += add_multiline(buffer + size, 12828, 11484, 12706, 12387, 10826, 8645, 6537, 5364, 1562, 3419, 5364, 0);
-	size += add_multiline(buffer + size, 8645, 8102, 0);
-	size += add_multiline(buffer + size, 9884, 8903, 8832, 0);
-	size += add_multiline(buffer + size, 101421, 101769, 102281, 102532, 101958, 101769, 0);
-	size += add_multiline(buffer + size, 32768, 31685, 35264, 39429, 36377, 32768, 0);
-	size += add_multiline(buffer + size, 39757, 38835, 38170, 37229, 36917, 35264, 0);
-	size += add_multiline(buffer + size, 102422, 105199, 106032, 116727, 112724, 110991, 109492, 105199, 0);
-	size += add_multiline(buffer + size, 32607, 27530, 27321, 0);
-	size += add_multiline(buffer + size, 71683, 68702, 66657, 68002, 67472, 67464, 68933, 71352, 73334, 0);
-	size += add_multiline(buffer + size, 66657, 61932, 59196, 0);
-	size += add_multiline(buffer + size, 67464, 65109, 0);
-	size += add_multiline(buffer + size, 80582, 80000, 0);
-	size += add_multiline(buffer + size, 85727, 85267, 85258, 85792, 0);
-	size += add_multiline(buffer + size, 83153, 83081, 82363, 0);
-	size += add_multiline(buffer + size, 83081, 85258, 0);
-	size += add_multiline(buffer + size, 37447, 34769, 30867, 29651, 0);
-	size += add_multiline(buffer + size, 61585, 61199, 63613, 62322, 61585, 59929, 57363, 0);
-	size += sprintf(buffer + size, "]}}]}");
+	char *buffer = indigo_safe_malloc(buffer_size);
+	unsigned size = (unsigned)snprintf(buffer, buffer_size, "%s", "{\"type\":\"FeatureCollection\",\"features\":[{\"type\":\"Feature\",\"id\":\"Const\",\"properties\":{},\"geometry\":{\"type\":\"MultiLineString\",\"coordinates\":[");
+	size += add_multiline(buffer + size, buffer_size - size,25428, 20889, 20455, 20205, 20894, 21421, 26451, 0);
+	size += add_multiline(buffer + size, buffer_size - size,114341, 113136, 112716, 112961, 111497, 110960, 110395, 109074, 106278, 102618, 0);
+	size += add_multiline(buffer + size, buffer_size - size,78384, 76297, 75264, 74376, 74395, 0);
+	size += add_multiline(buffer + size, buffer_size - size,71860, 73273, 75141, 75177, 0);
+	size += add_multiline(buffer + size, buffer_size - size,76297, 75141, 0);
+	size += add_multiline(buffer + size, buffer_size - size,76127, 75695, 76267, 76952, 77512, 78159, 0);
+	size += add_multiline(buffer + size, buffer_size - size,93747, 97649, 98036, 99473, 97804, 95501, 93747, 0);
+	size += add_multiline(buffer + size, buffer_size - size,97278, 97649, 95501, 93805, 0);
+	size += add_multiline(buffer + size, buffer_size - size,93174, 93825, 94114, 94160, 94005, 93542, 0);
+	size += add_multiline(buffer + size, buffer_size - size,76333, 74785, 72622, 73714, 0);
+	size += add_multiline(buffer + size, buffer_size - size,93506, 93864, 92855, 92041, 90496, 89931, 90185, 89642, 0);
+	size += add_multiline(buffer + size, buffer_size - size,89931, 88635, 0);
+	size += add_multiline(buffer + size, buffer_size - size,90496, 89341, 0);
+	size += add_multiline(buffer + size, buffer_size - size,92855, 93683, 94141, 0);
+	size += add_multiline(buffer + size, buffer_size - size,93683, 93085, 0);
+	size += add_multiline(buffer + size, buffer_size - size,7083, 6867, 2081, 5165, 7083, 0);
+	size += add_multiline(buffer + size, buffer_size - size,100751, 102395, 98495, 91792, 86929, 92609, 99240, 102395, 0);
+	size += add_multiline(buffer + size, buffer_size - size,98337, 97365, 96837, 0);
+	size += add_multiline(buffer + size, buffer_size - size,97365, 96757, 0);
+	size += add_multiline(buffer + size, buffer_size - size,81852, 81065, 80047, 72370, 0);
+	size += add_multiline(buffer + size, buffer_size - size,14879, 13147, 0);
+	size += add_multiline(buffer + size, buffer_size - size,42515, 42828, 43409, 0);
+	size += add_multiline(buffer + size, buffer_size - size,19893, 21281, 26069, 0);
+	size += add_multiline(buffer + size, buffer_size - size,75323, 71908, 74824, 0);
+	size += add_multiline(buffer + size, buffer_size - size,11767, 85822, 82080, 77055, 72607, 75097, 79822, 77055, 0);
+	size += add_multiline(buffer + size, buffer_size - size,7097, 8198, 9487, 8833, 7884, 7007, 5737, 4906, 3786, 118268, 116771, 115830, 114971, 0);
+	size += add_multiline(buffer + size, buffer_size - size,8796, 10064, 10670, 8796, 0);
+	size += add_multiline(buffer + size, buffer_size - size,64241, 64394, 60742, 0);
+	size += add_multiline(buffer + size, buffer_size - size,25859, 26634, 27628, 28199, 30277, 0);
+	size += add_multiline(buffer + size, buffer_size - size,67301, 65378, 62956, 59774, 58001, 53910, 54061, 59774, 0);
+	size += add_multiline(buffer + size, buffer_size - size,58001, 57399, 54539, 50801, 0);
+	size += add_multiline(buffer + size, buffer_size - size,54061, 46733, 41704, 0);
+	size += add_multiline(buffer + size, buffer_size - size,46733, 48319, 46853, 44127, 0);
+	size += add_multiline(buffer + size, buffer_size - size,74666, 72105, 69673, 71053, 71075, 73555, 74666, 0);
+	size += add_multiline(buffer + size, buffer_size - size,67927, 69673, 0);
+	size += add_multiline(buffer + size, buffer_size - size,101772, 102333, 103227, 100751, 0);
+	size += add_multiline(buffer + size, buffer_size - size,44816, 39953, 42913, 44816, 45941, 42913, 0);
+	size += add_multiline(buffer + size, buffer_size - size,110538, 111169, 110609, 111022, 110351, 0);
+	size += add_multiline(buffer + size, buffer_size - size,63121, 61317, 0);
+	size += add_multiline(buffer + size, buffer_size - size,28360, 28380, 25428, 23015, 23179, 23416, 24608, 28360, 0);
+	size += add_multiline(buffer + size, buffer_size - size,91262, 91971, 92420, 93194, 92791, 91971, 0);
+	size += add_multiline(buffer + size, buffer_size - size,45860, 45688, 44248, 41075, 0);
+	size += add_multiline(buffer + size, buffer_size - size,90422, 90568, 0);
+	size += add_multiline(buffer + size, buffer_size - size,92946, 89962, 88404, 88048, 86263, 84012, 0);
+	size += add_multiline(buffer + size, buffer_size - size,77450, 77233, 78072, 0);
+	size += add_multiline(buffer + size, buffer_size - size,77233, 76276, 77070, 77622, 79593, 0);
+	size += add_multiline(buffer + size, buffer_size - size,17440, 19780, 19921, 18772, 18597, 17440, 0);
+	size += add_multiline(buffer + size, buffer_size - size,24436, 24674, 25930, 25336, 0);
+	size += add_multiline(buffer + size, buffer_size - size,27366, 26727, 27989, 0);
+	size += add_multiline(buffer + size, buffer_size - size,26727, 26311, 25930, 0);
+	size += add_multiline(buffer + size, buffer_size - size,111954, 113368, 113246, 112948, 111188, 0);
+	size += add_multiline(buffer + size, buffer_size - size,14328, 15863, 17358, 18532, 18246, 0);
+	size += add_multiline(buffer + size, buffer_size - size,15863, 14576, 0);
+	size += add_multiline(buffer + size, buffer_size - size,40702, 51839, 52633, 0);
+	size += add_multiline(buffer + size, buffer_size - size,82273, 77952, 76440, 74946, 82273, 0);
+	size += add_multiline(buffer + size, buffer_size - size,44066, 42911, 42806, 43100, 0);
+	size += add_multiline(buffer + size, buffer_size - size,42911, 40526, 0);
+	size += add_multiline(buffer + size, buffer_size - size,8886, 6686, 4427, 3179, 746, 0);
+	size += add_multiline(buffer + size, buffer_size - size,9236, 17678, 2021, 0);
+	size += add_multiline(buffer + size, buffer_size - size,113881, 677, 1067, 113963, 0);
+	size += add_multiline(buffer + size, buffer_size - size,107315, 109427, 112029, 112447, 113963, 113881, 112158, 0);
+	size += add_multiline(buffer + size, buffer_size - size,45556, 48002, 45238, 50099, 52419, 51576, 50371, 45556, 41037, 30438, 0);
+	size += add_multiline(buffer + size, buffer_size - size,53229, 51233, 0);
+	size += add_multiline(buffer + size, buffer_size - size,100027, 100345, 101027, 102485, 102978, 104234, 105881, 106723, 107556, 106985, 105515, 104139, 100345, 0);
+	size += add_multiline(buffer + size, buffer_size - size,9640, 5447, 3092, 677, 0);
+	size += add_multiline(buffer + size, buffer_size - size,23522, 22783, 0);
+	size += add_multiline(buffer + size, buffer_size - size,68895, 64962, 57936, 56343, 54682, 53740, 52943, 51069, 49841, 48356, 46390, 47431, 45336, 43813, 43109, 42313, 42402, 42799, 43234, 43109, 0);
+	size += add_multiline(buffer + size, buffer_size - size,24305, 25985, 27288, 28103, 0);
+	size += add_multiline(buffer + size, buffer_size - size,25985, 25606, 0);
+	size += add_multiline(buffer + size, buffer_size - size,27654, 27072, 25606, 23685, 0);
+	size += add_multiline(buffer + size, buffer_size - size,47908, 48455, 50335, 50583, 49583, 49669, 54879, 57632, 54872, 50583, 0);
+	size += add_multiline(buffer + size, buffer_size - size,108085, 109111, 109908, 110997, 111043, 112122, 112623, 0);
+	size += add_multiline(buffer + size, buffer_size - size,109268, 111043, 0);
+	size += add_multiline(buffer + size, buffer_size - size,57380, 57757, 60129, 61941, 63090, 63608, 0);
+	size += add_multiline(buffer + size, buffer_size - size,61941, 64238, 66249, 0);
+	size += add_multiline(buffer + size, buffer_size - size,65474, 64238, 0);
+	size += add_multiline(buffer + size, buffer_size - size,44382, 41312, 35228, 34473, 37504, 0);
+	size += add_multiline(buffer + size, buffer_size - size,92175, 91117, 0);
+	size += add_multiline(buffer + size, buffer_size - size,94779, 95853, 97165, 100453, 102488, 104732, 0);
+	size += add_multiline(buffer + size, buffer_size - size,102098, 100453, 98110, 95947, 0);
+	size += add_multiline(buffer + size, buffer_size - size,78820, 80112, 78265, 0);
+	size += add_multiline(buffer + size, buffer_size - size,78401, 80112, 80763, 81266, 82396, 82514, 82729, 84143, 86228, 87073, 86670, 85927, 0);
+	size += add_multiline(buffer + size, buffer_size - size,87808, 85112, 84380, 81833, 81126, 79992, 0);
+	size += add_multiline(buffer + size, buffer_size - size,81833, 81693, 0);
+	size += add_multiline(buffer + size, buffer_size - size,84380, 83207, 0);
+	size += add_multiline(buffer + size, buffer_size - size,80170, 80816, 81693, 83207, 84379, 85693, 86974, 87933, 88794, 0);
+	size += add_multiline(buffer + size, buffer_size - size,59316, 59803, 60965, 61359, 59316, 0);
+	size += add_multiline(buffer + size, buffer_size - size,60718, 61084, 0);
+	size += add_multiline(buffer + size, buffer_size - size,62434, 59747, 0);
+	size += add_multiline(buffer + size, buffer_size - size,23875, 22109, 21444, 19587, 18543, 17378, 16537, 13701, 12770, 12843, 14146, 15474, 16611, 17651, 21393, 20535, 20042, 17797, 13847, 12486, 11407, 10602, 9007, 7588, 0);
+	size += add_multiline(buffer + size, buffer_size - size,55705, 54682, 53740, 55282, 55705, 0);
+	size += add_multiline(buffer + size, buffer_size - size,88048, 87108, 86742, 86032, 84345, 83000, 80883, 79593, 79882, 81377, 84012, 84970, 0);
+	size += add_multiline(buffer + size, buffer_size - size,31681, 34088, 35550, 37826, 36850, 32246, 30343, 29655, 0);
+	size += add_multiline(buffer + size, buffer_size - size,107089, 112405, 70638, 0);
+	size += add_multiline(buffer + size, buffer_size - size,37279, 36188, 0);
+	size += add_multiline(buffer + size, buffer_size - size,110130, 114996, 2484, 0);
+	size += add_multiline(buffer + size, buffer_size - size,87585, 85819, 85670, 87833, 87585, 94376, 97433, 89937, 83895, 80331, 78527, 75458, 68756, 61281, 56211, 0);
+	size += add_multiline(buffer + size, buffer_size - size,104987, 104858, 104521, 0);
+	size += add_multiline(buffer + size, buffer_size - size,30324, 32349, 33977, 34444, 33856, 33579, 30122, 0);
+	size += add_multiline(buffer + size, buffer_size - size,34444, 35904, 0);
+	size += add_multiline(buffer + size, buffer_size - size,12706, 14135, 0);
+	size += add_multiline(buffer + size, buffer_size - size,12828, 11484, 12706, 12387, 10826, 8645, 6537, 5364, 1562, 3419, 5364, 0);
+	size += add_multiline(buffer + size, buffer_size - size,8645, 8102, 0);
+	size += add_multiline(buffer + size, buffer_size - size,9884, 8903, 8832, 0);
+	size += add_multiline(buffer + size, buffer_size - size,101421, 101769, 102281, 102532, 101958, 101769, 0);
+	size += add_multiline(buffer + size, buffer_size - size,32768, 31685, 35264, 39429, 36377, 32768, 0);
+	size += add_multiline(buffer + size, buffer_size - size,39757, 38835, 38170, 37229, 36917, 35264, 0);
+	size += add_multiline(buffer + size, buffer_size - size,102422, 105199, 106032, 116727, 112724, 110991, 109492, 105199, 0);
+	size += add_multiline(buffer + size, buffer_size - size,32607, 27530, 27321, 0);
+	size += add_multiline(buffer + size, buffer_size - size,71683, 68702, 66657, 68002, 67472, 67464, 68933, 71352, 73334, 0);
+	size += add_multiline(buffer + size, buffer_size - size,66657, 61932, 59196, 0);
+	size += add_multiline(buffer + size, buffer_size - size,67464, 65109, 0);
+	size += add_multiline(buffer + size, buffer_size - size,80582, 80000, 0);
+	size += add_multiline(buffer + size, buffer_size - size,85727, 85267, 85258, 85792, 0);
+	size += add_multiline(buffer + size, buffer_size - size,83153, 83081, 82363, 0);
+	size += add_multiline(buffer + size, buffer_size - size,83081, 85258, 0);
+	size += add_multiline(buffer + size, buffer_size - size,37447, 34769, 30867, 29651, 0);
+	size += add_multiline(buffer + size, buffer_size - size,61585, 61199, 63613, 62322, 61585, 59929, 57363, 0);
+	size += snprintf(buffer + size, buffer_size - size, "]}}]}");
 	unsigned char *data = indigo_safe_malloc(buffer_size);
 	unsigned data_size = buffer_size;
 	indigo_uni_compress("constellations.lines.json", buffer, size, data, &data_size);
@@ -760,6 +812,42 @@ static void *indigo_add_constellations_lines_json_resource() {
 #endif
 
 #ifdef RPI_MANAGEMENT
+// Quote arg as a single POSIX shell token so client-supplied property text (SSID, password,
+// country code, host time) cannot inject shell metacharacters into the popen() command string.
+// The token is wrapped in single quotes and every embedded single quote is rewritten as '\''.
+// A worst-case value expands by 4x, so callers must size output as INDIGO_VALUE_SIZE * 4 + 3.
+// On overflow the token is truncated but stays balanced, so the command fails rather than injects.
+static char *shell_escape(const char *input, char *output, size_t output_size) {
+	size_t j = 0;
+	if (output_size == 0) {
+		return output;
+	}
+	if (j < output_size - 1) {
+		output[j++] = '\'';
+	}
+	for (const char *p = input; *p; p++) {
+		if (*p == '\'') {
+			if (j + 4 > output_size - 1) {
+				break;
+			}
+			output[j++] = '\'';
+			output[j++] = '\\';
+			output[j++] = '\'';
+			output[j++] = '\'';
+		} else {
+			if (j >= output_size - 1) {
+				break;
+			}
+			output[j++] = *p;
+		}
+	}
+	if (j < output_size - 1) {
+		output[j++] = '\'';
+	}
+	output[j] = 0;
+	return output;
+}
+
 static indigo_result execute_command(indigo_device *device, indigo_property *property, char *command, ...) {
 	char buffer[1024];
 	va_list args;
@@ -1359,19 +1447,22 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 	} else if (indigo_property_match(SERVER_WIFI_COUNTRY_CODE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- WIFI_COUNTRY_CODE
 		indigo_property_copy_values(SERVER_WIFI_COUNTRY_CODE_PROPERTY, property, false);
-		execute_command(device, SERVER_WIFI_COUNTRY_CODE_PROPERTY, "s_rpi_ctrl.sh --set-wifi-country-code \"%s\"", SERVER_WIFI_COUNTRY_CODE_ITEM->text.value);
+		char country_code[INDIGO_VALUE_SIZE * 4 + 3];
+		execute_command(device, SERVER_WIFI_COUNTRY_CODE_PROPERTY, "s_rpi_ctrl.sh --set-wifi-country-code %s", shell_escape(SERVER_WIFI_COUNTRY_CODE_ITEM->text.value, country_code, sizeof(country_code)));
 		update_wifi_setings(device);
 		return INDIGO_OK;
 	} else if (indigo_property_match(SERVER_WIFI_AP_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- WIFI_AP
 		indigo_property_copy_values(SERVER_WIFI_AP_PROPERTY, property, false);
-		execute_command(device, SERVER_WIFI_AP_PROPERTY, "s_rpi_ctrl.sh --set-wifi-server \"%s\" \"%s\"", SERVER_WIFI_AP_SSID_ITEM->text.value, SERVER_WIFI_AP_PASSWORD_ITEM->text.value);
+		char ap_ssid[INDIGO_VALUE_SIZE * 4 + 3], ap_password[INDIGO_VALUE_SIZE * 4 + 3];
+		execute_command(device, SERVER_WIFI_AP_PROPERTY, "s_rpi_ctrl.sh --set-wifi-server %s %s", shell_escape(SERVER_WIFI_AP_SSID_ITEM->text.value, ap_ssid, sizeof(ap_ssid)), shell_escape(SERVER_WIFI_AP_PASSWORD_ITEM->text.value, ap_password, sizeof(ap_password)));
 		update_wifi_setings(device);
 		return INDIGO_OK;
 	} else if (indigo_property_match(SERVER_WIFI_INFRASTRUCTURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- WIFI_INFRASTRUCTURE
 		indigo_property_copy_values(SERVER_WIFI_INFRASTRUCTURE_PROPERTY, property, false);
-		execute_command(device, SERVER_WIFI_INFRASTRUCTURE_PROPERTY, "s_rpi_ctrl.sh --set-wifi-client \"%s\" \"%s\"", SERVER_WIFI_INFRASTRUCTURE_SSID_ITEM->text.value, SERVER_WIFI_INFRASTRUCTURE_PASSWORD_ITEM->text.value);
+		char infra_ssid[INDIGO_VALUE_SIZE * 4 + 3], infra_password[INDIGO_VALUE_SIZE * 4 + 3];
+		execute_command(device, SERVER_WIFI_INFRASTRUCTURE_PROPERTY, "s_rpi_ctrl.sh --set-wifi-client %s %s", shell_escape(SERVER_WIFI_INFRASTRUCTURE_SSID_ITEM->text.value, infra_ssid, sizeof(infra_ssid)), shell_escape(SERVER_WIFI_INFRASTRUCTURE_PASSWORD_ITEM->text.value, infra_password, sizeof(infra_password)));
 		update_wifi_setings(device);
 		return INDIGO_OK;
 	} else if (indigo_property_match(SERVER_WIFI_CHANNEL_PROPERTY, property)) {
@@ -1399,7 +1490,8 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 	} else if (indigo_property_match(SERVER_HOST_TIME_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- HOST_TIME
 		indigo_property_copy_values(SERVER_HOST_TIME_PROPERTY, property, false);
-		execute_command(device, SERVER_HOST_TIME_PROPERTY, "s_rpi_ctrl.sh --set-date \"%s\"", SERVER_HOST_TIME_ITEM->text.value);
+		char host_time[INDIGO_VALUE_SIZE * 4 + 3];
+		execute_command(device, SERVER_HOST_TIME_PROPERTY, "s_rpi_ctrl.sh --set-date %s", shell_escape(SERVER_HOST_TIME_ITEM->text.value, host_time, sizeof(host_time)));
 		if (SERVER_HOST_TIME_PROPERTY->state == INDIGO_OK_STATE) {
 			indigo_delete_property(device, SERVER_HOST_TIME_PROPERTY, NULL);
 			SERVER_HOST_TIME_PROPERTY->hidden = true;
@@ -1498,59 +1590,57 @@ static void add_drivers(const char *folder) {
 	if (count >= 0) {
 		for (int i = 0; i < count; i++) {
 			char path[PATH_MAX];
-			sprintf(path, "%s%c%s", folder_path, INDIGO_PATH_SEPATATOR, list[i]);
+			snprintf(path, sizeof(path), "%s%c%s", folder_path, INDIGO_PATH_SEPATATOR, list[i]);
 			indigo_log("Loading driver list from %s", path);
 			indigo_uni_handle *file = indigo_uni_open_file(path, INDIGO_LOG_TRACE);
 			if (file != NULL) {
 				while (indigo_uni_read_line(file, line, sizeof(line)) > 0 && dynamic_drivers_count < INDIGO_MAX_DRIVERS) {
+					// parse the driver name from the first quoted, comma-separated field
 					char *pnt, *token = strtok_r(line, ",", &pnt);
+					char *name = NULL;
 					if (token && (token = strchr(token, '"'))) {
 						char *end = strchr(++token, '"');
 						if (end) {
 							*end = 0;
-							for (int i = 0; i < INDIGO_MAX_DRIVERS; i++) {
-								if (!strcmp(indigo_available_drivers[i].name, token)) {
-									token = NULL;
-									break;
-								}
-							}
-							if (token) {
-								for (int i = 0; i < dynamic_drivers_count; i++) {
-									if (!strcmp(dynamic_drivers[i].name, token)) {
-										token = NULL;
-										break;
-									}
-								}
-								if (token) {
-									for (int i = 0; i < dynamic_drivers_count; i++) {
-										//indigo_error("dynamic_drivers[%d].name = %s", i, dynamic_drivers[i].name);
-										if (!strcmp(dynamic_drivers[i].name, token)) {
-											token = NULL;
-											break;
-										}
-									}
-								}
-								if (token) {
-									dynamic_drivers[dynamic_drivers_count].name = strdup(token);
-								} else {
-									continue;
-								}
-							}
-							if (token) {
-								dynamic_drivers[dynamic_drivers_count].name = strdup(token);
-							} else {
-								continue;
-							}
+							name = token;
 						}
 					}
+					if (name == NULL) {
+						continue; // malformed line without a driver name
+					}
+					// skip drivers already available statically or already added dynamically
+					bool duplicate = false;
+					for (int i = 0; i < INDIGO_MAX_DRIVERS; i++) {
+						if (!strcmp(indigo_available_drivers[i].name, name)) {
+							duplicate = true;
+							break;
+						}
+					}
+					for (int i = 0; !duplicate && i < dynamic_drivers_count; i++) {
+						if (!strcmp(dynamic_drivers[i].name, name)) {
+							duplicate = true;
+							break;
+						}
+					}
+					if (duplicate) {
+						continue;
+					}
+					// parse the driver description from the second quoted field
+					char *description = NULL;
 					token = strtok_r(NULL, ",", &pnt);
 					if (token && (token = strchr(token, '"'))) {
 						char *end = strchr(token + 1, '"');
 						if (end) {
 							*end = 0;
-							dynamic_drivers[dynamic_drivers_count].description = strdup(token + 1);
+							description = token + 1;
 						}
 					}
+					if (description == NULL) {
+						continue; // malformed line without a driver description
+					}
+					// store name once and only count the entry when both fields are valid
+					dynamic_drivers[dynamic_drivers_count].name = strdup(name);
+					dynamic_drivers[dynamic_drivers_count].description = strdup(description);
 					dynamic_drivers_count++;
 				}
 				indigo_uni_close(&file);
@@ -1608,7 +1698,7 @@ static void server_main() {
 			i++;
 		} else if (!strcmp(server_argv[i], "-b-") || !strcmp(server_argv[i], "--disable-bonjour")) {
 			indigo_use_bonjour = false;
-		} else if (!strcmp(server_argv[i], "-b") || !strcmp(server_argv[i], "--bonjour")) {
+		} else if ((!strcmp(server_argv[i], "-b") || !strcmp(server_argv[i], "--bonjour")) && i < server_argc - 1) {
 			INDIGO_COPY_NAME(indigo_local_service_name, server_argv[i + 1]);
 			i++;
 		} else if (!strcmp(server_argv[i], "-c-") || !strcmp(server_argv[i], "--disable-control-panel")) {
@@ -1849,34 +1939,67 @@ static void server_main() {
 }
 
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-static void signal_handler(int signo) {
-	if (signo == SIGCHLD) {
-		int status;
-		while ((waitpid(-1, &status, WNOHANG)) > 0);
-		return;
-	}
-	if (server_pid == 0) {
-		/* SIGINT is delivered twise with CTRL-C
-		   this leads to freeze during shutdown so
-		   we ignore the second SIGINT */
-		if (signo == SIGINT) {
-			signal(SIGINT, SIG_IGN);
+// Signals are handled by dedicated threads that consume them synchronously with sigwait()
+// rather than by an async signal handler. sigwait() returns in ordinary thread context, so the
+// handling code below may safely log, reap children, and call indigo_server_shutdown() — none of
+// which are async-signal-safe and all of which the previous async handler performed illegally.
+// The managed signals are blocked process-wide (see main()) so they are delivered only here.
+
+// Runs in the worker process (the forked child, or the whole process when --do-not-fork is set):
+// reaps exited driver/INDI subprocesses on SIGCHLD and initiates shutdown on SIGINT/SIGTERM/SIGHUP.
+static void *server_signal_thread(void *arg) {
+	indigo_rename_thread("Signals");
+	sigset_t set;
+	sigemptyset(&set);
+	sigaddset(&set, SIGINT);
+	sigaddset(&set, SIGTERM);
+	sigaddset(&set, SIGHUP);
+	sigaddset(&set, SIGCHLD);
+	while (true) {
+		int signo;
+		if (sigwait(&set, &signo) != 0) {
+			continue;
+		}
+		if (signo == SIGCHLD) {
+			int status;
+			while (waitpid(-1, &status, WNOHANG) > 0);
+			continue;
 		}
 		INDIGO_LOG(indigo_log("Shutdown initiated (signal %d)...", signo));
 		indigo_server_shutdown();
 #ifdef INDIGO_MACOS
 		runLoop = false;
 #endif
-	} else {
+		// Further shutdown signals stay blocked and pending until the process exits, which
+		// reproduces the old handler's "ignore the second CTRL-C" behavior without racing.
+		return NULL;
+	}
+	return NULL;
+}
+
+// Runs in the supervising parent process: forwards shutdown signals to the worker and records
+// whether the worker should be restarted (SIGHUP) or the server should exit (SIGINT/SIGTERM).
+// SIGCHLD is left to the parent's explicit waitpid(server_pid) loop, avoiding a reap race.
+static void *supervisor_signal_thread(void *arg) {
+	indigo_rename_thread("Signals");
+	sigset_t set;
+	sigemptyset(&set);
+	sigaddset(&set, SIGINT);
+	sigaddset(&set, SIGTERM);
+	sigaddset(&set, SIGHUP);
+	while (true) {
+		int signo;
+		if (sigwait(&set, &signo) != 0) {
+			continue;
+		}
 		INDIGO_LOG(indigo_log("Signal %d received...", signo));
 		keep_server_running = (signo == SIGHUP);
-		if (use_sigkill) {
-			kill(server_pid, SIGKILL);
-		} else {
-			kill(server_pid, SIGINT);
+		if (server_pid > 0) {
+			kill(server_pid, use_sigkill ? SIGKILL : SIGINT);
+			use_sigkill = true;
 		}
-		use_sigkill = true;
 	}
+	return NULL;
 }
 #endif
 
@@ -1929,16 +2052,31 @@ int main(int argc, const char * argv[]) {
 #endif
 						 );
 			return 0;
-		} else {
+		} else if (server_argc < SERVER_ARGV_SIZE) {
 			server_argv[server_argc++] = argv[i];
+		} else {
+			fprintf(stderr, "Too many arguments, at most %d are supported\n", SERVER_ARGV_SIZE - 1);
+			return 1;
 		}
 	}
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-	signal(SIGINT, signal_handler);
-	signal(SIGTERM, signal_handler);
-	signal(SIGHUP, signal_handler);
-	signal(SIGCHLD, signal_handler);
+	// Block the signals we manage so they are delivered synchronously to a dedicated signal
+	// thread through sigwait(), instead of interrupting arbitrary code in an async handler. The
+	// mask is inherited across fork() and by every thread created afterwards, so the managed
+	// signals reach only the sigwait thread of each process.
+	sigset_t signal_set;
+	sigemptyset(&signal_set);
+	sigaddset(&signal_set, SIGINT);
+	sigaddset(&signal_set, SIGTERM);
+	sigaddset(&signal_set, SIGHUP);
+	sigaddset(&signal_set, SIGCHLD);
+	pthread_sigmask(SIG_BLOCK, &signal_set, NULL);
+	pthread_t signal_thread;
 	if (do_fork) {
+		// The supervisor signal thread is created on the first parent iteration below (after the
+		// initial single-threaded fork) so the first fork stays single-threaded; on restart forks
+		// the child inherits only this thread, which is idle inside sigwait() and holds no locks.
+		bool supervisor_started = false;
 		while(keep_server_running) {
 			server_pid = fork();
 			if (server_pid == -1) {
@@ -1954,7 +2092,7 @@ int main(int argc, const char * argv[]) {
 					name = (char *)server_argv[0];
 				}
 				strncpy(indigo_log_name, name, 255);
-				
+
 				/* Change process name for user convinience */
 				char *server_string = strstr(server_argv[0], "indigo_server");
 				if (server_string) {
@@ -1966,9 +2104,14 @@ int main(int argc, const char * argv[]) {
 					prctl(PR_SET_NAME, process_name, 0, 0, 0);
 				}
 #endif
+				pthread_create(&signal_thread, NULL, server_signal_thread, NULL);
 				server_main();
 				return EXIT_SUCCESS;
 			} else {
+				if (!supervisor_started) {
+					pthread_create(&signal_thread, NULL, supervisor_signal_thread, NULL);
+					supervisor_started = true;
+				}
 				while (waitpid(server_pid, NULL, 0) == -1 && keep_server_running) {
 					if (errno == EINTR) {
 						INDIGO_ERROR(indigo_error("waitpid(%d) interrupted: %s", server_pid, strerror(errno)));
@@ -1986,6 +2129,8 @@ int main(int argc, const char * argv[]) {
 		}
 		INDIGO_LOG(indigo_log("Shutdown complete! See you!"));
 	} else {
+		// No fork: this process is the worker.
+		pthread_create(&signal_thread, NULL, server_signal_thread, NULL);
 		server_main();
 	}
 #elif defined(INDIGO_WINDOWS)

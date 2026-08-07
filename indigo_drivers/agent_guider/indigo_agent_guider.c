@@ -2937,6 +2937,9 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 
 static indigo_result agent_device_detach(indigo_device *device) {
 	assert(device != NULL);
+	/* abort a running process before waiting for the timers to finish, otherwise
+	   indigo_cancel_all_timers() deadlocks on the guiding loop, which never ends by itself */
+	AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_cancel_pending_handlers(device);
 	indigo_cancel_all_timers(device);
 	save_config(device);

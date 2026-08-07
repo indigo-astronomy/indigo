@@ -59,6 +59,8 @@
 // if not defined then gaussian blur is used
 // #define USE_DISK_BLUR
 
+#define DEFOCUS_BLUR_SCALE						15		// default number of focuser steps per pixel of defocus blur
+
 // gp_bits is used as boolean
 #define is_connected                gp_bits
 
@@ -115,6 +117,7 @@
 #define FOCUSER_SETTINGS_PROPERTY		PRIVATE_DATA->focuser_settings_property
 #define FOCUSER_SETTINGS_FOCUS_ITEM	(FOCUSER_SETTINGS_PROPERTY->items + 0)
 #define FOCUSER_SETTINGS_BL_ITEM		(FOCUSER_SETTINGS_PROPERTY->items + 1)
+#define FOCUSER_SETTINGS_BLUR_SCALE_ITEM	(FOCUSER_SETTINGS_PROPERTY->items + 2)
 
 
 extern struct _cat { float ra, dec; unsigned char mag; } indigo_ccd_simulator_cat[];
@@ -230,29 +233,50 @@ static void search_stars(indigo_device *device) {
 	}
 }
 
-#ifdef USE_DISK_BLUR
-static void disk_blur(uint16_t *input_image, uint16_t *output_image, int width, int height, int radius) {
-	radius = abs(radius);
-	int diameter = 2 * radius + 1;
-	int area = M_PI * radius * radius;
+/* Defocus blur radius in pixels for the current focuser offset. The offset is
+   in focuser steps, FOCUSER_SETTINGS_BLUR_SCALE_ITEM tells how many steps are worth
+   one pixel of blur, so a single step moves the star profile by a fraction of a
+   pixel and a full defocus takes tens of steps, like a real focuser does. */
 
+static double defocus_radius(indigo_device *device) {
+	double scale = FOCUSER_SETTINGS_BLUR_SCALE_ITEM->number.value;
+	if (scale < 1) {
+		scale = 1;
+	}
+	return fabs(FOCUSER_SETTINGS_FOCUS_ITEM->number.value) / scale;
+}
+
+#ifdef USE_DISK_BLUR
+static void disk_blur(uint16_t *input_image, uint16_t *output_image, int width, int height, double radius) {
+	int limit = (int)ceil(radius);
+	/* The disk edge is anti-aliased, otherwise the covered area - and with it the
+	   amount of blur - would jump whenever the radius crosses a whole pixel. */
+	double inner = (radius - 0.5) * (radius - 0.5);
+	double outer = (radius + 0.5) * (radius + 0.5);
 	for (int y = 0; y < height; y++) {
 		for (int x = 0; x < width; x++) {
-			uint32_t sum = 0;
-			int count = 0;
-			for (int dy = -radius; dy <= radius; dy++) {
-				for (int dx = -radius; dx <= radius; dx++) {
+			double sum = 0;
+			double weight_sum = 0;
+			for (int dy = -limit; dy <= limit; dy++) {
+				for (int dx = -limit; dx <= limit; dx++) {
 					int nx = x + dx;
 					int ny = y + dy;
 					if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
-						if (dx * dx + dy * dy <= radius * radius) {
-							sum += input_image[ny * width + nx];
-							count++;
+						double distance = dx * dx + dy * dy;
+						double weight;
+						if (distance <= inner) {
+							weight = 1;
+						} else if (distance >= outer) {
+							continue;
+						} else {
+							weight = (outer - distance) / (outer - inner);
 						}
+						sum += weight * input_image[ny * width + nx];
+						weight_sum += weight;
 					}
 				}
 			}
-			output_image[y * width + x] = (uint16_t)(sum / count);
+			output_image[y * width + x] = weight_sum > 0 ? (uint16_t)round(sum / weight_sum) : input_image[y * width + x];
 		}
 	}
 }
@@ -260,98 +284,91 @@ static void disk_blur(uint16_t *input_image, uint16_t *output_image, int width, 
 
 #else /* use gaussian blur */
 
-// gausian blur algorithm is based on the paper http://blog.ivank.net/fastest-gaussian-blur.html by Ivan Kuckir
+/* Gaussian blur approximated by three passes of a box filter, as in
+   http://blog.ivank.net/fastest-gaussian-blur.html by Ivan Kuckir, but with the
+   extended box filter of Gwosdek et al. (2011) instead of a plain one: the two
+   outermost pixels of the kernel are weighted by a fraction, so the box has an
+   effective radius of n + alpha rather than a whole number of pixels. Without it
+   the blur would be quantized to integer box widths and small focuser moves
+   would either do nothing at all or change the star profile abruptly. */
 
-static void box_blur_h(uint16_t *scl, uint16_t *tcl, int w, int h, double r) {
-	if (r >= w / 2) {
-		r = w / 2 - 1;
-	}
-	if (r >= h / 2) {
-		r = h / 2 - 1;
-	}
-	double iarr = 1 / (r + r + 1);
+static void box_blur_h(uint16_t *scl, uint16_t *tcl, int w, int h, int n, double alpha) {
+	double iarr = 1 / (2 * n + 1 + 2 * alpha);
 	for (int i = 0; i < h; i++) {
-		int ti = i * w, li = ti, ri = (int)(ti + r);
-		int fv = scl[ti], lv = scl[ti + w - 1], val = (int)((r + 1) * fv);
-		for (int j = 0; j < r; j++) {
-			val += scl[ti + j];
+		uint16_t *src = scl + i * w;
+		uint16_t *dst = tcl + i * w;
+		int fv = src[0], lv = src[w - 1];
+		/* running sum of src[j - n] .. src[j + n], edge pixels extended */
+		int64_t val = (int64_t)n * fv;
+		for (int j = 0; j <= n; j++) {
+			val += j < w ? src[j] : lv;
 		}
-		for (int j = 0  ; j <= r ; j++) {
-			val += scl[ri++] - fv;
-			tcl[ti++] = (uint16_t)round(val * iarr);
-		}
-		for (int j = (int)(r + 1); j < w - r; j++) {
-			val += scl[ri++] - scl[li++];
-			tcl[ti++] = (uint16_t)round(val * iarr);
-		}
-		for (int j = (int)(w - r); j < w  ; j++) {
-			val += lv - scl[li++];
-			tcl[ti++] = (uint16_t)round(val * iarr);
+		for (int j = 0; j < w; j++) {
+			int li = j - n - 1, ri = j + n + 1;
+			int lp = li < 0 ? fv : src[li];
+			int rp = ri >= w ? lv : src[ri];
+			dst[j] = (uint16_t)round((val + alpha * (lp + rp)) * iarr);
+			int lo = j - n;
+			val += rp - (lo < 0 ? fv : src[lo]);
 		}
 	}
 }
 
-static void box_blur_t(uint16_t *scl, uint16_t *tcl, int w, int h, double r) {
-	if (r >= w / 2) {
-		r = w / 2 - 1;
-	}
-	if (r >= h / 2) {
-		r = h / 2 - 1;
-	}
-	double iarr = 1 / (r + r + 1);
+static void box_blur_t(uint16_t *scl, uint16_t *tcl, int w, int h, int n, double alpha) {
+	double iarr = 1 / (2 * n + 1 + 2 * alpha);
 	for (int i = 0; i < w; i++) {
-		int ti = i, li = ti, ri = (int)(ti + r * w);
-		int fv = scl[ti], lv = scl[ti + w * (h - 1)], val = (int)((r + 1) * fv);
-		for (int j = 0; j < r; j++) {
-			val += scl[ti + j * w];
+		uint16_t *src = scl + i;
+		uint16_t *dst = tcl + i;
+		int fv = src[0], lv = src[(h - 1) * w];
+		int64_t val = (int64_t)n * fv;
+		for (int j = 0; j <= n; j++) {
+			val += j < h ? src[j * w] : lv;
 		}
-		for (int j = 0  ; j <= r ; j++) {
-			val += scl[ri] - fv;
-			tcl[ti] = (uint16_t)round(val * iarr);
-			ri += w;
-			ti += w;
-		}
-		for (int j = (int)(r + 1); j < h - r; j++) {
-			val += scl[ri] - scl[li];
-			tcl[ti] = (uint16_t)round(val*iarr);
-			li += w;
-			ri += w;
-			ti += w;
-		}
-		for (int j = (int)(h - r); j < h  ; j++) {
-			val += lv - scl[li];
-			tcl[ti] = (uint16_t)round(val * iarr);
-			li += w;
-			ti += w;
+		for (int j = 0; j < h; j++) {
+			int li = j - n - 1, ri = j + n + 1;
+			int lp = li < 0 ? fv : src[li * w];
+			int rp = ri >= h ? lv : src[ri * w];
+			dst[j * w] = (uint16_t)round((val + alpha * (lp + rp)) * iarr);
+			int lo = j - n;
+			val += rp - (lo < 0 ? fv : src[lo * w]);
 		}
 	}
-}
-
-static void box_blur(uint16_t *scl, uint16_t *tcl, int w, int h, double r) {
-	int length = w * h;
-	for (int i = 0; i < length; i++) {
-		tcl[i] = scl[i];
-	}
-	box_blur_h(tcl, scl, w, h, r);
-	box_blur_t(scl, tcl, w, h, r);
 }
 
 static void gauss_blur(uint16_t *scl, uint16_t *tcl, int w, int h, double r) {
-	double ideal = sqrt((12 * r * r / 3) + 1);
-	int wl = (int)floor(ideal);
-	if (wl % 2 == 0) {
-		wl--;
+	int length = w * h;
+	r = fabs(r);
+	/* keep the kernel well inside the frame */
+	double max_r = (w < h ? w : h) / 6.0;
+	if (r > max_r) {
+		r = max_r;
 	}
-	int wu = wl + 2;
-	ideal = (12 * r * r - 3 * wl * wl - 12 * wl - 9)/(-4 * wl - 4);
-	int m = (int)round(ideal);
-	int sizes[3];
-	for (int i = 0; i < 3; i++) {
-		sizes[i] = i < m ? wl : wu;
+	if (r < 0.05) {
+		memcpy(tcl, scl, length * sizeof(uint16_t));
+		return;
 	}
-	box_blur(scl, tcl, w, h, (sizes[0] - 1) / 2);
-	box_blur(tcl, scl, w, h, (sizes[1] - 1) / 2);
-	box_blur(scl, tcl, w, h, (sizes[2] - 1) / 2);
+	/* variances of the three passes add up, so each pass needs r * r / 3 */
+	double variance = r * r / 3;
+	/* variance of a box of radius n is n * (n + 1) / 3, take the widest one that fits */
+	int n = (int)floor((sqrt(1 + 12 * variance) - 1) / 2);
+	/* and let alpha make up the difference: variance of the extended box is
+	   (2 * sum(k * k, k = 1..n) + 2 * alpha * (n + 1)^2) / (2 * n + 1 + 2 * alpha) */
+	double sum_sq = n * (n + 1.0) * (2 * n + 1.0) / 3;
+	double denominator = 2 * (n + 1.0) * (n + 1.0) - 2 * variance;
+	double alpha = denominator > 0 ? (variance * (2 * n + 1) - sum_sq) / denominator : 0;
+	if (alpha < 0) {
+		alpha = 0;
+	} else if (alpha > 1) {
+		alpha = 1;
+	}
+	/* horizontal and vertical passes are separable and commute, so they can be grouped */
+	box_blur_h(scl, tcl, w, h, n, alpha);
+	box_blur_h(tcl, scl, w, h, n, alpha);
+	box_blur_h(scl, tcl, w, h, n, alpha);
+	box_blur_t(tcl, scl, w, h, n, alpha);
+	box_blur_t(scl, tcl, w, h, n, alpha);
+	box_blur_t(tcl, scl, w, h, n, alpha);
+	memcpy(tcl, scl, length * sizeof(uint16_t));
 }
 
 #define blur_image gauss_blur
@@ -422,9 +439,10 @@ static void create_frame(indigo_device *device) {
 			{ 0 }
 		};
 
-		if (FOCUSER_SETTINGS_FOCUS_ITEM->number.value != 0 && PRIVATE_DATA->file_image_header.signature == INDIGO_RAW_MONO16) {
-			uint16_t *tmp = indigo_safe_malloc(2 * size);
-			blur_image((uint16_t *)PRIVATE_DATA->file_image, tmp, PRIVATE_DATA->file_image_header.width, PRIVATE_DATA->file_image_header.height, FOCUSER_SETTINGS_FOCUS_ITEM->number.value);
+		double radius = defocus_radius(device);
+		if (radius > 0 && PRIVATE_DATA->file_image_header.signature == INDIGO_RAW_MONO16) {
+			char *tmp = indigo_alloc_blob_buffer(size + FITS_HEADER_SIZE);
+			blur_image((uint16_t *)(PRIVATE_DATA->file_image + FITS_HEADER_SIZE), (uint16_t *)(tmp + FITS_HEADER_SIZE), PRIVATE_DATA->file_image_header.width, PRIVATE_DATA->file_image_header.height, radius);
 			indigo_process_image(device, tmp, PRIVATE_DATA->file_image_header.width, PRIVATE_DATA->file_image_header.height, bpp, true, true, strlen(BAYERPAT_ITEM->text.value) == 4 ? keywords : NULL, CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE);
 			free(tmp);
 		} else {
@@ -614,9 +632,10 @@ static void create_frame(indigo_device *device) {
 			}
 			raw[i] = (unsigned short)value;
 		}
-		if (FOCUSER_SETTINGS_FOCUS_ITEM->number.value != 0) {
+		double radius = defocus_radius(device);
+		if (radius > 0) {
 			uint16_t *tmp = indigo_safe_malloc(2 * size);
-			blur_image(raw, tmp, frame_width, frame_height, FOCUSER_SETTINGS_FOCUS_ITEM->number.value);
+			blur_image(raw, tmp, frame_width, frame_height, radius);
 			memcpy(raw, tmp, 2 * size);
 			free(tmp);
 		}
@@ -1718,9 +1737,10 @@ static indigo_result focuser_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
-		FOCUSER_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, "FOCUSER_SETUP", MAIN_GROUP, "Focuser Setup", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
-		indigo_init_number_item(FOCUSER_SETTINGS_FOCUS_ITEM, "FOCUS", "Focus", FOCUSER_POSITION_ITEM->number.min, FOCUSER_POSITION_ITEM->number.max, 0, 0);
-		indigo_init_number_item(FOCUSER_SETTINGS_BL_ITEM, "BACKLASH", "Backlash", 0, 1000, 0, 0);
+		FOCUSER_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, "FOCUSER_SETUP", MAIN_GROUP, "Focuser Setup", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
+		indigo_init_number_item(FOCUSER_SETTINGS_FOCUS_ITEM, "FOCUS", "Focus (steps)", FOCUSER_POSITION_ITEM->number.min, FOCUSER_POSITION_ITEM->number.max, 0, 0);
+		indigo_init_number_item(FOCUSER_SETTINGS_BL_ITEM, "BACKLASH", "Backlash (steps)", 0, 1000, 0, 0);
+		indigo_init_number_item(FOCUSER_SETTINGS_BLUR_SCALE_ITEM, "BLUR_SCALE", "Focuser blur (steps/px blur)", 1, 1000, 1, DEFOCUS_BLUR_SCALE);
 		// -------------------------------------------------------------------------------- FOCUSER_SPEED
 		FOCUSER_SPEED_ITEM->number.value = 1;
 		// -------------------------------------------------------------------------------- FOCUSER_POSITION

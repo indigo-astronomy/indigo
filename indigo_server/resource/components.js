@@ -154,7 +154,7 @@ Vue.component('indigo-edit-number-60', {
 			for (var i in this.property.items) {
 				var item = this.property.items[i];
 				if (item.name == this.name) {
-					if (self.ident != null) {
+					if (this.ident != null) {
 						item.newValue = stod(value);
 					} else {
 						var values = {}
@@ -589,13 +589,13 @@ Vue.component('indigo-ctrl', {
 										</template>
 										<template v-else-if="property.type == 'blob'">
 											<div v-for="item in property.items">
-												<template v-if="item.value != null && item.value.startsWith('http://')">
+												<template v-if="item.value != null && (item.value.startsWith('http://') || item.value.startsWith('https://'))">
 													<a v-if="!item.value.endsWith('.jpeg')" :href="item.value">{{item.value}}</a>
 													<img v-else :src="item.value" class="img-fluid"/>
 												</template>
 												<template v-else-if="item.value != null">
-													<a v-if="!item.value.endsWith('.jpeg')" :href="'http://' + window.location.hostname + ':' + window.location.port + item.value">{{"http://" + window.location.hostname + ":" + window.location.port + item.value}}</a>
-													<img v-else :src="'http://' + window.location.hostname + ':' + window.location.port + item.value" class="img-fluid"/>
+													<a v-if="!item.value.endsWith('.jpeg')" :href="window.location.protocol + '//' + window.location.host + item.value">{{window.location.protocol + "//" + window.location.host + item.value}}</a>
+													<img v-else :src="window.location.protocol + '//' + window.location.host + item.value" class="img-fluid"/>
 												</template>
 											</div>
 										</template>
@@ -742,13 +742,15 @@ Vue.component('indigo-wifi-setup', {
 		ap_property: Object,
 		infra_property: Object
 	},
-	data: {
-		mode: String
+	data: function() {
+		return {
+			mode: ""
+		};
 	},
 	methods: {
 		onChange: function(e) {
-			self.mode = e.target.value;
-			if (self.mode == "AP") {
+			this.mode = e.target.value;
+			if (this.mode == "AP") {
 				for (var i in this.ap_property.items) {
 					var item = this.ap_property.items[i];
 					if (item.name == "SSID") {
@@ -758,7 +760,7 @@ Vue.component('indigo-wifi-setup', {
 					}
 				}
 				$("#PASSWORD").removeAttr("placeholder");
-			} else if (self.mode == "INFRA") {
+			} else if (this.mode == "INFRA") {
 				for (var i in this.infra_property.items) {
 					var item = this.infra_property.items[i];
 					if (item.name == "SSID") {
@@ -773,7 +775,7 @@ Vue.component('indigo-wifi-setup', {
 			for (var i in this.ap_property.items) {
 				var item = this.ap_property.items[i];
 				if (item.name == "SSID" && item.value) {
-					self.mode = "AP";	
+					this.mode = "AP";	
 					return true;
 				}
 			}
@@ -783,7 +785,7 @@ Vue.component('indigo-wifi-setup', {
 			for (var i in this.infra_property.items) {
 				var item = this.infra_property.items[i];
 				if (item.name == "SSID" && item.value) {
-					self.mode = "INFRA";	
+					this.mode = "INFRA";	
 					return true;
 				}
 			}
@@ -808,9 +810,9 @@ Vue.component('indigo-wifi-setup', {
 			var values = {};
 			values["SSID"] = $("#SSID").val();
 			values["PASSWORD"] = $("#PASSWORD").val();
-			if (self.mode == "AP") {
+			if (this.mode == "AP") {
 				changeProperty(this.ap_property.device, this.ap_property.name, values);
-			} else if (self.mode == "INFRA") {
+			} else if (this.mode == "INFRA") {
 				changeProperty(this.infra_property.device, this.infra_property.name, values);
 			}
 		},

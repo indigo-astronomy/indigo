@@ -207,7 +207,7 @@
 	<script src="components.js"></script>
 	<script language="javascript" type="text/javascript">
 		
-		indigoURL = new URL("ws://" + window.location.hostname+":"+window.location.port);
+		indigoURL = new URL((window.location.protocol == "https:" ? "wss://" : "ws://") + window.location.host);
 		guiSetup();
 		window.addEventListener("load", init, false);
 
@@ -251,10 +251,10 @@
 				if (property.state == "Ok") {
 					var value = property.item("IMAGE").value;
 					if (value != null) {
-						if (value.startsWith("http://"))
+						if (value.startsWith("http://") || value.startsWith("https://"))
 							$("#image").attr("src", value + '?' + new Date().getTime()).parent().show();
 						else
-							$("#image").attr("src", "http://" + INDIGO.host + value + '?' + new Date().getTime()).parent().show();
+							$("#image").attr("src", window.location.protocol + "//" + INDIGO.host + value + '?' + new Date().getTime()).parent().show();
 					}
 				}
 			}
@@ -269,10 +269,10 @@
 					if (property.state == "Ok") {
 						var value = property.item("IMAGE").value;
 						if (value != null) {
-							if (value.startsWith("http://"))
+							if (value.startsWith("http://") || value.startsWith("https://"))
 								$("#image").attr("src", value + '?' + new Date().getTime()).parent().show();
 							else
-								$("#image").attr("src", "http://" + INDIGO.host + value + '?' + new Date().getTime()).parent().show();
+								$("#image").attr("src", window.location.protocol + "//" + INDIGO.host + value + '?' + new Date().getTime()).parent().show();
 						}
 					}
 				} else if (property.name == "CCD_PREVIEW_HISTOGRAM") {
@@ -280,10 +280,10 @@
 						var value = property.item("IMAGE").value;
 						if (value != null) {
 							$("#histogram").show();
-							if (value.startsWith("http://"))
+							if (value.startsWith("http://") || value.startsWith("https://"))
 								$("#histogram").attr("src", value + '?' + new Date().getTime()).parent().show();
 							else
-								$("#histogram").attr("src", "http://" + INDIGO.host + value + '?' + new Date().getTime()).show();
+								$("#histogram").attr("src", window.location.protocol + "//" + INDIGO.host + value + '?' + new Date().getTime()).show();
 						}
 					}
 				} else if (property.name == "AGENT_IMAGER_DOWNLOAD_IMAGE") {
