@@ -550,9 +550,9 @@ static bool astrometry_solve(indigo_device *device, indigo_platesolver_task *tas
 			hints_index += sprintf(hints + hints_index, " --depth %d", (int)AGENT_PLATESOLVER_HINTS_DEPTH_ITEM->number.value);
 		}
 		if (AGENT_PLATESOLVER_HINTS_SCALE_ITEM->number.value > 0) {
-			hints_index += sprintf(hints + hints_index, " --scale-units arcsecperpix --scale-low %.3f --scale-high %.3f", AGENT_PLATESOLVER_HINTS_SCALE_ITEM->number.value * 0.9 * 3600, AGENT_PLATESOLVER_HINTS_SCALE_ITEM->number.value * 1.1 * 3600);
+			hints_index += sprintf(hints + hints_index, " --scale-units arcsecperpix --scale-low %.3f --scale-high %.3f", AGENT_PLATESOLVER_HINTS_SCALE_ITEM->number.value * 0.85 * 3600, AGENT_PLATESOLVER_HINTS_SCALE_ITEM->number.value * 1.15 * 3600);
 		} else if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pixel_scale > 0 && AGENT_PLATESOLVER_HINTS_SCALE_ITEM->number.value < 0) {
-			hints_index += sprintf(hints + hints_index, " --scale-units arcsecperpix --scale-low %.3f --scale-high %.3f", INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pixel_scale * 0.9 * 3600, INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pixel_scale * 1.1 * 3600);
+			hints_index += sprintf(hints + hints_index, " --scale-units arcsecperpix --scale-low %.3f --scale-high %.3f", INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pixel_scale * 0.85 * 3600, INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pixel_scale * 1.15 * 3600);
 		}
 		if (AGENT_PLATESOLVER_HINTS_CPU_LIMIT_ITEM->number.value > 0) {
 			hints_index += sprintf(hints + hints_index, " --cpulimit %d", (int)AGENT_PLATESOLVER_HINTS_CPU_LIMIT_ITEM->number.value);

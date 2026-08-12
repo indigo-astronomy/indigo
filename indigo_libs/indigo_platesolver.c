@@ -616,7 +616,7 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		strcpy(AGENT_PLATESOLVER_HINTS_RADIUS_ITEM->number.format, "%m");
 		strcpy(AGENT_PLATESOLVER_HINTS_RA_ITEM->number.format, "%m");
 		strcpy(AGENT_PLATESOLVER_HINTS_DEC_ITEM->number.format, "%m");
-		strcpy(AGENT_PLATESOLVER_HINTS_SCALE_ITEM->number.format, "%m");
+		strcpy(AGENT_PLATESOLVER_HINTS_SCALE_ITEM->number.format, "%9m");
 		// -------------------------------------------------------------------------------- WCS property
 		AGENT_PLATESOLVER_WCS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_PLATESOLVER_WCS_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "WCS solution", INDIGO_OK_STATE, INDIGO_RO_PERM, 10);
 		if (AGENT_PLATESOLVER_WCS_PROPERTY == NULL) {
@@ -637,7 +637,7 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		strcpy(AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.format, "%m");
 		strcpy(AGENT_PLATESOLVER_WCS_WIDTH_ITEM->number.format, "%m");
 		strcpy(AGENT_PLATESOLVER_WCS_HEIGHT_ITEM->number.format, "%m");
-		strcpy(AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.format, "%m");
+		strcpy(AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.format, "%9m");
 		// -------------------------------------------------------------------------------- AGENT_PLATESOLVER_SYNC property /* OBSOLETED */
 		AGENT_PLATESOLVER_SYNC_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_PLATESOLVER_SYNC_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Sync mode (obsolete)", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 5);
 		if (AGENT_PLATESOLVER_SYNC_PROPERTY == NULL) {
