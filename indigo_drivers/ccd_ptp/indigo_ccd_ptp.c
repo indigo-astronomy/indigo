@@ -37,6 +37,7 @@
 #include "indigo_ptp_nikon.h"
 #include "indigo_ptp_sony.h"
 #include "indigo_ptp_fuji.h"
+#include "indigo_ptp_olympus.h"
 #include "indigo_ccd_ptp.h"
 
 #define MAX_DEVICES    	4
@@ -45,6 +46,8 @@
 #define NIKON_VID	0x04B0
 #define SONY_VID	0x054c
 #define FUJI_VID  0x04cb
+#define OLYMPUS_VID	0x07b4
+#define OM_SYSTEM_VID	0x33a2
 
 static indigo_device *devices[MAX_DEVICES];
 
@@ -634,6 +637,30 @@ static indigo_device *attach_device(int vendor, int product, const char *usb_pat
 				private_data->focus = NULL;
 				private_data->set_host_time = ptp_set_host_time;
 				private_data->check_dual_compression = ptp_fuji_check_dual_compression;
+			} else if (vendor == OLYMPUS_VID || vendor == OM_SYSTEM_VID) {
+				// set before ptp_open so the very first OpenSession (and the
+				// stale-session device-reset fallback) already run at the short
+				// timeout; read only by the libusb transaction path
+				private_data->transaction_timeout = OLYMPUS_PTP_TIMEOUT;
+				private_data->operation_code_label = ptp_operation_olympus_code_label;
+				private_data->response_code_label = ptp_response_code_label;
+				private_data->event_code_label = ptp_event_olympus_code_label;
+				private_data->property_code_name = ptp_property_olympus_code_name;
+				private_data->property_code_label = ptp_property_olympus_code_label;
+				private_data->property_value_code_label = ptp_property_olympus_value_code_label;
+				private_data->initialise = ptp_olympus_initialise;
+				private_data->handle_event = ptp_olympus_handle_event;
+				private_data->inject_property = NULL;
+				private_data->fix_property = ptp_olympus_fix_property;
+				private_data->set_property = ptp_olympus_set_property;
+				private_data->exposure = ptp_olympus_exposure;
+				private_data->liveview = (CAMERA[i].flags & ptp_flag_lv) ? ptp_olympus_liveview : NULL;
+				private_data->lock = NULL;
+				private_data->af = NULL;
+				private_data->zoom = NULL;
+				private_data->focus = ptp_olympus_focus;
+				private_data->set_host_time = ptp_set_host_time;
+				private_data->check_dual_compression = ptp_olympus_check_dual_compression;
 			} else {
 				private_data->operation_code_label = ptp_operation_code_label;
 				private_data->response_code_label = ptp_response_code_label;
