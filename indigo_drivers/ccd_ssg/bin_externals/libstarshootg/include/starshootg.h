@@ -1,7 +1,7 @@
 #ifndef __starshootg_h__
 #define __starshootg_h__
 
-/* Version: 60.31631.20260606 */
+/* Version: 60.32226.20260808 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -291,6 +291,9 @@ typedef struct Starshootg_t { int unused; } *HStarshootg;
 #define STARSHOOTG_BACKEND_MAX               1024    /* backend frame buffer deque length */
 #define STARSHOOTG_BACKEND_DEF               3
 #define STARSHOOTG_BACKEND_MIN               2
+#define STARSHOOTG_HEAT_MIN                  0       /* Heat */
+#define STARSHOOTG_LANE_MIN                  0       /* Lane */
+#define STARSHOOTG_FAN_MIN                   0       /* Fan */
 
 typedef struct {
     unsigned    width;
@@ -329,7 +332,7 @@ typedef struct {
 } StarshootgDeviceV2; /* device instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 60.31631.20260606
+    get the version of this dll/so/dylib, which is: 60.32226.20260808
 */
 #if defined(_WIN32)
 STARSHOOTG_API(const wchar_t*)   Starshootg_Version();
@@ -377,6 +380,18 @@ STARSHOOTG_API(HStarshootg) Starshootg_OpenByIndex(unsigned index);
 /* close the handle. After it is closed, never use the handle any more. */
 STARSHOOTG_API(void)     Starshootg_Close(HStarshootg h);
 
+/* load cfg:
+     (1) nullptr or empty string, load from EEPROM (address = 0)
+     (2) eeprom=???, load from EEPROM (address = 0x???)
+     (3) path\to\file.ini, load from ini file
+     (4) path\to\file.json, load from json file
+*/
+#if defined(_WIN32)
+STARSHOOTG_API(HRESULT)  Starshootg_Load(HStarshootg h, const wchar_t* strPara);
+#else
+STARSHOOTG_API(HRESULT)  Starshootg_Load(HStarshootg h, const char* strPara);
+#endif
+
 #define STARSHOOTG_EVENT_EXPOSURE          0x0001    /* exposure time or gain changed */
 #define STARSHOOTG_EVENT_TEMPTINT          0x0002    /* white balance changed, Temp/Tint mode */
 #define STARSHOOTG_EVENT_IMAGE             0x0004    /* live image arrived, use Starshootg_PullImageXXXX to get this image */
@@ -391,6 +406,8 @@ STARSHOOTG_API(void)     Starshootg_Close(HStarshootg h);
 #define STARSHOOTG_EVENT_AUTOEXPO_CONV     0x000d    /* auto exposure convergence */
 #define STARSHOOTG_EVENT_AUTOEXPO_CONVFAIL 0x000e    /* auto exposure once mode convergence failed */
 #define STARSHOOTG_EVENT_FPNC              0x000f    /* fix pattern noise correction status changed */
+#define STARSHOOTG_EVENT_FRONT_OVERFLOW    0x0010    /* front buffer overflow */
+#define STARSHOOTG_EVENT_BACK_OVERFLOW     0x0011    /* back buffer overflow */
 #define STARSHOOTG_EVENT_ERROR             0x0080    /* generic error */
 #define STARSHOOTG_EVENT_DISCONNECTED      0x0081    /* camera disconnected */
 #define STARSHOOTG_EVENT_NOFRAMETIMEOUT    0x0082    /* no frame timeout error */
@@ -687,8 +704,8 @@ typedef void (__stdcall* PISTARSHOOTG_HISTOGRAM_CALLBACKV2)(const unsigned* aHis
 /*
 * mode:
 *   0: disable auto exposure
-*   1: auto exposure continue mode
-*   2: auto exposure once mode
+*   1: auto exposure continuous mode
+*   2: auto exposure once
 */
 STARSHOOTG_API(HRESULT)  Starshootg_get_AutoExpoEnable(HStarshootg h, int* mode);
 STARSHOOTG_API(HRESULT)  Starshootg_put_AutoExpoEnable(HStarshootg h, int mode);
@@ -836,12 +853,12 @@ STARSHOOTG_API(HRESULT)  Starshootg_get_MonoMode(HStarshootg h);
 STARSHOOTG_API(HRESULT)  Starshootg_get_StillResolutionNumber(HStarshootg h);
 STARSHOOTG_API(HRESULT)  Starshootg_get_StillResolution(HStarshootg h, unsigned nResolutionIndex, int* pWidth, int* pHeight);
 
-/*  0: no realtime
+/*  0: Off
           stop grab frame when frame buffer deque is full, until the frames in the queue are pulled away and the queue is not full
-    1: realtime
+    1: Both
           use minimum frame buffer. When new frame arrive, drop all the pending frame regardless of whether the frame buffer is full.
           If DDR present, also limit the DDR frame buffer to only one frame.
-    2: soft realtime
+    2: Soft
           use minimum frame buffer. When new frame arrive, drop all the pending frame regardless of whether the frame buffer is full.
           If DDR present, the DDR frame buffer unchanged.
     default: 0
@@ -938,6 +955,15 @@ STARSHOOTG_API(HRESULT)  Starshootg_feed_Pipe(HStarshootg h, unsigned pipeId);
 STARSHOOTG_API(HRESULT)  Starshootg_put_Option(HStarshootg h, unsigned iOption, int iValue);
 STARSHOOTG_API(HRESULT)  Starshootg_get_Option(HStarshootg h, unsigned iOption, int* piValue);
 
+/* Case insensitive */
+STARSHOOTG_API(HRESULT)  Starshootg_put_Int(HStarshootg h, const char* strName, int iValue);
+STARSHOOTG_API(HRESULT)  Starshootg_get_Int(HStarshootg h, const char* strName, int* piValue);
+STARSHOOTG_API(HRESULT)  Starshootg_put_Str(HStarshootg h, const char* strName, const char* strValue);
+/* strValue: output buffer (128 bytes are always sufficient) */
+STARSHOOTG_API(HRESULT)  Starshootg_get_Str(HStarshootg h, const char* strName, char strValue[]);
+STARSHOOTG_API(HRESULT)  Starshootg_get_Enum(HStarshootg h, const char* strName, int* pNumber, int arrValue[], const char* arrString[]);
+STARSHOOTG_API(HRESULT)  Starshootg_get_StrPtr(HStarshootg h, const char* strName, const char** strValue);
+
 /* [RW] = Read/Write; [RO] = Read Only; [WO] = Write Only */
 #define STARSHOOTG_OPTION_NOFRAME_TIMEOUT        0x01       /* [RW] no frame timeout: 0 => disable, positive value (>= STARSHOOTG_NOFRAME_TIMEOUT_MIN) => timeout milliseconds. default: disable */
 #define STARSHOOTG_OPTION_THREAD_PRIORITY        0x02       /* [RW] set the priority of the internal thread which grab data from the usb device.
@@ -953,7 +979,7 @@ STARSHOOTG_API(HRESULT)  Starshootg_get_Option(HStarshootg h, unsigned iOption, 
                                                          */
 #define STARSHOOTG_OPTION_HISTOGRAM              0x05       /* [RW] 0 = only one, 1 = continue mode */
 #define STARSHOOTG_OPTION_BITDEPTH               0x06       /* [RW] 0 = 8 bits mode, 1 = 16 bits mode, subset of STARSHOOTG_OPTION_PIXEL_FORMAT */
-#define STARSHOOTG_OPTION_FAN                    0x07       /* [RW] 0 = turn off the cooling fan, [1, max] = fan speed, , set to "-1" means to use default fan speed */
+#define STARSHOOTG_OPTION_FAN                    0x07       /* [RW] 0 = turn off the cooling fan, [1, max] = fan speed, set to "-1" means to use default fan speed */
 #define STARSHOOTG_OPTION_TEC                    0x08       /* [RW] 0 = turn off the thermoelectric cooler, 1 = turn on the thermoelectric cooler */
 #define STARSHOOTG_OPTION_LINEAR                 0x09       /* [RW] 0 = turn off the builtin linear tone mapping, 1 = turn on the builtin linear tone mapping, default value: 1 */
 #define STARSHOOTG_OPTION_CURVE                  0x0a       /* [RW] 0 = turn off the builtin curve tone mapping, 1 = turn on the builtin polynomial curve tone mapping, 2 = logarithmic curve tone mapping, default value: 2 */
@@ -1002,7 +1028,7 @@ STARSHOOTG_API(HRESULT)  Starshootg_get_Option(HStarshootg h, unsigned iOption, 
                                                                   0: disable
                                                                   1: enable
                                                                  -1: reset
-                                                                 (0xff000000 | n): set the average number to n, [1~255]
+                                                                 (0xff000000 | n): set the average number to n, [1, 255]
                                                              get:
                                                                   (val & 0xff): 0 => disable, 1 => enable, 2 => inited
                                                                   ((val & 0xff00) >> 8): sequence
@@ -1021,7 +1047,7 @@ STARSHOOTG_API(HRESULT)  Starshootg_get_Option(HStarshootg h, unsigned iOption, 
                                                                  0: disable
                                                                  1: enable
                                                                 -1: reset
-                                                                 (0xff000000 | n): set the average number to n, [1~255]
+                                                                 (0xff000000 | n): set the average number to n, [1, 255]
                                                              get:
                                                                  (val & 0xff): 0 => disable, 1 => enable, 2 => inited
                                                                  ((val & 0xff00) >> 8): sequence
@@ -1059,7 +1085,7 @@ STARSHOOTG_API(HRESULT)  Starshootg_get_Option(HStarshootg h, unsigned iOption, 
 #define STARSHOOTG_OPTION_BANDWIDTH              0x2e       /* [RW] bandwidth, [1-100]% */
 #define STARSHOOTG_OPTION_RELOAD                 0x2f       /* [RW] reload the last frame in trigger mode */
 #define STARSHOOTG_OPTION_CALLBACK_THREAD        0x30       /* [RW] dedicated thread for callback: 0 => disable, 1 => enable
-                                                                 default: 1(GigE), 0(others)
+                                                                 default: 1
                                                          */
 #define STARSHOOTG_OPTION_FRONTEND_DEQUE_LENGTH  0x31       /* [RW] frontend (raw) frame buffer deque length, range: [2, 1024], default: 4
                                                             All the memory will be pre-allocated when the camera starts, so, please attention to memory usage
@@ -1097,7 +1123,7 @@ STARSHOOTG_API(HRESULT)  Starshootg_get_Option(HStarshootg h, unsigned iOption, 
 #define STARSHOOTG_OPTION_BACKEND_DEQUE_LENGTH   0x41       /* [RW] backend (pipelined) frame buffer deque length (Only available in pull mode), range: [2, 1024], default: 3
                                                             All the memory will be pre-allocated when the camera starts, so, please attention to memory usage
                                                          */
-#define STARSHOOTG_OPTION_LIGHTSOURCE_MAX        0x42       /* [RO] get the light source range, [0 ~ max] */
+#define STARSHOOTG_OPTION_LIGHTSOURCE_MAX        0x42       /* [RO] get the light source range, [0, max] */
 #define STARSHOOTG_OPTION_LIGHTSOURCE            0x43       /* [RW] light source */
 #define STARSHOOTG_OPTION_HEARTBEAT              0x44       /* [RW] Heartbeat interval in millisecond, range = [STARSHOOTG_HEARTBEAT_MIN, STARSHOOTG_HEARTBEAT_MAX], 0 = disable, default: disable */
 #define STARSHOOTG_OPTION_FRONTEND_DEQUE_CURRENT 0x45       /* [RO] get the current number in frontend deque */
@@ -1171,35 +1197,35 @@ STARSHOOTG_API(HRESULT)  Starshootg_get_Option(HStarshootg h, unsigned iOption, 
 #define STARSHOOTG_OPTION_MOTOR_POS              0x10000000 /* [RW] range: [1, 702] */
 #define STARSHOOTG_OPTION_PSEUDO_COLOR_START     0x63       /* [RW] Pseudo: start color, BGR format */
 #define STARSHOOTG_OPTION_PSEUDO_COLOR_END       0x64       /* [RW] Pseudo: end color, BGR format */
-#define STARSHOOTG_OPTION_PSEUDO_COLOR_ENABLE    0x65       /* [RW] Pseudo: -1 => custom: use startcolor & endcolor to generate the colormap
-                                                                    0 => disable
-                                                                    1 => spot
-                                                                    2 => spring
-                                                                    3 => summer
-                                                                    4 => autumn
-                                                                    5 => winter
-                                                                    6 => bone
-                                                                    7 => jet
-                                                                    8 => rainbow
-                                                                    9 => deepgreen
-                                                                    10 => ocean
-                                                                    11 => cool
-                                                                    12 => hsv
-                                                                    13 => pink
-                                                                    14 => hot
-                                                                    15 => parula
-                                                                    16 => magma
-                                                                    17 => inferno
-                                                                    18 => plasma
-                                                                    19 => viridis
-                                                                    20 => cividis
-                                                                    21 => twilight
-                                                                    22 => twilight_shifted
-                                                                    23 => turbo
-                                                                    24 => red
-                                                                    25 => green
-                                                                    26 => blue
-                                                                    27 => spectrum
+#define STARSHOOTG_OPTION_PSEUDO_COLOR_ENABLE    0x65       /* [RW] Pseudo: -1 => Custom: use startcolor & endcolor to generate the colormap
+                                                                    0 => Disable
+                                                                    1 => Spot
+                                                                    2 => Spring
+                                                                    3 => Summer
+                                                                    4 => Autumn
+                                                                    5 => Winter
+                                                                    6 => Bone
+                                                                    7 => Jet
+                                                                    8 => Rainbow
+                                                                    9 => DeepGreen
+                                                                    10 => Ocean
+                                                                    11 => Cool
+                                                                    12 => HSV
+                                                                    13 => Pink
+                                                                    14 => Hot
+                                                                    15 => Parula
+                                                                    16 => Magma
+                                                                    17 => Inferno
+                                                                    18 => Plasma
+                                                                    19 => Viridis
+                                                                    20 => Cividis
+                                                                    21 => Twilight
+                                                                    22 => TwilightShifted
+                                                                    23 => Turbo
+                                                                    24 => Red
+                                                                    25 => Green
+                                                                    26 => Blue
+                                                                    27 => Spectrum
                                                          */
 #define STARSHOOTG_OPTION_LOW_POWERCONSUMPTION   0x66       /* [RW] Low Power Consumption: 0 => disable, 1 => enable */
 #define STARSHOOTG_OPTION_FPNC                   0x67       /* [RW] Fix Pattern Noise Correction
@@ -1207,7 +1233,7 @@ STARSHOOTG_API(HRESULT)  Starshootg_get_Option(HStarshootg h, unsigned iOption, 
                                                                  0: disable
                                                                  1: enable
                                                                 -1: reset
-                                                                 (0xff000000 | n): set the average number to n, [1~255]
+                                                                 (0xff000000 | n): set the average number to n, [1, 255]
                                                              get:
                                                                  (val & 0xff): 0 => disable, 1 => enable, 2 => inited
                                                                  ((val & 0xff00) >> 8): sequence
@@ -1232,7 +1258,9 @@ STARSHOOTG_API(HRESULT)  Starshootg_get_Option(HStarshootg h, unsigned iOption, 
                                                                 n<0: every -n frame
                                                          */
 #define STARSHOOTG_OPTION_TECTARGET_RANGE        0x6d       /* [RO] TEC target range: min(low 16 bits) = (short)(val & 0xffff), max(high 16 bits) = (short)((val >> 16) & 0xffff) */
-#define STARSHOOTG_OPTION_CDS                    0x6e       /* [RW] Correlated Double Sampling: 0~max (STARSHOOTG_OPTION_CDS_MAX) */
+#define STARSHOOTG_OPTION_CDS                    0x6e       /* [RW] Correlated Double Sampling: 0~max (STARSHOOTG_OPTION_CDS_MAX)
+                                                              see https://www.next.gr/tutorials/sensors-and-transducers/image-sensor-noise-reduction-techniques-tutorial#correlated-double-sampling-cds
+                                                         */
 #define STARSHOOTG_OPTION_LOW_POWER_EXPOTIME     0x6f       /* [RW] Low Power Consumption: Enable if exposure time is greater than the set value */
 #define STARSHOOTG_OPTION_ZERO_OFFSET            0x70       /* [RW] Sensor output offset to zero: 0 => disable, 1 => eanble; default: 0 */
 #define STARSHOOTG_OPTION_GVCP_TIMEOUT           0x71       /* [RW] GVCP Timeout: millisecond, range = [5, 150], default: 15(wire), 30(wireless)
@@ -1272,10 +1300,16 @@ STARSHOOTG_API(HRESULT)  Starshootg_get_Option(HStarshootg h, unsigned iOption, 
                                                          */
 #define STARSHOOTG_OPTION_USER_SET               0x8a       /* [RW] user set */
 #define STARSHOOTG_OPTION_DIGITAL_GAIN           0x1001     /* [RW] digital gain */
-#define STARSHOOTG_OPTION_ANTI_BLOOMING          0x8b       /* [RW] Anti Blooming, maximum */
+#define STARSHOOTG_OPTION_ANTI_BLOOMING          0x8b       /* [RW] Anti Blooming, maximum
+                                                              Blooming occurs when the charge in a pixel exceeds the saturation level and the charge starts to fill adjacent pixels.
+                                                              Some sensors are designed with structures built into them to limit blooming - anti-blooming structures.
+                                                              Anti-blooming structures bleed off any excess charge before they can overflow the pixel and thereby stop blooming.
+                                                              However, anti-blooming structures can reduce the effective quantum efficiency and introduce non linearity into the sensor.
+                                                              Therefore, anti-blooming sensors are not recommended for applications requiring very low light or high accuracy measurements.
+                                                         */
 #define STARSHOOTG_OPTION_ANTI_BLOOMING_MAX      0x8c       /* [RO] Anti Blooming */
 #define STARSHOOTG_OPTION_CDS_MAX                0x8d       /* [RO] Correlated Double Sampling */
-#define STARSHOOTG_OPTION_SCANTYPE               0x8e       /* [RW] Scan Type: 0(linescan), 1(areascan) */
+#define STARSHOOTG_OPTION_SCANTYPE               0x8e       /* [RW] Scan Type: 0(areascan), 1(linescan) */
 #define STARSHOOTG_OPTION_OPERATIONMODE          0x8f       /* [RW] TDI Operation Mode: 1(area), 2(TDI) */
 #define STARSHOOTG_OPTION_TDITRIGGERMODE         0x90       /* [RW] TDI Trigger Mode: 1(normal), 2(both) */
 #define STARSHOOTG_OPTION_TDISTAGE               0x91       /* [RW] TDI Trigger Stage: sensor scan stage */
@@ -1284,6 +1318,7 @@ STARSHOOTG_API(HRESULT)  Starshootg_get_Option(HStarshootg h, unsigned iOption, 
 #define STARSHOOTG_OPTION_FRAMEINTERVAL_MAX      0x94       /* [RO] Frame Interval, maximum */
 #define STARSHOOTG_OPTION_IMAGEPTRRAW            0x95       /* [RW] default: 0 */
 #define STARSHOOTG_OPTION_IMAGEPTRBOTH           0x96       /* [RW] default: 0 */
+#define STARSHOOTG_OPTION_LDC                    0x97       /* [RW] Low Dark Current, 0 => disable, 1 => enable */
 
 /* pixel format */
 #define STARSHOOTG_PIXELFORMAT_RAW8              0x00
@@ -1381,16 +1416,16 @@ STARSHOOTG_API(HRESULT)  Starshootg_get_BinningMethod(HStarshootg h, unsigned in
 #define STARSHOOTG_IOCONTROLTYPE_SET_TRIGGERSOURCE            0x0e
 #define STARSHOOTG_IOCONTROLTYPE_GET_TRIGGERDELAY             0x0f /* Trigger delay time in microseconds, range: [0, 5000000] */
 #define STARSHOOTG_IOCONTROLTYPE_SET_TRIGGERDELAY             0x10
-#define STARSHOOTG_IOCONTROLTYPE_GET_BURSTCOUNTER             0x11 /* Burst Counter, range: [1 ~ 65535] */
+#define STARSHOOTG_IOCONTROLTYPE_GET_BURSTCOUNTER             0x11 /* Burst Counter, range: [1, 65535] */
 #define STARSHOOTG_IOCONTROLTYPE_SET_BURSTCOUNTER             0x12
 #define STARSHOOTG_IOCONTROLTYPE_GET_COUNTERSOURCE            0x13 /* 0x00 => Opto-isolated input, 0x01 => GPIO0, 0x02 => GPIO1 */
 #define STARSHOOTG_IOCONTROLTYPE_SET_COUNTERSOURCE            0x14
-#define STARSHOOTG_IOCONTROLTYPE_GET_COUNTERVALUE             0x15 /* Counter Value, range: [1 ~ 65535] */
+#define STARSHOOTG_IOCONTROLTYPE_GET_COUNTERVALUE             0x15 /* Counter Value, range: [1, 65535] */
 #define STARSHOOTG_IOCONTROLTYPE_SET_COUNTERVALUE             0x16
 #define STARSHOOTG_IOCONTROLTYPE_SET_RESETCOUNTER             0x18
-#define STARSHOOTG_IOCONTROLTYPE_GET_PWM_FREQ                 0x19 /* PWM Frequency */
+#define STARSHOOTG_IOCONTROLTYPE_GET_PWM_FREQ                 0x19 /* PWM Frequency, range: [0, 0xffffffff] */
 #define STARSHOOTG_IOCONTROLTYPE_SET_PWM_FREQ                 0x1a
-#define STARSHOOTG_IOCONTROLTYPE_GET_PWM_DUTYRATIO            0x1b /* PWM Duty Ratio */
+#define STARSHOOTG_IOCONTROLTYPE_GET_PWM_DUTYRATIO            0x1b /* PWM Duty Ratio, default: 50, range: [0, 100] */
 #define STARSHOOTG_IOCONTROLTYPE_SET_PWM_DUTYRATIO            0x1c
 #define STARSHOOTG_IOCONTROLTYPE_GET_PWMSOURCE                0x1d /* PWM Source: 0x00 => Opto-isolated input, 0x01 => GPIO0, 0x02 => GPIO1 */
 #define STARSHOOTG_IOCONTROLTYPE_SET_PWMSOURCE                0x1e
@@ -1423,23 +1458,23 @@ STARSHOOTG_API(HRESULT)  Starshootg_get_BinningMethod(HStarshootg h, unsigned in
 #define STARSHOOTG_IOCONTROLTYPE_SET_UART_LINEMODE            0x2e
 #define STARSHOOTG_IOCONTROLTYPE_GET_EXPO_ACTIVE_MODE         0x2f /* exposure time signal: 0 => specified line, 1 => common exposure time */
 #define STARSHOOTG_IOCONTROLTYPE_SET_EXPO_ACTIVE_MODE         0x30
-#define STARSHOOTG_IOCONTROLTYPE_GET_EXPO_START_LINE          0x31 /* exposure start line, default: 0 */
+#define STARSHOOTG_IOCONTROLTYPE_GET_EXPO_START_LINE          0x31 /* exposure start line, default: 0, range: [0, 16384] */
 #define STARSHOOTG_IOCONTROLTYPE_SET_EXPO_START_LINE          0x32
-#define STARSHOOTG_IOCONTROLTYPE_GET_EXPO_END_LINE            0x33 /* exposure end line, default: 0
+#define STARSHOOTG_IOCONTROLTYPE_GET_EXPO_END_LINE            0x33 /* exposure end line, default: 0, range: [0, 16384]
                                                                    end line must be no less than start line
                                                                 */
 #define STARSHOOTG_IOCONTROLTYPE_SET_EXPO_END_LINE            0x34
 #define STARSHOOTG_IOCONTROLTYPE_GET_EXEVT_ACTIVE_MODE        0x35 /* exposure event: 0 => specified line, 1 => common exposure time */
 #define STARSHOOTG_IOCONTROLTYPE_SET_EXEVT_ACTIVE_MODE        0x36
-#define STARSHOOTG_IOCONTROLTYPE_GET_OUTPUTCOUNTERVALUE       0x37 /* Output Counter Value, range: [0 ~ 65535] */
+#define STARSHOOTG_IOCONTROLTYPE_GET_OUTPUTCOUNTERVALUE       0x37 /* Output Counter Value, range: [0, 65535] */
 #define STARSHOOTG_IOCONTROLTYPE_SET_OUTPUTCOUNTERVALUE       0x38
 #define STARSHOOTG_IOCONTROLTYPE_SET_OUTPUT_PAUSE             0x3a /* Output pause: 1 => puase, 0 => unpause */
 #define STARSHOOTG_IOCONTROLTYPE_GET_INPUT_STATE              0x3b /* Input state: 0 (low level) or 1 (high level) */
-#define STARSHOOTG_IOCONTROLTYPE_GET_USER_PULSE_HIGH          0x3d /* User pulse high level time: us */
+#define STARSHOOTG_IOCONTROLTYPE_GET_USER_PULSE_HIGH          0x3d /* User pulse high level time: us, range: [0, 0xffffffff] */
 #define STARSHOOTG_IOCONTROLTYPE_SET_USER_PULSE_HIGH          0x3e
-#define STARSHOOTG_IOCONTROLTYPE_GET_USER_PULSE_LOW           0x3f /* User pulse low level time: us */
+#define STARSHOOTG_IOCONTROLTYPE_GET_USER_PULSE_LOW           0x3f /* User pulse low level time: us, range: [0, 0xffffffff] */
 #define STARSHOOTG_IOCONTROLTYPE_SET_USER_PULSE_LOW           0x40
-#define STARSHOOTG_IOCONTROLTYPE_GET_USER_PULSE_NUMBER        0x41 /* User pulse number: default 0 */
+#define STARSHOOTG_IOCONTROLTYPE_GET_USER_PULSE_NUMBER        0x41 /* User pulse number: default 0, range: [0, 0xffffffff] */
 #define STARSHOOTG_IOCONTROLTYPE_SET_USER_PULSE_NUMBER        0x42
 #define STARSHOOTG_IOCONTROLTYPE_GET_EXTERNAL_TRIGGER_NUMBER  0x43 /* External trigger number */
 #define STARSHOOTG_IOCONTROLTYPE_GET_DEBOUNCER_TRIGGER_NUMBER 0x45 /* Trigger signal number after debounce */

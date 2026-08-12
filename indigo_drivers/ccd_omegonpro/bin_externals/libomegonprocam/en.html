@@ -7,7 +7,7 @@
 <body>
 <h1 align="center">Omegonprocam API Manual</h1>
 <hr/><h1><font color="#0000FF">1. Version &amp; Platform</font></h1>
-<hr/><ul><li>Version: 60.31631.20260606</li></ul>
+<hr/><ul><li>Version: 60.32226.20260808</li></ul>
 <ul><li>Platform<ul>
       <li>Win32:<ul>
           <li>x64: Win7 or above</li>
@@ -138,7 +138,7 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
    <td width="68%">Description</td>
  </tr><tr>
    <td>OMEGONPROCAM_EVENT_EXPOSURE</td>
-   <td rowspan="19">Software</td>
+   <td rowspan="21">Software</td>
    <td>exposure time changed</td>
  </tr><tr>
    <td>OMEGONPROCAM_EVENT_TEMPTINT</td>
@@ -179,6 +179,12 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
  </tr><tr>
    <td>OMEGONPROCAM_EVENT_FPNC</td>
    <td>fixed pattern noise correction status changed</td>
+ </tr><tr>
+   <td>OMEGONPROCAM_EVENT_FRONT_OVERFLOW</td>
+   <td>front buffer overflow</td>
+ </tr><tr>
+   <td>OMEGONPROCAM_EVENT_BACK_OVERFLOW</td>
+   <td>back buffer overflow</td>
  </tr><tr>
    <td>OMEGONPROCAM_EVENT_ROI</td>
    <td>roi changed</td>
@@ -714,12 +720,12 @@ typedef struct {
       </tr></table></blockquote>
   <p>see table below:</p>
   <div align="center"><table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0"><tr>
-        <td width="15%" rowspan="5"><a id="cfg">Camera Configuration</a><br/>(see sample <a href="#democfg">here</a>)</td>
-        <td width="85%" colspan="3">No parameter is required after camId parameter if automatic parameter saving or loading is not required.<br/>Attach parameters, the camera configuration are automatically loaded when the camera is opened, and is automatically saved when the camera is close.</td>
-      </tr><tr>
+        <td width="15%" rowspan="6"><a id="cfg">Camera Configuration</a><br/>(see sample <a href="#democfg">here</a>)</td>
+        <td width="85%" colspan="4">No parameter is required after camId parameter if automatic parameter saving or loading is not required.<br/>Attach parameters, the camera configuration are automatically loaded when the camera is opened, and is automatically saved when the camera is close.</td>
+      </tr><tr width="5^"><td rowspan="4">Source</td>
         <td width="15%">;registry=xxxx\yyyy</td>
         <td width="15%">Registry (Windows only)</td>
-		<td width="55%">Specify to use the relative path of the registry key HKEY_CURRENT_USER. Empty after “=” means that the default registry path will be used:<br/>
+		<td width="50%">Specify to use the relative path of the registry key HKEY_CURRENT_USER. Empty after “=” means that the default registry path will be used:<br/>
         Software\XXX(CompanyName)\capi\YYY(Camera model name)</td>
       </tr><tr>
         <td>;ini=x:\yyyy\zzzz.ini</td>
@@ -734,17 +740,21 @@ typedef struct {
         <td>EEPROM</td>
 		<td>Use EEPROM as the device where the camera parameters are saved to or load from. xxxx is the starting address in EEPROM and empty means the starting address is 0</td>
       </tr><tr>
-        <td><a id="wbmode">White Balance Mode</a></td>
+        <td>Preset</td>
+        <td>;preset=xxxx</td>
+		<td colspan="2">Use a specific preset</td>
+      </tr><tr>
+        <td colspan="2"><a id="wbmode">White Balance Mode</a></td>
         <td>;wb=temptint or rgb</td>
-        <td colspan="2">White Balance use Temp/Tint mode or RGB Gain mode, see <a href="#wb">here</a><br/>Default: Temp/Tint</td>
+        <td colspan="3">White Balance use Temp/Tint mode or RGB Gain mode, see <a href="#wb">here</a><br/>Default: Temp/Tint</td>
       </tr><tr>
-        <td>USB Block Size</td>
+        <td colspan="2">USB Block Size</td>
         <td>;usbblocksize=xxx</td>
-        <td colspan="2">Percentage, range: 10~1000, means 10%~1000%</td>
+        <td colspan="3">Percentage, range: 10~1000, means 10%~1000%</td>
       </tr><tr>
-      <td>Zerocopy on linux platform</td>
+      <td colspan="2">Zerocopy on linux platform</td>
       <td>;zerocopy=1 or 0</td>
-      <td colspan="2">Helps to reduce memory copy and improve efficiency. Requires kernel version &gt;= 4.6 and hardware platform support.<br/>
+      <td colspan="3">Helps to reduce memory copy and improve efficiency. Requires kernel version &gt;= 4.6 and hardware platform support.<br/>
       If the image is wrong, this indicates that the hardware platform does not support this feature, please disable it.<br/>
       Disabled by default on Android or ARM, enabled on non-Android x86/x64</td></tr>
 </table></div>
@@ -776,7 +786,21 @@ for (UsbDevice usbDevice : deviceList.values()) {
 		<blockquote>
 			<p>HOmegonprocam h: camera handle</p>
 		</blockquote>
-    <p><strong>Remarks:</strong> close the camera. After the handle is closed, never use the HOmegonprocam handle any more.</p>
+    <p><strong>Remarks:</strong> close the camera. After the handle is closed, never use the HOmegonprocam handle any more.</p>	
+</li></ul><ul><li><h2><font color="#0000FF">Omegonprocam_Load</font></h2>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
+    <p><strong>Parameters:</strong></p>
+		<blockquote>
+			<p>HOmegonprocam h: camera handle</p>
+			<p>strPara: string parameter</p>
+		</blockquote>
+    <p><strong>Remarks:</strong> Load configuration:</p>
+		<blockquote>
+		<p>(1) nullptr or empty string, load from EEPROM (address = 0)</p>
+		<p>(2) eeprom=???, load from EEPROM (address = 0x???)</p>
+		<p>(3) path\to\file.ini, load from ini file</p>
+		<p>(4) path\to\file.json, load from json file</p>
+		</blockquote>	
 </li></ul><ul><li><h2><font color="#0000FF">Omegonprocam_StartPullModeWithWndMsg<br/>Omegonprocam_StartPullModeWithCallback</font></h2>
     <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
     <p><strong>Parameters:</strong></p>
@@ -1091,43 +1115,46 @@ typedef struct {
   <blockquote>
     <p>int pixelFormat: OMEGONPROCAM_PIXELFORMAT_xxxx, see <a href="#pflist">here</a></p>
   </blockquote>
-</li></ul><ul><li><h2><font color="#0000FF">Omegonprocam_put_Option<br/>Omegonprocam_get_Option</font></h2>
+</li></ul><ul><li><h2><font color="#0000FF">Omegonprocam_put_Option<br/>Omegonprocam_get_Option<br/>Omegonprocam_put_Int<br/>Omegonprocam_get_Int<br/>Omegonprocam_put_Str<br/>Omegonprocam_get_Str</font></h2>
       <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
       <p><strong>Parameters:</strong></p>
   <blockquote>
     <p>HOmegonprocam h: camera handle</p>
     <p>unsigned iOption: see table below</p>
+	<p>const char* strName: case insensitive, see table below</p>
     <p>int iValue: see table below</p>
+	<p>const char* strValue: input parameter, case insensitive</p>
+	<p>char strValue[]: out parameter (128 bytes are always sufficient)</p>
   <div align="center"><table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0"><tr>
-    	<td width="26%">Option</td><td width="%4">Read<br/>Write</td><td width="46%">Description</td><td width="4%">Default</td>
+    	<td width="20%">Option<br/>Name</td><td width="%4">Read<br/>Write</td><td width="50%">Description</td><td width="6%">Default</td>
     	<td width="20%">Can be changed when camera is running?<br/>(Before Omegonprocam_StartXXXX or after Omegonprocam_Stop)</td>
 	</tr><tr>
-        <td><a id="rawo">OMEGONPROCAM_OPTION_RAW</a></td><td>RW</td>
+        <td><a id="rawo">OMEGONPROCAM_OPTION_RAW<br/>Raw</a></td><td>RW</td>
         <td>0: RGB mode<br/>1: RAW mode, read the CMOS or CCD raw data<br/>
 		-1: RAW mode, the difference from 1 is the execution of FFC, DFC, FPNC, black balance, and white balance</td>
         <td>0</td>
         <td><b>No</b><br/>(When the camera is in running state, changing between RAW and non-RAW returns E_UNEXPECTED)<br/>
 		<b>Yes</b>(changing between 1 and -1)</td>
       </tr><tr>
-        <td>OMEGONPROCAM_OPTION_ISP</td><td>RW</td>
+        <td>OMEGONPROCAM_OPTION_ISP<br/>ISP</td><td>RW</td>
         <td>Enable hardware ISP:<br/>0 => auto (disable in RAW mode, otherwise enable)<br/>1 => enable<br/>-1 => disable</td>
         <td>0(Auto)</td>
         <td><b>No</b><br/>(The return value is E_UNEXPECTED when set this option while camera is running)</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_BITDEPTH</td><td>RW</td>
+      	<td>OMEGONPROCAM_OPTION_BITDEPTH<br/>BitDepth</td><td>RW</td>
       	<td>Some cameras support the bitdepth which is more than 8 such as 10, 12, 14, 16.<br/>
       	  0 = use 8 bitdepth.<br/>1 = use the maximum bitdepth of this camera.</td>
       	<td>Model Specific</td>
       	<td>Yes.<br/>But not recommended to modify too frequently while camera is running, it's relatively heavy operation.</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_TRIGGER</td><td>RW</td>
+      	<td>OMEGONPROCAM_OPTION_TRIGGER<br/>TriggerMode</td><td>RW</td>
       	<td>0 = video mode<br/>
       	  1 = software or simulated trigger mode<br/>
       	  2 = external trigger mode<br/>
 		  <a id="mix">3 = external + software trigger</a></td>
       <td>0</td><td>Yes</td>
       </tr><tr>
-      	<td><a id="rgb">OMEGONPROCAM_OPTION_RGB</a></td><td>RW</td>
+      	<td><a id="rgb">OMEGONPROCAM_OPTION_RGB</a><br/>RGB</td><td>RW</td>
       	<td>0 = RGB24<br/>
 			1 = RGB48 format when bitdepth &gt; 8<br/>
 			2 = RGB32<br/>
@@ -1137,61 +1164,61 @@ typedef struct {
       	<td>0</td>
       	<td><b>No</b><br/>(The return value is E_UNEXPECTED when set this option while camera is running)</td>
       </tr><tr>
-      	<td><a id="bgr">OMEGONPROCAM_OPTION_BYTEORDER</a></td><td>RW</td>
+      	<td><a id="bgr">OMEGONPROCAM_OPTION_BYTEORDER</a><br/>ByteOrder</td><td>RW</td>
       	<td>Byte order:<br/>1: BGR<br/>0: RGB</td>
       	<td>Win: 1<br/>Linux/MacOS/Android: 0</td>
       	<td>Yes.<br/>But not recommended to modify too frequently while camera is running, it's relatively heavy operation.</td>
       </tr><tr>
-      	<td><a id="upsidedown">OMEGONPROCAM_OPTION_UPSIDE_DOWN</a></td><td>RW</td>
+      	<td><a id="upsidedown">OMEGONPROCAM_OPTION_UPSIDE_DOWN</a><br/>UpsideDown</td><td>RW</td>
       	<td>Upside down:<br/>1: yes<br/>0: no<br/>
 			Please distinguish it from Omegonprocam_put_VFlip, which requires the CPU to perform data moving work on each frame of data</td>
       	<td>Win: 1<br/>Linux/MacOS/Android: 0</td>
       	<td><b>No</b><br/>(The return value is E_UNEXPECTED when set this option while camera is running)</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_ZERO_PADDING</td><td>RW</td>
+      	<td>OMEGONPROCAM_OPTION_ZERO_PADDING<br/>ZeroPadding</td><td>RW</td>
       	<td>Zero padding method when bitdepth is greater than 8 and less than 16:<br/>
 		0: high-odrder<br/>
 		1: low-order</td>
       	<td>0</td>
       	<td>Yes</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_FAN</td><td>RW</td>
+      	<td>OMEGONPROCAM_OPTION_FAN<br/>Fan</td><td>RW</td>
       	<td>Some cameras support the cooling fan.<br/>
       	  0 = turn off the cooling fan<br/>[1, max] = fan speed<br/>
 		  set to "-1" means to use default fan speed</td>
       <td>Model Specific</td><td>Yes</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_TEC</td><td>RW</td>
+      	<td>OMEGONPROCAM_OPTION_TEC<br/>TECEnable</td><td>RW</td>
       	<td>Some cameras support to turn on or off the thermoelectric cooler.<br/>
       	  0 = turn off the thermoelectric cooler<br/>1 = turn on the thermoelectric cooler</td>
       	<td>1</td><td>Yes</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_TECTARGET</td><td>RW</td>
+      	<td>OMEGONPROCAM_OPTION_TECTARGET<br/>TECTarget</td><td>RW</td>
       	<td>get or set the target temperature of the thermoelectric cooler, in 0.1℃. For example, 125 means 12.5℃, -35 means -3.5℃.<br/>
 		Set the target temperature to "-2730" or below means using the default for that model.</td>
       	<td>Model Specific</td>
       	<td>Yes</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_TECTARGET_RANGE</td><td>RO</td>
+      	<td>OMEGONPROCAM_OPTION_TECTARGET_RANGE<br/>TECTargetRange</td><td>RO</td>
       	<td>get the range of target temperature of the thermoelectric cooler, in 0.1℃. For example, 125 means 12.5℃, -35 means -3.5℃.<br/>
 		min(low 16 bits) = (short)(val &amp; 0xffff)<br/>max(high 16 bits) = (short)((val >> 16) &amp; 0xffff)</td>
       	<td>Model Specific</td>
       	<td>Yes</td>
       </tr><tr>
-      	<td><a id="aepolicy">OMEGONPROCAM_OPTION_AUTOEXP_POLICY</a></td><td>RW</td>
+      	<td><a id="aepolicy">OMEGONPROCAM_OPTION_AUTOEXP_POLICY</a><br/>AEPolicy</td><td>RW</td>
       	<td>Auto Exposure Policy:<br/>0: Exposure Only<br/>1: Exposure Preferred<br/>2: Gain Only<br/>3: Gain Preferred</td>
       	<td>1</td><td>Yes</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_AUTOEXP_THRESHOLD</td><td>RW</td>
-      	<td>threshold of auto exposure, range: [2~15]</td>
+      	<td>OMEGONPROCAM_OPTION_AUTOEXP_THRESHOLD<br/>AEThreshold</td><td>RW</td>
+      	<td>threshold of auto exposure, range: [2, 15]</td>
       	<td>5</td><td>Yes</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_FRAMERATE</td><td>RW</td>
+      	<td>OMEGONPROCAM_OPTION_FRAMERATE<br/>Framerate</td><td>RW</td>
       	<td>limit the frame rate.<br/>frame rate control is disabled automatically in trigger mode.</td>
       	<td>0<br/>(means no limit)</td>
       	<td><b>No</b><br/>(The return value is E_UNEXPECTED when set this option while camera is running)</td>
       </tr><tr>
-      	<td><a id="blacklevel">OMEGONPROCAM_OPTION_BLACKLEVEL</a></td><td>RW</td>
+      	<td><a id="blacklevel">OMEGONPROCAM_OPTION_BLACKLEVEL</a><br/>BlackLevel</td><td>RW</td>
       	<td>The black level refers to the baseline signal value output by an image sensor under no-light (completely dark) conditions.<br/>
 		In digital imaging systems, a fixed voltage offset is intentionally added to the signal to ensure that dark-region signals remain above zero, thereby preventing the loss of faint shadow details during A/D conversion.<br/>
 		(a) Prevent clipping: The sensor circuit's intrinsic noise may occasionally produce negative values. Without an offset, these negative values would be forcibly clipped to zero, resulting in the loss of shadow details.<br/>
@@ -1199,12 +1226,12 @@ typedef struct {
 		Always return E_NOTIMPL for camera that don't support black level.</td>
       	<td>0</td><td>Yes</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_MULTITHREAD</td><td>RW</td>
+      	<td>OMEGONPROCAM_OPTION_MULTITHREAD<br/>MultiThread</td><td>RW</td>
       	<td>multithread image processing</td>
       	<td>1</td>
       	<td><b>No</b><br/>(The return value is E_UNEXPECTED when set this option while camera is running)</td>
       </tr><tr>
-      	<td><a id="binning">OMEGONPROCAM_OPTION_BINNING</a></td><td>RW</td>
+      	<td><a id="binning">OMEGONPROCAM_OPTION_BINNING</a><br/>DigitalBinning</td><td>RW</td>
       	<td>digital binning:<br/><br/>
 					0x01 (no binning)<br/><br/>
                     n: (saturating add, n*n), 0x02(2*2), 0x03(3*3), 0x04(4*4), 0x05(5*5), 0x06(6*6), 0x07(7*7), 0x08(8*8). The Bitdepth of the data remains unchanged.<br/><br/>
@@ -1213,11 +1240,11 @@ typedef struct {
                     The final image size is rounded down to an even number, such as 640/3 to get 212</td>
       	<td>1</td><td>Yes</td>
       </tr><tr>
-      	<td><a id="rotate">OMEGONPROCAM_OPTION_ROTATE</a></td><td>RW</td>
+      	<td><a id="rotate">OMEGONPROCAM_OPTION_ROTATE</a><br/>Rotate</td><td>RW</td>
       	<td>rotate clockwise: 0, 90, 180, 270</td>
       	<td>0</td><td>Yes</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_CG</td><td>RW</td>
+      	<td>OMEGONPROCAM_OPTION_CG<br/>ConversionGain</td><td>RW</td>
       	<td>Conversion Gain:<br/>
 			0: LCG<br/>
 			1: HCG<br/>
@@ -1225,7 +1252,7 @@ typedef struct {
 			2: MCG (for camera with flag OMEGONPROCAM_FLAG_GHOPTO)</td>
       	<td>Model Specific</td><td>Yes</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_PIXEL_FORMAT</td><td>RW</td>
+      	<td>OMEGONPROCAM_OPTION_PIXEL_FORMAT<br/>PixelFormat</td><td>RW</td>
       	<td><a id="pflist">OMEGONPROCAM_PIXELFORMAT_RAW8<br/>
 OMEGONPROCAM_PIXELFORMAT_RAW10<br/>
 OMEGONPROCAM_PIXELFORMAT_RAW12<br/>
@@ -1250,7 +1277,7 @@ OMEGONPROCAM_PIXELFORMAT_RAW10PACK
       	<td>Model Specific</td>
       	<td>Yes.<br/>But not recommended to modify too frequently while camera is running, it's relatively heavy operation.</td>
       </tr><tr>
-      	<td><a id="ddrdepth">OMEGONPROCAM_OPTION_DDR_DEPTH</a></td><td>RW</td>
+      	<td><a id="ddrdepth">OMEGONPROCAM_OPTION_DDR_DEPTH</a><br/>DdrDepth</td><td>RW</td>
       	<td>the number of the frames that DDR can cache:<br/>
 		                    1: DDR cache only one frame<br/>
                             0: Auto:
@@ -1259,46 +1286,46 @@ OMEGONPROCAM_PIXELFORMAT_RAW10PACK
                             -1: DDR can cache frames to full capacity</td>
       	<td>0</td><td>Yes</td>
       </tr><tr>
-      	<td><a id="ffc">OMEGONPROCAM_OPTION_FFC</a></td><td>RW</td>
+      	<td><a id="ffc">OMEGONPROCAM_OPTION_FFC</a><br/>FFCInit<br/>FFCEnable<br/>FFCStatus</td><td>RW</td>
       	<td>Flat Field Correction:<br/>
 					set:
                         <blockquote>0: disable<br/>
                         1: enable<br/>
 						-1: reset<br/>
-                        (0xff000000 | n): set the average number to n, [1~255]</blockquote>
+                        (0xff000000 | n): set the average number to n, [1, 255]</blockquote>
                     get:
                         <blockquote>(val &amp; 0xff): 0 =&gt; disable, 1 =&gt; enable, 2 =&gt; inited<br/>
                         ((val &amp; 0xff00) &gt;&gt; 8): sequence<br/>
                         ((val &amp; 0xff0000) &gt;&gt; 16): average number</blockquote></td>
       	<td>0</td><td>Yes</td>
       </tr><tr>
-      	<td><a id="dfc">OMEGONPROCAM_OPTION_DFC</a></td><td>RW</td>
+      	<td><a id="dfc">OMEGONPROCAM_OPTION_DFC</a><br/>DFCInit<br/>DFCEnable<br/>DFCStatus</td><td>RW</td>
       	<td>Dark Field Correction:<br/>
 					set:
                         <blockquote>0: disable<br/>
                         1: enable<br/>
 						-1: reset<br/>
-                        (0xff000000 | n): set the average number to n, [1~255]</blockquote>
+                        (0xff000000 | n): set the average number to n, [1, 255]</blockquote>
                     get:
                         <blockquote>(val &amp; 0xff): 0 =&gt; disable, 1 =&gt; enable, 2 =&gt; inited<br/>
                         ((val &amp; 0xff00) &gt;&gt; 8): sequence<br/>
                         ((val &amp; 0xff0000) &gt;&gt; 16): average number</blockquote></td>
       	<td>0</td><td>Yes</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_FPNC</td><td>RW</td>
+      	<td>OMEGONPROCAM_OPTION_FPNC<br/>FPNCInit<br/>FPNCEnable<br/>FPNCStatus</td><td>RW</td>
       	<td>Fixed Pattern Noise Correction:<br/>
 					set:
                         <blockquote>0: disable<br/>
                         1: enable<br/>
 						-1: reset<br/>
-                        (0xff000000 | n): set the average number to n, [1~255]</blockquote>
+                        (0xff000000 | n): set the average number to n, [1, 255]</blockquote>
                     get:
                         <blockquote>(val &amp; 0xff): 0 =&gt; disable, 1 =&gt; enable, 2 =&gt; inited<br/>
                         ((val &amp; 0xff00) &gt;&gt; 8): sequence<br/>
                         ((val &amp; 0xff0000) &gt;&gt; 16): average number</blockquote></td>
       	<td>0</td><td>Yes</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_SHARPENING</td><td>RW</td>
+      	<td>OMEGONPROCAM_OPTION_SHARPENING<br/>SharpenStrength<br/>SharpenRadius<br/>SharpenThreshold</td><td>RW</td>
       	<td>Sharpening, (threshold &lt;&lt; 24) | (radius &lt;&lt; 16) | strength)
 						<blockquote>strength: [0, 500], default: 0 (disable)<br/>
 						radius: [1, 10]<br/>
@@ -1307,149 +1334,149 @@ OMEGONPROCAM_PIXELFORMAT_RAW10PACK
       	<td>strength: Model Specific<br/>radius: 2<br/>threshold: 0</td>
       	<td>Yes</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_FACTORY</td><td>WO</td>
+      	<td>OMEGONPROCAM_OPTION_FACTORY<br/>Factory</td><td>WO</td>
       	<td>restore the factory settings</td>
-      	<td>Always 0</td><td>Yes</td>
+      	<td>Always 0</td><td>No</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_TEC_VOLTAGE</td><td>RO</td>
+      	<td>OMEGONPROCAM_OPTION_TEC_VOLTAGE<br/>TECVoltage</td><td>RO</td>
       	<td>get the current TEC voltage in 0.1V, 59 mean 5.9V;<br/>
 					Please do not get this value too frequently, the recommended interval is 2 seconds or more</td>
       	<td>NA</td><td>NA</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_TEC_VOLTAGE_MAX</td><td>RW</td>
+      	<td>OMEGONPROCAM_OPTION_TEC_VOLTAGE_MAX<br/>TECVoltageMax</td><td>RW</td>
       	<td>TEC maximum voltage in 0.1V</td>
       	<td>NA</td><td>NA</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_TEC_VOLTAGE_MAX_RANGE</td><td>RO</td>
+      	<td>OMEGONPROCAM_OPTION_TEC_VOLTAGE_MAX_RANGE<br/>TECVoltageMaxRange</td><td>RO</td>
       	<td>get the TEC maximum voltage range in 0.1V<br/>high 16 bits: max<br/>low 16 bits: min</td>
       	<td>NA</td><td>NA</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_POWER</td><td>RO</td>
+      	<td>OMEGONPROCAM_OPTION_POWER<br/>PowerConsumption</td><td>RO</td>
       	<td>get power consumption, unit: milliwatt</td>
       	<td>NA</td><td>NA</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_GLOBAL_RESET_MODE</td><td>RW</td>
+      	<td>OMEGONPROCAM_OPTION_GLOBAL_RESET_MODE<br/>GlobalReset</td><td>RW</td>
       	<td>global reset mode</td>
       	<td>0</td><td>Yes</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_DEVICE_RESET</td><td>WO</td>
+      	<td>OMEGONPROCAM_OPTION_DEVICE_RESET<br/>DeviceReset</td><td>WO</td>
       	<td>reset usb device, simulate a replug</td>
       	<td>NA</td><td>NA</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_FOCUSPOS</td><td>RW</td>
+      	<td>OMEGONPROCAM_OPTION_FOCUSPOS<br/>FocusPos</td><td>RW</td>
       	<td>focus positon</td>
       	<td>NA</td><td>Yes</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_AFMODE</td><td>RW</td>
+      	<td>OMEGONPROCAM_OPTION_AFMODE<br/>AfMode</td><td>RW</td>
       	<td>auto focus mode: see OmegonprocamAFMode</td>
       	<td>NA</td><td>Yes</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_AFSTATUS</td><td>RO</td>
+      	<td>OMEGONPROCAM_OPTION_AFSTATUS<br/>AfStatus</td><td>RO</td>
       	<td>auto focus status: see OmegonprocamAFStaus</td>
       	<td>NA</td><td>NA</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_TESTPATTERN</td><td>RW</td>
+      	<td>OMEGONPROCAM_OPTION_TESTPATTERN<br/>TestPattern</td><td>RW</td>
       	<td>test pattern:<br/>0: off<br/>3: monochrome diagonal stripes<br/>5: monochrome vertical stripes<br/>7: monochrome horizontal stripes<br/>9: chromatic diagonal stripes</td>
       	<td>0</td><td>Yes</td>
       </tr><tr>
-        <td><a id="noframe">TOMEGONPROCAM_OPTION_NOFRAME_TIMEOUT</a></td><td>RW</td>
+        <td><a id="noframe">TOMEGONPROCAM_OPTION_NOFRAME_TIMEOUT</a><br/>NoFrameTimeout</td><td>RW</td>
         <td>Timeout for grabbing no frame. Trigger an event when no frame is acquired within the set time, see <a href="#evnoframe">OMEGONPROCAM_EVENT_NOFRAMETIMEOUT</a><br/>
           0 =&gt; disable<br/>
           positive value (&gt;=OMEGONPROCAM_NOFRAME_TIMEOUT_MIN) =&gt; timeout milliseconds</td>
         <td>0</td><td>Yes</td>
       </tr><tr>
-        <td><a id="nopacket">OMEGONPROCAM_OPTION_NOPACKET_TIMEOUT</a></td><td>RW</td>
+        <td><a id="nopacket">OMEGONPROCAM_OPTION_NOPACKET_TIMEOUT</a><br/>NoPacketTimeout</td><td>RW</td>
         <td>Timeout for grabbing no packet. Trigger an event when no packet is acquired within the set time, see <a href="#evnopacket">OMEGONPROCAM_EVENT_NOPACKETTIMEOUT</a><br/>
           0 =&gt; disable<br/>
           positive value (&gt;=OMEGONPROCAM_NOPACKET_TIMEOUT_MIN) =&gt; timeout milliseconds</td>
         <td>0</td><td>Yes</td>
       </tr><tr>
-        <td>OMEGONPROCAM_OPTION_BANDWIDTH</td><td>RW</td>
+        <td>OMEGONPROCAM_OPTION_BANDWIDTH<br/>Bandwidth</td><td>RW</td>
         <td>bandwidth, range:[1-100]%<br/>After setting the bandwidth, get the accurate precise rate range, and then set the precise frame rate</td>
 		<td>100</td><td>Yes</td>
       </tr><tr>
-        <td>OMEGONPROCAM_OPTION_MAX_PRECISE_FRAMERATE</td><td>RO</td>
+        <td>OMEGONPROCAM_OPTION_MAX_PRECISE_FRAMERATE<br/>MaxFramerate</td><td>RO</td>
         <td>get the precise frame maximum value in 0.1fps, such as 115 means 11.5fps<br/>
           the maximum value depends the bandwidth/resolution/bitdepth/ROI<br/>
           The return value is E_UNEXPECTED if camera is NOT running, E_NOTIMPL means not supported</td>
 		<td>NA</td><td>NA</td>
       </tr><tr>
-        <td>OMEGONPROCAM_OPTION_MIN_PRECISE_FRAMERATE</td><td>RO</td>
+        <td>OMEGONPROCAM_OPTION_MIN_PRECISE_FRAMERATE<br/>MinFramerate</td><td>RO</td>
         <td>get the precise frame minimum value in 0.1fps, such as 15 means 1.5fps<br/>
           the minimum value depends the bandwidth/resolution/bitdepth/ROI<br/>
           The return value is E_UNEXPECTED if camera is NOT running, E_NOTIMPL means not supported</td>
 		<td>NA</td><td>NA</td>
       </tr><tr>
-        <td><a id="precise">OMEGONPROCAM_OPTION_PRECISE_FRAMERATE</a></td><td>RW</td>
+        <td><a id="precise">OMEGONPROCAM_OPTION_PRECISE_FRAMERATE</a><br/>AcquisitionFrameRate</td><td>RW</td>
         <td>Precise framerate: in 0.1fps, such as 115 means 11.5fps<br/>
 		use OMEGONPROCAM_OPTION_MAX_PRECISE_FRAMERATE, OMEGONPROCAM_OPTION_MIN_PRECISE_FRAMERATE to get the range. if the set value is out of range, E_INVALIDARG will be returned</td>
 		<td>90% of the maximum</td><td>Yes</td>
       </tr><tr>
-        <td><a id="reload">OMEGONPROCAM_OPTION_RELOAD</a></td><td>RW</td>
+        <td><a id="reload">OMEGONPROCAM_OPTION_RELOAD</a><br/>Reload</td><td>RW</td>
         <td>Reload the last frame in the trigger mode<br/>
         get return value S_OK means supporting this feature, E_NOTIMPL means not supported</td>
 		<td>NA</td><td>Yes</td>
       </tr><tr>
-        <td>OMEGONPROCAM_OPTION_CALLBACK_THREAD</td><td>RW</td>
-        <td>dedicated thread for callback, only available in pull mode:<br/>0 =&gt; disable, 1 =&gt; enable</td>
-		<td>Enable(GigE)<br/>Disable(others)</td>
+        <td>OMEGONPROCAM_OPTION_CALLBACK_THREAD<br/>CallbackThread</td><td>RW</td>
+        <td>dedicated thread for callback:<br/>0 =&gt; disable, 1 =&gt; enable</td>
+		<td>Enable</td>
       	<td><b>No</b><br/>(The return value is E_UNEXPECTED when set this option while camera is running)</td>
       </tr><tr>
-        <td><a id="frontend">OMEGONPROCAM_OPTION_FRONTEND_DEQUE_LENGTH</a><br/>or<br/>OMEGONPROCAM_OPTION_FRAME_DEQUE_LENGTH</td><td>RW</td>
+        <td><a id="frontend">OMEGONPROCAM_OPTION_FRONTEND_DEQUE_LENGTH</a><br/>FrontDequeLength</td><td>RW</td>
         <td>frontend (raw) frame deque length, range: [2, 1024]<br/>All the memory will be pre-allocated when the camera starts, so, please attention to memory usage</td>
 		<td>4</td>
       	<td>USB: Yes<br/>GigE: Not supported with gigepdrv; supported with others<br/>CL&amp;CXP: depends on the frame grabber</td>
       </tr><tr>
-        <td><a id="backend">OMEGONPROCAM_OPTION_BACKEND_DEQUE_LENGTH</a></td><td>RW</td>
+        <td><a id="backend">OMEGONPROCAM_OPTION_BACKEND_DEQUE_LENGTH</a><br/>BackDequeLength</td><td>RW</td>
         <td>backend (pipelined) frame deque length (Only available in pull mode), range: [2, 1024]<br/>All the memory will be pre-allocated when the camera starts, so, please attention to memory usage</td>
 		<td>3</td>
       	<td>Yes</td>
       </tr><tr>
-        <td>OMEGONPROCAM_OPTION_SEQUENCER_ONOFF</td><td>RW</td>
+        <td>OMEGONPROCAM_OPTION_SEQUENCER_ONOFF<br/>SequencerMode</td><td>RW</td>
         <td>sequencer trigger: on/off</td>
 		<td>0</td><td>Yes</td>
       </tr><tr>
-        <td>OMEGONPROCAM_OPTION_SEQUENCER_NUMBER</td><td>RW</td>
+        <td>OMEGONPROCAM_OPTION_SEQUENCER_NUMBER<br/>SequencerNumber</td><td>RW</td>
         <td>sequencer trigger: number, range = [1, 255]</td>
 		<td>NA</td><td>Yes</td>
       </tr><tr>
-        <td>OMEGONPROCAM_OPTION_SEQUENCER_EXPOTIME</td><td>RW</td>
+        <td>OMEGONPROCAM_OPTION_SEQUENCER_EXPOTIME<br/>SequencerExposureTime</td><td>RW</td>
         <td>sequencer trigger: exposure time<br/>iOption = OMEGONPROCAM_OPTION_SEQUENCER_EXPOTIME | index<br/>iValue = exposure time (no 50/60 HZ constraint)<br/><br/>
 		For example, to set the exposure time of the third group to 50ms, call<br/>Omegonprocam_put_Option(OMEGONPROCAM_OPTION_SEQUENCER_EXPOTIME | 3, 50000)</td>
 		<td>NA</td><td>Yes</td>
       </tr><tr>
-        <td>OMEGONPROCAM_OPTION_SEQUENCER_EXPOGAIN</td><td>RW</td>
+        <td>OMEGONPROCAM_OPTION_SEQUENCER_EXPOGAIN<br/>SequencerGain</td><td>RW</td>
         <td>sequencer trigger: exposure gain<br/>iOption = OMEGONPROCAM_OPTION_SEQUENCER_EXPOGAIN | index<br/>iValue = gain</td>
 		<td>NA</td><td>Yes</td>
       </tr><tr>
-        <td><a id="denoise">OMEGONPROCAM_OPTION_DENOISE</a></td><td>RW</td>
+        <td><a id="denoise">OMEGONPROCAM_OPTION_DENOISE</a><br/>Denoise</td><td>RW</td>
         <td>Denoise<br/>
 		strength range: [0, 100], 0 means disable</td>
 		<td>Model Specific</td><td>Yes</td>
       </tr><tr>
-        <td><a id="heatmax">OMEGONPROCAM_OPTION_HEAT_MAX</a></td><td>RO</td>
+        <td><a id="heatmax">OMEGONPROCAM_OPTION_HEAT_MAX</a><br/>HeatMax</td><td>RO</td>
         <td>get maximum level: heat to prevent fogging up<br/>
 		[0, max], 0 means off</td>
 		<td>NA</td><td>NA</td>
       </tr><tr>
-        <td><a id="heat">OMEGONPROCAM_OPTION_HEAT</a></td><td>RW</td>
+        <td><a id="heat">OMEGONPROCAM_OPTION_HEAT</a><br/>Heat</td><td>RW</td>
         <td>heat to prevent fogging up</td>
 		<td>Model Specific</td><td>Yes</td>
       </tr><tr>
-        <td>OMEGONPROCAM_OPTION_LIGHTSOURCE_MAX</td><td>RO</td>
+        <td>OMEGONPROCAM_OPTION_LIGHTSOURCE_MAX<br/>LightSourceMax</td><td>RO</td>
         <td>get maximum level: light source<br/>
 		[0, max], 0 means off</td>
 		<td>NA</td><td>NA</td>
       </tr><tr>
-        <td>OMEGONPROCAM_OPTION_LIGHTSOURCE</td><td>RW</td>
+        <td>OMEGONPROCAM_OPTION_LIGHTSOURCE<br/>LightSource</td><td>RW</td>
         <td>light source level</td>
 		<td>50% max level</td><td>Yes</td>
       </tr><tr>
-        <td><a id="heartbeat">OMEGONPROCAM_OPTION_HEARTBEAT</a></td><td>RW</td>
+        <td><a id="heartbeat">OMEGONPROCAM_OPTION_HEARTBEAT</a><br/>Heatbeat</td><td>RW</td>
         <td>Heartbeat interval in millisecond<br/>range: [OMEGONPROCAM_HEARTBEAT_MIN, OMEGONPROCAM_HEARTBEAT_MAX]<br/>0: disable</td>
 		<td>disable</td><td>Yes</td>
       </tr><tr>
-        <td><a id="hwoption">TOUCPAM_OPTION_EVENT_HARDWARE</a></td><td>RW</td>
+        <td><a id="hwoption">TOUCPAM_OPTION_EVENT_HARDWARE</a><br/>EventHardware</td><td>RW</td>
         <td>enable or disable hardware event notify: 0 =&gt; disable, 1 =&gt; enable
         <blockquote>(1) iOption = OMEGONPROCAM_OPTION_EVENT_HARDWARE, master switch for notification of all hardware events<br/>
         (2) iOption = OMEGONPROCAM_OPTION_EVENT_HARDWARE | <a href="#hwevent">(event type)</a>, a specific type of sub-switch</blockquote>
@@ -1459,113 +1486,117 @@ OMEGONPROCAM_PIXELFORMAT_RAW10PACK
 		<td>Master switch: <b>No</b><br/>
         Sub-switch: Yes</td>
       </tr><tr>
-        <td>OMEGONPROCAM_OPTION_LOW_POWERCONSUMPTION</td><td>RW</td>
+        <td>OMEGONPROCAM_OPTION_LOW_POWERCONSUMPTION<br/>LowPowerConsumption</td><td>RW</td>
         <td>Low Power Consumption:<br/>0 =&gt; disable, 1 =&gt; enable</td>
 		<td>Model Specific</td><td>Yes</td>
       </tr><tr>
-        <td>OMEGONPROCAM_OPTION_LOW_POWER_EXPOTIME</td><td>RW</td>
+        <td>OMEGONPROCAM_OPTION_LOW_POWER_EXPOTIME<br/>LowPowerExpoTime</td><td>RW</td>
         <td>Low Power Consumption: Enable if exposure time is greater than the set value</td>
 		<td>Model Specific</td><td>Yes</td>
       </tr><tr>
-        <td><a id="lownoise">OMEGONPROCAM_OPTION_LOW_NOISE</a></td><td>RW</td>
+        <td><a id="lownoise">OMEGONPROCAM_OPTION_LOW_NOISE</a><br/>LowNoise</td><td>RW</td>
         <td>low noise mode (Higher signal noise ratio, lower frame rate):<br/>0 =&gt; disable, 1 =&gt; enable</td>
 		<td>Model Specific</td><td>Yes</td>
       </tr><tr>
-        <td>OMEGONPROCAM_OPTION_HIGH_FULLWELL</td><td>RW</td>
+        <td>OMEGONPROCAM_OPTION_HIGH_FULLWELL<br/>HighFullwell</td><td>RW</td>
         <td>high fullwell capacity:<br/>0 =&gt; disable, 1 =&gt; enable</td>
 		<td>Model Specific</td><td>Yes</td>
       </tr><tr>
-        <td>OMEGONPROCAM_OPTION_AUTOEXPOSURE_PERCENT</td><td>RW</td>
+        <td>OMEGONPROCAM_OPTION_LDC<br/>LDC</td><td>RW</td>
+        <td>Low Dark Current:<br/>0 =&gt; disable, 1 =&gt; enable</td>
+		<td>Model Specific</td><td>Yes</td>
+      </tr><tr>
+        <td>OMEGONPROCAM_OPTION_AUTOEXPOSURE_PERCENT<br/>AEPeak</td><td>RW</td>
         <td>Peak mode of brightness calculation method: Calculate the average brightness of specified percentage top brightest pixels in interest area. Enable this option when the background is dark and the target is overexposed in average mode. Frame rate may be affected when this option is enabled due to higher CPU consumption<br/>
         1~99: average brightness of specified percentage top brightest pixels in ROI, default: 1<br/>
         0 or 100: average brightness of whole pixels in ROI, means "disabled"</td>
 		<td>0(Disabled)</td><td>Yes</td>
       </tr><tr>
-        <td>OMEGONPROCAM_OPTION_DEFECT_PIXEL</td><td>RW</td>
+        <td>OMEGONPROCAM_OPTION_DEFECT_PIXEL<br/>DefectPixel</td><td>RW</td>
         <td>Defect Pixel Correction<br/>0 =&gt; disable, 1 =&gt; enable</td>
 		<td>enable (1)</td><td>Yes</td>
       </tr><tr>
-        <td>OMEGONPROCAM_OPTION_HDR_KB</td><td>RW</td>
+        <td>OMEGONPROCAM_OPTION_HDR_KB<br/>HdrKB</td><td>RW</td>
         <td>HDR synthesize<br/>K (high 16 bits): [1, 25500]<br/>B (low 16 bits): [0, 65535]<br/>0xffffffff => set to default</td>
 		<td>Model Specific</td><td>Yes</td>
       </tr><tr>
-        <td>OMEGONPROCAM_OPTION_HDR_THRESHOLD</td><td>RW</td>
+        <td>OMEGONPROCAM_OPTION_HDR_THRESHOLD<br/>HdrThreshold</td><td>RW</td>
         <td>HDR synthesize<br/>threshold: [1, 4094]<br/>0xffffffff => set to default</td>
 		<td>Model Specific</td><td>Yes</td>
       </tr><tr>
-        <td>OMEGONPROCAM_OPTION_DYNAMIC_DEFECT</td><td>RW</td>
+        <td>OMEGONPROCAM_OPTION_DYNAMIC_DEFECT<br/>DynamicDefectDead<br/>DynamicDefectHot</td><td>RW</td>
         <td>Dynamic Defect Pixel Correction<br/>dead pixel ratio, t1: (high 16 bits): [0, 100], means: [0.0, 1.0]<br/>hot pixel ratio, t2: (low 16 bits): [0, 100], means: [0.0, 1.0]<br/>See:<br/>OMEGONPROCAM_DYNAMIC_DEFECT_T1_(MIN/MAX/DEF), OMEGONPROCAM_DYNAMIC_DEFECT_T2_(MIN/MAX/DEF)</td>
 		<td>disable<br/>(t1=0, t2=0)</td><td>Yes</td>
       </tr><tr>
-        <td>OMEGONPROCAM_OPTION_ANTI_SHUTTER_EFFECT</td><td>RW</td>
+        <td>OMEGONPROCAM_OPTION_ANTI_SHUTTER_EFFECT<br/>AntiShutter</td><td>RW</td>
         <td>anti shutter effect: 1 =&gt; enable, 0 =&gt; disable</td>
 		<td>disable (0)</td><td>Yes</td>
       </tr><tr>
-        <td>OMEGONPROCAM_OPTION_OVERCLOCK_MAX</td><td>RO</td>
+        <td>OMEGONPROCAM_OPTION_OVERCLOCK_MAX<br/>OverclockMax</td><td>RO</td>
         <td>maximum overclock</td>
 		<td>NA</td><td>Yes</td>
       </tr><tr>
-        <td>OMEGONPROCAM_OPTION_OVERCLOCK</td><td>RW</td>
+        <td>OMEGONPROCAM_OPTION_OVERCLOCK<br/>OverClock</td><td>RW</td>
         <td>overclock</td>
 		<td>0</td><td>Yes</td>
       </tr><tr>
-        <td>OMEGONPROCAM_OPTION_RESET_SENSOR</td><td>WO</td>
+        <td>OMEGONPROCAM_OPTION_RESET_SENSOR<br/>ResetSensor</td><td>WO</td>
         <td>reset sensor</td>
 		<td>NA</td><td>Yes</td>
       </tr><tr>
-        <td>OMEGONPROCAM_OPTION_RESET_SEQ_TIMESTAMP</td><td>WO</td>
+        <td>OMEGONPROCAM_OPTION_RESET_SEQ_TIMESTAMP<br/>ResetSeqTimestamp</td><td>WO</td>
         <td>Reset seq, timestamp:<br/>
 		1: seq<br/>
 		2: timestamp<br/>
 		3: both</td>
 		<td>NA</td><td>Yes</td>
       </tr><tr>
-        <td>OMEGONPROCAM_OPTION_MODE_SEQ_TIMESTAMP</td><td>RW</td>
+        <td>OMEGONPROCAM_OPTION_MODE_SEQ_TIMESTAMP<br/>ModeSeqTimestamp</td><td>RW</td>
         <td>Mode of seq &amp; timestamp:<br/>
 		0: reset to 0 automatically<br/>
 		1: never reset automatically</td>
 		<td>0</td><td>Yes</td>
       </tr><tr>
-        <td>OMEGONPROCAM_OPTION_CHAMBER_HT</td><td>RO</td>
+        <td>OMEGONPROCAM_OPTION_CHAMBER_HT<br/>ChamberTemperature<br/>ChamberHumidity</td><td>RO</td>
         <td>get chamber humidity &amp; temperature:<br/>
         high 16 bits: humidity, in 0.1%, such as: 325 means humidity is 32.5%<br/>
         low 16 bits: temperature, in 0.1 degrees Celsius, such as: 32 means 3.2 degrees Celsius</td>
 		<td>NA</td><td>NA</td>
       </tr><tr>
-        <td>OMEGONPROCAM_OPTION_ENV_HT</td><td>RO</td>
+        <td>OMEGONPROCAM_OPTION_ENV_HT<br/>EnvironmentTemperature<br/>EnvironmentHumidity</td><td>RO</td>
         <td>get environment humidity &amp; temperature</td>
 		<td>NA</td><td>NA</td>
       </tr><tr>
-        <td>OMEGONPROCAM_OPTION_EXPOSURE_PRE_DELAY</td><td>RW</td>
+        <td>OMEGONPROCAM_OPTION_EXPOSURE_PRE_DELAY<br/>ExposurePreDelay</td><td>RW</td>
         <td>exposure signal pre-delay, microsecond</td>
 		<td>0</td><td>Yes</td>
       </tr><tr>
-        <td>OMEGONPROCAM_OPTION_EXPOSURE_POST_DELAY</td><td>RW</td>
+        <td>OMEGONPROCAM_OPTION_EXPOSURE_POST_DELAY<br/>ExposurePostDelay</td><td>RW</td>
         <td>exposure signal post-delay, microsecond</td>
 		<td>0</td><td>Yes</td>
       </tr><tr>
-        <td>OMEGONPROCAM_OPTION_LINE_PRE_DELAY</td><td>RW</td>
+        <td>OMEGONPROCAM_OPTION_LINE_PRE_DELAY<br/>LinePreDelay</td><td>RW</td>
         <td>specified line signal pre-delay, microsecond</td>
 		<td>0</td><td>Yes</td>
       </tr><tr>
-        <td>OMEGONPROCAM_OPTION_LINE_POST_DELAY</td><td>RW</td>
+        <td>OMEGONPROCAM_OPTION_LINE_POST_DELAY<br/>LinePostDelay</td><td>RW</td>
         <td>specified line signal post-delay, microsecond</td>
 		<td>0</td><td>Yes</td>
       </tr><tr>
-        <td>OMEGONPROCAM_OPTION_AUTOEXPO_CONV</td><td>RO</td>
+        <td>OMEGONPROCAM_OPTION_AUTOEXPO_CONV<br/>AutoExpoConv</td><td>RO</td>
         <td>get auto exposure convergence status:<br/>1(YES)<br/>0(NO)<br/>-1(PENDING)</td>
 		<td></td>
 		<td>NA</td>
       </tr><tr>
-        <td>OMEGONPROCAM_OPTION_AUTOEXP_EXPOTIME_DAMP</td><td>RW</td>
+        <td>OMEGONPROCAM_OPTION_AUTOEXP_EXPOTIME_DAMP<br/>AEDampTime</td><td>RW</td>
         <td>Auto exposure damping coefficient: time (thousandths)<br/>The larger the damping coefficient, the smoother and slower the exposure time changes</td>
 		<td>0</td><td>Yes</td>
       </tr><tr>
-        <td>OMEGONPROCAM_OPTION_AUTOEXP_GAIN_STEP</td><td>RW</td>
+        <td>OMEGONPROCAM_OPTION_AUTOEXP_GAIN_DAMP<br/>AEDamoGain</td><td>RW</td>
         <td>Auto exposure damping coefficient: gain (thousandths)<br/>The larger the damping coefficient, the smoother and slower the gain changes</td>
 		<td>0</td><td>Yes</td>
       </tr><tr>
-        <td>OMEGONPROCAM_OPTION_OVEREXP_POLICY</td><td>RW</td>
+        <td>OMEGONPROCAM_OPTION_OVEREXP_POLICY<br/>AEOverPolicy</td><td>RW</td>
         <td>Auto exposure overexposure policy: when overexposed,<br/>
 			<blockquote>0 =&gt; directly reduce the exposure time/gain to the minimum value; or<br/>
 			1 =&gt; reduce exposure time/gain according to the ratio between current and target brightness; or<br/>
@@ -1574,53 +1605,54 @@ OMEGONPROCAM_PIXELFORMAT_RAW10PACK
 		Policy 1 avoids the black screen, but the convergence speed is slower.</td>
 		<td>0</td><td>Yes</td>
       </tr><tr>
-        <td>OMEGONPROCAM_OPTION_AUTOEXPO_TRIGGER</td><td>RW</td>
+        <td>OMEGONPROCAM_OPTION_AUTOEXPO_TRIGGER<br/>AETrigger</td><td>RW</td>
         <td>auto exposure on trigger mode:<br/>1(Enable) or 0(Disable)</td>
 		<td>0</td><td>Yes</td>
 		</tr><tr>
-		<td>OMEGONPROCAM_OPTION_AWB_CONTINUOUS</td><td>RW</td>
+		<td>OMEGONPROCAM_OPTION_AWB_CONTINUOUS<br/>AwbContinuous</td><td>RW</td>
 		<td>Auto White Balance: continuous mode<br/><blockquote>
 			0:  disable<br/>
 			n&gt;0: every n millisecond(s)<br/>
 			n&lt;0: every -n frame</blockquote>
 		</td><td>0 (Disable)</td><td>Yes</td>
       </tr><tr>
-		<td>OMEGONPROCAM_OPTION_TIMED_TRIGGER_NUM</td><td>RW</td>
+		<td>OMEGONPROCAM_OPTION_TIMED_TRIGGER_NUM<br/>TimedTriggerNum</td><td>RW</td>
 		<td>Timed trigger number</td><td>0 (Disable)</td><td>Yes</td>
       </tr><tr>
-		<td>OMEGONPROCAM_OPTION_TIMED_TRIGGER_LOW</td><td>RW</td>
+		<td>OMEGONPROCAM_OPTION_TIMED_TRIGGER_LOW<br/>TimedTriggerLow</td><td>RW</td>
 		<td>Timed trigger: lower 32 bits of 64-bit integer, nanosecond since epoch (00:00:00 UTC on Thursday, 1 January 1970, see https://en.wikipedia.org/wiki/Unix_time)</td><td>0</td><td>Yes</td>
       </tr><tr>
-		<td>OMEGONPROCAM_OPTION_TIMED_TRIGGER_HIGH</td><td>RW</td>
+		<td>OMEGONPROCAM_OPTION_TIMED_TRIGGER_HIGH<br/>TimedTriggerHigh</td><td>RW</td>
 		<td>Timed trigger: high 32 bits. The lower 32 bits must be set first, followed by the higher 32 bits</td><td>0</td><td>Yes</td>
       </tr><tr>
-        <td>OMEGONPROCAM_OPTION_THREAD_PRIORITY</td><td>RW</td>
+        <td>OMEGONPROCAM_OPTION_THREAD_PRIORITY<br/>ThreadPriority</td><td>RW</td>
         <td>set the priority of the internal thread which grab data from the usb device.<br/>
           Win:<blockquote>0 = THREAD_PRIORITY_NORMAL;<br/>1 = THREAD_PRIORITY_ABOVE_NORMAL;<br/>2 = THREAD_PRIORITY_HIGHEST;<br/>3 = THREAD_PRIORITY_TIME_CRITICAL;<br/>Please refer to <a href="https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setthreadpriority" target="_blank">SetThreadPriority</a></blockquote>
 		  Linux &amp; macOS: <blockquote>similar to Win</blockquote></td>
         <td>1</td><td>Yes</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_LINEAR</td><td>RW</td>
+      	<td>OMEGONPROCAM_OPTION_LINEAR<br/>Linear</td><td>RW</td>
       	<td>Builtin linear tone mapping:<br/>0 = turn off<br/>1 = turn on</td>
       	<td>1</td><td>Yes</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_CURVE</td><td>RW</td>
-      	<td>Builtin curve tone mapping:<br/>0 = turn off<br/>
+      	<td>OMEGONPROCAM_OPTION_CURVE<br/>ToneMapping</td><td>RW</td>
+      	<td>Builtin tone mapping:<br/>0 = turn off<br/>
       	  1 = turn on polynomial<br/>
-		  2 = turn on logarithmic</td>
+		  2 = turn on logarithmic<br/>
+		  <strong>Enabling tone mapping significantly compromises linearity</strong></td>
       	<td>2</td><td>Yes</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_COLORMATIX</td><td>RW</td>
+      	<td>OMEGONPROCAM_OPTION_COLORMATIX<br/>ColorMatix</td><td>RW</td>
       	<td>0 = turn off the builtin color matrix<br/>
       	  1 = turn on the builtin color matrix</td>
       	<td>1</td><td>Yes</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_WBGAIN</td><td>RW</td>
+      	<td>OMEGONPROCAM_OPTION_WBGAIN<br/>WbGain</td><td>RW</td>
       	<td>0 = turn off the builtin white balance gain<br/>
       	  1 = turn on the builtin white balance gain</td>
       	<td>1</td><td>Yes</td>
       </tr><tr>
-      	<td width="28%"><a id="demosaic">OMEGONPROCAM_OPTION_DEMOSAIC</a></td><td>RW</td>
+      	<td width="28%"><a id="demosaic">OMEGONPROCAM_OPTION_DEMOSAIC</a><br/>Demosaic</td><td>RW</td>
       	<td width="48%">Demosaic mothod for both video and still image: (Please refrence <a href="https://en.wikipedia.org/wiki/Demosaicing">https://en.wikipedia.org/wiki/Demosaicing</a>)<br/>
       			0 = BILINEAR<br/>
       			1 = VNG(Variable Number of Gradients)<br/>
@@ -1631,19 +1663,19 @@ OMEGONPROCAM_PIXELFORMAT_RAW10PACK
       			Always return E_NOTIMPL for monochromatic camera.</td>
       	<td>0</td><td>Yes</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_DEMOSAIC_VIDEO</td><td>RW</td>
+      	<td>OMEGONPROCAM_OPTION_DEMOSAIC_VIDEO<br/>DemosaicVideo</td><td>RW</td>
       	<td>Demosaic mothod for video</td>
       	<td>0</td><td>Yes</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_DEMOSAIC_STILL</td><td>RW</td>
+      	<td>OMEGONPROCAM_OPTION_DEMOSAIC_STILL<br/>DemosaicStill</td><td>RW</td>
       	<td>Demosaic mothod for still image</td>
       	<td>0</td><td>Yes</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_OPEN_ERRORCODE</td><td>RO</td>
+      	<td>OMEGONPROCAM_OPTION_OPEN_ERRORCODE<br/>OpenErrorCode</td><td>RO</td>
       	<td>get the open camera error code</td>
       	<td>NA</td><td>NA</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_FLUSH</td><td>WO</td>
+      	<td>OMEGONPROCAM_OPTION_FLUSH<br/>Flush</td><td>WO</td>
       	<td>1: hard flush, discard frames cached by camera DDR (if any)<br/>
 		2: soft flush, discard frames cached by omegonprocam.dll (if any)<br/>
 		3: both<br/>
@@ -1651,121 +1683,121 @@ OMEGONPROCAM_PIXELFORMAT_RAW10PACK
         return the number of soft flushed frames if successful, <a href="#hresult">HRESULT</a> if failed</td>
       	<td>NA</td><td>NA</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_READOUT_MODE</td><td>RW</td>
+      	<td>OMEGONPROCAM_OPTION_READOUT_MODE<br/>ReadoutMode</td><td>RW</td>
       	<td>Readout mode:<br/>
 		0 = IWR (Integrate While Read)<br/>
 		1 = ITR (Integrate Then Read)<br/>
 		The working modes of the detector readout circuit can be divided into two types: ITR and IWR. Using the IWR readout mode can greatly increase the frame rate. In the ITR mode, the integration of the (n+1)th frame starts after all the data of the nth frame are read out, while in the IWR mode, the data of the nth frame is read out at the same time when the (n+1)th frame is integrated</td>
       	<td>NA</td><td>YES</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_VOLTAGEBIAS</td><td>RW</td>
+      	<td>OMEGONPROCAM_OPTION_VOLTAGEBIAS<br/>VoltageBias</td><td>RW</td>
       	<td>Voltage bias</td><td>Model Specific</td><td>YES</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_VOLTAGEBIAS_RANGE</td><td>RO</td>
+      	<td>OMEGONPROCAM_OPTION_VOLTAGEBIAS_RANGE<br/>VoltageBiasRange</td><td>RO</td>
       	<td>Voltage bias range:<br/>
 		min (low 16bits)<br/>
 		max (high 16bits)</td><td>NA</td><td>NA</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_TAILLIGHT</td><td>RW</td>
+      	<td>OMEGONPROCAM_OPTION_TAILLIGHT<br/>TailLight</td><td>RW</td>
       	<td>Turn on/off tail Led light:<br/>
 		0 =&gt; off<br/>
 		1 =&gt; on</td>
       	<td>1</td><td>YES</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_PSEUDO_COLOR_START</td><td>RW</td>
+      	<td>OMEGONPROCAM_OPTION_PSEUDO_COLOR_START<br/>PseudoColorStart</td><td>RW</td>
       	<td>Pseudo: start color, BGR format</td>
       	<td>NA</td><td>Yes</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_PSEUDO_COLOR_END</td><td>RW</td>
+      	<td>OMEGONPROCAM_OPTION_PSEUDO_COLOR_END<br/>PseudoColorEnd</td><td>RW</td>
       	<td>Pseudo: end color, BGR format</td>
       	<td>NA</td><td>Yes</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_PSEUDO_COLOR_ENABLE</td><td>RW</td>
-      	<td>Pseudo:<br/>-1 => custom: use startcolor &amp; endcolor to generate the colormap<br/>
-                                                                    0 =&gt; disable<br/>
-                                                                    1 =&gt; spot<br/>
-                                                                    2 =&gt; spring<br/>
-                                                                    3 =&gt; summer<br/>
-                                                                    4 =&gt; autumn<br/>
-                                                                    5 =&gt; winter<br/>
-                                                                    6 =&gt; bone<br/>
-                                                                    7 =&gt; jet<br/>
-                                                                    8 =&gt; rainbow<br/>
-                                                                    9 =&gt; deepgreen<br/>
-                                                                    10 =&gt; ocean<br/>
-                                                                    11 =&gt; cool<br/>
-                                                                    12 =&gt; hsv<br/>
-                                                                    13 =&gt; pink<br/>
-                                                                    14 =&gt; hot<br/>
-                                                                    15 =&gt; parula<br/>
-                                                                    16 =&gt; magma<br/>
-                                                                    17 =&gt; inferno<br/>
-                                                                    18 =&gt; plasma<br/>
-                                                                    19 =&gt; viridis<br/>
-                                                                    20 =&gt; cividis<br/>
-                                                                    21 =&gt; twilight<br/>
-                                                                    22 =&gt; twilight_shifted<br/>
-                                                                    23 =&gt; turbo<br/>
-																	24 =&gt; red<br/>
-																	25 =&gt; green<br/>
-																	26 =&gt; blue<br/>
-																	27 =&gt; spectrum</td>
+      	<td>OMEGONPROCAM_OPTION_PSEUDO_COLOR_ENABLE<br/>PseudoColorEnable</td><td>RW</td>
+      	<td>Pseudo:<br/>-1 => Custom: use startcolor &amp; endcolor to generate the colormap<br/>
+                                                                    0 =&gt; Disable<br/>
+                                                                    1 =&gt; Spot<br/>
+                                                                    2 =&gt; Spring<br/>
+                                                                    3 =&gt; Summer<br/>
+                                                                    4 =&gt; Autumn<br/>
+                                                                    5 =&gt; Winter<br/>
+                                                                    6 =&gt; Bone<br/>
+                                                                    7 =&gt; Jet<br/>
+                                                                    8 =&gt; Rainbow<br/>
+                                                                    9 =&gt; DeepGreen<br/>
+                                                                    10 =&gt; Ocean<br/>
+                                                                    11 =&gt; Cool<br/>
+                                                                    12 =&gt; HSV<br/>
+                                                                    13 =&gt; Pink<br/>
+                                                                    14 =&gt; Hot<br/>
+                                                                    15 =&gt; Parula<br/>
+                                                                    16 =&gt; Magma<br/>
+                                                                    17 =&gt; Inferno<br/>
+                                                                    18 =&gt; Plasma<br/>
+                                                                    19 =&gt; Viridis<br/>
+                                                                    20 =&gt; Cividis<br/>
+                                                                    21 =&gt; Twilight<br/>
+                                                                    22 =&gt; TwilightShifted<br/>
+                                                                    23 =&gt; Turbo<br/>
+																	24 =&gt; Red<br/>
+																	25 =&gt; Green<br/>
+																	26 =&gt; Blue<br/>
+																	27 =&gt; Spectrum</td>
       	<td>0</td><td>Yes</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_NUMBER_DROP_FRAME</td><td>RO</td>
+      	<td>OMEGONPROCAM_OPTION_NUMBER_DROP_FRAME<br/>DropFrame</td><td>RO</td>
       	<td>get the number of frames that have been grabbed from the USB but dropped by the software</td>
       	<td>NA</td><td>NA</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_DUMP_CFG</td><td>RW</td>
+      	<td>OMEGONPROCAM_OPTION_DUMP_CFG<br/>DumpCfg</td><td>RW</td>
       	<td>0 = when camera is stopped, do not dump configuration automatically<br/>
             1 = when camera is stopped, dump configuration automatically<br/>
             -1 = explicitly dump configuration once</td>
       	<td>1</td><td>Yes</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_FRONTEND_DEQUE_CURRENT</td><td>RO</td>
+      	<td>OMEGONPROCAM_OPTION_FRONTEND_DEQUE_CURRENT<br/>FrontDequeCurrent</td><td>RO</td>
       	<td>get the current number in frontend deque</td>
       	<td>NA</td><td>NA</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_BACKEND_DEQUE_CURRENT</td><td>RO</td>
+      	<td>OMEGONPROCAM_OPTION_BACKEND_DEQUE_CURRENT<br/>BackDequeCurrent</td><td>RO</td>
       	<td>get the current number in backend deque</td>
       	<td>NA</td><td>NA</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_FRONTEND_FULL</td><td>RO</td>
+      	<td>OMEGONPROCAM_OPTION_FRONTEND_FULL<br/>FrontFull</td><td>RO</td>
       	<td>get the number of frontend deque full</td>
       	<td>NA</td><td>NA</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_BACKEND_FULL</td><td>RO</td>
+      	<td>OMEGONPROCAM_OPTION_BACKEND_FULL<br/>BackFull</td><td>RO</td>
       	<td>get the number of backend deque full</td>
       	<td>NA</td><td>NA</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_PACKET_NUMBER</td><td>RO</td>
+      	<td>OMEGONPROCAM_OPTION_PACKET_NUMBER<br/>PacketNumber</td><td>RO</td>
       	<td>get the received packet number</td>
       	<td>NA</td><td>NA</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_GVCP_TIMEOUT</td><td>RW</td>
+      	<td>OMEGONPROCAM_OPTION_GVCP_TIMEOUT<br/>GvcpTimeout</td><td>RW</td>
       	<td>GVCP Timeout, millisecond, range: [5, 150]<br/>Unless in very special circumstances, generally no modification is required, just use the default value</td>
       	<td>15(wire)<br/>30(wireless)</td><td>Yes</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_GVCP_RETRY</td><td>RW</td>
+      	<td>OMEGONPROCAM_OPTION_GVCP_RETRY<br/>GvcpRetry</td><td>RW</td>
       	<td>GVCP Retry, range: [2, 16]<br/>Unless in very special circumstances, generally no modification is required, just use the default value</td>
       	<td>4(wire)<br/>8(wireless)</td><td>Yes</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_GVSP_WAIT_PERCENT</td><td>RW</td>
+      	<td>OMEGONPROCAM_OPTION_GVSP_WAIT_PERCENT<br/>GvcpWaitPercent</td><td>RW</td>
       	<td>GVSP wait percent: range = [0, 100]</td>
       	<td>trigger mode: 100<br/>realtime: 0<br/>other: 1</td><td>Yes</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_GIGETIMEOUT</td><td>RW</td>
+      	<td>OMEGONPROCAM_OPTION_GIGETIMEOUT<br/>GigeTimeout</td><td>RW</td>
       	<td>For GigE cameras, the application periodically sends heartbeat signals to the camera to keep the connection to the camera alive. If the camera doesn't receive heartbeat signals within the time period specified by the heartbeat timeout counter, the camera resets the connection. When the application is stopped by the debugger, the application cannot create the heartbeat signals.<br/>
 		0 =&gt; auto: when the camera is opened, disable if debugger is present or enable if no debugger is present<br/>
 		1 =&gt; enable<br/>
 		2 =&gt; disable</td>
       	<td>0</td><td>Yes</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_FILTERWHEEL_SLOT</td><td>RW</td>
+      	<td>OMEGONPROCAM_OPTION_FILTERWHEEL_SLOT<br/>FilterWheelSlot</td><td>RW</td>
       	<td>filter wheel slot number</td>
       	<td>7</td><td>Yes</td>
       </tr><tr>
-      	<td>OMEGONPROCAM_OPTION_FILTERWHEEL_POSITION</td><td>RW</td>
+      	<td>OMEGONPROCAM_OPTION_FILTERWHEEL_POSITION<br/>FilterWheelPosition</td><td>RW</td>
       	<td>filter wheel position:<br/>
 					set:
                         <blockquote>-1: calibrate<br/>
@@ -1776,65 +1808,69 @@ OMEGONPROCAM_PIXELFORMAT_RAW10PACK
                         val: position arrived</blockquote>
         </td>
       	<td>NA</td><td>Yes</td></tr><tr>
-      	<td>OMEGONPROCAM_OPTION_TRIGGER_CANCEL_MODE</td><td>RW</td>
+      	<td>OMEGONPROCAM_OPTION_TRIGGER_CANCEL_MODE<br/>TriggerCancelMode</td><td>RW</td>
       	<td>Trigger cancel mode:<br/>
 		0: no frame<br/>
 		1: output frame</td>
       	<td>0</td><td>Yes</td></tr><tr>
-      	<td>OMEGONPROCAM_OPTION_SCAN_DIRECTION</td><td>RW</td>
+      	<td>OMEGONPROCAM_OPTION_SCAN_DIRECTION<br/>ScanDirection</td><td>RW</td>
       	<td>Scan direction:<br/>
 		0: forward<br/>
 		1: reverse<br/>
 		2: alternate</td>
       	<td>0</td><td>Yes</td></tr><tr>
-      	<td>OMEGONPROCAM_OPTION_LANE</td><td>RW</td>
+      	<td>OMEGONPROCAM_OPTION_LANE<br/>Lane</td><td>RW</td>
       	<td>Lane</td>
       	<td>Model Specific</td><td>Yes</td></tr><tr>
-      	<td>OMEGONPROCAM_OPTION_ANTI_BLOOMING</td><td>RW</td>
-      	<td>anti-blooming</td>
+      	<td>OMEGONPROCAM_OPTION_ANTI_BLOOMING<br/>AntiBlooming</td><td>RW</td>
+      	<td>Blooming occurs when the charge in a pixel exceeds the saturation level and the charge starts to fill adjacent pixels.<br/>
+			 Some sensors are designed with structures built into them to limit blooming - anti-blooming structures.<br/>
+			 Anti-blooming structures bleed off any excess charge before they can overflow the pixel and thereby stop blooming.<br/>
+			 However, anti-blooming structures can reduce the effective quantum efficiency and introduce non linearity into the sensor.<br/>
+			 Therefore, anti-blooming sensors are not recommended for applications requiring very low light or high accuracy measurements.</td>
       	<td>Model Specific</td><td>Yes</td></tr><tr>
-      	<td>OMEGONPROCAM_OPTION_ANTI_BLOOMING_MAX</td><td>RW</td>
+      	<td>OMEGONPROCAM_OPTION_ANTI_BLOOMING_MAX<br/>AntiBloomingMax</td><td>RW</td>
       	<td>anti-blooming</td>
       	<td>NA</td><td>NA</td></tr><tr>
-      	<td>OMEGONPROCAM_OPTION_BLACKLEVEL_AUTOADJUST</td><td>RW</td>
+      	<td>OMEGONPROCAM_OPTION_BLACKLEVEL_AUTOADJUST<br/>BlacklevelAutoAdjust</td><td>RW</td>
       	<td>Black level automatic adjustment function:<br/> 0: off<br/>1: on<br/>
 		This setting turn on/off black level auto adjust function by OB(Optical Black) level.
 In case of long exposure and so on, OB level is offset by leak or any other reason.
 Because of it, if the adjustment becomes a problem, this setting is introduced for one of the solution.</td>
       	<td>Model Specific</td><td>Yes</td></tr><tr>
-      	<td>OMEGONPROCAM_OPTION_MECHANICALSHUTTER</td><td>RW</td>
+      	<td>OMEGONPROCAM_OPTION_MECHANICALSHUTTER<br/>MechanicalShutter</td><td>RW</td>
       	<td>Mechanical shutter:<br/>
 		0: open<br/>
 		1: close</td>
       	<td>0</td><td>Yes</td></tr><tr>
-      	<td>OMEGONPROCAM_OPTION_CDS</td><td>RW</td>
-      	<td>Correlated Double Sampling: 0~100</td>
+      	<td>OMEGONPROCAM_OPTION_CDS<br/>CDS</td><td>RW</td>
+      	<td>Correlated Double Sampling: 0~100<br/>see <a href="https://www.next.gr/tutorials/sensors-and-transducers/image-sensor-noise-reduction-techniques-tutorial#correlated-double-sampling-cds" target="_blank">here</a></td>
       	<td>0</td><td>Yes</td></tr><tr>
-      	<td>OMEGONPROCAM_OPTION_LINE_LENGTH</td><td>RW</td>
+      	<td>OMEGONPROCAM_OPTION_LINE_LENGTH<br/>LineLength</td><td>RW</td>
       	<td>Line length in pixel clock</td>
       	<td>NA</td><td>Yes</td></tr><tr>
-      	<td>OMEGONPROCAM_OPTION_LINE_TIME</td><td>RO</td>
+      	<td>OMEGONPROCAM_OPTION_LINE_TIME<br/>LineTime</td><td>RO</td>
       	<td>Line-time of sensor in nanosecond</td>
       	<td>NA</td><td>NA</td></tr><tr>
-      	<td>OMEGONPROCAM_OPTION_UPTIME</td><td>RO</td>
+      	<td>OMEGONPROCAM_OPTION_UPTIME<br/>Uptime</td><td>RO</td>
       	<td>device uptime in millisecond</td>
       	<td>NA</td><td>NA</td></tr><tr>
-      	<td>OMEGONPROCAM_OPTION_GPS</td><td>RO</td>
+      	<td>OMEGONPROCAM_OPTION_GPS<br/>GPS</td><td>RO</td>
       	<td>GPS status<br/>0 =&gt; not supported<br/>-1 =&gt; gps device offline<br/>1 =&gt; gps device online</td>
       	<td>NA</td><td>NA</td></tr><tr>
-      	<td>OMEGONPROCAM_OPTION_BITRANGE</td><td>RW</td>
+      	<td>OMEGONPROCAM_OPTION_BITRANGE<br/>BitRange</td><td>RW</td>
       	<td>Bit range: [0, 8], see: <a href="./images/bitrange.png">snapshot</a></td>
       	<td>0</td><td>Yes</td></tr><tr>
-      	<td>OMEGONPROCAM_OPTION_SCANTYPE</td><td>RW</td>
-      	<td>Scan Type:<br/>0=&gt;linescan<br/>1=&gt;areascan</td>
+      	<td>OMEGONPROCAM_OPTION_SCANTYPE<br/>DeviceScanType</td><td>RW</td>
+      	<td>Scan Type:<br/>0=&gt;areascan<br/>1=&gt;linescan</td>
       	<td>Model Specific</td><td>Yes</td></tr><tr>
-      	<td>OMEGONPROCAM_OPTION_OPERATIONMODE</td><td>RW</td>
+      	<td>OMEGONPROCAM_OPTION_OPERATIONMODE<br/>OperationMode</td><td>RW</td>
       	<td>TDI Operation Mode:<br/>1=&gt;area<br/>2=&gt;TDI</td>
       	<td>Model Specific</td><td>Yes</td></tr><tr>
-      	<td>OMEGONPROCAM_OPTION_TDITRIGGERMODE</td><td>RW</td>
+      	<td>OMEGONPROCAM_OPTION_TDITRIGGERMODE<br/>TDITriggerMode</td><td>RW</td>
       	<td>TDI Trigger Mode:<br/>1=&gt;normal<br/>2=&gt;both</td>
       	<td>Model Specific</td><td>Yes</td></tr><tr>
-      	<td>OMEGONPROCAM_OPTION_TDISTAGE</td><td>RW</td>
+      	<td>OMEGONPROCAM_OPTION_TDISTAGE<br/>TDIStage</td><td>RW</td>
       	<td>TDI Trigger Stage: sensor scan stage</td>
       	<td>Model Specific</td><td>Yes</td></tr>
 </table></div></blockquote><blockquote>
@@ -1848,11 +1884,11 @@ Because of it, if the adjustment becomes a problem, this setting is introduced f
     <blockquote>
       <p>HOmegonprocam h: camera handle</p>
       <p>int val:</p>
-    <blockquote>0: no realtime<blockquote>stop grab frame when frame buffer deque is full, until the frames in the queue are pulled away and the queue is not full</blockquote>
-    1: realtime
+    <blockquote>0: Off<blockquote>stop grab frame when frame buffer deque is full, until the frames in the queue are pulled away and the queue is not full</blockquote>
+    1: Both
           <blockquote>use minimum frame buffer. When new frame arrive, drop all the pending frame regardless of whether the frame buffer is full<br/>
           If DDR present, also limit the DDR frame buffer to only one frame.</blockquote>
-    2: soft realtime
+    2: Soft
           <blockquote>use minimum frame buffer. When new frame arrive, drop all the pending frame regardless of whether the frame buffer is full<br/>
           If DDR present, DDR frame buffer unchanged.</blockquote>
     </blockquote></blockquote>
@@ -1866,8 +1902,8 @@ Omegonprocam_get_MaxAutoExpoTimeAGain<br/>Omegonprocam_put_MinAutoExpoTimeAGain<
       <p>HOmegonprocam h: camera handle</p>
       <p><a id="aexpo">int mode:</a></p>
 		<blockquote>0: disable auto exposure<br/>
-		1: auto exposure continue mode<br/>
-		2: auto exposure once mode</blockquote>
+		1: auto exposure continuous mode<br/>
+		2: auto exposure once</blockquote>
       <p>unsigned short Target: auto-exposure target</p>
       <p>unsigned maxTime, unsigned short maxAGain: the maximum time and maximum gain of auto exposure. The default values are 350ms and 500.</p>
 	  <p>unsigned minTime, unsigned short minAGain: the minimal time and minimal gain of auto exposure. The default values are 0 and 100.</p>
@@ -2122,21 +2158,21 @@ Omegonprocam_put_Brightness<br/>Omegonprocam_get_Brightness<br/>Omegonprocam_get
    <td rowspan="2">Trigger delay time in microseconds, [0, 5000000]</td>
  </tr><tr><td>OMEGONPROCAM_IOCONTROLTYPE_SET_TRIGGERDELAY</td>
  </tr><tr><td>OMEGONPROCAM_IOCONTROLTYPE_GET_BURSTCOUNTER</td>
-   <td rowspan="2">Burst Counter, range: [1 ~ 65535]</td>
+   <td rowspan="2">Burst Counter, range: [1, 65535]</td>
  </tr><tr>
    <td>OMEGONPROCAM_IOCONTROLTYPE_SET_BURSTCOUNTER</td>
  </tr><tr><td>OMEGONPROCAM_IOCONTROLTYPE_GET_COUNTERSOURCE</td>
    <td rowspan="2">0x00 =&gt; Opto-isolated input<br/>0x01 =&gt; GPIO0<br/>0x02 =&gt; GPIO1</td>
  </tr><tr><td>OMEGONPROCAM_IOCONTROLTYPE_SET_COUNTERSOURCE</td>
  </tr><tr><td>OMEGONPROCAM_IOCONTROLTYPE_GET_COUNTERVALUE</td>
-   <td rowspan="2">Counter Value, range: [1 ~ 65535]</td>
+   <td rowspan="2">Counter Value, range: [1, 65535]</td>
  </tr><tr><td>OMEGONPROCAM_IOCONTROLTYPE_SET_COUNTERVALUE</td>
  </tr><tr><td>OMEGONPROCAM_IOCONTROLTYPE_SET_RESETCOUNTER</td><td></td>
  </tr><tr><td>OMEGONPROCAM_IOCONTROLTYPE_GET_PWM_FREQ</td>
-   <td rowspan="2">PWM Frequency</td>
+   <td rowspan="2">PWM Frequency, range: [0, 0xffffffff]</td>
  </tr><tr><td>OMEGONPROCAM_IOCONTROLTYPE_SET_PWM_FREQ</td>
  </tr><tr><td>OMEGONPROCAM_IOCONTROLTYPE_GET_PWM_DUTYRATIO</td>
-   <td rowspan="2">PWM Duty Ratio</td>
+   <td rowspan="2">PWM Duty Ratio, default: 50, range: [0, 100]</td>
  </tr><tr><td>OMEGONPROCAM_IOCONTROLTYPE_SET_PWM_DUTYRATIO</td>
  </tr><tr><td>OMEGONPROCAM_IOCONTROLTYPE_GET_PWMSOURCE</td>
    <td rowspan="2">0x00 =&gt; Opto-isolated input<br/>
@@ -2181,26 +2217,26 @@ Omegonprocam_put_Brightness<br/>Omegonprocam_get_Brightness<br/>Omegonprocam_get
    <td rowspan="2">exposure event:<br/>0 =&gt; specified line<br/>1 =&gt; common exposure time</td>
  </tr><tr><td>OMEGONPROCAM_IOCONTROLTYPE_SET_EXEVT_ACTIVE_MODE</td>
  </tr><tr><td>OMEGONPROCAM_IOCONTROLTYPE_GET_EXPO_START_LINE</td>
-   <td rowspan="2">exposure start line, default: 1</td>
+   <td rowspan="2">exposure start line, default: 0, range: [0, 16384]</td>
  </tr><tr><td>OMEGONPROCAM_IOCONTROLTYPE_SET_EXPO_START_LINE</td>
  </tr><tr><td>OMEGONPROCAM_IOCONTROLTYPE_GET_EXPO_END_LINE</td>
-   <td rowspan="2">exposure end line, default: 0<br/>end line must be no less than start line</td>
+   <td rowspan="2">exposure end line, default: 0, range: [0, 16384]<br/>end line must be no less than start line</td>
  </tr><tr><td>OMEGONPROCAM_IOCONTROLTYPE_SET_EXPO_END_LINE</td>
  </tr><tr><td>OMEGONPROCAM_IOCONTROLTYPE_GET_OUTPUTCOUNTERVALUE</td>
-   <td rowspan="2">Output Counter Value, range: [0 ~ 65535]</td>
+   <td rowspan="2">Output Counter Value, range: [0, 65535]</td>
  </tr><tr><td>OMEGONPROCAM_IOCONTROLTYPE_SET_OUTPUTCOUNTERVALUE</td>
  </tr><tr><td>OMEGONPROCAM_IOCONTROLTYPE_SET_OUTPUT_PAUSE</td>
    <td>Output pause: 1 =&gt; puase, 0 =&gt; unpause</td>
  </tr><tr><td>OMEGONPROCAM_IOCONTROLTYPE_GET_INPUT_STATE</td>
    <td>Input state: 0 (low level) or 1 (high level)</td>
 </tr><tr><td>OMEGONPROCAM_IOCONTROLTYPE_GET_USER_PULSE_HIGH</td>
-   <td rowspan="2">User pulse high level time: us</td>
+   <td rowspan="2">User pulse high level time: us, range: [0, 0xffffffff]</td>
  </tr><tr><td>OMEGONPROCAM_IOCONTROLTYPE_SET_USER_PULSE_HIGH</td>
  </tr><tr><td>OMEGONPROCAM_IOCONTROLTYPE_GET_USER_PULSE_LOW</td>
-   <td rowspan="2">User pulse low level time: us</td>
+   <td rowspan="2">User pulse low level time: us, range: [0, 0xffffffff]</td>
  </tr><tr><td>OMEGONPROCAM_IOCONTROLTYPE_SET_USER_PULSE_LOW</td>
  </tr><tr><td>OMEGONPROCAM_IOCONTROLTYPE_GET_USER_PULSE_NUMBER</td>
-   <td rowspan="2">User pulse number: default 0</td>
+   <td rowspan="2">User pulse number: default 0, range: [0, 0xffffffff]</td>
  </tr><tr><td>OMEGONPROCAM_IOCONTROLTYPE_SET_USER_PULSE_NUMBER</td>
  </tr><tr><td>OMEGONPROCAM_IOCONTROLTYPE_GET_EXTERNAL_TRIGGER_NUMBER</td>
    <td>External trigger number</td>
@@ -2229,7 +2265,7 @@ Omegonprocam_put_Brightness<br/>Omegonprocam_get_Brightness<br/>Omegonprocam_get
     <p>HOmegonprocam h: camera handle</p>
 	<p>filepath: file path</p>
   </blockquote>
-  <p><strong>Remarks:</strong> Export or import *.dfc, *.ffc or *.fpnc file.</p>
+  <p><strong>Remarks:</strong> Export or import *.raw or *.dfc, *.ffc, *.fpnc file.</p>
 </li></ul><ul><li><h2><font color="#0000FF">Omegonprocam_LevelRangeAuto</font></h2>
       <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
       <p><strong>Parameters:</strong></p>
