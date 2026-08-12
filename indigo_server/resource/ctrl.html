@@ -14,29 +14,29 @@
 					<img src="ctrl.png" width="40" height="40" class="d-inline-block align-middle" alt=""/>
 					<h4 class="title">Control Panel</h4>
 				</a>
-				<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarContent">
+				<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
 					<span class="navbar-toggler-icon"></span>
 				</button>
-				<div id="navbarContent" class="form-inline collapse navbar-collapse m-0">
+				<div id="navbarContent" class="collapse navbar-collapse m-0">
 					<template v-if="findProperty('Server', 'FEATURES') != null">
-						<a class="nav-link pr-0 ml-auto" href="mng.html" data-toggle="tooltip" title="Server Manager">
-							<img src="mng.png" width="40" height="40" class="align-middle mr-0" alt=""/>
+						<a class="nav-link ms-auto" href="mng.html" data-bs-toggle="tooltip" title="Server Manager">
+							<img src="mng.png" width="40" height="40" class="align-middle me-0" alt=""/>
 						</a>
-						<a class="nav-link pr-0" href="ctrl.html" data-toggle="tooltip" title="Control Panel">
-							<img src="ctrl.png" width="40" height="40" class="align-middle mr-0" alt=""/>
+						<a class="nav-link" href="ctrl.html" data-bs-toggle="tooltip" title="Control Panel">
+							<img src="ctrl.png" width="40" height="40" class="align-middle me-0" alt=""/>
 						</a>
 						<template v-if="findProperty('Server', 'FEATURES').item('WEB_APPS').value">
-							<a class="nav-link pr-0" href="imager.html" data-toggle="tooltip" title="Imager">
-								<img src="imager.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
+							<a class="nav-link" href="imager.html" data-bs-toggle="tooltip" title="Imager">
+								<img src="imager.png" width="40" height="40" class="d-inline-block align-middle me-0" alt=""/>
 							</a>
-							<a class="nav-link pr-0" href="mount.html" data-toggle="tooltip" title="Mount">
-								<img src="mount.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
+							<a class="nav-link" href="mount.html" data-bs-toggle="tooltip" title="Mount">
+								<img src="mount.png" width="40" height="40" class="d-inline-block align-middle me-0" alt=""/>
 							</a>
-							<a class="nav-link pr-0" href="guider.html" data-toggle="tooltip" title="Guider">
-								<img src="guider.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
+							<a class="nav-link" href="guider.html" data-bs-toggle="tooltip" title="Guider">
+								<img src="guider.png" width="40" height="40" class="d-inline-block align-middle me-0" alt=""/>
 							</a>
-							<a class="nav-link pr-0" href="script.html" data-toggle="tooltip" title="Script">
-								<img src="script.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
+							<a class="nav-link" href="script.html" data-bs-toggle="tooltip" title="Script">
+								<img src="script.png" width="40" height="40" class="d-inline-block align-middle me-0" alt=""/>
 							</a>
 						</template>
 					</template>
@@ -55,25 +55,24 @@
 						</div>
 					</div>
 				</template>
-				<div id="SUCCESS" class="alert alert-success alert-dismissible fade show m-1" role="alert" style="display:none;">
+				<div id="SUCCESS" class="alert alert-success alert-dismissible fade show m-1 mt-2" role="alert" style="display:none;">
 					{{ state }}
-					<span v-if="findProperty('Server', 'INFO')" class="float-right">
+					<span v-if="findProperty('Server', 'INFO')" class="float-end">
 						INDIGO Server {{findProperty('Server', 'INFO').item('VERSION').value}} at {{findProperty('Server', 'INFO').item('SERVICE').value}}
 					</span>
 				</div>
-				<div id="FAILURE" class="alert alert-danger alert-dismissible fade show m-1" role="alert" style="display:none;">
+				<div id="FAILURE" class="alert alert-danger alert-dismissible fade show m-1 mt-2" role="alert" style="display:none;">
 					{{ state }}
 				</div>
-				<div class="alert alert-info show m-1" role="alert">
+				<div class="alert alert-info show m-1 mt-2" role="alert">
 					Copyright &copy; 2019-2025, The INDIGO Initiative. All rights reserved.
-					<a v-if="dark" href="#" class="float-right" onclick="setLightMode()">Switch to light appearance</a>
-					<a v-else href="#" class="float-right" onclick="setDarkMode()">Switch to dark appearance</a>
+					<a v-if="dark" href="#" class="float-end" onclick="setLightMode()">Switch to light appearance</a>
+					<a v-else href="#" class="float-end" onclick="setDarkMode()">Switch to dark appearance</a>
 				</div>
 			</div>
 		</div>
 	</body>
 	<script src="jquery.min.js"></script>
-	<script src="popper.min.js"></script>
 	<script src="bootstrap.min.js"></script>
 	<script src="vue.min.js"></script>
 	<script src="indigo.js"></script>

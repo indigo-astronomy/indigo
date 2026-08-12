@@ -8,6 +8,28 @@
 	vertical-align: middle;
 }
 
+/* indigo-ctrl accordion spacing */
+.accordion.w-100 > .card {
+	margin-bottom: 0.5rem;
+}
+
+.accordion.collapse.bg-transparent > .card {
+	margin-bottom: 0.5rem;
+}
+
+.accordion.collapse:not(.bg-transparent) > .card {
+	margin-bottom: 0.25rem;
+}
+
+.navbar {
+	padding-left: 0.75rem;
+	padding-right: 0.75rem;
+}
+
+.navbar .nav-link {
+	padding: 0.25rem 0.375rem;
+}
+
 input {
 	text-overflow: ellipsis;
 }
@@ -90,10 +112,9 @@ input {
 	border-color: rgb(206, 212, 218);
 }
 
-.checked::before {
-	position: absolute;
-	left: .4rem;
-	content: '✓';
+.checkmark {
+	display: inline-block;
+	width: 1.1rem;
 	font-weight: 600;
 }
 

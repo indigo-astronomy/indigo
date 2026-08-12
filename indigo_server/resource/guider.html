@@ -15,29 +15,29 @@
 					<img src="guider.png" width="40" height="40" class="d-inline-block align-middle" alt=""/>
 					<h4 class="title">INDIGO Guider</h4>
 				</a>
-				<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarContent">
+				<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
 					<span class="navbar-toggler-icon"></span>
 				</button>
-				<div id="navbarContent" class="form-inline collapse navbar-collapse m-0">
+				<div id="navbarContent" class="collapse navbar-collapse m-0">
 					<template v-if="findProperty('Server', 'FEATURES') != null">
-						<a class="nav-link pr-0 ml-auto" href="mng.html" data-toggle="tooltip" title="Server Manager">
-							<img src="mng.png" width="40" height="40" class="align-middle mr-0" alt=""/>
+						<a class="nav-link ms-auto" href="mng.html" data-bs-toggle="tooltip" title="Server Manager">
+							<img src="mng.png" width="40" height="40" class="align-middle me-0" alt=""/>
 						</a>
-						<a class="nav-link pr-0" href="ctrl.html" data-toggle="tooltip" title="Control Panel">
-							<img src="ctrl.png" width="40" height="40" class="align-middle mr-0" alt=""/>
+						<a class="nav-link" href="ctrl.html" data-bs-toggle="tooltip" title="Control Panel">
+							<img src="ctrl.png" width="40" height="40" class="align-middle me-0" alt=""/>
 						</a>
 						<template v-if="findProperty('Server', 'FEATURES').item('WEB_APPS').value">
-							<a class="nav-link pr-0" href="imager.html" data-toggle="tooltip" title="Imager">
-								<img src="imager.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
+							<a class="nav-link" href="imager.html" data-bs-toggle="tooltip" title="Imager">
+								<img src="imager.png" width="40" height="40" class="d-inline-block align-middle me-0" alt=""/>
 							</a>
-							<a class="nav-link pr-0" href="mount.html" data-toggle="tooltip" title="Mount">
-								<img src="mount.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
+							<a class="nav-link" href="mount.html" data-bs-toggle="tooltip" title="Mount">
+								<img src="mount.png" width="40" height="40" class="d-inline-block align-middle me-0" alt=""/>
 							</a>
-							<a class="nav-link pr-0" href="guider.html" data-toggle="tooltip" title="Guider">
-								<img src="guider.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
+							<a class="nav-link" href="guider.html" data-bs-toggle="tooltip" title="Guider">
+								<img src="guider.png" width="40" height="40" class="d-inline-block align-middle me-0" alt=""/>
 							</a>
-							<a class="nav-link pr-0" href="script.html" data-toggle="tooltip" title="Script">
-								<img src="script.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
+							<a class="nav-link" href="script.html" data-bs-toggle="tooltip" title="Script">
+								<img src="script.png" width="40" height="40" class="d-inline-block align-middle me-0" alt=""/>
 							</a>
 						</template>
 					</template>
@@ -48,25 +48,25 @@
 					Waiting for Guider agent...
 				</div>
 				<template v-else>
-					<div class="row no-gutters">
+					<div class="row g-0">
 						<div class="col-md-4" style="min-width:360px">
 							<template v-if="findProperty('Guider Agent', 'FILTER_CCD_LIST') != null">
 								<div class="card p-1 m-1 bg-light">
-									<div class="card-block d-flex flex-wrap">
+									<div class="card-body d-flex flex-wrap">
 										<indigo-select-item :property="findProperty('Guider Agent', 'FILTER_CCD_LIST')"></indigo-select-item>
 									</div>
 								</div>
 							</template>
 							<template v-if="findProperty('Guider Agent', 'FILTER_GUIDER_LIST') != null">
 								<div class="card p-1 m-1 mt-2 bg-light">
-									<div class="card-block d-flex flex-wrap">
+									<div class="card-body d-flex flex-wrap">
 										<indigo-select-item :property="findProperty('Guider Agent', 'FILTER_GUIDER_LIST')"></indigo-select-item>
 									</div>
 								</div>
 							</template>
 							<template v-if="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS') != null">
 								<div class="card p-1 m-1 mt-2 bg-light">
-									<div class="card-block d-flex flex-wrap">
+									<div class="card-body d-flex flex-wrap">
 										<indigo-select-item :property="findProperty('Guider Agent', 'AGENT_GUIDER_DETECTION_MODE')"></indigo-select-item>
 										<indigo-edit-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'AGGRESSIVITY_RA'" :icon="'glyphicons-option-vertical'" :tooltip="'Aggressivity RA'"></indigo-edit-number>
 										<indigo-edit-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'AGGRESSIVITY_DEC'" :icon="'glyphicons-option-horizontal'" :tooltip="'Aggressivity Dec'"></indigo-edit-number>
@@ -89,17 +89,17 @@
 										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'DITHERING'" :icon="'dithering'" :tooltip="'Dithering RMSE'"></indigo-show-number>
 										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'PHASE'" :icon="'phase'" :tooltip="'Calibration phase'"></indigo-show-number>
 										<div v-if="findProperty('Guider Agent', 'AGENT_START_PROCESS') != null" class="d-flex p-1 w-100">
-											<button id="calibrate_button" class="btn btn-svg idle-state mr-2" onclick="calibrate()" data-toggle="tooltip" title="Calibrate">
+											<button id="calibrate_button" class="btn btn-svg idle-state me-2" onclick="calibrate()" data-bs-toggle="tooltip" title="Calibrate">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M7,12V9A1,1,0,0,1,8,8H9v5H8A1,1,0,0,1,7,12Zm5,3.92065a1,1,0,0,0-1.57349-.81927L3.88464,19.68073a1,1,0,0,0,0,1.63848l6.54187,4.57935A1,1,0,0,0,12,25.07928V23h5V18H12ZM13,8H11v5h2ZM24,18H23v5h1a1,1,0,0,0,1-1V19A1,1,0,0,0,24,18Zm4.11536-8.31927L21.57349,5.10138A1,1,0,0,0,20,5.92065V8H15v5h5v2.07928a1,1,0,0,0,1.57349.81928l6.54187-4.57935A1,1,0,0,0,28.11536,9.68073ZM19,23h2V18H19Z"/>
 												</svg>
 											</button>
-											<button id="guide_button" class="btn btn-svg idle-state mr-auto" onclick="guide()" data-toggle="tooltip" title="Guide">
+											<button id="guide_button" class="btn btn-svg idle-state me-auto" onclick="guide()" data-bs-toggle="tooltip" title="Guide">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M28,19v1a1,1,0,0,1-1,1H22.50018a1.5002,1.5002,0,0,1-1.47674-1.23633L19.95215,13.7666,17.47363,26.78076a1.49992,1.49992,0,0,1-1.40625,1.21778c-.02246.001-.04492.00146-.06836.00146a1.50033,1.50033,0,0,1-1.4414-1.08789L12,17.96l-.55756,1.95191A1.50018,1.50018,0,0,1,10,21H5a1,1,0,0,1-1-1V19a1,1,0,0,1,1-1H8.86816l1.68946-5.91211a1.50014,1.50014,0,0,1,2.88476,0l2.26563,7.9292L18.52637,5.21924a1.5,1.5,0,0,1,2.95019.01709L23.75586,18H27A1,1,0,0,1,28,19Z"/>
 												</svg>
 											</button>
-											<button class="btn btn-svg idle-state" onclick="stop()" data-toggle="tooltip" title="Stop">
+											<button class="btn btn-svg idle-state" onclick="stop()" data-bs-toggle="tooltip" title="Stop">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M25,8V24a1,1,0,0,1-1,1H8a1,1,0,0,1-1-1V8A1,1,0,0,1,8,7H24A1,1,0,0,1,25,8Z"/>
 												</svg>
@@ -111,40 +111,39 @@
 						</div>
 						<div class="col-md-8">
 							<div class="card p-1 m-1 bg-light">
-								<div class="card-blockd-flex">
-									<canvas id="graph_drift" class="card p-0 m-0 bg-light" data-toggle="tooltip" title="Drift"></canvas>
+								<div class="card-body d-flex">
+									<canvas id="graph_drift" class="card p-0 m-0 bg-light" data-bs-toggle="tooltip" title="Drift"></canvas>
 								</div>
 							</div>
 							<div class="card p-1 m-1 mt-2 bg-light">
-								<div class="card-blockd-flex">
-									<canvas id="graph_corr" class="card p-0 m-0 bg-light" data-toggle="tooltip" title="Corrections"></canvas>
+								<div class="card-body d-flex">
+									<canvas id="graph_corr" class="card p-0 m-0 bg-light" data-bs-toggle="tooltip" title="Corrections"></canvas>
 								</div>
 							</div>
 						</div>
 					</div>
 				</template>
-				<div id="SUCCESS" class="alert alert-success alert-dismissible fade show m-1" role="alert" style="display:none;">
+				<div id="SUCCESS" class="alert alert-success alert-dismissible fade show m-1 mt-2" role="alert" style="display:none;">
 					{{ state }}
-					<span v-if="findProperty('Server', 'INFO')" class="float-right">
+					<span v-if="findProperty('Server', 'INFO')" class="float-end">
 						INDIGO Server {{findProperty('Server', 'INFO').item('VERSION').value}} at {{findProperty('Server', 'INFO').item('SERVICE').value}}
 					</span>
 				</div>
-				<div id="FAILURE" class="alert alert-danger alert-dismissible fade show m-1" role="alert" style="display:none;">
+				<div id="FAILURE" class="alert alert-danger alert-dismissible fade show m-1 mt-2" role="alert" style="display:none;">
 					{{ state }}
 				</div>
-				<div id="MESSAGE" class="alert alert-warning alert-dismissible fade show m-1" role="alert" style="display:none;">
+				<div id="MESSAGE" class="alert alert-warning alert-dismissible fade show m-1 mt-2" role="alert" style="display:none;">
 					{{ state }}
 				</div>
-				<div class="alert alert-info show m-1" role="alert">
+				<div class="alert alert-info show m-1 mt-2" role="alert">
 					Copyright &copy; 2019-2025, The INDIGO Initiative. All rights reserved.
-					<a v-if="dark" href="#" class="float-right" onclick="setLightMode()">Switch to light appearance</a>
-					<a v-else href="#" class="float-right" onclick="setDarkMode()">Switch to dark appearance</a>
+					<a v-if="dark" href="#" class="float-end" onclick="setLightMode()">Switch to light appearance</a>
+					<a v-else href="#" class="float-end" onclick="setDarkMode()">Switch to dark appearance</a>
 				</div>
 			</div>
 		</div>
 	</body>
 	<script src="jquery.min.js"></script>
-	<script src="popper.min.js"></script>
 	<script src="bootstrap.min.js"></script>
 	<script src="vue.min.js"></script>
 	<script src="indigo.js"></script>

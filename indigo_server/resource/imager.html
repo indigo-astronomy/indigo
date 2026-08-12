@@ -15,29 +15,29 @@
 					<img src="imager.png" width="40" height="40" class="d-inline-block align-middle" alt=""/>
 					<h4 class="title">INDIGO Imager</h4>
 				</a>
-				<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarContent">
+				<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
 					<span class="navbar-toggler-icon"></span>
 				</button>
-				<div id="navbarContent" class="form-inline collapse navbar-collapse m-0">
+				<div id="navbarContent" class="collapse navbar-collapse m-0">
 					<template v-if="findProperty('Server', 'FEATURES') != null">
-						<a class="nav-link pr-0 ml-auto" href="mng.html" data-toggle="tooltip" title="Server Manager">
-							<img src="mng.png" width="40" height="40" class="align-middle mr-0" alt=""/>
+						<a class="nav-link ms-auto" href="mng.html" data-bs-toggle="tooltip" title="Server Manager">
+							<img src="mng.png" width="40" height="40" class="align-middle me-0" alt=""/>
 						</a>
-						<a class="nav-link pr-0" href="ctrl.html" data-toggle="tooltip" title="Control Panel">
-							<img src="ctrl.png" width="40" height="40" class="align-middle mr-0" alt=""/>
+						<a class="nav-link" href="ctrl.html" data-bs-toggle="tooltip" title="Control Panel">
+							<img src="ctrl.png" width="40" height="40" class="align-middle me-0" alt=""/>
 						</a>
 						<template v-if="findProperty('Server', 'FEATURES').item('WEB_APPS').value">
-							<a class="nav-link pr-0" href="imager.html" data-toggle="tooltip" title="Imager">
-								<img src="imager.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
+							<a class="nav-link" href="imager.html" data-bs-toggle="tooltip" title="Imager">
+								<img src="imager.png" width="40" height="40" class="d-inline-block align-middle me-0" alt=""/>
 							</a>
-							<a class="nav-link pr-0" href="mount.html" data-toggle="tooltip" title="Mount">
-								<img src="mount.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
+							<a class="nav-link" href="mount.html" data-bs-toggle="tooltip" title="Mount">
+								<img src="mount.png" width="40" height="40" class="d-inline-block align-middle me-0" alt=""/>
 							</a>
-							<a class="nav-link pr-0" href="guider.html" data-toggle="tooltip" title="Guider">
-								<img src="guider.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
+							<a class="nav-link" href="guider.html" data-bs-toggle="tooltip" title="Guider">
+								<img src="guider.png" width="40" height="40" class="d-inline-block align-middle me-0" alt=""/>
 							</a>
-							<a class="nav-link pr-0" href="script.html" data-toggle="tooltip" title="Script">
-								<img src="script.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
+							<a class="nav-link" href="script.html" data-bs-toggle="tooltip" title="Script">
+								<img src="script.png" width="40" height="40" class="d-inline-block align-middle me-0" alt=""/>
 							</a>
 						</template>
 					</template>
@@ -48,11 +48,11 @@
 					Waiting for Imager agent...
 				</div>
 				<template v-else>
-					<div class="row no-gutters">
+					<div class="row g-0">
 						<div class="col-md-4" style="min-width:360px">
 							<template v-if="findProperty('Imager Agent', 'FILTER_CCD_LIST') != null">
 								<div class="card p-1 m-1 bg-light">
-									<div class="card-block d-flex flex-wrap">
+									<div class="card-body d-flex flex-wrap">
 										<indigo-select-item :property="findProperty('Imager Agent', 'FILTER_CCD_LIST')"></indigo-select-item>
 										<template v-if="findProperty('Imager Agent', 'AGENT_START_PROCESS') != null">
 											<indigo-select-item :property="findProperty('Imager Agent', 'CCD_FRAME_TYPE')"></indigo-select-item>
@@ -70,27 +70,27 @@
 											<indigo-show-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_STATS')" :name="'FRAME'" :icon="'glyphicons-repeat'" :tooltip="'Image count'"></indigo-show-number>
 										</template>
 										<div v-if="findProperty('Imager Agent', 'AGENT_START_PROCESS') != null" class="d-flex p-1 w-100">
-											<button id="preview1_button" class="btn btn-svg idle-state mr-2" onclick="preview1()" data-toggle="tooltip" title="Single image preview">
+											<button id="preview1_button" class="btn btn-svg idle-state me-2" onclick="preview1()" data-bs-toggle="tooltip" title="Single image preview">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M25,8H22.125L21.81,6.91992A2.83342,2.83342,0,0,0,19.25,5h-6.5a2.83342,2.83342,0,0,0-2.56,1.91992L9.875,8H7a3.00879,3.00879,0,0,0-3,3V23a3.00879,3.00879,0,0,0,3,3H25a3.00879,3.00879,0,0,0,3-3V11A3.00879,3.00879,0,0,0,25,8ZM16,23a6,6,0,1,1,6-6A6,6,0,0,1,16,23ZM26,11.5a.5.5,0,0,1-.5.5h-1a.5.5,0,0,1-.5-.5v-1a.5.5,0,0,1,.5-.5h1a.5.5,0,0,1,.5.5ZM20,17a4,4,0,1,1-4-4A3.99992,3.99992,0,0,1,20,17Z"/>
 												</svg>
 											</button>
-											<button id="preview_button" class="btn btn-svg idle-state mr-2" onclick="preview()" data-toggle="tooltip" title="Preview">
+											<button id="preview_button" class="btn btn-svg idle-state me-2" onclick="preview()" data-bs-toggle="tooltip" title="Preview">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M31,11v9a1,1,0,0,1-1,1H29l-5-3.43748v-4.125L29,10h1A1,1,0,0,1,31,11ZM20,8H6a2.00591,2.00591,0,0,0-2,2V21a2.00591,2.00591,0,0,0,2,2H20a2.00591,2.00591,0,0,0,2-2V10A2.00591,2.00591,0,0,0,20,8Z"/>
 												</svg>
 											</button>
-											<button id="capture_button" class="btn btn-svg idle-state mr-auto" onclick="capture_batch()" data-toggle="tooltip" title="Capture batch">
+											<button id="capture_button" class="btn btn-svg idle-state me-auto" onclick="capture_batch()" data-bs-toggle="tooltip" title="Capture batch">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M16,5A11,11,0,1,0,27,16,11.01245,11.01245,0,0,0,16,5Zm0,19a8,8,0,1,1,8-8A8.00917,8.00917,0,0,1,16,24Zm5-8a5,5,0,1,1-5-5A5,5,0,0,1,21,16Z"/>
 												</svg>
 											</button>
-											<button v-if="findProperty('Imager Agent', 'AGENT_IMAGER_DOWNLOAD_FILES') != null && findProperty('Imager Agent', 'AGENT_IMAGER_DOWNLOAD_FILES').items.length > 1" cid="download_button" class="btn btn-svg idle-state mr-auto" onclick="download()" data-toggle="tooltip" title="Download images">
+											<button v-if="findProperty('Imager Agent', 'AGENT_IMAGER_DOWNLOAD_FILES') != null && findProperty('Imager Agent', 'AGENT_IMAGER_DOWNLOAD_FILES').items.length > 1" cid="download_button" class="btn btn-svg idle-state me-auto" onclick="download()" data-bs-toggle="tooltip" title="Download images">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M30.5,18a7.45207,7.45207,0,0,1-1.92773,5,6.49979,6.49979,0,0,1-4.61915,2H23V22h.95312a3.50194,3.50194,0,0,0,2.39258-1.01074A4.45541,4.45541,0,0,0,27.5,18a5.00588,5.00588,0,0,0-5-5,5.10006,5.10006,0,0,0-.70605.05664l-1.22266.168-.40039-1.168A5.993,5.993,0,0,0,8.665,15.37109l.32031,1.37012-1.34765.40723A2.97242,2.97242,0,0,0,5.5,20a2.01441,2.01441,0,0,0,.41406,1.22852A2.42324,2.42324,0,0,0,7.70312,22H10v3H7.70312a5.35308,5.35308,0,0,1-4.23535-2.03516A5.03407,5.03407,0,0,1,2.5,20a5.93806,5.93806,0,0,1,3.03809-5.19922C5.5127,14.53223,5.5,14.26465,5.5,14a8.99653,8.99653,0,0,1,17.05664-4A8.00931,8.00931,0,0,1,30.5,18ZM20.25885,23H18V17.5a.5.5,0,0,0-.5-.5h-2a.5.5,0,0,0-.5.5V23H12.74115a.5.5,0,0,0-.40393.79468l3.75885,5.15173a.50008.50008,0,0,0,.80786,0l3.75885-5.15173A.5.5,0,0,0,20.25885,23Z"/>
 												</svg>
 											</button>
-											<button class="btn btn-svg idle-state" onclick="stop()" data-toggle="tooltip" title="Stop">
+											<button class="btn btn-svg idle-state" onclick="stop()" data-bs-toggle="tooltip" title="Stop">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M25,8V24a1,1,0,0,1-1,1H8a1,1,0,0,1-1-1V8A1,1,0,0,1,8,7H24A1,1,0,0,1,25,8Z"/>
 												</svg>
@@ -101,7 +101,7 @@
 							</template>
 							<template v-if="findProperty('Imager Agent', 'FILTER_WHEEL_LIST') != null">
 								<div class="card p-1 m-1 mt-2 bg-light">
-									<div class="card-block d-flex flex-wrap">
+									<div class="card-body d-flex flex-wrap">
 										<indigo-select-item :property="findProperty('Imager Agent', 'FILTER_WHEEL_LIST')"></indigo-select-item>
 										<indigo-select-item v-if="findProperty('Imager Agent', 'WHEEL_SLOT')" :property="findProperty('Imager Agent', 'AGENT_WHEEL_FILTER')" :no_value="'Moving...'"></indigo-select-item>
 									</div>
@@ -109,13 +109,11 @@
 							</template>
 							<template v-if="findProperty('Imager Agent', 'FILTER_FOCUSER_LIST') != null">
 								<div class="card p-1 m-1 mt-2 bg-light">
-									<div class="card-block d-flex flex-wrap">
+									<div class="card-body d-flex flex-wrap">
 										<indigo-select-item :property="findProperty('Imager Agent', 'FILTER_FOCUSER_LIST')"></indigo-select-item>
 										<template v-if="findProperty('Imager Agent', 'FOCUSER_POSITION') || findProperty('Imager Agent', 'FOCUSER_STEPS') || findProperty('Imager Agent', 'FOCUSER_MODE')">
-											<div v-if="findProperty('Imager Agent', 'FOCUSER_POSITION') || findProperty('Imager Agent', 'FOCUSER_STEPS')" class="input-group p-1" :class="findProperty('Imager Agent', 'FOCUSER_SPEED') ? 'w-50' : 'w-100'" data-toggle="tooltip" title="Position or Step Count">
-												<a class="input-group-prepend">
-													<span class="input-group-text glyphicons glyphicons-ruler ok-state"></span>
-												</a>
+											<div v-if="findProperty('Imager Agent', 'FOCUSER_POSITION') || findProperty('Imager Agent', 'FOCUSER_STEPS')" class="input-group p-1" :class="findProperty('Imager Agent', 'FOCUSER_SPEED') ? 'w-50' : 'w-100'" data-bs-toggle="tooltip" title="Position or Step Count">
+												<span class="input-group-text glyphicons glyphicons-ruler ok-state"></span>
 												<input id="steps" type="text" value="0" class="form-control input-right">
 											</div>
 											<indigo-edit-number :property="findProperty('Imager Agent', 'FOCUSER_SPEED')" :name="'SPEED'" :icon="'glyphicons-signal'" :tooltip="'Focuser Speed'"></indigo-edit-number>
@@ -126,37 +124,37 @@
 											<indigo-show-number :property="findProperty('Imager Agent', 'FOCUSER_TEMPERATURE')" :name="'TEMPERATURE'" :icon="'glyphicons-temperature'" :tooltip="'Temperature'"></indigo-show-number>
 											<indigo-show-number :property="findProperty('Imager Agent', 'FOCUSER_COMPENSATION')" :name="'COMPENSATION'" :icon="'glyphicons-temperature-settings'" :tooltip="'Temperature Compensation'"></indigo-show-number>
 											<div class="d-flex p-1 w-100">
-												<button v-if="findProperty('Imager Agent', 'FOCUSER_POSITION') && findProperty('Imager Agent', 'FOCUSER_POSITION').perm == 'rw'" id="focuser_position_button" class="btn btn-svg idle-state mr-2" onclick="focuser_position()" data-toggle="tooltip" title="Move to absolute position">
+												<button v-if="findProperty('Imager Agent', 'FOCUSER_POSITION') && findProperty('Imager Agent', 'FOCUSER_POSITION').perm == 'rw'" id="focuser_position_button" class="btn btn-svg idle-state me-2" onclick="focuser_position()" data-bs-toggle="tooltip" title="Move to absolute position">
 													<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 														<path d="M24.8175,16.86432,9.503,25.77667A1,1,0,0,1,8,24.91235V7.08765a1,1,0,0,1,1.503-.86432L24.8175,15.13568A1.00006,1.00006,0,0,1,24.8175,16.86432Z"/>
 													</svg>
 												</button>
-												<button v-if="findProperty('Imager Agent', 'FOCUSER_STEPS')" id="focuser_in_button" class="btn btn-svg idle-state mr-2" onclick="focuser_in()" data-toggle="tooltip" title="Move in">
+												<button v-if="findProperty('Imager Agent', 'FOCUSER_STEPS')" id="focuser_in_button" class="btn btn-svg idle-state me-2" onclick="focuser_in()" data-bs-toggle="tooltip" title="Move in">
 													<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 														<path d="M22.99933,9.46185V22.53821a.8.8,0,0,1-1.2312.67383L11.55219,16.67383a.8.8,0,0,1,0-1.34766L21.76813,8.788A.8.8,0,0,1,22.99933,9.46185ZM10,8H9A1,1,0,0,0,8,9V23a1,1,0,0,0,1,1h1a1,1,0,0,0,1-1V9A1,1,0,0,0,10,8Z"/>
 													</svg>
 												</button>
-												<button v-if="findProperty('Imager Agent', 'FOCUSER_STEPS')" id="focuser_out_button" class="btn btn-svg idle-state mr-auto" onclick="focuser_out()" data-toggle="tooltip" title="Move out">
+												<button v-if="findProperty('Imager Agent', 'FOCUSER_STEPS')" id="focuser_out_button" class="btn btn-svg idle-state me-auto" onclick="focuser_out()" data-bs-toggle="tooltip" title="Move out">
 													<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 														<path d="M20.44781,15.32617a.8.8,0,0,1,0,1.34766L10.23187,23.212a.8.8,0,0,1-1.2312-.67383V9.46185a.8.8,0,0,1,1.2312-.67383ZM23,8H22a1,1,0,0,0-1,1V23a1,1,0,0,0,1,1h1a1,1,0,0,0,1-1V9A1,1,0,0,0,23,8Z"/>
 													</svg>
 												</button>
-												<button v-if="findProperty('Imager Agent', 'AGENT_START_PROCESS')" id="focuser_auto_button" class="btn btn-svg idle-state mr-2" onclick="focuser_auto()" data-toggle="tooltip" title="Autofocus">
+												<button v-if="findProperty('Imager Agent', 'AGENT_START_PROCESS')" id="focuser_auto_button" class="btn btn-svg idle-state me-2" onclick="focuser_auto()" data-bs-toggle="tooltip" title="Autofocus">
 													<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 														<path d="M6.709,9.293A.99991.99991,0,0,0,5.002,10V22a.99989.99989,0,0,0,1.707.707l6-6a.99962.99962,0,0,0,0-1.41406Zm.293,10.293V12.41406L10.58789,16ZM27.002,10V22a.99989.99989,0,0,1-1.707.707l-6-6a.99964.99964,0,0,1,0-1.41406l6-6A.99991.99991,0,0,1,27.002,10ZM17,25.5v1a.5.5,0,0,1-.5.5h-1a.5.5,0,0,1-.5-.5v-1a.5.5,0,0,1,.5-.5h1A.5.5,0,0,1,17,25.5Zm0-4v1a.5.5,0,0,1-.5.5h-1a.5.5,0,0,1-.5-.5v-1a.5.5,0,0,1,.5-.5h1A.5.5,0,0,1,17,21.5Zm0-4v1a.5.5,0,0,1-.5.5h-1a.5.5,0,0,1-.5-.5v-1a.5.5,0,0,1,.5-.5h1A.5.5,0,0,1,17,17.5Zm0-12v1a.5.5,0,0,1-.5.5h-1a.5.5,0,0,1-.5-.5v-1a.5.5,0,0,1,.5-.5h1A.5.5,0,0,1,17,5.5Zm0,4v1a.5.5,0,0,1-.5.5h-1a.5.5,0,0,1-.5-.5v-1a.5.5,0,0,1,.5-.5h1A.5.5,0,0,1,17,9.5Zm0,4v1a.5.5,0,0,1-.5.5h-1a.5.5,0,0,1-.5-.5v-1a.5.5,0,0,1,.5-.5h1A.5.5,0,0,1,17,13.5Z"/>
 													</svg>
 												</button>
-												<button v-if="findProperty('Imager Agent', 'FOCUSER_MODE') && findProperty('Imager Agent', 'FOCUSER_MODE').item('MANUAL').value" id="focuser_mode_button" class="btn btn-svg idle-state mr-2" onclick="focuser_auto_on()" data-toggle="tooltip" title="Compensation state">
+												<button v-if="findProperty('Imager Agent', 'FOCUSER_MODE') && findProperty('Imager Agent', 'FOCUSER_MODE').item('MANUAL').value" id="focuser_mode_button" class="btn btn-svg idle-state me-2" onclick="focuser_auto_on()" data-bs-toggle="tooltip" title="Compensation state">
 													<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 														<path d="M21.6499,4.18762,24.60956.488a.5.5,0,0,1,.78088,0L28.3501,4.18762A.5.5,0,0,1,27.95972,5H22.04028A.5.5,0,0,1,21.6499,4.18762ZM27.95972,7H22.04028a.49992.49992,0,0,0-.39038.81226l2.95966,3.6997a.5.5,0,0,0,.78088,0l2.95966-3.6997A.49992.49992,0,0,0,27.95972,7ZM17,18.835a5.50005,5.50005,0,1,1-8,0V8.08594a4,4,0,0,1,8,0Zm-1.5,3.75049A2.5018,2.5018,0,0,0,14,20.29736V14.08545a1,1,0,0,0-2,0v6.21191a2.49874,2.49874,0,1,0,3.5,2.28809Z"/>
 													</svg>
 												</button>
-												<button v-if="findProperty('Imager Agent', 'FOCUSER_MODE') && findProperty('Imager Agent', 'FOCUSER_MODE').item('AUTOMATIC').value" id="focuser_mode_button" class="btn btn-svg ok-state mr-2" onclick="focuser_auto_off()" data-toggle="tooltip" title="Compensation state">
+												<button v-if="findProperty('Imager Agent', 'FOCUSER_MODE') && findProperty('Imager Agent', 'FOCUSER_MODE').item('AUTOMATIC').value" id="focuser_mode_button" class="btn btn-svg ok-state me-2" onclick="focuser_auto_off()" data-bs-toggle="tooltip" title="Compensation state">
 													<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 														<path d="M21.6499,4.18762,24.60956.488a.5.5,0,0,1,.78088,0L28.3501,4.18762A.5.5,0,0,1,27.95972,5H22.04028A.5.5,0,0,1,21.6499,4.18762ZM27.95972,7H22.04028a.49992.49992,0,0,0-.39038.81226l2.95966,3.6997a.5.5,0,0,0,.78088,0l2.95966-3.6997A.49992.49992,0,0,0,27.95972,7ZM17,18.835a5.50005,5.50005,0,1,1-8,0V8.08594a4,4,0,0,1,8,0Zm-1.5,3.75049A2.5018,2.5018,0,0,0,14,20.29736V14.08545a1,1,0,0,0-2,0v6.21191a2.49874,2.49874,0,1,0,3.5,2.28809Z"/>
 													</svg>
 												</button>
-												<button v-if="findProperty('Imager Agent', 'FOCUSER_ABORT_MOTION')" class="btn btn-svg idle-state" onclick="focuser_stop()" data-toggle="tooltip" title="Stop">
+												<button v-if="findProperty('Imager Agent', 'FOCUSER_ABORT_MOTION')" class="btn btn-svg idle-state" onclick="focuser_stop()" data-bs-toggle="tooltip" title="Stop">
 													<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 														<path d="M25,8V24a1,1,0,0,1-1,1H8a1,1,0,0,1-1-1V8A1,1,0,0,1,8,7H24A1,1,0,0,1,25,8Z"/>
 													</svg>
@@ -169,7 +167,7 @@
 						</div>
 						<div class="col-md-8">
 							<div id="image_container" class="card p-1 m-1 bg-light" style="min-height: 10rem">
-								<div class="card-block">
+								<div class="card-body">
 									<div class="card p-0 border-0" style="display: none">
 										<img id="image" class="img-fluid rounded"/>
 										<img id="histogram" width="128" height="64" style="position: absolute; top:10px;left:10px;display:none"/>
@@ -179,28 +177,27 @@
 						</div>
 					</div>
 				</template>
-				<div id="SUCCESS" class="alert alert-success alert-dismissible fade show m-1" role="alert" style="display:none;">
+				<div id="SUCCESS" class="alert alert-success alert-dismissible fade show m-1 mt-2" role="alert" style="display:none;">
 					{{ state }}
-					<span v-if="findProperty('Server', 'INFO')" class="float-right">
+					<span v-if="findProperty('Server', 'INFO')" class="float-end">
 						INDIGO Server {{findProperty('Server', 'INFO').item('VERSION').value}} at {{findProperty('Server', 'INFO').item('SERVICE').value}}
 					</span>
 				</div>
-				<div id="FAILURE" class="alert alert-danger alert-dismissible fade show m-1" role="alert" style="display:none;">
+				<div id="FAILURE" class="alert alert-danger alert-dismissible fade show m-1 mt-2" role="alert" style="display:none;">
 					{{ state }}
 				</div>
-				<div id="MESSAGE" class="alert alert-warning alert-dismissible fade show m-1" role="alert" style="display:none;">
+				<div id="MESSAGE" class="alert alert-warning alert-dismissible fade show m-1 mt-2" role="alert" style="display:none;">
 					{{ state }}
 				</div>
-				<div class="alert alert-info show m-1" role="alert">
+				<div class="alert alert-info show m-1 mt-2" role="alert">
 					Copyright &copy; 2019-2025, The INDIGO Initiative. All rights reserved.
-					<a v-if="dark" href="#" class="float-right" onclick="setLightMode()">Switch to light appearance</a>
-					<a v-else href="#" class="float-right" onclick="setDarkMode()">Switch to dark appearance</a>
+					<a v-if="dark" href="#" class="float-end" onclick="setLightMode()">Switch to light appearance</a>
+					<a v-else href="#" class="float-end" onclick="setDarkMode()">Switch to dark appearance</a>
 				</div>
 			</div>
 		</div>
 	</body>
 	<script src="jquery.min.js"></script>
-	<script src="popper.min.js"></script>
 	<script src="bootstrap.min.js"></script>
 	<script src="vue.min.js"></script>
 	<script src="indigo.js"></script>
