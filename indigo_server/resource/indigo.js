@@ -3,16 +3,17 @@
  You can use this software under the terms of 'INDIGO Astronomy open-source license' (see LICENSE.md).
 */
 
-var INDIGO = new Vue({
-	el: '#ROOT',
-	data: {
-		state: 'Connecting...',
-		host: '',
-		devices: { },
-		db: [],
-	  dark: false,
-		columns: 3,
-	  useAgent: false
+var app = Vue.createApp({
+	data() {
+		return {
+			state: 'Connecting...',
+			host: '',
+			devices: { },
+			db: [],
+			dark: false,
+			columns: 3,
+			useAgent: false
+		};
 	},
 	methods: {
 		findProperty: function(device, name) {
@@ -43,8 +44,11 @@ var INDIGO = new Vue({
 			}
 			return result.sort(compare);
 		}
-  }
+	}
 });
+app.config.globalProperties.$ = $;
+app.config.globalProperties.window = window;
+var INDIGO = null;
 
 function init() {
 	websocket = new WebSocket(indigoURL);
@@ -195,9 +199,9 @@ function processDefineProperty(property) {
 	}
 	var properties = INDIGO.devices[device];
 	if (properties == null) {
-		Vue.set(INDIGO.devices, device, { [name]: property});
+		INDIGO.devices[device] = { [name]: property };
 	} else {
-		Vue.set(properties, name, property);
+		properties[name] = property;
 	}
 	onDefineProperty(property);
 }
@@ -213,8 +217,8 @@ function processUpdateProperty(property) {
 		if (savedProperty == null) {
 			return;
 		} else {
-			Vue.set(savedProperty, "state", property.state);
-			Vue.set(savedProperty, "message", property.message);
+			savedProperty.state = property.state;
+			savedProperty.message = property.message;
 			if (property.message != null) {
 				INDIGO.state = property.message;
 				$('#SUCCESS').hide();
@@ -226,9 +230,9 @@ function processUpdateProperty(property) {
 				for (var s in savedProperty.items) {
 					var saved = savedProperty.items[s];
 					if (item.name == saved.name) {
-						Vue.set(saved, "value", item.value);
+						saved.value = item.value;
 						if (item.target != null)
-							Vue.set(saved, "target", item.target);
+							saved.target = item.target;
 					}
 				}
 			}
@@ -244,10 +248,10 @@ function processDeleteProperty(property) {
 	if (properties == null) {
 		return;
 	} else if (name == null) {
-		Vue.delete(INDIGO.devices, device);
+		delete INDIGO.devices[device];
 	} else {
 		onDeleteProperty(properties[name]);
-		Vue.delete(properties, name);
+		delete properties[name];
 	}
 }
 

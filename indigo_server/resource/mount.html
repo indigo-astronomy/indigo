@@ -182,10 +182,10 @@
 									</div>
 								</div>
 							</template>
-							<template v-if="$(db).children().length > 0">
+							<template v-if="!Array.isArray(db)">
 								<div class="card p-1 m-1 mt-2 bg-light">
 									<div class="card-body">
-										<indigo-query-db :container="db"></indigo-query-db>
+										<indigo-query-db :container="db" :dark="dark"></indigo-query-db>
 									</div>
 								</div>
 							</template>
@@ -220,7 +220,7 @@
 						<div class="col-sm-8">
 							<div class="card p-1 m-1 bg-light" style="min-height: 10rem">
 								<div id="map" class="position-relative" style="overflow: scroll;"></div>
-								<div v-if="$('#map').children().length > 0" class="position-absolute d-flex">
+								<div v-if="!Array.isArray(db)" class="position-absolute d-flex">
 									<button class="btn btn-svg idle-state m-1" onclick="zoomIn()" data-bs-toggle="tooltip" title="Zoom In">
 										<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 											<path d="M27,14v4a1,1,0,0,1-1,1H19v7a1,1,0,0,1-1,1H14a1,1,0,0,1-1-1V19H6a1,1,0,0,1-1-1V14a1,1,0,0,1,1-1h7V6a1,1,0,0,1,1-1h4a1,1,0,0,1,1,1v7h7A1,1,0,0,1,27,14Z"/>
@@ -263,7 +263,7 @@
 	</body>
 	<script src="jquery.min.js"></script>
 	<script src="bootstrap.min.js"></script>
-	<script src="vue.min.js"></script>
+	<script src="vue.global.prod.js"></script>
 	<script src="indigo.js"></script>
 	<script src="components.js"></script>
 	<script src="d3.min.js"></script>

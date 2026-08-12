@@ -3,7 +3,7 @@
  You can use this software under the terms of 'INDIGO Astronomy open-source license' (see LICENSE.md).
  */
 
-Vue.component('indigo-select-item', {
+app.component('indigo-select-item', {
 	props: {
 		property: Object,
 		no_value: String,
@@ -40,7 +40,7 @@ Vue.component('indigo-select-item', {
 		</div>`
 });
 
-Vue.component('indigo-edit-number', {
+app.component('indigo-edit-number', {
 	props: {
 		property: Object,
 		enabler: Object,
@@ -136,7 +136,7 @@ Vue.component('indigo-edit-number', {
 		</div>`
 });
 
-Vue.component('indigo-edit-number-60', {
+app.component('indigo-edit-number-60', {
 	props: {
 		property: Object,
 		name: String,
@@ -198,7 +198,7 @@ Vue.component('indigo-edit-number-60', {
 		</div>`
 });
 
-Vue.component('indigo-show-number', {
+app.component('indigo-show-number', {
 	props: {
 		property: Object,
 		enabler: Object,
@@ -236,7 +236,7 @@ Vue.component('indigo-show-number', {
 		</div>`
 });
 
-Vue.component('indigo-show-number-60', {
+app.component('indigo-show-number-60', {
 	props: {
 		property: Object,
 		name: String,
@@ -269,7 +269,7 @@ Vue.component('indigo-show-number-60', {
 		</div>`
 });
 
-Vue.component('indigo-show-text', {
+app.component('indigo-show-text', {
 	props: {
 		property: Object,
 		name: String,
@@ -303,7 +303,7 @@ Vue.component('indigo-show-text', {
 		</div>`
 });
 
-Vue.component('indigo-edit-text', {
+app.component('indigo-edit-text', {
 	props: {
 		property: Object,
 		name: String,
@@ -337,7 +337,7 @@ Vue.component('indigo-edit-text', {
 		</div>`
 });
 
-Vue.component('indigo-stepper', {
+app.component('indigo-stepper', {
 	props: {
 		property: Object,
 		name: String,
@@ -366,6 +366,12 @@ Vue.component('indigo-stepper', {
 			values[this.name] = value;
 			changeProperty(this.property.device, this.property.name, values);
 		},
+		leftClick: function() {
+			this.left(this.$refs.stepInput.value);
+		},
+		rightClick: function() {
+			this.right(this.$refs.stepInput.value);
+		},
 		state: function() {
 			return this.property == null ? null : this.property.state.toLowerCase() + "-state";
 		},
@@ -380,13 +386,13 @@ Vue.component('indigo-stepper', {
 	},
 	template: `
 		<div v-if="property != null" class="input-group p-1" :class="(cls != null ? cls : 'w-50')" data-bs-toggle="tooltip" :title="tooltip">
-			<button class="btn glyphicons glyphicons-arrow-left" :class="state()" @click="left($($event.target).parent().next().val())" type="button"></button>
-			<input type="text" class="form-control input-right" :value="value()">
-			<button class="btn glyphicons glyphicons-arrow-right" :class="state()" @click="right($($event.target).parent().prev().val())" type="button"></button>
+			<button class="btn glyphicons glyphicons-arrow-left" :class="state()" @click="leftClick" type="button"></button>
+			<input ref="stepInput" type="text" class="form-control input-right" :value="value()">
+			<button class="btn glyphicons glyphicons-arrow-right" :class="state()" @click="rightClick" type="button"></button>
 		</div>`
 });
 
-Vue.component('indigo-ctrl', {
+app.component('indigo-ctrl', {
 	props: {
 		devices: Object
 	},
@@ -449,11 +455,11 @@ Vue.component('indigo-ctrl', {
 			return value;
 		},
 		newValue: function(item, value) {
-			Vue.set(item, 'newValue', value);
+			item.newValue = value;
 		},
 		reset: function(property) {
 			for (i in property.items) {
-				Vue.set(property.items[i], 'newValue', null);
+				property.items[i].newValue = null;
 			}
 		},
 		set: function(property) {
@@ -587,7 +593,7 @@ Vue.component('indigo-ctrl', {
 		</div>`
 });
 
-Vue.component('indigo-select-multi-item', {
+app.component('indigo-select-multi-item', {
 	props: {
 		property: Object,
 		label: String,
@@ -635,10 +641,18 @@ Vue.component('indigo-select-multi-item', {
 		</div>`
 });
 
-Vue.component('indigo-query-db', {
+app.component('indigo-query-db', {
 	props: {
 		container: Object,
-		result: Object
+		dark: {
+			type: Boolean,
+			default: false
+		}
+	},
+	data() {
+		return {
+			result: []
+		};
 	},
 	methods: {
 		setTarget: function(object) {
@@ -698,15 +712,15 @@ Vue.component('indigo-query-db', {
 				<div class="input-group-text btn-svg">&#x1f50d;</div>
 				<input type="text" class="form-control" @change="onChange">
 			</div>
-			<div v-if="this.result != null && this.result.length > 0" class="list-group list-group-flush p-1 mt-1 w-100" style="max-height: 10rem; overflow-y: scroll">
-				<a v-for="object in this.result" href="#" class="list-group-item list-group-item-action bg-transparent" :class="INDIGO.dark ? 'text-light' : 'text-dark'" @click="setTarget(object)">{{object.name}}</a>
+			<div v-if="result != null && result.length > 0" class="list-group list-group-flush p-1 mt-1 w-100" style="max-height: 10rem; overflow-y: scroll">
+				<a v-for="object in result" href="#" class="list-group-item list-group-item-action bg-transparent" :class="dark ? 'text-light' : 'text-dark'" @click="setTarget(object)">{{object.name}}</a>
 			</div>
-		<div>
+		</div>
 		`
 });
 
 
-Vue.component('indigo-wifi-setup', {
+app.component('indigo-wifi-setup', {
 	props: {
 		ap_property: Object,
 		infra_property: Object
@@ -838,7 +852,7 @@ Vue.component('indigo-wifi-setup', {
 		`
 });
 
-Vue.component('indigo-internet-sharing', {
+app.component('indigo-internet-sharing', {
 	props: {
 		property: Object
 	},
@@ -859,7 +873,7 @@ Vue.component('indigo-internet-sharing', {
 		`
 });
 
-Vue.component('indigo-shutdown', {
+app.component('indigo-shutdown', {
 	props: {
 		property: Object
 	},
@@ -878,6 +892,8 @@ Vue.component('indigo-shutdown', {
 		</div>
 		`
 });
+
+INDIGO = app.mount('#ROOT');
 
 function guiSetup() {
 	document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {

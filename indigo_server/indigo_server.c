@@ -1796,9 +1796,9 @@ static void server_main() {
 		indigo_server_add_resource("/jquery.min.js", jquery_js, sizeof(jquery_js), "text/javascript");
 		// VueJS
 		static unsigned char vue_js[] = {
-			#include "resource/vue.min.js.data"
+			#include "resource/vue.global.prod.js.data"
 		};
-		indigo_server_add_resource("/vue.min.js", vue_js, sizeof(vue_js), "text/javascript");
+		indigo_server_add_resource("/vue.global.prod.js", vue_js, sizeof(vue_js), "text/javascript");
 	}
 	if (use_web_apps) {
 		// INDIGO Imager
