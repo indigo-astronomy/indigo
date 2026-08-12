@@ -107,7 +107,6 @@ input {
 
 *:focus {
 	box-shadow: none !important;
-	border: solid 1px red( any color ) !important;
 }
 
 .input-label {

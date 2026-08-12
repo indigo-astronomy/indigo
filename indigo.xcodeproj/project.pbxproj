@@ -2883,6 +2883,7 @@
 		59A68E3D277DFF2B000439CC /* libSVBCameraSDK.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libSVBCameraSDK.a; sourceTree = "<group>"; };
 		59A68E3E277DFF40000439CC /* libSVBCameraSDK.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libSVBCameraSDK.a; sourceTree = "<group>"; };
 		59A68E3F277DFF4C000439CC /* libSVBCameraSDK.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libSVBCameraSDK.a; sourceTree = "<group>"; };
+		59A83CF1302D12B000314839 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		59A886EB225A85E20027680B /* 99-indigo_focuser_dmfc.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = "99-indigo_focuser_dmfc.rules"; sourceTree = "<group>"; };
 		59AC53732E106B4C004530DF /* indigo_focuser_astromechanics.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_astromechanics.driver; sourceTree = "<group>"; };
 		59AD798F24AA6AE700F52563 /* RainbowAstro_200629.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = RainbowAstro_200629.pdf; sourceTree = "<group>"; };
@@ -6175,6 +6176,7 @@
 		5925E3451E982BBC00FF373F /* resource */ = {
 			isa = PBXGroup;
 			children = (
+				59A83CF1302D12B000314839 /* REFACTOR.md */,
 				59AF321821F308870008CC52 /* mng.html */,
 				9D38D14321F09CE000549B67 /* ctrl.html */,
 				9D38D13F21F09CDF00549B67 /* imager.html */,

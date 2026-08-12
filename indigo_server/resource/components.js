@@ -266,7 +266,7 @@ Vue.component('indigo-show-number-60', {
 	template: `
 		<div v-if="property != null" class="p-1" :class="(cls != null ? cls : 'w-25')" data-toggle="tooltip" :title="tooltip">
 			<div class="badge p-0 w-100 d-flex justify-content-between align-items-center" :class="state()">
-				<small v-if="icon.startsWith('glyphicons-')" cclass="glyphicons" :class="icon"/>
+				<small v-if="icon.startsWith('glyphicons-')" class="glyphicons" :class="icon"/>
 				<small v-else class="ml-1 p-1">{{icon}}</small>
 				<small class="mr-2 p-1">{{value()}}</small>
 			</div>
@@ -623,7 +623,7 @@ Vue.component('indigo-select-multi-item', {
 		items: function() {
 			var result = [];
 			if (this.property != null) {
-				for (i in this.property.itemsByLabel) {
+				for (var i in this.property.items) {
 					var item = this.property.items[i];
 					if (item.name.startsWith(this.prefix)) result.push(item);
 				}
@@ -633,7 +633,7 @@ Vue.component('indigo-select-multi-item', {
 		value: function() {
 			var result = null;
 			if (this.property != null) {
-				for (i in this.property.itemsByLabel) {
+				for (var i in this.property.items) {
 					var item = this.property.items[i];
 					if (item.value && item.name.startsWith(this.prefix)) result = result == null ? item.label : result + "; " + item.label;
 				}
