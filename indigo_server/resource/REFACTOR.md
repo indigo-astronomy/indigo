@@ -414,7 +414,7 @@ All pages share the `#SUCCESS`/`#FAILURE`/`#MESSAGE` alerts and the copyright fo
 
 ---
 
-### Step 17 — UI modernization pass
+### Step 17 — UI modernization pass [DONE]
 
 **Files:** `indigo.css`, all `.html` files
 

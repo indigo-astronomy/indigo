@@ -211,6 +211,11 @@ app.component('indigo-show-number', {
 		state: function() {
 			return this.property == null ? null : this.property.state.toLowerCase() + "-state";
 		},
+		formatValue: function(value) {
+			if (typeof value != "number")
+				return value;
+			return Number(value.toPrecision(4)).toString();
+		},
 		value: function() {
 			if (this.property == null) return null;
 			if (this.enabler != null) {
@@ -221,17 +226,17 @@ app.component('indigo-show-number', {
 			}
 			for (var i in this.property.items) {
 				var item = this.property.items[i];
-				if (item.name == this.name) return item.value;
+				if (item.name == this.name) return this.formatValue(item.value);
 			}
 			return null;
 		}
 	},
 	template: `
 		<div v-if="property != null" class="p-1" :class="(cls != null ? cls : 'w-25')" data-bs-toggle="tooltip" :title="tooltip">
-			<div class="badge p-0 w-100 d-flex justify-content-between align-items-center" :class="state()">
-				<small v-if="icon.startsWith('glyphicons-')" class="glyphicons" :class="icon"/>
-				<small v-else class="ms-1 p-1">{{icon}}</small>
-				<small class="me-2">{{value()}}</small>
+			<div class="indigo-chip w-100 d-flex align-items-center" :class="state()">
+				<span v-if="icon.startsWith('glyphicons-')" class="indigo-chip-icon glyphicons" :class="icon"></span>
+				<span v-else class="indigo-chip-icon">{{icon}}</span>
+				<span class="indigo-chip-value">{{value()}}</span>
 			</div>
 		</div>`
 });
@@ -261,10 +266,10 @@ app.component('indigo-show-number-60', {
 	},
 	template: `
 		<div v-if="property != null" class="p-1" :class="(cls != null ? cls : 'w-25')" data-bs-toggle="tooltip" :title="tooltip">
-			<div class="badge p-0 w-100 d-flex justify-content-between align-items-center" :class="state()">
-				<small v-if="icon.startsWith('glyphicons-')" class="glyphicons" :class="icon"/>
-				<small v-else class="ms-1 p-1">{{icon}}</small>
-				<small class="me-2 p-1">{{value()}}</small>
+			<div class="indigo-chip w-100 d-flex align-items-center" :class="state()">
+				<span v-if="icon.startsWith('glyphicons-')" class="indigo-chip-icon glyphicons" :class="icon"></span>
+				<span v-else class="indigo-chip-icon">{{icon}}</span>
+				<span class="indigo-chip-value">{{value()}}</span>
 			</div>
 		</div>`
 });
@@ -294,11 +299,11 @@ app.component('indigo-show-text', {
 	},
 	template: `
 		<div v-if="property != null" class="p-1" :class="(cls != null ? cls : 'w-25')" data-bs-toggle="tooltip" :title="tooltip">
-			<div class="badge p-0 w-100 d-flex justify-content-between align-items-center" :class="state()">
-				<small v-if="icon != null && icon.startsWith('glyphicons-')" cclass="glyphicons" :class="icon"/>
-				<small v-else-if="icon != null" class="ms-1 p-1">{{icon}}</small>
-				<small v-else class="ms-1 p-1"></small>
-				<small class="me-2 p-1">{{value()}}</small>
+			<div class="indigo-chip w-100 d-flex align-items-center" :class="state()">
+				<span v-if="icon != null && icon.startsWith('glyphicons-')" class="indigo-chip-icon glyphicons" :class="icon"></span>
+				<span v-else-if="icon != null" class="indigo-chip-icon">{{icon}}</span>
+				<span v-else class="indigo-chip-icon"></span>
+				<span class="indigo-chip-value">{{value()}}</span>
 			</div>
 		</div>`
 });
@@ -549,9 +554,9 @@ app.component('indigo-ctrl', {
 												<input type="text" v-else class="form-control flex-shrink-0" style="width:12rem" :class="dirty(item)" :value="value(item)" @input="newValue(item, $event.target.value)">
 											</div>
 											<template v-if="property.perm != 'ro'">
-												<div class="float-end mt-1 me-1">
-													<button type="submit" class="btn btn-sm btn-primary ms-1" @click.prevent="set(property)">Submit</button>
-													<button class="btn btn-sm btn-outline-secondary ms-1" @click.prevent="reset(property)">Reset</button>
+												<div class="float-end d-flex gap-1 mt-1">
+													<button type="submit" class="btn btn-sm btn-primary" @click.prevent="set(property)">Submit</button>
+													<button class="btn btn-sm btn-outline-secondary" @click.prevent="reset(property)">Reset</button>
 												</div>
 											</template>
 										</template>
@@ -565,9 +570,9 @@ app.component('indigo-ctrl', {
 												</template>
 											</div>
 											<template v-if="property.perm != 'ro'">
-												<div class="float-end mt-1 me-1">
-													<button type="submit" class="btn btn-sm btn-primary ms-1" @click.prevent="set(property)">Submit</button>
-													<button class="btn btn-sm btn-outline-secondary ms-1" @click.prevent="reset(property)">Reset</button>
+												<div class="float-end d-flex gap-1 mt-1">
+													<button type="submit" class="btn btn-sm btn-primary" @click.prevent="set(property)">Submit</button>
+													<button class="btn btn-sm btn-outline-secondary" @click.prevent="reset(property)">Reset</button>
 												</div>
 											</template>
 										</template>
@@ -932,14 +937,14 @@ app.component('indigo-navbar', {
 			<div id="navbarContent" class="collapse navbar-collapse m-0">
 				<template v-if="features != null">
 					<a class="nav-link ms-auto" href="mng.html" data-bs-toggle="tooltip" title="Server Manager">
-						<img src="mng.png" width="40" height="40" class="align-middle me-0" alt=""/>
+						<img src="mng.png" width="40" height="40" class="align-middle" alt=""/>
 					</a>
 					<a class="nav-link" href="ctrl.html" data-bs-toggle="tooltip" title="Control Panel">
-						<img src="ctrl.png" width="40" height="40" class="align-middle me-0" alt=""/>
+						<img src="ctrl.png" width="40" height="40" class="align-middle" alt=""/>
 					</a>
 					<template v-if="webApps">
 						<a v-for="link in appLinks" :key="link.id" class="nav-link" :href="link.href" data-bs-toggle="tooltip" :title="link.title">
-							<img :src="link.icon" width="40" height="40" class="d-inline-block align-middle me-0" alt=""/>
+							<img :src="link.icon" width="40" height="40" class="d-inline-block align-middle" alt=""/>
 						</a>
 					</template>
 				</template>
@@ -1009,8 +1014,8 @@ app.component('indigo-status-bar', {
 			Copyright &copy; 2019-2025, The INDIGO Initiative. All rights reserved.
 			<a v-if="$root.dark" href="#" class="float-end" @click.prevent="setLight">Switch to light appearance</a>
 			<a v-else href="#" class="float-end" @click.prevent="setDark">Switch to dark appearance</a>
-			<a v-if="columnsToggle && $root.columns == 3" href="#" class="float-end me-3" @click.prevent="setColumns(1)">Switch to 1 column</a>
-			<a v-else-if="columnsToggle" href="#" class="float-end me-3" @click.prevent="setColumns(3)">Switch to 3 columns</a>
+			<a v-if="columnsToggle && $root.columns == 3" href="#" class="float-end indigo-status-bar-action" @click.prevent="setColumns(1)">Switch to 1 column</a>
+			<a v-else-if="columnsToggle" href="#" class="float-end indigo-status-bar-action" @click.prevent="setColumns(3)">Switch to 3 columns</a>
 		</div>
 		`
 });
@@ -1398,9 +1403,9 @@ app.component('indigo-wifi-setup', {
 				<span class="input-group-text ok-state" style="width: 10em;">Password</span>
 				<input id="PASSWORD" type="text" class="form-control" v-model="password" :placeholder="mode == 'INFRA' ? '<value is hidden>' : ''">
 			</div>
-			<div class="d-flex w-100 mt-1 p-1">
-				<button type="submit" class="btn btn-sm btn-primary ms-auto me-2" @click.prevent="set()">Submit</button>
-				<button class="btn btn-sm btn-outline-secondary me-0" @click.prevent="reset()">Reset</button>
+			<div class="d-flex w-100 mt-1 p-1 indigo-command-row">
+				<button type="submit" class="btn btn-sm btn-primary ms-auto" @click.prevent="set()">Submit</button>
+				<button class="btn btn-sm btn-outline-secondary" @click.prevent="reset()">Reset</button>
 			</div>
 		</div>
 		`
@@ -1648,14 +1653,7 @@ app.component('indigo-sky-map', {
 			var map = this.$refs.map;
 			if (map == null)
 				return;
-			if (window.innerWidth > 750) {
-				if (window.innerHeight > 650)
-					map.style.maxHeight = (window.innerHeight - 180) + "px";
-				else
-					map.style.maxHeight = "470px";
-			} else {
-				map.style.maxHeight = map.clientWidth + "px";
-			}
+			map.style.maxHeight = "";
 		},
 		centerInitialView: function() {
 			var map = this.$refs.map;
@@ -1784,7 +1782,7 @@ app.component('indigo-sky-map', {
 	},
 	template: `
 		<div class="position-relative">
-			<div id="map" ref="map" class="position-relative" style="overflow: scroll;"></div>
+			<div id="map" ref="map" class="position-relative indigo-sky-map"></div>
 			<div v-if="initialized" class="position-absolute d-flex">
 				<button class="btn btn-svg idle-state m-1" :disabled="localZoomLevel >= zooms.length - 1" @click.prevent="zoomIn" data-bs-toggle="tooltip" title="Zoom In">
 					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">

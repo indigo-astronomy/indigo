@@ -32,15 +32,15 @@
 									<div v-else class="form-group row m-1 p-1">
 										<textarea :id="'S_'+property.name" class="form-control fixed" rows="3" placeholder="No script" :value="property.item('SCRIPT')?.value" @input="property.dirty = true"></textarea>
 									</div>
-									<div class="float-start m-1 m-1 p-1">
-										<button type="button" class="btn btn-sm ms-1" :class="findProperty('Scripting Agent', 'AGENT_SCRIPTING_ON_LOAD_SCRIPT')?.item(property.name)?.value ? 'btn-primary' : 'btn-outline-secondary'" style="min-width: 6rem" data-bs-toggle="tooltip" title="Execute script on agent load" @click="onLoad(property)">On load</button>
-										<button type="button" class="btn btn-sm ms-1" :class="findProperty('Scripting Agent', 'AGENT_SCRIPTING_ON_UNLOAD_SCRIPT')?.item(property.name)?.value ? 'btn-primary' : 'btn-outline-secondary'" style="min-width: 6rem" data-bs-toggle="tooltip" title="Execute script on agent unload" @click="onUnload(property)">On unload</button>
+									<div class="float-start d-flex gap-1 m-1 p-1">
+										<button type="button" class="btn btn-sm" :class="findProperty('Scripting Agent', 'AGENT_SCRIPTING_ON_LOAD_SCRIPT')?.item(property.name)?.value ? 'btn-primary' : 'btn-outline-secondary'" style="min-width: 6rem" data-bs-toggle="tooltip" title="Execute script on agent load" @click="onLoad(property)">On load</button>
+										<button type="button" class="btn btn-sm" :class="findProperty('Scripting Agent', 'AGENT_SCRIPTING_ON_UNLOAD_SCRIPT')?.item(property.name)?.value ? 'btn-primary' : 'btn-outline-secondary'" style="min-width: 6rem" data-bs-toggle="tooltip" title="Execute script on agent unload" @click="onUnload(property)">On unload</button>
 									</div>
-									<div class="float-end m-1 m-1 p-1">
-										<button v-if="property.name!='AGENT_SCRIPTING_ADD_SCRIPT'" type="button" class="btn btn-sm btn-success ms-1" style="min-width: 6rem" :disabled="property.dirty" data-bs-toggle="tooltip" title="Execute script" @click="execute(property)">Execute</button>
-										<button v-if="property.name!='AGENT_SCRIPTING_ADD_SCRIPT'" type="button" class="btn btn-sm btn-danger ms-1" style="min-width: 6rem" :disabled="property.dirty" data-bs-toggle="tooltip" title="Delete script" @click="remove(property)">Delete</button>
-										<button v-if="property.name=='AGENT_SCRIPTING_ADD_SCRIPT'" type="button" class="btn btn-sm btn-primary ms-1" style="min-width: 6rem" data-bs-toggle="tooltip" title="Create new script" @click="save(property)">Create</button>
-										<button v-else type="button" class="btn btn-sm btn-primary ms-1" style="min-width: 6rem" data-bs-toggle="tooltip" title="Save script name and text" @click="save(property); property.dirty = false">Save</button>
+									<div class="float-end d-flex gap-1 m-1 p-1">
+										<button v-if="property.name!='AGENT_SCRIPTING_ADD_SCRIPT'" type="button" class="btn btn-sm btn-success" style="min-width: 6rem" :disabled="property.dirty" data-bs-toggle="tooltip" title="Execute script" @click="execute(property)">Execute</button>
+										<button v-if="property.name!='AGENT_SCRIPTING_ADD_SCRIPT'" type="button" class="btn btn-sm btn-danger" style="min-width: 6rem" :disabled="property.dirty" data-bs-toggle="tooltip" title="Delete script" @click="remove(property)">Delete</button>
+										<button v-if="property.name=='AGENT_SCRIPTING_ADD_SCRIPT'" type="button" class="btn btn-sm btn-primary" style="min-width: 6rem" data-bs-toggle="tooltip" title="Create new script" @click="save(property)">Create</button>
+										<button v-else type="button" class="btn btn-sm btn-primary" style="min-width: 6rem" data-bs-toggle="tooltip" title="Save script name and text" @click="save(property); property.dirty = false">Save</button>
 									</div>
 								</form>
 							</div>
@@ -56,7 +56,7 @@
 	<script src="vue.global.prod.js"></script>
 	<script src="indigo.js"></script>
 	<script src="components.js"></script>
-	<script language="javascript" type="text/javascript">
+	<script>
 		
 		indigoURL = new URL((window.location.protocol == "https:" ? "wss://" : "ws://") + window.location.host);
 		guiSetup();

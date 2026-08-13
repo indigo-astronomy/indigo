@@ -17,7 +17,7 @@
 				</div>
 				<template v-else>
 					<div class="row g-0">
-						<div class="col-sm-4" style="min-width:360px">
+						<div class="col-sm-4 indigo-side-panel">
 							<template v-if="findProperty('Mount Agent', 'AGENT_SITE_DATA_SOURCE') != null">
 								<div class="card p-1 m-1 bg-light">
 									<div class="card-body d-flex flex-wrap">
@@ -37,13 +37,13 @@
 										<indigo-show-number-60 :property="findProperty('Mount Agent', 'MOUNT_EQUATORIAL_COORDINATES')" :name="'DEC'" :icon="'δ'" :tooltip="'Declination'"></indigo-show-number-60>
 										<indigo-show-number-60 :property="findProperty('Mount Agent', 'MOUNT_HORIZONTAL_COORDINATES')" :name="'ALT'" :icon="'Ε'" :tooltip="'Altitude'"></indigo-show-number-60>
 										<indigo-show-number-60 :property="findProperty('Mount Agent', 'MOUNT_HORIZONTAL_COORDINATES')" :name="'AZ'" :icon="'Α'" :tooltip="'Azimuth'"></indigo-show-number-60>
-										<div v-if="findProperty('Mount Agent', 'MOUNT_ON_COORDINATES_SET') != null" class="d-flex p-1 w-100">
-											<button id="goto_button" class="btn btn-svg idle-state me-2" onclick="goto()" data-bs-toggle="tooltip" title="Slew">
+										<div v-if="findProperty('Mount Agent', 'MOUNT_ON_COORDINATES_SET') != null" class="d-flex p-1 w-100 indigo-command-row">
+											<button id="goto_button" class="btn btn-svg idle-state" onclick="goto()" data-bs-toggle="tooltip" title="Slew">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M24.8175,16.86432,9.503,25.77667A1,1,0,0,1,8,24.91235V7.08765a1,1,0,0,1,1.503-.86432L24.8175,15.13568A1.00006,1.00006,0,0,1,24.8175,16.86432Z"/>
 												</svg>
 											</button>
-											<button id="sync_button" class="btn btn-svg idle-state me-2" onclick="sync()" data-bs-toggle="tooltip" title="Sync">
+											<button id="sync_button" class="btn btn-svg idle-state" onclick="sync()" data-bs-toggle="tooltip" title="Sync">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M28.28717,17.1308l-5.76758,1.05835a.5.5,0,0,0-.2633.84533l.94043.94043L21.999,21.17236A3.6605,3.6605,0,0,1,20,22H18V11.44366a4.00005,4.00005,0,1,0-4,0V22H12a3.66355,3.66355,0,0,1-2-.82812L8.80316,19.975l.94055-.94056a.5.5,0,0,0-.2633-.84533L3.71283,17.1308a.5.5,0,0,0-.582.582l1.05835,5.76758a.5.5,0,0,0,.84533.2633l.94043-.94043,1.196,1.19623A7.49326,7.49326,0,0,0,12,26h1.6l2.00958,2.512a.5.5,0,0,0,.78088,0L18.4,26H20a7.49066,7.49066,0,0,0,4.82812-2L26.025,22.80316l.94056.94055a.5.5,0,0,0,.84533-.2633l1.05835-5.76758A.5.5,0,0,0,28.28717,17.1308ZM16,9a1,1,0,1,1,1-1A1.001,1.001,0,0,1,16,9Z"/>
 												</svg>
@@ -61,13 +61,13 @@
 												</indigo-status-button>
 											</template>
 											<template v-if="findProperty('Mount Agent', 'MOUNT_HOME') != null">
-												<indigo-status-button :property="findProperty('Mount Agent', 'MOUNT_HOME')" :action="window.home" class="ms-2" data-bs-toggle="tooltip" title="Home">
+												<indigo-status-button :property="findProperty('Mount Agent', 'MOUNT_HOME')" :action="window.home" data-bs-toggle="tooltip" title="Home">
 													<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 														<path d="M27.10482,17H24V27.5a.5.5,0,0,1-.5.5h-4a.5.5,0,0,1-.5-.5v-5a.5.5,0,0,0-.5-.5h-5a.5.5,0,0,0-.5.5v5a.5.5,0,0,1-.5.5h-4a.5.5,0,0,1-.5-.5V17H4.89518a.785.785,0,0,1-.55508-1.34008L15.46967,4.53023a.75.75,0,0,1,1.06066,0L27.6599,15.65992A.785.785,0,0,1,27.10482,17Z"/>
 													</svg>
 												</indigo-status-button>
 											</template>
-											<indigo-status-button :property="findProperty('Mount Agent', 'AGENT_LX200_SERVER')" active-item="STARTED" busy-item="STARTED" :active-action="window.stopLX200Server" :inactive-action="window.startLX200Server" :alert-action="window.startLX200Server" class="ms-2" data-bs-toggle="tooltip" title="LX200 Server">
+											<indigo-status-button :property="findProperty('Mount Agent', 'AGENT_LX200_SERVER')" active-item="STARTED" busy-item="STARTED" :active-action="window.stopLX200Server" :inactive-action="window.startLX200Server" :alert-action="window.startLX200Server" data-bs-toggle="tooltip" title="LX200 Server">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M13.39844,9.21A15.27,15.27,0,0,1,15,16a15.27,15.27,0,0,1-1.60156,6.79A1.49977,1.49977,0,1,1,10.707,21.46582,12.30309,12.30309,0,0,0,12,16a12.30309,12.30309,0,0,0-1.293-5.46582A1.49977,1.49977,0,1,1,13.39844,9.21ZM24.48926,5.33789a1.49977,1.49977,0,0,0-2.69141,1.32422,20.899,20.899,0,0,1,0,18.67578,1.49977,1.49977,0,1,0,2.69141,1.32422,23.89423,23.89423,0,0,0,0-21.32422ZM5.84766,10.46143a1.49937,1.49937,0,0,0-.6836,2.00781A7.94053,7.94053,0,0,1,6,16a7.94053,7.94053,0,0,1-.83594,3.53076A1.49977,1.49977,0,1,0,7.85547,20.855,10.90609,10.90609,0,0,0,9,16a10.90609,10.90609,0,0,0-1.14453-4.855A1.49881,1.49881,0,0,0,5.84766,10.46143ZM16.93748,6.58936a1.49938,1.49938,0,0,0-.68357,2.00781,16.56579,16.56579,0,0,1,0,14.80566,1.49977,1.49977,0,1,0,2.6914,1.32422,19.5609,19.5609,0,0,0,0-17.4541A1.49911,1.49911,0,0,0,16.93748,6.58936Z"/>
 												</svg>
@@ -75,18 +75,18 @@
 										</div>
 										<indigo-select-item :property="findProperty('Mount Agent', 'MOUNT_SLEW_RATE')" :cls="'w-50'"></indigo-select-item>
 										<indigo-select-item :property="findProperty('Mount Agent', 'MOUNT_TRACK_RATE')" :cls="'w-50'"></indigo-select-item>
-										<div v-if="findProperty('Mount Agent', 'MOUNT_TRACKING') != null" class="d-flex p-1 w-100">
-											<button class="btn btn-svg idle-state me-2" @mousedown.stop="window.moveWest($event)" @mouseup.stop="window.stopWest($event)" data-bs-toggle="tooltip" title="Move west">
+										<div v-if="findProperty('Mount Agent', 'MOUNT_TRACKING') != null" class="d-flex p-1 w-100 indigo-command-row">
+											<button class="btn btn-svg idle-state" @mousedown.stop="window.moveWest($event)" @mouseup.stop="window.stopWest($event)" data-bs-toggle="tooltip" title="Move west">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M27,14v4a1,1,0,0,1-1,1H16v3.47937a1,1,0,0,1-1.57349.81921L5.17035,16.81921a.99994.99994,0,0,1,0-1.63842l9.25616-6.47937A1,1,0,0,1,16,9.52063V13H26A1,1,0,0,1,27,14Z"/>
 												</svg>
 											</button>
-											<button class="btn btn-svg idle-state me-2" @mousedown.stop="window.moveEast($event)" @mouseup.stop="window.stopEast($event)" data-bs-toggle="tooltip" title="Move east">
+											<button class="btn btn-svg idle-state" @mousedown.stop="window.moveEast($event)" @mouseup.stop="window.stopEast($event)" data-bs-toggle="tooltip" title="Move east">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M26.82965,16.81921l-9.25622,6.47937A1,1,0,0,1,16,22.47937V19H6a1,1,0,0,1-1-1V14a1,1,0,0,1,1-1H16V9.52063a1,1,0,0,1,1.57343-.81921l9.25622,6.47937A.99994.99994,0,0,1,26.82965,16.81921Z"/>
 												</svg>
 											</button>
-											<button class="btn btn-svg idle-state me-2" @mousedown.stop="window.moveNorth($event)" @mouseup.stop="window.stopNorth($event)" data-bs-toggle="tooltip" title="Move north">
+											<button class="btn btn-svg idle-state" @mousedown.stop="window.moveNorth($event)" @mouseup.stop="window.stopNorth($event)" data-bs-toggle="tooltip" title="Move north">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M22.47937,16H19V26a1,1,0,0,1-1,1H14a1,1,0,0,1-1-1V16H9.52063a1,1,0,0,1-.81921-1.57349l6.47937-9.25616a.99994.99994,0,0,1,1.63842,0l6.47937,9.25616A1,1,0,0,1,22.47937,16Z"/>
 												</svg>
@@ -139,7 +139,7 @@
 							</template>
 						</div>
 						<div class="col-sm-8">
-							<div class="card p-1 m-1 bg-light" style="min-height: 10rem">
+							<div class="card p-1 m-1 bg-light indigo-sky-map-card">
 								<indigo-sky-map :current-coordinates="currentCoordinates" :target-coordinates="targetCoordinates" :object-coordinates="objectCoordinates" :geo-coordinates="geoCoordinates" :zoom-level="zoomLevel" :dark="dark" @select-object="window.selectObject($event)"></indigo-sky-map>
 							</div>
 						</div>
@@ -156,7 +156,7 @@
 	<script src="d3.min.js"></script>
 	<script src="celestial.min.js"></script>
 	<script src="components.js"></script>
-	<script language="javascript" type="text/javascript">
+	<script>
 
 		indigoURL = new URL((window.location.protocol == "https:" ? "wss://" : "ws://") + window.location.host);
 

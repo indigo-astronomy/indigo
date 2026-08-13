@@ -17,7 +17,7 @@
 				</div>
 				<template v-else>
 					<div class="row g-0">
-						<div class="col-md-4" style="min-width:360px">
+						<div class="col-md-4 indigo-side-panel">
 							<template v-if="findProperty('Imager Agent', 'FILTER_CCD_LIST') != null">
 								<div class="card p-1 m-1 bg-light">
 									<div class="card-body d-flex flex-wrap">
@@ -37,13 +37,13 @@
 											<indigo-show-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_STATS')" :name="'DELAY'" :icon="'glyphicons-hourglass'" :tooltip="'Delay between exposures'"></indigo-show-number>
 											<indigo-show-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_STATS')" :name="'FRAME'" :icon="'glyphicons-repeat'" :tooltip="'Image count'"></indigo-show-number>
 										</template>
-										<div v-if="findProperty('Imager Agent', 'AGENT_START_PROCESS') != null" class="d-flex p-1 w-100">
-											<button id="preview1_button" class="btn btn-svg idle-state me-2" onclick="preview1()" data-bs-toggle="tooltip" title="Single image preview">
+										<div v-if="findProperty('Imager Agent', 'AGENT_START_PROCESS') != null" class="d-flex p-1 w-100 indigo-command-row">
+											<button id="preview1_button" class="btn btn-svg idle-state" onclick="preview1()" data-bs-toggle="tooltip" title="Single image preview">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M25,8H22.125L21.81,6.91992A2.83342,2.83342,0,0,0,19.25,5h-6.5a2.83342,2.83342,0,0,0-2.56,1.91992L9.875,8H7a3.00879,3.00879,0,0,0-3,3V23a3.00879,3.00879,0,0,0,3,3H25a3.00879,3.00879,0,0,0,3-3V11A3.00879,3.00879,0,0,0,25,8ZM16,23a6,6,0,1,1,6-6A6,6,0,0,1,16,23ZM26,11.5a.5.5,0,0,1-.5.5h-1a.5.5,0,0,1-.5-.5v-1a.5.5,0,0,1,.5-.5h1a.5.5,0,0,1,.5.5ZM20,17a4,4,0,1,1-4-4A3.99992,3.99992,0,0,1,20,17Z"/>
 												</svg>
 											</button>
-											<button id="preview_button" class="btn btn-svg idle-state me-2" onclick="preview()" data-bs-toggle="tooltip" title="Preview">
+											<button id="preview_button" class="btn btn-svg idle-state" onclick="preview()" data-bs-toggle="tooltip" title="Preview">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M31,11v9a1,1,0,0,1-1,1H29l-5-3.43748v-4.125L29,10h1A1,1,0,0,1,31,11ZM20,8H6a2.00591,2.00591,0,0,0-2,2V21a2.00591,2.00591,0,0,0,2,2H20a2.00591,2.00591,0,0,0,2-2V10A2.00591,2.00591,0,0,0,20,8Z"/>
 												</svg>
@@ -91,13 +91,13 @@
 											<indigo-show-number :property="findProperty('Imager Agent', 'FOCUSER_POSITION')" :name="'POSITION'" :icon="'glyphicons-ruler'" :tooltip="'Absolute position'"></indigo-show-number>
 											<indigo-show-number :property="findProperty('Imager Agent', 'FOCUSER_TEMPERATURE')" :name="'TEMPERATURE'" :icon="'glyphicons-temperature'" :tooltip="'Temperature'"></indigo-show-number>
 											<indigo-show-number :property="findProperty('Imager Agent', 'FOCUSER_COMPENSATION')" :name="'COMPENSATION'" :icon="'glyphicons-temperature-settings'" :tooltip="'Temperature Compensation'"></indigo-show-number>
-											<div class="d-flex p-1 w-100">
-												<button v-if="findProperty('Imager Agent', 'FOCUSER_POSITION') && findProperty('Imager Agent', 'FOCUSER_POSITION').perm == 'rw'" id="focuser_position_button" class="btn btn-svg idle-state me-2" onclick="focuser_position()" data-bs-toggle="tooltip" title="Move to absolute position">
+											<div class="d-flex p-1 w-100 indigo-command-row">
+												<button v-if="findProperty('Imager Agent', 'FOCUSER_POSITION') && findProperty('Imager Agent', 'FOCUSER_POSITION').perm == 'rw'" id="focuser_position_button" class="btn btn-svg idle-state" onclick="focuser_position()" data-bs-toggle="tooltip" title="Move to absolute position">
 													<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 														<path d="M24.8175,16.86432,9.503,25.77667A1,1,0,0,1,8,24.91235V7.08765a1,1,0,0,1,1.503-.86432L24.8175,15.13568A1.00006,1.00006,0,0,1,24.8175,16.86432Z"/>
 													</svg>
 												</button>
-												<button v-if="findProperty('Imager Agent', 'FOCUSER_STEPS')" id="focuser_in_button" class="btn btn-svg idle-state me-2" onclick="focuser_in()" data-bs-toggle="tooltip" title="Move in">
+												<button v-if="findProperty('Imager Agent', 'FOCUSER_STEPS')" id="focuser_in_button" class="btn btn-svg idle-state" onclick="focuser_in()" data-bs-toggle="tooltip" title="Move in">
 													<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 														<path d="M22.99933,9.46185V22.53821a.8.8,0,0,1-1.2312.67383L11.55219,16.67383a.8.8,0,0,1,0-1.34766L21.76813,8.788A.8.8,0,0,1,22.99933,9.46185ZM10,8H9A1,1,0,0,0,8,9V23a1,1,0,0,0,1,1h1a1,1,0,0,0,1-1V9A1,1,0,0,0,10,8Z"/>
 													</svg>
@@ -107,17 +107,17 @@
 														<path d="M20.44781,15.32617a.8.8,0,0,1,0,1.34766L10.23187,23.212a.8.8,0,0,1-1.2312-.67383V9.46185a.8.8,0,0,1,1.2312-.67383ZM23,8H22a1,1,0,0,0-1,1V23a1,1,0,0,0,1,1h1a1,1,0,0,0,1-1V9A1,1,0,0,0,23,8Z"/>
 													</svg>
 												</button>
-												<button v-if="findProperty('Imager Agent', 'AGENT_START_PROCESS')" id="focuser_auto_button" class="btn btn-svg idle-state me-2" onclick="focuser_auto()" data-bs-toggle="tooltip" title="Autofocus">
+												<button v-if="findProperty('Imager Agent', 'AGENT_START_PROCESS')" id="focuser_auto_button" class="btn btn-svg idle-state" onclick="focuser_auto()" data-bs-toggle="tooltip" title="Autofocus">
 													<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 														<path d="M6.709,9.293A.99991.99991,0,0,0,5.002,10V22a.99989.99989,0,0,0,1.707.707l6-6a.99962.99962,0,0,0,0-1.41406Zm.293,10.293V12.41406L10.58789,16ZM27.002,10V22a.99989.99989,0,0,1-1.707.707l-6-6a.99964.99964,0,0,1,0-1.41406l6-6A.99991.99991,0,0,1,27.002,10ZM17,25.5v1a.5.5,0,0,1-.5.5h-1a.5.5,0,0,1-.5-.5v-1a.5.5,0,0,1,.5-.5h1A.5.5,0,0,1,17,25.5Zm0-4v1a.5.5,0,0,1-.5.5h-1a.5.5,0,0,1-.5-.5v-1a.5.5,0,0,1,.5-.5h1A.5.5,0,0,1,17,21.5Zm0-4v1a.5.5,0,0,1-.5.5h-1a.5.5,0,0,1-.5-.5v-1a.5.5,0,0,1,.5-.5h1A.5.5,0,0,1,17,17.5Zm0-12v1a.5.5,0,0,1-.5.5h-1a.5.5,0,0,1-.5-.5v-1a.5.5,0,0,1,.5-.5h1A.5.5,0,0,1,17,5.5Zm0,4v1a.5.5,0,0,1-.5.5h-1a.5.5,0,0,1-.5-.5v-1a.5.5,0,0,1,.5-.5h1A.5.5,0,0,1,17,9.5Zm0,4v1a.5.5,0,0,1-.5.5h-1a.5.5,0,0,1-.5-.5v-1a.5.5,0,0,1,.5-.5h1A.5.5,0,0,1,17,13.5Z"/>
 													</svg>
 												</button>
-												<button v-if="findProperty('Imager Agent', 'FOCUSER_MODE') && findProperty('Imager Agent', 'FOCUSER_MODE').item('MANUAL').value" id="focuser_mode_button" class="btn btn-svg idle-state me-2" onclick="focuser_auto_on()" data-bs-toggle="tooltip" title="Compensation state">
+												<button v-if="findProperty('Imager Agent', 'FOCUSER_MODE') && findProperty('Imager Agent', 'FOCUSER_MODE').item('MANUAL').value" id="focuser_mode_button" class="btn btn-svg idle-state" onclick="focuser_auto_on()" data-bs-toggle="tooltip" title="Compensation state">
 													<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 														<path d="M21.6499,4.18762,24.60956.488a.5.5,0,0,1,.78088,0L28.3501,4.18762A.5.5,0,0,1,27.95972,5H22.04028A.5.5,0,0,1,21.6499,4.18762ZM27.95972,7H22.04028a.49992.49992,0,0,0-.39038.81226l2.95966,3.6997a.5.5,0,0,0,.78088,0l2.95966-3.6997A.49992.49992,0,0,0,27.95972,7ZM17,18.835a5.50005,5.50005,0,1,1-8,0V8.08594a4,4,0,0,1,8,0Zm-1.5,3.75049A2.5018,2.5018,0,0,0,14,20.29736V14.08545a1,1,0,0,0-2,0v6.21191a2.49874,2.49874,0,1,0,3.5,2.28809Z"/>
 													</svg>
 												</button>
-												<button v-if="findProperty('Imager Agent', 'FOCUSER_MODE') && findProperty('Imager Agent', 'FOCUSER_MODE').item('AUTOMATIC').value" id="focuser_mode_button" class="btn btn-svg ok-state me-2" onclick="focuser_auto_off()" data-bs-toggle="tooltip" title="Compensation state">
+												<button v-if="findProperty('Imager Agent', 'FOCUSER_MODE') && findProperty('Imager Agent', 'FOCUSER_MODE').item('AUTOMATIC').value" id="focuser_mode_button" class="btn btn-svg ok-state" onclick="focuser_auto_off()" data-bs-toggle="tooltip" title="Compensation state">
 													<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 														<path d="M21.6499,4.18762,24.60956.488a.5.5,0,0,1,.78088,0L28.3501,4.18762A.5.5,0,0,1,27.95972,5H22.04028A.5.5,0,0,1,21.6499,4.18762ZM27.95972,7H22.04028a.49992.49992,0,0,0-.39038.81226l2.95966,3.6997a.5.5,0,0,0,.78088,0l2.95966-3.6997A.49992.49992,0,0,0,27.95972,7ZM17,18.835a5.50005,5.50005,0,1,1-8,0V8.08594a4,4,0,0,1,8,0Zm-1.5,3.75049A2.5018,2.5018,0,0,0,14,20.29736V14.08545a1,1,0,0,0-2,0v6.21191a2.49874,2.49874,0,1,0,3.5,2.28809Z"/>
 													</svg>
@@ -154,7 +154,7 @@
 	<script src="vue.global.prod.js"></script>
 	<script src="indigo.js"></script>
 	<script src="components.js"></script>
-	<script language="javascript" type="text/javascript">
+	<script>
 		
 		indigoURL = new URL((window.location.protocol == "https:" ? "wss://" : "ws://") + window.location.host);
 		guiSetup();
