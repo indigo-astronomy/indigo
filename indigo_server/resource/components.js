@@ -856,6 +856,80 @@ app.component('indigo-query-db', {
 });
 
 
+app.component('indigo-status-button', {
+	props: {
+		property: Object,
+		activeItem: String,
+		activeState: {
+			type: String,
+			default: "Ok"
+		},
+		busyItem: String,
+		busyStatusClass: {
+			type: String,
+			default: "busy-state"
+		},
+		statusClass: String,
+		action: Function,
+		activeAction: Function,
+		inactiveAction: Function,
+		busyAction: Function,
+		alertAction: Function
+	},
+	computed: {
+		stateClass: function() {
+			if (this.statusClass != null && this.statusClass != "")
+				return this.statusClass;
+			if (this.property == null)
+				return "idle-state";
+			if (this.property.state == this.activeState && this.activeItemValue())
+				return "ok-state";
+			if (this.property.state == "Busy" && this.busyItemValue())
+				return this.busyStatusClass;
+			if (this.property.state == "Alert")
+				return "alert-state";
+			return "idle-state";
+		}
+	},
+	methods: {
+		itemValue: function(name) {
+			if (this.property == null)
+				return false;
+			if (name == null || name == "")
+				return true;
+			var item = this.property.item(name);
+			return item != null && item.value;
+		},
+		activeItemValue: function() {
+			return this.itemValue(this.activeItem);
+		},
+		busyItemValue: function() {
+			if (this.busyItem == null || this.busyItem == "")
+				return this.property != null;
+			return this.itemValue(this.busyItem);
+		},
+		runAction: function(event) {
+			var action = this.action;
+			if (this.property != null && this.property.state == "Alert" && this.alertAction != null) {
+				action = this.alertAction;
+			} else if (this.property != null && this.property.state == "Busy" && this.busyAction != null) {
+				action = this.busyAction;
+			} else if (this.activeItemValue()) {
+				if (this.activeAction != null)
+					action = this.activeAction;
+			} else if (this.inactiveAction != null) {
+				action = this.inactiveAction;
+			}
+			if (action != null)
+				action(event);
+		}
+	},
+	template: `
+		<button class="btn btn-svg" :class="stateClass" @click="runAction"><slot></slot></button>
+		`
+});
+
+
 app.component('indigo-guider-graph', {
 	data: function() {
 		return {

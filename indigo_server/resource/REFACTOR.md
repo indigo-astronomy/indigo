@@ -351,7 +351,7 @@ In `guider.html`: replace the two raw `<canvas>` elements with `<indigo-guider-g
 
 ---
 
-### Step 14 — Extract `indigo-status-button` component
+### Step 14 — Extract `indigo-status-button` component [DONE]
 
 **Files:** `components.js`, `mount.html`, `guider.html`
 
