@@ -230,7 +230,7 @@ Bind them with `v-model` in the template. The `set()` method reads `this.ssid` a
 
 ---
 
-### Step 9 — Refactor guider button state to Vue reactive data
+### Step 9 — Refactor guider button state to Vue reactive data [DONE]
 
 **Files:** `guider.html`
 

@@ -15,7 +15,9 @@ var app = Vue.createApp({
 			useAgent: false,
 			connected: false,
 			failed: false,
-			message: false
+			message: false,
+			calibrating: false,
+			guiding: false
 		};
 	},
 	methods: {
