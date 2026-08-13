@@ -250,7 +250,7 @@ Since the guider page does not use a separate Vue instance (it uses the shared `
 
 ---
 
-### Step 10 — Refactor mount motion button state to remove jQuery
+### Step 10 — Refactor mount motion button state to remove jQuery [DONE]
 
 **Files:** `mount.html`
 

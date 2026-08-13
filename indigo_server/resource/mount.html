@@ -143,22 +143,22 @@
 										<indigo-select-item :property="findProperty('Mount Agent', 'MOUNT_SLEW_RATE')" :cls="'w-50'"></indigo-select-item>
 										<indigo-select-item :property="findProperty('Mount Agent', 'MOUNT_TRACK_RATE')" :cls="'w-50'"></indigo-select-item>
 										<div v-if="findProperty('Mount Agent', 'MOUNT_TRACKING') != null" class="d-flex p-1 w-100">
-											<button class="btn btn-svg idle-state me-2" @mousedown.stop="moveWest($event)" @mouseup.stop="stopWest($event)" data-bs-toggle="tooltip" title="Move west">
+											<button class="btn btn-svg idle-state me-2" @mousedown.stop="window.moveWest($event)" @mouseup.stop="window.stopWest($event)" data-bs-toggle="tooltip" title="Move west">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M27,14v4a1,1,0,0,1-1,1H16v3.47937a1,1,0,0,1-1.57349.81921L5.17035,16.81921a.99994.99994,0,0,1,0-1.63842l9.25616-6.47937A1,1,0,0,1,16,9.52063V13H26A1,1,0,0,1,27,14Z"/>
 												</svg>
 											</button>
-											<button class="btn btn-svg idle-state me-2" @mousedown.stop="moveEast($event)" @mouseup.stop="stopEast($event)" data-bs-toggle="tooltip" title="Move east">
+											<button class="btn btn-svg idle-state me-2" @mousedown.stop="window.moveEast($event)" @mouseup.stop="window.stopEast($event)" data-bs-toggle="tooltip" title="Move east">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M26.82965,16.81921l-9.25622,6.47937A1,1,0,0,1,16,22.47937V19H6a1,1,0,0,1-1-1V14a1,1,0,0,1,1-1H16V9.52063a1,1,0,0,1,1.57343-.81921l9.25622,6.47937A.99994.99994,0,0,1,26.82965,16.81921Z"/>
 												</svg>
 											</button>
-											<button class="btn btn-svg idle-state me-2" @mousedown.stop="moveNorth($event)" @mouseup.stop="stopNorth($event)" data-bs-toggle="tooltip" title="Move north">
+											<button class="btn btn-svg idle-state me-2" @mousedown.stop="window.moveNorth($event)" @mouseup.stop="window.stopNorth($event)" data-bs-toggle="tooltip" title="Move north">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M22.47937,16H19V26a1,1,0,0,1-1,1H14a1,1,0,0,1-1-1V16H9.52063a1,1,0,0,1-.81921-1.57349l6.47937-9.25616a.99994.99994,0,0,1,1.63842,0l6.47937,9.25616A1,1,0,0,1,22.47937,16Z"/>
 												</svg>
 											</button>
-											<button class="btn btn-svg idle-state me-auto" @mousedown.stop="moveSouth($event)" @mouseup.stop="stopSouth($event)" data-bs-toggle="tooltip" title="Move south">
+											<button class="btn btn-svg idle-state me-auto" @mousedown.stop="window.moveSouth($event)" @mouseup.stop="window.stopSouth($event)" data-bs-toggle="tooltip" title="Move south">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M23.29858,17.57349l-6.47937,9.25616a.99994.99994,0,0,1-1.63842,0L8.70142,17.57349A1,1,0,0,1,9.52063,16H13V6a1,1,0,0,1,1-1h4a1,1,0,0,1,1,1V16h3.47937A1,1,0,0,1,23.29858,17.57349Z"/>
 												</svg>
@@ -670,23 +670,13 @@
 		}
 
 		function moveEvent(event) {
-			var target = $(event.target);
-			if (target.is("path"))
-				target = target.parent();
-			if (target.is("svg"))
-				target = target.parent();
-			target.removeClass("idle-state")
-			target.addClass("busy-state")
+			var target = event.currentTarget;
+			target.classList.replace("idle-state", "busy-state");
 		}
 
 		function stopEvent(event) {
-			var target = $(event.target);
-			if (target.is("path"))
-				target = target.parent();
-			if (target.is("svg"))
-				target = target.parent();
-			target.removeClass("busy-state")
-			target.addClass("idle-state")
+			var target = event.currentTarget;
+			target.classList.replace("busy-state", "idle-state");
 		}
 
 		function moveWest(event) {
