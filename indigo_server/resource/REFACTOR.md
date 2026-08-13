@@ -270,7 +270,7 @@ function stopEvent(event) {
 
 ---
 
-### Step 11 — Extract `indigo-sky-map` Vue component
+### Step 11 — Extract `indigo-sky-map` Vue component [DONE]
 
 **Files:** `components.js`, `mount.html`
 

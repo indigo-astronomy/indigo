@@ -839,6 +839,403 @@ app.component('indigo-wifi-setup', {
 		`
 });
 
+app.component('indigo-sky-map', {
+	props: {
+		currentCoordinates: Array,
+		targetCoordinates: Array,
+		objectCoordinates: Array,
+		geoCoordinates: Object,
+		zoomLevel: {
+			type: Number,
+			default: 4
+		},
+		dark: {
+			type: Boolean,
+			default: false
+		}
+	},
+	emits: [ 'select-object' ],
+	data: function() {
+		return {
+			celestialConfig: null,
+			initialized: false,
+			localZoomLevel: this.zoomLevel,
+			follow: 0,
+			zooms: [ 500, 750, 1000, 1500, 2048, 2500 ],
+			canvas: null,
+			canvasClickHandler: null,
+			resizeHandler: null
+		};
+	},
+	mounted: function() {
+		this.celestialConfig = this.createConfig();
+		this.canvasClickHandler = this.canvasClick.bind(this);
+		this.resizeHandler = this.resize.bind(this);
+		window.addEventListener("resize", this.resizeHandler);
+		this.displayMap();
+	},
+	beforeUnmount: function() {
+		window.removeEventListener("resize", this.resizeHandler);
+		if (this.canvas != null)
+			this.canvas.removeEventListener("mousedown", this.canvasClickHandler);
+		if (window.indigoSkyMapComponent == this)
+			window.indigoSkyMapComponent = null;
+	},
+	watch: {
+		currentCoordinates: {
+			handler: function() {
+				this.redrawMap();
+			},
+			deep: true
+		},
+		targetCoordinates: {
+			handler: function() {
+				this.redrawMap();
+			},
+			deep: true
+		},
+		objectCoordinates: {
+			handler: function() {
+				this.redrawMap();
+			},
+			deep: true
+		},
+		geoCoordinates: {
+			handler: function() {
+				this.redrawMap();
+			},
+			deep: true
+		},
+		zoomLevel: function(value) {
+			if (value == this.localZoomLevel)
+				return;
+			this.localZoomLevel = value;
+			this.displayMap();
+		},
+		dark: function() {
+			this.displayMap();
+		}
+	},
+	methods: {
+		createConfig: function() {
+			return {
+				width: 2048,
+				projection: "stereographic",
+				transform: "equatorial",
+				interactive: false,
+				controls: false,
+				follow: "zenith",
+				background: { fill: "#fff", stroke: "#fff", opacity: 1, width: 1 },
+				container: "map",
+				datapath: "/data/",
+				stars: {
+					colors: true,
+					proper: true,
+					propernamelimit: 2,
+					propernamestyle: { fill: "#999", font: "13px -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif", align: "right", baseline: "bottom" },
+					style: { fill: "#000", opacity: 1 },
+					size: 5,
+					data: 'stars.json'
+				},
+				dsos: {
+					show: true,
+					names: true,
+					desig: true,
+					limit: 8,
+					namelimit: 5,
+					data: 'dsos.json',
+				},
+				constellations: {
+					show: true,
+					names: true,
+					desig: true,
+					lines: true,
+					bounds: false,
+					linestyle: { stroke: "#ccc", width: 1, opacity: 0.6 }
+				},
+				planets: {
+					show: true,
+					style: { fill: "#f00", font: "bold 17px 'Lucida Sans Unicode', Consolas, sans-serif", align: "center", baseline: "middle" },
+					data: 'planets.json',
+				},
+				mw: {
+					style: { fill:"#996", opacity: 0.1 }
+				}
+			};
+		},
+		applyTheme: function() {
+			if (this.dark) {
+				this.celestialConfig.background.fill = "#000";
+				this.celestialConfig.background.stroke = "#000";
+				this.celestialConfig.stars.style.fill = "#FFF";
+			} else {
+				this.celestialConfig.background.fill = "#fff";
+				this.celestialConfig.background.stroke = "#fff";
+				this.celestialConfig.stars.style.fill = "#000";
+			}
+		},
+		applyZoomConfig: function() {
+			this.celestialConfig.width = this.zooms[this.localZoomLevel];
+			switch (this.localZoomLevel) {
+				case 5:
+				case 4:
+					this.celestialConfig.stars.limit = 6;
+					this.celestialConfig.stars.proper = true;
+					this.celestialConfig.stars.propernamelimit = 2;
+					this.celestialConfig.constellations.names = true;
+					this.celestialConfig.dsos.names = true;
+					this.celestialConfig.dsos.limit = 6;
+					this.celestialConfig.dsos.namelimit = 4;
+					break;
+				case 3:
+				case 2:
+					this.celestialConfig.stars.limit = 4;
+					this.celestialConfig.stars.proper = true;
+					this.celestialConfig.stars.propernamelimit = 1.5;
+					this.celestialConfig.constellations.names = true;
+					this.celestialConfig.dsos.names = true;
+					this.celestialConfig.dsos.limit = 5;
+					this.celestialConfig.dsos.namelimit = 4;
+					break;
+				case 1:
+				case 0:
+					this.celestialConfig.stars.limit = 3;
+					this.celestialConfig.stars.proper = false;
+					this.celestialConfig.constellations.names = false;
+					this.celestialConfig.dsos.names = false;
+					break;
+			}
+		},
+		updateCenter: function() {
+			if (typeof Celestial === "undefined" || this.geoCoordinates == null)
+				return;
+			var latitude = this.geoCoordinates.latitude;
+			var longitude = this.geoCoordinates.longitude;
+			var pos = [ latitude, longitude ];
+			this.celestialConfig.geopos = pos;
+			this.celestialConfig.center = Celestial.getPoint(Celestial.horizontal.inverse(new Date(), [90, 0], pos), this.celestialConfig.transform);
+		},
+		addMarker: function() {
+			window.indigoSkyMapComponent = this;
+			if (window.indigoSkyMapMarkerAdded)
+				return;
+			Celestial.add({
+				type: "marker",
+				callback: function() {
+				},
+				redraw: function(error, json) {
+					if (window.indigoSkyMapComponent != null)
+						window.indigoSkyMapComponent.markerRedraw(error, json);
+				}
+			});
+			window.indigoSkyMapMarkerAdded = true;
+		},
+		displayMap: function() {
+			if (typeof Celestial === "undefined")
+				return;
+			if (this.celestialConfig == null)
+				this.celestialConfig = this.createConfig();
+			var firstDisplay = !this.initialized;
+			this.addMarker();
+			this.resize();
+			this.applyTheme();
+			this.applyZoomConfig();
+			this.updateCenter();
+			Celestial.display(this.celestialConfig);
+			this.initialized = true;
+			var self = this;
+			this.$nextTick(function() {
+				self.bindCanvas();
+				self.exposeContainer();
+				if (firstDisplay)
+					self.centerInitialView();
+				guiSetup();
+			});
+		},
+		redrawMap: function() {
+			if (typeof Celestial === "undefined")
+				return;
+			if (!this.initialized) {
+				this.displayMap();
+				return;
+			}
+			this.updateCenter();
+			if (this.celestialConfig.center != null)
+				Celestial.rotate({ center: this.celestialConfig.center });
+			if (Celestial.redraw != null)
+				Celestial.redraw();
+			this.scrollMovingMount();
+		},
+		bindCanvas: function() {
+			var map = this.$refs.map;
+			if (map == null)
+				return;
+			var canvas = map.querySelector("canvas");
+			if (canvas == null || canvas == this.canvas)
+				return;
+			if (this.canvas != null)
+				this.canvas.removeEventListener("mousedown", this.canvasClickHandler);
+			this.canvas = canvas;
+			this.canvas.addEventListener("mousedown", this.canvasClickHandler, false);
+		},
+		exposeContainer: function() {
+			if (typeof INDIGO !== "undefined" && Celestial.container != null)
+				INDIGO.db = Celestial.container[0];
+		},
+		resize: function() {
+			var map = this.$refs.map;
+			if (map == null)
+				return;
+			if (window.innerWidth > 750) {
+				if (window.innerHeight > 650)
+					map.style.maxHeight = (window.innerHeight - 180) + "px";
+				else
+					map.style.maxHeight = "470px";
+			} else {
+				map.style.maxHeight = map.clientWidth + "px";
+			}
+		},
+		centerInitialView: function() {
+			var map = this.$refs.map;
+			if (map == null)
+				return;
+			map.scrollLeft = (this.celestialConfig.width - map.clientWidth) / 2;
+			map.scrollTop = (this.celestialConfig.width - map.clientWidth) / 2;
+		},
+		scrollToCoordinates: function(coordinates) {
+			var map = this.$refs.map;
+			if (map == null || coordinates == null || typeof Celestial === "undefined" || Celestial.mapProjection == null)
+				return;
+			var point = Celestial.mapProjection(coordinates);
+			map.scrollLeft = point[0] - map.clientWidth / 2;
+			map.scrollTop = point[1] - map.clientWidth / 2;
+		},
+		scrollMovingMount: function() {
+			if (typeof INDIGO === "undefined" || INDIGO.findProperty == null)
+				return;
+			var eqCoordinates = INDIGO.findProperty("Mount Agent", "MOUNT_EQUATORIAL_COORDINATES");
+			if (eqCoordinates != null && eqCoordinates.state == "Busy")
+				this.scrollToCoordinates(this.currentCoordinates);
+		},
+		zoomIn: function() {
+			if (this.localZoomLevel >= this.zooms.length - 1)
+				return;
+			this.setZoom(this.localZoomLevel + 1);
+		},
+		zoomOut: function() {
+			if (this.localZoomLevel <= 0)
+				return;
+			this.setZoom(this.localZoomLevel - 1);
+		},
+		setZoom: function(value) {
+			this.localZoomLevel = value;
+			if (this.$root != null)
+				this.$root.zoomLevel = value;
+			this.displayMap();
+		},
+		centerMarker: function() {
+			if (this.follow == 0) {
+				this.scrollToCoordinates(this.currentCoordinates);
+				this.follow = 1;
+			} else {
+				this.scrollToCoordinates(this.objectCoordinates);
+				this.follow = 0;
+			}
+			this.redrawMap();
+		},
+		canvasClick: function(e) {
+			if (typeof Celestial === "undefined" || Celestial.mapProjection == null)
+				return;
+			var coordinates = Celestial.mapProjection.invert([ e.offsetX, e.offsetY ]);
+			var bestX = 0;
+			var bestY = 0;
+			var dist = Math.pow(coordinates[0] - bestX, 2) + Math.pow(coordinates[1] - bestY, 2);
+			var paths = this.$refs.map.querySelectorAll("container path");
+			for (var i = 0; i < paths.length; i++) {
+				var data = paths[i].__data__;
+				if (data == null) continue;
+				var geometry = data.geometry;
+				if (geometry == null) continue;
+				if (geometry.type != "Point") continue;
+				var d = Math.pow(coordinates[0] - geometry.coordinates[0], 2) + Math.pow(coordinates[1] - geometry.coordinates[1], 2);
+				if (d < dist) {
+					dist = d;
+					bestX = geometry.coordinates[0];
+					bestY = geometry.coordinates[1];
+				}
+			}
+			this.$emit('select-object', { ra: this.deg2h(bestX), dec: bestY });
+		},
+		deg2h: function(ra) {
+			return ra < 0 ? ra / 15 + 24 : ra / 15;
+		},
+		markerRedraw: function() {
+			if (typeof Celestial === "undefined" || Celestial.context == null || Celestial.mapProjection == null)
+				return;
+			if (this.currentCoordinates != null) {
+				Celestial.setStyle({ stroke: "#ff0000", width: 1 });
+				var point = Celestial.mapProjection(this.currentCoordinates);
+				Celestial.context.beginPath();
+				Celestial.context.arc(point[0], point[1], 10, 0, 2 * Math.PI);
+				Celestial.context.closePath();
+				Celestial.context.stroke();
+			}
+			if (this.targetCoordinates != null) {
+				var target = Celestial.mapProjection(this.targetCoordinates);
+				Celestial.context.beginPath();
+				Celestial.setStyle({ stroke: "#0000ff", width: 1 });
+				Celestial.context.moveTo(target[0] - 15, target[1]);
+				Celestial.context.lineTo(target[0] - 5, target[1]);
+				Celestial.context.moveTo(target[0] + 5, target[1]);
+				Celestial.context.lineTo(target[0] + 15, target[1]);
+				Celestial.context.moveTo(target[0], target[1] - 15);
+				Celestial.context.lineTo(target[0], target[1] - 5);
+				Celestial.context.moveTo(target[0], target[1] + 5);
+				Celestial.context.lineTo(target[0], target[1] + 15);
+				Celestial.context.closePath();
+				Celestial.context.stroke();
+			}
+			if (this.objectCoordinates != null) {
+				var object = Celestial.mapProjection(this.objectCoordinates);
+				Celestial.context.beginPath();
+				Celestial.setStyle({ stroke: "#00a000", width: 1 });
+				Celestial.context.moveTo(object[0] - 10, object[1] - 10);
+				Celestial.context.lineTo(object[0] - 3, object[1] - 3);
+				Celestial.context.moveTo(object[0] + 3, object[1] + 3);
+				Celestial.context.lineTo(object[0] + 10, object[1] + 10);
+				Celestial.context.moveTo(object[0] + 10, object[1] - 10);
+				Celestial.context.lineTo(object[0] + 3, object[1] - 3);
+				Celestial.context.moveTo(object[0] - 3, object[1] + 3);
+				Celestial.context.lineTo(object[0] - 10, object[1] + 10);
+				Celestial.context.closePath();
+				Celestial.context.stroke();
+			}
+		}
+	},
+	template: `
+		<div class="position-relative">
+			<div id="map" ref="map" class="position-relative" style="overflow: scroll;"></div>
+			<div v-if="initialized" class="position-absolute d-flex">
+				<button class="btn btn-svg idle-state m-1" :disabled="localZoomLevel >= zooms.length - 1" @click.prevent="zoomIn" data-bs-toggle="tooltip" title="Zoom In">
+					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+						<path d="M27,14v4a1,1,0,0,1-1,1H19v7a1,1,0,0,1-1,1H14a1,1,0,0,1-1-1V19H6a1,1,0,0,1-1-1V14a1,1,0,0,1,1-1h7V6a1,1,0,0,1,1-1h4a1,1,0,0,1,1,1v7h7A1,1,0,0,1,27,14Z"/>
+					</svg>
+				</button>
+				<button class="btn btn-svg idle-state m-1" :disabled="localZoomLevel <= 0" @click.prevent="zoomOut" data-bs-toggle="tooltip" title="Zoom Out">
+					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+						<path d="M26,14v4a1,1,0,0,1-1,1H7a1,1,0,0,1-1-1V14a1,1,0,0,1,1-1H25A1,1,0,0,1,26,14Z"/>
+					</svg>
+				</button>
+				<button class="btn btn-svg idle-state m-1" @click.prevent="centerMarker" data-bs-toggle="tooltip" title="Center at marker">
+					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+						<path d="M16,4a8.9999,8.9999,0,0,0-9,9c0,6,6.7583,13.07764,8.16156,14.63135a1.13778,1.13778,0,0,0,1.67688,0C18.2417,26.07764,25,19,25,13A8.9999,8.9999,0,0,0,16,4Zm0,14a5,5,0,1,1,5-5A5.00013,5.00013,0,0,1,16,18Z"/>
+					</svg>
+				</button>
+			</div>
+		</div>
+		`
+});
+
 app.component('indigo-internet-sharing', {
 	props: {
 		property: Object
@@ -900,25 +1297,10 @@ function setDarkMode() {
 	localStorage.setItem("dark_mode", true);
 	document.documentElement.setAttribute("data-theme", "dark");
 	INDIGO.dark = true;
-	if (typeof config !== 'undefined') {
-		config.background.fill = "#000";
-		config.stars.style.fill = "#FFF";
-		if (celestialVisible) {
-			Celestial.display(config);
-		}
-	}
 }
 
 function setLightMode() {
 	localStorage.removeItem("dark_mode");
 	document.documentElement.removeAttribute("data-theme");
 	INDIGO.dark = false;
-	if (typeof config !== 'undefined') {
-		config.background.fill = "#fff";
-		config.stars.style.fill = "#000";
-		if (celestialVisible) {
-			Celestial.display(config);
-		}
-	}
 }
-

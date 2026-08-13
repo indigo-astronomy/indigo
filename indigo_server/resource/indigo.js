@@ -17,7 +17,12 @@ var app = Vue.createApp({
 			failed: false,
 			message: false,
 			calibrating: false,
-			guiding: false
+			guiding: false,
+			currentCoordinates: null,
+			targetCoordinates: null,
+			objectCoordinates: null,
+			geoCoordinates: null,
+			zoomLevel: 4
 		};
 	},
 	methods: {
