@@ -427,6 +427,104 @@ All pages share the `#SUCCESS`/`#FAILURE`/`#MESSAGE` alerts and the copyright fo
 
 ---
 
+### Step 18 — Route imager preview actions through `AGENT_START_PROCESS` [DONE]
+
+**Files:** `imager.html`
+
+`preview1()` and `preview()` currently start camera preview by changing `CCD_UPLOAD_MODE`, `CCD_PREVIEW`, and `CCD_EXPOSURE` directly. The imager agent already exposes the same operations through `AGENT_START_PROCESS`:
+
+- `PREVIEW_1` starts `preview_1_process`
+- `PREVIEW` starts `preview_process`
+
+Update the imager UI so the preview buttons call:
+
+- `changeProperty("Imager Agent", "AGENT_START_PROCESS", { "PREVIEW_1": true })`
+- `changeProperty("Imager Agent", "AGENT_START_PROCESS", { "PREVIEW": true })`
+
+Remove the direct `CCD_EXPOSURE` start path from these UI functions and align preview button state with the agent process state instead of local jQuery class toggles.
+
+Source references: `indigo_drivers/agent_imager/indigo_agent_imager.c` defines `AGENT_IMAGER_START_PREVIEW_1_ITEM` / `AGENT_IMAGER_START_PREVIEW_ITEM` and dispatches them in the `AGENT_START_PROCESS` handler.
+
+---
+
+### Step 19 — Add imager focus estimator and star selection controls
+
+**Files:** `imager.html`, `components.js`
+
+Add UI controls in the imager focuser/agent settings area for:
+
+- `AGENT_IMAGER_FOCUS_ESTIMATOR` as a switch-property combo box
+- `AGENT_IMAGER_SELECTION.COUNT` as a star count numeric input
+- `AGENT_IMAGER_SELECTION.RADIUS` as a detection radius numeric input next to star count
+
+Use the existing `indigo-select-item` / `indigo-edit-number` patterns where they fit. `AGENT_IMAGER_SELECTION.COUNT` changes the number of `X`/`Y` star-selection items on the agent side, so the UI must tolerate the property being redefined after the value changes.
+
+Source references: `indigo_agent_imager.c` initializes `AGENT_IMAGER_FOCUS_ESTIMATOR` with `U_CURVE`, `HFD_PEAK`, `RMS_CONTRAST`, and `BAHTINOV`; it initializes `AGENT_IMAGER_SELECTION.COUNT` as maximum star count and `AGENT_IMAGER_SELECTION.RADIUS` as the detection radius in pixels.
+
+---
+
+### Step 20 — Show only focus settings relevant to the selected estimator
+
+**Files:** `imager.html`, `components.js`
+
+Replace the current obsolete `AGENT_IMAGER_FOCUS.INITIAL` / `FINAL` controls with estimator-aware controls for `AGENT_IMAGER_FOCUS`.
+
+Visibility should follow the source behavior:
+
+- `U_CURVE`: show `U_CURVE_SAMPLES`, `U_CURVE_STEP`, plus shared autofocus controls `BACKLASH`, `BACKLASH_OVERSHOOT_FACTOR`, `STACK`, `REPEAT`, and `DELAY`
+- `HFD_PEAK`: show `ITERATIVE_INITIAL`, `ITERATIVE_FINAL`, plus shared autofocus controls
+- `RMS_CONTRAST`: show `ITERATIVE_INITIAL`, `ITERATIVE_FINAL`, plus shared autofocus controls
+- `BAHTINOV`: show `ITERATIVE_INITIAL`, `ITERATIVE_FINAL`, `BAHTINOV_SIGMA`, plus shared autofocus controls
+
+Do not show obsolete `INITIAL` / `FINAL`. Treat `BRACKETING_STEP` separately from autofocus-estimator settings because the source uses it for bracketing batch capture, not for selecting the autofocus estimator.
+
+Source references: `indigo_agent_imager.c` maps `AGENT_IMAGER_FOCUS_ESTIMATOR` to `use_ucurve_focusing`, `use_iterative_focusing`, `use_hfd_estimator`, `use_rms_estimator`, and `use_bahtinov_estimator`; the autofocus implementations consume the item groups listed above.
+
+---
+
+### Step 21 — Refactor imager download and focuser step actions to remove jQuery
+
+**Files:** `imager.html`, `components.js`
+
+Refactor the remaining imager helper actions that still depend on jQuery-only DOM access:
+
+- `download()` should not toggle `#download_button` classes with jQuery. Move the download button state to Vue-reactive data or an `indigo-status-button`/status-class binding driven by `downloadInProgress` and the download property state.
+- `focuser_in()` and `focuser_out()` should not read the step count with `$("#steps").val()`. Make the step-count input Vue-controlled, e.g. with reactive data or a Vue ref, and pass the parsed value from that state.
+- Keep the existing command sequence for file download/delete and focuser motion (`FOCUSER_ON_POSITION_SET`, `FOCUSER_DIRECTION`, `FOCUSER_STEPS`) unchanged.
+- Preserve current button layout and tooltips while removing the jQuery dependency from these functions.
+
+Current source references: `imager.html` uses `downloadInProgress`, `downloadFileName`, `AGENT_IMAGER_DOWNLOAD_FILE`, `AGENT_IMAGER_DELETE_FILE`, and the shared `#steps` input for focuser position/in/out step values.
+
+---
+
+### Step 22 — Add imager dithering interval combo
+
+**Files:** `imager.html`, `components.js`
+
+Add a single imager UI combo for dithering cadence with these user-facing options:
+
+- Disabled
+- Every frame
+- Every 2nd frame
+- Every 3rd frame
+- Every 4th frame
+- Every 5th frame
+
+Map the combo to the existing agent properties:
+
+- Disabled: set `AGENT_PROCESS_FEATURES.ENABLE_DITHERING` to `false` and `AGENT_IMAGER_BATCH.FRAMES_TO_SKIP_BEFORE_DITHER` to `-1`
+- Every frame: set `ENABLE_DITHERING` to `true` and `FRAMES_TO_SKIP_BEFORE_DITHER` to `0`
+- Every 2nd frame: set `ENABLE_DITHERING` to `true` and `FRAMES_TO_SKIP_BEFORE_DITHER` to `1`
+- Every 3rd frame: set `ENABLE_DITHERING` to `true` and `FRAMES_TO_SKIP_BEFORE_DITHER` to `2`
+- Every 4th frame: set `ENABLE_DITHERING` to `true` and `FRAMES_TO_SKIP_BEFORE_DITHER` to `3`
+- Every 5th frame: set `ENABLE_DITHERING` to `true` and `FRAMES_TO_SKIP_BEFORE_DITHER` to `4`
+
+Keep `AGENT_PROCESS_FEATURES.DITHER_AFTER_LAST_FRAME` separate from this combo; it controls whether a final-frame dither is allowed, not the cadence.
+
+Source references: `indigo_agent_imager.c` initializes `AGENT_IMAGER_BATCH.FRAMES_TO_SKIP_BEFORE_DITHER` with range `-1..1000` and `AGENT_PROCESS_FEATURES.ENABLE_DITHERING`; the batch loop dithers only when the feature is enabled and the frames-to-dither counter reaches zero.
+
+---
+
 ## Dependency Summary After Refactoring
 
 | Library | Before | After |
@@ -440,8 +538,9 @@ All pages share the `#SUCCESS`/`#FAILURE`/`#MESSAGE` alerts and the copyright fo
 
 ## Recommended Step Order
 
-Steps can be batched into three commits for review:
+Steps can be batched into four commits for review:
 
 1. **Bugs + deps** (Steps 1–3): Fix bugs, upgrade Bootstrap 5, upgrade Vue 3 — each is independently testable
 2. **Reactivity** (Steps 4–10): Eliminate all jQuery DOM touches, replace with Vue reactive data
 3. **Components** (Steps 11–17): Extract sky map, graph, status button, navbar, status bar; modernize CSS
+4. **Functional imager UI** (Steps 18–22): Route preview through the agent, remove remaining imager action jQuery, expose estimator/selection/dithering controls, and filter autofocus settings by estimator
