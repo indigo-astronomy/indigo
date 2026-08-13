@@ -480,6 +480,15 @@ app.component('indigo-ctrl', {
 			}
 			changeProperty(property.device, property.name, values);
 		},
+		isAbsoluteUrl: function(value) {
+			return value.startsWith('http:') || value.startsWith('https:');
+		},
+		isImage: function(value) {
+			return value.endsWith('.jpeg');
+		},
+		localUrl: function(value) {
+			return window.location.protocol + '//' + window.location.host + value;
+		},
 		openAll: function(id) {
 			var header = $("#H_" + id);
 			var body = $("#B_" + id);
@@ -570,13 +579,13 @@ app.component('indigo-ctrl', {
 										</template>
 										<template v-else-if="property.type == 'blob'">
 											<div v-for="item in property.items">
-												<template v-if="item.value != null && (item.value.startsWith('http://') || item.value.startsWith('https://'))">
-													<a v-if="!item.value.endsWith('.jpeg')" :href="item.value">{{item.value}}</a>
+												<template v-if="item.value != null && isAbsoluteUrl(item.value)">
+													<a v-if="!isImage(item.value)" :href="item.value">{{item.value}}</a>
 													<img v-else :src="item.value" class="img-fluid"/>
 												</template>
 												<template v-else-if="item.value != null">
-													<a v-if="!item.value.endsWith('.jpeg')" :href="window.location.protocol + '//' + window.location.host + item.value">{{window.location.protocol + "//" + window.location.host + item.value}}</a>
-													<img v-else :src="window.location.protocol + '//' + window.location.host + item.value" class="img-fluid"/>
+													<a v-if="!isImage(item.value)" :href="localUrl(item.value)">{{localUrl(item.value)}}</a>
+													<img v-else :src="localUrl(item.value)" class="img-fluid"/>
 												</template>
 											</div>
 										</template>
