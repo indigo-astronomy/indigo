@@ -123,16 +123,16 @@
 						</div>
 					</div>
 				</template>
-				<div id="SUCCESS" class="alert alert-success alert-dismissible fade show m-1 mt-2" role="alert" style="display:none;">
+				<div v-show="connected" class="alert alert-success alert-dismissible fade show m-1 mt-2" role="alert">
 					{{ state }}
 					<span v-if="findProperty('Server', 'INFO')" class="float-end">
 						INDIGO Server {{findProperty('Server', 'INFO').item('VERSION').value}} at {{findProperty('Server', 'INFO').item('SERVICE').value}}
 					</span>
 				</div>
-				<div id="FAILURE" class="alert alert-danger alert-dismissible fade show m-1 mt-2" role="alert" style="display:none;">
+				<div v-show="failed" class="alert alert-danger alert-dismissible fade show m-1 mt-2" role="alert">
 					{{ state }}
 				</div>
-				<div id="MESSAGE" class="alert alert-warning alert-dismissible fade show m-1 mt-2" role="alert" style="display:none;">
+				<div v-show="message" class="alert alert-warning alert-dismissible fade show m-1 mt-2" role="alert">
 					{{ state }}
 				</div>
 				<div class="alert alert-info show m-1 mt-2" role="alert">

@@ -163,7 +163,7 @@ function setDarkMode() {
 
 ---
 
-### Step 5 — Replace jQuery-controlled status alerts with Vue `v-show`
+### Step 5 — Replace jQuery-controlled status alerts with Vue `v-show` [DONE]
 
 **Files:** `indigo.js`, all `.html` files
 

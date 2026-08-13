@@ -12,7 +12,10 @@ var app = Vue.createApp({
 			db: [],
 			dark: false,
 			columns: 3,
-			useAgent: false
+			useAgent: false,
+			connected: false,
+			failed: false,
+			message: false
 		};
 	},
 	methods: {
@@ -62,23 +65,23 @@ function init() {
 function onOpen(evt) {
 	INDIGO.state = 'Connected to ' + indigoURL.host;
 	INDIGO.host = indigoURL.host;
-	$('#SUCCESS').show();
-	$('#FAILURE').hide();
+	INDIGO.connected = true;
+	INDIGO.failed = false;
 	enumerateProperties();
 }
 
 function onClose(evt) {
 	INDIGO.devices = { };
 	INDIGO.state = 'Lost connection to ' + indigoURL.host;
-	$('#SUCCESS').hide();
-	$('#FAILURE').show();
+	INDIGO.connected = false;
+	INDIGO.failed = true;
 	setTimeout(init, 1000);
 }
 
 function onError(evt) {
-	INDIGO.state ='Error' + evt;
-	$('#SUCCESS').hide();
-	$('#FAILURE').show();
+	INDIGO.state = 'Error' + evt;
+	INDIGO.connected = false;
+	INDIGO.failed = true;
 }
 
 function onMessage(evt) {
@@ -112,9 +115,9 @@ function onMessage(evt) {
 		processDeleteProperty(property);
 	} else if ((msg = message["message"]) != null) {
 		INDIGO.state = msg;
-		$('#SUCCESS').hide();
-		$('#FAILURE').hide();
-		$('#MESSAGE').show();
+		INDIGO.connected = false;
+		INDIGO.failed = false;
+		INDIGO.message = true;
 	}
 }
 
@@ -221,9 +224,9 @@ function processUpdateProperty(property) {
 			savedProperty.message = property.message;
 			if (property.message != null) {
 				INDIGO.state = property.message;
-				$('#SUCCESS').hide();
-				$('#FAILURE').hide();
-				$('#MESSAGE').show();
+				INDIGO.connected = false;
+				INDIGO.failed = false;
+				INDIGO.message = true;
 			}
 			for (var i in property.items) {
 				var item = property.items[i];
