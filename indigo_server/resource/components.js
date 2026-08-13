@@ -547,10 +547,10 @@ app.component('indigo-autofocus-graph', {
 			return 128;
 		},
 		plotLeft: function() {
-			return 18;
+			return 8;
 		},
 		plotRight: function() {
-			return this.graphWidth() - 46;
+			return this.graphWidth() - 8;
 		},
 		plotTop: function() {
 			return 20;
@@ -638,6 +638,328 @@ app.component('indigo-autofocus-graph', {
 				<template v-if="currentSample() != null">
 					<circle class="indigo-autofocus-current" :cx="sampleX(currentSample())" :cy="sampleY(currentSample())" r="4"></circle>
 				</template>
+			</svg>
+		</div>`
+});
+
+app.component('indigo-star-selection-overlay', {
+	props: {
+		selectionProperty: Object,
+		estimatorProperty: Object,
+		cameraSelected: Boolean
+	},
+	data: function() {
+		return {
+			imageBox: {
+				left: 0,
+				top: 0,
+				width: 0,
+				height: 0,
+				naturalWidth: 0,
+				naturalHeight: 0
+			}
+		};
+	},
+	mounted: function() {
+		this.imageElement = this.$el.parentElement == null ? null : this.$el.parentElement.querySelector("#image");
+		this.updateImageMetricsHandler = () => this.updateImageMetrics();
+		if (this.imageElement != null)
+			this.imageElement.addEventListener("load", this.updateImageMetricsHandler);
+		window.addEventListener("resize", this.updateImageMetricsHandler);
+		if (typeof ResizeObserver != "undefined" && this.imageElement != null) {
+			this.resizeObserver = new ResizeObserver(this.updateImageMetricsHandler);
+			this.resizeObserver.observe(this.imageElement);
+		}
+		this.updateImageMetrics();
+	},
+	beforeUnmount: function() {
+		if (this.imageElement != null && this.updateImageMetricsHandler != null)
+			this.imageElement.removeEventListener("load", this.updateImageMetricsHandler);
+		if (this.updateImageMetricsHandler != null)
+			window.removeEventListener("resize", this.updateImageMetricsHandler);
+		if (this.resizeObserver != null)
+			this.resizeObserver.disconnect();
+	},
+	methods: {
+		item: function(name) {
+			if (this.selectionProperty == null)
+				return null;
+			if (typeof this.selectionProperty.item == "function")
+				return this.selectionProperty.item(name);
+			for (var i in this.selectionProperty.items) {
+				var item = this.selectionProperty.items[i];
+				if (item.name == name)
+					return item;
+			}
+			return null;
+		},
+		itemValue: function(name) {
+			var item = this.item(name);
+			if (item == null)
+				return null;
+			return Number(item.value);
+		},
+		estimatorIs: function(name) {
+			if (this.estimatorProperty == null)
+				return false;
+			var item = this.estimatorProperty.item(name);
+			return item != null && item.value;
+		},
+		updateImageMetrics: function() {
+			if (this.imageElement == null || this.$el.parentElement == null)
+				return;
+			var imageRect = this.imageElement.getBoundingClientRect();
+			var parentRect = this.$el.parentElement.getBoundingClientRect();
+			var imageBox = {
+				left: imageRect.left - parentRect.left,
+				top: imageRect.top - parentRect.top,
+				width: imageRect.width,
+				height: imageRect.height,
+				naturalWidth: this.imageElement.naturalWidth,
+				naturalHeight: this.imageElement.naturalHeight
+			};
+			if (
+				this.imageBox.left != imageBox.left ||
+				this.imageBox.top != imageBox.top ||
+				this.imageBox.width != imageBox.width ||
+				this.imageBox.height != imageBox.height ||
+				this.imageBox.naturalWidth != imageBox.naturalWidth ||
+				this.imageBox.naturalHeight != imageBox.naturalHeight
+			) {
+				this.imageBox = imageBox;
+			}
+		},
+		visible: function() {
+			return this.cameraSelected && this.selectionProperty != null && this.imageBox.width > 0 && this.imageBox.height > 0 && this.imageBox.naturalWidth > 0 && this.imageBox.naturalHeight > 0 && this.markers().length > 0;
+		},
+		overlayStyle: function() {
+			return {
+				left: this.imageBox.left + "px",
+				top: this.imageBox.top + "px",
+				width: this.imageBox.width + "px",
+				height: this.imageBox.height + "px"
+			};
+		},
+		markers: function() {
+			var markers = [];
+			if (this.selectionProperty == null)
+				return markers;
+			var count = this.itemValue("COUNT");
+			var radius = this.itemValue("RADIUS");
+			if (this.estimatorIs("BAHTINOV"))
+				return markers;
+			if (!this.estimatorIs("U_CURVE"))
+				count = 1;
+			if (!isFinite(count) || count < 1)
+				count = 1;
+			count = Math.min(Math.floor(count), 8);
+			if (!isFinite(radius) || radius <= 0)
+				radius = 1;
+			for (var i = 0; i < count; i++) {
+				var suffix = i == 0 ? "" : "_" + (i + 1);
+				var x = this.itemValue("X" + suffix);
+				var y = this.itemValue("Y" + suffix);
+				if (isFinite(x) && isFinite(y) && x > 0 && y > 0) {
+					markers.push({
+						x: x,
+						y: y,
+						radius: radius
+					});
+				}
+			}
+			return markers;
+		},
+		markerStyle: function(marker) {
+			var scaleX = this.imageBox.width / this.imageBox.naturalWidth;
+			var scaleY = this.imageBox.height / this.imageBox.naturalHeight;
+			var radius = marker.radius * Math.min(scaleX, scaleY);
+			var size = 2 * radius;
+			return {
+				left: marker.x * scaleX + "px",
+				top: marker.y * scaleY + "px",
+				width: size + "px",
+				height: size + "px"
+			};
+		}
+	},
+	template: `
+		<div class="indigo-star-selection-overlay" :style="overlayStyle()">
+			<template v-if="visible()">
+				<span v-for="(marker, index) in markers()" :key="'star-selection-' + index" class="indigo-star-selection-marker" :style="markerStyle(marker)"></span>
+			</template>
+		</div>`
+});
+
+app.component('indigo-bahtinov-spikes-overlay', {
+	props: {
+		spikesProperty: Object,
+		estimatorProperty: Object,
+		cameraSelected: Boolean
+	},
+	data: function() {
+		return {
+			imageBox: {
+				left: 0,
+				top: 0,
+				width: 0,
+				height: 0,
+				naturalWidth: 0,
+				naturalHeight: 0
+			}
+		};
+	},
+	mounted: function() {
+		this.imageElement = this.$el.parentElement == null ? null : this.$el.parentElement.querySelector("#image");
+		this.updateImageMetricsHandler = () => this.updateImageMetrics();
+		if (this.imageElement != null)
+			this.imageElement.addEventListener("load", this.updateImageMetricsHandler);
+		window.addEventListener("resize", this.updateImageMetricsHandler);
+		if (typeof ResizeObserver != "undefined" && this.imageElement != null) {
+			this.resizeObserver = new ResizeObserver(this.updateImageMetricsHandler);
+			this.resizeObserver.observe(this.imageElement);
+		}
+		this.updateImageMetrics();
+	},
+	beforeUnmount: function() {
+		if (this.imageElement != null && this.updateImageMetricsHandler != null)
+			this.imageElement.removeEventListener("load", this.updateImageMetricsHandler);
+		if (this.updateImageMetricsHandler != null)
+			window.removeEventListener("resize", this.updateImageMetricsHandler);
+		if (this.resizeObserver != null)
+			this.resizeObserver.disconnect();
+	},
+	methods: {
+		item: function(property, name) {
+			if (property == null)
+				return null;
+			if (typeof property.item == "function")
+				return property.item(name);
+			for (var i in property.items) {
+				var item = property.items[i];
+				if (item.name == name)
+					return item;
+			}
+			return null;
+		},
+		itemValue: function(property, name) {
+			var item = this.item(property, name);
+			if (item == null)
+				return null;
+			return Number(item.value);
+		},
+		estimatorIs: function(name) {
+			var item = this.item(this.estimatorProperty, name);
+			return item != null && item.value;
+		},
+		updateImageMetrics: function() {
+			if (this.imageElement == null || this.$el.parentElement == null)
+				return;
+			var imageRect = this.imageElement.getBoundingClientRect();
+			var parentRect = this.$el.parentElement.getBoundingClientRect();
+			var imageBox = {
+				left: imageRect.left - parentRect.left,
+				top: imageRect.top - parentRect.top,
+				width: imageRect.width,
+				height: imageRect.height,
+				naturalWidth: this.imageElement.naturalWidth,
+				naturalHeight: this.imageElement.naturalHeight
+			};
+			if (
+				this.imageBox.left != imageBox.left ||
+				this.imageBox.top != imageBox.top ||
+				this.imageBox.width != imageBox.width ||
+				this.imageBox.height != imageBox.height ||
+				this.imageBox.naturalWidth != imageBox.naturalWidth ||
+				this.imageBox.naturalHeight != imageBox.naturalHeight
+			) {
+				this.imageBox = imageBox;
+			}
+		},
+		overlayStyle: function() {
+			return {
+				left: this.imageBox.left + "px",
+				top: this.imageBox.top + "px",
+				width: this.imageBox.width + "px",
+				height: this.imageBox.height + "px"
+			};
+		},
+		viewBox: function() {
+			return "0 0 " + this.imageBox.naturalWidth + " " + this.imageBox.naturalHeight;
+		},
+		visible: function() {
+			return this.cameraSelected && this.estimatorIs("BAHTINOV") && this.spikesProperty != null && this.imageBox.width > 0 && this.imageBox.height > 0 && this.imageBox.naturalWidth > 0 && this.imageBox.naturalHeight > 0 && this.spikes().length > 0;
+		},
+		addPoint: function(points, x, y) {
+			var width = this.imageBox.naturalWidth;
+			var height = this.imageBox.naturalHeight;
+			var epsilon = 0.001;
+			if (x < -epsilon || x > width + epsilon || y < -epsilon || y > height + epsilon)
+				return;
+			x = Math.max(0, Math.min(width, x));
+			y = Math.max(0, Math.min(height, y));
+			for (var i in points) {
+				if (Math.abs(points[i].x - x) < epsilon && Math.abs(points[i].y - y) < epsilon)
+					return;
+			}
+			points.push({
+				x: x,
+				y: y
+			});
+		},
+		lineSegment: function(rho, theta) {
+			var width = this.imageBox.naturalWidth;
+			var height = this.imageBox.naturalHeight;
+			var cos = Math.cos(theta);
+			var sin = Math.sin(theta);
+			var epsilon = 0.000001;
+			var points = [];
+			if (Math.abs(sin) > epsilon) {
+				this.addPoint(points, 0, rho / sin);
+				this.addPoint(points, width, (rho - width * cos) / sin);
+			}
+			if (Math.abs(cos) > epsilon) {
+				this.addPoint(points, rho / cos, 0);
+				this.addPoint(points, (rho - height * sin) / cos, height);
+			}
+			if (points.length < 2)
+				return null;
+			var best = null;
+			for (var i = 0; i < points.length - 1; i++) {
+				for (var j = i + 1; j < points.length; j++) {
+					var dx = points[i].x - points[j].x;
+					var dy = points[i].y - points[j].y;
+					var distance = dx * dx + dy * dy;
+					if (best == null || distance > best.distance) {
+						best = {
+							x1: points[i].x,
+							y1: points[i].y,
+							x2: points[j].x,
+							y2: points[j].y,
+							distance: distance
+						};
+					}
+				}
+			}
+			return best;
+		},
+		spikes: function() {
+			var spikes = [];
+			for (var i = 1; i <= 3; i++) {
+				var rho = this.itemValue(this.spikesProperty, "RHO_" + i);
+				var theta = this.itemValue(this.spikesProperty, "THETA_" + i);
+				if (!isFinite(rho) || !isFinite(theta) || (rho == 0 && theta == 0))
+					continue;
+				var segment = this.lineSegment(rho, theta);
+				if (segment != null)
+					spikes.push(segment);
+			}
+			return spikes;
+		}
+	},
+	template: `
+		<div class="indigo-bahtinov-spikes-overlay" :style="overlayStyle()">
+			<svg v-if="visible()" :viewBox="viewBox()" preserveAspectRatio="none">
+				<line v-for="(spike, index) in spikes()" :key="'bahtinov-spike-' + index" class="indigo-bahtinov-spike" :x1="spike.x1" :y1="spike.y1" :x2="spike.x2" :y2="spike.y2"></line>
 			</svg>
 		</div>`
 });

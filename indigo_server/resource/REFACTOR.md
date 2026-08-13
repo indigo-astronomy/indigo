@@ -578,7 +578,7 @@ Source references: `indigo_agent_imager.c` updates `AGENT_IMAGER_STATS.FOCUS_POS
 
 ---
 
-### Step 24 — Mark selected stars on the image
+### Step 24 — Mark selected stars on the image [DONE]
 
 **Files:** `imager.html`, `components.js`, `indigo.css`
 
@@ -586,6 +586,8 @@ Overlay markers for the selected autofocus stars on the preview image.
 
 - Read the selected star count from `AGENT_IMAGER_SELECTION.COUNT`.
 - Read star coordinates from the repeated `AGENT_IMAGER_SELECTION.X` / `Y` items.
+- Show multiple selected stars only for `U_CURVE`; other focus estimators should mark only the first selected star.
+- For `BAHTINOV`, ignore selected star markers and draw the detected mask spikes from `AGENT_IMAGER_SPIKES.RHO_1` / `THETA_1`, `RHO_2` / `THETA_2`, and `RHO_3` / `THETA_3`.
 - Use `AGENT_IMAGER_SELECTION.RADIUS` for marker size.
 - Hide markers for empty coordinates and when no camera is selected.
 - Scale marker positions to the displayed image size so they stay aligned after image load, resize, or responsive layout changes.
