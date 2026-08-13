@@ -198,7 +198,7 @@ Add a `data()` property `localValue` bound with `v-model` on the `<input>`. The 
 
 ---
 
-### Step 7 — Refactor `indigo-ctrl` accordion to remove jQuery
+### Step 7 — Refactor `indigo-ctrl` accordion to remove jQuery [DONE]
 
 **Files:** `components.js`
 

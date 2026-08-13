@@ -501,18 +501,22 @@ app.component('indigo-ctrl', {
 			return window.location.protocol + '//' + window.location.host + value;
 		},
 		openAll: function(id) {
-			var header = $("#H_" + id);
-			var body = $("#B_" + id);
-			header.removeClass("collapsed");
-			body.addClass("show");
-			$(body).find("button.collapsed").removeClass("collapsed");
-			$(body).find("div.collapse").addClass("show");
+			var body = document.getElementById("B_" + id);
+			if (body == null)
+				return;
+			bootstrap.Collapse.getOrCreateInstance(body, { toggle: false }).show();
+			body.querySelectorAll(".collapse").forEach(function(el) {
+				bootstrap.Collapse.getOrCreateInstance(el, { toggle: false }).show();
+			});
 		},
 		closeAll: function(id) {
-			var body = $("#B_" + id);
-			body.addClass("show");
-			$(body).find("button.collapsed").addClass("collapsed");
-			$(body).find("div.collapse").removeClass("show");
+			var body = document.getElementById("B_" + id);
+			if (body == null)
+				return;
+			bootstrap.Collapse.getOrCreateInstance(body, { toggle: false }).show();
+			body.querySelectorAll(".collapse").forEach(function(el) {
+				bootstrap.Collapse.getOrCreateInstance(el, { toggle: false }).hide();
+			});
 		},
 	},
 	template: `
