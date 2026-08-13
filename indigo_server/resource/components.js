@@ -413,6 +413,235 @@ app.component('indigo-feature-number-dropdown', {
 		</div>`
 });
 
+app.component('indigo-autofocus-graph', {
+	props: {
+		startProperty: Object,
+		statsProperty: Object,
+		estimatorProperty: Object,
+		cameraSelected: Boolean,
+		focuserSelected: Boolean
+	},
+	data: function() {
+		return {
+			focusing: false,
+			baselineSampleKey: null,
+			lastSampleKey: null,
+			currentSampleValue: null,
+			samples: []
+		};
+	},
+	watch: {
+		startProperty: {
+			handler: function() {
+				this.onStartProcessUpdate();
+			},
+			deep: true,
+			immediate: true
+		},
+		statsProperty: {
+			handler: function() {
+				this.onStatsUpdate();
+			},
+			deep: true
+		},
+		estimatorProperty: {
+			handler: function() {
+				this.reset();
+			},
+			deep: true
+		}
+	},
+	methods: {
+		itemValue: function(property, name) {
+			if (property == null)
+				return null;
+			var item = property.item(name);
+			if (item == null)
+				return null;
+			return Number(item.value);
+		},
+		estimatorIs: function(name) {
+			if (this.estimatorProperty == null)
+				return false;
+			var item = this.estimatorProperty.item(name);
+			return item != null && item.value;
+		},
+		metricName: function() {
+			if (this.estimatorIs("RMS_CONTRAST"))
+				return "RMS_CONTRAST";
+			if (this.estimatorIs("BAHTINOV"))
+				return "BAHTINOV_ERROR";
+			return "HFD";
+		},
+		focusProcessActive: function() {
+			if (this.startProperty == null || this.startProperty.state != "Busy")
+				return false;
+			var item = this.startProperty.item("FOCUSING");
+			return item != null && item.value;
+		},
+		onStartProcessUpdate: function() {
+			var active = this.focusProcessActive();
+			if (active && !this.focusing)
+				this.reset();
+			this.focusing = active;
+		},
+		onStatsUpdate: function() {
+			this.onStartProcessUpdate();
+			if (!this.focusing || !this.cameraSelected || !this.focuserSelected || this.statsProperty == null)
+				return;
+			var metricName = this.metricName();
+			var position = this.itemValue(this.statsProperty, "FOCUS_POSITION");
+			var metric = this.itemValue(this.statsProperty, metricName);
+			if (!isFinite(position) || !isFinite(metric))
+				return;
+			if (metricName == "BAHTINOV_ERROR") {
+				if (metric < 0)
+					return;
+			} else if (metric <= 0) {
+				return;
+			}
+			var key = metricName + ":" + position + ":" + metric;
+			if (key == this.lastSampleKey || key == this.baselineSampleKey)
+				return;
+			this.lastSampleKey = key;
+			var sample = {
+				position: position,
+				metric: metric
+			};
+			this.currentSampleValue = sample;
+			for (var i in this.samples) {
+				if (this.samples[i].position == position) {
+					this.samples.splice(i, 1, sample);
+					return;
+				}
+			}
+			this.samples.push(sample);
+			if (this.samples.length > 200)
+				this.samples.shift();
+		},
+		reset: function() {
+			this.samples = [];
+			this.lastSampleKey = null;
+			this.baselineSampleKey = null;
+			this.currentSampleValue = null;
+			if (this.statsProperty != null) {
+				var metricName = this.metricName();
+				var position = this.itemValue(this.statsProperty, "FOCUS_POSITION");
+				var metric = this.itemValue(this.statsProperty, metricName);
+				if (isFinite(position) && isFinite(metric))
+					this.baselineSampleKey = metricName + ":" + position + ":" + metric;
+			}
+		},
+		visible: function() {
+			return this.cameraSelected && this.focuserSelected && this.samples.length > 0;
+		},
+		sortedSamples: function() {
+			return this.samples.slice().sort(function(a, b) {
+				return a.position - b.position;
+			});
+		},
+		graphWidth: function() {
+			return 256;
+		},
+		graphHeight: function() {
+			return 128;
+		},
+		plotLeft: function() {
+			return 18;
+		},
+		plotRight: function() {
+			return this.graphWidth() - 46;
+		},
+		plotTop: function() {
+			return 20;
+		},
+		plotBottom: function() {
+			return this.graphHeight() - 20;
+		},
+		bounds: function() {
+			var samples = this.sortedSamples();
+			var xMin = samples[0].position;
+			var xMax = samples[0].position;
+			var yMin = samples[0].metric;
+			var yMax = samples[0].metric;
+			for (var i in samples) {
+				var sample = samples[i];
+				xMin = Math.min(xMin, sample.position);
+				xMax = Math.max(xMax, sample.position);
+				yMin = Math.min(yMin, sample.metric);
+				yMax = Math.max(yMax, sample.metric);
+			}
+			if (xMin == xMax) {
+				xMin -= 1;
+				xMax += 1;
+			}
+			if (yMin == yMax) {
+				var padding = Math.max(Math.abs(yMin) * 0.1, 1);
+				yMin -= padding;
+				yMax += padding;
+			}
+			return {
+				xMin: xMin,
+				xMax: xMax,
+				yMin: yMin,
+				yMax: yMax
+			};
+		},
+		sampleX: function(sample) {
+			var bounds = this.bounds();
+			return this.plotLeft() + (sample.position - bounds.xMin) * (this.plotRight() - this.plotLeft()) / (bounds.xMax - bounds.xMin);
+		},
+		sampleY: function(sample) {
+			var bounds = this.bounds();
+			return this.plotBottom() - (sample.metric - bounds.yMin) * (this.plotBottom() - this.plotTop()) / (bounds.yMax - bounds.yMin);
+		},
+		linePath: function() {
+			var path = "";
+			var samples = this.sortedSamples();
+			for (var i in samples) {
+				var sample = samples[i];
+				path += (path == "" ? "M " : " L ") + this.sampleX(sample) + " " + this.sampleY(sample);
+			}
+			return path;
+		},
+		currentSample: function() {
+			return this.currentSampleValue;
+		},
+		bestSample: function() {
+			if (this.samples.length == 0)
+				return null;
+			var best = this.samples[0];
+			for (var i in this.samples) {
+				var sample = this.samples[i];
+				if (this.metricName() == "RMS_CONTRAST") {
+					if (sample.metric > best.metric)
+						best = sample;
+				} else if (sample.metric < best.metric) {
+					best = sample;
+				}
+			}
+			return best;
+		},
+		viewBox: function() {
+			return "0 0 " + this.graphWidth() + " " + this.graphHeight();
+		}
+	},
+	template: `
+		<div v-if="visible()" class="indigo-autofocus-graph">
+			<svg :viewBox="viewBox()" preserveAspectRatio="none">
+				<line class="indigo-autofocus-axis" :x1="plotLeft()" :y1="plotBottom()" :x2="plotRight()" :y2="plotBottom()"></line>
+				<line v-for="(sample, index) in sortedSamples()" :key="'sample-' + index" class="indigo-autofocus-sample" :x1="sampleX(sample)" :y1="plotBottom()" :x2="sampleX(sample)" :y2="sampleY(sample)"></line>
+				<path class="indigo-autofocus-line" :d="linePath()"></path>
+				<template v-if="bestSample() != null">
+					<circle class="indigo-autofocus-best" :cx="sampleX(bestSample())" :cy="sampleY(bestSample())" r="4"></circle>
+				</template>
+				<template v-if="currentSample() != null">
+					<circle class="indigo-autofocus-current" :cx="sampleX(currentSample())" :cy="sampleY(currentSample())" r="4"></circle>
+				</template>
+			</svg>
+		</div>`
+});
+
 app.component('indigo-edit-number-60', {
 	props: {
 		property: Object,

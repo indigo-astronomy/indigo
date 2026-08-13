@@ -170,9 +170,10 @@
 						<div class="col-md-8">
 							<div id="image_container" class="card p-1 m-1 bg-light" style="min-height: 10rem">
 								<div class="card-body">
-									<div class="card p-0 border-0" style="display: none">
+									<div class="card p-0 border-0 position-relative" style="display: none">
 										<img id="image" class="img-fluid rounded"/>
-										<img id="histogram" width="128" height="64" style="position: absolute; top:10px;left:10px;display:none"/>
+										<img id="histogram" class="indigo-preview-histogram" width="256" height="128" style="display:none"/>
+										<indigo-autofocus-graph :start-property="findProperty('Imager Agent', 'AGENT_START_PROCESS')" :stats-property="findProperty('Imager Agent', 'AGENT_IMAGER_STATS')" :estimator-property="findProperty('Imager Agent', 'AGENT_IMAGER_FOCUS_ESTIMATOR')" :camera-selected="window.imagerCameraSelected()" :focuser-selected="window.imagerFocuserSelected()"></indigo-autofocus-graph>
 									</div>
 								</div>
 							</div>
@@ -424,6 +425,18 @@
 
 				return count % 2 == 1;
 			}
+
+			function imagerPreviewURL(value) {
+				if (value.startsWith("http://") || value.startsWith("https://"))
+					return value;
+				return window.location.protocol + "//" + INDIGO.host + value;
+			}
+
+			function imagerShowPreviewElement(selector, value) {
+				if (value == null)
+					return;
+				$(selector).attr("src", imagerPreviewURL(value) + '?' + new Date().getTime()).show().parent().show();
+			}
 		
 		function onDefineProperty(property) {
 			onUpdateProperty(property);
@@ -433,16 +446,6 @@
 				} else if (property.name == "FILTER_RELATED_AGENT_LIST" && property.state == "Ok") {
 					changeProperty("Imager Agent", "FILTER_RELATED_AGENT_LIST", { "Guider Agent" : true });
 				}
-			} else if (property.name == "CCD_PREVIEW_IMAGE") {
-				if (property.state == "Ok") {
-					var value = property.item("IMAGE").value;
-					if (value != null) {
-						if (value.startsWith("http://") || value.startsWith("https://"))
-							$("#image").attr("src", value + '?' + new Date().getTime()).parent().show();
-						else
-							$("#image").attr("src", window.location.protocol + "//" + INDIGO.host + value + '?' + new Date().getTime()).parent().show();
-					}
-				}
 			}
 			guiSetup();
 		}
@@ -450,31 +453,16 @@
 		function onUpdateProperty(property) {
 			if (property.name == "FOCUSER_STEPS" || property.name == "FOCUSER_POSITION")
 				imagerUpdateFocuserMotionButton(property);
-			if (property.device == "Imager Agent") {
+			if (property.name == "CCD_PREVIEW_IMAGE") {
+				if (property.state == "Ok")
+					imagerShowPreviewElement("#image", property.item("IMAGE").value);
+			} else if (property.name == "CCD_PREVIEW_HISTOGRAM") {
+				if (property.state == "Ok")
+					imagerShowPreviewElement("#histogram", property.item("IMAGE").value);
+			} else if (property.device == "Imager Agent") {
 				if (property.name == "AGENT_START_PROCESS") {
 					if (property.state != "Busy" && property.state != "Alert")
 						imagerStartProcessItem = null;
-				} else if (property.name == "CCD_PREVIEW_IMAGE") {
-					if (property.state == "Ok") {
-						var value = property.item("IMAGE").value;
-						if (value != null) {
-							if (value.startsWith("http://") || value.startsWith("https://"))
-								$("#image").attr("src", value + '?' + new Date().getTime()).parent().show();
-							else
-								$("#image").attr("src", window.location.protocol + "//" + INDIGO.host + value + '?' + new Date().getTime()).parent().show();
-						}
-					}
-				} else if (property.name == "CCD_PREVIEW_HISTOGRAM") {
-					if (property.state == "Ok") {
-						var value = property.item("IMAGE").value;
-						if (value != null) {
-							$("#histogram").show();
-							if (value.startsWith("http://") || value.startsWith("https://"))
-								$("#histogram").attr("src", value + '?' + new Date().getTime()).parent().show();
-							else
-								$("#histogram").attr("src", window.location.protocol + "//" + INDIGO.host + value + '?' + new Date().getTime()).show();
-						}
-					}
 				} else if (property.name == "AGENT_IMAGER_DOWNLOAD_IMAGE") {
 					if (property.state == "Ok" && downloadFileName != "") {
 						var xhr = new XMLHttpRequest();

@@ -249,6 +249,73 @@ input {
 	margin-right: 1rem;
 }
 
+.indigo-preview-histogram {
+	position: absolute !important;
+	top: 10px !important;
+	left: 10px !important;
+	z-index: 4 !important;
+	width: 256px;
+	height: 128px;
+	pointer-events: none;
+}
+
+.indigo-autofocus-graph {
+	position: absolute;
+	top: 10px;
+	right: 10px;
+	z-index: 2;
+	width: 256px;
+	height: 128px;
+	padding: 0;
+	background-color: rgba(33, 37, 41, 0.72);
+	pointer-events: none;
+}
+
+[data-theme="dark"] .indigo-autofocus-graph {
+	background-color: rgba(33, 37, 41, 0.72);
+}
+
+.indigo-autofocus-graph svg {
+	display: block;
+	width: 256px;
+	height: 128px;
+}
+
+.indigo-autofocus-axis {
+	stroke: rgba(248, 249, 250, 0.95);
+	stroke-width: 1;
+}
+
+.indigo-autofocus-sample {
+	stroke: #0096ff;
+	stroke-width: 1;
+	opacity: 0.9;
+}
+
+.indigo-autofocus-line {
+	fill: none;
+	stroke: #0096ff;
+	stroke-width: 1.5;
+}
+
+.indigo-autofocus-current {
+	fill: #ff4d4d;
+	stroke: #ff4d4d;
+	stroke-width: 2;
+}
+
+.indigo-autofocus-best {
+	fill: #5cb85c;
+	stroke: #5cb85c;
+	stroke-width: 2;
+}
+
+@media (max-width: 799.98px) {
+	.indigo-autofocus-graph {
+		top: 148px;
+	}
+}
+
 .btn-svg {
 	width: 3.5rem;
 	height: 2.5rem;

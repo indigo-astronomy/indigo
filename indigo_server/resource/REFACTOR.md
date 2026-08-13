@@ -556,19 +556,22 @@ Source references: `indigo_agent_imager.c` initializes `AGENT_IMAGER_BATCH.FRAME
 
 ---
 
-### Step 23 — Add autofocus graph
+### Step 23 — Add autofocus graph [DONE]
 
 **Files:** `imager.html`, `components.js`, `indigo.css`
 
-Add an autofocus graph to the imager focuser area showing focus quality over focuser position during autofocus. The graph should be Vue-owned and should not depend on jQuery DOM updates.
+Add an autofocus graph over the preview image showing focus quality over focuser position during autofocus. The graph should be Vue-owned and should not depend on jQuery DOM updates.
 
 - Start/reset the graph when `AGENT_START_PROCESS.FOCUSING` starts.
 - Append samples from `AGENT_IMAGER_STATS.FOCUS_POSITION`.
+- Replace the previous sample when a new sample arrives for the same focuser position.
 - Select the Y-axis metric from the active focus estimator:
   - `U_CURVE` / `HFD_PEAK`: `AGENT_IMAGER_STATS.HFD`
   - `RMS_CONTRAST`: `AGENT_IMAGER_STATS.RMS_CONTRAST`
   - `BAHTINOV`: `AGENT_IMAGER_STATS.BAHTINOV_ERROR`
 - Keep the graph hidden unless both camera and focuser are selected.
+- Place the graph in the upper-right corner of the preview image as a `256x128` overlay and keep the histogram at its original `256x128` size in the upper-left corner.
+- Draw vertical sample lines, the focus-quality curve, a red marker for the current focuser position, and a green marker for the best sampled focuser position.
 - Preserve existing autofocus controls and button state behavior.
 
 Source references: `indigo_agent_imager.c` updates `AGENT_IMAGER_STATS.FOCUS_POSITION`, `HFD`, `RMS_CONTRAST`, and `BAHTINOV_ERROR` while processing autofocus frames.
