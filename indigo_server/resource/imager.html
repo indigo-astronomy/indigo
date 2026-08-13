@@ -79,6 +79,11 @@
 								<div class="card p-1 m-1 mt-2 bg-light">
 									<div class="card-body d-flex flex-wrap">
 										<indigo-select-item :property="findProperty('Imager Agent', 'FILTER_FOCUSER_LIST')"></indigo-select-item>
+										<template v-if="findProperty('Imager Agent', 'AGENT_START_PROCESS')">
+											<indigo-select-item :property="findProperty('Imager Agent', 'AGENT_IMAGER_FOCUS_ESTIMATOR')"></indigo-select-item>
+											<indigo-edit-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_SELECTION')" :name="'COUNT'" :icon="'glyphicons-star'" :tooltip="'Maximum number of stars'"></indigo-edit-number>
+											<indigo-edit-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_SELECTION')" :name="'RADIUS'" :icon="'glyphicons-target'" :tooltip="'Detection radius'"></indigo-edit-number>
+										</template>
 										<template v-if="findProperty('Imager Agent', 'FOCUSER_POSITION') || findProperty('Imager Agent', 'FOCUSER_STEPS') || findProperty('Imager Agent', 'FOCUSER_MODE')">
 											<div v-if="findProperty('Imager Agent', 'FOCUSER_POSITION') || findProperty('Imager Agent', 'FOCUSER_STEPS')" class="input-group p-1" :class="findProperty('Imager Agent', 'FOCUSER_SPEED') ? 'w-50' : 'w-100'" data-bs-toggle="tooltip" title="Position or Step Count">
 												<span class="input-group-text glyphicons glyphicons-ruler ok-state"></span>

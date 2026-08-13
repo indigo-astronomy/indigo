@@ -447,7 +447,7 @@ Source references: `indigo_drivers/agent_imager/indigo_agent_imager.c` defines `
 
 ---
 
-### Step 19 — Add imager focus estimator and star selection controls
+### Step 19 — Add imager focus estimator and star selection controls [DONE]
 
 **Files:** `imager.html`, `components.js`
 
