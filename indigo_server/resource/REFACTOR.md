@@ -182,7 +182,7 @@ In the `.html` files replace `id="SUCCESS"` / `style="display:none"` with `v-sho
 
 ---
 
-### Step 6 — Refactor `indigo-stepper` to remove jQuery
+### Step 6 — Refactor `indigo-stepper` to remove jQuery [DONE]
 
 **Files:** `components.js`
 

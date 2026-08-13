@@ -347,6 +347,23 @@ app.component('indigo-stepper', {
 		cls: String,
 		tooltip: String
 	},
+	data: function() {
+		return {
+			localValue: null
+		};
+	},
+	watch: {
+		property: {
+			handler: function() {
+				this.localValue = this.value();
+			},
+			deep: true,
+			immediate: true
+		},
+		name: function() {
+			this.localValue = this.value();
+		}
+	},
 	methods: {
 		left: function(value) {
 			var values = {};
@@ -366,12 +383,6 @@ app.component('indigo-stepper', {
 			values[this.name] = value;
 			changeProperty(this.property.device, this.property.name, values);
 		},
-		leftClick: function() {
-			this.left(this.$refs.stepInput.value);
-		},
-		rightClick: function() {
-			this.right(this.$refs.stepInput.value);
-		},
 		state: function() {
 			return this.property == null ? null : this.property.state.toLowerCase() + "-state";
 		},
@@ -386,9 +397,9 @@ app.component('indigo-stepper', {
 	},
 	template: `
 		<div v-if="property != null" class="input-group p-1" :class="(cls != null ? cls : 'w-50')" data-bs-toggle="tooltip" :title="tooltip">
-			<button class="btn glyphicons glyphicons-arrow-left" :class="state()" @click="leftClick" type="button"></button>
-			<input ref="stepInput" type="text" class="form-control input-right" :value="value()">
-			<button class="btn glyphicons glyphicons-arrow-right" :class="state()" @click="rightClick" type="button"></button>
+			<button class="btn glyphicons glyphicons-arrow-left" :class="state()" @click="left(localValue)" type="button"></button>
+			<input type="text" class="form-control input-right" v-model="localValue">
+			<button class="btn glyphicons glyphicons-arrow-right" :class="state()" @click="right(localValue)" type="button"></button>
 		</div>`
 });
 
