@@ -751,72 +751,53 @@ app.component('indigo-wifi-setup', {
 	},
 	data: function() {
 		return {
-			mode: ""
+			mode: "",
+			ssid: "",
+			password: ""
 		};
 	},
+	watch: {
+		ap_property: {
+			handler: function() {
+				this.reset();
+			},
+			deep: true,
+			immediate: true
+		},
+		infra_property: {
+			handler: function() {
+				this.reset();
+			},
+			deep: true
+		}
+	},
 	methods: {
-		onChange: function(e) {
-			this.mode = e.target.value;
-			if (this.mode == "AP") {
-				for (var i in this.ap_property.items) {
-					var item = this.ap_property.items[i];
-					if (item.name == "SSID") {
-						$("#SSID").val(item.value);
-					} else if (item.name == "PASSWORD") {
-						$("#PASSWORD").val(item.value);
-					}
-				}
-				$("#PASSWORD").removeAttr("placeholder");
-			} else if (this.mode == "INFRA") {
-				for (var i in this.infra_property.items) {
-					var item = this.infra_property.items[i];
-					if (item.name == "SSID") {
-						$("#SSID").val(item.value);
-					}
-				}
-				$("#PASSWORD").val("");
-				$("#PASSWORD").attr("placeholder", "<value is hidden>");
-			}
-		},
-		isAP: function() {
-			for (var i in this.ap_property.items) {
-				var item = this.ap_property.items[i];
-				if (item.name == "SSID" && item.value) {
-					this.mode = "AP";	
-					return true;
-				}
-			}
-			return false;
-		},
-		isInfra: function() {
-			for (var i in this.infra_property.items) {
-				var item = this.infra_property.items[i];
-				if (item.name == "SSID" && item.value) {
-					this.mode = "INFRA";	
-					return true;
-				}
-			}
-			return false;
-		},
-		value: function(name) {
-			for (var i in this.ap_property.items) {
-				var item = this.ap_property.items[i];
-				if (item.name == name && item.value) {
+		propertyValue: function(property, name) {
+			if (property == null)
+				return "";
+			for (var i in property.items) {
+				var item = property.items[i];
+				if (item.name == name && item.value)
 					return item.value;
-				}
-			}
-			for (var i in this.infra_property.items) {
-				var item = this.infra_property.items[i];
-				if (item.name == name && item.value) {
-					return item.value;
-				}
 			}
 			return "";
 		},
+		loadModeValues: function() {
+			if (this.mode == "AP") {
+				this.ssid = this.propertyValue(this.ap_property, "SSID");
+				this.password = this.propertyValue(this.ap_property, "PASSWORD");
+			} else if (this.mode == "INFRA") {
+				this.ssid = this.propertyValue(this.infra_property, "SSID");
+				this.password = "";
+			}
+		},
+		onChange: function() {
+			this.loadModeValues();
+		},
 		set: function() {
 			var values = {};
-			values["SSID"] = $("#SSID").val();
-			values["PASSWORD"] = $("#PASSWORD").val();
+			values["SSID"] = this.ssid;
+			values["PASSWORD"] = this.password;
 			if (this.mode == "AP") {
 				changeProperty(this.ap_property.device, this.ap_property.name, values);
 			} else if (this.mode == "INFRA") {
@@ -824,49 +805,31 @@ app.component('indigo-wifi-setup', {
 			}
 		},
 		reset: function() {
-			for (var i in this.ap_property.items) {
-				var item = this.ap_property.items[i];
-				if (item.name == "SSID") {
-					if (item.value) {
-						$("#MODE").val("AP")
-						$("#PASSWORD").removeAttr("placeholder");
-						$("#SSID").val(item.value);
-					}
-				} else if (item.name == "PASSWORD") {
-					if (item.value) {
-						$("#PASSWORD").val(item.value);
-					}
-				}
+			if (this.propertyValue(this.infra_property, "SSID") != "") {
+				this.mode = "INFRA";
+			} else if (this.propertyValue(this.ap_property, "SSID") != "") {
+				this.mode = "AP";
+			} else if (this.mode == "") {
+				this.mode = "AP";
 			}
-			for (var i in this.infra_property.items) {
-				var item = this.infra_property.items[i];
-				if (item.name == "SSID") {
-					if (item.value) {
-						$("#MODE").val("INFRA")
-						$("#PASSWORD").val("");
-						$("#PASSWORD").attr("placeholder", "<value is hidden>");
-						$("#SSID").val(item.value);
-					}
-				}
-			}
+			this.loadModeValues();
 		}
 	},	
 	template: `
 		<div class="w-100 d-flex flex-wrap">
 			<div class="w-100 p-1">
-				<select id="MODE" class="form-select ok-state" style="cursor: pointer" @change="onChange">
-					<option :selected="isAP()" value="AP">Configure access point</option>
-					<option :selected="isInfra()" value="INFRA">Join existing network</option>
+				<select id="MODE" class="form-select ok-state" style="cursor: pointer" v-model="mode" @change="onChange">
+					<option value="AP">Configure access point</option>
+					<option value="INFRA">Join existing network</option>
 				</select>
 			</div>
 			<div class="input-group p-1 w-100">
 				<span class="input-group-text ok-state" style="width: 10em;">SSID</span>
-				<input id="SSID" type="text" class="form-control" :value="value('SSID')">
+				<input id="SSID" type="text" class="form-control" v-model="ssid">
 			</div>
 			<div class="input-group p-1 w-100">
 				<span class="input-group-text ok-state" style="width: 10em;">Password</span>
-				<input id="PASSWORD" v-if="isInfra()" type="text" class="form-control" value="indigosky" :value="value('PASSWORD')" placeholder="<value is hidden>">
-				<input id="PASSWORD" v-else type="text" class="form-control" :value="value('PASSWORD')">
+				<input id="PASSWORD" type="text" class="form-control" v-model="password" :placeholder="mode == 'INFRA' ? '<value is hidden>' : ''">
 			</div>
 			<div class="d-flex w-100 mt-1 p-1">
 				<button type="submit" class="btn btn-sm btn-primary ms-auto me-2" @click.prevent="set()">Submit</button>

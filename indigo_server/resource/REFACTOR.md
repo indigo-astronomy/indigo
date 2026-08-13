@@ -215,7 +215,7 @@ The outer device accordion button uses `data-bs-toggle="collapse"` declaratively
 
 ---
 
-### Step 8 — Refactor `indigo-wifi-setup` to remove jQuery
+### Step 8 — Refactor `indigo-wifi-setup` to remove jQuery [DONE]
 
 **Files:** `components.js`
 
