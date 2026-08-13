@@ -910,36 +910,21 @@ function guiSetup() {
 	});
 	localStorage.name = "indigo";
 	if (localStorage.getItem("dark_mode")) {
+		document.documentElement.setAttribute("data-theme", "dark");
 		INDIGO.dark = true;
-		$('body').removeClass("bg-secondary").addClass("bg-dark");
-		$('input').removeClass("bg-light").addClass("bg-dark");
-		$('input').removeClass("text-dark").addClass("text-light");
-		$('textarea').removeClass("bg-light").addClass("bg-dark");
-		$('textarea').removeClass("text-dark").addClass("text-light");
-		$('div.bg-light').removeClass("bg-light").addClass("bg-secondary");
-		$('canvas.bg-light').removeClass("bg-light").addClass("bg-secondary");
-		if (typeof config !== 'undefined') {
-			config.background.fill = "#FFF";
-			config.stars.style.fill = "#000"
-		}
 	} else {
+		document.documentElement.removeAttribute("data-theme");
 		INDIGO.dark = false;
-		$('body').removeClass("bg-dark").addClass("bg-secondary");
-		$('input').removeClass("bg-dark").addClass("bg-light");
-		$('input').removeClass("text-light").addClass("text-dark");
-		$('textarea').removeClass("bg-dark").addClass("bg-light");
-		$('textarea').removeClass("text-light").addClass("text-dark");
-		$('div.bg-secondary').removeClass("bg-secondary").addClass("bg-light");
-		$('canvas.bg-secondary').removeClass("bg-secondary").addClass("bg-light");
 	}
 }
 
 function setDarkMode() {
 	localStorage.setItem("dark_mode", true);
-	guiSetup();
+	document.documentElement.setAttribute("data-theme", "dark");
+	INDIGO.dark = true;
 	if (typeof config !== 'undefined') {
 		config.background.fill = "#000";
-		config.stars.style.fill = "#FFF"
+		config.stars.style.fill = "#FFF";
 		if (celestialVisible) {
 			Celestial.display(config);
 		}
@@ -948,10 +933,11 @@ function setDarkMode() {
 
 function setLightMode() {
 	localStorage.removeItem("dark_mode");
-	guiSetup();
+	document.documentElement.removeAttribute("data-theme");
+	INDIGO.dark = false;
 	if (typeof config !== 'undefined') {
 		config.background.fill = "#fff";
-		config.stars.style.fill = "#000"
+		config.stars.style.fill = "#000";
 		if (celestialVisible) {
 			Celestial.display(config);
 		}

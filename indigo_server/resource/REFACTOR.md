@@ -78,7 +78,7 @@ Each step can be committed independently without breaking the application.
 
 ---
 
-### Step 1 — Fix existing bugs (no structural change)
+### Step 1 — Fix existing bugs (no structural change) [DONE]
 
 **Files:** `components.js`, `indigo.css`
 
@@ -89,7 +89,7 @@ Changes:
 
 ---
 
-### Step 2 — Upgrade from Bootstrap 4 to Bootstrap 5
+### Step 2 — Upgrade from Bootstrap 4 to Bootstrap 5 [DONE]
 
 **Files:** all `.html` files, `components.js`
 
@@ -107,7 +107,7 @@ Changes (mechanical class/attribute renames):
 
 ---
 
-### Step 3 — Upgrade from Vue 2 to Vue 3
+### Step 3 — Upgrade from Vue 2 to Vue 3 [DONE]
 
 **Files:** `indigo.js`, `components.js`, all `.html` files
 
@@ -128,7 +128,7 @@ Changes in `.html` files:
 
 ---
 
-### Step 4 — Replace dark mode with CSS custom properties
+### Step 4 — Replace dark mode with CSS custom properties [DONE]
 
 **Files:** `indigo.css`, `components.js` (`guiSetup`, `setDarkMode`, `setLightMode`)
 

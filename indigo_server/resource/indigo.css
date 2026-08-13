@@ -3,6 +3,39 @@
  You can use this software under the terms of 'INDIGO Astronomy open-source license' (see LICENSE.md).
  */
 
+:root {
+	--bg-page: #6c757d;
+	--bg-card: #f8f9fa;
+	--text-color: #212529;
+	--input-bg: #ffffff;
+}
+
+[data-theme="dark"] {
+	--bg-page: #212529;
+	--bg-card: #495057;
+	--text-color: #f8f9fa;
+	--input-bg: #343a40;
+}
+
+[data-theme="dark"] body {
+	background-color: var(--bg-page) !important;
+}
+
+[data-theme="dark"] .bg-light {
+	background-color: var(--bg-card) !important;
+}
+
+[data-theme="dark"] input,
+[data-theme="dark"] textarea,
+[data-theme="dark"] select {
+	background-color: var(--input-bg) !important;
+	color: var(--text-color) !important;
+}
+
+[data-theme="dark"] canvas {
+	background-color: var(--bg-card) !important;
+}
+
 .title {
 	display: inline;
 	vertical-align: middle;
