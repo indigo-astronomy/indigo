@@ -9,6 +9,8 @@
 	--text-color: #212529;
 	--input-bg: #ffffff;
 	--chip-border: rgba(0, 0, 0, 0.12);
+	--readonly-chip-bg: #e9ecef;
+	--readonly-chip-border: #ced4da;
 }
 
 [data-theme="dark"] {
@@ -17,6 +19,8 @@
 	--text-color: #f8f9fa;
 	--input-bg: #343a40;
 	--chip-border: rgba(255, 255, 255, 0.18);
+	--readonly-chip-bg: #5c636a;
+	--readonly-chip-border: #6c757d;
 }
 
 [data-theme="dark"] body {
@@ -173,6 +177,7 @@ input {
 }
 
 .indigo-chip {
+	height: 2rem;
 	min-height: 2rem;
 	border: 1px solid var(--chip-border);
 	border-radius: 0.375rem;
@@ -184,7 +189,23 @@ input {
 	line-height: 1.1;
 }
 
+.indigo-readonly-chip {
+	color: var(--text-color) !important;
+	background-color: var(--readonly-chip-bg) !important;
+	border-color: var(--readonly-chip-border) !important;
+}
+
+.indigo-icon-run {
+	white-space: nowrap;
+}
+
+.indigo-icon-run .glyphicons:before {
+	padding-left: 0;
+	padding-right: 0;
+}
+
 .indigo-chip-icon {
+	align-self: stretch;
 	min-width: 0;
 	padding: 0.3rem 0.25rem 0.3rem 0.45rem;
 	display: inline-flex;
@@ -202,8 +223,12 @@ input {
 }
 
 .indigo-chip-value {
+	align-self: stretch;
 	margin-left: auto;
 	padding: 0.3rem 0.45rem 0.3rem 0.25rem;
+	display: inline-flex;
+	align-items: center;
+	justify-content: flex-end;
 	flex: 0 0 auto;
 	max-width: 60%;
 	text-align: right;

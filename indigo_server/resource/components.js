@@ -50,10 +50,60 @@ app.component('indigo-edit-number', {
 		cls: String,
 		ident: String,
 		use_value: Boolean,
+		disabled: Boolean,
+		displayValue: [String, Number],
 		tooltip: String
 	},
 	methods: {
-		change: function(value) {
+		optionLabel: function(option) {
+			if (option != null && typeof option == "object" && Object.prototype.hasOwnProperty.call(option, "label"))
+				return option.label;
+			if (option != null && typeof option == "object" && Object.prototype.hasOwnProperty.call(option, "value"))
+				return option.value;
+			return option;
+		},
+		optionValue: function(option) {
+			if (option != null && typeof option == "object" && Object.prototype.hasOwnProperty.call(option, "value"))
+				return option.value;
+			return option;
+		},
+		optionIcon: function(option) {
+			if (option != null && typeof option == "object" && Object.prototype.hasOwnProperty.call(option, "icon"))
+				return option.icon;
+			return null;
+		},
+		optionIconCount: function(option) {
+			if (option != null && typeof option == "object" && Object.prototype.hasOwnProperty.call(option, "iconCount"))
+				return option.iconCount;
+			return 0;
+		},
+		optionHasIcons: function(option) {
+			return this.optionIcon(option) != null && this.optionIconCount(option) > 0;
+		},
+		optionForValue: function(value) {
+			if (this.values != null) {
+				for (var i in this.values) {
+					var option = this.values[i];
+					if (this.optionValue(option) == value)
+						return option;
+				}
+			}
+			return value;
+		},
+		valueLabel: function(value) {
+			if (this.values != null) {
+				for (var i in this.values) {
+					var option = this.values[i];
+					if (option != null && typeof option == "object" && Object.prototype.hasOwnProperty.call(option, "value") && this.optionValue(option) == value)
+						return this.optionLabel(option);
+				}
+			}
+			return value;
+		},
+		change: function(option) {
+			if (this.disabled)
+				return;
+			var value = this.optionValue(option);
 			var values = {};
 			if (value === "Off") {
 				if (this.enabler != null) {
@@ -72,7 +122,7 @@ app.component('indigo-edit-number', {
 				}
 			} else {
 				if (typeof value == "string")
-							value = parseFloat(value);
+					value = parseFloat(value);
 				if (this.enabler != null) {
 					for (var i in this.enabler.items) {
 						var item = this.enabler.items[i];
@@ -97,6 +147,8 @@ app.component('indigo-edit-number', {
 			return this.property == null ? null : this.property.state.toLowerCase() + "-state";
 		},
 		value: function() {
+			if (this.displayValue != null)
+				return this.displayValue;
 			if (this.property == null) return null;
 			if (this.enabler != null) {
 				for (var i in this.enabler.items) {
@@ -108,8 +160,8 @@ app.component('indigo-edit-number', {
 				var item = this.property.items[i];
 				if (item.name == this.name) {
 					if (this.property.perm == "ro" || this.use_value)
-						return item.value;
-					return item.target;
+						return this.valueLabel(item.value);
+					return this.valueLabel(item.target);
 				}
 			}
 			return null;
@@ -121,18 +173,130 @@ app.component('indigo-edit-number', {
 			<span v-else class="input-group-text" :class="state()">{{icon}}</span>
 			<template v-if="ident != null">
 				<input v-if="property.perm == 'ro'" :id="ident" readonly type="text" class="form-control input-right" :value="value()">
-				<input v-else :id="ident" type="text" class="form-control input-right" :value="value()" @change="onChange">
+				<input v-else :id="ident" type="text" class="form-control input-right" :value="value()" :disabled="disabled" @change="onChange">
 			</template>
 			<template v-else>
 				<input v-if="property.perm == 'ro'" readonly type="text" class="form-control input-right" :value="value()">
-				<input v-else type="text" class="form-control input-right" :value="value()" @change="onChange">
+				<input v-else type="text" class="form-control input-right" :value="value()" :disabled="disabled" @change="onChange">
 			</template>
 			<template v-if="values != null">
-				<button class="btn dropdown-toggle dropdown-toggle-split btn-outline-secondary" type="button" data-bs-toggle="dropdown"></button>
+				<button class="btn dropdown-toggle dropdown-toggle-split btn-outline-secondary" type="button" data-bs-toggle="dropdown" :disabled="disabled"></button>
 				<div class="dropdown-menu">
-					<a class="dropdown-item" href="#" v-for="value in values" @click="change(value)">{{value}}</a>
+					<a class="dropdown-item" href="#" v-for="value in values" @click="change(value)">{{optionLabel(value)}}</a>
 				</div>
 			</template>
+		</div>`
+});
+
+app.component('indigo-number-dropdown', {
+	props: {
+		property: Object,
+		name: String,
+		icon: String,
+		values: Array,
+		cls: String,
+		disabled: Boolean,
+		displayValue: [String, Number],
+		tooltip: String
+	},
+	methods: {
+		optionLabel: function(option) {
+			if (option != null && typeof option == "object" && Object.prototype.hasOwnProperty.call(option, "label"))
+				return option.label;
+			if (option != null && typeof option == "object" && Object.prototype.hasOwnProperty.call(option, "value"))
+				return option.value;
+			return option;
+		},
+		optionValue: function(option) {
+			if (option != null && typeof option == "object" && Object.prototype.hasOwnProperty.call(option, "value"))
+				return option.value;
+			return option;
+		},
+		optionIcon: function(option) {
+			if (option != null && typeof option == "object" && Object.prototype.hasOwnProperty.call(option, "icon"))
+				return option.icon;
+			return null;
+		},
+		optionIconCount: function(option) {
+			if (option != null && typeof option == "object" && Object.prototype.hasOwnProperty.call(option, "iconCount"))
+				return option.iconCount;
+			return 0;
+		},
+		optionHasIcons: function(option) {
+			return this.optionIcon(option) != null && this.optionIconCount(option) > 0;
+		},
+		optionForValue: function(value) {
+			if (this.values != null) {
+				for (var i in this.values) {
+					var option = this.values[i];
+					if (this.optionValue(option) == value)
+						return option;
+				}
+			}
+			return value;
+		},
+		valueLabel: function(value) {
+			if (this.values != null) {
+				for (var i in this.values) {
+					var option = this.values[i];
+					if (option != null && typeof option == "object" && Object.prototype.hasOwnProperty.call(option, "value") && this.optionValue(option) == value)
+						return this.optionLabel(option);
+				}
+			}
+			return value;
+		},
+		change: function(option) {
+			if (this.disabled || this.property == null || this.property.perm == "ro")
+				return;
+			var value = this.optionValue(option);
+			if (typeof value == "string")
+				value = parseFloat(value);
+			var values = {};
+			values[this.name] = value;
+			changeProperty(this.property.device, this.property.name, values);
+		},
+		state: function() {
+			return this.property == null ? null : this.property.state.toLowerCase() + "-state";
+		},
+		value: function() {
+			if (this.displayValue != null)
+				return this.displayValue;
+			if (this.property == null)
+				return null;
+			for (var i in this.property.items) {
+				var item = this.property.items[i];
+				if (item.name == this.name) {
+					if (this.property.perm == "ro")
+						return this.valueLabel(item.value);
+					return this.valueLabel(item.target);
+				}
+			}
+			return null;
+		},
+		selectedOption: function() {
+			return this.optionForValue(this.value());
+		}
+	},
+	template: `
+		<div v-if="property != null" class="dropdown p-1" :class="(cls != null ? cls : 'w-50')" data-bs-toggle="tooltip" :title="tooltip">
+			<button class="btn dropdown-toggle w-100 d-flex align-items-center" :class="state()" type="button" data-bs-toggle="dropdown" :disabled="disabled || property.perm == 'ro'">
+				<span v-if="icon != null && icon.startsWith('glyphicons-')" class="glyphicons me-2" :class="icon"></span>
+				<span v-else-if="icon != null" class="me-2">{{icon}}</span>
+				<span class="flex-grow-1 text-start indigo-icon-run">
+					<template v-if="optionHasIcons(selectedOption())">
+						<span v-for="n in optionIconCount(selectedOption())" class="glyphicons" :class="optionIcon(selectedOption())"></span>
+					</template>
+					<template v-else>{{value()}}</template>
+				</span>
+			</button>
+			<div class="dropdown-menu">
+				<a class="dropdown-item indigo-icon-run" href="#" v-for="value in values" @click.prevent="change(value)">
+					<template v-if="optionHasIcons(value)">
+						<span v-for="n in optionIconCount(value)" class="glyphicons" :class="optionIcon(value)"></span>
+					</template>
+					<template v-else>{{optionLabel(value)}}</template>
+				</a>
+			</div>
 		</div>`
 });
 
@@ -233,7 +397,7 @@ app.component('indigo-show-number', {
 	},
 	template: `
 		<div v-if="property != null" class="p-1" :class="(cls != null ? cls : 'w-25')" data-bs-toggle="tooltip" :title="tooltip">
-			<div class="indigo-chip w-100 d-flex align-items-center" :class="state()">
+			<div class="indigo-chip indigo-readonly-chip w-100 d-flex align-items-center">
 				<span v-if="icon.startsWith('glyphicons-')" class="indigo-chip-icon glyphicons" :class="icon"></span>
 				<span v-else class="indigo-chip-icon">{{icon}}</span>
 				<span class="indigo-chip-value">{{value()}}</span>
@@ -266,7 +430,7 @@ app.component('indigo-show-number-60', {
 	},
 	template: `
 		<div v-if="property != null" class="p-1" :class="(cls != null ? cls : 'w-25')" data-bs-toggle="tooltip" :title="tooltip">
-			<div class="indigo-chip w-100 d-flex align-items-center" :class="state()">
+			<div class="indigo-chip indigo-readonly-chip w-100 d-flex align-items-center">
 				<span v-if="icon.startsWith('glyphicons-')" class="indigo-chip-icon glyphicons" :class="icon"></span>
 				<span v-else class="indigo-chip-icon">{{icon}}</span>
 				<span class="indigo-chip-value">{{value()}}</span>
@@ -299,7 +463,7 @@ app.component('indigo-show-text', {
 	},
 	template: `
 		<div v-if="property != null" class="p-1" :class="(cls != null ? cls : 'w-25')" data-bs-toggle="tooltip" :title="tooltip">
-			<div class="indigo-chip w-100 d-flex align-items-center" :class="state()">
+			<div class="indigo-chip indigo-readonly-chip w-100 d-flex align-items-center">
 				<span v-if="icon != null && icon.startsWith('glyphicons-')" class="indigo-chip-icon glyphicons" :class="icon"></span>
 				<span v-else-if="icon != null" class="indigo-chip-icon">{{icon}}</span>
 				<span v-else class="indigo-chip-icon"></span>
@@ -1039,7 +1203,8 @@ app.component('indigo-status-button', {
 		activeAction: Function,
 		inactiveAction: Function,
 		busyAction: Function,
-		alertAction: Function
+		alertAction: Function,
+		disabled: Boolean
 	},
 	computed: {
 		stateClass: function() {
@@ -1090,7 +1255,7 @@ app.component('indigo-status-button', {
 		}
 	},
 	template: `
-		<button class="btn btn-svg" :class="stateClass" @click="runAction"><slot></slot></button>
+		<button class="btn btn-svg" :class="stateClass" :disabled="disabled" @click="runAction"><slot></slot></button>
 		`
 });
 

@@ -463,22 +463,27 @@ Source references: `indigo_agent_imager.c` initializes `AGENT_IMAGER_FOCUS_ESTIM
 
 ---
 
-### Step 20 — Show only focus settings relevant to the selected estimator
+### Step 20 — Show only focus settings relevant to the selected estimator [DONE]
 
 **Files:** `imager.html`, `components.js`
 
-Replace the current obsolete `AGENT_IMAGER_FOCUS.INITIAL` / `FINAL` controls with estimator-aware controls for `AGENT_IMAGER_FOCUS`.
+Replace the current obsolete `AGENT_IMAGER_FOCUS.INITIAL` / `FINAL` controls with estimator-aware controls matching the SwiftUI client logic.
 
-Visibility should follow the source behavior:
+In the web GUI, keep only the focuser selector visible until a real focuser is selected. Once a focuser is selected, show the focuser position/step input and editable focuser speed before the focus-estimator selector.
 
-- `U_CURVE`: show `U_CURVE_SAMPLES`, `U_CURVE_STEP`, plus shared autofocus controls `BACKLASH`, `BACKLASH_OVERSHOOT_FACTOR`, `STACK`, `REPEAT`, and `DELAY`
-- `HFD_PEAK`: show `ITERATIVE_INITIAL`, `ITERATIVE_FINAL`, plus shared autofocus controls
-- `RMS_CONTRAST`: show `ITERATIVE_INITIAL`, `ITERATIVE_FINAL`, plus shared autofocus controls
-- `BAHTINOV`: show `ITERATIVE_INITIAL`, `ITERATIVE_FINAL`, `BAHTINOV_SIGMA`, plus shared autofocus controls
+Visibility should then follow the selected estimator:
 
-Do not show obsolete `INITIAL` / `FINAL`. Treat `BRACKETING_STEP` separately from autofocus-estimator settings because the source uses it for bracketing batch capture, not for selecting the autofocus estimator.
+- `U_CURVE`: show `AGENT_IMAGER_SELECTION.COUNT` and `AGENT_IMAGER_SELECTION.RADIUS`; show `AGENT_IMAGER_SELECTION.SUBFRAME` only when `COUNT == 1`; show `U_CURVE_SAMPLES` and `U_CURVE_STEP`
+- `HFD_PEAK`: show `AGENT_IMAGER_SELECTION.RADIUS`, `AGENT_IMAGER_SELECTION.SUBFRAME`, `ITERATIVE_INITIAL`, and `ITERATIVE_FINAL`
+- `RMS_CONTRAST`: show `ITERATIVE_INITIAL` and `ITERATIVE_FINAL`
+- `BAHTINOV`: show `ITERATIVE_INITIAL`, `ITERATIVE_FINAL`, and `BAHTINOV_SIGMA`
+- For any selected estimator, show shared autofocus controls `BACKLASH` and `BACKLASH_OVERSHOOT_FACTOR` immediately after the focus-estimator selector
 
-Source references: `indigo_agent_imager.c` maps `AGENT_IMAGER_FOCUS_ESTIMATOR` to `use_ucurve_focusing`, `use_iterative_focusing`, `use_hfd_estimator`, `use_rms_estimator`, and `use_bahtinov_estimator`; the autofocus implementations consume the item groups listed above.
+Use labeled menu values for automatic subframing: `Off`, `1x`, `2x`, `3x`, `4x`, and `5x`. If the visible edit controls end on a half row, insert a row break before the read-only focuser values so `POSITION`, `TEMPERATURE`, `COMPENSATION`, and focus quality can sit together on one row. Focus quality comes from `AGENT_IMAGER_STATS`: `HFD` for `U_CURVE` and `HFD_PEAK`, `RMS_CONTRAST` for `RMS_CONTRAST`, and `BAHTINOV_ERROR` for `BAHTINOV`.
+
+Do not show obsolete `INITIAL` / `FINAL`. Treat `BRACKETING_STEP`, `STACK`, `REPEAT`, and `DELAY` separately from the estimator UI because they are not shown in the matching SwiftUI autofocus form.
+
+Source references: `indigo_agent_imager.c` maps `AGENT_IMAGER_FOCUS_ESTIMATOR` to `use_ucurve_focusing`, `use_iterative_focusing`, `use_hfd_estimator`, `use_rms_estimator`, and `use_bahtinov_estimator`; the SwiftUI client shows the same estimator-dependent selection and focus settings.
 
 ---
 
@@ -525,6 +530,42 @@ Source references: `indigo_agent_imager.c` initializes `AGENT_IMAGER_BATCH.FRAME
 
 ---
 
+### Step 23 — Add autofocus graph
+
+**Files:** `imager.html`, `components.js`, `indigo.css`
+
+Add an autofocus graph to the imager focuser area showing focus quality over focuser position during autofocus. The graph should be Vue-owned and should not depend on jQuery DOM updates.
+
+- Start/reset the graph when `AGENT_START_PROCESS.FOCUSING` starts.
+- Append samples from `AGENT_IMAGER_STATS.FOCUS_POSITION`.
+- Select the Y-axis metric from the active focus estimator:
+  - `U_CURVE` / `HFD_PEAK`: `AGENT_IMAGER_STATS.HFD`
+  - `RMS_CONTRAST`: `AGENT_IMAGER_STATS.RMS_CONTRAST`
+  - `BAHTINOV`: `AGENT_IMAGER_STATS.BAHTINOV_ERROR`
+- Keep the graph hidden unless both camera and focuser are selected.
+- Preserve existing autofocus controls and button state behavior.
+
+Source references: `indigo_agent_imager.c` updates `AGENT_IMAGER_STATS.FOCUS_POSITION`, `HFD`, `RMS_CONTRAST`, and `BAHTINOV_ERROR` while processing autofocus frames.
+
+---
+
+### Step 24 — Mark selected stars on the image
+
+**Files:** `imager.html`, `components.js`, `indigo.css`
+
+Overlay markers for the selected autofocus stars on the preview image.
+
+- Read the selected star count from `AGENT_IMAGER_SELECTION.COUNT`.
+- Read star coordinates from the repeated `AGENT_IMAGER_SELECTION.X` / `Y` items.
+- Use `AGENT_IMAGER_SELECTION.RADIUS` for marker size.
+- Hide markers for empty coordinates and when no camera is selected.
+- Scale marker positions to the displayed image size so they stay aligned after image load, resize, or responsive layout changes.
+- Keep the overlay Vue-owned and avoid direct jQuery access to image or marker DOM.
+
+Source references: `indigo_agent_imager.c` writes selected star coordinates back to `AGENT_IMAGER_SELECTION` after star detection and updates the property during autofocus processing.
+
+---
+
 ## Dependency Summary After Refactoring
 
 | Library | Before | After |
@@ -543,4 +584,4 @@ Steps can be batched into four commits for review:
 1. **Bugs + deps** (Steps 1–3): Fix bugs, upgrade Bootstrap 5, upgrade Vue 3 — each is independently testable
 2. **Reactivity** (Steps 4–10): Eliminate all jQuery DOM touches, replace with Vue reactive data
 3. **Components** (Steps 11–17): Extract sky map, graph, status button, navbar, status bar; modernize CSS
-4. **Functional imager UI** (Steps 18–22): Route preview through the agent, remove remaining imager action jQuery, expose estimator/selection/dithering controls, and filter autofocus settings by estimator
+4. **Functional imager UI** (Steps 18–24): Route preview through the agent, remove remaining imager action jQuery, expose estimator/selection/dithering controls, filter autofocus settings by estimator, and add autofocus image/graph feedback
