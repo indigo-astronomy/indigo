@@ -300,6 +300,119 @@ app.component('indigo-number-dropdown', {
 		</div>`
 });
 
+app.component('indigo-feature-number-dropdown', {
+	props: {
+		featureProperty: Object,
+		numberProperty: Object,
+		featureName: String,
+		numberName: String,
+		values: Array,
+		cls: String,
+		tooltip: String
+	},
+	methods: {
+		optionLabel: function(option) {
+			if (option != null && typeof option == "object" && Object.prototype.hasOwnProperty.call(option, "label"))
+				return option.label;
+			if (option != null && typeof option == "object" && Object.prototype.hasOwnProperty.call(option, "value"))
+				return option.value;
+			return option;
+		},
+		optionValue: function(option) {
+			if (option != null && typeof option == "object" && Object.prototype.hasOwnProperty.call(option, "value"))
+				return option.value;
+			return option;
+		},
+		optionEnabled: function(option) {
+			if (option != null && typeof option == "object" && Object.prototype.hasOwnProperty.call(option, "enabled"))
+				return option.enabled;
+			return true;
+		},
+		featureItem: function() {
+			if (this.featureProperty == null)
+				return null;
+			return this.featureProperty.item(this.featureName);
+		},
+		numberItem: function() {
+			if (this.numberProperty == null)
+				return null;
+			return this.numberProperty.item(this.numberName);
+		},
+		ready: function() {
+			return this.featureItem() != null && this.numberItem() != null;
+		},
+		isDisabled: function() {
+			return !this.ready() || this.featureProperty.perm == "ro" || this.numberProperty.perm == "ro";
+		},
+		numberValue: function() {
+			var item = this.numberItem();
+			if (item == null)
+				return null;
+			if (this.numberProperty.perm == "ro")
+				return item.value;
+			return item.target;
+		},
+		sameNumber: function(left, right) {
+			return Math.abs(Number(left) - Number(right)) < 0.000001;
+		},
+		selectedOption: function() {
+			if (!this.ready())
+				return null;
+			var enabled = this.featureItem().value;
+			var numberValue = this.numberValue();
+			if (this.values != null) {
+				for (var i in this.values) {
+					var option = this.values[i];
+					if (!enabled && !this.optionEnabled(option))
+						return option;
+					if (enabled && this.optionEnabled(option) && this.sameNumber(this.optionValue(option), numberValue))
+						return option;
+				}
+			}
+			return null;
+		},
+		value: function() {
+			var option = this.selectedOption();
+			if (option != null)
+				return this.optionLabel(option);
+			if (this.ready())
+				return this.numberValue();
+			return null;
+		},
+		change: function(option) {
+			if (this.isDisabled())
+				return;
+			var value = this.optionValue(option);
+			if (typeof value == "string")
+				value = parseFloat(value);
+			var featureValues = {};
+			featureValues[this.featureName] = this.optionEnabled(option);
+			changeProperty(this.featureProperty.device, this.featureProperty.name, featureValues);
+			var numberValues = {};
+			numberValues[this.numberName] = value;
+			changeProperty(this.numberProperty.device, this.numberProperty.name, numberValues);
+		},
+		state: function() {
+			if (!this.ready())
+				return null;
+			if (this.featureProperty.state == "Alert" || this.numberProperty.state == "Alert")
+				return "alert-state";
+			if (this.featureProperty.state == "Busy" || this.numberProperty.state == "Busy")
+				return "busy-state";
+			return this.numberProperty.state.toLowerCase() + "-state";
+		}
+	},
+	template: `
+		<div v-if="ready()" class="dropdown p-1" :class="(cls != null ? cls : 'w-50')" data-bs-toggle="tooltip" :title="tooltip">
+			<button class="btn dropdown-toggle w-100 d-flex align-items-center" :class="state()" type="button" data-bs-toggle="dropdown" :disabled="isDisabled()">
+				<span class="flex-grow-1 text-start text-truncate">{{value()}}</span>
+			</button>
+			<div class="dropdown-menu">
+				<a class="dropdown-item" href="#" v-for="value in values" @click.prevent="change(value)">{{optionLabel(value)}}</a>
+			</div>
+		</div>`
+});
+
 app.component('indigo-edit-number-60', {
 	props: {
 		property: Object,

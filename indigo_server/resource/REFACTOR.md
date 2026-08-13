@@ -502,31 +502,57 @@ Current source references: `imager.html` uses `downloadInProgress`, `downloadFil
 
 ---
 
-### Step 22 — Add imager dithering interval combo
+### Step 22 — Add imager dithering and meridian pause drop downs [DONE]
 
 **Files:** `imager.html`, `components.js`
 
-Add a single imager UI combo for dithering cadence with these user-facing options:
+Add a single imager UI dropdown for dithering cadence with these user-facing options:
 
-- Disabled
-- Every frame
-- Every 2nd frame
-- Every 3rd frame
-- Every 4th frame
-- Every 5th frame
+- Don't dither
+- Dither every frame
+- Dither every 2nd frame
+- Dither every 3rd frame
+- Dither every 4th frame
+- Dither every 5th frame
 
-Map the combo to the existing agent properties:
+Map the dropdown to the existing agent properties:
 
-- Disabled: set `AGENT_PROCESS_FEATURES.ENABLE_DITHERING` to `false` and `AGENT_IMAGER_BATCH.FRAMES_TO_SKIP_BEFORE_DITHER` to `-1`
-- Every frame: set `ENABLE_DITHERING` to `true` and `FRAMES_TO_SKIP_BEFORE_DITHER` to `0`
-- Every 2nd frame: set `ENABLE_DITHERING` to `true` and `FRAMES_TO_SKIP_BEFORE_DITHER` to `1`
-- Every 3rd frame: set `ENABLE_DITHERING` to `true` and `FRAMES_TO_SKIP_BEFORE_DITHER` to `2`
-- Every 4th frame: set `ENABLE_DITHERING` to `true` and `FRAMES_TO_SKIP_BEFORE_DITHER` to `3`
-- Every 5th frame: set `ENABLE_DITHERING` to `true` and `FRAMES_TO_SKIP_BEFORE_DITHER` to `4`
+- Don't dither: set `AGENT_PROCESS_FEATURES.ENABLE_DITHERING` to `false` and `AGENT_IMAGER_BATCH.FRAMES_TO_SKIP_BEFORE_DITHER` to `-1`
+- Dither every frame: set `ENABLE_DITHERING` to `true` and `FRAMES_TO_SKIP_BEFORE_DITHER` to `0`
+- Dither every 2nd frame: set `ENABLE_DITHERING` to `true` and `FRAMES_TO_SKIP_BEFORE_DITHER` to `1`
+- Dither every 3rd frame: set `ENABLE_DITHERING` to `true` and `FRAMES_TO_SKIP_BEFORE_DITHER` to `2`
+- Dither every 4th frame: set `ENABLE_DITHERING` to `true` and `FRAMES_TO_SKIP_BEFORE_DITHER` to `3`
+- Dither every 5th frame: set `ENABLE_DITHERING` to `true` and `FRAMES_TO_SKIP_BEFORE_DITHER` to `4`
 
-Keep `AGENT_PROCESS_FEATURES.DITHER_AFTER_LAST_FRAME` separate from this combo; it controls whether a final-frame dither is allowed, not the cadence.
+Keep `AGENT_PROCESS_FEATURES.DITHER_AFTER_LAST_FRAME` separate from this dropdown; it controls whether a final-frame dither is allowed, not the cadence.
 
-Source references: `indigo_agent_imager.c` initializes `AGENT_IMAGER_BATCH.FRAMES_TO_SKIP_BEFORE_DITHER` with range `-1..1000` and `AGENT_PROCESS_FEATURES.ENABLE_DITHERING`; the batch loop dithers only when the feature is enabled and the frames-to-dither counter reaches zero.
+Add a second imager UI dropdown for pause on meridian transit with these user-facing options:
+
+- Don't pause at meridian
+- Pause at meridian
+- Pause 15 min after meridian
+- Pause 30 min after meridian
+- Pause 1 hour after meridian
+- Pause 2 hours after meridian
+- Pause 15 min before meridian
+- Pause 30 min before meridian
+- Pause 1 hour before meridian
+- Pause 2 hours before meridian
+
+Map the pause-on-meridian dropdown to the existing agent properties:
+
+- Don't pause at meridian: set `AGENT_PROCESS_FEATURES.PAUSE_AFTER_TRANSIT` to `false` and `AGENT_IMAGER_BATCH.PAUSE_AFTER_TRANSIT` to `0`
+- Pause at meridian: set `PAUSE_AFTER_TRANSIT` feature to `true` and batch `PAUSE_AFTER_TRANSIT` to `0`
+- Pause 15 min after meridian: set `PAUSE_AFTER_TRANSIT` feature to `true` and batch `PAUSE_AFTER_TRANSIT` to `0.25`
+- Pause 30 min after meridian: set `PAUSE_AFTER_TRANSIT` feature to `true` and batch `PAUSE_AFTER_TRANSIT` to `0.5`
+- Pause 1 hour after meridian: set `PAUSE_AFTER_TRANSIT` feature to `true` and batch `PAUSE_AFTER_TRANSIT` to `1`
+- Pause 2 hours after meridian: set `PAUSE_AFTER_TRANSIT` feature to `true` and batch `PAUSE_AFTER_TRANSIT` to `2`
+- Pause 15 min before meridian: set `PAUSE_AFTER_TRANSIT` feature to `true` and batch `PAUSE_AFTER_TRANSIT` to `-0.25`
+- Pause 30 min before meridian: set `PAUSE_AFTER_TRANSIT` feature to `true` and batch `PAUSE_AFTER_TRANSIT` to `-0.5`
+- Pause 1 hour before meridian: set `PAUSE_AFTER_TRANSIT` feature to `true` and batch `PAUSE_AFTER_TRANSIT` to `-1`
+- Pause 2 hours before meridian: set `PAUSE_AFTER_TRANSIT` feature to `true` and batch `PAUSE_AFTER_TRANSIT` to `-2`
+
+Source references: `indigo_agent_imager.c` initializes `AGENT_IMAGER_BATCH.FRAMES_TO_SKIP_BEFORE_DITHER` with range `-1..1000` and `AGENT_PROCESS_FEATURES.ENABLE_DITHERING`; the batch loop dithers only when the feature is enabled and the frames-to-dither counter reaches zero. It also initializes `AGENT_PROCESS_FEATURES.PAUSE_AFTER_TRANSIT` and `AGENT_IMAGER_BATCH.PAUSE_AFTER_TRANSIT` with range `-2..2` hours.
 
 ---
 
