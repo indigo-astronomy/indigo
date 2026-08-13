@@ -406,7 +406,7 @@ Usage: `<indigo-navbar active="mount" title="INDIGO Mount" icon="mount.png"/>`
 
 ---
 
-### Step 16 — Extract shared status bar into `indigo-status-bar` component
+### Step 16 — Extract shared status bar into `indigo-status-bar` component [DONE]
 
 **Files:** `components.js`, all `.html` files
 

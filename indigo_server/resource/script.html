@@ -47,25 +47,7 @@
 						</div>
 					</div>
 				</template>
-				<div v-show="connected" class="alert alert-success alert-dismissible fade show m-1 mt-2" role="alert">
-					{{ state }}
-					<span v-if="findProperty('Server', 'INFO')" class="float-end">
-						INDIGO Server {{findProperty('Server', 'INFO').item('VERSION').value}} at {{findProperty('Server', 'INFO').item('SERVICE').value}}
-					</span>
-				</div>
-				<div v-show="failed" class="alert alert-danger alert-dismissible fade show m-1 mt-2" role="alert">
-					{{ state }}
-				</div>
-				<div v-show="message" class="alert alert-warning alert-dismissible fade show m-1 mt-2" role="alert">
-					{{ state }}
-				</div>
-				<div class="alert alert-info show m-1 mt-2" role="alert">
-					Copyright &copy; 2019-2025, The INDIGO Initiative. All rights reserved.
-					<a v-if="dark" href="#" class="float-end" onclick="setLightMode()">Switch to light appearance</a>
-					<a v-else href="#" class="float-end" onclick="setDarkMode()">Switch to dark appearance</a>
-					<a v-if="columns == 3" href="#" class="float-end me-3" onclick="$('div.col-md-4').removeClass('col-md-4').addClass('col-md-12');INDIGO.columns=1">Switch to 1 column</a>
-					<a v-else href="#" class="float-end me-3" onclick="$('div.col-md-12').removeClass('col-md-12').addClass('col-md-4');INDIGO.columns=3">Switch to 3 columns</a>
-				</div>
+				<indigo-status-bar :columns-toggle="true"></indigo-status-bar>
 			</div>
 		</div>
 	</body>

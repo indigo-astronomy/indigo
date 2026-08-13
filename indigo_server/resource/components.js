@@ -949,6 +949,73 @@ app.component('indigo-navbar', {
 });
 
 
+app.component('indigo-status-bar', {
+	props: {
+		columnsToggle: {
+			type: Boolean,
+			default: false
+		}
+	},
+	computed: {
+		serverInfo: function() {
+			if (this.$root == null || this.$root.findProperty == null)
+				return null;
+			return this.$root.findProperty("Server", "INFO");
+		},
+		serverVersion: function() {
+			if (this.serverInfo == null)
+				return "";
+			var item = this.serverInfo.item("VERSION");
+			return item == null ? "" : item.value;
+		},
+		serverService: function() {
+			if (this.serverInfo == null)
+				return "";
+			var item = this.serverInfo.item("SERVICE");
+			return item == null ? "" : item.value;
+		}
+	},
+	methods: {
+		setDark: function() {
+			setDarkMode();
+		},
+		setLight: function() {
+			setLightMode();
+		},
+		setColumns: function(columns) {
+			var fromClass = columns == 1 ? "col-md-4" : "col-md-12";
+			var toClass = columns == 1 ? "col-md-12" : "col-md-4";
+			document.querySelectorAll("div." + fromClass).forEach(function(element) {
+				element.classList.remove(fromClass);
+				element.classList.add(toClass);
+			});
+			this.$root.columns = columns;
+		}
+	},
+	template: `
+		<div v-show="$root.connected" class="alert alert-success alert-dismissible fade show m-1 mt-2" role="alert">
+			{{ $root.state }}
+			<span v-if="serverInfo != null" class="float-end">
+				INDIGO Server {{serverVersion}} at {{serverService}}
+			</span>
+		</div>
+		<div v-show="$root.failed" class="alert alert-danger alert-dismissible fade show m-1 mt-2" role="alert">
+			{{ $root.state }}
+		</div>
+		<div v-show="$root.message" class="alert alert-warning alert-dismissible fade show m-1 mt-2" role="alert">
+			{{ $root.state }}
+		</div>
+		<div class="alert alert-info show m-1 mt-2" role="alert">
+			Copyright &copy; 2019-2025, The INDIGO Initiative. All rights reserved.
+			<a v-if="$root.dark" href="#" class="float-end" @click.prevent="setLight">Switch to light appearance</a>
+			<a v-else href="#" class="float-end" @click.prevent="setDark">Switch to dark appearance</a>
+			<a v-if="columnsToggle && $root.columns == 3" href="#" class="float-end me-3" @click.prevent="setColumns(1)">Switch to 1 column</a>
+			<a v-else-if="columnsToggle" href="#" class="float-end me-3" @click.prevent="setColumns(3)">Switch to 3 columns</a>
+		</div>
+		`
+});
+
+
 app.component('indigo-status-button', {
 	props: {
 		property: Object,
