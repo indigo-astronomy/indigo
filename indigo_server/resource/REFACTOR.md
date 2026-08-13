@@ -334,7 +334,7 @@ fetch('/data/stars.json')
 
 ---
 
-### Step 13 — Extract `indigo-guider-graph` Vue component
+### Step 13 — Extract `indigo-guider-graph` Vue component [DONE]
 
 **Files:** `components.js`, `guider.html`
 

@@ -856,6 +856,227 @@ app.component('indigo-query-db', {
 });
 
 
+app.component('indigo-guider-graph', {
+	data: function() {
+		return {
+			raDrift: [],
+			decDrift: [],
+			raCorr: [],
+			decCorr: [],
+			rmse: [],
+			paintPending: false,
+			resizeHandler: null
+		};
+	},
+	watch: {
+		raDrift: {
+			handler: function() {
+				this.schedulePaint();
+			},
+			deep: true
+		},
+		decDrift: {
+			handler: function() {
+				this.schedulePaint();
+			},
+			deep: true
+		},
+		raCorr: {
+			handler: function() {
+				this.schedulePaint();
+			},
+			deep: true
+		},
+		decCorr: {
+			handler: function() {
+				this.schedulePaint();
+			},
+			deep: true
+		},
+		rmse: {
+			handler: function() {
+				this.schedulePaint();
+			},
+			deep: true
+		}
+	},
+	mounted: function() {
+		this.resizeHandler = this.paintGraphs.bind(this);
+		window.addEventListener("resize", this.resizeHandler);
+		this.paintGraphs();
+		guiSetup();
+	},
+	beforeUnmount: function() {
+		if (this.resizeHandler != null)
+			window.removeEventListener("resize", this.resizeHandler);
+	},
+	methods: {
+		push: function(driftRa, driftDec, corrRa, corrDec, rmseValue) {
+			this.trimData();
+			this.raDrift.push(driftRa);
+			this.decDrift.push(driftDec);
+			this.raCorr.push(corrRa);
+			this.decCorr.push(corrDec);
+			this.rmse.push(rmseValue);
+		},
+		clear: function() {
+			this.raDrift = [];
+			this.decDrift = [];
+			this.raCorr = [];
+			this.decCorr = [];
+			this.rmse = [];
+		},
+		trimData: function() {
+			while (this.raDrift.length >= 200)
+				this.raDrift.shift();
+			while (this.decDrift.length >= 200)
+				this.decDrift.shift();
+			while (this.raCorr.length >= 200)
+				this.raCorr.shift();
+			while (this.decCorr.length >= 200)
+				this.decCorr.shift();
+			while (this.rmse.length >= 200)
+				this.rmse.shift();
+		},
+		schedulePaint: function() {
+			if (this.paintPending)
+				return;
+			this.paintPending = true;
+			var self = this;
+			this.$nextTick(function() {
+				self.paintPending = false;
+				self.paintGraphs();
+			});
+		},
+		paintGraphs: function() {
+			this.paintGraph(this.$refs.driftCanvas, this.raDrift, this.decDrift, this.rmse, false);
+			this.paintGraph(this.$refs.corrCanvas, this.raCorr, this.decCorr, this.rmse, true);
+		},
+		paintGraph: function(canvas, ra, dec, rmse, pulse) {
+			if (canvas == null)
+				return;
+			canvas.width = canvas.offsetWidth;
+			canvas.height = canvas.offsetHeight;
+			var width = canvas.width;
+			var height = canvas.height;
+			if (width == 0 || height == 0 || ra.length == 0 || dec.length == 0)
+				return;
+			var height2 = height / 2;
+			var ctx = canvas.getContext("2d");
+			var maxValue = 0;
+			for (var i in ra) {
+				var value = Math.abs(ra[i]);
+				if (maxValue < value)
+					maxValue = value;
+			}
+			for (var j in dec) {
+				var decValue = Math.abs(dec[j]);
+				if (maxValue < decValue)
+					maxValue = decValue;
+			}
+			if (maxValue == 0) {
+				maxValue = 0.1;
+			} else if (maxValue < 0.5) {
+				maxValue = Math.ceil(maxValue * 10) / 10;
+			} else if (maxValue < 1) {
+				maxValue = 1;
+			} else if (maxValue > 10) {
+				maxValue = 10;
+			} else {
+				maxValue = Math.ceil(maxValue);
+			}
+			var yScale = (height2 - 5.0) / maxValue;
+			var xScale = width / 200;
+			ctx.save();
+			ctx.strokeStyle = "#AAA";
+			var path = new Path2D();
+			path.moveTo(0, height2);
+			path.lineTo(width, height2);
+			ctx.stroke(path);
+			path = new Path2D();
+			if (maxValue >= 1) {
+				for (var r = 1; r <= maxValue; r++) {
+					var rr = r * yScale;
+					path.moveTo(0, height2 - rr);
+					path.lineTo(width, height2 - rr);
+					path.moveTo(0, height2 + rr);
+					path.lineTo(width, height2 + rr);
+				}
+			} else {
+				ctx.setLineDash([1.0, 5.0]);
+				for (var rrIndex = 1; rrIndex <= 10 * maxValue; rrIndex++) {
+					var subpixel = rrIndex * yScale / 10;
+					path.moveTo(0, height2 - subpixel);
+					path.lineTo(width, height2 - subpixel);
+					path.moveTo(0, height2 + subpixel);
+					path.lineTo(width, height2 + subpixel);
+				}
+			}
+			ctx.stroke(path);
+			ctx.restore();
+
+			ctx.save();
+			ctx.fillStyle = "rgba(100, 100, 100, 0.3)";
+			path = new Path2D();
+			var rmseX = 0;
+			for (var k in rmse) {
+				if (rmse[k])
+					path.rect(rmseX, 0, xScale, height);
+				rmseX += xScale;
+			}
+			ctx.fill(path);
+			ctx.restore();
+
+			ctx.save();
+			ctx.strokeStyle = "#00F";
+			path = new Path2D();
+			var x = 0;
+			var y = height2 + ra[0] * yScale;
+			path.moveTo(x, y);
+			for (var m in ra) {
+				y = height2 + ra[m] * yScale;
+				path.lineTo(x, y);
+				x += xScale;
+				if (pulse)
+					path.lineTo(x, y);
+			}
+			ctx.stroke(path);
+			ctx.restore();
+
+			ctx.save();
+			ctx.strokeStyle = "#F00";
+			path = new Path2D();
+			x = 0;
+			y = height2 + dec[0] * yScale;
+			path.moveTo(x, y);
+			for (var n in dec) {
+				y = height2 + dec[n] * yScale;
+				path.lineTo(x, y);
+				x += xScale;
+				if (pulse)
+					path.lineTo(x, y);
+			}
+			ctx.stroke(path);
+			ctx.restore();
+		}
+	},
+	template: `
+		<div>
+			<div class="card p-1 m-1 bg-light">
+				<div class="card-body d-flex">
+					<canvas id="graph_drift" ref="driftCanvas" class="card p-0 m-0 bg-light" data-bs-toggle="tooltip" title="Drift"></canvas>
+				</div>
+			</div>
+			<div class="card p-1 m-1 mt-2 bg-light">
+				<div class="card-body d-flex">
+					<canvas id="graph_corr" ref="corrCanvas" class="card p-0 m-0 bg-light" data-bs-toggle="tooltip" title="Corrections"></canvas>
+				</div>
+			</div>
+		</div>
+		`
+});
+
+
 app.component('indigo-wifi-setup', {
 	props: {
 		ap_property: Object,
