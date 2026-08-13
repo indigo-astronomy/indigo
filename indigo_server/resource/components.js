@@ -665,9 +665,128 @@ app.component('indigo-select-multi-item', {
 		</div>`
 });
 
+var indigoStarCatalog = [];
+var indigoDsoCatalog = [];
+var indigoCatalogsLoaded = false;
+var indigoCatalogPromise = null;
+
+function indigoCatalogDeg2h(ra) {
+	return ra < 0 ? ra / 15 + 24 : ra / 15;
+}
+
+function indigoCatalogString(value) {
+	return value == null ? "" : String(value);
+}
+
+function indigoCatalogNormalize(value) {
+	return indigoCatalogString(value).replace(/\s/g, "").toUpperCase();
+}
+
+function indigoCatalogCoordinates(feature) {
+	if (feature == null || feature.geometry == null || feature.geometry.type != "Point")
+		return null;
+	if (feature.geometry.coordinates == null || feature.geometry.coordinates.length < 2)
+		return null;
+	return feature.geometry.coordinates;
+}
+
+function indigoCatalogLoad(url, mapper) {
+	return fetch(url)
+		.then(function(response) {
+			if (!response.ok)
+				throw new Error(url + " returned " + response.status);
+			return response.json();
+		})
+		.then(function(geojson) {
+			var result = [];
+			var features = geojson.features || [];
+			for (var i = 0; i < features.length; i++) {
+				var object = mapper(features[i]);
+				if (object != null)
+					result.push(object);
+			}
+			return result;
+		})
+		.catch(function(error) {
+			console.log("Failed to load " + url + ": " + error);
+			return [];
+		});
+}
+
+function indigoLoadCelestialCatalogs() {
+	if (indigoCatalogPromise != null)
+		return indigoCatalogPromise;
+	indigoCatalogPromise = Promise.all([
+		indigoCatalogLoad("/data/stars.json", function(feature) {
+			var coordinates = indigoCatalogCoordinates(feature);
+			if (coordinates == null)
+				return null;
+			var properties = feature.properties || {};
+			var id = feature.id;
+			var name = indigoCatalogString(properties.name);
+			var desig = indigoCatalogString(properties.desig);
+			var label = name;
+			if (desig != "") {
+				if (label != "")
+					label += ", ";
+				label += desig;
+			}
+			if (Number(id) > 0) {
+				if (label != "")
+					label += ", ";
+				label += "HIP" + id;
+			}
+			if (label == "")
+				label = "HIP" + id;
+			return {
+				name: label,
+				ra: indigoCatalogDeg2h(coordinates[0]),
+				raDeg: coordinates[0],
+				dec: coordinates[1],
+				search: [
+					id,
+					"HIP" + id,
+					name,
+					desig
+				].map(indigoCatalogNormalize).join(" ")
+			};
+		}),
+		indigoCatalogLoad("/data/dsos.json", function(feature) {
+			var coordinates = indigoCatalogCoordinates(feature);
+			if (coordinates == null)
+				return null;
+			var properties = feature.properties || {};
+			var id = indigoCatalogString(feature.id);
+			var name = indigoCatalogString(properties.name);
+			var desig = indigoCatalogString(properties.desig);
+			var label = name;
+			if (label != "" && desig != "")
+				label += ", ";
+			label += desig;
+			if (label == "")
+				label = id;
+			return {
+				name: label,
+				ra: indigoCatalogDeg2h(coordinates[0]),
+				raDeg: coordinates[0],
+				dec: coordinates[1],
+				search: [
+					id,
+					name,
+					desig
+				].map(indigoCatalogNormalize).join(" ")
+			};
+		})
+	]).then(function(catalogs) {
+		indigoStarCatalog = catalogs[0];
+		indigoDsoCatalog = catalogs[1];
+		indigoCatalogsLoaded = true;
+	});
+	return indigoCatalogPromise;
+}
+
 app.component('indigo-query-db', {
 	props: {
-		container: Object,
 		dark: {
 			type: Boolean,
 			default: false
@@ -675,58 +794,51 @@ app.component('indigo-query-db', {
 	},
 	data() {
 		return {
+			query: "",
+			loading: false,
 			result: []
 		};
 	},
+	mounted: function() {
+		this.loadCatalogs();
+	},
 	methods: {
+		loadCatalogs: function() {
+			if (indigoCatalogsLoaded)
+				return;
+			var self = this;
+			this.loading = true;
+			indigoLoadCelestialCatalogs().then(function() {
+				self.loading = false;
+				self.search();
+			});
+		},
 		setTarget: function(object) {
-			selectObject(object.ra, object.dec);
+			if (window.selectObject != null)
+				window.selectObject(object);
 		},
 		onChange: function(e) {
-			var pattern = e.target.value.replace(" ", "").toUpperCase();
-			var id = Number.parseInt(pattern);
+			this.query = e.target.value;
+			this.search();
+		},
+		search: function() {
+			var pattern = indigoCatalogNormalize(this.query);
 			this.result = [];
-			if (pattern != "") {
-				var stars = $(this.container).children(".star");
-				for (i in stars) {
-					var data = stars[i].__data__;
-					if (data == null) continue;
-					var properties = data.properties;
-					if (properties == null) continue;
-					var geometry = data.geometry;
-					if (geometry == null) continue;
-					if (data.id == id || (properties.name != null && properties.name.toUpperCase().indexOf(pattern) >= 0)) {
-						var name = properties.name;
-						if (properties.desig != "") {
-							if (name != "")
-								name += ", ";
-							name += properties.desig;
-						}
-						if (data.id > 0) {
-							if (name != "")
-								name += ", ";
-							name += "HIP" + data.id;
-						}
-						this.result.push({ name: name, ra: deg2h(geometry.coordinates[0]), dec: geometry.coordinates[1] });
-					}
-				}				
-				var dsos = $(this.container).children(".dso");
-				for (i in dsos) {
-					var data = dsos[i].__data__;
-					if (data == null) continue;
-					var properties = data.properties;
-					if (properties == null) continue;
-					var geometry = data.geometry;
-					if (geometry == null) continue;
-					if (data.id.toUpperCase().indexOf(pattern) >= 0 || (properties.desig != null && properties.desig.toUpperCase().indexOf(pattern) >= 0)) {
-						var name = properties.name;
-						if (name != "" && properties.desig != "")
-							name += ", ";
-						name += properties.desig;
-						var properties = data.properties;
-						this.result.push({ name: name, ra: deg2h(geometry.coordinates[0]), dec: geometry.coordinates[1] });
-					}
-				}				
+			if (pattern == "")
+				return;
+			if (!indigoCatalogsLoaded) {
+				this.loadCatalogs();
+				return;
+			}
+			for (var i = 0; i < indigoStarCatalog.length; i++) {
+				var star = indigoStarCatalog[i];
+				if (star.search.indexOf(pattern) >= 0)
+					this.result.push(star);
+			}
+			for (var j = 0; j < indigoDsoCatalog.length; j++) {
+				var dso = indigoDsoCatalog[j];
+				if (dso.search.indexOf(pattern) >= 0)
+					this.result.push(dso);
 			}
 		}
 	},
@@ -1046,7 +1158,6 @@ app.component('indigo-sky-map', {
 			var self = this;
 			this.$nextTick(function() {
 				self.bindCanvas();
-				self.exposeContainer();
 				if (firstDisplay)
 					self.centerInitialView();
 				guiSetup();
@@ -1077,10 +1188,6 @@ app.component('indigo-sky-map', {
 				this.canvas.removeEventListener("mousedown", this.canvasClickHandler);
 			this.canvas = canvas;
 			this.canvas.addEventListener("mousedown", this.canvasClickHandler, false);
-		},
-		exposeContainer: function() {
-			if (typeof INDIGO !== "undefined" && Celestial.container != null)
-				INDIGO.db = Celestial.container[0];
 		},
 		resize: function() {
 			var map = this.$refs.map;
@@ -1147,21 +1254,29 @@ app.component('indigo-sky-map', {
 			if (typeof Celestial === "undefined" || Celestial.mapProjection == null)
 				return;
 			var coordinates = Celestial.mapProjection.invert([ e.offsetX, e.offsetY ]);
+			if (!indigoCatalogsLoaded) {
+				var self = this;
+				indigoLoadCelestialCatalogs().then(function() {
+					self.selectNearestObject(coordinates);
+				});
+				return;
+			}
+			this.selectNearestObject(coordinates);
+		},
+		selectNearestObject: function(coordinates) {
 			var bestX = 0;
 			var bestY = 0;
 			var dist = Math.pow(coordinates[0] - bestX, 2) + Math.pow(coordinates[1] - bestY, 2);
-			var paths = this.$refs.map.querySelectorAll("container path");
-			for (var i = 0; i < paths.length; i++) {
-				var data = paths[i].__data__;
-				if (data == null) continue;
-				var geometry = data.geometry;
-				if (geometry == null) continue;
-				if (geometry.type != "Point") continue;
-				var d = Math.pow(coordinates[0] - geometry.coordinates[0], 2) + Math.pow(coordinates[1] - geometry.coordinates[1], 2);
-				if (d < dist) {
-					dist = d;
-					bestX = geometry.coordinates[0];
-					bestY = geometry.coordinates[1];
+			var catalogs = [ indigoStarCatalog, indigoDsoCatalog ];
+			for (var i = 0; i < catalogs.length; i++) {
+				for (var j = 0; j < catalogs[i].length; j++) {
+					var object = catalogs[i][j];
+					var d = Math.pow(coordinates[0] - object.raDeg, 2) + Math.pow(coordinates[1] - object.dec, 2);
+					if (d < dist) {
+						dist = d;
+						bestX = object.raDeg;
+						bestY = object.dec;
+					}
 				}
 			}
 			this.$emit('select-object', { ra: this.deg2h(bestX), dec: bestY });

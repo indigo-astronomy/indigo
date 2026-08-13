@@ -9,7 +9,6 @@ var app = Vue.createApp({
 			state: 'Connecting...',
 			host: '',
 			devices: { },
-			db: [],
 			dark: false,
 			columns: 3,
 			useAgent: false,

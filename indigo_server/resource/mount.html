@@ -182,13 +182,11 @@
 									</div>
 								</div>
 							</template>
-							<template v-if="!Array.isArray(db)">
-								<div class="card p-1 m-1 mt-2 bg-light">
-									<div class="card-body">
-										<indigo-query-db :container="db" :dark="dark"></indigo-query-db>
-									</div>
+							<div class="card p-1 m-1 mt-2 bg-light">
+								<div class="card-body">
+									<indigo-query-db :dark="dark"></indigo-query-db>
 								</div>
-							</template>
+							</div>
 							<template v-if="findProperty('Mount Agent', 'FILTER_DOME_LIST') != null">
 								<div class="card p-1 m-1 mt-2 bg-light">
 									<div class="card-body d-flex flex-wrap">

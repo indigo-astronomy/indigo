@@ -304,7 +304,7 @@ In `mount.html`:
 
 ---
 
-### Step 12 — Replace D3 `__data__` access in catalog search
+### Step 12 — Replace D3 `__data__` access in catalog search [DONE]
 
 **Files:** `components.js` (`indigo-query-db`), `mount.html`
 
