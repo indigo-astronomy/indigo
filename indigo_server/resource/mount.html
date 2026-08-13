@@ -10,39 +10,7 @@
 	<title>INDIGO Mount</title>
 	<body class="bg-secondary">
 		<div id="ROOT">
-			<nav class="navbar navbar-expand-sm navbar-light">
-				<a class="navbar-brand text-white " href="#">
-					<img src="mount.png" width="40" height="40" class="d-inline-block align-middle" alt=""/>
-					<h4 class="title">INDIGO Mount</h4>
-				</a>
-				<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
-					<span class="navbar-toggler-icon"></span>
-				</button>
-				<div id="navbarContent" class="collapse navbar-collapse m-0">
-					<template v-if="findProperty('Server', 'FEATURES') != null">
-						<a class="nav-link ms-auto" href="mng.html" data-bs-toggle="tooltip" title="Server Manager">
-							<img src="mng.png" width="40" height="40" class="align-middle me-0" alt=""/>
-						</a>
-						<a class="nav-link" href="ctrl.html" data-bs-toggle="tooltip" title="Control Panel">
-							<img src="ctrl.png" width="40" height="40" class="align-middle me-0" alt=""/>
-						</a>
-						<template v-if="findProperty('Server', 'FEATURES').item('WEB_APPS').value">
-							<a class="nav-link" href="imager.html" data-bs-toggle="tooltip" title="Imager">
-								<img src="imager.png" width="40" height="40" class="d-inline-block align-middle me-0" alt=""/>
-							</a>
-							<a class="nav-link" href="mount.html" data-bs-toggle="tooltip" title="Mount">
-								<img src="mount.png" width="40" height="40" class="d-inline-block align-middle me-0" alt=""/>
-							</a>
-							<a class="nav-link" href="guider.html" data-bs-toggle="tooltip" title="Guider">
-								<img src="guider.png" width="40" height="40" class="d-inline-block align-middle me-0" alt=""/>
-							</a>
-							<a class="nav-link" href="script.html" data-bs-toggle="tooltip" title="Script">
-								<img src="script.png" width="40" height="40" class="d-inline-block align-middle me-0" alt=""/>
-							</a>
-						</template>
-					</template>
-				</div>
-			</nav>
+			<indigo-navbar active="mount" title="INDIGO Mount" icon="mount.png"></indigo-navbar>
 			<div class="container-fluid">
 				<div v-if="devices['Mount Agent'] == null" class="alert alert-warning alert-dismissible m-1" role="alert">
 					Waiting for Mount Agent...

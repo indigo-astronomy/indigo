@@ -389,7 +389,7 @@ Vue.component('indigo-status-button', {
 
 ---
 
-### Step 15 — Extract shared navbar into `indigo-navbar` component
+### Step 15 — Extract shared navbar into `indigo-navbar` component [DONE]
 
 **Files:** `components.js`, all `.html` files
 

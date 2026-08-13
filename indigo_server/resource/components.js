@@ -856,6 +856,99 @@ app.component('indigo-query-db', {
 });
 
 
+app.component('indigo-navbar', {
+	props: {
+		active: String,
+		title: String,
+		icon: String,
+		expand: {
+			type: String,
+			default: "sm"
+		}
+	},
+	data: function() {
+		return {
+			appLinks: [
+				{ id: "imager", href: "imager.html", icon: "imager.png", title: "Imager" },
+				{ id: "mount", href: "mount.html", icon: "mount.png", title: "Mount" },
+				{ id: "guider", href: "guider.html", icon: "guider.png", title: "Guider" },
+				{ id: "script", href: "script.html", icon: "script.png", title: "Script" }
+			]
+		};
+	},
+	computed: {
+		navbarClass: function() {
+			return "navbar navbar-expand-" + this.expand + " navbar-light";
+		},
+		features: function() {
+			if (this.$root == null || this.$root.devices == null)
+				return null;
+			var properties = this.$root.devices["Server"];
+			if (properties == null)
+				return null;
+			return properties["FEATURES"];
+		},
+		webApps: function() {
+			if (this.features == null)
+				return false;
+			var item = this.features.item("WEB_APPS");
+			return item != null && item.value;
+		},
+		activePage: function() {
+			var pages = [
+				{ id: "mng", icon: "mng.png", title: "Server Manager" },
+				{ id: "ctrl", icon: "ctrl.png", title: "Control Panel" }
+			].concat(this.appLinks);
+			for (var i = 0; i < pages.length; i++) {
+				if (pages[i].id == this.active)
+					return pages[i];
+			}
+			return null;
+		},
+		brandIcon: function() {
+			if (this.icon != null && this.icon != "")
+				return this.icon;
+			if (this.activePage != null)
+				return this.activePage.icon;
+			return "";
+		},
+		brandTitle: function() {
+			if (this.title != null && this.title != "")
+				return this.title;
+			if (this.activePage != null)
+				return this.activePage.title;
+			return "";
+		}
+	},
+	template: `
+		<nav :class="navbarClass">
+			<a class="navbar-brand text-white" href="#">
+				<img :src="brandIcon" width="40" height="40" class="d-inline-block align-middle" alt=""/>
+				<h4 class="title">{{brandTitle}}</h4>
+			</a>
+			<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
+				<span class="navbar-toggler-icon"></span>
+			</button>
+			<div id="navbarContent" class="collapse navbar-collapse m-0">
+				<template v-if="features != null">
+					<a class="nav-link ms-auto" href="mng.html" data-bs-toggle="tooltip" title="Server Manager">
+						<img src="mng.png" width="40" height="40" class="align-middle me-0" alt=""/>
+					</a>
+					<a class="nav-link" href="ctrl.html" data-bs-toggle="tooltip" title="Control Panel">
+						<img src="ctrl.png" width="40" height="40" class="align-middle me-0" alt=""/>
+					</a>
+					<template v-if="webApps">
+						<a v-for="link in appLinks" :key="link.id" class="nav-link" :href="link.href" data-bs-toggle="tooltip" :title="link.title">
+							<img :src="link.icon" width="40" height="40" class="d-inline-block align-middle me-0" alt=""/>
+						</a>
+					</template>
+				</template>
+			</div>
+		</nav>
+		`
+});
+
+
 app.component('indigo-status-button', {
 	props: {
 		property: Object,
