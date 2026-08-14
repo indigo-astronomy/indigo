@@ -39,6 +39,12 @@
 	border-color: var(--input-bg) !important;
 }
 
+[data-theme="dark"] .input-group-text {
+	background-color: var(--input-bg) !important;
+	border-color: var(--input-bg) !important;
+	color: var(--text-color) !important;
+}
+
 [data-theme="dark"] .btn-outline-secondary {
 	border-color: var(--input-bg) !important;
 	color: var(--text-color) !important;
@@ -132,6 +138,14 @@ input {
 
 .container-fluid {
 	padding: 0.25rem;
+}
+
+.card.p-1 {
+	padding: 0.5rem !important;
+}
+
+.card-body {
+	padding: 0 !important;
 }
 
 .input-right {
@@ -531,15 +545,6 @@ indigo-sky-map,
 }
 
 /* ctrl.html wide two-column layout */
-.ctrl-tree {
-	overflow-y: auto;
-	max-height: calc(100vh - 100px);
-}
-
-.ctrl-panel {
-	overflow-y: auto;
-	max-height: calc(100vh - 100px);
-}
 
 .ctrl-tree .card:last-child,
 .ctrl-panel .card:last-child {
