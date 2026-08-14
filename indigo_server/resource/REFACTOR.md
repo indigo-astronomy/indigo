@@ -80,6 +80,7 @@ UI rules:
 - Dropdowns must use text labels only. Do not put icons in dropdown controls or dropdown option values; star-count dropdowns use labels `1 star`, `2 stars`, … `8 stars`.
 - All dropdown-style property selectors must use the shared Bootstrap dropdown component pattern used by `indigo-number-dropdown` / `indigo-feature-number-dropdown`, not native `<select>` elements. Tooltips should be attached to the dropdown wrapper and default to the property label unless a specific `tooltip` prop is supplied.
 - Catalog search results must look clickable: use a dedicated result row style with pointer cursor, hover/focus feedback, and a small action indicator.
+- The mount sky map panel must stay square (`aspect-ratio: 1 / 1`), use a fixed square scroll viewport around Celestial's internally sized map content so both horizontal and vertical scrolling work, and place map controls such as zoom in, zoom out, and center at marker as top-left overlays on the map.
 - `guiSetup()` must initialize Bootstrap tooltips both immediately and after the next Vue render tick, so controls inserted by `v-if` after a property change receive working tooltips.
 - `guiSetup()` and theme helpers must be safe to call before the Vue root has been assigned to `INDIGO`; update DOM theme state unconditionally, but write `INDIGO.dark` only when `INDIGO != null`.
 

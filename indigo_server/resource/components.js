@@ -2517,7 +2517,7 @@ app.component('indigo-sky-map', {
 			this.scrollMovingMount();
 		},
 		bindCanvas: function() {
-			var map = this.$refs.map;
+			var map = this.$refs.mapViewport;
 			if (map == null)
 				return;
 			var canvas = map.querySelector("canvas");
@@ -2529,20 +2529,20 @@ app.component('indigo-sky-map', {
 			this.canvas.addEventListener("mousedown", this.canvasClickHandler, false);
 		},
 		resize: function() {
-			var map = this.$refs.map;
+			var map = this.$refs.mapViewport;
 			if (map == null)
 				return;
 			map.style.maxHeight = "";
 		},
 		centerInitialView: function() {
-			var map = this.$refs.map;
+			var map = this.$refs.mapViewport;
 			if (map == null)
 				return;
 			map.scrollLeft = (this.celestialConfig.width - map.clientWidth) / 2;
 			map.scrollTop = (this.celestialConfig.width - map.clientWidth) / 2;
 		},
 		scrollToCoordinates: function(coordinates) {
-			var map = this.$refs.map;
+			var map = this.$refs.mapViewport;
 			if (map == null || coordinates == null || typeof Celestial === "undefined" || Celestial.mapProjection == null)
 				return;
 			var point = Celestial.mapProjection(coordinates);
@@ -2660,9 +2660,11 @@ app.component('indigo-sky-map', {
 		}
 	},
 	template: `
-		<div class="position-relative">
-			<div id="map" ref="map" class="position-relative indigo-sky-map"></div>
-			<div v-if="initialized" class="position-absolute d-flex">
+		<div class="position-relative indigo-sky-map-frame">
+			<div ref="mapViewport" class="position-relative indigo-sky-map">
+				<div id="map" class="position-relative"></div>
+			</div>
+			<div v-if="initialized" class="position-absolute d-flex indigo-sky-map-controls">
 				<button class="btn btn-svg idle-state m-1" :disabled="localZoomLevel >= zooms.length - 1" @click.prevent="zoomIn" data-bs-toggle="tooltip" title="Zoom In">
 					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 						<path d="M27,14v4a1,1,0,0,1-1,1H19v7a1,1,0,0,1-1,1H14a1,1,0,0,1-1-1V19H6a1,1,0,0,1-1-1V14a1,1,0,0,1,1-1h7V6a1,1,0,0,1,1-1h4a1,1,0,0,1,1,1v7h7A1,1,0,0,1,27,14Z"/>
