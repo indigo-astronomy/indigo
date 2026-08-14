@@ -54,12 +54,12 @@
 											<indigo-show-number-60 :property="window.mountDisplayCoordinatesProperty()" :name="'SET'" :icon="'↓'" :tooltip="'Set Time'"></indigo-show-number-60>
 									</template>
 									<div v-if="findProperty('Mount Agent', 'AGENT_START_PROCESS') != null" class="d-flex p-1 w-100 indigo-command-row">
-										<button id="goto_button" class="btn btn-svg" :class="window.mountStartProcessButtonClass('SLEW')" :disabled="window.mountStartProcessButtonDisabled('SLEW')" @click="window.goto()" data-bs-toggle="tooltip" title="Slew">
+											<button id="goto_button" class="btn btn-svg" :class="window.mountStateButtonClass('SLEW', 'SLEW')" :disabled="window.mountStartProcessButtonDisabled('SLEW')" @click="window.goto()" data-bs-toggle="tooltip" title="Slew">
 										<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 											<path d="M24.8175,16.86432,9.503,25.77667A1,1,0,0,1,8,24.91235V7.08765a1,1,0,0,1,1.503-.86432L24.8175,15.13568A1.00006,1.00006,0,0,1,24.8175,16.86432Z"/>
 										</svg>
 									</button>
-									<button id="sync_button" class="btn btn-svg" :class="window.mountStartProcessButtonClass('SYNC')" :disabled="window.mountStartProcessButtonDisabled('SYNC')" @click="window.sync()" data-bs-toggle="tooltip" title="Sync">
+										<button id="sync_button" class="btn btn-svg" :class="window.mountStateButtonClass('SLEW', 'SYNC')" :disabled="window.mountStartProcessButtonDisabled('SYNC')" @click="window.sync()" data-bs-toggle="tooltip" title="Sync">
 										<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 											<path d="M28.28717,17.1308l-5.76758,1.05835a.5.5,0,0,0-.2633.84533l.94043.94043L21.999,21.17236A3.6605,3.6605,0,0,1,20,22H18V11.44366a4.00005,4.00005,0,1,0-4,0V22H12a3.66355,3.66355,0,0,1-2-.82812L8.80316,19.975l.94055-.94056a.5.5,0,0,0-.2633-.84533L3.71283,17.1308a.5.5,0,0,0-.582.582l1.05835,5.76758a.5.5,0,0,0,.84533.2633l.94043-.94043,1.196,1.19623A7.49326,7.49326,0,0,0,12,26h1.6l2.00958,2.512a.5.5,0,0,0,.78088,0L18.4,26H20a7.49066,7.49066,0,0,0,4.82812-2L26.025,22.80316l.94056.94055a.5.5,0,0,0,.84533-.2633l1.05835-5.76758A.5.5,0,0,0,28.28717,17.1308ZM16,9a1,1,0,1,1,1-1A1.001,1.001,0,0,1,16,9Z"/>
 										</svg>

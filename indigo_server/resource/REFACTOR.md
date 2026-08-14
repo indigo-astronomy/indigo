@@ -871,7 +871,7 @@ Replace direct mount-device action writes with mount-agent `AGENT_START_PROCESS`
 - Match the imager/guider process-button convention: while `AGENT_START_PROCESS` is `Busy`, disable all mount action buttons and manual-motion controls except Stop. Keep the currently selected start-process item highlighted with busy/alert styling.
 - Arrange mount controls in two rows: first row has Slew, Sync, Park, Home, and Tracking on the left with Stop on the right; second row has manual motion on the left with the LX200 server button on the right.
 - Use `AGENT_MOUNT_STATE` for action state display and button coloring/busy state:
-  - `SLEW` for Slew/Sync progress and slew status
+  - `SLEW` for Slew/Sync button coloring and slew status, while preserving the selected `SLEW` / `SYNC` start-process item for immediate busy/alert feedback
   - `PARK` for Park/Unpark state
   - `HOME` for Home state
   - `TRACK` for Tracking state
