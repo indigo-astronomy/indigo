@@ -79,6 +79,7 @@ Each step can be committed independently without breaking the application.
 UI rules:
 - Dropdowns must use text labels only. Do not put icons in dropdown controls or dropdown option values; star-count dropdowns use labels `1 star`, `2 stars`, … `8 stars`.
 - All dropdown-style property selectors must use the shared Bootstrap dropdown component pattern used by `indigo-number-dropdown` / `indigo-feature-number-dropdown`, not native `<select>` elements. Tooltips should be attached to the dropdown wrapper and default to the property label unless a specific `tooltip` prop is supplied.
+- Catalog search results must look clickable: use a dedicated result row style with pointer cursor, hover/focus feedback, and a small action indicator.
 - `guiSetup()` must initialize Bootstrap tooltips both immediately and after the next Vue render tick, so controls inserted by `v-if` after a property change receive working tooltips.
 - `guiSetup()` and theme helpers must be safe to call before the Vue root has been assigned to `INDIGO`; update DOM theme state unconditionally, but write `INDIGO.dark` only when `INDIGO != null`.
 
@@ -823,6 +824,63 @@ Source references: `indigo_agent_guider.c` defines `AGENT_GUIDER_DITHERING_STRAT
 
 ---
 
+### Step 35 — Use mount agent coordinates in mount GUI [DONE]
+
+**Files:** `mount.html`
+
+Update the mount side panel so target coordinates and read-only current-coordinate display use mount agent properties instead of raw mount coordinate properties.
+
+- Move the editable target RA/Dec fields from `MOUNT_EQUATORIAL_COORDINATES.RA` / `MOUNT_EQUATORIAL_COORDINATES.DEC` to `AGENT_MOUNT_TARGET_COORDINATES.RA` / `AGENT_MOUNT_TARGET_COORDINATES.DEC`; those fields are still the target coordinates used by Slew and Sync.
+- Render target and display coordinate chips only when the corresponding mount-agent coordinate property is available; hide these coordinates instead of falling back to raw/non-agent coordinate properties.
+- In the location source card, show editable `GEOGRAPHIC_COORDINATES.LONGITUDE` / `LATITUDE` only when `AGENT_SITE_DATA_SOURCE.HOST` (`Use agent coordinates`) is selected.
+- Place catalog search above target RA/Dec inside the mount selection card, with visually clickable result rows.
+- Place `MOUNT_SLEW_RATE` and `MOUNT_TRACK_RATE` directly below target RA/Dec and above the read-only display chips.
+- Update object selection, Slew/Sync coordinate preparation, and sky-map target-coordinate helpers to read/write `AGENT_MOUNT_TARGET_COORDINATES` for target RA/Dec. Slew/Sync actions themselves are routed through `AGENT_START_PROCESS` in Step 36.
+- Replace the read-only current coordinate fields currently bound to `MOUNT_EQUATORIAL_COORDINATES` / `MOUNT_HORIZONTAL_COORDINATES` with `AGENT_MOUNT_DISPLAY_COORDINATES`:
+  - `RA_JNOW` — current RA, sexagesimal display, icon `'α'`, tooltip `'Right Ascension JNow'`
+  - `DEC_JNOW` — current Dec, sexagesimal display, icon `'δ'`, tooltip `'Declination JNow'`
+  - `ALT` — current altitude, sexagesimal display, icon `'Ε'`, tooltip `'Altitude'`
+  - `AZ` — current azimuth, sexagesimal display, icon `'Α'`, tooltip `'Azimuth'`
+- Add additional read-only mount-agent values where they fit without crowding the first coordinate row:
+  - `HA` — hour angle, sexagesimal display
+  - `RISE`, `TRANSIT`, `SET` — sexagesimal display times
+- Hide these read-only display fields when `AGENT_MOUNT_DISPLAY_COORDINATES` is not available. Do not fall back to `MOUNT_EQUATORIAL_COORDINATES` for current coordinates, because the mount agent computes JNow/display values consistently from site and target state.
+- In the mount selection card, keep only `FILTER_MOUNT_LIST` visible until a mount is selected; hide target coordinates, current-coordinate display, action buttons, rate dropdowns, and manual controls when no mount is selected.
+- In the dome section, keep only `FILTER_DOME_LIST` visible until a dome is selected; then show the coordinate chips and a fourth read-only shutter status chip showing `shutter opened`, `shutter closed`, or `N/A` based on `DOME_SHUTTER.OPENED` / `CLOSED` availability and value.
+- In the GPS section, keep only `FILTER_GPS_LIST` visible until a GPS is selected; then show the coordinate chips and a read-only fix status chip showing `no fix`, `2d fix`, `3d fix`, or `N/A` based on `GPS_STATUS.NO_FIX` / `2D_FIX` / `3D_FIX`.
+
+Source references: `indigo_names.h` defines `AGENT_MOUNT_TARGET_COORDINATES` items `RA` and `DEC` (property name string `AGENT_MOUNT_EQUATORIAL_COORDINATES`) and `AGENT_MOUNT_DISPLAY_COORDINATES` items used here (`RA_JNOW`, `DEC_JNOW`, `ALT`, `AZ`, `HA`, `RISE`, `TRANSIT`, and `SET`; property name string `AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY`); `indigo_agent_mount.c` updates these values from mount coordinates, site data, and tracking state.
+
+---
+
+### Step 36 — Route mount actions through agent start process [DONE]
+
+**Files:** `mount.html`
+
+Replace direct mount-device action writes with mount-agent `AGENT_START_PROCESS` commands.
+
+- Slew button: write `AGENT_START_PROCESS.SLEW = true`.
+- Sync button: write `AGENT_START_PROCESS.SYNC = true`.
+- Park button: write `AGENT_START_PROCESS.PARK = true`.
+- Unpark button: write `AGENT_START_PROCESS.UNPARK = true`.
+- Home button: write `AGENT_START_PROCESS.HOME = true`.
+- Tracking on button/state action: write `AGENT_START_PROCESS.TRACK_ON = true`.
+- Tracking off button/state action: write `AGENT_START_PROCESS.TRACK_OFF = true`.
+- Keep `AGENT_MOUNT_TARGET_COORDINATES` as the target RA/Dec source from Step 35; do not write `MOUNT_ON_COORDINATES_SET`, `MOUNT_PARK`, `MOUNT_HOME`, or `MOUNT_TRACKING` directly from the web UI for these actions.
+- Stop button: keep it enabled while any mount process is busy and write `AGENT_ABORT_PROCESS.ABORT = true`, with `MOUNT_ABORT_MOTION.ABORT_MOTION` only as a fallback.
+- Match the imager/guider process-button convention: while `AGENT_START_PROCESS` is `Busy`, disable all mount action buttons and manual-motion controls except Stop. Keep the currently selected start-process item highlighted with busy/alert styling.
+- Arrange mount controls in two rows: first row has Slew, Sync, Park, Home, and Tracking on the left with Stop on the right; second row has manual motion on the left with the LX200 server button on the right.
+- Use `AGENT_MOUNT_STATE` for action state display and button coloring/busy state:
+  - `SLEW` for Slew/Sync progress and slew status
+  - `PARK` for Park/Unpark state
+  - `HOME` for Home state
+  - `TRACK` for Tracking state
+- Use `AGENT_START_PROCESS` item availability for Park/Unpark/Home buttons where needed, so the UI reflects agent-mediated capabilities rather than raw device switches.
+
+Source references: `indigo_names.h` defines mount-agent start-process items `SLEW`, `SYNC`, `PARK`, `UNPARK`, `HOME`, `TRACK_ON`, and `TRACK_OFF`, and `AGENT_MOUNT_STATE` items `SLEW`, `PARK`, `HOME`, and `TRACK`; `indigo_agent_mount.c` handles those `AGENT_START_PROCESS` items, forwards the corresponding low-level `MOUNT_ON_COORDINATES_SET`, `MOUNT_PARK`, `MOUNT_HOME`, and `MOUNT_TRACKING` operations, and mirrors raw mount state into `AGENT_MOUNT_STATE`.
+
+---
+
 ## Dependency Summary After Refactoring
 
 | Library | Before | After |
@@ -843,3 +901,4 @@ Steps can be batched into four commits for review:
 3. **Components** (Steps 11–17): Extract sky map, graph, status button, navbar, status bar; modernize CSS
 4. **Functional imager UI** (Steps 18–24): Route preview through the agent, remove remaining imager action jQuery, expose estimator/selection/dithering controls, filter autofocus settings by estimator, and add autofocus image/graph feedback
 5. **Guider UI** (Steps 25–34): Add live preview with star overlay, move graphs into preview overlay, add capture mode and exposure dropdowns, add guiding rate RA/Dec controls, add drift detection section with mode/star-count/radius/subframe, add RA and Dec correction mode sections with conditional sub-fields, add integral stack section with stack-size dropdown and min-error/max-pulse fields, add calibration section with step input and read-only angle/backlash/speed results, add dithering section with strategy/amount dropdowns and settle-limit inputs
+6. **Mount UI** (Steps 35+): Move target coordinates to `AGENT_MOUNT_TARGET_COORDINATES`, current-coordinate/derived status displays to `AGENT_MOUNT_DISPLAY_COORDINATES`, and mount actions to `AGENT_START_PROCESS`

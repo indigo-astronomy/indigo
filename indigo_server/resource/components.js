@@ -1718,7 +1718,10 @@ app.component('indigo-query-db', {
 				<input type="text" class="form-control" @change="onChange">
 			</div>
 			<div v-if="result != null && result.length > 0" class="list-group list-group-flush p-1 mt-1 w-100" style="max-height: 10rem; overflow-y: scroll">
-				<a v-for="object in result" href="#" class="list-group-item list-group-item-action bg-transparent" :class="dark ? 'text-light' : 'text-dark'" @click="setTarget(object)">{{object.name}}</a>
+				<a v-for="object in result" href="#" class="list-group-item list-group-item-action indigo-catalog-result d-flex align-items-center" :class="dark ? 'text-light' : 'text-dark'" @click.prevent="setTarget(object)">
+					<span class="text-truncate">{{object.name}}</span>
+					<span class="indigo-catalog-result-icon ms-auto">›</span>
+				</a>
 			</div>
 		</div>
 		`
