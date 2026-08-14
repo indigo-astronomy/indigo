@@ -84,6 +84,7 @@ function onClose(evt) {
 	INDIGO.state = 'Lost connection to ' + indigoURL.host;
 	INDIGO.connected = false;
 	INDIGO.failed = true;
+	INDIGO.message = false;
 	setTimeout(init, 1000);
 }
 
@@ -91,6 +92,7 @@ function onError(evt) {
 	INDIGO.state = 'Error' + evt;
 	INDIGO.connected = false;
 	INDIGO.failed = true;
+	INDIGO.message = false;
 }
 
 function onMessage(evt) {

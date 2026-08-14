@@ -597,6 +597,221 @@ Source references: `indigo_agent_imager.c` writes selected star coordinates back
 
 ---
 
+### Step 25 — Add image preview to guider GUI [DONE]
+
+**Files:** `guider.html`, `components.js`
+
+Show a live camera preview in the guider in the same way as in the imager GUI:
+
+- Reuse the same `CCD_PREVIEW_IMAGE` / `CCD_PREVIEW_HISTOGRAM` property update path already used in `imager.html`.
+- Show the preview image and histogram overlay (upper-left, `256×128`) inside the same `position-relative` card wrapper used in the imager.
+- Overlay selected guider star markers from `AGENT_GUIDER_SELECTION`: read `X` / `Y` coordinates and `RADIUS` for marker size, and scale to displayed image dimensions the same way as `indigo-star-selection-overlay` in the imager. Show the overlay only for `SELECTION` and `WEIGHTED_SELECTION` detection modes (use `guiderDetectionModeIs()`); hide for `DONUTS` and `CENTROID`.
+- Hide the preview card when no camera is selected (i.e. `FILTER_CCD_LIST` first item is selected).
+- Add `PREVIEW_1` (single frame) and `PREVIEW` (continuous) buttons to the command row before the calibrate button, using `guiderStartProcessButtonClass()` / `guiderStartProcessButtonDisabled()` — the same coloring and disabling logic as the imager. Enable `CCD_PREVIEW` with histogram inside `guiderPreview1()` and `guiderPreview()`, as well as inside `calibrate()` and `guide()`.
+- Implement `guiderStartProcessProperty()`, `guiderStartProcessSelectedItem()`, `guiderStartProcessBusy()`, `guiderStartProcessButtonClass()`, `guiderStartProcessButtonDisabled()`, and `guiderSetStartProcessItem()` helper functions analogous to the imager equivalents.
+
+Source references: `indigo_agent_guider.c` uses `AGENT_GUIDER_SELECTION.X` / `Y` / `RADIUS` for the selected guide star position; `AGENT_START_PROCESS` items `PREVIEW_1` and `PREVIEW` trigger the corresponding preview processes.
+
+---
+
+### Step 26 — Move guider graphs into image preview as bottom overlay
+
+**Files:** `guider.html`, `components.js`, `indigo.css`
+
+Move the drift and correction graph canvases from their current standalone position into the preview image card as a bottom-edge overlay:
+
+- Place the `indigo-guider-graph` component absolutely at the bottom of the `position-relative` preview card, spanning its full width, with a fixed height (e.g. `128px`).
+- Use a semi-transparent dark background so the graph is readable over the preview image.
+- Keep the graph hidden when no camera is selected.
+- Remove the graph's previous standalone card/container from the layout so the right-side column is used entirely for the preview image.
+
+---
+
+### Step 27 — Add capture mode and exposure dropdowns to guider camera section
+
+**Files:** `guider.html`
+
+In the camera card of the guider UI, add:
+
+- **Capture mode** (`CCD_MODE`) as an `indigo-select-item` dropdown with `:cls="'w-50'"`, matching the imager pattern.
+- **Exposure** as an `indigo-edit-number` targeting `AGENT_GUIDER_SETTINGS.EXPOSURE` with preset values `[0, 0.1, 0.2, 0.3, 0.5, 1, 2, 3, 5, 10]` and icon `glyphicons-stopwatch`, also `:cls="'w-50'"` so it sits next to the capture mode dropdown in the same row.
+
+Place both controls after the camera selector (`FILTER_CCD_LIST`) and before any existing exposure/delay controls. If `AGENT_GUIDER_SETTINGS.EXPOSURE` already appears elsewhere in the form, remove the duplicate.
+
+Source references: `indigo_agent_guider.c` initializes `AGENT_GUIDER_SETTINGS` with `EXPOSURE`, `DELAY`, `STEP`, `BACKLASH`, `AGGRESSION`, `STACK`, `CALIBRATION_STEP_COUNT`, `GUIDE_RATE_RA`, and `GUIDE_RATE_DEC`.
+
+---
+
+### Step 28 — Add guiding rate RA / DEC controls to guider section
+
+**Files:** `guider.html`
+
+In the guider settings card, add two side-by-side editable number inputs:
+
+- `AGENT_GUIDER_SETTINGS.GUIDE_RATE_RA` with icon `glyphicons-resize-horizontal` and tooltip `'Guiding rate RA'`, `:cls="'w-50'"`.
+- `AGENT_GUIDER_SETTINGS.GUIDE_RATE_DEC` with icon `glyphicons-resize-vertical` and tooltip `'Guiding rate Dec'`, `:cls="'w-50'"`.
+
+Use `indigo-edit-number` for both. Place them together on the same flex row inside the guider card, after the existing calibration/aggression controls.
+
+Source references: `indigo_agent_guider.c` initializes `AGENT_GUIDER_SETTINGS.GUIDE_RATE_RA` and `AGENT_GUIDER_SETTINGS.GUIDE_RATE_DEC` as the per-axis guiding rates in arc-seconds per pixel.
+
+---
+
+### Step 29 — Add drift detection section to guider GUI
+
+**Files:** `guider.html`
+
+Add a dedicated drift detection card in the guider side panel containing:
+
+- **Detection mode + star count** on the same row, each at `w-50`:
+  - `AGENT_GUIDER_DETECTION_MODE` as an `indigo-select-item` dropdown with `:cls="'w-50'"`.
+  - `AGENT_GUIDER_SELECTION.STAR_COUNT` as an `indigo-number-dropdown` with `:cls="'w-50'"` and the same star-icon preset values as in the imager (`[{ value: 1, icon: 'glyphicons-star', iconCount: 1 }, … { value: 8, … }]`). Disable the dropdown (`:disabled`) and force `:display-value` to `1` when the active detection mode is not `SELECTION` or `WEIGHTED_SELECTION` — the same pattern used for `U_CURVE` star count in the imager.
+
+- **Detection radius + automatic subframing** on the next row, each at `w-50`, visible only when the active detection mode is `SELECTION` or `WEIGHTED_SELECTION` (use `v-if` checking `guiderDetectionModeIs('SELECTION') || guiderDetectionModeIs('WEIGHTED_SELECTION')`):
+  - `AGENT_GUIDER_SELECTION.RADIUS` as an `indigo-edit-number` with preset values `[3, 6, 12, 18, 24, 48]`, icon `glyphicons-target`, and tooltip `'Detection radius'`.
+  - `AGENT_GUIDER_SELECTION.SUBFRAME` as an `indigo-edit-number` with values `[{ label: 'Off', value: 0 }, 1, 2, 3, 4, 5]`, icon `glyphicons-crop`, and tooltip `'Automatic subframing'`.
+
+Add a page-level helper function `guiderDetectionModeIs(name)` analogous to `imagerFocusEstimatorIs()` in `imager.html`, reading `AGENT_GUIDER_DETECTION_MODE_PROPERTY`.
+
+Source references: `indigo_agent_guider.c` defines `AGENT_GUIDER_DETECTION_MODE_PROPERTY` with items `SELECTION` (index 0), `WEIGHTED_SELECTION` (index 1), `DONUTS` (index 2), and `CENTROID` (index 3). `AGENT_GUIDER_SELECTION_PROPERTY` items: `RADIUS` (index 0), `SUBFRAME` (index 1), `STAR_COUNT` (index 11). Star count and radius are used only by the two selection-based detection modes.
+
+---
+
+### Step 30 — Add RA correction mode section to guider GUI
+
+**Files:** `guider.html`
+
+Add a dedicated RA correction mode card in the guider side panel. The correction mode dropdown is always visible; the fields below it change according to the selected mode.
+
+- **RA correction mode** (`AGENT_GUIDER_CORRECTION_MODE_RA`) as an `indigo-select-item` dropdown, full width (no `:cls`).
+
+Conditionally show the following `indigo-edit-number` fields from `AGENT_GUIDER_SETTINGS_PROPERTY` immediately below, using `v-if` checking `guiderRaCorrectionModeIs('PI')` etc.:
+
+- **P/I** (`AGENT_GUIDER_CORRECTION_MODE_RA` item name `PI`):
+  - `AGG_RA` — RA aggressivity (%), icon `glyphicons-dashboard`, `:cls="'w-50'"`
+  - `I_GAIN_RA` — RA integral gain, icon `glyphicons-refresh`, `:cls="'w-50'"`
+
+- **Hysteresis** (`HYSTERESIS`):
+  - `HYSTERESIS_AGG_RA` — RA aggressivity (%), icon `glyphicons-dashboard`, `:cls="'w-50'"`
+  - `HYSTERESIS_HIST_RA` — RA hysteresis (%), icon `glyphicons-history`, `:cls="'w-50'"`
+
+- **Linear correction** (`LINEAR_TREND`):
+  - `LINEAR_TREND_AGG_RA` — RA aggressivity (%), icon `glyphicons-dashboard`, full width
+
+- **Predictive PEC** (`PPEC`):
+  - `PPEC_REACTIVE_GAIN_RA` — RA PPEC reactive gain (%), icon `glyphicons-dashboard`, `:cls="'w-50'"`
+  - `PPEC_PRED_GAIN_RA` — RA PPEC predictive gain (%), icon `glyphicons-signal`, `:cls="'w-50'"`
+  - `PPEC_PERIOD_RA` — RA PPEC period (s), icon `glyphicons-stopwatch`, full width
+
+Add a page-level helper `guiderRaCorrectionModeIs(name)` reading `AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY`, analogous to `imagerFocusEstimatorIs()`.
+
+Source references: `indigo_agent_guider.c` defines `AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY` with item name constants `AGENT_GUIDER_CORRECTION_MODE_PI_ITEM_NAME` (`"PI"`), `AGENT_GUIDER_CORRECTION_MODE_HYSTERESIS_ITEM_NAME` (`"HYSTERESIS"`), `AGENT_GUIDER_CORRECTION_MODE_LINEAR_TREND_ITEM_NAME` (`"LINEAR_TREND"`), and `AGENT_GUIDER_CORRECTION_MODE_PPEC_ITEM_NAME` (`"PPEC"`). The corresponding `AGENT_GUIDER_SETTINGS` items are `AGG_RA`, `I_GAIN_RA`, `HYSTERESIS_AGG_RA`, `HYSTERESIS_HIST_RA`, `LINEAR_TREND_AGG_RA`, `PPEC_REACTIVE_GAIN_RA`, `PPEC_PRED_GAIN_RA`, and `PPEC_PERIOD_RA`.
+
+---
+
+### Step 31 — Add Dec correction mode section to guider GUI
+
+**Files:** `guider.html`
+
+Add a dedicated Dec correction mode card in the guider side panel. The layout follows the SwiftUI client logic.
+
+**First row** — two half-width dropdowns side by side:
+- `AGENT_GUIDER_DEC_MODE` (`indigo-select-item`, `:cls="'w-50'"`) — Dec guiding mode with items: `BOTH` (North & South), `NORTH` (North only), `SOUTH` (South only), `NONE`.
+- `AGENT_GUIDER_CORRECTION_MODE_DEC` (`indigo-select-item`, `:cls="'w-50'"`) — Dec correction mode with items: `PI`, `HYSTERESIS`, `LINEAR_TREND`, `RESIST_SWITCH`. Disabled (`:disabled`) when Dec guiding mode is `NONE`.
+
+When Dec guiding mode is `NONE`, everything below the first row is hidden (`v-if="!guiderDecModeIs('NONE')"`).
+
+**Second row** — two half-width switch dropdowns side by side (shown only when mode ≠ `NONE`):
+- `AGENT_GUIDER_APPLY_DEC_BACKLASH` (`indigo-select-item`, `:cls="'w-50'"`) — Apply Dec backlash (Enabled/Disabled). Disabled (`:disabled`) when Dec guiding mode is not `BOTH`.
+- `AGENT_GUIDER_FLIP_REVERSES_DEC` (`indigo-select-item`, `:cls="'w-50'"`) — Reverse Dec on flip (Enabled/Disabled).
+
+**Conditional fields** from `AGENT_GUIDER_SETTINGS_PROPERTY` below, using `v-if` checking `guiderDecCorrectionModeIs(...)`:
+
+- **P/I** (`PI`):
+  - `AGG_DEC` — Dec aggressivity (%), icon `glyphicons-dashboard`, `:cls="'w-50'"`
+  - `I_GAIN_DEC` — Dec integral gain, icon `glyphicons-refresh`, `:cls="'w-50'"`
+
+- **Hysteresis** (`HYSTERESIS`):
+  - `HYSTERESIS_AGG_DEC` — Dec aggressivity (%), icon `glyphicons-dashboard`, `:cls="'w-50'"`
+  - `HYSTERESIS_HIST_DEC` — Dec hysteresis (%), icon `glyphicons-history`, `:cls="'w-50'"`
+
+- **Linear correction** (`LINEAR_TREND`):
+  - `LINEAR_TREND_AGG_DEC` — Dec aggressivity (%), icon `glyphicons-dashboard`, full width
+
+- **Resist switch** (`RESIST_SWITCH`):
+  - `RESIST_SWITCH_AGG_DEC` — Dec aggressivity (%), icon `glyphicons-dashboard`, `:cls="'w-50'"`
+  - `RESIST_SWITCH_FAST_THRSH_DEC` — Dec resist threshold (px), icon `glyphicons-flash`, `:cls="'w-50'"`
+
+Add page-level helper functions `guiderDecModeIs(name)` reading `AGENT_GUIDER_DEC_MODE_PROPERTY` and `guiderDecCorrectionModeIs(name)` reading `AGENT_GUIDER_CORRECTION_MODE_DEC_PROPERTY`, analogous to `guiderRaCorrectionModeIs()`.
+
+Source references: `indigo_agent_guider.c` defines `AGENT_GUIDER_DEC_MODE_PROPERTY` with items `BOTH` (0), `NORTH` (1), `SOUTH` (2), `NONE` (3); `AGENT_GUIDER_APPLY_DEC_BACKLASH_PROPERTY` with items `DISABLED` (0), `ENABLED` (1); `AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY` with items `ENABLED` (0), `DISABLED` (1); `AGENT_GUIDER_CORRECTION_MODE_DEC_PROPERTY` with items `PI`, `HYSTERESIS`, `LINEAR_TREND`, `RESIST_SWITCH`. Settings items: `AGG_DEC` (16), `I_GAIN_DEC` (18), `HYSTERESIS_AGG_DEC` (21), `HYSTERESIS_HIST_DEC` (23), `LINEAR_TREND_AGG_DEC` (25), `RESIST_SWITCH_AGG_DEC` (26), `RESIST_SWITCH_FAST_THRSH_DEC` (27).
+
+---
+
+### Step 32 — Add integral stack section to guider GUI
+
+**Files:** `guider.html`
+
+Add a dedicated integral stack card in the guider side panel.
+
+- **Integral stack size** (`AGENT_GUIDER_SETTINGS.STACK`) as an `indigo-number-dropdown` with labeled values:
+  - `{ label: 'Integral stack size 1', value: 1 }`
+  - `{ label: 'Integral stack size 2', value: 2 }`
+  - `{ label: 'Integral stack size 3', value: 3 }`
+  - `{ label: 'Integral stack size 4', value: 4 }`
+  - `{ label: 'Integral stack size 5', value: 5 }`
+  - `{ label: 'Integral stack size 10', value: 10 }`
+  - `{ label: 'Integral stack size 20', value: 20 }`
+
+- Below it, two half-width `indigo-edit-number` fields side by side:
+  - `AGENT_GUIDER_SETTINGS.MIN_ERR` — Min error (px), range 0–5, step 0.1, icon `glyphicons-resize-full`, `:cls="'w-50'"`
+  - `AGENT_GUIDER_SETTINGS.MAX_PULSE` — Max pulse (ms), icon `glyphicons-flash`, `:cls="'w-50'"`
+
+Source references: `indigo_agent_guider.c` initializes `AGENT_GUIDER_SETTINGS.STACK` (`AGENT_GUIDER_SETTINGS_STACK_ITEM`, index 19) with range `1..MAX_STACK`, step `1`, default `1`; `AGENT_GUIDER_SETTINGS.MIN_ERR` (`AGENT_GUIDER_SETTINGS_MIN_ERR_ITEM`, index 12) with range `0..5`, step `0.1`, default `0`; `AGENT_GUIDER_SETTINGS.MAX_PULSE` with the maximum correction pulse duration in milliseconds.
+
+---
+
+### Step 33 — Add calibration section to guider GUI
+
+**Files:** `guider.html`
+
+Add a dedicated calibration card in the guider side panel.
+
+- **Calibration step** (`AGENT_GUIDER_SETTINGS.STEP0`) as an `indigo-edit-number` with preset values `[0.01, 0.05, 0.1, 0.2, 0.5, 1]`, icon `glyphicons-hourglass`, and tooltip `'Calibration Step'`. Full width.
+
+- **Read-only results** on the next row — four `indigo-show-number` fields from `AGENT_GUIDER_SETTINGS_PROPERTY`, all on the same flex row:
+  - `ANGLE` — icon `'angle'`, tooltip `'Angle'`
+  - `BACKLASH` — icon `'b-lash'`, tooltip `'Backlash'`
+  - `SPEED_RA` — icon `'px/s α'`, tooltip `'Right Ascension Speed'`
+  - `SPEED_DEC` — icon `'px/s δ'`, tooltip `'Declination Speed'`
+
+Source references: `indigo_agent_guider.c` initializes `AGENT_GUIDER_SETTINGS.STEP0` as the calibration step size in seconds and writes back `ANGLE`, `BACKLASH`, `SPEED_RA`, and `SPEED_DEC` after a successful calibration run.
+
+---
+
+### Step 34 — Add dithering section to guider GUI
+
+**Files:** `guider.html`
+
+Add a dedicated dithering card in the guider side panel.
+
+**First row** — two half-width dropdowns side by side:
+- **Dithering strategy** (`AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY`) as an `indigo-select-item` with `:cls="'w-50'"`. Items: `RANDOM_SPIRAL` ("Randomized spiral"), `RANDOM` ("Random"), `SPIRAL` ("Spiral").
+- **Dithering amount** (`AGENT_GUIDER_SETTINGS.DITHERING_AMOUNT`) as an `indigo-number-dropdown` with `:cls="'w-50'"` and labeled values:
+  - `{ label: '1 px', value: 1 }`
+  - `{ label: '2 px', value: 2 }`
+  - `{ label: '3 px', value: 3 }`
+  - `{ label: '5 px', value: 5 }`
+  - `{ label: '10 px', value: 10 }`
+
+**Second row** — two half-width `indigo-edit-number` fields side by side:
+- `AGENT_GUIDER_SETTINGS.DITHERING_TIME_LIMIT` — Settle down max limit (s), icon `glyphicons-hourglass`, `:cls="'w-50'"`
+- `AGENT_GUIDER_SETTINGS.DITH_LIMIT` — Settle down min limit (frames), icon `glyphicons-scale`, `:cls="'w-50'"`
+
+Source references: `indigo_agent_guider.c` defines `AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY` (switch, items `RANDOM_SPIRAL`/`RANDOM`/`SPIRAL`); `AGENT_GUIDER_SETTINGS.DITHERING_AMOUNT` (index 28, range 0–15, step 1, default 1, "Dithering max amount (px)"); `AGENT_GUIDER_SETTINGS.DITHERING_TIME_LIMIT` (index 29, range 0–300, step 1, default 60, "Dithering Settle time limit (s)"); `AGENT_GUIDER_SETTINGS.DITH_LIMIT` (index 30, range 1–50, step 1, default 5, "Dithering min settling limit (frames)").
+
+---
+
 ## Dependency Summary After Refactoring
 
 | Library | Before | After |
@@ -616,3 +831,4 @@ Steps can be batched into four commits for review:
 2. **Reactivity** (Steps 4–10): Eliminate all jQuery DOM touches, replace with Vue reactive data
 3. **Components** (Steps 11–17): Extract sky map, graph, status button, navbar, status bar; modernize CSS
 4. **Functional imager UI** (Steps 18–24): Route preview through the agent, remove remaining imager action jQuery, expose estimator/selection/dithering controls, filter autofocus settings by estimator, and add autofocus image/graph feedback
+5. **Guider UI** (Steps 25–34): Add live preview with star overlay, move graphs into preview overlay, add capture mode and exposure dropdowns, add guiding rate RA/Dec controls, add drift detection section with mode/star-count/radius/subframe, add RA and Dec correction mode sections with conditional sub-fields, add integral stack section with stack-size dropdown and min-error/max-pulse fields, add calibration section with step input and read-only angle/backlash/speed results, add dithering section with strategy/amount dropdowns and settle-limit inputs

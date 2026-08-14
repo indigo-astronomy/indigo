@@ -57,12 +57,22 @@
 										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'DITHERING'" :icon="'dithering'" :tooltip="'Dithering RMSE'"></indigo-show-number>
 										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'PHASE'" :icon="'phase'" :tooltip="'Calibration phase'"></indigo-show-number>
 										<div v-if="findProperty('Guider Agent', 'AGENT_START_PROCESS') != null" class="d-flex p-1 w-100 indigo-command-row">
-											<indigo-status-button :status-class="calibrating ? 'busy-state' : 'idle-state'" :action="window.calibrate" data-bs-toggle="tooltip" title="Calibrate">
+											<indigo-status-button :property="findProperty('Guider Agent', 'AGENT_START_PROCESS')" busy-item="PREVIEW_1" :status-class="window.guiderStartProcessButtonClass('PREVIEW_1')" :disabled="window.guiderStartProcessButtonDisabled('PREVIEW_1')" :action="window.guiderPreview1" data-bs-toggle="tooltip" title="Single image preview">
+												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+													<path d="M25,8H22.125L21.81,6.91992A2.83342,2.83342,0,0,0,19.25,5h-6.5a2.83342,2.83342,0,0,0-2.56,1.91992L9.875,8H7a3.00879,3.00879,0,0,0-3,3V23a3.00879,3.00879,0,0,0,3,3H25a3.00879,3.00879,0,0,0,3-3V11A3.00879,3.00879,0,0,0,25,8ZM16,23a6,6,0,1,1,6-6A6,6,0,0,1,16,23ZM26,11.5a.5.5,0,0,1-.5.5h-1a.5.5,0,0,1-.5-.5v-1a.5.5,0,0,1,.5-.5h1a.5.5,0,0,1,.5.5ZM20,17a4,4,0,1,1-4-4A3.99992,3.99992,0,0,1,20,17Z"/>
+												</svg>
+											</indigo-status-button>
+											<indigo-status-button :property="findProperty('Guider Agent', 'AGENT_START_PROCESS')" busy-item="PREVIEW" :status-class="window.guiderStartProcessButtonClass('PREVIEW')" :disabled="window.guiderStartProcessButtonDisabled('PREVIEW')" :action="window.guiderPreview" data-bs-toggle="tooltip" title="Preview">
+												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+													<path d="M31,11v9a1,1,0,0,1-1,1H29l-5-3.43748v-4.125L29,10h1A1,1,0,0,1,31,11ZM20,8H6a2.00591,2.00591,0,0,0-2,2V21a2.00591,2.00591,0,0,0,2,2H20a2.00591,2.00591,0,0,0,2-2V10A2.00591,2.00591,0,0,0,20,8Z"/>
+												</svg>
+											</indigo-status-button>
+											<indigo-status-button :property="findProperty('Guider Agent', 'AGENT_START_PROCESS')" busy-item="CALIBRATION" :status-class="window.guiderStartProcessButtonClass('CALIBRATION')" :disabled="window.guiderStartProcessButtonDisabled('CALIBRATION')" :action="window.calibrate" data-bs-toggle="tooltip" title="Calibrate">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M7,12V9A1,1,0,0,1,8,8H9v5H8A1,1,0,0,1,7,12Zm5,3.92065a1,1,0,0,0-1.57349-.81927L3.88464,19.68073a1,1,0,0,0,0,1.63848l6.54187,4.57935A1,1,0,0,0,12,25.07928V23h5V18H12ZM13,8H11v5h2ZM24,18H23v5h1a1,1,0,0,0,1-1V19A1,1,0,0,0,24,18Zm4.11536-8.31927L21.57349,5.10138A1,1,0,0,0,20,5.92065V8H15v5h5v2.07928a1,1,0,0,0,1.57349.81928l6.54187-4.57935A1,1,0,0,0,28.11536,9.68073ZM19,23h2V18H19Z"/>
 												</svg>
 											</indigo-status-button>
-											<indigo-status-button :status-class="guiding ? 'busy-state' : 'idle-state'" :action="window.guide" class="me-auto" data-bs-toggle="tooltip" title="Guide">
+											<indigo-status-button :property="findProperty('Guider Agent', 'AGENT_START_PROCESS')" busy-item="GUIDING" :status-class="window.guiderStartProcessButtonClass('GUIDING')" :disabled="window.guiderStartProcessButtonDisabled('GUIDING')" :action="window.guide" class="me-auto" data-bs-toggle="tooltip" title="Guide">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M28,19v1a1,1,0,0,1-1,1H22.50018a1.5002,1.5002,0,0,1-1.47674-1.23633L19.95215,13.7666,17.47363,26.78076a1.49992,1.49992,0,0,1-1.40625,1.21778c-.02246.001-.04492.00146-.06836.00146a1.50033,1.50033,0,0,1-1.4414-1.08789L12,17.96l-.55756,1.95191A1.50018,1.50018,0,0,1,10,21H5a1,1,0,0,1-1-1V19a1,1,0,0,1,1-1H8.86816l1.68946-5.91211a1.50014,1.50014,0,0,1,2.88476,0l2.26563,7.9292L18.52637,5.21924a1.5,1.5,0,0,1,2.95019.01709L23.75586,18H27A1,1,0,0,1,28,19Z"/>
 												</svg>
@@ -78,6 +88,17 @@
 							</template>
 						</div>
 						<div class="col-xl-8">
+							<template v-if="window.guiderCameraSelected()">
+								<div id="image_container" class="card p-1 m-1 bg-light" style="min-height: 10rem">
+									<div class="card-body">
+										<div class="card p-0 border-0 position-relative" style="display: none">
+											<img id="image" class="img-fluid rounded"/>
+											<indigo-star-selection-overlay :selection-property="findProperty('Guider Agent', 'AGENT_GUIDER_SELECTION')" :camera-selected="window.guiderCameraSelected() && (window.guiderDetectionModeIs('SELECTION') || window.guiderDetectionModeIs('WEIGHTED_SELECTION'))"></indigo-star-selection-overlay>
+											<img id="histogram" class="indigo-preview-histogram" width="256" height="128" style="display:none"/>
+										</div>
+									</div>
+								</div>
+							</template>
 							<indigo-guider-graph ref="graph"></indigo-guider-graph>
 						</div>
 					</div>
@@ -120,16 +141,93 @@
 		}
 	
 		var targetExposureTime = 0;
+		var guiderStartProcessItem = null;
+
+		function guiderStartProcessProperty() {
+			if (INDIGO == null || INDIGO.devices["Guider Agent"] == null)
+				return null;
+			return INDIGO.devices["Guider Agent"]["AGENT_START_PROCESS"];
+		}
+
+		function guiderStartProcessSelectedItem() {
+			var property = guiderStartProcessProperty();
+			if (property != null) {
+				for (var i in property.items) {
+					if (property.items[i].value)
+						return property.items[i].name;
+				}
+			}
+			return guiderStartProcessItem;
+		}
+
+		function guiderStartProcessBusy() {
+			var property = guiderStartProcessProperty();
+			return property != null && property.state == "Busy";
+		}
+
+		function guiderStartProcessButtonClass(itemName) {
+			var property = guiderStartProcessProperty();
+			if (property == null || guiderStartProcessSelectedItem() != itemName)
+				return "idle-state";
+			if (property.state == "Busy")
+				return "busy-state";
+			if (property.state == "Alert")
+				return "alert-state";
+			return "idle-state";
+		}
+
+		function guiderStartProcessButtonDisabled(itemName) {
+			return guiderStartProcessBusy();
+		}
+
+		function guiderSetStartProcessItem(itemName) {
+			guiderStartProcessItem = itemName;
+		}
+
+		function guiderCameraSelected() {
+			if (INDIGO == null || INDIGO.devices["Guider Agent"] == null)
+				return false;
+			var property = INDIGO.devices["Guider Agent"]["FILTER_CCD_LIST"];
+			return property != null && property.items.length > 0 && !property.items[0].value;
+		}
+
+		function guiderDetectionModeIs(name) {
+			if (INDIGO == null || INDIGO.devices["Guider Agent"] == null)
+				return false;
+			var property = INDIGO.devices["Guider Agent"]["AGENT_GUIDER_DETECTION_MODE"];
+			if (property == null)
+				return false;
+			var item = property.item(name);
+			return item != null && item.value;
+		}
+
+		function guiderPreviewURL(value) {
+			if (value.startsWith("http://") || value.startsWith("https://"))
+				return value;
+			return window.location.protocol + "//" + INDIGO.host + value;
+		}
+
+		function guiderShowPreviewElement(selector, value) {
+			if (value == null)
+				return;
+			$(selector).attr("src", guiderPreviewURL(value) + '?' + new Date().getTime()).show().parent().show();
+		}
 
 		function onDefineProperty(property) {
 			onUpdateProperty(property);
 		}
-	
+
 		function onUpdateProperty(property) {
+			if (property.name == "CCD_PREVIEW_IMAGE") {
+				if (property.state == "Ok")
+					guiderShowPreviewElement("#image", property.item("IMAGE").value);
+			} else if (property.name == "CCD_PREVIEW_HISTOGRAM") {
+				if (property.state == "Ok")
+					guiderShowPreviewElement("#histogram", property.item("IMAGE").value);
+			}
 			if (property.device == "Guider Agent") {
 				if (property.name == "AGENT_START_PROCESS" && property.state != "Busy") {
-					INDIGO.calibrating = false;
-					INDIGO.guiding = false;
+					guiderStartProcessItem = null;
 				} else if (property.name == "AGENT_GUIDER_STATS") {
 					var phase = property.item("PHASE").value;
 					var frame = property.item("FRAME").value;
@@ -153,20 +251,35 @@
 			}
 			guiSetup();
 		}
-	
+
 		function onDeleteProperty(property) {
+			if (typeof property === 'undefined' || property.name == "CCD_PREVIEW_HISTOGRAM") {
+				$("#histogram").hide();
+			}
 			guiSetup();
 		}
 	
+		function guiderPreview1() {
+			guiderSetStartProcessItem("PREVIEW_1");
+			changeProperty("Guider Agent", "CCD_PREVIEW", { "ENABLED_WITH_HISTOGRAM": true });
+			changeProperty("Guider Agent", "AGENT_START_PROCESS", { "PREVIEW_1": true });
+		}
+
+		function guiderPreview() {
+			guiderSetStartProcessItem("PREVIEW");
+			changeProperty("Guider Agent", "CCD_PREVIEW", { "ENABLED_WITH_HISTOGRAM": true });
+			changeProperty("Guider Agent", "AGENT_START_PROCESS", { "PREVIEW": true });
+		}
+
 		function calibrate() {
-			INDIGO.calibrating = true;
-			INDIGO.guiding = false;
+			guiderSetStartProcessItem("CALIBRATION");
+			changeProperty("Guider Agent", "CCD_PREVIEW", { "ENABLED_WITH_HISTOGRAM": true });
 			changeProperty("Guider Agent", "AGENT_START_PROCESS", { "CALIBRATION" : true });
 		}
-	
+
 		function guide() {
-			INDIGO.calibrating = false;
-			INDIGO.guiding = true;
+			guiderSetStartProcessItem("GUIDING");
+			changeProperty("Guider Agent", "CCD_PREVIEW", { "ENABLED_WITH_HISTOGRAM": true });
 			changeProperty("Guider Agent", "AGENT_START_PROCESS", { "GUIDING" : true });
 		}
 	
