@@ -779,7 +779,7 @@ Source references: `indigo_agent_guider.c` initializes `AGENT_GUIDER_SETTINGS.ST
 
 ---
 
-### Step 33 — Add calibration section to guider GUI
+### Step 33 — Add calibration section to guider GUI [DONE]
 
 **Files:** `guider.html`
 
@@ -787,7 +787,7 @@ Add a dedicated calibration card in the guider side panel.
 
 - **Calibration step** (`AGENT_GUIDER_SETTINGS.STEP0`) as an `indigo-edit-number` with preset values `[0.01, 0.05, 0.1, 0.2, 0.5, 1]`, icon `glyphicons-hourglass`, and tooltip `'Calibration Step'`. Full width.
 
-- **Read-only results** on the next row — four `indigo-show-number` fields from `AGENT_GUIDER_SETTINGS_PROPERTY`, all on the same flex row:
+- **Read-only results** on the next row — four `indigo-show-number` fields from `AGENT_GUIDER_SETTINGS_PROPERTY`, all on the same flex row with `:cls="'w-25'"`:
   - `ANGLE` — icon `'angle'`, tooltip `'Angle'`
   - `BACKLASH` — icon `'b-lash'`, tooltip `'Backlash'`
   - `SPEED_RA` — icon `'px/s α'`, tooltip `'Right Ascension Speed'`
