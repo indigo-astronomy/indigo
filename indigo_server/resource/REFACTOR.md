@@ -918,6 +918,39 @@ Replaced the single-column `indigo-ctrl` accordion with a responsive two-column 
 
 ---
 
+### Step 39 — Switch default appearance to dark and darken state/status colours [DONE]
+
+**Files:** `indigo.css`, all HTML pages (add `data-theme="dark"` to `<html>`)
+
+Change the default appearance from light to dark and make the state indicator colours and status bar visually quieter.
+
+**Default theme:**
+
+Set `data-theme="dark"` on the `<html>` element of every page. The existing CSS variable block for `[data-theme="dark"]` already defines the dark palette; switching the default means moving those values into `:root` and keeping the light overrides under `[data-theme="light"]`.
+
+**Darker state colours:**
+
+Replace the current vivid Bootstrap-derived colours in `indigo.css` with darker, more muted variants:
+
+| State | Current bg | New bg |
+|-------|-----------|--------|
+| `ok-state` | `#5cb85c` (bright green) | `#2d6a2d` (dark green) |
+| `alert-state` | `#d9534f` (bright red) | `#7a1f1f` (dark red) |
+| `busy-state` | `#f0ad4e` (bright orange) | `#7a5010` (dark amber) |
+| `idle-state` | `#acaeaf` (light grey) | unchanged |
+
+Hover variants darken proportionally.
+
+**Status bar and copyright:**
+
+Apply a dark background (e.g. `#212529` or `var(--bg-page)`) and white text to:
+- The status messages row at the bottom of each page (`indigo-status-bar`)
+- The copyright / version line
+
+No functional change — purely visual.
+
+---
+
 ## Dependency Summary After Refactoring
 
 | Library | Before | After |
@@ -940,3 +973,4 @@ Steps can be batched into four commits for review:
 5. **Guider UI** (Steps 25–34): Add live preview with star overlay, move graphs into preview overlay, add capture mode and exposure dropdowns, add guiding rate RA/Dec controls, add drift detection section with mode/star-count/radius/subframe, add RA and Dec correction mode sections with conditional sub-fields, add integral stack section with stack-size dropdown and min-error/max-pulse fields, add calibration section with step input and read-only angle/backlash/speed results, add dithering section with strategy/amount dropdowns and settle-limit inputs
 6. **Mount UI** (Steps 35–36): Move target coordinates to `AGENT_MOUNT_TARGET_COORDINATES`, current-coordinate/derived status displays to `AGENT_MOUNT_DISPLAY_COORDINATES`, and mount actions to `AGENT_START_PROCESS`
 7. **Control panel UI** (Steps 37–38): Extract `indigo-ctrl-property-body` component, then add two-column wide-layout navigation (tree left / content panel right) to `ctrl.html`
+8. **Visual polish** (Step 39): Switch default appearance to dark, darken state colours and status bar

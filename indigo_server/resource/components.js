@@ -1643,7 +1643,7 @@ app.component('indigo-ctrl', {
 					<template v-else-if="selected.device">
 						<div class="card bg-transparent mb-2" v-for="(group, groupName) in groups(devices[selected.device])">
 							<div class="d-flex card-header p-0">
-								<button class="flex-grow-1 btn btn-outline-secondary p-2 collapse-button" data-bs-toggle="collapse" :data-bs-target="'#rp_' + groupName.hashCode()" style="text-align:left;border:none;background:transparent;color:black"><span class="icon-indicator"></span>{{groupName}}</button>
+								<button class="flex-grow-1 btn btn-outline-secondary p-2 collapse-button" data-bs-toggle="collapse" :data-bs-target="'#rp_' + groupName.hashCode()" style="text-align:left;border:none;background:transparent"><span class="icon-indicator"></span>{{groupName}}</button>
 							</div>
 							<div :id="'rp_' + groupName.hashCode()" class="accordion collapse show p-2">
 								<div class="card mb-2" v-for="(property, name) in group">
@@ -2094,19 +2094,19 @@ app.component('indigo-status-bar', {
 		}
 	},
 	template: `
-		<div v-show="$root.connected" class="alert alert-success alert-dismissible fade show m-1 mt-2" role="alert">
+		<div v-show="$root.connected" class="alert indigo-status-connected fade show m-1 mt-2" role="alert">
 			{{ $root.state }}
 			<span v-if="serverInfo != null" class="float-end">
 				INDIGO Server {{serverVersion}} at {{serverService}}
 			</span>
 		</div>
-		<div v-show="$root.failed" class="alert alert-danger alert-dismissible fade show m-1 mt-2" role="alert">
+		<div v-show="$root.failed" class="alert indigo-status-failed fade show m-1 mt-2" role="alert">
 			{{ $root.state }}
 		</div>
-		<div v-show="$root.message" class="alert alert-warning alert-dismissible fade show m-1 mt-2" role="alert">
+		<div v-show="$root.message" class="alert indigo-status-message fade show m-1 mt-2" role="alert">
 			{{ $root.state }}
 		</div>
-		<div class="alert alert-info show m-1 mt-2" role="alert">
+		<div class="alert indigo-status-info show m-1 mt-2" role="alert">
 			Copyright &copy; 2019-2025, The INDIGO Initiative. All rights reserved.
 			<a v-if="$root.dark" href="#" class="float-end" @click.prevent="setLight">Switch to light appearance</a>
 			<a v-else href="#" class="float-end" @click.prevent="setDark">Switch to dark appearance</a>
@@ -2962,10 +2962,10 @@ function guiSetup() {
 	if (INDIGO != null && typeof INDIGO.$nextTick == "function")
 		INDIGO.$nextTick(setupTooltips);
 	localStorage.name = "indigo";
-	if (localStorage.getItem("dark_mode")) {
-		setThemeState(true);
-	} else {
+	if (localStorage.getItem("light_mode")) {
 		setThemeState(false);
+	} else {
+		setThemeState(true);
 	}
 }
 
@@ -2976,12 +2976,12 @@ function setupTooltips() {
 }
 
 function setDarkMode() {
-	localStorage.setItem("dark_mode", true);
+	localStorage.removeItem("light_mode");
 	setThemeState(true);
 }
 
 function setLightMode() {
-	localStorage.removeItem("dark_mode");
+	localStorage.setItem("light_mode", true);
 	setThemeState(false);
 }
 
