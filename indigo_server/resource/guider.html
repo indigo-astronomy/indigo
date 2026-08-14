@@ -105,6 +105,16 @@
 							<template v-if="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS') != null">
 								<div class="card p-1 m-1 mt-2 bg-light">
 									<div class="card-body d-flex flex-wrap">
+										<indigo-number-dropdown v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'STACK')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'STACK'" :values="[{ label: 'Integral stack size 1', value: 1 }, { label: 'Integral stack size 2', value: 2 }, { label: 'Integral stack size 3', value: 3 }, { label: 'Integral stack size 4', value: 4 }, { label: 'Integral stack size 5', value: 5 }, { label: 'Integral stack size 10', value: 10 }, { label: 'Integral stack size 20', value: 20 }]" :tooltip="'Integral stack size'" :cls="'w-50'"></indigo-number-dropdown>
+										<indigo-edit-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'MIN_ERROR')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'MIN_ERROR'" :icon="'glyphicons-resize-full'" :tooltip="'Min error (px)'" :cls="'w-50'"></indigo-edit-number>
+										<indigo-edit-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'MIN_PULSE')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'MIN_PULSE'" :icon="'glyphicons-flash'" :tooltip="'Min pulse (s)'" :cls="'w-50'"></indigo-edit-number>
+										<indigo-edit-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'MAX_PULSE')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'MAX_PULSE'" :icon="'glyphicons-flash'" :tooltip="'Max pulse (s)'" :cls="'w-50'"></indigo-edit-number>
+									</div>
+								</div>
+							</template>
+							<template v-if="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS') != null">
+								<div class="card p-1 m-1 mt-2 bg-light">
+									<div class="card-body d-flex flex-wrap">
 										<indigo-edit-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'STEP0'" :icon="'glyphicons-hourglass'" :values="[0.01, 0.05, 0.1, 0.2, 0.5, 1]" :tooltip="'Calibration Step'"></indigo-edit-number>
 										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'SPEED_RA'" :icon="'px/s α'" :tooltip="'Right Ascension Speed'"></indigo-show-number>
 										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'SPEED_DEC'" :icon="'px/s δ'" :tooltip="'Declination Speed'"></indigo-show-number>

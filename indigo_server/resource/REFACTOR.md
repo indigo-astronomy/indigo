@@ -755,7 +755,7 @@ Source references: `indigo_agent_guider.c` defines `AGENT_GUIDER_DEC_MODE_PROPER
 
 ---
 
-### Step 32 — Add integral stack section to guider GUI
+### Step 32 — Add integral stack section to guider GUI [DONE]
 
 **Files:** `guider.html`
 
@@ -770,11 +770,12 @@ Add a dedicated integral stack card in the guider side panel.
   - `{ label: 'Integral stack size 10', value: 10 }`
   - `{ label: 'Integral stack size 20', value: 20 }`
 
-- Below it, two half-width `indigo-edit-number` fields side by side:
-  - `AGENT_GUIDER_SETTINGS.MIN_ERR` — Min error (px), range 0–5, step 0.1, icon `glyphicons-resize-full`, `:cls="'w-50'"`
-  - `AGENT_GUIDER_SETTINGS.MAX_PULSE` — Max pulse (ms), icon `glyphicons-flash`, `:cls="'w-50'"`
+- Below it, half-width `indigo-edit-number` fields:
+  - `AGENT_GUIDER_SETTINGS.MIN_ERROR` — Min error (px), range 0–5, step 0.1, icon `glyphicons-resize-full`, `:cls="'w-50'"`
+  - `AGENT_GUIDER_SETTINGS.MIN_PULSE` — Min pulse (s), icon `glyphicons-flash`, `:cls="'w-50'"`
+  - `AGENT_GUIDER_SETTINGS.MAX_PULSE` — Max pulse (s), icon `glyphicons-flash`, `:cls="'w-50'"`
 
-Source references: `indigo_agent_guider.c` initializes `AGENT_GUIDER_SETTINGS.STACK` (`AGENT_GUIDER_SETTINGS_STACK_ITEM`, index 19) with range `1..MAX_STACK`, step `1`, default `1`; `AGENT_GUIDER_SETTINGS.MIN_ERR` (`AGENT_GUIDER_SETTINGS_MIN_ERR_ITEM`, index 12) with range `0..5`, step `0.1`, default `0`; `AGENT_GUIDER_SETTINGS.MAX_PULSE` with the maximum correction pulse duration in milliseconds.
+Source references: `indigo_agent_guider.c` initializes `AGENT_GUIDER_SETTINGS.STACK` (`AGENT_GUIDER_SETTINGS_STACK_ITEM`, index 19) with range `1..MAX_STACK`, step `1`, default `1`; `AGENT_GUIDER_SETTINGS.MIN_ERROR` (`AGENT_GUIDER_SETTINGS_MIN_ERR_ITEM`, index 12) with range `0..5`, step `0.1`, default `0`; `AGENT_GUIDER_SETTINGS.MIN_PULSE` with the minimum correction pulse duration in seconds; `AGENT_GUIDER_SETTINGS.MAX_PULSE` with the maximum correction pulse duration in seconds.
 
 ---
 
