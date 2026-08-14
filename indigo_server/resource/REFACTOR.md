@@ -79,6 +79,7 @@ Each step can be committed independently without breaking the application.
 UI rules:
 - Dropdowns must use text labels only. Do not put icons in dropdown controls or dropdown option values, except star-count dropdowns that intentionally show 1 to 8 star icons.
 - All dropdown-style property selectors must use the shared Bootstrap dropdown component pattern used by `indigo-number-dropdown` / `indigo-feature-number-dropdown`, not native `<select>` elements. Tooltips should be attached to the dropdown wrapper and default to the property label unless a specific `tooltip` prop is supplied.
+- `guiSetup()` must initialize Bootstrap tooltips both immediately and after the next Vue render tick, so controls inserted by `v-if` after a property change receive working tooltips.
 
 ---
 
@@ -682,35 +683,35 @@ Source references: `indigo_agent_guider.c` defines `AGENT_GUIDER_DETECTION_MODE_
 
 ---
 
-### Step 30 — Add RA correction mode section to guider GUI
+### Step 30 — Add RA correction mode section to guider GUI [DONE]
 
 **Files:** `guider.html`
 
 Add a dedicated RA correction mode card in the guider side panel. The correction mode dropdown is always visible; the fields below it change according to the selected mode.
 
-- **RA correction mode** (`AGENT_GUIDER_CORRECTION_MODE_RA`) as an `indigo-select-item` dropdown, full width (no `:cls`).
+- **RA correction mode** (`AGENT_GUIDER_CORRECTION_MODE_RA`) as an `indigo-select-item` dropdown, full width (no `:cls`). Prefix every option label with `RA ` using `:label-prefix="'RA '"` so the selected correction axis is explicit.
 
 Conditionally show the following `indigo-edit-number` fields from `AGENT_GUIDER_SETTINGS_PROPERTY` immediately below, using `v-if` checking `guiderRaCorrectionModeIs('PI')` etc.:
 
-- **P/I** (`AGENT_GUIDER_CORRECTION_MODE_RA` item name `PI`):
-  - `AGG_RA` — RA aggressivity (%), icon `glyphicons-dashboard`, `:cls="'w-50'"`
+- **P/I** (`AGENT_GUIDER_CORRECTION_MODE_RA` item name `PI_CONTROLLER`, accepted in page helpers as `PI`):
+  - `AGGRESSIVITY_RA` — RA aggressivity (%), icon `glyphicons-dashboard`, `:cls="'w-50'"`
   - `I_GAIN_RA` — RA integral gain, icon `glyphicons-refresh`, `:cls="'w-50'"`
 
 - **Hysteresis** (`HYSTERESIS`):
-  - `HYSTERESIS_AGG_RA` — RA aggressivity (%), icon `glyphicons-dashboard`, `:cls="'w-50'"`
-  - `HYSTERESIS_HIST_RA` — RA hysteresis (%), icon `glyphicons-history`, `:cls="'w-50'"`
+  - `HYSTERESIS_AGGRESSIVENESS_RA` — RA aggressivity (%), icon `glyphicons-dashboard`, `:cls="'w-50'"`
+  - `HYSTERESIS_HYSTERESIS_RA` — RA hysteresis (%), icon `glyphicons-history`, `:cls="'w-50'"`
 
 - **Linear correction** (`LINEAR_TREND`):
-  - `LINEAR_TREND_AGG_RA` — RA aggressivity (%), icon `glyphicons-dashboard`, full width
+  - `LINEAR_TREND_AGGRESSIVENESS_RA` — RA aggressivity (%), icon `glyphicons-dashboard`, `:cls="'w-50'"`
 
 - **Predictive PEC** (`PPEC`):
   - `PPEC_REACTIVE_GAIN_RA` — RA PPEC reactive gain (%), icon `glyphicons-dashboard`, `:cls="'w-50'"`
-  - `PPEC_PRED_GAIN_RA` — RA PPEC predictive gain (%), icon `glyphicons-signal`, `:cls="'w-50'"`
-  - `PPEC_PERIOD_RA` — RA PPEC period (s), icon `glyphicons-stopwatch`, full width
+  - `PPEC_PREDICTION_GAIN_RA` — RA PPEC predictive gain (%), icon `glyphicons-signal`, `:cls="'w-50'"`
+  - `PPEC_PERIOD_RA` — RA PPEC period (s), icon `glyphicons-stopwatch`, `:cls="'w-50'"`
 
 Add a page-level helper `guiderRaCorrectionModeIs(name)` reading `AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY`, analogous to `imagerFocusEstimatorIs()`.
 
-Source references: `indigo_agent_guider.c` defines `AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY` with item name constants `AGENT_GUIDER_CORRECTION_MODE_PI_ITEM_NAME` (`"PI"`), `AGENT_GUIDER_CORRECTION_MODE_HYSTERESIS_ITEM_NAME` (`"HYSTERESIS"`), `AGENT_GUIDER_CORRECTION_MODE_LINEAR_TREND_ITEM_NAME` (`"LINEAR_TREND"`), and `AGENT_GUIDER_CORRECTION_MODE_PPEC_ITEM_NAME` (`"PPEC"`). The corresponding `AGENT_GUIDER_SETTINGS` items are `AGG_RA`, `I_GAIN_RA`, `HYSTERESIS_AGG_RA`, `HYSTERESIS_HIST_RA`, `LINEAR_TREND_AGG_RA`, `PPEC_REACTIVE_GAIN_RA`, `PPEC_PRED_GAIN_RA`, and `PPEC_PERIOD_RA`.
+Source references: `indigo_agent_guider.c` defines `AGENT_GUIDER_CORRECTION_MODE_RA_PROPERTY` with item name constants `AGENT_GUIDER_CORRECTION_MODE_PI_ITEM_NAME` (`"PI_CONTROLLER"`), `AGENT_GUIDER_CORRECTION_MODE_HYSTERESIS_ITEM_NAME` (`"HYSTERESIS"`), `AGENT_GUIDER_CORRECTION_MODE_LINEAR_TREND_ITEM_NAME` (`"LINEAR_TREND"`), and `AGENT_GUIDER_CORRECTION_MODE_PPEC_ITEM_NAME` (`"PPEC"`). The corresponding `AGENT_GUIDER_SETTINGS` items are `AGGRESSIVITY_RA`, `I_GAIN_RA`, `HYSTERESIS_AGGRESSIVENESS_RA`, `HYSTERESIS_HYSTERESIS_RA`, `LINEAR_TREND_AGGRESSIVENESS_RA`, `PPEC_REACTIVE_GAIN_RA`, `PPEC_PREDICTION_GAIN_RA`, and `PPEC_PERIOD_RA`.
 
 ---
 

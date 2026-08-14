@@ -9,7 +9,8 @@ app.component('indigo-select-item', {
 		no_value: String,
 		cls: String,
 		tooltip: String,
-		disabled: Boolean
+		disabled: Boolean,
+		labelPrefix: String
 	},
 	methods: {
 		change: function(item) {
@@ -39,8 +40,15 @@ app.component('indigo-select-item', {
 		value: function() {
 			var item = this.selectedItem();
 			if (item != null)
-				return item.label;
+				return this.label(item);
 			return this.no_value;
+		},
+		label: function(item) {
+			if (item == null)
+				return null;
+			if (this.labelPrefix != null)
+				return this.labelPrefix + item.label;
+			return item.label;
 		},
 		tooltipText: function() {
 			if (this.tooltip != null)
@@ -57,7 +65,7 @@ app.component('indigo-select-item', {
 			</button>
 			<div class="dropdown-menu">
 				<template v-if="!none_selected()">
-					<a class="dropdown-item" href="#" v-for="item in property.items" @click.prevent="change(item)">{{item.label}}</a>
+					<a class="dropdown-item" href="#" v-for="item in property.items" @click.prevent="change(item)">{{label(item)}}</a>
 				</template>
 			</div>
 		</div>`
@@ -2700,9 +2708,9 @@ app.component('indigo-shutdown', {
 INDIGO = app.mount('#ROOT');
 
 function guiSetup() {
-	document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
-		bootstrap.Tooltip.getOrCreateInstance(el);
-	});
+	setupTooltips();
+	if (INDIGO != null && typeof INDIGO.$nextTick == "function")
+		INDIGO.$nextTick(setupTooltips);
 	localStorage.name = "indigo";
 	if (localStorage.getItem("dark_mode")) {
 		document.documentElement.setAttribute("data-theme", "dark");
@@ -2711,6 +2719,12 @@ function guiSetup() {
 		document.documentElement.removeAttribute("data-theme");
 		INDIGO.dark = false;
 	}
+}
+
+function setupTooltips() {
+	document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
+		bootstrap.Tooltip.getOrCreateInstance(el);
+	});
 }
 
 function setDarkMode() {
