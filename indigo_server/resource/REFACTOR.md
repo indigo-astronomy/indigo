@@ -78,6 +78,7 @@ Each step can be committed independently without breaking the application.
 
 UI rules:
 - Dropdowns must use text labels only. Do not put icons in dropdown controls or dropdown option values, except star-count dropdowns that intentionally show 1 to 8 star icons.
+- All dropdown-style property selectors must use the shared Bootstrap dropdown component pattern used by `indigo-number-dropdown` / `indigo-feature-number-dropdown`, not native `<select>` elements. Tooltips should be attached to the dropdown wrapper and default to the property label unless a specific `tooltip` prop is supplied.
 
 ---
 

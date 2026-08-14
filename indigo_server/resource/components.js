@@ -7,12 +7,16 @@ app.component('indigo-select-item', {
 	props: {
 		property: Object,
 		no_value: String,
-		cls: String
+		cls: String,
+		tooltip: String,
+		disabled: Boolean
 	},
 	methods: {
-		onChange: function(e) {
+		change: function(item) {
+			if (this.property == null || this.disabled || this.property.perm == 'ro')
+				return;
 			var values = {};
-			values[e.target.value] = true;
+			values[item.name] = true;
 			changeProperty(this.property.device, this.property.name, values);
 		},
 		state: function() {
@@ -23,20 +27,39 @@ app.component('indigo-select-item', {
 				if (this.property.items[i].value) return false;
 			}
 			return true;
+		},
+		selectedItem: function() {
+			for (var i in this.property.items) {
+				var item = this.property.items[i];
+				if (item.value)
+					return item;
+			}
+			return null;
+		},
+		value: function() {
+			var item = this.selectedItem();
+			if (item != null)
+				return item.label;
+			return this.no_value;
+		},
+		tooltipText: function() {
+			if (this.tooltip != null)
+				return this.tooltip;
+			if (this.property != null)
+				return this.property.label;
+			return null;
 		}
 	},
 	template: `
-		<div v-if="property != null" class="p-1" :class="(cls != null ? cls : 'w-100')">
-			<select class="form-select" style="cursor: pointer" :class="state()" @change="onChange">
-				<template v-if="none_selected()">
-					<option disabled>{{ no_value }}</option>
+		<div v-if="property != null" class="dropdown p-1" :class="(cls != null ? cls : 'w-100')" data-bs-toggle="tooltip" :title="tooltipText()">
+			<button class="btn dropdown-toggle w-100 d-flex align-items-center" :class="state()" type="button" data-bs-toggle="dropdown" :disabled="disabled || property.perm == 'ro'">
+				<span class="flex-grow-1 text-start text-truncate">{{value()}}</span>
+			</button>
+			<div class="dropdown-menu">
+				<template v-if="!none_selected()">
+					<a class="dropdown-item" href="#" v-for="item in property.items" @click.prevent="change(item)">{{item.label}}</a>
 				</template>
-				<template v-else>
-					<option v-for="item in property.items" :selected="item.value" :value="item.name">
-						{{ item.label }}
-					</option>
-				</template>
-			</select>
+			</div>
 		</div>`
 });
 
