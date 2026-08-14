@@ -140,12 +140,8 @@ input {
 	padding: 0.25rem;
 }
 
-.card.p-1 {
-	padding: 0.5rem !important;
-}
-
 .card-body {
-	padding: 0 !important;
+	padding: 0;
 }
 
 .input-right {

@@ -1546,7 +1546,7 @@ app.component('indigo-ctrl', {
 
 				<!-- Left: tree navigation (accordion) -->
 				<div class="col-xl-4">
-				<div class="card bg-light ctrl-tree p-1 m-1">
+				<div class="card bg-light ctrl-tree p-2 m-1">
 					<!-- Service level -->
 					<div class="card bg-transparent mb-2">
 						<div class="d-flex card-header p-0">
@@ -1615,7 +1615,7 @@ app.component('indigo-ctrl', {
 
 				<!-- Right: content panel -->
 				<div class="col-xl-8">
-				<div class="card bg-light ctrl-panel p-1 m-1">
+				<div class="card bg-light ctrl-panel p-2 m-1">
 
 					<!-- Single property selected -->
 					<template v-if="selected.property">
