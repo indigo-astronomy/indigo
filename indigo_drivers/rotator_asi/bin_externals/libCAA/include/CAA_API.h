@@ -21,6 +21,11 @@ typedef struct _CAA_INFO
 	int MaxStep;//fixed maximum degree
 } CAA_INFO;
 
+typedef struct _CAA_HID_FILE_BUF {
+	int buffer_size;
+	char buf[55];
+}CAA_HID_FILE_BUFF;
+
 typedef enum _CAA_ERROR_CODE{
 	CAA_SUCCESS = 0,
 	CAA_ERROR_INVALID_INDEX,
@@ -37,6 +42,7 @@ typedef enum _CAA_ERROR_CODE{
 	CAA_ERROR_STALL,	// 堵转
 	CAA_ERROR_TIMEOUT, // 超时
 	CAA_ERROR_INVALID_LENGTH,
+	CAA_ERROR_USB_UPGRADE_FAILED,
 	CAA_ERROR_END = -1
 }CAA_ERROR_CODE;
 
@@ -290,7 +296,7 @@ CAA_API	CAA_ERROR_CODE CAAMinDegree(int ID, float* piAngle);
 
 /***************************************************************************
 Descriptions:
-Set max degree
+Get max degree
 
 Paras:
 int ID: the ID of caa
@@ -429,7 +435,7 @@ CAA_API	CAA_ERROR_CODE CAAClose(int ID);
 Descriptions:
 get version string, like "1, 4, 0"
 ***************************************************************************/
-CAA_API char* CAAGetSDKVersion();
+CAA_API const char* CAAGetSDKVersion();
 
 /***************************************************************************
 Descriptions:
@@ -497,6 +503,78 @@ CAA_ERROR_CLOSED: not opened
 CAA_SUCCESS: operation succeeds
 ***************************************************************************/
 CAA_API CAA_ERROR_CODE CAAGetType(int ID, CAA_TYPE* pCAAType);
+
+/***************************************************************************
+Descriptions:
+This interface serves as the starting point for the USB firmware upgrade process.
+Paras:
+int ID: connect device id.
+
+Return: 
+CAA_SUCCESS
+CAA_ERROR_INVALID_ID
+CAA_ERROR_REMOVED
+CAA_ERROR_NOT_SUPPORTED
+CAA_ERROR_ERROR_STATE
+***************************************************************************/
+CAA_API CAA_ERROR_CODE CAAHidStartUpdate(int ID);
+
+/***************************************************************************
+Descriptions:
+This interface is for sending the upgrade firmware. After it is activated, only firmware files can be sent and all other interfaces will be disabled.
+Paras:
+int ID: connect device id.
+CAA_HID_FILE_BUFF stuFileBuf: Structure for upgrade file package and byte size
+
+Note: Each package can contain a maximum of 11 bytes.
+
+Return: 
+CAA_SUCCESS
+CAA_ERROR_GENERAL_ERROR
+CAA_ERROR_INVALID_ID
+CAA_ERROR_INVALID_LENGTH
+***************************************************************************/
+CAA_API CAA_ERROR_CODE CAAHidWriteUpdateFile(int ID, CAA_HID_FILE_BUFF stuFileBuf);
+
+/***************************************************************************
+Descriptions:
+This interface serves as the ending point for the USB firmware upgrade process.
+Paras:
+int ID: connect device id.
+
+Return: 
+CAA_SUCCESS
+CAA_ERROR_INVALID_ID
+CAA_ERROR_REMOVED
+CAA_ERROR_USB_UPGRADE_FAILED
+***************************************************************************/
+CAA_API CAA_ERROR_CODE CAAHidEndUpdate(int ID);
+
+//#define ASIPRODUCE //API for Produce. It needs to be commented out when it is released to the public
+#ifdef ASIPRODUCE
+
+CAA_API CAA_ERROR_CODE CAASendCMD(int ID, unsigned char* buf, int size, bool bRead = false, unsigned char* readBuf = 0);
+
+/***************************************************************************
+Descriptions:
+Set the serial number to a CAA
+
+Paras:
+int ID: the ID of caa
+
+CAA_SN* pSN: pointer to SN
+
+Return: 
+CAA_ERROR_INVALID_ID: invalid ID value
+CAA_ERROR_CLOSED: not opened
+CAA_ERROR_NOT_SUPPORTED: the firmware does not support setting serial number
+CAA_SUCCESS: operation succeeds
+
+Note: Now setting serial number dose not through SDK, so this api is not used.
+***************************************************************************/
+CAA_API CAA_ERROR_CODE CAASetSerialNumber(int ID, CAA_SN* pSN);
+
+#endif
 
 #ifdef __cplusplus
 }
