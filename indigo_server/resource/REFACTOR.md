@@ -623,18 +623,19 @@ Move the drift and correction graph canvases from their current standalone posit
 - Place the `indigo-guider-graph` component absolutely at the bottom of the `position-relative` preview card, spanning its full width, with a fixed height (e.g. `128px`).
 - Use a semi-transparent dark background so the graph is readable over the preview image.
 - Keep the graph hidden when no camera is selected.
+- Keep the graph hidden for `PREVIEW_1` and `PREVIEW`; show it when `CALIBRATION` or `GUIDING` starts and leave it visible after those processes finish.
 - Remove the graph's previous standalone card/container from the layout so the right-side column is used entirely for the preview image.
 
 ---
 
-### Step 27 — Add capture mode and exposure dropdowns to guider camera section
+### Step 27 — Add capture mode and exposure dropdowns to guider camera section [DONE]
 
 **Files:** `guider.html`
 
 In the camera card of the guider UI, add:
 
 - **Capture mode** (`CCD_MODE`) as an `indigo-select-item` dropdown with `:cls="'w-50'"`, matching the imager pattern.
-- **Exposure** as an `indigo-edit-number` targeting `AGENT_GUIDER_SETTINGS.EXPOSURE` with preset values `[0, 0.1, 0.2, 0.3, 0.5, 1, 2, 3, 5, 10]` and icon `glyphicons-stopwatch`, also `:cls="'w-50'"` so it sits next to the capture mode dropdown in the same row.
+- **Exposure** as an `indigo-number-dropdown` targeting `AGENT_GUIDER_SETTINGS.EXPOSURE` with preset values `[0, 0.1, 0.2, 0.3, 0.5, 1, 2, 3, 5, 10]`, also `:cls="'w-50'"` so it sits next to the capture mode dropdown in the same row.
 
 Place both controls after the camera selector (`FILTER_CCD_LIST`) and before any existing exposure/delay controls. If `AGENT_GUIDER_SETTINGS.EXPOSURE` already appears elsewhere in the form, remove the duplicate.
 

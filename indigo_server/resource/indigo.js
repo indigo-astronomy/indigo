@@ -17,6 +17,7 @@ var app = Vue.createApp({
 			message: false,
 			calibrating: false,
 			guiding: false,
+			guiderGraphsEnabled: false,
 			imagerFocuserMotionButton: null,
 			imagerFocuserMotionState: "Idle",
 			imagerFocuserMotionActive: false,

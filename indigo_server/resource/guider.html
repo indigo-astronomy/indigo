@@ -22,6 +22,10 @@
 								<div class="card p-1 m-1 bg-light">
 									<div class="card-body d-flex flex-wrap">
 										<indigo-select-item :property="findProperty('Guider Agent', 'FILTER_CCD_LIST')"></indigo-select-item>
+										<template v-if="window.guiderCameraSelected()">
+											<indigo-select-item :property="findProperty('Guider Agent', 'CCD_MODE')" :cls="'w-50'"></indigo-select-item>
+											<indigo-number-dropdown :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'EXPOSURE'" :values="[{ label: 'Exposure 0 s', value: 0 }, { label: 'Exposure 0.1 s', value: 0.1 }, { label: 'Exposure 0.2 s', value: 0.2 }, { label: 'Exposure 0.3 s', value: 0.3 }, { label: 'Exposure 0.5 s', value: 0.5 }, { label: 'Exposure 1 s', value: 1 }, { label: 'Exposure 2 s', value: 2 }, { label: 'Exposure 3 s', value: 3 }, { label: 'Exposure 5 s', value: 5 }, { label: 'Exposure 10 s', value: 10 }]" :tooltip="'Exposure Time'" :cls="'w-50'"></indigo-number-dropdown>
+										</template>
 									</div>
 								</div>
 							</template>
@@ -38,7 +42,6 @@
 										<indigo-select-item :property="findProperty('Guider Agent', 'AGENT_GUIDER_DETECTION_MODE')"></indigo-select-item>
 										<indigo-edit-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'AGGRESSIVITY_RA'" :icon="'glyphicons-option-vertical'" :tooltip="'Aggressivity RA'"></indigo-edit-number>
 										<indigo-edit-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'AGGRESSIVITY_DEC'" :icon="'glyphicons-option-horizontal'" :tooltip="'Aggressivity Dec'"></indigo-edit-number>
-										<indigo-edit-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'EXPOSURE'" :icon="'glyphicons-stopwatch'" :values="[0.001, 0.01, 0.1, 1, 10, 100]" :tooltip="'Exposure Time'"></indigo-edit-number>
 										<indigo-edit-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'STEP0'" :icon="'glyphicons-hourglass'" :values="[0.01, 0.05, 0.1, 0.2, 0.5, 1]" :tooltip="'Calibration Step'"></indigo-edit-number>
 										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'SPEED_RA'" :icon="'px/s α'" :tooltip="'Right Ascension Speed'"></indigo-show-number>
 										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'SPEED_DEC'" :icon="'px/s δ'" :tooltip="'Declination Speed'"></indigo-show-number>
@@ -94,7 +97,7 @@
 										<img id="image" class="img-fluid rounded"/>
 										<indigo-star-selection-overlay :selection-property="findProperty('Guider Agent', 'AGENT_GUIDER_SELECTION')" :camera-selected="window.guiderCameraSelected() && (window.guiderDetectionModeIs('SELECTION') || window.guiderDetectionModeIs('WEIGHTED_SELECTION'))"></indigo-star-selection-overlay>
 										<img id="histogram" class="indigo-preview-histogram" width="256" height="128" style="display:none"/>
-										<indigo-guider-graph ref="graph"></indigo-guider-graph>
+										<indigo-guider-graph v-if="window.guiderGraphsVisible()" ref="graph"></indigo-guider-graph>
 									</div>
 								</div>
 							</div>
@@ -178,8 +181,18 @@
 			return guiderStartProcessBusy();
 		}
 
+		function guiderSetGraphsForStartProcessItem(itemName) {
+			if (INDIGO == null)
+				return;
+			if (itemName == "PREVIEW_1" || itemName == "PREVIEW")
+				INDIGO.guiderGraphsEnabled = false;
+			else if (itemName == "CALIBRATION" || itemName == "GUIDING")
+				INDIGO.guiderGraphsEnabled = true;
+		}
+
 		function guiderSetStartProcessItem(itemName) {
 			guiderStartProcessItem = itemName;
+			guiderSetGraphsForStartProcessItem(itemName);
 		}
 
 		function guiderCameraSelected() {
@@ -187,6 +200,10 @@
 				return false;
 			var property = INDIGO.devices["Guider Agent"]["FILTER_CCD_LIST"];
 			return property != null && property.items.length > 0 && !property.items[0].value;
+		}
+
+		function guiderGraphsVisible() {
+			return INDIGO != null && INDIGO.guiderGraphsEnabled && guiderCameraSelected();
 		}
 
 		function guiderSelectedCamera() {
@@ -237,8 +254,11 @@
 					guiderShowPreviewElement("#histogram", property.item("IMAGE").value);
 			}
 			if (property.device == "Guider Agent") {
-				if (property.name == "AGENT_START_PROCESS" && property.state != "Busy") {
-					guiderStartProcessItem = null;
+				if (property.name == "AGENT_START_PROCESS") {
+					guiderSetGraphsForStartProcessItem(guiderStartProcessSelectedItem());
+					if (property.state != "Busy") {
+						guiderStartProcessItem = null;
+					}
 				} else if (property.name == "AGENT_GUIDER_STATS") {
 					var phase = property.item("PHASE").value;
 					var frame = property.item("FRAME").value;
