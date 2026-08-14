@@ -880,178 +880,41 @@ Replace direct mount-device action writes with mount-agent `AGENT_START_PROCESS`
 
 Source references: `indigo_names.h` defines mount-agent start-process items `SLEW`, `SYNC`, `PARK`, `UNPARK`, `HOME`, `TRACK_ON`, and `TRACK_OFF`, and `AGENT_MOUNT_STATE` items `SLEW`, `PARK`, `HOME`, and `TRACK`; `indigo_agent_mount.c` handles those `AGENT_START_PROCESS` items, forwards the corresponding low-level `MOUNT_ON_COORDINATES_SET`, `MOUNT_PARK`, `MOUNT_HOME`, and `MOUNT_TRACKING` operations, and mirrors raw mount state into `AGENT_MOUNT_STATE`.
 
-### Step 37 — Extract `indigo-ctrl-property-body` component
+### Step 37 — Extract `indigo-ctrl-property-body` component [DONE]
 
 **Files:** `components.js`
 
-Extract the property items form (currently the `<form class="m-0">` inside each property's collapse body in `indigo-ctrl`) into a standalone `indigo-ctrl-property-body` component. This is a preparatory refactor required before Step 38 so that the wide-layout right panel can render property items without duplicating the template.
+Extracted the property items form from `indigo-ctrl` into a standalone `indigo-ctrl-property-body` component with `props: { property: Object }`.
 
-Props:
-```js
-props: { property: Object }
-```
+Moved methods that operate only on item/property data: `dirty`, `format`, `value`, `newValue`, `reset`, `set`, `setSwitch`, `isAbsoluteUrl`, `isImage`, `localUrl`. Added `itemState(item)` for light-type item state CSS class. Template is the original `<form class="m-0">` with all type branches (text / number / switch / light / blob), unchanged.
 
-Move these methods from `indigo-ctrl` into `indigo-ctrl-property-body` (none of them reference `devices` or any parent state):
-- `dirty(item)`, `format(item, value)`, `value(item)`, `newValue(item, value)`, `reset(property)`, `set(property)`, `setSwitch(property, itemName, value)`, `isAbsoluteUrl(value)`, `isImage(value)`, `localUrl(value)`
-- Add `itemState(item)` (a copy of the current `state()` function scoped to item-level light states, i.e. reads `item.value.toLowerCase() + "-state"`) to render light-type buttons inside the body.
-
-Template: the existing `<form class="m-0">` content with all `v-if="property.type == 'text'"` / `number` / `switch` / `light` / `blob` branches, unchanged.
-
-In `indigo-ctrl`, replace the inline `<form class="m-0">…</form>` block with `<indigo-ctrl-property-body :property="property"/>`. No visual change.
+In `indigo-ctrl` the inline form was replaced with `<indigo-ctrl-property-body :property="property"/>`. No visual change.
 
 ---
 
-### Step 38 — Add two-column wide-layout navigation to `indigo-ctrl`
+### Step 38 — Add two-column wide-layout navigation to `indigo-ctrl` [DONE]
 
-**Files:** `components.js`, `indigo.css`
+**Files:** `components.js`, `indigo.css`, `ctrl.html`
 
-Add a second rendering mode to `indigo-ctrl` that activates at the `xl` breakpoint (≥1200 px, same as other pages). Below `xl` the existing accordion is kept unchanged.
+Replaced the single-column `indigo-ctrl` accordion with a responsive two-column layout (xl+) sharing a common service/device/group/property selection model. Removed the outer `card` wrapper from `ctrl.html`.
 
-**New reactive `data()` fields in `indigo-ctrl`:**
+**Reactive data:** `selected: { device, group, property }` — `null/null/null` means service level selected.
 
-```js
-selected: { device: null, group: null, property: null },
-expandedDevices: {},   // { [deviceName]: bool }
-expandedGroups: {},    // { [deviceName + '_' + groupName]: bool }
-```
+**Methods added:** `hostname()` (returns `indigoURL.hostname`), `selectService()`, `selectDevice()`, `selectGroup()`, `selectProperty()`, `groupProperties()`. Removed `openAll()`/`closeAll()`.
 
-**New methods:**
+**Narrow layout (below xl):** Single `card bg-light p-1 m-1`. Service view: devices expanded by default (`collapse show`), groups collapsed, properties collapsed with inline `indigo-ctrl-property-body` body. Bootstrap manages all accordion state (IDs prefixed `n_`).
 
-- `selectDevice(deviceName)` — toggle `expandedDevices[deviceName]`; set `selected = { device: deviceName, group: null, property: null }` (right panel shows all groups/properties of the device).
-- `selectGroup(deviceName, groupName)` — toggle `expandedGroups[deviceName+'_'+groupName]`; set `selected = { device: deviceName, group: groupName, property: null }` (right panel shows all properties of the group).
-- `selectProperty(deviceName, groupName, property)` — set `selected = { device: deviceName, group: groupName, property }` (right panel shows that property's items only); ensure device and group are marked expanded.
-- `isDeviceExpanded(deviceName)` — returns `!!expandedDevices[deviceName]`.
-- `isGroupExpanded(deviceName, groupName)` — returns `!!expandedGroups[deviceName+'_'+groupName]`.
-- `groupProperties(deviceName, groupName)` — returns the property map for that group (delegates to `groups(devices[deviceName])[groupName]`).
+**Wide layout (xl+):** `row g-0` with `col-xl-4` (left tree) and `col-xl-8` (right panel), each a `card bg-light p-1 m-1`.
 
-Add a `watch: { devices: { deep: false } }` that validates `selected` after any top-level device change, clearing `selected` fields that no longer correspond to an existing device / group / property key.
+- **Left tree:** Four-level accordion — service (always shown, `#lt_service`) → device (`#lt_<hash>`) → group (`#lt_<hash>_<hash>`) → property (button only, no collapse). Each device/group row is split: icon button has only `data-bs-toggle` (toggles accordion, does not select); label button has only `@click` (selects, does not toggle). Active item indicated by `ctrl-tree-selected` class (CSS `::after` ▶ in inherit color/size).
 
-**Template structure:**
+- **Right panel:** Renders based on `selected`:
+  - **Service** (default): all devices expanded, groups with split icon (toggles)/label (navigates to group view), properties with collapse + inline `indigo-ctrl-property-body`. IDs prefixed `sv_`.
+  - **Device selected:** groups expanded (`collapse show`), properties collapsed accordion. IDs prefixed `rp_`.
+  - **Group selected:** all properties expanded (`collapse show`) with `indigo-ctrl-property-body`. IDs prefixed `rp_`.
+  - **Property selected:** single property card with `indigo-ctrl-property-body`.
 
-```html
-<!-- Narrow: accordion, visible on <xl (existing code, unchanged) -->
-<div class="d-xl-none accordion p-1 w-100">
-  …existing device/group/property accordion…
-</div>
-
-<!-- Wide: two-column, visible on xl+ -->
-<div class="d-none d-xl-flex w-100" style="min-height:0">
-
-  <!-- Left tree: col-xl-4 -->
-  <div class="indigo-side-panel col-xl-4 overflow-auto border-end">
-    <div v-for="(device, deviceName) in devices" class="mb-1">
-      <!-- Device row -->
-      <div class="d-flex align-items-center px-2 py-1 ctrl-tree-device"
-           :class="[state(device), { 'ctrl-tree-selected': selected.device == deviceName && !selected.group }]"
-           @click="selectDevice(deviceName)" style="cursor:pointer">
-        <span class="ctrl-tree-arrow me-1">{{ isDeviceExpanded(deviceName) ? '▾' : '▸' }}</span>
-        {{ deviceName }}
-      </div>
-      <!-- Groups (shown when device expanded) -->
-      <template v-if="isDeviceExpanded(deviceName)">
-        <div v-for="(group, groupName) in groups(device)" class="ms-2">
-          <!-- Group row -->
-          <div class="d-flex align-items-center px-2 py-1 ctrl-tree-group"
-               :class="{ 'ctrl-tree-selected': selected.device == deviceName && selected.group == groupName && !selected.property }"
-               @click="selectGroup(deviceName, groupName)" style="cursor:pointer">
-            <span class="ctrl-tree-arrow me-1">{{ isGroupExpanded(deviceName, groupName) ? '▾' : '▸' }}</span>
-            {{ groupName }}
-          </div>
-          <!-- Properties (shown when group expanded) -->
-          <template v-if="isGroupExpanded(deviceName, groupName)">
-            <div v-for="(property, name) in group"
-                 class="px-3 py-1 ctrl-tree-property"
-                 :class="[state(property), { 'ctrl-tree-selected': selected.property === property }]"
-                 @click="selectProperty(deviceName, groupName, property)" style="cursor:pointer">
-              <span class="icon-indicator me-1"></span>{{ property.label }}
-            </div>
-          </template>
-        </div>
-      </template>
-    </div>
-  </div>
-
-  <!-- Right panel: col-xl-8 -->
-  <div class="col-xl-8 overflow-auto p-2">
-
-    <!-- Single property selected -->
-    <template v-if="selected.property">
-      <div class="card mb-1">
-        <div class="card-header p-2" :class="state(selected.property)">
-          {{ selected.property.label }}
-          <small class="float-end">{{ selected.property.name }}</small>
-        </div>
-        <div class="card-body p-2 bg-light">
-          <indigo-ctrl-property-body :property="selected.property"/>
-        </div>
-      </div>
-    </template>
-
-    <!-- Group selected: all properties in that group -->
-    <template v-else-if="selected.group">
-      <div v-for="(property, name) in groupProperties(selected.device, selected.group)" class="card mb-1">
-        <div class="card-header p-2" :class="state(property)">
-          {{ property.label }}<small class="float-end">{{ name }}</small>
-        </div>
-        <div class="card-body p-2 bg-light">
-          <indigo-ctrl-property-body :property="property"/>
-        </div>
-      </div>
-    </template>
-
-    <!-- Device selected: all properties of all groups -->
-    <template v-else-if="selected.device">
-      <template v-for="(group, groupName) in groups(devices[selected.device])">
-        <h6 class="px-1 pt-2 pb-1 text-muted">{{ groupName }}</h6>
-        <div v-for="(property, name) in group" class="card mb-1">
-          <div class="card-header p-2" :class="state(property)">
-            {{ property.label }}<small class="float-end">{{ name }}</small>
-          </div>
-          <div class="card-body p-2 bg-light">
-            <indigo-ctrl-property-body :property="property"/>
-          </div>
-        </div>
-      </template>
-    </template>
-
-    <!-- Nothing selected -->
-    <template v-else>
-      <div class="text-muted text-center p-5">Select a device, group or property</div>
-    </template>
-
-  </div>
-</div>
-```
-
-**CSS additions in `indigo.css`:**
-
-```css
-.ctrl-tree-device,
-.ctrl-tree-group,
-.ctrl-tree-property {
-  border-radius: 4px;
-  transition: background 0.1s;
-}
-.ctrl-tree-device:hover,
-.ctrl-tree-group:hover,
-.ctrl-tree-property:hover {
-  background: rgba(0,0,0,.06);
-}
-.ctrl-tree-selected {
-  background: rgba(0,0,0,.12) !important;
-  font-weight: 500;
-}
-[data-theme="dark"] .ctrl-tree-device:hover,
-[data-theme="dark"] .ctrl-tree-group:hover,
-[data-theme="dark"] .ctrl-tree-property:hover {
-  background: rgba(255,255,255,.08);
-}
-[data-theme="dark"] .ctrl-tree-selected {
-  background: rgba(255,255,255,.15) !important;
-}
-```
-
-The `indigo-side-panel` class (already used on other pages) provides the sticky/scroll behaviour; no new layout class is needed in `ctrl.html` — only the existing `col-sm-12` wrapper changes to remove the width constraint so the `d-xl-flex` row inside can fill the full card width.
+**`indigo.css`:** Added `.ctrl-tree` / `.ctrl-panel` (overflow-y, max-height), `.ctrl-tree .card:last-child` / `.ctrl-panel .card:last-child` (margin-bottom: 0), `.ctrl-tree-selected` / `::after` (▶ indicator).
 
 ---
 

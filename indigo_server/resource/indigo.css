@@ -446,3 +446,33 @@ indigo-sky-map,
 .fixed {
 	font-family: monospace;
 }
+
+/* ctrl.html wide two-column layout */
+.ctrl-tree {
+	overflow-y: auto;
+	max-height: calc(100vh - 100px);
+}
+
+.ctrl-panel {
+	overflow-y: auto;
+	max-height: calc(100vh - 100px);
+}
+
+.ctrl-tree .card:last-child,
+.ctrl-panel .card:last-child {
+	margin-bottom: 0 !important;
+}
+
+.ctrl-tree-selected {
+	position: relative;
+}
+
+.ctrl-tree-selected::after {
+	content: "▶";
+	position: absolute;
+	right: 0.4rem;
+	top: 50%;
+	transform: translateY(-50%);
+	color: inherit;
+	font-size: 1em;
+}

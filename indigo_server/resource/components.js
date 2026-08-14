@@ -1418,10 +1418,32 @@ app.component('indigo-ctrl', {
 	props: {
 		devices: Object
 	},
+	data() {
+		return {
+			selected: { device: null, group: null, property: null }
+		};
+	},
+	watch: {
+		devices(val) {
+			if (this.selected.device != null && val[this.selected.device] == null) {
+				this.selected = { device: null, group: null, property: null };
+			} else if (this.selected.group != null) {
+				var dev = val[this.selected.device];
+				var grps = dev ? this.groups(dev) : {};
+				if (grps[this.selected.group] == null) {
+					this.selected = { device: this.selected.device, group: null, property: null };
+				} else if (this.selected.property != null) {
+					if (grps[this.selected.group][this.selected.property.name] == null) {
+						this.selected = { device: this.selected.device, group: this.selected.group, property: null };
+					}
+				}
+			}
+		}
+	},
 	methods: {
 		groups: function(device) {
 			var result = {};
-			for (p in device) {
+			for (var p in device) {
 				var property = device[p];
 				var group = result[property.group];
 				if (group == null) {
@@ -1437,11 +1459,11 @@ app.component('indigo-ctrl', {
 				return object.state.toLowerCase() + "-state";
 			if (object.value != null)
 				return object.value.toLowerCase() + "-state";
-			for (p in object) {
+			for (var p in object) {
 				var property = object[p];
 				if (property.name == "CONNECTION") {
 					if (property.state == "Ok") {
-						for (i in property.items) {
+						for (var i in property.items) {
 							var item = property.items[i];
 							if (item.name == "CONNECTED" && item.value) {
 								return "ok-state";
@@ -1453,53 +1475,245 @@ app.component('indigo-ctrl', {
 			}
 			return "idle-state";
 		},
-		openAll: function(id) {
-			var body = document.getElementById("B_" + id);
-			if (body == null)
-				return;
-			bootstrap.Collapse.getOrCreateInstance(body, { toggle: false }).show();
-			body.querySelectorAll(".collapse").forEach(function(el) {
-				bootstrap.Collapse.getOrCreateInstance(el, { toggle: false }).show();
-			});
+		hostname: function() {
+			return window.indigoURL ? indigoURL.hostname : 'INDIGO';
 		},
-		closeAll: function(id) {
-			var body = document.getElementById("B_" + id);
-			if (body == null)
-				return;
-			bootstrap.Collapse.getOrCreateInstance(body, { toggle: false }).show();
-			body.querySelectorAll(".collapse").forEach(function(el) {
-				bootstrap.Collapse.getOrCreateInstance(el, { toggle: false }).hide();
-			});
+		selectService: function() {
+			this.selected = { device: null, group: null, property: null };
+		},
+		selectDevice: function(deviceName) {
+			this.selected = { device: deviceName, group: null, property: null };
+		},
+		selectGroup: function(deviceName, groupName) {
+			this.selected = { device: deviceName, group: groupName, property: null };
+		},
+		selectProperty: function(deviceName, groupName, property) {
+			this.selected = { device: deviceName, group: groupName, property: property };
+		},
+		groupProperties: function(deviceName, groupName) {
+			var dev = this.devices[deviceName];
+			return dev ? (this.groups(dev)[groupName] || {}) : {};
 		},
 	},
 	template: `
-		<div class="accordion p-1 w-100">
-			<div class="card bg-transparent mb-2" v-for="(device,deviceName) in devices">
-				<div class="d-flex card-header p-0" :class="state(device)">
-					<button :id="'H_' + deviceName.hashCode()" class="flex-grow-1 btn p-2 collapsed collapse-button" data-bs-toggle="collapse" :data-bs-target="'#B_' + deviceName.hashCode()" style="text-align:left;border:none;background:transparent;"><span class="icon-indicator"></span>{{deviceName}}</button>
-					<button class="btn" @click.stop="closeAll(deviceName.hashCode())" style="border:none;background:transparent;" data-bs-toggle="tooltip" title="Collapse items">△</button>
-					<button class="btn" @click.stop="openAll(deviceName.hashCode())" style="border:none;background:transparent;" data-bs-toggle="tooltip" title="Expand items">▽</button>
-				</div>
-					<div :id="'B_' + deviceName.hashCode()" class="accordion collapse p-2 bg-transparent">
-					<div class="card bg-transparent mb-2" v-for="(group,groupName) in groups(device)">
-						<div class="d-flex card-header p-0">
-							<button :id="'H_' + deviceName.hashCode() + '_' + groupName.hashCode()" class="flex-grow-1 btn btn-outline-secondary p-2 collapsed collapse-button" data-bs-toggle="collapse" :data-bs-target="'#B_' + deviceName.hashCode() + '_' + groupName.hashCode()" style="text-align:left;border:none;background:transparent;color:black"><span class="icon-indicator"></span>{{groupName}}</button>
-							<button class="btn" @click.stop="closeAll(deviceName.hashCode() + '_' + groupName.hashCode())" style="border:none;background:transparent;">△</button>
-							<button class="btn" @click.stop="openAll(deviceName.hashCode() + '_' + groupName.hashCode())" style="border:none;background:transparent">▽</button>
-						</div>
-						<div :id="'B_' + deviceName.hashCode() + '_' + groupName.hashCode()" class="accordion collapse p-2">
-							<div class="card mb-1" v-for="(property,name) in group">
-								<button class="btn card-header p-2 collapsed collapse-button" :class="state(property)" data-bs-toggle="collapse" :data-bs-target="'#' + deviceName.hashCode() + '_' + groupName.hashCode() + '_' + name" style="text-align:left"><span class="icon-indicator"></span>{{property.label}}<small class="float-end">{{name}}</small></button>
-								<div :id="deviceName.hashCode() + '_' + groupName.hashCode() + '_' + name" class="collapse card-body p-2 bg-light">
-									<indigo-ctrl-property-body :property="property"/>
+		<div>
+			<!-- Narrow: service view (devices expanded, groups/properties collapsed) -->
+			<div class="d-xl-none">
+			<div class="card bg-light p-1 m-1">
+				<div class="card bg-transparent mb-2" v-for="(device, deviceName) in devices">
+					<div class="d-flex card-header p-0" :class="state(device)">
+						<button class="flex-grow-1 btn p-2 collapse-button"
+								data-bs-toggle="collapse"
+								:data-bs-target="'#n_' + deviceName.hashCode()"
+								style="text-align:left;border:none;background:transparent;">
+							<span class="icon-indicator"></span>{{deviceName}}
+						</button>
+					</div>
+					<div :id="'n_' + deviceName.hashCode()" class="accordion collapse show p-2 bg-transparent">
+						<div class="card bg-transparent mb-2" v-for="(group, groupName) in groups(device)">
+							<div class="d-flex card-header p-0">
+								<button class="flex-grow-1 btn btn-outline-secondary p-2 collapsed collapse-button"
+										data-bs-toggle="collapse"
+										:data-bs-target="'#n_' + deviceName.hashCode() + '_' + groupName.hashCode()"
+										style="text-align:left;border:none;background:transparent;color:black">
+									<span class="icon-indicator"></span>{{groupName}}
+								</button>
+							</div>
+							<div :id="'n_' + deviceName.hashCode() + '_' + groupName.hashCode()" class="accordion collapse p-2">
+								<div class="card mb-2" v-for="(property, name) in group">
+									<button class="btn card-header p-2 collapsed collapse-button"
+											:class="state(property)"
+											data-bs-toggle="collapse"
+											:data-bs-target="'#n_' + deviceName.hashCode() + '_' + groupName.hashCode() + '_' + name"
+											style="text-align:left">
+										<span class="icon-indicator"></span>{{property.label}}<small class="float-end">{{name}}</small>
+									</button>
+									<div :id="'n_' + deviceName.hashCode() + '_' + groupName.hashCode() + '_' + name" class="collapse card-body p-2 bg-light">
+										<indigo-ctrl-property-body :property="property"/>
+									</div>
 								</div>
 							</div>
 						</div>
 					</div>
 				</div>
 			</div>
+			</div><!-- /card -->
+			</div><!-- /d-xl-none -->
+
+			<!-- Wide: two-column layout, visible on xl+ -->
+			<div class="d-none d-xl-block">
+				<div class="row g-0">
+
+				<!-- Left: tree navigation (accordion) -->
+				<div class="col-xl-4">
+				<div class="card bg-light ctrl-tree p-1 m-1">
+					<!-- Service level -->
+					<div class="card bg-transparent mb-2">
+						<div class="d-flex card-header p-0">
+							<button class="btn p-2 collapse-button"
+									data-bs-toggle="collapse"
+									data-bs-target="#lt_service"
+									style="border:none;background:transparent;">
+								<span class="icon-indicator"></span>
+							</button>
+							<button class="flex-grow-1 btn p-2"
+									:class="{ 'ctrl-tree-selected': !selected.device }"
+									@click="selectService()"
+									style="text-align:left;border:none;background:transparent;">
+								{{hostname()}}
+							</button>
+						</div>
+						<div id="lt_service" class="accordion collapse show p-2 bg-transparent">
+							<div class="card bg-transparent mb-2" v-for="(device, deviceName) in devices">
+								<div class="d-flex card-header p-0" :class="state(device)">
+									<button class="btn p-2 collapsed collapse-button"
+											data-bs-toggle="collapse"
+											:data-bs-target="'#lt_' + deviceName.hashCode()"
+											style="border:none;background:transparent;">
+										<span class="icon-indicator"></span>
+									</button>
+									<button class="flex-grow-1 btn p-2"
+											:class="{ 'ctrl-tree-selected': selected.device == deviceName && !selected.group }"
+											@click="selectDevice(deviceName)"
+											style="text-align:left;border:none;background:transparent;">
+										{{deviceName}}
+									</button>
+								</div>
+								<div :id="'lt_' + deviceName.hashCode()" class="accordion collapse p-2 bg-transparent">
+									<div class="card bg-transparent mb-2" v-for="(group, groupName) in groups(device)">
+										<div class="d-flex card-header p-0">
+											<button class="btn p-2 collapsed collapse-button"
+													data-bs-toggle="collapse"
+													:data-bs-target="'#lt_' + deviceName.hashCode() + '_' + groupName.hashCode()"
+													style="border:none;background:transparent;color:black">
+												<span class="icon-indicator"></span>
+											</button>
+											<button class="flex-grow-1 btn p-2"
+													:class="{ 'ctrl-tree-selected': selected.device == deviceName && selected.group == groupName && !selected.property }"
+													@click="selectGroup(deviceName, groupName)"
+													style="text-align:left;border:none;background:transparent;color:black">
+												{{groupName}}
+											</button>
+										</div>
+										<div :id="'lt_' + deviceName.hashCode() + '_' + groupName.hashCode()" class="accordion collapse p-2">
+											<div class="card mb-2" v-for="(property, name) in group">
+												<button class="btn card-header p-2 w-100"
+														:class="[state(property), { 'ctrl-tree-selected': selected.property === property }]"
+														@click="selectProperty(deviceName, groupName, property)"
+														style="text-align:left">
+													{{property.label}}
+												</button>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				</div><!-- /col-xl-4 -->
+
+				<!-- Right: content panel -->
+				<div class="col-xl-8">
+				<div class="card bg-light ctrl-panel p-1 m-1">
+
+					<!-- Single property selected -->
+					<template v-if="selected.property">
+						<div class="card mb-2">
+							<div class="card-header p-2" :class="state(selected.property)">
+								{{selected.property.label}}<small class="float-end">{{selected.property.name}}</small>
+							</div>
+							<div class="card-body p-2 bg-light">
+								<indigo-ctrl-property-body :property="selected.property"/>
+							</div>
+						</div>
+					</template>
+
+					<!-- Group selected: show properties as accordion, all expanded by default -->
+					<template v-else-if="selected.group">
+						<div class="card mb-2" v-for="(property, name) in groupProperties(selected.device, selected.group)">
+							<button class="btn card-header p-2 collapse-button" :class="state(property)" data-bs-toggle="collapse" :data-bs-target="'#rp_' + name.hashCode()" style="text-align:left"><span class="icon-indicator"></span>{{property.label}}<small class="float-end">{{name}}</small></button>
+							<div :id="'rp_' + name.hashCode()" class="collapse show card-body p-2 bg-light">
+								<indigo-ctrl-property-body :property="property"/>
+							</div>
+						</div>
+					</template>
+
+					<!-- Device selected: show groups expanded, properties collapsed -->
+					<template v-else-if="selected.device">
+						<div class="card bg-transparent mb-2" v-for="(group, groupName) in groups(devices[selected.device])">
+							<div class="d-flex card-header p-0">
+								<button class="flex-grow-1 btn btn-outline-secondary p-2 collapse-button" data-bs-toggle="collapse" :data-bs-target="'#rp_' + groupName.hashCode()" style="text-align:left;border:none;background:transparent;color:black"><span class="icon-indicator"></span>{{groupName}}</button>
+							</div>
+							<div :id="'rp_' + groupName.hashCode()" class="accordion collapse show p-2">
+								<div class="card mb-2" v-for="(property, name) in group">
+									<button class="btn card-header p-2 collapsed collapse-button" :class="state(property)" data-bs-toggle="collapse" :data-bs-target="'#rp_' + groupName.hashCode() + '_' + name.hashCode()" style="text-align:left"><span class="icon-indicator"></span>{{property.label}}<small class="float-end">{{name}}</small></button>
+									<div :id="'rp_' + groupName.hashCode() + '_' + name.hashCode()" class="collapse card-body p-2 bg-light">
+										<indigo-ctrl-property-body :property="property"/>
+									</div>
+								</div>
+							</div>
+						</div>
+					</template>
+
+					<!-- Service selected (default): devices expanded, groups as navigation -->
+					<template v-else>
+						<div class="card bg-transparent mb-2" v-for="(device, deviceName) in devices">
+							<div class="d-flex card-header p-0" :class="state(device)">
+								<button class="btn p-2 collapse-button"
+										data-bs-toggle="collapse"
+										:data-bs-target="'#sv_' + deviceName.hashCode()"
+										style="border:none;background:transparent;">
+									<span class="icon-indicator"></span>
+								</button>
+								<button class="flex-grow-1 btn p-2"
+										@click="selectDevice(deviceName)"
+										style="text-align:left;border:none;background:transparent;">
+									{{deviceName}}
+								</button>
+							</div>
+							<div :id="'sv_' + deviceName.hashCode()" class="accordion collapse show p-2 bg-transparent">
+								<div class="card bg-transparent mb-2" v-for="(group, groupName) in groups(device)">
+									<div class="d-flex card-header p-0">
+										<button class="btn p-2 collapsed collapse-button"
+												data-bs-toggle="collapse"
+												:data-bs-target="'#sv_' + deviceName.hashCode() + '_' + groupName.hashCode()"
+												style="border:none;background:transparent;color:black">
+											<span class="icon-indicator"></span>
+										</button>
+										<button class="flex-grow-1 btn p-2"
+												@click="selectGroup(deviceName, groupName)"
+												style="text-align:left;border:none;background:transparent;color:black">
+											{{groupName}}
+										</button>
+									</div>
+									<div :id="'sv_' + deviceName.hashCode() + '_' + groupName.hashCode()" class="accordion collapse p-2">
+										<div class="card mb-2" v-for="(property, name) in group">
+											<button class="btn card-header p-2 collapsed collapse-button"
+													:class="state(property)"
+													data-bs-toggle="collapse"
+													:data-bs-target="'#sv_' + deviceName.hashCode() + '_' + groupName.hashCode() + '_' + name"
+													style="text-align:left">
+												<span class="icon-indicator"></span>{{property.label}}<small class="float-end">{{name}}</small>
+											</button>
+											<div :id="'sv_' + deviceName.hashCode() + '_' + groupName.hashCode() + '_' + name" class="collapse card-body p-2 bg-light">
+												<indigo-ctrl-property-body :property="property"/>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</template>
+
+				</div>
+				</div><!-- /col-xl-8 -->
+
+				</div><!-- /row -->
+			</div><!-- /d-none d-xl-block -->
 		</div>`
 });
+
 
 app.component('indigo-select-multi-item', {
 	props: {
