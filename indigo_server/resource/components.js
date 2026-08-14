@@ -645,7 +645,7 @@ app.component('indigo-autofocus-graph', {
 app.component('indigo-star-selection-overlay', {
 	props: {
 		selectionProperty: Object,
-		estimatorProperty: Object,
+		markerCount: Number,
 		cameraSelected: Boolean
 	},
 	data: function() {
@@ -699,12 +699,6 @@ app.component('indigo-star-selection-overlay', {
 				return null;
 			return Number(item.value);
 		},
-		estimatorIs: function(name) {
-			if (this.estimatorProperty == null)
-				return false;
-			var item = this.estimatorProperty.item(name);
-			return item != null && item.value;
-		},
 		updateImageMetrics: function() {
 			if (this.imageElement == null || this.$el.parentElement == null)
 				return;
@@ -744,14 +738,12 @@ app.component('indigo-star-selection-overlay', {
 			var markers = [];
 			if (this.selectionProperty == null)
 				return markers;
-			var count = this.itemValue("COUNT");
+			var count = this.markerCount;
 			var radius = this.itemValue("RADIUS");
-			if (this.estimatorIs("BAHTINOV"))
+			if (!isFinite(count))
+				count = 1;
+			if (count < 1)
 				return markers;
-			if (!this.estimatorIs("U_CURVE"))
-				count = 1;
-			if (!isFinite(count) || count < 1)
-				count = 1;
 			count = Math.min(Math.floor(count), 8);
 			if (!isFinite(radius) || radius <= 0)
 				radius = 1;

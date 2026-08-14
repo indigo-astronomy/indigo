@@ -608,7 +608,7 @@ Show a live camera preview in the guider in the same way as in the imager GUI:
 
 - Reuse the same `CCD_PREVIEW_IMAGE` / `CCD_PREVIEW_HISTOGRAM` property update path already used in `imager.html`.
 - Show the preview image and histogram overlay (upper-left, `256×128`) inside the same `position-relative` card wrapper used in the imager.
-- Overlay selected guider star markers from `AGENT_GUIDER_SELECTION`: read `X` / `Y` coordinates and `RADIUS` for marker size, and scale to displayed image dimensions the same way as `indigo-star-selection-overlay` in the imager. Show the overlay only for `SELECTION` and `WEIGHTED_SELECTION` detection modes (use `guiderDetectionModeIs()`); hide for `DONUTS` and `CENTROID`.
+- Overlay selected guider star markers from `AGENT_GUIDER_SELECTION`: pass the marker count into `indigo-star-selection-overlay`, read repeated `X` / `Y` coordinates and `RADIUS` for marker size, and scale to displayed image dimensions the same way as the imager. Show all selected stars for `SELECTION` and `WEIGHTED_SELECTION` detection modes (use `guiderDetectionModeIs()`); hide for `DONUTS` and `CENTROID`.
 - Hide the preview card when no camera is selected (i.e. `FILTER_CCD_LIST` first item is selected).
 - Add `PREVIEW_1` (single frame) and `PREVIEW` (continuous) buttons to the command row before the calibrate button, using `guiderStartProcessButtonClass()` / `guiderStartProcessButtonDisabled()` — the same coloring and disabling logic as the imager. Enable `CCD_PREVIEW` with histogram inside `guiderPreview1()` and `guiderPreview()`, as well as inside `calibrate()` and `guide()`.
 - Implement `guiderStartProcessProperty()`, `guiderStartProcessSelectedItem()`, `guiderStartProcessBusy()`, `guiderStartProcessButtonClass()`, `guiderStartProcessButtonDisabled()`, and `guiderSetStartProcessItem()` helper functions analogous to the imager equivalents.
@@ -661,7 +661,7 @@ Source references: `indigo_names.h` defines `GUIDER_RATE.RATE` as the common/RA 
 
 ---
 
-### Step 29 — Add drift detection section to guider GUI
+### Step 29 — Add drift detection section to guider GUI [DONE]
 
 **Files:** `guider.html`
 
@@ -669,7 +669,7 @@ Add a dedicated drift detection card in the guider side panel containing:
 
 - **Detection mode + star count** on the same row, each at `w-50`:
   - `AGENT_GUIDER_DETECTION_MODE` as an `indigo-select-item` dropdown with `:cls="'w-50'"`.
-  - `AGENT_GUIDER_SELECTION.STAR_COUNT` as an `indigo-number-dropdown` with `:cls="'w-50'"` and the same star-icon preset values as in the imager (`[{ value: 1, icon: 'glyphicons-star', iconCount: 1 }, … { value: 8, … }]`). This is the only dropdown icon exception. Disable the dropdown (`:disabled`) and force `:display-value` to `1` when the active detection mode is not `SELECTION` or `WEIGHTED_SELECTION` — the same pattern used for `U_CURVE` star count in the imager.
+  - `AGENT_GUIDER_SELECTION.COUNT` (`AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM_NAME`) as an `indigo-number-dropdown` with `:cls="'w-50'"`, `v-if` item check, and the same star-icon preset values as in the imager (`[{ value: 1, icon: 'glyphicons-star', iconCount: 1 }, … { value: 8, … }]`). This is the only dropdown icon exception. Disable the dropdown (`:disabled`) and force `:display-value` to `1` when the active detection mode is not `SELECTION` or `WEIGHTED_SELECTION` — the same pattern used for `U_CURVE` star count in the imager.
 
 - **Detection radius + automatic subframing** on the next row, each at `w-50`, visible only when the active detection mode is `SELECTION` or `WEIGHTED_SELECTION` (use `v-if` checking `guiderDetectionModeIs('SELECTION') || guiderDetectionModeIs('WEIGHTED_SELECTION')`):
   - `AGENT_GUIDER_SELECTION.RADIUS` as an `indigo-edit-number` with preset values `[3, 6, 12, 18, 24, 48]`, icon `glyphicons-target`, and tooltip `'Detection radius'`.
@@ -677,7 +677,7 @@ Add a dedicated drift detection card in the guider side panel containing:
 
 Add a page-level helper function `guiderDetectionModeIs(name)` analogous to `imagerFocusEstimatorIs()` in `imager.html`, reading `AGENT_GUIDER_DETECTION_MODE_PROPERTY`.
 
-Source references: `indigo_agent_guider.c` defines `AGENT_GUIDER_DETECTION_MODE_PROPERTY` with items `SELECTION` (index 0), `WEIGHTED_SELECTION` (index 1), `DONUTS` (index 2), and `CENTROID` (index 3). `AGENT_GUIDER_SELECTION_PROPERTY` items: `RADIUS` (index 0), `SUBFRAME` (index 1), `STAR_COUNT` (index 11). Star count and radius are used only by the two selection-based detection modes.
+Source references: `indigo_agent_guider.c` defines `AGENT_GUIDER_DETECTION_MODE_PROPERTY` with items `SELECTION` (index 0), `WEIGHTED_SELECTION` (index 1), `DONUTS` (index 2), and `CENTROID` (index 3). `AGENT_GUIDER_SELECTION_PROPERTY` items: `RADIUS` (index 0), `SUBFRAME` (index 1), `COUNT`/`AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM_NAME` (index 11). Star count and radius are used only by the two selection-based detection modes.
 
 ---
 

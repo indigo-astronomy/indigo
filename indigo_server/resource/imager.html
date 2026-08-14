@@ -173,7 +173,7 @@
 								<div class="card-body">
 									<div class="card p-0 border-0 position-relative" style="display: none">
 										<img id="image" class="img-fluid rounded"/>
-										<indigo-star-selection-overlay :selection-property="findProperty('Imager Agent', 'AGENT_IMAGER_SELECTION')" :estimator-property="findProperty('Imager Agent', 'AGENT_IMAGER_FOCUS_ESTIMATOR')" :camera-selected="window.imagerCameraSelected()"></indigo-star-selection-overlay>
+										<indigo-star-selection-overlay :selection-property="findProperty('Imager Agent', 'AGENT_IMAGER_SELECTION')" :marker-count="window.imagerStarSelectionMarkerCount()" :camera-selected="window.imagerCameraSelected()"></indigo-star-selection-overlay>
 										<indigo-bahtinov-spikes-overlay :spikes-property="findProperty('Imager Agent', 'AGENT_IMAGER_SPIKES')" :estimator-property="findProperty('Imager Agent', 'AGENT_IMAGER_FOCUS_ESTIMATOR')" :camera-selected="window.imagerCameraSelected()"></indigo-bahtinov-spikes-overlay>
 										<img id="histogram" class="indigo-preview-histogram" width="256" height="128" style="display:none"/>
 										<indigo-autofocus-graph :start-property="findProperty('Imager Agent', 'AGENT_START_PROCESS')" :stats-property="findProperty('Imager Agent', 'AGENT_IMAGER_STATS')" :estimator-property="findProperty('Imager Agent', 'AGENT_IMAGER_FOCUS_ESTIMATOR')" :camera-selected="window.imagerCameraSelected()" :focuser-selected="window.imagerFocuserSelected()"></indigo-autofocus-graph>
@@ -395,6 +395,26 @@
 					return false;
 				var item = property.item("COUNT");
 				return item != null && Number(item.value) == 1;
+			}
+
+			function imagerSelectionCount() {
+				if (INDIGO == null || INDIGO.devices["Imager Agent"] == null)
+					return 1;
+				var property = INDIGO.devices["Imager Agent"]["AGENT_IMAGER_SELECTION"];
+				if (property == null)
+					return 1;
+				var item = property.item("COUNT");
+				if (item == null || !isFinite(Number(item.value)) || Number(item.value) < 1)
+					return 1;
+				return Number(item.value);
+			}
+
+			function imagerStarSelectionMarkerCount() {
+				if (imagerFocusEstimatorIs("BAHTINOV"))
+					return 0;
+				if (imagerFocusEstimatorIs("U_CURVE"))
+					return imagerSelectionCount();
+				return 1;
 			}
 
 			function imagerPropertyHasItem(propertyName, itemName) {

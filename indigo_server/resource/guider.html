@@ -40,10 +40,21 @@
 									</div>
 								</div>
 							</template>
+							<template v-if="findProperty('Guider Agent', 'AGENT_GUIDER_DETECTION_MODE') != null">
+								<div class="card p-1 m-1 mt-2 bg-light">
+									<div class="card-body d-flex flex-wrap">
+										<indigo-select-item :property="findProperty('Guider Agent', 'AGENT_GUIDER_DETECTION_MODE')" :cls="'w-50'"></indigo-select-item>
+										<indigo-number-dropdown v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SELECTION', 'COUNT')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SELECTION')" :name="'COUNT'" :cls="'w-50'" :values="[{ value: 1, icon: 'glyphicons-star', iconCount: 1 }, { value: 2, icon: 'glyphicons-star', iconCount: 2 }, { value: 3, icon: 'glyphicons-star', iconCount: 3 }, { value: 4, icon: 'glyphicons-star', iconCount: 4 }, { value: 5, icon: 'glyphicons-star', iconCount: 5 }, { value: 6, icon: 'glyphicons-star', iconCount: 6 }, { value: 7, icon: 'glyphicons-star', iconCount: 7 }, { value: 8, icon: 'glyphicons-star', iconCount: 8 }]" :disabled="!(window.guiderDetectionModeIs('SELECTION') || window.guiderDetectionModeIs('WEIGHTED_SELECTION'))" :display-value="window.guiderDetectionModeIs('SELECTION') || window.guiderDetectionModeIs('WEIGHTED_SELECTION') ? null : 1" :tooltip="'Maximum number of stars'"></indigo-number-dropdown>
+										<template v-if="window.guiderDetectionModeIs('SELECTION') || window.guiderDetectionModeIs('WEIGHTED_SELECTION')">
+											<indigo-edit-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SELECTION', 'RADIUS')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SELECTION')" :name="'RADIUS'" :icon="'glyphicons-target'" :values="[3, 6, 12, 18, 24, 48]" :tooltip="'Detection radius'" :cls="'w-50'"></indigo-edit-number>
+											<indigo-edit-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SELECTION', 'SUBFRAME')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SELECTION')" :name="'SUBFRAME'" :icon="'glyphicons-crop'" :values="[{ label: 'Off', value: 0 }, 1, 2, 3, 4, 5]" :tooltip="'Automatic subframing'" :cls="'w-50'"></indigo-edit-number>
+										</template>
+									</div>
+								</div>
+							</template>
 							<template v-if="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS') != null">
 								<div class="card p-1 m-1 mt-2 bg-light">
 									<div class="card-body d-flex flex-wrap">
-										<indigo-select-item :property="findProperty('Guider Agent', 'AGENT_GUIDER_DETECTION_MODE')"></indigo-select-item>
 										<indigo-edit-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'AGGRESSIVITY_RA'" :icon="'glyphicons-option-vertical'" :tooltip="'Aggressivity RA'"></indigo-edit-number>
 										<indigo-edit-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'AGGRESSIVITY_DEC'" :icon="'glyphicons-option-horizontal'" :tooltip="'Aggressivity Dec'"></indigo-edit-number>
 										<indigo-edit-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'STEP0'" :icon="'glyphicons-hourglass'" :values="[0.01, 0.05, 0.1, 0.2, 0.5, 1]" :tooltip="'Calibration Step'"></indigo-edit-number>
@@ -99,7 +110,7 @@
 								<div class="card-body">
 									<div class="card p-0 border-0 position-relative" style="display: none">
 										<img id="image" class="img-fluid rounded"/>
-										<indigo-star-selection-overlay :selection-property="findProperty('Guider Agent', 'AGENT_GUIDER_SELECTION')" :camera-selected="window.guiderCameraSelected() && (window.guiderDetectionModeIs('SELECTION') || window.guiderDetectionModeIs('WEIGHTED_SELECTION'))"></indigo-star-selection-overlay>
+										<indigo-star-selection-overlay :selection-property="findProperty('Guider Agent', 'AGENT_GUIDER_SELECTION')" :marker-count="window.guiderStarSelectionMarkerCount()" :camera-selected="window.guiderCameraSelected() && (window.guiderDetectionModeIs('SELECTION') || window.guiderDetectionModeIs('WEIGHTED_SELECTION'))"></indigo-star-selection-overlay>
 										<img id="histogram" class="indigo-preview-histogram" width="256" height="128" style="display:none"/>
 										<indigo-guider-graph v-if="window.guiderGraphsVisible()" ref="graph"></indigo-guider-graph>
 									</div>
@@ -274,6 +285,31 @@
 				return false;
 			var item = property.item(name);
 			return item != null && item.value;
+		}
+
+		function guiderPropertyHasItem(propertyName, itemName) {
+			if (INDIGO == null || INDIGO.devices["Guider Agent"] == null)
+				return false;
+			var property = INDIGO.devices["Guider Agent"][propertyName];
+			return property != null && property.item(itemName) != null;
+		}
+
+		function guiderSelectionCount() {
+			if (INDIGO == null || INDIGO.devices["Guider Agent"] == null)
+				return 1;
+			var property = INDIGO.devices["Guider Agent"]["AGENT_GUIDER_SELECTION"];
+			if (property == null)
+				return 1;
+			var item = property.item("COUNT");
+			if (item == null || !isFinite(Number(item.value)) || Number(item.value) < 1)
+				return 1;
+			return Number(item.value);
+		}
+
+		function guiderStarSelectionMarkerCount() {
+			if (guiderDetectionModeIs("SELECTION") || guiderDetectionModeIs("WEIGHTED_SELECTION"))
+				return guiderSelectionCount();
+			return 0;
 		}
 
 		function guiderPreviewURL(value) {
