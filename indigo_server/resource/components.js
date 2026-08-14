@@ -1272,6 +1272,148 @@ app.component('indigo-stepper', {
 		</div>`
 });
 
+app.component('indigo-ctrl-property-body', {
+	props: {
+		property: Object
+	},
+	methods: {
+		itemState: function(item) {
+			if (item.value != null)
+				return item.value.toLowerCase() + "-state";
+			return "idle-state";
+		},
+		setSwitch: function(property, itemName, value) {
+			var values = {};
+			values[itemName] = value;
+			changeProperty(property.device, property.name, values);
+		},
+		dirty: function(item) {
+			if (item.newValue != null)
+				return "dirty";
+			return "";
+		},
+		format: function(item, value) {
+			if (item.format != null && item.format.endsWith("m"))
+				return dtos(value);
+			return value;
+		},
+		value: function(item) {
+			if (item.newValue != null)
+				return item.newValue;
+			var value = item.target != null ? item.target : item.value;
+			if (item.format != null && item.format.endsWith("m"))
+				return dtos(value);
+			return value;
+		},
+		newValue: function(item, value) {
+			item.newValue = value;
+		},
+		reset: function(property) {
+			for (var i in property.items) {
+				property.items[i].newValue = null;
+			}
+		},
+		set: function(property) {
+			var values = {};
+			for (var i in property.items) {
+				var item = property.items[i];
+				var newValue = item.newValue;
+				if (newValue != null) {
+					if (property.type == "number") {
+						if (item.format != null && item.format.endsWith("m"))
+							newValue = stod(newValue);
+						else
+							newValue = parseFloat(newValue);
+					}
+				}
+				values[item.name] = newValue != null ? newValue : (property.type == "number" ? item.target : item.value);
+				item.newValue = null;
+			}
+			changeProperty(property.device, property.name, values);
+		},
+		isAbsoluteUrl: function(value) {
+			return value.startsWith('http:') || value.startsWith('https:');
+		},
+		isImage: function(value) {
+			return value.endsWith('.jpeg');
+		},
+		localUrl: function(value) {
+			return window.location.protocol + '//' + window.location.host + value;
+		},
+	},
+	template: `
+		<form class="m-0">
+			<div v-if="property.message != null" class="alert alert-warning m-1" role="alert">
+				{{property.message}}
+			</div>
+			<template v-if="property.type == 'text'">
+				<div v-for="item in property.items" class="d-flex align-items-center gap-2 m-1">
+					<label class="flex-grow-1 text-truncate mb-0">{{item.label}}</label>
+					<input type="text" v-if="property.perm == 'ro'" readonly class="form-control flex-shrink-0" style="width:12rem" :value="item.value">
+					<input type="text" v-else class="form-control flex-shrink-0" style="width:12rem" :class="dirty(item)" :value="value(item)" @input="newValue(item, $event.target.value)">
+				</div>
+				<template v-if="property.perm != 'ro'">
+					<div class="float-end d-flex gap-1 mt-1">
+						<button type="submit" class="btn btn-sm btn-primary" @click.prevent="set(property)">Submit</button>
+						<button class="btn btn-sm btn-outline-secondary" @click.prevent="reset(property)">Reset</button>
+					</div>
+				</template>
+			</template>
+			<template v-else-if="property.type == 'number'">
+				<div v-for="item in property.items" class="d-flex align-items-center gap-1 m-1">
+					<label class="flex-grow-1 text-truncate mb-0">{{item.label}}</label>
+					<input type="text" v-if="property.perm == 'ro'" readonly class="form-control text-end flex-shrink-0" style="width:7rem" :class="dirty(item)" :value="format(item, item.value)">
+					<template v-else>
+						<input type="text" readonly class="form-control text-end flex-shrink-0" style="width:7rem" :value="format(item, item.value)">
+						<input type="text" class="form-control text-end flex-shrink-0" style="width:7rem" :class="dirty(item)" :value="value(item)" @input="newValue(item, $event.target.value)">
+					</template>
+				</div>
+				<template v-if="property.perm != 'ro'">
+					<div class="float-end d-flex gap-1 mt-1">
+						<button type="submit" class="btn btn-sm btn-primary" @click.prevent="set(property)">Submit</button>
+						<button class="btn btn-sm btn-outline-secondary" @click.prevent="reset(property)">Reset</button>
+					</div>
+				</template>
+			</template>
+			<template v-else-if="property.type == 'switch'">
+				<div class="form-group row m-0">
+					<div v-for="item in property.items" class="col-sm-3 p-0 m-0 pe-2" style="min-width: 15rem">
+						<template v-if="property.perm == 'ro'">
+							<button v-if="item.value && property.rule == 'OneOfMany'" disabled class="btn btn-sm btn-primary w-100 m-1">{{item.label}}</button>
+							<button v-else disabled class="btn btn-sm w-100 m-1" :class="item.value ? 'btn-primary' : 'btn-outline-secondary'" @click.prevent="setSwitch(property, item.name, !item.value)">{{item.label}}</button>
+						</template>
+						<template v-else>
+							<button v-if="item.value && property.rule == 'OneOfMany'" disabled class="btn btn-sm btn-primary w-100 m-1">{{item.label}}</button>
+							<button v-else class="btn btn-sm w-100 m-1" :class="item.value ? 'btn-primary' : 'btn-outline-secondary'" @click.prevent="setSwitch(property, item.name, !item.value)">{{item.label}}</button>
+						</template>
+					</div>
+				</div>
+			</template>
+			<template v-else-if="property.type == 'light'">
+				<div class="form-group row m-0">
+					<div v-for="item in property.items" class="col-sm-3 p-0 m-0 pe-2" style="min-width: 15rem">
+						<button disabled class="btn btn-sm w-100 m-1" :class="itemState(item)">{{item.label}}</button>
+					</div>
+				</div>
+			</template>
+			<template v-else-if="property.type == 'blob'">
+				<div v-for="item in property.items">
+					<template v-if="item.value != null && isAbsoluteUrl(item.value)">
+						<a v-if="!isImage(item.value)" :href="item.value">{{item.value}}</a>
+						<img v-else :src="item.value" class="img-fluid"/>
+					</template>
+					<template v-else-if="item.value != null">
+						<a v-if="!isImage(item.value)" :href="localUrl(item.value)">{{localUrl(item.value)}}</a>
+						<img v-else :src="localUrl(item.value)" class="img-fluid"/>
+					</template>
+				</div>
+			</template>
+			<template v-else>
+				<small>{{property}}</small>
+			</template>
+		</form>`
+});
+
 app.component('indigo-ctrl', {
 	props: {
 		devices: Object
@@ -1311,64 +1453,6 @@ app.component('indigo-ctrl', {
 			}
 			return "idle-state";
 		},
-		setSwitch: function(property, itemName, value) {
-			var values = {};
-			values[itemName] = value;
-			changeProperty(property.device, property.name, values);
-		},
-		dirty: function(item) {
-			if (item.newValue != null)
-				return "dirty";
-			return "";
-		},
-		format: function(item, value) {
-			if (item.format != null && item.format.endsWith("m"))
-				return dtos(value);
-			return value;
-		},
-		value: function(item) {
-			if (item.newValue != null)
-				return item.newValue;
-			var value = item.target != null ? item.target : item.value;
-			if (item.format != null && item.format.endsWith("m"))
-				return dtos(value);
-			return value;
-		},
-		newValue: function(item, value) {
-			item.newValue = value;
-		},
-		reset: function(property) {
-			for (i in property.items) {
-				property.items[i].newValue = null;
-			}
-		},
-		set: function(property) {
-			var values = {};
-			for (i in property.items) {
-				var item = property.items[i];
-				var newValue = item.newValue;
-				if (newValue != null) {
-					if (property.type == "number") {
-						if (item.format != null && item.format.endsWith("m"))
-							newValue = stod(newValue);
-						else
-							newValue = parseFloat(newValue);
-					}
-				}
-				values[item.name] = newValue != null ? newValue : (property.type == "number" ? item.target : item.value);
-				item.newValue = null;
-			}
-			changeProperty(property.device, property.name, values);
-		},
-		isAbsoluteUrl: function(value) {
-			return value.startsWith('http:') || value.startsWith('https:');
-		},
-		isImage: function(value) {
-			return value.endsWith('.jpeg');
-		},
-		localUrl: function(value) {
-			return window.location.protocol + '//' + window.location.host + value;
-		},
 		openAll: function(id) {
 			var body = document.getElementById("B_" + id);
 			if (body == null)
@@ -1407,76 +1491,7 @@ app.component('indigo-ctrl', {
 							<div class="card mb-1" v-for="(property,name) in group">
 								<button class="btn card-header p-2 collapsed collapse-button" :class="state(property)" data-bs-toggle="collapse" :data-bs-target="'#' + deviceName.hashCode() + '_' + groupName.hashCode() + '_' + name" style="text-align:left"><span class="icon-indicator"></span>{{property.label}}<small class="float-end">{{name}}</small></button>
 								<div :id="deviceName.hashCode() + '_' + groupName.hashCode() + '_' + name" class="collapse card-body p-2 bg-light">
-									<form class="m-0">
-										<div v-if="property.message != null" class="alert alert-warning m-1" role="alert">
-											{{property.message}}
-										</div>
-										<template v-if="property.type == 'text'">
-											<div v-for="item in property.items" class="d-flex align-items-center gap-2 m-1">
-												<label class="flex-grow-1 text-truncate mb-0">{{item.label}}</label>
-												<input type="text" v-if="property.perm == 'ro'" readonly class="form-control flex-shrink-0" style="width:12rem" :value="item.value">
-												<input type="text" v-else class="form-control flex-shrink-0" style="width:12rem" :class="dirty(item)" :value="value(item)" @input="newValue(item, $event.target.value)">
-											</div>
-											<template v-if="property.perm != 'ro'">
-												<div class="float-end d-flex gap-1 mt-1">
-													<button type="submit" class="btn btn-sm btn-primary" @click.prevent="set(property)">Submit</button>
-													<button class="btn btn-sm btn-outline-secondary" @click.prevent="reset(property)">Reset</button>
-												</div>
-											</template>
-										</template>
-										<template v-else-if="property.type == 'number'">
-											<div v-for="item in property.items" class="d-flex align-items-center gap-1 m-1">
-												<label class="flex-grow-1 text-truncate mb-0">{{item.label}}</label>
-												<input type="text" v-if="property.perm == 'ro'" readonly class="form-control text-end flex-shrink-0" style="width:7rem" :class="dirty(item)" :value="format(item, item.value)">
-												<template v-else>
-													<input type="text" readonly class="form-control text-end flex-shrink-0" style="width:7rem" :value="format(item, item.value)">
-													<input type="text" class="form-control text-end flex-shrink-0" style="width:7rem" :class="dirty(item)" :value="value(item)" @input="newValue(item, $event.target.value)">
-												</template>
-											</div>
-											<template v-if="property.perm != 'ro'">
-												<div class="float-end d-flex gap-1 mt-1">
-													<button type="submit" class="btn btn-sm btn-primary" @click.prevent="set(property)">Submit</button>
-													<button class="btn btn-sm btn-outline-secondary" @click.prevent="reset(property)">Reset</button>
-												</div>
-											</template>
-										</template>
-										<template v-else-if="property.type == 'switch'">
-											<div class="form-group row m-0">
-												<div v-for="item in property.items" class="col-sm-3 p-0 m-0 pe-2" style="min-width: 15rem">
-													<template v-if="property.perm == 'ro'">
-														<button v-if="item.value && property.rule == 'OneOfMany'" disabled class="btn btn-sm btn-primary w-100 m-1">{{item.label}}</button>
-														<button v-else disabled class="btn btn-sm w-100 m-1" :class="item.value ? 'btn-primary' : 'btn-outline-secondary'" @click.prevent="setSwitch(property, item.name, !item.value)">{{item.label}}</button>
-													</template>
-													<template v-else>
-														<button v-if="item.value && property.rule == 'OneOfMany'" disabled class="btn btn-sm btn-primary w-100 m-1">{{item.label}}</button>
-														<button v-else class="btn btn-sm w-100 m-1" :class="item.value ? 'btn-primary' : 'btn-outline-secondary'" @click.prevent="setSwitch(property, item.name, !item.value)">{{item.label}}</button>
-												  </template>
-												</div>
-											</div>
-										</template>
-										<template v-else-if="property.type == 'light'">
-											<div class="form-group row m-0">
-												<div v-for="item in property.items" class="col-sm-3 p-0 m-0 pe-2" style="min-width: 15rem">
-													<button disabled class="btn btn-sm w-100 m-1" :class="state(item)">{{item.label}}</button>
-												</div>
-											</div>
-										</template>
-										<template v-else-if="property.type == 'blob'">
-											<div v-for="item in property.items">
-												<template v-if="item.value != null && isAbsoluteUrl(item.value)">
-													<a v-if="!isImage(item.value)" :href="item.value">{{item.value}}</a>
-													<img v-else :src="item.value" class="img-fluid"/>
-												</template>
-												<template v-else-if="item.value != null">
-													<a v-if="!isImage(item.value)" :href="localUrl(item.value)">{{localUrl(item.value)}}</a>
-													<img v-else :src="localUrl(item.value)" class="img-fluid"/>
-												</template>
-											</div>
-										</template>
-										<template v-else>
-											<small>{{property}}</small>
-										</template>
-									</form>
+									<indigo-ctrl-property-body :property="property"/>
 								</div>
 							</div>
 						</div>

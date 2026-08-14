@@ -880,6 +880,179 @@ Replace direct mount-device action writes with mount-agent `AGENT_START_PROCESS`
 
 Source references: `indigo_names.h` defines mount-agent start-process items `SLEW`, `SYNC`, `PARK`, `UNPARK`, `HOME`, `TRACK_ON`, and `TRACK_OFF`, and `AGENT_MOUNT_STATE` items `SLEW`, `PARK`, `HOME`, and `TRACK`; `indigo_agent_mount.c` handles those `AGENT_START_PROCESS` items, forwards the corresponding low-level `MOUNT_ON_COORDINATES_SET`, `MOUNT_PARK`, `MOUNT_HOME`, and `MOUNT_TRACKING` operations, and mirrors raw mount state into `AGENT_MOUNT_STATE`.
 
+### Step 37 — Extract `indigo-ctrl-property-body` component
+
+**Files:** `components.js`
+
+Extract the property items form (currently the `<form class="m-0">` inside each property's collapse body in `indigo-ctrl`) into a standalone `indigo-ctrl-property-body` component. This is a preparatory refactor required before Step 38 so that the wide-layout right panel can render property items without duplicating the template.
+
+Props:
+```js
+props: { property: Object }
+```
+
+Move these methods from `indigo-ctrl` into `indigo-ctrl-property-body` (none of them reference `devices` or any parent state):
+- `dirty(item)`, `format(item, value)`, `value(item)`, `newValue(item, value)`, `reset(property)`, `set(property)`, `setSwitch(property, itemName, value)`, `isAbsoluteUrl(value)`, `isImage(value)`, `localUrl(value)`
+- Add `itemState(item)` (a copy of the current `state()` function scoped to item-level light states, i.e. reads `item.value.toLowerCase() + "-state"`) to render light-type buttons inside the body.
+
+Template: the existing `<form class="m-0">` content with all `v-if="property.type == 'text'"` / `number` / `switch` / `light` / `blob` branches, unchanged.
+
+In `indigo-ctrl`, replace the inline `<form class="m-0">…</form>` block with `<indigo-ctrl-property-body :property="property"/>`. No visual change.
+
+---
+
+### Step 38 — Add two-column wide-layout navigation to `indigo-ctrl`
+
+**Files:** `components.js`, `indigo.css`
+
+Add a second rendering mode to `indigo-ctrl` that activates at the `xl` breakpoint (≥1200 px, same as other pages). Below `xl` the existing accordion is kept unchanged.
+
+**New reactive `data()` fields in `indigo-ctrl`:**
+
+```js
+selected: { device: null, group: null, property: null },
+expandedDevices: {},   // { [deviceName]: bool }
+expandedGroups: {},    // { [deviceName + '_' + groupName]: bool }
+```
+
+**New methods:**
+
+- `selectDevice(deviceName)` — toggle `expandedDevices[deviceName]`; set `selected = { device: deviceName, group: null, property: null }` (right panel shows all groups/properties of the device).
+- `selectGroup(deviceName, groupName)` — toggle `expandedGroups[deviceName+'_'+groupName]`; set `selected = { device: deviceName, group: groupName, property: null }` (right panel shows all properties of the group).
+- `selectProperty(deviceName, groupName, property)` — set `selected = { device: deviceName, group: groupName, property }` (right panel shows that property's items only); ensure device and group are marked expanded.
+- `isDeviceExpanded(deviceName)` — returns `!!expandedDevices[deviceName]`.
+- `isGroupExpanded(deviceName, groupName)` — returns `!!expandedGroups[deviceName+'_'+groupName]`.
+- `groupProperties(deviceName, groupName)` — returns the property map for that group (delegates to `groups(devices[deviceName])[groupName]`).
+
+Add a `watch: { devices: { deep: false } }` that validates `selected` after any top-level device change, clearing `selected` fields that no longer correspond to an existing device / group / property key.
+
+**Template structure:**
+
+```html
+<!-- Narrow: accordion, visible on <xl (existing code, unchanged) -->
+<div class="d-xl-none accordion p-1 w-100">
+  …existing device/group/property accordion…
+</div>
+
+<!-- Wide: two-column, visible on xl+ -->
+<div class="d-none d-xl-flex w-100" style="min-height:0">
+
+  <!-- Left tree: col-xl-4 -->
+  <div class="indigo-side-panel col-xl-4 overflow-auto border-end">
+    <div v-for="(device, deviceName) in devices" class="mb-1">
+      <!-- Device row -->
+      <div class="d-flex align-items-center px-2 py-1 ctrl-tree-device"
+           :class="[state(device), { 'ctrl-tree-selected': selected.device == deviceName && !selected.group }]"
+           @click="selectDevice(deviceName)" style="cursor:pointer">
+        <span class="ctrl-tree-arrow me-1">{{ isDeviceExpanded(deviceName) ? '▾' : '▸' }}</span>
+        {{ deviceName }}
+      </div>
+      <!-- Groups (shown when device expanded) -->
+      <template v-if="isDeviceExpanded(deviceName)">
+        <div v-for="(group, groupName) in groups(device)" class="ms-2">
+          <!-- Group row -->
+          <div class="d-flex align-items-center px-2 py-1 ctrl-tree-group"
+               :class="{ 'ctrl-tree-selected': selected.device == deviceName && selected.group == groupName && !selected.property }"
+               @click="selectGroup(deviceName, groupName)" style="cursor:pointer">
+            <span class="ctrl-tree-arrow me-1">{{ isGroupExpanded(deviceName, groupName) ? '▾' : '▸' }}</span>
+            {{ groupName }}
+          </div>
+          <!-- Properties (shown when group expanded) -->
+          <template v-if="isGroupExpanded(deviceName, groupName)">
+            <div v-for="(property, name) in group"
+                 class="px-3 py-1 ctrl-tree-property"
+                 :class="[state(property), { 'ctrl-tree-selected': selected.property === property }]"
+                 @click="selectProperty(deviceName, groupName, property)" style="cursor:pointer">
+              <span class="icon-indicator me-1"></span>{{ property.label }}
+            </div>
+          </template>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <!-- Right panel: col-xl-8 -->
+  <div class="col-xl-8 overflow-auto p-2">
+
+    <!-- Single property selected -->
+    <template v-if="selected.property">
+      <div class="card mb-1">
+        <div class="card-header p-2" :class="state(selected.property)">
+          {{ selected.property.label }}
+          <small class="float-end">{{ selected.property.name }}</small>
+        </div>
+        <div class="card-body p-2 bg-light">
+          <indigo-ctrl-property-body :property="selected.property"/>
+        </div>
+      </div>
+    </template>
+
+    <!-- Group selected: all properties in that group -->
+    <template v-else-if="selected.group">
+      <div v-for="(property, name) in groupProperties(selected.device, selected.group)" class="card mb-1">
+        <div class="card-header p-2" :class="state(property)">
+          {{ property.label }}<small class="float-end">{{ name }}</small>
+        </div>
+        <div class="card-body p-2 bg-light">
+          <indigo-ctrl-property-body :property="property"/>
+        </div>
+      </div>
+    </template>
+
+    <!-- Device selected: all properties of all groups -->
+    <template v-else-if="selected.device">
+      <template v-for="(group, groupName) in groups(devices[selected.device])">
+        <h6 class="px-1 pt-2 pb-1 text-muted">{{ groupName }}</h6>
+        <div v-for="(property, name) in group" class="card mb-1">
+          <div class="card-header p-2" :class="state(property)">
+            {{ property.label }}<small class="float-end">{{ name }}</small>
+          </div>
+          <div class="card-body p-2 bg-light">
+            <indigo-ctrl-property-body :property="property"/>
+          </div>
+        </div>
+      </template>
+    </template>
+
+    <!-- Nothing selected -->
+    <template v-else>
+      <div class="text-muted text-center p-5">Select a device, group or property</div>
+    </template>
+
+  </div>
+</div>
+```
+
+**CSS additions in `indigo.css`:**
+
+```css
+.ctrl-tree-device,
+.ctrl-tree-group,
+.ctrl-tree-property {
+  border-radius: 4px;
+  transition: background 0.1s;
+}
+.ctrl-tree-device:hover,
+.ctrl-tree-group:hover,
+.ctrl-tree-property:hover {
+  background: rgba(0,0,0,.06);
+}
+.ctrl-tree-selected {
+  background: rgba(0,0,0,.12) !important;
+  font-weight: 500;
+}
+[data-theme="dark"] .ctrl-tree-device:hover,
+[data-theme="dark"] .ctrl-tree-group:hover,
+[data-theme="dark"] .ctrl-tree-property:hover {
+  background: rgba(255,255,255,.08);
+}
+[data-theme="dark"] .ctrl-tree-selected {
+  background: rgba(255,255,255,.15) !important;
+}
+```
+
+The `indigo-side-panel` class (already used on other pages) provides the sticky/scroll behaviour; no new layout class is needed in `ctrl.html` — only the existing `col-sm-12` wrapper changes to remove the width constraint so the `d-xl-flex` row inside can fill the full card width.
+
 ---
 
 ## Dependency Summary After Refactoring
@@ -902,4 +1075,5 @@ Steps can be batched into four commits for review:
 3. **Components** (Steps 11–17): Extract sky map, graph, status button, navbar, status bar; modernize CSS
 4. **Functional imager UI** (Steps 18–24): Route preview through the agent, remove remaining imager action jQuery, expose estimator/selection/dithering controls, filter autofocus settings by estimator, and add autofocus image/graph feedback
 5. **Guider UI** (Steps 25–34): Add live preview with star overlay, move graphs into preview overlay, add capture mode and exposure dropdowns, add guiding rate RA/Dec controls, add drift detection section with mode/star-count/radius/subframe, add RA and Dec correction mode sections with conditional sub-fields, add integral stack section with stack-size dropdown and min-error/max-pulse fields, add calibration section with step input and read-only angle/backlash/speed results, add dithering section with strategy/amount dropdowns and settle-limit inputs
-6. **Mount UI** (Steps 35+): Move target coordinates to `AGENT_MOUNT_TARGET_COORDINATES`, current-coordinate/derived status displays to `AGENT_MOUNT_DISPLAY_COORDINATES`, and mount actions to `AGENT_START_PROCESS`
+6. **Mount UI** (Steps 35–36): Move target coordinates to `AGENT_MOUNT_TARGET_COORDINATES`, current-coordinate/derived status displays to `AGENT_MOUNT_DISPLAY_COORDINATES`, and mount actions to `AGENT_START_PROCESS`
+7. **Control panel UI** (Steps 37–38): Extract `indigo-ctrl-property-body` component, then add two-column wide-layout navigation (tree left / content panel right) to `ctrl.html`
