@@ -76,6 +76,9 @@ The one remaining pain point after encapsulation is the catalog search in `indig
 
 Each step can be committed independently without breaking the application.
 
+UI rules:
+- Dropdowns must use text labels only. Do not put icons in dropdown controls or dropdown option values, except star-count dropdowns that intentionally show 1 to 8 star icons.
+
 ---
 
 ### Step 1 — Fix existing bugs (no structural change) [DONE]
@@ -643,18 +646,18 @@ Source references: `indigo_agent_guider.c` initializes `AGENT_GUIDER_SETTINGS` w
 
 ---
 
-### Step 28 — Add guiding rate RA / DEC controls to guider section
+### Step 28 — Add guiding rate RA / DEC controls to guider section [DONE]
 
 **Files:** `guider.html`
 
-In the guider settings card, add two side-by-side editable number inputs:
+In the guider device card, after the guider selector (`FILTER_GUIDER_LIST`), show the selected guider device's `GUIDER_RATE` as two side-by-side editable number inputs when the property is available:
 
-- `AGENT_GUIDER_SETTINGS.GUIDE_RATE_RA` with icon `glyphicons-resize-horizontal` and tooltip `'Guiding rate RA'`, `:cls="'w-50'"`.
-- `AGENT_GUIDER_SETTINGS.GUIDE_RATE_DEC` with icon `glyphicons-resize-vertical` and tooltip `'Guiding rate Dec'`, `:cls="'w-50'"`.
+- `GUIDER_RATE.RATE` with icon `glyphicons-resize-horizontal` and tooltip `'Guiding rate RA'`, `:cls="'w-50'"`.
+- `GUIDER_RATE.DEC_RATE` with icon `glyphicons-resize-vertical` and tooltip `'Guiding rate Dec'`, `:cls="'w-50'"`.
 
-Use `indigo-edit-number` for both. Place them together on the same flex row inside the guider card, after the existing calibration/aggression controls.
+Use `indigo-edit-number` for both. If the selected guider exposes only `GUIDER_RATE.RATE`, disable the Dec input and display the same `RATE` value there.
 
-Source references: `indigo_agent_guider.c` initializes `AGENT_GUIDER_SETTINGS.GUIDE_RATE_RA` and `AGENT_GUIDER_SETTINGS.GUIDE_RATE_DEC` as the per-axis guiding rates in arc-seconds per pixel.
+Source references: `indigo_names.h` defines `GUIDER_RATE.RATE` as the common/RA guide rate and optional `GUIDER_RATE.DEC_RATE` as the Dec guide rate; `indigo_docs/PROPERTIES.md` documents `DEC_RATE` as optional.
 
 ---
 
@@ -666,7 +669,7 @@ Add a dedicated drift detection card in the guider side panel containing:
 
 - **Detection mode + star count** on the same row, each at `w-50`:
   - `AGENT_GUIDER_DETECTION_MODE` as an `indigo-select-item` dropdown with `:cls="'w-50'"`.
-  - `AGENT_GUIDER_SELECTION.STAR_COUNT` as an `indigo-number-dropdown` with `:cls="'w-50'"` and the same star-icon preset values as in the imager (`[{ value: 1, icon: 'glyphicons-star', iconCount: 1 }, … { value: 8, … }]`). Disable the dropdown (`:disabled`) and force `:display-value` to `1` when the active detection mode is not `SELECTION` or `WEIGHTED_SELECTION` — the same pattern used for `U_CURVE` star count in the imager.
+  - `AGENT_GUIDER_SELECTION.STAR_COUNT` as an `indigo-number-dropdown` with `:cls="'w-50'"` and the same star-icon preset values as in the imager (`[{ value: 1, icon: 'glyphicons-star', iconCount: 1 }, … { value: 8, … }]`). This is the only dropdown icon exception. Disable the dropdown (`:disabled`) and force `:display-value` to `1` when the active detection mode is not `SELECTION` or `WEIGHTED_SELECTION` — the same pattern used for `U_CURVE` star count in the imager.
 
 - **Detection radius + automatic subframing** on the next row, each at `w-50`, visible only when the active detection mode is `SELECTION` or `WEIGHTED_SELECTION` (use `v-if` checking `guiderDetectionModeIs('SELECTION') || guiderDetectionModeIs('WEIGHTED_SELECTION')`):
   - `AGENT_GUIDER_SELECTION.RADIUS` as an `indigo-edit-number` with preset values `[3, 6, 12, 18, 24, 48]`, icon `glyphicons-target`, and tooltip `'Detection radius'`.

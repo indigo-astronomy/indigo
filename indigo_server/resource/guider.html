@@ -33,6 +33,10 @@
 								<div class="card p-1 m-1 mt-2 bg-light">
 									<div class="card-body d-flex flex-wrap">
 										<indigo-select-item :property="findProperty('Guider Agent', 'FILTER_GUIDER_LIST')"></indigo-select-item>
+										<template v-if="window.guiderRateProperty() != null">
+											<indigo-edit-number :property="window.guiderRateProperty()" :name="'RATE'" :icon="'glyphicons-resize-horizontal'" :tooltip="'Guiding rate RA'" :cls="'w-50'"></indigo-edit-number>
+											<indigo-edit-number :property="window.guiderRateProperty()" :name="window.guiderRateHasDecItem() ? 'DEC_RATE' : 'RATE'" :icon="'glyphicons-resize-vertical'" :tooltip="'Guiding rate Dec'" :cls="'w-50'" :disabled="!window.guiderRateHasDecItem()" :display-value="window.guiderRateHasDecItem() ? null : window.guiderRateValue('RATE')"></indigo-edit-number>
+										</template>
 									</div>
 								</div>
 							</template>
@@ -200,6 +204,49 @@
 				return false;
 			var property = INDIGO.devices["Guider Agent"]["FILTER_CCD_LIST"];
 			return property != null && property.items.length > 0 && !property.items[0].value;
+		}
+
+		function guiderGuiderSelected() {
+			if (INDIGO == null || INDIGO.devices["Guider Agent"] == null)
+				return false;
+			var property = INDIGO.devices["Guider Agent"]["FILTER_GUIDER_LIST"];
+			return property != null && property.items.length > 0 && !property.items[0].value;
+		}
+
+		function guiderSelectedGuider() {
+			if (!guiderGuiderSelected())
+				return null;
+			var property = INDIGO.devices["Guider Agent"]["FILTER_GUIDER_LIST"];
+			for (var i in property.items) {
+				if (property.items[i].value)
+					return property.items[i].name;
+			}
+			return null;
+		}
+
+		function guiderRateProperty() {
+			var guider = guiderSelectedGuider();
+			if (guider == null || INDIGO.devices[guider] == null)
+				return null;
+			return INDIGO.devices[guider]["GUIDER_RATE"];
+		}
+
+		function guiderRateItem(name) {
+			var property = guiderRateProperty();
+			if (property == null)
+				return null;
+			return property.item(name);
+		}
+
+		function guiderRateHasDecItem() {
+			return guiderRateItem("DEC_RATE") != null;
+		}
+
+		function guiderRateValue(name) {
+			var item = guiderRateItem(name);
+			if (item == null)
+				return null;
+			return item.target != null ? item.target : item.value;
 		}
 
 		function guiderGraphsVisible() {
