@@ -17,7 +17,7 @@
 				</div>
 				<template v-else>
 					<div class="row g-0">
-						<div class="col-sm-4 indigo-side-panel">
+						<div class="col-xl-4 indigo-side-panel">
 							<template v-if="findProperty('Mount Agent', 'AGENT_SITE_DATA_SOURCE') != null">
 								<div class="card p-1 m-1 bg-light">
 									<div class="card-body d-flex flex-wrap">
@@ -138,7 +138,7 @@
 								</div>
 							</template>
 						</div>
-						<div class="col-sm-8">
+						<div class="col-xl-8">
 							<div class="card p-1 m-1 bg-light indigo-sky-map-card">
 								<indigo-sky-map :current-coordinates="currentCoordinates" :target-coordinates="targetCoordinates" :object-coordinates="objectCoordinates" :geo-coordinates="geoCoordinates" :zoom-level="zoomLevel" :dark="dark" @select-object="window.selectObject($event)"></indigo-sky-map>
 							</div>

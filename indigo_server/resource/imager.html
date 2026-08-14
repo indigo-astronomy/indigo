@@ -17,7 +17,7 @@
 				</div>
 				<template v-else>
 					<div class="row g-0">
-						<div class="col-md-4 indigo-side-panel">
+						<div class="col-xl-4 indigo-side-panel">
 							<template v-if="findProperty('Imager Agent', 'FILTER_CCD_LIST') != null">
 								<div class="card p-1 m-1 bg-light">
 									<div class="card-body d-flex flex-wrap">
@@ -31,7 +31,8 @@
 											<indigo-edit-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_BATCH')" :name="'DELAY'" :icon="'glyphicons-hourglass'" :values="[0, 5, 10, 15, 20, 30]" :tooltip="'Delay between exposures'"></indigo-edit-number>
 											<indigo-edit-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_BATCH')" :name="'COUNT'" :icon="'glyphicons-repeat'" :values="[1, 5, 10, 15, 20, 30]" :tooltip="'Image count'"></indigo-edit-number>
 											<indigo-edit-text :property="findProperty('Imager Agent', 'CCD_LOCAL_MODE')" :name="'DIR'" :icon="'glyphicons-folder-open'" :tooltip="'Folder for saved images'"></indigo-edit-text>
-											<indigo-edit-text :property="findProperty('Imager Agent', 'CCD_LOCAL_MODE')" :name="'PREFIX'" :icon="'glyphicons-file'" :tooltip="'File name prefix for saved images'"></indigo-edit-text>
+											<indigo-edit-text :property="findProperty('Imager Agent', 'CCD_LOCAL_MODE')" :name="'PREFIX'" :icon="'glyphicons-file'" :cls="'w-50'" :tooltip="'File name prefix for saved images'"></indigo-edit-text>
+									<indigo-edit-text :property="findProperty('Imager Agent', 'CCD_LOCAL_MODE')" :name="'OBJECT'" :icon="'glyphicons-star'" :cls="'w-50'" :tooltip="'Object name'"></indigo-edit-text>
 											<indigo-feature-number-dropdown :feature-property="findProperty('Imager Agent', 'AGENT_PROCESS_FEATURES')" :number-property="findProperty('Imager Agent', 'AGENT_IMAGER_BATCH')" :feature-name="'ENABLE_DITHERING'" :number-name="'FRAMES_TO_SKIP_BEFORE_DITHER'" :cls="'w-50'" :values="[{ label: 'Don\'t dither', enabled: false, value: -1 }, { label: 'Dither every frame', enabled: true, value: 0 }, { label: 'Dither every 2nd frame', enabled: true, value: 1 }, { label: 'Dither every 3rd frame', enabled: true, value: 2 }, { label: 'Dither every 4th frame', enabled: true, value: 3 }, { label: 'Dither every 5th frame', enabled: true, value: 4 }]" :tooltip="'Dithering cadence'"></indigo-feature-number-dropdown>
 											<indigo-feature-number-dropdown :feature-property="findProperty('Imager Agent', 'AGENT_PROCESS_FEATURES')" :number-property="findProperty('Imager Agent', 'AGENT_IMAGER_BATCH')" :feature-name="'PAUSE_AFTER_TRANSIT'" :number-name="'PAUSE_AFTER_TRANSIT'" :cls="'w-50'" :values="[{ label: 'Don\'t pause at meridian', enabled: false, value: 0 }, { label: 'Pause at meridian', enabled: true, value: 0 }, { label: 'Pause 15 min after meridian', enabled: true, value: 0.25 }, { label: 'Pause 30 min after meridian', enabled: true, value: 0.5 }, { label: 'Pause 1 hour after meridian', enabled: true, value: 1 }, { label: 'Pause 2 hours after meridian', enabled: true, value: 2 }, { label: 'Pause 15 min before meridian', enabled: true, value: -0.25 }, { label: 'Pause 30 min before meridian', enabled: true, value: -0.5 }, { label: 'Pause 1 hour before meridian', enabled: true, value: -1 }, { label: 'Pause 2 hours before meridian', enabled: true, value: -2 }]" :tooltip="'Pause at meridian'"></indigo-feature-number-dropdown>
 											<indigo-show-number :property="findProperty('Imager Agent', 'CCD_TEMPERATURE')" :name="'TEMPERATURE'" :icon="'cooling'" :tooltip="'Cooling state'"></indigo-show-number>
@@ -56,7 +57,7 @@
 													<path d="M16,5A11,11,0,1,0,27,16,11.01245,11.01245,0,0,0,16,5Zm0,19a8,8,0,1,1,8-8A8.00917,8.00917,0,0,1,16,24Zm5-8a5,5,0,1,1-5-5A5,5,0,0,1,21,16Z"/>
 												</svg>
 											</indigo-status-button>
-											<button v-if="findProperty('Imager Agent', 'AGENT_IMAGER_DOWNLOAD_FILES') != null && findProperty('Imager Agent', 'AGENT_IMAGER_DOWNLOAD_FILES').items.length > 1" cid="download_button" class="btn btn-svg idle-state me-auto" :disabled="window.imagerStartProcessBusy()" onclick="download()" data-bs-toggle="tooltip" title="Download images">
+											<button v-if="findProperty('Imager Agent', 'AGENT_IMAGER_DOWNLOAD_FILES') != null && findProperty('Imager Agent', 'AGENT_IMAGER_DOWNLOAD_FILES').items.length > 1" cid="download_button" class="btn btn-svg idle-state" :disabled="window.imagerStartProcessBusy()" onclick="download()" data-bs-toggle="tooltip" title="Download images">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M30.5,18a7.45207,7.45207,0,0,1-1.92773,5,6.49979,6.49979,0,0,1-4.61915,2H23V22h.95312a3.50194,3.50194,0,0,0,2.39258-1.01074A4.45541,4.45541,0,0,0,27.5,18a5.00588,5.00588,0,0,0-5-5,5.10006,5.10006,0,0,0-.70605.05664l-1.22266.168-.40039-1.168A5.993,5.993,0,0,0,8.665,15.37109l.32031,1.37012-1.34765.40723A2.97242,2.97242,0,0,0,5.5,20a2.01441,2.01441,0,0,0,.41406,1.22852A2.42324,2.42324,0,0,0,7.70312,22H10v3H7.70312a5.35308,5.35308,0,0,1-4.23535-2.03516A5.03407,5.03407,0,0,1,2.5,20a5.93806,5.93806,0,0,1,3.03809-5.19922C5.5127,14.53223,5.5,14.26465,5.5,14a8.99653,8.99653,0,0,1,17.05664-4A8.00931,8.00931,0,0,1,30.5,18ZM20.25885,23H18V17.5a.5.5,0,0,0-.5-.5h-2a.5.5,0,0,0-.5.5V23H12.74115a.5.5,0,0,0-.40393.79468l3.75885,5.15173a.50008.50008,0,0,0,.80786,0l3.75885-5.15173A.5.5,0,0,0,20.25885,23Z"/>
 												</svg>
@@ -126,26 +127,26 @@
 												<indigo-show-number v-if="window.imagerCameraSelected() && window.imagerFocusEstimatorIs('RMS_CONTRAST') && window.imagerPropertyHasItem('AGENT_IMAGER_STATS', 'RMS_CONTRAST')" :property="findProperty('Imager Agent', 'AGENT_IMAGER_STATS')" :name="'RMS_CONTRAST'" :icon="'rms'" :cls="'w-25'" :tooltip="'Focus quality'"></indigo-show-number>
 												<indigo-show-number v-if="window.imagerCameraSelected() && window.imagerFocusEstimatorIs('BAHTINOV') && window.imagerPropertyHasItem('AGENT_IMAGER_STATS', 'BAHTINOV_ERROR')" :property="findProperty('Imager Agent', 'AGENT_IMAGER_STATS')" :name="'BAHTINOV_ERROR'" :icon="'error'" :cls="'w-25'" :tooltip="'Focus quality'"></indigo-show-number>
 												<div class="d-flex p-1 w-100 indigo-command-row">
-													<button v-if="findProperty('Imager Agent', 'FOCUSER_POSITION') && findProperty('Imager Agent', 'FOCUSER_POSITION').perm == 'rw'" id="focuser_position_button" class="btn btn-svg" :class="window.imagerFocuserMotionButtonClass('POSITION')" :disabled="window.imagerStartProcessBusy()" onclick="focuser_position()" data-bs-toggle="tooltip" title="Move to absolute position">
+													<indigo-status-button v-if="window.imagerCameraSelected() && findProperty('Imager Agent', 'AGENT_START_PROCESS')" :property="findProperty('Imager Agent', 'AGENT_START_PROCESS')" busy-item="FOCUSING" :status-class="window.imagerStartProcessButtonClass('FOCUSING')" :disabled="window.imagerStartProcessButtonDisabled('FOCUSING')" :action="window.focuser_auto" class="me-auto" data-bs-toggle="tooltip" title="Autofocus">
 														<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-															<path d="M24.8175,16.86432,9.503,25.77667A1,1,0,0,1,8,24.91235V7.08765a1,1,0,0,1,1.503-.86432L24.8175,15.13568A1.00006,1.00006,0,0,1,24.8175,16.86432Z"/>
+															<path d="M6.709,9.293A.99991.99991,0,0,0,5.002,10V22a.99989.99989,0,0,0,1.707.707l6-6a.99962.99962,0,0,0,0-1.41406Zm.293,10.293V12.41406L10.58789,16ZM27.002,10V22a.99989.99989,0,0,1-1.707.707l-6-6a.99964.99964,0,0,1,0-1.41406l6-6A.99991.99991,0,0,1,27.002,10ZM17,25.5v1a.5.5,0,0,1-.5.5h-1a.5.5,0,0,1-.5-.5v-1a.5.5,0,0,1,.5-.5h1A.5.5,0,0,1,17,25.5Zm0-4v1a.5.5,0,0,1-.5.5h-1a.5.5,0,0,1-.5-.5v-1a.5.5,0,0,1,.5-.5h1A.5.5,0,0,1,17,21.5Zm0-4v1a.5.5,0,0,1-.5.5h-1a.5.5,0,0,1-.5-.5v-1a.5.5,0,0,1,.5-.5h1A.5.5,0,0,1,17,17.5Zm0-12v1a.5.5,0,0,1-.5.5h-1a.5.5,0,0,1-.5-.5v-1a.5.5,0,0,1,.5-.5h1A.5.5,0,0,1,17,5.5Zm0,4v1a.5.5,0,0,1-.5.5h-1a.5.5,0,0,1-.5-.5v-1a.5.5,0,0,1,.5-.5h1A.5.5,0,0,1,17,9.5Zm0,4v1a.5.5,0,0,1-.5.5h-1a.5.5,0,0,1-.5-.5v-1a.5.5,0,0,1,.5-.5h1A.5.5,0,0,1,17,13.5Z"/>
 														</svg>
-													</button>
+													</indigo-status-button>
 													<button v-if="findProperty('Imager Agent', 'FOCUSER_STEPS')" id="focuser_in_button" class="btn btn-svg" :class="window.imagerFocuserMotionButtonClass('IN')" :disabled="window.imagerStartProcessBusy()" onclick="focuser_in()" data-bs-toggle="tooltip" title="Move in">
 														<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 															<path d="M22.99933,9.46185V22.53821a.8.8,0,0,1-1.2312.67383L11.55219,16.67383a.8.8,0,0,1,0-1.34766L21.76813,8.788A.8.8,0,0,1,22.99933,9.46185ZM10,8H9A1,1,0,0,0,8,9V23a1,1,0,0,0,1,1h1a1,1,0,0,0,1-1V9A1,1,0,0,0,10,8Z"/>
 														</svg>
 													</button>
-													<button v-if="findProperty('Imager Agent', 'FOCUSER_STEPS')" id="focuser_out_button" class="btn btn-svg me-auto" :class="window.imagerFocuserMotionButtonClass('OUT')" :disabled="window.imagerStartProcessBusy()" onclick="focuser_out()" data-bs-toggle="tooltip" title="Move out">
+													<button v-if="findProperty('Imager Agent', 'FOCUSER_POSITION') && findProperty('Imager Agent', 'FOCUSER_POSITION').perm == 'rw'" id="focuser_position_button" class="btn btn-svg" :class="window.imagerFocuserMotionButtonClass('POSITION')" :disabled="window.imagerStartProcessBusy()" onclick="focuser_position()" data-bs-toggle="tooltip" title="Move to absolute position">
+														<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+															<path d="M24.8175,16.86432,9.503,25.77667A1,1,0,0,1,8,24.91235V7.08765a1,1,0,0,1,1.503-.86432L24.8175,15.13568A1.00006,1.00006,0,0,1,24.8175,16.86432Z"/>
+														</svg>
+													</button>
+													<button v-if="findProperty('Imager Agent', 'FOCUSER_STEPS')" id="focuser_out_button" class="btn btn-svg" :class="window.imagerFocuserMotionButtonClass('OUT')" :disabled="window.imagerStartProcessBusy()" onclick="focuser_out()" data-bs-toggle="tooltip" title="Move out">
 														<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 															<path d="M20.44781,15.32617a.8.8,0,0,1,0,1.34766L10.23187,23.212a.8.8,0,0,1-1.2312-.67383V9.46185a.8.8,0,0,1,1.2312-.67383ZM23,8H22a1,1,0,0,0-1,1V23a1,1,0,0,0,1,1h1a1,1,0,0,0,1-1V9A1,1,0,0,0,23,8Z"/>
 														</svg>
 													</button>
-													<indigo-status-button v-if="window.imagerCameraSelected() && findProperty('Imager Agent', 'AGENT_START_PROCESS')" :property="findProperty('Imager Agent', 'AGENT_START_PROCESS')" busy-item="FOCUSING" :status-class="window.imagerStartProcessButtonClass('FOCUSING')" :disabled="window.imagerStartProcessButtonDisabled('FOCUSING')" :action="window.focuser_auto" data-bs-toggle="tooltip" title="Autofocus">
-														<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-															<path d="M6.709,9.293A.99991.99991,0,0,0,5.002,10V22a.99989.99989,0,0,0,1.707.707l6-6a.99962.99962,0,0,0,0-1.41406Zm.293,10.293V12.41406L10.58789,16ZM27.002,10V22a.99989.99989,0,0,1-1.707.707l-6-6a.99964.99964,0,0,1,0-1.41406l6-6A.99991.99991,0,0,1,27.002,10ZM17,25.5v1a.5.5,0,0,1-.5.5h-1a.5.5,0,0,1-.5-.5v-1a.5.5,0,0,1,.5-.5h1A.5.5,0,0,1,17,25.5Zm0-4v1a.5.5,0,0,1-.5.5h-1a.5.5,0,0,1-.5-.5v-1a.5.5,0,0,1,.5-.5h1A.5.5,0,0,1,17,21.5Zm0-4v1a.5.5,0,0,1-.5.5h-1a.5.5,0,0,1-.5-.5v-1a.5.5,0,0,1,.5-.5h1A.5.5,0,0,1,17,17.5Zm0-12v1a.5.5,0,0,1-.5.5h-1a.5.5,0,0,1-.5-.5v-1a.5.5,0,0,1,.5-.5h1A.5.5,0,0,1,17,5.5Zm0,4v1a.5.5,0,0,1-.5.5h-1a.5.5,0,0,1-.5-.5v-1a.5.5,0,0,1,.5-.5h1A.5.5,0,0,1,17,9.5Zm0,4v1a.5.5,0,0,1-.5.5h-1a.5.5,0,0,1-.5-.5v-1a.5.5,0,0,1,.5-.5h1A.5.5,0,0,1,17,13.5Z"/>
-														</svg>
-													</indigo-status-button>
 													<button v-if="findProperty('Imager Agent', 'FOCUSER_MODE') && findProperty('Imager Agent', 'FOCUSER_MODE').item('MANUAL').value" id="focuser_mode_button" class="btn btn-svg idle-state" :disabled="window.imagerStartProcessBusy()" onclick="focuser_auto_on()" data-bs-toggle="tooltip" title="Compensation state">
 														<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 															<path d="M21.6499,4.18762,24.60956.488a.5.5,0,0,1,.78088,0L28.3501,4.18762A.5.5,0,0,1,27.95972,5H22.04028A.5.5,0,0,1,21.6499,4.18762ZM27.95972,7H22.04028a.49992.49992,0,0,0-.39038.81226l2.95966,3.6997a.5.5,0,0,0,.78088,0l2.95966-3.6997A.49992.49992,0,0,0,27.95972,7ZM17,18.835a5.50005,5.50005,0,1,1-8,0V8.08594a4,4,0,0,1,8,0Zm-1.5,3.75049A2.5018,2.5018,0,0,0,14,20.29736V14.08545a1,1,0,0,0-2,0v6.21191a2.49874,2.49874,0,1,0,3.5,2.28809Z"/>
@@ -167,7 +168,7 @@
 								</div>
 							</template>
 						</div>
-						<div class="col-md-8">
+						<div class="col-xl-8">
 							<div id="image_container" class="card p-1 m-1 bg-light" style="min-height: 10rem">
 								<div class="card-body">
 									<div class="card p-0 border-0 position-relative" style="display: none">
