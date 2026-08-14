@@ -37,6 +37,7 @@ typedef enum _EAF_ERROR_CODE {
 	EAF_ERROR_CLOSED,
 	EAF_ERROR_BATTER_INFO,
 	EAF_ERROR_INVALID_LENGTH,
+	EAF_ERROR_USB_UPGRADE_FAILED,
 
 	// BLE
 	EAF_BLE_READ_DATA_FAILED = 50,
@@ -67,6 +68,16 @@ typedef struct _EAF_TYPE {
 typedef struct _EAF_BLE_NAME {
 	char name[16];
 }EAF_BLE_NAME;
+
+typedef struct _EAF_BLE_FILE_BUF {
+	int buf_size;
+	char buf[480];
+}EAF_BLE_FILE_BUFF;
+
+typedef struct _EAF_HID_FILE_BUF {
+	int buffer_size;
+	char buf[55];
+}EAF_HID_FILE_BUFF;
 
 typedef struct _EAF_ERROR_MSG {
 	char motor_error_code[3];   // 2 characters + 1 terminator
@@ -253,6 +264,86 @@ EAF_API EAF_ERROR_CODE EAFBLEgetAllInfo(int ID, EAF_ALL_INFO *pAllInfo);
 
 /***************************************************************************
 Descriptions:
+This interface serves as the starting point for the BLE firmware upgrade process.
+Paras:
+int ID: connect device id.
+int iFileSizeByte: The size of the file in bytes.
+
+Return: 
+EAF_SUCCESS
+EAF_BLE_DISCONNECT
+EAF_ERROR_INVALID_ID
+EAF_ERROR_NOT_SUPPORTED
+***************************************************************************/
+EAF_API EAF_ERROR_CODE EAFBLEStartUpdate(int ID, int iFileSizeByte);
+
+/***************************************************************************
+Descriptions:
+This interface is for sending the upgrade firmware. After it is activated, only firmware files can be sent and all other interfaces will be disabled.
+Paras:
+int ID: connect device id.
+EAF_BLE_FILE_BUFF stuFileBuf: Structure for upgrade file package and byte size
+
+Note: Each package can contain a maximum of 480 bytes.
+
+Return: 
+EAF_SUCCESS
+EAF_BLE_DISCONNECT
+EAF_ERROR_INVALID_ID
+EAF_ERROR_NOT_SUPPORTED
+EAF_ERROR_INVALID_LENGTH
+EAF_BLE_CHECK_SIZE_FAILED
+***************************************************************************/
+EAF_API EAF_ERROR_CODE EAFBLEWriteUpdateFile(int ID, EAF_BLE_FILE_BUFF stuFileBuf);
+
+/***************************************************************************
+Descriptions:
+This interface serves as the starting point for the USB firmware upgrade process.
+Paras:
+int ID: connect device id.
+
+Return: 
+EAF_SUCCESS
+EAF_ERROR_INVALID_ID
+EAF_ERROR_REMOVED
+EAF_ERROR_NOT_SUPPORTED
+EAF_ERROR_ERROR_STATE
+***************************************************************************/
+EAF_API EAF_ERROR_CODE EAFHidStartUpdate(int ID);
+/***************************************************************************
+Descriptions:
+This interface is for sending the upgrade firmware. After it is activated, only firmware files can be sent and all other interfaces will be disabled.
+Paras:
+int ID: connect device id.
+EAF_HID_FILE_BUFF stuFileBuf: Structure for upgrade file package and byte size
+
+Note: Each package can contain a maximum of 11 bytes.
+
+Return: 
+EAF_SUCCESS
+EAF_ERROR_GENERAL_ERROR
+EAF_ERROR_INVALID_ID
+EAF_ERROR_INVALID_LENGTH
+***************************************************************************/
+EAF_API EAF_ERROR_CODE EAFHidWriteUpdateFile(int ID, EAF_HID_FILE_BUFF stuFileBuf);
+/***************************************************************************
+Descriptions:
+This interface serves as the ending point for the USB firmware upgrade process.
+Paras:
+int ID: connect device id.
+
+Return: 
+EAF_SUCCESS
+EAF_ERROR_INVALID_ID
+EAF_ERROR_REMOVED
+EAF_ERROR_USB_UPGRADE_FAILED
+***************************************************************************/
+EAF_API EAF_ERROR_CODE EAFHidEndUpdate(int ID);
+
+EAF_API EAF_ERROR_CODE EAFBLESendData(int ID, int iCommandType, char *pInputData, int iInputLen, bool bReceive, char *pOutputData);
+
+/***************************************************************************
+Descriptions:
 This should be the first API to be called
 get number of connected EAF focuser, call this API to refresh device list if EAF is connected
 or disconnected
@@ -408,13 +499,14 @@ EAF_ERROR_REMOVED: focuser is removed
 ***************************************************************************/
 EAF_API	EAF_ERROR_CODE EAFStop(int ID);
 
+
 /***************************************************************************
 Descriptions:
 Stop moving and wait for the focuser to stop.
 
 Paras:
 int ID: the ID of focuser
-int timeoutMs: timeout in milliseconds
+int timeoutMs: timeout in milliseconds, default value is 1000ms
 
 Return:
 EAF_ERROR_INVALID_ID: invalid ID value
@@ -426,6 +518,7 @@ EAF_ERROR_MOVING: focuser did not stop within timeoutMs
 
 ***************************************************************************/
 EAF_API	EAF_ERROR_CODE EAFStopAndWait(int ID, int timeoutMs);
+
 
 /***************************************************************************
 Descriptions:
@@ -895,6 +988,48 @@ EAF_ERROR_NOT_SUPPORTED: not supported
 EAF_SUCCESS: operation succeeds
 ***************************************************************************/
 EAF_API EAF_ERROR_CODE EAFGetReason(int ID, int* pReason);
+
+// #define ASIPRODUCE //API for Produce. It needs to be commented out when it is released to the public
+#ifdef ASIPRODUCE
+
+EAF_API EAF_ERROR_CODE EAFSendCMD(int ID, unsigned char* buf, int size, bool bRead = false, unsigned char* readBuf = 0);
+
+/***************************************************************************
+Descriptions:
+Set the serial number to a EAF
+
+Paras:
+int ID: the ID of focuser
+
+EAF_SN* pSN: pointer to SN
+
+Return: 
+EAF_ERROR_INVALID_ID: invalid ID value
+EAF_ERROR_CLOSED: not opened
+EFW_ERROR_NOT_SUPPORTED: the firmware does not support setting serial number
+EAF_SUCCESS: operation succeeds
+
+Note: Now setting serial number dose not through SDK, so this api is not used.
+***************************************************************************/
+EAF_API EAF_ERROR_CODE EAFSetSerialNumber(int ID, EAF_SN* pSN);
+
+/***************************************************************************
+Descriptions:
+Set EAF Pro to factory mode.
+
+Paras:
+int ID: the ID of focuser
+
+Return:
+EAF_ERROR_INVALID_ID: invalid ID value
+EAF_ERROR_CLOSED: not opened
+EFW_ERROR_NOT_SUPPORTED: the firmware does not support setting factory mode.
+EAF_SUCCESS: operation succeeds
+
+Note: Now setting serial number dose not through SDK, so this api is not used.
+***************************************************************************/
+EAF_API EAF_ERROR_CODE EAFSetFactoryMode(int ID);
+#endif
 
 #ifdef __cplusplus
 }
