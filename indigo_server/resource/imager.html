@@ -274,6 +274,19 @@
 			return property != null && property.items.length > 0 && !property.items[0].value;
 		}
 
+		function imagerSelectedCamera() {
+			if (INDIGO == null || INDIGO.devices["Imager Agent"] == null)
+				return null;
+			var property = INDIGO.devices["Imager Agent"]["FILTER_CCD_LIST"];
+			if (property == null)
+				return null;
+			for (var i in property.items) {
+				if (property.items[i].value)
+					return property.items[i].name;
+			}
+			return null;
+		}
+
 		function imagerFocuserMotionButtonClass(buttonName) {
 			if (INDIGO == null || imagerStartProcessBusy() || INDIGO.imagerFocuserMotionButton != buttonName)
 				return "idle-state";
@@ -456,10 +469,10 @@
 		function onUpdateProperty(property) {
 			if (property.name == "FOCUSER_STEPS" || property.name == "FOCUSER_POSITION")
 				imagerUpdateFocuserMotionButton(property);
-			if (property.name == "CCD_PREVIEW_IMAGE") {
+			if (property.name == "CCD_PREVIEW_IMAGE" && property.device == imagerSelectedCamera()) {
 				if (property.state == "Ok")
 					imagerShowPreviewElement("#image", property.item("IMAGE").value);
-			} else if (property.name == "CCD_PREVIEW_HISTOGRAM") {
+			} else if (property.name == "CCD_PREVIEW_HISTOGRAM" && property.device == imagerSelectedCamera()) {
 				if (property.state == "Ok")
 					imagerShowPreviewElement("#histogram", property.item("IMAGE").value);
 			} else if (property.device == "Imager Agent") {

@@ -1932,6 +1932,7 @@ app.component('indigo-guider-graph', {
 			raCorr: [],
 			decCorr: [],
 			rmse: [],
+			driftUnit: "px",
 			paintPending: false,
 			resizeHandler: null
 		};
@@ -1979,13 +1980,15 @@ app.component('indigo-guider-graph', {
 			window.removeEventListener("resize", this.resizeHandler);
 	},
 	methods: {
-		push: function(driftRa, driftDec, corrRa, corrDec, rmseValue) {
+		push: function(driftRa, driftDec, corrRa, corrDec, rmseValue, unit) {
 			this.trimData();
 			this.raDrift.push(driftRa);
 			this.decDrift.push(driftDec);
 			this.raCorr.push(corrRa);
 			this.decCorr.push(corrDec);
 			this.rmse.push(rmseValue);
+			if (unit != null)
+				this.driftUnit = unit;
 		},
 		clear: function() {
 			this.raDrift = [];
@@ -1993,6 +1996,7 @@ app.component('indigo-guider-graph', {
 			this.raCorr = [];
 			this.decCorr = [];
 			this.rmse = [];
+			this.driftUnit = "px";
 		},
 		trimData: function() {
 			while (this.raDrift.length >= 200)
@@ -2017,17 +2021,21 @@ app.component('indigo-guider-graph', {
 			});
 		},
 		paintGraphs: function() {
-			this.paintGraph(this.$refs.driftCanvas, this.raDrift, this.decDrift, this.rmse, false);
-			this.paintGraph(this.$refs.corrCanvas, this.raCorr, this.decCorr, this.rmse, true);
+			var driftCanvas = this.$refs.driftCanvas;
+			var corrCanvas = this.$refs.corrCanvas;
+			var refWidth = driftCanvas != null ? driftCanvas.offsetWidth : (corrCanvas != null ? corrCanvas.offsetWidth : 0);
+			var xScale = refWidth > 0 ? refWidth / 200 : 0;
+			this.paintGraph(driftCanvas, this.raDrift, this.decDrift, this.rmse, false, xScale, this.driftUnit);
+			this.paintGraph(corrCanvas, this.raCorr, this.decCorr, this.rmse, true, xScale, "s");
 		},
-		paintGraph: function(canvas, ra, dec, rmse, pulse) {
+		paintGraph: function(canvas, ra, dec, rmse, pulse, xScale, unit) {
 			if (canvas == null)
 				return;
 			canvas.width = canvas.offsetWidth;
 			canvas.height = canvas.offsetHeight;
 			var width = canvas.width;
 			var height = canvas.height;
-			if (width == 0 || height == 0 || ra.length == 0 || dec.length == 0)
+			if (width == 0 || height == 0 || ra.length == 0 || dec.length == 0 || xScale == 0)
 				return;
 			var height2 = height / 2;
 			var ctx = canvas.getContext("2d");
@@ -2054,7 +2062,6 @@ app.component('indigo-guider-graph', {
 				maxValue = Math.ceil(maxValue);
 			}
 			var yScale = (height2 - 5.0) / maxValue;
-			var xScale = width / 200;
 			ctx.save();
 			ctx.strokeStyle = "#AAA";
 			var path = new Path2D();
@@ -2096,7 +2103,7 @@ app.component('indigo-guider-graph', {
 			ctx.restore();
 
 			ctx.save();
-			ctx.strokeStyle = "#00F";
+			ctx.strokeStyle = "#33b5ff";
 			path = new Path2D();
 			var x = 0;
 			var y = height2 + ra[0] * yScale;
@@ -2112,7 +2119,7 @@ app.component('indigo-guider-graph', {
 			ctx.restore();
 
 			ctx.save();
-			ctx.strokeStyle = "#F00";
+			ctx.strokeStyle = "#ff5555";
 			path = new Path2D();
 			x = 0;
 			y = height2 + dec[0] * yScale;
@@ -2126,20 +2133,21 @@ app.component('indigo-guider-graph', {
 			}
 			ctx.stroke(path);
 			ctx.restore();
+
+			var scaleLabel = "±" + (maxValue < 1 ? maxValue.toFixed(1) : maxValue.toFixed(0)) + (unit || "px");
+			ctx.save();
+			ctx.fillStyle = "#ffffff";
+			ctx.font = "bold 16px sans-serif";
+			ctx.textAlign = "right";
+			ctx.textBaseline = "top";
+			ctx.fillText(scaleLabel, width - 5, 5);
+			ctx.restore();
 		}
 	},
 	template: `
-		<div>
-			<div class="card p-1 m-1 bg-light">
-				<div class="card-body d-flex">
-					<canvas id="graph_drift" ref="driftCanvas" class="card p-0 m-0 bg-light" data-bs-toggle="tooltip" title="Drift"></canvas>
-				</div>
-			</div>
-			<div class="card p-1 m-1 mt-2 bg-light">
-				<div class="card-body d-flex">
-					<canvas id="graph_corr" ref="corrCanvas" class="card p-0 m-0 bg-light" data-bs-toggle="tooltip" title="Corrections"></canvas>
-				</div>
-			</div>
+		<div class="indigo-guider-graph">
+			<canvas ref="driftCanvas" data-bs-toggle="tooltip" title="Drift"></canvas>
+			<canvas ref="corrCanvas" data-bs-toggle="tooltip" title="Corrections"></canvas>
 		</div>
 		`
 });

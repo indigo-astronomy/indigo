@@ -614,7 +614,7 @@ Source references: `indigo_agent_guider.c` uses `AGENT_GUIDER_SELECTION.X` / `Y`
 
 ---
 
-### Step 26 — Move guider graphs into image preview as bottom overlay
+### Step 26 — Move guider graphs into image preview as bottom overlay [DONE]
 
 **Files:** `guider.html`, `components.js`, `indigo.css`
 
