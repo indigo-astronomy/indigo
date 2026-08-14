@@ -11,6 +11,7 @@ app.component('indigo-select-item', {
 		tooltip: String,
 		disabled: Boolean,
 		labelPrefix: String,
+		labelSuffix: String,
 		fallbackItem: String,
 		itemLabels: Object
 	},
@@ -52,9 +53,12 @@ app.component('indigo-select-item', {
 				return null;
 			if (this.itemLabels != null && this.itemLabels[item.name] != null)
 				return this.itemLabels[item.name];
+			var label = item.label;
 			if (this.labelPrefix != null)
-				return this.labelPrefix + item.label;
-			return item.label;
+				label = this.labelPrefix + label;
+			if (this.labelSuffix != null)
+				label = label + this.labelSuffix;
+			return label;
 		},
 		tooltipText: function() {
 			if (this.tooltip != null)
@@ -2096,6 +2100,7 @@ app.component('indigo-guider-graph', {
 			var yScale = (height2 - 5.0) / maxValue;
 			ctx.save();
 			ctx.strokeStyle = "#AAA";
+			ctx.lineWidth = 2;
 			var path = new Path2D();
 			path.moveTo(0, height2);
 			path.lineTo(width, height2);
@@ -2136,6 +2141,7 @@ app.component('indigo-guider-graph', {
 
 			ctx.save();
 			ctx.strokeStyle = "#33b5ff";
+			ctx.lineWidth = 2;
 			path = new Path2D();
 			var x = 0;
 			var y = height2 + ra[0] * yScale;
@@ -2152,6 +2158,7 @@ app.component('indigo-guider-graph', {
 
 			ctx.save();
 			ctx.strokeStyle = "#ff5555";
+			ctx.lineWidth = 2;
 			path = new Path2D();
 			x = 0;
 			y = height2 + dec[0] * yScale;

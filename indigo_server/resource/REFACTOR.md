@@ -77,7 +77,7 @@ The one remaining pain point after encapsulation is the catalog search in `indig
 Each step can be committed independently without breaking the application.
 
 UI rules:
-- Dropdowns must use text labels only. Do not put icons in dropdown controls or dropdown option values, except star-count dropdowns that intentionally show 1 to 8 star icons.
+- Dropdowns must use text labels only. Do not put icons in dropdown controls or dropdown option values; star-count dropdowns use labels `1 star`, `2 stars`, … `8 stars`.
 - All dropdown-style property selectors must use the shared Bootstrap dropdown component pattern used by `indigo-number-dropdown` / `indigo-feature-number-dropdown`, not native `<select>` elements. Tooltips should be attached to the dropdown wrapper and default to the property label unless a specific `tooltip` prop is supplied.
 - `guiSetup()` must initialize Bootstrap tooltips both immediately and after the next Vue render tick, so controls inserted by `v-if` after a property change receive working tooltips.
 - `guiSetup()` and theme helpers must be safe to call before the Vue root has been assigned to `INDIGO`; update DOM theme state unconditionally, but write `INDIGO.dark` only when `INDIGO != null`.
@@ -460,7 +460,7 @@ Source references: `indigo_drivers/agent_imager/indigo_agent_imager.c` defines `
 Add UI controls in the imager focuser/agent settings area for:
 
 - `AGENT_IMAGER_FOCUS_ESTIMATOR` as a switch-property combo box
-- `AGENT_IMAGER_SELECTION.COUNT` as a star count numeric input
+- `AGENT_IMAGER_SELECTION.COUNT` as a star count numeric input with text labels `1 star`, `2 stars`, … `8 stars`
 - `AGENT_IMAGER_SELECTION.RADIUS` as a detection radius numeric input next to star count
 
 Use the existing `indigo-select-item` / `indigo-edit-number` patterns where they fit. `AGENT_IMAGER_SELECTION.COUNT` changes the number of `X`/`Y` star-selection items on the agent side, so the UI must tolerate the property being redefined after the value changes.
@@ -577,7 +577,7 @@ Add an autofocus graph over the preview image showing focus quality over focuser
   - `BAHTINOV`: `AGENT_IMAGER_STATS.BAHTINOV_ERROR`
 - Keep the graph hidden unless both camera and focuser are selected.
 - Place the graph in the upper-right corner of the preview image as a `256x128` overlay and keep the histogram at its original `256x128` size in the upper-left corner.
-- Draw vertical sample lines, the focus-quality curve, a red marker for the current focuser position, and a green marker for the best sampled focuser position.
+- Draw vertical sample lines, the focus-quality curve, a red marker for the current focuser position, and a green marker for the best sampled focuser position. Use readable strokes (`1px` samples, `2px` curve) so the graph remains clear over the preview.
 - Preserve existing autofocus controls and button state behavior.
 
 Source references: `indigo_agent_imager.c` updates `AGENT_IMAGER_STATS.FOCUS_POSITION`, `HFD`, `RMS_CONTRAST`, and `BAHTINOV_ERROR` while processing autofocus frames.
@@ -628,6 +628,7 @@ Move the drift and correction graph canvases from their current standalone posit
 
 - Place the `indigo-guider-graph` component absolutely at the bottom of the `position-relative` preview card, spanning its full width, with a fixed height (e.g. `128px`).
 - Use a semi-transparent dark background so the graph is readable over the preview image.
+- Draw guider graph axes/grid and RA/Dec data lines at `2px` stroke width for readability over the preview.
 - Keep the graph hidden when no camera is selected.
 - Keep the graph hidden for `PREVIEW_1` and `PREVIEW`; show it when `CALIBRATION` or `GUIDING` starts and leave it visible after those processes finish.
 - Remove the graph's previous standalone card/container from the layout so the right-side column is used entirely for the preview image.
@@ -668,11 +669,13 @@ Source references: `indigo_names.h` defines `GUIDER_RATE.RATE` as the common/RA 
 
 **Files:** `guider.html`
 
+Shared visibility rule for the guider side panel: cards added in Steps 29–34 are shown only when both a real guider camera and a real guider device are selected.
+
 Add a dedicated drift detection card in the guider side panel containing:
 
 - **Detection mode + star count** on the same row, each at `w-50`:
-  - `AGENT_GUIDER_DETECTION_MODE` as an `indigo-select-item` dropdown with `:cls="'w-50'"`. Use `:item-labels="{ SELECTION: 'Selection mode', WEIGHTED_SELECTION: 'Weighted selection mode', DONUTS: 'Donuts mode', CENTROID: 'Centroid mode' }"` instead of raw item labels.
-  - `AGENT_GUIDER_SELECTION.COUNT` (`AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM_NAME`) as an `indigo-number-dropdown` with `:cls="'w-50'"`, `v-if` item check, and the same star-icon preset values as in the imager (`[{ value: 1, icon: 'glyphicons-star', iconCount: 1 }, … { value: 8, … }]`). This is the only dropdown icon exception. Disable the dropdown (`:disabled`) and force `:display-value` to `1` when the active detection mode is not `SELECTION` or `WEIGHTED_SELECTION` — the same pattern used for `U_CURVE` star count in the imager.
+  - `AGENT_GUIDER_DETECTION_MODE` as an `indigo-select-item` dropdown with `:cls="'w-50'"`. Use `:item-labels="{ SELECTION: 'Selection detection mode', WEIGHTED_SELECTION: 'Weighted selection detection mode', DONUTS: 'Donuts detection mode', CENTROID: 'Centroid detection mode' }"` instead of raw item labels.
+  - `AGENT_GUIDER_SELECTION.COUNT` (`AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM_NAME`) as an `indigo-number-dropdown` with `:cls="'w-50'"`, `v-if` item check, and the same text-labeled star-count values as in the imager (`1 star`, `2 stars`, … `8 stars`). Disable the dropdown (`:disabled`) and force `:display-value` to `1` when the active detection mode is not `SELECTION` or `WEIGHTED_SELECTION` — the same pattern used for `U_CURVE` star count in the imager.
 
 - **Detection radius + automatic subframing** on the next row, each at `w-50`, visible only when the active detection mode is `SELECTION` or `WEIGHTED_SELECTION` (use `v-if` checking `guiderDetectionModeIs('SELECTION') || guiderDetectionModeIs('WEIGHTED_SELECTION')`):
   - `AGENT_GUIDER_SELECTION.RADIUS` as an `indigo-edit-number` with preset values `[3, 6, 12, 18, 24, 48]`, icon `glyphicons-target`, and tooltip `'Detection radius'`.
@@ -690,7 +693,7 @@ Source references: `indigo_agent_guider.c` defines `AGENT_GUIDER_DETECTION_MODE_
 
 Add a dedicated RA correction mode card in the guider side panel. The correction mode dropdown is always visible; the fields below it change according to the selected mode.
 
-- **RA correction mode** (`AGENT_GUIDER_CORRECTION_MODE_RA`) as an `indigo-select-item` dropdown, full width (no `:cls`). Prefix every option label with `RA ` using `:label-prefix="'RA '"` so the selected correction axis is explicit.
+- **RA correction mode** (`AGENT_GUIDER_CORRECTION_MODE_RA`) as an `indigo-select-item` dropdown, full width (no `:cls`). Prefix every option label with `RA ` using `:label-prefix="'RA '"` and suffix it with ` correction mode` using `:label-suffix="' correction mode'"` so the selected correction axis and context are explicit.
 
 Conditionally show the following `indigo-edit-number` fields from `AGENT_GUIDER_SETTINGS_PROPERTY` immediately below, using `v-if` checking `guiderRaCorrectionModeIs('PI')` etc.:
 
@@ -724,7 +727,7 @@ Add a dedicated Dec correction mode card in the guider side panel. The layout fo
 
 **First row** — two half-width dropdowns side by side:
 - `AGENT_GUIDER_DEC_MODE` (`indigo-select-item`, `:cls="'w-50'"`) — Dec guiding mode with items: `BOTH` (North & South), `NORTH` (North only), `SOUTH` (South only), `NONE`. Use `:item-labels="{ BOTH: 'Guide North and South', NORTH: 'Guide North only', SOUTH: 'Guide South only', NONE: 'Do not guide Dec' }"` instead of raw item labels.
-- `AGENT_GUIDER_CORRECTION_MODE_DEC` (`indigo-select-item`, `:cls="'w-50'"`, `:label-prefix="'Dec '"`) — Dec correction mode with items: `PI_CONTROLLER` (accepted in page helpers as `PI`), `HYSTERESIS`, `LINEAR_TREND`, `RESIST_SWITCH`. Disabled (`:disabled`) when Dec guiding mode is `NONE`.
+- `AGENT_GUIDER_CORRECTION_MODE_DEC` (`indigo-select-item`, `:cls="'w-50'"`, `:label-prefix="'Dec '"`, `:label-suffix="' correction mode'"`) — Dec correction mode with items: `PI_CONTROLLER` (accepted in page helpers as `PI`), `HYSTERESIS`, `LINEAR_TREND`, `RESIST_SWITCH`. Disabled (`:disabled`) when Dec guiding mode is `NONE`.
 
 When Dec guiding mode is `NONE`, everything below the first row is hidden (`v-if="!guiderDecModeIs('NONE')"`).
 
@@ -797,26 +800,26 @@ Source references: `indigo_agent_guider.c` initializes `AGENT_GUIDER_SETTINGS.ST
 
 ---
 
-### Step 34 — Add dithering section to guider GUI
+### Step 34 — Add dithering section to guider GUI [DONE]
 
 **Files:** `guider.html`
 
 Add a dedicated dithering card in the guider side panel.
 
 **First row** — two half-width dropdowns side by side:
-- **Dithering strategy** (`AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY`) as an `indigo-select-item` with `:cls="'w-50'"`. Items: `RANDOM_SPIRAL` ("Randomized spiral"), `RANDOM` ("Random"), `SPIRAL` ("Spiral").
-- **Dithering amount** (`AGENT_GUIDER_SETTINGS.DITHERING_AMOUNT`) as an `indigo-number-dropdown` with `:cls="'w-50'"` and labeled values:
-  - `{ label: '1 px', value: 1 }`
-  - `{ label: '2 px', value: 2 }`
-  - `{ label: '3 px', value: 3 }`
-  - `{ label: '5 px', value: 5 }`
-  - `{ label: '10 px', value: 10 }`
+- **Dithering strategy** (`AGENT_GUIDER_DITHERING_STRATEGY`) as an `indigo-select-item` with `:cls="'w-50'"`. Items: `RANDOMIZED_SPIRAL`, `RANDOM`, `SPIRAL`. Use `:item-labels="{ RANDOMIZED_SPIRAL: 'Randomized spiral dithering', RANDOM: 'Random dithering', SPIRAL: 'Spiral dithering' }"` instead of raw item labels.
+- **Dithering amount** (`AGENT_GUIDER_SETTINGS.DITHERING_MAX_AMOUNT`) as an `indigo-number-dropdown` with `:cls="'w-50'"` and labeled values:
+  - `{ label: 'Dithering amount 1 px', value: 1 }`
+  - `{ label: 'Dithering amount 2 px', value: 2 }`
+  - `{ label: 'Dithering amount 3 px', value: 3 }`
+  - `{ label: 'Dithering amount 5 px', value: 5 }`
+  - `{ label: 'Dithering amount 10 px', value: 10 }`
 
 **Second row** — two half-width `indigo-edit-number` fields side by side:
-- `AGENT_GUIDER_SETTINGS.DITHERING_TIME_LIMIT` — Settle down max limit (s), icon `glyphicons-hourglass`, `:cls="'w-50'"`
-- `AGENT_GUIDER_SETTINGS.DITH_LIMIT` — Settle down min limit (frames), icon `glyphicons-scale`, `:cls="'w-50'"`
+- `AGENT_GUIDER_SETTINGS.DITHERING_SETTLE_TIME_LIMIT` — Settle down max limit (s), icon `glyphicons-hourglass`, `:cls="'w-50'"`
+- `AGENT_GUIDER_SETTINGS.DITHERING_LIMIT` — Settle down min limit (frames), icon `glyphicons-scale`, `:cls="'w-50'"`
 
-Source references: `indigo_agent_guider.c` defines `AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY` (switch, items `RANDOM_SPIRAL`/`RANDOM`/`SPIRAL`); `AGENT_GUIDER_SETTINGS.DITHERING_AMOUNT` (index 28, range 0–15, step 1, default 1, "Dithering max amount (px)"); `AGENT_GUIDER_SETTINGS.DITHERING_TIME_LIMIT` (index 29, range 0–300, step 1, default 60, "Dithering Settle time limit (s)"); `AGENT_GUIDER_SETTINGS.DITH_LIMIT` (index 30, range 1–50, step 1, default 5, "Dithering min settling limit (frames)").
+Source references: `indigo_agent_guider.c` defines `AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY` (switch, items `RANDOMIZED_SPIRAL`/`RANDOM`/`SPIRAL`); `AGENT_GUIDER_SETTINGS.DITHERING_MAX_AMOUNT` (index 28, range 0–15, step 1, default 1, "Dithering max amount (px)"); `AGENT_GUIDER_SETTINGS.DITHERING_SETTLE_TIME_LIMIT` (index 29, range 0–300, step 1, default 60, "Dithering Settle time limit (s)"); `AGENT_GUIDER_SETTINGS.DITHERING_LIMIT` (index 30, range 1–50, step 1, default 5, "Dithering min settling limit (frames)").
 
 ---
 
