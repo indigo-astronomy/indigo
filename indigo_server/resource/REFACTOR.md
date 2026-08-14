@@ -80,6 +80,7 @@ UI rules:
 - Dropdowns must use text labels only. Do not put icons in dropdown controls or dropdown option values, except star-count dropdowns that intentionally show 1 to 8 star icons.
 - All dropdown-style property selectors must use the shared Bootstrap dropdown component pattern used by `indigo-number-dropdown` / `indigo-feature-number-dropdown`, not native `<select>` elements. Tooltips should be attached to the dropdown wrapper and default to the property label unless a specific `tooltip` prop is supplied.
 - `guiSetup()` must initialize Bootstrap tooltips both immediately and after the next Vue render tick, so controls inserted by `v-if` after a property change receive working tooltips.
+- `guiSetup()` and theme helpers must be safe to call before the Vue root has been assigned to `INDIGO`; update DOM theme state unconditionally, but write `INDIGO.dark` only when `INDIGO != null`.
 
 ---
 
@@ -670,7 +671,7 @@ Source references: `indigo_names.h` defines `GUIDER_RATE.RATE` as the common/RA 
 Add a dedicated drift detection card in the guider side panel containing:
 
 - **Detection mode + star count** on the same row, each at `w-50`:
-  - `AGENT_GUIDER_DETECTION_MODE` as an `indigo-select-item` dropdown with `:cls="'w-50'"`.
+  - `AGENT_GUIDER_DETECTION_MODE` as an `indigo-select-item` dropdown with `:cls="'w-50'"`. Use `:item-labels="{ SELECTION: 'Selection mode', WEIGHTED_SELECTION: 'Weighted selection mode', DONUTS: 'Donuts mode', CENTROID: 'Centroid mode' }"` instead of raw item labels.
   - `AGENT_GUIDER_SELECTION.COUNT` (`AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM_NAME`) as an `indigo-number-dropdown` with `:cls="'w-50'"`, `v-if` item check, and the same star-icon preset values as in the imager (`[{ value: 1, icon: 'glyphicons-star', iconCount: 1 }, … { value: 8, … }]`). This is the only dropdown icon exception. Disable the dropdown (`:disabled`) and force `:display-value` to `1` when the active detection mode is not `SELECTION` or `WEIGHTED_SELECTION` — the same pattern used for `U_CURVE` star count in the imager.
 
 - **Detection radius + automatic subframing** on the next row, each at `w-50`, visible only when the active detection mode is `SELECTION` or `WEIGHTED_SELECTION` (use `v-if` checking `guiderDetectionModeIs('SELECTION') || guiderDetectionModeIs('WEIGHTED_SELECTION')`):
@@ -715,42 +716,42 @@ Source references: `indigo_agent_guider.c` defines `AGENT_GUIDER_CORRECTION_MODE
 
 ---
 
-### Step 31 — Add Dec correction mode section to guider GUI
+### Step 31 — Add Dec correction mode section to guider GUI [DONE]
 
 **Files:** `guider.html`
 
 Add a dedicated Dec correction mode card in the guider side panel. The layout follows the SwiftUI client logic.
 
 **First row** — two half-width dropdowns side by side:
-- `AGENT_GUIDER_DEC_MODE` (`indigo-select-item`, `:cls="'w-50'"`) — Dec guiding mode with items: `BOTH` (North & South), `NORTH` (North only), `SOUTH` (South only), `NONE`.
-- `AGENT_GUIDER_CORRECTION_MODE_DEC` (`indigo-select-item`, `:cls="'w-50'"`) — Dec correction mode with items: `PI`, `HYSTERESIS`, `LINEAR_TREND`, `RESIST_SWITCH`. Disabled (`:disabled`) when Dec guiding mode is `NONE`.
+- `AGENT_GUIDER_DEC_MODE` (`indigo-select-item`, `:cls="'w-50'"`) — Dec guiding mode with items: `BOTH` (North & South), `NORTH` (North only), `SOUTH` (South only), `NONE`. Use `:item-labels="{ BOTH: 'Guide North and South', NORTH: 'Guide North only', SOUTH: 'Guide South only', NONE: 'Do not guide Dec' }"` instead of raw item labels.
+- `AGENT_GUIDER_CORRECTION_MODE_DEC` (`indigo-select-item`, `:cls="'w-50'"`, `:label-prefix="'Dec '"`) — Dec correction mode with items: `PI_CONTROLLER` (accepted in page helpers as `PI`), `HYSTERESIS`, `LINEAR_TREND`, `RESIST_SWITCH`. Disabled (`:disabled`) when Dec guiding mode is `NONE`.
 
 When Dec guiding mode is `NONE`, everything below the first row is hidden (`v-if="!guiderDecModeIs('NONE')"`).
 
 **Second row** — two half-width switch dropdowns side by side (shown only when mode ≠ `NONE`):
-- `AGENT_GUIDER_APPLY_DEC_BACKLASH` (`indigo-select-item`, `:cls="'w-50'"`) — Apply Dec backlash (Enabled/Disabled). Disabled (`:disabled`) when Dec guiding mode is not `BOTH`.
-- `AGENT_GUIDER_FLIP_REVERSES_DEC` (`indigo-select-item`, `:cls="'w-50'"`) — Reverse Dec on flip (Enabled/Disabled).
+- `AGENT_GUIDER_APPLY_DEC_BACKLASH` (`indigo-select-item`, `:cls="'w-50'"`) — Apply Dec backlash. Disabled (`:disabled`) when Dec guiding mode is not `BOTH`. Use `:item-labels="{ DISABLED: 'Disabled Dec backlash', ENABLED: 'Enabled Dec backlash' }"` instead of generic Enabled/Disabled labels.
+- `AGENT_GUIDER_FLIP_REVERSES_DEC` (`indigo-select-item`, `:cls="'w-50'"`, `:fallback-item="'ENABLED'"`) — Reverse Dec on flip (items `ENABLED`/`DISABLED`). Use the fallback item so this OneOfMany switch does not render empty if no current item is selected. Use `:item-labels="{ ENABLED: 'Reverse speed on meridian flip', DISABLED: 'Keep speed on meridian flip' }"` instead of generic Enabled/Disabled labels.
 
 **Conditional fields** from `AGENT_GUIDER_SETTINGS_PROPERTY` below, using `v-if` checking `guiderDecCorrectionModeIs(...)`:
 
-- **P/I** (`PI`):
-  - `AGG_DEC` — Dec aggressivity (%), icon `glyphicons-dashboard`, `:cls="'w-50'"`
+- **P/I** (`PI_CONTROLLER`, accepted in page helpers as `PI`):
+  - `AGGRESSIVITY_DEC` — Dec aggressivity (%), icon `glyphicons-dashboard`, `:cls="'w-50'"`
   - `I_GAIN_DEC` — Dec integral gain, icon `glyphicons-refresh`, `:cls="'w-50'"`
 
 - **Hysteresis** (`HYSTERESIS`):
-  - `HYSTERESIS_AGG_DEC` — Dec aggressivity (%), icon `glyphicons-dashboard`, `:cls="'w-50'"`
-  - `HYSTERESIS_HIST_DEC` — Dec hysteresis (%), icon `glyphicons-history`, `:cls="'w-50'"`
+  - `HYSTERESIS_AGGRESSIVENESS_DEC` — Dec aggressivity (%), icon `glyphicons-dashboard`, `:cls="'w-50'"`
+  - `HYSTERESIS_HYSTERESIS_DEC` — Dec hysteresis (%), icon `glyphicons-history`, `:cls="'w-50'"`
 
 - **Linear correction** (`LINEAR_TREND`):
-  - `LINEAR_TREND_AGG_DEC` — Dec aggressivity (%), icon `glyphicons-dashboard`, full width
+  - `LINEAR_TREND_AGGRESSIVENESS_DEC` — Dec aggressivity (%), icon `glyphicons-dashboard`, `:cls="'w-50'"`
 
 - **Resist switch** (`RESIST_SWITCH`):
-  - `RESIST_SWITCH_AGG_DEC` — Dec aggressivity (%), icon `glyphicons-dashboard`, `:cls="'w-50'"`
-  - `RESIST_SWITCH_FAST_THRSH_DEC` — Dec resist threshold (px), icon `glyphicons-flash`, `:cls="'w-50'"`
+  - `RESIST_SWITCH_AGGRESSIVENESS_DEC` — Dec aggressivity (%), icon `glyphicons-dashboard`, `:cls="'w-50'"`
+  - `RESIST_SWITCH_FAST_THRESHOLD_DEC` — Dec resist threshold (px), icon `glyphicons-flash`, `:cls="'w-50'"`
 
 Add page-level helper functions `guiderDecModeIs(name)` reading `AGENT_GUIDER_DEC_MODE_PROPERTY` and `guiderDecCorrectionModeIs(name)` reading `AGENT_GUIDER_CORRECTION_MODE_DEC_PROPERTY`, analogous to `guiderRaCorrectionModeIs()`.
 
-Source references: `indigo_agent_guider.c` defines `AGENT_GUIDER_DEC_MODE_PROPERTY` with items `BOTH` (0), `NORTH` (1), `SOUTH` (2), `NONE` (3); `AGENT_GUIDER_APPLY_DEC_BACKLASH_PROPERTY` with items `DISABLED` (0), `ENABLED` (1); `AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY` with items `ENABLED` (0), `DISABLED` (1); `AGENT_GUIDER_CORRECTION_MODE_DEC_PROPERTY` with items `PI`, `HYSTERESIS`, `LINEAR_TREND`, `RESIST_SWITCH`. Settings items: `AGG_DEC` (16), `I_GAIN_DEC` (18), `HYSTERESIS_AGG_DEC` (21), `HYSTERESIS_HIST_DEC` (23), `LINEAR_TREND_AGG_DEC` (25), `RESIST_SWITCH_AGG_DEC` (26), `RESIST_SWITCH_FAST_THRSH_DEC` (27).
+Source references: `indigo_agent_guider.c` defines `AGENT_GUIDER_DEC_MODE_PROPERTY` with items `BOTH` (0), `NORTH` (1), `SOUTH` (2), `NONE` (3); `AGENT_GUIDER_APPLY_DEC_BACKLASH_PROPERTY` with items `DISABLED` (0), `ENABLED` (1); `AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY` with items `ENABLED` (0), `DISABLED` (1); `AGENT_GUIDER_CORRECTION_MODE_DEC_PROPERTY` with items `PI_CONTROLLER`, `HYSTERESIS`, `LINEAR_TREND`, `RESIST_SWITCH`. Settings items: `AGGRESSIVITY_DEC`, `I_GAIN_DEC`, `HYSTERESIS_AGGRESSIVENESS_DEC`, `HYSTERESIS_HYSTERESIS_DEC`, `LINEAR_TREND_AGGRESSIVENESS_DEC`, `RESIST_SWITCH_AGGRESSIVENESS_DEC`, and `RESIST_SWITCH_FAST_THRESHOLD_DEC`.
 
 ---
 

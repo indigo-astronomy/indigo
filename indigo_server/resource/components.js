@@ -10,7 +10,9 @@ app.component('indigo-select-item', {
 		cls: String,
 		tooltip: String,
 		disabled: Boolean,
-		labelPrefix: String
+		labelPrefix: String,
+		fallbackItem: String,
+		itemLabels: Object
 	},
 	methods: {
 		change: function(item) {
@@ -35,6 +37,8 @@ app.component('indigo-select-item', {
 				if (item.value)
 					return item;
 			}
+			if (this.fallbackItem != null)
+				return this.property.item(this.fallbackItem);
 			return null;
 		},
 		value: function() {
@@ -46,6 +50,8 @@ app.component('indigo-select-item', {
 		label: function(item) {
 			if (item == null)
 				return null;
+			if (this.itemLabels != null && this.itemLabels[item.name] != null)
+				return this.itemLabels[item.name];
 			if (this.labelPrefix != null)
 				return this.labelPrefix + item.label;
 			return item.label;
@@ -56,6 +62,9 @@ app.component('indigo-select-item', {
 			if (this.property != null)
 				return this.property.label;
 			return null;
+		},
+		itemsVisible: function() {
+			return !this.none_selected() || this.fallbackItem != null;
 		}
 	},
 	template: `
@@ -64,7 +73,7 @@ app.component('indigo-select-item', {
 				<span class="flex-grow-1 text-start text-truncate">{{value()}}</span>
 			</button>
 			<div class="dropdown-menu">
-				<template v-if="!none_selected()">
+				<template v-if="itemsVisible()">
 					<a class="dropdown-item" href="#" v-for="item in property.items" @click.prevent="change(item)">{{label(item)}}</a>
 				</template>
 			</div>
@@ -2713,11 +2722,9 @@ function guiSetup() {
 		INDIGO.$nextTick(setupTooltips);
 	localStorage.name = "indigo";
 	if (localStorage.getItem("dark_mode")) {
-		document.documentElement.setAttribute("data-theme", "dark");
-		INDIGO.dark = true;
+		setThemeState(true);
 	} else {
-		document.documentElement.removeAttribute("data-theme");
-		INDIGO.dark = false;
+		setThemeState(false);
 	}
 }
 
@@ -2729,12 +2736,19 @@ function setupTooltips() {
 
 function setDarkMode() {
 	localStorage.setItem("dark_mode", true);
-	document.documentElement.setAttribute("data-theme", "dark");
-	INDIGO.dark = true;
+	setThemeState(true);
 }
 
 function setLightMode() {
 	localStorage.removeItem("dark_mode");
-	document.documentElement.removeAttribute("data-theme");
-	INDIGO.dark = false;
+	setThemeState(false);
+}
+
+function setThemeState(dark) {
+	if (dark)
+		document.documentElement.setAttribute("data-theme", "dark");
+	else
+		document.documentElement.removeAttribute("data-theme");
+	if (INDIGO != null)
+		INDIGO.dark = dark;
 }

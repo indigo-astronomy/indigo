@@ -43,7 +43,7 @@
 							<template v-if="findProperty('Guider Agent', 'AGENT_GUIDER_DETECTION_MODE') != null">
 								<div class="card p-1 m-1 mt-2 bg-light">
 									<div class="card-body d-flex flex-wrap">
-										<indigo-select-item :property="findProperty('Guider Agent', 'AGENT_GUIDER_DETECTION_MODE')" :cls="'w-50'"></indigo-select-item>
+										<indigo-select-item :property="findProperty('Guider Agent', 'AGENT_GUIDER_DETECTION_MODE')" :cls="'w-50'" :item-labels="{ SELECTION: 'Selection mode', WEIGHTED_SELECTION: 'Weighted selection mode', DONUTS: 'Donuts mode', CENTROID: 'Centroid mode' }"></indigo-select-item>
 										<indigo-number-dropdown v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SELECTION', 'COUNT')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SELECTION')" :name="'COUNT'" :cls="'w-50'" :values="[{ value: 1, icon: 'glyphicons-star', iconCount: 1 }, { value: 2, icon: 'glyphicons-star', iconCount: 2 }, { value: 3, icon: 'glyphicons-star', iconCount: 3 }, { value: 4, icon: 'glyphicons-star', iconCount: 4 }, { value: 5, icon: 'glyphicons-star', iconCount: 5 }, { value: 6, icon: 'glyphicons-star', iconCount: 6 }, { value: 7, icon: 'glyphicons-star', iconCount: 7 }, { value: 8, icon: 'glyphicons-star', iconCount: 8 }]" :disabled="!(window.guiderDetectionModeIs('SELECTION') || window.guiderDetectionModeIs('WEIGHTED_SELECTION'))" :display-value="window.guiderDetectionModeIs('SELECTION') || window.guiderDetectionModeIs('WEIGHTED_SELECTION') ? null : 1" :tooltip="'Maximum number of stars'"></indigo-number-dropdown>
 										<template v-if="window.guiderDetectionModeIs('SELECTION') || window.guiderDetectionModeIs('WEIGHTED_SELECTION')">
 											<indigo-edit-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SELECTION', 'RADIUS')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SELECTION')" :name="'RADIUS'" :icon="'glyphicons-target'" :values="[3, 6, 12, 18, 24, 48]" :tooltip="'Detection radius'" :cls="'w-50'"></indigo-edit-number>
@@ -75,10 +75,36 @@
 									</div>
 								</div>
 							</template>
+							<template v-if="findProperty('Guider Agent', 'AGENT_GUIDER_DEC_MODE') != null || findProperty('Guider Agent', 'AGENT_GUIDER_CORRECTION_MODE_DEC') != null">
+								<div class="card p-1 m-1 mt-2 bg-light">
+									<div class="card-body d-flex flex-wrap">
+										<indigo-select-item :property="findProperty('Guider Agent', 'AGENT_GUIDER_DEC_MODE')" :cls="'w-50'" :item-labels="{ BOTH: 'Guide North and South', NORTH: 'Guide North only', SOUTH: 'Guide South only', NONE: 'Do not guide Dec' }"></indigo-select-item>
+										<indigo-select-item :property="findProperty('Guider Agent', 'AGENT_GUIDER_CORRECTION_MODE_DEC')" :cls="'w-50'" :disabled="window.guiderDecModeIs('NONE')" :label-prefix="'Dec '"></indigo-select-item>
+										<template v-if="!window.guiderDecModeIs('NONE')">
+											<indigo-select-item :property="findProperty('Guider Agent', 'AGENT_GUIDER_APPLY_DEC_BACKLASH')" :cls="'w-50'" :disabled="!window.guiderDecModeIs('BOTH')" :item-labels="{ DISABLED: 'Disabled Dec backlash', ENABLED: 'Enabled Dec backlash' }"></indigo-select-item>
+											<indigo-select-item :property="findProperty('Guider Agent', 'AGENT_GUIDER_FLIP_REVERSES_DEC')" :cls="'w-50'" :fallback-item="'ENABLED'" :item-labels="{ ENABLED: 'Reverse speed on meridian flip', DISABLED: 'Keep speed on meridian flip' }"></indigo-select-item>
+											<template v-if="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS') != null && window.guiderDecCorrectionModeIs('PI')">
+												<indigo-edit-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'AGGRESSIVITY_DEC')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'AGGRESSIVITY_DEC'" :icon="'glyphicons-dashboard'" :tooltip="'Dec aggressivity (%)'" :cls="'w-50'"></indigo-edit-number>
+												<indigo-edit-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'I_GAIN_DEC')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'I_GAIN_DEC'" :icon="'glyphicons-refresh'" :tooltip="'Dec integral gain'" :cls="'w-50'"></indigo-edit-number>
+											</template>
+											<template v-if="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS') != null && window.guiderDecCorrectionModeIs('HYSTERESIS')">
+												<indigo-edit-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'HYSTERESIS_AGGRESSIVENESS_DEC')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'HYSTERESIS_AGGRESSIVENESS_DEC'" :icon="'glyphicons-dashboard'" :tooltip="'Dec aggressivity (%)'" :cls="'w-50'"></indigo-edit-number>
+												<indigo-edit-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'HYSTERESIS_HYSTERESIS_DEC')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'HYSTERESIS_HYSTERESIS_DEC'" :icon="'glyphicons-history'" :tooltip="'Dec hysteresis (%)'" :cls="'w-50'"></indigo-edit-number>
+											</template>
+											<template v-if="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS') != null && window.guiderDecCorrectionModeIs('LINEAR_TREND')">
+												<indigo-edit-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'LINEAR_TREND_AGGRESSIVENESS_DEC')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'LINEAR_TREND_AGGRESSIVENESS_DEC'" :icon="'glyphicons-dashboard'" :tooltip="'Dec aggressivity (%)'" :cls="'w-50'"></indigo-edit-number>
+											</template>
+											<template v-if="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS') != null && window.guiderDecCorrectionModeIs('RESIST_SWITCH')">
+												<indigo-edit-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'RESIST_SWITCH_AGGRESSIVENESS_DEC')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'RESIST_SWITCH_AGGRESSIVENESS_DEC'" :icon="'glyphicons-dashboard'" :tooltip="'Dec aggressivity (%)'" :cls="'w-50'"></indigo-edit-number>
+												<indigo-edit-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'RESIST_SWITCH_FAST_THRESHOLD_DEC')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'RESIST_SWITCH_FAST_THRESHOLD_DEC'" :icon="'glyphicons-flash'" :tooltip="'Dec resist threshold (px)'" :cls="'w-50'"></indigo-edit-number>
+											</template>
+										</template>
+									</div>
+								</div>
+							</template>
 							<template v-if="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS') != null">
 								<div class="card p-1 m-1 mt-2 bg-light">
 									<div class="card-body d-flex flex-wrap">
-										<indigo-edit-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'AGGRESSIVITY_DEC'" :icon="'glyphicons-option-horizontal'" :tooltip="'Aggressivity Dec'"></indigo-edit-number>
 										<indigo-edit-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'STEP0'" :icon="'glyphicons-hourglass'" :values="[0.01, 0.05, 0.1, 0.2, 0.5, 1]" :tooltip="'Calibration Step'"></indigo-edit-number>
 										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'SPEED_RA'" :icon="'px/s α'" :tooltip="'Right Ascension Speed'"></indigo-show-number>
 										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'SPEED_DEC'" :icon="'px/s δ'" :tooltip="'Declination Speed'"></indigo-show-number>
@@ -313,6 +339,28 @@
 			if (INDIGO == null || INDIGO.devices["Guider Agent"] == null)
 				return false;
 			var property = INDIGO.devices["Guider Agent"]["AGENT_GUIDER_CORRECTION_MODE_RA"];
+			if (property == null)
+				return false;
+			var item = property.item(name);
+			if (item == null && name == "PI")
+				item = property.item("PI_CONTROLLER");
+			return item != null && item.value;
+		}
+
+		function guiderDecModeIs(name) {
+			if (INDIGO == null || INDIGO.devices["Guider Agent"] == null)
+				return false;
+			var property = INDIGO.devices["Guider Agent"]["AGENT_GUIDER_DEC_MODE"];
+			if (property == null)
+				return false;
+			var item = property.item(name);
+			return item != null && item.value;
+		}
+
+		function guiderDecCorrectionModeIs(name) {
+			if (INDIGO == null || INDIGO.devices["Guider Agent"] == null)
+				return false;
+			var property = INDIGO.devices["Guider Agent"]["AGENT_GUIDER_CORRECTION_MODE_DEC"];
 			if (property == null)
 				return false;
 			var item = property.item(name);
