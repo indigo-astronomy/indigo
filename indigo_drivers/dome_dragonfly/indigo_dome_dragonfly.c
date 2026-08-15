@@ -948,7 +948,6 @@ static indigo_result dome_attach(indigo_device *device) {
 		DOME_STEPS_PROPERTY->hidden = true;
 		DOME_PARK_PROPERTY->hidden = true;
 		DOME_DIMENSION_PROPERTY->hidden = true;
-		DOME_SLAVING_PROPERTY->hidden = true;
 		DOME_SLAVING_PARAMETERS_PROPERTY->hidden = true;
 		// Relabel Open / Close
 		INDIGO_COPY_VALUE(DOME_SHUTTER_PROPERTY->label, "Shutter / Roof");

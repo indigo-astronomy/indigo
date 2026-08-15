@@ -96,13 +96,6 @@ indigo_result indigo_dome_attach(indigo_device *device, const char* driver_name,
 			indigo_init_sexagesimal_number_item(DOME_HORIZONTAL_COORDINATES_AZ_ITEM, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, "Azimuth (0 to 360°)", 0, 360, 0, 0);
 			indigo_init_sexagesimal_number_item(DOME_HORIZONTAL_COORDINATES_ALT_ITEM, DOME_HORIZONTAL_COORDINATES_ALT_ITEM_NAME, "Altitude (0 to 90°)", 0, 90, 0, 0);
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->count = 1;
-			// -------------------------------------------------------------------------------- DOME_SLAVING
-			DOME_SLAVING_PROPERTY = indigo_init_switch_property(NULL, device->name, DOME_SLAVING_PROPERTY_NAME, DOME_MAIN_GROUP, "Slave dome to mount", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);;
-			if (DOME_SLAVING_PROPERTY == NULL) {
-				return INDIGO_FAILED;
-			}
-			indigo_init_switch_item(DOME_SLAVING_ENABLE_ITEM, DOME_SLAVING_ENABLE_ITEM_NAME, "Enable", false);
-			indigo_init_switch_item(DOME_SLAVING_DISABLE_ITEM, DOME_SLAVING_DISABLE_ITEM_NAME, "Disable", true);
 			// -------------------------------------------------------------------------------- DOME_SYNC
 			DOME_SLAVING_PARAMETERS_PROPERTY = indigo_init_number_property(NULL, device->name, DOME_SLAVING_PARAMETERS_PROPERTY_NAME, DOME_MAIN_GROUP, "Slaving parameteres", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 			if (DOME_SLAVING_PARAMETERS_PROPERTY == NULL) {
@@ -188,15 +181,6 @@ indigo_result indigo_dome_attach(indigo_device *device, const char* driver_name,
 			}
 			DOME_SET_HOST_TIME_PROPERTY->hidden = true;
 			indigo_init_switch_item(DOME_SET_HOST_TIME_ITEM, DOME_SET_HOST_TIME_ITEM_NAME, "From host", false);
-			// -------------------------------------------------------------------------------- SNOOP_DEVICES
-			DOME_SNOOP_DEVICES_PROPERTY = indigo_init_text_property(NULL, device->name, SNOOP_DEVICES_PROPERTY_NAME, MAIN_GROUP, "Snoop devices", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
-			if (DOME_SNOOP_DEVICES_PROPERTY == NULL) {
-				return INDIGO_FAILED;
-			}
-			indigo_init_text_item(DOME_SNOOP_MOUNT_ITEM, SNOOP_MOUNT_ITEM_NAME, "Mount", "");
-			indigo_init_text_item(DOME_SNOOP_GPS_ITEM, SNOOP_GPS_ITEM_NAME, "GPS", "");
-			// --------------------------------------------------------------------------------
-			return INDIGO_OK;
 		}
 	}
 	return INDIGO_FAILED;
@@ -212,7 +196,6 @@ indigo_result indigo_dome_enumerate_properties(indigo_device *device, indigo_cli
 		INDIGO_DEFINE_MATCHING_PROPERTY(DOME_STEPS_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(DOME_EQUATORIAL_COORDINATES_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(DOME_HORIZONTAL_COORDINATES_PROPERTY);
-		INDIGO_DEFINE_MATCHING_PROPERTY(DOME_SLAVING_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(DOME_SLAVING_PARAMETERS_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(DOME_ABORT_MOTION_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(DOME_SHUTTER_PROPERTY);
@@ -224,7 +207,6 @@ indigo_result indigo_dome_enumerate_properties(indigo_device *device, indigo_cli
 		INDIGO_DEFINE_MATCHING_PROPERTY(DOME_GEOGRAPHIC_COORDINATES_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(DOME_UTC_TIME_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(DOME_SET_HOST_TIME_PROPERTY);
-		INDIGO_DEFINE_MATCHING_PROPERTY(DOME_SNOOP_DEVICES_PROPERTY);
 	}
 	return indigo_device_enumerate_properties(device, client, property);
 }
@@ -242,7 +224,6 @@ indigo_result indigo_dome_change_property(indigo_device *device, indigo_client *
 			indigo_define_property(device, DOME_STEPS_PROPERTY, NULL);
 			indigo_define_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 			indigo_define_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-			indigo_define_property(device, DOME_SLAVING_PROPERTY, NULL);
 			indigo_define_property(device, DOME_SLAVING_PARAMETERS_PROPERTY, NULL);
 			indigo_define_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
 			indigo_define_property(device, DOME_SHUTTER_PROPERTY, NULL);
@@ -254,11 +235,6 @@ indigo_result indigo_dome_change_property(indigo_device *device, indigo_client *
 			indigo_define_property(device, DOME_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 			indigo_define_property(device, DOME_UTC_TIME_PROPERTY, NULL);
 			indigo_define_property(device, DOME_SET_HOST_TIME_PROPERTY, NULL);
-			indigo_define_property(device, DOME_SNOOP_DEVICES_PROPERTY, NULL);
-			if (DOME_SLAVING_ENABLE_ITEM->sw.value) {
-				indigo_add_snoop_rule(DOME_EQUATORIAL_COORDINATES_PROPERTY, DOME_SNOOP_MOUNT_ITEM->text.value, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
-				indigo_add_snoop_rule(DOME_GEOGRAPHIC_COORDINATES_PROPERTY, DOME_SNOOP_GPS_ITEM->text.value, GEOGRAPHIC_COORDINATES_PROPERTY_NAME);
-			}
 			indigo_set_timer(device, SYNC_INTERAL, sync_timer_callback, &DOME_CONTEXT->sync_timer);
 		} else {
 			indigo_cancel_timer(device, &DOME_CONTEXT->sync_timer);
@@ -270,15 +246,12 @@ indigo_result indigo_dome_change_property(indigo_device *device, indigo_client *
 			DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
 			DOME_PARK_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 			DOME_HOME_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_remove_snoop_rule(DOME_EQUATORIAL_COORDINATES_PROPERTY, DOME_SNOOP_MOUNT_ITEM->text.value, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
-			indigo_remove_snoop_rule(DOME_GEOGRAPHIC_COORDINATES_PROPERTY, DOME_SNOOP_GPS_ITEM->text.value, GEOGRAPHIC_COORDINATES_PROPERTY_NAME);
 			indigo_delete_property(device, DOME_SPEED_PROPERTY, NULL);
 			indigo_delete_property(device, DOME_DIRECTION_PROPERTY, NULL);
 			indigo_delete_property(device, DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY, NULL);
 			indigo_delete_property(device, DOME_STEPS_PROPERTY, NULL);
 			indigo_delete_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 			indigo_delete_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-			indigo_delete_property(device, DOME_SLAVING_PROPERTY, NULL);
 			indigo_delete_property(device, DOME_SLAVING_PARAMETERS_PROPERTY, NULL);
 			indigo_delete_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
 			indigo_delete_property(device, DOME_SHUTTER_PROPERTY, NULL);
@@ -290,7 +263,6 @@ indigo_result indigo_dome_change_property(indigo_device *device, indigo_client *
 			indigo_delete_property(device, DOME_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 			indigo_delete_property(device, DOME_UTC_TIME_PROPERTY, NULL);
 			indigo_delete_property(device, DOME_SET_HOST_TIME_PROPERTY, NULL);
-			indigo_delete_property(device, DOME_SNOOP_DEVICES_PROPERTY, NULL);
 		}
 		// -------------------------------------------------------------------------------- DOME_SPEED
 	} else if (indigo_property_match_changeable(DOME_SPEED_PROPERTY, property)) {
@@ -308,36 +280,13 @@ indigo_result indigo_dome_change_property(indigo_device *device, indigo_client *
 	} else if (indigo_property_match_changeable(DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY, property)) {
 		indigo_property_copy_values(DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY, property, false);
 		DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY->state = INDIGO_OK_STATE;
-		if (DOME_SLAVING_ENABLE_ITEM->sw.value) {
-			DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_set_switch(DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY, DOME_ON_HORIZONTAL_COORDINATES_SET_GOTO_ITEM, true);
-			indigo_update_property(device, DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY, "Can not SYNC position while folowing the mount.");
-		} else {
-			indigo_update_property(device, DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY, NULL);
-		}
+		indigo_update_property(device, DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- DOME_GEOGRAPHIC_COORDINATES
 	} else if (indigo_property_match_changeable(DOME_GEOGRAPHIC_COORDINATES_PROPERTY, property)) {
 		indigo_property_copy_values(DOME_GEOGRAPHIC_COORDINATES_PROPERTY, property, false);
 		DOME_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, DOME_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
-		return INDIGO_OK;
-		// -------------------------------------------------------------------------------- DOME_SLAVING
-	} else if (indigo_property_match_changeable(DOME_SLAVING_PROPERTY, property)) {
-		indigo_property_copy_values(DOME_SLAVING_PROPERTY, property, false);
-		DOME_SLAVING_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_remove_snoop_rule(DOME_EQUATORIAL_COORDINATES_PROPERTY, DOME_SNOOP_MOUNT_ITEM->text.value, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
-		indigo_remove_snoop_rule(DOME_GEOGRAPHIC_COORDINATES_PROPERTY, DOME_SNOOP_GPS_ITEM->text.value, GEOGRAPHIC_COORDINATES_PROPERTY_NAME);
-		if (DOME_SLAVING_ENABLE_ITEM->sw.value) {
-			if (!DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY->hidden && !DOME_ON_HORIZONTAL_COORDINATES_SET_GOTO_ITEM->sw.value) {
-				DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_set_switch(DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY, DOME_ON_HORIZONTAL_COORDINATES_SET_GOTO_ITEM, true);
-				indigo_update_property(device, DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY, "Switching to GOTO mode." );
-			}
-			indigo_add_snoop_rule(DOME_EQUATORIAL_COORDINATES_PROPERTY, DOME_SNOOP_MOUNT_ITEM->text.value, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
-			indigo_add_snoop_rule(DOME_GEOGRAPHIC_COORDINATES_PROPERTY, DOME_SNOOP_GPS_ITEM->text.value, GEOGRAPHIC_COORDINATES_PROPERTY_NAME);
-		}
-		indigo_update_property(device, DOME_SLAVING_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- DOME_SLAVING_PARAMETERS
 	} else if (indigo_property_match_changeable(DOME_SLAVING_PARAMETERS_PROPERTY, property)) {
@@ -356,22 +305,10 @@ indigo_result indigo_dome_change_property(indigo_device *device, indigo_client *
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, DOME_SPEED_PROPERTY);
 			indigo_save_property(device, NULL, DOME_DIRECTION_PROPERTY);
-			indigo_save_property(device, NULL, DOME_SLAVING_PROPERTY);
 			indigo_save_property(device, NULL, DOME_SLAVING_PARAMETERS_PROPERTY);
 			indigo_save_property(device, NULL, DOME_GEOGRAPHIC_COORDINATES_PROPERTY);
 			indigo_save_property(device, NULL, DOME_DIMENSION_PROPERTY);
 		}
-		// -------------------------------------------------------------------------------- SNOOP_DEVICES
-	} else if (indigo_property_match_changeable(DOME_SNOOP_DEVICES_PROPERTY, property)) {
-		indigo_remove_snoop_rule(DOME_EQUATORIAL_COORDINATES_PROPERTY, DOME_SNOOP_MOUNT_ITEM->text.value, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
-		indigo_remove_snoop_rule(DOME_GEOGRAPHIC_COORDINATES_PROPERTY, DOME_SNOOP_GPS_ITEM->text.value, GEOGRAPHIC_COORDINATES_PROPERTY_NAME);
-		indigo_property_copy_values(DOME_SNOOP_DEVICES_PROPERTY, property, false);
-		indigo_trim_local_service(DOME_SNOOP_MOUNT_ITEM->text.value);
-		indigo_trim_local_service(DOME_SNOOP_GPS_ITEM->text.value);
-		indigo_add_snoop_rule(DOME_EQUATORIAL_COORDINATES_PROPERTY, DOME_SNOOP_MOUNT_ITEM->text.value, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME);
-		indigo_add_snoop_rule(DOME_GEOGRAPHIC_COORDINATES_PROPERTY, DOME_SNOOP_GPS_ITEM->text.value, GEOGRAPHIC_COORDINATES_PROPERTY_NAME);
-		DOME_SNOOP_DEVICES_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, DOME_SNOOP_DEVICES_PROPERTY, NULL);
 	}
 	return indigo_device_change_property(device, client, property);
 }
@@ -384,7 +321,6 @@ indigo_result indigo_dome_detach(indigo_device *device) {
 	indigo_release_property(DOME_STEPS_PROPERTY);
 	indigo_release_property(DOME_EQUATORIAL_COORDINATES_PROPERTY);
 	indigo_release_property(DOME_HORIZONTAL_COORDINATES_PROPERTY);
-	indigo_release_property(DOME_SLAVING_PROPERTY);
 	indigo_release_property(DOME_SLAVING_PARAMETERS_PROPERTY);
 	indigo_release_property(DOME_ABORT_MOTION_PROPERTY);
 	indigo_release_property(DOME_SHUTTER_PROPERTY);
@@ -396,7 +332,6 @@ indigo_result indigo_dome_detach(indigo_device *device) {
 	indigo_release_property(DOME_GEOGRAPHIC_COORDINATES_PROPERTY);
 	indigo_release_property(DOME_UTC_TIME_PROPERTY);
 	indigo_release_property(DOME_SET_HOST_TIME_PROPERTY);
-	indigo_release_property(DOME_SNOOP_DEVICES_PROPERTY);
 	return indigo_device_detach(device);
 }
 

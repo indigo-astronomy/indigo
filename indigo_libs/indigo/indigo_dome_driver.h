@@ -128,18 +128,6 @@ extern "C" {
  */
 #define DOME_HORIZONTAL_COORDINATES_ALT_ITEM								(DOME_HORIZONTAL_COORDINATES_PROPERTY->items+1)
 
-/** DOME_SLAVING property pointer, property is optional, property change request should be fully handled by dome driver
- */
-#define DOME_SLAVING_PROPERTY								(DOME_CONTEXT->dome_slaving_property)
-
-/** DOME_SLAVING.ENABLE property item pointer.
- */
-#define DOME_SLAVING_ENABLE_ITEM							(DOME_SLAVING_PROPERTY->items+0)
-
-/** DOME_SLAVING.DISABLE property item pointer.
- */
-#define DOME_SLAVING_DISABLE_ITEM							(DOME_SLAVING_PROPERTY->items+1)
-
 /** DOME_SLAVING_PARAMETERS property pointer, property is optional, property change request should be fully handled by dome driver
  */
 #define DOME_SLAVING_PARAMETERS_PROPERTY						(DOME_CONTEXT->dome_slaving_parameters_property)
@@ -281,19 +269,6 @@ extern "C" {
 */
 #define DOME_SET_HOST_TIME_ITEM											(DOME_SET_HOST_TIME_PROPERTY->items+0)
 
-/** DOME_SNOOP_DEVICES property pointer, property is optional.
- */
-#define DOME_SNOOP_DEVICES_PROPERTY					(DOME_CONTEXT->dome_snoop_devices_property)
-
-/** DOME_SNOOP_DEVICES_PROPERTY.MOUNT property item pointer.
- */
-#define DOME_SNOOP_MOUNT_ITEM					(DOME_SNOOP_DEVICES_PROPERTY->items+0)
-
-/** DOME_SNOOP_DEVICES_PROPERTY.GPS property item pointer.
- */
-#define DOME_SNOOP_GPS_ITEM					(DOME_SNOOP_DEVICES_PROPERTY->items+1)
-
-
 /** Dome device context structure.
  */
 typedef struct {
@@ -304,7 +279,6 @@ typedef struct {
 	indigo_property *dome_steps_property;										///< DOME_STEPS property pointer
 	indigo_property *dome_equatorial_coordinates_property; 	///< DOME_EQUATORIAL_COORDINATES property pointer
 	indigo_property *dome_horizontal_coordinates_property;	///< DOME_HORIZONTAL_COORDINATES property pointer
-	indigo_property *dome_slaving_property;								///< DOME_SLAVING property pointer
 	indigo_property *dome_slaving_parameters_property;					///< DOME_SLAVING_PARAMETERS property pointer
 	indigo_property *dome_abort_motion_property;						///< DOME_ABORT_MOTION property pointer
 	indigo_property *dome_shutter_property;									///< DOME_SHUTTER_PROPERTY pointer
@@ -316,7 +290,6 @@ typedef struct {
 	indigo_property *dome_geographic_coordinates_property;	///< DOME_GEOGRAPHIC_COORDINATES property pointer
 	indigo_property *dome_utc_time_property;               	///< DOME_UTC_TIME property_pointer
 	indigo_property *dome_set_host_time_property;          	///< DOME_UTC_FROM_HOST property_pointer
-	indigo_property *dome_snoop_devices_property;						///< DOME_SNOOP_DEVICES property pointer
 	indigo_timer *sync_timer;
 } indigo_dome_context;
 

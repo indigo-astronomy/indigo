@@ -984,34 +984,6 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		// -------------------------------------------------------------------------------- DOME_EQUATORIAL_COORDINATES
 		indigo_property_copy_values(DOME_EQUATORIAL_COORDINATES_PROPERTY, property, false);
 		/* Keep the dome in sync if needed */
-		if (DOME_SLAVING_ENABLE_ITEM->sw.value) {
-			PROPERTY_LOCK();
-			double az;
-			char command[NEXDOME_CMD_LEN];
-			if (indigo_fix_dome_azimuth(device, DOME_EQUATORIAL_COORDINATES_RA_ITEM->number.value, DOME_EQUATORIAL_COORDINATES_DEC_ITEM->number.value, DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value, &az) &&
-			   (DOME_PARK_PROPERTY->state != INDIGO_BUSY_STATE) && (PRIVATE_DATA->callibration_requested == false) && (DOME_HORIZONTAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE)) {
-				if (DOME_PARK_PARKED_ITEM->sw.value) {
-					PROPERTY_UNLOCK();
-					if (DOME_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_ALERT_STATE) {
-						DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-						indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, "Can not Synchronize. Dome is parked.");
-					} else {
-						indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
-					}
-					return INDIGO_OK;
-				}
-				PRIVATE_DATA->park_requested = false;
-				DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target = az;
-				if (PRIVATE_DATA->version < FIRMWARE_VERSION_3_2) {
-					sprintf(command, "GAR,%.0f", az);
-				} else {
-					sprintf(command, "GSR,%.0f", az * PRIVATE_DATA->steps_per_degree);
-				}
-				nexdome_command(device, command);
-			}
-			nexdome_command(device, "PRR");
-			PROPERTY_UNLOCK();
-		}
 		DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 		return INDIGO_OK;

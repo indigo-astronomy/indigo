@@ -243,13 +243,14 @@ static indigo_alpaca_error alpaca_set_slaved(indigo_alpaca_device *device, int v
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotImplemented;
 	}
-	indigo_change_switch_property_1(
-		indigo_agent_alpaca_client,
-		device->indigo_device,
-		DOME_SLAVING_PROPERTY_NAME,
-		value ? DOME_SLAVING_ENABLE_ITEM_NAME : DOME_SLAVING_DISABLE_ITEM_NAME,
-		true
-	);
+// TODO: reimplement
+//	indigo_change_switch_property_1(
+//		indigo_agent_alpaca_client,
+//		device->indigo_device,
+//		DOME_SLAVING_PROPERTY_NAME,
+//		value ? DOME_SLAVING_ENABLE_ITEM_NAME : DOME_SLAVING_DISABLE_ITEM_NAME,
+//		true
+//	);
 	pthread_mutex_unlock(&device->mutex);
 	return indigo_alpaca_wait_for_bool(&device->dome.slaved, value, 30);
 }
@@ -547,19 +548,20 @@ void indigo_alpaca_dome_update_property(indigo_alpaca_device *alpaca_device, ind
 		} else {
 			alpaca_device->dome.isrotating = false;
 		}
-	} else if (!strcmp(property->name, DOME_SLAVING_PROPERTY_NAME)) {
-		alpaca_device->dome.canslave = true;
-		if (property->state == INDIGO_OK_STATE) {
-			for (int i = 0; i < property->count; i++) {
-				indigo_item *item = property->items + i;
-				if (!strcmp(item->name, DOME_SLAVING_ENABLE_ITEM_NAME)) {
-					alpaca_device->dome.slaved = item->sw.value;
-					alpaca_device->dome.canslave = true;
-				} else if (!strcmp(item->name, DOME_SLAVING_DISABLE_ITEM_NAME)) {
-					alpaca_device->dome.canslave = true;
-				}
-			}
-		}
+// TODO: reimplement
+//	} else if (!strcmp(property->name, DOME_SLAVING_PROPERTY_NAME)) {
+//		alpaca_device->dome.canslave = true;
+//		if (property->state == INDIGO_OK_STATE) {
+//			for (int i = 0; i < property->count; i++) {
+//				indigo_item *item = property->items + i;
+//				if (!strcmp(item->name, DOME_SLAVING_ENABLE_ITEM_NAME)) {
+//					alpaca_device->dome.slaved = item->sw.value;
+//					alpaca_device->dome.canslave = true;
+//				} else if (!strcmp(item->name, DOME_SLAVING_DISABLE_ITEM_NAME)) {
+//					alpaca_device->dome.canslave = true;
+//				}
+//			}
+//		}
 	} else if (!strcmp(property->name, DOME_SHUTTER_PROPERTY_NAME)) {
 		alpaca_device->dome.cansetshutter = true;
 		if (property->state == INDIGO_OK_STATE) {
