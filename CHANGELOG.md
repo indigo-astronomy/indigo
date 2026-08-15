@@ -2,13 +2,56 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [3.0-4] - 16 Aug Sun 2026
+## Overall:
+- indigo_server:
+	- fix shell injection in RPI management: client provided SSID, password, country code and host time are now escaped
+	- fix out of bounds write when too many command line arguments are given and missing value check for -b / --bonjour
+	- fix memory leak and possible NULL description in dynamic driver list parsing
+	- fix unchecked allocations, unbounded name copies and unescaped JSON in generated catalog resources
+	- signals are now consumed synchronously by dedicated sigwait() threads instead of a non async-signal-safe handler
+	- web GUI: build WebSocket and BLOB URLs from window.location, so HTTPS and TLS reverse proxies work
+	- web GUI: fix sexagesimal editor sending coordinates immediately, RA/Dec edits are staged until Slew/Sync again
+	- web GUI: fix WiFi setup component storing mode in a window global instead of component state
+
+## Driver changes:
+- indigo_agent_imager:
+	- agent can now be killed while paused
+
+- indigo_agent_guider:
+	- agent can now be killed while paused
+
+- indigo_ccd_simulator:
+	- use finer focus blur 15 steps equal 1 pixel blur by default
+
+- indigo_ccd_touptek & OEM:
+	- update SDK v.60.32226.20260808
+
+- indigo_agent_astrometry:
+	- fix SCALE format, and add more permissive scale tolerance
+
+- indigo_agent_astap:
+	- fix SCALE format
+
+- indigo_rotator_asi:
+	- updted SDK v.1.6.0
+
+- indigo_focuser_asi:
+	- update sdk v.1.8.3
+
+- indigo_wheel_asi:
+	- update sdk v.1.8.5
+
+
 # [3.0-3] - 05 Aug Thu 2026
+
 ## Driver changes:
 - indigo_agent_mount:
 	- fix AGENT_MOUNT_DISPLAY_COORDINATES initial state
 
 
 # [3.0-2] - 04 Aug Tue 2026
+
 ## Overall:
 - indigo_docs:
 	- DRIVER_DEVELOPMENT_BASICS updated with INDIGO 3 API
