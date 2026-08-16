@@ -402,8 +402,8 @@ static indigo_alpaca_error alpaca_slewtoaltitude(indigo_alpaca_device *device, i
 	indigo_change_switch_property_1(
 		indigo_agent_alpaca_client,
 		device->indigo_device,
-		DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY_NAME,
-		DOME_ON_HORIZONTAL_COORDINATES_SET_GOTO_ITEM_NAME,
+		DOME_ON_COORDINATES_SET_PROPERTY_NAME,
+		DOME_ON_COORDINATES_SET_GOTO_ITEM_NAME,
 		true
 	);
 	indigo_change_number_property_1(
@@ -443,8 +443,8 @@ static indigo_alpaca_error alpaca_slewtoazimuth(indigo_alpaca_device *device, in
 	indigo_change_switch_property_1(
 		indigo_agent_alpaca_client,
 		device->indigo_device,
-		DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY_NAME,
-		DOME_ON_HORIZONTAL_COORDINATES_SET_GOTO_ITEM_NAME,
+		DOME_ON_COORDINATES_SET_PROPERTY_NAME,
+		DOME_ON_COORDINATES_SET_GOTO_ITEM_NAME,
 		true
 	);
 	indigo_change_number_property_1(
@@ -475,8 +475,8 @@ static indigo_alpaca_error alpaca_synctoazimuth(indigo_alpaca_device *device, in
 	indigo_change_switch_property_1(
 		indigo_agent_alpaca_client,
 		device->indigo_device,
-		DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY_NAME,
-		DOME_ON_HORIZONTAL_COORDINATES_SET_SYNC_ITEM_NAME,
+		DOME_ON_COORDINATES_SET_PROPERTY_NAME,
+		DOME_ON_COORDINATES_SET_SYNC_ITEM_NAME,
 		true
 	);
 	indigo_change_number_property_1(
@@ -491,12 +491,12 @@ static indigo_alpaca_error alpaca_synctoazimuth(indigo_alpaca_device *device, in
 }
 
 void indigo_alpaca_dome_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property) {
-	if (!strcmp(property->name, DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY_NAME)) {
+	if (!strcmp(property->name, DOME_ON_COORDINATES_SET_PROPERTY_NAME)) {
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = property->items + i;
-			if (!strcmp(item->name, DOME_ON_HORIZONTAL_COORDINATES_SET_GOTO_ITEM_NAME)) {
+			if (!strcmp(item->name, DOME_ON_COORDINATES_SET_GOTO_ITEM_NAME)) {
 				alpaca_device->dome.cansetazimuth = true;
-			} else if (!strcmp(item->name, DOME_ON_HORIZONTAL_COORDINATES_SET_SYNC_ITEM_NAME)) {
+			} else if (!strcmp(item->name, DOME_ON_COORDINATES_SET_SYNC_ITEM_NAME)) {
 				alpaca_device->dome.cansyncazimuth = true;
 			}
 		}

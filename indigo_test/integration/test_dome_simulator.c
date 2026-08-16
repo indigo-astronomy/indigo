@@ -25,7 +25,7 @@ static const char *dome_connected_properties[] = {
 };
 
 static const char *dome_hidden_connected_properties[] = {
-	DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY_NAME,
+	DOME_ON_COORDINATES_SET_PROPERTY_NAME,
 	DOME_FLAP_PROPERTY_NAME,
 	DOME_PARK_POSITION_PROPERTY_NAME,
 	DOME_HOME_PROPERTY_NAME,

@@ -319,7 +319,7 @@ Visible after connection by default:
 
 Available but hidden by default or driver-dependent:
 
-- `DOME_ON_HORIZONTAL_COORDINATES_SET`
+- `DOME_ON_COORDINATES_SET`
 - `DOME_SLAVING_PARAMETERS`
 - `DOME_FLAP`
 - `DOME_PARK_POSITION`
