@@ -680,8 +680,8 @@ static indigo_result dome_attach(indigo_device *device) {
 		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
 		// --------------------------------------------------------------------------------
 		INFO_PROPERTY->count = 6;
-		// -------------------------------------------------------------------------------- DOME_ON_HORIZONTAL_COORDINATES_SET
-		DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY->hidden = false;
+		// -------------------------------------------------------------------------------- DOME_ON_COORDINATES_SET
+		DOME_ON_COORDINATES_SET_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- DOME_HORIZONTAL_COORDINATES
 		DOME_HORIZONTAL_COORDINATES_PROPERTY->perm = INDIGO_RW_PERM;
 		// -------------------------------------------------------------------------------- DOME_SLAVING_PARAMETERS
@@ -913,7 +913,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			return INDIGO_OK;
 		}
 
-		if (DOME_ON_HORIZONTAL_COORDINATES_SET_SYNC_ITEM->sw.value) {
+		if (DOME_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
 			if (!nexdome_sync_azimuth(device, PRIVATE_DATA->target_position)) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_sync_azimuth(%d): returned error", PRIVATE_DATA->handle);
 				DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -931,19 +931,6 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 
 		DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-		DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(DOME_EQUATORIAL_COORDINATES_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- DOME_EQUATORIAL_COORDINATES
-		indigo_property_copy_values(DOME_EQUATORIAL_COORDINATES_PROPERTY, property, false);
-		if (DOME_PARK_PARKED_ITEM->sw.value) {
-			DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, "Dome is parked");
-			return INDIGO_OK;
-		}
-		DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DOME_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_ABORT_MOTION
