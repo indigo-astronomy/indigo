@@ -446,27 +446,25 @@ void indigo_trace_property(const char *message, indigo_client *client, indigo_pr
 static void clear_previous_state(indigo_property *property) {
 	for (int i = 0; i < property->count; i++) {
 		indigo_item *item = property->items + i;
-		if (item->do_update) {
-			switch (property->type) {
-				case INDIGO_TEXT_VECTOR:
-					strcpy(item->text.previous_value, item->text.value);
-					break;
-				case INDIGO_NUMBER_VECTOR:
-					item->number.previous_value = item->number.value;
-					item->number.previous_target = item->number.target;
-					item->do_update = true;
-					break;
-				case INDIGO_SWITCH_VECTOR:
-					item->sw.previous_value = item->sw.value;
-					break;
-				case INDIGO_LIGHT_VECTOR:
-					item->light.previous_value = item->light.value;
-					break;
-				default:
-					break;
-			}
-			item->do_update = false;
+		switch (property->type) {
+			case INDIGO_TEXT_VECTOR:
+				strcpy(item->text.previous_value, item->text.value);
+				break;
+			case INDIGO_NUMBER_VECTOR:
+				item->number.previous_value = item->number.value;
+				item->number.previous_target = item->number.target;
+				item->do_update = true;
+				break;
+			case INDIGO_SWITCH_VECTOR:
+				item->sw.previous_value = item->sw.value;
+				break;
+			case INDIGO_LIGHT_VECTOR:
+				item->light.previous_value = item->light.value;
+				break;
+			default:
+				break;
 		}
+		item->do_update = false;
 	}
 	property->previous_state = property->state;
 	property->do_update = false;
