@@ -284,7 +284,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			PRIVATE_DATA->parking = true;
 			PRIVATE_DATA->parked = false;
 			PRIVATE_DATA->slew_in_progress = true;
-			MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_OK_STATE;
+			MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_BUSY_STATE;
 			MOUNT_STATE_PARK_ITEM->light.value = INDIGO_BUSY_STATE;
 			MOUNT_STATE_TRACKING_ITEM->light.value = INDIGO_IDLE_STATE;
 			indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
@@ -322,7 +322,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			indigo_update_coordinates(device, NULL);
 			PRIVATE_DATA->going_home = true;
 			PRIVATE_DATA->slew_in_progress = true;
-			MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_OK_STATE;
+			MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_BUSY_STATE;
 			MOUNT_STATE_HOME_ITEM->light.value = INDIGO_BUSY_STATE;
 			MOUNT_STATE_TRACKING_ITEM->light.value = INDIGO_IDLE_STATE;
 			indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
@@ -363,7 +363,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			if (MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value < 0) {
 				west = !west;
 			}
-			MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_OK_STATE;
+			MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_BUSY_STATE;
 			MOUNT_STATE_HOME_ITEM->light.value = INDIGO_IDLE_STATE;
 			indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
 			indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, west ? MOUNT_SIDE_OF_PIER_WEST_ITEM : MOUNT_SIDE_OF_PIER_EAST_ITEM, true);

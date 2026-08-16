@@ -554,7 +554,7 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 	indigo_j2k_to_eq(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
 	if (MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
 		if (nexstaraux_set_tracking(device, false) && nexstaraux_slew(device, ra, dec, true)) {
-			MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_OK_STATE;
+			MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_BUSY_STATE;
 			indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
 			PRIVATE_DATA->centering = PRIVATE_DATA->parking = PRIVATE_DATA->parked = false;
 			PRIVATE_DATA->slewing = true;
@@ -583,7 +583,7 @@ static void mount_park_handler(indigo_device *device) {
 	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 	indigo_j2k_to_eq(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
 	if (nexstaraux_set_tracking(device, false) && nexstaraux_slew(device, ra, dec, true)) {
-		MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_OK_STATE;
+		MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_BUSY_STATE;
 		MOUNT_STATE_PARK_ITEM->light.value = INDIGO_BUSY_STATE;
 		indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
 		PRIVATE_DATA->centering = PRIVATE_DATA->parked = false;
