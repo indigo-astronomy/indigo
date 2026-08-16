@@ -283,7 +283,7 @@ Properties are implemented by GPS driver base class in [indigo_gps_driver.c](htt
 | DOME_SPEED  | number | no | no  | SPEED  | yes  |  |
 | DOME_DIRECTION | switch | no | no  | CLOCKWISE  | yes  |  |
 |  |  |  |  | COUNTERCLOCKWISE | yes  |  |
-| DOME_ON_HORIZONTAL_COORDINATES_SET  | switch | no | no  | GOTO  | yes  |  |
+| DOME_ON_COORDINATES_SET  | switch | no | no  | GOTO  | yes  |  |
 |  |  |  |  | SYNC | yes  |  |
 | DOME_STEPS | number | no | no  | STEPS  | yes  |  |
 | DOME_EQUATORIAL_COORDINATES | number | no | no  | RA  | yes  |  |
