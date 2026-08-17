@@ -71,5 +71,9 @@ Tested on Raspberry Pi 5 with real MX-HD hardware:
 * manual NSEW motion
 * goto and sync
 * abort during goto
+* abort during park, unpark and home
+* recovery after aborting park/home with HOME or PARK
+* `MOUNT_EPOCH` operation with current epoch/JNow and J2000
 * guider-device connection
 * pulse guide command/state flow
+* independent RA/DEC pulse-guide stop behavior
