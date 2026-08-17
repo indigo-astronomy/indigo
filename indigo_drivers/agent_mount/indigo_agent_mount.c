@@ -984,7 +984,7 @@ static void handle_mount_change(indigo_device *device) {
 			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true);
 		}
 	}
-	if (AGENT_DOME_SLAVING_ENABLED_ITEM->sw.value && INDIGO_FILTER_DOME_SELECTED && !FILTER_DEVICE_CONTEXT->running_process && DEVICE_PRIVATE_DATA->dome_unparked && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_ALERT_STATE) {
+	if (AGENT_DOME_SLAVING_ENABLED_ITEM->sw.value && INDIGO_FILTER_DOME_SELECTED && !FILTER_DEVICE_CONTEXT->running_process && DEVICE_PRIVATE_DATA->dome_unparked && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state == INDIGO_OK_STATE) {
 		static const char *names[] = { DOME_EQUATORIAL_COORDINATES_RA_ITEM_NAME, DOME_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
 		indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device->name, DOME_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, names, current_radec);
 	}
