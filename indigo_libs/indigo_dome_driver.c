@@ -181,6 +181,7 @@ indigo_result indigo_dome_attach(indigo_device *device, const char* driver_name,
 			indigo_init_light_item(DOME_STATE_PARK_ITEM, DOME_STATE_PARK_ITEM_NAME, "Park", INDIGO_IDLE_STATE);
 			indigo_init_light_item(DOME_STATE_OPEN_ITEM, DOME_STATE_OPEN_ITEM_NAME, "Open", INDIGO_IDLE_STATE);
 			DOME_STATE_PROPERTY->hidden = true;
+			return INDIGO_OK;
 		}
 	}
 	return INDIGO_FAILED;
