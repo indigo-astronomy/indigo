@@ -325,12 +325,12 @@ static void format_longitude_mount_west_positive(double longitude_east, char *bu
 static bool mxhd_set_target(indigo_device *device, double ra, double dec) {
 	char ra_text[32], dec_text[32], command[64], ack = 0;
 	format_ra(ra, ra_text, sizeof(ra_text));
-	snprintf(command, sizeof(command), ":Sr%s#", ra_text);
+	snprintf(command, sizeof(command), ":Sr %s#", ra_text);
 	if (!mxhd_query_ack(device, command, &ack, MXHD_LONG_TIMEOUT) || ack != '1') {
 		return false;
 	}
 	format_dec(dec, dec_text, sizeof(dec_text));
-	snprintf(command, sizeof(command), ":Sd%s#", dec_text);
+	snprintf(command, sizeof(command), ":Sd %s#", dec_text);
 	return mxhd_query_ack(device, command, &ack, MXHD_LONG_TIMEOUT) && ack == '1';
 }
 
