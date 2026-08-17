@@ -565,6 +565,11 @@ static bool mxhd_open(indigo_device *device) {
 	for (int attempt = 0; attempt < 3; attempt++) {
 		if (mxhd_read_status(device, &b1, &b2, &b3)) {
 			decode_status(device, b1, b2, b3);
+			if (!mxhd_send(device, "@FD0#")) {
+				indigo_uni_close(&PRIVATE_DATA->handle);
+				return false;
+			}
+			PRIVATE_DATA->tracking_enabled = false;
 			return true;
 		}
 		indigo_usleep(200000);
@@ -589,6 +594,8 @@ static void mount_connect_callback(indigo_device *device) {
 		}
 		if (result) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			PRIVATE_DATA->tracking_enabled = false;
+			indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
 			update_tracking_property(device, NULL);
 			mxhd_update_mount_info(device);
 			indigo_execute_handler(device, position_timer_callback);
