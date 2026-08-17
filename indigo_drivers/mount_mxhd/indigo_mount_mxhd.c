@@ -938,19 +938,19 @@ static void mount_abort_callback(indigo_device *device) {
 			if (was_parking) {
 				PRIVATE_DATA->parked = false;
 				indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
-				MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
+				MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, MOUNT_PARK_PROPERTY, "Park aborted");
 				message = "Park aborted";
 			}
 			if (was_going_home) {
-				MOUNT_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
+				MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, MOUNT_HOME_PROPERTY, "Home aborted");
 				message = "Home aborted";
 			}
 			if (was_unparking) {
 				PRIVATE_DATA->parked = false;
 				indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
-				MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
+				MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, MOUNT_PARK_PROPERTY, "Unpark aborted");
 				message = "Unpark aborted";
 			}
