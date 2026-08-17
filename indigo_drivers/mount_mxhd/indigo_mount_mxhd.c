@@ -326,12 +326,16 @@ static bool mxhd_set_target(indigo_device *device, double ra, double dec) {
 	char ra_text[32], dec_text[32], command[64], ack = 0;
 	format_ra(ra, ra_text, sizeof(ra_text));
 	snprintf(command, sizeof(command), ":Sr %s#", ra_text);
-	if (!mxhd_query_ack(device, command, &ack, MXHD_LONG_TIMEOUT) || ack != '1') {
+	bool ra_ok = mxhd_query_ack(device, command, &ack, MXHD_LONG_TIMEOUT);
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s target RA %.8f -> %s, ack=%s/%02X", device->name, ra, command, ra_ok ? "OK" : "FAIL", (unsigned char)ack);
+	if (!ra_ok || ack != '1') {
 		return false;
 	}
 	format_dec(dec, dec_text, sizeof(dec_text));
 	snprintf(command, sizeof(command), ":Sd %s#", dec_text);
-	return mxhd_query_ack(device, command, &ack, MXHD_LONG_TIMEOUT) && ack == '1';
+	bool dec_ok = mxhd_query_ack(device, command, &ack, MXHD_LONG_TIMEOUT);
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s target DEC %.8f -> %s, ack=%s/%02X", device->name, dec, command, dec_ok ? "OK" : "FAIL", (unsigned char)ack);
+	return dec_ok && ack == '1';
 }
 
 static bool mxhd_query_radec(indigo_device *device, double *ra, double *dec) {
@@ -745,6 +749,14 @@ static void mount_eq_coords_callback(indigo_device *device) {
 	double mount_ra = ra;
 	double mount_dec = dec;
 	indigo_j2k_to_eq(MOUNT_EPOCH_ITEM->number.value, &mount_ra, &mount_dec);
+	INDIGO_DRIVER_LOG(DRIVER_NAME, "%s coordinate request epoch=%.1f input RA=%.8f DEC=%.8f -> mount RA=%.8f DEC=%.8f, mode=%s",
+		device->name,
+		MOUNT_EPOCH_ITEM->number.value,
+		ra,
+		dec,
+		mount_ra,
+		mount_dec,
+		MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value ? "sync" : (MOUNT_ON_COORDINATES_SET_SLEW_ITEM->sw.value ? "slew_stop" : "slew_track"));
 	if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
 		PRIVATE_DATA->stop_tracking_after_slew = false;
 		char response[128];
