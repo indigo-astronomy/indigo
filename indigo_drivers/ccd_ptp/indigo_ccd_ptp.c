@@ -84,8 +84,8 @@ static indigo_result ccd_attach(indigo_device *device) {
 		if (DSLR_DELETE_IMAGE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
-		indigo_init_switch_item(DSLR_DELETE_IMAGE_ON_ITEM, DSLR_ZOOM_PREVIEW_ON_ITEM_NAME, "On", true);
-		indigo_init_switch_item(DSLR_DELETE_IMAGE_OFF_ITEM, DSLR_ZOOM_PREVIEW_OFF_ITEM_NAME, "Off", false);
+		indigo_init_switch_item(DSLR_DELETE_IMAGE_ON_ITEM, DSLR_DELETE_IMAGE_ON_ITEM_NAME, "On", true);
+		indigo_init_switch_item(DSLR_DELETE_IMAGE_OFF_ITEM, DSLR_DELETE_IMAGE_OFF_ITEM_NAME, "Off", false);
 		// -------------------------------------------------------------------------------- DSLR_MIRROR_LOCKUP
 		DSLR_MIRROR_LOCKUP_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_MIRROR_LOCKUP_PROPERTY_NAME, "DSLR", "Use mirror lockup", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (DSLR_MIRROR_LOCKUP_PROPERTY == NULL) {
