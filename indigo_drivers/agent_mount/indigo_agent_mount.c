@@ -1630,7 +1630,7 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 				}
 			}
 		}
-	} else if (AGENT_MOUNT_ENABLE_JOYSTICK_CONTROL_ITEM->sw.value && !strcmp(property->name, "JOYSTICK_" MOUNT_PARK_PROPERTY_NAME)) {
+	} else if (property->state == INDIGO_OK_STATE && AGENT_MOUNT_ENABLE_JOYSTICK_CONTROL_ITEM->sw.value && !strcmp(property->name, "JOYSTICK_" MOUNT_PARK_PROPERTY_NAME)) {
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = property->items + i;
 			if (item->sw.value && !strcmp(item->name, MOUNT_PARK_PARKED_ITEM_NAME)) {
@@ -1641,7 +1641,7 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 				break;
 			}
 		}
-	} else if (AGENT_MOUNT_ENABLE_JOYSTICK_CONTROL_ITEM->sw.value && !strcmp(property->name, "JOYSTICK_" MOUNT_TRACKING_PROPERTY_NAME)) {
+	} else if (property->state == INDIGO_OK_STATE && AGENT_MOUNT_ENABLE_JOYSTICK_CONTROL_ITEM->sw.value && !strcmp(property->name, "JOYSTICK_" MOUNT_TRACKING_PROPERTY_NAME)) {
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = property->items + i;
 			if (item->sw.value && !strcmp(item->name, MOUNT_TRACKING_ON_ITEM_NAME)) {
@@ -1652,7 +1652,7 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 				break;
 			}
 		}
-	} else if (AGENT_MOUNT_ENABLE_JOYSTICK_CONTROL_ITEM->sw.value && !strcmp(property->name, "JOYSTICK_" MOUNT_HOME_PROPERTY_NAME)) {
+	} else if (property->state == INDIGO_OK_STATE && AGENT_MOUNT_ENABLE_JOYSTICK_CONTROL_ITEM->sw.value && !strcmp(property->name, "JOYSTICK_" MOUNT_HOME_PROPERTY_NAME)) {
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = property->items + i;
 			if (item->sw.value && !strcmp(item->name, MOUNT_HOME_ITEM_NAME)) {
@@ -1660,7 +1660,7 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 				break;
 			}
 		}
-	} else if (AGENT_MOUNT_ENABLE_JOYSTICK_CONTROL_ITEM->sw.value && !strcmp(property->name, "JOYSTICK_" MOUNT_SLEW_RATE_PROPERTY_NAME)) {
+	} else if (property->state == INDIGO_OK_STATE && AGENT_MOUNT_ENABLE_JOYSTICK_CONTROL_ITEM->sw.value && !strcmp(property->name, "JOYSTICK_" MOUNT_SLEW_RATE_PROPERTY_NAME)) {
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = property->items + i;
 			if (item->sw.value && !strcmp(item->name, MOUNT_SLEW_RATE_GUIDE_ITEM_NAME)) {
@@ -1677,7 +1677,7 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 				break;
 			}
 		}
-	} else if (AGENT_MOUNT_ENABLE_JOYSTICK_CONTROL_ITEM->sw.value && !strcmp(property->name, "JOYSTICK_" MOUNT_MOTION_DEC_PROPERTY_NAME)) {
+	} else if (property->state == INDIGO_OK_STATE && AGENT_MOUNT_ENABLE_JOYSTICK_CONTROL_ITEM->sw.value && !strcmp(property->name, "JOYSTICK_" MOUNT_MOTION_DEC_PROPERTY_NAME)) {
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = property->items + i;
 			if (!strcmp(item->name, MOUNT_MOTION_NORTH_ITEM_NAME)) {
@@ -1686,16 +1686,16 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 				indigo_change_switch_property_1(client, device->name, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, item->sw.value);
 			}
 		}
-	} else if (AGENT_MOUNT_ENABLE_JOYSTICK_CONTROL_ITEM->sw.value && !strcmp(property->name, "JOYSTICK_" MOUNT_MOTION_RA_PROPERTY_NAME)) {
+	} else if (property->state == INDIGO_OK_STATE && AGENT_MOUNT_ENABLE_JOYSTICK_CONTROL_ITEM->sw.value && !strcmp(property->name, "JOYSTICK_" MOUNT_MOTION_RA_PROPERTY_NAME)) {
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = property->items + i;
 			if (!strcmp(item->name, MOUNT_MOTION_WEST_ITEM_NAME)) {
 				indigo_change_switch_property_1(client, device->name, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, item->sw.value);
 			} else if (!strcmp(item->name, MOUNT_MOTION_EAST_ITEM_NAME)) {
-				indigo_change_switch_property_1(client, device->name, MOUNT_MOTION_EAST_ITEM_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, item->sw.value);
+				indigo_change_switch_property_1(client, device->name, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_EAST_ITEM_NAME, item->sw.value);
 			}
 		}
-	} else if (AGENT_MOUNT_ENABLE_JOYSTICK_CONTROL_ITEM->sw.value && !strcmp(property->name, "JOYSTICK_" MOUNT_ABORT_MOTION_PROPERTY_NAME)) {
+	} else if (property->state == INDIGO_OK_STATE && AGENT_MOUNT_ENABLE_JOYSTICK_CONTROL_ITEM->sw.value && !strcmp(property->name, "JOYSTICK_" MOUNT_ABORT_MOTION_PROPERTY_NAME)) {
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = property->items + i;
 			if (item->sw.value && !strcmp(item->name, MOUNT_ABORT_MOTION_ITEM_NAME)) {
@@ -1837,9 +1837,9 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		}
 		indigo_init_switch_item(AGENT_MOUNT_ENABLE_HA_LIMIT_FEATURE_ITEM, AGENT_MOUNT_ENABLE_HA_LIMIT_FEATURE_ITEM_NAME, "Enable HA limit", false);
 		indigo_init_switch_item(AGENT_MOUNT_ENABLE_TIME_LIMIT_FEATURE_ITEM, AGENT_MOUNT_ENABLE_TIME_LIMIT_FEATURE_ITEM_NAME, "Enable time limit", false);
-		indigo_init_switch_item(AGENT_MOUNT_ENABLE_DOME_SLAVING_ITEM, AGENT_MOUNT_ENABLE_DOME_SLAVING_ITEM_NAME, "Enable dome slaving", true);
-		indigo_init_switch_item(AGENT_MOUNT_ENABLE_DEROTATION_ITEM, AGENT_MOUNT_ENABLE_DEROTATION_ITEM_NAME, "Enable frame derotation", true);
-		indigo_init_switch_item(AGENT_MOUNT_ENABLE_JOYSTICK_CONTROL_ITEM, AGENT_MOUNT_ENABLE_JOYSTICK_CONTROL_ITEM_NAME, "Enable joystick control", true);
+		indigo_init_switch_item(AGENT_MOUNT_ENABLE_DOME_SLAVING_ITEM, AGENT_MOUNT_ENABLE_DOME_SLAVING_ITEM_NAME, "Enable dome slaving", false);
+		indigo_init_switch_item(AGENT_MOUNT_ENABLE_DEROTATION_ITEM, AGENT_MOUNT_ENABLE_DEROTATION_ITEM_NAME, "Enable frame derotation", false);
+		indigo_init_switch_item(AGENT_MOUNT_ENABLE_JOYSTICK_CONTROL_ITEM, AGENT_MOUNT_ENABLE_JOYSTICK_CONTROL_ITEM_NAME, "Enable joystick control", false);
 		// -------------------------------------------------------------------------------- AGENT_MOUNT_STATE
 		AGENT_MOUNT_STATE_PROPERTY = indigo_init_light_property(NULL, device->name, AGENT_MOUNT_STATE_PROPERTY_NAME, "Agent", "Mount state", INDIGO_OK_STATE, 4);
 		if (AGENT_MOUNT_STATE_PROPERTY == NULL) {
@@ -2169,39 +2169,7 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 
 static indigo_result agent_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (device == FILTER_CLIENT_CONTEXT->device) {
-		if (!strcmp(property->name, "JOYSTICK_" MOUNT_MOTION_DEC_PROPERTY_NAME) || !strcmp(property->name, "JOYSTICK_" MOUNT_MOTION_RA_PROPERTY_NAME)) {
-			if (property->state == INDIGO_OK_STATE) {
-				// forward property even if no item is on
-				indigo_filter_forward_change_property(client, property, NULL, property->name + 9);
-			}
-		} else if (!strcmp(property->name, "JOYSTICK_" MOUNT_PARK_PROPERTY_NAME) || !strcmp(property->name, "JOYSTICK_" MOUNT_HOME_PROPERTY_NAME) || !strcmp(property->name, "JOYSTICK_" MOUNT_SLEW_RATE_PROPERTY_NAME) || !strcmp(property->name, "JOYSTICK_" MOUNT_TRACKING_PROPERTY_NAME) || !strcmp(property->name, "JOYSTICK_" MOUNT_ABORT_MOTION_PROPERTY_NAME)) {
-			if (property->state == INDIGO_OK_STATE) {
-				// forward property only if some item is on
-				for (int i = 0; i < property->count; i++) {
-					if (property->items[i].sw.value) {
-						indigo_filter_forward_change_property(client, property, NULL, property->name + 9);
-						break;
-					}
-				}
-			}
-		} else if (!strcmp(property->name, "JOYSTICK_" FOCUSER_CONTROL_PROPERTY_NAME)) {
-			char *related_imager_agent_name = indigo_filter_first_related_agent(FILTER_CLIENT_CONTEXT->device, "Imager Agent");
-			if (related_imager_agent_name) {
-				static const char *names[] = { FOCUSER_FOCUS_IN_ITEM_NAME, FOCUSER_FOCUS_OUT_ITEM_NAME };
-				bool values[] = { false, false };
-				for (int i = 0; i < property->count; i++) {
-					indigo_item *item = property->items + i;
-					if (!strcmp(item->name, FOCUSER_FOCUS_IN_ITEM_NAME)) {
-						values[0] = item->sw.value;
-					} else if (!strcmp(item->name, FOCUSER_FOCUS_OUT_ITEM_NAME)) {
-						values[1] = item->sw.value;
-					}
-				}
-				indigo_change_switch_property(client, related_imager_agent_name, "AGENT_" FOCUSER_CONTROL_PROPERTY_NAME, 2, names, values);
-			}
-		} else {
-			snoop_changes(client, device, property);
-		}
+		snoop_changes(client, device, property);
 	}
 	return indigo_filter_update_property(client, device, property, message);
 }

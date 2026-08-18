@@ -46,6 +46,26 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 | DRV-013 | Medium | `gps_gpsd/indigo_gps_gpsd.c:59` | `gpsd_open()` copies the editable device-port text into `host_name[INDIGO_NAME_SIZE]` and `port[15]` with `strcpy()`/`strncpy()` without checking host or port length. A long `gpsd://...` value can overflow the host or port buffer before `gps_open()`. Parse with bounded lengths and reject invalid endpoints. | Open |
 | DRV-014 | Medium | `mount_synscan/indigo_mount_synscan_driver.c:1013` | `synscan_save_position()` writes the HOME-based `.indigo` path with `snprintf()` but then appends the park filename using `sprintf(buffer + path_end, ...)`. If HOME is long enough for `snprintf()` to truncate, `path_end` is the would-have-written length and can point past `buffer`. Compose the complete path with one checked `snprintf()`. | Open |
 | DRV-015 | Medium | `ccd_ptp/indigo_ptp.c:1533` | PTP string switch values are decoded into `PTP_MAX_CHARS` 256-byte entries, but refreshed property names are copied into `char str[INDIGO_NAME_SIZE]` with `strcpy()`. A camera-provided string value longer than 127 bytes can overflow `str` before the item name is updated. Use bounded copying and define a deterministic truncation or rejection policy for item names. | Open |
+| DRV-016 | High | `agent_mount/indigo_agent_mount.c:2172` | `AGENT_MOUNT_ENABLE_JOYSTICK_CONTROL` was ignored by the `agent_update_property()` forwarding path. `JOYSTICK_MOUNT_*` updates were forwarded to the selected mount before the gated joystick handling in `snoop_changes()` could run, so disabling joystick control in `AGENT_PROCESS_FEATURES` did not prevent joystick motion, park, tracking, home, or abort commands. | Closed (fixed) |
+| DRV-017 | High | `agent_mount/indigo_agent_mount.c:1840` | The refactor removed the old disabled-by-default `AGENT_DOME_SLAVING` and `AGENT_FIELD_DEROTATION` properties, then initialized the replacement `AGENT_PROCESS_FEATURES` items for dome slaving, derotation, and joystick control to `true`. Existing configurations saved under the old property names were no longer loaded into these new items, so upgrading could silently enable dome, rotator, and joystick-driven hardware behavior that was previously disabled. | Closed (fixed) |
+
+## Finding Summaries
+
+### DRV-016 (Closed — fixed)
+
+The duplicate `agent_update_property()` forwarding branches for `JOYSTICK_MOUNT_*`
+properties were removed. Updates for agent-owned mirror properties now go through
+`snoop_changes()`, where `AGENT_MOUNT_ENABLE_JOYSTICK_CONTROL_ITEM->sw.value` gates all
+joystick-driven mount actions. The RA east motion branch in `snoop_changes()` was also
+corrected to update `MOUNT_MOTION_RA`/`MOUNT_MOTION_EAST`.
+
+### DRV-017 (Closed — fixed)
+
+The new `AGENT_PROCESS_FEATURES` items for dome slaving, frame derotation, and joystick
+control now default to disabled. A saved `AGENT_PROCESS_FEATURES` configuration still
+overrides these defaults when loaded, but upgrades from configurations containing only the
+old `AGENT_DOME_SLAVING`/`AGENT_FIELD_DEROTATION` properties no longer enable hardware
+actions implicitly.
 
 ## Review Focus
 
@@ -69,3 +89,4 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 | `017ba602857378e4aed489c065c76eacae15924c` | `017ba602857378e4aed489c065c76eacae15924c` | 2026-08-01 | Follow-up pass over timer, async, and mutex-heavy paths in the scoped driver set; no additional source-backed findings recorded. |
 | `017ba602857378e4aed489c065c76eacae15924c` | `017ba602857378e4aed489c065c76eacae15924c` | 2026-08-01 | Final remaining-driver pass over protocol parsing, response tokenization, mirrored property resizing, and unchecked stack-buffer copies; recorded `DRV-009` and `DRV-010`. |
 | `017ba602857378e4aed489c065c76eacae15924c` | `017ba602857378e4aed489c065c76eacae15924c` | 2026-08-01 | Exhaustive scoped directory enumeration plus repeatable static scans over all 136 included top-level directories and 490 C-family files; recorded `DRV-011` through `DRV-015`. |
+| `d9b39b84e3780dca0c9e7cbb901b63a62586b106` | `afdd54618e5520c4983598c33b662c022962df7c` | 2026-08-18 | Requested review of the last two commits touching `agent_mount`; recorded `DRV-016` and `DRV-017`. |
