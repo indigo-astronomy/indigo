@@ -2396,6 +2396,38 @@
 		5992F7BC1E1EC9580035242E /* indigo_wheel_fli.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_wheel_fli.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		59946C852AE9AFB400AA558D /* indigo_stretch.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = indigo_stretch.cpp; sourceTree = "<group>"; };
 		59946C882AE9AFCC00AA558D /* indigo_stretch.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_stretch.h; sourceTree = "<group>"; };
+		599482543034FC75005D36BE /* indigo_agent_alignment.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_agent_alignment.h; sourceTree = "<group>"; };
+		599482553034FC75005D36BE /* indigo_agent_alignment.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_agent_alignment.c; sourceTree = "<group>"; };
+		599482563034FC75005D36BE /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		599482583034FC75005D36BE /* indigo_agent_lx200_server.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_agent_lx200_server.h; sourceTree = "<group>"; };
+		599482593034FC75005D36BE /* indigo_agent_lx200_server.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_agent_lx200_server.c; sourceTree = "<group>"; };
+		5994825A3034FC75005D36BE /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		5994825C3034FC75005D36BE /* libatik */ = {isa = PBXFileReference; lastKnownFileType = text; path = libatik; sourceTree = "<group>"; };
+		5994825E3034FC75005D36BE /* indigo_ccd_atik2.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_atik2.h; sourceTree = "<group>"; };
+		5994825F3034FC75005D36BE /* indigo_ccd_atik2.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_atik2.c; sourceTree = "<group>"; };
+		599482613034FC75005D36BE /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		599482633034FC75005D36BE /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
+		599482643034FC75005D36BE /* dslr_model_info.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = dslr_model_info.h; sourceTree = "<group>"; };
+		599482653034FC75005D36BE /* indigo_ccd_gphoto2.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_gphoto2.h; sourceTree = "<group>"; };
+		599482663034FC75005D36BE /* indigo_ccd_gphoto2.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_gphoto2.c; sourceTree = "<group>"; };
+		599482673034FC75005D36BE /* indigo_ccd_gphoto2_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_gphoto2_main.c; sourceTree = "<group>"; };
+		599482683034FC75005D36BE /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
+		599482693034FC75005D36BE /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		5994826B3034FC75005D36BE /* indigo_ccd_ica.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_ica.h; sourceTree = "<group>"; };
+		5994826C3034FC75005D36BE /* indigo_ccd_ica.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = indigo_ccd_ica.m; sourceTree = "<group>"; };
+		5994826D3034FC75005D36BE /* indigo_ica_ptp.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ica_ptp.h; sourceTree = "<group>"; };
+		5994826E3034FC75005D36BE /* indigo_ica_ptp.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = indigo_ica_ptp.m; sourceTree = "<group>"; };
+		5994826F3034FC75005D36BE /* indigo_ica_ptp_canon.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ica_ptp_canon.h; sourceTree = "<group>"; };
+		599482703034FC75005D36BE /* indigo_ica_ptp_canon.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = indigo_ica_ptp_canon.m; sourceTree = "<group>"; };
+		599482713034FC75005D36BE /* indigo_ica_ptp_nikon.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ica_ptp_nikon.h; sourceTree = "<group>"; };
+		599482723034FC75005D36BE /* indigo_ica_ptp_nikon.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = indigo_ica_ptp_nikon.m; sourceTree = "<group>"; };
+		599482733034FC75005D36BE /* indigo_ica_ptp_sony.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ica_ptp_sony.h; sourceTree = "<group>"; };
+		599482743034FC75005D36BE /* indigo_ica_ptp_sony.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = indigo_ica_ptp_sony.m; sourceTree = "<group>"; };
+		599482753034FC75005D36BE /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		599482773034FC75005D36BE /* indigo_guider_eqmac.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_guider_eqmac.h; sourceTree = "<group>"; };
+		599482783034FC75005D36BE /* indigo_guider_eqmac.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_guider_eqmac.c; sourceTree = "<group>"; };
+		599482793034FC75005D36BE /* indigo_guider_eqmac_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_guider_eqmac_main.c; sourceTree = "<group>"; };
+		5994827A3034FC75005D36BE /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		59958DFB25CB0DEB00BEFA1B /* indigo_dome_skyroof.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_dome_skyroof.c; sourceTree = "<group>"; };
 		59958DFC25CB0DEB00BEFA1B /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		59958DFD25CB0DEB00BEFA1B /* indigo_dome_skyroof_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_dome_skyroof_main.c; sourceTree = "<group>"; };
@@ -6232,6 +6264,7 @@
 				59C499DF1EFADF7600E750AA /* indigo_mac_drivers */,
 				9D45253F20E0F9A1004D1137 /* indigo_linux_drivers */,
 				9D45254520E0FB20004D1137 /* indigo_optional_drivers */,
+				5994827C3034FC75005D36BE /* obsoleted_drivers */,
 				59D381A61D9590EA00E87393 /* indigo_libs */,
 				9D1880BF1E534B89002F75D7 /* indigo_tools */,
 				599A63D61DF5D93500ABC827 /* indigo_server */,
@@ -7957,6 +7990,101 @@
 				59A52E7B21A33E78000B6F27 /* externals */,
 			);
 			path = wheel_fli;
+			sourceTree = "<group>";
+		};
+		599482573034FC75005D36BE /* agent_alignment */ = {
+			isa = PBXGroup;
+			children = (
+				599482563034FC75005D36BE /* README.md */,
+				599482543034FC75005D36BE /* indigo_agent_alignment.h */,
+				599482553034FC75005D36BE /* indigo_agent_alignment.c */,
+			);
+			path = agent_alignment;
+			sourceTree = "<group>";
+		};
+		5994825B3034FC75005D36BE /* agent_lx200_server */ = {
+			isa = PBXGroup;
+			children = (
+				5994825A3034FC75005D36BE /* README.md */,
+				599482583034FC75005D36BE /* indigo_agent_lx200_server.h */,
+				599482593034FC75005D36BE /* indigo_agent_lx200_server.c */,
+			);
+			path = agent_lx200_server;
+			sourceTree = "<group>";
+		};
+		5994825D3034FC75005D36BE /* bin_externals */ = {
+			isa = PBXGroup;
+			children = (
+				5994825C3034FC75005D36BE /* libatik */,
+			);
+			path = bin_externals;
+			sourceTree = "<group>";
+		};
+		599482623034FC75005D36BE /* ccd_atik2 */ = {
+			isa = PBXGroup;
+			children = (
+				599482613034FC75005D36BE /* README.md */,
+				5994825E3034FC75005D36BE /* indigo_ccd_atik2.h */,
+				5994825F3034FC75005D36BE /* indigo_ccd_atik2.c */,
+				5994825D3034FC75005D36BE /* bin_externals */,
+			);
+			path = ccd_atik2;
+			sourceTree = "<group>";
+		};
+		5994826A3034FC75005D36BE /* ccd_gphoto2 */ = {
+			isa = PBXGroup;
+			children = (
+				599482693034FC75005D36BE /* README.md */,
+				599482683034FC75005D36BE /* Makefile.inc */,
+				599482633034FC75005D36BE /* .gitignore */,
+				599482643034FC75005D36BE /* dslr_model_info.h */,
+				599482653034FC75005D36BE /* indigo_ccd_gphoto2.h */,
+				599482663034FC75005D36BE /* indigo_ccd_gphoto2.c */,
+				599482673034FC75005D36BE /* indigo_ccd_gphoto2_main.c */,
+			);
+			path = ccd_gphoto2;
+			sourceTree = "<group>";
+		};
+		599482763034FC75005D36BE /* ccd_ica */ = {
+			isa = PBXGroup;
+			children = (
+				599482753034FC75005D36BE /* README.md */,
+				5994826B3034FC75005D36BE /* indigo_ccd_ica.h */,
+				5994826C3034FC75005D36BE /* indigo_ccd_ica.m */,
+				5994826D3034FC75005D36BE /* indigo_ica_ptp.h */,
+				5994826E3034FC75005D36BE /* indigo_ica_ptp.m */,
+				5994826F3034FC75005D36BE /* indigo_ica_ptp_canon.h */,
+				599482703034FC75005D36BE /* indigo_ica_ptp_canon.m */,
+				599482713034FC75005D36BE /* indigo_ica_ptp_nikon.h */,
+				599482723034FC75005D36BE /* indigo_ica_ptp_nikon.m */,
+				599482733034FC75005D36BE /* indigo_ica_ptp_sony.h */,
+				599482743034FC75005D36BE /* indigo_ica_ptp_sony.m */,
+			);
+			path = ccd_ica;
+			sourceTree = "<group>";
+		};
+		5994827B3034FC75005D36BE /* guider_eqmac */ = {
+			isa = PBXGroup;
+			children = (
+				5994827A3034FC75005D36BE /* README.md */,
+				599482773034FC75005D36BE /* indigo_guider_eqmac.h */,
+				599482783034FC75005D36BE /* indigo_guider_eqmac.c */,
+				599482793034FC75005D36BE /* indigo_guider_eqmac_main.c */,
+			);
+			path = guider_eqmac;
+			sourceTree = "<group>";
+		};
+		5994827C3034FC75005D36BE /* obsoleted_drivers */ = {
+			isa = PBXGroup;
+			children = (
+				599482573034FC75005D36BE /* agent_alignment */,
+				5994825B3034FC75005D36BE /* agent_lx200_server */,
+				599482623034FC75005D36BE /* ccd_atik2 */,
+				5994826A3034FC75005D36BE /* ccd_gphoto2 */,
+				599482763034FC75005D36BE /* ccd_ica */,
+				5994827B3034FC75005D36BE /* guider_eqmac */,
+			);
+			path = obsoleted_drivers;
 			sourceTree = "<group>";
 		};
 		59958DFA25CB0DEB00BEFA1B /* dome_skyroof */ = {
