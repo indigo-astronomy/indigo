@@ -33,7 +33,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000003
+#define DRIVER_VERSION       0x03000004
 #define DRIVER_NAME          "indigo_wheel_indigo"
 #define DRIVER_LABEL         "PegasusAstro Indigo Filter Wheel"
 #define WHEEL_DEVICE_NAME    "Pegasus Indigo Filter Wheel"
@@ -52,6 +52,13 @@ typedef struct {
 
 //+ code
 
+// The wheel firmware is occasionally slow to answer, so allow a generous
+// per-command read timeout and never treat a single lost response as a failure.
+#define COMMAND_TIMEOUT      INDIGO_DELAY(3)
+#define SETTLE_DELAY         0.5
+#define POLL_DELAY           0.5
+#define MOVE_TIMEOUT         30
+
 static bool indigo_command(indigo_device *device, char *command, ...) {
 	long result = indigo_uni_discard(PRIVATE_DATA->handle);
 	if (result >= 0) {
@@ -60,7 +67,7 @@ static bool indigo_command(indigo_device *device, char *command, ...) {
 		result = indigo_uni_vtprintf(PRIVATE_DATA->handle, command, args, "\n");
 		va_end(args);
 		if (result > 0) {
-			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", INDIGO_DELAY(1));
+			result = indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "\n", "\r\n", COMMAND_TIMEOUT);
 		}
 	}
 	return result > 0;
@@ -124,23 +131,28 @@ static void wheel_connection_handler(indigo_device *device) {
 static void wheel_slot_handler(indigo_device *device) {
 	WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 	//+ wheel.WHEEL_SLOT.on_change
-	if (indigo_command(device, "WM:%d", (int)WHEEL_SLOT_ITEM->number.target) && !strncmp(PRIVATE_DATA->response, "WM:", 3)) {
-		while (true) {
-			if (indigo_command(device, "WF") && !strncmp(PRIVATE_DATA->response, "WF:", 3)) {
-				if (!strcmp(PRIVATE_DATA->response, "WF:-1")) {
-					indigo_sleep(0.5);
-					continue;
-				}
-				WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
-				WHEEL_SLOT_ITEM->number.value = atoi(PRIVATE_DATA->response + 3);
-				break;
-			} else {
-				WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
-				break;
-			}
+	int target = (int)WHEEL_SLOT_ITEM->number.target;
+	// A lost or malformed reply is not reported as a failure - the move is
+	// confirmed by polling WF until it reports the target slot, so a dropped
+	// WM echo or a single failed WF query is simply retried until MOVE_TIMEOUT.
+	if (!(indigo_command(device, "WM:%d", target) && !strncmp(PRIVATE_DATA->response, "WM:", 3))) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No valid response to WM:%d, waiting for WF to confirm the move", target);
+	}
+	indigo_sleep(SETTLE_DELAY);
+	WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+	time_t deadline = time(NULL) + MOVE_TIMEOUT;
+	while (true) {
+		int position = 0;
+		if (indigo_command(device, "WF") && sscanf(PRIVATE_DATA->response, "WF:%d", &position) == 1 && position == target) {
+			WHEEL_SLOT_ITEM->number.value = position;
+			WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+			break;
 		}
-	} else {
-		WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+		if (time(NULL) >= deadline) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Filter wheel failed to reach slot %d in %d seconds", target, MOVE_TIMEOUT);
+			break;
+		}
+		indigo_sleep(POLL_DELAY);
 	}
 	//- wheel.WHEEL_SLOT.on_change
 	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
