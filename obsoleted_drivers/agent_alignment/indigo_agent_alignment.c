@@ -161,7 +161,7 @@ static void process_connection_change(indigo_client *client, indigo_device *devi
 			indigo_alignment_point *points = MOUNT_CONTEXT->alignment_points;
 			for (int j = 0; j < alignment_point_count; j++) {
 				char name[INDIGO_NAME_SIZE], label[INDIGO_NAME_SIZE];
-				sprintf(name, AGENT_ALIGNMENT_POINT_PROPERY_NAME, j);
+				sprintf(name, AGENT_ALIGNMENT_POINT_PROPERTY_NAME, j);
 				sprintf(label, "Alignment point #%d", j);
 				indigo_property *alignment_property = indigo_init_number_property(NULL, agent_device->name, name, "Alignment points", label, INDIGO_OK_STATE, INDIGO_RW_PERM, 6);
 				indigo_init_number_item(AGENT_ALIGNMENT_POINT_RA_ITEM(alignment_property), AGENT_ALIGNMENT_POINT_RA_ITEM_NAME, "Right ascension (0 to 24 hrs)", 0, 24, 0, points[j].ra);
