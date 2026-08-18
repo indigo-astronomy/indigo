@@ -55,6 +55,14 @@ static void dome_timer_callback(indigo_device *device) {
 	}
 	//+ dome.on_timer
 	if (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_ALERT_STATE) {
+		if (DOME_PARK_PROPERTY->state == INDIGO_BUSY_STATE) {
+			indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_UNPARKED_ITEM, true);
+			DOME_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
+			DOME_STATE_PARK_ITEM->light.value = INDIGO_ALERT_STATE;
+		}
+		DOME_STATE_SLEW_ITEM->light.value = INDIGO_ALERT_STATE;
+		indigo_update_property(device, DOME_STATE_PROPERTY, NULL);
 		DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
 		indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 		INDIGO_UPDATE_PROPERTY_STATE(DOME_STEPS_PROPERTY, INDIGO_ALERT_STATE, NULL);
@@ -67,6 +75,9 @@ static void dome_timer_callback(indigo_device *device) {
 			} else {
 				DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position = PRIVATE_DATA->target_position;
 			}
+			DOME_STATE_SLEW_ITEM->light.value = INDIGO_BUSY_STATE;
+			DOME_STATE_PARK_ITEM->light.value = DOME_PARK_PARKED_ITEM->sw.value ? INDIGO_BUSY_STATE : DOME_PARK_PARKED_ITEM->sw.value;
+			indigo_update_property(device, DOME_STATE_PROPERTY, NULL);
 			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 			INDIGO_UPDATE_PROPERTY_STATE(DOME_STEPS_PROPERTY, INDIGO_BUSY_STATE, NULL);
 			indigo_set_timer(device, 0.1, dome_timer_callback, NULL);
@@ -78,11 +89,17 @@ static void dome_timer_callback(indigo_device *device) {
 			} else {
 				DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position = PRIVATE_DATA->target_position;
 			}
+			DOME_STATE_SLEW_ITEM->light.value = INDIGO_BUSY_STATE;
+			DOME_STATE_PARK_ITEM->light.value = DOME_PARK_PARKED_ITEM->sw.value ? INDIGO_BUSY_STATE : DOME_PARK_PARKED_ITEM->sw.value;
+			indigo_update_property(device, DOME_STATE_PROPERTY, NULL);
 			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 			INDIGO_UPDATE_PROPERTY_STATE(DOME_STEPS_PROPERTY, INDIGO_BUSY_STATE, NULL);
 			indigo_set_timer(device, 0.1, dome_timer_callback, NULL);
 		} else {
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+			DOME_STATE_SLEW_ITEM->light.value = INDIGO_IDLE_STATE;
+			DOME_STATE_PARK_ITEM->light.value = DOME_PARK_PARKED_ITEM->sw.value ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
+			indigo_update_property(device, DOME_STATE_PROPERTY, NULL);
 			DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position;
 			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 			INDIGO_UPDATE_PROPERTY_STATE(DOME_STEPS_PROPERTY, INDIGO_OK_STATE, NULL);
@@ -111,6 +128,8 @@ static void dome_horizontal_coordinates_handler(indigo_device *device) {
 	DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 	//+ dome.DOME_HORIZONTAL_COORDINATES.on_change
 	if (DOME_PARK_PARKED_ITEM->sw.value) {
+		DOME_STATE_SLEW_ITEM->light.value = INDIGO_ALERT_STATE;
+		indigo_update_property(device, DOME_STATE_PROPERTY, NULL);
 		DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_send_message(device, ALERT_PROPERTY, "Dome is parked");
 	} else {
@@ -136,6 +155,8 @@ static void dome_steps_handler(indigo_device *device) {
 	DOME_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 	//+ dome.DOME_STEPS.on_change
 	if (DOME_PARK_PARKED_ITEM->sw.value) {
+		DOME_STATE_SLEW_ITEM->light.value = INDIGO_ALERT_STATE;
+		indigo_update_property(device, DOME_STATE_PROPERTY, NULL);
 		DOME_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_send_message(device, ALERT_PROPERTY, "Dome is parked");
 	} else {
@@ -159,6 +180,8 @@ static void dome_abort_motion_handler(indigo_device *device) {
 	DOME_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	//+ dome.DOME_ABORT_MOTION.on_change
 	if (DOME_ABORT_MOTION_ITEM->sw.value && DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
+		DOME_STATE_SLEW_ITEM->light.value = INDIGO_IDLE_STATE;
+		indigo_update_property(device, DOME_STATE_PROPERTY, NULL);
 		DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position;
 		indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
@@ -171,8 +194,12 @@ static void dome_abort_motion_handler(indigo_device *device) {
 static void dome_shutter_handler(indigo_device *device) {
 	//+ dome.DOME_SHUTTER.on_change
 	DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
+	DOME_STATE_OPEN_ITEM->light.value = INDIGO_BUSY_STATE;
+	indigo_update_property(device, DOME_STATE_PROPERTY, NULL);
 	indigo_usleep(INDIGO_DELAY(6));
-	DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
+	DOME_STATE_OPEN_ITEM->light.value = INDIGO_OK_STATE;
+	indigo_update_property(device, DOME_STATE_PROPERTY, NULL);
+	DOME_SHUTTER_PROPERTY->state = DOME_SHUTTER_OPENED_ITEM->sw.value ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
 	//- dome.DOME_SHUTTER.on_change
 	indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 }
@@ -182,6 +209,8 @@ static void dome_park_handler(indigo_device *device) {
 	//+ dome.DOME_PARK.on_change
 	if (DOME_PARK_PARKED_ITEM->sw.value) {
 		DOME_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
+		DOME_STATE_SLEW_ITEM->light.value = DOME_STATE_PARK_ITEM->light.value = INDIGO_BUSY_STATE;
+		indigo_update_property(device, DOME_STATE_PROPERTY, NULL);
 		if (PRIVATE_DATA->current_position > 180) {
 			DOME_DIRECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_set_switch(DOME_DIRECTION_PROPERTY, DOME_DIRECTION_MOVE_CLOCKWISE_ITEM, true);
@@ -196,6 +225,9 @@ static void dome_park_handler(indigo_device *device) {
 		INDIGO_UPDATE_PROPERTY_STATE(DOME_STEPS_PROPERTY, INDIGO_BUSY_STATE, NULL);
 		INDIGO_UPDATE_PROPERTY_STATE(DOME_HORIZONTAL_COORDINATES_PROPERTY, INDIGO_BUSY_STATE, NULL);
 		indigo_set_timer(device, 0.5, dome_timer_callback, NULL);
+	} else {
+		DOME_STATE_SLEW_ITEM->light.value = DOME_STATE_PARK_ITEM->light.value = INDIGO_IDLE_STATE;
+		indigo_update_property(device, DOME_STATE_PROPERTY, NULL);
 	}
 	//- dome.DOME_PARK.on_change
 	indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
@@ -221,6 +253,10 @@ static indigo_result dome_attach(indigo_device *device) {
 		DOME_ABORT_MOTION_PROPERTY->hidden = false;
 		DOME_SHUTTER_PROPERTY->hidden = false;
 		DOME_PARK_PROPERTY->hidden = false;
+		DOME_STATE_PROPERTY->hidden = false;
+		//+ dome.DOME_STATE.on_attach
+		DOME_STATE_PARK_ITEM->light.value = INDIGO_OK_STATE;
+		//- dome.DOME_STATE.on_attach
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return dome_enumerate_properties(device, NULL, NULL);
 	}
