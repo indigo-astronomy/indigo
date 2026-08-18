@@ -380,6 +380,7 @@ indigo_result indigo_mount_enumerate_properties(indigo_device *device, indigo_cl
 	assert(DEVICE_CONTEXT != NULL);
 	if (IS_CONNECTED) {
 		INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_INFO_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_STATE_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_LST_TIME_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_UTC_TIME_PROPERTY);
@@ -410,7 +411,6 @@ indigo_result indigo_mount_enumerate_properties(indigo_device *device, indigo_cl
 		INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_SIDE_OF_PIER_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_PEC_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_PEC_TRAINING_PROPERTY);
-		INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_STATE_PROPERTY);
 	}
 	return indigo_device_enumerate_properties(device, client, property);
 }
@@ -428,6 +428,7 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 			indigo_j2k_to_jnow(&ra, &dec);
 			indigo_radec_to_altaz(ra, dec, NULL, MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value, MOUNT_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value, &MOUNT_HORIZONTAL_COORDINATES_ALT_ITEM->number.value, &MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM->number.value);
 			indigo_define_property(device, MOUNT_INFO_PROPERTY, NULL);
+			indigo_define_property(device, MOUNT_STATE_PROPERTY, NULL);
 			indigo_define_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 			indigo_define_property(device, MOUNT_LST_TIME_PROPERTY, NULL);
 			indigo_define_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
@@ -458,7 +459,6 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 			indigo_define_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
 			indigo_define_property(device, MOUNT_PEC_PROPERTY, NULL);
 			indigo_define_property(device, MOUNT_PEC_TRAINING_PROPERTY, NULL);
-			indigo_define_property(device, MOUNT_STATE_PROPERTY, NULL);
 		} else {
 			MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 			MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
@@ -468,6 +468,7 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 			MOUNT_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 			MOUNT_RAW_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_delete_property(device, MOUNT_INFO_PROPERTY, NULL);
+			indigo_delete_property(device, MOUNT_STATE_PROPERTY, NULL);
 			indigo_delete_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 			indigo_delete_property(device, MOUNT_LST_TIME_PROPERTY, NULL);
 			indigo_delete_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
@@ -498,7 +499,6 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 			indigo_delete_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
 			indigo_delete_property(device, MOUNT_PEC_PROPERTY, NULL);
 			indigo_delete_property(device, MOUNT_PEC_TRAINING_PROPERTY, NULL);
-			indigo_delete_property(device, MOUNT_STATE_PROPERTY, NULL);
 		}
 	} else if (indigo_property_match_changeable(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_GEOGRAPHIC_COORDINATES

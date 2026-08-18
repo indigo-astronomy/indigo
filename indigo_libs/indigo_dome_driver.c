@@ -191,6 +191,7 @@ indigo_result indigo_dome_enumerate_properties(indigo_device *device, indigo_cli
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	if (IS_CONNECTED) {
+		INDIGO_DEFINE_MATCHING_PROPERTY(DOME_STATE_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(DOME_SPEED_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(DOME_DIRECTION_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(DOME_ON_COORDINATES_SET_PROPERTY);
@@ -208,7 +209,6 @@ indigo_result indigo_dome_enumerate_properties(indigo_device *device, indigo_cli
 		INDIGO_DEFINE_MATCHING_PROPERTY(DOME_GEOGRAPHIC_COORDINATES_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(DOME_UTC_TIME_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(DOME_SET_HOST_TIME_PROPERTY);
-		INDIGO_DEFINE_MATCHING_PROPERTY(DOME_STATE_PROPERTY);
 	}
 	return indigo_device_enumerate_properties(device, client, property);
 }
@@ -220,6 +220,7 @@ indigo_result indigo_dome_change_property(indigo_device *device, indigo_client *
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (IS_CONNECTED) {
+			indigo_define_property(device, DOME_STATE_PROPERTY, NULL);
 			indigo_define_property(device, DOME_SPEED_PROPERTY, NULL);
 			indigo_define_property(device, DOME_DIRECTION_PROPERTY, NULL);
 			indigo_define_property(device, DOME_ON_COORDINATES_SET_PROPERTY, NULL);
@@ -237,7 +238,6 @@ indigo_result indigo_dome_change_property(indigo_device *device, indigo_client *
 			indigo_define_property(device, DOME_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 			indigo_define_property(device, DOME_UTC_TIME_PROPERTY, NULL);
 			indigo_define_property(device, DOME_SET_HOST_TIME_PROPERTY, NULL);
-			indigo_define_property(device, DOME_STATE_PROPERTY, NULL);
 	} else {
 			indigo_cancel_timer(device, &DOME_CONTEXT->sync_timer);
 			DOME_STEPS_PROPERTY->state = INDIGO_OK_STATE;
@@ -248,6 +248,7 @@ indigo_result indigo_dome_change_property(indigo_device *device, indigo_client *
 			DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
 			DOME_PARK_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 			DOME_HOME_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_delete_property(device, DOME_STATE_PROPERTY, NULL);
 			indigo_delete_property(device, DOME_SPEED_PROPERTY, NULL);
 			indigo_delete_property(device, DOME_DIRECTION_PROPERTY, NULL);
 			indigo_delete_property(device, DOME_ON_COORDINATES_SET_PROPERTY, NULL);
@@ -265,7 +266,6 @@ indigo_result indigo_dome_change_property(indigo_device *device, indigo_client *
 			indigo_delete_property(device, DOME_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 			indigo_delete_property(device, DOME_UTC_TIME_PROPERTY, NULL);
 			indigo_delete_property(device, DOME_SET_HOST_TIME_PROPERTY, NULL);
-			indigo_delete_property(device, DOME_STATE_PROPERTY, NULL);
 		}
 		// -------------------------------------------------------------------------------- DOME_SPEED
 	} else if (indigo_property_match_changeable(DOME_SPEED_PROPERTY, property)) {
