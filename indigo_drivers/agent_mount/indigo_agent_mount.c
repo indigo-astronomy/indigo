@@ -1626,6 +1626,79 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 				}
 			}
 		}
+	} else if (!strcmp(property->name, "JOYSTICK_" MOUNT_PARK_PROPERTY_NAME)) {
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = property->items + i;
+			if (item->sw.value && !strcmp(item->name, MOUNT_PARK_PARKED_ITEM_NAME)) {
+				indigo_change_switch_property_1(client, device->name, AGENT_START_PROCESS_PROPERTY_NAME, AGENT_MOUNT_START_PARK_ITEM_NAME, true);
+				break;
+			} else if (item->sw.value && !strcmp(item->name, MOUNT_PARK_UNPARKED_ITEM_NAME)) {
+				indigo_change_switch_property_1(client, device->name, AGENT_START_PROCESS_PROPERTY_NAME, AGENT_MOUNT_START_UNPARK_ITEM_NAME, true);
+				break;
+			}
+		}
+	} else if (!strcmp(property->name, "JOYSTICK_" MOUNT_TRACKING_PROPERTY_NAME)) {
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = property->items + i;
+			if (item->sw.value && !strcmp(item->name, MOUNT_TRACKING_ON_ITEM_NAME)) {
+				indigo_change_switch_property_1(client, device->name, AGENT_START_PROCESS_PROPERTY_NAME, AGENT_MOUNT_START_TRACKING_ON_ITEM_NAME, true);
+				break;
+			} else if (item->sw.value && !strcmp(item->name, MOUNT_TRACKING_OFF_ITEM_NAME)) {
+				indigo_change_switch_property_1(client, device->name, AGENT_START_PROCESS_PROPERTY_NAME, AGENT_MOUNT_START_TRACKING_OFF_ITEM_NAME, true);
+				break;
+			}
+		}
+	} else if (!strcmp(property->name, "JOYSTICK_" MOUNT_HOME_PROPERTY_NAME)) {
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = property->items + i;
+			if (item->sw.value && !strcmp(item->name, MOUNT_HOME_ITEM_NAME)) {
+				indigo_change_switch_property_1(client, device->name, AGENT_START_PROCESS_PROPERTY_NAME, AGENT_MOUNT_START_HOME_ITEM_NAME, true);
+				break;
+			}
+		}
+	} else if (!strcmp(property->name, "JOYSTICK_" MOUNT_SLEW_RATE_PROPERTY_NAME)) {
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = property->items + i;
+			if (item->sw.value && !strcmp(item->name, MOUNT_SLEW_RATE_GUIDE_ITEM_NAME)) {
+				indigo_change_switch_property_1(client, device->name, MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_GUIDE_ITEM_NAME, true);
+				break;
+			} else if (item->sw.value && !strcmp(item->name, MOUNT_SLEW_RATE_CENTERING_ITEM_NAME)) {
+				indigo_change_switch_property_1(client, device->name, MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_CENTERING_ITEM_NAME, true);
+				break;
+			} else if (item->sw.value && !strcmp(item->name, MOUNT_SLEW_RATE_FIND_ITEM_NAME)) {
+				indigo_change_switch_property_1(client, device->name, MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_FIND_ITEM_NAME, true);
+				break;
+			} else if (item->sw.value && !strcmp(item->name, MOUNT_SLEW_RATE_MAX_ITEM_NAME)) {
+				indigo_change_switch_property_1(client, device->name, MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_SLEW_RATE_MAX_ITEM_NAME, true);
+				break;
+			}
+		}
+	} else if (!strcmp(property->name, "JOYSTICK_" MOUNT_MOTION_DEC_PROPERTY_NAME)) {
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = property->items + i;
+			if (!strcmp(item->name, MOUNT_MOTION_NORTH_ITEM_NAME)) {
+				indigo_change_switch_property_1(client, device->name, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_NORTH_ITEM_NAME, item->sw.value);
+			} else if (!strcmp(item->name, MOUNT_MOTION_SOUTH_ITEM_NAME)) {
+				indigo_change_switch_property_1(client, device->name, MOUNT_MOTION_DEC_PROPERTY_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, item->sw.value);
+			}
+		}
+	} else if (!strcmp(property->name, "JOYSTICK_" MOUNT_MOTION_RA_PROPERTY_NAME)) {
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = property->items + i;
+			if (!strcmp(item->name, MOUNT_MOTION_WEST_ITEM_NAME)) {
+				indigo_change_switch_property_1(client, device->name, MOUNT_MOTION_RA_PROPERTY_NAME, MOUNT_MOTION_WEST_ITEM_NAME, item->sw.value);
+			} else if (!strcmp(item->name, MOUNT_MOTION_EAST_ITEM_NAME)) {
+				indigo_change_switch_property_1(client, device->name, MOUNT_MOTION_EAST_ITEM_NAME, MOUNT_MOTION_SOUTH_ITEM_NAME, item->sw.value);
+			}
+		}
+	} else if (!strcmp(property->name, "JOYSTICK_" MOUNT_ABORT_MOTION_PROPERTY_NAME)) {
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = property->items + i;
+			if (item->sw.value && !strcmp(item->name, MOUNT_ABORT_MOTION_ITEM_NAME)) {
+				indigo_change_switch_property_1(client, device->name, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true);
+				break;
+			}
+		}
 	}
 }
 
