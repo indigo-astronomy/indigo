@@ -244,8 +244,10 @@ static void mount_connect_callback(indigo_device *device) {
 		indigo_raw_to_translated(device, MOUNT_RAW_COORDINATES_RA_ITEM->number.value, MOUNT_RAW_COORDINATES_DEC_ITEM->number.value, &MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value, &MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value);
 		indigo_raw_to_translated(device, MOUNT_RAW_COORDINATES_RA_ITEM->number.target, MOUNT_RAW_COORDINATES_DEC_ITEM->number.target, &MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, &MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target);
 		indigo_set_timer(device, 1, position_timer_callback, &PRIVATE_DATA->position_timer);
+		indigo_send_message(device, OK_PROPERTY, "Connected to %s", device->name);
 	} else {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->position_timer);
+		indigo_send_message(device, OK_PROPERTY, "Disconnected from %s", device->name);
 	}
 	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_mount_change_property(device, NULL, CONNECTION_PROPERTY);
