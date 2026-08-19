@@ -1702,4 +1702,12 @@ enum {
 
 #define SERVER_INSTALL_PROPERTY_NAME																	"INSTALL"
 
+//------------------------------------------------------- obsolete names
+
+#define AGENT_FIELD_DEROTATION_PROPERTY_NAME													"AGENT_FIELD_DEROTATION"
+#define AGENT_FIELD_DEROTATION_ENABLED_ITEM_NAME											"ENABLED"
+#define AGENT_FIELD_DEROTATION_DISABLED_ITEM_NAME											"DISABLED"
+
+
+
 #endif /* indigo_names_h */
