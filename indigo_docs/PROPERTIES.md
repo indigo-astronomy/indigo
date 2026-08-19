@@ -635,7 +635,9 @@ The mount agent exposes the following common properties: FILTER_MOUNT_LIST, FILT
 | AGENT_PROCESS_FEATURES | switch | no | yes | ENABLE_HA_LIMIT | yes | Enable HA limit |
 |  |  |  |  | ENABLE_TIME_LIMIT | yes | Enable time limit |
 |  |  |  |  | ENABLE_DOME_SLAVING | yes | Enable dome slaving |
+|  |  |  |  | MAKE_DOME_SLAVING_PERSISTENT | yes | Make ENABLE_DOME_SLAVING persistent |
 |  |  |  |  | ENABLE_DEROTATION | yes | Enable frame derotation |
+|  |  |  |  | MAKE_DEROTATION_PERSISTENT | yes | Make ENABLE_DEROTATION persistent |
 |  |  |  |  | ENABLE_JOYSTICK_CONTROL | yes | Enable joystick control |
 | AGENT_MOUNT_STATE | light | yes | yes | SLEW | yes | Mount slew state |
 |  |  |  |  | PARK | yes | Mount park state |
