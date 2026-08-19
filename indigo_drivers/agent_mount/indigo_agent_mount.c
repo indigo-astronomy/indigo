@@ -273,9 +273,14 @@ typedef enum {
 	MOUNT_DOME_CONTROL_SYNC
 } mount_dome_control_operation;
 
-static void mount_dome_control(indigo_device *device, bool control_mount, bool control_dome, mount_dome_control_operation operation) {
+static void mount_dome_control(indigo_device *device, bool control_mount, bool control_dome, bool control_rotator, mount_dome_control_operation operation) {
 	const char *mount_operation = operation == MOUNT_DOME_CONTROL_SYNC ? MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME : MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME;
 	const char *dome_operation = operation == MOUNT_DOME_CONTROL_SYNC ? DOME_ON_COORDINATES_SET_SYNC_ITEM_NAME : DOME_ON_COORDINATES_SET_GOTO_ITEM_NAME;
+	const char *rotator_operation = operation == MOUNT_DOME_CONTROL_SYNC ? ROTATOR_ON_POSITION_SET_SYNC_ITEM_NAME : ROTATOR_ON_POSITION_SET_GOTO_ITEM_NAME;
+	time_t utc = time(NULL);
+	double lst = indigo_lst(&utc, AGENT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
+	double target_ha = fmod((lst - AGENT_MOUNT_TARGET_COORDINATES_RA_ITEM->number.target + 24), 24);
+	double parallactic_angle = indigo_parallactic_angle(target_ha * 15, AGENT_MOUNT_TARGET_COORDINATES_DEC_ITEM->number.target, AGENT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value);
 	if (control_dome) {
 		if (!DEVICE_PRIVATE_DATA->dome_unparked) {
 			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, DOME_PARK_PROPERTY_NAME, DOME_PARK_UNPARKED_ITEM_NAME, true);
@@ -288,6 +293,9 @@ static void mount_dome_control(indigo_device *device, bool control_mount, bool c
 		}
 		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, mount_operation, true);
 	}
+	if (control_rotator) {
+		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, ROTATOR_ON_POSITION_SET_PROPERTY_NAME, rotator_operation, true);
+	}
 	if (control_dome) {
 		static const char *names[] = { DOME_EQUATORIAL_COORDINATES_RA_ITEM_NAME, DOME_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
 		double values[] = { AGENT_MOUNT_TARGET_COORDINATES_RA_ITEM->number.target, AGENT_MOUNT_TARGET_COORDINATES_DEC_ITEM->number.target };
@@ -298,8 +306,23 @@ static void mount_dome_control(indigo_device *device, bool control_mount, bool c
 		double values[] = { AGENT_MOUNT_TARGET_COORDINATES_RA_ITEM->number.target, AGENT_MOUNT_TARGET_COORDINATES_DEC_ITEM->number.target };
 		indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, names, values);
 	}
+	if (control_rotator) {
+		double target_rotator_position = parallactic_angle + DEVICE_PRIVATE_DATA->initial_frame_rotation;
+		if (target_rotator_position < 0) {
+			target_rotator_position += 360;
+		} else if (target_rotator_position >= 360) {
+			target_rotator_position -= 360;
+		}
+		double rotation_diff = fabs(indigo_angle_difference(DEVICE_PRIVATE_DATA->rotator_position, target_rotator_position));
+		if (rotation_diff >= 0.005) {
+			indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device->name, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, target_rotator_position);
+		} else {
+			control_rotator = false;
+		}
+	}
 	bool mount_busy_seen = false;
 	bool dome_busy_seen = false;
+	bool rotator_busy_seen = false;
 	for (int i = 0; i < 3000; i++) {
 		if (control_mount && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state == INDIGO_BUSY_STATE) {
 			mount_busy_seen = true;
@@ -307,7 +330,10 @@ static void mount_dome_control(indigo_device *device, bool control_mount, bool c
 		if (control_dome && DEVICE_PRIVATE_DATA->dome_horizontal_coordinates_state == INDIGO_BUSY_STATE) {
 			dome_busy_seen = true;
 		}
-		if ((!control_mount || mount_busy_seen) && (!control_dome || dome_busy_seen)) {
+		if (control_rotator && DEVICE_PRIVATE_DATA->rotator_position_state == INDIGO_BUSY_STATE) {
+			rotator_busy_seen = true;
+		}
+		if ((!control_mount || mount_busy_seen) && (!control_dome || dome_busy_seen) && (!control_rotator || rotator_busy_seen)) {
 			break;
 		}
 		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -321,10 +347,14 @@ static void mount_dome_control(indigo_device *device, bool control_mount, bool c
 	if (control_dome && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && !dome_busy_seen && DEVICE_PRIVATE_DATA->dome_horizontal_coordinates_state != INDIGO_BUSY_STATE) {
 		indigo_debug("DOME_HORIZONTAL_COORDINATES didn't become BUSY in 3s");
 	}
+	if (control_rotator && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && !rotator_busy_seen && DEVICE_PRIVATE_DATA->rotator_position_state != INDIGO_BUSY_STATE) {
+		indigo_debug("ROTATOR_POSITION didn't become BUSY in 3s");
+	}
 	for (int i = 0; i < 180000; i++) {
 		bool mount_busy = control_mount && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state == INDIGO_BUSY_STATE;
 		bool dome_busy = control_dome && DEVICE_PRIVATE_DATA->dome_horizontal_coordinates_state == INDIGO_BUSY_STATE;
-		if (!mount_busy && !dome_busy) {
+		bool rotator_busy = control_rotator && DEVICE_PRIVATE_DATA->rotator_position_state == INDIGO_BUSY_STATE;
+		if (!mount_busy && !dome_busy && !rotator_busy) {
 			break;
 		}
 		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -336,7 +366,8 @@ static void mount_dome_control(indigo_device *device, bool control_mount, bool c
 	for (int i = 0; i < 10000; i++) {
 		bool mount_busy = control_mount && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state == INDIGO_BUSY_STATE;
 		bool dome_busy = control_dome && DEVICE_PRIVATE_DATA->dome_horizontal_coordinates_state == INDIGO_BUSY_STATE;
-		if (!mount_busy && !dome_busy) {
+		bool rotator_busy = control_dome && DEVICE_PRIVATE_DATA->rotator_position_state == INDIGO_BUSY_STATE;
+		if (!mount_busy && !dome_busy && !rotator_busy) {
 			break;
 		}
 		indigo_usleep(1000);
@@ -346,6 +377,9 @@ static void mount_dome_control(indigo_device *device, bool control_mount, bool c
 	}
 	if (control_dome && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->dome_horizontal_coordinates_state == INDIGO_BUSY_STATE) {
 		indigo_error("DOME_HORIZONTAL_COORDINATES didn't become OK in 180s");
+	}
+	if (control_rotator && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->rotator_position_state == INDIGO_BUSY_STATE) {
+		indigo_error("ROTATOR_POSITION didn't become OK in 180s");
 	}
 	if (control_mount) {
 		AGENT_MOUNT_START_SLEW_ITEM->sw.value = AGENT_MOUNT_START_SYNC_ITEM->sw.value = false;
@@ -358,7 +392,7 @@ static void mount_dome_control(indigo_device *device, bool control_mount, bool c
 		AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 		indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
-	} else if ((control_mount && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_OK_STATE) || (control_dome && DEVICE_PRIVATE_DATA->dome_horizontal_coordinates_state != INDIGO_OK_STATE)) {
+	} else if ((control_mount && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_OK_STATE) || (control_dome && DEVICE_PRIVATE_DATA->dome_horizontal_coordinates_state != INDIGO_OK_STATE) || (control_rotator && DEVICE_PRIVATE_DATA->rotator_position_state != INDIGO_OK_STATE)) {
 		AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 	} else {
@@ -369,13 +403,13 @@ static void mount_dome_control(indigo_device *device, bool control_mount, bool c
 
 static void slew_dome_process(indigo_device *device) {
 	FILTER_DEVICE_CONTEXT->running_process = true;
-	mount_dome_control(device, false, true, MOUNT_DOME_CONTROL_SLEW);
+	mount_dome_control(device, false, true, false, MOUNT_DOME_CONTROL_SLEW);
 	FILTER_DEVICE_CONTEXT->running_process = false;
 }
 
 static void sync_dome_process(indigo_device *device) {
 	FILTER_DEVICE_CONTEXT->running_process = true;
-	mount_dome_control(device, false, true, MOUNT_DOME_CONTROL_SYNC);
+	mount_dome_control(device, false, true, false, MOUNT_DOME_CONTROL_SYNC);
 	if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE) {
 		indigo_send_message(device, IDLE_PROPERTY, "Dome synced");
 	} else {
@@ -492,7 +526,8 @@ static void slew_process(indigo_device *device) {
 			indigo_send_message(device, ALERT_PROPERTY, "Shutter is closed");
 		}
 	}
-	mount_dome_control(device, true, control_dome, MOUNT_DOME_CONTROL_SLEW);
+	bool control_rotator = AGENT_MOUNT_ENABLE_DEROTATION_ITEM->sw.value && INDIGO_FILTER_ROTATOR_SELECTED;
+	mount_dome_control(device, true, control_dome, control_rotator, MOUNT_DOME_CONTROL_SLEW);
 	if (AGENT_MOUNT_ENABLE_HA_LIMIT_FEATURE_ITEM->sw.value) {
 		indigo_send_message(device, IDLE_PROPERTY, "HA limit is active");
 	}
@@ -505,7 +540,8 @@ static void slew_process(indigo_device *device) {
 static void sync_process(indigo_device *device) {
 	FILTER_DEVICE_CONTEXT->running_process = true;
 	bool control_dome = AGENT_MOUNT_ENABLE_DOME_SLAVING_ITEM->sw.value && INDIGO_FILTER_DOME_SELECTED;
-	mount_dome_control(device, true, control_dome, MOUNT_DOME_CONTROL_SYNC);
+	bool control_rotator = AGENT_MOUNT_ENABLE_DEROTATION_ITEM->sw.value && INDIGO_FILTER_ROTATOR_SELECTED;
+	mount_dome_control(device, true, control_dome, control_rotator, MOUNT_DOME_CONTROL_SYNC);
 	if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE) {
 		indigo_send_message(device, IDLE_PROPERTY, "Synced");
 	} else {
@@ -991,6 +1027,7 @@ static void handle_mount_change(indigo_device *device) {
 		}
 		double rotation_diff = fabs(indigo_angle_difference(DEVICE_PRIVATE_DATA->rotator_position, target_rotator_position));
 		if (rotation_diff >= 0.005) {
+			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_GOTO_ITEM_NAME, true);
 			indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device->name, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, target_rotator_position);
 		}
 	}
