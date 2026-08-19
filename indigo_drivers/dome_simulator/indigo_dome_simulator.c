@@ -192,14 +192,14 @@ static void dome_abort_motion_handler(indigo_device *device) {
 }
 
 static void dome_shutter_handler(indigo_device *device) {
+	DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
 	//+ dome.DOME_SHUTTER.on_change
-	DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
 	DOME_STATE_OPEN_ITEM->light.value = INDIGO_BUSY_STATE;
 	indigo_update_property(device, DOME_STATE_PROPERTY, NULL);
 	indigo_usleep(INDIGO_DELAY(6));
-	DOME_STATE_OPEN_ITEM->light.value = INDIGO_OK_STATE;
 	indigo_update_property(device, DOME_STATE_PROPERTY, NULL);
-	DOME_SHUTTER_PROPERTY->state = DOME_SHUTTER_OPENED_ITEM->sw.value ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
+	DOME_STATE_OPEN_ITEM->light.value = DOME_SHUTTER_OPENED_ITEM->sw.value ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
+	indigo_update_property(device, DOME_STATE_PROPERTY, NULL);
 	//- dome.DOME_SHUTTER.on_change
 	indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 }
