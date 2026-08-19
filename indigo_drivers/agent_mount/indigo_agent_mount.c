@@ -136,6 +136,8 @@
 #define AGENT_MOUNT_STATE_PARK_ITEM										(AGENT_MOUNT_STATE_PROPERTY->items+1)
 #define AGENT_MOUNT_STATE_HOME_ITEM										(AGENT_MOUNT_STATE_PROPERTY->items+2)
 #define AGENT_MOUNT_STATE_TRACKING_ITEM								(AGENT_MOUNT_STATE_PROPERTY->items+3)
+#define AGENT_MOUNT_STATE_SLAVED_DOME_ITEM						(AGENT_MOUNT_STATE_PROPERTY->items+4)
+#define AGENT_MOUNT_STATE_SLAVED_ROTATOR_ITEM					(AGENT_MOUNT_STATE_PROPERTY->items+5)
 
 #define AGENT_DOME_STATE_PROPERTY											(DEVICE_PRIVATE_DATA->agent_dome_state_property)
 #define AGENT_DOME_STATE_SLEW_ITEM										(AGENT_DOME_STATE_PROPERTY->items+0)
@@ -299,6 +301,8 @@ static void mount_dome_control(indigo_device *device, bool control_mount, bool c
 	if (control_dome) {
 		static const char *names[] = { DOME_EQUATORIAL_COORDINATES_RA_ITEM_NAME, DOME_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
 		double values[] = { AGENT_MOUNT_TARGET_COORDINATES_RA_ITEM->number.target, AGENT_MOUNT_TARGET_COORDINATES_DEC_ITEM->number.target };
+		AGENT_MOUNT_STATE_SLAVED_DOME_ITEM->light.value = INDIGO_BUSY_STATE;
+		indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
 		indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device->name, DOME_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, names, values);
 	}
 	if (control_mount) {
@@ -316,6 +320,8 @@ static void mount_dome_control(indigo_device *device, bool control_mount, bool c
 		double rotation_diff = fabs(indigo_angle_difference(DEVICE_PRIVATE_DATA->rotator_position, target_rotator_position));
 		if (rotation_diff >= 0.005) {
 			indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device->name, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, target_rotator_position);
+			AGENT_MOUNT_STATE_SLAVED_ROTATOR_ITEM->light.value = INDIGO_BUSY_STATE;
+			indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
 		} else {
 			control_rotator = false;
 		}
@@ -388,14 +394,20 @@ static void mount_dome_control(indigo_device *device, bool control_mount, bool c
 		AGENT_DOME_START_SLEW_ITEM->sw.value = AGENT_DOME_START_SYNC_ITEM->sw.value = false;
 	}
 	if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+		AGENT_MOUNT_STATE_SLAVED_DOME_ITEM->light.value = AGENT_MOUNT_STATE_SLAVED_ROTATOR_ITEM->light.value = INDIGO_IDLE_STATE;
+		indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
 		AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 		AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 		indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
 	} else if ((control_mount && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_OK_STATE) || (control_dome && DEVICE_PRIVATE_DATA->dome_horizontal_coordinates_state != INDIGO_OK_STATE) || (control_rotator && DEVICE_PRIVATE_DATA->rotator_position_state != INDIGO_OK_STATE)) {
+		AGENT_MOUNT_STATE_SLAVED_DOME_ITEM->light.value = AGENT_MOUNT_STATE_SLAVED_ROTATOR_ITEM->light.value = INDIGO_ALERT_STATE;
+		indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
 		AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 	} else {
+		AGENT_MOUNT_STATE_SLAVED_DOME_ITEM->light.value = AGENT_MOUNT_STATE_SLAVED_ROTATOR_ITEM->light.value = INDIGO_IDLE_STATE;
+		indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
 		AGENT_START_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 	}
@@ -555,6 +567,8 @@ static void park_process(indigo_device *device) {
 	bool control_dome = AGENT_MOUNT_ENABLE_DOME_SLAVING_ITEM->sw.value && INDIGO_FILTER_DOME_SELECTED;
 	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true);
 	if (control_dome) {
+		AGENT_MOUNT_STATE_SLAVED_DOME_ITEM->light.value = INDIGO_BUSY_STATE;
+		indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
 		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, DOME_PARK_PROPERTY_NAME, DOME_PARK_PARKED_ITEM_NAME, true);
 	}
 	for (int i = 0; i < 180000; i++) {
@@ -580,6 +594,8 @@ static void park_process(indigo_device *device) {
 		AGENT_START_PROCESS_PROPERTY->state = (mount_ok && dome_ok) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 	}
+	AGENT_MOUNT_STATE_SLAVED_DOME_ITEM->light.value = INDIGO_IDLE_STATE;
+	indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
 	FILTER_DEVICE_CONTEXT->running_process = false;
 }
 
@@ -588,6 +604,8 @@ static void unpark_process(indigo_device *device) {
 	bool control_dome = AGENT_MOUNT_ENABLE_DOME_SLAVING_ITEM->sw.value && INDIGO_FILTER_DOME_SELECTED;
 	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
 	if (control_dome) {
+		AGENT_MOUNT_STATE_SLAVED_DOME_ITEM->light.value = INDIGO_BUSY_STATE;
+		indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
 		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, DOME_PARK_PROPERTY_NAME, DOME_PARK_UNPARKED_ITEM_NAME, true);
 	}
 	for (int i = 0; i < 180000; i++) {
@@ -613,6 +631,8 @@ static void unpark_process(indigo_device *device) {
 		AGENT_START_PROCESS_PROPERTY->state = (mount_ok && dome_ok) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 	}
+	AGENT_MOUNT_STATE_SLAVED_DOME_ITEM->light.value = INDIGO_IDLE_STATE;
+	indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
 	FILTER_DEVICE_CONTEXT->running_process = false;
 }
 
@@ -1012,25 +1032,35 @@ static void handle_mount_change(indigo_device *device) {
 			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true);
 		}
 	}
+	if (!FILTER_DEVICE_CONTEXT->running_process) {
 	// slave dome
-	if (AGENT_MOUNT_ENABLE_DOME_SLAVING_ITEM->sw.value && INDIGO_FILTER_DOME_SELECTED && INDIGO_FILTER_MOUNT_SELECTED && DEVICE_PRIVATE_DATA->dome_unparked && DEVICE_PRIVATE_DATA->dome_horizontal_coordinates_state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->mount_unparked && DEVICE_PRIVATE_DATA->mount_tracking) {
-		static const char *names[] = { DOME_EQUATORIAL_COORDINATES_RA_ITEM_NAME, DOME_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
-		indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device->name, DOME_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, names, current_radec);
-	}
-	// derotate field
-	if (AGENT_MOUNT_ENABLE_DEROTATION_ITEM->sw.value && INDIGO_FILTER_ROTATOR_SELECTED && INDIGO_FILTER_MOUNT_SELECTED && DEVICE_PRIVATE_DATA->rotator_position_state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->mount_unparked && DEVICE_PRIVATE_DATA->mount_tracking) {
-		double target_rotator_position = AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM->number.value + DEVICE_PRIVATE_DATA->initial_frame_rotation;
-		if (target_rotator_position < 0) {
-			target_rotator_position += 360;
-		} else if (target_rotator_position >= 360) {
-			target_rotator_position -= 360;
+		if (AGENT_MOUNT_ENABLE_DOME_SLAVING_ITEM->sw.value && INDIGO_FILTER_DOME_SELECTED && INDIGO_FILTER_MOUNT_SELECTED && DEVICE_PRIVATE_DATA->dome_unparked && DEVICE_PRIVATE_DATA->dome_horizontal_coordinates_state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->mount_unparked && DEVICE_PRIVATE_DATA->mount_tracking) {
+			static const char *names[] = { DOME_EQUATORIAL_COORDINATES_RA_ITEM_NAME, DOME_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
+			indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device->name, DOME_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, names, current_radec);
+			AGENT_MOUNT_STATE_SLAVED_DOME_ITEM->light.value = INDIGO_OK_STATE;
+		} else {
+			AGENT_MOUNT_STATE_SLAVED_DOME_ITEM->light.value = INDIGO_IDLE_STATE;
 		}
-		double rotation_diff = fabs(indigo_angle_difference(DEVICE_PRIVATE_DATA->rotator_position, target_rotator_position));
-		if (rotation_diff >= 0.005) {
-			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_GOTO_ITEM_NAME, true);
-			indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device->name, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, target_rotator_position);
+		indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
+		// derotate field
+		if (AGENT_MOUNT_ENABLE_DEROTATION_ITEM->sw.value && INDIGO_FILTER_ROTATOR_SELECTED && INDIGO_FILTER_MOUNT_SELECTED && DEVICE_PRIVATE_DATA->rotator_position_state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->mount_unparked && DEVICE_PRIVATE_DATA->mount_tracking) {
+			double target_rotator_position = AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM->number.value + DEVICE_PRIVATE_DATA->initial_frame_rotation;
+			if (target_rotator_position < 0) {
+				target_rotator_position += 360;
+			} else if (target_rotator_position >= 360) {
+				target_rotator_position -= 360;
+			}
+			double rotation_diff = fabs(indigo_angle_difference(DEVICE_PRIVATE_DATA->rotator_position, target_rotator_position));
+			if (rotation_diff >= 0.005) {
+				indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_GOTO_ITEM_NAME, true);
+				indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device->name, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, target_rotator_position);
+			}
+			AGENT_MOUNT_STATE_SLAVED_ROTATOR_ITEM->light.value = INDIGO_OK_STATE;
+		} else {
+			AGENT_MOUNT_STATE_SLAVED_ROTATOR_ITEM->light.value = INDIGO_IDLE_STATE;
 		}
 	}
+	indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
 	// set eq coordinates and airmass to FITS headers of related imager agent
 	char *related_agent_name = indigo_filter_first_related_agent(device, "Imager Agent");
 	if (related_agent_name) {
@@ -1894,7 +1924,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_switch_item(AGENT_MOUNT_MAKE_DEROTATION_PERSISTENT_ITEM, AGENT_MOUNT_MAKE_DEROTATION_PERSISTENT_ITEM_NAME, "Make frame derotation persistent", false);
 		indigo_init_switch_item(AGENT_MOUNT_ENABLE_JOYSTICK_CONTROL_ITEM, AGENT_MOUNT_ENABLE_JOYSTICK_CONTROL_ITEM_NAME, "Enable joystick control", false);
 		// -------------------------------------------------------------------------------- AGENT_MOUNT_STATE
-		AGENT_MOUNT_STATE_PROPERTY = indigo_init_light_property(NULL, device->name, AGENT_MOUNT_STATE_PROPERTY_NAME, "Agent", "Mount state", INDIGO_OK_STATE, 4);
+		AGENT_MOUNT_STATE_PROPERTY = indigo_init_light_property(NULL, device->name, AGENT_MOUNT_STATE_PROPERTY_NAME, "Agent", "Mount state", INDIGO_OK_STATE, 6);
 		if (AGENT_MOUNT_STATE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
@@ -1902,6 +1932,8 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_light_item(AGENT_MOUNT_STATE_PARK_ITEM, AGENT_MOUNT_STATE_PARK_ITEM_NAME, "Park", INDIGO_IDLE_STATE);
 		indigo_init_light_item(AGENT_MOUNT_STATE_HOME_ITEM, AGENT_MOUNT_STATE_HOME_ITEM_NAME, "Home", INDIGO_IDLE_STATE);
 		indigo_init_light_item(AGENT_MOUNT_STATE_TRACKING_ITEM, AGENT_MOUNT_STATE_TRACKING_ITEM_NAME, "Tracking", INDIGO_IDLE_STATE);
+		indigo_init_light_item(AGENT_MOUNT_STATE_SLAVED_DOME_ITEM, AGENT_MOUNT_STATE_SLAVED_DOME_ITEM_NAME, "Slaved dome", INDIGO_IDLE_STATE);
+		indigo_init_light_item(AGENT_MOUNT_STATE_SLAVED_ROTATOR_ITEM, AGENT_MOUNT_STATE_SLAVED_ROTATOR_ITEM_NAME, "Slaved rotator", INDIGO_IDLE_STATE);
 		// -------------------------------------------------------------------------------- AGENT_DOME_STATE
 		AGENT_DOME_STATE_PROPERTY = indigo_init_light_property(NULL, device->name, AGENT_DOME_STATE_PROPERTY_NAME, "Agent", "Dome state", INDIGO_OK_STATE, 3);
 		if (AGENT_DOME_STATE_PROPERTY == NULL) {
