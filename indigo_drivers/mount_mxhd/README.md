@@ -49,6 +49,8 @@ For INDIGO HOME semantics, this driver stops the drive after HOME completion by 
 
 UNPARK is implemented by moving the mount to the home position, but it is treated as an observing-ready state.
 Unlike HOME, the driver does not send `@FD0#` after UNPARK, so the MX-HD sidereal drive is allowed to start or remain active.
+HOME and UNPARK take at least about 15 seconds on real MX-HD hardware, and PARK takes longer.
+The driver therefore does not report HOME/PARK/UNPARK completion before this minimum interval has elapsed.
 
 The MX-HD tracking state is not queried from hardware on connection.
 The INDIGO Tracking switch reflects the state last commanded or inferred by the driver; on a fresh driver start it is shown as stopped until a driver action such as UNPARK, slew, or explicit Tracking ON changes it.

@@ -44,6 +44,7 @@
 #define MXHD_IO_TIMEOUT 2
 #define MXHD_LONG_TIMEOUT 3
 #define MXHD_PARK_HOME_TIMEOUT_SECONDS 300
+#define MXHD_PARK_HOME_MIN_SECONDS 15
 #define MXHD_MOTOR_RECOVERY_SECONDS 90
 
 typedef struct {
@@ -549,7 +550,8 @@ static void position_timer_callback(indigo_device *device) {
 		PRIVATE_DATA->slew_started = 0;
 		PRIVATE_DATA->park_home_started = 0;
 	}
-	if (PRIVATE_DATA->parking && !PRIVATE_DATA->slewing && !PRIVATE_DATA->homing) {
+	bool park_home_min_elapsed = PRIVATE_DATA->park_home_started != 0 && difftime(time(NULL), PRIVATE_DATA->park_home_started) >= MXHD_PARK_HOME_MIN_SECONDS;
+	if (PRIVATE_DATA->parking && park_home_min_elapsed && !PRIVATE_DATA->slewing && !PRIVATE_DATA->homing) {
 		PRIVATE_DATA->parking = false;
 		PRIVATE_DATA->park_home_started = 0;
 		PRIVATE_DATA->parked = true;
@@ -562,7 +564,7 @@ static void position_timer_callback(indigo_device *device) {
 		MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_TRACKING_PROPERTY, "Parked, tracking stopped");
 	}
-	if (PRIVATE_DATA->going_home && !PRIVATE_DATA->slewing && !PRIVATE_DATA->homing) {
+	if (PRIVATE_DATA->going_home && park_home_min_elapsed && !PRIVATE_DATA->slewing && !PRIVATE_DATA->homing) {
 		bool stop_drive_after_home = PRIVATE_DATA->stop_drive_after_home;
 		PRIVATE_DATA->going_home = false;
 		PRIVATE_DATA->stop_drive_after_home = false;
@@ -592,7 +594,7 @@ static void position_timer_callback(indigo_device *device) {
 			indigo_update_property(device, MOUNT_TRACKING_PROPERTY, "Unparked, tracking active");
 		}
 	}
-	if (PRIVATE_DATA->unparking && !PRIVATE_DATA->slewing && !PRIVATE_DATA->homing) {
+	if (PRIVATE_DATA->unparking && park_home_min_elapsed && !PRIVATE_DATA->slewing && !PRIVATE_DATA->homing) {
 		PRIVATE_DATA->unparking = false;
 		PRIVATE_DATA->park_home_started = 0;
 		PRIVATE_DATA->parked = false;
