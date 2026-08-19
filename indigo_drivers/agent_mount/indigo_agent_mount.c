@@ -268,7 +268,7 @@ static bool validate_related_agent(indigo_device *device, indigo_property *info_
 static void abort_process(indigo_device *device) {
 	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true);
 	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, DOME_ABORT_MOTION_PROPERTY_NAME, DOME_ABORT_MOTION_ITEM_NAME, true);
-	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, ROTATOR_ABORT_MOTION_PROPERTY, ROTATOR_ABORT_MOTION_ITEM, true);
+	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME, true);
 }
 
 typedef enum {
