@@ -48,6 +48,7 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 | DRV-015 | Medium | `ccd_ptp/indigo_ptp.c:1533` | PTP string switch values are decoded into `PTP_MAX_CHARS` 256-byte entries, but refreshed property names are copied into `char str[INDIGO_NAME_SIZE]` with `strcpy()`. A camera-provided string value longer than 127 bytes can overflow `str` before the item name is updated. Use bounded copying and define a deterministic truncation or rejection policy for item names. | Open |
 | DRV-016 | High | `agent_mount/indigo_agent_mount.c:2172` | `AGENT_MOUNT_ENABLE_JOYSTICK_CONTROL` was ignored by the `agent_update_property()` forwarding path. `JOYSTICK_MOUNT_*` updates were forwarded to the selected mount before the gated joystick handling in `snoop_changes()` could run, so disabling joystick control in `AGENT_PROCESS_FEATURES` did not prevent joystick motion, park, tracking, home, or abort commands. | Closed (fixed) |
 | DRV-017 | High | `agent_mount/indigo_agent_mount.c:1840` | The refactor removed the old disabled-by-default `AGENT_DOME_SLAVING` and `AGENT_FIELD_DEROTATION` properties, then initialized the replacement `AGENT_PROCESS_FEATURES` items for dome slaving, derotation, and joystick control to `true`. Existing configurations saved under the old property names were no longer loaded into these new items, so upgrading could silently enable dome, rotator, and joystick-driven hardware behavior that was previously disabled. | Closed (fixed) |
+| DRV-018 | High | `agent_mount/indigo_agent_mount.c:521` | Mount park/unpark with dome slaving now sends `DOME_PARK` immediately after `MOUNT_PARK`, instead of waiting for the mount park state to complete successfully. If the mount park later fails or the process is aborted, dome/roof park motion has already been started and `abort_process()` only sends `MOUNT_ABORT_MOTION`, creating a hardware-safety regression. Preserve the previous sequencing or abort/guard dome motion explicitly. | Closed (fixed) |
 
 ## Finding Summaries
 
@@ -66,6 +67,17 @@ control now default to disabled. A saved `AGENT_PROCESS_FEATURES` configuration 
 overrides these defaults when loaded, but upgrades from configurations containing only the
 old `AGENT_DOME_SLAVING`/`AGENT_FIELD_DEROTATION` properties no longer enable hardware
 actions implicitly.
+
+### DRV-018 (Closed — fixed)
+
+The uncommitted `agent_mount` change starts dome park/unpark in parallel with mount
+park/unpark when dome slaving is enabled. The previous flow parked or unparked the dome
+only after the mount operation reached the expected final state. Starting both devices at
+once means a mount failure or early abort can still leave the dome/roof moving, while the
+agent's abort path only sends `MOUNT_ABORT_MOTION`.
+
+The abort path now sends `DOME_ABORT_MOTION` as well when a dome is selected, so a user
+abort during a combined mount/dome process attempts to stop both controlled devices.
 
 ## Review Focus
 
