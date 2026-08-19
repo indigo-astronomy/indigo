@@ -56,20 +56,28 @@ static bool validate_related_agent(indigo_device *device, indigo_property *info_
 
 bool indigo_platesolver_validate_executable(const char *executable) {
 	char command[128];
+#if defined(INDIGO_WINDOWS)
+	snprintf(command, sizeof(command), "where %s", executable);
+	FILE *output = _popen(command, "r");
+#else
 	snprintf(command, sizeof(command), "command -v %s", executable);
-	FILE *output = NULL;
-	char *line = NULL;
-	size_t size = 0;
-	output = popen(command, "r");
-	ssize_t result = getline(&line, &size, output);
-	if (result > 1) {
+	FILE *output = popen(command, "r");
+#endif
+	char line[256] = { 0 };
+	bool found = output != NULL && fgets(line, sizeof(line), output) != NULL && line[0] != 0;
+	if (output != NULL) {
+#if defined(INDIGO_WINDOWS)
+		_pclose(output);
+#else
+		pclose(output);
+#endif
+	}
+	if (found) {
 		INDIGO_DEBUG(indigo_debug("indigo_platesolver_validate_executable: %s", line));
 	} else {
 		indigo_error("indigo_platesolver_validate_executable: %s not found", executable);
 	}
-	pclose(output);
-	free(line);
-	return result > 1;
+	return found;
 }
 
 void indigo_platesolver_save_config(indigo_device *device) {

@@ -198,6 +198,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_guider_gpusb", "indi
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_aux_svbpowerbox", "indigo_drivers\aux_svbpowerbox\indigo_aux_svbpowerbox.vcxproj", "{30F645A4-8DED-45DB-A66D-27F5D55FB640}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_agent_astrometry", "indigo_drivers\agent_astrometry\indigo_agent_astrometry.vcxproj", "{BFC7E22C-40E5-42BA-BF8C-6A47DF36DA12}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|ARM64 = Debug|ARM64
@@ -966,6 +968,14 @@ Global
 		{30F645A4-8DED-45DB-A66D-27F5D55FB640}.Release|ARM64.Build.0 = Release|ARM64
 		{30F645A4-8DED-45DB-A66D-27F5D55FB640}.Release|x64.ActiveCfg = Release|x64
 		{30F645A4-8DED-45DB-A66D-27F5D55FB640}.Release|x64.Build.0 = Release|x64
+		{BFC7E22C-40E5-42BA-BF8C-6A47DF36DA12}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{BFC7E22C-40E5-42BA-BF8C-6A47DF36DA12}.Debug|ARM64.Build.0 = Debug|ARM64
+		{BFC7E22C-40E5-42BA-BF8C-6A47DF36DA12}.Debug|x64.ActiveCfg = Debug|x64
+		{BFC7E22C-40E5-42BA-BF8C-6A47DF36DA12}.Debug|x64.Build.0 = Debug|x64
+		{BFC7E22C-40E5-42BA-BF8C-6A47DF36DA12}.Release|ARM64.ActiveCfg = Release|ARM64
+		{BFC7E22C-40E5-42BA-BF8C-6A47DF36DA12}.Release|ARM64.Build.0 = Release|ARM64
+		{BFC7E22C-40E5-42BA-BF8C-6A47DF36DA12}.Release|x64.ActiveCfg = Release|x64
+		{BFC7E22C-40E5-42BA-BF8C-6A47DF36DA12}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
