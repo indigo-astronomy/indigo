@@ -309,6 +309,25 @@ static bool parse_sexagesimal(const char *text, double *result, bool is_dec) {
 	return true;
 }
 
+static bool parse_degrees(const char *text, double *result) {
+	bool has_digit = false;
+	for (const char *cursor = text; *cursor != 0; cursor++) {
+		if (isdigit((unsigned char)*cursor)) {
+			has_digit = true;
+			continue;
+		}
+		if (*cursor == '+' || *cursor == '-' || *cursor == ':' || *cursor == '*' || *cursor == '\'' || *cursor == '.' || isspace((unsigned char)*cursor)) {
+			continue;
+		}
+		return false;
+	}
+	if (!has_digit) {
+		return false;
+	}
+	*result = indigo_stod(text);
+	return true;
+}
+
 static void format_ra(double ra_hours, char *buffer, size_t size) {
 	char *value = indigo_dtos(normalize_hours(ra_hours), "%02d:%02d:%02.0f");
 	strncpy(buffer, value, size);
@@ -373,6 +392,55 @@ static bool mxhd_query_radec(indigo_device *device, double *ra, double *dec) {
 		return false;
 	}
 	return parse_sexagesimal(response, dec, true);
+}
+
+static bool mxhd_query_site(indigo_device *device, double *latitude, double *longitude) {
+	char response[64];
+	if (!mxhd_query_hash(device, ":Gt#", response, sizeof(response), MXHD_IO_TIMEOUT)) {
+		return false;
+	}
+	if (!parse_sexagesimal(response, latitude, true)) {
+		return false;
+	}
+	if (!mxhd_query_hash(device, ":Gg#", response, sizeof(response), MXHD_IO_TIMEOUT)) {
+		return false;
+	}
+	double longitude_west = 0;
+	if (!parse_degrees(response, &longitude_west)) {
+		return false;
+	}
+	*longitude = fmod(360 - longitude_west, 360);
+	if (*longitude < 0) {
+		*longitude += 360;
+	}
+	return true;
+}
+
+static bool mxhd_query_utc(indigo_device *device, time_t *utc, int *utc_offset) {
+	struct tm local_tm;
+	memset(&local_tm, 0, sizeof(local_tm));
+	char response[64];
+	char sep1 = 0, sep2 = 0;
+	if (!mxhd_query_hash(device, ":GC#", response, sizeof(response), MXHD_IO_TIMEOUT)) {
+		return false;
+	}
+	if (sscanf(response, "%d%c%d%c%d", &local_tm.tm_mon, &sep1, &local_tm.tm_mday, &sep2, &local_tm.tm_year) != 5) {
+		return false;
+	}
+	if (!mxhd_query_hash(device, ":GL#", response, sizeof(response), MXHD_IO_TIMEOUT)) {
+		return false;
+	}
+	if (sscanf(response, "%d%c%d%c%d", &local_tm.tm_hour, &sep1, &local_tm.tm_min, &sep2, &local_tm.tm_sec) != 5) {
+		return false;
+	}
+	if (!mxhd_query_hash(device, ":GG#", response, sizeof(response), MXHD_IO_TIMEOUT)) {
+		return false;
+	}
+	local_tm.tm_year += 100;
+	local_tm.tm_mon -= 1;
+	*utc_offset = -atoi(response);
+	*utc = indigo_timegm(&local_tm) - *utc_offset * 3600;
+	return true;
 }
 
 static bool mxhd_apply_site(indigo_device *device) {
@@ -619,6 +687,26 @@ static void mount_connect_callback(indigo_device *device) {
 			indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
 			update_tracking_property(device, NULL);
 			mxhd_update_mount_info(device);
+			double latitude = 0, longitude = 0;
+			if (mxhd_query_site(device, &latitude, &longitude)) {
+				PRIVATE_DATA->latitude = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = latitude;
+				PRIVATE_DATA->longitude = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = longitude;
+				PRIVATE_DATA->has_site = true;
+				MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+			} else {
+				MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+			indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+			time_t utc = 0;
+			int utc_offset = 0;
+			if (mxhd_query_utc(device, &utc, &utc_offset)) {
+				snprintf(MOUNT_UTC_OFFSET_ITEM->text.value, INDIGO_VALUE_SIZE, "%d", utc_offset);
+				indigo_timetoisogm(utc, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
+				MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
+			} else {
+				MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+			indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
 			indigo_execute_handler(device, position_timer_callback);
 		} else {
 			PRIVATE_DATA->device_count--;

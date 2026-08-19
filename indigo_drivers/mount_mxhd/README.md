@@ -25,10 +25,11 @@ The mount and guider devices share the same serial connection and can be connect
 ## Site and time setup
 
 The MX-HD mount needs valid time and observing-site settings for normal operation.
-This driver does not automatically send UTC/time or geographic coordinates on connection, because an INDIGO client may expose default or not-yet-initialized values during startup.
+On connection, the driver reads the latitude, longitude, UTC offset and local time stored in the MX-HD controller and publishes them as INDIGO site/time properties.
+The raw time returned by MX-HD is local time, so the driver converts it to UTC using the stored UTC offset before updating `MOUNT_UTC_TIME`.
 
 Use the INDIGO client `Configuration Control` profile mechanism to save and load fixed settings such as the serial port, baud rate and observing-site latitude/longitude.
-After connecting, use `Set UTC` -> `From host` to copy the Raspberry Pi or host computer time into the INDIGO UTC/offset fields and send it to the mount.
+After connecting, use `Set UTC` -> `From host` to copy the Raspberry Pi or host computer time into the INDIGO UTC/offset fields and send it to the mount when a current time update is needed.
 
 Changing `MOUNT_GEOGRAPHIC_COORDINATES` or `MOUNT_UTC_TIME` manually in the client still sends the updated values to the mount.
 
