@@ -57,7 +57,8 @@ Some clients may keep the rejected motion or guide property shown in Alert/red s
 
 MX-HD HOME/PARK operations include an initial sequence which cannot be interrupted by the mount firmware.
 To implement Abort during these operations, the driver disables motor excitation.
-After aborting HOME/PARK, manual motion may not be available until HOME or PARK is executed again.
+After aborting HOME/PARK/UNPARK this way, the driver blocks all motion-related commands for 90 seconds.
+After this safety interval, the driver re-enables motor excitation with `@ME1#` before the next motion-related command.
 
 ## Status: Tested
 
@@ -72,7 +73,6 @@ Tested on Raspberry Pi 5 with real MX-HD hardware:
 * goto and sync
 * abort during goto
 * abort during park, unpark and home
-* recovery after aborting park/home with HOME or PARK
 * `MOUNT_EPOCH` operation with current epoch/JNow and J2000
 * guider-device connection
 * pulse guide command/state flow
