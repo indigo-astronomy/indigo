@@ -531,16 +531,10 @@ static void position_timer_callback(indigo_device *device) {
 		double j2k_ra = ra;
 		double j2k_dec = dec;
 		indigo_eq_to_j2k(MOUNT_EPOCH_ITEM->number.value, &j2k_ra, &j2k_dec);
-		MOUNT_RAW_COORDINATES_RA_ITEM->number.value = ra;
-		MOUNT_RAW_COORDINATES_DEC_ITEM->number.value = dec;
 		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = j2k_ra;
 		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = j2k_dec;
-		MOUNT_RAW_COORDINATES_PROPERTY->state = moving ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = moving ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
 		indigo_update_coordinates(device, moving ? "Mount is moving" : NULL);
-		if (!MOUNT_RAW_COORDINATES_PROPERTY->hidden) {
-			indigo_update_property(device, MOUNT_RAW_COORDINATES_PROPERTY, NULL);
-		}
 		update_pier_side(device, ra);
 	} else if (moving) {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -1198,6 +1192,9 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
+		if (indigo_ignore_connection_change(device, property)) {
+			return INDIGO_OK;
+		}
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
@@ -1208,6 +1205,10 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			reject_if_parked(device, GUIDER_GUIDE_RA_PROPERTY);
 			return INDIGO_OK;
 		}
+		if (GUIDER_GUIDE_RA_PROPERTY->state == INDIGO_BUSY_STATE) {
+			indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, "RA guide pulse is busy");
+			return INDIGO_OK;
+		}
 		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
 		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
@@ -1216,6 +1217,10 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_DEC_PROPERTY, property)) {
 		if (PRIVATE_DATA->parked) {
 			reject_if_parked(device, GUIDER_GUIDE_DEC_PROPERTY);
+			return INDIGO_OK;
+		}
+		if (GUIDER_GUIDE_DEC_PROPERTY->state == INDIGO_BUSY_STATE) {
+			indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, "DEC guide pulse is busy");
 			return INDIGO_OK;
 		}
 		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
