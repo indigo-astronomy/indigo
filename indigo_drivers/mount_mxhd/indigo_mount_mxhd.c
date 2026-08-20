@@ -1137,7 +1137,9 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_HOME_PROPERTY, property)) {
 		if (PRIVATE_DATA->parked) {
-			reject_if_parked(device, MOUNT_HOME_PROPERTY);
+			MOUNT_HOME_ITEM->sw.value = false;
+			MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, MOUNT_HOME_PROPERTY, "Mount is parked!");
 			return INDIGO_OK;
 		}
 		if (!ensure_motor_recovery(device, MOUNT_HOME_PROPERTY)) {
