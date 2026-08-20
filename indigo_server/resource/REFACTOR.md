@@ -1187,7 +1187,7 @@ Requirements:
 
 ---
 
-### Step 50 — Add astrometry left-column controls, WCS chips, action buttons, and index toggles
+### Step 50 — Add astrometry left-column controls, WCS chips, action buttons, and index toggles [DONE]
 
 **Files:** `astrometry.html`, `components.js` if a small shared helper is needed
 
