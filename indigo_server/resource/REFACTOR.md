@@ -1151,6 +1151,102 @@ Requirements:
 
 ---
 
+### Step 48 — Add CCD preview and JPEG settings to platesolver agent [DONE]
+
+**Files:** `indigo_libs/indigo_platesolver.c`
+
+Fix the platesolver agent so its mirrored preview image can use the same preview property names and JPEG conversion controls as CCD and guider/imager preview paths.
+
+Requirements:
+- Add `CCD_PREVIEW` and `CCD_PREVIEW_IMAGE` to the platesolver agent using `AGENT_PLATESOLVER_CCD_PREVIEW_*` and `AGENT_PLATESOLVER_CCD_PREVIEW_IMAGE_*` aliases, define/enumerate/delete/change them with the image properties, and update `CCD_PREVIEW_IMAGE.IMAGE` when preview is enabled.
+- Add `CCD_JPEG_SETTINGS` and `CCD_JPEG_STRETCH_PRESETS` properties to the platesolver agent using the same item names, defaults, groups, save/enumerate/define/delete/change behavior, and preset-to-settings synchronization used by `indigo_ccd_driver.c`.
+- Save both JPEG properties with the platesolver config, alongside `AGENT_PLATESOLVER_HINTS`, `AGENT_PLATESOLVER_USE_INDEX`, and related persisted settings.
+- When a JPEG settings value changes, update the stretch preset selection to `SLIGHT`, `MODERATE`, `NORMAL`, `HARD`, or no preset using the same tolerance and lookup table logic as CCD drivers.
+- When a stretch preset changes, write the matching target background and clipping point back into `CCD_JPEG_SETTINGS`.
+- Use these settings when producing `CCD_PREVIEW_IMAGE`, converting incoming INDIGO RAW image data to `.jpeg` with the same stretch behavior as imager/guider previews.
+- Keep existing `AGENT_PLATESOLVER_IMAGE_OUTPUT` behavior as a raw image mirror for clients that already consume the BLOB.
+
+Source references: `indigo_ccd_driver.c` initializes and handles `CCD_PREVIEW`, `CCD_PREVIEW_IMAGE`, `CCD_JPEG_SETTINGS`, and `CCD_JPEG_STRETCH_PRESETS`; `indigo_platesolver.c` currently mirrors solved image data through `AGENT_PLATESOLVER_IMAGE_OUTPUT` without exposing those standard preview properties and JPEG settings.
+
+---
+
+### Step 49 — Add astrometry web app shell and navigation
+
+**Files:** `astrometry.html`, `components.js`, `indigo_server.c`, `Makefile`, resource icon files if needed
+
+Create a new Astrometry Agent web GUI using the same two-column `row g-0` layout and page conventions as `imager.html`, `mount.html`, and `guider.html`.
+
+Requirements:
+- Add `astrometry.html` with `<indigo-navbar active="astrometry" title="INDIGO Astrometry" ...>` and the standard `container-fluid`, waiting alert, page body, and `<indigo-status-bar>` structure.
+- Use `col-xl-4 indigo-side-panel` for the left column and `col-xl-8` for the right preview column.
+- In `checkState()`, auto-load `indigo_agent_astrometry` when `Astrometry Agent` is missing and the driver is not loaded, matching the page startup pattern used by other agent pages.
+- Add an `onDefineProperty()` hook that auto-selects `Imager Agent` and `Mount Agent` in `Astrometry Agent`'s `FILTER_RELATED_AGENT_LIST` when it is defined with `Ok` state.
+- Add Astrometry to the shared navbar `appLinks`, with a distinct `id`, title, link target, and icon.
+- Bundle and serve the new page from the embedded web server: add `resource/astrometry.html.data` to the `ctrlpanel` dependencies and add `/astrometry.html` to the `use_web_apps` resources in `indigo_server.c`.
+- If no astrometry icon exists, add or reuse a suitable existing small app icon without changing unrelated navbar behavior.
+
+---
+
+### Step 50 — Add astrometry left-column controls, WCS chips, action buttons, and index toggles
+
+**Files:** `astrometry.html`, `components.js` if a small shared helper is needed
+
+Build the Astrometry Agent control panel in the left column.
+
+Controls:
+- Add editable fields for `AGENT_PLATESOLVER_HINTS`:
+  - `RADIUS`, `RA`, `DEC`, `EPOCH`, `SCALE`, `PARITY`, `DOWNSAMPLE`, `DEPTH`, `CPULIMIT`
+  - Use sexagesimal number controls for `RA`, `DEC`, and `RADIUS` where the property format is `%m`; use normal numeric controls for the rest.
+- Add editable fields for `AGENT_PLATESOLVER_GOTO_SETTINGS`:
+  - `RA`, `DEC`
+  - Use sexagesimal number controls.
+- Add editable field for `AGENT_PLATESOLVER_EXPOSURE`:
+  - `EXPOSURE`
+  - Use a numeric input/dropdown pattern consistent with exposure controls on imager/guider.
+- Include `AGENT_PLATESOLVER_MOUNT_SETTLE_TIME.SETTLE_TIME` near the GOTO settings if present, because precise GOTO and centering depend on it.
+
+Read-only WCS chips:
+- Add read-only chips for `AGENT_PLATESOLVER_WCS`:
+  - `STATE`, `RA`, `DEC`, `EPOCH`, `ANGLE`, `WIDTH`, `HEIGHT`, `SCALE`, `PARITY`, `INDEX`
+- Use sexagesimal read-only controls for `RA`, `DEC`, `ANGLE`, `WIDTH`, and `HEIGHT`; use compact read-only numeric chips for the rest.
+- Hide WCS chips until `AGENT_PLATESOLVER_WCS` is available.
+
+Action buttons:
+- Add buttons for every available `AGENT_START_PROCESS` item:
+  - `SOLVE`, `SYNC`, `CENTER`, `PRECISE_GOTO`, `CALCULATE_PA_ERROR`, `RECALCULATE_PA_ERROR`, `RESET`
+- Match the imager/guider/mount process-button convention: while `AGENT_START_PROCESS` is `Busy`, disable all start buttons except Abort; show the active start item with busy/alert styling; use normal state styling after completion.
+- Add an Abort button that writes `AGENT_ABORT_PROCESS.ABORT = true`.
+- Also support the obsolete `AGENT_PLATESOLVER_ABORT.ABORT` as a fallback when `AGENT_ABORT_PROCESS` is not available.
+
+Index list:
+- Below the main controls, add a separate section with full-width buttons for each item in `AGENT_PLATESOLVER_USE_INDEX`.
+- Render each index button green when its switch item is on and default/idle grey when off.
+- Clicking an index button toggles that one switch item with `changeProperty('Astrometry Agent', 'AGENT_PLATESOLVER_USE_INDEX', { [item.name]: !item.value })`.
+- Hide the index section when `AGENT_PLATESOLVER_USE_INDEX` is unavailable or has no items.
+
+Source references: `indigo_platesolver.c` defines the hints, GOTO settings, exposure settings, WCS solution, start-process, abort, and index properties; `indigo_names.h` defines exact item-name constants.
+
+---
+
+### Step 51 — Add astrometry image preview in the right column
+
+**Files:** `astrometry.html`, `components.js` if preview handling is shared
+
+Show Astrometry Agent image output in the right column using the same preview behavior as imager and guider pages.
+
+Requirements:
+- Add a right-column preview card matching the imager/guider image card structure: `#image_container`, hidden image wrapper until an image arrives, `<img id="image" class="img-fluid rounded">`, and any needed histogram/stretch display only if exposed by the agent.
+- Enable `CCD_PREVIEW.ENABLED` on `Astrometry Agent` and listen for `CCD_PREVIEW_IMAGE.IMAGE` updates from `Astrometry Agent`; keep `AGENT_PLATESOLVER_IMAGE_OUTPUT.IMAGE` as a compatibility fallback if needed.
+- Resolve image URLs the same way as imager/guider preview helpers: preserve absolute `http://` / `https://` URLs and otherwise build from the current page protocol and `INDIGO.host`.
+- Cache-bust preview image updates with a timestamp so repeated solves refresh the browser image.
+- Show the preview image when the BLOB update reaches `Ok` state; hide it when the property is deleted.
+- Do not depend on jQuery for new preview logic if a small Vue-owned or native-DOM helper is practical; if copying the current imager/guider helper first, leave a follow-up note only if removing jQuery is outside this step's scope.
+- Verify the preview works with the `CCD_PREVIEW_IMAGE` path and JPEG settings added in Step 48.
+
+Source references: `imager.html` and `guider.html` already handle `CCD_PREVIEW_IMAGE` / `CCD_PREVIEW_HISTOGRAM` BLOB updates; platesolver exposes `CCD_PREVIEW_IMAGE` for standard preview use and keeps `AGENT_PLATESOLVER_IMAGE_OUTPUT` for compatibility.
+
+---
+
 ## Dependency Summary After Refactoring
 
 | Library | Before | After |
@@ -1176,3 +1272,4 @@ Steps can be batched into four commits for review:
 8. **Visual polish** (Step 39): Switch default appearance to dark, darken state colours and status bar
 9. **Script editor UI** (Steps 40–46): Remove CodeMirror/JSHint; redesign script.html as two-column layout; create `indigo-script-editor` Vue component with a plain textarea; implement action toolbar and script list; remove jQuery DOM reads; polish editor height, dark mode and dirty indicator; add Sequencer script handling
 10. **Related agents** (Step 47): Auto-select each page's related agents when `FILTER_RELATED_AGENT_LIST` is defined
+11. **Astrometry UI** (Steps 48–51): Add platesolver JPEG preview settings, create `astrometry.html`, expose Astrometry Agent controls/actions/index toggles, and show platesolver image output in the right column
