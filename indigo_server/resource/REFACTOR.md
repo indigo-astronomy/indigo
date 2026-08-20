@@ -951,6 +951,168 @@ No functional change — purely visual.
 
 ---
 
+### Step 40 — Download and bundle CodeMirror 5 with JavaScript mode, lint and JSHint [DONE]
+
+**Files:** `indigo_server/resource/` (new files), `script.html`
+
+Download CodeMirror 5 from https://codemirror.net/5/ and JSHint from https://jshint.com/. Combine into two bundle files to avoid multiple HTTP requests:
+
+**`codemirror-bundle.min.js`** — concatenation of (in order):
+1. `codemirror.min.js` (core)
+2. `mode/javascript/javascript.min.js` (JS syntax highlighting)
+3. `addon/lint/lint.min.js` (lint framework)
+4. `addon/lint/javascript-lint.min.js` (JS-specific lint using JSHint)
+5. `jshint.js` (JSHint static analysis engine)
+
+**`codemirror-bundle.min.css`** — concatenation of:
+1. `codemirror.min.css` (core styles)
+2. `addon/lint/lint.css` (lint gutter + error marker styles)
+
+Add `<link rel="stylesheet" href="codemirror-bundle.min.css"/>` and `<script src="codemirror-bundle.min.js"></script>` to `script.html` head.
+
+Generate `.data` pack files for both bundles so the binary INDIGO server can serve them.
+
+No UI change in this step.
+
+---
+
+### Step 41 — Redesign script.html to two-column layout
+
+**Files:** `script.html`
+
+Replace the current `v-for` multi-card layout with a fixed two-column design using the same `row g-0 / col-xl-4 / col-xl-8` pattern used in imager, mount and guider pages.
+
+**Left column (`col-xl-4`):** `card p-1 m-1 bg-light` containing:
+- Action toolbar (buttons described in Step 43)
+- Scrollable list of scripts (click to select; implemented in Step 43)
+
+**Right column (`col-xl-8`):** `card p-1 m-1 bg-light` containing:
+- Script name `<input>` at the top
+- A `<div id="script-editor">` placeholder that CodeMirror will attach to in Step 42
+
+**Narrow layout (below `xl`):** left column stacks above right column (natural Bootstrap behaviour).
+
+Remove `<indigo-status-bar :columns-toggle="true">` — replace with plain `<indigo-status-bar>`.
+
+Introduce a reactive `selectedProperty` variable in the root Vue app (or inline data) that holds the currently-selected INDIGO property object (`null` = new-script mode).
+
+---
+
+### Step 42 — Create `indigo-script-editor` Vue component in `components.js`
+
+**Files:** `components.js`
+
+Add a new `app.component('indigo-script-editor', {...})` component that wraps a CodeMirror 5 instance:
+
+**Props:** `property` (INDIGO property object or `null` for new-script mode), `dark` (Boolean).
+
+**Lifecycle:**
+- `mounted()`: call `CodeMirror(this.$refs.editor, { mode: 'javascript', lineNumbers: true, gutters: ['CodeMirror-lint-markers'], lint: { esversion: 11 }, theme: this.dark ? 'darcula' : 'default' })`. Store the instance as `this.cm`.
+- `beforeUnmount()`: call `this.cm.toTextArea()` or simply drop the reference.
+
+**Watchers:**
+- `property`: when it changes, call `this.cm.setValue(property?.item('SCRIPT')?.value ?? '')` and `this.cm.clearHistory()`. Also update the name input.
+- `dark`: call `this.cm.setOption('theme', val ? 'darcula' : 'default')`.
+
+**Events:** emit `'change'` on every CodeMirror `change` event so the parent can track `dirty` state.
+
+**Exposed methods:** `getName()` (reads name input ref) and `getCode()` (returns `this.cm.getValue()`).
+
+**Template:**
+```html
+<div>
+  <input ref="nameInput" type="text" class="form-control mb-1" placeholder="Script name">
+  <div ref="editor"></div>
+</div>
+```
+
+The `<div ref="editor">` is the CodeMirror mount point. Height is set via CSS so the editor fills the right panel (see Step 45).
+
+---
+
+### Step 43 — Left panel: action toolbar and script list
+
+**Files:** `script.html`, `indigo.js` (or inline `<script>`)
+
+Replace the inline `save()`/`execute()`/`remove()`/`onLoad()`/`onUnload()` jQuery-based functions with Vue-reactive implementations that read values from the `indigo-script-editor` component via a template ref.
+
+**Action toolbar buttons (top of left panel):**
+
+| Button | Enabled when | Action |
+|--------|--------------|--------|
+| New | always | Sets `selectedProperty = null`, clears editor |
+| Execute | `selectedProperty != null && !dirty` | `save()` then `AGENT_SCRIPTING_EXECUTE_SCRIPT` |
+| Delete | `selectedProperty != null && !dirty` | `save()` then `AGENT_SCRIPTING_DELETE_SCRIPT`, then clear selection |
+| Save | `dirty` | `changeProperty(…, { NAME: …, SCRIPT: … })` |
+| On load | `selectedProperty != null` | Toggle item in `AGENT_SCRIPTING_ON_LOAD_SCRIPT` |
+| On unload | `selectedProperty != null` | Toggle item in `AGENT_SCRIPTING_ON_UNLOAD_SCRIPT` |
+
+On Load and On Unload render as `btn-primary` when active, `btn-outline-secondary` when inactive (same as the current implementation).
+
+**Script list (below toolbar):**
+
+Loop over `scriptsProperties()` excluding `AGENT_SCRIPTING_ADD_SCRIPT`. Render each as a clickable button:
+- `active` / `ctrl-tree-selected` class when it equals `selectedProperty`
+- Small indicator badges (e.g. `L` and `U`) when on-load or on-unload is enabled for that script
+- Clicking sets `selectedProperty = property` and clears `dirty`
+
+When `selectedProperty` changes to an existing script, update the `indigo-script-editor` via its `property` prop (the watcher in Step 42 handles the rest).
+
+---
+
+### Step 44 — Wire up `save()` without jQuery
+
+**Files:** `script.html`
+
+The current implementation uses `$("#N_"+property.name).val()` and `$("#S_"+property.name).val()` to read name and code. Replace with calls to `this.$refs.editor.getName()` and `this.$refs.editor.getCode()` (the methods exposed by `indigo-script-editor`).
+
+Update `save()`:
+```js
+save() {
+    const name = this.$refs.scriptEditor.getName();
+    const code = this.$refs.scriptEditor.getCode();
+    const propName = this.selectedProperty?.name ?? 'AGENT_SCRIPTING_ADD_SCRIPT';
+    changeProperty('Scripting Agent', propName, { NAME: name, SCRIPT: code });
+    this.dirty = false;
+}
+```
+
+After a successful create (when `selectedProperty` was `null`), the new `AGENT_SCRIPTING_SCRIPT_xxx` property appears via `onDefineProperty`. Hook `onDefineProperty` to detect the new property by matching the saved name and automatically select it.
+
+Remove all remaining jQuery `$()` DOM reads from `script.html`.
+
+---
+
+### Step 45 — Visual polish: editor height, dark mode, dirty indicator
+
+**Files:** `script.html`, `indigo.css`
+
+**Editor height:** Make the CodeMirror editor fill the available height of the right panel. In `indigo.css` add:
+```css
+.indigo-script-editor .CodeMirror {
+    height: calc(100vh - 160px);
+}
+```
+Adjust the offset to account for the navbar, card padding, and name input row.
+
+**Dark mode:** The `darcula` theme bundled with CodeMirror provides a dark variant. Pass `$root.dark` as the `dark` prop to `indigo-script-editor`. The watcher in Step 42 calls `cm.setOption('theme', ...)` reactively.
+
+**Dirty indicator:** Prefix the script name in the list with `*` (or apply a CSS class) when `dirty` is `true` for that script. Disable Execute and Delete while dirty to prevent losing unsaved changes.
+
+**Lint gutter:** The JSHint-based lint adds red/yellow markers in the left gutter. No additional CSS needed beyond what `addon/lint/lint.css` provides, but ensure the gutter background colour is overridden for dark mode:
+```css
+[data-theme="dark"] .CodeMirror-lint-marker-error,
+[data-theme="dark"] .CodeMirror-lint-marker-warning {
+    /* keep default lint icon colours — they are SVG data URIs, no override needed */
+}
+[data-theme="dark"] .CodeMirror-gutters {
+    background-color: var(--bg-card) !important;
+    border-right-color: var(--bg-page) !important;
+}
+```
+
+---
+
 ## Dependency Summary After Refactoring
 
 | Library | Before | After |
@@ -974,3 +1136,4 @@ Steps can be batched into four commits for review:
 6. **Mount UI** (Steps 35–36): Move target coordinates to `AGENT_MOUNT_TARGET_COORDINATES`, current-coordinate/derived status displays to `AGENT_MOUNT_DISPLAY_COORDINATES`, and mount actions to `AGENT_START_PROCESS`
 7. **Control panel UI** (Steps 37–38): Extract `indigo-ctrl-property-body` component, then add two-column wide-layout navigation (tree left / content panel right) to `ctrl.html`
 8. **Visual polish** (Step 39): Switch default appearance to dark, darken state colours and status bar
+9. **Script editor UI** (Steps 40–45): Bundle CodeMirror 5 + JSHint; redesign script.html as two-column layout; create `indigo-script-editor` Vue component with CodeMirror lifecycle; implement action toolbar and script list; remove jQuery DOM reads; polish editor height, dark mode and dirty indicator

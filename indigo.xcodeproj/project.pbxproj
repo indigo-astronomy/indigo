@@ -2396,6 +2396,8 @@
 		5992F7BC1E1EC9580035242E /* indigo_wheel_fli.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_wheel_fli.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		59946C852AE9AFB400AA558D /* indigo_stretch.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = indigo_stretch.cpp; sourceTree = "<group>"; };
 		59946C882AE9AFCC00AA558D /* indigo_stretch.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_stretch.h; sourceTree = "<group>"; };
+		599482AD3036E71C005D36BE /* codemirror-bundle.min.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = "codemirror-bundle.min.css"; sourceTree = "<group>"; };
+		599482AE3036E71C005D36BE /* codemirror-bundle.min.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "codemirror-bundle.min.js"; sourceTree = "<group>"; };
 		59958DFB25CB0DEB00BEFA1B /* indigo_dome_skyroof.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_dome_skyroof.c; sourceTree = "<group>"; };
 		59958DFC25CB0DEB00BEFA1B /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		59958DFD25CB0DEB00BEFA1B /* indigo_dome_skyroof_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_dome_skyroof_main.c; sourceTree = "<group>"; };
@@ -6203,6 +6205,8 @@
 				59AF31FF21F25E8A0008CC52 /* d3.geo.projection.min.js */,
 				59AF321521F264D40008CC52 /* celestial.css */,
 				59AF321421F264D40008CC52 /* celestial.min.js */,
+				599482AD3036E71C005D36BE /* codemirror-bundle.min.css */,
+				599482AE3036E71C005D36BE /* codemirror-bundle.min.js */,
 				59AF320321F262280008CC52 /* data */,
 			);
 			path = resource;
