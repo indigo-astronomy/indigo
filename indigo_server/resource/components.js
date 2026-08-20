@@ -686,6 +686,127 @@ app.component('indigo-autofocus-graph', {
 		</div>`
 });
 
+app.component('indigo-pa-state-overlay', {
+	props: {
+		paStateProperty: Object
+	},
+	methods: {
+		item: function(name) {
+			if (this.paStateProperty == null)
+				return null;
+			if (typeof this.paStateProperty.item == "function")
+				return this.paStateProperty.item(name);
+			for (var i in this.paStateProperty.items) {
+				var item = this.paStateProperty.items[i];
+				if (item.name == name)
+					return item;
+			}
+			return null;
+		},
+		itemValue: function(name) {
+			var item = this.item(name);
+			if (item == null)
+				return null;
+			return Number(item.value);
+		},
+		valid: function() {
+			if (this.paStateProperty == null)
+				return false;
+			var state = this.itemValue("STATE");
+			var altError = this.altError();
+			var azError = this.azError();
+			return isFinite(state) && state > 0 && isFinite(altError) && isFinite(azError);
+		},
+		altError: function() {
+			return this.itemValue("ALT_POLAR_ERROR");
+		},
+		azError: function() {
+			return this.itemValue("AZ_POLAR_ERROR");
+		},
+		polarError: function() {
+			var value = this.itemValue("POLAR_ERROR");
+			if (isFinite(value))
+				return Math.abs(value);
+			var altError = this.altError();
+			var azError = this.azError();
+			if (!isFinite(altError) || !isFinite(azError))
+				return 0;
+			return Math.sqrt(altError * altError + azError * azError);
+		},
+		diameter: function() {
+			var maxError = Math.max(Math.abs(this.altError()), Math.abs(this.azError()), this.polarError());
+			if (!isFinite(maxError) || maxError <= 0)
+				maxError = 1 / 60;
+			return Math.max(maxError * 2, 1 / 60);
+		},
+		diameterLabel: function() {
+			return this.formatAngle(this.diameter());
+		},
+		color: function() {
+			var error = this.polarError() * 60;
+			if (error <= 5)
+				return "#3fb950";
+			if (error <= 30)
+				return "#d29922";
+			return "#f85149";
+		},
+		markerX: function() {
+			return 150 * (1 + this.azError() / this.diameter());
+		},
+		markerY: function() {
+			return 150 * (1 - this.altError() / this.diameter());
+		},
+		formatAngle: function(value) {
+			if (!isFinite(value))
+				return "N/A";
+			var minutes = Math.abs(value) * 60;
+			if (minutes < 60)
+				return minutes.toFixed(minutes < 10 ? 1 : 0) + "'";
+			return Math.abs(value).toFixed(1) + "°";
+		},
+		errorLabel: function(value) {
+			if (!isFinite(value))
+				return "N/A";
+			var sign = value >= 0 ? "+" : "-";
+			return sign + this.formatAngle(value);
+		},
+		altDirection: function() {
+			return this.itemValue("ALT_CORRECTION_UP") > 0 ? "Up" : "Down";
+		},
+		azDirection: function() {
+			return this.itemValue("AZ_CORRECTION_CW") > 0 ? "C.W." : "C.C.W.";
+		},
+		altLabel: function() {
+			return "Alt " + this.errorLabel(this.altError()) + " " + this.altDirection();
+		},
+		azLabel: function() {
+			return "Az " + this.errorLabel(this.azError()) + " " + this.azDirection();
+		}
+	},
+	template: `
+		<div v-if="paStateProperty != null" class="indigo-pa-state-overlay">
+			<div class="indigo-pa-state-box">
+				<template v-if="valid()">
+					<svg class="indigo-pa-state-target" viewBox="0 0 300 300">
+						<line x1="0" y1="150" x2="140" y2="150"></line>
+						<line x1="160" y1="150" x2="300" y2="150"></line>
+						<line x1="150" y1="0" x2="150" y2="140"></line>
+						<line x1="150" y1="160" x2="150" y2="300"></line>
+						<circle cx="150" cy="150" r="149"></circle>
+						<circle cx="150" cy="150" r="75"></circle>
+						<text x="294" y="164" text-anchor="end">{{diameterLabel()}}</text>
+						<circle class="indigo-pa-state-marker" :cx="markerX()" :cy="markerY()" r="10" :style="{ fill: color() }"></circle>
+					</svg>
+					<div class="indigo-pa-state-labels">
+						<span :style="{ color: color() }">{{altLabel()}}</span>
+						<span :style="{ color: color() }">{{azLabel()}}</span>
+					</div>
+				</template>
+				<div v-else class="indigo-pa-state-empty">No polar alignment data available.</div>
+			</div>
+		</div>`
+});
+
 app.component('indigo-star-selection-overlay', {
 	props: {
 		selectionProperty: Object,

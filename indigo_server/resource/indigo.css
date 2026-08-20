@@ -483,6 +483,70 @@ input {
 	stroke-width: 2;
 }
 
+.indigo-pa-state-overlay {
+	position: absolute;
+	top: 10px;
+	right: 10px;
+	z-index: 3;
+	width: 320px;
+	max-width: calc(100% - 20px);
+	pointer-events: none;
+}
+
+.indigo-pa-state-box {
+	padding: 10px;
+	border-radius: 4px;
+	background-color: rgba(33, 37, 41, 0.72);
+	color: #f8f9fa;
+}
+
+.indigo-pa-state-target {
+	display: block;
+	width: 300px;
+	max-width: 100%;
+	height: auto;
+	margin: 0 auto;
+	overflow: visible;
+}
+
+.indigo-pa-state-target line,
+.indigo-pa-state-target circle {
+	fill: none;
+	stroke: #33b5ff;
+	stroke-width: 1;
+	vector-effect: non-scaling-stroke;
+}
+
+.indigo-pa-state-target text {
+	fill: #33b5ff;
+	font-size: 13px;
+}
+
+.indigo-pa-state-target .indigo-pa-state-marker {
+	stroke: none;
+	filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.9));
+}
+
+.indigo-pa-state-labels {
+	display: flex;
+	justify-content: space-between;
+	gap: 1rem;
+	padding-top: 10px;
+	font-size: 1.25rem;
+	font-weight: 600;
+}
+
+.indigo-pa-state-warning,
+.indigo-pa-state-empty {
+	font-size: 1.25rem;
+	font-weight: 600;
+	text-align: center;
+}
+
+.indigo-pa-state-warning {
+	color: #ff5555;
+}
+
 .btn-svg {
 	width: 3.5rem;
 	height: 2.5rem;

@@ -1228,7 +1228,7 @@ Source references: `indigo_platesolver.c` defines the hints, GOTO settings, expo
 
 ---
 
-### Step 51 — Add astrometry image preview in the right column
+### Step 51 — Add astrometry image preview in the right column [DONE]
 
 **Files:** `astrometry.html`, `components.js` if preview handling is shared
 
