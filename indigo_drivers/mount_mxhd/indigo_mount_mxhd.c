@@ -63,6 +63,8 @@ typedef struct {
 	time_t slew_started;
 	time_t park_home_started;
 	time_t motor_recovery_until;
+	indigo_device *motor_recovery_alert_device;
+	indigo_property *motor_recovery_alert_property;
 	double latitude;
 	double longitude;
 	bool has_site;
@@ -76,6 +78,15 @@ static bool mxhd_send(indigo_device *device, const char *command);
 static bool set_tracking(indigo_device *device, bool enabled);
 static void update_mount_state_property(indigo_device *device);
 
+static void clear_motor_recovery_alert(void) {
+	if (private_data->motor_recovery_alert_device != NULL && private_data->motor_recovery_alert_property != NULL && private_data->motor_recovery_alert_property->state == INDIGO_ALERT_STATE) {
+		private_data->motor_recovery_alert_property->state = INDIGO_OK_STATE;
+		indigo_update_property(private_data->motor_recovery_alert_device, private_data->motor_recovery_alert_property, "Motor recovery ready");
+	}
+	private_data->motor_recovery_alert_device = NULL;
+	private_data->motor_recovery_alert_property = NULL;
+}
+
 static bool ensure_motor_recovery(indigo_device *device, indigo_property *property) {
 	if (PRIVATE_DATA->motor_recovery_until == 0) {
 		return true;
@@ -86,11 +97,14 @@ static bool ensure_motor_recovery(indigo_device *device, indigo_property *proper
 		char message[128];
 		snprintf(message, sizeof(message), "Motor recovery after abort, wait %.0f s", remaining);
 		property->state = INDIGO_ALERT_STATE;
+		PRIVATE_DATA->motor_recovery_alert_device = device;
+		PRIVATE_DATA->motor_recovery_alert_property = property;
 		indigo_update_property(device, property, message);
 		return false;
 	}
 	if (mxhd_send(device, "@ME1#")) {
 		PRIVATE_DATA->motor_recovery_until = 0;
+		clear_motor_recovery_alert();
 		update_mount_state_property(device);
 		return true;
 	}
@@ -116,6 +130,7 @@ static void update_motor_recovery_property(indigo_device *device) {
 	} else {
 		MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Motor recovery ready");
+		clear_motor_recovery_alert();
 	}
 }
 
@@ -1059,6 +1074,8 @@ static void mount_abort_callback(indigo_device *device) {
 		bool ok = home_or_park_motion ? mxhd_send(device, "@ME0#") : mxhd_send(device, ":Q#");
 		if (ok && home_or_park_motion) {
 			PRIVATE_DATA->motor_recovery_until = time(NULL) + MXHD_MOTOR_RECOVERY_SECONDS;
+			PRIVATE_DATA->motor_recovery_alert_device = NULL;
+			PRIVATE_DATA->motor_recovery_alert_property = NULL;
 		}
 		const char *message = ok ? "Aborted" : "Abort failed";
 		MOUNT_ABORT_MOTION_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
