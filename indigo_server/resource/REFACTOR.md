@@ -976,7 +976,7 @@ No UI change in this step.
 
 ---
 
-### Step 41 — Redesign script.html to two-column layout
+### Step 41 — Redesign script.html to two-column layout [DONE]
 
 **Files:** `script.html`
 

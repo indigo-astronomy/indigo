@@ -11,6 +11,7 @@ var app = Vue.createApp({
 			devices: { },
 			dark: false,
 			columns: 3,
+			selectedProperty: null,
 			useAgent: false,
 			connected: false,
 			failed: false,

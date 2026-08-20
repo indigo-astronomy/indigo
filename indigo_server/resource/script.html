@@ -19,37 +19,69 @@
 				</div>
 				<template v-else>
 					<div class="row g-0">
-						<div id="property" v-for="property in scriptsProperties()" :class="'col-md-' + 12 / columns">
+						<div class="col-xl-4 indigo-side-panel">
+							<div class="card p-1 m-1 bg-light">
+								<div class="d-flex flex-wrap gap-1 m-1 p-1 indigo-command-row">
+									<button type="button" class="btn btn-svg idle-state" data-bs-toggle="tooltip" title="Create new script" aria-label="Create new script" @click="selectedProperty = null">
+										<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+											<path d="M18,6H14v8H6v4h8v8h4V18h8V14H18Z"/>
+										</svg>
+									</button>
+									<button type="button" class="btn btn-svg ok-state" :disabled="selectedProperty == null || selectedProperty.dirty" data-bs-toggle="tooltip" title="Execute script" aria-label="Execute script" @click="execute(selectedProperty)">
+										<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+											<path d="M9,5V27L25,16Z"/>
+										</svg>
+									</button>
+									<button type="button" class="btn btn-svg alert-state" :disabled="selectedProperty == null || selectedProperty.dirty" data-bs-toggle="tooltip" title="Delete script" aria-label="Delete script" @click="remove(selectedProperty)">
+										<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+											<path d="M10,27a2,2,0,0,0,2,2h8a2,2,0,0,0,2-2V11H10Zm3-13h2V26H13Zm4,0h2V26H17ZM21,7,19,5H13L11,7H6v3H26V7Z"/>
+										</svg>
+									</button>
+									<button v-if="selectedProperty == null" type="button" class="btn btn-svg ok-state" :disabled="findProperty('Scripting Agent', 'AGENT_SCRIPTING_ADD_SCRIPT') == null" data-bs-toggle="tooltip" title="Save new script" aria-label="Save new script" @click="save(findProperty('Scripting Agent', 'AGENT_SCRIPTING_ADD_SCRIPT'))">
+										<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+											<path d="M6,5H22l4,4V27H6ZM10,8v7H22V10L20,8Zm0,11v5H22V19Z"/>
+										</svg>
+									</button>
+									<button v-else type="button" class="btn btn-svg ok-state" data-bs-toggle="tooltip" title="Save script name and text" aria-label="Save script name and text" @click="save(selectedProperty); selectedProperty.dirty = false">
+										<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+											<path d="M6,5H22l4,4V27H6ZM10,8v7H22V10L20,8Zm0,11v5H22V19Z"/>
+										</svg>
+									</button>
+									<button type="button" class="btn btn-svg" :class="selectedProperty != null && findProperty('Scripting Agent', 'AGENT_SCRIPTING_ON_LOAD_SCRIPT')?.item(selectedProperty.name)?.value ? 'ok-state' : 'idle-state'" :disabled="selectedProperty == null || findProperty('Scripting Agent', 'AGENT_SCRIPTING_ON_LOAD_SCRIPT') == null" data-bs-toggle="tooltip" title="Execute script on agent load" aria-label="Execute script on agent load" @click="onLoad(selectedProperty)">
+										<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+											<path d="M15,5h2V19l5-5,2,2-8,8-8-8,2-2,5,5ZM7,25H25v3H7Z"/>
+										</svg>
+									</button>
+									<button type="button" class="btn btn-svg" :class="selectedProperty != null && findProperty('Scripting Agent', 'AGENT_SCRIPTING_ON_UNLOAD_SCRIPT')?.item(selectedProperty.name)?.value ? 'ok-state' : 'idle-state'" :disabled="selectedProperty == null || findProperty('Scripting Agent', 'AGENT_SCRIPTING_ON_UNLOAD_SCRIPT') == null" data-bs-toggle="tooltip" title="Execute script on agent unload" aria-label="Execute script on agent unload" @click="onUnload(selectedProperty)">
+										<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+											<path d="M15,27h2V13l5,5,2-2-8-8-8,8,2,2,5-5ZM7,4H25V7H7Z"/>
+										</svg>
+									</button>
+								</div>
+								<div class="list-group m-1 p-1 overflow-auto" style="max-height: calc(100vh - 170px)">
+									<template v-for="property in scriptsProperties()" :key="property.name">
+										<button v-if="property.name!='AGENT_SCRIPTING_ADD_SCRIPT'" type="button" class="list-group-item list-group-item-action" :class="property == selectedProperty ? 'active ctrl-tree-selected' : ''" data-bs-toggle="tooltip" :title="property.label" @click="selectedProperty = property; property.dirty = false">
+											{{ property.label }}
+										</button>
+									</template>
+								</div>
+							</div>
+						</div>
+						<div class="col-xl-8">
 							<div class="card p-1 m-1 bg-light">
 								<form class="m-0">
-									<div v-if="property.name=='AGENT_SCRIPTING_ADD_SCRIPT'" class="form-group row m-1 p-1">
-										<input :id="'N_'+property.name" type="text" class="form-control" placeholder="New script name" @input="property.dirty = true">
+									<div class="form-group row m-1 p-1">
+										<input :id="'N_'+(selectedProperty == null ? 'AGENT_SCRIPTING_ADD_SCRIPT' : selectedProperty.name)" type="text" class="form-control" :placeholder="selectedProperty == null ? 'New script name' : 'No script name'" :value="selectedProperty == null ? '' : selectedProperty.label" data-bs-toggle="tooltip" title="Script name" @input="selectedProperty != null ? selectedProperty.dirty = true : false">
 									</div>
-									<div v-else class="form-group row m-1 p-1">
-										<input :id="'N_'+property.name" type="text" class="form-control" placeholder="No script name" :value="property.label" @input="property.dirty = true">
-									</div>
-									<div v-if="property.name=='AGENT_SCRIPTING_ADD_SCRIPT'" class="form-group row m-1 p-1">
-										<textarea :id="'S_'+property.name" class="form-control fixed" rows="3" placeholder="New script" @input="property.dirty = true"></textarea>
-									</div>
-									<div v-else class="form-group row m-1 p-1">
-										<textarea :id="'S_'+property.name" class="form-control fixed" rows="3" placeholder="No script" :value="property.item('SCRIPT')?.value" @input="property.dirty = true"></textarea>
-									</div>
-									<div class="float-start d-flex gap-1 m-1 p-1">
-										<button type="button" class="btn btn-sm" :class="findProperty('Scripting Agent', 'AGENT_SCRIPTING_ON_LOAD_SCRIPT')?.item(property.name)?.value ? 'btn-primary' : 'btn-outline-secondary'" style="min-width: 6rem" data-bs-toggle="tooltip" title="Execute script on agent load" @click="onLoad(property)">On load</button>
-										<button type="button" class="btn btn-sm" :class="findProperty('Scripting Agent', 'AGENT_SCRIPTING_ON_UNLOAD_SCRIPT')?.item(property.name)?.value ? 'btn-primary' : 'btn-outline-secondary'" style="min-width: 6rem" data-bs-toggle="tooltip" title="Execute script on agent unload" @click="onUnload(property)">On unload</button>
-									</div>
-									<div class="float-end d-flex gap-1 m-1 p-1">
-										<button v-if="property.name!='AGENT_SCRIPTING_ADD_SCRIPT'" type="button" class="btn btn-sm btn-success" style="min-width: 6rem" :disabled="property.dirty" data-bs-toggle="tooltip" title="Execute script" @click="execute(property)">Execute</button>
-										<button v-if="property.name!='AGENT_SCRIPTING_ADD_SCRIPT'" type="button" class="btn btn-sm btn-danger" style="min-width: 6rem" :disabled="property.dirty" data-bs-toggle="tooltip" title="Delete script" @click="remove(property)">Delete</button>
-										<button v-if="property.name=='AGENT_SCRIPTING_ADD_SCRIPT'" type="button" class="btn btn-sm btn-primary" style="min-width: 6rem" data-bs-toggle="tooltip" title="Create new script" @click="save(property)">Create</button>
-										<button v-else type="button" class="btn btn-sm btn-primary" style="min-width: 6rem" data-bs-toggle="tooltip" title="Save script name and text" @click="save(property); property.dirty = false">Save</button>
+									<div id="script-editor" class="form-group row m-1 p-1">
+										<textarea :id="'S_'+(selectedProperty == null ? 'AGENT_SCRIPTING_ADD_SCRIPT' : selectedProperty.name)" class="form-control fixed" rows="20" :placeholder="selectedProperty == null ? 'New script' : 'No script'" :value="selectedProperty == null ? '' : selectedProperty.item('SCRIPT')?.value" data-bs-toggle="tooltip" title="Script text" @input="selectedProperty != null ? selectedProperty.dirty = true : false"></textarea>
 									</div>
 								</form>
 							</div>
 						</div>
 					</div>
 				</template>
-				<indigo-status-bar :columns-toggle="true"></indigo-status-bar>
+				<indigo-status-bar></indigo-status-bar>
 			</div>
 		</div>
 	</body>
