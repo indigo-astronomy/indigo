@@ -437,7 +437,11 @@ static bool mxhd_query_utc(indigo_device *device, time_t *utc, int *utc_offset) 
 	if (!mxhd_query_hash(device, ":GG#", response, sizeof(response), MXHD_IO_TIMEOUT)) {
 		return false;
 	}
-	local_tm.tm_year += 100;
+	if (local_tm.tm_year < 100) {
+		local_tm.tm_year += 100;
+	} else {
+		local_tm.tm_year -= 1900;
+	}
 	local_tm.tm_mon -= 1;
 	*utc_offset = -atoi(response);
 	*utc = indigo_timegm(&local_tm) - *utc_offset * 3600;
