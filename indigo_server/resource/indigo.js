@@ -13,6 +13,7 @@ var app = Vue.createApp({
 			columns: 3,
 			selectedProperty: null,
 			scriptDirty: false,
+			scriptSavedName: null,
 			useAgent: false,
 			connected: false,
 			failed: false,
@@ -84,12 +85,32 @@ var app = Vue.createApp({
 			var editor = this.$refs.scriptEditor;
 			if (editor == null)
 				return false;
+			var isNew = this.selectedProperty == null;
 			var values = {};
 			values['NAME'] = editor.getName();
 			values['SCRIPT'] = editor.getCode();
+			this.scriptSavedName = isNew ? values['NAME'] : null;
 			changeProperty('Scripting Agent', property.name, values);
 			this.scriptDirty = false;
 			return true;
+		},
+		scriptPropertyName: function(property) {
+			if (property == null)
+				return "";
+			var item = property.item('NAME');
+			if (item != null && item.value != null)
+				return item.value;
+			return property.label;
+		},
+		scriptDefined: function(property) {
+			if (this.scriptSavedName == null || property == null)
+				return;
+			if (property.device != 'Scripting Agent' || !property.name.startsWith('AGENT_SCRIPTING_SCRIPT_'))
+				return;
+			if (this.scriptPropertyName(property) == this.scriptSavedName) {
+				this.selectScript(property);
+				this.scriptSavedName = null;
+			}
 		},
 		deleteScript: function() {
 			var property = this.selectedProperty;

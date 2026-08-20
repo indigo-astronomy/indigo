@@ -1856,20 +1856,12 @@ static void server_main() {
 		indigo_server_add_resource("/guider.html", guider_html, sizeof(guider_html), "text/html");
 		static unsigned char guider_png[] = {
 			#include "resource/guider.png.data"
-		};
-		indigo_server_add_resource("/guider.png", guider_png, sizeof(guider_png), "image/png");
-		// INDIGO Script
-		static unsigned char codemirror_css[] = {
-			#include "resource/codemirror-bundle.min.css.data"
-		};
-		indigo_server_add_resource("/codemirror-bundle.min.css", codemirror_css, sizeof(codemirror_css), "text/css");
-		static unsigned char codemirror_js[] = {
-			#include "resource/codemirror-bundle.min.js.data"
-		};
-		indigo_server_add_resource("/codemirror-bundle.min.js", codemirror_js, sizeof(codemirror_js), "text/javascript");
-		static unsigned char script_html[] = {
-			#include "resource/script.html.data"
-		};
+			};
+			indigo_server_add_resource("/guider.png", guider_png, sizeof(guider_png), "image/png");
+			// INDIGO Script
+			static unsigned char script_html[] = {
+				#include "resource/script.html.data"
+			};
 		indigo_server_add_resource("/script.html", script_html, sizeof(script_html), "text/html");
 		static unsigned char script_png[] = {
 			#include "resource/script.png.data"

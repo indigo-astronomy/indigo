@@ -86,14 +86,14 @@
 }
 
 [data-theme="dark"] .idle-state {
-	background-color: var(--bg-card) !important;
-	border-color: var(--bg-card) !important;
+	background-color: #3d4248 !important;
+	border-color: #3d4248 !important;
 	color: var(--text-color) !important;
 }
 
 [data-theme="dark"] .idle-state:hover {
-	background-color: var(--bg-page) !important;
-	border-color: var(--bg-page) !important;
+	background-color: #2e3338 !important;
+	border-color: #2e3338 !important;
 	color: var(--text-color) !important;
 }
 
@@ -495,6 +495,10 @@ input {
 	height: 1.5rem;
 }
 
+.btn-svg svg {
+	fill: currentColor;
+}
+
 .btn-svg .glyphicons {
 	display: inline-flex;
 	align-items: center;
@@ -552,6 +556,24 @@ indigo-sky-map,
 
 .fixed {
 	font-family: monospace;
+}
+
+.indigo-script-textarea {
+	height: calc(100vh - 260px);
+	min-height: 12rem;
+	resize: vertical;
+}
+
+.indigo-script-list .list-group-item {
+	border: none;
+	background-color: transparent;
+	color: var(--text-color);
+}
+
+.indigo-script-list .list-group-item:hover,
+.indigo-script-list .list-group-item:focus {
+	background-color: var(--readonly-chip-bg);
+	color: var(--text-color);
 }
 
 /* ctrl.html wide two-column layout */

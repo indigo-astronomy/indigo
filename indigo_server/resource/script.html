@@ -2,13 +2,11 @@
 <html>
 	<head>
 		<meta charset="utf-8"/>
-		<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
-		<link rel="stylesheet" href="bootstrap.min.css"/>
-		<link rel="stylesheet" href="glyphicons.css"/>
-		<link rel="stylesheet" href="codemirror-bundle.min.css"/>
-		<link rel="stylesheet" href="indigo.css"/>
-		<script src="codemirror-bundle.min.js"></script>
-	</head>
+			<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
+			<link rel="stylesheet" href="bootstrap.min.css"/>
+			<link rel="stylesheet" href="glyphicons.css"/>
+			<link rel="stylesheet" href="indigo.css"/>
+		</head>
 	<title>INDIGO Script</title>
 	<body class="bg-secondary">
 		<div id="ROOT">
@@ -49,10 +47,10 @@
 											</svg>
 										</button>
 								</div>
-								<div class="list-group m-1 p-1 overflow-auto" style="max-height: calc(100vh - 170px)">
+								<div class="list-group indigo-script-list m-1 p-1 overflow-auto" style="max-height: calc(100vh - 170px)">
 									<template v-for="property in scriptsProperties()" :key="property.name">
-											<button v-if="property.name!='AGENT_SCRIPTING_ADD_SCRIPT'" type="button" class="list-group-item list-group-item-action" :class="property == selectedProperty ? 'active ctrl-tree-selected' : ''" data-bs-toggle="tooltip" :title="property.label" @click="selectScript(property)">
-												{{ property.label }}
+											<button v-if="property.name!='AGENT_SCRIPTING_ADD_SCRIPT'" type="button" class="list-group-item list-group-item-action" :class="property == selectedProperty ? 'ctrl-tree-selected' : ''" @click="selectScript(property)">
+												{{ property == selectedProperty && scriptDirty ? '* ' : '' }}{{ property.label }}
 											</button>
 									</template>
 								</div>
@@ -61,7 +59,7 @@
 						<div class="col-xl-8">
 							<div class="card p-1 m-1 bg-light">
 								<form class="m-0">
-										<indigo-script-editor ref="scriptEditor" :property="selectedProperty" :dark="dark" @change="scriptChanged()"></indigo-script-editor>
+									<indigo-script-editor ref="scriptEditor" :property="selectedProperty" @change="scriptChanged()"></indigo-script-editor>
 								</form>
 							</div>
 						</div>
@@ -104,9 +102,10 @@
 			}
 		}
 	
-		function onDefineProperty(property) {
-			onUpdateProperty(property);
-		}
+			function onDefineProperty(property) {
+				INDIGO.scriptDefined(property);
+				onUpdateProperty(property);
+			}
 
 		function onUpdateProperty(property) {
 			guiSetup();
