@@ -1089,6 +1089,53 @@ Adjust the offset to account for the navbar, card padding, and name input row.
 
 ---
 
+### Step 46 — Sequence script badge display, Sequencer.js pre-execution, and running state UI [DONE]
+
+**Files:** `script.html`, `indigo.js`, `indigo_server/indigo_server.c`, `indigo_server/Makefile`
+
+Scripts whose `NAME` item starts with `#SEQUENCE` are Sequencer scripts — they depend on the `Sequence` class defined in `indigo_drivers/agent_scripting/library/Sequencer.js` being loaded into the scripting engine before they run.
+
+**Script list display:**
+
+Add a helper `isSequenceScript(property)` to `indigo.js` that returns `true` when `scriptPropertyName(property).startsWith('#SEQUENCE')`, and a `sequenceScriptDisplayLabel(property)` that returns the name with the `#SEQUENCE` prefix stripped.
+
+In the script list template in `script.html`, replace the plain `{{ property.label }}` rendering with:
+- A `<span class="badge bg-secondary me-1">sequence</span>` badge when `isSequenceScript(property)` is true
+- The display label from `sequenceScriptDisplayLabel(property)` (prefix stripped) for sequence scripts, or `property.label` for regular scripts
+
+**Sequencer.js server resource:**
+
+Copy (or symlink) `indigo_drivers/agent_scripting/library/Sequencer.js` into `indigo_server/resource/Sequencer.js`. The `Makefile` pattern rule `%.data: % cat $< | gzip | hexdump ...` then generates `resource/Sequencer.js.data` automatically. To handle the source living outside the resource directory, add an explicit rule:
+
+```makefile
+resource/Sequencer.js: ../../indigo_drivers/agent_scripting/library/Sequencer.js
+	cp $< $@
+```
+
+Add `resource/Sequencer.js.data` to the `ctrlpanel` target's dependency list in the `Makefile`.
+
+In `indigo_server.c`, inside the `use_web_apps` block alongside the other script-page resources, add:
+
+```c
+static unsigned char sequencer_js[] = {
+    #include "resource/Sequencer.js.data"
+};
+indigo_server_add_resource("/Sequencer.js", sequencer_js, sizeof(sequencer_js), "text/javascript");
+```
+
+**Client-side pre-execution:**
+
+In `executeScript()` in `indigo.js`, when `isSequenceScript(this.selectedProperty)` is true:
+
+1. `fetch('/Sequencer.js')` to retrieve the library text from the server.
+2. On success, call `changeProperty('Scripting Agent', 'AGENT_SCRIPTING_RUN_SCRIPT', { SCRIPT: text })` to load the `Sequence` class into the scripting engine (property name `"AGENT_SCRIPTING_RUN_SCRIPT"`, item name `"SCRIPT"`).
+3. After the run-script call, proceed with the normal `AGENT_SCRIPTING_EXECUTE_SCRIPT` flow to execute the sequence script itself.
+4. On fetch failure, log the error to console and abort without executing the script.
+
+For non-sequence scripts, `executeScript()` skips the fetch/pre-execution step entirely and works exactly as before.
+
+---
+
 ## Dependency Summary After Refactoring
 
 | Library | Before | After |

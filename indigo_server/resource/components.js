@@ -2201,7 +2201,8 @@ app.component('indigo-script-editor', {
 		return {
 			name: "",
 			script: "",
-			loading: false
+			loading: false,
+			isSequence: false
 		};
 	},
 	mounted: function() {
@@ -2213,8 +2214,12 @@ app.component('indigo-script-editor', {
 		}
 	},
 	methods: {
-		propertyName: function(property) {
-			return property == null ? "" : property.label;
+		fullPropertyName: function(property) {
+			if (property == null) return "";
+			var item = property.item('NAME');
+			if (item != null && item.value != null)
+				return item.value;
+			return property.label;
 		},
 		propertyScript: function(property) {
 			var script = "";
@@ -2227,9 +2232,19 @@ app.component('indigo-script-editor', {
 		},
 		setProperty: function(property) {
 			this.loading = true;
-			this.name = this.propertyName(property);
+			var fullName = this.fullPropertyName(property);
+			if (fullName.startsWith('#SEQUENCE')) {
+				this.isSequence = true;
+				this.name = fullName.substring(9).trimStart();
+			} else {
+				this.isSequence = false;
+				this.name = fullName;
+			}
 			this.script = this.propertyScript(property);
 			this.loading = false;
+		},
+		sequenceChanged: function() {
+			this.$emit('change');
 		},
 		editorChanged: function() {
 			if (!this.loading)
@@ -2239,7 +2254,7 @@ app.component('indigo-script-editor', {
 			this.$emit('change');
 		},
 		getName: function() {
-			return this.name;
+			return this.isSequence ? '#SEQUENCE ' + this.name : this.name;
 		},
 		getCode: function() {
 			return this.script;
@@ -2247,7 +2262,13 @@ app.component('indigo-script-editor', {
 	},
 	template: `
 		<div class="indigo-script-editor">
-			<input ref="nameInput" type="text" class="form-control mb-1" placeholder="Script name" data-bs-toggle="tooltip" title="Script name" v-model="name" @input="inputChanged">
+			<div class="d-flex mb-1 gap-2 align-items-center">
+				<input ref="nameInput" type="text" class="form-control" placeholder="Script name" data-bs-toggle="tooltip" title="Script name" v-model="name" @input="inputChanged">
+				<label class="form-check form-check-inline mb-0 text-nowrap">
+					<input class="form-check-input" type="checkbox" v-model="isSequence" @change="sequenceChanged()">
+					<span class="form-check-label">sequence</span>
+				</label>
+			</div>
 			<textarea id="script-editor" class="form-control fixed indigo-script-textarea" spellcheck="false" data-bs-toggle="tooltip" title="Script text" v-model="script" @input="editorChanged"></textarea>
 		</div>
 		`

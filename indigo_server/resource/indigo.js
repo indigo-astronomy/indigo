@@ -41,7 +41,12 @@ var app = Vue.createApp({
 			return properties[name];
 		},
 		scriptsProperties: function() {
+			var self = this;
 			function compare(a, b) {
+				var aSeq = self.isSequenceScript(a);
+				var bSeq = self.isSequenceScript(b);
+				if (aSeq !== bSeq)
+					return aSeq ? -1 : 1;
 				if (a.name < b.name)
 					return -1;
 				if (a.name > b.name)
@@ -103,14 +108,25 @@ var app = Vue.createApp({
 			return property.label;
 		},
 		scriptDefined: function(property) {
-			if (this.scriptSavedName == null || property == null)
+			if (property == null)
 				return;
 			if (property.device != 'Scripting Agent' || !property.name.startsWith('AGENT_SCRIPTING_SCRIPT_'))
+				return;
+			if (this.selectedProperty != null && property.name == this.selectedProperty.name) {
+				this.selectedProperty = property;
+				return;
+			}
+			if (this.scriptSavedName == null)
 				return;
 			if (this.scriptPropertyName(property) == this.scriptSavedName) {
 				this.selectScript(property);
 				this.scriptSavedName = null;
 			}
+		},
+		resetScript: function() {
+			if (this.$refs.scriptEditor != null)
+				this.$refs.scriptEditor.setProperty(this.selectedProperty);
+			this.scriptDirty = false;
 		},
 		deleteScript: function() {
 			var property = this.selectedProperty;
@@ -123,6 +139,48 @@ var app = Vue.createApp({
 			changeProperty('Scripting Agent', 'AGENT_SCRIPTING_DELETE_SCRIPT', values);
 			this.newScript();
 		},
+		isSequenceScript: function(property) {
+			return this.scriptPropertyName(property).startsWith('#SEQUENCE');
+		},
+		sequenceScriptDisplayLabel: function(property) {
+			var name = this.scriptPropertyName(property);
+			if (name.startsWith('#SEQUENCE'))
+				return name.substring(9).trimStart();
+			return name;
+		},
+		sequenceStateProperty: function() {
+			return this.findProperty('Scripting Agent', 'SEQUENCE_STATE');
+		},
+		sequenceRunning: function() {
+			var prop = this.sequenceStateProperty();
+			return prop != null && prop.state == 'Busy';
+		},
+		sequenceAbortProperty: function() {
+			return this.findProperty('Scripting Agent', 'AGENT_ABORT_PROCESS');
+		},
+		sequencePauseProperty: function() {
+			return this.findProperty('Scripting Agent', 'AGENT_PAUSE_PROCESS');
+		},
+		sequenceStateItem: function(name) {
+				var prop = this.sequenceStateProperty();
+				if (prop == null) return '-';
+				var item = prop.item(name);
+				return item != null ? item.value : '-';
+			},
+			sequenceControlsVisible: function() {
+			return this.sequenceAbortProperty() != null || this.sequencePauseProperty() != null;
+		},
+		sequencePaused: function() {
+			var prop = this.sequencePauseProperty();
+			if (prop == null) return false;
+			return prop.state == 'Busy';
+		},
+		abortSequence: function() {
+			changeProperty('Scripting Agent', 'AGENT_ABORT_PROCESS', { ABORT: true });
+		},
+		togglePauseSequence: function() {
+			changeProperty('Scripting Agent', 'AGENT_PAUSE_PROCESS', { PAUSE_WAIT: !this.sequencePaused() });
+		},
 		executeScript: function() {
 			var property = this.selectedProperty;
 			if (property == null)
@@ -131,7 +189,19 @@ var app = Vue.createApp({
 				return;
 			var values = {};
 			values[property.name] = true;
-			changeProperty('Scripting Agent', 'AGENT_SCRIPTING_EXECUTE_SCRIPT', values);
+			if (this.isSequenceScript(property)) {
+				fetch('/Sequencer.js')
+					.then(function(r) { return r.text(); })
+					.then(function(text) {
+						changeProperty('Scripting Agent', 'AGENT_SCRIPTING_RUN_SCRIPT', { SCRIPT: text });
+						changeProperty('Scripting Agent', 'AGENT_SCRIPTING_EXECUTE_SCRIPT', values);
+					})
+					.catch(function(err) {
+						console.error('Failed to fetch Sequencer.js:', err);
+					});
+			} else {
+				changeProperty('Scripting Agent', 'AGENT_SCRIPTING_EXECUTE_SCRIPT', values);
+			}
 		},
 		scriptSwitchValue: function(propertyName, property) {
 			var scriptProperty = this.findProperty('Scripting Agent', propertyName);

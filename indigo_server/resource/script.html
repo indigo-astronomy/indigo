@@ -20,43 +20,88 @@
 						<div class="col-xl-4 indigo-side-panel">
 							<div class="card p-1 m-1 bg-light">
 								<div class="d-flex flex-wrap gap-1 m-1 p-1 indigo-command-row">
-										<button type="button" class="btn btn-svg idle-state" data-bs-toggle="tooltip" title="Create new script" aria-label="Create new script" @click="newScript()">
+										<button type="button" class="btn btn-svg idle-state" :disabled="sequenceRunning()" data-bs-toggle="tooltip" title="Create new script" aria-label="Create new script" @click="newScript()">
 											<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 												<path d="M18,6H14v8H6v4h8v8h4V18h8V14H18Z"/>
 											</svg>
 										</button>
-										<button type="button" class="btn btn-svg idle-state" :disabled="selectedProperty == null || scriptDirty" data-bs-toggle="tooltip" title="Delete script" aria-label="Delete script" @click="deleteScript()">
+										<button type="button" class="btn btn-svg idle-state" :disabled="selectedProperty == null || scriptDirty || sequenceRunning()" data-bs-toggle="tooltip" title="Delete script" aria-label="Delete script" @click="deleteScript()">
 											<span class="glyphicons glyphicons-bin" aria-hidden="true"></span>
 										</button>
-										<button type="button" class="btn btn-svg idle-state" :disabled="!scriptDirty || scriptSaveProperty() == null" data-bs-toggle="tooltip" :title="selectedProperty == null ? 'Save new script' : 'Save script name and text'" :aria-label="selectedProperty == null ? 'Save new script' : 'Save script name and text'" @click="saveScript()">
-											<span class="glyphicons glyphicons-folder-open" aria-hidden="true"></span>
-										</button>
-										<button type="button" class="btn btn-svg" :class="scriptOnLoadActive(selectedProperty) ? 'ok-state' : 'idle-state'" :disabled="selectedProperty == null || findProperty('Scripting Agent', 'AGENT_SCRIPTING_ON_LOAD_SCRIPT') == null" data-bs-toggle="tooltip" title="Execute script on agent load" aria-label="Execute script on agent load" @click="toggleScriptOnLoad(selectedProperty)">
+										<button type="button" class="btn btn-svg" :class="scriptOnLoadActive(selectedProperty) ? 'ok-state' : 'idle-state'" :disabled="selectedProperty == null || isSequenceScript(selectedProperty) || findProperty('Scripting Agent', 'AGENT_SCRIPTING_ON_LOAD_SCRIPT') == null || sequenceRunning()" data-bs-toggle="tooltip" title="Execute script on agent load" aria-label="Execute script on agent load" @click="toggleScriptOnLoad(selectedProperty)">
 											<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 												<path d="M22.99933,9.46185V22.53821a.8.8,0,0,1-1.2312.67383L11.55219,16.67383a.8.8,0,0,1,0-1.34766L21.76813,8.788A.8.8,0,0,1,22.99933,9.46185ZM10,8H9A1,1,0,0,0,8,9V23a1,1,0,0,0,1,1h1a1,1,0,0,0,1-1V9A1,1,0,0,0,10,8Z"/>
 											</svg>
 										</button>
-										<button type="button" class="btn btn-svg" :class="scriptOnUnloadActive(selectedProperty) ? 'ok-state' : 'idle-state'" :disabled="selectedProperty == null || findProperty('Scripting Agent', 'AGENT_SCRIPTING_ON_UNLOAD_SCRIPT') == null" data-bs-toggle="tooltip" title="Execute script on agent unload" aria-label="Execute script on agent unload" @click="toggleScriptOnUnload(selectedProperty)">
+										<button type="button" class="btn btn-svg" :class="scriptOnUnloadActive(selectedProperty) ? 'ok-state' : 'idle-state'" :disabled="selectedProperty == null || isSequenceScript(selectedProperty) || findProperty('Scripting Agent', 'AGENT_SCRIPTING_ON_UNLOAD_SCRIPT') == null || sequenceRunning()" data-bs-toggle="tooltip" title="Execute script on agent unload" aria-label="Execute script on agent unload" @click="toggleScriptOnUnload(selectedProperty)">
 											<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 												<path d="M20.44781,15.32617a.8.8,0,0,1,0,1.34766L10.23187,23.212a.8.8,0,0,1-1.2312-.67383V9.46185a.8.8,0,0,1,1.2312-.67383ZM23,8H22a1,1,0,0,0-1,1V23a1,1,0,0,0,1,1h1a1,1,0,0,0,1-1V9A1,1,0,0,0,23,8Z"/>
 											</svg>
 										</button>
-										<button type="button" class="btn btn-svg idle-state ms-auto" :disabled="selectedProperty == null || scriptDirty" data-bs-toggle="tooltip" title="Execute script" aria-label="Execute script" @click="executeScript()">
+										<button type="button" class="btn btn-svg idle-state ms-auto" :disabled="!scriptDirty || scriptSaveProperty() == null || sequenceRunning()" data-bs-toggle="tooltip" :title="selectedProperty == null ? 'Save new script' : 'Save script name and text'" :aria-label="selectedProperty == null ? 'Save new script' : 'Save script name and text'" @click="saveScript()">
+											<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+												<path fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" d="M5,18L12,26L27,6"/>
+											</svg>
+										</button>
+										<button type="button" class="btn btn-svg idle-state" :disabled="!scriptDirty || selectedProperty == null || sequenceRunning()" data-bs-toggle="tooltip" title="Reset script" aria-label="Reset script" @click="resetScript()">
+											<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+												<path fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" d="M7,7L25,25M7,25L25,7"/>
+											</svg>
+										</button>
+								</div>
+								<div class="d-flex flex-wrap gap-1 m-1 p-1 indigo-command-row">
+										<button type="button" class="btn btn-svg" :class="sequenceRunning() ? 'busy-state' : 'idle-state'" :disabled="selectedProperty == null || scriptDirty || sequenceRunning()" data-bs-toggle="tooltip" title="Execute script" aria-label="Execute script" @click="executeScript()">
 											<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 												<path d="M9,5V27L25,16Z"/>
 											</svg>
 										</button>
+										<button type="button" class="btn btn-svg ms-auto" :class="sequencePaused() ? 'busy-state' : 'idle-state'" :disabled="!sequenceRunning()" data-bs-toggle="tooltip" title="Pause sequence" aria-label="Pause sequence" @click="togglePauseSequence()">
+											<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+												<rect x="8" y="5" width="5" height="22"/><rect x="19" y="5" width="5" height="22"/>
+											</svg>
+										</button>
+										<button type="button" class="btn btn-svg" :class="sequenceAbortProperty() && sequenceAbortProperty().state == 'Busy' ? 'busy-state' : sequenceAbortProperty() && sequenceAbortProperty().state == 'Alert' ? 'alert-state' : 'idle-state'" :disabled="!sequenceRunning()" data-bs-toggle="tooltip" title="Abort sequence" aria-label="Abort sequence" @click="abortSequence()">
+											<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+												<rect x="6" y="6" width="20" height="20"/>
+											</svg>
+										</button>
 								</div>
-								<div class="list-group indigo-script-list m-1 p-1 overflow-auto" style="max-height: calc(100vh - 170px)">
+								<div class="d-flex flex-wrap m-1">
+										<div class="p-1 w-25" data-bs-toggle="tooltip" title="Current step">
+											<div class="indigo-chip indigo-readonly-chip w-100 d-flex align-items-center">
+												<span class="indigo-chip-icon">step</span>
+												<span class="indigo-chip-value">{{ sequenceStateItem('PROGRESS') }}</span>
+											</div>
+										</div>
+										<div class="p-1 w-25" data-bs-toggle="tooltip" title="Total steps">
+											<div class="indigo-chip indigo-readonly-chip w-100 d-flex align-items-center">
+												<span class="indigo-chip-icon">stps</span>
+												<span class="indigo-chip-value">{{ sequenceStateItem('PROGRESS_TOTAL') }}</span>
+											</div>
+										</div>
+										<div class="p-1 w-25" data-bs-toggle="tooltip" title="Current exposure">
+											<div class="indigo-chip indigo-readonly-chip w-100 d-flex align-items-center">
+												<span class="indigo-chip-icon">exp</span>
+												<span class="indigo-chip-value">{{ sequenceStateItem('EXPOSURE') }}</span>
+											</div>
+										</div>
+										<div class="p-1 w-25" data-bs-toggle="tooltip" title="Total exposures">
+											<div class="indigo-chip indigo-readonly-chip w-100 d-flex align-items-center">
+												<span class="indigo-chip-icon">exps</span>
+												<span class="indigo-chip-value">{{ sequenceStateItem('EXPOSURE_TOTAL') }}</span>
+											</div>
+										</div>
+								</div>
+								<div class="list-group indigo-script-list m-1 p-1 overflow-auto" :class="sequenceRunning() ? 'pe-none opacity-50' : ''" style="max-height: calc(100vh - 170px)">
 									<template v-for="property in scriptsProperties()" :key="property.name">
 											<button v-if="property.name!='AGENT_SCRIPTING_ADD_SCRIPT'" type="button" class="list-group-item list-group-item-action" :class="property == selectedProperty ? 'ctrl-tree-selected' : ''" @click="selectScript(property)">
-												{{ property == selectedProperty && scriptDirty ? '* ' : '' }}{{ property.label }}
+												{{ sequenceScriptDisplayLabel(property) }}<span v-if="isSequenceScript(property)" class="badge bg-secondary" style="float:right;margin-right:1.2rem">sequence</span>
 											</button>
 									</template>
 								</div>
 							</div>
 						</div>
-						<div class="col-xl-8">
+						<div class="col-xl-8" :class="sequenceRunning() ? 'pe-none opacity-50' : ''">
 							<div class="card p-1 m-1 bg-light">
 								<form class="m-0">
 									<indigo-script-editor ref="scriptEditor" :property="selectedProperty" @change="scriptChanged()"></indigo-script-editor>
@@ -108,6 +153,12 @@
 			}
 
 		function onUpdateProperty(property) {
+			if (property.device === 'Scripting Agent' && property.name === 'SEQUENCE_STATE') {
+				document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
+					var tip = bootstrap.Tooltip.getInstance(el);
+					if (tip) tip.hide();
+				});
+			}
 			guiSetup();
 		}
 	
