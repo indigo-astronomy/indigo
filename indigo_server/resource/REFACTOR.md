@@ -1030,7 +1030,7 @@ The `<div ref="editor">` is the CodeMirror mount point. Height is set via CSS so
 
 ---
 
-### Step 43 — Left panel: action toolbar and script list
+### Step 43 — Left panel: action toolbar and script list [DONE]
 
 **Files:** `script.html`, `indigo.js` (or inline `<script>`)
 
@@ -1047,13 +1047,12 @@ Replace the inline `save()`/`execute()`/`remove()`/`onLoad()`/`onUnload()` jQuer
 | On load | `selectedProperty != null` | Toggle item in `AGENT_SCRIPTING_ON_LOAD_SCRIPT` |
 | On unload | `selectedProperty != null` | Toggle item in `AGENT_SCRIPTING_ON_UNLOAD_SCRIPT` |
 
-On Load and On Unload render as `btn-primary` when active, `btn-outline-secondary` when inactive (same as the current implementation).
+On Load and On Unload render as `ok-state` when active for the selected script, `idle-state` when inactive.
 
 **Script list (below toolbar):**
 
 Loop over `scriptsProperties()` excluding `AGENT_SCRIPTING_ADD_SCRIPT`. Render each as a clickable button:
 - `active` / `ctrl-tree-selected` class when it equals `selectedProperty`
-- Small indicator badges (e.g. `L` and `U`) when on-load or on-unload is enabled for that script
 - Clicking sets `selectedProperty = property` and clears `dirty`
 
 When `selectedProperty` changes to an existing script, update the `indigo-script-editor` via its `property` prop (the watcher in Step 42 handles the rest).

@@ -22,31 +22,28 @@
 						<div class="col-xl-4 indigo-side-panel">
 							<div class="card p-1 m-1 bg-light">
 								<div class="d-flex flex-wrap gap-1 m-1 p-1 indigo-command-row">
-										<button type="button" class="btn btn-svg idle-state" data-bs-toggle="tooltip" title="Create new script" aria-label="Create new script" @click="selectedProperty = null">
+										<button type="button" class="btn btn-svg idle-state" data-bs-toggle="tooltip" title="Create new script" aria-label="Create new script" @click="newScript()">
 											<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 												<path d="M18,6H14v8H6v4h8v8h4V18h8V14H18Z"/>
 											</svg>
 										</button>
-										<button type="button" class="btn btn-svg idle-state" :disabled="selectedProperty == null || selectedProperty.dirty" data-bs-toggle="tooltip" title="Delete script" aria-label="Delete script" @click="remove(selectedProperty)">
+										<button type="button" class="btn btn-svg idle-state" :disabled="selectedProperty == null || scriptDirty" data-bs-toggle="tooltip" title="Delete script" aria-label="Delete script" @click="deleteScript()">
 											<span class="glyphicons glyphicons-bin" aria-hidden="true"></span>
 										</button>
-										<button v-if="selectedProperty == null" type="button" class="btn btn-svg idle-state" :disabled="findProperty('Scripting Agent', 'AGENT_SCRIPTING_ADD_SCRIPT') == null" data-bs-toggle="tooltip" title="Save new script" aria-label="Save new script" @click="save(findProperty('Scripting Agent', 'AGENT_SCRIPTING_ADD_SCRIPT'))">
+										<button type="button" class="btn btn-svg idle-state" :disabled="!scriptDirty || scriptSaveProperty() == null" data-bs-toggle="tooltip" :title="selectedProperty == null ? 'Save new script' : 'Save script name and text'" :aria-label="selectedProperty == null ? 'Save new script' : 'Save script name and text'" @click="saveScript()">
 											<span class="glyphicons glyphicons-folder-open" aria-hidden="true"></span>
 										</button>
-										<button v-else type="button" class="btn btn-svg idle-state" data-bs-toggle="tooltip" title="Save script name and text" aria-label="Save script name and text" @click="save(selectedProperty); selectedProperty.dirty = false">
-											<span class="glyphicons glyphicons-folder-open" aria-hidden="true"></span>
-										</button>
-										<button type="button" class="btn btn-svg idle-state" :disabled="selectedProperty == null || findProperty('Scripting Agent', 'AGENT_SCRIPTING_ON_LOAD_SCRIPT') == null" data-bs-toggle="tooltip" title="Execute script on agent load" aria-label="Execute script on agent load" @click="onLoad(selectedProperty)">
+										<button type="button" class="btn btn-svg" :class="scriptOnLoadActive(selectedProperty) ? 'ok-state' : 'idle-state'" :disabled="selectedProperty == null || findProperty('Scripting Agent', 'AGENT_SCRIPTING_ON_LOAD_SCRIPT') == null" data-bs-toggle="tooltip" title="Execute script on agent load" aria-label="Execute script on agent load" @click="toggleScriptOnLoad(selectedProperty)">
 											<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 												<path d="M22.99933,9.46185V22.53821a.8.8,0,0,1-1.2312.67383L11.55219,16.67383a.8.8,0,0,1,0-1.34766L21.76813,8.788A.8.8,0,0,1,22.99933,9.46185ZM10,8H9A1,1,0,0,0,8,9V23a1,1,0,0,0,1,1h1a1,1,0,0,0,1-1V9A1,1,0,0,0,10,8Z"/>
 											</svg>
 										</button>
-										<button type="button" class="btn btn-svg idle-state" :disabled="selectedProperty == null || findProperty('Scripting Agent', 'AGENT_SCRIPTING_ON_UNLOAD_SCRIPT') == null" data-bs-toggle="tooltip" title="Execute script on agent unload" aria-label="Execute script on agent unload" @click="onUnload(selectedProperty)">
+										<button type="button" class="btn btn-svg" :class="scriptOnUnloadActive(selectedProperty) ? 'ok-state' : 'idle-state'" :disabled="selectedProperty == null || findProperty('Scripting Agent', 'AGENT_SCRIPTING_ON_UNLOAD_SCRIPT') == null" data-bs-toggle="tooltip" title="Execute script on agent unload" aria-label="Execute script on agent unload" @click="toggleScriptOnUnload(selectedProperty)">
 											<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 												<path d="M20.44781,15.32617a.8.8,0,0,1,0,1.34766L10.23187,23.212a.8.8,0,0,1-1.2312-.67383V9.46185a.8.8,0,0,1,1.2312-.67383ZM23,8H22a1,1,0,0,0-1,1V23a1,1,0,0,0,1,1h1a1,1,0,0,0,1-1V9A1,1,0,0,0,23,8Z"/>
 											</svg>
 										</button>
-										<button type="button" class="btn btn-svg idle-state ms-auto" :disabled="selectedProperty == null || selectedProperty.dirty" data-bs-toggle="tooltip" title="Execute script" aria-label="Execute script" @click="execute(selectedProperty)">
+										<button type="button" class="btn btn-svg idle-state ms-auto" :disabled="selectedProperty == null || scriptDirty" data-bs-toggle="tooltip" title="Execute script" aria-label="Execute script" @click="executeScript()">
 											<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 												<path d="M9,5V27L25,16Z"/>
 											</svg>
@@ -54,9 +51,9 @@
 								</div>
 								<div class="list-group m-1 p-1 overflow-auto" style="max-height: calc(100vh - 170px)">
 									<template v-for="property in scriptsProperties()" :key="property.name">
-										<button v-if="property.name!='AGENT_SCRIPTING_ADD_SCRIPT'" type="button" class="list-group-item list-group-item-action" :class="property == selectedProperty ? 'active ctrl-tree-selected' : ''" data-bs-toggle="tooltip" :title="property.label" @click="selectedProperty = property; property.dirty = false">
-											{{ property.label }}
-										</button>
+											<button v-if="property.name!='AGENT_SCRIPTING_ADD_SCRIPT'" type="button" class="list-group-item list-group-item-action" :class="property == selectedProperty ? 'active ctrl-tree-selected' : ''" data-bs-toggle="tooltip" :title="property.label" @click="selectScript(property)">
+												{{ property.label }}
+											</button>
 									</template>
 								</div>
 							</div>
@@ -64,7 +61,7 @@
 						<div class="col-xl-8">
 							<div class="card p-1 m-1 bg-light">
 								<form class="m-0">
-									<indigo-script-editor ref="scriptEditor" :property="selectedProperty" :dark="dark" @change="selectedProperty != null ? selectedProperty.dirty = true : false"></indigo-script-editor>
+										<indigo-script-editor ref="scriptEditor" :property="selectedProperty" :dark="dark" @change="scriptChanged()"></indigo-script-editor>
 								</form>
 							</div>
 						</div>
@@ -119,42 +116,5 @@
 			guiSetup();
 		}
 	
-		function onLoad(property) {
-			var values = {};
-			values[property.name] = !INDIGO.findProperty('Scripting Agent', 'AGENT_SCRIPTING_ON_LOAD_SCRIPT').item(property.name).value;
-			changeProperty('Scripting Agent', 'AGENT_SCRIPTING_ON_LOAD_SCRIPT', values);
-		}
-
-		function onUnload(property) {
-			var values = {};
-			values[property.name] = !INDIGO.findProperty('Scripting Agent', 'AGENT_SCRIPTING_ON_UNLOAD_SCRIPT').item(property.name).value;
-			changeProperty('Scripting Agent', 'AGENT_SCRIPTING_ON_UNLOAD_SCRIPT', values);
-		}
-
-			function save(property) {
-				if (property == null)
-					return;
-				var editor = INDIGO.$refs.scriptEditor;
-				if (editor == null)
-					return;
-				var values = {};
-				values['NAME'] = editor.getName()
-				values['SCRIPT'] = editor.getCode()
-				changeProperty('Scripting Agent', property.name, values);
-			}
-	
-		function remove(property) {
-			save(property);
-			var values = {};
-			values[property.name] = true;
-			changeProperty('Scripting Agent', 'AGENT_SCRIPTING_DELETE_SCRIPT', values);
-		}
-
-		function execute(property) {
-			save(property);
-			var values = {};
-			values[property.name] = true;
-			changeProperty('Scripting Agent', 'AGENT_SCRIPTING_EXECUTE_SCRIPT', values);
-		}
-	</script>
-</html>
+		</script>
+	</html>

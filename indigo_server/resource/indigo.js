@@ -12,6 +12,7 @@ var app = Vue.createApp({
 			dark: false,
 			columns: 3,
 			selectedProperty: null,
+			scriptDirty: false,
 			useAgent: false,
 			connected: false,
 			failed: false,
@@ -51,12 +52,95 @@ var app = Vue.createApp({
 			var property;
 			if ((property = properties['AGENT_SCRIPTING_ADD_SCRIPT']) != undefined)
 				result.push(property);
-			for (name in properties) {
+			for (var name in properties) {
 				var property = properties[name];
 				if (property.name.startsWith('AGENT_SCRIPTING_SCRIPT_'))
 					result.push(property);
 			}
 			return result.sort(compare);
+		},
+		newScript: function() {
+			this.selectedProperty = null;
+			this.scriptDirty = false;
+			if (this.$refs.scriptEditor != null)
+				this.$refs.scriptEditor.setProperty(null);
+		},
+		selectScript: function(property) {
+			this.selectedProperty = property;
+			this.scriptDirty = false;
+		},
+		scriptChanged: function() {
+			this.scriptDirty = true;
+		},
+		scriptSaveProperty: function() {
+			if (this.selectedProperty != null)
+				return this.selectedProperty;
+			return this.findProperty('Scripting Agent', 'AGENT_SCRIPTING_ADD_SCRIPT');
+		},
+		saveScript: function() {
+			var property = this.scriptSaveProperty();
+			if (property == null)
+				return false;
+			var editor = this.$refs.scriptEditor;
+			if (editor == null)
+				return false;
+			var values = {};
+			values['NAME'] = editor.getName();
+			values['SCRIPT'] = editor.getCode();
+			changeProperty('Scripting Agent', property.name, values);
+			this.scriptDirty = false;
+			return true;
+		},
+		deleteScript: function() {
+			var property = this.selectedProperty;
+			if (property == null)
+				return;
+			if (!this.saveScript())
+				return;
+			var values = {};
+			values[property.name] = true;
+			changeProperty('Scripting Agent', 'AGENT_SCRIPTING_DELETE_SCRIPT', values);
+			this.newScript();
+		},
+		executeScript: function() {
+			var property = this.selectedProperty;
+			if (property == null)
+				return;
+			if (!this.saveScript())
+				return;
+			var values = {};
+			values[property.name] = true;
+			changeProperty('Scripting Agent', 'AGENT_SCRIPTING_EXECUTE_SCRIPT', values);
+		},
+		scriptSwitchValue: function(propertyName, property) {
+			var scriptProperty = this.findProperty('Scripting Agent', propertyName);
+			if (scriptProperty == null || property == null)
+				return false;
+			var item = scriptProperty.item(property.name);
+			return item != null && item.value;
+		},
+		scriptOnLoadActive: function(property) {
+			return this.scriptSwitchValue('AGENT_SCRIPTING_ON_LOAD_SCRIPT', property);
+		},
+		scriptOnUnloadActive: function(property) {
+			return this.scriptSwitchValue('AGENT_SCRIPTING_ON_UNLOAD_SCRIPT', property);
+		},
+		toggleScriptSwitch: function(propertyName, property) {
+			var scriptProperty = this.findProperty('Scripting Agent', propertyName);
+			if (scriptProperty == null || property == null)
+				return;
+			var item = scriptProperty.item(property.name);
+			if (item == null)
+				return;
+			var values = {};
+			values[property.name] = !item.value;
+			changeProperty('Scripting Agent', propertyName, values);
+		},
+		toggleScriptOnLoad: function(property) {
+			this.toggleScriptSwitch('AGENT_SCRIPTING_ON_LOAD_SCRIPT', property);
+		},
+		toggleScriptOnUnload: function(property) {
+			this.toggleScriptSwitch('AGENT_SCRIPTING_ON_UNLOAD_SCRIPT', property);
 		}
 	}
 });
