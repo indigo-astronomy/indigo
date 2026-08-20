@@ -1170,7 +1170,7 @@ Source references: `indigo_ccd_driver.c` initializes and handles `CCD_PREVIEW`, 
 
 ---
 
-### Step 49 — Add astrometry web app shell and navigation
+### Step 49 — Add astrometry web app shell and navigation [DONE]
 
 **Files:** `astrometry.html`, `components.js`, `indigo_server.c`, `Makefile`, resource icon files if needed
 

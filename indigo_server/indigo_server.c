@@ -1858,6 +1858,15 @@ static void server_main() {
 			#include "resource/guider.png.data"
 			};
 			indigo_server_add_resource("/guider.png", guider_png, sizeof(guider_png), "image/png");
+			// INDIGO Astrometry
+			static unsigned char astrometry_html[] = {
+				#include "resource/astrometry.html.data"
+			};
+			indigo_server_add_resource("/astrometry.html", astrometry_html, sizeof(astrometry_html), "text/html");
+			static unsigned char astrometry_png[] = {
+				#include "resource/astrometry.png.data"
+			};
+			indigo_server_add_resource("/astrometry.png", astrometry_png, sizeof(astrometry_png), "image/png");
 			// INDIGO Script
 			static unsigned char script_html[] = {
 				#include "resource/script.html.data"

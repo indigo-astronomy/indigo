@@ -1973,6 +1973,7 @@ app.component('indigo-navbar', {
 				{ id: "imager", href: "imager.html", icon: "imager.png", title: "Imager" },
 				{ id: "mount", href: "mount.html", icon: "mount.png", title: "Mount" },
 				{ id: "guider", href: "guider.html", icon: "guider.png", title: "Guider" },
+				{ id: "astrometry", href: "astrometry.html", icon: "astrometry.png", title: "Astrometry" },
 				{ id: "script", href: "script.html", icon: "script.png", title: "Script" }
 			]
 		};
