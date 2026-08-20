@@ -77,9 +77,25 @@ static indigo_device *guider = NULL;
 static bool mxhd_send(indigo_device *device, const char *command);
 static bool set_tracking(indigo_device *device, bool enabled);
 static void update_mount_state_property(indigo_device *device);
+static void motor_recovery_ready_callback(indigo_device *device);
 
 static void clear_motor_recovery_alert(void) {
 	if (private_data->motor_recovery_alert_device != NULL && private_data->motor_recovery_alert_property != NULL && private_data->motor_recovery_alert_property->state == INDIGO_ALERT_STATE) {
+		if (!strcmp(private_data->motor_recovery_alert_property->name, MOUNT_MOTION_DEC_PROPERTY_NAME)) {
+			private_data->motor_recovery_alert_property->items[0].sw.value = false;
+			private_data->motor_recovery_alert_property->items[1].sw.value = false;
+		} else if (!strcmp(private_data->motor_recovery_alert_property->name, MOUNT_MOTION_RA_PROPERTY_NAME)) {
+			private_data->motor_recovery_alert_property->items[0].sw.value = false;
+			private_data->motor_recovery_alert_property->items[1].sw.value = false;
+		} else if (!strcmp(private_data->motor_recovery_alert_property->name, MOUNT_HOME_PROPERTY_NAME)) {
+			private_data->motor_recovery_alert_property->items[0].sw.value = false;
+		} else if (!strcmp(private_data->motor_recovery_alert_property->name, GUIDER_GUIDE_RA_PROPERTY_NAME)) {
+			private_data->motor_recovery_alert_property->items[0].number.value = 0;
+			private_data->motor_recovery_alert_property->items[1].number.value = 0;
+		} else if (!strcmp(private_data->motor_recovery_alert_property->name, GUIDER_GUIDE_DEC_PROPERTY_NAME)) {
+			private_data->motor_recovery_alert_property->items[0].number.value = 0;
+			private_data->motor_recovery_alert_property->items[1].number.value = 0;
+		}
 		private_data->motor_recovery_alert_property->state = INDIGO_OK_STATE;
 		indigo_update_property(private_data->motor_recovery_alert_device, private_data->motor_recovery_alert_property, "Motor recovery ready");
 	}
@@ -100,6 +116,7 @@ static bool ensure_motor_recovery(indigo_device *device, indigo_property *proper
 		PRIVATE_DATA->motor_recovery_alert_device = device;
 		PRIVATE_DATA->motor_recovery_alert_property = property;
 		indigo_update_property(device, property, message);
+		indigo_execute_handler_in(device->master_device, remaining + 0.1, motor_recovery_ready_callback);
 		return false;
 	}
 	if (mxhd_send(device, "@ME1#")) {
@@ -132,6 +149,20 @@ static void update_motor_recovery_property(indigo_device *device) {
 		indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Motor recovery ready");
 		clear_motor_recovery_alert();
 	}
+}
+
+static void motor_recovery_ready_callback(indigo_device *device) {
+	if (PRIVATE_DATA->motor_recovery_until == 0) {
+		clear_motor_recovery_alert();
+		update_mount_state_property(device);
+		return;
+	}
+	double remaining = difftime(PRIVATE_DATA->motor_recovery_until, time(NULL));
+	if (remaining > 0) {
+		indigo_execute_handler_in(device, remaining + 0.1, motor_recovery_ready_callback);
+		return;
+	}
+	update_mount_state_property(device);
 }
 
 static void update_mount_state_property(indigo_device *device) {
