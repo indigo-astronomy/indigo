@@ -576,6 +576,10 @@ input {
 	line-height: 1;
 }
 
+.indigo-script-delete-icon {
+	transform: scale(0.8);
+}
+
 #graph_drift {
 	border: none;
 	width: 100%;

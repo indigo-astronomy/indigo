@@ -26,7 +26,7 @@
 											</svg>
 										</button>
 										<button type="button" class="btn btn-svg idle-state" :disabled="selectedProperty == null || scriptDirty || sequenceRunning()" data-bs-toggle="tooltip" title="Delete script" aria-label="Delete script" @click="deleteScript()">
-											<span class="glyphicons glyphicons-bin" aria-hidden="true"></span>
+											<span class="glyphicons glyphicons-bin indigo-script-delete-icon" aria-hidden="true"></span>
 										</button>
 										<button type="button" class="btn btn-svg" :class="scriptOnLoadActive(selectedProperty) ? 'ok-state' : 'idle-state'" :disabled="selectedProperty == null || isSequenceScript(selectedProperty) || findProperty('Scripting Agent', 'AGENT_SCRIPTING_ON_LOAD_SCRIPT') == null || sequenceRunning()" data-bs-toggle="tooltip" title="Execute script on agent load" aria-label="Execute script on agent load" @click="toggleScriptOnLoad(selectedProperty)">
 											<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
@@ -92,9 +92,11 @@
 											</div>
 										</div>
 								</div>
+							</div>
+							<div class="card p-1 m-1 mt-2 bg-light">
 								<div class="list-group indigo-script-list m-1 p-1 overflow-auto" :class="sequenceRunning() ? 'pe-none opacity-50' : ''" style="max-height: calc(100vh - 170px)">
 									<template v-for="property in scriptsProperties()" :key="property.name">
-											<button v-if="property.name!='AGENT_SCRIPTING_ADD_SCRIPT'" type="button" class="list-group-item list-group-item-action" :class="property == selectedProperty ? 'ctrl-tree-selected' : ''" @click="selectScript(property)">
+											<button v-if="property.name!='AGENT_SCRIPTING_ADD_SCRIPT'" type="button" class="list-group-item list-group-item-action" :class="property == selectedProperty ? 'ctrl-tree-selected' : ''" data-bs-toggle="tooltip" :title="'Select ' + sequenceScriptDisplayLabel(property)" @click="selectScript(property)">
 												{{ sequenceScriptDisplayLabel(property) }}<span v-if="isSequenceScript(property)" class="badge bg-secondary" style="float:right;margin-right:1.2rem">sequence</span>
 											</button>
 									</template>
