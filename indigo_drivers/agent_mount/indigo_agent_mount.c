@@ -1642,6 +1642,13 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 			indigo_update_property(device, AGENT_DOME_STATE_PROPERTY, NULL);
 		}
 		CLIENT_PRIVATE_DATA->dome_horizontal_coordinates_state = property->state;
+		/*
+		 Unlike ROTATOR_POSITION this does not call handle_mount_change() to refresh
+		 AGENT_MOUNT_STATE immediately, so DOME_SLAVING follows with the next mount
+		 coordinates or LST update (up to about a second later). This is not crucial -
+		 the delay only affects the reported state, not the slaving itself, so no frames
+		 are ruined and the telescope keeps looking through the slit.
+		*/
 	} else if (!strcmp(property->name, FILTER_GPS_LIST_PROPERTY_NAME)) { // Snoop GPS
 		if (INDIGO_FILTER_GPS_SELECTED) {
 			for (int i = 1; i < property->count; i++) {
