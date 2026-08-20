@@ -239,6 +239,14 @@ app.config.globalProperties.$ = $;
 app.config.globalProperties.window = window;
 var INDIGO = null;
 
+function setState(msg) {
+	var d = new Date();
+	var h = d.getHours().toString().padStart(2, '0');
+	var m = d.getMinutes().toString().padStart(2, '0');
+	var s = d.getSeconds().toString().padStart(2, '0');
+	INDIGO.state = '[' + h + ':' + m + ':' + s + '] ' + msg;
+}
+
 function init() {
 	websocket = new WebSocket(indigoURL);
 	websocket.onopen = onOpen;
@@ -249,7 +257,7 @@ function init() {
 }
 
 function onOpen(evt) {
-	INDIGO.state = 'Connected to ' + indigoURL.host;
+	setState('Connected to ' + indigoURL.host);
 	INDIGO.host = indigoURL.host;
 	INDIGO.connected = true;
 	INDIGO.failed = false;
@@ -258,7 +266,7 @@ function onOpen(evt) {
 
 function onClose(evt) {
 	INDIGO.devices = { };
-	INDIGO.state = 'Lost connection to ' + indigoURL.host;
+	setState('Lost connection to ' + indigoURL.host);
 	INDIGO.connected = false;
 	INDIGO.failed = true;
 	INDIGO.message = false;
@@ -266,7 +274,7 @@ function onClose(evt) {
 }
 
 function onError(evt) {
-	INDIGO.state = 'Error' + evt;
+	setState('Error' + evt);
 	INDIGO.connected = false;
 	INDIGO.failed = true;
 	INDIGO.message = false;
@@ -302,7 +310,7 @@ function onMessage(evt) {
 	} else if ((property = message["deleteProperty"]) != null) {
 		processDeleteProperty(property);
 	} else if ((msg = message["message"]) != null) {
-		INDIGO.state = msg;
+		setState(msg);
 		INDIGO.connected = false;
 		INDIGO.failed = false;
 		INDIGO.message = true;
@@ -411,7 +419,7 @@ function processUpdateProperty(property) {
 			savedProperty.state = property.state;
 			savedProperty.message = property.message;
 			if (property.message != null) {
-				INDIGO.state = property.message;
+				setState(property.message);
 				INDIGO.connected = false;
 				INDIGO.failed = false;
 				INDIGO.message = true;
