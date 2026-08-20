@@ -321,7 +321,7 @@ static void mount_dome_control(indigo_device *device, bool control_mount, bool c
 		double rotation_diff = fabs(indigo_angle_difference(DEVICE_PRIVATE_DATA->rotator_position, target_rotator_position));
 		if (rotation_diff >= 0.005) {
 			indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device->name, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, target_rotator_position);
-			AGENT_MOUNT_STATE_SLAVED_ROTATOR_ITEM->light.value = INDIGO_BUSY_STATE;
+			AGENT_MOUNT_STATE_SLAVED_ROTATOR_ITEM->light.value = INDIGO_IDLE_STATE;
 			indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
 		} else {
 			control_rotator = false;
@@ -395,22 +395,22 @@ static void mount_dome_control(indigo_device *device, bool control_mount, bool c
 		AGENT_DOME_START_SLEW_ITEM->sw.value = AGENT_DOME_START_SYNC_ITEM->sw.value = false;
 	}
 	if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
-		AGENT_MOUNT_STATE_SLAVED_DOME_ITEM->light.value = AGENT_MOUNT_STATE_SLAVED_ROTATOR_ITEM->light.value = INDIGO_IDLE_STATE;
-		indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
 		AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 		AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 		indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
-	} else if ((control_mount && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_OK_STATE) || (control_dome && DEVICE_PRIVATE_DATA->dome_horizontal_coordinates_state != INDIGO_OK_STATE) || (control_rotator && DEVICE_PRIVATE_DATA->rotator_position_state != INDIGO_OK_STATE)) {
-		AGENT_MOUNT_STATE_SLAVED_DOME_ITEM->light.value = AGENT_MOUNT_STATE_SLAVED_ROTATOR_ITEM->light.value = INDIGO_ALERT_STATE;
-		indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
-		AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
-	} else {
 		AGENT_MOUNT_STATE_SLAVED_DOME_ITEM->light.value = AGENT_MOUNT_STATE_SLAVED_ROTATOR_ITEM->light.value = INDIGO_IDLE_STATE;
 		indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
+	} else if ((control_mount && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_OK_STATE) || (control_dome && DEVICE_PRIVATE_DATA->dome_horizontal_coordinates_state != INDIGO_OK_STATE) || (control_rotator && DEVICE_PRIVATE_DATA->rotator_position_state != INDIGO_OK_STATE)) {
+		AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
+		AGENT_MOUNT_STATE_SLAVED_DOME_ITEM->light.value = AGENT_MOUNT_STATE_SLAVED_ROTATOR_ITEM->light.value = INDIGO_ALERT_STATE;
+		indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
+	} else {
 		AGENT_START_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
+		AGENT_MOUNT_STATE_SLAVED_DOME_ITEM->light.value = AGENT_MOUNT_STATE_SLAVED_ROTATOR_ITEM->light.value = INDIGO_IDLE_STATE;
+		indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
 	}
 }
 
@@ -1701,6 +1701,7 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 			CLIENT_PRIVATE_DATA->rotator_position_state = INDIGO_IDLE_STATE;
 		}
 	} else if (!strcmp(property->name, ROTATOR_POSITION_PROPERTY_NAME)) {
+		indigo_property_state previous_state = CLIENT_PRIVATE_DATA->rotator_position_state;
 		CLIENT_PRIVATE_DATA->rotator_position_state = property->state;
 		if (property->state == INDIGO_OK_STATE) {
 			for (int i = 0; i < property->count; i++) {
@@ -1711,6 +1712,10 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 					break;
 				}
 			}
+		}
+		/* update AGENT_MOUNT_STATE immediately to keep Rotator state in sync */
+		if (previous_state != CLIENT_PRIVATE_DATA->rotator_position_state) {
+			handle_mount_change(device);
 		}
 	} else if (property->state == INDIGO_OK_STATE && AGENT_MOUNT_ENABLE_JOYSTICK_CONTROL_ITEM->sw.value && !strcmp(property->name, "JOYSTICK_" MOUNT_PARK_PROPERTY_NAME)) {
 		for (int i = 0; i < property->count; i++) {
