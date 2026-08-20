@@ -1152,7 +1152,7 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 						}
 						if (INDIGO_FILTER_ROTATOR_SELECTED && AGENT_MOUNT_ENABLE_FIELD_DEROTATION_ITEM->sw.value) {
 							DEVICE_PRIVATE_DATA->initial_frame_rotation = DEVICE_PRIVATE_DATA->rotator_position - AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM->number.value;
-							indigo_send_message(device, IDLE_PROPERTY, "Frame derotation is active");
+							indigo_send_message(device, IDLE_PROPERTY, "Field derotation is active");
 						}
 						CLIENT_PRIVATE_DATA->selected_mount_index = i;
 						indigo_update_property(device, AGENT_MOUNT_FEATURES_PROPERTY, NULL);
@@ -1168,7 +1168,7 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 				indigo_send_message(device, IDLE_PROPERTY, "Dome slaving is inactive");
 			}
 			if (INDIGO_FILTER_ROTATOR_SELECTED && AGENT_MOUNT_ENABLE_FIELD_DEROTATION_ITEM->sw.value) {
-				indigo_send_message(device, IDLE_PROPERTY, "Frame derotation is inactive");
+				indigo_send_message(device, IDLE_PROPERTY, "Field derotation is inactive");
 			}
 			CLIENT_PRIVATE_DATA->mount_side_of_pier = 0;
 			CLIENT_PRIVATE_DATA->equatorial_coordinates_defined = false;
@@ -1687,7 +1687,9 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 						CLIENT_PRIVATE_DATA->selected_rotator_index = i;
 						if (INDIGO_FILTER_MOUNT_SELECTED && AGENT_MOUNT_ENABLE_FIELD_DEROTATION_ITEM->sw.value) {
 							DEVICE_PRIVATE_DATA->initial_frame_rotation = DEVICE_PRIVATE_DATA->rotator_position - AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM->number.value;
-							indigo_send_message(device, IDLE_PROPERTY, "Frame derotation is active");
+							indigo_send_message(device, IDLE_PROPERTY, "Field derotation is active");
+						} else {
+							indigo_send_message(device, IDLE_PROPERTY, "Field derotation is inactive");
 						}
 					}
 					break;
@@ -1695,7 +1697,7 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 			}
 		} else if (CLIENT_PRIVATE_DATA->selected_rotator_index != 0) {
 			if (INDIGO_FILTER_MOUNT_SELECTED && AGENT_MOUNT_ENABLE_FIELD_DEROTATION_ITEM->sw.value) {
-				indigo_send_message(device, IDLE_PROPERTY, "Frame derotation is inactive");
+				indigo_send_message(device, IDLE_PROPERTY, "Field derotation is inactive");
 			}
 			CLIENT_PRIVATE_DATA->selected_rotator_index = 0;
 			CLIENT_PRIVATE_DATA->rotator_position_state = INDIGO_IDLE_STATE;
@@ -2159,13 +2161,20 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_PROCESS_FEATURES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AGENT_PROCESS_FEATURES
+		/* remember the state before the update so that the messages are sent on change only */
+		bool was_dome_slaving = AGENT_MOUNT_ENABLE_DOME_SLAVING_ITEM->sw.value;
+		bool was_derotating = AGENT_MOUNT_ENABLE_FIELD_DEROTATION_ITEM->sw.value;
 		indigo_property_copy_values(AGENT_PROCESS_FEATURES_PROPERTY, property, false);
-		if (AGENT_MOUNT_ENABLE_DOME_SLAVING_ITEM->sw.value && INDIGO_FILTER_MOUNT_SELECTED && INDIGO_FILTER_DOME_SELECTED) {
-			indigo_send_message(device, IDLE_PROPERTY, "Dome sleving is active");
+		if (AGENT_MOUNT_ENABLE_DOME_SLAVING_ITEM->sw.value != was_dome_slaving && INDIGO_FILTER_MOUNT_SELECTED && INDIGO_FILTER_DOME_SELECTED) {
+			indigo_send_message(device, IDLE_PROPERTY, AGENT_MOUNT_ENABLE_DOME_SLAVING_ITEM->sw.value ?
+				"Dome slaving is active" : "Dome slaving is inactive");
 		}
-		if (AGENT_MOUNT_ENABLE_FIELD_DEROTATION_ITEM->sw.value && INDIGO_FILTER_MOUNT_SELECTED && INDIGO_FILTER_ROTATOR_SELECTED) {
-			indigo_send_message(device, IDLE_PROPERTY, "Frame derotation is active");
-			DEVICE_PRIVATE_DATA->initial_frame_rotation = DEVICE_PRIVATE_DATA->rotator_position - AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM->number.value;
+		if (AGENT_MOUNT_ENABLE_FIELD_DEROTATION_ITEM->sw.value != was_derotating && INDIGO_FILTER_MOUNT_SELECTED && INDIGO_FILTER_ROTATOR_SELECTED) {
+			indigo_send_message(device, IDLE_PROPERTY, AGENT_MOUNT_ENABLE_FIELD_DEROTATION_ITEM->sw.value ?
+				"Field derotation is active" : "Field derotation is inactive");
+			if (AGENT_MOUNT_ENABLE_FIELD_DEROTATION_ITEM->sw.value) {
+				DEVICE_PRIVATE_DATA->initial_frame_rotation = DEVICE_PRIVATE_DATA->rotator_position - AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM->number.value;
+			}
 		}
 		AGENT_PROCESS_FEATURES_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_PROCESS_FEATURES_PROPERTY, NULL);
