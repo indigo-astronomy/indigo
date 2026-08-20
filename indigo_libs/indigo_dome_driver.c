@@ -366,13 +366,10 @@ bool indigo_fix_dome_azimuth(indigo_device *device, double ra, double dec, doubl
 		double lst = indigo_lst(&utc, DOME_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
 		double ha = map24(lst - ra);
 		*az = indigo_dome_solve_azimuth(ha, dec, DOME_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, DOME_RADIUS_ITEM->number.value, DOME_MOUNT_PIVOT_VERTICAL_OFFSET_ITEM->number.value, DOME_MOUNT_PIVOT_OTA_OFFSET_ITEM->number.value, DOME_MOUNT_PIVOT_OFFSET_NS_ITEM->number.value, DOME_MOUNT_PIVOT_OFFSET_EW_ITEM->number.value);
-		double diff = indigo_azimuth_distance(az_prev, *az);
-		if (diff >= threshold) {
-			update_needed = true;
-		} else {
-			update_needed = false;
-		}
 		*az = round(*az * 100) / 100;
+		double diff = indigo_azimuth_distance(az_prev, *az);
+		/* the slaving threshold is hysteresis for slewing, it must not suppress a sync */
+		update_needed = diff >= threshold || DOME_ON_COORDINATES_SET_SYNC_ITEM->sw.value;
 	}
 	return update_needed;
 }

@@ -127,9 +127,21 @@ double indigo_dome_solve_azimuth(double ha, double dec, double site_latitude, do
 		}
 	}
 
+	/*
+	The pivot offsets are given by the user in absolute compass terms (+N/-S and
+	+E/-W) but x and y are hemisphere dependent (x is +E and y is +N for +lat,
+	x is +W and y is +S for -lat) so they have to be mirrored for -lat.
+	*/
+	double offset_NS = mount_dec_offset_NS;
+	double offset_EW = mount_dec_offset_EW;
+	if (site_latitude < 0) {
+		offset_NS = -offset_NS;
+		offset_EW = -offset_EW;
+	}
+
 	/* Find the dome coordinates of the OTA reference point for a German equatorial */
-	x0 = mount_dec_length * sin(phi) + mount_dec_offset_EW;
-	y0 = -mount_dec_length * cos(phi) * sin(theta) + mount_dec_offset_NS;
+	x0 = mount_dec_length * sin(phi) + offset_EW;
+	y0 = -mount_dec_length * cos(phi) * sin(theta) + offset_NS;
 	z0 = mount_dec_length * cos(phi) * cos(theta) + mount_dec_height;
 
 	/*
@@ -200,11 +212,13 @@ int main(int argc, char *argv[]) {
 	if (argc != 3) return 1;
 	double ha = atof(argv[1]);
 	double dec = atof(argv[2]);
-	//solve_dome_azimuth(ha, dec, site_latitude, dome_radius, mount_dec_height, mount_dec_length, mount_dec_offset, mount_is_gem)
-	double daz = indigo_dome_solve_azimuth(ha, dec, -38.3334, 1.75, 0, 0.6, 0.24);
-	printf("daz=%.2f\n", daz);
-	daz = indigo_dome_solve_azimuth(ha, dec, -38.3334, 1.75, 0, 0.6, 0.24);
-	printf("daz=%.2f\n", daz);
+	/* indigo_dome_solve_azimuth(ha, dec, site_latitude, dome_radius, mount_dec_height, mount_dec_length, mount_dec_offset_NS, mount_dec_offset_EW) */
+	double daz = indigo_dome_solve_azimuth(ha, dec, -38.3334, 1.75, 0, 0.6, 0.24, 0);
+	printf("southern daz=%.2f\n", daz);
+	/* the mirrored northern site should give 180 - daz */
+	daz = indigo_dome_solve_azimuth(ha, -dec, 38.3334, 1.75, 0, 0.6, 0.24, 0);
+	printf("northern daz=%.2f\n", daz);
+	return 0;
 }
 
 #endif /* _TEST_ */
