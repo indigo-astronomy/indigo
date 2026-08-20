@@ -2192,6 +2192,85 @@ app.component('indigo-status-button', {
 });
 
 
+app.component('indigo-script-editor', {
+	props: {
+		property: Object,
+		dark: Boolean
+	},
+	emits: [ 'change' ],
+	data: function() {
+		return {
+			cm: null,
+			loading: false
+		};
+	},
+	mounted: function() {
+		this.cm = CodeMirror(this.$refs.editor, {
+			mode: 'javascript',
+			lineNumbers: true,
+			gutters: [ 'CodeMirror-lint-markers' ],
+			lint: { esversion: 11 },
+			theme: this.dark ? 'darcula' : 'default'
+		});
+		this.cm.on('change', this.editorChanged);
+		this.setProperty(this.property);
+		guiSetup();
+	},
+	beforeUnmount: function() {
+		if (this.cm != null && typeof this.cm.toTextArea == "function")
+			this.cm.toTextArea();
+		this.cm = null;
+	},
+	watch: {
+		property: function(value) {
+			this.setProperty(value);
+		},
+		dark: function(value) {
+			if (this.cm != null)
+				this.cm.setOption('theme', value ? 'darcula' : 'default');
+		}
+	},
+	methods: {
+		setProperty: function(property) {
+			var name = property == null ? "" : property.label;
+			var script = "";
+			if (property != null) {
+				var scriptItem = property.item('SCRIPT');
+				if (scriptItem != null && scriptItem.value != null)
+					script = scriptItem.value;
+			}
+			if (this.$refs.nameInput != null)
+				this.$refs.nameInput.value = name;
+			if (this.cm != null) {
+				this.loading = true;
+				this.cm.setValue(script);
+				this.cm.clearHistory();
+				this.loading = false;
+			}
+		},
+		editorChanged: function() {
+			if (!this.loading)
+				this.$emit('change');
+		},
+		inputChanged: function() {
+			this.$emit('change');
+		},
+		getName: function() {
+			return this.$refs.nameInput == null ? "" : this.$refs.nameInput.value;
+		},
+		getCode: function() {
+			return this.cm == null ? "" : this.cm.getValue();
+		}
+	},
+	template: `
+		<div class="indigo-script-editor">
+			<input ref="nameInput" type="text" class="form-control mb-1" placeholder="Script name" data-bs-toggle="tooltip" title="Script name" @input="inputChanged">
+			<div id="script-editor" ref="editor" data-bs-toggle="tooltip" title="Script text"></div>
+		</div>
+		`
+});
+
+
 app.component('indigo-guider-graph', {
 	data: function() {
 		return {

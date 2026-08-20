@@ -998,7 +998,7 @@ Introduce a reactive `selectedProperty` variable in the root Vue app (or inline 
 
 ---
 
-### Step 42 — Create `indigo-script-editor` Vue component in `components.js`
+### Step 42 — Create `indigo-script-editor` Vue component in `components.js` [DONE]
 
 **Files:** `components.js`
 

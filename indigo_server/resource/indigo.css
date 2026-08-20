@@ -488,10 +488,24 @@ input {
 	height: 2.5rem;
 }
 
-.btn-svg svg {
+.btn-svg svg,
+.btn-svg .glyphicons {
 	vertical-align: middle;
 	width: 1.5rem;
 	height: 1.5rem;
+}
+
+.btn-svg .glyphicons {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 1.25rem;
+	line-height: 1;
+}
+
+.btn-svg .glyphicons:before {
+	padding: 0;
+	line-height: 1;
 }
 
 #graph_drift {
