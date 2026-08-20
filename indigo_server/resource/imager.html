@@ -480,7 +480,7 @@
 				if (property.name == "AGENT_IMAGER_BATCH" && property.state == "Ok") {
 					changeProperty("Imager Agent", "CCD_PREVIEW", { "ENABLED_WITH_HISTOGRAM" : true });
 				} else if (property.name == "FILTER_RELATED_AGENT_LIST" && property.state == "Ok") {
-					changeProperty("Imager Agent", "FILTER_RELATED_AGENT_LIST", { "Guider Agent" : true });
+					changeProperty("Imager Agent", "FILTER_RELATED_AGENT_LIST", { "Guider Agent" : true, "Mount Agent" : true, "Astrometry Agent" : true });
 				}
 			}
 			guiSetup();

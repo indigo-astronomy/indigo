@@ -1136,6 +1136,21 @@ For non-sequence scripts, `executeScript()` skips the fetch/pre-execution step e
 
 ---
 
+### Step 47 — Auto-select related agents on agent pages [DONE]
+
+**Files:** `imager.html`, `mount.html`, `guider.html`
+
+Each agent has a `FILTER_RELATED_AGENT_LIST` switch property. Do not show a related-agents section in the left column; the related agents are fixed by the page workflow and should be selected automatically when the property is defined.
+
+Requirements:
+- In `imager.html`, when `Imager Agent` defines `FILTER_RELATED_AGENT_LIST` with `Ok` state, select `Guider Agent`, `Mount Agent`, and `Astrometry Agent`.
+- In `mount.html`, when `Mount Agent` defines `FILTER_RELATED_AGENT_LIST` with `Ok` state, select `Astrometry Agent`, `Guider Agent`, and `Imager Agent`.
+- In `guider.html`, when `Guider Agent` defines `FILTER_RELATED_AGENT_LIST` with `Ok` state, select `Imager Agent` and `Mount Agent`.
+- Keep these hooks in `onDefineProperty()` so they run as soon as the related-agent switch list is available.
+- Do not add a visible related-agent UI section or a shared related-agent component; the automatic hooks are the complete behavior.
+
+---
+
 ## Dependency Summary After Refactoring
 
 | Library | Before | After |
@@ -1159,4 +1174,5 @@ Steps can be batched into four commits for review:
 6. **Mount UI** (Steps 35–36): Move target coordinates to `AGENT_MOUNT_TARGET_COORDINATES`, current-coordinate/derived status displays to `AGENT_MOUNT_DISPLAY_COORDINATES`, and mount actions to `AGENT_START_PROCESS`
 7. **Control panel UI** (Steps 37–38): Extract `indigo-ctrl-property-body` component, then add two-column wide-layout navigation (tree left / content panel right) to `ctrl.html`
 8. **Visual polish** (Step 39): Switch default appearance to dark, darken state colours and status bar
-9. **Script editor UI** (Steps 40–45): Remove CodeMirror/JSHint; redesign script.html as two-column layout; create `indigo-script-editor` Vue component with a plain textarea; implement action toolbar and script list; remove jQuery DOM reads; polish editor height, dark mode and dirty indicator
+9. **Script editor UI** (Steps 40–46): Remove CodeMirror/JSHint; redesign script.html as two-column layout; create `indigo-script-editor` Vue component with a plain textarea; implement action toolbar and script list; remove jQuery DOM reads; polish editor height, dark mode and dirty indicator; add Sequencer script handling
+10. **Related agents** (Step 47): Auto-select each page's related agents when `FILTER_RELATED_AGENT_LIST` is defined
