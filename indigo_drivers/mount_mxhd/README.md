@@ -62,6 +62,7 @@ MX-HD HOME/PARK operations include an initial sequence which cannot be interrupt
 To implement Abort during these operations, the driver disables motor excitation.
 After aborting HOME/PARK/UNPARK this way, the driver blocks all motion-related commands for 90 seconds.
 After this safety interval, the driver re-enables motor excitation with `@ME1#` before the next motion-related command.
+During the 90-second safety interval, the recovery state is shown as Busy in the INDIGO state properties.
 
 ## Status: Tested
 

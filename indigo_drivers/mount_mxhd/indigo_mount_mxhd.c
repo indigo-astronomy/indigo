@@ -74,6 +74,7 @@ static indigo_device *guider = NULL;
 
 static bool mxhd_send(indigo_device *device, const char *command);
 static bool set_tracking(indigo_device *device, bool enabled);
+static void update_mount_state_property(indigo_device *device);
 
 static bool ensure_motor_recovery(indigo_device *device, indigo_property *property) {
 	if (PRIVATE_DATA->motor_recovery_until == 0) {
@@ -90,11 +91,32 @@ static bool ensure_motor_recovery(indigo_device *device, indigo_property *proper
 	}
 	if (mxhd_send(device, "@ME1#")) {
 		PRIVATE_DATA->motor_recovery_until = 0;
+		update_mount_state_property(device);
 		return true;
 	}
 	property->state = INDIGO_ALERT_STATE;
 	indigo_update_property(device, property, "Motor recovery failed");
 	return false;
+}
+
+static void update_motor_recovery_property(indigo_device *device) {
+	if (PRIVATE_DATA->motor_recovery_until == 0) {
+		if (MOUNT_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE) {
+			MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Motor recovery ready");
+		}
+		return;
+	}
+	double remaining = difftime(PRIVATE_DATA->motor_recovery_until, time(NULL));
+	if (remaining > 0) {
+		char message[128];
+		snprintf(message, sizeof(message), "Motor recovery after abort, wait %.0f s", remaining);
+		MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, message);
+	} else {
+		MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Motor recovery ready");
+	}
 }
 
 static void update_mount_state_property(indigo_device *device) {
@@ -114,7 +136,9 @@ static void update_mount_state_property(indigo_device *device) {
 	} else {
 		MOUNT_STATE_PARK_ITEM->light.value = INDIGO_IDLE_STATE;
 	}
-	if (PRIVATE_DATA->going_home) {
+	if (PRIVATE_DATA->motor_recovery_until != 0 && difftime(PRIVATE_DATA->motor_recovery_until, time(NULL)) > 0) {
+		MOUNT_STATE_HOME_ITEM->light.value = INDIGO_BUSY_STATE;
+	} else if (PRIVATE_DATA->going_home) {
 		MOUNT_STATE_HOME_ITEM->light.value = INDIGO_BUSY_STATE;
 	} else if (MOUNT_HOME_PROPERTY->state == INDIGO_ALERT_STATE) {
 		MOUNT_STATE_HOME_ITEM->light.value = INDIGO_ALERT_STATE;
@@ -132,6 +156,7 @@ static void update_mount_state_property(indigo_device *device) {
 	}
 	MOUNT_STATE_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
+	update_motor_recovery_property(device);
 }
 
 static void update_tracking_property(indigo_device *device, const char *message) {
