@@ -127,8 +127,8 @@
 #define AGENT_MOUNT_ENABLE_TIME_LIMIT_FEATURE_ITEM		(AGENT_PROCESS_FEATURES_PROPERTY->items+1)
 #define AGENT_MOUNT_ENABLE_DOME_SLAVING_ITEM					(AGENT_PROCESS_FEATURES_PROPERTY->items+2)
 #define AGENT_MOUNT_MAKE_DOME_SLAVING_PERSISTENT_ITEM	(AGENT_PROCESS_FEATURES_PROPERTY->items+3)
-#define AGENT_MOUNT_ENABLE_DEROTATION_ITEM						(AGENT_PROCESS_FEATURES_PROPERTY->items+4)
-#define AGENT_MOUNT_MAKE_DEROTATION_PERSISTENT_ITEM		(AGENT_PROCESS_FEATURES_PROPERTY->items+5)
+#define AGENT_MOUNT_ENABLE_FIELD_DEROTATION_ITEM						(AGENT_PROCESS_FEATURES_PROPERTY->items+4)
+#define AGENT_MOUNT_MAKE_FIELD_DEROTATION_PERSISTENT_ITEM		(AGENT_PROCESS_FEATURES_PROPERTY->items+5)
 #define AGENT_MOUNT_ENABLE_JOYSTICK_CONTROL_ITEM			(AGENT_PROCESS_FEATURES_PROPERTY->items+6)
 
 #define AGENT_MOUNT_STATE_PROPERTY										(DEVICE_PRIVATE_DATA->agent_mount_state_property)
@@ -136,8 +136,8 @@
 #define AGENT_MOUNT_STATE_PARK_ITEM										(AGENT_MOUNT_STATE_PROPERTY->items+1)
 #define AGENT_MOUNT_STATE_HOME_ITEM										(AGENT_MOUNT_STATE_PROPERTY->items+2)
 #define AGENT_MOUNT_STATE_TRACKING_ITEM								(AGENT_MOUNT_STATE_PROPERTY->items+3)
-#define AGENT_MOUNT_STATE_SLAVED_DOME_ITEM						(AGENT_MOUNT_STATE_PROPERTY->items+4)
-#define AGENT_MOUNT_STATE_SLAVED_ROTATOR_ITEM					(AGENT_MOUNT_STATE_PROPERTY->items+5)
+#define AGENT_MOUNT_STATE_DOME_SLAVING_ITEM						(AGENT_MOUNT_STATE_PROPERTY->items+4)
+#define AGENT_MOUNT_STATE_FIELD_DEROTATION_ITEM					(AGENT_MOUNT_STATE_PROPERTY->items+5)
 
 #define AGENT_DOME_STATE_PROPERTY											(DEVICE_PRIVATE_DATA->agent_dome_state_property)
 #define AGENT_DOME_STATE_SLEW_ITEM										(AGENT_DOME_STATE_PROPERTY->items+0)
@@ -221,12 +221,12 @@ static void save_config(indigo_device *device) {
 		if (!AGENT_MOUNT_MAKE_DOME_SLAVING_PERSISTENT_ITEM->sw.value) {
 			AGENT_MOUNT_ENABLE_DOME_SLAVING_ITEM->sw.value = false;
 		}
-		if (!AGENT_MOUNT_MAKE_DEROTATION_PERSISTENT_ITEM->sw.value) {
-			AGENT_MOUNT_ENABLE_DEROTATION_ITEM->sw.value = false;
+		if (!AGENT_MOUNT_MAKE_FIELD_DEROTATION_PERSISTENT_ITEM->sw.value) {
+			AGENT_MOUNT_ENABLE_FIELD_DEROTATION_ITEM->sw.value = false;
 		}
 		indigo_save_property(device, NULL, AGENT_PROCESS_FEATURES_PROPERTY);
 		AGENT_MOUNT_ENABLE_DOME_SLAVING_ITEM->sw.value = AGENT_MOUNT_ENABLE_DOME_SLAVING_ITEM->sw.previous_value;
-		AGENT_MOUNT_ENABLE_DEROTATION_ITEM->sw.value = AGENT_MOUNT_ENABLE_DEROTATION_ITEM->sw.previous_value;
+		AGENT_MOUNT_ENABLE_FIELD_DEROTATION_ITEM->sw.value = AGENT_MOUNT_ENABLE_FIELD_DEROTATION_ITEM->sw.previous_value;
 		double tmp_ha_tracking_limit = AGENT_HA_TRACKING_LIMIT_ITEM->number.value;
 		AGENT_HA_TRACKING_LIMIT_ITEM->number.value = AGENT_HA_TRACKING_LIMIT_ITEM->number.target;
 		double tmp_local_time_limit = AGENT_LOCAL_TIME_LIMIT_ITEM->number.value;
@@ -302,7 +302,7 @@ static void mount_dome_control(indigo_device *device, bool control_mount, bool c
 	if (control_dome) {
 		static const char *names[] = { DOME_EQUATORIAL_COORDINATES_RA_ITEM_NAME, DOME_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
 		double values[] = { AGENT_MOUNT_TARGET_COORDINATES_RA_ITEM->number.target, AGENT_MOUNT_TARGET_COORDINATES_DEC_ITEM->number.target };
-		AGENT_MOUNT_STATE_SLAVED_DOME_ITEM->light.value = INDIGO_BUSY_STATE;
+		AGENT_MOUNT_STATE_DOME_SLAVING_ITEM->light.value = INDIGO_BUSY_STATE;
 		indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
 		indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device->name, DOME_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, names, values);
 	}
@@ -321,7 +321,7 @@ static void mount_dome_control(indigo_device *device, bool control_mount, bool c
 		double rotation_diff = fabs(indigo_angle_difference(DEVICE_PRIVATE_DATA->rotator_position, target_rotator_position));
 		if (rotation_diff >= 0.005) {
 			indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device->name, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, target_rotator_position);
-			AGENT_MOUNT_STATE_SLAVED_ROTATOR_ITEM->light.value = INDIGO_IDLE_STATE;
+			AGENT_MOUNT_STATE_FIELD_DEROTATION_ITEM->light.value = INDIGO_IDLE_STATE;
 			indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
 		} else {
 			control_rotator = false;
@@ -399,17 +399,17 @@ static void mount_dome_control(indigo_device *device, bool control_mount, bool c
 		AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 		indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
-		AGENT_MOUNT_STATE_SLAVED_DOME_ITEM->light.value = AGENT_MOUNT_STATE_SLAVED_ROTATOR_ITEM->light.value = INDIGO_IDLE_STATE;
+		AGENT_MOUNT_STATE_DOME_SLAVING_ITEM->light.value = AGENT_MOUNT_STATE_FIELD_DEROTATION_ITEM->light.value = INDIGO_IDLE_STATE;
 		indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
 	} else if ((control_mount && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_OK_STATE) || (control_dome && DEVICE_PRIVATE_DATA->dome_horizontal_coordinates_state != INDIGO_OK_STATE) || (control_rotator && DEVICE_PRIVATE_DATA->rotator_position_state != INDIGO_OK_STATE)) {
 		AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
-		AGENT_MOUNT_STATE_SLAVED_DOME_ITEM->light.value = AGENT_MOUNT_STATE_SLAVED_ROTATOR_ITEM->light.value = INDIGO_ALERT_STATE;
+		AGENT_MOUNT_STATE_DOME_SLAVING_ITEM->light.value = AGENT_MOUNT_STATE_FIELD_DEROTATION_ITEM->light.value = INDIGO_ALERT_STATE;
 		indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
 	} else {
 		AGENT_START_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
-		AGENT_MOUNT_STATE_SLAVED_DOME_ITEM->light.value = AGENT_MOUNT_STATE_SLAVED_ROTATOR_ITEM->light.value = INDIGO_IDLE_STATE;
+		AGENT_MOUNT_STATE_DOME_SLAVING_ITEM->light.value = AGENT_MOUNT_STATE_FIELD_DEROTATION_ITEM->light.value = INDIGO_IDLE_STATE;
 		indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
 	}
 }
@@ -539,7 +539,7 @@ static void slew_process(indigo_device *device) {
 			indigo_send_message(device, ALERT_PROPERTY, "Shutter is closed");
 		}
 	}
-	bool control_rotator = AGENT_MOUNT_ENABLE_DEROTATION_ITEM->sw.value && INDIGO_FILTER_ROTATOR_SELECTED;
+	bool control_rotator = AGENT_MOUNT_ENABLE_FIELD_DEROTATION_ITEM->sw.value && INDIGO_FILTER_ROTATOR_SELECTED;
 	mount_dome_control(device, true, control_dome, control_rotator, MOUNT_DOME_CONTROL_SLEW);
 	if (AGENT_MOUNT_ENABLE_HA_LIMIT_FEATURE_ITEM->sw.value) {
 		indigo_send_message(device, IDLE_PROPERTY, "HA limit is active");
@@ -553,7 +553,7 @@ static void slew_process(indigo_device *device) {
 static void sync_process(indigo_device *device) {
 	FILTER_DEVICE_CONTEXT->running_process = true;
 	bool control_dome = AGENT_MOUNT_ENABLE_DOME_SLAVING_ITEM->sw.value && INDIGO_FILTER_DOME_SELECTED;
-	bool control_rotator = AGENT_MOUNT_ENABLE_DEROTATION_ITEM->sw.value && INDIGO_FILTER_ROTATOR_SELECTED;
+	bool control_rotator = AGENT_MOUNT_ENABLE_FIELD_DEROTATION_ITEM->sw.value && INDIGO_FILTER_ROTATOR_SELECTED;
 	mount_dome_control(device, true, control_dome, control_rotator, MOUNT_DOME_CONTROL_SYNC);
 	if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE) {
 		indigo_send_message(device, IDLE_PROPERTY, "Synced");
@@ -568,7 +568,7 @@ static void park_process(indigo_device *device) {
 	bool control_dome = AGENT_MOUNT_ENABLE_DOME_SLAVING_ITEM->sw.value && INDIGO_FILTER_DOME_SELECTED;
 	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true);
 	if (control_dome) {
-		AGENT_MOUNT_STATE_SLAVED_DOME_ITEM->light.value = INDIGO_BUSY_STATE;
+		AGENT_MOUNT_STATE_DOME_SLAVING_ITEM->light.value = INDIGO_BUSY_STATE;
 		indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
 		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, DOME_PARK_PROPERTY_NAME, DOME_PARK_PARKED_ITEM_NAME, true);
 	}
@@ -595,7 +595,7 @@ static void park_process(indigo_device *device) {
 		AGENT_START_PROCESS_PROPERTY->state = (mount_ok && dome_ok) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 	}
-	AGENT_MOUNT_STATE_SLAVED_DOME_ITEM->light.value = INDIGO_IDLE_STATE;
+	AGENT_MOUNT_STATE_DOME_SLAVING_ITEM->light.value = INDIGO_IDLE_STATE;
 	indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
 	FILTER_DEVICE_CONTEXT->running_process = false;
 }
@@ -605,7 +605,7 @@ static void unpark_process(indigo_device *device) {
 	bool control_dome = AGENT_MOUNT_ENABLE_DOME_SLAVING_ITEM->sw.value && INDIGO_FILTER_DOME_SELECTED;
 	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
 	if (control_dome) {
-		AGENT_MOUNT_STATE_SLAVED_DOME_ITEM->light.value = INDIGO_BUSY_STATE;
+		AGENT_MOUNT_STATE_DOME_SLAVING_ITEM->light.value = INDIGO_BUSY_STATE;
 		indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
 		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, DOME_PARK_PROPERTY_NAME, DOME_PARK_UNPARKED_ITEM_NAME, true);
 	}
@@ -632,7 +632,7 @@ static void unpark_process(indigo_device *device) {
 		AGENT_START_PROCESS_PROPERTY->state = (mount_ok && dome_ok) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 	}
-	AGENT_MOUNT_STATE_SLAVED_DOME_ITEM->light.value = INDIGO_IDLE_STATE;
+	AGENT_MOUNT_STATE_DOME_SLAVING_ITEM->light.value = INDIGO_IDLE_STATE;
 	indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
 	FILTER_DEVICE_CONTEXT->running_process = false;
 }
@@ -1038,13 +1038,13 @@ static void handle_mount_change(indigo_device *device) {
 		if (AGENT_MOUNT_ENABLE_DOME_SLAVING_ITEM->sw.value && INDIGO_FILTER_DOME_SELECTED && INDIGO_FILTER_MOUNT_SELECTED && DEVICE_PRIVATE_DATA->dome_unparked && DEVICE_PRIVATE_DATA->dome_horizontal_coordinates_state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->mount_unparked && DEVICE_PRIVATE_DATA->mount_tracking) {
 			static const char *names[] = { DOME_EQUATORIAL_COORDINATES_RA_ITEM_NAME, DOME_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
 			indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device->name, DOME_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, names, current_radec);
-			AGENT_MOUNT_STATE_SLAVED_DOME_ITEM->light.value = INDIGO_OK_STATE;
+			AGENT_MOUNT_STATE_DOME_SLAVING_ITEM->light.value = INDIGO_OK_STATE;
 		} else {
-			AGENT_MOUNT_STATE_SLAVED_DOME_ITEM->light.value = INDIGO_IDLE_STATE;
+			AGENT_MOUNT_STATE_DOME_SLAVING_ITEM->light.value = INDIGO_IDLE_STATE;
 		}
 		indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
 		// derotate field
-		if (AGENT_MOUNT_ENABLE_DEROTATION_ITEM->sw.value && INDIGO_FILTER_ROTATOR_SELECTED && INDIGO_FILTER_MOUNT_SELECTED && DEVICE_PRIVATE_DATA->rotator_position_state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->mount_unparked && DEVICE_PRIVATE_DATA->mount_tracking) {
+		if (AGENT_MOUNT_ENABLE_FIELD_DEROTATION_ITEM->sw.value && INDIGO_FILTER_ROTATOR_SELECTED && INDIGO_FILTER_MOUNT_SELECTED && DEVICE_PRIVATE_DATA->rotator_position_state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->mount_unparked && DEVICE_PRIVATE_DATA->mount_tracking) {
 			double target_rotator_position = AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM->number.value + DEVICE_PRIVATE_DATA->initial_frame_rotation;
 			if (target_rotator_position < 0) {
 				target_rotator_position += 360;
@@ -1056,9 +1056,9 @@ static void handle_mount_change(indigo_device *device) {
 				indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_GOTO_ITEM_NAME, true);
 				indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device->name, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, target_rotator_position);
 			}
-			AGENT_MOUNT_STATE_SLAVED_ROTATOR_ITEM->light.value = INDIGO_OK_STATE;
+			AGENT_MOUNT_STATE_FIELD_DEROTATION_ITEM->light.value = INDIGO_OK_STATE;
 		} else {
-			AGENT_MOUNT_STATE_SLAVED_ROTATOR_ITEM->light.value = INDIGO_IDLE_STATE;
+			AGENT_MOUNT_STATE_FIELD_DEROTATION_ITEM->light.value = INDIGO_IDLE_STATE;
 		}
 	}
 	indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
@@ -1150,7 +1150,7 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 						if (INDIGO_FILTER_DOME_SELECTED && AGENT_MOUNT_ENABLE_DOME_SLAVING_ITEM->sw.value) {
 							indigo_send_message(device, IDLE_PROPERTY, "Dome slaving is active");
 						}
-						if (INDIGO_FILTER_ROTATOR_SELECTED && AGENT_MOUNT_ENABLE_DEROTATION_ITEM->sw.value) {
+						if (INDIGO_FILTER_ROTATOR_SELECTED && AGENT_MOUNT_ENABLE_FIELD_DEROTATION_ITEM->sw.value) {
 							DEVICE_PRIVATE_DATA->initial_frame_rotation = DEVICE_PRIVATE_DATA->rotator_position - AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM->number.value;
 							indigo_send_message(device, IDLE_PROPERTY, "Frame derotation is active");
 						}
@@ -1167,7 +1167,7 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 			if (INDIGO_FILTER_DOME_SELECTED && AGENT_MOUNT_ENABLE_DOME_SLAVING_ITEM->sw.value) {
 				indigo_send_message(device, IDLE_PROPERTY, "Dome slaving is inactive");
 			}
-			if (INDIGO_FILTER_ROTATOR_SELECTED && AGENT_MOUNT_ENABLE_DEROTATION_ITEM->sw.value) {
+			if (INDIGO_FILTER_ROTATOR_SELECTED && AGENT_MOUNT_ENABLE_FIELD_DEROTATION_ITEM->sw.value) {
 				indigo_send_message(device, IDLE_PROPERTY, "Frame derotation is inactive");
 			}
 			CLIENT_PRIVATE_DATA->mount_side_of_pier = 0;
@@ -1685,7 +1685,7 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 				if (property->items[i].sw.value) {
 					if (CLIENT_PRIVATE_DATA->selected_rotator_index != i) {
 						CLIENT_PRIVATE_DATA->selected_rotator_index = i;
-						if (INDIGO_FILTER_MOUNT_SELECTED && AGENT_MOUNT_ENABLE_DEROTATION_ITEM->sw.value) {
+						if (INDIGO_FILTER_MOUNT_SELECTED && AGENT_MOUNT_ENABLE_FIELD_DEROTATION_ITEM->sw.value) {
 							DEVICE_PRIVATE_DATA->initial_frame_rotation = DEVICE_PRIVATE_DATA->rotator_position - AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM->number.value;
 							indigo_send_message(device, IDLE_PROPERTY, "Frame derotation is active");
 						}
@@ -1694,7 +1694,7 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 				}
 			}
 		} else if (CLIENT_PRIVATE_DATA->selected_rotator_index != 0) {
-			if (INDIGO_FILTER_MOUNT_SELECTED && AGENT_MOUNT_ENABLE_DEROTATION_ITEM->sw.value) {
+			if (INDIGO_FILTER_MOUNT_SELECTED && AGENT_MOUNT_ENABLE_FIELD_DEROTATION_ITEM->sw.value) {
 				indigo_send_message(device, IDLE_PROPERTY, "Frame derotation is inactive");
 			}
 			CLIENT_PRIVATE_DATA->selected_rotator_index = 0;
@@ -1926,8 +1926,8 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_switch_item(AGENT_MOUNT_ENABLE_TIME_LIMIT_FEATURE_ITEM, AGENT_MOUNT_ENABLE_TIME_LIMIT_FEATURE_ITEM_NAME, "Enable time limit", false);
 		indigo_init_switch_item(AGENT_MOUNT_ENABLE_DOME_SLAVING_ITEM, AGENT_MOUNT_ENABLE_DOME_SLAVING_ITEM_NAME, "Enable dome slaving", false);
 		indigo_init_switch_item(AGENT_MOUNT_MAKE_DOME_SLAVING_PERSISTENT_ITEM, AGENT_MOUNT_MAKE_DOME_SLAVING_PERSISTENT_ITEM_NAME, "Make dome slaving persistent", false);
-		indigo_init_switch_item(AGENT_MOUNT_ENABLE_DEROTATION_ITEM, AGENT_MOUNT_ENABLE_DEROTATION_ITEM_NAME, "Enable frame derotation", false);
-		indigo_init_switch_item(AGENT_MOUNT_MAKE_DEROTATION_PERSISTENT_ITEM, AGENT_MOUNT_MAKE_DEROTATION_PERSISTENT_ITEM_NAME, "Make frame derotation persistent", false);
+		indigo_init_switch_item(AGENT_MOUNT_ENABLE_FIELD_DEROTATION_ITEM, AGENT_MOUNT_ENABLE_FIELD_DEROTATION_ITEM_NAME, "Enable field derotation", false);
+		indigo_init_switch_item(AGENT_MOUNT_MAKE_FIELD_DEROTATION_PERSISTENT_ITEM, AGENT_MOUNT_MAKE_FIELD_DEROTATION_PERSISTENT_ITEM_NAME, "Make field derotation persistent", false);
 		indigo_init_switch_item(AGENT_MOUNT_ENABLE_JOYSTICK_CONTROL_ITEM, AGENT_MOUNT_ENABLE_JOYSTICK_CONTROL_ITEM_NAME, "Enable joystick control", false);
 		// -------------------------------------------------------------------------------- AGENT_MOUNT_STATE
 		AGENT_MOUNT_STATE_PROPERTY = indigo_init_light_property(NULL, device->name, AGENT_MOUNT_STATE_PROPERTY_NAME, "Agent", "Mount state", INDIGO_OK_STATE, 6);
@@ -1938,8 +1938,8 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_light_item(AGENT_MOUNT_STATE_PARK_ITEM, AGENT_MOUNT_STATE_PARK_ITEM_NAME, "Park", INDIGO_IDLE_STATE);
 		indigo_init_light_item(AGENT_MOUNT_STATE_HOME_ITEM, AGENT_MOUNT_STATE_HOME_ITEM_NAME, "Home", INDIGO_IDLE_STATE);
 		indigo_init_light_item(AGENT_MOUNT_STATE_TRACKING_ITEM, AGENT_MOUNT_STATE_TRACKING_ITEM_NAME, "Tracking", INDIGO_IDLE_STATE);
-		indigo_init_light_item(AGENT_MOUNT_STATE_SLAVED_DOME_ITEM, AGENT_MOUNT_STATE_SLAVED_DOME_ITEM_NAME, "Slaved dome", INDIGO_IDLE_STATE);
-		indigo_init_light_item(AGENT_MOUNT_STATE_SLAVED_ROTATOR_ITEM, AGENT_MOUNT_STATE_SLAVED_ROTATOR_ITEM_NAME, "Slaved rotator", INDIGO_IDLE_STATE);
+		indigo_init_light_item(AGENT_MOUNT_STATE_DOME_SLAVING_ITEM, AGENT_MOUNT_STATE_DOME_SLAVING_ITEM_NAME, "Dome slaving", INDIGO_IDLE_STATE);
+		indigo_init_light_item(AGENT_MOUNT_STATE_FIELD_DEROTATION_ITEM, AGENT_MOUNT_STATE_FIELD_DEROTATION_ITEM_NAME, "Field derotation", INDIGO_IDLE_STATE);
 		// -------------------------------------------------------------------------------- AGENT_DOME_STATE
 		AGENT_DOME_STATE_PROPERTY = indigo_init_light_property(NULL, device->name, AGENT_DOME_STATE_PROPERTY_NAME, "Agent", "Dome state", INDIGO_OK_STATE, 3);
 		if (AGENT_DOME_STATE_PROPERTY == NULL) {
@@ -2163,7 +2163,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		if (AGENT_MOUNT_ENABLE_DOME_SLAVING_ITEM->sw.value && INDIGO_FILTER_MOUNT_SELECTED && INDIGO_FILTER_DOME_SELECTED) {
 			indigo_send_message(device, IDLE_PROPERTY, "Dome sleving is active");
 		}
-		if (AGENT_MOUNT_ENABLE_DEROTATION_ITEM->sw.value && INDIGO_FILTER_MOUNT_SELECTED && INDIGO_FILTER_ROTATOR_SELECTED) {
+		if (AGENT_MOUNT_ENABLE_FIELD_DEROTATION_ITEM->sw.value && INDIGO_FILTER_MOUNT_SELECTED && INDIGO_FILTER_ROTATOR_SELECTED) {
 			indigo_send_message(device, IDLE_PROPERTY, "Frame derotation is active");
 			DEVICE_PRIVATE_DATA->initial_frame_rotation = DEVICE_PRIVATE_DATA->rotator_position - AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM->number.value;
 		}
