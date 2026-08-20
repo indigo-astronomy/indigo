@@ -46,6 +46,7 @@
 #define MXHD_PARK_HOME_TIMEOUT_SECONDS 300
 #define MXHD_PARK_HOME_MIN_SECONDS 15
 #define MXHD_MOTOR_RECOVERY_SECONDS 90
+#define MXHD_MOTOR_RECOVERY_ALERTS 16
 
 typedef struct {
 	indigo_uni_handle *handle;
@@ -63,8 +64,9 @@ typedef struct {
 	time_t slew_started;
 	time_t park_home_started;
 	time_t motor_recovery_until;
-	indigo_device *motor_recovery_alert_device;
-	indigo_property *motor_recovery_alert_property;
+	int motor_recovery_alert_count;
+	indigo_device *motor_recovery_alert_devices[MXHD_MOTOR_RECOVERY_ALERTS];
+	indigo_property *motor_recovery_alert_properties[MXHD_MOTOR_RECOVERY_ALERTS];
 	double latitude;
 	double longitude;
 	bool has_site;
@@ -79,28 +81,49 @@ static bool set_tracking(indigo_device *device, bool enabled);
 static void update_mount_state_property(indigo_device *device);
 static void motor_recovery_ready_callback(indigo_device *device);
 
-static void clear_motor_recovery_alert(void) {
-	if (private_data->motor_recovery_alert_device != NULL && private_data->motor_recovery_alert_property != NULL && private_data->motor_recovery_alert_property->state == INDIGO_ALERT_STATE) {
-		if (!strcmp(private_data->motor_recovery_alert_property->name, MOUNT_MOTION_DEC_PROPERTY_NAME)) {
-			private_data->motor_recovery_alert_property->items[0].sw.value = false;
-			private_data->motor_recovery_alert_property->items[1].sw.value = false;
-		} else if (!strcmp(private_data->motor_recovery_alert_property->name, MOUNT_MOTION_RA_PROPERTY_NAME)) {
-			private_data->motor_recovery_alert_property->items[0].sw.value = false;
-			private_data->motor_recovery_alert_property->items[1].sw.value = false;
-		} else if (!strcmp(private_data->motor_recovery_alert_property->name, MOUNT_HOME_PROPERTY_NAME)) {
-			private_data->motor_recovery_alert_property->items[0].sw.value = false;
-		} else if (!strcmp(private_data->motor_recovery_alert_property->name, GUIDER_GUIDE_RA_PROPERTY_NAME)) {
-			private_data->motor_recovery_alert_property->items[0].number.value = 0;
-			private_data->motor_recovery_alert_property->items[1].number.value = 0;
-		} else if (!strcmp(private_data->motor_recovery_alert_property->name, GUIDER_GUIDE_DEC_PROPERTY_NAME)) {
-			private_data->motor_recovery_alert_property->items[0].number.value = 0;
-			private_data->motor_recovery_alert_property->items[1].number.value = 0;
+static void add_motor_recovery_alert(indigo_device *device, indigo_property *property) {
+	for (int index = 0; index < private_data->motor_recovery_alert_count; index++) {
+		if (private_data->motor_recovery_alert_properties[index] == property) {
+			private_data->motor_recovery_alert_devices[index] = device;
+			return;
 		}
-		private_data->motor_recovery_alert_property->state = INDIGO_OK_STATE;
-		indigo_update_property(private_data->motor_recovery_alert_device, private_data->motor_recovery_alert_property, "Motor recovery ready");
 	}
-	private_data->motor_recovery_alert_device = NULL;
-	private_data->motor_recovery_alert_property = NULL;
+	if (private_data->motor_recovery_alert_count < MXHD_MOTOR_RECOVERY_ALERTS) {
+		int index = private_data->motor_recovery_alert_count++;
+		private_data->motor_recovery_alert_devices[index] = device;
+		private_data->motor_recovery_alert_properties[index] = property;
+	}
+}
+
+static void clear_motor_recovery_alert_items(indigo_property *property) {
+	if (!strcmp(property->name, MOUNT_MOTION_DEC_PROPERTY_NAME)) {
+		property->items[0].sw.value = false;
+		property->items[1].sw.value = false;
+	} else if (!strcmp(property->name, MOUNT_MOTION_RA_PROPERTY_NAME)) {
+		property->items[0].sw.value = false;
+		property->items[1].sw.value = false;
+	} else if (!strcmp(property->name, MOUNT_HOME_PROPERTY_NAME)) {
+		property->items[0].sw.value = false;
+	} else if (!strcmp(property->name, GUIDER_GUIDE_RA_PROPERTY_NAME)) {
+		property->items[0].number.value = 0;
+		property->items[1].number.value = 0;
+	} else if (!strcmp(property->name, GUIDER_GUIDE_DEC_PROPERTY_NAME)) {
+		property->items[0].number.value = 0;
+		property->items[1].number.value = 0;
+	}
+}
+
+static void clear_motor_recovery_alert(void) {
+	for (int index = 0; index < private_data->motor_recovery_alert_count; index++) {
+		indigo_device *device = private_data->motor_recovery_alert_devices[index];
+		indigo_property *property = private_data->motor_recovery_alert_properties[index];
+		if (device != NULL && property != NULL && property->state == INDIGO_ALERT_STATE) {
+			clear_motor_recovery_alert_items(property);
+			property->state = INDIGO_OK_STATE;
+			indigo_update_property(device, property, "Motor recovery ready");
+		}
+	}
+	private_data->motor_recovery_alert_count = 0;
 }
 
 static bool ensure_motor_recovery(indigo_device *device, indigo_property *property) {
@@ -113,8 +136,7 @@ static bool ensure_motor_recovery(indigo_device *device, indigo_property *proper
 		char message[128];
 		snprintf(message, sizeof(message), "Motor recovery after abort, wait %.0f s", remaining);
 		property->state = INDIGO_ALERT_STATE;
-		PRIVATE_DATA->motor_recovery_alert_device = device;
-		PRIVATE_DATA->motor_recovery_alert_property = property;
+		add_motor_recovery_alert(device, property);
 		indigo_update_property(device, property, message);
 		indigo_execute_handler_in(device->master_device, remaining + 0.1, motor_recovery_ready_callback);
 		return false;
@@ -1105,8 +1127,7 @@ static void mount_abort_callback(indigo_device *device) {
 		bool ok = home_or_park_motion ? mxhd_send(device, "@ME0#") : mxhd_send(device, ":Q#");
 		if (ok && home_or_park_motion) {
 			PRIVATE_DATA->motor_recovery_until = time(NULL) + MXHD_MOTOR_RECOVERY_SECONDS;
-			PRIVATE_DATA->motor_recovery_alert_device = NULL;
-			PRIVATE_DATA->motor_recovery_alert_property = NULL;
+			PRIVATE_DATA->motor_recovery_alert_count = 0;
 		}
 		const char *message = ok ? "Aborted" : "Abort failed";
 		MOUNT_ABORT_MOTION_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
