@@ -9,39 +9,7 @@
 	<title>INDIGO Server Manager</title>
 	<body class="bg-secondary">
 		<div id="ROOT">
-			<nav class="navbar navbar-expand-sm navbar-light">
-				<a class="navbar-brand text-white" href="#">
-					<img src="mng.png" width="40" height="40" class="d-inline-block align-middle" alt=""/>
-					<h4 class="title">Server Manager</h4>
-				</a>
-				<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarContent">
-					<span class="navbar-toggler-icon"></span>
-				</button>
-				<div id="navbarContent" class="form-inline collapse navbar-collapse m-0">
-					<template v-if="findProperty('Server', 'FEATURES') != null">
-						<a class="nav-link pr-0 ml-auto" href="mng.html" data-toggle="tooltip" title="Server Manager">
-							<img src="mng.png" width="40" height="40" class="align-middle mr-0" alt=""/>
-						</a>
-						<a class="nav-link pr-0" href="ctrl.html" data-toggle="tooltip" title="Control Panel">
-							<img src="ctrl.png" width="40" height="40" class="align-middle mr-0" alt=""/>
-						</a>
-						<template v-if="findProperty('Server', 'FEATURES').item('WEB_APPS').value">
-							<a class="nav-link pr-0" href="imager.html" data-toggle="tooltip" title="Imager">
-								<img src="imager.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
-							</a>
-							<a class="nav-link pr-0" href="mount.html" data-toggle="tooltip" title="Mount">
-								<img src="mount.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
-							</a>
-							<a class="nav-link pr-0" href="guider.html" data-toggle="tooltip" title="Guider">
-								<img src="guider.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
-							</a>
-							<a class="nav-link pr-0" href="script.html" data-toggle="tooltip" title="Script">
-								<img src="script.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
-							</a>
-						</template>
-					</template>
-				</div>
-			</nav>
+			<indigo-navbar active="mng" title="Server Manager" icon="mng.png"></indigo-navbar>
 			<div class="container-fluid">
 				<div v-if="devices['Server'] == null" class="alert alert-warning alert-dismissible m-1" role="alert">
 					Waiting for server...
@@ -50,7 +18,7 @@
 					<div class="row">
 						<div class="col-sm-12">
 							<div class="card p-1 m-1 bg-light">
-								<div class="card-block d-flex flex-wrap">
+								<div class="card-body d-flex flex-wrap">
 									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'Camera drivers'" :prefix="'indigo_ccd'" :tooltip="'Select camera drivers'"></indigo-select-multi-item>
 									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'Wheel drivers'" :prefix="'indigo_wheel'" :tooltip="'Select filter wheel drivers'"></indigo-select-multi-item>
 									<indigo-select-multi-item :property="findProperty('Server', 'DRIVERS')" :label="'Focuser drivers'" :prefix="'indigo_focuser'" :tooltip="'Select focuser drivers'"></indigo-select-multi-item>
@@ -66,50 +34,33 @@
 								</div>
 							</div>
 							<div class="card p-1 m-1 bg-light" v-if="findProperty('Server', 'WIFI_AP') != null && findProperty('Server', 'WIFI_INFRASTRUCTURE') != null">
-								<div class="card-block d-flex flex-wrap">
+								<div class="card-body d-flex flex-wrap">
 									<indigo-wifi-setup :ap_property="findProperty('Server', 'WIFI_AP')" :infra_property="findProperty('Server', 'WIFI_INFRASTRUCTURE')"></indigo-wifi-setup>
 								</div>
 							</div>
 							<div class="card p-1 m-1 bg-light" v-if="findProperty('Server', 'INTERNET_SHARING') != null">
-								<div class="card-block d-flex flex-wrap">
+								<div class="card-body d-flex flex-wrap">
 									<indigo-internet-sharing :property="findProperty('Server', 'INTERNET_SHARING')"></indigo-internet-sharing>
 								</div>
 							</div>
 							<div class="card p-1 m-1 bg-light" v-if="findProperty('Server', 'SHUTDOWN') != null">
-								<div class="card-block d-flex flex-wrap">
+								<div class="card-body d-flex flex-wrap">
 									<indigo-shutdown :property="findProperty('Server', 'SHUTDOWN')"></indigo-shutdown>
 								</div>
 							</div>
 						</div>
 					</div>
 				</template>
-				<div id="SUCCESS" class="alert alert-success alert-dismissible fade show m-1" role="alert" style="display:none;">
-					{{ state }}
-					<span v-if="findProperty('Server', 'INFO')" class="float-right">
-						INDIGO Server {{findProperty('Server', 'INFO').item('VERSION').value}} at {{findProperty('Server', 'INFO').item('SERVICE').value}}
-					</span>
-				</div>
-				<div id="FAILURE" class="alert alert-danger alert-dismissible fade show m-1" role="alert" style="display:none;">
-					{{ state }}
-				</div>
-				<div id="MESSAGE" class="alert alert-warning alert-dismissible fade show m-1" role="alert" style="display:none;">
-					{{ state }}
-				</div>
-				<div class="alert alert-info show m-1" role="alert">
-					Copyright &copy; 2019-2025, The INDIGO Initiative. All rights reserved.
-					<a v-if="dark" href="#" class="float-right" onclick="setLightMode()">Switch to light appearance</a>
-					<a v-else href="#" class="float-right" onclick="setDarkMode()">Switch to dark appearance</a>
-				</div>
+				<indigo-status-bar></indigo-status-bar>
 			</div>
 		</div>
 	</body>
 	<script src="jquery.min.js"></script>
-	<script src="popper.min.js"></script>
 	<script src="bootstrap.min.js"></script>
-	<script src="vue.min.js"></script>
+	<script src="vue.global.prod.js"></script>
 	<script src="indigo.js"></script>
 	<script src="components.js"></script>
-	<script language="javascript" type="text/javascript">
+	<script>
 		
 		indigoURL = new URL((window.location.protocol == "https:" ? "wss://" : "ws://") + window.location.host);
 		guiSetup();

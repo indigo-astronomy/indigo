@@ -548,7 +548,7 @@ exit_loop:
 	indigo_safe_free(value_buffer);
 	indigo_safe_free(name_buffer);
 	indigo_release_property(property);
-	indigo_log("JSON Parser: parser finished");
+	INDIGO_TRACE_PARSER(indigo_trace("JSON Parser: parser finished"));
 }
 
 #define JSON_ESCAPE_BUFFER_COUNT	2

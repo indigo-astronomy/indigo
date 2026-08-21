@@ -2428,6 +2428,8 @@
 		599482783034FC75005D36BE /* indigo_guider_eqmac.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_guider_eqmac.c; sourceTree = "<group>"; };
 		599482793034FC75005D36BE /* indigo_guider_eqmac_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_guider_eqmac_main.c; sourceTree = "<group>"; };
 		5994827A3034FC75005D36BE /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		599482C730375395005D36BE /* astrometry.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = astrometry.html; sourceTree = "<group>"; };
+		599482C830375395005D36BE /* astrometry.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = astrometry.png; sourceTree = "<group>"; };
 		59958DFB25CB0DEB00BEFA1B /* indigo_dome_skyroof.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_dome_skyroof.c; sourceTree = "<group>"; };
 		59958DFC25CB0DEB00BEFA1B /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		59958DFD25CB0DEB00BEFA1B /* indigo_dome_skyroof_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_dome_skyroof_main.c; sourceTree = "<group>"; };
@@ -2915,6 +2917,7 @@
 		59A68E3D277DFF2B000439CC /* libSVBCameraSDK.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libSVBCameraSDK.a; sourceTree = "<group>"; };
 		59A68E3E277DFF40000439CC /* libSVBCameraSDK.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libSVBCameraSDK.a; sourceTree = "<group>"; };
 		59A68E3F277DFF4C000439CC /* libSVBCameraSDK.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libSVBCameraSDK.a; sourceTree = "<group>"; };
+		59A83CF1302D12B000314839 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		59A886EB225A85E20027680B /* 99-indigo_focuser_dmfc.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = "99-indigo_focuser_dmfc.rules"; sourceTree = "<group>"; };
 		59AC53732E106B4C004530DF /* indigo_focuser_astromechanics.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_astromechanics.driver; sourceTree = "<group>"; };
 		59AD798F24AA6AE700F52563 /* RainbowAstro_200629.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = RainbowAstro_200629.pdf; sourceTree = "<group>"; };
@@ -6207,6 +6210,7 @@
 		5925E3451E982BBC00FF373F /* resource */ = {
 			isa = PBXGroup;
 			children = (
+				59A83CF1302D12B000314839 /* REFACTOR.md */,
 				59AF321821F308870008CC52 /* mng.html */,
 				9D38D14321F09CE000549B67 /* ctrl.html */,
 				9D38D13F21F09CDF00549B67 /* imager.html */,
@@ -6233,6 +6237,8 @@
 				59AF31FF21F25E8A0008CC52 /* d3.geo.projection.min.js */,
 				59AF321521F264D40008CC52 /* celestial.css */,
 				59AF321421F264D40008CC52 /* celestial.min.js */,
+				599482C730375395005D36BE /* astrometry.html */,
+				599482C830375395005D36BE /* astrometry.png */,
 				59AF320321F262280008CC52 /* data */,
 			);
 			path = resource;
