@@ -993,6 +993,10 @@ static inline void use_reference_channel(double *shadows, double *midtones, doub
 }
 
 void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, int frame_height, int bpp, const char *bayerpat, void **data_out, unsigned long *size_out, void **histogram_data, unsigned long *histogram_size, double B, double C, int reference_channel) {
+	indigo_raw_to_jpeg_with_quality(device, data_in, frame_width, frame_height, bpp, bayerpat, data_out, size_out, histogram_data, histogram_size, B, C, reference_channel, 90);
+}
+
+void indigo_raw_to_jpeg_with_quality(indigo_device *device, void *data_in, int frame_width, int frame_height, int bpp, const char *bayerpat, void **data_out, unsigned long *size_out, void **histogram_data, unsigned long *histogram_size, double B, double C, int reference_channel, int quality) {
 	INDIGO_DEBUG(double start = get_time_hd());
 	size_t size_in = frame_width * frame_height;
 	int sample_by = frame_width < STRECH_SAMPLE_SIZE ? 1 : frame_width / STRECH_SAMPLE_SIZE;
@@ -1142,7 +1146,7 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 		cinfo.pub.in_color_space = JCS_RGB;
 	}
 	jpeg_set_defaults(&cinfo.pub);
-	jpeg_set_quality(&cinfo.pub, (int)CCD_JPEG_SETTINGS_QUALITY_ITEM->number.target, true);
+	jpeg_set_quality(&cinfo.pub, quality, true);
 	JSAMPROW row_pointer[1];
 	jpeg_start_compress(&cinfo.pub, TRUE);
 	while (cinfo.pub.next_scanline < cinfo.pub.image_height) {
@@ -1827,7 +1831,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		double B = CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.target;
 		double C = CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.target;
 		int reference_channel = (int)CCD_JPEG_SETTINGS_REF_CHANNEL_ITEM->number.target;
-		indigo_raw_to_jpeg(device, (char*)data + FITS_HEADER_SIZE, frame_width, frame_height, bpp, bayerpat, &jpeg_data, &jpeg_size,  CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value ? &histogram_data : NULL, CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value ? &histogram_size : NULL, B, C, reference_channel);
+		indigo_raw_to_jpeg_with_quality(device, (char*)data + FITS_HEADER_SIZE, frame_width, frame_height, bpp, bayerpat, &jpeg_data, &jpeg_size,  CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value ? &histogram_data : NULL, CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value ? &histogram_size : NULL, B, C, reference_channel, (int)CCD_JPEG_SETTINGS_QUALITY_ITEM->number.target);
 		if (CCD_PREVIEW_ENABLED_ITEM->sw.value || CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value) {
 			CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);

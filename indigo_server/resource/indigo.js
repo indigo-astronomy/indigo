@@ -3,16 +3,33 @@
  You can use this software under the terms of 'INDIGO Astronomy open-source license' (see LICENSE.md).
 */
 
-var INDIGO = new Vue({
-	el: '#ROOT',
-	data: {
-		state: 'Connecting...',
-		host: '',
-		devices: { },
-		db: [],
-	  dark: false,
-		columns: 3,
-	  useAgent: false
+var app = Vue.createApp({
+	data() {
+		return {
+			state: 'Connecting...',
+			host: '',
+			devices: { },
+			dark: false,
+			columns: 3,
+			selectedProperty: null,
+			scriptDirty: false,
+			scriptSavedName: null,
+			useAgent: false,
+			connected: false,
+			failed: false,
+			message: false,
+			calibrating: false,
+			guiding: false,
+			guiderGraphsEnabled: false,
+			imagerFocuserMotionButton: null,
+			imagerFocuserMotionState: "Idle",
+			imagerFocuserMotionActive: false,
+			currentCoordinates: null,
+			targetCoordinates: null,
+			objectCoordinates: null,
+			geoCoordinates: null,
+			zoomLevel: 4
+		};
 	},
 	methods: {
 		findProperty: function(device, name) {
@@ -24,7 +41,12 @@ var INDIGO = new Vue({
 			return properties[name];
 		},
 		scriptsProperties: function() {
+			var self = this;
 			function compare(a, b) {
+				var aSeq = self.isSequenceScript(a);
+				var bSeq = self.isSequenceScript(b);
+				if (aSeq !== bSeq)
+					return aSeq ? -1 : 1;
 				if (a.name < b.name)
 					return -1;
 				if (a.name > b.name)
@@ -36,15 +58,194 @@ var INDIGO = new Vue({
 			var property;
 			if ((property = properties['AGENT_SCRIPTING_ADD_SCRIPT']) != undefined)
 				result.push(property);
-			for (name in properties) {
+			for (var name in properties) {
 				var property = properties[name];
 				if (property.name.startsWith('AGENT_SCRIPTING_SCRIPT_'))
 					result.push(property);
 			}
 			return result.sort(compare);
+		},
+		newScript: function() {
+			this.selectedProperty = null;
+			this.scriptDirty = false;
+			if (this.$refs.scriptEditor != null)
+				this.$refs.scriptEditor.setProperty(null);
+		},
+		selectScript: function(property) {
+			this.selectedProperty = property;
+			this.scriptDirty = false;
+		},
+		scriptChanged: function() {
+			this.scriptDirty = true;
+		},
+		scriptSaveProperty: function() {
+			if (this.selectedProperty != null)
+				return this.selectedProperty;
+			return this.findProperty('Scripting Agent', 'AGENT_SCRIPTING_ADD_SCRIPT');
+		},
+		saveScript: function() {
+			var property = this.scriptSaveProperty();
+			if (property == null)
+				return false;
+			var editor = this.$refs.scriptEditor;
+			if (editor == null)
+				return false;
+			var isNew = this.selectedProperty == null;
+			var values = {};
+			values['NAME'] = editor.getName();
+			values['SCRIPT'] = editor.getCode();
+			this.scriptSavedName = isNew ? values['NAME'] : null;
+			changeProperty('Scripting Agent', property.name, values);
+			this.scriptDirty = false;
+			return true;
+		},
+		scriptPropertyName: function(property) {
+			if (property == null)
+				return "";
+			var item = property.item('NAME');
+			if (item != null && item.value != null)
+				return item.value;
+			return property.label;
+		},
+		scriptDefined: function(property) {
+			if (property == null)
+				return;
+			if (property.device != 'Scripting Agent' || !property.name.startsWith('AGENT_SCRIPTING_SCRIPT_'))
+				return;
+			if (this.selectedProperty != null && property.name == this.selectedProperty.name) {
+				this.selectedProperty = property;
+				return;
+			}
+			if (this.scriptSavedName == null)
+				return;
+			if (this.scriptPropertyName(property) == this.scriptSavedName) {
+				this.selectScript(property);
+				this.scriptSavedName = null;
+			}
+		},
+		resetScript: function() {
+			if (this.$refs.scriptEditor != null)
+				this.$refs.scriptEditor.setProperty(this.selectedProperty);
+			this.scriptDirty = false;
+		},
+		deleteScript: function() {
+			var property = this.selectedProperty;
+			if (property == null)
+				return;
+			if (!this.saveScript())
+				return;
+			var values = {};
+			values[property.name] = true;
+			changeProperty('Scripting Agent', 'AGENT_SCRIPTING_DELETE_SCRIPT', values);
+			this.newScript();
+		},
+		isSequenceScript: function(property) {
+			return this.scriptPropertyName(property).startsWith('#SEQUENCE');
+		},
+		sequenceScriptDisplayLabel: function(property) {
+			var name = this.scriptPropertyName(property);
+			if (name.startsWith('#SEQUENCE'))
+				return name.substring(9).trimStart();
+			return name;
+		},
+		sequenceStateProperty: function() {
+			return this.findProperty('Scripting Agent', 'SEQUENCE_STATE');
+		},
+		sequenceRunning: function() {
+			var prop = this.sequenceStateProperty();
+			return prop != null && prop.state == 'Busy';
+		},
+		sequenceAbortProperty: function() {
+			return this.findProperty('Scripting Agent', 'AGENT_ABORT_PROCESS');
+		},
+		sequencePauseProperty: function() {
+			return this.findProperty('Scripting Agent', 'AGENT_PAUSE_PROCESS');
+		},
+		sequenceStateItem: function(name) {
+				var prop = this.sequenceStateProperty();
+				if (prop == null) return '-';
+				var item = prop.item(name);
+				return item != null ? item.value : '-';
+			},
+			sequenceControlsVisible: function() {
+			return this.sequenceAbortProperty() != null || this.sequencePauseProperty() != null;
+		},
+		sequencePaused: function() {
+			var prop = this.sequencePauseProperty();
+			if (prop == null) return false;
+			return prop.state == 'Busy';
+		},
+		abortSequence: function() {
+			changeProperty('Scripting Agent', 'AGENT_ABORT_PROCESS', { ABORT: true });
+		},
+		togglePauseSequence: function() {
+			changeProperty('Scripting Agent', 'AGENT_PAUSE_PROCESS', { PAUSE_WAIT: !this.sequencePaused() });
+		},
+		executeScript: function() {
+			var property = this.selectedProperty;
+			if (property == null)
+				return;
+			if (!this.saveScript())
+				return;
+			var values = {};
+			values[property.name] = true;
+			if (this.isSequenceScript(property)) {
+				fetch('/Sequencer.js')
+					.then(function(r) { return r.text(); })
+					.then(function(text) {
+						changeProperty('Scripting Agent', 'AGENT_SCRIPTING_RUN_SCRIPT', { SCRIPT: text });
+						changeProperty('Scripting Agent', 'AGENT_SCRIPTING_EXECUTE_SCRIPT', values);
+					})
+					.catch(function(err) {
+						console.error('Failed to fetch Sequencer.js:', err);
+					});
+			} else {
+				changeProperty('Scripting Agent', 'AGENT_SCRIPTING_EXECUTE_SCRIPT', values);
+			}
+		},
+		scriptSwitchValue: function(propertyName, property) {
+			var scriptProperty = this.findProperty('Scripting Agent', propertyName);
+			if (scriptProperty == null || property == null)
+				return false;
+			var item = scriptProperty.item(property.name);
+			return item != null && item.value;
+		},
+		scriptOnLoadActive: function(property) {
+			return this.scriptSwitchValue('AGENT_SCRIPTING_ON_LOAD_SCRIPT', property);
+		},
+		scriptOnUnloadActive: function(property) {
+			return this.scriptSwitchValue('AGENT_SCRIPTING_ON_UNLOAD_SCRIPT', property);
+		},
+		toggleScriptSwitch: function(propertyName, property) {
+			var scriptProperty = this.findProperty('Scripting Agent', propertyName);
+			if (scriptProperty == null || property == null)
+				return;
+			var item = scriptProperty.item(property.name);
+			if (item == null)
+				return;
+			var values = {};
+			values[property.name] = !item.value;
+			changeProperty('Scripting Agent', propertyName, values);
+		},
+		toggleScriptOnLoad: function(property) {
+			this.toggleScriptSwitch('AGENT_SCRIPTING_ON_LOAD_SCRIPT', property);
+		},
+		toggleScriptOnUnload: function(property) {
+			this.toggleScriptSwitch('AGENT_SCRIPTING_ON_UNLOAD_SCRIPT', property);
 		}
-  }
+	}
 });
+app.config.globalProperties.$ = $;
+app.config.globalProperties.window = window;
+var INDIGO = null;
+
+function setState(msg) {
+	var d = new Date();
+	var h = d.getHours().toString().padStart(2, '0');
+	var m = d.getMinutes().toString().padStart(2, '0');
+	var s = d.getSeconds().toString().padStart(2, '0');
+	INDIGO.state = '[' + h + ':' + m + ':' + s + '] ' + msg;
+}
 
 function init() {
 	websocket = new WebSocket(indigoURL);
@@ -56,25 +257,27 @@ function init() {
 }
 
 function onOpen(evt) {
-	INDIGO.state = 'Connected to ' + indigoURL.host;
+	setState('Connected to ' + indigoURL.host);
 	INDIGO.host = indigoURL.host;
-	$('#SUCCESS').show();
-	$('#FAILURE').hide();
+	INDIGO.connected = true;
+	INDIGO.failed = false;
 	enumerateProperties();
 }
 
 function onClose(evt) {
 	INDIGO.devices = { };
-	INDIGO.state = 'Lost connection to ' + indigoURL.host;
-	$('#SUCCESS').hide();
-	$('#FAILURE').show();
+	setState('Lost connection to ' + indigoURL.host);
+	INDIGO.connected = false;
+	INDIGO.failed = true;
+	INDIGO.message = false;
 	setTimeout(init, 1000);
 }
 
 function onError(evt) {
-	INDIGO.state ='Error' + evt;
-	$('#SUCCESS').hide();
-	$('#FAILURE').show();
+	setState('Error' + evt);
+	INDIGO.connected = false;
+	INDIGO.failed = true;
+	INDIGO.message = false;
 }
 
 function onMessage(evt) {
@@ -107,10 +310,10 @@ function onMessage(evt) {
 	} else if ((property = message["deleteProperty"]) != null) {
 		processDeleteProperty(property);
 	} else if ((msg = message["message"]) != null) {
-		INDIGO.state = msg;
-		$('#SUCCESS').hide();
-		$('#FAILURE').hide();
-		$('#MESSAGE').show();
+		setState(msg);
+		INDIGO.connected = false;
+		INDIGO.failed = false;
+		INDIGO.message = true;
 	}
 }
 
@@ -195,9 +398,9 @@ function processDefineProperty(property) {
 	}
 	var properties = INDIGO.devices[device];
 	if (properties == null) {
-		Vue.set(INDIGO.devices, device, { [name]: property});
+		INDIGO.devices[device] = { [name]: property };
 	} else {
-		Vue.set(properties, name, property);
+		properties[name] = property;
 	}
 	onDefineProperty(property);
 }
@@ -213,22 +416,22 @@ function processUpdateProperty(property) {
 		if (savedProperty == null) {
 			return;
 		} else {
-			Vue.set(savedProperty, "state", property.state);
-			Vue.set(savedProperty, "message", property.message);
+			savedProperty.state = property.state;
+			savedProperty.message = property.message;
 			if (property.message != null) {
-				INDIGO.state = property.message;
-				$('#SUCCESS').hide();
-				$('#FAILURE').hide();
-				$('#MESSAGE').show();
+				setState(property.message);
+				INDIGO.connected = false;
+				INDIGO.failed = false;
+				INDIGO.message = true;
 			}
 			for (var i in property.items) {
 				var item = property.items[i];
 				for (var s in savedProperty.items) {
 					var saved = savedProperty.items[s];
 					if (item.name == saved.name) {
-						Vue.set(saved, "value", item.value);
+						saved.value = item.value;
 						if (item.target != null)
-							Vue.set(saved, "target", item.target);
+							saved.target = item.target;
 					}
 				}
 			}
@@ -244,10 +447,10 @@ function processDeleteProperty(property) {
 	if (properties == null) {
 		return;
 	} else if (name == null) {
-		Vue.delete(INDIGO.devices, device);
+		delete INDIGO.devices[device];
 	} else {
 		onDeleteProperty(properties[name]);
-		Vue.delete(properties, name);
+		delete properties[name];
 	}
 }
 

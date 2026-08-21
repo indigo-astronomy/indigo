@@ -390,7 +390,7 @@ static void create_frame(indigo_device *device) {
 		if (CCD_IMAGE_FORMAT_NATIVE_ITEM->sw.value) {
 			void *data_out;
 			unsigned long size_out;
-			indigo_raw_to_jpeg(device, PRIVATE_DATA->dslr_image + FITS_HEADER_SIZE, DSLR_WIDTH, DSLR_HEIGHT, 24, NULL, &data_out, &size_out, NULL, NULL, 0, 0, 0);
+			indigo_raw_to_jpeg_with_quality(device, PRIVATE_DATA->dslr_image + FITS_HEADER_SIZE, DSLR_WIDTH, DSLR_HEIGHT, 24, NULL, &data_out, &size_out, NULL, NULL, 0, 0, 0, (int)CCD_JPEG_SETTINGS_QUALITY_ITEM->number.target);
 			if (CCD_PREVIEW_ENABLED_ITEM->sw.value) {
 				indigo_process_dslr_preview_image(device, data_out, (int)size_out);
 			}
