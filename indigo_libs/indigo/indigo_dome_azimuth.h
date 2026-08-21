@@ -54,7 +54,8 @@ INDIGO_EXTERN double indigo_dome_solve_azimuth (
 	double mount_dec_height,
 	double mount_dec_length,
 	double mount_dec_offset_NS,
-	double mount_dec_offset_EW
+	double mount_dec_offset_EW,
+	int side_of_pier
 );
 
 INDIGO_EXTERN double indigo_azimuth_distance(double az1, double az2);

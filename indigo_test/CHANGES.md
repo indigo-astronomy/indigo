@@ -46,7 +46,7 @@ Implemented unit suites:
 - `test_base64.c`: known vectors, binary round trips, padding, and newline-tolerant decoding.
 - `test_bus_helpers.c`: numeric/string conversion, sexagesimal conversion, pixel scale, local service trimming, switch helpers, and property value/target copying.
 - `test_bus_property.c`: text, number, switch, light, and BLOB property initialization, matching, copying, resizing, and release behavior, with every test case exercising all vector types.
-- `test_dome_azimuth.c`: hour wrapping, azimuth distance, and dome azimuth range checks.
+- `test_dome_azimuth.c`: hour wrapping, azimuth distance, dome azimuth range checks, mirror symmetry of the pivot offsets across the equator, agreement with an independent vector model of the same geometry over a latitude, hour angle, declination and OTA offset sweep, and side of pier handling (the OTA staying on the reported side, no azimuth jump when a mount tracks past the meridian, agreement with counterweight down for a normal mount).
 - `test_md5.c`: known MD5 vectors, partial MD5, and file-prefix MD5.
 - `test_polynomial_fit.c`: polynomial value, derivative, extrema, minimum search, string output, and exact line fitting.
 - `test_protocol_json.c`: JSON escaping, device/server adapter serialization, parser routing for number and switch changes, BLOB URL output, and malformed input handling.

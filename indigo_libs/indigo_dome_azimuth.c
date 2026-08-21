@@ -26,6 +26,7 @@
  */
 
 #include <math.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -72,7 +73,7 @@ static void equatorial_to_horizontal(double ha, double dec, double site_latitude
 }
 
 
-double indigo_dome_solve_azimuth(double ha, double dec, double site_latitude, double dome_radius, double mount_dec_height, double mount_dec_length, double mount_dec_offset_NS, double mount_dec_offset_EW) {
+double indigo_dome_solve_azimuth(double ha, double dec, double site_latitude, double dome_radius, double mount_dec_height, double mount_dec_length, double mount_dec_offset_NS, double mount_dec_offset_EW, int side_of_pier) {
 	ha = map24(ha);
 
 	/* Map an hourangle in hours to  -12 <= ha0 < +12 */
@@ -108,21 +109,40 @@ double indigo_dome_solve_azimuth(double ha, double dec, double site_latitude, do
 		theta = -1. * site_latitude * M_PI / 180.0;
 	}
 
-	/* if German equatorial the origin changes with HA */
+	/*
+	side_of_pier is MOUNT_SIDE_OF_PIER (-1 EAST, +1 WEST, 0 unknown) - the side
+	of the pier the OTA is on.
+
+	The two branches below are the two ends of the declination axis. The axis
+	turns with the mount, so the ends swap sides once the hour angle passes 6
+	hours: cos(ha0) tells which end is the east one right now.
+
+	At 6 hours the axis runs north to south, neither end is east or west and the
+	reported side says nothing. There, and when nothing is reported, fall back to
+	counterweight down - the end holding the OTA above the pivot.
+	*/
+	double ota_east_component = cos(ha0 * M_PI / 12.0);
+	double ota_up_component = sin(ha0 * M_PI / 12.0) * cos(theta);
+	bool east_branch;
+
+	if (side_of_pier == 0 || fabs(ota_east_component) < 1e-6) {
+		/* counterweight down, on the meridian the axis is level so settle it east */
+		east_branch = ota_up_component >= -1e-9;
+	} else {
+		bool ota_east_of_pier = side_of_pier < 0;
+		east_branch = (ota_east_component > 0) == ota_east_of_pier;
+	}
+
 	if (site_latitude >= 0) {
-		if (ha0 > 0) {
-			/* Looking west with OTA east of pier */
+		if (east_branch) {
 			phi = (6.0 - ha0) * M_PI / 12.0;
 		} else {
-			/* Looking east with OTA west of pier */
 			phi = -(6.0 + ha0) * M_PI / 12.0;
 		}
 	} else {
-		if (ha0 > 0) {
-			/* Looking west with OTA east of pier */
+		if (east_branch) {
 			phi = -(6.0 - ha0) * M_PI / 12.0;
 		} else {
-			/* Looking east with OTA west of pier */
 			phi = (6.0 + ha0) * M_PI / 12.0;
 		}
 	}
@@ -145,9 +165,8 @@ double indigo_dome_solve_azimuth(double ha, double dec, double site_latitude, do
 	z0 = mount_dec_length * cos(phi) * cos(theta) + mount_dec_height;
 
 	/*
-	(x,y,z) is on the optical axis
-	Iterate to make this point also lie on the dome surface
-	Begin iteration assuming the zero point is at the center of the dome
+	Follow the optical axis from that point to where it leaves the dome, which is
+	where the ray meets the sphere of the dome radius centred on the dome centre.
 	Telescope azimuth is measured from the direction to the pole
 	*/
 	double telaz2, telalt2;
@@ -162,41 +181,34 @@ double indigo_dome_solve_azimuth(double ha, double dec, double site_latitude, do
 		telalt2 = telalt * M_PI / 180.0;
 	}
 
-	double d = 0;
-	double r = dome_radius;
-	int n = 0;
-	double x = 0, y = 0, z = 0;
-	/* converges fast => 5 should be ok */
-	while (n < 5) {
-		d = d - (r - dome_radius);
-		double rp = dome_radius + d;
-		x = x0 + rp * cos(telalt2) * sin(telaz2);
-		y = y0 + rp * cos(telalt2) * cos(telaz2);
-		z = z0 + rp * sin(telalt2);
-		r = sqrt(x*x + y*y + z*z);
-		//printf("n, r, rp phi: %d %f %f %f\n", n, r, rp, phi);
-		n++;
+	double ux = cos(telalt2) * sin(telaz2);
+	double uy = cos(telalt2) * cos(telaz2);
+	double uz = sin(telalt2);
+
+	double r0 = sqrt(x0 * x0 + y0 * y0 + z0 * z0);
+	if (r0 >= dome_radius) {
+		/* the mount does not fit in the dome, nothing sensible to trace */
+		return telaz;
 	}
+	double b = x0 * ux + y0 * uy + z0 * uz;
+	double discriminant = b * b - (r0 * r0 - dome_radius * dome_radius);
+	if (discriminant < 0) {
+		return telaz;
+	}
+	double rp = -b + sqrt(discriminant);
+	double x = x0 + rp * ux;
+	double y = y0 + rp * uy;
 
 	/*
-	Use (x,y,0) from the interation to find the azimuth of the dome
+	Use (x,y,0) from the exit point to find the azimuth of the dome
 	Azimuth is N (0), E (90), S (180), W (270) in both hemispheres
 	However x and y are different in the hemispheres so we fix that here
 	*/
-	double zeta = atan2(x, y);
-	if ((zeta > -2 * M_PI) && (zeta < 2 * M_PI)) {
-		if (site_latitude >= 0) {
-			zeta = (180.0 / M_PI) * zeta;
-			zeta = map360(zeta);
-		} else {
-			zeta = (180.0 / M_PI) * zeta;
-			zeta = zeta + 180;
-			zeta = map360(zeta);
-		}
-	} else {
-		zeta = telaz;
+	double zeta = atan2(x, y) * 180.0 / M_PI;
+	if (site_latitude < 0) {
+		zeta += 180.0;
 	}
-	return zeta;
+	return map360(zeta);
 }
 
 double indigo_azimuth_distance(double az1, double az2) {
@@ -212,11 +224,11 @@ int main(int argc, char *argv[]) {
 	if (argc != 3) return 1;
 	double ha = atof(argv[1]);
 	double dec = atof(argv[2]);
-	/* indigo_dome_solve_azimuth(ha, dec, site_latitude, dome_radius, mount_dec_height, mount_dec_length, mount_dec_offset_NS, mount_dec_offset_EW) */
-	double daz = indigo_dome_solve_azimuth(ha, dec, -38.3334, 1.75, 0, 0.6, 0.24, 0);
+	/* indigo_dome_solve_azimuth(ha, dec, site_latitude, dome_radius, mount_dec_height, mount_dec_length, mount_dec_offset_NS, mount_dec_offset_EW, side_of_pier) */
+	double daz = indigo_dome_solve_azimuth(ha, dec, -38.3334, 1.75, 0, 0.6, 0.24, 0, 0);
 	printf("southern daz=%.2f\n", daz);
 	/* the mirrored northern site should give 180 - daz */
-	daz = indigo_dome_solve_azimuth(ha, -dec, 38.3334, 1.75, 0, 0.6, 0.24, 0);
+	daz = indigo_dome_solve_azimuth(ha, -dec, 38.3334, 1.75, 0, 0.6, 0.24, 0, 0);
 	printf("northern daz=%.2f\n", daz);
 	return 0;
 }

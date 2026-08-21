@@ -327,6 +327,7 @@ Properties are implemented by GPS driver base class in [indigo_gps_driver.c](htt
 | DOME_STEPS | number | no | no | STEPS | yes | Relative move (steps/ms) |
 | DOME_EQUATORIAL_COORDINATES | number | no | no | RA | yes | Right ascension (0 to 24 hrs) |
 |  |  |  |  | DEC | yes | Declination (-90 to 90°) |
+|  |  |  |  | SIDE_OF_PIER | yes | MOUNT_SIDE_OF_PIER as a number: -1 = EAST (pointing east, OTA west of pier), +1 = WEST (pointing west, OTA east of pier), 0 = unknown. When unknown the side of the pier is assumed from the hour angle. |
 | DOME_HORIZONTAL_COORDINATES | number | no | no | AZ | yes | Azimuth (0 to 360°) |
 |  |  |  |  | ALT | no | Hidden by default. |
 | DOME_SLAVING_PARAMETERS | number | no | no | MOVE_THRESHOLD | yes | Hidden by default. |

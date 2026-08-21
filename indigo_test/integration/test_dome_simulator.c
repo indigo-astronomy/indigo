@@ -78,7 +78,8 @@ static void simulator_passes_dome_compliance_checks(void) {
 	};
 	static const char *equatorial_items[] = {
 		DOME_EQUATORIAL_COORDINATES_RA_ITEM_NAME,
-		DOME_EQUATORIAL_COORDINATES_DEC_ITEM_NAME
+		DOME_EQUATORIAL_COORDINATES_DEC_ITEM_NAME,
+		DOME_EQUATORIAL_COORDINATES_SIDE_OF_PIER_ITEM_NAME
 	};
 	static const char *horizontal_items[] = {
 		DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME

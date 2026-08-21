@@ -116,6 +116,10 @@ extern "C" {
  */
 #define DOME_EQUATORIAL_COORDINATES_DEC_ITEM					(DOME_EQUATORIAL_COORDINATES_PROPERTY->items+1)
 
+/** DOME_EQUATORIAL_COORDINATES.SIDE_OF_PIER property item pointer, MOUNT_SIDE_OF_PIER as a number: -1 = EAST (pointing east, OTA west of pier), +1 = WEST (pointing west, OTA east of pier), 0 = unknown.
+ */
+#define DOME_EQUATORIAL_COORDINATES_SIDE_OF_PIER_ITEM	(DOME_EQUATORIAL_COORDINATES_PROPERTY->items+2)
+
 /** DOME_HORIZONTAL_COORDINATES property pointer, property is optional, property change request should be fully handled by dome driver
  */
 #define DOME_HORIZONTAL_COORDINATES_PROPERTY			(DOME_CONTEXT->dome_horizontal_coordinates_property)
@@ -317,7 +321,7 @@ INDIGO_EXTERN indigo_result indigo_dome_change_property(indigo_device *device, i
 INDIGO_EXTERN indigo_result indigo_dome_detach(indigo_device *device);
 /** Update dome azimuth according to mount and OTA dimensions.
  */
-INDIGO_EXTERN bool indigo_fix_dome_azimuth(indigo_device *device, double ra, double dec, double az_prev, double *az);
+INDIGO_EXTERN bool indigo_fix_dome_azimuth(indigo_device *device, double ra, double dec, int side_of_pier, double az_prev, double *az);
 
 #ifdef __cplusplus
 }
