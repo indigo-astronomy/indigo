@@ -1176,7 +1176,12 @@ bool ptp_open(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	int rc = 0;
 	struct libusb_device_descriptor	device_descriptor;
-	
+
+	if (PRIVATE_DATA->transaction_timeout == 0) {
+		// 0 would mean an infinite libusb timeout; vendors may preset a shorter
+		// value at attach time
+		PRIVATE_DATA->transaction_timeout = PTP_TIMEOUT;
+	}
 	libusb_device *dev = PRIVATE_DATA->dev;
 	rc = libusb_get_device_descriptor(dev, &device_descriptor);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_get_device_descriptor() -> %s", rc < 0 ? libusb_error_name(rc) : "OK");
@@ -1221,6 +1226,7 @@ bool ptp_open(indigo_device *device) {
 //	}
 	if (rc >= 0 && interface) {
 		int interface_number = interface->altsetting->bInterfaceNumber;
+		PRIVATE_DATA->iface = interface_number;
 		for (int i = 0; i < 5; i++) {
 			rc = libusb_claim_interface(handle, interface_number);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_claim_interface(%d) -> %s", interface_number, rc < 0 ? libusb_error_name(rc) : "OK");
@@ -1290,12 +1296,12 @@ bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t o
 	request.payload.params[3] = out_4;
 	request.payload.params[4] = out_5;
 	PTP_DUMP_CONTAINER(&request);
-	int rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_out, (unsigned char *)&request, request.length, &length, PTP_TIMEOUT);
+	int rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_out, (unsigned char *)&request, request.length, &length, PRIVATE_DATA->transaction_timeout);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer(%d) -> %s", length, rc < 0 ? libusb_error_name(rc) : "OK");
 	if (rc < 0) {
 		rc = libusb_clear_halt(PRIVATE_DATA->handle, PRIVATE_DATA->ep_out);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_clear_halt() -> %s", rc < 0 ? libusb_error_name(rc) : "OK");
-		rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_out, (unsigned char *)&request, request.length, &length, PTP_TIMEOUT);
+		rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_out, (unsigned char *)&request, request.length, &length, PRIVATE_DATA->transaction_timeout);
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "libusb_bulk_transfer(%d) -> %s", length, rc < 0 ? libusb_error_name(rc) : "OK");
 	}
 	if (rc < 0) {
@@ -1310,14 +1316,14 @@ bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t o
 		PTP_DUMP_CONTAINER(&request);
 		if (size < sizeof(ptp_container) - PTP_CONTAINER_HDR_SIZE) {
 			memcpy(request.payload.data, data_out, size);
-			rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_out, (unsigned char *)&request, request.length, &length, PTP_TIMEOUT);
+			rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_out, (unsigned char *)&request, request.length, &length, PRIVATE_DATA->transaction_timeout);
 		} else {
 			memcpy(request.payload.data, data_out, sizeof(ptp_container) - PTP_CONTAINER_HDR_SIZE);
-			rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_out, (unsigned char *)&request, sizeof(ptp_container), &length, PTP_TIMEOUT);
+			rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_out, (unsigned char *)&request, sizeof(ptp_container), &length, PRIVATE_DATA->transaction_timeout);
 		}
 		size -= length - PTP_CONTAINER_HDR_SIZE;
 		while (rc >=0 && size > 0) {
-			rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_out, (unsigned char *)&request, size, &length, PTP_TIMEOUT);
+			rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_out, (unsigned char *)&request, size, &length, PRIVATE_DATA->transaction_timeout);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer(%d) -> %s", length, rc < 0 ? libusb_error_name(rc) : "OK");
 			size -= length;
 		}
@@ -1330,7 +1336,7 @@ bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t o
 	while (true) {
 		memset(&response, 0, sizeof(response));
 		length = 0;
-		rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_in, (unsigned char *)&response, sizeof(response), &length, PTP_TIMEOUT);
+		rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_in, (unsigned char *)&response, sizeof(response), &length, PRIVATE_DATA->transaction_timeout);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer() -> %s, %d", rc < 0 ? libusb_error_name(rc) : "OK", length);
 		if (rc < 0) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read response -> %s", libusb_error_name(rc));
@@ -1354,7 +1360,7 @@ bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t o
 		}
 		total -= length;
 		while (total > 0) {
-			rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_in, buffer + offset, total + 1024 > PTP_MAX_BULK_TRANSFER_SIZE ? PTP_MAX_BULK_TRANSFER_SIZE : total + 1024, &length, PTP_TIMEOUT);
+			rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_in, buffer + offset, total + 1024 > PTP_MAX_BULK_TRANSFER_SIZE ? PTP_MAX_BULK_TRANSFER_SIZE : total + 1024, &length, PRIVATE_DATA->transaction_timeout);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer() -> %s, %d", rc < 0 ? libusb_error_name(rc) : "OK", length);
 			if (rc < 0) {
 				free(buffer);
@@ -1372,7 +1378,7 @@ bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t o
 		while (true) {
 			memset(&response, 0, sizeof(response));
 			length = 0;
-			rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_in, (unsigned char *)&response, sizeof(response), &length, PTP_TIMEOUT);
+			rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_in, (unsigned char *)&response, sizeof(response), &length, PRIVATE_DATA->transaction_timeout);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer() -> %s, %d", rc < 0 ? libusb_error_name(rc) : "OK", length);
 			if (rc < 0) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read response -> %s", libusb_error_name(rc));
