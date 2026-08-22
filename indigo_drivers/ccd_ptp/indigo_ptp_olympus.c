@@ -361,6 +361,16 @@ bool ptp_olympus_handle_event(indigo_device *device, ptp_event_code code, uint32
 }
 
 #ifndef USE_ICA_TRANSPORT
+static bool ptp_olympus_camera_control_mode_event(ptp_container *event, int length) {
+	if (event->code != ptp_event_olympus_DevicePropChanged && event->code != ptp_event_olympus_DevicePropChangedLegacy) {
+		return false;
+	}
+	if (length >= PTP_CONTAINER_COMMAND_SIZE(1) && event->payload.params[0] != ptp_property_olympus_CameraControlMode) {
+		return false;
+	}
+	return true;
+}
+
 static bool ptp_olympus_device_reset(indigo_device *device) {
 	// PIMA 15740 class-specific Device Reset request, returns the camera's PTP
 	// stack to the idle state when a transaction is stuck (the equivalent of
@@ -705,6 +715,9 @@ bool ptp_olympus_initialise(indigo_device *device) {
 #ifdef USE_ICA_TRANSPORT
 		indigo_usleep(100000);
 		ptp_get_event(device);
+		if (!switched) {
+			return false;
+		}
 #else
 		if (!switched) {
 			// a genuine mode change makes the OM-1 drop the response container
@@ -721,7 +734,7 @@ bool ptp_olympus_initialise(indigo_device *device) {
 					continue;
 				}
 				PTP_DUMP_CONTAINER(&event);
-				if (event.code == ptp_event_olympus_DevicePropChanged || event.code == ptp_event_olympus_DevicePropChangedLegacy) {
+				if (ptp_olympus_camera_control_mode_event(&event, length)) {
 					confirmed = true;
 				}
 				ptp_olympus_handle_event(device, event.code, event.payload.params);
@@ -730,7 +743,14 @@ bool ptp_olympus_initialise(indigo_device *device) {
 			// transition window is swallowed and wedges the pipe (in a settled
 			// mode-1 session 1015 answers normally); the C108 wait plus the
 			// recovery already confirm the switch
-			ptp_olympus_recover(device);
+			if (!confirmed) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CameraControlMode switch was not confirmed");
+				return false;
+			}
+			if (!ptp_olympus_recover(device)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CameraControlMode switch recovery failed");
+				return false;
+			}
 		}
 #endif
 	}
