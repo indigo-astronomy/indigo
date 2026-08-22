@@ -644,6 +644,8 @@ The mount agent exposes the following common properties: FILTER_MOUNT_LIST, FILT
 |  |  |  |  | PARK | yes | Mount park state |
 |  |  |  |  | HOME | yes | Mount home state |
 |  |  |  |  | TRACK | yes | Mount tracking state |
+|  |  |  |  | DOME_SLAVING | yes | Dome slaving state |
+|  |  |  |  | FIELD_DEROTATION | yes | Field derotation state |
 | AGENT_DOME_STATE | light | yes | yes | SLEW | yes | Dome slew state |
 |  |  |  |  | PARK | yes | Dome park state |
 |  |  |  |  | OPEN | yes | Dome open state |

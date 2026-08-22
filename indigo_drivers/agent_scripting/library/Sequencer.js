@@ -289,7 +289,7 @@ Sequence.prototype.set_object_name = function(name) {
 
 Sequence.prototype.start_preview = function(exposure) {
 	this.sequence.push({ execute: 'set_batch(0,' + exposure + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
-	this.sequence.push({ execute: 'start_preview()', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'start_imager_process("PREVIEW", "Busy")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.stop_preview = function() {
@@ -338,7 +338,7 @@ Sequence.prototype.capture_stream = function(p1, p2, p3) {
 	}
 	this.sequence.push({ execute: 'set_batch(' + count + ',' + exposure + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'set_upload_mode("BOTH")', step: this.step, progress: this.progress++, exposure: this.exposure });
-	this.sequence.push({ execute: 'capture_stream()', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'start_imager_process("STREAMING")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 	this.exposure += exposure * count;
 };
 
@@ -365,7 +365,7 @@ Sequence.prototype.focus_ignore_failure = function(exposure) {
 };
 
 Sequence.prototype.clear_focuser_selection = function() {
-	this.sequence.push({ execute: 'clear_focuser_selection()', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'start_imager_process("CLEAR_SELECTION")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.set_focuser_position = function(position) {
@@ -373,29 +373,106 @@ Sequence.prototype.set_focuser_position = function(position) {
 	this.sequence.push({ execute: 'set_focuser_position(' + position + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.park = function() {
-	this.sequence.push({ execute: 'park()', step: this.step++, progress: this.progress++, exposure: this.exposure });
+Sequence.prototype.slew = function(ra, dec) {
+	this.sequence.push({ execute: 'set_coordinates(' + ra + ',' + dec + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'start_mount_process("SLEW")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.home = function() {
-	this.sequence.push({ execute: 'home()', step: this.step++, progress: this.progress++, exposure: this.exposure });
+Sequence.prototype.park = function() {
+	this.sequence.push({ execute: 'start_mount_process("PARK")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.unpark = function() {
-	this.sequence.push({ execute: 'unpark()', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'start_mount_process("UNPARK")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
+Sequence.prototype.home = function() {
+	this.sequence.push({ execute: 'start_mount_process("HOME")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.enable_tracking = function() {
-	this.sequence.push({ execute: 'set_tracking("ON")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'start_mount_process("TRACK_ON")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.disable_tracking = function() {
-	this.sequence.push({ execute: 'set_tracking("OFF")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'start_mount_process("TRACK_OFF")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.slew = function(ra, dec) {
+Sequence.prototype.dome_slew = function(ra, dec) {
 	this.sequence.push({ execute: 'set_coordinates(' + ra + ',' + dec + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
-	this.sequence.push({ execute: 'slew()', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'start_mount_process("DOME_SLEW")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
+Sequence.prototype.dome_park = function() {
+	this.sequence.push({ execute: 'start_mount_process("DOME_PARK")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
+Sequence.prototype.dome_unpark = function() {
+	this.sequence.push({ execute: 'start_mount_process("DOME_UNPARK")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
+Sequence.prototype.dome_open = function() {
+	this.sequence.push({ execute: 'start_mount_process("DOME_OPEN")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
+Sequence.prototype.dome_close = function() {
+	this.sequence.push({ execute: 'start_mount_process("DOME_CLOSE")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
+Sequence.prototype.enable_ha_limit = function() {
+	this.sequence.push({ execute: 'set_mount_feature("ENABLE_HA_LIMIT", true)', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
+Sequence.prototype.disable_ha_limit = function() {
+	this.sequence.push({ execute: 'set_mount_feature("ENABLE_HA_LIMIT", false)', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
+Sequence.prototype.enable_time_limit = function() {
+	this.sequence.push({ execute: 'set_mount_feature("ENABLE_TIME_LIMIT", true)', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
+Sequence.prototype.disable_time_limit = function() {
+	this.sequence.push({ execute: 'set_mount_feature("ENABLE_TIME_LIMIT", false)', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
+Sequence.prototype.enable_dome_slaving = function() {
+	this.sequence.push({ execute: 'set_mount_feature("ENABLE_DOME_SLAVING", true)', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
+Sequence.prototype.disable_dome_slaving = function() {
+	this.sequence.push({ execute: 'set_mount_feature("ENABLE_DOME_SLAVING", false)', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
+Sequence.prototype.make_dome_slaving_persistent = function() {
+	this.sequence.push({ execute: 'set_mount_feature("MAKE_DOME_SLAVING_PERSISTENT", true)', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
+Sequence.prototype.make_dome_slaving_not_persistent = function() {
+	this.sequence.push({ execute: 'set_mount_feature("MAKE_DOME_SLAVING_PERSISTENT", false)', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
+Sequence.prototype.enable_field_derotation = function() {
+	this.sequence.push({ execute: 'set_mount_feature("ENABLE_FIELD_DEROTATION", true)', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
+Sequence.prototype.disable_field_derotation = function() {
+	this.sequence.push({ execute: 'set_mount_feature("ENABLE_FIELD_DEROTATION", false)', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
+Sequence.prototype.make_field_derotation_persistent = function() {
+	this.sequence.push({ execute: 'set_mount_feature("MAKE_FIELD_DEROTATION_PERSISTENT", true)', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
+Sequence.prototype.make_field_derotation_not_persistent = function() {
+	this.sequence.push({ execute: 'set_mount_feature("MAKE_FIELD_DEROTATION_PERSISTENT", false)', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
+Sequence.prototype.enable_joystick_control = function() {
+	this.sequence.push({ execute: 'set_mount_feature("ENABLE_JOYSTICK_CONTROL", true)', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
+Sequence.prototype.disable_joystick_control = function() {
+	this.sequence.push({ execute: 'set_mount_feature("ENABLE_JOYSTICK_CONTROL", false)', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.wait_for_gps = function() {
@@ -406,13 +483,7 @@ Sequence.prototype.calibrate_guiding = function(exposure) {
 	if (exposure != undefined) {
 		this.sequence.push({ execute: 'set_guider_exposure(' + exposure + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
 	}
-	this.sequence.push({ execute: 'calibrate_guiding()', step: this.step++, progress: this.progress++, exposure: this.exposure });
-};
-
-// TO BE REMOVED IN FUTURE RELEASE - USE calibrate_guiding() INSTEAD
-Sequence.prototype.calibrate_guiding_exposure = function(exposure) {
-	this.sequence.push({ execute: 'set_guider_exposure(' + exposure + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
-	this.sequence.push({ execute: 'calibrate_guiding()', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'start_guider_process("CALIBRATION")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.start_guiding = function(exposure) {
@@ -433,18 +504,18 @@ Sequence.prototype.stop_guiding = function() {
 };
 
 Sequence.prototype.clear_guider_selection = function() {
-	this.sequence.push({ execute: 'clear_guider_selection()', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'start_guider_process("CLEAR_SELECTION")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.sync_center = function(exposure) {
 	this.sequence.push({ execute: 'set_solver_exposure(' + exposure + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
-	this.sequence.push({ execute: 'sync_center()', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'start_astrometry_process("CENTER")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.precise_goto = function(exposure, ra, dec) {
 	this.sequence.push({ execute: 'set_solver_exposure(' + exposure + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'set_solver_target(' + ra + ', ' + dec + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
-	this.sequence.push({ execute: 'precise_goto()', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'start_astrometry_process("PRECISE_GOTO")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.set_rotator_angle = function(value) {
@@ -1436,17 +1507,13 @@ var indigo_sequencer = {
 		this.change_numbers(this.devices[IMAGER_AGENT], "AGENT_IMAGER_BATCH", { COUNT: count, EXPOSURE: exposure});
 	},
 
+	start_imager_process: function(name, state) {
+		this.select_switch(this.devices[IMAGER_AGENT], "AGENT_START_PROCESS", name, state);
+	},
+
 	capture_batch: function() {
 		this.capturing_batch = true;
-		this.select_switch(this.devices[IMAGER_AGENT], "AGENT_START_PROCESS", "EXPOSURE");
-	},
-
-	capture_stream: function() {
-		this.select_switch(this.devices[IMAGER_AGENT], "AGENT_START_PROCESS", "STREAMING");
-	},
-
-	start_preview: function() {
-		this.select_switch(this.devices[IMAGER_AGENT], "AGENT_START_PROCESS", "PREVIEW", "Busy");
+		this.start_imager_process("EXPOSURE");
 	},
 
 	stop_preview: function() {
@@ -1470,35 +1537,19 @@ var indigo_sequencer = {
 
 	focus: function(ignore_failure) {
 		this.ignore_failure = ignore_failure;
-		this.select_switch(this.devices[IMAGER_AGENT], "AGENT_START_PROCESS", "FOCUSING");
-	},
-
-	clear_focuser_selection: function() {
-		this.select_switch(this.devices[IMAGER_AGENT], "AGENT_START_PROCESS", "CLEAR_SELECTION");
-	},
-
-	unpark: function() {
-		this.select_switch(this.devices[MOUNT_AGENT], "MOUNT_PARK", "UNPARKED");
+		this.start_imager_process("FOCUSING");
 	},
 
 	set_coordinates: function(ra, dec) {
 		this.change_numbers(this.devices[MOUNT_AGENT], "AGENT_MOUNT_EQUATORIAL_COORDINATES", { RA: ra, DEC: dec});
 	},
 
-	slew: function(ra, dec) {
-		this.select_switch(this.devices[MOUNT_AGENT], "AGENT_START_PROCESS", "SLEW");
+	start_mount_process: function(name) {
+		this.select_switch(this.devices[MOUNT_AGENT], "AGENT_START_PROCESS", name);
 	},
 
-	park: function() {
-		this.select_switch(this.devices[MOUNT_AGENT], "MOUNT_PARK", "PARKED");
-	},
-
-	home: function() {
-		this.select_switch(this.devices[MOUNT_AGENT], "MOUNT_HOME", "HOME");
-	},
-
-	set_tracking: function(on_off) {
-		this.select_switch(this.devices[MOUNT_AGENT], "MOUNT_TRACKING", on_off);
+	set_mount_feature: function(name, value) {
+		this.set_switch(this.devices[MOUNT_AGENT], "AGENT_PROCESS_FEATURES", name, value);
 	},
 
 	wait_for_gps: function() {
@@ -1521,13 +1572,13 @@ var indigo_sequencer = {
 		this.change_numbers(this.devices[GUIDER_AGENT], "AGENT_GUIDER_SETTINGS", { EXPOSURE: exposure });
 	},
 
-	calibrate_guiding: function() {
-		this.select_switch(this.devices[GUIDER_AGENT], "AGENT_START_PROCESS", "CALIBRATION");
+	start_guider_process: function(name, state) {
+		this.select_switch(this.devices[GUIDER_AGENT], "AGENT_START_PROCESS", name, state);
 	},
 
 	start_guiding: function() {
 		this.allow_busy_state = true;
-		this.select_switch(this.devices[GUIDER_AGENT], "AGENT_START_PROCESS", "GUIDING", "Busy");
+		this.start_guider_process("GUIDING", "Busy");
 	},
 
 	stop_guiding: function() {
@@ -1545,10 +1596,6 @@ var indigo_sequencer = {
 		}
 	},
 
-	clear_guider_selection: function() {
-		this.select_switch(this.devices[GUIDER_AGENT], "AGENT_START_PROCESS", "CLEAR_SELECTION");
-	},
-
 	set_solver_exposure: function(exposure) {
 		this.change_numbers(this.devices[ASTROMETRY_AGENT], "AGENT_PLATESOLVER_EXPOSURE", { EXPOSURE: exposure });
 	},
@@ -1557,12 +1604,8 @@ var indigo_sequencer = {
 		this.change_numbers(this.devices[ASTROMETRY_AGENT], "AGENT_PLATESOLVER_GOTO_SETTINGS", { RA: ra, DEC: dec });
 	},
 
-	precise_goto: function() {
-		this.select_switch(this.devices[ASTROMETRY_AGENT], "AGENT_START_PROCESS", "PRECISE_GOTO");
-	},
-
-	sync_center: function() {
-		this.select_switch(this.devices[ASTROMETRY_AGENT], "AGENT_START_PROCESS", "CENTER");
+	start_astrometry_process: function(name) {
+		this.select_switch(this.devices[ASTROMETRY_AGENT], "AGENT_START_PROCESS", name);
 	},
 
 	set_rotator_goto: function() {
