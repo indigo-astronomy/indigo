@@ -237,6 +237,8 @@
 		595AA1D11FC5EEFE00350E7B /* indigo_agent.h in Headers */ = {isa = PBXBuildFile; fileRef = 595AA1CF1FC5EEFE00350E7B /* indigo_agent.h */; };
 		595AA1D21FC5EEFE00350E7B /* indigo_agent.c in Sources */ = {isa = PBXBuildFile; fileRef = 595AA1D01FC5EEFE00350E7B /* indigo_agent.c */; };
 		595B88EC242CFEA2008CA4E2 /* indigo_token.c in Sources */ = {isa = PBXBuildFile; fileRef = 595B88EB242CFEA2008CA4E2 /* indigo_token.c */; };
+		595F1419303A2A0B00474EF1 /* indigo_ptp_olympus.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F1418303A199800474EF1 /* indigo_ptp_olympus.m */; };
+		595F141A303A2A0B00474EF1 /* indigo_ptp_olympus.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F1418303A199800474EF1 /* indigo_ptp_olympus.m */; };
 		595F2918211E211100380EF4 /* DDHidMouse.h in Headers */ = {isa = PBXBuildFile; fileRef = 595F28FA211E211100380EF4 /* DDHidMouse.h */; };
 		595F2919211E211100380EF4 /* NSDictionary+DDHidExtras.h in Headers */ = {isa = PBXBuildFile; fileRef = 595F28FC211E211100380EF4 /* NSDictionary+DDHidExtras.h */; };
 		595F291A211E211100380EF4 /* DDHidEvent.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F28FD211E211100380EF4 /* DDHidEvent.m */; };
@@ -1592,6 +1594,9 @@
 		595B88EB242CFEA2008CA4E2 /* indigo_token.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_token.c; sourceTree = "<group>"; };
 		595E9FBE233E65F7006E01D3 /* make_dslr_table.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = make_dslr_table.py; sourceTree = "<group>"; };
 		595E9FBF233E6607006E01D3 /* dslr.csv */ = {isa = PBXFileReference; lastKnownFileType = text; name = dslr.csv; path = data/dslr.csv; sourceTree = SOURCE_ROOT; };
+		595F1416303A199800474EF1 /* indigo_ptp_olympus.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ptp_olympus.h; sourceTree = "<group>"; };
+		595F1417303A199800474EF1 /* indigo_ptp_olympus.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ptp_olympus.c; sourceTree = "<group>"; };
+		595F1418303A199800474EF1 /* indigo_ptp_olympus.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = indigo_ptp_olympus.m; sourceTree = "<group>"; };
 		595F28FA211E211100380EF4 /* DDHidMouse.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DDHidMouse.h; sourceTree = "<group>"; };
 		595F28FB211E211100380EF4 /* DDHidStandardUsages.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = DDHidStandardUsages.plist; sourceTree = "<group>"; };
 		595F28FC211E211100380EF4 /* NSDictionary+DDHidExtras.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSDictionary+DDHidExtras.h"; sourceTree = "<group>"; };
@@ -13616,6 +13621,7 @@
 				59D6718D22FDBB7500D08A2A /* indigo_ptp_nikon.h */,
 				59D6719122FDBB8D00D08A2A /* indigo_ptp_sony.h */,
 				59C3BB10255077E8000720B4 /* indigo_ptp_fuji.h */,
+				595F1416303A199800474EF1 /* indigo_ptp_olympus.h */,
 				599EB1792B54178100B333E4 /* ptp_camera_model.h */,
 				9D586C3F22FB0D43002D382E /* indigo_ccd_ptp.c */,
 				9D586C4422FC6265002D382E /* indigo_ptp.c */,
@@ -13623,6 +13629,7 @@
 				59D6718C22FDBB7500D08A2A /* indigo_ptp_nikon.c */,
 				59D6719022FDBB8D00D08A2A /* indigo_ptp_sony.c */,
 				59C3BB0F255077E8000720B4 /* indigo_ptp_fuji.c */,
+				595F1417303A199800474EF1 /* indigo_ptp_olympus.c */,
 				5937CBF32A02C25900135CCF /* indigo_ptp_ica.h */,
 				9DA71CF02A0255A900CFA533 /* indigo_ccd_ptp.m */,
 				5937CBE12A02BE9800135CCF /* indigo_ptp.m */,
@@ -13630,6 +13637,7 @@
 				5937CBE72A02BEE100135CCF /* indigo_ptp_nikon.m */,
 				5937CBEA2A02BEEB00135CCF /* indigo_ptp_sony.m */,
 				5937CBED2A02BEF700135CCF /* indigo_ptp_fuji.m */,
+				595F1418303A199800474EF1 /* indigo_ptp_olympus.m */,
 				59C3BB0E255077E8000720B4 /* indigo_ccd_ptp_main.c */,
 			);
 			path = ccd_ptp;
@@ -15753,6 +15761,7 @@
 				598A1B8D259BA94A00C0B34C /* indigo_ccd_uvc.c in Sources */,
 				598A1B8E259BA94A00C0B34C /* indigo_ao_sx.c in Sources */,
 				598FE27D2614F91B00E0DA21 /* indigo_dome_talon6ror.c in Sources */,
+				595F141A303A2A0B00474EF1 /* indigo_ptp_olympus.m in Sources */,
 				597BD19426067B0100239274 /* indigo_alpaca_focuser.c in Sources */,
 				598A1B8F259BA94A00C0B34C /* indigo_wheel_sx.c in Sources */,
 				598A1B90259BA94A00C0B34C /* NSXReturnThrowError.m in Sources */,
@@ -15968,6 +15977,7 @@
 				59111CE4285F503400E57194 /* indigocat_dso.c in Sources */,
 				597BD1702602552900239274 /* indigo_alpaca_wheel.c in Sources */,
 				5934588A2C8A0C220049421C /* indigo_focuser_lacerta.c in Sources */,
+				595F1419303A2A0B00474EF1 /* indigo_ptp_olympus.m in Sources */,
 				59C8E7C21DBBB05500AA3F0A /* indigo_ccd_sx.c in Sources */,
 				59111CF8285F504300E57194 /* indigocat_pluto.c in Sources */,
 				59111D03285F504300E57194 /* indigocat_uranus.c in Sources */,

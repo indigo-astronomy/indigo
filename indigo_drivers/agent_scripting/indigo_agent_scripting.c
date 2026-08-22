@@ -39,6 +39,8 @@
 
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_driver.h>
+#include <indigo/indigo_align.h>
+#include <indigo/indigocat/indigocat_solar_system.h>
 
 #include "duktape.h"
 #include "indigo_agent_scripting.h"
@@ -853,6 +855,30 @@ static duk_ret_t stod(duk_context *ctx) {
 	return 1;
 }
 
+static duk_ret_t solar_altitude(duk_context *ctx) {
+	double latitude = duk_require_number(ctx, 0);
+	double longitude = duk_require_number(ctx, 1);
+	equatorial_coords_s sun_pos;
+	time_t now = time(NULL);
+	indigocat_sun_equatorial_coords(UT2JD(now), &sun_pos);
+	double alt, az;
+	indigo_radec_to_altaz(sun_pos.ra / 15.0, sun_pos.dec, &now, latitude, longitude, 0, &alt, &az);
+	duk_push_number(ctx, alt);
+	return 1;
+}
+
+static duk_ret_t target_altitude(duk_context *ctx) {
+	double ra = duk_require_number(ctx, 0);
+	double dec = duk_require_number(ctx, 1);
+	double latitude = duk_require_number(ctx, 2);
+	double longitude = duk_require_number(ctx, 3);
+	double alt, az;
+	time_t now = time(NULL);
+	indigo_radec_to_altaz(ra, dec, &now, latitude, longitude, 0, &alt, &az);
+	duk_push_number(ctx, alt);
+	return 1;
+}
+
 // function indigo_set_timer(function, delay);
 
 static void timer_handler(indigo_device *device, void *data) {
@@ -1178,6 +1204,10 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_dtos");
 			duk_push_c_function(PRIVATE_DATA->ctx, stod, 1);
 			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_stod");
+			duk_push_c_function(PRIVATE_DATA->ctx, solar_altitude, 2);
+			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_solar_altitude");
+			duk_push_c_function(PRIVATE_DATA->ctx, target_altitude, 4);
+			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_target_altitude");
 			duk_push_c_function(PRIVATE_DATA->ctx, set_timer, 2);
 			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_set_timer");
 			duk_push_c_function(PRIVATE_DATA->ctx, utc_to_time, 1);

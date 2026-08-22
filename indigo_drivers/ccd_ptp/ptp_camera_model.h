@@ -172,6 +172,10 @@ static ptp_camera_model CAMERA[] = {
   { SONY_VID, 0x0d9f, "Sony Alpha A7RIV", ptp_flag_lv, 9504, 6336, 3.76 },
   { SONY_VID, 0x0d97, "Sony ZV-E10", ptp_flag_lv, 6024, 4024, 3.9 },
   { SONY_VID, 0xFFFF, "Sony Camera", ptp_flag_lv, 0, 0, 0 },
+  { OLYMPUS_VID, 0x0136, "OM System OM-1", ptp_flag_lv, 5184, 3888, 3.35 },
+  { OLYMPUS_VID, 0xFFFF, "Olympus Camera", ptp_flag_lv, 0, 0, 0 },
+  { OM_SYSTEM_VID, 0x0136, "OM System OM-1", ptp_flag_lv, 5184, 3888, 3.35 },
+  { OM_SYSTEM_VID, 0xFFFF, "OM System Camera", ptp_flag_lv, 0, 0, 0 },
   { 0 },
 };
 
