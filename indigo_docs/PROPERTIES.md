@@ -55,6 +55,7 @@ Properties CONNECTION through ADDITIONAL_INSTANCES are implemented by the driver
 |  |  |  |  | BITS_PER_PIXEL | yes | Bits/pixel |
 | CCD_LENS | number | no | yes | APERTURE | yes | in centimeters |
 |  |  |  |  | FOCAL_LENGTH | yes | in centimeters |
+|  |  |  |  | PHYSICAL_LENGTH | yes | in centimeters |
 | CCD_UPLOAD_MODE | switch | no | yes | CLIENT | yes | Upload to client |
 |  |  |  |  | LOCAL | yes | Save on server |
 |  |  |  |  | BOTH | yes | Upload and save |

@@ -133,6 +133,11 @@ extern "C" {
 
 #define CCD_LENS_FOCAL_LENGTH_ITEM      			(CCD_LENS_PROPERTY->items+1)
 
+/** CCD_LENS.PHYSICAL_LENGTH property item pointer.
+ */
+
+#define CCD_LENS_PHYSICAL_LENGTH_ITEM      			(CCD_LENS_PROPERTY->items+2)
+
 /** CCD_UPLOAD_MODE property pointer, property is mandatory, property change request is fully handled by indigo_ccd_change_property().
  */
 #define CCD_UPLOAD_MODE_PROPERTY          (CCD_CONTEXT->ccd_upload_mode_property)

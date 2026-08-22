@@ -133,6 +133,7 @@ enum {
 #define CCD_LENS_PROPERTY_NAME																				"CCD_LENS"
 #define CCD_LENS_APERTURE_ITEM_NAME																		"APERTURE"
 #define CCD_LENS_FOCAL_LENGTH_ITEM_NAME																"FOCAL_LENGTH"
+#define CCD_LENS_PHYSICAL_LENGTH_ITEM_NAME														"PHYSICAL_LENGTH"
 
 #define CCD_LENS_FOV_PROPERTY_NAME																		"CCD_LENS_FOV"
 #define CCD_LENS_FOV_FOV_WIDTH_ITEM_NAME															"FOV_WIDTH"
