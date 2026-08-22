@@ -45,6 +45,16 @@
 #include <indigo/indigo_md5.h>
 #include <indigo/indigo_stretch.h>
 
+#if defined(__GNUC__) && !defined(INDIGO_WINDOWS)
+#define INDIGO_LOCAL __attribute__((visibility("hidden")))
+#else
+#define INDIGO_LOCAL
+#endif
+
+extern INDIGO_LOCAL void indigo_compute_stretch_params_16_with_effective_bits(const uint16_t *buffer, int width, int height, int sample_columns_by, int sample_rows_by, double *shadows, double *midtones, double *highlights, unsigned long **histogram, unsigned long *total, double B, double C, int effective_bits);
+
+#undef INDIGO_LOCAL
+
 #define OBJECT_LENGTH 41
 
 struct indigo_jpeg_compress_struct {
@@ -982,6 +992,24 @@ indigo_result indigo_ccd_detach(indigo_device *device) {
 
 #define STRECH_SAMPLE_SIZE	0x1FF
 
+static inline int bits_per_channel(int bpp) {
+	if (bpp == 24) {
+		return 8;
+	}
+	if (bpp == 48) {
+		return 16;
+	}
+	return bpp;
+}
+
+static inline int effective_bits_per_channel(int bpp, int reported_bits) {
+	const int container_bits = bits_per_channel(bpp);
+	if (reported_bits < 8 || reported_bits > container_bits) {
+		return container_bits;
+	}
+	return reported_bits;
+}
+
 static inline void use_reference_channel(double *shadows, double *midtones, double *highlights, unsigned long *totals, int reference_channel) {
 	if (reference_channel < 1 || reference_channel > 3) {
 		return;
@@ -992,12 +1020,9 @@ static inline void use_reference_channel(double *shadows, double *midtones, doub
 	totals[0] = totals[1] = totals[2] = totals[reference_channel - 1];
 }
 
-void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, int frame_height, int bpp, const char *bayerpat, void **data_out, unsigned long *size_out, void **histogram_data, unsigned long *histogram_size, double B, double C, int reference_channel) {
-	indigo_raw_to_jpeg_with_quality(device, data_in, frame_width, frame_height, bpp, bayerpat, data_out, size_out, histogram_data, histogram_size, B, C, reference_channel, 90);
-}
-
-void indigo_raw_to_jpeg_with_quality(indigo_device *device, void *data_in, int frame_width, int frame_height, int bpp, const char *bayerpat, void **data_out, unsigned long *size_out, void **histogram_data, unsigned long *histogram_size, double B, double C, int reference_channel, int quality) {
+static void indigo_raw_to_jpeg_with_effective_bits(indigo_device *device, void *data_in, int frame_width, int frame_height, int bpp, int effective_bits, const char *bayerpat, void **data_out, unsigned long *size_out, void **histogram_data, unsigned long *histogram_size, double B, double C, int reference_channel, int quality) {
 	INDIGO_DEBUG(double start = get_time_hd());
+	effective_bits = effective_bits_per_channel(bpp, effective_bits);
 	size_t size_in = frame_width * frame_height;
 	int sample_by = frame_width < STRECH_SAMPLE_SIZE ? 1 : frame_width / STRECH_SAMPLE_SIZE;
 	void *copy = indigo_safe_malloc(3 * size_in * bpp / 8);
@@ -1075,7 +1100,9 @@ void indigo_raw_to_jpeg_with_quality(indigo_device *device, void *data_in, int f
 		if (bayerpat) {
 			if (!strcmp(bayerpat, "RGGB")) {
 				if (B != 0 && C != 0) {
-					indigo_compute_stretch_params_16_rggb((uint16_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, B, C);
+					indigo_compute_stretch_params_16_with_effective_bits((uint16_t *)(data_in), frame_width, frame_height, sample_by * 2, 2, &shadows[0], &midtones[0], &highlights[0], &histo[0], &totals[0], B, C, effective_bits);
+					indigo_compute_stretch_params_16_with_effective_bits((uint16_t *)(data_in) + 1, frame_width, frame_height, sample_by * 2, 2, &shadows[1], &midtones[1], &highlights[1], &histo[1], &totals[1], B, C, effective_bits);
+					indigo_compute_stretch_params_16_with_effective_bits((uint16_t *)(data_in) + frame_width + 1, frame_width, frame_height, sample_by * 2, 2, &shadows[2], &midtones[2], &highlights[2], &histo[2], &totals[2], B, C, effective_bits);
 					use_reference_channel(shadows, midtones, highlights, totals, reference_channel);
 					indigo_stretch_16_rggb((uint16_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights, totals);
 				} else {
@@ -1083,7 +1110,9 @@ void indigo_raw_to_jpeg_with_quality(indigo_device *device, void *data_in, int f
 				}
 			} else if (!strcmp(bayerpat, "GBRG")) {
 				if (B != 0 && C != 0) {
-					indigo_compute_stretch_params_16_gbrg((uint16_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, B, C);
+					indigo_compute_stretch_params_16_with_effective_bits((uint16_t *)(data_in) + frame_width, frame_width, frame_height, sample_by * 2, 2, &shadows[0], &midtones[0], &highlights[0], &histo[0], &totals[0], B, C, effective_bits);
+					indigo_compute_stretch_params_16_with_effective_bits((uint16_t *)(data_in), frame_width, frame_height, sample_by * 2, 2, &shadows[1], &midtones[1], &highlights[1], &histo[1], &totals[1], B, C, effective_bits);
+					indigo_compute_stretch_params_16_with_effective_bits((uint16_t *)(data_in) + 1, frame_width, frame_height, sample_by * 2, 2, &shadows[2], &midtones[2], &highlights[2], &histo[2], &totals[2], B, C, effective_bits);
 					use_reference_channel(shadows, midtones, highlights, totals, reference_channel);
 					indigo_stretch_16_gbrg((uint16_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights, totals);
 				} else {
@@ -1091,7 +1120,9 @@ void indigo_raw_to_jpeg_with_quality(indigo_device *device, void *data_in, int f
 				}
 			} else if (!strcmp(bayerpat, "GRBG")) {
 				if (B != 0 && C != 0) {
-					indigo_compute_stretch_params_16_grbg((uint16_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, B, C);
+					indigo_compute_stretch_params_16_with_effective_bits((uint16_t *)(data_in) + 1, frame_width, frame_height, sample_by * 2, 2, &shadows[0], &midtones[0], &highlights[0], &histo[0], &totals[0], B, C, effective_bits);
+					indigo_compute_stretch_params_16_with_effective_bits((uint16_t *)(data_in), frame_width, frame_height, sample_by * 2, 2, &shadows[1], &midtones[1], &highlights[1], &histo[1], &totals[1], B, C, effective_bits);
+					indigo_compute_stretch_params_16_with_effective_bits((uint16_t *)(data_in) + frame_width, frame_width, frame_height, sample_by * 2, 2, &shadows[2], &midtones[2], &highlights[2], &histo[2], &totals[2], B, C, effective_bits);
 					use_reference_channel(shadows, midtones, highlights, totals, reference_channel);
 					indigo_stretch_16_grbg((uint16_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights, totals);
 				} else {
@@ -1099,7 +1130,9 @@ void indigo_raw_to_jpeg_with_quality(indigo_device *device, void *data_in, int f
 				}
 			} else if (!strcmp(bayerpat, "BGGR")) {
 				if (B != 0 && C != 0) {
-					indigo_compute_stretch_params_16_bggr((uint16_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, B, C);
+					indigo_compute_stretch_params_16_with_effective_bits((uint16_t *)(data_in) + frame_width + 1, frame_width, frame_height, sample_by * 2, 2, &shadows[0], &midtones[0], &highlights[0], &histo[0], &totals[0], B, C, effective_bits);
+					indigo_compute_stretch_params_16_with_effective_bits((uint16_t *)(data_in) + 1, frame_width, frame_height, sample_by * 2, 2, &shadows[1], &midtones[1], &highlights[1], &histo[1], &totals[1], B, C, effective_bits);
+					indigo_compute_stretch_params_16_with_effective_bits((uint16_t *)(data_in), frame_width, frame_height, sample_by * 2, 2, &shadows[2], &midtones[2], &highlights[2], &histo[2], &totals[2], B, C, effective_bits);
 					use_reference_channel(shadows, midtones, highlights, totals, reference_channel);
 					indigo_stretch_16_bggr((uint16_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights, totals);
 				} else {
@@ -1110,7 +1143,7 @@ void indigo_raw_to_jpeg_with_quality(indigo_device *device, void *data_in, int f
 			}
 		} else {
 			if (B != 0 && C != 0) {
-				indigo_compute_stretch_params_16((uint16_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, B, C);
+				indigo_compute_stretch_params_16_with_effective_bits((uint16_t *)(data_in), frame_width, frame_height, sample_by, 1, &shadows[0], &midtones[0], &highlights[0], &histo[0], NULL, B, C, effective_bits);
 				indigo_stretch_16((uint16_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights);
 			} else {
 				for (size_t i = 0; i < size_in; i++) {
@@ -1129,7 +1162,9 @@ void indigo_raw_to_jpeg_with_quality(indigo_device *device, void *data_in, int f
 		}
 	} else if (bpp == 48) {
 		if (B != 0 && C != 0) {
-			indigo_compute_stretch_params_48((uint16_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, B, C);
+			for (int i = 0; i < 3; i++) {
+				indigo_compute_stretch_params_16_with_effective_bits((uint16_t *)(data_in) + i, 3 * frame_width, frame_height, sample_by * 3, 1, &shadows[i], &midtones[i], &highlights[i], &histo[i], &totals[i], B, C, effective_bits);
+			}
 			use_reference_channel(shadows, midtones, highlights, totals, reference_channel);
 			indigo_stretch_48((uint16_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights, totals);
 		} else {
@@ -1227,6 +1262,14 @@ void indigo_raw_to_jpeg_with_quality(indigo_device *device, void *data_in, int f
 	indigo_safe_free(histo[1]);
 	indigo_safe_free(histo[2]);
 	INDIGO_DEBUG(indigo_debug("RAW to preview conversion in %gs", get_time_hd() - start));
+}
+
+void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, int frame_height, int bpp, const char *bayerpat, void **data_out, unsigned long *size_out, void **histogram_data, unsigned long *histogram_size, double B, double C, int reference_channel) {
+	indigo_raw_to_jpeg_with_effective_bits(device, data_in, frame_width, frame_height, bpp, bits_per_channel(bpp), bayerpat, data_out, size_out, histogram_data, histogram_size, B, C, reference_channel, 90);
+}
+
+void indigo_raw_to_jpeg_with_quality(indigo_device *device, void *data_in, int frame_width, int frame_height, int bpp, const char *bayerpat, void **data_out, unsigned long *size_out, void **histogram_data, unsigned long *histogram_size, double B, double C, int reference_channel, int quality) {
+	indigo_raw_to_jpeg_with_effective_bits(device, data_in, frame_width, frame_height, bpp, bits_per_channel(bpp), bayerpat, data_out, size_out, histogram_data, histogram_size, B, C, reference_channel, quality);
 }
 
 static void add_key(char **header, bool fits, char *format, ...) {
@@ -1831,7 +1874,8 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		double B = CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.target;
 		double C = CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.target;
 		int reference_channel = (int)CCD_JPEG_SETTINGS_REF_CHANNEL_ITEM->number.target;
-		indigo_raw_to_jpeg_with_quality(device, (char*)data + FITS_HEADER_SIZE, frame_width, frame_height, bpp, bayerpat, &jpeg_data, &jpeg_size,  CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value ? &histogram_data : NULL, CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value ? &histogram_size : NULL, B, C, reference_channel, (int)CCD_JPEG_SETTINGS_QUALITY_ITEM->number.target);
+		const int effective_bits = (int)CCD_INFO_BITS_PER_PIXEL_ITEM->number.value;
+		indigo_raw_to_jpeg_with_effective_bits(device, (char*)data + FITS_HEADER_SIZE, frame_width, frame_height, bpp, effective_bits, bayerpat, &jpeg_data, &jpeg_size,  CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value ? &histogram_data : NULL, CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value ? &histogram_size : NULL, B, C, reference_channel, (int)CCD_JPEG_SETTINGS_QUALITY_ITEM->number.target);
 		if (CCD_PREVIEW_ENABLED_ITEM->sw.value || CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value) {
 			CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
