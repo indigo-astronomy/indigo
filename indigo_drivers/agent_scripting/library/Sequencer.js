@@ -106,6 +106,22 @@ Sequence.prototype.break_at_ha = function(limit) {
 	this.sequence.push({ execute: 'break_at_ha(' + l + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
+Sequence.prototype.wait_until_solar_altitude_below = function(limit) {
+	this.sequence.push({ execute: 'wait_until_solar_altitude_below(' + limit + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
+Sequence.prototype.wait_until_target_altitude_above = function(limit, ra, dec) {
+	this.sequence.push({ execute: 'wait_until_target_altitude_above(' + ra + ',' + dec + ',' + limit + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
+Sequence.prototype.break_if_solar_altitude_above = function(limit) {
+	this.sequence.push({ execute: 'break_if_solar_altitude_above(' + limit + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
+Sequence.prototype.break_if_target_altitude_below = function(limit, ra, dec) {
+	this.sequence.push({ execute: 'break_if_target_altitude_below(' + ra + ',' + dec + ',' + limit + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
 Sequence.prototype.resume_point = function() {
 	this.sequence.push({ execute: 'resume_point(' + (++this.recovery_point_index) + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
@@ -711,6 +727,7 @@ var indigo_sequencer = {
 	capturing_batch: false,
 	batch_exposure: 0,
 	verbose: true,
+	altitude_poll: null,
 
 	update_step_state: function(step, state) {
 		this.step_states["" + step] = state;
@@ -842,6 +859,7 @@ var indigo_sequencer = {
 		this.wait_for_device = null;
 		this.wait_for_property = null;
 		this.wait_for_property_state = "Ok";
+		this.altitude_poll = null;
 		this.sequence = null;
 		if (this.paused) {
 			this.paused = false;
@@ -891,6 +909,7 @@ var indigo_sequencer = {
 			this.skip_to_recovery_point = false;
 			this.ignore_failure = false;
 			this.skip_to_resume_point = false;
+			this.altitude_poll = null;
 			indigo_update_switch_property(this.devices[SCRIPTING_AGENT], "AGENT_PAUSE_PROCESS", { PAUSE_WAIT: false }, this.pause_state = "Ok");
 			indigo_update_switch_property(this.devices[SCRIPTING_AGENT], "AGENT_ABORT_PROCESS", { ABORT: false }, this.abort_state = "Ok");
 			indigo_update_number_property(this.devices[SCRIPTING_AGENT], "SEQUENCE_STATE", { STEP: this.step, PROGRESS: this.progress, PROGRESS_TOTAL: this.progress_total, EXPOSURE: this.exposure, EXPOSURE_TOTAL: this.exposure_total }, this.sequence_state = "Busy");
@@ -1307,6 +1326,91 @@ var indigo_sequencer = {
 		}
 	},
 
+	get_site_coordinates: function() {
+		var lat = 0, lon = 0;
+		var mount_agent = indigo_devices[this.devices[MOUNT_AGENT]];
+		if (mount_agent != null) {
+			var geo = mount_agent.GEOGRAPHIC_COORDINATES;
+			if (geo != null) {
+				lat = geo.items.LATITUDE;
+				lon = geo.items.LONGITUDE;
+			}
+		}
+		return { lat: lat, lon: lon };
+	},
+
+	wait_until_solar_altitude_below: function(limit) {
+		var site = this.get_site_coordinates();
+		var lat = site.lat, lon = site.lon;
+		var alt = indigo_solar_altitude(lat, lon);
+		if (alt < limit) {
+			indigo_send_message("Solar altitude " + alt.toFixed(1) + "° is already below " + limit + "°");
+			indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
+			return;
+		}
+		indigo_send_message("Waiting for solar altitude to drop below " + limit + "° (currently " + alt.toFixed(1) + "°)");
+		this.altitude_poll = function() {
+			var a = indigo_solar_altitude(lat, lon);
+			if (a < limit) {
+				indigo_sequencer.altitude_poll = null;
+				indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
+			} else {
+				indigo_send_message("Solar altitude " + a.toFixed(1) + "°, waiting for < " + limit + "°");
+				indigo_sequencer.wait_for_timer = indigo_set_timer(indigo_sequencer_altitude_poll_handler, 60);
+			}
+		};
+		this.wait_for_timer = indigo_set_timer(indigo_sequencer_altitude_poll_handler, 60);
+	},
+
+	wait_until_target_altitude_above: function(ra, dec, limit) {
+		var site = this.get_site_coordinates();
+		var lat = site.lat, lon = site.lon;
+		var alt = indigo_target_altitude(ra, dec, lat, lon);
+		if (alt > limit) {
+			indigo_send_message("Target altitude " + alt.toFixed(1) + "° is already above " + limit + "°");
+			indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
+			return;
+		}
+		indigo_send_message("Waiting for target altitude to rise above " + limit + "° (currently " + alt.toFixed(1) + "°)");
+		this.altitude_poll = function() {
+			var a = indigo_target_altitude(ra, dec, lat, lon);
+			if (a > limit) {
+				indigo_sequencer.altitude_poll = null;
+				indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
+			} else {
+				indigo_send_message("Target altitude " + a.toFixed(1) + "°, waiting for > " + limit + "°");
+				indigo_sequencer.wait_for_timer = indigo_set_timer(indigo_sequencer_altitude_poll_handler, 60);
+			}
+		};
+		this.wait_for_timer = indigo_set_timer(indigo_sequencer_altitude_poll_handler, 60);
+	},
+
+	break_if_solar_altitude_above: function(limit) {
+		var site = this.get_site_coordinates();
+		var alt = indigo_solar_altitude(site.lat, site.lon);
+		if (alt > limit) {
+			this.skip_to_resume_point = true;
+			indigo_send_message("Break executed: solar altitude " + alt.toFixed(1) + "° above " + limit + "°");
+			indigo_sequencer.update_step_state(indigo_sequencer.step, "Alert");
+			indigo_set_timer(indigo_sequencer_next_handler, 0);
+		} else {
+			indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
+		}
+	},
+
+	break_if_target_altitude_below: function(ra, dec, limit) {
+		var site = this.get_site_coordinates();
+		var alt = indigo_target_altitude(ra, dec, site.lat, site.lon);
+		if (alt < limit) {
+			this.skip_to_resume_point = true;
+			indigo_send_message("Break executed: target altitude " + alt.toFixed(1) + "° below " + limit + "°");
+			indigo_sequencer.update_step_state(indigo_sequencer.step, "Alert");
+			indigo_set_timer(indigo_sequencer_next_handler, 0);
+		} else {
+			indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
+		}
+	},
+
 	evaluate: function(code) {
 		eval(code);
 		indigo_set_timer(indigo_sequencer_next_ok_handler, 0);
@@ -1644,6 +1748,13 @@ function indigo_sequencer_next_ok_handler() {
 
 function indigo_sequencer_abort_handler() {
 	indigo_sequencer.abort();
+}
+
+function indigo_sequencer_altitude_poll_handler() {
+	indigo_sequencer.wait_for_timer = null;
+	if (indigo_sequencer.altitude_poll != null) {
+		indigo_sequencer.altitude_poll();
+	}
 }
 
 // MARK: Main code

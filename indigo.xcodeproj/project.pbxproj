@@ -237,6 +237,8 @@
 		595AA1D11FC5EEFE00350E7B /* indigo_agent.h in Headers */ = {isa = PBXBuildFile; fileRef = 595AA1CF1FC5EEFE00350E7B /* indigo_agent.h */; };
 		595AA1D21FC5EEFE00350E7B /* indigo_agent.c in Sources */ = {isa = PBXBuildFile; fileRef = 595AA1D01FC5EEFE00350E7B /* indigo_agent.c */; };
 		595B88EC242CFEA2008CA4E2 /* indigo_token.c in Sources */ = {isa = PBXBuildFile; fileRef = 595B88EB242CFEA2008CA4E2 /* indigo_token.c */; };
+		595F1419303A2A0B00474EF1 /* indigo_ptp_olympus.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F1418303A199800474EF1 /* indigo_ptp_olympus.m */; };
+		595F141A303A2A0B00474EF1 /* indigo_ptp_olympus.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F1418303A199800474EF1 /* indigo_ptp_olympus.m */; };
 		595F2918211E211100380EF4 /* DDHidMouse.h in Headers */ = {isa = PBXBuildFile; fileRef = 595F28FA211E211100380EF4 /* DDHidMouse.h */; };
 		595F2919211E211100380EF4 /* NSDictionary+DDHidExtras.h in Headers */ = {isa = PBXBuildFile; fileRef = 595F28FC211E211100380EF4 /* NSDictionary+DDHidExtras.h */; };
 		595F291A211E211100380EF4 /* DDHidEvent.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F28FD211E211100380EF4 /* DDHidEvent.m */; };
@@ -15759,6 +15761,7 @@
 				598A1B8D259BA94A00C0B34C /* indigo_ccd_uvc.c in Sources */,
 				598A1B8E259BA94A00C0B34C /* indigo_ao_sx.c in Sources */,
 				598FE27D2614F91B00E0DA21 /* indigo_dome_talon6ror.c in Sources */,
+				595F141A303A2A0B00474EF1 /* indigo_ptp_olympus.m in Sources */,
 				597BD19426067B0100239274 /* indigo_alpaca_focuser.c in Sources */,
 				598A1B8F259BA94A00C0B34C /* indigo_wheel_sx.c in Sources */,
 				598A1B90259BA94A00C0B34C /* NSXReturnThrowError.m in Sources */,
@@ -15974,6 +15977,7 @@
 				59111CE4285F503400E57194 /* indigocat_dso.c in Sources */,
 				597BD1702602552900239274 /* indigo_alpaca_wheel.c in Sources */,
 				5934588A2C8A0C220049421C /* indigo_focuser_lacerta.c in Sources */,
+				595F1419303A2A0B00474EF1 /* indigo_ptp_olympus.m in Sources */,
 				59C8E7C21DBBB05500AA3F0A /* indigo_ccd_sx.c in Sources */,
 				59111CF8285F504300E57194 /* indigocat_pluto.c in Sources */,
 				59111D03285F504300E57194 /* indigocat_uranus.c in Sources */,
