@@ -33,7 +33,7 @@
 #include <indigo/indigo_driver.h>
 
 #define PRIVATE_DATA                ((ptp_private_data *)device->private_data)
-#define DRIVER_VERSION 0x02000021
+#define DRIVER_VERSION 0x02000022
 #define DRIVER_NAME                 "indigo_ccd_ptp"
 
 #define PTP_TIMEOUT                 10000
@@ -354,6 +354,8 @@ typedef struct {
 #endif
 	libusb_device_handle *handle;
 	uint8_t ep_in, ep_out, ep_int;
+	uint8_t iface;
+	int transaction_timeout;
 	indigo_property *dslr_delete_image_property;
 	indigo_property *dslr_mirror_lockup_property;
 	indigo_property *dslr_zoom_preview_property;

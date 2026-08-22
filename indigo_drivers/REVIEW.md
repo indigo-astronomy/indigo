@@ -49,6 +49,7 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 | DRV-016 | High | `agent_mount/indigo_agent_mount.c:2172` | `AGENT_MOUNT_ENABLE_JOYSTICK_CONTROL` was ignored by the `agent_update_property()` forwarding path. `JOYSTICK_MOUNT_*` updates were forwarded to the selected mount before the gated joystick handling in `snoop_changes()` could run, so disabling joystick control in `AGENT_PROCESS_FEATURES` did not prevent joystick motion, park, tracking, home, or abort commands. | Closed (fixed) |
 | DRV-017 | High | `agent_mount/indigo_agent_mount.c:1840` | The refactor removed the old disabled-by-default `AGENT_DOME_SLAVING` and `AGENT_FIELD_DEROTATION` properties, then initialized the replacement `AGENT_PROCESS_FEATURES` items for dome slaving, derotation, and joystick control to `true`. Existing configurations saved under the old property names were no longer loaded into these new items, so upgrading could silently enable dome, rotator, and joystick-driven hardware behavior that was previously disabled. | Closed (fixed) |
 | DRV-018 | High | `agent_mount/indigo_agent_mount.c:521` | Mount park/unpark with dome slaving now sends `DOME_PARK` immediately after `MOUNT_PARK`, instead of waiting for the mount park state to complete successfully. If the mount park later fails or the process is aborted, dome/roof park motion has already been started and `abort_process()` only sends `MOUNT_ABORT_MOTION`, creating a hardware-safety regression. Preserve the previous sequencing or abort/guard dome motion explicitly. | Closed (fixed) |
+| DRV-019 | Medium | `ccd_ptp/indigo_ptp_olympus.c:696` | Olympus initialization logs a failed `CameraControlMode` switch and calls raw-USB recovery, but ignores missing confirmation and recovery failure before scheduling event polling and returning success. A disconnected, wedged, or wildcard-matched unsupported Olympus body can be reported connected even though remote capture and live view require PC-control mode. | Closed (fixed) |
 
 ## Finding Summaries
 
@@ -79,6 +80,23 @@ agent's abort path only sends `MOUNT_ABORT_MOTION`.
 The abort path now sends `DOME_ABORT_MOTION` as well when a dome is selected, so a user
 abort during a combined mount/dome process attempts to stop both controlled devices.
 
+### DRV-019 (Closed — fixed)
+
+`ptp_olympus_initialise()` treats a failed `SetDevicePropValue(CameraControlMode)` as
+recoverable, which is needed for the OM-1 mode-switch timeout case, but the implementation
+does not require either a C108 confirmation event or a successful `ptp_olympus_recover()`.
+The function then schedules `ptp_olympus_check_event()` and returns `true`. For a camera
+that was unplugged during the switch, remains wedged after reset, or matches the Olympus
+wildcard without supporting the OM PC-control extension, the driver can publish an OK
+connection even though `ptp_olympus_exposure()` and `ptp_olympus_liveview()` depend on
+that mode.
+
+The Olympus init path now accepts the expected raw-USB timeout workaround only after the
+camera-control property-change event is observed and `ptp_olympus_recover()` succeeds. If
+the switch is unconfirmed, recovery fails, or the ICA transport reports a direct switch
+failure, initialization returns `false` and the normal connection error path closes the
+PTP session instead of reporting the camera connected.
+
 ## Review Focus
 
 - Driver lifecycle: `INDIGO_DRIVER_INIT`, `INDIGO_DRIVER_SHUTDOWN`, and `INDIGO_DRIVER_INFO`.
@@ -102,3 +120,4 @@ abort during a combined mount/dome process attempts to stop both controlled devi
 | `017ba602857378e4aed489c065c76eacae15924c` | `017ba602857378e4aed489c065c76eacae15924c` | 2026-08-01 | Final remaining-driver pass over protocol parsing, response tokenization, mirrored property resizing, and unchecked stack-buffer copies; recorded `DRV-009` and `DRV-010`. |
 | `017ba602857378e4aed489c065c76eacae15924c` | `017ba602857378e4aed489c065c76eacae15924c` | 2026-08-01 | Exhaustive scoped directory enumeration plus repeatable static scans over all 136 included top-level directories and 490 C-family files; recorded `DRV-011` through `DRV-015`. |
 | `d9b39b84e3780dca0c9e7cbb901b63a62586b106` | `afdd54618e5520c4983598c33b662c022962df7c` | 2026-08-18 | Requested review of the last two commits touching `agent_mount`; recorded `DRV-016` and `DRV-017`. |
+| `017ba602857378e4aed489c065c76eacae15924c` | `a18baada350fd21298fc602fd1751518cc8254ba` | 2026-08-22 | Focused review of Olympus/OM System support under `ccd_ptp`; recorded `DRV-019`. Did not advance the folder baseline because other `indigo_drivers` changes in this range were not reviewed. |
