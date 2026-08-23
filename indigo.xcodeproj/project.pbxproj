@@ -2382,6 +2382,8 @@
 		5984A339303BA58900D581D2 /* test_focuser_steeldrive2_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_steeldrive2_simulator.c; sourceTree = "<group>"; };
 		5984A33A303BA72100D581D2 /* focuser_wemacro_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = focuser_wemacro_simulator.c; sourceTree = "<group>"; };
 		5984A33C303BA73500D581D2 /* test_focuser_wemacro_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_wemacro_simulator.c; sourceTree = "<group>"; };
+		5984A33D303BA80100D581D2 /* gps_nmea_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = gps_nmea_simulator.c; sourceTree = "<group>"; };
+		5984A33F303BA81300D581D2 /* test_gps_nmea_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_gps_nmea_simulator.c; sourceTree = "<group>"; };
 		5984C90827C2E2290090204B /* IMAGING_AF_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = IMAGING_AF_TUNING.md; sourceTree = "<group>"; };
 		5984C90927C2E22A0090204B /* POLAR_ALIGNMENT.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = POLAR_ALIGNMENT.md; sourceTree = "<group>"; };
 		5984C90A27C2E22A0090204B /* GUIDING_PI_CONTROLLER_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = GUIDING_PI_CONTROLLER_TUNING.md; sourceTree = "<group>"; };
@@ -8021,6 +8023,14 @@
 			path = focuser_wemacro_simulator;
 			sourceTree = "<group>";
 		};
+		5984A33E303BA80100D581D2 /* gps_nmea_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				5984A33D303BA80100D581D2 /* gps_nmea_simulator.c */,
+			);
+			path = gps_nmea_simulator;
+			sourceTree = "<group>";
+		};
 		598C57E121A75B1A001CA8C0 /* libnexstar */ = {
 			isa = PBXGroup;
 			children = (
@@ -12828,6 +12838,7 @@
 				59DD69C51FC1CF8D00AEF0DF /* indigo_gps_nmea.c */,
 				59DD69C81FC1CF8D00AEF0DF /* indigo_gps_nmea_main.c */,
 				9D0AE7602DB7A5F40012933D /* indigo_gps_nmea.driver */,
+				5984A33E303BA80100D581D2 /* gps_nmea_simulator */,
 			);
 			path = gps_nmea;
 			sourceTree = "<group>";
@@ -13098,6 +13109,7 @@
 		59FA7BF3301D3A5800A35CFB /* integration */ = {
 			isa = PBXGroup;
 			children = (
+				5984A33F303BA81300D581D2 /* test_gps_nmea_simulator.c */,
 				5984A33C303BA73500D581D2 /* test_focuser_wemacro_simulator.c */,
 				5984A339303BA58900D581D2 /* test_focuser_steeldrive2_simulator.c */,
 				5984A337303BA48800D581D2 /* test_focuser_usbv3_simulator.c */,
