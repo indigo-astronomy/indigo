@@ -67,6 +67,7 @@ INTEGRATION_TESTS = \
 	$(INTEGRATION_BUILD)/test_focuser_primaluce_simulator \
 	$(INTEGRATION_BUILD)/test_focuser_prodigy_simulator \
 	$(INTEGRATION_BUILD)/test_focuser_robofocus_simulator \
+	$(INTEGRATION_BUILD)/test_focuser_steeldrive2_simulator \
 	$(INTEGRATION_BUILD)/test_focuser_usbv3_simulator \
 	$(INTEGRATION_BUILD)/test_aux_svbpowerbox_simulator \
 	$(INTEGRATION_BUILD)/test_aux_wbplusv3_simulator \
@@ -127,6 +128,7 @@ FOCUSER_OPTEC_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_optec.a $
 FOCUSER_PRIMALUCE_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_primaluce.a $(TEST_LDFLAGS) -lindigocat
 FOCUSER_PRODIGY_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_prodigy.a $(TEST_LDFLAGS) -lindigocat
 FOCUSER_ROBOFOCUS_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_robofocus.a $(TEST_LDFLAGS) -lindigocat
+FOCUSER_STEELDRIVE2_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_steeldrive2.a $(TEST_LDFLAGS) -lindigocat
 FOCUSER_USBV3_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_usbv3.a $(TEST_LDFLAGS) -lindigocat
 AUX_SVBPOWERBOX_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_svbpowerbox.a $(TEST_LDFLAGS) -lindigocat
 AUX_WBPLUSV3_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_wbplusv3.a $(TEST_LDFLAGS) -lindigocat
@@ -330,6 +332,9 @@ $(INTEGRATION_BUILD)/focuser_prodigy_simulator: ../indigo_drivers/focuser_prodig
 $(INTEGRATION_BUILD)/focuser_robofocus_simulator: ../indigo_drivers/focuser_robofocus/focuser_robofocus_simulator/focuser_robofocus_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
+$(INTEGRATION_BUILD)/focuser_steeldrive2_simulator: ../indigo_drivers/focuser_steeldrive2/focuser_steeldrive2_simulator/focuser_steeldrive2_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $<
+
 $(INTEGRATION_BUILD)/focuser_usbv3_simulator: ../indigo_drivers/focuser_usbv3/focuser_usbv3_simulator/focuser_usbv3_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
@@ -482,6 +487,9 @@ $(INTEGRATION_BUILD)/test_focuser_prodigy_simulator: integration/test_focuser_pr
 
 $(INTEGRATION_BUILD)/test_focuser_robofocus_simulator: integration/test_focuser_robofocus_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_robofocus_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_ROBOFOCUS_SIMULATOR_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_focuser_steeldrive2_simulator: integration/test_focuser_steeldrive2_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_steeldrive2_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_STEELDRIVE2_SIMULATOR_TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/test_focuser_usbv3_simulator: integration/test_focuser_usbv3_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_usbv3_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_USBV3_SIMULATOR_TEST_LDFLAGS)
