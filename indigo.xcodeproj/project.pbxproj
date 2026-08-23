@@ -2350,6 +2350,8 @@
 		5984A314303B905D00D581D2 /* test_focuser_efa_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_efa_simulator.c; sourceTree = "<group>"; };
 		5984A315303B919100D581D2 /* focuser_focusdreampro_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = focuser_focusdreampro_simulator.c; sourceTree = "<group>"; };
 		5984A317303B91A300D581D2 /* test_focuser_focusdreampro_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_focusdreampro_simulator.c; sourceTree = "<group>"; };
+		5984A318303B944900D581D2 /* focuser_dmfc_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = focuser_dmfc_simulator.c; sourceTree = "<group>"; };
+		5984A319303B945A00D581D2 /* test_focuser_dmfc_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_dmfc_simulator.c; sourceTree = "<group>"; };
 		5984C90827C2E2290090204B /* IMAGING_AF_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = IMAGING_AF_TUNING.md; sourceTree = "<group>"; };
 		5984C90927C2E22A0090204B /* POLAR_ALIGNMENT.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = POLAR_ALIGNMENT.md; sourceTree = "<group>"; };
 		5984C90A27C2E22A0090204B /* GUIDING_PI_CONTROLLER_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = GUIDING_PI_CONTROLLER_TUNING.md; sourceTree = "<group>"; };
@@ -13018,6 +13020,7 @@
 		59FA7BF3301D3A5800A35CFB /* integration */ = {
 			isa = PBXGroup;
 			children = (
+				5984A319303B945A00D581D2 /* test_focuser_dmfc_simulator.c */,
 				5984A317303B91A300D581D2 /* test_focuser_focusdreampro_simulator.c */,
 				5984A314303B905D00D581D2 /* test_focuser_efa_simulator.c */,
 				5984A312303B8EBA00D581D2 /* test_focuser_astromechanics_simulator.c */,
@@ -14668,6 +14671,7 @@
 		9DB88E9D214BEDD900CECBCE /* focuser_dmfc_simulator */ = {
 			isa = PBXGroup;
 			children = (
+				5984A318303B944900D581D2 /* focuser_dmfc_simulator.c */,
 				9DB88E9E214BEDD900CECBCE /* focuser_dmfc_simulator.ino */,
 			);
 			path = focuser_dmfc_simulator;
