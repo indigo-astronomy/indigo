@@ -33,6 +33,7 @@ INTEGRATION_TESTS = \
 	$(INTEGRATION_BUILD)/test_dome_baader_simulator \
 	$(INTEGRATION_BUILD)/test_dome_nexdome_simulator \
 	$(INTEGRATION_BUILD)/test_dome_nexdome3_simulator \
+	$(INTEGRATION_BUILD)/test_dome_skyroof_simulator \
 	$(INTEGRATION_BUILD)/test_gps_simulator \
 	$(INTEGRATION_BUILD)/test_mount_simulator \
 	$(INTEGRATION_BUILD)/test_polaralign_simulator \
@@ -73,6 +74,7 @@ DOME_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_dome_simulator.a $(TEST_LD
 DOME_BAADER_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_dome_baader.a $(TEST_LDFLAGS) -lindigocat
 DOME_NEXDOME_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_dome_nexdome.a $(TEST_LDFLAGS) -lindigocat
 DOME_NEXDOME3_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_dome_nexdome3.a $(TEST_LDFLAGS) -lindigocat
+DOME_SKYROOF_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_dome_skyroof.a $(TEST_LDFLAGS) -lindigocat
 GPS_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_gps_simulator.a $(TEST_LDFLAGS) -lindigocat
 MOUNT_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_mount_simulator.a $(TEST_LDFLAGS) -lindigocat
 POLARALIGN_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_polaralign_simulator.a $(TEST_LDFLAGS) -lindigocat
@@ -200,6 +202,9 @@ $(INTEGRATION_BUILD)/dome_nexdome_simulator: ../indigo_drivers/dome_nexdome/dome
 $(INTEGRATION_BUILD)/dome_nexdome3_simulator: ../indigo_drivers/dome_nexdome3/dome_nexdome3_simulator/dome_nexdome3_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -pthread -o $@ $<
 
+$(INTEGRATION_BUILD)/dome_skyroof_simulator: ../indigo_drivers/dome_skyroof/dome_skyroof_simulator/dome_skyroof_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $<
+
 $(INTEGRATION_BUILD)/focuser_askar_simulator: ../indigo_drivers/focuser_askar/focuser_askar_simulator/focuser_askar_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -pthread -o $@ $<
 
@@ -295,6 +300,9 @@ $(INTEGRATION_BUILD)/test_dome_nexdome_simulator: integration/test_dome_nexdome_
 
 $(INTEGRATION_BUILD)/test_dome_nexdome3_simulator: integration/test_dome_nexdome3_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/dome_nexdome3_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(DOME_NEXDOME3_SIMULATOR_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_dome_skyroof_simulator: integration/test_dome_skyroof_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/dome_skyroof_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(DOME_SKYROOF_SIMULATOR_TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/test_rotator_falcon2_simulator: integration/test_rotator_falcon2_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/rotator_falcon2_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(ROTATOR_FALCON2_SIMULATOR_TEST_LDFLAGS)
