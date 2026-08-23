@@ -2344,6 +2344,8 @@
 		5984A30D303B8C7600D581D2 /* test_dome_talon6ror_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_dome_talon6ror_simulator.c; sourceTree = "<group>"; };
 		5984A30E303B8D8000D581D2 /* dome_beaver_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = dome_beaver_simulator.c; sourceTree = "<group>"; };
 		5984A310303B8D8F00D581D2 /* test_dome_beaver_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_dome_beaver_simulator.c; sourceTree = "<group>"; };
+		5984A311303B8EAC00D581D2 /* focuser_astromechanics_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = focuser_astromechanics_simulator.c; sourceTree = "<group>"; };
+		5984A312303B8EBA00D581D2 /* test_focuser_astromechanics_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_astromechanics_simulator.c; sourceTree = "<group>"; };
 		5984C90827C2E2290090204B /* IMAGING_AF_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = IMAGING_AF_TUNING.md; sourceTree = "<group>"; };
 		5984C90927C2E22A0090204B /* POLAR_ALIGNMENT.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = POLAR_ALIGNMENT.md; sourceTree = "<group>"; };
 		5984C90A27C2E22A0090204B /* GUIDING_PI_CONTROLLER_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = GUIDING_PI_CONTROLLER_TUNING.md; sourceTree = "<group>"; };
@@ -6701,6 +6703,7 @@
 		5955CB6F2684BEBF00685071 /* focuser_astromechanics_simulator */ = {
 			isa = PBXGroup;
 			children = (
+				5984A311303B8EAC00D581D2 /* focuser_astromechanics_simulator.c */,
 				5955CB702684BEBF00685071 /* focuser_astromechanics_simulator.ino */,
 			);
 			path = focuser_astromechanics_simulator;
@@ -13001,6 +13004,7 @@
 		59FA7BF3301D3A5800A35CFB /* integration */ = {
 			isa = PBXGroup;
 			children = (
+				5984A312303B8EBA00D581D2 /* test_focuser_astromechanics_simulator.c */,
 				5984A310303B8D8F00D581D2 /* test_dome_beaver_simulator.c */,
 				5984A30D303B8C7600D581D2 /* test_dome_talon6ror_simulator.c */,
 				5984A30B303B8AF200D581D2 /* test_dome_skyroof_simulator.c */,
