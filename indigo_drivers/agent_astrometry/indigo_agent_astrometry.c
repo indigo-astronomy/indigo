@@ -202,7 +202,7 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 
 	ASTROMETRY_DEVICE_PRIVATE_DATA->abort_requested = false;
 	char command_buf[8 * 1024];
-	sprintf(command_buf, "%s 2>&1", buffer);
+	snprintf(command_buf, sizeof(command_buf), "%s 2>&1", buffer);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "> %s", buffer);
 	int pipe_stdout[2];
 	if (pipe(pipe_stdout)) {
@@ -253,7 +253,7 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 				AGENT_PLATESOLVER_WCS_EPOCH_ITEM->number.value = 2000;
 			}
 			INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed = false;
-		} else if (sscanf(line, "Field size: %lg x %lg %s", &d1, &d2, s) == 3) {
+		} else if (sscanf(line, "Field size: %lg x %lg %15s", &d1, &d2, s) == 3) {
 			if (!strcmp(s, "degrees")) {
 				AGENT_PLATESOLVER_WCS_WIDTH_ITEM->number.value = d1;
 				AGENT_PLATESOLVER_WCS_HEIGHT_ITEM->number.value = d2;
