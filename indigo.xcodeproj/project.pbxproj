@@ -2326,6 +2326,8 @@
 		5984A2FA303B77B300D581D2 /* test_aux_ppb_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_ppb_simulator.c; sourceTree = "<group>"; };
 		5984A2FB303B795B00D581D2 /* aux_skyalert_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = aux_skyalert_simulator.c; sourceTree = "<group>"; };
 		5984A2FC303B796D00D581D2 /* test_aux_skyalert_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_skyalert_simulator.c; sourceTree = "<group>"; };
+		5984A2FD303B7A3E00D581D2 /* aux_sqm_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = aux_sqm_simulator.c; sourceTree = "<group>"; };
+		5984A2FE303B7A4900D581D2 /* test_aux_sqm_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_sqm_simulator.c; sourceTree = "<group>"; };
 		5984C90827C2E2290090204B /* IMAGING_AF_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = IMAGING_AF_TUNING.md; sourceTree = "<group>"; };
 		5984C90927C2E22A0090204B /* POLAR_ALIGNMENT.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = POLAR_ALIGNMENT.md; sourceTree = "<group>"; };
 		5984C90A27C2E22A0090204B /* GUIDING_PI_CONTROLLER_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = GUIDING_PI_CONTROLLER_TUNING.md; sourceTree = "<group>"; };
@@ -12960,6 +12962,7 @@
 		59FA7BF3301D3A5800A35CFB /* integration */ = {
 			isa = PBXGroup;
 			children = (
+				5984A2FE303B7A4900D581D2 /* test_aux_sqm_simulator.c */,
 				5984A2FC303B796D00D581D2 /* test_aux_skyalert_simulator.c */,
 				5984A2FA303B77B300D581D2 /* test_aux_ppb_simulator.c */,
 				5907ACEA301E9F1B0009AA99 /* test_aux_flipflat_simulator.c */,
@@ -14825,6 +14828,7 @@
 		9DE0E78E22C6294100289234 /* aux_sqm_simulator */ = {
 			isa = PBXGroup;
 			children = (
+				5984A2FD303B7A3E00D581D2 /* aux_sqm_simulator.c */,
 				9DE0E78F22C6294100289234 /* aux_sqm_simulator.ino */,
 			);
 			path = aux_sqm_simulator;
