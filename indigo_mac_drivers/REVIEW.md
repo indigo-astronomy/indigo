@@ -24,7 +24,7 @@ For the 2026-08-01 scoped baseline pass, build products and SDK/vendor subtrees 
 
 | ID | Severity | File | Summary | Status |
 | --- | --- | --- | --- | --- |
-| MACDRV-001 | High | `ccd_atik2/indigo_ccd_atik2.c:183` | CCD, guider, and wheel connection paths acquire the INDIGO global lock before `libatik_open()`, but if `libatik_open()` fails they only decrement `device_count` and leave the global lock held. A failed open can block later driver/device access until process restart. Track whether the lock was acquired and release it on every failed-open path. | Open |
+| MACDRV-001 | High | `ccd_atik2/indigo_ccd_atik2.c:183` | CCD, guider, and wheel connection paths acquire the INDIGO global lock before `libatik_open()`, but if `libatik_open()` fails they only decrement `device_count` and leave the global lock held. A failed open can block later driver/device access until process restart. Track whether the lock was acquired and release it on every failed-open path. | Closed (fixed) |
 | MACDRV-002 | Medium | `ccd_atik2/indigo_ccd_atik2.c:310` | The Atik2 detach handlers call `indigo_global_unlock()` whenever the detached device is the master device, independent of `device_count`. If CCD, guider, and wheel logical devices share the same physical camera, detaching the master while siblings are still connected can release the global lock early; if disconnect already released it, detach can also unlock a second time. Let the shared disconnect path own the lock lifecycle. | Open |
 | MACDRV-003 | Medium | `ccd_atik2/indigo_ccd_atik2.c:577` | The hotplug arrival path allocates shared private data and one or more logical `indigo_device` objects, then searches the fixed `devices[MAX_DEVICES]` table. If the table is full, the newly allocated objects and the `libusb_ref_device()` reference are not released. Reserve slots before allocation or add cleanup when no slot is available. | Open |
 | MACDRV-004 | Medium | `focuser_mjkzz_bt/indigo_focuser_mjkzz_bt.m:420`, `focuser_wemacro_bt/indigo_focuser_wemacro_bt.m:468` | Bluetooth driver shutdown only sets the static delegate to `nil`. It does not stop scanning, disconnect a connected peripheral, clear the CoreBluetooth delegate, or call `deleteDevice`, so an attached INDIGO device and malloc-backed private data can outlive driver shutdown. Add explicit delegate shutdown that disconnects, stops scans, detaches the device, and clears references. | Open |
@@ -33,6 +33,21 @@ For the 2026-08-01 scoped baseline pass, build products and SDK/vendor subtrees 
 | MACDRV-007 | Low | `focuser_mjkzz_bt/indigo_focuser_mjkzz_bt.m:27` | The MJKZZ Bluetooth focuser defines `DRIVER_NAME` as `"indigo_ccd_mjkzz_bt"`, while the entry point and public device name are focuser-specific. This reports incorrect driver metadata through `indigo_focuser_attach()` and log messages. Rename it to the focuser driver name. | Open |
 | MACDRV-008 | Medium | `focuser_wemacro_bt/indigo_focuser_wemacro_bt.m:316` | WeMacro attach allocates three custom properties in sequence, but returns `INDIGO_FAILED` immediately if the second or third allocation fails. Any earlier custom property, plus resources allocated by `indigo_focuser_attach()`, are not released on those partial-failure paths. Add cleanup before returning failure or centralize custom-property allocation before base attach succeeds. | Open |
 | MACDRV-009 | Medium | `ccd_atik2/indigo_ccd_atik2.c:516` | Atik2 wheel movement schedules `wheel_timer_callback` with a `NULL` timer handle, and the callback reschedules itself the same way. Disconnect and detach have no stored timer pointer to cancel, so a pending wheel timer can run after the logical wheel has been disconnected or freed by hotplug removal. Store the timer in shared private data and cancel it during wheel disconnect/detach. | Open |
+
+## Finding Summaries
+
+### MACDRV-001 (Closed — fixed)
+
+All three connection handlers in `indigo_ccd_atik2.c` (CCD line 176, guider line
+358, wheel line 476) follow the pattern: when `device_count++ == 0`, acquire the
+global lock, then call `libatik_open()`. On failure the outer `else` branch only
+decremented `device_count`, leaving the lock permanently held.
+
+The fix adds `indigo_global_unlock(device)` immediately inside the `else` arm of
+the `libatik_open()` call, within the `device_count++ == 0` block. The global lock
+is now released as soon as the failed open is detected, before control reaches the
+shared failure branch. The `result = 0` → `result = false` change is also applied
+for type consistency.
 
 ## Review Focus
 

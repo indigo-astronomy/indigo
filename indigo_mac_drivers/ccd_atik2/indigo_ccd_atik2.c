@@ -178,9 +178,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 				if (indigo_try_global_lock(device) != INDIGO_OK) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-					result = 0;
+					result = false;
 				} else {
 					result = libatik_open(PRIVATE_DATA->dev, &PRIVATE_DATA->device_context);
+					if (!result)
+						indigo_global_unlock(device);
 				}
 			}
 			if (result) {
@@ -360,9 +362,11 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 				if (indigo_try_global_lock(device) != INDIGO_OK) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-					result = 0;
+					result = false;
 				} else {
 					result = libatik_open(PRIVATE_DATA->dev, &PRIVATE_DATA->device_context);
+					if (!result)
+						indigo_global_unlock(device);
 				}
 			}
 			if (result) {
@@ -478,9 +482,11 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 				if (indigo_try_global_lock(device) != INDIGO_OK) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-					result = 0;
+					result = false;
 				} else {
 					result = libatik_open(PRIVATE_DATA->dev, &PRIVATE_DATA->device_context);
+					if (!result)
+						indigo_global_unlock(device);
 				}
 			}
 			if (result) {
