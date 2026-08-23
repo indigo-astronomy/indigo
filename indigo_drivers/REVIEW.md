@@ -31,7 +31,7 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 
 | ID | Severity | File | Summary | Status |
 | --- | --- | --- | --- | --- |
-| DRV-001 | High | `agent_alpaca/indigo_alpaca_ccd.c:946` | `CCD_MODE` items are copied into `readoutmodes_labels` and `readoutmodes_names` by raw `property->count` index, but the arrays are only `ALPACA_MAX_ITEMS` long. The setter also accepts `value == ALPACA_MAX_ITEMS`, causing an out-of-bounds read. Clamp mode import to `ALPACA_MAX_ITEMS` and reject `value >= ALPACA_MAX_ITEMS`. | Open |
+| DRV-001 | High | `agent_alpaca/indigo_alpaca_ccd.c:946` | `CCD_MODE` items are copied into `readoutmodes_labels` and `readoutmodes_names` by raw `property->count` index, but the arrays are only `ALPACA_MAX_ITEMS` long. The setter also accepts `value == ALPACA_MAX_ITEMS`, causing an out-of-bounds read. Clamp mode import to `ALPACA_MAX_ITEMS` and reject `value >= ALPACA_MAX_ITEMS`. | Closed (fixed) |
 | DRV-002 | Medium | `agent_alpaca/indigo_alpaca_wheel.c:107` | Wheel slot-offset/name updates store `property->count` as `wheel.count` even though Alpaca wheel arrays are limited to `ALPACA_MAX_FILTERS`. The response paths then serialize `count` entries from fixed 32-element arrays, so a driver exposing more items can read beyond the arrays. Clamp exported count to `ALPACA_MAX_FILTERS`. | Open |
 | DRV-003 | Medium | `agent_config/indigo_agent_config.c:686` | Agent configuration builds a semicolon-separated driver filter with repeated `strcat()` into one `INDIGO_VALUE_SIZE` text item. A server exposing enough selected drivers can overflow the filter string. Build with remaining-capacity checks or truncate safely. | Open |
 | DRV-004 | Medium | `agent_imager/indigo_agent_imager.c:3485` | The imager agent mirrors wheel slot names by assigning `AGENT_WHEEL_FILTER_PROPERTY->count = property->count`, but the property was initialized with `FILTER_SLOT_COUNT` items. A wheel with more than 24 slots can write past the property items when copying labels. Clamp to `FILTER_SLOT_COUNT` or resize the property before copying. | Open |
@@ -52,6 +52,17 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 | DRV-019 | Medium | `ccd_ptp/indigo_ptp_olympus.c:696` | Olympus initialization logs a failed `CameraControlMode` switch and calls raw-USB recovery, but ignores missing confirmation and recovery failure before scheduling event polling and returning success. A disconnected, wedged, or wildcard-matched unsupported Olympus body can be reported connected even though remote capture and live view require PC-control mode. | Closed (fixed) |
 
 ## Finding Summaries
+
+### DRV-001 (Closed — fixed)
+
+The `CCD_MODE` update path in `indigo_alpaca_ccd.c` now clamps the import loop to
+`ALPACA_MAX_ITEMS` before writing into the fixed-size `readoutmodes_labels` and
+`readoutmodes_names` arrays, preventing an out-of-bounds write when a camera exposes
+more than 128 readout modes.
+
+The `alpaca_set_readoutmode()` guard was changed from `value > ALPACA_MAX_ITEMS` to
+`value >= ALPACA_MAX_ITEMS`, so index 128 (one past the last valid slot) is now
+correctly rejected with `InvalidValue` instead of triggering an out-of-bounds read.
 
 ### DRV-016 (Closed — fixed)
 
