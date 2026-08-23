@@ -60,6 +60,7 @@ INTEGRATION_TESTS = \
 	$(INTEGRATION_BUILD)/test_focuser_lakeside_simulator \
 	$(INTEGRATION_BUILD)/test_focuser_mjkzz_simulator \
 	$(INTEGRATION_BUILD)/test_focuser_moonlite_simulator \
+	$(INTEGRATION_BUILD)/test_focuser_mypro2_simulator \
 	$(INTEGRATION_BUILD)/test_aux_svbpowerbox_simulator \
 	$(INTEGRATION_BUILD)/test_aux_wbplusv3_simulator \
 	$(INTEGRATION_BUILD)/test_aux_wbprov3_simulator \
@@ -112,6 +113,7 @@ FOCUSER_LACERTA_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_lacerta
 FOCUSER_LAKESIDE_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_lakeside.a $(TEST_LDFLAGS) -lindigocat
 FOCUSER_MJKZZ_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_mjkzz.a $(TEST_LDFLAGS) -lindigocat
 FOCUSER_MOONLITE_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_moonlite.a $(TEST_LDFLAGS) -lindigocat
+FOCUSER_MYPRO2_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_mypro2.a $(TEST_LDFLAGS) -lindigocat
 AUX_SVBPOWERBOX_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_svbpowerbox.a $(TEST_LDFLAGS) -lindigocat
 AUX_WBPLUSV3_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_wbplusv3.a $(TEST_LDFLAGS) -lindigocat
 AUX_WBPROV3_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_wbprov3.a $(TEST_LDFLAGS) -lindigocat
@@ -293,6 +295,9 @@ $(INTEGRATION_BUILD)/focuser_mjkzz_simulator: ../indigo_drivers/focuser_mjkzz/fo
 $(INTEGRATION_BUILD)/focuser_moonlite_simulator: ../indigo_drivers/focuser_moonlite/focuser_moonlite_simulator/focuser_moonlite_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -pthread -o $@ $<
 
+$(INTEGRATION_BUILD)/focuser_mypro2_simulator: ../indigo_drivers/focuser_mypro2/focuser_mypro2_simulator/focuser_mypro2_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $<
+
 $(INTEGRATION_BUILD)/aux_svbpowerbox_simulator: ../indigo_drivers/aux_svbpowerbox/aux_svbpowerbox_simulator/aux_svbpowerbox_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -pthread -o $@ $<
 
@@ -421,6 +426,9 @@ $(INTEGRATION_BUILD)/test_focuser_mjkzz_simulator: integration/test_focuser_mjkz
 
 $(INTEGRATION_BUILD)/test_focuser_moonlite_simulator: integration/test_focuser_moonlite_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_moonlite_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_MOONLITE_SIMULATOR_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_focuser_mypro2_simulator: integration/test_focuser_mypro2_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_mypro2_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_MYPRO2_SIMULATOR_TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/test_aux_svbpowerbox_simulator: integration/test_aux_svbpowerbox_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_svbpowerbox_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(AUX_SVBPOWERBOX_SIMULATOR_TEST_LDFLAGS)

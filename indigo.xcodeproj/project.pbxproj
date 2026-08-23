@@ -2362,6 +2362,8 @@
 		5984A323303B9B1D00D581D2 /* test_focuser_mjkzz_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_mjkzz_simulator.c; sourceTree = "<group>"; };
 		5984A324303B9BC800D581D2 /* focuser_moonlite_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = focuser_moonlite_simulator.c; sourceTree = "<group>"; };
 		5984A325303B9BDE00D581D2 /* test_focuser_moonlite_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_moonlite_simulator.c; sourceTree = "<group>"; };
+		5984A326303B9CB900D581D2 /* focuser_mypro2_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = focuser_mypro2_simulator.c; sourceTree = "<group>"; };
+		5984A328303B9CF200D581D2 /* test_focuser_mypro2_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_mypro2_simulator.c; sourceTree = "<group>"; };
 		5984C90827C2E2290090204B /* IMAGING_AF_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = IMAGING_AF_TUNING.md; sourceTree = "<group>"; };
 		5984C90927C2E22A0090204B /* POLAR_ALIGNMENT.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = POLAR_ALIGNMENT.md; sourceTree = "<group>"; };
 		5984C90A27C2E22A0090204B /* GUIDING_PI_CONTROLLER_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = GUIDING_PI_CONTROLLER_TUNING.md; sourceTree = "<group>"; };
@@ -7006,6 +7008,7 @@
 				5973456E256704CB001741D4 /* indigo_focuser_mypro2.h */,
 				5973456B256704CB001741D4 /* indigo_focuser_mypro2.c */,
 				5973456C256704CB001741D4 /* indigo_focuser_mypro2_main.c */,
+				5984A327303B9CB900D581D2 /* focuser_mypro2_simulator */,
 			);
 			path = focuser_mypro2;
 			sourceTree = "<group>";
@@ -7973,6 +7976,14 @@
 				5984A31D303B98AC00D581D2 /* focuser_ioptron_simulator.c */,
 			);
 			path = focuser_ioptron_simulator;
+			sourceTree = "<group>";
+		};
+		5984A327303B9CB900D581D2 /* focuser_mypro2_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				5984A326303B9CB900D581D2 /* focuser_mypro2_simulator.c */,
+			);
+			path = focuser_mypro2_simulator;
 			sourceTree = "<group>";
 		};
 		598C57E121A75B1A001CA8C0 /* libnexstar */ = {
@@ -13047,6 +13058,7 @@
 		59FA7BF3301D3A5800A35CFB /* integration */ = {
 			isa = PBXGroup;
 			children = (
+				5984A328303B9CF200D581D2 /* test_focuser_mypro2_simulator.c */,
 				5984A325303B9BDE00D581D2 /* test_focuser_moonlite_simulator.c */,
 				5984A323303B9B1D00D581D2 /* test_focuser_mjkzz_simulator.c */,
 				5984A321303B9A6600D581D2 /* test_focuser_lakeside_simulator.c */,
