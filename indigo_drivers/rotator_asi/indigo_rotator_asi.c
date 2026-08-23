@@ -133,7 +133,7 @@ static indigo_result rotator_attach(indigo_device *device) {
 
 		INFO_PROPERTY->count = 6;
 		INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->model);
-		char *sdk_version = CAAGetSDKVersion();
+		const char *sdk_version = CAAGetSDKVersion();
 		INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, sdk_version);
 		INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->label, "SDK version");
 

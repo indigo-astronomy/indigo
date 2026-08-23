@@ -131,7 +131,7 @@ static indigo_result wheel_attach(indigo_device *device) {
 
 	if (indigo_wheel_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		INFO_PROPERTY->count = 6;
-		char *sdk_version = EFWGetSDKVersion();
+		const char *sdk_version = EFWGetSDKVersion();
 		INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, sdk_version);
 		INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->model);
 		INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->label, "SDK version");
@@ -597,7 +597,7 @@ indigo_result indigo_wheel_asi(indigo_driver_action action, indigo_driver_info *
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
 
-			char *sdk_version = EFWGetSDKVersion();
+			const char *sdk_version = EFWGetSDKVersion();
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "EFW SDK v. %s", sdk_version);
 
 			for (int index = 0; index < EFW_ID_MAX; index++) {
