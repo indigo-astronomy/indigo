@@ -2330,6 +2330,8 @@
 		5984A2FE303B7A4900D581D2 /* test_aux_sqm_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_sqm_simulator.c; sourceTree = "<group>"; };
 		5984A2FF303B7B5600D581D2 /* aux_uch_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = aux_uch_simulator.c; sourceTree = "<group>"; };
 		5984A301303B7B6B00D581D2 /* test_aux_uch_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_uch_simulator.c; sourceTree = "<group>"; };
+		5984A302303B7D7600D581D2 /* aux_usbdp_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = aux_usbdp_simulator.c; sourceTree = "<group>"; };
+		5984A303303B7D9200D581D2 /* test_aux_usbdp_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_usbdp_simulator.c; sourceTree = "<group>"; };
 		5984C90827C2E2290090204B /* IMAGING_AF_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = IMAGING_AF_TUNING.md; sourceTree = "<group>"; };
 		5984C90927C2E22A0090204B /* POLAR_ALIGNMENT.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = POLAR_ALIGNMENT.md; sourceTree = "<group>"; };
 		5984C90A27C2E22A0090204B /* GUIDING_PI_CONTROLLER_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = GUIDING_PI_CONTROLLER_TUNING.md; sourceTree = "<group>"; };
@@ -6628,6 +6630,7 @@
 		5951E143235CDBD900D2DEF1 /* aux_usbdp_simulator */ = {
 			isa = PBXGroup;
 			children = (
+				5984A302303B7D7600D581D2 /* aux_usbdp_simulator.c */,
 				5951E144235CDBD900D2DEF1 /* aux_usbdp_simulator.ino */,
 			);
 			path = aux_usbdp_simulator;
@@ -12973,6 +12976,7 @@
 		59FA7BF3301D3A5800A35CFB /* integration */ = {
 			isa = PBXGroup;
 			children = (
+				5984A303303B7D9200D581D2 /* test_aux_usbdp_simulator.c */,
 				5984A301303B7B6B00D581D2 /* test_aux_uch_simulator.c */,
 				5984A2FE303B7A4900D581D2 /* test_aux_sqm_simulator.c */,
 				5984A2FC303B796D00D581D2 /* test_aux_skyalert_simulator.c */,

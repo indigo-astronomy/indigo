@@ -60,7 +60,8 @@ INTEGRATION_TESTS = \
 	$(INTEGRATION_BUILD)/test_aux_ppb_simulator \
 	$(INTEGRATION_BUILD)/test_aux_skyalert_simulator \
 	$(INTEGRATION_BUILD)/test_aux_sqm_simulator \
-	$(INTEGRATION_BUILD)/test_aux_uch_simulator
+	$(INTEGRATION_BUILD)/test_aux_uch_simulator \
+	$(INTEGRATION_BUILD)/test_aux_usbdp_simulator
 
 TEST_CFLAGS = $(CFLAGS) -I.. -I../indigo_libs -I../build/include
 TEST_LDFLAGS = $(LDFLAGS) -Wl,-rpath,$(BUILD_LIB) -lindigo -lm -lpthread
@@ -97,6 +98,7 @@ AUX_PPB_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_ppb.a $(TEST_LDFLAG
 AUX_SKYALERT_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_skyalert.a $(TEST_LDFLAGS) -lindigocat
 AUX_SQM_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_sqm.a $(TEST_LDFLAGS) -lindigocat
 AUX_UCH_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_uch.a $(TEST_LDFLAGS) -lindigocat
+AUX_USBDP_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_usbdp.a $(TEST_LDFLAGS) -lindigocat
 
 .PHONY: test test-unit test-integration test-clean check-lib
 
@@ -264,6 +266,9 @@ $(INTEGRATION_BUILD)/aux_sqm_simulator: ../indigo_drivers/aux_sqm/aux_sqm_simula
 $(INTEGRATION_BUILD)/aux_uch_simulator: ../indigo_drivers/aux_uch/aux_uch_simulator/aux_uch_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
+$(INTEGRATION_BUILD)/aux_usbdp_simulator: ../indigo_drivers/aux_usbdp/aux_usbdp_simulator/aux_usbdp_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $<
+
 $(INTEGRATION_BUILD)/test_focuser_askar_simulator: integration/test_focuser_askar_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_askar_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_ASKAR_SIMULATOR_TEST_LDFLAGS)
 
@@ -344,6 +349,9 @@ $(INTEGRATION_BUILD)/test_aux_sqm_simulator: integration/test_aux_sqm_simulator.
 
 $(INTEGRATION_BUILD)/test_aux_uch_simulator: integration/test_aux_uch_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_uch_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(AUX_UCH_SIMULATOR_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_aux_usbdp_simulator: integration/test_aux_usbdp_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/aux_usbdp_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(AUX_USBDP_SIMULATOR_TEST_LDFLAGS)
 
 test-clean:
 	rm -rf $(TEST_BUILD)
