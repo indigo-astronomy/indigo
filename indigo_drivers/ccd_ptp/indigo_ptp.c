@@ -1536,7 +1536,7 @@ bool ptp_update_property(indigo_device *device, ptp_property *property) {
 				char str[INDIGO_NAME_SIZE];
 				for (int i = 0; i < property->count; i++) {
 					if (property->type == ptp_str_type) {
-						strcpy(str, property->value.sw_str.values[i]);
+						INDIGO_COPY_NAME(str, property->value.sw_str.values[i]);
 						INDIGO_COPY_VALUE(property->property->items[i].label, str);
 					} else {
 						snprintf(str, INDIGO_NAME_SIZE, "%llx", property->value.sw.values[i]);
