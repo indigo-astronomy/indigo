@@ -2334,6 +2334,8 @@
 		5984A303303B7D9200D581D2 /* test_aux_usbdp_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_usbdp_simulator.c; sourceTree = "<group>"; };
 		5984A304303B81E000D581D2 /* test_dome_baader_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_dome_baader_simulator.c; sourceTree = "<group>"; };
 		5984A305303B81EE00D581D2 /* dome_baader_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = dome_baader_simulator.c; sourceTree = "<group>"; };
+		5984A306303B876A00D581D2 /* dome_nexdome_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = dome_nexdome_simulator.c; sourceTree = "<group>"; };
+		5984A307303B877B00D581D2 /* test_dome_nexdome_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_dome_nexdome_simulator.c; sourceTree = "<group>"; };
 		5984C90827C2E2290090204B /* IMAGING_AF_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = IMAGING_AF_TUNING.md; sourceTree = "<group>"; };
 		5984C90927C2E22A0090204B /* POLAR_ALIGNMENT.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = POLAR_ALIGNMENT.md; sourceTree = "<group>"; };
 		5984C90A27C2E22A0090204B /* GUIDING_PI_CONTROLLER_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = GUIDING_PI_CONTROLLER_TUNING.md; sourceTree = "<group>"; };
@@ -9819,6 +9821,7 @@
 		59B81ECF2337AA2E00DFA81B /* dome_nexdome_simulator */ = {
 			isa = PBXGroup;
 			children = (
+				5984A306303B876A00D581D2 /* dome_nexdome_simulator.c */,
 				59B81ED02337AA2E00DFA81B /* dome_nexdome_simulator.ino */,
 			);
 			path = dome_nexdome_simulator;
@@ -12979,6 +12982,7 @@
 		59FA7BF3301D3A5800A35CFB /* integration */ = {
 			isa = PBXGroup;
 			children = (
+				5984A307303B877B00D581D2 /* test_dome_nexdome_simulator.c */,
 				5984A304303B81E000D581D2 /* test_dome_baader_simulator.c */,
 				5984A303303B7D9200D581D2 /* test_aux_usbdp_simulator.c */,
 				5984A301303B7B6B00D581D2 /* test_aux_uch_simulator.c */,
