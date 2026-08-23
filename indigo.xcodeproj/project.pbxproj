@@ -2316,6 +2316,12 @@
 		598005FB22E4FFEA00021D67 /* libqsiapi.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libqsiapi.a; sourceTree = "<group>"; };
 		598005FD22E4FFEA00021D67 /* libqsiapi.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libqsiapi.a; sourceTree = "<group>"; };
 		5981C8E21DC2A2D300C7705F /* TODO.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = TODO.md; sourceTree = "<group>"; };
+		5984A2F2303B0FDC00D581D2 /* indigo_ccd_rpi.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_rpi.h; sourceTree = "<group>"; };
+		5984A2F3303B0FDC00D581D2 /* indigo_ccd_rpi.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = indigo_ccd_rpi.cpp; sourceTree = "<group>"; };
+		5984A2F4303B0FDC00D581D2 /* indigo_ccd_rpi.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_ccd_rpi.rules; sourceTree = "<group>"; };
+		5984A2F5303B0FDC00D581D2 /* indigo_ccd_rpi_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_rpi_main.c; sourceTree = "<group>"; };
+		5984A2F6303B0FDC00D581D2 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		5984A2F7303B0FDC00D581D2 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		5984C90827C2E2290090204B /* IMAGING_AF_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = IMAGING_AF_TUNING.md; sourceTree = "<group>"; };
 		5984C90927C2E22A0090204B /* POLAR_ALIGNMENT.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = POLAR_ALIGNMENT.md; sourceTree = "<group>"; };
 		5984C90A27C2E22A0090204B /* GUIDING_PI_CONTROLLER_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = GUIDING_PI_CONTROLLER_TUNING.md; sourceTree = "<group>"; };
@@ -7868,6 +7874,19 @@
 				59A52F1A21A341A0000B6F27 /* libfcusb */,
 			);
 			path = bin_externals;
+			sourceTree = "<group>";
+		};
+		5984A2F8303B0FDC00D581D2 /* ccd_rpi */ = {
+			isa = PBXGroup;
+			children = (
+				5984A2F7303B0FDC00D581D2 /* README.md */,
+				5984A2F6303B0FDC00D581D2 /* Makefile */,
+				5984A2F2303B0FDC00D581D2 /* indigo_ccd_rpi.h */,
+				5984A2F3303B0FDC00D581D2 /* indigo_ccd_rpi.cpp */,
+				5984A2F4303B0FDC00D581D2 /* indigo_ccd_rpi.rules */,
+				5984A2F5303B0FDC00D581D2 /* indigo_ccd_rpi_main.c */,
+			);
+			path = ccd_rpi;
 			sourceTree = "<group>";
 		};
 		598C57E121A75B1A001CA8C0 /* libnexstar */ = {
@@ -13462,6 +13481,7 @@
 			isa = PBXGroup;
 			children = (
 				59FA7C12301E2A1300A35CFB /* REVIEW.md */,
+				5984A2F8303B0FDC00D581D2 /* ccd_rpi */,
 				9D45254620E0FB20004D1137 /* ccd_andor */,
 			);
 			path = indigo_optional_drivers;
