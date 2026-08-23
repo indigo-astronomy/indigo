@@ -2372,6 +2372,8 @@
 		5984A32E303B9F6700D581D2 /* test_focuser_optec_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_optec_simulator.c; sourceTree = "<group>"; };
 		5984A32F303BA07D00D581D2 /* focuser_primaluce_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = focuser_primaluce_simulator.c; sourceTree = "<group>"; };
 		5984A330303BA08F00D581D2 /* test_focuser_primaluce_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_primaluce_simulator.c; sourceTree = "<group>"; };
+		5984A331303BA25700D581D2 /* focuser_prodigy_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = focuser_prodigy_simulator.c; sourceTree = "<group>"; };
+		5984A332303BA26100D581D2 /* test_focuser_prodigy_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_prodigy_simulator.c; sourceTree = "<group>"; };
 		5984C90827C2E2290090204B /* IMAGING_AF_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = IMAGING_AF_TUNING.md; sourceTree = "<group>"; };
 		5984C90927C2E22A0090204B /* POLAR_ALIGNMENT.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = POLAR_ALIGNMENT.md; sourceTree = "<group>"; };
 		5984C90A27C2E22A0090204B /* GUIDING_PI_CONTROLLER_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = GUIDING_PI_CONTROLLER_TUNING.md; sourceTree = "<group>"; };
@@ -13069,6 +13071,7 @@
 		59FA7BF3301D3A5800A35CFB /* integration */ = {
 			isa = PBXGroup;
 			children = (
+				5984A332303BA26100D581D2 /* test_focuser_prodigy_simulator.c */,
 				5984A330303BA08F00D581D2 /* test_focuser_primaluce_simulator.c */,
 				5984A32E303B9F6700D581D2 /* test_focuser_optec_simulator.c */,
 				5984A32C303B9E6400D581D2 /* test_focuser_nstep_simulator.c */,
@@ -13595,6 +13598,7 @@
 		9D3E907228995B140093C9EB /* focuser_prodigy_simulator */ = {
 			isa = PBXGroup;
 			children = (
+				5984A331303BA25700D581D2 /* focuser_prodigy_simulator.c */,
 				9D3E907328995B140093C9EB /* focuser_prodigy_simulator.ino */,
 			);
 			path = focuser_prodigy_simulator;
