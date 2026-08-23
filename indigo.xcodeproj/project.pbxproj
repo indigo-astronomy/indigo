@@ -2348,6 +2348,8 @@
 		5984A312303B8EBA00D581D2 /* test_focuser_astromechanics_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_astromechanics_simulator.c; sourceTree = "<group>"; };
 		5984A313303B904B00D581D2 /* focuser_efa_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = focuser_efa_simulator.c; sourceTree = "<group>"; };
 		5984A314303B905D00D581D2 /* test_focuser_efa_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_efa_simulator.c; sourceTree = "<group>"; };
+		5984A315303B919100D581D2 /* focuser_focusdreampro_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = focuser_focusdreampro_simulator.c; sourceTree = "<group>"; };
+		5984A317303B91A300D581D2 /* test_focuser_focusdreampro_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_focusdreampro_simulator.c; sourceTree = "<group>"; };
 		5984C90827C2E2290090204B /* IMAGING_AF_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = IMAGING_AF_TUNING.md; sourceTree = "<group>"; };
 		5984C90927C2E22A0090204B /* POLAR_ALIGNMENT.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = POLAR_ALIGNMENT.md; sourceTree = "<group>"; };
 		5984C90A27C2E22A0090204B /* GUIDING_PI_CONTROLLER_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = GUIDING_PI_CONTROLLER_TUNING.md; sourceTree = "<group>"; };
@@ -7936,6 +7938,14 @@
 			path = dome_beaver_simulator;
 			sourceTree = "<group>";
 		};
+		5984A316303B919100D581D2 /* focuser_focusdreampro_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				5984A315303B919100D581D2 /* focuser_focusdreampro_simulator.c */,
+			);
+			path = focuser_focusdreampro_simulator;
+			sourceTree = "<group>";
+		};
 		598C57E121A75B1A001CA8C0 /* libnexstar */ = {
 			isa = PBXGroup;
 			children = (
@@ -12909,6 +12919,7 @@
 				59EFE8A42363481E00ED5337 /* indigo_focuser_focusdreampro.h */,
 				59EFE8A22363481D00ED5337 /* indigo_focuser_focusdreampro.c */,
 				59EFE8A52363481E00ED5337 /* indigo_focuser_focusdreampro_main.c */,
+				5984A316303B919100D581D2 /* focuser_focusdreampro_simulator */,
 			);
 			name = focuser_focusdreampro;
 			path = indigo_drivers/focuser_focusdreampro;
@@ -13007,6 +13018,7 @@
 		59FA7BF3301D3A5800A35CFB /* integration */ = {
 			isa = PBXGroup;
 			children = (
+				5984A317303B91A300D581D2 /* test_focuser_focusdreampro_simulator.c */,
 				5984A314303B905D00D581D2 /* test_focuser_efa_simulator.c */,
 				5984A312303B8EBA00D581D2 /* test_focuser_astromechanics_simulator.c */,
 				5984A310303B8D8F00D581D2 /* test_dome_beaver_simulator.c */,
