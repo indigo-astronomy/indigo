@@ -42,7 +42,7 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 | DRV-009 | Medium | `dome_nexdome3/indigo_dome_nexdome3.c:567` | NexDome3 parses incoming `XB->...` messages with `sscanf(message, "XB->%s", state)` into `char state[20]`. A malformed or unexpectedly long controller message can overflow the stack buffer before the value is copied to the INDIGO text item. Add a field width or parse with bounded copying. | Open |
 | DRV-010 | Medium | `system_ascol/libascol/libascol.c:405` | `ascol_parse_devname()` parses `DEVICE_PORT_ITEM->text.value` with unbounded `%s` into the caller's `host` buffer; the system driver passes `char host[255]`, while the INDIGO text value can be larger. A long `tcp://...` or `ascol://...` value can overflow `host`. Use width-limited parsing or pass the destination size. | Open |
 | DRV-011 | Medium | `agent_astrometry/indigo_agent_astrometry.c:205` | The Astrometry agent builds `buffer[8192]` with `vsnprintf()` and then appends `" 2>&1"` into another 8192-byte buffer with `sprintf()`. A command truncated to the full source buffer can overflow `command_buf`; the same file also parses `Field size` units into `char s[16]` with unbounded `%s`. Use a single bounded `snprintf()` and width-limited parsing. | Closed (fixed) |
-| DRV-012 | Medium | `agent_astap/indigo_agent_astap.c:331` | The ASTAP agent has the same equal-sized `buffer` to `command_buf` append overflow as Astrometry. It also builds index parameters and index paths with repeated `sprintf()` into 512-byte buffers using `base_dir`, which can be near the buffer limit. Convert command, parameter, and path construction to checked `snprintf()` with remaining-capacity tracking. | Open |
+| DRV-012 | Medium | `agent_astap/indigo_agent_astap.c:331` | The ASTAP agent has the same equal-sized `buffer` to `command_buf` append overflow as Astrometry. It also builds index parameters and index paths with repeated `sprintf()` into 512-byte buffers using `base_dir`, which can be near the buffer limit. Convert command, parameter, and path construction to checked `snprintf()` with remaining-capacity tracking. | Closed (fixed) |
 | DRV-013 | Medium | `gps_gpsd/indigo_gps_gpsd.c:59` | `gpsd_open()` copies the editable device-port text into `host_name[INDIGO_NAME_SIZE]` and `port[15]` with `strcpy()`/`strncpy()` without checking host or port length. A long `gpsd://...` value can overflow the host or port buffer before `gps_open()`. Parse with bounded lengths and reject invalid endpoints. | Open |
 | DRV-014 | Medium | `mount_synscan/indigo_mount_synscan_driver.c:1013` | `synscan_save_position()` writes the HOME-based `.indigo` path with `snprintf()` but then appends the park filename using `sprintf(buffer + path_end, ...)`. If HOME is long enough for `snprintf()` to truncate, `path_end` is the would-have-written length and can point past `buffer`. Compose the complete path with one checked `snprintf()`. | Open |
 | DRV-015 | Medium | `ccd_ptp/indigo_ptp.c:1533` | PTP string switch values are decoded into `PTP_MAX_CHARS` 256-byte entries, but refreshed property names are copied into `char str[INDIGO_NAME_SIZE]` with `strcpy()`. A camera-provided string value longer than 127 bytes can overflow `str` before the item name is updated. Use bounded copying and define a deterministic truncation or rejection policy for item names. | Open |
@@ -132,6 +132,27 @@ Two fixes in `execute_command()` / the output-parsing loop in `indigo_agent_astr
 - Line 256: `%s` in `sscanf(line, "Field size: %lg x %lg %s", ...)` replaced with
   `%15s`. The destination `s` is `char s[16]`, so the field-width cap prevents an
   unbounded write from a malformed solver output line.
+
+### DRV-012 (Closed — fixed)
+
+Four categories of `sprintf()` replaced in `indigo_agent_astap.c`:
+
+- **Line 331** (`execute_command`): `sprintf(command_buf, "%s 2>&1", buffer)` →
+  `snprintf(command_buf, sizeof(command_buf), ...)`. Same overflow as DRV-011:
+  `buffer` is 8 KiB, `command_buf` is 8 KiB, and the `" 2>&1"` suffix can exceed
+  the destination if the source filled its own buffer.
+
+- **Lines 432–434** (`base`/`file`/`ini`): three `sprintf()` calls building
+  temporary-file paths from `base_dir` (up to 511 bytes) converted to `snprintf()`.
+
+- **Lines 447–468** (`params` accumulation): seven incremental `sprintf(params +
+  params_index, ...)` calls converted to `snprintf()` with a shared `params_avail`
+  counter. Each append checks `params_avail > 1` before writing and updates
+  `params_avail` afterward; the `-d "base_dir/item_name"` append (the highest-risk
+  one) is guarded in the same way.
+
+- **Lines 527 and 561** (`path`): two `sprintf(path, "%s/%s", base_dir, ...)` calls
+  building index-directory paths converted to `snprintf(path, sizeof(path), ...)`.
 
 ### DRV-016 (Closed — fixed)
 

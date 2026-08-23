@@ -328,7 +328,7 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 	
 	ASTAP_DEVICE_PRIVATE_DATA->abort_requested = false;
 	char command_buf[8 * 1024];
-	sprintf(command_buf, "%s 2>&1", buffer);
+	snprintf(command_buf, sizeof(command_buf), "%s 2>&1", buffer);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "> %s", buffer);
 	int pipe_stdout[2];
 	if (pipe(pipe_stdout)) {
@@ -429,9 +429,9 @@ static bool astap_solve(indigo_device *device, indigo_platesolver_task *task) {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
 		char base[512], file[512], ini[512];
-		sprintf(base, "%s/%s_%lX", base_dir, "image", time(0));
-		sprintf(file, "%s.%s", base, ext);
-		sprintf(ini, "%s.ini", base);
+		snprintf(base, sizeof(base), "%s/%s_%lX", base_dir, "image", time(0));
+		snprintf(file, sizeof(file), "%s.%s", base, ext);
+		snprintf(ini, sizeof(ini), "%s.ini", base);
 #pragma clang diagnostic pop
 		int handle = open(file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 		if (handle < 0) {
@@ -444,28 +444,40 @@ static bool astap_solve(indigo_device *device, indigo_platesolver_task *task) {
 		// execute astap plate solver
 		char params[512] = "";
 		int params_index = 0;
-		params_index = sprintf(params, "-z %d", (int)AGENT_PLATESOLVER_HINTS_DOWNSAMPLE_ITEM->number.value);
-		if (AGENT_PLATESOLVER_HINTS_RADIUS_ITEM->number.value > 0) {
-			params_index += sprintf(params + params_index, " -r %g", AGENT_PLATESOLVER_HINTS_RADIUS_ITEM->number.value);
+		int params_avail = (int)sizeof(params);
+		int params_n;
+		params_n = snprintf(params, params_avail, "-z %d", (int)AGENT_PLATESOLVER_HINTS_DOWNSAMPLE_ITEM->number.value);
+		if (params_n > 0 && params_n < params_avail) { params_index += params_n; params_avail -= params_n; }
+		if (AGENT_PLATESOLVER_HINTS_RADIUS_ITEM->number.value > 0 && params_avail > 1) {
+			params_n = snprintf(params + params_index, params_avail, " -r %g", AGENT_PLATESOLVER_HINTS_RADIUS_ITEM->number.value);
+			if (params_n > 0 && params_n < params_avail) { params_index += params_n; params_avail -= params_n; }
 		}
-		if (AGENT_PLATESOLVER_HINTS_RA_ITEM->number.value > 0) {
-			params_index += sprintf(params + params_index, " -ra %g", AGENT_PLATESOLVER_HINTS_RA_ITEM->number.value);
+		if (AGENT_PLATESOLVER_HINTS_RA_ITEM->number.value > 0 && params_avail > 1) {
+			params_n = snprintf(params + params_index, params_avail, " -ra %g", AGENT_PLATESOLVER_HINTS_RA_ITEM->number.value);
+			if (params_n > 0 && params_n < params_avail) { params_index += params_n; params_avail -= params_n; }
 		}
-		if (AGENT_PLATESOLVER_HINTS_DEC_ITEM->number.value > 0) {
-			params_index += sprintf(params + params_index, " -spd %g", AGENT_PLATESOLVER_HINTS_DEC_ITEM->number.value + 90);
+		if (AGENT_PLATESOLVER_HINTS_DEC_ITEM->number.value > 0 && params_avail > 1) {
+			params_n = snprintf(params + params_index, params_avail, " -spd %g", AGENT_PLATESOLVER_HINTS_DEC_ITEM->number.value + 90);
+			if (params_n > 0 && params_n < params_avail) { params_index += params_n; params_avail -= params_n; }
 		}
-		if (AGENT_PLATESOLVER_HINTS_DEPTH_ITEM->number.value > 0) {
-			params_index += sprintf(params + params_index, " -s %d", (int)AGENT_PLATESOLVER_HINTS_DEPTH_ITEM->number.value);
+		if (AGENT_PLATESOLVER_HINTS_DEPTH_ITEM->number.value > 0 && params_avail > 1) {
+			params_n = snprintf(params + params_index, params_avail, " -s %d", (int)AGENT_PLATESOLVER_HINTS_DEPTH_ITEM->number.value);
+			if (params_n > 0 && params_n < params_avail) { params_index += params_n; params_avail -= params_n; }
 		}
-		if (AGENT_PLATESOLVER_HINTS_SCALE_ITEM->number.value > 0 && ASTAP_DEVICE_PRIVATE_DATA->frame_height > 0) {
-			params_index += sprintf(params + params_index, " -fov %.1f", AGENT_PLATESOLVER_HINTS_SCALE_ITEM->number.value * ASTAP_DEVICE_PRIVATE_DATA->frame_height);
-		} else if (AGENT_PLATESOLVER_HINTS_SCALE_ITEM->number.value < 0 && ASTAP_DEVICE_PRIVATE_DATA->frame_height > 0 && INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pixel_scale > 0) {
-			params_index += sprintf(params + params_index, " -fov %.1f", INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pixel_scale * ASTAP_DEVICE_PRIVATE_DATA->frame_height);
+		if (AGENT_PLATESOLVER_HINTS_SCALE_ITEM->number.value > 0 && ASTAP_DEVICE_PRIVATE_DATA->frame_height > 0 && params_avail > 1) {
+			params_n = snprintf(params + params_index, params_avail, " -fov %.1f", AGENT_PLATESOLVER_HINTS_SCALE_ITEM->number.value * ASTAP_DEVICE_PRIVATE_DATA->frame_height);
+			if (params_n > 0 && params_n < params_avail) { params_index += params_n; params_avail -= params_n; }
+		} else if (AGENT_PLATESOLVER_HINTS_SCALE_ITEM->number.value < 0 && ASTAP_DEVICE_PRIVATE_DATA->frame_height > 0 && INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pixel_scale > 0 && params_avail > 1) {
+			params_n = snprintf(params + params_index, params_avail, " -fov %.1f", INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pixel_scale * ASTAP_DEVICE_PRIVATE_DATA->frame_height);
+			if (params_n > 0 && params_n < params_avail) { params_index += params_n; params_avail -= params_n; }
 		}
 		for (int k = 0; k < AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count; k++) {
 			indigo_item *item = AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items + k;
 			if (item->sw.value) {
-				params_index += sprintf(params + params_index, " -d \"%s/%s\"", base_dir, item->name);
+				if (params_avail > 1) {
+					params_n = snprintf(params + params_index, params_avail, " -d \"%s/%s\"", base_dir, item->name);
+					if (params_n > 0 && params_n < params_avail) { params_index += params_n; params_avail -= params_n; }
+				}
 				AGENT_PLATESOLVER_WCS_INDEX_ITEM->number.value = k;
 				break;
 			}
@@ -524,7 +536,7 @@ static void sync_installed_indexes(indigo_device *device, char *dir, indigo_prop
 		for (int j = 0; (name = astap_index[j].name); j++) {
 			if (!strncmp(name, item->name, 4)) {
 				if (item->sw.value) {
-					sprintf(path, "%s/%s", base_dir, astap_index[j].name);
+					snprintf(path, sizeof(path), "%s/%s", base_dir, astap_index[j].name);
 					bool first_one = true;
 					if (access(path, F_OK) != 0) {
 						execute_command(device, "mkdir \"%s\"", path);
@@ -558,7 +570,7 @@ static void sync_installed_indexes(indigo_device *device, char *dir, indigo_prop
 					add = true;
 					continue;
 				} else {
-					sprintf(path, "%s/%s", base_dir, astap_index[j].name);
+					snprintf(path, sizeof(path), "%s/%s", base_dir, astap_index[j].name);
 					if (access(path, F_OK) == 0) {
 						indigo_send_message(device, IDLE_PROPERTY, "Removing %s...", astap_index[j].name);
 						execute_command(device, "rm -rf \"%s\"", path);
