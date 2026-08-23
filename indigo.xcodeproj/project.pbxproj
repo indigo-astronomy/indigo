@@ -2368,6 +2368,8 @@
 		5984A32A303B9D9700D581D2 /* test_focuser_nfocus_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_nfocus_simulator.c; sourceTree = "<group>"; };
 		5984A32B303B9E3800D581D2 /* focuser_nstep_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = focuser_nstep_simulator.c; sourceTree = "<group>"; };
 		5984A32C303B9E6400D581D2 /* test_focuser_nstep_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_nstep_simulator.c; sourceTree = "<group>"; };
+		5984A32D303B9F5D00D581D2 /* focuser_optec_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = focuser_optec_simulator.c; sourceTree = "<group>"; };
+		5984A32E303B9F6700D581D2 /* test_focuser_optec_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_optec_simulator.c; sourceTree = "<group>"; };
 		5984C90827C2E2290090204B /* IMAGING_AF_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = IMAGING_AF_TUNING.md; sourceTree = "<group>"; };
 		5984C90927C2E22A0090204B /* POLAR_ALIGNMENT.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = POLAR_ALIGNMENT.md; sourceTree = "<group>"; };
 		5984C90A27C2E22A0090204B /* GUIDING_PI_CONTROLLER_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = GUIDING_PI_CONTROLLER_TUNING.md; sourceTree = "<group>"; };
@@ -6503,6 +6505,7 @@
 		59399D8C2177D316002886CA /* focuser_optec_simulator */ = {
 			isa = PBXGroup;
 			children = (
+				5984A32D303B9F5D00D581D2 /* focuser_optec_simulator.c */,
 				59399D8D2177D316002886CA /* focuser_optec_simulator.ino */,
 			);
 			path = focuser_optec_simulator;
@@ -13063,6 +13066,7 @@
 		59FA7BF3301D3A5800A35CFB /* integration */ = {
 			isa = PBXGroup;
 			children = (
+				5984A32E303B9F6700D581D2 /* test_focuser_optec_simulator.c */,
 				5984A32C303B9E6400D581D2 /* test_focuser_nstep_simulator.c */,
 				5984A32A303B9D9700D581D2 /* test_focuser_nfocus_simulator.c */,
 				5984A328303B9CF200D581D2 /* test_focuser_mypro2_simulator.c */,
