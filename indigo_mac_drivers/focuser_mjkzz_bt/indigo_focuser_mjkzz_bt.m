@@ -24,7 +24,7 @@
  */
 
 #define DRIVER_VERSION 0x02000002
-#define DRIVER_NAME "indigo_ccd_mjkzz_bt"
+#define DRIVER_NAME "indigo_focuser_mjkzz_bt"
 
 #include <stdlib.h>
 #include <string.h>
