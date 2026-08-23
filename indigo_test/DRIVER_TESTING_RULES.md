@@ -309,18 +309,16 @@ Visible after connection by default:
 - `DOME_STEPS`
 - `DOME_EQUATORIAL_COORDINATES`
 - `DOME_HORIZONTAL_COORDINATES`
-- `DOME_SLAVING`
 - `DOME_ABORT_MOTION`
 - `DOME_SHUTTER`
 - `DOME_PARK`
 - `DOME_DIMENSION`
 - `GEOGRAPHIC_COORDINATES`
-- `SNOOP_DEVICES`
 
 Available but hidden by default or driver-dependent:
 
 - `DOME_ON_COORDINATES_SET`
-- `DOME_SLAVING_PARAMETERS`
+- `DOME_SLAVING_PARAMETERS` (optional; the dome simulator exposes it)
 - `DOME_FLAP`
 - `DOME_PARK_POSITION`
 - `DOME_HOME`
@@ -332,11 +330,10 @@ Compliance scenarios:
 - Verify dome interface bit.
 - Run the common connection battery.
 - Assert movement properties: `DOME_SPEED`, `DOME_DIRECTION`, `DOME_STEPS`, `DOME_HORIZONTAL_COORDINATES`, and `DOME_ABORT_MOTION`.
-- Assert state/control properties: `DOME_SHUTTER`, `DOME_PARK`, and `DOME_SLAVING`.
+- Assert state/control properties: `DOME_SHUTTER` and `DOME_PARK`.
 - Validate azimuth, altitude, park position, speed, step, and dimension ranges where visible.
 - Exercise a GOTO azimuth or relative step move on simulators/fake I/O and verify `BUSY -> OK`.
 - Exercise abort while moving and verify movement properties are not left `BUSY`.
-- Toggle slaving when safe; if `DOME_SLAVING_PARAMETERS` is visible, validate threshold range.
 - Exercise shutter open/close and park/unpark only on simulators or fake I/O that can complete deterministically.
 - Treat flap, home, UTC, set-host-time, and on-coordinate-set properties as optional.
 
@@ -365,7 +362,6 @@ Visible after connection by default:
 - `MOUNT_HORIZONTAL_COORDINATES`
 - `MOUNT_ABORT_MOTION`
 - `MOUNT_EPOCH`
-- `SNOOP_DEVICES`
 
 Available but hidden by default or driver-dependent:
 
