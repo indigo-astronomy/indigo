@@ -50,7 +50,7 @@ typedef struct {
 	libatik_device_context *device_context;
 	libusb_device *dev;
 	int device_count;
-	indigo_timer *pre_exposure_timer, *exposure_timer, *temperature_timer, *guider_timer;
+	indigo_timer *pre_exposure_timer, *exposure_timer, *temperature_timer, *guider_timer, *wheel_timer;
 	double cooler_power, target_temperature, current_temperature;
 	int target_slot, current_slot;
 	unsigned short relay_mask;
@@ -447,7 +447,7 @@ static void wheel_timer_callback(indigo_device *device) {
 	if (PRIVATE_DATA->current_slot == PRIVATE_DATA->target_slot) {
 		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
-		indigo_set_timer(device, 0.5, wheel_timer_callback, NULL);
+		indigo_set_timer(device, 0.5, wheel_timer_callback, &PRIVATE_DATA->wheel_timer);
 	}
 	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 }
@@ -495,6 +495,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			}
 		} else {
+			indigo_cancel_timer(device, &PRIVATE_DATA->wheel_timer);
 			if (--PRIVATE_DATA->device_count == 0) {
 				libatik_close(PRIVATE_DATA->device_context);
 				indigo_global_unlock(device);
@@ -513,7 +514,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			PRIVATE_DATA->target_slot = WHEEL_SLOT_ITEM->number.value;
 			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
 			libatik_set_filter_wheel(PRIVATE_DATA->device_context, PRIVATE_DATA->target_slot);
-			indigo_set_timer(device, 0.5, wheel_timer_callback, NULL);
+			indigo_set_timer(device, 0.5, wheel_timer_callback, &PRIVATE_DATA->wheel_timer);
 		}
 		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 		return INDIGO_OK;
