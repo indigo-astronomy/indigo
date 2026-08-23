@@ -682,15 +682,24 @@ static void add_device(indigo_device *device, indigo_property *property) {
 		}
 	}
 	if (filter != NULL) {
-		*filter->text.value = 0;
-		for (int i = 0; i < property->count; i++) {
+		char *p = filter->text.value;
+		char *end = filter->text.value + INDIGO_VALUE_SIZE - 1;
+		*p = 0;
+		for (int i = 0; i < property->count && p < end; i++) {
 			indigo_item *item = property->items + i;
 			if (item->sw.value) {
-				if (*filter->text.value) {
-					strcat(filter->text.value, ";");
+				if (p > filter->text.value && p < end) {
+					*p++ = ';';
+					*p = 0;
 				}
-				if (strcmp(item->name, "NONE")) {
-					strcat(filter->text.value, item->name);
+				if (strcmp(item->name, "NONE") && p < end) {
+					int avail = (int)(end - p);
+					int len = (int)strlen(item->name);
+					if (len > avail)
+						len = avail;
+					memcpy(p, item->name, len);
+					p += len;
+					*p = 0;
 				}
 			}
 		}
