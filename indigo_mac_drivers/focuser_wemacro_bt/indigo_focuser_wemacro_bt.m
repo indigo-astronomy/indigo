@@ -230,6 +230,8 @@ static indigo_result focuser_detach(indigo_device *device);
 }
 
 -(void)peripheral:(CBPeripheral *)peripheral didUpdateValueForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error {
+	if (characteristic.value.length < 3)
+		return;
 	uint8_t *buffer = (uint8_t *)characteristic.value.bytes;
 	uint8_t state = buffer[2];
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%02x %02x %02x", buffer[0], buffer[1], buffer[2]);

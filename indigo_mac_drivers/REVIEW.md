@@ -29,12 +29,32 @@ For the 2026-08-01 scoped baseline pass, build products and SDK/vendor subtrees 
 | MACDRV-003 | Medium | `ccd_atik2/indigo_ccd_atik2.c:577` | The hotplug arrival path allocates shared private data and one or more logical `indigo_device` objects, then searches the fixed `devices[MAX_DEVICES]` table. If the table is full, the newly allocated objects and the `libusb_ref_device()` reference are not released. Reserve slots before allocation or add cleanup when no slot is available. | Closed (fixed) |
 | MACDRV-004 | Medium | `focuser_mjkzz_bt/indigo_focuser_mjkzz_bt.m:420`, `focuser_wemacro_bt/indigo_focuser_wemacro_bt.m:468` | Bluetooth driver shutdown only sets the static delegate to `nil`. It does not stop scanning, disconnect a connected peripheral, clear the CoreBluetooth delegate, or call `deleteDevice`, so an attached INDIGO device and malloc-backed private data can outlive driver shutdown. Add explicit delegate shutdown that disconnects, stops scans, detaches the device, and clears references. | Closed (fixed) |
 | MACDRV-005 | Medium | `focuser_mjkzz_bt/indigo_focuser_mjkzz_bt.m:135`, `focuser_wemacro_bt/indigo_focuser_wemacro_bt.m:153` | Both Bluetooth drivers call `CFBridgingRetain(peripheral)` when reusing or discovering peripherals. MJKZZ never releases the retained object, and WeMacro's release path is unreachable because `hc08` is set to `nil` before the `if (hc08)` check. Under ARC this is still a manual retain leak. Remove the explicit retain or balance it before clearing the peripheral reference. | Closed (fixed) |
-| MACDRV-006 | Medium | `focuser_mjkzz_bt/indigo_focuser_mjkzz_bt.m:210`, `focuser_wemacro_bt/indigo_focuser_wemacro_bt.m:236` | CoreBluetooth characteristic update callbacks assume the payload is exactly the expected protocol frame and immediately read 8 bytes for MJKZZ or byte 2 for WeMacro. A short or empty notification can read past `characteristic.value.bytes` and crash the driver. Validate `characteristic.value.length` before parsing. | Open |
+| MACDRV-006 | Medium | `focuser_mjkzz_bt/indigo_focuser_mjkzz_bt.m:210`, `focuser_wemacro_bt/indigo_focuser_wemacro_bt.m:236` | CoreBluetooth characteristic update callbacks assume the payload is exactly the expected protocol frame and immediately read 8 bytes for MJKZZ or byte 2 for WeMacro. A short or empty notification can read past `characteristic.value.bytes` and crash the driver. Validate `characteristic.value.length` before parsing. | Closed (fixed) |
 | MACDRV-007 | Low | `focuser_mjkzz_bt/indigo_focuser_mjkzz_bt.m:27` | The MJKZZ Bluetooth focuser defines `DRIVER_NAME` as `"indigo_ccd_mjkzz_bt"`, while the entry point and public device name are focuser-specific. This reports incorrect driver metadata through `indigo_focuser_attach()` and log messages. Rename it to the focuser driver name. | Open |
 | MACDRV-008 | Medium | `focuser_wemacro_bt/indigo_focuser_wemacro_bt.m:316` | WeMacro attach allocates three custom properties in sequence, but returns `INDIGO_FAILED` immediately if the second or third allocation fails. Any earlier custom property, plus resources allocated by `indigo_focuser_attach()`, are not released on those partial-failure paths. Add cleanup before returning failure or centralize custom-property allocation before base attach succeeds. | Closed (fixed) |
 | MACDRV-009 | Medium | `ccd_atik2/indigo_ccd_atik2.c:516` | Atik2 wheel movement schedules `wheel_timer_callback` with a `NULL` timer handle, and the callback reschedules itself the same way. Disconnect and detach have no stored timer pointer to cancel, so a pending wheel timer can run after the logical wheel has been disconnected or freed by hotplug removal. Store the timer in shared private data and cancel it during wheel disconnect/detach. | Closed (fixed) |
 
 ## Finding Summaries
+
+### MACDRV-006 (Closed — fixed)
+
+Both Bluetooth focuser drivers parsed the characteristic notification payload
+without first checking its length:
+
+- **MJKZZ** (`indigo_focuser_mjkzz_bt.m`): cast `characteristic.value.bytes`
+  directly to `mjkzz_message *` and read all 8 fields (including `ucMSG[0..3]`
+  and `ucSUM`) before any length validation. A short or empty notification —
+  possible during Bluetooth re-pairing or firmware quirks — would read past the
+  buffer and crash the driver.
+
+- **WeMacro** (`indigo_focuser_wemacro_bt.m`): read `buffer[2]` (and logged
+  `buffer[0]`, `buffer[1]`, `buffer[2]`) without checking length. Any notification
+  shorter than 3 bytes would go out-of-bounds.
+
+The fix adds a length guard at the top of each `didUpdateValueForCharacteristic:`
+callback. MJKZZ returns early if `characteristic.value.length < sizeof(mjkzz_message)`
+(8 bytes); WeMacro returns early if `characteristic.value.length < 3`. All byte
+access occurs after the guard.
 
 ### MACDRV-008 (Closed — fixed)
 
