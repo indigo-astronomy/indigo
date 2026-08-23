@@ -586,11 +586,20 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				indigo_get_usb_path(dev, usb_path);
 				snprintf(device->name, INDIGO_NAME_SIZE, "%s #%s", name, usb_path);
 				device->private_data = private_data;
+				bool slot_found = false;
 				for (int j = 0; j < MAX_DEVICES; j++) {
 					if (devices[j] == NULL) {
 						indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);
+						slot_found = true;
 						break;
 					}
+				}
+				if (!slot_found) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slot available for %s", device->name);
+					free(device);
+					free(private_data);
+					libusb_unref_device(dev);
+					break;
 				}
 				if (is_guider) {
 					device = malloc(sizeof(indigo_device));
@@ -599,11 +608,17 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 					device->master_device = master_device;
 					snprintf(device->name, INDIGO_NAME_SIZE, "%s (guider) #%s", name, usb_path);
 					device->private_data = private_data;
+					slot_found = false;
 					for (int j = 0; j < MAX_DEVICES; j++) {
 						if (devices[j] == NULL) {
 							indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);
+							slot_found = true;
 							break;
 						}
+					}
+					if (!slot_found) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slot available for %s", device->name);
+						free(device);
 					}
 				}
 				if (has_fw) {
@@ -613,11 +628,17 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 					device->master_device = master_device;
 					snprintf(device->name, INDIGO_NAME_SIZE, "%s (wheel) #%s", name, usb_path);
 					device->private_data = private_data;
+					slot_found = false;
 					for (int j = 0; j < MAX_DEVICES; j++) {
 						if (devices[j] == NULL) {
 							indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);
+							slot_found = true;
 							break;
 						}
+					}
+					if (!slot_found) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slot available for %s", device->name);
+						free(device);
 					}
 				}
 			}

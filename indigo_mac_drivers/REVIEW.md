@@ -26,7 +26,7 @@ For the 2026-08-01 scoped baseline pass, build products and SDK/vendor subtrees 
 | --- | --- | --- | --- | --- |
 | MACDRV-001 | High | `ccd_atik2/indigo_ccd_atik2.c:183` | CCD, guider, and wheel connection paths acquire the INDIGO global lock before `libatik_open()`, but if `libatik_open()` fails they only decrement `device_count` and leave the global lock held. A failed open can block later driver/device access until process restart. Track whether the lock was acquired and release it on every failed-open path. | Closed (fixed) |
 | MACDRV-002 | Medium | `ccd_atik2/indigo_ccd_atik2.c:310` | The Atik2 detach handlers call `indigo_global_unlock()` whenever the detached device is the master device, independent of `device_count`. If CCD, guider, and wheel logical devices share the same physical camera, detaching the master while siblings are still connected can release the global lock early; if disconnect already released it, detach can also unlock a second time. Let the shared disconnect path own the lock lifecycle. | Closed (fixed) |
-| MACDRV-003 | Medium | `ccd_atik2/indigo_ccd_atik2.c:577` | The hotplug arrival path allocates shared private data and one or more logical `indigo_device` objects, then searches the fixed `devices[MAX_DEVICES]` table. If the table is full, the newly allocated objects and the `libusb_ref_device()` reference are not released. Reserve slots before allocation or add cleanup when no slot is available. | Open |
+| MACDRV-003 | Medium | `ccd_atik2/indigo_ccd_atik2.c:577` | The hotplug arrival path allocates shared private data and one or more logical `indigo_device` objects, then searches the fixed `devices[MAX_DEVICES]` table. If the table is full, the newly allocated objects and the `libusb_ref_device()` reference are not released. Reserve slots before allocation or add cleanup when no slot is available. | Closed (fixed) |
 | MACDRV-004 | Medium | `focuser_mjkzz_bt/indigo_focuser_mjkzz_bt.m:420`, `focuser_wemacro_bt/indigo_focuser_wemacro_bt.m:468` | Bluetooth driver shutdown only sets the static delegate to `nil`. It does not stop scanning, disconnect a connected peripheral, clear the CoreBluetooth delegate, or call `deleteDevice`, so an attached INDIGO device and malloc-backed private data can outlive driver shutdown. Add explicit delegate shutdown that disconnects, stops scans, detaches the device, and clears references. | Open |
 | MACDRV-005 | Medium | `focuser_mjkzz_bt/indigo_focuser_mjkzz_bt.m:135`, `focuser_wemacro_bt/indigo_focuser_wemacro_bt.m:153` | Both Bluetooth drivers call `CFBridgingRetain(peripheral)` when reusing or discovering peripherals. MJKZZ never releases the retained object, and WeMacro's release path is unreachable because `hc08` is set to `nil` before the `if (hc08)` check. Under ARC this is still a manual retain leak. Remove the explicit retain or balance it before clearing the peripheral reference. | Open |
 | MACDRV-006 | Medium | `focuser_mjkzz_bt/indigo_focuser_mjkzz_bt.m:210`, `focuser_wemacro_bt/indigo_focuser_wemacro_bt.m:236` | CoreBluetooth characteristic update callbacks assume the payload is exactly the expected protocol frame and immediately read 8 bytes for MJKZZ or byte 2 for WeMacro. A short or empty notification can read past `characteristic.value.bytes` and crash the driver. Validate `characteristic.value.length` before parsing. | Open |
@@ -35,6 +35,23 @@ For the 2026-08-01 scoped baseline pass, build products and SDK/vendor subtrees 
 | MACDRV-009 | Medium | `ccd_atik2/indigo_ccd_atik2.c:516` | Atik2 wheel movement schedules `wheel_timer_callback` with a `NULL` timer handle, and the callback reschedules itself the same way. Disconnect and detach have no stored timer pointer to cancel, so a pending wheel timer can run after the logical wheel has been disconnected or freed by hotplug removal. Store the timer in shared private data and cancel it during wheel disconnect/detach. | Closed (fixed) |
 
 ## Finding Summaries
+
+### MACDRV-003 (Closed — fixed)
+
+In `hotplug_callback` (`LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED` branch), the code
+allocated `atik_private_data`, called `libusb_ref_device()`, and malloc'd one or
+more `indigo_device` objects before searching the fixed `devices[MAX_DEVICES]`
+array for a free slot. If the table was full the search loop fell through silently:
+the allocated objects were leaked and the `libusb_ref_device()` reference was never
+balanced.
+
+The fix introduces a `slot_found` boolean checked after each slot-search loop:
+
+- **CCD (master)**: if no slot, logs an error, `free(device)`, `free(private_data)`,
+  `libusb_unref_device(dev)`, then `break`s out of the switch case — no further
+  allocation is attempted for guider or wheel.
+- **Guider / wheel**: if no slot, logs an error and `free(device)` only — `private_data`
+  and the USB reference belong to the already-placed CCD slot.
 
 ### MACDRV-009 (Closed — fixed)
 
