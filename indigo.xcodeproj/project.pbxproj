@@ -2340,6 +2340,8 @@
 		5984A309303B88B800D581D2 /* test_dome_nexdome3_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_dome_nexdome3_simulator.c; sourceTree = "<group>"; };
 		5984A30A303B8ADF00D581D2 /* dome_skyroof_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = dome_skyroof_simulator.c; sourceTree = "<group>"; };
 		5984A30B303B8AF200D581D2 /* test_dome_skyroof_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_dome_skyroof_simulator.c; sourceTree = "<group>"; };
+		5984A30C303B8C6500D581D2 /* dome_talon6ror_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = dome_talon6ror_simulator.c; sourceTree = "<group>"; };
+		5984A30D303B8C7600D581D2 /* test_dome_talon6ror_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_dome_talon6ror_simulator.c; sourceTree = "<group>"; };
 		5984C90827C2E2290090204B /* IMAGING_AF_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = IMAGING_AF_TUNING.md; sourceTree = "<group>"; };
 		5984C90927C2E22A0090204B /* POLAR_ALIGNMENT.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = POLAR_ALIGNMENT.md; sourceTree = "<group>"; };
 		5984C90A27C2E22A0090204B /* GUIDING_PI_CONTROLLER_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = GUIDING_PI_CONTROLLER_TUNING.md; sourceTree = "<group>"; };
@@ -8019,6 +8021,7 @@
 		598FE2852615037000E0DA21 /* dome_talon6ror_simulator */ = {
 			isa = PBXGroup;
 			children = (
+				5984A30C303B8C6500D581D2 /* dome_talon6ror_simulator.c */,
 				598FE2862615037000E0DA21 /* dome_talon6ror_simulator.ino */,
 			);
 			path = dome_talon6ror_simulator;
@@ -12987,6 +12990,7 @@
 		59FA7BF3301D3A5800A35CFB /* integration */ = {
 			isa = PBXGroup;
 			children = (
+				5984A30D303B8C7600D581D2 /* test_dome_talon6ror_simulator.c */,
 				5984A30B303B8AF200D581D2 /* test_dome_skyroof_simulator.c */,
 				5984A309303B88B800D581D2 /* test_dome_nexdome3_simulator.c */,
 				5984A307303B877B00D581D2 /* test_dome_nexdome_simulator.c */,
