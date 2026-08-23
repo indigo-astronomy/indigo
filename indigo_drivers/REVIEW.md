@@ -37,7 +37,7 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 | DRV-004 | Medium | `agent_imager/indigo_agent_imager.c:3485` | The imager agent mirrors wheel slot names by assigning `AGENT_WHEEL_FILTER_PROPERTY->count = property->count`, but the property was initialized with `FILTER_SLOT_COUNT` items. A wheel with more than 24 slots can write past the property items when copying labels. Clamp to `FILTER_SLOT_COUNT` or resize the property before copying. | Closed (fixed) |
 | DRV-005 | Medium | `agent_alpaca/indigo_alpaca_switch.c:564` | Alpaca switch-name handling copies `AUX_OUTLET_NAMES` and `AUX_SENSOR_NAMES` with raw `property->count` into fixed `5 * ALPACA_MAX_SWITCHES` storage. The value paths clamp each bank to 8 items, but the name paths do not, so a property with too many names can write past the selected bank. Clamp each name bank to `ALPACA_MAX_SWITCHES`. | Closed (fixed) |
 | DRV-006 | Medium | `agent_alpaca/indigo_agent_alpaca.c:670` | `INFO_DEVICE_NAME` text is copied with `strcpy()` into `device_name[INDIGO_NAME_SIZE]`, while INDIGO text values are `INDIGO_VALUE_SIZE`. A long device-name text item can overflow the Alpaca device-name cache. Use `INDIGO_COPY_NAME()` or another bounded copy. | Closed (fixed) |
-| DRV-007 | Medium | `dome_nexdome3/indigo_dome_nexdome3.c:1203` | The optional NexDome custom command path formats `NEXDOME_COMMAND_ITEM->text.value` into `char command[NEXDOME_CMD_LEN]` with `sprintf()`. The text value can be much larger than the 100-byte command buffer, so a long custom command overflows the stack buffer. Use `snprintf()` and reject/truncate oversized commands. | Open |
+| DRV-007 | Medium | `dome_nexdome3/indigo_dome_nexdome3.c:1203` | The optional NexDome custom command path formats `NEXDOME_COMMAND_ITEM->text.value` into `char command[NEXDOME_CMD_LEN]` with `sprintf()`. The text value can be much larger than the 100-byte command buffer, so a long custom command overflows the stack buffer. Use `snprintf()` and reject/truncate oversized commands. | Closed (fixed) |
 | DRV-008 | Medium | `focuser_steeldrive2/indigo_focuser_steeldrive2.c:642` | SteelDrive2 formats the user-editable `X_NAME` text item into `char command[64]` with `sprintf("$BS SET NAME:%s", ...)`. `X_NAME_ITEM->text.value` is an INDIGO text value, so a long name can overflow the command buffer before it is sent. Bound the accepted name length or use `snprintf()` with state feedback on truncation. | Closed (fixed) |
 | DRV-009 | Medium | `dome_nexdome3/indigo_dome_nexdome3.c:567` | NexDome3 parses incoming `XB->...` messages with `sscanf(message, "XB->%s", state)` into `char state[20]`. A malformed or unexpectedly long controller message can overflow the stack buffer before the value is copied to the INDIGO text item. Add a field width or parse with bounded copying. | Open |
 | DRV-010 | Medium | `system_ascol/libascol/libascol.c:405` | `ascol_parse_devname()` parses `DEVICE_PORT_ITEM->text.value` with unbounded `%s` into the caller's `host` buffer; the system driver passes `char host[255]`, while the INDIGO text value can be larger. A long `tcp://...` or `ascol://...` value can overflow `host`. Use width-limited parsing or pass the destination size. | Open |
@@ -109,6 +109,15 @@ replaced with `INDIGO_COPY_NAME()`. `device_name` is `INDIGO_NAME_SIZE` (128 byt
 but INDIGO text values are `INDIGO_VALUE_SIZE` (512 bytes), so the unbounded copy
 could overflow the cache field. `driver_info` and `driver_version` use the same
 `strcpy` pattern but are declared `INDIGO_VALUE_SIZE` and were not overflowable.
+
+### DRV-007 (Closed — fixed)
+
+The `CMD_AID` custom-command handler in `indigo_dome_nexdome3.c` (line 1167) now
+uses `snprintf(command, sizeof(command), "%s\n", …)` and checks the return value
+against `sizeof(command)` (100 bytes). If the formatted string would be truncated,
+`NEXDOME_COMMAND_PROPERTY` is set to `INDIGO_ALERT_STATE` and no data is sent to
+the controller. A non-truncated command proceeds as before and the property is set
+to `INDIGO_OK_STATE`.
 
 ### DRV-008 (Closed — fixed)
 

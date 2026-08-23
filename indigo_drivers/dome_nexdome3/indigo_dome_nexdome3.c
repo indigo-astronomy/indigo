@@ -1164,8 +1164,12 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		indigo_property_copy_values(NEXDOME_COMMAND_PROPERTY, property, false);
 		PROPERTY_LOCK();
 		char command[NEXDOME_CMD_LEN];
-		sprintf(command, "%s\n", NEXDOME_COMMAND_ITEM->text.value);
-		nexdome_command(device, command);
+		if (snprintf(command, sizeof(command), "%s\n", NEXDOME_COMMAND_ITEM->text.value) >= (int)sizeof(command)) {
+			NEXDOME_COMMAND_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else {
+			nexdome_command(device, command);
+			NEXDOME_COMMAND_PROPERTY->state = INDIGO_OK_STATE;
+		}
 		PROPERTY_UNLOCK();
 		indigo_update_property(device, NEXDOME_COMMAND_PROPERTY, NULL);
 		return INDIGO_OK;
