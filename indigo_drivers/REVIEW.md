@@ -44,7 +44,7 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 | DRV-011 | Medium | `agent_astrometry/indigo_agent_astrometry.c:205` | The Astrometry agent builds `buffer[8192]` with `vsnprintf()` and then appends `" 2>&1"` into another 8192-byte buffer with `sprintf()`. A command truncated to the full source buffer can overflow `command_buf`; the same file also parses `Field size` units into `char s[16]` with unbounded `%s`. Use a single bounded `snprintf()` and width-limited parsing. | Closed (fixed) |
 | DRV-012 | Medium | `agent_astap/indigo_agent_astap.c:331` | The ASTAP agent has the same equal-sized `buffer` to `command_buf` append overflow as Astrometry. It also builds index parameters and index paths with repeated `sprintf()` into 512-byte buffers using `base_dir`, which can be near the buffer limit. Convert command, parameter, and path construction to checked `snprintf()` with remaining-capacity tracking. | Closed (fixed) |
 | DRV-013 | Medium | `gps_gpsd/indigo_gps_gpsd.c:59` | `gpsd_open()` copies the editable device-port text into `host_name[INDIGO_NAME_SIZE]` and `port[15]` with `strcpy()`/`strncpy()` without checking host or port length. A long `gpsd://...` value can overflow the host or port buffer before `gps_open()`. Parse with bounded lengths and reject invalid endpoints. | Closed (fixed) |
-| DRV-014 | Medium | `mount_synscan/indigo_mount_synscan_driver.c:1013` | `synscan_save_position()` writes the HOME-based `.indigo` path with `snprintf()` but then appends the park filename using `sprintf(buffer + path_end, ...)`. If HOME is long enough for `snprintf()` to truncate, `path_end` is the would-have-written length and can point past `buffer`. Compose the complete path with one checked `snprintf()`. | Open |
+| DRV-014 | Medium | `mount_synscan/indigo_mount_synscan_driver.c:1013` | `synscan_save_position()` writes the HOME-based `.indigo` path with `snprintf()` but then appends the park filename using `sprintf(buffer + path_end, ...)`. If HOME is long enough for `snprintf()` to truncate, `path_end` is the would-have-written length and can point past `buffer`. Compose the complete path with one checked `snprintf()`. | Closed (fixed) |
 | DRV-015 | Medium | `ccd_ptp/indigo_ptp.c:1533` | PTP string switch values are decoded into `PTP_MAX_CHARS` 256-byte entries, but refreshed property names are copied into `char str[INDIGO_NAME_SIZE]` with `strcpy()`. A camera-provided string value longer than 127 bytes can overflow `str` before the item name is updated. Use bounded copying and define a deterministic truncation or rejection policy for item names. | Open |
 | DRV-016 | High | `agent_mount/indigo_agent_mount.c:2172` | `AGENT_MOUNT_ENABLE_JOYSTICK_CONTROL` was ignored by the `agent_update_property()` forwarding path. `JOYSTICK_MOUNT_*` updates were forwarded to the selected mount before the gated joystick handling in `snoop_changes()` could run, so disabling joystick control in `AGENT_PROCESS_FEATURES` did not prevent joystick motion, park, tracking, home, or abort commands. | Closed (fixed) |
 | DRV-017 | High | `agent_mount/indigo_agent_mount.c:1840` | The refactor removed the old disabled-by-default `AGENT_DOME_SLAVING` and `AGENT_FIELD_DEROTATION` properties, then initialized the replacement `AGENT_PROCESS_FEATURES` items for dome slaving, derotation, and joystick control to `true`. Existing configurations saved under the old property names were no longer loaded into these new items, so upgrading could silently enable dome, rotator, and joystick-driven hardware behavior that was previously disabled. | Closed (fixed) |
@@ -168,6 +168,20 @@ copying:
 
 In both reject cases `gps_open()` is never called, so no partial or truncated
 endpoint reaches the gpsd library.
+
+### DRV-014 (Closed — fixed)
+
+`synscan_save_position()` in `indigo_mount_synscan_driver.c` previously stored the
+return value of `snprintf(buffer, …, "%s/.indigo", HOME)` as `path_end` and then
+used `sprintf(buffer + path_end, "/synscan-…")` to append the filename. `snprintf`
+returns the length that would have been written regardless of truncation, so a long
+`HOME` value makes `path_end ≥ INDIGO_VALUE_SIZE` and `buffer + path_end` points
+past the array.
+
+The fix follows the pattern already used in `synscan_restore_position()` (line
+1035): the directory path is built with one `snprintf()` (for `mkdir`), and the
+complete park-file path is built with a second independent `snprintf()` using the
+same `HOME` base, instead of indexing into the partially filled buffer.
 
 ### DRV-016 (Closed — fixed)
 
