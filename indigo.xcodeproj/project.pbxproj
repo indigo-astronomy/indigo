@@ -2374,6 +2374,8 @@
 		5984A330303BA08F00D581D2 /* test_focuser_primaluce_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_primaluce_simulator.c; sourceTree = "<group>"; };
 		5984A331303BA25700D581D2 /* focuser_prodigy_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = focuser_prodigy_simulator.c; sourceTree = "<group>"; };
 		5984A332303BA26100D581D2 /* test_focuser_prodigy_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_prodigy_simulator.c; sourceTree = "<group>"; };
+		5984A333303BA3C500D581D2 /* focuser_robofocus_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = focuser_robofocus_simulator.c; sourceTree = "<group>"; };
+		5984A334303BA3CF00D581D2 /* test_focuser_robofocus_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_robofocus_simulator.c; sourceTree = "<group>"; };
 		5984C90827C2E2290090204B /* IMAGING_AF_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = IMAGING_AF_TUNING.md; sourceTree = "<group>"; };
 		5984C90927C2E22A0090204B /* POLAR_ALIGNMENT.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = POLAR_ALIGNMENT.md; sourceTree = "<group>"; };
 		5984C90A27C2E22A0090204B /* GUIDING_PI_CONTROLLER_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = GUIDING_PI_CONTROLLER_TUNING.md; sourceTree = "<group>"; };
@@ -13033,6 +13035,7 @@
 		59F682A6250FD48200ABD731 /* focuser_robofocus_simulator */ = {
 			isa = PBXGroup;
 			children = (
+				5984A333303BA3C500D581D2 /* focuser_robofocus_simulator.c */,
 				59F682A7250FD48200ABD731 /* focuser_robofocus_simulator.ino */,
 			);
 			path = focuser_robofocus_simulator;
@@ -13071,6 +13074,7 @@
 		59FA7BF3301D3A5800A35CFB /* integration */ = {
 			isa = PBXGroup;
 			children = (
+				5984A334303BA3CF00D581D2 /* test_focuser_robofocus_simulator.c */,
 				5984A332303BA26100D581D2 /* test_focuser_prodigy_simulator.c */,
 				5984A330303BA08F00D581D2 /* test_focuser_primaluce_simulator.c */,
 				5984A32E303B9F6700D581D2 /* test_focuser_optec_simulator.c */,
