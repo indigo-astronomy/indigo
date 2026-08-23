@@ -566,7 +566,7 @@ static void handle_range(indigo_device *device, char *message) {
 static void handle_xb(indigo_device *device, char *message) {
 	char state[20];
 
-	if (sscanf(message, "XB->%s", state) != 1) {
+	if (sscanf(message, "XB->%19s", state) != 1) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Parsing message = '%s' error!", message);
 		return;
 	}
