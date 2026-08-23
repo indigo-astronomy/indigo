@@ -2384,6 +2384,8 @@
 		5984A33C303BA73500D581D2 /* test_focuser_wemacro_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_wemacro_simulator.c; sourceTree = "<group>"; };
 		5984A33D303BA80100D581D2 /* gps_nmea_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = gps_nmea_simulator.c; sourceTree = "<group>"; };
 		5984A33F303BA81300D581D2 /* test_gps_nmea_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_gps_nmea_simulator.c; sourceTree = "<group>"; };
+		5984A340303BA9A100D581D2 /* mount_ioptron_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = mount_ioptron_simulator.c; sourceTree = "<group>"; };
+		5984A342303BA9B100D581D2 /* test_mount_ioptron_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_mount_ioptron_simulator.c; sourceTree = "<group>"; };
 		5984C90827C2E2290090204B /* IMAGING_AF_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = IMAGING_AF_TUNING.md; sourceTree = "<group>"; };
 		5984C90927C2E22A0090204B /* POLAR_ALIGNMENT.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = POLAR_ALIGNMENT.md; sourceTree = "<group>"; };
 		5984C90A27C2E22A0090204B /* GUIDING_PI_CONTROLLER_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = GUIDING_PI_CONTROLLER_TUNING.md; sourceTree = "<group>"; };
@@ -8031,6 +8033,14 @@
 			path = gps_nmea_simulator;
 			sourceTree = "<group>";
 		};
+		5984A341303BA9A100D581D2 /* mount_ioptron_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				5984A340303BA9A100D581D2 /* mount_ioptron_simulator.c */,
+			);
+			path = mount_ioptron_simulator;
+			sourceTree = "<group>";
+		};
 		598C57E121A75B1A001CA8C0 /* libnexstar */ = {
 			isa = PBXGroup;
 			children = (
@@ -13109,6 +13119,7 @@
 		59FA7BF3301D3A5800A35CFB /* integration */ = {
 			isa = PBXGroup;
 			children = (
+				5984A342303BA9B100D581D2 /* test_mount_ioptron_simulator.c */,
 				5984A33F303BA81300D581D2 /* test_gps_nmea_simulator.c */,
 				5984A33C303BA73500D581D2 /* test_focuser_wemacro_simulator.c */,
 				5984A339303BA58900D581D2 /* test_focuser_steeldrive2_simulator.c */,
@@ -14663,6 +14674,7 @@
 				5956F660230BCBFC0016C7C2 /* Protocol_V3.01.pdf */,
 				59E2DA682638384900D3D4B5 /* Protocol_V3.10.pdf */,
 				59EA12822F66DA1200E29EDD /* Protocol_Special_Mode.pdf */,
+				5984A341303BA9A100D581D2 /* mount_ioptron_simulator */,
 				594A912825F4D18E002691D0 /* ioptron_simulator */,
 			);
 			path = mount_ioptron;

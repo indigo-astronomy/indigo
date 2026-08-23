@@ -1,0 +1,19 @@
+---
+triple:          'arm64-apple-darwin'
+binary-path:     'build/integration/mount_ioptron_simulator'
+relocations:
+  - { offset: 0x26, size: 0x8, addend: 0x0, symName: _main, symObjAddr: 0x0, symBinAddr: 0x100000658, symSize: 0x11F0 }
+  - { offset: 0x65, size: 0x8, addend: 0x0, symName: __MergedGlobals, symObjAddr: 0x1910, symBinAddr: 0x1000080D0, symSize: 0x0 }
+  - { offset: 0x93, size: 0x8, addend: 0x0, symName: __MergedGlobals, symObjAddr: 0x1910, symBinAddr: 0x1000080D0, symSize: 0x0 }
+  - { offset: 0xA8, size: 0x8, addend: 0x0, symName: __MergedGlobals.146, symObjAddr: 0x5D80, symBinAddr: 0x100008120, symSize: 0x0 }
+  - { offset: 0xBA, size: 0x8, addend: 0x0, symName: __MergedGlobals.146, symObjAddr: 0x5D80, symBinAddr: 0x100008120, symSize: 0x0 }
+  - { offset: 0xD1, size: 0x8, addend: 0x0, symName: __MergedGlobals.146, symObjAddr: 0x5D80, symBinAddr: 0x100008120, symSize: 0x0 }
+  - { offset: 0xDE, size: 0x8, addend: 0x0, symName: __MergedGlobals, symObjAddr: 0x1910, symBinAddr: 0x1000080D0, symSize: 0x0 }
+  - { offset: 0x193, size: 0x8, addend: 0x0, symName: __MergedGlobals, symObjAddr: 0x1910, symBinAddr: 0x1000080D0, symSize: 0x0 }
+  - { offset: 0x6CC, size: 0x8, addend: 0x0, symName: _main, symObjAddr: 0x0, symBinAddr: 0x100000658, symSize: 0x11F0 }
+  - { offset: 0xEBE, size: 0x8, addend: 0x0, symName: _signal_handler, symObjAddr: 0x11F0, symBinAddr: 0x100001848, symSize: 0x34 }
+  - { offset: 0x103E, size: 0x8, addend: 0x0, symName: _write_response, symObjAddr: 0x129C, symBinAddr: 0x1000018F4, symSize: 0x104 }
+  - { offset: 0x111A, size: 0x8, addend: 0x0, symName: _parse_signed_digits, symObjAddr: 0x13A0, symBinAddr: 0x1000019F8, symSize: 0x6C }
+  - { offset: 0x11BE, size: 0x8, addend: 0x0, symName: _usage, symObjAddr: 0x1224, symBinAddr: 0x10000187C, symSize: 0x78 }
+  - { offset: 0x11FD, size: 0x8, addend: 0x0, symName: _signal_handler, symObjAddr: 0x11F0, symBinAddr: 0x100001848, symSize: 0x34 }
+...

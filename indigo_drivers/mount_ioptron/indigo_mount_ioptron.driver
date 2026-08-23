@@ -258,7 +258,7 @@ driver ioptron {
 			}
 			if (!indigo_uni_is_valid(PRIVATE_DATA->handle)) {
 				ioptron_close(device);
-				indigo_execute_handler(device->master_device, indigo_disconnect_slave_devices);
+				indigo_execute_handler(device->master_device != NULL ? device->master_device : device, indigo_disconnect_slave_devices);
 				return false;
 			}
 			return true;

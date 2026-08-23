@@ -68,30 +68,20 @@ typedef struct {
 } mount_type;
 
 static mount_type PRODUCTS[] = {
-	// firmware 220718+ -> 3.0
-	{   45, "220718", "HEM44EC", V3_0, true, true, true },
-	{   46, "220718", "HEM44A", V3_0, false, true, true },
-	{   47, "220718", "HEM44AEC", V3_0, true, true, true },
-
-	// firmware 220305+ -> 3.0
-	{   10, "220305", "SkyHunter", V3_0, false, true, false },
-	{   11, "220305", "SkyHunterAA", V3_0, false, true, false },
-	{   25, "220305", "HEM27", V3_0, false, true, true },
-	{   30, "220305", "HEM27EC", V3_0, true, true, true },
-
 	// firmware 210101+ -> 3.1
-	{   26, "210101", "CEM26", V3_0, false, true, false },
-	{   27, "210101", "CEM26EC", V3_0, true, true, false },
+	{   26, "210101", "CEM26", V3_0, true, false, false  },
+	{   27, "210101", "CEM26EC", V3_0, true, false, false  },
 
 	// firmware 171001+ -> 3.0
 	{   45, "171001", "iEQ45Pro", V3_0, false, true, false },
 	{   46, "171001", "iEQ45ProAA", V3_0, false, true, false },
 	{   60, "171001", "CEM60", V3_0, false, true, true },
 	{   61, "171001", "CEM60EC", V3_0, true, true, true },
-	{   40, "210101", "CEM40", V2_5, false, true, true },
-	{   41, "210101", "CEM40EC", V2_5, true, true, true },
-	{   70, "210101", "CEM70", V3_0, false, true, true },
-	{   71, "210101", "CEM70EC", V3_0, true, true, true },
+	{   40, "210101", "CEM40", V2_5, false, true, false },
+	{   41, "210101", "CEM40EC", V2_5, true, true, false },
+	{   70, "210101", "CEM70", V3_0, false, false, false  },
+	{   71, "210101", "CEM70EC", V3_0, true, false, false  },
+
 
 	// firmware 161101+ -> 2.5
 	{   45, "161101", "iEQ45Pro", V2_5, false, true, false },
@@ -103,12 +93,12 @@ static mount_type PRODUCTS[] = {
 	{   40, NULL, "CEM40", V2_5, false, true, true },
 	{   41, NULL, "CEM40EC", V2_5, true, true, true },
 	{   30, NULL, "iEQ30Pro", V2_5, false, true, false },
-	{   25, NULL, "CEM25", V2_5, false, false, false },
-	{   26, NULL, "CEM25EC", V2_5, true, false, false },
-	{   11, NULL, "SmartEQPro+", V2_5, false, false, false },
-	{ 5035, NULL, "AZMountPro", V2_5, false, false, false },
-	{   10, NULL, "CubeII", V2_5, false, false, false },
-	{ 5010, NULL, "CubeIIAA", V2_5, false, false, false },
+	{   25, NULL, "CEM25", V2_5, false, false, false  },
+	{   26, NULL, "CEM25EC", V2_5, false, false, false  },
+	{   11, NULL, "SmartEQPro+", V2_5, false, false, false  },
+	{ 5035, NULL, "AZMountPro", V2_5, false, false, false  },
+	{   10, NULL, "CubeII", V2_5, false, false, false  },
+	{ 5010, NULL, "CubeIIAA", V2_5, false, false, false  },
 
 	// firmware 140807 -> 2.0
 	{   45, "140807", "iEQ45Pro", V2_0, false, true, false },
@@ -127,56 +117,32 @@ static mount_type PRODUCTS[] = {
 	{ 8497, NULL, "iEQ45 AA", HC_8407, false, true, false },
 	{ 8408, NULL, "ZEQ25", HC_8407, false, true, false },
 	{ 8498, NULL, "SmartEQ", HC_8407, false, true, false },
-	{   70, NULL, "CEM70", V3_0, false, true, true },
-	{   71, NULL, "CEM70EC", V3_0, true, true, true },
-	{   72, NULL, "CEM70EC2", V3_0, true, true, true },
+	{   70, NULL, "CEM70", V3_0, false, false, true  },
+	{   71, NULL, "CEM70EC", V3_0, true, false, true  },
 	{  120, NULL, "CEM120", V3_0, false, true, true },
 	{  121, NULL, "CEM120EC", V3_0, true, true, true },
-	{  122, NULL, "CEM120EC2", V3_0, true, true, true },
+	{  122, NULL, "CEM120EC2", V3_0, false, true, true },
 	{ 9035, NULL, "AZMountProSM", V3_0, false, false, false },
 	{   28, NULL, "GEM28", V3_0, false, true, false },
 	{   29, NULL, "GEM28EC", V3_0, true, true, false },
 	{ 5045, NULL, "iEQ45ProAA", V3_0, false, true, false },
 	{   43, NULL, "GEM45", V3_0, false, true, true },
 	{   44, NULL, "GEM45EC", V3_0, true, true, true },
-	{   12, NULL, "HAE16", V3_0, false, true, true },
-	{   13, NULL, "HAE16AA", V3_0, false, true, true },
-	{   14, NULL, "HAE18", V3_0, false, true, true },
-	{   22, NULL, "HAE18AA", V3_0, false, true, true },
-	{   15, NULL, "HEM15", V3_0, false, true, true },
-	{   35, NULL, "HAZ31", V3_0, false, true, true },
-	{ 8035, NULL, "HAZ31SM", V3_0, false, true, true },
-	{   52, NULL, "HAZ46", V3_0, false, true, true },
-	{ 8052, NULL, "HAZ46SM", V3_0, false, true, true },
-	{   73, NULL, "HAZ71", V3_0, false, true, true },
-	{   31, NULL, "HAE29", V3_0, false, true, true },
-	{   32, NULL, "HAE29EC", V3_0, true, true, true },
-	{   33, NULL, "HAE29AA", V3_0, false, true, true },
-	{   34, NULL, "HAE29AAEC", V3_0, true, true, true },
-	{   36, NULL, "HAE29C", V3_0, false, true, true },
-	{   37, NULL, "HAE29CEC", V3_0, true, true, true },
-	{   38, NULL, "HAE29CAA", V3_0, false, true, true },
-	{   39, NULL, "HAE29CAAEC", V3_0, true, true, true },
-	{ 8033, NULL, "HAE29AASM", V3_0, false, true, true },
-	{ 8034, NULL, "HAE29AAECSM", V3_0, true, true, true },
-	{   48, NULL, "HAE43", V3_0, false, true, true },
-	{   49, NULL, "HAE43EC", V3_0, true, true, true },
-	{   50, NULL, "HAE43AA", V3_0, false, true, true },
-	{   51, NULL, "HAE43AAEC", V3_0, true, true, true },
-	{   53, NULL, "HAE43C", V3_0, false, true, true },
-	{   54, NULL, "HAE43CEC", V3_0, true, true, true },
-	{   55, NULL, "HAE43CAA", V3_0, false, true, true },
-	{   56, NULL, "HAE43CAAEC", V3_0, true, true, true },
-	{ 8050, NULL, "HAE43AASM", V3_0, false, true, true },
-	{ 8051, NULL, "HAE43AAECSM", V3_0, true, true, true },
-	{   62, NULL, "HAE69", V3_0, false, true, true },
-	{   63, NULL, "HAE69EC", V3_0, true, true, true },
-	{   64, NULL, "HAE69AA", V3_0, false, true, true },
-	{   65, NULL, "HAE69AAEC", V3_0, true, true, true },
-	{   66, NULL, "HAE69C", V3_0, false, true, true },
-	{   67, NULL, "HAE69CEC", V3_0, true, true, true },
-	{   68, NULL, "HAE69CAA", V3_0, false, true, true },
-	{   69, NULL, "HAE69CAAEC", V3_0, true, true, true },
+	{   12, NULL, "HEM26", V3_0, false, true, false },
+	{   15, NULL, "HEM15", V3_0, false, true, false },
+	{   35, NULL, "HAZ31", V3_0, false, true, false },
+	{ 8035, NULL, "HAZ31SM", V3_0, false, true, false },
+	{   52, NULL, "HAZ46", V3_0, false, true, false },
+	{ 8052, NULL, "HAZ46SM", V3_0, false, true, false },
+	{   33, NULL, "HAE29", V3_0, false, true, false },
+	{   34, NULL, "HAE29AA", V3_0, false, true, false },
+	{   38, NULL, "HAE29C", V3_0, false, true, false },
+	{ 8033, NULL, "HAE29SM", V3_0, false, true, false },
+	{ 8034, NULL, "HAE29AASM", V3_0, false, true, false },
+	{   50, NULL, "HAE43", V3_0, false, true, false },
+	{   51, NULL, "HAE43AA", V3_0, false, true, false },
+	{ 8050, NULL, "HAE43SM", V3_0, false, true, false },
+	{ 8051, NULL, "HAE43AASM", V3_0, false, true, false },
 	{    0, NULL, "", V3_0, false, false, false },
 };
 
@@ -357,7 +323,7 @@ static bool ioptron_validate_handle(indigo_device *device) {
 	}
 	if (!indigo_uni_is_valid(PRIVATE_DATA->handle)) {
 		ioptron_close(device);
-		indigo_execute_handler(device->master_device, indigo_disconnect_slave_devices);
+		indigo_execute_handler(device->master_device != NULL ? device->master_device : device, indigo_disconnect_slave_devices);
 		return false;
 	}
 	return true;
@@ -531,116 +497,116 @@ static bool ioptron_set_utc(indigo_device *device, time_t secs, int utc_offset) 
 	return false;
 }
 
-//static bool ioptron_get_utc(indigo_device *device, time_t *secs, int *utc_offset) {
-//	struct tm tm;
-//	char sep;
-//	memset(&tm, 0, sizeof(tm));
-//	MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-//	if (PRIVATE_DATA->protocol == HC_8406) {
-//		if (ioptron_command(device, ":GC#") && sscanf(PRIVATE_DATA->response, "%2d%c%2d%c%2d", &tm.tm_mon, &sep, &tm.tm_mday, &sep, &tm.tm_year) == 5) {
-//			if (ioptron_command(device, ":GL#") && sscanf(PRIVATE_DATA->response, "%2d:%2d:%2d", &tm.tm_hour, &tm.tm_min, &tm.tm_sec) == 3) {
-//				tm.tm_year += 100; // TODO: To be fixed in year 2100 :)
-//				tm.tm_mon -= 1;
-//				if (ioptron_command(device, ":GG#")) {
-//					if (PRIVATE_DATA->response[0] ==  'E') {
-//						*utc_offset = atoi(PRIVATE_DATA->response + 1);
-//					} else {
-//						*utc_offset = -atoi(PRIVATE_DATA->response + 1);
-//					}
-//					*secs = indigo_timegm(&tm) - *utc_offset * 3600;
-//					PRIVATE_DATA->time_difference = time(NULL) - *secs;
-//					return true;
-//				}
-//			}
-//		}
-//	} else if (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == UNKNOWN) {
-//		if (ioptron_command(device, ":GC#") && sscanf(PRIVATE_DATA->response, "%2d%c%2d%c%2d", &tm.tm_mon, &sep, &tm.tm_mday, &sep, &tm.tm_year) == 5) {
-//			if (ioptron_command(device, ":GL#") && sscanf(PRIVATE_DATA->response, "%2d:%2d:%2d", &tm.tm_hour, &tm.tm_min, &tm.tm_sec) == 3) {
-//				tm.tm_year += 100; // TODO: To be fixed in year 2100 :)
-//				tm.tm_mon -= 1;
-//				if (ioptron_command(device, ":GG#")) {
-//					*utc_offset = atoi(PRIVATE_DATA->response);
-//					*secs = indigo_timegm(&tm) - *utc_offset * 3600;
-//					PRIVATE_DATA->time_difference = time(NULL) - *secs;
-//					return true;
-//				}
-//			}
-//		}
-//	} else if (PRIVATE_DATA->protocol == V1_0 || PRIVATE_DATA->protocol == V2_0 || PRIVATE_DATA->protocol == V2_5) {
-//		int offset;
-//		if (ioptron_command(device, ":GLT#") && sscanf(PRIVATE_DATA->response, "%4d%c%2d%2d%2d%2d%2d%2d", &offset, &sep, &tm.tm_year, &tm.tm_mon, &tm.tm_mday, &tm.tm_hour, &tm.tm_min, &tm.tm_sec) == 8) {
-//			tm.tm_year += 100; // TODO: To be fixed in year 2100 :)
-//			tm.tm_mon -= 1;
-//			*utc_offset = offset / 60;
-//			*secs = indigo_timegm(&tm) - *utc_offset * 3600;
-//			PRIVATE_DATA->time_difference = time(NULL) - *secs;
-//			return true;
-//		}
-//	} else if (PRIVATE_DATA->protocol == V3_0) {
-//		if (ioptron_command(device, ":GUT#")) {
-//			PRIVATE_DATA->response[4] = 0;
-//			int offset = atoi(PRIVATE_DATA->response);
-//			*utc_offset = offset / 60;
-//			double jd = atoll(PRIVATE_DATA->response + 5) / 8.64e+7 + JD2000;
-//			*secs = (time_t)((jd - DELTA_UT1_UTC - 2440587.5) * 86400.0);
-//			PRIVATE_DATA->time_difference = time(NULL) - *secs;
-//			return true;
-//		}
-//	}
-//	return false;
-//}
+static bool ioptron_get_utc(indigo_device *device, time_t *secs, int *utc_offset) {
+	struct tm tm;
+	char sep;
+	memset(&tm, 0, sizeof(tm));
+	MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
+	if (PRIVATE_DATA->protocol == HC_8406) {
+		if (ioptron_command(device, ":GC#") && sscanf(PRIVATE_DATA->response, "%2d%c%2d%c%2d", &tm.tm_mon, &sep, &tm.tm_mday, &sep, &tm.tm_year) == 5) {
+			if (ioptron_command(device, ":GL#") && sscanf(PRIVATE_DATA->response, "%2d:%2d:%2d", &tm.tm_hour, &tm.tm_min, &tm.tm_sec) == 3) {
+				tm.tm_year += 100; // TODO: To be fixed in year 2100 :)
+				tm.tm_mon -= 1;
+				if (ioptron_command(device, ":GG#")) {
+					if (PRIVATE_DATA->response[0] ==  'E') {
+						*utc_offset = atoi(PRIVATE_DATA->response + 1);
+					} else {
+						*utc_offset = -atoi(PRIVATE_DATA->response + 1);
+					}
+					*secs = indigo_timegm(&tm) - *utc_offset * 3600;
+					PRIVATE_DATA->time_difference = time(NULL) - *secs;
+					return true;
+				}
+			}
+		}
+	} else if (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == UNKNOWN) {
+		if (ioptron_command(device, ":GC#") && sscanf(PRIVATE_DATA->response, "%2d%c%2d%c%2d", &tm.tm_mon, &sep, &tm.tm_mday, &sep, &tm.tm_year) == 5) {
+			if (ioptron_command(device, ":GL#") && sscanf(PRIVATE_DATA->response, "%2d:%2d:%2d", &tm.tm_hour, &tm.tm_min, &tm.tm_sec) == 3) {
+				tm.tm_year += 100; // TODO: To be fixed in year 2100 :)
+				tm.tm_mon -= 1;
+				if (ioptron_command(device, ":GG#")) {
+					*utc_offset = atoi(PRIVATE_DATA->response);
+					*secs = indigo_timegm(&tm) - *utc_offset * 3600;
+					PRIVATE_DATA->time_difference = time(NULL) - *secs;
+					return true;
+				}
+			}
+		}
+	} else if (PRIVATE_DATA->protocol == V1_0 || PRIVATE_DATA->protocol == V2_0 || PRIVATE_DATA->protocol == V2_5) {
+		int offset;
+		if (ioptron_command(device, ":GLT#") && sscanf(PRIVATE_DATA->response, "%4d%c%2d%2d%2d%2d%2d%2d", &offset, &sep, &tm.tm_year, &tm.tm_mon, &tm.tm_mday, &tm.tm_hour, &tm.tm_min, &tm.tm_sec) == 8) {
+			tm.tm_year += 100; // TODO: To be fixed in year 2100 :)
+			tm.tm_mon -= 1;
+			*utc_offset = offset / 60;
+			*secs = indigo_timegm(&tm) - *utc_offset * 3600;
+			PRIVATE_DATA->time_difference = time(NULL) - *secs;
+			return true;
+		}
+	} else if (PRIVATE_DATA->protocol == V3_0) {
+		if (ioptron_command(device, ":GUT#")) {
+			PRIVATE_DATA->response[4] = 0;
+			int offset = atoi(PRIVATE_DATA->response);
+			*utc_offset = offset / 60;
+			double jd = atoll(PRIVATE_DATA->response + 5) / 8.64e+7 + JD2000;
+			*secs = (time_t)((jd - DELTA_UT1_UTC - 2440587.5) * 86400.0);
+			PRIVATE_DATA->time_difference = time(NULL) - *secs;
+			return true;
+		}
+	}
+	return false;
+}
 
-//static bool ioptron_get_site(indigo_device *device, double *latitude, double *longitude) {
-//	if (PRIVATE_DATA->protocol == HC_8406 || PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == V1_0) {
-//		if (ioptron_command(device, ":Gt#")) {
-//			*latitude = indigo_stod(PRIVATE_DATA->response);
-//			if (ioptron_command(device, ":Gg#")) {
-//				*longitude = indigo_stod(PRIVATE_DATA->response);
-//				return true;
-//			}
-//		}		
-//	} else if (PRIVATE_DATA->protocol == V2_0) {
-//		if (ioptron_command(device, ":Gt#")) {
-//			*latitude = atol(PRIVATE_DATA->response) / 60.0 / 60.0;
-//			if (ioptron_command(device, ":Gg#")) {
-//				*longitude = atol(PRIVATE_DATA->response) / 60.0 / 60.0;
-//				if (*longitude < 0) {
-//					*longitude += 360;
-//				}
-//				return true;
-//			}
-//		}
-//	} else if (PRIVATE_DATA->protocol == V2_5) {
-//		if (ioptron_command(device, ":GLS#") && strlen(PRIVATE_DATA->response) == 19) {
-//			char val[16];
-//			memcpy(val, PRIVATE_DATA->response, 7);
-//			val[7] = 0;
-//			*longitude = atol(val) / 60.0 / 60.0;
-//			if (*longitude < 0) {
-//				*longitude += 360;
-//			}
-//			memcpy(val, PRIVATE_DATA->response + 7, 6);
-//			val[6] = 0;
-//			*latitude = atol(val) / 60.0 / 60.0 - 90;
-//			return true;
-//		}
-//	} else if (PRIVATE_DATA->protocol == V3_0) {
-//		if (ioptron_command(device, ":GLS#") && strlen(PRIVATE_DATA->response) == 23) {
-//			char val[16];
-//			memcpy(val, PRIVATE_DATA->response, 9);
-//			val[9] = 0;
-//			*longitude = atol(val) / 60.0 / 60.0 / 100.0;
-//			if (*longitude < 0) {
-//				*longitude += 360;
-//			}
-//			strncpy(val, PRIVATE_DATA->response + 9, 8);
-//			val[8] = 0;
-//			*latitude = atol(val) / 60.0 / 60.0 / 100.0 - 90;
-//			return true;
-//		}
-//	}
-//	return false;
-//}
+static bool ioptron_get_site(indigo_device *device, double *latitude, double *longitude) {
+	if (PRIVATE_DATA->protocol == HC_8406 || PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == V1_0) {
+		if (ioptron_command(device, ":Gt#")) {
+			*latitude = indigo_stod(PRIVATE_DATA->response);
+			if (ioptron_command(device, ":Gg#")) {
+				*longitude = indigo_stod(PRIVATE_DATA->response);
+				return true;
+			}
+		}		
+	} else if (PRIVATE_DATA->protocol == V2_0) {
+		if (ioptron_command(device, ":Gt#")) {
+			*latitude = atol(PRIVATE_DATA->response) / 60.0 / 60.0;
+			if (ioptron_command(device, ":Gg#")) {
+				*longitude = atol(PRIVATE_DATA->response) / 60.0 / 60.0;
+				if (*longitude < 0) {
+					*longitude += 360;
+				}
+				return true;
+			}
+		}
+	} else if (PRIVATE_DATA->protocol == V2_5) {
+		if (ioptron_command(device, ":GLS#") && strlen(PRIVATE_DATA->response) == 19) {
+			char val[16];
+			memcpy(val, PRIVATE_DATA->response, 7);
+			val[7] = 0;
+			*longitude = atol(val) / 60.0 / 60.0;
+			if (*longitude < 0) {
+				*longitude += 360;
+			}
+			memcpy(val, PRIVATE_DATA->response + 7, 6);
+			val[6] = 0;
+			*latitude = atol(val) / 60.0 / 60.0 - 90;
+			return true;
+		}
+	} else if (PRIVATE_DATA->protocol == V3_0) {
+		if (ioptron_command(device, ":GLS#") && strlen(PRIVATE_DATA->response) == 23) {
+			char val[16];
+			memcpy(val, PRIVATE_DATA->response, 9);
+			val[9] = 0;
+			*longitude = atol(val) / 60.0 / 60.0 / 100.0;
+			if (*longitude < 0) {
+				*longitude += 360;
+			}
+			strncpy(val, PRIVATE_DATA->response + 9, 8);
+			val[8] = 0;
+			*latitude = atol(val) / 60.0 / 60.0 / 100.0 - 90;
+			return true;
+		}
+	}
+	return false;
+}
 
 static bool ioptron_set_site(indigo_device *device, double latitude, double longitude, double elevation) {
 	if (longitude < 0) {
@@ -1140,8 +1106,6 @@ static bool ioptron_init_mount(indigo_device *device) {
 				MOUNT_PARK_PROPERTY->hidden = false;
 				MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
 			}
-			MOUNT_HOME_PROPERTY->hidden = false;
-			MOUNT_HOME_PROPERTY->count = 2;
 			MOUNT_TRACKING_PROPERTY->hidden = false;
 			MOUNT_TRACK_RATE_PROPERTY->hidden = false;
 			MOUNT_TRACK_RATE_PROPERTY->count = 5;

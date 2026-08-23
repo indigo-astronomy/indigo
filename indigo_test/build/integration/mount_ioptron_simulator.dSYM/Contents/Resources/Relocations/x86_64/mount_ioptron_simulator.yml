@@ -1,0 +1,18 @@
+---
+triple:          'x86_64-apple-darwin'
+binary-path:     'build/integration/mount_ioptron_simulator'
+relocations:
+  - { offset: 0x27, size: 0x8, addend: 0x0, symName: _main, symObjAddr: 0x0, symBinAddr: 0x1000005F0, symSize: 0x1270 }
+  - { offset: 0x6A, size: 0x8, addend: 0x0, symName: _running, symObjAddr: 0x14A4, symBinAddr: 0x1000030E4, symSize: 0x0 }
+  - { offset: 0x96, size: 0x8, addend: 0x0, symName: _serial_fd, symObjAddr: 0x14A0, symBinAddr: 0x1000030E0, symSize: 0x0 }
+  - { offset: 0xAB, size: 0x8, addend: 0x0, symName: _options.0, symObjAddr: 0x5138, symBinAddr: 0x100003130, symSize: 0x0 }
+  - { offset: 0xBC, size: 0x8, addend: 0x0, symName: _options.1, symObjAddr: 0x5139, symBinAddr: 0x100003131, symSize: 0x0 }
+  - { offset: 0xD0, size: 0x8, addend: 0x0, symName: _options.2, symObjAddr: 0x5140, symBinAddr: 0x100003138, symSize: 0x0 }
+  - { offset: 0xDB, size: 0x8, addend: 0x0, symName: _options.3, symObjAddr: 0x14A8, symBinAddr: 0x1000030E8, symSize: 0x0 }
+  - { offset: 0x196, size: 0x8, addend: 0x0, symName: _state, symObjAddr: 0x14B0, symBinAddr: 0x1000030F0, symSize: 0x0 }
+  - { offset: 0x724, size: 0x8, addend: 0x0, symName: _main, symObjAddr: 0x0, symBinAddr: 0x1000005F0, symSize: 0x1270 }
+  - { offset: 0xA83, size: 0x8, addend: 0x0, symName: _signal_handler, symObjAddr: 0x1270, symBinAddr: 0x100001860, symSize: 0x30 }
+  - { offset: 0xAAA, size: 0x8, addend: 0x0, symName: _usage, symObjAddr: 0x12A0, symBinAddr: 0x100001890, symSize: 0x70 }
+  - { offset: 0xAD5, size: 0x8, addend: 0x0, symName: _write_response, symObjAddr: 0x1310, symBinAddr: 0x100001900, symSize: 0x100 }
+  - { offset: 0xB33, size: 0x8, addend: 0x0, symName: _parse_signed_digits, symObjAddr: 0x1410, symBinAddr: 0x100001A00, symSize: 0x6C }
+...

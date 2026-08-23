@@ -38,6 +38,7 @@ INTEGRATION_TESTS = \
 	$(INTEGRATION_BUILD)/test_dome_talon6ror_simulator \
 	$(INTEGRATION_BUILD)/test_gps_simulator \
 	$(INTEGRATION_BUILD)/test_gps_nmea_simulator \
+	$(INTEGRATION_BUILD)/test_mount_ioptron_simulator \
 	$(INTEGRATION_BUILD)/test_mount_simulator \
 	$(INTEGRATION_BUILD)/test_polaralign_simulator \
 	$(INTEGRATION_BUILD)/test_rotator_simulator \
@@ -101,6 +102,7 @@ DOME_SKYROOF_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_dome_skyroof.a $(T
 DOME_TALON6ROR_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_dome_talon6ror.a $(TEST_LDFLAGS) -lindigocat
 GPS_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_gps_simulator.a $(TEST_LDFLAGS) -lindigocat
 GPS_NMEA_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_gps_nmea.a $(TEST_LDFLAGS) -lindigocat
+MOUNT_IOPTRON_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_mount_ioptron.a $(TEST_LDFLAGS) -lindigocat
 MOUNT_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_mount_simulator.a $(TEST_LDFLAGS) -lindigocat
 POLARALIGN_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_polaralign_simulator.a $(TEST_LDFLAGS) -lindigocat
 ROTATOR_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_rotator_simulator.a $(TEST_LDFLAGS) -lindigocat
@@ -256,6 +258,9 @@ $(INTEGRATION_BUILD)/dome_talon6ror_simulator: ../indigo_drivers/dome_talon6ror/
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
 $(INTEGRATION_BUILD)/gps_nmea_simulator: ../indigo_drivers/gps_nmea/gps_nmea_simulator/gps_nmea_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $<
+
+$(INTEGRATION_BUILD)/mount_ioptron_simulator: ../indigo_drivers/mount_ioptron/mount_ioptron_simulator/mount_ioptron_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
 $(INTEGRATION_BUILD)/focuser_astromechanics_simulator: ../indigo_drivers/focuser_astromechanics/focuser_astromechanics_simulator/focuser_astromechanics_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
@@ -422,6 +427,9 @@ $(INTEGRATION_BUILD)/test_dome_talon6ror_simulator: integration/test_dome_talon6
 
 $(INTEGRATION_BUILD)/test_gps_nmea_simulator: integration/test_gps_nmea_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/gps_nmea_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(GPS_NMEA_SIMULATOR_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_mount_ioptron_simulator: integration/test_mount_ioptron_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/mount_ioptron_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(MOUNT_IOPTRON_SIMULATOR_TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/test_focuser_astromechanics_simulator: integration/test_focuser_astromechanics_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_astromechanics_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_ASTROMECHANICS_SIMULATOR_TEST_LDFLAGS)
