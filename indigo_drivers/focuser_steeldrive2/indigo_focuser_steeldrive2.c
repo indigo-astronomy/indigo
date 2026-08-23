@@ -640,8 +640,9 @@ static void focuser_abort_handler(indigo_device *device) {
 static void focuser_name_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char command[64], response[256];
-	sprintf(command, "$BS SET NAME:%s", X_NAME_ITEM->text.value);
-	if (steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK")) {
+	if (snprintf(command, sizeof(command), "$BS SET NAME:%s", X_NAME_ITEM->text.value) >= (int)sizeof(command)) {
+		X_NAME_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else if (steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK")) {
 		X_NAME_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
 		X_NAME_PROPERTY->state = INDIGO_ALERT_STATE;
