@@ -53,6 +53,7 @@ INTEGRATION_TESTS = \
 	$(INTEGRATION_BUILD)/test_focuser_dmfc_simulator \
 	$(INTEGRATION_BUILD)/test_focuser_dsd_simulator \
 	$(INTEGRATION_BUILD)/test_focuser_focusdreampro_simulator \
+	$(INTEGRATION_BUILD)/test_focuser_ioptron_simulator \
 	$(INTEGRATION_BUILD)/test_focuser_qhy_simulator \
 	$(INTEGRATION_BUILD)/test_focuser_optecfl_simulator \
 	$(INTEGRATION_BUILD)/test_focuser_lacerta_simulator \
@@ -101,6 +102,7 @@ FOCUSER_EFA_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_efa.a $(TES
 FOCUSER_DMFC_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_dmfc.a $(TEST_LDFLAGS) -lindigocat
 FOCUSER_DSD_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_dsd.a $(TEST_LDFLAGS) -lindigocat
 FOCUSER_FOCUSDREAMPRO_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_focusdreampro.a $(TEST_LDFLAGS) -lindigocat
+FOCUSER_IOPTRON_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_ioptron.a $(TEST_LDFLAGS) -lindigocat
 FOCUSER_QHY_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_qhy.a $(TEST_LDFLAGS) -lindigocat
 FOCUSER_OPTECFL_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_optecfl.a $(TEST_LDFLAGS) -lindigocat
 FOCUSER_LACERTA_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_lacerta.a $(TEST_LDFLAGS) -lindigocat
@@ -264,6 +266,9 @@ $(INTEGRATION_BUILD)/focuser_dsd_simulator: ../indigo_drivers/focuser_dsd/focuse
 $(INTEGRATION_BUILD)/focuser_focusdreampro_simulator: ../indigo_drivers/focuser_focusdreampro/focuser_focusdreampro_simulator/focuser_focusdreampro_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $<
 
+$(INTEGRATION_BUILD)/focuser_ioptron_simulator: ../indigo_drivers/focuser_ioptron/focuser_ioptron_simulator/focuser_ioptron_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $<
+
 $(INTEGRATION_BUILD)/focuser_qhy_simulator: ../indigo_drivers/focuser_qhy/focuser_qhy_simulator/focuser_qhy_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -pthread -o $@ $<
 
@@ -380,6 +385,9 @@ $(INTEGRATION_BUILD)/test_focuser_dsd_simulator: integration/test_focuser_dsd_si
 
 $(INTEGRATION_BUILD)/test_focuser_focusdreampro_simulator: integration/test_focuser_focusdreampro_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_focusdreampro_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_FOCUSDREAMPRO_SIMULATOR_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/test_focuser_ioptron_simulator: integration/test_focuser_ioptron_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_ioptron_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_IOPTRON_SIMULATOR_TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/test_focuser_qhy_simulator: integration/test_focuser_qhy_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_qhy_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(FOCUSER_QHY_SIMULATOR_TEST_LDFLAGS)
