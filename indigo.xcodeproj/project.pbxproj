@@ -2328,6 +2328,8 @@
 		5984A2FC303B796D00D581D2 /* test_aux_skyalert_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_skyalert_simulator.c; sourceTree = "<group>"; };
 		5984A2FD303B7A3E00D581D2 /* aux_sqm_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = aux_sqm_simulator.c; sourceTree = "<group>"; };
 		5984A2FE303B7A4900D581D2 /* test_aux_sqm_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_sqm_simulator.c; sourceTree = "<group>"; };
+		5984A2FF303B7B5600D581D2 /* aux_uch_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = aux_uch_simulator.c; sourceTree = "<group>"; };
+		5984A301303B7B6B00D581D2 /* test_aux_uch_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_aux_uch_simulator.c; sourceTree = "<group>"; };
 		5984C90827C2E2290090204B /* IMAGING_AF_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = IMAGING_AF_TUNING.md; sourceTree = "<group>"; };
 		5984C90927C2E22A0090204B /* POLAR_ALIGNMENT.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = POLAR_ALIGNMENT.md; sourceTree = "<group>"; };
 		5984C90A27C2E22A0090204B /* GUIDING_PI_CONTROLLER_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = GUIDING_PI_CONTROLLER_TUNING.md; sourceTree = "<group>"; };
@@ -6220,6 +6222,7 @@
 				59F087FC2DC3CB7F00F272E4 /* indigo_aux_uch.driver */,
 				5920077F2A5B2D050063C472 /* 99-indigo_aux_uch.rules */,
 				592007812A5B2D050063C472 /* UCH_Serial_Command_Table.pdf */,
+				5984A300303B7B5600D581D2 /* aux_uch_simulator */,
 			);
 			path = aux_uch;
 			sourceTree = "<group>";
@@ -7893,6 +7896,14 @@
 				5984A2F5303B0FDC00D581D2 /* indigo_ccd_rpi_main.c */,
 			);
 			path = ccd_rpi;
+			sourceTree = "<group>";
+		};
+		5984A300303B7B5600D581D2 /* aux_uch_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				5984A2FF303B7B5600D581D2 /* aux_uch_simulator.c */,
+			);
+			path = aux_uch_simulator;
 			sourceTree = "<group>";
 		};
 		598C57E121A75B1A001CA8C0 /* libnexstar */ = {
@@ -12962,6 +12973,7 @@
 		59FA7BF3301D3A5800A35CFB /* integration */ = {
 			isa = PBXGroup;
 			children = (
+				5984A301303B7B6B00D581D2 /* test_aux_uch_simulator.c */,
 				5984A2FE303B7A4900D581D2 /* test_aux_sqm_simulator.c */,
 				5984A2FC303B796D00D581D2 /* test_aux_skyalert_simulator.c */,
 				5984A2FA303B77B300D581D2 /* test_aux_ppb_simulator.c */,
