@@ -602,6 +602,7 @@ static indigo_uni_handle *open_tty(const char *serial, const struct termios *opt
 	handle->type = INDIGO_COM_HANDLE;
 	handle->fd = fd;
 	handle->log_level = log_level;
+	strncpy(handle->name, serial, sizeof(handle->name) - 1);
 	indigo_log_on_level(handle->log_level & 0xFFF, "%d <- // %s opened", handle->index, serial);
 	return handle;
 }
@@ -696,6 +697,7 @@ static indigo_uni_handle *open_tty(const char *serial, DCB *dcb, int log_level) 
 	handle->type = INDIGO_COM_HANDLE;
 	handle->com = com;
 	handle->log_level = log_level;
+	strncpy(handle->name, serial_buf, sizeof(handle->name) - 1);
 	indigo_log_on_level(log_level, "%d <- // %s opened", handle->index, serial);
 	return handle;
 }
@@ -1651,6 +1653,11 @@ bool indigo_uni_is_valid(indigo_uni_handle *handle) {
 			if (ioctl(handle->fd, TIOCMGET, &status) != -1) {
 				return true;
 			}
+#if defined(INDIGO_MACOS)
+			if (!strncmp(handle->name, "/dev/ttys", 9)) {
+				return true;
+			}
+#endif
 		} else if (handle->type == INDIGO_TCP_HANDLE) {
 			int result = (int)send(handle->fd, NULL, 0, MSG_NOSIGNAL);
 			if (!(result < 0 && (errno == EPIPE || errno == ECONNRESET))) {
