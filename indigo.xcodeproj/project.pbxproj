@@ -2380,6 +2380,8 @@
 		5984A337303BA48800D581D2 /* test_focuser_usbv3_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_usbv3_simulator.c; sourceTree = "<group>"; };
 		5984A338303BA57000D581D2 /* focuser_steeldrive2_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = focuser_steeldrive2_simulator.c; sourceTree = "<group>"; };
 		5984A339303BA58900D581D2 /* test_focuser_steeldrive2_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_steeldrive2_simulator.c; sourceTree = "<group>"; };
+		5984A33A303BA72100D581D2 /* focuser_wemacro_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = focuser_wemacro_simulator.c; sourceTree = "<group>"; };
+		5984A33C303BA73500D581D2 /* test_focuser_wemacro_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_wemacro_simulator.c; sourceTree = "<group>"; };
 		5984C90827C2E2290090204B /* IMAGING_AF_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = IMAGING_AF_TUNING.md; sourceTree = "<group>"; };
 		5984C90927C2E22A0090204B /* POLAR_ALIGNMENT.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = POLAR_ALIGNMENT.md; sourceTree = "<group>"; };
 		5984C90A27C2E22A0090204B /* GUIDING_PI_CONTROLLER_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = GUIDING_PI_CONTROLLER_TUNING.md; sourceTree = "<group>"; };
@@ -8011,6 +8013,14 @@
 			path = focuser_usbv3_simulator;
 			sourceTree = "<group>";
 		};
+		5984A33B303BA72100D581D2 /* focuser_wemacro_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				5984A33A303BA72100D581D2 /* focuser_wemacro_simulator.c */,
+			);
+			path = focuser_wemacro_simulator;
+			sourceTree = "<group>";
+		};
 		598C57E121A75B1A001CA8C0 /* libnexstar */ = {
 			isa = PBXGroup;
 			children = (
@@ -10088,6 +10098,7 @@
 				59C4C88320CEF107007EE330 /* indigo_focuser_wemacro.c */,
 				59C4C88120CEF107007EE330 /* indigo_focuser_wemacro_main.c */,
 				9DB4FF1A20D00000004A8B5A /* indigo_focuser_wemacro.rules */,
+				5984A33B303BA72100D581D2 /* focuser_wemacro_simulator */,
 			);
 			path = focuser_wemacro;
 			sourceTree = "<group>";
@@ -13087,6 +13098,7 @@
 		59FA7BF3301D3A5800A35CFB /* integration */ = {
 			isa = PBXGroup;
 			children = (
+				5984A33C303BA73500D581D2 /* test_focuser_wemacro_simulator.c */,
 				5984A339303BA58900D581D2 /* test_focuser_steeldrive2_simulator.c */,
 				5984A337303BA48800D581D2 /* test_focuser_usbv3_simulator.c */,
 				5984A334303BA3CF00D581D2 /* test_focuser_robofocus_simulator.c */,

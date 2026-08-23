@@ -80,6 +80,9 @@ static uint8_t wemacro_read(indigo_device *device) {
 	tv.tv_usec = 0;
 	long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
 	if (result < 0) {
+		if (PRIVATE_DATA->handle <= 0 || errno == EBADF) {
+			return 0;
+		}
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "select %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
 		return 0;
 	}
