@@ -162,12 +162,6 @@ driver skyroof {
 			// on_attach { }
 			// on_detach { }
 		}
-		inherited DOME_EQUATORIAL_COORDINATES {
-			hidden = true;
-			// on_change { }
-			// on_attach { }
-			// on_detach { }
-		}
 		inherited DOME_STEPS {
 			hidden = true;
 			// on_change { }

@@ -40,15 +40,6 @@
 #define SLEW_START_TIMEOUT 3.0  /* in seconds, grace for the dome to report busy */
 #define SLEW_POLL_INTERVAL 0.2  /* in seconds */
 
-static void dome_equatorial_coordinates_handler(indigo_device *device) {
-	if (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
-		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_NORMAL, SLEW_POLL_INTERVAL, dome_equatorial_coordinates_handler);
-		return;
-	}
-	DOME_EQUATORIAL_COORDINATES_PROPERTY->state = DOME_HORIZONTAL_COORDINATES_PROPERTY->state;
-	indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
-}
-
 indigo_result indigo_dome_attach(indigo_device *device, const char* driver_name, unsigned version) {
 	assert(device != NULL);
 	if (DOME_CONTEXT == NULL) {
@@ -83,15 +74,6 @@ indigo_result indigo_dome_attach(indigo_device *device, const char* driver_name,
 				return INDIGO_FAILED;
 			}
 			indigo_init_number_item(DOME_STEPS_ITEM, DOME_STEPS_ITEM_NAME, "Relative move (steps/ms)", 0, 65535, 1, 0);
-			// -------------------------------------------------------------------------------- DOME_EQUATORIAL_COORDINATES
-			DOME_EQUATORIAL_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, DOME_EQUATORIAL_COORDINATES_PROPERTY_NAME, DOME_MAIN_GROUP, "Equatorial coordinates", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
-			if (DOME_EQUATORIAL_COORDINATES_PROPERTY == NULL) {
-				return INDIGO_FAILED;
-			}
-			indigo_init_sexagesimal_number_item(DOME_EQUATORIAL_COORDINATES_RA_ITEM, DOME_EQUATORIAL_COORDINATES_RA_ITEM_NAME, "Right ascension (0 to 24 hrs)", 0, 24, 0, 0);
-			indigo_init_sexagesimal_number_item(DOME_EQUATORIAL_COORDINATES_DEC_ITEM, DOME_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, "Declination (-90 to 90°)", -90, 90, 0, 90);
-			/* MOUNT_SIDE_OF_PIER encoded as a number, 0 means unknown and the side of the pier is then assumed from the hour angle */
-			indigo_init_number_item(DOME_EQUATORIAL_COORDINATES_SIDE_OF_PIER_ITEM, DOME_EQUATORIAL_COORDINATES_SIDE_OF_PIER_ITEM_NAME, "Side of pier (-1 east, 0 unknown, +1 west)", -1, 1, 1, 0);
 			// -------------------------------------------------------------------------------- DOME_HORIZONTAL_COORDINATES
 			DOME_HORIZONTAL_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_MAIN_GROUP, "Absolute position", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 			if (DOME_HORIZONTAL_COORDINATES_PROPERTY == NULL) {
@@ -209,7 +191,6 @@ indigo_result indigo_dome_enumerate_properties(indigo_device *device, indigo_cli
 		INDIGO_DEFINE_MATCHING_PROPERTY(DOME_DIRECTION_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(DOME_ON_COORDINATES_SET_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(DOME_STEPS_PROPERTY);
-		INDIGO_DEFINE_MATCHING_PROPERTY(DOME_EQUATORIAL_COORDINATES_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(DOME_HORIZONTAL_COORDINATES_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(DOME_SLAVING_PARAMETERS_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(DOME_ABORT_MOTION_PROPERTY);
@@ -238,7 +219,6 @@ indigo_result indigo_dome_change_property(indigo_device *device, indigo_client *
 			indigo_define_property(device, DOME_DIRECTION_PROPERTY, NULL);
 			indigo_define_property(device, DOME_ON_COORDINATES_SET_PROPERTY, NULL);
 			indigo_define_property(device, DOME_STEPS_PROPERTY, NULL);
-			indigo_define_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 			indigo_define_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 			indigo_define_property(device, DOME_SLAVING_PARAMETERS_PROPERTY, NULL);
 			indigo_define_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
@@ -253,9 +233,7 @@ indigo_result indigo_dome_change_property(indigo_device *device, indigo_client *
 			indigo_define_property(device, DOME_SET_HOST_TIME_PROPERTY, NULL);
 	} else {
 			indigo_cancel_timer(device, &DOME_CONTEXT->sync_timer);
-			indigo_cancel_pending_handler(device, dome_equatorial_coordinates_handler);
 			DOME_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-			DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 			DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
 			DOME_FLAP_PROPERTY->state = INDIGO_OK_STATE;
@@ -267,7 +245,6 @@ indigo_result indigo_dome_change_property(indigo_device *device, indigo_client *
 			indigo_delete_property(device, DOME_DIRECTION_PROPERTY, NULL);
 			indigo_delete_property(device, DOME_ON_COORDINATES_SET_PROPERTY, NULL);
 			indigo_delete_property(device, DOME_STEPS_PROPERTY, NULL);
-			indigo_delete_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 			indigo_delete_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 			indigo_delete_property(device, DOME_SLAVING_PARAMETERS_PROPERTY, NULL);
 			indigo_delete_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
@@ -298,22 +275,6 @@ indigo_result indigo_dome_change_property(indigo_device *device, indigo_client *
 		indigo_property_copy_values(DOME_ON_COORDINATES_SET_PROPERTY, property, false);
 		DOME_ON_COORDINATES_SET_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, DOME_ON_COORDINATES_SET_PROPERTY, NULL);
-		return INDIGO_OK;
-		// -------------------------------------------------------------------------------- DOME_EQUATORIAL_COORDINATES
-	} else if (indigo_property_match_changeable(DOME_EQUATORIAL_COORDINATES_PROPERTY, property)) {
-		indigo_cancel_pending_handler(device, dome_equatorial_coordinates_handler);
-		indigo_property_copy_values(DOME_EQUATORIAL_COORDINATES_PROPERTY, property, false);
-		DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
-		double new_az;
-		bool needs_update = indigo_fix_dome_azimuth(device, DOME_EQUATORIAL_COORDINATES_RA_ITEM->number.target, DOME_EQUATORIAL_COORDINATES_DEC_ITEM->number.target, (int)DOME_EQUATORIAL_COORDINATES_SIDE_OF_PIER_ITEM->number.target, DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value, &new_az);
-		if (needs_update && device->change_property) {
-			indigo_change_number_property_1(client, device->name, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, new_az);
-			indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_NORMAL, SLEW_START_TIMEOUT, dome_equatorial_coordinates_handler);
-			return INDIGO_OK;
-		}
-		DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- DOME_GEOGRAPHIC_COORDINATES
 	} else if (indigo_property_match_changeable(DOME_GEOGRAPHIC_COORDINATES_PROPERTY, property)) {
@@ -352,7 +313,6 @@ indigo_result indigo_dome_detach(indigo_device *device) {
 	indigo_release_property(DOME_DIRECTION_PROPERTY);
 	indigo_release_property(DOME_ON_COORDINATES_SET_PROPERTY);
 	indigo_release_property(DOME_STEPS_PROPERTY);
-	indigo_release_property(DOME_EQUATORIAL_COORDINATES_PROPERTY);
 	indigo_release_property(DOME_HORIZONTAL_COORDINATES_PROPERTY);
 	indigo_release_property(DOME_SLAVING_PARAMETERS_PROPERTY);
 	indigo_release_property(DOME_ABORT_MOTION_PROPERTY);
@@ -375,20 +335,4 @@ time_t indigo_get_dome_utc(indigo_device *device) {
 	} else {
 		return time(NULL);
 	}
-}
-
-bool indigo_fix_dome_azimuth(indigo_device *device, double ra, double dec, int side_of_pier, double az_prev, double *az) {
-	bool update_needed = false;
-	if (!DOME_GEOGRAPHIC_COORDINATES_PROPERTY->hidden && !DOME_HORIZONTAL_COORDINATES_PROPERTY->hidden) {
-		double threshold = DOME_SLAVING_THRESHOLD_ITEM->number.value;
-		time_t utc = indigo_get_dome_utc(device);
-		double lst = indigo_lst(&utc, DOME_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
-		double ha = map24(lst - ra);
-		*az = indigo_dome_solve_azimuth(ha, dec, DOME_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, DOME_RADIUS_ITEM->number.value, DOME_MOUNT_PIVOT_VERTICAL_OFFSET_ITEM->number.value, DOME_MOUNT_PIVOT_OTA_OFFSET_ITEM->number.value, DOME_MOUNT_PIVOT_OFFSET_NS_ITEM->number.value, DOME_MOUNT_PIVOT_OFFSET_EW_ITEM->number.value, side_of_pier);
-		*az = round(*az * 100) / 100;
-		double diff = indigo_azimuth_distance(az_prev, *az);
-		/* the slaving threshold is hysteresis for slewing, it must not suppress a sync */
-		update_needed = diff >= threshold || DOME_ON_COORDINATES_SET_SYNC_ITEM->sw.value;
-	}
-	return update_needed;
 }

@@ -129,8 +129,6 @@
 								<div class="card-body d-flex flex-wrap">
 									<indigo-select-item :property="findProperty('Mount Agent', 'FILTER_DOME_LIST')"></indigo-select-item>
 									<template v-if="window.domeSelected()">
-										<indigo-show-number-60 :property="findProperty('Mount Agent', 'DOME_EQUATORIAL_COORDINATES')" :name="'RA'" :icon="'α'" :tooltip="'Right Ascension'"></indigo-show-number-60>
-										<indigo-show-number-60 :property="findProperty('Mount Agent', 'DOME_EQUATORIAL_COORDINATES')" :name="'DEC'" :icon="'δ'" :tooltip="'Declination'"></indigo-show-number-60>
 										<indigo-show-number-60 :property="findProperty('Mount Agent', 'DOME_HORIZONTAL_COORDINATES')" :name="'AZ'" :icon="'Α'" :tooltip="'Azimuth'"></indigo-show-number-60>
 										<div class="p-1 w-25" data-bs-toggle="tooltip" title="Shutter">
 											<div class="indigo-chip indigo-readonly-chip w-100 d-flex align-items-center">

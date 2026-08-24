@@ -20,10 +20,10 @@ static double normalize360(double angle) {
 }
 
 static void map24_wraps_hours_into_day_range(void) {
-	ASSERT_NEAR(0, map24(0), 1e-12);
-	ASSERT_NEAR(23.5, map24(-0.5), 1e-12);
-	ASSERT_NEAR(1.25, map24(25.25), 1e-12);
-	ASSERT_NEAR(23, map24(-25), 1e-12);
+	ASSERT_NEAR(0, indigo_map24(0), 1e-12);
+	ASSERT_NEAR(23.5, indigo_map24(-0.5), 1e-12);
+	ASSERT_NEAR(1.25, indigo_map24(25.25), 1e-12);
+	ASSERT_NEAR(23, indigo_map24(-25), 1e-12);
 }
 
 static void azimuth_distance_uses_shortest_arc(void) {

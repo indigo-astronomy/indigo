@@ -40,3 +40,4 @@ indigo_libs/indigo_build.c
 /indigo_windows/msvc/x64/Debug
 indigo_libs/externals/libusb/test-driver
 indigo_libs/externals/hidapi/windows/x64/
+indigo_test/build/

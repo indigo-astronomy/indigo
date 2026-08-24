@@ -996,8 +996,6 @@ static void dome_horizontal_coordinates_callback(indigo_device *device) {
 	indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 	DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-	DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 
 	PRIVATE_DATA->target_position = (float)DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target;
 	if (DOME_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {

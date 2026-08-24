@@ -2523,7 +2523,6 @@ static indigo_result dome_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
 		DEVICE_PORTS_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------
-		DOME_EQUATORIAL_COORDINATES_PROPERTY->hidden = true;
 		DOME_GEOGRAPHIC_COORDINATES_PROPERTY->hidden = true;
 		DOME_DIMENSION_PROPERTY->hidden = true;
 		DOME_SPEED_PROPERTY->hidden = true;

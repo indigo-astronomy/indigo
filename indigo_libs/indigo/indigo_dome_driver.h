@@ -104,22 +104,6 @@ extern "C" {
  */
 #define DOME_STEPS_ITEM									(DOME_STEPS_PROPERTY->items+0)
 
-/** DOME_EQUATORIAL_COORDINATES property pointer, property is optional, property change request should be fully handled by device driver.
-*/
-#define DOME_EQUATORIAL_COORDINATES_PROPERTY					(DOME_CONTEXT->dome_equatorial_coordinates_property)
-
-/** DOME_EQUATORIAL_COORDINATES.RA property item pointer.
- */
-#define DOME_EQUATORIAL_COORDINATES_RA_ITEM					(DOME_EQUATORIAL_COORDINATES_PROPERTY->items+0)
-
-/** DOME_EQUATORIAL_COORDINATES.DEC property item pointer.
- */
-#define DOME_EQUATORIAL_COORDINATES_DEC_ITEM					(DOME_EQUATORIAL_COORDINATES_PROPERTY->items+1)
-
-/** DOME_EQUATORIAL_COORDINATES.SIDE_OF_PIER property item pointer, MOUNT_SIDE_OF_PIER as a number: -1 = EAST (pointing east, OTA west of pier), +1 = WEST (pointing west, OTA east of pier), 0 = unknown.
- */
-#define DOME_EQUATORIAL_COORDINATES_SIDE_OF_PIER_ITEM	(DOME_EQUATORIAL_COORDINATES_PROPERTY->items+2)
-
 /** DOME_HORIZONTAL_COORDINATES property pointer, property is optional, property change request should be fully handled by dome driver
  */
 #define DOME_HORIZONTAL_COORDINATES_PROPERTY			(DOME_CONTEXT->dome_horizontal_coordinates_property)
@@ -290,7 +274,6 @@ typedef struct {
 	indigo_property *dome_direction_property;								///< DOME_DIRECTION property pointer
 	indigo_property *dome_on_horiz_coordinates_set_property;	///< DOME_ON_COORDINATES_SET property pointer
 	indigo_property *dome_steps_property;										///< DOME_STEPS property pointer
-	indigo_property *dome_equatorial_coordinates_property; 	///< DOME_EQUATORIAL_COORDINATES property pointer
 	indigo_property *dome_horizontal_coordinates_property;	///< DOME_HORIZONTAL_COORDINATES property pointer
 	indigo_property *dome_slaving_parameters_property;			///< DOME_SLAVING_PARAMETERS property pointer
 	indigo_property *dome_abort_motion_property;						///< DOME_ABORT_MOTION property pointer
@@ -319,9 +302,6 @@ INDIGO_EXTERN indigo_result indigo_dome_change_property(indigo_device *device, i
 /** Detach callback function.
  */
 INDIGO_EXTERN indigo_result indigo_dome_detach(indigo_device *device);
-/** Update dome azimuth according to mount and OTA dimensions.
- */
-INDIGO_EXTERN bool indigo_fix_dome_azimuth(indigo_device *device, double ra, double dec, int side_of_pier, double az_prev, double *az);
 
 #ifdef __cplusplus
 }

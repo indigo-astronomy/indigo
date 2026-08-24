@@ -32,7 +32,7 @@
 
 #include <indigo/indigo_dome_azimuth.h>
 
-double map24(double hour) {
+double indigo_map24(double hour) {
 	double hour24;
 	if (hour < 0.0) {
 		int n = (int)(hour / 24.0) - 1;
@@ -74,7 +74,7 @@ static void equatorial_to_horizontal(double ha, double dec, double site_latitude
 
 
 double indigo_dome_solve_azimuth(double ha, double dec, double site_latitude, double dome_radius, double mount_dec_height, double mount_dec_length, double mount_dec_offset_NS, double mount_dec_offset_EW, int side_of_pier) {
-	ha = map24(ha);
+	ha = indigo_map24(ha);
 
 	/* Map an hourangle in hours to  -12 <= ha0 < +12 */
 	double ha0 = (ha >= 12.0) ? (ha - 24.0) : ha;

@@ -14,7 +14,6 @@ static const char *dome_connected_properties[] = {
 	DOME_DIRECTION_PROPERTY_NAME,
 	DOME_ON_COORDINATES_SET_PROPERTY_NAME,
 	DOME_STEPS_PROPERTY_NAME,
-	DOME_EQUATORIAL_COORDINATES_PROPERTY_NAME,
 	DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME,
 	DOME_SLAVING_PARAMETERS_PROPERTY_NAME,
 	DOME_ABORT_MOTION_PROPERTY_NAME,
@@ -75,11 +74,6 @@ static void simulator_passes_dome_compliance_checks(void) {
 		DOME_DIRECTION_MOVE_CLOCKWISE_ITEM_NAME,
 		DOME_DIRECTION_MOVE_COUNTERCLOCKWISE_ITEM_NAME
 	};
-	static const char *equatorial_items[] = {
-		DOME_EQUATORIAL_COORDINATES_RA_ITEM_NAME,
-		DOME_EQUATORIAL_COORDINATES_DEC_ITEM_NAME,
-		DOME_EQUATORIAL_COORDINATES_SIDE_OF_PIER_ITEM_NAME
-	};
 	static const char *horizontal_items[] = {
 		DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME
 	};
@@ -110,7 +104,6 @@ static void simulator_passes_dome_compliance_checks(void) {
 	assert_property_has_item(DOME_SPEED_PROPERTY_NAME, DOME_SPEED_ITEM_NAME);
 	assert_property_has_items(DOME_DIRECTION_PROPERTY_NAME, direction_items, ARRAY_SIZE(direction_items));
 	assert_property_has_item(DOME_STEPS_PROPERTY_NAME, DOME_STEPS_ITEM_NAME);
-	assert_property_has_items(DOME_EQUATORIAL_COORDINATES_PROPERTY_NAME, equatorial_items, ARRAY_SIZE(equatorial_items));
 	assert_property_has_items(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, horizontal_items, ARRAY_SIZE(horizontal_items));
 	assert_property_has_item(DOME_ABORT_MOTION_PROPERTY_NAME, DOME_ABORT_MOTION_ITEM_NAME);
 	assert_property_has_items(DOME_SHUTTER_PROPERTY_NAME, shutter_items, ARRAY_SIZE(shutter_items));

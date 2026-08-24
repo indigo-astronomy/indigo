@@ -44,7 +44,7 @@
 extern "C" {
 #endif
 
-INDIGO_EXTERN double map24(double hour);
+INDIGO_EXTERN double indigo_map24(double hour);
 
 INDIGO_EXTERN double indigo_dome_solve_azimuth (
 	double ha,

@@ -41,6 +41,7 @@
 #include <indigo/indigo_ccd_driver.h>
 #include <indigo/indigo_rotator_driver.h>
 #include <indigo/indigo_align.h>
+#include <indigo/indigo_dome_azimuth.h>
 
 #include "indigo_agent_mount.h"
 
@@ -189,6 +190,9 @@ typedef struct {
 	double dome_latitude, dome_longitude, dome_elevation;
 	bool dome_parking, dome_parked, dome_unparked, dome_opened, dome_shutter_moving, dome_closed;
 	indigo_property_state dome_horizontal_coordinates_state;
+	double dome_azimuth;
+	double dome_slaving_threshold;
+	double dome_radius, dome_shutter_width, dome_mount_pivot_offset_ew, dome_mount_pivot_offset_ns, dome_mount_pivot_ota_offset, dome_mount_pivot_vertical_offset;
 	int selected_gps_index;
 	double gps_latitude, gps_longitude, gps_elevation;
 	int selected_rotator_index;
@@ -261,6 +265,17 @@ static bool validate_related_agent(indigo_device *device, indigo_property *info_
 	return false;
 }
 
+static bool fix_dome_azimuth(indigo_device *device, double ra, double dec, int side_of_pier, double *az) {
+	time_t utc = time(NULL);
+	double lst = indigo_lst(&utc, AGENT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
+	double ha = indigo_map24(lst - ra);
+	*az = indigo_dome_solve_azimuth(ha, dec, AGENT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, DEVICE_PRIVATE_DATA->dome_radius, DEVICE_PRIVATE_DATA->dome_mount_pivot_vertical_offset, DEVICE_PRIVATE_DATA->dome_mount_pivot_ota_offset, DEVICE_PRIVATE_DATA->dome_mount_pivot_offset_ns, DEVICE_PRIVATE_DATA->dome_mount_pivot_offset_ew, side_of_pier);
+	*az = round(*az * 100) / 100;
+	double diff = indigo_azimuth_distance(DEVICE_PRIVATE_DATA->dome_azimuth, *az);
+	return diff >= DEVICE_PRIVATE_DATA->dome_slaving_threshold;
+}
+
+
 static void abort_process(indigo_device *device) {
 	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true);
 	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, DOME_ABORT_MOTION_PROPERTY_NAME, DOME_ABORT_MOTION_ITEM_NAME, true);
@@ -270,7 +285,7 @@ static void abort_process(indigo_device *device) {
 typedef enum {
 	MOUNT_DOME_CONTROL_SLEW,
 	MOUNT_DOME_CONTROL_SYNC
-} mount_dome_control_operation;
+} control_operation;
 
 /* Both lights report a mode and not an operation, so they are IDLE when not slaved or
    derotated, OK while slaved or derotated and ALERT on error, never BUSY.
@@ -287,9 +302,8 @@ static void set_slaving_lights(indigo_device *device, bool control_dome, bool co
 	}
 }
 
-static void mount_dome_control(indigo_device *device, bool control_dome, bool control_rotator, mount_dome_control_operation operation) {
+static void mount_dome_control(indigo_device *device, bool control_dome, bool control_rotator, control_operation operation) {
 	const char *mount_operation = operation == MOUNT_DOME_CONTROL_SYNC ? MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME : MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME;
-	const char *dome_operation = operation == MOUNT_DOME_CONTROL_SYNC ? DOME_ON_COORDINATES_SET_SYNC_ITEM_NAME : DOME_ON_COORDINATES_SET_GOTO_ITEM_NAME;
 	const char *rotator_operation = operation == MOUNT_DOME_CONTROL_SYNC ? ROTATOR_ON_POSITION_SET_SYNC_ITEM_NAME : ROTATOR_ON_POSITION_SET_GOTO_ITEM_NAME;
 	time_t utc = time(NULL);
 	double lst = indigo_lst(&utc, AGENT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
@@ -299,7 +313,7 @@ static void mount_dome_control(indigo_device *device, bool control_dome, bool co
 		if (!DEVICE_PRIVATE_DATA->dome_unparked) {
 			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, DOME_PARK_PROPERTY_NAME, DOME_PARK_UNPARKED_ITEM_NAME, true);
 		}
-		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, DOME_ON_COORDINATES_SET_PROPERTY_NAME, dome_operation, true);
+		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, DOME_ON_COORDINATES_SET_PROPERTY_NAME, DOME_ON_COORDINATES_SET_GOTO_ITEM_NAME, true);
 	}
 	if (!DEVICE_PRIVATE_DATA->mount_unparked) {
 		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
@@ -309,14 +323,12 @@ static void mount_dome_control(indigo_device *device, bool control_dome, bool co
 		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, ROTATOR_ON_POSITION_SET_PROPERTY_NAME, rotator_operation, true);
 	}
 	if (control_dome) {
-		static const char *names[] = { DOME_EQUATORIAL_COORDINATES_RA_ITEM_NAME, DOME_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, DOME_EQUATORIAL_COORDINATES_SIDE_OF_PIER_ITEM_NAME };
-		/* The mount has not slewed yet, so the side of the pier it reports is still
-		   the one of the current position and can not be used for the target. It is
-		   sent as unknown and corrected by the slaving updates once the slew is over. */
-		double values[] = { AGENT_MOUNT_TARGET_COORDINATES_RA_ITEM->number.target, AGENT_MOUNT_TARGET_COORDINATES_DEC_ITEM->number.target, 0 };
-		AGENT_MOUNT_STATE_DOME_SLAVING_ITEM->light.value = INDIGO_OK_STATE;
-		indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
-		indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device->name, DOME_EQUATORIAL_COORDINATES_PROPERTY_NAME, 3, names, values);
+		double az;
+		if (fix_dome_azimuth(device, AGENT_MOUNT_TARGET_COORDINATES_RA_ITEM->number.target,  AGENT_MOUNT_TARGET_COORDINATES_DEC_ITEM->number.target, 0, &az)) {
+			indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device->name, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, az);
+			AGENT_MOUNT_STATE_DOME_SLAVING_ITEM->light.value = INDIGO_OK_STATE;
+			indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
+		}
 	}
 	{
 		static const char *names[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
@@ -546,9 +558,8 @@ static void slew_process(indigo_device *device) {
 
 static void sync_process(indigo_device *device) {
 	FILTER_DEVICE_CONTEXT->running_process = true;
-	bool control_dome = AGENT_MOUNT_ENABLE_DOME_SLAVING_ITEM->sw.value && INDIGO_FILTER_DOME_SELECTED;
 	bool control_rotator = AGENT_MOUNT_ENABLE_FIELD_DEROTATION_ITEM->sw.value && INDIGO_FILTER_ROTATOR_SELECTED;
-	mount_dome_control(device, control_dome, control_rotator, MOUNT_DOME_CONTROL_SYNC);
+	mount_dome_control(device, false, control_rotator, MOUNT_DOME_CONTROL_SYNC);
 	if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE) {
 		indigo_send_message(device, IDLE_PROPERTY, "Synced");
 	} else {
@@ -1030,9 +1041,11 @@ static void handle_mount_change(indigo_device *device) {
 	if (!FILTER_DEVICE_CONTEXT->running_process) {
 	// slave dome
 		if (AGENT_MOUNT_ENABLE_DOME_SLAVING_ITEM->sw.value && INDIGO_FILTER_DOME_SELECTED && INDIGO_FILTER_MOUNT_SELECTED && DEVICE_PRIVATE_DATA->dome_unparked && DEVICE_PRIVATE_DATA->dome_horizontal_coordinates_state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->mount_unparked && DEVICE_PRIVATE_DATA->mount_tracking) {
-			static const char *names[] = { DOME_EQUATORIAL_COORDINATES_RA_ITEM_NAME, DOME_EQUATORIAL_COORDINATES_DEC_ITEM_NAME, DOME_EQUATORIAL_COORDINATES_SIDE_OF_PIER_ITEM_NAME };
-			indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device->name, DOME_EQUATORIAL_COORDINATES_PROPERTY_NAME, 3, names, current_radec);
-			AGENT_MOUNT_STATE_DOME_SLAVING_ITEM->light.value = INDIGO_OK_STATE;
+			double az;
+			if (fix_dome_azimuth(device, ra, dec, DEVICE_PRIVATE_DATA->mount_side_of_pier, &az)) {
+				indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device->name, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, az);
+				AGENT_MOUNT_STATE_DOME_SLAVING_ITEM->light.value = INDIGO_OK_STATE;
+			}
 		} else {
 			AGENT_MOUNT_STATE_DOME_SLAVING_ITEM->light.value = INDIGO_IDLE_STATE;
 		}
@@ -1636,6 +1649,13 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 			indigo_update_property(device, AGENT_DOME_STATE_PROPERTY, NULL);
 		}
 		CLIENT_PRIVATE_DATA->dome_horizontal_coordinates_state = property->state;
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = property->items + i;
+			if (!strcmp(item->name, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME)) {
+				CLIENT_PRIVATE_DATA->dome_azimuth = item->number.value;
+				break;
+			}
+		}
 		/*
 		 Unlike ROTATOR_POSITION this does not call handle_mount_change() to refresh
 		 AGENT_MOUNT_STATE immediately, so DOME_SLAVING follows with the next mount
@@ -1643,6 +1663,35 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 		 the delay only affects the reported state, not the slaving itself, so no frames
 		 are ruined and the telescope keeps looking through the slit.
 		*/
+	} else if (!strcmp(property->name, DOME_DIMENSION_PROPERTY_NAME)) {
+		if (property->state == INDIGO_OK_STATE) {
+			for (int i = 0; i < property->count; i++) {
+				indigo_item *item = property->items + i;
+				if (!strcmp(item->name, DOME_RADIUS_ITEM_NAME)) {
+					CLIENT_PRIVATE_DATA->dome_radius = item->number.value;
+				} else if (!strcmp(item->name, DOME_SHUTTER_WIDTH_ITEM_NAME)) {
+					CLIENT_PRIVATE_DATA->dome_shutter_width = item->number.value;
+				} else if (!strcmp(item->name, DOME_MOUNT_PIVOT_OFFSET_NS_ITEM_NAME)) {
+					CLIENT_PRIVATE_DATA->dome_mount_pivot_offset_ns = item->number.value;
+				} else if (!strcmp(item->name, DOME_MOUNT_PIVOT_OFFSET_EW_ITEM_NAME)) {
+					CLIENT_PRIVATE_DATA->dome_mount_pivot_offset_ew = item->number.value;
+				} else if (!strcmp(item->name, DOME_MOUNT_PIVOT_VERTICAL_OFFSET_ITEM_NAME)) {
+					CLIENT_PRIVATE_DATA->dome_mount_pivot_vertical_offset = item->number.value;
+				} else if (!strcmp(item->name, DOME_MOUNT_PIVOT_OTA_OFFSET_ITEM_NAME)) {
+					CLIENT_PRIVATE_DATA->dome_mount_pivot_ota_offset = item->number.value;
+				}
+			}
+		}
+	} else if (!strcmp(property->name, DOME_SLAVING_PARAMETERS_PROPERTY_NAME)) {
+		if (property->state == INDIGO_OK_STATE) {
+			for (int i = 0; i < property->count; i++) {
+				indigo_item *item = property->items + i;
+				if (!strcmp(item->name, DOME_SLAVING_THRESHOLD_ITEM_NAME)) {
+					CLIENT_PRIVATE_DATA->dome_slaving_threshold = item->number.value;
+					break;
+				}
+			}
+		}
 	} else if (!strcmp(property->name, FILTER_GPS_LIST_PROPERTY_NAME)) { // Snoop GPS
 		if (INDIGO_FILTER_GPS_SELECTED) {
 			for (int i = 1; i < property->count; i++) {
