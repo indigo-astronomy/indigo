@@ -48,6 +48,7 @@ INTEGRATION_TESTS = \
 	$(INTEGRATION_BUILD)/test_mount_starbook_simulator \
 	$(INTEGRATION_BUILD)/test_polaralign_simulator \
 	$(INTEGRATION_BUILD)/test_rotator_simulator \
+	$(INTEGRATION_BUILD)/test_rotator_optec_simulator \
 	$(INTEGRATION_BUILD)/test_focuser_astromechanics_simulator \
 	$(INTEGRATION_BUILD)/test_focuser_askar_simulator \
 	$(INTEGRATION_BUILD)/test_rotator_falcon2_simulator \
@@ -119,6 +120,7 @@ MOUNT_STARBOOK_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_mount_starbook.a
 MOUNT_TEMMA_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_mount_temma.a $(TEST_LDFLAGS) -lindigocat
 POLARALIGN_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_polaralign_simulator.a $(TEST_LDFLAGS) -lindigocat
 ROTATOR_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_rotator_simulator.a $(TEST_LDFLAGS) -lindigocat
+ROTATOR_OPTEC_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_rotator_optec.a $(TEST_LDFLAGS) -lindigocat
 FOCUSER_ASTROMECHANICS_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_astromechanics.a $(TEST_LDFLAGS) -lindigocat
 FOCUSER_ASKAR_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_askar.a $(TEST_LDFLAGS) -lindigocat
 ROTATOR_FALCON2_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_rotator_falcon.a $(TEST_LDFLAGS) -lindigocat
@@ -491,6 +493,12 @@ $(INTEGRATION_BUILD)/test_focuser_astromechanics_simulator: integration/test_foc
 
 $(INTEGRATION_BUILD)/test_rotator_falcon2_simulator: integration/test_rotator_falcon2_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/rotator_falcon2_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(ROTATOR_FALCON2_SIMULATOR_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/rotator_optec_simulator: ../indigo_drivers/rotator_optec/rotator_optec_simulator/rotator_optec_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $<
+
+$(INTEGRATION_BUILD)/test_rotator_optec_simulator: integration/test_rotator_optec_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/rotator_optec_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(ROTATOR_OPTEC_SIMULATOR_TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/test_wheel_xagyl_simulator: integration/test_wheel_xagyl_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/wheel_xagyl_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(WHEEL_XAGYL_SIMULATOR_TEST_LDFLAGS)
