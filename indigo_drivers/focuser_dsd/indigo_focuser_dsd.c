@@ -438,7 +438,7 @@ static bool dsd_get_temperature(indigo_device *device, double *temperature) {
 	if (dsd_command(device, "[GTMC]", response, sizeof(response), 100)) {
 		int parsed = sscanf(response, "(%lf)", temperature);
 		if (parsed != 1) return false;
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "[GTMC] -> %s = %lf", response, *temperature);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "[GTMC] -> %s = %lf", response, *temperature);
 		return true;
 	}
 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
@@ -474,6 +474,15 @@ static void focuser_timer_callback(indigo_device *device) {
 	}
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+}
+
+
+static void schedule_focuser_timer(indigo_device *device) {
+	if (PRIVATE_DATA->focuser_timer == NULL) {
+		indigo_set_timer(device, 0.5, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
+	} else {
+		indigo_reschedule_timer(device, 0.5, &PRIVATE_DATA->focuser_timer);
+	}
 }
 
 
@@ -576,7 +585,7 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 	FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
 	FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-	indigo_set_timer(device, 0.5, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
+	schedule_focuser_timer(device);
 }
 
 
@@ -1002,7 +1011,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				if (!dsd_goto_position_bl(device, (uint32_t)PRIVATE_DATA->target_position)) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_goto_position_bl(%d, %d) failed", PRIVATE_DATA->handle->index, PRIVATE_DATA->target_position);
 				}
-				indigo_set_timer(device, 0.5, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
+				schedule_focuser_timer(device);
 			} else { /* RESET CURRENT POSITION */
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 				FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
@@ -1091,7 +1100,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			if (!dsd_goto_position_bl(device, (uint32_t)PRIVATE_DATA->target_position)) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_goto_position_bl(%d, %d) failed", PRIVATE_DATA->handle->index, PRIVATE_DATA->target_position);
 			}
-			indigo_set_timer(device, 0.5, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
+			schedule_focuser_timer(device);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
