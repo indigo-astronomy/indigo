@@ -2389,6 +2389,8 @@
 		5984A373303CC91500D581D2 /* mount_lx200_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = mount_lx200_simulator.c; sourceTree = "<group>"; };
 		5984A374303CC92600D581D2 /* test_dome_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_dome_simulator.c; sourceTree = "<group>"; };
 		5984A375303CC94200D581D2 /* test_mount_lx200_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_mount_lx200_simulator.c; sourceTree = "<group>"; };
+		5984A376303CCB2300D581D2 /* mount_nexstar_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = mount_nexstar_simulator.c; sourceTree = "<group>"; };
+		5984A377303CCB6600D581D2 /* test_mount_nexstar_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_mount_nexstar_simulator.c; sourceTree = "<group>"; };
 		5984C90827C2E2290090204B /* IMAGING_AF_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = IMAGING_AF_TUNING.md; sourceTree = "<group>"; };
 		5984C90927C2E22A0090204B /* POLAR_ALIGNMENT.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = POLAR_ALIGNMENT.md; sourceTree = "<group>"; };
 		5984C90A27C2E22A0090204B /* GUIDING_PI_CONTROLLER_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = GUIDING_PI_CONTROLLER_TUNING.md; sourceTree = "<group>"; };
@@ -6202,6 +6204,7 @@
 		591E1139215844BC00ABADA6 /* mount_nexstar_simulator */ = {
 			isa = PBXGroup;
 			children = (
+				5984A376303CCB2300D581D2 /* mount_nexstar_simulator.c */,
 				591E113A215844BC00ABADA6 /* mount_nexstar_simulator.ino */,
 			);
 			path = mount_nexstar_simulator;
@@ -13116,6 +13119,7 @@
 		59FA7BF3301D3A5800A35CFB /* integration */ = {
 			isa = PBXGroup;
 			children = (
+				5984A377303CCB6600D581D2 /* test_mount_nexstar_simulator.c */,
 				5984A375303CC94200D581D2 /* test_mount_lx200_simulator.c */,
 				5984A374303CC92600D581D2 /* test_dome_simulator.c */,
 				5984A342303BA9B100D581D2 /* test_mount_ioptron_simulator.c */,
