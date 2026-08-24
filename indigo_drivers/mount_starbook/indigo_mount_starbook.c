@@ -1188,7 +1188,7 @@ static void status_timer_callback(indigo_device *device) {
 		int utc_offset;
 		time_t secs;
 		if (starbook_get_utc(device, &secs, &utc_offset)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "get_utc: %d + %d", secs, utc_offset);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "get_utc: %d + %d", secs, utc_offset);
 			sprintf(MOUNT_UTC_OFFSET_ITEM->text.value, "%d", utc_offset);
 			indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
 			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;

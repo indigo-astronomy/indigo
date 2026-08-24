@@ -37,9 +37,11 @@ static const simulator_driver_case starbook_guider = {
 
 static void starbook_mount_passes_http_compliance_checks(void) {
 	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
 
 	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_STARBOOK_SIMULATOR_EXECUTABLE));
 	SERIAL_CHECK_TRUE(start_serial_driver(&starbook_mount, simulator.port));
+	driver_started = true;
 	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
 
 	assert_device_interface(INDIGO_INTERFACE_MOUNT);
@@ -66,7 +68,7 @@ static void starbook_mount_passes_http_compliance_checks(void) {
 	SERIAL_CHECK_TRUE(wait_for_property_state(STARBOOK_TIMEZONE_PROPERTY_NAME, INDIGO_OK_STATE));
 
 cleanup:
-	if (context.connected) {
+	if (driver_started) {
 		stop_serial_driver(&starbook_mount);
 	}
 	stop_external_serial_simulator(&simulator);
@@ -74,9 +76,14 @@ cleanup:
 
 static void starbook_guider_passes_http_compliance_checks(void) {
 	external_serial_simulator simulator = { 0 };
+	bool driver_started = false;
 
 	SERIAL_CHECK_TRUE(start_external_serial_simulator(&simulator, MOUNT_STARBOOK_SIMULATOR_EXECUTABLE));
-	SERIAL_CHECK_TRUE(start_shared_serial_device_with_master_case(&starbook_guider, &starbook_mount, simulator.port));
+	SERIAL_CHECK_TRUE(bring_up_serial_driver(&starbook_guider));
+	driver_started = true;
+	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_text_property_1_raw(&simulator_test_client, starbook_mount.device_name, DEVICE_PORT_PROPERTY_NAME, DEVICE_PORT_ITEM_NAME, simulator.port));
+	indigo_usleep(100000);
+	SERIAL_CHECK_TRUE(connect_serial_device(&starbook_guider, NULL));
 	SERIAL_CHECK_TRUE(context.connected && context.last_connection_state == INDIGO_OK_STATE);
 
 	assert_device_interface(INDIGO_INTERFACE_GUIDER);
@@ -91,8 +98,10 @@ static void starbook_guider_passes_http_compliance_checks(void) {
 	SERIAL_CHECK_TRUE(wait_for_property_not_busy(GUIDER_GUIDE_RA_PROPERTY_NAME));
 
 cleanup:
-	if (context.connected) {
-		stop_serial_driver(&starbook_guider);
+	if (driver_started) {
+		disconnect_serial_device(&starbook_guider);
+		disconnect_serial_device(&starbook_mount);
+		tear_down_serial_driver(&starbook_guider);
 	}
 	stop_external_serial_simulator(&simulator);
 }
