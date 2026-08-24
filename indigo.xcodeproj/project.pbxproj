@@ -2397,6 +2397,8 @@
 		5984A37C303CCDDA00D581D2 /* test_mount_pmc8_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_mount_pmc8_simulator.c; sourceTree = "<group>"; };
 		5984A37D303CCEE600D581D2 /* mount_rainbow_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = mount_rainbow_simulator.c; sourceTree = "<group>"; };
 		5984A37E303CCF0400D581D2 /* test_mount_rainbow_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_mount_rainbow_simulator.c; sourceTree = "<group>"; };
+		5984A37F303CD2DC00D581D2 /* mount_starbook_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = mount_starbook_simulator.c; sourceTree = "<group>"; };
+		5984A381303CD2F200D581D2 /* test_mount_starbook_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_mount_starbook_simulator.c; sourceTree = "<group>"; };
 		5984C90827C2E2290090204B /* IMAGING_AF_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = IMAGING_AF_TUNING.md; sourceTree = "<group>"; };
 		5984C90927C2E22A0090204B /* POLAR_ALIGNMENT.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = POLAR_ALIGNMENT.md; sourceTree = "<group>"; };
 		5984C90A27C2E22A0090204B /* GUIDING_PI_CONTROLLER_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = GUIDING_PI_CONTROLLER_TUNING.md; sourceTree = "<group>"; };
@@ -8056,6 +8058,14 @@
 			path = mount_pmc8_simulator;
 			sourceTree = "<group>";
 		};
+		5984A380303CD2DC00D581D2 /* mount_starbook_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				5984A37F303CD2DC00D581D2 /* mount_starbook_simulator.c */,
+			);
+			path = mount_starbook_simulator;
+			sourceTree = "<group>";
+		};
 		598C57E121A75B1A001CA8C0 /* libnexstar */ = {
 			isa = PBXGroup;
 			children = (
@@ -10201,6 +10211,7 @@
 				59D29A132841469D00D5E7F7 /* indigo_mount_starbook.h */,
 				59D29A162841469D00D5E7F7 /* indigo_mount_starbook.c */,
 				59D29A152841469D00D5E7F7 /* indigo_mount_starbook_main.c */,
+				5984A380303CD2DC00D581D2 /* mount_starbook_simulator */,
 			);
 			path = mount_starbook;
 			sourceTree = "<group>";
@@ -13135,6 +13146,7 @@
 		59FA7BF3301D3A5800A35CFB /* integration */ = {
 			isa = PBXGroup;
 			children = (
+				5984A381303CD2F200D581D2 /* test_mount_starbook_simulator.c */,
 				5984A37E303CCF0400D581D2 /* test_mount_rainbow_simulator.c */,
 				5984A37C303CCDDA00D581D2 /* test_mount_pmc8_simulator.c */,
 				5984A379303CCCED00D581D2 /* test_mount_nexstaraux_simulator.c */,
