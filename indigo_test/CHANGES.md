@@ -78,6 +78,7 @@ Implemented bus and simulator integration suites:
 - `test_mount_rainbow_simulator.c`: external pseudo-terminal simulator launch, ready-file discovery, and hardware-free RainbowAstro serial protocol coverage for mount lifecycle, identity, guide-rate, tracking, track-rate, coordinate, and abort paths.
 - `test_mount_simulator.c`: mount simulator metadata, main mount and guider-device lifecycle, property enumeration, connection/disconnection, mount compliance checks, and guider compliance checks.
 - `test_mount_starbook_simulator.c`: external loopback HTTP simulator launch, ready-file discovery, and hardware-free Vixen StarBook protocol coverage for mount and guider logical devices.
+- `test_mount_temma_simulator.c`: external pseudo-terminal simulator launch, ready-file discovery, and hardware-free Takahashi Temma serial protocol coverage for mount and guider logical devices.
 - `test_polaralign_simulator.c`: polar aligner simulator metadata, lifecycle, property enumeration, connection/disconnection, property item/range checks, direction commands, offset no-op handling, reset commands, and abort command handling.
 - `test_rotator_simulator.c`: rotator simulator metadata, lifecycle, property enumeration, connection/disconnection, and rotator compliance checks.
 - `test_focuser_astromechanics_simulator.c`: external pseudo-terminal simulator launch, ready-file discovery, hardware-free serial driver connection, and serial compliance checks for the ASTROMECHANICS focuser driver, including position/aperture property coverage and the aperture command path.
