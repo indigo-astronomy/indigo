@@ -2393,6 +2393,8 @@
 		5984A377303CCB6600D581D2 /* test_mount_nexstar_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_mount_nexstar_simulator.c; sourceTree = "<group>"; };
 		5984A378303CCCCA00D581D2 /* mount_nexstaraux_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = mount_nexstaraux_simulator.c; sourceTree = "<group>"; };
 		5984A379303CCCED00D581D2 /* test_mount_nexstaraux_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_mount_nexstaraux_simulator.c; sourceTree = "<group>"; };
+		5984A37A303CCD9400D581D2 /* mount_pmc8_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = mount_pmc8_simulator.c; sourceTree = "<group>"; };
+		5984A37C303CCDDA00D581D2 /* test_mount_pmc8_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_mount_pmc8_simulator.c; sourceTree = "<group>"; };
 		5984C90827C2E2290090204B /* IMAGING_AF_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = IMAGING_AF_TUNING.md; sourceTree = "<group>"; };
 		5984C90927C2E22A0090204B /* POLAR_ALIGNMENT.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = POLAR_ALIGNMENT.md; sourceTree = "<group>"; };
 		5984C90A27C2E22A0090204B /* GUIDING_PI_CONTROLLER_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = GUIDING_PI_CONTROLLER_TUNING.md; sourceTree = "<group>"; };
@@ -6708,6 +6710,7 @@
 				595567D424BA00DA00DF303D /* indigo_mount_pmc8.c */,
 				595567D224BA00DA00DF303D /* indigo_mount_pmc8_main.c */,
 				595567DB24BA017E00DF303D /* PMC_Eight_ProgrammersReferenceManual_Release2_2019_March_07.pdf */,
+				5984A37B303CCD9400D581D2 /* mount_pmc8_simulator */,
 			);
 			path = mount_pmc8;
 			sourceTree = "<group>";
@@ -8041,6 +8044,14 @@
 				5984A340303BA9A100D581D2 /* mount_ioptron_simulator.c */,
 			);
 			path = mount_ioptron_simulator;
+			sourceTree = "<group>";
+		};
+		5984A37B303CCD9400D581D2 /* mount_pmc8_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				5984A37A303CCD9400D581D2 /* mount_pmc8_simulator.c */,
+			);
+			path = mount_pmc8_simulator;
 			sourceTree = "<group>";
 		};
 		598C57E121A75B1A001CA8C0 /* libnexstar */ = {
@@ -13121,6 +13132,7 @@
 		59FA7BF3301D3A5800A35CFB /* integration */ = {
 			isa = PBXGroup;
 			children = (
+				5984A37C303CCDDA00D581D2 /* test_mount_pmc8_simulator.c */,
 				5984A379303CCCED00D581D2 /* test_mount_nexstaraux_simulator.c */,
 				5984A377303CCB6600D581D2 /* test_mount_nexstar_simulator.c */,
 				5984A375303CC94200D581D2 /* test_mount_lx200_simulator.c */,
