@@ -1040,12 +1040,14 @@ static void handle_mount_change(indigo_device *device) {
 	}
 	if (!FILTER_DEVICE_CONTEXT->running_process) {
 	// slave dome
-		if (AGENT_MOUNT_ENABLE_DOME_SLAVING_ITEM->sw.value && INDIGO_FILTER_DOME_SELECTED && INDIGO_FILTER_MOUNT_SELECTED && DEVICE_PRIVATE_DATA->dome_unparked && DEVICE_PRIVATE_DATA->dome_horizontal_coordinates_state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->mount_unparked && DEVICE_PRIVATE_DATA->mount_tracking) {
-			double az;
-			if (fix_dome_azimuth(device, ra, dec, DEVICE_PRIVATE_DATA->mount_side_of_pier, &az)) {
-				indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device->name, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, az);
-				AGENT_MOUNT_STATE_DOME_SLAVING_ITEM->light.value = INDIGO_OK_STATE;
+		if (AGENT_MOUNT_ENABLE_DOME_SLAVING_ITEM->sw.value && INDIGO_FILTER_DOME_SELECTED && INDIGO_FILTER_MOUNT_SELECTED && DEVICE_PRIVATE_DATA->dome_unparked && DEVICE_PRIVATE_DATA->mount_unparked && DEVICE_PRIVATE_DATA->mount_tracking) {
+			if (DEVICE_PRIVATE_DATA->dome_horizontal_coordinates_state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_BUSY_STATE) {
+				double az;
+				if (fix_dome_azimuth(device, ra, dec, DEVICE_PRIVATE_DATA->mount_side_of_pier, &az)) {
+					indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device->name, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, az);
+				}
 			}
+			AGENT_MOUNT_STATE_DOME_SLAVING_ITEM->light.value = INDIGO_OK_STATE;
 		} else {
 			AGENT_MOUNT_STATE_DOME_SLAVING_ITEM->light.value = INDIGO_IDLE_STATE;
 		}
