@@ -1324,7 +1324,7 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 						handle_mount_change(device);
 						break;
 					}
-					
+
 				}
 			} else {
 				CLIENT_PRIVATE_DATA->mount_tracking = false;
@@ -1479,6 +1479,9 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 			indigo_update_property(device, AGENT_DOME_STATE_PROPERTY, NULL);
 			AGENT_DOME_FEATURES_CAN_PARK_ITEM->sw.value = AGENT_DOME_FEATURES_CAN_OPEN_ITEM->sw.value = false;
 			indigo_update_property(device, AGENT_DOME_FEATURES_PROPERTY, NULL);
+			/* No dome - no slave */
+			AGENT_MOUNT_STATE_DOME_SLAVING_ITEM->light.value = INDIGO_IDLE_STATE;
+			indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
 		}
 	} else if (!strcmp(property->name, "DOME_" GEOGRAPHIC_COORDINATES_PROPERTY_NAME)) {
 		bool changed = false;
@@ -2248,6 +2251,13 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 				DEVICE_PRIVATE_DATA->initial_frame_rotation = DEVICE_PRIVATE_DATA->rotator_position - AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM->number.value;
 			}
 		}
+		set_slaving_lights(
+			device,
+			!AGENT_MOUNT_ENABLE_DOME_SLAVING_ITEM->sw.value,
+			!AGENT_MOUNT_ENABLE_FIELD_DEROTATION_ITEM->sw.value,
+			INDIGO_IDLE_STATE,
+			INDIGO_IDLE_STATE
+		);
 		AGENT_PROCESS_FEATURES_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_PROCESS_FEATURES_PROPERTY, NULL);
 		save_config(device);
