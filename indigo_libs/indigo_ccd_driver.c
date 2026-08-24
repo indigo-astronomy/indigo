@@ -1508,7 +1508,7 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 			}
 			strcat(tmp, fs + 2);
 			strcpy(format, tmp);
-		} else if ((fs[1] == 'D' || fs[1] == 'H' || fs[1] == 'd' || fs[1] == 'h') || (fs[1] == 'J') || ((fs[1] == '.' || fs[1] == '-') && (fs[2] == 'D' || fs[2] == 'H' || fs[2] == 'd' || fs[2] == 'h'))) { // %D, %.D, %-D - local date, %H, %.H, %-H - local time, %d, %.d, %-d - GM date, %h, %.h, %-h - GM time
+		} else if ((fs[1] == 'D' || fs[1] == 'N' || fs[1] == 'H' || fs[1] == 'd' || fs[1] == 'h') || (fs[1] == 'J') || ((fs[1] == '.' || fs[1] == '-') && (fs[2] == 'D' || fs[2] == 'N' || fs[2] == 'H' || fs[2] == 'd' || fs[2] == 'h'))) { // %D, %.D, %-D - local date, %N, %.N, %-N - session night local date, %H, %.H, %-H - local time, %d, %.d, %-d - GM date, %h, %.h, %-h - GM time
 			char buffer[32];
 			struct tm *gm_time_info = gmtime(&current_time);
 			struct tm *local_time_info = localtime(&current_time);
@@ -1517,6 +1517,12 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 			} else if (fs[1] == 'h') {
 				strftime(buffer, 15, "%H%M%S", gm_time_info);
 			} else if (fs[1] == 'D') {
+				strftime(buffer, 15, "%Y%m%d", local_time_info);
+			} else if (fs[1] == 'N') {
+				if (local_time_info->tm_hour < 12) {
+					local_time_info->tm_hour -= 12;
+					mktime(local_time_info);
+				}
 				strftime(buffer, 15, "%Y%m%d", local_time_info);
 			} else if (fs[1] == 'd') {
 				strftime(buffer, 15, "%Y%m%d", gm_time_info);
@@ -1542,6 +1548,16 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 				} else if (fs[1] == '-') {
 					strftime(buffer, 15, "%Y-%m-%d", local_time_info);
 				}
+			} else if (fs[2] == 'N') {
+				if (local_time_info->tm_hour < 12) {
+					local_time_info->tm_hour -= 12;
+					mktime(local_time_info);
+				}
+				if (fs[1] == '.') {
+					strftime(buffer, 15, "%Y.%m.%d", local_time_info);
+				} else if (fs[1] == '-') {
+					strftime(buffer, 15, "%Y-%m-%d", local_time_info);
+				}
 			} else if (fs[2] == 'd') {
 				if (fs[1] == '.') {
 					strftime(buffer, 15, "%Y.%m.%d", gm_time_info);
@@ -1551,7 +1567,7 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 			}
 			strncpy(tmp, format, fs - format);
 			strcat(tmp, buffer);
-			if (fs[1] == 'D' || fs[1] == 'H' || fs[1] == 'd' || fs[1] == 'h' || fs[1] == 'J') {
+			if (fs[1] == 'D' || fs[1] == 'N' || fs[1] == 'H' || fs[1] == 'd' || fs[1] == 'h' || fs[1] == 'J') {
 				strcat(tmp, fs + 2);
 			} else {
 				strcat(tmp, fs + 3);

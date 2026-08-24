@@ -61,7 +61,7 @@ Properties CONNECTION through ADDITIONAL_INSTANCES are implemented by the driver
 |  |  |  |  | BOTH | yes | Upload and save |
 |  |  |  |  | NONE | no | Hidden by default. |
 | CCD_LOCAL_MODE | text | no | yes | DIR | yes | Directory |
-|  |  |  |  | PREFIX | yes | XXX or XXXX is replaced by sequence or a template with %M (MD5), %E/%nE (exposure), %D/%xD (date), %H/%xH (time), %C (filter name), %nS (sequence), %F (frame type), %T (chip temperature), %G (gain), %O (offset), %R (resolution), %B (binning), %P (focuser position) format specifier. |
+|  |  |  |  | PREFIX | yes | XXX or XXXX is replaced by sequence or a template with %M (MD5), %E/%nE (exposure), %D/%xD (date), %N/%xN (session night date), %H/%xH (time), %C (filter name), %nS (sequence), %F (frame type), %T (chip temperature), %G (gain), %O (offset), %R (resolution), %B (binning), %P (focuser position) format specifier. |
 |  |  |  |  | OBJECT | yes | Object name. |
 | CCD_EXPOSURE | number | no | yes | EXPOSURE | yes | Start exposure |
 | CCD_STREAMING | number | no | no | EXPOSURE | yes | The same as CCD_EXPOSURE, but will upload COUNT images. Use COUNT -1 for endless loop. |
