@@ -2386,6 +2386,9 @@
 		5984A33F303BA81300D581D2 /* test_gps_nmea_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_gps_nmea_simulator.c; sourceTree = "<group>"; };
 		5984A340303BA9A100D581D2 /* mount_ioptron_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = mount_ioptron_simulator.c; sourceTree = "<group>"; };
 		5984A342303BA9B100D581D2 /* test_mount_ioptron_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_mount_ioptron_simulator.c; sourceTree = "<group>"; };
+		5984A373303CC91500D581D2 /* mount_lx200_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = mount_lx200_simulator.c; sourceTree = "<group>"; };
+		5984A374303CC92600D581D2 /* test_dome_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_dome_simulator.c; sourceTree = "<group>"; };
+		5984A375303CC94200D581D2 /* test_mount_lx200_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_mount_lx200_simulator.c; sourceTree = "<group>"; };
 		5984C90827C2E2290090204B /* IMAGING_AF_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = IMAGING_AF_TUNING.md; sourceTree = "<group>"; };
 		5984C90927C2E22A0090204B /* POLAR_ALIGNMENT.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = POLAR_ALIGNMENT.md; sourceTree = "<group>"; };
 		5984C90A27C2E22A0090204B /* GUIDING_PI_CONTROLLER_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = GUIDING_PI_CONTROLLER_TUNING.md; sourceTree = "<group>"; };
@@ -6207,6 +6210,7 @@
 		591E1142215AEC3900ABADA6 /* mount_lx200_simulator */ = {
 			isa = PBXGroup;
 			children = (
+				5984A373303CC91500D581D2 /* mount_lx200_simulator.c */,
 				591E1143215AEC3900ABADA6 /* mount_lx200_simulator.ino */,
 			);
 			path = mount_lx200_simulator;
@@ -13112,6 +13116,8 @@
 		59FA7BF3301D3A5800A35CFB /* integration */ = {
 			isa = PBXGroup;
 			children = (
+				5984A375303CC94200D581D2 /* test_mount_lx200_simulator.c */,
+				5984A374303CC92600D581D2 /* test_dome_simulator.c */,
 				5984A342303BA9B100D581D2 /* test_mount_ioptron_simulator.c */,
 				5984A33F303BA81300D581D2 /* test_gps_nmea_simulator.c */,
 				5984A33C303BA73500D581D2 /* test_focuser_wemacro_simulator.c */,
