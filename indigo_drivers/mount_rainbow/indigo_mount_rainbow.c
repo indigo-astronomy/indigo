@@ -67,11 +67,9 @@ static bool rainbow_command(indigo_device *device, char *command, indigo_propert
 }
 
 static bool rainbow_response(indigo_device *device, char *response, int length) {
-	if (indigo_uni_read_section(PRIVATE_DATA->handle, response, length, "#", "", INDIGO_DELAY(0.2) > 0)) {
-		pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+	if (indigo_uni_read_section(PRIVATE_DATA->handle, response, length, "#", "", INDIGO_DELAY(0.2)) > 0) {
 		return true;
 	}
-	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 	return false;
 }
 

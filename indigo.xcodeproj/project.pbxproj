@@ -2395,6 +2395,8 @@
 		5984A379303CCCED00D581D2 /* test_mount_nexstaraux_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_mount_nexstaraux_simulator.c; sourceTree = "<group>"; };
 		5984A37A303CCD9400D581D2 /* mount_pmc8_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = mount_pmc8_simulator.c; sourceTree = "<group>"; };
 		5984A37C303CCDDA00D581D2 /* test_mount_pmc8_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_mount_pmc8_simulator.c; sourceTree = "<group>"; };
+		5984A37D303CCEE600D581D2 /* mount_rainbow_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = mount_rainbow_simulator.c; sourceTree = "<group>"; };
+		5984A37E303CCF0400D581D2 /* test_mount_rainbow_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_mount_rainbow_simulator.c; sourceTree = "<group>"; };
 		5984C90827C2E2290090204B /* IMAGING_AF_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = IMAGING_AF_TUNING.md; sourceTree = "<group>"; };
 		5984C90927C2E22A0090204B /* POLAR_ALIGNMENT.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = POLAR_ALIGNMENT.md; sourceTree = "<group>"; };
 		5984C90A27C2E22A0090204B /* GUIDING_PI_CONTROLLER_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = GUIDING_PI_CONTROLLER_TUNING.md; sourceTree = "<group>"; };
@@ -12984,6 +12986,7 @@
 		59E5A29E23C1238400E8BBBF /* mount_rainbow_simulator */ = {
 			isa = PBXGroup;
 			children = (
+				5984A37D303CCEE600D581D2 /* mount_rainbow_simulator.c */,
 				59E5A29F23C1238400E8BBBF /* mount_rainbow_simulator.ino */,
 			);
 			path = mount_rainbow_simulator;
@@ -13132,6 +13135,7 @@
 		59FA7BF3301D3A5800A35CFB /* integration */ = {
 			isa = PBXGroup;
 			children = (
+				5984A37E303CCF0400D581D2 /* test_mount_rainbow_simulator.c */,
 				5984A37C303CCDDA00D581D2 /* test_mount_pmc8_simulator.c */,
 				5984A379303CCCED00D581D2 /* test_mount_nexstaraux_simulator.c */,
 				5984A377303CCB6600D581D2 /* test_mount_nexstar_simulator.c */,

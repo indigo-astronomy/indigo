@@ -75,6 +75,7 @@ Implemented bus and simulator integration suites:
 - `test_mount_nexstar_simulator.c`: external pseudo-terminal simulator launch, ready-file discovery, configurable NexStar protocol simulator coverage for both Celestron and Sky-Watcher dialect connection paths, plus Celestron mount and guider property/action coverage.
 - `test_mount_nexstaraux_simulator.c`: external TCP simulator launch, ready-file discovery using a `nexstar://` loopback URL, and hardware-free NexStar AUX binary protocol coverage for mount and guider logical devices.
 - `test_mount_pmc8_simulator.c`: external pseudo-terminal simulator launch, ready-file discovery, and hardware-free PMC-Eight serial protocol coverage for mount and guider logical devices.
+- `test_mount_rainbow_simulator.c`: external pseudo-terminal simulator launch, ready-file discovery, and hardware-free RainbowAstro serial protocol coverage for mount lifecycle, identity, guide-rate, tracking, track-rate, coordinate, and abort paths.
 - `test_mount_simulator.c`: mount simulator metadata, main mount and guider-device lifecycle, property enumeration, connection/disconnection, mount compliance checks, and guider compliance checks.
 - `test_polaralign_simulator.c`: polar aligner simulator metadata, lifecycle, property enumeration, connection/disconnection, property item/range checks, direction commands, offset no-op handling, reset commands, and abort command handling.
 - `test_rotator_simulator.c`: rotator simulator metadata, lifecycle, property enumeration, connection/disconnection, and rotator compliance checks.
