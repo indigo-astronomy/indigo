@@ -6627,20 +6627,6 @@
 			path = mount_ioptron_1.0_simulator;
 			sourceTree = "<group>";
 		};
-		594A912825F4D18E002691D0 /* ioptron_simulator */ = {
-			isa = PBXGroup;
-			children = (
-				594A912A25F4D8B7002691D0 /* mount_ioptron_8406_simulator */,
-				594A913325F52415002691D0 /* mount_ioptron_8407_simulator */,
-				594A911F25F4300C002691D0 /* mount_ioptron_1.0_simulator */,
-				59AEB117215446960008A729 /* mount_ioptron_2.0_simulator */,
-				595AEB0E230FDE0200AB5C99 /* mount_ioptron_2.5_simulator */,
-				594A911625F38B62002691D0 /* mount_ioptron_3.0_simulator */,
-				594A912925F4D1EB002691D0 /* common.h */,
-			);
-			path = ioptron_simulator;
-			sourceTree = "<group>";
-		};
 		594A912A25F4D8B7002691D0 /* mount_ioptron_8406_simulator */ = {
 			isa = PBXGroup;
 			children = (
@@ -8036,6 +8022,13 @@
 		5984A341303BA9A100D581D2 /* mount_ioptron_simulator */ = {
 			isa = PBXGroup;
 			children = (
+				594A912A25F4D8B7002691D0 /* mount_ioptron_8406_simulator */,
+				594A913325F52415002691D0 /* mount_ioptron_8407_simulator */,
+				594A911F25F4300C002691D0 /* mount_ioptron_1.0_simulator */,
+				59AEB117215446960008A729 /* mount_ioptron_2.0_simulator */,
+				595AEB0E230FDE0200AB5C99 /* mount_ioptron_2.5_simulator */,
+				594A911625F38B62002691D0 /* mount_ioptron_3.0_simulator */,
+				594A912925F4D1EB002691D0 /* common.h */,
 				5984A340303BA9A100D581D2 /* mount_ioptron_simulator.c */,
 			);
 			path = mount_ioptron_simulator;
@@ -14675,7 +14668,6 @@
 				59E2DA682638384900D3D4B5 /* Protocol_V3.10.pdf */,
 				59EA12822F66DA1200E29EDD /* Protocol_Special_Mode.pdf */,
 				5984A341303BA9A100D581D2 /* mount_ioptron_simulator */,
-				594A912825F4D18E002691D0 /* ioptron_simulator */,
 			);
 			path = mount_ioptron;
 			sourceTree = "<group>";
