@@ -840,7 +840,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 			}
 		}
 		CCD_STREAMING_PROPERTY->hidden = false;
-		CCD_IMAGE_FORMAT_PROPERTY->count = 6;
+		CCD_IMAGE_FORMAT_PROPERTY->count = 7;
 		CCD_GAIN_PROPERTY->hidden = false;
 
 		X_CCD_ADVANCED_PROPERTY = indigo_init_number_property(NULL, device->name, "X_CCD_ADVANCED", CCD_ADVANCED_GROUP, "Advanced Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 9);
