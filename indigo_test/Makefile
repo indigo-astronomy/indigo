@@ -54,6 +54,7 @@ INTEGRATION_TESTS = \
 	$(INTEGRATION_BUILD)/test_focuser_askar_simulator \
 	$(INTEGRATION_BUILD)/test_rotator_falcon2_simulator \
 	$(INTEGRATION_BUILD)/test_wheel_xagyl_simulator \
+	$(INTEGRATION_BUILD)/test_wheel_indigo_simulator \
 	$(INTEGRATION_BUILD)/test_wheel_quantum_simulator \
 	$(INTEGRATION_BUILD)/test_wheel_trutek_simulator \
 	$(INTEGRATION_BUILD)/test_wheel_qhy_simulator \
@@ -127,6 +128,7 @@ FOCUSER_ASTROMECHANICS_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_
 FOCUSER_ASKAR_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_focuser_askar.a $(TEST_LDFLAGS) -lindigocat
 ROTATOR_FALCON2_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_rotator_falcon.a $(TEST_LDFLAGS) -lindigocat
 WHEEL_XAGYL_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_wheel_xagyl.a $(TEST_LDFLAGS) -lindigocat
+WHEEL_INDIGO_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_wheel_indigo.a $(TEST_LDFLAGS) -lindigocat
 WHEEL_QUANTUM_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_wheel_quantum.a $(TEST_LDFLAGS) -lindigocat
 WHEEL_TRUTEK_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_wheel_trutek.a $(TEST_LDFLAGS) -lindigocat
 WHEEL_QHY_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_wheel_qhy.a $(TEST_LDFLAGS) -lindigocat
@@ -510,6 +512,12 @@ $(INTEGRATION_BUILD)/test_rotator_wa_simulator: integration/test_rotator_wa_simu
 
 $(INTEGRATION_BUILD)/test_wheel_xagyl_simulator: integration/test_wheel_xagyl_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/wheel_xagyl_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(WHEEL_XAGYL_SIMULATOR_TEST_LDFLAGS)
+
+$(INTEGRATION_BUILD)/wheel_indigo_simulator: ../indigo_drivers/wheel_indigo/wheel_indigo_simulator/wheel_indigo_simulator.c simulator_common/serial_simulator_common.h | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $<
+
+$(INTEGRATION_BUILD)/test_wheel_indigo_simulator: integration/test_wheel_indigo_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/wheel_indigo_simulator | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(WHEEL_INDIGO_SIMULATOR_TEST_LDFLAGS)
 
 $(INTEGRATION_BUILD)/test_wheel_quantum_simulator: integration/test_wheel_quantum_simulator.c integration/serial_simulator_test_common.h integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/wheel_quantum_simulator | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(WHEEL_QUANTUM_SIMULATOR_TEST_LDFLAGS)

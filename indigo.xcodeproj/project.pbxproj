@@ -2404,6 +2404,8 @@
 		5984A384303CDA7400D581D2 /* test_rotator_optec_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_rotator_optec_simulator.c; sourceTree = "<group>"; };
 		5984A385303CDBA400D581D2 /* rotator_wa_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = rotator_wa_simulator.c; sourceTree = "<group>"; };
 		5984A387303CDBBE00D581D2 /* test_rotator_wa_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_rotator_wa_simulator.c; sourceTree = "<group>"; };
+		5984A388303CDD8700D581D2 /* wheel_indigo_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = wheel_indigo_simulator.c; sourceTree = "<group>"; };
+		5984A389303CDD9100D581D2 /* test_wheel_indigo_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_wheel_indigo_simulator.c; sourceTree = "<group>"; };
 		5984C90827C2E2290090204B /* IMAGING_AF_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = IMAGING_AF_TUNING.md; sourceTree = "<group>"; };
 		5984C90927C2E22A0090204B /* POLAR_ALIGNMENT.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = POLAR_ALIGNMENT.md; sourceTree = "<group>"; };
 		5984C90A27C2E22A0090204B /* GUIDING_PI_CONTROLLER_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = GUIDING_PI_CONTROLLER_TUNING.md; sourceTree = "<group>"; };
@@ -9935,6 +9937,7 @@
 		59B5134B297066040075C8A1 /* wheel_indigo_simulator */ = {
 			isa = PBXGroup;
 			children = (
+				5984A388303CDD8700D581D2 /* wheel_indigo_simulator.c */,
 				59B5134C297066040075C8A1 /* wheel_indigo_simulator.ino */,
 			);
 			path = wheel_indigo_simulator;
@@ -13161,6 +13164,7 @@
 		59FA7BF3301D3A5800A35CFB /* integration */ = {
 			isa = PBXGroup;
 			children = (
+				5984A389303CDD9100D581D2 /* test_wheel_indigo_simulator.c */,
 				5984A387303CDBBE00D581D2 /* test_rotator_wa_simulator.c */,
 				5984A383303CDA7400D581D2 /* test_mount_temma_simulator.c */,
 				5984A384303CDA7400D581D2 /* test_rotator_optec_simulator.c */,
