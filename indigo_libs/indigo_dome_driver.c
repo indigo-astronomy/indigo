@@ -37,6 +37,17 @@
 #include <indigo/indigo_align.h>
 
 #define SYNC_INTERAL 15.0  /* in seconds */
+#define SLEW_START_TIMEOUT 3.0  /* in seconds, grace for the dome to report busy */
+#define SLEW_POLL_INTERVAL 0.2  /* in seconds */
+
+static void dome_equatorial_coordinates_handler(indigo_device *device) {
+	if (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
+		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_NORMAL, SLEW_POLL_INTERVAL, dome_equatorial_coordinates_handler);
+		return;
+	}
+	DOME_EQUATORIAL_COORDINATES_PROPERTY->state = DOME_HORIZONTAL_COORDINATES_PROPERTY->state;
+	indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
+}
 
 indigo_result indigo_dome_attach(indigo_device *device, const char* driver_name, unsigned version) {
 	assert(device != NULL);
@@ -242,6 +253,7 @@ indigo_result indigo_dome_change_property(indigo_device *device, indigo_client *
 			indigo_define_property(device, DOME_SET_HOST_TIME_PROPERTY, NULL);
 	} else {
 			indigo_cancel_timer(device, &DOME_CONTEXT->sync_timer);
+			indigo_cancel_pending_handler(device, dome_equatorial_coordinates_handler);
 			DOME_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 			DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
@@ -289,11 +301,16 @@ indigo_result indigo_dome_change_property(indigo_device *device, indigo_client *
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- DOME_EQUATORIAL_COORDINATES
 	} else if (indigo_property_match_changeable(DOME_EQUATORIAL_COORDINATES_PROPERTY, property)) {
+		indigo_cancel_pending_handler(device, dome_equatorial_coordinates_handler);
 		indigo_property_copy_values(DOME_EQUATORIAL_COORDINATES_PROPERTY, property, false);
+		DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 		double new_az;
 		bool needs_update = indigo_fix_dome_azimuth(device, DOME_EQUATORIAL_COORDINATES_RA_ITEM->number.target, DOME_EQUATORIAL_COORDINATES_DEC_ITEM->number.target, (int)DOME_EQUATORIAL_COORDINATES_SIDE_OF_PIER_ITEM->number.target, DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value, &new_az);
 		if (needs_update && device->change_property) {
 			indigo_change_number_property_1(client, device->name, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, new_az);
+			indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_NORMAL, SLEW_START_TIMEOUT, dome_equatorial_coordinates_handler);
+			return INDIGO_OK;
 		}
 		DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
