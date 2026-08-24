@@ -254,6 +254,16 @@ Frames captured by `capture_batch` / `capture_stream` contribute to the `EXPOSUR
 | `home()` | Send the mount to its home position. |
 | `enable_tracking()` / `disable_tracking()` | Turn sidereal tracking on/off. |
 
+### Dome
+
+| Method | Description |
+|---|---|
+| `dome_slew(az)` | Slew the dome to the given azimuth in degrees. This step waits until the dome stops moving. |
+| `dome_park()` / `dome_unpark()` | Park / unpark the dome. |
+| `dome_open()` / `dome_close()` | Open / close the dome shutter. |
+| `enable_dome_slaving()` / `disable_dome_slaving()` | Make the dome follow the mount, or stop following it. |
+| `make_dome_slaving_persistent()` / `make_dome_slaving_not_persistent()` | Keep dome slaving on across mount processes, or only while one is running. |
+
 ### Plate solving & centering
 
 | Method | Description |

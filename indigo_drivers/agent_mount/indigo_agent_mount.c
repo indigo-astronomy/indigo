@@ -114,13 +114,11 @@
 #define AGENT_MOUNT_START_HOME_ITEM  									(AGENT_START_PROCESS_PROPERTY->items+4)
 #define AGENT_MOUNT_START_TRACKING_ON_ITEM  					(AGENT_START_PROCESS_PROPERTY->items+5)
 #define AGENT_MOUNT_START_TRACKING_OFF_ITEM  					(AGENT_START_PROCESS_PROPERTY->items+6)
-#define AGENT_DOME_START_SLEW_ITEM  									(AGENT_START_PROCESS_PROPERTY->items+7)
-#define AGENT_DOME_START_SYNC_ITEM  									(AGENT_START_PROCESS_PROPERTY->items+8)
-#define AGENT_DOME_START_PARK_ITEM  									(AGENT_START_PROCESS_PROPERTY->items+9)
-#define AGENT_DOME_START_UNPARK_ITEM  								(AGENT_START_PROCESS_PROPERTY->items+10)
-#define AGENT_DOME_START_OPEN_ITEM  									(AGENT_START_PROCESS_PROPERTY->items+11)
-#define AGENT_DOME_START_CLOSE_ITEM 									(AGENT_START_PROCESS_PROPERTY->items+12)
-#define AGENT_RESET_ITEM 															(AGENT_START_PROCESS_PROPERTY->items+13)
+#define AGENT_DOME_START_PARK_ITEM  									(AGENT_START_PROCESS_PROPERTY->items+7)
+#define AGENT_DOME_START_UNPARK_ITEM  								(AGENT_START_PROCESS_PROPERTY->items+8)
+#define AGENT_DOME_START_OPEN_ITEM  									(AGENT_START_PROCESS_PROPERTY->items+9)
+#define AGENT_DOME_START_CLOSE_ITEM 									(AGENT_START_PROCESS_PROPERTY->items+10)
+#define AGENT_RESET_ITEM 															(AGENT_START_PROCESS_PROPERTY->items+11)
 
 #define AGENT_PROCESS_FEATURES_PROPERTY								(DEVICE_PRIVATE_DATA->agent_process_features_property)
 #define AGENT_MOUNT_ENABLE_HA_LIMIT_FEATURE_ITEM			(AGENT_PROCESS_FEATURES_PROPERTY->items+0)
@@ -152,10 +150,8 @@
 #define AGENT_MOUNT_FEATURES_CAN_TRACK_ITEM						(AGENT_MOUNT_FEATURES_PROPERTY->items+4)
 
 #define AGENT_DOME_FEATURES_PROPERTY									(DEVICE_PRIVATE_DATA->agent_dome_features_property)
-#define AGENT_DOME_FEATURES_CAN_SLEW_ITEM							(AGENT_DOME_FEATURES_PROPERTY->items+0)
-#define AGENT_DOME_FEATURES_CAN_SYNC_ITEM							(AGENT_DOME_FEATURES_PROPERTY->items+1)
-#define AGENT_DOME_FEATURES_CAN_PARK_ITEM							(AGENT_DOME_FEATURES_PROPERTY->items+2)
-#define AGENT_DOME_FEATURES_CAN_OPEN_ITEM							(AGENT_DOME_FEATURES_PROPERTY->items+3)
+#define AGENT_DOME_FEATURES_CAN_PARK_ITEM							(AGENT_DOME_FEATURES_PROPERTY->items+0)
+#define AGENT_DOME_FEATURES_CAN_OPEN_ITEM							(AGENT_DOME_FEATURES_PROPERTY->items+1)
 
 typedef struct {
 	indigo_property *agent_geographic_property;
@@ -279,19 +275,19 @@ typedef enum {
 /* Both lights report a mode and not an operation, so they are IDLE when not slaved or
    derotated, OK while slaved or derotated and ALERT on error, never BUSY.
    Set only the lights this operation is actually driving, leave the others as they are. */
-static void set_slaving_lights(indigo_device *device, bool slaving_dome, bool control_rotator, indigo_property_state dome_slaving, indigo_property_state field_derotation) {
-	if (slaving_dome) {
+static void set_slaving_lights(indigo_device *device, bool control_dome, bool control_rotator, indigo_property_state dome_slaving, indigo_property_state field_derotation) {
+	if (control_dome) {
 		AGENT_MOUNT_STATE_DOME_SLAVING_ITEM->light.value = dome_slaving;
 	}
 	if (control_rotator) {
 		AGENT_MOUNT_STATE_FIELD_DEROTATION_ITEM->light.value = field_derotation;
 	}
-	if (slaving_dome || control_rotator) {
+	if (control_dome || control_rotator) {
 		indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
 	}
 }
 
-static void mount_dome_control(indigo_device *device, bool control_mount, bool control_dome, bool control_rotator, mount_dome_control_operation operation) {
+static void mount_dome_control(indigo_device *device, bool control_dome, bool control_rotator, mount_dome_control_operation operation) {
 	const char *mount_operation = operation == MOUNT_DOME_CONTROL_SYNC ? MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME : MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME;
 	const char *dome_operation = operation == MOUNT_DOME_CONTROL_SYNC ? DOME_ON_COORDINATES_SET_SYNC_ITEM_NAME : DOME_ON_COORDINATES_SET_GOTO_ITEM_NAME;
 	const char *rotator_operation = operation == MOUNT_DOME_CONTROL_SYNC ? ROTATOR_ON_POSITION_SET_SYNC_ITEM_NAME : ROTATOR_ON_POSITION_SET_GOTO_ITEM_NAME;
@@ -299,22 +295,16 @@ static void mount_dome_control(indigo_device *device, bool control_mount, bool c
 	double lst = indigo_lst(&utc, AGENT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
 	double target_ha = fmod((lst - AGENT_MOUNT_TARGET_COORDINATES_RA_ITEM->number.target + 24), 24);
 	double parallactic_angle = indigo_parallactic_angle(target_ha * 15, AGENT_MOUNT_TARGET_COORDINATES_DEC_ITEM->number.target, AGENT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value);
-	/* The dome slaving light reports the dome following the mount, so it belongs to a
-	   mount operation only. A stand alone dome slew or sync is reported by AGENT_DOME_STATE
-	   and must leave this light alone, the same way field derotation belongs to the rotator. */
-	bool slaving_dome = control_mount && control_dome;
 	if (control_dome) {
 		if (!DEVICE_PRIVATE_DATA->dome_unparked) {
 			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, DOME_PARK_PROPERTY_NAME, DOME_PARK_UNPARKED_ITEM_NAME, true);
 		}
 		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, DOME_ON_COORDINATES_SET_PROPERTY_NAME, dome_operation, true);
 	}
-	if (control_mount) {
-		if (!DEVICE_PRIVATE_DATA->mount_unparked) {
-			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
-		}
-		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, mount_operation, true);
+	if (!DEVICE_PRIVATE_DATA->mount_unparked) {
+		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
 	}
+	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, mount_operation, true);
 	if (control_rotator) {
 		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, ROTATOR_ON_POSITION_SET_PROPERTY_NAME, rotator_operation, true);
 	}
@@ -324,13 +314,11 @@ static void mount_dome_control(indigo_device *device, bool control_mount, bool c
 		   the one of the current position and can not be used for the target. It is
 		   sent as unknown and corrected by the slaving updates once the slew is over. */
 		double values[] = { AGENT_MOUNT_TARGET_COORDINATES_RA_ITEM->number.target, AGENT_MOUNT_TARGET_COORDINATES_DEC_ITEM->number.target, 0 };
-		if (slaving_dome) {
-			AGENT_MOUNT_STATE_DOME_SLAVING_ITEM->light.value = INDIGO_OK_STATE;
-			indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
-		}
+		AGENT_MOUNT_STATE_DOME_SLAVING_ITEM->light.value = INDIGO_OK_STATE;
+		indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
 		indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device->name, DOME_EQUATORIAL_COORDINATES_PROPERTY_NAME, 3, names, values);
 	}
-	if (control_mount) {
+	{
 		static const char *names[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
 		double values[] = { AGENT_MOUNT_TARGET_COORDINATES_RA_ITEM->number.target, AGENT_MOUNT_TARGET_COORDINATES_DEC_ITEM->number.target };
 		indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, names, values);
@@ -355,7 +343,7 @@ static void mount_dome_control(indigo_device *device, bool control_mount, bool c
 	bool dome_busy_seen = false;
 	bool rotator_busy_seen = false;
 	for (int i = 0; i < 3000; i++) {
-		if (control_mount && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state == INDIGO_BUSY_STATE) {
+		if (DEVICE_PRIVATE_DATA->mount_eq_coordinates_state == INDIGO_BUSY_STATE) {
 			mount_busy_seen = true;
 		}
 		if (control_dome && DEVICE_PRIVATE_DATA->dome_horizontal_coordinates_state == INDIGO_BUSY_STATE) {
@@ -364,7 +352,7 @@ static void mount_dome_control(indigo_device *device, bool control_mount, bool c
 		if (control_rotator && DEVICE_PRIVATE_DATA->rotator_position_state == INDIGO_BUSY_STATE) {
 			rotator_busy_seen = true;
 		}
-		if ((!control_mount || mount_busy_seen) && (!control_dome || dome_busy_seen) && (!control_rotator || rotator_busy_seen)) {
+		if (mount_busy_seen && (!control_dome || dome_busy_seen) && (!control_rotator || rotator_busy_seen)) {
 			break;
 		}
 		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -372,7 +360,7 @@ static void mount_dome_control(indigo_device *device, bool control_mount, bool c
 		}
 		indigo_usleep(1000);
 	}
-	if (control_mount && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && !mount_busy_seen && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_BUSY_STATE) {
+	if (AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && !mount_busy_seen && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_BUSY_STATE) {
 		indigo_debug("MOUNT_EQUATORIAL_COORDINATES didn't become BUSY in 3s");
 	}
 	if (control_dome && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && !dome_busy_seen && DEVICE_PRIVATE_DATA->dome_horizontal_coordinates_state != INDIGO_BUSY_STATE) {
@@ -382,7 +370,7 @@ static void mount_dome_control(indigo_device *device, bool control_mount, bool c
 		indigo_debug("ROTATOR_POSITION didn't become BUSY in 3s");
 	}
 	for (int i = 0; i < 180000; i++) {
-		bool mount_busy = control_mount && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state == INDIGO_BUSY_STATE;
+		bool mount_busy = DEVICE_PRIVATE_DATA->mount_eq_coordinates_state == INDIGO_BUSY_STATE;
 		bool dome_busy = control_dome && DEVICE_PRIVATE_DATA->dome_horizontal_coordinates_state == INDIGO_BUSY_STATE;
 		bool rotator_busy = control_rotator && DEVICE_PRIVATE_DATA->rotator_position_state == INDIGO_BUSY_STATE;
 		if (!mount_busy && !dome_busy && !rotator_busy) {
@@ -395,7 +383,7 @@ static void mount_dome_control(indigo_device *device, bool control_mount, bool c
 	}
 	// 10s for ramp down after abort
 	for (int i = 0; i < 10000; i++) {
-		bool mount_busy = control_mount && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state == INDIGO_BUSY_STATE;
+		bool mount_busy = DEVICE_PRIVATE_DATA->mount_eq_coordinates_state == INDIGO_BUSY_STATE;
 		bool dome_busy = control_dome && DEVICE_PRIVATE_DATA->dome_horizontal_coordinates_state == INDIGO_BUSY_STATE;
 		bool rotator_busy = control_rotator && DEVICE_PRIVATE_DATA->rotator_position_state == INDIGO_BUSY_STATE;
 		if (!mount_busy && !dome_busy && !rotator_busy) {
@@ -403,7 +391,7 @@ static void mount_dome_control(indigo_device *device, bool control_mount, bool c
 		}
 		indigo_usleep(1000);
 	}
-	if (control_mount && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state == INDIGO_BUSY_STATE) {
+	if (AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state == INDIGO_BUSY_STATE) {
 		indigo_error("MOUNT_EQUATORIAL_COORDINATES didn't become OK in 180s");
 	}
 	if (control_dome && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->dome_horizontal_coordinates_state == INDIGO_BUSY_STATE) {
@@ -412,25 +400,20 @@ static void mount_dome_control(indigo_device *device, bool control_mount, bool c
 	if (control_rotator && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->rotator_position_state == INDIGO_BUSY_STATE) {
 		indigo_error("ROTATOR_POSITION didn't become OK in 180s");
 	}
-	if (control_mount) {
-		AGENT_MOUNT_START_SLEW_ITEM->sw.value = AGENT_MOUNT_START_SYNC_ITEM->sw.value = false;
-	}
-	if (control_dome) {
-		AGENT_DOME_START_SLEW_ITEM->sw.value = AGENT_DOME_START_SYNC_ITEM->sw.value = false;
-	}
+	AGENT_MOUNT_START_SLEW_ITEM->sw.value = AGENT_MOUNT_START_SYNC_ITEM->sw.value = false;
 	if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 		AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 		AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 		indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
-		set_slaving_lights(device, slaving_dome, control_rotator, INDIGO_IDLE_STATE, INDIGO_IDLE_STATE);
-	} else if ((control_mount && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_OK_STATE) || (control_dome && DEVICE_PRIVATE_DATA->dome_horizontal_coordinates_state != INDIGO_OK_STATE) || (control_rotator && DEVICE_PRIVATE_DATA->rotator_position_state != INDIGO_OK_STATE)) {
+		set_slaving_lights(device, control_dome, control_rotator, INDIGO_IDLE_STATE, INDIGO_IDLE_STATE);
+	} else if (DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_OK_STATE || (control_dome && DEVICE_PRIVATE_DATA->dome_horizontal_coordinates_state != INDIGO_OK_STATE) || (control_rotator && DEVICE_PRIVATE_DATA->rotator_position_state != INDIGO_OK_STATE)) {
 		AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 		/* Only the subsystem that failed raises its light, a failed mount slew is not a slaving failure */
 		set_slaving_lights(
 			device,
-			slaving_dome,
+			control_dome,
 			control_rotator,
 			DEVICE_PRIVATE_DATA->dome_horizontal_coordinates_state == INDIGO_OK_STATE ? INDIGO_IDLE_STATE : INDIGO_ALERT_STATE,
 			DEVICE_PRIVATE_DATA->rotator_position_state == INDIGO_OK_STATE ? INDIGO_IDLE_STATE : INDIGO_ALERT_STATE
@@ -438,25 +421,8 @@ static void mount_dome_control(indigo_device *device, bool control_mount, bool c
 	} else {
 		AGENT_START_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
-		set_slaving_lights(device, slaving_dome, control_rotator, INDIGO_IDLE_STATE, INDIGO_IDLE_STATE);
+		set_slaving_lights(device, control_dome, control_rotator, INDIGO_IDLE_STATE, INDIGO_IDLE_STATE);
 	}
-}
-
-static void slew_dome_process(indigo_device *device) {
-	FILTER_DEVICE_CONTEXT->running_process = true;
-	mount_dome_control(device, false, true, false, MOUNT_DOME_CONTROL_SLEW);
-	FILTER_DEVICE_CONTEXT->running_process = false;
-}
-
-static void sync_dome_process(indigo_device *device) {
-	FILTER_DEVICE_CONTEXT->running_process = true;
-	mount_dome_control(device, false, true, false, MOUNT_DOME_CONTROL_SYNC);
-	if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE) {
-		indigo_send_message(device, IDLE_PROPERTY, "Dome synced");
-	} else {
-		indigo_send_message(device, ALERT_PROPERTY, "Dome sync failed");
-	}
-	FILTER_DEVICE_CONTEXT->running_process = false;
 }
 
 static void park_dome_process(indigo_device *device) {
@@ -568,7 +534,7 @@ static void slew_process(indigo_device *device) {
 		}
 	}
 	bool control_rotator = AGENT_MOUNT_ENABLE_FIELD_DEROTATION_ITEM->sw.value && INDIGO_FILTER_ROTATOR_SELECTED;
-	mount_dome_control(device, true, control_dome, control_rotator, MOUNT_DOME_CONTROL_SLEW);
+	mount_dome_control(device, control_dome, control_rotator, MOUNT_DOME_CONTROL_SLEW);
 	if (AGENT_MOUNT_ENABLE_HA_LIMIT_FEATURE_ITEM->sw.value) {
 		indigo_send_message(device, IDLE_PROPERTY, "HA limit is active");
 	}
@@ -582,7 +548,7 @@ static void sync_process(indigo_device *device) {
 	FILTER_DEVICE_CONTEXT->running_process = true;
 	bool control_dome = AGENT_MOUNT_ENABLE_DOME_SLAVING_ITEM->sw.value && INDIGO_FILTER_DOME_SELECTED;
 	bool control_rotator = AGENT_MOUNT_ENABLE_FIELD_DEROTATION_ITEM->sw.value && INDIGO_FILTER_ROTATOR_SELECTED;
-	mount_dome_control(device, true, control_dome, control_rotator, MOUNT_DOME_CONTROL_SYNC);
+	mount_dome_control(device, control_dome, control_rotator, MOUNT_DOME_CONTROL_SYNC);
 	if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE) {
 		indigo_send_message(device, IDLE_PROPERTY, "Synced");
 	} else {
@@ -1496,7 +1462,7 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 			CLIENT_PRIVATE_DATA->dome_state_defined = true;
 			AGENT_DOME_STATE_SLEW_ITEM->light.value = AGENT_DOME_STATE_PARK_ITEM->light.value = INDIGO_IDLE_STATE;
 			indigo_update_property(device, AGENT_DOME_STATE_PROPERTY, NULL);
-			AGENT_DOME_FEATURES_CAN_SLEW_ITEM->sw.value = AGENT_DOME_FEATURES_CAN_SYNC_ITEM->sw.value = AGENT_DOME_FEATURES_CAN_PARK_ITEM->sw.value = AGENT_DOME_FEATURES_CAN_OPEN_ITEM->sw.value = false;
+			AGENT_DOME_FEATURES_CAN_PARK_ITEM->sw.value = AGENT_DOME_FEATURES_CAN_OPEN_ITEM->sw.value = false;
 			indigo_update_property(device, AGENT_DOME_FEATURES_PROPERTY, NULL);
 		}
 	} else if (!strcmp(property->name, "DOME_" GEOGRAPHIC_COORDINATES_PROPERTY_NAME)) {
@@ -1932,7 +1898,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_sexagesimal_number_item(AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM, AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM_NAME, "Parallactic angle (-180 to 180°)", -180, 180, 0, 0);
 		indigo_init_number_item(AGENT_MOUNT_DISPLAY_COORDINATES_DEROTATION_RATE_ITEM, AGENT_MOUNT_DISPLAY_COORDINATES_DEROTATION_RATE_ITEM_NAME, "Derotation rate (\"/s)", -1000, 1000, 0, 0);
 		// -------------------------------------------------------------------------------- AGENT_START_PROCESS
-		AGENT_START_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_START_PROCESS_PROPERTY_NAME, "Agent", "Start process", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 14);
+		AGENT_START_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_START_PROCESS_PROPERTY_NAME, "Agent", "Start process", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 12);
 		if (AGENT_START_PROCESS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
@@ -1943,8 +1909,6 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_switch_item(AGENT_MOUNT_START_HOME_ITEM, AGENT_MOUNT_START_HOME_ITEM_NAME, "Home", false);
 		indigo_init_switch_item(AGENT_MOUNT_START_TRACKING_ON_ITEM, AGENT_MOUNT_START_TRACKING_ON_ITEM_NAME, "Tracking on", false);
 		indigo_init_switch_item(AGENT_MOUNT_START_TRACKING_OFF_ITEM, AGENT_MOUNT_START_TRACKING_OFF_ITEM_NAME, "Tracking off", false);
-		indigo_init_switch_item(AGENT_DOME_START_SLEW_ITEM, AGENT_DOME_START_SLEW_ITEM_NAME, "Slew dome", false);
-		indigo_init_switch_item(AGENT_DOME_START_SYNC_ITEM, AGENT_DOME_START_SYNC_ITEM_NAME, "Sync dome", false);
 		indigo_init_switch_item(AGENT_DOME_START_PARK_ITEM, AGENT_DOME_START_PARK_ITEM_NAME, "Park dome", false);
 		indigo_init_switch_item(AGENT_DOME_START_UNPARK_ITEM, AGENT_DOME_START_UNPARK_ITEM_NAME, "Unpark dome", false);
 		indigo_init_switch_item(AGENT_DOME_START_OPEN_ITEM, AGENT_DOME_START_OPEN_ITEM_NAME, "Open dome", false);
@@ -1996,12 +1960,10 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_switch_item(AGENT_MOUNT_FEATURES_CAN_HOME_ITEM, AGENT_MOUNT_FEATURES_CAN_HOME_ITEM_NAME, "Can home", false);
 		indigo_init_switch_item(AGENT_MOUNT_FEATURES_CAN_TRACK_ITEM, AGENT_MOUNT_FEATURES_CAN_TRACK_ITEM_NAME, "Can track", false);
 		// -------------------------------------------------------------------------------- AGENT_DOME_FEATURES
-		AGENT_DOME_FEATURES_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_DOME_FEATURES_PROPERTY_NAME, "Agent", "Dome features", INDIGO_OK_STATE, INDIGO_RO_PERM, INDIGO_ANY_OF_MANY_RULE, 4);
+		AGENT_DOME_FEATURES_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_DOME_FEATURES_PROPERTY_NAME, "Agent", "Dome features", INDIGO_OK_STATE, INDIGO_RO_PERM, INDIGO_ANY_OF_MANY_RULE, 2);
 		if (AGENT_DOME_FEATURES_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
-		indigo_init_switch_item(AGENT_DOME_FEATURES_CAN_SLEW_ITEM, AGENT_DOME_FEATURES_CAN_SLEW_ITEM_NAME, "Can slew", false);
-		indigo_init_switch_item(AGENT_DOME_FEATURES_CAN_SYNC_ITEM, AGENT_DOME_FEATURES_CAN_SYNC_ITEM_NAME, "Can sync", false);
 		indigo_init_switch_item(AGENT_DOME_FEATURES_CAN_PARK_ITEM, AGENT_DOME_FEATURES_CAN_PARK_ITEM_NAME, "Can park", false);
 		indigo_init_switch_item(AGENT_DOME_FEATURES_CAN_OPEN_ITEM, AGENT_DOME_FEATURES_CAN_OPEN_ITEM_NAME, "Can open", false);
 		// --------------------------------------------------------------------------------
@@ -2176,27 +2138,19 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 					AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, "No mount is selected");
 				}
-			} else if (AGENT_DOME_START_SLEW_ITEM->sw.value || AGENT_DOME_START_SYNC_ITEM->sw.value || AGENT_DOME_START_PARK_ITEM->sw.value || AGENT_DOME_START_UNPARK_ITEM->sw.value || AGENT_DOME_START_OPEN_ITEM->sw.value || AGENT_DOME_START_CLOSE_ITEM->sw.value) {
+			} else if (AGENT_DOME_START_PARK_ITEM->sw.value || AGENT_DOME_START_UNPARK_ITEM->sw.value || AGENT_DOME_START_OPEN_ITEM->sw.value || AGENT_DOME_START_CLOSE_ITEM->sw.value) {
 				if (INDIGO_FILTER_DOME_SELECTED) {
 					/* Do not start a process the selected dome has no property for, it would only time out. */
 					const char *unsupported = NULL;
-					if (AGENT_DOME_START_SLEW_ITEM->sw.value) {
-						unsupported = AGENT_DOME_FEATURES_CAN_SLEW_ITEM->sw.value ? NULL : "slew";
-					} else if (AGENT_DOME_START_SYNC_ITEM->sw.value) {
-						unsupported = AGENT_DOME_FEATURES_CAN_SYNC_ITEM->sw.value ? NULL : "sync";
-					} else if (AGENT_DOME_START_PARK_ITEM->sw.value || AGENT_DOME_START_UNPARK_ITEM->sw.value) {
+					if (AGENT_DOME_START_PARK_ITEM->sw.value || AGENT_DOME_START_UNPARK_ITEM->sw.value) {
 						unsupported = AGENT_DOME_FEATURES_CAN_PARK_ITEM->sw.value ? NULL : "park";
 					} else if (AGENT_DOME_START_OPEN_ITEM->sw.value || AGENT_DOME_START_CLOSE_ITEM->sw.value) {
 						unsupported = AGENT_DOME_FEATURES_CAN_OPEN_ITEM->sw.value ? NULL : "shutter";
 					}
 					if (unsupported) {
-						AGENT_DOME_START_SLEW_ITEM->sw.value = AGENT_DOME_START_SYNC_ITEM->sw.value = AGENT_DOME_START_PARK_ITEM->sw.value = AGENT_DOME_START_UNPARK_ITEM->sw.value = AGENT_DOME_START_OPEN_ITEM->sw.value = AGENT_DOME_START_CLOSE_ITEM->sw.value = false;
+						AGENT_DOME_START_PARK_ITEM->sw.value = AGENT_DOME_START_UNPARK_ITEM->sw.value = AGENT_DOME_START_OPEN_ITEM->sw.value = AGENT_DOME_START_CLOSE_ITEM->sw.value = false;
 						AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 						indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, "Selected dome does not support %s", unsupported);
-					} else if (AGENT_DOME_START_SLEW_ITEM->sw.value) {
-						indigo_set_timer(device, 0, slew_dome_process, NULL);
-					} else if (AGENT_DOME_START_SYNC_ITEM->sw.value) {
-						indigo_set_timer(device, 0, sync_dome_process, NULL);
 					} else if (AGENT_DOME_START_PARK_ITEM->sw.value) {
 						indigo_set_timer(device, 0, park_dome_process, NULL);
 					} else if (AGENT_DOME_START_UNPARK_ITEM->sw.value) {
@@ -2207,7 +2161,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 						indigo_set_timer(device, 0, close_dome_process, NULL);
 					}
 				} else {
-					AGENT_DOME_START_SLEW_ITEM->sw.value = AGENT_DOME_START_SYNC_ITEM->sw.value = AGENT_DOME_START_PARK_ITEM->sw.value = AGENT_DOME_START_UNPARK_ITEM->sw.value = AGENT_DOME_START_OPEN_ITEM->sw.value = AGENT_DOME_START_CLOSE_ITEM->sw.value = false;
+					AGENT_DOME_START_PARK_ITEM->sw.value = AGENT_DOME_START_UNPARK_ITEM->sw.value = AGENT_DOME_START_OPEN_ITEM->sw.value = AGENT_DOME_START_CLOSE_ITEM->sw.value = false;
 					AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, "No dome is selected");
 				}
@@ -2302,17 +2256,6 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 					AGENT_MOUNT_FEATURES_CAN_SYNC_ITEM->sw.value = true;
 				}
 			}
-		} else if (!strcmp(property->name, DOME_ON_COORDINATES_SET_PROPERTY_NAME)) {
-			for (int i = 0; i < property->count; i++) {
-				indigo_item *item = property->items + i;
-				if (!strcmp(item->name, DOME_ON_COORDINATES_SET_GOTO_ITEM_NAME)) {
-					AGENT_DOME_FEATURES_CAN_SLEW_ITEM->sw.value = true;
-				} else if (!strcmp(item->name, DOME_ON_COORDINATES_SET_SYNC_ITEM_NAME)) {
-					AGENT_DOME_FEATURES_CAN_SYNC_ITEM->sw.value = true;
-				}
-			}
-		} else if (!strcmp(property->name, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME)) {
-			AGENT_DOME_FEATURES_CAN_SLEW_ITEM->sw.value = true;
 		} else {
 			snoop_changes(client, device, property);
 		}

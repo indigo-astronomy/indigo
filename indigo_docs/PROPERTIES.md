@@ -626,8 +626,6 @@ The mount agent exposes the following common properties: FILTER_MOUNT_LIST, FILT
 |  |  |  |  | HOME | yes | Go to home position |
 |  |  |  |  | TRACK_ON | yes | Start tracking |
 |  |  |  |  | TRACK_OFF | yes | Stop tracking |
-|  |  |  |  | DOME_SLEW | yes | Slew dome |
-|  |  |  |  | DOME_SYNC | yes | Sync dome |
 |  |  |  |  | DOME_PARK | yes | Park dome |
 |  |  |  |  | DOME_UNPARK | yes | Unpark dome |
 |  |  |  |  | DOME_OPEN | yes | Open dome shutter |
@@ -655,9 +653,7 @@ The mount agent exposes the following common properties: FILTER_MOUNT_LIST, FILT
 |  |  |  |  | PARK | yes | Mount supports park |
 |  |  |  |  | HOME | yes | Mount supports home |
 |  |  |  |  | TRACK | yes | Mount supports tracking |
-| AGENT_DOME_FEATURE | switch | yes | yes | SLEW | yes | Dome supports slewing |
-|  |  |  |  | SYNC | yes | Dome supports sync |
-|  |  |  |  | PARK | yes | Dome supports park |
+| AGENT_DOME_FEATURE | switch | yes | yes | PARK | yes | Dome supports park |
 |  |  |  |  | OPEN | yes | Dome supports open/close |
 
 Mount agent properties are defined in `indigo_drivers/agent_mount/indigo_agent_mount.c`.

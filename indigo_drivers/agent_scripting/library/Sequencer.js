@@ -414,9 +414,9 @@ Sequence.prototype.disable_tracking = function() {
 	this.sequence.push({ execute: 'start_mount_process("TRACK_OFF")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.dome_slew = function(ra, dec) {
-	this.sequence.push({ execute: 'set_coordinates(' + ra + ',' + dec + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
-	this.sequence.push({ execute: 'start_mount_process("DOME_SLEW")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+Sequence.prototype.dome_slew = function(az) {
+	this.sequence.push({ execute: 'set_dome_goto()', step: this.step, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'dome_slew(' + az + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.dome_park = function() {
@@ -1650,6 +1650,16 @@ var indigo_sequencer = {
 
 	start_mount_process: function(name) {
 		this.select_switch(this.devices[MOUNT_AGENT], "AGENT_START_PROCESS", name);
+	},
+
+	set_dome_goto: function() {
+		this.allow_same_value = true;
+		this.allow_missing_property = true;
+		this.select_switch(this.devices[MOUNT_AGENT], "DOME_ON_COORDINATES_SET", "GOTO");
+	},
+
+	dome_slew: function(az) {
+		this.change_numbers(this.devices[MOUNT_AGENT], "DOME_HORIZONTAL_COORDINATES", { AZ: az });
 	},
 
 	set_mount_feature: function(name, value) {
