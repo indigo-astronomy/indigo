@@ -43,7 +43,7 @@
 
 typedef struct {
 	//+ data
-	int target_position, current_position;
+	double target_position, current_position;
 	//- data
 } simulator_private_data;
 
@@ -67,11 +67,11 @@ static void dome_timer_callback(indigo_device *device) {
 		indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 		INDIGO_UPDATE_PROPERTY_STATE(DOME_STEPS_PROPERTY, INDIGO_ALERT_STATE, NULL);
 	} else {
-		if (DOME_DIRECTION_MOVE_CLOCKWISE_ITEM->sw.value && PRIVATE_DATA->current_position != PRIVATE_DATA->target_position) {
+		if (DOME_DIRECTION_MOVE_CLOCKWISE_ITEM->sw.value && fabs(PRIVATE_DATA->current_position - PRIVATE_DATA->target_position) > 1e-6) {
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-			int dif = (int)(PRIVATE_DATA->target_position - PRIVATE_DATA->current_position + 360) % 360;
+			double dif = fmod(PRIVATE_DATA->target_position - PRIVATE_DATA->current_position + 360.0, 360.0);
 			if (dif > DOME_SPEED_ITEM->number.value) {
-				DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position = (int)(PRIVATE_DATA->current_position + DOME_SPEED_ITEM->number.value + 360) % 360;
+				DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position = fmod(PRIVATE_DATA->current_position + DOME_SPEED_ITEM->number.value + 360.0, 360.0);
 			} else {
 				DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position = PRIVATE_DATA->target_position;
 			}
@@ -81,11 +81,11 @@ static void dome_timer_callback(indigo_device *device) {
 			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 			INDIGO_UPDATE_PROPERTY_STATE(DOME_STEPS_PROPERTY, INDIGO_BUSY_STATE, NULL);
 			indigo_set_timer(device, 0.1, dome_timer_callback, NULL);
-		} else if (DOME_DIRECTION_MOVE_COUNTERCLOCKWISE_ITEM->sw.value && PRIVATE_DATA->current_position != PRIVATE_DATA->target_position) {
+		} else if (DOME_DIRECTION_MOVE_COUNTERCLOCKWISE_ITEM->sw.value && fabs(PRIVATE_DATA->current_position - PRIVATE_DATA->target_position) > 1e-6) {
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-			int dif = (int)(PRIVATE_DATA->current_position - PRIVATE_DATA->target_position + 360) % 360;
+			double dif = fmod(PRIVATE_DATA->current_position - PRIVATE_DATA->target_position + 360.0, 360.0);
 			if (dif > DOME_SPEED_ITEM->number.value) {
-				DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position = (int)(PRIVATE_DATA->current_position - DOME_SPEED_ITEM->number.value + 360) % 360;
+				DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position = fmod(PRIVATE_DATA->current_position - DOME_SPEED_ITEM->number.value + 360.0, 360.0);
 			} else {
 				DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position = PRIVATE_DATA->target_position;
 			}
@@ -133,8 +133,8 @@ static void dome_horizontal_coordinates_handler(indigo_device *device) {
 		DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_send_message(device, ALERT_PROPERTY, "Dome is parked");
 	} else {
-		PRIVATE_DATA->target_position = (int)DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target;
-		int dif = (int)(PRIVATE_DATA->target_position - PRIVATE_DATA->current_position + 360) % 360;
+		PRIVATE_DATA->target_position = fmod(DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target + 360.0, 360.0);
+		double dif = fmod(PRIVATE_DATA->target_position - PRIVATE_DATA->current_position + 360.0, 360.0);
 		if (dif < 180) {
 			indigo_set_switch(DOME_DIRECTION_PROPERTY, DOME_DIRECTION_MOVE_CLOCKWISE_ITEM, true);
 			DOME_STEPS_ITEM->number.value = dif;
@@ -160,11 +160,11 @@ static void dome_steps_handler(indigo_device *device) {
 		DOME_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_send_message(device, ALERT_PROPERTY, "Dome is parked");
 	} else {
-		DOME_STEPS_ITEM->number.value = (int)DOME_STEPS_ITEM->number.value;
+		DOME_STEPS_ITEM->number.value = fmax(0, DOME_STEPS_ITEM->number.value);
 		if (DOME_DIRECTION_MOVE_COUNTERCLOCKWISE_ITEM->sw.value) {
-			PRIVATE_DATA->target_position = (int)(PRIVATE_DATA->current_position - DOME_STEPS_ITEM->number.value + 360) % 360;
+			PRIVATE_DATA->target_position = fmod(PRIVATE_DATA->current_position - DOME_STEPS_ITEM->number.value + 360.0, 360.0);
 		} else if (DOME_DIRECTION_MOVE_CLOCKWISE_ITEM->sw.value) {
-			PRIVATE_DATA->target_position = (int)(PRIVATE_DATA->current_position + DOME_STEPS_ITEM->number.value + 360) % 360;
+			PRIVATE_DATA->target_position = fmod(PRIVATE_DATA->current_position + DOME_STEPS_ITEM->number.value + 360.0, 360.0);
 		}
 		DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 		DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position;

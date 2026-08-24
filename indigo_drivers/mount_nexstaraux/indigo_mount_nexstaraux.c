@@ -600,7 +600,8 @@ static void mount_abort_motion_handler(indigo_device *device) {
 	//+ mount.MOUNT_ABORT_MOTION.on_change
 	if (MOUNT_ABORT_MOTION_ITEM->sw.value) {
 		MOUNT_ABORT_MOTION_ITEM->sw.value = false;
-		if (nexstaraux_stop(device)) {
+		unsigned char reply[16] = { 0 };
+		if (nexstaraux_command_24(device, APP, AZM, MC_MOVE_POS, 0, reply) && nexstaraux_command_24(device, APP, ALT, MC_MOVE_POS, 0, reply)) {
 			if (MOUNT_MOTION_WEST_ITEM->sw.value || MOUNT_MOTION_EAST_ITEM->sw.value) {
 				MOUNT_MOTION_WEST_ITEM->sw.value = MOUNT_MOTION_EAST_ITEM->sw.value = false;
 				MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;

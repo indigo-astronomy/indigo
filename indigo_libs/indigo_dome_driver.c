@@ -73,7 +73,7 @@ indigo_result indigo_dome_attach(indigo_device *device, const char* driver_name,
 			if (DOME_STEPS_PROPERTY == NULL) {
 				return INDIGO_FAILED;
 			}
-			indigo_init_number_item(DOME_STEPS_ITEM, DOME_STEPS_ITEM_NAME, "Relative move (steps/ms)", 0, 65535, 1, 0);
+			indigo_init_number_item(DOME_STEPS_ITEM, DOME_STEPS_ITEM_NAME, "Relative move (°)", 0, 180, 1, 0);
 			// -------------------------------------------------------------------------------- DOME_HORIZONTAL_COORDINATES
 			DOME_HORIZONTAL_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_MAIN_GROUP, "Absolute position", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 			if (DOME_HORIZONTAL_COORDINATES_PROPERTY == NULL) {
@@ -138,12 +138,12 @@ indigo_result indigo_dome_attach(indigo_device *device, const char* driver_name,
 			if (DOME_DIMENSION_PROPERTY == NULL) {
 				return INDIGO_FAILED;
 			}
-			indigo_init_number_item(DOME_RADIUS_ITEM, DOME_RADIUS_ITEM_NAME, "Dome radius (m)", 0.1, 50, 0, 0.1);
-			indigo_init_number_item(DOME_SHUTTER_WIDTH_ITEM, DOME_SHUTTER_WIDTH_ITEM_NAME, "Dome shutter width (m)", 0.1, 50, 0, 0.1);
+			indigo_init_number_item(DOME_RADIUS_ITEM, DOME_RADIUS_ITEM_NAME, "Dome radius (m)", 0.1, 50, 0, 0.25);
+			indigo_init_number_item(DOME_SHUTTER_WIDTH_ITEM, DOME_SHUTTER_WIDTH_ITEM_NAME, "Dome shutter width (m)", 0.1, 50, 0, 0.12);
 			indigo_init_number_item(DOME_MOUNT_PIVOT_OFFSET_NS_ITEM, DOME_MOUNT_PIVOT_OFFSET_NS_ITEM_NAME, "Mount Pivot Offset N/S (m, +N/-S)", -30, 30, 0, 0);
 			indigo_init_number_item(DOME_MOUNT_PIVOT_OFFSET_EW_ITEM, DOME_MOUNT_PIVOT_OFFSET_EW_ITEM_NAME, "Mount Pivot Offset E/W (m, +E/-W)", -30, 30, 0, 0);
 			indigo_init_number_item(DOME_MOUNT_PIVOT_VERTICAL_OFFSET_ITEM, DOME_MOUNT_PIVOT_VERTICAL_OFFSET_ITEM_NAME, "Mount Pivot Vertical Offset (m)", -10, 10, 0, 0);
-			indigo_init_number_item(DOME_MOUNT_PIVOT_OTA_OFFSET_ITEM, DOME_MOUNT_PIVOT_OTA_OFFSET_ITEM_NAME, "Optical axis offset from the RA axis (m)", 0, 10, 0, 0);
+			indigo_init_number_item(DOME_MOUNT_PIVOT_OTA_OFFSET_ITEM, DOME_MOUNT_PIVOT_OTA_OFFSET_ITEM_NAME, "Optical axis offset from the RA axis (m)", 0, 10, 0, 0.1);
 			// -------------------------------------------------------------------------------- DOME_GEOGRAPHIC_COORDINATES
 			DOME_GEOGRAPHIC_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, DOME_SITE_GROUP, "Location", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
 			if (DOME_GEOGRAPHIC_COORDINATES_PROPERTY == NULL) {
