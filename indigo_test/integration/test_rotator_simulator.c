@@ -168,12 +168,29 @@ static void simulator_maps_reversed_direction_positions(void) {
 	stop_connected_simulator(&rotator_simulator);
 }
 
+static void simulator_moves_across_zero_by_shortest_path(void) {
+	start_connected_simulator(&rotator_simulator);
+
+	double start_position = rotator_target_in_range(1);
+	double wrapped_target = rotator_target_in_range(359);
+	ASSERT_FALSE(isnan(start_position));
+	ASSERT_FALSE(isnan(wrapped_target));
+
+	assert_rotator_direction_is(ROTATOR_DIRECTION_NORMAL_ITEM_NAME);
+	assert_rotator_syncs_to(start_position);
+	assert_rotator_moves_to(wrapped_target);
+	assert_rotator_moves_to(start_position);
+
+	stop_connected_simulator(&rotator_simulator);
+}
+
 int main(void) {
 	const indigo_test_case tests[] = {
 		{ "driver_info_reports_simulator_metadata", driver_info_reports_simulator_metadata },
 		{ "simulator_exposes_expected_properties", simulator_exposes_expected_properties },
 		{ "simulator_passes_rotator_compliance_checks", simulator_passes_rotator_compliance_checks },
-		{ "simulator_maps_reversed_direction_positions", simulator_maps_reversed_direction_positions }
+		{ "simulator_maps_reversed_direction_positions", simulator_maps_reversed_direction_positions },
+		{ "simulator_moves_across_zero_by_shortest_path", simulator_moves_across_zero_by_shortest_path }
 	};
 	return indigo_run_tests("rotator simulator integration tests", tests, ARRAY_SIZE(tests));
 }
