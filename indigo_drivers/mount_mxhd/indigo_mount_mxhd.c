@@ -1213,13 +1213,13 @@ static void mount_abort_callback(indigo_device *device) {
 			}
 			if (was_unparking) {
 				PRIVATE_DATA->parked = false;
-				PRIVATE_DATA->tracking_enabled = true;
+				PRIVATE_DATA->tracking_enabled = false;
 				indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
 				MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, MOUNT_PARK_PROPERTY, "Unpark aborted");
-				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
+				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
 				MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, MOUNT_TRACKING_PROPERTY, "Unpark aborted, tracking active");
+				indigo_update_property(device, MOUNT_TRACKING_PROPERTY, "Unpark aborted, tracking stopped");
 				message = "Unpark aborted";
 			}
 			if (stop_tracking_after_slew) {

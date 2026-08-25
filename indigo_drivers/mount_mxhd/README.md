@@ -69,8 +69,7 @@ After aborting HOME/PARK/UNPARK this way, the driver blocks all motion-related c
 After this safety interval, the driver automatically re-enables motor excitation with `@ME1#`.
 If a motion-related command is requested after the safety interval but before the recovery callback runs, the driver re-enables motor excitation before that command.
 During the 90-second safety interval, the recovery state is shown as Busy in the INDIGO state properties.
-After a PARK or HOME abort, MX-HD tracking is treated as stopped.
-After an UNPARK abort, MX-HD tracking is treated as active.
+After a PARK, HOME or UNPARK abort, MX-HD tracking is treated as stopped.
 
 ## Status: Tested
 
