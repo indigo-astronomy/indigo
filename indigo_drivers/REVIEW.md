@@ -50,7 +50,7 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 | DRV-017 | High | `agent_mount/indigo_agent_mount.c:1840` | The refactor removed the old disabled-by-default `AGENT_DOME_SLAVING` and `AGENT_FIELD_DEROTATION` properties, then initialized the replacement `AGENT_PROCESS_FEATURES` items for dome slaving, derotation, and joystick control to `true`. Existing configurations saved under the old property names were no longer loaded into these new items, so upgrading could silently enable dome, rotator, and joystick-driven hardware behavior that was previously disabled. | Closed (fixed) |
 | DRV-018 | High | `agent_mount/indigo_agent_mount.c:521` | Mount park/unpark with dome slaving now sends `DOME_PARK` immediately after `MOUNT_PARK`, instead of waiting for the mount park state to complete successfully. If the mount park later fails or the process is aborted, dome/roof park motion has already been started and `abort_process()` only sends `MOUNT_ABORT_MOTION`, creating a hardware-safety regression. Preserve the previous sequencing or abort/guard dome motion explicitly. | Closed (fixed) |
 | DRV-019 | Medium | `ccd_ptp/indigo_ptp_olympus.c:696` | Olympus initialization logs a failed `CameraControlMode` switch and calls raw-USB recovery, but ignores missing confirmation and recovery failure before scheduling event polling and returning success. A disconnected, wedged, or wildcard-matched unsupported Olympus body can be reported connected even though remote capture and live view require PC-control mode. | Closed (fixed) |
-| DRV-020 | Medium | `agent_mount/indigo_agent_mount.c:1189` | Mount and rotator deselection can leave `AGENT_MOUNT_STATE_DOME_SLAVING` / `AGENT_MOUNT_STATE_FIELD_DEROTATION` reporting the previous state after the required device is gone. Clear the slaving lights when the mount is deselected, and clear field derotation when the rotator is deselected. | Open |
+| DRV-020 | Medium | `agent_mount/indigo_agent_mount.c:1189` | Mount and rotator deselection can leave `AGENT_MOUNT_STATE_DOME_SLAVING` / `AGENT_MOUNT_STATE_FIELD_DEROTATION` reporting the previous state after the required device is gone. Clear the slaving lights when the mount is deselected, and clear field derotation when the rotator is deselected. | Closed (fixed) |
 | DRV-021 | Medium | `agent_mount/indigo_agent_mount.c:1043` | The autonomous slaving path treats `DOME_HORIZONTAL_COORDINATES` / `ROTATOR_POSITION` `ALERT` as eligible for another command and then unconditionally reports the slaving light as `OK`, masking dome or rotator failures despite the state-light contract saying `ALERT` on error. Propagate or preserve alert state until the dependent device reports recovery. | Open |
 
 ## Finding Summaries
@@ -267,19 +267,17 @@ the switch is unconfirmed, recovery fails, or the ICA transport reports a direct
 failure, initialization returns `false` and the normal connection error path closes the
 PTP session instead of reporting the camera connected.
 
-### DRV-020 (Open)
+### DRV-020 (Closed — fixed)
 
-`FILTER_MOUNT_LIST` deselection resets only the mount operation lights
-(`SLEW`, `PARK`, `HOME`, and `TRACK`) before updating `AGENT_MOUNT_STATE`.
-It does not clear `DOME_SLAVING` or `FIELD_DEROTATION`, so a previous `OK` or
-`ALERT` slaving state can remain visible after no mount is selected and
-`handle_mount_change()` will no longer refresh it.
+`FILTER_MOUNT_LIST` deselection now clears both `DOME_SLAVING` and
+`FIELD_DEROTATION` along with the mount operation lights before updating
+`AGENT_MOUNT_STATE`, so no slaving state remains visible after the selected mount is
+removed.
 
-The rotator deselection branch has the same asymmetry for field derotation: it
-sets `selected_rotator_index = 0` and `rotator_position_state = INDIGO_IDLE_STATE`
-but leaves `AGENT_MOUNT_STATE_FIELD_DEROTATION_ITEM` unchanged. The dome deselection
-branch already clears `AGENT_MOUNT_STATE_DOME_SLAVING_ITEM`, so mirror that behavior
-for rotator deselection and clear both slaving lights on mount deselection.
+The rotator deselection branch now calls `set_slaving_lights()` for
+`FIELD_DEROTATION` after setting `selected_rotator_index = 0` and
+`rotator_position_state = INDIGO_IDLE_STATE`, mirroring the existing dome deselection
+cleanup for `DOME_SLAVING`.
 
 ### DRV-021 (Open)
 

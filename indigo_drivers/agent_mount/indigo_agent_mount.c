@@ -1186,7 +1186,7 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 			CLIENT_PRIVATE_DATA->mount_homing = CLIENT_PRIVATE_DATA->mount_homed = false;
 			CLIENT_PRIVATE_DATA->mount_state_defined = false;
 			CLIENT_PRIVATE_DATA->mount_eq_coordinates_state = INDIGO_IDLE_STATE;
-			AGENT_MOUNT_STATE_SLEW_ITEM->light.value = AGENT_MOUNT_STATE_PARK_ITEM->light.value = AGENT_MOUNT_STATE_HOME_ITEM->light.value = AGENT_MOUNT_STATE_TRACKING_ITEM->light.value = INDIGO_IDLE_STATE;
+			AGENT_MOUNT_STATE_SLEW_ITEM->light.value = AGENT_MOUNT_STATE_PARK_ITEM->light.value = AGENT_MOUNT_STATE_HOME_ITEM->light.value = AGENT_MOUNT_STATE_TRACKING_ITEM->light.value = AGENT_MOUNT_STATE_DOME_SLAVING_ITEM->light.value = AGENT_MOUNT_STATE_FIELD_DEROTATION_ITEM->light.value = INDIGO_IDLE_STATE;
 			indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
 			AGENT_MOUNT_FEATURES_CAN_SLEW_ITEM->sw.value = AGENT_MOUNT_FEATURES_CAN_SYNC_ITEM->sw.value = AGENT_MOUNT_FEATURES_CAN_PARK_ITEM->sw.value = AGENT_MOUNT_FEATURES_CAN_HOME_ITEM->sw.value = AGENT_MOUNT_FEATURES_CAN_TRACK_ITEM->sw.value = false;
 			indigo_update_property(device, AGENT_MOUNT_FEATURES_PROPERTY, NULL);
@@ -1755,6 +1755,7 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 			}
 			CLIENT_PRIVATE_DATA->selected_rotator_index = 0;
 			CLIENT_PRIVATE_DATA->rotator_position_state = INDIGO_IDLE_STATE;
+			set_slaving_lights(device, false, true, INDIGO_IDLE_STATE, INDIGO_IDLE_STATE);
 		}
 	} else if (!strcmp(property->name, ROTATOR_POSITION_PROPERTY_NAME)) {
 		indigo_property_state previous_state = CLIENT_PRIVATE_DATA->rotator_position_state;
