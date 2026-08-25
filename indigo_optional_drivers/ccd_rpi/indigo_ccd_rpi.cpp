@@ -1664,7 +1664,7 @@ static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_clie
 	assert(DEVICE_CONTEXT != NULL);
 	if (IS_CONNECTED) {
 
-		indigo_define_matching_property(RPI_AF_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(RPI_AF_PROPERTY);
 
 		if (X_CCD_ADVANCED_PROPERTY && indigo_property_match(X_CCD_ADVANCED_PROPERTY, property)) {
 			indigo_define_property(device, X_CCD_ADVANCED_PROPERTY, NULL);
