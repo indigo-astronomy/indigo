@@ -66,7 +66,8 @@ Some clients may keep the rejected motion or guide property shown in Alert/red s
 MX-HD HOME/PARK operations include an initial sequence which cannot be interrupted by the mount firmware.
 To implement Abort during these operations, the driver disables motor excitation.
 After aborting HOME/PARK/UNPARK this way, the driver blocks all motion-related commands for 90 seconds.
-After this safety interval, the driver re-enables motor excitation with `@ME1#` before the next motion-related command.
+After this safety interval, the driver automatically re-enables motor excitation with `@ME1#`.
+If a motion-related command is requested after the safety interval but before the recovery callback runs, the driver re-enables motor excitation before that command.
 During the 90-second safety interval, the recovery state is shown as Busy in the INDIGO state properties.
 After a PARK or HOME abort, MX-HD tracking is treated as stopped.
 After an UNPARK abort, MX-HD tracking is treated as active.

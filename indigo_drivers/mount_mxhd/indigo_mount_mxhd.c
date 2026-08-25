@@ -196,9 +196,8 @@ static void update_motor_recovery_property(indigo_device *device) {
 		MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, message);
 	} else {
-		MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Motor recovery ready");
-		clear_motor_recovery_alert(PRIVATE_DATA);
+		MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Motor recovery enabling");
 	}
 }
 
@@ -213,7 +212,16 @@ static void motor_recovery_ready_callback(indigo_device *device) {
 		schedule_motor_recovery_ready(device, remaining + 0.1);
 		return;
 	}
-	update_mount_state_property(device);
+	if (mxhd_send(device, "@ME1#")) {
+		PRIVATE_DATA->motor_recovery_until = 0;
+		clear_motor_recovery_alert(PRIVATE_DATA);
+		MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Motor recovery ready");
+		update_mount_state_property(device);
+	} else {
+		MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Motor recovery failed");
+	}
 }
 
 static void update_mount_state_property(indigo_device *device) {
@@ -1176,6 +1184,7 @@ static void mount_abort_callback(indigo_device *device) {
 		if (ok && home_or_park_motion) {
 			PRIVATE_DATA->motor_recovery_until = time(NULL) + MXHD_MOTOR_RECOVERY_SECONDS;
 			PRIVATE_DATA->motor_recovery_alert_count = 0;
+			schedule_motor_recovery_ready(device, MXHD_MOTOR_RECOVERY_SECONDS + 0.1);
 		}
 		const char *message = ok ? "Aborted" : "Abort failed";
 		MOUNT_ABORT_MOTION_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
