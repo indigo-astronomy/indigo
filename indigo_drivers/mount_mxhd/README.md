@@ -54,7 +54,9 @@ The driver therefore does not report HOME/PARK/UNPARK completion before this min
 
 MX-HD firmware starts sidereal tracking after power-on.
 The MX-HD tracking state is not queried from hardware on connection, and the driver does not stop or start tracking during connection.
-The INDIGO Tracking switch reflects the state last commanded or inferred by the driver; on a fresh driver start it is shown as stopped until a driver action such as UNPARK, slew, or explicit Tracking ON changes it.
+The INDIGO Tracking switch reflects the state last commanded or inferred by the driver, so immediately after connection it may not match the physical tracking state of the mount.
+On a fresh driver start it is shown as stopped until a driver action such as UNPARK, slew, or explicit Tracking ON changes it.
+To synchronize the displayed Tracking state with the mount after connection, click the opposite Tracking switch item once; e.g. if the mount is physically tracking but INDIGO shows Stopped, click Tracking ON.
 
 MX-HD does not report pier side through the supported protocol commands, so the driver hides the INDIGO side-of-pier property instead of inferring it from hour angle.
 
