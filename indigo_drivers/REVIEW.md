@@ -50,6 +50,8 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 | DRV-017 | High | `agent_mount/indigo_agent_mount.c:1840` | The refactor removed the old disabled-by-default `AGENT_DOME_SLAVING` and `AGENT_FIELD_DEROTATION` properties, then initialized the replacement `AGENT_PROCESS_FEATURES` items for dome slaving, derotation, and joystick control to `true`. Existing configurations saved under the old property names were no longer loaded into these new items, so upgrading could silently enable dome, rotator, and joystick-driven hardware behavior that was previously disabled. | Closed (fixed) |
 | DRV-018 | High | `agent_mount/indigo_agent_mount.c:521` | Mount park/unpark with dome slaving now sends `DOME_PARK` immediately after `MOUNT_PARK`, instead of waiting for the mount park state to complete successfully. If the mount park later fails or the process is aborted, dome/roof park motion has already been started and `abort_process()` only sends `MOUNT_ABORT_MOTION`, creating a hardware-safety regression. Preserve the previous sequencing or abort/guard dome motion explicitly. | Closed (fixed) |
 | DRV-019 | Medium | `ccd_ptp/indigo_ptp_olympus.c:696` | Olympus initialization logs a failed `CameraControlMode` switch and calls raw-USB recovery, but ignores missing confirmation and recovery failure before scheduling event polling and returning success. A disconnected, wedged, or wildcard-matched unsupported Olympus body can be reported connected even though remote capture and live view require PC-control mode. | Closed (fixed) |
+| DRV-020 | Medium | `agent_mount/indigo_agent_mount.c:1189` | Mount and rotator deselection can leave `AGENT_MOUNT_STATE_DOME_SLAVING` / `AGENT_MOUNT_STATE_FIELD_DEROTATION` reporting the previous state after the required device is gone. Clear the slaving lights when the mount is deselected, and clear field derotation when the rotator is deselected. | Open |
+| DRV-021 | Medium | `agent_mount/indigo_agent_mount.c:1043` | The autonomous slaving path treats `DOME_HORIZONTAL_COORDINATES` / `ROTATOR_POSITION` `ALERT` as eligible for another command and then unconditionally reports the slaving light as `OK`, masking dome or rotator failures despite the state-light contract saying `ALERT` on error. Propagate or preserve alert state until the dependent device reports recovery. | Open |
 
 ## Finding Summaries
 
@@ -265,6 +267,34 @@ the switch is unconfirmed, recovery fails, or the ICA transport reports a direct
 failure, initialization returns `false` and the normal connection error path closes the
 PTP session instead of reporting the camera connected.
 
+### DRV-020 (Open)
+
+`FILTER_MOUNT_LIST` deselection resets only the mount operation lights
+(`SLEW`, `PARK`, `HOME`, and `TRACK`) before updating `AGENT_MOUNT_STATE`.
+It does not clear `DOME_SLAVING` or `FIELD_DEROTATION`, so a previous `OK` or
+`ALERT` slaving state can remain visible after no mount is selected and
+`handle_mount_change()` will no longer refresh it.
+
+The rotator deselection branch has the same asymmetry for field derotation: it
+sets `selected_rotator_index = 0` and `rotator_position_state = INDIGO_IDLE_STATE`
+but leaves `AGENT_MOUNT_STATE_FIELD_DEROTATION_ITEM` unchanged. The dome deselection
+branch already clears `AGENT_MOUNT_STATE_DOME_SLAVING_ITEM`, so mirror that behavior
+for rotator deselection and clear both slaving lights on mount deselection.
+
+### DRV-021 (Open)
+
+The periodic `handle_mount_change()` slaving path only excludes dependent-device
+states that are `INDIGO_BUSY_STATE`. If `DOME_HORIZONTAL_COORDINATES` or
+`ROTATOR_POSITION` reports `INDIGO_ALERT_STATE` after an autonomous correction, the
+next mount/LST or rotator-state update can enter the same branch, issue another command,
+and set `AGENT_MOUNT_STATE_DOME_SLAVING_ITEM` or
+`AGENT_MOUNT_STATE_FIELD_DEROTATION_ITEM` to `INDIGO_OK_STATE` immediately.
+
+The explicit slew/sync finalizer can mark those lights `ALERT`, but the autonomous
+tracking path masks failures and conflicts with the helper comment that the lights are
+`ALERT` on error. Treat dependent `ALERT` states as slaving failures, or preserve the
+existing alert light until the dependent property reports `OK` again.
+
 ## Review Focus
 
 - Driver lifecycle: `INDIGO_DRIVER_INIT`, `INDIGO_DRIVER_SHUTDOWN`, and `INDIGO_DRIVER_INFO`.
@@ -289,3 +319,4 @@ PTP session instead of reporting the camera connected.
 | `017ba602857378e4aed489c065c76eacae15924c` | `017ba602857378e4aed489c065c76eacae15924c` | 2026-08-01 | Exhaustive scoped directory enumeration plus repeatable static scans over all 136 included top-level directories and 490 C-family files; recorded `DRV-011` through `DRV-015`. |
 | `d9b39b84e3780dca0c9e7cbb901b63a62586b106` | `afdd54618e5520c4983598c33b662c022962df7c` | 2026-08-18 | Requested review of the last two commits touching `agent_mount`; recorded `DRV-016` and `DRV-017`. |
 | `017ba602857378e4aed489c065c76eacae15924c` | `a18baada350fd21298fc602fd1751518cc8254ba` | 2026-08-22 | Focused review of Olympus/OM System support under `ccd_ptp`; recorded `DRV-019`. Did not advance the folder baseline because other `indigo_drivers` changes in this range were not reviewed. |
+| `017ba602857378e4aed489c065c76eacae15924c` | `f8b7086ebdd408c34366a8acdac27e6311103911` + working tree | 2026-08-25 | Focused review of `agent_mount/indigo_agent_mount.c` `AGENT_MOUNT_STATE_DOME_SLAVING` and `AGENT_MOUNT_STATE_FIELD_DEROTATION` usage; recorded `DRV-020` and `DRV-021`. Did not advance the folder baseline because the rest of `indigo_drivers` was not reviewed. |

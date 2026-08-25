@@ -1324,7 +1324,6 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 						handle_mount_change(device);
 						break;
 					}
-
 				}
 			} else {
 				CLIENT_PRIVATE_DATA->mount_tracking = false;
@@ -2241,23 +2240,15 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		bool was_derotating = AGENT_MOUNT_ENABLE_FIELD_DEROTATION_ITEM->sw.value;
 		indigo_property_copy_values(AGENT_PROCESS_FEATURES_PROPERTY, property, false);
 		if (AGENT_MOUNT_ENABLE_DOME_SLAVING_ITEM->sw.value != was_dome_slaving && INDIGO_FILTER_MOUNT_SELECTED && INDIGO_FILTER_DOME_SELECTED) {
-			indigo_send_message(device, IDLE_PROPERTY, AGENT_MOUNT_ENABLE_DOME_SLAVING_ITEM->sw.value ?
-				"Dome slaving is active" : "Dome slaving is inactive");
+			indigo_send_message(device, IDLE_PROPERTY, AGENT_MOUNT_ENABLE_DOME_SLAVING_ITEM->sw.value ? "Dome slaving is active" : "Dome slaving is inactive");
 		}
 		if (AGENT_MOUNT_ENABLE_FIELD_DEROTATION_ITEM->sw.value != was_derotating && INDIGO_FILTER_MOUNT_SELECTED && INDIGO_FILTER_ROTATOR_SELECTED) {
-			indigo_send_message(device, IDLE_PROPERTY, AGENT_MOUNT_ENABLE_FIELD_DEROTATION_ITEM->sw.value ?
-				"Field derotation is active" : "Field derotation is inactive");
+			indigo_send_message(device, IDLE_PROPERTY, AGENT_MOUNT_ENABLE_FIELD_DEROTATION_ITEM->sw.value ? "Field derotation is active" : "Field derotation is inactive");
 			if (AGENT_MOUNT_ENABLE_FIELD_DEROTATION_ITEM->sw.value) {
 				DEVICE_PRIVATE_DATA->initial_frame_rotation = DEVICE_PRIVATE_DATA->rotator_position - AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM->number.value;
 			}
 		}
-		set_slaving_lights(
-			device,
-			!AGENT_MOUNT_ENABLE_DOME_SLAVING_ITEM->sw.value,
-			!AGENT_MOUNT_ENABLE_FIELD_DEROTATION_ITEM->sw.value,
-			INDIGO_IDLE_STATE,
-			INDIGO_IDLE_STATE
-		);
+		set_slaving_lights(device, !AGENT_MOUNT_ENABLE_DOME_SLAVING_ITEM->sw.value, !AGENT_MOUNT_ENABLE_FIELD_DEROTATION_ITEM->sw.value, INDIGO_IDLE_STATE, INDIGO_IDLE_STATE);
 		AGENT_PROCESS_FEATURES_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_PROCESS_FEATURES_PROPERTY, NULL);
 		save_config(device);
