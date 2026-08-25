@@ -51,7 +51,7 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 | DRV-018 | High | `agent_mount/indigo_agent_mount.c:521` | Mount park/unpark with dome slaving now sends `DOME_PARK` immediately after `MOUNT_PARK`, instead of waiting for the mount park state to complete successfully. If the mount park later fails or the process is aborted, dome/roof park motion has already been started and `abort_process()` only sends `MOUNT_ABORT_MOTION`, creating a hardware-safety regression. Preserve the previous sequencing or abort/guard dome motion explicitly. | Closed (fixed) |
 | DRV-019 | Medium | `ccd_ptp/indigo_ptp_olympus.c:696` | Olympus initialization logs a failed `CameraControlMode` switch and calls raw-USB recovery, but ignores missing confirmation and recovery failure before scheduling event polling and returning success. A disconnected, wedged, or wildcard-matched unsupported Olympus body can be reported connected even though remote capture and live view require PC-control mode. | Closed (fixed) |
 | DRV-020 | Medium | `agent_mount/indigo_agent_mount.c:1189` | Mount and rotator deselection can leave `AGENT_MOUNT_STATE_DOME_SLAVING` / `AGENT_MOUNT_STATE_FIELD_DEROTATION` reporting the previous state after the required device is gone. Clear the slaving lights when the mount is deselected, and clear field derotation when the rotator is deselected. | Closed (fixed) |
-| DRV-021 | Medium | `agent_mount/indigo_agent_mount.c:1043` | The autonomous slaving path treats `DOME_HORIZONTAL_COORDINATES` / `ROTATOR_POSITION` `ALERT` as eligible for another command and then unconditionally reports the slaving light as `OK`, masking dome or rotator failures despite the state-light contract saying `ALERT` on error. Propagate or preserve alert state until the dependent device reports recovery. | Open |
+| DRV-021 | Medium | `agent_mount/indigo_agent_mount.c:1043` | The autonomous slaving path treats `DOME_HORIZONTAL_COORDINATES` / `ROTATOR_POSITION` `ALERT` as eligible for another command and then unconditionally reports the slaving light as `OK`, masking dome or rotator failures despite the state-light contract saying `ALERT` on error. Propagate or preserve alert state until the dependent device reports recovery. | Closed (fixed) |
 
 ## Finding Summaries
 
@@ -279,19 +279,17 @@ The rotator deselection branch now calls `set_slaving_lights()` for
 `rotator_position_state = INDIGO_IDLE_STATE`, mirroring the existing dome deselection
 cleanup for `DOME_SLAVING`.
 
-### DRV-021 (Open)
+### DRV-021 (Closed — fixed)
 
-The periodic `handle_mount_change()` slaving path only excludes dependent-device
-states that are `INDIGO_BUSY_STATE`. If `DOME_HORIZONTAL_COORDINATES` or
-`ROTATOR_POSITION` reports `INDIGO_ALERT_STATE` after an autonomous correction, the
-next mount/LST or rotator-state update can enter the same branch, issue another command,
-and set `AGENT_MOUNT_STATE_DOME_SLAVING_ITEM` or
-`AGENT_MOUNT_STATE_FIELD_DEROTATION_ITEM` to `INDIGO_OK_STATE` immediately.
+The periodic `handle_mount_change()` slaving path now checks dependent-device
+`INDIGO_ALERT_STATE` before issuing autonomous corrections. If
+`DOME_HORIZONTAL_COORDINATES` is alert, `AGENT_MOUNT_STATE_DOME_SLAVING_ITEM` is set
+to `INDIGO_ALERT_STATE` and no new dome azimuth command is sent from that pass.
 
-The explicit slew/sync finalizer can mark those lights `ALERT`, but the autonomous
-tracking path masks failures and conflicts with the helper comment that the lights are
-`ALERT` on error. Treat dependent `ALERT` states as slaving failures, or preserve the
-existing alert light until the dependent property reports `OK` again.
+The field derotation path now does the same for `ROTATOR_POSITION`: while the rotator
+position property is alert, `AGENT_MOUNT_STATE_FIELD_DEROTATION_ITEM` is set to
+`INDIGO_ALERT_STATE` and no autonomous derotation command is issued. The light is only
+returned to `OK` by the non-alert correction path.
 
 ## Review Focus
 

@@ -1041,31 +1041,39 @@ static void handle_mount_change(indigo_device *device) {
 	if (!FILTER_DEVICE_CONTEXT->running_process) {
 	// slave dome
 		if (AGENT_MOUNT_ENABLE_DOME_SLAVING_ITEM->sw.value && INDIGO_FILTER_DOME_SELECTED && INDIGO_FILTER_MOUNT_SELECTED && DEVICE_PRIVATE_DATA->dome_unparked && DEVICE_PRIVATE_DATA->mount_unparked && DEVICE_PRIVATE_DATA->mount_tracking) {
-			if (DEVICE_PRIVATE_DATA->dome_horizontal_coordinates_state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_BUSY_STATE) {
-				double az;
-				if (fix_dome_azimuth(device, ra, dec, DEVICE_PRIVATE_DATA->mount_side_of_pier, &az)) {
-					indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device->name, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, az);
+			if (DEVICE_PRIVATE_DATA->dome_horizontal_coordinates_state == INDIGO_ALERT_STATE) {
+				AGENT_MOUNT_STATE_DOME_SLAVING_ITEM->light.value = INDIGO_ALERT_STATE;
+			} else {
+				if (DEVICE_PRIVATE_DATA->dome_horizontal_coordinates_state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_BUSY_STATE) {
+					double az;
+					if (fix_dome_azimuth(device, ra, dec, DEVICE_PRIVATE_DATA->mount_side_of_pier, &az)) {
+						indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device->name, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, az);
+					}
 				}
+				AGENT_MOUNT_STATE_DOME_SLAVING_ITEM->light.value = INDIGO_OK_STATE;
 			}
-			AGENT_MOUNT_STATE_DOME_SLAVING_ITEM->light.value = INDIGO_OK_STATE;
 		} else {
 			AGENT_MOUNT_STATE_DOME_SLAVING_ITEM->light.value = INDIGO_IDLE_STATE;
 		}
 		indigo_update_property(device, AGENT_MOUNT_STATE_PROPERTY, NULL);
 		// derotate field
-		if (AGENT_MOUNT_ENABLE_FIELD_DEROTATION_ITEM->sw.value && INDIGO_FILTER_ROTATOR_SELECTED && INDIGO_FILTER_MOUNT_SELECTED && DEVICE_PRIVATE_DATA->rotator_position_state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->mount_unparked && DEVICE_PRIVATE_DATA->mount_tracking) {
-			double target_rotator_position = AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM->number.value + DEVICE_PRIVATE_DATA->initial_frame_rotation;
-			if (target_rotator_position < 0) {
-				target_rotator_position += 360;
-			} else if (target_rotator_position >= 360) {
-				target_rotator_position -= 360;
+		if (AGENT_MOUNT_ENABLE_FIELD_DEROTATION_ITEM->sw.value && INDIGO_FILTER_ROTATOR_SELECTED && INDIGO_FILTER_MOUNT_SELECTED && DEVICE_PRIVATE_DATA->mount_unparked && DEVICE_PRIVATE_DATA->mount_tracking) {
+			if (DEVICE_PRIVATE_DATA->rotator_position_state == INDIGO_ALERT_STATE) {
+				AGENT_MOUNT_STATE_FIELD_DEROTATION_ITEM->light.value = INDIGO_ALERT_STATE;
+			} else if (DEVICE_PRIVATE_DATA->rotator_position_state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_BUSY_STATE) {
+				double target_rotator_position = AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM->number.value + DEVICE_PRIVATE_DATA->initial_frame_rotation;
+				if (target_rotator_position < 0) {
+					target_rotator_position += 360;
+				} else if (target_rotator_position >= 360) {
+					target_rotator_position -= 360;
+				}
+				double rotation_diff = fabs(indigo_angle_difference(DEVICE_PRIVATE_DATA->rotator_position, target_rotator_position));
+				if (rotation_diff >= 0.005) {
+					indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_GOTO_ITEM_NAME, true);
+					indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device->name, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, target_rotator_position);
+				}
+				AGENT_MOUNT_STATE_FIELD_DEROTATION_ITEM->light.value = INDIGO_OK_STATE;
 			}
-			double rotation_diff = fabs(indigo_angle_difference(DEVICE_PRIVATE_DATA->rotator_position, target_rotator_position));
-			if (rotation_diff >= 0.005) {
-				indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_GOTO_ITEM_NAME, true);
-				indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device->name, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, target_rotator_position);
-			}
-			AGENT_MOUNT_STATE_FIELD_DEROTATION_ITEM->light.value = INDIGO_OK_STATE;
 		} else {
 			AGENT_MOUNT_STATE_FIELD_DEROTATION_ITEM->light.value = INDIGO_IDLE_STATE;
 		}
