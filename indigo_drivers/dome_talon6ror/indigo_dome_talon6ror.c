@@ -204,12 +204,10 @@ static bool talon6ror_open(indigo_device *device) {
 			break;
 		}
 		if (result < 0) {
-			pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 			return false;
 		}
 		result = read(PRIVATE_DATA->handle, &c, 1);
 		if (result < 1) {
-			pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 			return false;
 		}
 		tv.tv_sec = 0;
