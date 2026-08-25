@@ -52,8 +52,11 @@ Unlike HOME, the driver does not send `@FD0#` after UNPARK, so the MX-HD siderea
 HOME and UNPARK take at least about 15 seconds on real MX-HD hardware, and PARK takes longer.
 The driver therefore does not report HOME/PARK/UNPARK completion before this minimum interval has elapsed.
 
-The MX-HD tracking state is not queried from hardware on connection.
+MX-HD firmware starts sidereal tracking after power-on.
+The MX-HD tracking state is not queried from hardware on connection, and the driver does not stop or start tracking during connection.
 The INDIGO Tracking switch reflects the state last commanded or inferred by the driver; on a fresh driver start it is shown as stopped until a driver action such as UNPARK, slew, or explicit Tracking ON changes it.
+
+MX-HD does not report pier side through the supported protocol commands, so the driver hides the INDIGO side-of-pier property instead of inferring it from hour angle.
 
 While the mount is parked, the driver rejects motion, slew, sync, tracking-rate changes and pulse-guide requests with an INDIGO Alert state and a `Mount is parked!` message. UNPARK remains available.
 Some clients may keep the rejected motion or guide property shown in Alert/red state until the next valid update of that property; this indicates the last request was rejected and does not mean the mount is still moving or guiding.

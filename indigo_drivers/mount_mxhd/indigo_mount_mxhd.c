@@ -80,18 +80,22 @@ static bool mxhd_send(indigo_device *device, const char *command);
 static bool set_tracking(indigo_device *device, bool enabled);
 static void update_mount_state_property(indigo_device *device);
 static void motor_recovery_ready_callback(indigo_device *device);
+static void guider_guide_ra_callback(indigo_device *device, void *data);
+static void guider_guide_dec_callback(indigo_device *device, void *data);
+static void guider_guide_ra_finish_callback(indigo_device *device, void *data);
+static void guider_guide_dec_finish_callback(indigo_device *device, void *data);
 
-static void add_motor_recovery_alert(indigo_device *device, indigo_property *property) {
-	for (int index = 0; index < private_data->motor_recovery_alert_count; index++) {
-		if (private_data->motor_recovery_alert_properties[index] == property) {
-			private_data->motor_recovery_alert_devices[index] = device;
+static void add_motor_recovery_alert(mxhd_private_data *data, indigo_device *device, indigo_property *property) {
+	for (int index = 0; index < data->motor_recovery_alert_count; index++) {
+		if (data->motor_recovery_alert_properties[index] == property) {
+			data->motor_recovery_alert_devices[index] = device;
 			return;
 		}
 	}
-	if (private_data->motor_recovery_alert_count < MXHD_MOTOR_RECOVERY_ALERTS) {
-		int index = private_data->motor_recovery_alert_count++;
-		private_data->motor_recovery_alert_devices[index] = device;
-		private_data->motor_recovery_alert_properties[index] = property;
+	if (data->motor_recovery_alert_count < MXHD_MOTOR_RECOVERY_ALERTS) {
+		int index = data->motor_recovery_alert_count++;
+		data->motor_recovery_alert_devices[index] = device;
+		data->motor_recovery_alert_properties[index] = property;
 	}
 }
 
@@ -113,17 +117,23 @@ static void clear_motor_recovery_alert_items(indigo_property *property) {
 	}
 }
 
-static void clear_motor_recovery_alert(void) {
-	for (int index = 0; index < private_data->motor_recovery_alert_count; index++) {
-		indigo_device *device = private_data->motor_recovery_alert_devices[index];
-		indigo_property *property = private_data->motor_recovery_alert_properties[index];
+static void clear_motor_recovery_alert(mxhd_private_data *data) {
+	for (int index = 0; index < data->motor_recovery_alert_count; index++) {
+		indigo_device *device = data->motor_recovery_alert_devices[index];
+		indigo_property *property = data->motor_recovery_alert_properties[index];
 		if (device != NULL && property != NULL && property->state == INDIGO_ALERT_STATE) {
 			clear_motor_recovery_alert_items(property);
 			property->state = INDIGO_OK_STATE;
 			indigo_update_property(device, property, "Motor recovery ready");
 		}
 	}
-	private_data->motor_recovery_alert_count = 0;
+	data->motor_recovery_alert_count = 0;
+}
+
+static void schedule_motor_recovery_ready(indigo_device *device, double delay) {
+	indigo_device *master_device = device->master_device != NULL ? device->master_device : device;
+	indigo_cancel_pending_handler(master_device, motor_recovery_ready_callback);
+	indigo_execute_handler_in(master_device, delay, motor_recovery_ready_callback);
 }
 
 static bool ensure_motor_recovery(indigo_device *device, indigo_property *property) {
@@ -136,15 +146,34 @@ static bool ensure_motor_recovery(indigo_device *device, indigo_property *proper
 		char message[128];
 		snprintf(message, sizeof(message), "Motor recovery after abort, wait %.0f s", remaining);
 		property->state = INDIGO_ALERT_STATE;
-		add_motor_recovery_alert(device, property);
+		add_motor_recovery_alert(PRIVATE_DATA, device, property);
 		indigo_update_property(device, property, message);
-		indigo_execute_handler_in(device->master_device, remaining + 0.1, motor_recovery_ready_callback);
+		schedule_motor_recovery_ready(device, remaining + 0.1);
+		return false;
+	}
+	return true;
+}
+
+static bool recover_motor_if_needed(indigo_device *device, indigo_property *property) {
+	if (PRIVATE_DATA->motor_recovery_until == 0) {
+		return true;
+	}
+	time_t now = time(NULL);
+	double remaining = difftime(PRIVATE_DATA->motor_recovery_until, now);
+	if (remaining > 0) {
+		char message[128];
+		snprintf(message, sizeof(message), "Motor recovery after abort, wait %.0f s", remaining);
+		property->state = INDIGO_ALERT_STATE;
+		add_motor_recovery_alert(PRIVATE_DATA, device, property);
+		indigo_update_property(device, property, message);
+		schedule_motor_recovery_ready(device, remaining + 0.1);
 		return false;
 	}
 	if (mxhd_send(device, "@ME1#")) {
 		PRIVATE_DATA->motor_recovery_until = 0;
-		clear_motor_recovery_alert();
-		update_mount_state_property(device);
+		indigo_cancel_pending_handler(device->master_device != NULL ? device->master_device : device, motor_recovery_ready_callback);
+		clear_motor_recovery_alert(PRIVATE_DATA);
+		update_mount_state_property(device->master_device != NULL ? device->master_device : device);
 		return true;
 	}
 	property->state = INDIGO_ALERT_STATE;
@@ -169,19 +198,19 @@ static void update_motor_recovery_property(indigo_device *device) {
 	} else {
 		MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Motor recovery ready");
-		clear_motor_recovery_alert();
+		clear_motor_recovery_alert(PRIVATE_DATA);
 	}
 }
 
 static void motor_recovery_ready_callback(indigo_device *device) {
 	if (PRIVATE_DATA->motor_recovery_until == 0) {
-		clear_motor_recovery_alert();
+		clear_motor_recovery_alert(PRIVATE_DATA);
 		update_mount_state_property(device);
 		return;
 	}
 	double remaining = difftime(PRIVATE_DATA->motor_recovery_until, time(NULL));
 	if (remaining > 0) {
-		indigo_execute_handler_in(device, remaining + 0.1, motor_recovery_ready_callback);
+		schedule_motor_recovery_ready(device, remaining + 0.1);
 		return;
 	}
 	update_mount_state_property(device);
@@ -272,14 +301,6 @@ static double normalize_hours(double value) {
 		value += 24;
 	}
 	while (value >= 24) {
-		value -= 24;
-	}
-	return value;
-}
-
-static double normalize_signed_hours(double value) {
-	value = normalize_hours(value);
-	if (value >= 12) {
 		value -= 24;
 	}
 	return value;
@@ -582,19 +603,6 @@ static bool mxhd_apply_utc(indigo_device *device) {
 	return mxhd_query_ack(device, command, &ack, MXHD_LONG_TIMEOUT) && ack == '1';
 }
 
-static void update_pier_side(indigo_device *device, double ra) {
-	double longitude = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value;
-	time_t utc = indigo_get_mount_utc(device);
-	double lst = indigo_lst(&utc, longitude);
-	double ha = normalize_signed_hours(lst - ra);
-	if (fabs(ha) < (1.0 / 60.0)) {
-		return;
-	}
-	indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, ha > 0 ? MOUNT_SIDE_OF_PIER_EAST_ITEM : MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
-	MOUNT_SIDE_OF_PIER_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
-}
-
 static void decode_status(indigo_device *device, uint8_t b1, uint8_t b2, uint8_t b3) {
 	(void)b1;
 	(void)b2;
@@ -727,7 +735,6 @@ static void position_timer_callback(indigo_device *device) {
 		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = j2k_dec;
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = moving ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
 		indigo_update_coordinates(device, moving ? "Mount is moving" : NULL);
-		update_pier_side(device, ra);
 	} else if (moving) {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_coordinates(device, "Mount is moving");
@@ -753,11 +760,6 @@ static bool mxhd_open(indigo_device *device) {
 	for (int attempt = 0; attempt < 3; attempt++) {
 		if (mxhd_read_status(device, &b1, &b2, &b3)) {
 			decode_status(device, b1, b2, b3);
-			if (!mxhd_send(device, "@FD0#")) {
-				indigo_uni_close(&PRIVATE_DATA->handle);
-				return false;
-			}
-			PRIVATE_DATA->tracking_enabled = false;
 			return true;
 		}
 		indigo_usleep(200000);
@@ -774,6 +776,41 @@ static void mxhd_close(indigo_device *device) {
 	}
 }
 
+static void reset_private_state(indigo_device *device) {
+	PRIVATE_DATA->tracking_enabled = false;
+	PRIVATE_DATA->parked = false;
+	PRIVATE_DATA->parking = false;
+	PRIVATE_DATA->going_home = false;
+	PRIVATE_DATA->unparking = false;
+	PRIVATE_DATA->stop_drive_after_home = false;
+	PRIVATE_DATA->home_reached = false;
+	PRIVATE_DATA->homing = false;
+	PRIVATE_DATA->slewing = false;
+	PRIVATE_DATA->stop_tracking_after_slew = false;
+	PRIVATE_DATA->slew_started = 0;
+	PRIVATE_DATA->park_home_started = 0;
+	PRIVATE_DATA->motor_recovery_until = 0;
+	PRIVATE_DATA->motor_recovery_alert_count = 0;
+	indigo_cancel_pending_handler(device->master_device != NULL ? device->master_device : device, motor_recovery_ready_callback);
+	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
+	MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
+	MOUNT_HOME_ITEM->sw.value = false;
+	MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
+	MOUNT_ABORT_MOTION_ITEM->sw.value = false;
+	MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
+	MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
+	MOUNT_SLEW_RATE_PROPERTY->state = INDIGO_OK_STATE;
+	MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_OK_STATE;
+	MOUNT_MOTION_NORTH_ITEM->sw.value = false;
+	MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
+	MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
+	MOUNT_MOTION_EAST_ITEM->sw.value = false;
+	MOUNT_MOTION_WEST_ITEM->sw.value = false;
+	MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
+}
+
 static void mount_connect_callback(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool result = true;
@@ -782,9 +819,6 @@ static void mount_connect_callback(indigo_device *device) {
 		}
 		if (result) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			PRIVATE_DATA->tracking_enabled = false;
-			indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
-			update_tracking_property(device, NULL);
 			mxhd_update_mount_info(device);
 			double latitude = 0, longitude = 0;
 			if (mxhd_query_site(device, &latitude, &longitude)) {
@@ -809,6 +843,7 @@ static void mount_connect_callback(indigo_device *device) {
 			indigo_execute_handler(device, position_timer_callback);
 		} else {
 			PRIVATE_DATA->device_count--;
+			reset_private_state(device);
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
@@ -816,6 +851,7 @@ static void mount_connect_callback(indigo_device *device) {
 		indigo_cancel_pending_handlers(device);
 		if (PRIVATE_DATA->device_count > 0 && --PRIVATE_DATA->device_count == 0) {
 			mxhd_close(device);
+			reset_private_state(device);
 		}
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
@@ -843,8 +879,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
 		MOUNT_PARK_PROPERTY->hidden = false;
 		MOUNT_HOME_PROPERTY->hidden = false;
-		MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
-		MOUNT_SIDE_OF_PIER_PROPERTY->perm = INDIGO_RO_PERM;
+		MOUNT_SIDE_OF_PIER_PROPERTY->hidden = true;
 		MOUNT_STATE_PROPERTY->hidden = false;
 		MOUNT_TRACK_RATE_PROPERTY->count = 3;
 		MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
@@ -948,6 +983,11 @@ static void mount_set_host_time_callback(indigo_device *device) {
 }
 
 static void mount_eq_coords_callback(indigo_device *device) {
+	if (!recover_motor_if_needed(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY)) {
+		indigo_update_coordinates(device, "Motor recovery failed");
+		update_mount_state_property(device);
+		return;
+	}
 	double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
 	double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
 	double mount_ra = ra;
@@ -999,6 +1039,10 @@ static void mount_eq_coords_callback(indigo_device *device) {
 }
 
 static void mount_park_callback(indigo_device *device) {
+	if (!recover_motor_if_needed(device, MOUNT_PARK_PROPERTY)) {
+		update_mount_state_property(device);
+		return;
+	}
 	if (MOUNT_PARK_PARKED_ITEM->sw.value) {
 		if (enable_motion_and_send(device, "@Hm#")) {
 			PRIVATE_DATA->parking = true;
@@ -1032,6 +1076,10 @@ static void mount_park_callback(indigo_device *device) {
 }
 
 static void mount_home_callback(indigo_device *device) {
+	if (!recover_motor_if_needed(device, MOUNT_HOME_PROPERTY)) {
+		update_mount_state_property(device);
+		return;
+	}
 	if (MOUNT_HOME_ITEM->sw.value) {
 		MOUNT_HOME_ITEM->sw.value = false;
 		if (enable_motion_and_send(device, "@OG#")) {
@@ -1052,7 +1100,7 @@ static void mount_home_callback(indigo_device *device) {
 }
 
 static void mount_slew_rate_callback(indigo_device *device) {
-	if (set_slew_rate(device)) {
+	if (recover_motor_if_needed(device, MOUNT_SLEW_RATE_PROPERTY) && set_slew_rate(device)) {
 		MOUNT_SLEW_RATE_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
 		MOUNT_SLEW_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -1062,7 +1110,7 @@ static void mount_slew_rate_callback(indigo_device *device) {
 
 static void mount_tracking_callback(indigo_device *device) {
 	PRIVATE_DATA->tracking_enabled = MOUNT_TRACKING_ON_ITEM->sw.value;
-	if (set_tracking(device, PRIVATE_DATA->tracking_enabled)) {
+	if (recover_motor_if_needed(device, MOUNT_TRACKING_PROPERTY) && set_tracking(device, PRIVATE_DATA->tracking_enabled)) {
 		MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
 		MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -1072,7 +1120,7 @@ static void mount_tracking_callback(indigo_device *device) {
 }
 
 static void mount_track_rate_callback(indigo_device *device) {
-	if (set_track_rate(device)) {
+	if (recover_motor_if_needed(device, MOUNT_TRACK_RATE_PROPERTY) && set_track_rate(device)) {
 		MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
 		MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -1081,7 +1129,7 @@ static void mount_track_rate_callback(indigo_device *device) {
 }
 
 static void mount_motion_dec_callback(indigo_device *device) {
-	if (send_motion(device, MOUNT_MOTION_DEC_PROPERTY)) {
+	if (recover_motor_if_needed(device, MOUNT_MOTION_DEC_PROPERTY) && send_motion(device, MOUNT_MOTION_DEC_PROPERTY)) {
 		if (MOUNT_MOTION_NORTH_ITEM->sw.value || MOUNT_MOTION_SOUTH_ITEM->sw.value) {
 			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
 		} else {
@@ -1094,7 +1142,7 @@ static void mount_motion_dec_callback(indigo_device *device) {
 }
 
 static void mount_motion_ra_callback(indigo_device *device) {
-	if (send_motion(device, MOUNT_MOTION_RA_PROPERTY)) {
+	if (recover_motor_if_needed(device, MOUNT_MOTION_RA_PROPERTY) && send_motion(device, MOUNT_MOTION_RA_PROPERTY)) {
 		if (MOUNT_MOTION_EAST_ITEM->sw.value || MOUNT_MOTION_WEST_ITEM->sw.value) {
 			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_BUSY_STATE;
 		} else {
@@ -1335,7 +1383,7 @@ static bool stop_guide_dec(indigo_device *device) {
 	return mxhd_send(device, ":Qn#") && mxhd_send(device, ":Qs#");
 }
 
-static void guider_guide_ra_finish_callback(indigo_device *device) {
+static void guider_guide_ra_finish_handler(indigo_device *device) {
 	bool ok = stop_guide_ra(device);
 	GUIDER_GUIDE_EAST_ITEM->number.value = 0;
 	GUIDER_GUIDE_WEST_ITEM->number.value = 0;
@@ -1343,12 +1391,33 @@ static void guider_guide_ra_finish_callback(indigo_device *device) {
 	indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 }
 
-static void guider_guide_dec_finish_callback(indigo_device *device) {
+static void guider_guide_ra_finish_callback(indigo_device *device, void *data) {
+	(void)data;
+	guider_guide_ra_finish_handler(device);
+}
+
+static void guider_guide_dec_finish_handler(indigo_device *device) {
 	bool ok = stop_guide_dec(device);
 	GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
 	GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
 	GUIDER_GUIDE_DEC_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 	indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+}
+
+static void guider_guide_dec_finish_callback(indigo_device *device, void *data) {
+	(void)data;
+	guider_guide_dec_finish_handler(device);
+}
+
+static void reset_guider_pulses(indigo_device *device, const char *message) {
+	GUIDER_GUIDE_EAST_ITEM->number.value = 0;
+	GUIDER_GUIDE_WEST_ITEM->number.value = 0;
+	GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, message);
+	GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
+	GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
+	GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, message);
 }
 
 static indigo_result guider_attach(indigo_device *device) {
@@ -1362,7 +1431,7 @@ static indigo_result guider_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
-static void guider_connect_callback(indigo_device *device) {
+static void guider_connect_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool result = true;
 		if (PRIVATE_DATA->device_count++ == 0) {
@@ -1372,20 +1441,39 @@ static void guider_connect_callback(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			PRIVATE_DATA->device_count--;
+			reset_private_state(device->master_device);
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
+		indigo_cancel_pending_handler(device, (indigo_timer_callback)guider_guide_ra_callback);
+		indigo_cancel_pending_handler(device, (indigo_timer_callback)guider_guide_dec_callback);
+		indigo_cancel_pending_handler(device, (indigo_timer_callback)guider_guide_ra_finish_callback);
+		indigo_cancel_pending_handler(device, (indigo_timer_callback)guider_guide_dec_finish_callback);
+		if (PRIVATE_DATA->handle != NULL) {
+			(void)stop_guide_ra(device);
+			(void)stop_guide_dec(device);
+		}
+		reset_guider_pulses(device, "Guider disconnected");
 		if (PRIVATE_DATA->device_count > 0 && --PRIVATE_DATA->device_count == 0) {
 			mxhd_close(device->master_device);
+			reset_private_state(device->master_device);
 		}
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
 }
 
-static void guider_guide_ra_callback(indigo_device *device) {
+static void guider_connect_callback(indigo_device *device, void *data) {
+	(void)data;
+	guider_connect_handler(device);
+}
+
+static void guider_guide_ra_handler(indigo_device *device) {
+	if (!recover_motor_if_needed(device, GUIDER_GUIDE_RA_PROPERTY)) {
+		return;
+	}
 	const char *command = NULL;
 	double duration = 0;
 	if (GUIDER_GUIDE_EAST_ITEM->number.value > 0) {
@@ -1396,18 +1484,26 @@ static void guider_guide_ra_callback(indigo_device *device) {
 		duration = GUIDER_GUIDE_WEST_ITEM->number.value;
 	}
 	if (command == NULL) {
-		guider_guide_ra_finish_callback(device);
+		guider_guide_ra_finish_handler(device);
 	} else if (mxhd_send(device, command)) {
 		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
-		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT, duration / 1000.0, guider_guide_ra_finish_callback);
+		indigo_execute_priority_handler_with_data_in(device, INDIGO_TASK_PRIORITY_URGENT, duration / 1000.0, guider_guide_ra_finish_callback, NULL);
 	} else {
 		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 	}
 }
 
-static void guider_guide_dec_callback(indigo_device *device) {
+static void guider_guide_ra_callback(indigo_device *device, void *data) {
+	(void)data;
+	guider_guide_ra_handler(device);
+}
+
+static void guider_guide_dec_handler(indigo_device *device) {
+	if (!recover_motor_if_needed(device, GUIDER_GUIDE_DEC_PROPERTY)) {
+		return;
+	}
 	const char *command = NULL;
 	double duration = 0;
 	if (GUIDER_GUIDE_NORTH_ITEM->number.value > 0) {
@@ -1418,15 +1514,20 @@ static void guider_guide_dec_callback(indigo_device *device) {
 		duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
 	}
 	if (command == NULL) {
-		guider_guide_dec_finish_callback(device);
+		guider_guide_dec_finish_handler(device);
 	} else if (mxhd_send(device, command)) {
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
-		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT, duration / 1000.0, guider_guide_dec_finish_callback);
+		indigo_execute_priority_handler_with_data_in(device, INDIGO_TASK_PRIORITY_URGENT, duration / 1000.0, guider_guide_dec_finish_callback, NULL);
 	} else {
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 	}
+}
+
+static void guider_guide_dec_callback(indigo_device *device, void *data) {
+	(void)data;
+	guider_guide_dec_handler(device);
 }
 
 static indigo_result guider_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
@@ -1440,7 +1541,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		indigo_execute_handler(device, guider_connect_callback);
+		indigo_execute_handler_with_data(device, guider_connect_callback, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_RA_PROPERTY, property)) {
 		if (PRIVATE_DATA->parked) {
@@ -1457,7 +1558,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
 		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
-		indigo_execute_priority_handler(device, INDIGO_TASK_PRIORITY_URGENT, guider_guide_ra_callback);
+		indigo_execute_priority_handler_with_data(device, INDIGO_TASK_PRIORITY_URGENT, guider_guide_ra_callback, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_DEC_PROPERTY, property)) {
 		if (PRIVATE_DATA->parked) {
@@ -1474,7 +1575,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
-		indigo_execute_priority_handler(device, INDIGO_TASK_PRIORITY_URGENT, guider_guide_dec_callback);
+		indigo_execute_priority_handler_with_data(device, INDIGO_TASK_PRIORITY_URGENT, guider_guide_dec_callback, NULL);
 		return INDIGO_OK;
 	}
 	return indigo_guider_change_property(device, client, property);
@@ -1484,7 +1585,7 @@ static indigo_result guider_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (IS_CONNECTED) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-		guider_connect_callback(device);
+		guider_connect_handler(device);
 	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_guider_detach(device);
