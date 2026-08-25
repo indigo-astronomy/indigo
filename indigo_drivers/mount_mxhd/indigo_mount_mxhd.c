@@ -1183,21 +1183,34 @@ static void mount_abort_callback(indigo_device *device) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 			if (was_parking) {
 				PRIVATE_DATA->parked = false;
+				PRIVATE_DATA->tracking_enabled = false;
 				indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
 				MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, MOUNT_PARK_PROPERTY, "Park aborted");
+				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
+				MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, MOUNT_TRACKING_PROPERTY, "Park aborted, tracking stopped");
 				message = "Park aborted";
 			}
 			if (was_going_home) {
+				PRIVATE_DATA->tracking_enabled = true;
+				MOUNT_HOME_ITEM->sw.value = false;
 				MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, MOUNT_HOME_PROPERTY, "Home aborted");
+				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
+				MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, MOUNT_TRACKING_PROPERTY, "Home aborted, tracking active");
 				message = "Home aborted";
 			}
 			if (was_unparking) {
 				PRIVATE_DATA->parked = false;
+				PRIVATE_DATA->tracking_enabled = true;
 				indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
 				MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, MOUNT_PARK_PROPERTY, "Unpark aborted");
+				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
+				MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, MOUNT_TRACKING_PROPERTY, "Unpark aborted, tracking active");
 				message = "Unpark aborted";
 			}
 			if (stop_tracking_after_slew) {
