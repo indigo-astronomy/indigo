@@ -997,6 +997,9 @@ static void handle_dome_connect_property(indigo_device *device) {
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, false);
 					lunatico_close(device);
 				}
+			} else {
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, false);
 			}
 		}
 	} else {
