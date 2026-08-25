@@ -361,14 +361,12 @@ bool ptp_olympus_handle_event(indigo_device *device, ptp_event_code code, uint32
 }
 
 #ifndef USE_ICA_TRANSPORT
-static bool ptp_olympus_camera_control_mode_event(ptp_container *event, int length) {
-	if (event->code != ptp_event_olympus_DevicePropChanged && event->code != ptp_event_olympus_DevicePropChangedLegacy) {
-		return false;
-	}
-	if (length >= PTP_CONTAINER_COMMAND_SIZE(1) && event->payload.params[0] != ptp_property_olympus_CameraControlMode) {
-		return false;
-	}
-	return true;
+static bool ptp_olympus_camera_control_mode_event(ptp_container *event) {
+	// the OM-1 never sends a d052-parameterized event for the mode switch: the
+	// transition is confirmed by C108 [d121, 0f, 01] ~1.5-3s after the write
+	// (hardware-verified, other property changes like d084 may accompany it),
+	// so any property-change event in this window counts as the confirmation
+	return event->code == ptp_event_olympus_DevicePropChanged || event->code == ptp_event_olympus_DevicePropChangedLegacy;
 }
 
 static bool ptp_olympus_device_reset(indigo_device *device) {
@@ -734,7 +732,7 @@ bool ptp_olympus_initialise(indigo_device *device) {
 					continue;
 				}
 				PTP_DUMP_CONTAINER(&event);
-				if (ptp_olympus_camera_control_mode_event(&event, length)) {
+				if (ptp_olympus_camera_control_mode_event(&event)) {
 					confirmed = true;
 				}
 				ptp_olympus_handle_event(device, event.code, event.payload.params);
@@ -745,6 +743,10 @@ bool ptp_olympus_initialise(indigo_device *device) {
 			// recovery already confirm the switch
 			if (!confirmed) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CameraControlMode switch was not confirmed");
+				// the write may still have been acted on and its dropped response
+				// wedges the bulk pipe - reset best-effort so a retry does not
+				// start against a dead endpoint
+				ptp_olympus_recover(device);
 				return false;
 			}
 			if (!ptp_olympus_recover(device)) {
