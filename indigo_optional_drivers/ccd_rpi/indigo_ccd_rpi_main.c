@@ -30,7 +30,7 @@ int main(int argc, const char *argv[]) {
   indigo_main_argc = argc;
   indigo_main_argv = argv;
 
-  indigo_client *protocol_adapter = indigo_xml_device_adapter(0, 1);
+  indigo_client *protocol_adapter = indigo_xml_device_adapter(indigo_stdin_handle, indigo_stdout_handle);
   indigo_enable_blob_mode_record *record =
       (indigo_enable_blob_mode_record *)malloc(
           sizeof(indigo_enable_blob_mode_record));
