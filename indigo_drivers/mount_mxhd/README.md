@@ -68,8 +68,8 @@ To implement Abort during these operations, the driver disables motor excitation
 After aborting HOME/PARK/UNPARK this way, the driver blocks all motion-related commands for 90 seconds.
 After this safety interval, the driver re-enables motor excitation with `@ME1#` before the next motion-related command.
 During the 90-second safety interval, the recovery state is shown as Busy in the INDIGO state properties.
-After a PARK abort, MX-HD tracking is treated as stopped.
-After a HOME or UNPARK abort, MX-HD tracking is treated as active.
+After a PARK or HOME abort, MX-HD tracking is treated as stopped.
+After an UNPARK abort, MX-HD tracking is treated as active.
 
 ## Status: Tested
 
