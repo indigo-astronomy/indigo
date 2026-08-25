@@ -57,7 +57,6 @@ $(BUILD_SHARE)/$(DRIVER_METADATA): $(DRIVER_SO)
 
 install: all
 	install -m 0644 $(DRIVER_SO) $(INSTALL_LIB)
-	install -m 0644 $(BUILD_DRIVERS)/$(DRIVER_NAME).a $(INSTALL_LIB)
 	install $(BUILD_DRIVERS)/$(DRIVER_NAME) $(INSTALL_BIN)
 	$(BUILD_BIN)/indigo_driver_metadata $(DRIVER_SO) >$(INSTALL_SHARE)/$(DRIVER_METADATA)
 
