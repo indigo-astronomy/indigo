@@ -151,8 +151,10 @@
 #define AGENT_MOUNT_FEATURES_CAN_TRACK_ITEM						(AGENT_MOUNT_FEATURES_PROPERTY->items+4)
 
 #define AGENT_DOME_FEATURES_PROPERTY									(DEVICE_PRIVATE_DATA->agent_dome_features_property)
-#define AGENT_DOME_FEATURES_CAN_PARK_ITEM							(AGENT_DOME_FEATURES_PROPERTY->items+0)
-#define AGENT_DOME_FEATURES_CAN_OPEN_ITEM							(AGENT_DOME_FEATURES_PROPERTY->items+1)
+#define AGENT_DOME_FEATURES_CAN_SLEW_ITEM							(AGENT_DOME_FEATURES_PROPERTY->items+0)
+#define AGENT_DOME_FEATURES_CAN_SYNC_ITEM							(AGENT_DOME_FEATURES_PROPERTY->items+1)
+#define AGENT_DOME_FEATURES_CAN_PARK_ITEM							(AGENT_DOME_FEATURES_PROPERTY->items+2)
+#define AGENT_DOME_FEATURES_CAN_OPEN_ITEM							(AGENT_DOME_FEATURES_PROPERTY->items+3)
 
 typedef struct {
 	indigo_property *agent_geographic_property;
@@ -2022,10 +2024,12 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_switch_item(AGENT_MOUNT_FEATURES_CAN_HOME_ITEM, AGENT_MOUNT_FEATURES_CAN_HOME_ITEM_NAME, "Can home", false);
 		indigo_init_switch_item(AGENT_MOUNT_FEATURES_CAN_TRACK_ITEM, AGENT_MOUNT_FEATURES_CAN_TRACK_ITEM_NAME, "Can track", false);
 		// -------------------------------------------------------------------------------- AGENT_DOME_FEATURES
-		AGENT_DOME_FEATURES_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_DOME_FEATURES_PROPERTY_NAME, "Agent", "Dome features", INDIGO_OK_STATE, INDIGO_RO_PERM, INDIGO_ANY_OF_MANY_RULE, 2);
+		AGENT_DOME_FEATURES_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_DOME_FEATURES_PROPERTY_NAME, "Agent", "Dome features", INDIGO_OK_STATE, INDIGO_RO_PERM, INDIGO_ANY_OF_MANY_RULE, 4);
 		if (AGENT_DOME_FEATURES_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
+		indigo_init_switch_item(AGENT_DOME_FEATURES_CAN_SLEW_ITEM, AGENT_DOME_FEATURES_CAN_SLEW_ITEM_NAME, "Can slew", false);
+		indigo_init_switch_item(AGENT_DOME_FEATURES_CAN_SYNC_ITEM, AGENT_DOME_FEATURES_CAN_SYNC_ITEM_NAME, "Can sync", false);
 		indigo_init_switch_item(AGENT_DOME_FEATURES_CAN_PARK_ITEM, AGENT_DOME_FEATURES_CAN_PARK_ITEM_NAME, "Can park", false);
 		indigo_init_switch_item(AGENT_DOME_FEATURES_CAN_OPEN_ITEM, AGENT_DOME_FEATURES_CAN_OPEN_ITEM_NAME, "Can open", false);
 		// --------------------------------------------------------------------------------
@@ -2317,6 +2321,17 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 					AGENT_MOUNT_FEATURES_CAN_SYNC_ITEM->sw.value = true;
 				}
 			}
+		} else if (!strcmp(property->name, DOME_ON_COORDINATES_SET_PROPERTY_NAME)) {
+			for (int i = 0; i < property->count; i++) {
+				indigo_item *item = property->items + i;
+				if (!strcmp(item->name, DOME_ON_COORDINATES_SET_GOTO_ITEM_NAME)) {
+					AGENT_DOME_FEATURES_CAN_SLEW_ITEM->sw.value = true;
+				} else if (!strcmp(item->name, DOME_ON_COORDINATES_SET_SYNC_ITEM_NAME)) {
+					AGENT_DOME_FEATURES_CAN_SYNC_ITEM->sw.value = true;
+				}
+			}
+		} else if (!strcmp(property->name, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME)) {
+			AGENT_DOME_FEATURES_CAN_SLEW_ITEM->sw.value = true;
 		} else {
 			snoop_changes(client, device, property);
 		}
