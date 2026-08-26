@@ -40,6 +40,41 @@
 #define SLEW_START_TIMEOUT 3.0  /* in seconds, grace for the dome to report busy */
 #define SLEW_POLL_INTERVAL 0.2  /* in seconds */
 
+#define DOME_FIT_MARGIN 0.95  /* fraction of the dome radius the mount geometry may use */
+
+static bool sanitize_dome_dimension(indigo_device *device) {
+	bool clipped = false;
+	double radius = DOME_RADIUS_ITEM->number.value;
+	double limit = radius * DOME_FIT_MARGIN;
+	/* the shutter is a slot on the dome sphere, wider means half sky dome */
+	if (DOME_SHUTTER_WIDTH_ITEM->number.value > 2 * radius) {
+		DOME_SHUTTER_WIDTH_ITEM->number.target = DOME_SHUTTER_WIDTH_ITEM->number.value = 2 * radius;
+		clipped = false; // shutter width >= 2 * radius is still valid, meaning half sky dome
+	}
+
+	if (DOME_MOUNT_PIVOT_OTA_OFFSET_ITEM->number.value > limit) {
+		DOME_MOUNT_PIVOT_OTA_OFFSET_ITEM->number.target = DOME_MOUNT_PIVOT_OTA_OFFSET_ITEM->number.value = limit;
+		clipped = true;
+	}
+
+	/* what is left of the radius limits how far the pivot itself can be from the dome centre */
+	double max_pivot_distance = limit - DOME_MOUNT_PIVOT_OTA_OFFSET_ITEM->number.value;
+	double offset_ns = DOME_MOUNT_PIVOT_OFFSET_NS_ITEM->number.value;
+	double offset_ew = DOME_MOUNT_PIVOT_OFFSET_EW_ITEM->number.value;
+	double offset_vertical = DOME_MOUNT_PIVOT_VERTICAL_OFFSET_ITEM->number.value;
+	double pivot_distance = sqrt(offset_ns * offset_ns + offset_ew * offset_ew + offset_vertical * offset_vertical);
+
+	if (pivot_distance > max_pivot_distance) {
+		/*  max_pivot_distance >= 0 -> pivot_distance != 0 */
+		double scale = max_pivot_distance / pivot_distance;
+		DOME_MOUNT_PIVOT_OFFSET_NS_ITEM->number.target = DOME_MOUNT_PIVOT_OFFSET_NS_ITEM->number.value = offset_ns * scale;
+		DOME_MOUNT_PIVOT_OFFSET_EW_ITEM->number.target = DOME_MOUNT_PIVOT_OFFSET_EW_ITEM->number.value = offset_ew * scale;
+		DOME_MOUNT_PIVOT_VERTICAL_OFFSET_ITEM->number.target = DOME_MOUNT_PIVOT_VERTICAL_OFFSET_ITEM->number.value = offset_vertical * scale;
+		clipped = true;
+	}
+	return clipped;
+}
+
 indigo_result indigo_dome_attach(indigo_device *device, const char* driver_name, unsigned version) {
 	assert(device != NULL);
 	if (DOME_CONTEXT == NULL) {
@@ -144,6 +179,10 @@ indigo_result indigo_dome_attach(indigo_device *device, const char* driver_name,
 			indigo_init_number_item(DOME_MOUNT_PIVOT_OFFSET_EW_ITEM, DOME_MOUNT_PIVOT_OFFSET_EW_ITEM_NAME, "Mount Pivot Offset E/W (m, +E/-W)", -30, 30, 0, 0);
 			indigo_init_number_item(DOME_MOUNT_PIVOT_VERTICAL_OFFSET_ITEM, DOME_MOUNT_PIVOT_VERTICAL_OFFSET_ITEM_NAME, "Mount Pivot Vertical Offset (m)", -10, 10, 0, 0);
 			indigo_init_number_item(DOME_MOUNT_PIVOT_OTA_OFFSET_ITEM, DOME_MOUNT_PIVOT_OTA_OFFSET_ITEM_NAME, "Optical axis offset from the RA axis (m)", 0, 10, 0, 0.1);
+			/* dimensions are in m, show them with mm resolution */
+			for (int i = 0; i < DOME_DIMENSION_PROPERTY->count; i++) {
+				INDIGO_COPY_VALUE(DOME_DIMENSION_PROPERTY->items[i].number.format, "%.3f");
+			}
 			// -------------------------------------------------------------------------------- DOME_GEOGRAPHIC_COORDINATES
 			DOME_GEOGRAPHIC_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, DOME_SITE_GROUP, "Location", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
 			if (DOME_GEOGRAPHIC_COORDINATES_PROPERTY == NULL) {
@@ -227,6 +266,7 @@ indigo_result indigo_dome_change_property(indigo_device *device, indigo_client *
 			indigo_define_property(device, DOME_PARK_PROPERTY, NULL);
 			indigo_define_property(device, DOME_PARK_POSITION_PROPERTY, NULL);
 			indigo_define_property(device, DOME_HOME_PROPERTY, NULL);
+			sanitize_dome_dimension(device);
 			indigo_define_property(device, DOME_DIMENSION_PROPERTY, NULL);
 			indigo_define_property(device, DOME_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 			indigo_define_property(device, DOME_UTC_TIME_PROPERTY, NULL);
@@ -291,8 +331,9 @@ indigo_result indigo_dome_change_property(indigo_device *device, indigo_client *
 		// -------------------------------------------------------------------------------- DOME_DIMENSION
 	} else if (indigo_property_match_changeable(DOME_DIMENSION_PROPERTY, property)) {
 		indigo_property_copy_values(DOME_DIMENSION_PROPERTY, property, false);
+		bool clipped = sanitize_dome_dimension(device);
 		DOME_DIMENSION_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, DOME_DIMENSION_PROPERTY, NULL);
+		indigo_update_property(device, DOME_DIMENSION_PROPERTY, clipped ? "Mount does not fit in the dome, dimensions clipped" : NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- CONFIG
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
