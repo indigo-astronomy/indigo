@@ -168,6 +168,49 @@ static void json_adapter_serializes_define_update_delete_and_blob_url(void) {
 	assert_contains(output, "\"setBLOBVector\"");
 }
 
+/* A text item longer than INDIGO_VALUE_SIZE is kept in item->text.long_value, the adapter has to
+   serialize all of it - a truncated script would come back truncated from any JSON client. */
+static void json_adapter_serializes_whole_long_text_value(void) {
+	static char script[8192];
+	static char output[65536];
+	int length = (int)sizeof(script) - 1;
+	for (int i = 0; i < length; i++) {
+		script[i] = (i % 40 == 39) ? '\n' : 'a';
+	}
+	script[length - 1] = '!'; /* the last character has to survive the round trip */
+	script[length] = 0;
+
+	indigo_uni_handle *handle = NULL;
+	indigo_client *client = new_output_adapter("build/unit/protocol_json_long_text.tmp", &handle);
+	ASSERT_TRUE(client != NULL);
+	indigo_device device;
+	memset(&device, 0, sizeof(device));
+	INDIGO_COPY_NAME(device.name, TEST_DEVICE_NAME);
+
+	indigo_property *text = indigo_init_text_property(NULL, TEST_DEVICE_NAME, TEXT_PROPERTY_NAME, "Protocol", "Text Label", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+	ASSERT_TRUE(text != NULL);
+	indigo_init_text_item(text->items, TEXT_ITEM_NAME, "Value", "%s", "");
+	indigo_set_text_item_value(text->items, script);
+	text->version = INDIGO_VERSION_CURRENT;
+	ASSERT_TRUE(text->items[0].text.long_value != NULL);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_json_device_adapter_define_property(client, &device, text, NULL));
+	text->items[0].do_update = true;
+	ASSERT_EQ_INT(INDIGO_OK, indigo_json_device_adapter_update_property(client, &device, text, NULL));
+	indigo_release_property(text);
+
+	close_output_adapter(client, &handle);
+	ASSERT_TRUE(read_file("build/unit/protocol_json_long_text.tmp", output, sizeof(output)));
+
+	assert_contains(output, "\"defTextVector\"");
+	assert_contains(output, "\"setTextVector\"");
+	/* escaping turns every newline into two characters, so the whole value is longer than the script */
+	ASSERT_TRUE(strlen(output) > 2 * (size_t)length);
+	/* both the defined and the updated value have to end with the last character of the script */
+	const char *first = strstr(output, "a!\" }");
+	ASSERT_TRUE(first != NULL);
+	ASSERT_TRUE(strstr(first + 1, "a!\" }") != NULL);
+}
+
 static indigo_client *new_input_adapter(const char *path, indigo_uni_handle **input) {
 	*input = indigo_uni_open_file(path, INDIGO_LOG_NONE);
 	if (*input == NULL) {
@@ -244,6 +287,7 @@ int main(void) {
 	const indigo_test_case tests[] = {
 		{ "json_escape_handles_special_characters", json_escape_handles_special_characters },
 		{ "json_adapter_serializes_define_update_delete_and_blob_url", json_adapter_serializes_define_update_delete_and_blob_url },
+		{ "json_adapter_serializes_whole_long_text_value", json_adapter_serializes_whole_long_text_value },
 		{ "json_parser_routes_number_and_switch_fixtures", json_parser_routes_number_and_switch_fixtures },
 		{ "json_parser_ignores_malformed_fixture_without_change", json_parser_ignores_malformed_fixture_without_change }
 	};

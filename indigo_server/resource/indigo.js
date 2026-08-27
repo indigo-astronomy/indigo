@@ -90,6 +90,11 @@ var app = Vue.createApp({
 			var editor = this.$refs.scriptEditor;
 			if (editor == null)
 				return false;
+			/* Nothing was edited, so there is nothing to store. Execute and delete call this to
+			   flush pending edits first and must not write the editor content back over an
+			   untouched script. */
+			if (!this.scriptDirty)
+				return true;
 			var isNew = this.selectedProperty == null;
 			var values = {};
 			values['NAME'] = editor.getName();

@@ -49,7 +49,8 @@ extern "C" {
  */
 INDIGO_EXTERN void indigo_json_parse(indigo_device *device, indigo_client *client);
 
-/** Escape JSON string into buffer identified by index (0-1).
+/** Escape JSON string into buffer identified by index (0-1), any greater index selects a long
+    buffer able to hold a whole text item value.
  */
 INDIGO_EXTERN const char *indigo_json_escape_b(int index, const char *string);
 

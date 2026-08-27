@@ -1247,6 +1247,23 @@ Source references: `imager.html` and `guider.html` already handle `CCD_PREVIEW_I
 
 ---
 
+### Step 52 — Do not rewrite an unedited script on execute or delete [DONE]
+
+**Files:** `indigo.js`
+
+`executeScript()` and `deleteScript()` call `saveScript()` first so that pending edits are stored before the script runs or is removed. `saveScript()` wrote the editor content back unconditionally, so executing or deleting a script rewrote it from the textarea even when the user had not typed anything. Any defect that leaves the editor content different from the stored script - a truncated value on the wire, for example - was then persisted by the agent as a side effect of pressing Execute.
+
+Skip the write when nothing was edited:
+
+```js
+if (!this.scriptDirty)
+    return true;
+```
+
+`true` keeps the "pending edits are stored" contract for both callers, so they proceed instead of aborting. Both buttons are already `:disabled` while `scriptDirty` is set, so this removes a redundant write rather than changing the intended flow. The Save button is unaffected: it is enabled only when `scriptDirty` is true.
+
+---
+
 ## Dependency Summary After Refactoring
 
 | Library | Before | After |

@@ -628,12 +628,18 @@ static long ws_write(indigo_uni_handle *handle, const char *buffer, long length)
 	return result;
 }
 
+/* A single escaped text item value can be as long as the escape buffer, so the room kept for
+   the next write has to cover it, not just a short number or label. */
+#define SPRINTF_HEADROOM	(INDIGO_BUFFER_SIZE + 1024)
+
 #define SPRINTF(...) { \
 size = sprintf(__VA_ARGS__); \
 pnt += size; \
 size = (long)(pnt - output_buffer); \
-if (size + 1024 > buffer_size) { \
+if (size + SPRINTF_HEADROOM > buffer_size) { \
+while (size + SPRINTF_HEADROOM > buffer_size) { \
 buffer_size *= 2; \
+} \
 output_buffer = indigo_safe_realloc(output_buffer, buffer_size); \
 pnt = output_buffer + size; \
 } \
@@ -672,7 +678,7 @@ indigo_result indigo_json_device_adapter_define_property(indigo_client *client, 
 			}
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
-				SPRINTF(pnt, "%s { \"name\": \"%s\", \"label\": \"%s\", \"value\": \"%s\" }",  i > 0 ? "," : "", item->name, indigo_json_escape_b(0, item->label), indigo_json_escape_b(1, indigo_get_text_item_value(item)));
+				SPRINTF(pnt, "%s { \"name\": \"%s\", \"label\": \"%s\", \"value\": \"%s\" }",  i > 0 ? "," : "", item->name, indigo_json_escape_b(0, item->label), indigo_json_escape_b(JSON_ESCAPE_BUFFER_COUNT, indigo_get_text_item_value(item)));
 			}
 			size = sprintf(pnt, " ] } }");
 			size += (long)(pnt - output_buffer);
@@ -798,7 +804,7 @@ indigo_result indigo_json_device_adapter_update_property(indigo_client *client, 
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
 				if (client->force_item_updates || item->do_update) {
-					SPRINTF(pnt, "%s { \"name\": \"%s\", \"value\": \"%s\" }",  j++ > 0 ? "," : "", item->name, indigo_json_escape(indigo_get_text_item_value(item)));
+					SPRINTF(pnt, "%s { \"name\": \"%s\", \"value\": \"%s\" }",  j++ > 0 ? "," : "", item->name, indigo_json_escape_b(JSON_ESCAPE_BUFFER_COUNT, indigo_get_text_item_value(item)));
 				}
 			}
 			size = sprintf(pnt, " ] } }");
