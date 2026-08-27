@@ -33,7 +33,7 @@
 
 #pragma mark - Common definitions
 
-#define DRIVER_VERSION       0x03000005
+#define DRIVER_VERSION       0x03000006
 #define DRIVER_NAME          "indigo_rotator_falcon"
 #define DRIVER_LABEL         "PegasusAstro Falcon rotator"
 #define ROTATOR_DEVICE_NAME  "Pegasus Falcon rotator"
@@ -105,40 +105,44 @@ static void falcon_close(indigo_device *device) {
 
 //+ rotator.code
 
+// FR reports the motor state, FR:1 means the rotator is rotating and FR:0 that it is
+// idle, so the move is complete on FR:0. SETTLE_DELAY gives the rotator time to start
+// after MD:, otherwise the first poll would still see it idle and report the move as
+// finished. A lost or malformed reply is retried, only MOVE_TIMEOUT fails the move.
+#define SETTLE_DELAY         0.5
+#define POLL_DELAY           0.1
+#define MOVE_TIMEOUT         120
+
 static void falcon_move(indigo_device *device) {
 	PRIVATE_DATA->abort = false;
-	if (falcon_command(device, "MD:%0.2f", ROTATOR_POSITION_ITEM->number.target) && !strncmp(PRIVATE_DATA->response, "MD:", 3)) {
-		while (true) {
-			if (PRIVATE_DATA->abort) {
-				falcon_command(device, "FH");
-				ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-				break;
-			}
-			if (falcon_command(device, "FD") && !strncmp(PRIVATE_DATA->response, "FD:", 3)) {
-				ROTATOR_POSITION_ITEM->number.value = indigo_atod(PRIVATE_DATA->response + 3);
-				indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
-			} else {
-				ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-				break;
-			}
-			if (falcon_command(device, "FR") && !strncmp(PRIVATE_DATA->response, "FR:", 3)) {
-				if (!strcmp(PRIVATE_DATA->response, "FR:1")) {
-					ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-					break;
-				}
-			} else {
-				ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-				break;
-			}
-			indigo_sleep(0.1);
+	if (!(falcon_command(device, "MD:%0.2f", ROTATOR_POSITION_ITEM->number.target) && !strncmp(PRIVATE_DATA->response, "MD:", 3))) {
+		ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		return;
+	}
+	indigo_sleep(SETTLE_DELAY);
+	ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+	time_t deadline = time(NULL) + MOVE_TIMEOUT;
+	while (true) {
+		if (PRIVATE_DATA->abort) {
+			falcon_command(device, "FH");
+			break;
 		}
 		if (falcon_command(device, "FD") && !strncmp(PRIVATE_DATA->response, "FD:", 3)) {
 			ROTATOR_POSITION_ITEM->number.value = indigo_atod(PRIVATE_DATA->response + 3);
-		} else {
-			ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 		}
-	} else {
-		ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		if (falcon_command(device, "FR") && !strcmp(PRIVATE_DATA->response, "FR:0")) {
+			ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+			break;
+		}
+		if (time(NULL) >= deadline) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Rotator failed to reach %.2f in %d seconds", ROTATOR_POSITION_ITEM->number.target, MOVE_TIMEOUT);
+			break;
+		}
+		indigo_sleep(POLL_DELAY);
+	}
+	if (falcon_command(device, "FD") && !strncmp(PRIVATE_DATA->response, "FD:", 3)) {
+		ROTATOR_POSITION_ITEM->number.value = indigo_atod(PRIVATE_DATA->response + 3);
 	}
 }
 
@@ -169,12 +173,14 @@ static void rotator_connection_handler(indigo_device *device) {
 			falcon_command(device, "DR:0");
 			if (falcon_command(device, "FA")) {
 				if (!strncmp(PRIVATE_DATA->response, "FR_OK", 5)) {
-					char *pnt, *token = strtok_r(PRIVATE_DATA->response, ":", &pnt);
+					// FR_OK:position_in_steps:position_in_deg:is_moving:limit_detect:do_derotation:motor_reverse
+					char *pnt, *token = strtok_r(PRIVATE_DATA->response, ":", &pnt); // status
+					token = strtok_r(NULL, ":", &pnt); // position_in_steps
 					token = strtok_r(NULL, ":", &pnt); // position_in_deg
 					if (token) {
 						ROTATOR_POSITION_ITEM->number.target = ROTATOR_POSITION_ITEM->number.value = indigo_atod(token);
 					}
-					token = strtok_r(NULL, ":", &pnt); // is_running
+					token = strtok_r(NULL, ":", &pnt); // is_moving
 					token = strtok_r(NULL, ":", &pnt); // limit_detect
 					token = strtok_r(NULL, ":", &pnt); // do_derotation
 					token = strtok_r(NULL, ":", &pnt); // motor_reverse
@@ -186,12 +192,13 @@ static void rotator_connection_handler(indigo_device *device) {
 						}
 					}
 				} else if (!strncmp(PRIVATE_DATA->response, "F2R:", 4)) {
-					char *pnt, *token = strtok_r(PRIVATE_DATA->response, ":", &pnt); // position_in_deg
+					// F2R:position_in_deg:is_moving:speed:microsteps:direction
+					char *pnt, *token = strtok_r(PRIVATE_DATA->response, ":", &pnt); // status
 					token = strtok_r(NULL, ":", &pnt); // position_in_deg
 					if (token) {
 						ROTATOR_POSITION_ITEM->number.target = ROTATOR_POSITION_ITEM->number.value = indigo_atod(token);
 					}
-					token = strtok_r(NULL, ":", &pnt); // is_running
+					token = strtok_r(NULL, ":", &pnt); // is_moving
 					token = strtok_r(NULL, ":", &pnt); // speed
 					token = strtok_r(NULL, ":", &pnt); // microsteps
 					token = strtok_r(NULL, ":", &pnt); // direction
