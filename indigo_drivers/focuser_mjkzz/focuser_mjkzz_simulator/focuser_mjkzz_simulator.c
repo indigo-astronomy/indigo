@@ -15,6 +15,7 @@
 #include <string.h>
 #include <errno.h>
 #include <signal.h>
+#include <stdint.h>
 
 #include "../mjkzz_def.h"
 #include "../../../indigo_test/simulator_common/serial_simulator_common.h"
