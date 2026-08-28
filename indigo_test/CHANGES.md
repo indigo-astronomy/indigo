@@ -42,6 +42,7 @@ Run `make all` from the repository root first if `build/lib/libindigo` or the re
 
 Implemented unit suites:
 
+- `test_align_math.c`: parallactic angle against IAU SOFA/ERFA reference values and its meridian behavior, and the derotation rate against the measured rate of change of the parallactic angle (the quantity the mount agent derotates with), including reference values, the zero crossings due east and west, and the growth towards the zenith.
 - `test_aux_math.c`: dewpoint and Bortle-scale helper behavior.
 - `test_base64.c`: known vectors, binary round trips, padding, and newline-tolerant decoding.
 - `test_bus_helpers.c`: numeric/string conversion, sexagesimal conversion, pixel scale, local service trimming, switch helpers, and property value/target copying.
