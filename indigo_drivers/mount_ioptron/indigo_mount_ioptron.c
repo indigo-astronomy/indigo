@@ -68,10 +68,6 @@ typedef struct {
 } mount_type;
 
 static mount_type PRODUCTS[] = {
-	// firmware 210101+ -> 3.1
-	{   26, "210101", "CEM26", V3_0, true, false, false  },
-	{   27, "210101", "CEM26EC", V3_0, true, false, false  },
-
 	// firmware 171001+ -> 3.0
 	{   45, "171001", "iEQ45Pro", V3_0, false, true, false },
 	{   46, "171001", "iEQ45ProAA", V3_0, false, true, false },
@@ -110,6 +106,8 @@ static mount_type PRODUCTS[] = {
 	{   61, NULL, "CEM60EC", V1_0, true, true, false },
 	
 	// firmware independent
+	{   26, NULL, "CEM26", V3_0, true, true, false  },
+	{   27, NULL, "CEM26EC", V3_0, true, true, false  },
 	{ 8407, NULL, "iEQ45/iEQ30", HC_8407, false, true, false },
 	{ 8497, NULL, "iEQ45 AA", HC_8407, false, true, false },
 	{ 8408, NULL, "ZEQ25", HC_8407, false, true, false },
