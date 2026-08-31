@@ -146,11 +146,15 @@ static bool synscan_read_response(indigo_device* device, char* r) {
 	char c;
 	char resp[20];
 	if (PRIVATE_DATA->udp) {
-		long bytes_read = recv(PRIVATE_DATA->handle, resp, sizeof(resp), 0);
+		long bytes_read = recv(PRIVATE_DATA->handle, resp, sizeof(resp) - 1, 0);
+		if (bytes_read <= 0) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Reading response failed");
+			return false;
+		}
 		resp[bytes_read] = 0;
 	} else {
 		long total_bytes = 0;
-		while (total_bytes < sizeof(resp)) {
+		while (total_bytes < (long)sizeof(resp) - 1) {
 			long bytes_read = read(PRIVATE_DATA->handle, &c, 1);
 			if (bytes_read == 0) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "SYNSCAN_TIMEOUT");
@@ -171,11 +175,12 @@ static bool synscan_read_response(indigo_device* device, char* r) {
 	}
 	//  Check response syntax =...<cr>, if invalid retry
 	size_t len = strlen(resp);
+	int printable_len = len > 0 ? (int)len - 1 : 0;
 	if (len < 2 || resp[0] != '=' || resp[len - 1] != '\r') {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RESPONSE: [%.*s] - error", len - 1, resp);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RESPONSE: [%.*s] - error", printable_len, resp);
 		return false;
 	} else {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RESPONSE: [%.*s]", len - 1, resp);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RESPONSE: [%.*s]", printable_len, resp);
 	}
 
 	//  Extract response payload, return
