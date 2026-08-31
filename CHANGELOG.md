@@ -90,6 +90,10 @@ All notable changes to INDIGO framework will be documented in this file.
 - indigo_mount_lx200:
 	- do not switch mount type when starting tracking - #759
 
+- indigo_mount_ioptron:
+	- can park fixed for CEM70, CEM70EC, CEM26 and CEM26EC
+	- fix malformed :SPA and :SPH commands used to set the default park position
+
 - indigo_focuser_dsd:
 	- focuser timer rescheduling fixed
 
@@ -98,6 +102,9 @@ All notable changes to INDIGO framework will be documented in this file.
 
 - indigo_aux_joystick:
 	- focuser mapping removed, code cleanup
+
+- indigo_agent_config:
+	- fix deadlock while loading a configuration
 
 - indigo_ccd_simulator:
 	- JPEG preview added for platesolver agents
