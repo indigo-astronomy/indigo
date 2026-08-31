@@ -13,6 +13,10 @@ Portable INDIGO drivers and agents under `indigo_drivers/`, including generated 
 
 For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor subtrees named `externals` or `bin_externals` were intentionally excluded. The pass covered 490 C-family source/header files in 136 remaining top-level driver and agent directories.
 
+## Focused Review Notes
+
+2026-08-31 hot-plug SDK serialization pass: reviewed active `indigo_drivers/` hot-plug implementations using `libusb_hotplug_register_callback()` or vendor hot-plug callbacks, excluding `externals`, `bin_externals`, and disabled `#ifdef HOTPLUG` QHY code. This was a focused static review for races where a hot-plug enumeration/open/close path serializes access with a driver-global mutex but the normal connect/open/close path calls the same vendor SDK without that mutex. This pass did not advance `Last reviewed commit`.
+
 ## Coverage Manifest
 
 | Group | Directories |
@@ -52,6 +56,14 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 | DRV-019 | Medium | `ccd_ptp/indigo_ptp_olympus.c:696` | Olympus initialization logs a failed `CameraControlMode` switch and calls raw-USB recovery, but ignores missing confirmation and recovery failure before scheduling event polling and returning success. A disconnected, wedged, or wildcard-matched unsupported Olympus body can be reported connected even though remote capture and live view require PC-control mode. | Closed (fixed) |
 | DRV-020 | Medium | `agent_mount/indigo_agent_mount.c:1189` | Mount and rotator deselection can leave `AGENT_MOUNT_STATE_DOME_SLAVING` / `AGENT_MOUNT_STATE_FIELD_DEROTATION` reporting the previous state after the required device is gone. Clear the slaving lights when the mount is deselected, and clear field derotation when the rotator is deselected. | Closed (fixed) |
 | DRV-021 | Medium | `agent_mount/indigo_agent_mount.c:1043` | The autonomous slaving path treats `DOME_HORIZONTAL_COORDINATES` / `ROTATOR_POSITION` `ALERT` as eligible for another command and then unconditionally reports the slaving light as `OK`, masking dome or rotator failures despite the state-light contract saying `ALERT` on error. Propagate or preserve alert state until the dependent device reports recovery. | Closed (fixed) |
+| DRV-022 | High | `wheel_asi/indigo_wheel_asi.c:173`, `focuser_asi/indigo_focuser_asi.c:557`, `rotator_asi/indigo_rotator_asi.c:189`, `ccd_asi/indigo_ccd_asi.c:254`, `guider_asi/indigo_guider_asi.c:89` | ZWO ASI-family connect/open paths call SDK enumeration/open/close APIs without the driver-global hot-plug mutex, so plug/unplug timers can race `EFW/EAF/CAA/ASI/USB2ST4` SDK global state during connect or disconnect. | Open |
+| DRV-023 | High | `ccd_playerone/indigo_ccd_playerone.c:213`, `wheel_playerone/indigo_wheel_playerone.c:157` | PlayerOne camera and wheel connect paths call `POAOpen*` / properties APIs without the driver-global hot-plug mutex while plug/unplug handlers enumerate and temporarily open/close the same SDK under that mutex. | Open |
+| DRV-024 | Medium | `ccd_fli/indigo_ccd_fli.c:145`, `focuser_fli/indigo_focuser_fli.c:152`, `wheel_fli/indigo_wheel_fli.c:122` | FLI connect paths use only per-device `usb_mutex` around `FLIOpen()` / `FLIClose()`, while hot-plug handlers protect `FLICreateList()` / `FLIList*()` / `FLIDeleteList()` with a separate driver-global mutex. | Open |
+| DRV-025 | Medium | `ccd_svb/indigo_ccd_svb.c:194` | SVBONY normal connect calls `SVBOpenCamera()` with only the device `usb_mutex`, but hot-plug serializes SDK enumeration and temporary open/close with `device_mutex`. | Open |
+| DRV-026 | Medium | `ccd_touptek/indigo_ccd_touptek.c:944` | ToupTek/OEM connect paths open devices with the vendor SDK without the hot-plug `mutex`, while the hot-plug refresh path enumerates devices and mutates shared presence state under that mutex. | Open |
+| DRV-027 | Medium | `ccd_dsi/indigo_ccd_dsi.c:271` | Meade DSI connect opens the camera outside `device_mutex`, but plug/unplug scans and non-macOS temporary probe opens are serialized with `device_mutex`, leaving a scan/open race class. | Open |
+| DRV-028 | Medium | `ccd_qsi/indigo_ccd_qsi.cpp:374` | QSI hot-plug uses the global `QSICamera cam` under `device_mutex`, but connect uses the same SDK object without that mutex for connect-time SDK calls. | Open |
+| DRV-029 | High | `guider_asi/indigo_guider_asi.c:389` | `process_plug_event()` locks `indigo_device_enumeration_mutex` and never unlocks it on the successful attach path, so the first successful ASI USB-ST4 plug event can permanently block later plug/unplug enumeration. | Open |
 
 ## Finding Summaries
 
@@ -291,6 +303,57 @@ position property is alert, `AGENT_MOUNT_STATE_FIELD_DEROTATION_ITEM` is set to
 `INDIGO_ALERT_STATE` and no autonomous derotation command is issued. The light is only
 returned to `OK` by the non-alert correction path.
 
+### DRV-022 (Open)
+
+The ZWO SDK-backed hot-plug drivers serialize plug/unplug enumeration with a driver-global mutex, but normal connect/open and disconnect/close paths use only per-device `usb_mutex` locks:
+
+- `wheel_asi`: `wheel_connect_callback()` calls `find_index_by_device_id()` (`EFWGetNum()` / `EFWGetID()`), `EFWOpen()`, initial property reads, and `EFWClose()` outside `indigo_device_enumeration_mutex`, while `process_plug_event()` / `process_unplug_event()` hold that mutex around `EFWGetNum()` / `EFWGetID()` / temporary `EFWOpen()` / `EFWClose()`.
+- `focuser_asi`: same pattern for `EAFGetNum()` / `EAFGetID()` / `EAFOpen()` / `EAFClose()` in the USB path. Bluetooth paths are separate and not part of this finding.
+- `rotator_asi`: same pattern for `CAAGetNum()` / `CAAGetID()` / `CAAOpen()` / `CAAClose()`.
+- `ccd_asi`: hot-plug holds `device_mutex` while enumerating cameras and temporarily opening/closing one camera for ID/serial data, but `asi_open()` / `asi_close()` call `ASIOpenCamera()` / `ASIInitCamera()` / `ASICloseCamera()` without that mutex.
+- `guider_asi`: hot-plug holds `indigo_device_enumeration_mutex` around `USB2ST4GetNum()` / `USB2ST4GetID()`, but `asi_open()` / `asi_close()` call `USB2ST4Open()` / `USB2ST4Close()` without it.
+
+The ASI wheel crash log showed this exact shape: a connect callback entered SDK enumeration while hot-plug/unplug callbacks were also active, and the closed SDK dereferenced invalid internal state. These drivers should use one driver-global SDK mutex for enumeration/open/close paths, or otherwise prove the vendor SDK calls are reentrant.
+
+### DRV-023 (Open)
+
+The PlayerOne camera and wheel drivers have the same split-lock shape:
+
+- `ccd_playerone`: `process_plug_event()` holds `device_mutex` while calling `POAGetCameraCount()`, `POAGetCameraProperties()`, temporary `POAOpenCamera()`, and `POACloseCamera()`, but `playerone_open()` / `playerone_close()` use only `PRIVATE_DATA->usb_mutex` around `POAOpenCamera()` / `POAInitCamera()` / `POACloseCamera()`.
+- `wheel_playerone`: `process_plug_event()` holds `indigo_device_enumeration_mutex` around `POAGetPWCount()`, `POAGetPWProperties()`, temporary `POAOpenPW()`, and `POAClosePW()`, but `wheel_connect_callback()` calls `POAGetPWPropertiesByHandle()`, `POAOpenPW()`, and `POAClosePW()` outside that mutex.
+
+If the PlayerOne SDK has global enumeration/open state like the ZWO SDK, hot-plug timers can race normal connect/disconnect.
+
+### DRV-024 (Open)
+
+The FLI CCD, focuser, and wheel drivers protect hot-plug enumeration with a driver-global mutex, but connect paths open and close devices under only per-device `usb_mutex`:
+
+- `ccd_fli`: `fli_open()` calls `FLIOpen()` and error-path `FLIClose()` while hot-plug uses `device_mutex` around `FLICreateList()` / `FLIListFirst()` / `FLIListNext()` / `FLIDeleteList()`.
+- `focuser_fli`: `fli_focuser_connect()` calls `FLIOpen()` outside `device_mutex`, while hot-plug enumeration is serialized with `device_mutex`.
+- `wheel_fli`: `wheel_connect_callback()` calls `find_index_by_device_fname()` against the shared enumerated arrays and then `FLIOpen()` / `FLIClose()` outside `indigo_device_enumeration_mutex`, while hot-plug updates those arrays under that mutex.
+
+The risk is lower confidence than the ZWO finding because it depends on libfli's internal reentrancy, but the driver-level locking suggests enumeration is already considered global state.
+
+### DRV-025 (Open)
+
+`ccd_svb` uses `device_mutex` in hot-plug paths around `SVBGetNumOfConnectedCameras()`, `SVBGetCameraInfo()`, temporary `SVBOpenCamera()`, property/probing calls, and `SVBCloseCamera()`. Normal `svb_open()` / close paths use only `PRIVATE_DATA->usb_mutex` around `SVBOpenCamera()` and later `SVBCloseCamera()`. A connect racing with an arrival/removal timer can therefore overlap SDK enumeration and open/close state.
+
+### DRV-026 (Open)
+
+`ccd_touptek` uses a driver-global `mutex` for `process_plug_event()` while refreshing the device inventory with `SDK_CALL(EnumV2)` and updating shared `devices[]` / `present` state. The CCD, guider, wheel, and focuser connect callbacks call `SDK_CALL(Open)` directly from normal connect paths without taking that mutex. If the vendor hot-plug callback schedules a refresh during user connect/disconnect, SDK enumeration and open can overlap.
+
+### DRV-027 (Open)
+
+`ccd_dsi` hot-plug uses `device_mutex` around `dsi_scan_usb()` and, on non-macOS paths, a temporary `dsi_open_camera()` used to name/probe the camera. Normal connect enters `camera_open(device)` outside `device_mutex`. That leaves the same scan/open race class as the ASI wheel issue, even though macOS avoids the temporary open inside plug handling because it can reset the device.
+
+### DRV-028 (Open)
+
+`ccd_qsi` uses a single global `QSICamera cam` object. `process_plug_event()` protects `cam.get_AvailableCameras()` with `device_mutex`, but `ccd_connect_callback()` uses the same `cam` object for `get_Connected()`, `get_SelectCamera()`, and the subsequent connect sequence without holding `device_mutex`. Because the SDK object is shared across all QSI devices, hot-plug enumeration can race connect-time SDK state.
+
+### DRV-029 (Open)
+
+`guider_asi` has a direct mutex leak in `process_plug_event()`: it locks `indigo_device_enumeration_mutex`, handles error returns correctly, but the successful path attaches the new guider and stores it in `devices[slot]` without unlocking before returning. After the first successful plug event, later ASI USB-ST4 plug/unplug handlers block forever on the same mutex. The fix is a straightforward unlock on the success path, plus considering the DRV-022 serialization fix for normal open/close.
+
 ## Review Focus
 
 - Driver lifecycle: `INDIGO_DRIVER_INIT`, `INDIGO_DRIVER_SHUTDOWN`, and `INDIGO_DRIVER_INFO`.
@@ -316,3 +379,4 @@ returned to `OK` by the non-alert correction path.
 | `d9b39b84e3780dca0c9e7cbb901b63a62586b106` | `afdd54618e5520c4983598c33b662c022962df7c` | 2026-08-18 | Requested review of the last two commits touching `agent_mount`; recorded `DRV-016` and `DRV-017`. |
 | `017ba602857378e4aed489c065c76eacae15924c` | `a18baada350fd21298fc602fd1751518cc8254ba` | 2026-08-22 | Focused review of Olympus/OM System support under `ccd_ptp`; recorded `DRV-019`. Did not advance the folder baseline because other `indigo_drivers` changes in this range were not reviewed. |
 | `017ba602857378e4aed489c065c76eacae15924c` | `f8b7086ebdd408c34366a8acdac27e6311103911` + working tree | 2026-08-25 | Focused review of `agent_mount/indigo_agent_mount.c` `AGENT_MOUNT_STATE_DOME_SLAVING` and `AGENT_MOUNT_STATE_FIELD_DEROTATION` usage; recorded `DRV-020` and `DRV-021`. Did not advance the folder baseline because the rest of `indigo_drivers` was not reviewed. |
+| `017ba602857378e4aed489c065c76eacae15924c` | working tree | 2026-08-31 | Focused review of active hot-plug driver SDK enumeration/open/close serialization under `indigo_drivers`; recorded `DRV-022` through `DRV-029`. Did not advance the folder baseline because the rest of `indigo_drivers` was not reviewed. |
