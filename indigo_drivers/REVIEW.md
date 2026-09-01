@@ -17,6 +17,8 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 
 2026-08-31 hot-plug SDK serialization pass: reviewed active `indigo_drivers/` hot-plug implementations using `libusb_hotplug_register_callback()` or vendor hot-plug callbacks, excluding `externals`, `bin_externals`, and disabled `#ifdef HOTPLUG` QHY code. This was a focused static review for races where a hot-plug enumeration/open/close path serializes access with a driver-global mutex but the normal connect/open/close path calls the same vendor SDK without that mutex. This pass did not advance `Last reviewed commit`.
 
+2026-09-01 deep focused `mount_lx200` pass: reviewed the incremental production diff, the new host-side LX200 simulator, the LX200/OnStep integration test, and the hand-written multi-device connection lifecycle for mount, guider, focuser, and AUX logical devices. This pass did not advance `Last reviewed commit`.
+
 ## Coverage Manifest
 
 | Group | Directories |
@@ -68,6 +70,8 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 | DRV-031 | High | `../indigo_tools/indigo_generator.c:1450`, `mount_ioptron/indigo_mount_ioptron.c:1470`, `mount_ioptron/indigo_mount_ioptron.c:2046` | The generated multi-device connection-handler template incremented the shared connection count before driver-specific `on_connect` initialization, but on init failure emitted only `PRIVATE_DATA->count--` and no close when that failed attempt had opened the shared handle. `mount_ioptron` exposed this generator bug in both mount and guider handlers. | Closed (fixed) |
 | DRV-032 | Medium | `mount_ioptron/indigo_mount_ioptron.c:897` | V2.5/V3 guide-rate commands format RA and DEC as fixed two-digit fields (`:RG%02d%02d#`), while the inherited mount guide-rate property still accepts values up to 100. Sending 100 produces a six-digit payload (`RG100100`) that does not match the parsed two-two digit protocol shape. | Closed (fixed) |
 | DRV-033 | Medium | `mount_ioptron/indigo_mount_ioptron.c:800` | `ioptron_set_tracking_rate()` validates the `:RT*#` and custom-rate replies, but then treats any readable `:ST1#` response as success instead of requiring the success ack byte. A rejected tracking-enable command can still leave `MOUNT_TRACK_RATE` reported OK. | Closed (fixed) |
+| DRV-034 | High | `mount_lx200/indigo_mount_lx200.c:2333`, `mount_lx200/indigo_mount_lx200.c:3032`, `mount_lx200/indigo_mount_lx200.c:3161`, `mount_lx200/indigo_mount_lx200.c:3334` | LX200 connect handlers increment the shared `device_count` before autodetection, call `meade_close()` on autodetect failure, and then the common failure path decrements the already reset counter. A single failed detect can underflow the shared count and prevent later reconnect attempts from reopening the serial handle. | Closed (fixed) |
+| DRV-035 | Medium | `mount_lx200/indigo_mount_lx200.c:3172`, `mount_lx200/indigo_mount_lx200.c:3387` | If the focuser or AUX logical device is the first LX200 device to open the shared serial connection and autodetection succeeds with an unsupported mount type, the handler decrements `device_count` and reports `CONNECTION` alert without closing the handle opened by that same attempt. The serial/TCP endpoint can stay occupied while the shared count is zero. | Open |
 
 ## Finding Summaries
 
@@ -438,6 +442,43 @@ selection but rejects enabling tracking, `MOUNT_TRACK_RATE` can still report
 Fixed by requiring the final `:ST1#` reply byte to be `'1'` in the generated
 `ioptron_set_tracking_rate()` source and regenerating the checked-in driver output.
 
+### DRV-034 (Closed)
+
+The LX200 driver is hand-written but uses the same shared-connection pattern as generated
+multi-device drivers: mount, guider, focuser, and AUX all increment
+`PRIVATE_DATA->device_count` before the first logical device opens the serial/TCP handle.
+On autodetect failure each connect handler calls `meade_close()`, and `meade_close()`
+sets `PRIVATE_DATA->device_count = 0`. Control then falls through to the common failure
+block, which decrements the same counter again.
+
+After one failed autodetect from a cold state, `device_count` becomes `-1`. A later
+connect attempt evaluates `if (PRIVATE_DATA->device_count++ == 0)` as false, so it skips
+`meade_open()` even though there is no valid handle. The driver then tries detection
+against a NULL handle, fails, and repeats the underflow. This can leave the LX200 driver
+unable to recover from a transient probe failure without unloading/reloading the driver.
+
+Fixed by removing the direct `meade_close()` calls from autodetect failure handling and
+letting the common failure path do the reference-count cleanup. The failure path now
+decrements `device_count` once and closes the shared handle only when the count reaches
+zero.
+
+### DRV-035 (Open)
+
+The focuser and AUX logical devices reject mount types they cannot support after the
+shared handle has already been opened and autodetected. When that rejected logical device
+is the first connected instance, `PRIVATE_DATA->device_count` is 1 and the handler's
+unsupported-type branch decrements it to 0, but does not call `meade_close()`.
+
+That leaves `PRIVATE_DATA->handle` open while the shared reference count says no logical
+device owns it. The next connection attempt can overwrite or reuse the stale handle state,
+and a serial port may remain occupied after the user-visible connection has failed.
+
+The new LX200 simulator integration test exercises successful Meade mount/guider/focuser
+and OnStep AUX paths, but does not currently inject autodetect failures or unsupported
+first-slave combinations. It also drives the new tracking-on change through the `:AP#`
+fallback because the simulator's `:GW#` response always starts with `P`, so the new
+`:AA#` alt/az branch remains a coverage gap rather than a runtime finding.
+
 ## Review Focus
 
 - Driver lifecycle: `INDIGO_DRIVER_INIT`, `INDIGO_DRIVER_SHUTDOWN`, and `INDIGO_DRIVER_INFO`.
@@ -466,3 +507,4 @@ Fixed by requiring the final `:ST1#` reply byte to be `'1'` in the generated
 | `017ba602857378e4aed489c065c76eacae15924c` | working tree | 2026-08-31 | Focused review of active hot-plug driver SDK enumeration/open/close serialization under `indigo_drivers`; recorded `DRV-022` through `DRV-029`. Did not advance the folder baseline because the rest of `indigo_drivers` was not reviewed. |
 | `6efc2c7ac` | `a5282c84d` | 2026-09-01 | Verification pass over today's race-fix commits (DRV-022 through DRV-029); confirmed no deadlocks introduced. Surfaced `DRV-030` as a pre-existing NULL-handle crash in `ccd_touptek` disconnect path, independent of these commits. |
 | `017ba602857378e4aed489c065c76eacae15924c` | `1e82d6187` + working tree | 2026-09-01 | Deep focused review of `mount_ioptron` generated driver, generator source, simulator, and integration coverage; recorded `DRV-031` as a generator-template lifecycle bug exposed by `mount_ioptron`, plus `DRV-032` and `DRV-033` as iOptron-specific findings. Did not advance the folder baseline because the rest of `indigo_drivers` was not reviewed. |
+| `017ba602857378e4aed489c065c76eacae15924c` | HEAD + working tree | 2026-09-01 | Deep focused review of `mount_lx200`, including the incremental tracking-mode diff, hand-written shared connection lifecycle, new host-side simulator, and LX200 integration coverage; recorded `DRV-034` and `DRV-035`. Did not advance the folder baseline because the rest of `indigo_drivers` was not reviewed. |
