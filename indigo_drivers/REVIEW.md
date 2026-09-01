@@ -17,6 +17,10 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 
 2026-08-31 hot-plug SDK serialization pass: reviewed active `indigo_drivers/` hot-plug implementations using `libusb_hotplug_register_callback()` or vendor hot-plug callbacks, excluding `externals`, `bin_externals`, and disabled `#ifdef HOTPLUG` QHY code. This was a focused static review for races where a hot-plug enumeration/open/close path serializes access with a driver-global mutex but the normal connect/open/close path calls the same vendor SDK without that mutex. This pass did not advance `Last reviewed commit`.
 
+2026-09-01 deep focused `mount_lx200` pass: reviewed the incremental production diff, the new host-side LX200 simulator, the LX200/OnStep integration test, and the hand-written multi-device connection lifecycle for mount, guider, focuser, and AUX logical devices. This pass did not advance `Last reviewed commit`.
+
+2026-09-01 deep focused `mount_synscan` pass: reviewed the incremental production diff, the refactored host-side SynScan simulator, the SynScan mount/guider integration test, UDP/serial protocol framing, and the hand-written shared mount/guider connection and pulse-guiding lifecycle. This pass did not advance `Last reviewed commit`.
+
 ## Coverage Manifest
 
 | Group | Directories |
@@ -56,14 +60,22 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 | DRV-019 | Medium | `ccd_ptp/indigo_ptp_olympus.c:696` | Olympus initialization logs a failed `CameraControlMode` switch and calls raw-USB recovery, but ignores missing confirmation and recovery failure before scheduling event polling and returning success. A disconnected, wedged, or wildcard-matched unsupported Olympus body can be reported connected even though remote capture and live view require PC-control mode. | Closed (fixed) |
 | DRV-020 | Medium | `agent_mount/indigo_agent_mount.c:1189` | Mount and rotator deselection can leave `AGENT_MOUNT_STATE_DOME_SLAVING` / `AGENT_MOUNT_STATE_FIELD_DEROTATION` reporting the previous state after the required device is gone. Clear the slaving lights when the mount is deselected, and clear field derotation when the rotator is deselected. | Closed (fixed) |
 | DRV-021 | Medium | `agent_mount/indigo_agent_mount.c:1043` | The autonomous slaving path treats `DOME_HORIZONTAL_COORDINATES` / `ROTATOR_POSITION` `ALERT` as eligible for another command and then unconditionally reports the slaving light as `OK`, masking dome or rotator failures despite the state-light contract saying `ALERT` on error. Propagate or preserve alert state until the dependent device reports recovery. | Closed (fixed) |
-| DRV-022 | High | `wheel_asi/indigo_wheel_asi.c:173`, `focuser_asi/indigo_focuser_asi.c:557`, `rotator_asi/indigo_rotator_asi.c:189`, `ccd_asi/indigo_ccd_asi.c:254`, `guider_asi/indigo_guider_asi.c:89` | ZWO ASI-family connect/open paths call SDK enumeration/open/close APIs without the driver-global hot-plug mutex, so plug/unplug timers can race `EFW/EAF/CAA/ASI/USB2ST4` SDK global state during connect or disconnect. | Open |
-| DRV-023 | High | `ccd_playerone/indigo_ccd_playerone.c:213`, `wheel_playerone/indigo_wheel_playerone.c:157` | PlayerOne camera and wheel connect paths call `POAOpen*` / properties APIs without the driver-global hot-plug mutex while plug/unplug handlers enumerate and temporarily open/close the same SDK under that mutex. | Open |
-| DRV-024 | Medium | `ccd_fli/indigo_ccd_fli.c:145`, `focuser_fli/indigo_focuser_fli.c:152`, `wheel_fli/indigo_wheel_fli.c:122` | FLI connect paths use only per-device `usb_mutex` around `FLIOpen()` / `FLIClose()`, while hot-plug handlers protect `FLICreateList()` / `FLIList*()` / `FLIDeleteList()` with a separate driver-global mutex. | Open |
-| DRV-025 | Medium | `ccd_svb/indigo_ccd_svb.c:194` | SVBONY normal connect calls `SVBOpenCamera()` with only the device `usb_mutex`, but hot-plug serializes SDK enumeration and temporary open/close with `device_mutex`. | Open |
-| DRV-026 | Medium | `ccd_touptek/indigo_ccd_touptek.c:944` | ToupTek/OEM connect paths open devices with the vendor SDK without the hot-plug `mutex`, while the hot-plug refresh path enumerates devices and mutates shared presence state under that mutex. | Open |
-| DRV-027 | Medium | `ccd_dsi/indigo_ccd_dsi.c:271` | Meade DSI connect opens the camera outside `device_mutex`, but plug/unplug scans and non-macOS temporary probe opens are serialized with `device_mutex`, leaving a scan/open race class. | Open |
-| DRV-028 | Medium | `ccd_qsi/indigo_ccd_qsi.cpp:374` | QSI hot-plug uses the global `QSICamera cam` under `device_mutex`, but connect uses the same SDK object without that mutex for connect-time SDK calls. | Open |
-| DRV-029 | High | `guider_asi/indigo_guider_asi.c:389` | `process_plug_event()` locks `indigo_device_enumeration_mutex` and never unlocks it on the successful attach path, so the first successful ASI USB-ST4 plug event can permanently block later plug/unplug enumeration. | Open |
+| DRV-022 | High | `wheel_asi/indigo_wheel_asi.c:173`, `focuser_asi/indigo_focuser_asi.c:557`, `rotator_asi/indigo_rotator_asi.c:189`, `ccd_asi/indigo_ccd_asi.c:254`, `guider_asi/indigo_guider_asi.c:89` | ZWO ASI-family connect/open paths call SDK enumeration/open/close APIs without the driver-global hot-plug mutex, so plug/unplug timers can race `EFW/EAF/CAA/ASI/USB2ST4` SDK global state during connect or disconnect. | Closed (fixed) |
+| DRV-023 | High | `ccd_playerone/indigo_ccd_playerone.c:213`, `wheel_playerone/indigo_wheel_playerone.c:157` | PlayerOne camera and wheel connect paths call `POAOpen*` / properties APIs without the driver-global hot-plug mutex while plug/unplug handlers enumerate and temporarily open/close the same SDK under that mutex. | Closed (fixed) |
+| DRV-024 | Medium | `ccd_fli/indigo_ccd_fli.c:145`, `focuser_fli/indigo_focuser_fli.c:152`, `wheel_fli/indigo_wheel_fli.c:122` | FLI connect paths use only per-device `usb_mutex` around `FLIOpen()` / `FLIClose()`, while hot-plug handlers protect `FLICreateList()` / `FLIList*()` / `FLIDeleteList()` with a separate driver-global mutex. | Closed (fixed) |
+| DRV-025 | Medium | `ccd_svb/indigo_ccd_svb.c:194` | SVBONY normal connect calls `SVBOpenCamera()` with only the device `usb_mutex`, but hot-plug serializes SDK enumeration and temporary open/close with `indigo_device_enumeration_mutex`. | Closed (fixed) |
+| DRV-026 | Medium | `ccd_touptek/indigo_ccd_touptek.c:944` | ToupTek/OEM connect paths open devices with the vendor SDK without the hot-plug `mutex`, while the hot-plug refresh path enumerates devices and mutates shared presence state under that mutex. | Closed (fixed) |
+| DRV-027 | Medium | `ccd_dsi/indigo_ccd_dsi.c:271` | Meade DSI connect opened the camera outside the hot-plug enumeration mutex, while plug/unplug scans and non-macOS temporary probe opens were serialized with that mutex. | Closed (fixed) |
+| DRV-028 | Medium | `ccd_qsi/indigo_ccd_qsi.cpp:374` | QSI hot-plug uses the global `QSICamera cam` under `indigo_device_enumeration_mutex`, but connect used the same SDK object without that mutex for connect-time SDK calls. | Closed (fixed) |
+| DRV-029 | High | `guider_asi/indigo_guider_asi.c:389` | `process_plug_event()` locks `indigo_device_enumeration_mutex` and never unlocks it on the successful attach path, so the first successful ASI USB-ST4 plug event can permanently block later plug/unplug enumeration. | Closed (fixed) |
+| DRV-030 | Medium | `ccd_touptek/indigo_ccd_touptek.c:1123` | The disconnect path in `ccd_connect_callback()` calls `SDK_CALL(Stop)(PRIVATE_DATA->handle)` unconditionally before checking whether `handle` is non-NULL. If a prior connect attempt left `handle == NULL` (because `SDK_CALL(Open)` failed), an explicit disconnect request from a client will pass NULL to the vendor SDK, likely crashing the process. Guard the Stop call with `if (PRIVATE_DATA->handle)` or move it inside the existing `if (PRIVATE_DATA->handle)` close block. | Closed (fixed) |
+| DRV-031 | High | `../indigo_tools/indigo_generator.c:1450`, `mount_ioptron/indigo_mount_ioptron.c:1470`, `mount_ioptron/indigo_mount_ioptron.c:2046` | The generated multi-device connection-handler template incremented the shared connection count before driver-specific `on_connect` initialization, but on init failure emitted only `PRIVATE_DATA->count--` and no close when that failed attempt had opened the shared handle. `mount_ioptron` exposed this generator bug in both mount and guider handlers. | Closed (fixed) |
+| DRV-032 | Medium | `mount_ioptron/indigo_mount_ioptron.c:897` | V2.5/V3 guide-rate commands format RA and DEC as fixed two-digit fields (`:RG%02d%02d#`), while the inherited mount guide-rate property still accepts values up to 100. Sending 100 produces a six-digit payload (`RG100100`) that does not match the parsed two-two digit protocol shape. | Closed (fixed) |
+| DRV-033 | Medium | `mount_ioptron/indigo_mount_ioptron.c:800` | `ioptron_set_tracking_rate()` validates the `:RT*#` and custom-rate replies, but then treats any readable `:ST1#` response as success instead of requiring the success ack byte. A rejected tracking-enable command can still leave `MOUNT_TRACK_RATE` reported OK. | Closed (fixed) |
+| DRV-034 | High | `mount_lx200/indigo_mount_lx200.c:2333`, `mount_lx200/indigo_mount_lx200.c:3032`, `mount_lx200/indigo_mount_lx200.c:3161`, `mount_lx200/indigo_mount_lx200.c:3334` | LX200 connect handlers increment the shared `device_count` before autodetection, call `meade_close()` on autodetect failure, and then the common failure path decrements the already reset counter. A single failed detect can underflow the shared count and prevent later reconnect attempts from reopening the serial handle. | Closed (fixed) |
+| DRV-035 | Medium | `mount_lx200/indigo_mount_lx200.c:3173`, `mount_lx200/indigo_mount_lx200.c:3391` | If the focuser or AUX logical device is the first LX200 device to open the shared serial connection and autodetection succeeds with an unsupported mount type, the handler decrements `device_count` and reports `CONNECTION` alert without closing the handle opened by that same attempt. The serial/TCP endpoint can stay occupied while the shared count is zero. | Closed (fixed) |
+| DRV-036 | High | `mount_synscan/indigo_mount_synscan_driver.c:75` | `synscan_open()` parses `synscan://host:port` by copying `colon - host` bytes into `char host_name[INDIGO_NAME_SIZE]` with no length check and no guaranteed terminator. A long user-supplied `DEVICE_PORT` host segment can overflow the stack before `indigo_open_udp()` is called. | Closed (fixed) |
+| DRV-037 | Medium | `mount_synscan/indigo_mount_synscan_guider.c:179`, `mount_synscan/indigo_mount_synscan_guider.c:237`, `mount_synscan/indigo_mount_synscan_guider.c:258` | The SynScan guider starts two long-lived pulse worker callbacks that wait on condition variables, but disconnect sets `guiding_thread_exit = false` and never signals either condition. Disconnecting the guider without detaching leaves the workers blocked and a later reconnect can start another pair of workers against the same shared state. | Closed (fixed) |
 
 ## Finding Summaries
 
@@ -303,56 +315,215 @@ position property is alert, `AGENT_MOUNT_STATE_FIELD_DEROTATION_ITEM` is set to
 `INDIGO_ALERT_STATE` and no autonomous derotation command is issued. The light is only
 returned to `OK` by the non-alert correction path.
 
-### DRV-022 (Open)
+### DRV-022 (Closed)
 
 The ZWO SDK-backed hot-plug drivers serialize plug/unplug enumeration with a driver-global mutex, but normal connect/open and disconnect/close paths use only per-device `usb_mutex` locks:
 
 - `wheel_asi`: `wheel_connect_callback()` calls `find_index_by_device_id()` (`EFWGetNum()` / `EFWGetID()`), `EFWOpen()`, initial property reads, and `EFWClose()` outside `indigo_device_enumeration_mutex`, while `process_plug_event()` / `process_unplug_event()` hold that mutex around `EFWGetNum()` / `EFWGetID()` / temporary `EFWOpen()` / `EFWClose()`.
 - `focuser_asi`: same pattern for `EAFGetNum()` / `EAFGetID()` / `EAFOpen()` / `EAFClose()` in the USB path. Bluetooth paths are separate and not part of this finding.
 - `rotator_asi`: same pattern for `CAAGetNum()` / `CAAGetID()` / `CAAOpen()` / `CAAClose()`.
-- `ccd_asi`: hot-plug holds `device_mutex` while enumerating cameras and temporarily opening/closing one camera for ID/serial data, but `asi_open()` / `asi_close()` call `ASIOpenCamera()` / `ASIInitCamera()` / `ASICloseCamera()` without that mutex.
+- `ccd_asi`: hot-plug holds `indigo_device_enumeration_mutex` while enumerating cameras and temporarily opening/closing one camera for ID/serial data, but `asi_open()` / `asi_close()` call `ASIOpenCamera()` / `ASIInitCamera()` / `ASICloseCamera()` without that mutex.
 - `guider_asi`: hot-plug holds `indigo_device_enumeration_mutex` around `USB2ST4GetNum()` / `USB2ST4GetID()`, but `asi_open()` / `asi_close()` call `USB2ST4Open()` / `USB2ST4Close()` without it.
 
 The ASI wheel crash log showed this exact shape: a connect callback entered SDK enumeration while hot-plug/unplug callbacks were also active, and the closed SDK dereferenced invalid internal state. These drivers should use one driver-global SDK mutex for enumeration/open/close paths, or otherwise prove the vendor SDK calls are reentrant.
 
-### DRV-023 (Open)
+Fixed by reusing each driver's hot-plug mutex around the normal USB enumeration/open/initial-read/close path, with CCD and guider hot-unplug detaching outside that mutex to avoid self-deadlock when detach invokes close.
+
+### DRV-023 (Closed)
 
 The PlayerOne camera and wheel drivers have the same split-lock shape:
 
-- `ccd_playerone`: `process_plug_event()` holds `device_mutex` while calling `POAGetCameraCount()`, `POAGetCameraProperties()`, temporary `POAOpenCamera()`, and `POACloseCamera()`, but `playerone_open()` / `playerone_close()` use only `PRIVATE_DATA->usb_mutex` around `POAOpenCamera()` / `POAInitCamera()` / `POACloseCamera()`.
+- `ccd_playerone`: `process_plug_event()` holds `indigo_device_enumeration_mutex` while calling `POAGetCameraCount()`, `POAGetCameraProperties()`, temporary `POAOpenCamera()`, and `POACloseCamera()`, but `playerone_open()` / `playerone_close()` use only `PRIVATE_DATA->usb_mutex` around `POAOpenCamera()` / `POAInitCamera()` / `POACloseCamera()`.
 - `wheel_playerone`: `process_plug_event()` holds `indigo_device_enumeration_mutex` around `POAGetPWCount()`, `POAGetPWProperties()`, temporary `POAOpenPW()`, and `POAClosePW()`, but `wheel_connect_callback()` calls `POAGetPWPropertiesByHandle()`, `POAOpenPW()`, and `POAClosePW()` outside that mutex.
 
 If the PlayerOne SDK has global enumeration/open state like the ZWO SDK, hot-plug timers can race normal connect/disconnect.
 
-### DRV-024 (Open)
+Fixed by reusing each driver's hot-plug mutex around the normal camera/wheel open/initial-property/close paths, with hot-unplug detaching devices outside that mutex to avoid self-deadlock when detach invokes close.
+
+### DRV-024 (Closed)
 
 The FLI CCD, focuser, and wheel drivers protect hot-plug enumeration with a driver-global mutex, but connect paths open and close devices under only per-device `usb_mutex`:
 
-- `ccd_fli`: `fli_open()` calls `FLIOpen()` and error-path `FLIClose()` while hot-plug uses `device_mutex` around `FLICreateList()` / `FLIListFirst()` / `FLIListNext()` / `FLIDeleteList()`.
-- `focuser_fli`: `fli_focuser_connect()` calls `FLIOpen()` outside `device_mutex`, while hot-plug enumeration is serialized with `device_mutex`.
+- `ccd_fli`: `fli_open()` calls `FLIOpen()` and error-path `FLIClose()` while hot-plug uses `indigo_device_enumeration_mutex` around `FLICreateList()` / `FLIListFirst()` / `FLIListNext()` / `FLIDeleteList()`.
+- `focuser_fli`: `fli_focuser_connect()` calls `FLIOpen()` outside `indigo_device_enumeration_mutex`, while hot-plug enumeration is serialized with `indigo_device_enumeration_mutex`.
 - `wheel_fli`: `wheel_connect_callback()` calls `find_index_by_device_fname()` against the shared enumerated arrays and then `FLIOpen()` / `FLIClose()` outside `indigo_device_enumeration_mutex`, while hot-plug updates those arrays under that mutex.
 
 The risk is lower confidence than the ZWO finding because it depends on libfli's internal reentrancy, but the driver-level locking suggests enumeration is already considered global state.
 
-### DRV-025 (Open)
+Fixed by reusing each driver's hot-plug mutex around normal `FLIOpen()` / `FLIClose()` paths, including the wheel's shared enumerated file-name lookup. Hot-unplug detaches devices outside that mutex to avoid self-deadlock when detach invokes close.
 
-`ccd_svb` uses `device_mutex` in hot-plug paths around `SVBGetNumOfConnectedCameras()`, `SVBGetCameraInfo()`, temporary `SVBOpenCamera()`, property/probing calls, and `SVBCloseCamera()`. Normal `svb_open()` / close paths use only `PRIVATE_DATA->usb_mutex` around `SVBOpenCamera()` and later `SVBCloseCamera()`. A connect racing with an arrival/removal timer can therefore overlap SDK enumeration and open/close state.
+### DRV-025 (Closed)
 
-### DRV-026 (Open)
+`ccd_svb` uses `indigo_device_enumeration_mutex` in hot-plug paths around `SVBGetNumOfConnectedCameras()`, `SVBGetCameraInfo()`, temporary `SVBOpenCamera()`, property/probing calls, and `SVBCloseCamera()`. Normal `svb_open()` / close paths use only `PRIVATE_DATA->usb_mutex` around `SVBOpenCamera()` and later `SVBCloseCamera()`. A connect racing with an arrival/removal timer can therefore overlap SDK enumeration and open/close state.
+
+Fixed by reusing `indigo_device_enumeration_mutex` around normal `SVBOpenCamera()` / `SVBCloseCamera()` paths and detaching hot-unplugged devices outside that mutex to avoid self-deadlock when detach invokes close.
+
+### DRV-026 (Closed)
 
 `ccd_touptek` uses a driver-global `mutex` for `process_plug_event()` while refreshing the device inventory with `SDK_CALL(EnumV2)` and updating shared `devices[]` / `present` state. The CCD, guider, wheel, and focuser connect callbacks call `SDK_CALL(Open)` directly from normal connect paths without taking that mutex. If the vendor hot-plug callback schedules a refresh during user connect/disconnect, SDK enumeration and open can overlap.
 
-### DRV-027 (Open)
+Fixed by reusing `indigo_device_enumeration_mutex` around normal CCD, guider, wheel, and focuser `SDK_CALL(Open)` / final `SDK_CALL(Close)` paths. Hot-unplug detaches devices outside that mutex to avoid self-deadlock when detach invokes close.
 
-`ccd_dsi` hot-plug uses `device_mutex` around `dsi_scan_usb()` and, on non-macOS paths, a temporary `dsi_open_camera()` used to name/probe the camera. Normal connect enters `camera_open(device)` outside `device_mutex`. That leaves the same scan/open race class as the ASI wheel issue, even though macOS avoids the temporary open inside plug handling because it can reset the device.
+### DRV-027 (Closed)
 
-### DRV-028 (Open)
+`ccd_dsi` hot-plug uses `indigo_device_enumeration_mutex` around `dsi_scan_usb()` and, on non-macOS paths, a temporary `dsi_open_camera()` used to name/probe the camera. Normal connect entered `camera_open(device)` outside that mutex. That left the same scan/open race class as the ASI wheel issue, even though macOS avoids the temporary open inside plug handling because it can reset the device.
 
-`ccd_qsi` uses a single global `QSICamera cam` object. `process_plug_event()` protects `cam.get_AvailableCameras()` with `device_mutex`, but `ccd_connect_callback()` uses the same `cam` object for `get_Connected()`, `get_SelectCamera()`, and the subsequent connect sequence without holding `device_mutex`. Because the SDK object is shared across all QSI devices, hot-plug enumeration can race connect-time SDK state.
+Fixed by renaming the driver-global hot-plug mutex to `indigo_device_enumeration_mutex` and reusing it around normal `dsi_open_camera()` / `dsi_close_camera()` paths. Hot-unplug detaches devices outside that mutex to avoid self-deadlock when detach invokes close.
 
-### DRV-029 (Open)
+### DRV-028 (Closed)
+
+`ccd_qsi` uses a single global `QSICamera cam` object. `process_plug_event()` protects `cam.get_AvailableCameras()` with `indigo_device_enumeration_mutex`, but `ccd_connect_callback()` used the same `cam` object for `get_Connected()`, `get_SelectCamera()`, and the subsequent connect sequence without holding that mutex. Because the SDK object is shared across all QSI devices, hot-plug enumeration could race connect-time SDK state.
+
+Fixed by renaming the driver-global hot-plug mutex to `indigo_device_enumeration_mutex` and reusing it around normal connect/disconnect SDK access to `cam`. Hot-unplug detaches devices outside that mutex to avoid self-deadlock when detach invokes disconnect.
+
+### DRV-029 (Closed)
 
 `guider_asi` has a direct mutex leak in `process_plug_event()`: it locks `indigo_device_enumeration_mutex`, handles error returns correctly, but the successful path attaches the new guider and stores it in `devices[slot]` without unlocking before returning. After the first successful plug event, later ASI USB-ST4 plug/unplug handlers block forever on the same mutex. The fix is a straightforward unlock on the success path, plus considering the DRV-022 serialization fix for normal open/close.
+
+Fixed by unlocking `indigo_device_enumeration_mutex` on the successful attach path.
+
+### DRV-030 (Closed)
+
+`ccd_connect_callback()` in `indigo_ccd_touptek.c` enters the disconnect branch (`else`) and immediately calls `SDK_CALL(Stop)(PRIVATE_DATA->handle)` at line 1123. This runs before any NULL-handle guard. A handle of NULL can result from a prior connect where `SDK_CALL(Open)` returned NULL: the DRV-026 fix correctly releases the global lock in that path, but `PRIVATE_DATA->handle` remains NULL and `gp_bits` is cleared to 0 (line 1120). If the user or a client subsequently sends a disconnect request, `SDK_CALL(Stop)(NULL)` is invoked, which is expected to dereference the NULL handle in the vendor SDK and crash the process.
+
+Fixed by wrapping the `SDK_CALL(Stop)` call with `if (PRIVATE_DATA->handle)`, matching the pattern already used for the `SDK_CALL(Close)` call at line 1151.
+
+### DRV-031 (Closed)
+
+The root cause was in `indigo_generator.c`, not in iOptron-specific source. For generated
+multi-device drivers, the connection-handler template emitted
+`if (PRIVATE_DATA->count++ == 0) ..._open(...)`, then emitted the driver-specific
+`on_connect` block, but the failure branch only emitted `PRIVATE_DATA->count--`. If
+`..._open()` succeeded and the generated `on_connect` initialization failed, the generated
+handler marked `CONNECTION` disconnected without closing the handle opened by that same
+attempt.
+
+`mount_ioptron` exposed the issue because its generated mount and guider handlers both
+call `ioptron_init_mount()` / `ioptron_init_guider()` after opening the shared serial/TCP
+handle. A rejected or malformed probe could therefore leak the handle and leave the
+controller endpoint occupied. Other generated multi-device drivers with the same
+open-then-init shape were susceptible to the same template bug.
+
+Fixed in the generator by emitting `if (--PRIVATE_DATA->count == 0) { ..._close(device); }`
+on generated multi-device connection failure. The checked-in `mount_ioptron` generated
+output was regenerated with that template, so its mount and guider handlers now close the
+shared handle only when the failed attempt brings the shared count back to zero.
+
+### DRV-032 (Closed)
+
+For V2.5/V3 controllers, `ioptron_set_guide_rate()` sends both axes in one fixed-width
+payload with `:RG%02d%02d#`, and initialization parses `:AG#` as two characters for DEC
+and two characters for RA. The inherited mount `MOUNT_GUIDE_RATE` items are initialized
+with max 100 in `indigo_mount_driver.c`, and the iOptron driver does not lower that max
+when it exposes the two-axis V2.5/V3 form.
+
+As a result, a valid INDIGO-side value of 100 formats as `RG100100`, which is longer than
+the two-two digit command shape. The simulator currently masks this by copying only the
+first four payload characters, and the integration test exercises 50 but not the 100
+boundary.
+
+Fixed by setting the iOptron guide-rate item ranges after protocol detection according to
+the local protocol PDFs: V1.0 uses 10..80, V2.0 uses 10..90, and V2.5/V3 use separate
+RA 1..90 and DEC 10..99 ranges. The 8407 branch keeps a 10..100 item range because its
+documentation permits 10..90 plus 100, while INDIGO number ranges cannot represent the
+91..99 gap; the command helper now rejects that gap before sending the protocol command.
+The generated driver was regenerated from the updated `.driver` source, and the iOptron
+simulator integration test now asserts the V3 mount/guider RA and DEC ranges.
+
+### DRV-033 (Closed)
+
+In `ioptron_set_tracking_rate()`, non-8406 protocols correctly require `*response == '1'`
+for the `:RT*#` command and for custom `:RR*#` commands, but the final `:ST1#` command is
+combined as `result = result && ioptron_simple_reply_command(device, ":ST1#")`. That
+helper returns true when one byte is read, regardless of whether the byte is the success
+ack.
+
+`ioptron_set_tracking()` checks `:ST%c#` with `*response == '1'`, so the tracking-rate
+path is inconsistent with the direct tracking path. If the controller accepts the rate
+selection but rejects enabling tracking, `MOUNT_TRACK_RATE` can still report
+`INDIGO_OK_STATE`.
+
+Fixed by requiring the final `:ST1#` reply byte to be `'1'` in the generated
+`ioptron_set_tracking_rate()` source and regenerating the checked-in driver output.
+
+### DRV-034 (Closed)
+
+The LX200 driver is hand-written but uses the same shared-connection pattern as generated
+multi-device drivers: mount, guider, focuser, and AUX all increment
+`PRIVATE_DATA->device_count` before the first logical device opens the serial/TCP handle.
+On autodetect failure each connect handler calls `meade_close()`, and `meade_close()`
+sets `PRIVATE_DATA->device_count = 0`. Control then falls through to the common failure
+block, which decrements the same counter again.
+
+After one failed autodetect from a cold state, `device_count` becomes `-1`. A later
+connect attempt evaluates `if (PRIVATE_DATA->device_count++ == 0)` as false, so it skips
+`meade_open()` even though there is no valid handle. The driver then tries detection
+against a NULL handle, fails, and repeats the underflow. This can leave the LX200 driver
+unable to recover from a transient probe failure without unloading/reloading the driver.
+
+Fixed by removing the direct `meade_close()` calls from autodetect failure handling and
+letting the common failure path do the reference-count cleanup. The failure path now
+decrements `device_count` once and closes the shared handle only when the count reaches
+zero.
+
+### DRV-035 (Closed)
+
+The focuser and AUX logical devices reject mount types they cannot support after the
+shared handle has already been opened and autodetected. When that rejected logical device
+is the first connected instance, `PRIVATE_DATA->device_count` is 1 and the handler's
+unsupported-type branch decrements it to 0, but does not call `meade_close()`.
+
+That leaves `PRIVATE_DATA->handle` open while the shared reference count says no logical
+device owns it. The next connection attempt can overwrite or reuse the stale handle state,
+and a serial port may remain occupied after the user-visible connection has failed.
+
+Fixed by routing the focuser and AUX unsupported-type branches through the same
+reference-count cleanup as other connection failures: decrement once, and close the shared
+handle when the rejected first logical device brings `device_count` back to zero.
+
+The new LX200 simulator integration test exercises successful Meade mount/guider/focuser
+and OnStep AUX paths, but does not currently inject autodetect failures or unsupported
+first-slave combinations. It also drives the new tracking-on change through the `:AP#`
+fallback because the simulator's `:GW#` response always starts with `P`, so the new
+`:AA#` alt/az branch remains a coverage gap rather than a runtime finding.
+
+### DRV-036 (Closed)
+
+`synscan_open()` accepts editable `DEVICE_PORT` values in the form `synscan://host:port`.
+When a colon is present, it declares `char host_name[INDIGO_NAME_SIZE]` and then calls
+`strncpy(host_name, host, colon - host)`. Because `colon - host` is derived entirely from
+the user-controlled text item, a host segment of `INDIGO_NAME_SIZE` bytes or longer writes
+past `host_name` before UDP open is attempted. Even shorter exact-width values are not
+explicitly null-terminated before being passed to `indigo_open_udp()`.
+
+The new simulator integration test uses a pseudo-terminal serial path, so it does not
+exercise the UDP parser or long `synscan://...` endpoints.
+
+Fixed by checking the host segment length before copying it into `host_name`, explicitly
+terminating the copied string, and failing the UDP open safely when the host is too long
+for `INDIGO_NAME_SIZE`.
+
+### DRV-037 (Closed)
+
+On a successful SynScan guider connection, `synscan_connect_timer_callback()` starts two
+zero-delay callbacks, `guider_timer_callback_ra()` and `guider_timer_callback_dec()`. Both
+callbacks enter infinite loops and block in `pthread_cond_wait()` until a guide pulse or
+`PRIVATE_DATA->guiding_thread_exit` wakes them.
+
+The guider disconnect path does the opposite of the required shutdown signal: it sets
+`guiding_thread_exit = false`, decrements `device_count`, and returns `CONNECTION` OK
+without signalling either condition variable or cancelling the timer handles. If a user
+disconnects the guider but keeps the driver loaded, the two worker callbacks remain parked
+on the condition variables. A later reconnect starts another pair of callbacks sharing the
+same pulse fields and condition variables, so guide pulses can be consumed unpredictably
+and shutdown may have to wait for stale workers. The current integration test disconnects
+only during teardown, so `guider_detach()` later sets `guiding_thread_exit = true` and
+masks the ordinary disconnect leak.
+
+Fixed by adding a shared guider-worker shutdown helper used by both disconnect and
+detach. It cancels pending pulse timers, sets the exit flag, signals both condition
+variables, waits for the active guider worker count to drain, and resets pulse state
+before starting a fresh pair of workers on reconnect.
 
 ## Review Focus
 
@@ -380,3 +551,7 @@ The risk is lower confidence than the ZWO finding because it depends on libfli's
 | `017ba602857378e4aed489c065c76eacae15924c` | `a18baada350fd21298fc602fd1751518cc8254ba` | 2026-08-22 | Focused review of Olympus/OM System support under `ccd_ptp`; recorded `DRV-019`. Did not advance the folder baseline because other `indigo_drivers` changes in this range were not reviewed. |
 | `017ba602857378e4aed489c065c76eacae15924c` | `f8b7086ebdd408c34366a8acdac27e6311103911` + working tree | 2026-08-25 | Focused review of `agent_mount/indigo_agent_mount.c` `AGENT_MOUNT_STATE_DOME_SLAVING` and `AGENT_MOUNT_STATE_FIELD_DEROTATION` usage; recorded `DRV-020` and `DRV-021`. Did not advance the folder baseline because the rest of `indigo_drivers` was not reviewed. |
 | `017ba602857378e4aed489c065c76eacae15924c` | working tree | 2026-08-31 | Focused review of active hot-plug driver SDK enumeration/open/close serialization under `indigo_drivers`; recorded `DRV-022` through `DRV-029`. Did not advance the folder baseline because the rest of `indigo_drivers` was not reviewed. |
+| `6efc2c7ac` | `a5282c84d` | 2026-09-01 | Verification pass over today's race-fix commits (DRV-022 through DRV-029); confirmed no deadlocks introduced. Surfaced `DRV-030` as a pre-existing NULL-handle crash in `ccd_touptek` disconnect path, independent of these commits. |
+| `017ba602857378e4aed489c065c76eacae15924c` | `1e82d6187` + working tree | 2026-09-01 | Deep focused review of `mount_ioptron` generated driver, generator source, simulator, and integration coverage; recorded `DRV-031` as a generator-template lifecycle bug exposed by `mount_ioptron`, plus `DRV-032` and `DRV-033` as iOptron-specific findings. Did not advance the folder baseline because the rest of `indigo_drivers` was not reviewed. |
+| `017ba602857378e4aed489c065c76eacae15924c` | HEAD + working tree | 2026-09-01 | Deep focused review of `mount_lx200`, including the incremental tracking-mode diff, hand-written shared connection lifecycle, new host-side simulator, and LX200 integration coverage; recorded `DRV-034` and `DRV-035`. Did not advance the folder baseline because the rest of `indigo_drivers` was not reviewed. |
+| `017ba602857378e4aed489c065c76eacae15924c` | HEAD + working tree | 2026-09-01 | Deep focused review of `mount_synscan`, including the incremental driver/protocol diff, refactored host-side simulator, mount/guider integration coverage, UDP endpoint parsing, and pulse-guiding lifecycle; recorded `DRV-036` and `DRV-037`. Did not advance the folder baseline because the rest of `indigo_drivers` was not reviewed. |

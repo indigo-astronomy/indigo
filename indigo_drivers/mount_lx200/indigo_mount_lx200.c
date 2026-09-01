@@ -2333,7 +2333,6 @@ static void mount_connect_callback(indigo_device *device) {
 				if (!meade_detect_mount(device)) {
 					connection_result = false;
 					indigo_send_message(device, ALERT_PROPERTY, "Autodetection failed!");
-					meade_close(device);
 				}
 			}
 		}
@@ -2356,7 +2355,9 @@ static void mount_connect_callback(indigo_device *device) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_execute_handler(device, position_timer_callback);
 		} else {
-			PRIVATE_DATA->device_count--;
+			if (--PRIVATE_DATA->device_count <= 0) {
+				meade_close(device);
+			}
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
@@ -3031,14 +3032,15 @@ static void guider_connect_callback(indigo_device *device) {
 				if (!meade_detect_mount(device->master_device)) {
 					result = false;
 					indigo_send_message(device, ALERT_PROPERTY, "Autodetection failed!");
-					meade_close(device);
 				}
 			}
 		}
 		if (result) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
-			PRIVATE_DATA->device_count--;
+			if (--PRIVATE_DATA->device_count <= 0) {
+				meade_close(device->master_device);
+			}
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
@@ -3159,7 +3161,6 @@ static void focuser_connect_callback(indigo_device *device) {
 				if (!meade_detect_mount(device->master_device)) {
 					result = false;
 					indigo_send_message(device, ALERT_PROPERTY, "Autodetection failed!");
-					meade_close(device);
 				}
 			}
 		}
@@ -3170,12 +3171,16 @@ static void focuser_connect_callback(indigo_device *device) {
 				FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
-				PRIVATE_DATA->device_count--;
+				if (--PRIVATE_DATA->device_count <= 0) {
+					meade_close(device->master_device);
+				}
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			}
 		} else {
-			PRIVATE_DATA->device_count--;
+			if (--PRIVATE_DATA->device_count <= 0) {
+				meade_close(device->master_device);
+			}
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
@@ -3331,7 +3336,6 @@ static void aux_connect_handler(indigo_device *device) {
 				if (!meade_detect_mount(device->master_device)) {
 					result = false;
 					indigo_send_message(device, ALERT_PROPERTY, "Autodetection failed!");
-					meade_close(device);
 				}
 			}
 		}
@@ -3385,12 +3389,16 @@ static void aux_connect_handler(indigo_device *device) {
 				indigo_define_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
 				indigo_execute_handler(device, onstep_aux_timer_callback);
 			} else {
-				PRIVATE_DATA->device_count--;
+				if (--PRIVATE_DATA->device_count <= 0) {
+					meade_close(device->master_device);
+				}
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			}
 		} else {
-			PRIVATE_DATA->device_count--;
+			if (--PRIVATE_DATA->device_count <= 0) {
+				meade_close(device->master_device);
+			}
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}

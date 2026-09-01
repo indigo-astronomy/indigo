@@ -502,10 +502,7 @@ static indigo_result guider_detach(indigo_device *device) {
 		synscan_guider_connect(device);
 	}
 
-	//  Wake up the pulse timer threads to exit
-	PRIVATE_DATA->guiding_thread_exit = true;
-	pthread_cond_signal(&PRIVATE_DATA->ha_pulse_cond);
-	pthread_cond_signal(&PRIVATE_DATA->dec_pulse_cond);
+	synscan_stop_guider_threads(device);
 
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_guider_detach(device);

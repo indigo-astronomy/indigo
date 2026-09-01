@@ -159,7 +159,7 @@ static bool asi_command(indigo_device *device, const char *command, char *respon
 		return false;
 	}
 	if (!indigo_uni_is_valid(PRIVATE_DATA->handle)) {
-		asi_close(device);
+		asi_close(device->master_device);
 		indigo_execute_handler(device->master_device, indigo_disconnect_slave_devices);
 		return false;
 	}
@@ -180,9 +180,9 @@ static bool asi_command(indigo_device *device, const char *command, char *respon
 static void asi_close(indigo_device *device) {
 	if (PRIVATE_DATA->handle != NULL) {
 		indigo_uni_close(&PRIVATE_DATA->handle);
-		PRIVATE_DATA->device_count = 0;
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
 	}
+	PRIVATE_DATA->device_count = 0;
 }
 
 // ---------------------------------------------------------------------  mount commands
@@ -876,7 +876,6 @@ static void mount_connect_callback(indigo_device *device) {
 		if (result && !asi_detect_mount(device)) {
 			result = false;
 			indigo_send_message(device, ALERT_PROPERTY, "Handshake failed");
-			asi_close(device);
 		}
 		if (result) {
 			asi_init_mount(device);
@@ -886,15 +885,17 @@ static void mount_connect_callback(indigo_device *device) {
 			indigo_execute_handler(device, position_timer_callback);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
-			PRIVATE_DATA->device_count--;
+			if (--PRIVATE_DATA->device_count <= 0) {
+				asi_close(device->master_device);
+			}
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
-		if (--PRIVATE_DATA->device_count == 0) {
+		if (--PRIVATE_DATA->device_count <= 0) {
 			asi_stop(device);
-			asi_close(device);
+			asi_close(device->master_device);
 		}
 		indigo_delete_property(device, MOUNT_MODE_PROPERTY, NULL);
 		indigo_delete_property(device, ZWO_BUZZER_PROPERTY, NULL);
@@ -1419,13 +1420,15 @@ static void guider_connect_callback(indigo_device *device) {
 				}
 			}
 		} else {
-			PRIVATE_DATA->device_count--;
+			if (--PRIVATE_DATA->device_count <= 0) {
+				asi_close(device->master_device);
+			}
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
-		if (--PRIVATE_DATA->device_count == 0) {
-			asi_close(device);
+		if (--PRIVATE_DATA->device_count <= 0) {
+			asi_close(device->master_device);
 		}
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}

@@ -73,9 +73,15 @@ bool synscan_open(indigo_device *device) {
 			PRIVATE_DATA->handle = indigo_open_udp(host, 11880);
 		} else {
 			char host_name[INDIGO_NAME_SIZE];
-			strncpy(host_name, host, colon - host);
-			int port = atoi(colon + 1);
-			PRIVATE_DATA->handle = indigo_open_udp(host_name, port);
+			size_t host_length = colon - host;
+			if (host_length < sizeof(host_name)) {
+				strncpy(host_name, host, host_length);
+				host_name[host_length] = 0;
+				int port = atoi(colon + 1);
+				PRIVATE_DATA->handle = indigo_open_udp(host_name, port);
+			} else {
+				PRIVATE_DATA->handle = 0;
+			}
 		}
 		PRIVATE_DATA->udp = true;
 	} else {

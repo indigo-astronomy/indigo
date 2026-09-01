@@ -492,116 +492,116 @@ static bool ioptron_set_utc(indigo_device *device, time_t secs, int utc_offset) 
 	return false;
 }
 
-static bool ioptron_get_utc(indigo_device *device, time_t *secs, int *utc_offset) {
-	struct tm tm;
-	char sep;
-	memset(&tm, 0, sizeof(tm));
-	MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-	if (PRIVATE_DATA->protocol == HC_8406) {
-		if (ioptron_command(device, ":GC#") && sscanf(PRIVATE_DATA->response, "%2d%c%2d%c%2d", &tm.tm_mon, &sep, &tm.tm_mday, &sep, &tm.tm_year) == 5) {
-			if (ioptron_command(device, ":GL#") && sscanf(PRIVATE_DATA->response, "%2d:%2d:%2d", &tm.tm_hour, &tm.tm_min, &tm.tm_sec) == 3) {
-				tm.tm_year += 100; // TODO: To be fixed in year 2100 :)
-				tm.tm_mon -= 1;
-				if (ioptron_command(device, ":GG#")) {
-					if (PRIVATE_DATA->response[0] ==  'E') {
-						*utc_offset = atoi(PRIVATE_DATA->response + 1);
-					} else {
-						*utc_offset = -atoi(PRIVATE_DATA->response + 1);
-					}
-					*secs = indigo_timegm(&tm) - *utc_offset * 3600;
-					PRIVATE_DATA->time_difference = time(NULL) - *secs;
-					return true;
-				}
-			}
-		}
-	} else if (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == UNKNOWN) {
-		if (ioptron_command(device, ":GC#") && sscanf(PRIVATE_DATA->response, "%2d%c%2d%c%2d", &tm.tm_mon, &sep, &tm.tm_mday, &sep, &tm.tm_year) == 5) {
-			if (ioptron_command(device, ":GL#") && sscanf(PRIVATE_DATA->response, "%2d:%2d:%2d", &tm.tm_hour, &tm.tm_min, &tm.tm_sec) == 3) {
-				tm.tm_year += 100; // TODO: To be fixed in year 2100 :)
-				tm.tm_mon -= 1;
-				if (ioptron_command(device, ":GG#")) {
-					*utc_offset = atoi(PRIVATE_DATA->response);
-					*secs = indigo_timegm(&tm) - *utc_offset * 3600;
-					PRIVATE_DATA->time_difference = time(NULL) - *secs;
-					return true;
-				}
-			}
-		}
-	} else if (PRIVATE_DATA->protocol == V1_0 || PRIVATE_DATA->protocol == V2_0 || PRIVATE_DATA->protocol == V2_5) {
-		int offset;
-		if (ioptron_command(device, ":GLT#") && sscanf(PRIVATE_DATA->response, "%4d%c%2d%2d%2d%2d%2d%2d", &offset, &sep, &tm.tm_year, &tm.tm_mon, &tm.tm_mday, &tm.tm_hour, &tm.tm_min, &tm.tm_sec) == 8) {
-			tm.tm_year += 100; // TODO: To be fixed in year 2100 :)
-			tm.tm_mon -= 1;
-			*utc_offset = offset / 60;
-			*secs = indigo_timegm(&tm) - *utc_offset * 3600;
-			PRIVATE_DATA->time_difference = time(NULL) - *secs;
-			return true;
-		}
-	} else if (PRIVATE_DATA->protocol == V3_0) {
-		if (ioptron_command(device, ":GUT#")) {
-			PRIVATE_DATA->response[4] = 0;
-			int offset = atoi(PRIVATE_DATA->response);
-			*utc_offset = offset / 60;
-			double jd = atoll(PRIVATE_DATA->response + 5) / 8.64e+7 + JD2000;
-			*secs = (time_t)((jd - DELTA_UT1_UTC - 2440587.5) * 86400.0);
-			PRIVATE_DATA->time_difference = time(NULL) - *secs;
-			return true;
-		}
-	}
-	return false;
-}
-
-static bool ioptron_get_site(indigo_device *device, double *latitude, double *longitude) {
-	if (PRIVATE_DATA->protocol == HC_8406 || PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == V1_0) {
-		if (ioptron_command(device, ":Gt#")) {
-			*latitude = indigo_stod(PRIVATE_DATA->response);
-			if (ioptron_command(device, ":Gg#")) {
-				*longitude = indigo_stod(PRIVATE_DATA->response);
-				return true;
-			}
-		}		
-	} else if (PRIVATE_DATA->protocol == V2_0) {
-		if (ioptron_command(device, ":Gt#")) {
-			*latitude = atol(PRIVATE_DATA->response) / 60.0 / 60.0;
-			if (ioptron_command(device, ":Gg#")) {
-				*longitude = atol(PRIVATE_DATA->response) / 60.0 / 60.0;
-				if (*longitude < 0) {
-					*longitude += 360;
-				}
-				return true;
-			}
-		}
-	} else if (PRIVATE_DATA->protocol == V2_5) {
-		if (ioptron_command(device, ":GLS#") && strlen(PRIVATE_DATA->response) == 19) {
-			char val[16];
-			memcpy(val, PRIVATE_DATA->response, 7);
-			val[7] = 0;
-			*longitude = atol(val) / 60.0 / 60.0;
-			if (*longitude < 0) {
-				*longitude += 360;
-			}
-			memcpy(val, PRIVATE_DATA->response + 7, 6);
-			val[6] = 0;
-			*latitude = atol(val) / 60.0 / 60.0 - 90;
-			return true;
-		}
-	} else if (PRIVATE_DATA->protocol == V3_0) {
-		if (ioptron_command(device, ":GLS#") && strlen(PRIVATE_DATA->response) == 23) {
-			char val[16];
-			memcpy(val, PRIVATE_DATA->response, 9);
-			val[9] = 0;
-			*longitude = atol(val) / 60.0 / 60.0 / 100.0;
-			if (*longitude < 0) {
-				*longitude += 360;
-			}
-			strncpy(val, PRIVATE_DATA->response + 9, 8);
-			val[8] = 0;
-			*latitude = atol(val) / 60.0 / 60.0 / 100.0 - 90;
-			return true;
-		}
-	}
-	return false;
-}
+//		static bool ioptron_get_utc(indigo_device *device, time_t *secs, int *utc_offset) {
+//			struct tm tm;
+//			char sep;
+//			memset(&tm, 0, sizeof(tm));
+//			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
+//			if (PRIVATE_DATA->protocol == HC_8406) {
+//				if (ioptron_command(device, ":GC#") && sscanf(PRIVATE_DATA->response, "%2d%c%2d%c%2d", &tm.tm_mon, &sep, &tm.tm_mday, &sep, &tm.tm_year) == 5) {
+//					if (ioptron_command(device, ":GL#") && sscanf(PRIVATE_DATA->response, "%2d:%2d:%2d", &tm.tm_hour, &tm.tm_min, &tm.tm_sec) == 3) {
+//						tm.tm_year += 100; // TODO: To be fixed in year 2100 :)
+//						tm.tm_mon -= 1;
+//						if (ioptron_command(device, ":GG#")) {
+//							if (PRIVATE_DATA->response[0] ==  'E') {
+//								*utc_offset = atoi(PRIVATE_DATA->response + 1);
+//							} else {
+//								*utc_offset = -atoi(PRIVATE_DATA->response + 1);
+//							}
+//							*secs = indigo_timegm(&tm) - *utc_offset * 3600;
+//							PRIVATE_DATA->time_difference = time(NULL) - *secs;
+//							return true;
+//						}
+//					}
+//				}
+//			} else if (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == UNKNOWN) {
+//				if (ioptron_command(device, ":GC#") && sscanf(PRIVATE_DATA->response, "%2d%c%2d%c%2d", &tm.tm_mon, &sep, &tm.tm_mday, &sep, &tm.tm_year) == 5) {
+//					if (ioptron_command(device, ":GL#") && sscanf(PRIVATE_DATA->response, "%2d:%2d:%2d", &tm.tm_hour, &tm.tm_min, &tm.tm_sec) == 3) {
+//						tm.tm_year += 100; // TODO: To be fixed in year 2100 :)
+//						tm.tm_mon -= 1;
+//						if (ioptron_command(device, ":GG#")) {
+//							*utc_offset = atoi(PRIVATE_DATA->response);
+//							*secs = indigo_timegm(&tm) - *utc_offset * 3600;
+//							PRIVATE_DATA->time_difference = time(NULL) - *secs;
+//							return true;
+//						}
+//					}
+//				}
+//			} else if (PRIVATE_DATA->protocol == V1_0 || PRIVATE_DATA->protocol == V2_0 || PRIVATE_DATA->protocol == V2_5) {
+//				int offset;
+//				if (ioptron_command(device, ":GLT#") && sscanf(PRIVATE_DATA->response, "%4d%c%2d%2d%2d%2d%2d%2d", &offset, &sep, &tm.tm_year, &tm.tm_mon, &tm.tm_mday, &tm.tm_hour, &tm.tm_min, &tm.tm_sec) == 8) {
+//					tm.tm_year += 100; // TODO: To be fixed in year 2100 :)
+//					tm.tm_mon -= 1;
+//					*utc_offset = offset / 60;
+//					*secs = indigo_timegm(&tm) - *utc_offset * 3600;
+//					PRIVATE_DATA->time_difference = time(NULL) - *secs;
+//					return true;
+//				}
+//			} else if (PRIVATE_DATA->protocol == V3_0) {
+//				if (ioptron_command(device, ":GUT#")) {
+//					PRIVATE_DATA->response[4] = 0;
+//					int offset = atoi(PRIVATE_DATA->response);
+//					*utc_offset = offset / 60;
+//					double jd = atoll(PRIVATE_DATA->response + 5) / 8.64e+7 + JD2000;
+//					*secs = (time_t)((jd - DELTA_UT1_UTC - 2440587.5) * 86400.0);
+//					PRIVATE_DATA->time_difference = time(NULL) - *secs;
+//					return true;
+//				}
+//			}
+//			return false;
+//		}
+//
+//		static bool ioptron_get_site(indigo_device *device, double *latitude, double *longitude) {
+//			if (PRIVATE_DATA->protocol == HC_8406 || PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == V1_0) {
+//				if (ioptron_command(device, ":Gt#")) {
+//					*latitude = indigo_stod(PRIVATE_DATA->response);
+//					if (ioptron_command(device, ":Gg#")) {
+//						*longitude = indigo_stod(PRIVATE_DATA->response);
+//						return true;
+//					}
+//				}		
+//			} else if (PRIVATE_DATA->protocol == V2_0) {
+//				if (ioptron_command(device, ":Gt#")) {
+//					*latitude = atol(PRIVATE_DATA->response) / 60.0 / 60.0;
+//					if (ioptron_command(device, ":Gg#")) {
+//						*longitude = atol(PRIVATE_DATA->response) / 60.0 / 60.0;
+//						if (*longitude < 0) {
+//							*longitude += 360;
+//						}
+//						return true;
+//					}
+//				}
+//			} else if (PRIVATE_DATA->protocol == V2_5) {
+//				if (ioptron_command(device, ":GLS#") && strlen(PRIVATE_DATA->response) == 19) {
+//					char val[16];
+//					memcpy(val, PRIVATE_DATA->response, 7);
+//					val[7] = 0;
+//					*longitude = atol(val) / 60.0 / 60.0;
+//					if (*longitude < 0) {
+//						*longitude += 360;
+//					}
+//					memcpy(val, PRIVATE_DATA->response + 7, 6);
+//					val[6] = 0;
+//					*latitude = atol(val) / 60.0 / 60.0 - 90;
+//					return true;
+//				}
+//			} else if (PRIVATE_DATA->protocol == V3_0) {
+//				if (ioptron_command(device, ":GLS#") && strlen(PRIVATE_DATA->response) == 23) {
+//					char val[16];
+//					memcpy(val, PRIVATE_DATA->response, 9);
+//					val[9] = 0;
+//					*longitude = atol(val) / 60.0 / 60.0 / 100.0;
+//					if (*longitude < 0) {
+//						*longitude += 360;
+//					}
+//					strncpy(val, PRIVATE_DATA->response + 9, 8);
+//					val[8] = 0;
+//					*latitude = atol(val) / 60.0 / 60.0 / 100.0 - 90;
+//					return true;
+//				}
+//			}
+//			return false;
+//		}
 
 static bool ioptron_set_site(indigo_device *device, double latitude, double longitude, double elevation) {
 	if (longitude < 0) {
@@ -797,7 +797,7 @@ static bool ioptron_set_tracking_rate(indigo_device *device, char tracking_rate,
 				}
 			}
 		}
-		result = result && ioptron_simple_reply_command(device, ":ST1#");
+		result = result && ioptron_simple_reply_command(device, ":ST1#") && *PRIVATE_DATA->response == '1';
 	}
 	return result;
 }
@@ -895,6 +895,15 @@ static bool ioptron_set_tracking(indigo_device *device, bool on) {
 }
 
 static bool ioptron_set_guide_rate(indigo_device *device, int ra, int dec) {
+	if (PRIVATE_DATA->protocol == HC_8407 && (ra < 10 || (ra > 90 && ra < 100) || ra > 100)) {
+		return false;
+	} else if (PRIVATE_DATA->protocol == V1_0 && (ra < 10 || ra > 80)) {
+		return false;
+	} else if (PRIVATE_DATA->protocol == V2_0 && (ra < 10 || ra > 90)) {
+		return false;
+	} else if ((PRIVATE_DATA->protocol == V2_5 || PRIVATE_DATA->protocol == V3_0) && (ra < 1 || ra > 90 || dec < 10 || dec > 99)) {
+		return false;
+	}
 	bool result = false;
 	if (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == V1_0 || PRIVATE_DATA->protocol == V2_0) {
 		result = ioptron_simple_reply_command(device, ":RG%03d#", ra) && *PRIVATE_DATA->response == '1';
@@ -1097,6 +1106,9 @@ static bool ioptron_init_mount(indigo_device *device) {
 			MOUNT_PARK_PROPERTY->count = 1;
 			MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
 		} else if (PRIVATE_DATA->protocol == HC_8407) {
+			MOUNT_GUIDE_RATE_RA_ITEM->number.min = 10;
+			MOUNT_GUIDE_RATE_RA_ITEM->number.max = 100;
+			MOUNT_GUIDE_RATE_RA_ITEM->number.step = 1;
 			if (PRIVATE_DATA->product != 8498) {
 				MOUNT_PARK_PROPERTY->hidden = false;
 				MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
@@ -1132,6 +1144,9 @@ static bool ioptron_init_mount(indigo_device *device) {
 			}
 			MOUNT_SLEW_RATE_PROPERTY->hidden = false;
 		} else if (PRIVATE_DATA->protocol == V1_0) {
+			MOUNT_GUIDE_RATE_RA_ITEM->number.min = 10;
+			MOUNT_GUIDE_RATE_RA_ITEM->number.max = 80;
+			MOUNT_GUIDE_RATE_RA_ITEM->number.step = 1;
 			MOUNT_PARK_PROPERTY->hidden = !PRIVATE_DATA->can_park;
 			MOUNT_TRACKING_PROPERTY->hidden = false;
 			MOUNT_TRACK_RATE_PROPERTY->hidden = false;
@@ -1165,6 +1180,9 @@ static bool ioptron_init_mount(indigo_device *device) {
 			}
 			MOUNT_SLEW_RATE_PROPERTY->hidden = false;
 		} else if (PRIVATE_DATA->protocol == V2_0) {
+			MOUNT_GUIDE_RATE_RA_ITEM->number.min = 10;
+			MOUNT_GUIDE_RATE_RA_ITEM->number.max = 90;
+			MOUNT_GUIDE_RATE_RA_ITEM->number.step = 1;
 			MOUNT_PARK_PROPERTY->hidden = !PRIVATE_DATA->can_park;
 			MOUNT_HOME_PROPERTY->hidden = false;
 			MOUNT_HOME_PROPERTY->count = PRIVATE_DATA->can_search_home ? 3 : 2;
@@ -1201,6 +1219,12 @@ static bool ioptron_init_mount(indigo_device *device) {
 			}
 			MOUNT_SLEW_RATE_PROPERTY->hidden = false;
 		} else if (PRIVATE_DATA->protocol == V2_5) {
+			MOUNT_GUIDE_RATE_RA_ITEM->number.min = 1;
+			MOUNT_GUIDE_RATE_RA_ITEM->number.max = 90;
+			MOUNT_GUIDE_RATE_RA_ITEM->number.step = 1;
+			MOUNT_GUIDE_RATE_DEC_ITEM->number.min = 10;
+			MOUNT_GUIDE_RATE_DEC_ITEM->number.max = 99;
+			MOUNT_GUIDE_RATE_DEC_ITEM->number.step = 1;
 			MOUNT_PARK_PROPERTY->hidden = !PRIVATE_DATA->can_park;
 			MOUNT_HOME_PROPERTY->hidden = false;
 			MOUNT_HOME_PROPERTY->count = PRIVATE_DATA->can_search_home ? 3 : 2;
@@ -1240,6 +1264,12 @@ static bool ioptron_init_mount(indigo_device *device) {
 			}
 			MOUNT_SLEW_RATE_PROPERTY->hidden = false;
 		} else if (PRIVATE_DATA->protocol == V3_0) {
+			MOUNT_GUIDE_RATE_RA_ITEM->number.min = 1;
+			MOUNT_GUIDE_RATE_RA_ITEM->number.max = 90;
+			MOUNT_GUIDE_RATE_RA_ITEM->number.step = 1;
+			MOUNT_GUIDE_RATE_DEC_ITEM->number.min = 10;
+			MOUNT_GUIDE_RATE_DEC_ITEM->number.max = 99;
+			MOUNT_GUIDE_RATE_DEC_ITEM->number.step = 1;
 			MOUNT_PARK_PROPERTY->hidden = !PRIVATE_DATA->can_park;
 			MOUNT_PARK_SET_PROPERTY->hidden = !PRIVATE_DATA->can_park;
 			MOUNT_HOME_PROPERTY->hidden = false;
@@ -1329,7 +1359,21 @@ static bool ioptron_init_guider(indigo_device *device) {
 	if (ioptron_detect_mount(device->master_device)) {
 		if (PRIVATE_DATA->protocol == HC_8406) {
 			GUIDER_RATE_PROPERTY->hidden = true;
-		} else if (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == V1_0) {
+		} else if (PRIVATE_DATA->protocol == HC_8407) {
+			GUIDER_RATE_ITEM->number.min = 10;
+			GUIDER_RATE_ITEM->number.max = 100;
+			GUIDER_RATE_ITEM->number.step = 1;
+			GUIDER_RATE_PROPERTY->hidden = false;
+			GUIDER_RATE_PROPERTY->count = 1;
+			if (ioptron_command(device, ":AG#")) {
+				GUIDER_RATE_ITEM->number.value = atof(PRIVATE_DATA->response) * 100;
+			} else {
+				GUIDER_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+		} else if (PRIVATE_DATA->protocol == V1_0) {
+			GUIDER_RATE_ITEM->number.min = 10;
+			GUIDER_RATE_ITEM->number.max = 80;
+			GUIDER_RATE_ITEM->number.step = 1;
 			GUIDER_RATE_PROPERTY->hidden = false;
 			GUIDER_RATE_PROPERTY->count = 1;
 			if (ioptron_command(device, ":AG#")) {
@@ -1338,6 +1382,9 @@ static bool ioptron_init_guider(indigo_device *device) {
 				GUIDER_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 		} else if (PRIVATE_DATA->protocol == V2_0) {
+			GUIDER_RATE_ITEM->number.min = 10;
+			GUIDER_RATE_ITEM->number.max = 90;
+			GUIDER_RATE_ITEM->number.step = 1;
 			GUIDER_RATE_PROPERTY->hidden = false;
 			GUIDER_RATE_PROPERTY->count = 1;
 			if (ioptron_command(device, ":AG#")) {
@@ -1346,6 +1393,12 @@ static bool ioptron_init_guider(indigo_device *device) {
 				GUIDER_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 		} else if (PRIVATE_DATA->protocol == V2_5 || PRIVATE_DATA->protocol == V3_0) {
+			GUIDER_RATE_ITEM->number.min = 1;
+			GUIDER_RATE_ITEM->number.max = 90;
+			GUIDER_RATE_ITEM->number.step = 1;
+			GUIDER_DEC_RATE_ITEM->number.min = 10;
+			GUIDER_DEC_RATE_ITEM->number.max = 99;
+			GUIDER_DEC_RATE_ITEM->number.step = 1;
 			GUIDER_RATE_PROPERTY->hidden = false;
 			GUIDER_RATE_PROPERTY->count = 2;
 			if (ioptron_command(device, ":AG#")) {
@@ -1484,7 +1537,9 @@ static void mount_connection_handler(indigo_device *device) {
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", MOUNT_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
 			indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", MOUNT_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
-			PRIVATE_DATA->count--;
+			if (--PRIVATE_DATA->count == 0) {
+				ioptron_close(device);
+			}
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
@@ -2056,7 +2111,9 @@ static void guider_connection_handler(indigo_device *device) {
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", GUIDER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
 			indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", GUIDER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
-			PRIVATE_DATA->count--;
+			if (--PRIVATE_DATA->count == 0) {
+				ioptron_close(device);
+			}
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
