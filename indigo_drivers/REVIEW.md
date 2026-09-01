@@ -71,7 +71,7 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 | DRV-032 | Medium | `mount_ioptron/indigo_mount_ioptron.c:897` | V2.5/V3 guide-rate commands format RA and DEC as fixed two-digit fields (`:RG%02d%02d#`), while the inherited mount guide-rate property still accepts values up to 100. Sending 100 produces a six-digit payload (`RG100100`) that does not match the parsed two-two digit protocol shape. | Closed (fixed) |
 | DRV-033 | Medium | `mount_ioptron/indigo_mount_ioptron.c:800` | `ioptron_set_tracking_rate()` validates the `:RT*#` and custom-rate replies, but then treats any readable `:ST1#` response as success instead of requiring the success ack byte. A rejected tracking-enable command can still leave `MOUNT_TRACK_RATE` reported OK. | Closed (fixed) |
 | DRV-034 | High | `mount_lx200/indigo_mount_lx200.c:2333`, `mount_lx200/indigo_mount_lx200.c:3032`, `mount_lx200/indigo_mount_lx200.c:3161`, `mount_lx200/indigo_mount_lx200.c:3334` | LX200 connect handlers increment the shared `device_count` before autodetection, call `meade_close()` on autodetect failure, and then the common failure path decrements the already reset counter. A single failed detect can underflow the shared count and prevent later reconnect attempts from reopening the serial handle. | Closed (fixed) |
-| DRV-035 | Medium | `mount_lx200/indigo_mount_lx200.c:3172`, `mount_lx200/indigo_mount_lx200.c:3387` | If the focuser or AUX logical device is the first LX200 device to open the shared serial connection and autodetection succeeds with an unsupported mount type, the handler decrements `device_count` and reports `CONNECTION` alert without closing the handle opened by that same attempt. The serial/TCP endpoint can stay occupied while the shared count is zero. | Open |
+| DRV-035 | Medium | `mount_lx200/indigo_mount_lx200.c:3173`, `mount_lx200/indigo_mount_lx200.c:3391` | If the focuser or AUX logical device is the first LX200 device to open the shared serial connection and autodetection succeeds with an unsupported mount type, the handler decrements `device_count` and reports `CONNECTION` alert without closing the handle opened by that same attempt. The serial/TCP endpoint can stay occupied while the shared count is zero. | Closed (fixed) |
 
 ## Finding Summaries
 
@@ -462,7 +462,7 @@ letting the common failure path do the reference-count cleanup. The failure path
 decrements `device_count` once and closes the shared handle only when the count reaches
 zero.
 
-### DRV-035 (Open)
+### DRV-035 (Closed)
 
 The focuser and AUX logical devices reject mount types they cannot support after the
 shared handle has already been opened and autodetected. When that rejected logical device
@@ -472,6 +472,10 @@ unsupported-type branch decrements it to 0, but does not call `meade_close()`.
 That leaves `PRIVATE_DATA->handle` open while the shared reference count says no logical
 device owns it. The next connection attempt can overwrite or reuse the stale handle state,
 and a serial port may remain occupied after the user-visible connection has failed.
+
+Fixed by routing the focuser and AUX unsupported-type branches through the same
+reference-count cleanup as other connection failures: decrement once, and close the shared
+handle when the rejected first logical device brings `device_count` back to zero.
 
 The new LX200 simulator integration test exercises successful Meade mount/guider/focuser
 and OnStep AUX paths, but does not currently inject autodetect failures or unsupported
