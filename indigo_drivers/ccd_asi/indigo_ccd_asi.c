@@ -114,6 +114,7 @@ typedef struct {
 	indigo_property *asi_advanced_property;
 } asi_private_data;
 
+static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static int get_unity_gain(indigo_device *device) {
 	if (PRIVATE_DATA->is_asi120) {
@@ -243,28 +244,34 @@ static bool asi_open(indigo_device *device) {
 
 	if (device->is_connected) return false;
 
+	pthread_mutex_lock(&device_mutex);
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	if (PRIVATE_DATA->count_open++ == 0) {
 		if (indigo_try_global_lock(device) != INDIGO_OK) {
-			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
 			PRIVATE_DATA->count_open--;
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			pthread_mutex_unlock(&device_mutex);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
 			return false;
 		}
 		res = ASIOpenCamera(id);
 		if (res) {
-			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIOpenCamera(%d) = %d", id, res);
 			PRIVATE_DATA->count_open--;
+			indigo_global_unlock(device);
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			pthread_mutex_unlock(&device_mutex);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIOpenCamera(%d) = %d", id, res);
 			return false;
 		}
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ASIOpenCamera(%d) = %d", id, res);
 		res = ASIInitCamera(id);
 		if (res) {
 			ASICloseCamera(id);
-			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIInitCamera(%d) = %d", id, res);
 			PRIVATE_DATA->count_open--;
+			indigo_global_unlock(device);
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			pthread_mutex_unlock(&device_mutex);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIInitCamera(%d) = %d", id, res);
 			return false;
 		}
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ASIInitCamera(%d) = %d", id, res);
@@ -280,6 +287,7 @@ static bool asi_open(indigo_device *device) {
 	}
 	PRIVATE_DATA->is_asi120 = strstr(PRIVATE_DATA->info.Name, "ASI120M") != NULL;
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	pthread_mutex_unlock(&device_mutex);
 	return true;
 }
 
@@ -496,6 +504,7 @@ static void asi_close(indigo_device *device) {
 		return;
 	}
 
+	pthread_mutex_lock(&device_mutex);
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	if (--PRIVATE_DATA->count_open == 0) {
 		ASICloseCamera(PRIVATE_DATA->dev_id);
@@ -507,6 +516,7 @@ static void asi_close(indigo_device *device) {
 		}
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	pthread_mutex_unlock(&device_mutex);
 }
 
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
@@ -1802,8 +1812,6 @@ static indigo_result guider_detach(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- hot-plug support
 
-static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
-
 #define MAX_DEVICES                   24
 #define NO_DEVICE                 (-1000)
 
@@ -2030,12 +2038,15 @@ static void process_unplug_event(indigo_device *unused) {
 				pthread_mutex_unlock(&device_mutex);
 				return;
 			}
-			indigo_detach_device(*device);
-			if ((*device)->private_data) {
-				private_data = (*device)->private_data;
+			indigo_device *device_to_detach = *device;
+			if (device_to_detach->private_data) {
+				private_data = device_to_detach->private_data;
 			}
-			free(*device);
 			*device = NULL;
+			pthread_mutex_unlock(&device_mutex);
+			indigo_detach_device(device_to_detach);
+			free(device_to_detach);
+			pthread_mutex_lock(&device_mutex);
 			removed = true;
 			slot = find_device_slot(id);
 		}
@@ -2157,4 +2168,3 @@ indigo_result indigo_ccd_asi(indigo_driver_action action, indigo_driver_info *in
 
 	return INDIGO_OK;
 }
-

@@ -111,6 +111,7 @@ typedef struct {
 static indigo_device *ble_device = NULL;
 static int find_index_by_device_id(int id);
 static void compensate_focus(indigo_device *device, double new_temp);
+static pthread_mutex_t indigo_device_enumeration_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void save_selected_bt_device_config(indigo_device *device, const char *name_address) {
 	indigo_uni_handle *handle = indigo_open_config_file(device->name, 0, O_WRONLY | O_CREAT | O_TRUNC, ".bt");
@@ -551,9 +552,12 @@ static int focuser_bt_close(indigo_device *device) {
 static void focuser_connect_callback(indigo_device *device) {
 	int index = 0;
 	int res = EAF_SUCCESS;
+	bool enumeration_locked = false;
 	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!PRIVATE_DATA->is_bluetooth) {
+			pthread_mutex_lock(&indigo_device_enumeration_mutex);
+			enumeration_locked = true;
 			index = find_index_by_device_id(PRIVATE_DATA->dev_id);
 		}
 		if (index >= 0 || PRIVATE_DATA->is_bluetooth) {
@@ -561,6 +565,10 @@ static void focuser_connect_callback(indigo_device *device) {
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 				if (indigo_try_global_lock(device) != INDIGO_OK) {
 					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+					if (enumeration_locked) {
+						pthread_mutex_unlock(&indigo_device_enumeration_mutex);
+						enumeration_locked = false;
+					}
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -663,6 +671,10 @@ static void focuser_connect_callback(indigo_device *device) {
 							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Battery info is supported for device %d", PRIVATE_DATA->dev_id);
 						}
 						pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+						if (enumeration_locked) {
+							pthread_mutex_unlock(&indigo_device_enumeration_mutex);
+							enumeration_locked = false;
+						}
 
 						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 						indigo_define_property(device, EAF_BEEP_PROPERTY, NULL);
@@ -687,6 +699,9 @@ static void focuser_connect_callback(indigo_device *device) {
 				}
 			}
 		}
+		if (enumeration_locked) {
+			pthread_mutex_unlock(&indigo_device_enumeration_mutex);
+		}
 	} else {
 		if (device->is_connected) {
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_timer);
@@ -694,6 +709,9 @@ static void focuser_connect_callback(indigo_device *device) {
 			indigo_delete_property(device, EAF_BEEP_PROPERTY, NULL);
 			indigo_delete_property(device, EAF_CUSTOM_SUFFIX_PROPERTY, NULL);
 			indigo_delete_property(device, EAF_BATTERY_INFO_PROPERTY, NULL);
+			if (!PRIVATE_DATA->is_bluetooth) {
+				pthread_mutex_lock(&indigo_device_enumeration_mutex);
+			}
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 			res = EAFStop(PRIVATE_DATA->dev_id);
 			if (PRIVATE_DATA->is_bluetooth) {
@@ -708,6 +726,9 @@ static void focuser_connect_callback(indigo_device *device) {
 			}
 			indigo_global_unlock(device);
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			if (!PRIVATE_DATA->is_bluetooth) {
+				pthread_mutex_unlock(&indigo_device_enumeration_mutex);
+			}
 			device->is_connected = false;
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
@@ -1221,8 +1242,6 @@ static void split_device_name(const char *fill_device_name, char *device_name, c
 	strncpy(suffix, suffix_start, 9);
 }
 
-static pthread_mutex_t indigo_device_enumeration_mutex = PTHREAD_MUTEX_INITIALIZER;
-
 static void process_plug_event(indigo_device *unused) {
 	EAF_INFO info;
 	static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(
@@ -1308,10 +1327,13 @@ static void process_unplug_event(indigo_device *unused) {
 			pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 			return;
 		}
-		indigo_detach_device(*device);
-		free((*device)->private_data);
-		free(*device);
+		indigo_device *device_to_detach = *device;
 		*device = NULL;
+		pthread_mutex_unlock(&indigo_device_enumeration_mutex);
+		indigo_detach_device(device_to_detach);
+		free(device_to_detach->private_data);
+		free(device_to_detach);
+		pthread_mutex_lock(&indigo_device_enumeration_mutex);
 		removed = true;
 	}
 	if (!removed) {
@@ -1445,4 +1467,3 @@ indigo_result indigo_focuser_asi(indigo_driver_action action, indigo_driver_info
 
 	return INDIGO_OK;
 }
-

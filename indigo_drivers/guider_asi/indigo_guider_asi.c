@@ -73,6 +73,7 @@ typedef struct {
 	pthread_mutex_t usb_mutex;
 } asi_private_data;
 
+static pthread_mutex_t indigo_device_enumeration_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static bool asi_open(indigo_device *device) {
 	int id = PRIVATE_DATA->dev_id;
@@ -80,20 +81,25 @@ static bool asi_open(indigo_device *device) {
 
 	if (device->is_connected) return false;
 
+	pthread_mutex_lock(&indigo_device_enumeration_mutex);
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	if (indigo_try_global_lock(device) != INDIGO_OK) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
 		return false;
 	}
 	res = USB2ST4Open(id);
 	if (res) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "USB2ST4Open(%d) = %d", id, res);
+		indigo_global_unlock(device);
 		return false;
 	}
 
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 	return true;
 }
 
@@ -104,10 +110,12 @@ static void asi_close(indigo_device *device) {
 		return;
 	}
 
+	pthread_mutex_lock(&indigo_device_enumeration_mutex);
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	USB2ST4Close(PRIVATE_DATA->dev_id);
 	indigo_global_unlock(device);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 }
 
 
@@ -375,8 +383,6 @@ static int find_unplugged_device_id() {
 	return id;
 }
 
-static pthread_mutex_t indigo_device_enumeration_mutex = PTHREAD_MUTEX_INITIALIZER;
-
 static void process_plug_event(indigo_device *unused) {
 	static indigo_device guider_template = INDIGO_DEVICE_INITIALIZER(
 		 "",
@@ -413,6 +419,7 @@ static void process_plug_event(indigo_device *unused) {
 	device->private_data = private_data;
 	indigo_attach_device(device);
 	devices[slot]=device;
+	pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 }
 
 static void process_unplug_event(indigo_device *unused) {
@@ -428,12 +435,15 @@ static void process_unplug_event(indigo_device *unused) {
 				pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 				return;
 			}
-			indigo_detach_device(*device);
-			if ((*device)->private_data) {
-				private_data = (*device)->private_data;
+			indigo_device *device_to_detach = *device;
+			if (device_to_detach->private_data) {
+				private_data = device_to_detach->private_data;
 			}
-			free(*device);
 			*device = NULL;
+			pthread_mutex_unlock(&indigo_device_enumeration_mutex);
+			indigo_detach_device(device_to_detach);
+			free(device_to_detach);
+			pthread_mutex_lock(&indigo_device_enumeration_mutex);
 			removed = true;
 			slot = find_device_slot(id);
 		}
