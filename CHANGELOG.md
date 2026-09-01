@@ -2,6 +2,55 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [3.0-6] - 02 Sep Wed 2026
+## Overall:
+- indigo_tools:
+	- indigo_generator: the generated multi-device connection handler no longer leaves the shared handle open when the driver specific initialization fails
+
+- indigo_test:
+	- integration test for the iOptron guide rate limits added
+
+- security and robustness sweep:
+	- hot-plug/connection races fixed in ccd_asi, wheel_asi, focuser_asi, rotator_asi, guider_asi, ccd_playerone, wheel_playerone, ccd_fli, focuser_fli, wheel_fli, ccd_svb, ccd_touptek, ccd_qsi and ccd_dsi - connect and disconnect are now serialized with the driver global hot-plug enumeration mutex
+	- close on connection failure fixed in the multi-device drivers ao_sx, aux_upb, aux_upb3, focuser_primaluce, mount_ioptron, mount_nexstaraux and mount_lx200
+	- a memory overflow, a dangling lock and a potential crash fixed in mount_synscan, guider_asi and ccd_touptek
+	- compiler warnings silenced
+
+## Driver changes:
+- indigo_mount_mxhd:
+	- new driver for MX-HD mounts added - #769
+
+- indigo_ccd_dsi:
+	- fix camera recognition, the camera wake-up sequence lost in the 3.0 migration is restored
+	- fix pre- and post-renumeration USB product IDs being treated as equivalent, a camera with the firmware already loaded is no longer re-flashed and a camera without firmware is no longer offered as a device
+
+- indigo_guider_asi:
+	- fix the hot-plug enumeration mutex left locked after a successful plug event, which blocked all later plug and unplug handling
+
+- indigo_ccd_touptek:
+	- fix potential crash when a disconnect is requested after a failed open
+
+- indigo_mount_ioptron:
+	- fix guide rate limits, the V2.5/V3 protocol accepts two digits per axis only
+	- fix :ST1# error handling, the success acknowledgement is now required
+
+- indigo_mount_lx200:
+	- fix shared device count underflow on autodetection failure, which prevented later reconnects
+	- fix the shared serial handle being left open when the focuser or AUX device detects an unsupported mount type
+
+- indigo_mount_asi:
+	- fix shared device count underflow on handshake failure or on a connection lost mid-session, which made the driver refuse to reopen the port until the server was restarted
+	- fix a failed mount handshake closing the shared connection while the guider was still using it
+
+- indigo_mount_synscan:
+	- fix crash in UDP discovery
+	- fix stack overflow while parsing a long host name in synscan://host:port
+	- fix guider pulse workers left blocked on disconnect
+
+- indigo_mount_pmc8:
+	- typos fixed
+
+
 # [3.0-5] - 31 Aug Mon 2026
 ## Overall:
 - indigo_server:

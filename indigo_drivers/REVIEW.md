@@ -76,6 +76,7 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 | DRV-035 | Medium | `mount_lx200/indigo_mount_lx200.c:3173`, `mount_lx200/indigo_mount_lx200.c:3391` | If the focuser or AUX logical device is the first LX200 device to open the shared serial connection and autodetection succeeds with an unsupported mount type, the handler decrements `device_count` and reports `CONNECTION` alert without closing the handle opened by that same attempt. The serial/TCP endpoint can stay occupied while the shared count is zero. | Closed (fixed) |
 | DRV-036 | High | `mount_synscan/indigo_mount_synscan_driver.c:75` | `synscan_open()` parses `synscan://host:port` by copying `colon - host` bytes into `char host_name[INDIGO_NAME_SIZE]` with no length check and no guaranteed terminator. A long user-supplied `DEVICE_PORT` host segment can overflow the stack before `indigo_open_udp()` is called. | Closed (fixed) |
 | DRV-037 | Medium | `mount_synscan/indigo_mount_synscan_guider.c:179`, `mount_synscan/indigo_mount_synscan_guider.c:237`, `mount_synscan/indigo_mount_synscan_guider.c:258` | The SynScan guider starts two long-lived pulse worker callbacks that wait on condition variables, but disconnect sets `guiding_thread_exit = false` and never signals either condition. Disconnecting the guider without detaching leaves the workers blocked and a later reconnect can start another pair of workers against the same shared state. | Closed (fixed) |
+| DRV-038 | High | `mount_asi/indigo_mount_asi.c:180`, `mount_asi/indigo_mount_asi.c:876`, `mount_asi/indigo_mount_asi.c:889`, `mount_asi/indigo_mount_asi.c:1422` | The ZWO AM connect paths shared the DRV-034/DRV-035 defects, but unrecoverably: `asi_close()` reset `device_count` only when a handle was open, the handshake failure branch closed the shared handle while a sibling device could still hold it, and both failure paths decremented the count unguarded. A failed handshake, or a link lost mid-session, drove `device_count` negative, after which `device_count++ == 0` never held again and `asi_open()` was never called for the life of the loaded driver. | Closed (fixed) |
 
 ## Finding Summaries
 
@@ -524,6 +525,34 @@ Fixed by adding a shared guider-worker shutdown helper used by both disconnect a
 detach. It cancels pending pulse timers, sets the exit flag, signals both condition
 variables, waits for the active guider worker count to drain, and resets pulse state
 before starting a fresh pair of workers on reconnect.
+
+### DRV-038 (Closed — fixed)
+
+The ZWO AM driver shares one serial or TCP handle between the mount and the guider device,
+refcounted with `device_count`. It carried both multi-device defects fixed in `mount_lx200`
+under DRV-034 and DRV-035, but without the LX200 recovery property.
+
+`meade_close()` resets `device_count = 0` outside its `handle != NULL` guard, which is what
+makes the `if (--device_count <= 0) meade_close(...)` idiom self-healing: the decrement may
+reach `-1`, but the close puts it back to `0`. `asi_close()` reset the counter inside that
+guard, so a negative count was never repaired. Because every open is gated on
+`if (PRIVATE_DATA->device_count++ == 0)`, a negative count meant `asi_open()` was never
+called again and `handle` stayed `NULL` for the life of the loaded driver.
+
+Three paths reached that state. A failed `asi_detect_mount()` closed the handle in the
+handshake failure branch, resetting the count to `0`, and the failure path then decremented
+it to `-1`. With the guider already connected the same close pulled the handle out from
+under it, leaving the guider reporting connected while every guide pulse failed on a `NULL`
+handle. A link lost mid-session took `asi_command()` into `asi_close()` and
+`indigo_disconnect_slave_devices()`, after which both disconnect branches tested
+`--device_count == 0`, which is false at `-1` and `-2`, so the count was never restored and
+reconnecting after replugging the cable was impossible.
+
+Fixed by following the `mount_lx200` pattern: `asi_close()` resets `device_count`
+unconditionally, the handshake failure branch no longer closes the shared handle, and all
+four connect-failure and disconnect paths use `if (--PRIVATE_DATA->device_count <= 0)` before
+closing. `asi_close()` is now always called with `device->master_device` for a correct port
+name in the disconnect log.
 
 ## Review Focus
 
