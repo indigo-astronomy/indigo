@@ -61,7 +61,7 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 | DRV-024 | Medium | `ccd_fli/indigo_ccd_fli.c:145`, `focuser_fli/indigo_focuser_fli.c:152`, `wheel_fli/indigo_wheel_fli.c:122` | FLI connect paths use only per-device `usb_mutex` around `FLIOpen()` / `FLIClose()`, while hot-plug handlers protect `FLICreateList()` / `FLIList*()` / `FLIDeleteList()` with a separate driver-global mutex. | Closed (fixed) |
 | DRV-025 | Medium | `ccd_svb/indigo_ccd_svb.c:194` | SVBONY normal connect calls `SVBOpenCamera()` with only the device `usb_mutex`, but hot-plug serializes SDK enumeration and temporary open/close with `indigo_device_enumeration_mutex`. | Closed (fixed) |
 | DRV-026 | Medium | `ccd_touptek/indigo_ccd_touptek.c:944` | ToupTek/OEM connect paths open devices with the vendor SDK without the hot-plug `mutex`, while the hot-plug refresh path enumerates devices and mutates shared presence state under that mutex. | Closed (fixed) |
-| DRV-027 | Medium | `ccd_dsi/indigo_ccd_dsi.c:271` | Meade DSI connect opens the camera outside `device_mutex`, but plug/unplug scans and non-macOS temporary probe opens are serialized with `device_mutex`, leaving a scan/open race class. | Open |
+| DRV-027 | Medium | `ccd_dsi/indigo_ccd_dsi.c:271` | Meade DSI connect opened the camera outside the hot-plug enumeration mutex, while plug/unplug scans and non-macOS temporary probe opens were serialized with that mutex. | Closed (fixed) |
 | DRV-028 | Medium | `ccd_qsi/indigo_ccd_qsi.cpp:374` | QSI hot-plug uses the global `QSICamera cam` under `device_mutex`, but connect uses the same SDK object without that mutex for connect-time SDK calls. | Open |
 | DRV-029 | High | `guider_asi/indigo_guider_asi.c:389` | `process_plug_event()` locks `indigo_device_enumeration_mutex` and never unlocks it on the successful attach path, so the first successful ASI USB-ST4 plug event can permanently block later plug/unplug enumeration. | Closed (fixed) |
 
@@ -352,9 +352,11 @@ Fixed by reusing `indigo_device_enumeration_mutex` around normal `SVBOpenCamera(
 
 Fixed by reusing `indigo_device_enumeration_mutex` around normal CCD, guider, wheel, and focuser `SDK_CALL(Open)` / final `SDK_CALL(Close)` paths. Hot-unplug detaches devices outside that mutex to avoid self-deadlock when detach invokes close.
 
-### DRV-027 (Open)
+### DRV-027 (Closed)
 
-`ccd_dsi` hot-plug uses `device_mutex` around `dsi_scan_usb()` and, on non-macOS paths, a temporary `dsi_open_camera()` used to name/probe the camera. Normal connect enters `camera_open(device)` outside `device_mutex`. That leaves the same scan/open race class as the ASI wheel issue, even though macOS avoids the temporary open inside plug handling because it can reset the device.
+`ccd_dsi` hot-plug uses `indigo_device_enumeration_mutex` around `dsi_scan_usb()` and, on non-macOS paths, a temporary `dsi_open_camera()` used to name/probe the camera. Normal connect entered `camera_open(device)` outside that mutex. That left the same scan/open race class as the ASI wheel issue, even though macOS avoids the temporary open inside plug handling because it can reset the device.
+
+Fixed by renaming the driver-global hot-plug mutex to `indigo_device_enumeration_mutex` and reusing it around normal `dsi_open_camera()` / `dsi_close_camera()` paths. Hot-unplug detaches devices outside that mutex to avoid self-deadlock when detach invokes close.
 
 ### DRV-028 (Open)
 
