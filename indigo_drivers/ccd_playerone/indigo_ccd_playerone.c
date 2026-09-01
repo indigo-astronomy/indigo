@@ -127,7 +127,7 @@ typedef struct {
 	indigo_property *playerone_sensore_mode_property;
 } playerone_private_data;
 
-static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t indigo_device_enumeration_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static int get_pixel_depth(indigo_device *device) {
 	int item = 0;
@@ -204,13 +204,13 @@ static bool playerone_open(indigo_device *device) {
 		return false;
 	}
 
-	pthread_mutex_lock(&device_mutex);
+	pthread_mutex_lock(&indigo_device_enumeration_mutex);
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	if (PRIVATE_DATA->count_open++ == 0) {
 		if (indigo_try_global_lock(device) != INDIGO_OK) {
 			PRIVATE_DATA->count_open--;
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-			pthread_mutex_unlock(&device_mutex);
+			pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
 			return false;
 		}
@@ -219,7 +219,7 @@ static bool playerone_open(indigo_device *device) {
 			PRIVATE_DATA->count_open--;
 			indigo_global_unlock(device);
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-			pthread_mutex_unlock(&device_mutex);
+			pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAOpenCamera(%d) > %d", id, res);
 			return false;
 		}
@@ -229,7 +229,7 @@ static bool playerone_open(indigo_device *device) {
 			PRIVATE_DATA->count_open--;
 			indigo_global_unlock(device);
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-			pthread_mutex_unlock(&device_mutex);
+			pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAInitCamera(%d) > %d", id, res);
 			return false;
 		}
@@ -244,7 +244,7 @@ static bool playerone_open(indigo_device *device) {
 		}
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-	pthread_mutex_unlock(&device_mutex);
+	pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 	return true;
 }
 
@@ -426,7 +426,7 @@ static void playerone_close(indigo_device *device) {
 	if (!device->is_connected) {
 		return;
 	}
-	pthread_mutex_lock(&device_mutex);
+	pthread_mutex_lock(&indigo_device_enumeration_mutex);
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	if (--PRIVATE_DATA->count_open == 0) {
 		POACloseCamera(PRIVATE_DATA->dev_id);
@@ -438,7 +438,7 @@ static void playerone_close(indigo_device *device) {
 		}
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-	pthread_mutex_unlock(&device_mutex);
+	pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 }
 
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
@@ -2191,25 +2191,25 @@ static void process_plug_event(indigo_device *unused) {
 		NULL,
 		guider_detach
 		);
-	pthread_mutex_lock(&device_mutex);
+	pthread_mutex_lock(&indigo_device_enumeration_mutex);
 	int slot = find_available_device_slot();
 	if (slot < 0) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slots available.");
-		pthread_mutex_unlock(&device_mutex);
+		pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 		return;
 	}
 
 	int id = find_plugged_device_id();
 	if (id == NO_DEVICE) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "No plugged device found.");
-		pthread_mutex_unlock(&device_mutex);
+		pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 		return;
 	}
 
 	int index = find_index_by_device_id(id);
 	if (index < 0) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "No index of plugged device found.");
-		pthread_mutex_unlock(&device_mutex);
+		pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 		return;
 	}
 	POAErrors res = POAGetCameraProperties(index, &property);
@@ -2249,7 +2249,7 @@ static void process_plug_event(indigo_device *unused) {
 			slot = find_available_device_slot();
 			if (slot < 0) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slots available.");
-				pthread_mutex_unlock(&device_mutex);
+				pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 				return;
 			}
 			device = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
@@ -2262,11 +2262,11 @@ static void process_plug_event(indigo_device *unused) {
 			devices[slot]=device;
 		}
 	}
-	pthread_mutex_unlock(&device_mutex);
+	pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 }
 
 static void process_unplug_event(indigo_device *unused) {
-	pthread_mutex_lock(&device_mutex);
+	pthread_mutex_lock(&indigo_device_enumeration_mutex);
 	int id, slot;
 	bool removed = false;
 	playerone_private_data *private_data = NULL;
@@ -2275,7 +2275,7 @@ static void process_unplug_event(indigo_device *unused) {
 		while (slot >= 0) {
 			indigo_device **device = &devices[slot];
 			if (*device == NULL) {
-				pthread_mutex_unlock(&device_mutex);
+				pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 				return;
 			}
 			indigo_device *device_to_detach = *device;
@@ -2283,10 +2283,10 @@ static void process_unplug_event(indigo_device *unused) {
 				private_data = device_to_detach->private_data;
 			}
 			*device = NULL;
-			pthread_mutex_unlock(&device_mutex);
+			pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 			indigo_detach_device(device_to_detach);
 			free(device_to_detach);
-			pthread_mutex_lock(&device_mutex);
+			pthread_mutex_lock(&indigo_device_enumeration_mutex);
 			removed = true;
 			slot = find_device_slot(id);
 		}
@@ -2304,7 +2304,7 @@ static void process_unplug_event(indigo_device *unused) {
 	if (!removed) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No POA Camera unplugged");
 	}
-	pthread_mutex_unlock(&device_mutex);
+	pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 }
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {

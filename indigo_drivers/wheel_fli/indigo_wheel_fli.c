@@ -60,6 +60,7 @@ typedef struct {
 } fli_private_data;
 
 static int find_index_by_device_fname(char *fname);
+static pthread_mutex_t indigo_device_enumeration_mutex = PTHREAD_MUTEX_INITIALIZER;
 // -------------------------------------------------------------------------------- INDIGO Wheel device implementation
 
 static void wheel_timer_callback(indigo_device *device) {
@@ -104,16 +105,21 @@ static indigo_result wheel_attach(indigo_device *device) {
 }
 
 static void wheel_connect_callback(indigo_device *device) {
-	int index = find_index_by_device_fname(PRIVATE_DATA->dev_file_name);
-	if (index < 0) {
-		WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;;
-	} else {
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			if (!device->is_connected) {
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (!device->is_connected) {
+			bool enumeration_locked = false;
+			pthread_mutex_lock(&indigo_device_enumeration_mutex);
+			enumeration_locked = true;
+			int index = find_index_by_device_fname(PRIVATE_DATA->dev_file_name);
+			if (index < 0) {
+				WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;;
+			} else {
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
 				if (indigo_try_global_lock(device) != INDIGO_OK) {
 					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+					pthread_mutex_unlock(&indigo_device_enumeration_mutex);
+					enumeration_locked = false;
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -160,6 +166,8 @@ static void wheel_connect_callback(indigo_device *device) {
 							INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetHWRevision(%d) = %d", id, res);
 						}
 						pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+						pthread_mutex_unlock(&indigo_device_enumeration_mutex);
+						enumeration_locked = false;
 
 						sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%ld", fw_rev);
 						sprintf(INFO_DEVICE_HW_REVISION_ITEM->text.value, "%ld", hw_rev);
@@ -174,27 +182,32 @@ static void wheel_connect_callback(indigo_device *device) {
 						indigo_set_timer(device, 0, wheel_timer_callback, NULL);
 					} else {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIOpen(%d) = %d", PRIVATE_DATA->dev_id, res);
+						indigo_global_unlock(device);
 						CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 						indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 						indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-						return;
 					}
 				}
 			}
-		} else {
-			if (device->is_connected) {
-				device->is_connected = false;
-				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-				long res = FLIClose(PRIVATE_DATA->dev_id);
-				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-				if (res) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIClose(%d) = %d", PRIVATE_DATA->dev_id, res);
-				}
-				PRIVATE_DATA->dev_id = -1;
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-				indigo_global_unlock(device);
+			if (enumeration_locked) {
+				pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 			}
+		}
+	} else {
+		if (device->is_connected) {
+			device->is_connected = false;
+			pthread_mutex_lock(&indigo_device_enumeration_mutex);
+			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+			long res = FLIClose(PRIVATE_DATA->dev_id);
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			pthread_mutex_unlock(&indigo_device_enumeration_mutex);
+			if (res) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIClose(%d) = %d", PRIVATE_DATA->dev_id, res);
+			}
+			PRIVATE_DATA->dev_id = -1;
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			indigo_global_unlock(device);
 		}
 	}
 	indigo_wheel_change_property(device, NULL, CONNECTION_PROPERTY);
@@ -361,8 +374,6 @@ static int find_unplugged_device(char *fname) {
 	return -1;
 }
 
-static pthread_mutex_t indigo_device_enumeration_mutex = PTHREAD_MUTEX_INITIALIZER;
-
 static void process_plug_event(indigo_device *unused) {
 	static indigo_device wheel_template = INDIGO_DEVICE_INITIALIZER(
 		"",
@@ -417,10 +428,13 @@ static void process_unplug_event(indigo_device *unused) {
 			pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 			return;
 		}
-		indigo_detach_device(*device);
-		free((*device)->private_data);
-		free(*device);
+		indigo_device *device_to_detach = *device;
 		*device = NULL;
+		pthread_mutex_unlock(&indigo_device_enumeration_mutex);
+		indigo_detach_device(device_to_detach);
+		free(device_to_detach->private_data);
+		free(device_to_detach);
+		pthread_mutex_lock(&indigo_device_enumeration_mutex);
 		removed = true;
 	}
 	if (!removed) {
