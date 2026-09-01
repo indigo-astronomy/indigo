@@ -65,6 +65,9 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 | DRV-028 | Medium | `ccd_qsi/indigo_ccd_qsi.cpp:374` | QSI hot-plug uses the global `QSICamera cam` under `indigo_device_enumeration_mutex`, but connect used the same SDK object without that mutex for connect-time SDK calls. | Closed (fixed) |
 | DRV-029 | High | `guider_asi/indigo_guider_asi.c:389` | `process_plug_event()` locks `indigo_device_enumeration_mutex` and never unlocks it on the successful attach path, so the first successful ASI USB-ST4 plug event can permanently block later plug/unplug enumeration. | Closed (fixed) |
 | DRV-030 | Medium | `ccd_touptek/indigo_ccd_touptek.c:1123` | The disconnect path in `ccd_connect_callback()` calls `SDK_CALL(Stop)(PRIVATE_DATA->handle)` unconditionally before checking whether `handle` is non-NULL. If a prior connect attempt left `handle == NULL` (because `SDK_CALL(Open)` failed), an explicit disconnect request from a client will pass NULL to the vendor SDK, likely crashing the process. Guard the Stop call with `if (PRIVATE_DATA->handle)` or move it inside the existing `if (PRIVATE_DATA->handle)` close block. | Closed (fixed) |
+| DRV-031 | High | `../indigo_tools/indigo_generator.c:1450`, `mount_ioptron/indigo_mount_ioptron.c:1470`, `mount_ioptron/indigo_mount_ioptron.c:2046` | The generated multi-device connection-handler template incremented the shared connection count before driver-specific `on_connect` initialization, but on init failure emitted only `PRIVATE_DATA->count--` and no close when that failed attempt had opened the shared handle. `mount_ioptron` exposed this generator bug in both mount and guider handlers. | Closed (fixed) |
+| DRV-032 | Medium | `mount_ioptron/indigo_mount_ioptron.c:902` | V2.5/V3 guide-rate commands format RA and DEC as fixed two-digit fields (`:RG%02d%02d#`), while the inherited mount guide-rate property still accepts values up to 100. Sending 100 produces a six-digit payload (`RG100100`) that does not match the parsed two-two digit protocol shape. | Open |
+| DRV-033 | Medium | `mount_ioptron/indigo_mount_ioptron.c:800` | `ioptron_set_tracking_rate()` validates the `:RT*#` and custom-rate replies, but then treats any readable `:ST1#` response as success instead of requiring the success ack byte. A rejected tracking-enable command can still leave `MOUNT_TRACK_RATE` reported OK. | Open |
 
 ## Finding Summaries
 
@@ -371,11 +374,58 @@ Fixed by renaming the driver-global hot-plug mutex to `indigo_device_enumeration
 
 Fixed by unlocking `indigo_device_enumeration_mutex` on the successful attach path.
 
-### DRV-030 (Open)
+### DRV-030 (Closed)
 
 `ccd_connect_callback()` in `indigo_ccd_touptek.c` enters the disconnect branch (`else`) and immediately calls `SDK_CALL(Stop)(PRIVATE_DATA->handle)` at line 1123. This runs before any NULL-handle guard. A handle of NULL can result from a prior connect where `SDK_CALL(Open)` returned NULL: the DRV-026 fix correctly releases the global lock in that path, but `PRIVATE_DATA->handle` remains NULL and `gp_bits` is cleared to 0 (line 1120). If the user or a client subsequently sends a disconnect request, `SDK_CALL(Stop)(NULL)` is invoked, which is expected to dereference the NULL handle in the vendor SDK and crash the process.
 
 Fixed by wrapping the `SDK_CALL(Stop)` call with `if (PRIVATE_DATA->handle)`, matching the pattern already used for the `SDK_CALL(Close)` call at line 1151.
+
+### DRV-031 (Closed)
+
+The root cause was in `indigo_generator.c`, not in iOptron-specific source. For generated
+multi-device drivers, the connection-handler template emitted
+`if (PRIVATE_DATA->count++ == 0) ..._open(...)`, then emitted the driver-specific
+`on_connect` block, but the failure branch only emitted `PRIVATE_DATA->count--`. If
+`..._open()` succeeded and the generated `on_connect` initialization failed, the generated
+handler marked `CONNECTION` disconnected without closing the handle opened by that same
+attempt.
+
+`mount_ioptron` exposed the issue because its generated mount and guider handlers both
+call `ioptron_init_mount()` / `ioptron_init_guider()` after opening the shared serial/TCP
+handle. A rejected or malformed probe could therefore leak the handle and leave the
+controller endpoint occupied. Other generated multi-device drivers with the same
+open-then-init shape were susceptible to the same template bug.
+
+Fixed in the generator by emitting `if (--PRIVATE_DATA->count == 0) { ..._close(device); }`
+on generated multi-device connection failure. The checked-in `mount_ioptron` generated
+output was regenerated with that template, so its mount and guider handlers now close the
+shared handle only when the failed attempt brings the shared count back to zero.
+
+### DRV-032 (Open)
+
+For V2.5/V3 controllers, `ioptron_set_guide_rate()` sends both axes in one fixed-width
+payload with `:RG%02d%02d#`, and initialization parses `:AG#` as two characters for DEC
+and two characters for RA. The inherited mount `MOUNT_GUIDE_RATE` items are initialized
+with max 100 in `indigo_mount_driver.c`, and the iOptron driver does not lower that max
+when it exposes the two-axis V2.5/V3 form.
+
+As a result, a valid INDIGO-side value of 100 formats as `RG100100`, which is longer than
+the two-two digit command shape. The simulator currently masks this by copying only the
+first four payload characters, and the integration test exercises 50 but not the 100
+boundary.
+
+### DRV-033 (Open)
+
+In `ioptron_set_tracking_rate()`, non-8406 protocols correctly require `*response == '1'`
+for the `:RT*#` command and for custom `:RR*#` commands, but the final `:ST1#` command is
+combined as `result = result && ioptron_simple_reply_command(device, ":ST1#")`. That
+helper returns true when one byte is read, regardless of whether the byte is the success
+ack.
+
+`ioptron_set_tracking()` checks `:ST%c#` with `*response == '1'`, so the tracking-rate
+path is inconsistent with the direct tracking path. If the controller accepts the rate
+selection but rejects enabling tracking, `MOUNT_TRACK_RATE` can still report
+`INDIGO_OK_STATE`.
 
 ## Review Focus
 
@@ -404,3 +454,4 @@ Fixed by wrapping the `SDK_CALL(Stop)` call with `if (PRIVATE_DATA->handle)`, ma
 | `017ba602857378e4aed489c065c76eacae15924c` | `f8b7086ebdd408c34366a8acdac27e6311103911` + working tree | 2026-08-25 | Focused review of `agent_mount/indigo_agent_mount.c` `AGENT_MOUNT_STATE_DOME_SLAVING` and `AGENT_MOUNT_STATE_FIELD_DEROTATION` usage; recorded `DRV-020` and `DRV-021`. Did not advance the folder baseline because the rest of `indigo_drivers` was not reviewed. |
 | `017ba602857378e4aed489c065c76eacae15924c` | working tree | 2026-08-31 | Focused review of active hot-plug driver SDK enumeration/open/close serialization under `indigo_drivers`; recorded `DRV-022` through `DRV-029`. Did not advance the folder baseline because the rest of `indigo_drivers` was not reviewed. |
 | `6efc2c7ac` | `a5282c84d` | 2026-09-01 | Verification pass over today's race-fix commits (DRV-022 through DRV-029); confirmed no deadlocks introduced. Surfaced `DRV-030` as a pre-existing NULL-handle crash in `ccd_touptek` disconnect path, independent of these commits. |
+| `017ba602857378e4aed489c065c76eacae15924c` | `1e82d6187` + working tree | 2026-09-01 | Deep focused review of `mount_ioptron` generated driver, generator source, simulator, and integration coverage; recorded `DRV-031` as a generator-template lifecycle bug exposed by `mount_ioptron`, plus `DRV-032` and `DRV-033` as iOptron-specific findings. Did not advance the folder baseline because the rest of `indigo_drivers` was not reviewed. |
