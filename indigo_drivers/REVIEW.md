@@ -19,6 +19,8 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 
 2026-09-01 deep focused `mount_lx200` pass: reviewed the incremental production diff, the new host-side LX200 simulator, the LX200/OnStep integration test, and the hand-written multi-device connection lifecycle for mount, guider, focuser, and AUX logical devices. This pass did not advance `Last reviewed commit`.
 
+2026-09-01 deep focused `mount_synscan` pass: reviewed the incremental production diff, the refactored host-side SynScan simulator, the SynScan mount/guider integration test, UDP/serial protocol framing, and the hand-written shared mount/guider connection and pulse-guiding lifecycle. This pass did not advance `Last reviewed commit`.
+
 ## Coverage Manifest
 
 | Group | Directories |
@@ -72,6 +74,8 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 | DRV-033 | Medium | `mount_ioptron/indigo_mount_ioptron.c:800` | `ioptron_set_tracking_rate()` validates the `:RT*#` and custom-rate replies, but then treats any readable `:ST1#` response as success instead of requiring the success ack byte. A rejected tracking-enable command can still leave `MOUNT_TRACK_RATE` reported OK. | Closed (fixed) |
 | DRV-034 | High | `mount_lx200/indigo_mount_lx200.c:2333`, `mount_lx200/indigo_mount_lx200.c:3032`, `mount_lx200/indigo_mount_lx200.c:3161`, `mount_lx200/indigo_mount_lx200.c:3334` | LX200 connect handlers increment the shared `device_count` before autodetection, call `meade_close()` on autodetect failure, and then the common failure path decrements the already reset counter. A single failed detect can underflow the shared count and prevent later reconnect attempts from reopening the serial handle. | Closed (fixed) |
 | DRV-035 | Medium | `mount_lx200/indigo_mount_lx200.c:3173`, `mount_lx200/indigo_mount_lx200.c:3391` | If the focuser or AUX logical device is the first LX200 device to open the shared serial connection and autodetection succeeds with an unsupported mount type, the handler decrements `device_count` and reports `CONNECTION` alert without closing the handle opened by that same attempt. The serial/TCP endpoint can stay occupied while the shared count is zero. | Closed (fixed) |
+| DRV-036 | High | `mount_synscan/indigo_mount_synscan_driver.c:75` | `synscan_open()` parses `synscan://host:port` by copying `colon - host` bytes into `char host_name[INDIGO_NAME_SIZE]` with no length check and no guaranteed terminator. A long user-supplied `DEVICE_PORT` host segment can overflow the stack before `indigo_open_udp()` is called. | Closed (fixed) |
+| DRV-037 | Medium | `mount_synscan/indigo_mount_synscan_guider.c:178`, `mount_synscan/indigo_mount_synscan_guider.c:197` | The SynScan guider starts two long-lived pulse worker callbacks that wait on condition variables, but disconnect sets `guiding_thread_exit = false` and never signals either condition. Disconnecting the guider without detaching leaves the workers blocked and a later reconnect can start another pair of workers against the same shared state. | Open |
 
 ## Finding Summaries
 
@@ -483,6 +487,39 @@ first-slave combinations. It also drives the new tracking-on change through the 
 fallback because the simulator's `:GW#` response always starts with `P`, so the new
 `:AA#` alt/az branch remains a coverage gap rather than a runtime finding.
 
+### DRV-036 (Closed)
+
+`synscan_open()` accepts editable `DEVICE_PORT` values in the form `synscan://host:port`.
+When a colon is present, it declares `char host_name[INDIGO_NAME_SIZE]` and then calls
+`strncpy(host_name, host, colon - host)`. Because `colon - host` is derived entirely from
+the user-controlled text item, a host segment of `INDIGO_NAME_SIZE` bytes or longer writes
+past `host_name` before UDP open is attempted. Even shorter exact-width values are not
+explicitly null-terminated before being passed to `indigo_open_udp()`.
+
+The new simulator integration test uses a pseudo-terminal serial path, so it does not
+exercise the UDP parser or long `synscan://...` endpoints.
+
+Fixed by checking the host segment length before copying it into `host_name`, explicitly
+terminating the copied string, and failing the UDP open safely when the host is too long
+for `INDIGO_NAME_SIZE`.
+
+### DRV-037 (Open)
+
+On a successful SynScan guider connection, `synscan_connect_timer_callback()` starts two
+zero-delay callbacks, `guider_timer_callback_ra()` and `guider_timer_callback_dec()`. Both
+callbacks enter infinite loops and block in `pthread_cond_wait()` until a guide pulse or
+`PRIVATE_DATA->guiding_thread_exit` wakes them.
+
+The guider disconnect path does the opposite of the required shutdown signal: it sets
+`guiding_thread_exit = false`, decrements `device_count`, and returns `CONNECTION` OK
+without signalling either condition variable or cancelling the timer handles. If a user
+disconnects the guider but keeps the driver loaded, the two worker callbacks remain parked
+on the condition variables. A later reconnect starts another pair of callbacks sharing the
+same pulse fields and condition variables, so guide pulses can be consumed unpredictably
+and shutdown may have to wait for stale workers. The current integration test disconnects
+only during teardown, so `guider_detach()` later sets `guiding_thread_exit = true` and
+masks the ordinary disconnect leak.
+
 ## Review Focus
 
 - Driver lifecycle: `INDIGO_DRIVER_INIT`, `INDIGO_DRIVER_SHUTDOWN`, and `INDIGO_DRIVER_INFO`.
@@ -512,3 +549,4 @@ fallback because the simulator's `:GW#` response always starts with `P`, so the 
 | `6efc2c7ac` | `a5282c84d` | 2026-09-01 | Verification pass over today's race-fix commits (DRV-022 through DRV-029); confirmed no deadlocks introduced. Surfaced `DRV-030` as a pre-existing NULL-handle crash in `ccd_touptek` disconnect path, independent of these commits. |
 | `017ba602857378e4aed489c065c76eacae15924c` | `1e82d6187` + working tree | 2026-09-01 | Deep focused review of `mount_ioptron` generated driver, generator source, simulator, and integration coverage; recorded `DRV-031` as a generator-template lifecycle bug exposed by `mount_ioptron`, plus `DRV-032` and `DRV-033` as iOptron-specific findings. Did not advance the folder baseline because the rest of `indigo_drivers` was not reviewed. |
 | `017ba602857378e4aed489c065c76eacae15924c` | HEAD + working tree | 2026-09-01 | Deep focused review of `mount_lx200`, including the incremental tracking-mode diff, hand-written shared connection lifecycle, new host-side simulator, and LX200 integration coverage; recorded `DRV-034` and `DRV-035`. Did not advance the folder baseline because the rest of `indigo_drivers` was not reviewed. |
+| `017ba602857378e4aed489c065c76eacae15924c` | HEAD + working tree | 2026-09-01 | Deep focused review of `mount_synscan`, including the incremental driver/protocol diff, refactored host-side simulator, mount/guider integration coverage, UDP endpoint parsing, and pulse-guiding lifecycle; recorded `DRV-036` and `DRV-037`. Did not advance the folder baseline because the rest of `indigo_drivers` was not reviewed. |
