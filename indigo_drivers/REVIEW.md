@@ -75,7 +75,7 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 | DRV-034 | High | `mount_lx200/indigo_mount_lx200.c:2333`, `mount_lx200/indigo_mount_lx200.c:3032`, `mount_lx200/indigo_mount_lx200.c:3161`, `mount_lx200/indigo_mount_lx200.c:3334` | LX200 connect handlers increment the shared `device_count` before autodetection, call `meade_close()` on autodetect failure, and then the common failure path decrements the already reset counter. A single failed detect can underflow the shared count and prevent later reconnect attempts from reopening the serial handle. | Closed (fixed) |
 | DRV-035 | Medium | `mount_lx200/indigo_mount_lx200.c:3173`, `mount_lx200/indigo_mount_lx200.c:3391` | If the focuser or AUX logical device is the first LX200 device to open the shared serial connection and autodetection succeeds with an unsupported mount type, the handler decrements `device_count` and reports `CONNECTION` alert without closing the handle opened by that same attempt. The serial/TCP endpoint can stay occupied while the shared count is zero. | Closed (fixed) |
 | DRV-036 | High | `mount_synscan/indigo_mount_synscan_driver.c:75` | `synscan_open()` parses `synscan://host:port` by copying `colon - host` bytes into `char host_name[INDIGO_NAME_SIZE]` with no length check and no guaranteed terminator. A long user-supplied `DEVICE_PORT` host segment can overflow the stack before `indigo_open_udp()` is called. | Closed (fixed) |
-| DRV-037 | Medium | `mount_synscan/indigo_mount_synscan_guider.c:178`, `mount_synscan/indigo_mount_synscan_guider.c:197` | The SynScan guider starts two long-lived pulse worker callbacks that wait on condition variables, but disconnect sets `guiding_thread_exit = false` and never signals either condition. Disconnecting the guider without detaching leaves the workers blocked and a later reconnect can start another pair of workers against the same shared state. | Open |
+| DRV-037 | Medium | `mount_synscan/indigo_mount_synscan_guider.c:179`, `mount_synscan/indigo_mount_synscan_guider.c:237`, `mount_synscan/indigo_mount_synscan_guider.c:258` | The SynScan guider starts two long-lived pulse worker callbacks that wait on condition variables, but disconnect sets `guiding_thread_exit = false` and never signals either condition. Disconnecting the guider without detaching leaves the workers blocked and a later reconnect can start another pair of workers against the same shared state. | Closed (fixed) |
 
 ## Finding Summaries
 
@@ -503,7 +503,7 @@ Fixed by checking the host segment length before copying it into `host_name`, ex
 terminating the copied string, and failing the UDP open safely when the host is too long
 for `INDIGO_NAME_SIZE`.
 
-### DRV-037 (Open)
+### DRV-037 (Closed)
 
 On a successful SynScan guider connection, `synscan_connect_timer_callback()` starts two
 zero-delay callbacks, `guider_timer_callback_ra()` and `guider_timer_callback_dec()`. Both
@@ -519,6 +519,11 @@ same pulse fields and condition variables, so guide pulses can be consumed unpre
 and shutdown may have to wait for stale workers. The current integration test disconnects
 only during teardown, so `guider_detach()` later sets `guiding_thread_exit = true` and
 masks the ordinary disconnect leak.
+
+Fixed by adding a shared guider-worker shutdown helper used by both disconnect and
+detach. It cancels pending pulse timers, sets the exit flag, signals both condition
+variables, waits for the active guider worker count to drain, and resets pulse state
+before starting a fresh pair of workers on reconnect.
 
 ## Review Focus
 
