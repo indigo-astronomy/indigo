@@ -57,7 +57,7 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 | DRV-020 | Medium | `agent_mount/indigo_agent_mount.c:1189` | Mount and rotator deselection can leave `AGENT_MOUNT_STATE_DOME_SLAVING` / `AGENT_MOUNT_STATE_FIELD_DEROTATION` reporting the previous state after the required device is gone. Clear the slaving lights when the mount is deselected, and clear field derotation when the rotator is deselected. | Closed (fixed) |
 | DRV-021 | Medium | `agent_mount/indigo_agent_mount.c:1043` | The autonomous slaving path treats `DOME_HORIZONTAL_COORDINATES` / `ROTATOR_POSITION` `ALERT` as eligible for another command and then unconditionally reports the slaving light as `OK`, masking dome or rotator failures despite the state-light contract saying `ALERT` on error. Propagate or preserve alert state until the dependent device reports recovery. | Closed (fixed) |
 | DRV-022 | High | `wheel_asi/indigo_wheel_asi.c:173`, `focuser_asi/indigo_focuser_asi.c:557`, `rotator_asi/indigo_rotator_asi.c:189`, `ccd_asi/indigo_ccd_asi.c:254`, `guider_asi/indigo_guider_asi.c:89` | ZWO ASI-family connect/open paths call SDK enumeration/open/close APIs without the driver-global hot-plug mutex, so plug/unplug timers can race `EFW/EAF/CAA/ASI/USB2ST4` SDK global state during connect or disconnect. | Closed (fixed) |
-| DRV-023 | High | `ccd_playerone/indigo_ccd_playerone.c:213`, `wheel_playerone/indigo_wheel_playerone.c:157` | PlayerOne camera and wheel connect paths call `POAOpen*` / properties APIs without the driver-global hot-plug mutex while plug/unplug handlers enumerate and temporarily open/close the same SDK under that mutex. | Open |
+| DRV-023 | High | `ccd_playerone/indigo_ccd_playerone.c:213`, `wheel_playerone/indigo_wheel_playerone.c:157` | PlayerOne camera and wheel connect paths call `POAOpen*` / properties APIs without the driver-global hot-plug mutex while plug/unplug handlers enumerate and temporarily open/close the same SDK under that mutex. | Closed (fixed) |
 | DRV-024 | Medium | `ccd_fli/indigo_ccd_fli.c:145`, `focuser_fli/indigo_focuser_fli.c:152`, `wheel_fli/indigo_wheel_fli.c:122` | FLI connect paths use only per-device `usb_mutex` around `FLIOpen()` / `FLIClose()`, while hot-plug handlers protect `FLICreateList()` / `FLIList*()` / `FLIDeleteList()` with a separate driver-global mutex. | Open |
 | DRV-025 | Medium | `ccd_svb/indigo_ccd_svb.c:194` | SVBONY normal connect calls `SVBOpenCamera()` with only the device `usb_mutex`, but hot-plug serializes SDK enumeration and temporary open/close with `device_mutex`. | Open |
 | DRV-026 | Medium | `ccd_touptek/indigo_ccd_touptek.c:944` | ToupTek/OEM connect paths open devices with the vendor SDK without the hot-plug `mutex`, while the hot-plug refresh path enumerates devices and mutates shared presence state under that mutex. | Open |
@@ -317,7 +317,7 @@ The ASI wheel crash log showed this exact shape: a connect callback entered SDK 
 
 Fixed by reusing each driver's hot-plug mutex around the normal USB enumeration/open/initial-read/close path, with CCD and guider hot-unplug detaching outside that mutex to avoid self-deadlock when detach invokes close.
 
-### DRV-023 (Open)
+### DRV-023 (Closed)
 
 The PlayerOne camera and wheel drivers have the same split-lock shape:
 
@@ -325,6 +325,8 @@ The PlayerOne camera and wheel drivers have the same split-lock shape:
 - `wheel_playerone`: `process_plug_event()` holds `indigo_device_enumeration_mutex` around `POAGetPWCount()`, `POAGetPWProperties()`, temporary `POAOpenPW()`, and `POAClosePW()`, but `wheel_connect_callback()` calls `POAGetPWPropertiesByHandle()`, `POAOpenPW()`, and `POAClosePW()` outside that mutex.
 
 If the PlayerOne SDK has global enumeration/open state like the ZWO SDK, hot-plug timers can race normal connect/disconnect.
+
+Fixed by reusing each driver's hot-plug mutex around the normal camera/wheel open/initial-property/close paths, with hot-unplug detaching devices outside that mutex to avoid self-deadlock when detach invokes close.
 
 ### DRV-024 (Open)
 
