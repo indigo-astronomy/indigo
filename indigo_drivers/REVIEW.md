@@ -60,7 +60,7 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 | DRV-023 | High | `ccd_playerone/indigo_ccd_playerone.c:213`, `wheel_playerone/indigo_wheel_playerone.c:157` | PlayerOne camera and wheel connect paths call `POAOpen*` / properties APIs without the driver-global hot-plug mutex while plug/unplug handlers enumerate and temporarily open/close the same SDK under that mutex. | Closed (fixed) |
 | DRV-024 | Medium | `ccd_fli/indigo_ccd_fli.c:145`, `focuser_fli/indigo_focuser_fli.c:152`, `wheel_fli/indigo_wheel_fli.c:122` | FLI connect paths use only per-device `usb_mutex` around `FLIOpen()` / `FLIClose()`, while hot-plug handlers protect `FLICreateList()` / `FLIList*()` / `FLIDeleteList()` with a separate driver-global mutex. | Closed (fixed) |
 | DRV-025 | Medium | `ccd_svb/indigo_ccd_svb.c:194` | SVBONY normal connect calls `SVBOpenCamera()` with only the device `usb_mutex`, but hot-plug serializes SDK enumeration and temporary open/close with `indigo_device_enumeration_mutex`. | Closed (fixed) |
-| DRV-026 | Medium | `ccd_touptek/indigo_ccd_touptek.c:944` | ToupTek/OEM connect paths open devices with the vendor SDK without the hot-plug `mutex`, while the hot-plug refresh path enumerates devices and mutates shared presence state under that mutex. | Open |
+| DRV-026 | Medium | `ccd_touptek/indigo_ccd_touptek.c:944` | ToupTek/OEM connect paths open devices with the vendor SDK without the hot-plug `mutex`, while the hot-plug refresh path enumerates devices and mutates shared presence state under that mutex. | Closed (fixed) |
 | DRV-027 | Medium | `ccd_dsi/indigo_ccd_dsi.c:271` | Meade DSI connect opens the camera outside `device_mutex`, but plug/unplug scans and non-macOS temporary probe opens are serialized with `device_mutex`, leaving a scan/open race class. | Open |
 | DRV-028 | Medium | `ccd_qsi/indigo_ccd_qsi.cpp:374` | QSI hot-plug uses the global `QSICamera cam` under `device_mutex`, but connect uses the same SDK object without that mutex for connect-time SDK calls. | Open |
 | DRV-029 | High | `guider_asi/indigo_guider_asi.c:389` | `process_plug_event()` locks `indigo_device_enumeration_mutex` and never unlocks it on the successful attach path, so the first successful ASI USB-ST4 plug event can permanently block later plug/unplug enumeration. | Closed (fixed) |
@@ -346,9 +346,11 @@ Fixed by reusing each driver's hot-plug mutex around normal `FLIOpen()` / `FLICl
 
 Fixed by reusing `indigo_device_enumeration_mutex` around normal `SVBOpenCamera()` / `SVBCloseCamera()` paths and detaching hot-unplugged devices outside that mutex to avoid self-deadlock when detach invokes close.
 
-### DRV-026 (Open)
+### DRV-026 (Closed)
 
 `ccd_touptek` uses a driver-global `mutex` for `process_plug_event()` while refreshing the device inventory with `SDK_CALL(EnumV2)` and updating shared `devices[]` / `present` state. The CCD, guider, wheel, and focuser connect callbacks call `SDK_CALL(Open)` directly from normal connect paths without taking that mutex. If the vendor hot-plug callback schedules a refresh during user connect/disconnect, SDK enumeration and open can overlap.
+
+Fixed by reusing `indigo_device_enumeration_mutex` around normal CCD, guider, wheel, and focuser `SDK_CALL(Open)` / final `SDK_CALL(Close)` paths. Hot-unplug detaches devices outside that mutex to avoid self-deadlock when detach invokes close.
 
 ### DRV-027 (Open)
 
