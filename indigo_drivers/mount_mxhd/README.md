@@ -64,11 +64,12 @@ While the mount is parked, the driver rejects motion, slew, sync, tracking-rate 
 Some clients may keep the rejected motion or guide property shown in Alert/red state until the next valid update of that property; this indicates the last request was rejected and does not mean the mount is still moving or guiding.
 
 MX-HD HOME/PARK operations include an initial sequence which cannot be interrupted by the mount firmware.
-To implement Abort during these operations, the driver disables motor excitation.
+To implement Abort during these operations, the driver disables motor excitation with `@ME0#` and explicitly stops tracking with `@FD0#`.
 After aborting HOME/PARK/UNPARK this way, the driver blocks all motion-related commands for 90 seconds.
 After this safety interval, the driver automatically re-enables motor excitation with `@ME1#`.
 If a motion-related command is requested after the safety interval but before the recovery callback runs, the driver re-enables motor excitation before that command.
 During the 90-second safety interval, the recovery state is shown as Busy in the INDIGO state properties.
+If the `@ME1#` transmission fails, the driver keeps an Alert state and rejects motion-related commands until the user disconnects and reconnects the device.
 After a PARK, HOME or UNPARK abort, MX-HD tracking is treated as stopped.
 
 ## Status: Tested
