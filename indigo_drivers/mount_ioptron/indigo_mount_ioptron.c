@@ -492,116 +492,116 @@ static bool ioptron_set_utc(indigo_device *device, time_t secs, int utc_offset) 
 	return false;
 }
 
-static bool ioptron_get_utc(indigo_device *device, time_t *secs, int *utc_offset) {
-	struct tm tm;
-	char sep;
-	memset(&tm, 0, sizeof(tm));
-	MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-	if (PRIVATE_DATA->protocol == HC_8406) {
-		if (ioptron_command(device, ":GC#") && sscanf(PRIVATE_DATA->response, "%2d%c%2d%c%2d", &tm.tm_mon, &sep, &tm.tm_mday, &sep, &tm.tm_year) == 5) {
-			if (ioptron_command(device, ":GL#") && sscanf(PRIVATE_DATA->response, "%2d:%2d:%2d", &tm.tm_hour, &tm.tm_min, &tm.tm_sec) == 3) {
-				tm.tm_year += 100; // TODO: To be fixed in year 2100 :)
-				tm.tm_mon -= 1;
-				if (ioptron_command(device, ":GG#")) {
-					if (PRIVATE_DATA->response[0] ==  'E') {
-						*utc_offset = atoi(PRIVATE_DATA->response + 1);
-					} else {
-						*utc_offset = -atoi(PRIVATE_DATA->response + 1);
-					}
-					*secs = indigo_timegm(&tm) - *utc_offset * 3600;
-					PRIVATE_DATA->time_difference = time(NULL) - *secs;
-					return true;
-				}
-			}
-		}
-	} else if (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == UNKNOWN) {
-		if (ioptron_command(device, ":GC#") && sscanf(PRIVATE_DATA->response, "%2d%c%2d%c%2d", &tm.tm_mon, &sep, &tm.tm_mday, &sep, &tm.tm_year) == 5) {
-			if (ioptron_command(device, ":GL#") && sscanf(PRIVATE_DATA->response, "%2d:%2d:%2d", &tm.tm_hour, &tm.tm_min, &tm.tm_sec) == 3) {
-				tm.tm_year += 100; // TODO: To be fixed in year 2100 :)
-				tm.tm_mon -= 1;
-				if (ioptron_command(device, ":GG#")) {
-					*utc_offset = atoi(PRIVATE_DATA->response);
-					*secs = indigo_timegm(&tm) - *utc_offset * 3600;
-					PRIVATE_DATA->time_difference = time(NULL) - *secs;
-					return true;
-				}
-			}
-		}
-	} else if (PRIVATE_DATA->protocol == V1_0 || PRIVATE_DATA->protocol == V2_0 || PRIVATE_DATA->protocol == V2_5) {
-		int offset;
-		if (ioptron_command(device, ":GLT#") && sscanf(PRIVATE_DATA->response, "%4d%c%2d%2d%2d%2d%2d%2d", &offset, &sep, &tm.tm_year, &tm.tm_mon, &tm.tm_mday, &tm.tm_hour, &tm.tm_min, &tm.tm_sec) == 8) {
-			tm.tm_year += 100; // TODO: To be fixed in year 2100 :)
-			tm.tm_mon -= 1;
-			*utc_offset = offset / 60;
-			*secs = indigo_timegm(&tm) - *utc_offset * 3600;
-			PRIVATE_DATA->time_difference = time(NULL) - *secs;
-			return true;
-		}
-	} else if (PRIVATE_DATA->protocol == V3_0) {
-		if (ioptron_command(device, ":GUT#")) {
-			PRIVATE_DATA->response[4] = 0;
-			int offset = atoi(PRIVATE_DATA->response);
-			*utc_offset = offset / 60;
-			double jd = atoll(PRIVATE_DATA->response + 5) / 8.64e+7 + JD2000;
-			*secs = (time_t)((jd - DELTA_UT1_UTC - 2440587.5) * 86400.0);
-			PRIVATE_DATA->time_difference = time(NULL) - *secs;
-			return true;
-		}
-	}
-	return false;
-}
-
-static bool ioptron_get_site(indigo_device *device, double *latitude, double *longitude) {
-	if (PRIVATE_DATA->protocol == HC_8406 || PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == V1_0) {
-		if (ioptron_command(device, ":Gt#")) {
-			*latitude = indigo_stod(PRIVATE_DATA->response);
-			if (ioptron_command(device, ":Gg#")) {
-				*longitude = indigo_stod(PRIVATE_DATA->response);
-				return true;
-			}
-		}		
-	} else if (PRIVATE_DATA->protocol == V2_0) {
-		if (ioptron_command(device, ":Gt#")) {
-			*latitude = atol(PRIVATE_DATA->response) / 60.0 / 60.0;
-			if (ioptron_command(device, ":Gg#")) {
-				*longitude = atol(PRIVATE_DATA->response) / 60.0 / 60.0;
-				if (*longitude < 0) {
-					*longitude += 360;
-				}
-				return true;
-			}
-		}
-	} else if (PRIVATE_DATA->protocol == V2_5) {
-		if (ioptron_command(device, ":GLS#") && strlen(PRIVATE_DATA->response) == 19) {
-			char val[16];
-			memcpy(val, PRIVATE_DATA->response, 7);
-			val[7] = 0;
-			*longitude = atol(val) / 60.0 / 60.0;
-			if (*longitude < 0) {
-				*longitude += 360;
-			}
-			memcpy(val, PRIVATE_DATA->response + 7, 6);
-			val[6] = 0;
-			*latitude = atol(val) / 60.0 / 60.0 - 90;
-			return true;
-		}
-	} else if (PRIVATE_DATA->protocol == V3_0) {
-		if (ioptron_command(device, ":GLS#") && strlen(PRIVATE_DATA->response) == 23) {
-			char val[16];
-			memcpy(val, PRIVATE_DATA->response, 9);
-			val[9] = 0;
-			*longitude = atol(val) / 60.0 / 60.0 / 100.0;
-			if (*longitude < 0) {
-				*longitude += 360;
-			}
-			strncpy(val, PRIVATE_DATA->response + 9, 8);
-			val[8] = 0;
-			*latitude = atol(val) / 60.0 / 60.0 / 100.0 - 90;
-			return true;
-		}
-	}
-	return false;
-}
+//		static bool ioptron_get_utc(indigo_device *device, time_t *secs, int *utc_offset) {
+//			struct tm tm;
+//			char sep;
+//			memset(&tm, 0, sizeof(tm));
+//			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
+//			if (PRIVATE_DATA->protocol == HC_8406) {
+//				if (ioptron_command(device, ":GC#") && sscanf(PRIVATE_DATA->response, "%2d%c%2d%c%2d", &tm.tm_mon, &sep, &tm.tm_mday, &sep, &tm.tm_year) == 5) {
+//					if (ioptron_command(device, ":GL#") && sscanf(PRIVATE_DATA->response, "%2d:%2d:%2d", &tm.tm_hour, &tm.tm_min, &tm.tm_sec) == 3) {
+//						tm.tm_year += 100; // TODO: To be fixed in year 2100 :)
+//						tm.tm_mon -= 1;
+//						if (ioptron_command(device, ":GG#")) {
+//							if (PRIVATE_DATA->response[0] ==  'E') {
+//								*utc_offset = atoi(PRIVATE_DATA->response + 1);
+//							} else {
+//								*utc_offset = -atoi(PRIVATE_DATA->response + 1);
+//							}
+//							*secs = indigo_timegm(&tm) - *utc_offset * 3600;
+//							PRIVATE_DATA->time_difference = time(NULL) - *secs;
+//							return true;
+//						}
+//					}
+//				}
+//			} else if (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == UNKNOWN) {
+//				if (ioptron_command(device, ":GC#") && sscanf(PRIVATE_DATA->response, "%2d%c%2d%c%2d", &tm.tm_mon, &sep, &tm.tm_mday, &sep, &tm.tm_year) == 5) {
+//					if (ioptron_command(device, ":GL#") && sscanf(PRIVATE_DATA->response, "%2d:%2d:%2d", &tm.tm_hour, &tm.tm_min, &tm.tm_sec) == 3) {
+//						tm.tm_year += 100; // TODO: To be fixed in year 2100 :)
+//						tm.tm_mon -= 1;
+//						if (ioptron_command(device, ":GG#")) {
+//							*utc_offset = atoi(PRIVATE_DATA->response);
+//							*secs = indigo_timegm(&tm) - *utc_offset * 3600;
+//							PRIVATE_DATA->time_difference = time(NULL) - *secs;
+//							return true;
+//						}
+//					}
+//				}
+//			} else if (PRIVATE_DATA->protocol == V1_0 || PRIVATE_DATA->protocol == V2_0 || PRIVATE_DATA->protocol == V2_5) {
+//				int offset;
+//				if (ioptron_command(device, ":GLT#") && sscanf(PRIVATE_DATA->response, "%4d%c%2d%2d%2d%2d%2d%2d", &offset, &sep, &tm.tm_year, &tm.tm_mon, &tm.tm_mday, &tm.tm_hour, &tm.tm_min, &tm.tm_sec) == 8) {
+//					tm.tm_year += 100; // TODO: To be fixed in year 2100 :)
+//					tm.tm_mon -= 1;
+//					*utc_offset = offset / 60;
+//					*secs = indigo_timegm(&tm) - *utc_offset * 3600;
+//					PRIVATE_DATA->time_difference = time(NULL) - *secs;
+//					return true;
+//				}
+//			} else if (PRIVATE_DATA->protocol == V3_0) {
+//				if (ioptron_command(device, ":GUT#")) {
+//					PRIVATE_DATA->response[4] = 0;
+//					int offset = atoi(PRIVATE_DATA->response);
+//					*utc_offset = offset / 60;
+//					double jd = atoll(PRIVATE_DATA->response + 5) / 8.64e+7 + JD2000;
+//					*secs = (time_t)((jd - DELTA_UT1_UTC - 2440587.5) * 86400.0);
+//					PRIVATE_DATA->time_difference = time(NULL) - *secs;
+//					return true;
+//				}
+//			}
+//			return false;
+//		}
+//
+//		static bool ioptron_get_site(indigo_device *device, double *latitude, double *longitude) {
+//			if (PRIVATE_DATA->protocol == HC_8406 || PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == V1_0) {
+//				if (ioptron_command(device, ":Gt#")) {
+//					*latitude = indigo_stod(PRIVATE_DATA->response);
+//					if (ioptron_command(device, ":Gg#")) {
+//						*longitude = indigo_stod(PRIVATE_DATA->response);
+//						return true;
+//					}
+//				}		
+//			} else if (PRIVATE_DATA->protocol == V2_0) {
+//				if (ioptron_command(device, ":Gt#")) {
+//					*latitude = atol(PRIVATE_DATA->response) / 60.0 / 60.0;
+//					if (ioptron_command(device, ":Gg#")) {
+//						*longitude = atol(PRIVATE_DATA->response) / 60.0 / 60.0;
+//						if (*longitude < 0) {
+//							*longitude += 360;
+//						}
+//						return true;
+//					}
+//				}
+//			} else if (PRIVATE_DATA->protocol == V2_5) {
+//				if (ioptron_command(device, ":GLS#") && strlen(PRIVATE_DATA->response) == 19) {
+//					char val[16];
+//					memcpy(val, PRIVATE_DATA->response, 7);
+//					val[7] = 0;
+//					*longitude = atol(val) / 60.0 / 60.0;
+//					if (*longitude < 0) {
+//						*longitude += 360;
+//					}
+//					memcpy(val, PRIVATE_DATA->response + 7, 6);
+//					val[6] = 0;
+//					*latitude = atol(val) / 60.0 / 60.0 - 90;
+//					return true;
+//				}
+//			} else if (PRIVATE_DATA->protocol == V3_0) {
+//				if (ioptron_command(device, ":GLS#") && strlen(PRIVATE_DATA->response) == 23) {
+//					char val[16];
+//					memcpy(val, PRIVATE_DATA->response, 9);
+//					val[9] = 0;
+//					*longitude = atol(val) / 60.0 / 60.0 / 100.0;
+//					if (*longitude < 0) {
+//						*longitude += 360;
+//					}
+//					strncpy(val, PRIVATE_DATA->response + 9, 8);
+//					val[8] = 0;
+//					*latitude = atol(val) / 60.0 / 60.0 / 100.0 - 90;
+//					return true;
+//				}
+//			}
+//			return false;
+//		}
 
 static bool ioptron_set_site(indigo_device *device, double latitude, double longitude, double elevation) {
 	if (longitude < 0) {
