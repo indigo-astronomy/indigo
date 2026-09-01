@@ -797,7 +797,7 @@ static bool ioptron_set_tracking_rate(indigo_device *device, char tracking_rate,
 				}
 			}
 		}
-		result = result && ioptron_simple_reply_command(device, ":ST1#");
+		result = result && ioptron_simple_reply_command(device, ":ST1#") && *PRIVATE_DATA->response == '1';
 	}
 	return result;
 }

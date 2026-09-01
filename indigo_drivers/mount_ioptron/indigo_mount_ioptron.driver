@@ -732,7 +732,7 @@ driver ioptron {
 						}
 					}
 				}
-				result = result && ioptron_simple_reply_command(device, ":ST1#");
+				result = result && ioptron_simple_reply_command(device, ":ST1#") && *PRIVATE_DATA->response == '1';
 			}
 			return result;
 		}
