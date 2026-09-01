@@ -62,7 +62,7 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 | DRV-025 | Medium | `ccd_svb/indigo_ccd_svb.c:194` | SVBONY normal connect calls `SVBOpenCamera()` with only the device `usb_mutex`, but hot-plug serializes SDK enumeration and temporary open/close with `indigo_device_enumeration_mutex`. | Closed (fixed) |
 | DRV-026 | Medium | `ccd_touptek/indigo_ccd_touptek.c:944` | ToupTek/OEM connect paths open devices with the vendor SDK without the hot-plug `mutex`, while the hot-plug refresh path enumerates devices and mutates shared presence state under that mutex. | Closed (fixed) |
 | DRV-027 | Medium | `ccd_dsi/indigo_ccd_dsi.c:271` | Meade DSI connect opened the camera outside the hot-plug enumeration mutex, while plug/unplug scans and non-macOS temporary probe opens were serialized with that mutex. | Closed (fixed) |
-| DRV-028 | Medium | `ccd_qsi/indigo_ccd_qsi.cpp:374` | QSI hot-plug uses the global `QSICamera cam` under `device_mutex`, but connect uses the same SDK object without that mutex for connect-time SDK calls. | Open |
+| DRV-028 | Medium | `ccd_qsi/indigo_ccd_qsi.cpp:374` | QSI hot-plug uses the global `QSICamera cam` under `indigo_device_enumeration_mutex`, but connect used the same SDK object without that mutex for connect-time SDK calls. | Closed (fixed) |
 | DRV-029 | High | `guider_asi/indigo_guider_asi.c:389` | `process_plug_event()` locks `indigo_device_enumeration_mutex` and never unlocks it on the successful attach path, so the first successful ASI USB-ST4 plug event can permanently block later plug/unplug enumeration. | Closed (fixed) |
 
 ## Finding Summaries
@@ -358,9 +358,11 @@ Fixed by reusing `indigo_device_enumeration_mutex` around normal CCD, guider, wh
 
 Fixed by renaming the driver-global hot-plug mutex to `indigo_device_enumeration_mutex` and reusing it around normal `dsi_open_camera()` / `dsi_close_camera()` paths. Hot-unplug detaches devices outside that mutex to avoid self-deadlock when detach invokes close.
 
-### DRV-028 (Open)
+### DRV-028 (Closed)
 
-`ccd_qsi` uses a single global `QSICamera cam` object. `process_plug_event()` protects `cam.get_AvailableCameras()` with `device_mutex`, but `ccd_connect_callback()` uses the same `cam` object for `get_Connected()`, `get_SelectCamera()`, and the subsequent connect sequence without holding `device_mutex`. Because the SDK object is shared across all QSI devices, hot-plug enumeration can race connect-time SDK state.
+`ccd_qsi` uses a single global `QSICamera cam` object. `process_plug_event()` protects `cam.get_AvailableCameras()` with `indigo_device_enumeration_mutex`, but `ccd_connect_callback()` used the same `cam` object for `get_Connected()`, `get_SelectCamera()`, and the subsequent connect sequence without holding that mutex. Because the SDK object is shared across all QSI devices, hot-plug enumeration could race connect-time SDK state.
+
+Fixed by renaming the driver-global hot-plug mutex to `indigo_device_enumeration_mutex` and reusing it around normal connect/disconnect SDK access to `cam`. Hot-unplug detaches devices outside that mutex to avoid self-deadlock when detach invokes disconnect.
 
 ### DRV-029 (Closed)
 
