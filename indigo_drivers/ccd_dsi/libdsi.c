@@ -16,6 +16,10 @@
 #include "libdsi.h"
 #include "libdsi_firmware.h"
 
+#define DSI_VENDOR_ID			0x156c
+#define DSI_PRODUCT_ID_NO_FW	0x0100	/* pre-renumeration, firmware not loaded yet */
+#define DSI_PRODUCT_ID			0x0101	/* post-renumeration, camera is operational */
+
 static int dsicmd_command_1(dsi_camera_t *dsi, dsi_command_t cmd);
 static int dsicmd_command_2(dsi_camera_t *dsi, dsi_command_t cmd, int );
 static int dsicmd_command_3(dsi_camera_t *dsi, dsi_command_t cmd, int, int);
@@ -682,6 +686,12 @@ static dsi_camera_t *dsicmd_init_dsi(dsi_camera_t *dsi) {
 	dsi->little_endian_data = 1;
 	dsi->bayer_pattern[0] = '\0';
 	dsi->bin_mode = BIN1X1;
+	/* Wake up the camera and query it, without this sequence the EEPROM reads below return garbage */
+	dsicmd_command_1(dsi, PING);
+	dsicmd_command_1(dsi, RESET);
+	dsicmd_get_version(dsi);
+	dsicmd_load_status(dsi);
+	dsicmd_command_1(dsi, GET_READOUT_MODE);
 	dsi_get_chip_name(dsi);
 	dsi_get_camera_name(dsi);
 	// dsi_get_serial_number(dsi);
@@ -1223,7 +1233,7 @@ bool dsi_load_firmware(void) {
 	int cnt = (int)libusb_get_device_list(NULL, &list);
 	for (i = 0; i < cnt; ++i) {
 		if (!libusb_get_device_descriptor(list[i], &desc)) {
-			if ((desc.idVendor == 0x156c) && (desc.idProduct == 0x0101 || desc.idProduct == 0x0100)) {
+			if ((desc.idVendor == DSI_VENDOR_ID) && (desc.idProduct == DSI_PRODUCT_ID_NO_FW)) {
 				libusb_device_handle *handle;
 				int rc = libusb_open(list[i], &handle);
 				if (rc >= 0) {
@@ -1256,7 +1266,7 @@ int dsi_scan_usb(dsi_device_list devices) {
 	int cnt = (int)libusb_get_device_list(NULL, &list);
 	for (i = 0; i < cnt; ++i) {
 		if (!libusb_get_device_descriptor(list[i], &desc)) {
-			if ((desc.idVendor == 0x156c) && (desc.idProduct == 0x0101 || desc.idProduct == 0x0100)) {
+			if ((desc.idVendor == DSI_VENDOR_ID) && (desc.idProduct == DSI_PRODUCT_ID)) {
 				dsi_get_identifier(list[i], dev_id);
 				strncpy(devices[index], dev_id, DSI_ID_LEN);
 				index++;
@@ -1290,7 +1300,7 @@ dsi_camera_t *dsi_open_camera(const char *identifier) {
 	int cnt = (int)libusb_get_device_list(NULL, &list);
 	for (i = 0; i < cnt; ++i) {
 		if (!libusb_get_device_descriptor(list[i], &desc)) {
-			if ((desc.idVendor == 0x156c) && (desc.idProduct == 0x0101 || desc.idProduct == 0x0100)) {
+			if ((desc.idVendor == DSI_VENDOR_ID) && (desc.idProduct == DSI_PRODUCT_ID)) {
 				dev = list[i];
 				dsi_get_identifier(dev, dev_id);
 				if (!strncmp(dev_id, identifier, DSI_ID_LEN)) {

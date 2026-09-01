@@ -70,20 +70,25 @@ typedef struct {
 	bool can_check_temperature;
 } dsi_private_data;
 
+static pthread_mutex_t indigo_device_enumeration_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static bool camera_open(indigo_device *device) {
 	if (device->is_connected) {
 		return false;
 	}
+	pthread_mutex_lock(&indigo_device_enumeration_mutex);
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	if (indigo_try_global_lock(device) != INDIGO_OK) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
 		return false;
 	}
 	PRIVATE_DATA->dsi = dsi_open_camera(PRIVATE_DATA->dev_sid);
 	if (PRIVATE_DATA->dsi == NULL) {
+		indigo_global_unlock(device);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsi_open_camera(%s) = %p", PRIVATE_DATA->dev_sid, PRIVATE_DATA->dsi);
 		return false;
 	}
@@ -93,11 +98,14 @@ static bool camera_open(indigo_device *device) {
 		if (PRIVATE_DATA->buffer == NULL) {
 			dsi_close_camera(PRIVATE_DATA->dsi);
 			PRIVATE_DATA->dsi = NULL;
+			indigo_global_unlock(device);
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-			return true;
+			pthread_mutex_unlock(&indigo_device_enumeration_mutex);
+			return false;
 		}
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 	return true;
 }
 
@@ -159,10 +167,12 @@ static void camera_close(indigo_device *device) {
 	if (!device->is_connected) {
 		return;
 	}
+	pthread_mutex_lock(&indigo_device_enumeration_mutex);
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	dsi_close_camera(PRIVATE_DATA->dsi);
 	indigo_global_unlock(device);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 	if (PRIVATE_DATA->buffer != NULL) {
 		free(PRIVATE_DATA->buffer);
 		PRIVATE_DATA->buffer = NULL;
@@ -452,7 +462,6 @@ static indigo_result ccd_detach(indigo_device *device) {
 
 
 // -------------------------------------------------------------------------------- hot-plug support
-static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 #define MAX_DEVICES                   32
 #define NOT_FOUND                    (-1)
@@ -549,18 +558,18 @@ static void process_plug_event(indigo_device *unusued) {
 		return;
 	}
 #endif
-	pthread_mutex_lock(&device_mutex);
+	pthread_mutex_lock(&indigo_device_enumeration_mutex);
 	int slot = find_available_device_slot();
 	if (slot < 0) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slots available.");
-		pthread_mutex_unlock(&device_mutex);
+		pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 		return;
 	}
 	char sid[DSI_ID_LEN];
 	bool found = find_plugged_device_sid(sid);
 	if (!found) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No plugged device found.");
-		pthread_mutex_unlock(&device_mutex);
+		pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 		return;
 	}
 	char dev_name[DSI_NAME_LEN + 1];
@@ -572,7 +581,7 @@ static void process_plug_event(indigo_device *unusued) {
 	dsi = dsi_open_camera(sid);
 	if (dsi == NULL) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Camera %s can not be open.", sid);
-		pthread_mutex_unlock(&device_mutex);
+		pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 		return;
 	}
 	strncpy(dev_name, dsi_get_model_name(dsi), DSI_NAME_LEN);
@@ -591,7 +600,7 @@ static void process_plug_event(indigo_device *unusued) {
 	device->private_data = private_data;
 	indigo_attach_device(device);
 	devices[slot]=device;
-	pthread_mutex_unlock(&device_mutex);
+	pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 }
 
 
@@ -599,20 +608,23 @@ static void process_unplug_event(indigo_device *unusued) {
 	int slot;
 	bool removed = false;
 	dsi_private_data *private_data = NULL;
-	pthread_mutex_lock(&device_mutex);
+	pthread_mutex_lock(&indigo_device_enumeration_mutex);
 	while ((slot = find_unplugged_device_slot()) != NOT_FOUND) {
 		indigo_device **device = &devices[slot];
 		if (*device == NULL) {
-			pthread_mutex_unlock(&device_mutex);
+			pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 			return;
 		}
-		indigo_detach_device(*device);
-		if ((*device)->private_data) {
-			private_data = (dsi_private_data*)((*device)->private_data);
-		}
-		free(*device);
+		indigo_device *removed_device = *device;
 		*device = NULL;
+		pthread_mutex_unlock(&indigo_device_enumeration_mutex);
+		indigo_detach_device(removed_device);
+		if (removed_device->private_data) {
+			private_data = (dsi_private_data*)(removed_device->private_data);
+		}
+		free(removed_device);
 		removed = true;
+		pthread_mutex_lock(&indigo_device_enumeration_mutex);
 	}
 	if (private_data) {
 		if (private_data->buffer != NULL) {
@@ -625,7 +637,7 @@ static void process_unplug_event(indigo_device *unusued) {
 	if (!removed) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No DSI Camera unplugged!");
 	}
-	pthread_mutex_unlock(&device_mutex);
+	pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 }
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {

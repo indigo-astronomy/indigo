@@ -56,6 +56,14 @@ static bool set_ioptron_port(const char *port) {
 	return false;
 }
 
+static void assert_number_item_range(const char *property_name, const char *item_name, double min, double max, double step) {
+	indigo_item *item = find_cached_item(property_name, item_name);
+	ASSERT_TRUE(item != NULL);
+	ASSERT_NEAR(min, item->number.min, 0.001);
+	ASSERT_NEAR(max, item->number.max, 0.001);
+	ASSERT_NEAR(step, item->number.step, 0.001);
+}
+
 static bool connect_ioptron_mount_with_protocol(const char *simulator_protocol) {
 	external_serial_simulator simulator = { 0 };
 	bool driver_started = false;
@@ -125,6 +133,8 @@ static void ioptron_protocol_3_mount_passes_serial_compliance_checks(void) {
 
 	assert_device_interface(INDIGO_INTERFACE_MOUNT);
 	assert_property_has_items(MOUNT_GUIDE_RATE_PROPERTY_NAME, guide_rate_items, ARRAY_SIZE(guide_rate_items));
+	assert_number_item_range(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, 1, 90, 1);
+	assert_number_item_range(MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_DEC_ITEM_NAME, 10, 99, 1);
 	assert_property_has_items(MOUNT_MERIDIAN_HANDLING_PROPERTY_NAME, meridian_handling_items, ARRAY_SIZE(meridian_handling_items));
 	assert_property_has_item(MOUNT_MERIDIAN_LIMIT_PROPERTY_NAME, MOUNT_MERIDIAN_LIMIT_ITEM_NAME);
 	assert_property_has_item(MOUNT_CUSTOM_TRACKING_RATE_PROPERTY_NAME, MOUNT_CUSTOM_TRACKING_RATE_ITEM_NAME);
@@ -170,6 +180,9 @@ static void ioptron_guider_passes_serial_compliance_checks(void) {
 	assert_property_has_item(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME);
 	assert_property_has_item(GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME);
 	assert_property_has_item(GUIDER_RATE_PROPERTY_NAME, GUIDER_RATE_ITEM_NAME);
+	assert_property_has_item(GUIDER_RATE_PROPERTY_NAME, GUIDER_DEC_RATE_ITEM_NAME);
+	assert_number_item_range(GUIDER_RATE_PROPERTY_NAME, GUIDER_RATE_ITEM_NAME, 1, 90, 1);
+	assert_number_item_range(GUIDER_RATE_PROPERTY_NAME, GUIDER_DEC_RATE_ITEM_NAME, 10, 99, 1);
 
 	SERIAL_CHECK_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, ioptron_guider.device_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, 100));
 	SERIAL_CHECK_TRUE(wait_for_property_not_busy(GUIDER_GUIDE_DEC_PROPERTY_NAME));

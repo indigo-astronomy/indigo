@@ -13,6 +13,7 @@
 #include <indigo/indigo_guider_driver.h>
 
 indigo_result synscan_guider_connect(indigo_device* device);
+void synscan_stop_guider_threads(indigo_device *device);
 
 void guider_timer_callback_ra(indigo_device *device);
 void guider_timer_callback_dec(indigo_device *device);

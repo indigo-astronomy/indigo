@@ -41,20 +41,45 @@
 //	}
 //}
 
+static void guider_thread_started(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->driver_mutex);
+	PRIVATE_DATA->guider_thread_count++;
+	pthread_mutex_unlock(&PRIVATE_DATA->driver_mutex);
+}
+
+static void guider_thread_finished(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->driver_mutex);
+	PRIVATE_DATA->guider_thread_count--;
+	pthread_mutex_unlock(&PRIVATE_DATA->driver_mutex);
+}
+
+static int guider_thread_count(indigo_device *device) {
+	int count;
+	pthread_mutex_lock(&PRIVATE_DATA->driver_mutex);
+	count = PRIVATE_DATA->guider_thread_count;
+	pthread_mutex_unlock(&PRIVATE_DATA->driver_mutex);
+	return count;
+}
+
 void guider_timer_callback_ra(indigo_device *device) {
 	PRIVATE_DATA->timer_count++;
+	guider_thread_started(device);
 	while (true) {
 		//  Wait for pulse or exit
 		int pulse_length_ms;
+		bool exit_requested;
 		pthread_mutex_lock(&PRIVATE_DATA->ha_mutex);
-		while (!PRIVATE_DATA->guiding_thread_exit && PRIVATE_DATA->ha_pulse_ms == 0)
+		while (!PRIVATE_DATA->guiding_thread_exit && PRIVATE_DATA->ha_pulse_ms == 0) {
 			pthread_cond_wait(&PRIVATE_DATA->ha_pulse_cond, &PRIVATE_DATA->ha_mutex);
+		}
+		exit_requested = PRIVATE_DATA->guiding_thread_exit;
 		pulse_length_ms = PRIVATE_DATA->ha_pulse_ms;
 		PRIVATE_DATA->ha_pulse_ms = 0;
 		pthread_mutex_unlock(&PRIVATE_DATA->ha_mutex);
 
 		//  Exit if requested
-		if (PRIVATE_DATA->guiding_thread_exit) {
+		if (exit_requested) {
+			guider_thread_finished(device);
 			PRIVATE_DATA->timer_count--;
 			return;
 		}
@@ -97,18 +122,23 @@ void guider_timer_callback_ra(indigo_device *device) {
 
 void guider_timer_callback_dec(indigo_device *device) {
 	PRIVATE_DATA->timer_count++;
+	guider_thread_started(device);
 	while (true) {
 		//  Wait for pulse or exit
 		int pulse_length_ms;
+		bool exit_requested;
 		pthread_mutex_lock(&PRIVATE_DATA->dec_mutex);
-		while (!PRIVATE_DATA->guiding_thread_exit && PRIVATE_DATA->dec_pulse_ms == 0)
+		while (!PRIVATE_DATA->guiding_thread_exit && PRIVATE_DATA->dec_pulse_ms == 0) {
 			pthread_cond_wait(&PRIVATE_DATA->dec_pulse_cond, &PRIVATE_DATA->dec_mutex);
+		}
+		exit_requested = PRIVATE_DATA->guiding_thread_exit;
 		pulse_length_ms = PRIVATE_DATA->dec_pulse_ms;
 		PRIVATE_DATA->dec_pulse_ms = 0;
 		pthread_mutex_unlock(&PRIVATE_DATA->dec_mutex);
 		
 		//  Exit if requested
-		if (PRIVATE_DATA->guiding_thread_exit) {
+		if (exit_requested) {
+			guider_thread_finished(device);
 			PRIVATE_DATA->timer_count--;
 			return;
 		}
@@ -146,6 +176,27 @@ void guider_timer_callback_dec(indigo_device *device) {
 	PRIVATE_DATA->timer_count--;
 }
 
+void synscan_stop_guider_threads(indigo_device *device) {
+	indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer_ra);
+	indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer_dec);
+
+	pthread_mutex_lock(&PRIVATE_DATA->ha_mutex);
+	PRIVATE_DATA->guiding_thread_exit = true;
+	PRIVATE_DATA->ha_pulse_ms = 0;
+	pthread_cond_signal(&PRIVATE_DATA->ha_pulse_cond);
+	pthread_mutex_unlock(&PRIVATE_DATA->ha_mutex);
+
+	pthread_mutex_lock(&PRIVATE_DATA->dec_mutex);
+	PRIVATE_DATA->guiding_thread_exit = true;
+	PRIVATE_DATA->dec_pulse_ms = 0;
+	pthread_cond_signal(&PRIVATE_DATA->dec_pulse_cond);
+	pthread_mutex_unlock(&PRIVATE_DATA->dec_mutex);
+
+	while (guider_thread_count(device) > 0) {
+		indigo_usleep(100000);
+	}
+}
+
 static void synscan_connect_timer_callback(indigo_device* device) {
 	//  Lock the driver
 	pthread_mutex_lock(&PRIVATE_DATA->driver_mutex);
@@ -174,6 +225,14 @@ static void synscan_connect_timer_callback(indigo_device* device) {
 		PRIVATE_DATA->device_count++;
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
+		pthread_mutex_lock(&PRIVATE_DATA->ha_mutex);
+		PRIVATE_DATA->guiding_thread_exit = false;
+		PRIVATE_DATA->ha_pulse_ms = 0;
+		pthread_mutex_unlock(&PRIVATE_DATA->ha_mutex);
+		pthread_mutex_lock(&PRIVATE_DATA->dec_mutex);
+		PRIVATE_DATA->guiding_thread_exit = false;
+		PRIVATE_DATA->dec_pulse_ms = 0;
+		pthread_mutex_unlock(&PRIVATE_DATA->dec_mutex);
 		//  Start RA/DEC timer threads
 		indigo_set_timer(device, 0, &guider_timer_callback_ra, &PRIVATE_DATA->guider_timer_ra);
 		indigo_set_timer(device, 0, &guider_timer_callback_dec, &PRIVATE_DATA->guider_timer_dec);
@@ -196,9 +255,9 @@ indigo_result synscan_guider_connect(indigo_device* device) {
 		return INDIGO_OK;
 	} else if (CONNECTION_DISCONNECTED_ITEM->sw.value) {
 		//  DISCONNECT from mount
-		PRIVATE_DATA->guiding_thread_exit = false;
+		synscan_stop_guider_threads(device);
 		if (--PRIVATE_DATA->device_count == 0) {
-			synscan_close(device);
+			synscan_close(device->master_device);
 		}
 	}
 	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
