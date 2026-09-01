@@ -64,6 +64,7 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 | DRV-027 | Medium | `ccd_dsi/indigo_ccd_dsi.c:271` | Meade DSI connect opened the camera outside the hot-plug enumeration mutex, while plug/unplug scans and non-macOS temporary probe opens were serialized with that mutex. | Closed (fixed) |
 | DRV-028 | Medium | `ccd_qsi/indigo_ccd_qsi.cpp:374` | QSI hot-plug uses the global `QSICamera cam` under `indigo_device_enumeration_mutex`, but connect used the same SDK object without that mutex for connect-time SDK calls. | Closed (fixed) |
 | DRV-029 | High | `guider_asi/indigo_guider_asi.c:389` | `process_plug_event()` locks `indigo_device_enumeration_mutex` and never unlocks it on the successful attach path, so the first successful ASI USB-ST4 plug event can permanently block later plug/unplug enumeration. | Closed (fixed) |
+| DRV-030 | Medium | `ccd_touptek/indigo_ccd_touptek.c:1123` | The disconnect path in `ccd_connect_callback()` calls `SDK_CALL(Stop)(PRIVATE_DATA->handle)` unconditionally before checking whether `handle` is non-NULL. If a prior connect attempt left `handle == NULL` (because `SDK_CALL(Open)` failed), an explicit disconnect request from a client will pass NULL to the vendor SDK, likely crashing the process. Guard the Stop call with `if (PRIVATE_DATA->handle)` or move it inside the existing `if (PRIVATE_DATA->handle)` close block. | Closed (fixed) |
 
 ## Finding Summaries
 
@@ -370,6 +371,12 @@ Fixed by renaming the driver-global hot-plug mutex to `indigo_device_enumeration
 
 Fixed by unlocking `indigo_device_enumeration_mutex` on the successful attach path.
 
+### DRV-030 (Open)
+
+`ccd_connect_callback()` in `indigo_ccd_touptek.c` enters the disconnect branch (`else`) and immediately calls `SDK_CALL(Stop)(PRIVATE_DATA->handle)` at line 1123. This runs before any NULL-handle guard. A handle of NULL can result from a prior connect where `SDK_CALL(Open)` returned NULL: the DRV-026 fix correctly releases the global lock in that path, but `PRIVATE_DATA->handle` remains NULL and `gp_bits` is cleared to 0 (line 1120). If the user or a client subsequently sends a disconnect request, `SDK_CALL(Stop)(NULL)` is invoked, which is expected to dereference the NULL handle in the vendor SDK and crash the process.
+
+Fixed by wrapping the `SDK_CALL(Stop)` call with `if (PRIVATE_DATA->handle)`, matching the pattern already used for the `SDK_CALL(Close)` call at line 1151.
+
 ## Review Focus
 
 - Driver lifecycle: `INDIGO_DRIVER_INIT`, `INDIGO_DRIVER_SHUTDOWN`, and `INDIGO_DRIVER_INFO`.
@@ -396,3 +403,4 @@ Fixed by unlocking `indigo_device_enumeration_mutex` on the successful attach pa
 | `017ba602857378e4aed489c065c76eacae15924c` | `a18baada350fd21298fc602fd1751518cc8254ba` | 2026-08-22 | Focused review of Olympus/OM System support under `ccd_ptp`; recorded `DRV-019`. Did not advance the folder baseline because other `indigo_drivers` changes in this range were not reviewed. |
 | `017ba602857378e4aed489c065c76eacae15924c` | `f8b7086ebdd408c34366a8acdac27e6311103911` + working tree | 2026-08-25 | Focused review of `agent_mount/indigo_agent_mount.c` `AGENT_MOUNT_STATE_DOME_SLAVING` and `AGENT_MOUNT_STATE_FIELD_DEROTATION` usage; recorded `DRV-020` and `DRV-021`. Did not advance the folder baseline because the rest of `indigo_drivers` was not reviewed. |
 | `017ba602857378e4aed489c065c76eacae15924c` | working tree | 2026-08-31 | Focused review of active hot-plug driver SDK enumeration/open/close serialization under `indigo_drivers`; recorded `DRV-022` through `DRV-029`. Did not advance the folder baseline because the rest of `indigo_drivers` was not reviewed. |
+| `6efc2c7ac` | `a5282c84d` | 2026-09-01 | Verification pass over today's race-fix commits (DRV-022 through DRV-029); confirmed no deadlocks introduced. Surfaced `DRV-030` as a pre-existing NULL-handle crash in `ccd_touptek` disconnect path, independent of these commits. |

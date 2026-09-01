@@ -1120,8 +1120,10 @@ static void ccd_connect_callback(indigo_device *device) {
 			device->gp_bits = 0;
 		}
 	} else {
-		result = SDK_CALL(Stop)(PRIVATE_DATA->handle);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Stop() -> %08x", result);
+		if (PRIVATE_DATA->handle) {
+			result = SDK_CALL(Stop)(PRIVATE_DATA->handle);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Stop() -> %08x", result);
+		}
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperature_timer);
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->exposure_watchdog_timer);
 		if (PRIVATE_DATA->buffer != NULL) {
