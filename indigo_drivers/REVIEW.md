@@ -66,7 +66,7 @@ For the 2026-08-01 scoped baseline pass, simulator directories and SDK/vendor su
 | DRV-029 | High | `guider_asi/indigo_guider_asi.c:389` | `process_plug_event()` locks `indigo_device_enumeration_mutex` and never unlocks it on the successful attach path, so the first successful ASI USB-ST4 plug event can permanently block later plug/unplug enumeration. | Closed (fixed) |
 | DRV-030 | Medium | `ccd_touptek/indigo_ccd_touptek.c:1123` | The disconnect path in `ccd_connect_callback()` calls `SDK_CALL(Stop)(PRIVATE_DATA->handle)` unconditionally before checking whether `handle` is non-NULL. If a prior connect attempt left `handle == NULL` (because `SDK_CALL(Open)` failed), an explicit disconnect request from a client will pass NULL to the vendor SDK, likely crashing the process. Guard the Stop call with `if (PRIVATE_DATA->handle)` or move it inside the existing `if (PRIVATE_DATA->handle)` close block. | Closed (fixed) |
 | DRV-031 | High | `../indigo_tools/indigo_generator.c:1450`, `mount_ioptron/indigo_mount_ioptron.c:1470`, `mount_ioptron/indigo_mount_ioptron.c:2046` | The generated multi-device connection-handler template incremented the shared connection count before driver-specific `on_connect` initialization, but on init failure emitted only `PRIVATE_DATA->count--` and no close when that failed attempt had opened the shared handle. `mount_ioptron` exposed this generator bug in both mount and guider handlers. | Closed (fixed) |
-| DRV-032 | Medium | `mount_ioptron/indigo_mount_ioptron.c:902` | V2.5/V3 guide-rate commands format RA and DEC as fixed two-digit fields (`:RG%02d%02d#`), while the inherited mount guide-rate property still accepts values up to 100. Sending 100 produces a six-digit payload (`RG100100`) that does not match the parsed two-two digit protocol shape. | Open |
+| DRV-032 | Medium | `mount_ioptron/indigo_mount_ioptron.c:902` | V2.5/V3 guide-rate commands format RA and DEC as fixed two-digit fields (`:RG%02d%02d#`), while the inherited mount guide-rate property still accepts values up to 100. Sending 100 produces a six-digit payload (`RG100100`) that does not match the parsed two-two digit protocol shape. | Closed (fixed) |
 | DRV-033 | Medium | `mount_ioptron/indigo_mount_ioptron.c:800` | `ioptron_set_tracking_rate()` validates the `:RT*#` and custom-rate replies, but then treats any readable `:ST1#` response as success instead of requiring the success ack byte. A rejected tracking-enable command can still leave `MOUNT_TRACK_RATE` reported OK. | Open |
 
 ## Finding Summaries
@@ -401,7 +401,7 @@ on generated multi-device connection failure. The checked-in `mount_ioptron` gen
 output was regenerated with that template, so its mount and guider handlers now close the
 shared handle only when the failed attempt brings the shared count back to zero.
 
-### DRV-032 (Open)
+### DRV-032 (Closed)
 
 For V2.5/V3 controllers, `ioptron_set_guide_rate()` sends both axes in one fixed-width
 payload with `:RG%02d%02d#`, and initialization parses `:AG#` as two characters for DEC
@@ -413,6 +413,14 @@ As a result, a valid INDIGO-side value of 100 formats as `RG100100`, which is lo
 the two-two digit command shape. The simulator currently masks this by copying only the
 first four payload characters, and the integration test exercises 50 but not the 100
 boundary.
+
+Fixed by setting the iOptron guide-rate item ranges after protocol detection according to
+the local protocol PDFs: V1.0 uses 10..80, V2.0 uses 10..90, and V2.5/V3 use separate
+RA 1..90 and DEC 10..99 ranges. The 8407 branch keeps a 10..100 item range because its
+documentation permits 10..90 plus 100, while INDIGO number ranges cannot represent the
+91..99 gap; the command helper now rejects that gap before sending the protocol command.
+The generated driver was regenerated from the updated `.driver` source, and the iOptron
+simulator integration test now asserts the V3 mount/guider RA and DEC ranges.
 
 ### DRV-033 (Open)
 

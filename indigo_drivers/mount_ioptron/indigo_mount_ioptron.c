@@ -895,6 +895,15 @@ static bool ioptron_set_tracking(indigo_device *device, bool on) {
 }
 
 static bool ioptron_set_guide_rate(indigo_device *device, int ra, int dec) {
+	if (PRIVATE_DATA->protocol == HC_8407 && (ra < 10 || (ra > 90 && ra < 100) || ra > 100)) {
+		return false;
+	} else if (PRIVATE_DATA->protocol == V1_0 && (ra < 10 || ra > 80)) {
+		return false;
+	} else if (PRIVATE_DATA->protocol == V2_0 && (ra < 10 || ra > 90)) {
+		return false;
+	} else if ((PRIVATE_DATA->protocol == V2_5 || PRIVATE_DATA->protocol == V3_0) && (ra < 1 || ra > 90 || dec < 10 || dec > 99)) {
+		return false;
+	}
 	bool result = false;
 	if (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == V1_0 || PRIVATE_DATA->protocol == V2_0) {
 		result = ioptron_simple_reply_command(device, ":RG%03d#", ra) && *PRIVATE_DATA->response == '1';
@@ -1097,6 +1106,9 @@ static bool ioptron_init_mount(indigo_device *device) {
 			MOUNT_PARK_PROPERTY->count = 1;
 			MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
 		} else if (PRIVATE_DATA->protocol == HC_8407) {
+			MOUNT_GUIDE_RATE_RA_ITEM->number.min = 10;
+			MOUNT_GUIDE_RATE_RA_ITEM->number.max = 100;
+			MOUNT_GUIDE_RATE_RA_ITEM->number.step = 1;
 			if (PRIVATE_DATA->product != 8498) {
 				MOUNT_PARK_PROPERTY->hidden = false;
 				MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
@@ -1132,6 +1144,9 @@ static bool ioptron_init_mount(indigo_device *device) {
 			}
 			MOUNT_SLEW_RATE_PROPERTY->hidden = false;
 		} else if (PRIVATE_DATA->protocol == V1_0) {
+			MOUNT_GUIDE_RATE_RA_ITEM->number.min = 10;
+			MOUNT_GUIDE_RATE_RA_ITEM->number.max = 80;
+			MOUNT_GUIDE_RATE_RA_ITEM->number.step = 1;
 			MOUNT_PARK_PROPERTY->hidden = !PRIVATE_DATA->can_park;
 			MOUNT_TRACKING_PROPERTY->hidden = false;
 			MOUNT_TRACK_RATE_PROPERTY->hidden = false;
@@ -1165,6 +1180,9 @@ static bool ioptron_init_mount(indigo_device *device) {
 			}
 			MOUNT_SLEW_RATE_PROPERTY->hidden = false;
 		} else if (PRIVATE_DATA->protocol == V2_0) {
+			MOUNT_GUIDE_RATE_RA_ITEM->number.min = 10;
+			MOUNT_GUIDE_RATE_RA_ITEM->number.max = 90;
+			MOUNT_GUIDE_RATE_RA_ITEM->number.step = 1;
 			MOUNT_PARK_PROPERTY->hidden = !PRIVATE_DATA->can_park;
 			MOUNT_HOME_PROPERTY->hidden = false;
 			MOUNT_HOME_PROPERTY->count = PRIVATE_DATA->can_search_home ? 3 : 2;
@@ -1201,6 +1219,12 @@ static bool ioptron_init_mount(indigo_device *device) {
 			}
 			MOUNT_SLEW_RATE_PROPERTY->hidden = false;
 		} else if (PRIVATE_DATA->protocol == V2_5) {
+			MOUNT_GUIDE_RATE_RA_ITEM->number.min = 1;
+			MOUNT_GUIDE_RATE_RA_ITEM->number.max = 90;
+			MOUNT_GUIDE_RATE_RA_ITEM->number.step = 1;
+			MOUNT_GUIDE_RATE_DEC_ITEM->number.min = 10;
+			MOUNT_GUIDE_RATE_DEC_ITEM->number.max = 99;
+			MOUNT_GUIDE_RATE_DEC_ITEM->number.step = 1;
 			MOUNT_PARK_PROPERTY->hidden = !PRIVATE_DATA->can_park;
 			MOUNT_HOME_PROPERTY->hidden = false;
 			MOUNT_HOME_PROPERTY->count = PRIVATE_DATA->can_search_home ? 3 : 2;
@@ -1240,6 +1264,12 @@ static bool ioptron_init_mount(indigo_device *device) {
 			}
 			MOUNT_SLEW_RATE_PROPERTY->hidden = false;
 		} else if (PRIVATE_DATA->protocol == V3_0) {
+			MOUNT_GUIDE_RATE_RA_ITEM->number.min = 1;
+			MOUNT_GUIDE_RATE_RA_ITEM->number.max = 90;
+			MOUNT_GUIDE_RATE_RA_ITEM->number.step = 1;
+			MOUNT_GUIDE_RATE_DEC_ITEM->number.min = 10;
+			MOUNT_GUIDE_RATE_DEC_ITEM->number.max = 99;
+			MOUNT_GUIDE_RATE_DEC_ITEM->number.step = 1;
 			MOUNT_PARK_PROPERTY->hidden = !PRIVATE_DATA->can_park;
 			MOUNT_PARK_SET_PROPERTY->hidden = !PRIVATE_DATA->can_park;
 			MOUNT_HOME_PROPERTY->hidden = false;
@@ -1329,7 +1359,21 @@ static bool ioptron_init_guider(indigo_device *device) {
 	if (ioptron_detect_mount(device->master_device)) {
 		if (PRIVATE_DATA->protocol == HC_8406) {
 			GUIDER_RATE_PROPERTY->hidden = true;
-		} else if (PRIVATE_DATA->protocol == HC_8407 || PRIVATE_DATA->protocol == V1_0) {
+		} else if (PRIVATE_DATA->protocol == HC_8407) {
+			GUIDER_RATE_ITEM->number.min = 10;
+			GUIDER_RATE_ITEM->number.max = 100;
+			GUIDER_RATE_ITEM->number.step = 1;
+			GUIDER_RATE_PROPERTY->hidden = false;
+			GUIDER_RATE_PROPERTY->count = 1;
+			if (ioptron_command(device, ":AG#")) {
+				GUIDER_RATE_ITEM->number.value = atof(PRIVATE_DATA->response) * 100;
+			} else {
+				GUIDER_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+		} else if (PRIVATE_DATA->protocol == V1_0) {
+			GUIDER_RATE_ITEM->number.min = 10;
+			GUIDER_RATE_ITEM->number.max = 80;
+			GUIDER_RATE_ITEM->number.step = 1;
 			GUIDER_RATE_PROPERTY->hidden = false;
 			GUIDER_RATE_PROPERTY->count = 1;
 			if (ioptron_command(device, ":AG#")) {
@@ -1338,6 +1382,9 @@ static bool ioptron_init_guider(indigo_device *device) {
 				GUIDER_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 		} else if (PRIVATE_DATA->protocol == V2_0) {
+			GUIDER_RATE_ITEM->number.min = 10;
+			GUIDER_RATE_ITEM->number.max = 90;
+			GUIDER_RATE_ITEM->number.step = 1;
 			GUIDER_RATE_PROPERTY->hidden = false;
 			GUIDER_RATE_PROPERTY->count = 1;
 			if (ioptron_command(device, ":AG#")) {
@@ -1346,6 +1393,12 @@ static bool ioptron_init_guider(indigo_device *device) {
 				GUIDER_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 		} else if (PRIVATE_DATA->protocol == V2_5 || PRIVATE_DATA->protocol == V3_0) {
+			GUIDER_RATE_ITEM->number.min = 1;
+			GUIDER_RATE_ITEM->number.max = 90;
+			GUIDER_RATE_ITEM->number.step = 1;
+			GUIDER_DEC_RATE_ITEM->number.min = 10;
+			GUIDER_DEC_RATE_ITEM->number.max = 99;
+			GUIDER_DEC_RATE_ITEM->number.step = 1;
 			GUIDER_RATE_PROPERTY->hidden = false;
 			GUIDER_RATE_PROPERTY->count = 2;
 			if (ioptron_command(device, ":AG#")) {
