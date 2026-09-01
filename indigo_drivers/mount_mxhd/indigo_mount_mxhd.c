@@ -68,9 +68,6 @@ typedef struct {
 	int motor_recovery_alert_count;
 	indigo_device *motor_recovery_alert_devices[MXHD_MOTOR_RECOVERY_ALERTS];
 	indigo_property *motor_recovery_alert_properties[MXHD_MOTOR_RECOVERY_ALERTS];
-	double latitude;
-	double longitude;
-	bool has_site;
 } mxhd_private_data;
 
 static mxhd_private_data *private_data = NULL;
@@ -297,13 +294,6 @@ static void update_mount_state_property(indigo_device *device) {
 	MOUNT_STATE_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
 	update_motor_recovery_property(device);
-}
-
-static void update_tracking_property(indigo_device *device, const char *message) {
-	indigo_set_switch(MOUNT_TRACKING_PROPERTY, PRIVATE_DATA->tracking_enabled ? MOUNT_TRACKING_ON_ITEM : MOUNT_TRACKING_OFF_ITEM, true);
-	MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, MOUNT_TRACKING_PROPERTY, message);
-	update_mount_state_property(device);
 }
 
 static void update_track_rate_to_sidereal(indigo_device *device, const char *message) {
@@ -866,9 +856,8 @@ static void mount_connect_callback(indigo_device *device) {
 			mxhd_update_mount_info(device);
 			double latitude = 0, longitude = 0;
 			if (mxhd_query_site(device, &latitude, &longitude)) {
-				PRIVATE_DATA->latitude = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = latitude;
-				PRIVATE_DATA->longitude = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = longitude;
-				PRIVATE_DATA->has_site = true;
+				MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = latitude;
+				MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = longitude;
 				MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
 				MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -994,9 +983,6 @@ static bool send_motion(indigo_device *device, indigo_property *property) {
 }
 
 static void mount_geo_coords_callback(indigo_device *device) {
-	PRIVATE_DATA->latitude = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value;
-	PRIVATE_DATA->longitude = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value;
-	PRIVATE_DATA->has_site = true;
 	if (!IS_CONNECTED || mxhd_apply_site(device)) {
 		MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
