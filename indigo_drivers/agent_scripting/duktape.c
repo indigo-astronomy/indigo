@@ -33044,7 +33044,7 @@ DUK_LOCAL duk_bool_t duk__parse_string_iso8601_subset(duk_hthread *thr, const ch
 			}
 
 			sep_idx = i;
-			match_val = (1UL << part_idx) + (1UL << (sep_idx + 9)); /* match against rule part/sep bits */
+			match_val = (duk_uint_fast32_t)((1UL << part_idx) + (1UL << (sep_idx + 9))); /* match against rule part/sep bits */
 
 			for (i = 0; i < (duk_small_uint_t) (sizeof(duk__parse_iso8601_control) / sizeof(duk_uint32_t)); i++) {
 				duk_uint_fast32_t rule = duk__parse_iso8601_control[i];

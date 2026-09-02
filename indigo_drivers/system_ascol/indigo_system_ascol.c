@@ -75,12 +75,12 @@
 #define OIMV_PROPERTY_NAME                 "ASCOL_OIMV"
 #define OIMV_ITEM_NAME_BASE                "VALUE"
 
-#define X_MOUNT_STATE_PROPERTY               (PRIVATE_DATA->mount_state_property)
+#define X_MOUNT_STATE_PROPERTY              (PRIVATE_DATA->mount_state_property)
 #define MOUNT_STATE_ITEM                   (X_MOUNT_STATE_PROPERTY->items+0)
 #define RA_STATE_ITEM                      (X_MOUNT_STATE_PROPERTY->items+1)
 #define DEC_STATE_ITEM                     (X_MOUNT_STATE_PROPERTY->items+2)
 
-#define X_MOUNT_STATE_PROPERTY_NAME          "ASCOL_MOUNT_STATE"
+#define X_MOUNT_STATE_PROPERTY_NAME        "ASCOL_MOUNT_STATE"
 #define MOUNT_STATE_ITEM_NAME              "MOUNT"
 #define RA_STATE_ITEM_NAME                 "RA_AXIS"
 #define DEC_STATE_ITEM_NAME                "DEC_AXIS"
@@ -240,10 +240,17 @@
 #define DOME_ON_ITEM_NAME                  "ON"
 #define DOME_OFF_ITEM_NAME                 "OFF"
 
-#define DOME_STATE_PROPERTY                 (PRIVATE_DATA->dome_state_property)
-#define DOME_STATE_ITEM                     (DOME_STATE_PROPERTY->items+0)
-#define DOME_STATE_PROPERTY_NAME            "ASCOL_DOME_STATE"
-#define DOME_STATE_ITEM_NAME                "STATE"
+#define ASCOL_DOME_STATE_PROPERTY          (PRIVATE_DATA->dome_state_property)
+#define ASCOL_DOME_STATE_ITEM              (ASCOL_DOME_STATE_PROPERTY->items+0)
+#define ASCOL_DOME_STATE_PROPERTY_NAME     "ASCOL_DOME_STATE"
+#define ASCOL_DOME_STATE_ITEM_NAME         "STATE"
+
+#define DOME_SLAVING_PROPERTY               (PRIVATE_DATA->dome_slaving_property)
+#define DOME_SLAVING_ENABLE_ITEM            (DOME_SLAVING_PROPERTY->items+0)
+#define DOME_SLAVING_DISABLE_ITEM           (DOME_SLAVING_PROPERTY->items+1)
+#define DOME_SLAVING_PROPERTY_NAME					"DOME_SLAVING"
+#define DOME_SLAVING_ENABLE_ITEM_NAME				"ENABLED"
+#define DOME_SLAVING_DISABLE_ITEM_NAME			"DISABLED"
 
 #define DOME_SHUTTER_STATE_PROPERTY         (PRIVATE_DATA->dome_shutter_state_property)
 #define DOME_SHUTTER_STATE_ITEM             (DOME_SHUTTER_STATE_PROPERTY->items+0)
@@ -285,6 +292,7 @@ typedef struct {
 	indigo_property *oil_state_property;
 	indigo_property *oimv_property;
 	indigo_property *mount_state_property;
+	indigo_property *dome_slaving_property;
 	indigo_property *flap_state_property;
 	indigo_property *flap_tube_property;
 	indigo_property *flap_coude_property;
@@ -342,6 +350,7 @@ static indigo_result ascol_mount_enumerate_properties(indigo_device *device, ind
 		INDIGO_DEFINE_MATCHING_PROPERTY(OIL_STATE_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(OIMV_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(X_MOUNT_STATE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(DOME_SLAVING_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(FLAP_STATE_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(FLAP_TUBE_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(FLAP_COUDE_PROPERTY);
@@ -1492,7 +1501,6 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_TRACK_RATE_PROPERTY->hidden = true;
 		//INDIGO_COPY_NAME(MOUNT_TRACKING_PROPERTY->group, SWITCHES_GROUP);
 		MOUNT_SLEW_RATE_PROPERTY->hidden = true;
-		MOUNT_SNOOP_DEVICES_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------- OIL STATE
 		OIL_STATE_PROPERTY = indigo_init_text_property(NULL, device->name, OIL_STATE_PROPERTY_NAME, OIL_GROUP, "Oil State", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 1);
 		if (OIL_STATE_PROPERTY == NULL) {
@@ -2221,15 +2229,15 @@ static void dome_update_state() {
 	   (DOME_SLAVING_PROPERTY->state == INDIGO_BUSY_STATE) ||
 	   (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) ||
 	   (DOME_STEPS_PROPERTY->state == INDIGO_BUSY_STATE)) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating DOME_STATE_PROPERTY (dev = %d)", PRIVATE_DATA->dev_id);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating ASCOL_DOME_STATE_PROPERTY (dev = %d)", PRIVATE_DATA->dev_id);
 		ascol_get_dome_state(PRIVATE_DATA->glst, &descr, &descrs);
-		snprintf(DOME_STATE_ITEM->text.value, INDIGO_VALUE_SIZE, "%s - %s", descrs, descr);
-		indigo_update_property(device, DOME_STATE_PROPERTY, NULL);
+		snprintf(ASCOL_DOME_STATE_ITEM->text.value, INDIGO_VALUE_SIZE, "%s - %s", descrs, descr);
+		indigo_update_property(device, ASCOL_DOME_STATE_PROPERTY, NULL);
 
 		if (PRIVATE_DATA->glst.dome_state == DOME_STATE_OFF) {
 			DOME_ON_ITEM->sw.value = false;
 			DOME_OFF_ITEM->sw.value = true;
-			DOME_STATE_PROPERTY->state = INDIGO_OK_STATE;
+			ASCOL_DOME_STATE_PROPERTY->state = INDIGO_OK_STATE;
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 			DOME_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 			update_horizontal = true;
@@ -2237,18 +2245,18 @@ static void dome_update_state() {
 		           (PRIVATE_DATA->glst.dome_state == DOME_STATE_AUTO_STOP)) {
 			DOME_ON_ITEM->sw.value = true;
 			DOME_OFF_ITEM->sw.value = false;
-			DOME_STATE_PROPERTY->state = INDIGO_OK_STATE;
+			ASCOL_DOME_STATE_PROPERTY->state = INDIGO_OK_STATE;
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 			DOME_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 			update_horizontal = true;
 		} else {
 			DOME_ON_ITEM->sw.value = true;
 			DOME_OFF_ITEM->sw.value = false;
-			DOME_STATE_PROPERTY->state = INDIGO_BUSY_STATE;
+			ASCOL_DOME_STATE_PROPERTY->state = INDIGO_BUSY_STATE;
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 			DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		}
-		indigo_update_property(device, DOME_STATE_PROPERTY, NULL);
+		indigo_update_property(device, ASCOL_DOME_STATE_PROPERTY, NULL);
 
 		if (update_all || (DOME_POWER_PROPERTY->state == INDIGO_BUSY_STATE) ||
 		   (prev_glst.dome_state != PRIVATE_DATA->glst.dome_state)) {
@@ -2495,7 +2503,7 @@ static void dome_handle_steps(indigo_device *device) {
 static indigo_result ascol_dome_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
 		INDIGO_DEFINE_MATCHING_PROPERTY(DOME_POWER_PROPERTY);
-		INDIGO_DEFINE_MATCHING_PROPERTY(DOME_STATE_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(ASCOL_DOME_STATE_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(DOME_SHUTTER_STATE_PROPERTY);
 	}
 	return indigo_dome_enumerate_properties(device, client, property);
@@ -2515,8 +2523,6 @@ static indigo_result dome_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
 		DEVICE_PORTS_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------
-		DOME_SNOOP_DEVICES_PROPERTY->hidden = true;
-		DOME_EQUATORIAL_COORDINATES_PROPERTY->hidden = true;
 		DOME_GEOGRAPHIC_COORDINATES_PROPERTY->hidden = true;
 		DOME_DIMENSION_PROPERTY->hidden = true;
 		DOME_SPEED_PROPERTY->hidden = true;
@@ -2536,11 +2542,18 @@ static indigo_result dome_attach(indigo_device *device) {
 		indigo_init_switch_item(DOME_ON_ITEM, DOME_ON_ITEM_NAME, "On", false);
 		indigo_init_switch_item(DOME_OFF_ITEM, DOME_OFF_ITEM_NAME, "Off", true);
 		// --------------------------------------------------------------------------- DOME STATE
-		DOME_STATE_PROPERTY = indigo_init_text_property(NULL, device->name, DOME_STATE_PROPERTY_NAME, DOME_MAIN_GROUP, "Dome State", INDIGO_BUSY_STATE, INDIGO_RO_PERM, 1);
-		if (DOME_STATE_PROPERTY == NULL) {
+		ASCOL_DOME_STATE_PROPERTY = indigo_init_text_property(NULL, device->name, ASCOL_DOME_STATE_PROPERTY_NAME, DOME_MAIN_GROUP, "Dome State", INDIGO_BUSY_STATE, INDIGO_RO_PERM, 1);
+		if (ASCOL_DOME_STATE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
-		indigo_init_text_item(DOME_STATE_ITEM, DOME_STATE_ITEM_NAME, "State", "");
+		indigo_init_text_item(ASCOL_DOME_STATE_ITEM, ASCOL_DOME_STATE_ITEM_NAME, "State", "");
+		// -------------------------------------------------------------------------------- DOME_SLAVING
+		DOME_SLAVING_PROPERTY = indigo_init_switch_property(NULL, device->name, DOME_SLAVING_PROPERTY_NAME, DOME_MAIN_GROUP, "Slave dome to mount", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);;
+		if (DOME_SLAVING_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_switch_item(DOME_SLAVING_ENABLE_ITEM, DOME_SLAVING_ENABLE_ITEM_NAME, "Enable", false);
+		indigo_init_switch_item(DOME_SLAVING_DISABLE_ITEM, DOME_SLAVING_DISABLE_ITEM_NAME, "Disable", true);
 		// --------------------------------------------------------------------------- DOME SHUTTER STATE
 		DOME_SHUTTER_STATE_PROPERTY = indigo_init_text_property(NULL, device->name, DOME_SHUTTER_STATE_PROPERTY_NAME, DOME_MAIN_GROUP, "Dome Shutter State", INDIGO_BUSY_STATE, INDIGO_RO_PERM, 1);
 		if (DOME_SHUTTER_STATE_PROPERTY == NULL) {
@@ -2569,7 +2582,8 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 				if (ascol_device_open(device)) {
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					indigo_define_property(device, DOME_POWER_PROPERTY, NULL);
-					indigo_define_property(device, DOME_STATE_PROPERTY, NULL);
+					indigo_define_property(device, ASCOL_DOME_STATE_PROPERTY, NULL);
+					indigo_define_property(device, DOME_SLAVING_PROPERTY, NULL);
 					indigo_define_property(device, DOME_SHUTTER_STATE_PROPERTY, NULL);
 					device->is_connected = true;
 				} else {
@@ -2581,7 +2595,8 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			if (device->is_connected) {
 				ascol_device_close(device);
 				indigo_delete_property(device, DOME_POWER_PROPERTY, NULL);
-				indigo_delete_property(device, DOME_STATE_PROPERTY, NULL);
+				indigo_delete_property(device, ASCOL_DOME_STATE_PROPERTY, NULL);
+				indigo_delete_property(device, DOME_SLAVING_PROPERTY, NULL);
 				indigo_delete_property(device, DOME_SHUTTER_STATE_PROPERTY, NULL);
 				device->is_connected = false;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -2657,7 +2672,8 @@ static indigo_result dome_detach(indigo_device *device) {
 	}
 
 	indigo_release_property(DOME_POWER_PROPERTY);
-	indigo_release_property(DOME_STATE_PROPERTY);
+	indigo_release_property(ASCOL_DOME_STATE_PROPERTY);
+	indigo_release_property(DOME_SLAVING_PROPERTY);
 	indigo_release_property(DOME_SHUTTER_STATE_PROPERTY);
 
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);

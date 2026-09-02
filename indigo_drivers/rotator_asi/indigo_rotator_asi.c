@@ -73,6 +73,7 @@ typedef struct {
 } asi_private_data;
 
 static int find_index_by_device_id(int id);
+static pthread_mutex_t indigo_device_enumeration_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // -------------------------------------------------------------------------------- INDIGO rotator device implementation
 static void rotator_timer_callback(indigo_device *device) {
@@ -133,7 +134,7 @@ static indigo_result rotator_attach(indigo_device *device) {
 
 		INFO_PROPERTY->count = 6;
 		INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->model);
-		char *sdk_version = CAAGetSDKVersion();
+		const char *sdk_version = CAAGetSDKVersion();
 		INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, sdk_version);
 		INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->label, "SDK version");
 
@@ -184,14 +185,19 @@ static indigo_result rotator_attach(indigo_device *device) {
 
 static void rotator_connect_callback(indigo_device *device) {
 	int index;
+	bool enumeration_locked = false;
 	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		index = find_index_by_device_id(PRIVATE_DATA->dev_id);
-		if (index >= 0) {
-			if (!device->is_connected) {
+		if (!device->is_connected) {
+			pthread_mutex_lock(&indigo_device_enumeration_mutex);
+			enumeration_locked = true;
+			index = find_index_by_device_id(PRIVATE_DATA->dev_id);
+			if (index >= 0) {
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 				if (indigo_try_global_lock(device) != INDIGO_OK) {
 					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+					pthread_mutex_unlock(&indigo_device_enumeration_mutex);
+					enumeration_locked = false;
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -237,6 +243,8 @@ static void rotator_connect_callback(indigo_device *device) {
 						}
 						CAA_BEEP_OFF_ITEM->sw.value = !CAA_BEEP_ON_ITEM->sw.value;
 						pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+						pthread_mutex_unlock(&indigo_device_enumeration_mutex);
+						enumeration_locked = false;
 
 						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 
@@ -248,11 +256,15 @@ static void rotator_connect_callback(indigo_device *device) {
 						indigo_set_timer(device, 0.1, temperature_timer_callback, &PRIVATE_DATA->temperature_timer);
 					} else {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "CAAOpen(%d) = %d", index, res);
+						indigo_global_unlock(device);
 						CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 						indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 						indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 					}
 				}
+			}
+			if (enumeration_locked) {
+				pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 			}
 		}
 	} else {
@@ -261,6 +273,7 @@ static void rotator_connect_callback(indigo_device *device) {
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperature_timer);
 			indigo_delete_property(device, CAA_BEEP_PROPERTY, NULL);
 			indigo_delete_property(device, CAA_CUSTOM_SUFFIX_PROPERTY, NULL);
+			pthread_mutex_lock(&indigo_device_enumeration_mutex);
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 			int res = CAAStop(PRIVATE_DATA->dev_id);
 			res = CAAClose(PRIVATE_DATA->dev_id);
@@ -271,6 +284,7 @@ static void rotator_connect_callback(indigo_device *device) {
 			}
 			indigo_global_unlock(device);
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 			device->is_connected = false;
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
@@ -606,8 +620,6 @@ static void split_device_name(const char *fill_device_name, char *device_name, c
 	strncpy(suffix, suffix_start, 9);
 }
 
-static pthread_mutex_t indigo_device_enumeration_mutex = PTHREAD_MUTEX_INITIALIZER;
-
 static void process_plug_event(indigo_device *unused) {
 	CAA_INFO info;
 	static indigo_device rotator_template = INDIGO_DEVICE_INITIALIZER(
@@ -690,10 +702,13 @@ static void process_unplug_event(indigo_device *unused) {
 			pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 			return;
 		}
-		indigo_detach_device(*device);
-		free((*device)->private_data);
-		free(*device);
+		indigo_device *device_to_detach = *device;
 		*device = NULL;
+		pthread_mutex_unlock(&indigo_device_enumeration_mutex);
+		indigo_detach_device(device_to_detach);
+		free(device_to_detach->private_data);
+		free(device_to_detach);
+		pthread_mutex_lock(&indigo_device_enumeration_mutex);
 		removed = true;
 	}
 	if (!removed) {

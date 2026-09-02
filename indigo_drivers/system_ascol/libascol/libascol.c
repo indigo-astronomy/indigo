@@ -406,11 +406,11 @@ int ascol_parse_devname(char *device, char *host, int *port) {
 	char *strp;
 	int n;
 
-	n = sscanf(device,"tcp://%s",host);
+	n = sscanf(device,"tcp://%254s",host);
 	if (n < 1) {
-		n = sscanf(device,"ascol://%s",host);
+		n = sscanf(device,"ascol://%254s",host);
 		if (n < 1) {
-			sscanf(device,"%s",host);
+			sscanf(device,"%254s",host);
 		}
 	}
 

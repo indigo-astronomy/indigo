@@ -1,3 +1,5 @@
+LDFLAGS += -lindigocat
+
 indigo_agent_scripting.c: boot.js.dat
 
 boot.js.dat: boot.js

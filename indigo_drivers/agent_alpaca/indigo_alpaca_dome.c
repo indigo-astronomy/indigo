@@ -246,9 +246,9 @@ static indigo_alpaca_error alpaca_set_slaved(indigo_alpaca_device *device, int v
 	indigo_change_switch_property_1(
 		indigo_agent_alpaca_client,
 		device->indigo_device,
-		DOME_SLAVING_PROPERTY_NAME,
-		value ? DOME_SLAVING_ENABLE_ITEM_NAME : DOME_SLAVING_DISABLE_ITEM_NAME,
-		true
+		AGENT_PROCESS_FEATURES_PROPERTY_NAME,
+		AGENT_MOUNT_ENABLE_DOME_SLAVING_ITEM_NAME,
+		value
 	);
 	pthread_mutex_unlock(&device->mutex);
 	return indigo_alpaca_wait_for_bool(&device->dome.slaved, value, 30);
@@ -401,8 +401,8 @@ static indigo_alpaca_error alpaca_slewtoaltitude(indigo_alpaca_device *device, i
 	indigo_change_switch_property_1(
 		indigo_agent_alpaca_client,
 		device->indigo_device,
-		DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY_NAME,
-		DOME_ON_HORIZONTAL_COORDINATES_SET_GOTO_ITEM_NAME,
+		DOME_ON_COORDINATES_SET_PROPERTY_NAME,
+		DOME_ON_COORDINATES_SET_GOTO_ITEM_NAME,
 		true
 	);
 	indigo_change_number_property_1(
@@ -442,8 +442,8 @@ static indigo_alpaca_error alpaca_slewtoazimuth(indigo_alpaca_device *device, in
 	indigo_change_switch_property_1(
 		indigo_agent_alpaca_client,
 		device->indigo_device,
-		DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY_NAME,
-		DOME_ON_HORIZONTAL_COORDINATES_SET_GOTO_ITEM_NAME,
+		DOME_ON_COORDINATES_SET_PROPERTY_NAME,
+		DOME_ON_COORDINATES_SET_GOTO_ITEM_NAME,
 		true
 	);
 	indigo_change_number_property_1(
@@ -474,8 +474,8 @@ static indigo_alpaca_error alpaca_synctoazimuth(indigo_alpaca_device *device, in
 	indigo_change_switch_property_1(
 		indigo_agent_alpaca_client,
 		device->indigo_device,
-		DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY_NAME,
-		DOME_ON_HORIZONTAL_COORDINATES_SET_SYNC_ITEM_NAME,
+		DOME_ON_COORDINATES_SET_PROPERTY_NAME,
+		DOME_ON_COORDINATES_SET_SYNC_ITEM_NAME,
 		true
 	);
 	indigo_change_number_property_1(
@@ -490,12 +490,12 @@ static indigo_alpaca_error alpaca_synctoazimuth(indigo_alpaca_device *device, in
 }
 
 void indigo_alpaca_dome_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property) {
-	if (!strcmp(property->name, DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY_NAME)) {
+	if (!strcmp(property->name, DOME_ON_COORDINATES_SET_PROPERTY_NAME)) {
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = property->items + i;
-			if (!strcmp(item->name, DOME_ON_HORIZONTAL_COORDINATES_SET_GOTO_ITEM_NAME)) {
+			if (!strcmp(item->name, DOME_ON_COORDINATES_SET_GOTO_ITEM_NAME)) {
 				alpaca_device->dome.cansetazimuth = true;
-			} else if (!strcmp(item->name, DOME_ON_HORIZONTAL_COORDINATES_SET_SYNC_ITEM_NAME)) {
+			} else if (!strcmp(item->name, DOME_ON_COORDINATES_SET_SYNC_ITEM_NAME)) {
 				alpaca_device->dome.cansyncazimuth = true;
 			}
 		}
@@ -547,12 +547,12 @@ void indigo_alpaca_dome_update_property(indigo_alpaca_device *alpaca_device, ind
 		} else {
 			alpaca_device->dome.isrotating = false;
 		}
-	} else if (!strcmp(property->name, DOME_SLAVING_PROPERTY_NAME)) {
+	} else if (!strcmp(property->name, AGENT_PROCESS_FEATURES_PROPERTY_NAME)) {
 		alpaca_device->dome.canslave = true;
 		if (property->state == INDIGO_OK_STATE) {
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = property->items + i;
-				if (!strcmp(item->name, DOME_SLAVING_ENABLE_ITEM_NAME)) {
+				if (!strcmp(item->name, AGENT_MOUNT_ENABLE_DOME_SLAVING_ITEM_NAME)) {
 					alpaca_device->dome.slaved = item->sw.value;
 					alpaca_device->dome.canslave = true;
 				} else if (!strcmp(item->name, DOME_SLAVING_DISABLE_ITEM_NAME)) {

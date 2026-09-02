@@ -56,9 +56,21 @@ static bool gpsd_open(indigo_device *device) {
 	}
 	char *colon = strchr(text, ':');
 	if (colon == NULL) {
+		if (strlen(text) >= sizeof(host_name)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Host name too long");
+			return false;
+		}
 		strcpy(host_name, text);
 		strcpy(port, "2947");
 	} else {
+		if (colon - text >= (ptrdiff_t)sizeof(host_name)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Host name too long");
+			return false;
+		}
+		if (strlen(colon + 1) >= sizeof(port)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Port value too long");
+			return false;
+		}
 		strncpy(host_name, text, colon - text);
 		strcpy(port, colon + 1);
 	}

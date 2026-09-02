@@ -647,7 +647,7 @@ indigo_result indigo_device_attach(indigo_device *device, const char* driver_nam
 		}
 		indigo_init_switch_item(CONNECTION_CONNECTED_ITEM, CONNECTION_CONNECTED_ITEM_NAME, "Connected", false);
 		indigo_init_switch_item(CONNECTION_DISCONNECTED_ITEM, CONNECTION_DISCONNECTED_ITEM_NAME, "Disconnected", true);
-		// -------------------------------------------------------------------------------- DEVICE_INFO
+		// -------------------------------------------------------------------------------- INFO
 		INFO_PROPERTY = indigo_init_text_property(NULL, device->name, INFO_PROPERTY_NAME, MAIN_GROUP, "Device info", INDIGO_OK_STATE, INDIGO_RO_PERM, 8);
 		if (INFO_PROPERTY == NULL) {
 			return INDIGO_FAILED;

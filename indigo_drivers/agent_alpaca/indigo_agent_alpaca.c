@@ -667,7 +667,7 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 				}
 			} else if (!strcmp(item->name, INFO_DEVICE_NAME_ITEM_NAME)) {
 				pthread_mutex_lock(&alpaca_device->mutex);
-				strcpy(alpaca_device->device_name, item->text.value);
+				INDIGO_COPY_NAME(alpaca_device->device_name, item->text.value);
 				pthread_mutex_unlock(&alpaca_device->mutex);
 			} else if (!strcmp(item->name, INFO_DEVICE_DRIVER_ITEM_NAME)) {
 				pthread_mutex_lock(&alpaca_device->mutex);

@@ -115,7 +115,7 @@
 #define AGENT_IMAGER_START_STREAMING_ITEM 		(AGENT_START_PROCESS_PROPERTY->items+3)
 #define AGENT_IMAGER_START_FOCUSING_ITEM 			(AGENT_START_PROCESS_PROPERTY->items+4)
 #define AGENT_IMAGER_CLEAR_SELECTION_ITEM			(AGENT_START_PROCESS_PROPERTY->items+5)
-#define AGENT_IMAGER_RESET_ITEM 							(AGENT_START_PROCESS_PROPERTY->items+6)
+#define AGENT_RESET_ITEM 											(AGENT_START_PROCESS_PROPERTY->items+6)
 
 #define AGENT_PAUSE_PROCESS_PROPERTY					(DEVICE_PRIVATE_DATA->agent_pause_process_property)
 #define AGENT_PAUSE_PROCESS_ITEM      				(AGENT_PAUSE_PROCESS_PROPERTY->items+0)
@@ -2589,7 +2589,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_switch_item(AGENT_IMAGER_START_STREAMING_ITEM, AGENT_IMAGER_START_STREAMING_ITEM_NAME, "Start streaming batch", false);
 		indigo_init_switch_item(AGENT_IMAGER_START_FOCUSING_ITEM, AGENT_IMAGER_START_FOCUSING_ITEM_NAME, "Start focusing", false);
 		indigo_init_switch_item(AGENT_IMAGER_CLEAR_SELECTION_ITEM, AGENT_IMAGER_CLEAR_SELECTION_ITEM_NAME, "Clear star selection", false);
-		indigo_init_switch_item(AGENT_IMAGER_RESET_ITEM, AGENT_IMAGER_RESET_ITEM_NAME, "Reset to defaults", false);
+		indigo_init_switch_item(AGENT_RESET_ITEM, AGENT_RESET_ITEM_NAME, "Reset to defaults", false);
 		AGENT_PAUSE_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_PAUSE_PROCESS_PROPERTY_NAME, "Agent", "Pause/Resume process", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 3);
 		if (AGENT_PAUSE_PROCESS_PROPERTY == NULL) {
 			return INDIGO_FAILED;
@@ -3001,9 +3001,9 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			AGENT_ABORT_PROCESS_ITEM->sw.value = false;
 			AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
-			if (AGENT_IMAGER_RESET_ITEM->sw.value) {
+			if (AGENT_RESET_ITEM->sw.value) {
 				factory_reset(device);
-				AGENT_IMAGER_RESET_ITEM->sw.value = false;
+				AGENT_RESET_ITEM->sw.value = false;
 				AGENT_START_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, "Reset to defaults");
 				return INDIGO_OK;
@@ -3485,8 +3485,9 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 		}
 	} else if (!strcmp(property->name, WHEEL_SLOT_NAME_PROPERTY_NAME)) {
 		indigo_delete_property(FILTER_CLIENT_CONTEXT->device, AGENT_WHEEL_FILTER_PROPERTY, NULL);
-		AGENT_WHEEL_FILTER_PROPERTY->count = property->count;
-		for (int i = 0; i < property->count; i++) {
+		int count = property->count < FILTER_SLOT_COUNT ? property->count : FILTER_SLOT_COUNT;
+		AGENT_WHEEL_FILTER_PROPERTY->count = count;
+		for (int i = 0; i < count; i++) {
 			strcpy(AGENT_WHEEL_FILTER_PROPERTY->items[i].label, property->items[i].text.value);
 		}
 		indigo_define_property(FILTER_CLIENT_CONTEXT->device, AGENT_WHEEL_FILTER_PROPERTY, NULL);

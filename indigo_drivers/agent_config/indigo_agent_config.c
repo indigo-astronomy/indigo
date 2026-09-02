@@ -137,6 +137,39 @@ static void populate_list(indigo_device *device) {
 	}
 }
 
+static void clear_restore_properties(indigo_device *device) {
+	pthread_mutex_lock(&DEVICE_PRIVATE_DATA->restore_mutex);
+	for (int i = 0; i < DEVICE_PRIVATE_DATA->restore_count; i++) {
+		if (DEVICE_PRIVATE_DATA->restore_properties[i]) {
+			indigo_release_property(DEVICE_PRIVATE_DATA->restore_properties[i]);
+			DEVICE_PRIVATE_DATA->restore_properties[i] = NULL;
+		}
+	}
+	DEVICE_PRIVATE_DATA->restore_count = 0;
+	pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->restore_mutex);
+}
+
+static bool has_restore_properties(indigo_device *device) {
+	bool has_properties = false;
+	pthread_mutex_lock(&DEVICE_PRIVATE_DATA->restore_mutex);
+	for (int i = 0; i < DEVICE_PRIVATE_DATA->restore_count; i++) {
+		if (DEVICE_PRIVATE_DATA->restore_properties[i]) {
+			has_properties = true;
+			break;
+		}
+	}
+	pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->restore_mutex);
+	return has_properties;
+}
+
+static void process_configuration_property(indigo_device *device);
+
+static void process_restore_properties(indigo_device *device) {
+	while (has_restore_properties(device)) {
+		process_configuration_property(device);
+	}
+}
+
 static void load_configuration(indigo_device *device) {
 	// request deselect everything from all agents first
 	indigo_update_property(device, AGENT_CONFIG_LOAD_PROPERTY, "Unloading current configuration, please wait...");
@@ -221,27 +254,14 @@ static void load_configuration(indigo_device *device) {
 				context->input = handle;
 				client->client_context = context;
 				client->version = INDIGO_VERSION_CURRENT;
-				DEVICE_PRIVATE_DATA->restore_count = 0;
+				clear_restore_properties(device);
 				indigo_xml_parse(NULL, client);
 				indigo_uni_close(&handle);
 				free(context);
 				free(client);
 				// wait for all the changes to be applied
 				indigo_usleep(500000);
-				bool done = false;
-				while (!done) {
-					done = true;
-					for (int j = 0; j < DEVICE_PRIVATE_DATA->restore_count; j++) {
-						if (DEVICE_PRIVATE_DATA->restore_properties[j]) {
-							done = false;
-							break;
-						}
-					}
-					if (done) {
-						break;
-					}
-					indigo_usleep(100000);
-				}
+				process_restore_properties(device);
 				strncpy(AGENT_CONFIG_LAST_CONFIG_NAME_ITEM->text.value, item->name, INDIGO_NAME_SIZE);
 			}
 			item->sw.value = false;
@@ -560,10 +580,14 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		}
 		return INDIGO_OK;
 	} else if (!strncmp(property->name, "AGENT_CONFIG", 12)) {
+		bool restore_scheduled = false;
+		pthread_mutex_lock(&DEVICE_PRIVATE_DATA->restore_mutex);
 		if (DEVICE_PRIVATE_DATA->restore_count < MAX_AGENTS) {
-			pthread_mutex_lock(&DEVICE_PRIVATE_DATA->data_mutex);
 			DEVICE_PRIVATE_DATA->restore_properties[DEVICE_PRIVATE_DATA->restore_count++] = indigo_copy_property(NULL, property);
-			pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->data_mutex);
+			restore_scheduled = true;
+		}
+		pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->restore_mutex);
+		if (restore_scheduled) {
 			indigo_execute_handler(device, process_configuration_property);
 		}
 	}
@@ -682,15 +706,24 @@ static void add_device(indigo_device *device, indigo_property *property) {
 		}
 	}
 	if (filter != NULL) {
-		*filter->text.value = 0;
-		for (int i = 0; i < property->count; i++) {
+		char *p = filter->text.value;
+		char *end = filter->text.value + INDIGO_VALUE_SIZE - 1;
+		*p = 0;
+		for (int i = 0; i < property->count && p < end; i++) {
 			indigo_item *item = property->items + i;
 			if (item->sw.value) {
-				if (*filter->text.value) {
-					strcat(filter->text.value, ";");
+				if (p > filter->text.value && p < end) {
+					*p++ = ';';
+					*p = 0;
 				}
-				if (strcmp(item->name, "NONE")) {
-					strcat(filter->text.value, item->name);
+				if (strcmp(item->name, "NONE") && p < end) {
+					int avail = (int)(end - p);
+					int len = (int)strlen(item->name);
+					if (len > avail)
+						len = avail;
+					memcpy(p, item->name, len);
+					p += len;
+					*p = 0;
 				}
 			}
 		}

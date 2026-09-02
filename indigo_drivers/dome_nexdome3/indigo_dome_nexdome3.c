@@ -566,7 +566,7 @@ static void handle_range(indigo_device *device, char *message) {
 static void handle_xb(indigo_device *device, char *message) {
 	char state[20];
 
-	if (sscanf(message, "XB->%s", state) != 1) {
+	if (sscanf(message, "XB->%19s", state) != 1) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Parsing message = '%s' error!", message);
 		return;
 	}
@@ -674,8 +674,8 @@ static indigo_result dome_attach(indigo_device *device) {
 		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
 		// --------------------------------------------------------------------------------
 		INFO_PROPERTY->count = 6;
-		// -------------------------------------------------------------------------------- DOME_ON_HORIZONTAL_COORDINATES_SET
-		DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY->hidden = false;
+		// -------------------------------------------------------------------------------- DOME_ON_COORDINATES_SET
+		DOME_ON_COORDINATES_SET_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- DOME_HORIZONTAL_COORDINATES
 		DOME_HORIZONTAL_COORDINATES_PROPERTY->perm = INDIGO_RW_PERM;
 		// -------------------------------------------------------------------------------- DOME_SLAVING_PARAMETERS
@@ -959,11 +959,10 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		}
 		PROPERTY_LOCK();
 		char command[NEXDOME_CMD_LEN];
-		if (DOME_ON_HORIZONTAL_COORDINATES_SET_SYNC_ITEM->sw.value) {
+		if (DOME_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
 			sprintf(command, "PWR,%.0f", target_position * PRIVATE_DATA->steps_per_degree);
 			nexdome_command(device, command);
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-			DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		} else { /* GOTO */
 			PRIVATE_DATA->park_requested = false;
 			PRIVATE_DATA->callibration_requested = false;
@@ -978,42 +977,6 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		PROPERTY_UNLOCK();
 		indigo_set_timer(device, 3, dome_rotator_status_request, NULL);
 		indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-		indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
-		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(DOME_EQUATORIAL_COORDINATES_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- DOME_EQUATORIAL_COORDINATES
-		indigo_property_copy_values(DOME_EQUATORIAL_COORDINATES_PROPERTY, property, false);
-		/* Keep the dome in sync if needed */
-		if (DOME_SLAVING_ENABLE_ITEM->sw.value) {
-			PROPERTY_LOCK();
-			double az;
-			char command[NEXDOME_CMD_LEN];
-			if (indigo_fix_dome_azimuth(device, DOME_EQUATORIAL_COORDINATES_RA_ITEM->number.value, DOME_EQUATORIAL_COORDINATES_DEC_ITEM->number.value, DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value, &az) &&
-			   (DOME_PARK_PROPERTY->state != INDIGO_BUSY_STATE) && (PRIVATE_DATA->callibration_requested == false) && (DOME_HORIZONTAL_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE)) {
-				if (DOME_PARK_PARKED_ITEM->sw.value) {
-					PROPERTY_UNLOCK();
-					if (DOME_EQUATORIAL_COORDINATES_PROPERTY->state != INDIGO_ALERT_STATE) {
-						DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-						indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, "Can not Synchronize. Dome is parked.");
-					} else {
-						indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
-					}
-					return INDIGO_OK;
-				}
-				PRIVATE_DATA->park_requested = false;
-				DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target = az;
-				if (PRIVATE_DATA->version < FIRMWARE_VERSION_3_2) {
-					sprintf(command, "GAR,%.0f", az);
-				} else {
-					sprintf(command, "GSR,%.0f", az * PRIVATE_DATA->steps_per_degree);
-				}
-				nexdome_command(device, command);
-			}
-			nexdome_command(device, "PRR");
-			PROPERTY_UNLOCK();
-		}
-		DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(DOME_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_ABORT_MOTION
@@ -1201,8 +1164,12 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		indigo_property_copy_values(NEXDOME_COMMAND_PROPERTY, property, false);
 		PROPERTY_LOCK();
 		char command[NEXDOME_CMD_LEN];
-		sprintf(command, "%s\n", NEXDOME_COMMAND_ITEM->text.value);
-		nexdome_command(device, command);
+		if (snprintf(command, sizeof(command), "%s\n", NEXDOME_COMMAND_ITEM->text.value) >= (int)sizeof(command)) {
+			NEXDOME_COMMAND_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else {
+			nexdome_command(device, command);
+			NEXDOME_COMMAND_PROPERTY->state = INDIGO_OK_STATE;
+		}
 		PROPERTY_UNLOCK();
 		indigo_update_property(device, NEXDOME_COMMAND_PROPERTY, NULL);
 		return INDIGO_OK;

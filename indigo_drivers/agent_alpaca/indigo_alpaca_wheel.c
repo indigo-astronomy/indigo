@@ -95,7 +95,8 @@ void indigo_alpaca_wheel_update_property(indigo_alpaca_device *alpaca_device, in
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = property->items + i;
 				if (!strcmp(item->name, WHEEL_SLOT_ITEM_NAME)) {
-					alpaca_device->wheel.count = (int)item->number.max;
+					int max = (int)item->number.max;
+					alpaca_device->wheel.count = max < ALPACA_MAX_FILTERS ? max : ALPACA_MAX_FILTERS;
 					alpaca_device->wheel.position = (int)item->number.value - 1;
 				}
 			}
@@ -104,7 +105,7 @@ void indigo_alpaca_wheel_update_property(indigo_alpaca_device *alpaca_device, in
 		}
 	} else if (!strcmp(property->name, WHEEL_SLOT_OFFSET_PROPERTY_NAME)) {
 		if (property->state == INDIGO_OK_STATE) {
-			alpaca_device->wheel.count = property->count;
+			alpaca_device->wheel.count = property->count < ALPACA_MAX_FILTERS ? property->count : ALPACA_MAX_FILTERS;
 			for (int i = 0; i < property->count; i++) {
 				indigo_item* item = property->items + i;
 				int index = 0;
@@ -115,7 +116,7 @@ void indigo_alpaca_wheel_update_property(indigo_alpaca_device *alpaca_device, in
 		}
 	} else if (!strcmp(property->name, WHEEL_SLOT_NAME_PROPERTY_NAME)) {
 		if (property->state == INDIGO_OK_STATE) {
-			alpaca_device->wheel.count = property->count;
+			alpaca_device->wheel.count = property->count < ALPACA_MAX_FILTERS ? property->count : ALPACA_MAX_FILTERS;
 			for (int i = 0; i < property->count; i++) {
 				indigo_item* item = property->items + i;
 				int index = 0;

@@ -1448,7 +1448,9 @@ void write_c_connection_change_handler(device_type *device) {
 			write_line("\t\t\tindigo_send_message(device, ALERT_PROPERTY, \"Failed to connect to %%s\", device->name);");
 		}
 		if (is_multi_device) {
-			write_line("\t\t\tPRIVATE_DATA->count--;");
+			write_line("\t\t\tif (--PRIVATE_DATA->count == 0) {");
+			write_line("\t\t\t\t%s_close(device);", driver.name);
+			write_line("\t\t\t}");
 		}
 		write_line("\t\t\tCONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;");
 		write_line("\t\t\tindigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);");

@@ -299,6 +299,8 @@ typedef struct {
 	indigo_property *beep_property;
 } DRIVER_PRIVATE_DATA;
 
+static pthread_mutex_t indigo_device_enumeration_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 #define ADVANCED_GROUP                 "Advanced"
 
 #define X_CALIBRATE_PROPERTY           (PRIVATE_DATA->calibrate_property)
@@ -840,7 +842,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 			}
 		}
 		CCD_STREAMING_PROPERTY->hidden = false;
-		CCD_IMAGE_FORMAT_PROPERTY->count = 6;
+		CCD_IMAGE_FORMAT_PROPERTY->count = 7;
 		CCD_GAIN_PROPERTY->hidden = false;
 
 		X_CCD_ADVANCED_PROPERTY = indigo_init_number_property(NULL, device->name, "X_CCD_ADVANCED", CCD_ADVANCED_GROUP, "Advanced Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 9);
@@ -941,8 +943,13 @@ static void ccd_connect_callback(indigo_device *device) {
 			} else {
 				char id[66];
 				sprintf(id, "@%s", INDIGO_WCHAR_TO_CHAR(PRIVATE_DATA->cam.id));
+				pthread_mutex_lock(&indigo_device_enumeration_mutex);
 				PRIVATE_DATA->handle = SDK_CALL(Open)(INDIGO_CHAR_TO_WCHAR(id));
+				pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Open(%s) -> %p", id, PRIVATE_DATA->handle);
+				if (PRIVATE_DATA->handle == NULL) {
+					indigo_global_unlock(device);
+				}
 			}
 		}
 		device->gp_bits = 1;
@@ -1113,8 +1120,10 @@ static void ccd_connect_callback(indigo_device *device) {
 			device->gp_bits = 0;
 		}
 	} else {
-		result = SDK_CALL(Stop)(PRIVATE_DATA->handle);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Stop() -> %08x", result);
+		if (PRIVATE_DATA->handle) {
+			result = SDK_CALL(Stop)(PRIVATE_DATA->handle);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Stop() -> %08x", result);
+		}
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperature_timer);
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->exposure_watchdog_timer);
 		if (PRIVATE_DATA->buffer != NULL) {
@@ -1142,9 +1151,11 @@ static void ccd_connect_callback(indigo_device *device) {
 		if (PRIVATE_DATA->guider && PRIVATE_DATA->guider->gp_bits == 0) {
 			if (PRIVATE_DATA->handle != NULL) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Closing camera");
+				pthread_mutex_lock(&indigo_device_enumeration_mutex);
 				pthread_mutex_lock(&PRIVATE_DATA->mutex);
 				SDK_CALL(Close)(PRIVATE_DATA->handle);
 				pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+				pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 			}
 			PRIVATE_DATA->handle = NULL;
 			indigo_global_unlock(device);
@@ -1597,8 +1608,13 @@ static void guider_connect_callback(indigo_device *device) {
 			} else {
 				char id[66];
 				sprintf(id, "@%s", INDIGO_WCHAR_TO_CHAR(PRIVATE_DATA->cam.id));
+				pthread_mutex_lock(&indigo_device_enumeration_mutex);
 				PRIVATE_DATA->handle = SDK_CALL(Open)(INDIGO_CHAR_TO_WCHAR(id));
+				pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Open(%s) -> %p", id, PRIVATE_DATA->handle);
+				if (PRIVATE_DATA->handle == NULL) {
+					indigo_global_unlock(device);
+				}
 			}
 		}
 		device->gp_bits = 1;
@@ -1624,9 +1640,11 @@ static void guider_connect_callback(indigo_device *device) {
 		if (PRIVATE_DATA->camera && PRIVATE_DATA->camera->gp_bits == 0) {
 			if (PRIVATE_DATA->handle != NULL) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Closing camera");
+				pthread_mutex_lock(&indigo_device_enumeration_mutex);
 				pthread_mutex_lock(&PRIVATE_DATA->mutex);
 				SDK_CALL(Close)(PRIVATE_DATA->handle);
 				pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+				pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 				indigo_global_unlock(device);
 			}
 			PRIVATE_DATA->handle = NULL;
@@ -1844,8 +1862,13 @@ static void wheel_connect_callback(indigo_device *device) {
 			} else {
 				char id[66];
 				sprintf(id, "@%s", INDIGO_WCHAR_TO_CHAR(PRIVATE_DATA->cam.id));
+				pthread_mutex_lock(&indigo_device_enumeration_mutex);
 				PRIVATE_DATA->handle = SDK_CALL(Open)(INDIGO_CHAR_TO_WCHAR(id));
+				pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Open(%s) -> %p", id, PRIVATE_DATA->handle);
+				if (PRIVATE_DATA->handle == NULL) {
+					indigo_global_unlock(device);
+				}
 			}
 		}
 		device->gp_bits = 1;
@@ -1888,9 +1911,11 @@ static void wheel_connect_callback(indigo_device *device) {
 		if (PRIVATE_DATA->camera && PRIVATE_DATA->camera->gp_bits == 0) {
 			if (PRIVATE_DATA->handle != NULL) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Closing wheel");
+				pthread_mutex_lock(&indigo_device_enumeration_mutex);
 				pthread_mutex_lock(&PRIVATE_DATA->mutex);
 				SDK_CALL(Close)(PRIVATE_DATA->handle);
 				pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+				pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 				indigo_global_unlock(device);
 			}
 			PRIVATE_DATA->handle = NULL;
@@ -2226,8 +2251,13 @@ static void focuser_connect_callback(indigo_device *device) {
 			} else {
 				char id[66];
 				sprintf(id, "@%s", INDIGO_WCHAR_TO_CHAR(PRIVATE_DATA->cam.id));
+				pthread_mutex_lock(&indigo_device_enumeration_mutex);
 				PRIVATE_DATA->handle = SDK_CALL(Open)(INDIGO_CHAR_TO_WCHAR(id));
+				pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Open(%s) -> %p", id, PRIVATE_DATA->handle);
+				if (PRIVATE_DATA->handle == NULL) {
+					indigo_global_unlock(device);
+				}
 			}
 		}
 		device->gp_bits = 1;
@@ -2311,9 +2341,11 @@ static void focuser_connect_callback(indigo_device *device) {
 		if (PRIVATE_DATA->camera && PRIVATE_DATA->camera->gp_bits == 0) {
 			if (PRIVATE_DATA->handle != NULL) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Closing focuser");
+				pthread_mutex_lock(&indigo_device_enumeration_mutex);
 				pthread_mutex_lock(&PRIVATE_DATA->mutex);
 				SDK_CALL(Close)(PRIVATE_DATA->handle);
 				pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+				pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 				indigo_global_unlock(device);
 			}
 			PRIVATE_DATA->handle = NULL;
@@ -2622,7 +2654,6 @@ static indigo_result focuser_detach(indigo_device *device) {
 // -------------------------------------------------------------------------------- hot-plug support
 
 static indigo_device *devices[SDK_DEF(MAX)];
-static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 #ifdef TOUPTEK
 
@@ -2684,7 +2715,7 @@ int OEMCamEnum(ToupcamDeviceV2 *cams, int max_count) {
 #endif
 
 static void process_plug_event(indigo_device *unusued) {
-	pthread_mutex_lock(&mutex);
+	pthread_mutex_lock(&indigo_device_enumeration_mutex);
 	for (int i = 0; i < SDK_DEF(MAX); i++) {
 		indigo_device *device = devices[i];
 		if (device) {
@@ -2836,6 +2867,8 @@ static void process_plug_event(indigo_device *unusued) {
 		indigo_device *device = devices[i];
 		if (device && !PRIVATE_DATA->present) {
 			indigo_device *guider = PRIVATE_DATA->guider;
+			devices[i] = NULL;
+			pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 			if (guider) {
 				indigo_detach_device(guider);
 				free(guider);
@@ -2845,10 +2878,10 @@ static void process_plug_event(indigo_device *unusued) {
 				free(device->private_data);
 			}
 			free(device);
-			devices[i] = NULL;
+			pthread_mutex_lock(&indigo_device_enumeration_mutex);
 		}
 	}
-	pthread_mutex_unlock(&mutex);
+	pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 }
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
@@ -2920,4 +2953,3 @@ indigo_result ENTRY_POINT(indigo_driver_action action, indigo_driver_info *info)
 
 	return INDIGO_OK;
 }
-

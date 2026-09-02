@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
+		<link rel="stylesheet" href="bootstrap.min.css"/>
+		<link rel="stylesheet" href="glyphicons.css"/>
+		<link rel="stylesheet" href="indigo.css"/>
+	</head>
+	<title>INDIGO Astrometry</title>
+	<body class="bg-secondary">
+		<div id="ROOT">
+			<indigo-navbar active="astrometry" title="INDIGO Astrometry" icon="astrometry.png" expand="md"></indigo-navbar>
+			<div class="container-fluid">
+				<div v-if="devices['Astrometry Agent'] == null" class="alert alert-warning alert-dismissible m-1" role="alert">
+					Waiting for Astrometry Agent...
+				</div>
+				<template v-else>
+					<div class="row g-0">
+						<div class="col-xl-4 indigo-side-panel">
+							<div v-if="findProperty('Astrometry Agent', 'AGENT_PLATESOLVER_HINTS') != null" class="card p-1 m-1 bg-light">
+								<div class="card-body d-flex flex-wrap">
+									<indigo-edit-number-60 :property="findProperty('Astrometry Agent', 'AGENT_PLATESOLVER_HINTS')" :name="'RA'" :icon="'α'" :tooltip="'Right Ascension hint'"></indigo-edit-number-60>
+									<indigo-edit-number-60 :property="findProperty('Astrometry Agent', 'AGENT_PLATESOLVER_HINTS')" :name="'DEC'" :icon="'δ'" :tooltip="'Declination hint'"></indigo-edit-number-60>
+									<indigo-edit-number-60 :property="findProperty('Astrometry Agent', 'AGENT_PLATESOLVER_HINTS')" :name="'RADIUS'" :icon="'r'" :tooltip="'Search radius'"></indigo-edit-number-60>
+									<indigo-edit-number :property="findProperty('Astrometry Agent', 'AGENT_PLATESOLVER_HINTS')" :name="'DOWNSAMPLE'" :icon="'glyphicons-resize-small'" :tooltip="'Downsample'"></indigo-edit-number>
+									<indigo-number-dropdown :property="findProperty('Astrometry Agent', 'AGENT_PLATESOLVER_HINTS')" :name="'PARITY'" :values="[{ label: 'Both parities', value: 0 }, { label: 'Normal parity', value: 1 }, { label: 'Flipped parity', value: -1 }]" :tooltip="'Parity'"></indigo-number-dropdown>
+									<indigo-number-dropdown :property="findProperty('Astrometry Agent', 'AGENT_PLATESOLVER_HINTS')" :name="'EPOCH'" :values="[{ label: 'JNow epoch', value: 0 }, { label: 'J2000 epoch', value: 2000 }]" :tooltip="'Epoch'"></indigo-number-dropdown>
+									<indigo-edit-number :property="findProperty('Astrometry Agent', 'AGENT_PLATESOLVER_HINTS')" :name="'SCALE'" :icon="'glyphicons-resize-full'" :tooltip="'Pixel scale'"></indigo-edit-number>
+									<indigo-edit-number :property="findProperty('Astrometry Agent', 'AGENT_PLATESOLVER_HINTS')" :name="'DEPTH'" :icon="'glyphicons-list-numbered'" :tooltip="'Depth'"></indigo-edit-number>
+									<indigo-edit-number :property="findProperty('Astrometry Agent', 'AGENT_PLATESOLVER_HINTS')" :name="'CPULIMIT'" :icon="'glyphicons-hourglass'" :tooltip="'CPU time limit'"></indigo-edit-number>
+								</div>
+							</div>
+							<div v-if="findProperty('Astrometry Agent', 'AGENT_PLATESOLVER_GOTO_SETTINGS') != null || findProperty('Astrometry Agent', 'AGENT_PLATESOLVER_EXPOSURE') != null || findProperty('Astrometry Agent', 'AGENT_PLATESOLVER_MOUNT_SETTLE_TIME') != null || findProperty('Astrometry Agent', 'AGENT_START_PROCESS') != null" class="card p-1 m-1 mt-2 bg-light">
+								<div class="card-body d-flex flex-wrap">
+									<indigo-edit-number-60 :property="findProperty('Astrometry Agent', 'AGENT_PLATESOLVER_GOTO_SETTINGS')" :name="'RA'" :icon="'α'" :tooltip="'Target Right Ascension'"></indigo-edit-number-60>
+									<indigo-edit-number-60 :property="findProperty('Astrometry Agent', 'AGENT_PLATESOLVER_GOTO_SETTINGS')" :name="'DEC'" :icon="'δ'" :tooltip="'Target Declination'"></indigo-edit-number-60>
+									<indigo-number-dropdown :property="findProperty('Astrometry Agent', 'AGENT_PLATESOLVER_EXPOSURE')" :name="'EXPOSURE'" :values="[{ label: 'Exposure 0.1 s', value: 0.1 }, { label: 'Exposure 0.5 s', value: 0.5 }, { label: 'Exposure 1 s', value: 1 }, { label: 'Exposure 2 s', value: 2 }, { label: 'Exposure 3 s', value: 3 }, { label: 'Exposure 5 s', value: 5 }, { label: 'Exposure 10 s', value: 10 }, { label: 'Exposure 30 s', value: 30 }]" :tooltip="'Exposure time'" :cls="'w-50'"></indigo-number-dropdown>
+									<indigo-number-dropdown :property="findProperty('Astrometry Agent', 'AGENT_PLATESOLVER_MOUNT_SETTLE_TIME')" :name="'SETTLE_TIME'" :values="[{ label: 'Settle 1 s', value: 1 }, { label: 'Settle 2 s', value: 2 }, { label: 'Settle 3 s', value: 3 }, { label: 'Settle 5 s', value: 5 }]" :tooltip="'Mount settle time'" :cls="'w-50'"></indigo-number-dropdown>
+									<div v-if="findProperty('Astrometry Agent', 'AGENT_START_PROCESS') != null" class="d-flex p-1 w-100 indigo-command-row">
+										<indigo-status-button v-if="window.astrometryStartProcessHasItem('SOLVE')" :property="findProperty('Astrometry Agent', 'AGENT_START_PROCESS')" busy-item="SOLVE" :status-class="window.astrometryStartProcessButtonClass('SOLVE')" :disabled="window.astrometryStartProcessButtonDisabled('SOLVE')" :action="window.astrometrySolve" data-bs-toggle="tooltip" title="Solve">
+											<span class="fw-bold">S</span>
+										</indigo-status-button>
+										<indigo-status-button v-if="window.astrometryStartProcessHasItem('SYNC')" :property="findProperty('Astrometry Agent', 'AGENT_START_PROCESS')" busy-item="SYNC" :status-class="window.astrometryStartProcessButtonClass('SYNC')" :disabled="window.astrometryStartProcessButtonDisabled('SYNC')" :action="window.astrometrySync" data-bs-toggle="tooltip" title="Sync">
+											<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+												<path d="M28.28717,17.1308l-5.76758,1.05835a.5.5,0,0,0-.2633.84533l.94043.94043L21.999,21.17236A3.6605,3.6605,0,0,1,20,22H18V11.44366a4.00005,4.00005,0,1,0-4,0V22H12a3.66355,3.66355,0,0,1-2-.82812L8.80316,19.975l.94055-.94056a.5.5,0,0,0-.2633-.84533L3.71283,17.1308a.5.5,0,0,0-.582.582l1.05835,5.76758a.5.5,0,0,0,.84533.2633l.94043-.94043,1.196,1.19623A7.49326,7.49326,0,0,0,12,26h1.6l2.00958,2.512a.5.5,0,0,0,.78088,0L18.4,26H20a7.49066,7.49066,0,0,0,4.82812-2L26.025,22.80316l.94056.94055a.5.5,0,0,0,.84533-.2633l1.05835-5.76758A.5.5,0,0,0,28.28717,17.1308ZM16,9a1,1,0,1,1,1-1A1.001,1.001,0,0,1,16,9Z"/>
+											</svg>
+										</indigo-status-button>
+										<indigo-status-button v-if="window.astrometryStartProcessHasItem('CENTER')" :property="findProperty('Astrometry Agent', 'AGENT_START_PROCESS')" busy-item="CENTER" :status-class="window.astrometryStartProcessButtonClass('CENTER')" :disabled="window.astrometryStartProcessButtonDisabled('CENTER')" :action="window.astrometryCenter" data-bs-toggle="tooltip" title="Center">
+											<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+												<path d="M16,5A11,11,0,1,0,27,16,11.01245,11.01245,0,0,0,16,5Zm0,19a8,8,0,1,1,8-8A8.00917,8.00917,0,0,1,16,24Zm5-8a5,5,0,1,1-5-5A5,5,0,0,1,21,16Z"/>
+											</svg>
+										</indigo-status-button>
+										<indigo-status-button v-if="window.astrometryStartProcessHasItem('PRECISE_GOTO')" :property="findProperty('Astrometry Agent', 'AGENT_START_PROCESS')" busy-item="PRECISE_GOTO" :status-class="window.astrometryStartProcessButtonClass('PRECISE_GOTO')" :disabled="window.astrometryStartProcessButtonDisabled('PRECISE_GOTO')" :action="window.astrometryPreciseGoto" data-bs-toggle="tooltip" title="Precise GOTO">
+											<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+												<path d="M24.8175,16.86432,9.503,25.77667A1,1,0,0,1,8,24.91235V7.08765a1,1,0,0,1,1.503-.86432L24.8175,15.13568A1.00006,1.00006,0,0,1,24.8175,16.86432Z"/>
+											</svg>
+										</indigo-status-button>
+										<indigo-status-button v-if="window.astrometryStartProcessHasItem('CALCULATE_PA_ERROR')" :property="findProperty('Astrometry Agent', 'AGENT_START_PROCESS')" busy-item="CALCULATE_PA_ERROR" :status-class="window.astrometryStartProcessButtonClass('CALCULATE_PA_ERROR')" :disabled="window.astrometryStartProcessButtonDisabled('CALCULATE_PA_ERROR')" :action="window.astrometryCalculatePaError" data-bs-toggle="tooltip" title="Calculate PA error">
+											<span class="fw-bold" style="font-size: 0.82rem; line-height: 1;">PA<sub>1</sub></span>
+										</indigo-status-button>
+										<indigo-status-button v-if="window.astrometryStartProcessHasItem('RECALCULATE_PA_ERROR')" :property="findProperty('Astrometry Agent', 'AGENT_START_PROCESS')" busy-item="RECALCULATE_PA_ERROR" :status-class="window.astrometryStartProcessButtonClass('RECALCULATE_PA_ERROR')" :disabled="window.astrometryStartProcessButtonDisabled('RECALCULATE_PA_ERROR')" :action="window.astrometryRecalculatePaError" data-bs-toggle="tooltip" title="Recalculate PA error">
+											<span class="fw-bold" style="font-size: 0.82rem; line-height: 1;">PA<sub>n</sub></span>
+										</indigo-status-button>
+										<span class="ms-auto" data-bs-toggle="tooltip" title="Abort">
+											<button class="btn btn-svg idle-state" :disabled="!window.astrometryStartProcessBusy()" @click="window.astrometryAbort()">
+												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+													<path d="M25,8V24a1,1,0,0,1-1,1H8a1,1,0,0,1-1-1V8A1,1,0,0,1,8,7H24A1,1,0,0,1,25,8Z"/>
+												</svg>
+											</button>
+										</span>
+									</div>
+								</div>
+							</div>
+							<div v-if="findProperty('Astrometry Agent', 'AGENT_PLATESOLVER_WCS') != null" class="card p-1 m-1 mt-2 bg-light">
+								<div class="card-body d-flex flex-wrap">
+									<indigo-show-number-60 :property="findProperty('Astrometry Agent', 'AGENT_PLATESOLVER_WCS')" :name="'RA'" :icon="'α'" :tooltip="'Solved Right Ascension'"></indigo-show-number-60>
+									<indigo-show-number-60 :property="findProperty('Astrometry Agent', 'AGENT_PLATESOLVER_WCS')" :name="'DEC'" :icon="'δ'" :tooltip="'Solved Declination'"></indigo-show-number-60>
+									<indigo-show-number-60 :property="findProperty('Astrometry Agent', 'AGENT_PLATESOLVER_WCS')" :name="'ANGLE'" :icon="'∠'" :tooltip="'Image angle'"></indigo-show-number-60>
+									<indigo-show-number-60 :property="findProperty('Astrometry Agent', 'AGENT_PLATESOLVER_WCS')" :name="'SCALE'" :icon="'°/px'" :tooltip="'Solved scale'"></indigo-show-number-60>
+									<indigo-show-number-60 :property="findProperty('Astrometry Agent', 'AGENT_PLATESOLVER_WCS')" :name="'WIDTH'" :icon="'w'" :tooltip="'Image width'"></indigo-show-number-60>
+									<indigo-show-number-60 :property="findProperty('Astrometry Agent', 'AGENT_PLATESOLVER_WCS')" :name="'HEIGHT'" :icon="'h'" :tooltip="'Image height'"></indigo-show-number-60>
+									<div class="p-1 w-25" data-bs-toggle="tooltip" title="Solved parity">
+										<div class="indigo-chip indigo-readonly-chip w-100 d-flex align-items-center">
+											<span class="indigo-chip-icon">par</span>
+											<span class="indigo-chip-value">{{window.astrometryParityLabel()}}</span>
+										</div>
+									</div>
+									<div class="p-1 w-25" data-bs-toggle="tooltip" title="Solved index">
+										<div class="indigo-chip indigo-readonly-chip w-100 d-flex align-items-center">
+											<span class="indigo-chip-icon">idx</span>
+											<span class="indigo-chip-value">{{window.astrometryIndexLabel()}}</span>
+										</div>
+									</div>
+								</div>
+							</div>
+							<div v-if="window.astrometryUseIndexItems().length > 0" class="card p-1 m-1 mt-2 bg-light">
+								<div class="card-body d-flex flex-wrap">
+									<div v-for="item in window.astrometryUseIndexItems()" :key="item.name" class="p-1 w-100">
+										<button class="btn w-100 text-start" :class="item.value ? 'ok-state' : 'idle-state'" @click="window.astrometryToggleIndex(item)" data-bs-toggle="tooltip" title="Toggle index">{{item.label || item.name}}</button>
+									</div>
+								</div>
+							</div>
+						</div>
+						<div class="col-xl-8">
+							<div id="image_container" class="card p-2 m-1 bg-light" style="min-height: 10rem">
+								<div class="card-body">
+									<div id="image_wrapper" class="card p-0 border-0 position-relative" style="display: none">
+										<img id="image" class="img-fluid rounded"/>
+										<indigo-pa-state-overlay :pa-state-property="findProperty('Astrometry Agent', 'AGENT_PLATESOLVER_PA_STATE')"></indigo-pa-state-overlay>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</template>
+				<indigo-status-bar></indigo-status-bar>
+			</div>
+		</div>
+	</body>
+	<script src="jquery.min.js"></script>
+	<script src="bootstrap.min.js"></script>
+	<script src="vue.global.prod.js"></script>
+	<script src="indigo.js"></script>
+	<script src="components.js"></script>
+	<script>
+
+		indigoURL = new URL((window.location.protocol == "https:" ? "wss://" : "ws://") + window.location.host);
+		guiSetup();
+		window.addEventListener("load", init, false);
+
+		function checkState() {
+			var server = INDIGO.devices["Server"];
+			if (server == null) {
+				console.log("No 'Server' device.");
+			} else {
+				var hostTime = INDIGO.devices["Server"]["HOST_TIME"];
+				if (hostTime != null && hostTime.items[0].value == "") {
+					changeProperty("Server", "HOST_TIME", { "TIME": timestamp() })
+				}
+				if (INDIGO.devices["Astrometry Agent"] == null) {
+					console.log("No 'Astrometry Agent' device.");
+					if (server["DRIVERS"].item("indigo_agent_astrometry") == null) {
+						console.log("Trying to load 'indigo_agent_astrometry' driver.");
+						changeProperty("Server", "LOAD", { "DRIVER": "indigo_agent_astrometry" });
+					} else if (!server["DRIVERS"].item("indigo_agent_astrometry").value) {
+						console.log("Trying to enable 'indigo_agent_astrometry' driver.");
+						changeProperty("Server", "DRIVERS", { "indigo_agent_astrometry": true });
+					}
+				}
+			}
+			window.astrometryEnablePreview();
+		}
+
+		function onDefineProperty(property) {
+			checkState();
+			onUpdateProperty(property);
+			if (property.device == "Astrometry Agent" && property.name == "FILTER_RELATED_AGENT_LIST" && property.state == "Ok") {
+				changeProperty("Astrometry Agent", "FILTER_RELATED_AGENT_LIST", { "Imager Agent" : true, "Mount Agent" : true });
+			} else if (property.device == "Astrometry Agent" && property.name == "CCD_PREVIEW" && property.state == "Ok") {
+				window.astrometryEnablePreview();
+			}
+		}
+
+		function onUpdateProperty(property) {
+			if (property.device == "Astrometry Agent") {
+				if (property.name == "CCD_PREVIEW_IMAGE" && property.state == "Ok") {
+					var image = property.item("IMAGE");
+					if (image != null)
+						window.astrometryShowPreviewElement("image", image.value);
+				} else if (property.name == "AGENT_PLATESOLVER_IMAGE_OUTPUT" && property.state == "Ok" && !window.astrometryPreviewVisible()) {
+					var output = property.item("IMAGE");
+					if (output != null)
+						window.astrometryShowPreviewElement("image", output.value);
+				}
+			}
+			window.astrometryRefreshTooltips();
+		}
+
+		function onDeleteProperty(property) {
+			if (typeof property === 'undefined' || (property.device == "Astrometry Agent" && (property.name == "CCD_PREVIEW_IMAGE" || property.name == "AGENT_PLATESOLVER_IMAGE_OUTPUT")))
+				window.astrometryHidePreviewElement("image");
+			window.astrometryRefreshTooltips();
+		}
+
+		window.astrometryRefreshTooltips = function() {
+			if (INDIGO != null && typeof INDIGO.$nextTick == "function")
+				INDIGO.$nextTick(setupTooltips);
+		};
+
+		window.astrometryStartProcessHasItem = function(name) {
+			var property = INDIGO.findProperty("Astrometry Agent", "AGENT_START_PROCESS");
+			return property != null && property.item(name) != null;
+		};
+
+		window.astrometryStartProcessBusy = function() {
+			var property = INDIGO.findProperty("Astrometry Agent", "AGENT_START_PROCESS");
+			return property != null && property.state == "Busy";
+		};
+
+		window.astrometryStartProcessButtonClass = function(name) {
+			var property = INDIGO.findProperty("Astrometry Agent", "AGENT_START_PROCESS");
+			if (property == null)
+				return "idle-state";
+			var item = property.item(name);
+			if (property.state == "Busy" && item != null && item.value)
+				return "busy-state";
+			if (property.state == "Alert" && item != null && item.value)
+				return "alert-state";
+			return "idle-state";
+		};
+
+		window.astrometryStartProcessButtonDisabled = function(name) {
+			var property = INDIGO.findProperty("Astrometry Agent", "AGENT_START_PROCESS");
+			return property == null || (property.state == "Busy" && (property.item(name) == null || !property.item(name).value));
+		};
+
+		window.astrometryStartProcess = function(name) {
+			var values = {};
+			values[name] = true;
+			changeProperty("Astrometry Agent", "AGENT_START_PROCESS", values);
+		};
+
+		window.astrometrySolve = function() {
+			window.astrometryStartProcess("SOLVE");
+		};
+
+		window.astrometrySync = function() {
+			window.astrometryStartProcess("SYNC");
+		};
+
+		window.astrometryCenter = function() {
+			window.astrometryStartProcess("CENTER");
+		};
+
+		window.astrometryPreciseGoto = function() {
+			window.astrometryStartProcess("PRECISE_GOTO");
+		};
+
+		window.astrometryCalculatePaError = function() {
+			window.astrometryStartProcess("CALCULATE_PA_ERROR");
+		};
+
+		window.astrometryRecalculatePaError = function() {
+			window.astrometryStartProcess("RECALCULATE_PA_ERROR");
+		};
+
+		window.astrometryAbort = function() {
+			if (INDIGO.findProperty("Astrometry Agent", "AGENT_ABORT_PROCESS") != null) {
+				changeProperty("Astrometry Agent", "AGENT_ABORT_PROCESS", { "ABORT": true });
+			} else if (INDIGO.findProperty("Astrometry Agent", "AGENT_PLATESOLVER_ABORT") != null) {
+				changeProperty("Astrometry Agent", "AGENT_PLATESOLVER_ABORT", { "ABORT": true });
+			}
+		};
+
+		window.astrometryUseIndexItems = function() {
+			var property = INDIGO.findProperty("Astrometry Agent", "AGENT_PLATESOLVER_USE_INDEX");
+			return property == null ? [] : property.items;
+		};
+
+		window.astrometryToggleIndex = function(item) {
+			var values = {};
+			values[item.name] = !item.value;
+			changeProperty("Astrometry Agent", "AGENT_PLATESOLVER_USE_INDEX", values);
+		};
+
+		window.astrometryWcsItemValue = function(name) {
+			var property = INDIGO.findProperty("Astrometry Agent", "AGENT_PLATESOLVER_WCS");
+			if (property == null)
+				return null;
+			for (var i in property.items) {
+				var item = property.items[i];
+				if (item.name == name)
+					return item.value;
+			}
+			return null;
+		};
+
+		window.astrometryParityLabel = function() {
+			var value = window.astrometryWcsItemValue("PARITY");
+			if (value == -1)
+				return "flipped";
+			if (value == 0)
+				return "N/A";
+			if (value == 1)
+				return "normal";
+			return value;
+		};
+
+		window.astrometryIndexLabel = function() {
+			var value = window.astrometryWcsItemValue("INDEX");
+			if (value == 0)
+				return "N/A";
+			return value;
+		};
+
+		window.astrometryPreviewURL = function(value) {
+			if (value.startsWith("http://") || value.startsWith("https://"))
+				return value;
+			return window.location.protocol + "//" + INDIGO.host + value;
+		};
+
+		window.astrometryShowPreviewElement = function(elementId, value) {
+			if (value == null)
+				return;
+			var element = document.getElementById(elementId);
+			if (element == null)
+				return;
+			element.src = window.astrometryPreviewURL(value) + "?" + new Date().getTime();
+			element.style.display = "";
+			if (element.parentElement != null)
+				element.parentElement.style.display = "";
+		};
+
+		window.astrometryHidePreviewElement = function(elementId) {
+			var element = document.getElementById(elementId);
+			if (element == null)
+				return;
+			element.removeAttribute("src");
+			element.style.display = "none";
+			if (element.parentElement != null)
+				element.parentElement.style.display = "none";
+		};
+
+		window.astrometryPreviewVisible = function() {
+			var element = document.getElementById("image");
+			return element != null && element.getAttribute("src") != null && element.style.display != "none";
+		};
+
+		window.astrometryEnablePreview = function() {
+			var property = INDIGO.findProperty("Astrometry Agent", "CCD_PREVIEW");
+			if (property == null || property.state != "Ok")
+				return;
+			var enabled = property.item("ENABLED");
+			if (enabled != null && !enabled.value)
+				changeProperty("Astrometry Agent", "CCD_PREVIEW", { "ENABLED": true });
+		};
+
+	</script>
+</html>

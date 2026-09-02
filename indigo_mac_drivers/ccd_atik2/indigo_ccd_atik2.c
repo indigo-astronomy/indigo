@@ -50,7 +50,7 @@ typedef struct {
 	libatik_device_context *device_context;
 	libusb_device *dev;
 	int device_count;
-	indigo_timer *pre_exposure_timer, *exposure_timer, *temperature_timer, *guider_timer;
+	indigo_timer *pre_exposure_timer, *exposure_timer, *temperature_timer, *guider_timer, *wheel_timer;
 	double cooler_power, target_temperature, current_temperature;
 	int target_slot, current_slot;
 	unsigned short relay_mask;
@@ -178,9 +178,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 				if (indigo_try_global_lock(device) != INDIGO_OK) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-					result = 0;
+					result = false;
 				} else {
 					result = libatik_open(PRIVATE_DATA->dev, &PRIVATE_DATA->device_context);
+					if (!result)
+						indigo_global_unlock(device);
 				}
 			}
 			if (result) {
@@ -307,9 +309,6 @@ static indigo_result ccd_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
-	if (device == device->master_device) {
-		indigo_global_unlock(device);
-	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_ccd_detach(device);
 }
@@ -360,9 +359,11 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 				if (indigo_try_global_lock(device) != INDIGO_OK) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-					result = 0;
+					result = false;
 				} else {
 					result = libatik_open(PRIVATE_DATA->dev, &PRIVATE_DATA->device_context);
+					if (!result)
+						indigo_global_unlock(device);
 				}
 			}
 			if (result) {
@@ -430,9 +431,6 @@ static indigo_result guider_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
-	if (device == device->master_device) {
-		indigo_global_unlock(device);
-	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_guider_detach(device);
 }
@@ -449,7 +447,7 @@ static void wheel_timer_callback(indigo_device *device) {
 	if (PRIVATE_DATA->current_slot == PRIVATE_DATA->target_slot) {
 		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
-		indigo_set_timer(device, 0.5, wheel_timer_callback, NULL);
+		indigo_set_timer(device, 0.5, wheel_timer_callback, &PRIVATE_DATA->wheel_timer);
 	}
 	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 }
@@ -478,9 +476,11 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 				if (indigo_try_global_lock(device) != INDIGO_OK) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-					result = 0;
+					result = false;
 				} else {
 					result = libatik_open(PRIVATE_DATA->dev, &PRIVATE_DATA->device_context);
+					if (!result)
+						indigo_global_unlock(device);
 				}
 			}
 			if (result) {
@@ -495,6 +495,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			}
 		} else {
+			indigo_cancel_timer(device, &PRIVATE_DATA->wheel_timer);
 			if (--PRIVATE_DATA->device_count == 0) {
 				libatik_close(PRIVATE_DATA->device_context);
 				indigo_global_unlock(device);
@@ -513,7 +514,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			PRIVATE_DATA->target_slot = WHEEL_SLOT_ITEM->number.value;
 			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
 			libatik_set_filter_wheel(PRIVATE_DATA->device_context, PRIVATE_DATA->target_slot);
-			indigo_set_timer(device, 0.5, wheel_timer_callback, NULL);
+			indigo_set_timer(device, 0.5, wheel_timer_callback, &PRIVATE_DATA->wheel_timer);
 		}
 		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 		return INDIGO_OK;
@@ -526,9 +527,6 @@ static indigo_result wheel_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
-	if (device == device->master_device) {
-		indigo_global_unlock(device);
-	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_wheel_detach(device);
 }
@@ -588,11 +586,20 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 				indigo_get_usb_path(dev, usb_path);
 				snprintf(device->name, INDIGO_NAME_SIZE, "%s #%s", name, usb_path);
 				device->private_data = private_data;
+				bool slot_found = false;
 				for (int j = 0; j < MAX_DEVICES; j++) {
 					if (devices[j] == NULL) {
 						indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);
+						slot_found = true;
 						break;
 					}
+				}
+				if (!slot_found) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slot available for %s", device->name);
+					free(device);
+					free(private_data);
+					libusb_unref_device(dev);
+					break;
 				}
 				if (is_guider) {
 					device = malloc(sizeof(indigo_device));
@@ -601,11 +608,17 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 					device->master_device = master_device;
 					snprintf(device->name, INDIGO_NAME_SIZE, "%s (guider) #%s", name, usb_path);
 					device->private_data = private_data;
+					slot_found = false;
 					for (int j = 0; j < MAX_DEVICES; j++) {
 						if (devices[j] == NULL) {
 							indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);
+							slot_found = true;
 							break;
 						}
+					}
+					if (!slot_found) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slot available for %s", device->name);
+						free(device);
 					}
 				}
 				if (has_fw) {
@@ -615,11 +628,17 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 					device->master_device = master_device;
 					snprintf(device->name, INDIGO_NAME_SIZE, "%s (wheel) #%s", name, usb_path);
 					device->private_data = private_data;
+					slot_found = false;
 					for (int j = 0; j < MAX_DEVICES; j++) {
 						if (devices[j] == NULL) {
 							indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);
+							slot_found = true;
 							break;
 						}
+					}
+					if (!slot_found) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slot available for %s", device->name);
+						free(device);
 					}
 				}
 			}

@@ -561,14 +561,16 @@ void indigo_alpaca_switch_update_property(indigo_alpaca_device *alpaca_device, i
 	} else if (!strcmp(property->name, AUX_OUTLET_NAMES_PROPERTY_NAME)) {
 		int offset = 0 * ALPACA_MAX_SWITCHES;
 		alpaca_device->sw.nameset[0] = property->state == INDIGO_OK_STATE;
-		for (int i = 0; i < property->count; i++) {
+		int count = property->count < ALPACA_MAX_SWITCHES ? property->count : ALPACA_MAX_SWITCHES;
+		for (int i = 0; i < count; i++) {
 			indigo_item *item = property->items + i;
 			strcpy(alpaca_device->sw.switchname[offset + i], item->text.value);
 		}
 	} else if (!strcmp(property->name, AUX_SENSOR_NAMES_PROPERTY_NAME)) {
 		int offset = 4 * ALPACA_MAX_SWITCHES;
 		alpaca_device->sw.nameset[4] = property->state == INDIGO_OK_STATE;
-		for (int i = 0; i < property->count; i++) {
+		int count = property->count < ALPACA_MAX_SWITCHES ? property->count : ALPACA_MAX_SWITCHES;
+		for (int i = 0; i < count; i++) {
 			indigo_item *item = property->items + i;
 			strcpy(alpaca_device->sw.switchname[offset + i], item->text.value);
 		}

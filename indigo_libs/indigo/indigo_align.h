@@ -213,8 +213,11 @@ INDIGO_EXTERN double indigo_airmass(double altitude);
  * for an alt-azimuth mounted telescope based on the altitude and azimuth of the object
  * and the latitude of the observer. The derotation rate is returned in arcseconds per second.
  *
+ * It equals the rate of change of the parallactic angle, so a derotator kept at the
+ * parallactic angle turns at this rate. The rate is unbounded near the zenith.
+ *
  * @param alt The altitude of the object, in degrees.
- * @param az The azimuth of the object, in degrees.
+ * @param az The azimuth of the object, in degrees, measured from North as everywhere in INDIGO.
  * @param latitude The latitude of the observer, in degrees.
  * @return The derotation rate in arcseconds per second.
  */

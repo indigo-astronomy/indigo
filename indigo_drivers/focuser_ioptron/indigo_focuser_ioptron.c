@@ -168,7 +168,8 @@ static void focuser_timer_callback(indigo_device *device) {
 	int pos, moving, temp, dir;
 	// :FI# -> PPPPPPPMTTTTTD# (position, moving flag, temperature, direction); moving == 1 means the focuser is moving
 	if (ioptron_command(device, ":FI#") && indigo_uni_read_section(PRIVATE_DATA->handle, PRIVATE_DATA->response, sizeof(PRIVATE_DATA->response), "#", "#", INDIGO_DELAY(1)) > 0 && sscanf(PRIVATE_DATA->response, "%7d%1d%5d%1d", &pos, &moving, &temp, &dir) == 4) {
-		PRIVATE_DATA->reversed = (dir == 0);
+		bool reversed = (dir == 0);
+		PRIVATE_DATA->reversed = reversed;
 		indigo_property_state moving_state = moving ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
 		if (FOCUSER_POSITION_ITEM->number.value != pos || FOCUSER_POSITION_PROPERTY->state != moving_state) {
 			FOCUSER_POSITION_ITEM->number.value = pos;
@@ -193,8 +194,8 @@ static void focuser_timer_callback(indigo_device *device) {
 			FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
 		}
-		if (FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value != (PRIVATE_DATA->reversed == 1)) {
-			indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, PRIVATE_DATA->reversed == 1 ? FOCUSER_REVERSE_MOTION_ENABLED_ITEM : FOCUSER_REVERSE_MOTION_DISABLED_ITEM, true);
+		if (FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value != reversed || FOCUSER_REVERSE_MOTION_PROPERTY->state != INDIGO_OK_STATE) {
+			indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, reversed ? FOCUSER_REVERSE_MOTION_ENABLED_ITEM : FOCUSER_REVERSE_MOTION_DISABLED_ITEM, true);
 			FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
 		}

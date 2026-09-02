@@ -390,7 +390,7 @@ static void create_frame(indigo_device *device) {
 		if (CCD_IMAGE_FORMAT_NATIVE_ITEM->sw.value) {
 			void *data_out;
 			unsigned long size_out;
-			indigo_raw_to_jpeg(device, PRIVATE_DATA->dslr_image + FITS_HEADER_SIZE, DSLR_WIDTH, DSLR_HEIGHT, 24, NULL, &data_out, &size_out, NULL, NULL, 0, 0, 0);
+			indigo_raw_to_jpeg_with_quality(device, PRIVATE_DATA->dslr_image + FITS_HEADER_SIZE, DSLR_WIDTH, DSLR_HEIGHT, 24, NULL, &data_out, &size_out, NULL, NULL, 0, 0, 0, (int)CCD_JPEG_SETTINGS_QUALITY_ITEM->number.target);
 			if (CCD_PREVIEW_ENABLED_ITEM->sw.value) {
 				indigo_process_dslr_preview_image(device, data_out, (int)size_out);
 			}
@@ -957,6 +957,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 				CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
 				CCD_COOLER_POWER_ITEM->number.value = 0;
 				CCD_LENS_FOCAL_LENGTH_ITEM->number.value = 12.7;
+				CCD_LENS_PHYSICAL_LENGTH_ITEM->number.value = 12.7;
 				CCD_LENS_APERTURE_ITEM->number.value = 4;
 				CCD_LENS_PROPERTY->state = INDIGO_OK_STATE;
 				CCD_EGAIN_PROPERTY->hidden = false;
@@ -966,6 +967,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 				CCD_COOLER_POWER_PROPERTY->hidden = true;
 				CCD_TEMPERATURE_PROPERTY->hidden = true;
 				CCD_LENS_FOCAL_LENGTH_ITEM->number.value = 5.1;
+				CCD_LENS_PHYSICAL_LENGTH_ITEM->number.value = 5.1;
 				CCD_LENS_APERTURE_ITEM->number.value = 2;
 				CCD_LENS_PROPERTY->state = INDIGO_OK_STATE;
 			}

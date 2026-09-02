@@ -748,7 +748,7 @@ static indigo_alpaca_error alpaca_set_readoutmode(indigo_alpaca_device *device, 
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotConnected;
 	}
-	if (value < 0 || value > ALPACA_MAX_ITEMS || device->ccd.readoutmodes_names[value] == NULL) {
+	if (value < 0 || value >= ALPACA_MAX_ITEMS || device->ccd.readoutmodes_names[value] == NULL) {
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_InvalidValue;
 	}
@@ -943,7 +943,8 @@ void indigo_alpaca_ccd_update_property(indigo_alpaca_device *alpaca_device, indi
 		}
 	} else if (!strcmp(property->name, CCD_MODE_PROPERTY_NAME)) {
 		if (property->state == INDIGO_OK_STATE) {
-			for (int i = 0; i < property->count; i++) {
+			int count = property->count < ALPACA_MAX_ITEMS ? property->count : ALPACA_MAX_ITEMS;
+			for (int i = 0; i < count; i++) {
 				indigo_item *item = property->items + i;
 				alpaca_device->ccd.readoutmodes_labels[i] = item->label;
 				alpaca_device->ccd.readoutmodes_names[i] = item->name;

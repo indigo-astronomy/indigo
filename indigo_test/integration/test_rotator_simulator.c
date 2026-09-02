@@ -10,12 +10,12 @@
 
 static const char *rotator_connected_properties[] = {
 	ROTATOR_ABORT_MOTION_PROPERTY_NAME,
+	ROTATOR_DIRECTION_PROPERTY_NAME,
 	ROTATOR_POSITION_PROPERTY_NAME,
 	ROTATOR_ON_POSITION_SET_PROPERTY_NAME
 };
 
 static const char *rotator_hidden_connected_properties[] = {
-	ROTATOR_DIRECTION_PROPERTY_NAME,
 	ROTATOR_STEPS_PER_REVOLUTION_PROPERTY_NAME,
 	ROTATOR_RELATIVE_MOVE_PROPERTY_NAME,
 	ROTATOR_BACKLASH_PROPERTY_NAME,
@@ -59,13 +59,38 @@ static double rotator_target_in_range(double preferred_value) {
 	return (position->number.min + position->number.max) / 2;
 }
 
+static double rotator_reversed_position(double position) {
+	return 360 - position;
+}
+
+static void assert_rotator_reports_position(double position) {
+	ASSERT_TRUE(wait_for_number_item_value(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, position, 0.001));
+	indigo_item *position_item = find_cached_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME);
+	ASSERT_TRUE(position_item != NULL);
+	ASSERT_NEAR(position, position_item->number.value, 0.001);
+	ASSERT_NEAR(position, position_item->number.target, 0.001);
+}
+
+static void assert_rotator_direction_is(const char *item_name) {
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, rotator_simulator.device_name, ROTATOR_DIRECTION_PROPERTY_NAME, item_name, true));
+	ASSERT_TRUE(wait_for_property_state(ROTATOR_DIRECTION_PROPERTY_NAME, INDIGO_OK_STATE));
+}
+
+static void assert_rotator_syncs_to(double position) {
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, rotator_simulator.device_name, ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_SYNC_ITEM_NAME, true));
+	ASSERT_TRUE(wait_for_property_state(ROTATOR_ON_POSITION_SET_PROPERTY_NAME, INDIGO_OK_STATE));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, rotator_simulator.device_name, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, position));
+	ASSERT_TRUE(wait_for_property_state(ROTATOR_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	assert_rotator_reports_position(position);
+}
+
 static void assert_rotator_moves_to(double target_position) {
 	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, rotator_simulator.device_name, ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_GOTO_ITEM_NAME, true));
 	ASSERT_TRUE(wait_for_property_state(ROTATOR_ON_POSITION_SET_PROPERTY_NAME, INDIGO_OK_STATE));
 	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, rotator_simulator.device_name, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, target_position));
 	ASSERT_TRUE(wait_for_property_state(ROTATOR_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
 	ASSERT_TRUE(wait_for_property_state(ROTATOR_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
-	ASSERT_TRUE(wait_for_number_item_value(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, target_position, 0.001));
+	assert_rotator_reports_position(target_position);
 }
 
 static void simulator_passes_rotator_compliance_checks(void) {
@@ -76,19 +101,24 @@ static void simulator_passes_rotator_compliance_checks(void) {
 		ROTATOR_ON_POSITION_SET_GOTO_ITEM_NAME,
 		ROTATOR_ON_POSITION_SET_SYNC_ITEM_NAME
 	};
+	static const char *direction_items[] = {
+		ROTATOR_DIRECTION_NORMAL_ITEM_NAME,
+		ROTATOR_DIRECTION_REVERSED_ITEM_NAME
+	};
 	start_connected_simulator(&rotator_simulator);
 
 	assert_device_interface(INDIGO_INTERFACE_ROTATOR);
 	assert_property_has_items(ROTATOR_POSITION_PROPERTY_NAME, position_items, ARRAY_SIZE(position_items));
 	assert_property_has_item(ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME);
 	assert_property_has_items(ROTATOR_ON_POSITION_SET_PROPERTY_NAME, on_position_set_items, ARRAY_SIZE(on_position_set_items));
+	assert_property_has_items(ROTATOR_DIRECTION_PROPERTY_NAME, direction_items, ARRAY_SIZE(direction_items));
 	assert_number_item_in_range(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME);
 
 	double original_position = cached_number_value(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME);
-	assert_rotator_moves_to(rotator_target_in_range(90));
-	assert_rotator_moves_to(rotator_target_in_range(180));
+	assert_rotator_moves_to(rotator_target_in_range(20));
+	assert_rotator_moves_to(rotator_target_in_range(40));
 
-	double far_position = rotator_target_in_range(270);
+	double far_position = rotator_target_in_range(60);
 	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, rotator_simulator.device_name, ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_GOTO_ITEM_NAME, true));
 	ASSERT_TRUE(wait_for_property_state(ROTATOR_ON_POSITION_SET_PROPERTY_NAME, INDIGO_OK_STATE));
 	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, rotator_simulator.device_name, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, far_position));
@@ -97,7 +127,7 @@ static void simulator_passes_rotator_compliance_checks(void) {
 	ASSERT_TRUE(wait_for_property_state(ROTATOR_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
 	ASSERT_TRUE(wait_for_property_state(ROTATOR_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
 
-	double sync_position = rotator_target_in_range(45);
+	double sync_position = rotator_target_in_range(10);
 	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, rotator_simulator.device_name, ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_SYNC_ITEM_NAME, true));
 	ASSERT_TRUE(wait_for_property_state(ROTATOR_ON_POSITION_SET_PROPERTY_NAME, INDIGO_OK_STATE));
 	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, rotator_simulator.device_name, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, sync_position));
@@ -108,11 +138,59 @@ static void simulator_passes_rotator_compliance_checks(void) {
 	stop_connected_simulator(&rotator_simulator);
 }
 
+static void simulator_maps_reversed_direction_positions(void) {
+	start_connected_simulator(&rotator_simulator);
+
+	double normal_position = rotator_target_in_range(45);
+	double reversed_sync_position = rotator_target_in_range(330);
+	double reversed_move_position = rotator_target_in_range(325);
+	ASSERT_FALSE(isnan(normal_position));
+	ASSERT_FALSE(isnan(reversed_sync_position));
+	ASSERT_FALSE(isnan(reversed_move_position));
+
+	assert_rotator_direction_is(ROTATOR_DIRECTION_NORMAL_ITEM_NAME);
+	assert_rotator_syncs_to(normal_position);
+
+	assert_rotator_direction_is(ROTATOR_DIRECTION_REVERSED_ITEM_NAME);
+	assert_rotator_reports_position(rotator_reversed_position(normal_position));
+
+	assert_rotator_syncs_to(reversed_sync_position);
+	assert_rotator_direction_is(ROTATOR_DIRECTION_NORMAL_ITEM_NAME);
+	assert_rotator_reports_position(rotator_reversed_position(reversed_sync_position));
+
+	assert_rotator_direction_is(ROTATOR_DIRECTION_REVERSED_ITEM_NAME);
+	assert_rotator_reports_position(reversed_sync_position);
+	assert_rotator_moves_to(reversed_move_position);
+
+	assert_rotator_direction_is(ROTATOR_DIRECTION_NORMAL_ITEM_NAME);
+	assert_rotator_reports_position(rotator_reversed_position(reversed_move_position));
+
+	stop_connected_simulator(&rotator_simulator);
+}
+
+static void simulator_moves_across_zero_by_shortest_path(void) {
+	start_connected_simulator(&rotator_simulator);
+
+	double start_position = rotator_target_in_range(1);
+	double wrapped_target = rotator_target_in_range(359);
+	ASSERT_FALSE(isnan(start_position));
+	ASSERT_FALSE(isnan(wrapped_target));
+
+	assert_rotator_direction_is(ROTATOR_DIRECTION_NORMAL_ITEM_NAME);
+	assert_rotator_syncs_to(start_position);
+	assert_rotator_moves_to(wrapped_target);
+	assert_rotator_moves_to(start_position);
+
+	stop_connected_simulator(&rotator_simulator);
+}
+
 int main(void) {
 	const indigo_test_case tests[] = {
 		{ "driver_info_reports_simulator_metadata", driver_info_reports_simulator_metadata },
 		{ "simulator_exposes_expected_properties", simulator_exposes_expected_properties },
-		{ "simulator_passes_rotator_compliance_checks", simulator_passes_rotator_compliance_checks }
+		{ "simulator_passes_rotator_compliance_checks", simulator_passes_rotator_compliance_checks },
+		{ "simulator_maps_reversed_direction_positions", simulator_maps_reversed_direction_positions },
+		{ "simulator_moves_across_zero_by_shortest_path", simulator_moves_across_zero_by_shortest_path }
 	};
 	return indigo_run_tests("rotator simulator integration tests", tests, ARRAY_SIZE(tests));
 }

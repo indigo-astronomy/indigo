@@ -108,6 +108,7 @@ typedef struct {
 	pthread_cond_t ha_pulse_cond;
 	pthread_cond_t dec_pulse_cond;
 	bool guiding_thread_exit;
+	int guider_thread_count;
 	int ha_pulse_ms;
 	int dec_pulse_ms;
 	

@@ -74,6 +74,7 @@ static indigo_result focuser_detach(indigo_device *device);
 -(void)connect;
 -(void)cmd:(uint8_t)cmd a:(uint8_t)a b:(uint8_t)b c:(uint8_t)c d:(uint32_t)d;
 -(void)disconnect;
+-(void)shutdown;
 @end
 
 #pragma clang diagnostic ignored "-Wshadow-ivar"
@@ -142,15 +143,12 @@ static indigo_result focuser_detach(indigo_device *device);
 				[self deleteDevice];
 				hc08 = nil;
 				ffe1 = nil;
-				if (hc08)
-					CFBridgingRelease((__bridge void *)hc08);
 			}
 			break;
 		case CBManagerStatePoweredOn:
 			if (hc08 == nil) {
 				for (CBPeripheral *peripheral in [central retrieveConnectedPeripheralsWithServices:@[[CBUUID UUIDWithString:@"FFE0"]]]) {
 					if ([peripheral.name isEqualToString:@"HC-08"]) {
-						CFBridgingRetain(peripheral);
 						hc08 = peripheral;
 						peripheral.delegate = self;
 						[self createDevice];
@@ -175,7 +173,6 @@ static indigo_result focuser_detach(indigo_device *device);
 
 -(void)centralManager:(CBCentralManager *)central didDiscoverPeripheral:(CBPeripheral *)peripheral advertisementData:(NSDictionary<NSString *,id> *)advertisementData RSSI:(NSNumber *)RSSI {
 	if ([peripheral.name isEqualToString:@"HC-08"]) {
-		CFBridgingRetain(peripheral);
 		hc08 = peripheral;
 		peripheral.delegate = self;
 		[self createDevice];
@@ -233,6 +230,8 @@ static indigo_result focuser_detach(indigo_device *device);
 }
 
 -(void)peripheral:(CBPeripheral *)peripheral didUpdateValueForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error {
+	if (characteristic.value.length < 3)
+		return;
 	uint8_t *buffer = (uint8_t *)characteristic.value.bytes;
 	uint8_t state = buffer[2];
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%02x %02x %02x", buffer[0], buffer[1], buffer[2]);
@@ -287,6 +286,19 @@ static indigo_result focuser_detach(indigo_device *device);
 		[central cancelPeripheralConnection:hc08];
 }
 
+-(void)shutdown {
+	central.delegate = nil;
+	@synchronized(self) {
+		if (scanning) {
+			[central stopScan];
+			scanning = false;
+		}
+	}
+	if (hc08 != nil && hc08.state != CBPeripheralStateDisconnected)
+		[central cancelPeripheralConnection:hc08];
+	[self deleteDevice];
+}
+
 @end
 
 static WeMacroBTDelegate *delegate;
@@ -307,22 +319,19 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_SPEED_ITEM->number.max = 2;
 		// -------------------------------------------------------------------------------- X_RAIL_CONFIG
 		X_RAIL_CONFIG_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_RAIL_CONFIG", X_RAIL_BATCH, "Set configuration", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 2);
-		if (X_RAIL_CONFIG_PROPERTY == NULL) {
-			return INDIGO_FAILED;
-		}
+		if (X_RAIL_CONFIG_PROPERTY == NULL)
+			goto fail;
 		indigo_init_switch_item(X_RAIL_CONFIG_BACK_ITEM, "BACK", "Return back when done", false);
 		indigo_init_switch_item(X_RAIL_CONFIG_BEEP_ITEM, "BEEP", "Beep when done", false);
 		// -------------------------------------------------------------------------------- X_RAIL_SHUTTER
 		X_RAIL_SHUTTER_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_RAIL_SHUTTER", X_RAIL_BATCH, "Fire shutter", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
-		if (X_RAIL_SHUTTER_PROPERTY == NULL) {
-			return INDIGO_FAILED;
-		}
+		if (X_RAIL_SHUTTER_PROPERTY == NULL)
+			goto fail;
 		indigo_init_switch_item(X_RAIL_SHUTTER_ITEM, "SHUTTER", "Fire shutter", false);
 		// -------------------------------------------------------------------------------- X_RAIL_EXECUTE
 		X_RAIL_EXECUTE_PROPERTY = indigo_init_number_property(NULL, device->name, "X_RAIL_EXECUTE", X_RAIL_BATCH, "Execute batch", INDIGO_OK_STATE, INDIGO_RW_PERM, 5);
-		if (X_RAIL_EXECUTE_PROPERTY == NULL) {
-			return INDIGO_FAILED;
-		}
+		if (X_RAIL_EXECUTE_PROPERTY == NULL)
+			goto fail;
 		indigo_init_number_item(X_RAIL_EXECUTE_SETTLE_TIME_ITEM, "SETTLE_TIME", "Settle time", 0, 99, 1, 1);
 		indigo_init_number_item(X_RAIL_EXECUTE_PER_STEP_ITEM, "SHUTTER_PER_STEP", "Shutter per step", 1, 9, 1, 1);
 		indigo_init_number_item(X_RAIL_EXECUTE_INTERVAL_ITEM, "SHUTTER_INTERVAL", "Shutter interval", 1, 99, 1, 1);
@@ -331,6 +340,12 @@ static indigo_result focuser_attach(indigo_device *device) {
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return focuser_enumerate_properties(device, NULL, NULL);
+	fail:
+		indigo_release_property(X_RAIL_CONFIG_PROPERTY);
+		X_RAIL_CONFIG_PROPERTY = NULL;
+		indigo_release_property(X_RAIL_SHUTTER_PROPERTY);
+		X_RAIL_SHUTTER_PROPERTY = NULL;
+		indigo_focuser_detach(device);
 	}
 	return INDIGO_FAILED;
 }
@@ -467,6 +482,7 @@ indigo_result indigo_focuser_wemacro_bt(indigo_driver_action action, indigo_driv
 
 		case INDIGO_DRIVER_SHUTDOWN:
 			last_action = action;
+			[delegate shutdown];
 			delegate = nil;
 			break;
 

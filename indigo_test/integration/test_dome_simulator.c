@@ -9,23 +9,21 @@
 #include "simulator_test_common.h"
 
 static const char *dome_connected_properties[] = {
+	DOME_STATE_PROPERTY_NAME,
 	DOME_SPEED_PROPERTY_NAME,
 	DOME_DIRECTION_PROPERTY_NAME,
+	DOME_ON_COORDINATES_SET_PROPERTY_NAME,
 	DOME_STEPS_PROPERTY_NAME,
-	DOME_EQUATORIAL_COORDINATES_PROPERTY_NAME,
 	DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME,
-	DOME_SLAVING_PROPERTY_NAME,
 	DOME_SLAVING_PARAMETERS_PROPERTY_NAME,
 	DOME_ABORT_MOTION_PROPERTY_NAME,
 	DOME_SHUTTER_PROPERTY_NAME,
 	DOME_PARK_PROPERTY_NAME,
 	DOME_DIMENSION_PROPERTY_NAME,
-	GEOGRAPHIC_COORDINATES_PROPERTY_NAME,
-	SNOOP_DEVICES_PROPERTY_NAME
+	GEOGRAPHIC_COORDINATES_PROPERTY_NAME
 };
 
 static const char *dome_hidden_connected_properties[] = {
-	DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY_NAME,
 	DOME_FLAP_PROPERTY_NAME,
 	DOME_PARK_POSITION_PROPERTY_NAME,
 	DOME_HOME_PROPERTY_NAME,
@@ -76,16 +74,8 @@ static void simulator_passes_dome_compliance_checks(void) {
 		DOME_DIRECTION_MOVE_CLOCKWISE_ITEM_NAME,
 		DOME_DIRECTION_MOVE_COUNTERCLOCKWISE_ITEM_NAME
 	};
-	static const char *equatorial_items[] = {
-		DOME_EQUATORIAL_COORDINATES_RA_ITEM_NAME,
-		DOME_EQUATORIAL_COORDINATES_DEC_ITEM_NAME
-	};
 	static const char *horizontal_items[] = {
 		DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME
-	};
-	static const char *slaving_items[] = {
-		DOME_SLAVING_ENABLE_ITEM_NAME,
-		DOME_SLAVING_DISABLE_ITEM_NAME
 	};
 	static const char *shutter_items[] = {
 		DOME_SHUTTER_OPENED_ITEM_NAME,
@@ -114,10 +104,7 @@ static void simulator_passes_dome_compliance_checks(void) {
 	assert_property_has_item(DOME_SPEED_PROPERTY_NAME, DOME_SPEED_ITEM_NAME);
 	assert_property_has_items(DOME_DIRECTION_PROPERTY_NAME, direction_items, ARRAY_SIZE(direction_items));
 	assert_property_has_item(DOME_STEPS_PROPERTY_NAME, DOME_STEPS_ITEM_NAME);
-	assert_property_has_items(DOME_EQUATORIAL_COORDINATES_PROPERTY_NAME, equatorial_items, ARRAY_SIZE(equatorial_items));
 	assert_property_has_items(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, horizontal_items, ARRAY_SIZE(horizontal_items));
-	assert_property_has_items(DOME_SLAVING_PROPERTY_NAME, slaving_items, ARRAY_SIZE(slaving_items));
-	assert_property_has_item(DOME_SLAVING_PARAMETERS_PROPERTY_NAME, DOME_SLAVING_THRESHOLD_ITEM_NAME);
 	assert_property_has_item(DOME_ABORT_MOTION_PROPERTY_NAME, DOME_ABORT_MOTION_ITEM_NAME);
 	assert_property_has_items(DOME_SHUTTER_PROPERTY_NAME, shutter_items, ARRAY_SIZE(shutter_items));
 	assert_property_has_items(DOME_PARK_PROPERTY_NAME, park_items, ARRAY_SIZE(park_items));
@@ -126,7 +113,6 @@ static void simulator_passes_dome_compliance_checks(void) {
 	assert_number_item_in_range(DOME_SPEED_PROPERTY_NAME, DOME_SPEED_ITEM_NAME);
 	assert_number_item_in_range(DOME_STEPS_PROPERTY_NAME, DOME_STEPS_ITEM_NAME);
 	assert_number_item_in_range(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME);
-	assert_number_item_in_range(DOME_SLAVING_PARAMETERS_PROPERTY_NAME, DOME_SLAVING_THRESHOLD_ITEM_NAME);
 	assert_number_item_in_range(DOME_DIMENSION_PROPERTY_NAME, DOME_RADIUS_ITEM_NAME);
 
 	double fast_speed = bounded_dome_number_value(DOME_SPEED_PROPERTY_NAME, DOME_SPEED_ITEM_NAME, 30);
@@ -140,11 +126,6 @@ static void simulator_passes_dome_compliance_checks(void) {
 	ASSERT_TRUE(wait_for_property_state(DOME_SHUTTER_PROPERTY_NAME, INDIGO_OK_STATE));
 	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, dome_simulator.device_name, DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_CLOSED_ITEM_NAME, true));
 	ASSERT_TRUE(wait_for_property_state(DOME_SHUTTER_PROPERTY_NAME, INDIGO_OK_STATE));
-
-	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, dome_simulator.device_name, DOME_SLAVING_PROPERTY_NAME, DOME_SLAVING_ENABLE_ITEM_NAME, true));
-	ASSERT_TRUE(wait_for_property_state(DOME_SLAVING_PROPERTY_NAME, INDIGO_OK_STATE));
-	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, dome_simulator.device_name, DOME_SLAVING_PROPERTY_NAME, DOME_SLAVING_DISABLE_ITEM_NAME, true));
-	ASSERT_TRUE(wait_for_property_state(DOME_SLAVING_PROPERTY_NAME, INDIGO_OK_STATE));
 
 	double target_az = bounded_dome_number_value(DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME, 3);
 	ASSERT_FALSE(isnan(target_az));

@@ -418,7 +418,12 @@ double indigo_airmass(double altitude) {
 }
 
 double indigo_derotation_rate(double alt, double az, double latitude) {
-	double derotation_rate = 15.04106858 * cos(latitude * DEG2RAD) * cos(az * DEG2RAD) / cos(alt * DEG2RAD);
+	/* The classic field rotation formula is written for azimuth measured westward from South,
+	   INDIGO measures azimuth from North, which flips the sign of cos(az), hence the leading
+	   minus. The result is the rate of change of the parallactic angle, so it is also the rate
+	   at which the derotator has to turn - the mount agent keeps the rotator at the parallactic
+	   angle itself. */
+	double derotation_rate = -15.04106858 * cos(latitude * DEG2RAD) * cos(az * DEG2RAD) / cos(alt * DEG2RAD);
 	return derotation_rate;
 }
 

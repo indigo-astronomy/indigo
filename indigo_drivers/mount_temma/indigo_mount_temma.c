@@ -317,7 +317,7 @@ static void temma_set_latitude(indigo_device *device) {
 // -------------------------------------------------------------------------------- INDIGO MOUNT device implementation
 
 static void position_timer_callback(indigo_device *device) {
-	if (PRIVATE_DATA->handle > 0) {
+	if (IS_CONNECTED && PRIVATE_DATA->handle > 0) {
 		temma_command(device, TEMMA_GET_POSITION, true);
 		temma_command(device, TEMMA_GET_GOTO_STATE, true);
 		if (PRIVATE_DATA->isBusy) {
@@ -341,7 +341,7 @@ static void position_timer_callback(indigo_device *device) {
 }
 
 static void slew_timer_callback(indigo_device *device) {
-	if (*PRIVATE_DATA->slewCommand) {
+	if (IS_CONNECTED && *PRIVATE_DATA->slewCommand) {
 		temma_command(device, PRIVATE_DATA->slewCommand, false);
 		indigo_reschedule_timer(device, 0.25, &PRIVATE_DATA->slew_timer);
 	}
@@ -444,6 +444,8 @@ static void mount_connect_callback(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->position_timer);
+		*PRIVATE_DATA->slewCommand = 0;
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->slew_timer);
 		indigo_delete_property(device, CORRECTION_SPEED_PROPERTY, NULL);
 		indigo_delete_property(device, HIGH_SPEED_PROPERTY, NULL);
 		indigo_delete_property(device, ZENITH_PROPERTY, NULL);
@@ -553,6 +555,8 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		// -------------------------------------------------------------------------------- MOUNT_ABORT_MOTION
 		indigo_property_copy_values(MOUNT_ABORT_MOTION_PROPERTY, property, false);
 		if (MOUNT_ABORT_MOTION_ITEM->sw.value) {
+			*PRIVATE_DATA->slewCommand = 0;
+			indigo_cancel_timer_sync(device, &PRIVATE_DATA->slew_timer);
 			temma_command(device, TEMMA_SLEW_STOP, false);
 			temma_command(device, TEMMA_GOTO_STOP, false);
 			for (int i = 0; i < 16; i++) {

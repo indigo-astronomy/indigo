@@ -33,11 +33,87 @@
 #include <sys/stat.h>
 
 #include <indigo/indigo_agent.h>
+#include <indigo/indigo_ccd_driver.h>
 #include <indigo/indigo_filter.h>
 #include <indigo/indigo_align.h>
 #include <indigo/indigo_platesolver.h>
 
 // TODO: Remove obsoleted AGENT_PLATESOLVER_SYNC and AGENT_PLATESOLVER_ABORT properties in future
+
+typedef struct {
+	float target_background;
+	float clipping_point;
+} agent_platesolver_jpeg_stretch_params_t;
+
+static const agent_platesolver_jpeg_stretch_params_t agent_platesolver_jpeg_stretch_params_lut[] = {
+	{ 0.05f, -2.8f },
+	{ 0.15f, -2.8f },
+	{ 0.25f, -2.8f },
+	{ 0.40f, -2.5f }
+};
+
+static void update_preview_image(indigo_device *device, void *image, long size, const char *format) {
+	if (!AGENT_PLATESOLVER_CCD_PREVIEW_ENABLED_ITEM->sw.value && !AGENT_PLATESOLVER_CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value) {
+		return;
+	}
+	if (!strcmp(format, ".jpeg") || !strcmp(format, ".jpg")) {
+		AGENT_PLATESOLVER_CCD_PREVIEW_IMAGE_ITEM->blob.value = image;
+		AGENT_PLATESOLVER_CCD_PREVIEW_IMAGE_ITEM->blob.size = size;
+		INDIGO_COPY_NAME(AGENT_PLATESOLVER_CCD_PREVIEW_IMAGE_ITEM->blob.format, format);
+		AGENT_PLATESOLVER_CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, AGENT_PLATESOLVER_CCD_PREVIEW_IMAGE_PROPERTY, NULL);
+		return;
+	}
+	if (strcmp(format, ".raw") || size < (long)sizeof(indigo_raw_header)) {
+		AGENT_PLATESOLVER_CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, AGENT_PLATESOLVER_CCD_PREVIEW_IMAGE_PROPERTY, "Preview conversion supports RAW images only");
+		return;
+	}
+	indigo_raw_header *header = (indigo_raw_header *)image;
+	int bpp = 0;
+	switch (header->signature) {
+		case INDIGO_RAW_MONO8:
+			bpp = 8;
+			break;
+		case INDIGO_RAW_MONO16:
+			bpp = 16;
+			break;
+		case INDIGO_RAW_RGB24:
+			bpp = 24;
+			break;
+		case INDIGO_RAW_RGB48:
+			bpp = 48;
+			break;
+		default:
+			AGENT_PLATESOLVER_CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, AGENT_PLATESOLVER_CCD_PREVIEW_IMAGE_PROPERTY, "Unsupported RAW preview format");
+			return;
+	}
+	void *jpeg_data = NULL;
+	unsigned long jpeg_size = 0;
+	double B = AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.target;
+	double C = AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.target;
+	int reference_channel = (int)AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_REF_CHANNEL_ITEM->number.target;
+	indigo_raw_to_jpeg_with_quality(device, (char *)image + sizeof(indigo_raw_header), header->width, header->height, bpp, NULL, &jpeg_data, &jpeg_size, NULL, NULL, B, C, reference_channel, (int)AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_QUALITY_ITEM->number.target);
+	if (jpeg_data) {
+		if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->preview_image) {
+			if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->preview_image_size < jpeg_size) {
+				INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->preview_image = indigo_safe_realloc(INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->preview_image, INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->preview_image_size = jpeg_size);
+			}
+		} else {
+			INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->preview_image = indigo_safe_malloc(INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->preview_image_size = jpeg_size);
+		}
+		memcpy(INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->preview_image, jpeg_data, jpeg_size);
+		AGENT_PLATESOLVER_CCD_PREVIEW_IMAGE_ITEM->blob.value = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->preview_image;
+		AGENT_PLATESOLVER_CCD_PREVIEW_IMAGE_ITEM->blob.size = jpeg_size;
+		strcpy(AGENT_PLATESOLVER_CCD_PREVIEW_IMAGE_ITEM->blob.format, ".jpeg");
+		AGENT_PLATESOLVER_CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
+		free(jpeg_data);
+	} else {
+		AGENT_PLATESOLVER_CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	indigo_update_property(device, AGENT_PLATESOLVER_CCD_PREVIEW_IMAGE_PROPERTY, NULL);
+}
 
 // -------------------------------------------------------------------------------- INDIGO agent device implementation
 
@@ -90,6 +166,8 @@ void indigo_platesolver_save_config(indigo_device *device) {
 		indigo_save_property(device, NULL, AGENT_PLATESOLVER_SYNC_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_PLATESOLVER_EXPOSURE_SETTINGS_PROPERTY);
+		indigo_save_property(device, NULL, AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_PROPERTY);
+		indigo_save_property(device, NULL, AGENT_PLATESOLVER_CCD_JPEG_STRETCH_PRESETS_PROPERTY);
 		if (DEVICE_CONTEXT->property_save_file_handle != NULL) {
 			CONFIG_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_uni_close(&DEVICE_CONTEXT->property_save_file_handle);
@@ -397,7 +475,7 @@ static void solve(indigo_platesolver_task *task) {
 	// Solve with a particular plate solver
 	if (task->image == NULL) {
 		indigo_send_message(device, IDLE_PROPERTY, "Downloading image");
-		if (!indigo_download_blob(task->image_url, &task->image, &task->size, NULL)) {
+		if (!indigo_download_blob(task->image_url, &task->image, &task->size, task->format)) {
 			process_failed(device, "Image download failed");
 			return;
 		}
@@ -407,6 +485,7 @@ static void solve(indigo_platesolver_task *task) {
 	INDIGO_COPY_NAME(AGENT_PLATESOLVER_IMAGE_OUTPUT_ITEM->blob.format, task->format);
 	AGENT_PLATESOLVER_IMAGE_OUTPUT_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, AGENT_PLATESOLVER_IMAGE_OUTPUT_PROPERTY, NULL);
+	update_preview_image(device, task->image, task->size, task->format);
 	bool success = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->solve(device, task);
 	indigo_safe_free(task->image);
 	indigo_safe_free(task);
@@ -667,7 +746,7 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		indigo_init_switch_item(AGENT_PLATESOLVER_START_PRECISE_GOTO_ITEM, AGENT_PLATESOLVER_START_PRECISE_GOTO_ITEM_NAME, "Precise GOTO", false);
 		indigo_init_switch_item(AGENT_PLATESOLVER_START_CALCULATE_PA_ERROR_ITEM, AGENT_PLATESOLVER_START_CALCULATE_PA_ERROR_ITEM_NAME, "Calclulate polar alignment error", false);
 		indigo_init_switch_item(AGENT_PLATESOLVER_START_RECALCULATE_PA_ERROR_ITEM, AGENT_PLATESOLVER_START_RECALCULATE_PA_ERROR_ITEM_NAME, "Recalclulate polar alignment error", false);
-		indigo_init_switch_item(AGENT_PLATESOLVER_RESET_ITEM, AGENT_PLATESOLVER_RESET_ITEM_NAME, "Reset to defaults", false);
+		indigo_init_switch_item(AGENT_RESET_ITEM, AGENT_RESET_ITEM_NAME, "Reset to defaults", false);
 		// -------------------------------------------------------------------------------- AGENT_ABORT_PROCESS property /* replaces AGENT_PLATESOLVER_ABORT */
 		AGENT_ABORT_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_ABORT_PROCESS_PROPERTY_NAME, "Agent", "Abort process", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
 		if (AGENT_ABORT_PROCESS_PROPERTY == NULL) {
@@ -748,17 +827,49 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		}
 		indigo_init_switch_item(AGENT_PLATESOLVER_ABORT_ITEM, AGENT_PLATESOLVER_ABORT_ITEM_NAME, "Abort", false);
 		// -------------------------------------------------------------------------------- AGENT_PLATESOLVER_IMAGE property
-		AGENT_PLATESOLVER_IMAGE_PROPERTY = indigo_init_blob_property_p(NULL, device->name, AGENT_PLATESOLVER_IMAGE_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Image upload", INDIGO_OK_STATE, INDIGO_WO_PERM, 1);
+		AGENT_PLATESOLVER_IMAGE_PROPERTY = indigo_init_blob_property_p(NULL, device->name, AGENT_PLATESOLVER_IMAGE_PROPERTY_NAME, "Image", "Image upload", INDIGO_OK_STATE, INDIGO_WO_PERM, 1);
 		if (AGENT_PLATESOLVER_IMAGE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
 		indigo_init_blob_item(AGENT_PLATESOLVER_IMAGE_ITEM, AGENT_PLATESOLVER_IMAGE_ITEM_NAME, "Image");
 		// -------------------------------------------------------------------------------- AGENT_PLATESOLVER_IMAGE_OUTPUT property
-		AGENT_PLATESOLVER_IMAGE_OUTPUT_PROPERTY = indigo_init_blob_property(NULL, device->name, AGENT_PLATESOLVER_IMAGE_OUTPUT_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Image mirror", INDIGO_OK_STATE, 1);
+		AGENT_PLATESOLVER_IMAGE_OUTPUT_PROPERTY = indigo_init_blob_property(NULL, device->name, AGENT_PLATESOLVER_IMAGE_OUTPUT_PROPERTY_NAME, "Image", "Image mirror", INDIGO_OK_STATE, 1);
 		if (AGENT_PLATESOLVER_IMAGE_OUTPUT_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
 		indigo_init_blob_item(AGENT_PLATESOLVER_IMAGE_OUTPUT_ITEM, AGENT_PLATESOLVER_IMAGE_OUTPUT_ITEM_NAME, "Image");
+		// -------------------------------------------------------------------------------- CCD_PREVIEW
+		AGENT_PLATESOLVER_CCD_PREVIEW_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_PREVIEW_PROPERTY_NAME, "Image", "Enable preview", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+		if (AGENT_PLATESOLVER_CCD_PREVIEW_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_switch_item(AGENT_PLATESOLVER_CCD_PREVIEW_DISABLED_ITEM, CCD_PREVIEW_DISABLED_ITEM_NAME, "Disabled", true);
+		indigo_init_switch_item(AGENT_PLATESOLVER_CCD_PREVIEW_ENABLED_ITEM, CCD_PREVIEW_ENABLED_ITEM_NAME, "Enabled", false);
+		indigo_init_switch_item(AGENT_PLATESOLVER_CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM, CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM_NAME, "Enabled + histogram", false);
+		// -------------------------------------------------------------------------------- CCD_PREVIEW_IMAGE
+		AGENT_PLATESOLVER_CCD_PREVIEW_IMAGE_PROPERTY = indigo_init_blob_property(NULL, device->name, CCD_PREVIEW_IMAGE_PROPERTY_NAME, "Image", "Preview image data", INDIGO_OK_STATE, 1);
+		if (AGENT_PLATESOLVER_CCD_PREVIEW_IMAGE_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_blob_item(AGENT_PLATESOLVER_CCD_PREVIEW_IMAGE_ITEM, CCD_PREVIEW_IMAGE_ITEM_NAME, "Image data");
+		// -------------------------------------------------------------------------------- CCD_JPEG_SETTINGS
+		AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_JPEG_SETTINGS_PROPERTY_NAME, "Image", "JPEG Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 4);
+		if (AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_number_item(AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_QUALITY_ITEM, CCD_JPEG_SETTINGS_QUALITY_ITEM_NAME, "Conversion quality", 10, 100, 1, 90);
+		indigo_init_number_item(AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM, CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM_NAME, "Target mean background", 0, 1, 0.05, agent_platesolver_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_NORMAL].target_background);
+		indigo_init_number_item(AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM, CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM_NAME, "Clipping point", -3, 0, 0.1, agent_platesolver_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_NORMAL].clipping_point);
+		indigo_init_number_item(AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_REF_CHANNEL_ITEM, CCD_JPEG_SETTINGS_REF_CHANNEL_ITEM_NAME, "Reference channel (0=AWB, 1=R, 2=G, 3=B)", 0, 3, 1, 0);
+		// -------------------------------------------------------------------------------- CCD_JPEG_STRETCH_PRESETS
+		AGENT_PLATESOLVER_CCD_JPEG_STRETCH_PRESETS_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_JPEG_STRETCH_PRESETS_PROPERTY_NAME, "Image", "JPEG Stretching Presets", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 4);
+		if (AGENT_PLATESOLVER_CCD_JPEG_STRETCH_PRESETS_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_switch_item(AGENT_PLATESOLVER_CCD_JPEG_STRETCH_PRESETS_SLIGHT_ITEM, CCD_JPEG_STRETCH_PRESETS_SLIGHT_ITEM_NAME, "Slight", false);
+		indigo_init_switch_item(AGENT_PLATESOLVER_CCD_JPEG_STRETCH_PRESETS_MODERATE_ITEM, CCD_JPEG_STRETCH_PRESETS_MODERATE_ITEM_NAME, "Moderate", false);
+		indigo_init_switch_item(AGENT_PLATESOLVER_CCD_JPEG_STRETCH_PRESETS_NORMAL_ITEM, CCD_JPEG_STRETCH_PRESETS_NORMAL_ITEM_NAME, "Normal", true);
+		indigo_init_switch_item(AGENT_PLATESOLVER_CCD_JPEG_STRETCH_PRESETS_HARD_ITEM, CCD_JPEG_STRETCH_PRESETS_HARD_ITEM_NAME, "Hard", false);
 		// --------------------------------------------------------------------------------
 		CONFIG_PROPERTY->hidden = true;
 		PROFILE_PROPERTY->hidden = true;
@@ -791,6 +902,10 @@ indigo_result indigo_platesolver_enumerate_properties(indigo_device *device, ind
 	INDIGO_DEFINE_MATCHING_PROPERTY(AGENT_PLATESOLVER_ABORT_PROPERTY);
 	INDIGO_DEFINE_MATCHING_PROPERTY(AGENT_PLATESOLVER_IMAGE_PROPERTY);
 	INDIGO_DEFINE_MATCHING_PROPERTY(AGENT_PLATESOLVER_IMAGE_OUTPUT_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(AGENT_PLATESOLVER_CCD_PREVIEW_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(AGENT_PLATESOLVER_CCD_PREVIEW_IMAGE_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_PROPERTY);
+	INDIGO_DEFINE_MATCHING_PROPERTY(AGENT_PLATESOLVER_CCD_JPEG_STRETCH_PRESETS_PROPERTY);
 	return indigo_filter_enumerate_properties(device, client, property);
 }
 
@@ -801,7 +916,65 @@ indigo_result indigo_platesolver_change_property(indigo_device *device, indigo_c
 	if (client == FILTER_DEVICE_CONTEXT->client) {
 		return INDIGO_OK;
 	}
-	if (indigo_property_match(AGENT_PLATESOLVER_USE_INDEX_PROPERTY, property)) {
+	if (indigo_property_match_changeable(AGENT_PLATESOLVER_CCD_PREVIEW_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CCD_PREVIEW
+		indigo_property_copy_values(AGENT_PLATESOLVER_CCD_PREVIEW_PROPERTY, property, false);
+		AGENT_PLATESOLVER_CCD_PREVIEW_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, AGENT_PLATESOLVER_CCD_PREVIEW_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CCD_JPEG_SETTINGS
+		indigo_property_copy_values(AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_PROPERTY, property, false);
+		AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
+		AGENT_PLATESOLVER_CCD_JPEG_STRETCH_PRESETS_PROPERTY->state = INDIGO_OK_STATE;
+		if (fabs(AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.value - agent_platesolver_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_SLIGHT].clipping_point) < 0.001 && fabs(AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.value - agent_platesolver_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_SLIGHT].target_background) < 0.001) {
+			indigo_set_switch(AGENT_PLATESOLVER_CCD_JPEG_STRETCH_PRESETS_PROPERTY, AGENT_PLATESOLVER_CCD_JPEG_STRETCH_PRESETS_SLIGHT_ITEM, true);
+		} else if (fabs(AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.value - agent_platesolver_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_MODERATE].clipping_point) < 0.001 && fabs(AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.value - agent_platesolver_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_MODERATE].target_background) < 0.001) {
+			indigo_set_switch(AGENT_PLATESOLVER_CCD_JPEG_STRETCH_PRESETS_PROPERTY, AGENT_PLATESOLVER_CCD_JPEG_STRETCH_PRESETS_MODERATE_ITEM, true);
+		} else if (fabs(AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.value - agent_platesolver_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_NORMAL].clipping_point) < 0.001 && fabs(AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.value - agent_platesolver_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_NORMAL].target_background) < 0.001) {
+			indigo_set_switch(AGENT_PLATESOLVER_CCD_JPEG_STRETCH_PRESETS_PROPERTY, AGENT_PLATESOLVER_CCD_JPEG_STRETCH_PRESETS_NORMAL_ITEM, true);
+		} else if (fabs(AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.value - agent_platesolver_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_HARD].clipping_point) < 0.001 && fabs(AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.value - agent_platesolver_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_HARD].target_background) < 0.001) {
+			indigo_set_switch(AGENT_PLATESOLVER_CCD_JPEG_STRETCH_PRESETS_PROPERTY, AGENT_PLATESOLVER_CCD_JPEG_STRETCH_PRESETS_HARD_ITEM, true);
+		} else {
+			AGENT_PLATESOLVER_CCD_JPEG_STRETCH_PRESETS_SLIGHT_ITEM->sw.value =
+			AGENT_PLATESOLVER_CCD_JPEG_STRETCH_PRESETS_MODERATE_ITEM->sw.value =
+			AGENT_PLATESOLVER_CCD_JPEG_STRETCH_PRESETS_NORMAL_ITEM->sw.value =
+			AGENT_PLATESOLVER_CCD_JPEG_STRETCH_PRESETS_HARD_ITEM->sw.value = false;
+		}
+		AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_REF_CHANNEL_ITEM->number.value = (int)AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_REF_CHANNEL_ITEM->number.value;
+		indigo_update_property(device, AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_PROPERTY, NULL);
+		indigo_update_property(device, AGENT_PLATESOLVER_CCD_JPEG_STRETCH_PRESETS_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(AGENT_PLATESOLVER_CCD_JPEG_STRETCH_PRESETS_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CCD_JPEG_STRETCH_PRESETS
+		indigo_property_copy_values(AGENT_PLATESOLVER_CCD_JPEG_STRETCH_PRESETS_PROPERTY, property, false);
+		AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
+		AGENT_PLATESOLVER_CCD_JPEG_STRETCH_PRESETS_PROPERTY->state = INDIGO_OK_STATE;
+		if (AGENT_PLATESOLVER_CCD_JPEG_STRETCH_PRESETS_SLIGHT_ITEM->sw.value) {
+			AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.value =
+			AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.target = agent_platesolver_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_SLIGHT].clipping_point;
+			AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.value =
+			AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.target = agent_platesolver_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_SLIGHT].target_background;
+		} else if (AGENT_PLATESOLVER_CCD_JPEG_STRETCH_PRESETS_MODERATE_ITEM->sw.value) {
+			AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.value =
+			AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.target = agent_platesolver_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_MODERATE].clipping_point;
+			AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.value =
+			AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.target = agent_platesolver_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_MODERATE].target_background;
+		} else if (AGENT_PLATESOLVER_CCD_JPEG_STRETCH_PRESETS_NORMAL_ITEM->sw.value) {
+			AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.value =
+			AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.target = agent_platesolver_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_NORMAL].clipping_point;
+			AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.value =
+			AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.target = agent_platesolver_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_NORMAL].target_background;
+		} else if (AGENT_PLATESOLVER_CCD_JPEG_STRETCH_PRESETS_HARD_ITEM->sw.value) {
+			AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.value =
+			AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.target = agent_platesolver_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_HARD].clipping_point;
+			AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.value =
+			AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.target = agent_platesolver_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_HARD].target_background;
+		}
+		indigo_update_property(device, AGENT_PLATESOLVER_CCD_JPEG_STRETCH_PRESETS_PROPERTY, NULL);
+		indigo_update_property(device, AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(AGENT_PLATESOLVER_USE_INDEX_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- AGENT_PLATESOLVER_USE_INDEX
 		indigo_property_copy_values(AGENT_PLATESOLVER_USE_INDEX_PROPERTY, property, false);
 		AGENT_PLATESOLVER_USE_INDEX_PROPERTY->state = INDIGO_OK_STATE;
@@ -877,9 +1050,9 @@ indigo_result indigo_platesolver_change_property(indigo_device *device, indigo_c
 			indigo_property_copy_values(AGENT_START_PROCESS_PROPERTY, property, false);
 			AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
-			if (AGENT_PLATESOLVER_RESET_ITEM->sw.value) {
+			if (AGENT_RESET_ITEM->sw.value) {
 				factory_reset(device);
-				AGENT_PLATESOLVER_RESET_ITEM->sw.value = false;
+				AGENT_RESET_ITEM->sw.value = false;
 				AGENT_START_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, "Reset to defaults");
 			} else {
@@ -899,13 +1072,13 @@ indigo_result indigo_platesolver_change_property(indigo_device *device, indigo_c
 	} else if (indigo_property_match(AGENT_PLATESOLVER_IMAGE_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- AGENT_PLATESOLVER_IMAGE
 		indigo_property_copy_values(AGENT_PLATESOLVER_IMAGE_PROPERTY, property, false);
-		if (AGENT_PLATESOLVER_IMAGE_ITEM->blob.size > 0 && AGENT_PLATESOLVER_IMAGE_ITEM->blob.value) {
+		if ((AGENT_PLATESOLVER_IMAGE_ITEM->blob.size > 0 && AGENT_PLATESOLVER_IMAGE_ITEM->blob.value) || *AGENT_PLATESOLVER_IMAGE_ITEM->blob.url) {
 			indigo_platesolver_task *task = indigo_safe_malloc(sizeof(indigo_platesolver_task));
 			task->device = device;
 			INDIGO_COPY_VALUE(task->image_url, AGENT_PLATESOLVER_IMAGE_ITEM->blob.url);
+			INDIGO_COPY_NAME(task->format, AGENT_PLATESOLVER_IMAGE_ITEM->blob.format);
 			if (AGENT_PLATESOLVER_IMAGE_ITEM->blob.value != NULL) {
 				task->image = indigo_safe_malloc_copy(task->size = AGENT_PLATESOLVER_IMAGE_ITEM->blob.size, AGENT_PLATESOLVER_IMAGE_ITEM->blob.value);
-				INDIGO_COPY_NAME(task->format, AGENT_PLATESOLVER_IMAGE_ITEM->blob.format);
 			} else {
 				task->image = NULL;
 			}
@@ -949,6 +1122,11 @@ indigo_result indigo_platesolver_device_detach(indigo_device *device) {
 	indigo_release_property(AGENT_PLATESOLVER_ABORT_PROPERTY);
 	indigo_release_property(AGENT_PLATESOLVER_IMAGE_PROPERTY);
 	indigo_release_property(AGENT_PLATESOLVER_IMAGE_OUTPUT_PROPERTY);
+	indigo_release_property(AGENT_PLATESOLVER_CCD_PREVIEW_PROPERTY);
+	indigo_release_property(AGENT_PLATESOLVER_CCD_PREVIEW_IMAGE_PROPERTY);
+	indigo_release_property(AGENT_PLATESOLVER_CCD_JPEG_SETTINGS_PROPERTY);
+	indigo_release_property(AGENT_PLATESOLVER_CCD_JPEG_STRETCH_PRESETS_PROPERTY);
+	indigo_safe_free(INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->preview_image);
 	pthread_mutex_destroy(&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->mutex);
 	return indigo_filter_device_detach(device);
 }
@@ -1068,9 +1246,9 @@ indigo_result indigo_platesolver_update_property(indigo_client *client, indigo_d
 							indigo_platesolver_task *task = indigo_safe_malloc(sizeof(indigo_platesolver_task));
 							task->device = FILTER_CLIENT_CONTEXT->device;
 							INDIGO_COPY_VALUE(task->image_url, item->blob.url);
+							INDIGO_COPY_NAME(task->format, item->blob.format);
 							if (item->blob.value != NULL) {
 								task->image = indigo_safe_malloc_copy(task->size = item->blob.size, item->blob.value);
-								INDIGO_COPY_NAME(task->format, item->blob.format);
 							} else {
 								task->image = NULL;
 							}

@@ -72,6 +72,7 @@ typedef struct {
 } asi_private_data;
 
 static int find_index_by_device_id(int id);
+static pthread_mutex_t indigo_device_enumeration_mutex = PTHREAD_MUTEX_INITIALIZER;
 // -------------------------------------------------------------------------------- INDIGO Wheel device implementation
 
 
@@ -131,7 +132,7 @@ static indigo_result wheel_attach(indigo_device *device) {
 
 	if (indigo_wheel_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		INFO_PROPERTY->count = 6;
-		char *sdk_version = EFWGetSDKVersion();
+		const char *sdk_version = EFWGetSDKVersion();
 		INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, sdk_version);
 		INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->model);
 		INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->label, "SDK version");
@@ -168,15 +169,20 @@ static indigo_result wheel_enumerate_properties(indigo_device *device, indigo_cl
 static void wheel_connect_callback(indigo_device *device) {
 	EFW_INFO info;
 	int index = 0;
+	bool enumeration_locked = false;
 	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		index = find_index_by_device_id(PRIVATE_DATA->dev_id);
-		if (index >= 0) {
-			if (!device->is_connected) {
+		if (!device->is_connected) {
+			pthread_mutex_lock(&indigo_device_enumeration_mutex);
+			enumeration_locked = true;
+			index = find_index_by_device_id(PRIVATE_DATA->dev_id);
+			if (index >= 0) {
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
 				if (indigo_try_global_lock(device) != INDIGO_OK) {
 					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+					pthread_mutex_unlock(&indigo_device_enumeration_mutex);
+					enumeration_locked = false;
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -193,6 +199,8 @@ static void wheel_connect_callback(indigo_device *device) {
 						res = EFWGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->target_slot));
 						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_slot, res);
 						pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+						pthread_mutex_unlock(&indigo_device_enumeration_mutex);
+						enumeration_locked = false;
 						PRIVATE_DATA->target_slot++;
 						WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->target_slot;
 
@@ -211,9 +219,13 @@ static void wheel_connect_callback(indigo_device *device) {
 					}
 				}
 			}
+			if (enumeration_locked) {
+				pthread_mutex_unlock(&indigo_device_enumeration_mutex);
+			}
 		}
 	} else {
 		if (device->is_connected) {
+			pthread_mutex_lock(&indigo_device_enumeration_mutex);
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 			int res = EFWClose(PRIVATE_DATA->dev_id);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWClose(%d) = %d", PRIVATE_DATA->dev_id, res);
@@ -221,6 +233,7 @@ static void wheel_connect_callback(indigo_device *device) {
 			indigo_delete_property(device, X_CUSTOM_SUFFIX_PROPERTY, NULL);
 			indigo_global_unlock(device);
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 			device->is_connected = false;
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
@@ -446,8 +459,6 @@ static void split_device_name(const char *fill_device_name, char *device_name, c
 	strncpy(suffix, suffix_start, 9);
 }
 
-static pthread_mutex_t indigo_device_enumeration_mutex = PTHREAD_MUTEX_INITIALIZER;
-
 static void process_plug_event(indigo_device *unused) {
 	EFW_INFO info;
 	static indigo_device wheel_template = INDIGO_DEVICE_INITIALIZER(
@@ -530,10 +541,13 @@ static void process_unplug_event(indigo_device *unused) {
 			pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 			return;
 		}
-		indigo_detach_device(*device);
-		free((*device)->private_data);
-		free(*device);
+		indigo_device *device_to_detach = *device;
 		*device = NULL;
+		pthread_mutex_unlock(&indigo_device_enumeration_mutex);
+		indigo_detach_device(device_to_detach);
+		free(device_to_detach->private_data);
+		free(device_to_detach);
+		pthread_mutex_lock(&indigo_device_enumeration_mutex);
 		removed = true;
 	}
 	if (!removed) {
@@ -597,7 +611,7 @@ indigo_result indigo_wheel_asi(indigo_driver_action action, indigo_driver_info *
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
 
-			char *sdk_version = EFWGetSDKVersion();
+			const char *sdk_version = EFWGetSDKVersion();
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "EFW SDK v. %s", sdk_version);
 
 			for (int index = 0; index < EFW_ID_MAX; index++) {
@@ -630,4 +644,3 @@ indigo_result indigo_wheel_asi(indigo_driver_action action, indigo_driver_info *
 
 	return INDIGO_OK;
 }
-

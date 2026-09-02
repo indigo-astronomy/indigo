@@ -3,16 +3,24 @@
  You can use this software under the terms of 'INDIGO Astronomy open-source license' (see LICENSE.md).
  */
 
-Vue.component('indigo-select-item', {
+app.component('indigo-select-item', {
 	props: {
 		property: Object,
 		no_value: String,
-		cls: String
+		cls: String,
+		tooltip: String,
+		disabled: Boolean,
+		labelPrefix: String,
+		labelSuffix: String,
+		fallbackItem: String,
+		itemLabels: Object
 	},
 	methods: {
-		onChange: function(e) {
+		change: function(item) {
+			if (this.property == null || this.disabled || this.property.perm == 'ro')
+				return;
 			var values = {};
-			values[e.target.value] = true;
+			values[item.name] = true;
 			changeProperty(this.property.device, this.property.name, values);
 		},
 		state: function() {
@@ -23,24 +31,60 @@ Vue.component('indigo-select-item', {
 				if (this.property.items[i].value) return false;
 			}
 			return true;
+		},
+		selectedItem: function() {
+			for (var i in this.property.items) {
+				var item = this.property.items[i];
+				if (item.value)
+					return item;
+			}
+			if (this.fallbackItem != null)
+				return this.property.item(this.fallbackItem);
+			return null;
+		},
+		value: function() {
+			var item = this.selectedItem();
+			if (item != null)
+				return this.label(item);
+			return this.no_value;
+		},
+		label: function(item) {
+			if (item == null)
+				return null;
+			if (this.itemLabels != null && this.itemLabels[item.name] != null)
+				return this.itemLabels[item.name];
+			var label = item.label;
+			if (this.labelPrefix != null)
+				label = this.labelPrefix + label;
+			if (this.labelSuffix != null)
+				label = label + this.labelSuffix;
+			return label;
+		},
+		tooltipText: function() {
+			if (this.tooltip != null)
+				return this.tooltip;
+			if (this.property != null)
+				return this.property.label;
+			return null;
+		},
+		itemsVisible: function() {
+			return !this.none_selected() || this.fallbackItem != null;
 		}
 	},
 	template: `
-		<div v-if="property != null" class="p-1" :class="(cls != null ? cls : 'w-100')">
-			<select class="custom-select" style="cursor: pointer" :class="state()" @change="onChange">
-				<template v-if="none_selected()">
-					<option disabled>{{ no_value }}</option>
+		<div v-if="property != null" class="dropdown p-1" :class="(cls != null ? cls : 'w-100')" data-bs-toggle="tooltip" :title="tooltipText()">
+			<button class="btn dropdown-toggle w-100 d-flex align-items-center" :class="state()" type="button" data-bs-toggle="dropdown" :disabled="disabled || property.perm == 'ro'">
+				<span class="flex-grow-1 text-start text-truncate">{{value()}}</span>
+			</button>
+			<div class="dropdown-menu">
+				<template v-if="itemsVisible()">
+					<a class="dropdown-item" href="#" v-for="item in property.items" @click.prevent="change(item)">{{label(item)}}</a>
 				</template>
-				<template v-else>
-					<option v-for="item in property.items" :selected="item.value" :value="item.name">
-						{{ item.label }}
-					</option>
-				</template>
-			</select>
+			</div>
 		</div>`
 });
 
-Vue.component('indigo-edit-number', {
+app.component('indigo-edit-number', {
 	props: {
 		property: Object,
 		enabler: Object,
@@ -50,10 +94,60 @@ Vue.component('indigo-edit-number', {
 		cls: String,
 		ident: String,
 		use_value: Boolean,
+		disabled: Boolean,
+		displayValue: [String, Number],
 		tooltip: String
 	},
 	methods: {
-		change: function(value) {
+		optionLabel: function(option) {
+			if (option != null && typeof option == "object" && Object.prototype.hasOwnProperty.call(option, "label"))
+				return option.label;
+			if (option != null && typeof option == "object" && Object.prototype.hasOwnProperty.call(option, "value"))
+				return option.value;
+			return option;
+		},
+		optionValue: function(option) {
+			if (option != null && typeof option == "object" && Object.prototype.hasOwnProperty.call(option, "value"))
+				return option.value;
+			return option;
+		},
+		optionIcon: function(option) {
+			if (option != null && typeof option == "object" && Object.prototype.hasOwnProperty.call(option, "icon"))
+				return option.icon;
+			return null;
+		},
+		optionIconCount: function(option) {
+			if (option != null && typeof option == "object" && Object.prototype.hasOwnProperty.call(option, "iconCount"))
+				return option.iconCount;
+			return 0;
+		},
+		optionHasIcons: function(option) {
+			return this.optionIcon(option) != null && this.optionIconCount(option) > 0;
+		},
+		optionForValue: function(value) {
+			if (this.values != null) {
+				for (var i in this.values) {
+					var option = this.values[i];
+					if (this.optionValue(option) == value)
+						return option;
+				}
+			}
+			return value;
+		},
+		valueLabel: function(value) {
+			if (this.values != null) {
+				for (var i in this.values) {
+					var option = this.values[i];
+					if (option != null && typeof option == "object" && Object.prototype.hasOwnProperty.call(option, "value") && this.optionValue(option) == value)
+						return this.optionLabel(option);
+				}
+			}
+			return value;
+		},
+		change: function(option) {
+			if (this.disabled)
+				return;
+			var value = this.optionValue(option);
 			var values = {};
 			if (value === "Off") {
 				if (this.enabler != null) {
@@ -72,7 +166,7 @@ Vue.component('indigo-edit-number', {
 				}
 			} else {
 				if (typeof value == "string")
-							value = parseFloat(value);
+					value = parseFloat(value);
 				if (this.enabler != null) {
 					for (var i in this.enabler.items) {
 						var item = this.enabler.items[i];
@@ -97,6 +191,8 @@ Vue.component('indigo-edit-number', {
 			return this.property == null ? null : this.property.state.toLowerCase() + "-state";
 		},
 		value: function() {
+			if (this.displayValue != null)
+				return this.displayValue;
 			if (this.property == null) return null;
 			if (this.enabler != null) {
 				for (var i in this.enabler.items) {
@@ -108,37 +204,924 @@ Vue.component('indigo-edit-number', {
 				var item = this.property.items[i];
 				if (item.name == this.name) {
 					if (this.property.perm == "ro" || this.use_value)
-						return item.value;
-					return item.target;
+						return this.valueLabel(item.value);
+					return this.valueLabel(item.target);
 				}
 			}
 			return null;
 		}
 	},
 	template: `
-		<div v-if="property != null" class="input-group p-1" :class="(cls != null ? cls : 'w-50')" data-toggle="tooltip" :title="tooltip">
-			<a class="input-group-prepend">
-				<span v-if="icon.startsWith('glyphicons-')" class="input-group-text glyphicons" :class="icon + ' ' + state()"></span>
-				<span v-else class="input-group-text" :class="state()">{{icon}}</span>
-			</a>
+		<div v-if="property != null" class="input-group p-1" :class="(cls != null ? cls : 'w-50')" data-bs-toggle="tooltip" :title="tooltip">
+			<span v-if="icon.startsWith('glyphicons-')" class="input-group-text glyphicons" :class="icon + ' ' + state()"></span>
+			<span v-else class="input-group-text" :class="state()">{{icon}}</span>
 			<template v-if="ident != null">
 				<input v-if="property.perm == 'ro'" :id="ident" readonly type="text" class="form-control input-right" :value="value()">
-				<input v-else :id="ident" type="text" class="form-control input-right" :value="value()" @change="onChange">
+				<input v-else :id="ident" type="text" class="form-control input-right" :value="value()" :disabled="disabled" @change="onChange">
 			</template>
 			<template v-else>
 				<input v-if="property.perm == 'ro'" readonly type="text" class="form-control input-right" :value="value()">
-				<input v-else type="text" class="form-control input-right" :value="value()" @change="onChange">
+				<input v-else type="text" class="form-control input-right" :value="value()" :disabled="disabled" @change="onChange">
 			</template>
-			<div v-if="values != null" class="input-group-append">
-				<button class="btn dropdown-toggle dropdown-toggle-split btn-outline-secondary" type="button" data-toggle="dropdown"></button>
+			<template v-if="values != null">
+				<button class="btn dropdown-toggle dropdown-toggle-split btn-outline-secondary" type="button" data-bs-toggle="dropdown" :disabled="disabled"></button>
 				<div class="dropdown-menu">
-					<a class="dropdown-item" href="#" v-for="value in values" @click="change(value)">{{value}}</a>
+					<a class="dropdown-item" href="#" v-for="value in values" @click="change(value)">{{optionLabel(value)}}</a>
 				</div>
+			</template>
+		</div>`
+});
+
+app.component('indigo-number-dropdown', {
+	props: {
+		property: Object,
+		name: String,
+		icon: String,
+		values: Array,
+		cls: String,
+		disabled: Boolean,
+		displayValue: [String, Number],
+		tooltip: String
+	},
+	methods: {
+		optionLabel: function(option) {
+			if (option != null && typeof option == "object" && Object.prototype.hasOwnProperty.call(option, "label"))
+				return option.label;
+			if (option != null && typeof option == "object" && Object.prototype.hasOwnProperty.call(option, "value"))
+				return option.value;
+			return option;
+		},
+		optionValue: function(option) {
+			if (option != null && typeof option == "object" && Object.prototype.hasOwnProperty.call(option, "value"))
+				return option.value;
+			return option;
+		},
+		optionIcon: function(option) {
+			if (option != null && typeof option == "object" && Object.prototype.hasOwnProperty.call(option, "icon"))
+				return option.icon;
+			return null;
+		},
+		optionIconCount: function(option) {
+			if (option != null && typeof option == "object" && Object.prototype.hasOwnProperty.call(option, "iconCount"))
+				return option.iconCount;
+			return 0;
+		},
+		optionHasIcons: function(option) {
+			return this.optionIcon(option) != null && this.optionIconCount(option) > 0;
+		},
+		optionForValue: function(value) {
+			if (this.values != null) {
+				for (var i in this.values) {
+					var option = this.values[i];
+					if (this.optionValue(option) == value)
+						return option;
+				}
+			}
+			return value;
+		},
+		valueLabel: function(value) {
+			if (this.values != null) {
+				for (var i in this.values) {
+					var option = this.values[i];
+					if (option != null && typeof option == "object" && Object.prototype.hasOwnProperty.call(option, "value") && this.optionValue(option) == value)
+						return this.optionLabel(option);
+				}
+			}
+			return value;
+		},
+		change: function(option) {
+			if (this.disabled || this.property == null || this.property.perm == "ro")
+				return;
+			var value = this.optionValue(option);
+			if (typeof value == "string")
+				value = parseFloat(value);
+			var values = {};
+			values[this.name] = value;
+			changeProperty(this.property.device, this.property.name, values);
+		},
+		state: function() {
+			return this.property == null ? null : this.property.state.toLowerCase() + "-state";
+		},
+		value: function() {
+			if (this.displayValue != null)
+				return this.displayValue;
+			if (this.property == null)
+				return null;
+			for (var i in this.property.items) {
+				var item = this.property.items[i];
+				if (item.name == this.name) {
+					if (this.property.perm == "ro")
+						return this.valueLabel(item.value);
+					return this.valueLabel(item.target);
+				}
+			}
+			return null;
+		},
+		selectedOption: function() {
+			return this.optionForValue(this.value());
+		}
+	},
+	template: `
+		<div v-if="property != null" class="dropdown p-1" :class="(cls != null ? cls : 'w-50')" data-bs-toggle="tooltip" :title="tooltip">
+			<button class="btn dropdown-toggle w-100 d-flex align-items-center" :class="state()" type="button" data-bs-toggle="dropdown" :disabled="disabled || property.perm == 'ro'">
+				<span v-if="icon != null && icon.startsWith('glyphicons-')" class="glyphicons me-2" :class="icon"></span>
+				<span v-else-if="icon != null" class="me-2">{{icon}}</span>
+				<span class="flex-grow-1 text-start indigo-icon-run">
+					<template v-if="optionHasIcons(selectedOption())">
+						<span v-for="n in optionIconCount(selectedOption())" class="glyphicons" :class="optionIcon(selectedOption())"></span>
+					</template>
+					<template v-else>{{value()}}</template>
+				</span>
+			</button>
+			<div class="dropdown-menu">
+				<a class="dropdown-item indigo-icon-run" href="#" v-for="value in values" @click.prevent="change(value)">
+					<template v-if="optionHasIcons(value)">
+						<span v-for="n in optionIconCount(value)" class="glyphicons" :class="optionIcon(value)"></span>
+					</template>
+					<template v-else>{{optionLabel(value)}}</template>
+				</a>
 			</div>
 		</div>`
 });
 
-Vue.component('indigo-edit-number-60', {
+app.component('indigo-feature-number-dropdown', {
+	props: {
+		featureProperty: Object,
+		numberProperty: Object,
+		featureName: String,
+		numberName: String,
+		values: Array,
+		cls: String,
+		tooltip: String
+	},
+	methods: {
+		optionLabel: function(option) {
+			if (option != null && typeof option == "object" && Object.prototype.hasOwnProperty.call(option, "label"))
+				return option.label;
+			if (option != null && typeof option == "object" && Object.prototype.hasOwnProperty.call(option, "value"))
+				return option.value;
+			return option;
+		},
+		optionValue: function(option) {
+			if (option != null && typeof option == "object" && Object.prototype.hasOwnProperty.call(option, "value"))
+				return option.value;
+			return option;
+		},
+		optionEnabled: function(option) {
+			if (option != null && typeof option == "object" && Object.prototype.hasOwnProperty.call(option, "enabled"))
+				return option.enabled;
+			return true;
+		},
+		featureItem: function() {
+			if (this.featureProperty == null)
+				return null;
+			return this.featureProperty.item(this.featureName);
+		},
+		numberItem: function() {
+			if (this.numberProperty == null)
+				return null;
+			return this.numberProperty.item(this.numberName);
+		},
+		ready: function() {
+			return this.featureItem() != null && this.numberItem() != null;
+		},
+		isDisabled: function() {
+			return !this.ready() || this.featureProperty.perm == "ro" || this.numberProperty.perm == "ro";
+		},
+		numberValue: function() {
+			var item = this.numberItem();
+			if (item == null)
+				return null;
+			if (this.numberProperty.perm == "ro")
+				return item.value;
+			return item.target;
+		},
+		sameNumber: function(left, right) {
+			return Math.abs(Number(left) - Number(right)) < 0.000001;
+		},
+		selectedOption: function() {
+			if (!this.ready())
+				return null;
+			var enabled = this.featureItem().value;
+			var numberValue = this.numberValue();
+			if (this.values != null) {
+				for (var i in this.values) {
+					var option = this.values[i];
+					if (!enabled && !this.optionEnabled(option))
+						return option;
+					if (enabled && this.optionEnabled(option) && this.sameNumber(this.optionValue(option), numberValue))
+						return option;
+				}
+			}
+			return null;
+		},
+		value: function() {
+			var option = this.selectedOption();
+			if (option != null)
+				return this.optionLabel(option);
+			if (this.ready())
+				return this.numberValue();
+			return null;
+		},
+		change: function(option) {
+			if (this.isDisabled())
+				return;
+			var value = this.optionValue(option);
+			if (typeof value == "string")
+				value = parseFloat(value);
+			var featureValues = {};
+			featureValues[this.featureName] = this.optionEnabled(option);
+			changeProperty(this.featureProperty.device, this.featureProperty.name, featureValues);
+			var numberValues = {};
+			numberValues[this.numberName] = value;
+			changeProperty(this.numberProperty.device, this.numberProperty.name, numberValues);
+		},
+		state: function() {
+			if (!this.ready())
+				return null;
+			if (this.featureProperty.state == "Alert" || this.numberProperty.state == "Alert")
+				return "alert-state";
+			if (this.featureProperty.state == "Busy" || this.numberProperty.state == "Busy")
+				return "busy-state";
+			return this.numberProperty.state.toLowerCase() + "-state";
+		}
+	},
+	template: `
+		<div v-if="ready()" class="dropdown p-1" :class="(cls != null ? cls : 'w-50')" data-bs-toggle="tooltip" :title="tooltip">
+			<button class="btn dropdown-toggle w-100 d-flex align-items-center" :class="state()" type="button" data-bs-toggle="dropdown" :disabled="isDisabled()">
+				<span class="flex-grow-1 text-start text-truncate">{{value()}}</span>
+			</button>
+			<div class="dropdown-menu">
+				<a class="dropdown-item" href="#" v-for="value in values" @click.prevent="change(value)">{{optionLabel(value)}}</a>
+			</div>
+		</div>`
+});
+
+app.component('indigo-autofocus-graph', {
+	props: {
+		startProperty: Object,
+		statsProperty: Object,
+		estimatorProperty: Object,
+		cameraSelected: Boolean,
+		focuserSelected: Boolean
+	},
+	data: function() {
+		return {
+			focusing: false,
+			baselineSampleKey: null,
+			lastSampleKey: null,
+			currentSampleValue: null,
+			samples: []
+		};
+	},
+	watch: {
+		startProperty: {
+			handler: function() {
+				this.onStartProcessUpdate();
+			},
+			deep: true,
+			immediate: true
+		},
+		statsProperty: {
+			handler: function() {
+				this.onStatsUpdate();
+			},
+			deep: true
+		},
+		estimatorProperty: {
+			handler: function() {
+				this.reset();
+			},
+			deep: true
+		}
+	},
+	methods: {
+		itemValue: function(property, name) {
+			if (property == null)
+				return null;
+			var item = property.item(name);
+			if (item == null)
+				return null;
+			return Number(item.value);
+		},
+		estimatorIs: function(name) {
+			if (this.estimatorProperty == null)
+				return false;
+			var item = this.estimatorProperty.item(name);
+			return item != null && item.value;
+		},
+		metricName: function() {
+			if (this.estimatorIs("RMS_CONTRAST"))
+				return "RMS_CONTRAST";
+			if (this.estimatorIs("BAHTINOV"))
+				return "BAHTINOV_ERROR";
+			return "HFD";
+		},
+		focusProcessActive: function() {
+			if (this.startProperty == null || this.startProperty.state != "Busy")
+				return false;
+			var item = this.startProperty.item("FOCUSING");
+			return item != null && item.value;
+		},
+		onStartProcessUpdate: function() {
+			var active = this.focusProcessActive();
+			if (active && !this.focusing)
+				this.reset();
+			this.focusing = active;
+		},
+		onStatsUpdate: function() {
+			this.onStartProcessUpdate();
+			if (!this.focusing || !this.cameraSelected || !this.focuserSelected || this.statsProperty == null)
+				return;
+			var metricName = this.metricName();
+			var position = this.itemValue(this.statsProperty, "FOCUS_POSITION");
+			var metric = this.itemValue(this.statsProperty, metricName);
+			if (!isFinite(position) || !isFinite(metric))
+				return;
+			if (metricName == "BAHTINOV_ERROR") {
+				if (metric < 0)
+					return;
+			} else if (metric <= 0) {
+				return;
+			}
+			var key = metricName + ":" + position + ":" + metric;
+			if (key == this.lastSampleKey || key == this.baselineSampleKey)
+				return;
+			this.lastSampleKey = key;
+			var sample = {
+				position: position,
+				metric: metric
+			};
+			this.currentSampleValue = sample;
+			for (var i in this.samples) {
+				if (this.samples[i].position == position) {
+					this.samples.splice(i, 1, sample);
+					return;
+				}
+			}
+			this.samples.push(sample);
+			if (this.samples.length > 200)
+				this.samples.shift();
+		},
+		reset: function() {
+			this.samples = [];
+			this.lastSampleKey = null;
+			this.baselineSampleKey = null;
+			this.currentSampleValue = null;
+			if (this.statsProperty != null) {
+				var metricName = this.metricName();
+				var position = this.itemValue(this.statsProperty, "FOCUS_POSITION");
+				var metric = this.itemValue(this.statsProperty, metricName);
+				if (isFinite(position) && isFinite(metric))
+					this.baselineSampleKey = metricName + ":" + position + ":" + metric;
+			}
+		},
+		visible: function() {
+			return this.cameraSelected && this.focuserSelected && this.samples.length > 0;
+		},
+		sortedSamples: function() {
+			return this.samples.slice().sort(function(a, b) {
+				return a.position - b.position;
+			});
+		},
+		graphWidth: function() {
+			return 256;
+		},
+		graphHeight: function() {
+			return 128;
+		},
+		plotLeft: function() {
+			return 8;
+		},
+		plotRight: function() {
+			return this.graphWidth() - 8;
+		},
+		plotTop: function() {
+			return 20;
+		},
+		plotBottom: function() {
+			return this.graphHeight() - 20;
+		},
+		bounds: function() {
+			var samples = this.sortedSamples();
+			var xMin = samples[0].position;
+			var xMax = samples[0].position;
+			var yMin = samples[0].metric;
+			var yMax = samples[0].metric;
+			for (var i in samples) {
+				var sample = samples[i];
+				xMin = Math.min(xMin, sample.position);
+				xMax = Math.max(xMax, sample.position);
+				yMin = Math.min(yMin, sample.metric);
+				yMax = Math.max(yMax, sample.metric);
+			}
+			if (xMin == xMax) {
+				xMin -= 1;
+				xMax += 1;
+			}
+			if (yMin == yMax) {
+				var padding = Math.max(Math.abs(yMin) * 0.1, 1);
+				yMin -= padding;
+				yMax += padding;
+			}
+			return {
+				xMin: xMin,
+				xMax: xMax,
+				yMin: yMin,
+				yMax: yMax
+			};
+		},
+		sampleX: function(sample) {
+			var bounds = this.bounds();
+			return this.plotLeft() + (sample.position - bounds.xMin) * (this.plotRight() - this.plotLeft()) / (bounds.xMax - bounds.xMin);
+		},
+		sampleY: function(sample) {
+			var bounds = this.bounds();
+			return this.plotBottom() - (sample.metric - bounds.yMin) * (this.plotBottom() - this.plotTop()) / (bounds.yMax - bounds.yMin);
+		},
+		linePath: function() {
+			var path = "";
+			var samples = this.sortedSamples();
+			for (var i in samples) {
+				var sample = samples[i];
+				path += (path == "" ? "M " : " L ") + this.sampleX(sample) + " " + this.sampleY(sample);
+			}
+			return path;
+		},
+		currentSample: function() {
+			return this.currentSampleValue;
+		},
+		bestSample: function() {
+			if (this.samples.length == 0)
+				return null;
+			var best = this.samples[0];
+			for (var i in this.samples) {
+				var sample = this.samples[i];
+				if (this.metricName() == "RMS_CONTRAST") {
+					if (sample.metric > best.metric)
+						best = sample;
+				} else if (sample.metric < best.metric) {
+					best = sample;
+				}
+			}
+			return best;
+		},
+		viewBox: function() {
+			return "0 0 " + this.graphWidth() + " " + this.graphHeight();
+		}
+	},
+	template: `
+		<div v-if="visible()" class="indigo-autofocus-graph">
+			<svg :viewBox="viewBox()" preserveAspectRatio="none">
+				<line class="indigo-autofocus-axis" :x1="plotLeft()" :y1="plotBottom()" :x2="plotRight()" :y2="plotBottom()"></line>
+				<line v-for="(sample, index) in sortedSamples()" :key="'sample-' + index" class="indigo-autofocus-sample" :x1="sampleX(sample)" :y1="plotBottom()" :x2="sampleX(sample)" :y2="sampleY(sample)"></line>
+				<path class="indigo-autofocus-line" :d="linePath()"></path>
+				<template v-if="bestSample() != null">
+					<circle class="indigo-autofocus-best" :cx="sampleX(bestSample())" :cy="sampleY(bestSample())" r="4"></circle>
+				</template>
+				<template v-if="currentSample() != null">
+					<circle class="indigo-autofocus-current" :cx="sampleX(currentSample())" :cy="sampleY(currentSample())" r="4"></circle>
+				</template>
+			</svg>
+		</div>`
+});
+
+app.component('indigo-pa-state-overlay', {
+	props: {
+		paStateProperty: Object
+	},
+	methods: {
+		item: function(name) {
+			if (this.paStateProperty == null)
+				return null;
+			if (typeof this.paStateProperty.item == "function")
+				return this.paStateProperty.item(name);
+			for (var i in this.paStateProperty.items) {
+				var item = this.paStateProperty.items[i];
+				if (item.name == name)
+					return item;
+			}
+			return null;
+		},
+		itemValue: function(name) {
+			var item = this.item(name);
+			if (item == null)
+				return null;
+			return Number(item.value);
+		},
+		valid: function() {
+			if (this.paStateProperty == null)
+				return false;
+			var state = this.itemValue("STATE");
+			var altError = this.altError();
+			var azError = this.azError();
+			return isFinite(state) && state > 0 && isFinite(altError) && isFinite(azError);
+		},
+		altError: function() {
+			return this.itemValue("ALT_POLAR_ERROR");
+		},
+		azError: function() {
+			return this.itemValue("AZ_POLAR_ERROR");
+		},
+		polarError: function() {
+			var value = this.itemValue("POLAR_ERROR");
+			if (isFinite(value))
+				return Math.abs(value);
+			var altError = this.altError();
+			var azError = this.azError();
+			if (!isFinite(altError) || !isFinite(azError))
+				return 0;
+			return Math.sqrt(altError * altError + azError * azError);
+		},
+		diameter: function() {
+			var maxError = Math.max(Math.abs(this.altError()), Math.abs(this.azError()), this.polarError());
+			if (!isFinite(maxError) || maxError <= 0)
+				maxError = 1 / 60;
+			return Math.max(maxError * 2, 1 / 60);
+		},
+		diameterLabel: function() {
+			return this.formatAngle(this.diameter());
+		},
+		color: function() {
+			var error = this.polarError() * 60;
+			if (error <= 5)
+				return "#3fb950";
+			if (error <= 30)
+				return "#d29922";
+			return "#f85149";
+		},
+		markerX: function() {
+			return 150 * (1 + this.azError() / this.diameter());
+		},
+		markerY: function() {
+			return 150 * (1 - this.altError() / this.diameter());
+		},
+		formatAngle: function(value) {
+			if (!isFinite(value))
+				return "N/A";
+			var minutes = Math.abs(value) * 60;
+			if (minutes < 60)
+				return minutes.toFixed(minutes < 10 ? 1 : 0) + "'";
+			return Math.abs(value).toFixed(1) + "°";
+		},
+		errorLabel: function(value) {
+			if (!isFinite(value))
+				return "N/A";
+			var sign = value >= 0 ? "+" : "-";
+			return sign + this.formatAngle(value);
+		},
+		altDirection: function() {
+			return this.itemValue("ALT_CORRECTION_UP") > 0 ? "Up" : "Down";
+		},
+		azDirection: function() {
+			return this.itemValue("AZ_CORRECTION_CW") > 0 ? "C.W." : "C.C.W.";
+		},
+		altLabel: function() {
+			return "Alt " + this.errorLabel(this.altError()) + " " + this.altDirection();
+		},
+		azLabel: function() {
+			return "Az " + this.errorLabel(this.azError()) + " " + this.azDirection();
+		}
+	},
+	template: `
+		<div v-if="paStateProperty != null" class="indigo-pa-state-overlay">
+			<div class="indigo-pa-state-box">
+				<template v-if="valid()">
+					<svg class="indigo-pa-state-target" viewBox="0 0 300 300">
+						<line x1="0" y1="150" x2="140" y2="150"></line>
+						<line x1="160" y1="150" x2="300" y2="150"></line>
+						<line x1="150" y1="0" x2="150" y2="140"></line>
+						<line x1="150" y1="160" x2="150" y2="300"></line>
+						<circle cx="150" cy="150" r="149"></circle>
+						<circle cx="150" cy="150" r="75"></circle>
+						<text x="294" y="164" text-anchor="end">{{diameterLabel()}}</text>
+						<circle class="indigo-pa-state-marker" :cx="markerX()" :cy="markerY()" r="10" :style="{ fill: color() }"></circle>
+					</svg>
+					<div class="indigo-pa-state-labels">
+						<span :style="{ color: color() }">{{altLabel()}}</span>
+						<span :style="{ color: color() }">{{azLabel()}}</span>
+					</div>
+				</template>
+				<div v-else class="indigo-pa-state-empty">No polar alignment data available.</div>
+			</div>
+		</div>`
+});
+
+app.component('indigo-star-selection-overlay', {
+	props: {
+		selectionProperty: Object,
+		markerCount: Number,
+		cameraSelected: Boolean
+	},
+	data: function() {
+		return {
+			imageBox: {
+				left: 0,
+				top: 0,
+				width: 0,
+				height: 0,
+				naturalWidth: 0,
+				naturalHeight: 0
+			}
+		};
+	},
+	mounted: function() {
+		this.imageElement = this.$el.parentElement == null ? null : this.$el.parentElement.querySelector("#image");
+		this.updateImageMetricsHandler = () => this.updateImageMetrics();
+		if (this.imageElement != null)
+			this.imageElement.addEventListener("load", this.updateImageMetricsHandler);
+		window.addEventListener("resize", this.updateImageMetricsHandler);
+		if (typeof ResizeObserver != "undefined" && this.imageElement != null) {
+			this.resizeObserver = new ResizeObserver(this.updateImageMetricsHandler);
+			this.resizeObserver.observe(this.imageElement);
+		}
+		this.updateImageMetrics();
+	},
+	beforeUnmount: function() {
+		if (this.imageElement != null && this.updateImageMetricsHandler != null)
+			this.imageElement.removeEventListener("load", this.updateImageMetricsHandler);
+		if (this.updateImageMetricsHandler != null)
+			window.removeEventListener("resize", this.updateImageMetricsHandler);
+		if (this.resizeObserver != null)
+			this.resizeObserver.disconnect();
+	},
+	methods: {
+		item: function(name) {
+			if (this.selectionProperty == null)
+				return null;
+			if (typeof this.selectionProperty.item == "function")
+				return this.selectionProperty.item(name);
+			for (var i in this.selectionProperty.items) {
+				var item = this.selectionProperty.items[i];
+				if (item.name == name)
+					return item;
+			}
+			return null;
+		},
+		itemValue: function(name) {
+			var item = this.item(name);
+			if (item == null)
+				return null;
+			return Number(item.value);
+		},
+		updateImageMetrics: function() {
+			if (this.imageElement == null || this.$el.parentElement == null)
+				return;
+			var imageRect = this.imageElement.getBoundingClientRect();
+			var parentRect = this.$el.parentElement.getBoundingClientRect();
+			var imageBox = {
+				left: imageRect.left - parentRect.left,
+				top: imageRect.top - parentRect.top,
+				width: imageRect.width,
+				height: imageRect.height,
+				naturalWidth: this.imageElement.naturalWidth,
+				naturalHeight: this.imageElement.naturalHeight
+			};
+			if (
+				this.imageBox.left != imageBox.left ||
+				this.imageBox.top != imageBox.top ||
+				this.imageBox.width != imageBox.width ||
+				this.imageBox.height != imageBox.height ||
+				this.imageBox.naturalWidth != imageBox.naturalWidth ||
+				this.imageBox.naturalHeight != imageBox.naturalHeight
+			) {
+				this.imageBox = imageBox;
+			}
+		},
+		visible: function() {
+			return this.cameraSelected && this.selectionProperty != null && this.imageBox.width > 0 && this.imageBox.height > 0 && this.imageBox.naturalWidth > 0 && this.imageBox.naturalHeight > 0 && this.markers().length > 0;
+		},
+		overlayStyle: function() {
+			return {
+				left: this.imageBox.left + "px",
+				top: this.imageBox.top + "px",
+				width: this.imageBox.width + "px",
+				height: this.imageBox.height + "px"
+			};
+		},
+		markers: function() {
+			var markers = [];
+			if (this.selectionProperty == null)
+				return markers;
+			var count = this.markerCount;
+			var radius = this.itemValue("RADIUS");
+			if (!isFinite(count))
+				count = 1;
+			if (count < 1)
+				return markers;
+			count = Math.min(Math.floor(count), 8);
+			if (!isFinite(radius) || radius <= 0)
+				radius = 1;
+			for (var i = 0; i < count; i++) {
+				var suffix = i == 0 ? "" : "_" + (i + 1);
+				var x = this.itemValue("X" + suffix);
+				var y = this.itemValue("Y" + suffix);
+				if (isFinite(x) && isFinite(y) && x > 0 && y > 0) {
+					markers.push({
+						x: x,
+						y: y,
+						radius: radius
+					});
+				}
+			}
+			return markers;
+		},
+		markerStyle: function(marker) {
+			var scaleX = this.imageBox.width / this.imageBox.naturalWidth;
+			var scaleY = this.imageBox.height / this.imageBox.naturalHeight;
+			var radius = marker.radius * Math.min(scaleX, scaleY);
+			var size = 2 * radius;
+			return {
+				left: marker.x * scaleX + "px",
+				top: marker.y * scaleY + "px",
+				width: size + "px",
+				height: size + "px"
+			};
+		}
+	},
+	template: `
+		<div class="indigo-star-selection-overlay" :style="overlayStyle()">
+			<template v-if="visible()">
+				<span v-for="(marker, index) in markers()" :key="'star-selection-' + index" class="indigo-star-selection-marker" :style="markerStyle(marker)"></span>
+			</template>
+		</div>`
+});
+
+app.component('indigo-bahtinov-spikes-overlay', {
+	props: {
+		spikesProperty: Object,
+		estimatorProperty: Object,
+		cameraSelected: Boolean
+	},
+	data: function() {
+		return {
+			imageBox: {
+				left: 0,
+				top: 0,
+				width: 0,
+				height: 0,
+				naturalWidth: 0,
+				naturalHeight: 0
+			}
+		};
+	},
+	mounted: function() {
+		this.imageElement = this.$el.parentElement == null ? null : this.$el.parentElement.querySelector("#image");
+		this.updateImageMetricsHandler = () => this.updateImageMetrics();
+		if (this.imageElement != null)
+			this.imageElement.addEventListener("load", this.updateImageMetricsHandler);
+		window.addEventListener("resize", this.updateImageMetricsHandler);
+		if (typeof ResizeObserver != "undefined" && this.imageElement != null) {
+			this.resizeObserver = new ResizeObserver(this.updateImageMetricsHandler);
+			this.resizeObserver.observe(this.imageElement);
+		}
+		this.updateImageMetrics();
+	},
+	beforeUnmount: function() {
+		if (this.imageElement != null && this.updateImageMetricsHandler != null)
+			this.imageElement.removeEventListener("load", this.updateImageMetricsHandler);
+		if (this.updateImageMetricsHandler != null)
+			window.removeEventListener("resize", this.updateImageMetricsHandler);
+		if (this.resizeObserver != null)
+			this.resizeObserver.disconnect();
+	},
+	methods: {
+		item: function(property, name) {
+			if (property == null)
+				return null;
+			if (typeof property.item == "function")
+				return property.item(name);
+			for (var i in property.items) {
+				var item = property.items[i];
+				if (item.name == name)
+					return item;
+			}
+			return null;
+		},
+		itemValue: function(property, name) {
+			var item = this.item(property, name);
+			if (item == null)
+				return null;
+			return Number(item.value);
+		},
+		estimatorIs: function(name) {
+			var item = this.item(this.estimatorProperty, name);
+			return item != null && item.value;
+		},
+		updateImageMetrics: function() {
+			if (this.imageElement == null || this.$el.parentElement == null)
+				return;
+			var imageRect = this.imageElement.getBoundingClientRect();
+			var parentRect = this.$el.parentElement.getBoundingClientRect();
+			var imageBox = {
+				left: imageRect.left - parentRect.left,
+				top: imageRect.top - parentRect.top,
+				width: imageRect.width,
+				height: imageRect.height,
+				naturalWidth: this.imageElement.naturalWidth,
+				naturalHeight: this.imageElement.naturalHeight
+			};
+			if (
+				this.imageBox.left != imageBox.left ||
+				this.imageBox.top != imageBox.top ||
+				this.imageBox.width != imageBox.width ||
+				this.imageBox.height != imageBox.height ||
+				this.imageBox.naturalWidth != imageBox.naturalWidth ||
+				this.imageBox.naturalHeight != imageBox.naturalHeight
+			) {
+				this.imageBox = imageBox;
+			}
+		},
+		overlayStyle: function() {
+			return {
+				left: this.imageBox.left + "px",
+				top: this.imageBox.top + "px",
+				width: this.imageBox.width + "px",
+				height: this.imageBox.height + "px"
+			};
+		},
+		viewBox: function() {
+			return "0 0 " + this.imageBox.naturalWidth + " " + this.imageBox.naturalHeight;
+		},
+		visible: function() {
+			return this.cameraSelected && this.estimatorIs("BAHTINOV") && this.spikesProperty != null && this.imageBox.width > 0 && this.imageBox.height > 0 && this.imageBox.naturalWidth > 0 && this.imageBox.naturalHeight > 0 && this.spikes().length > 0;
+		},
+		addPoint: function(points, x, y) {
+			var width = this.imageBox.naturalWidth;
+			var height = this.imageBox.naturalHeight;
+			var epsilon = 0.001;
+			if (x < -epsilon || x > width + epsilon || y < -epsilon || y > height + epsilon)
+				return;
+			x = Math.max(0, Math.min(width, x));
+			y = Math.max(0, Math.min(height, y));
+			for (var i in points) {
+				if (Math.abs(points[i].x - x) < epsilon && Math.abs(points[i].y - y) < epsilon)
+					return;
+			}
+			points.push({
+				x: x,
+				y: y
+			});
+		},
+		lineSegment: function(rho, theta) {
+			var width = this.imageBox.naturalWidth;
+			var height = this.imageBox.naturalHeight;
+			var cos = Math.cos(theta);
+			var sin = Math.sin(theta);
+			var epsilon = 0.000001;
+			var points = [];
+			if (Math.abs(sin) > epsilon) {
+				this.addPoint(points, 0, rho / sin);
+				this.addPoint(points, width, (rho - width * cos) / sin);
+			}
+			if (Math.abs(cos) > epsilon) {
+				this.addPoint(points, rho / cos, 0);
+				this.addPoint(points, (rho - height * sin) / cos, height);
+			}
+			if (points.length < 2)
+				return null;
+			var best = null;
+			for (var i = 0; i < points.length - 1; i++) {
+				for (var j = i + 1; j < points.length; j++) {
+					var dx = points[i].x - points[j].x;
+					var dy = points[i].y - points[j].y;
+					var distance = dx * dx + dy * dy;
+					if (best == null || distance > best.distance) {
+						best = {
+							x1: points[i].x,
+							y1: points[i].y,
+							x2: points[j].x,
+							y2: points[j].y,
+							distance: distance
+						};
+					}
+				}
+			}
+			return best;
+		},
+		spikes: function() {
+			var spikes = [];
+			for (var i = 1; i <= 3; i++) {
+				var rho = this.itemValue(this.spikesProperty, "RHO_" + i);
+				var theta = this.itemValue(this.spikesProperty, "THETA_" + i);
+				if (!isFinite(rho) || !isFinite(theta) || (rho == 0 && theta == 0))
+					continue;
+				var segment = this.lineSegment(rho, theta);
+				if (segment != null)
+					spikes.push(segment);
+			}
+			return spikes;
+		}
+	},
+	template: `
+		<div class="indigo-bahtinov-spikes-overlay" :style="overlayStyle()">
+			<svg v-if="visible()" :viewBox="viewBox()" preserveAspectRatio="none">
+				<line v-for="(spike, index) in spikes()" :key="'bahtinov-spike-' + index" class="indigo-bahtinov-spike" :x1="spike.x1" :y1="spike.y1" :x2="spike.x2" :y2="spike.y2"></line>
+			</svg>
+		</div>`
+});
+
+app.component('indigo-edit-number-60', {
 	props: {
 		property: Object,
 		name: String,
@@ -186,11 +1169,9 @@ Vue.component('indigo-edit-number-60', {
 		}
 	},
 	template: `
-		<div v-if="property != null" class="input-group p-1" :class="(cls != null ? cls : 'w-50')" data-toggle="tooltip" :title="tooltip">
-			<a class="input-group-prepend">
-				<span v-if="icon.startsWith('glyphicons-')" class="input-group-text glyphicons" :class="icon + ' ' + state()"></span>
-				<div v-else class="input-group-text input-label" :class="state()">{{icon}}</div>
-			</a>
+		<div v-if="property != null" class="input-group p-1" :class="(cls != null ? cls : 'w-50')" data-bs-toggle="tooltip" :title="tooltip">
+			<span v-if="icon.startsWith('glyphicons-')" class="input-group-text glyphicons" :class="icon + ' ' + state()"></span>
+			<div v-else class="input-group-text input-label" :class="state()">{{icon}}</div>
 			<template v-if="ident != null">
 				<input v-if="property.perm == 'ro'" :id="ident" readonly type="text" class="form-control input-right" :value="value()">
 				<input v-else :id="ident" type="text" class="form-control input-right" :value="value()" @change="onChange">
@@ -202,7 +1183,7 @@ Vue.component('indigo-edit-number-60', {
 		</div>`
 });
 
-Vue.component('indigo-show-number', {
+app.component('indigo-show-number', {
 	props: {
 		property: Object,
 		enabler: Object,
@@ -215,6 +1196,11 @@ Vue.component('indigo-show-number', {
 		state: function() {
 			return this.property == null ? null : this.property.state.toLowerCase() + "-state";
 		},
+		formatValue: function(value) {
+			if (typeof value != "number")
+				return value;
+			return Number(value.toPrecision(4)).toString();
+		},
 		value: function() {
 			if (this.property == null) return null;
 			if (this.enabler != null) {
@@ -225,22 +1211,22 @@ Vue.component('indigo-show-number', {
 			}
 			for (var i in this.property.items) {
 				var item = this.property.items[i];
-				if (item.name == this.name) return item.value;
+				if (item.name == this.name) return this.formatValue(item.value);
 			}
 			return null;
 		}
 	},
 	template: `
-		<div v-if="property != null" class="p-1" :class="(cls != null ? cls : 'w-25')" data-toggle="tooltip" :title="tooltip">
-			<div class="badge p-0 w-100 d-flex justify-content-between align-items-center" :class="state()">
-				<small v-if="icon.startsWith('glyphicons-')" class="glyphicons" :class="icon"/>
-				<small v-else class="ml-1 p-1">{{icon}}</small>
-				<small class="mr-2">{{value()}}</small>
+		<div v-if="property != null" class="p-1" :class="(cls != null ? cls : 'w-25')" data-bs-toggle="tooltip" :title="tooltip">
+			<div class="indigo-chip indigo-readonly-chip w-100 d-flex align-items-center">
+				<span v-if="icon.startsWith('glyphicons-')" class="indigo-chip-icon glyphicons" :class="icon"></span>
+				<span v-else class="indigo-chip-icon">{{icon}}</span>
+				<span class="indigo-chip-value">{{value()}}</span>
 			</div>
 		</div>`
 });
 
-Vue.component('indigo-show-number-60', {
+app.component('indigo-show-number-60', {
 	props: {
 		property: Object,
 		name: String,
@@ -264,16 +1250,16 @@ Vue.component('indigo-show-number-60', {
 		}
 	},
 	template: `
-		<div v-if="property != null" class="p-1" :class="(cls != null ? cls : 'w-25')" data-toggle="tooltip" :title="tooltip">
-			<div class="badge p-0 w-100 d-flex justify-content-between align-items-center" :class="state()">
-				<small v-if="icon.startsWith('glyphicons-')" cclass="glyphicons" :class="icon"/>
-				<small v-else class="ml-1 p-1">{{icon}}</small>
-				<small class="mr-2 p-1">{{value()}}</small>
+		<div v-if="property != null" class="p-1" :class="(cls != null ? cls : 'w-25')" data-bs-toggle="tooltip" :title="tooltip">
+			<div class="indigo-chip indigo-readonly-chip w-100 d-flex align-items-center">
+				<span v-if="icon.startsWith('glyphicons-')" class="indigo-chip-icon glyphicons" :class="icon"></span>
+				<span v-else class="indigo-chip-icon">{{icon}}</span>
+				<span class="indigo-chip-value">{{value()}}</span>
 			</div>
 		</div>`
 });
 
-Vue.component('indigo-show-text', {
+app.component('indigo-show-text', {
 	props: {
 		property: Object,
 		name: String,
@@ -297,17 +1283,17 @@ Vue.component('indigo-show-text', {
 		}
 	},
 	template: `
-		<div v-if="property != null" class="p-1" :class="(cls != null ? cls : 'w-25')" data-toggle="tooltip" :title="tooltip">
-			<div class="badge p-0 w-100 d-flex justify-content-between align-items-center" :class="state()">
-				<small v-if="icon != null && icon.startsWith('glyphicons-')" cclass="glyphicons" :class="icon"/>
-				<small v-else-if="icon != null" class="ml-1 p-1">{{icon}}</small>
-				<small v-else class="ml-1 p-1"></small>
-				<small class="mr-2 p-1">{{value()}}</small>
+		<div v-if="property != null" class="p-1" :class="(cls != null ? cls : 'w-25')" data-bs-toggle="tooltip" :title="tooltip">
+			<div class="indigo-chip indigo-readonly-chip w-100 d-flex align-items-center">
+				<span v-if="icon != null && icon.startsWith('glyphicons-')" class="indigo-chip-icon glyphicons" :class="icon"></span>
+				<span v-else-if="icon != null" class="indigo-chip-icon">{{icon}}</span>
+				<span v-else class="indigo-chip-icon"></span>
+				<span class="indigo-chip-value">{{value()}}</span>
 			</div>
 		</div>`
 });
 
-Vue.component('indigo-edit-text', {
+app.component('indigo-edit-text', {
 	props: {
 		property: Object,
 		name: String,
@@ -334,16 +1320,14 @@ Vue.component('indigo-edit-text', {
 		}
 	},
 	template: `
-		<div v-if="property != null" class="input-group p-1" :class="(cls != null ? cls : 'w-100')" data-toggle="tooltip" :title="tooltip">
-		<div class="input-group-prepend">
+		<div v-if="property != null" class="input-group p-1" :class="(cls != null ? cls : 'w-100')" data-bs-toggle="tooltip" :title="tooltip">
 			<span v-if="icon.startsWith('glyphicons-')" class="input-group-text glyphicons" :class="icon + ' ' + state()"></span>
 			<span v-else class="input-group-text" :class="state()">{{icon}}</span>
-		</div>
-		<input type="text" class="form-control" :value="item().value" @change="onChange">
+			<input type="text" class="form-control" :value="item().value" @change="onChange">
 		</div>`
 });
 
-Vue.component('indigo-stepper', {
+app.component('indigo-stepper', {
 	props: {
 		property: Object,
 		name: String,
@@ -352,6 +1336,23 @@ Vue.component('indigo-stepper', {
 		direction_right: String,
 		cls: String,
 		tooltip: String
+	},
+	data: function() {
+		return {
+			localValue: null
+		};
+	},
+	watch: {
+		property: {
+			handler: function() {
+				this.localValue = this.value();
+			},
+			deep: true,
+			immediate: true
+		},
+		name: function() {
+			this.localValue = this.value();
+		}
 	},
 	methods: {
 		left: function(value) {
@@ -385,54 +1386,21 @@ Vue.component('indigo-stepper', {
 		}
 	},
 	template: `
-		<div v-if="property != null" class="input-group p-1" :class="(cls != null ? cls : 'w-50')" data-toggle="tooltip" :title="tooltip">
-			<div class="input-group-prepend">
-				<button class="btn glyphicons glyphicons-arrow-left" :class="state()" @click="left($($event.target).parent().next().val())" type="button"></button>
-			</div>
-			<input type="text" class="form-control input-right" :value="value()">
-			<div class="input-group-append">
-				<button class="btn glyphicons glyphicons-arrow-right" :class="state()" @click="right($($event.target).parent().prev().val())" type="button"></button>
-			</div>
+		<div v-if="property != null" class="input-group p-1" :class="(cls != null ? cls : 'w-50')" data-bs-toggle="tooltip" :title="tooltip">
+			<button class="btn glyphicons glyphicons-arrow-left" :class="state()" @click="left(localValue)" type="button"></button>
+			<input type="text" class="form-control input-right" v-model="localValue">
+			<button class="btn glyphicons glyphicons-arrow-right" :class="state()" @click="right(localValue)" type="button"></button>
 		</div>`
 });
 
-Vue.component('indigo-ctrl', {
+app.component('indigo-ctrl-property-body', {
 	props: {
-		devices: Object
+		property: Object
 	},
 	methods: {
-		groups: function(device) {
-			var result = {};
-			for (p in device) {
-				var property = device[p];
-				var group = result[property.group];
-				if (group == null) {
-					group = {};
-					result[property.group] = group;
-				}
-				group[property.name] = property;
-			}
-			return result;
-		},
-		state: function(object) {
-			if (object.state != null)
-				return object.state.toLowerCase() + "-state";
-			if (object.value != null)
-				return object.value.toLowerCase() + "-state";
-			for (p in object) {
-				var property = object[p];
-				if (property.name == "CONNECTION") {
-					if (property.state == "Ok") {
-						for (i in property.items) {
-							var item = property.items[i];
-							if (item.name == "CONNECTED" && item.value) {
-								return "ok-state";
-							}
-						}
-					}
-					break;
-				}
-			}
+		itemState: function(item) {
+			if (item.value != null)
+				return item.value.toLowerCase() + "-state";
 			return "idle-state";
 		},
 		setSwitch: function(property, itemName, value) {
@@ -459,16 +1427,16 @@ Vue.component('indigo-ctrl', {
 			return value;
 		},
 		newValue: function(item, value) {
-			Vue.set(item, 'newValue', value);
+			item.newValue = value;
 		},
 		reset: function(property) {
-			for (i in property.items) {
-				Vue.set(property.items[i], 'newValue', null);
+			for (var i in property.items) {
+				property.items[i].newValue = null;
 			}
 		},
 		set: function(property) {
 			var values = {};
-			for (i in property.items) {
+			for (var i in property.items) {
 				var item = property.items[i];
 				var newValue = item.newValue;
 				if (newValue != null) {
@@ -484,135 +1452,391 @@ Vue.component('indigo-ctrl', {
 			}
 			changeProperty(property.device, property.name, values);
 		},
-		openAll: function(id) {
-			var header = $("#H_" + id);
-			var body = $("#B_" + id);
-			header.removeClass("collapsed");
-			body.addClass("show");
-			$(body).find("button.collapsed").removeClass("collapsed");
-			$(body).find("div.collapse").addClass("show");
+		isAbsoluteUrl: function(value) {
+			return value.startsWith('http:') || value.startsWith('https:');
 		},
-		closeAll: function(id) {
-			var body = $("#B_" + id);
-			body.addClass("show");
-			$(body).find("button.collapsed").addClass("collapsed");
-			$(body).find("div.collapse").removeClass("show");
+		isImage: function(value) {
+			return value.endsWith('.jpeg');
+		},
+		localUrl: function(value) {
+			return window.location.protocol + '//' + window.location.host + value;
 		},
 	},
 	template: `
-		<div class="accordion p-1 w-100">
-			<div class="card bg-transparent" v-for="(device,deviceName) in devices">
-				<div class="input-group d-flex card-header p-0" :class="state(device)">
-					<div class="input-group-prepend flex-grow-1">
-								<button :id="'H_' + deviceName.hashCode()" class="btn p-2 collapsed collapse-button w-100" data-toggle="collapse" :data-target="'#B_' + deviceName.hashCode()" style="text-align:left;border:none;background:transparent;"><span class="icon-indicator"></span>{{deviceName}}</button>
+		<form class="m-0">
+			<div v-if="property.message != null" class="alert alert-warning m-1" role="alert">
+				{{property.message}}
+			</div>
+			<template v-if="property.type == 'text'">
+				<div v-for="item in property.items" class="d-flex align-items-center gap-2 m-1">
+					<label class="flex-grow-1 text-truncate mb-0">{{item.label}}</label>
+					<input type="text" v-if="property.perm == 'ro'" readonly class="form-control flex-shrink-0" style="width:12rem" :value="item.value">
+					<input type="text" v-else class="form-control flex-shrink-0" style="width:12rem" :class="dirty(item)" :value="value(item)" @input="newValue(item, $event.target.value)">
+				</div>
+				<template v-if="property.perm != 'ro'">
+					<div class="float-end d-flex gap-1 mt-1">
+						<button type="submit" class="btn btn-sm btn-primary" @click.prevent="set(property)">Submit</button>
+						<button class="btn btn-sm btn-outline-secondary" @click.prevent="reset(property)">Reset</button>
 					</div>
-					<div class="input-group-append">
-						<button class="btn" @click.stop="closeAll(deviceName.hashCode())" style="border:none;background:transparent;" data-toggle="tooltip" title="Collapse items">△</button>
+				</template>
+			</template>
+			<template v-else-if="property.type == 'number'">
+				<div v-for="item in property.items" class="d-flex align-items-center gap-1 m-1">
+					<label class="flex-grow-1 text-truncate mb-0">{{item.label}}</label>
+					<input type="text" v-if="property.perm == 'ro'" readonly class="form-control text-end flex-shrink-0" style="width:7rem" :class="dirty(item)" :value="format(item, item.value)">
+					<template v-else>
+						<input type="text" readonly class="form-control text-end flex-shrink-0" style="width:7rem" :value="format(item, item.value)">
+						<input type="text" class="form-control text-end flex-shrink-0" style="width:7rem" :class="dirty(item)" :value="value(item)" @input="newValue(item, $event.target.value)">
+					</template>
+				</div>
+				<template v-if="property.perm != 'ro'">
+					<div class="float-end d-flex gap-1 mt-1">
+						<button type="submit" class="btn btn-sm btn-primary" @click.prevent="set(property)">Submit</button>
+						<button class="btn btn-sm btn-outline-secondary" @click.prevent="reset(property)">Reset</button>
 					</div>
-					<div class="input-group-append">
-						<button class="btn" @click.stop="openAll(deviceName.hashCode())" style="border:none;background:transparent;" data-toggle="tooltip" title="Expand items">▽</button>
+				</template>
+			</template>
+			<template v-else-if="property.type == 'switch'">
+				<div class="form-group row m-0">
+					<div v-for="item in property.items" class="col-sm-3 p-0 m-0 pe-2" style="min-width: 15rem">
+						<template v-if="property.perm == 'ro'">
+							<button v-if="item.value && property.rule == 'OneOfMany'" disabled class="btn btn-sm btn-primary w-100 m-1">{{item.label}}</button>
+							<button v-else disabled class="btn btn-sm w-100 m-1" :class="item.value ? 'btn-primary' : 'btn-outline-secondary'" @click.prevent="setSwitch(property, item.name, !item.value)">{{item.label}}</button>
+						</template>
+						<template v-else>
+							<button v-if="item.value && property.rule == 'OneOfMany'" disabled class="btn btn-sm btn-primary w-100 m-1">{{item.label}}</button>
+							<button v-else class="btn btn-sm w-100 m-1" :class="item.value ? 'btn-primary' : 'btn-outline-secondary'" @click.prevent="setSwitch(property, item.name, !item.value)">{{item.label}}</button>
+						</template>
 					</div>
 				</div>
-					<div :id="'B_' + deviceName.hashCode()" class="accordion collapse p-2 bg-transparent">
-					<div class="card bg-transparent"  v-for="(group,groupName) in groups(device)">
-						<div class="input-group d-flex card-header p-0">
-							<div class="input-group-prepend flex-grow-1">
-								<button :id="'H_' + deviceName.hashCode() + '_' + groupName.hashCode()" class="btn btn-outline-secondary p-2 collapsed collapse-button w-100" data-toggle="collapse" :data-target="'#B_' + deviceName.hashCode() + '_' + groupName.hashCode()" style="text-align:left;border:none;background:transparent;color:black"><span class="icon-indicator"></span>{{groupName}}</button>
+			</template>
+			<template v-else-if="property.type == 'light'">
+				<div class="form-group row m-0">
+					<div v-for="item in property.items" class="col-sm-3 p-0 m-0 pe-2" style="min-width: 15rem">
+						<button disabled class="btn btn-sm w-100 m-1" :class="itemState(item)">{{item.label}}</button>
+					</div>
+				</div>
+			</template>
+			<template v-else-if="property.type == 'blob'">
+				<div v-for="item in property.items">
+					<template v-if="item.value != null && isAbsoluteUrl(item.value)">
+						<a v-if="!isImage(item.value)" :href="item.value">{{item.value}}</a>
+						<img v-else :src="item.value" class="img-fluid"/>
+					</template>
+					<template v-else-if="item.value != null">
+						<a v-if="!isImage(item.value)" :href="localUrl(item.value)">{{localUrl(item.value)}}</a>
+						<img v-else :src="localUrl(item.value)" class="img-fluid"/>
+					</template>
+				</div>
+			</template>
+			<template v-else>
+				<small>{{property}}</small>
+			</template>
+		</form>`
+});
+
+app.component('indigo-ctrl', {
+	props: {
+		devices: Object
+	},
+	data() {
+		return {
+			selected: { device: null, group: null, property: null }
+		};
+	},
+	watch: {
+		devices(val) {
+			if (this.selected.device != null && val[this.selected.device] == null) {
+				this.selected = { device: null, group: null, property: null };
+			} else if (this.selected.group != null) {
+				var dev = val[this.selected.device];
+				var grps = dev ? this.groups(dev) : {};
+				if (grps[this.selected.group] == null) {
+					this.selected = { device: this.selected.device, group: null, property: null };
+				} else if (this.selected.property != null) {
+					if (grps[this.selected.group][this.selected.property.name] == null) {
+						this.selected = { device: this.selected.device, group: this.selected.group, property: null };
+					}
+				}
+			}
+		}
+	},
+	methods: {
+		groups: function(device) {
+			var result = {};
+			for (var p in device) {
+				var property = device[p];
+				var group = result[property.group];
+				if (group == null) {
+					group = {};
+					result[property.group] = group;
+				}
+				group[property.name] = property;
+			}
+			return result;
+		},
+		state: function(object) {
+			if (object.state != null)
+				return object.state.toLowerCase() + "-state";
+			if (object.value != null)
+				return object.value.toLowerCase() + "-state";
+			for (var p in object) {
+				var property = object[p];
+				if (property.name == "CONNECTION") {
+					if (property.state == "Ok") {
+						for (var i in property.items) {
+							var item = property.items[i];
+							if (item.name == "CONNECTED" && item.value) {
+								return "ok-state";
+							}
+						}
+					}
+					break;
+				}
+			}
+			return "idle-state";
+		},
+		hostname: function() {
+			return window.indigoURL ? indigoURL.hostname : 'INDIGO';
+		},
+		selectService: function() {
+			this.selected = { device: null, group: null, property: null };
+		},
+		selectDevice: function(deviceName) {
+			this.selected = { device: deviceName, group: null, property: null };
+		},
+		selectGroup: function(deviceName, groupName) {
+			this.selected = { device: deviceName, group: groupName, property: null };
+		},
+		selectProperty: function(deviceName, groupName, property) {
+			this.selected = { device: deviceName, group: groupName, property: property };
+		},
+		groupProperties: function(deviceName, groupName) {
+			var dev = this.devices[deviceName];
+			return dev ? (this.groups(dev)[groupName] || {}) : {};
+		},
+	},
+	template: `
+		<div>
+			<!-- Narrow: service view (devices expanded, groups/properties collapsed) -->
+			<div class="d-xl-none">
+			<div class="card bg-light p-1 m-1">
+				<div class="card bg-transparent mb-2" v-for="(device, deviceName) in devices">
+					<div class="d-flex card-header p-0" :class="state(device)">
+						<button class="flex-grow-1 btn p-2 collapse-button"
+								data-bs-toggle="collapse"
+								:data-bs-target="'#n_' + deviceName.hashCode()"
+								style="text-align:left;border:none;background:transparent;">
+							<span class="icon-indicator"></span>{{deviceName}}
+						</button>
+					</div>
+					<div :id="'n_' + deviceName.hashCode()" class="accordion collapse show p-2 bg-transparent">
+						<div class="card bg-transparent mb-2" v-for="(group, groupName) in groups(device)">
+							<div class="d-flex card-header p-0">
+								<button class="flex-grow-1 btn btn-outline-secondary p-2 collapsed collapse-button"
+										data-bs-toggle="collapse"
+										:data-bs-target="'#n_' + deviceName.hashCode() + '_' + groupName.hashCode()"
+										style="text-align:left;border:none;background:transparent;color:black">
+									<span class="icon-indicator"></span>{{groupName}}
+								</button>
 							</div>
-							<div class="input-group-append">
-								<button class="btn" @click.stop="closeAll(deviceName.hashCode() + '_' + groupName.hashCode())" style="border:none;background:transparent;">△</button>
-							</div>
-							<div class="input-group-append">
-								<button class="btn" @click.stop="openAll(deviceName.hashCode() + '_' + groupName.hashCode())" style="border:none;background:transparent">▽</button>
-							</div>
-						</div>
-						<div :id="'B_' + deviceName.hashCode() + '_' + groupName.hashCode()" class="accordion collapse p-2">
-							<div class="card" v-for="(property,name) in group">
-								<button class="btn card-header p-2 collapsed collapse-button" :class="state(property)" data-toggle="collapse" :data-target="'#' + deviceName.hashCode() + '_' + groupName.hashCode() + '_' + name" style="text-align:left"><span class="icon-indicator"></span>{{property.label}}<small class="float-right">{{name}}</small></button>
-								<div :id="deviceName.hashCode() + '_' + groupName.hashCode() + '_' + name" class="collapse card-block p-2 bg-light">
-									<form class="m-0">
-										<div v-if="property.message != null" class="alert alert-warning m-1" role="alert">
-											{{property.message}}
-										</div>
-										<template v-if="property.type == 'text'">
-											<div v-for="item in property.items" class="form-group row m-1">
-												<label class="col-sm-4 col-form-label pl-0 mt-1">{{item.label}}</label>
-												<input type="text" v-if="property.perm == 'ro'" readonly class="col-sm-8 form-control mt-1" :value="item.value">
-												<input type="text" v-else class="col-sm-8 form-control mt-1" :class="dirty(item)" :value="value(item)" @input="newValue(item, $event.target.value)">
-											</div>
-											<template v-if="property.perm != 'ro'">
-												<div class="float-right mt-1 mr-1">
-													<button type="submit" class="btn btn-sm btn-primary ml-1" @click.prevent="set(property)">Submit</button>
-													<button class="btn btn-sm btn-default ml-1" @click.prevent="reset(property)">Reset</button>
-												</div>
-											</template>
-										</template>
-										<template v-else-if="property.type == 'number'">
-											<div v-for="item in property.items" class="form-group row m-1">
-												<template v-if="property.perm == 'ro'">
-													<label class="col-sm-9 col-form-label pl-0 mt-1">{{item.label}}</label>
-													<input type="text" readonly class="col-sm-3 form-control mt-1" style="min-width: 5rem" :class="dirty(item)" :value="format(item, item.value)">
-												</template>
-												<template v-else>
-													<label class="col-sm-5 col-form-label pl-0 mt-1">{{item.label}}</label>
-													<input type="text" readonly class="col-sm-3 form-control mt-1" :value="format(item, item.value)" style="min-width: 5rem">
-													<input type="text" class="col-sm-3 offset-sm-1 form-control mt-1" style="min-width: 5rem" :class="dirty(item)" :value="value(item)" @input="newValue(item, $event.target.value)">
-												</template>
-											</div>
-											<template v-if="property.perm != 'ro'">
-												<div class="float-right mt-1 mr-1">
-													<button type="submit" class="btn btn-sm btn-primary ml-1" @click.prevent="set(property)">Submit</button>
-													<button class="btn btn-sm btn-default ml-1" @click.prevent="reset(property)">Reset</button>
-												</div>
-											</template>
-										</template>
-										<template v-else-if="property.type == 'switch'">
-											<div class="form-group row m-0">
-												<div v-for="item in property.items" class="col-sm-3 p-0 m-0 pr-2" style="min-width: 15rem">
-													<template v-if="property.perm == 'ro'">
-														<button v-if="item.value && property.rule == 'OneOfMany'" disabled class="btn btn-sm btn-primary w-100 m-1">{{item.label}}</button>
-														<button v-else disabled class="btn btn-sm w-100 m-1" :class="item.value ? 'btn-primary' : 'btn-default'" @click.prevent="setSwitch(property, item.name, !item.value)">{{item.label}}</button>
-													</template>
-													<template v-else>
-														<button v-if="item.value && property.rule == 'OneOfMany'" disabled class="btn btn-sm btn-primary w-100 m-1">{{item.label}}</button>
-														<button v-else class="btn btn-sm w-100 m-1" :class="item.value ? 'btn-primary' : 'btn-default'" @click.prevent="setSwitch(property, item.name, !item.value)">{{item.label}}</button>
-												  </template>
-												</div>
-											</div>
-										</template>
-										<template v-else-if="property.type == 'light'">
-											<div class="form-group row m-0">
-												<div v-for="item in property.items" class="col-sm-3 p-0 m-0 pr-2" style="min-width: 15rem">
-													<button disabled class="btn btn-sm w-100 m-1" :class="state(item)">{{item.label}}</button>
-												</div>
-											</div>
-										</template>
-										<template v-else-if="property.type == 'blob'">
-											<div v-for="item in property.items">
-												<template v-if="item.value != null && (item.value.startsWith('http://') || item.value.startsWith('https://'))">
-													<a v-if="!item.value.endsWith('.jpeg')" :href="item.value">{{item.value}}</a>
-													<img v-else :src="item.value" class="img-fluid"/>
-												</template>
-												<template v-else-if="item.value != null">
-													<a v-if="!item.value.endsWith('.jpeg')" :href="window.location.protocol + '//' + window.location.host + item.value">{{window.location.protocol + "//" + window.location.host + item.value}}</a>
-													<img v-else :src="window.location.protocol + '//' + window.location.host + item.value" class="img-fluid"/>
-												</template>
-											</div>
-										</template>
-										<template v-else>
-											<small>{{property}}</small>
-										</template>
-									</form>
+							<div :id="'n_' + deviceName.hashCode() + '_' + groupName.hashCode()" class="accordion collapse p-2">
+								<div class="card mb-2" v-for="(property, name) in group">
+									<button class="btn card-header p-2 collapsed collapse-button"
+											:class="state(property)"
+											data-bs-toggle="collapse"
+											:data-bs-target="'#n_' + deviceName.hashCode() + '_' + groupName.hashCode() + '_' + name"
+											style="text-align:left">
+										<span class="icon-indicator"></span>{{property.label}}<small class="float-end">{{name}}</small>
+									</button>
+									<div :id="'n_' + deviceName.hashCode() + '_' + groupName.hashCode() + '_' + name" class="collapse card-body p-2 bg-light">
+										<indigo-ctrl-property-body :property="property"/>
+									</div>
 								</div>
 							</div>
 						</div>
 					</div>
 				</div>
 			</div>
+			</div><!-- /card -->
+			</div><!-- /d-xl-none -->
+
+			<!-- Wide: two-column layout, visible on xl+ -->
+			<div class="d-none d-xl-block">
+				<div class="row g-0">
+
+				<!-- Left: tree navigation (accordion) -->
+				<div class="col-xl-4">
+				<div class="card bg-light ctrl-tree p-2 m-1">
+					<!-- Service level -->
+					<div class="card bg-transparent mb-2">
+						<div class="d-flex card-header p-0">
+							<button class="btn p-2 collapse-button"
+									data-bs-toggle="collapse"
+									data-bs-target="#lt_service"
+									style="border:none;background:transparent;">
+								<span class="icon-indicator"></span>
+							</button>
+							<button class="flex-grow-1 btn p-2"
+									:class="{ 'ctrl-tree-selected': !selected.device }"
+									@click="selectService()"
+									style="text-align:left;border:none;background:transparent;">
+								{{hostname()}}
+							</button>
+						</div>
+						<div id="lt_service" class="accordion collapse show p-2 bg-transparent">
+							<div class="card bg-transparent mb-2" v-for="(device, deviceName) in devices">
+								<div class="d-flex card-header p-0" :class="state(device)">
+									<button class="btn p-2 collapsed collapse-button"
+											data-bs-toggle="collapse"
+											:data-bs-target="'#lt_' + deviceName.hashCode()"
+											style="border:none;background:transparent;">
+										<span class="icon-indicator"></span>
+									</button>
+									<button class="flex-grow-1 btn p-2"
+											:class="{ 'ctrl-tree-selected': selected.device == deviceName && !selected.group }"
+											@click="selectDevice(deviceName)"
+											style="text-align:left;border:none;background:transparent;">
+										{{deviceName}}
+									</button>
+								</div>
+								<div :id="'lt_' + deviceName.hashCode()" class="accordion collapse p-2 bg-transparent">
+									<div class="card bg-transparent mb-2" v-for="(group, groupName) in groups(device)">
+										<div class="d-flex card-header p-0">
+											<button class="btn p-2 collapsed collapse-button"
+													data-bs-toggle="collapse"
+													:data-bs-target="'#lt_' + deviceName.hashCode() + '_' + groupName.hashCode()"
+													style="border:none;background:transparent;color:black">
+												<span class="icon-indicator"></span>
+											</button>
+											<button class="flex-grow-1 btn p-2"
+													:class="{ 'ctrl-tree-selected': selected.device == deviceName && selected.group == groupName && !selected.property }"
+													@click="selectGroup(deviceName, groupName)"
+													style="text-align:left;border:none;background:transparent;color:black">
+												{{groupName}}
+											</button>
+										</div>
+										<div :id="'lt_' + deviceName.hashCode() + '_' + groupName.hashCode()" class="accordion collapse p-2">
+											<div class="card mb-2" v-for="(property, name) in group">
+												<button class="btn card-header p-2 w-100"
+														:class="[state(property), { 'ctrl-tree-selected': selected.property === property }]"
+														@click="selectProperty(deviceName, groupName, property)"
+														style="text-align:left">
+													{{property.label}}
+												</button>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				</div><!-- /col-xl-4 -->
+
+				<!-- Right: content panel -->
+				<div class="col-xl-8">
+				<div class="card bg-light ctrl-panel p-2 m-1">
+
+					<!-- Single property selected -->
+					<template v-if="selected.property">
+						<div class="card mb-2">
+							<div class="card-header p-2" :class="state(selected.property)">
+								{{selected.property.label}}<small class="float-end">{{selected.property.name}}</small>
+							</div>
+							<div class="card-body p-2 bg-light">
+								<indigo-ctrl-property-body :property="selected.property"/>
+							</div>
+						</div>
+					</template>
+
+					<!-- Group selected: show properties as accordion, all expanded by default -->
+					<template v-else-if="selected.group">
+						<div class="card mb-2" v-for="(property, name) in groupProperties(selected.device, selected.group)">
+							<button class="btn card-header p-2 collapse-button" :class="state(property)" data-bs-toggle="collapse" :data-bs-target="'#rp_' + name.hashCode()" style="text-align:left"><span class="icon-indicator"></span>{{property.label}}<small class="float-end">{{name}}</small></button>
+							<div :id="'rp_' + name.hashCode()" class="collapse show card-body p-2 bg-light">
+								<indigo-ctrl-property-body :property="property"/>
+							</div>
+						</div>
+					</template>
+
+					<!-- Device selected: show groups expanded, properties collapsed -->
+					<template v-else-if="selected.device">
+						<div class="card bg-transparent mb-2" v-for="(group, groupName) in groups(devices[selected.device])">
+							<div class="d-flex card-header p-0">
+								<button class="flex-grow-1 btn btn-outline-secondary p-2 collapse-button" data-bs-toggle="collapse" :data-bs-target="'#rp_' + groupName.hashCode()" style="text-align:left;border:none;background:transparent"><span class="icon-indicator"></span>{{groupName}}</button>
+							</div>
+							<div :id="'rp_' + groupName.hashCode()" class="accordion collapse show p-2">
+								<div class="card mb-2" v-for="(property, name) in group">
+									<button class="btn card-header p-2 collapsed collapse-button" :class="state(property)" data-bs-toggle="collapse" :data-bs-target="'#rp_' + groupName.hashCode() + '_' + name.hashCode()" style="text-align:left"><span class="icon-indicator"></span>{{property.label}}<small class="float-end">{{name}}</small></button>
+									<div :id="'rp_' + groupName.hashCode() + '_' + name.hashCode()" class="collapse card-body p-2 bg-light">
+										<indigo-ctrl-property-body :property="property"/>
+									</div>
+								</div>
+							</div>
+						</div>
+					</template>
+
+					<!-- Service selected (default): devices expanded, groups as navigation -->
+					<template v-else>
+						<div class="card bg-transparent mb-2" v-for="(device, deviceName) in devices">
+							<div class="d-flex card-header p-0" :class="state(device)">
+								<button class="btn p-2 collapse-button"
+										data-bs-toggle="collapse"
+										:data-bs-target="'#sv_' + deviceName.hashCode()"
+										style="border:none;background:transparent;">
+									<span class="icon-indicator"></span>
+								</button>
+								<button class="flex-grow-1 btn p-2"
+										@click="selectDevice(deviceName)"
+										style="text-align:left;border:none;background:transparent;">
+									{{deviceName}}
+								</button>
+							</div>
+							<div :id="'sv_' + deviceName.hashCode()" class="accordion collapse show p-2 bg-transparent">
+								<div class="card bg-transparent mb-2" v-for="(group, groupName) in groups(device)">
+									<div class="d-flex card-header p-0">
+										<button class="btn p-2 collapsed collapse-button"
+												data-bs-toggle="collapse"
+												:data-bs-target="'#sv_' + deviceName.hashCode() + '_' + groupName.hashCode()"
+												style="border:none;background:transparent;color:black">
+											<span class="icon-indicator"></span>
+										</button>
+										<button class="flex-grow-1 btn p-2"
+												@click="selectGroup(deviceName, groupName)"
+												style="text-align:left;border:none;background:transparent;color:black">
+											{{groupName}}
+										</button>
+									</div>
+									<div :id="'sv_' + deviceName.hashCode() + '_' + groupName.hashCode()" class="accordion collapse p-2">
+										<div class="card mb-2" v-for="(property, name) in group">
+											<button class="btn card-header p-2 collapsed collapse-button"
+													:class="state(property)"
+													data-bs-toggle="collapse"
+													:data-bs-target="'#sv_' + deviceName.hashCode() + '_' + groupName.hashCode() + '_' + name"
+													style="text-align:left">
+												<span class="icon-indicator"></span>{{property.label}}<small class="float-end">{{name}}</small>
+											</button>
+											<div :id="'sv_' + deviceName.hashCode() + '_' + groupName.hashCode() + '_' + name" class="collapse card-body p-2 bg-light">
+												<indigo-ctrl-property-body :property="property"/>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</template>
+
+				</div>
+				</div><!-- /col-xl-8 -->
+
+				</div><!-- /row -->
+			</div><!-- /d-none d-xl-block -->
 		</div>`
 });
 
-Vue.component('indigo-select-multi-item', {
+
+app.component('indigo-select-multi-item', {
 	props: {
 		property: Object,
 		label: String,
@@ -623,7 +1847,7 @@ Vue.component('indigo-select-multi-item', {
 		items: function() {
 			var result = [];
 			if (this.property != null) {
-				for (i in this.property.itemsByLabel) {
+				for (var i in this.property.items) {
 					var item = this.property.items[i];
 					if (item.name.startsWith(this.prefix)) result.push(item);
 				}
@@ -633,7 +1857,7 @@ Vue.component('indigo-select-multi-item', {
 		value: function() {
 			var result = null;
 			if (this.property != null) {
-				for (i in this.property.itemsByLabel) {
+				for (var i in this.property.items) {
 					var item = this.property.items[i];
 					if (item.value && item.name.startsWith(this.prefix)) result = result == null ? item.label : result + "; " + item.label;
 				}
@@ -650,166 +1874,815 @@ Vue.component('indigo-select-multi-item', {
 		}
 	},
 	template: `
-		<div class="input-group p-1" data-toggle="tooltip" :title="tooltip">
-			<div class="input-group-prepend">
-				<span class="input-group-text" id="inputGroup-sizing-default" style="width: 10em;" :class="state()">{{label}}</span>
-			</div>
+		<div class="input-group p-1" data-bs-toggle="tooltip" :title="tooltip">
+			<span class="input-group-text" style="width: 10em;" :class="state()">{{label}}</span>
 			<input readonly type="text" class="form-control" :value="value()">
-			<div class="input-group-append">
-				<button class="btn dropdown-toggle dropdown-toggle-split btn-outline-secondary" type="button" data-toggle="dropdown"></button>
-				<div class="dropdown-menu">
-					<a class="dropdown-item" :class="item.value ? 'checked' : ''" href="#" v-for="item in items()" @click="change(item)">{{item.label}}</a>
-				</div>
+			<button class="btn dropdown-toggle dropdown-toggle-split btn-outline-secondary" type="button" data-bs-toggle="dropdown"></button>
+			<div class="dropdown-menu">
+				<a class="dropdown-item" :class="item.value ? 'checked' : ''" href="#" v-for="item in items()" @click="change(item)"><span class="checkmark">{{item.value ? '✓' : ''}}</span>{{item.label}}</a>
 			</div>
 		</div>`
 });
 
-Vue.component('indigo-query-db', {
+var indigoStarCatalog = [];
+var indigoDsoCatalog = [];
+var indigoCatalogsLoaded = false;
+var indigoCatalogPromise = null;
+
+function indigoCatalogDeg2h(ra) {
+	return ra < 0 ? ra / 15 + 24 : ra / 15;
+}
+
+function indigoCatalogString(value) {
+	return value == null ? "" : String(value);
+}
+
+function indigoCatalogNormalize(value) {
+	return indigoCatalogString(value).replace(/\s/g, "").toUpperCase();
+}
+
+function indigoCatalogCoordinates(feature) {
+	if (feature == null || feature.geometry == null || feature.geometry.type != "Point")
+		return null;
+	if (feature.geometry.coordinates == null || feature.geometry.coordinates.length < 2)
+		return null;
+	return feature.geometry.coordinates;
+}
+
+function indigoCatalogLoad(url, mapper) {
+	return fetch(url)
+		.then(function(response) {
+			if (!response.ok)
+				throw new Error(url + " returned " + response.status);
+			return response.json();
+		})
+		.then(function(geojson) {
+			var result = [];
+			var features = geojson.features || [];
+			for (var i = 0; i < features.length; i++) {
+				var object = mapper(features[i]);
+				if (object != null)
+					result.push(object);
+			}
+			return result;
+		})
+		.catch(function(error) {
+			console.log("Failed to load " + url + ": " + error);
+			return [];
+		});
+}
+
+function indigoLoadCelestialCatalogs() {
+	if (indigoCatalogPromise != null)
+		return indigoCatalogPromise;
+	indigoCatalogPromise = Promise.all([
+		indigoCatalogLoad("/data/stars.json", function(feature) {
+			var coordinates = indigoCatalogCoordinates(feature);
+			if (coordinates == null)
+				return null;
+			var properties = feature.properties || {};
+			var id = feature.id;
+			var name = indigoCatalogString(properties.name);
+			var desig = indigoCatalogString(properties.desig);
+			var label = name;
+			if (desig != "") {
+				if (label != "")
+					label += ", ";
+				label += desig;
+			}
+			if (Number(id) > 0) {
+				if (label != "")
+					label += ", ";
+				label += "HIP" + id;
+			}
+			if (label == "")
+				label = "HIP" + id;
+			return {
+				name: label,
+				ra: indigoCatalogDeg2h(coordinates[0]),
+				raDeg: coordinates[0],
+				dec: coordinates[1],
+				search: [
+					id,
+					"HIP" + id,
+					name,
+					desig
+				].map(indigoCatalogNormalize).join(" ")
+			};
+		}),
+		indigoCatalogLoad("/data/dsos.json", function(feature) {
+			var coordinates = indigoCatalogCoordinates(feature);
+			if (coordinates == null)
+				return null;
+			var properties = feature.properties || {};
+			var id = indigoCatalogString(feature.id);
+			var name = indigoCatalogString(properties.name);
+			var desig = indigoCatalogString(properties.desig);
+			var label = name;
+			if (label != "" && desig != "")
+				label += ", ";
+			label += desig;
+			if (label == "")
+				label = id;
+			return {
+				name: label,
+				ra: indigoCatalogDeg2h(coordinates[0]),
+				raDeg: coordinates[0],
+				dec: coordinates[1],
+				search: [
+					id,
+					name,
+					desig
+				].map(indigoCatalogNormalize).join(" ")
+			};
+		})
+	]).then(function(catalogs) {
+		indigoStarCatalog = catalogs[0];
+		indigoDsoCatalog = catalogs[1];
+		indigoCatalogsLoaded = true;
+	});
+	return indigoCatalogPromise;
+}
+
+app.component('indigo-query-db', {
 	props: {
-		container: Object,
-		result: Object
+		dark: {
+			type: Boolean,
+			default: false
+		}
+	},
+	data() {
+		return {
+			query: "",
+			loading: false,
+			result: []
+		};
+	},
+	mounted: function() {
+		this.loadCatalogs();
 	},
 	methods: {
+		loadCatalogs: function() {
+			if (indigoCatalogsLoaded)
+				return;
+			var self = this;
+			this.loading = true;
+			indigoLoadCelestialCatalogs().then(function() {
+				self.loading = false;
+				self.search();
+			});
+		},
 		setTarget: function(object) {
-			selectObject(object.ra, object.dec);
+			if (window.selectObject != null)
+				window.selectObject(object);
 		},
 		onChange: function(e) {
-			var pattern = e.target.value.replace(" ", "").toUpperCase();
-			var id = Number.parseInt(pattern);
+			this.query = e.target.value;
+			this.search();
+		},
+		search: function() {
+			var pattern = indigoCatalogNormalize(this.query);
 			this.result = [];
-			if (pattern != "") {
-				var stars = $(this.container).children(".star");
-				for (i in stars) {
-					var data = stars[i].__data__;
-					if (data == null) continue;
-					var properties = data.properties;
-					if (properties == null) continue;
-					var geometry = data.geometry;
-					if (geometry == null) continue;
-					if (data.id == id || (properties.name != null && properties.name.toUpperCase().indexOf(pattern) >= 0)) {
-						var name = properties.name;
-						if (properties.desig != "") {
-							if (name != "")
-								name += ", ";
-							name += properties.desig;
-						}
-						if (data.id > 0) {
-							if (name != "")
-								name += ", ";
-							name += "HIP" + data.id;
-						}
-						this.result.push({ name: name, ra: deg2h(geometry.coordinates[0]), dec: geometry.coordinates[1] });
-					}
-				}				
-				var dsos = $(this.container).children(".dso");
-				for (i in dsos) {
-					var data = dsos[i].__data__;
-					if (data == null) continue;
-					var properties = data.properties;
-					if (properties == null) continue;
-					var geometry = data.geometry;
-					if (geometry == null) continue;
-					if (data.id.toUpperCase().indexOf(pattern) >= 0 || (properties.desig != null && properties.desig.toUpperCase().indexOf(pattern) >= 0)) {
-						var name = properties.name;
-						if (name != "" && properties.desig != "")
-							name += ", ";
-						name += properties.desig;
-						var properties = data.properties;
-						this.result.push({ name: name, ra: deg2h(geometry.coordinates[0]), dec: geometry.coordinates[1] });
-					}
-				}				
+			if (pattern == "")
+				return;
+			if (!indigoCatalogsLoaded) {
+				this.loadCatalogs();
+				return;
+			}
+			for (var i = 0; i < indigoStarCatalog.length; i++) {
+				var star = indigoStarCatalog[i];
+				if (star.search.indexOf(pattern) >= 0)
+					this.result.push(star);
+			}
+			for (var j = 0; j < indigoDsoCatalog.length; j++) {
+				var dso = indigoDsoCatalog[j];
+				if (dso.search.indexOf(pattern) >= 0)
+					this.result.push(dso);
 			}
 		}
 	},
 	template: `
 		<div class="w-100">
 			<div class="input-group p-1 w-100">
-				<div class="input-group-prepend">
-					<div class="input-group-text btn-svg">&#x1f50d;</div>
-				</div>
-				<input type="text" class="form-control" @change="onChange">			
+				<div class="input-group-text input-label ok-state"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" fill="currentColor" viewBox="0 0 16 16"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.099zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/></svg></div>
+				<input type="text" class="form-control" @change="onChange">
 			</div>
-			<div v-if="this.result != null && this.result.length > 0" class="list-group list-group-flush p-1 mt-1 w-100" style="max-height: 10rem; overflow-y: scroll">
-				<a v-for="object in this.result" href="#" class="list-group-item list-group-item-action bg-transparent" :class="INDIGO.dark ? 'text-light' : 'text-dark'" @click="setTarget(object)">{{object.name}}</a>
+			<div v-if="result != null && result.length > 0" class="list-group list-group-flush p-1 mt-1 w-100" style="max-height: 10rem; overflow-y: scroll">
+				<a v-for="object in result" href="#" class="list-group-item list-group-item-action indigo-catalog-result d-flex align-items-center" :class="dark ? 'text-light' : 'text-dark'" @click.prevent="setTarget(object)">
+					<span class="text-truncate">{{object.name}}</span>
+					<span class="indigo-catalog-result-icon ms-auto">›</span>
+				</a>
 			</div>
-		<div>
+		</div>
 		`
 });
 
 
-Vue.component('indigo-wifi-setup', {
+app.component('indigo-navbar', {
+	props: {
+		active: String,
+		title: String,
+		icon: String,
+		expand: {
+			type: String,
+			default: "sm"
+		}
+	},
+	data: function() {
+		return {
+			appLinks: [
+				{ id: "imager", href: "imager.html", icon: "imager.png", title: "Imager" },
+				{ id: "mount", href: "mount.html", icon: "mount.png", title: "Mount" },
+				{ id: "guider", href: "guider.html", icon: "guider.png", title: "Guider" },
+				{ id: "astrometry", href: "astrometry.html", icon: "astrometry.png", title: "Astrometry" },
+				{ id: "script", href: "script.html", icon: "script.png", title: "Script" }
+			]
+		};
+	},
+	computed: {
+		navbarClass: function() {
+			return "navbar navbar-expand-" + this.expand + " navbar-light";
+		},
+		features: function() {
+			if (this.$root == null || this.$root.devices == null)
+				return null;
+			var properties = this.$root.devices["Server"];
+			if (properties == null)
+				return null;
+			return properties["FEATURES"];
+		},
+		webApps: function() {
+			if (this.features == null)
+				return false;
+			var item = this.features.item("WEB_APPS");
+			return item != null && item.value;
+		},
+		activePage: function() {
+			var pages = [
+				{ id: "mng", icon: "mng.png", title: "Server Manager" },
+				{ id: "ctrl", icon: "ctrl.png", title: "Control Panel" }
+			].concat(this.appLinks);
+			for (var i = 0; i < pages.length; i++) {
+				if (pages[i].id == this.active)
+					return pages[i];
+			}
+			return null;
+		},
+		brandIcon: function() {
+			if (this.icon != null && this.icon != "")
+				return this.icon;
+			if (this.activePage != null)
+				return this.activePage.icon;
+			return "";
+		},
+		brandTitle: function() {
+			if (this.title != null && this.title != "")
+				return this.title;
+			if (this.activePage != null)
+				return this.activePage.title;
+			return "";
+		}
+	},
+	template: `
+		<nav :class="navbarClass">
+			<a class="navbar-brand text-white" href="#">
+				<img :src="brandIcon" width="40" height="40" class="d-inline-block align-middle" alt=""/>
+				<h4 class="title">{{brandTitle}}</h4>
+			</a>
+			<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
+				<span class="navbar-toggler-icon"></span>
+			</button>
+			<div id="navbarContent" class="collapse navbar-collapse m-0">
+				<template v-if="features != null">
+					<a class="nav-link ms-auto" href="mng.html" data-bs-toggle="tooltip" title="Server Manager">
+						<img src="mng.png" width="40" height="40" class="align-middle" alt=""/>
+					</a>
+					<a class="nav-link" href="ctrl.html" data-bs-toggle="tooltip" title="Control Panel">
+						<img src="ctrl.png" width="40" height="40" class="align-middle" alt=""/>
+					</a>
+					<template v-if="webApps">
+						<a v-for="link in appLinks" :key="link.id" class="nav-link" :href="link.href" data-bs-toggle="tooltip" :title="link.title">
+							<img :src="link.icon" width="40" height="40" class="d-inline-block align-middle" alt=""/>
+						</a>
+					</template>
+				</template>
+			</div>
+		</nav>
+		`
+});
+
+
+app.component('indigo-status-bar', {
+	props: {
+		columnsToggle: {
+			type: Boolean,
+			default: false
+		}
+	},
+	computed: {
+		serverInfo: function() {
+			if (this.$root == null || this.$root.findProperty == null)
+				return null;
+			return this.$root.findProperty("Server", "INFO");
+		},
+		serverVersion: function() {
+			if (this.serverInfo == null)
+				return "";
+			var item = this.serverInfo.item("VERSION");
+			return item == null ? "" : item.value;
+		},
+		serverService: function() {
+			if (this.serverInfo == null)
+				return "";
+			var item = this.serverInfo.item("SERVICE");
+			return item == null ? "" : item.value;
+		}
+	},
+	methods: {
+		setDark: function() {
+			setDarkMode();
+		},
+		setLight: function() {
+			setLightMode();
+		},
+		setColumns: function(columns) {
+			var fromClass = columns == 1 ? "col-md-4" : "col-md-12";
+			var toClass = columns == 1 ? "col-md-12" : "col-md-4";
+			document.querySelectorAll("div." + fromClass).forEach(function(element) {
+				element.classList.remove(fromClass);
+				element.classList.add(toClass);
+			});
+			this.$root.columns = columns;
+		}
+	},
+	template: `
+		<div v-show="$root.connected" class="alert indigo-status-connected fade show m-1 mt-2" role="alert">
+			{{ $root.state }}
+			<span v-if="serverInfo != null" class="float-end">
+				INDIGO Server {{serverVersion}} at {{serverService}}
+			</span>
+		</div>
+		<div v-show="$root.failed" class="alert indigo-status-failed fade show m-1 mt-2" role="alert">
+			{{ $root.state }}
+		</div>
+		<div v-show="$root.message" class="alert indigo-status-message fade show m-1 mt-2" role="alert">
+			{{ $root.state }}
+		</div>
+		<div class="alert indigo-status-info show m-1 mt-2" role="alert">
+			Copyright &copy; 2019-2025, The INDIGO Initiative. All rights reserved.
+			<a v-if="$root.dark" href="#" class="float-end" @click.prevent="setLight">Switch to light appearance</a>
+			<a v-else href="#" class="float-end" @click.prevent="setDark">Switch to dark appearance</a>
+			<a v-if="columnsToggle && $root.columns == 3" href="#" class="float-end indigo-status-bar-action" @click.prevent="setColumns(1)">Switch to 1 column</a>
+			<a v-else-if="columnsToggle" href="#" class="float-end indigo-status-bar-action" @click.prevent="setColumns(3)">Switch to 3 columns</a>
+		</div>
+		`
+});
+
+
+app.component('indigo-status-button', {
+	props: {
+		property: Object,
+		activeItem: String,
+		activeState: {
+			type: String,
+			default: "Ok"
+		},
+		busyItem: String,
+		busyStatusClass: {
+			type: String,
+			default: "busy-state"
+		},
+		statusClass: String,
+		action: Function,
+		activeAction: Function,
+		inactiveAction: Function,
+		busyAction: Function,
+		alertAction: Function,
+		disabled: Boolean
+	},
+	computed: {
+		stateClass: function() {
+			if (this.statusClass != null && this.statusClass != "")
+				return this.statusClass;
+			if (this.property == null)
+				return "idle-state";
+			if (this.property.state == this.activeState && this.activeItemValue())
+				return "ok-state";
+			if (this.property.state == "Busy" && this.busyItemValue())
+				return this.busyStatusClass;
+			if (this.property.state == "Alert")
+				return "alert-state";
+			return "idle-state";
+		}
+	},
+	methods: {
+		itemValue: function(name) {
+			if (this.property == null)
+				return false;
+			if (name == null || name == "")
+				return true;
+			var item = this.property.item(name);
+			return item != null && item.value;
+		},
+		activeItemValue: function() {
+			return this.itemValue(this.activeItem);
+		},
+		busyItemValue: function() {
+			if (this.busyItem == null || this.busyItem == "")
+				return this.property != null;
+			return this.itemValue(this.busyItem);
+		},
+		runAction: function(event) {
+			var action = this.action;
+			if (this.property != null && this.property.state == "Alert" && this.alertAction != null) {
+				action = this.alertAction;
+			} else if (this.property != null && this.property.state == "Busy" && this.busyAction != null) {
+				action = this.busyAction;
+			} else if (this.activeItemValue()) {
+				if (this.activeAction != null)
+					action = this.activeAction;
+			} else if (this.inactiveAction != null) {
+				action = this.inactiveAction;
+			}
+			if (action != null)
+				action(event);
+		}
+	},
+	template: `
+		<button class="btn btn-svg" :class="stateClass" :disabled="disabled" @click="runAction"><slot></slot></button>
+		`
+});
+
+
+app.component('indigo-script-editor', {
+	props: {
+		property: Object
+	},
+	emits: [ 'change' ],
+	data: function() {
+		return {
+			name: "",
+			script: "",
+			loading: false,
+			isSequence: false
+		};
+	},
+	mounted: function() {
+		this.setProperty(this.property);
+	},
+	watch: {
+		property: function(value) {
+			this.setProperty(value);
+		}
+	},
+	methods: {
+		fullPropertyName: function(property) {
+			if (property == null) return "";
+			var item = property.item('NAME');
+			if (item != null && item.value != null)
+				return item.value;
+			return property.label;
+		},
+		propertyScript: function(property) {
+			var script = "";
+			if (property != null) {
+				var scriptItem = property.item('SCRIPT');
+				if (scriptItem != null && scriptItem.value != null)
+					script = scriptItem.value;
+			}
+			return script;
+		},
+		setProperty: function(property) {
+			this.loading = true;
+			var fullName = this.fullPropertyName(property);
+			if (fullName.startsWith('#SEQUENCE')) {
+				this.isSequence = true;
+				this.name = fullName.substring(9).trimStart();
+			} else {
+				this.isSequence = false;
+				this.name = fullName;
+			}
+			this.script = this.propertyScript(property);
+			this.loading = false;
+		},
+		sequenceChanged: function() {
+			this.$emit('change');
+		},
+		editorChanged: function() {
+			if (!this.loading)
+				this.$emit('change');
+		},
+		inputChanged: function() {
+			this.$emit('change');
+		},
+		getName: function() {
+			return this.isSequence ? '#SEQUENCE ' + this.name : this.name;
+		},
+		getCode: function() {
+			return this.script;
+		}
+	},
+	template: `
+		<div class="indigo-script-editor">
+			<div class="d-flex mb-1 gap-2 align-items-center">
+				<input ref="nameInput" type="text" class="form-control" placeholder="Script name" data-bs-toggle="tooltip" title="Script name" v-model="name" @input="inputChanged">
+				<label class="form-check form-check-inline mb-0 text-nowrap">
+					<input class="form-check-input" type="checkbox" v-model="isSequence" @change="sequenceChanged()">
+					<span class="form-check-label">sequence</span>
+				</label>
+			</div>
+			<textarea id="script-editor" class="form-control fixed indigo-script-textarea" spellcheck="false" data-bs-toggle="tooltip" title="Script text" v-model="script" @input="editorChanged"></textarea>
+		</div>
+		`
+});
+
+
+app.component('indigo-guider-graph', {
+	data: function() {
+		return {
+			raDrift: [],
+			decDrift: [],
+			raCorr: [],
+			decCorr: [],
+			rmse: [],
+			driftUnit: "px",
+			paintPending: false,
+			resizeHandler: null
+		};
+	},
+	watch: {
+		raDrift: {
+			handler: function() {
+				this.schedulePaint();
+			},
+			deep: true
+		},
+		decDrift: {
+			handler: function() {
+				this.schedulePaint();
+			},
+			deep: true
+		},
+		raCorr: {
+			handler: function() {
+				this.schedulePaint();
+			},
+			deep: true
+		},
+		decCorr: {
+			handler: function() {
+				this.schedulePaint();
+			},
+			deep: true
+		},
+		rmse: {
+			handler: function() {
+				this.schedulePaint();
+			},
+			deep: true
+		}
+	},
+	mounted: function() {
+		this.resizeHandler = this.paintGraphs.bind(this);
+		window.addEventListener("resize", this.resizeHandler);
+		this.paintGraphs();
+		guiSetup();
+	},
+	beforeUnmount: function() {
+		if (this.resizeHandler != null)
+			window.removeEventListener("resize", this.resizeHandler);
+	},
+	methods: {
+		push: function(driftRa, driftDec, corrRa, corrDec, rmseValue, unit) {
+			this.trimData();
+			this.raDrift.push(driftRa);
+			this.decDrift.push(driftDec);
+			this.raCorr.push(corrRa);
+			this.decCorr.push(corrDec);
+			this.rmse.push(rmseValue);
+			if (unit != null)
+				this.driftUnit = unit;
+		},
+		clear: function() {
+			this.raDrift = [];
+			this.decDrift = [];
+			this.raCorr = [];
+			this.decCorr = [];
+			this.rmse = [];
+			this.driftUnit = "px";
+		},
+		trimData: function() {
+			while (this.raDrift.length >= 200)
+				this.raDrift.shift();
+			while (this.decDrift.length >= 200)
+				this.decDrift.shift();
+			while (this.raCorr.length >= 200)
+				this.raCorr.shift();
+			while (this.decCorr.length >= 200)
+				this.decCorr.shift();
+			while (this.rmse.length >= 200)
+				this.rmse.shift();
+		},
+		schedulePaint: function() {
+			if (this.paintPending)
+				return;
+			this.paintPending = true;
+			var self = this;
+			this.$nextTick(function() {
+				self.paintPending = false;
+				self.paintGraphs();
+			});
+		},
+		paintGraphs: function() {
+			var driftCanvas = this.$refs.driftCanvas;
+			var corrCanvas = this.$refs.corrCanvas;
+			var refWidth = driftCanvas != null ? driftCanvas.offsetWidth : (corrCanvas != null ? corrCanvas.offsetWidth : 0);
+			var xScale = refWidth > 0 ? refWidth / 200 : 0;
+			this.paintGraph(driftCanvas, this.raDrift, this.decDrift, this.rmse, false, xScale, this.driftUnit);
+			this.paintGraph(corrCanvas, this.raCorr, this.decCorr, this.rmse, true, xScale, "s");
+		},
+		paintGraph: function(canvas, ra, dec, rmse, pulse, xScale, unit) {
+			if (canvas == null)
+				return;
+			canvas.width = canvas.offsetWidth;
+			canvas.height = canvas.offsetHeight;
+			var width = canvas.width;
+			var height = canvas.height;
+			if (width == 0 || height == 0 || ra.length == 0 || dec.length == 0 || xScale == 0)
+				return;
+			var height2 = height / 2;
+			var ctx = canvas.getContext("2d");
+			var maxValue = 0;
+			for (var i in ra) {
+				var value = Math.abs(ra[i]);
+				if (maxValue < value)
+					maxValue = value;
+			}
+			for (var j in dec) {
+				var decValue = Math.abs(dec[j]);
+				if (maxValue < decValue)
+					maxValue = decValue;
+			}
+			if (maxValue == 0) {
+				maxValue = 0.1;
+			} else if (maxValue < 0.5) {
+				maxValue = Math.ceil(maxValue * 10) / 10;
+			} else if (maxValue < 1) {
+				maxValue = 1;
+			} else if (maxValue > 10) {
+				maxValue = 10;
+			} else {
+				maxValue = Math.ceil(maxValue);
+			}
+			var yScale = (height2 - 5.0) / maxValue;
+			ctx.save();
+			ctx.strokeStyle = "#AAA";
+			ctx.lineWidth = 2;
+			var path = new Path2D();
+			path.moveTo(0, height2);
+			path.lineTo(width, height2);
+			ctx.stroke(path);
+			path = new Path2D();
+			if (maxValue >= 1) {
+				for (var r = 1; r <= maxValue; r++) {
+					var rr = r * yScale;
+					path.moveTo(0, height2 - rr);
+					path.lineTo(width, height2 - rr);
+					path.moveTo(0, height2 + rr);
+					path.lineTo(width, height2 + rr);
+				}
+			} else {
+				ctx.setLineDash([1.0, 5.0]);
+				for (var rrIndex = 1; rrIndex <= 10 * maxValue; rrIndex++) {
+					var subpixel = rrIndex * yScale / 10;
+					path.moveTo(0, height2 - subpixel);
+					path.lineTo(width, height2 - subpixel);
+					path.moveTo(0, height2 + subpixel);
+					path.lineTo(width, height2 + subpixel);
+				}
+			}
+			ctx.stroke(path);
+			ctx.restore();
+
+			ctx.save();
+			ctx.fillStyle = "rgba(100, 100, 100, 0.3)";
+			path = new Path2D();
+			var rmseX = 0;
+			for (var k in rmse) {
+				if (rmse[k])
+					path.rect(rmseX, 0, xScale, height);
+				rmseX += xScale;
+			}
+			ctx.fill(path);
+			ctx.restore();
+
+			ctx.save();
+			ctx.strokeStyle = "#33b5ff";
+			ctx.lineWidth = 2;
+			path = new Path2D();
+			var x = 0;
+			var y = height2 + ra[0] * yScale;
+			path.moveTo(x, y);
+			for (var m in ra) {
+				y = height2 + ra[m] * yScale;
+				path.lineTo(x, y);
+				x += xScale;
+				if (pulse)
+					path.lineTo(x, y);
+			}
+			ctx.stroke(path);
+			ctx.restore();
+
+			ctx.save();
+			ctx.strokeStyle = "#ff5555";
+			ctx.lineWidth = 2;
+			path = new Path2D();
+			x = 0;
+			y = height2 + dec[0] * yScale;
+			path.moveTo(x, y);
+			for (var n in dec) {
+				y = height2 + dec[n] * yScale;
+				path.lineTo(x, y);
+				x += xScale;
+				if (pulse)
+					path.lineTo(x, y);
+			}
+			ctx.stroke(path);
+			ctx.restore();
+
+			var scaleLabel = "±" + (maxValue < 1 ? maxValue.toFixed(1) : maxValue.toFixed(0)) + (unit || "px");
+			ctx.save();
+			ctx.fillStyle = "#ffffff";
+			ctx.font = "bold 16px sans-serif";
+			ctx.textAlign = "right";
+			ctx.textBaseline = "top";
+			ctx.fillText(scaleLabel, width - 5, 5);
+			ctx.restore();
+		}
+	},
+	template: `
+		<div class="indigo-guider-graph">
+			<canvas ref="driftCanvas" data-bs-toggle="tooltip" title="Drift"></canvas>
+			<canvas ref="corrCanvas" data-bs-toggle="tooltip" title="Corrections"></canvas>
+		</div>
+		`
+});
+
+
+app.component('indigo-wifi-setup', {
 	props: {
 		ap_property: Object,
 		infra_property: Object
 	},
 	data: function() {
 		return {
-			mode: ""
+			mode: "",
+			ssid: "",
+			password: ""
 		};
 	},
+	watch: {
+		ap_property: {
+			handler: function() {
+				this.reset();
+			},
+			deep: true,
+			immediate: true
+		},
+		infra_property: {
+			handler: function() {
+				this.reset();
+			},
+			deep: true
+		}
+	},
 	methods: {
-		onChange: function(e) {
-			this.mode = e.target.value;
-			if (this.mode == "AP") {
-				for (var i in this.ap_property.items) {
-					var item = this.ap_property.items[i];
-					if (item.name == "SSID") {
-						$("#SSID").val(item.value);
-					} else if (item.name == "PASSWORD") {
-						$("#PASSWORD").val(item.value);
-					}
-				}
-				$("#PASSWORD").removeAttr("placeholder");
-			} else if (this.mode == "INFRA") {
-				for (var i in this.infra_property.items) {
-					var item = this.infra_property.items[i];
-					if (item.name == "SSID") {
-						$("#SSID").val(item.value);
-					}
-				}
-				$("#PASSWORD").val("");
-				$("#PASSWORD").attr("placeholder", "<value is hidden>");
-			}
-		},
-		isAP: function() {
-			for (var i in this.ap_property.items) {
-				var item = this.ap_property.items[i];
-				if (item.name == "SSID" && item.value) {
-					this.mode = "AP";	
-					return true;
-				}
-			}
-			return false;
-		},
-		isInfra: function() {
-			for (var i in this.infra_property.items) {
-				var item = this.infra_property.items[i];
-				if (item.name == "SSID" && item.value) {
-					this.mode = "INFRA";	
-					return true;
-				}
-			}
-			return false;
-		},
-		value: function(name) {
-			for (var i in this.ap_property.items) {
-				var item = this.ap_property.items[i];
-				if (item.name == name && item.value) {
+		propertyValue: function(property, name) {
+			if (property == null)
+				return "";
+			for (var i in property.items) {
+				var item = property.items[i];
+				if (item.name == name && item.value)
 					return item.value;
-				}
-			}
-			for (var i in this.infra_property.items) {
-				var item = this.infra_property.items[i];
-				if (item.name == name && item.value) {
-					return item.value;
-				}
 			}
 			return "";
 		},
+		loadModeValues: function() {
+			if (this.mode == "AP") {
+				this.ssid = this.propertyValue(this.ap_property, "SSID");
+				this.password = this.propertyValue(this.ap_property, "PASSWORD");
+			} else if (this.mode == "INFRA") {
+				this.ssid = this.propertyValue(this.infra_property, "SSID");
+				this.password = "";
+			}
+		},
+		onChange: function() {
+			this.loadModeValues();
+		},
 		set: function() {
 			var values = {};
-			values["SSID"] = $("#SSID").val();
-			values["PASSWORD"] = $("#PASSWORD").val();
+			values["SSID"] = this.ssid;
+			values["PASSWORD"] = this.password;
 			if (this.mode == "AP") {
 				changeProperty(this.ap_property.device, this.ap_property.name, values);
 			} else if (this.mode == "INFRA") {
@@ -817,63 +2690,436 @@ Vue.component('indigo-wifi-setup', {
 			}
 		},
 		reset: function() {
-			for (var i in this.ap_property.items) {
-				var item = this.ap_property.items[i];
-				if (item.name == "SSID") {
-					if (item.value) {
-						$("#MODE").val("AP")
-						$("#PASSWORD").removeAttr("placeholder");
-						$("#SSID").val(item.value);
-					}
-				} else if (item.name == "PASSWORD") {
-					if (item.value) {
-						$("#PASSWORD").val(item.value);
-					}
-				}
+			if (this.propertyValue(this.infra_property, "SSID") != "") {
+				this.mode = "INFRA";
+			} else if (this.propertyValue(this.ap_property, "SSID") != "") {
+				this.mode = "AP";
+			} else if (this.mode == "") {
+				this.mode = "AP";
 			}
-			for (var i in this.infra_property.items) {
-				var item = this.infra_property.items[i];
-				if (item.name == "SSID") {
-					if (item.value) {
-						$("#MODE").val("INFRA")
-						$("#PASSWORD").val("");
-						$("#PASSWORD").attr("placeholder", "<value is hidden>");
-						$("#SSID").val(item.value);
-					}
-				}
-			}
+			this.loadModeValues();
 		}
 	},	
 	template: `
 		<div class="w-100 d-flex flex-wrap">
 			<div class="w-100 p-1">
-				<select id="MODE" class="custom-select ok-state" style="cursor: pointer" @change="onChange">
-					<option :selected="isAP()" value="AP">Configure access point</option>
-					<option :selected="isInfra()" value="INFRA">Join existing network</option>
+				<select id="MODE" class="form-select ok-state" style="cursor: pointer" v-model="mode" @change="onChange">
+					<option value="AP">Configure access point</option>
+					<option value="INFRA">Join existing network</option>
 				</select>
 			</div>
 			<div class="input-group p-1 w-100">
-				<div class="input-group-prepend">
-					<span class="input-group-text ok-state" style="width: 10em;">SSID</span>
-				</div>
-				<input id="SSID" type="text" class="form-control" :value="value('SSID')">
+				<span class="input-group-text ok-state" style="width: 10em;">SSID</span>
+				<input id="SSID" type="text" class="form-control" v-model="ssid">
 			</div>
 			<div class="input-group p-1 w-100">
-				<div class="input-group-prepend">
-					<span class="input-group-text ok-state" style="width: 10em;">Password</span>
-				</div>
-				<input id="PASSWORD" v-if="isInfra()" type="text" class="form-control" value="indigosky" :value="value('PASSWORD')" placeholder="<value is hidden>">
-				<input id="PASSWORD" v-else type="text" class="form-control" :value="value('PASSWORD')">
+				<span class="input-group-text ok-state" style="width: 10em;">Password</span>
+				<input id="PASSWORD" type="text" class="form-control" v-model="password" :placeholder="mode == 'INFRA' ? '<value is hidden>' : ''">
 			</div>
-			<div class="d-flex w-100 mt-1 p-1">
-				<button type="submit" class="btn btn-sm btn-primary ml-auto mr-2" @click.prevent="set()">Submit</button>
-				<button class="btn btn-sm btn-default mr-0" @click.prevent="reset()">Reset</button>
+			<div class="d-flex w-100 mt-1 p-1 indigo-command-row">
+				<button type="submit" class="btn btn-sm btn-primary ms-auto" @click.prevent="set()">Submit</button>
+				<button class="btn btn-sm btn-outline-secondary" @click.prevent="reset()">Reset</button>
 			</div>
 		</div>
 		`
 });
 
-Vue.component('indigo-internet-sharing', {
+app.component('indigo-sky-map', {
+	props: {
+		currentCoordinates: Array,
+		targetCoordinates: Array,
+		objectCoordinates: Array,
+		geoCoordinates: Object,
+		zoomLevel: {
+			type: Number,
+			default: 4
+		},
+		dark: {
+			type: Boolean,
+			default: false
+		}
+	},
+	emits: [ 'select-object' ],
+	data: function() {
+		return {
+			celestialConfig: null,
+			initialized: false,
+			localZoomLevel: this.zoomLevel,
+			follow: 0,
+			zooms: [ 500, 750, 1000, 1500, 2048, 2500 ],
+			canvas: null,
+			canvasClickHandler: null,
+			resizeHandler: null
+		};
+	},
+	mounted: function() {
+		this.celestialConfig = this.createConfig();
+		this.canvasClickHandler = this.canvasClick.bind(this);
+		this.resizeHandler = this.resize.bind(this);
+		window.addEventListener("resize", this.resizeHandler);
+		this.displayMap();
+	},
+	beforeUnmount: function() {
+		window.removeEventListener("resize", this.resizeHandler);
+		if (this.canvas != null)
+			this.canvas.removeEventListener("mousedown", this.canvasClickHandler);
+		if (window.indigoSkyMapComponent == this)
+			window.indigoSkyMapComponent = null;
+	},
+	watch: {
+		currentCoordinates: {
+			handler: function() {
+				this.redrawMap();
+			},
+			deep: true
+		},
+		targetCoordinates: {
+			handler: function() {
+				this.redrawMap();
+			},
+			deep: true
+		},
+		objectCoordinates: {
+			handler: function() {
+				this.redrawMap();
+			},
+			deep: true
+		},
+		geoCoordinates: {
+			handler: function() {
+				this.redrawMap();
+			},
+			deep: true
+		},
+		zoomLevel: function(value) {
+			if (value == this.localZoomLevel)
+				return;
+			this.localZoomLevel = value;
+			this.displayMap();
+		},
+		dark: function() {
+			this.displayMap();
+		}
+	},
+	methods: {
+		createConfig: function() {
+			return {
+				width: 2048,
+				projection: "stereographic",
+				transform: "equatorial",
+				interactive: false,
+				controls: false,
+				follow: "zenith",
+				background: { fill: "#fff", stroke: "#fff", opacity: 1, width: 1 },
+				container: "map",
+				datapath: "/data/",
+				stars: {
+					colors: true,
+					proper: true,
+					propernamelimit: 2,
+					propernamestyle: { fill: "#999", font: "13px -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif", align: "right", baseline: "bottom" },
+					style: { fill: "#000", opacity: 1 },
+					size: 5,
+					data: 'stars.json'
+				},
+				dsos: {
+					show: true,
+					names: true,
+					desig: true,
+					limit: 8,
+					namelimit: 5,
+					data: 'dsos.json',
+				},
+				constellations: {
+					show: true,
+					names: true,
+					desig: true,
+					lines: true,
+					bounds: false,
+					linestyle: { stroke: "#ccc", width: 1, opacity: 0.6 }
+				},
+				planets: {
+					show: true,
+					style: { fill: "#f00", font: "bold 17px 'Lucida Sans Unicode', Consolas, sans-serif", align: "center", baseline: "middle" },
+					data: 'planets.json',
+				},
+				mw: {
+					style: { fill:"#996", opacity: 0.1 }
+				}
+			};
+		},
+		applyTheme: function() {
+			if (this.dark) {
+				this.celestialConfig.background.fill = "#000";
+				this.celestialConfig.background.stroke = "#000";
+				this.celestialConfig.stars.style.fill = "#FFF";
+			} else {
+				this.celestialConfig.background.fill = "#fff";
+				this.celestialConfig.background.stroke = "#fff";
+				this.celestialConfig.stars.style.fill = "#000";
+			}
+		},
+		applyZoomConfig: function() {
+			this.celestialConfig.width = this.zooms[this.localZoomLevel];
+			switch (this.localZoomLevel) {
+				case 5:
+				case 4:
+					this.celestialConfig.stars.limit = 6;
+					this.celestialConfig.stars.proper = true;
+					this.celestialConfig.stars.propernamelimit = 2;
+					this.celestialConfig.constellations.names = true;
+					this.celestialConfig.dsos.names = true;
+					this.celestialConfig.dsos.limit = 6;
+					this.celestialConfig.dsos.namelimit = 4;
+					break;
+				case 3:
+				case 2:
+					this.celestialConfig.stars.limit = 4;
+					this.celestialConfig.stars.proper = true;
+					this.celestialConfig.stars.propernamelimit = 1.5;
+					this.celestialConfig.constellations.names = true;
+					this.celestialConfig.dsos.names = true;
+					this.celestialConfig.dsos.limit = 5;
+					this.celestialConfig.dsos.namelimit = 4;
+					break;
+				case 1:
+				case 0:
+					this.celestialConfig.stars.limit = 3;
+					this.celestialConfig.stars.proper = false;
+					this.celestialConfig.constellations.names = false;
+					this.celestialConfig.dsos.names = false;
+					break;
+			}
+		},
+		updateCenter: function() {
+			if (typeof Celestial === "undefined" || this.geoCoordinates == null)
+				return;
+			var latitude = this.geoCoordinates.latitude;
+			var longitude = this.geoCoordinates.longitude;
+			var pos = [ latitude, longitude ];
+			this.celestialConfig.geopos = pos;
+			this.celestialConfig.center = Celestial.getPoint(Celestial.horizontal.inverse(new Date(), [90, 0], pos), this.celestialConfig.transform);
+		},
+		addMarker: function() {
+			window.indigoSkyMapComponent = this;
+			if (window.indigoSkyMapMarkerAdded)
+				return;
+			Celestial.add({
+				type: "marker",
+				callback: function() {
+				},
+				redraw: function(error, json) {
+					if (window.indigoSkyMapComponent != null)
+						window.indigoSkyMapComponent.markerRedraw(error, json);
+				}
+			});
+			window.indigoSkyMapMarkerAdded = true;
+		},
+		displayMap: function() {
+			if (typeof Celestial === "undefined")
+				return;
+			if (this.celestialConfig == null)
+				this.celestialConfig = this.createConfig();
+			var firstDisplay = !this.initialized;
+			this.addMarker();
+			this.resize();
+			this.applyTheme();
+			this.applyZoomConfig();
+			this.updateCenter();
+			Celestial.display(this.celestialConfig);
+			this.initialized = true;
+			var self = this;
+			this.$nextTick(function() {
+				self.bindCanvas();
+				if (firstDisplay)
+					self.centerInitialView();
+				guiSetup();
+			});
+		},
+		redrawMap: function() {
+			if (typeof Celestial === "undefined")
+				return;
+			if (!this.initialized) {
+				this.displayMap();
+				return;
+			}
+			this.updateCenter();
+			if (this.celestialConfig.center != null)
+				Celestial.rotate({ center: this.celestialConfig.center });
+			if (Celestial.redraw != null)
+				Celestial.redraw();
+			this.scrollMovingMount();
+		},
+		bindCanvas: function() {
+			var map = this.$refs.mapViewport;
+			if (map == null)
+				return;
+			var canvas = map.querySelector("canvas");
+			if (canvas == null || canvas == this.canvas)
+				return;
+			if (this.canvas != null)
+				this.canvas.removeEventListener("mousedown", this.canvasClickHandler);
+			this.canvas = canvas;
+			this.canvas.addEventListener("mousedown", this.canvasClickHandler, false);
+		},
+		resize: function() {
+			var map = this.$refs.mapViewport;
+			if (map == null)
+				return;
+			map.style.maxHeight = "";
+		},
+		centerInitialView: function() {
+			var map = this.$refs.mapViewport;
+			if (map == null)
+				return;
+			map.scrollLeft = (this.celestialConfig.width - map.clientWidth) / 2;
+			map.scrollTop = (this.celestialConfig.width - map.clientWidth) / 2;
+		},
+		scrollToCoordinates: function(coordinates) {
+			var map = this.$refs.mapViewport;
+			if (map == null || coordinates == null || typeof Celestial === "undefined" || Celestial.mapProjection == null)
+				return;
+			var point = Celestial.mapProjection(coordinates);
+			map.scrollLeft = point[0] - map.clientWidth / 2;
+			map.scrollTop = point[1] - map.clientWidth / 2;
+		},
+		scrollMovingMount: function() {
+			if (typeof INDIGO === "undefined" || INDIGO.findProperty == null)
+				return;
+			var eqCoordinates = INDIGO.findProperty("Mount Agent", "MOUNT_EQUATORIAL_COORDINATES");
+			if (eqCoordinates != null && eqCoordinates.state == "Busy")
+				this.scrollToCoordinates(this.currentCoordinates);
+		},
+		zoomIn: function() {
+			if (this.localZoomLevel >= this.zooms.length - 1)
+				return;
+			this.setZoom(this.localZoomLevel + 1);
+		},
+		zoomOut: function() {
+			if (this.localZoomLevel <= 0)
+				return;
+			this.setZoom(this.localZoomLevel - 1);
+		},
+		setZoom: function(value) {
+			this.localZoomLevel = value;
+			if (this.$root != null)
+				this.$root.zoomLevel = value;
+			this.displayMap();
+		},
+		centerMarker: function() {
+			if (this.follow == 0) {
+				this.scrollToCoordinates(this.currentCoordinates);
+				this.follow = 1;
+			} else {
+				this.scrollToCoordinates(this.objectCoordinates);
+				this.follow = 0;
+			}
+			this.redrawMap();
+		},
+		canvasClick: function(e) {
+			if (typeof Celestial === "undefined" || Celestial.mapProjection == null)
+				return;
+			var coordinates = Celestial.mapProjection.invert([ e.offsetX, e.offsetY ]);
+			if (!indigoCatalogsLoaded) {
+				var self = this;
+				indigoLoadCelestialCatalogs().then(function() {
+					self.selectNearestObject(coordinates);
+				});
+				return;
+			}
+			this.selectNearestObject(coordinates);
+		},
+		selectNearestObject: function(coordinates) {
+			var bestX = 0;
+			var bestY = 0;
+			var dist = Math.pow(coordinates[0] - bestX, 2) + Math.pow(coordinates[1] - bestY, 2);
+			var catalogs = [ indigoStarCatalog, indigoDsoCatalog ];
+			for (var i = 0; i < catalogs.length; i++) {
+				for (var j = 0; j < catalogs[i].length; j++) {
+					var object = catalogs[i][j];
+					var d = Math.pow(coordinates[0] - object.raDeg, 2) + Math.pow(coordinates[1] - object.dec, 2);
+					if (d < dist) {
+						dist = d;
+						bestX = object.raDeg;
+						bestY = object.dec;
+					}
+				}
+			}
+			this.$emit('select-object', { ra: this.deg2h(bestX), dec: bestY });
+		},
+		deg2h: function(ra) {
+			return ra < 0 ? ra / 15 + 24 : ra / 15;
+		},
+		markerRedraw: function() {
+			if (typeof Celestial === "undefined" || Celestial.context == null || Celestial.mapProjection == null)
+				return;
+			if (this.currentCoordinates != null) {
+				Celestial.setStyle({ stroke: "#ff0000", width: 1 });
+				var point = Celestial.mapProjection(this.currentCoordinates);
+				Celestial.context.beginPath();
+				Celestial.context.arc(point[0], point[1], 10, 0, 2 * Math.PI);
+				Celestial.context.closePath();
+				Celestial.context.stroke();
+			}
+			if (this.targetCoordinates != null) {
+				var target = Celestial.mapProjection(this.targetCoordinates);
+				Celestial.context.beginPath();
+				Celestial.setStyle({ stroke: "#0000ff", width: 1 });
+				Celestial.context.moveTo(target[0] - 15, target[1]);
+				Celestial.context.lineTo(target[0] - 5, target[1]);
+				Celestial.context.moveTo(target[0] + 5, target[1]);
+				Celestial.context.lineTo(target[0] + 15, target[1]);
+				Celestial.context.moveTo(target[0], target[1] - 15);
+				Celestial.context.lineTo(target[0], target[1] - 5);
+				Celestial.context.moveTo(target[0], target[1] + 5);
+				Celestial.context.lineTo(target[0], target[1] + 15);
+				Celestial.context.closePath();
+				Celestial.context.stroke();
+			}
+			if (this.objectCoordinates != null) {
+				var object = Celestial.mapProjection(this.objectCoordinates);
+				Celestial.context.beginPath();
+				Celestial.setStyle({ stroke: "#00a000", width: 1 });
+				Celestial.context.moveTo(object[0] - 10, object[1] - 10);
+				Celestial.context.lineTo(object[0] - 3, object[1] - 3);
+				Celestial.context.moveTo(object[0] + 3, object[1] + 3);
+				Celestial.context.lineTo(object[0] + 10, object[1] + 10);
+				Celestial.context.moveTo(object[0] + 10, object[1] - 10);
+				Celestial.context.lineTo(object[0] + 3, object[1] - 3);
+				Celestial.context.moveTo(object[0] - 3, object[1] + 3);
+				Celestial.context.lineTo(object[0] - 10, object[1] + 10);
+				Celestial.context.closePath();
+				Celestial.context.stroke();
+			}
+		}
+	},
+	template: `
+		<div class="position-relative indigo-sky-map-frame">
+			<div ref="mapViewport" class="position-relative indigo-sky-map">
+				<div id="map" class="position-relative"></div>
+			</div>
+			<div v-if="initialized" class="position-absolute d-flex indigo-sky-map-controls">
+				<button class="btn btn-svg idle-state m-1" :disabled="localZoomLevel >= zooms.length - 1" @click.prevent="zoomIn" data-bs-toggle="tooltip" title="Zoom In">
+					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+						<path d="M27,14v4a1,1,0,0,1-1,1H19v7a1,1,0,0,1-1,1H14a1,1,0,0,1-1-1V19H6a1,1,0,0,1-1-1V14a1,1,0,0,1,1-1h7V6a1,1,0,0,1,1-1h4a1,1,0,0,1,1,1v7h7A1,1,0,0,1,27,14Z"/>
+					</svg>
+				</button>
+				<button class="btn btn-svg idle-state m-1" :disabled="localZoomLevel <= 0" @click.prevent="zoomOut" data-bs-toggle="tooltip" title="Zoom Out">
+					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+						<path d="M26,14v4a1,1,0,0,1-1,1H7a1,1,0,0,1-1-1V14a1,1,0,0,1,1-1H25A1,1,0,0,1,26,14Z"/>
+					</svg>
+				</button>
+				<button class="btn btn-svg idle-state m-1" @click.prevent="centerMarker" data-bs-toggle="tooltip" title="Center at marker">
+					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+						<path d="M16,4a8.9999,8.9999,0,0,0-9,9c0,6,6.7583,13.07764,8.16156,14.63135a1.13778,1.13778,0,0,0,1.67688,0C18.2417,26.07764,25,19,25,13A8.9999,8.9999,0,0,0,16,4Zm0,14a5,5,0,1,1,5-5A5.00013,5.00013,0,0,1,16,18Z"/>
+					</svg>
+				</button>
+			</div>
+		</div>
+		`
+});
+
+app.component('indigo-internet-sharing', {
 	props: {
 		property: Object
 	},
@@ -886,15 +3132,15 @@ Vue.component('indigo-internet-sharing', {
 	},
 	template: `
 		<div class="w-100 d-flex flex-wrap p-1">
-			<div v-for="item in property.items" class="col-sm-6 p-0 m-0 pr-2" style="min-width: 15rem">
+			<div v-for="item in property.items" class="col-sm-6 p-0 m-0 pe-2" style="min-width: 15rem">
 				<button v-if="item.value" disabled class="btn btn-sm btn-primary w-100 m-1">Internet sharing {{item.label}}</button>
-				<button v-else class="btn btn-sm w-100 m-1" :class="item.value ? 'btn-primary' : 'btn-default'" @click.prevent="setSwitch(property, item.name, !item.value)">Internet sharing {{item.label}}</button>
+				<button v-else class="btn btn-sm w-100 m-1" :class="item.value ? 'btn-primary' : 'btn-outline-secondary'" @click.prevent="setSwitch(property, item.name, !item.value)">Internet sharing {{item.label}}</button>
 			</div>
 		</div>
 		`
 });
 
-Vue.component('indigo-shutdown', {
+app.component('indigo-shutdown', {
 	props: {
 		property: Object
 	},
@@ -914,55 +3160,41 @@ Vue.component('indigo-shutdown', {
 		`
 });
 
+INDIGO = app.mount('#ROOT');
+
 function guiSetup() {
-	$('[data-toggle="tooltip"]').tooltip();
+	setupTooltips();
+	if (INDIGO != null && typeof INDIGO.$nextTick == "function")
+		INDIGO.$nextTick(setupTooltips);
 	localStorage.name = "indigo";
-	if (localStorage.getItem("dark_mode")) {
-		INDIGO.dark = true;
-		$('body').removeClass("bg-secondary").addClass("bg-dark");
-		$('input').removeClass("bg-light").addClass("bg-dark");
-		$('input').removeClass("text-dark").addClass("text-light");
-		$('textarea').removeClass("bg-light").addClass("bg-dark");
-		$('textarea').removeClass("text-dark").addClass("text-light");
-		$('div.bg-light').removeClass("bg-light").addClass("bg-secondary");
-		$('canvas.bg-light').removeClass("bg-light").addClass("bg-secondary");
-		if (typeof config !== 'undefined') {
-			config.background.fill = "#FFF";
-			config.stars.style.fill = "#000"
-		}
+	if (localStorage.getItem("light_mode")) {
+		setThemeState(false);
 	} else {
-		INDIGO.dark = false;
-		$('body').removeClass("bg-dark").addClass("bg-secondary");
-		$('input').removeClass("bg-dark").addClass("bg-light");
-		$('input').removeClass("text-light").addClass("text-dark");
-		$('textarea').removeClass("bg-dark").addClass("bg-light");
-		$('textarea').removeClass("text-light").addClass("text-dark");
-		$('div.bg-secondary').removeClass("bg-secondary").addClass("bg-light");
-		$('canvas.bg-secondary').removeClass("bg-secondary").addClass("bg-light");
+		setThemeState(true);
 	}
+}
+
+function setupTooltips() {
+	document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
+		bootstrap.Tooltip.getOrCreateInstance(el);
+	});
 }
 
 function setDarkMode() {
-	localStorage.setItem("dark_mode", true);
-	guiSetup();
-	if (typeof config !== 'undefined') {
-		config.background.fill = "#000";
-		config.stars.style.fill = "#FFF"
-		if (celestialVisible) {
-			Celestial.display(config);
-		}
-	}
+	localStorage.removeItem("light_mode");
+	setThemeState(true);
 }
 
 function setLightMode() {
-	localStorage.removeItem("dark_mode");
-	guiSetup();
-	if (typeof config !== 'undefined') {
-		config.background.fill = "#fff";
-		config.stars.style.fill = "#000"
-		if (celestialVisible) {
-			Celestial.display(config);
-		}
-	}
+	localStorage.setItem("light_mode", true);
+	setThemeState(false);
 }
 
+function setThemeState(dark) {
+	if (dark)
+		document.documentElement.setAttribute("data-theme", "dark");
+	else
+		document.documentElement.removeAttribute("data-theme");
+	if (INDIGO != null)
+		INDIGO.dark = dark;
+}

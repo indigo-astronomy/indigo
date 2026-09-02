@@ -366,8 +366,10 @@ static void focuser_timer_callback(indigo_device *device) {
 		return;
 	}
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	indigo_device *aux = device;
-	device = device->master_device;
+	indigo_device *aux = device->master_device ? device : NULL;
+	if (device->master_device) {
+		device = device->master_device;
+	}
 	char response[256], *value;
 	bool status_update = false;
 	if (steeldrive2_command(device, "$BS SUMMARY", response, sizeof(response))) {
@@ -406,11 +408,13 @@ static void focuser_timer_callback(indigo_device *device) {
 						status_update = true;
 					}
 				} else if (!strcmp(token, "PWM")) {
-					indigo_device *device = aux;
-					double tmp = indigo_atod(value);
-					if (AUX_HEATER_OUTLET_1_ITEM->number.value != tmp) {
-						AUX_HEATER_OUTLET_1_ITEM->number.value = tmp;
-						indigo_update_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
+					if (aux != NULL) {
+						indigo_device *device = aux;
+						double tmp = indigo_atod(value);
+						if (AUX_HEATER_OUTLET_1_ITEM->number.value != tmp) {
+							AUX_HEATER_OUTLET_1_ITEM->number.value = tmp;
+							indigo_update_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
+						}
 					}
 				} else if (!strcmp(token, "TEMP_AVG")) {
 					double tmp = indigo_atod(value);
@@ -435,7 +439,7 @@ static void focuser_timer_callback(indigo_device *device) {
 			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 		}
 	}
-	indigo_set_timer(device, PRIVATE_DATA->moving ? 0.1 : 0.5, focuser_timer_callback, &PRIVATE_DATA->timer);
+	indigo_reschedule_timer(device, PRIVATE_DATA->moving ? 0.1 : 0.5, &PRIVATE_DATA->timer);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
@@ -640,8 +644,9 @@ static void focuser_abort_handler(indigo_device *device) {
 static void focuser_name_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char command[64], response[256];
-	sprintf(command, "$BS SET NAME:%s", X_NAME_ITEM->text.value);
-	if (steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK")) {
+	if (snprintf(command, sizeof(command), "$BS SET NAME:%s", X_NAME_ITEM->text.value) >= (int)sizeof(command)) {
+		X_NAME_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else if (steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK")) {
 		X_NAME_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
 		X_NAME_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -1085,9 +1090,10 @@ static void aux_connection_handler(indigo_device *device) {
 static void aux_heater_outlet_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char command[64], response[256];
+	AUX_HEATER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
 	sprintf(command, "$BS SET PWM:%d", (int)AUX_HEATER_OUTLET_1_ITEM->number.value);
 	if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
-		X_SAVED_VALUES_PROPERTY->state = INDIGO_ALERT_STATE;
+		AUX_HEATER_OUTLET_PROPERTY->state = INDIGO_ALERT_STATE;
 	X_USE_PID_PROPERTY->state = INDIGO_OK_STATE;
 	int value;
 	if (steeldrive2_command(device, "$BS GET PID_CTRL", response, sizeof(response)) && sscanf(response, "$BS STATUS PID_CTRL:%d", &value) == 1) {
@@ -1118,7 +1124,7 @@ static void aux_heater_outlet_handler(indigo_device *device) {
 static void aux_dew_control_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char command[64], response[256];
-	X_USE_PID_PROPERTY->state = INDIGO_OK_STATE;
+	AUX_DEW_CONTROL_PROPERTY->state = INDIGO_OK_STATE;
 	sprintf(command, "$BS SET PID_CTRL:%d", AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value ? 1 : 0);
 	if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
 		AUX_DEW_CONTROL_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -1140,7 +1146,7 @@ static void aux_use_pid_handler(indigo_device *device) {
 static void aux_pid_settings_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char command[64], response[256];
-	X_USE_PID_PROPERTY->state = INDIGO_OK_STATE;
+	X_PID_SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
 	sprintf(command, "$BS SET PID_TARGET:%.2f", X_PID_SETTINGS_TARGET_ITEM->number.value);
 	indigo_fix_locale(command);
 	if (steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK")) {

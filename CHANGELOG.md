@@ -2,6 +2,163 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [3.0-6] - 02 Sep Wed 2026
+## Overall:
+- indigo_tools:
+	- indigo_generator: the generated multi-device connection handler no longer leaves the shared handle open when the driver specific initialization fails
+
+- indigo_test:
+	- integration test for the iOptron guide rate limits added
+
+- security and robustness sweep:
+	- hot-plug/connection races fixed in ccd_asi, wheel_asi, focuser_asi, rotator_asi, guider_asi, ccd_playerone, wheel_playerone, ccd_fli, focuser_fli, wheel_fli, ccd_svb, ccd_touptek, ccd_qsi and ccd_dsi - connect and disconnect are now serialized with the driver global hot-plug enumeration mutex
+	- close on connection failure fixed in the multi-device drivers ao_sx, aux_upb, aux_upb3, focuser_primaluce, mount_ioptron, mount_nexstaraux and mount_lx200
+	- a memory overflow, a dangling lock and a potential crash fixed in mount_synscan, guider_asi and ccd_touptek
+	- compiler warnings silenced
+
+## Driver changes:
+- indigo_mount_mxhd:
+	- new driver for MX-HD mounts added - #769
+
+- indigo_ccd_dsi:
+	- fix camera recognition, the camera wake-up sequence lost in the 3.0 migration is restored
+	- fix pre- and post-renumeration USB product IDs being treated as equivalent, a camera with the firmware already loaded is no longer re-flashed and a camera without firmware is no longer offered as a device
+
+- indigo_guider_asi:
+	- fix the hot-plug enumeration mutex left locked after a successful plug event, which blocked all later plug and unplug handling
+
+- indigo_ccd_touptek:
+	- fix potential crash when a disconnect is requested after a failed open
+
+- indigo_mount_ioptron:
+	- fix guide rate limits, the V2.5/V3 protocol accepts two digits per axis only
+	- fix :ST1# error handling, the success acknowledgement is now required
+
+- indigo_mount_lx200:
+	- fix shared device count underflow on autodetection failure, which prevented later reconnects
+	- fix the shared serial handle being left open when the focuser or AUX device detects an unsupported mount type
+
+- indigo_mount_asi:
+	- fix shared device count underflow on handshake failure or on a connection lost mid-session, which made the driver refuse to reopen the port until the server was restarted
+	- fix a failed mount handshake closing the shared connection while the guider was still using it
+
+- indigo_mount_synscan:
+	- fix crash in UDP discovery
+	- fix stack overflow while parsing a long host name in synscan://host:port
+	- fix guider pulse workers left blocked on disconnect
+
+- indigo_mount_pmc8:
+	- typos fixed
+
+
+# [3.0-5] - 31 Aug Mon 2026
+## Overall:
+- indigo_server:
+	- web GUI: complete refactoring - jQuery removed, Bootstrap upgraded to 5, Vue upgraded to 3
+	- web GUI: dark appearance is now the default
+	- web GUI: new astrometry page with agent controls, index toggles and image preview
+	- web GUI: imager page shows focus settings relevant to the selected focus estimator only, plus autofocus graph, selected star markers, dithering and meridian pause drop downs
+	- web GUI: guider page shows image preview with star markers, graphs moved into the preview as bottom overlay, and adds capture mode, exposure, guiding rate, drift detection, RA/Dec correction mode, integral stack, calibration and dithering sections
+	- web GUI: mount page uses mount agent coordinates and routes actions through AGENT_START_PROCESS
+	- web GUI: control panel has two-column wide-layout navigation
+	- web GUI: script editor redesigned to two-column layout with script list, dirty indicator and sequence script badges
+	- web GUI: messages and errors are timestamped
+	- web GUI: an unchanged script is no longer rewritten when it is executed or deleted
+
+- indigo_libs:
+	- dome slaving and field derotation moved from the dome drivers to the Mount Agent
+	- legacy SNOOP/SLAVING support removed from dome and mount drivers
+	- DOME_ON_HORIZONTAL_COORDINATES_SET renamed to DOME_ON_COORDINATES_SET
+	- AGENT_RESET_ITEM and MOUNT_STATE_SLEW_ITEM behaviour unified across agents and drivers
+	- message definition order changed for mount and dome drivers to send STATUS before other properties
+	- indigo_json: fix truncation of text values longer than 1023 characters, which shortened long scripts in any JSON client
+	- indigo_align: fix the sign of the derotation rate, it now matches the rate of change of the parallactic angle
+	- indigo_dome_driver: fix dome azimuth, sanitize dome dimensions so the mount geometry fits in the dome, change default dome dimensions, show dimensions with mm resolution
+	- indigo_ccd_driver: CCD_LENS.PHYSICAL_LENGTH added
+	- indigo_ccd_driver: session night file name template placeholder %N added - #744
+	- uni_io: serial port name added to the handle
+
+- indigo_test:
+	- serial simulators and integration tests added for 44 more drivers, 72 integration and 13 unit test executables in total
+	- unit tests added for the parallactic angle and the derotation rate
+
+- security and robustness sweep:
+	- possible memory overflows and state propagation issues fixed in agent_alpaca, agent_astap, agent_astrometry, agent_config, agent_imager, agent_mount, ccd_ptp, dome_nexdome3, focuser_steeldrive2, gps_gpsd, mount_synscan and system_ascol
+	- locking issues, memory leaks, a memory overflow and a dangling timer fixed in ccd_atik2, focuser_mjkzz_bt and focuser_wemacro_bt
+
+## Driver changes:
+- indigo_agent_mount:
+	- dome slaving support added, the slaved dome follows the mount only when the mount is unparked and tracking
+	- field derotation refactored, derotation runs only when the mount is unparked and tracking
+	- AGENT_MOUNT_ENABLE_DOME_SLAVING, AGENT_MOUNT_ENABLE_DEROTATION and AGENT_MOUNT_ENABLE_JOYSTICK_CONTROL added to AGENT_PROCESS_FEATURES
+	- AGENT_DOME_START_... added to AGENT_START_PROCESS, AGENT_DOME_STATE and AGENT_DOME_FEATURES added
+	- AGENT_MOUNT_STATE_SLAVED_DOME and AGENT_MOUNT_STATE_SLAVED_ROTATOR added to AGENT_MOUNT_STATE
+	- joystick support added
+	- slew and sync processes execute driver operations simultaneously, the rotator moves together with the mount and the dome
+	- park/unpark of a slaved dome happens simultaneously with the master mount
+	- abort process aborts rotator motion as well
+	- dome slaving waits for the end of a manual mount move
+	- fix dome slaving in the southern hemisphere, hysteresis removed from dome sync
+	- fix slaving lights: alert state is propagated, lights are turned off when the rotator or the mount is deselected
+
+- indigo_agent_scripting:
+	- wait_until_solar_altitude_below, wait_until_target_altitude_above, break_if_solar_altitude_above and break_if_target_altitude_below added to the sequencer
+	- Sequencer.js updated with dome slaving and field derotation
+
+- indigo_ccd_ptp:
+	- Olympus OM-1 support added
+	- image format count increased from 6 to 7
+	- DSLR_DELETE_IMAGE item names fixed
+
+- indigo_ccd_rpi:
+	- fixed - #771
+
+- indigo_rotator_falcon:
+	- fix goto reporting completion while the rotator was still moving and hanging busy on a goto to the current position
+
+- indigo_wheel_indigo:
+	- fix occasional slow or garbage response leaving the wheel in a wrong state
+
+- indigo_dome_dragonfly:
+	- failed lunatico_open handled correctly
+
+- indigo_dome_talon6ror:
+	- superfluous pthread_mutex_unlock removed
+
+- indigo_dome_simulator:
+	- DOME_STATE support added
+	- shutter control fixed
+
+- indigo_rotator_simulator:
+	- reverse direction support added
+	- rotator uses the shortest path for movement
+
+- indigo_mount_simulator:
+	- unified message added
+
+- indigo_mount_lx200:
+	- do not switch mount type when starting tracking - #759
+
+- indigo_mount_ioptron:
+	- can park fixed for CEM70, CEM70EC, CEM26 and CEM26EC
+	- fix malformed :SPA and :SPH commands used to set the default park position
+
+- indigo_focuser_dsd:
+	- focuser timer rescheduling fixed
+
+- indigo_focuser_mjkzz_bt:
+	- wrong name fixed
+
+- indigo_aux_joystick:
+	- focuser mapping removed, code cleanup
+
+- indigo_agent_config:
+	- fix deadlock while loading a configuration
+
+- indigo_ccd_simulator:
+	- JPEG preview added for platesolver agents
+
+
 # [3.0-4] - 16 Aug Sun 2026
 ## Overall:
 - indigo_server:

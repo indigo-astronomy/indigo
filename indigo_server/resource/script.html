@@ -2,112 +2,126 @@
 <html>
 	<head>
 		<meta charset="utf-8"/>
-		<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
-		<link rel="stylesheet" href="bootstrap.min.css"/>
-		<link rel="stylesheet" href="glyphicons.css"/>
-		<link rel="stylesheet" href="indigo.css"/>
-	</head>
+			<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
+			<link rel="stylesheet" href="bootstrap.min.css"/>
+			<link rel="stylesheet" href="glyphicons.css"/>
+			<link rel="stylesheet" href="indigo.css"/>
+		</head>
 	<title>INDIGO Script</title>
 	<body class="bg-secondary">
 		<div id="ROOT">
-			<nav class="navbar navbar-expand-md navbar-light">
-				<a class="navbar-brand text-white " href="#">
-					<img src="guider.png" width="40" height="40" class="d-inline-block align-middle" alt=""/>
-					<h4 class="title">INDIGO Script</h4>
-				</a>
-				<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarContent">
-					<span class="navbar-toggler-icon"></span>
-				</button>
-				<div id="navbarContent" class="form-inline collapse navbar-collapse m-0">
-					<template v-if="findProperty('Server', 'FEATURES') != null">
-						<a class="nav-link pr-0 ml-auto" href="mng.html" data-toggle="tooltip" title="Server Manager">
-							<img src="mng.png" width="40" height="40" class="align-middle mr-0" alt=""/>
-						</a>
-						<a class="nav-link pr-0" href="ctrl.html" data-toggle="tooltip" title="Control Panel">
-							<img src="ctrl.png" width="40" height="40" class="align-middle mr-0" alt=""/>
-						</a>
-						<template v-if="findProperty('Server', 'FEATURES').item('WEB_APPS').value">
-							<a class="nav-link pr-0" href="imager.html" data-toggle="tooltip" title="Imager">
-								<img src="imager.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
-							</a>
-							<a class="nav-link pr-0" href="mount.html" data-toggle="tooltip" title="Mount">
-								<img src="mount.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
-							</a>
-							<a class="nav-link pr-0" href="guider.html" data-toggle="tooltip" title="Scripting">
-								<img src="guider.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
-							</a>
-							<a class="nav-link pr-0" href="script.html" data-toggle="tooltip" title="Script">
-								<img src="script.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
-							</a>
-						</template>
-					</template>
-				</div>
-			</nav>
+			<indigo-navbar active="script" title="INDIGO Script" icon="script.png" expand="md"></indigo-navbar>
 			<div class="container-fluid">
 				<div v-if="devices['Scripting Agent'] == null" class="alert alert-warning alert-dismissible m-1" role="alert">
 					Waiting for Scripting agent...
 				</div>
 				<template v-else>
-					<div class="row no-gutters">
-						<div id="property" v-for="property in scriptsProperties()" :class="'col-md-' + 12 / columns">
+					<div class="row g-0">
+						<div class="col-xl-4 indigo-side-panel">
+							<div class="card p-1 m-1 bg-light">
+								<div class="d-flex flex-wrap gap-1 m-1 p-1 indigo-command-row">
+										<button type="button" class="btn btn-svg idle-state" :disabled="sequenceRunning()" data-bs-toggle="tooltip" title="Create new script" aria-label="Create new script" @click="newScript()">
+											<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+												<path d="M18,6H14v8H6v4h8v8h4V18h8V14H18Z"/>
+											</svg>
+										</button>
+										<button type="button" class="btn btn-svg idle-state" :disabled="selectedProperty == null || scriptDirty || sequenceRunning()" data-bs-toggle="tooltip" title="Delete script" aria-label="Delete script" @click="deleteScript()">
+											<span class="glyphicons glyphicons-bin indigo-script-delete-icon" aria-hidden="true"></span>
+										</button>
+										<button type="button" class="btn btn-svg" :class="scriptOnLoadActive(selectedProperty) ? 'ok-state' : 'idle-state'" :disabled="selectedProperty == null || isSequenceScript(selectedProperty) || findProperty('Scripting Agent', 'AGENT_SCRIPTING_ON_LOAD_SCRIPT') == null || sequenceRunning()" data-bs-toggle="tooltip" title="Execute script on agent load" aria-label="Execute script on agent load" @click="toggleScriptOnLoad(selectedProperty)">
+											<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+												<path d="M22.99933,9.46185V22.53821a.8.8,0,0,1-1.2312.67383L11.55219,16.67383a.8.8,0,0,1,0-1.34766L21.76813,8.788A.8.8,0,0,1,22.99933,9.46185ZM10,8H9A1,1,0,0,0,8,9V23a1,1,0,0,0,1,1h1a1,1,0,0,0,1-1V9A1,1,0,0,0,10,8Z"/>
+											</svg>
+										</button>
+										<button type="button" class="btn btn-svg" :class="scriptOnUnloadActive(selectedProperty) ? 'ok-state' : 'idle-state'" :disabled="selectedProperty == null || isSequenceScript(selectedProperty) || findProperty('Scripting Agent', 'AGENT_SCRIPTING_ON_UNLOAD_SCRIPT') == null || sequenceRunning()" data-bs-toggle="tooltip" title="Execute script on agent unload" aria-label="Execute script on agent unload" @click="toggleScriptOnUnload(selectedProperty)">
+											<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+												<path d="M20.44781,15.32617a.8.8,0,0,1,0,1.34766L10.23187,23.212a.8.8,0,0,1-1.2312-.67383V9.46185a.8.8,0,0,1,1.2312-.67383ZM23,8H22a1,1,0,0,0-1,1V23a1,1,0,0,0,1,1h1a1,1,0,0,0,1-1V9A1,1,0,0,0,23,8Z"/>
+											</svg>
+										</button>
+										<button type="button" class="btn btn-svg idle-state ms-auto" :disabled="!scriptDirty || scriptSaveProperty() == null || sequenceRunning()" data-bs-toggle="tooltip" :title="selectedProperty == null ? 'Save new script' : 'Save script name and text'" :aria-label="selectedProperty == null ? 'Save new script' : 'Save script name and text'" @click="saveScript()">
+											<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+												<path fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" d="M5,18L12,26L27,6"/>
+											</svg>
+										</button>
+										<button type="button" class="btn btn-svg idle-state" :disabled="!scriptDirty || selectedProperty == null || sequenceRunning()" data-bs-toggle="tooltip" title="Reset script" aria-label="Reset script" @click="resetScript()">
+											<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+												<path fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" d="M7,7L25,25M7,25L25,7"/>
+											</svg>
+										</button>
+								</div>
+								<div class="d-flex flex-wrap gap-1 m-1 p-1 indigo-command-row">
+										<button type="button" class="btn btn-svg" :class="sequenceRunning() ? 'busy-state' : 'idle-state'" :disabled="selectedProperty == null || scriptDirty || sequenceRunning()" data-bs-toggle="tooltip" title="Execute script" aria-label="Execute script" @click="executeScript()">
+											<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+												<path d="M9,5V27L25,16Z"/>
+											</svg>
+										</button>
+										<button type="button" class="btn btn-svg ms-auto" :class="sequencePaused() ? 'busy-state' : 'idle-state'" :disabled="!sequenceRunning()" data-bs-toggle="tooltip" title="Pause sequence" aria-label="Pause sequence" @click="togglePauseSequence()">
+											<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+												<rect x="8" y="5" width="5" height="22"/><rect x="19" y="5" width="5" height="22"/>
+											</svg>
+										</button>
+										<button type="button" class="btn btn-svg" :class="sequenceAbortProperty() && sequenceAbortProperty().state == 'Busy' ? 'busy-state' : sequenceAbortProperty() && sequenceAbortProperty().state == 'Alert' ? 'alert-state' : 'idle-state'" :disabled="!sequenceRunning()" data-bs-toggle="tooltip" title="Abort sequence" aria-label="Abort sequence" @click="abortSequence()">
+											<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+												<rect x="6" y="6" width="20" height="20"/>
+											</svg>
+										</button>
+								</div>
+								<div class="d-flex flex-wrap m-1">
+										<div class="p-1 w-25" data-bs-toggle="tooltip" title="Current step">
+											<div class="indigo-chip indigo-readonly-chip w-100 d-flex align-items-center">
+												<span class="indigo-chip-icon">step</span>
+												<span class="indigo-chip-value">{{ sequenceStateItem('PROGRESS') }}</span>
+											</div>
+										</div>
+										<div class="p-1 w-25" data-bs-toggle="tooltip" title="Total steps">
+											<div class="indigo-chip indigo-readonly-chip w-100 d-flex align-items-center">
+												<span class="indigo-chip-icon">stps</span>
+												<span class="indigo-chip-value">{{ sequenceStateItem('PROGRESS_TOTAL') }}</span>
+											</div>
+										</div>
+										<div class="p-1 w-25" data-bs-toggle="tooltip" title="Current exposure">
+											<div class="indigo-chip indigo-readonly-chip w-100 d-flex align-items-center">
+												<span class="indigo-chip-icon">exp</span>
+												<span class="indigo-chip-value">{{ sequenceStateItem('EXPOSURE') }}</span>
+											</div>
+										</div>
+										<div class="p-1 w-25" data-bs-toggle="tooltip" title="Total exposures">
+											<div class="indigo-chip indigo-readonly-chip w-100 d-flex align-items-center">
+												<span class="indigo-chip-icon">exps</span>
+												<span class="indigo-chip-value">{{ sequenceStateItem('EXPOSURE_TOTAL') }}</span>
+											</div>
+										</div>
+								</div>
+							</div>
+							<div class="card p-1 m-1 mt-2 bg-light">
+								<div class="list-group indigo-script-list m-1 p-1 overflow-auto" :class="sequenceRunning() ? 'pe-none opacity-50' : ''" style="max-height: calc(100vh - 170px)">
+									<template v-for="property in scriptsProperties()" :key="property.name">
+											<button v-if="property.name!='AGENT_SCRIPTING_ADD_SCRIPT'" type="button" class="list-group-item list-group-item-action" :class="property == selectedProperty ? 'ctrl-tree-selected' : ''" data-bs-toggle="tooltip" :title="'Select ' + sequenceScriptDisplayLabel(property)" @click="selectScript(property)">
+												{{ sequenceScriptDisplayLabel(property) }}<span v-if="isSequenceScript(property)" class="badge bg-secondary" style="float:right;margin-right:1.2rem">sequence</span>
+											</button>
+									</template>
+								</div>
+							</div>
+						</div>
+						<div class="col-xl-8" :class="sequenceRunning() ? 'pe-none opacity-50' : ''">
 							<div class="card p-1 m-1 bg-light">
 								<form class="m-0">
-									<div v-if="property.name=='AGENT_SCRIPTING_ADD_SCRIPT'" class="form-group row m-1 p-1">
-										<input :id="'N_'+property.name" type="text" class="form-control" placeholder="New script name" @input="Vue.set(property, 'dirty', true)">
-									</div>
-									<div v-else class="form-group row m-1 p-1">
-										<input :id="'N_'+property.name" type="text" class="form-control" placeholder="No script name" :value="property.label" @input="Vue.set(property, 'dirty', true)">
-									</div>
-									<div v-if="property.name=='AGENT_SCRIPTING_ADD_SCRIPT'" class="form-group row m-1 p-1">
-										<textarea :id="'S_'+property.name" class="form-control fixed" rows="3" placeholder="New script" @input="Vue.set(property, 'dirty', true)"></textarea>
-									</div>
-									<div v-else class="form-group row m-1 p-1">
-										<textarea :id="'S_'+property.name" class="form-control fixed" rows="3" placeholder="No script" @input="Vue.set(property, 'dirty', true)">{{ property.item('SCRIPT').value }}</textarea>
-									</div>
-									<div class="float-left m-1 m-1 p-1">
-										<button type="button" class="btn btn-sm ml-1" :class="findProperty('Scripting Agent', 'AGENT_SCRIPTING_ON_LOAD_SCRIPT').item(property.name).value ? 'btn-primary' : 'btn-default'" style="min-width: 6rem" data-toggle="tooltip" title="Execute script on agent load" @click="onLoad(property)">On load</button>
-										<button type="button" class="btn btn-sm ml-1" :class="findProperty('Scripting Agent', 'AGENT_SCRIPTING_ON_UNLOAD_SCRIPT').item(property.name).value ? 'btn-primary' : 'btn-default'" style="min-width: 6rem" data-toggle="tooltip" title="Execute script on agent unload" @click="onUnload(property)">On unload</button>
-									</div>
-									<div class="float-right m-1 m-1 p-1">
-										<button v-if="property.name!='AGENT_SCRIPTING_ADD_SCRIPT'" type="button" class="btn btn-sm btn-success ml-1" style="min-width: 6rem" :disabled="property.dirty" data-toggle="tooltip" title="Execute script" @click="execute(property)">Execute</button>
-										<button v-if="property.name!='AGENT_SCRIPTING_ADD_SCRIPT'" type="button" class="btn btn-sm btn-danger ml-1" style="min-width: 6rem" :disabled="property.dirty" data-toggle="tooltip" title="Delete script" @click="remove(property)">Delete</button>
-										<button v-if="property.name=='AGENT_SCRIPTING_ADD_SCRIPT'" type="button" class="btn btn-sm btn-primary ml-1" style="min-width: 6rem" data-toggle="tooltip" title="Create new script" @click="save(property)">Create</button>
-										<button v-else type="button" class="btn btn-sm btn-primary ml-1" style="min-width: 6rem" data-toggle="tooltip" title="Save script name and text" @click="save(property); property.dirty = false">Save</button>
-									</div>
+									<indigo-script-editor ref="scriptEditor" :property="selectedProperty" @change="scriptChanged()"></indigo-script-editor>
 								</form>
 							</div>
 						</div>
 					</div>
 				</template>
-				<div id="SUCCESS" class="alert alert-success alert-dismissible fade show m-1" role="alert" style="display:none;">
-					{{ state }}
-					<span v-if="findProperty('Server', 'INFO')" class="float-right">
-						INDIGO Server {{findProperty('Server', 'INFO').item('VERSION').value}} at {{findProperty('Server', 'INFO').item('SERVICE').value}}
-					</span>
-				</div>
-				<div id="FAILURE" class="alert alert-danger alert-dismissible fade show m-1" role="alert" style="display:none;">
-					{{ state }}
-				</div>
-				<div id="MESSAGE" class="alert alert-warning alert-dismissible fade show m-1" role="alert" style="display:none;">
-					{{ state }}
-				</div>
-				<div class="alert alert-info show m-1" role="alert">
-					Copyright &copy; 2019-2025, The INDIGO Initiative. All rights reserved.
-					<a v-if="dark" href="#" class="float-right" onclick="setLightMode()">Switch to light appearance</a>
-					<a v-else href="#" class="float-right" onclick="setDarkMode()">Switch to dark appearance</a>
-					<a v-if="columns == 3" href="#" class="float-right mr-3" onclick="$('div.col-md-4').removeClass('col-md-4').addClass('col-md-12');INDIGO.columns=1">Switch to 1 column</a>
-					<a v-else href="#" class="float-right mr-3" onclick="$('div.col-md-12').removeClass('col-md-12').addClass('col-md-4');INDIGO.columns=3">Switch to 3 columns</a>
-				</div>
+				<indigo-status-bar></indigo-status-bar>
 			</div>
 		</div>
 	</body>
 	<script src="jquery.min.js"></script>
-	<script src="popper.min.js"></script>
 	<script src="bootstrap.min.js"></script>
-	<script src="vue.min.js"></script>
+	<script src="vue.global.prod.js"></script>
 	<script src="indigo.js"></script>
 	<script src="components.js"></script>
-	<script language="javascript" type="text/javascript">
+	<script>
 		
 		indigoURL = new URL((window.location.protocol == "https:" ? "wss://" : "ws://") + window.location.host);
 		guiSetup();
@@ -135,11 +149,18 @@
 			}
 		}
 	
-		function onDefineProperty(property) {
-			onUpdateProperty(property);
-		}
+			function onDefineProperty(property) {
+				INDIGO.scriptDefined(property);
+				onUpdateProperty(property);
+			}
 
 		function onUpdateProperty(property) {
+			if (property.device === 'Scripting Agent' && property.name === 'SEQUENCE_STATE') {
+				document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
+					var tip = bootstrap.Tooltip.getInstance(el);
+					if (tip) tip.hide();
+				});
+			}
 			guiSetup();
 		}
 	
@@ -147,39 +168,5 @@
 			guiSetup();
 		}
 	
-		function onLoad(property) {
-			var values = {};
-			values[property.name] = !INDIGO.findProperty('Scripting Agent', 'AGENT_SCRIPTING_ON_LOAD_SCRIPT').item(property.name).value;
-			changeProperty('Scripting Agent', 'AGENT_SCRIPTING_ON_LOAD_SCRIPT', values);
-		}
-
-		function onUnload(property) {
-			var values = {};
-			values[property.name] = !INDIGO.findProperty('Scripting Agent', 'AGENT_SCRIPTING_ON_UNLOAD_SCRIPT').item(property.name).value;
-			changeProperty('Scripting Agent', 'AGENT_SCRIPTING_ON_UNLOAD_SCRIPT', values);
-		}
-
-		function save(property) {
-			var values = {};
-			var name = $("#N_" + property.name);
-			var script = $("#S_" + property.name);
-			values['NAME'] = name.val()
-			values['SCRIPT'] = script.val()
-			changeProperty('Scripting Agent', property.name, values);
-		}
-	
-		function remove(property) {
-			save(property);
-			var values = {};
-			values[property.name] = true;
-			changeProperty('Scripting Agent', 'AGENT_SCRIPTING_DELETE_SCRIPT', values);
-		}
-
-		function execute(property) {
-			save(property);
-			var values = {};
-			values[property.name] = true;
-			changeProperty('Scripting Agent', 'AGENT_SCRIPTING_EXECUTE_SCRIPT', values);
-		}
-	</script>
-</html>
+		</script>
+	</html>

@@ -15,11 +15,20 @@ Read the relevant documentation before changing behavior:
 - `indigo_docs/DRIVER_DEVELOPMENT_BASICS.md` is the main reference for driver lifecycle, property semantics, INDIGO 3.0 APIs, portable I/O, and handler queues.
 - `indigo_docs/DRIVER_GENERATOR_MIGRATION.md` documents generated-driver migration.
 - `indigo_docs/MAKEFILES.md` explains the makefile layers.
-- `indigo_docs/PROPERTIES.md` and `indigo_libs/indigo/indigo_names.h` define standard property names.
 - `indigo_docs/SERIAL_DEVICE_SIMULATORS.md` documents the host-side serial simulator contract, ready-file convention, and refactored simulator inventory.
 - `indigo_drivers/*/README.md` files document driver-specific hardware, prerequisites, connection details, limitations, and operational notes.
 - `indigo_test/AGENTS.md` documents automated-test layout, harness conventions, simulator integration rules, and test cleanup.
 - `REVIEW.md` indexes incremental automatic code review state and links to folder-level review files.
+
+## Properties reference
+
+The properties reference is maintained in `indigo_docs/PROPERTIES.md`. Keep this file up to date when changing source code. Source files for documented property sections are listed in `indigo_docs/PROPERTIES.md` at the end of each section; use those per-section source notes as the authoritative mapping.
+
+Always look for:
+- indigo_init_*_property() function calls
+- indigo_init_*_item() function calls
+- *_PROPERTY->count = ... statements
+- *_PROPERTY->hidden = ... statements
 
 ## Formatting
 

@@ -24,7 +24,7 @@
  */
 
 #define DRIVER_VERSION 0x02000002
-#define DRIVER_NAME "indigo_ccd_mjkzz_bt"
+#define DRIVER_NAME "indigo_focuser_mjkzz_bt"
 
 #include <stdlib.h>
 #include <string.h>
@@ -56,6 +56,7 @@ static indigo_result focuser_detach(indigo_device *device);
 -(void)connect;
 -(void)command:(char)cmd index:(int)index value:(int)value;
 -(void)disconnect;
+-(void)shutdown;
 @end
 
 #pragma clang diagnostic ignored "-Wshadow-ivar"
@@ -132,7 +133,6 @@ static indigo_result focuser_detach(indigo_device *device);
 			if (stackrail == nil) {
 				for (CBPeripheral *peripheral in [central retrieveConnectedPeripheralsWithServices:@[[CBUUID UUIDWithString:@"FFE0"]]]) {
 					if ([peripheral.name isEqualToString:@"STACKRAIL"]) {
-						CFBridgingRetain(peripheral);
 						stackrail = peripheral;
 						peripheral.delegate = self;
 						[self createDevice];
@@ -157,7 +157,6 @@ static indigo_result focuser_detach(indigo_device *device);
 
 -(void)centralManager:(CBCentralManager *)central didDiscoverPeripheral:(CBPeripheral *)peripheral advertisementData:(NSDictionary<NSString *,id> *)advertisementData RSSI:(NSNumber *)RSSI {
 	if ([peripheral.name isEqualToString:@"STACKRAIL"]) {
-		CFBridgingRetain(peripheral);
 		stackrail = peripheral;
 		peripheral.delegate = self;
 		[self createDevice];
@@ -207,6 +206,8 @@ static indigo_result focuser_detach(indigo_device *device);
 }
 
 -(void)peripheral:(CBPeripheral *)peripheral didUpdateValueForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error {
+	if (characteristic.value.length < sizeof(mjkzz_message))
+		return;
 	mjkzz_message *message = (mjkzz_message *)characteristic.value.bytes;
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "< %02x%02x%02x%02x%02x%02x%02x%02x", message->ucADD, message->ucCMD, message->ucIDX, message->ucMSG[0], message->ucMSG[1], message->ucMSG[2], message->ucMSG[3], message->ucSUM);
 	if (message->ucADD == 0x81) {
@@ -285,6 +286,19 @@ static indigo_result focuser_detach(indigo_device *device);
 -(void)disconnect {
 	if (stackrail.state != CBPeripheralStateDisconnected)
 		[central cancelPeripheralConnection:stackrail];
+}
+
+-(void)shutdown {
+	central.delegate = nil;
+	@synchronized(self) {
+		if (scanning) {
+			[central stopScan];
+			scanning = false;
+		}
+	}
+	if (stackrail != nil && stackrail.state != CBPeripheralStateDisconnected)
+		[central cancelPeripheralConnection:stackrail];
+	[self deleteDevice];
 }
 
 @end
@@ -419,6 +433,7 @@ indigo_result indigo_focuser_mjkzz_bt(indigo_driver_action action, indigo_driver
 
 		case INDIGO_DRIVER_SHUTDOWN:
 			last_action = action;
+			[delegate shutdown];
 			delegate = nil;
 			break;
 

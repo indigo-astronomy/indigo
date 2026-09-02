@@ -943,12 +943,10 @@ static indigo_result dome_attach(indigo_device *device) {
 		DOME_SPEED_PROPERTY->hidden = true;
 		DOME_DIRECTION_PROPERTY->hidden = true;
 		DOME_HORIZONTAL_COORDINATES_PROPERTY->hidden = true;
-		DOME_EQUATORIAL_COORDINATES_PROPERTY->hidden = true;
 		DOME_DIRECTION_PROPERTY->hidden = true;
 		DOME_STEPS_PROPERTY->hidden = true;
 		DOME_PARK_PROPERTY->hidden = true;
 		DOME_DIMENSION_PROPERTY->hidden = true;
-		DOME_SLAVING_PROPERTY->hidden = true;
 		DOME_SLAVING_PARAMETERS_PROPERTY->hidden = true;
 		// Relabel Open / Close
 		INDIGO_COPY_VALUE(DOME_SHUTTER_PROPERTY->label, "Shutter / Roof");
@@ -999,6 +997,9 @@ static void handle_dome_connect_property(indigo_device *device) {
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, false);
 					lunatico_close(device);
 				}
+			} else {
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, false);
 			}
 		}
 	} else {

@@ -10,146 +10,200 @@
 	<title>INDIGO Guider</title>
 	<body class="bg-secondary">
 		<div id="ROOT">
-			<nav class="navbar navbar-expand-md navbar-light">
-				<a class="navbar-brand text-white " href="#">
-					<img src="guider.png" width="40" height="40" class="d-inline-block align-middle" alt=""/>
-					<h4 class="title">INDIGO Guider</h4>
-				</a>
-				<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarContent">
-					<span class="navbar-toggler-icon"></span>
-				</button>
-				<div id="navbarContent" class="form-inline collapse navbar-collapse m-0">
-					<template v-if="findProperty('Server', 'FEATURES') != null">
-						<a class="nav-link pr-0 ml-auto" href="mng.html" data-toggle="tooltip" title="Server Manager">
-							<img src="mng.png" width="40" height="40" class="align-middle mr-0" alt=""/>
-						</a>
-						<a class="nav-link pr-0" href="ctrl.html" data-toggle="tooltip" title="Control Panel">
-							<img src="ctrl.png" width="40" height="40" class="align-middle mr-0" alt=""/>
-						</a>
-						<template v-if="findProperty('Server', 'FEATURES').item('WEB_APPS').value">
-							<a class="nav-link pr-0" href="imager.html" data-toggle="tooltip" title="Imager">
-								<img src="imager.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
-							</a>
-							<a class="nav-link pr-0" href="mount.html" data-toggle="tooltip" title="Mount">
-								<img src="mount.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
-							</a>
-							<a class="nav-link pr-0" href="guider.html" data-toggle="tooltip" title="Guider">
-								<img src="guider.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
-							</a>
-							<a class="nav-link pr-0" href="script.html" data-toggle="tooltip" title="Script">
-								<img src="script.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
-							</a>
-						</template>
-					</template>
-				</div>
-			</nav>
+			<indigo-navbar active="guider" title="INDIGO Guider" icon="guider.png" expand="md"></indigo-navbar>
 			<div class="container-fluid">
 				<div v-if="devices['Guider Agent'] == null" class="alert alert-warning alert-dismissible m-1" role="alert">
 					Waiting for Guider agent...
 				</div>
 				<template v-else>
-					<div class="row no-gutters">
-						<div class="col-md-4" style="min-width:360px">
+					<div class="row g-0">
+						<div class="col-xl-4 indigo-side-panel">
 							<template v-if="findProperty('Guider Agent', 'FILTER_CCD_LIST') != null">
 								<div class="card p-1 m-1 bg-light">
-									<div class="card-block d-flex flex-wrap">
+									<div class="card-body d-flex flex-wrap">
 										<indigo-select-item :property="findProperty('Guider Agent', 'FILTER_CCD_LIST')"></indigo-select-item>
+										<template v-if="window.guiderCameraSelected()">
+											<indigo-select-item :property="findProperty('Guider Agent', 'CCD_MODE')" :cls="'w-50'"></indigo-select-item>
+											<indigo-number-dropdown :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'EXPOSURE'" :values="[{ label: 'Exposure 0 s', value: 0 }, { label: 'Exposure 0.1 s', value: 0.1 }, { label: 'Exposure 0.2 s', value: 0.2 }, { label: 'Exposure 0.3 s', value: 0.3 }, { label: 'Exposure 0.5 s', value: 0.5 }, { label: 'Exposure 1 s', value: 1 }, { label: 'Exposure 2 s', value: 2 }, { label: 'Exposure 3 s', value: 3 }, { label: 'Exposure 5 s', value: 5 }, { label: 'Exposure 10 s', value: 10 }]" :tooltip="'Exposure Time'" :cls="'w-50'"></indigo-number-dropdown>
+											<div v-if="findProperty('Guider Agent', 'AGENT_START_PROCESS') != null" class="d-flex p-1 w-100 indigo-command-row">
+												<indigo-status-button :property="findProperty('Guider Agent', 'AGENT_START_PROCESS')" busy-item="PREVIEW_1" :status-class="window.guiderStartProcessButtonClass('PREVIEW_1')" :disabled="window.guiderStartProcessButtonDisabled('PREVIEW_1')" :action="window.guiderPreview1" data-bs-toggle="tooltip" title="Single image preview">
+													<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+														<path d="M25,8H22.125L21.81,6.91992A2.83342,2.83342,0,0,0,19.25,5h-6.5a2.83342,2.83342,0,0,0-2.56,1.91992L9.875,8H7a3.00879,3.00879,0,0,0-3,3V23a3.00879,3.00879,0,0,0,3,3H25a3.00879,3.00879,0,0,0,3-3V11A3.00879,3.00879,0,0,0,25,8ZM16,23a6,6,0,1,1,6-6A6,6,0,0,1,16,23ZM26,11.5a.5.5,0,0,1-.5.5h-1a.5.5,0,0,1-.5-.5v-1a.5.5,0,0,1,.5-.5h1a.5.5,0,0,1,.5.5ZM20,17a4,4,0,1,1-4-4A3.99992,3.99992,0,0,1,20,17Z"/>
+													</svg>
+												</indigo-status-button>
+												<indigo-status-button :property="findProperty('Guider Agent', 'AGENT_START_PROCESS')" busy-item="PREVIEW" :status-class="window.guiderStartProcessButtonClass('PREVIEW')" :disabled="window.guiderStartProcessButtonDisabled('PREVIEW')" :action="window.guiderPreview" class="me-auto" data-bs-toggle="tooltip" title="Preview">
+													<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+														<path d="M31,11v9a1,1,0,0,1-1,1H29l-5-3.43748v-4.125L29,10h1A1,1,0,0,1,31,11ZM20,8H6a2.00591,2.00591,0,0,0-2,2V21a2.00591,2.00591,0,0,0,2,2H20a2.00591,2.00591,0,0,0,2-2V10A2.00591,2.00591,0,0,0,20,8Z"/>
+													</svg>
+												</indigo-status-button>
+												<button class="btn btn-svg idle-state" onclick="stop()" data-bs-toggle="tooltip" title="Stop">
+													<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+														<path d="M25,8V24a1,1,0,0,1-1,1H8a1,1,0,0,1-1-1V8A1,1,0,0,1,8,7H24A1,1,0,0,1,25,8Z"/>
+													</svg>
+												</button>
+											</div>
+										</template>
 									</div>
 								</div>
 							</template>
 							<template v-if="findProperty('Guider Agent', 'FILTER_GUIDER_LIST') != null">
 								<div class="card p-1 m-1 mt-2 bg-light">
-									<div class="card-block d-flex flex-wrap">
+									<div class="card-body d-flex flex-wrap">
 										<indigo-select-item :property="findProperty('Guider Agent', 'FILTER_GUIDER_LIST')"></indigo-select-item>
+										<template v-if="window.guiderGuiderSelected()">
+											<template v-if="window.guiderRateProperty() != null">
+												<indigo-edit-number :property="window.guiderRateProperty()" :name="'RATE'" :icon="'glyphicons-resize-horizontal'" :tooltip="'Guiding rate RA'" :cls="'w-50'"></indigo-edit-number>
+												<indigo-edit-number :property="window.guiderRateProperty()" :name="window.guiderRateHasDecItem() ? 'DEC_RATE' : 'RATE'" :icon="'glyphicons-resize-vertical'" :tooltip="'Guiding rate Dec'" :cls="'w-50'" :disabled="!window.guiderRateHasDecItem()" :display-value="window.guiderRateHasDecItem() ? null : window.guiderRateValue('RATE')"></indigo-edit-number>
+											</template>
+											<template v-if="findProperty('Guider Agent', 'AGENT_GUIDER_STATS') != null">
+												<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'PHASE'" :icon="'phase'" :tooltip="'Calibration Phase'"></indigo-show-number>
+												<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'FRAME'" :icon="'frame'" :tooltip="'Frame Count'"></indigo-show-number>
+												<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'RMSE_RA'" :icon="'err α'" :tooltip="'Right Ascension RMSE'"></indigo-show-number>
+												<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'RMSE_DEC'" :icon="'err δ'" :tooltip="'Declination RMSE'"></indigo-show-number>
+												<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'DRIFT_RA'" :icon="'drft α'" :tooltip="'Right Ascension Drift'"></indigo-show-number>
+												<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'DRIFT_DEC'" :icon="'drft δ'" :tooltip="'Declination Drift'"></indigo-show-number>
+												<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'CORR_RA'" :icon="'cor α'" :tooltip="'Right Ascension Correction'"></indigo-show-number>
+												<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'CORR_DEC'" :icon="'cor δ'" :tooltip="'Declination Correction'"></indigo-show-number>
+											</template>
+											<div v-if="findProperty('Guider Agent', 'AGENT_START_PROCESS') != null" class="d-flex p-1 w-100 indigo-command-row">
+												<indigo-status-button :property="findProperty('Guider Agent', 'AGENT_START_PROCESS')" busy-item="CALIBRATION" :status-class="window.guiderStartProcessButtonClass('CALIBRATION')" :disabled="window.guiderStartProcessButtonDisabled('CALIBRATION')" :action="window.calibrate" data-bs-toggle="tooltip" title="Calibrate">
+													<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+														<path d="M7,12V9A1,1,0,0,1,8,8H9v5H8A1,1,0,0,1,7,12Zm5,3.92065a1,1,0,0,0-1.57349-.81927L3.88464,19.68073a1,1,0,0,0,0,1.63848l6.54187,4.57935A1,1,0,0,0,12,25.07928V23h5V18H12ZM13,8H11v5h2ZM24,18H23v5h1a1,1,0,0,0,1-1V19A1,1,0,0,0,24,18Zm4.11536-8.31927L21.57349,5.10138A1,1,0,0,0,20,5.92065V8H15v5h5v2.07928a1,1,0,0,0,1.57349.81928l6.54187-4.57935A1,1,0,0,0,28.11536,9.68073ZM19,23h2V18H19Z"/>
+													</svg>
+												</indigo-status-button>
+												<indigo-status-button :property="findProperty('Guider Agent', 'AGENT_START_PROCESS')" busy-item="GUIDING" :status-class="window.guiderStartProcessButtonClass('GUIDING')" :disabled="window.guiderStartProcessButtonDisabled('GUIDING')" :action="window.guide" class="me-auto" data-bs-toggle="tooltip" title="Guide">
+													<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+														<path d="M28,19v1a1,1,0,0,1-1,1H22.50018a1.5002,1.5002,0,0,1-1.47674-1.23633L19.95215,13.7666,17.47363,26.78076a1.49992,1.49992,0,0,1-1.40625,1.21778c-.02246.001-.04492.00146-.06836.00146a1.50033,1.50033,0,0,1-1.4414-1.08789L12,17.96l-.55756,1.95191A1.50018,1.50018,0,0,1,10,21H5a1,1,0,0,1-1-1V19a1,1,0,0,1,1-1H8.86816l1.68946-5.91211a1.50014,1.50014,0,0,1,2.88476,0l2.26563,7.9292L18.52637,5.21924a1.5,1.5,0,0,1,2.95019.01709L23.75586,18H27A1,1,0,0,1,28,19Z"/>
+													</svg>
+												</indigo-status-button>
+												<button class="btn btn-svg idle-state" onclick="stop()" data-bs-toggle="tooltip" title="Stop">
+													<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+														<path d="M25,8V24a1,1,0,0,1-1,1H8a1,1,0,0,1-1-1V8A1,1,0,0,1,8,7H24A1,1,0,0,1,25,8Z"/>
+													</svg>
+												</button>
+											</div>
+										</template>
 									</div>
 								</div>
 							</template>
-							<template v-if="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS') != null">
+							<template v-if="window.guiderCameraSelected() && window.guiderGuiderSelected() && findProperty('Guider Agent', 'AGENT_GUIDER_DETECTION_MODE') != null">
 								<div class="card p-1 m-1 mt-2 bg-light">
-									<div class="card-block d-flex flex-wrap">
-										<indigo-select-item :property="findProperty('Guider Agent', 'AGENT_GUIDER_DETECTION_MODE')"></indigo-select-item>
-										<indigo-edit-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'AGGRESSIVITY_RA'" :icon="'glyphicons-option-vertical'" :tooltip="'Aggressivity RA'"></indigo-edit-number>
-										<indigo-edit-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'AGGRESSIVITY_DEC'" :icon="'glyphicons-option-horizontal'" :tooltip="'Aggressivity Dec'"></indigo-edit-number>
-										<indigo-edit-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'EXPOSURE'" :icon="'glyphicons-stopwatch'" :values="[0.001, 0.01, 0.1, 1, 10, 100]" :tooltip="'Exposure Time'"></indigo-edit-number>
-										<indigo-edit-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'STEP0'" :icon="'glyphicons-hourglass'" :values="[0.01, 0.05, 0.1, 0.2, 0.5, 1]" :tooltip="'Calibration Step'"></indigo-edit-number>
-										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'SPEED_RA'" :icon="'px/s α'" :tooltip="'Right Ascension Speed'"></indigo-show-number>
-										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'SPEED_DEC'" :icon="'px/s δ'" :tooltip="'Declination Speed'"></indigo-show-number>
-										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'BACKLASH'" :icon="'b-lash'" :tooltip="'Backlash'"></indigo-show-number>
-										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'ANGLE'" :icon="'angle'" :tooltip="'Angle'"></indigo-show-number>
-										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'PHASE'" :icon="'phase'" :tooltip="'Calibration Phase'"></indigo-show-number>
-										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'FRAME'" :icon="'frame'" :tooltip="'Frame Count'"></indigo-show-number>
-										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'RMSE_RA'" :icon="'err α'" :tooltip="'Right Ascension RMSE'"></indigo-show-number>
-										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'RMSE_DEC'" :icon="'err δ'" :tooltip="'Declination RMSE'"></indigo-show-number>
-										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'DRIFT_RA'" :icon="'drft α'" :tooltip="'Right Ascension Drift'"></indigo-show-number>
-										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'DRIFT_DEC'" :icon="'drft δ'" :tooltip="'Declination Drift'"></indigo-show-number>
-										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'CORR_RA'" :icon="'cor α'" :tooltip="'Right Ascension Correction'"></indigo-show-number>
-										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'CORR_DEC'" :icon="'cor δ'" :tooltip="'Declination Correction'"></indigo-show-number>
-										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'DELAY'" :icon="'delay'" :tooltip="'Delay between frames'"></indigo-show-number>
-										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'SNR'" :icon="'S/N'" :tooltip="'Signal/noise ratio'"></indigo-show-number>
-										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'DITHERING'" :icon="'dithering'" :tooltip="'Dithering RMSE'"></indigo-show-number>
-										<indigo-show-number :property="findProperty('Guider Agent', 'AGENT_GUIDER_STATS')" :name="'PHASE'" :icon="'phase'" :tooltip="'Calibration phase'"></indigo-show-number>
-										<div v-if="findProperty('Guider Agent', 'AGENT_START_PROCESS') != null" class="d-flex p-1 w-100">
-											<button id="calibrate_button" class="btn btn-svg idle-state mr-2" onclick="calibrate()" data-toggle="tooltip" title="Calibrate">
-												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-													<path d="M7,12V9A1,1,0,0,1,8,8H9v5H8A1,1,0,0,1,7,12Zm5,3.92065a1,1,0,0,0-1.57349-.81927L3.88464,19.68073a1,1,0,0,0,0,1.63848l6.54187,4.57935A1,1,0,0,0,12,25.07928V23h5V18H12ZM13,8H11v5h2ZM24,18H23v5h1a1,1,0,0,0,1-1V19A1,1,0,0,0,24,18Zm4.11536-8.31927L21.57349,5.10138A1,1,0,0,0,20,5.92065V8H15v5h5v2.07928a1,1,0,0,0,1.57349.81928l6.54187-4.57935A1,1,0,0,0,28.11536,9.68073ZM19,23h2V18H19Z"/>
-												</svg>
-											</button>
-											<button id="guide_button" class="btn btn-svg idle-state mr-auto" onclick="guide()" data-toggle="tooltip" title="Guide">
-												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-													<path d="M28,19v1a1,1,0,0,1-1,1H22.50018a1.5002,1.5002,0,0,1-1.47674-1.23633L19.95215,13.7666,17.47363,26.78076a1.49992,1.49992,0,0,1-1.40625,1.21778c-.02246.001-.04492.00146-.06836.00146a1.50033,1.50033,0,0,1-1.4414-1.08789L12,17.96l-.55756,1.95191A1.50018,1.50018,0,0,1,10,21H5a1,1,0,0,1-1-1V19a1,1,0,0,1,1-1H8.86816l1.68946-5.91211a1.50014,1.50014,0,0,1,2.88476,0l2.26563,7.9292L18.52637,5.21924a1.5,1.5,0,0,1,2.95019.01709L23.75586,18H27A1,1,0,0,1,28,19Z"/>
-												</svg>
-											</button>
-											<button class="btn btn-svg idle-state" onclick="stop()" data-toggle="tooltip" title="Stop">
-												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-													<path d="M25,8V24a1,1,0,0,1-1,1H8a1,1,0,0,1-1-1V8A1,1,0,0,1,8,7H24A1,1,0,0,1,25,8Z"/>
-												</svg>
-											</button>
-										</div>
+									<div class="card-body d-flex flex-wrap">
+										<indigo-select-item :property="findProperty('Guider Agent', 'AGENT_GUIDER_DETECTION_MODE')" :cls="'w-50'" :item-labels="{ SELECTION: 'Selection detection mode', WEIGHTED_SELECTION: 'Weighted selection detection mode', DONUTS: 'Donuts detection mode', CENTROID: 'Centroid detection mode' }"></indigo-select-item>
+										<indigo-number-dropdown v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SELECTION', 'COUNT')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SELECTION')" :name="'COUNT'" :cls="'w-50'" :values="[{ label: '1 star', value: 1 }, { label: '2 stars', value: 2 }, { label: '3 stars', value: 3 }, { label: '4 stars', value: 4 }, { label: '5 stars', value: 5 }, { label: '6 stars', value: 6 }, { label: '7 stars', value: 7 }, { label: '8 stars', value: 8 }]" :disabled="!(window.guiderDetectionModeIs('SELECTION') || window.guiderDetectionModeIs('WEIGHTED_SELECTION'))" :display-value="window.guiderDetectionModeIs('SELECTION') || window.guiderDetectionModeIs('WEIGHTED_SELECTION') ? null : 1" :tooltip="'Maximum number of stars'"></indigo-number-dropdown>
+										<template v-if="window.guiderDetectionModeIs('SELECTION') || window.guiderDetectionModeIs('WEIGHTED_SELECTION')">
+											<indigo-edit-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SELECTION', 'RADIUS')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SELECTION')" :name="'RADIUS'" :icon="'glyphicons-target'" :values="[3, 6, 12, 18, 24, 48]" :tooltip="'Detection radius'" :cls="'w-50'"></indigo-edit-number>
+											<indigo-edit-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SELECTION', 'SUBFRAME')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SELECTION')" :name="'SUBFRAME'" :icon="'glyphicons-crop'" :values="[{ label: 'Off', value: 0 }, 1, 2, 3, 4, 5]" :tooltip="'Automatic subframing'" :cls="'w-50'"></indigo-edit-number>
+										</template>
+									</div>
+								</div>
+							</template>
+							<template v-if="window.guiderCameraSelected() && window.guiderGuiderSelected() && findProperty('Guider Agent', 'AGENT_GUIDER_CORRECTION_MODE_RA') != null">
+								<div class="card p-1 m-1 mt-2 bg-light">
+									<div class="card-body d-flex flex-wrap">
+										<indigo-select-item :property="findProperty('Guider Agent', 'AGENT_GUIDER_CORRECTION_MODE_RA')" :label-prefix="'RA '" :label-suffix="' correction mode'"></indigo-select-item>
+										<template v-if="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS') != null && window.guiderRaCorrectionModeIs('PI')">
+											<indigo-edit-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'AGGRESSIVITY_RA')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'AGGRESSIVITY_RA'" :icon="'glyphicons-dashboard'" :tooltip="'RA aggressivity (%)'" :cls="'w-50'"></indigo-edit-number>
+											<indigo-edit-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'I_GAIN_RA')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'I_GAIN_RA'" :icon="'glyphicons-refresh'" :tooltip="'RA integral gain'" :cls="'w-50'"></indigo-edit-number>
+										</template>
+										<template v-if="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS') != null && window.guiderRaCorrectionModeIs('HYSTERESIS')">
+											<indigo-edit-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'HYSTERESIS_AGGRESSIVENESS_RA')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'HYSTERESIS_AGGRESSIVENESS_RA'" :icon="'glyphicons-dashboard'" :tooltip="'RA aggressivity (%)'" :cls="'w-50'"></indigo-edit-number>
+											<indigo-edit-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'HYSTERESIS_HYSTERESIS_RA')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'HYSTERESIS_HYSTERESIS_RA'" :icon="'glyphicons-history'" :tooltip="'RA hysteresis (%)'" :cls="'w-50'"></indigo-edit-number>
+										</template>
+										<template v-if="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS') != null && window.guiderRaCorrectionModeIs('LINEAR_TREND')">
+											<indigo-edit-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'LINEAR_TREND_AGGRESSIVENESS_RA')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'LINEAR_TREND_AGGRESSIVENESS_RA'" :icon="'glyphicons-dashboard'" :tooltip="'RA aggressivity (%)'" :cls="'w-50'"></indigo-edit-number>
+										</template>
+										<template v-if="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS') != null && window.guiderRaCorrectionModeIs('PPEC')">
+											<indigo-edit-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'PPEC_REACTIVE_GAIN_RA')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'PPEC_REACTIVE_GAIN_RA'" :icon="'glyphicons-dashboard'" :tooltip="'RA PPEC reactive gain (%)'" :cls="'w-50'"></indigo-edit-number>
+											<indigo-edit-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'PPEC_PREDICTION_GAIN_RA')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'PPEC_PREDICTION_GAIN_RA'" :icon="'glyphicons-signal'" :tooltip="'RA PPEC predictive gain (%)'" :cls="'w-50'"></indigo-edit-number>
+											<indigo-edit-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'PPEC_PERIOD_RA')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'PPEC_PERIOD_RA'" :icon="'glyphicons-stopwatch'" :tooltip="'RA PPEC period (s)'" :cls="'w-50'"></indigo-edit-number>
+										</template>
+									</div>
+								</div>
+							</template>
+							<template v-if="window.guiderCameraSelected() && window.guiderGuiderSelected() && (findProperty('Guider Agent', 'AGENT_GUIDER_DEC_MODE') != null || findProperty('Guider Agent', 'AGENT_GUIDER_CORRECTION_MODE_DEC') != null)">
+								<div class="card p-1 m-1 mt-2 bg-light">
+									<div class="card-body d-flex flex-wrap">
+										<indigo-select-item :property="findProperty('Guider Agent', 'AGENT_GUIDER_DEC_MODE')" :cls="'w-50'" :item-labels="{ BOTH: 'Guide North and South', NORTH: 'Guide North only', SOUTH: 'Guide South only', NONE: 'Do not guide Dec' }"></indigo-select-item>
+										<indigo-select-item :property="findProperty('Guider Agent', 'AGENT_GUIDER_CORRECTION_MODE_DEC')" :cls="'w-50'" :disabled="window.guiderDecModeIs('NONE')" :label-prefix="'Dec '" :label-suffix="' correction mode'"></indigo-select-item>
+										<template v-if="!window.guiderDecModeIs('NONE')">
+											<indigo-select-item :property="findProperty('Guider Agent', 'AGENT_GUIDER_APPLY_DEC_BACKLASH')" :cls="'w-50'" :disabled="!window.guiderDecModeIs('BOTH')" :item-labels="{ DISABLED: 'Disabled Dec backlash', ENABLED: 'Enabled Dec backlash' }"></indigo-select-item>
+											<indigo-select-item :property="findProperty('Guider Agent', 'AGENT_GUIDER_FLIP_REVERSES_DEC')" :cls="'w-50'" :fallback-item="'ENABLED'" :item-labels="{ ENABLED: 'Reverse speed on meridian flip', DISABLED: 'Keep speed on meridian flip' }"></indigo-select-item>
+											<template v-if="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS') != null && window.guiderDecCorrectionModeIs('PI')">
+												<indigo-edit-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'AGGRESSIVITY_DEC')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'AGGRESSIVITY_DEC'" :icon="'glyphicons-dashboard'" :tooltip="'Dec aggressivity (%)'" :cls="'w-50'"></indigo-edit-number>
+												<indigo-edit-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'I_GAIN_DEC')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'I_GAIN_DEC'" :icon="'glyphicons-refresh'" :tooltip="'Dec integral gain'" :cls="'w-50'"></indigo-edit-number>
+											</template>
+											<template v-if="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS') != null && window.guiderDecCorrectionModeIs('HYSTERESIS')">
+												<indigo-edit-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'HYSTERESIS_AGGRESSIVENESS_DEC')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'HYSTERESIS_AGGRESSIVENESS_DEC'" :icon="'glyphicons-dashboard'" :tooltip="'Dec aggressivity (%)'" :cls="'w-50'"></indigo-edit-number>
+												<indigo-edit-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'HYSTERESIS_HYSTERESIS_DEC')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'HYSTERESIS_HYSTERESIS_DEC'" :icon="'glyphicons-history'" :tooltip="'Dec hysteresis (%)'" :cls="'w-50'"></indigo-edit-number>
+											</template>
+											<template v-if="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS') != null && window.guiderDecCorrectionModeIs('LINEAR_TREND')">
+												<indigo-edit-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'LINEAR_TREND_AGGRESSIVENESS_DEC')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'LINEAR_TREND_AGGRESSIVENESS_DEC'" :icon="'glyphicons-dashboard'" :tooltip="'Dec aggressivity (%)'" :cls="'w-50'"></indigo-edit-number>
+											</template>
+											<template v-if="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS') != null && window.guiderDecCorrectionModeIs('RESIST_SWITCH')">
+												<indigo-edit-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'RESIST_SWITCH_AGGRESSIVENESS_DEC')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'RESIST_SWITCH_AGGRESSIVENESS_DEC'" :icon="'glyphicons-dashboard'" :tooltip="'Dec aggressivity (%)'" :cls="'w-50'"></indigo-edit-number>
+												<indigo-edit-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'RESIST_SWITCH_FAST_THRESHOLD_DEC')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'RESIST_SWITCH_FAST_THRESHOLD_DEC'" :icon="'glyphicons-flash'" :tooltip="'Dec resist threshold (px)'" :cls="'w-50'"></indigo-edit-number>
+											</template>
+										</template>
+									</div>
+								</div>
+							</template>
+							<template v-if="window.guiderCameraSelected() && window.guiderGuiderSelected() && findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS') != null">
+								<div class="card p-1 m-1 mt-2 bg-light">
+									<div class="card-body d-flex flex-wrap">
+										<indigo-number-dropdown v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'STACK')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'STACK'" :values="[{ label: 'Integral stack size 1', value: 1 }, { label: 'Integral stack size 2', value: 2 }, { label: 'Integral stack size 3', value: 3 }, { label: 'Integral stack size 4', value: 4 }, { label: 'Integral stack size 5', value: 5 }, { label: 'Integral stack size 10', value: 10 }, { label: 'Integral stack size 20', value: 20 }]" :tooltip="'Integral stack size'" :cls="'w-50'"></indigo-number-dropdown>
+										<indigo-edit-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'MIN_ERROR')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'MIN_ERROR'" :icon="'glyphicons-resize-full'" :tooltip="'Min error (px)'" :cls="'w-50'"></indigo-edit-number>
+										<indigo-edit-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'MIN_PULSE')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'MIN_PULSE'" :icon="'glyphicons-flash'" :tooltip="'Min pulse (s)'" :cls="'w-50'"></indigo-edit-number>
+										<indigo-edit-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'MAX_PULSE')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'MAX_PULSE'" :icon="'glyphicons-flash'" :tooltip="'Max pulse (s)'" :cls="'w-50'"></indigo-edit-number>
+									</div>
+								</div>
+							</template>
+							<template v-if="window.guiderCameraSelected() && window.guiderGuiderSelected() && findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS') != null">
+								<div class="card p-1 m-1 mt-2 bg-light">
+									<div class="card-body d-flex flex-wrap">
+										<indigo-edit-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'STEP0')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'STEP0'" :icon="'glyphicons-hourglass'" :values="[0.01, 0.05, 0.1, 0.2, 0.5, 1]" :tooltip="'Calibration Step'" :cls="'w-100'"></indigo-edit-number>
+										<indigo-show-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'ANGLE')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'ANGLE'" :icon="'angle'" :tooltip="'Angle'" :cls="'w-25'"></indigo-show-number>
+										<indigo-show-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'BACKLASH')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'BACKLASH'" :icon="'b-lash'" :tooltip="'Backlash'" :cls="'w-25'"></indigo-show-number>
+										<indigo-show-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'SPEED_RA')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'SPEED_RA'" :icon="'px/s α'" :tooltip="'Right Ascension Speed'" :cls="'w-25'"></indigo-show-number>
+										<indigo-show-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'SPEED_DEC')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'SPEED_DEC'" :icon="'px/s δ'" :tooltip="'Declination Speed'" :cls="'w-25'"></indigo-show-number>
+									</div>
+								</div>
+							</template>
+							<template v-if="window.guiderCameraSelected() && window.guiderGuiderSelected() && (findProperty('Guider Agent', 'AGENT_GUIDER_DITHERING_STRATEGY') != null || findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS') != null)">
+								<div class="card p-1 m-1 mt-2 bg-light">
+									<div class="card-body d-flex flex-wrap">
+										<indigo-select-item :property="findProperty('Guider Agent', 'AGENT_GUIDER_DITHERING_STRATEGY')" :cls="'w-50'" :item-labels="{ RANDOMIZED_SPIRAL: 'Randomized spiral dithering', RANDOM: 'Random dithering', SPIRAL: 'Spiral dithering' }"></indigo-select-item>
+										<indigo-number-dropdown v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'DITHERING_MAX_AMOUNT')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'DITHERING_MAX_AMOUNT'" :values="[{ label: 'Dithering amount 1 px', value: 1 }, { label: 'Dithering amount 2 px', value: 2 }, { label: 'Dithering amount 3 px', value: 3 }, { label: 'Dithering amount 5 px', value: 5 }, { label: 'Dithering amount 10 px', value: 10 }]" :tooltip="'Dithering amount'" :cls="'w-50'"></indigo-number-dropdown>
+										<indigo-edit-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'DITHERING_SETTLE_TIME_LIMIT')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'DITHERING_SETTLE_TIME_LIMIT'" :icon="'glyphicons-hourglass'" :tooltip="'Settle down max limit (s)'" :cls="'w-50'"></indigo-edit-number>
+										<indigo-edit-number v-if="window.guiderPropertyHasItem('AGENT_GUIDER_SETTINGS', 'DITHERING_LIMIT')" :property="findProperty('Guider Agent', 'AGENT_GUIDER_SETTINGS')" :name="'DITHERING_LIMIT'" :icon="'glyphicons-scale'" :tooltip="'Settle down min limit (frames)'" :cls="'w-50'"></indigo-edit-number>
 									</div>
 								</div>
 							</template>
 						</div>
-						<div class="col-md-8">
-							<div class="card p-1 m-1 bg-light">
-								<div class="card-blockd-flex">
-									<canvas id="graph_drift" class="card p-0 m-0 bg-light" data-toggle="tooltip" title="Drift"></canvas>
-								</div>
-							</div>
-							<div class="card p-1 m-1 mt-2 bg-light">
-								<div class="card-blockd-flex">
-									<canvas id="graph_corr" class="card p-0 m-0 bg-light" data-toggle="tooltip" title="Corrections"></canvas>
+						<div class="col-xl-8">
+							<div id="image_container" class="card p-2 m-1 bg-light" style="min-height: 10rem">
+								<div class="card-body">
+									<div class="card p-0 border-0 position-relative" style="display: none">
+										<img id="image" class="img-fluid rounded"/>
+										<indigo-star-selection-overlay :selection-property="findProperty('Guider Agent', 'AGENT_GUIDER_SELECTION')" :marker-count="window.guiderStarSelectionMarkerCount()" :camera-selected="window.guiderCameraSelected() && (window.guiderDetectionModeIs('SELECTION') || window.guiderDetectionModeIs('WEIGHTED_SELECTION'))"></indigo-star-selection-overlay>
+										<img id="histogram" class="indigo-preview-histogram" width="256" height="128" style="display:none"/>
+										<indigo-guider-graph v-if="window.guiderGraphsVisible()" ref="graph"></indigo-guider-graph>
+									</div>
 								</div>
 							</div>
 						</div>
 					</div>
 				</template>
-				<div id="SUCCESS" class="alert alert-success alert-dismissible fade show m-1" role="alert" style="display:none;">
-					{{ state }}
-					<span v-if="findProperty('Server', 'INFO')" class="float-right">
-						INDIGO Server {{findProperty('Server', 'INFO').item('VERSION').value}} at {{findProperty('Server', 'INFO').item('SERVICE').value}}
-					</span>
-				</div>
-				<div id="FAILURE" class="alert alert-danger alert-dismissible fade show m-1" role="alert" style="display:none;">
-					{{ state }}
-				</div>
-				<div id="MESSAGE" class="alert alert-warning alert-dismissible fade show m-1" role="alert" style="display:none;">
-					{{ state }}
-				</div>
-				<div class="alert alert-info show m-1" role="alert">
-					Copyright &copy; 2019-2025, The INDIGO Initiative. All rights reserved.
-					<a v-if="dark" href="#" class="float-right" onclick="setLightMode()">Switch to light appearance</a>
-					<a v-else href="#" class="float-right" onclick="setDarkMode()">Switch to dark appearance</a>
-				</div>
+				<indigo-status-bar></indigo-status-bar>
 			</div>
 		</div>
 	</body>
 	<script src="jquery.min.js"></script>
-	<script src="popper.min.js"></script>
 	<script src="bootstrap.min.js"></script>
-	<script src="vue.min.js"></script>
+	<script src="vue.global.prod.js"></script>
 	<script src="indigo.js"></script>
 	<script src="components.js"></script>
-	<script language="javascript" type="text/javascript">
+	<script>
 		
 		indigoURL = new URL((window.location.protocol == "https:" ? "wss://" : "ws://") + window.location.host);
 		guiSetup();
@@ -178,180 +232,283 @@
 		}
 	
 		var targetExposureTime = 0;
-		
-		var raDrift = [];
-		var decDrift = [];
-		var raCorr = [];
-		var decCorr = [];
-		var rmse = [];
+		var guiderStartProcessItem = null;
 
-		function paintGraph(graph, ra, dec, rmse) {
-			var canvas = document.getElementById(graph);
-			canvas.width = $("#" + graph).outerWidth();
-			canvas.height = $("#" + graph).outerHeight();
-			var pulse = graph == "graph_corr";
-			var width = canvas.width;
-			var height = canvas.height;
-			var height2 = height / 2;
-			var ctx = canvas.getContext("2d");
-			var maxValue = 0;
-			for (i in ra) {
-				var value = Math.abs(ra[i]);
-				if (maxValue < value)
-					maxValue = value;
-			}
-			for (i in dec) {
-				var value = Math.abs(dec[i]);
-				if (maxValue < value)
-					maxValue = value;
-			}
-			if (maxValue == 0) {
-				maxValue = 0.1;
-			} else if (maxValue < 0.5) {
-				maxValue = Math.ceil(maxValue * 10) / 10;
-			} else if (maxValue < 1) {
-				maxValue = 1;
-			} else if (maxValue > 10) {
-				maxValue = 10;
-			} else {
-				maxValue = Math.ceil(maxValue);
-			}
-			var yScale = (height2 - 5.0) / maxValue;
-			var xScale = width / 200;
-			ctx.save();
-			ctx.strokeStyle = "#AAA";
-			var path = new Path2D();
-			path.moveTo(0, height2);
-			path.lineTo(width, height2);
-			ctx.stroke(path);
-			path = new Path2D();
-			if (maxValue >= 1) {
-				for (r = 1; r <= maxValue; r++) {
-					var rr = r * yScale;
-					path.moveTo(0, height2 - rr);
-					path.lineTo(width, height2 - rr);
-					path.moveTo(0, height2 + rr);
-					path.lineTo(width, height2 + rr);
-				}
-			} else {
-				ctx.setLineDash([1.0, 5.0]);
-				for (r = 1; r <= 10 * maxValue; r++) {
-					var rr = r * yScale / 10;
-					path.moveTo(0, height2 - rr);
-					path.lineTo(width, height2 - rr);
-					path.moveTo(0, height2 + rr);
-					path.lineTo(width, height2 + rr);
+		function guiderStartProcessProperty() {
+			if (INDIGO == null || INDIGO.devices["Guider Agent"] == null)
+				return null;
+			return INDIGO.devices["Guider Agent"]["AGENT_START_PROCESS"];
+		}
+
+		function guiderStartProcessSelectedItem() {
+			var property = guiderStartProcessProperty();
+			if (property != null) {
+				for (var i in property.items) {
+					if (property.items[i].value)
+						return property.items[i].name;
 				}
 			}
-			ctx.stroke(path);
-			ctx.restore();
+			return guiderStartProcessItem;
+		}
 
-			ctx.save();
-			ctx.fillStyle = "rgba(100, 100, 100, 0.3)";
-			path = new Path2D();
-			x = 0;
-			for (i in rmse) {
-				if (rmse[i])
-					path.rect(x, 0, xScale, height);
-				x += xScale;
-			}
-			ctx.fill(path);
-			ctx.restore();
+		function guiderStartProcessBusy() {
+			var property = guiderStartProcessProperty();
+			return property != null && property.state == "Busy";
+		}
 
-			
-			ctx.save();
-			ctx.strokeStyle = "#00F";
-			path = new Path2D();
-			var x = 0;
-			var y = height2 + ra[0]*yScale;
-			path.moveTo(x, y);
-			for (i in ra) {
-				y = height2 + ra[i]*yScale;
-				path.lineTo(x, y);
-				x += xScale;
-				if (pulse)
-					path.lineTo(x, y);
+		function guiderStartProcessButtonClass(itemName) {
+			var property = guiderStartProcessProperty();
+			if (property == null || guiderStartProcessSelectedItem() != itemName)
+				return "idle-state";
+			if (property.state == "Busy")
+				return "busy-state";
+			if (property.state == "Alert")
+				return "alert-state";
+			return "idle-state";
+		}
+
+		function guiderStartProcessButtonDisabled(itemName) {
+			return guiderStartProcessBusy();
+		}
+
+		function guiderSetGraphsForStartProcessItem(itemName) {
+			if (INDIGO == null)
+				return;
+			if (itemName == "PREVIEW_1" || itemName == "PREVIEW")
+				INDIGO.guiderGraphsEnabled = false;
+			else if (itemName == "CALIBRATION" || itemName == "GUIDING")
+				INDIGO.guiderGraphsEnabled = true;
+		}
+
+		function guiderSetStartProcessItem(itemName) {
+			guiderStartProcessItem = itemName;
+			guiderSetGraphsForStartProcessItem(itemName);
+		}
+
+		function guiderCameraSelected() {
+			if (INDIGO == null || INDIGO.devices["Guider Agent"] == null)
+				return false;
+			var property = INDIGO.devices["Guider Agent"]["FILTER_CCD_LIST"];
+			return property != null && property.items.length > 0 && !property.items[0].value;
+		}
+
+		function guiderGuiderSelected() {
+			if (INDIGO == null || INDIGO.devices["Guider Agent"] == null)
+				return false;
+			var property = INDIGO.devices["Guider Agent"]["FILTER_GUIDER_LIST"];
+			return property != null && property.items.length > 0 && !property.items[0].value;
+		}
+
+		function guiderSelectedGuider() {
+			if (!guiderGuiderSelected())
+				return null;
+			var property = INDIGO.devices["Guider Agent"]["FILTER_GUIDER_LIST"];
+			for (var i in property.items) {
+				if (property.items[i].value)
+					return property.items[i].name;
 			}
-			ctx.stroke(path);
-			ctx.restore();
-			ctx.save();
-			ctx.strokeStyle = "#F00";
-			path = new Path2D();
-			x = 0;
-			y = height2 + dec[0]*yScale;
-			path.moveTo(x, y);
-			for (i in dec) {
-				y = height2 + dec[i]*yScale;
-				path.lineTo(x, y);
-				x += xScale;
-				if (pulse)
-					path.lineTo(x, y);
+			return null;
+		}
+
+		function guiderRateProperty() {
+			var guider = guiderSelectedGuider();
+			if (guider == null || INDIGO.devices[guider] == null)
+				return null;
+			return INDIGO.devices[guider]["GUIDER_RATE"];
+		}
+
+		function guiderRateItem(name) {
+			var property = guiderRateProperty();
+			if (property == null)
+				return null;
+			return property.item(name);
+		}
+
+		function guiderRateHasDecItem() {
+			return guiderRateItem("DEC_RATE") != null;
+		}
+
+		function guiderRateValue(name) {
+			var item = guiderRateItem(name);
+			if (item == null)
+				return null;
+			return item.target != null ? item.target : item.value;
+		}
+
+		function guiderGraphsVisible() {
+			return INDIGO != null && INDIGO.guiderGraphsEnabled && guiderCameraSelected();
+		}
+
+		function guiderSelectedCamera() {
+			if (INDIGO == null || INDIGO.devices["Guider Agent"] == null)
+				return null;
+			var property = INDIGO.devices["Guider Agent"]["FILTER_CCD_LIST"];
+			if (property == null)
+				return null;
+			for (var i in property.items) {
+				if (property.items[i].value)
+					return property.items[i].name;
 			}
-			ctx.stroke(path);
-			ctx.restore();
+			return null;
+		}
+
+		function guiderDetectionModeIs(name) {
+			if (INDIGO == null || INDIGO.devices["Guider Agent"] == null)
+				return false;
+			var property = INDIGO.devices["Guider Agent"]["AGENT_GUIDER_DETECTION_MODE"];
+			if (property == null)
+				return false;
+			var item = property.item(name);
+			return item != null && item.value;
+		}
+
+		function guiderRaCorrectionModeIs(name) {
+			if (INDIGO == null || INDIGO.devices["Guider Agent"] == null)
+				return false;
+			var property = INDIGO.devices["Guider Agent"]["AGENT_GUIDER_CORRECTION_MODE_RA"];
+			if (property == null)
+				return false;
+			var item = property.item(name);
+			if (item == null && name == "PI")
+				item = property.item("PI_CONTROLLER");
+			return item != null && item.value;
+		}
+
+		function guiderDecModeIs(name) {
+			if (INDIGO == null || INDIGO.devices["Guider Agent"] == null)
+				return false;
+			var property = INDIGO.devices["Guider Agent"]["AGENT_GUIDER_DEC_MODE"];
+			if (property == null)
+				return false;
+			var item = property.item(name);
+			return item != null && item.value;
+		}
+
+		function guiderDecCorrectionModeIs(name) {
+			if (INDIGO == null || INDIGO.devices["Guider Agent"] == null)
+				return false;
+			var property = INDIGO.devices["Guider Agent"]["AGENT_GUIDER_CORRECTION_MODE_DEC"];
+			if (property == null)
+				return false;
+			var item = property.item(name);
+			if (item == null && name == "PI")
+				item = property.item("PI_CONTROLLER");
+			return item != null && item.value;
+		}
+
+		function guiderPropertyHasItem(propertyName, itemName) {
+			if (INDIGO == null || INDIGO.devices["Guider Agent"] == null)
+				return false;
+			var property = INDIGO.devices["Guider Agent"][propertyName];
+			return property != null && property.item(itemName) != null;
+		}
+
+		function guiderSelectionCount() {
+			if (INDIGO == null || INDIGO.devices["Guider Agent"] == null)
+				return 1;
+			var property = INDIGO.devices["Guider Agent"]["AGENT_GUIDER_SELECTION"];
+			if (property == null)
+				return 1;
+			var item = property.item("COUNT");
+			if (item == null || !isFinite(Number(item.value)) || Number(item.value) < 1)
+				return 1;
+			return Number(item.value);
+		}
+
+		function guiderStarSelectionMarkerCount() {
+			if (guiderDetectionModeIs("SELECTION") || guiderDetectionModeIs("WEIGHTED_SELECTION"))
+				return guiderSelectionCount();
+			return 0;
+		}
+
+		function guiderPreviewURL(value) {
+			if (value.startsWith("http://") || value.startsWith("https://"))
+				return value;
+			return window.location.protocol + "//" + INDIGO.host + value;
+		}
+
+		function guiderShowPreviewElement(selector, value) {
+			if (value == null)
+				return;
+			$(selector).attr("src", guiderPreviewURL(value) + '?' + new Date().getTime()).show().parent().show();
 		}
 
 		function onDefineProperty(property) {
 			onUpdateProperty(property);
+			if (property.device == "Guider Agent" && property.name == "FILTER_RELATED_AGENT_LIST" && property.state == "Ok") {
+				changeProperty("Guider Agent", "FILTER_RELATED_AGENT_LIST", { "Imager Agent" : true, "Mount Agent" : true });
+			}
 		}
-	
+
 		function onUpdateProperty(property) {
+			if (property.name == "CCD_PREVIEW_IMAGE" && property.device == guiderSelectedCamera()) {
+				if (property.state == "Ok")
+					guiderShowPreviewElement("#image", property.item("IMAGE").value);
+			} else if (property.name == "CCD_PREVIEW_HISTOGRAM" && property.device == guiderSelectedCamera()) {
+				if (property.state == "Ok")
+					guiderShowPreviewElement("#histogram", property.item("IMAGE").value);
+			}
 			if (property.device == "Guider Agent") {
-				if (property.name == "AGENT_START_PROCESS" && property.state != "Busy") {
-					$("#calibrate_button").removeClass("busy-state");
-					$("#calibrate_button").addClass("idle-state");
-					$("#guide_button").removeClass("busy-state");
-					$("#guide_button").addClass("idle-state");
+				if (property.name == "AGENT_START_PROCESS") {
+					guiderSetGraphsForStartProcessItem(guiderStartProcessSelectedItem());
+					if (property.state != "Busy") {
+						guiderStartProcessItem = null;
+					}
 				} else if (property.name == "AGENT_GUIDER_STATS") {
 					var phase = property.item("PHASE").value;
 					var frame = property.item("FRAME").value;
-					if (frame <= 1) {
-						raDrift = [];
-						decDrift = [];
-						raCorr = [];
-						decCorr = [];
-						rmse = [];
+					var graph = INDIGO.$refs.graph;
+					if (graph != null) {
+						if (frame <= 1) {
+							graph.clear();
+						}
+						var driftRa;
+						var driftDec;
+						var driftUnit;
+						if (phase > 0) {
+							driftRa = property.item("DRIFT_X").value;
+							driftDec = property.item("DRIFT_Y").value;
+							driftUnit = "px";
+						} else {
+							driftRa = property.item("DRIFT_RA").value;
+							driftDec = property.item("DRIFT_DEC").value;
+							driftUnit = '"';
+						}
+						graph.push(driftRa, driftDec, property.item("CORR_RA").value, property.item("CORR_DEC").value, property.item("DITHERING").value, driftUnit);
 					}
-					while (raDrift.length >= 200)
-						raDrift.shift();
-					while (decDrift.length >= 200)
-						decDrift.shift();
-					while (raCorr.length >= 200)
-						raCorr.shift();
-					while (decCorr.length >= 200)
-						decCorr.shift();
-					while (rmse.length >= 200)
-						rmse.shift();
-					if (phase > 0) {
-						raDrift.push(property.item("DRIFT_X").value);
-						decDrift.push(property.item("DRIFT_Y").value);
-					} else {
-						raDrift.push(property.item("DRIFT_RA").value);
-						decDrift.push(property.item("DRIFT_DEC").value);
-					}
-					raCorr.push(property.item("CORR_RA").value);
-					decCorr.push(property.item("CORR_DEC").value);
-					rmse.push(property.item("DITHERING").value);
-					paintGraph("graph_drift", raDrift, decDrift, rmse);
-					paintGraph("graph_corr", raCorr, decCorr, rmse);
 				}
 			}
 			guiSetup();
 		}
-	
+
 		function onDeleteProperty(property) {
+			if (typeof property === 'undefined' || property.name == "CCD_PREVIEW_HISTOGRAM") {
+				$("#histogram").hide();
+			}
 			guiSetup();
 		}
 	
+		function guiderPreview1() {
+			guiderSetStartProcessItem("PREVIEW_1");
+			changeProperty("Guider Agent", "CCD_PREVIEW", { "ENABLED_WITH_HISTOGRAM": true });
+			changeProperty("Guider Agent", "AGENT_START_PROCESS", { "PREVIEW_1": true });
+		}
+
+		function guiderPreview() {
+			guiderSetStartProcessItem("PREVIEW");
+			changeProperty("Guider Agent", "CCD_PREVIEW", { "ENABLED_WITH_HISTOGRAM": true });
+			changeProperty("Guider Agent", "AGENT_START_PROCESS", { "PREVIEW": true });
+		}
+
 		function calibrate() {
-			$("#calibrate_button").removeClass("idle-state");
-			$("#calibrate_button").addClass("busy-state");
+			guiderSetStartProcessItem("CALIBRATION");
+			changeProperty("Guider Agent", "CCD_PREVIEW", { "ENABLED_WITH_HISTOGRAM": true });
 			changeProperty("Guider Agent", "AGENT_START_PROCESS", { "CALIBRATION" : true });
 		}
-	
+
 		function guide() {
-			$("#guide_button").removeClass("idle-state");
-			$("#guide_button").addClass("busy-state");
+			guiderSetStartProcessItem("GUIDING");
+			changeProperty("Guider Agent", "CCD_PREVIEW", { "ENABLED_WITH_HISTOGRAM": true });
 			changeProperty("Guider Agent", "AGENT_START_PROCESS", { "GUIDING" : true });
 		}
 	

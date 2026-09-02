@@ -204,12 +204,10 @@ static bool talon6ror_open(indigo_device *device) {
 			break;
 		}
 		if (result < 0) {
-			pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 			return false;
 		}
 		result = read(PRIVATE_DATA->handle, &c, 1);
 		if (result < 1) {
-			pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 			return false;
 		}
 		tv.tv_sec = 0;
@@ -552,12 +550,10 @@ static indigo_result dome_attach(indigo_device *device) {
 		DOME_SPEED_PROPERTY->hidden = true;
 		DOME_DIRECTION_PROPERTY->hidden = true;
 		DOME_HORIZONTAL_COORDINATES_PROPERTY->hidden = true;
-		DOME_EQUATORIAL_COORDINATES_PROPERTY->hidden = true;
 		DOME_DIRECTION_PROPERTY->hidden = true;
 		DOME_STEPS_PROPERTY->hidden = true;
 		DOME_PARK_PROPERTY->hidden = true;
 		DOME_DIMENSION_PROPERTY->hidden = true;
-		DOME_SLAVING_PROPERTY->hidden = true;
 		DOME_SLAVING_PARAMETERS_PROPERTY->hidden = true;
 		DOME_SHUTTER_PROPERTY->rule = INDIGO_AT_MOST_ONE_RULE;
 		INDIGO_COPY_VALUE(DOME_SHUTTER_PROPERTY->label, "Roof state");

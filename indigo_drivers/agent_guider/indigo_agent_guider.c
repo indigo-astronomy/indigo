@@ -99,7 +99,7 @@
 #define AGENT_GUIDER_START_CALIBRATION_AND_GUIDING_ITEM 	(AGENT_START_PROCESS_PROPERTY->items+3)
 #define AGENT_GUIDER_START_GUIDING_ITEM 			(AGENT_START_PROCESS_PROPERTY->items+4)
 #define AGENT_GUIDER_CLEAR_SELECTION_ITEM 		(AGENT_START_PROCESS_PROPERTY->items+5)
-#define AGENT_GUIDER_RESET_ITEM 							(AGENT_START_PROCESS_PROPERTY->items+6)
+#define AGENT_RESET_ITEM 											(AGENT_START_PROCESS_PROPERTY->items+6)
 
 #define AGENT_ABORT_PROCESS_PROPERTY					(DEVICE_PRIVATE_DATA->agent_abort_process_property)
 #define AGENT_ABORT_PROCESS_ITEM      				(AGENT_ABORT_PROCESS_PROPERTY->items+0)
@@ -2299,7 +2299,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_switch_item(AGENT_GUIDER_START_CALIBRATION_AND_GUIDING_ITEM, AGENT_GUIDER_START_CALIBRATION_AND_GUIDING_ITEM_NAME, "Start calibration and guiding", false);
 		indigo_init_switch_item(AGENT_GUIDER_START_GUIDING_ITEM, AGENT_GUIDER_START_GUIDING_ITEM_NAME, "Start guiding", false);
 		indigo_init_switch_item(AGENT_GUIDER_CLEAR_SELECTION_ITEM, AGENT_GUIDER_CLEAR_SELECTION_ITEM_NAME, "Clear star selection", false);
-		indigo_init_switch_item(AGENT_GUIDER_RESET_ITEM, AGENT_GUIDER_RESET_ITEM_NAME, "Reset to defaults", false);
+		indigo_init_switch_item(AGENT_RESET_ITEM, AGENT_RESET_ITEM_NAME, "Reset to defaults", false);
 
 		AGENT_ABORT_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_ABORT_PROCESS_PROPERTY_NAME, "Agent", "Abort process", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
 		if (AGENT_ABORT_PROCESS_PROPERTY == NULL) {
@@ -2780,9 +2780,9 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			indigo_property_copy_values(AGENT_START_PROCESS_PROPERTY, property, false);
 			AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
-			if (AGENT_GUIDER_RESET_ITEM->sw.value) {
+			if (AGENT_RESET_ITEM->sw.value) {
 				factory_reset(device);
-				AGENT_GUIDER_RESET_ITEM->sw.value = false;
+				AGENT_RESET_ITEM->sw.value = false;
 				AGENT_START_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, "Reset to defaults");
 			} else if (AGENT_GUIDER_CLEAR_SELECTION_ITEM->sw.value) {

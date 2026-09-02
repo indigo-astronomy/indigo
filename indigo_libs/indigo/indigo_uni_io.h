@@ -100,6 +100,7 @@ typedef struct {
 	};
 	int log_level;
 	int last_error;
+	char name[256];
 } indigo_uni_handle;
 
 typedef struct {

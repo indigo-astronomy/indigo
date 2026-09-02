@@ -10,155 +10,156 @@
 	<title>INDIGO Imager</title>
 	<body class="bg-secondary">
 		<div id="ROOT">
-			<nav class="navbar navbar-expand-md navbar-light">
-				<a class="navbar-brand text-white " href="#">
-					<img src="imager.png" width="40" height="40" class="d-inline-block align-middle" alt=""/>
-					<h4 class="title">INDIGO Imager</h4>
-				</a>
-				<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarContent">
-					<span class="navbar-toggler-icon"></span>
-				</button>
-				<div id="navbarContent" class="form-inline collapse navbar-collapse m-0">
-					<template v-if="findProperty('Server', 'FEATURES') != null">
-						<a class="nav-link pr-0 ml-auto" href="mng.html" data-toggle="tooltip" title="Server Manager">
-							<img src="mng.png" width="40" height="40" class="align-middle mr-0" alt=""/>
-						</a>
-						<a class="nav-link pr-0" href="ctrl.html" data-toggle="tooltip" title="Control Panel">
-							<img src="ctrl.png" width="40" height="40" class="align-middle mr-0" alt=""/>
-						</a>
-						<template v-if="findProperty('Server', 'FEATURES').item('WEB_APPS').value">
-							<a class="nav-link pr-0" href="imager.html" data-toggle="tooltip" title="Imager">
-								<img src="imager.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
-							</a>
-							<a class="nav-link pr-0" href="mount.html" data-toggle="tooltip" title="Mount">
-								<img src="mount.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
-							</a>
-							<a class="nav-link pr-0" href="guider.html" data-toggle="tooltip" title="Guider">
-								<img src="guider.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
-							</a>
-							<a class="nav-link pr-0" href="script.html" data-toggle="tooltip" title="Script">
-								<img src="script.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
-							</a>
-						</template>
-					</template>
-				</div>
-			</nav>
+			<indigo-navbar active="imager" title="INDIGO Imager" icon="imager.png" expand="md"></indigo-navbar>
 			<div class="container-fluid">
 				<div v-if="devices['Imager Agent'] == null" class="alert alert-warning alert-dismissible m-1" role="alert">
 					Waiting for Imager agent...
 				</div>
 				<template v-else>
-					<div class="row no-gutters">
-						<div class="col-md-4" style="min-width:360px">
+					<div class="row g-0">
+						<div class="col-xl-4 indigo-side-panel">
 							<template v-if="findProperty('Imager Agent', 'FILTER_CCD_LIST') != null">
 								<div class="card p-1 m-1 bg-light">
-									<div class="card-block d-flex flex-wrap">
+									<div class="card-body d-flex flex-wrap">
 										<indigo-select-item :property="findProperty('Imager Agent', 'FILTER_CCD_LIST')"></indigo-select-item>
+										<template v-if="window.imagerCameraSelected()">
 										<template v-if="findProperty('Imager Agent', 'AGENT_START_PROCESS') != null">
-											<indigo-select-item :property="findProperty('Imager Agent', 'CCD_FRAME_TYPE')"></indigo-select-item>
-											<indigo-select-item :property="findProperty('Imager Agent', 'CCD_MODE')"></indigo-select-item>
+											<indigo-select-item :property="findProperty('Imager Agent', 'CCD_FRAME_TYPE')" :cls="'w-50'"></indigo-select-item>
+											<indigo-select-item :property="findProperty('Imager Agent', 'CCD_MODE')" :cls="'w-50'"></indigo-select-item>
 											<indigo-edit-number :property="findProperty('Imager Agent', 'CCD_TEMPERATURE')" :name="'TEMPERATURE'" :icon="'glyphicons-temperature-low'" :values="['Off', 0, -10, -15, -20, -30]" :enabler="findProperty('Imager Agent', 'CCD_COOLER')" :tooltip="'Cooling state'"></indigo-edit-number>
 											<indigo-edit-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_BATCH')" :name="'EXPOSURE'" :icon="'glyphicons-stopwatch'" :values="[0.001, 0.01, 0.1, 1, 10, 100]" :tooltip="'Exposure time'"></indigo-edit-number>
 											<indigo-edit-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_BATCH')" :name="'DELAY'" :icon="'glyphicons-hourglass'" :values="[0, 5, 10, 15, 20, 30]" :tooltip="'Delay between exposures'"></indigo-edit-number>
 											<indigo-edit-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_BATCH')" :name="'COUNT'" :icon="'glyphicons-repeat'" :values="[1, 5, 10, 15, 20, 30]" :tooltip="'Image count'"></indigo-edit-number>
 											<indigo-edit-text :property="findProperty('Imager Agent', 'CCD_LOCAL_MODE')" :name="'DIR'" :icon="'glyphicons-folder-open'" :tooltip="'Folder for saved images'"></indigo-edit-text>
-											<indigo-edit-text :property="findProperty('Imager Agent', 'CCD_LOCAL_MODE')" :name="'PREFIX'" :icon="'glyphicons-file'" :tooltip="'File name prefix for saved images'"></indigo-edit-text>
-											<indigo-show-number :property="findProperty('Imager Agent', 'CCD_TEMPERATURE')" :name="'TEMPERATURE'" :icon="'glyphicons-temperature'" :tooltip="'Cooling state'"></indigo-show-number>
-											<indigo-show-number v-if="!useAgent" :property="findProperty('Imager Agent', 'CCD_EXPOSURE')" :name="'EXPOSURE'" :icon="'glyphicons-stopwatch'" :tooltip="'Exposure time'"></indigo-show-number>
-											<indigo-show-number v-else :property="findProperty('Imager Agent', 'AGENT_IMAGER_STATS')" :name="'EXPOSURE'" :icon="'glyphicons-stopwatch'" :tooltip="'Exposure time'"></indigo-show-number>
-											<indigo-show-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_STATS')" :name="'DELAY'" :icon="'glyphicons-hourglass'" :tooltip="'Delay between exposures'"></indigo-show-number>
-											<indigo-show-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_STATS')" :name="'FRAME'" :icon="'glyphicons-repeat'" :tooltip="'Image count'"></indigo-show-number>
+											<indigo-edit-text :property="findProperty('Imager Agent', 'CCD_LOCAL_MODE')" :name="'PREFIX'" :icon="'glyphicons-file'" :cls="'w-50'" :tooltip="'File name prefix for saved images'"></indigo-edit-text>
+									<indigo-edit-text :property="findProperty('Imager Agent', 'CCD_LOCAL_MODE')" :name="'OBJECT'" :icon="'glyphicons-star'" :cls="'w-50'" :tooltip="'Object name'"></indigo-edit-text>
+											<indigo-feature-number-dropdown :feature-property="findProperty('Imager Agent', 'AGENT_PROCESS_FEATURES')" :number-property="findProperty('Imager Agent', 'AGENT_IMAGER_BATCH')" :feature-name="'ENABLE_DITHERING'" :number-name="'FRAMES_TO_SKIP_BEFORE_DITHER'" :cls="'w-50'" :values="[{ label: 'Don\'t dither', enabled: false, value: -1 }, { label: 'Dither every frame', enabled: true, value: 0 }, { label: 'Dither every 2nd frame', enabled: true, value: 1 }, { label: 'Dither every 3rd frame', enabled: true, value: 2 }, { label: 'Dither every 4th frame', enabled: true, value: 3 }, { label: 'Dither every 5th frame', enabled: true, value: 4 }]" :tooltip="'Dithering cadence'"></indigo-feature-number-dropdown>
+											<indigo-feature-number-dropdown :feature-property="findProperty('Imager Agent', 'AGENT_PROCESS_FEATURES')" :number-property="findProperty('Imager Agent', 'AGENT_IMAGER_BATCH')" :feature-name="'PAUSE_AFTER_TRANSIT'" :number-name="'PAUSE_AFTER_TRANSIT'" :cls="'w-50'" :values="[{ label: 'Don\'t pause at meridian', enabled: false, value: 0 }, { label: 'Pause at meridian', enabled: true, value: 0 }, { label: 'Pause 15 min after meridian', enabled: true, value: 0.25 }, { label: 'Pause 30 min after meridian', enabled: true, value: 0.5 }, { label: 'Pause 1 hour after meridian', enabled: true, value: 1 }, { label: 'Pause 2 hours after meridian', enabled: true, value: 2 }, { label: 'Pause 15 min before meridian', enabled: true, value: -0.25 }, { label: 'Pause 30 min before meridian', enabled: true, value: -0.5 }, { label: 'Pause 1 hour before meridian', enabled: true, value: -1 }, { label: 'Pause 2 hours before meridian', enabled: true, value: -2 }]" :tooltip="'Pause at meridian'"></indigo-feature-number-dropdown>
+											<indigo-show-number :property="findProperty('Imager Agent', 'CCD_TEMPERATURE')" :name="'TEMPERATURE'" :icon="'cooling'" :tooltip="'Cooling state'"></indigo-show-number>
+											<indigo-show-number v-if="!useAgent" :property="findProperty('Imager Agent', 'CCD_EXPOSURE')" :name="'EXPOSURE'" :icon="'exposure'" :tooltip="'Exposure time'"></indigo-show-number>
+											<indigo-show-number v-else :property="findProperty('Imager Agent', 'AGENT_IMAGER_STATS')" :name="'EXPOSURE'" :icon="'exposure'" :tooltip="'Exposure time'"></indigo-show-number>
+											<indigo-show-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_STATS')" :name="'DELAY'" :icon="'delay'" :tooltip="'Delay between exposures'"></indigo-show-number>
+											<indigo-show-number :property="findProperty('Imager Agent', 'AGENT_IMAGER_STATS')" :name="'FRAME'" :icon="'count'" :tooltip="'Image count'"></indigo-show-number>
 										</template>
-										<div v-if="findProperty('Imager Agent', 'AGENT_START_PROCESS') != null" class="d-flex p-1 w-100">
-											<button id="preview1_button" class="btn btn-svg idle-state mr-2" onclick="preview1()" data-toggle="tooltip" title="Single image preview">
+										<div v-if="findProperty('Imager Agent', 'AGENT_START_PROCESS') != null" class="d-flex p-1 w-100 indigo-command-row">
+											<indigo-status-button :property="findProperty('Imager Agent', 'AGENT_START_PROCESS')" busy-item="PREVIEW_1" :status-class="window.imagerStartProcessButtonClass('PREVIEW_1')" :disabled="window.imagerStartProcessButtonDisabled('PREVIEW_1')" :action="window.preview1" data-bs-toggle="tooltip" title="Single image preview">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M25,8H22.125L21.81,6.91992A2.83342,2.83342,0,0,0,19.25,5h-6.5a2.83342,2.83342,0,0,0-2.56,1.91992L9.875,8H7a3.00879,3.00879,0,0,0-3,3V23a3.00879,3.00879,0,0,0,3,3H25a3.00879,3.00879,0,0,0,3-3V11A3.00879,3.00879,0,0,0,25,8ZM16,23a6,6,0,1,1,6-6A6,6,0,0,1,16,23ZM26,11.5a.5.5,0,0,1-.5.5h-1a.5.5,0,0,1-.5-.5v-1a.5.5,0,0,1,.5-.5h1a.5.5,0,0,1,.5.5ZM20,17a4,4,0,1,1-4-4A3.99992,3.99992,0,0,1,20,17Z"/>
 												</svg>
-											</button>
-											<button id="preview_button" class="btn btn-svg idle-state mr-2" onclick="preview()" data-toggle="tooltip" title="Preview">
+											</indigo-status-button>
+											<indigo-status-button :property="findProperty('Imager Agent', 'AGENT_START_PROCESS')" busy-item="PREVIEW" :status-class="window.imagerStartProcessButtonClass('PREVIEW')" :disabled="window.imagerStartProcessButtonDisabled('PREVIEW')" :action="window.preview" data-bs-toggle="tooltip" title="Preview">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M31,11v9a1,1,0,0,1-1,1H29l-5-3.43748v-4.125L29,10h1A1,1,0,0,1,31,11ZM20,8H6a2.00591,2.00591,0,0,0-2,2V21a2.00591,2.00591,0,0,0,2,2H20a2.00591,2.00591,0,0,0,2-2V10A2.00591,2.00591,0,0,0,20,8Z"/>
 												</svg>
-											</button>
-											<button id="capture_button" class="btn btn-svg idle-state mr-auto" onclick="capture_batch()" data-toggle="tooltip" title="Capture batch">
+											</indigo-status-button>
+											<indigo-status-button :property="findProperty('Imager Agent', 'AGENT_START_PROCESS')" busy-item="EXPOSURE" :status-class="window.imagerStartProcessButtonClass('EXPOSURE')" :disabled="window.imagerStartProcessButtonDisabled('EXPOSURE')" :action="window.capture_batch" class="me-auto" data-bs-toggle="tooltip" title="Capture batch">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M16,5A11,11,0,1,0,27,16,11.01245,11.01245,0,0,0,16,5Zm0,19a8,8,0,1,1,8-8A8.00917,8.00917,0,0,1,16,24Zm5-8a5,5,0,1,1-5-5A5,5,0,0,1,21,16Z"/>
 												</svg>
-											</button>
-											<button v-if="findProperty('Imager Agent', 'AGENT_IMAGER_DOWNLOAD_FILES') != null && findProperty('Imager Agent', 'AGENT_IMAGER_DOWNLOAD_FILES').items.length > 1" cid="download_button" class="btn btn-svg idle-state mr-auto" onclick="download()" data-toggle="tooltip" title="Download images">
+											</indigo-status-button>
+											<button v-if="findProperty('Imager Agent', 'AGENT_IMAGER_DOWNLOAD_FILES') != null && findProperty('Imager Agent', 'AGENT_IMAGER_DOWNLOAD_FILES').items.length > 1" cid="download_button" class="btn btn-svg idle-state" :disabled="window.imagerStartProcessBusy()" onclick="download()" data-bs-toggle="tooltip" title="Download images">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M30.5,18a7.45207,7.45207,0,0,1-1.92773,5,6.49979,6.49979,0,0,1-4.61915,2H23V22h.95312a3.50194,3.50194,0,0,0,2.39258-1.01074A4.45541,4.45541,0,0,0,27.5,18a5.00588,5.00588,0,0,0-5-5,5.10006,5.10006,0,0,0-.70605.05664l-1.22266.168-.40039-1.168A5.993,5.993,0,0,0,8.665,15.37109l.32031,1.37012-1.34765.40723A2.97242,2.97242,0,0,0,5.5,20a2.01441,2.01441,0,0,0,.41406,1.22852A2.42324,2.42324,0,0,0,7.70312,22H10v3H7.70312a5.35308,5.35308,0,0,1-4.23535-2.03516A5.03407,5.03407,0,0,1,2.5,20a5.93806,5.93806,0,0,1,3.03809-5.19922C5.5127,14.53223,5.5,14.26465,5.5,14a8.99653,8.99653,0,0,1,17.05664-4A8.00931,8.00931,0,0,1,30.5,18ZM20.25885,23H18V17.5a.5.5,0,0,0-.5-.5h-2a.5.5,0,0,0-.5.5V23H12.74115a.5.5,0,0,0-.40393.79468l3.75885,5.15173a.50008.50008,0,0,0,.80786,0l3.75885-5.15173A.5.5,0,0,0,20.25885,23Z"/>
 												</svg>
 											</button>
-											<button class="btn btn-svg idle-state" onclick="stop()" data-toggle="tooltip" title="Stop">
+											<button class="btn btn-svg idle-state" onclick="stop()" data-bs-toggle="tooltip" title="Stop">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M25,8V24a1,1,0,0,1-1,1H8a1,1,0,0,1-1-1V8A1,1,0,0,1,8,7H24A1,1,0,0,1,25,8Z"/>
 												</svg>
 											</button>
 										</div>
+										</template>
 									</div>
 								</div>
 							</template>
 							<template v-if="findProperty('Imager Agent', 'FILTER_WHEEL_LIST') != null">
 								<div class="card p-1 m-1 mt-2 bg-light">
-									<div class="card-block d-flex flex-wrap">
+									<div class="card-body d-flex flex-wrap">
 										<indigo-select-item :property="findProperty('Imager Agent', 'FILTER_WHEEL_LIST')"></indigo-select-item>
 										<indigo-select-item v-if="findProperty('Imager Agent', 'WHEEL_SLOT')" :property="findProperty('Imager Agent', 'AGENT_WHEEL_FILTER')" :no_value="'Moving...'"></indigo-select-item>
 									</div>
 								</div>
 							</template>
 							<template v-if="findProperty('Imager Agent', 'FILTER_FOCUSER_LIST') != null">
-								<div class="card p-1 m-1 mt-2 bg-light">
-									<div class="card-block d-flex flex-wrap">
-										<indigo-select-item :property="findProperty('Imager Agent', 'FILTER_FOCUSER_LIST')"></indigo-select-item>
-										<template v-if="findProperty('Imager Agent', 'FOCUSER_POSITION') || findProperty('Imager Agent', 'FOCUSER_STEPS') || findProperty('Imager Agent', 'FOCUSER_MODE')">
-											<div v-if="findProperty('Imager Agent', 'FOCUSER_POSITION') || findProperty('Imager Agent', 'FOCUSER_STEPS')" class="input-group p-1" :class="findProperty('Imager Agent', 'FOCUSER_SPEED') ? 'w-50' : 'w-100'" data-toggle="tooltip" title="Position or Step Count">
-												<a class="input-group-prepend">
+									<div class="card p-1 m-1 mt-2 bg-light">
+										<div class="card-body d-flex flex-wrap">
+											<indigo-select-item :property="findProperty('Imager Agent', 'FILTER_FOCUSER_LIST')"></indigo-select-item>
+											<template v-if="window.imagerFocuserSelected()">
+												<div v-if="findProperty('Imager Agent', 'FOCUSER_POSITION') || findProperty('Imager Agent', 'FOCUSER_STEPS')" class="input-group p-1" :class="window.imagerFocuserSpeedEditable() ? 'w-50' : 'w-100'" data-bs-toggle="tooltip" title="Position or Step Count">
 													<span class="input-group-text glyphicons glyphicons-ruler ok-state"></span>
-												</a>
-												<input id="steps" type="text" value="0" class="form-control input-right">
-											</div>
-											<indigo-edit-number :property="findProperty('Imager Agent', 'FOCUSER_SPEED')" :name="'SPEED'" :icon="'glyphicons-signal'" :tooltip="'Focuser Speed'"></indigo-edit-number>
-											<indigo-edit-number v-if="findProperty('Imager Agent', 'AGENT_START_PROCESS')" :property="findProperty('Imager Agent', 'AGENT_IMAGER_FOCUS')" :name="'INITIAL'" :icon="'glyphicons-resize-full'" :tooltip="'Initial step'"></indigo-edit-number>
-											<indigo-edit-number v-if="findProperty('Imager Agent', 'AGENT_START_PROCESS')" :property="findProperty('Imager Agent', 'AGENT_IMAGER_FOCUS')" :name="'FINAL'" :icon="'glyphicons-resize-small'" :tooltip="'Final step'"></indigo-edit-number>
-											<indigo-show-number :property="findProperty('Imager Agent', 'FOCUSER_SPEED')" :name="'SPEED'" :icon="'glyphicons-signal'" :tooltip="'Speed'"></indigo-show-number>
-											<indigo-show-number :property="findProperty('Imager Agent', 'FOCUSER_POSITION')" :name="'POSITION'" :icon="'glyphicons-ruler'" :tooltip="'Absolute position'"></indigo-show-number>
-											<indigo-show-number :property="findProperty('Imager Agent', 'FOCUSER_TEMPERATURE')" :name="'TEMPERATURE'" :icon="'glyphicons-temperature'" :tooltip="'Temperature'"></indigo-show-number>
-											<indigo-show-number :property="findProperty('Imager Agent', 'FOCUSER_COMPENSATION')" :name="'COMPENSATION'" :icon="'glyphicons-temperature-settings'" :tooltip="'Temperature Compensation'"></indigo-show-number>
-											<div class="d-flex p-1 w-100">
-												<button v-if="findProperty('Imager Agent', 'FOCUSER_POSITION') && findProperty('Imager Agent', 'FOCUSER_POSITION').perm == 'rw'" id="focuser_position_button" class="btn btn-svg idle-state mr-2" onclick="focuser_position()" data-toggle="tooltip" title="Move to absolute position">
-													<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-														<path d="M24.8175,16.86432,9.503,25.77667A1,1,0,0,1,8,24.91235V7.08765a1,1,0,0,1,1.503-.86432L24.8175,15.13568A1.00006,1.00006,0,0,1,24.8175,16.86432Z"/>
-													</svg>
-												</button>
-												<button v-if="findProperty('Imager Agent', 'FOCUSER_STEPS')" id="focuser_in_button" class="btn btn-svg idle-state mr-2" onclick="focuser_in()" data-toggle="tooltip" title="Move in">
-													<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-														<path d="M22.99933,9.46185V22.53821a.8.8,0,0,1-1.2312.67383L11.55219,16.67383a.8.8,0,0,1,0-1.34766L21.76813,8.788A.8.8,0,0,1,22.99933,9.46185ZM10,8H9A1,1,0,0,0,8,9V23a1,1,0,0,0,1,1h1a1,1,0,0,0,1-1V9A1,1,0,0,0,10,8Z"/>
-													</svg>
-												</button>
-												<button v-if="findProperty('Imager Agent', 'FOCUSER_STEPS')" id="focuser_out_button" class="btn btn-svg idle-state mr-auto" onclick="focuser_out()" data-toggle="tooltip" title="Move out">
-													<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-														<path d="M20.44781,15.32617a.8.8,0,0,1,0,1.34766L10.23187,23.212a.8.8,0,0,1-1.2312-.67383V9.46185a.8.8,0,0,1,1.2312-.67383ZM23,8H22a1,1,0,0,0-1,1V23a1,1,0,0,0,1,1h1a1,1,0,0,0,1-1V9A1,1,0,0,0,23,8Z"/>
-													</svg>
-												</button>
-												<button v-if="findProperty('Imager Agent', 'AGENT_START_PROCESS')" id="focuser_auto_button" class="btn btn-svg idle-state mr-2" onclick="focuser_auto()" data-toggle="tooltip" title="Autofocus">
-													<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-														<path d="M6.709,9.293A.99991.99991,0,0,0,5.002,10V22a.99989.99989,0,0,0,1.707.707l6-6a.99962.99962,0,0,0,0-1.41406Zm.293,10.293V12.41406L10.58789,16ZM27.002,10V22a.99989.99989,0,0,1-1.707.707l-6-6a.99964.99964,0,0,1,0-1.41406l6-6A.99991.99991,0,0,1,27.002,10ZM17,25.5v1a.5.5,0,0,1-.5.5h-1a.5.5,0,0,1-.5-.5v-1a.5.5,0,0,1,.5-.5h1A.5.5,0,0,1,17,25.5Zm0-4v1a.5.5,0,0,1-.5.5h-1a.5.5,0,0,1-.5-.5v-1a.5.5,0,0,1,.5-.5h1A.5.5,0,0,1,17,21.5Zm0-4v1a.5.5,0,0,1-.5.5h-1a.5.5,0,0,1-.5-.5v-1a.5.5,0,0,1,.5-.5h1A.5.5,0,0,1,17,17.5Zm0-12v1a.5.5,0,0,1-.5.5h-1a.5.5,0,0,1-.5-.5v-1a.5.5,0,0,1,.5-.5h1A.5.5,0,0,1,17,5.5Zm0,4v1a.5.5,0,0,1-.5.5h-1a.5.5,0,0,1-.5-.5v-1a.5.5,0,0,1,.5-.5h1A.5.5,0,0,1,17,9.5Zm0,4v1a.5.5,0,0,1-.5.5h-1a.5.5,0,0,1-.5-.5v-1a.5.5,0,0,1,.5-.5h1A.5.5,0,0,1,17,13.5Z"/>
-													</svg>
-												</button>
-												<button v-if="findProperty('Imager Agent', 'FOCUSER_MODE') && findProperty('Imager Agent', 'FOCUSER_MODE').item('MANUAL').value" id="focuser_mode_button" class="btn btn-svg idle-state mr-2" onclick="focuser_auto_on()" data-toggle="tooltip" title="Compensation state">
-													<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-														<path d="M21.6499,4.18762,24.60956.488a.5.5,0,0,1,.78088,0L28.3501,4.18762A.5.5,0,0,1,27.95972,5H22.04028A.5.5,0,0,1,21.6499,4.18762ZM27.95972,7H22.04028a.49992.49992,0,0,0-.39038.81226l2.95966,3.6997a.5.5,0,0,0,.78088,0l2.95966-3.6997A.49992.49992,0,0,0,27.95972,7ZM17,18.835a5.50005,5.50005,0,1,1-8,0V8.08594a4,4,0,0,1,8,0Zm-1.5,3.75049A2.5018,2.5018,0,0,0,14,20.29736V14.08545a1,1,0,0,0-2,0v6.21191a2.49874,2.49874,0,1,0,3.5,2.28809Z"/>
-													</svg>
-												</button>
-												<button v-if="findProperty('Imager Agent', 'FOCUSER_MODE') && findProperty('Imager Agent', 'FOCUSER_MODE').item('AUTOMATIC').value" id="focuser_mode_button" class="btn btn-svg ok-state mr-2" onclick="focuser_auto_off()" data-toggle="tooltip" title="Compensation state">
-													<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-														<path d="M21.6499,4.18762,24.60956.488a.5.5,0,0,1,.78088,0L28.3501,4.18762A.5.5,0,0,1,27.95972,5H22.04028A.5.5,0,0,1,21.6499,4.18762ZM27.95972,7H22.04028a.49992.49992,0,0,0-.39038.81226l2.95966,3.6997a.5.5,0,0,0,.78088,0l2.95966-3.6997A.49992.49992,0,0,0,27.95972,7ZM17,18.835a5.50005,5.50005,0,1,1-8,0V8.08594a4,4,0,0,1,8,0Zm-1.5,3.75049A2.5018,2.5018,0,0,0,14,20.29736V14.08545a1,1,0,0,0-2,0v6.21191a2.49874,2.49874,0,1,0,3.5,2.28809Z"/>
-													</svg>
-												</button>
-												<button v-if="findProperty('Imager Agent', 'FOCUSER_ABORT_MOTION')" class="btn btn-svg idle-state" onclick="focuser_stop()" data-toggle="tooltip" title="Stop">
-													<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-														<path d="M25,8V24a1,1,0,0,1-1,1H8a1,1,0,0,1-1-1V8A1,1,0,0,1,8,7H24A1,1,0,0,1,25,8Z"/>
+													<input id="steps" type="text" value="0" class="form-control input-right">
+												</div>
+												<indigo-edit-number v-if="window.imagerFocuserSpeedEditable()" :property="findProperty('Imager Agent', 'FOCUSER_SPEED')" :name="'SPEED'" :icon="'glyphicons-signal'" :tooltip="'Focuser Speed'"></indigo-edit-number>
+												<template v-if="window.imagerCameraSelected()">
+													<indigo-select-item v-if="findProperty('Imager Agent', 'AGENT_IMAGER_FOCUS_ESTIMATOR')" :property="findProperty('Imager Agent', 'AGENT_IMAGER_FOCUS_ESTIMATOR')" :cls="'w-50'"></indigo-select-item>
+													<indigo-number-dropdown v-if="window.imagerPropertyHasItem('AGENT_IMAGER_SELECTION', 'COUNT')" :property="findProperty('Imager Agent', 'AGENT_IMAGER_SELECTION')" :name="'COUNT'" :cls="'w-50'" :values="[{ label: '1 star', value: 1 }, { label: '2 stars', value: 2 }, { label: '3 stars', value: 3 }, { label: '4 stars', value: 4 }, { label: '5 stars', value: 5 }, { label: '6 stars', value: 6 }, { label: '7 stars', value: 7 }, { label: '8 stars', value: 8 }]" :disabled="!window.imagerFocusEstimatorIs('U_CURVE')" :display-value="window.imagerFocusEstimatorIs('U_CURVE') ? null : 1" :tooltip="'Maximum number of stars'"></indigo-number-dropdown>
+													<template v-if="findProperty('Imager Agent', 'AGENT_IMAGER_FOCUS') && window.imagerFocusEstimatorSelected()">
+														<indigo-edit-number v-if="window.imagerPropertyHasItem('AGENT_IMAGER_FOCUS', 'BACKLASH')" :property="findProperty('Imager Agent', 'AGENT_IMAGER_FOCUS')" :name="'BACKLASH'" :icon="'glyphicons-resize-horizontal'" :tooltip="'Backlash'"></indigo-edit-number>
+														<indigo-edit-number v-if="window.imagerPropertyHasItem('AGENT_IMAGER_FOCUS', 'BACKLASH_OVERSHOOT_FACTOR')" :property="findProperty('Imager Agent', 'AGENT_IMAGER_FOCUS')" :name="'BACKLASH_OVERSHOOT_FACTOR'" :icon="'glyphicons-forward'" :tooltip="'Backlash overshoot factor'"></indigo-edit-number>
+													</template>
+													<template v-if="findProperty('Imager Agent', 'AGENT_IMAGER_SELECTION')">
+														<template v-if="window.imagerFocusEstimatorIs('U_CURVE')">
+															<indigo-edit-number v-if="window.imagerPropertyHasItem('AGENT_IMAGER_SELECTION', 'RADIUS')" :property="findProperty('Imager Agent', 'AGENT_IMAGER_SELECTION')" :name="'RADIUS'" :icon="'glyphicons-target'" :values="[3, 6, 12, 18, 24, 48]" :tooltip="'Detection radius'"></indigo-edit-number>
+															<indigo-edit-number v-if="window.imagerPropertyHasItem('AGENT_IMAGER_SELECTION', 'SUBFRAME')" :property="findProperty('Imager Agent', 'AGENT_IMAGER_SELECTION')" :name="'SUBFRAME'" :icon="'glyphicons-crop'" :values="[{ label: 'Off', value: 0 }, 1, 2, 3, 4, 5]" :disabled="!window.imagerSelectionCountIsOne()" :display-value="window.imagerSelectionCountIsOne() ? null : 'Off'" :tooltip="'Automatic subframing'"></indigo-edit-number>
+														</template>
+														<template v-if="window.imagerFocusEstimatorIs('HFD_PEAK')">
+															<indigo-edit-number v-if="window.imagerPropertyHasItem('AGENT_IMAGER_SELECTION', 'RADIUS')" :property="findProperty('Imager Agent', 'AGENT_IMAGER_SELECTION')" :name="'RADIUS'" :icon="'glyphicons-target'" :values="[3, 6, 12, 18, 24, 48]" :tooltip="'Detection radius'"></indigo-edit-number>
+															<indigo-edit-number v-if="window.imagerPropertyHasItem('AGENT_IMAGER_SELECTION', 'SUBFRAME')" :property="findProperty('Imager Agent', 'AGENT_IMAGER_SELECTION')" :name="'SUBFRAME'" :icon="'glyphicons-crop'" :values="[{ label: 'Off', value: 0 }, 1, 2, 3, 4, 5]" :tooltip="'Automatic subframing'"></indigo-edit-number>
+														</template>
+													</template>
+													<template v-if="findProperty('Imager Agent', 'AGENT_IMAGER_FOCUS')">
+														<template v-if="window.imagerFocusEstimatorIs('U_CURVE')">
+															<indigo-edit-number v-if="window.imagerPropertyHasItem('AGENT_IMAGER_FOCUS', 'U_CURVE_SAMPLES')" :property="findProperty('Imager Agent', 'AGENT_IMAGER_FOCUS')" :name="'U_CURVE_SAMPLES'" :icon="'glyphicons-list-numbered'" :tooltip="'U-Curve fitting samples'"></indigo-edit-number>
+															<indigo-edit-number v-if="window.imagerPropertyHasItem('AGENT_IMAGER_FOCUS', 'U_CURVE_STEP')" :property="findProperty('Imager Agent', 'AGENT_IMAGER_FOCUS')" :name="'U_CURVE_STEP'" :icon="'glyphicons-resize-full'" :tooltip="'U-Curve sample step'"></indigo-edit-number>
+														</template>
+														<template v-if="window.imagerFocusEstimatorIs('HFD_PEAK') || window.imagerFocusEstimatorIs('RMS_CONTRAST') || window.imagerFocusEstimatorIs('BAHTINOV')">
+															<indigo-edit-number v-if="window.imagerPropertyHasItem('AGENT_IMAGER_FOCUS', 'ITERATIVE_INITIAL')" :property="findProperty('Imager Agent', 'AGENT_IMAGER_FOCUS')" :name="'ITERATIVE_INITIAL'" :icon="'glyphicons-resize-full'" :tooltip="'Iterative initial step'"></indigo-edit-number>
+															<indigo-edit-number v-if="window.imagerPropertyHasItem('AGENT_IMAGER_FOCUS', 'ITERATIVE_FINAL')" :property="findProperty('Imager Agent', 'AGENT_IMAGER_FOCUS')" :name="'ITERATIVE_FINAL'" :icon="'glyphicons-resize-small'" :tooltip="'Iterative final step'"></indigo-edit-number>
+														</template>
+														<indigo-edit-number v-if="window.imagerFocusEstimatorIs('BAHTINOV') && window.imagerPropertyHasItem('AGENT_IMAGER_FOCUS', 'BAHTINOV_SIGMA')" :property="findProperty('Imager Agent', 'AGENT_IMAGER_FOCUS')" :name="'BAHTINOV_SIGMA'" :icon="'glyphicons-adjust'" :tooltip="'Bahtinov sigma'"></indigo-edit-number>
+													</template>
+													<div v-if="window.imagerFocusControlsNeedRowBreak()" class="w-100"></div>
+												</template>
+												<indigo-show-number :property="findProperty('Imager Agent', 'FOCUSER_POSITION')" :name="'POSITION'" :icon="'position'" :cls="'w-25'" :tooltip="'Absolute position'"></indigo-show-number>
+												<indigo-show-number :property="findProperty('Imager Agent', 'FOCUSER_TEMPERATURE')" :name="'TEMPERATURE'" :icon="'temp'" :cls="'w-25'" :tooltip="'Temperature'"></indigo-show-number>
+												<indigo-show-number :property="findProperty('Imager Agent', 'FOCUSER_COMPENSATION')" :name="'COMPENSATION'" :icon="'comp'" :cls="'w-25'" :tooltip="'Temperature Compensation'"></indigo-show-number>
+												<indigo-show-number v-if="window.imagerCameraSelected() && (window.imagerFocusEstimatorIs('U_CURVE') || window.imagerFocusEstimatorIs('HFD_PEAK')) && window.imagerPropertyHasItem('AGENT_IMAGER_STATS', 'HFD')" :property="findProperty('Imager Agent', 'AGENT_IMAGER_STATS')" :name="'HFD'" :icon="'hfd'" :cls="'w-25'" :tooltip="'Focus quality'"></indigo-show-number>
+												<indigo-show-number v-if="window.imagerCameraSelected() && window.imagerFocusEstimatorIs('RMS_CONTRAST') && window.imagerPropertyHasItem('AGENT_IMAGER_STATS', 'RMS_CONTRAST')" :property="findProperty('Imager Agent', 'AGENT_IMAGER_STATS')" :name="'RMS_CONTRAST'" :icon="'rms'" :cls="'w-25'" :tooltip="'Focus quality'"></indigo-show-number>
+												<indigo-show-number v-if="window.imagerCameraSelected() && window.imagerFocusEstimatorIs('BAHTINOV') && window.imagerPropertyHasItem('AGENT_IMAGER_STATS', 'BAHTINOV_ERROR')" :property="findProperty('Imager Agent', 'AGENT_IMAGER_STATS')" :name="'BAHTINOV_ERROR'" :icon="'error'" :cls="'w-25'" :tooltip="'Focus quality'"></indigo-show-number>
+												<div class="d-flex p-1 w-100 indigo-command-row">
+													<indigo-status-button v-if="window.imagerCameraSelected() && findProperty('Imager Agent', 'AGENT_START_PROCESS')" :property="findProperty('Imager Agent', 'AGENT_START_PROCESS')" busy-item="FOCUSING" :status-class="window.imagerStartProcessButtonClass('FOCUSING')" :disabled="window.imagerStartProcessButtonDisabled('FOCUSING')" :action="window.focuser_auto" class="me-auto" data-bs-toggle="tooltip" title="Autofocus">
+														<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+															<path d="M6.709,9.293A.99991.99991,0,0,0,5.002,10V22a.99989.99989,0,0,0,1.707.707l6-6a.99962.99962,0,0,0,0-1.41406Zm.293,10.293V12.41406L10.58789,16ZM27.002,10V22a.99989.99989,0,0,1-1.707.707l-6-6a.99964.99964,0,0,1,0-1.41406l6-6A.99991.99991,0,0,1,27.002,10ZM17,25.5v1a.5.5,0,0,1-.5.5h-1a.5.5,0,0,1-.5-.5v-1a.5.5,0,0,1,.5-.5h1A.5.5,0,0,1,17,25.5Zm0-4v1a.5.5,0,0,1-.5.5h-1a.5.5,0,0,1-.5-.5v-1a.5.5,0,0,1,.5-.5h1A.5.5,0,0,1,17,21.5Zm0-4v1a.5.5,0,0,1-.5.5h-1a.5.5,0,0,1-.5-.5v-1a.5.5,0,0,1,.5-.5h1A.5.5,0,0,1,17,17.5Zm0-12v1a.5.5,0,0,1-.5.5h-1a.5.5,0,0,1-.5-.5v-1a.5.5,0,0,1,.5-.5h1A.5.5,0,0,1,17,5.5Zm0,4v1a.5.5,0,0,1-.5.5h-1a.5.5,0,0,1-.5-.5v-1a.5.5,0,0,1,.5-.5h1A.5.5,0,0,1,17,9.5Zm0,4v1a.5.5,0,0,1-.5.5h-1a.5.5,0,0,1-.5-.5v-1a.5.5,0,0,1,.5-.5h1A.5.5,0,0,1,17,13.5Z"/>
+														</svg>
+													</indigo-status-button>
+													<button v-if="findProperty('Imager Agent', 'FOCUSER_STEPS')" id="focuser_in_button" class="btn btn-svg" :class="window.imagerFocuserMotionButtonClass('IN')" :disabled="window.imagerStartProcessBusy()" onclick="focuser_in()" data-bs-toggle="tooltip" title="Move in">
+														<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+															<path d="M22.99933,9.46185V22.53821a.8.8,0,0,1-1.2312.67383L11.55219,16.67383a.8.8,0,0,1,0-1.34766L21.76813,8.788A.8.8,0,0,1,22.99933,9.46185ZM10,8H9A1,1,0,0,0,8,9V23a1,1,0,0,0,1,1h1a1,1,0,0,0,1-1V9A1,1,0,0,0,10,8Z"/>
+														</svg>
+													</button>
+													<button v-if="findProperty('Imager Agent', 'FOCUSER_POSITION') && findProperty('Imager Agent', 'FOCUSER_POSITION').perm == 'rw'" id="focuser_position_button" class="btn btn-svg" :class="window.imagerFocuserMotionButtonClass('POSITION')" :disabled="window.imagerStartProcessBusy()" onclick="focuser_position()" data-bs-toggle="tooltip" title="Move to absolute position">
+														<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+															<path d="M24.8175,16.86432,9.503,25.77667A1,1,0,0,1,8,24.91235V7.08765a1,1,0,0,1,1.503-.86432L24.8175,15.13568A1.00006,1.00006,0,0,1,24.8175,16.86432Z"/>
+														</svg>
+													</button>
+													<button v-if="findProperty('Imager Agent', 'FOCUSER_STEPS')" id="focuser_out_button" class="btn btn-svg" :class="window.imagerFocuserMotionButtonClass('OUT')" :disabled="window.imagerStartProcessBusy()" onclick="focuser_out()" data-bs-toggle="tooltip" title="Move out">
+														<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+															<path d="M20.44781,15.32617a.8.8,0,0,1,0,1.34766L10.23187,23.212a.8.8,0,0,1-1.2312-.67383V9.46185a.8.8,0,0,1,1.2312-.67383ZM23,8H22a1,1,0,0,0-1,1V23a1,1,0,0,0,1,1h1a1,1,0,0,0,1-1V9A1,1,0,0,0,23,8Z"/>
+														</svg>
+													</button>
+													<button v-if="findProperty('Imager Agent', 'FOCUSER_MODE') && findProperty('Imager Agent', 'FOCUSER_MODE').item('MANUAL').value" id="focuser_mode_button" class="btn btn-svg idle-state" :disabled="window.imagerStartProcessBusy()" onclick="focuser_auto_on()" data-bs-toggle="tooltip" title="Compensation state">
+														<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+															<path d="M21.6499,4.18762,24.60956.488a.5.5,0,0,1,.78088,0L28.3501,4.18762A.5.5,0,0,1,27.95972,5H22.04028A.5.5,0,0,1,21.6499,4.18762ZM27.95972,7H22.04028a.49992.49992,0,0,0-.39038.81226l2.95966,3.6997a.5.5,0,0,0,.78088,0l2.95966-3.6997A.49992.49992,0,0,0,27.95972,7ZM17,18.835a5.50005,5.50005,0,1,1-8,0V8.08594a4,4,0,0,1,8,0Zm-1.5,3.75049A2.5018,2.5018,0,0,0,14,20.29736V14.08545a1,1,0,0,0-2,0v6.21191a2.49874,2.49874,0,1,0,3.5,2.28809Z"/>
+														</svg>
+													</button>
+													<button v-if="findProperty('Imager Agent', 'FOCUSER_MODE') && findProperty('Imager Agent', 'FOCUSER_MODE').item('AUTOMATIC').value" id="focuser_mode_button" class="btn btn-svg" :class="window.imagerStartProcessBusy() ? 'idle-state' : 'ok-state'" :disabled="window.imagerStartProcessBusy()" onclick="focuser_auto_off()" data-bs-toggle="tooltip" title="Compensation state">
+														<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+															<path d="M21.6499,4.18762,24.60956.488a.5.5,0,0,1,.78088,0L28.3501,4.18762A.5.5,0,0,1,27.95972,5H22.04028A.5.5,0,0,1,21.6499,4.18762ZM27.95972,7H22.04028a.49992.49992,0,0,0-.39038.81226l2.95966,3.6997a.5.5,0,0,0,.78088,0l2.95966-3.6997A.49992.49992,0,0,0,27.95972,7ZM17,18.835a5.50005,5.50005,0,1,1-8,0V8.08594a4,4,0,0,1,8,0Zm-1.5,3.75049A2.5018,2.5018,0,0,0,14,20.29736V14.08545a1,1,0,0,0-2,0v6.21191a2.49874,2.49874,0,1,0,3.5,2.28809Z"/>
+														</svg>
+													</button>
+													<button v-if="findProperty('Imager Agent', 'FOCUSER_ABORT_MOTION')" class="btn btn-svg idle-state" onclick="focuser_stop()" data-bs-toggle="tooltip" title="Stop">
+														<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+															<path d="M25,8V24a1,1,0,0,1-1,1H8a1,1,0,0,1-1-1V8A1,1,0,0,1,8,7H24A1,1,0,0,1,25,8Z"/>
 													</svg>
 												</button>
 											</div>
@@ -167,45 +168,31 @@
 								</div>
 							</template>
 						</div>
-						<div class="col-md-8">
-							<div id="image_container" class="card p-1 m-1 bg-light" style="min-height: 10rem">
-								<div class="card-block">
-									<div class="card p-0 border-0" style="display: none">
+						<div class="col-xl-8">
+							<div id="image_container" class="card p-2 m-1 bg-light" style="min-height: 10rem">
+								<div class="card-body">
+									<div class="card p-0 border-0 position-relative" style="display: none">
 										<img id="image" class="img-fluid rounded"/>
-										<img id="histogram" width="128" height="64" style="position: absolute; top:10px;left:10px;display:none"/>
+										<indigo-star-selection-overlay :selection-property="findProperty('Imager Agent', 'AGENT_IMAGER_SELECTION')" :marker-count="window.imagerStarSelectionMarkerCount()" :camera-selected="window.imagerCameraSelected()"></indigo-star-selection-overlay>
+										<indigo-bahtinov-spikes-overlay :spikes-property="findProperty('Imager Agent', 'AGENT_IMAGER_SPIKES')" :estimator-property="findProperty('Imager Agent', 'AGENT_IMAGER_FOCUS_ESTIMATOR')" :camera-selected="window.imagerCameraSelected()"></indigo-bahtinov-spikes-overlay>
+										<img id="histogram" class="indigo-preview-histogram" width="256" height="128" style="display:none"/>
+										<indigo-autofocus-graph :start-property="findProperty('Imager Agent', 'AGENT_START_PROCESS')" :stats-property="findProperty('Imager Agent', 'AGENT_IMAGER_STATS')" :estimator-property="findProperty('Imager Agent', 'AGENT_IMAGER_FOCUS_ESTIMATOR')" :camera-selected="window.imagerCameraSelected()" :focuser-selected="window.imagerFocuserSelected()"></indigo-autofocus-graph>
 									</div>
 								</div>
 							</div>
 						</div>
 					</div>
 				</template>
-				<div id="SUCCESS" class="alert alert-success alert-dismissible fade show m-1" role="alert" style="display:none;">
-					{{ state }}
-					<span v-if="findProperty('Server', 'INFO')" class="float-right">
-						INDIGO Server {{findProperty('Server', 'INFO').item('VERSION').value}} at {{findProperty('Server', 'INFO').item('SERVICE').value}}
-					</span>
-				</div>
-				<div id="FAILURE" class="alert alert-danger alert-dismissible fade show m-1" role="alert" style="display:none;">
-					{{ state }}
-				</div>
-				<div id="MESSAGE" class="alert alert-warning alert-dismissible fade show m-1" role="alert" style="display:none;">
-					{{ state }}
-				</div>
-				<div class="alert alert-info show m-1" role="alert">
-					Copyright &copy; 2019-2025, The INDIGO Initiative. All rights reserved.
-					<a v-if="dark" href="#" class="float-right" onclick="setLightMode()">Switch to light appearance</a>
-					<a v-else href="#" class="float-right" onclick="setDarkMode()">Switch to dark appearance</a>
-				</div>
+				<indigo-status-bar></indigo-status-bar>
 			</div>
 		</div>
 	</body>
 	<script src="jquery.min.js"></script>
-	<script src="popper.min.js"></script>
 	<script src="bootstrap.min.js"></script>
-	<script src="vue.min.js"></script>
+	<script src="vue.global.prod.js"></script>
 	<script src="indigo.js"></script>
 	<script src="components.js"></script>
-	<script language="javascript" type="text/javascript">
+	<script>
 		
 		indigoURL = new URL((window.location.protocol == "https:" ? "wss://" : "ws://") + window.location.host);
 		guiSetup();
@@ -233,11 +220,259 @@
 			}
 		}
 	
-		var targetExposureTime = 0;
-		var repeatExposure = false;
 		var downloadInProgress = false;
 		var downloadURL = "";
 		var downloadFileName = "";
+		var imagerStartProcessItem = null;
+		var imagerFocuserMotionResetTimer = null;
+
+		function imagerStartProcessProperty() {
+			if (INDIGO == null || INDIGO.devices["Imager Agent"] == null)
+				return null;
+			return INDIGO.devices["Imager Agent"]["AGENT_START_PROCESS"];
+		}
+
+		function imagerStartProcessSelectedItem() {
+			var property = imagerStartProcessProperty();
+			if (property != null) {
+				for (var i in property.items) {
+					if (property.items[i].value)
+						return property.items[i].name;
+				}
+			}
+			return imagerStartProcessItem;
+		}
+
+		function imagerStartProcessBusy() {
+			var property = imagerStartProcessProperty();
+			return property != null && property.state == "Busy";
+		}
+
+		function imagerStartProcessButtonClass(itemName) {
+			var property = imagerStartProcessProperty();
+			if (property == null || imagerStartProcessSelectedItem() != itemName)
+				return "idle-state";
+			if (property.state == "Busy")
+				return "busy-state";
+			if (property.state == "Alert")
+				return "alert-state";
+			return "idle-state";
+		}
+
+		function imagerStartProcessButtonDisabled(itemName) {
+			return imagerStartProcessBusy();
+		}
+
+		function imagerSetStartProcessItem(itemName) {
+			imagerStartProcessItem = itemName;
+		}
+
+		function imagerCameraSelected() {
+			if (INDIGO == null || INDIGO.devices["Imager Agent"] == null)
+				return false;
+			var property = INDIGO.devices["Imager Agent"]["FILTER_CCD_LIST"];
+			return property != null && property.items.length > 0 && !property.items[0].value;
+		}
+
+		function imagerSelectedCamera() {
+			if (INDIGO == null || INDIGO.devices["Imager Agent"] == null)
+				return null;
+			var property = INDIGO.devices["Imager Agent"]["FILTER_CCD_LIST"];
+			if (property == null)
+				return null;
+			for (var i in property.items) {
+				if (property.items[i].value)
+					return property.items[i].name;
+			}
+			return null;
+		}
+
+		function imagerFocuserMotionButtonClass(buttonName) {
+			if (INDIGO == null || imagerStartProcessBusy() || INDIGO.imagerFocuserMotionButton != buttonName)
+				return "idle-state";
+			if (INDIGO.imagerFocuserMotionState == "Busy")
+				return "busy-state";
+			if (INDIGO.imagerFocuserMotionState == "Alert")
+				return "alert-state";
+			return "idle-state";
+		}
+
+		function imagerClearFocuserMotionButton() {
+			if (imagerFocuserMotionResetTimer != null) {
+				clearTimeout(imagerFocuserMotionResetTimer);
+				imagerFocuserMotionResetTimer = null;
+			}
+			if (INDIGO == null)
+				return;
+			INDIGO.imagerFocuserMotionButton = null;
+			INDIGO.imagerFocuserMotionState = "Idle";
+			INDIGO.imagerFocuserMotionActive = false;
+		}
+
+		function imagerSetFocuserMotionButton(buttonName) {
+			if (imagerFocuserMotionResetTimer != null)
+				clearTimeout(imagerFocuserMotionResetTimer);
+			if (INDIGO == null)
+				return;
+			INDIGO.imagerFocuserMotionButton = buttonName;
+			INDIGO.imagerFocuserMotionState = "Busy";
+			INDIGO.imagerFocuserMotionActive = false;
+			imagerFocuserMotionResetTimer = setTimeout(function() {
+				if (INDIGO != null && !INDIGO.imagerFocuserMotionActive)
+					imagerClearFocuserMotionButton();
+			}, 1000);
+		}
+
+		function imagerFocuserMotionButtonMatchesProperty(propertyName) {
+			if (INDIGO == null)
+				return false;
+			if (INDIGO.imagerFocuserMotionButton == "POSITION")
+				return propertyName == "FOCUSER_POSITION";
+			if (INDIGO.imagerFocuserMotionButton == "IN" || INDIGO.imagerFocuserMotionButton == "OUT")
+				return propertyName == "FOCUSER_STEPS";
+			return false;
+		}
+
+		function imagerUpdateFocuserMotionButton(property) {
+			if (!imagerFocuserMotionButtonMatchesProperty(property.name))
+				return;
+			if (property.state == "Busy" || property.state == "Alert") {
+				if (imagerFocuserMotionResetTimer != null) {
+					clearTimeout(imagerFocuserMotionResetTimer);
+					imagerFocuserMotionResetTimer = null;
+				}
+				INDIGO.imagerFocuserMotionActive = true;
+				INDIGO.imagerFocuserMotionState = property.state;
+			} else if (INDIGO.imagerFocuserMotionActive) {
+				imagerClearFocuserMotionButton();
+			}
+		}
+
+		function imagerFocusEstimatorProperty() {
+			if (INDIGO == null || INDIGO.devices["Imager Agent"] == null)
+				return null;
+			return INDIGO.devices["Imager Agent"]["AGENT_IMAGER_FOCUS_ESTIMATOR"];
+		}
+
+		function imagerFocusEstimatorIs(name) {
+			var property = imagerFocusEstimatorProperty();
+			if (property == null)
+				return false;
+			var item = property.item(name);
+			return item != null && item.value;
+		}
+
+		function imagerFocusEstimatorSelected() {
+			var property = imagerFocusEstimatorProperty();
+			if (property == null)
+				return false;
+			for (var i in property.items) {
+				if (property.items[i].value)
+					return true;
+			}
+			return false;
+		}
+
+			function imagerFocuserSelected() {
+				if (INDIGO == null || INDIGO.devices["Imager Agent"] == null)
+					return false;
+				var property = INDIGO.devices["Imager Agent"]["FILTER_FOCUSER_LIST"];
+				return property != null && property.items.length > 0 && !property.items[0].value;
+			}
+
+			function imagerFocuserSpeedEditable() {
+				if (INDIGO == null || INDIGO.devices["Imager Agent"] == null)
+					return false;
+				var property = INDIGO.devices["Imager Agent"]["FOCUSER_SPEED"];
+				return property != null && property.perm == "rw";
+			}
+
+			function imagerSelectionCountIsOne() {
+				if (INDIGO == null || INDIGO.devices["Imager Agent"] == null)
+					return false;
+				var property = INDIGO.devices["Imager Agent"]["AGENT_IMAGER_SELECTION"];
+				if (property == null)
+					return false;
+				var item = property.item("COUNT");
+				return item != null && Number(item.value) == 1;
+			}
+
+			function imagerSelectionCount() {
+				if (INDIGO == null || INDIGO.devices["Imager Agent"] == null)
+					return 1;
+				var property = INDIGO.devices["Imager Agent"]["AGENT_IMAGER_SELECTION"];
+				if (property == null)
+					return 1;
+				var item = property.item("COUNT");
+				if (item == null || !isFinite(Number(item.value)) || Number(item.value) < 1)
+					return 1;
+				return Number(item.value);
+			}
+
+			function imagerStarSelectionMarkerCount() {
+				if (imagerFocusEstimatorIs("BAHTINOV"))
+					return 0;
+				if (imagerFocusEstimatorIs("U_CURVE"))
+					return imagerSelectionCount();
+				return 1;
+			}
+
+			function imagerPropertyHasItem(propertyName, itemName) {
+				if (INDIGO == null || INDIGO.devices["Imager Agent"] == null)
+					return false;
+				var property = INDIGO.devices["Imager Agent"][propertyName];
+				return property != null && property.item(itemName) != null;
+			}
+
+			function imagerFocusControlsNeedRowBreak() {
+				var count = 0;
+
+				if (imagerFocusEstimatorIs("U_CURVE")) {
+					if (imagerPropertyHasItem("AGENT_IMAGER_SELECTION", "RADIUS"))
+						count++;
+					if (imagerPropertyHasItem("AGENT_IMAGER_SELECTION", "SUBFRAME"))
+						count++;
+					if (imagerPropertyHasItem("AGENT_IMAGER_FOCUS", "U_CURVE_SAMPLES"))
+						count++;
+					if (imagerPropertyHasItem("AGENT_IMAGER_FOCUS", "U_CURVE_STEP"))
+						count++;
+				} else if (imagerFocusEstimatorIs("HFD_PEAK")) {
+					if (imagerPropertyHasItem("AGENT_IMAGER_SELECTION", "RADIUS"))
+						count++;
+					if (imagerPropertyHasItem("AGENT_IMAGER_SELECTION", "SUBFRAME"))
+						count++;
+				}
+
+				if (imagerFocusEstimatorIs("HFD_PEAK") || imagerFocusEstimatorIs("RMS_CONTRAST") || imagerFocusEstimatorIs("BAHTINOV")) {
+					if (imagerPropertyHasItem("AGENT_IMAGER_FOCUS", "ITERATIVE_INITIAL"))
+						count++;
+					if (imagerPropertyHasItem("AGENT_IMAGER_FOCUS", "ITERATIVE_FINAL"))
+						count++;
+				}
+
+				if (imagerFocusEstimatorIs("BAHTINOV") && imagerPropertyHasItem("AGENT_IMAGER_FOCUS", "BAHTINOV_SIGMA"))
+					count++;
+				if (imagerFocusEstimatorSelected()) {
+					if (imagerPropertyHasItem("AGENT_IMAGER_FOCUS", "BACKLASH"))
+						count++;
+					if (imagerPropertyHasItem("AGENT_IMAGER_FOCUS", "BACKLASH_OVERSHOOT_FACTOR"))
+						count++;
+				}
+
+				return count % 2 == 1;
+			}
+
+			function imagerPreviewURL(value) {
+				if (value.startsWith("http://") || value.startsWith("https://"))
+					return value;
+				return window.location.protocol + "//" + INDIGO.host + value;
+			}
+
+			function imagerShowPreviewElement(selector, value) {
+				if (value == null)
+					return;
+				$(selector).attr("src", imagerPreviewURL(value) + '?' + new Date().getTime()).show().parent().show();
+			}
 		
 		function onDefineProperty(property) {
 			onUpdateProperty(property);
@@ -245,47 +480,25 @@
 				if (property.name == "AGENT_IMAGER_BATCH" && property.state == "Ok") {
 					changeProperty("Imager Agent", "CCD_PREVIEW", { "ENABLED_WITH_HISTOGRAM" : true });
 				} else if (property.name == "FILTER_RELATED_AGENT_LIST" && property.state == "Ok") {
-					changeProperty("Imager Agent", "FILTER_RELATED_AGENT_LIST", { "Guider Agent" : true });
-				}
-			} else if (property.name == "CCD_PREVIEW_IMAGE") {
-				if (property.state == "Ok") {
-					var value = property.item("IMAGE").value;
-					if (value != null) {
-						if (value.startsWith("http://") || value.startsWith("https://"))
-							$("#image").attr("src", value + '?' + new Date().getTime()).parent().show();
-						else
-							$("#image").attr("src", window.location.protocol + "//" + INDIGO.host + value + '?' + new Date().getTime()).parent().show();
-					}
+					changeProperty("Imager Agent", "FILTER_RELATED_AGENT_LIST", { "Guider Agent" : true, "Mount Agent" : true, "Astrometry Agent" : true });
 				}
 			}
 			guiSetup();
 		}
 	
 		function onUpdateProperty(property) {
-			if (property.device == "Imager Agent") {
-				if (property.name == "AGENT_IMAGER_BATCH" && property.state == "Ok") {
-					targetExposureTime = property.item("EXPOSURE").value;
-				} else if (property.name == "CCD_PREVIEW_IMAGE") {
-					if (property.state == "Ok") {
-						var value = property.item("IMAGE").value;
-						if (value != null) {
-							if (value.startsWith("http://") || value.startsWith("https://"))
-								$("#image").attr("src", value + '?' + new Date().getTime()).parent().show();
-							else
-								$("#image").attr("src", window.location.protocol + "//" + INDIGO.host + value + '?' + new Date().getTime()).parent().show();
-						}
-					}
-				} else if (property.name == "CCD_PREVIEW_HISTOGRAM") {
-					if (property.state == "Ok") {
-						var value = property.item("IMAGE").value;
-						if (value != null) {
-							$("#histogram").show();
-							if (value.startsWith("http://") || value.startsWith("https://"))
-								$("#histogram").attr("src", value + '?' + new Date().getTime()).parent().show();
-							else
-								$("#histogram").attr("src", window.location.protocol + "//" + INDIGO.host + value + '?' + new Date().getTime()).show();
-						}
-					}
+			if (property.name == "FOCUSER_STEPS" || property.name == "FOCUSER_POSITION")
+				imagerUpdateFocuserMotionButton(property);
+			if (property.name == "CCD_PREVIEW_IMAGE" && property.device == imagerSelectedCamera()) {
+				if (property.state == "Ok")
+					imagerShowPreviewElement("#image", property.item("IMAGE").value);
+			} else if (property.name == "CCD_PREVIEW_HISTOGRAM" && property.device == imagerSelectedCamera()) {
+				if (property.state == "Ok")
+					imagerShowPreviewElement("#histogram", property.item("IMAGE").value);
+			} else if (property.device == "Imager Agent") {
+				if (property.name == "AGENT_START_PROCESS") {
+					if (property.state != "Busy" && property.state != "Alert")
+						imagerStartProcessItem = null;
 				} else if (property.name == "AGENT_IMAGER_DOWNLOAD_IMAGE") {
 					if (property.state == "Ok" && downloadFileName != "") {
 						var xhr = new XMLHttpRequest();
@@ -307,72 +520,6 @@
 						};
 						xhr.send();
 					}
-				} else if (property.name == "CCD_EXPOSURE") {
-					if (property.state == "Ok") {
-						$("#preview1_button").removeClass("busy-state");
-						$("#preview1_button").addClass("idle-state");
-						$("#preview_button").removeClass("busy-state");
-						$("#preview_button").addClass("idle-state");
-						if (repeatExposure) {
-							$("#preview_button").removeClass("idle-state");
-							$("#preview_button").addClass("busy-state");
-							changeProperty("Imager Agent", "CCD_EXPOSURE", { "EXPOSURE": targetExposureTime });
-						}
-					} else if (property.state == "Alert") {
-						$("#preview1_button").removeClass("busy-state");
-						$("#preview1_button").addClass("idle-state");
-						$("#preview_button").removeClass("busy-state");
-						$("#preview_button").addClass("idle-state");
-					}
-				} else if (property.name == "AGENT_START_PROCESS") {
-					if (property.state == "Ok") {
-						$("#capture_button").removeClass("busy-state");
-						$("#capture_button").addClass("idle-state");
-						$("#focuser_auto_button").removeClass("busy-state");
-						$("#focuser_auto_button").addClass("idle-state");
-					} else if (property.state == "Alert") {
-						$("#capture_button").removeClass("busy-state");
-						$("#capture_button").addClass("idle-state");
-						$("#focuser_auto_button").removeClass("busy-state");
-						$("#focuser_auto_button").addClass("idle-state");
-					}
-				} else if (property.name == "FOCUSER_STEPS") {
-					if (property.state == "Alert") {
-						$("#focuser_in_button").removeClass("idle-state");
-						$("#focuser_in_button").removeClass("busy-state");
-						$("#focuser_in_button").addClass("alert-state");
-						$("#focuser_out_button").removeClass("idle-state");
-						$("#focuser_out_button").removeClass("busy-state");
-						$("#focuser_out_button").addClass("alert-state");
-					} else if (property.state == "Busy") {
-						$("#focuser_in_button").removeClass("idle-state");
-						$("#focuser_in_button").removeClass("alert-state");
-						$("#focuser_in_button").addClass("busy-state");
-						$("#focuser_out_button").removeClass("idle-state");
-						$("#focuser_out_button").removeClass("alert-state");
-						$("#focuser_out_button").addClass("busy-state");
-					} else {
-						$("#focuser_in_button").removeClass("alert-state");
-						$("#focuser_in_button").removeClass("busy-state");
-						$("#focuser_in_button").addClass("idle-state");
-						$("#focuser_out_button").removeClass("alert-state");
-						$("#focuser_out_button").removeClass("busy-state");
-						$("#focuser_out_button").addClass("idle-state");
-					}
-				} else if (property.name == "FOCUSER_POSITION") {
-					if (property.state == "Alert") {
-						$("#focuser_position_button").removeClass("idle-state");
-						$("#focuser_position_button").removeClass("busy-state");
-						$("#focuser_position_button").addClass("alert-state");
-					} else if (property.state == "Busy") {
-						$("#focuser_position_button").removeClass("idle-state");
-						$("#focuser_position_button").removeClass("alert-state");
-						$("#focuser_position_button").addClass("busy-state");
-					} else {
-						$("#focuser_position_button").removeClass("alert-state");
-						$("#focuser_position_button").removeClass("busy-state");
-						$("#focuser_position_button").addClass("idle-state");
-					}
 				}
 			}
 			guiSetup();
@@ -386,30 +533,24 @@
 		}
 	
 		function preview1() {
-			repeatExposure = false;
-			$("#preview1_button").removeClass("idle-state");
-			$("#preview1_button").addClass("busy-state");
-			INDIGO.useAgent = false;
+			INDIGO.useAgent = true;
+			imagerSetStartProcessItem("PREVIEW_1");
 			changeProperty("Imager Agent", "CCD_UPLOAD_MODE", { "CLIENT" : true });
 			changeProperty("Imager Agent", "CCD_PREVIEW", { "ENABLED_WITH_HISTOGRAM" : true });
-			changeProperty("Imager Agent", "CCD_EXPOSURE", { "EXPOSURE": targetExposureTime });
+			changeProperty("Imager Agent", "AGENT_START_PROCESS", { "PREVIEW_1" : true });
 		}
 	
 		function preview() {
-			repeatExposure = true;
-			$("#preview_button").removeClass("idle-state");
-			$("#preview_button").addClass("busy-state");
-			INDIGO.useAgent = false;
+			INDIGO.useAgent = true;
+			imagerSetStartProcessItem("PREVIEW");
 			changeProperty("Imager Agent", "CCD_UPLOAD_MODE", { "CLIENT" : true });
 			changeProperty("Imager Agent", "CCD_PREVIEW", { "ENABLED_WITH_HISTOGRAM" : true });
-			changeProperty("Imager Agent", "CCD_EXPOSURE", { "EXPOSURE": targetExposureTime });
+			changeProperty("Imager Agent", "AGENT_START_PROCESS", { "PREVIEW" : true });
 		}
 	
 		function capture_batch() {
-			repeatExposure = false;
-			$("#capture_button").removeClass("idle-state");
-			$("#capture_button").addClass("busy-state");
 			INDIGO.useAgent = true;
+			imagerSetStartProcessItem("EXPOSURE");
 			changeProperty("Imager Agent", "CCD_UPLOAD_MODE", { "LOCAL" : true });
 			changeProperty("Imager Agent", "CCD_PREVIEW", { "ENABLED_WITH_HISTOGRAM" : true });
 			changeProperty("Imager Agent", "AGENT_START_PROCESS", { "EXPOSURE" : true });
@@ -433,19 +574,20 @@
 	}
 	
 	function stop() {
-		repeatExposure = false;
 		changeProperty("Imager Agent", "AGENT_ABORT_PROCESS", { "ABORT": true });
 		changeProperty("Imager Agent", "CCD_ABORT_EXPOSURE", { "ABORT_EXPOSURE": true });
 	}
 
 	function focuser_position() {
 		var position = parseInt($("#steps").val());
+		imagerSetFocuserMotionButton("POSITION");
 		changeProperty("Imager Agent", "FOCUSER_ON_POSITION_SET", { "GOTO" : true });
 		changeProperty("Imager Agent", "FOCUSER_POSITION", { "POSITION" : position });
 	}
 
 	function focuser_in() {
 		var steps = parseInt($("#steps").val());
+		imagerSetFocuserMotionButton("IN");
 		changeProperty("Imager Agent", "FOCUSER_ON_POSITION_SET", { "GOTO" : true });
 		changeProperty("Imager Agent", "FOCUSER_DIRECTION", { "MOVE_INWARD" : true });
 		changeProperty("Imager Agent", "FOCUSER_STEPS", { "STEPS" : steps });
@@ -453,15 +595,15 @@
 	
 	function focuser_out() {
 		var steps = parseInt($("#steps").val());
+		imagerSetFocuserMotionButton("OUT");
 		changeProperty("Imager Agent", "FOCUSER_ON_POSITION_SET", { "GOTO" : true });
 		changeProperty("Imager Agent", "FOCUSER_DIRECTION", { "MOVE_OUTWARD" : true });
 		changeProperty("Imager Agent", "FOCUSER_STEPS", { "STEPS" : steps });
 	}
 
 	function focuser_auto() {
-		$("#focuser_auto_button").removeClass("idle-state");
-		$("#focuser_auto_button").addClass("busy-state");
-		changeProperty("Imager Agent", "CCD_PREVIEW", { "ENABLED" : true });
+		imagerSetStartProcessItem("FOCUSING");
+		changeProperty("Imager Agent", "CCD_PREVIEW", { "ENABLED_WITH_HISTOGRAM" : true });
 		changeProperty("Imager Agent", "AGENT_START_PROCESS", { "FOCUSING" : true });
 	}
 	

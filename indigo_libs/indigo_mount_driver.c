@@ -275,13 +275,6 @@ indigo_result indigo_mount_attach(indigo_device *device, const char* driver_name
 			MOUNT_SIDE_OF_PIER_PROPERTY->hidden = true;
 			indigo_init_switch_item(MOUNT_SIDE_OF_PIER_EAST_ITEM, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME, "East", true);
 			indigo_init_switch_item(MOUNT_SIDE_OF_PIER_WEST_ITEM, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME, "West", false);
-			// -------------------------------------------------------------------------------- SNOOP_DEVICES
-			MOUNT_SNOOP_DEVICES_PROPERTY = indigo_init_text_property(NULL, device->name, SNOOP_DEVICES_PROPERTY_NAME, MAIN_GROUP, "Snoop devices", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
-			if (MOUNT_SNOOP_DEVICES_PROPERTY == NULL) {
-				return INDIGO_FAILED;
-			}
-			indigo_init_text_item(MOUNT_SNOOP_JOYSTICK_ITEM, SNOOP_JOYSTICK_ITEM_NAME, "Joystick", "");
-			indigo_init_text_item(MOUNT_SNOOP_GPS_ITEM, SNOOP_GPS_ITEM_NAME, "GPS", "");
 			// -------------------------------------------------------------------------------- MOUNT_USE_PPEC
 			MOUNT_PEC_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_PEC_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Use PEC", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 			if (MOUNT_PEC_PROPERTY == NULL) {
@@ -387,6 +380,7 @@ indigo_result indigo_mount_enumerate_properties(indigo_device *device, indigo_cl
 	assert(DEVICE_CONTEXT != NULL);
 	if (IS_CONNECTED) {
 		INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_INFO_PROPERTY);
+		INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_STATE_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_LST_TIME_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_UTC_TIME_PROPERTY);
@@ -415,10 +409,8 @@ indigo_result indigo_mount_enumerate_properties(indigo_device *device, indigo_cl
 		INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_ALIGNMENT_RESET_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_EPOCH_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_SIDE_OF_PIER_PROPERTY);
-		INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_SNOOP_DEVICES_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_PEC_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_PEC_TRAINING_PROPERTY);
-		INDIGO_DEFINE_MATCHING_PROPERTY(MOUNT_STATE_PROPERTY);
 	}
 	return indigo_device_enumerate_properties(device, client, property);
 }
@@ -436,6 +428,7 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 			indigo_j2k_to_jnow(&ra, &dec);
 			indigo_radec_to_altaz(ra, dec, NULL, MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value, MOUNT_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value, &MOUNT_HORIZONTAL_COORDINATES_ALT_ITEM->number.value, &MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM->number.value);
 			indigo_define_property(device, MOUNT_INFO_PROPERTY, NULL);
+			indigo_define_property(device, MOUNT_STATE_PROPERTY, NULL);
 			indigo_define_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 			indigo_define_property(device, MOUNT_LST_TIME_PROPERTY, NULL);
 			indigo_define_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
@@ -464,18 +457,8 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 			indigo_define_property(device, MOUNT_ALIGNMENT_RESET_PROPERTY, NULL);
 			indigo_define_property(device, MOUNT_EPOCH_PROPERTY, NULL);
 			indigo_define_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
-			indigo_define_property(device, MOUNT_SNOOP_DEVICES_PROPERTY, NULL);
 			indigo_define_property(device, MOUNT_PEC_PROPERTY, NULL);
 			indigo_define_property(device, MOUNT_PEC_TRAINING_PROPERTY, NULL);
-			indigo_define_property(device, MOUNT_STATE_PROPERTY, NULL);
-			indigo_add_snoop_rule(MOUNT_PARK_PROPERTY, MOUNT_SNOOP_JOYSTICK_ITEM->text.value, MOUNT_PARK_PROPERTY_NAME);
-			indigo_add_snoop_rule(MOUNT_SLEW_RATE_PROPERTY, MOUNT_SNOOP_JOYSTICK_ITEM->text.value, MOUNT_SLEW_RATE_PROPERTY_NAME);
-			indigo_add_snoop_rule(MOUNT_TRACKING_PROPERTY, MOUNT_SNOOP_JOYSTICK_ITEM->text.value, MOUNT_TRACKING_PROPERTY_NAME);
-			indigo_add_snoop_rule(MOUNT_MOTION_DEC_PROPERTY, MOUNT_SNOOP_JOYSTICK_ITEM->text.value, MOUNT_MOTION_DEC_PROPERTY_NAME);
-			indigo_add_snoop_rule(MOUNT_MOTION_RA_PROPERTY, MOUNT_SNOOP_JOYSTICK_ITEM->text.value, MOUNT_MOTION_RA_PROPERTY_NAME);
-			indigo_add_snoop_rule(MOUNT_ABORT_MOTION_PROPERTY, MOUNT_SNOOP_JOYSTICK_ITEM->text.value, MOUNT_ABORT_MOTION_PROPERTY_NAME);
-			indigo_add_snoop_rule(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, MOUNT_SNOOP_GPS_ITEM->text.value, GEOGRAPHIC_COORDINATES_PROPERTY_NAME);
-			indigo_add_snoop_rule(MOUNT_UTC_TIME_PROPERTY, MOUNT_SNOOP_GPS_ITEM->text.value, UTC_TIME_PROPERTY_NAME);
 		} else {
 			MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 			MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
@@ -484,15 +467,8 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 			MOUNT_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 			MOUNT_RAW_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_remove_snoop_rule(MOUNT_PARK_PROPERTY, MOUNT_SNOOP_JOYSTICK_ITEM->text.value, MOUNT_PARK_PROPERTY_NAME);
-			indigo_remove_snoop_rule(MOUNT_SLEW_RATE_PROPERTY, MOUNT_SNOOP_JOYSTICK_ITEM->text.value, MOUNT_SLEW_RATE_PROPERTY_NAME);
-			indigo_remove_snoop_rule(MOUNT_TRACKING_PROPERTY, MOUNT_SNOOP_JOYSTICK_ITEM->text.value, MOUNT_TRACKING_PROPERTY_NAME);
-			indigo_remove_snoop_rule(MOUNT_MOTION_DEC_PROPERTY, MOUNT_SNOOP_JOYSTICK_ITEM->text.value, MOUNT_MOTION_DEC_PROPERTY_NAME);
-			indigo_remove_snoop_rule(MOUNT_MOTION_RA_PROPERTY, MOUNT_SNOOP_JOYSTICK_ITEM->text.value, MOUNT_MOTION_RA_PROPERTY_NAME);
-			indigo_remove_snoop_rule(MOUNT_ABORT_MOTION_PROPERTY, MOUNT_SNOOP_JOYSTICK_ITEM->text.value, MOUNT_ABORT_MOTION_PROPERTY_NAME);
-			indigo_remove_snoop_rule(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, MOUNT_SNOOP_GPS_ITEM->text.value, GEOGRAPHIC_COORDINATES_PROPERTY_NAME);
-			indigo_remove_snoop_rule(MOUNT_UTC_TIME_PROPERTY, MOUNT_SNOOP_GPS_ITEM->text.value, UTC_TIME_PROPERTY_NAME);
 			indigo_delete_property(device, MOUNT_INFO_PROPERTY, NULL);
+			indigo_delete_property(device, MOUNT_STATE_PROPERTY, NULL);
 			indigo_delete_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 			indigo_delete_property(device, MOUNT_LST_TIME_PROPERTY, NULL);
 			indigo_delete_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
@@ -521,10 +497,8 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 			indigo_delete_property(device, MOUNT_ALIGNMENT_RESET_PROPERTY, NULL);
 			indigo_delete_property(device, MOUNT_EPOCH_PROPERTY, NULL);
 			indigo_delete_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
-			indigo_delete_property(device, MOUNT_SNOOP_DEVICES_PROPERTY, NULL);
 			indigo_delete_property(device, MOUNT_PEC_PROPERTY, NULL);
 			indigo_delete_property(device, MOUNT_PEC_TRAINING_PROPERTY, NULL);
-			indigo_delete_property(device, MOUNT_STATE_PROPERTY, NULL);
 		}
 	} else if (indigo_property_match_changeable(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_GEOGRAPHIC_COORDINATES
@@ -841,29 +815,6 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 		MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_CUSTOM_TRACKING_RATE_PROPERTY, NULL);
 		return INDIGO_OK;
-		// -------------------------------------------------------------------------------- SNOOP_DEVICES
-	} else if (indigo_property_match_changeable(MOUNT_SNOOP_DEVICES_PROPERTY, property)) {
-		indigo_remove_snoop_rule(MOUNT_PARK_PROPERTY, MOUNT_SNOOP_JOYSTICK_ITEM->text.value, MOUNT_PARK_PROPERTY_NAME);
-		indigo_remove_snoop_rule(MOUNT_SLEW_RATE_PROPERTY, MOUNT_SNOOP_JOYSTICK_ITEM->text.value, MOUNT_SLEW_RATE_PROPERTY_NAME);
-		indigo_remove_snoop_rule(MOUNT_TRACKING_PROPERTY, MOUNT_SNOOP_JOYSTICK_ITEM->text.value, MOUNT_TRACKING_PROPERTY_NAME);
-		indigo_remove_snoop_rule(MOUNT_MOTION_DEC_PROPERTY, MOUNT_SNOOP_JOYSTICK_ITEM->text.value, MOUNT_MOTION_DEC_PROPERTY_NAME);
-		indigo_remove_snoop_rule(MOUNT_MOTION_RA_PROPERTY, MOUNT_SNOOP_JOYSTICK_ITEM->text.value, MOUNT_MOTION_RA_PROPERTY_NAME);
-		indigo_remove_snoop_rule(MOUNT_ABORT_MOTION_PROPERTY, MOUNT_SNOOP_JOYSTICK_ITEM->text.value, MOUNT_ABORT_MOTION_PROPERTY_NAME);
-		indigo_remove_snoop_rule(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, MOUNT_SNOOP_GPS_ITEM->text.value, GEOGRAPHIC_COORDINATES_PROPERTY_NAME);
-		indigo_remove_snoop_rule(MOUNT_UTC_TIME_PROPERTY, MOUNT_SNOOP_GPS_ITEM->text.value, UTC_TIME_PROPERTY_NAME);
-		indigo_property_copy_values(MOUNT_SNOOP_DEVICES_PROPERTY, property, false);
-		indigo_trim_local_service(MOUNT_SNOOP_JOYSTICK_ITEM->text.value);
-		indigo_trim_local_service(MOUNT_SNOOP_GPS_ITEM->text.value);
-		indigo_add_snoop_rule(MOUNT_PARK_PROPERTY, MOUNT_SNOOP_JOYSTICK_ITEM->text.value, MOUNT_PARK_PROPERTY_NAME);
-		indigo_add_snoop_rule(MOUNT_SLEW_RATE_PROPERTY, MOUNT_SNOOP_JOYSTICK_ITEM->text.value, MOUNT_SLEW_RATE_PROPERTY_NAME);
-		indigo_add_snoop_rule(MOUNT_TRACKING_PROPERTY, MOUNT_SNOOP_JOYSTICK_ITEM->text.value, MOUNT_TRACKING_PROPERTY_NAME);
-		indigo_add_snoop_rule(MOUNT_MOTION_DEC_PROPERTY, MOUNT_SNOOP_JOYSTICK_ITEM->text.value, MOUNT_MOTION_DEC_PROPERTY_NAME);
-		indigo_add_snoop_rule(MOUNT_MOTION_RA_PROPERTY, MOUNT_SNOOP_JOYSTICK_ITEM->text.value, MOUNT_MOTION_RA_PROPERTY_NAME);
-		indigo_add_snoop_rule(MOUNT_ABORT_MOTION_PROPERTY, MOUNT_SNOOP_JOYSTICK_ITEM->text.value, MOUNT_ABORT_MOTION_PROPERTY_NAME);
-		indigo_add_snoop_rule(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, MOUNT_SNOOP_GPS_ITEM->text.value, GEOGRAPHIC_COORDINATES_PROPERTY_NAME);
-		indigo_add_snoop_rule(MOUNT_UTC_TIME_PROPERTY, MOUNT_SNOOP_GPS_ITEM->text.value, UTC_TIME_PROPERTY_NAME);
-		MOUNT_SNOOP_DEVICES_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, MOUNT_SNOOP_DEVICES_PROPERTY, NULL);
 		// --------------------------------------------------------------------------------
 	}
 	return indigo_device_change_property(device, client, property);
@@ -900,7 +851,6 @@ indigo_result indigo_mount_detach(indigo_device *device) {
 	indigo_release_property(MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY);
 	indigo_release_property(MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY);
 	indigo_release_property(MOUNT_ALIGNMENT_RESET_PROPERTY);
-	indigo_release_property(MOUNT_SNOOP_DEVICES_PROPERTY);
 	indigo_release_property(MOUNT_PEC_PROPERTY);
 	indigo_release_property(MOUNT_PEC_TRAINING_PROPERTY);
 	indigo_release_property(MOUNT_STATE_PROPERTY);

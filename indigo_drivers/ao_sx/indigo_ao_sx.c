@@ -118,7 +118,9 @@ static void ao_connection_handler(indigo_device *device) {
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", AO_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
 			indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", AO_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
-			PRIVATE_DATA->count--;
+			if (--PRIVATE_DATA->count == 0) {
+				sx_close(device);
+			}
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
@@ -257,7 +259,9 @@ static void guider_connection_handler(indigo_device *device) {
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", GUIDER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
 			indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", GUIDER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
-			PRIVATE_DATA->count--;
+			if (--PRIVATE_DATA->count == 0) {
+				sx_close(device);
+			}
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}

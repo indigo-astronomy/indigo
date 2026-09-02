@@ -119,6 +119,7 @@ typedef struct {
 	indigo_property *fli_camera_mode_property;
 } fli_private_data;
 
+static pthread_mutex_t indigo_device_enumeration_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static indigo_result fli_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
@@ -134,10 +135,12 @@ static bool fli_open(indigo_device *device) {
 
 	if (device->is_connected) return false;
 
+	pthread_mutex_lock(&indigo_device_enumeration_mutex);
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
 	if (indigo_try_global_lock(device) != INDIGO_OK) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
 		return false;
 	}
@@ -145,7 +148,9 @@ static bool fli_open(indigo_device *device) {
 	long res = FLIOpen(&(PRIVATE_DATA->dev_id), PRIVATE_DATA->dev_file_name, PRIVATE_DATA->domain);
 	id = PRIVATE_DATA->dev_id;
 	if (res) {
+		indigo_global_unlock(device);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIOpen(%d) = %d", id, res);
 		return false;
 	}
@@ -153,7 +158,9 @@ static bool fli_open(indigo_device *device) {
 	res = FLIGetArrayArea(id, &(PRIVATE_DATA->total_area.ul_x), &(PRIVATE_DATA->total_area.ul_y), &(PRIVATE_DATA->total_area.lr_x), &(PRIVATE_DATA->total_area.lr_y));
 	if (res) {
 		FLIClose(id);
+		indigo_global_unlock(device);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetArrayArea(%d) = %d", id, res);
 		return false;
 	}
@@ -161,7 +168,9 @@ static bool fli_open(indigo_device *device) {
 	res = FLIGetVisibleArea(id, &(PRIVATE_DATA->visible_area.ul_x), &(PRIVATE_DATA->visible_area.ul_y), &(PRIVATE_DATA->visible_area.lr_x), &(PRIVATE_DATA->visible_area.lr_y));
 	if (res) {
 		FLIClose(id);
+		indigo_global_unlock(device);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetVisibleArea(%d) = %d", id, res);
 		return false;
 	}
@@ -184,6 +193,7 @@ static bool fli_open(indigo_device *device) {
 	}
 
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 	return true;
 }
 
@@ -373,9 +383,11 @@ static void fli_close(indigo_device *device) {
 		return;
 	}
 
+	pthread_mutex_lock(&indigo_device_enumeration_mutex);
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	long res = FLIClose(PRIVATE_DATA->dev_id);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 	if (res) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIClose(%d) = %d", PRIVATE_DATA->dev_id, res);
 	}
@@ -881,8 +893,6 @@ static indigo_result ccd_detach(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- hot-plug support
 
-static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
-
 #define MAX_DEVICES                   32
 
 static const flidomain_t enum_domain = FLIDOMAIN_USB | FLIDEVICE_CAMERA;
@@ -1004,11 +1014,11 @@ static void process_plug_event(indigo_device *unused) {
 		ccd_detach
 		);
 
-	pthread_mutex_lock(&device_mutex);
+	pthread_mutex_lock(&indigo_device_enumeration_mutex);
 	int slot = find_available_device_slot();
 	if (slot < 0) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slots available.");
-		pthread_mutex_unlock(&device_mutex);
+		pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 		return;
 	}
 
@@ -1016,7 +1026,7 @@ static void process_plug_event(indigo_device *unused) {
 	int idx = find_plugged_device(file_name);
 	if (idx < 0) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No FLI Camera plugged.");
-		pthread_mutex_unlock(&device_mutex);
+		pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 		return;
 	}
 	indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
@@ -1032,11 +1042,11 @@ static void process_plug_event(indigo_device *unused) {
 	device->master_device = device;
 	indigo_attach_device(device);
 	devices[slot]=device;
-	pthread_mutex_unlock(&device_mutex);
+	pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 }
 
 static void process_unplug_event(indigo_device *unused) {
-	pthread_mutex_lock(&device_mutex);
+	pthread_mutex_lock(&indigo_device_enumeration_mutex);
 	int slot, id;
 	char file_name[PATH_MAX];
 	bool removed = false;
@@ -1047,23 +1057,26 @@ static void process_unplug_event(indigo_device *unused) {
 		}
 		indigo_device **device = &devices[slot];
 		if (*device == NULL) {
-			pthread_mutex_unlock(&device_mutex);
+			pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 			return;
 		}
-		indigo_detach_device(*device);
-		fli_private_data *private_data = (*device)->private_data;
+		indigo_device *device_to_detach = *device;
+		fli_private_data *private_data = device_to_detach->private_data;
+		*device = NULL;
+		pthread_mutex_unlock(&indigo_device_enumeration_mutex);
+		indigo_detach_device(device_to_detach);
 		if (private_data->buffer) {
 			free(private_data->buffer);
 		}
-		free((*device)->private_data);
-		free(*device);
-		*device = NULL;
+		free(device_to_detach->private_data);
+		free(device_to_detach);
+		pthread_mutex_lock(&indigo_device_enumeration_mutex);
 		removed = true;
 	}
 	if (!removed) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No FLI Camera unplugged!");
 	}
-	pthread_mutex_unlock(&device_mutex);
+	pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 }
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {

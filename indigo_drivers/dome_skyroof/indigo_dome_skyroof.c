@@ -110,8 +110,10 @@ static void dome_shutter_finalizer(indigo_device *device) {
 		if (skyroof_write(device, "Status#") && skyroof_read(device)) {
 			if (DOME_SHUTTER_OPENED_ITEM->sw.value && !strcmp(PRIVATE_DATA->response, "RoofOpen#")) {
 				DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 			} else if (DOME_SHUTTER_CLOSED_ITEM->sw.value && !strcmp(PRIVATE_DATA->response, "RoofClosed#")) {
 				DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 			} else {
 				indigo_execute_handler_in(device, 0.5, dome_shutter_finalizer);
 			}
@@ -202,11 +204,9 @@ static indigo_result dome_attach(indigo_device *device) {
 		DOME_SPEED_PROPERTY->hidden = true;
 		DOME_DIRECTION_PROPERTY->hidden = true;
 		DOME_HORIZONTAL_COORDINATES_PROPERTY->hidden = true;
-		DOME_EQUATORIAL_COORDINATES_PROPERTY->hidden = true;
 		DOME_STEPS_PROPERTY->hidden = true;
 		DOME_PARK_PROPERTY->hidden = true;
 		DOME_DIMENSION_PROPERTY->hidden = true;
-		DOME_SLAVING_PROPERTY->hidden = true;
 		DOME_SLAVING_PARAMETERS_PROPERTY->hidden = true;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return dome_enumerate_properties(device, NULL, NULL);

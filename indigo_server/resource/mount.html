@@ -10,326 +10,188 @@
 	<title>INDIGO Mount</title>
 	<body class="bg-secondary">
 		<div id="ROOT">
-			<nav class="navbar navbar-expand-sm navbar-light">
-				<a class="navbar-brand text-white " href="#">
-					<img src="mount.png" width="40" height="40" class="d-inline-block align-middle" alt=""/>
-					<h4 class="title">INDIGO Mount</h4>
-				</a>
-				<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarContent">
-					<span class="navbar-toggler-icon"></span>
-				</button>
-				<div id="navbarContent" class="form-inline collapse navbar-collapse m-0">
-					<template v-if="findProperty('Server', 'FEATURES') != null">
-						<a class="nav-link pr-0 ml-auto" href="mng.html" data-toggle="tooltip" title="Server Manager">
-							<img src="mng.png" width="40" height="40" class="align-middle mr-0" alt=""/>
-						</a>
-						<a class="nav-link pr-0" href="ctrl.html" data-toggle="tooltip" title="Control Panel">
-							<img src="ctrl.png" width="40" height="40" class="align-middle mr-0" alt=""/>
-						</a>
-						<template v-if="findProperty('Server', 'FEATURES').item('WEB_APPS').value">
-							<a class="nav-link pr-0" href="imager.html" data-toggle="tooltip" title="Imager">
-								<img src="imager.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
-							</a>
-							<a class="nav-link pr-0" href="mount.html" data-toggle="tooltip" title="Mount">
-								<img src="mount.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
-							</a>
-							<a class="nav-link pr-0" href="guider.html" data-toggle="tooltip" title="Guider">
-								<img src="guider.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
-							</a>
-							<a class="nav-link pr-0" href="script.html" data-toggle="tooltip" title="Script">
-								<img src="script.png" width="40" height="40" class="d-inline-block align-middle mr-0" alt=""/>
-							</a>
-						</template>
-					</template>
-				</div>
-			</nav>
+			<indigo-navbar active="mount" title="INDIGO Mount" icon="mount.png"></indigo-navbar>
 			<div class="container-fluid">
 				<div v-if="devices['Mount Agent'] == null" class="alert alert-warning alert-dismissible m-1" role="alert">
 					Waiting for Mount Agent...
 				</div>
 				<template v-else>
-					<div class="row no-gutters">
-						<div class="col-sm-4" style="min-width:360px">
+					<div class="row g-0">
+						<div class="col-xl-4 indigo-side-panel">
 							<template v-if="findProperty('Mount Agent', 'AGENT_SITE_DATA_SOURCE') != null">
 								<div class="card p-1 m-1 bg-light">
-									<div class="card-block d-flex flex-wrap">
-										<indigo-select-item :property="findProperty('Mount Agent', 'AGENT_SITE_DATA_SOURCE')"></indigo-select-item>
-										<indigo-edit-number-60 :property="findProperty('Mount Agent', 'GEOGRAPHIC_COORDINATES')" :name="'LONGITUDE'" :icon="'λ'" :tooltip="'Longitude'"></indigo-edit-number-60>
-										<indigo-edit-number-60 :property="findProperty('Mount Agent', 'GEOGRAPHIC_COORDINATES')" :name="'LATITUDE'" :icon="'φ'" :tooltip="'Latitude'"></indigo-edit-number-60>
-									</div>
+										<div class="card-body d-flex flex-wrap">
+											<indigo-select-item :property="findProperty('Mount Agent', 'AGENT_SITE_DATA_SOURCE')"></indigo-select-item>
+											<template v-if="window.siteDataSourceIsAgentCoordinates()">
+												<indigo-edit-number-60 :property="findProperty('Mount Agent', 'GEOGRAPHIC_COORDINATES')" :name="'LONGITUDE'" :icon="'λ'" :tooltip="'Longitude'"></indigo-edit-number-60>
+												<indigo-edit-number-60 :property="findProperty('Mount Agent', 'GEOGRAPHIC_COORDINATES')" :name="'LATITUDE'" :icon="'φ'" :tooltip="'Latitude'"></indigo-edit-number-60>
+											</template>
+										</div>
 								</div>
 							</template>
 							<template v-if="findProperty('Mount Agent', 'FILTER_MOUNT_LIST') != null">
-								<div class="card p-1 m-1 bg-light">
-									<div class="card-block d-flex flex-wrap">
-										<indigo-select-item :property="findProperty('Mount Agent', 'FILTER_MOUNT_LIST')"></indigo-select-item>
-										<indigo-edit-number-60 :property="findProperty('Mount Agent', 'MOUNT_EQUATORIAL_COORDINATES')" :name="'RA'" :icon="'α'" :ident="'RA'" :tooltip="'Right Ascension'"></indigo-edit-number-60>
-										<indigo-edit-number-60 :property="findProperty('Mount Agent', 'MOUNT_EQUATORIAL_COORDINATES')" :name="'DEC'" :icon="'δ'" :ident="'DEC'" :tooltip="'Declination'"></indigo-edit-number-60>
-										<indigo-show-number-60 :property="findProperty('Mount Agent', 'MOUNT_EQUATORIAL_COORDINATES')" :name="'RA'" :icon="'α'" :tooltip="'Right Ascension'"></indigo-show-number-60>
-										<indigo-show-number-60 :property="findProperty('Mount Agent', 'MOUNT_EQUATORIAL_COORDINATES')" :name="'DEC'" :icon="'δ'" :tooltip="'Declination'"></indigo-show-number-60>
-										<indigo-show-number-60 :property="findProperty('Mount Agent', 'MOUNT_HORIZONTAL_COORDINATES')" :name="'ALT'" :icon="'Ε'" :tooltip="'Altitude'"></indigo-show-number-60>
-										<indigo-show-number-60 :property="findProperty('Mount Agent', 'MOUNT_HORIZONTAL_COORDINATES')" :name="'AZ'" :icon="'Α'" :tooltip="'Azimuth'"></indigo-show-number-60>
-										<div v-if="findProperty('Mount Agent', 'MOUNT_ON_COORDINATES_SET') != null" class="d-flex p-1 w-100">
-											<button id="goto_button" class="btn btn-svg idle-state mr-2" onclick="goto()" data-toggle="tooltip" title="Slew">
-												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-													<path d="M24.8175,16.86432,9.503,25.77667A1,1,0,0,1,8,24.91235V7.08765a1,1,0,0,1,1.503-.86432L24.8175,15.13568A1.00006,1.00006,0,0,1,24.8175,16.86432Z"/>
+								<div class="card p-1 m-1 mt-2 bg-light">
+									<div class="card-body d-flex flex-wrap">
+											<indigo-select-item :property="findProperty('Mount Agent', 'FILTER_MOUNT_LIST')"></indigo-select-item>
+												<template v-if="window.mountSelected()">
+												<div class="w-100">
+													<indigo-query-db :dark="dark"></indigo-query-db>
+												</div>
+													<template v-if="window.mountTargetCoordinatesProperty() != null">
+														<indigo-edit-number-60 :property="window.mountTargetCoordinatesProperty()" :name="'RA'" :icon="'α'" :ident="'RA'" :tooltip="'Target Right Ascension'"></indigo-edit-number-60>
+														<indigo-edit-number-60 :property="window.mountTargetCoordinatesProperty()" :name="'DEC'" :icon="'δ'" :ident="'DEC'" :tooltip="'Target Declination'"></indigo-edit-number-60>
+													</template>
+											<indigo-select-item :property="findProperty('Mount Agent', 'MOUNT_SLEW_RATE')" :cls="'w-50'"></indigo-select-item>
+											<indigo-select-item :property="findProperty('Mount Agent', 'MOUNT_TRACK_RATE')" :cls="'w-50'"></indigo-select-item>
+											<template v-if="window.mountDisplayCoordinatesProperty() != null">
+											<indigo-show-number-60 :property="window.mountDisplayCoordinatesProperty()" :name="'RA_JNOW'" :icon="'α'" :tooltip="'Right Ascension JNow'"></indigo-show-number-60>
+											<indigo-show-number-60 :property="window.mountDisplayCoordinatesProperty()" :name="'DEC_JNOW'" :icon="'δ'" :tooltip="'Declination JNow'"></indigo-show-number-60>
+											<indigo-show-number-60 :property="window.mountDisplayCoordinatesProperty()" :name="'ALT'" :icon="'Ε'" :tooltip="'Altitude'"></indigo-show-number-60>
+											<indigo-show-number-60 :property="window.mountDisplayCoordinatesProperty()" :name="'AZ'" :icon="'Α'" :tooltip="'Azimuth'"></indigo-show-number-60>
+											<indigo-show-number-60 :property="window.mountDisplayCoordinatesProperty()" :name="'HA'" :icon="'HA'" :tooltip="'Hour Angle'"></indigo-show-number-60>
+											<indigo-show-number-60 :property="window.mountDisplayCoordinatesProperty()" :name="'RISE'" :icon="'↑'" :tooltip="'Rise Time'"></indigo-show-number-60>
+											<indigo-show-number-60 :property="window.mountDisplayCoordinatesProperty()" :name="'TRANSIT'" :icon="'↕'" :tooltip="'Transit Time'"></indigo-show-number-60>
+											<indigo-show-number-60 :property="window.mountDisplayCoordinatesProperty()" :name="'SET'" :icon="'↓'" :tooltip="'Set Time'"></indigo-show-number-60>
+									</template>
+									<div v-if="findProperty('Mount Agent', 'AGENT_START_PROCESS') != null" class="d-flex p-1 w-100 indigo-command-row">
+											<button id="goto_button" class="btn btn-svg" :class="window.mountStateButtonClass('SLEW', 'SLEW')" :disabled="window.mountStartProcessButtonDisabled('SLEW')" @click="window.goto()" data-bs-toggle="tooltip" title="Slew">
+										<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+											<path d="M24.8175,16.86432,9.503,25.77667A1,1,0,0,1,8,24.91235V7.08765a1,1,0,0,1,1.503-.86432L24.8175,15.13568A1.00006,1.00006,0,0,1,24.8175,16.86432Z"/>
+										</svg>
+									</button>
+										<button id="sync_button" class="btn btn-svg" :class="window.mountStateButtonClass('SLEW', 'SYNC')" :disabled="window.mountStartProcessButtonDisabled('SYNC')" @click="window.sync()" data-bs-toggle="tooltip" title="Sync">
+										<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+											<path d="M28.28717,17.1308l-5.76758,1.05835a.5.5,0,0,0-.2633.84533l.94043.94043L21.999,21.17236A3.6605,3.6605,0,0,1,20,22H18V11.44366a4.00005,4.00005,0,1,0-4,0V22H12a3.66355,3.66355,0,0,1-2-.82812L8.80316,19.975l.94055-.94056a.5.5,0,0,0-.2633-.84533L3.71283,17.1308a.5.5,0,0,0-.582.582l1.05835,5.76758a.5.5,0,0,0,.84533.2633l.94043-.94043,1.196,1.19623A7.49326,7.49326,0,0,0,12,26h1.6l2.00958,2.512a.5.5,0,0,0,.78088,0L18.4,26H20a7.49066,7.49066,0,0,0,4.82812-2L26.025,22.80316l.94056.94055a.5.5,0,0,0,.84533-.2633l1.05835-5.76758A.5.5,0,0,0,28.28717,17.1308ZM16,9a1,1,0,1,1,1-1A1.001,1.001,0,0,1,16,9Z"/>
+										</svg>
+									</button>
+										<template v-if="findProperty('Mount Agent', 'AGENT_START_PROCESS').item('PARK') != null || findProperty('Mount Agent', 'AGENT_START_PROCESS').item('UNPARK') != null">
+											<indigo-status-button :property="findProperty('Mount Agent', 'AGENT_START_PROCESS')" :status-class="window.mountStateButtonClass('PARK', window.mountParkStartProcessItem())" :disabled="window.mountStartProcessButtonDisabled(window.mountParkStartProcessItem())" :action="window.park" data-bs-toggle="tooltip" title="Park">
+											<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+												<path d="M18.77643,15.56836A2.43555,2.43555,0,0,1,16.51794,17H14V12h2.5A2.51651,2.51651,0,0,1,18.77643,15.56836ZM27,7V25a2.00006,2.00006,0,0,1-2,2H7a2.00006,2.00006,0,0,1-2-2V7A2,2,0,0,1,7,5H25A2,2,0,0,1,27,7ZM16.5,9h-5a.5.5,0,0,0-.5.5v13a.5.5,0,0,0,.5.5h2a.5.5,0,0,0,.5-.5V20h2.5A5.24605,5.24605,0,0,0,22,14.5,5.24605,5.24605,0,0,0,16.5,9Z"/>
+											</svg>
+										</indigo-status-button>
+									</template>
+									<template v-if="findProperty('Mount Agent', 'AGENT_START_PROCESS').item('HOME') != null">
+										<indigo-status-button :property="findProperty('Mount Agent', 'AGENT_START_PROCESS')" :status-class="window.mountStateButtonClass('HOME', 'HOME')" :disabled="window.mountStartProcessButtonDisabled('HOME')" :action="window.home" data-bs-toggle="tooltip" title="Home">
+											<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+												<path d="M27.10482,17H24V27.5a.5.5,0,0,1-.5.5h-4a.5.5,0,0,1-.5-.5v-5a.5.5,0,0,0-.5-.5h-5a.5.5,0,0,0-.5.5v5a.5.5,0,0,1-.5.5h-4a.5.5,0,0,1-.5-.5V17H4.89518a.785.785,0,0,1-.55508-1.34008L15.46967,4.53023a.75.75,0,0,1,1.06066,0L27.6599,15.65992A.785.785,0,0,1,27.10482,17Z"/>
 												</svg>
-											</button>
-											<button id="sync_button" class="btn btn-svg idle-state mr-2" onclick="sync()" data-toggle="tooltip" title="Sync">
+											</indigo-status-button>
+										</template>
+										<template v-if="findProperty('Mount Agent', 'AGENT_START_PROCESS').item('TRACK_ON') != null || findProperty('Mount Agent', 'AGENT_START_PROCESS').item('TRACK_OFF') != null">
+											<indigo-status-button :property="findProperty('Mount Agent', 'AGENT_START_PROCESS')" :status-class="window.mountStateButtonClass('TRACK', window.mountTrackingStartProcessItem())" :disabled="window.mountStartProcessButtonDisabled(window.mountTrackingStartProcessItem())" :action="window.trackingToggle" data-bs-toggle="tooltip" title="Tracking">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-													<path d="M28.28717,17.1308l-5.76758,1.05835a.5.5,0,0,0-.2633.84533l.94043.94043L21.999,21.17236A3.6605,3.6605,0,0,1,20,22H18V11.44366a4.00005,4.00005,0,1,0-4,0V22H12a3.66355,3.66355,0,0,1-2-.82812L8.80316,19.975l.94055-.94056a.5.5,0,0,0-.2633-.84533L3.71283,17.1308a.5.5,0,0,0-.582.582l1.05835,5.76758a.5.5,0,0,0,.84533.2633l.94043-.94043,1.196,1.19623A7.49326,7.49326,0,0,0,12,26h1.6l2.00958,2.512a.5.5,0,0,0,.78088,0L18.4,26H20a7.49066,7.49066,0,0,0,4.82812-2L26.025,22.80316l.94056.94055a.5.5,0,0,0,.84533-.2633l1.05835-5.76758A.5.5,0,0,0,28.28717,17.1308ZM16,9a1,1,0,1,1,1-1A1.001,1.001,0,0,1,16,9Z"/>
+													<path d="M16,4A12,12,0,1,0,28,16,12.01312,12.01312,0,0,0,16,4Zm4.16022,12.82178-5.66541,3.22583A1,1,0,0,1,13,19.17871v-6.4519a1.00005,1.00005,0,0,1,1.49481-.869l5.66541,3.226A1,1,0,0,1,20.16022,16.82178Z"/>
 												</svg>
-											</button>
-											<button class="btn btn-svg idle-state mr-auto" onclick="stop()" data-toggle="tooltip" title="Stop">
-												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-													<path d="M25,8V24a1,1,0,0,1-1,1H8a1,1,0,0,1-1-1V8A1,1,0,0,1,8,7H24A1,1,0,0,1,25,8Z"/>
-												</svg>
-											</button>
-											<template v-if="findProperty('Mount Agent', 'MOUNT_PARK') != null">
-												<button v-if="findProperty('Mount Agent', 'MOUNT_PARK').state == 'Ok' && findProperty('Mount Agent', 'MOUNT_PARK').item('PARKED').value" class="btn btn-svg ok-state" onclick="park()" data-toggle="tooltip" title="Park">
-													<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-														<path d="M18.77643,15.56836A2.43555,2.43555,0,0,1,16.51794,17H14V12h2.5A2.51651,2.51651,0,0,1,18.77643,15.56836ZM27,7V25a2.00006,2.00006,0,0,1-2,2H7a2.00006,2.00006,0,0,1-2-2V7A2,2,0,0,1,7,5H25A2,2,0,0,1,27,7ZM16.5,9h-5a.5.5,0,0,0-.5.5v13a.5.5,0,0,0,.5.5h2a.5.5,0,0,0,.5-.5V20h2.5A5.24605,5.24605,0,0,0,22,14.5,5.24605,5.24605,0,0,0,16.5,9Z"/>
-													</svg>
-												</button>
-												<button v-else-if="findProperty('Mount Agent', 'MOUNT_PARK').state == 'Busy' && findProperty('Mount Agent', 'MOUNT_PARK').item('PARKED').value" class="btn btn-svg busy-state ml-2" onclick="park()" data-toggle="tooltip" title="Park">
-													<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-														<path d="M18.77643,15.56836A2.43555,2.43555,0,0,1,16.51794,17H14V12h2.5A2.51651,2.51651,0,0,1,18.77643,15.56836ZM27,7V25a2.00006,2.00006,0,0,1-2,2H7a2.00006,2.00006,0,0,1-2-2V7A2,2,0,0,1,7,5H25A2,2,0,0,1,27,7ZM16.5,9h-5a.5.5,0,0,0-.5.5v13a.5.5,0,0,0,.5.5h2a.5.5,0,0,0,.5-.5V20h2.5A5.24605,5.24605,0,0,0,22,14.5,5.24605,5.24605,0,0,0,16.5,9Z"/>
-													</svg>
-												</button>
-												<button v-else class="btn btn-svg idle-state" onclick="park()" data-toggle="tooltip" title="Park">
-													<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-														<path d="M18.77643,15.56836A2.43555,2.43555,0,0,1,16.51794,17H14V12h2.5A2.51651,2.51651,0,0,1,18.77643,15.56836ZM27,7V25a2.00006,2.00006,0,0,1-2,2H7a2.00006,2.00006,0,0,1-2-2V7A2,2,0,0,1,7,5H25A2,2,0,0,1,27,7ZM16.5,9h-5a.5.5,0,0,0-.5.5v13a.5.5,0,0,0,.5.5h2a.5.5,0,0,0,.5-.5V20h2.5A5.24605,5.24605,0,0,0,22,14.5,5.24605,5.24605,0,0,0,16.5,9Z"/>
-													</svg>
-												</button>
-											</template>
-											<template v-if="findProperty('Mount Agent', 'MOUNT_HOME') != null">
-												<button v-if="findProperty('Mount Agent', 'MOUNT_HOME').state == 'Ok'" class="btn btn-svg ok-state ml-2" onclick="home()" data-toggle="tooltip" title="Home">
-													<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-														<path d="M27.10482,17H24V27.5a.5.5,0,0,1-.5.5h-4a.5.5,0,0,1-.5-.5v-5a.5.5,0,0,0-.5-.5h-5a.5.5,0,0,0-.5.5v5a.5.5,0,0,1-.5.5h-4a.5.5,0,0,1-.5-.5V17H4.89518a.785.785,0,0,1-.55508-1.34008L15.46967,4.53023a.75.75,0,0,1,1.06066,0L27.6599,15.65992A.785.785,0,0,1,27.10482,17Z"/>
-													</svg>
-												</button>
-												<button v-else-if="findProperty('Mount Agent', 'MOUNT_HOME').state == 'Busy'" class="btn btn-svg busy-state" onclick="home()" data-toggle="tooltip" title="Home">
-													<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-														<path d="M27.10482,17H24V27.5a.5.5,0,0,1-.5.5h-4a.5.5,0,0,1-.5-.5v-5a.5.5,0,0,0-.5-.5h-5a.5.5,0,0,0-.5.5v5a.5.5,0,0,1-.5.5h-4a.5.5,0,0,1-.5-.5V17H4.89518a.785.785,0,0,1-.55508-1.34008L15.46967,4.53023a.75.75,0,0,1,1.06066,0L27.6599,15.65992A.785.785,0,0,1,27.10482,17Z"/>
-													</svg>
-												</button>
-												<button v-else class="btn btn-svg idle-state ml-2" onclick="home()" data-toggle="tooltip" title="Home">
-													<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-														<path d="M27.10482,17H24V27.5a.5.5,0,0,1-.5.5h-4a.5.5,0,0,1-.5-.5v-5a.5.5,0,0,0-.5-.5h-5a.5.5,0,0,0-.5.5v5a.5.5,0,0,1-.5.5h-4a.5.5,0,0,1-.5-.5V17H4.89518a.785.785,0,0,1-.55508-1.34008L15.46967,4.53023a.75.75,0,0,1,1.06066,0L27.6599,15.65992A.785.785,0,0,1,27.10482,17Z"/>
-													</svg>
-												</button>
-											</template>
-											<button v-if="findProperty('Mount Agent', 'AGENT_LX200_SERVER').state == 'Busy' && findProperty('Mount Agent', 'AGENT_LX200_SERVER').item('STARTED').value" class="btn btn-svg busy-state ml-2" onclick="stopLX200Server()" data-toggle="tooltip" title="LX200 Server">
-												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-													<path d="M13.39844,9.21A15.27,15.27,0,0,1,15,16a15.27,15.27,0,0,1-1.60156,6.79A1.49977,1.49977,0,1,1,10.707,21.46582,12.30309,12.30309,0,0,0,12,16a12.30309,12.30309,0,0,0-1.293-5.46582A1.49977,1.49977,0,1,1,13.39844,9.21ZM24.48926,5.33789a1.49977,1.49977,0,0,0-2.69141,1.32422,20.899,20.899,0,0,1,0,18.67578,1.49977,1.49977,0,1,0,2.69141,1.32422,23.89423,23.89423,0,0,0,0-21.32422ZM5.84766,10.46143a1.49937,1.49937,0,0,0-.6836,2.00781A7.94053,7.94053,0,0,1,6,16a7.94053,7.94053,0,0,1-.83594,3.53076A1.49977,1.49977,0,1,0,7.85547,20.855,10.90609,10.90609,0,0,0,9,16a10.90609,10.90609,0,0,0-1.14453-4.855A1.49881,1.49881,0,0,0,5.84766,10.46143ZM16.93748,6.58936a1.49938,1.49938,0,0,0-.68357,2.00781,16.56579,16.56579,0,0,1,0,14.80566,1.49977,1.49977,0,1,0,2.6914,1.32422,19.5609,19.5609,0,0,0,0-17.4541A1.49911,1.49911,0,0,0,16.93748,6.58936Z"/>
-												</svg>
-											</button>
-											<button v-else-if="findProperty('Mount Agent', 'AGENT_LX200_SERVER').state == 'Ok' && findProperty('Mount Agent', 'AGENT_LX200_SERVER').item('STARTED').value" class="btn btn-svg ok-state ml-2" onclick="stopLX200Server()" data-toggle="tooltip" title="LX200 Server">
-												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-													<path d="M13.39844,9.21A15.27,15.27,0,0,1,15,16a15.27,15.27,0,0,1-1.60156,6.79A1.49977,1.49977,0,1,1,10.707,21.46582,12.30309,12.30309,0,0,0,12,16a12.30309,12.30309,0,0,0-1.293-5.46582A1.49977,1.49977,0,1,1,13.39844,9.21ZM24.48926,5.33789a1.49977,1.49977,0,0,0-2.69141,1.32422,20.899,20.899,0,0,1,0,18.67578,1.49977,1.49977,0,1,0,2.69141,1.32422,23.89423,23.89423,0,0,0,0-21.32422ZM5.84766,10.46143a1.49937,1.49937,0,0,0-.6836,2.00781A7.94053,7.94053,0,0,1,6,16a7.94053,7.94053,0,0,1-.83594,3.53076A1.49977,1.49977,0,1,0,7.85547,20.855,10.90609,10.90609,0,0,0,9,16a10.90609,10.90609,0,0,0-1.14453-4.855A1.49881,1.49881,0,0,0,5.84766,10.46143ZM16.93748,6.58936a1.49938,1.49938,0,0,0-.68357,2.00781,16.56579,16.56579,0,0,1,0,14.80566,1.49977,1.49977,0,1,0,2.6914,1.32422,19.5609,19.5609,0,0,0,0-17.4541A1.49911,1.49911,0,0,0,16.93748,6.58936Z"/>
-												</svg>
-											</button>
-											<button v-else-if="findProperty('Mount Agent', 'AGENT_LX200_SERVER').state == 'Alert'" class="btn btn-svg alert-state ml-2" onclick="startLX200Server()" data-toggle="tooltip" title="LX200 Server">
-												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-													<path d="M13.39844,9.21A15.27,15.27,0,0,1,15,16a15.27,15.27,0,0,1-1.60156,6.79A1.49977,1.49977,0,1,1,10.707,21.46582,12.30309,12.30309,0,0,0,12,16a12.30309,12.30309,0,0,0-1.293-5.46582A1.49977,1.49977,0,1,1,13.39844,9.21ZM24.48926,5.33789a1.49977,1.49977,0,0,0-2.69141,1.32422,20.899,20.899,0,0,1,0,18.67578,1.49977,1.49977,0,1,0,2.69141,1.32422,23.89423,23.89423,0,0,0,0-21.32422ZM5.84766,10.46143a1.49937,1.49937,0,0,0-.6836,2.00781A7.94053,7.94053,0,0,1,6,16a7.94053,7.94053,0,0,1-.83594,3.53076A1.49977,1.49977,0,1,0,7.85547,20.855,10.90609,10.90609,0,0,0,9,16a10.90609,10.90609,0,0,0-1.14453-4.855A1.49881,1.49881,0,0,0,5.84766,10.46143ZM16.93748,6.58936a1.49938,1.49938,0,0,0-.68357,2.00781,16.56579,16.56579,0,0,1,0,14.80566,1.49977,1.49977,0,1,0,2.6914,1.32422,19.5609,19.5609,0,0,0,0-17.4541A1.49911,1.49911,0,0,0,16.93748,6.58936Z"/>
-												</svg>
-											</button>
-											<button v-else class="btn btn-svg idle-state ml-2" onclick="startLX200Server()" data-toggle="tooltip" title="LX200 Server">
-												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-													<path d="M13.39844,9.21A15.27,15.27,0,0,1,15,16a15.27,15.27,0,0,1-1.60156,6.79A1.49977,1.49977,0,1,1,10.707,21.46582,12.30309,12.30309,0,0,0,12,16a12.30309,12.30309,0,0,0-1.293-5.46582A1.49977,1.49977,0,1,1,13.39844,9.21ZM24.48926,5.33789a1.49977,1.49977,0,0,0-2.69141,1.32422,20.899,20.899,0,0,1,0,18.67578,1.49977,1.49977,0,1,0,2.69141,1.32422,23.89423,23.89423,0,0,0,0-21.32422ZM5.84766,10.46143a1.49937,1.49937,0,0,0-.6836,2.00781A7.94053,7.94053,0,0,1,6,16a7.94053,7.94053,0,0,1-.83594,3.53076A1.49977,1.49977,0,1,0,7.85547,20.855,10.90609,10.90609,0,0,0,9,16a10.90609,10.90609,0,0,0-1.14453-4.855A1.49881,1.49881,0,0,0,5.84766,10.46143ZM16.93748,6.58936a1.49938,1.49938,0,0,0-.68357,2.00781,16.56579,16.56579,0,0,1,0,14.80566,1.49977,1.49977,0,1,0,2.6914,1.32422,19.5609,19.5609,0,0,0,0-17.4541A1.49911,1.49911,0,0,0,16.93748,6.58936Z"/>
-												</svg>
-											</button>
+											</indigo-status-button>
+										</template>
+										<button class="btn btn-svg idle-state ms-auto" onclick="stop()" data-bs-toggle="tooltip" title="Stop">
+											<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+												<path d="M25,8V24a1,1,0,0,1-1,1H8a1,1,0,0,1-1-1V8A1,1,0,0,1,8,7H24A1,1,0,0,1,25,8Z"/>
+											</svg>
+										</button>
 										</div>
-										<indigo-select-item :property="findProperty('Mount Agent', 'MOUNT_SLEW_RATE')" :cls="'w-50'"></indigo-select-item>
-										<indigo-select-item :property="findProperty('Mount Agent', 'MOUNT_TRACK_RATE')" :cls="'w-50'"></indigo-select-item>
-										<div v-if="findProperty('Mount Agent', 'MOUNT_TRACKING') != null" class="d-flex p-1 w-100">
-											<button class="btn btn-svg idle-state mr-2" @mousedown.stop="moveWest($event)" @mouseup.stop="stopWest($event)" data-toggle="tooltip" title="Move west">
-												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-													<path d="M27,14v4a1,1,0,0,1-1,1H16v3.47937a1,1,0,0,1-1.57349.81921L5.17035,16.81921a.99994.99994,0,0,1,0-1.63842l9.25616-6.47937A1,1,0,0,1,16,9.52063V13H26A1,1,0,0,1,27,14Z"/>
-												</svg>
-											</button>
-											<button class="btn btn-svg idle-state mr-2" @mousedown.stop="moveEast($event)" @mouseup.stop="stopEast($event)" data-toggle="tooltip" title="Move east">
-												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-													<path d="M26.82965,16.81921l-9.25622,6.47937A1,1,0,0,1,16,22.47937V19H6a1,1,0,0,1-1-1V14a1,1,0,0,1,1-1H16V9.52063a1,1,0,0,1,1.57343-.81921l9.25622,6.47937A.99994.99994,0,0,1,26.82965,16.81921Z"/>
-												</svg>
-											</button>
-											<button class="btn btn-svg idle-state mr-2" @mousedown.stop="moveNorth($event)" @mouseup.stop="stopNorth($event)" data-toggle="tooltip" title="Move north">
-												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-													<path d="M22.47937,16H19V26a1,1,0,0,1-1,1H14a1,1,0,0,1-1-1V16H9.52063a1,1,0,0,1-.81921-1.57349l6.47937-9.25616a.99994.99994,0,0,1,1.63842,0l6.47937,9.25616A1,1,0,0,1,22.47937,16Z"/>
-												</svg>
-											</button>
-											<button class="btn btn-svg idle-state mr-auto" @mousedown.stop="moveSouth($event)" @mouseup.stop="stopSouth($event)" data-toggle="tooltip" title="Move south">
-												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-													<path d="M23.29858,17.57349l-6.47937,9.25616a.99994.99994,0,0,1-1.63842,0L8.70142,17.57349A1,1,0,0,1,9.52063,16H13V6a1,1,0,0,1,1-1h4a1,1,0,0,1,1,1V16h3.47937A1,1,0,0,1,23.29858,17.57349Z"/>
-												</svg>
-											</button>
-											<button v-if="findProperty('Mount Agent', 'MOUNT_TRACKING').state == 'Ok' && findProperty('Mount Agent', 'MOUNT_TRACKING').item('ON').value" class="btn btn-svg ok-state" onclick="trackingOff()" data-toggle="tooltip" title="Tracking">
-												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-													<path d="M16,4A12,12,0,1,0,28,16,12.01312,12.01312,0,0,0,16,4Zm4.16022,12.82178-5.66541,3.22583A1,1,0,0,1,13,19.17871v-6.4519a1.00005,1.00005,0,0,1,1.49481-.869l5.66541,3.226A1,1,0,0,1,20.16022,16.82178Z"/>
-												</svg>
-											</button>
-											<button v-else-if="findProperty('Mount Agent', 'MOUNT_TRACKING').state == 'Ok' && findProperty('Mount Agent', 'MOUNT_TRACKING').item('OFF').value" class="btn btn-svg idle-state" onclick="trackingOn()" data-toggle="tooltip" title="Tracking">
-												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-													<path d="M16,4A12,12,0,1,0,28,16,12.01312,12.01312,0,0,0,16,4Zm4.16022,12.82178-5.66541,3.22583A1,1,0,0,1,13,19.17871v-6.4519a1.00005,1.00005,0,0,1,1.49481-.869l5.66541,3.226A1,1,0,0,1,20.16022,16.82178Z"/>
-												</svg>
-											</button>
-											<button v-else class="btn btn-svg alert-state" onclick="trackingOff()" data-toggle="tooltip" title="Tracking">
-												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-													<path d="M16,4A12,12,0,1,0,28,16,12.01312,12.01312,0,0,0,16,4Zm4.16022,12.82178-5.66541,3.22583A1,1,0,0,1,13,19.17871v-6.4519a1.00005,1.00005,0,0,1,1.49481-.869l5.66541,3.226A1,1,0,0,1,20.16022,16.82178Z"/>
-												</svg>
-											</button>
+										<div v-if="findProperty('Mount Agent', 'MOUNT_TRACKING') != null || findProperty('Mount Agent', 'AGENT_LX200_SERVER') != null" class="d-flex p-1 w-100 indigo-command-row">
+										<template v-if="findProperty('Mount Agent', 'MOUNT_TRACKING') != null">
+										<button class="btn btn-svg idle-state" :disabled="window.mountStartProcessBusy()" @mousedown.stop="window.moveWest($event)" @mouseup.stop="window.stopWest($event)" data-bs-toggle="tooltip" title="Move west">
+										<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+											<path d="M27,14v4a1,1,0,0,1-1,1H16v3.47937a1,1,0,0,1-1.57349.81921L5.17035,16.81921a.99994.99994,0,0,1,0-1.63842l9.25616-6.47937A1,1,0,0,1,16,9.52063V13H26A1,1,0,0,1,27,14Z"/>
+										</svg>
+									</button>
+									<button class="btn btn-svg idle-state" :disabled="window.mountStartProcessBusy()" @mousedown.stop="window.moveEast($event)" @mouseup.stop="window.stopEast($event)" data-bs-toggle="tooltip" title="Move east">
+										<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+											<path d="M26.82965,16.81921l-9.25622,6.47937A1,1,0,0,1,16,22.47937V19H6a1,1,0,0,1-1-1V14a1,1,0,0,1,1-1H16V9.52063a1,1,0,0,1,1.57343-.81921l9.25622,6.47937A.99994.99994,0,0,1,26.82965,16.81921Z"/>
+										</svg>
+									</button>
+									<button class="btn btn-svg idle-state" :disabled="window.mountStartProcessBusy()" @mousedown.stop="window.moveNorth($event)" @mouseup.stop="window.stopNorth($event)" data-bs-toggle="tooltip" title="Move north">
+										<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+											<path d="M22.47937,16H19V26a1,1,0,0,1-1,1H14a1,1,0,0,1-1-1V16H9.52063a1,1,0,0,1-.81921-1.57349l6.47937-9.25616a.99994.99994,0,0,1,1.63842,0l6.47937,9.25616A1,1,0,0,1,22.47937,16Z"/>
+										</svg>
+									</button>
+										<button class="btn btn-svg idle-state" :disabled="window.mountStartProcessBusy()" @mousedown.stop="window.moveSouth($event)" @mouseup.stop="window.stopSouth($event)" data-bs-toggle="tooltip" title="Move south">
+											<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+												<path d="M23.29858,17.57349l-6.47937,9.25616a.99994.99994,0,0,1-1.63842,0L8.70142,17.57349A1,1,0,0,1,9.52063,16H13V6a1,1,0,0,1,1-1h4a1,1,0,0,1,1,1V16h3.47937A1,1,0,0,1,23.29858,17.57349Z"/>
+											</svg>
+										</button>
+										</template>
+										<indigo-status-button v-if="findProperty('Mount Agent', 'AGENT_LX200_SERVER') != null" :property="findProperty('Mount Agent', 'AGENT_LX200_SERVER')" active-item="STARTED" busy-item="STARTED" :active-action="window.stopLX200Server" :inactive-action="window.startLX200Server" :alert-action="window.startLX200Server" :disabled="window.mountStartProcessBusy()" class="ms-auto" data-bs-toggle="tooltip" title="LX200 Server">
+											<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+												<path d="M13.39844,9.21A15.27,15.27,0,0,1,15,16a15.27,15.27,0,0,1-1.60156,6.79A1.49977,1.49977,0,1,1,10.707,21.46582,12.30309,12.30309,0,0,0,12,16a12.30309,12.30309,0,0,0-1.293-5.46582A1.49977,1.49977,0,1,1,13.39844,9.21ZM24.48926,5.33789a1.49977,1.49977,0,0,0-2.69141,1.32422,20.899,20.899,0,0,1,0,18.67578,1.49977,1.49977,0,1,0,2.69141,1.32422,23.89423,23.89423,0,0,0,0-21.32422ZM5.84766,10.46143a1.49937,1.49937,0,0,0-.6836,2.00781A7.94053,7.94053,0,0,1,6,16a7.94053,7.94053,0,0,1-.83594,3.53076A1.49977,1.49977,0,1,0,7.85547,20.855,10.90609,10.90609,0,0,0,9,16a10.90609,10.90609,0,0,0-1.14453-4.855A1.49881,1.49881,0,0,0,5.84766,10.46143ZM16.93748,6.58936a1.49938,1.49938,0,0,0-.68357,2.00781,16.56579,16.56579,0,0,1,0,14.80566,1.49977,1.49977,0,1,0,2.6914,1.32422,19.5609,19.5609,0,0,0,0-17.4541A1.49911,1.49911,0,0,0,16.93748,6.58936Z"/>
+											</svg>
+										</indigo-status-button>
 										</div>
-									</div>
+										</template>
 								</div>
-							</template>
-							<template v-if="$(db).children().length > 0">
-								<div class="card p-1 m-1 bg-light">
-									<div class="card-block">
-										<indigo-query-db :container="db"></indigo-query-db>
-									</div>
-								</div>
-							</template>
+						</div>
+					</template>
 							<template v-if="findProperty('Mount Agent', 'FILTER_DOME_LIST') != null">
-								<div class="card p-1 m-1 bg-light">
-									<div class="card-block d-flex flex-wrap">
-										<indigo-select-item :property="findProperty('Mount Agent', 'FILTER_DOME_LIST')"></indigo-select-item>
-										<indigo-show-number-60 :property="findProperty('Mount Agent', 'DOME_EQUATORIAL_COORDINATES')" :name="'RA'" :icon="'α'" :tooltip="'Right Ascension'"></indigo-show-number-60>
-										<indigo-show-number-60 :property="findProperty('Mount Agent', 'DOME_EQUATORIAL_COORDINATES')" :name="'DEC'" :icon="'δ'" :tooltip="'Declination'"></indigo-show-number-60>
+							<div class="card p-1 m-1 mt-2 bg-light">
+								<div class="card-body d-flex flex-wrap">
+									<indigo-select-item :property="findProperty('Mount Agent', 'FILTER_DOME_LIST')"></indigo-select-item>
+									<template v-if="window.domeSelected()">
 										<indigo-show-number-60 :property="findProperty('Mount Agent', 'DOME_HORIZONTAL_COORDINATES')" :name="'AZ'" :icon="'Α'" :tooltip="'Azimuth'"></indigo-show-number-60>
+										<div class="p-1 w-25" data-bs-toggle="tooltip" title="Shutter">
+											<div class="indigo-chip indigo-readonly-chip w-100 d-flex align-items-center">
+												<span class="indigo-chip-icon">shtr</span>
+												<span class="indigo-chip-value">{{window.domeShutterLabel()}}</span>
+											</div>
+										</div>
+									</template>
 									</div>
 								</div>
 							</template>
 							<template v-if="findProperty('Mount Agent', 'FILTER_GPS_LIST') != null">
-								<div class="card p-1 m-1 bg-light">
-									<div class="card-block d-flex flex-wrap">
-										<indigo-select-item :property="findProperty('Mount Agent', 'FILTER_GPS_LIST')"></indigo-select-item>
-										<indigo-show-number-60 :property="findProperty('Mount Agent', 'GPS_GEOGRAPHIC_COORDINATES')" :name="'LONGITUDE'" :icon="'λ'" :tooltip="'Longitude'"></indigo-show-number-60>
-										<indigo-show-number-60 :property="findProperty('Mount Agent', 'GPS_GEOGRAPHIC_COORDINATES')" :name="'LATITUDE'" :icon="'φ'" :tooltip="'Latitude'"></indigo-show-number-60>
-										<indigo-show-number :property="findProperty('Mount Agent', 'GPS_GEOGRAPHIC_COORDINATES')" :name="'ELEVATION'" :icon="'↑'" :tooltip="'Elevation'"></indigo-show-number>
+								<div class="card p-1 m-1 mt-2 bg-light">
+									<div class="card-body d-flex flex-wrap">
+											<indigo-select-item :property="findProperty('Mount Agent', 'FILTER_GPS_LIST')"></indigo-select-item>
+											<template v-if="window.gpsSelected()">
+											<indigo-show-number-60 :property="findProperty('Mount Agent', 'GPS_GEOGRAPHIC_COORDINATES')" :name="'LONGITUDE'" :icon="'λ'" :tooltip="'Longitude'"></indigo-show-number-60>
+											<indigo-show-number-60 :property="findProperty('Mount Agent', 'GPS_GEOGRAPHIC_COORDINATES')" :name="'LATITUDE'" :icon="'φ'" :tooltip="'Latitude'"></indigo-show-number-60>
+											<indigo-show-number :property="findProperty('Mount Agent', 'GPS_GEOGRAPHIC_COORDINATES')" :name="'ELEVATION'" :icon="'↑'" :tooltip="'Elevation'"></indigo-show-number>
+											<div class="p-1 w-25" data-bs-toggle="tooltip" title="GPS Fix">
+												<div class="indigo-chip indigo-readonly-chip w-100 d-flex align-items-center">
+													<span class="indigo-chip-icon">fix</span>
+													<span class="indigo-chip-value">{{window.gpsFixLabel()}}</span>
+												</div>
+											</div>
+											</template>
+										</div>
 									</div>
-								</div>
-							</template>
+								</template>
 							<template v-if="findProperty('Mount Agent', 'FILTER_JOYSTICK_LIST') != null">
-								<div class="card p-1 m-1 bg-light">
-									<div class="card-block d-flex flex-wrap">
+								<div class="card p-1 m-1 mt-2 bg-light">
+									<div class="card-body d-flex flex-wrap">
 										<indigo-select-item :property="findProperty('Mount Agent', 'FILTER_JOYSTICK_LIST')"></indigo-select-item>
 									</div>
 								</div>
 							</template>
 						</div>
-						<div class="col-sm-8">
-							<div class="card p-1 m-1 bg-light" style="min-height: 10rem">
-								<div id="map" class="position-relative" style="overflow: scroll;"></div>
-								<div v-if="$('#map').children().length > 0" class="position-absolute d-flex">
-									<button class="btn btn-svg idle-state m-1" onclick="zoomIn()" data-toggle="tooltip" title="Zoom In">
-										<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-											<path d="M27,14v4a1,1,0,0,1-1,1H19v7a1,1,0,0,1-1,1H14a1,1,0,0,1-1-1V19H6a1,1,0,0,1-1-1V14a1,1,0,0,1,1-1h7V6a1,1,0,0,1,1-1h4a1,1,0,0,1,1,1v7h7A1,1,0,0,1,27,14Z"/>
-										</svg>
-									</button>
-									<button class="btn btn-svg idle-state m-1" onclick="zoomOut()" data-toggle="tooltip" title="Zoom Out">
-										<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-											<path d="M26,14v4a1,1,0,0,1-1,1H7a1,1,0,0,1-1-1V14a1,1,0,0,1,1-1H25A1,1,0,0,1,26,14Z"/>
-										</svg>
-									</button>
-									<button class="btn btn-svg idle-state m-1" onclick="followMarker()" data-toggle="tooltip" title="Center at marker">
-										<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-											<path d="M16,4a8.9999,8.9999,0,0,0-9,9c0,6,6.7583,13.07764,8.16156,14.63135a1.13778,1.13778,0,0,0,1.67688,0C18.2417,26.07764,25,19,25,13A8.9999,8.9999,0,0,0,16,4Zm0,14a5,5,0,1,1,5-5A5.00013,5.00013,0,0,1,16,18Z"/>
-										</svg>
-									</button>
-								</div>
+						<div class="col-xl-8">
+							<div class="card p-2 m-1 bg-light indigo-sky-map-card">
+								<indigo-sky-map :current-coordinates="currentCoordinates" :target-coordinates="targetCoordinates" :object-coordinates="objectCoordinates" :geo-coordinates="geoCoordinates" :zoom-level="zoomLevel" :dark="dark" @select-object="window.selectObject($event)"></indigo-sky-map>
 							</div>
 						</div>
 					</div>
 				</template>
-				<div id="SUCCESS" class="alert alert-success alert-dismissible fade show m-1" role="alert" style="display:none;">
-					{{ state }}
-					<span v-if="findProperty('Server', 'INFO')" class="float-right">
-						INDIGO Server {{findProperty('Server', 'INFO').item('VERSION').value}} at {{findProperty('Server', 'INFO').item('SERVICE').value}}
-					</span>
-				</div>
-				<div id="FAILURE" class="alert alert-danger alert-dismissible fade show m-1" role="alert" style="display:none;">
-					{{ state }}
-				</div>
-				<div id="MESSAGE" class="alert alert-warning alert-dismissible fade show m-1" role="alert" style="display:none;">
-					{{ state }}
-				</div>
-				<div class="alert alert-info show m-1" role="alert">
-					Copyright &copy; 2019-2025, The INDIGO Initiative. All rights reserved.
-					<a v-if="dark" href="#" class="float-right" onclick="setLightMode()">Switch to light appearance</a>
-					<a v-else href="#" class="float-right" onclick="setDarkMode()">Switch to dark appearance</a>
-				</div>
+				<indigo-status-bar></indigo-status-bar>
 			</div>
 		</div>
 	</body>
 	<script src="jquery.min.js"></script>
-	<script src="popper.min.js"></script>
 	<script src="bootstrap.min.js"></script>
-	<script src="vue.min.js"></script>
+	<script src="vue.global.prod.js"></script>
 	<script src="indigo.js"></script>
-	<script src="components.js"></script>
 	<script src="d3.min.js"></script>
 	<script src="celestial.min.js"></script>
-	<script language="javascript" type="text/javascript">
+	<script src="components.js"></script>
+	<script>
 
 		indigoURL = new URL((window.location.protocol == "https:" ? "wss://" : "ws://") + window.location.host);
 
 		//indigoURL = new URL("ws://localhost:7624");
-		var targetExposureTime = 0;
-		var repeatExposure = false
-		var celestialVisible = false;
-		var zooms = [ 500, 750, 1000, 1500, 2000, 2500 ];
-		var zoom = 4;
-		var follow = 0
-		var currentCoordinates = null;
-		var targetCoordinates = null;
-		var objectCoordinates = null;
-
-
-		var config = {
-			width: 2048,
-			projection: "stereographic",
-			transform: "equatorial",
-			interactive: false,
-			controls: false,
-			follow: "zenith",
-			background: { fill: "#fff", stroke: "#fff", opacity: 1, width: 1 },
-			container: "map",
-			datapath: "/data/",
-			stars: {
-				colors: true,
-				proper: true,
-				propernamelimit: 2,
-				propernamestyle: { fill: "#999", font: "13px -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif", align: "right", baseline: "bottom" },
-				style: { fill: "#000", opacity: 1 },
-				size: 5,
-				data: 'stars.json'
-			},
-			dsos: {
-				show: true,
-				names: true,
-				desig: true,
-				limit: 8,
-				namelimit: 5,
-				data: 'dsos.json',
-			},
-			constellations: {
-				show: true,
-				names: true,
-				desig: true,
-				lines: true,
-				bounds: false,
-				linestyle: { stroke: "#ccc", width: 1, opacity: 0.6 }
-			},
-			planets: {
-				show: true,
-				style: { fill: "#f00", font: "bold 17px 'Lucida Sans Unicode', Consolas, sans-serif", align: "center", baseline: "middle" },
-				data: 'planets.json',
-			},
-
-			mw: {
-				style: { fill:"#996", opacity: 0.1 }
-			}
-		};
+			var targetExposureTime = 0;
+			var repeatExposure = false
+			var mountStartProcessItem = null;
 
 		guiSetup();
 		window.addEventListener("load", init, false);
@@ -356,311 +218,325 @@
 			}
 		}
 
-		window.onresize = function() {
-			var map = $("#map");
-			if (map != null && map.length > 0) {
-				if (window.innerWidth > 750) {
-					if (window.innerHeight > 650)
-						map.css('max-height', (window.innerHeight - 180) + 'px');
-					else
-					map.css('max-height', '470px');
-				} else {
-					map.css('max-height', map.width() + 'px');
-				}
+			function h2deg(ra) {
+				return ra > 12 ? (ra - 24) * 15 : ra * 15;
 			}
-		}
 
-		function zoomIn() {
-			if (zoom < 5) {
-				config.width = zooms[++zoom];
-				switch (zoom) {
-					case 5:
-					case 4:
-						config.stars.limit = 6;
-						config.stars.proper = true;
-						config.stars.propernamelimit = 2;
-						config.constellations.names = true;
-						config.dsos.names = true;
-						config.dsos.limit = 6;
-						config.dsos.namelimit = 4;
-						break;
-					case 3:
-					case 2:
-						config.stars.limit = 4;
-						config.stars.proper = true;
-						config.stars.propernamelimit = 1.5;
-						config.constellations.names = true;
-						config.dsos.names = true;
-						config.dsos.limit = 5;
-						config.dsos.namelimit = 4;
-						break;
-					case 1:
-						config.stars.limit = 3;
-						config.stars.proper = false;
-						config.constellations.names = false;
-						config.dsos.names = false;
-						break;
-				}
-				Celestial.display(config);
+			function deg2h(ra) {
+				return ra < 0 ? ra / 15 + 24 : ra / 15;
 			}
-		}
 
-		function zoomOut() {
-			if (zoom > 0) {
-				config.width = zooms[--zoom];
-				switch (zoom) {
-					case 4:
-						config.stars.limit = 6;
-						config.stars.proper = true;
-						config.stars.propernamelimit = 2;
-						config.constellations.names = true;
-						config.dsos.names = true;
-						config.dsos.limit = 6;
-						config.dsos.namelimit = 4;
-						break;
-					case 3:
-					case 2:
-						config.stars.limit = 4;
-						config.stars.proper = true;
-						config.stars.propernamelimit = 1.5;
-						config.constellations.names = true;
-						config.dsos.names = true;
-						config.dsos.limit = 5;
-						config.dsos.namelimit = 4;
-						break;
-					case 1:
-					case 0:
-						config.stars.limit = 3;
-						config.stars.proper = false;
-						config.constellations.names = false;
-						config.dsos.names = false;
-						break;
-				}
-				Celestial.display(config);
+			function mountTargetCoordinatesProperty() {
+				if (INDIGO == null)
+					return null;
+				var property = INDIGO.findProperty("Mount Agent", "AGENT_MOUNT_TARGET_COORDINATES");
+				if (property == null)
+					property = INDIGO.findProperty("Mount Agent", "AGENT_MOUNT_EQUATORIAL_COORDINATES");
+				return property;
 			}
-		}
 
-		function followMarker() {
-			var map = $("#map");
-			if (map != null && map.length > 0) {
-				if (follow == 0) {
-					var current = Celestial.mapProjection(currentCoordinates);
-					map.scrollLeft(current[0] - map.width() / 2);
-					map.scrollTop(current[1] - map.width() / 2);
-					follow = 1;
-				} else if (follow == 1) {
-					var current = Celestial.mapProjection(objectCoordinates);
-					map.scrollLeft(current[0] - map.width() / 2);
-					map.scrollTop(current[1] - map.width() / 2);
-					follow = 0;
+				function mountDisplayCoordinatesProperty() {
+					if (INDIGO == null)
+						return null;
+					var property = INDIGO.findProperty("Mount Agent", "AGENT_MOUNT_DISPLAY_COORDINATES");
+					if (property == null)
+						property = INDIGO.findProperty("Mount Agent", "AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY");
+					return property;
 				}
-				updateMap();
-			}
-		}
 
-		function canvasClick(e) {
-			var coordinates = Celestial.mapProjection.invert([e.offsetX, e.offsetY]);
-			var bestX = 0;
-			var bestY = 0;
-			var dist = Math.pow(coordinates[0] - bestX, 2) + Math.pow(coordinates[1] - bestY, 2);
-			var paths = $("#map container path");
-			for (i in paths) {
-				var path = paths[i];
-				var data = path.__data__;
-				if (data == null) continue;
-				var geometry = data.geometry;
-				if (geometry == null) continue;
-				if (geometry.type != "Point") continue;
-				var d = Math.pow(coordinates[0] - geometry.coordinates[0], 2) + Math.pow(coordinates[1] - geometry.coordinates[1], 2);
-				if (d < dist) {
-					dist = d;
-					bestX = geometry.coordinates[0];
-					bestY = geometry.coordinates[1];
+				function mountStartProcessProperty() {
+					if (INDIGO == null || INDIGO.devices["Mount Agent"] == null)
+						return null;
+					return INDIGO.devices["Mount Agent"]["AGENT_START_PROCESS"];
 				}
-			}
-			selectObject(deg2h(bestX), bestY);
-		}
 
-		function updateMap() {
-			var map = $("#map");
-			if (map != null && map.length > 0) {
-				var device = INDIGO.devices["Mount Agent"];
-				if (device != null) {
-					var geo_coordinates = device["GEOGRAPHIC_COORDINATES"];
-					if (geo_coordinates != null) {
-						var latitude = geo_coordinates.item("LATITUDE").value;
-						var longitude = geo_coordinates.item("LONGITUDE").value;
-						var pos = [latitude, longitude];
-						config.center = Celestial.getPoint(Celestial.horizontal.inverse(new Date(), [90, 0], pos), config.transform);
-					}
-					if (celestialVisible) {
-						Celestial.rotate({ center: config.center });
-						var eqCoordinates = INDIGO.findProperty("Mount Agent", "MOUNT_EQUATORIAL_COORDINATES");
-						if (eqCoordinates != null && eqCoordinates.state == "Busy") {
-							var current = Celestial.mapProjection(currentCoordinates);
-							map.scrollLeft(current[0] - map.width() / 2);
-							map.scrollTop(current[1] - map.width() / 2);
+				function mountStartProcessSelectedItem() {
+					var property = mountStartProcessProperty();
+					if (property != null) {
+						for (var i in property.items) {
+							if (property.items[i].value)
+								return property.items[i].name;
 						}
-					} else {
-						window.onresize();
-						celestialVisible = true;
-						Celestial.display(config);
-						map.scrollLeft((zooms[zoom] - map.width()) / 2);
-						map.scrollTop((zooms[zoom] - map.width()) / 2);
-						INDIGO.db = Celestial.container[0];
-						var canvas =  $(map).children("canvas")[0];
-						canvas.addEventListener("mousedown", canvasClick, false);
+					}
+					return mountStartProcessItem;
+				}
+
+				function mountStartProcessBusy() {
+					var property = mountStartProcessProperty();
+					return property != null && property.state == "Busy";
+				}
+
+				function mountStartProcessButtonClass(itemName) {
+					var property = mountStartProcessProperty();
+					if (property == null || mountStartProcessSelectedItem() != itemName)
+						return "idle-state";
+					if (property.state == "Busy")
+						return "busy-state";
+					if (property.state == "Alert")
+						return "alert-state";
+					return "idle-state";
+				}
+
+				function mountStartProcessButtonDisabled(itemName) {
+					return mountStartProcessBusy();
+				}
+
+				function mountSetStartProcessItem(itemName) {
+					mountStartProcessItem = itemName;
+				}
+
+				function mountStateProperty() {
+					if (INDIGO == null || INDIGO.devices["Mount Agent"] == null)
+						return null;
+					return INDIGO.devices["Mount Agent"]["AGENT_MOUNT_STATE"];
+				}
+
+				function mountSelected() {
+					if (INDIGO == null || INDIGO.devices["Mount Agent"] == null)
+						return false;
+					var property = INDIGO.devices["Mount Agent"]["FILTER_MOUNT_LIST"];
+					return property != null && property.items.length > 0 && !property.items[0].value;
+				}
+
+				function siteDataSourceIsAgentCoordinates() {
+					if (INDIGO == null || INDIGO.devices["Mount Agent"] == null)
+						return false;
+					var property = INDIGO.devices["Mount Agent"]["AGENT_SITE_DATA_SOURCE"];
+					if (property == null)
+						return false;
+					var item = property.item("HOST");
+					return item != null && item.value;
+				}
+
+				function domeSelected() {
+					if (INDIGO == null || INDIGO.devices["Mount Agent"] == null)
+						return false;
+					var property = INDIGO.devices["Mount Agent"]["FILTER_DOME_LIST"];
+					return property != null && property.items.length > 0 && !property.items[0].value;
+				}
+
+				function gpsSelected() {
+					if (INDIGO == null || INDIGO.devices["Mount Agent"] == null)
+						return false;
+					var property = INDIGO.devices["Mount Agent"]["FILTER_GPS_LIST"];
+					return property != null && property.items.length > 0 && !property.items[0].value;
+				}
+
+				function domeShutterLabel() {
+					if (INDIGO == null || INDIGO.devices["Mount Agent"] == null)
+						return "N/A";
+					var property = INDIGO.devices["Mount Agent"]["DOME_SHUTTER"];
+					if (property == null)
+						return "N/A";
+					var opened = property.item("OPENED");
+					if (opened != null && opened.value)
+						return "shutter opened";
+					var closed = property.item("CLOSED");
+					if (closed != null && closed.value)
+						return "shutter closed";
+					return "N/A";
+				}
+
+				function gpsStatusItemActive(property, itemName) {
+					var item = property.item(itemName);
+					return item != null && item.value != "Idle";
+				}
+
+				function gpsFixLabel() {
+					if (INDIGO == null || INDIGO.devices["Mount Agent"] == null)
+						return "N/A";
+					var property = INDIGO.devices["Mount Agent"]["GPS_STATUS"];
+					if (property == null)
+						return "N/A";
+					if (gpsStatusItemActive(property, "3D_FIX"))
+						return "3d fix";
+					if (gpsStatusItemActive(property, "2D_FIX"))
+						return "2d fix";
+					if (gpsStatusItemActive(property, "NO_FIX"))
+						return "no fix";
+					return "N/A";
+				}
+
+				function mountStateItemValue(itemName) {
+					var property = mountStateProperty();
+					if (property == null)
+						return null;
+					var item = property.item(itemName);
+					return item == null ? null : item.value;
+				}
+
+				function mountStateButtonClass(stateItemName, processItemName) {
+					var processProperty = mountStartProcessProperty();
+					if (processProperty != null && mountStartProcessSelectedItem() == processItemName) {
+						if (processProperty.state == "Busy")
+							return "busy-state";
+						if (processProperty.state == "Alert")
+							return "alert-state";
+					}
+					var state = mountStateItemValue(stateItemName);
+					if (state == "Ok")
+						return "ok-state";
+					if (state == "Busy")
+						return "busy-state";
+					if (state == "Alert")
+						return "alert-state";
+					return "idle-state";
+				}
+
+				function mountParkStartProcessItem() {
+					return mountStateItemValue("PARK") == "Ok" ? "UNPARK" : "PARK";
+				}
+
+				function mountTrackingStartProcessItem() {
+					return mountStateItemValue("TRACK") == "Ok" ? "TRACK_OFF" : "TRACK_ON";
+				}
+
+			function mountPropertyIsTargetCoordinates(property) {
+				return property.name == "AGENT_MOUNT_TARGET_COORDINATES" || property.name == "AGENT_MOUNT_EQUATORIAL_COORDINATES";
+			}
+
+			function mountPropertyIsDisplayCoordinates(property) {
+				return property.name == "AGENT_MOUNT_DISPLAY_COORDINATES" || property.name == "AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY";
+			}
+
+			function mountNumberValue(item) {
+				return item.target != null ? item.target : item.value;
+			}
+
+			function updateMountCurrentCoordinates(property) {
+				var ra = property.item("RA_JNOW");
+				var dec = property.item("DEC_JNOW");
+				if (ra != null && dec != null)
+					INDIGO.currentCoordinates = [h2deg(ra.value), dec.value];
+			}
+
+			function updateMountTargetCoordinates(property) {
+				var ra = property.item("RA");
+				var dec = property.item("DEC");
+				if (ra != null && dec != null)
+					INDIGO.targetCoordinates = [h2deg(mountNumberValue(ra)), mountNumberValue(dec)];
+			}
+
+			function selectObject(object, dec) {
+				var ra = object;
+				if (object != null && typeof object == "object") {
+					ra = object.ra;
+					dec = object.dec;
+				}
+				var eqCoordinates = mountTargetCoordinatesProperty();
+				if (eqCoordinates != null) {
+					var raItem = eqCoordinates.item("RA");
+					var decItem = eqCoordinates.item("DEC");
+					if (raItem != null && decItem != null) {
+						raItem.newValue = ra;
+						decItem.newValue = dec;
+						INDIGO.targetCoordinates = [h2deg(ra), dec];
+					}
+					var raInput = document.getElementById("RA");
+					var decInput = document.getElementById("DEC");
+					if (raInput != null)
+						raInput.value = dtos(ra);
+					if (decInput != null)
+						decInput.value = dtos(dec);
+				}
+				INDIGO.objectCoordinates = [h2deg(ra), dec];
+			}
+
+			function onDefineProperty(property) {
+				if (property.device == "Mount Agent") {
+					if (property.name == "GEOGRAPHIC_COORDINATES" && property.state == "Ok") {
+						INDIGO.geoCoordinates = {
+							latitude: property.item("LATITUDE").value,
+							longitude: property.item("LONGITUDE").value
+						};
+					}
+					if (mountPropertyIsDisplayCoordinates(property))
+						updateMountCurrentCoordinates(property);
+					if (mountPropertyIsTargetCoordinates(property))
+						updateMountTargetCoordinates(property);
+					if (property.name == "DOME_SLAVING") {
+						values = {};
+						values["ENABLED"] = true;
+						changeProperty(property.device, property.name, values);
+					}
+					if (property.name == "FILTER_RELATED_AGENT_LIST" && property.state == "Ok") {
+						changeProperty("Mount Agent", "FILTER_RELATED_AGENT_LIST", { "Astrometry Agent" : true, "Guider Agent" : true, "Imager Agent" : true });
 					}
 				}
+				guiSetup();
 			}
-		}
 
-		function h2deg(ra) {
-			return ra > 12 ? (ra - 24) * 15 : ra * 15;
-		}
-
-		function deg2h(ra) {
-			return ra < 0 ? ra / 15 + 24 : ra / 15;
-		}
-
-		function markerCallback(error, json) {
-		}
-
-		function selectObject(ra, dec) {
-			var eqCoordinates = INDIGO.findProperty("Mount Agent", "MOUNT_EQUATORIAL_COORDINATES");
-			if (eqCoordinates != null) {
-				$("#RA").val(dtos(eqCoordinates.item("RA").newValue = ra));
-				$("#DEC").val(dtos(eqCoordinates.item("DEC").newValue = dec));
+				function onUpdateProperty(property) {
+					if (property.device == "Mount Agent") {
+						if (property.name == "AGENT_START_PROCESS" && property.state != "Busy" && property.state != "Alert")
+							mountStartProcessItem = null;
+						if (property.name == "GEOGRAPHIC_COORDINATES" && property.state == "Ok") {
+							INDIGO.geoCoordinates = {
+							latitude: property.item("LATITUDE").value,
+							longitude: property.item("LONGITUDE").value
+						};
+					}
+					if (mountPropertyIsDisplayCoordinates(property))
+						updateMountCurrentCoordinates(property);
+					if (mountPropertyIsTargetCoordinates(property))
+						updateMountTargetCoordinates(property);
+				}
+				guiSetup();
 			}
-			objectCoordinates = [h2deg(ra), dec];
-			updateMap();
-		}
-
-		function markerRedraw(error, json) {
-			if (celestialVisible) {
-				var pt;
-				if (currentCoordinates != null) {
-					Celestial.setStyle({ stroke: "#ff0000", width: 1});
-					pt = Celestial.mapProjection(currentCoordinates);
-					Celestial.context.beginPath();
-					Celestial.context.arc(pt[0], pt[1], 10, 0, 2 * Math.PI);
-					Celestial.context.closePath();
-					Celestial.context.stroke();
-				}
-				if (targetCoordinates != null) {
-					pt = Celestial.mapProjection(targetCoordinates);
-					Celestial.context.beginPath();
-					Celestial.setStyle({ stroke: "#0000ff", width: 1});
-					Celestial.context.moveTo(pt[0] - 15, pt[1]);
-					Celestial.context.lineTo(pt[0] - 5, pt[1]);
-					Celestial.context.moveTo(pt[0] + 5, pt[1]);
-					Celestial.context.lineTo(pt[0] + 15, pt[1]);
-					Celestial.context.moveTo(pt[0], pt[1] - 15);
-					Celestial.context.lineTo(pt[0], pt[1] - 5);
-					Celestial.context.moveTo(pt[0], pt[1] + 5);
-					Celestial.context.lineTo(pt[0], pt[1] + 15);
-					Celestial.context.closePath();
-					Celestial.context.stroke();
-				}
-				if (objectCoordinates != null) {
-					pt = Celestial.mapProjection(objectCoordinates);
-					Celestial.context.beginPath();
-					Celestial.setStyle({ stroke: "#00a000", width: 1});
-					Celestial.context.moveTo(pt[0] - 10, pt[1] - 10);
-					Celestial.context.lineTo(pt[0] - 3, pt[1] - 3);
-					Celestial.context.moveTo(pt[0] + 3, pt[1] + 3);
-					Celestial.context.lineTo(pt[0] + 10, pt[1] + 10);
-					Celestial.context.moveTo(pt[0] + 10, pt[1] - 10);
-					Celestial.context.lineTo(pt[0] + 3, pt[1] - 3);
-					Celestial.context.moveTo(pt[0] - 3, pt[1] + 3);
-					Celestial.context.lineTo(pt[0] - 10, pt[1] + 10);
-					Celestial.context.closePath();
-					Celestial.context.stroke();
-				}
-			}
-		}
-
-		Celestial.add({type:"marker", callback: markerCallback, redraw: markerRedraw });
-
-		function onDefineProperty(property) {
-			if (property.device == "Mount Agent") {
-				if (property.name == "FILTER_MOUNT_LIST" && property.state == "Ok") {
-					updateMap();
-				}
-				if (property.name == "GEOGRAPHIC_COORDINATES" && property.state == "Ok") {
-					updateMap();
-				}
-				if (property.name == "MOUNT_EQUATORIAL_COORDINATES") {
-					currentCoordinates = [h2deg(property.item("RA").value), property.item("DEC").value];
-					targetCoordinates = [h2deg(property.item("RA").target), property.item("DEC").target];
-					updateMap();
-				}
-				if (property.name == "DOME_SLAVING") {
-					values = {};
-					values["ENABLED"] = true;
-					changeProperty(property.device, property.name, values);
-				}
-			}
-			guiSetup();
-	}
-
-		function onUpdateProperty(property) {
-			if (property.device == "Mount Agent") {
-				if (property.name == "GEOGRAPHIC_COORDINATES" && property.state == "Ok") {
-					config.geopos = [ property.item("LATITUDE").value, property.item("LONGITUDE").value ];
-					updateMap();
-				}
-				if (property.name == "MOUNT_EQUATORIAL_COORDINATES") {
-					currentCoordinates = [h2deg(property.item("RA").value), property.item("DEC").value];
-					targetCoordinates = [h2deg(property.item("RA").target), property.item("DEC").target];
-					updateMap();
-				}
-			}
-			guiSetup();
-		}
 
 		function onDeleteProperty(property) {
 			guiSetup();
 		}
 
-		function setCoordinates() {
-			var property = INDIGO.findProperty("Mount Agent", "MOUNT_EQUATORIAL_COORDINATES");
-			var item = property.item("RA");
-			var ra = item.newValue != null ? item.newValue : item.target;
-			item = property.item("DEC");
-			var dec = item.newValue != null ? item.newValue : item.target;
-			changeProperty("Mount Agent", "MOUNT_EQUATORIAL_COORDINATES", { "RA": ra, "DEC": dec });
-		}
+			function setCoordinates() {
+				var property = mountTargetCoordinatesProperty();
+				if (property == null)
+					return false;
+				var raItem = property.item("RA");
+				var decItem = property.item("DEC");
+				if (raItem == null || decItem == null)
+					return false;
+				var ra = raItem.newValue != null ? raItem.newValue : mountNumberValue(raItem);
+				var dec = decItem.newValue != null ? decItem.newValue : mountNumberValue(decItem);
+				INDIGO.targetCoordinates = [h2deg(ra), dec];
+				changeProperty("Mount Agent", property.name, { "RA": ra, "DEC": dec });
+				return true;
+			}
 
-		function goto() {
-			changeProperty("Mount Agent", "MOUNT_ON_COORDINATES_SET", { "TRACK": true });
-			setCoordinates();
-		}
+				function startMountProcess(itemName) {
+					if (mountStartProcessBusy())
+						return;
+					var values = {};
+					values[itemName] = true;
+					mountSetStartProcessItem(itemName);
+					changeProperty("Mount Agent", "AGENT_START_PROCESS", values);
+				}
 
-		function sync() {
-			changeProperty("Mount Agent", "MOUNT_ON_COORDINATES_SET", { "SYNC": true });
-			setCoordinates();
-		}
+			function goto() {
+				if (setCoordinates())
+					startMountProcess("SLEW");
+			}
 
-		function stop() {
-			changeProperty("Mount Agent", "MOUNT_ABORT_MOTION", { "ABORT_MOTION": true });
-		}
+			function sync() {
+				if (setCoordinates())
+					startMountProcess("SYNC");
+			}
 
-		function home() {
-			changeProperty("Mount Agent", "MOUNT_HOME", { "HOME": true });
-		}
-
-		function park() {
-			var property = INDIGO.findProperty("Mount Agent", "MOUNT_PARK");
-			if (property != null) {
-				var item = property.item("PARKED");
-				if (item.value) {
-					changeProperty("Mount Agent", "MOUNT_PARK", { "UNPARKED": true });
+			function stop() {
+				if (INDIGO.findProperty("Mount Agent", "AGENT_ABORT_PROCESS") != null) {
+					changeProperty("Mount Agent", "AGENT_ABORT_PROCESS", { "ABORT": true });
 				} else {
-					changeProperty("Mount Agent", "MOUNT_PARK", { "PARKED": true });
+					changeProperty("Mount Agent", "MOUNT_ABORT_MOTION", { "ABORT_MOTION": true });
 				}
 			}
-		}
+
+			function home() {
+				startMountProcess("HOME");
+			}
+
+			function park() {
+				startMountProcess(mountParkStartProcessItem());
+			}
 
 		function startLX200Server() {
 			changeProperty("Mount Agent", "AGENT_LX200_SERVER", { "STARTED": true });
@@ -670,72 +546,73 @@
 			changeProperty("Mount Agent", "AGENT_LX200_SERVER", { "STOPPED": true });
 		}
 
-		function moveEvent(event) {
-			var target = $(event.target);
-			if (target.is("path"))
-				target = target.parent();
-			if (target.is("svg"))
-				target = target.parent();
-			target.removeClass("idle-state")
-			target.addClass("busy-state")
-		}
+			function moveEvent(event) {
+				if (mountStartProcessBusy())
+					return false;
+				var target = event.currentTarget;
+				target.classList.replace("idle-state", "busy-state");
+				return true;
+			}
 
 		function stopEvent(event) {
-			var target = $(event.target);
-			if (target.is("path"))
-				target = target.parent();
-			if (target.is("svg"))
-				target = target.parent();
-			target.removeClass("busy-state")
-			target.addClass("idle-state")
+			var target = event.currentTarget;
+			target.classList.replace("busy-state", "idle-state");
 		}
 
-		function moveWest(event) {
-			moveEvent(event);
-			changeProperty("Mount Agent", "MOUNT_MOTION_RA", { "WEST": true });
-		}
+			function moveWest(event) {
+				if (!moveEvent(event))
+					return;
+				changeProperty("Mount Agent", "MOUNT_MOTION_RA", { "WEST": true });
+			}
 
 		function stopWest(event) {
 			stopEvent(event);
 			changeProperty("Mount Agent", "MOUNT_MOTION_RA", { "WEST": false });
 		}
 
-		function moveEast(event) {
-			moveEvent(event);
-			changeProperty("Mount Agent", "MOUNT_MOTION_RA", { "EAST": true });
-		}
+			function moveEast(event) {
+				if (!moveEvent(event))
+					return;
+				changeProperty("Mount Agent", "MOUNT_MOTION_RA", { "EAST": true });
+			}
 
 		function stopEast(event) {
 			stopEvent(event);
 			changeProperty("Mount Agent", "MOUNT_MOTION_RA", { "EAST": false });
 		}
 
-		function moveNorth(event) {
-			moveEvent(event);
-			changeProperty("Mount Agent", "MOUNT_MOTION_DEC", { "NORTH": true });
-		}
+			function moveNorth(event) {
+				if (!moveEvent(event))
+					return;
+				changeProperty("Mount Agent", "MOUNT_MOTION_DEC", { "NORTH": true });
+			}
 
 		function stopNorth(event) {
 			stopEvent(event);
 			changeProperty("Mount Agent", "MOUNT_MOTION_DEC", { "NORTH": false });
 		}
 
-		function moveSouth(event) {
-			moveEvent(event);
-			changeProperty("Mount Agent", "MOUNT_MOTION_DEC", { "SOUTH": true });
-		}
+			function moveSouth(event) {
+				if (!moveEvent(event))
+					return;
+				changeProperty("Mount Agent", "MOUNT_MOTION_DEC", { "SOUTH": true });
+			}
 
 		function stopSouth(event) {
 			stopEvent(event);
 			changeProperty("Mount Agent", "MOUNT_MOTION_DEC", { "SOUTH": false });
 		}
 
-		function trackingOn(event) {
-			changeProperty("Mount Agent", "MOUNT_TRACKING", { "ON": true });
-		}
+			function trackingToggle(event) {
+				startMountProcess(mountTrackingStartProcessItem());
+			}
 
-		function trackingOff(event) {
-			changeProperty("Mount Agent", "MOUNT_TRACKING", { "OFF": true });
-		}
+			function trackingOn(event) {
+				startMountProcess("TRACK_ON");
+			}
+
+			function trackingOff(event) {
+				startMountProcess("TRACK_OFF");
+			}
 	</script>
 </html>

@@ -235,11 +235,16 @@ static bool start_shared_serial_device(const simulator_driver_case *device_case,
 		tear_down_serial_driver(device_case);
 		return false;
 	}
+	indigo_usleep(100000);
 	if (!connect_serial_device(device_case, NULL)) {
 		tear_down_serial_driver(device_case);
 		return false;
 	}
 	return true;
+}
+
+static bool start_shared_serial_device_with_master_case(const simulator_driver_case *device_case, const simulator_driver_case *master_case, const char *port) {
+	return start_shared_serial_device(device_case, master_case->device_name, port);
 }
 
 static void assert_serial_focuser_class_property_completeness(void) {

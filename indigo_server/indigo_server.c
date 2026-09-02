@@ -1796,9 +1796,9 @@ static void server_main() {
 		indigo_server_add_resource("/jquery.min.js", jquery_js, sizeof(jquery_js), "text/javascript");
 		// VueJS
 		static unsigned char vue_js[] = {
-			#include "resource/vue.min.js.data"
+			#include "resource/vue.global.prod.js.data"
 		};
-		indigo_server_add_resource("/vue.min.js", vue_js, sizeof(vue_js), "text/javascript");
+		indigo_server_add_resource("/vue.global.prod.js", vue_js, sizeof(vue_js), "text/javascript");
 	}
 	if (use_web_apps) {
 		// INDIGO Imager
@@ -1856,17 +1856,30 @@ static void server_main() {
 		indigo_server_add_resource("/guider.html", guider_html, sizeof(guider_html), "text/html");
 		static unsigned char guider_png[] = {
 			#include "resource/guider.png.data"
-		};
-		indigo_server_add_resource("/guider.png", guider_png, sizeof(guider_png), "image/png");
-		// INDIGO Script
-		static unsigned char script_html[] = {
-			#include "resource/script.html.data"
-		};
+			};
+			indigo_server_add_resource("/guider.png", guider_png, sizeof(guider_png), "image/png");
+			// INDIGO Astrometry
+			static unsigned char astrometry_html[] = {
+				#include "resource/astrometry.html.data"
+			};
+			indigo_server_add_resource("/astrometry.html", astrometry_html, sizeof(astrometry_html), "text/html");
+			static unsigned char astrometry_png[] = {
+				#include "resource/astrometry.png.data"
+			};
+			indigo_server_add_resource("/astrometry.png", astrometry_png, sizeof(astrometry_png), "image/png");
+			// INDIGO Script
+			static unsigned char script_html[] = {
+				#include "resource/script.html.data"
+			};
 		indigo_server_add_resource("/script.html", script_html, sizeof(script_html), "text/html");
 		static unsigned char script_png[] = {
 			#include "resource/script.png.data"
 		};
 		indigo_server_add_resource("/script.png", script_png, sizeof(script_png), "image/png");
+		static unsigned char sequencer_js[] = {
+			#include "resource/Sequencer.js.data"
+		};
+		indigo_server_add_resource("/Sequencer.js", sequencer_js, sizeof(sequencer_js), "text/javascript");
 	}
 #ifdef RPI_MANAGEMENT
 	indigo_server_add_file_resource("/log", "indigo.log", "text/plain; charset=UTF-8");

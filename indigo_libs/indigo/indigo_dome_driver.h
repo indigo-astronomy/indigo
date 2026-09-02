@@ -83,17 +83,17 @@ extern "C" {
 
 
 //----------------------------------------------
-/** DOME_ON_HORIZONTAL_COORDINATES_SET property pointer, property is optional.
+/** DOME_ON_COORDINATES_SET property pointer, property is optional.
  */
-#define DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY							(DOME_CONTEXT->dome_on_horiz_coordinates_set_property)
+#define DOME_ON_COORDINATES_SET_PROPERTY							(DOME_CONTEXT->dome_on_horiz_coordinates_set_property)
 
-/**  DOME_ON_HORIZONTAL_COORDINATES_SET.GOTO property item pointer.
+/**  DOME_ON_COORDINATES_SET.GOTO property item pointer.
  */
-#define DOME_ON_HORIZONTAL_COORDINATES_SET_GOTO_ITEM						(DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY->items+0)
+#define DOME_ON_COORDINATES_SET_GOTO_ITEM						(DOME_ON_COORDINATES_SET_PROPERTY->items+0)
 
-/**  DOME_ON_HORIZONTAL_COORDINATES_SET.SYNC property item pointer.
+/**  DOME_ON_COORDINATES_SET.SYNC property item pointer.
  */
-#define DOME_ON_HORIZONTAL_COORDINATES_SET_SYNC_ITEM						(DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY->items+1)
+#define DOME_ON_COORDINATES_SET_SYNC_ITEM						(DOME_ON_COORDINATES_SET_PROPERTY->items+1)
 
 
 /** DOME_STEPS property pointer, property is optional, property change request should be fully handled by dome driver
@@ -103,18 +103,6 @@ extern "C" {
 /** DOME_STEPS.STEPS property item pointer.
  */
 #define DOME_STEPS_ITEM									(DOME_STEPS_PROPERTY->items+0)
-
-/** DOME_EQUATORIAL_COORDINATES property pointer, property is optional, property change request should be fully handled by device driver.
-*/
-#define DOME_EQUATORIAL_COORDINATES_PROPERTY					(DOME_CONTEXT->dome_equatorial_coordinates_property)
-
-/** DOME_EQUATORIAL_COORDINATES.RA property item pointer.
- */
-#define DOME_EQUATORIAL_COORDINATES_RA_ITEM					(DOME_EQUATORIAL_COORDINATES_PROPERTY->items+0)
-
-/** DOME_EQUATORIAL_COORDINATES.DEC property item pointer.
- */
-#define DOME_EQUATORIAL_COORDINATES_DEC_ITEM					(DOME_EQUATORIAL_COORDINATES_PROPERTY->items+1)
 
 /** DOME_HORIZONTAL_COORDINATES property pointer, property is optional, property change request should be fully handled by dome driver
  */
@@ -127,18 +115,6 @@ extern "C" {
 /** DOME_HORIZONTAL_COORDINATES.ALT property item pointer.
  */
 #define DOME_HORIZONTAL_COORDINATES_ALT_ITEM								(DOME_HORIZONTAL_COORDINATES_PROPERTY->items+1)
-
-/** DOME_SLAVING property pointer, property is optional, property change request should be fully handled by dome driver
- */
-#define DOME_SLAVING_PROPERTY								(DOME_CONTEXT->dome_slaving_property)
-
-/** DOME_SLAVING.ENABLE property item pointer.
- */
-#define DOME_SLAVING_ENABLE_ITEM							(DOME_SLAVING_PROPERTY->items+0)
-
-/** DOME_SLAVING.DISABLE property item pointer.
- */
-#define DOME_SLAVING_DISABLE_ITEM							(DOME_SLAVING_PROPERTY->items+1)
 
 /** DOME_SLAVING_PARAMETERS property pointer, property is optional, property change request should be fully handled by dome driver
  */
@@ -281,17 +257,13 @@ extern "C" {
 */
 #define DOME_SET_HOST_TIME_ITEM											(DOME_SET_HOST_TIME_PROPERTY->items+0)
 
-/** DOME_SNOOP_DEVICES property pointer, property is optional.
+//------------------------------------------------
+/** DOME_STATE property pointer, property is optional.
  */
-#define DOME_SNOOP_DEVICES_PROPERTY					(DOME_CONTEXT->dome_snoop_devices_property)
-
-/** DOME_SNOOP_DEVICES_PROPERTY.MOUNT property item pointer.
- */
-#define DOME_SNOOP_MOUNT_ITEM					(DOME_SNOOP_DEVICES_PROPERTY->items+0)
-
-/** DOME_SNOOP_DEVICES_PROPERTY.GPS property item pointer.
- */
-#define DOME_SNOOP_GPS_ITEM					(DOME_SNOOP_DEVICES_PROPERTY->items+1)
+#define DOME_STATE_PROPERTY													(DOME_CONTEXT->dome_state_property)
+#define DOME_STATE_SLEW_ITEM												(DOME_STATE_PROPERTY->items+0)
+#define DOME_STATE_PARK_ITEM												(DOME_STATE_PROPERTY->items+1)
+#define DOME_STATE_OPEN_ITEM												(DOME_STATE_PROPERTY->items+2)
 
 
 /** Dome device context structure.
@@ -300,23 +272,21 @@ typedef struct {
 	indigo_device_context device_context;										///< device context base
 	indigo_property *dome_speed_property;										///< DOME_SPEED property pointer
 	indigo_property *dome_direction_property;								///< DOME_DIRECTION property pointer
-	indigo_property *dome_on_horiz_coordinates_set_property;				///< DOME_ON_HORIZONTAL_COORDINATES_SET property pointer
+	indigo_property *dome_on_horiz_coordinates_set_property;	///< DOME_ON_COORDINATES_SET property pointer
 	indigo_property *dome_steps_property;										///< DOME_STEPS property pointer
-	indigo_property *dome_equatorial_coordinates_property; 	///< DOME_EQUATORIAL_COORDINATES property pointer
 	indigo_property *dome_horizontal_coordinates_property;	///< DOME_HORIZONTAL_COORDINATES property pointer
-	indigo_property *dome_slaving_property;								///< DOME_SLAVING property pointer
-	indigo_property *dome_slaving_parameters_property;					///< DOME_SLAVING_PARAMETERS property pointer
+	indigo_property *dome_slaving_parameters_property;			///< DOME_SLAVING_PARAMETERS property pointer
 	indigo_property *dome_abort_motion_property;						///< DOME_ABORT_MOTION property pointer
 	indigo_property *dome_shutter_property;									///< DOME_SHUTTER_PROPERTY pointer
-	indigo_property *dome_flap_property;									///< DOME_FLAP_PROPERTY pointer
+	indigo_property *dome_flap_property;										///< DOME_FLAP_PROPERTY pointer
 	indigo_property *dome_park_property;										///< DOME_PARK property pointer
-	indigo_property *dome_park_position_property;							///< DOME_PARK_POSITION property pointer
-	indigo_property *dome_home_property;							///< DOME_HOME property pointer
+	indigo_property *dome_park_position_property;						///< DOME_PARK_POSITION property pointer
+	indigo_property *dome_home_property;										///< DOME_HOME property pointer
 	indigo_property *dome_dimension_property;								///< DOME_DIMENSION property pointer
 	indigo_property *dome_geographic_coordinates_property;	///< DOME_GEOGRAPHIC_COORDINATES property pointer
 	indigo_property *dome_utc_time_property;               	///< DOME_UTC_TIME property_pointer
 	indigo_property *dome_set_host_time_property;          	///< DOME_UTC_FROM_HOST property_pointer
-	indigo_property *dome_snoop_devices_property;						///< DOME_SNOOP_DEVICES property pointer
+	indigo_property *dome_state_property;										///< DOME_STATE property_pointer
 	indigo_timer *sync_timer;
 } indigo_dome_context;
 
@@ -332,9 +302,6 @@ INDIGO_EXTERN indigo_result indigo_dome_change_property(indigo_device *device, i
 /** Detach callback function.
  */
 INDIGO_EXTERN indigo_result indigo_dome_detach(indigo_device *device);
-/** Update dome azimuth according to mount and OTA dimensions.
- */
-INDIGO_EXTERN bool indigo_fix_dome_azimuth(indigo_device *device, double ra, double dec, double az_prev, double *az);
 
 #ifdef __cplusplus
 }

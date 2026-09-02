@@ -497,7 +497,9 @@ static void mount_connection_handler(indigo_device *device) {
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", MOUNT_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
 			indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", MOUNT_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
-			PRIVATE_DATA->count--;
+			if (--PRIVATE_DATA->count == 0) {
+				nexstaraux_close(device);
+			}
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
@@ -554,7 +556,7 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 	indigo_j2k_to_eq(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
 	if (MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
 		if (nexstaraux_set_tracking(device, false) && nexstaraux_slew(device, ra, dec, true)) {
-			MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_OK_STATE;
+			MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_BUSY_STATE;
 			indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
 			PRIVATE_DATA->centering = PRIVATE_DATA->parking = PRIVATE_DATA->parked = false;
 			PRIVATE_DATA->slewing = true;
@@ -583,7 +585,7 @@ static void mount_park_handler(indigo_device *device) {
 	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 	indigo_j2k_to_eq(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
 	if (nexstaraux_set_tracking(device, false) && nexstaraux_slew(device, ra, dec, true)) {
-		MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_OK_STATE;
+		MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_BUSY_STATE;
 		MOUNT_STATE_PARK_ITEM->light.value = INDIGO_BUSY_STATE;
 		indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
 		PRIVATE_DATA->centering = PRIVATE_DATA->parked = false;
@@ -600,8 +602,7 @@ static void mount_abort_motion_handler(indigo_device *device) {
 	//+ mount.MOUNT_ABORT_MOTION.on_change
 	if (MOUNT_ABORT_MOTION_ITEM->sw.value) {
 		MOUNT_ABORT_MOTION_ITEM->sw.value = false;
-		unsigned char reply[16] = { 0 };
-		if (nexstaraux_command_24(device, APP, AZM, MC_MOVE_POS, 0, reply) && nexstaraux_command_24(device, APP, ALT, MC_MOVE_POS, 0, reply)) {
+		if (nexstaraux_stop(device)) {
 			if (MOUNT_MOTION_WEST_ITEM->sw.value || MOUNT_MOTION_EAST_ITEM->sw.value) {
 				MOUNT_MOTION_WEST_ITEM->sw.value = MOUNT_MOTION_EAST_ITEM->sw.value = false;
 				MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
@@ -803,7 +804,9 @@ static void guider_connection_handler(indigo_device *device) {
 			indigo_send_message(device, OK_PROPERTY, "Connected to %s on %s", GUIDER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
 		} else {
 			indigo_send_message(device, ALERT_PROPERTY, "Failed to connect to %s on %s", GUIDER_DEVICE_NAME, DEVICE_PORT_ITEM->text.value);
-			PRIVATE_DATA->count--;
+			if (--PRIVATE_DATA->count == 0) {
+				nexstaraux_close(device);
+			}
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
