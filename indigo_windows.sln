@@ -1,6 +1,6 @@
-﻿Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 18
-VisualStudioVersion = 18.4.11620.152
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.37614.0 d17.14
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo", "indigo_libs\indigo.vcxproj", "{AA10BE9E-6416-4F58-B821-2D0E479EB81B}"
 EndProject
@@ -147,6 +147,8 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_mount_ioptron", "indigo_drivers\mount_ioptron\indigo_mount_ioptron.vcxproj", "{D2B427C2-B6D4-4354-BDDF-92041036799F}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_mount_lx200", "indigo_drivers\mount_lx200\indigo_mount_lx200.vcxproj", "{7C84806A-6F8A-49AC-B9ED-476D4B36EB58}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_mount_mxhd", "indigo_drivers\mount_mxhd\indigo_mount_mxhd.vcxproj", "{4E5B8F65-46E4-4D9F-AE99-64AB8D28D93A}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_mount_rainbow", "indigo_drivers\mount_rainbow\indigo_mount_rainbow.vcxproj", "{76DAC9B0-19CB-4986-8AF2-CA5C52BF3622}"
 EndProject
@@ -792,6 +794,14 @@ Global
 		{7C84806A-6F8A-49AC-B9ED-476D4B36EB58}.Release|ARM64.Build.0 = Release|ARM64
 		{7C84806A-6F8A-49AC-B9ED-476D4B36EB58}.Release|x64.ActiveCfg = Release|x64
 		{7C84806A-6F8A-49AC-B9ED-476D4B36EB58}.Release|x64.Build.0 = Release|x64
+		{4E5B8F65-46E4-4D9F-AE99-64AB8D28D93A}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{4E5B8F65-46E4-4D9F-AE99-64AB8D28D93A}.Debug|ARM64.Build.0 = Debug|ARM64
+		{4E5B8F65-46E4-4D9F-AE99-64AB8D28D93A}.Debug|x64.ActiveCfg = Debug|x64
+		{4E5B8F65-46E4-4D9F-AE99-64AB8D28D93A}.Debug|x64.Build.0 = Debug|x64
+		{4E5B8F65-46E4-4D9F-AE99-64AB8D28D93A}.Release|ARM64.ActiveCfg = Release|ARM64
+		{4E5B8F65-46E4-4D9F-AE99-64AB8D28D93A}.Release|ARM64.Build.0 = Release|ARM64
+		{4E5B8F65-46E4-4D9F-AE99-64AB8D28D93A}.Release|x64.ActiveCfg = Release|x64
+		{4E5B8F65-46E4-4D9F-AE99-64AB8D28D93A}.Release|x64.Build.0 = Release|x64
 		{76DAC9B0-19CB-4986-8AF2-CA5C52BF3622}.Debug|ARM64.ActiveCfg = Debug|ARM64
 		{76DAC9B0-19CB-4986-8AF2-CA5C52BF3622}.Debug|ARM64.Build.0 = Debug|ARM64
 		{76DAC9B0-19CB-4986-8AF2-CA5C52BF3622}.Debug|x64.ActiveCfg = Debug|x64
