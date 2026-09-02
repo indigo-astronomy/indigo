@@ -109,6 +109,7 @@ indigo_uni_handle *indigo_uni_create_file_handle(int fd, int log_level) {
 }
 #endif
 
+#if !defined(INDIGO_CLIENT)
 static int discard_data(indigo_uni_handle *handle) {
 	if (handle->type != INDIGO_COM_HANDLE) {
 		return -1;
@@ -121,6 +122,7 @@ static int discard_data(indigo_uni_handle *handle) {
 #pragma message ("TODO: discard_data()")
 #endif
 }
+#endif
 
 #define MAX_DUMP_SIZE	64
 
@@ -166,6 +168,7 @@ int indigo_uni_wait_for_data(indigo_uni_handle *handle, long timeout) {
 #elif defined(INDIGO_WINDOWS)
 	if (handle->type == INDIGO_FILE_HANDLE) {
 		return 1;
+#if !defined(INDIGO_CLIENT)
 	} else if (handle->type == INDIGO_COM_HANDLE) {
 		ULONGLONG start = GetTickCount64();
 		COMSTAT stat;
@@ -188,6 +191,7 @@ int indigo_uni_wait_for_data(indigo_uni_handle *handle, long timeout) {
 		}
 		indigo_log_on_level(handle->log_level & 0xFFF, "%d -> // wait timeout", handle->index);
 		return 0;
+#endif
 	} else if (handle->type == INDIGO_TCP_HANDLE || handle->type == INDIGO_UDP_HANDLE) {
 		fd_set readout;
 		FD_ZERO(&readout);
@@ -254,6 +258,7 @@ static long read_data(indigo_uni_handle *handle, void *buffer, long length) {
 		} else {
 			return bytes_read;
 		}
+#if !defined(INDIGO_CLIENT)
 	} else if (handle->type == INDIGO_COM_HANDLE) {
 		bytes_read = 0;
 		bool read_result = ReadFile(handle->com, buffer, length, &bytes_read, NULL);
@@ -267,6 +272,7 @@ static long read_data(indigo_uni_handle *handle, void *buffer, long length) {
 			return -1;
 		}
 		return bytes_read;
+#endif
 	} else if (handle->type == INDIGO_TCP_HANDLE || handle->type == INDIGO_UDP_HANDLE) {
 		bytes_read = recv(handle->sock, buffer, length, 0);
 		if (bytes_read < 0) {
@@ -327,6 +333,7 @@ static long write_data(indigo_uni_handle *handle, const char *buffer, long lengt
 			return -1;
 		}
 		return bytes_written;
+#if !defined(INDIGO_CLIENT)
 	} else if (handle->type == INDIGO_COM_HANDLE) {
 		bytes_written = 0;
 		bool write_result = WriteFile(handle->com, buffer, (DWORD)length, &bytes_written, NULL);
@@ -340,6 +347,7 @@ static long write_data(indigo_uni_handle *handle, const char *buffer, long lengt
 			return -1;
 		}
 		return bytes_written;
+#endif
 	} else if (handle->type == INDIGO_TCP_HANDLE || handle->type == INDIGO_UDP_HANDLE) {
 		bytes_written = send(handle->sock, buffer, length, 0);
 		if (bytes_written < 0) {
@@ -484,6 +492,7 @@ indigo_uni_handle *indigo_uni_create_file(const char *path, int log_level) {
 	return NULL;
 }
 
+#if !defined(INDIGO_CLIENT)
 static int map_baudrate(const char *baudrate) {
 #if defined(INDIGO_WINDOWS)
 	static int valid_baud_rate[] = { 2400, 4800, 9600, 19200, 38400, 57600, 115200, 0 };
@@ -816,6 +825,7 @@ int indigo_uni_set_cts(indigo_uni_handle *handle, bool state) {
 #endif
 	return 0;
 }
+#endif
 
 bool indigo_perform_passive_discovery(int port, int timeout, char *host, int max_host, char *message, int max_message) {
 	bool result = false;
@@ -1368,8 +1378,10 @@ long indigo_uni_discard(indigo_uni_handle *handle) {
 	}
 	if (handle->type == INDIGO_FILE_HANDLE) {
 		return 0;
+#if !defined(INDIGO_CLIENT)
 	} else if (handle->type == INDIGO_COM_HANDLE) {
 		return discard_data(handle);
+#endif
 	}
 	char c;
 	long bytes_read = 0;
@@ -1665,13 +1677,16 @@ bool indigo_uni_is_valid(indigo_uni_handle *handle) {
 			}
 		}
 #elif defined(INDIGO_WINDOWS)
+#if !defined(INDIGO_CLIENT)
 		if (handle->type == INDIGO_COM_HANDLE) {
 			COMSTAT stat;
 			DWORD errors;
 			if (ClearCommError(handle->com, &errors, &stat)) {
 				return true;
 			}
-		} else if (handle->type == INDIGO_TCP_HANDLE) {
+		} else
+#endif
+		if (handle->type == INDIGO_TCP_HANDLE) {
 			int result = send(handle->sock, NULL, 0, 0);
 			if (result == SOCKET_ERROR) {
 				int err = WSAGetLastError();
@@ -1744,8 +1759,10 @@ void indigo_uni_close(indigo_uni_handle **handle) {
 #endif
 		if (copy->type == INDIGO_FILE_HANDLE) {
 			_close(copy->fd);
+#if !defined(INDIGO_CLIENT)
 		} else if (copy->type == INDIGO_COM_HANDLE) {
 			CloseHandle(copy->com);
+#endif
 		} else if (copy->type == INDIGO_TCP_HANDLE || copy->type == INDIGO_UDP_HANDLE) {
 			struct linger ling;
 			ling.l_onoff = 1;
