@@ -557,28 +557,28 @@ static bool astrometry_solve(indigo_device *device, indigo_platesolver_task *tas
 				components = 1;
 				ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width = ((indigo_raw_header *)image)->width;
 				ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height = ((indigo_raw_header *)image)->height;
-				image = image + sizeof(indigo_raw_header);
+				image = (char *)image + sizeof(indigo_raw_header);
 			} else if (!strncmp("RAW2", (const char *)(image), 4)) {
 				// 16 bit RAW
 				byte_per_pixel = 2;
 				components = 1;
 				ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width = ((indigo_raw_header *)image)->width;
 				ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height = ((indigo_raw_header *)image)->height;
-				image = image + sizeof(indigo_raw_header);
+				image = (char *)image + sizeof(indigo_raw_header);
 			} else if (!strncmp("RAW3", (const char *)(image), 4)) {
 				// 8 bit RGB
 				byte_per_pixel = 1;
 				components = 3;
 				ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width = ((indigo_raw_header *)image)->width;
 				ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height = ((indigo_raw_header *)image)->height;
-				image = image + sizeof(indigo_raw_header);
+				image = (char *)image + sizeof(indigo_raw_header);
 			} else if (!strncmp("RAW6", (const char *)(image), 4)) {
 				// 16 bit RGB
 				byte_per_pixel = 2;
 				components = 3;
 				ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width = ((indigo_raw_header *)image)->width;
 				ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height = ((indigo_raw_header *)image)->height;
-				image = image + sizeof(indigo_raw_header);
+				image = (char *)image + sizeof(indigo_raw_header);
 			} else if (((uint8_t *)image)[0] == 0xFF && ((uint8_t *)image)[1] == 0xD8 && ((uint8_t *)image)[2] == 0xFF) {
 				// JPEG
 				struct indigo_jpeg_decompress_struct cinfo;
@@ -609,7 +609,7 @@ static bool astrometry_solve(indigo_device *device, indigo_platesolver_task *tas
 				image = intermediate_image = indigo_safe_malloc(image_size = ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height * row_stride);
 				while (cinfo.pub.output_scanline < cinfo.pub.output_height) {
 					unsigned char *buffer_array[1];
-					buffer_array[0] = intermediate_image + (cinfo.pub.output_scanline) * row_stride;
+					buffer_array[0] = (unsigned char *)intermediate_image + (size_t)(cinfo.pub.output_scanline) * row_stride;
 					jpeg_read_scanlines(&cinfo.pub, buffer_array, 1);
 				}
 				jpeg_finish_decompress(&cinfo.pub);
@@ -867,7 +867,7 @@ static void sync_installed_indexes(indigo_device *device, char *dir, indigo_prop
 		if (remove) {
 			for (int j = 0; j < AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count; j++) {
 				if (!strcmp(item->name, AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items[j].name)) {
-					memmove(AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items + j, AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items + (j + 1), (AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count - j) * sizeof(indigo_item));
+					memmove(AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items + j, AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items + (j + 1), (AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count - j - 1) * sizeof(indigo_item));
 					AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count--;
 					break;
 				}
