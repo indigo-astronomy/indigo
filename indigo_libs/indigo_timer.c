@@ -481,8 +481,9 @@ static double task_delay(indigo_queue_task *task) {
 // wrapper for executing queue task = scheduled call of handler
 static void *queue_func(indigo_queue *queue) {
 	indigo_rename_thread("Queue %s", queue->device->name);
-	// wakeup indigo_queue_create
+	// wakeup indigo_queue_create, ready flag avoids a lost wakeup if the signal arrives before the wait
 	pthread_mutex_lock(&queue->cond_mutex);
+	queue->ready = true;
 	pthread_cond_signal(&queue->cond);
 	pthread_mutex_unlock(&queue->cond_mutex);
 	// main loop waiting for wakeup signal or timeout
@@ -544,9 +545,12 @@ indigo_queue *indigo_queue_create(indigo_device *device) {
 	pthread_cond_init(&queue->cond, NULL);
 #endif
 	pthread_mutex_init(&queue->thread_mutex, NULL);
+	queue->ready = false;
 	pthread_create(&queue->thread, NULL, (void * (*)(void*))queue_func, queue);
 	pthread_mutex_lock(&queue->cond_mutex);
-	pthread_cond_wait(&queue->cond, &queue->cond_mutex);
+	while (!queue->ready) {
+		pthread_cond_wait(&queue->cond, &queue->cond_mutex);
+	}
 	pthread_mutex_unlock(&queue->cond_mutex);
 	return queue;
 }

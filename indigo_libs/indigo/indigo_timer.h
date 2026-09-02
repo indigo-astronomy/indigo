@@ -95,6 +95,7 @@ typedef struct indigo_queue {
 	indigo_queue_task *task;
 	int queue_id;
 	bool abort;
+	bool ready; // guard against a lost wakeup race condition
 	pthread_mutex_t thread_mutex;
 } indigo_queue;
 
