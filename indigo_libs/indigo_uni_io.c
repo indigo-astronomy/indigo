@@ -1425,18 +1425,7 @@ long indigo_uni_read(indigo_uni_handle *handle, void *buffer, long length) {
 		return -1;
 	}
 	if (handle->type == INDIGO_UDP_HANDLE) {
-		long bytes_read = indigo_uni_read_available(handle, buffer, length);
-		if (bytes_read < 0) {
-			return -1;
-		}
-		if (handle->log_level < 0) {
-			indigo_log_on_level(-handle->log_level, "%d <- // %ld bytes read", handle->index, bytes_read);
-		} else if (handle->log_level & BINARY_LOG) {
-			indigo_log_on_level(handle->log_level & 0xFFF & ~BINARY_LOG, "%d -> %s", handle->index, dump_data(buffer, bytes_read));
-		} else {
-			indigo_log_on_level(handle->log_level & 0xFFF, "%d <- %.*s", handle->index, bytes_read, buffer);
-		}
-		return bytes_read;
+		return indigo_uni_read_available(handle, buffer, length);
 	}
 	long remaining = length;
 	char *pnt = (char *)buffer;
