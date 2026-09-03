@@ -492,7 +492,6 @@ driver primaluce {
 			group = FOCUSER_ADVANCED_GROUP;
 			label = "Configuration";
 			perm = INDIGO_RO_PERM;
-			// handle_change = false;
 			// asynchronous_change = false;
 			item X_CONFIG_M1ACC {
 				name = "M1ACC";
@@ -559,7 +558,6 @@ driver primaluce {
 			group = FOCUSER_ADVANCED_GROUP;
 			label = "State";
 			perm = INDIGO_RO_PERM;
-			// handle_change = false;
 			// asynchronous_change = false;
 			item X_STATE_MOTOR_TEMP {
 				name = "MOTOR_TEMP";
@@ -605,7 +603,6 @@ driver primaluce {
 			name = "X_WIFI";
 			group = FOCUSER_ADVANCED_GROUP;
 			label = "WiFi mode";
-			// handle_change = false;
 			// asynchronous_change = false;
 			item X_WIFI_OFF {
 				name = "OFF";
@@ -634,7 +631,6 @@ driver primaluce {
 			name = "X_WIFI_AP";
 			group = FOCUSER_ADVANCED_GROUP;
 			label = "AP WiFi settings";
-			// handle_change = false;
 			// asynchronous_change = false;
 			item X_WIFI_AP_SSID {
 				name = "AP_SSID";
@@ -659,7 +655,6 @@ driver primaluce {
 			name = "X_WIFI_STA";
 			group = FOCUSER_ADVANCED_GROUP;
 			label = "STA WiFi settings";
-			// handle_change = false;
 			// asynchronous_change = false;
 			item X_WIFI_STA_SSID {
 				name = "STA_SSID";
@@ -691,7 +686,6 @@ driver primaluce {
 			name = "X_LEDS";
 			group = FOCUSER_ADVANCED_GROUP;
 			label = "LEDs";
-			// handle_change = false;
 			// asynchronous_change = false;
 			item X_LEDS_OFF {
 				name = "OFF";
@@ -717,7 +711,6 @@ driver primaluce {
 			group = FOCUSER_ADVANCED_GROUP;
 			label = "Preset light";
 			perm = INDIGO_RO_PERM;
-			// handle_change = false;
 			// asynchronous_change = false;
 			item X_RUNPRESET_L_M1ACC {
 				name = "M1ACC";
@@ -784,7 +777,6 @@ driver primaluce {
 			group = FOCUSER_ADVANCED_GROUP;
 			label = "Preset medium";
 			perm = INDIGO_RO_PERM;
-			// handle_change = false;
 			// asynchronous_change = false;
 			item X_RUNPRESET_M_M1ACC {
 				name = "M1ACC";
@@ -851,7 +843,6 @@ driver primaluce {
 			group = FOCUSER_ADVANCED_GROUP;
 			label = "Preset slow";
 			perm = INDIGO_RO_PERM;
-			// handle_change = false;
 			// asynchronous_change = false;
 			item X_RUNPRESET_S_M1ACC {
 				name = "M1ACC";
@@ -922,7 +913,6 @@ driver primaluce {
 			name = "X_RUNPRESET_1";
 			group = FOCUSER_ADVANCED_GROUP;
 			label = "Preset #1";
-			// handle_change = false;
 			// asynchronous_change = false;
 			item X_RUNPRESET_1_M1ACC {
 				name = "M1ACC";
@@ -993,7 +983,6 @@ driver primaluce {
 			name = "X_RUNPRESET_2";
 			group = FOCUSER_ADVANCED_GROUP;
 			label = "Preset #2";
-			// handle_change = false;
 			// asynchronous_change = false;
 			item X_RUNPRESET_2_M1ACC {
 				name = "M1ACC";
@@ -1064,7 +1053,6 @@ driver primaluce {
 			name = "X_RUNPRESET_3";
 			group = FOCUSER_ADVANCED_GROUP;
 			label = "Preset #3";
-			// handle_change = false;
 			// asynchronous_change = false;
 			item X_RUNPRESET_3_M1ACC {
 				name = "M1ACC";
@@ -1165,7 +1153,6 @@ driver primaluce {
 			name = "X_RUNPRESET";
 			group = FOCUSER_ADVANCED_GROUP;
 			label = "Presets";
-			// handle_change = false;
 			// asynchronous_change = false;
 			item X_RUNPRESET_L {
 				name = "L";
@@ -1220,7 +1207,6 @@ driver primaluce {
 			name = "X_HOLD_CURR";
 			group = FOCUSER_ADVANCED_GROUP;
 			label = "Hold current";
-			// handle_change = false;
 			// asynchronous_change = false;
 			item X_HOLD_CURR_OFF {
 				name = "OFF";
@@ -1284,7 +1270,6 @@ driver primaluce {
 			name = "X_CALIBRATE";
 			group = FOCUSER_ADVANCED_GROUP;
 			label = "Calibrate focuser";
-			// handle_change = false;
 			// asynchronous_change = false;
 			item X_CALIBRATE_F_START {
 				name = "START";
@@ -1466,7 +1451,6 @@ driver primaluce {
 			name = "X_CALIBRATE_A";
 			group = FOCUSER_ADVANCED_GROUP;
 			label = "Calibrate rotator";
-			// handle_change = false;
 			// asynchronous_change = false;
 			item X_CALIBRATE_R_START {
 				name = "START";

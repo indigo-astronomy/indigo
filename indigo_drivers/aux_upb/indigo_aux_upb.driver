@@ -619,7 +619,6 @@ driver upb {
 			label = "Outlet names";
 			persistent = true;
 			always_defined = true;
-			// handle_change = false;
 			// asynchronous_change = false;
 			on_change {
 				snprintf(AUX_POWER_OUTLET_1_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_POWER_OUTLET_NAME_1_ITEM->text.value);

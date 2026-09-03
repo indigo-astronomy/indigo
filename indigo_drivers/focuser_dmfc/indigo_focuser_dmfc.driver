@@ -183,7 +183,6 @@ driver dmfc {
 			name = "X_FOCUSER_MOTOR_TYPE";
 			group = FOCUSER_MAIN_GROUP;
 			label = "Motor type";
-			// handle_change = false;
 			// asynchronous_change = false;
 			item X_FOCUSER_MOTOR_TYPE_STEPPER {
 				name = "STEPPER";
@@ -207,7 +206,6 @@ driver dmfc {
 			name = "X_FOCUSER_ENCODER";
 			group = FOCUSER_MAIN_GROUP;
 			label = "Encoder state";
-			// handle_change = false;
 			// asynchronous_change = false;
 			item X_FOCUSER_ENCODER_ENABLED {
 				name = "ENABLED";
@@ -231,7 +229,6 @@ driver dmfc {
 			name = "X_FOCUSER_LED";
 			group = FOCUSER_MAIN_GROUP;
 			label = "LED status";
-			// handle_change = false;
 			// asynchronous_change = false;
 			item X_FOCUSER_LED_ENABLED {
 				name = "ENABLED";

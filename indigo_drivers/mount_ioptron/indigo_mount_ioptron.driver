@@ -1765,7 +1765,6 @@ driver ioptron {
 			name = "MOUNT_MERIDIAN_HANDLING";
 			group = MOUNT_MAIN_GROUP;
 			label = "Meridian handling";
-			// handle_change = false;
 			// asynchronous_change = false;
 			item MOUNT_MERIDIAN_STOP {
 				name = "STOP";
@@ -1790,7 +1789,6 @@ driver ioptron {
 			name = "MOUNT_MERIDIAN_LIMIT";
 			group = MOUNT_MAIN_GROUP;
 			label = "Meridian limit";
-			// handle_change = false;
 			// asynchronous_change = false;
 			item MOUNT_MERIDIAN_LIMIT {
 				name = "LIMIT";
@@ -1838,7 +1836,6 @@ driver ioptron {
 			name = "PROTOCOL_VERSION";
 			group = MAIN_GROUP;
 			label = "Mount protocol version";
-			// handle_change = false;
 			// asynchronous_change = false;
 			item PROTOCOL_AUTO {
 				name = "AUTO";

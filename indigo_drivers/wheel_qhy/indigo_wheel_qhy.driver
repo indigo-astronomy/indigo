@@ -140,7 +140,6 @@ driver qhy {
 			group = MAIN_GROUP;
 			label = "Device type";
 			always_defined = true;
-			// handle_change = false;
 			// asynchronous_change = false;
 			item X_MODEL_1 {
 				name = "1";

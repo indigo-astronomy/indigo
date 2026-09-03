@@ -82,7 +82,6 @@ driver astromechanics {
 			name = "X_FOCUSER_APERTURE";
 			group = FOCUSER_ADVANCED_GROUP;
 			label = "Aperture";
-			// handle_change = false;
 			// asynchronous_change = false;
 			item X_FOCUSER_APERTURE {
 				name = "APERURE";

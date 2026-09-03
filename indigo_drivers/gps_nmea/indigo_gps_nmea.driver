@@ -309,7 +309,6 @@ driver nmea {
 			group = MAIN_GROUP;
 			label = "Selected positioning system";
 			always_defined = true;
-			// handle_change = false;
 			// asynchronous_change = false;
 			on_change {
 				nmea_reset(device);

@@ -131,7 +131,6 @@ driver skyroof {
 			name = "HEATER_CONTROL";
 			group = DOME_MAIN_GROUP;
 			label = "Heater control";
-			// handle_change = false;
 			// asynchronous_change = false;
 			item HEATER_CONTROL_OFF {
 				name = "OFF";

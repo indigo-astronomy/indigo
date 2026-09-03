@@ -327,7 +327,6 @@ driver upb3 {
 			label = "Outlet names";
 			persistent = true;
 			always_defined = true;
-			// handle_change = false;
 			// asynchronous_change = false;
 			on_change {
 				snprintf(AUX_POWER_OUTLET_1_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_POWER_OUTLET_NAME_1_ITEM->text.value);
@@ -482,7 +481,6 @@ driver upb3 {
 			group = POWERBOX_GROUP;
 			label = "Power outlets";
 			rule = INDIGO_ANY_OF_MANY_RULE;
-			// handle_change = false;
 			// asynchronous_change = false;
 			on_change {
 				upb3_command(device, "P1:%d", AUX_POWER_OUTLET_1_ITEM->sw.value ? 100 : 0);
@@ -594,7 +592,6 @@ driver upb3 {
 			name = AUX_HEATER_OUTLET_PROPERTY_NAME;
 			group = POWERBOX_GROUP;
 			label = "Heater outlets";
-			// handle_change = false;
 			// asynchronous_change = false;
 			on_change {
 				upb3_command(device, "D1:%d", (int)AUX_HEATER_OUTLET_1_ITEM->number.value);
@@ -630,7 +627,6 @@ driver upb3 {
 			name = AUX_DEW_CONTROL_PROPERTY_NAME;
 			group = POWERBOX_GROUP;
 			label = "Dew control";
-			// handle_change = false;
 			// asynchronous_change = false;
 			on_change {
 					if (AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value) {
@@ -710,7 +706,6 @@ driver upb3 {
 			name = "AUX_SAVE_OUTLET_STATES_AS_DEFAULT";
 			group = POWERBOX_GROUP;
 			label = "Save current outlet states as default";
-			// handle_change = false;
 			// asynchronous_change = false;
 			on_change {
 					if (AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM->sw.value) {

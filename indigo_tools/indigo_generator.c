@@ -653,9 +653,6 @@ bool parse_property_block(device_type *device, property_type **properties) {
 			if (parse_expression_attribute("handler", property->handler, sizeof(property->handler))) {
 				continue;
 			}
-			if (parse_bool_attribute("handle_change", &property->handle_change)) {
-				continue;
-			}
 			if (parse_bool_attribute("asynchronous_change", &property->asynchronous_change)) {
 				continue;
 			}
@@ -2696,7 +2693,6 @@ void write_definition_source(void) {
 				if (property->always_defined) {
 					write_line("\t\t\talways_defined = true;");
 				}
-				write_line("\t\t\t// handle_change = false;");
 				write_line("\t\t\t// asynchronous_change = false;");
 				for (item_type *item = property->items; item; item = item->next) {
 					write_line("\t\t\titem %s {", item->id);
