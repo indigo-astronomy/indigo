@@ -464,6 +464,7 @@ static void set_property(parser_context *context, indigo_property *other, char *
 				for (int j = 0; j < property->count; j++) {
 					indigo_item *property_item = &property->items[j];
 					if (!strcmp(property_item->name, other_item->name)) {
+						property_item->do_update = true;
 						switch (property->type) {
 							case INDIGO_TEXT_VECTOR:
 								indigo_set_text_item_value(property_item, indigo_get_text_item_value(other_item));
