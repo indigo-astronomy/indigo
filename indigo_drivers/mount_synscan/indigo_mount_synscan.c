@@ -65,6 +65,7 @@
 #define SYNSCAN_DEFAULT_UDP_PORT 11880
 #define SYNSCAN_UDP_DISCOVERY_ATTEMPTS 8
 #define SYNSCAN_UDP_DISCOVERY_RETRY_DELAY INDIGO_DELAY(1)
+#define SYNSCAN_UDP_COMMAND_ATTEMPTS 3
 #define SYNSCAN_COMMAND_TIMEOUT INDIGO_DELAY(1)
 #define SYNSCAN_NEXT_BYTE_TIMEOUT INDIGO_DELAY(0.1)
 
@@ -342,21 +343,32 @@ static bool synscan_command(indigo_device *device, const char *command, char *re
 	if (!synscan_validate_handle(device)) {
 		return false;
 	}
-	if (indigo_uni_discard(PRIVATE_DATA->handle) < 0) {
-		synscan_handle_connection_loss(device);
-		return false;
-	}
+	bool udp = PRIVATE_DATA->handle->type == INDIGO_UDP_HANDLE;
+	int attempts = udp ? SYNSCAN_UDP_COMMAND_ATTEMPTS : 1;
 	char buffer[32];
 	snprintf(buffer, sizeof(buffer), "%s\r", command);
-	if (indigo_uni_write(PRIVATE_DATA->handle, buffer, (long)strlen(buffer)) <= 0) {
+	for (int attempt = 0; attempt < attempts; attempt++) {
+		if (indigo_uni_discard(PRIVATE_DATA->handle) < 0 && !udp) {
+			synscan_handle_connection_loss(device);
+			return false;
+		}
+		if (indigo_uni_write(PRIVATE_DATA->handle, buffer, (long)strlen(buffer)) <= 0) {
+			synscan_handle_connection_loss(device);
+			if (!udp) {
+				return false;
+			}
+			continue;
+		}
+		synscan_response_result result = synscan_read_response(device, response, response_size);
+		if (result == SYNSCAN_RESPONSE_OK) {
+			return true;
+		}
+		if (result == SYNSCAN_RESPONSE_COMMAND_ERROR) {
+			return false;
+		}
 		synscan_handle_connection_loss(device);
-		return false;
 	}
-	synscan_response_result result = synscan_read_response(device, response, response_size);
-	if (result == SYNSCAN_RESPONSE_IO_ERROR) {
-		synscan_handle_connection_loss(device);
-	}
-	return result == SYNSCAN_RESPONSE_OK;
+	return false;
 }
 
 static bool synscan_command_with_long_result(indigo_device *device, const char *command, long *value) {
@@ -1450,6 +1462,10 @@ static bool synscan_validate_handle(indigo_device *device) {
 
 static void synscan_handle_connection_loss(indigo_device *device) {
 	if (PRIVATE_DATA->handle != NULL) {
+		if (PRIVATE_DATA->handle->type == INDIGO_UDP_HANDLE) {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Temporary SynScan UDP communication failure");
+			return;
+		}
 		bool was_connected = CONNECTION_CONNECTED_ITEM->sw.value && CONNECTION_PROPERTY->state == INDIGO_OK_STATE;
 		indigo_device *master = device->master_device != NULL ? device->master_device : device;
 		synscan_close(master);
