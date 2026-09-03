@@ -5190,6 +5190,7 @@
 		9DE0E7B522C6465500289234 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9DE0E7B622C6465500289234 /* indigo_focuser_dsd.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_dsd.h; sourceTree = "<group>"; };
 		9DE55C982F98C3C700B2C143 /* mount_nexstaraux_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = mount_nexstaraux_simulator.ino; sourceTree = "<group>"; };
+		9DEF39813049909400FD4BC4 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		9DF148102D52384D00049345 /* build_windows_sdk.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = build_windows_sdk.sh; sourceTree = "<group>"; };
 		9DF148112D52384D00049345 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		9DF148122D52384D00049345 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -10235,6 +10236,7 @@
 			isa = PBXGroup;
 			children = (
 				59FA7C0E301DD9DC00A35CFB /* REVIEW.md */,
+				9DEF39813049909400FD4BC4 /* REFACTOR.md */,
 				9D42F0442F615C7E000D1ED5 /* indigo_client */,
 				9D94A89E2E703FD7005C5C56 /* hidapi */,
 				59111CCD285F4DCE00E57194 /* indigocat */,
