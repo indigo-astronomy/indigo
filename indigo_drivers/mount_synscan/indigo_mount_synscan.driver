@@ -42,6 +42,8 @@ driver synscan {
 		#define SOLAR_RATE                       15.0
 
 		#define SYNSCAN_DEFAULT_UDP_PORT         11880
+		#define SYNSCAN_UDP_DISCOVERY_ATTEMPTS   8
+		#define SYNSCAN_UDP_DISCOVERY_RETRY_DELAY INDIGO_DELAY(1)
 		#define SYNSCAN_COMMAND_TIMEOUT          INDIGO_DELAY(1)
 		#define SYNSCAN_NEXT_BYTE_TIMEOUT        INDIGO_DELAY(0.1)
 
@@ -165,6 +167,12 @@ driver synscan {
 	code {
 		static const char hex_digits[] = "0123456789ABCDEF";
 
+		typedef enum {
+			SYNSCAN_RESPONSE_OK,
+			SYNSCAN_RESPONSE_COMMAND_ERROR,
+			SYNSCAN_RESPONSE_IO_ERROR
+		} synscan_response_result;
+
 		static bool synscan_validate_handle(indigo_device *device);
 		static void synscan_handle_connection_loss(indigo_device *device);
 
@@ -233,7 +241,7 @@ driver synscan {
 			return (synscan_hex_value(buffer[2]) << 8) | (synscan_hex_value(buffer[0]) << 4) | synscan_hex_value(buffer[1]);
 		}
 
-		static bool synscan_read_response(indigo_device *device, char *response, size_t response_size) {
+		static synscan_response_result synscan_read_response(indigo_device *device, char *response, size_t response_size) {
 			char buffer[32] = { 0 };
 			long count;
 			if (PRIVATE_DATA->udp) {
@@ -243,16 +251,16 @@ driver synscan {
 			}
 			if (count < 2) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No SynScan response");
-				return false;
+				return SYNSCAN_RESPONSE_IO_ERROR;
 			}
 			buffer[count] = 0;
 			if (buffer[0] == '!') {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SynScan command failed with error %.2s", buffer + 1);
-				return false;
+				return SYNSCAN_RESPONSE_COMMAND_ERROR;
 			}
 			if (buffer[0] != '=' || buffer[count - 1] != '\r') {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Invalid SynScan response: %.*s", (int)count, buffer);
-				return false;
+				return SYNSCAN_RESPONSE_IO_ERROR;
 			}
 			if (response != NULL && response_size > 0) {
 				size_t payload_size = (size_t)count - 2;
@@ -262,7 +270,7 @@ driver synscan {
 				memcpy(response, buffer + 1, payload_size);
 				response[payload_size] = 0;
 			}
-			return true;
+			return SYNSCAN_RESPONSE_OK;
 		}
 
 		static bool synscan_command(indigo_device *device, const char *command, char *response, size_t response_size) {
@@ -279,11 +287,11 @@ driver synscan {
 				synscan_handle_connection_loss(device);
 				return false;
 			}
-			bool ok = synscan_read_response(device, response, response_size);
-			if (!ok) {
+			synscan_response_result result = synscan_read_response(device, response, response_size);
+			if (result == SYNSCAN_RESPONSE_IO_ERROR) {
 				synscan_handle_connection_loss(device);
 			}
-			return ok;
+			return result == SYNSCAN_RESPONSE_OK;
 		}
 
 		static bool synscan_command_with_long_result(indigo_device *device, const char *command, long *value) {
@@ -881,11 +889,10 @@ driver synscan {
 			*alt = atan2(z, r);
 		}
 
-		static bool synscan_update_mount_coordinates(indigo_device *device) {
+		static bool synscan_read_mount_coordinates(indigo_device *device) {
 			if (!synscan_update_axis_positions(device)) {
 				return false;
 			}
-			indigo_property_state coordinates_state = PRIVATE_DATA->global_mode == SYNSCAN_GLOBAL_IDLE ? INDIGO_OK_STATE : INDIGO_BUSY_STATE;
 			double lst = indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
 			double raw_ha = 0;
 			double raw_dec = 0;
@@ -910,11 +917,21 @@ driver synscan {
 				synscan_de2h(aligned_ha, aligned_dec, latitude, &az, &alt);
 				MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = az * 180.0 / M_PI;
 				MOUNT_HORIZONTAL_COORDINATES_ALT_ITEM->number.value = alt * 180.0 / M_PI;
-				MOUNT_HORIZONTAL_COORDINATES_PROPERTY->state = coordinates_state;
 				MOUNT_LST_TIME_ITEM->number.value = lst;
 			}
+			return true;
+		}
+
+		static bool synscan_update_mount_coordinates(indigo_device *device) {
+			if (!synscan_read_mount_coordinates(device)) {
+				return false;
+			}
+			indigo_property_state coordinates_state = PRIVATE_DATA->global_mode == SYNSCAN_GLOBAL_IDLE ? INDIGO_OK_STATE : INDIGO_BUSY_STATE;
 			MOUNT_RAW_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = coordinates_state;
+			if (!MOUNT_HORIZONTAL_COORDINATES_PROPERTY->hidden) {
+				MOUNT_HORIZONTAL_COORDINATES_PROPERTY->state = coordinates_state;
+			}
 			synscan_update_mount_state(device);
 			indigo_update_property(device, MOUNT_RAW_COORDINATES_PROPERTY, NULL);
 			indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
@@ -1250,8 +1267,6 @@ driver synscan {
 					return false;
 				}
 			}
-			synscan_axis_long_query(device, 'j', SYNSCAN_AXIS_RA, &PRIVATE_DATA->ra_axis_position);
-			synscan_axis_long_query(device, 'j', SYNSCAN_AXIS_DEC, &PRIVATE_DATA->dec_axis_position);
 			PRIVATE_DATA->global_mode = SYNSCAN_GLOBAL_IDLE;
 			PRIVATE_DATA->ra_axis_mode = SYNSCAN_AXIS_IDLE;
 			PRIVATE_DATA->dec_axis_mode = SYNSCAN_AXIS_IDLE;
@@ -1262,23 +1277,31 @@ driver synscan {
 			PRIVATE_DATA->southern_hemisphere = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value < 0;
 			indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
 			indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
+			if (!synscan_read_mount_coordinates(device)) {
+				return false;
+			}
 			return true;
 		}
 
 		static bool synscan_udp_discovery(char *host, size_t host_size) {
 			char command[] = ":e1\r";
 			char response[16] = { 0 };
-			if (!indigo_perform_active_discovery("255.255.255.255", SYNSCAN_DEFAULT_UDP_PORT, 1, command, (int)strlen(command), host, (int)host_size, response, sizeof(response))) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No SynScan mount detected by UDP broadcast");
-				return false;
+			for (int attempt = 0; attempt < SYNSCAN_UDP_DISCOVERY_ATTEMPTS; attempt++) {
+				host[0] = 0;
+				response[0] = 0;
+				if (indigo_perform_active_discovery("255.255.255.255", SYNSCAN_DEFAULT_UDP_PORT, 1, command, (int)strlen(command), host, (int)host_size, response, sizeof(response))) {
+					size_t response_length = strlen(response);
+					if (response_length >= 2 && response[0] == '=' && response[response_length - 1] == '\r') {
+						INDIGO_DRIVER_LOG(DRIVER_NAME, "SynScan mount detected by UDP broadcast at %s", host);
+						return true;
+					}
+				}
+				if (attempt + 1 < SYNSCAN_UDP_DISCOVERY_ATTEMPTS) {
+					indigo_usleep(SYNSCAN_UDP_DISCOVERY_RETRY_DELAY);
+				}
 			}
-			size_t response_length = strlen(response);
-			if (response_length < 2 || response[0] != '=' || response[response_length - 1] != '\r') {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No SynScan mount detected by UDP broadcast");
-				return false;
-			}
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "SynScan mount detected by UDP broadcast at %s", host);
-			return true;
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No SynScan mount detected by UDP broadcast");
+			return false;
 		}
 
 		static bool synscan_autodetect_udp(indigo_device *device) {
@@ -1425,9 +1448,15 @@ driver synscan {
 			MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->hidden = false;
 			MOUNT_EPOCH_PROPERTY->perm = INDIGO_RO_PERM;
 			MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
+			MOUNT_STATE_PROPERTY->hidden = false;
 			ADDITIONAL_INSTANCES_PROPERTY->hidden = device->base_device != NULL;
-		}
+			}
 		// on_detach { }
+		inherited MOUNT_PARK_SET {
+			// on_change { }
+			// on_attach { }
+			// on_detach { }
+		}
 		inherited MOUNT_PARK {
 			on_change {
 				bool ok = true;
@@ -1634,7 +1663,6 @@ driver synscan {
 			// on_detach { }
 		}
 		inherited MOUNT_STATE {
-			hidden = false;
 			// on_change { }
 			// on_attach { }
 			// on_detach { }
