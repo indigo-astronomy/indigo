@@ -2,6 +2,10 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [3.0-7] - 03 Sep Thu 2026
+## Overall:
+- indigo_timers: several race conditions fixed
+
 # [3.0-6] - 02 Sep Wed 2026
 ## Overall:
 - indigo_tools:
