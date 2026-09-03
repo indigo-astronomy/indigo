@@ -1935,37 +1935,42 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
 		DEVICE_BAUDRATE_PROPERTY->hidden = false;
 		//+ mount.on_attach
-		MOUNT_PARK_PARKED_ITEM->sw.value = false;
-		MOUNT_PARK_UNPARKED_ITEM->sw.value = true;
-		MOUNT_PARK_SET_PROPERTY->hidden = false;
-		MOUNT_PARK_POSITION_PROPERTY->hidden = false;
-		MOUNT_HOME_PROPERTY->hidden = false;
-		MOUNT_HOME_SET_PROPERTY->hidden = false;
-		MOUNT_HOME_POSITION_PROPERTY->hidden = false;
-		MOUNT_TRACKING_ON_ITEM->sw.value = false;
-		MOUNT_TRACKING_OFF_ITEM->sw.value = true;
-		strncpy(MOUNT_GUIDE_RATE_PROPERTY->label, "ST4 guide rate", INDIGO_VALUE_SIZE);
-		MOUNT_RAW_COORDINATES_PROPERTY->hidden = false;
-		DEVICE_PORTS_PROPERTY->hidden = false;
-		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
-		DEVICE_PORT_PROPERTY->hidden = false;
-		DEVICE_BAUDRATE_PROPERTY->hidden = false;
-		indigo_set_switch(MOUNT_ALIGNMENT_MODE_PROPERTY, MOUNT_ALIGNMENT_MODE_NEAREST_POINT_ITEM, true);
-		MOUNT_ALIGNMENT_MODE_PROPERTY->hidden = false;
-		MOUNT_ALIGNMENT_MODE_PROPERTY->count = 2;
-		MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->hidden = false;
-		MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->rule = INDIGO_ANY_OF_MANY_RULE;
-		MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->hidden = false;
-		MOUNT_EPOCH_PROPERTY->perm = INDIGO_RO_PERM;
-		MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
-		MOUNT_STATE_PROPERTY->hidden = false;
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = device->base_device != NULL;
 		//- mount.on_attach
+		DEVICE_BAUDRATE_PROPERTY->hidden = false;
+		MOUNT_EPOCH_PROPERTY->hidden = false;
+		//+ mount.MOUNT_EPOCH.on_attach
+		MOUNT_EPOCH_PROPERTY->perm = INDIGO_RO_PERM;
+		//- mount.MOUNT_EPOCH.on_attach
+		MOUNT_STATE_PROPERTY->hidden = false;
 		MOUNT_PARK_SET_PROPERTY->hidden = false;
+		MOUNT_PARK_POSITION_PROPERTY->hidden = false;
+		MOUNT_HOME_SET_PROPERTY->hidden = false;
+		MOUNT_HOME_POSITION_PROPERTY->hidden = false;
+		MOUNT_RAW_COORDINATES_PROPERTY->hidden = false;
+		MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
+		MOUNT_ALIGNMENT_MODE_PROPERTY->hidden = false;
+		//+ mount.MOUNT_ALIGNMENT_MODE.on_attach
+		MOUNT_ALIGNMENT_MODE_PROPERTY->count = 2;
+		indigo_set_switch(MOUNT_ALIGNMENT_MODE_PROPERTY, MOUNT_ALIGNMENT_MODE_NEAREST_POINT_ITEM, true);
+		//- mount.MOUNT_ALIGNMENT_MODE.on_attach
+		MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->hidden = false;
+		//+ mount.MOUNT_ALIGNMENT_SELECT_POINTS.on_attach
+		MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->rule = INDIGO_ANY_OF_MANY_RULE;
+		//- mount.MOUNT_ALIGNMENT_SELECT_POINTS.on_attach
+		MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->hidden = false;
 		MOUNT_PARK_PROPERTY->hidden = false;
+		//+ mount.MOUNT_PARK.on_attach
+		MOUNT_PARK_PARKED_ITEM->sw.value = false;
+		MOUNT_PARK_UNPARKED_ITEM->sw.value = true;
+		//- mount.MOUNT_PARK.on_attach
 		MOUNT_HOME_PROPERTY->hidden = false;
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->hidden = false;
 		MOUNT_TRACKING_PROPERTY->hidden = false;
+		//+ mount.MOUNT_TRACKING.on_attach
+		MOUNT_TRACKING_ON_ITEM->sw.value = false;
+		MOUNT_TRACKING_OFF_ITEM->sw.value = true;
+		//- mount.MOUNT_TRACKING.on_attach
 		MOUNT_TRACK_RATE_PROPERTY->hidden = false;
 		MOUNT_MOTION_RA_PROPERTY->hidden = false;
 		MOUNT_MOTION_DEC_PROPERTY->hidden = false;
@@ -1985,6 +1990,9 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_init_switch_item(MOUNT_USE_DEC_ENCODER_ITEM, MOUNT_USE_DEC_ENCODER_ITEM_NAME, "Use Dec encoder", false);
 		MOUNT_USE_ENCODERS_PROPERTY->hidden = true;
 		MOUNT_GUIDE_RATE_PROPERTY->hidden = false;
+		//+ mount.MOUNT_GUIDE_RATE.on_attach
+		strncpy(MOUNT_GUIDE_RATE_PROPERTY->label, "ST4 guide rate", INDIGO_VALUE_SIZE);
+		//- mount.MOUNT_GUIDE_RATE.on_attach
 		MOUNT_PEC_PROPERTY->hidden = false;
 		MOUNT_PEC_TRAINING_PROPERTY->hidden = false;
 		MOUNT_AUTOHOME_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_AUTOHOME_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Auto home", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
@@ -1999,7 +2007,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		}
 		indigo_init_number_item(MOUNT_AUTOHOME_DEC_OFFSET_ITEM, MOUNT_AUTOHOME_DEC_OFFSET_ITEM_NAME, "Dec offset", -90, 90, 0, 0);
 		MOUNT_AUTOHOME_SETTINGS_PROPERTY->hidden = true;
-		MOUNT_OPERATING_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_OPERATING_MODE_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Operating mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		MOUNT_OPERATING_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_OPERATING_MODE_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Operating mode", INDIGO_OK_STATE, INDIGO_RO_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (MOUNT_OPERATING_MODE_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
@@ -2078,17 +2086,11 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		MOUNT_AUTOHOME_SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_AUTOHOME_SETTINGS_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(MOUNT_OPERATING_MODE_PROPERTY, property)) {
-		indigo_property_copy_values(MOUNT_OPERATING_MODE_PROPERTY, property, false);
-		MOUNT_OPERATING_MODE_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, MOUNT_OPERATING_MODE_PROPERTY, NULL);
-		return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, MOUNT_POLARSCOPE_PROPERTY);
 			indigo_save_property(device, NULL, MOUNT_USE_ENCODERS_PROPERTY);
 			indigo_save_property(device, NULL, MOUNT_AUTOHOME_SETTINGS_PROPERTY);
-			indigo_save_property(device, NULL, MOUNT_OPERATING_MODE_PROPERTY);
 		}
 	}
 	return indigo_mount_change_property(device, client, property);

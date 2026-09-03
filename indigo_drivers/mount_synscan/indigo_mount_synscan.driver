@@ -1441,39 +1441,47 @@ driver synscan {
 		}
 		// on_disconnect { }
 		on_attach {
-			MOUNT_PARK_PARKED_ITEM->sw.value = false;
-			MOUNT_PARK_UNPARKED_ITEM->sw.value = true;
-			MOUNT_PARK_SET_PROPERTY->hidden = false;
-			MOUNT_PARK_POSITION_PROPERTY->hidden = false;
-			MOUNT_HOME_PROPERTY->hidden = false;
-			MOUNT_HOME_SET_PROPERTY->hidden = false;
-			MOUNT_HOME_POSITION_PROPERTY->hidden = false;
-			MOUNT_TRACKING_ON_ITEM->sw.value = false;
-			MOUNT_TRACKING_OFF_ITEM->sw.value = true;
-			strncpy(MOUNT_GUIDE_RATE_PROPERTY->label, "ST4 guide rate", INDIGO_VALUE_SIZE);
-			MOUNT_RAW_COORDINATES_PROPERTY->hidden = false;
-			DEVICE_PORTS_PROPERTY->hidden = false;
-			indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
-			DEVICE_PORT_PROPERTY->hidden = false;
-			DEVICE_BAUDRATE_PROPERTY->hidden = false;
-			indigo_set_switch(MOUNT_ALIGNMENT_MODE_PROPERTY, MOUNT_ALIGNMENT_MODE_NEAREST_POINT_ITEM, true);
-			MOUNT_ALIGNMENT_MODE_PROPERTY->hidden = false;
-			MOUNT_ALIGNMENT_MODE_PROPERTY->count = 2;
-			MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->hidden = false;
-			MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->rule = INDIGO_ANY_OF_MANY_RULE;
-			MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->hidden = false;
-			MOUNT_EPOCH_PROPERTY->perm = INDIGO_RO_PERM;
-			MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
-			MOUNT_STATE_PROPERTY->hidden = false;
 			ADDITIONAL_INSTANCES_PROPERTY->hidden = device->base_device != NULL;
+		}
+		inherited DEVICE_BAUDRATE {
+		}
+		inherited MOUNT_EPOCH {
+			on_attach {
+				MOUNT_EPOCH_PROPERTY->perm = INDIGO_RO_PERM;
 			}
-		// on_detach { }
+		}
+		inherited MOUNT_STATE {
+		}
 		inherited MOUNT_PARK_SET {
-			// on_change { }
-			// on_attach { }
-			// on_detach { }
+		}
+		inherited MOUNT_PARK_POSITION {
+		}
+		inherited MOUNT_HOME_SET {
+		}
+		inherited MOUNT_HOME_POSITION {
+		}
+		inherited MOUNT_RAW_COORDINATES {
+		}
+		inherited MOUNT_SIDE_OF_PIER {
+		}
+		inherited MOUNT_ALIGNMENT_MODE {
+			on_attach {
+				MOUNT_ALIGNMENT_MODE_PROPERTY->count = 2;
+				indigo_set_switch(MOUNT_ALIGNMENT_MODE_PROPERTY, MOUNT_ALIGNMENT_MODE_NEAREST_POINT_ITEM, true);
+			}
+		}
+		inherited MOUNT_ALIGNMENT_SELECT_POINTS {
+			on_attach {
+				MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->rule = INDIGO_ANY_OF_MANY_RULE;
+			}
+		}
+		inherited MOUNT_ALIGNMENT_DELETE_POINTS {
 		}
 		inherited MOUNT_PARK {
+			on_attach {
+				MOUNT_PARK_PARKED_ITEM->sw.value = false;
+				MOUNT_PARK_UNPARKED_ITEM->sw.value = true;
+			}
 			on_change {
 				bool ok = true;
 				if (MOUNT_PARK_PARKED_ITEM->sw.value) {
@@ -1576,6 +1584,10 @@ driver synscan {
 			// on_detach { }
 		}
 		inherited MOUNT_TRACKING {
+			on_attach {
+				MOUNT_TRACKING_ON_ITEM->sw.value = false;
+				MOUNT_TRACKING_OFF_ITEM->sw.value = true;
+			}
 			on_change {
 				bool ok = true;
 				if (MOUNT_TRACKING_ON_ITEM->sw.value) {
@@ -1736,6 +1748,9 @@ driver synscan {
 			}
 		}
 		inherited MOUNT_GUIDE_RATE {
+			on_attach {
+				strncpy(MOUNT_GUIDE_RATE_PROPERTY->label, "ST4 guide rate", INDIGO_VALUE_SIZE);
+			}
 			on_change {
 				bool ok = true;
 				ok = ok && synscan_set_st4_guide_rate(device, SYNSCAN_AXIS_RA, MOUNT_GUIDE_RATE_RA_ITEM->number.value);
@@ -1842,11 +1857,10 @@ driver synscan {
 			name = MOUNT_OPERATING_MODE_PROPERTY_NAME;
 			group = MOUNT_MAIN_GROUP;
 			label = "Operating mode";
+			perm = INDIGO_RO_PERM;
 			rule = INDIGO_ONE_OF_MANY_RULE;
-				hidden = true;
-				persistent = true;
-				on_change {
-				}
+			hidden = true;
+			// on_change { }
 			// on_attach { }
 			// on_detach { }
 			item POLAR_MODE {
