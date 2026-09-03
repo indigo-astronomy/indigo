@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright (c) 2025 Rumen Bogdanovski
+# Copyright (c) 2026 Rumen Bogdanovski
 # All rights reserved.
 #
 # You can use this software under the terms of 'INDIGO Astronomy
@@ -106,6 +106,20 @@ BUILD_DIR="$REPO_ROOT/build/$INDIGO_BUILD_CONFIGURATION/$INDIGO_BUILD_PLATFORM"
 if [ ! -d "$BUILD_DIR" ]; then
     echo "error: build output directory not found: $BUILD_DIR" >&2
     exit 1
+fi
+
+# Generate the "indigo_drivers" metadata file (name/description of every
+# indigo_*.dll driver/agent next to indigo_server.exe). indigo_server looks
+# for this file next to its own executable on Windows (the equivalent of
+# /usr/share/indigo/indigo_drivers on Linux), and uses it to populate the
+# list of available drivers without having to load every DLL up front.
+if [ -x "$BUILD_DIR/make_indigo_drivers.exe" ]; then
+    echo "==> Generating indigo_drivers metadata file"
+    (cd "$BUILD_DIR" && ./make_indigo_drivers.exe)
+else
+    echo "warning: $BUILD_DIR/make_indigo_drivers.exe not found, skipping" >&2
+    echo "         driver metadata generation (indigo_server won't be able" >&2
+    echo "         to list available drivers)." >&2
 fi
 
 echo "==> Locating Inno Setup compiler (ISCC.exe)"
