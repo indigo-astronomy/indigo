@@ -382,8 +382,10 @@ static inline int timespec_cmp(const struct timespec *a, const struct timespec *
 	return 0;
 }
 
-// Peek either the highest priority runnable task or the first task from the queue
-static indigo_queue_task *peek_task(indigo_queue *queue, const struct timespec *now) {
+// Peek the scheduled time of either the highest priority runnable task or of the first task in the queue,
+// return false if the queue is empty. The time is copied out while timers_mutex is held - returning the task
+// itself would let indigo_queue_remove() free it before the caller dereferences it.
+static bool peek_task_at(indigo_queue *queue, const struct timespec *now, struct timespec *at) {
 	pthread_mutex_lock(&timers_mutex);
 	indigo_queue_task *runnable_task = queue->task;
 	indigo_queue_task *current = queue->task;
@@ -398,8 +400,12 @@ static indigo_queue_task *peek_task(indigo_queue *queue, const struct timespec *
 		}
 		current = current->next;
 	}
+	bool found = runnable_task != NULL;
+	if (found) {
+		*at = runnable_task->at;
+	}
 	pthread_mutex_unlock(&timers_mutex);
-	return runnable_task;
+	return found;
 }
 
 // Dequeue the highest priority runnable task from the queue
@@ -481,20 +487,25 @@ static double task_delay(indigo_queue_task *task) {
 // wrapper for executing queue task = scheduled call of handler
 static void *queue_func(indigo_queue *queue) {
 	indigo_rename_thread("Queue %s", queue->device->name);
-	// wakeup indigo_queue_create
+	// wakeup indigo_queue_create, ready flag avoids a lost wakeup if the signal arrives before the wait
 	pthread_mutex_lock(&queue->cond_mutex);
+	queue->ready = true;
 	pthread_cond_signal(&queue->cond);
 	pthread_mutex_unlock(&queue->cond_mutex);
 	// main loop waiting for wakeup signal or timeout
-	while (!queue->abort) {
+	while (true) {
 		struct timespec now;
 		clock_time(&now);
 		pthread_mutex_lock(&queue->cond_mutex);
-		indigo_queue_task *task = peek_task(queue, &now);
-		if (task && timespec_cmp(&task->at, &now) > 0) { // wait for timeout for the next task
-			pthread_cond_timedwait(&queue->cond, &queue->cond_mutex, &task->at);
-		} else if (task == NULL) { // no task, wait for wakeup
+		if (queue->abort) { // abort is a predicate of cond, it has to be checked with cond_mutex held, otherwise the wakeup signaled by indigo_queue_delete may be lost and the wait never returns
+			pthread_mutex_unlock(&queue->cond_mutex);
+			break;
+		}
+		struct timespec at;
+		if (!peek_task_at(queue, &now, &at)) { // no task, wait for wakeup
 			pthread_cond_wait(&queue->cond, &queue->cond_mutex);
+		} else if (timespec_cmp(&at, &now) > 0) { // wait for timeout for the next task
+			pthread_cond_timedwait(&queue->cond, &queue->cond_mutex, &at);
 		} // task to execute now
 		pthread_mutex_unlock(&queue->cond_mutex);
 		pthread_mutex_lock(&queue->thread_mutex); // held only around task execution so indigo_queue_remove can proceed while the queue is idle
@@ -544,9 +555,12 @@ indigo_queue *indigo_queue_create(indigo_device *device) {
 	pthread_cond_init(&queue->cond, NULL);
 #endif
 	pthread_mutex_init(&queue->thread_mutex, NULL);
+	queue->ready = false;
 	pthread_create(&queue->thread, NULL, (void * (*)(void*))queue_func, queue);
 	pthread_mutex_lock(&queue->cond_mutex);
-	pthread_cond_wait(&queue->cond, &queue->cond_mutex);
+	while (!queue->ready) {
+		pthread_cond_wait(&queue->cond, &queue->cond_mutex);
+	}
 	pthread_mutex_unlock(&queue->cond_mutex);
 	return queue;
 }
@@ -597,7 +611,10 @@ void indigo_queue_remove(indigo_queue *queue, indigo_device *device, indigo_time
 // remove all tasks from queue and queue itself
 void indigo_queue_delete(indigo_queue **queue) {
 	if (*queue) {
+		pthread_mutex_lock(&(*queue)->cond_mutex); // set abort and signal with cond_mutex held so the queue thread can not miss it
 		(*queue)->abort = true;
+		pthread_cond_signal(&(*queue)->cond);
+		pthread_mutex_unlock(&(*queue)->cond_mutex);
 		indigo_queue_remove(*queue, NULL, NULL);
 		pthread_join((*queue)->thread, NULL);
 		indigo_safe_free(*queue);

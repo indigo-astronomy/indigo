@@ -9,7 +9,7 @@
 | agent_imager             | 3️⃣  | ✅ Yes   | ⛔ N/A   | ✅ Yes   | ✅ Yes   |                                                          |
 | agent_mount              | 3️⃣  | ✅ Yes   | ⛔ N/A   | ✅ Yes   | ✅ Yes   |                                                          |
 | agent_scripting          | 3️⃣  | ✅ Yes   | ⛔ N/A   | ✅ Yes   | ✅ Yes   |                                                          |
-| agent_astrometry         | 2️⃣  | ❌ No    | ⛔ N/A   | ✅ Yes   | ✅ Yes   | ⛔ Needs fork() & pipes                                  |
+| agent_astrometry         | 2️⃣  | ❌ No    | ⛔ N/A   | ✅ Yes   | ✅ Yes   | 🚧 Source ported (CreateProcess/Job Objects, WinINet download, no curl/rm dependency) + vcxproj added to indigo_windows.sln; not yet built/tested on real Windows/MSVC |
 | agent_astap              | 2️⃣  | ❌ No    | ⛔ N/A   | ❌ No    | ❌ No    | ⛔ Needs fork() & pipes                                  |
 | agent_snoop              | 2️⃣  | ❌ No    | ⛔ N/A   | ❌ No    | ❌ No    | 🚧 Obsolete                                              |
 | ao_sx                    | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ HW    |                                                          |

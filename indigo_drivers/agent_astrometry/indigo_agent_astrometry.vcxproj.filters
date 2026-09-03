@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Header Files\indigo">
+      <UniqueIdentifier>{e1017ff9-5c7f-4430-927d-8cbaf114da5d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\indigo">
+      <UniqueIdentifier>{99aba4d8-10c2-4af9-8cc0-fb6e6b82c8b3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\libjpeg">
+      <UniqueIdentifier>{7c2a4e10-3b58-4f6d-9a21-5d0e8c1b47af}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\indigo_windows\dllmain.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="indigo_agent_astrometry.c">
+      <Filter>Source Files\indigo</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jaricom.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jcapimin.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jcapistd.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jcarith.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jccoefct.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jccolor.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jcdctmgr.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jchuff.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jcinit.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jcmainct.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jcmarker.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jcmaster.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jcomapi.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jcparam.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jcprepct.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jcsample.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jctrans.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jdapimin.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jdapistd.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jdarith.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jdatadst.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jdatasrc.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jdcoefct.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jdcolor.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jddctmgr.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jdhuff.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jdinput.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jdmainct.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jdmarker.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jdmaster.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jdmerge.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jdpostct.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jdsample.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jdtrans.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jerror.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jfdctflt.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jfdctfst.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jfdctint.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jidctflt.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jidctfst.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jidctint.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jmemmgr.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jmemnobs.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jquant1.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jquant2.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\externals\libjpeg\jutils.c">
+      <Filter>Source Files\libjpeg</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="indigo_agent_astrometry.h">
+      <Filter>Header Files\indigo</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
