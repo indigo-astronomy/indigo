@@ -84,7 +84,7 @@
 | focuser_fcusb            | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ HW    |                                                          |
 | focuser_fli              | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ❌ No    |                                                          |
 | focuser_focusdreampro    | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ❌ No    |                                                          |
-| focuser_ioptron          | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ❌ No    |                                                          |
+| focuser_ioptron          | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ❌ No    |                                                          |
 | focuser_lacerta          | 2️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    |                                                          |
 | focuser_lakeside         | 2️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    |                                                          |
 | focuser_lunatico         | 2️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    |                                                          |
@@ -119,7 +119,7 @@
 | mount_rainbow            | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ❌ No    |                                                          |
 | mount_simulator          | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ⛔ N/A   |                                                          |
 | mount_starbook           | 2️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    |                                                          |
-| mount_synscan            | 2️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    |                                                          |
+| mount_synscan            | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ HW    |                                                          |
 | mount_temma              | 2️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    |                                                          |
 | polaralign_simulator     | 3️⃣  | ❌ No    | ❌ No    | ❌ No    | ⛔ N/A   |                                                          |
 | rotator_asi              | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ✅ HW    |                                                          |

@@ -38,6 +38,10 @@
 #include <indigo/indigo_token.h>
 #include <indigo/indigo_uni_io.h>
 
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+#include <sys/time.h>
+#endif
+
 #define INDIGO_VERSION_3
 
 #if defined(INDIGO_WINDOWS)
@@ -988,6 +992,14 @@ INDIGO_EXTERN bool indigo_make_name_unique(char *name, const char *format, ...);
 #endif
 
 #if defined(INDIGO_WINDOWS) && _MSC_VER
+
+#ifndef _TIMEVAL_DEFINED
+#define _TIMEVAL_DEFINED
+struct timeval {
+	long tv_sec;
+	long tv_usec;
+};
+#endif
 
 INDIGO_EXTERN int gettimeofday(struct timeval * tp, struct timezone * tzp);
 

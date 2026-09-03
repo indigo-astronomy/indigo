@@ -1071,6 +1071,20 @@ bool c_code_starts_with(code_type *code, const char *format, ...) {
 	return false;
 }
 
+bool c_code_is_empty(code_type *code) {
+	if (code == NULL) {
+		return false;
+	}
+	for (; code; code = code->next) {
+		for (char *pnt = code->text; pnt < code->text + code->size; pnt++) {
+			if (!isspace(*pnt)) {
+				return false;
+			}
+		}
+	}
+	return true;
+}
+
 void write_code_block(code_type *code, int indentation) {
 	char *text = code->text;
 	int size = code->size;
@@ -1516,7 +1530,7 @@ void write_c_high_level_code_section(device_type *device) {
 	}
 	write_c_connection_change_handler(device);
 	for (property_type *property = device->properties; property; property = property->next) {
-		if (property->handle_change && strcmp(property->perm, "INDIGO_PERM_RO") && (property->type[0] != 'i' || property->on_change)) {
+		if (property->handle_change && strcmp(property->perm, "INDIGO_PERM_RO") && !c_code_is_empty(property->on_change) && (property->type[0] != 'i' || property->on_change)) {
 			write_c_property_change_handler(device, property);
 		}
 	}
@@ -1665,7 +1679,15 @@ void write_c_change_property(device_type *device) {
 			persistent |= property->persistent;
 			if (property->type[0] != 'i' || property->on_change) {
 				write_line("\t} else if (indigo_property_match_changeable(%s, property)) {", property->handle);
-				if (property->asynchronous_change) {
+				if (c_code_is_empty(property->on_change)) {
+					if (property->preserve_values) {
+						write_line("\t\tindigo_property_copy_targets(%s, property, false);", property->handle);
+					} else {
+						write_line("\t\tindigo_property_copy_values(%s, property, false);", property->handle);
+					}
+					write_line("\t\t%s->state = INDIGO_OK_STATE;", property->handle);
+					write_line("\t\tindigo_update_property(device, %s, NULL);", property->handle);
+				} else if (property->asynchronous_change) {
 					if (property->preserve_values) {
 						write_line("\t\tINDIGO_COPY_TARGETS_PROCESS_CHANGE(%s, %s);", property->handle, property->handler);
 					} else if (!strncmp(property->id, "MOUNT_MOTION", 12)) {

@@ -1,0 +1,2049 @@
+// Copyright (c) 2026 CloudMakers, s. r. o.
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// SynScan Mount driver definition
+//
+// Based on INDIGO 2.0 SynScan driver code by David Hulse.
+
+driver synscan {
+	label = "SynScan Mount";
+	author = "CloudMakers, s. r. o. based on INDIGO 2.0 code by David Hulse";
+	copyright = "Copyright (c) 2026 CloudMakers, s. r. o.";
+	version = 0;
+	serial {
+		configurable_speed = true;
+	}
+	include {
+		#include <indigo/indigo_align.h>
+		#include <indigo/indigo_aux_driver.h>
+		#include <indigo/indigo_driver_xml.h>
+		#include <indigo/indigo_guider_driver.h>
+		#include <indigo/indigo_mount_driver.h>
+		#include <indigo/indigo_uni_io.h>
+	}
+	define {
+		#define SIDEREAL_RATE                    ((360.0 * 3600.0) / 86164.090530833)
+		#define LUNAR_RATE                       14.511415
+		#define SOLAR_RATE                       15.0
+
+		#define SYNSCAN_DEFAULT_UDP_PORT         11880
+		#define SYNSCAN_COMMAND_TIMEOUT          INDIGO_DELAY(1)
+		#define SYNSCAN_NEXT_BYTE_TIMEOUT        INDIGO_DELAY(0.1)
+
+		#define SYNSCAN_STATUS_INITIALIZED       0x0100
+		#define SYNSCAN_STATUS_RUNNING           0x0001
+		#define SYNSCAN_HIGH_SPEED_GOTO_RAMP     3200
+		#define SYNSCAN_LOW_SPEED_GOTO_RAMP      200
+
+		#define SYNSCAN_SIDE_EAST                0
+		#define SYNSCAN_SIDE_WEST                1
+
+		#define MOUNT_POLARSCOPE_PROPERTY_NAME             "POLARSCOPE"
+		#define MOUNT_POLARSCOPE_BRIGHTNESS_ITEM_NAME      "BRIGHTNESS"
+		#define MOUNT_USE_ENCODERS_PROPERTY_NAME           "MOUNT_USE_ENCODERS"
+		#define MOUNT_USE_RA_ENCODER_ITEM_NAME             "RA"
+		#define MOUNT_USE_DEC_ENCODER_ITEM_NAME            "DEC"
+		#define MOUNT_AUTOHOME_PROPERTY_NAME               "MOUNT_AUTOHOME"
+		#define MOUNT_AUTOHOME_ITEM_NAME                   "AUTOHOME"
+		#define MOUNT_AUTOHOME_SETTINGS_PROPERTY_NAME      "MOUNT_AUTOHOME_SETTINGS"
+		#define MOUNT_AUTOHOME_DEC_OFFSET_ITEM_NAME        "DEC_OFFSET"
+		#define MOUNT_OPERATING_MODE_PROPERTY_NAME         "MOUNT_OPERATING_MODE"
+		#define POLAR_MODE_ITEM_NAME                       "POLAR"
+		#define ALTAZ_MODE_ITEM_NAME                       "ALTAZ"
+
+		typedef enum {
+			SYNSCAN_AXIS_RA = '1',
+			SYNSCAN_AXIS_DEC = '2'
+		} synscan_axis;
+
+		typedef enum {
+			SYNSCAN_GLOBAL_IDLE = 0,
+			SYNSCAN_GLOBAL_SLEWING,
+			SYNSCAN_GLOBAL_PARKING,
+			SYNSCAN_GLOBAL_HOMING
+		} synscan_global_mode;
+
+		typedef enum {
+			SYNSCAN_AXIS_IDLE = 0,
+			SYNSCAN_AXIS_TRACKING,
+			SYNSCAN_AXIS_GUIDING,
+			SYNSCAN_AXIS_MANUAL_SLEWING,
+			SYNSCAN_AXIS_GOTO
+		} synscan_axis_mode;
+
+		typedef enum {
+			SYNSCAN_DIRECTION_FORWARD = 0,
+			SYNSCAN_DIRECTION_REVERSE = 1
+		} synscan_direction;
+
+		enum {
+			SYNSCAN_FEATURE_ENCODER = 0x0001,
+			SYNSCAN_FEATURE_PPEC = 0x0002,
+			SYNSCAN_FEATURE_HOME_INDEXER = 0x0004,
+			SYNSCAN_FEATURE_AZEQ = 0x0008,
+			SYNSCAN_FEATURE_IN_PPEC_TRAINING = 0x0010,
+			SYNSCAN_FEATURE_IN_PPEC = 0x0020,
+			SYNSCAN_FEATURE_POLAR_LED = 0x1000,
+			SYNSCAN_FEATURE_COMMON_SLEW_START = 0x2000,
+			SYNSCAN_FEATURE_HALF_CURRENT_TRACKING = 0x4000
+		};
+
+		enum {
+			SYNSCAN_EXT_GET_HOME_INDEX = 0x0000,
+			SYNSCAN_EXT_GET_FEATURES = 0x0001,
+			SYNSCAN_EXT_START_PPEC_TRAINING = 0x0000,
+			SYNSCAN_EXT_STOP_PPEC_TRAINING = 0x0001,
+			SYNSCAN_EXT_TURN_PPEC_ON = 0x0002,
+			SYNSCAN_EXT_TURN_PPEC_OFF = 0x0003,
+			SYNSCAN_EXT_TURN_ENCODER_ON = 0x0004,
+			SYNSCAN_EXT_TURN_ENCODER_OFF = 0x0005,
+			SYNSCAN_EXT_RESET_HOME_INDEXER = 0x0008
+		};
+	}
+	data {
+		bool udp;
+		bool configured;
+		bool parked;
+		bool homed;
+		bool snap_port_supported;
+		bool abort_motion;
+		int model_code;
+		synscan_global_mode global_mode;
+		synscan_axis_mode ra_axis_mode;
+		synscan_axis_mode dec_axis_mode;
+		long ra_total_steps;
+		long dec_total_steps;
+		long ra_worm_steps;
+		long dec_worm_steps;
+		long ra_timer_frequency;
+		long dec_timer_frequency;
+		long ra_high_speed_ratio;
+		long dec_high_speed_ratio;
+		long ra_features;
+		long dec_features;
+		long ra_home_position;
+		long dec_home_position;
+		long ra_zero_position;
+		long dec_zero_position;
+		long ra_axis_position;
+		long dec_axis_position;
+		bool ra_axis_config_valid;
+		bool dec_axis_config_valid;
+		int ra_axis_config_mode;
+		int dec_axis_config_mode;
+		synscan_direction ra_axis_config_direction;
+		synscan_direction dec_axis_config_direction;
+		long ra_axis_config_period;
+		long dec_axis_config_period;
+		double ra_position;
+		double dec_position;
+		double ra_target_position;
+		double dec_target_position;
+		double guide_ra_deadline;
+		double guide_dec_deadline;
+		double guide_ra_resume_rate;
+		int guide_ra_direction;
+		int guide_dec_direction;
+		double current_tracking_rate;
+		bool southern_hemisphere;
+	}
+	code {
+		static const char hex_digits[] = "0123456789ABCDEF";
+
+		static bool synscan_validate_handle(indigo_device *device);
+		static void synscan_handle_connection_loss(indigo_device *device);
+
+		static double synscan_now(void) {
+			struct timeval now;
+			gettimeofday(&now, NULL);
+			return now.tv_sec + now.tv_usec / 1000000.0;
+		}
+
+		static int synscan_hex_value(char value) {
+			if (value >= '0' && value <= '9') {
+				return value - '0';
+			}
+			if (value >= 'A' && value <= 'F') {
+				return value - 'A' + 10;
+			}
+			if (value >= 'a' && value <= 'f') {
+				return value - 'a' + 10;
+			}
+			return 0;
+		}
+
+		static const char *synscan_hex24(long value) {
+			static INDIGO_THREAD_LOCAL char buffer[7];
+			buffer[1] = hex_digits[value & 0xF];
+			value >>= 4;
+			buffer[0] = hex_digits[value & 0xF];
+			value >>= 4;
+			buffer[3] = hex_digits[value & 0xF];
+			value >>= 4;
+			buffer[2] = hex_digits[value & 0xF];
+			value >>= 4;
+			buffer[5] = hex_digits[value & 0xF];
+			value >>= 4;
+			buffer[4] = hex_digits[value & 0xF];
+			buffer[6] = 0;
+			return buffer;
+		}
+
+		static long synscan_hex24_to_long(const char *buffer) {
+			long value = 0;
+			value |= synscan_hex_value(buffer[4]);
+			value <<= 4;
+			value |= synscan_hex_value(buffer[5]);
+			value <<= 4;
+			value |= synscan_hex_value(buffer[2]);
+			value <<= 4;
+			value |= synscan_hex_value(buffer[3]);
+			value <<= 4;
+			value |= synscan_hex_value(buffer[0]);
+			value <<= 4;
+			value |= synscan_hex_value(buffer[1]);
+			return value;
+		}
+
+		static long synscan_hex_to_long(const char *buffer) {
+			long value = 0;
+			while (*buffer != 0) {
+				value <<= 4;
+				value |= synscan_hex_value(*buffer++);
+			}
+			return value;
+		}
+
+		static long synscan_hex12_to_long(const char *buffer) {
+			return (synscan_hex_value(buffer[2]) << 8) | (synscan_hex_value(buffer[0]) << 4) | synscan_hex_value(buffer[1]);
+		}
+
+		static bool synscan_read_response(indigo_device *device, char *response, size_t response_size) {
+			char buffer[32] = { 0 };
+			long count;
+			if (PRIVATE_DATA->udp) {
+				count = indigo_uni_read(PRIVATE_DATA->handle, buffer, sizeof(buffer) - 1);
+			} else {
+				count = indigo_uni_read_section2(PRIVATE_DATA->handle, buffer, sizeof(buffer) - 1, "\r", "", SYNSCAN_COMMAND_TIMEOUT, SYNSCAN_NEXT_BYTE_TIMEOUT);
+			}
+			if (count < 2) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No SynScan response");
+				return false;
+			}
+			buffer[count] = 0;
+			if (buffer[0] == '!') {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SynScan command failed with error %.2s", buffer + 1);
+				return false;
+			}
+			if (buffer[0] != '=' || buffer[count - 1] != '\r') {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Invalid SynScan response: %.*s", (int)count, buffer);
+				return false;
+			}
+			if (response != NULL && response_size > 0) {
+				size_t payload_size = (size_t)count - 2;
+				if (payload_size >= response_size) {
+					payload_size = response_size - 1;
+				}
+				memcpy(response, buffer + 1, payload_size);
+				response[payload_size] = 0;
+			}
+			return true;
+		}
+
+		static bool synscan_command(indigo_device *device, const char *command, char *response, size_t response_size) {
+			if (!synscan_validate_handle(device)) {
+				return false;
+			}
+			if (indigo_uni_discard(PRIVATE_DATA->handle) < 0) {
+				synscan_handle_connection_loss(device);
+				return false;
+			}
+			char buffer[32];
+			snprintf(buffer, sizeof(buffer), "%s\r", command);
+			if (indigo_uni_write(PRIVATE_DATA->handle, buffer, (long)strlen(buffer)) <= 0) {
+				synscan_handle_connection_loss(device);
+				return false;
+			}
+			bool ok = synscan_read_response(device, response, response_size);
+			if (!ok) {
+				synscan_handle_connection_loss(device);
+			}
+			return ok;
+		}
+
+		static bool synscan_command_with_long_result(indigo_device *device, const char *command, long *value) {
+			char response[16] = { 0 };
+			if (!synscan_command(device, command, response, sizeof(response))) {
+				return false;
+			}
+			if (value != NULL) {
+				*value = synscan_hex24_to_long(response);
+			}
+			return true;
+		}
+
+		static bool synscan_command_with_code_result(indigo_device *device, const char *command, long *value) {
+			char response[16] = { 0 };
+			if (!synscan_command(device, command, response, sizeof(response))) {
+				return false;
+			}
+			if (value != NULL) {
+				*value = synscan_hex_to_long(response);
+			}
+			return true;
+		}
+
+		static bool synscan_firmware_version(indigo_device *device, long *version) {
+			return synscan_command_with_long_result(device, ":e1", version);
+		}
+
+		static bool synscan_probe_handle(indigo_device *device) {
+			long version = 0;
+			return synscan_firmware_version(device, &version);
+		}
+
+		static bool synscan_axis_long_query(indigo_device *device, char command, synscan_axis axis, long *value) {
+			char buffer[8];
+			snprintf(buffer, sizeof(buffer), ":%c%c", command, axis);
+			return synscan_command_with_long_result(device, buffer, value);
+		}
+
+		static bool synscan_axis_code_query(indigo_device *device, char command, synscan_axis axis, long *value) {
+			char buffer[8];
+			snprintf(buffer, sizeof(buffer), ":%c%c", command, axis);
+			return synscan_command_with_code_result(device, buffer, value);
+		}
+
+		static bool synscan_axis_status_query(indigo_device *device, synscan_axis axis, long *value) {
+			char response[16] = { 0 };
+			char buffer[8];
+			snprintf(buffer, sizeof(buffer), ":f%c", axis);
+			if (!synscan_command(device, buffer, response, sizeof(response))) {
+				return false;
+			}
+			if (value != NULL) {
+				*value = synscan_hex12_to_long(response);
+			}
+			return true;
+		}
+
+		static bool synscan_axis_command(indigo_device *device, char command, synscan_axis axis) {
+			char buffer[8];
+			snprintf(buffer, sizeof(buffer), ":%c%c", command, axis);
+			return synscan_command(device, buffer, NULL, 0);
+		}
+
+		static bool synscan_axis_setting(indigo_device *device, char command, synscan_axis axis, long value) {
+			char buffer[16];
+			snprintf(buffer, sizeof(buffer), ":%c%c%s", command, axis, synscan_hex24(value));
+			return synscan_command(device, buffer, NULL, 0);
+		}
+
+		static bool synscan_set_axis_mode(indigo_device *device, synscan_axis axis, int mode, synscan_direction direction) {
+			char buffer[8];
+			snprintf(buffer, sizeof(buffer), ":G%c%X%X", axis, mode & 0xF, direction == SYNSCAN_DIRECTION_REVERSE ? 1 : 0);
+			return synscan_command(device, buffer, NULL, 0);
+		}
+
+		static bool *synscan_axis_config_valid(indigo_device *device, synscan_axis axis) {
+			return axis == SYNSCAN_AXIS_RA ? &PRIVATE_DATA->ra_axis_config_valid : &PRIVATE_DATA->dec_axis_config_valid;
+		}
+
+		static int *synscan_axis_config_mode(indigo_device *device, synscan_axis axis) {
+			return axis == SYNSCAN_AXIS_RA ? &PRIVATE_DATA->ra_axis_config_mode : &PRIVATE_DATA->dec_axis_config_mode;
+		}
+
+		static synscan_direction *synscan_axis_config_direction(indigo_device *device, synscan_axis axis) {
+			return axis == SYNSCAN_AXIS_RA ? &PRIVATE_DATA->ra_axis_config_direction : &PRIVATE_DATA->dec_axis_config_direction;
+		}
+
+		static long *synscan_axis_config_period(indigo_device *device, synscan_axis axis) {
+			return axis == SYNSCAN_AXIS_RA ? &PRIVATE_DATA->ra_axis_config_period : &PRIVATE_DATA->dec_axis_config_period;
+		}
+
+		static void synscan_invalidate_axis_config(indigo_device *device, synscan_axis axis) {
+			*synscan_axis_config_valid(device, axis) = false;
+		}
+
+		static void synscan_invalidate_axis_configs(indigo_device *device) {
+			synscan_invalidate_axis_config(device, SYNSCAN_AXIS_RA);
+			synscan_invalidate_axis_config(device, SYNSCAN_AXIS_DEC);
+		}
+
+		static bool synscan_axis_config_matches(indigo_device *device, synscan_axis axis, int mode, synscan_direction direction, long period) {
+			return *synscan_axis_config_valid(device, axis)
+				&& *synscan_axis_config_mode(device, axis) == mode
+				&& *synscan_axis_config_direction(device, axis) == direction
+				&& *synscan_axis_config_period(device, axis) == period;
+		}
+
+		static void synscan_cache_axis_config(indigo_device *device, synscan_axis axis, int mode, synscan_direction direction, long period) {
+			*synscan_axis_config_valid(device, axis) = true;
+			*synscan_axis_config_mode(device, axis) = mode;
+			*synscan_axis_config_direction(device, axis) = direction;
+			*synscan_axis_config_period(device, axis) = period;
+		}
+
+		static bool synscan_wait_axis_stopped(indigo_device *device, synscan_axis axis, bool *abort);
+
+		static bool synscan_stop_axis_and_wait(indigo_device *device, synscan_axis axis, bool *abort) {
+			synscan_invalidate_axis_config(device, axis);
+			return synscan_axis_command(device, 'K', axis) && synscan_wait_axis_stopped(device, axis, abort);
+		}
+
+		static double synscan_tracking_rate(indigo_device *device) {
+			if (MOUNT_TRACK_RATE_SOLAR_ITEM->sw.value) {
+				return SOLAR_RATE;
+			}
+			if (MOUNT_TRACK_RATE_LUNAR_ITEM->sw.value) {
+				return LUNAR_RATE;
+			}
+			return SIDEREAL_RATE;
+		}
+
+		static long synscan_rate_to_period(indigo_device *device, synscan_axis axis, double rate, bool *high_speed, synscan_direction *direction) {
+			if (PRIVATE_DATA->southern_hemisphere && axis == SYNSCAN_AXIS_RA) {
+				rate = -rate;
+			}
+			*direction = rate < 0 ? SYNSCAN_DIRECTION_REVERSE : SYNSCAN_DIRECTION_FORWARD;
+			rate = fabs(rate);
+			*high_speed = rate > 128 * SIDEREAL_RATE;
+			if (*high_speed) {
+				long ratio = axis == SYNSCAN_AXIS_RA ? PRIVATE_DATA->ra_high_speed_ratio : PRIVATE_DATA->dec_high_speed_ratio;
+				if (ratio > 0) {
+					rate /= ratio;
+				}
+			}
+			if (rate <= 0) {
+				return 0;
+			}
+			double steps = axis == SYNSCAN_AXIS_RA ? PRIVATE_DATA->ra_total_steps : PRIVATE_DATA->dec_total_steps;
+			double frequency = axis == SYNSCAN_AXIS_RA ? PRIVATE_DATA->ra_timer_frequency : PRIVATE_DATA->dec_timer_frequency;
+			double counts_per_second = rate * steps / (360.0 * 3600.0);
+			long period = counts_per_second > 0 ? lrint(frequency / counts_per_second) : 0;
+			return period > 0 && period < 6 ? 6 : period;
+		}
+
+		static bool synscan_slew_axis_at_rate(indigo_device *device, synscan_axis axis, double rate) {
+			if (rate == 0) {
+				return synscan_stop_axis_and_wait(device, axis, NULL);
+			}
+			bool high_speed = false;
+			synscan_direction direction = SYNSCAN_DIRECTION_FORWARD;
+			long period = synscan_rate_to_period(device, axis, rate, &high_speed, &direction);
+			if (period <= 0) {
+				return false;
+			}
+			int mode = high_speed ? 3 : 1;
+			long status = 0;
+			bool running = false;
+			if (!synscan_axis_status_query(device, axis, &status)) {
+				return false;
+			}
+			running = (status & SYNSCAN_STATUS_RUNNING) != 0;
+			if (!synscan_axis_config_matches(device, axis, mode, direction, period)) {
+				if (running) {
+					if (!synscan_stop_axis_and_wait(device, axis, NULL)) {
+						return false;
+					}
+				}
+				if (!synscan_set_axis_mode(device, axis, mode, direction) || !synscan_axis_setting(device, 'I', axis, period)) {
+					synscan_invalidate_axis_config(device, axis);
+					return false;
+				}
+				synscan_cache_axis_config(device, axis, mode, direction, period);
+				running = false;
+			}
+			return running || synscan_axis_command(device, 'J', axis);
+		}
+
+		static bool synscan_update_mount_coordinates(indigo_device *device);
+		static bool synscan_ext_inquiry(indigo_device *device, synscan_axis axis, long inquiry, long *value);
+		static bool synscan_ext_setting(indigo_device *device, synscan_axis axis, long setting);
+		static void synscan_clear_tracking_state(indigo_device *device);
+		static long synscan_low_speed_goto_margin(indigo_device *device, synscan_axis axis);
+
+		static bool synscan_wait_axis_stopped(indigo_device *device, synscan_axis axis, bool *abort) {
+			for (int i = 0; i < 300; i++) {
+				long status = 0;
+				if (abort != NULL && *abort) {
+					return false;
+				}
+				if (!synscan_axis_status_query(device, axis, &status)) {
+					return false;
+				}
+				if ((status & SYNSCAN_STATUS_RUNNING) == 0) {
+					return true;
+				}
+				if (i % 5 == 0) {
+					synscan_update_mount_coordinates(device);
+				}
+				indigo_usleep(100000);
+			}
+			return false;
+		}
+
+		static bool synscan_slew_axis_to_steps(indigo_device *device, synscan_axis axis, long target) {
+			long current = 0;
+			if (!synscan_axis_long_query(device, 'j', axis, &current)) {
+				return false;
+			}
+			long delta = target - current;
+			if (delta == 0) {
+				return true;
+			}
+			synscan_direction direction = delta < 0 ? SYNSCAN_DIRECTION_REVERSE : SYNSCAN_DIRECTION_FORWARD;
+			delta = labs(delta);
+			bool high_speed = delta > synscan_low_speed_goto_margin(device, axis);
+			long ramp = high_speed ? SYNSCAN_HIGH_SPEED_GOTO_RAMP : SYNSCAN_LOW_SPEED_GOTO_RAMP;
+			long slowdown = delta > ramp ? ramp : delta;
+			return synscan_stop_axis_and_wait(device, axis, NULL)
+				&& synscan_set_axis_mode(device, axis, high_speed ? 0 : 2, direction)
+				&& synscan_axis_setting(device, 'H', axis, delta)
+				&& synscan_axis_setting(device, 'M', axis, slowdown)
+				&& synscan_axis_command(device, 'J', axis);
+		}
+
+		static bool synscan_slew_axis_for_home_search(indigo_device *device, synscan_axis axis, synscan_direction direction) {
+			long status = 0;
+			bool running = false;
+			if (!synscan_axis_status_query(device, axis, &status)) {
+				return false;
+			}
+			running = (status & SYNSCAN_STATUS_RUNNING) != 0;
+			if (!synscan_axis_config_matches(device, axis, 3, direction, 6)) {
+				if (running && !synscan_stop_axis_and_wait(device, axis, NULL)) {
+					return false;
+				}
+				if (!synscan_set_axis_mode(device, axis, 3, direction) || !synscan_axis_setting(device, 'I', axis, 6)) {
+					synscan_invalidate_axis_config(device, axis);
+					return false;
+				}
+				synscan_cache_axis_config(device, axis, 3, direction, 6);
+				running = false;
+			}
+			return running || synscan_axis_command(device, 'J', axis);
+		}
+
+		static bool synscan_wait_home_index(indigo_device *device, synscan_axis axis, long unchanged_value, long *home_index, bool *abort) {
+			for (int i = 0; i < 1200; i++) {
+				long value = 0;
+				if (abort != NULL && *abort) {
+					return false;
+				}
+				if (!synscan_ext_inquiry(device, axis, SYNSCAN_EXT_GET_HOME_INDEX, &value)) {
+					return false;
+				}
+				if (value != unchanged_value) {
+					if (home_index != NULL) {
+						*home_index = value;
+					}
+					return true;
+				}
+				if (i % 10 == 0) {
+					synscan_update_mount_coordinates(device);
+				}
+				indigo_usleep(100000);
+			}
+			return false;
+		}
+
+		static bool synscan_prepare_home_index_search(indigo_device *device, synscan_axis axis, bool *slewing_up, bool *abort) {
+			long value = 0;
+			long position = 0;
+			long total_steps = axis == SYNSCAN_AXIS_RA ? PRIVATE_DATA->ra_total_steps : PRIVATE_DATA->dec_total_steps;
+			long search_offset = lrint(5.0 / 360.0 * total_steps);
+			bool ok = synscan_ext_setting(device, axis, SYNSCAN_EXT_RESET_HOME_INDEXER)
+				&& synscan_ext_inquiry(device, axis, SYNSCAN_EXT_GET_HOME_INDEX, &value);
+			if (!ok) {
+				return false;
+			}
+			*slewing_up = value == 0;
+			ok = synscan_axis_long_query(device, 'j', axis, &position)
+				&& synscan_slew_axis_to_steps(device, axis, position + (*slewing_up ? -search_offset : search_offset))
+				&& synscan_wait_axis_stopped(device, axis, abort)
+				&& synscan_ext_inquiry(device, axis, SYNSCAN_EXT_GET_HOME_INDEX, &value);
+			if (!ok) {
+				return false;
+			}
+			if (value != 0 && value != 0xFFFFFF) {
+				ok = synscan_axis_long_query(device, 'j', axis, &position)
+					&& synscan_slew_axis_to_steps(device, axis, position + (*slewing_up ? -search_offset : search_offset))
+					&& synscan_wait_axis_stopped(device, axis, abort)
+					&& synscan_ext_setting(device, axis, SYNSCAN_EXT_RESET_HOME_INDEXER)
+					&& synscan_ext_inquiry(device, axis, SYNSCAN_EXT_GET_HOME_INDEX, &value);
+				if (!ok) {
+					return false;
+				}
+				*slewing_up = value == 0;
+			}
+			if (!*slewing_up) {
+				ok = synscan_slew_axis_for_home_search(device, axis, SYNSCAN_DIRECTION_REVERSE)
+					&& synscan_wait_home_index(device, axis, 0xFFFFFF, NULL, abort);
+				indigo_sleep(3);
+				ok = synscan_stop_axis_and_wait(device, axis, abort)
+					&& ok
+					&& synscan_ext_setting(device, axis, SYNSCAN_EXT_RESET_HOME_INDEXER);
+				if (!ok) {
+					return false;
+				}
+				*slewing_up = true;
+			}
+			return true;
+		}
+
+		static bool synscan_autohome_axes(indigo_device *device, long *ra_home_index, long *dec_home_index, bool *abort) {
+			bool ra_found = false;
+			bool dec_found = false;
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Starting SynScan auto-home index search");
+			bool ok = synscan_slew_axis_for_home_search(device, SYNSCAN_AXIS_RA, SYNSCAN_DIRECTION_FORWARD)
+				&& synscan_slew_axis_for_home_search(device, SYNSCAN_AXIS_DEC, SYNSCAN_DIRECTION_FORWARD);
+			if (!ok) {
+				return false;
+			}
+			for (int i = 0; i < 1200 && (!ra_found || !dec_found); i++) {
+				long value = 0;
+				if (abort != NULL && *abort) {
+					break;
+				}
+				if (!ra_found) {
+					if (!synscan_ext_inquiry(device, SYNSCAN_AXIS_RA, SYNSCAN_EXT_GET_HOME_INDEX, &value)) {
+						break;
+					}
+					if (value != 0) {
+						*ra_home_index = value;
+						ra_found = true;
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SynScan RA home index found at %06lx", value & 0xFFFFFF);
+						synscan_axis_command(device, 'K', SYNSCAN_AXIS_RA);
+						synscan_invalidate_axis_config(device, SYNSCAN_AXIS_RA);
+					}
+				}
+				if (!dec_found) {
+					if (!synscan_ext_inquiry(device, SYNSCAN_AXIS_DEC, SYNSCAN_EXT_GET_HOME_INDEX, &value)) {
+						break;
+					}
+					if (value != 0) {
+						*dec_home_index = value;
+						dec_found = true;
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SynScan DEC home index found at %06lx", value & 0xFFFFFF);
+						synscan_axis_command(device, 'K', SYNSCAN_AXIS_DEC);
+						synscan_invalidate_axis_config(device, SYNSCAN_AXIS_DEC);
+					}
+				}
+				if (!ra_found || !dec_found) {
+					if (i % 10 == 0) {
+						synscan_update_mount_coordinates(device);
+					}
+					indigo_usleep(100000);
+				}
+			}
+			ok = ra_found && dec_found;
+			if (!ok) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SynScan auto-home index search timed out or was aborted, RA found = %d, DEC found = %d", ra_found, dec_found);
+			}
+			ok = synscan_wait_axis_stopped(device, SYNSCAN_AXIS_RA, abort) && ok;
+			ok = synscan_wait_axis_stopped(device, SYNSCAN_AXIS_DEC, abort) && ok;
+			return ok;
+		}
+
+		static bool synscan_perform_autohome(indigo_device *device) {
+			bool ok = true;
+			bool slewing_up_ra = false;
+			bool slewing_up_dec = false;
+			long ra_home_index = 0;
+			long dec_home_index = 0;
+			long ra_offset = lrint(10.0 / 360.0 * PRIVATE_DATA->ra_total_steps);
+			long dec_offset = lrint(10.0 / 360.0 * PRIVATE_DATA->dec_total_steps);
+			PRIVATE_DATA->abort_motion = false;
+			MOUNT_USE_RA_ENCODER_ITEM->sw.value = MOUNT_USE_DEC_ENCODER_ITEM->sw.value = false;
+			ok = ok && synscan_ext_setting(device, SYNSCAN_AXIS_RA, SYNSCAN_EXT_TURN_ENCODER_OFF);
+			ok = ok && synscan_ext_setting(device, SYNSCAN_AXIS_DEC, SYNSCAN_EXT_TURN_ENCODER_OFF);
+			ok = ok && synscan_stop_axis_and_wait(device, SYNSCAN_AXIS_RA, &PRIVATE_DATA->abort_motion);
+			ok = ok && synscan_stop_axis_and_wait(device, SYNSCAN_AXIS_DEC, &PRIVATE_DATA->abort_motion);
+			if (ok) {
+				synscan_clear_tracking_state(device);
+			}
+			ok = ok && synscan_axis_setting(device, 'E', SYNSCAN_AXIS_RA, PRIVATE_DATA->ra_home_position);
+			ok = ok && synscan_axis_setting(device, 'E', SYNSCAN_AXIS_DEC, PRIVATE_DATA->dec_home_position);
+			ok = ok && synscan_prepare_home_index_search(device, SYNSCAN_AXIS_RA, &slewing_up_ra, &PRIVATE_DATA->abort_motion);
+			ok = ok && synscan_prepare_home_index_search(device, SYNSCAN_AXIS_DEC, &slewing_up_dec, &PRIVATE_DATA->abort_motion);
+			ok = ok && synscan_autohome_axes(device, &ra_home_index, &dec_home_index, &PRIVATE_DATA->abort_motion);
+			ok = ok && synscan_slew_axis_to_steps(device, SYNSCAN_AXIS_RA, ra_home_index - ra_offset);
+			ok = ok && synscan_slew_axis_to_steps(device, SYNSCAN_AXIS_DEC, dec_home_index - dec_offset);
+			ok = ok && synscan_wait_axis_stopped(device, SYNSCAN_AXIS_RA, &PRIVATE_DATA->abort_motion);
+			ok = ok && synscan_wait_axis_stopped(device, SYNSCAN_AXIS_DEC, &PRIVATE_DATA->abort_motion);
+			ok = ok && synscan_slew_axis_to_steps(device, SYNSCAN_AXIS_RA, ra_home_index);
+			ok = ok && synscan_slew_axis_to_steps(device, SYNSCAN_AXIS_DEC, dec_home_index);
+			ok = ok && synscan_wait_axis_stopped(device, SYNSCAN_AXIS_RA, &PRIVATE_DATA->abort_motion);
+			ok = ok && synscan_wait_axis_stopped(device, SYNSCAN_AXIS_DEC, &PRIVATE_DATA->abort_motion);
+			ok = ok && synscan_axis_setting(device, 'E', SYNSCAN_AXIS_RA, PRIVATE_DATA->ra_home_position);
+			ok = ok && synscan_axis_setting(device, 'E', SYNSCAN_AXIS_DEC, PRIVATE_DATA->dec_home_position + lrint(MOUNT_AUTOHOME_DEC_OFFSET_ITEM->number.value / 360.0 * PRIVATE_DATA->dec_total_steps));
+			return ok;
+		}
+
+		static void synscan_update_mount_state(indigo_device *device) {
+			MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_IDLE_STATE;
+			MOUNT_STATE_PARK_ITEM->light.value = INDIGO_IDLE_STATE;
+			MOUNT_STATE_HOME_ITEM->light.value = INDIGO_IDLE_STATE;
+			MOUNT_STATE_TRACKING_ITEM->light.value = INDIGO_IDLE_STATE;
+			if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_ALERT_STATE) {
+				MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_ALERT_STATE;
+			} else if (PRIVATE_DATA->global_mode == SYNSCAN_GLOBAL_SLEWING || PRIVATE_DATA->ra_axis_mode == SYNSCAN_AXIS_MANUAL_SLEWING || PRIVATE_DATA->dec_axis_mode == SYNSCAN_AXIS_MANUAL_SLEWING) {
+				MOUNT_STATE_SLEW_ITEM->light.value = INDIGO_BUSY_STATE;
+			}
+			if (MOUNT_PARK_PROPERTY->state == INDIGO_ALERT_STATE) {
+				MOUNT_STATE_PARK_ITEM->light.value = INDIGO_ALERT_STATE;
+			} else if (PRIVATE_DATA->global_mode == SYNSCAN_GLOBAL_PARKING) {
+				MOUNT_STATE_PARK_ITEM->light.value = INDIGO_BUSY_STATE;
+			} else if (PRIVATE_DATA->parked) {
+				MOUNT_STATE_PARK_ITEM->light.value = INDIGO_OK_STATE;
+			}
+			if (MOUNT_HOME_PROPERTY->state == INDIGO_ALERT_STATE) {
+				MOUNT_STATE_HOME_ITEM->light.value = INDIGO_ALERT_STATE;
+			} else if (PRIVATE_DATA->global_mode == SYNSCAN_GLOBAL_HOMING) {
+				MOUNT_STATE_HOME_ITEM->light.value = INDIGO_BUSY_STATE;
+			} else if (PRIVATE_DATA->homed) {
+				MOUNT_STATE_HOME_ITEM->light.value = INDIGO_OK_STATE;
+			}
+			if (MOUNT_TRACKING_PROPERTY->state == INDIGO_ALERT_STATE) {
+				MOUNT_STATE_TRACKING_ITEM->light.value = INDIGO_ALERT_STATE;
+			} else if (MOUNT_TRACKING_ON_ITEM->sw.value) {
+				MOUNT_STATE_TRACKING_ITEM->light.value = INDIGO_OK_STATE;
+			}
+			MOUNT_STATE_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, MOUNT_STATE_PROPERTY, NULL);
+		}
+
+		static void synscan_clear_tracking_state(indigo_device *device) {
+			PRIVATE_DATA->current_tracking_rate = 0;
+			if (PRIVATE_DATA->ra_axis_mode == SYNSCAN_AXIS_TRACKING || PRIVATE_DATA->ra_axis_mode == SYNSCAN_AXIS_GUIDING) {
+				PRIVATE_DATA->ra_axis_mode = SYNSCAN_AXIS_IDLE;
+			}
+			indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
+			MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+		}
+
+		static long synscan_fraction_to_steps(long zero, long total, double fraction) {
+			while (fraction < -0.5) {
+				fraction += 1.0;
+			}
+			while (fraction > 0.5) {
+				fraction -= 1.0;
+			}
+			return zero + lrint(fraction * total);
+		}
+
+		static long synscan_position_to_steps(long zero, long total, double position) {
+			if (position > 0.75) {
+				position -= 1.0;
+			}
+			return lrint(zero + position * total);
+		}
+
+		static long synscan_low_speed_goto_margin(indigo_device *device, synscan_axis axis) {
+			long total_steps = axis == SYNSCAN_AXIS_RA ? PRIVATE_DATA->ra_total_steps : PRIVATE_DATA->dec_total_steps;
+			return lrint(5 * 128 * SIDEREAL_RATE * total_steps / (360.0 * 3600.0));
+		}
+
+		static bool synscan_update_axis_positions(indigo_device *device) {
+			bool ok = true;
+			ok = ok && synscan_axis_long_query(device, (MOUNT_USE_DEC_ENCODER_ITEM->sw.value && (PRIVATE_DATA->dec_features & SYNSCAN_FEATURE_ENCODER)) ? 'd' : 'j', SYNSCAN_AXIS_DEC, &PRIVATE_DATA->dec_axis_position);
+			ok = ok && synscan_axis_long_query(device, (MOUNT_USE_RA_ENCODER_ITEM->sw.value && (PRIVATE_DATA->ra_features & SYNSCAN_FEATURE_ENCODER)) ? 'd' : 'j', SYNSCAN_AXIS_RA, &PRIVATE_DATA->ra_axis_position);
+			if (PRIVATE_DATA->ra_total_steps > 0) {
+				PRIVATE_DATA->ra_position = (double)(PRIVATE_DATA->ra_axis_position - PRIVATE_DATA->ra_zero_position) / (double)PRIVATE_DATA->ra_total_steps;
+			}
+			if (PRIVATE_DATA->dec_total_steps > 0) {
+				PRIVATE_DATA->dec_position = (double)(PRIVATE_DATA->dec_axis_position - PRIVATE_DATA->dec_zero_position) / (double)PRIVATE_DATA->dec_total_steps;
+			}
+			return ok;
+		}
+
+		static void synscan_encoder_to_eq(indigo_device *device, double ra_encoder, double dec_encoder, double *ha, double *dec, int *side_of_pier) {
+			bool south = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value < 0;
+			if (dec_encoder < 0) {
+				dec_encoder += 1.0;
+			}
+			bool west = false;
+			if (dec_encoder < 0.25) {
+				*dec = dec_encoder;
+			} else if (dec_encoder < 0.75) {
+				*dec = 0.5 - dec_encoder;
+				west = true;
+			} else {
+				*dec = dec_encoder - 1.0;
+			}
+			if (south) {
+				west = !west;
+				*dec = -*dec;
+			}
+			*dec *= 2.0 * M_PI;
+			*side_of_pier = west ? SYNSCAN_SIDE_WEST : SYNSCAN_SIDE_EAST;
+			if (!south) {
+				if (!west) {
+					*ha = ra_encoder - 0.5;
+				} else if (ra_encoder < 0.5) {
+					*ha = ra_encoder;
+				} else {
+					*ha = ra_encoder - 1.0;
+				}
+			} else {
+				if (west) {
+					*ha = 0.5 - ra_encoder;
+				} else if (ra_encoder < 0.5) {
+					*ha = -ra_encoder;
+				} else {
+					*ha = 1.0 - ra_encoder;
+				}
+			}
+			if (*ha < -0.5) {
+				*ha += 1.0;
+			}
+			if (*ha >= 0.5) {
+				*ha -= 1.0;
+			}
+			*ha *= 2.0 * M_PI;
+		}
+
+		static void synscan_eq_to_encoder(indigo_device *device, double ha, double dec, double ra_positions[2], double dec_positions[2]) {
+			bool south = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value < 0;
+			double west_dec = M_PI - dec;
+			if (south) {
+				west_dec = dec < 0 ? -dec : 2.0 * M_PI - dec;
+			}
+			double east_dec = M_PI + dec;
+			if (!south) {
+				east_dec = dec < 0 ? 2.0 * M_PI + dec : dec;
+			}
+			if (west_dec > M_PI + M_PI_2) {
+				west_dec -= 2.0 * M_PI;
+			}
+			if (east_dec > M_PI + M_PI_2) {
+				east_dec -= 2.0 * M_PI;
+			}
+			while (ha > M_PI) {
+				ha -= 2.0 * M_PI;
+			}
+			while (ha < -M_PI) {
+				ha += 2.0 * M_PI;
+			}
+			double west_ra = ha >= 0 ? ha : ha + 2.0 * M_PI;
+			if (south) {
+				west_ra = M_PI - ha;
+			}
+			double east_ra = ha + M_PI;
+			if (south) {
+				east_ra = ha >= 0 ? 2.0 * M_PI - ha : -ha;
+			}
+			ra_positions[0] = west_ra / (2.0 * M_PI);
+			dec_positions[0] = west_dec / (2.0 * M_PI);
+			ra_positions[1] = east_ra / (2.0 * M_PI);
+			dec_positions[1] = east_dec / (2.0 * M_PI);
+		}
+
+		static int synscan_select_encoder_solution(double ra_positions[2]) {
+			return ra_positions[0] <= 0.5 ? 0 : 1;
+		}
+
+		static void synscan_de2h(double ha, double dec, double latitude, double *az, double *alt) {
+			double sh = sin(ha);
+			double ch = cos(ha);
+			double sd = sin(dec);
+			double cd = cos(dec);
+			double sp = sin(latitude);
+			double cp = cos(latitude);
+			double x = -ch * cd * sp + sd * cp;
+			double y = -sh * cd;
+			double z = ch * cd * cp + sd * sp;
+			double r = hypot(x, y);
+			*az = r == 0.0 ? 0.0 : atan2(y, x);
+			if (fabs(*az) < 0.00001) {
+				*az = 0.0;
+			}
+			if (*az < 0.0) {
+				*az += 2.0 * M_PI;
+			}
+			*alt = atan2(z, r);
+		}
+
+		static bool synscan_update_mount_coordinates(indigo_device *device) {
+			if (!synscan_update_axis_positions(device)) {
+				return false;
+			}
+			indigo_property_state coordinates_state = PRIVATE_DATA->global_mode == SYNSCAN_GLOBAL_IDLE ? INDIGO_OK_STATE : INDIGO_BUSY_STATE;
+			double lst = indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
+			double raw_ha = 0;
+			double raw_dec = 0;
+			int side_of_pier = MOUNT_SIDE_EAST;
+			synscan_encoder_to_eq(device, PRIVATE_DATA->ra_position, PRIVATE_DATA->dec_position, &raw_ha, &raw_dec, &side_of_pier);
+			MOUNT_RAW_COORDINATES_RA_ITEM->number.value = lst - raw_ha * 12.0 / M_PI;
+			while (MOUNT_RAW_COORDINATES_RA_ITEM->number.value < 0) {
+				MOUNT_RAW_COORDINATES_RA_ITEM->number.value += 24.0;
+			}
+			while (MOUNT_RAW_COORDINATES_RA_ITEM->number.value >= 24.0) {
+				MOUNT_RAW_COORDINATES_RA_ITEM->number.value -= 24.0;
+			}
+			MOUNT_RAW_COORDINATES_DEC_ITEM->number.value = raw_dec * 180.0 / M_PI;
+			indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, side_of_pier == MOUNT_SIDE_EAST ? MOUNT_SIDE_OF_PIER_EAST_ITEM : MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
+			indigo_raw_to_translated_with_lst(device, lst, MOUNT_RAW_COORDINATES_RA_ITEM->number.value, MOUNT_RAW_COORDINATES_DEC_ITEM->number.value, side_of_pier, &MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value, &MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value);
+			if (!MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->hidden && !MOUNT_HORIZONTAL_COORDINATES_PROPERTY->hidden) {
+				double az = 0;
+				double alt = 0;
+				double aligned_ha = (lst - MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value) * M_PI / 12.0;
+				double aligned_dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value * M_PI / 180.0;
+				double latitude = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value * M_PI / 180.0;
+				synscan_de2h(aligned_ha, aligned_dec, latitude, &az, &alt);
+				MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = az * 180.0 / M_PI;
+				MOUNT_HORIZONTAL_COORDINATES_ALT_ITEM->number.value = alt * 180.0 / M_PI;
+				MOUNT_HORIZONTAL_COORDINATES_PROPERTY->state = coordinates_state;
+				MOUNT_LST_TIME_ITEM->number.value = lst;
+			}
+			MOUNT_RAW_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = coordinates_state;
+			synscan_update_mount_state(device);
+			indigo_update_property(device, MOUNT_RAW_COORDINATES_PROPERTY, NULL);
+			indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
+			indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
+			if (!MOUNT_HORIZONTAL_COORDINATES_PROPERTY->hidden) {
+				indigo_update_property(device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+			}
+			indigo_update_property(device, MOUNT_LST_TIME_PROPERTY, NULL);
+			return true;
+		}
+
+		static void synscan_set_coordinate_state(indigo_device *device, indigo_property_state state) {
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = state;
+			indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
+			if (!MOUNT_HORIZONTAL_COORDINATES_PROPERTY->hidden) {
+				MOUNT_HORIZONTAL_COORDINATES_PROPERTY->state = state;
+				indigo_update_property(device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+			}
+		}
+
+		static void synscan_ha_dec_to_steps(indigo_device *device, double ha_hours, double dec_degrees, long *ra_steps, long *dec_steps) {
+			double ra_positions[2];
+			double dec_positions[2];
+			synscan_eq_to_encoder(device, ha_hours * M_PI / 12.0, dec_degrees * M_PI / 180.0, ra_positions, dec_positions);
+			int index = synscan_select_encoder_solution(ra_positions);
+			if (ra_steps != NULL) {
+				*ra_steps = synscan_position_to_steps(PRIVATE_DATA->ra_zero_position, PRIVATE_DATA->ra_total_steps, ra_positions[index]);
+			}
+			if (dec_steps != NULL) {
+				*dec_steps = synscan_position_to_steps(PRIVATE_DATA->dec_zero_position, PRIVATE_DATA->dec_total_steps, dec_positions[index]);
+			}
+		}
+
+		static void synscan_radec_to_steps(indigo_device *device, double ra_hours, double dec_degrees, long *ra_steps, long *dec_steps) {
+			double raw_ra = ra_hours;
+			double raw_dec = dec_degrees;
+			indigo_translated_to_raw(device, ra_hours, dec_degrees, &raw_ra, &raw_dec);
+			double lst = indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
+			synscan_ha_dec_to_steps(device, lst - raw_ra, raw_dec, ra_steps, dec_steps);
+		}
+
+		static bool synscan_ext_inquiry(indigo_device *device, synscan_axis axis, long inquiry, long *value) {
+			char buffer[16];
+			snprintf(buffer, sizeof(buffer), ":q%c%s", axis, synscan_hex24(inquiry));
+			return synscan_command_with_long_result(device, buffer, value);
+		}
+
+		static bool synscan_ext_setting(indigo_device *device, synscan_axis axis, long setting) {
+			char buffer[16];
+			snprintf(buffer, sizeof(buffer), ":W%c%s", axis, synscan_hex24(setting));
+			return synscan_command(device, buffer, NULL, 0);
+		}
+
+		static void synscan_ppec_training_timer(indigo_device *device) {
+			bool ok = synscan_ext_inquiry(device, SYNSCAN_AXIS_RA, SYNSCAN_EXT_GET_FEATURES, &PRIVATE_DATA->ra_features);
+			ok = ok && synscan_ext_inquiry(device, SYNSCAN_AXIS_DEC, SYNSCAN_EXT_GET_FEATURES, &PRIVATE_DATA->dec_features);
+			if (!ok) {
+				MOUNT_PEC_TRAINING_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, MOUNT_PEC_TRAINING_PROPERTY, "Failed to read PPEC training state.");
+			} else if ((PRIVATE_DATA->ra_features & SYNSCAN_FEATURE_IN_PPEC_TRAINING) || (PRIVATE_DATA->dec_features & SYNSCAN_FEATURE_IN_PPEC_TRAINING)) {
+				indigo_set_timer(device, 1, synscan_ppec_training_timer, NULL);
+			} else {
+				indigo_set_switch(MOUNT_PEC_TRAINING_PROPERTY, MOUNT_PEC_TRAINIG_STOPPED_ITEM, true);
+				MOUNT_PEC_TRAINING_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, MOUNT_PEC_TRAINING_PROPERTY, "Cleared PPEC training state.");
+			}
+		}
+
+		static bool synscan_set_polarscope_brightness(indigo_device *device, int brightness) {
+			char buffer[8];
+			if (brightness < 0) {
+				brightness = 0;
+			} else if (brightness > 255) {
+				brightness = 255;
+			}
+			snprintf(buffer, sizeof(buffer), ":V1%02X", brightness);
+			return synscan_command(device, buffer, NULL, 0);
+		}
+
+		static bool synscan_set_st4_guide_rate(indigo_device *device, synscan_axis axis, double rate) {
+			char buffer[8];
+			int code = 2;
+			if (rate >= 1.0) {
+				code = 0;
+			} else if (rate >= 0.75) {
+				code = 1;
+			} else if (rate >= 0.5) {
+				code = 2;
+			} else if (rate >= 0.25) {
+				code = 3;
+			} else {
+				code = 4;
+			}
+			snprintf(buffer, sizeof(buffer), ":P%c%d", axis, code);
+			return synscan_command(device, buffer, NULL, 0);
+		}
+
+		static void synscan_make_park_file_path(indigo_device *device, char *path, size_t path_size) {
+			const char *config_folder = indigo_uni_config_folder();
+			const char *model = *MOUNT_INFO_MODEL_ITEM->text.value ? MOUNT_INFO_MODEL_ITEM->text.value : "unknown";
+			snprintf(path, path_size, "%s/synscan-%s.park", config_folder, model);
+		}
+
+		static bool synscan_save_position(indigo_device *device) {
+			char path[INDIGO_VALUE_SIZE];
+			char buffer[INDIGO_VALUE_SIZE];
+			synscan_make_park_file_path(device, path, sizeof(path));
+			indigo_uni_mkdir(indigo_uni_config_folder());
+			indigo_uni_handle *file = indigo_uni_create_file(path, INDIGO_LOG_DEBUG);
+			if (file == NULL) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can't create %s", path);
+				return false;
+			}
+			snprintf(buffer, sizeof(buffer), "%06lx %06lx\n", PRIVATE_DATA->ra_axis_position, PRIVATE_DATA->dec_axis_position);
+			bool ok = indigo_uni_write(file, buffer, (long)strlen(buffer)) == (long)strlen(buffer);
+			indigo_uni_close(&file);
+			if (!ok) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can't write %s", path);
+			}
+			return ok;
+		}
+
+		static bool synscan_restore_position(indigo_device *device, synscan_axis axis, bool remove_file) {
+			char path[INDIGO_VALUE_SIZE];
+			char buffer[INDIGO_VALUE_SIZE] = { 0 };
+			long ra_position = PRIVATE_DATA->ra_home_position;
+			long dec_position = PRIVATE_DATA->dec_home_position;
+			synscan_make_park_file_path(device, path, sizeof(path));
+			indigo_uni_handle *file = indigo_uni_open_file(path, INDIGO_LOG_DEBUG);
+			if (file != NULL) {
+				long count = indigo_uni_read(file, buffer, sizeof(buffer) - 1);
+				if (count > 0) {
+					buffer[count] = 0;
+					if (sscanf(buffer, "%lx %lx", &ra_position, &dec_position) != 2) {
+						ra_position = PRIVATE_DATA->ra_home_position;
+						dec_position = PRIVATE_DATA->dec_home_position;
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to parse saved SynScan park position: %s", buffer);
+					}
+				}
+				indigo_uni_close(&file);
+				if (remove_file) {
+					indigo_uni_remove(path);
+				}
+			}
+			char command[16];
+			snprintf(command, sizeof(command), ":E%c%s", axis, synscan_hex24(axis == SYNSCAN_AXIS_RA ? ra_position : dec_position));
+			return synscan_command(device, command, NULL, 0);
+		}
+
+		static bool synscan_has_snap_port(int model_code) {
+			switch (model_code) {
+			case 0x04: // EQ8
+			case 0x05: // AZEQ6
+			case 0x06: // AZEQ5
+			case 0x0A: // Star Adventurer
+			case 0x23: // EQ6-R Pro
+			case 0xA5: // AZGTi
+				return true;
+			}
+			return false;
+		}
+
+		static bool synscan_set_snap_port(indigo_device *device, bool enabled) {
+			char command[8];
+			snprintf(command, sizeof(command), ":O%c%c", SYNSCAN_AXIS_RA, enabled ? '1' : '0');
+			return synscan_command(device, command, NULL, 0);
+		}
+
+		static void synscan_set_model_info(indigo_device *device, long version) {
+			int release = (int)(version & 0xFF);
+			int revision = (int)((version >> 8) & 0xFF);
+			int model = (int)((version >> 16) & 0xFF);
+			PRIVATE_DATA->model_code = model;
+			PRIVATE_DATA->snap_port_supported = synscan_has_snap_port(model);
+			snprintf(MOUNT_INFO_FIRMWARE_ITEM->text.value, INDIGO_VALUE_SIZE, "%2d.%02d", release, revision);
+			snprintf(MOUNT_INFO_VENDOR_ITEM->text.value, INDIGO_VALUE_SIZE, "Sky-Watcher SynScan");
+			switch (model) {
+			case 0x00:
+				snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "EQ6");
+				break;
+			case 0x01:
+				snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "HEQ5");
+				break;
+			case 0x02:
+				snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "EQ5");
+				break;
+			case 0x03:
+				snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "EQ3");
+				break;
+			case 0x04:
+				snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "EQ8");
+				break;
+			case 0x05:
+				snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "AZEQ6");
+				break;
+			case 0x06:
+				snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "AZEQ5");
+				break;
+			case 0x0A:
+				snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "Star Adventurer");
+				break;
+			case 0x0C:
+				snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "Star Adventurer GTi");
+				break;
+			case 0x20:
+				snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "EQ8-R Pro");
+				break;
+			case 0x22:
+				snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "AZEQ6 Pro");
+				break;
+			case 0x23:
+				snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "EQ6-R Pro");
+				break;
+			case 0x24:
+				snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "EQ6 Pro");
+				break;
+			case 0x25:
+				snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "CQ350 Pro");
+				break;
+			case 0x31:
+				snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "EQ5 Pro");
+				break;
+			case 0x80:
+				snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "GT");
+				break;
+			case 0x81:
+				snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "MF");
+				break;
+			case 0x82:
+				snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "114GT");
+				break;
+			case 0x83:
+				snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "StarSeek");
+				break;
+			case 0x90:
+				snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "DOB");
+				break;
+			case 0xA2:
+				snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "AZ-GTe");
+				break;
+			case 0xA5:
+				snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "AZGTi");
+				break;
+			case 0x44:
+				snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "Wave 100i");
+				break;
+			case 0x45:
+				snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "Wave 150i");
+				break;
+			default:
+				snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "CUSTOM (%02x)", model);
+				break;
+			}
+		}
+
+		static bool synscan_configure(indigo_device *device) {
+			long version = 0;
+			long ra_status = 0;
+			long dec_status = 0;
+			if (!synscan_firmware_version(device, &version)) {
+				return false;
+			}
+			synscan_set_model_info(device, version);
+			if (!synscan_axis_status_query(device, SYNSCAN_AXIS_RA, &ra_status)) {
+				return false;
+			}
+			if (!synscan_axis_status_query(device, SYNSCAN_AXIS_DEC, &dec_status)) {
+				return false;
+			}
+			if ((ra_status & SYNSCAN_STATUS_RUNNING) != 0) {
+				synscan_stop_axis_and_wait(device, SYNSCAN_AXIS_RA, NULL);
+			}
+			if ((dec_status & SYNSCAN_STATUS_RUNNING) != 0) {
+				synscan_stop_axis_and_wait(device, SYNSCAN_AXIS_DEC, NULL);
+			}
+			if (!synscan_axis_long_query(device, 'a', SYNSCAN_AXIS_RA, &PRIVATE_DATA->ra_total_steps)) {
+				return false;
+			}
+			if (!synscan_axis_long_query(device, 'a', SYNSCAN_AXIS_DEC, &PRIVATE_DATA->dec_total_steps)) {
+				return false;
+			}
+			synscan_axis_long_query(device, 's', SYNSCAN_AXIS_RA, &PRIVATE_DATA->ra_worm_steps);
+			synscan_axis_long_query(device, 's', SYNSCAN_AXIS_DEC, &PRIVATE_DATA->dec_worm_steps);
+			if (!synscan_axis_long_query(device, 'b', SYNSCAN_AXIS_RA, &PRIVATE_DATA->ra_timer_frequency)) {
+				return false;
+			}
+			if (!synscan_axis_long_query(device, 'b', SYNSCAN_AXIS_DEC, &PRIVATE_DATA->dec_timer_frequency)) {
+				return false;
+			}
+			if (!synscan_axis_code_query(device, 'g', SYNSCAN_AXIS_RA, &PRIVATE_DATA->ra_high_speed_ratio)) {
+				return false;
+			}
+			if (!synscan_axis_code_query(device, 'g', SYNSCAN_AXIS_DEC, &PRIVATE_DATA->dec_high_speed_ratio)) {
+				return false;
+			}
+			if (!synscan_ext_inquiry(device, SYNSCAN_AXIS_RA, SYNSCAN_EXT_GET_FEATURES, &PRIVATE_DATA->ra_features)) {
+				PRIVATE_DATA->ra_features = 0;
+			}
+			if (!synscan_ext_inquiry(device, SYNSCAN_AXIS_DEC, SYNSCAN_EXT_GET_FEATURES, &PRIVATE_DATA->dec_features)) {
+				PRIVATE_DATA->dec_features = 0;
+			}
+			MOUNT_OPERATING_MODE_PROPERTY->hidden = !((PRIVATE_DATA->ra_features & SYNSCAN_FEATURE_AZEQ) || (PRIVATE_DATA->dec_features & SYNSCAN_FEATURE_AZEQ));
+			MOUNT_USE_ENCODERS_PROPERTY->hidden = !((PRIVATE_DATA->ra_features & SYNSCAN_FEATURE_ENCODER) || (PRIVATE_DATA->dec_features & SYNSCAN_FEATURE_ENCODER));
+			MOUNT_PEC_PROPERTY->hidden = MOUNT_PEC_TRAINING_PROPERTY->hidden = !((PRIVATE_DATA->ra_features & SYNSCAN_FEATURE_PPEC) || (PRIVATE_DATA->dec_features & SYNSCAN_FEATURE_PPEC));
+			MOUNT_AUTOHOME_PROPERTY->hidden = MOUNT_AUTOHOME_SETTINGS_PROPERTY->hidden = !((PRIVATE_DATA->ra_features & SYNSCAN_FEATURE_HOME_INDEXER) && (PRIVATE_DATA->dec_features & SYNSCAN_FEATURE_HOME_INDEXER));
+			MOUNT_POLARSCOPE_PROPERTY->hidden = !synscan_set_polarscope_brightness(device, 0);
+			if (!MOUNT_POLARSCOPE_PROPERTY->hidden) {
+				MOUNT_POLARSCOPE_BRIGHTNESS_ITEM->number.value = 255;
+			}
+			if (!MOUNT_PEC_PROPERTY->hidden) {
+				indigo_set_switch(MOUNT_PEC_PROPERTY, PRIVATE_DATA->ra_features & SYNSCAN_FEATURE_IN_PPEC ? MOUNT_PEC_ENABLED_ITEM : MOUNT_PEC_DISABLED_ITEM, true);
+			}
+			if (!MOUNT_PEC_TRAINING_PROPERTY->hidden) {
+				indigo_set_switch(MOUNT_PEC_TRAINING_PROPERTY, (PRIVATE_DATA->ra_features & SYNSCAN_FEATURE_IN_PPEC_TRAINING) || (PRIVATE_DATA->dec_features & SYNSCAN_FEATURE_IN_PPEC_TRAINING) ? MOUNT_PEC_TRAINIG_STARTED_ITEM : MOUNT_PEC_TRAINIG_STOPPED_ITEM, true);
+			}
+			PRIVATE_DATA->ra_home_position = 0x800000;
+			PRIVATE_DATA->dec_home_position = 0x800000 + (PRIVATE_DATA->dec_total_steps / 4);
+			PRIVATE_DATA->ra_zero_position = PRIVATE_DATA->ra_home_position - (PRIVATE_DATA->ra_total_steps / 4);
+			PRIVATE_DATA->dec_zero_position = PRIVATE_DATA->dec_home_position - (PRIVATE_DATA->dec_total_steps / 4);
+			if ((ra_status & SYNSCAN_STATUS_INITIALIZED) == 0) {
+				if (!synscan_axis_command(device, 'F', SYNSCAN_AXIS_RA)) {
+					return false;
+				}
+				if (!synscan_restore_position(device, SYNSCAN_AXIS_RA, false)) {
+					return false;
+				}
+			}
+			if ((dec_status & SYNSCAN_STATUS_INITIALIZED) == 0) {
+				if (!synscan_axis_command(device, 'F', SYNSCAN_AXIS_DEC)) {
+					return false;
+				}
+				if (!synscan_restore_position(device, SYNSCAN_AXIS_DEC, true)) {
+					return false;
+				}
+			}
+			synscan_axis_long_query(device, 'j', SYNSCAN_AXIS_RA, &PRIVATE_DATA->ra_axis_position);
+			synscan_axis_long_query(device, 'j', SYNSCAN_AXIS_DEC, &PRIVATE_DATA->dec_axis_position);
+			PRIVATE_DATA->global_mode = SYNSCAN_GLOBAL_IDLE;
+			PRIVATE_DATA->ra_axis_mode = SYNSCAN_AXIS_IDLE;
+			PRIVATE_DATA->dec_axis_mode = SYNSCAN_AXIS_IDLE;
+			PRIVATE_DATA->configured = true;
+			PRIVATE_DATA->parked = false;
+			PRIVATE_DATA->homed = false;
+			PRIVATE_DATA->current_tracking_rate = 0;
+			PRIVATE_DATA->southern_hemisphere = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value < 0;
+			indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
+			indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
+			return true;
+		}
+
+		static bool synscan_udp_discovery(char *host, size_t host_size) {
+			char command[] = ":e1\r";
+			char response[16] = { 0 };
+			if (!indigo_perform_active_discovery("255.255.255.255", SYNSCAN_DEFAULT_UDP_PORT, 1, command, (int)strlen(command), host, (int)host_size, response, sizeof(response))) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No SynScan mount detected by UDP broadcast");
+				return false;
+			}
+			size_t response_length = strlen(response);
+			if (response_length < 2 || response[0] != '=' || response[response_length - 1] != '\r') {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No SynScan mount detected by UDP broadcast");
+				return false;
+			}
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "SynScan mount detected by UDP broadcast at %s", host);
+			return true;
+		}
+
+		static bool synscan_autodetect_udp(indigo_device *device) {
+			char host[INDIGO_VALUE_SIZE] = { 0 };
+			if (!synscan_udp_discovery(host, sizeof(host))) {
+				return false;
+			}
+			char url[INDIGO_VALUE_SIZE];
+			snprintf(url, sizeof(url), "udp://%s:%d", host, SYNSCAN_DEFAULT_UDP_PORT);
+			PRIVATE_DATA->udp = true;
+			PRIVATE_DATA->handle = indigo_uni_open_url(url, SYNSCAN_DEFAULT_UDP_PORT, INDIGO_UDP_HANDLE, INDIGO_LOG_DEBUG);
+			if (PRIVATE_DATA->handle == NULL) {
+				return false;
+			}
+			indigo_uni_set_socket_read_timeout(PRIVATE_DATA->handle, SYNSCAN_COMMAND_TIMEOUT);
+			indigo_uni_set_socket_write_timeout(PRIVATE_DATA->handle, SYNSCAN_COMMAND_TIMEOUT);
+			if (!synscan_probe_handle(device)) {
+				indigo_uni_close(&PRIVATE_DATA->handle);
+				return false;
+			}
+			snprintf(url, sizeof(url), "synscan://%s:%d", host, SYNSCAN_DEFAULT_UDP_PORT);
+			INDIGO_COPY_VALUE(DEVICE_PORT_ITEM->text.value, url);
+			indigo_update_property(device, DEVICE_PORT_PROPERTY, "Mount detected by UDP broadcast");
+			return true;
+		}
+
+		static bool synscan_open(indigo_device *device) {
+			char *name = DEVICE_PORT_ITEM->text.value;
+			if (PRIVATE_DATA->handle != NULL) {
+				return true;
+			}
+			if (!strncmp(name, "synscan://", 10)) {
+				PRIVATE_DATA->udp = true;
+				if (name[10] == 0) {
+					return synscan_autodetect_udp(device);
+				}
+				char url[INDIGO_VALUE_SIZE];
+				snprintf(url, sizeof(url), "udp://%s", name + 10);
+				PRIVATE_DATA->handle = indigo_uni_open_url(url, SYNSCAN_DEFAULT_UDP_PORT, INDIGO_UDP_HANDLE, INDIGO_LOG_DEBUG);
+				if (PRIVATE_DATA->handle != NULL) {
+					indigo_uni_set_socket_read_timeout(PRIVATE_DATA->handle, SYNSCAN_COMMAND_TIMEOUT);
+					indigo_uni_set_socket_write_timeout(PRIVATE_DATA->handle, SYNSCAN_COMMAND_TIMEOUT);
+				}
+			} else {
+				PRIVATE_DATA->udp = false;
+				PRIVATE_DATA->handle = indigo_uni_open_serial_with_config(name, DEVICE_BAUDRATE_ITEM->text.value, INDIGO_LOG_DEBUG);
+			}
+			if (PRIVATE_DATA->handle == NULL) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", name);
+				return false;
+			}
+			if (!synscan_probe_handle(device)) {
+				indigo_uni_close(&PRIVATE_DATA->handle);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "No SynScan response from %s", name);
+				return false;
+			}
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s @ %s", name, PRIVATE_DATA->udp ? "UDP" : DEVICE_BAUDRATE_ITEM->text.value);
+			return true;
+		}
+
+		static void synscan_close(indigo_device *device) {
+			if (PRIVATE_DATA->handle != NULL) {
+				indigo_uni_close(&PRIVATE_DATA->handle);
+			}
+			PRIVATE_DATA->udp = false;
+		}
+
+		static bool synscan_validate_handle(indigo_device *device) {
+			if (PRIVATE_DATA->handle == NULL) {
+				return false;
+			}
+			if (PRIVATE_DATA->handle->type == INDIGO_UDP_HANDLE) {
+				return true;
+			}
+			if (!indigo_uni_is_valid(PRIVATE_DATA->handle)) {
+				synscan_handle_connection_loss(device);
+				return false;
+			}
+			return true;
+		}
+
+		static void synscan_handle_connection_loss(indigo_device *device) {
+			if (PRIVATE_DATA->handle != NULL) {
+				bool was_connected = CONNECTION_CONNECTED_ITEM->sw.value && CONNECTION_PROPERTY->state == INDIGO_OK_STATE;
+				indigo_device *master = device->master_device != NULL ? device->master_device : device;
+				synscan_close(master);
+				if (was_connected) {
+					indigo_device_disconnect(NULL, master->name);
+					indigo_execute_handler(master, indigo_disconnect_slave_devices);
+				}
+			}
+		}
+	}
+	// on_init { }
+	// on_shutdown { }
+	mount {
+		name = "Mount SynScan";
+		code {
+			static int mount_manual_slew_rate_index(indigo_device *device) {
+				if (MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value) {
+					return 4;
+				}
+				if (MOUNT_SLEW_RATE_FIND_ITEM->sw.value) {
+					return 6;
+				}
+				if (MOUNT_SLEW_RATE_MAX_ITEM->sw.value) {
+					return 9;
+				}
+				return 1;
+			}
+		}
+		on_timer {
+			if (!IS_CONNECTED || PRIVATE_DATA->handle == NULL) {
+				return;
+			}
+			synscan_update_mount_coordinates(device);
+			indigo_execute_handler_in(device, PRIVATE_DATA->global_mode == SYNSCAN_GLOBAL_IDLE ? 1 : 0.5, mount_timer_callback);
+		}
+		on_connect {
+			connection_result = synscan_configure(device);
+		}
+		// on_disconnect { }
+		on_attach {
+			MOUNT_PARK_PARKED_ITEM->sw.value = false;
+			MOUNT_PARK_UNPARKED_ITEM->sw.value = true;
+			MOUNT_PARK_SET_PROPERTY->hidden = false;
+			MOUNT_PARK_POSITION_PROPERTY->hidden = false;
+			MOUNT_HOME_PROPERTY->hidden = false;
+			MOUNT_HOME_SET_PROPERTY->hidden = false;
+			MOUNT_HOME_POSITION_PROPERTY->hidden = false;
+			MOUNT_TRACKING_ON_ITEM->sw.value = false;
+			MOUNT_TRACKING_OFF_ITEM->sw.value = true;
+			strncpy(MOUNT_GUIDE_RATE_PROPERTY->label, "ST4 guide rate", INDIGO_VALUE_SIZE);
+			MOUNT_RAW_COORDINATES_PROPERTY->hidden = false;
+			DEVICE_PORTS_PROPERTY->hidden = false;
+			indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
+			DEVICE_PORT_PROPERTY->hidden = false;
+			DEVICE_BAUDRATE_PROPERTY->hidden = false;
+			indigo_set_switch(MOUNT_ALIGNMENT_MODE_PROPERTY, MOUNT_ALIGNMENT_MODE_NEAREST_POINT_ITEM, true);
+			MOUNT_ALIGNMENT_MODE_PROPERTY->hidden = false;
+			MOUNT_ALIGNMENT_MODE_PROPERTY->count = 2;
+			MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->hidden = false;
+			MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->rule = INDIGO_ANY_OF_MANY_RULE;
+			MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->hidden = false;
+			MOUNT_EPOCH_PROPERTY->perm = INDIGO_RO_PERM;
+			MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
+			ADDITIONAL_INSTANCES_PROPERTY->hidden = device->base_device != NULL;
+		}
+		// on_detach { }
+		inherited MOUNT_PARK {
+			on_change {
+				bool ok = true;
+				if (MOUNT_PARK_PARKED_ITEM->sw.value) {
+					long ra_target = 0;
+					long dec_target = 0;
+					PRIVATE_DATA->abort_motion = false;
+					PRIVATE_DATA->global_mode = SYNSCAN_GLOBAL_PARKING;
+					PRIVATE_DATA->homed = false;
+					synscan_update_mount_state(device);
+					synscan_ha_dec_to_steps(device, MOUNT_PARK_POSITION_HA_ITEM->number.value, MOUNT_PARK_POSITION_DEC_ITEM->number.value, &ra_target, &dec_target);
+					ok = ok && synscan_slew_axis_to_steps(device, SYNSCAN_AXIS_RA, ra_target);
+					ok = ok && synscan_slew_axis_to_steps(device, SYNSCAN_AXIS_DEC, dec_target);
+					ok = ok && synscan_wait_axis_stopped(device, SYNSCAN_AXIS_RA, &PRIVATE_DATA->abort_motion);
+					ok = ok && synscan_wait_axis_stopped(device, SYNSCAN_AXIS_DEC, &PRIVATE_DATA->abort_motion);
+					ok = ok && synscan_update_axis_positions(device);
+					ok = ok && synscan_save_position(device);
+					PRIVATE_DATA->parked = ok;
+					PRIVATE_DATA->global_mode = SYNSCAN_GLOBAL_IDLE;
+					if (ok) {
+						synscan_clear_tracking_state(device);
+					}
+					if (!ok) {
+						MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
+					}
+					synscan_update_mount_state(device);
+				} else {
+					PRIVATE_DATA->parked = false;
+					synscan_update_mount_state(device);
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited MOUNT_HOME {
+			on_change {
+				bool ok = true;
+				if (MOUNT_HOME_ITEM->sw.value) {
+					long ra_target = 0;
+					long dec_target = 0;
+					MOUNT_HOME_ITEM->sw.value = false;
+					PRIVATE_DATA->abort_motion = false;
+					PRIVATE_DATA->global_mode = SYNSCAN_GLOBAL_HOMING;
+					PRIVATE_DATA->homed = false;
+					synscan_update_mount_state(device);
+					synscan_ha_dec_to_steps(device, MOUNT_HOME_POSITION_HA_ITEM->number.value, MOUNT_HOME_POSITION_DEC_ITEM->number.value, &ra_target, &dec_target);
+					ok = ok && synscan_slew_axis_to_steps(device, SYNSCAN_AXIS_RA, ra_target);
+					ok = ok && synscan_slew_axis_to_steps(device, SYNSCAN_AXIS_DEC, dec_target);
+					ok = ok && synscan_wait_axis_stopped(device, SYNSCAN_AXIS_RA, &PRIVATE_DATA->abort_motion);
+					ok = ok && synscan_wait_axis_stopped(device, SYNSCAN_AXIS_DEC, &PRIVATE_DATA->abort_motion);
+					PRIVATE_DATA->global_mode = SYNSCAN_GLOBAL_IDLE;
+					PRIVATE_DATA->homed = ok;
+					if (ok) {
+						synscan_clear_tracking_state(device);
+					}
+				}
+				if (!ok) {
+					MOUNT_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				synscan_update_mount_state(device);
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited MOUNT_EQUATORIAL_COORDINATES {
+			preserve_values = true;
+			on_change {
+				if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
+					MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
+					MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
+					indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
+					return;
+				}
+				long ra_target = 0;
+				long dec_target = 0;
+				synscan_radec_to_steps(device, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target, &ra_target, &dec_target);
+				PRIVATE_DATA->abort_motion = false;
+				PRIVATE_DATA->global_mode = SYNSCAN_GLOBAL_SLEWING;
+				PRIVATE_DATA->homed = false;
+				synscan_update_mount_state(device);
+				bool ok = synscan_slew_axis_to_steps(device, SYNSCAN_AXIS_RA, ra_target);
+				ok = ok && synscan_slew_axis_to_steps(device, SYNSCAN_AXIS_DEC, dec_target);
+				ok = ok && synscan_wait_axis_stopped(device, SYNSCAN_AXIS_RA, &PRIVATE_DATA->abort_motion);
+				ok = ok && synscan_wait_axis_stopped(device, SYNSCAN_AXIS_DEC, &PRIVATE_DATA->abort_motion);
+				PRIVATE_DATA->global_mode = SYNSCAN_GLOBAL_IDLE;
+				if (ok && MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
+					PRIVATE_DATA->current_tracking_rate = synscan_tracking_rate(device);
+					PRIVATE_DATA->southern_hemisphere = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value < 0;
+					ok = synscan_slew_axis_at_rate(device, SYNSCAN_AXIS_RA, PRIVATE_DATA->current_tracking_rate);
+					PRIVATE_DATA->ra_axis_mode = ok ? SYNSCAN_AXIS_TRACKING : SYNSCAN_AXIS_IDLE;
+					indigo_set_switch(MOUNT_TRACKING_PROPERTY, ok ? MOUNT_TRACKING_ON_ITEM : MOUNT_TRACKING_OFF_ITEM, true);
+					MOUNT_TRACKING_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+					indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+				}
+				if (!ok) {
+					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				synscan_update_mount_state(device);
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited MOUNT_TRACKING {
+			on_change {
+				bool ok = true;
+				if (MOUNT_TRACKING_ON_ITEM->sw.value) {
+					PRIVATE_DATA->current_tracking_rate = synscan_tracking_rate(device);
+					PRIVATE_DATA->southern_hemisphere = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value < 0;
+					ok = synscan_slew_axis_at_rate(device, SYNSCAN_AXIS_RA, PRIVATE_DATA->current_tracking_rate);
+					PRIVATE_DATA->ra_axis_mode = ok ? SYNSCAN_AXIS_TRACKING : SYNSCAN_AXIS_IDLE;
+				} else {
+					ok = synscan_stop_axis_and_wait(device, SYNSCAN_AXIS_RA, NULL);
+					PRIVATE_DATA->current_tracking_rate = 0;
+					PRIVATE_DATA->ra_axis_mode = SYNSCAN_AXIS_IDLE;
+				}
+				if (!ok) {
+					MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				synscan_update_mount_state(device);
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited MOUNT_TRACK_RATE {
+			on_change {
+				bool ok = true;
+				if (MOUNT_TRACKING_ON_ITEM->sw.value) {
+					PRIVATE_DATA->current_tracking_rate = synscan_tracking_rate(device);
+					PRIVATE_DATA->southern_hemisphere = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value < 0;
+					ok = synscan_slew_axis_at_rate(device, SYNSCAN_AXIS_RA, PRIVATE_DATA->current_tracking_rate);
+				}
+				if (!ok) {
+					MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				synscan_update_mount_state(device);
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited MOUNT_MOTION_RA {
+			on_change {
+				static const double rates[] = { 1.25, 2, 8, 16, 32, 70, 100, 625, 725, 825 };
+				bool ok = true;
+				double rate = rates[mount_manual_slew_rate_index(device)] * SIDEREAL_RATE;
+				if (MOUNT_MOTION_WEST_ITEM->sw.value) {
+					ok = synscan_slew_axis_at_rate(device, SYNSCAN_AXIS_RA, rate);
+					PRIVATE_DATA->ra_axis_mode = SYNSCAN_AXIS_MANUAL_SLEWING;
+					PRIVATE_DATA->homed = false;
+				} else if (MOUNT_MOTION_EAST_ITEM->sw.value) {
+					ok = synscan_slew_axis_at_rate(device, SYNSCAN_AXIS_RA, -rate);
+					PRIVATE_DATA->ra_axis_mode = SYNSCAN_AXIS_MANUAL_SLEWING;
+					PRIVATE_DATA->homed = false;
+				} else {
+					ok = synscan_stop_axis_and_wait(device, SYNSCAN_AXIS_RA, NULL);
+					PRIVATE_DATA->ra_axis_mode = SYNSCAN_AXIS_IDLE;
+				}
+				if (!ok) {
+					MOUNT_MOTION_RA_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				synscan_update_mount_state(device);
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited MOUNT_MOTION_DEC {
+			on_change {
+				static const double rates[] = { 0.5, 1, 8, 16, 32, 70, 100, 625, 725, 825 };
+				bool ok = true;
+				double rate = rates[mount_manual_slew_rate_index(device)] * SIDEREAL_RATE;
+				if (MOUNT_MOTION_NORTH_ITEM->sw.value) {
+					ok = synscan_slew_axis_at_rate(device, SYNSCAN_AXIS_DEC, -rate);
+					PRIVATE_DATA->dec_axis_mode = SYNSCAN_AXIS_MANUAL_SLEWING;
+					PRIVATE_DATA->homed = false;
+				} else if (MOUNT_MOTION_SOUTH_ITEM->sw.value) {
+					ok = synscan_slew_axis_at_rate(device, SYNSCAN_AXIS_DEC, rate);
+					PRIVATE_DATA->dec_axis_mode = SYNSCAN_AXIS_MANUAL_SLEWING;
+					PRIVATE_DATA->homed = false;
+				} else {
+					ok = synscan_stop_axis_and_wait(device, SYNSCAN_AXIS_DEC, NULL);
+					PRIVATE_DATA->dec_axis_mode = SYNSCAN_AXIS_IDLE;
+				}
+				if (!ok) {
+					MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				synscan_update_mount_state(device);
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited MOUNT_ABORT_MOTION {
+			on_change {
+				PRIVATE_DATA->abort_motion = true;
+				synscan_axis_command(device, 'L', SYNSCAN_AXIS_RA);
+				synscan_axis_command(device, 'L', SYNSCAN_AXIS_DEC);
+				synscan_invalidate_axis_configs(device);
+				MOUNT_ABORT_MOTION_ITEM->sw.value = false;
+				PRIVATE_DATA->global_mode = SYNSCAN_GLOBAL_IDLE;
+				PRIVATE_DATA->ra_axis_mode = SYNSCAN_AXIS_IDLE;
+				PRIVATE_DATA->dec_axis_mode = SYNSCAN_AXIS_IDLE;
+				PRIVATE_DATA->homed = false;
+				synscan_update_mount_state(device);
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited MOUNT_STATE {
+			hidden = false;
+			// on_change { }
+			// on_attach { }
+			// on_detach { }
+			perm = INDIGO_RO_PERM;
+		}
+		number MOUNT_POLARSCOPE {
+			name = MOUNT_POLARSCOPE_PROPERTY_NAME;
+			group = MOUNT_MAIN_GROUP;
+			label = "Polarscope";
+			hidden = true;
+			persistent = true;
+			on_change {
+				bool ok = synscan_set_polarscope_brightness(device, (int)MOUNT_POLARSCOPE_BRIGHTNESS_ITEM->number.value);
+				if (!ok) {
+					MOUNT_POLARSCOPE_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+			item MOUNT_POLARSCOPE_BRIGHTNESS {
+				name = MOUNT_POLARSCOPE_BRIGHTNESS_ITEM_NAME;
+				label = "Polarscope Brightness";
+				value = 0;
+				min = 0;
+				max = 255;
+				step = 0;
+			}
+		}
+		switch MOUNT_USE_ENCODERS {
+			name = MOUNT_USE_ENCODERS_PROPERTY_NAME;
+			group = MOUNT_MAIN_GROUP;
+			label = "Use encoders";
+			rule = INDIGO_ANY_OF_MANY_RULE;
+			hidden = true;
+			persistent = true;
+			on_change {
+				bool ok = true;
+				ok = ok && synscan_ext_setting(device, SYNSCAN_AXIS_RA, MOUNT_USE_RA_ENCODER_ITEM->sw.value ? SYNSCAN_EXT_TURN_ENCODER_ON : SYNSCAN_EXT_TURN_ENCODER_OFF);
+				ok = ok && synscan_ext_setting(device, SYNSCAN_AXIS_DEC, MOUNT_USE_DEC_ENCODER_ITEM->sw.value ? SYNSCAN_EXT_TURN_ENCODER_ON : SYNSCAN_EXT_TURN_ENCODER_OFF);
+				if (!ok) {
+					MOUNT_USE_ENCODERS_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+			item MOUNT_USE_RA_ENCODER {
+				name = MOUNT_USE_RA_ENCODER_ITEM_NAME;
+				label = "Use RA encoder";
+				value = false;
+			}
+			item MOUNT_USE_DEC_ENCODER {
+				name = MOUNT_USE_DEC_ENCODER_ITEM_NAME;
+				label = "Use Dec encoder";
+				value = false;
+			}
+		}
+		inherited MOUNT_GUIDE_RATE {
+			on_change {
+				bool ok = true;
+				ok = ok && synscan_set_st4_guide_rate(device, SYNSCAN_AXIS_RA, MOUNT_GUIDE_RATE_RA_ITEM->number.value);
+				ok = ok && synscan_set_st4_guide_rate(device, SYNSCAN_AXIS_DEC, MOUNT_GUIDE_RATE_DEC_ITEM->number.value);
+				if (!ok) {
+					MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited MOUNT_PEC {
+			on_change {
+				bool ok = synscan_ext_setting(device, SYNSCAN_AXIS_RA, MOUNT_PEC_ENABLED_ITEM->sw.value ? SYNSCAN_EXT_TURN_PPEC_ON : SYNSCAN_EXT_TURN_PPEC_OFF);
+				if (!ok) {
+					MOUNT_PEC_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited MOUNT_PEC_TRAINING {
+			on_change {
+				bool ok = synscan_ext_setting(device, SYNSCAN_AXIS_RA, MOUNT_PEC_TRAINIG_STARTED_ITEM->sw.value ? SYNSCAN_EXT_START_PPEC_TRAINING : SYNSCAN_EXT_STOP_PPEC_TRAINING);
+				if (!ok) {
+					MOUNT_PEC_TRAINING_PROPERTY->state = INDIGO_ALERT_STATE;
+				} else if (MOUNT_PEC_TRAINIG_STARTED_ITEM->sw.value) {
+					indigo_set_timer(device, 1, synscan_ppec_training_timer, NULL);
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+		switch MOUNT_AUTOHOME {
+			name = MOUNT_AUTOHOME_PROPERTY_NAME;
+			group = MOUNT_MAIN_GROUP;
+			label = "Auto home";
+			rule = INDIGO_ANY_OF_MANY_RULE;
+			hidden = true;
+			on_change {
+				if (!MOUNT_AUTOHOME_ITEM->sw.value) {
+					indigo_update_property(device, MOUNT_AUTOHOME_PROPERTY, NULL);
+					return;
+				}
+				if (PRIVATE_DATA->parked) {
+					MOUNT_AUTOHOME_ITEM->sw.value = false;
+					MOUNT_AUTOHOME_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, MOUNT_AUTOHOME_PROPERTY, "Mount is parked.");
+					return;
+				}
+				if (PRIVATE_DATA->global_mode != SYNSCAN_GLOBAL_IDLE) {
+					MOUNT_AUTOHOME_ITEM->sw.value = false;
+					MOUNT_AUTOHOME_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, MOUNT_AUTOHOME_PROPERTY, "Auto home not started - mount is busy.");
+					return;
+				}
+				PRIVATE_DATA->global_mode = SYNSCAN_GLOBAL_HOMING;
+				PRIVATE_DATA->homed = false;
+				MOUNT_AUTOHOME_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, MOUNT_AUTOHOME_PROPERTY, "Starting auto home procedure...");
+				synscan_set_coordinate_state(device, INDIGO_BUSY_STATE);
+				synscan_update_mount_state(device);
+				bool ok = synscan_perform_autohome(device);
+				PRIVATE_DATA->global_mode = SYNSCAN_GLOBAL_IDLE;
+				PRIVATE_DATA->homed = ok;
+				MOUNT_AUTOHOME_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+				if (!ok) {
+					synscan_stop_axis_and_wait(device, SYNSCAN_AXIS_RA, NULL);
+					synscan_stop_axis_and_wait(device, SYNSCAN_AXIS_DEC, NULL);
+				}
+				MOUNT_AUTOHOME_ITEM->sw.value = false;
+				if (!synscan_update_mount_coordinates(device)) {
+					synscan_set_coordinate_state(device, INDIGO_OK_STATE);
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+			item MOUNT_AUTOHOME {
+				name = MOUNT_AUTOHOME_ITEM_NAME;
+				label = "Start auto home procedure";
+				value = false;
+			}
+		}
+		number MOUNT_AUTOHOME_SETTINGS {
+			name = MOUNT_AUTOHOME_SETTINGS_PROPERTY_NAME;
+			group = MOUNT_MAIN_GROUP;
+			label = "Auto home settings";
+				hidden = true;
+				persistent = true;
+				on_change {
+				}
+			// on_attach { }
+			// on_detach { }
+			item MOUNT_AUTOHOME_DEC_OFFSET {
+				name = MOUNT_AUTOHOME_DEC_OFFSET_ITEM_NAME;
+				label = "Dec offset";
+				value = 0;
+				min = -90;
+				max = 90;
+				step = 0;
+			}
+		}
+		switch MOUNT_OPERATING_MODE {
+			name = MOUNT_OPERATING_MODE_PROPERTY_NAME;
+			group = MOUNT_MAIN_GROUP;
+			label = "Operating mode";
+			rule = INDIGO_ONE_OF_MANY_RULE;
+				hidden = true;
+				persistent = true;
+				on_change {
+				}
+			// on_attach { }
+			// on_detach { }
+			item POLAR_MODE {
+				name = POLAR_MODE_ITEM_NAME;
+				label = "Polar mode";
+				value = true;
+			}
+			item ALTAZ_MODE {
+				name = ALTAZ_MODE_ITEM_NAME;
+				label = "Alt/Az mode";
+				value = false;
+			}
+		}
+	}
+		guider {
+		name = "Mount SynScan (guider)";
+		code {
+			static void guider_guide_ra_finalizer(indigo_device *device) {
+				double remaining = PRIVATE_DATA->guide_ra_deadline - synscan_now();
+				if (remaining > 0.01) {
+					indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT, remaining, guider_guide_ra_finalizer);
+					return;
+				}
+				bool ok = synscan_slew_axis_at_rate(device, SYNSCAN_AXIS_RA, PRIVATE_DATA->guide_ra_resume_rate);
+				PRIVATE_DATA->guide_ra_deadline = 0;
+				PRIVATE_DATA->guide_ra_direction = 0;
+				PRIVATE_DATA->ra_axis_mode = ok ? SYNSCAN_AXIS_TRACKING : SYNSCAN_AXIS_IDLE;
+				GUIDER_GUIDE_EAST_ITEM->number.value = 0;
+				GUIDER_GUIDE_WEST_ITEM->number.value = 0;
+				GUIDER_GUIDE_RA_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+				indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, ok ? NULL : "Failed to finish RA guide pulse.");
+			}
+
+			static void guider_guide_dec_finalizer(indigo_device *device) {
+				double remaining = PRIVATE_DATA->guide_dec_deadline - synscan_now();
+				if (remaining > 0.01) {
+					indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT, remaining, guider_guide_dec_finalizer);
+					return;
+				}
+				bool ok = synscan_stop_axis_and_wait(device, SYNSCAN_AXIS_DEC, NULL);
+				PRIVATE_DATA->guide_dec_deadline = 0;
+				PRIVATE_DATA->guide_dec_direction = 0;
+				PRIVATE_DATA->dec_axis_mode = SYNSCAN_AXIS_IDLE;
+				GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
+				GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
+				GUIDER_GUIDE_DEC_PROPERTY->state = ok ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+				indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, ok ? NULL : "Failed to finish DEC guide pulse.");
+			}
+		}
+		// on_timer { }
+		on_connect {
+			if (!PRIVATE_DATA->configured) {
+				indigo_device *master = device->master_device != NULL ? device->master_device : device;
+				connection_result = synscan_configure(master);
+			}
+		}
+		// on_disconnect { }
+		on_attach {
+			GUIDER_GUIDE_DEC_PROPERTY->hidden = false;
+			GUIDER_GUIDE_RA_PROPERTY->hidden = false;
+			GUIDER_RATE_PROPERTY->hidden = false;
+			GUIDER_RATE_PROPERTY->count = 2;
+		}
+		// on_detach { }
+		inherited GUIDER_GUIDE_RA {
+				on_change {
+					double duration = 0;
+					int direction = 0;
+					if (PRIVATE_DATA->guide_ra_direction < 0 && GUIDER_GUIDE_WEST_ITEM->number.value > 0) {
+						GUIDER_GUIDE_EAST_ITEM->number.value = 0;
+					} else if (PRIVATE_DATA->guide_ra_direction > 0 && GUIDER_GUIDE_EAST_ITEM->number.value > 0) {
+						GUIDER_GUIDE_WEST_ITEM->number.value = 0;
+					}
+					if (GUIDER_GUIDE_EAST_ITEM->number.value > 0) {
+						duration = GUIDER_GUIDE_EAST_ITEM->number.value / 1000.0;
+						direction = -1;
+					} else if (GUIDER_GUIDE_WEST_ITEM->number.value > 0) {
+						duration = GUIDER_GUIDE_WEST_ITEM->number.value / 1000.0;
+						direction = 1;
+					}
+					if (duration <= 0) {
+						GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
+						indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+						return;
+					}
+					double tracking_rate = PRIVATE_DATA->current_tracking_rate;
+					if (tracking_rate == 0) {
+						GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_ALERT_STATE;
+						indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, "Ignoring RA guide pulse - mount is not tracking.");
+						return;
+					}
+					double guide_rate = tracking_rate + direction * GUIDER_RATE_ITEM->number.value * tracking_rate / 100.0;
+					double deadline = synscan_now() + duration;
+					if (PRIVATE_DATA->guide_ra_direction != 0 && PRIVATE_DATA->guide_ra_direction != direction) {
+						PRIVATE_DATA->guide_ra_deadline = deadline;
+					} else if (deadline > PRIVATE_DATA->guide_ra_deadline) {
+						PRIVATE_DATA->guide_ra_deadline = deadline;
+					}
+					PRIVATE_DATA->guide_ra_direction = direction;
+					PRIVATE_DATA->guide_ra_resume_rate = tracking_rate;
+					bool ok = synscan_slew_axis_at_rate(device, SYNSCAN_AXIS_RA, guide_rate);
+					PRIVATE_DATA->ra_axis_mode = ok ? SYNSCAN_AXIS_GUIDING : SYNSCAN_AXIS_IDLE;
+					GUIDER_GUIDE_RA_PROPERTY->state = ok ? INDIGO_BUSY_STATE : INDIGO_ALERT_STATE;
+					indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, ok ? NULL : "Failed to start RA guide pulse.");
+					if (ok) {
+						indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT, duration, guider_guide_ra_finalizer);
+					}
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited GUIDER_GUIDE_DEC {
+				on_change {
+					double duration = 0;
+					int direction = 0;
+					if (PRIVATE_DATA->guide_dec_direction < 0 && GUIDER_GUIDE_SOUTH_ITEM->number.value > 0) {
+						GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
+					} else if (PRIVATE_DATA->guide_dec_direction > 0 && GUIDER_GUIDE_NORTH_ITEM->number.value > 0) {
+						GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
+					}
+					if (GUIDER_GUIDE_NORTH_ITEM->number.value > 0) {
+						duration = GUIDER_GUIDE_NORTH_ITEM->number.value / 1000.0;
+						direction = -1;
+					} else if (GUIDER_GUIDE_SOUTH_ITEM->number.value > 0) {
+						duration = GUIDER_GUIDE_SOUTH_ITEM->number.value / 1000.0;
+						direction = 1;
+					}
+					if (duration <= 0) {
+						GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+						indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+						return;
+					}
+					double tracking_rate = PRIVATE_DATA->current_tracking_rate != 0 ? PRIVATE_DATA->current_tracking_rate : SIDEREAL_RATE;
+					double guide_rate = direction * GUIDER_DEC_RATE_ITEM->number.value * tracking_rate / 100.0;
+					double deadline = synscan_now() + duration;
+					if (PRIVATE_DATA->guide_dec_direction != 0 && PRIVATE_DATA->guide_dec_direction != direction) {
+						PRIVATE_DATA->guide_dec_deadline = deadline;
+					} else if (deadline > PRIVATE_DATA->guide_dec_deadline) {
+						PRIVATE_DATA->guide_dec_deadline = deadline;
+					}
+					PRIVATE_DATA->guide_dec_direction = direction;
+					bool ok = synscan_slew_axis_at_rate(device, SYNSCAN_AXIS_DEC, guide_rate);
+					PRIVATE_DATA->dec_axis_mode = ok ? SYNSCAN_AXIS_GUIDING : SYNSCAN_AXIS_IDLE;
+					GUIDER_GUIDE_DEC_PROPERTY->state = ok ? INDIGO_BUSY_STATE : INDIGO_ALERT_STATE;
+					indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, ok ? NULL : "Failed to start DEC guide pulse.");
+					if (ok) {
+						indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT, duration, guider_guide_dec_finalizer);
+					}
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited GUIDER_RATE {
+			persistent = true;
+			on_change {
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+	}
+	aux {
+		name = "Mount SynScan (aux)";
+		interface = INDIGO_INTERFACE_AUX_SHUTTER;
+		on_timer {
+			if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+				CCD_EXPOSURE_ITEM->number.value--;
+				if (CCD_EXPOSURE_ITEM->number.value <= 0) {
+					CCD_EXPOSURE_ITEM->number.value = 0;
+					CCD_EXPOSURE_PROPERTY->state = synscan_set_snap_port(device, false) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+				}
+				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+				if (CCD_EXPOSURE_ITEM->number.value > 0) {
+					indigo_execute_priority_handler_in(device, 100, CCD_EXPOSURE_ITEM->number.value < 1 ? CCD_EXPOSURE_ITEM->number.value : 1, aux_timer_callback);
+				}
+			}
+		}
+		on_connect {
+			if (!PRIVATE_DATA->configured) {
+				indigo_device *master = device->master_device != NULL ? device->master_device : device;
+				connection_result = synscan_configure(master);
+			}
+			if (connection_result && !PRIVATE_DATA->snap_port_supported) {
+				connection_result = false;
+			}
+			CCD_ABORT_EXPOSURE_PROPERTY->hidden = !connection_result;
+			CCD_EXPOSURE_PROPERTY->hidden = !connection_result;
+			CCD_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.target = 0;
+			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+		}
+		on_disconnect {
+			if (PRIVATE_DATA->snap_port_supported) {
+				synscan_set_snap_port(device, false);
+			}
+		}
+		// on_attach { }
+		switch CCD_ABORT_EXPOSURE {
+			name = CCD_ABORT_EXPOSURE_PROPERTY_NAME;
+			group = AUX_MAIN_GROUP;
+			label = "Abort exposure";
+			rule = INDIGO_ANY_OF_MANY_RULE;
+			hidden = true;
+			on_change {
+				if (CCD_ABORT_EXPOSURE_ITEM->sw.value && CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+					indigo_cancel_pending_handler(device, aux_timer_callback);
+					synscan_set_snap_port(device, false);
+					INDIGO_UPDATE_PROPERTY_STATE(CCD_EXPOSURE_PROPERTY, INDIGO_ALERT_STATE, NULL);
+				}
+				CCD_ABORT_EXPOSURE_ITEM->sw.value = false;
+				CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+			}
+			item CCD_ABORT_EXPOSURE {
+				name = CCD_ABORT_EXPOSURE_ITEM_NAME;
+				label = "Abort exposure";
+				value = false;
+			}
+		}
+		number CCD_EXPOSURE {
+			name = CCD_EXPOSURE_PROPERTY_NAME;
+			group = AUX_MAIN_GROUP;
+			label = "Start exposure";
+			hidden = true;
+			on_change {
+				if (!PRIVATE_DATA->snap_port_supported) {
+					CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+					return;
+				}
+				bool ok = synscan_set_snap_port(device, true);
+				if (ok) {
+					CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_execute_priority_handler_in(device, 100, CCD_EXPOSURE_ITEM->number.value < 1 ? CCD_EXPOSURE_ITEM->number.value : 1, aux_timer_callback);
+				} else {
+					CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			item CCD_EXPOSURE {
+				name = CCD_EXPOSURE_ITEM_NAME;
+				label = "Start exposure";
+				max = 1000;
+				step = 1;
+				format = "%g";
+			}
+		}
+	}
+}

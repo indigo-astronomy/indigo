@@ -911,6 +911,97 @@ bool indigo_perform_passive_discovery(int port, int timeout, char *host, int max
 	return result;
 }
 
+bool indigo_perform_active_discovery(const char *host, int port, int timeout, const char *payload, int payload_size, char *responder, int max_responder, char *message, int max_message) {
+	bool result = false;
+	if (host == NULL || payload == NULL || payload_size <= 0) {
+		return false;
+	}
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	int udp_socket = socket(AF_INET, SOCK_DGRAM, 0);
+	if (udp_socket < 0) {
+		indigo_error("Failed to create active discovery socket");
+	} else {
+		struct timeval tv;
+		struct sockaddr_in remote_addr;
+		tv.tv_sec = timeout;
+		tv.tv_usec = 0;
+		setsockopt(udp_socket, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(struct timeval));
+		int broadcast = 1;
+		setsockopt(udp_socket, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast));
+		memset((char *)&remote_addr, 0, sizeof(remote_addr));
+		remote_addr.sin_family = AF_INET;
+		remote_addr.sin_port = htons(port);
+		remote_addr.sin_addr.s_addr = inet_addr(host);
+		for (int n = 0; n < 5; n++) {
+			if (sendto(udp_socket, payload, payload_size, 0, (struct sockaddr *)&remote_addr, sizeof(remote_addr)) <= 0) {
+				continue;
+			}
+			struct sockaddr_in reply_addr;
+			socklen_t addrlen = sizeof(reply_addr);
+			unsigned char reply[2048];
+			long recvlen = recvfrom(udp_socket, reply, sizeof(reply) - 1, 0, (struct sockaddr *)&reply_addr, &addrlen);
+			if (recvlen > 0) {
+				reply[recvlen] = 0;
+				if (responder) {
+					strncpy(responder, inet_ntoa(reply_addr.sin_addr), max_responder);
+					responder[max_responder - 1] = 0;
+				}
+				if (message) {
+					strncpy(message, (char *)reply, max_message);
+					message[max_message - 1] = 0;
+				}
+				result = true;
+				break;
+			}
+		}
+		close(udp_socket);
+	}
+#elif defined(INDIGO_WINDOWS)
+	SOCKET udp_socket = socket(AF_INET, SOCK_DGRAM, 0);
+	if (udp_socket < 0) {
+		indigo_error("Failed to create active discovery socket");
+	} else {
+		DWORD timeout_ms = timeout * 1000;
+		struct sockaddr_in remote_addr;
+		setsockopt(udp_socket, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout_ms, sizeof(timeout_ms));
+		BOOL broadcast = TRUE;
+		setsockopt(udp_socket, SOL_SOCKET, SO_BROADCAST, (const char *)&broadcast, sizeof(broadcast));
+		memset((char *)&remote_addr, 0, sizeof(remote_addr));
+		remote_addr.sin_family = AF_INET;
+		remote_addr.sin_port = htons(port);
+		remote_addr.sin_addr.s_addr = inet_addr(host);
+		for (int n = 0; n < 5; n++) {
+			if (sendto(udp_socket, payload, payload_size, 0, (struct sockaddr *)&remote_addr, sizeof(remote_addr)) <= 0) {
+				continue;
+			}
+			struct sockaddr_in reply_addr;
+			socklen_t addrlen = sizeof(reply_addr);
+			unsigned char reply[2048];
+			long recvlen = recvfrom(udp_socket, reply, sizeof(reply) - 1, 0, (struct sockaddr *)&reply_addr, &addrlen);
+			if (recvlen > 0) {
+				reply[recvlen] = 0;
+				if (responder) {
+					wchar_t ipstr[INET_ADDRSTRLEN];
+					InetNtop(AF_INET, &reply_addr.sin_addr, ipstr, sizeof(ipstr));
+					strncpy(responder, indigo_wchar_to_char(ipstr), max_responder);
+					responder[max_responder - 1] = 0;
+				}
+				if (message) {
+					strncpy(message, (char *)reply, max_message);
+					message[max_message - 1] = 0;
+				}
+				result = true;
+				break;
+			}
+		}
+		closesocket(udp_socket);
+	}
+#else
+#pragma message ("TODO: indigo_perform_active_discovery()")
+#endif
+	return result;
+}
+
 indigo_uni_handle *indigo_uni_open_client_socket(const char *host, int port, int type, int log_level) {
 	indigo_uni_handle *handle = NULL;
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)

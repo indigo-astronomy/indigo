@@ -306,7 +306,7 @@ In practice, **Approach 2** is a good way to get started quickly. After extracti
 
 * All property allocation, registration, deletion, and release.
 * The `aux_attach` / `aux_detach` / `aux_enumerate_properties` / `aux_change_property` scaffolding.
-* The `indigo_execute_handler` dispatch for every `on_change` block.
+* The `indigo_execute_handler` dispatch for every non-empty `on_change` block.
 * The connection handler structure including the `svbpowerbox_open` / `svbpowerbox_close` calls (functions with the `<driver_name>_open` / `<driver_name>_close` naming convention are wired in automatically).
 * The `indigo_execute_handler_in(device, 1, aux_timer_callback)` loop.
 * `DRIVER_VERSION`, `DRIVER_NAME`, `DRIVER_LABEL`, and the `indigo_<type>_<name>()` entry point.
@@ -317,12 +317,21 @@ In practice, **Approach 2** is a good way to get started quickly. After extracti
 
 * All actual device communication (open/close/read/write, protocol framing, checksums).
 * The body of `on_timer`, `on_connect`, `on_disconnect`, `on_attach`.
-* The body of every `on_change` handler.
+* The body of every `on_change` handler that needs driver-specific behavior.
 * Any extra helper functions in `code` or `<dev>.code`.
 * Extra fields in `data`.
 * Extra `#define` constants in `define`.
 
 ### Special handling
+
+An empty `on_change { }` block has special copy-only semantics. When a writable
+property only needs to accept new values, leave the block empty; the generator
+emits a direct change branch that copies the incoming values or targets, sets
+the property state to `INDIGO_OK_STATE`, calls `indigo_update_property()`, and
+returns `INDIGO_OK` without scheduling a handler. This applies to both
+driver-defined properties and inherited properties. For inherited properties,
+omitting `on_change` entirely means that no generated change branch is emitted,
+which is the right choice for read-only or pass-through properties.
 
 Four mount-specific properties receive special treatment in the generated change handlers: MOUNT_EQUATORIAL_COORDINATES, MOUNT_MOTION_RA, MOUNT_MOTION_DEC, and MOUNT_TRACKING.
 For each of these, the generator inserts a park-state guard at the very top of the handler — before any user-supplied on_change code runs.

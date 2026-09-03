@@ -280,6 +280,22 @@ Properties are implemented by mount driver base class in [indigo_mount_driver.c]
 
 Properties are implemented by guider driver base class in [indigo_guider_driver.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_guider_driver.c).
 
+## SynScan mount specific properties
+
+| Property name | Type | RO | Required | Item name | Required | Comments |
+| ----- | ----- | ----- | ----- | ----- | ----- | ----- |
+| POLARSCOPE | number | no | no | BRIGHTNESS | yes | Hidden unless the connected SynScan controller accepts polar-scope LED brightness commands. |
+| MOUNT_OPERATING_MODE | switch | no | no | POLAR | yes | Hidden unless the connected controller reports AZ/EQ operating-mode support. |
+|  |  |  |  | ALTAZ | yes | Alt/Az operating mode. |
+| MOUNT_USE_ENCODERS | switch | no | no | RA | yes | Hidden unless the connected controller reports auxiliary encoder support. |
+|  |  |  |  | DEC | yes | Enable DEC auxiliary encoder. |
+| MOUNT_AUTOHOME | switch | no | no | AUTOHOME | yes | Hidden unless the connected controller reports home-indexer support. |
+| MOUNT_AUTOHOME_SETTINGS | number | no | no | DEC_OFFSET | yes | Hidden unless the connected controller reports home-indexer support. |
+
+On SynScan controllers with a snap port, `Mount SynScan (aux)` exposes the standard AUX shutter `CCD_EXPOSURE` and `CCD_ABORT_EXPOSURE` properties.
+
+Properties are implemented by `indigo_drivers/mount_synscan/indigo_mount_synscan.c`.
+
 ## AO specific properties
 
 | Property name | Type | RO | Required | Item name | Required | Comments |

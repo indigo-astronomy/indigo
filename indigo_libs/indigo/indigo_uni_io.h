@@ -189,6 +189,10 @@ INDIGO_EXTERN int indigo_uni_set_cts(indigo_uni_handle *handle, bool state);
  */
 INDIGO_EXTERN bool indigo_perform_passive_discovery(int port, int timeout, char *host, int max_host, char *message, int max_message);
 
+/** Perform active UDP discovery
+ */
+INDIGO_EXTERN bool indigo_perform_active_discovery(const char *host, int port, int timeout, const char *payload, int payload_size, char *responder, int max_responder, char *message, int max_message);
+
 /** Open client socket.
  */
 INDIGO_EXTERN indigo_uni_handle *indigo_uni_open_client_socket(const char *host, int port, int type, int log_level);
