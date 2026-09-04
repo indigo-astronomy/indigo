@@ -5189,6 +5189,7 @@
 		9DE0E7B522C6465500289234 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9DE0E7B622C6465500289234 /* indigo_focuser_dsd.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_dsd.h; sourceTree = "<group>"; };
 		9DE55C982F98C3C700B2C143 /* mount_nexstaraux_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = mount_nexstaraux_simulator.ino; sourceTree = "<group>"; };
+		9DEF3982304AD9A600FD4BC4 /* TIMERS_AND_QUEUES.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = TIMERS_AND_QUEUES.md; sourceTree = "<group>"; };
 		9DF148102D52384D00049345 /* build_windows_sdk.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = build_windows_sdk.sh; sourceTree = "<group>"; };
 		9DF148112D52384D00049345 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		9DF148122D52384D00049345 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -5660,6 +5661,7 @@
 				5912C80B23D2447400A48B75 /* DRIVER_DEVELOPMENT_BASICS.md */,
 				592089392F857B5800E4A595 /* DRIVER_GENERATOR_MIGRATION.md */,
 				59FA7C1A301E348B00A35CFB /* SERIAL_DEVICE_SIMULATORS.md */,
+				9DEF3982304AD9A600FD4BC4 /* TIMERS_AND_QUEUES.md */,
 				5912C80923D2447400A48B75 /* Introduction to INDIGO.pdf */,
 			);
 			path = indigo_docs;

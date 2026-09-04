@@ -260,7 +260,7 @@ static void *timer_callback_func(void *arg) {
 	if (timer->timer_mutex) {
 		pthread_mutex_lock(timer->timer_mutex);
 	}
-	if (timer->timer_data) {
+	if (timer->has_data) {
 		((indigo_timer_with_data_callback)timer->callback)(timer->device, timer->timer_data);
 	} else {
 		((indigo_timer_callback)timer->callback)(timer->device);
@@ -428,11 +428,12 @@ static void reset_timer_state(indigo_timer *timer, double delay) {
 	timer->registry_next = NULL;
 }
 
-static void prepare_timer_for_schedule(indigo_timer *timer, indigo_device *device, double delay, indigo_timer_with_data_callback callback, void *timer_data, pthread_mutex_t *timer_mutex) {
+static void prepare_timer_for_schedule(indigo_timer *timer, indigo_device *device, double delay, indigo_timer_with_data_callback callback, void *timer_data, bool has_data, pthread_mutex_t *timer_mutex) {
 	timer->canceled = false;
 	timer->device = device;
 	timer->callback = callback;
 	timer->timer_data = timer_data;
+	timer->has_data = has_data;
 	timer->timer_mutex = timer_mutex;
 	reset_timer_state(timer, delay);
 }
@@ -447,13 +448,13 @@ static void link_device_timer_locked(indigo_timer *timer) {
 	}
 }
 
-static indigo_timer *create_timer_object(indigo_device *device, double delay, indigo_timer_with_data_callback callback, void *timer_data, pthread_mutex_t *timer_mutex) {
+static indigo_timer *create_timer_object(indigo_device *device, double delay, indigo_timer_with_data_callback callback, void *timer_data, bool has_data, pthread_mutex_t *timer_mutex) {
 	indigo_timer *timer = indigo_safe_malloc(sizeof(indigo_timer));
 	timer->timer_id = next_timer_id++;
 	init_timer_state_primitives(timer);
 	timer->reference = NULL;
 	timer->next = NULL;
-	prepare_timer_for_schedule(timer, device, delay, callback, timer_data, timer_mutex);
+	prepare_timer_for_schedule(timer, device, delay, callback, timer_data, has_data, timer_mutex);
 	register_timer_locked(timer);
 	return timer;
 }
@@ -469,7 +470,7 @@ struct timespec indigo_delay_to_time(double delay) {
 	return normalize_timespec(time);
 }
 
-static bool set_timer(indigo_device *device, double delay, indigo_timer_with_data_callback callback, indigo_timer **timer, void *timer_data, pthread_mutex_t *timer_mutex) {
+static bool set_timer(indigo_device *device, double delay, indigo_timer_with_data_callback callback, indigo_timer **timer, void *timer_data, bool has_data, pthread_mutex_t *timer_mutex) {
 	ensure_timer_scheduler();
 	pthread_mutex_lock(&timer_scheduler.mutex);
 	if (timer != NULL && *timer != NULL) {
@@ -477,7 +478,7 @@ static bool set_timer(indigo_device *device, double delay, indigo_timer_with_dat
 		indigo_error("Attempt to set timer with non-NULL reference");
 		return false;
 	}
-	indigo_timer *t = create_timer_object(device, delay, callback, timer_data, timer_mutex);
+	indigo_timer *t = create_timer_object(device, delay, callback, timer_data, has_data, timer_mutex);
 	t->reference = timer;
 	if (timer != NULL) {
 		*timer = t;
@@ -492,15 +493,15 @@ static bool set_timer(indigo_device *device, double delay, indigo_timer_with_dat
 }
 
 bool indigo_set_timer(indigo_device *device, double delay, indigo_timer_callback callback, indigo_timer **timer) {
-	return set_timer(device, delay, (indigo_timer_with_data_callback)callback, timer, NULL, NULL);
+	return set_timer(device, delay, (indigo_timer_with_data_callback)callback, timer, NULL, false, NULL);
 }
 
 bool indigo_set_timer_with_data(indigo_device *device, double delay, indigo_timer_with_data_callback callback, indigo_timer **timer, void *timer_data) {
-	return set_timer(device, delay, (indigo_timer_with_data_callback)callback, timer, timer_data, NULL);
+	return set_timer(device, delay, (indigo_timer_with_data_callback)callback, timer, timer_data, true, NULL);
 }
 
 bool indigo_set_timer_with_mutex(indigo_device *device, double delay, indigo_timer_callback callback, indigo_timer **timer, pthread_mutex_t *timer_mutex) {
-	return set_timer(device, delay, (indigo_timer_with_data_callback)callback, timer, NULL, timer_mutex);
+	return set_timer(device, delay, (indigo_timer_with_data_callback)callback, timer, NULL, false, timer_mutex);
 }
 
 static bool reschedule_timer_with_callback_locked(double delay, indigo_timer_with_data_callback callback, indigo_timer **timer) {

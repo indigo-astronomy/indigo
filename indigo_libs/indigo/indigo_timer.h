@@ -64,6 +64,7 @@ typedef struct indigo_timer {
 	struct indigo_timer **reference;
 	struct indigo_timer *next;
 	void *timer_data;
+	bool has_data;
 	pthread_mutex_t *timer_mutex;
 	int state;
 	struct timespec at;

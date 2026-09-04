@@ -829,6 +829,17 @@ static void set_timer_with_data_passes_user_data(void) {
 	destroy_state();
 }
 
+static void set_timer_with_data_passes_null_user_data(void) {
+	reset_state();
+	indigo_timer *timer = NULL;
+
+	ASSERT_TRUE(indigo_set_timer_with_data(NULL, 0.01, record_data_callback, &timer, NULL));
+	ASSERT_TRUE(wait_for_count(&state.data_callback_count, 1));
+	ASSERT_TRUE(state.last_data == NULL);
+
+	destroy_state();
+}
+
 static void set_timer_with_mutex_runs_callback_while_mutex_is_locked(void) {
 	reset_state();
 	indigo_device_context context = { 0 };
@@ -2289,6 +2300,7 @@ int main(void) {
 		{ "nonzero_delay_timer_does_not_fire_before_deadline", nonzero_delay_timer_does_not_fire_before_deadline },
 		{ "set_timer_runs_callback_and_clears_reference", set_timer_runs_callback_and_clears_reference },
 		{ "set_timer_with_data_passes_user_data", set_timer_with_data_passes_user_data },
+		{ "set_timer_with_data_passes_null_user_data", set_timer_with_data_passes_null_user_data },
 		{ "set_timer_with_mutex_runs_callback_while_mutex_is_locked", set_timer_with_mutex_runs_callback_while_mutex_is_locked },
 		{ "cancel_timer_prevents_pending_callback", cancel_timer_prevents_pending_callback },
 		{ "cancel_timer_sync_prevents_pending_callback_and_returns_true", cancel_timer_sync_prevents_pending_callback_and_returns_true },
