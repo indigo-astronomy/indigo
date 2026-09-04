@@ -914,6 +914,7 @@ static char *execute_query(char *command, ...) {
 }
 
 static void check_versions(indigo_device *device) {
+	indigo_rename_thread("Version checker");
 	while (true) {
 		bool redefine = false;
 		char *line = execute_query("s_rpi_ctrl.sh --list-available-versions");
@@ -1961,7 +1962,7 @@ static void server_main() {
 // Runs in the worker process (the forked child, or the whole process when --do-not-fork is set):
 // reaps exited driver/INDI subprocesses on SIGCHLD and initiates shutdown on SIGINT/SIGTERM/SIGHUP.
 static void *server_signal_thread(void *arg) {
-	indigo_rename_thread("Signals");
+	indigo_rename_thread("Server signal handler");
 	sigset_t set;
 	sigemptyset(&set);
 	sigaddset(&set, SIGINT);
@@ -1994,7 +1995,7 @@ static void *server_signal_thread(void *arg) {
 // whether the worker should be restarted (SIGHUP) or the server should exit (SIGINT/SIGTERM).
 // SIGCHLD is left to the parent's explicit waitpid(server_pid) loop, avoiding a reap race.
 static void *supervisor_signal_thread(void *arg) {
-	indigo_rename_thread("Signals");
+	indigo_rename_thread("Supervisor signal handler");
 	sigset_t set;
 	sigemptyset(&set);
 	sigaddset(&set, SIGINT);

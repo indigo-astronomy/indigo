@@ -1121,6 +1121,7 @@ indigo_uni_handle *indigo_uni_open_url(const char *url, int default_port, indigo
 #if !defined(INDIGO_CLIENT)
 
 void indigo_uni_open_tcp_server_socket(int *port, indigo_uni_handle **server_handle, void (*worker)(indigo_uni_worker_data *), void *data, void (*callback)(int), int log_level) {
+	indigo_rename_thread("TCP server");
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	int server_socket = socket(PF_INET, SOCK_STREAM, 0);
 	if (server_socket == -1) {

@@ -779,6 +779,7 @@ static indigo_device *devices[MAX_DEVICES];
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void *poll(indigo_device *device) {
+	indigo_rename_thread("Joystick poller");
 	int index = PRIVATE_DATA->index;
 	int joy_fd;
 	char path[128];

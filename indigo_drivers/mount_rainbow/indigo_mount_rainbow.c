@@ -130,6 +130,7 @@ static void rainbow_close(indigo_device *device) {
 }
 
 static void rainbow_reader(indigo_device *device) {
+	indigo_rename_thread("Rainbow reader");
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "Reader started");
 	char response[128];
 	double ra, dec;

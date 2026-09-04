@@ -220,10 +220,10 @@ int libusb_hotplug_deregister_callback_poll(libusb_context *ctx, libusb_hotplug_
 #else
 
 void *indigo_usb_hotplug_thread(void *arg) {
+	indigo_rename_thread("USB hotplug");
 	while (true) {
 		libusb_handle_events(NULL);
 	}
 	return NULL;
 }
 #endif
-

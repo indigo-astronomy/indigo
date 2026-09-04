@@ -129,6 +129,7 @@ static bool wemacro_write(indigo_device *device, uint8_t cmd, uint8_t a, uint8_t
 }
 
 static char *wemacro_reader(indigo_device *device) {
+	indigo_rename_thread("WeMacro reader");
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "started");
 	uint8_t state = wemacro_read(device);
 	if (state == 0xf0) {

@@ -42,6 +42,7 @@
 #include <pthread.h>
 
 #include <indigo/indigo_service_discovery.h>
+#include <indigo/indigo_uni_io.h>
 
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -337,6 +338,7 @@ static void WINAPI browser_callback(DNSServiceRef sdRef, DNSServiceFlags flags, 
 }
 
 static void *service_browser_handler(void *data) {
+	indigo_rename_thread("Service browser");
 	INDIGO_DEBUG(indigo_debug("Service browser started"));
 	while (browser_sd) {
 		DNSServiceProcessResult(browser_sd);
