@@ -130,6 +130,9 @@ static bool start_timer_scheduler_locked(void);
 static void enqueue_finished_worker_locked(pthread_t thread);
 static void reap_finished_workers_locked(void);
 static bool reschedule_timer_with_callback_locked(double delay, indigo_timer_with_data_callback callback, indigo_timer **timer);
+#if !defined(INDIGO_WINDOWS)
+static void reset_timer_scheduler_after_fork_child(void);
+#endif
 
 static inline int timespec_cmp(const struct timespec *a, const struct timespec *b) {
 	if (a->tv_sec < b->tv_sec) return -1;
@@ -183,6 +186,11 @@ static int timer_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t *mutex, co
 }
 
 static void init_timer_scheduler_once(void) {
+#if !defined(INDIGO_WINDOWS)
+	if (pthread_atfork(NULL, NULL, reset_timer_scheduler_after_fork_child) != 0) {
+		indigo_error("Failed to register timer scheduler fork handler");
+	}
+#endif
 	init_timer_cond(&timer_scheduler.cond);
 	timer_scheduler.pending = NULL;
 	timer_scheduler.timers = NULL;
@@ -199,23 +207,20 @@ static void init_timer_scheduler_once(void) {
 
 static bool ensure_timer_scheduler(void) {
 	pthread_once(&timer_scheduler.once, init_timer_scheduler_once);
+	pthread_mutex_lock(&timer_scheduler.mutex);
 #if !defined(INDIGO_WINDOWS)
 	if (timer_scheduler.pid != getpid()) {
-		pthread_mutex_init(&timer_scheduler.mutex, NULL);
-		init_timer_cond(&timer_scheduler.cond);
-		timer_scheduler.pending = NULL;
-		timer_scheduler.timers = NULL;
-		timer_scheduler.finished_workers = NULL;
-		timer_scheduler.thread_started = false;
-		timer_scheduler.start_failed = false;
-		timer_scheduler.ready = false;
-		timer_scheduler.pid = getpid();
-		pthread_mutex_lock(&timer_scheduler.mutex);
-		start_timer_scheduler_locked();
 		pthread_mutex_unlock(&timer_scheduler.mutex);
+		indigo_error("Timer scheduler state was not reset after fork");
+		return false;
 	}
 #endif
-	return timer_scheduler.thread_started && !timer_scheduler.start_failed;
+	if (!timer_scheduler.thread_started && !timer_scheduler.start_failed) {
+		start_timer_scheduler_locked();
+	}
+	bool ready = timer_scheduler.thread_started && !timer_scheduler.start_failed;
+	pthread_mutex_unlock(&timer_scheduler.mutex);
+	return ready;
 }
 
 static bool start_timer_scheduler_locked(void) {
@@ -233,6 +238,21 @@ static bool start_timer_scheduler_locked(void) {
 		return false;
 	}
 }
+
+#if !defined(INDIGO_WINDOWS)
+static void reset_timer_scheduler_after_fork_child(void) {
+	pthread_mutex_init(&timer_scheduler.mutex, NULL);
+	init_timer_cond(&timer_scheduler.cond);
+	timer_scheduler.pending = NULL;
+	timer_scheduler.timers = NULL;
+	timer_scheduler.finished_workers = NULL;
+	timer_scheduler.thread_started = false;
+	timer_scheduler.start_failed = false;
+	timer_scheduler.ready = false;
+	timer_scheduler.pid = getpid();
+	next_timer_id = 0;
+}
+#endif
 
 static void *timer_scheduler_func(void *arg) {
 	(void)arg;

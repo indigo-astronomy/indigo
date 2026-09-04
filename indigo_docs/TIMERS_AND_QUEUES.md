@@ -92,9 +92,12 @@ finished-worker list before returning; the scheduler joins those threads on its
 next pass through the loop.
 
 After `fork()`, the child process must not reuse thread state inherited from the
-parent. On non-Windows platforms the scheduler records the process id and
-reinitializes the scheduler state when a timer API is used in a different
-process.
+parent. On non-Windows platforms a `pthread_atfork()` child handler resets the
+scheduler mutex, condition variable, pending list, live registry, finished
+worker list, and startup flags. The first timer API used in the child then
+starts a new scheduler thread for the child process. A process-id guard remains
+in the normal timer API path so an unreset scheduler state is rejected instead
+of being reinitialized concurrently by multiple child threads.
 
 ## Timer Lifecycle
 
