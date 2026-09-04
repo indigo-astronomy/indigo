@@ -18,6 +18,7 @@
 - [Development Introduction](DEVELOPMENT.md)
 - [Driver Development Basics](DRIVER_DEVELOPMENT_BASICS.md)
   > Every driver also has a README.md file in its own directory.
+- [Timers and Handler Queues](TIMERS_AND_QUEUES.md)
 - [Driver Code Generator Migration](DRIVER_GENERATOR_MIGRATION.md)
 - [Serial Device Simulators](SERIAL_DEVICE_SIMULATORS.md)
 - [Client Development Basics](CLIENT_DEVELOPMENT_BASICS.md)

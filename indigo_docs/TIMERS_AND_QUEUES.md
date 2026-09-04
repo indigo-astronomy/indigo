@@ -1,10 +1,22 @@
 # Timers and Handler Queues
+Revision: 05.09.2026 (draft)
+
+Authors: **Peter Polakovic** & **Rumen G. Bogdanovski**
+
+e-mail: *peter.polakovic@cloudmakers.eu*, *rumenastro@gmail.com*
 
 This note describes the internal implementation model behind
 `indigo_timer.c` and the timer/queue APIs declared in `indigo_timer.h`.
 The public function names are intentionally unchanged, but the implementation
 is built around explicit ownership, condition predicates, and short critical
 sections.
+
+Drivers use both facilities. The timer API in `indigo_timer.h` is called
+directly for polling, timeouts and any work that should run independently of
+other activity on the device. Handler queues are normally reached through the
+wrappers in `indigo_driver.h`, described in
+[Driver-Facing Wrappers](#driver-facing-wrappers). [Examples](#examples) shows
+the patterns both are meant to be used in.
 
 ## Goals
 
@@ -234,6 +246,221 @@ task, joins the worker thread, destroys synchronization primitives, frees the
 queue, and clears the caller's pointer. When called from the queue worker, it
 marks self-deletion and returns; the worker frees the queue after the current
 callback unwinds.
+
+## Driver-Facing Wrappers
+
+Drivers normally do not call the queue API in `indigo_timer.h` at all. They use
+the wrappers in `indigo_driver.h`, which own the queue for them: the queue is
+created lazily on the first handler, it belongs to the **master device**, and it
+is deleted by `indigo_device_detach()`. All slave devices of one master share
+that master's queue, so their handlers are serialized against each other.
+
+Every wrapper passes the master device mutex as the task mutex, so a queued
+handler also excludes anything else holding that mutex, including timers
+scheduled with `indigo_set_device_timer()`.
+
+### Task Priorities
+
+Priority is a signed integer; higher values run first among tasks that are
+already due. A task scheduled for the future never preempts a due task,
+whatever its priority.
+
+| Constant | Value | Intended use |
+| --- | ---: | --- |
+| `INDIGO_TASK_PRIORITY_NORMAL` | 0 | Ordinary property change handlers |
+| `INDIGO_TASK_PRIORITY_HIGH` | 5 | Work that should overtake ordinary handlers |
+| `INDIGO_TASK_PRIORITY_TIME` | 10 | Time critical work, for example guiding |
+| `INDIGO_TASK_PRIORITY_URGENT` | 20 | Aborts and guide pulse finalizers |
+
+Values are ordinary integers, so intermediate and negative priorities are legal
+if a driver needs them.
+
+### Handler Wrappers
+
+| Wrapper | Priority | Delay |
+| --- | --- | --- |
+| `indigo_execute_handler(device, handler)` | `NORMAL` | none |
+| `indigo_execute_handler_with_data(device, handler, data)` | `NORMAL` | none |
+| `indigo_execute_handler_in(device, delay, handler)` | `TIME` | given |
+| `indigo_execute_handler_with_data_in(device, delay, handler, data)` | `TIME` | given |
+| `indigo_execute_priority_handler(device, priority, handler)` | given | none |
+| `indigo_execute_priority_handler_with_data(device, priority, handler, data)` | given | none |
+| `indigo_execute_priority_handler_in(device, priority, delay, handler)` | given | given |
+| `indigo_execute_priority_handler_with_data_in(device, priority, delay, handler, data)` | given | given |
+
+Note the asymmetry in the first four rows: the immediate forms use
+`INDIGO_TASK_PRIORITY_NORMAL`, but the `_in` forms use
+`INDIGO_TASK_PRIORITY_TIME`. A driver that only adds a delay to an existing
+`indigo_execute_handler()` call therefore also raises its priority by ten. Use
+the explicit `indigo_execute_priority_handler_in()` form when the priority
+matters.
+
+Two wrappers remove queued work. Both match on the calling device, so they
+never touch tasks belonging to a sibling device sharing the same queue:
+
+- `indigo_cancel_pending_handlers(device)` drops every pending task for that
+  device.
+- `indigo_cancel_pending_handler(device, handler)` drops only the pending tasks
+  bound to that one handler.
+
+Both wait if the currently running task also matches, unless they are called
+from the queue worker itself. A handler can therefore cancel its own siblings
+without deadlocking.
+
+`indigo_set_device_timer(device, delay, handler, &timer)` is the timer-side
+counterpart. It schedules a normal timer with the master device mutex, so the
+callback serializes with queued handlers even though it does not run on the
+queue.
+
+### Property Change Macros
+
+The `indigo_bus.h` macros wrap the common change-handler shape. They copy the
+incoming values, set the property busy, update it, and dispatch the handler with
+`indigo_execute_handler()`, so they all run at `INDIGO_TASK_PRIORITY_NORMAL`:
+
+- `INDIGO_COPY_VALUES_PROCESS_CHANGE(property, handler)` ignores the request if
+  the property is already busy.
+- `INDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME(property, handler)` accepts it even
+  when busy.
+- `INDIGO_COPY_TARGETS_PROCESS_CHANGE(property, handler)` copies number targets
+  rather than values.
+- `INDIGO_COPY_VALUES_PROCESS_SYNC_CHANGE(property, handler)` and
+  `INDIGO_COPY_TARGETS_PROCESS_SYNC_CHANGE(property, handler)` call the handler
+  inline instead of queueing it. Use them only for handlers that cannot block,
+  since they run on the caller's thread.
+
+## Examples
+
+### Property change handler
+
+The common case. The change handler validates and acknowledges, the queued
+handler does the blocking I/O:
+
+```c
+static void focuser_position_callback(indigo_device *device) {
+	if (focuser_move(device, FOCUSER_POSITION_ITEM->number.target)) {
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+	} else {
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+}
+
+static indigo_result focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
+	if (indigo_property_match_changeable(FOCUSER_POSITION_PROPERTY, property)) {
+		indigo_property_copy_targets(FOCUSER_POSITION_PROPERTY, property, false);
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		indigo_execute_handler(device, focuser_position_callback);
+		return INDIGO_OK;
+	}
+	return indigo_focuser_change_property(device, client, property);
+}
+```
+
+The same thing with the macro:
+
+```c
+	if (indigo_property_match_changeable(FOCUSER_POSITION_PROPERTY, property)) {
+		INDIGO_COPY_TARGETS_PROCESS_CHANGE(FOCUSER_POSITION_PROPERTY, focuser_position_callback);
+		return INDIGO_OK;
+	}
+```
+
+### Abort that has to overtake queued work
+
+An abort is useless behind a queue of pending moves, so it runs at
+`INDIGO_TASK_PRIORITY_URGENT` and drops the pending work first:
+
+```c
+	if (indigo_property_match_changeable(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
+		indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
+		indigo_cancel_pending_handler(device, focuser_position_callback);
+		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+		indigo_execute_priority_handler(device, INDIGO_TASK_PRIORITY_URGENT, focuser_abort_callback);
+		return INDIGO_OK;
+	}
+```
+
+### Deferred handler with an explicit priority
+
+A guide pulse starts the motion now and stops it after the pulse length. The
+finalizer must not sit behind ordinary handlers, so the priority is stated
+explicitly rather than inherited from the `_in` form:
+
+```c
+static void guider_guide_ra_callback(indigo_device *device) {
+	int west = GUIDER_GUIDE_WEST_ITEM->number.value;
+	int east = GUIDER_GUIDE_EAST_ITEM->number.value;
+	guider_start_ra(device, west, east);
+	if (west > 0) {
+		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT, west / 1000.0, guider_guide_ra_finish_callback);
+	} else if (east > 0) {
+		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT, east / 1000.0, guider_guide_ra_finish_callback);
+	}
+}
+```
+
+### Passing data to a handler
+
+`has_data` is tracked separately from the pointer, so `NULL` is a valid payload:
+
+```c
+static void wheel_slot_callback(indigo_device *device, void *data) {
+	int slot = (int)(intptr_t)data;
+	...
+}
+
+	indigo_execute_handler_with_data(device, wheel_slot_callback, (void *)(intptr_t)slot);
+```
+
+### Periodic polling with a timer
+
+Polling belongs on a timer, not on the queue. The callback reschedules itself,
+which reuses the same timer object rather than allocating a new one:
+
+```c
+static void ccd_temperature_callback(indigo_device *device) {
+	ccd_read_temperature(device);
+	indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
+	indigo_reschedule_timer(device, 5.0, &PRIVATE_DATA->temperature_timer);
+}
+
+static indigo_result ccd_attach(indigo_device *device) {
+	...
+	indigo_set_device_timer(device, 0, ccd_temperature_callback, &PRIVATE_DATA->temperature_timer);
+	return INDIGO_OK;
+}
+```
+
+Cancel it before the device goes away. `indigo_cancel_timer_sync()` guarantees
+the callback is no longer running when it returns, which is what makes freeing
+private data safe:
+
+```c
+	indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperature_timer);
+```
+
+### Choosing between a timer and a handler queue
+
+Both run work off the caller's thread, and both are first-class: neither
+replaces the other. They differ in what they guarantee:
+
+| | Timer | Handler queue |
+| --- | --- | --- |
+| Concurrency | Independent timers run in parallel | One task at a time per master device |
+| Ordering | None between timers | Deadline, then priority |
+| Cost per dispatch | One thread created per firing | Reuses the queue worker |
+| Cancellation | Per timer reference | By device, or by device and handler |
+| Natural fit | Polling, timeouts, pulse endings | Property change handlers, device I/O |
+
+The choice follows from the concurrency the work needs, not from cost. Use a
+timer when the work must run independently of whatever else the device is
+doing, and a queue when it must be serialized with it. Cost only matters at the
+margin: handler dispatch is cheaper than timer dispatch, because the queue
+worker persists while every timer firing creates a thread, so a very frequent
+short task is worth placing on a queue if its ordering requirements allow it.
 
 ## Locking Invariants
 
