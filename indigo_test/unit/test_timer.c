@@ -270,6 +270,22 @@ static void queue_task_mutex_observing_callback(indigo_device *device) {
 	pthread_mutex_unlock(&state.mutex);
 }
 
+static void queue_set_handler_max_run_time_callback(indigo_device *device) {
+	(void)device;
+	if (!indigo_set_handler_max_run_time(0.25)) {
+		pthread_mutex_lock(&state.mutex);
+		state.error_count++;
+		pthread_cond_broadcast(&state.cond);
+		pthread_mutex_unlock(&state.mutex);
+		return;
+	}
+
+	pthread_mutex_lock(&state.mutex);
+	state.callback_count++;
+	pthread_cond_broadcast(&state.cond);
+	pthread_mutex_unlock(&state.mutex);
+}
+
 typedef struct {
 	indigo_queue *queue;
 	int first;
@@ -1834,6 +1850,78 @@ static void queue_add_null_queue_is_harmless(void) {
 	destroy_state();
 }
 
+static void queue_set_handler_max_run_time_without_running_handler_returns_false(void) {
+	ASSERT_FALSE(indigo_set_handler_max_run_time(0.25));
+	ASSERT_FALSE(indigo_set_handler_max_run_time(0));
+}
+
+static void queue_running_handler_can_set_own_max_run_time(void) {
+	reset_state();
+	indigo_device_context context = { 0 };
+	indigo_device device = make_test_device(&context);
+	indigo_queue *queue = indigo_queue_create(&device);
+
+	indigo_queue_add(queue, &device, INDIGO_TASK_PRIORITY_NORMAL, 0, queue_set_handler_max_run_time_callback, NULL);
+	ASSERT_TRUE(wait_for_count(&state.callback_count, 1));
+	ASSERT_EQ_INT(0, state.error_count);
+
+	indigo_queue_delete(&queue);
+	ASSERT_TRUE(queue == NULL);
+	destroy_test_device(&context);
+	destroy_state();
+}
+
+static void queue_pending_task_limit_is_per_queue_configurable_and_reported_once(void) {
+	reset_state();
+	indigo_device_context context = { 0 };
+	indigo_device device = make_test_device(&context);
+	indigo_queue *queue = indigo_queue_create(&device);
+	int payloads[5] = { 1, 2, 3, 4, 5 };
+
+	ASSERT_TRUE(queue != NULL);
+	ASSERT_EQ_INT(0, (int)queue->pending_task_count);
+	ASSERT_EQ_INT(100, (int)queue->max_pending_tasks);
+	ASSERT_FALSE(queue->pending_task_limit_reported);
+	ASSERT_FALSE(indigo_queue_set_max_pending_tasks(NULL, 2));
+	ASSERT_TRUE(indigo_queue_set_max_pending_tasks(queue, 2));
+	ASSERT_EQ_INT(2, (int)queue->max_pending_tasks);
+
+	indigo_queue_add(queue, &device, INDIGO_TASK_PRIORITY_NORMAL, 0, queue_barrier_callback, NULL);
+	ASSERT_TRUE(wait_for_flag(&state.callback_started));
+
+	indigo_queue_add_with_data(queue, &device, INDIGO_TASK_PRIORITY_NORMAL, 1, queue_callback_a, payloads + 0, NULL);
+	indigo_queue_add_with_data(queue, &device, INDIGO_TASK_PRIORITY_NORMAL, 1, queue_callback_a, payloads + 1, NULL);
+	ASSERT_EQ_INT(2, (int)queue->pending_task_count);
+	ASSERT_FALSE(queue->pending_task_limit_reported);
+
+	indigo_queue_add_with_data(queue, &device, INDIGO_TASK_PRIORITY_NORMAL, 1, queue_callback_a, payloads + 2, NULL);
+	ASSERT_EQ_INT(3, (int)queue->pending_task_count);
+	ASSERT_TRUE(queue->pending_task_limit_reported);
+
+	ASSERT_TRUE(indigo_queue_set_max_pending_tasks(queue, 0));
+	ASSERT_EQ_INT(0, (int)queue->max_pending_tasks);
+	ASSERT_FALSE(queue->pending_task_limit_reported);
+	indigo_queue_add_with_data(queue, &device, INDIGO_TASK_PRIORITY_NORMAL, 1, queue_callback_a, payloads + 3, NULL);
+	ASSERT_EQ_INT(4, (int)queue->pending_task_count);
+	ASSERT_FALSE(queue->pending_task_limit_reported);
+
+	ASSERT_TRUE(indigo_queue_set_max_pending_tasks(queue, 3));
+	ASSERT_EQ_INT(3, (int)queue->max_pending_tasks);
+	indigo_queue_add_with_data(queue, &device, INDIGO_TASK_PRIORITY_NORMAL, 1, queue_callback_a, payloads + 4, NULL);
+	ASSERT_EQ_INT(5, (int)queue->pending_task_count);
+	ASSERT_TRUE(queue->pending_task_limit_reported);
+
+	pthread_mutex_lock(&state.mutex);
+	state.callback_finished = true;
+	pthread_cond_broadcast(&state.cond);
+	pthread_mutex_unlock(&state.mutex);
+
+	indigo_queue_delete(&queue);
+	ASSERT_TRUE(queue == NULL);
+	destroy_test_device(&context);
+	destroy_state();
+}
+
 static void queue_task_with_mutex_runs_while_mutex_is_held(void) {
 	reset_state();
 	indigo_device_context context = { 0 };
@@ -2512,6 +2600,9 @@ int main(void) {
 		{ "queue_add_initializes_data_as_null_and_uses_plain_callback", queue_add_initializes_data_as_null_and_uses_plain_callback },
 		{ "queue_add_with_data_passes_exact_data_pointer", queue_add_with_data_passes_exact_data_pointer },
 		{ "queue_add_null_queue_is_harmless", queue_add_null_queue_is_harmless },
+		{ "queue_set_handler_max_run_time_without_running_handler_returns_false", queue_set_handler_max_run_time_without_running_handler_returns_false },
+		{ "queue_running_handler_can_set_own_max_run_time", queue_running_handler_can_set_own_max_run_time },
+		{ "queue_pending_task_limit_is_per_queue_configurable_and_reported_once", queue_pending_task_limit_is_per_queue_configurable_and_reported_once },
 		{ "queue_task_with_mutex_runs_while_mutex_is_held", queue_task_with_mutex_runs_while_mutex_is_held },
 		{ "queue_callbacks_are_serialized_for_one_queue", queue_callbacks_are_serialized_for_one_queue },
 		{ "queue_inserting_earlier_task_wakes_worker", queue_inserting_earlier_task_wakes_worker },

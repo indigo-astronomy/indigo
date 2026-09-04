@@ -95,6 +95,7 @@ typedef struct indigo_queue_task {
 	indigo_device *device;
 	int priority;
 	struct timespec at;
+	double max_run_time;
 	indigo_timer_callback callback;
 	void *data;
 	bool has_data;
@@ -107,6 +108,9 @@ typedef struct indigo_queue {
 	pthread_cond_t cond;
 	pthread_t thread;
 	indigo_queue_task *task;
+	size_t pending_task_count;
+	size_t max_pending_tasks;
+	bool pending_task_limit_reported;
 	bool abort;
 	bool ready; // guard against a lost wakeup race condition
 	pthread_mutex_t mutex;
@@ -163,6 +167,14 @@ INDIGO_EXTERN void indigo_queue_add(indigo_queue *queue, indigo_device *device, 
 /** Add task with data. Higher signed priority values run first among due tasks.
  */
 INDIGO_EXTERN void indigo_queue_add_with_data(indigo_queue *queue, indigo_device *device, int priority, double delay, indigo_timer_with_data_callback callback, void *data, pthread_mutex_t *task_mutex);
+
+/** Set maximum run time for the currently running handler queue task. Use 0 for unlimited.
+ */
+INDIGO_EXTERN bool indigo_set_handler_max_run_time(double max_run_time);
+
+/** Set maximum pending tasks for the queue. Use 0 for unlimited.
+ */
+INDIGO_EXTERN bool indigo_queue_set_max_pending_tasks(indigo_queue *queue, size_t max_pending_tasks);
 
 /** Remove tasks from queue for given device and handler
  */

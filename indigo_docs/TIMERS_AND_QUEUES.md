@@ -122,6 +122,10 @@ timer for reschedule and updates its next deadline and callback. When the
 current callback returns, the callback thread either reinserts the same timer
 into the pending list or completes it.
 
+The callback thread tracks its current timer in thread-local storage while the
+user callback is running. The timer implementation uses this to recognize
+self-reschedule and self-cancel paths without scanning timer lists.
+
 `indigo_reschedule_timer()` preserves the callback form and data payload.
 `indigo_reschedule_timer_with_callback()` accepts a plain one-argument callback,
 so it explicitly changes the timer to the plain callback form and discards any
@@ -204,6 +208,17 @@ frees the task.
 
 The callback-with-data form is tracked by `indigo_queue_task.has_data`, so a
 `NULL` data pointer is a valid payload for queued data callbacks.
+
+Queue tasks have a default maximum run-time diagnostic threshold of 0.1 seconds.
+If a task callback runs longer than its current threshold, the queue logs a
+debug message after the callback returns. A running handler can call
+`indigo_set_handler_max_run_time()` to raise the threshold for its own current
+task, or pass 0 to disable the threshold for that task.
+
+Queues also track their pending task count. If a queue grows beyond the default
+limit of 100 pending tasks, it logs one debug message for that queue lifetime.
+Callers can use `indigo_queue_set_max_pending_tasks()` to change the limit for
+a queue, or set it to 0 for unlimited.
 
 ## Handler Queue Removal And Deletion
 

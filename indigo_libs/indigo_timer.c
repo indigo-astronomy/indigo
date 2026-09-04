@@ -39,6 +39,8 @@
 #include <indigo/indigo_driver.h>
 
 #define SEC_NS    1000000000LL       /* 1 sec in nanoseconds */
+#define DEFAULT_QUEUE_TASK_MAX_RUN_TIME 0.1
+#define DEFAULT_QUEUE_MAX_PENDING_TASKS 100u
 
 #if defined(INDIGO_WINDOWS)
 #include <windows.h>
@@ -106,6 +108,8 @@ typedef struct {
 
 // Protected by timer_scheduler.mutex.
 static uint64_t next_timer_id = 0;
+static INDIGO_THREAD_LOCAL indigo_timer *current_timer = NULL;
+static INDIGO_THREAD_LOCAL indigo_queue_task *current_queue_task = NULL;
 static indigo_timer_scheduler timer_scheduler = {
 	.mutex = PTHREAD_MUTEX_INITIALIZER,
 	.once = PTHREAD_ONCE_INIT,
@@ -311,6 +315,7 @@ static void *timer_callback_func(void *arg) {
 	indigo_timer *timer = (indigo_timer *)arg;
 	indigo_rename_thread("Timer callback #%" PRIu64, timer->timer_id);
 	// Scheduler mutex is not held while callbacks run, and scheduler code never locks timer_mutex.
+	current_timer = timer;
 	if (timer->timer_mutex) {
 		pthread_mutex_lock(timer->timer_mutex);
 	}
@@ -322,6 +327,7 @@ static void *timer_callback_func(void *arg) {
 	if (timer->timer_mutex) {
 		pthread_mutex_unlock(timer->timer_mutex);
 	}
+	current_timer = NULL;
 	pthread_mutex_lock(&timer_scheduler.mutex);
 	enqueue_finished_worker_locked(pthread_self());
 	if (timer->reschedule_requested && !timer->cancel_requested && !timer->canceled) {
@@ -586,7 +592,7 @@ static bool reschedule_timer_with_callback_locked(double delay, indigo_timer_wit
 			pthread_cond_signal(&timer_scheduler.cond);
 		}
 		result = true;
-	} else if ((*timer)->state == INDIGO_TIMER_RUNNING && !(*timer)->canceled && (*timer)->worker_started && pthread_equal(pthread_self(), (*timer)->callback_thread)) {
+	} else if ((*timer)->state == INDIGO_TIMER_RUNNING && !(*timer)->canceled && (*timer)->worker_started && *timer == current_timer) {
 		indigo_timer *t = *timer;
 		t->at = indigo_delay_to_time(delay);
 		t->callback = (indigo_timer_with_data_callback)callback;
@@ -676,7 +682,7 @@ bool indigo_cancel_timer_sync(indigo_device *device, indigo_timer **timer) {
 			complete_timer_locked(t, INDIGO_TIMER_CANCELED);
 			result = true;
 		} else if (t->state == INDIGO_TIMER_RUNNING) {
-			bool self_callback = t->worker_started && pthread_equal(pthread_self(), t->callback_thread);
+			bool self_callback = t->worker_started && t == current_timer;
 			t->cancel_requested = true;
 			t->reschedule_requested = false;
 			result = true;
@@ -721,7 +727,7 @@ void indigo_cancel_all_timers(indigo_device *device) {
 			scheduler_remove_pending_locked(timer);
 			complete_timer_locked(timer, INDIGO_TIMER_CANCELED);
 		} else if (timer->state == INDIGO_TIMER_RUNNING) {
-			bool self_callback = timer->worker_started && pthread_equal(pthread_self(), timer->callback_thread);
+			bool self_callback = timer->worker_started && timer == current_timer;
 			timer->cancel_requested = true;
 			timer->reschedule_requested = false;
 			if (self_callback) {
@@ -799,6 +805,7 @@ static indigo_queue_task *dequeue_runnable_task_locked(indigo_queue *queue) {
 		} else {
 			queue->task = runnable_task->next;
 		}
+		queue->pending_task_count--;
 	}
 	return runnable_task;
 }
@@ -814,6 +821,7 @@ static void remove_tasks_locked(indigo_queue *queue, indigo_device *device, indi
 		indigo_queue_task *task = *link;
 		if (task_matches(task, device, callback)) {
 			*link = task->next;
+			queue->pending_task_count--;
 			indigo_safe_free(task);
 		} else {
 			link = &task->next;
@@ -834,6 +842,11 @@ static void enqueue_task_locked(indigo_queue *queue, indigo_queue_task *task) {
 		task->next = next->next;
 		next->next = task;
 	}
+	queue->pending_task_count++;
+	if (queue->max_pending_tasks > 0 && queue->pending_task_count > queue->max_pending_tasks && !queue->pending_task_limit_reported) {
+		queue->pending_task_limit_reported = true;
+		INDIGO_DEBUG(indigo_debug("Handler queue for '%s' has %zu pending tasks, more than %zu task limit", queue->device ? queue->device->name : "unknown device", queue->pending_task_count, queue->max_pending_tasks));
+	}
 }
 
 static double task_delay(indigo_queue_task *task) {
@@ -844,6 +857,10 @@ static double task_delay(indigo_queue_task *task) {
 		delay = (now.tv_sec - task->at.tv_sec) + (now.tv_nsec - task->at.tv_nsec) / 1e9;
 	}
 	return delay;
+}
+
+static double timespec_elapsed(const struct timespec *from, const struct timespec *to) {
+	return (to->tv_sec - from->tv_sec) + (to->tv_nsec - from->tv_nsec) / 1e9;
 }
 
 // wrapper for executing queue task = scheduled call of handler
@@ -892,6 +909,9 @@ static void *queue_func(indigo_queue *queue) {
 				INDIGO_TRACE(indigo_trace("Executing task %p: priority %d, delay %.6fs", runnable_task->callback, runnable_task->priority, delay));
 			}
 
+			struct timespec task_started_at;
+			clock_time(&task_started_at);
+			current_queue_task = runnable_task;
 			if (runnable_task->task_mutex) { // if there is specific mutex for task, lock it
 				pthread_mutex_lock(runnable_task->task_mutex);
 			}
@@ -899,6 +919,13 @@ static void *queue_func(indigo_queue *queue) {
 				((indigo_timer_with_data_callback)runnable_task->callback)(runnable_task->device, runnable_task->data);
 			} else {
 				runnable_task->callback(runnable_task->device);
+			}
+			current_queue_task = NULL;
+			struct timespec task_finished_at;
+			clock_time(&task_finished_at);
+			double elapsed = timespec_elapsed(&task_started_at, &task_finished_at);
+			if (runnable_task->max_run_time > 0 && elapsed > runnable_task->max_run_time) {
+				INDIGO_DEBUG(indigo_debug("Handler queue task for '%s' took %.3fs, longer than %.3fs limit", runnable_task->device ? runnable_task->device->name : "unknown device", elapsed, runnable_task->max_run_time));
 			}
 			if (runnable_task->task_mutex) { // if there is specific mutex for task, unlock it
 				pthread_mutex_unlock(runnable_task->task_mutex);
@@ -931,6 +958,9 @@ indigo_queue *indigo_queue_create(indigo_device *device) {
 	pthread_mutex_init(&queue->mutex, NULL);
 	queue->running_task = NULL;
 	queue->running = false;
+	queue->pending_task_count = 0;
+	queue->max_pending_tasks = DEFAULT_QUEUE_MAX_PENDING_TASKS;
+	queue->pending_task_limit_reported = false;
 	queue->abort = false;
 	queue->ready = false;
 	queue->self_delete_requested = false;
@@ -959,6 +989,7 @@ void indigo_queue_add(indigo_queue *queue, indigo_device *device, int priority, 
 	task->device = device;
 	task->priority = priority;
 	task->at = indigo_delay_to_time(delay);
+	task->max_run_time = DEFAULT_QUEUE_TASK_MAX_RUN_TIME;
 	task->callback = callback;
 	task->data = NULL;
 	task->has_data = false;
@@ -978,6 +1009,7 @@ void indigo_queue_add_with_data(indigo_queue *queue, indigo_device *device, int 
 	task->device = device;
 	task->priority = priority;
 	task->at = indigo_delay_to_time(delay);
+	task->max_run_time = DEFAULT_QUEUE_TASK_MAX_RUN_TIME;
 	task->callback = (indigo_timer_callback)callback;
 	task->data = data;
 	task->has_data = true;
@@ -987,6 +1019,25 @@ void indigo_queue_add_with_data(indigo_queue *queue, indigo_device *device, int 
 	enqueue_task_locked(queue, task);
 	pthread_cond_signal(&queue->cond);
 	pthread_mutex_unlock(&queue->mutex);
+}
+
+bool indigo_set_handler_max_run_time(double max_run_time) {
+	if (current_queue_task == NULL) {
+		return false;
+	}
+	current_queue_task->max_run_time = max_run_time;
+	return true;
+}
+
+bool indigo_queue_set_max_pending_tasks(indigo_queue *queue, size_t max_pending_tasks) {
+	if (queue == NULL) {
+		return false;
+	}
+	pthread_mutex_lock(&queue->mutex);
+	queue->max_pending_tasks = max_pending_tasks;
+	queue->pending_task_limit_reported = false;
+	pthread_mutex_unlock(&queue->mutex);
+	return true;
 }
 
 // remove scheduled tasks from queue, if device is NULL, remove all tasks otherwise remove tasks related to device

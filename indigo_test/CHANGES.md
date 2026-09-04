@@ -53,7 +53,7 @@ Implemented unit suites:
 - `test_protocol_json.c`: JSON escaping, device/server adapter serialization, parser routing for number and switch changes, BLOB URL output, and malformed input handling.
 - `test_protocol_xml.c`: XML escaping, device and client adapter serialization, parser routing for text changes and BLOB URL mode, remote property events, and malformed input handling.
 - `test_raw_image.c`: RAW type constants, Bayer extension detection, Bayer channel equalization, saturation masks, and contrast.
-- `test_timer.c`: timer delay conversion, callback execution, data callbacks, mutex-wrapped callbacks, cancel/reschedule behavior including data-to-plain callback transitions, device-wide timer cancellation, fork-time scheduler restart and inherited-timer cleanup while a callback is active, signed queue priority ordering, queue removal, and queue deletion.
+- `test_timer.c`: timer delay conversion, callback execution, data callbacks, mutex-wrapped callbacks, cancel/reschedule behavior including data-to-plain callback transitions, device-wide timer cancellation, fork-time scheduler restart and inherited-timer cleanup while a callback is active, signed queue priority ordering, queue handler run-time limit adjustment, queue pending-task limit configuration/reporting, queue removal, and queue deletion.
 - `test_token.c`: token parsing, device token add/update/remove, and master-token fallback.
 
 ## Integration Coverage
