@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2025 CloudMakers, s. r. o.
+// Copyright (c) 2017-2026 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -18,6 +18,7 @@
 
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+// 3.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
 /** INDIGO timers
  \file indigo_timer.c
