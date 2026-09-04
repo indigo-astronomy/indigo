@@ -1399,6 +1399,8 @@
 		59292E5620D4224F0042E939 /* libcurl.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libcurl.tbd; path = usr/lib/libcurl.tbd; sourceTree = SDKROOT; };
 		592C32D830476069004D5AE6 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		592C32D93047793D004D5AE6 /* indigo_mount_synscan.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_mount_synscan.driver; sourceTree = "<group>"; };
+		592C3352304B5671004D5AE6 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
+		592C3353304B5B3F004D5AE6 /* indigo_wheel_asi.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_wheel_asi.driver; sourceTree = "<group>"; };
 		592E79122168DD7A00E856F3 /* indigo_focuser_mjkzz.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_mjkzz.h; sourceTree = "<group>"; };
 		592E79142168DD7A00E856F3 /* focuser_mjkzz_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = focuser_mjkzz_simulator.ino; sourceTree = "<group>"; };
 		592E79152168DD7A00E856F3 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -14854,10 +14856,12 @@
 			isa = PBXGroup;
 			children = (
 				594107CE1EC8E9C200C44F92 /* README.md */,
+				592C3352304B5671004D5AE6 /* REFACTOR.md */,
 				59D9684821A303780069A64C /* Makefile.inc */,
 				9DBC34641DCB267700588DB9 /* indigo_wheel_asi.h */,
 				9DBC34631DCB267700588DB9 /* indigo_wheel_asi.c */,
 				9DBC34621DCB267700588DB9 /* indigo_wheel_asi_main.c */,
+				592C3353304B5B3F004D5AE6 /* indigo_wheel_asi.driver */,
 				9DBC34681DCB267E00588DB9 /* bin_externals */,
 			);
 			path = wheel_asi;
