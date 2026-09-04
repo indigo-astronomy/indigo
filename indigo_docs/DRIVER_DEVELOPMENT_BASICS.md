@@ -375,8 +375,10 @@ Timers in INDIGO are managed with several calls:
 
 - *indigo_set_timer()* - schedule callback to be called after a certain amount of time. The callback will be executed in a separate thread (prototype changed in INDIGO 2.0-122).
 - *indigo_reschedule_timer()* - reschedule already scheduled timer, can be used for recurring operations.
-- *indigo_cancel_timer()* - request cancellation of a scheduled timer and return, the timer may finish after the function returned.
-- *indigo_cancel_timer_sync()* - request cancellation of a scheduled timer and wait until canceled (introduced in INDIGO 2.0-122).
+- *indigo_cancel_timer()* - request cancellation of a scheduled timer and return. It returns true if a pending timer was prevented from running and false if the timer was already running or the reference did not identify a live timer.
+- *indigo_cancel_timer_sync()* - request cancellation of a scheduled timer and wait until it is safe to release resources used by the callback (introduced in INDIGO 2.0-122). It returns true when a live timer was canceled or waited for, and false when the reference did not identify a live timer.
+
+If a non-NULL timer reference is passed to *indigo_set_timer()*, the pointed-to value must be NULL. Passing a reference that already contains a live timer handle fails instead of waiting for the old timer to complete.
 
 The timer callback should be a void function that accepts pointer to *indigo_device*. The following function illustrates how to poll the Atik filter wheel until the desired filter is set:
 
@@ -440,7 +442,7 @@ indigo_cancel_timer(device, &wheel_timer);
 
 Rather than using a global timer objects, as shown above, it is a good idea to store them in the device private data. Good example for this is [indigo_wheel_asi.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/wheel_asi/indigo_wheel_asi.c).
 
-As of INDIGO 2.0-122 new call is introduced -  *indigo_cancel_timer_sync()*. This call is useful in an event of device disconnect and device detach to prevent releasing of the device resources before the timer is canceled. It should not be called directly in the **change property** callback, as it may deadlock this thread. So if some timers need to be canceled at disconnect it is a good idea to handle the connection property asynchronously with *indigo_async()*, *indigo_handle_property_async()* or *indigo_set_timer()* (with 0 time delay). There are examples of this in almost every driver.
+As of INDIGO 2.0-122 new call is introduced -  *indigo_cancel_timer_sync()*. This call is useful in an event of device disconnect and device detach to prevent releasing of the device resources before the timer is canceled. The call is safe when invoked from the timer's own callback; in that case it cancels any future reschedule of the same timer but does not wait for the current callback to return. It can still block when called from another thread while the timer callback is running, so drivers should continue to handle disconnect and other prolonged property changes asynchronously with *indigo_async()*, *indigo_handle_property_async()* or *indigo_set_timer()* (with 0 time delay). There are examples of this in almost every driver.
 
 Blocking or prolonged operations executed in the driver main thread may block the whole INDIGO framework. Because of this they should be executed asynchronously in a separate thread. Asynchronous operations can be executed with:
 

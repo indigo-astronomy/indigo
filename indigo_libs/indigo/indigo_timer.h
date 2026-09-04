@@ -26,7 +26,9 @@
 #ifndef indigo_timer_h
 #define indigo_timer_h
 #include <stdio.h>
+#include <stdint.h>
 #include <pthread.h>
+#include <time.h>
 #include <indigo/indigo_bus.h>
 
 #if defined(INDIGO_WINDOWS)
@@ -49,27 +51,38 @@ typedef void (*indigo_timer_callback)(indigo_device *device);
 typedef void (*indigo_timer_with_data_callback)(indigo_device *device, void *timer_data);
 
 /** Timer structure.
+ *
+ * The fields of this structure are private implementation details. They are
+ * exposed only because existing source code uses `indigo_timer *` handles.
+ * Callers must not read, write, allocate, copy, or embed timer objects.
  */
 typedef struct indigo_timer {
 	indigo_device *device;                    ///< device associated with timer
 	void *callback;           								///< callback function pointer
 	bool canceled;                            ///< timer is canceled (darwin only)
-	bool scheduled;
-	bool callback_running;
-	double delay;
-	bool wake;
-	int timer_id;
-	pthread_cond_t cond;
-	pthread_mutex_t cond_mutex;
-	pthread_t thread;
+	uint64_t timer_id;
 	struct indigo_timer **reference;
 	struct indigo_timer *next;
 	void *timer_data;
-	pthread_mutex_t thread_mutex;
 	pthread_mutex_t *timer_mutex;
+	int state;
+	struct timespec at;
+	bool cancel_requested;
+	bool reschedule_requested;
+	bool completed;
+	bool worker_started;
+	int waiters;
+	pthread_t callback_thread;
+	pthread_cond_t completed_cond;
+	struct indigo_timer *scheduler_next;
+	struct indigo_timer *registry_next;
 } indigo_timer;
 
-/** Queue structure.
+/** Queue structures.
+ *
+ * The fields of these structures are private implementation details. Public
+ * callers should use only `indigo_queue *` handles and the queue functions
+ * declared below.
  */
 
 #define INDIGO_TASK_PRIORITY_NORMAL   0
@@ -83,6 +96,7 @@ typedef struct indigo_queue_task {
 	struct timespec at;
 	indigo_timer_callback callback;
 	void *data;
+	bool has_data;
 	pthread_mutex_t *task_mutex;
 	struct indigo_queue_task *next;
 } indigo_queue_task;
@@ -90,13 +104,14 @@ typedef struct indigo_queue_task {
 typedef struct indigo_queue {
 	indigo_device *device;
 	pthread_cond_t cond;
-	pthread_mutex_t cond_mutex;
 	pthread_t thread;
 	indigo_queue_task *task;
-	int queue_id;
 	bool abort;
 	bool ready; // guard against a lost wakeup race condition
-	pthread_mutex_t thread_mutex;
+	pthread_mutex_t mutex;
+	indigo_queue_task *running_task;
+	bool running;
+	bool self_delete_requested;
 } indigo_queue;
 
 /** Translate delay into absolute time.
