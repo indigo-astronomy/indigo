@@ -581,8 +581,10 @@ bool indigo_reschedule_timer(indigo_device *device, double delay, indigo_timer *
 	pthread_mutex_lock(&timer_scheduler.mutex);
 	if (timer == NULL || *timer == NULL) {
 		indigo_error("Attempt to reschedule timer without reference!");
-	} else {
+	} else if (timer_reference_is_valid_locked(timer)) {
 		result = reschedule_timer_with_callback_locked(delay, (indigo_timer_with_data_callback)(*timer)->callback, timer);
+	} else {
+		result = reschedule_timer_with_callback_locked(delay, NULL, timer);
 	}
 	pthread_mutex_unlock(&timer_scheduler.mutex);
 	return result;
@@ -962,6 +964,8 @@ void indigo_queue_remove(indigo_queue *queue, indigo_device *device, indigo_time
 	if (queue) {
 		pthread_mutex_lock(&queue->mutex);
 		remove_tasks_locked(queue, device, callback);
+		// The queue worker and remove/delete waiters use disjoint predicates on queue->cond,
+		// so a signal is sufficient here unless another wait purpose is added later.
 		pthread_cond_signal(&queue->cond);
 		while (!pthread_equal(pthread_self(), queue->thread) && queue->running && task_matches(queue->running_task, device, callback)) {
 			pthread_cond_wait(&queue->cond, &queue->mutex);
