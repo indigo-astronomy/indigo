@@ -92,12 +92,15 @@ finished-worker list before returning; the scheduler joins those threads on its
 next pass through the loop.
 
 After `fork()`, the child process must not reuse thread state inherited from the
-parent. On non-Windows platforms a `pthread_atfork()` child handler resets the
-scheduler mutex, condition variable, pending list, live registry, finished
-worker list, and startup flags. The first timer API used in the child then
-starts a new scheduler thread for the child process. A process-id guard remains
-in the normal timer API path so an unreset scheduler state is rejected instead
-of being reinitialized concurrently by multiple child threads.
+parent. On non-Windows platforms `pthread_atfork()` locks the scheduler mutex
+before the fork, unlocks it in the parent, and in the child resets only ordinary
+scheduler state while still holding that mutex before unlocking it. It does not
+reinitialize pthread primitives in the child. Inherited timers are discarded:
+their public reference slots and device timer-list ownership are cleared, so the
+same slots are reusable. The first timer API used in the child then starts a new
+scheduler thread for the child process. A process-id guard remains in the normal
+timer API path so an unreset scheduler state is rejected instead of being
+reinitialized concurrently by multiple child threads.
 
 ## Timer Lifecycle
 
@@ -118,6 +121,11 @@ API. Self-reschedule does not allocate a new timer object. It marks the running
 timer for reschedule and updates its next deadline and callback. When the
 current callback returns, the callback thread either reinserts the same timer
 into the pending list or completes it.
+
+`indigo_reschedule_timer()` preserves the callback form and data payload.
+`indigo_reschedule_timer_with_callback()` accepts a plain one-argument callback,
+so it explicitly changes the timer to the plain callback form and discards any
+previous data payload.
 
 Completion unlinks the timer from its device list, clears the public reference
 only if it still points to this exact timer object, unregisters the timer from
@@ -184,7 +192,9 @@ Queue tasks store a device pointer, priority, deadline, callback, optional data
 payload, optional task mutex, and next pointer. Pending tasks are inserted in
 deadline order. When one or more tasks are due, the worker selects the highest
 priority runnable task among the due tasks. Future high-priority tasks do not
-block lower-priority tasks that are already due.
+block lower-priority tasks that are already due. Priority is a signed integer:
+higher values run first, and negative values are valid. Tasks with equal
+priority retain deadline/insertion order.
 
 The queue worker never runs more than one task at a time. It removes a runnable
 task from the pending list, records it as the running task, releases the queue

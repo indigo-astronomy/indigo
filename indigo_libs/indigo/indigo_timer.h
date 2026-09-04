@@ -135,7 +135,8 @@ INDIGO_EXTERN bool indigo_set_timer_with_mutex(indigo_device *device, double del
  */
 INDIGO_EXTERN bool indigo_reschedule_timer(indigo_device *device, double delay, indigo_timer **timer);
 
-/** Rescheduled timer (if not null) with different handler.
+/** Reschedule timer (if not null) with a different plain callback.
+ * Any data callback payload is discarded.
  */
 INDIGO_EXTERN bool indigo_reschedule_timer_with_callback(indigo_device *device, double delay, indigo_timer_callback callback, indigo_timer **timer);
 
@@ -155,11 +156,11 @@ INDIGO_EXTERN void indigo_cancel_all_timers(indigo_device *device);
  */
 INDIGO_EXTERN indigo_queue *indigo_queue_create(indigo_device *device);
 
-/** Add task to queue
+/** Add task to queue. Higher signed priority values run first among due tasks.
  */
 INDIGO_EXTERN void indigo_queue_add(indigo_queue *queue, indigo_device *device, int priority, double delay, indigo_timer_callback callback, pthread_mutex_t *task_mutex);
 
-/** Add task with data to queue
+/** Add task with data. Higher signed priority values run first among due tasks.
  */
 INDIGO_EXTERN void indigo_queue_add_with_data(indigo_queue *queue, indigo_device *device, int priority, double delay, indigo_timer_with_data_callback callback, void *data, pthread_mutex_t *task_mutex);
 

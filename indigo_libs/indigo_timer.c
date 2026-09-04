@@ -129,8 +129,10 @@ static void free_timer_if_unused_locked(indigo_timer *timer);
 static bool start_timer_scheduler_locked(void);
 static void enqueue_finished_worker_locked(pthread_t thread);
 static void reap_finished_workers_locked(void);
-static bool reschedule_timer_with_callback_locked(double delay, indigo_timer_with_data_callback callback, indigo_timer **timer);
+static bool reschedule_timer_with_callback_locked(double delay, indigo_timer_with_data_callback callback, bool clear_data, indigo_timer **timer);
 #if !defined(INDIGO_WINDOWS)
+static void lock_timer_scheduler_before_fork(void);
+static void unlock_timer_scheduler_after_fork_parent(void);
 static void reset_timer_scheduler_after_fork_child(void);
 #endif
 
@@ -187,7 +189,7 @@ static int timer_cond_timedwait(pthread_cond_t *cond, pthread_mutex_t *mutex, co
 
 static void init_timer_scheduler_once(void) {
 #if !defined(INDIGO_WINDOWS)
-	if (pthread_atfork(NULL, NULL, reset_timer_scheduler_after_fork_child) != 0) {
+	if (pthread_atfork(lock_timer_scheduler_before_fork, unlock_timer_scheduler_after_fork_parent, reset_timer_scheduler_after_fork_child) != 0) {
 		indigo_error("Failed to register timer scheduler fork handler");
 	}
 #endif
@@ -240,9 +242,28 @@ static bool start_timer_scheduler_locked(void) {
 }
 
 #if !defined(INDIGO_WINDOWS)
+static void lock_timer_scheduler_before_fork(void) {
+	pthread_mutex_lock(&timer_scheduler.mutex);
+}
+
+static void unlock_timer_scheduler_after_fork_parent(void) {
+	pthread_mutex_unlock(&timer_scheduler.mutex);
+}
+
 static void reset_timer_scheduler_after_fork_child(void) {
-	pthread_mutex_init(&timer_scheduler.mutex, NULL);
-	init_timer_cond(&timer_scheduler.cond);
+	// Timer threads do not exist in the child. Discard their ownership without
+	// destroying inherited pthread objects, and make their public slots reusable.
+	for (indigo_timer *timer = timer_scheduler.timers; timer != NULL; timer = timer->registry_next) {
+		if (timer->reference != NULL && *timer->reference == timer) {
+			*timer->reference = NULL;
+		}
+		timer->reference = NULL;
+		if (timer->device != NULL && timer->device->device_context != NULL) {
+			((indigo_device_context *)timer->device->device_context)->timers = NULL;
+		}
+		timer->next = NULL;
+		timer->scheduler_next = NULL;
+	}
 	timer_scheduler.pending = NULL;
 	timer_scheduler.timers = NULL;
 	timer_scheduler.finished_workers = NULL;
@@ -251,6 +272,7 @@ static void reset_timer_scheduler_after_fork_child(void) {
 	timer_scheduler.ready = false;
 	timer_scheduler.pid = getpid();
 	next_timer_id = 0;
+	pthread_mutex_unlock(&timer_scheduler.mutex);
 }
 #endif
 
@@ -539,7 +561,7 @@ bool indigo_set_timer_with_mutex(indigo_device *device, double delay, indigo_tim
 	return set_timer(device, delay, (indigo_timer_with_data_callback)callback, timer, NULL, false, timer_mutex);
 }
 
-static bool reschedule_timer_with_callback_locked(double delay, indigo_timer_with_data_callback callback, indigo_timer **timer) {
+static bool reschedule_timer_with_callback_locked(double delay, indigo_timer_with_data_callback callback, bool clear_data, indigo_timer **timer) {
 	bool result = false;
 	if (timer == NULL || *timer == NULL) {
 		indigo_error("Attempt to reschedule timer without reference!");
@@ -554,6 +576,10 @@ static bool reschedule_timer_with_callback_locked(double delay, indigo_timer_wit
 		scheduler_remove_pending_locked(t);
 		t->at = indigo_delay_to_time(delay);
 		t->callback = (indigo_timer_with_data_callback)callback;
+		if (clear_data) {
+			t->has_data = false;
+			t->timer_data = NULL;
+		}
 		t->reschedule_requested = false;
 		bool earliest_changed = scheduler_insert_pending_locked(t);
 		if (earliest_changed) {
@@ -564,6 +590,10 @@ static bool reschedule_timer_with_callback_locked(double delay, indigo_timer_wit
 		indigo_timer *t = *timer;
 		t->at = indigo_delay_to_time(delay);
 		t->callback = (indigo_timer_with_data_callback)callback;
+		if (clear_data) {
+			t->has_data = false;
+			t->timer_data = NULL;
+		}
 		t->reschedule_requested = true;
 		result = true;
 	} else {
@@ -582,9 +612,9 @@ bool indigo_reschedule_timer(indigo_device *device, double delay, indigo_timer *
 	if (timer == NULL || *timer == NULL) {
 		indigo_error("Attempt to reschedule timer without reference!");
 	} else if (timer_reference_is_valid_locked(timer)) {
-		result = reschedule_timer_with_callback_locked(delay, (indigo_timer_with_data_callback)(*timer)->callback, timer);
+		result = reschedule_timer_with_callback_locked(delay, (indigo_timer_with_data_callback)(*timer)->callback, false, timer);
 	} else {
-		result = reschedule_timer_with_callback_locked(delay, NULL, timer);
+		result = reschedule_timer_with_callback_locked(delay, NULL, false, timer);
 	}
 	pthread_mutex_unlock(&timer_scheduler.mutex);
 	return result;
@@ -596,7 +626,7 @@ bool indigo_reschedule_timer_with_callback(indigo_device *device, double delay, 
 		return false;
 	}
 	pthread_mutex_lock(&timer_scheduler.mutex);
-	bool result = reschedule_timer_with_callback_locked(delay, (indigo_timer_with_data_callback)callback, timer);
+	bool result = reschedule_timer_with_callback_locked(delay, (indigo_timer_with_data_callback)callback, true, timer);
 	pthread_mutex_unlock(&timer_scheduler.mutex);
 	return result;
 }
@@ -722,24 +752,26 @@ void indigo_cancel_all_timers(indigo_device *device) {
 // The time is copied out while queue->mutex is held - returning the task itself would let
 // indigo_queue_remove() free it before the caller dereferences it.
 static bool peek_task_at_locked(indigo_queue *queue, const struct timespec *now, struct timespec *at) {
-	indigo_queue_task *runnable_task = queue->task;
+	indigo_queue_task *runnable_task = NULL;
 	indigo_queue_task *current = queue->task;
-	int highest_priority = -1;
 	while (current) {
 		if (timespec_cmp(&current->at, now) > 0) {
 			break;
 		}
-		if (current->priority > highest_priority) {
-			highest_priority = current->priority;
+		if (runnable_task == NULL || current->priority > runnable_task->priority) {
 			runnable_task = current;
 		}
 		current = current->next;
 	}
-	bool found = runnable_task != NULL;
-	if (found) {
+	if (runnable_task != NULL) {
 		*at = runnable_task->at;
+		return true;
 	}
-	return found;
+	if (queue->task != NULL) {
+		*at = queue->task->at;
+		return true;
+	}
+	return false;
 }
 
 // Dequeue the highest priority runnable task from the queue
@@ -750,13 +782,11 @@ static indigo_queue_task *dequeue_runnable_task_locked(indigo_queue *queue) {
 	indigo_queue_task *prev_to_runnable_task = NULL;
 	indigo_queue_task *current = queue->task;
 	indigo_queue_task *prev = NULL;
-	int highest_priority = -1;
 	while (current) {
 		if (timespec_cmp(&current->at, &now) > 0) {
 			break;
 		}
-		if (current->priority > highest_priority) {
-			highest_priority = current->priority;
+		if (runnable_task == NULL || current->priority > runnable_task->priority) {
 			runnable_task = current;
 			prev_to_runnable_task = prev;
 		}

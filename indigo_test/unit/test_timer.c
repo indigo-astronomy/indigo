@@ -5,6 +5,7 @@
 // open-source license' (see LICENSE.md).
 
 #include <errno.h>
+#include <limits.h>
 #include <pthread.h>
 #include <stdint.h>
 #include <string.h>
@@ -408,6 +409,34 @@ static void self_reschedule_switch_callback(indigo_device *device) {
 	}
 }
 
+static indigo_timer *data_reschedule_timer = NULL;
+
+static void plain_callback_after_data_reschedule(indigo_device *device) {
+	(void)device;
+	pthread_mutex_lock(&state.mutex);
+	if (data_reschedule_timer == NULL || data_reschedule_timer->has_data || data_reschedule_timer->timer_data != NULL) {
+		state.error_count++;
+	}
+	state.callback_count++;
+	pthread_cond_broadcast(&state.cond);
+	pthread_mutex_unlock(&state.mutex);
+}
+
+static void data_reschedule_to_plain_callback(indigo_device *device, void *data) {
+	(void)data;
+	pthread_mutex_lock(&state.mutex);
+	state.data_callback_count++;
+	pthread_cond_broadcast(&state.cond);
+	pthread_mutex_unlock(&state.mutex);
+
+	if (!indigo_reschedule_timer_with_callback(device, 0.001, plain_callback_after_data_reschedule, &data_reschedule_timer)) {
+		pthread_mutex_lock(&state.mutex);
+		state.error_count++;
+		pthread_cond_broadcast(&state.cond);
+		pthread_mutex_unlock(&state.mutex);
+	}
+}
+
 static indigo_timer *self_cancel_sync_timer = NULL;
 
 static void self_cancel_timer_sync_callback(indigo_device *device) {
@@ -425,6 +454,13 @@ static void self_cancel_timer_sync_callback(indigo_device *device) {
 }
 
 #if !defined(INDIGO_WINDOWS)
+static indigo_timer *fork_inherited_timer = NULL;
+static indigo_device_context *fork_inherited_context = NULL;
+
+static void empty_callback(indigo_device *device) {
+	(void)device;
+}
+
 static void run_child_test(void (*child_test)(void)) {
 	int before = indigo_test_failures;
 	child_test();
@@ -453,6 +489,20 @@ static void assert_child_exits_without_deadlock(void (*child_test)(void)) {
 	waitpid(pid, &status, 0);
 	ASSERT_TRUE(false);
 }
+
+static void child_starts_timer_scheduler_after_fork(void) {
+	indigo_timer *timer = NULL;
+
+	ASSERT_TRUE(indigo_set_timer(NULL, 0, empty_callback, &timer));
+	ASSERT_TRUE(wait_for_timer_reference_to_clear(&timer));
+}
+
+static void child_discards_inherited_timer_references(void) {
+	ASSERT_TRUE(fork_inherited_timer == NULL);
+	ASSERT_TRUE(fork_inherited_context->timers == NULL);
+	ASSERT_TRUE(indigo_set_timer(NULL, 0, empty_callback, &fork_inherited_timer));
+	ASSERT_TRUE(wait_for_timer_reference_to_clear(&fork_inherited_timer));
+}
 #endif
 
 typedef struct {
@@ -474,14 +524,10 @@ static void stress_callback(indigo_device *device, void *data) {
 	pthread_mutex_unlock(&state.mutex);
 }
 
-static void stress_alternate_callback(indigo_device *device, void *data) {
-	stress_timer_payload *payload = (stress_timer_payload *)data;
+static void stress_alternate_callback(indigo_device *device) {
+	(void)device;
 	pthread_mutex_lock(&state.mutex);
-	if (payload == NULL || payload->worker < 0 || payload->slot < 0 || payload->magic != 0x54494d45u) {
-		state.error_count++;
-	} else {
-		state.stress_alternate_callback_count++;
-	}
+	state.stress_alternate_callback_count++;
 	pthread_cond_broadcast(&state.cond);
 	pthread_mutex_unlock(&state.mutex);
 }
@@ -579,7 +625,7 @@ static void *stress_worker(void *data) {
 		} else if (action == 2) {
 			indigo_reschedule_timer(NULL, delay, &payload->timer);
 		} else {
-			indigo_reschedule_timer_with_callback(NULL, delay, (indigo_timer_callback)stress_alternate_callback, &payload->timer);
+			indigo_reschedule_timer_with_callback(NULL, delay, stress_alternate_callback, &payload->timer);
 		}
 		if ((i % 37) == 0) {
 			indigo_usleep(1000);
@@ -609,7 +655,7 @@ static void *shared_stress_worker(void *data) {
 		} else if (action == 3) {
 			indigo_reschedule_timer(NULL, delay, &payload->timer);
 		} else {
-			indigo_reschedule_timer_with_callback(NULL, delay, (indigo_timer_callback)stress_alternate_callback, &payload->timer);
+			indigo_reschedule_timer_with_callback(NULL, delay, stress_alternate_callback, &payload->timer);
 		}
 		pthread_mutex_unlock(context->locks + slot);
 		if ((i % 53) == 0) {
@@ -954,6 +1000,40 @@ static void child_cancel_timer_sync_from_own_callback(void) {
 static void cancel_timer_sync_from_own_callback_does_not_deadlock(void) {
 	assert_child_exits_without_deadlock(child_cancel_timer_sync_from_own_callback);
 }
+
+static void timer_scheduler_restarts_after_fork_during_callback(void) {
+	reset_state();
+	indigo_timer *timer = NULL;
+
+	ASSERT_TRUE(indigo_set_timer(NULL, 0, long_running_callback, &timer));
+	ASSERT_TRUE(wait_for_flag(&state.callback_started));
+	assert_child_exits_without_deadlock(child_starts_timer_scheduler_after_fork);
+	if (timer != NULL) {
+		ASSERT_TRUE(indigo_cancel_timer_sync(NULL, &timer));
+	}
+	ASSERT_TRUE(wait_for_timer_reference_to_clear(&timer));
+
+	destroy_state();
+}
+
+static void fork_discards_inherited_timer_references_and_device_links(void) {
+	reset_state();
+	indigo_device_context context = { 0 };
+	indigo_device device = make_test_device(&context);
+	fork_inherited_timer = NULL;
+	fork_inherited_context = &context;
+
+	ASSERT_TRUE(indigo_set_timer(&device, 1, record_callback, &fork_inherited_timer));
+	ASSERT_TRUE(context.timers == fork_inherited_timer);
+	assert_child_exits_without_deadlock(child_discards_inherited_timer_references);
+	ASSERT_TRUE(fork_inherited_timer != NULL);
+	ASSERT_TRUE(indigo_cancel_timer_sync(&device, &fork_inherited_timer));
+	ASSERT_TRUE(context.timers == NULL);
+	fork_inherited_context = NULL;
+
+	destroy_test_device(&context);
+	destroy_state();
+}
 #endif
 
 static void reschedule_timer_changes_delay_and_callback(void) {
@@ -968,6 +1048,37 @@ static void reschedule_timer_changes_delay_and_callback(void) {
 	indigo_usleep(100000);
 	ASSERT_EQ_INT(0, state.callback_count);
 	ASSERT_EQ_INT(1, state.alternate_callback_count);
+
+	destroy_state();
+}
+
+static void reschedule_pending_data_timer_to_plain_callback_discards_payload(void) {
+	reset_state();
+	indigo_timer *timer = NULL;
+	int payload = 42;
+
+	ASSERT_TRUE(indigo_set_timer_with_data(NULL, 1, record_data_callback, &timer, &payload));
+	ASSERT_TRUE(indigo_reschedule_timer_with_callback(NULL, 1, record_callback, &timer));
+	ASSERT_FALSE(timer->has_data);
+	ASSERT_TRUE(timer->timer_data == NULL);
+	ASSERT_TRUE(indigo_reschedule_timer(NULL, 0.01, &timer));
+	ASSERT_TRUE(wait_for_count(&state.callback_count, 1));
+	ASSERT_EQ_INT(0, state.data_callback_count);
+	ASSERT_TRUE(wait_for_timer_reference_to_clear(&timer));
+
+	destroy_state();
+}
+
+static void self_reschedule_data_timer_to_plain_callback_discards_payload(void) {
+	reset_state();
+	data_reschedule_timer = NULL;
+	int payload = 42;
+
+	ASSERT_TRUE(indigo_set_timer_with_data(NULL, 0, data_reschedule_to_plain_callback, &data_reschedule_timer, &payload));
+	ASSERT_TRUE(wait_for_count(&state.callback_count, 1));
+	ASSERT_EQ_INT(1, state.data_callback_count);
+	ASSERT_EQ_INT(0, state.error_count);
+	ASSERT_TRUE(wait_for_timer_reference_to_clear(&data_reschedule_timer));
 
 	destroy_state();
 }
@@ -1609,6 +1720,36 @@ static void queue_executes_runnable_tasks_by_priority(void) {
 	ASSERT_TRUE(wait_for_sequence_count(2));
 	ASSERT_EQ_INT(2, state.sequence[0]);
 	ASSERT_EQ_INT(1, state.sequence[1]);
+
+	indigo_queue_delete(&queue);
+	ASSERT_TRUE(queue == NULL);
+	destroy_test_device(&context);
+	destroy_state();
+}
+
+static void queue_executes_negative_priority_tasks_by_priority(void) {
+	reset_state();
+	indigo_device_context context = { 0 };
+	indigo_device device = make_test_device(&context);
+	indigo_queue *queue = indigo_queue_create(&device);
+	int lowest = 1;
+	int middle = 2;
+	int highest = 3;
+
+	indigo_queue_add(queue, &device, INDIGO_TASK_PRIORITY_NORMAL, 0, queue_barrier_callback, NULL);
+	ASSERT_TRUE(wait_for_flag(&state.callback_started));
+	indigo_queue_add_with_data(queue, &device, INT_MIN, 0, queue_callback_a, &lowest, NULL);
+	indigo_queue_add_with_data(queue, &device, -10, 0, queue_callback_b, &middle, NULL);
+	indigo_queue_add_with_data(queue, &device, -1, 0, queue_callback_a, &highest, NULL);
+	pthread_mutex_lock(&state.mutex);
+	state.callback_finished = true;
+	pthread_cond_broadcast(&state.cond);
+	pthread_mutex_unlock(&state.mutex);
+
+	ASSERT_TRUE(wait_for_sequence_count(3));
+	ASSERT_EQ_INT(3, state.sequence[0]);
+	ASSERT_EQ_INT(2, state.sequence[1]);
+	ASSERT_EQ_INT(1, state.sequence[2]);
 
 	indigo_queue_delete(&queue);
 	ASSERT_TRUE(queue == NULL);
@@ -2326,8 +2467,12 @@ int main(void) {
 		{ "completing_callback_does_not_clear_newer_timer_reference", completing_callback_does_not_clear_newer_timer_reference },
 #if !defined(INDIGO_WINDOWS)
 		{ "cancel_timer_sync_from_own_callback_does_not_deadlock", cancel_timer_sync_from_own_callback_does_not_deadlock },
+		{ "timer_scheduler_restarts_after_fork_during_callback", timer_scheduler_restarts_after_fork_during_callback },
+		{ "fork_discards_inherited_timer_references_and_device_links", fork_discards_inherited_timer_references_and_device_links },
 #endif
 		{ "reschedule_timer_changes_delay_and_callback", reschedule_timer_changes_delay_and_callback },
+		{ "reschedule_pending_data_timer_to_plain_callback_discards_payload", reschedule_pending_data_timer_to_plain_callback_discards_payload },
+		{ "self_reschedule_data_timer_to_plain_callback_discards_payload", self_reschedule_data_timer_to_plain_callback_discards_payload },
 		{ "reschedule_pending_timer_to_earlier_deadline_wakes_scheduler", reschedule_pending_timer_to_earlier_deadline_wakes_scheduler },
 		{ "reschedule_pending_timer_to_later_deadline_prevents_old_deadline", reschedule_pending_timer_to_later_deadline_prevents_old_deadline },
 		{ "reschedule_timer_from_callback_repeats_until_complete", reschedule_timer_from_callback_repeats_until_complete },
@@ -2362,6 +2507,7 @@ int main(void) {
 		{ "queue_asap_task_runs_promptly", queue_asap_task_runs_promptly },
 		{ "queue_delayed_task_does_not_run_before_due_time", queue_delayed_task_does_not_run_before_due_time },
 		{ "queue_executes_runnable_tasks_by_priority", queue_executes_runnable_tasks_by_priority },
+		{ "queue_executes_negative_priority_tasks_by_priority", queue_executes_negative_priority_tasks_by_priority },
 		{ "queue_future_high_priority_task_does_not_block_due_low_priority_task", queue_future_high_priority_task_does_not_block_due_low_priority_task },
 		{ "queue_add_initializes_data_as_null_and_uses_plain_callback", queue_add_initializes_data_as_null_and_uses_plain_callback },
 		{ "queue_add_with_data_passes_exact_data_pointer", queue_add_with_data_passes_exact_data_pointer },
