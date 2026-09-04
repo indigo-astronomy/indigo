@@ -27,7 +27,7 @@ driver <name> {
     author = "Author Name <email>";
     copyright = "Copyright notice";
     version = <integer>;
-    serial;          // or libusb { ... } or hid { ... }
+    serial;          // or libusb { ... }, hid { ... }, or sdk { ... }
 
     define { /* #define constants */ }
     include { /* extra #include lines */ }
@@ -72,6 +72,27 @@ driver <name> {
 }
 ```
 
+For SDK-based USB devices where the vendor SDK has its own enumeration ids, use an `sdk` block instead of preserving hand-written hot-plug scaffolding:
+
+```c
+sdk {
+    hotplug = true;
+    vid = 0x1234;
+    pid = 0x5678;
+    plug {
+        /* Runs with libusb_device *dev, <driver>_private_data *private_data,
+         * char name[INDIGO_NAME_SIZE], and bool plug_result.
+         * Fill private_data and name, or set plug_result = false to reject.
+         */
+    }
+    unplug {
+        /* Runs with indigo_device *device, <driver>_private_data *private_data,
+         * and libusb_device *dev before generated detach/free.
+         */
+    }
+}
+```
+
 The `<device_type>` keyword matches the device's INDIGO class (`aux`, `wheel`, `focuser`, `ccd`, `mount`, `guider`, `rotator`, `dome`, `gps`, etc.).
 
 Running the generator with a `.driver` file produces:
@@ -109,7 +130,7 @@ Read the `.c` file and note:
 
 **2. Write the `.driver` file**
 
-Follow the format above. For the `serial` connection type, write `serial;`. If the device is identified by port pattern (vendor, product, or vid/pid) you can add a `serial { pattern { ... } }` block. Refer to existing `.driver` files in `indigo_drivers/` for examples.
+Follow the format above. For the `serial` connection type, write `serial;`. If the device is identified by port pattern (vendor, product, or vid/pid) you can add a `serial { pattern { ... } }` block. For direct USB handles use `libusb` or `hid`; for SDK-based hot-plug with SDK ids/model records use `sdk { hotplug = true; plug { ... } unplug { ... } }`. Refer to existing `.driver` files in `indigo_drivers/` for examples.
 
 Name the open/close helper functions `<driver_name>_open` and `<driver_name>_close`. The generator looks for functions with exactly these names in the `code` block and wires them into the connection handler automatically. For example, for driver `svbpowerbox`, name them `svbpowerbox_open` and `svbpowerbox_close`.
 
