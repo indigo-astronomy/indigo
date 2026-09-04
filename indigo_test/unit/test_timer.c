@@ -1677,6 +1677,22 @@ static void queue_add_with_data_passes_exact_data_pointer(void) {
 	destroy_state();
 }
 
+static void queue_add_null_queue_is_harmless(void) {
+	reset_state();
+	indigo_device_context context = { 0 };
+	indigo_device device = make_test_device(&context);
+	int payload = 42;
+
+	indigo_queue_add(NULL, &device, INDIGO_TASK_PRIORITY_NORMAL, 0, record_callback, NULL);
+	indigo_queue_add_with_data(NULL, &device, INDIGO_TASK_PRIORITY_NORMAL, 0, record_data_callback, &payload, NULL);
+
+	ASSERT_EQ_INT(0, state.callback_count);
+	ASSERT_EQ_INT(0, state.data_callback_count);
+
+	destroy_test_device(&context);
+	destroy_state();
+}
+
 static void queue_task_with_mutex_runs_while_mutex_is_held(void) {
 	reset_state();
 	indigo_device_context context = { 0 };
@@ -2349,6 +2365,7 @@ int main(void) {
 		{ "queue_future_high_priority_task_does_not_block_due_low_priority_task", queue_future_high_priority_task_does_not_block_due_low_priority_task },
 		{ "queue_add_initializes_data_as_null_and_uses_plain_callback", queue_add_initializes_data_as_null_and_uses_plain_callback },
 		{ "queue_add_with_data_passes_exact_data_pointer", queue_add_with_data_passes_exact_data_pointer },
+		{ "queue_add_null_queue_is_harmless", queue_add_null_queue_is_harmless },
 		{ "queue_task_with_mutex_runs_while_mutex_is_held", queue_task_with_mutex_runs_while_mutex_is_held },
 		{ "queue_callbacks_are_serialized_for_one_queue", queue_callbacks_are_serialized_for_one_queue },
 		{ "queue_inserting_earlier_task_wakes_worker", queue_inserting_earlier_task_wakes_worker },

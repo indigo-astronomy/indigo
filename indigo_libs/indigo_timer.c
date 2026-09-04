@@ -100,9 +100,11 @@ typedef struct {
 	pid_t pid;
 #endif
 	bool thread_started;
+	bool start_failed;
 	bool ready;
 } indigo_timer_scheduler;
 
+// Protected by timer_scheduler.mutex.
 static uint64_t next_timer_id = 0;
 static indigo_timer_scheduler timer_scheduler = {
 	.mutex = PTHREAD_MUTEX_INITIALIZER,
@@ -114,6 +116,7 @@ static indigo_timer_scheduler timer_scheduler = {
 	.pid = 0,
 #endif
 	.thread_started = false,
+	.start_failed = false,
 	.ready = false
 };
 
@@ -123,7 +126,7 @@ static bool scheduler_insert_pending_locked(indigo_timer *timer);
 static bool scheduler_remove_pending_locked(indigo_timer *timer);
 static void complete_timer_locked(indigo_timer *timer, indigo_timer_state state);
 static void free_timer_if_unused_locked(indigo_timer *timer);
-static void start_timer_scheduler_locked(void);
+static bool start_timer_scheduler_locked(void);
 static void enqueue_finished_worker_locked(pthread_t thread);
 static void reap_finished_workers_locked(void);
 static bool reschedule_timer_with_callback_locked(double delay, indigo_timer_with_data_callback callback, indigo_timer **timer);
@@ -185,6 +188,7 @@ static void init_timer_scheduler_once(void) {
 	timer_scheduler.timers = NULL;
 	timer_scheduler.finished_workers = NULL;
 	timer_scheduler.ready = false;
+	timer_scheduler.start_failed = false;
 #if !defined(INDIGO_WINDOWS)
 	timer_scheduler.pid = getpid();
 #endif
@@ -193,7 +197,7 @@ static void init_timer_scheduler_once(void) {
 	pthread_mutex_unlock(&timer_scheduler.mutex);
 }
 
-static void ensure_timer_scheduler(void) {
+static bool ensure_timer_scheduler(void) {
 	pthread_once(&timer_scheduler.once, init_timer_scheduler_once);
 #if !defined(INDIGO_WINDOWS)
 	if (timer_scheduler.pid != getpid()) {
@@ -203,6 +207,7 @@ static void ensure_timer_scheduler(void) {
 		timer_scheduler.timers = NULL;
 		timer_scheduler.finished_workers = NULL;
 		timer_scheduler.thread_started = false;
+		timer_scheduler.start_failed = false;
 		timer_scheduler.ready = false;
 		timer_scheduler.pid = getpid();
 		pthread_mutex_lock(&timer_scheduler.mutex);
@@ -210,16 +215,22 @@ static void ensure_timer_scheduler(void) {
 		pthread_mutex_unlock(&timer_scheduler.mutex);
 	}
 #endif
+	return timer_scheduler.thread_started && !timer_scheduler.start_failed;
 }
 
-static void start_timer_scheduler_locked(void) {
+static bool start_timer_scheduler_locked(void) {
 	if (pthread_create(&timer_scheduler.thread, NULL, timer_scheduler_func, NULL) == 0) {
 		timer_scheduler.thread_started = true;
+		timer_scheduler.start_failed = false;
 		while (!timer_scheduler.ready) {
 			pthread_cond_wait(&timer_scheduler.cond, &timer_scheduler.mutex);
 		}
+		return true;
 	} else {
+		timer_scheduler.thread_started = false;
+		timer_scheduler.start_failed = true;
 		indigo_error("Failed to start timer scheduler thread");
+		return false;
 	}
 }
 
@@ -472,7 +483,10 @@ struct timespec indigo_delay_to_time(double delay) {
 }
 
 static bool set_timer(indigo_device *device, double delay, indigo_timer_with_data_callback callback, indigo_timer **timer, void *timer_data, bool has_data, pthread_mutex_t *timer_mutex) {
-	ensure_timer_scheduler();
+	if (!ensure_timer_scheduler()) {
+		indigo_error("Attempt to set timer without running scheduler");
+		return false;
+	}
 	pthread_mutex_lock(&timer_scheduler.mutex);
 	if (timer != NULL && *timer != NULL) {
 		pthread_mutex_unlock(&timer_scheduler.mutex);
@@ -541,7 +555,9 @@ static bool reschedule_timer_with_callback_locked(double delay, indigo_timer_wit
 bool indigo_reschedule_timer(indigo_device *device, double delay, indigo_timer **timer) {
 	(void)device;
 	bool result = false;
-	ensure_timer_scheduler();
+	if (!ensure_timer_scheduler()) {
+		return false;
+	}
 	pthread_mutex_lock(&timer_scheduler.mutex);
 	if (timer == NULL || *timer == NULL) {
 		indigo_error("Attempt to reschedule timer without reference!");
@@ -554,7 +570,9 @@ bool indigo_reschedule_timer(indigo_device *device, double delay, indigo_timer *
 
 bool indigo_reschedule_timer_with_callback(indigo_device *device, double delay, indigo_timer_callback callback, indigo_timer **timer) {
 	(void)device;
-	ensure_timer_scheduler();
+	if (!ensure_timer_scheduler()) {
+		return false;
+	}
 	pthread_mutex_lock(&timer_scheduler.mutex);
 	bool result = reschedule_timer_with_callback_locked(delay, (indigo_timer_with_data_callback)callback, timer);
 	pthread_mutex_unlock(&timer_scheduler.mutex);
@@ -564,7 +582,9 @@ bool indigo_reschedule_timer_with_callback(indigo_device *device, double delay, 
 bool indigo_cancel_timer(indigo_device *device, indigo_timer **timer) {
 	(void)device;
 	bool result = false;
-	ensure_timer_scheduler();
+	if (!ensure_timer_scheduler()) {
+		return false;
+	}
 	pthread_mutex_lock(&timer_scheduler.mutex);
 	if (timer == NULL || *timer == NULL) {
 		result = false;
@@ -589,7 +609,9 @@ bool indigo_cancel_timer(indigo_device *device, indigo_timer **timer) {
 bool indigo_cancel_timer_sync(indigo_device *device, indigo_timer **timer) {
 	(void)device;
 	bool result = false;
-	ensure_timer_scheduler();
+	if (!ensure_timer_scheduler()) {
+		return false;
+	}
 	pthread_mutex_lock(&timer_scheduler.mutex);
 	if (timer == NULL || *timer == NULL) {
 		result = false;
@@ -627,7 +649,9 @@ void indigo_cancel_all_timers(indigo_device *device) {
 	if (device == NULL || DEVICE_CONTEXT == NULL) {
 		return;
 	}
-	ensure_timer_scheduler();
+	if (!ensure_timer_scheduler()) {
+		return;
+	}
 	pthread_mutex_lock(&timer_scheduler.mutex);
 	size_t device_timer_count = 0;
 	for (indigo_timer *timer = DEVICE_CONTEXT->timers; timer != NULL; timer = timer->next) {
@@ -876,6 +900,9 @@ indigo_queue *indigo_queue_create(indigo_device *device) {
 // add task to queue. note queue carries device which is usually master device while task may be related to some of slave devices
 
 void indigo_queue_add(indigo_queue *queue, indigo_device *device, int priority, double delay, indigo_timer_callback callback, pthread_mutex_t *task_mutex) {
+	if (queue == NULL) {
+		return;
+	}
 	indigo_queue_task *task = indigo_safe_malloc(sizeof(indigo_queue_task));
 	task->device = device;
 	task->priority = priority;
@@ -892,6 +919,9 @@ void indigo_queue_add(indigo_queue *queue, indigo_device *device, int priority, 
 }
 
 void indigo_queue_add_with_data(indigo_queue *queue, indigo_device *device, int priority, double delay, indigo_timer_with_data_callback callback, void *data, pthread_mutex_t *task_mutex) {
+	if (queue == NULL) {
+		return;
+	}
 	indigo_queue_task *task = indigo_safe_malloc(sizeof(indigo_queue_task));
 	task->device = device;
 	task->priority = priority;
