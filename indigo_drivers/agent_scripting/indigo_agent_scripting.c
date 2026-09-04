@@ -1019,57 +1019,6 @@ static duk_ret_t set_timer(duk_context *ctx) {
 	return DUK_RET_ERROR;
 }
 
-// TODO: obsolete - remove soon
-static duk_ret_t set_timer_at(duk_context *ctx) {
-	for (uintptr_t index = 0; index < MAX_TIMER_COUNT; index++) {
-		if (PRIVATE_DATA->timers[index] == NULL) {
-			duk_push_global_object(PRIVATE_DATA->ctx);
-			duk_get_prop_string(PRIVATE_DATA->ctx, -1, "indigo_timers");
-			duk_push_number(PRIVATE_DATA->ctx, (double)index);
-			duk_dup(PRIVATE_DATA->ctx, 0);
-			duk_put_prop(PRIVATE_DATA->ctx, -3);
-			time_t now = time(NULL);
-			time_t target_time = (long)duk_require_number(ctx, 1);
-			if (indigo_set_timer_with_data(agent_device, target_time > now ? target_time - now : 0, timer_handler, PRIVATE_DATA->timers + index, (void *)(index + 1))) {
-				duk_push_int(ctx, (int)index);
-			} else {
-				duk_push_int(ctx, -1);
-			}
-			return 1;
-		}
-	}
-	return DUK_RET_ERROR;
-}
-
-static duk_ret_t set_timer_at_utc(duk_context *ctx) {
-	for (uintptr_t index = 0; index < MAX_TIMER_COUNT; index++) {
-		if (PRIVATE_DATA->timers[index] == NULL) {
-			duk_push_global_object(PRIVATE_DATA->ctx);
-			duk_get_prop_string(PRIVATE_DATA->ctx, -1, "indigo_timers");
-			duk_push_number(PRIVATE_DATA->ctx, (double)index);
-			duk_dup(PRIVATE_DATA->ctx, 0);
-			duk_put_prop(PRIVATE_DATA->ctx, -3);
-			const char *utc = duk_require_string(ctx, 1);
-			struct tm tm_time;
-			memset(&tm_time, 0, sizeof(struct tm));
-			time_t now = time(NULL);
-			parse_utc(utc, now, &tm_time);
-			time_t target_time = indigo_timegm(&tm_time);
-			if (target_time == -1) {
-				return DUK_RET_ERROR;
-			}
-			if (indigo_set_timer_with_data(agent_device, target_time > now ? target_time - now : 0, timer_handler, PRIVATE_DATA->timers + index, (void *)(index + 1))) {
-				duk_push_int(ctx, (int)index);
-			} else {
-				duk_push_int(ctx, -1);
-			}
-			return 1;
-		}
-	}
-	return DUK_RET_ERROR;
-}
-// ---------------------------
-
 // function indigo_cancel_timer(timer);
 
 static duk_ret_t cancel_timer(duk_context *ctx) {
@@ -1220,16 +1169,10 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_delay_to_utc");
 			duk_push_c_function(PRIVATE_DATA->ctx, time_to_utc, 1);
 			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_time_to_utc");
-			// TODO: obsolete - remove soon
-			duk_push_c_function(PRIVATE_DATA->ctx, set_timer_at, 2);
-			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_set_timer_at");
-			duk_push_c_function(PRIVATE_DATA->ctx, set_timer_at_utc, 2);
-			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_set_timer_at_utc");
 			duk_push_c_function(PRIVATE_DATA->ctx, utc_to_delay, 1);
 			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_utc_diff");
 			duk_push_c_function(PRIVATE_DATA->ctx, time_to_delay, 1);
 			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_local_time_diff");
-			// ---------------------------
 			duk_push_c_function(PRIVATE_DATA->ctx, cancel_timer, 1);
 			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_cancel_timer");
 			if (duk_peval_string(PRIVATE_DATA->ctx, boot_js)) {

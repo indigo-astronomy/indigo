@@ -18,8 +18,6 @@
 
 // This file generated from indigo_aux_dsusb.driver
 
-// TODO: Add libdsusb for windows
-
 #pragma mark - Includes
 
 #include <stdlib.h>

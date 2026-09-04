@@ -18,8 +18,6 @@
 
 // This file generated from indigo_focuser_fcusb.driver
 
-// TODO: Add libfcusb for windows
-
 #pragma mark - Includes
 
 #include <stdlib.h>

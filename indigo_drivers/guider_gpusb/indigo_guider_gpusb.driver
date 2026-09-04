@@ -22,8 +22,6 @@
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 // 3.0 refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-// TODO: Add libgpusb for windows
-
 driver gpusb {
 	label = "Shoestring GPUSB guider";
 	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";

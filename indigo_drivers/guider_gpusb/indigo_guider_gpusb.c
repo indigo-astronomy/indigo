@@ -18,8 +18,6 @@
 
 // This file generated from indigo_guider_gpusb.driver
 
-// TODO: Add libgpusb for windows
-
 #pragma mark - Includes
 
 #include <stdlib.h>
