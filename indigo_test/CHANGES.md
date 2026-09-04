@@ -21,18 +21,32 @@ indigo_test/
     protocol/
   unit/
   integration/
+  benchmark/
 ```
 
-Unit tests live in `indigo_test/unit/`. Integration tests live in `indigo_test/integration/`. Protocol parser fixtures live in `indigo_test/fixtures/protocol/`.
+Unit tests live in `indigo_test/unit/`. Integration tests live in `indigo_test/integration/`. Protocol parser fixtures live in `indigo_test/fixtures/protocol/`. Timing benchmarks live in `indigo_test/benchmark/`.
 
 ## Build Targets
 
 - `make -C indigo_test test` runs unit and integration tests.
 - `make -C indigo_test test-unit` runs pure unit tests.
 - `make -C indigo_test test-integration` runs bus and simulator-driver integration tests.
+- `make -C indigo_test benchmark` builds and runs the timing benchmarks.
 - `make -C indigo_test test-clean` removes generated test binaries and dSYM files.
 
 Run `make all` from the repository root first if `build/lib/libindigo` or the required simulator driver archives are missing.
+
+## Benchmarks
+
+`indigo_test/benchmark/` holds measurement tools rather than tests. They report numbers, never assert, and always exit `0`, so they are deliberately excluded from the `test` target: results depend on machine load and on kernel timer behavior, and are meaningful only when compared against another run on the same machine.
+
+All benchmarks report min, mean, median, p95, p99, max, and standard deviation, discard warm-up samples, and repeat the whole scenario set several times so that one-time costs and outliers stay visible. Timings come from a monotonic clock read inside the benchmark, so they are independent of the clock the library uses internally. Because they call only long-stable API, the same sources can be built against a second `libindigo` to compare two implementations on one machine.
+
+`benchmark/bench_timer.c` measures per-fire latency and jitter of `indigo_set_timer()` and `indigo_reschedule_timer()`: a one-shot timer, a zero-delay timer that isolates dispatch cost, a self-rescheduling 10 ms timer, the interval between its fires, and a burst of timers that all come due at the same instant.
+
+Comparison results are written up beside the sources. `benchmark/TIMERS_AND_QUEUES_MERGE_REVIEW.md` records the `master` against `refactoring` measurements for both benchmarks, the correctness differences behind them, and the open items before that branch merges.
+
+`benchmark/bench_queue.c` measures the same properties for handler queues: the cost of `indigo_queue_add()` against a backlog of pending tasks, dispatch latency on an idle queue, lateness of a delayed task, a task that re-adds itself every 10 ms with the interval between its fires, and the per-task cost of draining a batch of ready tasks. The drain is measured both on an otherwise idle library and while another thread continuously creates and cancels timers, which exposes any lock shared between the timer and queue subsystems.
 
 ## Test Harness
 

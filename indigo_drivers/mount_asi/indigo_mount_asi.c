@@ -114,7 +114,7 @@ static char *asi_error_string(unsigned int code) {
 		"Mount not initialized",
 		"Mount is moving",
 		"Target is below horizon",
-		"Target is beow the altitude limit",
+		"Target is below the altitude limit",
 		"Time and location are not set",
 		"Warning: Meridian reached, tracking stopeed",
 		"Target is on the other side of the meridian"

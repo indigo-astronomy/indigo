@@ -13,6 +13,10 @@ include ../Makefile.inc
 TEST_BUILD = build
 UNIT_BUILD = $(TEST_BUILD)/unit
 INTEGRATION_BUILD = $(TEST_BUILD)/integration
+BENCHMARK_BUILD = $(TEST_BUILD)/benchmark
+BENCHMARKS = \
+	$(BENCHMARK_BUILD)/bench_timer \
+	$(BENCHMARK_BUILD)/bench_queue
 UNIT_TESTS = \
 	$(UNIT_BUILD)/test_align_math \
 	$(UNIT_BUILD)/test_aux_math \
@@ -174,7 +178,7 @@ AUX_SQM_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_sqm.a $(TEST_LDFLAG
 AUX_UCH_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_uch.a $(TEST_LDFLAGS) -lindigocat
 AUX_USBDP_SIMULATOR_TEST_LDFLAGS = $(BUILD_DRIVERS)/indigo_aux_usbdp.a $(TEST_LDFLAGS) -lindigocat
 
-.PHONY: test test-unit test-integration test-clean check-lib
+.PHONY: test test-unit test-integration benchmark test-clean check-lib
 
 test: test-unit test-integration
 
@@ -190,6 +194,14 @@ test-integration: check-lib $(INTEGRATION_TESTS)
 		"$$test" || exit $$?; \
 	done
 
+# Benchmarks measure timing, they do not pass or fail, so they are not part of
+# the test target. Results are comparable only between runs on the same machine.
+benchmark: check-lib $(BENCHMARKS)
+	@for benchmark in $(BENCHMARKS); do \
+		printf "Running %s\n" "$$benchmark"; \
+		"$$benchmark" || exit $$?; \
+	done
+
 check-lib:
 	@test -f $(BUILD_LIB)/libindigo.a -o -f $(BUILD_LIB)/libindigo.$(SOEXT) || { \
 		printf "Missing INDIGO library in $(BUILD_LIB). Run 'make all' from the repository root first.\n"; \
@@ -201,6 +213,15 @@ $(UNIT_BUILD):
 
 $(INTEGRATION_BUILD):
 	mkdir -p $@
+
+$(BENCHMARK_BUILD):
+	mkdir -p $@
+
+$(BENCHMARK_BUILD)/bench_timer: benchmark/bench_timer.c | $(BENCHMARK_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
+
+$(BENCHMARK_BUILD)/bench_queue: benchmark/bench_queue.c | $(BENCHMARK_BUILD)
+	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)
 
 $(UNIT_BUILD)/test_bus_property: unit/test_bus_property.c test_runner.h | $(UNIT_BUILD)
 	$(CC) $(TEST_CFLAGS) -o $@ $< $(TEST_LDFLAGS)

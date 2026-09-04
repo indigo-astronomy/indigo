@@ -10,6 +10,7 @@ This directory contains the automated, hardware-free INDIGO test suite. Keep thi
 - `test_runner.h` provides the local dependency-free C test runner and assertion macros.
 - `unit/` contains fast deterministic tests for library helpers, property helpers, protocol adapters/parsers, tokens, RAW helpers, math helpers, and similar code.
 - `integration/` contains in-process bus and simulator-driver tests.
+- `benchmark/` contains measurement tools that report timing rather than passing or failing.
 - `integration/simulator_test_common.h` contains shared simulator lifecycle helpers, the in-process client, property cache, wait helpers, and compliance-style assertions.
 - `fixtures/protocol/` contains fixed XML and JSON protocol parser fixtures.
 - `CHANGES.md` summarizes current coverage and deferred automated-test work.
@@ -21,6 +22,7 @@ Run `make all` from the repository root first if `build/lib/libindigo` or the re
 - `make -C indigo_test test` runs all automated unit and integration tests.
 - `make -C indigo_test test-unit` runs unit tests only.
 - `make -C indigo_test test-integration` runs bus and simulator-driver integration tests only.
+- `make -C indigo_test benchmark` builds and runs the benchmarks. They are not part of `test`.
 - `make -C indigo_test test-clean` removes generated `indigo_test/build` binaries and dSYM files.
 
 After validating changes that build tests, run `make -C indigo_test test-clean` unless the user asks to keep build artifacts.
@@ -61,10 +63,25 @@ After validating changes that build tests, run `make -C indigo_test test-clean` 
 - Use `simulator_test_common.h` for simulator compliance checks.
 - Use `DRIVER_TESTING_RULES.md` for all simulator devices.
 
+## Benchmark Rules
+
+- Benchmarks measure timing or throughput; they never assert and always exit `0`.
+- Keep them out of `UNIT_TESTS` and `INTEGRATION_TESTS` so `test` stays deterministic and fast.
+- Print min, mean, median, p95, p99, max, and standard deviation so runs can be compared.
+- Discard warm-up samples and support several runs, so one-time costs and outliers are visible.
+- Take timings from a monotonic clock read inside the benchmark, not from library internals.
+- Use only long-stable public API where practical, so the same source can be built against
+  two libraries to compare implementations.
+- Build every harness being compared with identical compiler flags; mismatched flags have
+  already produced a false finding once.
+- Record comparison results in a markdown note beside the benchmark sources, including the
+  environment, the sample counts, and anything left open.
+
 ## Makefile Rules
 
 - Add new unit executables to `UNIT_TESTS`.
 - Add new integration executables to `INTEGRATION_TESTS`.
+- Add new benchmark executables to `BENCHMARKS`.
 - Keep test-specific linker flags local and explicit.
 - Do not add generated binaries or `build/` artifacts to the repository.
 - Keep `test-clean` able to remove all generated test outputs.
