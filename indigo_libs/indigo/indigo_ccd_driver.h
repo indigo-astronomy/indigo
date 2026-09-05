@@ -653,6 +653,10 @@ INDIGO_EXTERN void indigo_finalize_video_stream(indigo_device *device);
  */
 INDIGO_EXTERN void indigo_finalize_dslr_video_stream(indigo_device *device);
 
+/** Pre exposure setup..
+ */
+INDIGO_EXTERN indigo_result indigo_ccd_exposure_setup(indigo_device *device);
+
 /** Set alert state on dependent properties.
  */
 INDIGO_EXTERN indigo_result indigo_ccd_failure_cleanup(indigo_device *device);

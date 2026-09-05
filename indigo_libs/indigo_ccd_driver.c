@@ -451,6 +451,27 @@ indigo_result indigo_ccd_enumerate_properties(indigo_device *device, indigo_clie
 	return indigo_device_enumerate_properties(device, client, property);
 }
 
+indigo_result indigo_ccd_exposure_setup(indigo_device *device) {
+	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+		if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
+			if (CCD_IMAGE_FILE_PROPERTY->state != INDIGO_BUSY_STATE) {
+				CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
+			}
+		}
+		if (CCD_UPLOAD_MODE_CLIENT_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
+			if (CCD_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE) {
+				CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+			}
+		}
+		if (CCD_EXPOSURE_ITEM->number.value >= 1) {
+			CCD_CONTEXT->countdown_endtime = get_time_hd() + CCD_EXPOSURE_ITEM->number.target;
+		}
+	}
+	return INDIGO_OK;
+}
+
 indigo_result indigo_ccd_failure_cleanup(indigo_device *device) {
 	device->dont_update = false;
 	if (CCD_IMAGE_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -628,28 +649,10 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
-		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-			if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
-				if (CCD_IMAGE_FILE_PROPERTY->state != INDIGO_BUSY_STATE) {
-					CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
-					indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
-				}
-			}
-			if (CCD_UPLOAD_MODE_CLIENT_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
-				if (CCD_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE) {
-					CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
-					indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-				}
-			}
-			if (CCD_EXPOSURE_ITEM->number.value >= 1) {
-				CCD_CONTEXT->countdown_endtime = get_time_hd() + CCD_EXPOSURE_ITEM->number.target;
-			}
-		}
-		return INDIGO_OK;
+		return indigo_ccd_exposure_setup(device);
 	} else if (indigo_property_match_changeable(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
-		indigo_ccd_abort_exposure_cleanup(device);
-		return INDIGO_OK;
+		return indigo_ccd_abort_exposure_cleanup(device);
 	} else if (indigo_property_match_changeable(CCD_FRAME_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_FRAME
 		indigo_property_copy_values(CCD_FRAME_PROPERTY, property, false);
