@@ -30,7 +30,7 @@
 | aux_rts                  | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ❌ No    |                                                          |
 | aux_skyalert             | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ Sim   |                                                          |
 | aux_sqm                  | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ Sim   |                                                          |
-| aux_svbpowerbox          | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ HW    |
+| aux_svbpowerbox          | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ HW    |                                                          |
 | aux_uch                  | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ Sim   |                                                          |
 | aux_upb                  | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ HW    |                                                          |
 | aux_upb3                 | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ Sim   |                                                          |
@@ -67,7 +67,7 @@
 | ccd_touptek              | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ✅ HW    |                                                          |
 | ccd_uvc                  | 2️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    | ⛔ libuvc is Unix only                                   |
 | dome_baader              | 2️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    |                                                          |
-| dome_beaver              | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ✅ HW    |                                                          |
+| dome_beaver              | 3️⃣  | ✅ Yes   | ❌ No    | ✅ Yes   | ✅ HW    |                                                          |
 | dome_dragonfly           | 2️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    |                                                          |
 | dome_nexdome             | 2️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    |                                                          |
 | dome_nexdome3            | 2️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    |                                                          |
@@ -84,7 +84,7 @@
 | focuser_fcusb            | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ HW    |                                                          |
 | focuser_fli              | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ❌ No    |                                                          |
 | focuser_focusdreampro    | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ❌ No    |                                                          |
-| focuser_ioptron          | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ❌ No    |                                                          |
+| focuser_ioptron          | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ❌ No    |                                                          |
 | focuser_lacerta          | 2️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    |                                                          |
 | focuser_lakeside         | 2️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    |                                                          |
 | focuser_lunatico         | 2️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    |                                                          |
@@ -111,7 +111,7 @@
 | guider_cgusbst4          | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ❌ No    |                                                          |
 | guider_gpusb             | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ HW    |                                                          |
 | mount_asi                | 3️⃣  | ✅ Yes   | ❌ No    | ✅ Yes   | ❌ No    |                                                          |
-| mount_ioptron            | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ✅ Sim   |                                                          |
+| mount_ioptron            | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ Sim   |                                                          |
 | mount_lx200              | 3️⃣  | ✅ Yes   | ❌ No    | ✅ Yes   | ✅ HW    |                                                          |
 | mount_nexstar            | 2️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    | ⏰ TODO - make libnexstar for Windows                    |
 | mount_nexstaraux         | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ HW    |                                                          |
