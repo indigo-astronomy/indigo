@@ -28,6 +28,7 @@
 #include <time.h>
 #include <pthread.h>
 #include <stdlib.h>
+#include <string.h>
 #include <errno.h>
 #include <inttypes.h>
 #include <math.h>
@@ -845,7 +846,7 @@ static void enqueue_task_locked(indigo_queue *queue, indigo_queue_task *task) {
 	queue->pending_task_count++;
 	if (queue->max_pending_tasks > 0 && queue->pending_task_count > queue->max_pending_tasks && !queue->pending_task_limit_reported) {
 		queue->pending_task_limit_reported = true;
-		INDIGO_DEBUG(indigo_debug("Handler queue for '%s' has %zu pending tasks, more than %zu task limit", queue->device ? queue->device->name : "unknown device", queue->pending_task_count, queue->max_pending_tasks));
+		INDIGO_DEBUG(indigo_debug("Handler queue for '%s' has %zu pending tasks, more than %zu task limit", queue->name, queue->pending_task_count, queue->max_pending_tasks));
 	}
 }
 
@@ -865,7 +866,7 @@ static double timespec_elapsed(const struct timespec *from, const struct timespe
 
 // wrapper for executing queue task = scheduled call of handler
 static void *queue_func(indigo_queue *queue) {
-	indigo_rename_thread("Queue %s", queue->device->name);
+	indigo_rename_thread("%s", queue->name);
 	// wakeup indigo_queue_create, ready flag avoids a lost wakeup if the signal arrives before the wait
 	pthread_mutex_lock(&queue->mutex);
 	queue->ready = true;
@@ -878,6 +879,16 @@ static void *queue_func(indigo_queue *queue) {
 		clock_time(&now);
 		if (queue->abort) { // abort is a predicate of cond, it has to be checked with queue->mutex held, otherwise the wakeup signaled by indigo_queue_delete may be lost and the wait never returns
 			break;
+		}
+		if (queue->rename_pending) {
+			queue->rename_pending = false;
+			char name[sizeof(queue->name)];
+			strncpy(name, queue->name, sizeof(name));
+			name[sizeof(name) - 1] = 0;
+			pthread_mutex_unlock(&queue->mutex);
+			indigo_rename_thread("%s", name);
+			pthread_mutex_lock(&queue->mutex);
+			continue;
 		}
 		struct timespec at;
 		if (!peek_task_at_locked(queue, &now, &at)) { // no task, wait for wakeup
@@ -925,7 +936,7 @@ static void *queue_func(indigo_queue *queue) {
 			clock_time(&task_finished_at);
 			double elapsed = timespec_elapsed(&task_started_at, &task_finished_at);
 			if (runnable_task->max_run_time > 0 && elapsed > runnable_task->max_run_time) {
-				INDIGO_DEBUG(indigo_debug("Handler queue task for '%s' took %.3fs, longer than %.3fs limit", runnable_task->device ? runnable_task->device->name : "unknown device", elapsed, runnable_task->max_run_time));
+				INDIGO_DEBUG(indigo_debug("Handler queue task for '%s' took %.3fs, longer than %.3fs limit", queue->name, elapsed, runnable_task->max_run_time));
 			}
 			if (runnable_task->task_mutex) { // if there is specific mutex for task, unlock it
 				pthread_mutex_unlock(runnable_task->task_mutex);
@@ -954,6 +965,11 @@ static void *queue_func(indigo_queue *queue) {
 indigo_queue *indigo_queue_create(indigo_device *device) {
 	indigo_queue *queue = indigo_safe_malloc(sizeof(indigo_queue));
 	queue->device = device;
+	if (device) {
+		snprintf(queue->name, sizeof(queue->name), "Queue %s", device->name);
+	} else {
+		strcpy(queue->name, "Queue");
+	}
 	init_timer_cond(&queue->cond);
 	pthread_mutex_init(&queue->mutex, NULL);
 	queue->running_task = NULL;
@@ -963,6 +979,7 @@ indigo_queue *indigo_queue_create(indigo_device *device) {
 	queue->pending_task_limit_reported = false;
 	queue->abort = false;
 	queue->ready = false;
+	queue->rename_pending = false;
 	queue->self_delete_requested = false;
 	if (pthread_create(&queue->thread, NULL, (void * (*)(void*))queue_func, queue) != 0) {
 		indigo_error("Failed to start queue thread");
@@ -977,6 +994,17 @@ indigo_queue *indigo_queue_create(indigo_device *device) {
 	}
 	pthread_mutex_unlock(&queue->mutex);
 	return queue;
+}
+
+void indigo_queue_set_name(indigo_queue *queue, const char *name) {
+	if (queue == NULL || name == NULL) {
+		return;
+	}
+	pthread_mutex_lock(&queue->mutex);
+	snprintf(queue->name, sizeof(queue->name), "%s", name);
+	queue->rename_pending = true;
+	pthread_cond_signal(&queue->cond);
+	pthread_mutex_unlock(&queue->mutex);
 }
 
 // add task to queue. note queue carries device which is usually master device while task may be related to some of slave devices

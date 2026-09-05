@@ -1401,6 +1401,9 @@
 		592C32D93047793D004D5AE6 /* indigo_mount_synscan.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_mount_synscan.driver; sourceTree = "<group>"; };
 		592C3352304B5671004D5AE6 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		592C3353304B5B3F004D5AE6 /* indigo_wheel_asi.driver */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = indigo_wheel_asi.driver; sourceTree = "<group>"; };
+		592C3354304BE541004D5AE6 /* bench_queue.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = bench_queue.c; sourceTree = "<group>"; };
+		592C3355304BE541004D5AE6 /* bench_timer.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = bench_timer.c; sourceTree = "<group>"; };
+		592C3356304BE541004D5AE6 /* TIMERS_AND_QUEUES_MERGE_REVIEW.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = TIMERS_AND_QUEUES_MERGE_REVIEW.md; sourceTree = "<group>"; };
 		592E79122168DD7A00E856F3 /* indigo_focuser_mjkzz.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_mjkzz.h; sourceTree = "<group>"; };
 		592E79142168DD7A00E856F3 /* focuser_mjkzz_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = focuser_mjkzz_simulator.ino; sourceTree = "<group>"; };
 		592E79152168DD7A00E856F3 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -6393,9 +6396,20 @@
 				59FEFFD0301E7005007FB62D /* simulator_common */,
 				59FA7BE9301D35FD00A35CFB /* unit */,
 				59FA7BF3301D3A5800A35CFB /* integration */,
+				592C3357304BE541004D5AE6 /* benchmark */,
 				59FA7C07301D439A00A35CFB /* fixtures */,
 			);
 			path = indigo_test;
+			sourceTree = "<group>";
+		};
+		592C3357304BE541004D5AE6 /* benchmark */ = {
+			isa = PBXGroup;
+			children = (
+				592C3354304BE541004D5AE6 /* bench_queue.c */,
+				592C3355304BE541004D5AE6 /* bench_timer.c */,
+				592C3356304BE541004D5AE6 /* TIMERS_AND_QUEUES_MERGE_REVIEW.md */,
+			);
+			path = benchmark;
 			sourceTree = "<group>";
 		};
 		592E79112168DD7A00E856F3 /* focuser_mjkzz */ = {

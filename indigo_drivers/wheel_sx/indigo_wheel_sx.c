@@ -59,6 +59,9 @@ typedef struct {
 
 #pragma mark - Low level code
 
+static indigo_queue *driver_queue = NULL;
+static pthread_mutex_t driver_queue_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 //+ code
 
 static bool sx_message(indigo_device *device, int a, int b) {
@@ -170,7 +173,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		if (!indigo_ignore_connection_change(device, property)) {
 			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_execute_handler(device, wheel_connection_handler);
+			indigo_queue_add(driver_queue, device, INDIGO_TASK_PRIORITY_NORMAL, 0, wheel_connection_handler, &driver_queue_mutex);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(WHEEL_SLOT_PROPERTY, property)) {
@@ -195,11 +198,11 @@ static indigo_device wheel_template = INDIGO_DEVICE_INITIALIZER(WHEEL_DEVICE_NAM
 
 #pragma mark - Hot-plug code
 
-static pthread_mutex_t hotplug_mutex = PTHREAD_MUTEX_INITIALIZER;
 static indigo_device *wheel = NULL;
 
-static void process_plug_event(libusb_device *dev) {
-	pthread_mutex_lock(&hotplug_mutex);
+static void process_plug_event_handler(indigo_device *device, void *data) {
+	indigo_set_handler_max_run_time(1);
+	libusb_device *dev = (libusb_device *)data;
 	if (wheel == NULL) {
 		char usb_path[INDIGO_NAME_SIZE];
 		indigo_get_usb_path(dev, usb_path);
@@ -209,30 +212,36 @@ static void process_plug_event(libusb_device *dev) {
 		wheel->private_data = private_data;
 		indigo_attach_device(wheel);
 	}
-	pthread_mutex_unlock(&hotplug_mutex);
+	libusb_unref_device(dev);
 }
 
-static void process_unplug_event(libusb_device *dev) {
-	pthread_mutex_lock(&hotplug_mutex);
+static void process_unplug_event_handler(indigo_device *device, void *data) {
+	libusb_device *dev = (libusb_device *)data;
 	if (wheel != NULL) {
 		indigo_detach_device(wheel);
 		free(wheel->private_data);
 		free(wheel);
 		wheel = NULL;
 	}
-	pthread_mutex_unlock(&hotplug_mutex);
+	if (dev != NULL) {
+		libusb_unref_device(dev);
+	}
 }
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
-			INDIGO_ASYNC(process_plug_event, dev);
+			dev = libusb_ref_device(dev);
+			indigo_queue_add_with_data(driver_queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 0, process_plug_event_handler, dev, &driver_queue_mutex);
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
-			process_unplug_event(dev);
+			dev = libusb_ref_device(dev);
+			indigo_queue_add_with_data(driver_queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 0, process_unplug_event_handler, dev, &driver_queue_mutex);
 			break;
 		}
+		default:
+			break;
 	}
 	return 0;
 }
@@ -254,6 +263,12 @@ indigo_result indigo_wheel_sx(indigo_driver_action action, indigo_driver_info *i
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
 			wheel = NULL;
+			driver_queue = indigo_queue_create(NULL);
+			if (driver_queue == NULL) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to create driver queue");
+				return INDIGO_FAILED;
+			}
+			indigo_queue_set_name(driver_queue, "Queue " DRIVER_LABEL);
 			indigo_start_usb_event_handler();
 			int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, SX_VENDOR_ID, SX_PRODUCT_ID, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
@@ -264,7 +279,8 @@ indigo_result indigo_wheel_sx(indigo_driver_action action, indigo_driver_info *i
 			last_action = action;
 			libusb_hotplug_deregister_callback(NULL, callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
-			process_unplug_event(NULL);
+			process_unplug_event_handler(NULL, NULL);
+			indigo_queue_delete(&driver_queue);
 			break;
 
 		case INDIGO_DRIVER_INFO:

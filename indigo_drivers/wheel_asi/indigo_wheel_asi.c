@@ -24,11 +24,11 @@
 #include <string.h>
 #include <math.h>
 #include <assert.h>
-#include <stdbool.h>
 #include <pthread.h>
 
 //+ include
 
+#include <stdbool.h>
 #include <EFW_filter.h>
 
 //- include
@@ -88,12 +88,14 @@ typedef struct {
 
 #pragma mark - Low level code
 
+static indigo_queue *driver_queue = NULL;
+static pthread_mutex_t driver_queue_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 //+ code
 
 static int efw_products[100];
 static int efw_id_count = 0;
 static bool connected_ids[EFW_ID_MAX];
-static pthread_mutex_t indigo_device_enumeration_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void split_device_name(const char *name, char *model, char *custom_suffix) {
 	snprintf(model, 64, "%s", name);
@@ -114,7 +116,6 @@ static void split_device_name(const char *name, char *model, char *custom_suffix
 static bool asi_open(indigo_device *device) {
 	bool result = false;
 	bool global_locked = false;
-	pthread_mutex_lock(&indigo_device_enumeration_mutex);
 	if (indigo_try_global_lock(device) != INDIGO_OK) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
 	} else {
@@ -126,18 +127,15 @@ static bool asi_open(indigo_device *device) {
 	if (!result && global_locked) {
 		indigo_global_unlock(device);
 	}
-	pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 	return result;
 }
 
 static void asi_close(indigo_device *device) {
-	pthread_mutex_lock(&indigo_device_enumeration_mutex);
 	if (PRIVATE_DATA->dev_id >= 0 && PRIVATE_DATA->dev_id < EFW_ID_MAX) {
 		int res = EFWClose(PRIVATE_DATA->dev_id);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWClose(%d) = %d", PRIVATE_DATA->dev_id, res);
 	}
 	indigo_global_unlock(device);
-	pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 }
 
 //- code
@@ -227,9 +225,6 @@ static void wheel_connection_handler(indigo_device *device) {
 
 static void wheel_slot_handler(indigo_device *device) {
 	//+ wheel.WHEEL_SLOT.on_change
-	if(WHEEL_SLOT_PROPERTY->state == INDIGO_BUSY_STATE) {
-		return;
-	}
 	if (WHEEL_SLOT_ITEM->number.value < 1 || WHEEL_SLOT_ITEM->number.value > WHEEL_SLOT_ITEM->number.max) {
 		WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
@@ -237,16 +232,15 @@ static void wheel_slot_handler(indigo_device *device) {
 		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 	} else {
-		WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
 		PRIVATE_DATA->target_slot = (int)WHEEL_SLOT_ITEM->number.value;
 		WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
 		int res = EFWSetPosition(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_slot - 1);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWSetPosition(%d, %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_slot - 1, res);
-		if (res == EFW_SUCCESS) {
-			indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
-		} else {
+		if (res != EFW_SUCCESS) {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+		} else {
+			indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
 		}
 	}
 	//- wheel.WHEEL_SLOT.on_change
@@ -254,12 +248,14 @@ static void wheel_slot_handler(indigo_device *device) {
 
 static void wheel_x_calibrate_handler(indigo_device *device) {
 	//+ wheel.X_CALIBRATE.on_change
-	if (X_CALIBRATE_PROPERTY->state == INDIGO_BUSY_STATE || WHEEL_SLOT_PROPERTY->state == INDIGO_BUSY_STATE) {
+	if (WHEEL_SLOT_PROPERTY->state == INDIGO_BUSY_STATE) {
+		X_CALIBRATE_START_ITEM->sw.value = false;
+		X_CALIBRATE_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, X_CALIBRATE_PROPERTY, "Wheel is busy");
 		return;
 	}
 	if (X_CALIBRATE_START_ITEM->sw.value) {
-		X_CALIBRATE_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, X_CALIBRATE_PROPERTY, "Calibration started");
+		indigo_send_message(device, X_CALIBRATE_PROPERTY, "Calibration started");
 		WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 		int res = EFWCalibrate(PRIVATE_DATA->dev_id);
@@ -278,9 +274,8 @@ static void wheel_x_calibrate_handler(indigo_device *device) {
 }
 
 static void wheel_x_custom_suffix_handler(indigo_device *device) {
+	X_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_OK_STATE;
 	//+ wheel.X_CUSTOM_SUFFIX.on_change
-	X_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_BUSY_STATE;
-	indigo_update_property(device, X_CUSTOM_SUFFIX_PROPERTY, NULL);
 	if (strlen(X_CUSTOM_SUFFIX_ITEM->text.value) > 8) {
 		X_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, X_CUSTOM_SUFFIX_PROPERTY, "Custom suffix too long");
@@ -305,11 +300,10 @@ static void wheel_x_custom_suffix_handler(indigo_device *device) {
 	strncpy(PRIVATE_DATA->custom_suffix, X_CUSTOM_SUFFIX_ITEM->text.value, sizeof(PRIVATE_DATA->custom_suffix) - 1);
 	X_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_OK_STATE;
 	if (strlen(X_CUSTOM_SUFFIX_ITEM->text.value) > 0) {
-		indigo_update_property(device, X_CUSTOM_SUFFIX_PROPERTY, "Filter wheel name suffix '#%s' will be used on replug", X_CUSTOM_SUFFIX_ITEM->text.value);
+		indigo_send_message(device, X_CUSTOM_SUFFIX_PROPERTY, "Filter wheel name suffix '#%s' will be used on replug", X_CUSTOM_SUFFIX_ITEM->text.value);
 	} else {
-		indigo_update_property(device, X_CUSTOM_SUFFIX_PROPERTY, "Filter wheel name suffix cleared, will be used on replug");
+		indigo_send_message(device, X_CUSTOM_SUFFIX_PROPERTY, "Filter wheel name suffix cleared, will be used on replug");
 	}
-	return;
 	//- wheel.X_CUSTOM_SUFFIX.on_change
 	indigo_update_property(device, X_CUSTOM_SUFFIX_PROPERTY, NULL);
 }
@@ -357,7 +351,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		if (!indigo_ignore_connection_change(device, property)) {
 			indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 			INDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);
-			indigo_execute_handler(device, wheel_connection_handler);
+			indigo_queue_add(driver_queue, device, INDIGO_TASK_PRIORITY_NORMAL, 0, wheel_connection_handler, &driver_queue_mutex);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(WHEEL_SLOT_PROPERTY, property)) {
@@ -390,80 +384,92 @@ static indigo_device wheel_template = INDIGO_DEVICE_INITIALIZER(WHEEL_DEVICE_NAM
 
 #pragma mark - Hot-plug code
 
-static pthread_mutex_t hotplug_mutex = PTHREAD_MUTEX_INITIALIZER;
 static indigo_device *devices[MAX_DEVICES];
 
-static void process_plug_event(libusb_device *dev) {
-	pthread_mutex_lock(&hotplug_mutex);
+static void process_plug_event_handler(indigo_device *device, void *data) {
+	indigo_set_handler_max_run_time(1);
+	libusb_device *dev = (libusb_device *)data;
+	bool dev_ref_transferred = false;
+	asi_private_data *private_data = NULL;
 	bool plug_result = true;
 	char name[INDIGO_NAME_SIZE] = DRIVER_LABEL;
-	asi_private_data *private_data = indigo_safe_malloc(sizeof(asi_private_data));
+	private_data = indigo_safe_malloc(sizeof(asi_private_data));
 	private_data->usbdev = dev;
-	libusb_ref_device(dev);
-	//+ sdk.plug
-	plug_result = false;
 	struct libusb_device_descriptor descriptor;
-	if (libusb_get_device_descriptor(dev, &descriptor) == LIBUSB_SUCCESS && descriptor.idVendor == ASI_VENDOR_ID) {
+	if (!(libusb_get_device_descriptor(dev, &descriptor) == LIBUSB_SUCCESS && descriptor.idVendor == ASI_VENDOR_ID)) {
+		plug_result = false;
+	}
+	if (plug_result) {
+		//+ sdk.plug
+		plug_result = false;
 		for (int i = 0; i < efw_id_count; i++) {
 			if (efw_products[i] == descriptor.idProduct) {
 				plug_result = true;
 				break;
 			}
 		}
-	}
-	if (plug_result) {
-		plug_result = false;
-		private_data->dev_id = NO_DEVICE;
-		pthread_mutex_lock(&indigo_device_enumeration_mutex);
-		int count = EFWGetNum();
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetNum() = %d", count);
-		for (int index = 0; index < count; index++) {
-			int id = NO_DEVICE;
-			int res = EFWGetID(index, &id);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetID(%d, -> %d) = %d", index, id, res);
-			if (res != EFW_SUCCESS || id < 0 || id >= EFW_ID_MAX || connected_ids[id]) {
-				continue;
-			}
-			res = EFWOpen(id);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWOpen(%d) = %d", id, res);
-			if (res != EFW_SUCCESS) {
-				continue;
-			}
-			EFW_INFO info = {0};
-			res = EFWGetProperty(id, &info);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetProperty(%d) = %d", id, res);
-			EFWClose(id);
-			if (res == EFW_SUCCESS) {
-				private_data->dev_id = id;
-				connected_ids[id] = true;
-				split_device_name(info.Name, private_data->model, private_data->custom_suffix);
-				snprintf(name, INDIGO_NAME_SIZE, "%s", info.Name);
-				plug_result = true;
-				break;
+		if (plug_result) {
+			plug_result = false;
+			private_data->dev_id = NO_DEVICE;
+			int count = EFWGetNum();
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetNum() = %d", count);
+			for (int index = 0; index < count; index++) {
+				int id = NO_DEVICE;
+				int res = EFWGetID(index, &id);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetID(%d, -> %d) = %d", index, id, res);
+				if (res != EFW_SUCCESS || id < 0 || id >= EFW_ID_MAX || connected_ids[id]) {
+					continue;
+				}
+				res = EFWOpen(id);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWOpen(%d) = %d", id, res);
+				if (res != EFW_SUCCESS) {
+					continue;
+				}
+				EFW_INFO info = {0};
+				res = EFWGetProperty(id, &info);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetProperty(%d) = %d", id, res);
+				EFWClose(id);
+				if (res == EFW_SUCCESS) {
+					private_data->dev_id = id;
+					connected_ids[id] = true;
+					split_device_name(info.Name, private_data->model, private_data->custom_suffix);
+					snprintf(name, INDIGO_NAME_SIZE, "%s", info.Name);
+					plug_result = true;
+					break;
+				}
 			}
 		}
-		pthread_mutex_unlock(&indigo_device_enumeration_mutex);
+		//- sdk.plug
 	}
-	//- sdk.plug
 	if (plug_result) {
 		indigo_device *wheel = indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
 		wheel->private_data = private_data;
 		snprintf(wheel->name, INDIGO_NAME_SIZE, "%s", name);
+		bool wheel_attached = false;
 		for (int j = 0; j < MAX_DEVICES; j++) {
 			if (devices[j] == NULL) {
-				indigo_async((void *)(void *)indigo_attach_device, devices[j] = wheel);
+				devices[j] = wheel;
+				if (indigo_attach_device(wheel) == INDIGO_OK) {
+					dev_ref_transferred = true;
+					wheel_attached = true;
+				} else {
+					devices[j] = NULL;
+				}
 				break;
 			}
 		}
-	} else {
-		libusb_unref_device(dev);
-		free(private_data);
+		if (!wheel_attached) {
+			free(wheel);
+		}
 	}
-	pthread_mutex_unlock(&hotplug_mutex);
+	if (!dev_ref_transferred) {
+		free(private_data);
+		libusb_unref_device(dev);
+	}
 }
 
-static void process_unplug_event(libusb_device *dev) {
-	pthread_mutex_lock(&hotplug_mutex);
+static void process_unplug_event_handler(indigo_device *device, void *data) {
+	libusb_device *dev = (libusb_device *)data;
 	asi_private_data *private_data = NULL;
 	for (int j = 0; j < MAX_DEVICES; j++) {
 		if (devices[j] != NULL) {
@@ -485,19 +491,23 @@ static void process_unplug_event(libusb_device *dev) {
 		libusb_unref_device(dev);
 		free(private_data);
 	}
-	pthread_mutex_unlock(&hotplug_mutex);
+	libusb_unref_device(dev);
 }
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
-			INDIGO_ASYNC(process_plug_event, dev);
+			dev = libusb_ref_device(dev);
+			indigo_queue_add_with_data(driver_queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 0, process_plug_event_handler, dev, &driver_queue_mutex);
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
-			process_unplug_event(dev);
+			dev = libusb_ref_device(dev);
+			indigo_queue_add_with_data(driver_queue, NULL, INDIGO_TASK_PRIORITY_NORMAL, 0, process_unplug_event_handler, dev, &driver_queue_mutex);
 			break;
 		}
+		default:
+			break;
 	}
 	return 0;
 }
@@ -535,6 +545,12 @@ indigo_result indigo_wheel_asi(indigo_driver_action action, indigo_driver_info *
 			for (int i = 0; i < MAX_DEVICES; i++) {
 				devices[i] = NULL;
 			}
+			driver_queue = indigo_queue_create(NULL);
+			if (driver_queue == NULL) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to create driver queue");
+				return INDIGO_FAILED;
+			}
+			indigo_queue_set_name(driver_queue, "Queue " DRIVER_LABEL);
 			indigo_start_usb_event_handler();
 			int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, ASI_VENDOR_ID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
@@ -550,9 +566,10 @@ indigo_result indigo_wheel_asi(indigo_driver_action action, indigo_driver_info *
 			for (int i = 0; i < MAX_DEVICES; i++) {
 				if (devices[i] != NULL) {
 					indigo_device *device = devices[i];
-					hotplug_callback(NULL, PRIVATE_DATA->usbdev, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
+					process_unplug_event_handler(NULL, libusb_ref_device(PRIVATE_DATA->usbdev));
 				}
 			}
+			indigo_queue_delete(&driver_queue);
 			break;
 
 		case INDIGO_DRIVER_INFO:

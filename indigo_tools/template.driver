@@ -84,7 +84,7 @@ driver XXXXX { // replace XXXXX with driver base name without indigo_type_ prefi
 		vid = XXXXX; // optional attribute; replace XXXXX with vendor ID (number C expression)
 		plug {
 			// optional C code block
-			// it runs with libusb_device *dev, XXXXX_private_data *private_data, char name[INDIGO_NAME_SIZE] and bool plug_result
+			// it runs after generated USB descriptor/vid/pid filtering with libusb_device *dev, struct libusb_device_descriptor descriptor, XXXXX_private_data *private_data, char name[INDIGO_NAME_SIZE] and bool plug_result
 			// fill private_data and name, or set plug_result = false to reject the USB event
 			// the code will be surrounded by "//+ sdk.plug" and "//-" markers in the generated code
 		}

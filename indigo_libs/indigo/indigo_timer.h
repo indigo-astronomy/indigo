@@ -105,6 +105,7 @@ typedef struct indigo_queue_task {
 
 typedef struct indigo_queue {
 	indigo_device *device;
+	char name[256];
 	pthread_cond_t cond;
 	pthread_t thread;
 	indigo_queue_task *task;
@@ -113,6 +114,7 @@ typedef struct indigo_queue {
 	bool pending_task_limit_reported;
 	bool abort;
 	bool ready; // guard against a lost wakeup race condition
+	bool rename_pending;
 	pthread_mutex_t mutex;
 	indigo_queue_task *running_task;
 	bool running;
@@ -156,9 +158,13 @@ INDIGO_EXTERN bool indigo_cancel_timer_sync(indigo_device *device, indigo_timer 
  */
 INDIGO_EXTERN void indigo_cancel_all_timers(indigo_device *device);
 
-/** Create queue
+/** Create queue. The device argument is used for thread naming and may be NULL.
  */
 INDIGO_EXTERN indigo_queue *indigo_queue_create(indigo_device *device);
+
+/** Change queue thread name.
+ */
+INDIGO_EXTERN void indigo_queue_set_name(indigo_queue *queue, const char *name);
 
 /** Add task to queue. Higher signed priority values run first among due tasks.
  */

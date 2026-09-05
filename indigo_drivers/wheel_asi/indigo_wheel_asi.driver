@@ -24,6 +24,7 @@ driver asi {
 	copyright = "Copyright (C) 2016 Rumen G. Bogdanovski";
 	version = 14;
 	include {
+		#include <stdbool.h>
 		#include <EFW_filter.h>
 	}
 	define {
@@ -38,111 +39,101 @@ driver asi {
 		int current_slot, target_slot;
 		int slot_count;
 	}
-	sdk {
-		hotplug = true;
-		vid = ASI_VENDOR_ID;
-		plug {
-			plug_result = false;
-			struct libusb_device_descriptor descriptor;
-			if (libusb_get_device_descriptor(dev, &descriptor) == LIBUSB_SUCCESS && descriptor.idVendor == ASI_VENDOR_ID) {
+		sdk {
+			hotplug = true;
+			vid = ASI_VENDOR_ID;
+			plug {
+				plug_result = false;
 				for (int i = 0; i < efw_id_count; i++) {
 					if (efw_products[i] == descriptor.idProduct) {
 						plug_result = true;
 						break;
 					}
 				}
-			}
-			if (plug_result) {
-				plug_result = false;
-				private_data->dev_id = NO_DEVICE;
-				pthread_mutex_lock(&indigo_device_enumeration_mutex);
-				int count = EFWGetNum();
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetNum() = %d", count);
-				for (int index = 0; index < count; index++) {
-					int id = NO_DEVICE;
-					int res = EFWGetID(index, &id);
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetID(%d, -> %d) = %d", index, id, res);
-					if (res != EFW_SUCCESS || id < 0 || id >= EFW_ID_MAX || connected_ids[id]) {
-						continue;
-					}
-					res = EFWOpen(id);
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWOpen(%d) = %d", id, res);
-					if (res != EFW_SUCCESS) {
-						continue;
-					}
-					EFW_INFO info = {0};
-					res = EFWGetProperty(id, &info);
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetProperty(%d) = %d", id, res);
-					EFWClose(id);
-					if (res == EFW_SUCCESS) {
-						private_data->dev_id = id;
-						connected_ids[id] = true;
-						split_device_name(info.Name, private_data->model, private_data->custom_suffix);
-						snprintf(name, INDIGO_NAME_SIZE, "%s", info.Name);
-						plug_result = true;
-						break;
+				if (plug_result) {
+					plug_result = false;
+					private_data->dev_id = NO_DEVICE;
+					int count = EFWGetNum();
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetNum() = %d", count);
+					for (int index = 0; index < count; index++) {
+						int id = NO_DEVICE;
+						int res = EFWGetID(index, &id);
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetID(%d, -> %d) = %d", index, id, res);
+						if (res != EFW_SUCCESS || id < 0 || id >= EFW_ID_MAX || connected_ids[id]) {
+							continue;
+						}
+						res = EFWOpen(id);
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWOpen(%d) = %d", id, res);
+						if (res != EFW_SUCCESS) {
+							continue;
+						}
+						EFW_INFO info = {0};
+						res = EFWGetProperty(id, &info);
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetProperty(%d) = %d", id, res);
+						EFWClose(id);
+						if (res == EFW_SUCCESS) {
+							private_data->dev_id = id;
+							connected_ids[id] = true;
+							split_device_name(info.Name, private_data->model, private_data->custom_suffix);
+							snprintf(name, INDIGO_NAME_SIZE, "%s", info.Name);
+							plug_result = true;
+							break;
+						}
 					}
 				}
-				pthread_mutex_unlock(&indigo_device_enumeration_mutex);
+			}
+			unplug {
+				if (private_data->dev_id >= 0 && private_data->dev_id < EFW_ID_MAX) {
+					connected_ids[private_data->dev_id] = false;
+				}
 			}
 		}
-		unplug {
-			if (private_data->dev_id >= 0 && private_data->dev_id < EFW_ID_MAX) {
-				connected_ids[private_data->dev_id] = false;
-			}
-		}
-	}
-	code {
-		static int efw_products[100];
-		static int efw_id_count = 0;
-		static bool connected_ids[EFW_ID_MAX];
-		static pthread_mutex_t indigo_device_enumeration_mutex = PTHREAD_MUTEX_INITIALIZER;
+		code {
+			static int efw_products[100];
+			static int efw_id_count = 0;
+			static bool connected_ids[EFW_ID_MAX];
 
-		static void split_device_name(const char *name, char *model, char *custom_suffix) {
-			snprintf(model, 64, "%s", name);
-			custom_suffix[0] = 0;
-			char *suffix = strrchr(model, '#');
-			if (suffix == NULL) {
-				return;
+			static void split_device_name(const char *name, char *model, char *custom_suffix) {
+				snprintf(model, 64, "%s", name);
+				custom_suffix[0] = 0;
+				char *suffix = strrchr(model, '#');
+				if (suffix == NULL) {
+					return;
+				}
+				*suffix++ = 0;
+				size_t length = strlen(model);
+				while (length > 0 && model[length - 1] == ' ') {
+					model[--length] = 0;
+				}
+				strncpy(custom_suffix, suffix, 8);
+				custom_suffix[8] = 0;
 			}
-			*suffix++ = 0;
-			size_t length = strlen(model);
-			while (length > 0 && model[length - 1] == ' ') {
-				model[--length] = 0;
-			}
-			strncpy(custom_suffix, suffix, 8);
-			custom_suffix[8] = 0;
-		}
 
-		static bool asi_open(indigo_device *device) {
-			bool result = false;
-			bool global_locked = false;
-			pthread_mutex_lock(&indigo_device_enumeration_mutex);
-			if (indigo_try_global_lock(device) != INDIGO_OK) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-			} else {
-				global_locked = true;
-				int res = EFWOpen(PRIVATE_DATA->dev_id);
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWOpen(%d) = %d", PRIVATE_DATA->dev_id, res);
-				result = res == EFW_SUCCESS;
+			static bool asi_open(indigo_device *device) {
+				bool result = false;
+				bool global_locked = false;
+				if (indigo_try_global_lock(device) != INDIGO_OK) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
+				} else {
+					global_locked = true;
+					int res = EFWOpen(PRIVATE_DATA->dev_id);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWOpen(%d) = %d", PRIVATE_DATA->dev_id, res);
+					result = res == EFW_SUCCESS;
+				}
+				if (!result && global_locked) {
+					indigo_global_unlock(device);
+				}
+				return result;
 			}
-			if (!result && global_locked) {
+
+			static void asi_close(indigo_device *device) {
+				if (PRIVATE_DATA->dev_id >= 0 && PRIVATE_DATA->dev_id < EFW_ID_MAX) {
+					int res = EFWClose(PRIVATE_DATA->dev_id);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWClose(%d) = %d", PRIVATE_DATA->dev_id, res);
+				}
 				indigo_global_unlock(device);
 			}
-			pthread_mutex_unlock(&indigo_device_enumeration_mutex);
-			return result;
 		}
-
-		static void asi_close(indigo_device *device) {
-			pthread_mutex_lock(&indigo_device_enumeration_mutex);
-			if (PRIVATE_DATA->dev_id >= 0 && PRIVATE_DATA->dev_id < EFW_ID_MAX) {
-				int res = EFWClose(PRIVATE_DATA->dev_id);
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWClose(%d) = %d", PRIVATE_DATA->dev_id, res);
-			}
-			indigo_global_unlock(device);
-			pthread_mutex_unlock(&indigo_device_enumeration_mutex);
-		}
-	}
 	on_init {
 		const char *sdk_version = EFWGetSDKVersion();
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "EFW SDK v. %s", sdk_version);
@@ -221,9 +212,6 @@ driver asi {
 		// on_detach { }
 		inherited WHEEL_SLOT {
 			on_change {
-				if(WHEEL_SLOT_PROPERTY->state == INDIGO_BUSY_STATE) {
-					return;
-				}
 				if (WHEEL_SLOT_ITEM->number.value < 1 || WHEEL_SLOT_ITEM->number.value > WHEEL_SLOT_ITEM->number.max) {
 					WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
@@ -231,16 +219,15 @@ driver asi {
 					WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 					indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 				} else {
-					WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
 					PRIVATE_DATA->target_slot = (int)WHEEL_SLOT_ITEM->number.value;
 					WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
 					int res = EFWSetPosition(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_slot - 1);
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWSetPosition(%d, %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_slot - 1, res);
-					if (res == EFW_SUCCESS) {
-						indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
-					} else {
+					if (res != EFW_SUCCESS) {
 						WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
 						indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+					} else {
+						indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
 					}
 				}
 			}
@@ -251,12 +238,14 @@ driver asi {
 			label = "Calibrate filter wheel";
 			rule = INDIGO_ANY_OF_MANY_RULE;
 			on_change {
-				if (X_CALIBRATE_PROPERTY->state == INDIGO_BUSY_STATE || WHEEL_SLOT_PROPERTY->state == INDIGO_BUSY_STATE) {
+				if (WHEEL_SLOT_PROPERTY->state == INDIGO_BUSY_STATE) {
+					X_CALIBRATE_START_ITEM->sw.value = false;
+					X_CALIBRATE_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, X_CALIBRATE_PROPERTY, "Wheel is busy");
 					return;
 				}
 				if (X_CALIBRATE_START_ITEM->sw.value) {
-					X_CALIBRATE_PROPERTY->state = INDIGO_BUSY_STATE;
-					indigo_update_property(device, X_CALIBRATE_PROPERTY, "Calibration started");
+					indigo_send_message(device, X_CALIBRATE_PROPERTY, "Calibration started");
 					WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 					int res = EFWCalibrate(PRIVATE_DATA->dev_id);
@@ -283,8 +272,6 @@ driver asi {
 			group = WHEEL_ADVANCED_GROUP;
 			label = "Device name custom suffix";
 			on_change {
-				X_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_update_property(device, X_CUSTOM_SUFFIX_PROPERTY, NULL);
 				if (strlen(X_CUSTOM_SUFFIX_ITEM->text.value) > 8) {
 					X_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_update_property(device, X_CUSTOM_SUFFIX_PROPERTY, "Custom suffix too long");
@@ -309,11 +296,10 @@ driver asi {
 				strncpy(PRIVATE_DATA->custom_suffix, X_CUSTOM_SUFFIX_ITEM->text.value, sizeof(PRIVATE_DATA->custom_suffix) - 1);
 				X_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_OK_STATE;
 				if (strlen(X_CUSTOM_SUFFIX_ITEM->text.value) > 0) {
-					indigo_update_property(device, X_CUSTOM_SUFFIX_PROPERTY, "Filter wheel name suffix '#%s' will be used on replug", X_CUSTOM_SUFFIX_ITEM->text.value);
+					indigo_send_message(device, X_CUSTOM_SUFFIX_PROPERTY, "Filter wheel name suffix '#%s' will be used on replug", X_CUSTOM_SUFFIX_ITEM->text.value);
 				} else {
-					indigo_update_property(device, X_CUSTOM_SUFFIX_PROPERTY, "Filter wheel name suffix cleared, will be used on replug");
+					indigo_send_message(device, X_CUSTOM_SUFFIX_PROPERTY, "Filter wheel name suffix cleared, will be used on replug");
 				}
-				return;
 			}
 			item X_CUSTOM_SUFFIX {
 				name = "SUFFIX";

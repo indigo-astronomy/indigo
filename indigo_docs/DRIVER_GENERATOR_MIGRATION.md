@@ -80,8 +80,10 @@ sdk {
     vid = 0x1234;
     pid = 0x5678;
     plug {
-        /* Runs with libusb_device *dev, <driver>_private_data *private_data,
-         * char name[INDIGO_NAME_SIZE], and bool plug_result.
+        /* Runs after generated USB descriptor/vid/pid filtering with
+         * libusb_device *dev, struct libusb_device_descriptor descriptor,
+         * <driver>_private_data *private_data, char name[INDIGO_NAME_SIZE],
+         * and bool plug_result.
          * Fill private_data and name, or set plug_result = false to reject.
          */
     }
@@ -92,6 +94,12 @@ sdk {
     }
 }
 ```
+
+Generated hot-plug drivers create one driver-wide handler queue in addition to
+the usual per-device queues. The libusb callback enqueues arrival/removal work on
+that driver queue, and generated `CONNECTION` handling for hot-plug devices uses
+the same queue. This serializes SDK enumeration, attach/detach and open/close
+operations across all instances of one generated driver.
 
 The `<device_type>` keyword matches the device's INDIGO class (`aux`, `wheel`, `focuser`, `ccd`, `mount`, `guider`, `rotator`, `dome`, `gps`, etc.).
 
