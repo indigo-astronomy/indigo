@@ -139,6 +139,7 @@ Properties are implemented by CCD driver base class in [indigo_ccd_driver.c](htt
 | DSLR_FOCUS_METERING | switch |  | no | ... | yes | RO/RW status and items depend on the particular camera |
 | DSLR_FOCUS_MODE | switch |  | no | ... | yes | RO/RW status and items depend on the particular camera |
 | DSLR_CAPTURE_MODE | switch |  | no | ... | yes | RO/RW status and items depend on the particular camera |
+| DSLR_CAPTURE_DESTINATION | switch |  | no | ... | yes | Capture destination, if supported by the camera |
 | DSLR_FLASH_MODE | switch |  | no | ... | yes | RO/RW status and items depend on the particular camera |
 | DSLR_EXPOSURE_COMPENSATION | switch |  | no | ... | yes | RO/RW status and items depend on the particular camera |
 | DSLR_BATTERY_LEVEL | number | yes | no | VALUE | yes | Value |

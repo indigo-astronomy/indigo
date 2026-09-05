@@ -188,6 +188,7 @@ char *ptp_property_canon_code_name(uint16_t code) {
 		case ptp_property_canon_FocusMode: return DSLR_FOCUS_MODE_PROPERTY_NAME;
 		case ptp_property_canon_ExpCompensation: return DSLR_EXPOSURE_COMPENSATION_PROPERTY_NAME;
 		case ptp_property_canon_BatteryPower: return DSLR_BATTERY_LEVEL_PROPERTY_NAME;
+		case ptp_property_canon_CaptureDestination: return DSLR_CAPTURE_DESTINATION_PROPERTY_NAME;
 		case ptp_property_canon_ExExposureLevelIncrements: return DSLR_COMPENSATION_STEP_PROPERTY_NAME;
 		case ptp_property_canon_PictureStyle: return DSLR_PICTURE_STYLE_PROPERTY_NAME;
 		case ptp_property_canon_MultiAspect: return DSLR_ASPECT_RATIO_PROPERTY_NAME;
@@ -730,10 +731,16 @@ char *ptp_property_canon_value_code_label(indigo_device *device, uint16_t proper
 			break;
 		}
 		case ptp_property_canon_CaptureDestination: {
+			if (code == 0x2) {
+				return "Card";
+			}
 			if (code == 0x4) {
 				return "RAM";
 			}
-			return "Card";
+			if (code == 0x6) {
+				return "Card";
+			}
+			break;
 		}
 		case ptp_property_canon_EVFOutputDevice: {
 			switch (code) {
@@ -1085,6 +1092,9 @@ static void ptp_canon_get_event(indigo_device *device) {
 						}
 					}
 					if (property) {
+						if (code == ptp_property_canon_CaptureDestination) {
+							CANON_PRIVATE_DATA->use_ram = property->value.number.value == 0x04;
+						}
 						*next_updated++ = property;
 						if (property->type == ptp_str_type) {
 							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "value = '%s'", property->value.text.value);
@@ -1245,7 +1255,7 @@ static void ptp_canon_get_event(indigo_device *device) {
 							// update property
 							if (read_size == length) {
 								const char *ext = strchr(filename, '.');
-								if (ptp_check_jpeg_ext(ext) && ptp_canon_check_dual_compression(device)) {
+								if (ext && ptp_check_jpeg_ext(ext) && ptp_canon_check_dual_compression(device)) {
 									if (CCD_PREVIEW_ENABLED_ITEM->sw.value) {
 										indigo_process_dslr_preview_image(device, image_buffer, (int)length);
 									}
@@ -1480,6 +1490,8 @@ static bool set_number_property(indigo_device *device, uint16_t code, uint64_t v
 			CANON_PRIVATE_DATA->shutter = (int)value;
 		} else if (code == ptp_property_canon_AutoExposureMode) {
 			CANON_PRIVATE_DATA->mode = (int)value;
+		} else if (code == ptp_property_canon_CaptureDestination) {
+			CANON_PRIVATE_DATA->use_ram = value == 0x04;
 		}
 	}
 	return result;

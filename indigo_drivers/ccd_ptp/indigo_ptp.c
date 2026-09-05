@@ -1080,8 +1080,8 @@ bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t o
 	container.payload.params[3] = out_4;
 	container.payload.params[4] = out_5;
 	PTP_DUMP_CONTAINER(&container);
-	NSData *requestData = [NSData dataWithBytesNoCopy:&container length:container.length freeWhenDone:NO];
-	NSData *outData = data_out ? [NSData dataWithBytesNoCopy:data_out length:data_out_size freeWhenDone:YES] : nil;
+	NSData *requestData = [NSData dataWithBytes:&container length:container.length];
+	NSData *outData = data_out ? [NSData dataWithBytes:data_out length:data_out_size] : nil;
 	if (delegate.ptpSemafor == nil) {
 		delegate.ptpSemafor = dispatch_semaphore_create(0);
 	}
