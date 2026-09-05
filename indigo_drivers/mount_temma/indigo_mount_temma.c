@@ -53,6 +53,11 @@
 
 #define CCD_ADVANCED_GROUP         "Advanced"
 
+#define FLOW_CONTROL_PROPERTY     (PRIVATE_DATA->flow_control_property)
+#define FLOW_CONTROL_ON_ITEM      (FLOW_CONTROL_PROPERTY->items+0)
+#define FLOW_CONTROL_OFF_ITEM     (FLOW_CONTROL_PROPERTY->items+1)
+#define FLOW_CONTROL_PROPERTY_NAME "FLOW_CONTROL"
+
 #define CORRECTION_SPEED_PROPERTY			(PRIVATE_DATA->correction_speed_property)
 #define CORRECTION_SPEED_RA_ITEM          (CORRECTION_SPEED_PROPERTY->items+0)
 #define CORRECTION_SPEED_DEC_ITEM         (CORRECTION_SPEED_PROPERTY->items+1)
@@ -113,6 +118,7 @@ typedef struct {
 	indigo_timer *position_timer;
 	pthread_mutex_t port_mutex;
 	char product[128];
+	indigo_property *flow_control_property;
 	indigo_property *correction_speed_property;
 	indigo_property *high_speed_property;
 	indigo_property *zenith_property;
@@ -128,8 +134,11 @@ static bool temma_open(indigo_device *device) {
 			close(PRIVATE_DATA->handle);
 			return false;
 		}
-		options.c_cflag |= (CS8 | PARENB | CRTSCTS);
-		options.c_cflag &= (~PARODD & ~CSTOPB);
+		options.c_cflag |= (CS8 | PARENB);
+		options.c_cflag &= ~(PARODD | CSTOPB | CRTSCTS);
+		if (FLOW_CONTROL_ON_ITEM->sw.value) {
+			options.c_cflag |= CRTSCTS;
+		}
 		cfsetispeed(&options, B19200);
 		cfsetospeed(&options, B19200);
 		options.c_iflag = IGNBRK;
@@ -366,6 +375,13 @@ static indigo_result mount_attach(indigo_device *device) {
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
 
+		FLOW_CONTROL_PROPERTY = indigo_init_switch_property(NULL, device->name, FLOW_CONTROL_PROPERTY_NAME, MAIN_GROUP, "RTS/CTS flow control", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (FLOW_CONTROL_PROPERTY == NULL) {
+			return INDIGO_FAILED;
+		}
+		indigo_init_switch_item(FLOW_CONTROL_ON_ITEM, "ON", "On", true);
+		indigo_init_switch_item(FLOW_CONTROL_OFF_ITEM, "OFF", "Off", false);
+
 		// CORRECTION_SPEED
 		CORRECTION_SPEED_PROPERTY = indigo_init_number_property(NULL, device->name, CORRECTION_SPEED_PROPERTY_NAME, CCD_ADVANCED_GROUP, "Correction speed", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		if (CORRECTION_SPEED_PROPERTY == NULL) {
@@ -397,6 +413,7 @@ static indigo_result mount_attach(indigo_device *device) {
 }
 
 static indigo_result mount_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	INDIGO_DEFINE_MATCHING_PROPERTY(FLOW_CONTROL_PROPERTY);
 	if (IS_CONNECTED) {
 		INDIGO_DEFINE_MATCHING_PROPERTY(CORRECTION_SPEED_PROPERTY);
 		INDIGO_DEFINE_MATCHING_PROPERTY(HIGH_SPEED_PROPERTY);
@@ -472,6 +489,18 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, mount_connect_callback, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(FLOW_CONTROL_PROPERTY, property)) {
+		indigo_lock_master_device(device);
+		if (PRIVATE_DATA->device_count > 0 || CONNECTION_PROPERTY->state == INDIGO_BUSY_STATE) {
+			FLOW_CONTROL_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, FLOW_CONTROL_PROPERTY, "Disconnect the mount and guider before changing RTS/CTS flow control");
+		} else {
+			indigo_property_copy_values(FLOW_CONTROL_PROPERTY, property, false);
+			FLOW_CONTROL_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, FLOW_CONTROL_PROPERTY, NULL);
+		}
+		indigo_unlock_master_device(device);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_PARK_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_PARK
@@ -735,6 +764,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
+			indigo_save_property(device, NULL, FLOW_CONTROL_PROPERTY);
 			indigo_save_property(device, NULL, CORRECTION_SPEED_PROPERTY);
 		}
 	}
@@ -748,6 +778,7 @@ static indigo_result mount_detach(indigo_device *device) {
 		mount_connect_callback(device);
 	}
 	indigo_release_property(CORRECTION_SPEED_PROPERTY);
+	indigo_release_property(FLOW_CONTROL_PROPERTY);
 	indigo_release_property(HIGH_SPEED_PROPERTY);
 	indigo_release_property(ZENITH_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
