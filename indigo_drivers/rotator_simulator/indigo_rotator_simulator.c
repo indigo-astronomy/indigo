@@ -123,7 +123,7 @@ static void rotator_timer_callback(indigo_device *device) {
 			if (delta > 0) {
 				indigo_execute_handler_in(device, 0.1, rotator_timer_callback);
 			} else {
-				indigo_execute_priority_handler_in(device, 100, 0.1, rotator_timer_callback);
+				indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, 0.1, rotator_timer_callback);
 			}
 		} else {
 			ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
@@ -158,7 +158,7 @@ static void rotator_position_handler(indigo_device *device) {
 		ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 		PRIVATE_DATA->target_position = simulator_private_position(device, ROTATOR_POSITION_ITEM->number.target);
 		simulator_update_rotator_position(device);
-		indigo_execute_priority_handler_in(device, 100, 0.1, rotator_timer_callback);
+		indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, 0.1, rotator_timer_callback);
 	}
 	//- rotator.ROTATOR_POSITION.on_change
 	indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);

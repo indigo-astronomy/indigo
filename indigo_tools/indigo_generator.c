@@ -1746,13 +1746,15 @@ void write_c_change_property(device_type *device) {
 					write_line("\t\t%s->state = INDIGO_OK_STATE;", property->handle);
 					write_line("\t\tindigo_update_property(device, %s, NULL);", property->handle);
 				} else if (property->asynchronous_change) {
-					if (property->preserve_values) {
-						write_line("\t\tINDIGO_COPY_TARGETS_PROCESS_CHANGE(%s, %s);", property->handle, property->handler);
-					} else if (!strncmp(property->id, "MOUNT_MOTION", 12)) {
-						write_line("\t\tINDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME(%s, %s);", property->handle, property->handler);
-					} else {
-						write_line("\t\tINDIGO_COPY_VALUES_PROCESS_CHANGE(%s, %s);", property->handle, property->handler);
-					}
+						if (property->preserve_values) {
+							write_line("\t\tINDIGO_COPY_TARGETS_PROCESS_CHANGE(%s, %s);", property->handle, property->handler);
+						} else if (!strncmp(property->id, "MOUNT_MOTION", 12)) {
+							write_line("\t\tINDIGO_COPY_VALUES_PROCESS_CHANGE_ANYTIME(%s, %s);", property->handle, property->handler);
+						} else if (!strcmp(property->id, "GUIDER_GUIDE_RA") || !strcmp(property->id, "GUIDER_GUIDE_DEC")) {
+							write_line("\t\tINDIGO_COPY_VALUES_PROCESS_PRIORITY_CHANGE(%s, %s);", property->handle, property->handler);
+						} else {
+							write_line("\t\tINDIGO_COPY_VALUES_PROCESS_CHANGE(%s, %s);", property->handle, property->handler);
+						}
 				} else {
 					if (property->preserve_values) {
 						write_line("\t\tINDIGO_COPY_TARGETS_PROCESS_SYNC_CHANGE(%s, %s);", property->handle, property->handler);

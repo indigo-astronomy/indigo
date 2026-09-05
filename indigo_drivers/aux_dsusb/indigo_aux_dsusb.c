@@ -115,7 +115,7 @@ static void aux_timer_callback(indigo_device *device) {
 		}
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		if (CCD_EXPOSURE_ITEM->number.value > 0) {
-			indigo_execute_priority_handler_in(device, 100, CCD_EXPOSURE_ITEM->number.value < 1 ? CCD_EXPOSURE_ITEM->number.value : 1, aux_timer_callback);
+			indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, CCD_EXPOSURE_ITEM->number.value < 1 ? CCD_EXPOSURE_ITEM->number.value : 1, aux_timer_callback);
 		}
 	}
 	//- aux.on_timer
@@ -181,7 +181,7 @@ static void aux_ccd_exposure_handler(indigo_device *device) {
 	}
 	libdsusb_start(PRIVATE_DATA->device_context);
 	CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-	indigo_execute_priority_handler_in(device, 100, CCD_EXPOSURE_ITEM->number.value < 1 ? CCD_EXPOSURE_ITEM->number.value : 1, aux_timer_callback);
+	indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, CCD_EXPOSURE_ITEM->number.value < 1 ? CCD_EXPOSURE_ITEM->number.value : 1, aux_timer_callback);
 	//- aux.CCD_EXPOSURE.on_change
 	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 }

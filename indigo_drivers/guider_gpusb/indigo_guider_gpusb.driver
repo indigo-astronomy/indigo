@@ -90,7 +90,7 @@ driver gpusb {
 				libgpusb_set(PRIVATE_DATA->device_context, PRIVATE_DATA->relay_mask);
 				if (duration > 0) {
 					INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_DEC_PROPERTY, INDIGO_BUSY_STATE, NULL);
-					indigo_execute_priority_handler_in(device, 100, duration / 1000.0, guider_guide_dec_finish_handler);
+					indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, duration / 1000.0, guider_guide_dec_finish_handler);
 				}
 			}
 		}
@@ -109,7 +109,7 @@ driver gpusb {
 				libgpusb_set(PRIVATE_DATA->device_context, PRIVATE_DATA->relay_mask);
 				if (duration > 0) {
 					INDIGO_UPDATE_PROPERTY_STATE(GUIDER_GUIDE_RA_PROPERTY, INDIGO_BUSY_STATE, NULL);
-					indigo_execute_priority_handler_in(device, 100, duration / 1000.0, guider_guide_ra_finish_handler);
+					indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, duration / 1000.0, guider_guide_ra_finish_handler);
 				}
 			}
 		}
