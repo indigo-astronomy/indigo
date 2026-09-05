@@ -1725,7 +1725,13 @@ void write_c_change_property(device_type *device) {
 	write_line("\t\tif (!indigo_ignore_connection_change(device, property)) {");
 	write_line("\t\t\tindigo_property_copy_values(CONNECTION_PROPERTY, property, false);");
 		write_line("\t\t\tINDIGO_UPDATE_PROPERTY_STATE(CONNECTION_PROPERTY, INDIGO_BUSY_STATE, NULL);");
-		if (driver_uses_hotplug()) {
+		if (driver_uses_hotplug() && driver.devices->next) {
+			write_line("\t\t\tif (CONNECTION_CONNECTED_ITEM->sw.value && PRIVATE_DATA->count == 0) {");
+			write_line("\t\t\t\tindigo_queue_add(driver_queue, device, INDIGO_TASK_PRIORITY_NORMAL, 0, %s_connection_handler, &driver_queue_mutex);", device->type);
+			write_line("\t\t\t} else {");
+			write_line("\t\t\t\tindigo_execute_handler(device, %s_connection_handler);", device->type);
+			write_line("\t\t\t}");
+		} else if (driver_uses_hotplug()) {
 			write_line("\t\t\tindigo_queue_add(driver_queue, device, INDIGO_TASK_PRIORITY_NORMAL, 0, %s_connection_handler, &driver_queue_mutex);", device->type);
 		} else {
 			write_line("\t\t\tindigo_execute_handler(device, %s_connection_handler);", device->type);
