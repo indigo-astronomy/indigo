@@ -52,7 +52,7 @@ typedef struct item_type {
 typedef struct property_type {
 	struct property_type *next;
 	char type[12], id[128], handle[128], name[128], define_name[128], pointer[128], handler[64], label[256], group[32],  perm[32], rule[32], hidden[64];
-	bool always_defined, handle_change, asynchronous_change, persistent, preserve_values;
+	bool always_defined, handle_change, asynchronous_change, persistent, preserve_values, pass_through_change;
 	int max_name_length;
 	code_type *code, *on_attach, *on_change, *on_detach;
 	item_type *items;
@@ -667,6 +667,9 @@ bool parse_property_block(device_type *device, property_type **properties) {
 				continue;
 			}
 			if (parse_bool_attribute("preserve_values", &property->preserve_values)) {
+				continue;
+			}
+			if (parse_bool_attribute("pass_through_change", &property->pass_through_change)) {
 				continue;
 			}
 			if (parse_code_block("code", &property->code)) {
@@ -1768,7 +1771,9 @@ void write_c_change_property(device_type *device) {
 						write_line("\t\tINDIGO_COPY_VALUES_PROCESS_SYNC_CHANGE(%s, %s);", property->handle, property->handler);
 					}
 				}
-				write_line("\t\treturn INDIGO_OK;");
+				if (!property->pass_through_change) {
+					write_line("\t\treturn INDIGO_OK;");
+				}
 			}
 		}
 	}
@@ -2869,6 +2874,9 @@ void write_definition_source(void) {
 			}
 			if (property->preserve_values) {
 				write_line("\t\t\tpreserve_values = true;");
+			}
+			if (property->pass_through_change) {
+				write_line("\t\t\tpass_through_change = true;");
 			}
 			if (property->on_change) {
 				write_line("\t\t\ton_change {");

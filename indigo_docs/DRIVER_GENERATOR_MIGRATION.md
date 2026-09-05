@@ -59,6 +59,7 @@ driver <name> {
             rule = INDIGO_ANY_OF_MANY_RULE; // switches only
             persistent = true;             // optional
             always_defined = true;         // optional
+            pass_through_change = true;    // optional, continue to type handler after matching this property
             on_change { /* handler code */ }
 
             item <ITEM_HANDLE> {
@@ -361,6 +362,8 @@ returns `INDIGO_OK` without scheduling a handler. This applies to both
 driver-defined properties and inherited properties. For inherited properties,
 omitting `on_change` entirely means that no generated change branch is emitted,
 which is the right choice for read-only or pass-through properties.
+
+By default, every generated property change branch finishes with `return INDIGO_OK`, so a property handled by the driver-specific callback is not passed to the base type handler. Set `pass_through_change = true` on a property when the generated branch should still run but then continue to the final `indigo_<type>_change_property(device, client, property)` call.
 
 Four mount-specific properties receive special treatment in the generated change handlers: MOUNT_EQUATORIAL_COORDINATES, MOUNT_MOTION_RA, MOUNT_MOTION_DEC, and MOUNT_TRACKING.
 For each of these, the generator inserts a park-state guard at the very top of the handler — before any user-supplied on_change code runs.
