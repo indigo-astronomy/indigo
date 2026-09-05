@@ -738,7 +738,7 @@ char *ptp_property_canon_value_code_label(indigo_device *device, uint16_t proper
 				return "RAM";
 			}
 			if (code == 0x6) {
-				return "Card";
+				return "RAM and Card";
 			}
 			break;
 		}
@@ -1091,10 +1091,10 @@ static void ptp_canon_get_event(indigo_device *device) {
 								break;
 						}
 					}
+					if (code == ptp_property_canon_CaptureDestination) {
+						CANON_PRIVATE_DATA->use_ram = property->value.number.value == 0x04;
+					}
 					if (property) {
-						if (code == ptp_property_canon_CaptureDestination) {
-							CANON_PRIVATE_DATA->use_ram = property->value.number.value == 0x04;
-						}
 						*next_updated++ = property;
 						if (property->type == ptp_str_type) {
 							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "value = '%s'", property->value.text.value);
