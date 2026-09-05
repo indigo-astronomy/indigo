@@ -1,0 +1,402 @@
+// Copyright (c) 2017-2026 Rumen G. Bogdanovski
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// Meade DSI Camera driver definition
+
+driver dsi {
+	label = "Meade DSI Camera";
+	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
+	copyright = "Copyright (c) 2017-2026 Rumen G. Bogdanovski";
+	version = 14;
+	sdk {
+		hotplug = true;
+		vid = DSI_VENDOR_ID;
+		plug {
+		#ifdef __APPLE__
+			if (dsi_load_firmware()) {
+				plug_result = false;
+			}
+		#endif
+			if (plug_result) {
+				plug_result = false;
+				private_data->dev_sid[0] = 0;
+				dsi_device_list dev_list;
+				int count = dsi_scan_usb(dev_list);
+				for (int i = 0; i < count; i++) {
+					if (dsi_sid_is_connected(dev_list[i])) {
+						continue;
+					}
+					char dev_name[DSI_NAME_LEN + 1];
+					if (!dsi_get_plugged_device_name(dev_list[i], dev_name, sizeof(dev_name))) {
+						continue;
+					}
+					strncpy(private_data->dev_sid, dev_list[i], DSI_ID_LEN);
+					private_data->dev_sid[DSI_ID_LEN - 1] = '\0';
+					dsi_set_connected_sid(private_data->dev_sid, true);
+					snprintf(name, INDIGO_NAME_SIZE, "%s", dev_name);
+					indigo_make_name_unique(name, "%s", private_data->dev_sid);
+					plug_result = true;
+					break;
+				}
+			}
+		}
+		unplug {
+			dsi_set_connected_sid(private_data->dev_sid, false);
+		}
+	}
+	include {
+		#include "libdsi.h"
+	}
+	define {
+		#define MAX_CCD_TEMP         45     /* Max CCD temperature */
+		#define MIN_CCD_TEMP        -55     /* Min CCD temperature */
+
+		#define DEFAULT_BPP          16     /* Default bits per pixel */
+
+		#define TEMP_CHECK_TIME       3     /* Time between teperature checks (seconds) */
+		#define DSI_VENDOR_ID              0x156c
+		#undef MAX_DEVICES
+		#define MAX_DEVICES                32
+	}
+	data {
+		char dev_sid[DSI_ID_LEN];
+		enum DSI_BIN_MODE exp_bin_mode;
+		dsi_camera_t *dsi;
+		long int buffer_size;
+		char *buffer;
+		bool can_check_temperature;
+	}
+	code {
+		typedef enum {
+			DSI_IMAGE_FAILED,
+			DSI_IMAGE_PENDING,
+			DSI_IMAGE_READY
+		} dsi_image_result;
+
+		static char connected_sids[DSI_MAX_DEVICES][DSI_ID_LEN];
+
+		static bool dsi_sid_is_connected(const char *sid) {
+			for (int i = 0; i < DSI_MAX_DEVICES; i++) {
+				if (!strncmp(connected_sids[i], sid, DSI_ID_LEN)) {
+					return true;
+				}
+			}
+			return false;
+		}
+
+		static void dsi_set_connected_sid(const char *sid, bool connected) {
+			for (int i = 0; i < DSI_MAX_DEVICES; i++) {
+				if (connected) {
+					if (connected_sids[i][0] == '\0') {
+						strncpy(connected_sids[i], sid, DSI_ID_LEN);
+						connected_sids[i][DSI_ID_LEN - 1] = '\0';
+						return;
+					}
+				} else if (!strncmp(connected_sids[i], sid, DSI_ID_LEN)) {
+					connected_sids[i][0] = '\0';
+					return;
+				}
+			}
+		}
+
+		static bool dsi_open(indigo_device *device) {
+			// TODO: Split DSI camera initialization into short handler tasks.
+			indigo_set_handler_max_run_time(2);
+			if (indigo_try_global_lock(device) != INDIGO_OK) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
+				return false;
+			}
+			PRIVATE_DATA->dsi = dsi_open_camera(PRIVATE_DATA->dev_sid);
+			if (PRIVATE_DATA->dsi == NULL) {
+				indigo_global_unlock(device);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsi_open_camera(%s) = %p", PRIVATE_DATA->dev_sid, PRIVATE_DATA->dsi);
+				return false;
+			}
+			if (PRIVATE_DATA->buffer == NULL) {
+				PRIVATE_DATA->buffer_size = dsi_get_frame_width(PRIVATE_DATA->dsi) * dsi_get_frame_height(PRIVATE_DATA->dsi) * dsi_get_bytespp(PRIVATE_DATA->dsi) + FITS_HEADER_SIZE;
+				PRIVATE_DATA->buffer = (char*)indigo_alloc_blob_buffer(PRIVATE_DATA->buffer_size);
+				if (PRIVATE_DATA->buffer == NULL) {
+					dsi_close_camera(PRIVATE_DATA->dsi);
+					PRIVATE_DATA->dsi = NULL;
+					indigo_global_unlock(device);
+					return false;
+				}
+			}
+			return true;
+		}
+
+		static bool dsi_camera_start_exposure(indigo_device *device, double exposure, bool dark, int binning) {
+			long res;
+			enum DSI_BIN_MODE bin_mode = (binning > 1) ? BIN2X2 : BIN1X1;
+			if (dsi_get_max_binning(PRIVATE_DATA->dsi) > 1) {
+				res = dsi_set_binning(PRIVATE_DATA->dsi, bin_mode);
+				if (res) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsi_set_binning(%s, %d) = %d", PRIVATE_DATA->dev_sid, bin_mode, res);
+					return false;
+				}
+			}
+			res = dsi_start_exposure(PRIVATE_DATA->dsi, exposure);
+			if (res) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsi_start_exposure(%s) = %d", PRIVATE_DATA->dev_sid, res);
+				return false;
+			}
+			PRIVATE_DATA->exp_bin_mode = bin_mode;
+			return true;
+		}
+
+		static dsi_image_result dsi_camera_read_pixels(indigo_device *device, double *retry_delay) {
+			long res;
+			double exposure_time_left = dsi_get_exposure_time_left(PRIVATE_DATA->dsi);
+			if (exposure_time_left > 0) {
+				*retry_delay = fmax(exposure_time_left, 0.01);
+				return DSI_IMAGE_PENDING;
+			}
+			dsi_set_image_little_endian(PRIVATE_DATA->dsi, 0);
+			res = dsi_read_image(PRIVATE_DATA->dsi, (unsigned char *)(PRIVATE_DATA->buffer + FITS_HEADER_SIZE), true);
+			if (res == 0) {
+				return DSI_IMAGE_READY;
+			}
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Exposure failed! dsi_read_image(%s) = %ld", PRIVATE_DATA->dev_sid, res);
+			dsi_abort_exposure(PRIVATE_DATA->dsi);
+			dsi_reset_camera(PRIVATE_DATA->dsi);
+			return DSI_IMAGE_FAILED;
+		}
+
+		static bool dsi_camera_abort_exposure(indigo_device *device) {
+			dsi_abort_exposure(PRIVATE_DATA->dsi);
+			dsi_reset_camera(PRIVATE_DATA->dsi);
+			PRIVATE_DATA->can_check_temperature = true;
+			return true;
+		}
+
+		static void dsi_close(indigo_device *device) {
+			// TODO: Split DSI camera shutdown into short handler tasks.
+			indigo_set_handler_max_run_time(2);
+			dsi_close_camera(PRIVATE_DATA->dsi);
+			indigo_global_unlock(device);
+			if (PRIVATE_DATA->buffer != NULL) {
+				free(PRIVATE_DATA->buffer);
+				PRIVATE_DATA->buffer = NULL;
+			}
+		}
+		
+		static bool dsi_get_plugged_device_name(const char *sid, char *name, size_t size) {
+		#ifdef __APPLE__
+			snprintf(name, size, "Meade DSI");
+		#else
+			// doesn't work on macOS, dsi_open_camera resets the device what leads to duplicate plug/unplug
+			dsi_camera_t *dsi = dsi_open_camera(sid);
+			if (dsi == NULL) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Camera %s can not be open.", sid);
+				return false;
+			}
+			snprintf(name, size, "%s", dsi_get_model_name(dsi));
+			dsi_close_camera(dsi);
+		#endif
+			return true;
+		}
+	}
+	// on_init { }
+	// on_shutdown { }
+	ccd {
+		name = "%s";
+		code {
+			static void ccd_exposure_finalizer(indigo_device *device) {
+				double retry_delay;
+				// TODO: Split the blocking DSI image readout into incremental transfers.
+				indigo_set_handler_max_run_time(2);
+				PRIVATE_DATA->can_check_temperature = true;
+				if (!CONNECTION_CONNECTED_ITEM->sw.value) {
+					return;
+				}
+				if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+					CCD_EXPOSURE_ITEM->number.value = 0;
+					indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+					switch (dsi_camera_read_pixels(device, &retry_delay)) {
+					case DSI_IMAGE_READY: {
+						int binning = (PRIVATE_DATA->exp_bin_mode == BIN1X1) ? 1 : 2;
+						const char *color_string = dsi_get_bayer_pattern(PRIVATE_DATA->dsi);
+						if (color_string[0] != '\0') {
+							/* NOTE: There is no need to take care about the offsets,
+							 the SDK takes care the image to be in the correct bayer pattern */
+							indigo_fits_keyword keywords[] = {
+								{ INDIGO_FITS_STRING, "BAYERPAT", .string = color_string, "Bayer color pattern" },
+								{ 0 }
+							};
+							indigo_process_image(device, PRIVATE_DATA->buffer, (int)(CCD_FRAME_WIDTH_ITEM->number.value / binning), (int)(CCD_FRAME_HEIGHT_ITEM->number.value / binning), DEFAULT_BPP, true, true, keywords, false);
+						} else {
+							indigo_process_image(device, PRIVATE_DATA->buffer,  (int)(CCD_FRAME_WIDTH_ITEM->number.value / binning), (int)(CCD_FRAME_HEIGHT_ITEM->number.value / binning), DEFAULT_BPP, true, true, NULL, false );
+						}
+						CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+						indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+						break;
+					}
+					case DSI_IMAGE_PENDING:
+						indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, retry_delay, ccd_exposure_finalizer);
+						break;
+					case DSI_IMAGE_FAILED:
+						indigo_ccd_failure_cleanup(device);
+						CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+						indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed");
+						break;
+					}
+				}
+				PRIVATE_DATA->can_check_temperature = true;
+			}
+		}
+		on_timer {
+			if (PRIVATE_DATA->can_check_temperature) {
+				// check temperature;
+				CCD_TEMPERATURE_ITEM->number.value = dsi_get_temperature(PRIVATE_DATA->dsi);
+				indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
+				indigo_execute_handler_in(device, TEMP_CHECK_TIME, ccd_timer_callback);
+			}
+		}
+		on_connect {
+			CCD_INFO_WIDTH_ITEM->number.value = dsi_get_frame_width(PRIVATE_DATA->dsi);
+			CCD_INFO_HEIGHT_ITEM->number.value = dsi_get_frame_height(PRIVATE_DATA->dsi);
+			CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = CCD_INFO_WIDTH_ITEM->number.value;
+			CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = CCD_INFO_HEIGHT_ITEM->number.value;
+			sprintf(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, "%s", dsi_get_serial_number(PRIVATE_DATA->dsi));
+			sprintf(INFO_DEVICE_MODEL_ITEM->text.value, "%s", dsi_get_model_name(PRIVATE_DATA->dsi));
+			indigo_update_property(device, INFO_PROPERTY, NULL);
+			CCD_INFO_PIXEL_WIDTH_ITEM->number.value = dsi_get_pixel_width(PRIVATE_DATA->dsi);
+			CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = dsi_get_pixel_height(PRIVATE_DATA->dsi);
+			CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value;
+			CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = 1;
+			CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = 1;
+			CCD_FRAME_PROPERTY->perm = INDIGO_RO_PERM;
+			CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = DEFAULT_BPP;
+			CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = DEFAULT_BPP;
+			CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = DEFAULT_BPP;
+			char name[32];
+			if (dsi_get_max_binning(PRIVATE_DATA->dsi) > 1) {
+				CCD_BIN_PROPERTY->hidden = false;
+				CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
+				CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
+				CCD_MODE_PROPERTY->count = 2;
+				sprintf(name, "RAW 16 %dx%d", dsi_get_frame_width(PRIVATE_DATA->dsi), dsi_get_frame_height(PRIVATE_DATA->dsi));
+				indigo_init_switch_item(CCD_MODE_ITEM, "BIN_1x1", name, true);
+				sprintf(name, "RAW 16 %dx%d", dsi_get_frame_width(PRIVATE_DATA->dsi)/2, dsi_get_frame_height(PRIVATE_DATA->dsi)/2);
+				indigo_init_switch_item(CCD_MODE_ITEM+1, "BIN_2x2", name, false);
+			} else {
+				CCD_BIN_PROPERTY->hidden = true;  // keep it hidden as device does not support binning!
+				CCD_BIN_PROPERTY->perm = INDIGO_RO_PERM;
+				CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
+				CCD_MODE_PROPERTY->count = 1;
+				sprintf(name, "RAW 16 %dx%d", dsi_get_frame_width(PRIVATE_DATA->dsi), dsi_get_frame_height(PRIVATE_DATA->dsi));
+				indigo_init_switch_item(CCD_MODE_ITEM, "BIN_1x1", name, true);
+			}
+			CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.min = 1;
+			CCD_BIN_HORIZONTAL_ITEM->number.max = dsi_get_max_binning(PRIVATE_DATA->dsi);
+			CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.min = 1;
+			CCD_BIN_VERTICAL_ITEM->number.max = dsi_get_max_binning(PRIVATE_DATA->dsi);
+			CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = DEFAULT_BPP;
+			CCD_TEMPERATURE_PROPERTY->hidden = false;
+			CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
+			CCD_TEMPERATURE_ITEM->number.min = MIN_CCD_TEMP;
+			CCD_TEMPERATURE_ITEM->number.max = MAX_CCD_TEMP;
+			CCD_TEMPERATURE_ITEM->number.step = 0;
+			CCD_GAIN_PROPERTY->hidden = false;
+			CCD_GAIN_PROPERTY->perm = INDIGO_RW_PERM;
+			CCD_GAIN_ITEM->number.min = 0;
+			CCD_GAIN_ITEM->number.max = 100;
+			CCD_GAIN_ITEM->number.value = dsi_get_amp_gain(PRIVATE_DATA->dsi);
+			CCD_OFFSET_PROPERTY->hidden = false;
+			CCD_OFFSET_PROPERTY->perm = INDIGO_RW_PERM;
+			CCD_OFFSET_ITEM->number.min = 0;
+			CCD_OFFSET_ITEM->number.max = 100;
+			CCD_OFFSET_ITEM->number.value = dsi_get_amp_offset(PRIVATE_DATA->dsi);
+			double temp = dsi_get_temperature(PRIVATE_DATA->dsi);
+			if (temp > 1000) {  /* no sensor */
+				CCD_TEMPERATURE_PROPERTY->hidden = true;
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dsi_get_temperature(%s) = NO_SENSOR", PRIVATE_DATA->dev_sid);
+			} else {
+				PRIVATE_DATA->can_check_temperature = true;
+			}
+		}
+		on_disconnect {
+			PRIVATE_DATA->can_check_temperature = false;
+		}
+		on_attach {
+			/* Use all info property fields */
+			INFO_PROPERTY->count = 8;
+		}
+		// on_detach { }
+		inherited CCD_EXPOSURE {
+			on_change {
+				long ok;
+				ok = dsi_camera_start_exposure(device, CCD_EXPOSURE_ITEM->number.target, CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_DARKFLAT_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value, CCD_BIN_VERTICAL_ITEM->number.value);
+				if (ok) {
+					indigo_ccd_exposure_setup(device);
+					indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, CCD_EXPOSURE_ITEM->number.target, ccd_exposure_finalizer);
+				} else {
+					indigo_ccd_failure_cleanup(device);
+					CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed.");
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited CCD_ABORT_EXPOSURE {
+			on_change {
+				if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+					indigo_cancel_pending_handler(device, ccd_exposure_finalizer);
+					dsi_camera_abort_exposure(device);
+				}
+				PRIVATE_DATA->can_check_temperature = true;
+				indigo_ccd_abort_exposure_cleanup(device);
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited CCD_GAIN {
+			on_change {
+				dsi_set_amp_gain(PRIVATE_DATA->dsi, (int)(CCD_GAIN_ITEM->number.value));
+				CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited CCD_OFFSET {
+			on_change {
+				dsi_set_amp_offset(PRIVATE_DATA->dsi, (int)(CCD_OFFSET_ITEM->number.value));
+				CCD_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited CCD_BIN {
+			asynchronous_change = false;
+			on_change {
+				int prev_bin_x = (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
+				int prev_bin_y = (int)CCD_BIN_VERTICAL_ITEM->number.value;
+				/* DSI requires BIN_X and BIN_Y to be equal, so keep them entangled */
+				if ((int)CCD_BIN_HORIZONTAL_ITEM->number.value != prev_bin_x) {
+					CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.value;
+				} else if ((int)CCD_BIN_VERTICAL_ITEM->number.value != prev_bin_y) {
+					CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.value;
+				}
+				indigo_ccd_change_property(device, NULL, CCD_BIN_PROPERTY);
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+	}
+}

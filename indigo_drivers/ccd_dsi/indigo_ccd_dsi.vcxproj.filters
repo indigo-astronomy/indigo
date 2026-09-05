@@ -42,4 +42,9 @@
       <Filter>Header Files\indigo</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="indigo_ccd_dsi.driver">
+      <Filter>Source Files\indigo</Filter>
+    </None>
+  </ItemGroup>
 </Project>

@@ -43,7 +43,7 @@
 | ccd_asi                  | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ✅ HW    |                                                          |
 | ccd_atik                 | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ❌ No    |                                                          |
 | ccd_bresser              | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ✅ HW    | ➡️ Touptek                                               |
-| ccd_dsi                  | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ❌ No    |                                                          |
+| ccd_dsi                  | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ HW    |                                                          |
 | ccd_fli                  | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ❌ No    |                                                          |
 | ccd_iidc                 | 2️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    | ⏰ TODO - make libdc1394 for Windows                     |
 | ccd_mallin               | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ✅ HW    | ➡️ Touptek                                               |

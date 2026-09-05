@@ -173,6 +173,9 @@
     <ClInclude Include="libdsi.h" />
     <ClInclude Include="libdsi_firmware.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="indigo_ccd_dsi.driver" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
