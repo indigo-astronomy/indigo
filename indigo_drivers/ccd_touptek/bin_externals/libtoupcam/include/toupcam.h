@@ -1,7 +1,7 @@
 #ifndef __toupcam_h__
 #define __toupcam_h__
 
-/* Version: 60.32226.20260808 */
+/* Version: 60.32499.20260902 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -111,12 +111,12 @@ extern "C" {
 #define S_FALSE             (HRESULT)(0x00000001) /* Yet another success */ /* Remark: Different from S_OK, such as internal values and user-set values have coincided, equivalent to noop */
 #define E_UNEXPECTED        (HRESULT)(0x8000ffff) /* Catastrophic failure */ /* Remark: Generally indicates that the conditions are not met, such as calling put_Option setting some options that do not support modification when the camera is running, and so on */
 #define E_NOTIMPL           (HRESULT)(0x80004001) /* Not supported or not implemented */ /* Remark: This feature is not supported on this model of camera */
-#define E_NOINTERFACE       (HRESULT)(0x80004002)
-#define E_ACCESSDENIED      (HRESULT)(0x80070005) /* Permission denied */ /* Remark: Insufficient permissions. This may be blocked by system security policies; on Linux, USB devices often require additional permission configuration, which can be resolved by setting up udev rules or running with root privileges */
 #define E_OUTOFMEMORY       (HRESULT)(0x8007000e) /* Out of memory */
 #define E_INVALIDARG        (HRESULT)(0x80070057) /* One or more arguments are not valid */
+#define E_NOINTERFACE       (HRESULT)(0x80004002)
 #define E_POINTER           (HRESULT)(0x80004003) /* Pointer that is not valid */ /* Remark: Pointer is NULL */
 #define E_FAIL              (HRESULT)(0x80004005) /* Generic failure */
+#define E_ACCESSDENIED      (HRESULT)(0x80070005) /* Permission denied */ /* Remark: Insufficient permissions. This may be blocked by system security policies; on Linux, USB devices often require additional permission configuration, which can be resolved by setting up udev rules or running with root privileges */
 #define E_WRONG_THREAD      (HRESULT)(0x8001010e) /* Call function in the wrong thread */
 #define E_GEN_FAILURE       (HRESULT)(0x8007001f) /* Device not functioning */ /* Remark: It is generally caused by hardware errors, such as cable problems, USB port problems, poor contact, insufficient power supply, camera hardware damage, etc */
 #define E_BUSY              (HRESULT)(0x800700aa) /* The requested resource is in use */ /* Remark: The camera is already in use, such as duplicated opening/starting the camera, or being used by other application, etc */
@@ -332,7 +332,7 @@ typedef struct {
 } ToupcamDeviceV2; /* device instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 60.32226.20260808
+    get the version of this dll/so/dylib, which is: 60.32499.20260902
 */
 #if defined(_WIN32)
 TOUPCAM_API(const wchar_t*)   Toupcam_Version();
@@ -439,6 +439,8 @@ TOUPCAM_API(HRESULT)  Toupcam_StartPullModeWithCallback(HToupcam h, PTOUPCAM_EVE
 #define TOUPCAM_FRAMEINFO_FLAG_AUTOFOCUS          0x00000080 /* auto focus: uLum & uFV */
 #define TOUPCAM_FRAMEINFO_FLAG_COUNT              0x00000100 /* timecount, framecount, tricount */
 #define TOUPCAM_FRAMEINFO_FLAG_MECHANICALSHUTTER  0x00000200 /* Mechanical shutter: closed */
+#define TOUPCAM_FRAMEINFO_FLAG_HOB                0x00000400 /* Horizontal Optical Black */
+#define TOUPCAM_FRAMEINFO_FLAG_VOB                0x00000800 /* Vertical Optical Black */
 #define TOUPCAM_FRAMEINFO_FLAG_STILL              0x00008000 /* still image */
 #define TOUPCAM_FRAMEINFO_FLAG_CG                 0x00010000 /* Conversion Gain: High */
 
@@ -466,7 +468,8 @@ typedef struct {
 
 typedef struct {
     ToupcamFrameInfoV3 v3;
-    unsigned reserved; /* not used */
+    unsigned short hob; /* Horizontal Optical Black */
+    unsigned short vob; /* Vertical Optical Black */
     unsigned uLum;
     unsigned long long uFV;
     unsigned long long timecount;
@@ -836,13 +839,13 @@ typedef struct {
 #endif
 
 /* Minimum width & height: 4 */
-TOUPCAM_API(HRESULT)  Toupcam_put_AWBAuxRect(HToupcam h, const RECT* pAuxRect); /* auto white balance ROI */
-TOUPCAM_API(HRESULT)  Toupcam_get_AWBAuxRect(HToupcam h, RECT* pAuxRect);
-TOUPCAM_API(HRESULT)  Toupcam_put_AEAuxRect(HToupcam h, const RECT* pAuxRect);  /* auto exposure ROI */
-TOUPCAM_API(HRESULT)  Toupcam_get_AEAuxRect(HToupcam h, RECT* pAuxRect);
+TOUPCAM_API(HRESULT)  Toupcam_put_AWBAuxRect(HToupcam h, const RECT* pRect); /* auto white balance ROI */
+TOUPCAM_API(HRESULT)  Toupcam_get_AWBAuxRect(HToupcam h, RECT* pRect);
+TOUPCAM_API(HRESULT)  Toupcam_put_AEAuxRect(HToupcam h, const RECT* pRect);  /* auto exposure ROI */
+TOUPCAM_API(HRESULT)  Toupcam_get_AEAuxRect(HToupcam h, RECT* pRect);
 
-TOUPCAM_API(HRESULT)  Toupcam_put_ABBAuxRect(HToupcam h, const RECT* pAuxRect); /* auto black balance ROI */
-TOUPCAM_API(HRESULT)  Toupcam_get_ABBAuxRect(HToupcam h, RECT* pAuxRect);
+TOUPCAM_API(HRESULT)  Toupcam_put_ABBAuxRect(HToupcam h, const RECT* pRect); /* auto black balance ROI */
+TOUPCAM_API(HRESULT)  Toupcam_get_ABBAuxRect(HToupcam h, RECT* pRect);
 
 /*
     S_FALSE:    color mode
@@ -1318,7 +1321,6 @@ TOUPCAM_API(HRESULT)  Toupcam_get_StrPtr(HToupcam h, const char* strName, const 
 #define TOUPCAM_OPTION_FRAMEINTERVAL_MAX      0x94       /* [RO] Frame Interval, maximum */
 #define TOUPCAM_OPTION_IMAGEPTRRAW            0x95       /* [RW] default: 0 */
 #define TOUPCAM_OPTION_IMAGEPTRBOTH           0x96       /* [RW] default: 0 */
-#define TOUPCAM_OPTION_LDC                    0x97       /* [RW] Low Dark Current, 0 => disable, 1 => enable */
 
 /* pixel format */
 #define TOUPCAM_PIXELFORMAT_RAW8              0x00
