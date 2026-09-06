@@ -616,6 +616,7 @@ static bool handle_exposure_property(indigo_device *device, indigo_property *pro
 			PRIVATE_DATA->can_check_temperature = false;
 			indigo_set_timer(device, CCD_RBI_FLUSH_EXPOSURE_ITEM->number.value, rbi_exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
 		} else {
+			indigo_ccd_resume_countdown(device);
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
 		}

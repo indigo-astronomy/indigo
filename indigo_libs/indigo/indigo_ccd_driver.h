@@ -555,7 +555,6 @@ typedef struct {
 	bool countdown_canceled;									///< countdown canceled
 	bool countdown_enabled;									///< countdown enabled
 	double countdown_endtime;									///< countdown end time
-	indigo_timer *countdown_timer;								///< countdown timer
 	void *preview_image;													///< preview image buffer
 	unsigned long preview_image_size;							///< preview image buffer size
 	void *preview_histogram;											///< preview histogram buffer

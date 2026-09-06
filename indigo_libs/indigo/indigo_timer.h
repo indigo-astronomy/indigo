@@ -86,6 +86,7 @@ typedef struct indigo_timer {
  * declared below.
  */
 
+#define INDIGO_TASK_PRIORITY_LOW     -5 // low priority background tasks
 #define INDIGO_TASK_PRIORITY_NORMAL   0
 #define INDIGO_TASK_PRIORITY_HIGH     5
 #define INDIGO_TASK_PRIORITY_TIME    10 // time critical tasks (e.g. guiding)
