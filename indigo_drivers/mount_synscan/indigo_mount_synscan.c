@@ -915,10 +915,10 @@ static void synscan_eq_to_encoder(indigo_device *device, double ha, double dec, 
 	if (!south) {
 		east_dec = dec < 0 ? 2.0 * M_PI + dec : dec;
 	}
-	if (west_dec > M_PI + M_PI_2) {
+	if (west_dec > M_PI + M_PI / 2.0) {
 		west_dec -= 2.0 * M_PI;
 	}
-	if (east_dec > M_PI + M_PI_2) {
+	if (east_dec > M_PI + M_PI / 2.0) {
 		east_dec -= 2.0 * M_PI;
 	}
 	while (ha > M_PI) {
