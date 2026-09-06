@@ -7,7 +7,7 @@
 <body>
 <h1 align="center">Omegonprocam API Manual</h1>
 <hr/><h1><font color="#0000FF">1. Version &amp; Platform</font></h1>
-<hr/><ul><li>Version: 60.32226.20260808</li></ul>
+<hr/><ul><li>Version: 60.32499.20260902</li></ul>
 <ul><li>Platform<ul>
       <li>Win32:<ul>
           <li>x64: Win7 or above</li>
@@ -55,12 +55,11 @@ The SDK zip file contains all of the necessary resources and information:</p>
 		Please pay attation to:<blockquote>1. uwp must use winusb, cannot use the proprietary driver. If the proprietary driver has already been installed, please uninstall it in the device manager, after this, Windows will use winusb automatically.<br/>2. DeviceCapability of uwp, see: <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/usbcon/updating-the-app-manifest-with-usb-device-capabilities" target="_blank">How to add USB device capabilities to the app manifest</a>.</blockquote>
 		</blockquote></li>
      <li>drivers
-		<blockquote>USB (<b>The cameras produced after Jan. 1, 2017 support WinUSB, It is strongly recommended not to install the driver on Windows 8 and above</b>)<blockquote>
-		<ol><li>x86 folder contains the kernel mode drivers for x86, including omegonprocam.cat, omegonprocam.inf and omegonprocam.sys.</li>
-         <li>x64 folder contains the kennel mode driver for x64, including omegonprocam.cat, omegonprocam.inf and omegonprocam.sys.</li>
-		 <li>It is recommended to use DPInst.exe to automatically install the driver. If you use NSIS to make the installation file, you can use a statement similar to the following:
-			<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>ExecWait '"$INSTDIR\drivers\x64\DPInst.exe" /SA /SW /PATH "$INSTDIR\drivers\x64"'</pre></td></tr></table></li>
-		</ol></blockquote></blockquote>
+		<blockquote>USB (<b>Cameras manufactured after January 1, 2017, have built-in support for WinUSB. No driver installation is required on Windows 8 or later</b>)<blockquote>
+		Unless preventing the device from appearing in the “Safely Remove Hardware” list is required, driver installation is not recommended on Windows 8 or later.<br/>
+		If driver installation is required, DPInst.exe is recommended for automatic driver installation.<br/>If you still decide to install the driver, it is recommended that you use DPInst.exe to install the driver automatically. If you use NSIS to make the installation file, you can use a statement similar to the following:
+			<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>ExecWait '"$INSTDIR\drivers\x64\DPInst.exe" /SA /SW /PATH "$INSTDIR\drivers\x64"'</pre></td></tr></table>
+		</blockquote></blockquote>
 		<blockquote>GigE: GigE Performance Driver (Win7 or above)</blockquote>
 		</li></ul></li>
 </ul><ul><li>linux: For Linux
@@ -1500,10 +1499,6 @@ OMEGONPROCAM_PIXELFORMAT_RAW10PACK
       </tr><tr>
         <td>OMEGONPROCAM_OPTION_HIGH_FULLWELL<br/>HighFullwell</td><td>RW</td>
         <td>high fullwell capacity:<br/>0 =&gt; disable, 1 =&gt; enable</td>
-		<td>Model Specific</td><td>Yes</td>
-      </tr><tr>
-        <td>OMEGONPROCAM_OPTION_LDC<br/>LDC</td><td>RW</td>
-        <td>Low Dark Current:<br/>0 =&gt; disable, 1 =&gt; enable</td>
 		<td>Model Specific</td><td>Yes</td>
       </tr><tr>
         <td>OMEGONPROCAM_OPTION_AUTOEXPOSURE_PERCENT<br/>AEPeak</td><td>RW</td>
