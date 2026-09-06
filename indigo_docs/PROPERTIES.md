@@ -100,6 +100,8 @@ Properties CONNECTION through ADDITIONAL_INSTANCES are implemented by the driver
 | CCD_TEMPERATURE | number |  | no | TEMPERATURE | yes | It depends on hardware if it is undefined, read-only or read-write. |
 | CCD_COOLER | switch | no | no | ON | yes | On |
 |  |  |  |  | OFF | yes | Off |
+| X_CCD_FLOOD_LED | switch | no | no | ON | yes | Starlight Xpress flood LED; available only on supported camera models. Source: `indigo_drivers/ccd_sx/indigo_ccd_sx.driver`. |
+|  |  |  |  | OFF | yes | Turn flood LED off. |
 | CCD_COOLER_POWER | number | yes | no | POWER | yes | It depends on hardware if it is undefined, read-only or read-write. |
 | CCD_FITS_HEADERS | text | yes | yes | FITS key name, ... | yes | String in form "value" or "'value'" |
 | CCD_SET_FITS_HEADER | text | no | yes | KEYWORD | yes | FITS key name |

@@ -1964,7 +1964,7 @@ void write_c_hotplug_section(void) {
 	write_line("\tlibusb_device *dev = (libusb_device *)data;");
 	if (driver.libusb || driver.sdk) {
 		write_line("\t%s_private_data *private_data = NULL;", driver.name);
-		write_line("\tfor (int j = 0; j < MAX_DEVICES; j++) {");
+		write_line("\tfor (int j = MAX_DEVICES - 1; j >= 0; j--) {");
 		write_line("\t\tif (devices[j] != NULL) {");
 		write_line("\t\t\tindigo_device *device = devices[j];");
 		write_line("\t\t\tif (PRIVATE_DATA->usbdev == dev) {");
