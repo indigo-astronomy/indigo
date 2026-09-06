@@ -42,6 +42,8 @@ typedef struct {
 	char directory[PATH_MAX];
 	char ready_file[PATH_MAX];
 	char port[PATH_MAX];
+	char tcp_url[PATH_MAX];
+	char udp_url[PATH_MAX];
 } external_serial_simulator;
 
 static void remove_simulator_directory(const char *directory) {
@@ -55,6 +57,8 @@ static void remove_simulator_directory(const char *directory) {
 
 static bool read_ready_file(external_serial_simulator *simulator) {
 	static const char port_prefix[] = "INDIGO_SIMULATOR_PORT=";
+	static const char tcp_url_prefix[] = "INDIGO_SIMULATOR_TCP_URL=";
+	static const char udp_url_prefix[] = "INDIGO_SIMULATOR_UDP_URL=";
 	FILE *file = fopen(simulator->ready_file, "r");
 	if (file == NULL) {
 		return false;
@@ -65,6 +69,10 @@ static bool read_ready_file(external_serial_simulator *simulator) {
 		line[strcspn(line, "\r\n")] = '\0';
 		if (!strncmp(line, port_prefix, sizeof(port_prefix) - 1)) {
 			snprintf(simulator->port, sizeof(simulator->port), "%s", line + sizeof(port_prefix) - 1);
+		} else if (!strncmp(line, tcp_url_prefix, sizeof(tcp_url_prefix) - 1)) {
+			snprintf(simulator->tcp_url, sizeof(simulator->tcp_url), "%s", line + sizeof(tcp_url_prefix) - 1);
+		} else if (!strncmp(line, udp_url_prefix, sizeof(udp_url_prefix) - 1)) {
+			snprintf(simulator->udp_url, sizeof(simulator->udp_url), "%s", line + sizeof(udp_url_prefix) - 1);
 		}
 	}
 	fclose(file);

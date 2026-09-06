@@ -12,6 +12,7 @@
 #define _XOPEN_SOURCE 600
 
 #include <errno.h>
+#include <fcntl.h>
 #include <limits.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -19,8 +20,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <arpa/inet.h>
 #include <sys/select.h>
+#include <sys/socket.h>
 #include <sys/time.h>
+#include <netinet/in.h>
 #include <unistd.h>
 
 #include "../../../indigo_test/simulator_common/serial_simulator_common.h"
@@ -28,6 +32,7 @@
 typedef struct {
 	bool headless;
 	bool trace;
+	bool network;
 	const char *ready_file;
 } simulator_options;
 
@@ -41,6 +46,7 @@ typedef struct {
 static simulator_options options = {
 	.headless = false,
 	.trace = false,
+	.network = false,
 	.ready_file = NULL
 };
 static simulator_state state = {
@@ -52,12 +58,16 @@ static simulator_state state = {
 static const char *simulator_name = "mount_pmc8";
 static volatile sig_atomic_t running = 1;
 static int serial_fd = -1;
+static int tcp_fd = -1;
+static int tcp_client_fd = -1;
+static int udp_fd = -1;
 
 static void usage(const char *name) {
 	printf("PMC-Eight mount serial simulator\n");
 	printf("Usage: %s [OPTIONS]\n", name);
 	printf("  --headless              Disable terminal-oriented output\n");
-	printf("  --ready-file <path>     Write INDIGO_SIMULATOR_PORT after PTY setup\n");
+	printf("  --network               Enable loopback TCP and UDP listeners\n");
+	printf("  --ready-file <path>     Write simulator connection details after setup\n");
 	printf("  --trace                 Log protocol requests and replies\n");
 	printf("  -h, --help              Show this help and exit\n");
 }
@@ -70,6 +80,8 @@ static bool parse_args(int argc, char *argv[]) {
 		} else if (!strcmp(argv[i], "--headless")) {
 			options.headless = true;
 			options.trace = false;
+		} else if (!strcmp(argv[i], "--network")) {
+			options.network = true;
 		} else if (!strcmp(argv[i], "--trace")) {
 			options.trace = true;
 		} else if (!strcmp(argv[i], "--ready-file")) {
@@ -93,13 +105,132 @@ static void signal_handler(int sig) {
 		close(serial_fd);
 		serial_fd = -1;
 	}
+	if (tcp_client_fd >= 0) {
+		close(tcp_client_fd);
+		tcp_client_fd = -1;
+	}
+	if (tcp_fd >= 0) {
+		close(tcp_fd);
+		tcp_fd = -1;
+	}
+	if (udp_fd >= 0) {
+		close(udp_fd);
+		udp_fd = -1;
+	}
 }
 
-static void write_response(const char *response) {
+static bool set_nonblocking(int fd) {
+	int flags = fcntl(fd, F_GETFL, 0);
+	if (flags < 0) {
+		return false;
+	}
+	return fcntl(fd, F_SETFL, flags | O_NONBLOCK) == 0;
+}
+
+static bool open_loopback_socket(int type, int port, int *fd, int *bound_port) {
+	*fd = socket(AF_INET, type, 0);
+	if (*fd < 0) {
+		perror("socket");
+		return false;
+	}
+	int reuse = 1;
+	setsockopt(*fd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
+
+	struct sockaddr_in address;
+	memset(&address, 0, sizeof(address));
+	address.sin_family = AF_INET;
+	address.sin_addr.s_addr = inet_addr("127.0.0.1");
+	address.sin_port = htons(port);
+	if (bind(*fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
+		perror("bind");
+		close(*fd);
+		*fd = -1;
+		return false;
+	}
+	socklen_t length = sizeof(address);
+	if (getsockname(*fd, (struct sockaddr *)&address, &length) < 0) {
+		perror("getsockname");
+		close(*fd);
+		*fd = -1;
+		return false;
+	}
+	*bound_port = ntohs(address.sin_port);
+	if (!set_nonblocking(*fd)) {
+		perror("fcntl");
+		close(*fd);
+		*fd = -1;
+		return false;
+	}
+	return true;
+}
+
+static bool open_network_sockets(int *port) {
+	if (!open_loopback_socket(SOCK_STREAM, 0, &tcp_fd, port)) {
+		return false;
+	}
+	if (listen(tcp_fd, 4) < 0) {
+		perror("listen");
+		close(tcp_fd);
+		tcp_fd = -1;
+		return false;
+	}
+	int udp_port = 0;
+	if (!open_loopback_socket(SOCK_DGRAM, *port, &udp_fd, &udp_port)) {
+		close(tcp_fd);
+		tcp_fd = -1;
+		return false;
+	}
+	if (udp_port != *port) {
+		close(udp_fd);
+		close(tcp_fd);
+		udp_fd = -1;
+		tcp_fd = -1;
+		return false;
+	}
+	return true;
+}
+
+static bool write_ready_file(const char *ready_file, const char *port, int network_port) {
+	char tmp_file[PATH_MAX];
+	snprintf(tmp_file, sizeof(tmp_file), "%s.tmp.%ld", ready_file, (long)getpid());
+
+	FILE *file = fopen(tmp_file, "w");
+	if (file == NULL) {
+		perror("fopen ready file");
+		return false;
+	}
+
+	fprintf(file, "INDIGO_SIMULATOR=%s\n", simulator_name);
+	fprintf(file, "INDIGO_SIMULATOR_PORT=%s\n", port);
+	fprintf(file, "INDIGO_SIMULATOR_TCP_URL=tcp://127.0.0.1:%d\n", network_port);
+	fprintf(file, "INDIGO_SIMULATOR_UDP_URL=udp://127.0.0.1:%d\n", network_port);
+	fprintf(file, "INDIGO_SIMULATOR_PID=%ld\n", (long)getpid());
+	if (fclose(file) != 0) {
+		perror("fclose ready file");
+		unlink(tmp_file);
+		return false;
+	}
+
+	if (rename(tmp_file, ready_file) != 0) {
+		perror("rename ready file");
+		unlink(tmp_file);
+		return false;
+	}
+	return true;
+}
+
+static void write_response(int fd, const char *response) {
 	if (options.trace) {
 		fprintf(stderr, "<- %s\n", response);
 	}
-	serial_simulator_write_all(serial_fd, response, strlen(response));
+	serial_simulator_write_all(fd, response, strlen(response));
+}
+
+static void write_udp_response(const struct sockaddr_in *client_address, socklen_t client_address_length, const char *response) {
+	if (options.trace) {
+		fprintf(stderr, "<- %s\n", response);
+	}
+	sendto(udp_fd, response, strlen(response), 0, (const struct sockaddr *)client_address, client_address_length);
 }
 
 static int axis_from_command(const char *command, size_t index) {
@@ -109,54 +240,92 @@ static int axis_from_command(const char *command, size_t index) {
 	return command[index] - '0';
 }
 
-static void handle_command(const char *command) {
-	char response[96] = { 0 };
+static const char *build_response(const char *command, char *response, size_t response_size) {
 	if (options.trace) {
 		fprintf(stderr, "-> %s\n", command);
 	}
 	if (!strcmp(command, "ESGv!")) {
-		write_response("ESGvES20200301 EXOS2 20!");
+		return "ESGvES20200301 EXOS2 20!";
 	} else if (!strcmp(command, "ESGi!")) {
-		write_response("ESGi0000000000000000080000!");
+		return "ESGi0000000000000000080000!";
 	} else if (!strcmp(command, "ESGx!")) {
-		snprintf(response, sizeof(response), "ESGx%04X!", state.tracking_rate & 0xFFFF);
-		write_response(response);
+		snprintf(response, response_size, "ESGx%04X!", state.tracking_rate & 0xFFFF);
+		return response;
 	} else if (!strncmp(command, "ESSd", 4)) {
 		int axis = axis_from_command(command, 4);
 		if (axis >= 0) {
 			state.direction[axis] = command[5] == '0' ? 0 : 1;
 		}
-		write_response(command);
+		return command;
 	} else if (!strncmp(command, "ESTr", 4)) {
 		state.tracking_rate = (int)strtol(command + 4, NULL, 16);
-		write_response(command);
+		return command;
 	} else if (!strncmp(command, "ESSr", 4)) {
 		int axis = axis_from_command(command, 4);
 		if (axis >= 0) {
 			state.rate[axis] = (int)strtol(command + 5, NULL, 16);
 		}
-		write_response(command);
+		return command;
 	} else if (!strncmp(command, "ESPt", 4) || !strncmp(command, "ESSp", 4)) {
 		int axis = axis_from_command(command, 4);
 		if (axis >= 0) {
 			state.position[axis] = (int32_t)strtol(command + 5, NULL, 16);
 			state.rate[axis] = axis == 0 ? state.tracking_rate : 0;
 		}
-		write_response(command);
+		return command;
 	} else if (!strncmp(command, "ESGp", 4)) {
 		int axis = axis_from_command(command, 4);
-		snprintf(response, sizeof(response), "ESGp%d%06X!", axis < 0 ? 0 : axis, axis < 0 ? 0 : state.position[axis] & 0xFFFFFF);
-		write_response(response);
+		snprintf(response, response_size, "ESGp%d%06X!", axis < 0 ? 0 : axis, axis < 0 ? 0 : state.position[axis] & 0xFFFFFF);
+		return response;
 	} else if (!strncmp(command, "ESGr", 4)) {
 		int axis = axis_from_command(command, 4);
-		snprintf(response, sizeof(response), "ESGr%d%04X!", axis < 0 ? 0 : axis, axis < 0 ? 0 : state.rate[axis] & 0xFFFF);
-		write_response(response);
+		snprintf(response, response_size, "ESGr%d%04X!", axis < 0 ? 0 : axis, axis < 0 ? 0 : state.rate[axis] & 0xFFFF);
+		return response;
 	} else if (!strcmp(command, "ESY!")) {
-		write_response("ESY0!");
+		return "ESY0!";
 	} else if (!strcmp(command, "ESX!")) {
-		write_response("ESX0!");
+		return "ESX0!";
 	} else {
-		write_response(command);
+		return command;
+	}
+}
+
+static void handle_command(int fd, const char *command) {
+	char response[96] = { 0 };
+	write_response(fd, build_response(command, response, sizeof(response)));
+}
+
+static void handle_udp_command(const struct sockaddr_in *client_address, socklen_t client_address_length, const char *command) {
+	char response[96] = { 0 };
+	write_udp_response(client_address, client_address_length, build_response(command, response, sizeof(response)));
+}
+
+static void process_stream_input(int fd, char *command, size_t *length) {
+	char buffer[64];
+	ssize_t count = read(fd, buffer, sizeof(buffer));
+	if (count > 0) {
+		for (ssize_t i = 0; i < count; i++) {
+			if (*length + 1 < 64) {
+				command[(*length)++] = buffer[i];
+			}
+			if (buffer[i] == '!') {
+				command[*length] = 0;
+				handle_command(fd, command);
+				*length = 0;
+			}
+		}
+	} else if (count < 0 && !(errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK || errno == EIO)) {
+		if (fd == tcp_client_fd) {
+			close(tcp_client_fd);
+			tcp_client_fd = -1;
+			*length = 0;
+		} else {
+			running = 0;
+		}
+	} else if (count == 0 && fd == tcp_client_fd) {
+		close(tcp_client_fd);
+		tcp_client_fd = -1;
+		*length = 0;
 	}
 }
 
@@ -170,54 +339,111 @@ int main(int argc, char *argv[]) {
 	if (serial_fd < 0) {
 		return 1;
 	}
-	if (options.ready_file != NULL && !serial_simulator_write_ready_file(options.ready_file, simulator_name, port)) {
+	int network_port = 0;
+	if (options.network && !open_network_sockets(&network_port)) {
 		close(serial_fd);
 		return 1;
 	}
+	if (options.ready_file != NULL) {
+		bool ready = options.network ? write_ready_file(options.ready_file, port, network_port) : serial_simulator_write_ready_file(options.ready_file, simulator_name, port);
+		if (!ready) {
+			close(serial_fd);
+			if (tcp_fd >= 0) {
+				close(tcp_fd);
+			}
+			if (udp_fd >= 0) {
+				close(udp_fd);
+			}
+			return 1;
+		}
+	}
 	if (!options.headless) {
 		printf("PMC-Eight mount simulator ready on %s\n", port);
+		if (options.network) {
+			printf("PMC-Eight mount simulator TCP ready on tcp://127.0.0.1:%d\n", network_port);
+			printf("PMC-Eight mount simulator UDP ready on udp://127.0.0.1:%d\n", network_port);
+		}
 	}
 
 	signal(SIGINT, signal_handler);
 	signal(SIGTERM, signal_handler);
 
-	char command[64] = { 0 };
-	size_t length = 0;
+	char serial_command[64] = { 0 };
+	size_t serial_length = 0;
+	char tcp_command[64] = { 0 };
+	size_t tcp_length = 0;
 	while (running) {
 		fd_set readfds;
 		FD_ZERO(&readfds);
 		FD_SET(serial_fd, &readfds);
+		int max_fd = serial_fd;
+		if (tcp_fd >= 0) {
+			FD_SET(tcp_fd, &readfds);
+		}
+		if (udp_fd >= 0) {
+			FD_SET(udp_fd, &readfds);
+		}
+		if (tcp_fd >= 0 && tcp_fd > max_fd) {
+			max_fd = tcp_fd;
+		}
+		if (udp_fd >= 0 && udp_fd > max_fd) {
+			max_fd = udp_fd;
+		}
+		if (tcp_client_fd >= 0) {
+			FD_SET(tcp_client_fd, &readfds);
+			if (tcp_client_fd > max_fd) {
+				max_fd = tcp_client_fd;
+			}
+		}
 		struct timeval timeout = { 0, 100000 };
-		int selected = select(serial_fd + 1, &readfds, NULL, NULL, &timeout);
+		int selected = select(max_fd + 1, &readfds, NULL, NULL, &timeout);
 		if (selected < 0) {
 			if (errno == EINTR) {
 				continue;
 			}
 			break;
 		}
-		if (selected == 0 || !FD_ISSET(serial_fd, &readfds)) {
+		if (selected == 0) {
 			continue;
 		}
-		char buffer[64];
-		ssize_t count = read(serial_fd, buffer, sizeof(buffer));
-		if (count > 0) {
-			for (ssize_t i = 0; i < count; i++) {
-				if (length + 1 < sizeof(command)) {
-					command[length++] = buffer[i];
+		if (tcp_fd >= 0 && FD_ISSET(tcp_fd, &readfds)) {
+			struct sockaddr_in client_address;
+			socklen_t client_address_length = sizeof(client_address);
+			int client_fd = accept(tcp_fd, (struct sockaddr *)&client_address, &client_address_length);
+			if (client_fd >= 0) {
+				set_nonblocking(client_fd);
+				if (tcp_client_fd >= 0) {
+					close(tcp_client_fd);
 				}
-				if (buffer[i] == '!') {
-					command[length] = 0;
-					handle_command(command);
-					length = 0;
-				}
+				tcp_client_fd = client_fd;
+				tcp_length = 0;
 			}
-		} else if (count < 0 && (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK || errno == EIO)) {
-			usleep(1000);
-		} else if (count == 0) {
-			usleep(1000);
-		} else {
-			break;
 		}
+		if (udp_fd >= 0 && FD_ISSET(udp_fd, &readfds)) {
+			char buffer[64];
+			struct sockaddr_in client_address;
+			socklen_t client_address_length = sizeof(client_address);
+			ssize_t count = recvfrom(udp_fd, buffer, sizeof(buffer) - 1, 0, (struct sockaddr *)&client_address, &client_address_length);
+			if (count > 0) {
+				buffer[count] = 0;
+				handle_udp_command(&client_address, client_address_length, buffer);
+			}
+		}
+		if (FD_ISSET(serial_fd, &readfds)) {
+			process_stream_input(serial_fd, serial_command, &serial_length);
+		}
+		if (tcp_client_fd >= 0 && FD_ISSET(tcp_client_fd, &readfds)) {
+			process_stream_input(tcp_client_fd, tcp_command, &tcp_length);
+		}
+	}
+	if (tcp_client_fd >= 0) {
+		close(tcp_client_fd);
+	}
+	if (tcp_fd >= 0) {
+		close(tcp_fd);
+	}
+	if (udp_fd >= 0) {
+		close(udp_fd);
 	}
 	if (serial_fd >= 0) {
 		close(serial_fd);

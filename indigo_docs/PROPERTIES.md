@@ -1320,11 +1320,11 @@ Source: `indigo_drivers/mount_nexstaraux/indigo_mount_nexstaraux.c`.
 
 ### mount_pmc8
 
-Custom properties: `CONNECTION_MODE`, `MOUNT_TYPE`.
+Custom properties: `CONNECTION_MODE`, `MOUNT_TYPE` (`AUTO`, `G11`, `TITAN`, `EXOS-2`, `iEXOS-100`).
 
 Driver-specific use of existing properties: `GUIDER_RATE`, `MOUNT_GUIDE_RATE`, `MOUNT_ON_COORDINATES_SET`, `MOUNT_SIDE_OF_PIER`.
 
-Source: `indigo_drivers/mount_pmc8/indigo_mount_pmc8.c`.
+Source: `indigo_drivers/mount_pmc8/indigo_mount_pmc8.driver`; generated output in `indigo_drivers/mount_pmc8/indigo_mount_pmc8.c`.
 
 ### mount_rainbow
 

@@ -1,0 +1,867 @@
+// Copyright (c) 2020-2026 CloudMakers, s. r. o.
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// PMC Eight Mount driver definition
+
+driver pmc8 {
+	label = "PMC Eight Mount";
+	author = "Peter Polakovic <peter.polakovic@cloudmakers.eu>";
+	copyright = "Copyright (c) 2020-2026 CloudMakers, s. r. o.";
+	version = 9;
+	serial;
+	include {
+		#include <stdarg.h>
+	}
+	define {
+		#define PMC8_RESPONSE									(PRIVATE_DATA->response)
+
+		// -------------------------------------------------------------------------------- MODEL DATA
+
+		typedef struct {
+			char *name;
+			uint32_t count[2];
+		} mount_type_data;
+
+		typedef enum {
+			PMC8_G11 = 0,
+			PMC8_TITAN,
+			PMC8_EXOS2,
+			PMC8_IEXOS100
+		} model_type;
+
+		static mount_type_data MODELS[] = {
+			{ "Losmandy G-11", { 4608000, 4608000 } },
+			{ "Losmandy Titan", { 3456000, 3456000 } },
+			{ "Explore Scientific EXOS II", { 4147200, 4147200 } },
+			{ "Explore Scientific iEXOS-100", { 4147200, 4147200 } },
+		};
+	}
+	data {
+		model_type type;
+		int rate[3];
+		pthread_mutex_t port_mutex;
+		indigo_uni_handle_type proto;
+		bool park;
+		bool is_udp, is_tcp, is_serial;
+		bool configured;
+		int version;
+		char response[128];
+	}
+	code {
+		static bool pmc8_validate_handle(indigo_device *device) {
+			return PRIVATE_DATA->handle != NULL;
+		}
+
+		static void pmc8_update_connection_port(indigo_device *device) {
+			if (CONNECTION_UDP_ITEM->sw.value) {
+				strcpy(DEVICE_PORT_ITEM->text.value, "udp://192.168.47.1");
+			} else if (CONNECTION_TCP_ITEM->sw.value) {
+				strcpy(DEVICE_PORT_ITEM->text.value, "tcp://192.168.47.1");
+			} else {
+				if (DEVICE_PORTS_PROPERTY->count > 1) {
+					strcpy(DEVICE_PORT_ITEM->text.value, DEVICE_PORTS_PROPERTY->items[1].name);
+				} else {
+					strcpy(DEVICE_PORT_ITEM->text.value, "");
+				}
+			}
+			DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, DEVICE_PORT_PROPERTY, NULL);
+		}
+
+		static void pmc8_update_mount_type_perm(indigo_device *device, indigo_property_perm perm) {
+			indigo_delete_property(device, MOUNT_TYPE_PROPERTY, NULL);
+			MOUNT_TYPE_PROPERTY->perm = perm;
+			indigo_define_property(device, MOUNT_TYPE_PROPERTY, NULL);
+		}
+
+		static bool pmc8_open(indigo_device *device) {
+			char *name = DEVICE_PORT_ITEM->text.value;
+			if (!indigo_uni_is_url(name, "pmc8")) {
+				PRIVATE_DATA->proto = INDIGO_COM_HANDLE;
+				PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, 115200, INDIGO_LOG_DEBUG);
+				if (CONNECTION_SERIAL_DTR_ITEM->sw.value) {
+					indigo_uni_set_dtr(PRIVATE_DATA->handle, false);
+				}
+			} else {
+				PRIVATE_DATA->proto = INDIGO_UDP_HANDLE;
+				PRIVATE_DATA->handle = indigo_uni_open_url(name, 54372, PRIVATE_DATA->proto, INDIGO_LOG_DEBUG);
+				if (PRIVATE_DATA->handle != NULL) {
+					PRIVATE_DATA->proto = PRIVATE_DATA->handle->type;
+					indigo_uni_set_socket_read_timeout(PRIVATE_DATA->handle, INDIGO_DELAY(0.5));
+					indigo_uni_set_socket_write_timeout(PRIVATE_DATA->handle, INDIGO_DELAY(0.5));
+				}
+			}
+			return PRIVATE_DATA->handle != NULL;
+		}
+
+		static bool pmc8_command(indigo_device *device, char *command, ...) {
+			pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
+			bool result = false;
+			if (!pmc8_validate_handle(device)) {
+				goto cleanup;
+			}
+			for (int repeat = 10; repeat >= 0; repeat--) {
+				long bytes_read = 0;
+				long io_result = indigo_uni_discard(PRIVATE_DATA->handle);
+				if (io_result >= 0) {
+					va_list args;
+					va_start(args, command);
+					io_result = indigo_uni_vprintf(PRIVATE_DATA->handle, command, args);
+					va_end(args);
+				}
+				if (io_result >= 0) {
+					if (PRIVATE_DATA->handle->type == INDIGO_UDP_HANDLE) {
+						bytes_read = indigo_uni_read(PRIVATE_DATA->handle, PMC8_RESPONSE, sizeof(PRIVATE_DATA->response) - 1);
+					} else {
+						bytes_read = indigo_uni_read_section2(PRIVATE_DATA->handle, PMC8_RESPONSE, sizeof(PRIVATE_DATA->response) - 1, "!%#", "", INDIGO_DELAY(0.5), INDIGO_DELAY(0.1));
+					}
+				}
+				if (bytes_read > 0) {
+					PMC8_RESPONSE[bytes_read] = 0;
+					char terminator = PMC8_RESPONSE[bytes_read - 1];
+					result = terminator == '!' || terminator == '%' || terminator == '#';
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s -> %s", command, PMC8_RESPONSE);
+					for (char *tmp = PMC8_RESPONSE; *tmp; tmp++) {
+						if (*tmp == '!') {
+							*tmp = 0;
+							break;
+						}
+					}
+				}
+				if (result) {
+					break;
+				}
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s failed", command);
+			}
+		cleanup:
+			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+			return result;
+		}
+
+		static void pmc8_set_mount_model(indigo_device *device, model_type type) {
+			PRIVATE_DATA->type = type;
+			strcpy(MOUNT_INFO_MODEL_ITEM->text.value, MODELS[type].name);
+			double sec_per_count = 1296000.0/MODELS[type].count[0];
+			PRIVATE_DATA->rate[0] = round(15.0 / sec_per_count * 25);
+			PRIVATE_DATA->rate[1] = round(14.685 / sec_per_count * 25);
+			PRIVATE_DATA->rate[2] = round(15.041 / sec_per_count * 25);
+		}
+
+		static void pmc8_update_mount_model(indigo_device *device) {
+			if (MOUNT_TYPE_G11->sw.value) {
+				pmc8_set_mount_model(device, PMC8_G11);
+			} else if (MOUNT_TYPE_TITAN->sw.value) {
+				pmc8_set_mount_model(device, PMC8_TITAN);
+			} else if (MOUNT_TYPE_EXOS2->sw.value) {
+				pmc8_set_mount_model(device, PMC8_EXOS2);
+			} else if (MOUNT_TYPE_IEXOS100->sw.value) {
+				pmc8_set_mount_model(device, PMC8_IEXOS100);
+			}
+		}
+
+		static bool pmc8_read_mount_firmware(indigo_device *device) {
+			if (!pmc8_command(device, "ESGv!") || strncmp(PMC8_RESPONSE, "ESGv", 4)) {
+				return false;
+			}
+			strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, PMC8_RESPONSE + 6);
+			PRIVATE_DATA->version = atoi(PMC8_RESPONSE + 6);
+			return true;
+		}
+
+		static bool pmc8_detect_mount_type(indigo_device *device) {
+			if (!pmc8_read_mount_firmware(device)) {
+				return false;
+			}
+			if (PRIVATE_DATA->version < 20) {
+				if (strstr(PMC8_RESPONSE, "G11")) {
+					pmc8_set_mount_model(device, PMC8_G11);
+				} else if (strstr(PMC8_RESPONSE, "TITAN")) {
+					pmc8_set_mount_model(device, PMC8_TITAN);
+				} else if (strstr(PMC8_RESPONSE, "EXOS2")) {
+					pmc8_set_mount_model(device, PMC8_EXOS2);
+				} else if (strstr(PMC8_RESPONSE, "ES1A")) {
+					pmc8_set_mount_model(device, PMC8_IEXOS100);
+				}
+			} else {
+				if (pmc8_command(device, "ESGi!") && !strncmp(PMC8_RESPONSE, "ESGi", 4) && strlen(PMC8_RESPONSE) >= 22) {
+					int type = 10 * (PMC8_RESPONSE[20] - '0') + PMC8_RESPONSE[21] - '0';
+					if (type >= 4 && type <= 7) {
+						pmc8_set_mount_model(device, PMC8_G11);
+					} else if (type >= 8 && type <= 11) {
+						pmc8_set_mount_model(device, PMC8_EXOS2);
+					} else {
+						// TBD there is iExos200/300 mentioned with no clear data
+						pmc8_set_mount_model(device, PMC8_IEXOS100);
+					}
+				}
+			}
+			return true;
+		}
+
+		static bool pmc8_configure_mount(indigo_device *device) {
+			for (int retry = 0; retry < 3; retry++) {
+				if (MOUNT_TYPE_AUTO->sw.value ? pmc8_detect_mount_type(device) : pmc8_read_mount_firmware(device)) {
+					if (!MOUNT_TYPE_AUTO->sw.value) {
+						pmc8_update_mount_model(device);
+					}
+					return true;
+				}
+				indigo_send_message(device, BUSY_PROPERTY, "Retrying connection in 10 seconds...");
+				indigo_sleep(10);
+			}
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to initialize to %s", DEVICE_PORT_ITEM->text.value);
+			return false;
+		}
+
+		static void pmc8_close(indigo_device *device) {
+			if (device->master_device != NULL) {
+				device = device->master_device;
+			}
+			if (PRIVATE_DATA->handle != NULL) {
+				indigo_uni_close(&PRIVATE_DATA->handle);
+				PRIVATE_DATA->configured = false;
+			}
+		}
+
+		static bool pmc8_get_tracking_rate(indigo_device *device) {
+			if (pmc8_command(device, "ESGx!")) {
+				int rate = (int)strtol(PMC8_RESPONSE + 4, NULL, 16);
+				if (rate == 0) {
+					indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
+				} else {
+					indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
+					if (rate == PRIVATE_DATA->rate[0]) {
+						indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SIDEREAL_ITEM, true);
+					} else if (rate == PRIVATE_DATA->rate[1]) {
+						indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_LUNAR_ITEM, true);
+					} else if (rate == PRIVATE_DATA->rate[2]) {
+						indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SOLAR_ITEM, true);
+					}
+				}
+				return true;
+			}
+			return false;
+		}
+
+		static bool pmc8_set_tracking_rate(indigo_device *device, int offset) {
+			int rate = 0;
+			if (MOUNT_TRACKING_ON_ITEM->sw.value) {
+				if (MOUNT_TRACK_RATE_SIDEREAL_ITEM->sw.value) {
+					rate = PRIVATE_DATA->rate[0];
+				} else if (MOUNT_TRACK_RATE_LUNAR_ITEM->sw.value) {
+					rate = PRIVATE_DATA->rate[1];
+				} else if (MOUNT_TRACK_RATE_SOLAR_ITEM->sw.value) {
+					rate = PRIVATE_DATA->rate[2];
+				}
+			}
+			if (MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value >= 0) {
+				if (!pmc8_command(device, "ESSd01!")) {
+					return false;
+				}
+			} else {
+				if (!pmc8_command(device, "ESSd00!")) {
+					return false;
+				}
+			}
+			if (pmc8_command(device, "ESTr%04X!", rate + offset)) {
+				return true;
+			}
+			return false;
+		}
+
+		static bool pmc8_stop_tracking(indigo_device *device) {
+			if (pmc8_command(device, "ESTr0000!")) {
+				return true;
+			}
+			return false;
+		}
+
+		static bool pmc8_point(indigo_device *device, bool sync, int32_t ha, int32_t dec) {
+			if (!pmc8_command(device, sync ? "ESSp0%06X!" : "ESPt0%06X!", ha & 0xFFFFFF)) {
+				return false;
+			}
+			if (!pmc8_command(device, sync ? "ESSp1%06X!" : "ESPt1%06X!", dec & 0xFFFFFF)) {
+				return false;
+			}
+			return true;
+		}
+
+		static bool pmc8_get_position(indigo_device *device, int32_t *ha, int32_t *dec) {
+			int32_t raw_ha = 0, raw_dec = 0;
+			if (pmc8_command(device, "ESGp0!")) {
+				raw_ha = (int)strtol(PMC8_RESPONSE + 5, NULL, 16);
+				if (raw_ha & 0x800000) {
+					raw_ha |= 0xFF000000;
+				}
+				if (pmc8_command(device, "ESGp1!")) {
+					raw_dec = (int)strtol(PMC8_RESPONSE + 5, NULL, 16);
+					if (raw_dec & 0x800000) {
+						raw_dec |= 0xFF000000;
+					}
+					*ha = raw_ha;
+					*dec = raw_dec;
+					return true;
+				}
+			}
+			return false;
+		}
+
+		static bool pmc8_get_rate(indigo_device *device, int32_t *ra, int32_t *dec) {
+			if (pmc8_command(device, "ESGr0!")) {
+				*ra = (int)strtol(PMC8_RESPONSE + 5, NULL, 16);
+				if (pmc8_command(device, "ESGr1!")) {
+					*dec = (int)strtol(PMC8_RESPONSE + 5, NULL, 16);
+					return true;
+				}
+			}
+			return false;
+		}
+
+		static bool pmc8_move(indigo_device *device, int axis, int direction, int rate) {
+			if (rate == 0) {
+				if (axis == 0) {
+					return pmc8_set_tracking_rate(device, 0);
+				} else {
+					return pmc8_command(device, "ESSr10000!");
+				}
+			} else {
+				if (!pmc8_command(device, "ESSd%d%d!", axis, direction)) {
+					return false;
+				}
+				if (!pmc8_command(device, "ESSr%d%04X!", axis, abs(rate))) {
+					return false;
+				}
+			}
+			return true;
+		}
+	}
+	// on_init { }
+	// on_shutdown { }
+	mount {
+		name = "Mount PMC Eight";
+		code {
+			static void mount_connection_handler(indigo_device *device);
+
+			static void mount_switch_connection_handler(indigo_device *device) {
+				CONNECTION_MODE_PROPERTY->state = INDIGO_OK_STATE;
+			    if (PRIVATE_DATA->is_udp && CONNECTION_TCP_ITEM->sw.value) {
+						if (!pmc8_command(device, "ESY!") || strcmp(PMC8_RESPONSE, "ESY0")) {
+							CONNECTION_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+						}
+						indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+					mount_connection_handler(device);
+			    } else if (PRIVATE_DATA->is_udp && (CONNECTION_SERIAL_ITEM->sw.value || CONNECTION_SERIAL_DTR_ITEM->sw.value)) {
+						indigo_send_message(device, ALERT_PROPERTY, "Can't switch from UDP to SERIAL directly, switch to TCP first!");
+						indigo_set_switch(CONNECTION_MODE_PROPERTY, CONNECTION_UDP_ITEM, true);
+						CONNECTION_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+			    } else if (PRIVATE_DATA->is_tcp && CONNECTION_UDP_ITEM->sw.value) {
+						if (!pmc8_command(device, "ESY!") || strcmp(PMC8_RESPONSE, "ESY1")) {
+							CONNECTION_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+						}
+						indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+					mount_connection_handler(device);
+			    } else if (PRIVATE_DATA->is_tcp && (CONNECTION_SERIAL_ITEM->sw.value || CONNECTION_SERIAL_DTR_ITEM->sw.value)) {
+						if (!pmc8_command(device, "ESX!") || strcmp(PMC8_RESPONSE, "ESX0")) {
+							CONNECTION_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+						}
+						indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+					mount_connection_handler(device);
+			    } else if (PRIVATE_DATA->is_serial && CONNECTION_UDP_ITEM->sw.value) {
+						indigo_send_message(device, ALERT_PROPERTY, "Can't switch from SERIAL to UDP directly, switch to TCP first!");
+						indigo_set_switch(CONNECTION_MODE_PROPERTY, CONNECTION_SERIAL_ITEM, true);
+						CONNECTION_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+			    } else if (PRIVATE_DATA->is_serial && CONNECTION_TCP_ITEM->sw.value) {
+						if (!pmc8_command(device, "ESX!") || strcmp(PMC8_RESPONSE, "ESX1")) {
+							CONNECTION_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+						}
+						indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+					mount_connection_handler(device);
+			    }
+				if (CONNECTION_MODE_PROPERTY->state == INDIGO_OK_STATE) {
+					pmc8_update_connection_port(device);
+				}
+				indigo_update_property(device, CONNECTION_MODE_PROPERTY, NULL);
+			}
+		}
+		on_timer {
+			if (PRIVATE_DATA->handle != NULL) {
+				int32_t raw_ha = 0, raw_dec = 0;
+				if (pmc8_get_position(device, &raw_ha, &raw_dec)) {
+					if (abs(raw_ha) < 0xFFF && abs(raw_dec) < 0xFFF && MOUNT_TRACKING_OFF_ITEM->sw.value && PRIVATE_DATA->park) {
+						PRIVATE_DATA->park = false;
+						MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
+						indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
+					}
+					indigo_item *side_of_pier;
+					uint32_t ra_count = MODELS[PRIVATE_DATA->type].count[0];
+					uint32_t dec_count = MODELS[PRIVATE_DATA->type].count[1];
+					double ha_angle = ((double)raw_ha / ra_count) * 24;
+					double dec_angle = ((double)raw_dec / dec_count) * 360;
+					double lst = indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
+					double ha, ra, dec;
+					if (MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value >= 0) {
+						if (raw_dec >= -1) {
+							dec = 90 - dec_angle;
+							ha = ha_angle - 6;
+							side_of_pier = MOUNT_SIDE_OF_PIER_WEST_ITEM;
+						} else {
+							dec = 90 + dec_angle;
+							ha = ha_angle + 6;
+							side_of_pier = MOUNT_SIDE_OF_PIER_EAST_ITEM;
+						}
+					} else {
+						if (raw_dec >= -1) {
+							dec = -90 + dec_angle;
+							ha = -(ha_angle - 6);
+							side_of_pier = MOUNT_SIDE_OF_PIER_EAST_ITEM;
+						} else {
+							dec = -90 - dec_angle;
+							ha = -(ha_angle + 6);
+							side_of_pier = MOUNT_SIDE_OF_PIER_WEST_ITEM;
+						}
+					}
+					ra = lst - ha;
+					if (ra < 0) {
+						ra += 24;
+					} else if (ra > 24)
+						ra -= 24;
+					indigo_eq_to_j2k(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
+					MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
+					MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
+					if (!side_of_pier->sw.value) {
+						indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, side_of_pier, true);
+						indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
+					}
+					indigo_update_coordinates(device, NULL);
+					indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
+				}
+				indigo_execute_handler_in(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE ? 0.5 : 1, mount_timer_callback);
+			}
+		}
+		on_connect {
+			if (!PRIVATE_DATA->configured) {
+				connection_result = pmc8_configure_mount(device);
+			}
+			if (connection_result) {
+				PRIVATE_DATA->configured = true;
+				indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
+				if (pmc8_get_tracking_rate(device)) {
+					MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
+					MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_OK_STATE;
+				} else {
+					MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
+					MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				pmc8_update_mount_type_perm(device, INDIGO_RO_PERM);
+			}
+		}
+		on_disconnect {
+			pmc8_update_mount_type_perm(device, INDIGO_RW_PERM);
+		}
+		on_attach {
+			// -------------------------------------------------------------------------------- DEVICE_PORT
+			strcpy(DEVICE_PORT_ITEM->text.value, "udp://192.168.47.1");
+			DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;
+			// -------------------------------------------------------------------------------- MOUNT_INFO
+			strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Explore Scientific");
+			// -------------------------------------------------------------------------------- MOUNT_ON_COORDINATES_SET
+			MOUNT_ON_COORDINATES_SET_PROPERTY->count = 2;
+			// -------------------------------------------------------------------------------- MOUNT_GUIDE_RATE
+			MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
+			// -------------------------------------------------------------------------------- MOUNT_SIDE_OF_PIER
+			MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
+			ADDITIONAL_INSTANCES_PROPERTY->hidden = device->base_device != NULL;
+			pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
+		}
+		// on_detach { }
+		switch CONNECTION_MODE {
+			persistent = true;
+			always_defined = true;
+			on_change {
+				PRIVATE_DATA->is_udp = CONNECTION_UDP_ITEM->sw.value;
+				PRIVATE_DATA->is_tcp = CONNECTION_TCP_ITEM->sw.value;
+				PRIVATE_DATA->is_serial = (CONNECTION_SERIAL_ITEM->sw.value || CONNECTION_SERIAL_DTR_ITEM->sw.value);
+				if (IS_CONNECTED) {
+					CONNECTION_MODE_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_update_property(device, CONNECTION_MODE_PROPERTY, NULL);
+					indigo_execute_handler(device, mount_switch_connection_handler);
+				} else {
+					pmc8_update_connection_port(device);
+					CONNECTION_MODE_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_update_property(device, CONNECTION_MODE_PROPERTY, NULL);
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+			name = "CONNECTION_MODE";
+			group = MAIN_GROUP;
+			label = "Connection mode";
+			item CONNECTION_UDP {
+				name = "UDP";
+				label = "UDP";
+				value = true;
+			}
+			item CONNECTION_TCP {
+				name = "TCP";
+				label = "TCP";
+				value = false;
+			}
+			item CONNECTION_SERIAL {
+				name = "SERIAL";
+				label = "Serial";
+				value = false;
+			}
+			item CONNECTION_SERIAL_DTR {
+				name = "SERIAL_DTR";
+				label = "Serial (clear DTR)";
+				value = false;
+			}
+		}
+		switch MOUNT_TYPE {
+			persistent = true;
+			always_defined = true;
+			on_change {
+				pmc8_update_mount_model(device);
+				MOUNT_TYPE_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, MOUNT_TYPE_PROPERTY, NULL);
+			}
+			// on_attach { }
+			// on_detach { }
+			name = "MOUNT_TYPE";
+			group = MAIN_GROUP;
+			label = "Mount type";
+			item MOUNT_TYPE_AUTO {
+				handle = MOUNT_TYPE_AUTO;
+				name = "AUTO";
+				label = "Auto";
+				value = true;
+			}
+			item MOUNT_TYPE_G11 {
+				handle = MOUNT_TYPE_G11;
+				name = "G11";
+				label = MODELS[0].name;
+				value = false;
+			}
+			item MOUNT_TYPE_TITAN {
+				handle = MOUNT_TYPE_TITAN;
+				name = "TITAN";
+				label = MODELS[1].name;
+				value = false;
+			}
+			item MOUNT_TYPE_EXOS2 {
+				handle = MOUNT_TYPE_EXOS2;
+				name = "EXOS-2";
+				label = MODELS[2].name;
+				value = false;
+			}
+			item MOUNT_TYPE_IEXOS100 {
+				handle = MOUNT_TYPE_IEXOS100;
+				name = "iEXOS-100";
+				label = MODELS[3].name;
+				value = false;
+			}
+		}
+		inherited MOUNT_EQUATORIAL_COORDINATES {
+			on_change {
+				pmc8_stop_tracking(device);
+				indigo_usleep(200000);
+				for (int i = 0; i < 3 && MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE; i++) {
+					double ra_angle = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
+					double dec_angle = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
+					indigo_j2k_to_eq(MOUNT_EPOCH_ITEM->number.value, &ra_angle, &dec_angle);
+					double lst = indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
+					double ha_angle = lst - ra_angle;
+					if (ha_angle < -12) {
+						ha_angle += 24;
+					} else if (ha_angle >= 12) {
+						ha_angle -= 24;
+					}
+					if (MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value >= 0) {
+						if (ha_angle < 0) {
+							ha_angle = ha_angle + 6;
+							dec_angle = -(dec_angle - 90);
+						} else {
+							ha_angle = ha_angle - 6;
+							dec_angle = dec_angle - 90;
+						}
+					} else {
+						if (ha_angle < 0) {
+							ha_angle = -(ha_angle + 6);
+							dec_angle = -(dec_angle + 90);
+						} else {
+							ha_angle = -(ha_angle - 6);
+							dec_angle = dec_angle + 90;
+						}
+					}
+					uint32_t ra_count = MODELS[PRIVATE_DATA->type].count[0];
+					uint32_t dec_count = MODELS[PRIVATE_DATA->type].count[1];
+					int32_t raw_dec = (dec_angle / 360.0) * dec_count;
+					int32_t raw_ha = (ha_angle / 24.0) * ra_count;
+					if (!pmc8_point(device, MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value, raw_ha, raw_dec)) {
+						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+					}
+					if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
+						break;
+					}		
+					indigo_usleep(1000000);
+					while (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
+						int32_t ra_rate, dec_rate;
+						if (pmc8_get_rate(device, &ra_rate, &dec_rate)) {
+							if (ra_rate <= PRIVATE_DATA->rate[2] && dec_rate == 0) {
+								break;
+							}
+						} else {
+							MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+						}
+						indigo_usleep(200000);
+					}
+					indigo_usleep(500000);
+				}
+				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
+				if (pmc8_set_tracking_rate(device, 0)) {
+					MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
+				} else {
+					MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+				if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
+					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+				}
+				indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited MOUNT_TRACKING {
+			on_change {
+				if (pmc8_set_tracking_rate(device, 0)) {
+					MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
+				} else {
+					MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited MOUNT_TRACK_RATE {
+			on_change {
+				if (pmc8_set_tracking_rate(device, 0)) {
+					MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_OK_STATE;
+				} else {
+					MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited MOUNT_PARK {
+			on_change {
+				MOUNT_TRACKING_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
+				mount_tracking_handler(device);
+				PRIVATE_DATA->park = true;
+				if (!pmc8_point(device, false, 0, 0)) {
+					MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited MOUNT_ABORT_MOTION {
+			on_change {
+				if (pmc8_move(device, 0, 0, 0) && pmc8_move(device, 1, 0, 0)) {
+					MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+				} else {
+					MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				if (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
+					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
+				}
+				MOUNT_MOTION_WEST_ITEM->sw.value = MOUNT_MOTION_EAST_ITEM->sw.value = false;
+				indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
+				MOUNT_MOTION_NORTH_ITEM->sw.value = MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
+				indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
+				indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, NULL);
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited MOUNT_MOTION_DEC {
+			on_change {
+				int rate = 0;
+				if (MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value) {
+					rate = PRIVATE_DATA->rate[0];
+				} else if (MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value) {
+					rate = 0x1000;
+				} else if (MOUNT_SLEW_RATE_FIND_ITEM->sw.value) {
+					rate = 0x3000;
+				} else if (MOUNT_SLEW_RATE_MAX_ITEM->sw.value) {
+					rate = 0xFFFF;
+				}
+				int direction = 0, dec_rate = rate;
+				if (MOUNT_MOTION_NORTH_ITEM->sw.value) {
+					direction = 0;
+				} else if (MOUNT_MOTION_SOUTH_ITEM->sw.value) {
+					direction = 1;
+				} else {
+					dec_rate = 0;
+				}
+				if (pmc8_move(device, 1, direction, dec_rate)) {
+					MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
+				} else {
+					MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited MOUNT_MOTION_RA {
+			on_change {
+				int rate = 0;
+				if (MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value) {
+					rate = PRIVATE_DATA->rate[0];
+				} else if (MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value) {
+					rate = 0x1000;
+				} else if (MOUNT_SLEW_RATE_FIND_ITEM->sw.value) {
+					rate = 0x3000;
+				} else if (MOUNT_SLEW_RATE_MAX_ITEM->sw.value) {
+					rate = 0xFFFF;
+				}
+				int direction = 0, ra_rate = rate;
+				if (MOUNT_MOTION_WEST_ITEM->sw.value) {
+					direction = 0;
+				} else if (MOUNT_MOTION_EAST_ITEM->sw.value) {
+					direction = 1;
+				} else {
+					ra_rate = 0;
+				}
+				if (pmc8_move(device, 0, direction, ra_rate)) {
+					MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
+				} else {
+					MOUNT_MOTION_RA_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+	}
+	guider {
+		name = "Mount PMC Eight (guider)";
+		code {
+			static void guider_guide_ra_finalizer(indigo_device *device) {
+				if (!CONNECTION_CONNECTED_ITEM->sw.value) {
+					return;
+				}
+				pmc8_set_tracking_rate(device->master_device, 0);
+				GUIDER_GUIDE_EAST_ITEM->number.value = 0;
+				GUIDER_GUIDE_WEST_ITEM->number.value = 0;
+				GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+			}
+
+			static void guider_guide_dec_finalizer(indigo_device *device) {
+				if (!CONNECTION_CONNECTED_ITEM->sw.value) {
+					return;
+				}
+				pmc8_move(device, 1, 0, 0);
+				GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
+				GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
+				GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+			}
+		}
+		// on_timer { }
+		on_connect {
+			if (!PRIVATE_DATA->configured) {
+				connection_result = pmc8_configure_mount(device->master_device);
+			}
+			if (connection_result) {
+				PRIVATE_DATA->configured = true;
+			}
+		}
+		on_disconnect {
+			indigo_cancel_pending_handlers(device);
+			indigo_cancel_pending_handler(device, guider_guide_dec_finalizer);
+			indigo_cancel_pending_handler(device, guider_guide_ra_finalizer);
+		}
+		on_attach {
+			// -------------------------------------------------------------------------------- GUIDER_RATE
+			GUIDER_RATE_PROPERTY->hidden = false;
+			// --------------------------------------------------------------------------------
+		}
+		// on_detach { }
+		inherited GUIDER_GUIDE_RA {
+			on_change {
+				indigo_cancel_pending_handler(device, guider_guide_ra_finalizer);
+				int rate = PRIVATE_DATA->rate[0] * (GUIDER_RATE_ITEM->number.value / 100.0);
+				double duration = 0;
+				if (GUIDER_GUIDE_EAST_ITEM->number.value > 0) {
+					pmc8_set_tracking_rate(device->master_device, -rate);
+					duration = GUIDER_GUIDE_EAST_ITEM->number.value / 1000.0;
+				} else if (GUIDER_GUIDE_WEST_ITEM->number.value > 0) {
+					pmc8_set_tracking_rate(device->master_device, rate);
+					duration = GUIDER_GUIDE_WEST_ITEM->number.value / 1000.0;
+				}
+				if (duration > 0) {
+					indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, duration, guider_guide_ra_finalizer);
+					GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+				} else {
+					guider_guide_ra_finalizer(device);
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited GUIDER_GUIDE_DEC {
+			on_change {
+				indigo_cancel_pending_handler(device, guider_guide_dec_finalizer);
+				int rate = PRIVATE_DATA->rate[0] * (GUIDER_RATE_ITEM->number.value / 2500.0);
+				double duration = 0;
+				if (GUIDER_GUIDE_NORTH_ITEM->number.value > 0) {
+					pmc8_move(device, 1, 1, rate);
+					duration = GUIDER_GUIDE_NORTH_ITEM->number.value / 1000.0;
+				} else if (GUIDER_GUIDE_SOUTH_ITEM->number.value > 0) {
+					pmc8_move(device, 1, 0, rate);
+					duration = GUIDER_GUIDE_SOUTH_ITEM->number.value / 1000.0;
+				}
+				if (duration > 0) {
+					indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_TIME, duration, guider_guide_dec_finalizer);
+					GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+				} else {
+					guider_guide_dec_finalizer(device);
+				}
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+		inherited GUIDER_RATE {
+			on_change {
+			}
+			// on_attach { }
+			// on_detach { }
+		}
+	}
+}
