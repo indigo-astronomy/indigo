@@ -969,29 +969,30 @@ bool indigo_perform_active_discovery(const char *host, int port, int timeout, co
 		memset((char *)&remote_addr, 0, sizeof(remote_addr));
 		remote_addr.sin_family = AF_INET;
 		remote_addr.sin_port = htons(port);
-		remote_addr.sin_addr.s_addr = inet_addr(host);
-		for (int n = 0; n < 5; n++) {
-			if (sendto(udp_socket, payload, payload_size, 0, (struct sockaddr *)&remote_addr, sizeof(remote_addr)) <= 0) {
-				continue;
-			}
-			struct sockaddr_in reply_addr;
-			socklen_t addrlen = sizeof(reply_addr);
-			unsigned char reply[2048];
-			long recvlen = recvfrom(udp_socket, reply, sizeof(reply) - 1, 0, (struct sockaddr *)&reply_addr, &addrlen);
-			if (recvlen > 0) {
-				reply[recvlen] = 0;
-				if (responder) {
-					wchar_t ipstr[INET_ADDRSTRLEN];
-					InetNtop(AF_INET, &reply_addr.sin_addr, ipstr, sizeof(ipstr));
-					strncpy(responder, indigo_wchar_to_char(ipstr), max_responder);
-					responder[max_responder - 1] = 0;
+		if (InetPtonA(AF_INET, host, &remote_addr.sin_addr) == 1) {
+			for (int n = 0; n < 5; n++) {
+				if (sendto(udp_socket, payload, payload_size, 0, (struct sockaddr *)&remote_addr, sizeof(remote_addr)) <= 0) {
+					continue;
 				}
-				if (message) {
-					strncpy(message, (char *)reply, max_message);
-					message[max_message - 1] = 0;
+				struct sockaddr_in reply_addr;
+				socklen_t addrlen = sizeof(reply_addr);
+				unsigned char reply[2048];
+				long recvlen = recvfrom(udp_socket, reply, sizeof(reply) - 1, 0, (struct sockaddr *)&reply_addr, &addrlen);
+				if (recvlen > 0) {
+					reply[recvlen] = 0;
+					if (responder) {
+						wchar_t ipstr[INET_ADDRSTRLEN];
+						InetNtop(AF_INET, &reply_addr.sin_addr, ipstr, sizeof(ipstr));
+						strncpy(responder, indigo_wchar_to_char(ipstr), max_responder);
+						responder[max_responder - 1] = 0;
+					}
+					if (message) {
+						strncpy(message, (char *)reply, max_message);
+						message[max_message - 1] = 0;
+					}
+					result = true;
+					break;
 				}
-				result = true;
-				break;
 			}
 		}
 		closesocket(udp_socket);

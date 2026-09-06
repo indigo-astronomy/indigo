@@ -484,7 +484,7 @@ static void reset_timer_state(indigo_timer *timer, double delay) {
 	timer->completed = false;
 	timer->worker_started = false;
 	timer->waiters = 0;
-	timer->callback_thread = (pthread_t)0;
+	memset(&timer->callback_thread, 0, sizeof(timer->callback_thread));
 	timer->scheduler_next = NULL;
 	timer->registry_next = NULL;
 }
