@@ -288,7 +288,7 @@ static void process_plug_event_handler(indigo_device *device, void *data) {
 static void process_unplug_event_handler(indigo_device *device, void *data) {
 	libusb_device *dev = (libusb_device *)data;
 	fcusb_private_data *private_data = NULL;
-	for (int j = 0; j < MAX_DEVICES; j++) {
+	for (int j = MAX_DEVICES - 1; j >= 0; j--) {
 		if (devices[j] != NULL) {
 			indigo_device *device = devices[j];
 			if (PRIVATE_DATA->usbdev == dev) {
