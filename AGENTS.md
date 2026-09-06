@@ -22,7 +22,7 @@ Read the relevant documentation before changing behavior:
 
 ## Properties reference
 
-The properties reference is maintained in `indigo_docs/PROPERTIES.md`. Keep this file up to date when changing source code. Source files for documented property sections are listed in `indigo_docs/PROPERTIES.md` at the end of each section; use those per-section source notes as the authoritative mapping.
+The properties reference is maintained in `indigo_docs/PROPERTIES.md`. Keep this file up to date when changing source code. Whenever a property is added to or removed from any driver or framework code, update `indigo_docs/PROPERTIES.md` in the same change. Source files for documented property sections are listed in `indigo_docs/PROPERTIES.md` at the end of each section; use those per-section source notes as the authoritative mapping.
 
 Always look for:
 - indigo_init_*_property() function calls

@@ -100,8 +100,6 @@ Properties CONNECTION through ADDITIONAL_INSTANCES are implemented by the driver
 | CCD_TEMPERATURE | number |  | no | TEMPERATURE | yes | It depends on hardware if it is undefined, read-only or read-write. |
 | CCD_COOLER | switch | no | no | ON | yes | On |
 |  |  |  |  | OFF | yes | Off |
-| X_CCD_FLOOD_LED | switch | no | no | ON | yes | Starlight Xpress flood LED; available only on supported camera models. Source: `indigo_drivers/ccd_sx/indigo_ccd_sx.driver`. |
-|  |  |  |  | OFF | yes | Turn flood LED off. |
 | CCD_COOLER_POWER | number | yes | no | POWER | yes | It depends on hardware if it is undefined, read-only or read-write. |
 | CCD_FITS_HEADERS | text | yes | yes | FITS key name, ... | yes | String in form "value" or "'value'" |
 | CCD_SET_FITS_HEADER | text | no | yes | KEYWORD | yes | FITS key name |
@@ -144,6 +142,10 @@ Properties are implemented by CCD driver base class in [indigo_ccd_driver.c](htt
 | DSLR_CAPTURE_DESTINATION | switch |  | no | ... | yes | Capture destination, if supported by the camera |
 | DSLR_FLASH_MODE | switch |  | no | ... | yes | RO/RW status and items depend on the particular camera |
 | DSLR_EXPOSURE_COMPENSATION | switch |  | no | ... | yes | RO/RW status and items depend on the particular camera |
+| DSLR_COMPENSATION_STEP | switch |  | no | ... | yes | RO/RW status and items depend on the particular camera |
+| DSLR_PICTURE_STYLE | switch |  | no | ... | yes | RO/RW status and items depend on the particular camera |
+| DSLR_COLOR_SPACE | switch |  | no | ... | yes | RO/RW status and items depend on the particular camera |
+| DSLR_ASPECT_RATIO | switch |  | no | ... | yes | RO/RW status and items depend on the particular camera |
 | DSLR_BATTERY_LEVEL | number | yes | no | VALUE | yes | Value |
 | DSLR_FOCAL_LENGTH | number | yes | no | VALUE | yes | Value |
 | DSLR_LOCK | switch | no | no | LOCK | yes | Lock camera UI |
@@ -161,7 +163,7 @@ Properties are implemented by CCD driver base class in [indigo_ccd_driver.c](htt
 |  |  |  |  | OFF | yes | Off |
 | DSLR_SET_HOST_TIME | switch | no | no | SET | yes | Set host time |
 
-A reference implementation is ICA driver [indigo_ccd_ica.m](https://github.com/indigo-astronomy/indigo/blob/master/indigo_mac_drivers/ccd_ica/indigo_ccd_ica.m).
+DSLR properties are defined by the PTP CCD driver in `indigo_drivers/ccd_ptp`.
 
 ## Wheel specific properties
 
@@ -282,22 +284,6 @@ Properties are implemented by mount driver base class in [indigo_mount_driver.c]
 |  |  |  |  | DEC_RATE | no | Hidden by default. % of sidereal rate (DEC) |
 
 Properties are implemented by guider driver base class in [indigo_guider_driver.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_guider_driver.c).
-
-## SynScan mount specific properties
-
-| Property name | Type | RO | Required | Item name | Required | Comments |
-| ----- | ----- | ----- | ----- | ----- | ----- | ----- |
-| POLARSCOPE | number | no | no | BRIGHTNESS | yes | Hidden unless the connected SynScan controller accepts polar-scope LED brightness commands. |
-| MOUNT_OPERATING_MODE | switch | no | no | POLAR | yes | Hidden unless the connected controller reports AZ/EQ operating-mode support. |
-|  |  |  |  | ALTAZ | yes | Alt/Az operating mode. |
-| MOUNT_USE_ENCODERS | switch | no | no | RA | yes | Hidden unless the connected controller reports auxiliary encoder support. |
-|  |  |  |  | DEC | yes | Enable DEC auxiliary encoder. |
-| MOUNT_AUTOHOME | switch | no | no | AUTOHOME | yes | Hidden unless the connected controller reports home-indexer support. |
-| MOUNT_AUTOHOME_SETTINGS | number | no | no | DEC_OFFSET | yes | Hidden unless the connected controller reports home-indexer support. |
-
-On SynScan controllers with a snap port, `Mount SynScan (aux)` exposes the standard AUX shutter `CCD_EXPOSURE` and `CCD_ABORT_EXPOSURE` properties.
-
-Properties are implemented by `indigo_drivers/mount_synscan/indigo_mount_synscan.c`.
 
 ## AO specific properties
 
@@ -464,9 +450,9 @@ To be used by auxiliary devices like powerboxes, weather stations, etc.
 |  |  |  |  | OFF | yes | Turn light off |
 | AUX_LIGHT_INTENSITY | number | no | no | LIGHT_INTENSITY | yes | Flatbox light intensity |
 
-## Agent specific properties
+Auxiliary property names are defined in `indigo_libs/indigo/indigo_names.h`; auxiliary devices use the common attach/change/enumerate hooks from `indigo_libs/indigo_aux_driver.c`.
 
-### Common agent properties
+## Agent filter properties
 
 All agents inherit a set of device-selector and relation properties from the agent filter base class. Each agent enables only the device-list properties relevant to its function; the rest remain hidden.
 
@@ -508,168 +494,996 @@ All agents inherit a set of device-selector and relation properties from the age
 
 Common agent properties are defined in `indigo_libs/indigo_filter.c`.
 
-### Imager agent
+## Agent specific properties
 
-The imager agent exposes the following common properties: FILTER_CCD_LIST, FILTER_WHEEL_LIST, FILTER_FOCUSER_LIST, FILTER_ROTATOR_LIST, FILTER_AUX_1_LIST, FILTER_RELATED_AGENT_LIST, FILTER_FORCE_SYMMETRIC_RELATIONS, CCD_LENS_FOV.
+Agent drivers define these properties on top of the common agent filter properties listed above. The table also lists common filter properties whose visibility or meaning is changed by a particular agent.
 
-| Property name | Type | RO | Required | Item name | Required | Comments |
-| ----- | ----- | ----- | ----- | ----- | ----- | ----- |
-| AGENT_START_PROCESS | switch | no | yes | PREVIEW_1 | yes | Start single-frame preview |
-|  |  |  |  | PREVIEW | yes | Start preview |
-|  |  |  |  | EXPOSURE | yes | Start exposure batch |
-|  |  |  |  | STREAMING | yes | Start streaming batch |
-|  |  |  |  | FOCUSING | yes | Start autofocus |
-|  |  |  |  | CLEAR_SELECTION | yes | Clear star selection |
-|  |  |  |  | RESET | yes | Reset to defaults |
-| AGENT_PAUSE_PROCESS | switch | no | yes | PAUSE | yes | Pause batch immediately (abort running capture) or resume |
-|  |  |  |  | PAUSE_WAIT | yes | Pause batch after running capture or resume |
-|  |  |  |  | PAUSE_AFTER_TRANSIT | yes | Resume batch paused at configured transit time (e.g. after meridian flip) |
-| AGENT_ABORT_PROCESS | switch | no | yes | ABORT | yes | Abort running process |
-| AGENT_PROCESS_FEATURES | switch | no | yes | ENABLE_DITHERING | yes | Enable dithering |
-|  |  |  |  | DITHER_AFTER_LAST_FRAME | yes | Dither after last frame in batch |
-|  |  |  |  | PAUSE_AFTER_TRANSIT | yes | Pause at configured transit time |
-|  |  |  |  | APPLY_FILTER_OFFSETS | yes | Apply focus offsets for filters |
-|  |  |  |  | MACRO_MODE | yes | Use macro mode |
-| AGENT_IMAGER_BATCH | number | no | yes | COUNT | yes | Frame count |
-|  |  |  |  | EXPOSURE | yes | Exposure duration (in seconds) |
-|  |  |  |  | DELAY | yes | Delay between exposures (in seconds) |
-|  |  |  |  | FRAMES_TO_SKIP_BEFORE_DITHER | yes | Frames to skip before each dither |
-|  |  |  |  | PAUSE_AFTER_TRANSIT | yes | Pause batch at transit time (e.g. before meridian flip); use 24:00:00 to turn off |
-| AGENT_IMAGER_DOWNLOAD_FILE | text | no | yes | FILE | yes | File to load into AGENT_IMAGER_DOWNLOAD_IMAGE and remove from host |
-| AGENT_IMAGER_DOWNLOAD_FILES | switch | no | yes | REFRESH | yes | Refresh the list of available files |
-|  |  |  |  | file name | yes | Set file to AGENT_IMAGER_DOWNLOAD_FILE |
-| AGENT_IMAGER_DOWNLOAD_IMAGE | blob | no | yes | IMAGE | yes | Downloaded image data |
+### Alpaca agent
 
-Imager agent properties are defined in `indigo_drivers/agent_imager/indigo_agent_imager.c`.
+| Property name | Type | RO | Items | Comments |
+| ----- | ----- | ----- | ----- | ----- |
+| AGENT_ALPACA_DISCOVERY | number | no | PORT | Alpaca discovery server port. |
+| AGENT_ALPACA_DEVICES | text | no | dynamic device numbers | Device mapping table, initially empty and resized as devices are discovered. |
+| AGENT_ALPACA_CAMERA_BAYERPAT | text | no | dynamic camera numbers | Per-camera Bayer pattern mapping. |
+
+Source: `indigo_drivers/agent_alpaca/indigo_agent_alpaca.c`.
+
+### ASTAP agent
+
+| Property name | Type | RO | Items | Comments |
+| ----- | ----- | ----- | ----- | ----- |
+| AGENT_ASTAP_INDEX | switch | no | dynamic ASTAP index names | Installed ASTAP index management. Also updates `AGENT_PLATESOLVER_USE_INDEX`. |
+
+Source: `indigo_drivers/agent_astap/indigo_agent_astap.c`.
+
+### Astrometry agent
+
+| Property name | Type | RO | Items | Comments |
+| ----- | ----- | ----- | ----- | ----- |
+| AGENT_ASTROMETRY_INDEX_41XX | switch | no | dynamic Tycho-2 index names | Installed 41xx index management. Also updates `AGENT_PLATESOLVER_USE_INDEX`. |
+| AGENT_ASTROMETRY_INDEX_42XX | switch | no | dynamic 2MASS index names | Installed 42xx index management. Also updates `AGENT_PLATESOLVER_USE_INDEX`. |
+
+Source: `indigo_drivers/agent_astrometry/indigo_agent_astrometry.c`.
+
+### Auxiliary agent
+
+| Property name | Type | RO | Items | Comments |
+| ----- | ----- | ----- | ----- | ----- |
+| FILTER_AUX_1_LIST | switch | no | device name | Exposes the common AUX #1 selector. |
+| FILTER_AUX_2_LIST | switch | no | device name | Exposes the common AUX #2 selector. |
+| FILTER_AUX_3_LIST | switch | no | device name | Exposes the common AUX #3 selector. |
+| FILTER_AUX_4_LIST | switch | no | device name | Exposes the common AUX #4 selector. |
+| FILTER_RELATED_AGENT_LIST | switch | no | agent name | Exposes the common related-agent selector. |
+
+Source: `indigo_drivers/agent_auxiliary/indigo_agent_auxiliary.c`.
+
+### Config agent
+
+| Property name | Type | RO | Items | Comments |
+| ----- | ----- | ----- | ----- | ----- |
+| AGENT_CONFIG_SETUP | switch | no | AUTOSAVE_DEVICE_CONFIGS, UNLOAD_UNUSED_DRIVERS | Agent configuration options. |
+| AGENT_CONFIG_SAVE | text | no | NAME | Save the current setup as a named configuration. |
+| AGENT_CONFIG_REMOVE | text | no | NAME | Remove a named configuration. |
+| AGENT_CONFIG_LAST_CONFIG | text | yes | NAME | Last configuration used. |
+| AGENT_CONFIG_LOAD | switch | no | dynamic configuration names | Load one available configuration. |
+| AGENT_CONFIG_DRIVERS | switch | yes | dynamic driver names | Drivers referenced by configurations. |
+| AGENT_CONFIG_PROFILES | text | yes | dynamic profile names | Profiles referenced by configurations. |
+
+Source: `indigo_drivers/agent_config/indigo_agent_config.c`.
 
 ### Guider agent
 
-The guider agent exposes the following common properties: FILTER_CCD_LIST, FILTER_GUIDER_LIST, FILTER_RELATED_AGENT_LIST, FILTER_FORCE_SYMMETRIC_RELATIONS.
+| Property name | Type | RO | Items | Comments |
+| ----- | ----- | ----- | ----- | ----- |
+| FILTER_CCD_LIST | switch | no | device name | Exposes the common CCD selector for guider frames. |
+| FILTER_GUIDER_LIST | switch | no | device name | Exposes the common guider output selector. |
+| FILTER_RELATED_AGENT_LIST | switch | no | agent name | Exposes the common related-agent selector. |
+| AGENT_GUIDER_CORRECTION_MODE_RA | switch | no | PI_CONTROLLER, HYSTERESIS, LINEAR_TREND, PPEC | RA drift correction mode. |
+| AGENT_GUIDER_CORRECTION_MODE_DEC | switch | no | PI_CONTROLLER, HYSTERESIS, LINEAR_TREND, RESIST_SWITCH | Dec drift correction mode. |
+| AGENT_GUIDER_DETECTION_MODE | switch | no | SELECTION, WEIGHTED_SELECTION, DONUTS, CENTROID | Drift detection mode. |
+| AGENT_GUIDER_DEC_MODE | switch | no | BOTH, NORTH, SOUTH, NONE | Dec guiding mode. |
+| AGENT_GUIDER_APPLY_DEC_BACKLASH | switch | no | DISABLED, ENABLED | Dec backlash compensation switch. |
+| AGENT_START_PROCESS | switch | no | PREVIEW_1, PREVIEW, CALIBRATION, CALIBRATION_AND_GUIDING, GUIDING, CLEAR_SELECTION, RESET | Guider start/reset commands. |
+| AGENT_ABORT_PROCESS | switch | no | ABORT | Abort the current guider process. |
+| AGENT_PROCESS_FEATURES | switch | no | ENABLE_LOGGING, FAIL_ON_CALIBRATION_ERROR, RESET_ON_CALIBRATION_ERROR, FAIL_ON_GUIDING_ERROR, CONTINUE_ON_GUIDING_ERROR, RESET_ON_GUIDING_ERROR, RESET_ON_GUIDING_ERROR_WAIT_ALL_STARS, USE_INCLUDE_FOR_DONUTS | Guider process behavior options. |
+| AGENT_GUIDER_MOUNT_COORDINATES | number | no | RA, DEC, SIDE_OF_PIER | Telescope coordinates used by the guider. |
+| AGENT_GUIDER_SETTINGS | number | no | EXPOSURE, DELAY, STEP0, MAX_BL_STEPS, MIN_BL_DRIFT, MAX_CALIBRATION_STEPS, MIN_CALIBRATION_DRIFT, ANGLE, SIDE_OF_PIER, BACKLASH, SPEED_RA, SPEED_DEC, MIN_ERROR, MIN_PULSE, MAX_PULSE, AGGRESSIVITY_RA, AGGRESSIVITY_DEC, I_GAIN_RA, I_GAIN_DEC, STACK, HYSTERESIS_AGGRESSIVENESS_RA, HYSTERESIS_AGGRESSIVENESS_DEC, HYSTERESIS_HYSTERESIS_RA, HYSTERESIS_HYSTERESIS_DEC, LINEAR_TREND_AGGRESSIVENESS_RA, LINEAR_TREND_AGGRESSIVENESS_DEC, RESIST_SWITCH_AGGRESSIVENESS_DEC, RESIST_SWITCH_FAST_THRESHOLD_DEC, DITHERING_MAX_AMOUNT, DITHERING_SETTLE_TIME_LIMIT, DITHERING_LIMIT, PPEC_REACTIVE_GAIN_RA, PPEC_PREDICTION_GAIN_RA, PPEC_PERIOD_RA, PPEC_PERIOD_FIXED, PPEC_RETAIN_MODEL_RA | Guider calibration, guiding, dithering, and PPEC settings. |
+| AGENT_GUIDER_FLIP_REVERSES_DEC | switch | no | ENABLED, DISABLED | Reverse Dec speed after meridian flip. |
+| AGENT_GUIDER_STARS | switch | no | REFRESH, dynamic star names | Detected guider stars. |
+| AGENT_GUIDER_SELECTION | number | no | RADIUS, SUBFRAME, EDGE_CLIPPING, INCLUDE_LEFT, INCLUDE_TOP, INCLUDE_WIDTH, INCLUDE_HEIGHT, EXCLUDE_LEFT, EXCLUDE_TOP, EXCLUDE_WIDTH, EXCLUDE_HEIGHT, COUNT, X, Y, dynamic X_n/Y_n | Guider star and region selection. |
+| AGENT_GUIDER_STATS | number | yes | PHASE, FRAME, REFERENCE_X, REFERENCE_Y, DRIFT_X, DRIFT_Y, DRIFT_RA, DRIFT_DEC, DRIFT_RA_S, DRIFT_DEC_S, CORR_RA, CORR_DEC, RMSE_RA, RMSE_DEC, RMSE_RA_S, RMSE_DEC_S, RMSE_RA_ST, RMSE_DEC_ST, RMSE_RA_S_ST, RMSE_DEC_S_ST, SNR, DELAY, DITHERING, PPEC_LEARNING, PPEC_PERIOD, CORR_RESPONSE_RA, CORR_RESPONSE_DEC | Guider process statistics. |
+| AGENT_GUIDER_LOG | text | no | DIR, TEMPLATE | Guider log output location and filename template. |
+| AGENT_GUIDER_DITHERING_OFFSETS | number | no | X, Y | Manual dithering offsets. |
+| AGENT_GUIDER_DITHERING_STRATEGY | switch | no | RANDOMIZED_SPIRAL, RANDOM, SPIRAL | Dithering pattern selection. |
+| AGENT_GUIDER_DITHER | switch | no | TRIGGER, RESET | Trigger or reset dithering. |
+| AGENT_GUIDER_RESET_PPEC | switch | no | RESET | Reset the predictive PEC model. |
 
-| Property name | Type | RO | Required | Item name | Required | Comments |
-| ----- | ----- | ----- | ----- | ----- | ----- | ----- |
-| AGENT_START_PROCESS | switch | no | yes | PREVIEW | yes | Start preview |
-|  |  |  |  | CALIBRATION | yes | Start calibration |
-|  |  |  |  | GUIDING | yes | Start guiding |
-| AGENT_ABORT_PROCESS | switch | no | yes | ABORT | yes | Abort running process |
-| AGENT_PROCESS_FEATURES | switch | no | yes | ENABLE_LOGGING | yes | Make guiding log |
-| AGENT_GUIDER_LOG | text | no | yes | DIR | yes | Guiding log folder |
-|  |  |  |  | TEMPLATE | yes | File name template, strftime() format specifiers accepted |
-| AGENT_GUIDER_DETECTION_MODE | switch | no | yes | DONUTS | yes | Use DONUTS algorithm |
-|  |  |  |  | CENTROID | yes | Use full frame centroid algorithm |
-|  |  |  |  | SELECTION | yes | Use selected star centroid algorithm |
-| AGENT_GUIDER_DEC_MODE | switch | no | yes | BOTH | yes | Guide both north and south |
-|  |  |  |  | NORTH | yes | Guide north only |
-|  |  |  |  | SOUTH | yes | Guide south only |
-|  |  |  |  | NONE | yes | Don't guide in declination axis |
-| AGENT_GUIDER_SELECTION | number | no | yes | X | yes | Selected star X coordinate (pixels) |
-|  |  |  |  | Y | yes | Selected star Y coordinate (pixels) |
-| AGENT_GUIDER_SETTINGS | number | no | yes | EXPOSURE | yes | Exposure duration (in seconds) |
-|  |  |  |  | STEP0 | yes | Initial step size (in pixels) |
-|  |  |  |  | ANGLE | yes | Measured angle (in degrees) |
-|  |  |  |  | BACKLASH | yes | Measured backlash (in pixels) |
-|  |  |  |  | SPEED_RA | yes | Measured RA speed (in pixels/second) |
-|  |  |  |  | SPEED_DEC | yes | Measured dec speed (in pixels/second) |
-|  |  |  |  | MAX_BL_STEPS | yes | Max backlash clearing steps |
-|  |  |  |  | MIN_BL_DRIFT | yes | Min required backlash drift (in pixels) |
-|  |  |  |  | MAX_CALIBRATION_STEPS | yes | Max calibration steps |
-|  |  |  |  | AGGRESSIVITY_RA | yes | RA aggressivity (in %) |
-|  |  |  |  | AGGRESSIVITY_DEC | yes | Dec aggressivity (in %) |
-|  |  |  |  | MIN_ERROR | yes | Min error to correct (in pixels) |
-|  |  |  |  | MIN_PULSE | yes | Min pulse length to emit (in seconds) |
-|  |  |  |  | MAX_PULSE | yes | Max pulse length to emit (in seconds) |
-|  |  |  |  | DITHERING_X | yes | Dithering offset (in pixels) |
-|  |  |  |  | DITHERING_Y | yes | Dithering offset Y (px) |
-| AGENT_GUIDER_STATS | number | yes | yes | PHASE | yes | Process phase |
-|  |  |  |  | FRAME | yes | Frame number |
-|  |  |  |  | DRIFT_X | yes | Measured drift (X/Y) |
-|  |  |  |  | DRIFT_Y | yes | Drift Y (px) |
-|  |  |  |  | DRIFT_RA | yes | Measured drift (RA/dec) |
-|  |  |  |  | DRIFT_DEC | yes | Drift Dec (px) |
-|  |  |  |  | CORR_RA | yes | Correction (RA/dec) |
-|  |  |  |  | CORR_DEC | yes | Correction Dec (s) |
-|  |  |  |  | RMSE_RA | yes | Root Mean Square Error (RA/dec) |
-|  |  |  |  | RMSE_DEC | yes | RMSE Dec (px) |
+Source: `indigo_drivers/agent_guider/indigo_agent_guider.c`.
 
-Guider agent properties are defined in `indigo_drivers/agent_guider/indigo_agent_guider.c`.
+### Imager agent
+
+| Property name | Type | RO | Items | Comments |
+| ----- | ----- | ----- | ----- | ----- |
+| FILTER_CCD_LIST | switch | no | device name | Exposes the common CCD selector. |
+| FILTER_WHEEL_LIST | switch | no | device name | Exposes the common filter-wheel selector. |
+| FILTER_FOCUSER_LIST | switch | no | device name | Exposes the common focuser selector. |
+| FILTER_AUX_1_LIST | switch | no | device name | Exposes the common AUX #1 selector as an external shutter. |
+| FILTER_RELATED_AGENT_LIST | switch | no | agent name | Exposes the common related-agent selector. |
+| AGENT_IMAGER_BATCH | number | no | COUNT, EXPOSURE, DELAY, FRAMES_TO_SKIP_BEFORE_DITHER, PAUSE_AFTER_TRANSIT | Imaging batch settings. |
+| AGENT_IMAGER_FOCUS | number | no | INITIAL, FINAL, ITERATIVE_INITIAL, ITERATIVE_FINAL, U_CURVE_SAMPLES, U_CURVE_STEP, BAHTINOV_SIGMA, BRACKETING_STEP, BACKLASH, BACKLASH_OVERSHOOT_FACTOR, STACK, REPEAT, DELAY | Autofocus settings. |
+| AGENT_IMAGER_FOCUS_FAILURE | switch | no | STOP, RESTORE | Action on autofocus failure. |
+| AGENT_IMAGER_FOCUS_ESTIMATOR | switch | no | U_CURVE, HFD_PEAK, RMS_CONTRAST, BAHTINOV | Autofocus estimator selection. |
+| AGENT_IMAGER_CAPTURE | number | no | CAPTURE | Capture trigger/control value. |
+| AGENT_START_PROCESS | switch | no | PREVIEW_1, PREVIEW, EXPOSURE, STREAMING, FOCUSING, CLEAR_SELECTION, RESET | Imager start/reset commands. |
+| AGENT_PAUSE_PROCESS | switch | no | PAUSE, PAUSE_WAIT, PAUSE_AFTER_TRANSIT | Pause modes for the active process. |
+| AGENT_ABORT_PROCESS | switch | no | ABORT | Abort the current imager process. |
+| AGENT_PROCESS_FEATURES | switch | no | ENABLE_DITHERING, DITHER_AFTER_LAST_FRAME, PAUSE_AFTER_TRANSIT, APPLY_FILTER_OFFSETS, MACRO_MODE | Imager process behavior options. |
+| AGENT_IMAGER_DOWNLOAD_FILE | text | no | FILE | Select file to download. |
+| AGENT_IMAGER_DOWNLOAD_FILES | switch | no | REFRESH, dynamic file names | Downloadable image-cache files. |
+| AGENT_IMAGER_DOWNLOAD_IMAGE | blob | yes | IMAGE | Downloaded image data. |
+| AGENT_IMAGER_DELETE_FILE | text | no | FILE | Delete image-cache file. |
+| AGENT_IMAGER_DISK_USAGE | number | yes | TOTAL, USED, FREE | Image-cache disk usage. |
+| AGENT_WHEEL_FILTER | switch | no | dynamic filter slots | Agent-side filter selection. |
+| AGENT_FOCUSER_CONTROL | switch | no | FOCUS_IN, FOCUS_OUT | Agent-side focuser manual control. |
+| AGENT_IMAGER_STARS | switch | no | REFRESH, dynamic star names | Detected imager stars. |
+| AGENT_IMAGER_SELECTION | number | no | RADIUS, SUBFRAME, INCLUDE_LEFT, INCLUDE_TOP, INCLUDE_WIDTH, INCLUDE_HEIGHT, EXCLUDE_LEFT, EXCLUDE_TOP, EXCLUDE_WIDTH, EXCLUDE_HEIGHT, COUNT, X, Y, dynamic X_n/Y_n | Imager star and region selection. |
+| AGENT_IMAGER_SPIKES | number | yes | RHO_1, THETA_1, RHO_2, THETA_2, RHO_3, THETA_3 | Bahtinov spike fit data. |
+| AGENT_IMAGER_STATS | number | yes | EXPOSURE, DELAY, FRAME, FRAMES, BATCH_INDEX, BATCH, BATCHES, PHASE, DRIFT_X, DRIFT_Y, DITHERING, FOCUS_OFFSET, FOCUS_POSITION, RMS_CONTRAST, BEST_FOCUS_DEVIATION, FRAMES_TO_DITHERING, BAHTINOV_ERROR, MAX_STARS_TO_USE, PEAK, FWHM, HFD, dynamic HFD_n | Imager process statistics. |
+| AGENT_IMAGER_BREAKPOINT | switch | no | PRE_BATCH, PRE_CAPTURE, POST_CAPTURE, PRE_DELAY, POST_DELAY, POST_BATCH | Breakpoints for scripted imaging flows. |
+| AGENT_IMAGER_RESUME_CONDITION | switch | no | TRIGGER, BARRIER | Resume condition after a breakpoint. |
+| AGENT_IMAGER_BARRIER_STATE | light | yes | dynamic breakpoint names | Barrier state for paused imaging flows. |
+
+Source: `indigo_drivers/agent_imager/indigo_agent_imager.c`.
 
 ### Mount agent
 
-The mount agent exposes the following common properties: FILTER_MOUNT_LIST, FILTER_DOME_LIST, FILTER_GPS_LIST, FILTER_JOYSTICK_LIST, FILTER_RELATED_AGENT_LIST, FILTER_FORCE_SYMMETRIC_RELATIONS.
+| Property name | Type | RO | Items | Comments |
+| ----- | ----- | ----- | ----- | ----- |
+| FILTER_MOUNT_LIST | switch | no | device name | Exposes the common mount selector. |
+| FILTER_DOME_LIST | switch | no | device name | Exposes the common dome selector. |
+| FILTER_ROTATOR_LIST | switch | no | device name | Exposes the common rotator selector. |
+| FILTER_GPS_LIST | switch | no | device name | Exposes the common GPS selector. |
+| FILTER_JOYSTICK_LIST | switch | no | device name | Exposes the common joystick selector. |
+| FILTER_RELATED_AGENT_LIST | switch | no | agent name | Exposes the common related-agent selector. |
+| GEOGRAPHIC_COORDINATES | number | no | LATITUDE, LONGITUDE, ELEVATION | Agent-owned geographic coordinates. |
+| AGENT_SITE_DATA_SOURCE | switch | no | HOST, MOUNT, DOME, GPS | Source for site coordinates. |
+| AGENT_SET_HOST_TIME | switch | no | MOUNT, DOME | Use host time for selected devices. |
+| ABORT_RELATED_PROCESS | switch | no | IMAGER, GUIDER | Abort related imager/guider processes. |
+| AGENT_LX200_SERVER | switch | no | STARTED, STOPPED | LX200 server state. |
+| AGENT_LX200_CONFIGURATION | number | no | PORT, EPOCH | LX200 server configuration. |
+| AGENT_LIMITS | number | no | HA_TRACKING, LOCAL_TIME, COORDINATES_PROPAGATE_THRESHOLD | Mount-agent limits and propagation threshold. |
+| AGENT_MOUNT_FOV | number | no | ANGLE, WIDTH, HEIGHT | Field-of-view values used by mount clients. |
+| AGENT_MOUNT_EQUATORIAL_COORDINATES | number | no | RA, DEC | Mount-agent target coordinates. |
+| AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY | number | yes | RA_JNOW, DEC_JNOW, ALT, AZ, AIRMASS, HA, RISE, TRANSIT, SET, TIME_TO_TRANSIT, FLIP_REQUIRED, PARALLACTIC_ANGLE, DEROTATION_RATE | Calculated display coordinates and derotation data. |
+| AGENT_START_PROCESS | switch | no | SLEW, SYNC, PARK, UNPARK, HOME, TRACK_ON, TRACK_OFF, DOME_PARK, DOME_UNPARK, DOME_OPEN, DOME_CLOSE, RESET | Mount and dome start/reset commands. |
+| AGENT_ABORT_PROCESS | switch | no | ABORT | Abort active mount-agent process. |
+| AGENT_PROCESS_FEATURES | switch | no | ENABLE_HA_LIMIT, ENABLE_TIME_LIMIT, ENABLE_DOME_SLAVING, MAKE_DOME_SLAVING_PERSISTENT, ENABLE_FIELD_DEROTATION, MAKE_FIELD_DEROTATION_PERSISTENT, ENABLE_JOYSTICK_CONTROL | Mount-agent process behavior options. |
+| AGENT_MOUNT_STATE | light | yes | SLEW, PARK, HOME, TRACK, DOME_SLAVING, FIELD_DEROTATION | Mount-agent state lights. |
+| AGENT_DOME_STATE | light | yes | SLEW, PARK, OPEN | Dome state lights. |
+| AGENT_MOUNT_FEATURE | switch | yes | SLEW, SYNC, PARK, HOME, TRACK | Capabilities detected from the selected mount. |
+| AGENT_DOME_FEATURE | switch | yes | SLEW, SYNC, PARK, OPEN | Capabilities detected from the selected dome. |
 
-| Property name | Type | RO | Required | Item name | Required | Comments |
-| ----- | ----- | ----- | ----- | ----- | ----- | ----- |
-| GEOGRAPHIC_COORDINATES | number | no | yes | LATITUDE | yes | Observatory coordinates |
-|  |  |  |  | LONGITUDE | yes | Longitude (0 to 360° +E) |
-|  |  |  |  | ELEVATION | yes | Elevation (m) |
-| AGENT_SITE_DATA_SOURCE | switch | no | yes | HOST | yes | Use agent coordinates |
-|  |  |  |  | MOUNT | yes | Use mount controller coordinates |
-|  |  |  |  | DOME | yes | Use dome controller coordinates |
-|  |  |  |  | GPS | yes | Use GPS coordinates |
-| AGENT_SET_HOST_TIME | switch | no | yes | MOUNT | yes | Set host time to mount |
-|  |  |  |  | DOME | yes | Set host time to dome |
-| ABORT_RELATED_PROCESS | switch | no | yes | IMAGER | yes | Allow aborting imager agent process |
-|  |  |  |  | GUIDER | yes | Allow aborting guider agent process |
-| AGENT_LX200_SERVER | switch | no | yes | STARTED | yes | LX200 server running |
-|  |  |  |  | STOPPED | yes | LX200 server stopped |
-| AGENT_LX200_CONFIGURATION | number | no | yes | PORT | yes | LX200 server port |
-|  |  |  |  | EPOCH | yes | Epoch (0 = JNow, 2000 = J2000) |
-| AGENT_LIMITS | number | no | yes | HA_TRACKING | yes | HA limit for tracking; park when reached; use 24:00:00 to turn off |
-|  |  |  |  | LOCAL_TIME | yes | Time limit for tracking; park when reached; use 12:00:00 to turn off |
-|  |  |  |  | COORDINATES_PROPAGATE_THRESHOLD | yes | Min geographic coordinate difference that triggers propagation |
-| AGENT_MOUNT_FOV | number | no | yes | ANGLE | yes | FOV rotation angle (°) |
-|  |  |  |  | WIDTH | yes | FOV width (°) |
-|  |  |  |  | HEIGHT | yes | FOV height (°) |
-| AGENT_MOUNT_EQUATORIAL_COORDINATES | number | no | yes | RA | yes | Target right ascension (0 to 24 hrs) |
-|  |  |  |  | DEC | yes | Target declination (−90° to +90°) |
-| AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY | number | yes | yes | RA_JNOW | yes | Right ascension JNow |
-|  |  |  |  | DEC_JNOW | yes | Declination JNow |
-|  |  |  |  | ALT | yes | Altitude (°) |
-|  |  |  |  | AZ | yes | Azimuth (°) |
-|  |  |  |  | AIRMASS | yes | Airmass |
-|  |  |  |  | HA | yes | Hour angle |
-|  |  |  |  | RISE | yes | Rise time |
-|  |  |  |  | TRANSIT | yes | Transit time |
-|  |  |  |  | SET | yes | Set time |
-|  |  |  |  | TIME_TO_TRANSIT | yes | Time to transit |
-|  |  |  |  | FLIP_REQUIRED | yes | Flip required (0 or 1) |
-|  |  |  |  | PARALLACTIC_ANGLE | yes | Parallactic angle (°) |
-|  |  |  |  | DEROTATION_RATE | yes | Derotation rate ("/s) |
-| AGENT_START_PROCESS | switch | no | yes | SLEW | yes | Slew mount to target |
-|  |  |  |  | SYNC | yes | Sync mount to target |
-|  |  |  |  | PARK | yes | Park mount |
-|  |  |  |  | UNPARK | yes | Unpark mount |
-|  |  |  |  | HOME | yes | Go to home position |
-|  |  |  |  | TRACK_ON | yes | Start tracking |
-|  |  |  |  | TRACK_OFF | yes | Stop tracking |
-|  |  |  |  | DOME_PARK | yes | Park dome |
-|  |  |  |  | DOME_UNPARK | yes | Unpark dome |
-|  |  |  |  | DOME_OPEN | yes | Open dome shutter |
-|  |  |  |  | DOME_CLOSE | yes | Close dome shutter |
-|  |  |  |  | RESET | yes | Reset to defaults |
-| AGENT_ABORT_PROCESS | switch | no | yes | ABORT | yes | Abort running process |
-| AGENT_PROCESS_FEATURES | switch | no | yes | ENABLE_HA_LIMIT | yes | Enable HA limit |
-|  |  |  |  | ENABLE_TIME_LIMIT | yes | Enable time limit |
-|  |  |  |  | ENABLE_DOME_SLAVING | yes | Enable dome slaving |
-|  |  |  |  | MAKE_DOME_SLAVING_PERSISTENT | yes | Make ENABLE_DOME_SLAVING persistent |
-|  |  |  |  | ENABLE_FIELD_DEROTATION | yes | Enable field derotation |
-|  |  |  |  | MAKE_FIELD_DEROTATION_PERSISTENT | yes | Make ENABLE_FIELD_DEROTATION persistent |
-|  |  |  |  | ENABLE_JOYSTICK_CONTROL | yes | Enable joystick control |
-| AGENT_MOUNT_STATE | light | yes | yes | SLEW | yes | Mount slew state |
-|  |  |  |  | PARK | yes | Mount park state |
-|  |  |  |  | HOME | yes | Mount home state |
-|  |  |  |  | TRACK | yes | Mount tracking state |
-|  |  |  |  | DOME_SLAVING | yes | Dome slaving state |
-|  |  |  |  | FIELD_DEROTATION | yes | Field derotation state |
-| AGENT_DOME_STATE | light | yes | yes | SLEW | yes | Dome slew state |
-|  |  |  |  | PARK | yes | Dome park state |
-|  |  |  |  | OPEN | yes | Dome open state |
-| AGENT_MOUNT_FEATURE | switch | yes | yes | SLEW | yes | Mount supports slewing |
-|  |  |  |  | SYNC | yes | Mount supports sync |
-|  |  |  |  | PARK | yes | Mount supports park |
-|  |  |  |  | HOME | yes | Mount supports home |
-|  |  |  |  | TRACK | yes | Mount supports tracking |
-| AGENT_DOME_FEATURE | switch | yes | yes | PARK | yes | Dome supports park |
-|  |  |  |  | OPEN | yes | Dome supports open/close |
+Source: `indigo_drivers/agent_mount/indigo_agent_mount.c`.
 
-Mount agent properties are defined in `indigo_drivers/agent_mount/indigo_agent_mount.c`.
+### Plate solver agents
+
+| Property name | Type | RO | Items | Comments |
+| ----- | ----- | ----- | ----- | ----- |
+| FILTER_RELATED_AGENT_LIST | switch | no | agent name | Exposes the common related-agent selector. |
+| AGENT_PLATESOLVER_USE_INDEX | switch | no | dynamic index names | Index selection shared by plate solver implementations. |
+| AGENT_PLATESOLVER_HINTS | number | no | RADIUS, RA, DEC, EPOCH, SCALE, PARITY, DOWNSAMPLE, DEPTH, CPULIMIT | Solver hints. |
+| AGENT_PLATESOLVER_WCS | number | yes | STATE, RA, DEC, EPOCH, ANGLE, WIDTH, HEIGHT, SCALE, PARITY, INDEX | WCS result. |
+| AGENT_PLATESOLVER_SYNC | switch | no | DISABLED, SYNC, CENTER, CALCULATE_PA_ERROR, RECALCULATE_PA_ERROR | Obsolete sync/center mode property retained for compatibility. |
+| AGENT_START_PROCESS | switch | no | SOLVE, SYNC, CENTER, PRECISE_GOTO, CALCULATE_PA_ERROR, RECALCULATE_PA_ERROR, RESET | Plate solver start/reset commands. |
+| AGENT_ABORT_PROCESS | switch | no | ABORT | Abort active plate solving process. |
+| AGENT_PLATESOLVER_SOLVE_IMAGES | switch | no | ENABLED, DISABLED | Enable or disable solving incoming images. |
+| AGENT_PLATESOLVER_EXPOSURE | number | no | EXPOSURE | Exposure used by plate solver capture flows. |
+| AGENT_PLATESOLVER_PA_SETTINGS | number | no | EXPOSURE, HA_MOVE, COMPENSATE_REFRACTION | Polar-alignment settings. |
+| AGENT_PLATESOLVER_PA_STATE | number | yes | STATE, DEC_DRIFT_2, DEC_DRIFT_3, TARGET_RA, TARGET_DEC, CURRENT_RA, CURRENT_DEC, ALT_POLAR_ERROR, AZ_POLAR_ERROR, ALT_CORRECTION_UP, AZ_CORRECTION_CW, POLAR_ERROR, ACCURACY_WARNING | Polar-alignment state and correction values. |
+| AGENT_PLATESOLVER_GOTO_SETTINGS | number | no | RA, DEC | Target coordinates for solver-assisted goto. |
+| AGENT_PLATESOLVER_MOUNT_SETTLE_TIME | number | no | SETTLE_TIME | Settle time after mount motion. |
+| AGENT_PLATESOLVER_ABORT | switch | no | ABORT | Obsolete abort property retained for compatibility. |
+| AGENT_PLATESOLVER_IMAGE | blob | no | IMAGE | Input image for solving. |
+| AGENT_PLATESOLVER_IMAGE_OUTPUT | blob | yes | IMAGE | Solver output image. |
+| CCD_PREVIEW, CCD_PREVIEW_IMAGE, CCD_JPEG_SETTINGS, CCD_JPEG_STRETCH_PRESETS | mixed | mixed | see CCD property sections | Reuses CCD preview and JPEG properties for plate-solver image preview. |
+
+Source: `indigo_libs/indigo_platesolver.c`; used by `indigo_drivers/agent_solver/indigo_agent_solver.c`, `indigo_drivers/agent_astap/indigo_agent_astap.c`, and `indigo_drivers/agent_astrometry/indigo_agent_astrometry.c`.
+
+### Scripting agent
+
+| Property name | Type | RO | Items | Comments |
+| ----- | ----- | ----- | ----- | ----- |
+| AGENT_SCRIPTING_RUN_SCRIPT | text | no | SCRIPT | Run an ad-hoc script. |
+| AGENT_SCRIPTING_ADD_SCRIPT | text | no | NAME, SCRIPT | Add a named script. |
+| AGENT_SCRIPTING_EXECUTE_SCRIPT | switch | no | dynamic script names | Execute one saved script. |
+| AGENT_SCRIPTING_DELETE_SCRIPT | text | no | NAME | Delete a saved script. |
+| AGENT_SCRIPTING_ON_LOAD_SCRIPT | switch | no | AGENT_SCRIPTING_ADD_SCRIPT, dynamic script names | Scripts executed when the agent loads. |
+| AGENT_SCRIPTING_ON_UNLOAD_SCRIPT | switch | no | AGENT_SCRIPTING_ADD_SCRIPT, dynamic script names | Scripts executed when the agent unloads. |
+| AGENT_SCRIPTING_SCRIPT_%d | text | no | NAME, SCRIPT | Dynamic property created for each saved script. |
+| dynamic cached script properties | text, number, switch, light | mixed | dynamic item names | Script-created or script-cached INDIGO properties. |
+
+Source: `indigo_drivers/agent_scripting/indigo_agent_scripting.c`.
+
+## Driver specific properties
+
+This section lists driver-level additions and driver-specific use of the common properties above. A driver is listed when it defines its own property names, exposes common properties for a secondary logical device, or changes the visibility, item count, or semantics of base properties.
+
+### ao_sx
+
+Driver-specific use of existing properties: `AO_GUIDE_DEC`, `AO_GUIDE_RA`, `AO_RESET`, `GUIDER_GUIDE_DEC`, `GUIDER_GUIDE_RA`.
+
+Source: `indigo_drivers/ao_sx/indigo_ao_sx.c`.
+
+### aux_arteskyflat
+
+Driver-specific use of existing properties: `AUX_LIGHT_INTENSITY`, `AUX_LIGHT_SWITCH`.
+
+Source: `indigo_drivers/aux_arteskyflat/indigo_aux_arteskyflat.c`.
+
+### aux_astromechanics
+
+Driver-specific use of existing properties: `AUX_WEATHER`.
+
+Source: `indigo_drivers/aux_astromechanics/indigo_aux_astromechanics.c`.
+
+### aux_cloudwatcher
+
+Custom properties: `AUX_CLOUD`, `AUX_CLOUD_THRESHOLDS`, `AUX_DEW_THRESHOLD`, `AUX_DEW_WARNING`, `AUX_GPIO_OUTLETS`, `AUX_HUMIDITY`, `AUX_HUMIDITY_THRESHOLDS`, `AUX_OUTLET_NAMES`, `AUX_RAIN`, `AUX_RAIN_THRESHOLD`, `AUX_RAIN_THRESHOLDS`, `AUX_RAIN_WARNING`, `AUX_SKY`, `AUX_SKY_THRESHOLDS`, `AUX_WIND`, `AUX_WIND_THRESHOLD`, `AUX_WIND_THRESHOLDS`, `AUX_WIND_WARNING`, `X_AAG_CONSTANTS`, `X_ANEMOMETER_TYPE`, `X_HEATER_CONTROL_STATE`, `X_RAIN_SENSOR_HEATER_SETUP`, `X_SKY_CORRECTION`.
+
+Driver-specific use of existing properties: `AUX_INFO`, `AUX_WEATHER`.
+
+Source: `indigo_drivers/aux_cloudwatcher/indigo_aux_cloudwatcher.c`.
+
+### aux_dragonfly
+
+Custom properties: `AUX_GPIO_OUTLETS`, `AUX_GPIO_SENSORS`, `AUX_OUTLET_NAMES`, `AUX_OUTLET_PULSE_LENGTHS`, `AUX_SENSOR_NAMES`.
+
+Source: `indigo_drivers/aux_dragonfly/indigo_aux_dragonfly.c`.
+
+### aux_dsusb
+
+Custom properties: `X_CONFIG`.
+
+Driver-specific use of existing properties: `CCD_ABORT_EXPOSURE`, `CCD_EXPOSURE`.
+
+Source: `indigo_drivers/aux_dsusb/indigo_aux_dsusb.c`.
+
+### aux_fbc
+
+Custom properties: `AUX_LIGHT_IMPULSE`.
+
+Driver-specific use of existing properties: `AUX_LIGHT_INTENSITY`, `CCD_EXPOSURE`.
+
+Source: `indigo_drivers/aux_fbc/indigo_aux_fbc.c`.
+
+### aux_flatmaster
+
+Driver-specific use of existing properties: `AUX_LIGHT_INTENSITY`, `AUX_LIGHT_SWITCH`.
+
+Source: `indigo_drivers/aux_flatmaster/indigo_aux_flatmaster.c`.
+
+### aux_flipflat
+
+Custom properties: `AUX_COVER`.
+
+Driver-specific use of existing properties: `AUX_LIGHT_INTENSITY`, `AUX_LIGHT_SWITCH`.
+
+Source: `indigo_drivers/aux_flipflat/indigo_aux_flipflat.c`.
+
+### aux_geoptikflat
+
+Driver-specific use of existing properties: `AUX_LIGHT_INTENSITY`, `AUX_LIGHT_SWITCH`.
+
+Source: `indigo_drivers/aux_geoptikflat/indigo_aux_geoptikflat.c`.
+
+### aux_joystick
+
+Custom properties: `JOYSTICK_AXES`, `JOYSTICK_BUTTONS`, `JOYSTICK_MAPPING`, `JOYSTICK_OPTIONS`.
+
+Driver-specific use of existing properties: `MOUNT_ABORT_MOTION`, `MOUNT_HOME`, `MOUNT_MOTION_DEC`, `MOUNT_MOTION_RA`, `MOUNT_PARK`, `MOUNT_SLEW_RATE`, `MOUNT_TRACKING`.
+
+Source: `indigo_drivers/aux_joystick/indigo_aux_joystick.c`.
+
+### aux_mgbox
+
+Custom properties: `AUX_DEW_THRESHOLD`, `AUX_DEW_WARNING`, `AUX_GPIO_OUTLETS`, `AUX_OUTLET_NAMES`, `AUX_OUTLET_PULSE_LENGTHS`, `X_REBOOT_DEVICE`, `X_REBOOT_GPS`, `X_SEND_GPS_DATA_TO_MOUNT`, `X_SEND_WEATHER_DATA_TO_MOUNT`, `X_WEATHER_CALIBRATION`.
+
+Driver-specific use of existing properties: `AUX_WEATHER`, `GEOGRAPHIC_COORDINATES`, `GPS_ADVANCED`, `UTC_TIME`.
+
+Source: `indigo_drivers/aux_mgbox/indigo_aux_mgbox.c`.
+
+### aux_ppb
+
+Custom properties: `AUX_OUTLET_NAMES`, `AUX_SAVE_OUTLET_STATES_AS_DEFAULT`, `X_AUX_REBOOT`, `X_DSLR_POWER`.
+
+Driver-specific use of existing properties: `AUX_DEW_CONTROL`, `AUX_HEATER_OUTLET`, `AUX_INFO`, `AUX_POWER_OUTLET`, `AUX_POWER_OUTLET_STATE`, `AUX_WEATHER`.
+
+Source: `indigo_drivers/aux_ppb/indigo_aux_ppb.c`.
+
+### aux_rts
+
+Driver-specific use of existing properties: `CCD_ABORT_EXPOSURE`, `CCD_EXPOSURE`.
+
+Source: `indigo_drivers/aux_rts/indigo_aux_rts.c`.
+
+### aux_skyalert
+
+Driver-specific use of existing properties: `AUX_INFO`, `AUX_WEATHER`.
+
+Source: `indigo_drivers/aux_skyalert/indigo_aux_skyalert.c`.
+
+### aux_sqm
+
+Driver-specific use of existing properties: `AUX_INFO`, `AUX_WEATHER`.
+
+Source: `indigo_drivers/aux_sqm/indigo_aux_sqm.c`.
+
+### aux_svbpowerbox
+
+Custom properties: `AUX_DEW_WARNING`, `AUX_OUTLET_NAMES`, `AUX_TEMPERATURE_SENSORS`.
+
+Driver-specific use of existing properties: `AUX_DEW_CONTROL`, `AUX_HEATER_OUTLET`, `AUX_INFO`, `AUX_POWER_OUTLET`, `AUX_POWER_OUTLET_CURRENT`, `AUX_POWER_OUTLET_VOLTAGE`, `AUX_USB_PORT`, `AUX_WEATHER`.
+
+Source: `indigo_drivers/aux_svbpowerbox/indigo_aux_svbpowerbox.c`.
+
+### aux_uch
+
+Custom properties: `AUX_OUTLET_NAMES`, `AUX_SAVE_OUTLET_STATES_AS_DEFAULT`, `X_AUX_REBOOT`.
+
+Driver-specific use of existing properties: `AUX_INFO`, `AUX_USB_PORT`.
+
+Source: `indigo_drivers/aux_uch/indigo_aux_uch.c`.
+
+### aux_upb
+
+Custom properties: `AUX_OUTLET_NAMES`, `AUX_SAVE_OUTLET_STATES_AS_DEFAULT`, `X_AUX_HUB`, `X_AUX_REBOOT`, `X_AUX_VARIABLE_POWER_OUTLET`.
+
+Driver-specific use of existing properties: `AUX_DEW_CONTROL`, `AUX_HEATER_OUTLET`, `AUX_HEATER_OUTLET_CURRENT`, `AUX_HEATER_OUTLET_STATE`, `AUX_INFO`, `AUX_POWER_OUTLET`, `AUX_POWER_OUTLET_CURRENT`, `AUX_POWER_OUTLET_STATE`, `AUX_USB_PORT`, `AUX_USB_PORT_STATE`, `AUX_WEATHER`, `FOCUSER_ABORT_MOTION`, `FOCUSER_BACKLASH`, `FOCUSER_LIMITS`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_POSITION`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_STEPS`, `FOCUSER_TEMPERATURE`.
+
+Source: `indigo_drivers/aux_upb/indigo_aux_upb.c`.
+
+### aux_upb3
+
+Custom properties: `AUX_OUTLET_NAMES`, `AUX_REBOOT`, `AUX_SAVE_OUTLET_STATES_AS_DEFAULT`, `AUX_VARIABLE_POWER_OUTLET`.
+
+Driver-specific use of existing properties: `AUX_DEW_CONTROL`, `AUX_HEATER_OUTLET`, `AUX_INFO`, `AUX_POWER_OUTLET`, `AUX_POWER_OUTLET_CURRENT`, `AUX_POWER_OUTLET_STATE`, `AUX_USB_PORT`, `AUX_WEATHER`, `FOCUSER_ABORT_MOTION`, `FOCUSER_BACKLASH`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_POSITION`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_STEPS`, `FOCUSER_TEMPERATURE`.
+
+Source: `indigo_drivers/aux_upb3/indigo_aux_upb3.c`.
+
+### aux_usbdp
+
+Custom properties: `AUX_DEW_THRESHOLD`, `AUX_DEW_WARNING`, `AUX_HEATER_AGGRESSIVITY`, `AUX_LINK_CHANNELS_2AND3`, `AUX_OUTLET_NAMES`, `AUX_TEMPERATURE_CALLIBRATION`, `AUX_TEMPERATURE_SENSORS`.
+
+Driver-specific use of existing properties: `AUX_DEW_CONTROL`, `AUX_HEATER_OUTLET`, `AUX_HEATER_OUTLET_STATE`, `AUX_WEATHER`.
+
+Source: `indigo_drivers/aux_usbdp/indigo_aux_usbdp.c`.
+
+### aux_wbplusv3
+
+Custom properties: `AUX_DEW_WARNING`, `AUX_OUTLET_NAMES`, `AUX_TEMPERATURE_SENSORS`, `X_AUX_CALIBRATE`.
+
+Driver-specific use of existing properties: `AUX_DEW_CONTROL`, `AUX_HEATER_OUTLET`, `AUX_INFO`, `AUX_POWER_OUTLET`, `AUX_POWER_OUTLET_VOLTAGE`, `AUX_USB_PORT`, `AUX_WEATHER`.
+
+Source: `indigo_drivers/aux_wbplusv3/indigo_aux_wbplusv3.c`.
+
+### aux_wbprov3
+
+Custom properties: `AUX_DEW_WARNING`, `AUX_OUTLET_NAMES`, `AUX_TEMPERATURE_SENSORS`, `X_AUX_CALIBRATE`.
+
+Driver-specific use of existing properties: `AUX_DEW_CONTROL`, `AUX_HEATER_OUTLET`, `AUX_INFO`, `AUX_POWER_OUTLET`, `AUX_POWER_OUTLET_CURRENT`, `AUX_POWER_OUTLET_VOLTAGE`, `AUX_USB_PORT`, `AUX_WEATHER`.
+
+Source: `indigo_drivers/aux_wbprov3/indigo_aux_wbprov3.c`.
+
+### aux_wcv4ec
+
+Custom properties: `AUX_COVER`, `X_COVER_DETECT_OPEN_CLOSE`, `X_COVER_SET_OPEN_CLOSE`, `X_HEATER`.
+
+Driver-specific use of existing properties: `AUX_LIGHT_INTENSITY`, `AUX_LIGHT_SWITCH`.
+
+Source: `indigo_drivers/aux_wcv4ec/indigo_aux_wcv4ec.c`.
+
+### ccd_asi
+
+Custom properties: `ASI_ADVANCED`, `ASI_CUSTOM_SUFFIX`, `ASI_PRESETS`, `PIXEL_FORMAT`.
+
+Driver-specific use of existing properties: `CCD_COOLER`, `CCD_COOLER_POWER`, `CCD_EGAIN`, `CCD_EXPOSURE`, `CCD_GAIN`, `CCD_GAMMA`, `CCD_IMAGE_FORMAT`, `CCD_MODE`, `CCD_OFFSET`, `CCD_STREAMING`, `CCD_STREAMING_SETTINGS`, `CCD_TEMPERATURE`, `GUIDER_GUIDE_DEC`, `GUIDER_GUIDE_RA`.
+
+Source: `indigo_drivers/ccd_asi/indigo_ccd_asi.c`.
+
+### ccd_atik
+
+Custom properties: `ATIK_PRESETS`, `ATIK_WINDOW_HEATER`.
+
+Driver-specific use of existing properties: `CCD_COOLER`, `CCD_COOLER_POWER`, `CCD_GAIN`, `CCD_MODE`, `CCD_OFFSET`, `CCD_READ_MODE`, `CCD_TEMPERATURE`, `WHEEL_SLOT_NAME`, `WHEEL_SLOT_OFFSET`.
+
+Source: `indigo_drivers/ccd_atik/indigo_ccd_atik.c`.
+
+### ccd_dsi
+
+Driver-specific use of existing properties: `CCD_ABORT_EXPOSURE`, `CCD_BIN`, `CCD_EXPOSURE`, `CCD_GAIN`, `CCD_MODE`, `CCD_OFFSET`, `CCD_TEMPERATURE`.
+
+Source: `indigo_drivers/ccd_dsi/indigo_ccd_dsi.c`.
+
+### ccd_fli
+
+Custom properties: `FLI_CAMERA_MODE`, `FLI_NFLUSHES`.
+
+Driver-specific use of existing properties: `CCD_COOLER`, `CCD_COOLER_POWER`, `CCD_RBI_FLUSH`, `CCD_RBI_FLUSH_ENABLE`, `CCD_TEMPERATURE`.
+
+Source: `indigo_drivers/ccd_fli/indigo_ccd_fli.c`.
+
+### ccd_iidc
+
+Driver-specific use of existing properties: `CCD_GAIN`, `CCD_GAMMA`, `CCD_IMAGE_FORMAT`, `CCD_MODE`, `CCD_STREAMING`, `CCD_STREAMING_SETTINGS`, `CCD_TEMPERATURE`.
+
+Source: `indigo_drivers/ccd_iidc/indigo_ccd_iidc.c`.
+
+### ccd_mi
+
+Driver-specific use of existing properties: `CCD_COOLER`, `CCD_COOLER_POWER`, `CCD_EGAIN`, `CCD_GAIN`, `CCD_MODE`, `CCD_READ_MODE`, `CCD_TEMPERATURE`, `WHEEL_SLOT_NAME`, `WHEEL_SLOT_OFFSET`.
+
+Source: `indigo_drivers/ccd_mi/indigo_ccd_mi.c`.
+
+### ccd_pentax
+
+Driver-specific use of existing properties: `DSLR_APERTURE`, `DSLR_ISO`, `DSLR_PROGRAM`, `DSLR_SHUTTER`.
+
+Source: `indigo_drivers/ccd_pentax/indigo_ccd_pentax.c`.
+
+### ccd_playerone
+
+Custom properties: `PIXEL_FORMAT`, `POA_ADVANCED`, `POA_CUSTOM_SUFFIX`, `POA_PRESETS`, `POA_SENSOR_MODE`.
+
+Driver-specific use of existing properties: `CCD_COOLER`, `CCD_COOLER_POWER`, `CCD_EGAIN`, `CCD_EXPOSURE`, `CCD_GAIN`, `CCD_IMAGE_FORMAT`, `CCD_MODE`, `CCD_OFFSET`, `CCD_STREAMING`, `CCD_STREAMING_SETTINGS`, `CCD_TEMPERATURE`, `GUIDER_GUIDE_DEC`, `GUIDER_GUIDE_RA`.
+
+Source: `indigo_drivers/ccd_playerone/indigo_ccd_playerone.c`.
+
+### ccd_ptp
+
+Driver-specific use of existing properties: `CCD_JPEG_SETTINGS`, `CCD_MODE`, `CCD_PREVIEW_IMAGE`, `CCD_STREAMING`, `CCD_UPLOAD_MODE`, `DSLR_AF`, `DSLR_DELETE_IMAGE`, `DSLR_LOCK`, `DSLR_MIRROR_LOCKUP`, `DSLR_SET_HOST_TIME`, `DSLR_ZOOM_PREVIEW`, `FOCUSER_POSITION`, `FOCUSER_SPEED`.
+
+Source: `indigo_drivers/ccd_ptp/indigo_ccd_ptp.c`.
+
+### ccd_sbig
+
+Custom properties: `SBIG_ABG_STATE`, `SBIG_ADD_AO`, `SBIG_ADD_WHEEL`, `SBIG_FREEZE_TEC`.
+
+Driver-specific use of existing properties: `CCD_COOLER`, `CCD_COOLER_POWER`, `CCD_INFO`, `CCD_MODE`, `CCD_TEMPERATURE`, `GUIDER_GUIDE_DEC`, `GUIDER_GUIDE_RA`, `WHEEL_SLOT_NAME`, `WHEEL_SLOT_OFFSET`, `SBIG_ABG`.
+
+Source: `indigo_drivers/ccd_sbig/indigo_ccd_sbig.c`.
+
+### ccd_ssag
+
+Driver-specific use of existing properties: `CCD_GAIN`, `CCD_IMAGE_FORMAT`, `CCD_STREAMING`, `CCD_STREAMING_SETTINGS`.
+
+Source: `indigo_drivers/ccd_ssag/indigo_ccd_ssag.c`.
+
+### ccd_svb
+
+Custom properties: `PIXEL_FORMAT`, `SVB_ADVANCED`.
+
+Driver-specific use of existing properties: `CCD_COOLER`, `CCD_COOLER_POWER`, `CCD_EXPOSURE`, `CCD_GAIN`, `CCD_GAMMA`, `CCD_IMAGE_FORMAT`, `CCD_MODE`, `CCD_OFFSET`, `CCD_STREAMING`, `CCD_STREAMING_SETTINGS`, `CCD_TEMPERATURE`, `GUIDER_GUIDE_DEC`, `GUIDER_GUIDE_RA`.
+
+Source: `indigo_drivers/ccd_svb/indigo_ccd_svb.c`.
+
+### ccd_sx
+
+Custom properties: `X_CCD_FLOOD_LED`.
+
+Driver-specific use of existing properties: `CCD_ABORT_EXPOSURE`, `CCD_BIN`, `CCD_EXPOSURE`, `CCD_FRAME`, `CCD_MODE`, `CCD_TEMPERATURE`, `GUIDER_GUIDE_DEC`, `GUIDER_GUIDE_RA`, `30`.
+
+Source: `indigo_drivers/ccd_sx/indigo_ccd_sx.c`.
+
+### ccd_touptek
+
+Custom properties: `X_AAF_BEEP`, `X_CALIBRATE`, `X_CCD_ADVANCED`, `X_CCD_BIN_MODE`, `X_CCD_CONVERSION_GAIN`, `X_CCD_FAN`, `X_CCD_HEATER`, `X_CCD_LED`, `X_WHEEL_MODEL`.
+
+Driver-specific use of existing properties: `CCD_COOLER`, `CCD_COOLER_POWER`, `CCD_GAIN`, `CCD_IMAGE_FORMAT`, `CCD_MODE`, `CCD_OFFSET`, `CCD_STREAMING`, `CCD_TEMPERATURE`, `FOCUSER_BACKLASH`, `FOCUSER_COMPENSATION`, `FOCUSER_LIMITS`, `FOCUSER_MODE`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`, `WHEEL_SLOT_NAME`, `WHEEL_SLOT_OFFSET`.
+
+Source: `indigo_drivers/ccd_touptek/indigo_ccd_touptek.c`.
+
+### ccd_uvc
+
+Driver-specific use of existing properties: `CCD_BIN`, `CCD_GAIN`, `CCD_GAMMA`, `CCD_IMAGE_FORMAT`, `CCD_INFO`, `CCD_MODE`, `CCD_STREAMING`, `CCD_STREAMING_SETTINGS`.
+
+Source: `indigo_drivers/ccd_uvc/indigo_ccd_uvc.c`.
+
+### dome_baader
+
+Custom properties: `X_EMERGENCY_CLOSE`.
+
+Driver-specific use of existing properties: `DOME_FLAP`, `DOME_ON_COORDINATES_SET`, `DOME_SLAVING_PARAMETERS`, `DOME_SPEED`.
+
+Source: `indigo_drivers/dome_baader/indigo_dome_baader.c`.
+
+### dome_beaver
+
+Custom properties: `X_CLEAR_FAILURES`, `X_CONDITIONS_SAFETY`, `X_FAILURE_MESSAGES`, `X_ROTATOR_CALIBRATE`, `X_SHUTTER_CALIBRATE`.
+
+Driver-specific use of existing properties: `DOME_HOME`, `DOME_ON_COORDINATES_SET`, `DOME_PARK_POSITION`, `DOME_SHUTTER`, `DOME_SLAVING_PARAMETERS`, `DOME_SPEED`.
+
+Source: `indigo_drivers/dome_beaver/indigo_dome_beaver.c`.
+
+### dome_dragonfly
+
+Custom properties: `AUX_GPIO_OUTLETS`, `AUX_GPIO_SENSORS`, `AUX_OUTLET_NAMES`, `AUX_OUTLET_PULSE_LENGTHS`, `AUX_SENSOR_NAMES`, `LA_DOME_BUTTON_FUNCTION`, `LA_DOME_SETTINGS`.
+
+Driver-specific use of existing properties: `DOME_DIMENSION`, `DOME_DIRECTION`, `DOME_HORIZONTAL_COORDINATES`, `DOME_PARK`, `DOME_SLAVING_PARAMETERS`, `DOME_SPEED`, `DOME_STEPS`.
+
+Source: `indigo_drivers/dome_dragonfly/indigo_dome_dragonfly.c`.
+
+### dome_nexdome
+
+Custom properties: `NEXDOME_CALLIBRATE`, `NEXDOME_FIND_HOME`, `NEXDOME_POWER`, `NEXDOME_RESET_SHUTTER_COMM`, `NEXDOME_REVERSED`.
+
+Driver-specific use of existing properties: `DOME_ON_COORDINATES_SET`, `DOME_SLAVING_PARAMETERS`, `DOME_SPEED`.
+
+Source: `indigo_drivers/dome_nexdome/indigo_dome_nexdome.c`.
+
+### dome_nexdome3
+
+Custom properties: `NEXDOME_ACCELERATION_TIME`, `NEXDOME_BATTERY_POWER`, `NEXDOME_COMMAND`, `NEXDOME_FIND_HOME`, `NEXDOME_HOME_POSITION`, `NEXDOME_MOVE_THRESHOLD`, `NEXDOME_RAIN_SENSOR`, `NEXDOME_RANGE`, `NEXDOME_SETTINGS`, `NEXDOME_VELOCITY`, `NEXDOME_XB_STATE`.
+
+Driver-specific use of existing properties: `DOME_ON_COORDINATES_SET`, `DOME_SLAVING_PARAMETERS`, `DOME_SPEED`.
+
+Source: `indigo_drivers/dome_nexdome3/indigo_dome_nexdome3.c`.
+
+### dome_skyroof
+
+Custom properties: `HEATER_CONTROL`.
+
+Driver-specific use of existing properties: `DOME_ABORT_MOTION`, `DOME_DIMENSION`, `DOME_DIRECTION`, `DOME_HORIZONTAL_COORDINATES`, `DOME_PARK`, `DOME_SHUTTER`, `DOME_SLAVING_PARAMETERS`, `DOME_SPEED`, `DOME_STEPS`.
+
+Source: `indigo_drivers/dome_skyroof/indigo_dome_skyroof.c`.
+
+### dome_talon6ror
+
+Custom properties: `X_CLOSE_COND`, `X_DELAY_CONF`, `X_MOTOR_CONF`, `X_POSITION`, `X_SENSORS`, `X_STATUS`, `X_TIMER_COND`.
+
+Driver-specific use of existing properties: `DOME_DIMENSION`, `DOME_DIRECTION`, `DOME_HORIZONTAL_COORDINATES`, `DOME_PARK`, `DOME_SLAVING_PARAMETERS`, `DOME_SPEED`, `DOME_STEPS`.
+
+Source: `indigo_drivers/dome_talon6ror/indigo_dome_talon6ror.c`.
+
+### focuser_asi
+
+Custom properties: `EAF_BATTERY_INFO`, `EAF_BEEP_ON_MOVE`, `EAF_CUSTOM_SUFFIX`, `EAF_SCAN_BLUETOOTH`.
+
+Driver-specific use of existing properties: `FOCUSER_BACKLASH`, `FOCUSER_COMPENSATION`, `FOCUSER_LIMITS`, `FOCUSER_MODE`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`.
+
+Source: `indigo_drivers/focuser_asi/indigo_focuser_asi.c`.
+
+### focuser_askar
+
+Custom properties: `X_FOCUSER_MOTOR_MODE`.
+
+Driver-specific use of existing properties: `FOCUSER_BACKLASH`, `FOCUSER_COMPENSATION`, `FOCUSER_LIMITS`, `FOCUSER_MODE`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`.
+
+Source: `indigo_drivers/focuser_askar/indigo_focuser_askar.c`.
+
+### focuser_astroasis
+
+Custom properties: `BACKLASH_DIRECTION_PROPERTY`, `BEEP_ON_MOVE_PROPERTY`, `BEEP_ON_POWER_UP_PROPERTY`, `BLUETOOTH_PROPERTY`, `BLUETOOTH_NAME_PROPERTY`, `BOARD_TEMPERATURE_PROPERTY`, `CUSTOM_SUFFIX`, `FACTORY_RESET_PROPERTY`.
+
+Driver-specific use of existing properties: `FOCUSER_BACKLASH`, `FOCUSER_COMPENSATION`, `FOCUSER_LIMITS`, `FOCUSER_MODE`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`.
+
+Source: `indigo_drivers/focuser_astroasis/indigo_focuser_astroasis.c`.
+
+### focuser_astromechanics
+
+Custom properties: `X_FOCUSER_APERTURE`.
+
+Driver-specific use of existing properties: `FOCUSER_ABORT_MOTION`, `FOCUSER_POSITION`, `FOCUSER_SPEED`, `FOCUSER_STEPS`.
+
+Source: `indigo_drivers/focuser_astromechanics/indigo_focuser_astromechanics.c`.
+
+### focuser_dmfc
+
+Custom properties: `X_FOCUSER_ENCODER`, `X_FOCUSER_LED`, `X_FOCUSER_MOTOR_TYPE`.
+
+Driver-specific use of existing properties: `FOCUSER_ABORT_MOTION`, `FOCUSER_BACKLASH`, `FOCUSER_LIMITS`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_POSITION`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_STEPS`, `FOCUSER_TEMPERATURE`.
+
+Source: `indigo_drivers/focuser_dmfc/indigo_focuser_dmfc.c`.
+
+### focuser_dsd
+
+Custom properties: `DSD_COILS_MODE`, `DSD_CURRENT_CONTROL`, `DSD_MODEL_HINT`, `DSD_STEP_MODE`, `DSD_TIMINGS`.
+
+Driver-specific use of existing properties: `FOCUSER_BACKLASH`, `FOCUSER_COMPENSATION`, `FOCUSER_LIMITS`, `FOCUSER_MODE`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`.
+
+Source: `indigo_drivers/focuser_dsd/indigo_focuser_dsd.c`.
+
+### focuser_efa
+
+Custom properties: `X_FOCUSER_CALIBRATION`, `X_FOCUSER_FANS`.
+
+Driver-specific use of existing properties: `FOCUSER_LIMITS`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`.
+
+Source: `indigo_drivers/focuser_efa/indigo_focuser_efa.c`.
+
+### focuser_fc3
+
+Driver-specific use of existing properties: `FOCUSER_ABORT_MOTION`, `FOCUSER_BACKLASH`, `FOCUSER_DIRECTION`, `FOCUSER_LIMITS`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_POSITION`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_STEPS`, `FOCUSER_TEMPERATURE`.
+
+Source: `indigo_drivers/focuser_fc3/indigo_focuser_fc3.c`.
+
+### focuser_fcusb
+
+Custom properties: `X_FOCUSER_FREQUENCY`.
+
+Driver-specific use of existing properties: `FOCUSER_ABORT_MOTION`, `FOCUSER_POSITION`, `FOCUSER_STEPS`.
+
+Source: `indigo_drivers/focuser_fcusb/indigo_focuser_fcusb.c`.
+
+### focuser_fli
+
+Driver-specific use of existing properties: `FOCUSER_SPEED`.
+
+Source: `indigo_drivers/focuser_fli/indigo_focuser_fli.c`.
+
+### focuser_focusdreampro
+
+Custom properties: `X_FOCUSER_DUTY_CYCLE`.
+
+Driver-specific use of existing properties: `FOCUSER_LIMITS`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_POSITION`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_TEMPERATURE`.
+
+Source: `indigo_drivers/focuser_focusdreampro/indigo_focuser_focusdreampro.c`.
+
+### focuser_ioptron
+
+Custom properties: `ZERO_SYNC`.
+
+Driver-specific use of existing properties: `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`.
+
+Source: `indigo_drivers/focuser_ioptron/indigo_focuser_ioptron.c`.
+
+### focuser_lacerta
+
+Driver-specific use of existing properties: `FOCUSER_BACKLASH`, `FOCUSER_LIMITS`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`.
+
+Source: `indigo_drivers/focuser_lacerta/indigo_focuser_lacerta.c`.
+
+### focuser_lakeside
+
+Custom properties: `X_FOCUSER_ACTIVE_SLOPE`.
+
+Driver-specific use of existing properties: `FOCUSER_BACKLASH`, `FOCUSER_COMPENSATION`, `FOCUSER_MODE`, `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`.
+
+Source: `indigo_drivers/focuser_lakeside/indigo_focuser_lakeside.c`.
+
+### focuser_lunatico / rotator_lunatico shared
+
+Custom properties: `AUX_GPIO_SENSORS`, `AUX_OUTLET_NAMES`, `AUX_SENSOR_NAMES`, `LA_MOTOR_TYPE`, `LA_MOTOR_WIRING`, `LA_POWER_CONTROL`, `LA_STEP_MODE`, `LA_TEMPERATURE_SENSOR`, `LUNATICO_MODEL`, `LUNATICO_PORT_EXP_CONFIG`, `LUNATICO_PORT_THIRD_CONFIG`.
+
+Driver-specific use of existing properties: `AUX_POWER_OUTLET`, `FOCUSER_BACKLASH`, `FOCUSER_COMPENSATION`, `FOCUSER_LIMITS`, `FOCUSER_MODE`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`, `ROTATOR_BACKLASH`, `ROTATOR_DIRECTION`, `ROTATOR_LIMITS`, `ROTATOR_STEPS_PER_REVOLUTION`.
+
+Source: `indigo_drivers/focuser_lunatico/shared/lunatico_shared.c`.
+
+### focuser_mjkzz
+
+Driver-specific use of existing properties: `FOCUSER_POSITION`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_TEMPERATURE`.
+
+Source: `indigo_drivers/focuser_mjkzz/indigo_focuser_mjkzz.c`.
+
+### focuser_moonlite
+
+Custom properties: `X_FOCUSER_STEPPING_MODE`.
+
+Driver-specific use of existing properties: `FOCUSER_COMPENSATION`, `FOCUSER_LIMITS`, `FOCUSER_MODE`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_TEMPERATURE`.
+
+Source: `indigo_drivers/focuser_moonlite/indigo_focuser_moonlite.c`.
+
+### focuser_mypro2
+
+Custom properties: `X_COILS_MODE`, `X_SETTLE_TIME`, `X_STEP_MODE`.
+
+Driver-specific use of existing properties: `FOCUSER_BACKLASH`, `FOCUSER_COMPENSATION`, `FOCUSER_LIMITS`, `FOCUSER_MODE`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`.
+
+Source: `indigo_drivers/focuser_mypro2/indigo_focuser_mypro2.c`.
+
+### focuser_nfocus
+
+Driver-specific use of existing properties: `FOCUSER_POSITION`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_TEMPERATURE`.
+
+Source: `indigo_drivers/focuser_nfocus/indigo_focuser_nfocus.c`.
+
+### focuser_nstep
+
+Custom properties: `X_FOCUSER_PHASE_WIRING`, `X_FOCUSER_STEPPING_MODE`.
+
+Driver-specific use of existing properties: `FOCUSER_BACKLASH`, `FOCUSER_COMPENSATION`, `FOCUSER_MODE`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_TEMPERATURE`.
+
+Source: `indigo_drivers/focuser_nstep/indigo_focuser_nstep.c`.
+
+### focuser_optec
+
+Driver-specific use of existing properties: `FOCUSER_ABORT_MOTION`, `FOCUSER_COMPENSATION`, `FOCUSER_MODE`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`.
+
+Source: `indigo_drivers/focuser_optec/indigo_focuser_optec.c`.
+
+### focuser_optecfl
+
+Custom properties: `X_FOCUSER_TYPE`.
+
+Driver-specific use of existing properties: `FOCUSER_COMPENSATION`, `FOCUSER_MODE`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`.
+
+Source: `indigo_drivers/focuser_optecfl/indigo_focuser_optecfl.c`.
+
+### focuser_primaluce
+
+Custom properties: `X_CALIBRATE`, `X_CALIBRATE_A`, `X_CONFIG`, `X_HOLD_CURR`, `X_LEDS`, `X_RUNPRESET`, `X_RUNPRESET_1`, `X_RUNPRESET_2`, `X_RUNPRESET_3`, `X_RUNPRESET_L`, `X_RUNPRESET_M`, `X_RUNPRESET_S`, `X_STATE`, `X_WIFI`, `X_WIFI_AP`, `X_WIFI_STA`.
+
+Driver-specific use of existing properties: `FOCUSER_ABORT_MOTION`, `FOCUSER_BACKLASH`, `FOCUSER_POSITION`, `FOCUSER_SPEED`, `FOCUSER_STEPS`, `FOCUSER_TEMPERATURE`, `ROTATOR_ABORT_MOTION`, `ROTATOR_ON_POSITION_SET`, `ROTATOR_POSITION`.
+
+Source: `indigo_drivers/focuser_primaluce/indigo_focuser_primaluce.c`.
+
+### focuser_prodigy
+
+Custom properties: `AUX_OUTLET_NAMES`, `X_AUX_REBOOT`, `X_FOCUSER_PARK`.
+
+Driver-specific use of existing properties: `AUX_POWER_OUTLET`, `AUX_USB_PORT`, `FOCUSER_BACKLASH`, `FOCUSER_LIMITS`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_TEMPERATURE`.
+
+Source: `indigo_drivers/focuser_prodigy/indigo_focuser_prodigy.c`.
+
+### focuser_qhy
+
+Driver-specific use of existing properties: `FOCUSER_BACKLASH`, `FOCUSER_COMPENSATION`, `FOCUSER_LIMITS`, `FOCUSER_MODE`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`.
+
+Source: `indigo_drivers/focuser_qhy/indigo_focuser_qhy.c`.
+
+### focuser_robofocus
+
+Custom properties: `X_FOCUSER_CONFIG`, `X_FOCUSER_POWER_CHANNELS`.
+
+Driver-specific use of existing properties: `FOCUSER_LIMITS`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`.
+
+Source: `indigo_drivers/focuser_robofocus/indigo_focuser_robofocus.c`.
+
+### focuser_steeldrive2
+
+Custom properties: `X_NAME`, `X_PID_SETTINGS`, `X_RESET`, `X_SAVED_VALUES`, `X_SELECT_AMB_SENSOR`, `X_SELECT_PID_SENSOR`, `X_SELECT_TC_SENSOR`, `X_START_ZEROING`, `X_STATUS`, `X_USE_AUTO_DEW`, `X_USE_ENDSTOP`, `X_USE_PID`.
+
+Driver-specific use of existing properties: `AUX_HEATER_OUTLET`, `FOCUSER_COMPENSATION`, `FOCUSER_LIMITS`, `FOCUSER_MODE`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`.
+
+Source: `indigo_drivers/focuser_steeldrive2/indigo_focuser_steeldrive2.c`.
+
+### focuser_usbv3
+
+Custom properties: `X_FOCUSER_STEP_SIZE`.
+
+Driver-specific use of existing properties: `FOCUSER_ABORT_MOTION`, `FOCUSER_COMPENSATION`, `FOCUSER_LIMITS`, `FOCUSER_MODE`, `FOCUSER_POSITION`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_STEPS`, `FOCUSER_TEMPERATURE`.
+
+Source: `indigo_drivers/focuser_usbv3/indigo_focuser_usbv3.c`.
+
+### focuser_wemacro
+
+Custom properties: `X_RAIL_CONFIG`, `X_RAIL_EXECUTE`, `X_RAIL_SHUTTER`.
+
+Driver-specific use of existing properties: `FOCUSER_POSITION`, `FOCUSER_REVERSE_MOTION`.
+
+Source: `indigo_drivers/focuser_wemacro/indigo_focuser_wemacro.c`.
+
+### gps_gpsd
+
+Driver-specific use of existing properties: `GEOGRAPHIC_COORDINATES`, `GPS_ADVANCED`, `UTC_TIME`.
+
+Source: `indigo_drivers/gps_gpsd/indigo_gps_gpsd.c`.
+
+### gps_nmea
+
+Custom properties: `X_GPS_SELECTED_SYSTEM`.
+
+Driver-specific use of existing properties: `GEOGRAPHIC_COORDINATES`, `GPS_ADVANCED`, `UTC_TIME`.
+
+Source: `indigo_drivers/gps_nmea/indigo_gps_nmea.c`.
+
+### guider_asi
+
+Driver-specific use of existing properties: `GUIDER_GUIDE_DEC`, `GUIDER_GUIDE_RA`.
+
+Source: `indigo_drivers/guider_asi/indigo_guider_asi.c`.
+
+### guider_cgusbst4
+
+Driver-specific use of existing properties: `GUIDER_GUIDE_DEC`, `GUIDER_GUIDE_RA`.
+
+Source: `indigo_drivers/guider_cgusbst4/indigo_guider_cgusbst4.c`.
+
+### guider_gpusb
+
+Driver-specific use of existing properties: `GUIDER_GUIDE_DEC`, `GUIDER_GUIDE_RA`.
+
+Source: `indigo_drivers/guider_gpusb/indigo_guider_gpusb.c`.
+
+### mount_asi
+
+Custom properties: `X_BUZZER`, `X_MAX_SLEW_SPEED`, `X_MERIDIAN`, `X_MERIDIAN_LIMIT`, `X_MOUNT_MODE`.
+
+Driver-specific use of existing properties: `MOUNT_ALIGNMENT_RESET`, `MOUNT_GUIDE_RATE`, `MOUNT_HOME`, `MOUNT_INFO`, `MOUNT_MOTION_DEC`, `MOUNT_MOTION_RA`, `MOUNT_ON_COORDINATES_SET`, `MOUNT_PARK`, `MOUNT_SET_HOST_TIME`, `MOUNT_SIDE_OF_PIER`, `MOUNT_SLEW_RATE`, `MOUNT_TRACKING`, `MOUNT_TRACK_RATE`, `UTC_TIME`.
+
+Source: `indigo_drivers/mount_asi/indigo_mount_asi.c`.
+
+### mount_ioptron
+
+Custom properties: `MOUNT_MERIDIAN_HANDLING`, `MOUNT_MERIDIAN_LIMIT`, `PROTOCOL_VERSION`.
+
+Driver-specific use of existing properties: `GEOGRAPHIC_COORDINATES`, `GUIDER_GUIDE_DEC`, `GUIDER_GUIDE_RA`, `GUIDER_RATE`, `MOUNT_ABORT_MOTION`, `MOUNT_CUSTOM_TRACKING_RATE`, `MOUNT_EQUATORIAL_COORDINATES`, `MOUNT_GUIDE_RATE`, `MOUNT_HOME`, `MOUNT_INFO`, `MOUNT_MOTION_DEC`, `MOUNT_MOTION_RA`, `MOUNT_ON_COORDINATES_SET`, `MOUNT_PARK`, `MOUNT_PARK_SET`, `MOUNT_PEC`, `MOUNT_PEC_TRAINING`, `MOUNT_SET_HOST_TIME`, `MOUNT_SIDE_OF_PIER`, `MOUNT_SLEW_RATE`, `MOUNT_STATE`, `MOUNT_TRACKING`, `MOUNT_TRACK_RATE`, `UTC_TIME`.
+
+Source: `indigo_drivers/mount_ioptron/indigo_mount_ioptron.c`.
+
+### mount_lx200
+
+Custom properties: `X_ALTITUDE_LIMITS`, `X_MOUNT_MODE`, `X_MOUNT_TYPE`, `X_NYX_LEVELER`, `X_NYX_WIFI_AP`, `X_NYX_WIFI_CL`, `X_NYX_WIFI_RESET`, `X_ONSTEP_AUTOMATIC_MERIDIAN_FLIP`, `X_ONSTEP_MERIDIAN_LIMITS`, `X_ONSTEP_PREFERRED_PIER_SIDE`, `X_ZWO_BUZZER`.
+
+Driver-specific use of existing properties: `AUX_HEATER_OUTLET`, `AUX_INFO`, `AUX_POWER_OUTLET`, `AUX_WEATHER`, `FOCUSER_POSITION`, `FOCUSER_REVERSE_MOTION`, `MOUNT_GUIDE_RATE`, `MOUNT_HOME`, `MOUNT_HOME_SET`, `MOUNT_INFO`, `MOUNT_MOTION_DEC`, `MOUNT_MOTION_RA`, `MOUNT_ON_COORDINATES_SET`, `MOUNT_PARK`, `MOUNT_PARK_SET`, `MOUNT_PEC`, `MOUNT_SET_HOST_TIME`, `MOUNT_SIDE_OF_PIER`, `MOUNT_SLEW_RATE`, `MOUNT_STATE`, `MOUNT_TRACKING`, `MOUNT_TRACK_RATE`, `UTC_TIME`.
+
+Source: `indigo_drivers/mount_lx200/indigo_mount_lx200.c`.
+
+### mount_mxhd
+
+Driver-specific use of existing properties: `GUIDER_RATE`, `MOUNT_GUIDE_RATE`, `MOUNT_HOME`, `MOUNT_INFO`, `MOUNT_PARK`, `MOUNT_SET_HOST_TIME`, `MOUNT_SIDE_OF_PIER`, `MOUNT_STATE`, `MOUNT_TRACK_RATE`, `UTC_TIME`.
+
+Source: `indigo_drivers/mount_mxhd/indigo_mount_mxhd.c`.
+
+### mount_nexstar
+
+Custom properties: `COMMAND_GUIDE_RATE`, `TRACKING_MODE`.
+
+Driver-specific use of existing properties: `GEOGRAPHIC_COORDINATES`, `GUIDER_GUIDE_DEC`, `GUIDER_GUIDE_RA`, `MOUNT_GUIDE_RATE`, `MOUNT_ON_COORDINATES_SET`, `MOUNT_PARK_POSITION`, `MOUNT_SET_HOST_TIME`, `MOUNT_SIDE_OF_PIER`, `MOUNT_SLEW_RATE`, `MOUNT_TRACK_RATE`, `UTC_TIME`.
+
+Source: `indigo_drivers/mount_nexstar/indigo_mount_nexstar.c`.
+
+### mount_nexstaraux
+
+Driver-specific use of existing properties: `GUIDER_GUIDE_DEC`, `GUIDER_GUIDE_RA`, `GUIDER_RATE`, `MOUNT_ABORT_MOTION`, `MOUNT_EQUATORIAL_COORDINATES`, `MOUNT_GUIDE_RATE`, `MOUNT_MOTION_DEC`, `MOUNT_MOTION_RA`, `MOUNT_ON_COORDINATES_SET`, `MOUNT_PARK`, `MOUNT_STATE`, `MOUNT_TRACKING`, `MOUNT_TRACK_RATE`.
+
+Source: `indigo_drivers/mount_nexstaraux/indigo_mount_nexstaraux.c`.
+
+### mount_pmc8
+
+Custom properties: `CONNECTION_MODE`, `MOUNT_TYPE`.
+
+Driver-specific use of existing properties: `GUIDER_RATE`, `MOUNT_GUIDE_RATE`, `MOUNT_ON_COORDINATES_SET`, `MOUNT_SIDE_OF_PIER`.
+
+Source: `indigo_drivers/mount_pmc8/indigo_mount_pmc8.c`.
+
+### mount_rainbow
+
+Driver-specific use of existing properties: `MOUNT_GUIDE_RATE`, `MOUNT_ON_COORDINATES_SET`, `MOUNT_PARK`, `MOUNT_SET_HOST_TIME`, `UTC_TIME`.
+
+Source: `indigo_drivers/mount_rainbow/indigo_mount_rainbow.c`.
+
+### mount_starbook
+
+Custom properties: `STARBOOK_RESET`, `STARBOOK_TIMEZONE`.
+
+Driver-specific use of existing properties: `MOUNT_GUIDE_RATE`, `MOUNT_ON_COORDINATES_SET`, `MOUNT_PARK`, `MOUNT_PARK_POSITION`, `MOUNT_PARK_SET`, `MOUNT_SET_HOST_TIME`, `MOUNT_SIDE_OF_PIER`, `MOUNT_TRACKING`, `MOUNT_TRACK_RATE`, `UTC_TIME`.
+
+Source: `indigo_drivers/mount_starbook/indigo_mount_starbook.c`.
+
+### mount_synscan
+
+Custom properties: `MOUNT_AUTOHOME`, `MOUNT_AUTOHOME_SETTINGS`, `MOUNT_OPERATING_MODE`, `MOUNT_USE_ENCODERS`, `POLARSCOPE`.
+
+Driver-specific use of existing properties: `CCD_ABORT_EXPOSURE`, `CCD_EXPOSURE`, `GUIDER_GUIDE_DEC`, `GUIDER_GUIDE_RA`, `GUIDER_RATE`, `MOUNT_ABORT_MOTION`, `MOUNT_ALIGNMENT_DELETE_POINTS`, `MOUNT_ALIGNMENT_MODE`, `MOUNT_ALIGNMENT_SELECT_POINTS`, `MOUNT_EPOCH`, `MOUNT_EQUATORIAL_COORDINATES`, `MOUNT_GUIDE_RATE`, `MOUNT_HOME`, `MOUNT_HOME_POSITION`, `MOUNT_HOME_SET`, `MOUNT_MOTION_DEC`, `MOUNT_MOTION_RA`, `MOUNT_PARK`, `MOUNT_PARK_POSITION`, `MOUNT_PARK_SET`, `MOUNT_PEC`, `MOUNT_PEC_TRAINING`, `MOUNT_RAW_COORDINATES`, `MOUNT_SIDE_OF_PIER`, `MOUNT_STATE`, `MOUNT_TRACKING`, `MOUNT_TRACK_RATE`.
+
+Source: `indigo_drivers/mount_synscan/indigo_mount_synscan.c`.
+
+### mount_temma
+
+Custom properties: `TEMMA_CORRECTION_SPEED`, `TEMMA_HIGH_SPEED`, `TEMMA_ZENITH`.
+
+Driver-specific use of existing properties: `MOUNT_ON_COORDINATES_SET`, `MOUNT_PARK`, `MOUNT_PARK_POSITION`, `MOUNT_PARK_SET`, `MOUNT_SET_HOST_TIME`, `MOUNT_SIDE_OF_PIER`, `UTC_TIME`.
+
+Source: `indigo_drivers/mount_temma/indigo_mount_temma.c`.
+
+### rotator_asi
+
+Custom properties: `CAA_BEEP_ON_MOVE`, `CAA_CUSTOM_SUFFIX`.
+
+Driver-specific use of existing properties: `ROTATOR_BACKLASH`, `ROTATOR_DIRECTION`, `ROTATOR_LIMITS`, `ROTATOR_ON_POSITION_SET`, `ROTATOR_RELATIVE_MOVE`.
+
+Source: `indigo_drivers/rotator_asi/indigo_rotator_asi.c`.
+
+### rotator_falcon
+
+Driver-specific use of existing properties: `ROTATOR_ABORT_MOTION`, `ROTATOR_DIRECTION`, `ROTATOR_POSITION`, `ROTATOR_RELATIVE_MOVE`.
+
+Source: `indigo_drivers/rotator_falcon/indigo_rotator_falcon.c`.
+
+### rotator_optec
+
+Custom properties: `X_HOME`, `X_RATE`, `X_ROTATE`.
+
+Driver-specific use of existing properties: `ROTATOR_ABORT_MOTION`, `ROTATOR_DIRECTION`, `ROTATOR_ON_POSITION_SET`.
+
+Source: `indigo_drivers/rotator_optec/indigo_rotator_optec.c`.
+
+### rotator_wa
+
+Custom properties: `X_SET_ZERO_POSITION`.
+
+Driver-specific use of existing properties: `ROTATOR_ABORT_MOTION`, `ROTATOR_BACKLASH`, `ROTATOR_DIRECTION`, `ROTATOR_ON_POSITION_SET`, `ROTATOR_POSITION_OFFSET`, `ROTATOR_RAW_POSITION`, `ROTATOR_RELATIVE_MOVE`.
+
+Source: `indigo_drivers/rotator_wa/indigo_rotator_wa.c`.
+
+### system_ascol
+
+Custom properties: `ASCOL_ABERRATION`, `ASCOL_ABERRATION_NUTATION`, `ASCOL_ALARMS`, `ASCOL_AXIS_CALIBRATED`, `ASCOL_CORRECTION_MODEL`, `ASCOL_COUDE_TUBE`, `ASCOL_DEC_CALIBRATION`, `ASCOL_DOME_POWER`, `ASCOL_DOME_SHUTTER_STATE`, `ASCOL_DOME_STATE`, `ASCOL_ERROR_CORRECTION`, `ASCOL_FLAP_STATE`, `ASCOL_FLAP_TUBE`, `ASCOL_FOCUSER_STATE`, `ASCOL_GLME`, `ASCOL_GUIDE_CORRECTION`, `ASCOL_GUIDE_MODE`, `ASCOL_HADEC_COORDINATES`, `ASCOL_HADEC_RELATIVE_MOVE`, `ASCOL_MOUNT_STATE`, `ASCOL_OIL_POWER`, `ASCOL_OIL_STATE`, `ASCOL_OIMV`, `ASCOL_RADEC_RELATIVE_MOVE`, `ASCOL_RA_CALIBRATION`, `ASCOL_REFRACTION`, `ASCOL_T1_SPEED`, `ASCOL_T2_SPEED`, `ASCOL_T3_SPEED`, `ASCOL_TELESCOPE_POWER`, `ASCOL_USER_SPEED`, `DOME_SLAVING`.
+
+Driver-specific use of existing properties: `DOME_DIMENSION`, `DOME_PARK`, `DOME_SPEED`, `FOCUSER_BACKLASH`, `FOCUSER_COMPENSATION`, `FOCUSER_MODE`, `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`, `GEOGRAPHIC_COORDINATES`, `GUIDER_GUIDE_DEC`, `GUIDER_GUIDE_RA`, `GUIDER_RATE`, `MOUNT_GUIDE_RATE`, `MOUNT_INFO`, `MOUNT_MOTION_DEC`, `MOUNT_MOTION_RA`, `MOUNT_ON_COORDINATES_SET`, `MOUNT_PARK`, `MOUNT_SET_HOST_TIME`, `MOUNT_SIDE_OF_PIER`, `MOUNT_SLEW_RATE`, `MOUNT_TRACK_RATE`, `UTC_TIME`.
+
+Source: `indigo_drivers/system_ascol/indigo_system_ascol.c`.
+
+### wheel_asi
+
+Custom properties: `X_CALIBRATE`, `X_CUSTOM_SUFFIX`.
+
+Driver-specific use of existing properties: `WHEEL_SLOT`, `WHEEL_SLOT_NAME`, `WHEEL_SLOT_OFFSET`.
+
+Source: `indigo_drivers/wheel_asi/indigo_wheel_asi.c`.
+
+### wheel_astroasis
+
+Custom properties: `X_BLUETOOTH_PROPERTY`, `X_BLUETOOTH_NAME_PROPERTY`, `X_CALIBRATE`, `X_CUSTOM_SUFFIX`, `X_FACTORY_RESET`.
+
+Driver-specific use of existing properties: `WHEEL_SLOT_NAME`, `WHEEL_SLOT_OFFSET`.
+
+Source: `indigo_drivers/wheel_astroasis/indigo_wheel_astroasis.c`.
+
+### wheel_atik
+
+Driver-specific use of existing properties: `WHEEL_SLOT`, `WHEEL_SLOT_NAME`, `WHEEL_SLOT_OFFSET`.
+
+Source: `indigo_drivers/wheel_atik/indigo_wheel_atik.c`.
+
+### wheel_fli
+
+Driver-specific use of existing properties: `WHEEL_SLOT_NAME`, `WHEEL_SLOT_OFFSET`.
+
+Source: `indigo_drivers/wheel_fli/indigo_wheel_fli.c`.
+
+### wheel_indigo
+
+Driver-specific use of existing properties: `WHEEL_SLOT`, `WHEEL_SLOT_NAME`, `WHEEL_SLOT_OFFSET`.
+
+Source: `indigo_drivers/wheel_indigo/indigo_wheel_indigo.c`.
+
+### wheel_manual
+
+Driver-specific use of existing properties: `WHEEL_SLOT`, `WHEEL_SLOT_NAME`, `WHEEL_SLOT_OFFSET`.
+
+Source: `indigo_drivers/wheel_manual/indigo_wheel_manual.c`.
+
+### wheel_mi
+
+Custom properties: `MI_SFW_COMMANDS`.
+
+Driver-specific use of existing properties: `WHEEL_SLOT_NAME`, `WHEEL_SLOT_OFFSET`.
+
+Source: `indigo_drivers/wheel_mi/indigo_wheel_mi.c`.
+
+### wheel_optec
+
+Driver-specific use of existing properties: `WHEEL_SLOT`, `WHEEL_SLOT_NAME`, `WHEEL_SLOT_OFFSET`.
+
+Source: `indigo_drivers/wheel_optec/indigo_wheel_optec.c`.
+
+### wheel_playerone
+
+Custom properties: `POA_CUSTOM_SUFFIX`, `POA_RESET`.
+
+Driver-specific use of existing properties: `WHEEL_SLOT_NAME`, `WHEEL_SLOT_OFFSET`.
+
+Source: `indigo_drivers/wheel_playerone/indigo_wheel_playerone.c`.
+
+### wheel_qhy
+
+Custom properties: `X_MODEL`.
+
+Driver-specific use of existing properties: `WHEEL_SLOT`, `WHEEL_SLOT_NAME`, `WHEEL_SLOT_OFFSET`.
+
+Source: `indigo_drivers/wheel_qhy/indigo_wheel_qhy.c`.
+
+### wheel_quantum
+
+Driver-specific use of existing properties: `WHEEL_SLOT`, `WHEEL_SLOT_NAME`, `WHEEL_SLOT_OFFSET`.
+
+Source: `indigo_drivers/wheel_quantum/indigo_wheel_quantum.c`.
+
+### wheel_sx
+
+Driver-specific use of existing properties: `WHEEL_SLOT`, `WHEEL_SLOT_NAME`, `WHEEL_SLOT_OFFSET`.
+
+Source: `indigo_drivers/wheel_sx/indigo_wheel_sx.c`.
+
+### wheel_trutek
+
+Driver-specific use of existing properties: `WHEEL_SLOT`, `WHEEL_SLOT_NAME`, `WHEEL_SLOT_OFFSET`.
+
+Source: `indigo_drivers/wheel_trutek/indigo_wheel_trutek.c`.
+
+### wheel_xagyl
+
+Driver-specific use of existing properties: `WHEEL_SLOT`, `WHEEL_SLOT_NAME`, `WHEEL_SLOT_OFFSET`.
+
+Source: `indigo_drivers/wheel_xagyl/indigo_wheel_xagyl.c`.
