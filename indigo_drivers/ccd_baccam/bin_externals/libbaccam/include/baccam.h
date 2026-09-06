@@ -1,7 +1,7 @@
 #ifndef __baccam_h__
 #define __baccam_h__
 
-/* Version: 60.31631.20260606 */
+/* Version: 60.32499.20260902 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -111,12 +111,12 @@ extern "C" {
 #define S_FALSE             (HRESULT)(0x00000001) /* Yet another success */ /* Remark: Different from S_OK, such as internal values and user-set values have coincided, equivalent to noop */
 #define E_UNEXPECTED        (HRESULT)(0x8000ffff) /* Catastrophic failure */ /* Remark: Generally indicates that the conditions are not met, such as calling put_Option setting some options that do not support modification when the camera is running, and so on */
 #define E_NOTIMPL           (HRESULT)(0x80004001) /* Not supported or not implemented */ /* Remark: This feature is not supported on this model of camera */
-#define E_NOINTERFACE       (HRESULT)(0x80004002)
-#define E_ACCESSDENIED      (HRESULT)(0x80070005) /* Permission denied */ /* Remark: Insufficient permissions. This may be blocked by system security policies; on Linux, USB devices often require additional permission configuration, which can be resolved by setting up udev rules or running with root privileges */
 #define E_OUTOFMEMORY       (HRESULT)(0x8007000e) /* Out of memory */
 #define E_INVALIDARG        (HRESULT)(0x80070057) /* One or more arguments are not valid */
+#define E_NOINTERFACE       (HRESULT)(0x80004002)
 #define E_POINTER           (HRESULT)(0x80004003) /* Pointer that is not valid */ /* Remark: Pointer is NULL */
 #define E_FAIL              (HRESULT)(0x80004005) /* Generic failure */
+#define E_ACCESSDENIED      (HRESULT)(0x80070005) /* Permission denied */ /* Remark: Insufficient permissions. This may be blocked by system security policies; on Linux, USB devices often require additional permission configuration, which can be resolved by setting up udev rules or running with root privileges */
 #define E_WRONG_THREAD      (HRESULT)(0x8001010e) /* Call function in the wrong thread */
 #define E_GEN_FAILURE       (HRESULT)(0x8007001f) /* Device not functioning */ /* Remark: It is generally caused by hardware errors, such as cable problems, USB port problems, poor contact, insufficient power supply, camera hardware damage, etc */
 #define E_BUSY              (HRESULT)(0x800700aa) /* The requested resource is in use */ /* Remark: The camera is already in use, such as duplicated opening/starting the camera, or being used by other application, etc */
@@ -291,6 +291,9 @@ typedef struct Baccam_t { int unused; } *HBaccam;
 #define BACCAM_BACKEND_MAX               1024    /* backend frame buffer deque length */
 #define BACCAM_BACKEND_DEF               3
 #define BACCAM_BACKEND_MIN               2
+#define BACCAM_HEAT_MIN                  0       /* Heat */
+#define BACCAM_LANE_MIN                  0       /* Lane */
+#define BACCAM_FAN_MIN                   0       /* Fan */
 
 typedef struct {
     unsigned    width;
@@ -329,7 +332,7 @@ typedef struct {
 } BaccamDeviceV2; /* device instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 60.31631.20260606
+    get the version of this dll/so/dylib, which is: 60.32499.20260902
 */
 #if defined(_WIN32)
 BACCAM_API(const wchar_t*)   Baccam_Version();
@@ -377,6 +380,18 @@ BACCAM_API(HBaccam) Baccam_OpenByIndex(unsigned index);
 /* close the handle. After it is closed, never use the handle any more. */
 BACCAM_API(void)     Baccam_Close(HBaccam h);
 
+/* load cfg:
+     (1) nullptr or empty string, load from EEPROM (address = 0)
+     (2) eeprom=???, load from EEPROM (address = 0x???)
+     (3) path\to\file.ini, load from ini file
+     (4) path\to\file.json, load from json file
+*/
+#if defined(_WIN32)
+BACCAM_API(HRESULT)  Baccam_Load(HBaccam h, const wchar_t* strPara);
+#else
+BACCAM_API(HRESULT)  Baccam_Load(HBaccam h, const char* strPara);
+#endif
+
 #define BACCAM_EVENT_EXPOSURE          0x0001    /* exposure time or gain changed */
 #define BACCAM_EVENT_TEMPTINT          0x0002    /* white balance changed, Temp/Tint mode */
 #define BACCAM_EVENT_IMAGE             0x0004    /* live image arrived, use Baccam_PullImageXXXX to get this image */
@@ -391,6 +406,8 @@ BACCAM_API(void)     Baccam_Close(HBaccam h);
 #define BACCAM_EVENT_AUTOEXPO_CONV     0x000d    /* auto exposure convergence */
 #define BACCAM_EVENT_AUTOEXPO_CONVFAIL 0x000e    /* auto exposure once mode convergence failed */
 #define BACCAM_EVENT_FPNC              0x000f    /* fix pattern noise correction status changed */
+#define BACCAM_EVENT_FRONT_OVERFLOW    0x0010    /* front buffer overflow */
+#define BACCAM_EVENT_BACK_OVERFLOW     0x0011    /* back buffer overflow */
 #define BACCAM_EVENT_ERROR             0x0080    /* generic error */
 #define BACCAM_EVENT_DISCONNECTED      0x0081    /* camera disconnected */
 #define BACCAM_EVENT_NOFRAMETIMEOUT    0x0082    /* no frame timeout error */
@@ -422,6 +439,8 @@ BACCAM_API(HRESULT)  Baccam_StartPullModeWithCallback(HBaccam h, PBACCAM_EVENT_C
 #define BACCAM_FRAMEINFO_FLAG_AUTOFOCUS          0x00000080 /* auto focus: uLum & uFV */
 #define BACCAM_FRAMEINFO_FLAG_COUNT              0x00000100 /* timecount, framecount, tricount */
 #define BACCAM_FRAMEINFO_FLAG_MECHANICALSHUTTER  0x00000200 /* Mechanical shutter: closed */
+#define BACCAM_FRAMEINFO_FLAG_HOB                0x00000400 /* Horizontal Optical Black */
+#define BACCAM_FRAMEINFO_FLAG_VOB                0x00000800 /* Vertical Optical Black */
 #define BACCAM_FRAMEINFO_FLAG_STILL              0x00008000 /* still image */
 #define BACCAM_FRAMEINFO_FLAG_CG                 0x00010000 /* Conversion Gain: High */
 
@@ -449,7 +468,8 @@ typedef struct {
 
 typedef struct {
     BaccamFrameInfoV3 v3;
-    unsigned reserved; /* not used */
+    unsigned short hob; /* Horizontal Optical Black */
+    unsigned short vob; /* Vertical Optical Black */
     unsigned uLum;
     unsigned long long uFV;
     unsigned long long timecount;
@@ -687,8 +707,8 @@ typedef void (__stdcall* PIBACCAM_HISTOGRAM_CALLBACKV2)(const unsigned* aHist, u
 /*
 * mode:
 *   0: disable auto exposure
-*   1: auto exposure continue mode
-*   2: auto exposure once mode
+*   1: auto exposure continuous mode
+*   2: auto exposure once
 */
 BACCAM_API(HRESULT)  Baccam_get_AutoExpoEnable(HBaccam h, int* mode);
 BACCAM_API(HRESULT)  Baccam_put_AutoExpoEnable(HBaccam h, int mode);
@@ -819,13 +839,13 @@ typedef struct {
 #endif
 
 /* Minimum width & height: 4 */
-BACCAM_API(HRESULT)  Baccam_put_AWBAuxRect(HBaccam h, const RECT* pAuxRect); /* auto white balance ROI */
-BACCAM_API(HRESULT)  Baccam_get_AWBAuxRect(HBaccam h, RECT* pAuxRect);
-BACCAM_API(HRESULT)  Baccam_put_AEAuxRect(HBaccam h, const RECT* pAuxRect);  /* auto exposure ROI */
-BACCAM_API(HRESULT)  Baccam_get_AEAuxRect(HBaccam h, RECT* pAuxRect);
+BACCAM_API(HRESULT)  Baccam_put_AWBAuxRect(HBaccam h, const RECT* pRect); /* auto white balance ROI */
+BACCAM_API(HRESULT)  Baccam_get_AWBAuxRect(HBaccam h, RECT* pRect);
+BACCAM_API(HRESULT)  Baccam_put_AEAuxRect(HBaccam h, const RECT* pRect);  /* auto exposure ROI */
+BACCAM_API(HRESULT)  Baccam_get_AEAuxRect(HBaccam h, RECT* pRect);
 
-BACCAM_API(HRESULT)  Baccam_put_ABBAuxRect(HBaccam h, const RECT* pAuxRect); /* auto black balance ROI */
-BACCAM_API(HRESULT)  Baccam_get_ABBAuxRect(HBaccam h, RECT* pAuxRect);
+BACCAM_API(HRESULT)  Baccam_put_ABBAuxRect(HBaccam h, const RECT* pRect); /* auto black balance ROI */
+BACCAM_API(HRESULT)  Baccam_get_ABBAuxRect(HBaccam h, RECT* pRect);
 
 /*
     S_FALSE:    color mode
@@ -836,12 +856,12 @@ BACCAM_API(HRESULT)  Baccam_get_MonoMode(HBaccam h);
 BACCAM_API(HRESULT)  Baccam_get_StillResolutionNumber(HBaccam h);
 BACCAM_API(HRESULT)  Baccam_get_StillResolution(HBaccam h, unsigned nResolutionIndex, int* pWidth, int* pHeight);
 
-/*  0: no realtime
+/*  0: Off
           stop grab frame when frame buffer deque is full, until the frames in the queue are pulled away and the queue is not full
-    1: realtime
+    1: Both
           use minimum frame buffer. When new frame arrive, drop all the pending frame regardless of whether the frame buffer is full.
           If DDR present, also limit the DDR frame buffer to only one frame.
-    2: soft realtime
+    2: Soft
           use minimum frame buffer. When new frame arrive, drop all the pending frame regardless of whether the frame buffer is full.
           If DDR present, the DDR frame buffer unchanged.
     default: 0
@@ -938,6 +958,15 @@ BACCAM_API(HRESULT)  Baccam_feed_Pipe(HBaccam h, unsigned pipeId);
 BACCAM_API(HRESULT)  Baccam_put_Option(HBaccam h, unsigned iOption, int iValue);
 BACCAM_API(HRESULT)  Baccam_get_Option(HBaccam h, unsigned iOption, int* piValue);
 
+/* Case insensitive */
+BACCAM_API(HRESULT)  Baccam_put_Int(HBaccam h, const char* strName, int iValue);
+BACCAM_API(HRESULT)  Baccam_get_Int(HBaccam h, const char* strName, int* piValue);
+BACCAM_API(HRESULT)  Baccam_put_Str(HBaccam h, const char* strName, const char* strValue);
+/* strValue: output buffer (128 bytes are always sufficient) */
+BACCAM_API(HRESULT)  Baccam_get_Str(HBaccam h, const char* strName, char strValue[]);
+BACCAM_API(HRESULT)  Baccam_get_Enum(HBaccam h, const char* strName, int* pNumber, int arrValue[], const char* arrString[]);
+BACCAM_API(HRESULT)  Baccam_get_StrPtr(HBaccam h, const char* strName, const char** strValue);
+
 /* [RW] = Read/Write; [RO] = Read Only; [WO] = Write Only */
 #define BACCAM_OPTION_NOFRAME_TIMEOUT        0x01       /* [RW] no frame timeout: 0 => disable, positive value (>= BACCAM_NOFRAME_TIMEOUT_MIN) => timeout milliseconds. default: disable */
 #define BACCAM_OPTION_THREAD_PRIORITY        0x02       /* [RW] set the priority of the internal thread which grab data from the usb device.
@@ -953,7 +982,7 @@ BACCAM_API(HRESULT)  Baccam_get_Option(HBaccam h, unsigned iOption, int* piValue
                                                          */
 #define BACCAM_OPTION_HISTOGRAM              0x05       /* [RW] 0 = only one, 1 = continue mode */
 #define BACCAM_OPTION_BITDEPTH               0x06       /* [RW] 0 = 8 bits mode, 1 = 16 bits mode, subset of BACCAM_OPTION_PIXEL_FORMAT */
-#define BACCAM_OPTION_FAN                    0x07       /* [RW] 0 = turn off the cooling fan, [1, max] = fan speed, , set to "-1" means to use default fan speed */
+#define BACCAM_OPTION_FAN                    0x07       /* [RW] 0 = turn off the cooling fan, [1, max] = fan speed, set to "-1" means to use default fan speed */
 #define BACCAM_OPTION_TEC                    0x08       /* [RW] 0 = turn off the thermoelectric cooler, 1 = turn on the thermoelectric cooler */
 #define BACCAM_OPTION_LINEAR                 0x09       /* [RW] 0 = turn off the builtin linear tone mapping, 1 = turn on the builtin linear tone mapping, default value: 1 */
 #define BACCAM_OPTION_CURVE                  0x0a       /* [RW] 0 = turn off the builtin curve tone mapping, 1 = turn on the builtin polynomial curve tone mapping, 2 = logarithmic curve tone mapping, default value: 2 */
@@ -1002,7 +1031,7 @@ BACCAM_API(HRESULT)  Baccam_get_Option(HBaccam h, unsigned iOption, int* piValue
                                                                   0: disable
                                                                   1: enable
                                                                  -1: reset
-                                                                 (0xff000000 | n): set the average number to n, [1~255]
+                                                                 (0xff000000 | n): set the average number to n, [1, 255]
                                                              get:
                                                                   (val & 0xff): 0 => disable, 1 => enable, 2 => inited
                                                                   ((val & 0xff00) >> 8): sequence
@@ -1021,7 +1050,7 @@ BACCAM_API(HRESULT)  Baccam_get_Option(HBaccam h, unsigned iOption, int* piValue
                                                                  0: disable
                                                                  1: enable
                                                                 -1: reset
-                                                                 (0xff000000 | n): set the average number to n, [1~255]
+                                                                 (0xff000000 | n): set the average number to n, [1, 255]
                                                              get:
                                                                  (val & 0xff): 0 => disable, 1 => enable, 2 => inited
                                                                  ((val & 0xff00) >> 8): sequence
@@ -1059,7 +1088,7 @@ BACCAM_API(HRESULT)  Baccam_get_Option(HBaccam h, unsigned iOption, int* piValue
 #define BACCAM_OPTION_BANDWIDTH              0x2e       /* [RW] bandwidth, [1-100]% */
 #define BACCAM_OPTION_RELOAD                 0x2f       /* [RW] reload the last frame in trigger mode */
 #define BACCAM_OPTION_CALLBACK_THREAD        0x30       /* [RW] dedicated thread for callback: 0 => disable, 1 => enable
-                                                                 default: 1(GigE), 0(others)
+                                                                 default: 1
                                                          */
 #define BACCAM_OPTION_FRONTEND_DEQUE_LENGTH  0x31       /* [RW] frontend (raw) frame buffer deque length, range: [2, 1024], default: 4
                                                             All the memory will be pre-allocated when the camera starts, so, please attention to memory usage
@@ -1097,7 +1126,7 @@ BACCAM_API(HRESULT)  Baccam_get_Option(HBaccam h, unsigned iOption, int* piValue
 #define BACCAM_OPTION_BACKEND_DEQUE_LENGTH   0x41       /* [RW] backend (pipelined) frame buffer deque length (Only available in pull mode), range: [2, 1024], default: 3
                                                             All the memory will be pre-allocated when the camera starts, so, please attention to memory usage
                                                          */
-#define BACCAM_OPTION_LIGHTSOURCE_MAX        0x42       /* [RO] get the light source range, [0 ~ max] */
+#define BACCAM_OPTION_LIGHTSOURCE_MAX        0x42       /* [RO] get the light source range, [0, max] */
 #define BACCAM_OPTION_LIGHTSOURCE            0x43       /* [RW] light source */
 #define BACCAM_OPTION_HEARTBEAT              0x44       /* [RW] Heartbeat interval in millisecond, range = [BACCAM_HEARTBEAT_MIN, BACCAM_HEARTBEAT_MAX], 0 = disable, default: disable */
 #define BACCAM_OPTION_FRONTEND_DEQUE_CURRENT 0x45       /* [RO] get the current number in frontend deque */
@@ -1171,35 +1200,35 @@ BACCAM_API(HRESULT)  Baccam_get_Option(HBaccam h, unsigned iOption, int* piValue
 #define BACCAM_OPTION_MOTOR_POS              0x10000000 /* [RW] range: [1, 702] */
 #define BACCAM_OPTION_PSEUDO_COLOR_START     0x63       /* [RW] Pseudo: start color, BGR format */
 #define BACCAM_OPTION_PSEUDO_COLOR_END       0x64       /* [RW] Pseudo: end color, BGR format */
-#define BACCAM_OPTION_PSEUDO_COLOR_ENABLE    0x65       /* [RW] Pseudo: -1 => custom: use startcolor & endcolor to generate the colormap
-                                                                    0 => disable
-                                                                    1 => spot
-                                                                    2 => spring
-                                                                    3 => summer
-                                                                    4 => autumn
-                                                                    5 => winter
-                                                                    6 => bone
-                                                                    7 => jet
-                                                                    8 => rainbow
-                                                                    9 => deepgreen
-                                                                    10 => ocean
-                                                                    11 => cool
-                                                                    12 => hsv
-                                                                    13 => pink
-                                                                    14 => hot
-                                                                    15 => parula
-                                                                    16 => magma
-                                                                    17 => inferno
-                                                                    18 => plasma
-                                                                    19 => viridis
-                                                                    20 => cividis
-                                                                    21 => twilight
-                                                                    22 => twilight_shifted
-                                                                    23 => turbo
-                                                                    24 => red
-                                                                    25 => green
-                                                                    26 => blue
-                                                                    27 => spectrum
+#define BACCAM_OPTION_PSEUDO_COLOR_ENABLE    0x65       /* [RW] Pseudo: -1 => Custom: use startcolor & endcolor to generate the colormap
+                                                                    0 => Disable
+                                                                    1 => Spot
+                                                                    2 => Spring
+                                                                    3 => Summer
+                                                                    4 => Autumn
+                                                                    5 => Winter
+                                                                    6 => Bone
+                                                                    7 => Jet
+                                                                    8 => Rainbow
+                                                                    9 => DeepGreen
+                                                                    10 => Ocean
+                                                                    11 => Cool
+                                                                    12 => HSV
+                                                                    13 => Pink
+                                                                    14 => Hot
+                                                                    15 => Parula
+                                                                    16 => Magma
+                                                                    17 => Inferno
+                                                                    18 => Plasma
+                                                                    19 => Viridis
+                                                                    20 => Cividis
+                                                                    21 => Twilight
+                                                                    22 => TwilightShifted
+                                                                    23 => Turbo
+                                                                    24 => Red
+                                                                    25 => Green
+                                                                    26 => Blue
+                                                                    27 => Spectrum
                                                          */
 #define BACCAM_OPTION_LOW_POWERCONSUMPTION   0x66       /* [RW] Low Power Consumption: 0 => disable, 1 => enable */
 #define BACCAM_OPTION_FPNC                   0x67       /* [RW] Fix Pattern Noise Correction
@@ -1207,7 +1236,7 @@ BACCAM_API(HRESULT)  Baccam_get_Option(HBaccam h, unsigned iOption, int* piValue
                                                                  0: disable
                                                                  1: enable
                                                                 -1: reset
-                                                                 (0xff000000 | n): set the average number to n, [1~255]
+                                                                 (0xff000000 | n): set the average number to n, [1, 255]
                                                              get:
                                                                  (val & 0xff): 0 => disable, 1 => enable, 2 => inited
                                                                  ((val & 0xff00) >> 8): sequence
@@ -1232,7 +1261,9 @@ BACCAM_API(HRESULT)  Baccam_get_Option(HBaccam h, unsigned iOption, int* piValue
                                                                 n<0: every -n frame
                                                          */
 #define BACCAM_OPTION_TECTARGET_RANGE        0x6d       /* [RO] TEC target range: min(low 16 bits) = (short)(val & 0xffff), max(high 16 bits) = (short)((val >> 16) & 0xffff) */
-#define BACCAM_OPTION_CDS                    0x6e       /* [RW] Correlated Double Sampling: 0~max (BACCAM_OPTION_CDS_MAX) */
+#define BACCAM_OPTION_CDS                    0x6e       /* [RW] Correlated Double Sampling: 0~max (BACCAM_OPTION_CDS_MAX)
+                                                              see https://www.next.gr/tutorials/sensors-and-transducers/image-sensor-noise-reduction-techniques-tutorial#correlated-double-sampling-cds
+                                                         */
 #define BACCAM_OPTION_LOW_POWER_EXPOTIME     0x6f       /* [RW] Low Power Consumption: Enable if exposure time is greater than the set value */
 #define BACCAM_OPTION_ZERO_OFFSET            0x70       /* [RW] Sensor output offset to zero: 0 => disable, 1 => eanble; default: 0 */
 #define BACCAM_OPTION_GVCP_TIMEOUT           0x71       /* [RW] GVCP Timeout: millisecond, range = [5, 150], default: 15(wire), 30(wireless)
@@ -1272,10 +1303,16 @@ BACCAM_API(HRESULT)  Baccam_get_Option(HBaccam h, unsigned iOption, int* piValue
                                                          */
 #define BACCAM_OPTION_USER_SET               0x8a       /* [RW] user set */
 #define BACCAM_OPTION_DIGITAL_GAIN           0x1001     /* [RW] digital gain */
-#define BACCAM_OPTION_ANTI_BLOOMING          0x8b       /* [RW] Anti Blooming, maximum */
+#define BACCAM_OPTION_ANTI_BLOOMING          0x8b       /* [RW] Anti Blooming, maximum
+                                                              Blooming occurs when the charge in a pixel exceeds the saturation level and the charge starts to fill adjacent pixels.
+                                                              Some sensors are designed with structures built into them to limit blooming - anti-blooming structures.
+                                                              Anti-blooming structures bleed off any excess charge before they can overflow the pixel and thereby stop blooming.
+                                                              However, anti-blooming structures can reduce the effective quantum efficiency and introduce non linearity into the sensor.
+                                                              Therefore, anti-blooming sensors are not recommended for applications requiring very low light or high accuracy measurements.
+                                                         */
 #define BACCAM_OPTION_ANTI_BLOOMING_MAX      0x8c       /* [RO] Anti Blooming */
 #define BACCAM_OPTION_CDS_MAX                0x8d       /* [RO] Correlated Double Sampling */
-#define BACCAM_OPTION_SCANTYPE               0x8e       /* [RW] Scan Type: 0(linescan), 1(areascan) */
+#define BACCAM_OPTION_SCANTYPE               0x8e       /* [RW] Scan Type: 0(areascan), 1(linescan) */
 #define BACCAM_OPTION_OPERATIONMODE          0x8f       /* [RW] TDI Operation Mode: 1(area), 2(TDI) */
 #define BACCAM_OPTION_TDITRIGGERMODE         0x90       /* [RW] TDI Trigger Mode: 1(normal), 2(both) */
 #define BACCAM_OPTION_TDISTAGE               0x91       /* [RW] TDI Trigger Stage: sensor scan stage */
@@ -1381,16 +1418,16 @@ BACCAM_API(HRESULT)  Baccam_get_BinningMethod(HBaccam h, unsigned index, const c
 #define BACCAM_IOCONTROLTYPE_SET_TRIGGERSOURCE            0x0e
 #define BACCAM_IOCONTROLTYPE_GET_TRIGGERDELAY             0x0f /* Trigger delay time in microseconds, range: [0, 5000000] */
 #define BACCAM_IOCONTROLTYPE_SET_TRIGGERDELAY             0x10
-#define BACCAM_IOCONTROLTYPE_GET_BURSTCOUNTER             0x11 /* Burst Counter, range: [1 ~ 65535] */
+#define BACCAM_IOCONTROLTYPE_GET_BURSTCOUNTER             0x11 /* Burst Counter, range: [1, 65535] */
 #define BACCAM_IOCONTROLTYPE_SET_BURSTCOUNTER             0x12
 #define BACCAM_IOCONTROLTYPE_GET_COUNTERSOURCE            0x13 /* 0x00 => Opto-isolated input, 0x01 => GPIO0, 0x02 => GPIO1 */
 #define BACCAM_IOCONTROLTYPE_SET_COUNTERSOURCE            0x14
-#define BACCAM_IOCONTROLTYPE_GET_COUNTERVALUE             0x15 /* Counter Value, range: [1 ~ 65535] */
+#define BACCAM_IOCONTROLTYPE_GET_COUNTERVALUE             0x15 /* Counter Value, range: [1, 65535] */
 #define BACCAM_IOCONTROLTYPE_SET_COUNTERVALUE             0x16
 #define BACCAM_IOCONTROLTYPE_SET_RESETCOUNTER             0x18
-#define BACCAM_IOCONTROLTYPE_GET_PWM_FREQ                 0x19 /* PWM Frequency */
+#define BACCAM_IOCONTROLTYPE_GET_PWM_FREQ                 0x19 /* PWM Frequency, range: [0, 0xffffffff] */
 #define BACCAM_IOCONTROLTYPE_SET_PWM_FREQ                 0x1a
-#define BACCAM_IOCONTROLTYPE_GET_PWM_DUTYRATIO            0x1b /* PWM Duty Ratio */
+#define BACCAM_IOCONTROLTYPE_GET_PWM_DUTYRATIO            0x1b /* PWM Duty Ratio, default: 50, range: [0, 100] */
 #define BACCAM_IOCONTROLTYPE_SET_PWM_DUTYRATIO            0x1c
 #define BACCAM_IOCONTROLTYPE_GET_PWMSOURCE                0x1d /* PWM Source: 0x00 => Opto-isolated input, 0x01 => GPIO0, 0x02 => GPIO1 */
 #define BACCAM_IOCONTROLTYPE_SET_PWMSOURCE                0x1e
@@ -1423,23 +1460,23 @@ BACCAM_API(HRESULT)  Baccam_get_BinningMethod(HBaccam h, unsigned index, const c
 #define BACCAM_IOCONTROLTYPE_SET_UART_LINEMODE            0x2e
 #define BACCAM_IOCONTROLTYPE_GET_EXPO_ACTIVE_MODE         0x2f /* exposure time signal: 0 => specified line, 1 => common exposure time */
 #define BACCAM_IOCONTROLTYPE_SET_EXPO_ACTIVE_MODE         0x30
-#define BACCAM_IOCONTROLTYPE_GET_EXPO_START_LINE          0x31 /* exposure start line, default: 0 */
+#define BACCAM_IOCONTROLTYPE_GET_EXPO_START_LINE          0x31 /* exposure start line, default: 0, range: [0, 16384] */
 #define BACCAM_IOCONTROLTYPE_SET_EXPO_START_LINE          0x32
-#define BACCAM_IOCONTROLTYPE_GET_EXPO_END_LINE            0x33 /* exposure end line, default: 0
+#define BACCAM_IOCONTROLTYPE_GET_EXPO_END_LINE            0x33 /* exposure end line, default: 0, range: [0, 16384]
                                                                    end line must be no less than start line
                                                                 */
 #define BACCAM_IOCONTROLTYPE_SET_EXPO_END_LINE            0x34
 #define BACCAM_IOCONTROLTYPE_GET_EXEVT_ACTIVE_MODE        0x35 /* exposure event: 0 => specified line, 1 => common exposure time */
 #define BACCAM_IOCONTROLTYPE_SET_EXEVT_ACTIVE_MODE        0x36
-#define BACCAM_IOCONTROLTYPE_GET_OUTPUTCOUNTERVALUE       0x37 /* Output Counter Value, range: [0 ~ 65535] */
+#define BACCAM_IOCONTROLTYPE_GET_OUTPUTCOUNTERVALUE       0x37 /* Output Counter Value, range: [0, 65535] */
 #define BACCAM_IOCONTROLTYPE_SET_OUTPUTCOUNTERVALUE       0x38
 #define BACCAM_IOCONTROLTYPE_SET_OUTPUT_PAUSE             0x3a /* Output pause: 1 => puase, 0 => unpause */
 #define BACCAM_IOCONTROLTYPE_GET_INPUT_STATE              0x3b /* Input state: 0 (low level) or 1 (high level) */
-#define BACCAM_IOCONTROLTYPE_GET_USER_PULSE_HIGH          0x3d /* User pulse high level time: us */
+#define BACCAM_IOCONTROLTYPE_GET_USER_PULSE_HIGH          0x3d /* User pulse high level time: us, range: [0, 0xffffffff] */
 #define BACCAM_IOCONTROLTYPE_SET_USER_PULSE_HIGH          0x3e
-#define BACCAM_IOCONTROLTYPE_GET_USER_PULSE_LOW           0x3f /* User pulse low level time: us */
+#define BACCAM_IOCONTROLTYPE_GET_USER_PULSE_LOW           0x3f /* User pulse low level time: us, range: [0, 0xffffffff] */
 #define BACCAM_IOCONTROLTYPE_SET_USER_PULSE_LOW           0x40
-#define BACCAM_IOCONTROLTYPE_GET_USER_PULSE_NUMBER        0x41 /* User pulse number: default 0 */
+#define BACCAM_IOCONTROLTYPE_GET_USER_PULSE_NUMBER        0x41 /* User pulse number: default 0, range: [0, 0xffffffff] */
 #define BACCAM_IOCONTROLTYPE_SET_USER_PULSE_NUMBER        0x42
 #define BACCAM_IOCONTROLTYPE_GET_EXTERNAL_TRIGGER_NUMBER  0x43 /* External trigger number */
 #define BACCAM_IOCONTROLTYPE_GET_DEBOUNCER_TRIGGER_NUMBER 0x45 /* Trigger signal number after debounce */
