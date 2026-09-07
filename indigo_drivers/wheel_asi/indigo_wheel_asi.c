@@ -1,4 +1,4 @@
-// Copyright (C) 2016 Rumen G. Bogdanovski
+// Copyright (C) 2016-2026 Rumen G. Bogdanovski
 // All rights reserved.
 
 // You may use this software under the terms of 'INDIGO Astronomy
@@ -95,7 +95,6 @@ static pthread_mutex_t driver_queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static int efw_products[100];
 static int efw_id_count = 0;
-static bool connected_ids[EFW_ID_MAX];
 
 static void split_device_name(const char *name, char *model, char *custom_suffix) {
 	snprintf(model, 64, "%s", name);
@@ -417,7 +416,17 @@ static void process_plug_event_handler(indigo_device *device, void *data) {
 				int id = NO_DEVICE;
 				int res = EFWGetID(index, &id);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetID(%d, -> %d) = %d", index, id, res);
-				if (res != EFW_SUCCESS || id < 0 || id >= EFW_ID_MAX || connected_ids[id]) {
+				if (res != EFW_SUCCESS || id < 0 || id >= EFW_ID_MAX) {
+					continue;
+				}
+				bool attached = false;
+				for (int slot = 0; slot < MAX_DEVICES; slot++) {
+					if (devices[slot] != NULL && ((asi_private_data *)devices[slot]->private_data)->dev_id == id) {
+						attached = true;
+						break;
+					}
+				}
+				if (attached) {
 					continue;
 				}
 				res = EFWOpen(id);
@@ -425,13 +434,12 @@ static void process_plug_event_handler(indigo_device *device, void *data) {
 				if (res != EFW_SUCCESS) {
 					continue;
 				}
-				EFW_INFO info = {0};
+				EFW_INFO info = { 0 };
 				res = EFWGetProperty(id, &info);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetProperty(%d) = %d", id, res);
 				EFWClose(id);
 				if (res == EFW_SUCCESS) {
 					private_data->dev_id = id;
-					connected_ids[id] = true;
 					split_device_name(info.Name, private_data->model, private_data->custom_suffix);
 					snprintf(name, INDIGO_NAME_SIZE, "%s", info.Name);
 					plug_result = true;
@@ -476,11 +484,6 @@ static void process_unplug_event_handler(indigo_device *device, void *data) {
 			indigo_device *device = devices[j];
 			if (PRIVATE_DATA->usbdev == dev) {
 				private_data = PRIVATE_DATA;
-				//+ sdk.unplug
-				if (private_data->dev_id >= 0 && private_data->dev_id < EFW_ID_MAX) {
-					connected_ids[private_data->dev_id] = false;
-				}
-				//- sdk.unplug
 				indigo_detach_device(device);
 				free(device);
 				devices[j] = NULL;
@@ -531,10 +534,6 @@ indigo_result indigo_wheel_asi(indigo_driver_action action, indigo_driver_info *
 			//+ on_init
 			const char *sdk_version = EFWGetSDKVersion();
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "EFW SDK v. %s", sdk_version);
-
-			for (int index = 0; index < EFW_ID_MAX; index++) {
-				connected_ids[index] = false;
-			}
 			efw_id_count = EFWGetProductIDs(efw_products);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetProductIDs(-> [ %d, %d, ... ]) = %d", efw_products[0], efw_products[1], efw_id_count);
 			if (efw_id_count <= 0) {

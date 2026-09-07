@@ -1414,6 +1414,7 @@
 		592C3390304F29CB004D5AE6 /* REFACTOR.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = REFACTOR.md; sourceTree = "<group>"; };
 		592C3391304F31C9004D5AE6 /* indigo_focuser_asi.driver */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_asi.driver; sourceTree = "<group>"; };
 		592C3392304F4209004D5AE6 /* test_focuser_asi_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_focuser_asi_sdk.c; sourceTree = "<group>"; };
+		592C3393304F46D1004D5AE6 /* test_wheel_asi_sdk.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = test_wheel_asi_sdk.c; sourceTree = "<group>"; };
 		592E79122168DD7A00E856F3 /* indigo_focuser_mjkzz.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_mjkzz.h; sourceTree = "<group>"; };
 		592E79142168DD7A00E856F3 /* focuser_mjkzz_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = focuser_mjkzz_simulator.ino; sourceTree = "<group>"; };
 		592E79152168DD7A00E856F3 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -13176,6 +13177,7 @@
 		59FA7BF3301D3A5800A35CFB /* integration */ = {
 			isa = PBXGroup;
 			children = (
+				592C3393304F46D1004D5AE6 /* test_wheel_asi_sdk.c */,
 				592C3392304F4209004D5AE6 /* test_focuser_asi_sdk.c */,
 				5984A389303CDD9100D581D2 /* test_wheel_indigo_simulator.c */,
 				5984A387303CDBBE00D581D2 /* test_rotator_wa_simulator.c */,

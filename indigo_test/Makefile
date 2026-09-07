@@ -32,6 +32,7 @@ UNIT_TESTS = \
 	$(UNIT_BUILD)/test_token \
 	$(UNIT_BUILD)/test_raw_image
 INTEGRATION_TESTS = \
+	$(INTEGRATION_BUILD)/test_wheel_asi_sdk \
 	$(INTEGRATION_BUILD)/test_focuser_asi_sdk \
 	$(INTEGRATION_BUILD)/test_bus_lifecycle \
 	$(INTEGRATION_BUILD)/test_ccd_simulator \
@@ -685,3 +686,12 @@ $(INTEGRATION_BUILD)/focuser_asi_sdk_driver.o: ../indigo_drivers/focuser_asi/ind
 
 $(INTEGRATION_BUILD)/test_focuser_asi_sdk: integration/test_focuser_asi_sdk.c integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/focuser_asi_sdk_driver.o | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(EAF_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/focuser_asi_sdk_driver.o -o $@ $(TEST_LDFLAGS) -lusb-1.0
+
+EFW_SDK_TEST_INCLUDE = -I../indigo_drivers/wheel_asi/bin_externals/libEFWFilter/include
+EFW_SDK_TEST_REPLACEMENTS = -Dlibusb_hotplug_register_callback_sim=efw_test_usb_register_sim -Dlibusb_hotplug_deregister_callback_poll=efw_test_usb_deregister_poll -Dindigo_start_usb_event_handler=efw_test_usb_start -Dindigo_try_global_lock=efw_test_lock -Dindigo_global_unlock=efw_test_unlock -Dindigo_attach_device=efw_test_attach -Dindigo_detach_device=efw_test_detach -Dlibusb_hotplug_register_callback=efw_test_usb_register -Dlibusb_hotplug_deregister_callback=efw_test_usb_deregister -Dlibusb_ref_device=efw_test_usb_ref -Dlibusb_unref_device=efw_test_usb_unref -Dlibusb_get_device_descriptor=efw_test_usb_descriptor
+
+$(INTEGRATION_BUILD)/wheel_asi_sdk_driver.o: ../indigo_drivers/wheel_asi/indigo_wheel_asi.c ../indigo_drivers/wheel_asi/indigo_wheel_asi.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(EFW_SDK_TEST_INCLUDE) $(EFW_SDK_TEST_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_wheel_asi_sdk: integration/test_wheel_asi_sdk.c integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/wheel_asi_sdk_driver.o | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(EFW_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/wheel_asi_sdk_driver.o -o $@ $(TEST_LDFLAGS) -lusb-1.0

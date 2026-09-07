@@ -199,3 +199,9 @@ All tests passed at the time this document was cleaned up.
 - Six regression groups cover failed initialization cleanup and lock release; confirmed position/step limits and failed limit/backlash readback; termination of failed polling and SDK preflight before retry; abort switch reset and delayed stop confirmation; accepting compensation settings, retaining the temperature baseline and recovery after a transient move error; five devices plus retry after failed attach and capacity exhaustion.
 - Narrow run: `make -C indigo_test build/integration/test_focuser_asi_sdk` then `indigo_test/build/integration/test_focuser_asi_sdk`. All six groups passed on macOS. Fresh x86_64/arm64 compilation and archive/dynamic-library/executable linking with the real SDK also passed; existing vendor deployment-target warnings remain.
 - Real EAF firmware timing, physical USB enumeration order, hand-controller behavior and end-to-end configuration persistence still require hardware validation.
+
+## 2026-09-07 — ASI EFW hot-plug regression
+
+Added `integration/test_wheel_asi_sdk.c` for DRV-051. It compiles the production driver separately with SDK/USB stubs and exercises its public lifecycle. It verifies retry after a failed attach and after exhausting all five slots then freeing one, without reinitializing the driver. No vendor SDK or hardware is needed for this test. The regression fails on the original driver at failed-attach retry and passes with the fix.
+
+Run `make -C indigo_test build/integration/test_wheel_asi_sdk` then `indigo_test/build/integration/test_wheel_asi_sdk`. Real USB enumeration and vendor SDK behavior still require hardware validation.
