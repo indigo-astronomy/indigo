@@ -192,3 +192,10 @@ All tests passed at the time this document was cleaned up.
 - Add driver-specific fake I/O tests for hardware drivers with complex parsing or command sequencing.
 - Wire a root-level `make test` target once the suite is accepted as part of the normal project workflow.
 - Update `README.md` and `TESTING.md` with the finalized automated test commands and their relationship to manual hardware testing.
+
+## 2026-09-07 focuser_asi refactoring verification
+
+- Added `integration/test_focuser_asi_sdk.c` to the integration suite. It compiles the generated driver separately, exercises the public driver entry point and bus APIs, and replaces SDK calls, USB events and hardware locks without linking the vendor SDK or accessing USB hardware.
+- Six regression groups cover failed initialization cleanup and lock release; confirmed position/step limits and failed limit/backlash readback; termination of failed polling and SDK preflight before retry; abort switch reset and delayed stop confirmation; accepting compensation settings, retaining the temperature baseline and recovery after a transient move error; five devices plus retry after failed attach and capacity exhaustion.
+- Narrow run: `make -C indigo_test build/integration/test_focuser_asi_sdk` then `indigo_test/build/integration/test_focuser_asi_sdk`. All six groups passed on macOS. Fresh x86_64/arm64 compilation and archive/dynamic-library/executable linking with the real SDK also passed; existing vendor deployment-target warnings remain.
+- Real EAF firmware timing, physical USB enumeration order, hand-controller behavior and end-to-end configuration persistence still require hardware validation.

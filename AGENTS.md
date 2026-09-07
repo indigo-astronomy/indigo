@@ -40,8 +40,12 @@ Always look for:
   - trim trailing whitespace
 - `uncrustify.cfg` defines C-family formatting. Match nearby code when it differs in small ways.
 - Use K&R-style braces as seen in existing C files: `if (...) {`, `for (...) {`, `static void callback(...) {`.
+- Separate function definitions with exactly one blank line. Do not put blank lines inside function bodies. Apply this also to hand-written code in `.driver` blocks. Whitespace emitted by the generator is exempt; do not modify the generator or hand-edit generated output to enforce this rule.
+- Keep every function call and macro invocation on a single line, including all arguments; do not wrap calls to meet a line-length limit. Apply this also to hand-written code in `.driver` blocks. Formatting emitted by the generator is exempt; do not modify the generator or hand-edit generated output to enforce this rule.
 - Always use braces for `if`, `for`, `while`, and `do` bodies.
 - Surround operators with spaces.
+- Do not put whitespace before a comma; put exactly one space after a comma when followed by another token on the same line, e.g. `INDIGO_DRIVER_DEBUG(DRIVER_NAME, "'%s' MaxStep = %d", device->name, PRIVATE_DATA->info.MaxStep);`. Apply this also to hand-written code in `.driver` blocks. Formatting emitted by the generator is exempt; do not modify the generator or hand-edit generated output to enforce this rule.
+- Put a space after `{` and before `}` in inline brace-enclosed initializers and compound literals, e.g. `{ 0 }` rather than `{0}`. Apply this also to hand-written code in `.driver` blocks. Formatting emitted by the generator is exempt; do not modify the generator or hand-edit generated output to enforce this rule.
 - Keep preprocessor defines aligned with tabs where the surrounding file does that.
 - Do not reformat unrelated code or churn generated files.
 

@@ -1026,11 +1026,13 @@ Source: `indigo_drivers/dome_talon6ror/indigo_dome_talon6ror.c`.
 
 ### focuser_asi
 
-Custom properties: `EAF_BATTERY_INFO`, `EAF_BEEP_ON_MOVE`, `EAF_CUSTOM_SUFFIX`, `EAF_SCAN_BLUETOOTH`.
+Custom properties: `EAF_BATTERY_INFO`, `EAF_BEEP_ON_MOVE`, `EAF_CUSTOM_SUFFIX`.
 
 Driver-specific use of existing properties: `FOCUSER_BACKLASH`, `FOCUSER_COMPENSATION`, `FOCUSER_LIMITS`, `FOCUSER_MODE`, `FOCUSER_ON_POSITION_SET`, `FOCUSER_REVERSE_MOTION`, `FOCUSER_SPEED`, `FOCUSER_TEMPERATURE`.
 
-Source: `indigo_drivers/focuser_asi/indigo_focuser_asi.c`.
+`EAF_BEEP_ON_MOVE` is saved with the standard configuration. `FOCUSER_POSITION` and `FOCUSER_STEPS` report `BUSY` during motion and complete when polling confirms the motor has stopped. A polling error reports `ALERT` and stops that polling loop; a new movement request verifies the SDK motion state first. `FOCUSER_ABORT_MOTION` resets its momentary switch on success and failure and remains `BUSY` until stop is confirmed. Confirmed `FOCUSER_LIMITS` changes update the position and step ranges. `FOCUSER_COMPENSATION` accepts the coefficient and threshold; transient temperature errors preserve the last valid compensation baseline.
+
+Source: `indigo_drivers/focuser_asi/indigo_focuser_asi.driver` (generates `indigo_focuser_asi.c`).
 
 ### focuser_askar
 

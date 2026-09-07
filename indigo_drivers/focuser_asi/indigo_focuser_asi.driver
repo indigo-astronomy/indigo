@@ -1,0 +1,731 @@
+// Copyright (C) 2016-2026 Rumen G. Bogdanovski
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// Refactored by OpenAI Codex in 2026.
+
+// ZWO ASI Focuser driver definition
+
+driver asi {
+	label = "ZWO ASI Focuser";
+	author = "refactoring by Peter Polakovic <peter.polakovic@cloudmakers.eu>";
+	copyright = "Copyright (C) 2016-2026 Rumen G. Bogdanovski";
+	version = 30;
+	include {
+		#include <stdbool.h>
+		#include <EAF_focuser.h>
+	}
+	define {
+		#define ASI_VENDOR_ID                   0x03c3
+		#define EAF_PRODUCT_ID                  0x1f10
+	}
+	data {
+		int dev_id;
+		EAF_INFO info;
+		char model[64];
+		char custom_suffix[9];
+		int current_position, target_position, max_position, backlash;
+		double prev_temp;
+		bool has_temperature_sensor;
+		bool moving;
+	}
+	sdk {
+		hotplug = true;
+		vid = ASI_VENDOR_ID;
+		pid = EAF_PRODUCT_ID;
+		plug {
+			plug_result = false;
+			int count = EAFGetNum();
+			for (int index = 0; index < count; index++) {
+				int id = -1;
+				int res = EAFGetID(index, &id);
+				if (res != EAF_SUCCESS || id < 0 || id >= EAF_ID_MAX) {
+					continue;
+				}
+				bool attached = false;
+				for (int slot = 0; slot < MAX_DEVICES; slot++) {
+					if (devices[slot] != NULL && ((asi_private_data *)devices[slot]->private_data)->dev_id == id) {
+						attached = true;
+						break;
+					}
+				}
+				if (attached) {
+					continue;
+				}
+				res = EAFOpen(id);
+				if (res != EAF_SUCCESS) {
+					continue;
+				}
+				EAF_INFO info = { 0 };
+				res = EAFGetProperty(id, &info);
+				EAFClose(id);
+				if (res != EAF_SUCCESS) {
+					continue;
+				}
+				private_data->dev_id = id;
+				private_data->info = info;
+				private_data->has_temperature_sensor = true;
+				split_device_name(info.Name, private_data->model, private_data->custom_suffix);
+				if (private_data->custom_suffix[0]) {
+					snprintf(name, INDIGO_NAME_SIZE, "%s #%s", private_data->model, private_data->custom_suffix);
+				} else {
+					snprintf(name, INDIGO_NAME_SIZE, "%s", private_data->model);
+				}
+				indigo_make_name_unique(name, "%d", id);
+				plug_result = true;
+				break;
+			}
+		}
+	}
+	code {
+		static void split_device_name(const char *full_name, char *model, char *suffix) {
+			snprintf(model, 64, "%s", full_name);
+			suffix[0] = 0;
+			char *suffix_start = strchr(model, '(');
+			char *suffix_end = strrchr(model, ')');
+			if (suffix_start == NULL || suffix_end == NULL || suffix_end <= suffix_start) {
+				return;
+			}
+			*suffix_start = 0;
+			*suffix_end = 0;
+			suffix_start++;
+			while (suffix_start[0] == ' ') {
+				suffix_start++;
+			}
+			strncpy(suffix, suffix_start, 8);
+			suffix[8] = 0;
+			size_t length = strlen(model);
+			while (length > 0 && model[length - 1] == ' ') {
+				model[--length] = 0;
+			}
+		}
+
+		static bool asi_open(indigo_device *device) {
+			bool result = false;
+			bool global_locked = false;
+			if (indigo_try_global_lock(device) != INDIGO_OK) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
+			} else {
+				global_locked = true;
+				int res = EAFOpen(PRIVATE_DATA->dev_id);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFOpen(%d) = %d", PRIVATE_DATA->dev_id, res);
+				if (res != EAF_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unable to open EAF device %d: %d", PRIVATE_DATA->dev_id, res);
+				}
+				result = res == EAF_SUCCESS;
+			}
+			if (!result && global_locked) {
+				indigo_global_unlock(device);
+			}
+			return result;
+		}
+
+		static void asi_close(indigo_device *device) {
+			int res = EAFStop(PRIVATE_DATA->dev_id);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFStop(%d) = %d", PRIVATE_DATA->dev_id, res);
+			res = EAFClose(PRIVATE_DATA->dev_id);
+			if (res != EAF_SUCCESS) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFClose(%d) = %d", PRIVATE_DATA->dev_id, res);
+			} else {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFClose(%d) = %d", PRIVATE_DATA->dev_id, res);
+			}
+			indigo_global_unlock(device);
+		}
+	}
+	on_init {
+		const char *sdk_version = EAFGetSDKVersion();
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "EAF SDK v. %s ", sdk_version);
+	}
+	// on_shutdown { }
+	focuser {
+		name = "%s";
+		code {
+			static void focuser_move_finalizer(indigo_device *device) {
+				if (!IS_CONNECTED) {
+					return;
+				}
+				bool moving = false, moving_hc = false;
+				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+				int res = EAFIsMoving(PRIVATE_DATA->dev_id, &moving, &moving_hc);
+				if (res != EAF_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFIsMoving(%d) = %d", PRIVATE_DATA->dev_id, res);
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				res = EAFGetPosition(PRIVATE_DATA->dev_id, &PRIVATE_DATA->current_position);
+				if (res != EAF_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetPosition(%d) = %d", PRIVATE_DATA->dev_id, res);
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+				} else {
+					FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
+				}
+				PRIVATE_DATA->moving = false;
+				if (FOCUSER_POSITION_PROPERTY->state != INDIGO_ALERT_STATE && (moving || moving_hc)) {
+					PRIVATE_DATA->moving = true;
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_execute_handler_in(device, 0.5, focuser_move_finalizer);
+				}
+				FOCUSER_STEPS_PROPERTY->state = FOCUSER_POSITION_PROPERTY->state;
+				if (FOCUSER_ABORT_MOTION_PROPERTY->state == INDIGO_BUSY_STATE) {
+					FOCUSER_ABORT_MOTION_PROPERTY->state = FOCUSER_POSITION_PROPERTY->state;
+					if (moving_hc) {
+						FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+					}
+					indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, moving_hc ? "Release the hand controller to stop motion" : NULL);
+				}
+				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+				indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+			}
+
+			static bool focuser_motion_ready(indigo_device *device) {
+				if (!IS_CONNECTED) {
+					FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "Focuser is not connected");
+					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+					return false;
+				}
+				if (PRIVATE_DATA->moving) {
+					FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "Focuser is moving");
+					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+					return false;
+				}
+				bool moving = false, moving_hc = false;
+				int res = EAFIsMoving(PRIVATE_DATA->dev_id, &moving, &moving_hc);
+				if (res != EAF_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFIsMoving(%d) = %d", PRIVATE_DATA->dev_id, res);
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+					FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "Cannot verify focuser motion state");
+					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+					return false;
+				}
+				if (moving || moving_hc) {
+					PRIVATE_DATA->moving = true;
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+					FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "Focuser is moving");
+					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+					indigo_execute_handler_in(device, 0.5, focuser_move_finalizer);
+					return false;
+				}
+				return true;
+			}
+
+			static void focuser_update_limits(indigo_device *device, int maximum) {
+				bool changed = FOCUSER_POSITION_ITEM->number.max != maximum;
+				if (changed && IS_CONNECTED) {
+					indigo_delete_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+					if (FOCUSER_MODE_MANUAL_ITEM->sw.value) {
+						indigo_delete_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+					}
+				}
+				PRIVATE_DATA->max_position = maximum;
+				FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = maximum;
+				FOCUSER_POSITION_ITEM->number.max = maximum;
+				FOCUSER_STEPS_ITEM->number.max = maximum;
+				if (changed && IS_CONNECTED) {
+					indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+					if (FOCUSER_MODE_MANUAL_ITEM->sw.value) {
+						indigo_define_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+					}
+				}
+			}
+
+			static void compensate_focus(indigo_device *device, double new_temp) {
+				int compensation;
+				double temp_difference = new_temp - PRIVATE_DATA->prev_temp;
+				/* we do not have previous temperature reading */
+				if (PRIVATE_DATA->prev_temp < -270) {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Not compensating: PRIVATE_DATA->prev_temp = %f", PRIVATE_DATA->prev_temp);
+					PRIVATE_DATA->prev_temp = new_temp;
+					return;
+				}
+				/* we do not have current temperature reading or focuser is moving */
+				if (!isfinite(new_temp) || (new_temp < -270) || PRIVATE_DATA->moving) {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Not compensating: new_temp = %f, FOCUSER_POSITION_PROPERTY->state = %d", new_temp, FOCUSER_POSITION_PROPERTY->state);
+					return;
+				}
+				/* temperature difference if more than 1 degree so compensation needed */
+				if ((fabs(temp_difference) >= FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.value) && (fabs(temp_difference) < 100)) {
+					compensation = (int)(temp_difference * FOCUSER_COMPENSATION_ITEM->number.value);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensation: temp_difference = %.2f, compensation = %d, steps/degC = %.0f, threshold = %.2f", temp_difference, compensation, FOCUSER_COMPENSATION_ITEM->number.value, FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.value);
+				} else {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Not compensating (not needed): temp_difference = %.2f, threshold = %.2f", temp_difference, FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.value);
+					return;
+				}
+				if (!focuser_motion_ready(device)) {
+					return;
+				}
+				int res = EAFGetPosition(PRIVATE_DATA->dev_id, &PRIVATE_DATA->current_position);
+				if (res != EAF_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetPosition(%d) = %d", PRIVATE_DATA->dev_id, res);
+					return;
+				}
+				PRIVATE_DATA->target_position = PRIVATE_DATA->current_position + compensation;
+				/* Make sure we do not attempt to go beyond the limits */
+				if (FOCUSER_POSITION_ITEM->number.max < PRIVATE_DATA->target_position) {
+					PRIVATE_DATA->target_position = (int)FOCUSER_POSITION_ITEM->number.max;
+				} else if (FOCUSER_POSITION_ITEM->number.min > PRIVATE_DATA->target_position) {
+					PRIVATE_DATA->target_position = (int)FOCUSER_POSITION_ITEM->number.min;
+				}
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensating: Corrected PRIVATE_DATA->target_position = %d", PRIVATE_DATA->target_position);
+				res = EAFMove(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position);
+				if (res != EAF_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFMove(%d, %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position, res);
+					FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+					return;
+				}
+				PRIVATE_DATA->moving = true;
+				PRIVATE_DATA->prev_temp = new_temp;
+				FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
+				FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+				indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+				indigo_execute_handler_in(device, 0.5, focuser_move_finalizer);
+			}
+		}
+		on_timer {
+			float temp = NAN;
+			int res = EAFGetTemp(PRIVATE_DATA->dev_id, &temp);
+			if (isfinite(temp) && temp < -270 && (res == EAF_SUCCESS || res == EAF_ERROR_GENERAL_ERROR)) {
+				FOCUSER_TEMPERATURE_ITEM->number.value = temp;
+				FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_IDLE_STATE;
+				indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, PRIVATE_DATA->has_temperature_sensor ? "The temperature sensor is not connected" : NULL);
+				PRIVATE_DATA->has_temperature_sensor = false;
+			} else if (res != EAF_SUCCESS || !isfinite(temp)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetTemp(%d) = %d", PRIVATE_DATA->dev_id, res);
+				FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, "Failed to read temperature");
+			} else {
+				PRIVATE_DATA->has_temperature_sensor = true;
+				FOCUSER_TEMPERATURE_ITEM->number.value = temp;
+				FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
+				if (FOCUSER_MODE_AUTOMATIC_ITEM->sw.value) {
+					compensate_focus(device, temp);
+				}
+			}
+			if (FOCUSER_MODE_MANUAL_ITEM->sw.value) {
+				PRIVATE_DATA->prev_temp = -273;
+			}
+			/* Update battery info for devices with battery info support */
+			if (!EAF_BATTERY_INFO_PROPERTY->hidden) {
+				EAF_BATTERY_INFO battery_info;
+				res = EAFGetBatteryInfo(PRIVATE_DATA->dev_id, &battery_info);
+				if (res == EAF_SUCCESS) {
+					EAF_BATTERY_CHARGE_ITEM->number.value = (double)battery_info.battery_percentage;
+					EAF_BATTERY_TEMP_ITEM->number.value = (double)battery_info.battery_temp;
+					EAF_BATTERY_VOLTAGE_ITEM->number.value = (double)battery_info.battery_vol / 1000.0;
+					EAF_BATTERY_CHARGE_CURR_ITEM->number.value = (double)battery_info.battery_charge_curr;
+					EAF_BATTERY_DISCHARGE_CURR_ITEM->number.value = (double)battery_info.battery_discharge_curr;
+					EAF_BATTERY_HEALTH_ITEM->number.value = (double)battery_info.battery_health;
+					EAF_BATTERY_CHARGE_VOL_ITEM->number.value = (double)battery_info.battery_charge_vol / 1000.0;
+					EAF_BATTERY_CYCLES_ITEM->number.value = (double)battery_info.battery_num_of_cycles;
+					EAF_BATTERY_INFO_PROPERTY->state = INDIGO_OK_STATE;
+				} else {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFGetBatteryInfo(%d) = %d", PRIVATE_DATA->dev_id, res);
+					EAF_BATTERY_INFO_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				indigo_update_property(device, EAF_BATTERY_INFO_PROPERTY, NULL);
+			}
+			indigo_execute_handler_in(device, 2, focuser_timer_callback);
+		}
+		on_connect {
+			int res = EAFGetBacklash(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->backlash));
+			if (res != EAF_SUCCESS) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetBacklash(%d) = %d", PRIVATE_DATA->dev_id, res);
+				connection_result = false;
+			}
+			FOCUSER_BACKLASH_ITEM->number.value = (double)PRIVATE_DATA->backlash;
+			res = EAFGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->target_position));
+			if (res != EAF_SUCCESS) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position, res);
+				connection_result = false;
+			}
+			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->target_position;
+			res = EAFGetReverse(PRIVATE_DATA->dev_id, &(FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value));
+			if (res != EAF_SUCCESS) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetReverse(%d, -> %d) = %d", PRIVATE_DATA->dev_id, FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value, res);
+				connection_result = false;
+			}
+			FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value = !FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value;
+			res = EAFGetBeep(PRIVATE_DATA->dev_id, &(EAF_BEEP_ON_ITEM->sw.value));
+			if (res != EAF_SUCCESS) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetBeep(%d, -> %d) = %d", PRIVATE_DATA->dev_id, EAF_BEEP_ON_ITEM->sw.value, res);
+				connection_result = false;
+			}
+			EAF_BEEP_OFF_ITEM->sw.value = !EAF_BEEP_ON_ITEM->sw.value;
+			res = EAFGetMaxStep(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->max_position));
+			if (res != EAF_SUCCESS) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetMaxStep(%d) = %d", PRIVATE_DATA->dev_id, res);
+				connection_result = false;
+			}
+			FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target = (double)PRIVATE_DATA->max_position;
+			int step_range = 0;
+			res = EAFStepRange(PRIVATE_DATA->dev_id, &step_range);
+			if (res != EAF_SUCCESS) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFStepRange(%d) = %d", PRIVATE_DATA->dev_id, res);
+				connection_result = false;
+			}
+			if (step_range > 0) {
+				FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max = (double)step_range;
+			} else {
+				connection_result = false;
+			}
+			EAF_BATTERY_INFO_PROPERTY->hidden = true;
+			EAF_BATTERY_INFO battery_info;
+			res = EAFGetBatteryInfo(PRIVATE_DATA->dev_id, &battery_info);
+			if (res == EAF_SUCCESS) {
+				EAF_BATTERY_INFO_PROPERTY->hidden = false;
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Battery info is supported for device %d", PRIVATE_DATA->dev_id);
+			}
+			PRIVATE_DATA->prev_temp = -273;  /* we do not have previous temperature reading */
+			PRIVATE_DATA->moving = false;
+			PRIVATE_DATA->current_position = PRIVATE_DATA->target_position;
+			FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->target_position;
+			if (connection_result) {
+				focuser_update_limits(device, PRIVATE_DATA->max_position);
+			} else {
+				asi_close(device);
+			}
+		}
+		on_attach {
+			INFO_PROPERTY->count = 6;
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->model);
+			const char *sdk_version = EAFGetSDKVersion();
+			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, sdk_version);
+			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->label, "SDK version");
+			FOCUSER_LIMITS_PROPERTY->hidden = false;
+			FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min = 0;
+			FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max = PRIVATE_DATA->info.MaxStep;
+			FOCUSER_LIMITS_MIN_POSITION_ITEM->number.min = 0;
+			FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = 0;
+			FOCUSER_LIMITS_MIN_POSITION_ITEM->number.max = 0;
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "\'%s\' MaxStep = %d",device->name ,PRIVATE_DATA->info.MaxStep);
+			FOCUSER_SPEED_PROPERTY->hidden = true;
+			FOCUSER_BACKLASH_PROPERTY->hidden = false;
+			FOCUSER_BACKLASH_ITEM->number.min = 0;
+			FOCUSER_BACKLASH_ITEM->number.max = 10000;
+			FOCUSER_BACKLASH_ITEM->number.step = 1;
+			FOCUSER_POSITION_ITEM->number.min = 0;
+			FOCUSER_POSITION_ITEM->number.step = 1;
+			FOCUSER_POSITION_ITEM->number.max = PRIVATE_DATA->info.MaxStep;
+			FOCUSER_STEPS_ITEM->number.min = 0;
+			FOCUSER_STEPS_ITEM->number.step = 1;
+			FOCUSER_STEPS_ITEM->number.max = PRIVATE_DATA->info.MaxStep;
+			FOCUSER_ON_POSITION_SET_PROPERTY->hidden = false;
+			FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
+			FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
+			// -------------------------------------------------------------------------- FOCUSER_COMPENSATION
+			FOCUSER_COMPENSATION_PROPERTY->hidden = false;
+			FOCUSER_COMPENSATION_ITEM->number.min = -10000;
+			FOCUSER_COMPENSATION_ITEM->number.max = 10000;
+			FOCUSER_COMPENSATION_PROPERTY->count = 2;
+			// -------------------------------------------------------------------------- FOCUSER_MODE
+			FOCUSER_MODE_PROPERTY->hidden = false;
+		}
+		switch EAF_BEEP {
+			persistent = true;
+			on_change {
+				int res = EAFSetBeep(PRIVATE_DATA->dev_id, EAF_BEEP_ON_ITEM->sw.value);
+				if (res != EAF_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFSetBeep(%d, %d) = %d", PRIVATE_DATA->dev_id, EAF_BEEP_ON_ITEM->sw.value, res);
+					EAF_BEEP_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			name = "EAF_BEEP_ON_MOVE";
+			group = FOCUSER_ADVANCED_GROUP;
+			label = "Beep on move";
+			item EAF_BEEP_ON {
+				name = "ON";
+				label = "On";
+				value = false;
+			}
+			item EAF_BEEP_OFF {
+				name = "OFF";
+				label = "Off";
+				value = true;
+			}
+		}
+		text EAF_CUSTOM_SUFFIX {
+			on_change {
+				if (strlen(EAF_CUSTOM_SUFFIX_ITEM->text.value) > 8) {
+					EAF_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, EAF_CUSTOM_SUFFIX_PROPERTY, "Custom suffix too long");
+					return;
+				}
+				EAF_ID eaf_id = { 0 };
+				memcpy(eaf_id.id, EAF_CUSTOM_SUFFIX_ITEM->text.value, 8);
+				int res = EAFSetID(PRIVATE_DATA->dev_id, eaf_id);
+				if (res) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFSetID(%d, \"%s\") = %d", PRIVATE_DATA->dev_id, EAF_CUSTOM_SUFFIX_ITEM->text.value, res);
+					EAF_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_ALERT_STATE;
+					INDIGO_COPY_VALUE(EAF_CUSTOM_SUFFIX_ITEM->text.value, PRIVATE_DATA->custom_suffix);
+					indigo_update_property(device, EAF_CUSTOM_SUFFIX_PROPERTY, NULL);
+					return;
+				}
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFSetID(%d, \"%s\") = %d", PRIVATE_DATA->dev_id, EAF_CUSTOM_SUFFIX_ITEM->text.value, res);
+				memset(PRIVATE_DATA->custom_suffix, 0, sizeof(PRIVATE_DATA->custom_suffix));
+				strncpy(PRIVATE_DATA->custom_suffix, EAF_CUSTOM_SUFFIX_ITEM->text.value, sizeof(PRIVATE_DATA->custom_suffix) - 1);
+				if (strlen(EAF_CUSTOM_SUFFIX_ITEM->text.value) > 0) {
+					indigo_send_message(device, EAF_CUSTOM_SUFFIX_PROPERTY, "Focuser name suffix '#%s' will be used on replug", EAF_CUSTOM_SUFFIX_ITEM->text.value);
+				} else {
+					indigo_send_message(device, EAF_CUSTOM_SUFFIX_PROPERTY, "Focuser name suffix cleared, will be used on replug");
+				}
+			}
+			name = "EAF_CUSTOM_SUFFIX";
+			group = FOCUSER_ADVANCED_GROUP;
+			label = "Device name custom suffix";
+			item EAF_CUSTOM_SUFFIX {
+				name = "SUFFIX";
+				label = "Suffix";
+				value = PRIVATE_DATA->custom_suffix;
+			}
+		}
+		number EAF_BATTERY_INFO {
+			hidden = true;
+			name = "EAF_BATTERY_INFO";
+			group = "Battery";
+			label = "Battery information";
+			perm = INDIGO_RO_PERM;
+			item EAF_BATTERY_CHARGE {
+				name = "CHARGE";
+				label = "Charge (%)";
+				value = 0;
+				min = 0;
+				max = 100;
+				step = 0;
+			}
+			item EAF_BATTERY_TEMP {
+				name = "TEMPERATURE";
+				label = "Temperature (°C)";
+				value = 0;
+				min = -100;
+				max = 100;
+				step = 0;
+			}
+			item EAF_BATTERY_VOLTAGE {
+				name = "VOLTAGE";
+				label = "Voltage (V)";
+				value = 0;
+				min = 0;
+				max = 5;
+				step = 0;
+			}
+			item EAF_BATTERY_CHARGE_CURR {
+				name = "CHARGE_CURRENT";
+				label = "Charge current (mA)";
+				value = 0;
+				min = 0;
+				max = 10000;
+				step = 0;
+			}
+			item EAF_BATTERY_DISCHARGE_CURR {
+				name = "DISCHARGE_CURRENT";
+				label = "Discharge current (mA)";
+				value = 0;
+				min = 0;
+				max = 10000;
+				step = 0;
+			}
+			item EAF_BATTERY_HEALTH {
+				name = "HEALTH";
+				label = "Health";
+				value = 0;
+				min = 0;
+				max = 100;
+				step = 0;
+			}
+			item EAF_BATTERY_CHARGE_VOL {
+				name = "CHARGE_VOLTAGE";
+				label = "Charge voltage (V)";
+				value = 0;
+				min = 0;
+				max = 5;
+				step = 0;
+			}
+			item EAF_BATTERY_CYCLES {
+				name = "CYCLES";
+				label = "Number of cycles";
+				value = 0;
+				min = 0;
+				max = 10000;
+				step = 0;
+			}
+		}
+		inherited FOCUSER_REVERSE_MOTION {
+			on_change {
+				int res = EAFSetReverse(PRIVATE_DATA->dev_id, FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value);
+				if (res != EAF_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFSetReverse(%d, %d) = %d", PRIVATE_DATA->dev_id, FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value, res);
+					FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+		}
+		inherited FOCUSER_POSITION {
+			preserve_values = true;
+			on_change {
+				if (!focuser_motion_ready(device)) {
+					return;
+				}
+				double target = FOCUSER_POSITION_ITEM->number.target;
+				FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
+				PRIVATE_DATA->target_position = (int)target;
+				if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) {
+					int res = EAFMove(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position);
+					if (res != EAF_SUCCESS) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFMove(%d, %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position, res);
+						FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+					} else {
+						PRIVATE_DATA->moving = true;
+						FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+						indigo_execute_handler_in(device, 0.5, focuser_move_finalizer);
+					}
+					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+				} else {
+					int res = EAFResetPostion(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position);
+					if (res == EAF_SUCCESS) {
+						res = EAFGetPosition(PRIVATE_DATA->dev_id, &PRIVATE_DATA->current_position);
+					}
+					FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+					if (res != EAF_SUCCESS) {
+						FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+					}
+					FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
+					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+				}
+			}
+		}
+		inherited FOCUSER_LIMITS {
+			preserve_values = true;
+			on_change {
+				double target = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target;
+				int res = EAFSetMaxStep(PRIVATE_DATA->dev_id, (int)target);
+				if (res != EAF_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFSetMaxStep(%d, %d) = %d", PRIVATE_DATA->dev_id, (int)target, res);
+					FOCUSER_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				int confirmed = PRIVATE_DATA->max_position;
+				res = EAFGetMaxStep(PRIVATE_DATA->dev_id, &confirmed);
+				if (res != EAF_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetMaxStep(%d) = %d", PRIVATE_DATA->dev_id, res);
+					FOCUSER_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
+				} else {
+					focuser_update_limits(device, confirmed);
+				}
+			}
+		}
+		inherited FOCUSER_BACKLASH {
+			preserve_values = true;
+			on_change {
+				double target = FOCUSER_BACKLASH_ITEM->number.target;
+				int res = EAFSetBacklash(PRIVATE_DATA->dev_id, (int)target);
+				if (res != EAF_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFSetBacklash(%d, %d) = %d", PRIVATE_DATA->dev_id, (int)target, res);
+					FOCUSER_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				int confirmed = PRIVATE_DATA->backlash;
+				res = EAFGetBacklash(PRIVATE_DATA->dev_id, &confirmed);
+				if (res != EAF_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetBacklash(%d) = %d", PRIVATE_DATA->dev_id, res);
+					FOCUSER_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
+				} else {
+					PRIVATE_DATA->backlash = confirmed;
+					FOCUSER_BACKLASH_ITEM->number.value = confirmed;
+				}
+			}
+		}
+		inherited FOCUSER_STEPS {
+			on_change {
+				if (!focuser_motion_ready(device)) {
+					return;
+				}
+				int res = EAFGetPosition(PRIVATE_DATA->dev_id, &PRIVATE_DATA->current_position);
+				if (res != EAF_SUCCESS) {
+					FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, FOCUSER_POSITION_PROPERTY, "Failed to read focuser position");
+					indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+					return;
+				}
+				int steps = (int)FOCUSER_STEPS_ITEM->number.value;
+				PRIVATE_DATA->target_position = PRIVATE_DATA->current_position + (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? -steps : steps);
+				PRIVATE_DATA->target_position = (int)fmax(FOCUSER_POSITION_ITEM->number.min, fmin(FOCUSER_POSITION_ITEM->number.max, PRIVATE_DATA->target_position));
+				FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
+				FOCUSER_POSITION_ITEM->number.target = PRIVATE_DATA->target_position;
+				res = EAFMove(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position);
+				if (res != EAF_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFMove(%d, %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position, res);
+					FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+				} else {
+					PRIVATE_DATA->moving = true;
+					FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_execute_handler_in(device, 0.5, focuser_move_finalizer);
+				}
+				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+				indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+			}
+		}
+		inherited FOCUSER_ABORT_MOTION {
+			on_change {
+				FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
+				int res = EAFStop(PRIVATE_DATA->dev_id);
+				if (res != EAF_SUCCESS) {
+					FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, "Failed to stop focuser");
+					return;
+				}
+				indigo_cancel_pending_handler(device, focuser_move_finalizer);
+				FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_BUSY_STATE;
+				focuser_move_finalizer(device);
+			}
+		}
+		inherited FOCUSER_COMPENSATION {
+			on_change { }
+		}
+		inherited FOCUSER_MODE {
+			on_change {
+				if (FOCUSER_MODE_MANUAL_ITEM->sw.value) {
+					indigo_define_property(device, FOCUSER_ON_POSITION_SET_PROPERTY, NULL);
+					indigo_define_property(device, FOCUSER_SPEED_PROPERTY, NULL);
+					indigo_define_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
+					indigo_define_property(device, FOCUSER_DIRECTION_PROPERTY, NULL);
+					indigo_define_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+					indigo_define_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+					indigo_define_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
+					indigo_delete_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+					FOCUSER_POSITION_PROPERTY->perm = INDIGO_RW_PERM;
+					indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+				} else {
+					indigo_delete_property(device, FOCUSER_ON_POSITION_SET_PROPERTY, NULL);
+					indigo_delete_property(device, FOCUSER_SPEED_PROPERTY, NULL);
+					indigo_delete_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
+					indigo_delete_property(device, FOCUSER_DIRECTION_PROPERTY, NULL);
+					indigo_delete_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+					indigo_delete_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+					indigo_delete_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
+					indigo_delete_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+					FOCUSER_POSITION_PROPERTY->perm = INDIGO_RO_PERM;
+					indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+				}
+			}
+		}
+	}
+}

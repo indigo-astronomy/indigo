@@ -6,7 +6,7 @@ https://astronomy-imaging-camera.com
 
 All ZWO EAF focusers.
 
-This driver supports hot-plug (multiple devices).
+This driver supports hot-plug (up to 5 USB devices).
 
 ## Supported platforms
 

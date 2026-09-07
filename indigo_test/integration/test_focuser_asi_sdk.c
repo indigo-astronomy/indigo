@@ -1,0 +1,409 @@
+// Copyright (c) 2026 CloudMakers, s. r. o.
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+
+#include <stdbool.h>
+#include <stdatomic.h>
+#include <EAF_focuser.h>
+#include <indigo/indigo_usb_utils.h>
+#include <indigo_drivers/focuser_asi/indigo_focuser_asi.h>
+#include "simulator_test_common.h"
+
+static libusb_hotplug_callback_fn usb_callback;
+static int usb_devices[11];
+static atomic_int visible_count = 1, attached_mask, attach_attempts, fail_attach;
+static atomic_int move_calls, poll_calls, close_calls, lock_count, position = 100, maximum = 10000, backlash;
+static atomic_bool motor, hand_control, fail_poll, fail_position, fail_move, fail_stop, fail_max, fail_backlash, fail_temperature;
+static atomic_int temperature = 10, abort_state;
+static atomic_bool abort_switch;
+static const simulator_driver_case eaf = { "ZWO ASI Focuser", "indigo_focuser_asi", "EAF SDK test 0", indigo_focuser_asi, false, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
+
+static indigo_result eaf_client_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (!strcmp(property->device, eaf.device_name) && !strcmp(property->name, FOCUSER_ABORT_MOTION_PROPERTY_NAME)) {
+		if (property->count > 0) {
+			atomic_store(&abort_switch, property->items[0].sw.value);
+		}
+		atomic_store(&abort_state, property->state);
+	}
+	return simulator_client_update_property(client, device, property, message);
+}
+
+static bool wait_abort(indigo_property_state state) {
+	for (int i = 0; i < 200; i++) {
+		if (atomic_load(&abort_state) == state && !atomic_load(&abort_switch)) {
+			return true;
+		}
+		indigo_usleep(10000);
+	}
+	return false;
+}
+
+static int device_index(indigo_device *device) {
+	int index = -1;
+	sscanf(device->name, "EAF SDK test %d", &index);
+	return index;
+}
+
+indigo_result eaf_test_attach(indigo_device *device) {
+	atomic_fetch_add(&attach_attempts, 1);
+	if (atomic_exchange(&fail_attach, 0)) {
+		return INDIGO_FAILED;
+	}
+	indigo_result result = indigo_attach_device(device);
+	if (result == INDIGO_OK) {
+		atomic_fetch_or(&attached_mask, 1 << device_index(device));
+	}
+	return result;
+}
+
+indigo_result eaf_test_detach(indigo_device *device) {
+	int index = device_index(device);
+	indigo_result result = indigo_detach_device(device);
+	atomic_fetch_and(&attached_mask, ~(1 << index));
+	return result;
+}
+
+void eaf_test_usb_start(void) {
+}
+
+indigo_result eaf_test_lock(indigo_device *device) {
+	atomic_fetch_add(&lock_count, 1);
+	return INDIGO_OK;
+}
+
+indigo_result eaf_test_unlock(indigo_device *device) {
+	atomic_fetch_sub(&lock_count, 1);
+	return INDIGO_OK;
+}
+
+int LIBUSB_CALL eaf_test_usb_register(libusb_context *ctx, int events, int flags, int vid, int pid, int cls, libusb_hotplug_callback_fn callback, void *data, libusb_hotplug_callback_handle *handle) {
+	usb_callback = callback;
+	callback(NULL, (libusb_device *)&usb_devices[0], LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED, NULL);
+	return LIBUSB_SUCCESS;
+}
+
+int eaf_test_usb_register_sim(libusb_context *ctx, libusb_hotplug_event events, libusb_hotplug_flag flags, int vid, int pid, int cls, libusb_hotplug_callback_fn callback, void *data, libusb_hotplug_callback_handle *handle) {
+	return eaf_test_usb_register(ctx, events, flags, vid, pid, cls, callback, data, handle);
+}
+
+int eaf_test_usb_deregister_poll(libusb_context *ctx, libusb_hotplug_callback_handle handle) {
+	return LIBUSB_SUCCESS;
+}
+
+void LIBUSB_CALL eaf_test_usb_deregister(libusb_context *ctx, libusb_hotplug_callback_handle handle) {
+}
+
+libusb_device *LIBUSB_CALL eaf_test_usb_ref(libusb_device *device) {
+	return device;
+}
+
+void LIBUSB_CALL eaf_test_usb_unref(libusb_device *device) {
+}
+
+int LIBUSB_CALL eaf_test_usb_descriptor(libusb_device *device, struct libusb_device_descriptor *descriptor) {
+	memset(descriptor, 0, sizeof(*descriptor));
+	descriptor->idVendor = 0x03c3;
+	descriptor->idProduct = 0x1f10;
+	return LIBUSB_SUCCESS;
+}
+
+int EAFGetNum(void) {
+	return atomic_load(&visible_count);
+}
+
+EAF_ERROR_CODE EAFGetID(int index, int *id) {
+	if (usb_devices[index] == -1) {
+		return EAF_ERROR_INVALID_ID;
+	}
+	*id = index;
+	return EAF_SUCCESS;
+}
+
+EAF_ERROR_CODE EAFOpen(int id) {
+	return EAF_SUCCESS;
+}
+
+EAF_ERROR_CODE EAFClose(int id) {
+	atomic_fetch_add(&close_calls, 1);
+	return EAF_SUCCESS;
+}
+
+const char *EAFGetSDKVersion(void) {
+	return "test SDK";
+}
+
+EAF_ERROR_CODE EAFGetProperty(int id, EAF_INFO *info) {
+	memset(info, 0, sizeof(*info));
+	info->ID = id;
+	info->MaxStep = 10000;
+	snprintf(info->Name, sizeof(info->Name), "EAF SDK test %d", id);
+	return EAF_SUCCESS;
+}
+
+EAF_ERROR_CODE EAFIsMoving(int id, bool *moving, bool *hc) {
+	atomic_fetch_add(&poll_calls, 1);
+	if (atomic_load(&fail_poll)) {
+		return EAF_ERROR_GENERAL_ERROR;
+	}
+	*moving = atomic_load(&motor);
+	*hc = atomic_load(&hand_control);
+	return EAF_SUCCESS;
+}
+
+EAF_ERROR_CODE EAFGetPosition(int id, int *value) {
+	if (atomic_load(&fail_position)) {
+		return EAF_ERROR_GENERAL_ERROR;
+	}
+	*value = atomic_load(&position);
+	return EAF_SUCCESS;
+}
+
+EAF_ERROR_CODE EAFMove(int id, int target) {
+	atomic_fetch_add(&move_calls, 1);
+	if (atomic_load(&fail_move)) {
+		return EAF_ERROR_GENERAL_ERROR;
+	}
+	atomic_store(&motor, true);
+	return EAF_SUCCESS;
+}
+
+EAF_ERROR_CODE EAFStop(int id) {
+	// A successful stop command deliberately leaves motion active until the test confirms stop.
+	return atomic_load(&fail_stop) ? EAF_ERROR_GENERAL_ERROR : EAF_SUCCESS;
+}
+
+EAF_ERROR_CODE EAFResetPostion(int id, int target) {
+	atomic_store(&position, target);
+	return EAF_SUCCESS;
+}
+
+EAF_ERROR_CODE EAFGetTemp(int id, float *value) {
+	if (atomic_load(&fail_temperature)) {
+		return EAF_ERROR_REMOVED;
+	}
+	*value = atomic_load(&temperature);
+	return EAF_SUCCESS;
+}
+
+EAF_ERROR_CODE EAFGetBatteryInfo(int id, EAF_BATTERY_INFO *info) {
+	return EAF_ERROR_NOT_SUPPORTED;
+}
+
+EAF_ERROR_CODE EAFSetID(int id, EAF_ID alias) {
+	return EAF_SUCCESS;
+}
+
+EAF_ERROR_CODE EAFStepRange(int id, int *value) {
+	*value = 10000;
+	return EAF_SUCCESS;
+}
+
+EAF_ERROR_CODE EAFSetMaxStep(int id, int value) {
+	atomic_store(&maximum, value);
+	return EAF_SUCCESS;
+}
+
+EAF_ERROR_CODE EAFGetMaxStep(int id, int *value) {
+	if (atomic_load(&fail_max)) {
+		return EAF_ERROR_GENERAL_ERROR;
+	}
+	*value = atomic_load(&maximum);
+	return EAF_SUCCESS;
+}
+
+EAF_ERROR_CODE EAFSetBacklash(int id, int value) {
+	atomic_store(&backlash, value);
+	return EAF_SUCCESS;
+}
+
+EAF_ERROR_CODE EAFGetBacklash(int id, int *value) {
+	if (atomic_load(&fail_backlash)) {
+		return EAF_ERROR_GENERAL_ERROR;
+	}
+	*value = atomic_load(&backlash);
+	return EAF_SUCCESS;
+}
+
+EAF_ERROR_CODE EAFSetReverse(int id, bool value) {
+	return EAF_SUCCESS;
+}
+
+EAF_ERROR_CODE EAFGetReverse(int id, bool *value) {
+	*value = false;
+	return EAF_SUCCESS;
+}
+
+EAF_ERROR_CODE EAFSetBeep(int id, bool value) {
+	return EAF_SUCCESS;
+}
+
+EAF_ERROR_CODE EAFGetBeep(int id, bool *value) {
+	*value = false;
+	return EAF_SUCCESS;
+}
+
+static bool wait_atomic(atomic_int *value, int expected) {
+	for (int i = 0; i < 200; i++) {
+		if (atomic_load(value) == expected) {
+			return true;
+		}
+		indigo_usleep(10000);
+	}
+	return false;
+}
+
+static void set_switch(const char *property, const char *item) {
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, eaf.device_name, property, item, true));
+}
+
+static void set_number(const char *property, const char *item, double value) {
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, eaf.device_name, property, item, value));
+}
+
+static void failed_connect_releases_sdk_and_lock(void) {
+	atomic_store(&fail_position, true);
+	int closed = atomic_load(&close_calls);
+	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME);
+	ASSERT_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(closed + 1, atomic_load(&close_calls));
+	ASSERT_EQ_INT(0, atomic_load(&lock_count));
+	atomic_store(&fail_position, false);
+	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME);
+	ASSERT_TRUE(wait_for_simulator_connection_state(true));
+}
+
+static void limits_and_readback_failures(void) {
+	set_number(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 500);
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_LIMITS_PROPERTY_NAME, INDIGO_OK_STATE));
+	ASSERT_NEAR(500, find_cached_item(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME)->number.max, 0);
+	ASSERT_NEAR(500, find_cached_item(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME)->number.max, 0);
+	atomic_store(&fail_max, true);
+	set_number(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 700);
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_LIMITS_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	ASSERT_NEAR(500, find_cached_item(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME)->number.value, 0);
+	atomic_store(&fail_max, false);
+	set_number(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 10000);
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_LIMITS_PROPERTY_NAME, INDIGO_OK_STATE));
+	atomic_store(&fail_backlash, true);
+	set_number(FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, 50);
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_BACKLASH_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	ASSERT_NEAR(0, find_cached_item(FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME)->number.value, 0);
+	atomic_store(&fail_backlash, false);
+}
+
+static void polling_failure_and_safe_retry(void) {
+	set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 300);
+	ASSERT_TRUE(wait_atomic(&move_calls, 1));
+	atomic_store(&fail_poll, true);
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	int polls = atomic_load(&poll_calls);
+	indigo_usleep(700000);
+	ASSERT_EQ_INT(polls, atomic_load(&poll_calls));
+	set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 400);
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(1, atomic_load(&move_calls));
+	atomic_store(&fail_poll, false);
+	polls = atomic_load(&poll_calls);
+	set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 400);
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	ASSERT_TRUE(wait_atomic(&poll_calls, polls + 2));
+	ASSERT_EQ_INT(1, atomic_load(&move_calls));
+	atomic_store(&motor, false);
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+}
+
+static void abort_waits_for_stop_and_resets_switch(void) {
+	set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 300);
+	ASSERT_TRUE(wait_atomic(&move_calls, 2));
+	atomic_store(&fail_stop, true);
+	set_switch(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME);
+	ASSERT_TRUE(wait_abort(INDIGO_ALERT_STATE));
+	ASSERT_FALSE(atomic_load(&abort_switch));
+	atomic_store(&fail_stop, false);
+	set_switch(FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME);
+	ASSERT_TRUE(wait_abort(INDIGO_BUSY_STATE));
+	ASSERT_FALSE(atomic_load(&abort_switch));
+	atomic_store(&motor, false);
+	ASSERT_TRUE(wait_abort(INDIGO_OK_STATE));
+}
+
+static void compensation_recovers_without_losing_baseline(void) {
+	set_number(FOCUSER_COMPENSATION_PROPERTY_NAME, FOCUSER_COMPENSATION_ITEM_NAME, 100);
+	ASSERT_TRUE(wait_for_number_item_value(FOCUSER_COMPENSATION_PROPERTY_NAME, FOCUSER_COMPENSATION_ITEM_NAME, 100, 0));
+	set_switch(FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_AUTOMATIC_ITEM_NAME);
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_MODE_PROPERTY_NAME, INDIGO_OK_STATE));
+	indigo_usleep(2200000);
+	atomic_store(&fail_temperature, true);
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_TEMPERATURE_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	atomic_store(&fail_move, true);
+	atomic_store(&temperature, 12);
+	atomic_store(&fail_temperature, false);
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(3, atomic_load(&move_calls));
+	atomic_store(&fail_move, false);
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	ASSERT_EQ_INT(4, atomic_load(&move_calls));
+	atomic_store(&motor, false);
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	set_switch(FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_MANUAL_ITEM_NAME);
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_MODE_PROPERTY_NAME, INDIGO_OK_STATE));
+}
+
+static void hotplug_capacity_and_failed_attach_retry(void) {
+	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME);
+	ASSERT_TRUE(wait_for_simulator_connection_state(false));
+	atomic_store(&visible_count, 2);
+	atomic_store(&fail_attach, 1);
+	int attempts = atomic_load(&attach_attempts);
+	usb_callback(NULL, (libusb_device *)&usb_devices[1], LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED, NULL);
+	ASSERT_TRUE(wait_atomic(&attach_attempts, attempts + 1));
+	usb_callback(NULL, (libusb_device *)&usb_devices[1], LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED, NULL);
+	ASSERT_TRUE(wait_atomic(&attached_mask, 3));
+	for (int i = 2; i < 5; i++) {
+		atomic_store(&visible_count, i + 1);
+		usb_callback(NULL, (libusb_device *)&usb_devices[i], LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED, NULL);
+		ASSERT_TRUE(wait_atomic(&attached_mask, (1 << (i + 1)) - 1));
+	}
+	atomic_store(&visible_count, 6);
+	int closed = atomic_load(&close_calls);
+	usb_callback(NULL, (libusb_device *)&usb_devices[5], LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED, NULL);
+	ASSERT_TRUE(wait_atomic(&close_calls, closed + 1));
+	usb_callback(NULL, (libusb_device *)&usb_devices[0], LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
+	ASSERT_TRUE(wait_atomic(&attached_mask, 30));
+	// Keep SDK enumeration from advertising the removed ID during the replacement arrival.
+	usb_devices[0] = -1;
+	usb_callback(NULL, (libusb_device *)&usb_devices[5], LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED, NULL);
+	ASSERT_TRUE(wait_atomic(&attached_mask, 62));
+}
+
+int main(void) {
+	reset_simulator_context(&eaf);
+	simulator_test_client.update_property = eaf_client_update;
+	indigo_start();
+	indigo_attach_client(&simulator_test_client);
+	indigo_focuser_asi(INDIGO_DRIVER_INIT, NULL);
+	if (!wait_atomic(&attached_mask, 1)) {
+		fprintf(stderr, "Initial attach failed: mask=%d attempts=%d closes=%d\n", atomic_load(&attached_mask), atomic_load(&attach_attempts), atomic_load(&close_calls));
+		return 1;
+	}
+	const indigo_test_case tests[] = {
+		{ "failed connection cleanup", failed_connect_releases_sdk_and_lock },
+		{ "effective limits and failed readback", limits_and_readback_failures },
+		{ "polling termination and safe retry", polling_failure_and_safe_retry },
+		{ "abort confirmation and switch reset", abort_waits_for_stop_and_resets_switch },
+		{ "compensation and temperature recovery", compensation_recovers_without_losing_baseline },
+		{ "five devices and attach retry", hotplug_capacity_and_failed_attach_retry }
+	};
+	int result = indigo_run_tests("ASI EAF SDK integration", tests, ARRAY_SIZE(tests));
+	if (context.connected) {
+		set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME);
+		wait_for_simulator_connection_state(false);
+	}
+	indigo_focuser_asi(INDIGO_DRIVER_SHUTDOWN, NULL);
+	indigo_detach_client(&simulator_test_client);
+	indigo_stop();
+	release_cached_properties();
+	return result;
+}
