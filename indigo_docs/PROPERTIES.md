@@ -1402,6 +1402,8 @@ Custom properties: `X_CALIBRATE`, `X_CUSTOM_SUFFIX`.
 
 Driver-specific use of existing properties: `WHEEL_SLOT`, `WHEEL_SLOT_NAME`, `WHEEL_SLOT_OFFSET`.
 
+Initialization requires successful SDK reads. `WHEEL_SLOT` preserves the last confirmed slot while moving or on read failure; read failures end polling with `ALERT`. Calibration read failures set `X_CALIBRATE` and `WHEEL_SLOT` to `ALERT`. A false calibration START request is acknowledged as a no-op; disconnect clears the calibration request and state. Reconnect monitors any continuing movement before accepting slot changes.
+
 Source: `indigo_drivers/wheel_asi/indigo_wheel_asi.c`.
 
 ### wheel_astroasis

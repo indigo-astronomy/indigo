@@ -15,7 +15,8 @@ static libusb_hotplug_callback_fn usb_callback;
 static int usb_devices[6];
 static atomic_int visible_count = 1, attached_mask, attach_attempts, fail_attach;
 static atomic_int close_calls, lock_count, open_calls, set_position_calls, requested_slot, current_slot;
-static atomic_bool moving;
+static atomic_bool moving, fail_read, fail_info;
+static atomic_int read_calls, calibrate_calls, slots = 5;
 static const simulator_driver_case efw = { "ZWO ASI Filter Wheel", "indigo_wheel_asi", "EFW SDK test 0", indigo_wheel_asi, false, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
 
 static int device_index(indigo_device *device) {
@@ -114,9 +115,12 @@ const char *EFWGetSDKVersion(void) {
 }
 
 EFW_ERROR_CODE EFWGetProperty(int id, EFW_INFO *info) {
+	if (atomic_load(&fail_info)) {
+		return EFW_ERROR_REMOVED;
+	}
 	memset(info, 0, sizeof(*info));
 	info->ID = id;
-	info->slotNum = 5;
+	info->slotNum = atomic_load(&slots);
 	snprintf(info->Name, sizeof(info->Name), "EFW SDK test %d", id);
 	return EFW_SUCCESS;
 }
@@ -127,6 +131,10 @@ int EFWGetProductIDs(int *ids) {
 }
 
 EFW_ERROR_CODE EFWGetPosition(int id, int *position) {
+	atomic_fetch_add(&read_calls, 1);
+	if (atomic_load(&fail_read)) {
+		return EFW_ERROR_REMOVED;
+	}
 	*position = atomic_load(&moving) ? -1 : atomic_load(&current_slot);
 	return EFW_SUCCESS;
 }
@@ -139,6 +147,8 @@ EFW_ERROR_CODE EFWSetPosition(int id, int position) {
 }
 
 EFW_ERROR_CODE EFWCalibrate(int id) {
+	atomic_store(&moving, true);
+	atomic_fetch_add(&calibrate_calls, 1);
 	return EFW_SUCCESS;
 }
 
@@ -176,6 +186,98 @@ static void connect_change_slot_disconnect(void) {
 	ASSERT_TRUE(wait_for_simulator_connection_state(false));
 	ASSERT_EQ_INT(closed + 1, atomic_load(&close_calls));
 	ASSERT_EQ_INT(0, atomic_load(&lock_count));
+}
+
+static bool connection(bool connect) {
+	if (indigo_change_switch_property_1(&simulator_test_client, efw.device_name, CONNECTION_PROPERTY_NAME, connect ? CONNECTION_CONNECTED_ITEM_NAME : CONNECTION_DISCONNECTED_ITEM_NAME, true) != INDIGO_OK) {
+		return false;
+	}
+	return wait_for_simulator_connection_state(connect);
+}
+
+static void initialization_failures(void) {
+	int closed = atomic_load(&close_calls);
+	atomic_store(&fail_info, true);
+	indigo_change_switch_property_1(&simulator_test_client, efw.device_name, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true);
+	ASSERT_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(closed + 1, atomic_load(&close_calls));
+	ASSERT_EQ_INT(0, atomic_load(&lock_count));
+	atomic_store(&fail_info, false);
+	atomic_store(&fail_read, true);
+	indigo_change_switch_property_1(&simulator_test_client, efw.device_name, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true);
+	ASSERT_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(closed + 2, atomic_load(&close_calls));
+	ASSERT_EQ_INT(0, atomic_load(&lock_count));
+	atomic_store(&fail_read, false);
+	atomic_store(&slots, 100);
+	indigo_change_switch_property_1(&simulator_test_client, efw.device_name, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true);
+	ASSERT_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(closed + 3, atomic_load(&close_calls));
+	ASSERT_EQ_INT(0, atomic_load(&lock_count));
+	atomic_store(&slots, 5);
+	ASSERT_TRUE(connection(true));
+	ASSERT_TRUE(connection(false));
+}
+
+static void polling_and_calibration_read_failures(void) {
+	ASSERT_TRUE(connection(true));
+	int moves = atomic_load(&set_position_calls);
+	indigo_change_number_property_1(&simulator_test_client, efw.device_name, WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, 5);
+	ASSERT_TRUE(wait_atomic(&set_position_calls, moves + 1));
+	atomic_store(&fail_read, true);
+	ASSERT_TRUE(wait_for_property_state(WHEEL_SLOT_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	ASSERT_TRUE(wait_for_number_item_value(WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, 3, 0));
+	int reads = atomic_load(&read_calls);
+	indigo_usleep(700000);
+	ASSERT_EQ_INT(reads, atomic_load(&read_calls));
+	atomic_store(&fail_read, false);
+	atomic_store(&moving, false);
+	int calibrations = atomic_load(&calibrate_calls);
+	indigo_change_switch_property_1(&simulator_test_client, efw.device_name, "X_CALIBRATE", "START", true);
+	ASSERT_TRUE(wait_atomic(&calibrate_calls, calibrations + 1));
+	atomic_store(&fail_read, true);
+	ASSERT_TRUE(wait_for_property_state("X_CALIBRATE", INDIGO_ALERT_STATE));
+	ASSERT_TRUE(wait_for_property_state(WHEEL_SLOT_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	ASSERT_FALSE(find_cached_item("X_CALIBRATE", "START")->sw.value);
+	ASSERT_TRUE(wait_for_number_item_value(WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, 3, 0));
+	reads = atomic_load(&read_calls);
+	indigo_usleep(1200000);
+	ASSERT_EQ_INT(reads, atomic_load(&read_calls));
+	atomic_store(&fail_read, false);
+	atomic_store(&moving, false);
+	indigo_change_switch_property_1(&simulator_test_client, efw.device_name, "X_CALIBRATE", "START", true);
+	ASSERT_TRUE(wait_atomic(&calibrate_calls, calibrations + 2));
+	ASSERT_TRUE(wait_for_property_state("X_CALIBRATE", INDIGO_BUSY_STATE));
+	atomic_store(&current_slot, 0);
+	atomic_store(&moving, false);
+	ASSERT_TRUE(wait_for_property_state("X_CALIBRATE", INDIGO_OK_STATE));
+	ASSERT_TRUE(wait_for_number_item_value(WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, 1, 0));
+	ASSERT_TRUE(connection(false));
+}
+
+static void calibration_noop_and_interrupted_reconnect(void) {
+	ASSERT_TRUE(connection(true));
+	int calibrations = atomic_load(&calibrate_calls);
+	indigo_change_switch_property_1(&simulator_test_client, efw.device_name, "X_CALIBRATE", "START", false);
+	ASSERT_TRUE(wait_for_property_state("X_CALIBRATE", INDIGO_OK_STATE));
+	ASSERT_EQ_INT(calibrations, atomic_load(&calibrate_calls));
+	indigo_change_switch_property_1(&simulator_test_client, efw.device_name, "X_CALIBRATE", "START", true);
+	ASSERT_TRUE(wait_atomic(&calibrate_calls, calibrations + 1));
+	ASSERT_TRUE(connection(false));
+	ASSERT_EQ_INT(0, atomic_load(&lock_count));
+	ASSERT_TRUE(connection(true));
+	ASSERT_TRUE(wait_for_property_state("X_CALIBRATE", INDIGO_OK_STATE));
+	ASSERT_FALSE(find_cached_item("X_CALIBRATE", "START")->sw.value);
+	ASSERT_TRUE(wait_for_property_state(WHEEL_SLOT_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	atomic_store(&current_slot, 1);
+	atomic_store(&moving, false);
+	ASSERT_TRUE(wait_for_property_state(WHEEL_SLOT_PROPERTY_NAME, INDIGO_OK_STATE));
+	ASSERT_TRUE(wait_for_number_item_value(WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, 2, 0));
+	indigo_change_switch_property_1(&simulator_test_client, efw.device_name, "X_CALIBRATE", "START", true);
+	ASSERT_TRUE(wait_atomic(&calibrate_calls, calibrations + 2));
+	atomic_store(&moving, false);
+	ASSERT_TRUE(wait_for_property_state("X_CALIBRATE", INDIGO_OK_STATE));
+	ASSERT_TRUE(connection(false));
 }
 
 static void hotplug_capacity_and_failed_attach_retry(void) {
@@ -217,6 +319,9 @@ int main(void) {
 	}
 	const indigo_test_case tests[] = {
 		{ "connect, change slot, disconnect", connect_change_slot_disconnect },
+		{ "initialization failures", initialization_failures },
+		{ "polling and calibration read failures", polling_and_calibration_read_failures },
+		{ "calibration noop and interrupted reconnect", calibration_noop_and_interrupted_reconnect },
 		{ "failed attach and full capacity retry", hotplug_capacity_and_failed_attach_retry }
 	};
 	int result = indigo_run_tests("ASI EFW SDK integration", tests, sizeof(tests) / sizeof(tests[0]));

@@ -213,3 +213,7 @@ The ASI EFW SDK suite also covers connection, changing slot 1 to slot 3, and dis
 Extended `integration/test_focuser_asi_sdk.c` with four public-bus functional cases: connect/absolute move/disconnect, relative moves in both directions, position synchronization without an SDK move, and limits/backlash/reverse/beep settings with readback after reconnect. Stateful SDK stubs record requested positions and settings. The tests verify SDK open/close and lock release, motion BUSY-to-OK completion, and confirmed positions. Existing abort and compensation regressions remain in the same suite (ten cases total).
 
 Run `make -C indigo_test build/integration/test_focuser_asi_sdk` followed by `indigo_test/build/integration/test_focuser_asi_sdk`. These tests require no hardware; physical motion and vendor SDK behavior are not covered.
+
+## 2026-09-07 — ASI EFW SDK error regressions
+
+The wheel SDK suite now has five cases. Added required initialization read failures and oversized SDK slot counts with close/lock-release checks; motion polling failure preserving the confirmed slot and stopping retries; calibration read failure/reset/retry; START=false completion; and interrupted calibration followed by reconnect while the wheel is still moving. Existing normal motion and attach/capacity retry cases remain. All five cases passed, and production universal compilation/linking passed separately.

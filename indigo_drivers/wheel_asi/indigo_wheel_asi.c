@@ -145,14 +145,17 @@ static void wheel_move_finalizer(indigo_device *device) {
 	if (!IS_CONNECTED) {
 		return;
 	}
-	int res = EFWGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->current_slot));
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->current_slot, res);
-	PRIVATE_DATA->current_slot++;
-	WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
-	if (PRIVATE_DATA->current_slot == PRIVATE_DATA->target_slot) {
-		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
-	} else {
+	int pos = -1;
+	int res = EFWGetPosition(PRIVATE_DATA->dev_id, &pos);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_id, pos, res);
+	if (res != EFW_SUCCESS) {
+		WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else if (pos == -1) {
 		indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
+	} else {
+		PRIVATE_DATA->current_slot = pos + 1;
+		WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
+		WHEEL_SLOT_PROPERTY->state = PRIVATE_DATA->target_slot == 0 || PRIVATE_DATA->current_slot == PRIVATE_DATA->target_slot ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 	}
 	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 }
@@ -164,6 +167,13 @@ static void wheel_calibrate_finalizer(indigo_device *device) {
 	int pos = 0;
 	int res = EFWGetPosition(PRIVATE_DATA->dev_id, &pos);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_id, pos, res);
+	if (res != EFW_SUCCESS) {
+		WHEEL_SLOT_PROPERTY->state = X_CALIBRATE_PROPERTY->state = INDIGO_ALERT_STATE;
+		X_CALIBRATE_START_ITEM->sw.value = false;
+		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+		indigo_update_property(device, X_CALIBRATE_PROPERTY, "Failed to read calibration status");
+		return;
+	}
 	if (pos == -1) {
 		indigo_execute_handler_in(device, 1, wheel_calibrate_finalizer);
 		return;
@@ -189,16 +199,38 @@ static void wheel_connection_handler(indigo_device *device) {
 		connection_result = asi_open(device);
 		if (connection_result) {
 			//+ wheel.on_connect
-			EFW_INFO info;
-			EFWGetProperty(PRIVATE_DATA->dev_id, &info);
-			WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->slot_count = info.slotNum;
-			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->model);
-			INDIGO_COPY_VALUE(X_CUSTOM_SUFFIX_ITEM->text.value, PRIVATE_DATA->custom_suffix);
-			int res = EFWGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->current_slot));
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->current_slot, res);
-			PRIVATE_DATA->current_slot++;
-			PRIVATE_DATA->target_slot = PRIVATE_DATA->current_slot;
-			WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->current_slot;
+			EFW_INFO info = { 0 };
+			int res = EFWGetProperty(PRIVATE_DATA->dev_id, &info);
+			if (res != EFW_SUCCESS || info.slotNum <= 0 || info.slotNum > WHEEL_SLOT_NAME_PROPERTY->allocated_count || info.slotNum > WHEEL_SLOT_OFFSET_PROPERTY->allocated_count) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "EFWGetProperty(%d) = %d, slots = %d", PRIVATE_DATA->dev_id, res, info.slotNum);
+				connection_result = false;
+			}
+			int pos = -1;
+			if (connection_result) {
+				res = EFWGetPosition(PRIVATE_DATA->dev_id, &pos);
+				if (res != EFW_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "EFWGetPosition(%d) = %d", PRIVATE_DATA->dev_id, res);
+					connection_result = false;
+				}
+			}
+			if (connection_result) {
+				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->slot_count = info.slotNum;
+				INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->model);
+				INDIGO_COPY_VALUE(X_CUSTOM_SUFFIX_ITEM->text.value, PRIVATE_DATA->custom_suffix);
+				X_CALIBRATE_START_ITEM->sw.value = false;
+				X_CALIBRATE_PROPERTY->state = INDIGO_OK_STATE;
+				if (pos == -1) {
+					PRIVATE_DATA->target_slot = 0;
+					WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_execute_handler_in(device, 0.5, wheel_move_finalizer);
+				} else {
+					PRIVATE_DATA->current_slot = PRIVATE_DATA->target_slot = pos + 1;
+					WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->current_slot;
+					WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+				}
+			} else {
+				asi_close(device);
+			}
 			//- wheel.on_connect
 		}
 		if (connection_result) {
@@ -213,6 +245,10 @@ static void wheel_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_pending_handlers(device);
+		//+ wheel.on_disconnect
+		X_CALIBRATE_START_ITEM->sw.value = false;
+		X_CALIBRATE_PROPERTY->state = INDIGO_OK_STATE;
+		//- wheel.on_disconnect
 		indigo_delete_property(device, X_CALIBRATE_PROPERTY, NULL);
 		indigo_delete_property(device, X_CUSTOM_SUFFIX_PROPERTY, NULL);
 		asi_close(device);
@@ -247,6 +283,11 @@ static void wheel_slot_handler(indigo_device *device) {
 
 static void wheel_x_calibrate_handler(indigo_device *device) {
 	//+ wheel.X_CALIBRATE.on_change
+	if (!X_CALIBRATE_START_ITEM->sw.value) {
+		X_CALIBRATE_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, X_CALIBRATE_PROPERTY, NULL);
+		return;
+	}
 	if (WHEEL_SLOT_PROPERTY->state == INDIGO_BUSY_STATE) {
 		X_CALIBRATE_START_ITEM->sw.value = false;
 		X_CALIBRATE_PROPERTY->state = INDIGO_ALERT_STATE;
