@@ -24,7 +24,7 @@
  \file indigo_agent_mount.c
  */
 
-#define DRIVER_VERSION 0x03000015
+#define DRIVER_VERSION 0x03000016
 #define DRIVER_NAME	"indigo_agent_mount"
 
 #include <stdlib.h>
@@ -1233,12 +1233,12 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 			indigo_item *item = property->items + i;
 			if (item->sw.value && !strcmp(item->name, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME) && CLIENT_PRIVATE_DATA->mount_side_of_pier != -1) {
 				CLIENT_PRIVATE_DATA->mount_side_of_pier = -1;
-				indigo_send_message(device, IDLE_PROPERTY, "Mount is on east side of pier");
+				indigo_send_message(device, IDLE_PROPERTY, "Telescope is on east side of pier");
 				handle_mount_change(device);
 				break;
 			} else if (item->sw.value && !strcmp(item->name, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME) && CLIENT_PRIVATE_DATA->mount_side_of_pier != 1) {
 				CLIENT_PRIVATE_DATA->mount_side_of_pier = 1;
-				indigo_send_message(device, IDLE_PROPERTY, "Mount is on west side of pier");
+				indigo_send_message(device, IDLE_PROPERTY, "Telescope is on west side of pier");
 				handle_mount_change(device);
 				break;
 			}
