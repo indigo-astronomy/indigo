@@ -9,12 +9,14 @@
 #include <EFW_filter.h>
 #include <indigo/indigo_usb_utils.h>
 #include <indigo_drivers/wheel_asi/indigo_wheel_asi.h>
-#include "../test_runner.h"
+#include "simulator_test_common.h"
 
 static libusb_hotplug_callback_fn usb_callback;
 static int usb_devices[6];
 static atomic_int visible_count = 1, attached_mask, attach_attempts, fail_attach;
-static atomic_int close_calls, lock_count;
+static atomic_int close_calls, lock_count, open_calls, set_position_calls, requested_slot, current_slot;
+static atomic_bool moving;
+static const simulator_driver_case efw = { "ZWO ASI Filter Wheel", "indigo_wheel_asi", "EFW SDK test 0", indigo_wheel_asi, false, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
 
 static int device_index(indigo_device *device) {
 	int index = -1;
@@ -98,6 +100,7 @@ EFW_ERROR_CODE EFWGetID(int index, int *id) {
 }
 
 EFW_ERROR_CODE EFWOpen(int id) {
+	atomic_fetch_add(&open_calls, 1);
 	return EFW_SUCCESS;
 }
 
@@ -124,11 +127,14 @@ int EFWGetProductIDs(int *ids) {
 }
 
 EFW_ERROR_CODE EFWGetPosition(int id, int *position) {
-	*position = 0;
+	*position = atomic_load(&moving) ? -1 : atomic_load(&current_slot);
 	return EFW_SUCCESS;
 }
 
 EFW_ERROR_CODE EFWSetPosition(int id, int position) {
+	atomic_store(&requested_slot, position);
+	atomic_store(&moving, true);
+	atomic_fetch_add(&set_position_calls, 1);
 	return EFW_SUCCESS;
 }
 
@@ -148,6 +154,28 @@ static bool wait_atomic(atomic_int *value, int expected) {
 		indigo_usleep(10000);
 	}
 	return false;
+}
+
+static void connect_change_slot_disconnect(void) {
+	int opened = atomic_load(&open_calls);
+	int closed = atomic_load(&close_calls);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, efw.device_name, CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true));
+	ASSERT_TRUE(wait_for_simulator_connection_state(true));
+	ASSERT_EQ_INT(opened + 1, atomic_load(&open_calls));
+	ASSERT_EQ_INT(1, atomic_load(&lock_count));
+	ASSERT_TRUE(wait_for_number_item_value(WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, 1, 0));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_number_property_1(&simulator_test_client, efw.device_name, WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, 3));
+	ASSERT_TRUE(wait_atomic(&set_position_calls, 1));
+	ASSERT_EQ_INT(2, atomic_load(&requested_slot));
+	ASSERT_TRUE(wait_for_property_state(WHEEL_SLOT_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	atomic_store(&current_slot, atomic_load(&requested_slot));
+	atomic_store(&moving, false);
+	ASSERT_TRUE(wait_for_property_state(WHEEL_SLOT_PROPERTY_NAME, INDIGO_OK_STATE));
+	ASSERT_TRUE(wait_for_number_item_value(WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, 3, 0));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, efw.device_name, CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME, true));
+	ASSERT_TRUE(wait_for_simulator_connection_state(false));
+	ASSERT_EQ_INT(closed + 1, atomic_load(&close_calls));
+	ASSERT_EQ_INT(0, atomic_load(&lock_count));
 }
 
 static void hotplug_capacity_and_failed_attach_retry(void) {
@@ -176,18 +204,29 @@ static void hotplug_capacity_and_failed_attach_retry(void) {
 }
 
 int main(void) {
+	reset_simulator_context(&efw);
 	indigo_start();
+	indigo_attach_client(&simulator_test_client);
 	indigo_wheel_asi(INDIGO_DRIVER_INIT, NULL);
 	if (!wait_atomic(&attached_mask, 1)) {
 		indigo_wheel_asi(INDIGO_DRIVER_SHUTDOWN, NULL);
+		indigo_detach_client(&simulator_test_client);
 		indigo_stop();
+		release_cached_properties();
 		return 1;
 	}
 	const indigo_test_case tests[] = {
+		{ "connect, change slot, disconnect", connect_change_slot_disconnect },
 		{ "failed attach and full capacity retry", hotplug_capacity_and_failed_attach_retry }
 	};
-	int result = indigo_run_tests("ASI EFW SDK hotplug", tests, sizeof(tests) / sizeof(tests[0]));
+	int result = indigo_run_tests("ASI EFW SDK integration", tests, sizeof(tests) / sizeof(tests[0]));
+	if (context.connected) {
+		indigo_change_switch_property_1(&simulator_test_client, efw.device_name, CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME, true);
+		wait_for_simulator_connection_state(false);
+	}
 	indigo_wheel_asi(INDIGO_DRIVER_SHUTDOWN, NULL);
+	indigo_detach_client(&simulator_test_client);
 	indigo_stop();
+	release_cached_properties();
 	return result;
 }

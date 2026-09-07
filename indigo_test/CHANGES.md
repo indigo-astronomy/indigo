@@ -205,3 +205,5 @@ All tests passed at the time this document was cleaned up.
 Added `integration/test_wheel_asi_sdk.c` for DRV-051. It compiles the production driver separately with SDK/USB stubs and exercises its public lifecycle. It verifies retry after a failed attach and after exhausting all five slots then freeing one, without reinitializing the driver. No vendor SDK or hardware is needed for this test. The regression fails on the original driver at failed-attach retry and passes with the fix.
 
 Run `make -C indigo_test build/integration/test_wheel_asi_sdk` then `indigo_test/build/integration/test_wheel_asi_sdk`. Real USB enumeration and vendor SDK behavior still require hardware validation.
+
+The ASI EFW SDK suite also covers connection, changing slot 1 to slot 3, and disconnection through the public property API. It checks SDK open/close calls, lock acquisition/release, conversion from INDIGO slot 3 to SDK index 2, and the slot property's BUSY-to-OK transition with the confirmed final value. Both integration cases passed with the SDK stubs.
