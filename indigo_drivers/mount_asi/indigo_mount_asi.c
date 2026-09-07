@@ -24,7 +24,7 @@
  \file indigo_mount_asi.c
  */
 
-#define DRIVER_VERSION 0x0300001B
+#define DRIVER_VERSION 0x0300001C
 #define DRIVER_NAME	"indigo_mount_asi"
 
 #include <stdlib.h>
@@ -555,7 +555,9 @@ static bool asi_home(indigo_device *device) {
 }
 
 static bool asi_park(indigo_device *device) {
-	return asi_command(device, ":hP#", NULL, 0, 0);
+	// park drives the mount in bad state and the only way to recover is via asi app.
+	// return asi_command(device, ":hP#", NULL, 0, 0);
+	return true;
 }
 
 static bool asi_stop(indigo_device *device) {
@@ -788,7 +790,8 @@ static void asi_init_mount(indigo_device *device) {
 			ZWO_MERIDIAN_TRACK_PASSED_ITEM->sw.value = track;
 			ZWO_MERIDIAN_LIMIT_ITEM->number.value = ZWO_MERIDIAN_LIMIT_ITEM->number.target = limit;
 		}
-		MOUNT_PARK_PROPERTY->hidden = false;
+		// PARK is dangerous with asi mounts as it drives the mount in a bad state and the only way to recover is via asi app.
+		MOUNT_PARK_PROPERTY->hidden = true;
 		indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
 		MOUNT_ALIGNMENT_RESET_PROPERTY->hidden = false;
 	} else {
