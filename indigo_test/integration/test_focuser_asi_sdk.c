@@ -17,7 +17,8 @@ static atomic_int visible_count = 1, attached_mask, attach_attempts, fail_attach
 static atomic_int move_calls, poll_calls, close_calls, lock_count, position = 100, maximum = 10000, backlash;
 static atomic_bool motor, hand_control, fail_poll, fail_position, fail_move, fail_stop, fail_max, fail_backlash, fail_temperature;
 static atomic_int temperature = 10, abort_state;
-static atomic_bool abort_switch;
+static atomic_bool abort_switch, reverse_enabled, beep_enabled;
+static atomic_int open_calls, requested_position, reset_calls;
 static const simulator_driver_case eaf = { "ZWO ASI Focuser", "indigo_focuser_asi", "EAF SDK test 0", indigo_focuser_asi, false, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
 
 static indigo_result eaf_client_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
@@ -122,6 +123,7 @@ EAF_ERROR_CODE EAFGetID(int index, int *id) {
 }
 
 EAF_ERROR_CODE EAFOpen(int id) {
+	atomic_fetch_add(&open_calls, 1);
 	return EAF_SUCCESS;
 }
 
@@ -161,11 +163,13 @@ EAF_ERROR_CODE EAFGetPosition(int id, int *value) {
 }
 
 EAF_ERROR_CODE EAFMove(int id, int target) {
-	atomic_fetch_add(&move_calls, 1);
+	atomic_store(&requested_position, target);
 	if (atomic_load(&fail_move)) {
+		atomic_fetch_add(&move_calls, 1);
 		return EAF_ERROR_GENERAL_ERROR;
 	}
 	atomic_store(&motor, true);
+	atomic_fetch_add(&move_calls, 1);
 	return EAF_SUCCESS;
 }
 
@@ -176,6 +180,7 @@ EAF_ERROR_CODE EAFStop(int id) {
 
 EAF_ERROR_CODE EAFResetPostion(int id, int target) {
 	atomic_store(&position, target);
+	atomic_fetch_add(&reset_calls, 1);
 	return EAF_SUCCESS;
 }
 
@@ -227,20 +232,22 @@ EAF_ERROR_CODE EAFGetBacklash(int id, int *value) {
 }
 
 EAF_ERROR_CODE EAFSetReverse(int id, bool value) {
+	atomic_store(&reverse_enabled, value);
 	return EAF_SUCCESS;
 }
 
 EAF_ERROR_CODE EAFGetReverse(int id, bool *value) {
-	*value = false;
+	*value = atomic_load(&reverse_enabled);
 	return EAF_SUCCESS;
 }
 
 EAF_ERROR_CODE EAFSetBeep(int id, bool value) {
+	atomic_store(&beep_enabled, value);
 	return EAF_SUCCESS;
 }
 
 EAF_ERROR_CODE EAFGetBeep(int id, bool *value) {
-	*value = false;
+	*value = atomic_load(&beep_enabled);
 	return EAF_SUCCESS;
 }
 
@@ -351,6 +358,112 @@ static void compensation_recovers_without_losing_baseline(void) {
 	ASSERT_TRUE(wait_for_property_state(FOCUSER_MODE_PROPERTY_NAME, INDIGO_OK_STATE));
 }
 
+static bool finish_motion_at(int target) {
+	atomic_store(&position, target);
+	atomic_store(&motor, false);
+	return wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE) && wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_OK_STATE) && wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, target, 0);
+}
+
+static void connect_move_disconnect(void) {
+	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME);
+	ASSERT_TRUE(wait_for_simulator_connection_state(false));
+	int opened = atomic_load(&open_calls), closed = atomic_load(&close_calls);
+	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME);
+	ASSERT_TRUE(wait_for_simulator_connection_state(true));
+	ASSERT_EQ_INT(opened + 1, atomic_load(&open_calls));
+	ASSERT_EQ_INT(1, atomic_load(&lock_count));
+	ASSERT_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, atomic_load(&position), 0));
+	int moves = atomic_load(&move_calls);
+	set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 1500);
+	ASSERT_TRUE(wait_atomic(&move_calls, moves + 1));
+	ASSERT_EQ_INT(1500, atomic_load(&requested_position));
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	ASSERT_TRUE(finish_motion_at(1500));
+	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME);
+	ASSERT_TRUE(wait_for_simulator_connection_state(false));
+	ASSERT_EQ_INT(closed + 1, atomic_load(&close_calls));
+	ASSERT_EQ_INT(0, atomic_load(&lock_count));
+}
+
+static void relative_motion_in_both_directions(void) {
+	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME);
+	ASSERT_TRUE(wait_for_simulator_connection_state(true));
+	int start = atomic_load(&position), moves = atomic_load(&move_calls);
+	set_switch(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME);
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_DIRECTION_PROPERTY_NAME, INDIGO_OK_STATE));
+	set_number(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 200);
+	ASSERT_TRUE(wait_atomic(&move_calls, moves + 1));
+	ASSERT_EQ_INT(start + 200, atomic_load(&requested_position));
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	ASSERT_TRUE(finish_motion_at(start + 200));
+	set_switch(FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME);
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_DIRECTION_PROPERTY_NAME, INDIGO_OK_STATE));
+	set_number(FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 75);
+	ASSERT_TRUE(wait_atomic(&move_calls, moves + 2));
+	ASSERT_EQ_INT(start + 125, atomic_load(&requested_position));
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_STEPS_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	ASSERT_TRUE(finish_motion_at(start + 125));
+	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME);
+	ASSERT_TRUE(wait_for_simulator_connection_state(false));
+	ASSERT_EQ_INT(0, atomic_load(&lock_count));
+}
+
+static void synchronize_position_without_motion(void) {
+	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME);
+	ASSERT_TRUE(wait_for_simulator_connection_state(true));
+	int moves = atomic_load(&move_calls), resets = atomic_load(&reset_calls);
+	set_switch(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_SYNC_ITEM_NAME);
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, INDIGO_OK_STATE));
+	set_number(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 800);
+	ASSERT_TRUE(wait_atomic(&reset_calls, resets + 1));
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_POSITION_PROPERTY_NAME, INDIGO_OK_STATE));
+	ASSERT_TRUE(wait_for_number_item_value(FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, 800, 0));
+	ASSERT_EQ_INT(800, atomic_load(&position));
+	ASSERT_EQ_INT(moves, atomic_load(&move_calls));
+	ASSERT_FALSE(atomic_load(&motor));
+	set_switch(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME);
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_ON_POSITION_SET_PROPERTY_NAME, INDIGO_OK_STATE));
+	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME);
+	ASSERT_TRUE(wait_for_simulator_connection_state(false));
+}
+
+static void settings_and_readback(void) {
+	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME);
+	ASSERT_TRUE(wait_for_simulator_connection_state(true));
+	set_number(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 5000);
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_LIMITS_PROPERTY_NAME, INDIGO_OK_STATE));
+	ASSERT_TRUE(wait_for_number_item_value(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 5000, 0));
+	ASSERT_EQ_INT(5000, atomic_load(&maximum));
+	set_number(FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, 125);
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_BACKLASH_PROPERTY_NAME, INDIGO_OK_STATE));
+	ASSERT_TRUE(wait_for_number_item_value(FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, 125, 0));
+	ASSERT_EQ_INT(125, atomic_load(&backlash));
+	set_switch(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME);
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
+	ASSERT_TRUE(atomic_load(&reverse_enabled));
+	set_switch("EAF_BEEP_ON_MOVE", "ON");
+	ASSERT_TRUE(wait_for_property_state("EAF_BEEP_ON_MOVE", INDIGO_OK_STATE));
+	ASSERT_TRUE(atomic_load(&beep_enabled));
+	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME);
+	ASSERT_TRUE(wait_for_simulator_connection_state(false));
+	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME);
+	ASSERT_TRUE(wait_for_simulator_connection_state(true));
+	ASSERT_TRUE(find_cached_item(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_ENABLED_ITEM_NAME)->sw.value);
+	ASSERT_TRUE(find_cached_item("EAF_BEEP_ON_MOVE", "ON")->sw.value);
+	ASSERT_TRUE(wait_for_number_item_value(FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, 125, 0));
+	ASSERT_TRUE(wait_for_number_item_value(FOCUSER_LIMITS_PROPERTY_NAME, FOCUSER_LIMITS_MAX_POSITION_ITEM_NAME, 5000, 0));
+	set_switch(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, FOCUSER_REVERSE_MOTION_DISABLED_ITEM_NAME);
+	ASSERT_TRUE(wait_for_property_state(FOCUSER_REVERSE_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
+	ASSERT_FALSE(atomic_load(&reverse_enabled));
+	set_switch("EAF_BEEP_ON_MOVE", "OFF");
+	ASSERT_TRUE(wait_for_property_state("EAF_BEEP_ON_MOVE", INDIGO_OK_STATE));
+	ASSERT_FALSE(atomic_load(&beep_enabled));
+	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME);
+	ASSERT_TRUE(wait_for_simulator_connection_state(false));
+	ASSERT_EQ_INT(0, atomic_load(&lock_count));
+}
+
 static void hotplug_capacity_and_failed_attach_retry(void) {
 	set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME);
 	ASSERT_TRUE(wait_for_simulator_connection_state(false));
@@ -394,6 +507,10 @@ int main(void) {
 		{ "polling termination and safe retry", polling_failure_and_safe_retry },
 		{ "abort confirmation and switch reset", abort_waits_for_stop_and_resets_switch },
 		{ "compensation and temperature recovery", compensation_recovers_without_losing_baseline },
+		{ "connect, move, disconnect", connect_move_disconnect },
+		{ "relative motion in both directions", relative_motion_in_both_directions },
+		{ "synchronize position without motion", synchronize_position_without_motion },
+		{ "settings and reconnect readback", settings_and_readback },
 		{ "five devices and attach retry", hotplug_capacity_and_failed_attach_retry }
 	};
 	int result = indigo_run_tests("ASI EAF SDK integration", tests, ARRAY_SIZE(tests));

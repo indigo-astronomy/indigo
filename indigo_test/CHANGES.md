@@ -207,3 +207,9 @@ Added `integration/test_wheel_asi_sdk.c` for DRV-051. It compiles the production
 Run `make -C indigo_test build/integration/test_wheel_asi_sdk` then `indigo_test/build/integration/test_wheel_asi_sdk`. Real USB enumeration and vendor SDK behavior still require hardware validation.
 
 The ASI EFW SDK suite also covers connection, changing slot 1 to slot 3, and disconnection through the public property API. It checks SDK open/close calls, lock acquisition/release, conversion from INDIGO slot 3 to SDK index 2, and the slot property's BUSY-to-OK transition with the confirmed final value. Both integration cases passed with the SDK stubs.
+
+## 2026-09-07 — ASI EAF functional scenarios
+
+Extended `integration/test_focuser_asi_sdk.c` with four public-bus functional cases: connect/absolute move/disconnect, relative moves in both directions, position synchronization without an SDK move, and limits/backlash/reverse/beep settings with readback after reconnect. Stateful SDK stubs record requested positions and settings. The tests verify SDK open/close and lock release, motion BUSY-to-OK completion, and confirmed positions. Existing abort and compensation regressions remain in the same suite (ten cases total).
+
+Run `make -C indigo_test build/integration/test_focuser_asi_sdk` followed by `indigo_test/build/integration/test_focuser_asi_sdk`. These tests require no hardware; physical motion and vendor SDK behavior are not covered.
