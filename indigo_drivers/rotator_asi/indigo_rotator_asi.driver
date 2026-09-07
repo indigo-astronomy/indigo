@@ -1,0 +1,526 @@
+// Copyright (C) 2024-2026 Rumen G. Bogdanovski
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+// GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+// Driver structure refactored by OpenAI Codex (2026).
+
+// ZWO CAA Rotator driver definition
+
+driver asi {
+	label = "ZWO CAA Rotator";
+	author = "Rumen G. Bogdanovski <rumenastro@gmail.com>";
+	copyright = "Copyright (C) 2024-2026 Rumen G. Bogdanovski";
+	version = 4;
+	include {
+		#include <stdbool.h>
+		#include <CAA_API.h>
+	}
+	define {
+		#define ASI_VENDOR_ID 0x03c3
+		#define NO_DEVICE (-1000)
+	}
+	data {
+		int dev_id;
+		bool sdk_open;
+		bool moving;
+		bool abort_pending;
+		CAA_INFO info;
+		char model[64];
+		char custom_suffix[9];
+		float current_position, target_position, min_position, max_position;
+	}
+	sdk {
+		hotplug = true;
+		vid = ASI_VENDOR_ID;
+		plug {
+			plug_result = false;
+			for (int i = 0; i < caa_id_count; i++) {
+				if (caa_products[i] == descriptor.idProduct) {
+					plug_result = true;
+					break;
+				}
+			}
+			if (plug_result) {
+				plug_result = false;
+				int count = CAAGetNum();
+				for (int index = 0; index < count; index++) {
+					int id = -1;
+					int res = CAAGetID(index, &id);
+					if (res != CAA_SUCCESS || id < 0 || id >= CAA_ID_MAX) {
+						continue;
+					}
+					bool attached = false;
+					for (int slot = 0; slot < MAX_DEVICES; slot++) {
+						if (devices[slot] != NULL && ((asi_private_data *)devices[slot]->private_data)->dev_id == id) {
+							attached = true;
+							break;
+						}
+					}
+					if (attached) {
+						continue;
+					}
+					res = CAAOpen(id);
+					if (res != CAA_SUCCESS) {
+						continue;
+					}
+					CAA_INFO info = { 0 };
+					res = CAAGetProperty(id, &info);
+					CAAClose(id);
+					if (res != CAA_SUCCESS) {
+						continue;
+					}
+					private_data->dev_id = id;
+					private_data->info = info;
+					split_device_name(info.Name, private_data->model, private_data->custom_suffix);
+					if (private_data->custom_suffix[0]) {
+						snprintf(name, INDIGO_NAME_SIZE, "%s #%s", private_data->model, private_data->custom_suffix);
+					} else {
+						snprintf(name, INDIGO_NAME_SIZE, "%s", private_data->model);
+					}
+					indigo_make_name_unique(name, "%d", id);
+					plug_result = true;
+					break;
+				}
+			}
+		}
+	}
+	code {
+		static int caa_products[100];
+		static int caa_id_count = 0;
+
+		static int find_index_by_device_id(int id) {
+			int count = CAAGetNum();
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CAAGetNum() = %d", count);
+			int cur_id = NO_DEVICE;
+			for (int index = 0; index < count; index++) {
+				int res = CAAGetID(index, &cur_id);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CAAGetID(%d, -> %d) = %d", index, cur_id, res);
+				if (res == CAA_SUCCESS && cur_id == id) {
+					return index;
+				}
+			}
+			return -1;
+		}
+
+		static void split_device_name(const char *fill_device_name, char *device_name, char *suffix) {
+			if (fill_device_name == NULL || device_name == NULL || suffix == NULL) {
+				return;
+			}
+			snprintf(device_name, 64, "%.*s", 63, fill_device_name);
+			suffix[0] = 0;
+			char *suffix_start = strchr(device_name, '(');
+			char *suffix_end = strrchr(device_name, ')');
+			if (suffix_start == NULL || suffix_end == NULL || suffix_end <= suffix_start) {
+				return;
+			}
+			*suffix_start++ = 0;
+			*suffix_end = 0;
+			while (*suffix_start == ' ') {
+				suffix_start++;
+			}
+			snprintf(suffix, 9, "%.8s", suffix_start);
+			size_t length = strlen(device_name);
+			while (length > 0 && device_name[length - 1] == ' ') {
+				device_name[--length] = 0;
+			}
+		}
+
+		static bool asi_open(indigo_device *device) {
+			if (PRIVATE_DATA->sdk_open) {
+				return true;
+			}
+			if (PRIVATE_DATA->dev_id < 0 || PRIVATE_DATA->dev_id >= CAA_ID_MAX || find_index_by_device_id(PRIVATE_DATA->dev_id) < 0) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CAA device %d is no longer available", PRIVATE_DATA->dev_id);
+				return false;
+			}
+			if (indigo_try_global_lock(device) != INDIGO_OK) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
+				return false;
+			}
+			int res = CAAOpen(PRIVATE_DATA->dev_id);
+			if (res != CAA_SUCCESS) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CAAOpen(%d) = %d", PRIVATE_DATA->dev_id, res);
+				indigo_global_unlock(device);
+			} else {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CAAOpen(%d) = %d", PRIVATE_DATA->dev_id, res);
+				PRIVATE_DATA->sdk_open = true;
+			}
+			return res == CAA_SUCCESS;
+		}
+
+		static void asi_close(indigo_device *device) {
+			if (!PRIVATE_DATA->sdk_open) {
+				return;
+			}
+			int res = CAAStop(PRIVATE_DATA->dev_id);
+			if (res != CAA_SUCCESS) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CAAStop(%d) = %d", PRIVATE_DATA->dev_id, res);
+			}
+			res = CAAClose(PRIVATE_DATA->dev_id);
+			if (res != CAA_SUCCESS) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CAAClose(%d) = %d", PRIVATE_DATA->dev_id, res);
+			} else {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CAAClose(%d) = %d", PRIVATE_DATA->dev_id, res);
+			}
+			indigo_global_unlock(device);
+			PRIVATE_DATA->sdk_open = false;
+			PRIVATE_DATA->moving = false;
+			PRIVATE_DATA->abort_pending = false;
+		}
+	}
+	on_init {
+		const char *sdk_version = CAAGetSDKVersion();
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "CAA SDK v. %s ", sdk_version);
+		caa_id_count = CAAGetProductIDs(NULL);
+		if (caa_id_count <= 0 || caa_id_count > (int)(sizeof(caa_products) / sizeof(caa_products[0]))) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Invalid CAA product count: %d", caa_id_count);
+			return INDIGO_FAILED;
+		}
+		caa_id_count = CAAGetProductIDs(caa_products);
+		if (caa_id_count <= 0 || caa_id_count > (int)(sizeof(caa_products) / sizeof(caa_products[0]))) {
+			return INDIGO_FAILED;
+		}
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CAAGetProductIDs(-> [ %d, %d, ... ]) = %d", caa_products[0], caa_products[1], caa_id_count);
+	}
+	rotator {
+		name = "%s";
+		code {
+			static void rotator_update_motion(indigo_device *device, indigo_property_state state, const char *message) {
+				ROTATOR_POSITION_PROPERTY->state = ROTATOR_RELATIVE_MOVE_PROPERTY->state = state;
+				ROTATOR_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
+				indigo_update_property(device, ROTATOR_POSITION_PROPERTY, message);
+				indigo_update_property(device, ROTATOR_RELATIVE_MOVE_PROPERTY, NULL);
+			}
+
+			static bool rotator_read_position(indigo_device *device) {
+				float position = 0;
+				int res = CAAGetDegree(PRIVATE_DATA->dev_id, &position);
+				if (res != CAA_SUCCESS || !isfinite(position)) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "CAAGetDegree(%d) = %d, position = %f", PRIVATE_DATA->dev_id, res, position);
+					return false;
+				}
+				PRIVATE_DATA->current_position = position;
+				ROTATOR_POSITION_ITEM->number.value = position;
+				return true;
+			}
+
+			static void rotator_move_finalizer(indigo_device *device);
+
+			static bool rotator_motion_ready(indigo_device *device) {
+				bool moving = false, hand_control = false;
+				int res = CAAIsMoving(PRIVATE_DATA->dev_id, &moving, &hand_control);
+				if (res != CAA_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "CAAIsMoving(%d) = %d", PRIVATE_DATA->dev_id, res);
+					rotator_update_motion(device, INDIGO_ALERT_STATE, "Failed to read motion status");
+					return false;
+				}
+				PRIVATE_DATA->moving = moving || hand_control;
+				if (PRIVATE_DATA->moving || PRIVATE_DATA->abort_pending) {
+					ROTATOR_POSITION_ITEM->number.target = PRIVATE_DATA->target_position;
+					rotator_update_motion(device, INDIGO_BUSY_STATE, "Rotator is moving");
+					indigo_cancel_pending_handler(device, rotator_move_finalizer);
+					indigo_execute_handler_in(device, 0.5, rotator_move_finalizer);
+					return false;
+				}
+				return true;
+			}
+
+			static void rotator_move_finalizer(indigo_device *device) {
+				if (!IS_CONNECTED) {
+					return;
+				}
+				bool moving = false, hand_control = false;
+				int res = CAAIsMoving(PRIVATE_DATA->dev_id, &moving, &hand_control);
+				bool position_ok = rotator_read_position(device);
+				if (res != CAA_SUCCESS || !position_ok) {
+					PRIVATE_DATA->moving = res != CAA_SUCCESS || moving || hand_control;
+					rotator_update_motion(device, INDIGO_ALERT_STATE, "Failed to read motion status or position");
+					if (PRIVATE_DATA->abort_pending) {
+						PRIVATE_DATA->abort_pending = false;
+						ROTATOR_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+						indigo_update_property(device, ROTATOR_ABORT_MOTION_PROPERTY, NULL);
+					}
+					return;
+				}
+				PRIVATE_DATA->moving = moving || hand_control;
+				rotator_update_motion(device, PRIVATE_DATA->moving ? INDIGO_BUSY_STATE : INDIGO_OK_STATE, NULL);
+				if (PRIVATE_DATA->abort_pending) {
+					if (hand_control) {
+						PRIVATE_DATA->abort_pending = false;
+						ROTATOR_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+					} else if (!moving) {
+						PRIVATE_DATA->abort_pending = false;
+						PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
+						ROTATOR_POSITION_ITEM->number.target = PRIVATE_DATA->current_position;
+						ROTATOR_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+						indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+					}
+					indigo_update_property(device, ROTATOR_ABORT_MOTION_PROPERTY, hand_control ? "Release the hand controller to stop motion" : NULL);
+				}
+				if (PRIVATE_DATA->moving) {
+					indigo_execute_handler_in(device, 0.5, rotator_move_finalizer);
+				}
+			}
+
+			static bool rotator_valid_target(indigo_device *device, double target) {
+				return target >= PRIVATE_DATA->min_position && target <= PRIVATE_DATA->max_position;
+			}
+
+			static void rotator_start_move(indigo_device *device, double target) {
+				if (!rotator_valid_target(device, target)) {
+					rotator_update_motion(device, INDIGO_ALERT_STATE, "Target is outside rotator limits");
+					return;
+				}
+				indigo_cancel_pending_handler(device, rotator_move_finalizer);
+				int res = CAAMoveTo(PRIVATE_DATA->dev_id, (float)target);
+				if (res != CAA_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "CAAMoveTo(%d, %f) = %d", PRIVATE_DATA->dev_id, target, res);
+					rotator_update_motion(device, INDIGO_ALERT_STATE, "Failed to start motion");
+					return;
+				}
+				PRIVATE_DATA->target_position = (float)target;
+				ROTATOR_POSITION_ITEM->number.target = target;
+				PRIVATE_DATA->moving = true;
+				rotator_update_motion(device, INDIGO_BUSY_STATE, NULL);
+				indigo_execute_handler_in(device, 0.5, rotator_move_finalizer);
+			}
+		}
+		on_attach {
+			INFO_PROPERTY->count = 6;
+			INDIGO_COPY_VALUE(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->model);
+			const char *sdk_version = CAAGetSDKVersion();
+			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->text.value, sdk_version);
+			INDIGO_COPY_VALUE(INFO_DEVICE_FW_REVISION_ITEM->label, "SDK version");
+			ROTATOR_LIMITS_MAX_POSITION_ITEM->number.min = 0;
+			ROTATOR_LIMITS_MAX_POSITION_ITEM->number.value =
+			ROTATOR_LIMITS_MAX_POSITION_ITEM->number.target = 360;
+			ROTATOR_LIMITS_MAX_POSITION_ITEM->number.max = 480;
+			ROTATOR_LIMITS_MIN_POSITION_ITEM->number.min = 0;
+			ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value =
+			ROTATOR_LIMITS_MIN_POSITION_ITEM->number.target = 0;
+			ROTATOR_LIMITS_MIN_POSITION_ITEM->number.max = 480;
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "\'%s\' MaxStep = %d", device->name, PRIVATE_DATA->info.MaxStep);
+			ROTATOR_POSITION_ITEM->number.min = 0;
+			ROTATOR_POSITION_ITEM->number.step = 1;
+			ROTATOR_POSITION_ITEM->number.max = 480;
+			ROTATOR_RELATIVE_MOVE_ITEM->number.min = -120;
+			ROTATOR_RELATIVE_MOVE_ITEM->number.step = 1;
+			ROTATOR_RELATIVE_MOVE_ITEM->number.max = 120;
+		}
+		on_connect {
+			float maximum = 0, position = 0;
+			bool reversed = false, beep = false;
+			int res = CAAGetMaxDegree(PRIVATE_DATA->dev_id, &maximum);
+			if (res != CAA_SUCCESS || !isfinite(maximum) || maximum < 0 || maximum > 480) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CAAGetMaxDegree(%d) = %d", PRIVATE_DATA->dev_id, res);
+				connection_result = false;
+			}
+			res = CAAGetDegree(PRIVATE_DATA->dev_id, &position);
+			if (res != CAA_SUCCESS || !isfinite(position)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CAAGetDegree(%d) = %d", PRIVATE_DATA->dev_id, res);
+				connection_result = false;
+			}
+			res = CAAGetReverse(PRIVATE_DATA->dev_id, &reversed);
+			if (res != CAA_SUCCESS) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CAAGetReverse(%d) = %d", PRIVATE_DATA->dev_id, res);
+				connection_result = false;
+			}
+			res = CAAGetBeep(PRIVATE_DATA->dev_id, &beep);
+			if (res != CAA_SUCCESS) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CAAGetBeep(%d) = %d", PRIVATE_DATA->dev_id, res);
+				connection_result = false;
+			}
+			if (connection_result) {
+				PRIVATE_DATA->moving = false;
+				PRIVATE_DATA->abort_pending = false;
+				ROTATOR_ABORT_MOTION_ITEM->sw.value = false;
+				ROTATOR_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+				PRIVATE_DATA->min_position = 0;
+				PRIVATE_DATA->max_position = maximum;
+				PRIVATE_DATA->current_position = PRIVATE_DATA->target_position = position;
+				ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value = ROTATOR_LIMITS_MIN_POSITION_ITEM->number.target = ROTATOR_LIMITS_MIN_POSITION_ITEM->number.min = ROTATOR_LIMITS_MIN_POSITION_ITEM->number.max = 0;
+				ROTATOR_LIMITS_MAX_POSITION_ITEM->number.value = ROTATOR_LIMITS_MAX_POSITION_ITEM->number.target = maximum;
+				ROTATOR_POSITION_ITEM->number.value = ROTATOR_POSITION_ITEM->number.target = position;
+				ROTATOR_DIRECTION_REVERSED_ITEM->sw.value = reversed;
+				ROTATOR_DIRECTION_NORMAL_ITEM->sw.value = !reversed;
+				CAA_BEEP_ON_ITEM->sw.value = beep;
+				CAA_BEEP_OFF_ITEM->sw.value = !beep;
+				ROTATOR_POSITION_PROPERTY->state = ROTATOR_RELATIVE_MOVE_PROPERTY->state = INDIGO_OK_STATE;
+				ROTATOR_DIRECTION_PROPERTY->state = CAA_BEEP_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_execute_handler_in(device, 0.5, rotator_move_finalizer);
+			} else {
+				asi_close(device);
+			}
+		}
+		inherited ROTATOR_DIRECTION {
+			hidden = false;
+			on_change {
+				int res = CAASetReverse(PRIVATE_DATA->dev_id, ROTATOR_DIRECTION_REVERSED_ITEM->sw.value);
+				if (res != CAA_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "CAASetReverse(%d, %d) = %d", PRIVATE_DATA->dev_id, ROTATOR_DIRECTION_REVERSED_ITEM->sw.value, res);
+					ROTATOR_DIRECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+		}
+		inherited ROTATOR_POSITION {
+			preserve_values = true;
+			on_change {
+				double target = ROTATOR_POSITION_ITEM->number.target;
+				if (!rotator_motion_ready(device)) {
+					return;
+				}
+				if (!rotator_valid_target(device, target)) {
+					rotator_update_motion(device, INDIGO_ALERT_STATE, "Target is outside rotator limits");
+					return;
+				}
+				if (!rotator_read_position(device)) {
+					rotator_update_motion(device, INDIGO_ALERT_STATE, "Failed to read position");
+					return;
+				}
+				if (ROTATOR_ON_POSITION_SET_GOTO_ITEM->sw.value) {
+					rotator_start_move(device, target);
+				} else {
+					indigo_cancel_pending_handler(device, rotator_move_finalizer);
+					int res = CAACurDegree(PRIVATE_DATA->dev_id, (float)target);
+					bool position_ok = rotator_read_position(device);
+					if (res != CAA_SUCCESS || !position_ok) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "CAACurDegree(%d, %f) = %d", PRIVATE_DATA->dev_id, target, res);
+						rotator_update_motion(device, INDIGO_ALERT_STATE, "Failed to sync position");
+					} else {
+						PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
+						ROTATOR_POSITION_ITEM->number.target = PRIVATE_DATA->current_position;
+						rotator_update_motion(device, INDIGO_OK_STATE, NULL);
+					}
+				}
+			}
+		}
+		inherited ROTATOR_LIMITS {
+			hidden = false;
+			preserve_values = true;
+			on_change {
+				double requested = ROTATOR_LIMITS_MAX_POSITION_ITEM->number.target;
+				int res = CAASetMaxDegree(PRIVATE_DATA->dev_id, (float)requested);
+				if (res != CAA_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "CAASetMaxDegree(%d, %f) = %d", PRIVATE_DATA->dev_id, requested, res);
+					ROTATOR_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				float confirmed = 0;
+				res = CAAGetMaxDegree(PRIVATE_DATA->dev_id, &confirmed);
+				if (res != CAA_SUCCESS || !isfinite(confirmed) || confirmed < 0 || confirmed > ROTATOR_LIMITS_MAX_POSITION_ITEM->number.max) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "CAAGetMaxDegree(%d) = %d", PRIVATE_DATA->dev_id, res);
+					ROTATOR_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
+				} else {
+					PRIVATE_DATA->max_position = confirmed;
+				}
+				ROTATOR_LIMITS_MIN_POSITION_ITEM->number.value = ROTATOR_LIMITS_MIN_POSITION_ITEM->number.target = 0;
+				ROTATOR_LIMITS_MAX_POSITION_ITEM->number.value = ROTATOR_LIMITS_MAX_POSITION_ITEM->number.target = PRIVATE_DATA->max_position;
+			}
+		}
+		inherited ROTATOR_RELATIVE_MOVE {
+			hidden = false;
+			preserve_values = true;
+			on_change {
+				double delta = ROTATOR_RELATIVE_MOVE_ITEM->number.target;
+				if (!rotator_motion_ready(device)) {
+					return;
+				}
+				if (!rotator_read_position(device)) {
+					rotator_update_motion(device, INDIGO_ALERT_STATE, "Failed to read position");
+					return;
+				}
+				indigo_cancel_pending_handler(device, rotator_move_finalizer);
+				rotator_start_move(device, (double)PRIVATE_DATA->current_position + delta);
+			}
+		}
+		inherited ROTATOR_ABORT_MOTION {
+			on_change {
+				ROTATOR_ABORT_MOTION_ITEM->sw.value = false;
+				int res = CAAStop(PRIVATE_DATA->dev_id);
+				indigo_cancel_pending_handler(device, rotator_move_finalizer);
+				PRIVATE_DATA->abort_pending = res == CAA_SUCCESS;
+				ROTATOR_ABORT_MOTION_PROPERTY->state = res == CAA_SUCCESS ? INDIGO_BUSY_STATE : INDIGO_ALERT_STATE;
+				rotator_move_finalizer(device);
+				if (res != CAA_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "CAAStop(%d) = %d", PRIVATE_DATA->dev_id, res);
+					ROTATOR_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				indigo_update_property(device, ROTATOR_ABORT_MOTION_PROPERTY, res == CAA_SUCCESS ? NULL : "Failed to stop rotator");
+			}
+		}
+		inherited ROTATOR_ON_POSITION_SET {
+			hidden = false;
+		}
+		inherited ROTATOR_BACKLASH {
+			hidden = true;
+		}
+		switch CAA_BEEP {
+			name = "CAA_BEEP_ON_MOVE";
+			group = ROTATOR_ADVANCED_GROUP;
+			label = "Beep on move";
+			rule = INDIGO_ONE_OF_MANY_RULE;
+			persistent = true;
+			on_change {
+				int res = CAASetBeep(PRIVATE_DATA->dev_id, CAA_BEEP_ON_ITEM->sw.value);
+				if (res != CAA_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "CAASetBeep(%d, %d) = %d", PRIVATE_DATA->dev_id, CAA_BEEP_ON_ITEM->sw.value, res);
+					CAA_BEEP_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			}
+			item CAA_BEEP_ON {
+				name = "ON";
+				label = "On";
+				value = false;
+			}
+			item CAA_BEEP_OFF {
+				name = "OFF";
+				label = "Off";
+				value = true;
+			}
+		}
+		text CAA_CUSTOM_SUFFIX {
+			name = "CAA_CUSTOM_SUFFIX";
+			group = ROTATOR_ADVANCED_GROUP;
+			label = "Device name custom suffix";
+			on_change {
+				if (strlen(CAA_CUSTOM_SUFFIX_ITEM->text.value) > 8) {
+					CAA_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_ALERT_STATE;
+					INDIGO_COPY_VALUE(CAA_CUSTOM_SUFFIX_ITEM->text.value, PRIVATE_DATA->custom_suffix);
+					indigo_update_property(device, CAA_CUSTOM_SUFFIX_PROPERTY, "Custom suffix too long");
+					return;
+				}
+				CAA_ID caa_id = { 0 };
+				memcpy(caa_id.id, CAA_CUSTOM_SUFFIX_ITEM->text.value, strlen(CAA_CUSTOM_SUFFIX_ITEM->text.value));
+				int res = CAASetID(PRIVATE_DATA->dev_id, caa_id);
+				if (res != CAA_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "CAASetID(%d) = %d", PRIVATE_DATA->dev_id, res);
+					CAA_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_ALERT_STATE;
+					INDIGO_COPY_VALUE(CAA_CUSTOM_SUFFIX_ITEM->text.value, PRIVATE_DATA->custom_suffix);
+					indigo_update_property(device, CAA_CUSTOM_SUFFIX_PROPERTY, "Failed to set custom suffix");
+					return;
+				}
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CAASetID(%d, \"%s\") = %d", PRIVATE_DATA->dev_id, CAA_CUSTOM_SUFFIX_ITEM->text.value, res);
+				snprintf(PRIVATE_DATA->custom_suffix, sizeof(PRIVATE_DATA->custom_suffix), "%.8s", CAA_CUSTOM_SUFFIX_ITEM->text.value);
+				indigo_send_message(device, CAA_CUSTOM_SUFFIX_PROPERTY, PRIVATE_DATA->custom_suffix[0] ? "Rotator name suffix will be used on replug" : "Rotator name suffix cleared, will be used on replug");
+			}
+			item CAA_CUSTOM_SUFFIX {
+				name = "SUFFIX";
+				label = "Suffix";
+				value = PRIVATE_DATA->custom_suffix;
+			}
+		}
+	}
+}

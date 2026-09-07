@@ -1364,7 +1364,9 @@ Custom properties: `CAA_BEEP_ON_MOVE`, `CAA_CUSTOM_SUFFIX`.
 
 Driver-specific use of existing properties: `ROTATOR_BACKLASH`, `ROTATOR_DIRECTION`, `ROTATOR_LIMITS`, `ROTATOR_ON_POSITION_SET`, `ROTATOR_RELATIVE_MOVE`.
 
-Source: `indigo_drivers/rotator_asi/indigo_rotator_asi.c`.
+Incoming property values use framework validation. Absolute and computed relative targets must fit the configured device limits, without wrapping or clamping. Position and relative-move states report SDK failures together and stay busy while motor or hand-controller motion is reported. Abort cannot stop hand-controller motion and reports alert until the user releases the controller and retries. Maximum-limit writes use SDK readback; the minimum remains fixed at zero. Failed custom-suffix writes restore the last confirmed suffix.
+
+Sources: `indigo_drivers/rotator_asi/indigo_rotator_asi.driver`, generated `indigo_drivers/rotator_asi/indigo_rotator_asi.c`.
 
 ### rotator_falcon
 

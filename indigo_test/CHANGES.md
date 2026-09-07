@@ -217,3 +217,27 @@ Run `make -C indigo_test build/integration/test_focuser_asi_sdk` followed by `in
 ## 2026-09-07 — ASI EFW SDK error regressions
 
 The wheel SDK suite now has five cases. Added required initialization read failures and oversized SDK slot counts with close/lock-release checks; motion polling failure preserving the confirmed slot and stopping retries; calibration read failure/reset/retry; START=false completion; and interrupted calibration followed by reconnect while the wheel is still moving. Existing normal motion and attach/capacity retry cases remain. All five cases passed, and production universal compilation/linking passed separately.
+
+## 2026-09-07 — ASI CAA hardware-free regression (rotator refactoring Step 8)
+
+Added `integration/test_rotator_asi_sdk.c` and registered `test_rotator_asi_sdk` in `INTEGRATION_TESTS`, including the standard `test-integration` and `test` targets. As with EAF/EFW, the generated production C is compiled into a separate test object with local preprocessor replacements for USB discovery, attach/detach and global locks. Stateful CAA functions are supplied by the test executable, which links the real INDIGO library without the vendor CAA binary. No production source or generator changes are needed.
+
+Each of the 11 named scenarios starts a fresh driver lifecycle and uses public driver/bus APIs, `test_runner.h` and `simulator_test_common.h`. Cleanup runs even after a failed assertion. Per-device counters detect SDK calls on closed handles, duplicate opens, unbalanced global locks and leaked USB references; successful SDK opens and closes must balance after every scenario.
+
+Implemented coverage:
+
+- Metadata/version, interface, custom schemas and connected-only visibility, hidden backlash, SDK version and repeated connect/disconnect.
+- Failed SDK open and all four required connection reads (maximum, position, reverse, beep), followed by a successful retry; failed initialization must leave CONNECTION alert/disconnected and release handles/locks.
+- Fractional absolute and signed relative motion, separate current value/target, overlapping requests, computed relative targets outside effective limits, and continued BUSY while the SDK motor flag remains active even at the target angle.
+- Failed move start, status/position polling failures, preservation of confirmed position, termination of failed polling and safe retry while the motor remains active.
+- Sync command failure, failure of readback after successful sync, and successful sync without a move command.
+- Failed stop, delayed motor-stop confirmation, abort switch reset and hand-controller movement that cannot be stopped through the SDK.
+- Maximum writes and failed write/readback consistency, effective motion-limit rejection, reverse/beep writes and failures, and settings readback on reconnect.
+- Beep persistence selection through CONFIG_SAVE. Test-local save/base-dispatch hooks observe the driver's save request and bypass base CONFIG handling to avoid writing user configuration; all other base property handling delegates to the real rotator base driver. This checks selection for persistence, not disk serialization.
+- Empty/eight-byte suffixes, overlength rejection without an SDK write, failed-write rollback, and the resulting device name after replug.
+- Disconnect/reconnect and connected unplug with pending movement polling; no further SDK polling after close. Wrong USB vendor/product, failed/invalid SDK IDs, failed open/property probes, failed attach/retry, duplicate arrival, default five-device capacity, slot reuse, and removal of one connected device while another stays open.
+- Unplug queued behind a deliberately held SDK probe, using a bounded gate; normal driver shutdown and resource balance after every scenario.
+
+Validation: `make -C indigo_test build/integration/test_rotator_asi_sdk` compiled the test and separate production object for x86_64/arm64. `indigo_test/build/integration/test_rotator_asi_sdk` passed all 11 scenarios on native macOS arm64. Expected SDK error logs are from injected failures. The final run includes suffix replug and motor-active-at-target checks. Dynamic dependencies contain INDIGO/libusb and system libraries, with no CAA vendor binary. `git diff --check` passed; `make -C indigo_test test-clean` removes the generated test artifacts.
+
+Remaining coverage: forced overlap of an already executing device handler with disconnect, shutdown with queued/in-flight hot-plug work, USB callback registration/queue allocation failures, invalid startup product-count responses, and vendor timing/physical USB-to-SDK identity. The connection helper waits for the initial delayed SDK read before issuing ordinary command assertions; commands racing that initial read are not covered. No physical CAA, Linux execution, x86_64 execution or full-suite run was performed in this step. Hardware validation remains refactoring Step 9.

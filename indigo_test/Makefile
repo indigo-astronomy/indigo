@@ -34,6 +34,7 @@ UNIT_TESTS = \
 INTEGRATION_TESTS = \
 	$(INTEGRATION_BUILD)/test_wheel_asi_sdk \
 	$(INTEGRATION_BUILD)/test_focuser_asi_sdk \
+	$(INTEGRATION_BUILD)/test_rotator_asi_sdk \
 	$(INTEGRATION_BUILD)/test_bus_lifecycle \
 	$(INTEGRATION_BUILD)/test_ccd_simulator \
 	$(INTEGRATION_BUILD)/test_dome_simulator \
@@ -695,3 +696,12 @@ $(INTEGRATION_BUILD)/wheel_asi_sdk_driver.o: ../indigo_drivers/wheel_asi/indigo_
 
 $(INTEGRATION_BUILD)/test_wheel_asi_sdk: integration/test_wheel_asi_sdk.c integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/wheel_asi_sdk_driver.o | $(INTEGRATION_BUILD)
 	$(CC) $(TEST_CFLAGS) $(EFW_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/wheel_asi_sdk_driver.o -o $@ $(TEST_LDFLAGS) -lusb-1.0
+
+CAA_SDK_TEST_INCLUDE = -I../indigo_drivers/rotator_asi/bin_externals/libCAA/include
+CAA_SDK_TEST_REPLACEMENTS = -Dindigo_rotator_change_property=caa_test_base_change -Dlibusb_hotplug_register_callback_sim=caa_test_usb_register_sim -Dlibusb_hotplug_deregister_callback_poll=caa_test_usb_deregister_poll -Dindigo_save_property=caa_test_save -Dindigo_start_usb_event_handler=caa_test_usb_start -Dindigo_try_global_lock=caa_test_lock -Dindigo_global_unlock=caa_test_unlock -Dindigo_attach_device=caa_test_attach -Dindigo_detach_device=caa_test_detach -Dlibusb_hotplug_register_callback=caa_test_usb_register -Dlibusb_hotplug_deregister_callback=caa_test_usb_deregister -Dlibusb_ref_device=caa_test_usb_ref -Dlibusb_unref_device=caa_test_usb_unref -Dlibusb_get_device_descriptor=caa_test_usb_descriptor
+
+$(INTEGRATION_BUILD)/rotator_asi_sdk_driver.o: ../indigo_drivers/rotator_asi/indigo_rotator_asi.c ../indigo_drivers/rotator_asi/indigo_rotator_asi.h Makefile | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(CAA_SDK_TEST_INCLUDE) $(CAA_SDK_TEST_REPLACEMENTS) -c $< -o $@
+
+$(INTEGRATION_BUILD)/test_rotator_asi_sdk: integration/test_rotator_asi_sdk.c integration/simulator_test_common.h test_runner.h $(INTEGRATION_BUILD)/rotator_asi_sdk_driver.o | $(INTEGRATION_BUILD)
+	$(CC) $(TEST_CFLAGS) $(CAA_SDK_TEST_INCLUDE) $< $(INTEGRATION_BUILD)/rotator_asi_sdk_driver.o -o $@ $(TEST_LDFLAGS) -lusb-1.0

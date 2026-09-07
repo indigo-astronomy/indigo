@@ -1,0 +1,754 @@
+// Copyright (c) 2026 CloudMakers, s. r. o.
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
+
+#include <stdbool.h>
+#include <stdatomic.h>
+#include <CAA_API.h>
+#include <indigo/indigo_usb_utils.h>
+#include <indigo/indigo_rotator_driver.h>
+#include <indigo_drivers/rotator_asi/indigo_rotator_asi.h>
+#include "simulator_test_common.h"
+
+// Production C is compiled separately; these symbols replace only SDK/USB/lock hooks.
+#define DEVICE_COUNT 6
+static libusb_hotplug_callback_fn usb_callback;
+static int usb_devices[DEVICE_COUNT];
+static char device_names[DEVICE_COUNT][INDIGO_NAME_SIZE];
+static atomic_int visible_count, attached_mask, attach_attempts, fail_attach, refs[DEVICE_COUNT];
+static atomic_int sdk_handles[DEVICE_COUNT], connections[DEVICE_COUNT], locks[DEVICE_COUNT];
+static atomic_int open_calls, close_calls, violations, saved_beep;
+static atomic_int position[DEVICE_COUNT], maximum[DEVICE_COUNT], requested[DEVICE_COUNT];
+static atomic_bool motor[DEVICE_COUNT], hand_control[DEVICE_COUNT], reverse[DEVICE_COUNT], beep[DEVICE_COUNT];
+static atomic_int sdk_ids[DEVICE_COUNT], usb_product[DEVICE_COUNT], usb_vendor[DEVICE_COUNT];
+static char suffix[DEVICE_COUNT][9];
+static pthread_mutex_t suffix_mutex = PTHREAD_MUTEX_INITIALIZER;
+static atomic_bool hold_probe, probe_entered, sync_read_failure;
+enum operation { OP_OPEN, OP_INFO, OP_POSITION, OP_STATUS, OP_MOVE, OP_SYNC, OP_STOP, OP_MAX_READ, OP_MAX_WRITE, OP_REVERSE_READ, OP_REVERSE_WRITE, OP_BEEP_READ, OP_BEEP_WRITE, OP_SUFFIX, OP_COUNT };
+static atomic_bool fail[OP_COUNT];
+static atomic_int calls[OP_COUNT];
+static const simulator_driver_case caa = { "ZWO CAA Rotator", "indigo_rotator_asi", "CAA SDK test 0", indigo_rotator_asi, false, NULL, 0, NULL, 0, NULL, 0, NULL, 0 };
+
+static int device_index(const char *name) {
+	int id = -1;
+	sscanf(name, "CAA SDK test %d", &id);
+	return id;
+}
+
+static bool wait_atomic(atomic_int *value, int expected) {
+	for (int i = 0; i < 300; i++) {
+		if (atomic_load(value) == expected) {
+			return true;
+		}
+		indigo_usleep(10000);
+	}
+	fprintf(stderr, "Timed out: expected %d, got %d\n", expected, atomic_load(value));
+	return false;
+}
+
+static bool wait_flag(atomic_bool *value) {
+	for (int i = 0; i < 300; i++) {
+		if (atomic_load(value)) {
+			return true;
+		}
+		indigo_usleep(10000);
+	}
+	return false;
+}
+
+static indigo_result caa_client_update(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	int id = device_index(property->device);
+	if (id >= 0 && id < DEVICE_COUNT && !strcmp(property->name, CONNECTION_PROPERTY_NAME) && property->state != INDIGO_BUSY_STATE) {
+		atomic_store(&connections[id], property->state == INDIGO_OK_STATE && property->items[0].sw.value);
+	}
+	return simulator_client_update_property(client, device, property, message);
+}
+
+indigo_result caa_test_attach(indigo_device *device) {
+	atomic_fetch_add(&attach_attempts, 1);
+	if (atomic_exchange(&fail_attach, 0)) {
+		return INDIGO_FAILED;
+	}
+	indigo_result result = indigo_attach_device(device);
+	if (result == INDIGO_OK) {
+		snprintf(device_names[device_index(device->name)], INDIGO_NAME_SIZE, "%s", device->name);
+		atomic_fetch_or(&attached_mask, 1 << device_index(device->name));
+	}
+	return result;
+}
+
+indigo_result caa_test_detach(indigo_device *device) {
+	int id = device_index(device->name);
+	indigo_result result = indigo_detach_device(device);
+	atomic_fetch_and(&attached_mask, ~(1 << id));
+	atomic_store(&connections[id], 0);
+	return result;
+}
+
+void caa_test_usb_start(void) {
+}
+
+indigo_result caa_test_lock(indigo_device *device) {
+	if (atomic_fetch_add(&locks[device_index(device->name)], 1) != 0) {
+		atomic_fetch_add(&violations, 1);
+	}
+	return INDIGO_OK;
+}
+
+indigo_result caa_test_unlock(indigo_device *device) {
+	if (atomic_fetch_sub(&locks[device_index(device->name)], 1) != 1) {
+		atomic_fetch_add(&violations, 1);
+	}
+	return INDIGO_OK;
+}
+
+indigo_result caa_test_base_change(indigo_device *device, indigo_client *client, indigo_property *property) {
+	// Observe the driver's persistence selection without writing base configuration to disk.
+	if (!strcmp(property->name, CONFIG_PROPERTY_NAME)) {
+		return INDIGO_OK;
+	}
+	return indigo_rotator_change_property(device, client, property);
+}
+
+indigo_result caa_test_save(indigo_device *device, indigo_uni_handle **file, indigo_property *property) {
+	if (!strcmp(property->name, "CAA_BEEP_ON_MOVE")) {
+		atomic_fetch_add(&saved_beep, 1);
+	}
+	return INDIGO_OK;
+}
+
+int LIBUSB_CALL caa_test_usb_register(libusb_context *ctx, int events, int flags, int vid, int pid, int cls, libusb_hotplug_callback_fn callback, void *data, libusb_hotplug_callback_handle *handle) {
+	usb_callback = callback;
+	*handle = 1;
+	callback(NULL, (libusb_device *)&usb_devices[0], LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED, NULL);
+	return LIBUSB_SUCCESS;
+}
+
+int caa_test_usb_register_sim(libusb_context *ctx, libusb_hotplug_event events, libusb_hotplug_flag flags, int vid, int pid, int cls, libusb_hotplug_callback_fn callback, void *data, libusb_hotplug_callback_handle *handle) {
+	return caa_test_usb_register(ctx, events, flags, vid, pid, cls, callback, data, handle);
+}
+
+int caa_test_usb_deregister_poll(libusb_context *ctx, libusb_hotplug_callback_handle handle) {
+	return LIBUSB_SUCCESS;
+}
+
+void LIBUSB_CALL caa_test_usb_deregister(libusb_context *ctx, libusb_hotplug_callback_handle handle) {
+}
+
+libusb_device *LIBUSB_CALL caa_test_usb_ref(libusb_device *device) {
+	atomic_fetch_add(&refs[(int *)device - usb_devices], 1);
+	return device;
+}
+
+void LIBUSB_CALL caa_test_usb_unref(libusb_device *device) {
+	if (atomic_fetch_sub(&refs[(int *)device - usb_devices], 1) <= 0) {
+		atomic_fetch_add(&violations, 1);
+	}
+}
+
+int LIBUSB_CALL caa_test_usb_descriptor(libusb_device *device, struct libusb_device_descriptor *descriptor) {
+	int id = (int *)device - usb_devices;
+	memset(descriptor, 0, sizeof(*descriptor));
+	descriptor->idVendor = atomic_load(&usb_vendor[id]);
+	descriptor->idProduct = atomic_load(&usb_product[id]);
+	return LIBUSB_SUCCESS;
+}
+
+int CAAGetNum(void) {
+	return atomic_load(&visible_count);
+}
+
+int CAAGetProductIDs(int *ids) {
+	if (ids != NULL) {
+		ids[0] = 0x1f10;
+	}
+	return 1;
+}
+
+const char *CAAGetSDKVersion(void) {
+	return "test SDK";
+}
+
+CAA_ERROR_CODE CAAGetID(int index, int *id) {
+	*id = atomic_load(&sdk_ids[index]);
+	return *id == -1 ? CAA_ERROR_INVALID_ID : CAA_SUCCESS;
+}
+
+static CAA_ERROR_CODE sdk_call(int id, enum operation op) {
+	atomic_fetch_add(&calls[op], 1);
+	if (id < 0 || id >= DEVICE_COUNT || (op != OP_OPEN && atomic_load(&sdk_handles[id]) != 1)) {
+		atomic_fetch_add(&violations, 1);
+		return CAA_ERROR_CLOSED;
+	}
+	return atomic_load(&fail[op]) ? CAA_ERROR_GENERAL_ERROR : CAA_SUCCESS;
+}
+
+CAA_ERROR_CODE CAAOpen(int id) {
+	CAA_ERROR_CODE result = sdk_call(id, OP_OPEN);
+	if (result == CAA_SUCCESS) {
+		if (atomic_fetch_add(&sdk_handles[id], 1) != 0) {
+			atomic_fetch_add(&violations, 1);
+		}
+		atomic_fetch_add(&open_calls, 1);
+	}
+	return result;
+}
+
+CAA_ERROR_CODE CAAClose(int id) {
+	if (atomic_fetch_sub(&sdk_handles[id], 1) != 1) {
+		atomic_fetch_add(&violations, 1);
+	}
+	atomic_fetch_add(&close_calls, 1);
+	return CAA_SUCCESS;
+}
+
+CAA_ERROR_CODE CAAGetProperty(int id, CAA_INFO *info) {
+	atomic_store(&probe_entered, true);
+	for (int i = 0; i < 300 && atomic_load(&hold_probe); i++) {
+		indigo_usleep(10000);
+	}
+	CAA_ERROR_CODE result = sdk_call(id, OP_INFO);
+	memset(info, 0, sizeof(*info));
+	info->ID = id;
+	info->MaxStep = 480;
+	pthread_mutex_lock(&suffix_mutex);
+	snprintf(info->Name, sizeof(info->Name), "CAA SDK test %d%s%s%s", id, suffix[id][0] ? " (" : "", suffix[id], suffix[id][0] ? ")" : "");
+	pthread_mutex_unlock(&suffix_mutex);
+	return result;
+}
+
+CAA_ERROR_CODE CAAGetDegree(int id, float *value) {
+	*value = atomic_load(&position[id]) / 100.0f;
+	return sdk_call(id, OP_POSITION);
+}
+
+CAA_ERROR_CODE CAAGetMaxDegree(int id, float *value) {
+	*value = atomic_load(&maximum[id]) / 100.0f;
+	return sdk_call(id, OP_MAX_READ);
+}
+
+CAA_ERROR_CODE CAASetMaxDegree(int id, float value) {
+	CAA_ERROR_CODE result = sdk_call(id, OP_MAX_WRITE);
+	if (result == CAA_SUCCESS) {
+		atomic_store(&maximum[id], lroundf(value * 100));
+	}
+	return result;
+}
+
+CAA_ERROR_CODE CAAIsMoving(int id, bool *moving, bool *hc) {
+	*moving = atomic_load(&motor[id]);
+	*hc = atomic_load(&hand_control[id]);
+	return sdk_call(id, OP_STATUS);
+}
+
+CAA_ERROR_CODE CAAMoveTo(int id, float value) {
+	CAA_ERROR_CODE result = sdk_call(id, OP_MOVE);
+	if (result == CAA_SUCCESS) {
+		atomic_store(&requested[id], lroundf(value * 100));
+		atomic_store(&motor[id], true);
+	}
+	return result;
+}
+
+CAA_ERROR_CODE CAACurDegree(int id, float value) {
+	CAA_ERROR_CODE result = sdk_call(id, OP_SYNC);
+	if (result == CAA_SUCCESS) {
+		atomic_store(&position[id], lroundf(value * 100));
+	}
+	if (atomic_load(&sync_read_failure)) {
+		atomic_store(&fail[OP_POSITION], true);
+	}
+	return result;
+}
+
+CAA_ERROR_CODE CAAStop(int id) {
+	// The test independently confirms motor stop; a hand controller remains active.
+	return sdk_call(id, OP_STOP);
+}
+
+CAA_ERROR_CODE CAAGetReverse(int id, bool *value) {
+	*value = atomic_load(&reverse[id]);
+	return sdk_call(id, OP_REVERSE_READ);
+}
+
+CAA_ERROR_CODE CAASetReverse(int id, bool value) {
+	CAA_ERROR_CODE result = sdk_call(id, OP_REVERSE_WRITE);
+	if (result == CAA_SUCCESS) {
+		atomic_store(&reverse[id], value);
+	}
+	return result;
+}
+
+CAA_ERROR_CODE CAAGetBeep(int id, bool *value) {
+	*value = atomic_load(&beep[id]);
+	return sdk_call(id, OP_BEEP_READ);
+}
+
+CAA_ERROR_CODE CAASetBeep(int id, bool value) {
+	CAA_ERROR_CODE result = sdk_call(id, OP_BEEP_WRITE);
+	if (result == CAA_SUCCESS) {
+		atomic_store(&beep[id], value);
+	}
+	return result;
+}
+
+CAA_ERROR_CODE CAASetID(int id, CAA_ID alias) {
+	CAA_ERROR_CODE result = sdk_call(id, OP_SUFFIX);
+	if (result == CAA_SUCCESS) {
+		pthread_mutex_lock(&suffix_mutex);
+		memcpy(suffix[id], alias.id, 8);
+		suffix[id][8] = 0;
+		pthread_mutex_unlock(&suffix_mutex);
+	}
+	return result;
+}
+
+static void usb_event(int id, libusb_hotplug_event event) {
+	usb_callback(NULL, (libusb_device *)&usb_devices[id], event, NULL);
+}
+
+static bool set_switch(const char *property, const char *item) {
+	return indigo_change_switch_property_1(&simulator_test_client, caa.device_name, property, item, true) == INDIGO_OK;
+}
+
+static bool set_number(const char *property, const char *item, double value) {
+	return indigo_change_number_property_1(&simulator_test_client, caa.device_name, property, item, value) == INDIGO_OK;
+}
+
+static bool connection(bool connect) {
+	int polls = atomic_load(&calls[OP_STATUS]);
+	if (!set_switch(CONNECTION_PROPERTY_NAME, connect ? CONNECTION_CONNECTED_ITEM_NAME : CONNECTION_DISCONNECTED_ITEM_NAME) || !wait_for_simulator_connection_state(connect)) {
+		return false;
+	}
+	// Wait for the initial delayed read before testing a later command's terminal state.
+	if (connect) {
+		for (int i = 0; i < 300 && atomic_load(&calls[OP_STATUS]) == polls; i++) {
+			indigo_usleep(10000);
+		}
+		return atomic_load(&calls[OP_STATUS]) > polls;
+	}
+	return true;
+}
+
+static bool motion_state(indigo_property_state state) {
+	return wait_for_property_state(ROTATOR_POSITION_PROPERTY_NAME, state) && wait_for_property_state(ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, state);
+}
+
+static bool finish_motion(int centidegrees) {
+	atomic_store(&position[0], centidegrees);
+	atomic_store(&motor[0], false);
+	atomic_store(&hand_control[0], false);
+	return motion_state(INDIGO_OK_STATE) && wait_for_number_item_value(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, centidegrees / 100.0, 0.001);
+}
+
+static void metadata_schema_and_reconnect(void) {
+	indigo_driver_info info;
+	ASSERT_EQ_INT(INDIGO_OK, indigo_rotator_asi(INDIGO_DRIVER_INFO, &info));
+	ASSERT_STREQ("indigo_rotator_asi", info.name);
+	ASSERT_STREQ("ZWO CAA Rotator", info.description);
+	ASSERT_EQ_INT(0x03000004, info.version);
+	ASSERT_TRUE(find_cached_property("CAA_BEEP_ON_MOVE") == NULL);
+	for (int i = 0; i < 3; i++) {
+		ASSERT_TRUE(connection(true));
+		ASSERT_EQ_INT(1, atomic_load(&sdk_handles[0]));
+		ASSERT_EQ_INT(1, atomic_load(&locks[0]));
+		assert_device_interface(INDIGO_INTERFACE_ROTATOR);
+		assert_property_has_item("CAA_BEEP_ON_MOVE", "ON");
+		assert_property_has_item("CAA_BEEP_ON_MOVE", "OFF");
+		assert_property_has_item("CAA_CUSTOM_SUFFIX", "SUFFIX");
+		ASSERT_EQ_INT(INDIGO_ONE_OF_MANY_RULE, find_cached_property("CAA_BEEP_ON_MOVE")->rule);
+		ASSERT_EQ_INT(INDIGO_RW_PERM, find_cached_property("CAA_CUSTOM_SUFFIX")->perm);
+		ASSERT_TRUE(find_cached_property(ROTATOR_BACKLASH_PROPERTY_NAME) == NULL);
+		ASSERT_TRUE(find_cached_property(ROTATOR_RELATIVE_MOVE_PROPERTY_NAME) != NULL);
+		ASSERT_STREQ("test SDK", find_cached_item(INFO_PROPERTY_NAME, INFO_DEVICE_FW_REVISION_ITEM_NAME)->text.value);
+		ASSERT_TRUE(connection(false));
+		ASSERT_TRUE(find_cached_property("CAA_BEEP_ON_MOVE") == NULL);
+		ASSERT_EQ_INT(0, atomic_load(&locks[0]));
+		ASSERT_EQ_INT(0, atomic_load(&sdk_handles[0]));
+	}
+}
+
+static void initialization_failures(void) {
+	const enum operation failures[] = { OP_OPEN, OP_MAX_READ, OP_POSITION, OP_REVERSE_READ, OP_BEEP_READ };
+	for (unsigned i = 0; i < ARRAY_SIZE(failures); i++) {
+		int closed = atomic_load(&close_calls);
+		atomic_store(&fail[failures[i]], true);
+		ASSERT_TRUE(set_switch(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME));
+		ASSERT_TRUE(wait_for_property_state(CONNECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+		ASSERT_EQ_INT(closed + (failures[i] != OP_OPEN), atomic_load(&close_calls));
+		ASSERT_EQ_INT(0, atomic_load(&sdk_handles[0]));
+		ASSERT_EQ_INT(0, atomic_load(&locks[0]));
+		ASSERT_FALSE(find_cached_item(CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME)->sw.value);
+		atomic_store(&fail[failures[i]], false);
+		ASSERT_TRUE(connection(true));
+		ASSERT_TRUE(connection(false));
+	}
+}
+
+static void absolute_relative_and_overlap(void) {
+	ASSERT_TRUE(connection(true));
+	ASSERT_TRUE(set_number(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 123.25));
+	ASSERT_TRUE(wait_atomic(&requested[0], 12325));
+	ASSERT_TRUE(motion_state(INDIGO_BUSY_STATE));
+	ASSERT_NEAR(10, find_cached_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME)->number.value, 0.001);
+	ASSERT_NEAR(123.25, find_cached_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME)->number.target, 0.001);
+	ASSERT_TRUE(set_number(ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, ROTATOR_RELATIVE_MOVE_ITEM_NAME, 50));
+	ASSERT_TRUE(set_number(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 200));
+	ASSERT_EQ_INT(1, atomic_load(&calls[OP_MOVE]));
+	atomic_store(&position[0], 12325);
+	int polls = atomic_load(&calls[OP_STATUS]);
+	for (int i = 0; i < 300 && atomic_load(&calls[OP_STATUS]) == polls; i++) {
+		indigo_usleep(10000);
+	}
+	ASSERT_TRUE(atomic_load(&calls[OP_STATUS]) > polls);
+	ASSERT_TRUE(motion_state(INDIGO_BUSY_STATE));
+	ASSERT_TRUE(finish_motion(12325));
+	ASSERT_TRUE(set_number(ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, ROTATOR_RELATIVE_MOVE_ITEM_NAME, -23.25));
+	ASSERT_TRUE(wait_atomic(&requested[0], 10000));
+	ASSERT_TRUE(finish_motion(10000));
+	ASSERT_TRUE(set_number(ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, ROTATOR_RELATIVE_MOVE_ITEM_NAME, 12.5));
+	ASSERT_TRUE(wait_atomic(&requested[0], 11250));
+	ASSERT_TRUE(finish_motion(11250));
+	ASSERT_TRUE(set_number(ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, ROTATOR_RELATIVE_MOVE_ITEM_NAME, -120));
+	ASSERT_TRUE(motion_state(INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(3, atomic_load(&calls[OP_MOVE]));
+}
+
+static void failed_motion_and_polling(void) {
+	ASSERT_TRUE(connection(true));
+	atomic_store(&fail[OP_MOVE], true);
+	ASSERT_TRUE(set_number(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 50));
+	ASSERT_TRUE(motion_state(INDIGO_ALERT_STATE));
+	ASSERT_FALSE(atomic_load(&motor[0]));
+	atomic_store(&fail[OP_MOVE], false);
+	const enum operation failures[] = { OP_STATUS, OP_POSITION };
+	for (unsigned i = 0; i < ARRAY_SIZE(failures); i++) {
+		ASSERT_TRUE(set_number(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 50));
+		ASSERT_TRUE(motion_state(INDIGO_BUSY_STATE));
+		atomic_store(&fail[failures[i]], true);
+		ASSERT_TRUE(motion_state(INDIGO_ALERT_STATE));
+		ASSERT_NEAR(10, find_cached_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME)->number.value, 0.001);
+		int polls = atomic_load(&calls[OP_STATUS]);
+		indigo_usleep(600000);
+		ASSERT_EQ_INT(polls, atomic_load(&calls[OP_STATUS]));
+		atomic_store(&fail[failures[i]], false);
+		int moves = atomic_load(&calls[OP_MOVE]);
+		ASSERT_TRUE(set_number(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 60));
+		ASSERT_TRUE(motion_state(INDIGO_BUSY_STATE));
+		ASSERT_EQ_INT(moves, atomic_load(&calls[OP_MOVE]));
+		ASSERT_TRUE(finish_motion(1000));
+	}
+}
+
+static void synchronization_and_readback(void) {
+	ASSERT_TRUE(connection(true));
+	ASSERT_TRUE(set_switch(ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_SYNC_ITEM_NAME));
+	ASSERT_TRUE(wait_for_property_state(ROTATOR_ON_POSITION_SET_PROPERTY_NAME, INDIGO_OK_STATE));
+	atomic_store(&fail[OP_SYNC], true);
+	ASSERT_TRUE(set_number(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 25.5));
+	ASSERT_TRUE(motion_state(INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(1000, atomic_load(&position[0]));
+	atomic_store(&fail[OP_SYNC], false);
+	atomic_store(&sync_read_failure, true);
+	ASSERT_TRUE(set_number(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 25.5));
+	ASSERT_TRUE(motion_state(INDIGO_ALERT_STATE));
+	atomic_store(&sync_read_failure, false);
+	atomic_store(&fail[OP_POSITION], false);
+	ASSERT_TRUE(set_number(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 35.75));
+	ASSERT_TRUE(motion_state(INDIGO_OK_STATE));
+	ASSERT_NEAR(35.75, find_cached_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME)->number.value, 0.001);
+	ASSERT_NEAR(35.75, find_cached_item(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME)->number.target, 0.001);
+	ASSERT_EQ_INT(0, atomic_load(&calls[OP_MOVE]));
+}
+
+static void abort_motor_and_hand_controller(void) {
+	ASSERT_TRUE(connection(true));
+	ASSERT_TRUE(set_number(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 70));
+	ASSERT_TRUE(motion_state(INDIGO_BUSY_STATE));
+	atomic_store(&fail[OP_STOP], true);
+	ASSERT_TRUE(set_switch(ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME));
+	ASSERT_TRUE(wait_for_property_state(ROTATOR_ABORT_MOTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	ASSERT_FALSE(find_cached_item(ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME)->sw.value);
+	ASSERT_TRUE(motion_state(INDIGO_BUSY_STATE));
+	atomic_store(&fail[OP_STOP], false);
+	ASSERT_TRUE(set_switch(ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME));
+	ASSERT_TRUE(wait_for_property_state(ROTATOR_ABORT_MOTION_PROPERTY_NAME, INDIGO_BUSY_STATE));
+	ASSERT_TRUE(finish_motion(3000));
+	ASSERT_TRUE(wait_for_property_state(ROTATOR_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
+	atomic_store(&hand_control[0], true);
+	ASSERT_TRUE(set_number(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 80));
+	ASSERT_TRUE(motion_state(INDIGO_BUSY_STATE));
+	ASSERT_EQ_INT(1, atomic_load(&calls[OP_MOVE]));
+	ASSERT_TRUE(set_switch(ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME));
+	ASSERT_TRUE(wait_for_property_state(ROTATOR_ABORT_MOTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	ASSERT_TRUE(motion_state(INDIGO_BUSY_STATE));
+	ASSERT_TRUE(finish_motion(3500));
+	ASSERT_TRUE(set_switch(ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_ABORT_MOTION_ITEM_NAME));
+	ASSERT_TRUE(wait_for_property_state(ROTATOR_ABORT_MOTION_PROPERTY_NAME, INDIGO_OK_STATE));
+}
+
+static void limits_and_settings(void) {
+	ASSERT_TRUE(connection(true));
+	ASSERT_TRUE(set_number(ROTATOR_LIMITS_PROPERTY_NAME, ROTATOR_LIMITS_MAX_POSITION_ITEM_NAME, 200.5));
+	ASSERT_TRUE(wait_for_property_state(ROTATOR_LIMITS_PROPERTY_NAME, INDIGO_OK_STATE));
+	ASSERT_EQ_INT(20050, atomic_load(&maximum[0]));
+	const enum operation failures[] = { OP_MAX_WRITE, OP_MAX_READ };
+	for (unsigned i = 0; i < ARRAY_SIZE(failures); i++) {
+		atomic_store(&fail[failures[i]], true);
+		ASSERT_TRUE(set_number(ROTATOR_LIMITS_PROPERTY_NAME, ROTATOR_LIMITS_MAX_POSITION_ITEM_NAME, 250));
+		ASSERT_TRUE(wait_for_property_state(ROTATOR_LIMITS_PROPERTY_NAME, INDIGO_ALERT_STATE));
+		ASSERT_NEAR(200.5, find_cached_item(ROTATOR_LIMITS_PROPERTY_NAME, ROTATOR_LIMITS_MAX_POSITION_ITEM_NAME)->number.value, 0.001);
+		ASSERT_NEAR(200.5, find_cached_item(ROTATOR_LIMITS_PROPERTY_NAME, ROTATOR_LIMITS_MAX_POSITION_ITEM_NAME)->number.target, 0.001);
+		atomic_store(&fail[failures[i]], false);
+	}
+	ASSERT_TRUE(set_number(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 220));
+	ASSERT_TRUE(motion_state(INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(0, atomic_load(&calls[OP_MOVE]));
+	ASSERT_TRUE(set_switch(ROTATOR_DIRECTION_PROPERTY_NAME, ROTATOR_DIRECTION_REVERSED_ITEM_NAME));
+	ASSERT_TRUE(wait_for_property_state(ROTATOR_DIRECTION_PROPERTY_NAME, INDIGO_OK_STATE));
+	ASSERT_TRUE(atomic_load(&reverse[0]));
+	ASSERT_TRUE(set_switch("CAA_BEEP_ON_MOVE", "ON"));
+	ASSERT_TRUE(wait_for_property_state("CAA_BEEP_ON_MOVE", INDIGO_OK_STATE));
+	ASSERT_TRUE(atomic_load(&beep[0]));
+	atomic_store(&fail[OP_REVERSE_WRITE], true);
+	ASSERT_TRUE(set_switch(ROTATOR_DIRECTION_PROPERTY_NAME, ROTATOR_DIRECTION_NORMAL_ITEM_NAME));
+	ASSERT_TRUE(wait_for_property_state(ROTATOR_DIRECTION_PROPERTY_NAME, INDIGO_ALERT_STATE));
+	atomic_store(&fail[OP_BEEP_WRITE], true);
+	ASSERT_TRUE(set_switch("CAA_BEEP_ON_MOVE", "OFF"));
+	ASSERT_TRUE(wait_for_property_state("CAA_BEEP_ON_MOVE", INDIGO_ALERT_STATE));
+	atomic_store(&fail[OP_REVERSE_WRITE], false);
+	atomic_store(&fail[OP_BEEP_WRITE], false);
+	ASSERT_TRUE(connection(false));
+	ASSERT_TRUE(connection(true));
+	ASSERT_TRUE(find_cached_item(ROTATOR_DIRECTION_PROPERTY_NAME, ROTATOR_DIRECTION_REVERSED_ITEM_NAME)->sw.value);
+	ASSERT_TRUE(find_cached_item("CAA_BEEP_ON_MOVE", "ON")->sw.value);
+	ASSERT_TRUE(set_switch(CONFIG_PROPERTY_NAME, CONFIG_SAVE_ITEM_NAME));
+	ASSERT_TRUE(wait_atomic(&saved_beep, 1));
+}
+
+static void suffix_boundaries_and_rollback(void) {
+	ASSERT_TRUE(connection(true));
+	const char *values[] = { "12345678", "", "abc" };
+	for (unsigned i = 0; i < ARRAY_SIZE(values); i++) {
+		ASSERT_EQ_INT(INDIGO_OK, indigo_change_text_property_1(&simulator_test_client, caa.device_name, "CAA_CUSTOM_SUFFIX", "SUFFIX", values[i]));
+		ASSERT_TRUE(wait_for_property_state("CAA_CUSTOM_SUFFIX", INDIGO_OK_STATE));
+		ASSERT_STREQ(values[i], find_cached_item("CAA_CUSTOM_SUFFIX", "SUFFIX")->text.value);
+	}
+	int writes = atomic_load(&calls[OP_SUFFIX]);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_text_property_1(&simulator_test_client, caa.device_name, "CAA_CUSTOM_SUFFIX", "SUFFIX", "123456789"));
+	ASSERT_TRUE(wait_for_property_state("CAA_CUSTOM_SUFFIX", INDIGO_ALERT_STATE));
+	ASSERT_EQ_INT(writes, atomic_load(&calls[OP_SUFFIX]));
+	ASSERT_STREQ("abc", find_cached_item("CAA_CUSTOM_SUFFIX", "SUFFIX")->text.value);
+	atomic_store(&fail[OP_SUFFIX], true);
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_text_property_1(&simulator_test_client, caa.device_name, "CAA_CUSTOM_SUFFIX", "SUFFIX", "new"));
+	ASSERT_TRUE(wait_for_property_state("CAA_CUSTOM_SUFFIX", INDIGO_ALERT_STATE));
+	ASSERT_STREQ("abc", find_cached_item("CAA_CUSTOM_SUFFIX", "SUFFIX")->text.value);
+	atomic_store(&fail[OP_SUFFIX], false);
+	ASSERT_TRUE(connection(false));
+	usb_event(0, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT);
+	ASSERT_TRUE(wait_atomic(&refs[0], 0));
+	usb_event(0, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED);
+	ASSERT_TRUE(wait_atomic(&attached_mask, 1));
+	ASSERT_STREQ("CAA SDK test 0 #abc", device_names[0]);
+}
+
+static void disconnect_and_unplug_polling(void) {
+	ASSERT_TRUE(connection(true));
+	ASSERT_TRUE(set_number(ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, 100));
+	ASSERT_TRUE(motion_state(INDIGO_BUSY_STATE));
+	ASSERT_TRUE(connection(false));
+	int polls = atomic_load(&calls[OP_STATUS]);
+	indigo_usleep(600000);
+	ASSERT_EQ_INT(polls, atomic_load(&calls[OP_STATUS]));
+	ASSERT_TRUE(connection(true));
+	ASSERT_TRUE(motion_state(INDIGO_BUSY_STATE));
+	atomic_store(&sdk_ids[0], -1);
+	usb_event(0, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT);
+	ASSERT_TRUE(wait_atomic(&refs[0], 0));
+	ASSERT_EQ_INT(0, atomic_load(&sdk_handles[0]));
+	ASSERT_EQ_INT(0, atomic_load(&locks[0]));
+	polls = atomic_load(&calls[OP_STATUS]);
+	indigo_usleep(600000);
+	ASSERT_EQ_INT(polls, atomic_load(&calls[OP_STATUS]));
+	atomic_store(&motor[0], false);
+	atomic_store(&sdk_ids[0], 0);
+	usb_event(0, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED);
+	ASSERT_TRUE(wait_atomic(&attached_mask, 1));
+	ASSERT_TRUE(connection(true));
+}
+
+static void discovery_failures_and_capacity(void) {
+	atomic_store(&visible_count, 2);
+	atomic_store(&usb_product[1], 0xeeee);
+	usb_event(1, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED);
+	ASSERT_TRUE(wait_atomic(&refs[1], 0));
+	ASSERT_EQ_INT(1, atomic_load(&attached_mask));
+	atomic_store(&usb_product[1], 0x1f10);
+	atomic_store(&usb_vendor[1], 0xffff);
+	usb_event(1, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED);
+	ASSERT_TRUE(wait_atomic(&refs[1], 0));
+	ASSERT_EQ_INT(1, atomic_load(&attached_mask));
+	atomic_store(&usb_vendor[1], 0x03c3);
+	const int ids[] = { -1, -2, CAA_ID_MAX };
+	for (unsigned i = 0; i < ARRAY_SIZE(ids); i++) {
+		atomic_store(&sdk_ids[1], ids[i]);
+		usb_event(1, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED);
+		ASSERT_TRUE(wait_atomic(&refs[1], 0));
+		ASSERT_EQ_INT(1, atomic_load(&attached_mask));
+	}
+	atomic_store(&sdk_ids[1], 1);
+	const enum operation failures[] = { OP_OPEN, OP_INFO };
+	for (unsigned i = 0; i < ARRAY_SIZE(failures); i++) {
+		atomic_store(&fail[failures[i]], true);
+		usb_event(1, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED);
+		ASSERT_TRUE(wait_atomic(&refs[1], 0));
+		ASSERT_EQ_INT(0, atomic_load(&sdk_handles[1]));
+		atomic_store(&fail[failures[i]], false);
+	}
+	atomic_store(&fail_attach, 1);
+	usb_event(1, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED);
+	ASSERT_TRUE(wait_atomic(&refs[1], 0));
+	ASSERT_EQ_INT(1, atomic_load(&attached_mask));
+	usb_event(1, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED);
+	ASSERT_TRUE(wait_atomic(&attached_mask, 3));
+	int opens = atomic_load(&open_calls);
+	usb_event(1, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED);
+	ASSERT_TRUE(wait_atomic(&refs[1], 1));
+	ASSERT_EQ_INT(opens, atomic_load(&open_calls));
+	for (int i = 2; i < DEVICE_COUNT; i++) {
+		atomic_store(&visible_count, i + 1);
+		usb_event(i, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED);
+		if (i < 5) {
+			ASSERT_TRUE(wait_atomic(&attached_mask, (1 << (i + 1)) - 1));
+		} else {
+			ASSERT_TRUE(wait_atomic(&refs[i], 0));
+			ASSERT_EQ_INT(31, atomic_load(&attached_mask));
+		}
+	}
+	atomic_store(&sdk_ids[2], -1);
+	usb_event(2, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT);
+	ASSERT_TRUE(wait_atomic(&refs[2], 0));
+	usb_event(5, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED);
+	ASSERT_TRUE(wait_atomic(&attached_mask, 59));
+	ASSERT_TRUE(connection(true));
+	ASSERT_EQ_INT(INDIGO_OK, indigo_change_switch_property_1(&simulator_test_client, "CAA SDK test 1", CONNECTION_PROPERTY_NAME, CONNECTION_CONNECTED_ITEM_NAME, true));
+	ASSERT_TRUE(wait_atomic(&connections[1], 1));
+	ASSERT_EQ_INT(1, atomic_load(&sdk_handles[0]));
+	ASSERT_EQ_INT(1, atomic_load(&sdk_handles[1]));
+	usb_event(1, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT);
+	ASSERT_TRUE(wait_atomic(&refs[1], 0));
+	ASSERT_EQ_INT(1, atomic_load(&sdk_handles[0]));
+	ASSERT_EQ_INT(0, atomic_load(&sdk_handles[1]));
+}
+
+static void unplug_queued_during_probe(void) {
+	atomic_store(&visible_count, 2);
+	atomic_store(&probe_entered, false);
+	atomic_store(&hold_probe, true);
+	usb_event(1, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED);
+	ASSERT_TRUE(wait_flag(&probe_entered));
+	usb_event(1, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT);
+	atomic_store(&hold_probe, false);
+	ASSERT_TRUE(wait_atomic(&refs[1], 0));
+	ASSERT_EQ_INT(1, atomic_load(&attached_mask));
+	ASSERT_EQ_INT(0, atomic_load(&sdk_handles[1]));
+}
+
+static void reset_mock(void) {
+	atomic_store(&visible_count, 1);
+	atomic_store(&attached_mask, 0);
+	atomic_store(&attach_attempts, 0);
+	atomic_store(&fail_attach, 0);
+	atomic_store(&violations, 0);
+	atomic_store(&open_calls, 0);
+	atomic_store(&close_calls, 0);
+	atomic_store(&saved_beep, 0);
+	atomic_store(&hold_probe, false);
+	atomic_store(&probe_entered, false);
+	atomic_store(&sync_read_failure, false);
+	for (int i = 0; i < OP_COUNT; i++) {
+		atomic_store(&fail[i], false);
+		atomic_store(&calls[i], 0);
+	}
+	for (int i = 0; i < DEVICE_COUNT; i++) {
+		atomic_store(&refs[i], 0);
+		atomic_store(&sdk_handles[i], 0);
+		atomic_store(&locks[i], 0);
+		atomic_store(&connections[i], 0);
+		atomic_store(&position[i], 1000);
+		atomic_store(&maximum[i], 36000);
+		atomic_store(&requested[i], 0);
+		atomic_store(&motor[i], false);
+		atomic_store(&hand_control[i], false);
+		atomic_store(&reverse[i], false);
+		atomic_store(&beep[i], false);
+		atomic_store(&sdk_ids[i], i);
+		atomic_store(&usb_product[i], 0x1f10);
+		atomic_store(&usb_vendor[i], 0x03c3);
+		suffix[i][0] = 0;
+	}
+}
+
+static bool teardown(void) {
+	bool result = true;
+	atomic_store(&hold_probe, false);
+	for (int i = 0; i < OP_COUNT; i++) {
+		atomic_store(&fail[i], false);
+	}
+	for (int i = 0; i < DEVICE_COUNT; i++) {
+		if (atomic_load(&connections[i])) {
+			char name[INDIGO_NAME_SIZE];
+			snprintf(name, sizeof(name), "%s", device_names[i]);
+			indigo_change_switch_property_1(&simulator_test_client, name, CONNECTION_PROPERTY_NAME, CONNECTION_DISCONNECTED_ITEM_NAME, true);
+			result &= wait_atomic(&connections[i], 0);
+		}
+	}
+	result &= indigo_rotator_asi(INDIGO_DRIVER_SHUTDOWN, NULL) == INDIGO_OK;
+	for (int i = 0; i < DEVICE_COUNT; i++) {
+		result &= wait_atomic(&refs[i], 0) && atomic_load(&sdk_handles[i]) == 0 && atomic_load(&locks[i]) == 0;
+	}
+	result &= atomic_load(&open_calls) == atomic_load(&close_calls) && atomic_load(&violations) == 0;
+	if (!result) {
+		fprintf(stderr, "Cleanup failed: opens=%d closes=%d violations=%d\n", atomic_load(&open_calls), atomic_load(&close_calls), atomic_load(&violations));
+	}
+	release_cached_properties();
+	return result;
+}
+
+int main(void) {
+	const indigo_test_case tests[] = {
+		{ "metadata, schema and repeated connection", metadata_schema_and_reconnect },
+		{ "failed initialization releases SDK and locks", initialization_failures },
+		{ "fractional absolute/relative motion and overlap", absolute_relative_and_overlap },
+		{ "move/status/position failures and polling recovery", failed_motion_and_polling },
+		{ "sync command and readback failures", synchronization_and_readback },
+		{ "abort confirmation and hand controller", abort_motor_and_hand_controller },
+		{ "limits, settings, persistence and reconnect", limits_and_settings },
+		{ "suffix boundaries and rollback", suffix_boundaries_and_rollback },
+		{ "disconnect/unplug with pending polling", disconnect_and_unplug_polling },
+		{ "discovery failures, capacity and multi-device removal", discovery_failures_and_capacity },
+		{ "unplug queued during SDK probe", unplug_queued_during_probe }
+	};
+	indigo_start();
+	simulator_test_client.update_property = caa_client_update;
+	indigo_attach_client(&simulator_test_client);
+	int result = 0;
+	for (unsigned i = 0; i < ARRAY_SIZE(tests); i++) {
+		reset_mock();
+		reset_simulator_context(&caa);
+		if (indigo_rotator_asi(INDIGO_DRIVER_INIT, NULL) != INDIGO_OK || !wait_atomic(&attached_mask, 1)) {
+			result = 1;
+		} else {
+			result |= indigo_run_tests("ASI CAA SDK integration", &tests[i], 1);
+		}
+		if (!teardown()) {
+			result = 1;
+			break;
+		}
+	}
+	indigo_detach_client(&simulator_test_client);
+	indigo_stop();
+	return result;
+}

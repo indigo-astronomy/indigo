@@ -119,8 +119,6 @@ driver sx {
 		#define CHUNK_SIZE                    (4*1024*1024)
 
 		#define SX_VENDOR_ID                  0x1278
-		#undef MAX_DEVICES
-		#define MAX_DEVICES                   10
 
 		#define PRIVATE_DATA        ((sx_private_data *)device->private_data)
 
