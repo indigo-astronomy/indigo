@@ -74,7 +74,7 @@
 | dome_simulator           | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ⛔ N/A   |                                                          |
 | dome_skyroof             | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ Yes   |                                                          |
 | dome_talon6ror           | 2️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    |                                                          |
-| focuser_asi              | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ❌ No    |                                                          |
+| focuser_asi              | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ Yes   |                                                          |
 | focuser_astroasis        | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ✅ HW    |                                                          |
 | focuser_astromechanics   | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ Sim   |                                                          |
 | focuser_dmfc             | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ Sim   |                                                          |
@@ -122,7 +122,7 @@
 | mount_synscan            | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ HW    |                                                          |
 | mount_temma              | 2️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    |                                                          |
 | polaralign_simulator     | 3️⃣  | ❌ No    | ❌ No    | ❌ No    | ⛔ N/A   |                                                          |
-| rotator_asi              | 3️⃣  | ✅ Yes   | ❌ No    | ❌ No    | ✅ HW    |                                                          |
+| rotator_asi              | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ HW    |                                                          |
 | rotator_falcon           | 3️⃣  | ✅ Yes   | ✅ Yes   | ✅ Yes   | ✅ HW    |                                                          |
 | rotator_lunatico         | 2️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    |                                                          |
 | rotator_optec            | 2️⃣  | ❌ No    | ❌ No    | ❌ No    | ❌ No    |                                                          |
