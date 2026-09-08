@@ -187,6 +187,16 @@ INDIGO_EXTERN bool indigo_queue_set_max_pending_tasks(indigo_queue *queue, size_
  */
 INDIGO_EXTERN void indigo_queue_remove(indigo_queue *queue, indigo_device *device, indigo_timer_callback callback);
 
+/** Wait synchronously until no pending or running tasks remain. Tasks run at their
+ * scheduled times, including delayed tasks and follow-ups enqueued by callbacks.
+ * Stop producers and recurring tasks first; otherwise this may wait indefinitely.
+ * Do not hold a task mutex while waiting. The caller must keep the queue alive:
+ * do not delete it concurrently, including self-deletion from a callback.
+ * Returns false for NULL, a stopped queue, or a call from the queue's own worker.
+ * This does not cancel tasks or prevent subsequent additions.
+ */
+INDIGO_EXTERN bool indigo_queue_drain(indigo_queue *queue);
+
 /** Remove all tasks, abort queue and free associated structure
  */
 INDIGO_EXTERN void indigo_queue_delete(indigo_queue **queue);

@@ -90,9 +90,9 @@ Some drivers are generated from `.driver` files by `indigo_generator`.
 - Generated public headers expose the driver entry point and normally do not keep private device-name macros from the old hand-written driver. Update tests to use generated device names or public APIs instead of relying on removed private macros.
 - After editing `.driver`, run `indigo_generator`, build the driver, and run the narrowest available simulator or integration test. Also inspect `git diff` afterward: large generated diffs are expected, but verify that every behavioral difference is explained by generator semantics.
 
-## Camera Driver Testing
+## Driver Testing
 
-For CCD fake SDK/USB and real-hardware validation, follow the [Camera Driver Test Standard](indigo_test/DRIVER_TESTING_RULES.md#camera-driver-test-standard-fake-sdkusb-and-hardware).
+For CCD, mount, wheel, focuser, rotator, guider, AO and GPS validation, follow the shared scope and class standards in [Driver Testing Rules](indigo_test/DRIVER_TESTING_RULES.md).
 
 ## Repository Hygiene
 

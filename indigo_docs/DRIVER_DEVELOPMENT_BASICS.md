@@ -533,7 +533,12 @@ indigo_execute_priority_handler_in(device, INDIGO_TASK_PRIORITY_URGENT,
 	((double)north) / 1000.0, guider_guide_dec_finish_callback);
 ```
 
-A driver that needs a queue outside of the standard device queue (for example an auxiliary control channel) can create and manage one directly with *indigo_queue_create()*, *indigo_queue_add()* / *indigo_queue_add_with_data()*, *indigo_queue_remove()* and *indigo_queue_delete()*, all declared in [indigo_timer.h](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo/indigo_timer.h). Most drivers never need this - the device queue reached through the *indigo_execute_handler()* family is sufficient.
+A driver that needs a queue outside of the standard device queue (for example an auxiliary control channel) can create and manage one directly with *indigo_queue_create()*, *indigo_queue_add()* / *indigo_queue_add_with_data()*, *indigo_queue_remove()*, *indigo_queue_drain()* and *indigo_queue_delete()*, all declared in [indigo_timer.h](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo/indigo_timer.h). Most drivers never need this - the device queue reached through the *indigo_execute_handler()* family is sufficient.
+
+After stopping task producers (for example by deregistering USB hot-plug), call `indigo_queue_drain(queue)` to wait synchronously until both pending and running tasks finish. Delayed tasks retain their deadlines, and callback-enqueued follow-up work is included. Stop recurring polling first; do not hold a task mutex or delete the queue concurrently. Calling from the queue's own worker returns `false` instead of deadlocking. Draining leaves the queue usable; `indigo_queue_delete()` cancels pending tasks and destroys it.
+
+Generated hot-plug drivers use this shutdown sequence for libusb, SDK and HID: verify that devices are disconnected under the driver task mutex; on success stop SDK discovery retries, deregister hot-plug, cancel pending retries, drain the queue without holding the task mutex, and only then detach devices and delete the queue. A rejected shutdown leaves hot-plug and discovery active.
+
 
 ### Communication with the Hardware
 

@@ -1003,7 +1003,7 @@ void indigo_queue_set_name(indigo_queue *queue, const char *name) {
 	pthread_mutex_lock(&queue->mutex);
 	snprintf(queue->name, sizeof(queue->name), "%s", name);
 	queue->rename_pending = true;
-	pthread_cond_signal(&queue->cond);
+	pthread_cond_broadcast(&queue->cond);
 	pthread_mutex_unlock(&queue->mutex);
 }
 
@@ -1025,7 +1025,7 @@ void indigo_queue_add(indigo_queue *queue, indigo_device *device, int priority, 
 	pthread_mutex_lock(&queue->mutex);
 	task->next = NULL;
 	enqueue_task_locked(queue, task);
-	pthread_cond_signal(&queue->cond);
+	pthread_cond_broadcast(&queue->cond);
 	pthread_mutex_unlock(&queue->mutex);
 }
 
@@ -1045,7 +1045,7 @@ void indigo_queue_add_with_data(indigo_queue *queue, indigo_device *device, int 
 	pthread_mutex_lock(&queue->mutex);
 	task->next = NULL;
 	enqueue_task_locked(queue, task);
-	pthread_cond_signal(&queue->cond);
+	pthread_cond_broadcast(&queue->cond);
 	pthread_mutex_unlock(&queue->mutex);
 }
 
@@ -1073,14 +1073,26 @@ void indigo_queue_remove(indigo_queue *queue, indigo_device *device, indigo_time
 	if (queue) {
 		pthread_mutex_lock(&queue->mutex);
 		remove_tasks_locked(queue, device, callback);
-		// The queue worker and remove/delete waiters use disjoint predicates on queue->cond,
-		// so a signal is sufficient here unless another wait purpose is added later.
-		pthread_cond_signal(&queue->cond);
+		// Wake both the worker and threads waiting for the queue to drain.
+		pthread_cond_broadcast(&queue->cond);
 		while (!pthread_equal(pthread_self(), queue->thread) && queue->running && task_matches(queue->running_task, device, callback)) {
 			pthread_cond_wait(&queue->cond, &queue->mutex);
 		}
 		pthread_mutex_unlock(&queue->mutex);
 	}
+}
+
+bool indigo_queue_drain(indigo_queue *queue) {
+	if (queue == NULL || pthread_equal(pthread_self(), queue->thread)) {
+		return false;
+	}
+	pthread_mutex_lock(&queue->mutex);
+	while (!queue->abort && (queue->task != NULL || queue->running)) {
+		pthread_cond_wait(&queue->cond, &queue->mutex);
+	}
+	bool drained = !queue->abort;
+	pthread_mutex_unlock(&queue->mutex);
+	return drained;
 }
 
 // remove all tasks from queue and queue itself
